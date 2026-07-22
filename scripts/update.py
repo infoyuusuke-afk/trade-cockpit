@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import yfinance as yf
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parents[1]
 JST = ZoneInfo("Asia/Tokyo")
 
 
@@ -94,6 +94,10 @@ def main():
     theme_rows = "".join(f"<tr><td>{i}</td><td>{a}</td><td>{b}</td></tr>" for i, (a, b) in enumerate(themes, 1))
     vix = indices.get("VIX", {}).get("price")
     usd = indices.get("ドル円", {}).get("price")
+    nikkei = indices.get("日経平均", {}).get("price")
+    range_text = "取得不能"
+    if isinstance(nikkei, (int, float)):
+        range_text = f"{round(nikkei * .985):,.0f}円 ～ {round(nikkei * 1.015):,.0f}円"
     risk = "警戒" if isinstance(vix, (int, float)) and vix >= 20 else "通常警戒"
     timing_title = "引け前チェック" if afternoon else "寄り付き前チェック"
     timing_items = ["VWAP位置と大引けの気配", "上ヒゲ・出来高・決算予定", "持ち越しは逆指値を先に決める", "PTSと翌営業日の材料確認"] if afternoon else ["先物・米指数・SOXを確認", "為替・金利・VIXを確認", "GU/GD幅と板・歩み値を確認", "寄り後5分は出来高を観察", "IFO注文を準備してから入る"]
@@ -102,9 +106,9 @@ def main():
 
     html = f'''<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="900"><title>AIトレードコクピット</title>
 <style>
-*{{box-sizing:border-box}}body{{margin:0;background:#070b10;color:#eef3f8;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:15px}}header{{padding:14px 18px;border-bottom:1px solid #34404d;display:flex;justify-content:space-between;align-items:center}}h1{{margin:0;font-size:25px}}h2{{font-size:19px;margin:0 0 10px;color:#dbe8ff}}.sub{{color:#aebdcb;margin-top:5px}}.tag{{background:#ffe66d;color:#111;padding:8px 13px;border-radius:8px;font-weight:800}}main{{padding:8px;display:grid;grid-template-columns:1.12fr 1fr 1fr;gap:8px}}.card{{background:#111923;border:1px solid #536170;border-radius:7px;padding:10px;overflow:auto}}.wide{{grid-column:span 2}}table{{width:100%;border-collapse:collapse}}th{{background:#192735;color:#eaf2fa}}th,td{{border:1px solid #46525e;padding:7px;text-align:right}}th:first-child,td:first-child{{text-align:left}}.up{{color:#55df71;font-weight:800}}.down{{color:#ff5f5f;font-weight:800}}small{{color:#b9c4cf}}ul{{padding-left:18px;line-height:1.75;margin:5px 0}}.warning{{color:#ffe66d}}.quote{{font-size:20px;font-weight:800;line-height:1.6}}footer{{padding:10px 16px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}}@media(max-width:1100px){{main{{grid-template-columns:1fr 1fr}}}}@media(max-width:700px){{main{{grid-template-columns:1fr}}.wide{{grid-column:span 1}}}}
+*{{box-sizing:border-box}}body{{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}}header{{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;align-items:center;gap:12px}}h1{{margin:0;font-size:25px;letter-spacing:.03em}}h2{{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}}.sub{{color:#aebdcb;margin-top:4px}}.headright{{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}}.tag{{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}}.range{{border:1px solid #ddca41;border-radius:6px;overflow:hidden;display:flex;font-weight:800}}.range b{{background:#fff3a2;color:#161616;padding:7px 10px}}.range span{{background:#18180c;color:#ffe86b;padding:7px 10px}}main{{padding:6px;display:grid;grid-template-columns:1.16fr .95fr 1.08fr;gap:6px}}.card{{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto;box-shadow:0 2px 7px #0008}}.wide{{grid-column:span 2}}table{{width:100%;border-collapse:collapse;white-space:normal}}th{{background:#1b2a39;color:#f3f7fb}}th,td{{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}}th:first-child,td:first-child{{text-align:left}}tr:nth-child(even) td{{background:#111923}}.up{{color:#52e46f;font-weight:900}}.down{{color:#ff6262;font-weight:900}}small{{color:#bac6d2}}ul{{padding-left:17px;line-height:1.65;margin:3px 0}}.warning{{color:#ffe66d}}.quote{{font-size:17px;font-weight:900;line-height:1.55}}footer{{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}}@media(max-width:1150px){{main{{grid-template-columns:1fr 1fr}}}}@media(max-width:720px){{header{{align-items:flex-start;flex-direction:column}}main{{grid-template-columns:1fr}}.wide{{grid-column:span 1}}table{{min-width:520px}}}}
 </style></head><body>
-<header><div><h1>AIトレードコクピット</h1><div class="sub">毎日8:30・15:00自動更新／15分ごとに画面再読み込み</div></div><div><span class="tag">{phase}</span><div class="sub">{data["updated_at"]}</div></div></header>
+<header><div><h1>AIトレードコクピット</h1><div class="sub">毎日8:30・15:00自動更新／15分ごとに画面再読み込み</div></div><div class="headright"><div class="range"><b>本日の想定レンジ（日経平均）</b><span>{range_text}</span></div><div><span class="tag">{phase}</span><div class="sub">{data["updated_at"]}</div></div></div></header>
 <main>
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日の狙い目業種 TOP5</h2><table><tr><th>順位</th><th>業種</th><th>注目ポイント</th></tr>{theme_rows}</table></section>
