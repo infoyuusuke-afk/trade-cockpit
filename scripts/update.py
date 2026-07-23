@@ -297,8 +297,14 @@ def main():
         key=lambda x: x[1]["momentum_score"], reverse=True
     )[:5]
     high_rank = sorted(
-        [(n, r) for n, r in swing_pool if r["to_high52"] >= -3],
+        [(n, r) for n, r in swing_pool if r["to_high52"] >= -5],
         key=lambda x: x[1]["high_score"], reverse=True
+    )[:5]
+    overheated_rank = sorted(
+        [(n, r) for n, r in swing_pool
+         if r["ret5"] >= 8 and r["ret20"] >= 15
+         and (r["from_ma20"] > 12 or r["atr_pct"] > 7)],
+        key=lambda x: x[1]["momentum_score"], reverse=True
     )[:5]
 
     sector_scores = {}
@@ -355,7 +361,8 @@ def main():
         "swing_candidates": {
             "stable": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in stable_rank],
             "momentum": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in momentum_rank],
-            "new_high": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in high_rank]
+            "new_high": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in high_rank],
+            "overheated_watch": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in overheated_rank]
         },
         "earnings_candidates": earnings, "themes": themes,
         "morning_snapshot": morning, "morning_reviews": reviews
@@ -409,6 +416,7 @@ def main():
     stable_rows = swing_rows(stable_rank, "stable")
     momentum_rows = swing_rows(momentum_rank, "momentum")
     high_rows = swing_rows(high_rank, "new_high")
+    overheat_rows = swing_rows(overheated_rank, "overheated")
     earning_rows = "".join(
         f"<tr><td>{x['name']}</td><td>{x['date']}</td><td>{money(x['price'])}</td>"
         f"<td>{money(x['plan']['entry'])}</td><td>{money(x['plan']['stop'])}</td>"
@@ -436,9 +444,10 @@ def main():
 <section class="card wide"><h2>⑤-A 安定上昇候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{stable_rows}</table></section>
 <section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{momentum_rows}</table><p class="warning">20日線から18％超乖離、ATR9％超は除外。急騰後の高値づかみを避けます。</p></section>
 <section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{high_rows}</table></section>
+<section class="card wide"><h2>⑤-D 急騰後の過熱監視・押し目待ち TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>押し目目安</th><th>損切り</th><th>戻り目標</th><th>判定</th></tr>{overheat_rows}</table><p class="warning">ここは即飛び乗り禁止。5日線反発、前日高値更新、出来高再増加の3点を確認してから候補へ昇格。</p></section>
 <section class="card wide"><h2>⑥ 決算勝負候補（7日以内・確認できた銘柄のみ）</h2><table><tr><th>会社名＋コード</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>注意</th></tr>{earning_rows}</table><p class="warning">決算跨ぎは通常の逆指値が効かないギャップリスクあり。発表日・時刻は必ず会社IRで最終確認。</p></section>
 <section class="card"><h2>⑦ 運用ルール</h2><p>最大損失を先に固定／同テーマ集中を避ける／デイトレは15:25までに手仕舞い／損切りを広げない。</p></section>
-<section class="card"><h2>⑧ 選定ロジック</h2><p>安定＝20日線＞60日線・低ATR・高流動性。急騰＝5日/20日モメンタム・出来高増・20日高値接近。新高値＝52週高値3％以内・20日高値突破・出来高確認。</p></section>
+<section class="card"><h2>⑧ 選定ロジック</h2><p>安定＝20日線＞60日線・低ATR・高流動性。急騰＝5日/20日モメンタム・出来高増・20日高値接近。新高値＝52週高値5％以内・20日高値突破・出来高確認。過熱株は別枠監視。</p></section>
 </main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>{data['updated_at']}</span></footer></body></html>"""
     (ROOT / "index.html").write_text(html, encoding="utf-8")
 
