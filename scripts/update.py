@@ -1,6 +1,10 @@
 import json
+import re
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
+from urllib.parse import urljoin
+from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -115,6 +119,45 @@ def earnings_date(ticker, now):
         return sorted(dates)[0][1] if dates else None
     except Exception:
         return None
+
+
+def jpx_earnings_map(now):
+    """Read JPX's official monthly earnings schedule spreadsheets."""
+    page = "https://www.jpx.co.jp/listing/event-schedules/financial-announcement/"
+    try:
+        req = Request(page, headers={"User-Agent": "Mozilla/5.0 trade-cockpit"})
+        html = urlopen(req, timeout=20).read().decode("utf-8", errors="ignore")
+        links = re.findall(r'href=["\']([^"\']+\.(?:xlsx?|XLSX?))', html)
+        result = {}
+        for href in links[-4:]:
+            url = urljoin(page, href)
+            req = Request(url, headers={"User-Agent": "Mozilla/5.0 trade-cockpit"})
+            raw = urlopen(req, timeout=30).read()
+            sheets = pd.read_excel(BytesIO(raw), sheet_name=None, header=None)
+            for frame in sheets.values():
+                for _, row in frame.iterrows():
+                    vals = [x for x in row.tolist() if pd.notna(x)]
+                    text_vals = [str(x).strip() for x in vals]
+                    code = next((re.sub(r"\.0$", "", x) for x in text_vals
+                                 if re.fullmatch(r"\d{4}[A-Z]?(?:\.0)?", x)), None)
+                    if not code:
+                        continue
+                    found_date = None
+                    for value in vals:
+                        try:
+                            ts = pd.Timestamp(value)
+                            if 2025 <= ts.year <= 2028:
+                                found_date = ts.strftime("%Y-%m-%d")
+                                break
+                        except Exception:
+                            pass
+                    if found_date:
+                        delta = (pd.Timestamp(found_date).date() - now.date()).days
+                        if -1 <= delta <= 7:
+                            result[code] = {"date": found_date, "source": "JPX"}
+        return result
+    except Exception:
+        return {}
 
 
 def trade_plan(r, intraday=None):
@@ -232,12 +275,18 @@ def main():
                 **review_trade(item["plan"], r.get("intraday"))
             })
 
+    official_earnings = jpx_earnings_map(now)
     earnings = []
     for name, r in valid:
-        dt = earnings_date(r["ticker"], now)
+        code = r["ticker"].split(".")[0]
+        official = official_earnings.get(code)
+        dt = official["date"] if official else earnings_date(r["ticker"], now)
         if dt:
             p = trade_plan(r, r.get("intraday"))
-            earnings.append({"name": name, "date": dt, "price": r["price"], "plan": p})
+            earnings.append({
+                "name": name, "date": dt, "price": r["price"], "plan": p,
+                "source": official["source"] if official else "Yahoo予想"
+            })
     earnings.sort(key=lambda x: x["date"])
     earnings = earnings[:7]
 
@@ -284,7 +333,7 @@ def main():
     earning_rows = "".join(
         f"<tr><td>{x['name']}</td><td>{x['date']}</td><td>{money(x['price'])}</td>"
         f"<td>{money(x['plan']['entry'])}</td><td>{money(x['plan']['stop'])}</td>"
-        f"<td>{money(x['plan']['target1'])}</td><td>発表時刻・会社IRを最終確認</td></tr>"
+        f"<td>{money(x['plan']['target1'])}</td><td>{x['source']}／発表時刻は会社IR確認</td></tr>"
         for x in earnings
     ) or "<tr><td colspan='7'>今後7日以内で取得確認できた決算候補なし</td></tr>"
     review_rows = "".join(
