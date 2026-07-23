@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-07-23 16:24:16 JST",
+  "updated_at": "2026-07-23 16:29:15 JST",
   "phase": "大引け検証15:00版",
   "indices": {
     "日経平均": {
@@ -208,36 +208,36 @@
     },
     "ドル円": {
       "ok": true,
-      "price": 163.14,
+      "price": 163.16,
       "open": 163.09,
-      "high": 163.16,
+      "high": 163.17,
       "low": 162.99,
       "prev_close": 163.19,
-      "change_pct": -0.03,
-      "ret5": 0.66,
-      "ret20": 0.85,
+      "change_pct": -0.01,
+      "ret5": 0.67,
+      "ret20": 0.87,
       "rvol": 0,
       "turnover": 0,
       "atr14": 0.59,
       "atr_pct": 0.36,
-      "ma5": 162.74,
+      "ma5": 162.75,
       "ma20": 162.26,
       "ma60": 160.25,
-      "from_ma5": 0.25,
-      "from_ma20": 0.54,
+      "from_ma5": 0.26,
+      "from_ma20": 0.56,
       "touch_ma5": true,
-      "to_high20": -0.03,
-      "to_high52": -0.03,
-      "bb_upper": 163.17,
-      "bb_lower": 161.35,
+      "to_high20": -0.02,
+      "to_high52": -0.02,
+      "bb_upper": 163.18,
+      "bb_lower": 161.34,
       "bb_width": 1.13,
-      "bb_width_change": 0.15,
+      "bb_width_change": 0.16,
       "bb_percentile": 8.3,
       "bb_expansion_score": 69.1,
-      "day_score": 1.21,
-      "swing_score": 3.44,
-      "stable_score": 7.15,
-      "momentum_score": 7.31,
+      "day_score": 1.23,
+      "swing_score": 3.45,
+      "stable_score": 7.16,
+      "momentum_score": 7.32,
       "high_score": 7.0
     },
     "米10年金利": {
@@ -3134,6 +3134,63 @@
   },
   "earnings_candidates": [
     {
+      "name": "富士電機（6504）",
+      "date": "2026-07-30",
+      "price": 13180.0,
+      "plan": {
+        "entry": 13190,
+        "stop": 12900,
+        "target1": 13625,
+        "target2": 13830,
+        "risk": 290
+      },
+      "source": "JPX",
+      "expectation_score": 69,
+      "raw_expectation_score": 72,
+      "hurdle_risk": 10,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +27.3%／EPS予想幅 6.2%／予想売上成長 +5.4%／過去4回サプライズ平均 +7.1%／予想修正 上2／下0／決算前テクニカル 28/100／コンセンサス警戒 10/100（−2.8点）",
+      "technical_score": 28
+    },
+    {
+      "name": "キーエンス（6861）",
+      "date": "2026-07-28",
+      "price": 72260.0,
+      "plan": {
+        "entry": 72340,
+        "stop": 71015,
+        "target1": 74325,
+        "target2": 75255,
+        "risk": 1325
+      },
+      "source": "JPX",
+      "expectation_score": 68,
+      "raw_expectation_score": 74,
+      "hurdle_risk": 20,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +21.9%／EPS予想幅 13.7%／予想売上成長 +19.8%／過去4回サプライズ平均 +6.3%／予想修正 上2／下0／決算前テクニカル 34/100／コンセンサス警戒 20/100（−5.6点）",
+      "technical_score": 34
+    },
+    {
+      "name": "マクニカHD（3132）",
+      "date": "2026-07-27",
+      "price": 3409.0,
+      "plan": {
+        "entry": 3395,
+        "stop": 3315,
+        "target1": 3520,
+        "target2": 3575,
+        "risk": 80
+      },
+      "source": "会社公表・市場カレンダー",
+      "expectation_score": 65,
+      "raw_expectation_score": 69,
+      "hurdle_risk": 13,
+      "score_coverage": 30,
+      "score_detail": "予想売上成長 +14.7%／決算前テクニカル 68/100／コンセンサス警戒 13/100（−3.6点）",
+      "technical_score": 68
+    },
+    {
       "name": "アドバンテスト（6857）",
       "date": "2026-07-29",
       "price": 30800.0,
@@ -3145,9 +3202,11 @@
         "risk": 1085
       },
       "source": "会社IR",
-      "expectation_score": 81,
+      "expectation_score": 62,
+      "raw_expectation_score": 76,
+      "hurdle_risk": 51,
       "score_coverage": 100,
-      "score_detail": "予想EPS成長 +38.1%／予想売上成長 +29.9%／過去4回サプライズ平均 +25.3%／予想修正 上1／下1／決算前テクニカル 47/100",
+      "score_detail": "予想EPS成長 +38.1%／EPS予想幅 53.7%／予想売上成長 +29.9%／過去4回サプライズ平均 +25.3%／予想修正 上1／下1／決算前テクニカル 47/100／コンセンサス警戒 51/100（−14.3点）",
       "technical_score": 47
     },
     {
@@ -3162,27 +3221,31 @@
         "risk": 109
       },
       "source": "JPX",
-      "expectation_score": 78,
+      "expectation_score": 57,
+      "raw_expectation_score": 62,
+      "hurdle_risk": 15,
       "score_coverage": 30,
-      "score_detail": "予想売上成長 +42.1%／決算前テクニカル 33/100",
+      "score_detail": "予想売上成長 +42.1%／決算前テクニカル 33/100／コンセンサス警戒 15/100（−4.2点）",
       "technical_score": 33
     },
     {
-      "name": "キーエンス（6861）",
-      "date": "2026-07-28",
-      "price": 72260.0,
+      "name": "フューチャー（4722）",
+      "date": "2026-07-29",
+      "price": 2183.0,
       "plan": {
-        "entry": 72340,
-        "stop": 71015,
-        "target1": 74325,
-        "target2": 75255,
-        "risk": 1325
+        "entry": 2177,
+        "stop": 2109,
+        "target1": 2279,
+        "target2": 2327,
+        "risk": 68
       },
       "source": "JPX",
-      "expectation_score": 73,
-      "score_coverage": 100,
-      "score_detail": "予想EPS成長 +21.9%／予想売上成長 +19.8%／過去4回サプライズ平均 +6.3%／予想修正 上2／下0／決算前テクニカル 34/100",
-      "technical_score": 34
+      "expectation_score": 56,
+      "raw_expectation_score": 56,
+      "hurdle_risk": 0,
+      "score_coverage": 30,
+      "score_detail": "予想売上成長 +8.8%／決算前テクニカル 45/100／コンセンサス警戒 0/100（−0.0点）",
+      "technical_score": 45
     },
     {
       "name": "ディスコ（6146）",
@@ -3196,61 +3259,12 @@
         "risk": 2405
       },
       "source": "JPX",
-      "expectation_score": 70,
+      "expectation_score": 48,
+      "raw_expectation_score": 65,
+      "hurdle_risk": 63,
       "score_coverage": 100,
-      "score_detail": "予想EPS成長 +43.1%／予想売上成長 +27.0%／過去4回サプライズ平均 +10.1%／予想修正 上0／下2／決算前テクニカル 37/100",
+      "score_detail": "予想EPS成長 +43.1%／EPS予想幅 60.1%／予想売上成長 +27.0%／過去4回サプライズ平均 +10.1%／予想修正 上0／下2／決算前テクニカル 37/100／コンセンサス警戒 63/100（−17.6点）",
       "technical_score": 37
-    },
-    {
-      "name": "東京エレクトロン（8035）",
-      "date": "2026-07-30",
-      "price": 65950.0,
-      "plan": {
-        "entry": 66070,
-        "stop": 63765,
-        "target1": 69530,
-        "target2": 71145,
-        "risk": 2305
-      },
-      "source": "JPX",
-      "expectation_score": 70,
-      "score_coverage": 100,
-      "score_detail": "予想EPS成長 +38.9%／予想売上成長 +38.2%／過去4回サプライズ平均 +1.2%／予想修正 上2／下2／決算前テクニカル 34/100",
-      "technical_score": 34
-    },
-    {
-      "name": "富士電機（6504）",
-      "date": "2026-07-30",
-      "price": 13180.0,
-      "plan": {
-        "entry": 13190,
-        "stop": 12900,
-        "target1": 13625,
-        "target2": 13830,
-        "risk": 290
-      },
-      "source": "JPX",
-      "expectation_score": 70,
-      "score_coverage": 100,
-      "score_detail": "予想EPS成長 +27.3%／予想売上成長 +5.4%／過去4回サプライズ平均 +7.1%／予想修正 上2／下0／決算前テクニカル 28/100",
-      "technical_score": 28
-    },
-    {
-      "name": "マクニカHD（3132）",
-      "date": "2026-07-27",
-      "price": 3409.0,
-      "plan": {
-        "entry": 3395,
-        "stop": 3315,
-        "target1": 3520,
-        "target2": 3575,
-        "risk": 80
-      },
-      "source": "会社公表・市場カレンダー",
-      "expectation_score": 66,
-      "score_coverage": 30,
-      "score_detail": "予想売上成長 +14.7%／決算前テクニカル 68/100",
-      "technical_score": 68
     }
   ],
   "themes": [
