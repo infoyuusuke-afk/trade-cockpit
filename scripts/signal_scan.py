@@ -195,6 +195,90 @@ def analyse(item, frame):
         "ma5": round(ma5, 2), "rvol": round(rvol, 2),
         "ret20": round(ret20, 2), "atr_pct": round(atr_pct, 2),
         "signal_date": frame.index[-1].strftime("%Y-%m-%d"),
+        "reason": f"{setup}／終値が主要移動平均線上／出来高比{rvol:.2f}倍",
+        "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
+        "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
+    }
+
+
+def analyse_short(item, frame):
+    """翌日の安値割れで発動する持ち越しショート候補。"""
+    if frame is None or len(frame) < 65:
+        return None
+    close_s = frame["Close"].astype(float)
+    high_s = frame["High"].astype(float)
+    low_s = frame["Low"].astype(float)
+    open_s = frame["Open"].astype(float)
+    volume_s = frame["Volume"].fillna(0).astype(float)
+    close, high, low, open_ = map(finite, (
+        close_s.iloc[-1], high_s.iloc[-1], low_s.iloc[-1], open_s.iloc[-1]
+    ))
+    if None in (close, high, low, open_) or close <= 0:
+        return None
+    ma5_s = close_s.rolling(5).mean()
+    ma20_s = close_s.rolling(20).mean()
+    ma60_s = close_s.rolling(60).mean()
+    ma5, ma20, ma60 = map(finite, (ma5_s.iloc[-1], ma20_s.iloc[-1], ma60_s.iloc[-1]))
+    if None in (ma5, ma20, ma60):
+        return None
+    tr = pd.concat([
+        high_s - low_s,
+        (high_s - close_s.shift()).abs(),
+        (low_s - close_s.shift()).abs(),
+    ], axis=1).max(axis=1)
+    atr = finite(tr.rolling(14).mean().iloc[-1])
+    avg_volume = finite(volume_s.rolling(20).mean().iloc[-1]) or 0
+    volume = finite(volume_s.iloc[-1]) or 0
+    if not atr:
+        return None
+    ret5 = (close / float(close_s.iloc[-6]) - 1) * 100
+    ret20 = (close / float(close_s.iloc[-21]) - 1) * 100
+    rvol = volume / avg_volume if avg_volume else 0
+    turnover = close * volume
+    atr_pct = atr / close * 100
+    from_ma20 = (close / ma20 - 1) * 100
+    prior20_low = float(low_s.iloc[-21:-1].min())
+    down_order = close < ma5 < ma20
+    falling = ma5 < float(ma5_s.iloc[-2]) and ma20 < float(ma20_s.iloc[-6])
+    bearish = close < open_
+    low_break = close <= prior20_low or low < float(low_s.iloc[-2])
+    rebound_failed = high >= ma5 * .98 and close < ma5
+    liquid = turnover >= 300_000_000 and rvol >= .90
+    not_oversold = ret5 > -12 and ret20 > -25 and from_ma20 > -18
+    not_squeeze_prone = close >= 500 and atr_pct <= 8
+    if not (down_order and falling and bearish and liquid and not_oversold and not_squeeze_prone
+            and (low_break or rebound_failed)):
+        return None
+    score = (
+        20 + 15
+        + (10 if bearish else 0)
+        + (15 if rvol >= 1.2 else 10)
+        + (15 if turnover >= 3_000_000_000 else 10)
+        + (15 if low_break else 8)
+        + (10 if atr_pct <= 5 else 5)
+    )
+    score = min(100, score)
+    if score < 70:
+        return None
+    tick = 1 if close < 3000 else 5
+    trigger = math.floor((low - tick) / tick) * tick
+    stop = math.ceil(max(high + atr * .30, ma5 + atr * .30) / tick) * tick
+    risk = max(stop - trigger, tick)
+    setup = "安値割れ" if low_break else "5日線戻り失敗"
+    return {
+        "code": item["code"], "ticker": item["ticker"],
+        "name": f"{item['name']}（{item['code']}）",
+        "setup": setup, "score": int(score),
+        "close": round(close, 2), "trigger": round(trigger, 2),
+        "stop": round(stop, 2),
+        "target1": round((trigger - risk * 1.5) / tick) * tick,
+        "target2": round((trigger - risk * 2.5) / tick) * tick,
+        "ma5": round(ma5, 2), "rvol": round(rvol, 2),
+        "ret20": round(ret20, 2), "atr_pct": round(atr_pct, 2),
+        "signal_date": frame.index[-1].strftime("%Y-%m-%d"),
+        "reason": f"{setup}／終値＜5日線＜20日線／出来高比{rvol:.2f}倍",
+        "event_risk": "決算・上方修正・自社株買い・海外指数反発を確認。決算7日以内は原則見送り。",
+        "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で確認。大幅GDは追いかけない。",
     }
 
 
@@ -209,6 +293,7 @@ def main():
     old_prepared = {x["ticker"]: x for x in old.get("prepared", [])}
 
     results = []
+    short_results = []
     failed = 0
     batch_size = 120
     for start in range(0, len(universe), batch_size):
@@ -222,14 +307,23 @@ def main():
         except Exception:
             downloaded = pd.DataFrame()
         for item in batch:
-            row = analyse(item, one_frame(downloaded, item["ticker"], len(batch) == 1))
+            frame = one_frame(downloaded, item["ticker"], len(batch) == 1)
+            row = analyse(item, frame)
+            short_row = analyse_short(item, frame)
             if row:
                 results.append(row)
-            elif one_frame(downloaded, item["ticker"], len(batch) == 1) is None:
+            if short_row:
+                short_results.append(short_row)
+            if frame is None:
                 failed += 1
         time.sleep(.2)
 
     results.sort(key=lambda x: (x["score"], x["rvol"], x["ret20"]), reverse=True)
+    short_results.sort(key=lambda x: (x["score"], x["rvol"], -x["ret20"]), reverse=True)
+    overnight_long = [
+        x for x in results
+        if x["score"] >= 70 and x["rvol"] >= .90 and x["atr_pct"] <= 7
+    ][:15]
     entered = []
     for row in results:
         prior = old_prepared.get(row["ticker"])
@@ -247,6 +341,8 @@ def main():
         "signal_count": len(results),
         "prepared": results[:100],
         "entered": entered[:50],
+        "overnight_long": overnight_long,
+        "overnight_short": short_results[:15],
         "note": "日足終値ベース。準備足高値を翌日以降に上抜いた場合のみIN。最終判断は板・出来高・会社IRで確認。"
     }
     old_path.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
