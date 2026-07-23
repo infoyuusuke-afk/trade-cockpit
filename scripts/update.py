@@ -634,8 +634,8 @@ def main():
     day_range = "取得不能" if not nikkei else f"{nikkei-(atr_n or nikkei*.015):,.0f} ～ {nikkei+(atr_n or nikkei*.015):,.0f}円"
     phase = data["phase"]
     html = f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="900"><title>AIトレードコクピット</title>
-<style>*{{box-sizing:border-box}}body{{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}}header{{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}}h1{{margin:0;font-size:25px}}h2{{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}}.sub{{color:#aebdcb;margin-top:4px}}.tag{{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}}main{{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}}.card{{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}}.wide{{grid-column:1/-1}}table{{width:100%;border-collapse:collapse}}th{{background:#1b2a39}}th,td{{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}}th:nth-child(-n+2),td:nth-child(-n+2){{text-align:left}}tr:nth-child(even) td{{background:#111923}}.up{{color:#52e46f;font-weight:900}}.down{{color:#ff6262;font-weight:900}}small{{color:#bac6d2}}.warning{{color:#ffe66d}}footer{{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}}@media(max-width:800px){{header{{align-items:flex-start;flex-direction:column}}main{{grid-template-columns:1fr}}.wide{{grid-column:1}}table{{min-width:700px}}}}</style></head><body>
-<header><div><h1>AIトレードコクピット Ver.3.1</h1><div class="sub">安定上昇・短期急騰・新高値更新を分離／過熱銘柄は押し目待ち判定</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><main>
+<style>*{{box-sizing:border-box}}body{{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}}header{{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}}h1{{margin:0;font-size:25px}}h2{{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}}.sub{{color:#aebdcb;margin-top:4px}}.tag{{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}}main{{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}}.card{{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}}.wide{{grid-column:1/-1}}table{{width:100%;border-collapse:collapse}}th{{background:#1b2a39}}th,td{{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}}th:nth-child(-n+2),td:nth-child(-n+2){{text-align:left}}tr:nth-child(even) td{{background:#111923}}.up{{color:#52e46f;font-weight:900}}.down{{color:#ff6262;font-weight:900}}small{{color:#bac6d2}}.warning{{color:#ffe66d}}.steps{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}}.step{{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}}.step b{{display:block;color:#ffe66d;font-size:15px}}.pill{{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}}.prep{{background:#f2a900;color:#111}}.in{{background:#52e46f;color:#071009}}footer{{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}}@media(max-width:800px){{header{{align-items:flex-start;flex-direction:column}}main{{grid-template-columns:1fr}}.wide{{grid-column:1}}table{{min-width:700px}}.steps{{grid-template-columns:1fr}}}}</style></head><body>
+<header><div><h1>AIトレードコクピット Ver.3.2</h1><div class="sub">日本株シグナルスキャン／準備足高値ブレイクでIN</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><main>
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
 <section class="card wide"><h2>③ 当日狙い目銘柄 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1／2</th><th>発動条件・リスク</th></tr>{day_rows}</table><p class="warning">入口は指値の断定ではなく発動水準。VWAP・5分足・出来高を満たさなければ見送り。</p></section>
@@ -646,9 +646,54 @@ def main():
 <section class="card wide"><h2>⑤-D 急騰後の過熱監視・押し目待ち TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>押し目目安</th><th>損切り</th><th>戻り目標</th><th>判定</th></tr>{overheat_rows}</table><p class="warning">ここは即飛び乗り禁止。5日線反発、前日高値更新、出来高再増加の3点を確認してから候補へ昇格。</p></section>
 <section class="card wide"><h2>⑥-A 決算勝負候補 TOP15（7日以内・決算期待値順）</h2><table><tr><th>会社名＋コード</th><th>調整後期待値</th><th>コンセンサス警戒</th><th>テクニカル点</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>採点根拠・注意</th></tr>{earning_rows}</table><p class="warning">高すぎるEPS・売上予想、予想幅の大きさ、下方修正、過去の上振れ不足、決算前の株価上昇を警戒度として減点。好決算でもコンセンサス未達や材料出尽くしになる危険を反映します。</p></section>
 <section class="card wide"><h2>⑥-B BB上方エクスパンション期待 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>現在値</th><th>BB幅</th><th>5日比</th><th>幅順位</th><th>出来高比</th><th>イン</th><th>損切り</th><th>判定</th></tr>{bb_rows}</table><p class="warning">BB幅順位は過去120日の細さ。数値が低いほどスクイーズ状態。上限突破＋BB幅拡大＋出来高増加を最優先します。</p></section>
-<section class="card"><h2>⑦ 運用ルール</h2><p>最大損失を先に固定／同テーマ集中を避ける／デイトレは15:25までに手仕舞い／損切りを広げない。</p></section>
-<section class="card"><h2>⑧ 選定ロジック</h2><p>安定＝20日線＞60日線・低ATR・高流動性。急騰＝上向き5日線タッチ反発・終値で5日線維持・出来高再増加。新高値＝52週高値5％以内・20日高値突破・出来高確認。過熱株は別枠監視。</p></section>
-</main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>{data['updated_at']}</span></footer></body></html>"""
+<section class="card wide"><h2>⑦ AIスイングサインの使い方</h2>
+<div class="steps">
+<div class="step"><b>1　<span class="pill prep">準備</span>を探す</b>大引け後に一覧を確認。準備は「まだ買わない」の意味です。</div>
+<div class="step"><b>2　IN価格をメモ</b>準備足の高値＋1ティック。翌日からこの価格を監視します。</div>
+<div class="step"><b>3　上抜けたら<span class="pill in">IN</span></b>翌日以降にIN価格を上抜いた場合だけ買います。大幅GUは飛び乗りません。</div>
+<div class="step"><b>4　損切りを固定</b>赤字の損切り価格を下げません。利確1で半分、利確2で残りを決済します。</div>
+</div>
+<p class="warning">重要：準備が出た翌日に無条件で買いません。IN価格を超えない、終値で5日線を割る、2営業日たっても発動しない場合は見送りです。</p>
+</section>
+<section class="card wide"><h2>⑧ 本日<span class="pill in">IN</span>点灯銘柄</h2>
+<div id="signal-meta" class="sub">全銘柄データを読み込み中...</div>
+<table><thead><tr><th>会社名＋コード</th><th>種類</th><th>期待値</th><th>IN価格</th><th>損切り</th><th>利確1／2</th><th>判定</th></tr></thead>
+<tbody id="entered-signals"><tr><td colspan="7">読み込み中...</td></tr></tbody></table></section>
+<section class="card wide"><h2>⑨ 本日<span class="pill prep">準備</span>点灯銘柄 上位30</h2>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>種類</th><th>期待値</th><th>終値</th><th>IN価格</th><th>損切り</th><th>利確1／2</th><th>出来高比</th><th>20日騰落</th></tr></thead>
+<tbody id="prepared-signals"><tr><td colspan="10">読み込み中...</td></tr></tbody></table>
+<p class="warning">全市場の日足を自動走査し、60点以上を抽出。画面は期待値上位30銘柄、データには上位100銘柄を保存します。</p></section>
+<section class="card"><h2>⑩ 運用ルール</h2><p>最大損失を先に固定／同テーマ集中を避ける／デイトレは15:25までに手仕舞い／損切りを広げない。</p></section>
+<section class="card"><h2>⑪ 選定ロジック</h2><p>安定＝20日線＞60日線・低ATR・高流動性。急騰＝上向き5日線タッチ反発・終値で5日線維持・出来高再増加。新高値＝52週高値5％以内・20日高値突破・出来高確認。過熱株は別枠監視。</p></section>
+</main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>{data['updated_at']}</span></footer>
+<script>
+const yen = v => Number(v).toLocaleString("ja-JP");
+fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
+  document.getElementById("signal-meta").textContent =
+    d.source + "／走査 " + d.scanned_count.toLocaleString() + "銘柄／準備 " +
+    d.signal_count + "銘柄／更新 " + d.updated_at;
+  const entered = (d.entered || []).map(x =>
+    "<tr><td>" + x.name + "</td><td>" + x.setup + "</td><td><b class='up'>" +
+    x.score + "/100</b></td><td>" + yen(x.trigger) + "</td><td class='down'>" +
+    yen(x.stop) + "</td><td>" + yen(x.target1) + "／" + yen(x.target2) +
+    "</td><td><span class='pill in'>IN</span></td></tr>").join("");
+  document.getElementById("entered-signals").innerHTML =
+    entered || "<tr><td colspan='7'>本日のIN点灯銘柄なし。無理に選定しません。</td></tr>";
+  const prepared = (d.prepared || []).slice(0, 30).map((x, i) =>
+    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.setup +
+    "</td><td><b class='up'>" + x.score + "/100</b></td><td>" + yen(x.close) +
+    "</td><td><b>" + yen(x.trigger) + "</b></td><td class='down'>" + yen(x.stop) +
+    "</td><td>" + yen(x.target1) + "／" + yen(x.target2) + "</td><td>" +
+    x.rvol.toFixed(2) + "倍</td><td>" + (x.ret20 >= 0 ? "+" : "") +
+    x.ret20.toFixed(2) + "%</td></tr>").join("");
+  document.getElementById("prepared-signals").innerHTML =
+    prepared || "<tr><td colspan='10'>本日の準備点灯銘柄なし。</td></tr>";
+}}).catch(() => {{
+  document.getElementById("signal-meta").textContent = "全銘柄シグナルデータを取得できませんでした。次回自動更新で再試行します。";
+  document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>データ取得待ち</td></tr>";
+  document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
+}});
+</script></body></html>"""
     (ROOT / "index.html").write_text(html, encoding="utf-8")
 
 
