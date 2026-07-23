@@ -2,6 +2,12 @@ name: Update Trade Cockpit
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/update.py"
+      - "watchlist.json"
+      - ".github/workflows/update.yml"
   schedule:
     - cron: "30 23 * * *" # 08:30 JST
     - cron: "0 6 * * *"   # 15:00 JST
@@ -16,7 +22,7 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - name: Checkout repository
