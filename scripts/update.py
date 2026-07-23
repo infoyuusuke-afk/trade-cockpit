@@ -54,6 +54,8 @@ def daily_snapshot(ticker):
         rvol = vol / avg_vol if avg_vol else 0
         atr_pct = atr / close * 100 if close else 0
         from_ma20 = (close / ma20 - 1) * 100 if ma20 else 0
+        from_ma5 = (close / ma5 - 1) * 100 if ma5 else 0
+        touch_ma5 = low <= ma5 * 1.01 and close >= ma5
         to_high20 = (close / prior_high20 - 1) * 100 if prior_high20 else 0
         to_high52 = (close / high52 - 1) * 100 if high52 else 0
         day_score = (
@@ -83,6 +85,7 @@ def daily_snapshot(ticker):
             + min(max(ret20, -10), 35) * .12
             + min(rvol, 4) * 2
             + (3 if to_high20 >= -1 else 0)
+            + (4 if touch_ma5 else 1 if 0 <= from_ma5 <= 5 else 0)
             + (2 if turnover >= 3_000_000_000 else 0)
             - (4 if from_ma20 > 18 or atr_pct > 9 else 0)
         )
@@ -102,7 +105,8 @@ def daily_snapshot(ticker):
             "rvol": round(rvol, 2), "turnover": round(turnover),
             "atr14": round(atr, 2), "atr_pct": round(atr_pct, 2),
             "ma5": round(ma5, 2), "ma20": round(ma20, 2), "ma60": round(ma60, 2),
-            "from_ma20": round(from_ma20, 2), "to_high20": round(to_high20, 2),
+            "from_ma5": round(from_ma5, 2), "from_ma20": round(from_ma20, 2),
+            "touch_ma5": touch_ma5, "to_high20": round(to_high20, 2),
             "to_high52": round(to_high52, 2),
             "day_score": round(day_score, 2), "swing_score": round(swing_score, 2),
             "stable_score": round(stable_score, 2),
@@ -293,7 +297,8 @@ def main():
     )[:5]
     momentum_rank = sorted(
         [(n, r) for n, r in swing_pool
-         if r["ret5"] >= 3 and r["ret20"] >= 5 and r["from_ma20"] <= 18],
+         if r["ret20"] >= 5 and r["from_ma20"] <= 18
+         and r["price"] >= r["ma5"] and (r["touch_ma5"] or r["from_ma5"] <= 5)],
         key=lambda x: x[1]["momentum_score"], reverse=True
     )[:5]
     high_rank = sorted(
@@ -398,6 +403,13 @@ def main():
             p = trade_plan(r, r.get("intraday"))
             if r["from_ma20"] > 12:
                 action = "過熱・押し目待ち"
+            elif kind == "momentum" and r["touch_ma5"]:
+                action = "5日線タッチ反発・高値更新で発動"
+                p["stop"] = round((r["ma5"] - r["atr14"] * .30) / 5) * 5
+                risk = max(p["entry"] - p["stop"], r["price"] * .004)
+                p["target2"] = round((p["entry"] + risk * 2.2) / 5) * 5
+            elif kind == "momentum" and r["price"] >= r["ma5"]:
+                action = "5日線上継続・次の押しを待つ"
             elif kind == "new_high" and r["to_high20"] >= 0:
                 action = "高値更新＋出来高で発動"
             elif kind == "momentum":
@@ -442,12 +454,12 @@ def main():
 <section class="card wide"><h2>③ 当日狙い目銘柄 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1／2</th><th>発動条件・リスク</th></tr>{day_rows}</table><p class="warning">入口は指値の断定ではなく発動水準。VWAP・5分足・出来高を満たさなければ見送り。</p></section>
 <section class="card wide"><h2>④ 朝8:30候補のザラバ答え合わせ</h2><table><tr><th>会社名＋コード</th><th>朝イン</th><th>朝損切り</th><th>朝利確1／2</th><th>結果</th><th>終値・VWAP検証</th></tr>{review_rows}</table></section>
 <section class="card wide"><h2>⑤-A 安定上昇候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{stable_rows}</table></section>
-<section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{momentum_rows}</table><p class="warning">20日線から18％超乖離、ATR9％超は除外。急騰後の高値づかみを避けます。</p></section>
+<section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{momentum_rows}</table><p class="warning">上向き5日線へのタッチ反発を最優先。場中の一時割れではなく終値回復を確認。終値で5日線を明確に割った場合は候補から外します。</p></section>
 <section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{high_rows}</table></section>
 <section class="card wide"><h2>⑤-D 急騰後の過熱監視・押し目待ち TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>押し目目安</th><th>損切り</th><th>戻り目標</th><th>判定</th></tr>{overheat_rows}</table><p class="warning">ここは即飛び乗り禁止。5日線反発、前日高値更新、出来高再増加の3点を確認してから候補へ昇格。</p></section>
 <section class="card wide"><h2>⑥ 決算勝負候補（7日以内・確認できた銘柄のみ）</h2><table><tr><th>会社名＋コード</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>注意</th></tr>{earning_rows}</table><p class="warning">決算跨ぎは通常の逆指値が効かないギャップリスクあり。発表日・時刻は必ず会社IRで最終確認。</p></section>
 <section class="card"><h2>⑦ 運用ルール</h2><p>最大損失を先に固定／同テーマ集中を避ける／デイトレは15:25までに手仕舞い／損切りを広げない。</p></section>
-<section class="card"><h2>⑧ 選定ロジック</h2><p>安定＝20日線＞60日線・低ATR・高流動性。急騰＝5日/20日モメンタム・出来高増・20日高値接近。新高値＝52週高値5％以内・20日高値突破・出来高確認。過熱株は別枠監視。</p></section>
+<section class="card"><h2>⑧ 選定ロジック</h2><p>安定＝20日線＞60日線・低ATR・高流動性。急騰＝上向き5日線タッチ反発・終値で5日線維持・出来高再増加。新高値＝52週高値5％以内・20日高値突破・出来高確認。過熱株は別枠監視。</p></section>
 </main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>{data['updated_at']}</span></footer></body></html>"""
     (ROOT / "index.html").write_text(html, encoding="utf-8")
 
