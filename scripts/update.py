@@ -259,6 +259,81 @@ def expectation_score(r, earnings=False):
     return round(max(0, min(score, 100)))
 
 
+def first_number(frame, row_name, columns):
+    try:
+        if frame is None or frame.empty or row_name not in frame.index:
+            return None
+        for column in columns:
+            if column in frame.columns:
+                value = frame.loc[row_name, column]
+                if pd.notna(value):
+                    return float(value)
+    except Exception:
+        pass
+    return None
+
+
+def earnings_expectation(ticker, technical_score):
+    """Score expected earnings quality from estimates, revisions and surprise history."""
+    parts = []
+    details = []
+    try:
+        stock = yf.Ticker(ticker)
+        eps = stock.get_earnings_estimate()
+        rev = stock.get_revenue_estimate()
+        revisions = stock.get_eps_revisions()
+        history = stock.get_earnings_history()
+
+        eps_growth = first_number(eps, "0q", ["growth"])
+        if eps_growth is not None:
+            value = max(0, min(100, 45 + eps_growth * 110))
+            parts.append((value, 30))
+            details.append(f"予想EPS成長 {eps_growth*100:+.1f}%")
+
+        revenue_growth = first_number(rev, "0q", ["growth"])
+        if revenue_growth is not None:
+            value = max(0, min(100, 45 + revenue_growth * 140))
+            parts.append((value, 20))
+            details.append(f"予想売上成長 {revenue_growth*100:+.1f}%")
+
+        if history is not None and not history.empty:
+            surprise_col = next((c for c in history.columns if "surprise" in str(c).lower()), None)
+            if surprise_col is not None:
+                surprises = pd.to_numeric(history[surprise_col], errors="coerce").dropna().tail(4)
+                if not surprises.empty:
+                    avg = float(surprises.mean())
+                    if abs(avg) <= 1:
+                        avg *= 100
+                    beat_rate = float((surprises > 0).mean())
+                    value = max(0, min(100, 40 + avg * 2 + beat_rate * 35))
+                    parts.append((value, 25))
+                    details.append(f"過去4回サプライズ平均 {avg:+.1f}%")
+
+        if revisions is not None and not revisions.empty and "0q" in revisions.index:
+            row = revisions.loc["0q"]
+            ups = sum(float(row.get(c, 0) or 0) for c in ["upLast7days", "upLast30days"])
+            downs = sum(float(row.get(c, 0) or 0) for c in ["downLast7Days", "downLast30days"])
+            total = ups + downs
+            if total > 0:
+                value = max(0, min(100, 50 + (ups - downs) / total * 45))
+                parts.append((value, 15))
+                details.append(f"予想修正 上{ups:.0f}／下{downs:.0f}")
+
+    except Exception:
+        pass
+
+    parts.append((technical_score, 10))
+    details.append(f"決算前テクニカル {technical_score}/100")
+    total_weight = sum(weight for _, weight in parts)
+    score = round(sum(value * weight for value, weight in parts) / total_weight)
+    coverage = round(total_weight)
+    return {
+        "score": max(0, min(score, 100)),
+        "coverage": coverage,
+        "detail": "／".join(details)
+    }
+
+
 def review_trade(plan, intra):
     if not intra or not intra.get("ok"):
         return {"result": "検証不能"}
@@ -396,10 +471,15 @@ def main():
         dt = official["date"] if official else earnings_date(r["ticker"], now)
         if dt:
             p = trade_plan(r, r.get("intraday"))
+            technical = expectation_score(r, earnings=True)
+            fundamental = earnings_expectation(r["ticker"], technical)
             earnings.append({
                 "name": name, "date": dt, "price": r["price"], "plan": p,
                 "source": official["source"] if official else "Yahoo予想",
-                "expectation_score": expectation_score(r, earnings=True)
+                "expectation_score": fundamental["score"],
+                "score_coverage": fundamental["coverage"],
+                "score_detail": fundamental["detail"],
+                "technical_score": technical
             })
     earnings.sort(key=lambda x: (-x["expectation_score"], x["date"]))
     earnings = earnings[:7]
@@ -482,12 +562,13 @@ def main():
     high_rows = swing_rows(high_rank, "new_high")
     overheat_rows = swing_rows(overheated_rank, "overheated")
     earning_rows = "".join(
-        f"<tr><td>{x['name']}</td><td><b class='{'up' if x['expectation_score']>=80 else ''}'>{x['expectation_score']}/100</b></td>"
+        f"<tr><td>{x['name']}</td><td><b class='{'up' if x['expectation_score']>=80 else ''}'>{x['expectation_score']}/100</b>"
+        f"<br><small>データ充足 {x['score_coverage']}%</small></td><td>{x['technical_score']}/100</td>"
         f"<td>{x['date']}</td><td>{money(x['price'])}</td>"
         f"<td>{money(x['plan']['entry'])}</td><td>{money(x['plan']['stop'])}</td>"
-        f"<td>{money(x['plan']['target1'])}</td><td>{x['source']}／発表時刻は会社IR確認</td></tr>"
+        f"<td>{money(x['plan']['target1'])}</td><td>{x['score_detail']}<br><small>{x['source']}／発表時刻は会社IR確認</small></td></tr>"
         for x in earnings
-    ) or "<tr><td colspan='8'>今後7日以内で取得確認できた決算候補なし</td></tr>"
+    ) or "<tr><td colspan='9'>今後7日以内で取得確認できた決算候補なし</td></tr>"
     bb_rows = ""
     for i, (name, r) in enumerate(bb_rank, 1):
         p = trade_plan(r, r.get("intraday"))
@@ -525,7 +606,7 @@ def main():
 <section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{momentum_rows}</table><p class="warning">上向き5日線へのタッチ反発を最優先。場中の一時割れではなく終値回復を確認。終値で5日線を明確に割った場合は候補から外します。</p></section>
 <section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{high_rows}</table></section>
 <section class="card wide"><h2>⑤-D 急騰後の過熱監視・押し目待ち TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>押し目目安</th><th>損切り</th><th>戻り目標</th><th>判定</th></tr>{overheat_rows}</table><p class="warning">ここは即飛び乗り禁止。5日線反発、前日高値更新、出来高再増加の3点を確認してから候補へ昇格。</p></section>
-<section class="card wide"><h2>⑥-A 決算勝負候補（7日以内・期待値順）</h2><table><tr><th>会社名＋コード</th><th>期待値</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>注意</th></tr>{earning_rows}</table><p class="warning">期待値はテクニカル・出来高・流動性・高値位置の評価であり、決算内容やギャップを保証する点数ではありません。</p></section>
+<section class="card wide"><h2>⑥-A 決算勝負候補（7日以内・決算期待値順）</h2><table><tr><th>会社名＋コード</th><th>決算期待値</th><th>テクニカル点</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>採点根拠・注意</th></tr>{earning_rows}</table><p class="warning">決算期待値＝市場予想EPS成長30％・売上成長20％・過去サプライズ25％・予想修正15％・決算前テクニカル10％。データ欠損時は取得項目内で再配点します。決算結果やギャップを保証する点数ではありません。</p></section>
 <section class="card wide"><h2>⑥-B BB上方エクスパンション期待 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>現在値</th><th>BB幅</th><th>5日比</th><th>幅順位</th><th>出来高比</th><th>イン</th><th>損切り</th><th>判定</th></tr>{bb_rows}</table><p class="warning">BB幅順位は過去120日の細さ。数値が低いほどスクイーズ状態。上限突破＋BB幅拡大＋出来高増加を最優先します。</p></section>
 <section class="card"><h2>⑦ 運用ルール</h2><p>最大損失を先に固定／同テーマ集中を避ける／デイトレは15:25までに手仕舞い／損切りを広げない。</p></section>
 <section class="card"><h2>⑧ 選定ロジック</h2><p>安定＝20日線＞60日線・低ATR・高流動性。急騰＝上向き5日線タッチ反発・終値で5日線維持・出来高再増加。新高値＝52週高値5％以内・20日高値突破・出来高確認。過熱株は別枠監視。</p></section>
