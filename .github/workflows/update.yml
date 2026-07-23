@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "scripts/update.py"
+      - "scripts/signal_scan.py"
       - "watchlist.json"
       - "requirements.txt"
       - ".github/workflows/update.yml"
@@ -41,16 +42,18 @@ jobs:
       - name: Update cockpit data
         env:
           TZ: Asia/Tokyo
-        run: python scripts/update.py
+        run: |
+          python scripts/signal_scan.py
+          python scripts/update.py
 
       - name: Commit and push updated files
         run: |
-          if git diff --quiet -- index.html data.json; then
+          if git diff --quiet -- index.html data.json signals.json; then
             echo "No changes to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html data.json
+          git add index.html data.json signals.json
           git commit -m "Auto-update trade cockpit"
           git push
