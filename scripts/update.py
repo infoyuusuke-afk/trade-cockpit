@@ -518,7 +518,7 @@ def main():
                 "technical_score": technical
             })
     earnings.sort(key=lambda x: (-x["expectation_score"], x["date"]))
-    earnings = earnings[:7]
+    earnings = earnings[:15]
 
     data = {
         "updated_at": now.strftime("%Y-%m-%d %H:%M:%S JST"),
@@ -644,7 +644,7 @@ def main():
 <section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{momentum_rows}</table><p class="warning">上向き5日線へのタッチ反発を最優先。場中の一時割れではなく終値回復を確認。終値で5日線を明確に割った場合は候補から外します。</p></section>
 <section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{high_rows}</table></section>
 <section class="card wide"><h2>⑤-D 急騰後の過熱監視・押し目待ち TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>押し目目安</th><th>損切り</th><th>戻り目標</th><th>判定</th></tr>{overheat_rows}</table><p class="warning">ここは即飛び乗り禁止。5日線反発、前日高値更新、出来高再増加の3点を確認してから候補へ昇格。</p></section>
-<section class="card wide"><h2>⑥-A 決算勝負候補（7日以内・決算期待値順）</h2><table><tr><th>会社名＋コード</th><th>調整後期待値</th><th>コンセンサス警戒</th><th>テクニカル点</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>採点根拠・注意</th></tr>{earning_rows}</table><p class="warning">高すぎるEPS・売上予想、予想幅の大きさ、下方修正、過去の上振れ不足、決算前の株価上昇を警戒度として減点。好決算でもコンセンサス未達や材料出尽くしになる危険を反映します。</p></section>
+<section class="card wide"><h2>⑥-A 決算勝負候補 TOP15（7日以内・決算期待値順）</h2><table><tr><th>会社名＋コード</th><th>調整後期待値</th><th>コンセンサス警戒</th><th>テクニカル点</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>採点根拠・注意</th></tr>{earning_rows}</table><p class="warning">高すぎるEPS・売上予想、予想幅の大きさ、下方修正、過去の上振れ不足、決算前の株価上昇を警戒度として減点。好決算でもコンセンサス未達や材料出尽くしになる危険を反映します。</p></section>
 <section class="card wide"><h2>⑥-B BB上方エクスパンション期待 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>現在値</th><th>BB幅</th><th>5日比</th><th>幅順位</th><th>出来高比</th><th>イン</th><th>損切り</th><th>判定</th></tr>{bb_rows}</table><p class="warning">BB幅順位は過去120日の細さ。数値が低いほどスクイーズ状態。上限突破＋BB幅拡大＋出来高増加を最優先します。</p></section>
 <section class="card"><h2>⑦ 運用ルール</h2><p>最大損失を先に固定／同テーマ集中を避ける／デイトレは15:25までに手仕舞い／損切りを広げない。</p></section>
 <section class="card"><h2>⑧ 選定ロジック</h2><p>安定＝20日線＞60日線・低ATR・高流動性。急騰＝上向き5日線タッチ反発・終値で5日線維持・出来高再増加。新高値＝52週高値5％以内・20日高値突破・出来高確認。過熱株は別枠監視。</p></section>
