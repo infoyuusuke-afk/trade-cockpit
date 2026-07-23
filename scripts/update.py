@@ -634,8 +634,8 @@ def main():
     day_range = "取得不能" if not nikkei else f"{nikkei-(atr_n or nikkei*.015):,.0f} ～ {nikkei+(atr_n or nikkei*.015):,.0f}円"
     phase = data["phase"]
     html = f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="900"><title>AIトレードコクピット</title>
-<style>*{{box-sizing:border-box}}body{{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}}header{{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}}h1{{margin:0;font-size:25px}}h2{{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}}.sub{{color:#aebdcb;margin-top:4px}}.tag{{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}}main{{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}}.card{{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}}.wide{{grid-column:1/-1}}table{{width:100%;border-collapse:collapse}}th{{background:#1b2a39}}th,td{{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}}th:nth-child(-n+2),td:nth-child(-n+2){{text-align:left}}tr:nth-child(even) td{{background:#111923}}.up{{color:#52e46f;font-weight:900}}.down{{color:#ff6262;font-weight:900}}small{{color:#bac6d2}}.warning{{color:#ffe66d}}.steps{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}}.step{{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}}.step b{{display:block;color:#ffe66d;font-size:15px}}.pill{{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}}.prep{{background:#f2a900;color:#111}}.in{{background:#52e46f;color:#071009}}footer{{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}}@media(max-width:800px){{header{{align-items:flex-start;flex-direction:column}}main{{grid-template-columns:1fr}}.wide{{grid-column:1}}table{{min-width:700px}}.steps{{grid-template-columns:1fr}}}}</style></head><body>
-<header><div><h1>AIトレードコクピット Ver.3.2</h1><div class="sub">日本株シグナルスキャン／準備足高値ブレイクでIN</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><main>
+<style>*{{box-sizing:border-box}}body{{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}}header{{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}}h1{{margin:0;font-size:25px}}h2{{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}}.sub{{color:#aebdcb;margin-top:4px}}.tag{{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}}main{{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}}.card{{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}}.wide{{grid-column:1/-1}}table{{width:100%;border-collapse:collapse}}th{{background:#1b2a39}}th,td{{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}}th:nth-child(-n+2),td:nth-child(-n+2){{text-align:left}}tr:nth-child(even) td{{background:#111923}}.up{{color:#52e46f;font-weight:900}}.down{{color:#ff6262;font-weight:900}}small{{color:#bac6d2}}.warning{{color:#ffe66d}}.steps{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}}.step{{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}}.step b{{display:block;color:#ffe66d;font-size:15px}}.pill{{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}}.prep{{background:#f2a900;color:#111}}.in{{background:#52e46f;color:#071009}}.long{{background:#2f80ed;color:white}}.short{{background:#e23b3b;color:white}}footer{{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}}@media(max-width:800px){{header{{align-items:flex-start;flex-direction:column}}main{{grid-template-columns:1fr}}.wide{{grid-column:1}}table{{min-width:700px}}.steps{{grid-template-columns:1fr}}}}</style></head><body>
+<header><div><h1>AIトレードコクピット Ver.3.3</h1><div class="sub">日本株全市場／持ち越しLONG・SHORT発動価格</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><main>
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
 <section class="card wide"><h2>③ 当日狙い目銘柄 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1／2</th><th>発動条件・リスク</th></tr>{day_rows}</table><p class="warning">入口は指値の断定ではなく発動水準。VWAP・5分足・出来高を満たさなければ見送り。</p></section>
@@ -663,8 +663,16 @@ def main():
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>種類</th><th>期待値</th><th>終値</th><th>IN価格</th><th>損切り</th><th>利確1／2</th><th>出来高比</th><th>20日騰落</th></tr></thead>
 <tbody id="prepared-signals"><tr><td colspan="10">読み込み中...</td></tr></tbody></table>
 <p class="warning">全市場の日足を自動走査し、60点以上を抽出。画面は期待値上位30銘柄、データには上位100銘柄を保存します。</p></section>
-<section class="card"><h2>⑩ 運用ルール</h2><p>最大損失を先に固定／同テーマ集中を避ける／デイトレは15:25までに手仕舞い／損切りを広げない。</p></section>
-<section class="card"><h2>⑪ 選定ロジック</h2><p>安定＝20日線＞60日線・低ATR・高流動性。急騰＝上向き5日線タッチ反発・終値で5日線維持・出来高再増加。新高値＝52週高値5％以内・20日高値突破・出来高確認。過熱株は別枠監視。</p></section>
+<section class="card wide"><h2>⑩ 持ち越し<span class="pill long">LONG</span>候補 TOP10</h2>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>翌日LONG発動</th><th>損切り</th><th>利確1／2</th><th>選定理由</th><th>決算・イベントリスク</th></tr></thead>
+<tbody id="overnight-long"><tr><td colspan="8">読み込み中...</td></tr></tbody></table>
+<p class="warning">翌日寄りで無条件に買いません。準備足高値を上抜いた場合だけLONG。大幅GUは飛び乗らず、通常の半分の株数を推奨。</p></section>
+<section class="card wide"><h2>⑪ 持ち越し<span class="pill short">SHORT</span>候補 TOP10</h2>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>翌日SHORT発動</th><th>損切り</th><th>利確1／2</th><th>選定理由</th><th>決算・イベント／空売り注意</th></tr></thead>
+<tbody id="overnight-short"><tr><td colspan="8">読み込み中...</td></tr></tbody></table>
+<p class="warning">翌日寄りで無条件に売りません。準備足安値を割った場合だけSHORT。楽天MS2で貸借区分・在庫・逆日歩・空売り規制を必ず確認。大幅GDは追いかけません。</p></section>
+<section class="card"><h2>⑫ 運用ルール</h2><p>最大損失を先に固定／同テーマ集中を避ける／持ち越しは通常の半分の株数／損切りを広げない。</p></section>
+<section class="card"><h2>⑬ 選定ロジック</h2><p>LONG＝上昇トレンド・高値突破。SHORT＝終値＜5日線＜20日線・戻り失敗・安値割れ。低流動性、売られすぎ、踏み上げ危険は除外。</p></section>
 </main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>{data['updated_at']}</span></footer>
 <script>
 const yen = v => Number(v).toLocaleString("ja-JP");
@@ -688,10 +696,22 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     x.ret20.toFixed(2) + "%</td></tr>").join("");
   document.getElementById("prepared-signals").innerHTML =
     prepared || "<tr><td colspan='10'>本日の準備点灯銘柄なし。</td></tr>";
+  const carryRows = (items, side) => (items || []).slice(0, 10).map((x, i) =>
+    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td><b class='" +
+    (side === "LONG" ? "up" : "down") + "'>" + x.score + "/100</b></td><td><b>" +
+    yen(x.trigger) + "</b></td><td class='down'>" + yen(x.stop) + "</td><td>" +
+    yen(x.target1) + "／" + yen(x.target2) + "</td><td>" + x.reason +
+    "</td><td>" + x.event_risk + "<br><small>" + x.caution + "</small></td></tr>").join("");
+  document.getElementById("overnight-long").innerHTML =
+    carryRows(d.overnight_long, "LONG") || "<tr><td colspan='8'>本日の持ち越しLONG合格銘柄なし。</td></tr>";
+  document.getElementById("overnight-short").innerHTML =
+    carryRows(d.overnight_short, "SHORT") || "<tr><td colspan='8'>本日の持ち越しSHORT合格銘柄なし。</td></tr>";
 }}).catch(() => {{
   document.getElementById("signal-meta").textContent = "全銘柄シグナルデータを取得できませんでした。次回自動更新で再試行します。";
   document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>データ取得待ち</td></tr>";
   document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
+  document.getElementById("overnight-long").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
+  document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
 }});
 </script></body></html>"""
     (ROOT / "index.html").write_text(html, encoding="utf-8")
