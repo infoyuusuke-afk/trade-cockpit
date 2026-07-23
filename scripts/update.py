@@ -276,6 +276,10 @@ def main():
             })
 
     official_earnings = jpx_earnings_map(now)
+    for code, item in config.get("earnings_overrides", {}).items():
+        delta = (pd.Timestamp(item["date"]).date() - now.date()).days
+        if -1 <= delta <= 7:
+            official_earnings[code] = item
     earnings = []
     for name, r in valid:
         code = r["ticker"].split(".")[0]
