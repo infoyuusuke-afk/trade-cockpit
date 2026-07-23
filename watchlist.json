@@ -9,9 +9,16 @@
     "ドル円": "JPY=X",
     "米10年金利": "^TNX"
   },
+  "earnings_overrides": {
+    "3132": {"date": "2026-07-27", "source": "会社公表・市場カレンダー"},
+    "6988": {"date": "2026-07-28", "source": "会社IR"},
+    "6857": {"date": "2026-07-29", "source": "会社IR"}
+  },
   "stocks": {
     "東京エレクトロン（8035）": {"ticker": "8035.T", "sector": "半導体・AI", "style": "day"},
     "アドバンテスト（6857）": {"ticker": "6857.T", "sector": "半導体・AI", "style": "day"},
+    "マクニカHD（3132）": {"ticker": "3132.T", "sector": "半導体・AI", "style": "both"},
+    "日東電工（6988）": {"ticker": "6988.T", "sector": "電子材料・AI", "style": "both"},
     "ディスコ（6146）": {"ticker": "6146.T", "sector": "半導体・AI", "style": "day"},
     "レーザーテック（6920）": {"ticker": "6920.T", "sector": "半導体・AI", "style": "day"},
     "キオクシアHD（285A）": {"ticker": "285A.T", "sector": "半導体・AI", "style": "day"},
