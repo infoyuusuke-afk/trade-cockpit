@@ -23,7 +23,7 @@ def flat_columns(df):
 def daily_snapshot(ticker):
     try:
         df = flat_columns(yf.download(
-            ticker, period="6mo", interval="1d", auto_adjust=False,
+            ticker, period="1y", interval="1d", auto_adjust=False,
             progress=False, threads=False
         )).dropna(subset=["Close"])
         if len(df) < 3:
@@ -44,10 +44,18 @@ def daily_snapshot(ticker):
         atr = float(tr.tail(14).mean())
         ma5 = float(df["Close"].tail(5).mean())
         ma20 = float(df["Close"].tail(20).mean())
+        ma60 = float(df["Close"].tail(60).mean()) if len(df) >= 60 else ma20
+        old_ma20 = float(df["Close"].iloc[-40:-20].mean()) if len(df) >= 40 else ma20
+        prior_high20 = float(df["High"].iloc[-21:-1].max()) if len(df) >= 21 else high
+        high52 = float(df["High"].tail(252).max())
         ret5 = (close / float(df["Close"].iloc[-6]) - 1) * 100 if len(df) >= 6 else 0
         ret20 = (close / float(df["Close"].iloc[-21]) - 1) * 100 if len(df) >= 21 else 0
         change = (close / prev - 1) * 100 if prev else 0
         rvol = vol / avg_vol if avg_vol else 0
+        atr_pct = atr / close * 100 if close else 0
+        from_ma20 = (close / ma20 - 1) * 100 if ma20 else 0
+        to_high20 = (close / prior_high20 - 1) * 100 if prior_high20 else 0
+        to_high52 = (close / high52 - 1) * 100 if high52 else 0
         day_score = (
             min(max(change, -4), 4) * .8
             + min(max(ret5, -8), 8) * .35
@@ -62,14 +70,44 @@ def daily_snapshot(ticker):
             + (1 if close > ma20 else -1)
             + min(rvol, 2)
         )
+        stable_score = (
+            (3 if close > ma20 > ma60 else 0)
+            + (2 if ma20 > old_ma20 else -1)
+            + min(max(ret20, -5), 15) * .18
+            + min(rvol, 2)
+            + (2 if atr_pct <= 3.5 else 0)
+            + (2 if turnover >= 5_000_000_000 else 0)
+        )
+        momentum_score = (
+            min(max(ret5, -5), 25) * .32
+            + min(max(ret20, -10), 35) * .12
+            + min(rvol, 4) * 2
+            + (3 if to_high20 >= -1 else 0)
+            + (2 if turnover >= 3_000_000_000 else 0)
+            - (4 if from_ma20 > 18 or atr_pct > 9 else 0)
+        )
+        high_score = (
+            (5 if to_high52 >= -1 else 3 if to_high52 >= -3 else 0)
+            + (3 if close >= prior_high20 else 0)
+            + min(rvol, 3) * 1.5
+            + (2 if ma20 > old_ma20 else 0)
+            + (2 if turnover >= 5_000_000_000 else 0)
+            - (3 if from_ma20 > 15 else 0)
+        )
         return {
             "ok": True, "price": round(close, 2), "open": round(open_, 2),
             "high": round(high, 2), "low": round(low, 2),
             "prev_close": round(prev, 2), "change_pct": round(change, 2),
             "ret5": round(ret5, 2), "ret20": round(ret20, 2),
             "rvol": round(rvol, 2), "turnover": round(turnover),
-            "atr14": round(atr, 2), "ma5": round(ma5, 2), "ma20": round(ma20, 2),
-            "day_score": round(day_score, 2), "swing_score": round(swing_score, 2)
+            "atr14": round(atr, 2), "atr_pct": round(atr_pct, 2),
+            "ma5": round(ma5, 2), "ma20": round(ma20, 2), "ma60": round(ma60, 2),
+            "from_ma20": round(from_ma20, 2), "to_high20": round(to_high20, 2),
+            "to_high52": round(to_high52, 2),
+            "day_score": round(day_score, 2), "swing_score": round(swing_score, 2),
+            "stable_score": round(stable_score, 2),
+            "momentum_score": round(momentum_score, 2),
+            "high_score": round(high_score, 2)
         }
     except Exception as e:
         return {"ok": False, "error": type(e).__name__}
@@ -243,10 +281,25 @@ def main():
         [(n, r) for n, r in valid if r["style"] in ("day", "both") and r["turnover"] >= 2_000_000_000],
         key=lambda x: x[1]["day_score"], reverse=True
     )[:7]
-    swing_rank = sorted(
-        [(n, r) for n, r in valid if r["style"] in ("swing", "both") and 1500 <= r["price"] <= 15000],
-        key=lambda x: x[1]["swing_score"], reverse=True
-    )[:7]
+    swing_pool = [
+        (n, r) for n, r in valid
+        if r["style"] in ("swing", "both") and 500 <= r["price"] <= 30000
+        and r["turnover"] >= 500_000_000
+    ]
+    stable_rank = sorted(
+        [(n, r) for n, r in swing_pool
+         if r["price"] > r["ma20"] > r["ma60"] and r["atr_pct"] <= 5.0],
+        key=lambda x: x[1]["stable_score"], reverse=True
+    )[:5]
+    momentum_rank = sorted(
+        [(n, r) for n, r in swing_pool
+         if r["ret5"] >= 3 and r["ret20"] >= 5 and r["from_ma20"] <= 18],
+        key=lambda x: x[1]["momentum_score"], reverse=True
+    )[:5]
+    high_rank = sorted(
+        [(n, r) for n, r in swing_pool if r["to_high52"] >= -3],
+        key=lambda x: x[1]["high_score"], reverse=True
+    )[:5]
 
     sector_scores = {}
     for _, r in valid:
@@ -299,7 +352,11 @@ def main():
         "phase": "大引け検証15:00版" if afternoon else "寄り付き前8:30版",
         "indices": indices, "stocks": stocks,
         "day_candidates": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in day_rank],
-        "swing_candidates": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in swing_rank],
+        "swing_candidates": {
+            "stable": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in stable_rank],
+            "momentum": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in momentum_rank],
+            "new_high": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in high_rank]
+        },
         "earnings_candidates": earnings, "themes": themes,
         "morning_snapshot": morning, "morning_reviews": reviews
     }
@@ -328,12 +385,30 @@ def main():
             f"<td>{money(p['stop'])}</td><td>{money(p['target1'])}／{money(p['target2'])}</td>"
             f"<td>{trigger}<br><small>{shares}株・最大損失 約{max_loss:,.0f}円</small></td></tr>"
         )
-    swing_rows = "".join(
-        f"<tr><td>{i}</td><td>{name}</td><td>{money(r['price'])}</td><td>{pct(r['ret5'])}</td>"
-        f"<td>{pct(r['ret20'])}</td><td>{money(trade_plan(r, r.get('intraday'))['entry'])}</td>"
-        f"<td>{money(trade_plan(r, r.get('intraday'))['stop'])}</td><td>{money(trade_plan(r, r.get('intraday'))['target2'])}</td></tr>"
-        for i, (name, r) in enumerate(swing_rank, 1)
-    )
+    def swing_rows(rank, kind):
+        rows = ""
+        for i, (name, r) in enumerate(rank, 1):
+            p = trade_plan(r, r.get("intraday"))
+            if r["from_ma20"] > 12:
+                action = "過熱・押し目待ち"
+            elif kind == "new_high" and r["to_high20"] >= 0:
+                action = "高値更新＋出来高で発動"
+            elif kind == "momentum":
+                action = "前日高値突破か5日線反発"
+            else:
+                action = "20日線上の押し目"
+            rows += (
+                f"<tr><td>{i}</td><td>{name}</td><td>{money(r['price'])}</td>"
+                f"<td>{pct(r['ret5'])}</td><td>{pct(r['ret20'])}</td>"
+                f"<td>{pct(r['to_high52'])}</td><td>{r['rvol']:.2f}倍</td>"
+                f"<td>{money(p['entry'])}</td><td>{money(p['stop'])}</td>"
+                f"<td>{money(p['target2'])}</td><td>{action}</td></tr>"
+            )
+        return rows or "<tr><td colspan='11'>本日の条件合格銘柄なし。無理に選定しません。</td></tr>"
+
+    stable_rows = swing_rows(stable_rank, "stable")
+    momentum_rows = swing_rows(momentum_rank, "momentum")
+    high_rows = swing_rows(high_rank, "new_high")
     earning_rows = "".join(
         f"<tr><td>{x['name']}</td><td>{x['date']}</td><td>{money(x['price'])}</td>"
         f"<td>{money(x['plan']['entry'])}</td><td>{money(x['plan']['stop'])}</td>"
@@ -353,15 +428,17 @@ def main():
     phase = data["phase"]
     html = f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="900"><title>AIトレードコクピット</title>
 <style>*{{box-sizing:border-box}}body{{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}}header{{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}}h1{{margin:0;font-size:25px}}h2{{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}}.sub{{color:#aebdcb;margin-top:4px}}.tag{{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}}main{{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}}.card{{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}}.wide{{grid-column:1/-1}}table{{width:100%;border-collapse:collapse}}th{{background:#1b2a39}}th,td{{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}}th:nth-child(-n+2),td:nth-child(-n+2){{text-align:left}}tr:nth-child(even) td{{background:#111923}}.up{{color:#52e46f;font-weight:900}}.down{{color:#ff6262;font-weight:900}}small{{color:#bac6d2}}.warning{{color:#ffe66d}}footer{{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}}@media(max-width:800px){{header{{align-items:flex-start;flex-direction:column}}main{{grid-template-columns:1fr}}.wide{{grid-column:1}}table{{min-width:700px}}}}</style></head><body>
-<header><div><h1>AIトレードコクピット Ver.3.0</h1><div class="sub">8:30候補保存 → 15:00ザラバ実績検証／候補は30銘柄から動的選定</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><main>
+<header><div><h1>AIトレードコクピット Ver.3.1</h1><div class="sub">安定上昇・短期急騰・新高値更新を分離／過熱銘柄は押し目待ち判定</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><main>
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>根拠</th></tr>{theme_rows}</table></section>
 <section class="card wide"><h2>③ 当日狙い目銘柄 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1／2</th><th>発動条件・リスク</th></tr>{day_rows}</table><p class="warning">入口は指値の断定ではなく発動水準。VWAP・5分足・出来高を満たさなければ見送り。</p></section>
 <section class="card wide"><h2>④ 朝8:30候補のザラバ答え合わせ</h2><table><tr><th>会社名＋コード</th><th>朝イン</th><th>朝損切り</th><th>朝利確1／2</th><th>結果</th><th>終値・VWAP検証</th></tr>{review_rows}</table></section>
-<section class="card wide"><h2>⑤ スイング候補 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>押し目イン</th><th>損切り</th><th>利確目安</th></tr>{swing_rows}</table></section>
+<section class="card wide"><h2>⑤-A 安定上昇候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{stable_rows}</table></section>
+<section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{momentum_rows}</table><p class="warning">20日線から18％超乖離、ATR9％超は除外。急騰後の高値づかみを避けます。</p></section>
+<section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{high_rows}</table></section>
 <section class="card wide"><h2>⑥ 決算勝負候補（7日以内・確認できた銘柄のみ）</h2><table><tr><th>会社名＋コード</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>注意</th></tr>{earning_rows}</table><p class="warning">決算跨ぎは通常の逆指値が効かないギャップリスクあり。発表日・時刻は必ず会社IRで最終確認。</p></section>
 <section class="card"><h2>⑦ 運用ルール</h2><p>最大損失を先に固定／同テーマ集中を避ける／デイトレは15:25までに手仕舞い／損切りを広げない。</p></section>
-<section class="card"><h2>⑧ 次回への学習</h2><p>15:00版は朝候補の未約定・利確・損切り・VWAP位置を保存。固定銘柄の繰り返しを避け、出来高・売買代金・5日/20日モメンタムを次回順位へ反映。</p></section>
+<section class="card"><h2>⑧ 選定ロジック</h2><p>安定＝20日線＞60日線・低ATR・高流動性。急騰＝5日/20日モメンタム・出来高増・20日高値接近。新高値＝52週高値3％以内・20日高値突破・出来高確認。</p></section>
 </main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>{data['updated_at']}</span></footer></body></html>"""
     (ROOT / "index.html").write_text(html, encoding="utf-8")
 
