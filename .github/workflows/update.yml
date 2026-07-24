@@ -12,8 +12,8 @@ on:
       - "requirements.txt"
       - ".github/workflows/update.yml"
   schedule:
-    - cron: "30 23 * * *" # 08:30 JST
-    - cron: "30 2 * * 1-5" # 11:30 JST, morning-session review
+    - cron: "0 23 * * *" # 08:00 JST
+    - cron: "45 2 * * 1-5" # 11:45 JST, morning-session review
     - cron: "35 6 * * 1-5" # 15:35 JST, after the Tokyo market close
 
 permissions:
