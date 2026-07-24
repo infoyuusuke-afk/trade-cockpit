@@ -121,7 +121,7 @@ def statistics(history: list[dict]) -> dict:
     }
 
 
-def render(reviews: list[dict], stats: dict, message: str, provisional: bool = False) -> str:
+def render(reviews: list[dict], stats: dict, message: str) -> str:
     rows = []
     for x in reviews:
         pnl = "—" if x["pnl_yen"] is None else f'{x["pnl_yen"]:+,}円'
@@ -132,14 +132,14 @@ def render(reviews: list[dict], stats: dict, message: str, provisional: bool = F
             f"<td>{html.escape(x['side'])} {x['score']:.0f}/100</td>"
             f"<td>{x['entry']:,.0f}<br><small>損切 {x['stop']:,.0f}</small></td>"
             f"<td>{x['target1']:,.0f} / {x['target2']:,.0f}</td>"
-            f"<td><strong>{html.escape(x['result'])}</strong><br><small>{'前引け' if provisional else '終値'} {x['close']:,.0f}</small></td>"
+            f"<td><strong>{html.escape(x['result'])}</strong><br><small>終値 {x['close']:,.0f}</small></td>"
             f"<td>{pnl}<br><small>{r}</small></td>"
             "</tr>"
         )
-    body = "".join(rows) or '<tr><td colspan="6">同日8:30版の固定スナップショットがないため検証不成立。候補成績には加算しません。</td></tr>'
+    body = "".join(rows) or '<tr><td colspan="6">同日8:00版の固定スナップショットがないため検証不成立。候補成績には加算しません。</td></tr>'
     return f"""
 <section class="panel morning-audit">
-  <h2>④ 朝8:30版との答え合わせ・仮想トレード</h2>
+  <h2>④ 朝8:00版との答え合わせ・仮想トレード</h2>
   <p>{html.escape(message)}</p>
   <div class="cards">
     <div class="card"><b>累計検証</b><span>{stats['count']}件</span></div>
@@ -150,16 +150,15 @@ def render(reviews: list[dict], stats: dict, message: str, provisional: bool = F
     <div class="card"><b>実戦判定</b><span>{stats['decision']}</span></div>
   </div>
   <p><small>100株（1万円以上は10株）で計算。朝の発動価格到達時のみ約定。同日中に損切りと利確の両方へ触れ、順序を確定できない取引は除外。</small></p>
-  <div class="table-wrap"><table><thead><tr><th>銘柄</th><th>朝評価</th><th>発動 / 損切</th><th>利確1 / 2</th><th>{'前場途中経過' if provisional else '大引け判定'}</th><th>{'仮含み損益' if provisional else '仮想損益'}</th></tr></thead><tbody>{body}</tbody></table></div>
+  <div class="table-wrap"><table><thead><tr><th>銘柄</th><th>朝評価</th><th>発動 / 損切</th><th>利確1 / 2</th><th>大引け判定</th><th>仮想損益</th></tr></thead><tbody>{body}</tbody></table></div>
 </section>"""
 
 
 def main() -> None:
     now = datetime.now(JST)
     data = load(DATA, {})
-    is_midday = now.hour == 11
-    is_close = now.hour >= 12 or "大引け" in data.get("phase", "")
-    if not is_midday and not is_close:
+    is_afternoon = now.hour >= 12 or "大引け" in data.get("phase", "")
+    if not is_afternoon:
         snap = morning_snapshot(data, now)
         save(SNAPSHOT, snap)
         data["morning_snapshot_fixed"] = snap
@@ -177,24 +176,25 @@ def main() -> None:
                 reviews.append(audit_one(plan, stock))
 
     history = load(HISTORY, [])
-    if is_close:
-        history = [x for x in history if x.get("date") != now.date().isoformat()]
-        history.extend({"date": now.date().isoformat(), **x} for x in reviews)
-        history = history[-500:]
-        save(HISTORY, history)
+    history = [x for x in history if x.get("date") != now.date().isoformat()]
+    history.extend({"date": now.date().isoformat(), **x} for x in reviews)
+    history = history[-500:]
+    save(HISTORY, history)
     stats = statistics(history)
     message = (
-        f"朝{snap.get('fixed_at', '')}に固定した候補を、{'前場データで途中検証（正式成績には未加算）' if is_midday else '大引けデータで正式検証'}。"
+        f"朝{snap.get('fixed_at', '')}に固定した候補を、大引けデータで検証。"
         if same_day
-        else "本日は同日8:30版の機械保存がないため、答え合わせは検証不成立。次回朝版から自動蓄積します。"
+        else "本日は同日8:00版の機械保存がないため、答え合わせは検証不成立。次回朝版から自動蓄積します。"
     )
-    section = render(reviews, stats, message, provisional=is_midday)
+    section = render(reviews, stats, message)
     page = PAGE.read_text(encoding="utf-8")
-    pattern = re.compile(r'<section[^>]*>\\s*<h2>④ 朝8(?::30)?候補のザラバ答え合わせ.*?</section>', re.S)
-    if pattern.search(page):
-        page = pattern.sub(section, page, count=1)
-    else:
-        page = page.replace("</main>", section + "\n</main>", 1)
+    pattern = re.compile(
+        r'<section[^>]*>\s*<h2>④ 朝8(?::(?:00|30))?'
+        r'(?:候補のザラバ答え合わせ|版との答え合わせ・仮想トレード).*?</section>',
+        re.S,
+    )
+    page = pattern.sub("", page)
+    page = page.replace("</main>", section + "\n</main>", 1)
     PAGE.write_text(page, encoding="utf-8")
     data["paper_trade_reviews"] = reviews
     data["paper_trade_stats"] = stats
