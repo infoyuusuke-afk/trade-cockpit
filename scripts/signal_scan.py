@@ -322,7 +322,12 @@ def main():
     short_results.sort(key=lambda x: (x["score"], x["rvol"], -x["ret20"]), reverse=True)
     overnight_long = [
         x for x in results
-        if x["score"] >= 70 and x["rvol"] >= .90 and x["atr_pct"] <= 7
+        if (
+            x["score"] >= 70
+            and x["rvol"] >= .90
+            and x["atr_pct"] <= 7
+            and x["code"] != "285A"  # キオクシアHDは朝スキャル専用
+        )
     ][:15]
     entered = []
     for row in results:
