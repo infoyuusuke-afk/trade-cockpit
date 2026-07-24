@@ -8,6 +8,7 @@ on:
       - "scripts/update.py"
       - "scripts/signal_scan.py"
       - "scripts/morning_review.py"
+      - "scripts/weekly_tabs.py"
       - "watchlist.json"
       - "requirements.txt"
       - ".github/workflows/update.yml"
@@ -15,6 +16,7 @@ on:
     - cron: "0 23 * * *" # 08:00 JST
     - cron: "45 2 * * 1-5" # 11:45 JST, morning-session review
     - cron: "35 6 * * 1-5" # 15:35 JST, after the Tokyo market close
+    - cron: "0 0 * * 6" # Saturday 09:00 JST, weekly review
 
 permissions:
   contents: write
@@ -48,10 +50,11 @@ jobs:
           python scripts/signal_scan.py
           python scripts/update.py
           python scripts/morning_review.py
+          python scripts/weekly_tabs.py
 
       - name: Commit and push updated files
         run: |
-          if git diff --quiet -- index.html data.json signals.json morning_snapshot.json paper_trade_history.json; then
+          if git diff --quiet -- index.html data.json signals.json morning_snapshot.json paper_trade_history.json weekly_review.json; then
             echo "No changes to commit."
             exit 0
           fi
@@ -60,6 +63,7 @@ jobs:
           git add index.html data.json signals.json
           test ! -f morning_snapshot.json || git add morning_snapshot.json
           test ! -f paper_trade_history.json || git add paper_trade_history.json
+          test ! -f weekly_review.json || git add weekly_review.json
           git commit -m "Auto-update trade cockpit"
           for attempt in 1 2 3; do
             git pull --rebase origin main
