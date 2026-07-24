@@ -664,9 +664,9 @@ def main():
 <tbody id="prepared-signals"><tr><td colspan="10">読み込み中...</td></tr></tbody></table>
 <p class="warning">全市場の日足を自動走査し、60点以上を抽出。画面は期待値上位30銘柄、データには上位100銘柄を保存します。</p></section>
 <section class="card wide"><h2>⑩ 持ち越し<span class="pill long">LONG</span>候補 TOP10</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>翌日LONG発動</th><th>損切り</th><th>利確1／2</th><th>選定理由</th><th>決算・イベントリスク</th></tr></thead>
-<tbody id="overnight-long"><tr><td colspan="8">読み込み中...</td></tr></tbody></table>
-<p class="warning">翌日寄りで無条件に買いません。準備足高値を上抜いた場合だけLONG。大幅GUは飛び乗らず、通常の半分の株数を推奨。</p></section>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>翌日LONG発動</th><th>損切り</th><th>利確1／2</th><th>予約IFO入力例</th><th>選定理由</th><th>決算・イベントリスク</th></tr></thead>
+<tbody id="overnight-long"><tr><td colspan="9">読み込み中...</td></tr></tbody></table>
+<p class="warning">大引け後に予約IFOを設定し、朝は注文を変更しません。新規買いが発動した場合だけ利確・損切りを自動管理。大幅GUは約定させない価格条件にし、朝一はキオクシア等の値嵩株スキャルへ集中します。すでに保有済みならIFOではなく決済OCOを使用。</p></section>
 <section class="card wide"><h2>⑪ 持ち越し<span class="pill short">SHORT</span>候補 TOP10</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>翌日SHORT発動</th><th>損切り</th><th>利確1／2</th><th>選定理由</th><th>決算・イベント／空売り注意</th></tr></thead>
 <tbody id="overnight-short"><tr><td colspan="8">読み込み中...</td></tr></tbody></table>
@@ -696,21 +696,31 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     x.ret20.toFixed(2) + "%</td></tr>").join("");
   document.getElementById("prepared-signals").innerHTML =
     prepared || "<tr><td colspan='10'>本日の準備点灯銘柄なし。</td></tr>";
-  const carryRows = (items, side) => (items || []).slice(0, 10).map((x, i) =>
+  const carryRows = (items, side) => (items || []).slice(0, 10).map((x, i) => {{
+    const risk100 = Math.abs(x.trigger - x.stop) * 100;
+    const ifo = side === "LONG"
+      ? "新規買い逆指値 " + yen(x.trigger) + "<br><b>100株 IFO</b>：利確 " +
+        yen(x.target1) + "／損切 " + yen(x.stop) +
+        "<br><small>最大損失目安 " + yen(risk100) + "円。200株なら100株ずつ利確1・2へ分割。</small>"
+      : "新規売り逆指値 " + yen(x.trigger) + "<br>利確 " +
+        yen(x.target1) + "／損切 " + yen(x.stop);
+    return (
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td><b class='" +
     (side === "LONG" ? "up" : "down") + "'>" + x.score + "/100</b></td><td><b>" +
     yen(x.trigger) + "</b></td><td class='down'>" + yen(x.stop) + "</td><td>" +
-    yen(x.target1) + "／" + yen(x.target2) + "</td><td>" + x.reason +
-    "</td><td>" + x.event_risk + "<br><small>" + x.caution + "</small></td></tr>").join("");
+    yen(x.target1) + "／" + yen(x.target2) + "</td><td>" + ifo +
+    "</td><td>" + x.reason + "</td><td>" + x.event_risk +
+    "<br><small>" + x.caution + "</small></td></tr>");
+  }}).join("");
   document.getElementById("overnight-long").innerHTML =
-    carryRows(d.overnight_long, "LONG") || "<tr><td colspan='8'>本日の持ち越しLONG合格銘柄なし。</td></tr>";
+    carryRows(d.overnight_long, "LONG") || "<tr><td colspan='9'>本日の持ち越しLONG合格銘柄なし。</td></tr>";
   document.getElementById("overnight-short").innerHTML =
     carryRows(d.overnight_short, "SHORT") || "<tr><td colspan='8'>本日の持ち越しSHORT合格銘柄なし。</td></tr>";
 }}).catch(() => {{
   document.getElementById("signal-meta").textContent = "全銘柄シグナルデータを取得できませんでした。次回自動更新で再試行します。";
   document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>データ取得待ち</td></tr>";
   document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
-  document.getElementById("overnight-long").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
+  document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
   document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
 }});
 </script></body></html>"""
