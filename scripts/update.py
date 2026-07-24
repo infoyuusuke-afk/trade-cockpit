@@ -698,10 +698,18 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     prepared || "<tr><td colspan='10'>本日の準備点灯銘柄なし。</td></tr>";
   const carryRows = (items, side) => (items || []).slice(0, 10).map((x, i) => {{
     const risk100 = Math.abs(x.trigger - x.stop) * 100;
+    const tick = x.trigger < 3000 ? 1 : 5;
+    const entryLimit = side === "LONG" ? x.trigger + tick * 2 : x.trigger - tick * 2;
     const ifo = side === "LONG"
-      ? "新規買い逆指値 " + yen(x.trigger) + "<br><b>100株 IFO</b>：利確 " +
-        yen(x.target1) + "／損切 " + yen(x.stop) +
-        "<br><small>最大損失目安 " + yen(risk100) + "円。200株なら100株ずつ利確1・2へ分割。</small>"
+      ? "<b>IFO（利益確定＋損切り）</b><br>" +
+        "① 買建・100株・特定<br>" +
+        "② 市場価格 " + yen(x.trigger) + "円以上<br>" +
+        "③ 買い指値 " + yen(entryLimit) + "円<br>" +
+        "④ 利益確定：売埋指値 " + yen(x.target1) + "円<br>" +
+        "⑤ 損切り：市場価格 " + yen(x.stop) + "円以下<br>" +
+        "⑥ 執行期限：当日中<br>" +
+        "<small>最大損失目安 " + yen(risk100) + "円。利確2 " +
+        yen(x.target2) + "円は200株時の2本目。</small>"
       : "新規売り逆指値 " + yen(x.trigger) + "<br>利確 " +
         yen(x.target1) + "／損切 " + yen(x.stop);
     return (
