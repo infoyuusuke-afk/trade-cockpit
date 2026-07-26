@@ -1,40 +1,9 @@
 {
-  "updated_at": "2026-07-25 16:40:14 JST",
+  "updated_at": "2026-07-26 17:02:10 JST",
   "phase": "大引け検証15:00版",
   "indices": {
     "日経平均": {
-      "ok": true,
-      "price": 64611.15,
-      "open": 65584.25,
-      "high": 65720.81,
-      "low": 64201.03,
-      "prev_close": 66422.6,
-      "change_pct": -2.73,
-      "ret5": -3.33,
-      "ret20": -10.72,
-      "rvol": 0.86,
-      "turnover": 8748349498438,
-      "atr14": 1896.97,
-      "atr_pct": 2.94,
-      "ma5": 65504.53,
-      "ma20": 67852.73,
-      "ma60": 66022.0,
-      "from_ma5": -1.36,
-      "from_ma20": -4.78,
-      "touch_ma5": false,
-      "to_high20": -11.0,
-      "to_high52": -11.29,
-      "bb_upper": 71330.89,
-      "bb_lower": 64374.58,
-      "bb_width": 10.25,
-      "bb_width_change": 0.03,
-      "bb_percentile": 25.8,
-      "bb_expansion_score": 31.7,
-      "day_score": -1.06,
-      "swing_score": -5.98,
-      "stable_score": 2.96,
-      "momentum_score": 1.45,
-      "high_score": 3.29
+      "ok": false
     },
     "TOPIX": {
       "ok": true,
@@ -4233,25 +4202,6 @@
       "technical_score": 41
     },
     {
-      "name": "信越化学工業（4063）",
-      "date": "2026-07-24",
-      "price": 6702.0,
-      "plan": {
-        "entry": 6675,
-        "stop": 6510,
-        "target1": 6925,
-        "target2": 7040,
-        "risk": 165
-      },
-      "source": "JPX",
-      "expectation_score": 65,
-      "raw_expectation_score": 68,
-      "hurdle_risk": 12,
-      "score_coverage": 100,
-      "score_detail": "予想EPS成長 +18.0%／EPS予想幅 0.0%／予想売上成長 +9.4%／過去4回サプライズ平均 +1.5%／予想修正 上2／下0／決算前テクニカル 36/100／コンセンサス警戒 12/100（−3.4点）",
-      "technical_score": 36
-    },
-    {
       "name": "マクニカHD（3132）",
       "date": "2026-07-27",
       "price": 3378.0,
@@ -4383,6 +4333,25 @@
       "score_coverage": 100,
       "score_detail": "予想EPS成長 +10.2%／EPS予想幅 11.3%／予想売上成長 +4.9%／過去4回サプライズ平均 -7.4%／予想修正 上2／下0／決算前テクニカル 53/100／コンセンサス警戒 17/100（−4.8点）",
       "technical_score": 53
+    },
+    {
+      "name": "ソニーグループ（6758）",
+      "date": "2026-07-31",
+      "price": 3409.0,
+      "plan": {
+        "entry": 3410,
+        "stop": 3365,
+        "target1": 3470,
+        "target2": 3500,
+        "risk": 40
+      },
+      "source": "JPX",
+      "expectation_score": 51,
+      "raw_expectation_score": 58,
+      "hurdle_risk": 25,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +13.4%／EPS予想幅 12.8%／予想売上成長 +3.7%／過去4回サプライズ平均 -6.8%／予想修正 上2／下1／決算前テクニカル 52/100／コンセンサス警戒 25/100（−7.0点）",
+      "technical_score": 52
     }
   ],
   "themes": [
