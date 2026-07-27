@@ -1,0 +1,84 @@
+{
+  "date": "2026-07-28",
+  "fixed_at": "2026-07-28 01:06:19 JST",
+  "rule": "朝の発動価格を固定。寄り成りではなく、発動価格到達時だけ仮想約定。",
+  "candidates": [
+    {
+      "name": "三菱重工業（7011）",
+      "ticker": "7011.T",
+      "side": "LONG",
+      "score": 87.0,
+      "entry": 3945,
+      "stop": 3855,
+      "target1": 4085,
+      "target2": 4150,
+      "morning_price": 3945.0
+    },
+    {
+      "name": "小松製作所（6301）",
+      "ticker": "6301.T",
+      "side": "LONG",
+      "score": 86.0,
+      "entry": 6640,
+      "stop": 6535,
+      "target1": 6805,
+      "target2": 6880,
+      "morning_price": 6642.0
+    },
+    {
+      "name": "IHI（7013）",
+      "ticker": "7013.T",
+      "side": "LONG",
+      "score": 85.0,
+      "entry": 2894,
+      "stop": 2809,
+      "target1": 3023,
+      "target2": 3083,
+      "morning_price": 2878.5
+    },
+    {
+      "name": "フューチャー（4722）",
+      "ticker": "4722.T",
+      "side": "LONG",
+      "score": 84.0,
+      "entry": 2198,
+      "stop": 2117,
+      "target1": 2320,
+      "target2": 2377,
+      "morning_price": 2210.0
+    },
+    {
+      "name": "日東電工（6988）",
+      "ticker": "6988.T",
+      "side": "LONG",
+      "score": 84.0,
+      "entry": 3330,
+      "stop": 3275,
+      "target1": 3405,
+      "target2": 3440,
+      "morning_price": 3322.0
+    },
+    {
+      "name": "川崎重工業（7012）",
+      "ticker": "7012.T",
+      "side": "LONG",
+      "score": 84.0,
+      "entry": 2796,
+      "stop": 2715,
+      "target1": 2917,
+      "target2": 2974,
+      "morning_price": 2785.5
+    },
+    {
+      "name": "日立製作所（6501）",
+      "ticker": "6501.T",
+      "side": "LONG",
+      "score": 82.0,
+      "entry": 4865,
+      "stop": 4775,
+      "target1": 5000,
+      "target2": 5065,
+      "morning_price": 4850.0
+    }
+  ]
+}
