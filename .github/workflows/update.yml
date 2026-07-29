@@ -34,6 +34,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Sync latest generated state
+        run: git pull --rebase origin main
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
