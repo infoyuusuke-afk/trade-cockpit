@@ -1,41 +1,10 @@
 {
-  "updated_at": "2026-07-30 02:44:48 JST",
-  "phase": "寄り付き前8:30版",
+  "updated_at": "2026-07-30 02:54:03 JST",
+  "phase": "寄り付き前8:00版",
+  "session": "morning",
   "indices": {
     "日経平均": {
-      "ok": true,
-      "price": 62364.92,
-      "open": 64539.92,
-      "high": 64573.18,
-      "low": 61923.6,
-      "prev_close": 64931.19,
-      "change_pct": -3.95,
-      "ret5": -5.84,
-      "ret5_prev": -1.5,
-      "ret20": -10.23,
-      "rvol": 1.18,
-      "turnover": 11662240390625,
-      "atr14": 1944.91,
-      "atr_pct": 3.12,
-      "ma5": 64889.09,
-      "ma20": 67276.09,
-      "ma60": 66136.02,
-      "from_ma5": -3.89,
-      "from_ma20": -7.3,
-      "touch_ma5": false,
-      "to_high20": -13.34,
-      "to_high52": -14.37,
-      "bb_upper": 71461.9,
-      "bb_lower": 63090.28,
-      "bb_width": 12.44,
-      "bb_width_change": 1.96,
-      "bb_percentile": 47.5,
-      "bb_expansion_score": 26.3,
-      "day_score": -2.43,
-      "swing_score": -6.42,
-      "stable_score": 3.28,
-      "momentum_score": 1.57,
-      "high_score": 3.78
+      "ok": false
     },
     "TOPIX": {
       "ok": true,
@@ -74,104 +43,104 @@
     },
     "NASDAQ": {
       "ok": true,
-      "price": 24717.33,
+      "price": 24743.76,
       "open": 24863.48,
       "high": 24899.98,
       "low": 24492.3,
       "prev_close": 24876.91,
-      "change_pct": -0.64,
-      "ret5": -3.79,
+      "change_pct": -0.54,
+      "ret5": -3.69,
       "ret5_prev": -2.2,
-      "ret20": -5.71,
-      "rvol": 0.52,
-      "turnover": 97894856556000,
+      "ret20": -5.61,
+      "rvol": 0.53,
+      "turnover": 100055484280855,
       "atr14": 403.08,
       "atr_pct": 1.63,
-      "ma5": 24927.97,
-      "ma20": 25674.97,
-      "ma60": 25984.54,
-      "from_ma5": -0.84,
-      "from_ma20": -3.73,
+      "ma5": 24933.25,
+      "ma20": 25676.29,
+      "ma60": 25984.98,
+      "from_ma5": -0.76,
+      "from_ma20": -3.63,
       "touch_ma5": false,
-      "to_high20": -6.08,
-      "to_high52": -9.09,
-      "bb_upper": 26639.41,
-      "bb_lower": 24710.52,
-      "bb_width": 7.51,
-      "bb_width_change": 1.88,
-      "bb_percentile": 50.0,
-      "bb_expansion_score": 28.9,
-      "day_score": -0.06,
-      "swing_score": -5.24,
-      "stable_score": 2.62,
-      "momentum_score": 1.14,
-      "high_score": 2.78
+      "to_high20": -5.98,
+      "to_high52": -9.0,
+      "bb_upper": 26635.54,
+      "bb_lower": 24717.04,
+      "bb_width": 7.47,
+      "bb_width_change": 1.84,
+      "bb_percentile": 48.3,
+      "bb_expansion_score": 29.6,
+      "day_score": 0.07,
+      "swing_score": -5.16,
+      "stable_score": 2.63,
+      "momentum_score": 1.2,
+      "high_score": 2.79
     },
     "S&P500": {
       "ok": true,
-      "price": 7381.42,
+      "price": 7385.17,
       "open": 7418.16,
       "high": 7426.38,
       "low": 7341.25,
       "prev_close": 7428.78,
-      "change_pct": -0.64,
-      "ret5": -1.57,
+      "change_pct": -0.59,
+      "ret5": -1.52,
       "ret5_prev": -0.97,
-      "ret20": -1.57,
+      "ret20": -1.52,
       "rvol": 0.34,
-      "turnover": 12173983960230,
+      "turnover": 12462023747799,
       "atr14": 74.08,
       "atr_pct": 1.0,
-      "ma5": 7408.73,
-      "ma20": 7486.37,
-      "ma60": 7453.32,
-      "from_ma5": -0.37,
-      "from_ma20": -1.4,
+      "ma5": 7409.48,
+      "ma20": 7486.56,
+      "ma60": 7453.38,
+      "from_ma5": -0.33,
+      "from_ma20": -1.35,
       "touch_ma5": false,
-      "to_high20": -2.64,
-      "to_high52": -3.14,
-      "bb_upper": 7598.25,
-      "bb_lower": 7374.49,
-      "bb_width": 2.99,
-      "bb_width_change": -0.02,
-      "bb_percentile": 10.0,
-      "bb_expansion_score": 58.7,
-      "day_score": 0.45,
-      "swing_score": -3.61,
-      "stable_score": 6.05,
-      "momentum_score": 1.98,
-      "high_score": 4.5
+      "to_high20": -2.59,
+      "to_high52": -3.09,
+      "bb_upper": 7597.74,
+      "bb_lower": 7375.37,
+      "bb_width": 2.97,
+      "bb_width_change": -0.04,
+      "bb_percentile": 9.2,
+      "bb_expansion_score": 59.1,
+      "day_score": 0.51,
+      "swing_score": -3.57,
+      "stable_score": 6.07,
+      "momentum_score": 2.02,
+      "high_score": 4.52
     },
     "SOX": {
       "ok": true,
-      "price": 10655.69,
+      "price": 10690.89,
       "open": 11011.87,
       "high": 11125.05,
       "low": 10481.21,
-      "prev_close": 11035.68,
-      "change_pct": -3.44,
-      "ret5": -14.14,
-      "ret5_prev": 0.1,
-      "ret20": -25.21,
+      "prev_close": 11554.88,
+      "change_pct": -7.48,
+      "ret5": -8.97,
+      "ret5_prev": -4.89,
+      "ret20": -19.03,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 589.16,
-      "atr_pct": 5.53,
-      "ma5": 11481.79,
-      "ma20": 12227.6,
-      "ma60": 12540.51,
-      "from_ma5": -7.19,
-      "from_ma20": -12.86,
+      "atr14": 625.66,
+      "atr_pct": 5.85,
+      "ma5": 11871.29,
+      "ma20": 12484.46,
+      "ma60": 12511.84,
+      "from_ma5": -9.94,
+      "from_ma20": -14.37,
       "touch_ma5": false,
-      "to_high20": -25.65,
-      "to_high52": -27.29,
-      "bb_upper": 13536.42,
-      "bb_lower": 10918.77,
-      "bb_width": 21.41,
-      "bb_width_change": 0.02,
-      "bb_percentile": 56.7,
-      "bb_expansion_score": 15.2,
-      "day_score": -6.55,
+      "to_high20": -25.41,
+      "to_high52": -27.05,
+      "bb_upper": 14022.17,
+      "bb_lower": 10946.75,
+      "bb_width": 24.63,
+      "bb_width_change": 2.61,
+      "bb_percentile": 75.8,
+      "bb_expansion_score": 8.5,
+      "day_score": -7.0,
       "swing_score": -9.55,
       "stable_score": -1.9,
       "momentum_score": -2.8,
@@ -179,72 +148,72 @@
     },
     "VIX": {
       "ok": true,
-      "price": 19.44,
+      "price": 19.59,
       "open": 18.27,
       "high": 20.34,
       "low": 18.05,
       "prev_close": 18.21,
-      "change_pct": 6.75,
-      "ret5": 16.83,
+      "change_pct": 7.58,
+      "ret5": 17.73,
       "ret5_prev": 6.19,
-      "ret20": 18.18,
+      "ret20": 19.09,
       "rvol": 0,
       "turnover": 0,
       "atr14": 2.0,
-      "atr_pct": 10.31,
-      "ma5": 18.72,
-      "ma20": 17.15,
+      "atr_pct": 10.23,
+      "ma5": 18.75,
+      "ma20": 17.16,
       "ma60": 17.45,
-      "from_ma5": 3.85,
-      "from_ma20": 13.36,
+      "from_ma5": 4.48,
+      "from_ma20": 14.18,
       "touch_ma5": true,
-      "to_high20": -4.28,
-      "to_high52": -44.93,
-      "bb_upper": 19.69,
-      "bb_lower": 14.61,
-      "bb_width": 29.59,
-      "bb_width_change": 2.71,
+      "to_high20": -3.55,
+      "to_high52": -44.5,
+      "bb_upper": 19.72,
+      "bb_lower": 14.59,
+      "bb_width": 29.9,
+      "bb_width_change": 3.02,
       "bb_percentile": 30.0,
       "bb_expansion_score": 44.5,
       "day_score": 7.0,
       "swing_score": 9.55,
       "stable_score": 1.7,
-      "momentum_score": 7.57,
+      "momentum_score": 7.96,
       "high_score": 0.0
     },
     "ドル円": {
       "ok": true,
-      "price": 163.81,
+      "price": 163.77,
       "open": 163.79,
       "high": 163.9,
       "low": 163.27,
       "prev_close": 163.77,
-      "change_pct": 0.03,
-      "ret5": 0.38,
+      "change_pct": -0.0,
+      "ret5": 0.36,
       "ret5_prev": 0.62,
-      "ret20": 0.73,
+      "ret20": 0.7,
       "rvol": 0,
       "turnover": 0,
       "atr14": 0.63,
       "atr_pct": 0.38,
-      "ma5": 163.62,
+      "ma5": 163.61,
       "ma20": 162.6,
       "ma60": 160.69,
-      "from_ma5": 0.12,
-      "from_ma20": 0.75,
+      "from_ma5": 0.1,
+      "from_ma20": 0.72,
       "touch_ma5": true,
-      "to_high20": -0.1,
-      "to_high52": -0.1,
-      "bb_upper": 164.02,
-      "bb_lower": 161.18,
-      "bb_width": 1.74,
-      "bb_width_change": 0.42,
+      "to_high20": -0.13,
+      "to_high52": -0.13,
+      "bb_upper": 164.01,
+      "bb_lower": 161.19,
+      "bb_width": 1.73,
+      "bb_width_change": 0.41,
       "bb_percentile": 37.5,
       "bb_expansion_score": 58.9,
-      "day_score": 1.15,
-      "swing_score": 3.32,
+      "day_score": 1.12,
+      "swing_score": 3.3,
       "stable_score": 7.13,
-      "momentum_score": 7.21,
+      "momentum_score": 7.2,
       "high_score": 7.0
     },
     "米10年金利": {
@@ -2554,7 +2523,7 @@
         "target1": 3610,
         "target2": 3665,
         "risk": 75,
-        "entry_limit": 3495
+        "tick": 5
       }
     },
     {
@@ -2597,12 +2566,12 @@
       "style": "day",
       "rotation_group": "内需・ディフェンシブ",
       "plan": {
-        "entry": 7455,
-        "stop": 7325,
+        "entry": 7460,
+        "stop": 7320,
         "target1": 7650,
         "target2": 7740,
         "risk": 130,
-        "entry_limit": 7455
+        "tick": 10
       }
     },
     {
@@ -2650,7 +2619,7 @@
         "target1": 3230,
         "target2": 3350,
         "risk": 170,
-        "entry_limit": 2975
+        "tick": 5
       }
     },
     {
@@ -2698,7 +2667,7 @@
         "target1": 3665,
         "target2": 3705,
         "risk": 55,
-        "entry_limit": 3585
+        "tick": 5
       }
     },
     {
@@ -2746,7 +2715,7 @@
         "target1": 3545,
         "target2": 3585,
         "risk": 60,
-        "entry_limit": 3455
+        "tick": 5
       }
     },
     {
@@ -2793,7 +2762,8 @@
         "stop": 2514,
         "target1": 2647,
         "target2": 2684,
-        "risk": 53
+        "risk": 53,
+        "tick": 1
       }
     },
     {
@@ -2840,10 +2810,162 @@
         "stop": 4365,
         "target1": 4610,
         "target2": 4675,
-        "risk": 95
+        "risk": 95,
+        "tick": 5
       }
     }
   ],
+  "day_ifo_candidates": [
+    {
+      "name": "本田技研工業（7267）",
+      "code": "7267",
+      "ticker": "7267.T",
+      "side": "LONG",
+      "sector": "自動車・モビリティ",
+      "sector_phase": "拡大",
+      "score": 100,
+      "shares": 100,
+      "trigger": 1617,
+      "entry_limit": 1619,
+      "stop": 1584,
+      "target1": 1672,
+      "target2": 1696,
+      "required_capital": 161900,
+      "max_loss": 3500,
+      "expected_profit": 5300,
+      "risk_reward": 1.51,
+      "reason": "自動車・モビリティ＝拡大 91点／テクニカル 78点／出来高比 1.18倍／売買代金 313億円",
+      "event_risk": "7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。",
+      "order_type": "逆指値注文＋IFO（利益確定＋損切り）",
+      "market": "東証（SOR）",
+      "credit_type": "制度（6カ月）",
+      "entry_expiry": "当日中",
+      "exit_expiry": "当日中",
+      "quote_rule": "8:55気配が1,619円を超えていたら価格を上げず注文取消。",
+      "close_rule": "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。"
+    },
+    {
+      "name": "MS&AD（8725）",
+      "code": "8725",
+      "ticker": "8725.T",
+      "side": "LONG",
+      "sector": "金融",
+      "sector_phase": "拡大",
+      "score": 100,
+      "shares": 100,
+      "trigger": 5080,
+      "entry_limit": 5100,
+      "stop": 5000,
+      "target1": 5250,
+      "target2": 5320,
+      "required_capital": 510000,
+      "max_loss": 10000,
+      "expected_profit": 15000,
+      "risk_reward": 1.5,
+      "reason": "金融＝拡大 87点／テクニカル 90点／出来高比 0.93倍／売買代金 229億円",
+      "event_risk": "7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。",
+      "order_type": "逆指値注文＋IFO（利益確定＋損切り）",
+      "market": "東証（SOR）",
+      "credit_type": "制度（6カ月）",
+      "entry_expiry": "当日中",
+      "exit_expiry": "当日中",
+      "quote_rule": "8:55気配が5,100円を超えていたら価格を上げず注文取消。",
+      "close_rule": "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。"
+    },
+    {
+      "name": "楽天グループ（4755）",
+      "code": "4755",
+      "ticker": "4755.T",
+      "side": "LONG",
+      "sector": "内需・ディフェンシブ",
+      "sector_phase": "拡大",
+      "score": 97,
+      "shares": 100,
+      "trigger": 834,
+      "entry_limit": 836,
+      "stop": 813,
+      "target1": 870,
+      "target2": 887,
+      "required_capital": 83600,
+      "max_loss": 2300,
+      "expected_profit": 3400,
+      "risk_reward": 1.48,
+      "reason": "内需・ディフェンシブ＝拡大 84点／テクニカル 77点／出来高比 0.88倍／売買代金 108億円",
+      "event_risk": "7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。",
+      "order_type": "逆指値注文＋IFO（利益確定＋損切り）",
+      "market": "東証（SOR）",
+      "credit_type": "制度（6カ月）",
+      "entry_expiry": "当日中",
+      "exit_expiry": "当日中",
+      "quote_rule": "8:55気配が836円を超えていたら価格を上げず注文取消。",
+      "close_rule": "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。"
+    },
+    {
+      "name": "日本郵船（9101）",
+      "code": "9101",
+      "ticker": "9101.T",
+      "side": "LONG",
+      "sector": "資源・素材・商社",
+      "sector_phase": "中立",
+      "score": 89,
+      "shares": 100,
+      "trigger": 6060,
+      "entry_limit": 6080,
+      "stop": 5940,
+      "target1": 6290,
+      "target2": 6390,
+      "required_capital": 608000,
+      "max_loss": 14000,
+      "expected_profit": 21000,
+      "risk_reward": 1.5,
+      "reason": "資源・素材・商社＝中立 76点／テクニカル 83点／出来高比 0.90倍／売買代金 148億円",
+      "event_risk": "決算予定 2026-08-05（JPX）。当日まで持ち越さない。",
+      "order_type": "逆指値注文＋IFO（利益確定＋損切り）",
+      "market": "東証（SOR）",
+      "credit_type": "制度（6カ月）",
+      "entry_expiry": "当日中",
+      "exit_expiry": "当日中",
+      "quote_rule": "8:55気配が6,080円を超えていたら価格を上げず注文取消。",
+      "close_rule": "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。"
+    },
+    {
+      "name": "トヨタ自動車（7203）",
+      "code": "7203",
+      "ticker": "7203.T",
+      "side": "LONG",
+      "sector": "自動車・モビリティ",
+      "sector_phase": "拡大",
+      "score": 90,
+      "shares": 100,
+      "trigger": 3020,
+      "entry_limit": 3030,
+      "stop": 2970,
+      "target1": 3120,
+      "target2": 3160,
+      "required_capital": 303000,
+      "max_loss": 6000,
+      "expected_profit": 9000,
+      "risk_reward": 1.5,
+      "reason": "自動車・モビリティ＝拡大 91点／テクニカル 71点／出来高比 1.13倍／売買代金 921億円",
+      "event_risk": "決算予定 2026-08-04（JPX）。当日まで持ち越さない。",
+      "order_type": "逆指値注文＋IFO（利益確定＋損切り）",
+      "market": "東証（SOR）",
+      "credit_type": "制度（6カ月）",
+      "entry_expiry": "当日中",
+      "exit_expiry": "当日中",
+      "quote_rule": "8:55気配が3,030円を超えていたら価格を上げず注文取消。",
+      "close_rule": "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。"
+    }
+  ],
+  "day_ifo_summary": {
+    "count": 5,
+    "shares_each": 100,
+    "total_capital": 1666500,
+    "total_profit": 53700,
+    "total_max_loss": 35800,
+    "order_time": "8:55",
+    "manual_entry": true
+  },
   "swing_candidates": {
     "stable": [
       {
@@ -2890,7 +3012,8 @@
           "stop": 3605,
           "target1": 3780,
           "target2": 3830,
-          "risk": 70
+          "risk": 70,
+          "tick": 5
         }
       },
       {
@@ -2934,10 +3057,11 @@
         "rotation_group": "金融",
         "plan": {
           "entry": 5040,
-          "stop": 4975,
+          "stop": 4980,
           "target1": 5140,
-          "target2": 5185,
-          "risk": 65
+          "target2": 5180,
+          "risk": 60,
+          "tick": 10
         }
       },
       {
@@ -2980,11 +3104,12 @@
         "style": "swing",
         "rotation_group": "資源・素材・商社",
         "plan": {
-          "entry": 6035,
-          "stop": 5945,
-          "target1": 6175,
+          "entry": 6040,
+          "stop": 5940,
+          "target1": 6180,
           "target2": 6240,
-          "risk": 95
+          "risk": 90,
+          "tick": 10
         }
       },
       {
@@ -3031,7 +3156,8 @@
           "stop": 802,
           "target1": 842,
           "target2": 854,
-          "risk": 16
+          "risk": 16,
+          "tick": 1
         }
       },
       {
@@ -3078,7 +3204,8 @@
           "stop": 4430,
           "target1": 4580,
           "target2": 4625,
-          "risk": 60
+          "risk": 60,
+          "tick": 5
         }
       }
     ],
@@ -3127,7 +3254,8 @@
           "stop": 3530,
           "target1": 3665,
           "target2": 3705,
-          "risk": 55
+          "risk": 55,
+          "tick": 5
         }
       },
       {
@@ -3174,7 +3302,8 @@
           "stop": 2810,
           "target1": 3230,
           "target2": 3350,
-          "risk": 170
+          "risk": 170,
+          "tick": 5
         }
       },
       {
@@ -3221,7 +3350,8 @@
           "stop": 2037,
           "target1": 2095,
           "target2": 2112,
-          "risk": 23
+          "risk": 23,
+          "tick": 1
         }
       },
       {
@@ -3268,7 +3398,8 @@
           "stop": 802,
           "target1": 842,
           "target2": 854,
-          "risk": 16
+          "risk": 16,
+          "tick": 1
         }
       },
       {
@@ -3315,7 +3446,8 @@
           "stop": 1563,
           "target1": 1625,
           "target2": 1642,
-          "risk": 25
+          "risk": 25,
+          "tick": 1
         }
       }
     ],
@@ -3364,7 +3496,8 @@
           "stop": 2923,
           "target1": 3015,
           "target2": 3040,
-          "risk": 37
+          "risk": 37,
+          "tick": 1
         }
       },
       {
@@ -3408,10 +3541,11 @@
         "rotation_group": "金融",
         "plan": {
           "entry": 5040,
-          "stop": 4975,
+          "stop": 4980,
           "target1": 5140,
-          "target2": 5185,
-          "risk": 65
+          "target2": 5180,
+          "risk": 60,
+          "tick": 10
         }
       },
       {
@@ -3458,7 +3592,8 @@
           "stop": 12290,
           "target1": 12960,
           "target2": 13150,
-          "risk": 270
+          "risk": 270,
+          "tick": 10
         }
       },
       {
@@ -3505,7 +3640,8 @@
           "stop": 3605,
           "target1": 3780,
           "target2": 3830,
-          "risk": 70
+          "risk": 70,
+          "tick": 5
         }
       },
       {
@@ -3548,11 +3684,12 @@
         "style": "swing",
         "rotation_group": "金融",
         "plan": {
-          "entry": 6955,
+          "entry": 6960,
           "stop": 6830,
-          "target1": 7145,
-          "target2": 7235,
-          "risk": 125
+          "target1": 7150,
+          "target2": 7230,
+          "risk": 130,
+          "tick": 10
         }
       }
     ],
@@ -3601,7 +3738,8 @@
           "stop": 2810,
           "target1": 3230,
           "target2": 3350,
-          "risk": 170
+          "risk": 170,
+          "tick": 5
         }
       }
     ]
@@ -3616,7 +3754,8 @@
         "stop": 2935,
         "target1": 3030,
         "target2": 3060,
-        "risk": 40
+        "risk": 40,
+        "tick": 5
       },
       "source": "JPX",
       "expectation_score": 76,
@@ -3631,11 +3770,12 @@
       "date": "2026-07-31",
       "price": 5319.0,
       "plan": {
-        "entry": 5345,
-        "stop": 5205,
-        "target1": 5555,
+        "entry": 5340,
+        "stop": 5210,
+        "target1": 5550,
         "target2": 5650,
-        "risk": 140
+        "risk": 140,
+        "tick": 10
       },
       "source": "JPX",
       "expectation_score": 74,
@@ -3654,7 +3794,8 @@
         "stop": 3605,
         "target1": 3780,
         "target2": 3830,
-        "risk": 70
+        "risk": 70,
+        "tick": 5
       },
       "source": "JPX",
       "expectation_score": 74,
@@ -3673,7 +3814,8 @@
         "stop": 4365,
         "target1": 4610,
         "target2": 4675,
-        "risk": 95
+        "risk": 95,
+        "tick": 5
       },
       "source": "JPX",
       "expectation_score": 71,
@@ -3689,10 +3831,11 @@
       "price": 6373.0,
       "plan": {
         "entry": 6410,
-        "stop": 6205,
+        "stop": 6210,
         "target1": 6720,
-        "target2": 6865,
-        "risk": 205
+        "target2": 6860,
+        "risk": 210,
+        "tick": 10
       },
       "source": "JPX",
       "expectation_score": 71,
@@ -3707,11 +3850,12 @@
       "date": "2026-07-30",
       "price": 12420.0,
       "plan": {
-        "entry": 12485,
-        "stop": 12125,
-        "target1": 13025,
-        "target2": 13275,
-        "risk": 360
+        "entry": 12490,
+        "stop": 12130,
+        "target1": 13020,
+        "target2": 13280,
+        "risk": 360,
+        "tick": 10
       },
       "source": "JPX",
       "expectation_score": 70,
@@ -3730,7 +3874,8 @@
         "stop": 2105,
         "target1": 2357,
         "target2": 2428,
-        "risk": 101
+        "risk": 101,
+        "tick": 1
       },
       "source": "JPX",
       "expectation_score": 70,
@@ -3749,7 +3894,8 @@
         "stop": 2711,
         "target1": 2906,
         "target2": 2961,
-        "risk": 78
+        "risk": 78,
+        "tick": 1
       },
       "source": "JPX",
       "expectation_score": 70,
@@ -3768,7 +3914,8 @@
         "stop": 3420,
         "target1": 3610,
         "target2": 3665,
-        "risk": 75
+        "risk": 75,
+        "tick": 5
       },
       "source": "JPX",
       "expectation_score": 68,
@@ -3787,7 +3934,8 @@
         "stop": 2865,
         "target1": 3305,
         "target2": 3430,
-        "risk": 180
+        "risk": 180,
+        "tick": 5
       },
       "source": "JPX",
       "expectation_score": 66,
@@ -3806,7 +3954,8 @@
         "stop": 4705,
         "target1": 4920,
         "target2": 4980,
-        "risk": 85
+        "risk": 85,
+        "tick": 5
       },
       "source": "JPX",
       "expectation_score": 65,
@@ -3825,7 +3974,8 @@
         "stop": 3935,
         "target1": 4495,
         "target2": 4655,
-        "risk": 225
+        "risk": 225,
+        "tick": 5
       },
       "source": "JPX",
       "expectation_score": 63,
@@ -3844,7 +3994,8 @@
         "stop": 3735,
         "target1": 3945,
         "target2": 4005,
-        "risk": 85
+        "risk": 85,
+        "tick": 5
       },
       "source": "JPX",
       "expectation_score": 61,
@@ -3860,10 +4011,11 @@
       "price": 25510.0,
       "plan": {
         "entry": 25770,
-        "stop": 24365,
+        "stop": 24370,
         "target1": 27870,
-        "target2": 28855,
-        "risk": 1400
+        "target2": 28850,
+        "risk": 1400,
+        "tick": 10
       },
       "source": "会社IR",
       "expectation_score": 58,
@@ -3882,7 +4034,8 @@
         "stop": 2851,
         "target1": 3085,
         "target2": 3150,
-        "risk": 93
+        "risk": 93,
+        "tick": 1
       },
       "source": "JPX",
       "expectation_score": 58,
@@ -3962,127 +4115,127 @@
     "rate_view": "金利横ばい：業績と需給を優先",
     "rate5": -0.26,
     "breadth": "9/11",
-    "spread": 32.1,
+    "spread": 30.9,
     "us_sectors": [
       {
         "sector": "ヘルスケア",
         "ticker": "XLV",
         "phase": "拡大",
-        "score": 91.2,
-        "rel5": 6.34,
-        "rel20": 6.85,
-        "acceleration": 4.65,
-        "from_ma20": 3.22,
+        "score": 86.5,
+        "rel5": 5.79,
+        "rel20": 5.47,
+        "acceleration": 3.58,
+        "from_ma20": 3.53,
         "action": "順張り・押し目"
       },
       {
         "sector": "生活必需品",
         "ticker": "XLP",
         "phase": "拡大",
-        "score": 85.5,
-        "rel5": 5.3,
-        "rel20": 6.94,
-        "acceleration": 3.24,
-        "from_ma20": 3.46,
+        "score": 85.1,
+        "rel5": 5.24,
+        "rel20": 6.87,
+        "acceleration": 3.18,
+        "from_ma20": 3.44,
         "action": "順張り・押し目"
       },
       {
         "sector": "金融",
         "ticker": "XLF",
         "phase": "拡大",
-        "score": 80.2,
-        "rel5": 3.47,
-        "rel20": 8.11,
-        "acceleration": 3.4,
-        "from_ma20": 1.76,
+        "score": 79.5,
+        "rel5": 3.35,
+        "rel20": 7.98,
+        "acceleration": 3.28,
+        "from_ma20": 1.69,
         "action": "順張り・押し目"
       },
       {
         "sector": "不動産",
         "ticker": "XLRE",
         "phase": "拡大",
-        "score": 75.1,
+        "score": 75.2,
         "rel5": 3.59,
         "rel20": 5.86,
         "acceleration": 1.61,
-        "from_ma20": 2.1,
+        "from_ma20": 2.14,
         "action": "順張り・押し目"
       },
       {
         "sector": "素材",
         "ticker": "XLB",
         "phase": "拡大",
-        "score": 71.0,
-        "rel5": 3.12,
-        "rel20": 3.1,
-        "acceleration": 1.52,
-        "from_ma20": 1.31,
+        "score": 71.2,
+        "rel5": 3.15,
+        "rel20": 3.13,
+        "acceleration": 1.55,
+        "from_ma20": 1.39,
         "action": "順張り・押し目"
       },
       {
         "sector": "コミュニケーション",
         "ticker": "XLC",
         "phase": "拡大",
-        "score": 61.5,
-        "rel5": 2.16,
-        "rel20": 4.1,
-        "acceleration": 4.88,
-        "from_ma20": -0.18,
+        "score": 61.7,
+        "rel5": 2.18,
+        "rel20": 4.12,
+        "acceleration": 4.9,
+        "from_ma20": -0.11,
         "action": "順張り・押し目"
       },
       {
         "sector": "エネルギー",
         "ticker": "XLE",
         "phase": "中立",
-        "score": 60.1,
-        "rel5": 0.64,
-        "rel20": 12.0,
-        "acceleration": -5.11,
-        "from_ma20": 3.49,
+        "score": 60.8,
+        "rel5": 0.73,
+        "rel20": 12.11,
+        "acceleration": -5.02,
+        "from_ma20": 3.64,
         "action": "方向確認待ち"
       },
       {
         "sector": "資本財・工業",
         "ticker": "XLI",
-        "phase": "中立",
-        "score": 44.5,
-        "rel5": 0.97,
-        "rel20": -2.45,
-        "acceleration": 0.67,
-        "from_ma20": -1.85,
-        "action": "方向確認待ち"
+        "phase": "流入初期",
+        "score": 45.0,
+        "rel5": 1.04,
+        "rel20": -2.39,
+        "acceleration": 0.74,
+        "from_ma20": -1.74,
+        "action": "最優先監視・初押し"
       },
       {
         "sector": "一般消費財",
         "ticker": "XLY",
         "phase": "流入初期",
-        "score": 42.4,
-        "rel5": 0.13,
-        "rel20": -2.61,
-        "acceleration": 1.71,
-        "from_ma20": -2.24,
+        "score": 43.1,
+        "rel5": 0.23,
+        "rel20": -2.51,
+        "acceleration": 1.81,
+        "from_ma20": -2.1,
         "action": "最優先監視・初押し"
       },
       {
         "sector": "公益",
         "ticker": "XLU",
         "phase": "流出",
-        "score": 38.8,
-        "rel5": -0.07,
-        "rel20": 1.21,
-        "acceleration": -2.61,
-        "from_ma20": -0.64,
+        "score": 38.3,
+        "rel5": -0.15,
+        "rel20": 1.13,
+        "acceleration": -2.69,
+        "from_ma20": -0.66,
         "action": "新規ロング停止"
       },
       {
         "sector": "情報技術・AI",
         "ticker": "XLK",
         "phase": "流出",
-        "score": 8.0,
-        "rel5": -4.67,
-        "rel20": -9.71,
-        "acceleration": -4.92,
-        "from_ma20": -5.75,
+        "score": 8.4,
+        "rel5": -4.62,
+        "rel20": -9.67,
+        "acceleration": -4.87,
+        "from_ma20": -5.65,
         "action": "新規ロング停止"
       }
     ],
@@ -4297,7 +4450,8 @@
           "stop": 2810,
           "target1": 3230,
           "target2": 3350,
-          "risk": 170
+          "risk": 170,
+          "tick": 5
         },
         "reason": "自動車・モビリティが拡大／TOPIX比5日 +5.78%／出来高比 0.97倍"
       },
@@ -4307,11 +4461,12 @@
         "phase": "拡大",
         "score": 97,
         "plan": {
-          "entry": 7455,
-          "stop": 7325,
+          "entry": 7460,
+          "stop": 7320,
           "target1": 7650,
           "target2": 7740,
-          "risk": 130
+          "risk": 130,
+          "tick": 10
         },
         "reason": "内需・ディフェンシブが拡大／TOPIX比5日 +4.03%／出来高比 1.70倍"
       },
@@ -4322,10 +4477,11 @@
         "score": 96,
         "plan": {
           "entry": 5040,
-          "stop": 4975,
+          "stop": 4980,
           "target1": 5140,
-          "target2": 5185,
-          "risk": 65
+          "target2": 5180,
+          "risk": 60,
+          "tick": 10
         },
         "reason": "金融が拡大／TOPIX比5日 +4.06%／出来高比 0.93倍"
       },
@@ -4339,7 +4495,8 @@
           "stop": 2037,
           "target1": 2095,
           "target2": 2112,
-          "risk": 23
+          "risk": 23,
+          "tick": 1
         },
         "reason": "自動車・モビリティが拡大／TOPIX比5日 +5.78%／出来高比 1.26倍"
       },
@@ -4353,7 +4510,8 @@
           "stop": 2514,
           "target1": 2647,
           "target2": 2684,
-          "risk": 53
+          "risk": 53,
+          "tick": 1
         },
         "reason": "自動車・モビリティが拡大／TOPIX比5日 +5.78%／出来高比 1.32倍"
       },
@@ -4367,7 +4525,8 @@
           "stop": 1563,
           "target1": 1625,
           "target2": 1642,
-          "risk": 25
+          "risk": 25,
+          "tick": 1
         },
         "reason": "自動車・モビリティが拡大／TOPIX比5日 +5.78%／出来高比 1.18倍"
       },
@@ -4381,7 +4540,8 @@
           "stop": 3715,
           "target1": 3845,
           "target2": 3880,
-          "risk": 55
+          "risk": 55,
+          "tick": 5
         },
         "reason": "内需・ディフェンシブが拡大／TOPIX比5日 +4.03%／出来高比 1.29倍"
       }
@@ -4441,7 +4601,8 @@
         "stop": 3420,
         "target1": 3610,
         "target2": 3665,
-        "risk": 75
+        "risk": 75,
+        "tick": 5
       }
     },
     {
@@ -4488,7 +4649,8 @@
         "stop": 3530,
         "target1": 3665,
         "target2": 3705,
-        "risk": 55
+        "risk": 55,
+        "tick": 5
       }
     },
     {
@@ -4535,7 +4697,8 @@
         "stop": 3400,
         "target1": 3545,
         "target2": 3585,
-        "risk": 60
+        "risk": 60,
+        "tick": 5
       }
     },
     {
@@ -4582,7 +4745,8 @@
         "stop": 12290,
         "target1": 12960,
         "target2": 13150,
-        "risk": 270
+        "risk": 270,
+        "tick": 10
       }
     },
     {
@@ -4629,7 +4793,8 @@
         "stop": 4365,
         "target1": 4610,
         "target2": 4675,
-        "risk": 95
+        "risk": 95,
+        "tick": 5
       }
     },
     {
@@ -4676,7 +4841,8 @@
         "stop": 1563,
         "target1": 1625,
         "target2": 1642,
-        "risk": 25
+        "risk": 25,
+        "tick": 1
       }
     },
     {
@@ -4723,157 +4889,153 @@
         "stop": 1203,
         "target1": 1299,
         "target2": 1326,
-        "risk": 39
+        "risk": 39,
+        "tick": 1
       }
     }
   ],
   "morning_snapshot": {
     "date": "2026-07-30",
+    "fixed_at": "2026-07-30 02:54:03 JST",
+    "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": [
       {
-        "name": "富士通（6702）",
+        "name": "本田技研工業（7267）",
+        "ticker": "7267.T",
+        "side": "LONG",
+        "score": 100,
+        "price": 1612.0,
         "plan": {
-          "entry": 3495,
-          "stop": 3420,
-          "target1": 3610,
-          "target2": 3665,
-          "risk": 75
-        },
-        "price": 3700.0
+          "entry": 1617,
+          "entry_limit": 1619,
+          "stop": 1584,
+          "target1": 1672,
+          "target2": 1696
+        }
       },
       {
-        "name": "任天堂（7974）",
+        "name": "MS&AD（8725）",
+        "ticker": "8725.T",
+        "side": "LONG",
+        "score": 100,
+        "price": 5039.0,
         "plan": {
-          "entry": 7455,
-          "stop": 7325,
-          "target1": 7650,
-          "target2": 7740,
-          "risk": 130
-        },
-        "price": 7659.0
+          "entry": 5080,
+          "entry_limit": 5100,
+          "stop": 5000,
+          "target1": 5250,
+          "target2": 5320
+        }
       },
       {
-        "name": "GO（581A）",
+        "name": "楽天グループ（4755）",
+        "ticker": "4755.T",
+        "side": "LONG",
+        "score": 97,
+        "price": 832.0,
         "plan": {
-          "entry": 2975,
-          "stop": 2810,
-          "target1": 3230,
-          "target2": 3350,
-          "risk": 170
-        },
-        "price": 3045.0
+          "entry": 834,
+          "entry_limit": 836,
+          "stop": 813,
+          "target1": 870,
+          "target2": 887
+        }
       },
       {
-        "name": "ソニーグループ（6758）",
+        "name": "日本郵船（9101）",
+        "ticker": "9101.T",
+        "side": "LONG",
+        "score": 89,
+        "price": 6020.0,
         "plan": {
-          "entry": 3585,
-          "stop": 3530,
-          "target1": 3665,
-          "target2": 3705,
-          "risk": 55
-        },
-        "price": 3662.0
+          "entry": 6060,
+          "entry_limit": 6080,
+          "stop": 5940,
+          "target1": 6290,
+          "target2": 6390
+        }
       },
       {
-        "name": "日東電工（6988）",
+        "name": "トヨタ自動車（7203）",
+        "ticker": "7203.T",
+        "side": "LONG",
+        "score": 90,
+        "price": 3008.0,
         "plan": {
-          "entry": 3455,
-          "stop": 3400,
-          "target1": 3545,
-          "target2": 3585,
-          "risk": 60
-        },
-        "price": 3446.0
-      },
-      {
-        "name": "ニデック（6594）",
-        "plan": {
-          "entry": 2567,
-          "stop": 2514,
-          "target1": 2647,
-          "target2": 2684,
-          "risk": 53
-        },
-        "price": 2564.0
-      },
-      {
-        "name": "NEC（6701）",
-        "plan": {
-          "entry": 4465,
-          "stop": 4365,
-          "target1": 4610,
-          "target2": 4675,
-          "risk": 95
-        },
-        "price": 4490.0
+          "entry": 3020,
+          "entry_limit": 3030,
+          "stop": 2970,
+          "target1": 3120,
+          "target2": 3160
+        }
       }
     ]
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-07-30",
-    "fixed_at": "2026-07-30 02:45:12 JST",
+    "fixed_at": "2026-07-30 02:54:53 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
-        "name": "富士通（6702）",
-        "ticker": "6702.T",
+        "name": "本田技研工業（7267）",
+        "ticker": "7267.T",
         "side": "LONG",
-        "score": 95.0,
-        "entry": 3495,
-        "entry_limit": 3495,
-        "stop": 3420,
-        "target1": 3610,
-        "target2": 3665,
-        "morning_price": 3700.0
+        "score": 100.0,
+        "entry": 1617,
+        "entry_limit": 1619,
+        "stop": 1584,
+        "target1": 1672,
+        "target2": 1696,
+        "morning_price": 1619
       },
       {
-        "name": "任天堂（7974）",
-        "ticker": "7974.T",
+        "name": "MS&AD（8725）",
+        "ticker": "8725.T",
         "side": "LONG",
-        "score": 95.0,
-        "entry": 7455,
-        "entry_limit": 7455,
-        "stop": 7325,
-        "target1": 7650,
-        "target2": 7740,
-        "morning_price": 7659.0
+        "score": 100.0,
+        "entry": 5080,
+        "entry_limit": 5100,
+        "stop": 5000,
+        "target1": 5250,
+        "target2": 5320,
+        "morning_price": 5100
       },
       {
-        "name": "GO（581A）",
-        "ticker": "581A.T",
+        "name": "楽天グループ（4755）",
+        "ticker": "4755.T",
         "side": "LONG",
-        "score": 95.0,
-        "entry": 2975,
-        "entry_limit": 2975,
-        "stop": 2810,
-        "target1": 3230,
-        "target2": 3350,
-        "morning_price": 3045.0
+        "score": 97.0,
+        "entry": 834,
+        "entry_limit": 836,
+        "stop": 813,
+        "target1": 870,
+        "target2": 887,
+        "morning_price": 836
       },
       {
-        "name": "ソニーグループ（6758）",
-        "ticker": "6758.T",
+        "name": "日本郵船（9101）",
+        "ticker": "9101.T",
         "side": "LONG",
-        "score": 95.0,
-        "entry": 3585,
-        "entry_limit": 3585,
-        "stop": 3530,
-        "target1": 3665,
-        "target2": 3705,
-        "morning_price": 3662.0
+        "score": 89.0,
+        "entry": 6060,
+        "entry_limit": 6080,
+        "stop": 5940,
+        "target1": 6290,
+        "target2": 6390,
+        "morning_price": 6080
       },
       {
-        "name": "日東電工（6988）",
-        "ticker": "6988.T",
+        "name": "トヨタ自動車（7203）",
+        "ticker": "7203.T",
         "side": "LONG",
-        "score": 91.0,
-        "entry": 3455,
-        "entry_limit": 3455,
-        "stop": 3400,
-        "target1": 3545,
-        "target2": 3585,
-        "morning_price": 3446.0
+        "score": 90.0,
+        "entry": 3020,
+        "entry_limit": 3030,
+        "stop": 2970,
+        "target1": 3120,
+        "target2": 3160,
+        "morning_price": 3030
       }
     ]
   }
