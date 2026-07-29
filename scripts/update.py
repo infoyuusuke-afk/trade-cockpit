@@ -27,6 +27,44 @@ US_SECTOR_ETFS = {
     "不動産": "XLRE",
 }
 
+SILICON_PHOTONICS_WATCH = [
+    {
+        "name": "古河電気工業（5801）",
+        "code": "5801",
+        "role": "CPO向け外部光源・光デバイス",
+        "relevance": 96,
+        "source": "https://www.furukawa.co.jp/release/2022/comm_20220307.html",
+    },
+    {
+        "name": "住友電気工業（5802）",
+        "code": "5802",
+        "role": "CPO向け高密度光接続部品",
+        "relevance": 93,
+        "source": "https://sumitomoelectric.com/jp/rd/technical-reviews/j202",
+    },
+    {
+        "name": "NTT（9432）",
+        "code": "9432",
+        "role": "光電融合デバイス CoPKG・IOWN",
+        "relevance": 90,
+        "source": "https://group.ntt/en/newsrelease/2024/03/12/240312a.html",
+    },
+    {
+        "name": "フジクラ（5803）",
+        "code": "5803",
+        "role": "AIデータセンター向け光配線",
+        "relevance": 84,
+        "source": "https://www.fujikura.co.jp/news/pressrelease/2026030913824swr_wtc.html",
+    },
+    {
+        "name": "富士通（6702）",
+        "code": "6702",
+        "role": "光電融合・次世代ネットワーク",
+        "relevance": 76,
+        "source": "https://www.fujitsu.com/global/about/resources/news/press-releases/2021/0426-01.html",
+    },
+]
+
 
 def flat_columns(df):
     if isinstance(df.columns, pd.MultiIndex):
@@ -880,6 +918,79 @@ def build_day_ifo_candidates(valid, rotation, official_earnings, now):
     return selected
 
 
+def build_silicon_photonics_watch(stocks, official_earnings, now):
+    """Create conditional IN/OUT levels for the morning CPO theme watch.
+
+    Levels are based on the latest completed daily bar.  The trigger is one
+    valid tick above that bar's high, so the list never means "buy at open".
+    """
+    rows = []
+    for meta in SILICON_PHOTONICS_WATCH:
+        row = stocks.get(meta["name"], {})
+        if not row.get("ok"):
+            continue
+
+        price = float(row.get("price") or 0)
+        high = float(row.get("high") or price)
+        low = float(row.get("low") or price)
+        atr = max(float(row.get("atr14") or price * .02), price * .008)
+        tick = price_tick(price)
+        trigger = round_to_tick(max(price, high) + tick, tick)
+        entry_limit = round_to_tick(trigger + tick * 2, tick)
+        stop = round_to_tick(
+            max(low - atr * .10, entry_limit - atr * .85),
+            tick,
+        )
+        if stop >= entry_limit:
+            stop = round_to_tick(entry_limit - max(tick, atr * .55), tick)
+        risk = max(entry_limit - stop, tick)
+        target1 = round_to_tick(entry_limit + risk * 1.5, tick)
+        target2 = round_to_tick(entry_limit + risk * 2.2, tick)
+
+        technical = expectation_score(row)
+        score = round(clamp(meta["relevance"] * .55 + technical * .45))
+        event = official_earnings.get(meta["code"])
+        event_days = None
+        if event and event.get("date"):
+            event_days = (pd.Timestamp(event["date"]).date() - now.date()).days
+            if 0 <= event_days <= 2:
+                score = max(0, score - 12)
+        event_risk = (
+            f"決算予定 {event['date']}。決算前の新規持ち越しは見送り。"
+            if event and event_days is not None and event_days >= 0
+            else "7日以内のJPX確認済み決算なし。突発IR・米半導体安に注意。"
+        )
+        status = (
+            "決算接近・原則見送り"
+            if event_days is not None and 0 <= event_days <= 2
+            else "条件成立時だけLONG"
+        )
+        max_loss = round((entry_limit - stop) * 100)
+        profit1 = round((target1 - entry_limit) * 100)
+        rows.append({
+            **meta,
+            "score": score,
+            "technical": technical,
+            "price": price,
+            "trigger": trigger,
+            "entry_limit": entry_limit,
+            "stop": stop,
+            "target1": target1,
+            "target2": target2,
+            "max_loss_100": max_loss,
+            "profit1_100": profit1,
+            "status": status,
+            "event_risk": event_risk,
+            "condition": (
+                "9:15以降、VWAP上＋5分足終値で発動価格を維持＋"
+                "出来高増加。大幅GUと寄り直後の飛び乗りは禁止。"
+            ),
+        })
+
+    rows.sort(key=lambda x: (x["score"], x["relevance"]), reverse=True)
+    return rows
+
+
 def render_day_ifo_cards(candidates):
     if not candidates:
         return (
@@ -1040,13 +1151,21 @@ def main():
     generated_day_ifo = build_day_ifo_candidates(
         valid, rotation, official_earnings, now
     )
+    generated_photonics_watch = build_silicon_photonics_watch(
+        stocks, official_earnings, now
+    )
     previous_morning = previous.get("morning_snapshot") or {}
     same_day_snapshot = previous_morning.get("date") == now.strftime("%Y-%m-%d")
     if session == "morning" or not same_day_snapshot:
         day_ifo_candidates = generated_day_ifo
+        photonics_watch = generated_photonics_watch
     else:
         day_ifo_candidates = (
             previous.get("day_ifo_candidates") or generated_day_ifo
+        )
+        photonics_watch = (
+            previous.get("silicon_photonics_watch")
+            or generated_photonics_watch
         )
 
     morning = previous_morning
@@ -1100,6 +1219,7 @@ def main():
         "indices": indices, "stocks": stocks,
         "day_candidates": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in day_rank],
         "day_ifo_candidates": day_ifo_candidates,
+        "silicon_photonics_watch": photonics_watch,
         "day_ifo_summary": {
             "count": len(day_ifo_candidates),
             "shares_each": 100,
@@ -1165,6 +1285,24 @@ def main():
         for i, row in enumerate(rotation["picks"], 1)
     ) or "<tr><td colspan='9'>流入初期・拡大かつ流動性条件を満たす候補なし。見送りです。</td></tr>"
     kioxia_view = rotation["kioxia"]
+    photonics_rows = "".join(
+        f"<tr><td>{i}</td><td><b>{row['name']}</b><br><small>{row['role']}</small></td>"
+        f"<td><b class='up'>{row['score']}/100</b><br><small>技術関連度 {row['relevance']}／"
+        f"株価技術点 {row['technical']}</small></td>"
+        f"<td>{money(row['price'])}</td><td><b>{money(row['trigger'])}</b><br>"
+        f"<small>買い上限 {money(row['entry_limit'])}</small></td>"
+        f"<td class='down'><b>{money(row['stop'])}</b><br>"
+        f"<small>100株 −{row['max_loss_100']:,}円</small></td>"
+        f"<td class='up'><b>{money(row['target1'])}</b><br>"
+        f"<small>100株 +{row['profit1_100']:,}円</small></td>"
+        f"<td>{money(row['target2'])}</td>"
+        f"<td>{row['status']}<br><small>{row['condition']} {row['event_risk']}</small></td>"
+        f"<td><a href='{row['source']}' target='_blank' rel='noopener'>公式資料</a></td></tr>"
+        for i, row in enumerate(photonics_watch, 1)
+    ) or (
+        "<tr><td colspan='10'>株価データを取得できませんでした。"
+        "価格なしでの注文は行いません。</td></tr>"
+    )
     ifo_cards = render_day_ifo_cards(day_ifo_candidates)
     ifo_count_note = (
         "分散条件を満たす5銘柄を選定"
@@ -1274,6 +1412,10 @@ def main():
 <h3>キオクシアHD（285A）セクター判定</h3>
 <div class="rotation-box"><b>{phase_badge(kioxia_view['status'])}　{kioxia_view['action']}</b>{kioxia_view['detail']}</div>
 <p class="warning">これは機関投資家の保有明細そのものではなく、{rotation['source_note']}です。流入初期でも発動価格を上抜かなければ見送り。参考：<a href="https://limo.media/articles/-/133222" target="_blank" rel="noopener">イズミダイズム「セクターローテーション」解説</a></p>
+</section>
+<section id="silicon-photonics-watch" class="card wide"><h2>②-P AI光通信・シリコンフォトニクス監視（朝刊IN／OUT価格）</h2>
+<table><tr><th>順位</th><th>会社名＋コード／役割</th><th>期待値</th><th>基準値</th><th>IN発動／買い上限</th><th>OUT損切り</th><th>OUT利確1</th><th>OUT利確2</th><th>発動条件・リスク</th><th>根拠</th></tr>{photonics_rows}</table>
+<p class="warning"><b>使い方：</b>INは前日高値＋1ティック。寄り成りでは買いません。9:15以降にVWAP上・5分足終値・出来高増加が揃った場合だけ発動し、買い上限を超えたら追わず取消。OUT損切りを約定後すぐ設定し、価格を下げて損切りを広げません。GFSの3億ドルは米商務省とのLOI（予定支援）であり、日本企業への直接受注確定ではありません。<a href="https://gf.com/news-and-events/news/globalfoundries-signs-letter-of-intent-with-the-us-department-of-commerce-for-a-300-million-award-to-accelerate-us-silicon-photonics-leadership/" target="_blank" rel="noopener">GFS公式発表</a></p>
 </section>
 <section id="day-ifo-orders" class="card wide"><h2>②-O 8:55入力用・当日IN分散5銘柄（MS2 IFO注文票）</h2>
 <div class="ifo-summary">
