@@ -389,6 +389,107 @@ def hammer_row(item, frame, timeframe):
     }
 
 
+def analyse_daily_reversal(item, frame):
+    """急落後の出来高急増と複数足の底打ちを検出する。"""
+    if frame is None or len(frame) < 65:
+        return None
+    close_s = frame["Close"].astype(float)
+    open_s = frame["Open"].astype(float)
+    high_s = frame["High"].astype(float)
+    low_s = frame["Low"].astype(float)
+    volume_s = frame["Volume"].fillna(0).astype(float)
+
+    o = float(open_s.iloc[-1])
+    h = float(high_s.iloc[-1])
+    l = float(low_s.iloc[-1])
+    c = float(close_s.iloc[-1])
+    po = float(open_s.iloc[-2])
+    ph = float(high_s.iloc[-2])
+    pl = float(low_s.iloc[-2])
+    pc = float(close_s.iloc[-2])
+    p2o = float(open_s.iloc[-3])
+    p2h = float(high_s.iloc[-3])
+    p2l = float(low_s.iloc[-3])
+    p2c = float(close_s.iloc[-3])
+
+    ma5 = float(close_s.rolling(5).mean().iloc[-1])
+    ma20 = float(close_s.rolling(20).mean().iloc[-1])
+    avg_volume = float(volume_s.iloc[-23:-3].mean())
+    max_recent_volume = float(volume_s.iloc[-3:].max())
+    volume_ratio = max_recent_volume / avg_volume if avg_volume else 0
+    turnover = c * float(volume_s.iloc[-1])
+    pattern_low = float(low_s.iloc[-3:].min())
+    fall_from_10d = (float(close_s.iloc[-11]) / pattern_low - 1) * 100
+
+    body = max(abs(c - o), c * .002)
+    lower_wick = min(o, c) - l
+    prior_body = max(abs(pc - po), pc * .002)
+    prior_lower_wick = min(po, pc) - pl
+    second_body = max(abs(p2c - p2o), p2c * .002)
+
+    current_hammer = lower_wick >= body * 1.5 and c >= l + (h - l) * .60
+    prior_hammer = prior_lower_wick >= prior_body * 1.5 and pc >= pl + (ph - pl) * .55
+    bullish_engulfing = c > o and pc < po and o <= pc and c >= po
+    morning_star = (
+        p2c < p2o
+        and prior_body <= second_body * .55
+        and c > o
+        and c >= (p2o + p2c) / 2
+    )
+    high_break_confirmation = c > o and c > ph
+    midpoint_confirmation = c > o and c >= (ph + pl) / 2
+
+    downtrend = (
+        fall_from_10d >= 8
+        and (c < ma20 or float(close_s.iloc[-4]) < ma20)
+        and float(close_s.iloc[-6:-1].max()) > pattern_low * 1.06
+    )
+    climax = volume_ratio >= 1.5
+    base_pattern = current_hammer or prior_hammer or bullish_engulfing or morning_star
+    confirmation = high_break_confirmation or bullish_engulfing or morning_star
+    liquid = turnover >= 300_000_000 and c >= 100
+    if not (downtrend and climax and base_pattern and liquid and midpoint_confirmation):
+        return None
+
+    score = 55
+    score += 15 if volume_ratio >= 2.5 else 10
+    score += 10 if confirmation else 5
+    score += 10 if bullish_engulfing or morning_star else 6
+    score += 5 if c >= ma5 else 2
+    score += 5 if c > (h + l) / 2 else 0
+    score = min(100, score)
+
+    if morning_star:
+        setup = "明けの明星"
+    elif bullish_engulfing:
+        setup = "陽線包み足"
+    elif prior_hammer and high_break_confirmation:
+        setup = "ハンマー高値突破"
+    else:
+        setup = "セリクラ下ヒゲ反転"
+    phase = "反転確認" if confirmation and c >= ma5 else "底打ち準備"
+
+    tick = 1 if c < 3000 else 5
+    trigger = math.ceil((h + tick) / tick) * tick
+    stop = math.floor((pattern_low - tick) / tick) * tick
+    risk = max(trigger - stop, tick)
+    return {
+        "code": item["code"], "ticker": item["ticker"],
+        "name": f"{item['name']}（{item['code']}）",
+        "setup": setup, "phase": phase, "score": int(score),
+        "close": round(c, 2), "trigger": round(trigger, 2),
+        "stop": round(stop, 2),
+        "target1": round((trigger + risk * 1.5) / tick) * tick,
+        "target2": round((trigger + risk * 2.5) / tick) * tick,
+        "volume_ratio": round(volume_ratio, 2),
+        "fall_from_10d": round(fall_from_10d, 2),
+        "ma5": round(ma5, 2), "ma20": round(ma20, 2),
+        "signal_date": pd.Timestamp(frame.index[-1]).strftime("%Y-%m-%d"),
+        "reason": f"10日高値圏から−{fall_from_10d:.1f}%／出来高{volume_ratio:.2f}倍／{setup}",
+        "caution": "逆張り候補。発動価格を上抜かなければ買わず、パターン安値割れで即撤退。",
+    }
+
+
 def main():
     now = datetime.now(JST)
     universe, source = load_universe()
@@ -402,6 +503,7 @@ def main():
     results = []
     short_results = []
     hammer_results = []
+    daily_reversals = []
     failed = 0
     batch_size = 120
     for start in range(0, len(universe), batch_size):
@@ -427,6 +529,9 @@ def main():
                     hammer = hammer_row(item, frame, timeframe)
                     if hammer:
                         hammer_results.append(hammer)
+                daily_reversal = analyse_daily_reversal(item, frame)
+                if daily_reversal:
+                    daily_reversals.append(daily_reversal)
             if frame is None:
                 failed += 1
         time.sleep(.2)
@@ -439,6 +544,10 @@ def main():
             1 if x["timeframe"] == "月足" else 0,
             x["volume_ratio"],
         ),
+        reverse=True,
+    )
+    daily_reversals.sort(
+        key=lambda x: (x["score"], x["phase"] == "反転確認", x["volume_ratio"]),
         reverse=True,
     )
     overnight_long = [
@@ -470,6 +579,7 @@ def main():
         "overnight_long": overnight_long,
         "overnight_short": short_results[:15],
         "monthly_weekly_hammers": hammer_results[:40],
+        "daily_capitulation_reversals": daily_reversals[:40],
         "note": "日足終値ベース。準備足高値を翌日以降に上抜いた場合のみIN。最終判断は板・出来高・会社IRで確認。"
     }
     old_path.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
