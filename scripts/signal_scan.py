@@ -325,18 +325,27 @@ def hammer_row(item, frame, timeframe):
     volume_ratio = volume / avg_volume if avg_volume else 0
     turnover = close * volume
 
+    touch_tolerance = .03 if timeframe == "月足" and provisional else .015
     touched = []
-    if low <= fast * 1.015 and close >= fast:
+    if low <= fast * (1 + touch_tolerance) and close >= fast:
         touched.append(f"{fast_len}{'週' if timeframe == '週足' else '月'}線")
-    if low <= slow * 1.015 and close >= slow:
+    if low <= slow * (1 + touch_tolerance) and close >= slow:
         touched.append(f"{slow_len}{'週' if timeframe == '週足' else '月'}線")
 
-    bullish_hammer = (
+    strict_hammer = (
         close > open_
         and lower_wick >= body * 2.0
         and upper_wick <= body * .75
         and close_location >= .67
     )
+    provisional_month_hammer = (
+        timeframe == "月足" and provisional
+        and close > open_
+        and lower_wick >= body * 1.5
+        and upper_wick <= body
+        and close_location >= .60
+    )
+    bullish_hammer = strict_hammer or provisional_month_hammer
     liquidity_floor = 500_000_000 if timeframe == "週足" else 2_000_000_000
     if not bullish_hammer or not touched or turnover < liquidity_floor:
         return None
@@ -357,7 +366,10 @@ def hammer_row(item, frame, timeframe):
         "code": item["code"], "ticker": item["ticker"],
         "name": f"{item['name']}（{item['code']}）",
         "timeframe": timeframe,
-        "status": "暫定" if provisional else "確定",
+        "status": (
+            "暫定・準ハンマー" if provisional and not strict_hammer
+            else "暫定" if provisional else "確定"
+        ),
         "score": int(score),
         "close": round(close, 2),
         "trigger": round(trigger, 2),
