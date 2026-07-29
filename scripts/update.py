@@ -644,6 +644,10 @@ def main():
 <section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{momentum_rows}</table><p class="warning">上向き5日線へのタッチ反発を最優先。場中の一時割れではなく終値回復を確認。終値で5日線を明確に割った場合は候補から外します。</p></section>
 <section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{high_rows}</table></section>
 <section class="card wide"><h2>⑤-D 急騰後の過熱監視・押し目待ち TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>押し目目安</th><th>損切り</th><th>戻り目標</th><th>判定</th></tr>{overheat_rows}</table><p class="warning">ここは即飛び乗り禁止。5日線反発、前日高値更新、出来高再増加の3点を確認してから候補へ昇格。</p></section>
+<section class="card wide"><h2>⑤-E 月足・週足 陽線ハンマー＋移動平均線反発</h2>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>足</th><th>判定</th><th>期待値</th><th>終値</th><th>反発線</th><th>下ヒゲ／実体</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
+<tbody id="hammer-signals"><tr><td colspan="12">全市場を走査中...</td></tr></tbody></table>
+<p class="warning">7月月足は月末まで暫定。高値＋1ティックを翌日以降に上抜いた場合だけ発動し、ハンマーの安値割れで撤退します。</p></section>
 <section class="card wide"><h2>⑥-A 決算勝負候補 TOP15（7日以内・決算期待値順）</h2><table><tr><th>会社名＋コード</th><th>調整後期待値</th><th>コンセンサス警戒</th><th>テクニカル点</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>採点根拠・注意</th></tr>{earning_rows}</table><p class="warning">高すぎるEPS・売上予想、予想幅の大きさ、下方修正、過去の上振れ不足、決算前の株価上昇を警戒度として減点。好決算でもコンセンサス未達や材料出尽くしになる危険を反映します。</p></section>
 <section class="card wide"><h2>⑥-B BB上方エクスパンション期待 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>現在値</th><th>BB幅</th><th>5日比</th><th>幅順位</th><th>出来高比</th><th>イン</th><th>損切り</th><th>判定</th></tr>{bb_rows}</table><p class="warning">BB幅順位は過去120日の細さ。数値が低いほどスクイーズ状態。上限突破＋BB幅拡大＋出来高増加を最優先します。</p></section>
 <section class="card wide"><h2>⑦ AIスイングサインの使い方</h2>
@@ -696,6 +700,16 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     x.ret20.toFixed(2) + "%</td></tr>").join("");
   document.getElementById("prepared-signals").innerHTML =
     prepared || "<tr><td colspan='10'>本日の準備点灯銘柄なし。</td></tr>";
+  const hammers = (d.monthly_weekly_hammers || []).slice(0, 20).map((x, i) =>
+    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.timeframe +
+    "</td><td>" + x.status + "</td><td><b class='up'>" + x.score +
+    "/100</b></td><td>" + yen(x.close) + "</td><td>" + x.ma_rebound +
+    "</td><td>" + x.lower_wick_ratio.toFixed(1) + "倍</td><td>" +
+    x.volume_ratio.toFixed(2) + "倍</td><td><b>" + yen(x.trigger) +
+    "</b></td><td class='down'>" + yen(x.stop) + "</td><td>" +
+    yen(x.target1) + "／" + yen(x.target2) + "</td></tr>").join("");
+  document.getElementById("hammer-signals").innerHTML =
+    hammers || "<tr><td colspan='12'>厳格条件に合格した陽線ハンマー銘柄なし。</td></tr>";
   const carryRows = (items, side) => (items || []).slice(0, 10).map((x, i) => {{
     const risk100 = Math.abs(x.trigger - x.stop) * 100;
     const tick = x.trigger < 3000 ? 1 : 5;
@@ -728,6 +742,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("signal-meta").textContent = "全銘柄シグナルデータを取得できませんでした。次回自動更新で再試行します。";
   document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>データ取得待ち</td></tr>";
   document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
+  document.getElementById("hammer-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
   document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
   document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
 }});
