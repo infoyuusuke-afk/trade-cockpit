@@ -282,6 +282,101 @@ def analyse_short(item, frame):
     }
 
 
+def resample_ohlcv(frame, rule):
+    """日足から週足・月足を作る。未確定の当週・当月も最新行として残す。"""
+    indexed = frame.copy()
+    if not isinstance(indexed.index, pd.DatetimeIndex):
+        indexed.index = pd.to_datetime(indexed.index)
+    return indexed.resample(rule).agg({
+        "Open": "first", "High": "max", "Low": "min",
+        "Close": "last", "Volume": "sum",
+    }).dropna(subset=["Open", "High", "Low", "Close"])
+
+
+def hammer_row(item, frame, timeframe):
+    """陽線ハンマー＋移動平均線反発を週足・月足で判定する。"""
+    rule = "W-FRI" if timeframe == "週足" else "ME"
+    bars = resample_ohlcv(frame, rule)
+    required = 22 if timeframe == "週足" else 13
+    if len(bars) < required:
+        return None
+
+    bar = bars.iloc[-1]
+    open_, high, low, close = map(float, (bar["Open"], bar["High"], bar["Low"], bar["Close"]))
+    volume = float(bar["Volume"])
+    body = max(close - open_, close * .002)
+    lower_wick = min(open_, close) - low
+    upper_wick = high - max(open_, close)
+    candle_range = max(high - low, close * .002)
+    close_location = (close - low) / candle_range
+
+    if timeframe == "週足":
+        fast_len, slow_len = 10, 20
+        provisional = pd.Timestamp(frame.index[-1]).weekday() < 4
+    else:
+        fast_len, slow_len = 6, 12
+        last_date = pd.Timestamp(frame.index[-1])
+        provisional = (last_date + pd.offsets.BMonthEnd(0)).date() != last_date.date()
+
+    closes = bars["Close"].astype(float)
+    fast = float(closes.rolling(fast_len).mean().iloc[-1])
+    slow = float(closes.rolling(slow_len).mean().iloc[-1])
+    avg_volume = float(bars["Volume"].astype(float).iloc[-7:-1].mean())
+    volume_ratio = volume / avg_volume if avg_volume else 0
+    turnover = close * volume
+
+    touched = []
+    if low <= fast * 1.015 and close >= fast:
+        touched.append(f"{fast_len}{'週' if timeframe == '週足' else '月'}線")
+    if low <= slow * 1.015 and close >= slow:
+        touched.append(f"{slow_len}{'週' if timeframe == '週足' else '月'}線")
+
+    bullish_hammer = (
+        close > open_
+        and lower_wick >= body * 2.0
+        and upper_wick <= body * .75
+        and close_location >= .67
+    )
+    liquidity_floor = 500_000_000 if timeframe == "週足" else 2_000_000_000
+    if not bullish_hammer or not touched or turnover < liquidity_floor:
+        return None
+
+    score = 55
+    score += 12 if lower_wick >= body * 3 else 8
+    score += 10 if upper_wick <= body * .35 else 5
+    score += 10 if volume_ratio >= 1.20 else 6 if volume_ratio >= .90 else 2
+    score += 8 if close >= fast >= slow else 4 if close >= slow else 0
+    score += 5 if len(touched) >= 2 else 2
+    score = min(100, score)
+
+    tick = 1 if close < 3000 else 5
+    trigger = math.ceil((high + tick) / tick) * tick
+    stop = math.floor((low - tick) / tick) * tick
+    risk = max(trigger - stop, tick)
+    return {
+        "code": item["code"], "ticker": item["ticker"],
+        "name": f"{item['name']}（{item['code']}）",
+        "timeframe": timeframe,
+        "status": "暫定" if provisional else "確定",
+        "score": int(score),
+        "close": round(close, 2),
+        "trigger": round(trigger, 2),
+        "stop": round(stop, 2),
+        "target1": round((trigger + risk * 1.5) / tick) * tick,
+        "target2": round((trigger + risk * 2.5) / tick) * tick,
+        "ma_rebound": "・".join(touched),
+        "lower_wick_ratio": round(lower_wick / body, 1),
+        "upper_wick_ratio": round(upper_wick / body, 1),
+        "volume_ratio": round(volume_ratio, 2),
+        "signal_date": pd.Timestamp(frame.index[-1]).strftime("%Y-%m-%d"),
+        "reason": (
+            f"{timeframe}陽線ハンマー／下ヒゲ{lower_wick / body:.1f}倍／"
+            f"{'・'.join(touched)}反発／出来高比{volume_ratio:.2f}倍"
+        ),
+        "caution": "高値＋1ティックを上抜くまで準備。月足・週足確定前に形が崩れた場合は除外。",
+    }
+
+
 def main():
     now = datetime.now(JST)
     universe, source = load_universe()
@@ -294,6 +389,7 @@ def main():
 
     results = []
     short_results = []
+    hammer_results = []
     failed = 0
     batch_size = 120
     for start in range(0, len(universe), batch_size):
@@ -301,7 +397,7 @@ def main():
         tickers = [x["ticker"] for x in batch]
         try:
             downloaded = yf.download(
-                tickers, period="1y", interval="1d", auto_adjust=False,
+                tickers, period="2y", interval="1d", auto_adjust=False,
                 group_by="ticker", progress=False, threads=True, timeout=30
             )
         except Exception:
@@ -314,12 +410,25 @@ def main():
                 results.append(row)
             if short_row:
                 short_results.append(short_row)
+            if frame is not None:
+                for timeframe in ("月足", "週足"):
+                    hammer = hammer_row(item, frame, timeframe)
+                    if hammer:
+                        hammer_results.append(hammer)
             if frame is None:
                 failed += 1
         time.sleep(.2)
 
     results.sort(key=lambda x: (x["score"], x["rvol"], x["ret20"]), reverse=True)
     short_results.sort(key=lambda x: (x["score"], x["rvol"], -x["ret20"]), reverse=True)
+    hammer_results.sort(
+        key=lambda x: (
+            x["score"],
+            1 if x["timeframe"] == "月足" else 0,
+            x["volume_ratio"],
+        ),
+        reverse=True,
+    )
     overnight_long = [
         x for x in results
         if (
@@ -348,6 +457,7 @@ def main():
         "entered": entered[:50],
         "overnight_long": overnight_long,
         "overnight_short": short_results[:15],
+        "monthly_weekly_hammers": hammer_results[:40],
         "note": "日足終値ベース。準備足高値を翌日以降に上抜いた場合のみIN。最終判断は板・出来高・会社IRで確認。"
     }
     old_path.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
