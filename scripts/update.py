@@ -648,6 +648,10 @@ def main():
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>足</th><th>判定</th><th>期待値</th><th>終値</th><th>反発線</th><th>下ヒゲ／実体</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
 <tbody id="hammer-signals"><tr><td colspan="12">全市場を走査中...</td></tr></tbody></table>
 <p class="warning">7月月足は月末まで暫定。高値＋1ティックを翌日以降に上抜いた場合だけ発動し、ハンマーの安値割れで撤退します。</p></section>
+<section class="card wide"><h2>⑤-F 日足セリングクライマックス反転監視</h2>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>反転形</th><th>期待値</th><th>終値</th><th>10日下落</th><th>出来高急増</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead>
+<tbody id="daily-reversal-signals"><tr><td colspan="12">全市場を走査中...</td></tr></tbody></table>
+<p class="warning">画像のような「急落→大出来高→安値固め→陽線確認」を検出。逆張りなので、反転足高値＋1ティックを上抜くまで買いません。</p></section>
 <section class="card wide"><h2>⑥-A 決算勝負候補 TOP15（7日以内・決算期待値順）</h2><table><tr><th>会社名＋コード</th><th>調整後期待値</th><th>コンセンサス警戒</th><th>テクニカル点</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>採点根拠・注意</th></tr>{earning_rows}</table><p class="warning">高すぎるEPS・売上予想、予想幅の大きさ、下方修正、過去の上振れ不足、決算前の株価上昇を警戒度として減点。好決算でもコンセンサス未達や材料出尽くしになる危険を反映します。</p></section>
 <section class="card wide"><h2>⑥-B BB上方エクスパンション期待 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>現在値</th><th>BB幅</th><th>5日比</th><th>幅順位</th><th>出来高比</th><th>イン</th><th>損切り</th><th>判定</th></tr>{bb_rows}</table><p class="warning">BB幅順位は過去120日の細さ。数値が低いほどスクイーズ状態。上限突破＋BB幅拡大＋出来高増加を最優先します。</p></section>
 <section class="card wide"><h2>⑦ AIスイングサインの使い方</h2>
@@ -710,6 +714,16 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     yen(x.target1) + "／" + yen(x.target2) + "</td></tr>").join("");
   document.getElementById("hammer-signals").innerHTML =
     hammers || "<tr><td colspan='12'>厳格条件に合格した陽線ハンマー銘柄なし。</td></tr>";
+  const dailyReversals = (d.daily_capitulation_reversals || []).slice(0, 20).map((x, i) =>
+    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.phase +
+    "</td><td>" + x.setup + "</td><td><b class='up'>" + x.score +
+    "/100</b></td><td>" + yen(x.close) + "</td><td>−" +
+    x.fall_from_10d.toFixed(1) + "%</td><td>" + x.volume_ratio.toFixed(2) +
+    "倍</td><td><b>" + yen(x.trigger) + "</b></td><td class='down'>" +
+    yen(x.stop) + "</td><td>" + yen(x.target1) + "／" + yen(x.target2) +
+    "</td><td>" + x.reason + "</td></tr>").join("");
+  document.getElementById("daily-reversal-signals").innerHTML =
+    dailyReversals || "<tr><td colspan='12'>本日のセリクラ反転合格銘柄なし。</td></tr>";
   const carryRows = (items, side) => (items || []).slice(0, 10).map((x, i) => {{
     const risk100 = Math.abs(x.trigger - x.stop) * 100;
     const tick = x.trigger < 3000 ? 1 : 5;
@@ -743,6 +757,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>データ取得待ち</td></tr>";
   document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
   document.getElementById("hammer-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
+  document.getElementById("daily-reversal-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
   document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
   document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
 }});
