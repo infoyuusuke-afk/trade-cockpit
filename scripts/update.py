@@ -13,6 +13,20 @@ import yfinance as yf
 ROOT = Path(__file__).resolve().parents[1]
 JST = ZoneInfo("Asia/Tokyo")
 
+US_SECTOR_ETFS = {
+    "情報技術・AI": "XLK",
+    "コミュニケーション": "XLC",
+    "一般消費財": "XLY",
+    "資本財・工業": "XLI",
+    "金融": "XLF",
+    "ヘルスケア": "XLV",
+    "エネルギー": "XLE",
+    "素材": "XLB",
+    "生活必需品": "XLP",
+    "公益": "XLU",
+    "不動産": "XLRE",
+}
+
 
 def flat_columns(df):
     if isinstance(df.columns, pd.MultiIndex):
@@ -57,6 +71,10 @@ def daily_snapshot(ticker):
         bb_width_prev5 = float(bb_width_series.iloc[-6:-1].mean()) if len(bb_width_series) >= 6 else bb_width
         bb_percentile = float((bb_width_series.tail(120) <= bb_width).mean() * 100)
         ret5 = (close / float(df["Close"].iloc[-6]) - 1) * 100 if len(df) >= 6 else 0
+        ret5_prev = (
+            (float(df["Close"].iloc[-6]) / float(df["Close"].iloc[-11]) - 1) * 100
+            if len(df) >= 11 else ret5
+        )
         ret20 = (close / float(df["Close"].iloc[-21]) - 1) * 100 if len(df) >= 21 else 0
         change = (close / prev - 1) * 100 if prev else 0
         rvol = vol / avg_vol if avg_vol else 0
@@ -116,7 +134,8 @@ def daily_snapshot(ticker):
             "ok": True, "price": round(close, 2), "open": round(open_, 2),
             "high": round(high, 2), "low": round(low, 2),
             "prev_close": round(prev, 2), "change_pct": round(change, 2),
-            "ret5": round(ret5, 2), "ret20": round(ret20, 2),
+            "ret5": round(ret5, 2), "ret5_prev": round(ret5_prev, 2),
+            "ret20": round(ret20, 2),
             "rvol": round(rvol, 2), "turnover": round(turnover),
             "atr14": round(atr, 2), "atr_pct": round(atr_pct, 2),
             "ma5": round(ma5, 2), "ma20": round(ma20, 2), "ma60": round(ma60, 2),
@@ -403,6 +422,265 @@ def css(v):
     return "up" if isinstance(v, (int, float)) and v > 0 else "down" if isinstance(v, (int, float)) and v < 0 else ""
 
 
+def average(rows, key, default=0):
+    values = [
+        float(row.get(key, 0)) for row in rows
+        if isinstance(row.get(key), (int, float))
+    ]
+    return sum(values) / len(values) if values else default
+
+
+def clamp(value, low=0, high=100):
+    return max(low, min(high, value))
+
+
+def broad_sector(sector):
+    """Group the watchlist themes into investable top-down buckets."""
+    if any(x in sector for x in ("銀行", "保険", "金融")):
+        return "金融"
+    if any(x in sector for x in ("自動車", "EV", "MaaS")):
+        return "自動車・モビリティ"
+    if any(x in sector for x in ("防衛", "重工", "FA", "ロボット", "機械", "電線", "電力", "蓄電池")):
+        return "資本財・インフラ"
+    if any(x in sector for x in ("半導体", "AI", "電子", "DX", "データセンター")):
+        return "AI・テクノロジー"
+    if any(x in sector for x in ("資源", "原油", "商社", "海運", "素材")):
+        return "資源・素材・商社"
+    if any(x in sector for x in ("通信", "鉄道", "内需", "ゲーム", "コンテンツ", "サービス")):
+        return "内需・ディフェンシブ"
+    return "その他"
+
+
+def rotation_phase(rel5, rel20, acceleration, ma_gap=0):
+    """Classify money flow without treating the strongest sector as an automatic buy."""
+    if rel20 >= 7 and ma_gap >= 7 and (rel5 <= 0 or acceleration <= -1):
+        return "過熱・失速注意"
+    if rel5 > 0 and acceleration >= .7 and rel20 <= 3:
+        return "流入初期"
+    if rel5 > 0 and rel20 > 0 and acceleration >= -1:
+        return "拡大"
+    if rel5 < 0 and acceleration < 0:
+        return "流出"
+    if rel20 < 0 and rel5 <= 0:
+        return "低迷"
+    return "中立"
+
+
+def rotation_score(rel5, rel20, acceleration, ma_gap=0, breadth=50, rvol=1):
+    raw = (
+        50
+        + clamp(rel5, -8, 8) * 3.2
+        + clamp(rel20, -15, 15) * .9
+        + clamp(acceleration, -8, 8) * 1.8
+        + clamp(ma_gap, -10, 10) * .45
+        + (breadth - 50) * .12
+        + clamp(rvol - 1, -1, 2) * 3
+    )
+    return round(clamp(raw), 1)
+
+
+def phase_action(phase):
+    return {
+        "流入初期": "最優先監視・初押し",
+        "拡大": "順張り・押し目",
+        "過熱・失速注意": "利確優先・飛び乗り禁止",
+        "流出": "新規ロング停止",
+        "低迷": "見送り",
+        "中立": "方向確認待ち",
+    }.get(phase, "待機")
+
+
+def phase_badge(phase):
+    cls = {
+        "流入初期": "in",
+        "拡大": "long",
+        "過熱・失速注意": "prep",
+        "流出": "short",
+        "低迷": "short",
+    }.get(phase, "")
+    return f"<span class='pill {cls}'>{phase}</span>"
+
+
+def build_sector_rotation(indices, valid):
+    """Top-down view: macro -> sector -> Japanese group -> stock."""
+    sp500 = indices.get("S&P500", {})
+    topix = indices.get("TOPIX", {})
+    us_rows = []
+    for sector, ticker in US_SECTOR_ETFS.items():
+        snap = daily_snapshot(ticker)
+        if not snap.get("ok") or not sp500.get("ok"):
+            continue
+        rel5 = snap.get("ret5", 0) - sp500.get("ret5", 0)
+        rel20 = snap.get("ret20", 0) - sp500.get("ret20", 0)
+        acceleration = (
+            snap.get("ret5", 0) - snap.get("ret5_prev", snap.get("ret5", 0))
+            - sp500.get("ret5", 0) + sp500.get("ret5_prev", sp500.get("ret5", 0))
+        )
+        breadth_proxy = 100 if snap.get("price", 0) >= snap.get("ma20", float("inf")) else 0
+        phase = rotation_phase(rel5, rel20, acceleration, snap.get("from_ma20", 0))
+        us_rows.append({
+            "sector": sector, "ticker": ticker, "phase": phase,
+            "score": rotation_score(
+                rel5, rel20, acceleration, snap.get("from_ma20", 0),
+                breadth_proxy, snap.get("rvol", 1)
+            ),
+            "rel5": round(rel5, 2), "rel20": round(rel20, 2),
+            "acceleration": round(acceleration, 2),
+            "from_ma20": snap.get("from_ma20", 0),
+            "action": phase_action(phase),
+        })
+    us_rows.sort(key=lambda x: x["score"], reverse=True)
+
+    groups = {}
+    for name, row in valid:
+        group = broad_sector(row.get("sector", ""))
+        row["rotation_group"] = group
+        groups.setdefault(group, []).append((name, row))
+
+    jp_rows = []
+    for group, members in groups.items():
+        rows = [row for _, row in members]
+        group_ret5 = average(rows, "ret5")
+        group_ret5_prev = average(rows, "ret5_prev", group_ret5)
+        group_ret20 = average(rows, "ret20")
+        rel5 = group_ret5 - topix.get("ret5", 0)
+        rel20 = group_ret20 - topix.get("ret20", 0)
+        acceleration = (
+            group_ret5 - group_ret5_prev
+            - topix.get("ret5", 0) + topix.get("ret5_prev", topix.get("ret5", 0))
+        )
+        breadth = sum(row.get("price", 0) >= row.get("ma20", float("inf")) for row in rows) / len(rows) * 100
+        ma_gap = average(rows, "from_ma20")
+        rvol = average(rows, "rvol", 1)
+        phase = rotation_phase(rel5, rel20, acceleration, ma_gap)
+        leaders = sorted(
+            members,
+            key=lambda x: (
+                x[1].get("ret5", 0) - topix.get("ret5", 0)
+                + min(x[1].get("rvol", 0), 3) * 1.5
+            ),
+            reverse=True,
+        )[:3]
+        jp_rows.append({
+            "sector": group, "phase": phase,
+            "score": rotation_score(rel5, rel20, acceleration, ma_gap, breadth, rvol),
+            "rel5": round(rel5, 2), "rel20": round(rel20, 2),
+            "acceleration": round(acceleration, 2),
+            "breadth": round(breadth, 1), "rvol": round(rvol, 2),
+            "members": len(members),
+            "leaders": [
+                {
+                    "name": name,
+                    "ret5": row.get("ret5", 0),
+                    "rvol": row.get("rvol", 0),
+                }
+                for name, row in leaders
+            ],
+            "action": phase_action(phase),
+        })
+    jp_rows.sort(key=lambda x: x["score"], reverse=True)
+    jp_by_sector = {row["sector"]: row for row in jp_rows}
+
+    growth_scores = [
+        row["score"] for row in us_rows
+        if row["sector"] in ("情報技術・AI", "コミュニケーション", "一般消費財")
+    ]
+    rotation_scores = [
+        row["score"] for row in us_rows
+        if row["sector"] in ("資本財・工業", "金融", "ヘルスケア", "エネルギー", "素材")
+    ]
+    growth_score = sum(growth_scores) / len(growth_scores) if growth_scores else 50
+    rotation_value_score = sum(rotation_scores) / len(rotation_scores) if rotation_scores else 50
+    spread = rotation_value_score - growth_score
+    if spread >= 5:
+        regime = "グロースからバリュー・資本財へ"
+        regime_action = "AI一本へ集中せず、金融・資本財・ヘルスケアの初押しを優先"
+    elif spread <= -5:
+        regime = "グロース回帰"
+        regime_action = "AI・情報技術の押し目を優先。ただし過熱判定なら追わない"
+    else:
+        regime = "混在・切替中"
+        regime_action = "指数ではなく、流入初期または拡大のセクターだけを選ぶ"
+
+    positive_breadth = sum(row["rel5"] > 0 for row in us_rows)
+    us10y = indices.get("米10年金利", {})
+    rate5 = us10y.get("ret5", 0)
+    if rate5 >= 1:
+        rate_view = "金利上昇：高PERグロースに逆風"
+    elif rate5 <= -1:
+        rate_view = "金利低下：グロースに追い風"
+    else:
+        rate_view = "金利横ばい：業績と需給を優先"
+
+    picks = []
+    favored = {
+        row["sector"]: row for row in jp_rows
+        if row["phase"] in ("流入初期", "拡大") and row["score"] >= 55
+    }
+    for name, row in valid:
+        group = row.get("rotation_group")
+        group_row = favored.get(group)
+        if not group_row or row.get("turnover", 0) < 500_000_000:
+            continue
+        stock_rel5 = row.get("ret5", 0) - topix.get("ret5", 0)
+        score = clamp(
+            group_row["score"] * .55
+            + 35
+            + clamp(stock_rel5, -8, 8) * 1.8
+            + clamp(row.get("rvol", 1) - 1, -1, 2) * 3
+        )
+        picks.append({
+            "name": name, "sector": group, "phase": group_row["phase"],
+            "score": round(score),
+            "plan": trade_plan(row, row.get("intraday")),
+            "reason": (
+                f"{group}が{group_row['phase']}／TOPIX比5日 "
+                f"{group_row['rel5']:+.2f}%／出来高比 {row.get('rvol', 0):.2f}倍"
+            ),
+        })
+    picks.sort(key=lambda x: x["score"], reverse=True)
+    picks = picks[:7]
+
+    kioxia = next(
+        ((name, row) for name, row in valid if "キオクシア" in name),
+        None,
+    )
+    kioxia_view = {
+        "status": "データなし",
+        "action": "判定不能",
+        "detail": "株価またはセクターデータを取得できませんでした。",
+    }
+    if kioxia:
+        name, row = kioxia
+        group_row = jp_by_sector.get(row.get("rotation_group"), {})
+        phase = group_row.get("phase", "中立")
+        if phase in ("流出", "低迷", "過熱・失速注意"):
+            action = "追加買い停止"
+            detail = "会社材料よりセクター需給を優先。セクターが流入初期へ戻り、個別が前日高値を上抜くまで新規資金を入れない。"
+        elif phase in ("流入初期", "拡大"):
+            action = "反転条件だけ再評価"
+            detail = "セクターの追い風は確認。ただし前日高値突破＋VWAP上維持を満たすまで買い増し判定にはしない。"
+        else:
+            action = "新規追加は見送り"
+            detail = "方向未確定。業績期待だけで平均取得単価を下げず、セクターと個別の両方の反転を待つ。"
+        kioxia_view = {
+            "name": name, "status": phase, "action": action, "detail": detail,
+            "sector_score": group_row.get("score"),
+            "sector_rel5": group_row.get("rel5"),
+        }
+
+    return {
+        "method": "アセット→セクター→個別株のトップダウン",
+        "regime": regime, "regime_action": regime_action,
+        "rate_view": rate_view, "rate5": round(rate5, 2),
+        "breadth": f"{positive_breadth}/{len(us_rows)}",
+        "spread": round(spread, 1),
+        "us_sectors": us_rows, "japan_sectors": jp_rows,
+        "picks": picks, "kioxia": kioxia_view,
+        "source_note": "米国11業種ETFのS&P500相対強弱と、日本株監視群のTOPIX相対強弱による公開データ代理指標",
+    }
+
+
 def main():
     now = datetime.now(JST)
     afternoon = now.hour >= 12
@@ -425,6 +703,7 @@ def main():
         stocks[name] = row
 
     valid = [(n, r) for n, r in stocks.items() if r.get("ok")]
+    rotation = build_sector_rotation(indices, valid)
     day_rank = sorted(
         [(n, r) for n, r in valid if r["style"] in ("day", "both") and r["turnover"] >= 2_000_000_000],
         key=lambda x: x[1]["day_score"], reverse=True
@@ -532,6 +811,7 @@ def main():
             "overheated_watch": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in overheated_rank]
         },
         "earnings_candidates": earnings, "themes": themes,
+        "sector_rotation": rotation,
         "bb_expansion_candidates": [
             {"name": n, **r, "plan": trade_plan(r, r.get("intraday"))}
             for n, r in bb_rank
@@ -551,6 +831,35 @@ def main():
         f"<td>{count}銘柄の実測平均</td></tr>"
         for i, (name, score, count, members) in enumerate(themes, 1)
     )
+    us_rotation_rows = "".join(
+        f"<tr><td>{i}</td><td>{row['sector']} <small>{row['ticker']}</small></td>"
+        f"<td>{phase_badge(row['phase'])}</td><td><b>{row['score']:.0f}/100</b></td>"
+        f"<td class='{css(row['rel5'])}'>{pct(row['rel5'])}</td>"
+        f"<td class='{css(row['rel20'])}'>{pct(row['rel20'])}</td>"
+        f"<td class='{css(row['acceleration'])}'>{row['acceleration']:+.2f}pt</td>"
+        f"<td>{row['action']}</td></tr>"
+        for i, row in enumerate(rotation["us_sectors"], 1)
+    ) or "<tr><td colspan='8'>米国セクターETFを取得できませんでした。</td></tr>"
+    jp_rotation_rows = "".join(
+        f"<tr><td>{i}</td><td>{row['sector']}</td><td>{phase_badge(row['phase'])}</td>"
+        f"<td><b>{row['score']:.0f}/100</b></td>"
+        f"<td class='{css(row['rel5'])}'>{pct(row['rel5'])}</td>"
+        f"<td class='{css(row['rel20'])}'>{pct(row['rel20'])}</td>"
+        f"<td class='{css(row['acceleration'])}'>{row['acceleration']:+.2f}pt</td>"
+        f"<td>{row['breadth']:.0f}%</td><td>{row['rvol']:.2f}倍</td>"
+        f"<td>{'<br>'.join(x['name'] for x in row['leaders'])}</td>"
+        f"<td>{row['action']}</td></tr>"
+        for i, row in enumerate(rotation["japan_sectors"], 1)
+    ) or "<tr><td colspan='11'>日本株の業種群を計算できませんでした。</td></tr>"
+    rotation_pick_rows = "".join(
+        f"<tr><td>{i}</td><td>{row['name']}</td><td>{row['sector']}</td>"
+        f"<td>{phase_badge(row['phase'])}</td><td><b class='up'>{row['score']}/100</b></td>"
+        f"<td>{money(row['plan']['entry'])}</td><td class='down'>{money(row['plan']['stop'])}</td>"
+        f"<td>{money(row['plan']['target1'])}／{money(row['plan']['target2'])}</td>"
+        f"<td>{row['reason']}</td></tr>"
+        for i, row in enumerate(rotation["picks"], 1)
+    ) or "<tr><td colspan='9'>流入初期・拡大かつ流動性条件を満たす候補なし。見送りです。</td></tr>"
+    kioxia_view = rotation["kioxia"]
     day_rows = ""
     for i, (name, r) in enumerate(day_rank, 1):
         p = trade_plan(r, r.get("intraday"))
@@ -634,10 +943,27 @@ def main():
     day_range = "取得不能" if not nikkei else f"{nikkei-(atr_n or nikkei*.015):,.0f} ～ {nikkei+(atr_n or nikkei*.015):,.0f}円"
     phase = data["phase"]
     html = f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="900"><title>AIトレードコクピット</title>
-<style>*{{box-sizing:border-box}}body{{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}}header{{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}}h1{{margin:0;font-size:25px}}h2{{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}}.sub{{color:#aebdcb;margin-top:4px}}.tag{{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}}main{{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}}.card{{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}}.wide{{grid-column:1/-1}}table{{width:100%;border-collapse:collapse}}th{{background:#1b2a39}}th,td{{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}}th:nth-child(-n+2),td:nth-child(-n+2){{text-align:left}}tr:nth-child(even) td{{background:#111923}}.up{{color:#52e46f;font-weight:900}}.down{{color:#ff6262;font-weight:900}}small{{color:#bac6d2}}.warning{{color:#ffe66d}}.steps{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}}.step{{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}}.step b{{display:block;color:#ffe66d;font-size:15px}}.pill{{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}}.prep{{background:#f2a900;color:#111}}.in{{background:#52e46f;color:#071009}}.long{{background:#2f80ed;color:white}}.short{{background:#e23b3b;color:white}}footer{{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}}@media(max-width:800px){{header{{align-items:flex-start;flex-direction:column}}main{{grid-template-columns:1fr}}.wide{{grid-column:1}}table{{min-width:700px}}.steps{{grid-template-columns:1fr}}}}</style></head><body>
+<style>*{{box-sizing:border-box}}body{{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}}header{{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}}h1{{margin:0;font-size:25px}}h2{{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}}h3{{color:#9fc8ff;margin:15px 0 7px}}a{{color:#70c7ff}}.sub{{color:#aebdcb;margin-top:4px}}.tag{{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}}main{{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}}.card{{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}}.wide{{grid-column:1/-1}}table{{width:100%;border-collapse:collapse}}th{{background:#1b2a39}}th,td{{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}}th:nth-child(-n+2),td:nth-child(-n+2){{text-align:left}}tr:nth-child(even) td{{background:#111923}}.up{{color:#52e46f;font-weight:900}}.down{{color:#ff6262;font-weight:900}}small{{color:#bac6d2}}.warning{{color:#ffe66d}}.steps,.rotation-grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}}.step,.rotation-box{{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}}.step b,.rotation-box b{{display:block;color:#ffe66d;font-size:15px}}.rotation-box strong{{font-size:17px;color:#f4f7fa}}.pill{{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}}.prep{{background:#f2a900;color:#111}}.in{{background:#52e46f;color:#071009}}.long{{background:#2f80ed;color:white}}.short{{background:#e23b3b;color:white}}footer{{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}}@media(max-width:800px){{header{{align-items:flex-start;flex-direction:column}}main{{grid-template-columns:1fr}}.wide{{grid-column:1}}table{{min-width:700px}}.steps,.rotation-grid{{grid-template-columns:1fr}}}}</style></head><body>
 <header><div><h1>AIトレードコクピット Ver.3.3</h1><div class="sub">日本株全市場／持ち越しLONG・SHORT発動価格</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><main>
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
+<section id="sector-rotation" class="card wide"><h2>②-R 機関投資家型 セクターローテーション</h2>
+<div class="rotation-grid">
+<div class="rotation-box"><b>市場レジーム</b><strong>{rotation['regime']}</strong><br>{rotation['regime_action']}</div>
+<div class="rotation-box"><b>金利スイッチ</b><strong>{rotation['rate_view']}</strong><br>米10年金利 5日変化 {rotation['rate5']:+.2f}%</div>
+<div class="rotation-box"><b>米国業種の広がり</b><strong>{rotation['breadth']}業種</strong><br>S&P500を5日で上回った業種数</div>
+<div class="rotation-box"><b>判定順序</b><strong>資産 → 業種 → 個別株</strong><br>個別材料だけで逆風業種を買わない</div>
+</div>
+<h3>米国11業種：S&P500に対する相対強弱</h3>
+<table><tr><th>順位</th><th>業種ETF</th><th>資金段階</th><th>点数</th><th>5日相対</th><th>20日相対</th><th>勢い変化</th><th>行動</th></tr>{us_rotation_rows}</table>
+<h3>日本株：TOPIXに対する相対強弱</h3>
+<table><tr><th>順位</th><th>業種群</th><th>資金段階</th><th>点数</th><th>5日相対</th><th>20日相対</th><th>勢い変化</th><th>20日線上比率</th><th>出来高比</th><th>先行銘柄</th><th>行動</th></tr>{jp_rotation_rows}</table>
+<h3>セクター追い風＋流動性合格の個別株</h3>
+<table><tr><th>順位</th><th>会社名＋コード</th><th>業種群</th><th>資金段階</th><th>期待値</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr>{rotation_pick_rows}</table>
+<h3>キオクシアHD（285A）セクター判定</h3>
+<div class="rotation-box"><b>{phase_badge(kioxia_view['status'])}　{kioxia_view['action']}</b>{kioxia_view['detail']}</div>
+<p class="warning">これは機関投資家の保有明細そのものではなく、{rotation['source_note']}です。流入初期でも発動価格を上抜かなければ見送り。参考：<a href="https://limo.media/articles/-/133222" target="_blank" rel="noopener">イズミダイズム「セクターローテーション」解説</a></p>
+</section>
 <section class="card wide"><h2>③ 当日狙い目銘柄 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1／2</th><th>発動条件・リスク</th></tr>{day_rows}</table><p class="warning">入口は指値の断定ではなく発動水準。VWAP・5分足・出来高を満たさなければ見送り。</p></section>
 <section class="card wide"><h2>④ 朝8:30候補のザラバ答え合わせ</h2><table><tr><th>会社名＋コード</th><th>朝イン</th><th>朝損切り</th><th>朝利確1／2</th><th>結果</th><th>終値・VWAP検証</th></tr>{review_rows}</table></section>
 <section class="card wide"><h2>⑤-A 安定上昇候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{stable_rows}</table></section>
