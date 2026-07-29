@@ -1,6 +1,6 @@
 {
   "date": "2026-07-30",
-  "fixed_at": "2026-07-30 04:25:54 JST",
+  "fixed_at": "2026-07-30 07:57:28 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
@@ -8,12 +8,12 @@
       "ticker": "7267.T",
       "side": "LONG",
       "score": 100.0,
-      "entry": 1617,
-      "entry_limit": 1619,
-      "stop": 1584,
-      "target1": 1672,
-      "target2": 1696,
-      "morning_price": 1619
+      "entry": 1690,
+      "entry_limit": 1692,
+      "stop": 1656,
+      "target1": 1746,
+      "target2": 1771,
+      "morning_price": 1692
     },
     {
       "name": "MS&AD（8725）",
@@ -22,46 +22,46 @@
       "score": 100.0,
       "entry": 5080,
       "entry_limit": 5100,
-      "stop": 5000,
-      "target1": 5250,
-      "target2": 5320,
+      "stop": 4990,
+      "target1": 5260,
+      "target2": 5340,
       "morning_price": 5100
     },
     {
       "name": "楽天グループ（4755）",
       "ticker": "4755.T",
       "side": "LONG",
-      "score": 97.0,
-      "entry": 834,
-      "entry_limit": 836,
-      "stop": 813,
-      "target1": 870,
-      "target2": 887,
-      "morning_price": 836
+      "score": 99.0,
+      "entry": 844.1,
+      "entry_limit": 844.3,
+      "stop": 823.4,
+      "target1": 875.6,
+      "target2": 890.3,
+      "morning_price": 844.3
     },
     {
       "name": "日本郵船（9101）",
       "ticker": "9101.T",
       "side": "LONG",
-      "score": 89.0,
-      "entry": 6060,
-      "entry_limit": 6080,
-      "stop": 5940,
-      "target1": 6290,
-      "target2": 6390,
-      "morning_price": 6080
+      "score": 91.0,
+      "entry": 6160,
+      "entry_limit": 6180,
+      "stop": 6040,
+      "target1": 6390,
+      "target2": 6490,
+      "morning_price": 6180
     },
     {
       "name": "トヨタ自動車（7203）",
       "ticker": "7203.T",
       "side": "LONG",
-      "score": 90.0,
-      "entry": 3020,
-      "entry_limit": 3030,
-      "stop": 2970,
-      "target1": 3120,
-      "target2": 3160,
-      "morning_price": 3030
+      "score": 100.0,
+      "entry": 3240,
+      "entry_limit": 3250,
+      "stop": 3180,
+      "target1": 3355,
+      "target2": 3405,
+      "morning_price": 3250
     }
   ]
 }
