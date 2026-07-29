@@ -241,6 +241,33 @@ def jpx_earnings_map(now):
         return {}
 
 
+def price_tick(price):
+    """Return a conservative valid order step for the displayed MS2 prices.
+
+    A decimal last price is used as evidence that the issue trades in 0.1-yen
+    units (for example NTT).  For the other issues we use the wider standard
+    TSE steps, which remain valid even when a TOPIX100 issue accepts a finer
+    step.
+    """
+    price = float(price)
+    if price < 1000 and abs(price - round(price)) >= .05:
+        return .1
+    if price < 3000:
+        return 1
+    if price < 5000:
+        return 5
+    if price < 30000:
+        return 10
+    if price < 50000:
+        return 50
+    return 100
+
+
+def round_to_tick(value, tick):
+    rounded = round(float(value) / tick) * tick
+    return round(rounded, 1) if tick < 1 else round(rounded)
+
+
 def trade_plan(r, intraday=None):
     p = float((intraday or {}).get("close") or r["price"])
     atr = max(float(r.get("atr14") or p * .02), p * .008)
@@ -254,12 +281,12 @@ def trade_plan(r, intraday=None):
     risk = max(entry - stop, p * .004)
     target1 = entry + risk * 1.5
     target2 = entry + risk * 2.2
-    tick = 5 if p >= 3000 else 1
-    rounded = lambda x: round(x / tick) * tick
+    tick = price_tick(p)
+    rounded = lambda x: round_to_tick(x, tick)
     return {
         "entry": rounded(entry), "stop": rounded(stop),
         "target1": rounded(target1), "target2": rounded(target2),
-        "risk": rounded(risk)
+        "risk": rounded(risk), "tick": tick
     }
 
 
@@ -391,16 +418,19 @@ def review_trade(plan, intra):
     if not intra or not intra.get("ok"):
         return {"result": "検証不能"}
     entry, stop = plan["entry"], plan["stop"]
-    t1, t2 = plan["target1"], plan["target2"]
-    entered = intra["low"] <= entry <= intra["high"]
+    entry_limit = plan.get("entry_limit", entry)
+    t1 = plan["target1"]
+    entered = intra["high"] >= entry and intra["low"] <= entry_limit
     if not entered:
         return {"result": "未約定", "detail": f"安値{intra['low']:,.0f}／高値{intra['high']:,.0f}"}
-    if intra["high"] >= t2:
-        result = "利確2到達"
-    elif intra["high"] >= t1:
-        result = "利確1到達"
-    elif intra["low"] <= stop:
-        result = "損切り到達"
+    stop_hit = intra["low"] <= stop
+    target_hit = intra["high"] >= t1
+    if stop_hit and target_hit:
+        result = "順序不明（成績除外）"
+    elif target_hit:
+        result = "IFO利確"
+    elif stop_hit:
+        result = "IFO損切り"
     else:
         result = "継続・未決済"
     pnl = intra["close"] - entry
@@ -411,7 +441,10 @@ def review_trade(plan, intra):
 
 
 def money(v):
-    return "—" if v is None else f"{v:,.0f}"
+    if v is None:
+        return "—"
+    value = float(v)
+    return f"{value:,.1f}" if abs(value - round(value)) >= .05 else f"{value:,.0f}"
 
 
 def pct(v):
@@ -681,9 +714,233 @@ def build_sector_rotation(indices, valid):
     }
 
 
+def build_day_ifo_candidates(valid, rotation, official_earnings, now):
+    """Build five diversified, manually entered MS2 IFO order tickets.
+
+    These are conditional LONG orders for the user's 8:55 review.  They are
+    deliberately separate from high-priced opening scalps such as Kioxia.
+    """
+    sector_rows = {
+        row["sector"]: row for row in rotation.get("japan_sectors", [])
+    }
+    excluded_phases = {"流出", "低迷", "過熱・失速注意"}
+    eligible = []
+    for name, row in valid:
+        code = str(row.get("ticker", "")).split(".")[0]
+        price = float(row.get("price") or 0)
+        group = row.get("rotation_group") or broad_sector(row.get("sector", ""))
+        sector = sector_rows.get(group, {})
+        phase = sector.get("phase", "中立")
+        if code == "285A" or "キオクシア" in name:
+            continue
+        if row.get("style") not in ("swing", "both"):
+            continue
+        if not (100 <= price <= 20000):
+            continue
+        if row.get("turnover", 0) < 2_000_000_000:
+            continue
+        if row.get("atr_pct", 99) > 7.0 or row.get("from_ma20", 99) > 12:
+            continue
+        if price < float(row.get("ma20") or price) * .985:
+            continue
+        if phase in excluded_phases:
+            continue
+
+        event = official_earnings.get(code)
+        event_days = None
+        if event and event.get("date"):
+            event_days = (pd.Timestamp(event["date"]).date() - now.date()).days
+            if 0 <= event_days <= 2:
+                # A 100-share IFO basket is not used for an imminent earnings bet.
+                continue
+
+        tick = price_tick(price)
+        atr = max(float(row.get("atr14") or price * .02), price * .008)
+        trigger = round_to_tick(
+            max(float(row.get("high") or price), price) + tick, tick
+        )
+        entry_limit = round_to_tick(trigger + tick * 2, tick)
+        stop = round_to_tick(
+            max(
+                float(row.get("low") or price) - atr * .10,
+                trigger - atr * .85,
+            ),
+            tick,
+        )
+        if stop >= trigger:
+            stop = round_to_tick(trigger - max(tick, atr * .55), tick)
+        risk_per_share = max(entry_limit - stop, tick)
+        target1 = round_to_tick(entry_limit + risk_per_share * 1.5, tick)
+        target2 = round_to_tick(entry_limit + risk_per_share * 2.2, tick)
+
+        technical = expectation_score(row)
+        sector_score = float(sector.get("score", 50))
+        liquidity = (
+            100 if row.get("turnover", 0) >= 10_000_000_000
+            else 82 if row.get("turnover", 0) >= 5_000_000_000
+            else 68
+        )
+        trend = (
+            100 if price > row.get("ma5", price) > row.get("ma20", price)
+            else 72 if price >= row.get("ma20", price)
+            else 45
+        )
+        volume_score = clamp(float(row.get("rvol", 1)) * 55, 35, 100)
+        score = (
+            15
+            + technical * .38
+            + sector_score * .27
+            + liquidity * .15
+            + trend * .10
+            + volume_score * .10
+        )
+        if event_days is not None and 3 <= event_days <= 7:
+            score -= 8
+        score = round(clamp(score))
+
+        shares = 100
+        required_capital = round(entry_limit * shares)
+        max_loss = round(risk_per_share * shares)
+        expected_profit = round((target1 - entry_limit) * shares)
+        rr = round(expected_profit / max_loss, 2) if max_loss else 0
+        event_risk = (
+            f"決算予定 {event['date']}（{event.get('source', '確認済み')}）。"
+            "当日まで持ち越さない。"
+            if event
+            else "7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。"
+        )
+        reason = (
+            f"{group}＝{phase} {sector_score:.0f}点／"
+            f"テクニカル {technical}点／出来高比 {row.get('rvol', 0):.2f}倍／"
+            f"売買代金 {row.get('turnover', 0) / 100_000_000:.0f}億円"
+        )
+        eligible.append({
+            "name": name,
+            "code": code,
+            "ticker": row.get("ticker", ""),
+            "side": "LONG",
+            "sector": group,
+            "sector_phase": phase,
+            "score": score,
+            "shares": shares,
+            "trigger": trigger,
+            "entry_limit": entry_limit,
+            "stop": stop,
+            "target1": target1,
+            "target2": target2,
+            "required_capital": required_capital,
+            "max_loss": max_loss,
+            "expected_profit": expected_profit,
+            "risk_reward": rr,
+            "reason": reason,
+            "event_risk": event_risk,
+            "order_type": "逆指値注文＋IFO（利益確定＋損切り）",
+            "market": "東証（SOR）",
+            "credit_type": "制度（6カ月）",
+            "entry_expiry": "当日中",
+            "exit_expiry": "当日中",
+            "quote_rule": (
+                f"8:55気配が{entry_limit:,.1f}円を超えていたら価格を上げず注文取消。"
+                if tick < 1 else
+                f"8:55気配が{entry_limit:,.0f}円を超えていたら価格を上げず注文取消。"
+            ),
+            "close_rule": (
+                "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、"
+                "失効する決済注文を必ずOCOで再設定。"
+            ),
+        })
+
+    eligible.sort(
+        key=lambda x: (
+            x["score"],
+            x["risk_reward"],
+            -x["max_loss"],
+        ),
+        reverse=True,
+    )
+
+    selected = []
+    used_sectors = set()
+    for item in eligible:
+        if item["sector"] in used_sectors:
+            continue
+        selected.append(item)
+        used_sectors.add(item["sector"])
+        if len(selected) == 5:
+            break
+    if len(selected) < 5:
+        for item in eligible:
+            if item in selected:
+                continue
+            if sum(x["sector"] == item["sector"] for x in selected) >= 2:
+                continue
+            selected.append(item)
+            if len(selected) == 5:
+                break
+    return selected
+
+
+def render_day_ifo_cards(candidates):
+    if not candidates:
+        return (
+            "<div class='rotation-box'>本日の流動性・分散・セクター条件に"
+            "合格した注文候補なし。5銘柄を無理に埋めません。</div>"
+        )
+    cards = []
+    for rank, item in enumerate(candidates, 1):
+        cards.append(f"""
+<article class="ifo-card">
+  <div class="ifo-head">
+    <span class="ifo-rank">#{rank}</span>
+    <div><h3>{item['name']}</h3><small>{item['sector']}／{item['sector_phase']}</small></div>
+    <b class="ifo-score">{item['score']}/100</b>
+  </div>
+  <div class="ifo-columns">
+    <div class="order-box entry-order">
+      <b>左側｜信用新規・買建</b>
+      <dl>
+        <dt>市場</dt><dd>{item['market']}</dd>
+        <dt>信用区分</dt><dd>{item['credit_type']}</dd>
+        <dt>数量</dt><dd><strong>{item['shares']}株</strong></dd>
+        <dt>新規注文</dt><dd>逆指値注文</dd>
+        <dt>市場価格が</dt><dd><strong>{money(item['trigger'])}円以上</strong></dd>
+        <dt>買い指値</dt><dd><strong>{money(item['entry_limit'])}円</strong></dd>
+        <dt>執行期限</dt><dd>{item['entry_expiry']}</dd>
+      </dl>
+    </div>
+    <div class="order-box exit-order">
+      <b>右側｜IFO（利益確定＋損切り）</b>
+      <dl>
+        <dt>利益確定</dt><dd>売埋・指値 <strong class="up">{money(item['target1'])}円</strong></dd>
+        <dt>損切り条件</dt><dd>市場価格が <strong class="down">{money(item['stop'])}円以下</strong></dd>
+        <dt>損切り注文</dt><dd>成行</dd>
+        <dt>執行期限</dt><dd>{item['exit_expiry']}</dd>
+        <dt>利確2参考</dt><dd>{money(item['target2'])}円（注文には未入力）</dd>
+      </dl>
+    </div>
+  </div>
+  <div class="ifo-metrics">
+    <span>建玉目安 <b>{item['required_capital']:,}円</b></span>
+    <span>利確時 <b class="up">+{item['expected_profit']:,}円</b></span>
+    <span>最大損失 <b class="down">−{item['max_loss']:,}円</b></span>
+    <span>RR <b>{item['risk_reward']:.2f}</b></span>
+  </div>
+  <p><b>選定理由：</b>{item['reason']}</p>
+  <p class="warning"><b>8:55確認：</b>{item['quote_rule']}</p>
+  <p><small>{item['event_risk']} {item['close_rule']}</small></p>
+</article>""")
+    return "".join(cards)
+
+
 def main():
     now = datetime.now(JST)
-    afternoon = now.hour >= 12
+    if now.hour < 11:
+        session = "morning"
+    elif now.hour < 15:
+        session = "midday"
+    else:
+        session = "close"
+    intraday_mode = session != "morning"
     config = json.loads((ROOT / "watchlist.json").read_text(encoding="utf-8"))
     previous = {}
     data_path = ROOT / "data.json"
@@ -698,7 +955,7 @@ def main():
     for name, meta in config["stocks"].items():
         row = daily_snapshot(meta["ticker"])
         row.update({"ticker": meta["ticker"], "sector": meta["sector"], "style": meta["style"]})
-        if afternoon and row.get("ok"):
+        if intraday_mode and row.get("ok"):
             row["intraday"] = intraday_snapshot(meta["ticker"])
         stocks[name] = row
 
@@ -753,25 +1010,6 @@ def main():
         key=lambda x: x[1], reverse=True
     )[:5]
 
-    morning = previous.get("morning_snapshot")
-    if not afternoon:
-        morning = {
-            "date": now.strftime("%Y-%m-%d"),
-            "candidates": [
-                {"name": n, "plan": trade_plan(r), "price": r["price"]}
-                for n, r in day_rank
-            ]
-        }
-
-    reviews = []
-    if afternoon and morning and morning.get("date") == now.strftime("%Y-%m-%d"):
-        for item in morning.get("candidates", []):
-            r = stocks.get(item["name"], {})
-            reviews.append({
-                "name": item["name"], "plan": item["plan"],
-                **review_trade(item["plan"], r.get("intraday"))
-            })
-
     official_earnings = jpx_earnings_map(now)
     for code, item in config.get("earnings_overrides", {}).items():
         delta = (pd.Timestamp(item["date"]).date() - now.date()).days
@@ -799,11 +1037,78 @@ def main():
     earnings.sort(key=lambda x: (-x["expectation_score"], x["date"]))
     earnings = earnings[:15]
 
+    generated_day_ifo = build_day_ifo_candidates(
+        valid, rotation, official_earnings, now
+    )
+    previous_morning = previous.get("morning_snapshot") or {}
+    same_day_snapshot = previous_morning.get("date") == now.strftime("%Y-%m-%d")
+    if session == "morning" or not same_day_snapshot:
+        day_ifo_candidates = generated_day_ifo
+    else:
+        day_ifo_candidates = (
+            previous.get("day_ifo_candidates") or generated_day_ifo
+        )
+
+    morning = previous_morning
+    if session == "morning":
+        morning = {
+            "date": now.strftime("%Y-%m-%d"),
+            "fixed_at": now.strftime("%Y-%m-%d %H:%M:%S JST"),
+            "rule": (
+                "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ"
+                "100株IFOを手入力。"
+            ),
+            "candidates": [
+                {
+                    "name": item["name"],
+                    "ticker": item["ticker"],
+                    "side": item["side"],
+                    "score": item["score"],
+                    "price": stocks.get(item["name"], {}).get("price"),
+                    "plan": {
+                        "entry": item["trigger"],
+                        "entry_limit": item["entry_limit"],
+                        "stop": item["stop"],
+                        "target1": item["target1"],
+                        "target2": item["target2"],
+                    },
+                }
+                for item in day_ifo_candidates
+            ],
+        }
+
+    reviews = []
+    if intraday_mode and morning and morning.get("date") == now.strftime("%Y-%m-%d"):
+        for item in morning.get("candidates", []):
+            row = stocks.get(item["name"], {})
+            reviews.append({
+                "name": item["name"], "plan": item["plan"],
+                **review_trade(item["plan"], row.get("intraday"))
+            })
+
+    total_capital = sum(x["required_capital"] for x in day_ifo_candidates)
+    total_profit = sum(x["expected_profit"] for x in day_ifo_candidates)
+    total_loss = sum(x["max_loss"] for x in day_ifo_candidates)
     data = {
         "updated_at": now.strftime("%Y-%m-%d %H:%M:%S JST"),
-        "phase": "大引け検証15:00版" if afternoon else "寄り付き前8:30版",
+        "phase": (
+            "寄り付き前8:00版" if session == "morning"
+            else "前場検証11:45版" if session == "midday"
+            else "大引け検証15:35版"
+        ),
+        "session": session,
         "indices": indices, "stocks": stocks,
         "day_candidates": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in day_rank],
+        "day_ifo_candidates": day_ifo_candidates,
+        "day_ifo_summary": {
+            "count": len(day_ifo_candidates),
+            "shares_each": 100,
+            "total_capital": total_capital,
+            "total_profit": total_profit,
+            "total_max_loss": total_loss,
+            "order_time": "8:55",
+            "manual_entry": True,
+        },
         "swing_candidates": {
             "stable": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in stable_rank],
             "momentum": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in momentum_rank],
@@ -860,14 +1165,20 @@ def main():
         for i, row in enumerate(rotation["picks"], 1)
     ) or "<tr><td colspan='9'>流入初期・拡大かつ流動性条件を満たす候補なし。見送りです。</td></tr>"
     kioxia_view = rotation["kioxia"]
+    ifo_cards = render_day_ifo_cards(day_ifo_candidates)
+    ifo_count_note = (
+        "分散条件を満たす5銘柄を選定"
+        if len(day_ifo_candidates) == 5
+        else f"厳格条件合格は{len(day_ifo_candidates)}銘柄。無理に5銘柄へ増やさない"
+    )
     day_rows = ""
     for i, (name, r) in enumerate(day_rank, 1):
         p = trade_plan(r, r.get("intraday"))
-        shares = 10 if p["entry"] >= 10000 else 100
+        shares = 100
         max_loss = abs(p["entry"] - p["stop"]) * shares
         intra = r.get("intraday") or {}
         trigger = "VWAP上維持" if intra.get("close", 0) >= intra.get("vwap", float("inf")) else "VWAP回復待ち"
-        if not afternoon:
+        if session == "morning":
             trigger = "寄り後5分足＋VWAP確認"
         day_rows += (
             f"<tr><td>{i}</td><td>{name}</td><td>{money(r['price'])}</td><td>{money(p['entry'])}</td>"
@@ -936,14 +1247,14 @@ def main():
         f"<td>{money(x['plan']['target1'])}／{money(x['plan']['target2'])}</td>"
         f"<td class='{'up' if '利確' in x['result'] else 'down' if '損切り' in x['result'] else ''}'>{x['result']}</td>"
         f"<td>{x.get('detail','—')}</td></tr>" for x in reviews
-    ) or "<tr><td colspan='6'>朝版の同日スナップショットなし。次回8:30版から自動検証します。</td></tr>"
+    ) or "<tr><td colspan='6'>朝版の同日スナップショットなし。次回8:00版から自動検証します。</td></tr>"
 
     nikkei = indices.get("日経平均", {}).get("price")
     atr_n = indices.get("日経平均", {}).get("atr14")
     day_range = "取得不能" if not nikkei else f"{nikkei-(atr_n or nikkei*.015):,.0f} ～ {nikkei+(atr_n or nikkei*.015):,.0f}円"
     phase = data["phase"]
     html = f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="900"><title>AIトレードコクピット</title>
-<style>*{{box-sizing:border-box}}body{{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}}header{{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}}h1{{margin:0;font-size:25px}}h2{{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}}h3{{color:#9fc8ff;margin:15px 0 7px}}a{{color:#70c7ff}}.sub{{color:#aebdcb;margin-top:4px}}.tag{{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}}main{{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}}.card{{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}}.wide{{grid-column:1/-1}}table{{width:100%;border-collapse:collapse}}th{{background:#1b2a39}}th,td{{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}}th:nth-child(-n+2),td:nth-child(-n+2){{text-align:left}}tr:nth-child(even) td{{background:#111923}}.up{{color:#52e46f;font-weight:900}}.down{{color:#ff6262;font-weight:900}}small{{color:#bac6d2}}.warning{{color:#ffe66d}}.steps,.rotation-grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}}.step,.rotation-box{{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}}.step b,.rotation-box b{{display:block;color:#ffe66d;font-size:15px}}.rotation-box strong{{font-size:17px;color:#f4f7fa}}.pill{{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}}.prep{{background:#f2a900;color:#111}}.in{{background:#52e46f;color:#071009}}.long{{background:#2f80ed;color:white}}.short{{background:#e23b3b;color:white}}footer{{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}}@media(max-width:800px){{header{{align-items:flex-start;flex-direction:column}}main{{grid-template-columns:1fr}}.wide{{grid-column:1}}table{{min-width:700px}}.steps,.rotation-grid{{grid-template-columns:1fr}}}}</style></head><body>
+<style>*{{box-sizing:border-box}}body{{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}}header{{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}}h1{{margin:0;font-size:25px}}h2{{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}}h3{{color:#9fc8ff;margin:15px 0 7px}}a{{color:#70c7ff}}.sub{{color:#aebdcb;margin-top:4px}}.tag{{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}}main{{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}}.card{{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}}.wide{{grid-column:1/-1}}table{{width:100%;border-collapse:collapse}}th{{background:#1b2a39}}th,td{{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}}th:nth-child(-n+2),td:nth-child(-n+2){{text-align:left}}tr:nth-child(even) td{{background:#111923}}.up{{color:#52e46f;font-weight:900}}.down{{color:#ff6262;font-weight:900}}small{{color:#bac6d2}}.warning{{color:#ffe66d}}.steps,.rotation-grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}}.step,.rotation-box{{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}}.step b,.rotation-box b{{display:block;color:#ffe66d;font-size:15px}}.rotation-box strong{{font-size:17px;color:#f4f7fa}}.pill{{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}}.prep{{background:#f2a900;color:#111}}.in{{background:#52e46f;color:#071009}}.long{{background:#2f80ed;color:white}}.short{{background:#e23b3b;color:white}}.ifo-summary{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:9px 0}}.ifo-summary .rotation-box strong{{font-size:19px}}.ifo-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}.ifo-card{{background:linear-gradient(145deg,#101c2a,#081019);border:1px solid #3b6588;border-radius:10px;padding:11px;box-shadow:0 8px 22px #0007}}.ifo-head{{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;border-bottom:1px solid #35506a;padding-bottom:8px}}.ifo-head h3{{margin:0;color:#f4f7fa;font-size:16px}}.ifo-rank{{background:#ffe66d;color:#101820;font-weight:900;border-radius:6px;padding:5px 7px}}.ifo-score{{font-size:18px;color:#52e46f}}.ifo-columns{{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}}.order-box{{background:#07101a;border:1px solid #425a70;border-radius:8px;padding:9px}}.order-box>b{{display:block;color:#79c7ff;margin-bottom:7px}}.exit-order>b{{color:#58e3ae}}.order-box dl{{display:grid;grid-template-columns:minmax(88px,.9fr) 1.25fr;gap:4px 8px;margin:0}}.order-box dt{{color:#9eafbf}}.order-box dd{{margin:0;text-align:right}}.ifo-metrics{{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:8px 0}}.ifo-metrics span{{background:#182637;border-radius:5px;padding:6px;text-align:center}}.ifo-card p{{line-height:1.55;margin:6px 0}}footer{{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}}@media(max-width:800px){{header{{align-items:flex-start;flex-direction:column}}main{{grid-template-columns:1fr}}.wide{{grid-column:1}}table{{min-width:700px}}.steps,.rotation-grid,.ifo-summary,.ifo-grid,.ifo-columns{{grid-template-columns:1fr}}.ifo-metrics{{grid-template-columns:1fr 1fr}}}}</style></head><body>
 <header><div><h1>AIトレードコクピット Ver.3.3</h1><div class="sub">日本株全市場／持ち越しLONG・SHORT発動価格</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><main>
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
@@ -964,8 +1275,19 @@ def main():
 <div class="rotation-box"><b>{phase_badge(kioxia_view['status'])}　{kioxia_view['action']}</b>{kioxia_view['detail']}</div>
 <p class="warning">これは機関投資家の保有明細そのものではなく、{rotation['source_note']}です。流入初期でも発動価格を上抜かなければ見送り。参考：<a href="https://limo.media/articles/-/133222" target="_blank" rel="noopener">イズミダイズム「セクターローテーション」解説</a></p>
 </section>
+<section id="day-ifo-orders" class="card wide"><h2>②-O 8:55入力用・当日IN分散5銘柄（MS2 IFO注文票）</h2>
+<div class="ifo-summary">
+<div class="rotation-box"><b>合格銘柄</b><strong>{len(day_ifo_candidates)} / 5銘柄</strong><br>{ifo_count_note}</div>
+<div class="rotation-box"><b>注文単位</b><strong>各100株</strong><br>分割注文なし／キオクシアは対象外</div>
+<div class="rotation-box"><b>全候補が約定した場合</b><strong>建玉目安 {total_capital:,}円</strong><br>利確1合計 <span class="up">+{total_profit:,}円</span></div>
+<div class="rotation-box"><b>損失上限の目安</b><strong class="down">−{total_loss:,}円</strong><br>5銘柄が全て損切りになった場合</div>
+</div>
+<p class="warning"><b>8:55の手順：</b>気配を確認し、買い指値上限を超えていない銘柄だけ手入力します。価格を上げて追いかけず、発動しなければ注文失効で終了。コクピットから証券会社へ注文は送信しません。</p>
+<div class="ifo-grid">{ifo_cards}</div>
+<p class="warning">IFOは利確1と損切りの1組を入力します。利確2は翌日以降へ持ち越す判断をした場合の参考値です。本日中の決済注文は失効するため、15:20時点で未決済なら当日手仕舞い、または翌営業日用の決済OCOを自分で再設定してください。</p>
+</section>
 <section class="card wide"><h2>③ 当日狙い目銘柄 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1／2</th><th>発動条件・リスク</th></tr>{day_rows}</table><p class="warning">入口は指値の断定ではなく発動水準。VWAP・5分足・出来高を満たさなければ見送り。</p></section>
-<section class="card wide"><h2>④ 朝8:30候補のザラバ答え合わせ</h2><table><tr><th>会社名＋コード</th><th>朝イン</th><th>朝損切り</th><th>朝利確1／2</th><th>結果</th><th>終値・VWAP検証</th></tr>{review_rows}</table></section>
+<section class="card wide"><h2>④ 朝8:00候補のザラバ答え合わせ</h2><table><tr><th>会社名＋コード</th><th>朝イン</th><th>朝損切り</th><th>朝利確1／2</th><th>結果</th><th>終値・VWAP検証</th></tr>{review_rows}</table></section>
 <section class="card wide"><h2>⑤-A 安定上昇候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{stable_rows}</table></section>
 <section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{momentum_rows}</table><p class="warning">上向き5日線へのタッチ反発を最優先。場中の一時割れではなく終値回復を確認。終値で5日線を明確に割った場合は候補から外します。</p></section>
 <section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{high_rows}</table></section>
@@ -1052,7 +1374,9 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     dailyReversals || "<tr><td colspan='12'>本日のセリクラ反転合格銘柄なし。</td></tr>";
   const carryRows = (items, side) => (items || []).slice(0, 10).map((x, i) => {{
     const risk100 = Math.abs(x.trigger - x.stop) * 100;
-    const tick = x.trigger < 3000 ? 1 : 5;
+    const tick = x.trigger < 1000 && Math.abs(x.trigger - Math.round(x.trigger)) >= .05
+      ? .1 : x.trigger < 3000 ? 1 : x.trigger < 5000 ? 5
+      : x.trigger < 30000 ? 10 : x.trigger < 50000 ? 50 : 100;
     const entryLimit = side === "LONG" ? x.trigger + tick * 2 : x.trigger - tick * 2;
     const ifo = side === "LONG"
       ? "<b>IFO（利益確定＋損切り）</b><br>" +
@@ -1063,7 +1387,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
         "⑤ 損切り：市場価格 " + yen(x.stop) + "円以下<br>" +
         "⑥ 執行期限：当日中<br>" +
         "<small>最大損失目安 " + yen(risk100) + "円。利確2 " +
-        yen(x.target2) + "円は200株時の2本目。</small>"
+        yen(x.target2) + "円は100株注文では未入力の参考値。</small>"
       : "新規売り逆指値 " + yen(x.trigger) + "<br>利確 " +
         yen(x.target1) + "／損切 " + yen(x.stop);
     return (
