@@ -1393,7 +1393,7 @@ def main():
     phase = data["phase"]
     html = f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="900"><title>AIトレードコクピット</title>
 <style>*{{box-sizing:border-box}}body{{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}}header{{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}}h1{{margin:0;font-size:25px}}h2{{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}}h3{{color:#9fc8ff;margin:15px 0 7px}}a{{color:#70c7ff}}.sub{{color:#aebdcb;margin-top:4px}}.tag{{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}}main{{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}}.card{{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}}.wide{{grid-column:1/-1}}table{{width:100%;border-collapse:collapse}}th{{background:#1b2a39}}th,td{{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}}th:nth-child(-n+2),td:nth-child(-n+2){{text-align:left}}tr:nth-child(even) td{{background:#111923}}.up{{color:#52e46f;font-weight:900}}.down{{color:#ff6262;font-weight:900}}small{{color:#bac6d2}}.warning{{color:#ffe66d}}.steps,.rotation-grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}}.step,.rotation-box{{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}}.step b,.rotation-box b{{display:block;color:#ffe66d;font-size:15px}}.rotation-box strong{{font-size:17px;color:#f4f7fa}}.pill{{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}}.prep{{background:#f2a900;color:#111}}.in{{background:#52e46f;color:#071009}}.long{{background:#2f80ed;color:white}}.short{{background:#e23b3b;color:white}}.ifo-summary{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:9px 0}}.ifo-summary .rotation-box strong{{font-size:19px}}.ifo-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}.ifo-card{{background:linear-gradient(145deg,#101c2a,#081019);border:1px solid #3b6588;border-radius:10px;padding:11px;box-shadow:0 8px 22px #0007}}.ifo-head{{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;border-bottom:1px solid #35506a;padding-bottom:8px}}.ifo-head h3{{margin:0;color:#f4f7fa;font-size:16px}}.ifo-rank{{background:#ffe66d;color:#101820;font-weight:900;border-radius:6px;padding:5px 7px}}.ifo-score{{font-size:18px;color:#52e46f}}.ifo-columns{{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}}.order-box{{background:#07101a;border:1px solid #425a70;border-radius:8px;padding:9px}}.order-box>b{{display:block;color:#79c7ff;margin-bottom:7px}}.exit-order>b{{color:#58e3ae}}.order-box dl{{display:grid;grid-template-columns:minmax(88px,.9fr) 1.25fr;gap:4px 8px;margin:0}}.order-box dt{{color:#9eafbf}}.order-box dd{{margin:0;text-align:right}}.ifo-metrics{{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:8px 0}}.ifo-metrics span{{background:#182637;border-radius:5px;padding:6px;text-align:center}}.ifo-card p{{line-height:1.55;margin:6px 0}}footer{{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}}@media(max-width:800px){{header{{align-items:flex-start;flex-direction:column}}main{{grid-template-columns:1fr}}.wide{{grid-column:1}}table{{min-width:700px}}.steps,.rotation-grid,.ifo-summary,.ifo-grid,.ifo-columns{{grid-template-columns:1fr}}.ifo-metrics{{grid-template-columns:1fr 1fr}}}}</style></head><body>
-<header><div><h1>AIトレードコクピット Ver.3.3</h1><div class="sub">日本株全市場／持ち越しLONG・SHORT発動価格</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><main>
+<header><div><h1>AIトレードコクピット Ver.3.4</h1><div class="sub">日本株全市場／持ち越しLONG・SHORT発動価格</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><main>
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
 <section id="sector-rotation" class="card wide"><h2>②-R 機関投資家型 セクターローテーション</h2>
@@ -1438,7 +1438,11 @@ def main():
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>足</th><th>判定</th><th>期待値</th><th>終値</th><th>反発線</th><th>下ヒゲ／実体</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
 <tbody id="hammer-signals"><tr><td colspan="12">全市場を走査中...</td></tr></tbody></table>
 <p class="warning">7月月足は月末まで暫定。高値＋1ティックを翌日以降に上抜いた場合だけ発動し、ハンマーの安値割れで撤退します。</p></section>
-<section class="card wide"><h2>⑤-F 日足セリングクライマックス反転監視</h2>
+<section id="long-term-ma-rebound" class="card wide"><h2>⑤-F 長期右肩上がり・50週線／200日線反発ランキング</h2>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>型</th><th>状態</th><th>期待値</th><th>終値</th><th>支持線</th><th>線の傾斜</th><th>半年騰落</th><th>足型</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
+<tbody id="long-term-ma-signals"><tr><td colspan="14">全市場を走査中...</td></tr></tbody></table>
+<p class="warning"><b>合格条件：</b>50週線または200日線が上向き、半年のトレンドが悪化していない、支持線タッチ後に終値が線上へ回復、流動性合格。200日線型は陽線ハンマー必須。反転足高値＋1ティックを上抜いた場合だけ発動し、反転足安値割れで撤退。決算7日以内・大幅GU・低流動性は見送り。</p></section>
+<section class="card wide"><h2>⑤-G 日足セリングクライマックス反転監視</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>反転形</th><th>期待値</th><th>終値</th><th>10日下落</th><th>出来高急増</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead>
 <tbody id="daily-reversal-signals"><tr><td colspan="12">全市場を走査中...</td></tr></tbody></table>
 <p class="warning">画像のような「急落→大出来高→安値固め→陽線確認」を検出。逆張りなので、反転足高値＋1ティックを上抜くまで買いません。</p></section>
@@ -1504,6 +1508,20 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     yen(x.target1) + "／" + yen(x.target2) + "</td></tr>").join("");
   document.getElementById("hammer-signals").innerHTML =
     hammers || "<tr><td colspan='12'>厳格条件に合格した陽線ハンマー銘柄なし。</td></tr>";
+  const longTerm = (d.long_term_ma_rebounds || []).slice(0, 30).map((x, i) =>
+    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.setup +
+    "</td><td>" + x.status + "</td><td><b class='up'>" + x.score +
+    "/100</b></td><td>" + yen(x.close) + "</td><td>" + x.ma_label + " " +
+    yen(x.ma_value) + "</td><td class='" + (x.ma_slope >= 0 ? "up" : "down") +
+    "'>" + (x.ma_slope >= 0 ? "+" : "") + x.ma_slope.toFixed(2) +
+    "%</td><td class='" + (x.trend_return >= 0 ? "up" : "down") + "'>" +
+    (x.trend_return >= 0 ? "+" : "") + x.trend_return.toFixed(2) +
+    "%</td><td>" + x.candle + "</td><td>" + x.volume_ratio.toFixed(2) +
+    "倍</td><td><b>" + yen(x.trigger) + "</b></td><td class='down'>" +
+    yen(x.stop) + "</td><td>" + yen(x.target1) + "／" + yen(x.target2) +
+    "</td></tr>").join("");
+  document.getElementById("long-term-ma-signals").innerHTML =
+    longTerm || "<tr><td colspan='14'>厳格条件に合格した50週線／200日線反発銘柄なし。</td></tr>";
   const dailyReversals = (d.daily_capitulation_reversals || []).slice(0, 20).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.phase +
     "</td><td>" + x.setup + "</td><td><b class='up'>" + x.score +
@@ -1549,6 +1567,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>データ取得待ち</td></tr>";
   document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
   document.getElementById("hammer-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
+  document.getElementById("long-term-ma-signals").innerHTML = "<tr><td colspan='14'>データ取得待ち</td></tr>";
   document.getElementById("daily-reversal-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
   document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
   document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
