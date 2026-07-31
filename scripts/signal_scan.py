@@ -389,6 +389,137 @@ def hammer_row(item, frame, timeframe):
     }
 
 
+
+def long_term_rebound_row(item, frame, setup_type):
+    """長期上昇トレンドの50週線反発／日足200日線ハンマーを抽出する。"""
+    if frame is None or len(frame) < 230:
+        return None
+
+    close_s = frame["Close"].astype(float)
+    high_s = frame["High"].astype(float)
+    low_s = frame["Low"].astype(float)
+    open_s = frame["Open"].astype(float)
+    volume_s = frame["Volume"].fillna(0).astype(float)
+    close = float(close_s.iloc[-1])
+    current_turnover = close * float(volume_s.iloc[-1])
+    avg_daily_turnover = float((close_s * volume_s).tail(20).mean())
+    if close < 100 or current_turnover < 300_000_000 or avg_daily_turnover < 500_000_000:
+        return None
+
+    if setup_type == "週足50週線反発":
+        bars = resample_ohlcv(frame, "W-FRI")
+        if len(bars) < 55:
+            return None
+        closes = bars["Close"].astype(float)
+        ma_s = closes.rolling(50).mean()
+        ma_value = float(ma_s.iloc[-1])
+        ma_old = float(ma_s.iloc[-5])
+        bar = bars.iloc[-1]
+        open_, high, low, close = map(
+            float, (bar["Open"], bar["High"], bar["Low"], bar["Close"])
+        )
+        volume = float(bar["Volume"])
+        avg_volume = float(bars["Volume"].astype(float).iloc[-13:-1].mean())
+        volume_ratio = volume / avg_volume if avg_volume else 0
+        trend_return = (
+            (close / float(closes.iloc[-27]) - 1) * 100
+            if len(closes) >= 27 else 0
+        )
+        ma_slope = (ma_value / ma_old - 1) * 100 if ma_old else 0
+        candle_range = max(high - low, close * .002)
+        close_location = (close - low) / candle_range
+        body = max(abs(close - open_), close * .002)
+        lower_wick = min(open_, close) - low
+        touched = low <= ma_value * 1.03 and high >= ma_value * .97
+        reclaimed = close >= ma_value
+        bullish_reaction = close > open_ or close_location >= .68
+        trend_ok = ma_slope > 0 and trend_return >= 5
+        if not (touched and reclaimed and bullish_reaction and trend_ok):
+            return None
+        candle = "陽線反発" if close > open_ else "下ヒゲ反発"
+        score = 55
+        score += 15 if ma_slope >= 2 else 10
+        score += 12 if trend_return >= 20 else 8 if trend_return >= 10 else 4
+        score += 10 if close_location >= .75 else 6
+        score += 8 if volume_ratio >= 1.20 else 5 if volume_ratio >= .90 else 2
+        score += 5 if lower_wick >= body * 1.5 else 2
+        timeframe = "週足"
+        ma_label = "50週線"
+        provisional = pd.Timestamp(frame.index[-1]).weekday() < 4
+        status = "暫定" if provisional else "確定"
+    else:
+        ma_s = close_s.rolling(200).mean()
+        ma_value = float(ma_s.iloc[-1])
+        ma_old = float(ma_s.iloc[-21])
+        open_ = float(open_s.iloc[-1])
+        high = float(high_s.iloc[-1])
+        low = float(low_s.iloc[-1])
+        close = float(close_s.iloc[-1])
+        volume = float(volume_s.iloc[-1])
+        avg_volume = float(volume_s.iloc[-21:-1].mean())
+        volume_ratio = volume / avg_volume if avg_volume else 0
+        trend_return = (
+            (close / float(close_s.iloc[-127]) - 1) * 100
+            if len(close_s) >= 127 else 0
+        )
+        ma_slope = (ma_value / ma_old - 1) * 100 if ma_old else 0
+        body = max(abs(close - open_), close * .002)
+        lower_wick = min(open_, close) - low
+        upper_wick = high - max(open_, close)
+        candle_range = max(high - low, close * .002)
+        close_location = (close - low) / candle_range
+        hammer = (
+            close > open_
+            and lower_wick >= body * 1.8
+            and upper_wick <= body
+            and close_location >= .65
+        )
+        touched = low <= ma_value * 1.02 and high >= ma_value * .98
+        reclaimed = close >= ma_value
+        trend_ok = ma_slope > 0 and trend_return >= 0
+        if not (hammer and touched and reclaimed and trend_ok):
+            return None
+        candle = "陽線ハンマー"
+        score = 58
+        score += 15 if lower_wick >= body * 3 else 10
+        score += 12 if ma_slope >= 2 else 8
+        score += 10 if trend_return >= 20 else 6 if trend_return >= 8 else 3
+        score += 8 if volume_ratio >= 1.20 else 5 if volume_ratio >= .90 else 2
+        score += 5 if close_location >= .80 else 3
+        timeframe = "日足"
+        ma_label = "200日線"
+        status = "確定"
+
+    score = int(min(100, score))
+    if score < 70:
+        return None
+    tick = 1 if close < 3000 else 5
+    trigger = math.ceil((high + tick) / tick) * tick
+    stop = math.floor((low - tick) / tick) * tick
+    risk = max(trigger - stop, tick)
+    return {
+        "code": item["code"], "ticker": item["ticker"],
+        "name": f"{item['name']}（{item['code']}）",
+        "setup": setup_type, "timeframe": timeframe, "status": status,
+        "score": score, "close": round(close, 2),
+        "ma_label": ma_label, "ma_value": round(ma_value, 2),
+        "ma_slope": round(ma_slope, 2),
+        "trend_return": round(trend_return, 2),
+        "candle": candle, "volume_ratio": round(volume_ratio, 2),
+        "trigger": round(trigger, 2), "stop": round(stop, 2),
+        "target1": round((trigger + risk * 1.5) / tick) * tick,
+        "target2": round((trigger + risk * 2.5) / tick) * tick,
+        "signal_date": pd.Timestamp(frame.index[-1]).strftime("%Y-%m-%d"),
+        "reason": (
+            f"{setup_type}／{ma_label}傾斜{ma_slope:+.1f}%／"
+            f"半年騰落{trend_return:+.1f}%／出来高比{volume_ratio:.2f}倍"
+        ),
+        "caution": (
+            "反転足高値＋1ティックを上抜くまで買わない。"
+            "反転足安値割れで撤退。決算7日以内・大幅GUは見送り。"
+        ),
+    }
+
 def analyse_daily_reversal(item, frame):
     """急落後の出来高急増と複数足の底打ちを検出する。"""
     if frame is None or len(frame) < 65:
@@ -503,6 +634,7 @@ def main():
     results = []
     short_results = []
     hammer_results = []
+    long_term_rebounds = []
     daily_reversals = []
     failed = 0
     batch_size = 120
@@ -529,6 +661,10 @@ def main():
                     hammer = hammer_row(item, frame, timeframe)
                     if hammer:
                         hammer_results.append(hammer)
+                for setup_type in ("週足50週線反発", "日足200日線ハンマー"):
+                    rebound = long_term_rebound_row(item, frame, setup_type)
+                    if rebound:
+                        long_term_rebounds.append(rebound)
                 daily_reversal = analyse_daily_reversal(item, frame)
                 if daily_reversal:
                     daily_reversals.append(daily_reversal)
@@ -544,6 +680,10 @@ def main():
             1 if x["timeframe"] == "月足" else 0,
             x["volume_ratio"],
         ),
+        reverse=True,
+    )
+    long_term_rebounds.sort(
+        key=lambda x: (x["score"], x["setup"] == "日足200日線ハンマー", x["volume_ratio"]),
         reverse=True,
     )
     daily_reversals.sort(
@@ -579,6 +719,7 @@ def main():
         "overnight_long": overnight_long,
         "overnight_short": short_results[:15],
         "monthly_weekly_hammers": hammer_results[:40],
+        "long_term_ma_rebounds": long_term_rebounds[:50],
         "daily_capitulation_reversals": daily_reversals[:40],
         "note": "日足終値ベース。準備足高値を翌日以降に上抜いた場合のみIN。最終判断は板・出来高・会社IRで確認。"
     }
