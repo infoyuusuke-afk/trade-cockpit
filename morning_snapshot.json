@@ -1,8 +1,44 @@
 {
-  "date": "2026-07-31",
-  "fixed_at": "2026-07-31 07:55:43 JST",
+  "date": "2026-08-01",
+  "fixed_at": "2026-08-01 04:56:22 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
+    {
+      "name": "デンソー（6902）",
+      "ticker": "6902.T",
+      "side": "LONG",
+      "score": 100.0,
+      "entry": 2219,
+      "entry_limit": 2221,
+      "stop": 2182,
+      "target1": 2280,
+      "target2": 2307,
+      "morning_price": 2221
+    },
+    {
+      "name": "JR東日本（9020）",
+      "ticker": "9020.T",
+      "side": "LONG",
+      "score": 100.0,
+      "entry": 3950,
+      "entry_limit": 3960,
+      "stop": 3870,
+      "target1": 4095,
+      "target2": 4160,
+      "morning_price": 3960
+    },
+    {
+      "name": "日本郵船（9101）",
+      "ticker": "9101.T",
+      "side": "LONG",
+      "score": 84.0,
+      "entry": 6180,
+      "entry_limit": 6200,
+      "stop": 6060,
+      "target1": 6410,
+      "target2": 6510,
+      "morning_price": 6200
+    },
     {
       "name": "本田技研工業（7267）",
       "ticker": "7267.T",
@@ -26,42 +62,6 @@
       "target1": 874.9,
       "target2": 889.2,
       "morning_price": 844.5
-    },
-    {
-      "name": "日本郵船（9101）",
-      "ticker": "9101.T",
-      "side": "LONG",
-      "score": 87.0,
-      "entry": 6180,
-      "entry_limit": 6200,
-      "stop": 6060,
-      "target1": 6410,
-      "target2": 6510,
-      "morning_price": 6200
-    },
-    {
-      "name": "トヨタ自動車（7203）",
-      "ticker": "7203.T",
-      "side": "LONG",
-      "score": 97.0,
-      "entry": 3195,
-      "entry_limit": 3205,
-      "stop": 3130,
-      "target1": 3320,
-      "target2": 3370,
-      "morning_price": 3205
-    },
-    {
-      "name": "ラウンドワン（4680）",
-      "ticker": "4680.T",
-      "side": "LONG",
-      "score": 79.0,
-      "entry": 1278,
-      "entry_limit": 1280,
-      "stop": 1233,
-      "target1": 1350,
-      "target2": 1383,
-      "morning_price": 1280
     }
   ]
 }
