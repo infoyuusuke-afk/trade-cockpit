@@ -1,10 +1,42 @@
 {
-  "updated_at": "2026-08-01 16:44:22 JST",
+  "updated_at": "2026-08-01 16:59:49 JST",
   "phase": "大引け検証15:35版",
   "session": "close",
   "indices": {
     "日経平均": {
-      "ok": false
+      "ok": true,
+      "price": 64362.02,
+      "open": 61957.1,
+      "high": 65364.73,
+      "low": 61948.23,
+      "prev_close": 61867.43,
+      "change_pct": 4.03,
+      "ret5": -0.39,
+      "ret5_prev": -3.33,
+      "ret20": -6.36,
+      "rvol": 1.36,
+      "turnover": 14700285260938,
+      "atr14": 2172.63,
+      "atr_pct": 3.38,
+      "ma5": 62991.95,
+      "ma20": 66195.75,
+      "ma60": 66236.55,
+      "from_ma5": 2.17,
+      "from_ma20": -2.77,
+      "touch_ma5": true,
+      "to_high20": -8.56,
+      "to_high52": -11.63,
+      "bb_upper": 71012.74,
+      "bb_lower": 61378.76,
+      "bb_width": 14.55,
+      "bb_width_change": 2.13,
+      "bb_percentile": 71.7,
+      "bb_expansion_score": 19.0,
+      "day_score": 8.1,
+      "swing_score": -3.37,
+      "stable_score": 3.46,
+      "momentum_score": 7.82,
+      "high_score": 4.03
     },
     "TOPIX": {
       "ok": true,
@@ -4454,146 +4486,6 @@
   },
   "earnings_candidates": [
     {
-      "name": "日本郵船（9101）",
-      "date": "2026-08-05",
-      "price": 6110.0,
-      "plan": {
-        "entry": 6100,
-        "stop": 6020,
-        "target1": 6210,
-        "target2": 6270,
-        "risk": 80,
-        "tick": 10
-      },
-      "source": "JPX",
-      "expectation_score": 89,
-      "raw_expectation_score": 93,
-      "hurdle_risk": 15,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 93/100／コンセンサス警戒 15/100（−4.2点）",
-      "technical_score": 93
-    },
-    {
-      "name": "ソニーグループ（6758）",
-      "date": "2026-07-31",
-      "price": 3787.0,
-      "plan": {
-        "entry": 3805,
-        "stop": 3745,
-        "target1": 3895,
-        "target2": 3940,
-        "risk": 60,
-        "tick": 5
-      },
-      "source": "JPX",
-      "expectation_score": 84,
-      "raw_expectation_score": 88,
-      "hurdle_risk": 15,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 88/100／コンセンサス警戒 15/100（−4.2点）",
-      "technical_score": 88
-    },
-    {
-      "name": "KDDI（9433）",
-      "date": "2026-08-07",
-      "price": 2921.0,
-      "plan": {
-        "entry": 2920,
-        "stop": 2881,
-        "target1": 2979,
-        "target2": 3006,
-        "risk": 39,
-        "tick": 1
-      },
-      "source": "JPX",
-      "expectation_score": 69,
-      "raw_expectation_score": 71,
-      "hurdle_risk": 8,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 71/100／コンセンサス警戒 8/100（−2.2点）",
-      "technical_score": 71
-    },
-    {
-      "name": "ソフトバンク（9434）",
-      "date": "2026-08-04",
-      "price": 223.4,
-      "plan": {
-        "entry": 222.5,
-        "stop": 219.6,
-        "target1": 226.8,
-        "target2": 228.9,
-        "risk": 2.9,
-        "tick": 0.1
-      },
-      "source": "JPX",
-      "expectation_score": 66,
-      "raw_expectation_score": 68,
-      "hurdle_risk": 8,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 68/100／コンセンサス警戒 8/100（−2.2点）",
-      "technical_score": 68
-    },
-    {
-      "name": "任天堂（7974）",
-      "date": "2026-08-06",
-      "price": 7679.0,
-      "plan": {
-        "entry": 7680,
-        "stop": 7530,
-        "target1": 7900,
-        "target2": 8000,
-        "risk": 150,
-        "tick": 10
-      },
-      "source": "JPX",
-      "expectation_score": 65,
-      "raw_expectation_score": 67,
-      "hurdle_risk": 8,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 67/100／コンセンサス警戒 8/100（−2.2点）",
-      "technical_score": 67
-    },
-    {
-      "name": "NTT（9432）",
-      "date": "2026-08-06",
-      "price": 152.4,
-      "plan": {
-        "entry": 152.4,
-        "stop": 150.8,
-        "target1": 154.8,
-        "target2": 156.0,
-        "risk": 1.6,
-        "tick": 0.1
-      },
-      "source": "JPX",
-      "expectation_score": 65,
-      "raw_expectation_score": 67,
-      "hurdle_risk": 8,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 67/100／コンセンサス警戒 8/100（−2.2点）",
-      "technical_score": 67
-    },
-    {
-      "name": "INPEX（1605）",
-      "date": "2026-08-07",
-      "price": 3627.0,
-      "plan": {
-        "entry": 3615,
-        "stop": 3565,
-        "target1": 3695,
-        "target2": 3735,
-        "risk": 55,
-        "tick": 5
-      },
-      "source": "JPX",
-      "expectation_score": 65,
-      "raw_expectation_score": 67,
-      "hurdle_risk": 8,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 67/100／コンセンサス警戒 8/100（−2.2点）",
-      "technical_score": 67
-    },
-    {
       "name": "トヨタ自動車（7203）",
       "date": "2026-08-04",
       "price": 3067.0,
@@ -4606,31 +4498,11 @@
         "tick": 5
       },
       "source": "JPX",
-      "expectation_score": 64,
-      "raw_expectation_score": 64,
-      "hurdle_risk": 0,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 64/100／コンセンサス警戒 0/100（−0.0点）",
-      "technical_score": 64
-    },
-    {
-      "name": "リクルートHD（6098）",
-      "date": "2026-08-07",
-      "price": 12550.0,
-      "plan": {
-        "entry": 12520,
-        "stop": 12260,
-        "target1": 12890,
-        "target2": 13070,
-        "risk": 250,
-        "tick": 10
-      },
-      "source": "JPX",
-      "expectation_score": 64,
-      "raw_expectation_score": 64,
-      "hurdle_risk": 0,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 64/100／コンセンサス警戒 0/100（−0.0点）",
+      "expectation_score": 77,
+      "raw_expectation_score": 80,
+      "hurdle_risk": 10,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +27.1%／EPS予想幅 2.7%／予想売上成長 +5.9%／過去4回サプライズ平均 +28.3%／予想修正 上3／下0／決算前テクニカル 64/100／コンセンサス警戒 10/100（−2.8点）",
       "technical_score": 64
     },
     {
@@ -4646,12 +4518,52 @@
         "tick": 5
       },
       "source": "JPX",
-      "expectation_score": 63,
-      "raw_expectation_score": 63,
-      "hurdle_risk": 0,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 63/100／コンセンサス警戒 0/100（−0.0点）",
+      "expectation_score": 75,
+      "raw_expectation_score": 85,
+      "hurdle_risk": 35,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +32.8%／EPS予想幅 31.6%／予想売上成長 +22.1%／過去4回サプライズ平均 +25.2%／予想修正 上3／下0／決算前テクニカル 63/100／コンセンサス警戒 35/100（−9.8点）",
       "technical_score": 63
+    },
+    {
+      "name": "リクルートHD（6098）",
+      "date": "2026-08-07",
+      "price": 12550.0,
+      "plan": {
+        "entry": 12520,
+        "stop": 12260,
+        "target1": 12890,
+        "target2": 13070,
+        "risk": 250,
+        "tick": 10
+      },
+      "source": "JPX",
+      "expectation_score": 75,
+      "raw_expectation_score": 81,
+      "hurdle_risk": 20,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +30.5%／EPS予想幅 11.4%／予想売上成長 +12.1%／過去4回サプライズ平均 +8.4%／予想修正 上2／下0／決算前テクニカル 64/100／コンセンサス警戒 20/100（−5.6点）",
+      "technical_score": 64
+    },
+    {
+      "name": "住友電気工業（5802）",
+      "date": "2026-07-31",
+      "price": 2184.0,
+      "plan": {
+        "entry": 2189,
+        "stop": 2097,
+        "target1": 2328,
+        "target2": 2392,
+        "risk": 92,
+        "tick": 1
+      },
+      "source": "JPX",
+      "expectation_score": 74,
+      "raw_expectation_score": 79,
+      "hurdle_risk": 18,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +35.3%／EPS予想幅 1.5%／予想売上成長 +4.6%／過去4回サプライズ平均 +26.5%／予想修正 上2／下0／決算前テクニカル 43/100／コンセンサス警戒 18/100（−5.0点）",
+      "technical_score": 43
     },
     {
       "name": "三菱電機（6503）",
@@ -4666,52 +4578,32 @@
         "tick": 10
       },
       "source": "JPX",
-      "expectation_score": 60,
-      "raw_expectation_score": 60,
-      "hurdle_risk": 0,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 60/100／コンセンサス警戒 0/100（−0.0点）",
+      "expectation_score": 74,
+      "raw_expectation_score": 78,
+      "hurdle_risk": 15,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +21.1%／EPS予想幅 9.1%／予想売上成長 +6.9%／過去4回サプライズ平均 +22.1%／予想修正 上2／下0／決算前テクニカル 60/100／コンセンサス警戒 15/100（−4.2点）",
       "technical_score": 60
     },
     {
-      "name": "JR東日本（9020）",
-      "date": "2026-07-31",
-      "price": 3676.0,
+      "name": "IHI（7013）",
+      "date": "2026-08-05",
+      "price": 2827.5,
       "plan": {
-        "entry": 3660,
-        "stop": 3605,
-        "target1": 3745,
-        "target2": 3785,
-        "risk": 55,
-        "tick": 5
+        "entry": 2842,
+        "stop": 2775,
+        "target1": 2942,
+        "target2": 2989,
+        "risk": 67,
+        "tick": 1
       },
       "source": "JPX",
-      "expectation_score": 59,
-      "raw_expectation_score": 59,
-      "hurdle_risk": 0,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 59/100／コンセンサス警戒 0/100（−0.0点）",
-      "technical_score": 59
-    },
-    {
-      "name": "三菱商事（8058）",
-      "date": "2026-08-03",
-      "price": 4776.0,
-      "plan": {
-        "entry": 4785,
-        "stop": 4715,
-        "target1": 4895,
-        "target2": 4950,
-        "risk": 75,
-        "tick": 5
-      },
-      "source": "JPX",
-      "expectation_score": 59,
-      "raw_expectation_score": 59,
-      "hurdle_risk": 0,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 59/100／コンセンサス警戒 0/100（−0.0点）",
-      "technical_score": 59
+      "expectation_score": 70,
+      "raw_expectation_score": 77,
+      "hurdle_risk": 25,
+      "score_coverage": 85,
+      "score_detail": "予想EPS成長 +256.7%／EPS予想幅 0.0%／予想売上成長 +9.4%／過去4回サプライズ平均 +44.4%／決算前テクニカル 38/100／コンセンサス警戒 25/100（−7.0点）",
+      "technical_score": 38
     },
     {
       "name": "ファナック（6954）",
@@ -4726,32 +4618,172 @@
         "tick": 10
       },
       "source": "JPX",
-      "expectation_score": 58,
-      "raw_expectation_score": 58,
-      "hurdle_risk": 0,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 58/100／コンセンサス警戒 0/100（−0.0点）",
+      "expectation_score": 68,
+      "raw_expectation_score": 73,
+      "hurdle_risk": 17,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +20.0%／EPS予想幅 10.1%／予想売上成長 +11.7%／過去4回サプライズ平均 +4.2%／予想修正 上3／下0／決算前テクニカル 58/100／コンセンサス警戒 17/100（−4.8点）",
       "technical_score": 58
     },
     {
-      "name": "三井住友FG（8316）",
-      "date": "2026-07-31",
-      "price": 6814.0,
+      "name": "川崎重工業（7012）",
+      "date": "2026-08-07",
+      "price": 2763.0,
       "plan": {
-        "entry": 6850,
-        "stop": 6740,
-        "target1": 7030,
-        "target2": 7110,
-        "risk": 120,
-        "tick": 10
+        "entry": 2767,
+        "stop": 2704,
+        "target1": 2861,
+        "target2": 2905,
+        "risk": 63,
+        "tick": 1
       },
       "source": "JPX",
-      "expectation_score": 52,
-      "raw_expectation_score": 52,
-      "hurdle_risk": 0,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 52/100／コンセンサス警戒 0/100（−0.0点）",
-      "technical_score": 52
+      "expectation_score": 68,
+      "raw_expectation_score": 78,
+      "hurdle_risk": 35,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +335.3%／EPS予想幅 15.8%／予想売上成長 +9.2%／過去4回サプライズ平均 +19.4%／予想修正 上2／下0／決算前テクニカル 43/100／コンセンサス警戒 35/100（−9.8点）",
+      "technical_score": 43
+    },
+    {
+      "name": "古河電気工業（5801）",
+      "date": "2026-08-06",
+      "price": 3145.0,
+      "plan": {
+        "entry": 3135,
+        "stop": 2970,
+        "target1": 3385,
+        "target2": 3500,
+        "risk": 165,
+        "tick": 5
+      },
+      "source": "JPX",
+      "expectation_score": 67,
+      "raw_expectation_score": 79,
+      "hurdle_risk": 45,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +231.7%／EPS予想幅 29.8%／予想売上成長 +13.0%／過去4回サプライズ平均 +45.1%／予想修正 上1／下0／決算前テクニカル 28/100／コンセンサス警戒 45/100（−12.6点）",
+      "technical_score": 28
+    },
+    {
+      "name": "フジクラ（5803）",
+      "date": "2026-08-07",
+      "price": 4172.0,
+      "plan": {
+        "entry": 4165,
+        "stop": 3960,
+        "target1": 4475,
+        "target2": 4620,
+        "risk": 205,
+        "tick": 5
+      },
+      "source": "JPX",
+      "expectation_score": 67,
+      "raw_expectation_score": 78,
+      "hurdle_risk": 40,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +98.9%／EPS予想幅 0.3%／予想売上成長 +31.3%／過去4回サプライズ平均 +7.2%／予想修正 上4／下0／決算前テクニカル 41/100／コンセンサス警戒 40/100（−11.2点）",
+      "technical_score": 41
+    },
+    {
+      "name": "TDK（6762）",
+      "date": "2026-07-31",
+      "price": 3008.0,
+      "plan": {
+        "entry": 3025,
+        "stop": 2930,
+        "target1": 3165,
+        "target2": 3230,
+        "risk": 95,
+        "tick": 5
+      },
+      "source": "JPX",
+      "expectation_score": 65,
+      "raw_expectation_score": 69,
+      "hurdle_risk": 15,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +11.8%／EPS予想幅 26.3%／予想売上成長 +7.3%／過去4回サプライズ平均 +7.7%／予想修正 上4／下0／決算前テクニカル 39/100／コンセンサス警戒 15/100（−4.2点）",
+      "technical_score": 39
+    },
+    {
+      "name": "三菱商事（8058）",
+      "date": "2026-08-03",
+      "price": 4776.0,
+      "plan": {
+        "entry": 4785,
+        "stop": 4715,
+        "target1": 4895,
+        "target2": 4950,
+        "risk": 75,
+        "tick": 5
+      },
+      "source": "JPX",
+      "expectation_score": 65,
+      "raw_expectation_score": 72,
+      "hurdle_risk": 25,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +52.3%／EPS予想幅 0.0%／予想売上成長 +2.0%／過去4回サプライズ平均 +5.5%／予想修正 上2／下0／決算前テクニカル 59/100／コンセンサス警戒 25/100（−7.0点）",
+      "technical_score": 59
+    },
+    {
+      "name": "ローム（6963）",
+      "date": "2026-08-05",
+      "price": 4331.0,
+      "plan": {
+        "entry": 4335,
+        "stop": 4130,
+        "target1": 4640,
+        "target2": 4785,
+        "risk": 205,
+        "tick": 5
+      },
+      "source": "JPX",
+      "expectation_score": 63,
+      "raw_expectation_score": 75,
+      "hurdle_risk": 40,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +119.6%／EPS予想幅 16.9%／予想売上成長 +11.1%／過去4回サプライズ平均 +7.5%／予想修正 上2／下0／決算前テクニカル 39/100／コンセンサス警戒 40/100（−11.2点）",
+      "technical_score": 39
+    },
+    {
+      "name": "三菱重工業（7011）",
+      "date": "2026-08-04",
+      "price": 3764.0,
+      "plan": {
+        "entry": 3775,
+        "stop": 3710,
+        "target1": 3880,
+        "target2": 3930,
+        "risk": 70,
+        "tick": 5
+      },
+      "source": "JPX",
+      "expectation_score": 61,
+      "raw_expectation_score": 66,
+      "hurdle_risk": 18,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 +17.8%／EPS予想幅 15.1%／予想売上成長 -3.4%／過去4回サプライズ平均 +16.8%／予想修正 上1／下1／決算前テクニカル 37/100／コンセンサス警戒 18/100（−5.0点）",
+      "technical_score": 37
+    },
+    {
+      "name": "NTT（9432）",
+      "date": "2026-08-06",
+      "price": 152.4,
+      "plan": {
+        "entry": 152.4,
+        "stop": 150.8,
+        "target1": 154.8,
+        "target2": 156.0,
+        "risk": 1.6,
+        "tick": 0.1
+      },
+      "source": "JPX",
+      "expectation_score": 53,
+      "raw_expectation_score": 59,
+      "hurdle_risk": 20,
+      "score_coverage": 85,
+      "score_detail": "予想EPS成長 -2.4%／EPS予想幅 7.5%／予想売上成長 +6.8%／過去4回サプライズ平均 +1.1%／決算前テクニカル 67/100／コンセンサス警戒 20/100（−5.6点）",
+      "technical_score": 67
     }
   ],
   "themes": [
