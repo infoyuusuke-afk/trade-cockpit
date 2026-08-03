@@ -1,67 +1,67 @@
 {
-  "date": "2026-08-01",
-  "fixed_at": "2026-08-01 05:02:44 JST",
+  "date": "2026-08-04",
+  "fixed_at": "2026-08-04 01:14:04 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
-      "name": "デンソー（6902）",
-      "ticker": "6902.T",
+      "name": "日立製作所（6501）",
+      "ticker": "6501.T",
       "side": "LONG",
-      "score": 100.0,
-      "entry": 2219,
-      "entry_limit": 2221,
-      "stop": 2182,
-      "target1": 2280,
-      "target2": 2307,
-      "morning_price": 2221
+      "score": 98.0,
+      "entry": 5370,
+      "entry_limit": 5390,
+      "stop": 5240,
+      "target1": 5620,
+      "target2": 5720,
+      "morning_price": 5390
     },
     {
-      "name": "JR東日本（9020）",
-      "ticker": "9020.T",
+      "name": "ソニーグループ（6758）",
+      "ticker": "6758.T",
       "side": "LONG",
-      "score": 100.0,
-      "entry": 3950,
-      "entry_limit": 3960,
-      "stop": 3870,
-      "target1": 4095,
-      "target2": 4160,
-      "morning_price": 3960
-    },
-    {
-      "name": "日本郵船（9101）",
-      "ticker": "9101.T",
-      "side": "LONG",
-      "score": 84.0,
-      "entry": 6180,
-      "entry_limit": 6200,
-      "stop": 6060,
-      "target1": 6410,
-      "target2": 6510,
-      "morning_price": 6200
+      "score": 98.0,
+      "entry": 3970,
+      "entry_limit": 3980,
+      "stop": 3880,
+      "target1": 4130,
+      "target2": 4200,
+      "morning_price": 3980
     },
     {
       "name": "本田技研工業（7267）",
       "ticker": "7267.T",
       "side": "LONG",
-      "score": 100.0,
-      "entry": 1689,
-      "entry_limit": 1691,
-      "stop": 1654,
-      "target1": 1746,
-      "target2": 1772,
-      "morning_price": 1691
+      "score": 95.0,
+      "entry": 1647,
+      "entry_limit": 1649,
+      "stop": 1610,
+      "target1": 1708,
+      "target2": 1735,
+      "morning_price": 1649
     },
     {
       "name": "楽天グループ（4755）",
       "ticker": "4755.T",
       "side": "LONG",
-      "score": 94.0,
-      "entry": 844.3,
-      "entry_limit": 844.5,
-      "stop": 824.2,
-      "target1": 874.9,
-      "target2": 889.2,
-      "morning_price": 844.5
+      "score": 93.0,
+      "entry": 837.2,
+      "entry_limit": 837.4,
+      "stop": 818.0,
+      "target1": 866.5,
+      "target2": 880.1,
+      "morning_price": 837.4
+    },
+    {
+      "name": "キヤノン（7751）",
+      "ticker": "7751.T",
+      "side": "LONG",
+      "score": 90.0,
+      "entry": 4555,
+      "entry_limit": 4565,
+      "stop": 4450,
+      "target1": 4740,
+      "target2": 4820,
+      "morning_price": 4565
     }
   ]
 }
