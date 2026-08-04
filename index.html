@@ -38,7 +38,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 </script>
 <!-- COCKPIT_TABS_END -->
 </head><body>
-<header><div><h1>AIトレードコクピット Ver.3.5</h1><div class="sub">日本株全市場／持ち越しLONG・SHORT発動価格</div></div><div><span class="tag">大引け検証15:35版</span><div class="sub">2026-08-04 22:20:44 JST／日経想定 61,851 ～ 66,064円</div></div></header><main>
+<header><div><h1>AIトレードコクピット Ver.3.5</h1><div class="sub">日本株全市場／持ち越しLONG・SHORT発動価格</div></div><div><span class="tag">大引け検証15:35版</span><div class="sub">2026-08-04 22:20:44 JST／日経想定 61,851 ～ 66,064円</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;today&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr><tr><td>日経平均</td><td>63,957.5</td><td class='up'>+0.32%</td><td>上向き</td></tr><tr><td>TOPIX</td><td>412.4</td><td class='up'>+0.15%</td><td>横ばい</td></tr><tr><td>NASDAQ</td><td>25,913.9</td><td class='up'>+2.13%</td><td>上向き</td></tr><tr><td>S&P500</td><td>7,600.5</td><td class='up'>+1.48%</td><td>上向き</td></tr><tr><td>SOX</td><td>11,430.4</td><td class='up'>+1.05%</td><td>上向き</td></tr><tr><td>VIX</td><td>15.6</td><td class='down'>-1.77%</td><td>下向き</td></tr><tr><td>ドル円</td><td>157.4</td><td class='down'>-0.09%</td><td>横ばい</td></tr><tr><td>米10年金利</td><td>4.7</td><td class='down'>-0.49%</td><td>下向き</td></tr></table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr><tr><td>1</td><td>蓄電池・電力</td><td class='up'>+10.8</td><td>パワーエックス（485A） <small>強度+10.8／+10.71%</small></td><td>1銘柄の実測平均</td></tr><tr><td>2</td><td>防衛・重工</td><td class='up'>+10.2</td><td>三菱重工業（7011） <small>強度+13.1／+7.69%</small><br>川崎重工業（7012） <small>強度+9.8／+4.60%</small><br>IHI（7013） <small>強度+9.5／+3.92%</small></td><td>4銘柄の実測平均</td></tr><tr><td>3</td><td>FA・ヘルスケア</td><td class='up'>+10.2</td><td>オムロン（6645） <small>強度+10.2／+3.32%</small></td><td>1銘柄の実測平均</td></tr><tr><td>4</td><td>電線・データセンター</td><td class='up'>+9.9</td><td>古河電気工業（5801） <small>強度+11.5／+11.44%</small><br>フジクラ（5803） <small>強度+10.9／+7.88%</small><br>住友電気工業（5802） <small>強度+7.2／+4.80%</small></td><td>3銘柄の実測平均</td></tr><tr><td>5</td><td>FA・高値がさ</td><td class='up'>+9.7</td><td>キーエンス（6861） <small>強度+9.7／+2.84%</small></td><td>1銘柄の実測平均</td></tr></table></section>
 <section id="sector-rotation" class="card wide"><h2>②-R 機関投資家型 セクターローテーション</h2>
@@ -357,7 +357,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <!-- WEEKLY_REVIEW_END -->
 
 <section id="tv-watchlist-export" class="card wide">
-  <h2>⑤-X TradingView監視リスト出力</h2>
+  <h2>TradingView監視リスト出力</h2>
   <p>AIコクピットの候補を、TradingViewへ読み込めるTXT形式で保存します。空の候補や重複銘柄は自動で除外します。</p>
   <div style="display:flex;flex-wrap:wrap;gap:10px;margin:14px 0">
     <button id="tv-day" type="button" style="padding:11px 16px;border:0;border-radius:9px;background:#00b894;color:#fff;font-weight:700;cursor:pointer">当日IN・準備を保存</button>
