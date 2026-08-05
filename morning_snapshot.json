@@ -1,67 +1,67 @@
 {
-  "date": "2026-08-05",
-  "fixed_at": "2026-08-05 07:55:08 JST",
+  "date": "2026-08-06",
+  "fixed_at": "2026-08-06 07:57:19 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
+    {
+      "name": "ソフトバンク（9434）",
+      "ticker": "9434.T",
+      "side": "LONG",
+      "score": 100.0,
+      "entry": 232.0,
+      "entry_limit": 232.2,
+      "stop": 227.1,
+      "target1": 239.8,
+      "target2": 243.4,
+      "morning_price": 232.2
+    },
     {
       "name": "日立製作所（6501）",
       "ticker": "6501.T",
       "side": "LONG",
       "score": 100.0,
-      "entry": 5540,
-      "entry_limit": 5560,
-      "stop": 5400,
-      "target1": 5800,
-      "target2": 5910,
-      "morning_price": 5560
+      "entry": 5510,
+      "entry_limit": 5530,
+      "stop": 5360,
+      "target1": 5780,
+      "target2": 5900,
+      "morning_price": 5530
     },
     {
       "name": "パナソニックHD（6752）",
       "ticker": "6752.T",
       "side": "LONG",
-      "score": 85.0,
-      "entry": 4330,
-      "entry_limit": 4340,
-      "stop": 4130,
-      "target1": 4655,
-      "target2": 4800,
-      "morning_price": 4340
+      "score": 97.0,
+      "entry": 4545,
+      "entry_limit": 4555,
+      "stop": 4360,
+      "target1": 4850,
+      "target2": 4985,
+      "morning_price": 4555
     },
     {
-      "name": "京セラ（6971）",
-      "ticker": "6971.T",
+      "name": "フューチャー（4722）",
+      "ticker": "4722.T",
       "side": "LONG",
-      "score": 84.0,
-      "entry": 3745,
-      "entry_limit": 3755,
-      "stop": 3610,
-      "target1": 3970,
-      "target2": 4075,
-      "morning_price": 3755
+      "score": 98.0,
+      "entry": 2449,
+      "entry_limit": 2451,
+      "stop": 2436,
+      "target1": 2474,
+      "target2": 2484,
+      "morning_price": 2451
     },
     {
-      "name": "三菱重工業（7011）",
-      "ticker": "7011.T",
+      "name": "オムロン（6645）",
+      "ticker": "6645.T",
       "side": "LONG",
-      "score": 96.0,
-      "entry": 4160,
-      "entry_limit": 4170,
-      "stop": 4030,
-      "target1": 4380,
-      "target2": 4480,
-      "morning_price": 4170
-    },
-    {
-      "name": "NEC（6701）",
-      "ticker": "6701.T",
-      "side": "LONG",
-      "score": 81.0,
-      "entry": 4825,
-      "entry_limit": 4835,
-      "stop": 4645,
-      "target1": 5120,
-      "target2": 5255,
-      "morning_price": 4835
+      "score": 98.0,
+      "entry": 5940,
+      "entry_limit": 5960,
+      "stop": 5710,
+      "target1": 6340,
+      "target2": 6510,
+      "morning_price": 5960
     }
   ]
 }
