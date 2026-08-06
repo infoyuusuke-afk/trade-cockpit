@@ -364,7 +364,20 @@ document.addEventListener("DOMContentLoaded",()=>{
   </div>
 </section>
 <!-- WEEKLY_REVIEW_END -->
-</main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>2026-08-06 22:11:45 JST</span></footer>
+</main><!-- MARKET_ALARM_ASTROLOGY_DIRECT_V1 -->
+<section class="card wide" id="market-alarm"><h2>⚠ 市場警戒シグナル</h2>
+<div class="rotation-grid">
+<div class="rotation-box"><b>ヒンデンブルグ・オーメン</b><strong class="warning">未確認（データ更新待ち）</strong><br>点灯を断定せず、NYSE騰落・新高値/新安値・指数条件を確認後に更新します。</div>
+<div class="rotation-box"><b>運用ルール</b><strong>売買点数には加算しない</strong><br>点灯時も即売りではなく、VIX・空売り比率・指数トレンドと合わせて警戒度を上げます。</div>
+</div></section>
+<section class="card wide" id="fortune-panel"><h2>🔮 本格占い・心理コンディション（売買点数とは完全分離）</h2>
+<div class="rotation-grid">
+<div class="rotation-box"><b>出生情報</b><strong>1971年12月12日／愛知県豊橋市</strong><br>出生時刻は「深夜」のため、時刻依存項目は暫定判定です。</div>
+<div class="rotation-box"><b>本日の行動テーマ</b><strong>確認を一つ増やす日</strong><br>寄り直後の衝動注文を避け、OR15・VWAP・前足実体抜けの一致を待ちます。</div>
+<div class="rotation-box"><b>心理チェック</b><strong>損失の取り返しを目的にしない</strong><br>占いは気分と行動管理専用。銘柄選定・期待値・売買GO判定には使いません。</div>
+<div class="rotation-box"><b>開運ルール</b><strong>注文前に数量・損切り・利確を声出し確認</strong><br>条件未達は見送り。見送れたら成功として記録します。</div>
+</div></section>
+<footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>2026-08-06 22:11:45 JST</span></footer>
 <script>
 const yen = v => Number(v).toLocaleString("ja-JP");
 const tvRows = items => (items || []).map(x => x && x.code ? "TSE:" + String(x.code).toUpperCase() : "").filter(Boolean);
