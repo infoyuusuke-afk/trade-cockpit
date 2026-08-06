@@ -1,67 +1,67 @@
 {
-  "date": "2026-08-06",
-  "fixed_at": "2026-08-06 07:57:19 JST",
+  "date": "2026-08-07",
+  "fixed_at": "2026-08-07 08:07:53 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
-    {
-      "name": "ソフトバンク（9434）",
-      "ticker": "9434.T",
-      "side": "LONG",
-      "score": 100.0,
-      "entry": 232.0,
-      "entry_limit": 232.2,
-      "stop": 227.1,
-      "target1": 239.8,
-      "target2": 243.4,
-      "morning_price": 232.2
-    },
     {
       "name": "日立製作所（6501）",
       "ticker": "6501.T",
       "side": "LONG",
       "score": 100.0,
-      "entry": 5510,
-      "entry_limit": 5530,
-      "stop": 5360,
-      "target1": 5780,
-      "target2": 5900,
-      "morning_price": 5530
+      "entry": 5600,
+      "entry_limit": 5620,
+      "stop": 5450,
+      "target1": 5880,
+      "target2": 5990,
+      "morning_price": 5620
+    },
+    {
+      "name": "ソフトバンク（9434）",
+      "ticker": "9434.T",
+      "side": "LONG",
+      "score": 95.0,
+      "entry": 229.6,
+      "entry_limit": 229.8,
+      "stop": 224.8,
+      "target1": 237.3,
+      "target2": 240.8,
+      "morning_price": 229.8
     },
     {
       "name": "パナソニックHD（6752）",
       "ticker": "6752.T",
       "side": "LONG",
-      "score": 97.0,
-      "entry": 4545,
-      "entry_limit": 4555,
-      "stop": 4360,
-      "target1": 4850,
-      "target2": 4985,
-      "morning_price": 4555
+      "score": 94.0,
+      "entry": 4530,
+      "entry_limit": 4540,
+      "stop": 4320,
+      "target1": 4870,
+      "target2": 5025,
+      "morning_price": 4540
     },
     {
-      "name": "フューチャー（4722）",
-      "ticker": "4722.T",
+      "name": "小松製作所（6301）",
+      "ticker": "6301.T",
       "side": "LONG",
-      "score": 98.0,
-      "entry": 2449,
-      "entry_limit": 2451,
-      "stop": 2436,
-      "target1": 2474,
-      "target2": 2484,
-      "morning_price": 2451
+      "score": 100.0,
+      "entry": 7410,
+      "entry_limit": 7430,
+      "stop": 7170,
+      "target1": 7820,
+      "target2": 8000,
+      "morning_price": 7430
     },
     {
-      "name": "オムロン（6645）",
-      "ticker": "6645.T",
+      "name": "京セラ（6971）",
+      "ticker": "6971.T",
       "side": "LONG",
-      "score": 98.0,
-      "entry": 5940,
-      "entry_limit": 5960,
-      "stop": 5710,
-      "target1": 6340,
-      "target2": 6510,
-      "morning_price": 5960
+      "score": 93.0,
+      "entry": 3885,
+      "entry_limit": 3895,
+      "stop": 3750,
+      "target1": 4110,
+      "target2": 4215,
+      "morning_price": 3895
     }
   ]
 }
