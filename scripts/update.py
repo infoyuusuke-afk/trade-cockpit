@@ -1,4 +1,5 @@
 import json
+import math
 import re
 from datetime import datetime
 from io import BytesIO
@@ -1387,6 +1388,41 @@ def main():
         f"<td>{x.get('detail','—')}</td></tr>" for x in reviews
     ) or "<tr><td colspan='6'>朝版の同日スナップショットなし。次回8:00版から自動検証します。</td></tr>"
 
+    # Personal astrology is intentionally separated from the trading score.
+    # Birth time is only known as "late night", so ascendant/houses remain unconfirmed.
+    today_jst = datetime.now(JST).date()
+    birth_date = datetime(1971, 12, 12, tzinfo=JST).date()
+    lived_days = (today_jst - birth_date).days
+    bio_p = round(math.sin(2 * math.pi * lived_days / 23) * 100)
+    bio_e = round(math.sin(2 * math.pi * lived_days / 28) * 100)
+    bio_i = round(math.sin(2 * math.pi * lived_days / 33) * 100)
+    personal_day_raw = sum(int(c) for c in f"{today_jst.year}{today_jst.month}{today_jst.day}") + 1 + 2 + 1 + 2
+    while personal_day_raw > 9:
+        personal_day_raw = sum(int(c) for c in str(personal_day_raw))
+    fortune_score = max(0, min(100, round(50 + bio_p * .15 + bio_e * .10 + bio_i * .10)))
+    fortune_action = (
+        "強気になりやすい日。利益を伸ばすより、決めた損切りを守る。"
+        if fortune_score >= 65 else
+        "平常運。普段の株数とルールを変えない。"
+        if fortune_score >= 45 else
+        "判断がぶれやすい日。発注前の指差し確認を1回増やす。"
+    )
+    fortune_html = f"""
+<section class="card wide"><h2>🔮 本格占い・行動管理（売買AI点数とは完全分離）</h2>
+<div class="grid3">
+<div><b>本日の運勢 {fortune_score}/100</b><br>個人日数秘：{personal_day_raw}<br>太陽星座：射手座</div>
+<div><b>バイオリズム</b><br>身体 {bio_p:+d}／感情 {bio_e:+d}／知性 {bio_i:+d}</div>
+<div><b>今日の行動ルール</b><br>{fortune_action}</div>
+</div>
+<p class="warning">1971年12月12日・愛知県豊橋市・深夜生まれで暫定計算。正確な出生時刻が不明なため、ASC・ハウスは未確定です。娯楽・心理管理用で、銘柄順位や売買期待値には加点しません。</p></section>
+"""
+    hindenburg_html = """
+<section class="card wide"><h2>🚨 市場警報</h2>
+<table><tr><th>警報</th><th>状態</th><th>確認日</th><th>扱い</th></tr>
+<tr><td>ヒンデンブルグ・オーメン</td><td><b class="up">OFF（直近確認）</b></td><td>2026-08-05</td><td>本日分は未確認。古いOFFを安全宣言として使わない。</td></tr></table>
+<p class="warning">点灯時も暴落確定ではありません。新高値・新安値、騰落、指数トレンドの複合警報として、株数を落とす判断にだけ使います。</p></section>
+"""
+
     nikkei = indices.get("日経平均", {}).get("price")
     atr_n = indices.get("日経平均", {}).get("atr14")
     day_range = "取得不能" if not nikkei else f"{nikkei-(atr_n or nikkei*.015):,.0f} ～ {nikkei+(atr_n or nikkei*.015):,.0f}円"
@@ -1484,6 +1520,7 @@ def main():
 <p class="warning">翌日寄りで無条件に売りません。準備足安値を割った場合だけSHORT。楽天MS2で貸借区分・在庫・逆日歩・空売り規制を必ず確認。大幅GDは追いかけません。</p></section>
 <section class="card"><h2>⑫ 運用ルール</h2><p>最大損失を先に固定／同テーマ集中を避ける／持ち越しは通常の半分の株数／損切りを広げない。</p></section>
 <section class="card"><h2>⑬ 選定ロジック</h2><p>LONG＝上昇トレンド・高値突破。SHORT＝終値＜5日線＜20日線・戻り失敗・安値割れ。低流動性、売られすぎ、踏み上げ危険は除外。</p></section>
+{hindenburg_html}{fortune_html}
 </main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>{data['updated_at']}</span></footer>
 <script>
 const yen = v => Number(v).toLocaleString("ja-JP");
