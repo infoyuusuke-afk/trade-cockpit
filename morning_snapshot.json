@@ -1,67 +1,67 @@
 {
-  "date": "2026-08-10",
-  "fixed_at": "2026-08-10 09:07:52 JST",
+  "date": "2026-08-11",
+  "fixed_at": "2026-08-11 09:13:24 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
-      "name": "本田技研工業（7267）",
-      "ticker": "7267.T",
+      "name": "ラウンドワン（4680）",
+      "ticker": "4680.T",
       "side": "LONG",
       "score": 100.0,
-      "entry": 1694,
-      "entry_limit": 1696,
-      "stop": 1650,
-      "target1": 1765,
-      "target2": 1797,
-      "morning_price": 1696
+      "entry": 1369,
+      "entry_limit": 1371,
+      "stop": 1313,
+      "target1": 1458,
+      "target2": 1499,
+      "morning_price": 1371
     },
     {
       "name": "日立製作所（6501）",
       "ticker": "6501.T",
       "side": "LONG",
       "score": 100.0,
-      "entry": 5630,
-      "entry_limit": 5650,
-      "stop": 5490,
-      "target1": 5890,
-      "target2": 6000,
-      "morning_price": 5650
+      "entry": 5700,
+      "entry_limit": 5720,
+      "stop": 5560,
+      "target1": 5960,
+      "target2": 6070,
+      "morning_price": 5720
+    },
+    {
+      "name": "本田技研工業（7267）",
+      "ticker": "7267.T",
+      "side": "LONG",
+      "score": 99.0,
+      "entry": 1695,
+      "entry_limit": 1697,
+      "stop": 1652,
+      "target1": 1764,
+      "target2": 1796,
+      "morning_price": 1697
     },
     {
       "name": "NTT（9432）",
       "ticker": "9432.T",
       "side": "LONG",
-      "score": 91.0,
-      "entry": 159.4,
-      "entry_limit": 159.6,
-      "stop": 156.5,
-      "target1": 164.2,
-      "target2": 166.4,
-      "morning_price": 159.6
+      "score": 87.0,
+      "entry": 160.0,
+      "entry_limit": 160.2,
+      "stop": 157.1,
+      "target1": 164.8,
+      "target2": 167.0,
+      "morning_price": 160.2
     },
     {
       "name": "キヤノン（7751）",
       "ticker": "7751.T",
       "side": "LONG",
-      "score": 87.0,
-      "entry": 4640,
-      "entry_limit": 4650,
-      "stop": 4530,
-      "target1": 4830,
-      "target2": 4915,
-      "morning_price": 4650
-    },
-    {
-      "name": "MS&AD（8725）",
-      "ticker": "8725.T",
-      "side": "LONG",
-      "score": 73.0,
-      "entry": 4925,
-      "entry_limit": 4935,
-      "stop": 4820,
-      "target1": 5110,
-      "target2": 5190,
-      "morning_price": 4935
+      "score": 82.0,
+      "entry": 4665,
+      "entry_limit": 4675,
+      "stop": 4555,
+      "target1": 4855,
+      "target2": 4940,
+      "morning_price": 4675
     }
   ]
 }
