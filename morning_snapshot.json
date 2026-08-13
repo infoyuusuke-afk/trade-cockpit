@@ -1,67 +1,67 @@
 {
-  "date": "2026-08-13",
-  "fixed_at": "2026-08-13 07:56:30 JST",
+  "date": "2026-08-14",
+  "fixed_at": "2026-08-14 07:55:04 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
-      "name": "本田技研工業（7267）",
-      "ticker": "7267.T",
+      "name": "日本郵船（9101）",
+      "ticker": "9101.T",
       "side": "LONG",
-      "score": 97.0,
-      "entry": 1691,
-      "entry_limit": 1693,
-      "stop": 1651,
-      "target1": 1756,
-      "target2": 1785,
-      "morning_price": 1693
+      "score": 100.0,
+      "entry": 6220,
+      "entry_limit": 6240,
+      "stop": 6120,
+      "target1": 6420,
+      "target2": 6500,
+      "morning_price": 6240
     },
     {
       "name": "日立製作所（6501）",
       "ticker": "6501.T",
       "side": "LONG",
-      "score": 94.0,
-      "entry": 5710,
-      "entry_limit": 5730,
-      "stop": 5570,
-      "target1": 5970,
-      "target2": 6080,
-      "morning_price": 5730
-    },
-    {
-      "name": "パナソニックHD（6752）",
-      "ticker": "6752.T",
-      "side": "LONG",
-      "score": 85.0,
-      "entry": 4645,
-      "entry_limit": 4655,
-      "stop": 4440,
-      "target1": 4980,
-      "target2": 5130,
-      "morning_price": 4655
+      "score": 90.0,
+      "entry": 5770,
+      "entry_limit": 5790,
+      "stop": 5640,
+      "target1": 6020,
+      "target2": 6120,
+      "morning_price": 5790
     },
     {
       "name": "三菱UFJ FG（8306）",
       "ticker": "8306.T",
       "side": "LONG",
-      "score": 72.0,
-      "entry": 3620,
-      "entry_limit": 3630,
-      "stop": 3535,
-      "target1": 3770,
-      "target2": 3840,
-      "morning_price": 3630
+      "score": 84.0,
+      "entry": 3715,
+      "entry_limit": 3725,
+      "stop": 3625,
+      "target1": 3875,
+      "target2": 3945,
+      "morning_price": 3725
     },
     {
-      "name": "小松製作所（6301）",
-      "ticker": "6301.T",
+      "name": "本田技研工業（7267）",
+      "ticker": "7267.T",
       "side": "LONG",
-      "score": 91.0,
-      "entry": 7470,
-      "entry_limit": 7490,
-      "stop": 7250,
-      "target1": 7850,
-      "target2": 8020,
-      "morning_price": 7490
+      "score": 83.0,
+      "entry": 1679,
+      "entry_limit": 1681,
+      "stop": 1638,
+      "target1": 1746,
+      "target2": 1776,
+      "morning_price": 1681
+    },
+    {
+      "name": "INPEX（1605）",
+      "ticker": "1605.T",
+      "side": "LONG",
+      "score": 92.0,
+      "entry": 3765,
+      "entry_limit": 3775,
+      "stop": 3670,
+      "target1": 3930,
+      "target2": 4005,
+      "morning_price": 3775
     }
   ]
 }
