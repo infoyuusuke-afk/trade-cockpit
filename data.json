@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-14 16:06:28 JST",
+  "updated_at": "2026-08-14 18:50:34 JST",
   "phase": "大引け検証15:35版",
   "session": "close",
   "indices": {
@@ -12,30 +12,30 @@
       "prev_close": 68308.59,
       "change_pct": 0.59,
       "ret5": 4.61,
-      "ret5_prev": 6.92,
-      "ret20": 0.23,
+      "ret5_prev": 6.17,
+      "ret20": -0.05,
       "rvol": 0.0,
       "turnover": 0,
-      "atr14": 1725.44,
-      "atr_pct": 2.51,
+      "atr14": 1789.48,
+      "atr_pct": 2.6,
       "ma5": 67424.68,
-      "ma20": 65658.27,
-      "ma60": 66651.56,
+      "ma20": 65306.87,
+      "ma60": 66910.54,
       "from_ma5": 1.91,
-      "from_ma20": 4.65,
+      "from_ma20": 5.22,
       "touch_ma5": false,
-      "to_high20": -0.95,
+      "to_high20": -0.12,
       "to_high52": -5.65,
-      "bb_upper": 69991.33,
-      "bb_lower": 61325.21,
-      "bb_width": 13.2,
-      "bb_width_change": -0.04,
-      "bb_percentile": 54.2,
-      "bb_expansion_score": 43.0,
+      "bb_upper": 69236.24,
+      "bb_lower": 61377.51,
+      "bb_width": 12.03,
+      "bb_width_change": -0.09,
+      "bb_percentile": 37.5,
+      "bb_expansion_score": 48.9,
       "day_score": 3.09,
-      "swing_score": 4.67,
-      "stable_score": 1.04,
-      "momentum_score": 5.5,
+      "swing_score": 4.6,
+      "stable_score": 0.99,
+      "momentum_score": 5.47,
       "high_score": 0.0
     },
     "TOPIX": {
@@ -117,30 +117,30 @@
       "prev_close": 7748.5,
       "change_pct": 0.65,
       "ret5": 1.15,
-      "ret5_prev": 3.66,
-      "ret20": 3.52,
+      "ret5_prev": 5.38,
+      "ret20": 3.77,
       "rvol": 0.93,
       "turnover": 37694313570488,
-      "atr14": 84.64,
+      "atr14": 84.95,
       "atr_pct": 1.09,
       "ma5": 7757.29,
-      "ma20": 7568.59,
-      "ma60": 7508.1,
+      "ma20": 7576.19,
+      "ma60": 7505.02,
       "from_ma5": 0.54,
-      "from_ma20": 3.04,
+      "from_ma20": 2.94,
       "touch_ma5": true,
       "to_high20": 0.07,
       "to_high52": -0.23,
-      "bb_upper": 7875.62,
-      "bb_lower": 7261.57,
-      "bb_width": 8.11,
-      "bb_width_change": 1.28,
+      "bb_upper": 7878.65,
+      "bb_lower": 7273.72,
+      "bb_width": 7.98,
+      "bb_width_change": 1.19,
       "bb_percentile": 84.2,
       "bb_expansion_score": 48.7,
       "day_score": 5.31,
-      "swing_score": 5.21,
-      "stable_score": 10.56,
-      "momentum_score": 11.64,
+      "swing_score": 5.27,
+      "stable_score": 10.6,
+      "momentum_score": 11.67,
       "high_score": 13.39
     },
     "SOX": {
@@ -152,105 +152,136 @@
       "prev_close": 12399.38,
       "change_pct": 0.46,
       "ret5": 3.38,
-      "ret5_prev": 15.33,
-      "ret20": 0.88,
+      "ret5_prev": 6.6,
+      "ret20": 4.96,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 563.42,
-      "atr_pct": 4.52,
+      "atr14": 564.95,
+      "atr_pct": 4.54,
       "ma5": 12260.9,
-      "ma20": 11891.07,
-      "ma60": 12599.83,
+      "ma20": 11848.55,
+      "ma60": 12618.38,
       "from_ma5": 1.59,
-      "from_ma20": 4.75,
+      "from_ma20": 5.13,
       "touch_ma5": false,
-      "to_high20": -3.04,
+      "to_high20": -0.6,
       "to_high52": -15.01,
-      "bb_upper": 12948.26,
-      "bb_lower": 10833.89,
-      "bb_width": 17.78,
-      "bb_width_change": -1.9,
-      "bb_percentile": 31.7,
-      "bb_expansion_score": 43.9,
+      "bb_upper": 12899.47,
+      "bb_lower": 10797.64,
+      "bb_width": 17.74,
+      "bb_width_change": -0.39,
+      "bb_percentile": 30.0,
+      "bb_expansion_score": 51.5,
       "day_score": 2.55,
-      "swing_score": 4.4,
-      "stable_score": -0.84,
-      "momentum_score": 2.19,
+      "swing_score": 5.42,
+      "stable_score": -0.11,
+      "momentum_score": 5.68,
       "high_score": 0.0
     },
     "VIX": {
       "ok": true,
-      "price": 14.63,
-      "open": 14.68,
-      "high": 14.8,
-      "low": 14.39,
-      "prev_close": 14.55,
-      "change_pct": 0.55,
-      "ret5": -3.43,
-      "ret5_prev": -11.35,
-      "ret20": -12.55,
+      "price": 14.59,
+      "open": 14.64,
+      "high": 14.65,
+      "low": 14.55,
+      "prev_close": 14.63,
+      "change_pct": -0.27,
+      "ret5": -2.08,
+      "ret5_prev": -6.82,
+      "ret20": -22.27,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 1.64,
-      "atr_pct": 11.23,
-      "ma5": 14.96,
-      "ma20": 16.86,
-      "ma60": 17.07,
-      "from_ma5": -2.23,
-      "from_ma20": -13.21,
+      "atr14": 1.48,
+      "atr_pct": 10.14,
+      "ma5": 14.9,
+      "ma20": 16.65,
+      "ma60": 17.03,
+      "from_ma5": -2.09,
+      "from_ma20": -12.36,
       "touch_ma5": false,
-      "to_high20": -29.93,
-      "to_high52": -58.56,
-      "bb_upper": 20.25,
-      "bb_lower": 13.47,
-      "bb_width": 40.2,
-      "bb_width_change": 4.72,
-      "bb_percentile": 62.5,
-      "bb_expansion_score": 13.1,
-      "day_score": -1.76,
-      "swing_score": -7.34,
+      "to_high20": -30.12,
+      "to_high52": -58.67,
+      "bb_upper": 20.05,
+      "bb_lower": 13.24,
+      "bb_width": 40.92,
+      "bb_width_change": 4.14,
+      "bb_percentile": 63.3,
+      "bb_expansion_score": 12.8,
+      "day_score": -1.95,
+      "swing_score": -7.48,
       "stable_score": -1.9,
-      "momentum_score": -6.3,
+      "momentum_score": -5.87,
       "high_score": 0.0
     },
     "ドル円": {
       "ok": true,
-      "price": 159.22,
+      "price": 159.12,
       "open": 159.49,
       "high": 159.53,
-      "low": 159.13,
+      "low": 159.06,
       "prev_close": 159.33,
-      "change_pct": -0.07,
-      "ret5": 0.51,
+      "change_pct": -0.13,
+      "ret5": 0.45,
       "ret5_prev": -1.11,
-      "ret20": -1.94,
+      "ret20": -2.01,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 1.75,
+      "atr14": 1.76,
       "atr_pct": 1.1,
-      "ma5": 158.97,
-      "ma20": 160.68,
+      "ma5": 158.95,
+      "ma20": 160.67,
       "ma60": 160.88,
-      "from_ma5": 0.16,
-      "from_ma20": -0.9,
+      "from_ma5": 0.11,
+      "from_ma20": -0.96,
       "touch_ma5": true,
-      "to_high20": -2.9,
-      "to_high52": -2.9,
+      "to_high20": -2.96,
+      "to_high52": -2.96,
       "bb_upper": 165.64,
-      "bb_lower": 155.71,
-      "bb_width": 6.18,
-      "bb_width_change": 0.15,
-      "bb_percentile": 99.2,
-      "bb_expansion_score": 15.3,
-      "day_score": 1.13,
-      "swing_score": -3.31,
-      "stable_score": 0.65,
-      "momentum_score": 3.93,
+      "bb_lower": 155.7,
+      "bb_width": 6.19,
+      "bb_width_change": 0.16,
+      "bb_percentile": 100.0,
+      "bb_expansion_score": 15.0,
+      "day_score": 1.05,
+      "swing_score": -3.34,
+      "stable_score": 0.64,
+      "momentum_score": 3.9,
       "high_score": 3.0
     },
     "米10年金利": {
-      "ok": false,
-      "error": "IndexError"
+      "ok": true,
+      "price": 4.64,
+      "open": 4.67,
+      "high": 4.68,
+      "low": 4.61,
+      "prev_close": 4.68,
+      "change_pct": -0.88,
+      "ret5": -0.62,
+      "ret5_prev": 0.15,
+      "ret20": 1.58,
+      "rvol": 0,
+      "turnover": 0,
+      "atr14": 0.06,
+      "atr_pct": 1.22,
+      "ma5": 4.67,
+      "ma20": 4.65,
+      "ma60": 4.55,
+      "from_ma5": -0.69,
+      "from_ma20": -0.24,
+      "touch_ma5": false,
+      "to_high20": -2.23,
+      "to_high52": -2.23,
+      "bb_upper": 4.74,
+      "bb_lower": 4.56,
+      "bb_width": 3.79,
+      "bb_width_change": -0.61,
+      "bb_percentile": 8.3,
+      "bb_expansion_score": 57.1,
+      "day_score": -1.92,
+      "swing_score": 1.18,
+      "stable_score": 4.28,
+      "momentum_score": -0.01,
+      "high_score": 5.0
     }
   },
   "stocks": {
@@ -297,8 +328,8 @@
         "high": 61650.0,
         "low": 59000.0,
         "close": 59190.0,
-        "vwap": 59663.1,
-        "volume": 4464000
+        "vwap": 59683.96,
+        "volume": 2325700
       },
       "rotation_group": "AI・テクノロジー"
     },
@@ -489,8 +520,8 @@
         "high": 68120.0,
         "low": 64730.0,
         "close": 65200.0,
-        "vwap": 65686.9,
-        "volume": 1776700
+        "vwap": 65772.96,
+        "volume": 1047700
       },
       "rotation_group": "AI・テクノロジー"
     },
@@ -537,8 +568,8 @@
         "high": 41200.0,
         "low": 38400.0,
         "close": 38790.0,
-        "vwap": 39289.88,
-        "volume": 5563200
+        "vwap": 39412.65,
+        "volume": 3255500
       },
       "rotation_group": "AI・テクノロジー"
     },
@@ -777,8 +808,8 @@
         "high": 1916.0,
         "low": 1847.0,
         "close": 1900.0,
-        "vwap": 1897.35,
-        "volume": 231900
+        "vwap": 1892.36,
+        "volume": 132500
       },
       "rotation_group": "内需・ディフェンシブ"
     },
@@ -825,8 +856,8 @@
         "high": 4921.0,
         "low": 4830.0,
         "close": 4836.0,
-        "vwap": 4870.82,
-        "volume": 3814600
+        "vwap": 4865.96,
+        "volume": 2353300
       },
       "rotation_group": "金融"
     },
@@ -965,12 +996,12 @@
       "style": "both",
       "intraday": {
         "ok": true,
-        "open": 5786.0,
+        "open": 5785.0,
         "high": 5806.0,
         "low": 5632.0,
         "close": 5679.0,
-        "vwap": 5682.82,
-        "volume": 84074900
+        "vwap": 5700.16,
+        "volume": 48106100
       },
       "rotation_group": "資本財・インフラ"
     },
@@ -1113,8 +1144,8 @@
         "high": 5830.0,
         "low": 5699.0,
         "close": 5768.0,
-        "vwap": 5782.03,
-        "volume": 12638200
+        "vwap": 5778.12,
+        "volume": 7268600
       },
       "rotation_group": "資本財・インフラ"
     },
@@ -1353,8 +1384,8 @@
         "high": 6265.0,
         "low": 6107.0,
         "close": 6183.0,
-        "vwap": 6190.52,
-        "volume": 7956400
+        "vwap": 6187.39,
+        "volume": 4203600
       },
       "rotation_group": "資本財・インフラ"
     },
@@ -1449,8 +1480,8 @@
         "high": 8945.0,
         "low": 8674.0,
         "close": 8903.0,
-        "vwap": 8851.16,
-        "volume": 27152500
+        "vwap": 8856.56,
+        "volume": 14918700
       },
       "rotation_group": "内需・ディフェンシブ"
     },
@@ -1545,8 +1576,8 @@
         "high": 779.6,
         "low": 757.1,
         "close": 765.1,
-        "vwap": 767.69,
-        "volume": 35408500
+        "vwap": 767.3,
+        "volume": 21002900
       },
       "rotation_group": "内需・ディフェンシブ"
     },
@@ -1593,8 +1624,8 @@
         "high": 1348.0,
         "low": 1281.0,
         "close": 1346.0,
-        "vwap": 1323.72,
-        "volume": 3781200
+        "vwap": 1326.55,
+        "volume": 2482800
       },
       "rotation_group": "内需・ディフェンシブ"
     },
@@ -1785,8 +1816,8 @@
         "high": 6441.0,
         "low": 6243.0,
         "close": 6390.0,
-        "vwap": 6373.58,
-        "volume": 2622700
+        "vwap": 6383.72,
+        "volume": 4629000
       },
       "rotation_group": "資源・素材・商社"
     },
@@ -1833,8 +1864,8 @@
         "high": 3789.0,
         "low": 3675.0,
         "close": 3778.0,
-        "vwap": 3735.57,
-        "volume": 3173300
+        "vwap": 3732.14,
+        "volume": 4710600
       },
       "rotation_group": "資源・素材・商社"
     },
@@ -1881,8 +1912,8 @@
         "high": 4847.0,
         "low": 4753.0,
         "close": 4792.0,
-        "vwap": 4806.71,
-        "volume": 9107000
+        "vwap": 4800.22,
+        "volume": 5287900
       },
       "rotation_group": "資源・素材・商社"
     },
@@ -1890,7 +1921,7 @@
       "ok": true,
       "price": 1784.0,
       "open": 1801.0,
-      "high": 1897.0,
+      "high": 1898.0,
       "low": 1731.0,
       "prev_close": 1865.0,
       "change_pct": -4.34,
@@ -1899,7 +1930,7 @@
       "ret20": -17.02,
       "rvol": 1.44,
       "turnover": 11118601600,
-      "atr14": 143.36,
+      "atr14": 143.43,
       "atr_pct": 8.04,
       "ma5": 1847.6,
       "ma20": 1787.9,
@@ -1929,8 +1960,8 @@
         "high": 1898.0,
         "low": 1751.0,
         "close": 1780.0,
-        "vwap": 1807.43,
-        "volume": 8977200
+        "vwap": 1811.76,
+        "volume": 5364700
       },
       "rotation_group": "資本財・インフラ"
     },
@@ -1973,12 +2004,12 @@
       "style": "day",
       "intraday": {
         "ok": true,
-        "open": 85910.0,
+        "open": 85900.0,
         "high": 87820.0,
         "low": 85530.0,
         "close": 87490.0,
-        "vwap": 87322.06,
-        "volume": 767300
+        "vwap": 87225.09,
+        "volume": 408400
       },
       "rotation_group": "資本財・インフラ"
     },
@@ -2025,8 +2056,8 @@
         "high": 6476.0,
         "low": 6361.0,
         "close": 6369.0,
-        "vwap": 6403.81,
-        "volume": 6771500
+        "vwap": 6405.08,
+        "volume": 3634800
       },
       "rotation_group": "AI・テクノロジー"
     },
@@ -2121,8 +2152,8 @@
         "high": 7416.0,
         "low": 7289.0,
         "close": 7321.0,
-        "vwap": 7342.47,
-        "volume": 1853500
+        "vwap": 7340.83,
+        "volume": 1135800
       },
       "rotation_group": "資本財・インフラ"
     },
@@ -2169,8 +2200,8 @@
         "high": 4671.0,
         "low": 4580.0,
         "close": 4668.0,
-        "vwap": 4642.11,
-        "volume": 3103700
+        "vwap": 4639.95,
+        "volume": 1867600
       },
       "rotation_group": "その他"
     },
@@ -2361,8 +2392,8 @@
         "high": 3905.0,
         "low": 3765.0,
         "close": 3896.0,
-        "vwap": 3877.33,
-        "volume": 26479100
+        "vwap": 3867.68,
+        "volume": 14670800
       },
       "rotation_group": "AI・テクノロジー"
     },
@@ -2405,12 +2436,12 @@
       "style": "both",
       "intraday": {
         "ok": true,
-        "open": 5618.0,
+        "open": 5617.0,
         "high": 5622.0,
         "low": 5398.0,
         "close": 5418.0,
-        "vwap": 5470.22,
-        "volume": 4723700
+        "vwap": 5469.86,
+        "volume": 2736400
       },
       "rotation_group": "資本財・インフラ"
     },
@@ -2457,8 +2488,8 @@
         "high": 2837.0,
         "low": 2720.0,
         "close": 2795.0,
-        "vwap": 2783.23,
-        "volume": 3033000
+        "vwap": 2771.37,
+        "volume": 4518200
       },
       "rotation_group": "自動車・モビリティ"
     },
@@ -2505,8 +2536,8 @@
         "high": 5166.0,
         "low": 4958.0,
         "close": 5016.0,
-        "vwap": 5045.48,
-        "volume": 6545300
+        "vwap": 5028.49,
+        "volume": 3988600
       },
       "rotation_group": "AI・テクノロジー"
     },
@@ -2649,8 +2680,8 @@
         "high": 14665.0,
         "low": 13885.0,
         "close": 14240.0,
-        "vwap": 14185.77,
-        "volume": 2270300
+        "vwap": 14176.93,
+        "volume": 3949100
       },
       "rotation_group": "AI・テクノロジー"
     },
@@ -2697,8 +2728,8 @@
         "high": 7225.0,
         "low": 6959.0,
         "close": 7037.0,
-        "vwap": 7129.74,
-        "volume": 2029800
+        "vwap": 7105.29,
+        "volume": 1150700
       },
       "rotation_group": "資本財・インフラ"
     },
@@ -2793,8 +2824,8 @@
         "high": 1955.0,
         "low": 1911.5,
         "close": 1952.0,
-        "vwap": 1945.34,
-        "volume": 8092500
+        "vwap": 1942.2,
+        "volume": 4538300
       },
       "rotation_group": "自動車・モビリティ"
     },
@@ -2889,8 +2920,8 @@
         "high": 162.6,
         "low": 159.6,
         "close": 162.5,
-        "vwap": 161.41,
-        "volume": 338729500
+        "vwap": 161.44,
+        "volume": 216093500
       },
       "rotation_group": "AI・テクノロジー"
     },
@@ -2937,8 +2968,8 @@
         "high": 2875.0,
         "low": 2842.5,
         "close": 2870.0,
-        "vwap": 2858.86,
-        "volume": 10387400
+        "vwap": 2859.56,
+        "volume": 5185700
       },
       "rotation_group": "AI・テクノロジー"
     },
@@ -3036,14 +3067,14 @@
         "high": 8945.0,
         "low": 8674.0,
         "close": 8903.0,
-        "vwap": 8851.16,
-        "volume": 27152500
+        "vwap": 8856.56,
+        "volume": 14918700
       },
       "rotation_group": "内需・ディフェンシブ",
       "plan": {
         "entry": 8870,
         "stop": 8680,
-        "target1": 9150,
+        "target1": 9160,
         "target2": 9290,
         "risk": 190,
         "tick": 10
@@ -3150,15 +3181,15 @@
         "high": 3905.0,
         "low": 3765.0,
         "close": 3896.0,
-        "vwap": 3877.33,
-        "volume": 26479100
+        "vwap": 3867.68,
+        "volume": 14670800
       },
       "rotation_group": "AI・テクノロジー",
       "plan": {
-        "entry": 3885,
-        "stop": 3805,
-        "target1": 4010,
-        "target2": 4065,
+        "entry": 3875,
+        "stop": 3795,
+        "target1": 4000,
+        "target2": 4055,
         "risk": 80,
         "tick": 5
       }
@@ -3264,8 +3295,8 @@
         "high": 5166.0,
         "low": 4958.0,
         "close": 5016.0,
-        "vwap": 5045.48,
-        "volume": 6545300
+        "vwap": 5028.49,
+        "volume": 3988600
       },
       "rotation_group": "AI・テクノロジー",
       "plan": {
@@ -3748,14 +3779,14 @@
           "high": 6441.0,
           "low": 6243.0,
           "close": 6390.0,
-          "vwap": 6373.58,
-          "volume": 2622700
+          "vwap": 6383.72,
+          "volume": 4629000
         },
         "rotation_group": "資源・素材・商社",
         "plan": {
           "entry": 6390,
           "stop": 6300,
-          "target1": 6520,
+          "target1": 6530,
           "target2": 6590,
           "risk": 90,
           "tick": 10
@@ -3805,8 +3836,8 @@
           "high": 5830.0,
           "low": 5699.0,
           "close": 5768.0,
-          "vwap": 5782.03,
-          "volume": 12638200
+          "vwap": 5778.12,
+          "volume": 7268600
         },
         "rotation_group": "資本財・インフラ",
         "plan": {
@@ -3862,14 +3893,14 @@
           "high": 3789.0,
           "low": 3675.0,
           "close": 3778.0,
-          "vwap": 3735.57,
-          "volume": 3173300
+          "vwap": 3732.14,
+          "volume": 4710600
         },
         "rotation_group": "資源・素材・商社",
         "plan": {
-          "entry": 3745,
-          "stop": 3680,
-          "target1": 3840,
+          "entry": 3740,
+          "stop": 3675,
+          "target1": 3835,
           "target2": 3880,
           "risk": 65,
           "tick": 5
@@ -4035,14 +4066,14 @@
           "high": 6441.0,
           "low": 6243.0,
           "close": 6390.0,
-          "vwap": 6373.58,
-          "volume": 2622700
+          "vwap": 6383.72,
+          "volume": 4629000
         },
         "rotation_group": "資源・素材・商社",
         "plan": {
           "entry": 6390,
           "stop": 6300,
-          "target1": 6520,
+          "target1": 6530,
           "target2": 6590,
           "risk": 90,
           "tick": 10
@@ -4092,14 +4123,14 @@
           "high": 3789.0,
           "low": 3675.0,
           "close": 3778.0,
-          "vwap": 3735.57,
-          "volume": 3173300
+          "vwap": 3732.14,
+          "volume": 4710600
         },
         "rotation_group": "資源・素材・商社",
         "plan": {
-          "entry": 3745,
-          "stop": 3680,
-          "target1": 3840,
+          "entry": 3740,
+          "stop": 3675,
+          "target1": 3835,
           "target2": 3880,
           "risk": 65,
           "tick": 5
@@ -4149,8 +4180,8 @@
           "high": 5830.0,
           "low": 5699.0,
           "close": 5768.0,
-          "vwap": 5782.03,
-          "volume": 12638200
+          "vwap": 5778.12,
+          "volume": 7268600
         },
         "rotation_group": "資本財・インフラ",
         "plan": {
@@ -4265,14 +4296,14 @@
           "high": 6441.0,
           "low": 6243.0,
           "close": 6390.0,
-          "vwap": 6373.58,
-          "volume": 2622700
+          "vwap": 6383.72,
+          "volume": 4629000
         },
         "rotation_group": "資源・素材・商社",
         "plan": {
           "entry": 6390,
           "stop": 6300,
-          "target1": 6520,
+          "target1": 6530,
           "target2": 6590,
           "risk": 90,
           "tick": 10
@@ -4379,8 +4410,8 @@
           "high": 5830.0,
           "low": 5699.0,
           "close": 5768.0,
-          "vwap": 5782.03,
-          "volume": 12638200
+          "vwap": 5778.12,
+          "volume": 7268600
         },
         "rotation_group": "資本財・インフラ",
         "plan": {
@@ -4638,11 +4669,11 @@
         "tick": 5
       },
       "source": "JPX",
-      "expectation_score": 86,
-      "raw_expectation_score": 86,
+      "expectation_score": 51,
+      "raw_expectation_score": 51,
       "hurdle_risk": 0,
-      "score_coverage": 35,
-      "score_detail": "過去4回サプライズ平均 +36.2%／決算前テクニカル 51/100／コンセンサス警戒 0/100（−0.0点）",
+      "score_coverage": 10,
+      "score_detail": "決算前テクニカル 51/100／コンセンサス警戒 0/100（−0.0点）",
       "technical_score": 51
     }
   ],
@@ -4713,18 +4744,18 @@
     "regime": "グロースからバリュー・資本財へ",
     "regime_action": "AI一本へ集中せず、金融・資本財・ヘルスケアの初押しを優先",
     "rate_view": "金利横ばい：業績と需給を優先",
-    "rate5": 0,
+    "rate5": -0.62,
     "breadth": "5/11",
-    "spread": 8.8,
+    "spread": 8.4,
     "us_sectors": [
       {
         "sector": "エネルギー",
         "ticker": "XLE",
         "phase": "拡大",
-        "score": 86.7,
+        "score": 86.5,
         "rel5": 3.84,
-        "rel20": 3.57,
-        "acceleration": 8.86,
+        "rel20": 3.32,
+        "acceleration": 10.58,
         "from_ma20": 3.59,
         "action": "順張り・押し目"
       },
@@ -4732,10 +4763,10 @@
         "sector": "ヘルスケア",
         "ticker": "XLV",
         "phase": "流入初期",
-        "score": 68.7,
+        "score": 71.5,
         "rel5": 1.24,
-        "rel20": 0.55,
-        "acceleration": 4.33,
+        "rel20": 0.3,
+        "acceleration": 6.05,
         "from_ma20": 2.71,
         "action": "最優先監視・初押し"
       },
@@ -4743,10 +4774,10 @@
         "sector": "情報技術・AI",
         "ticker": "XLK",
         "phase": "拡大",
-        "score": 66.6,
+        "score": 69.5,
         "rel5": 1.79,
-        "rel20": 3.94,
-        "acceleration": -0.01,
+        "rel20": 3.69,
+        "acceleration": 1.71,
         "from_ma20": 5.81,
         "action": "順張り・押し目"
       },
@@ -4754,10 +4785,10 @@
         "sector": "生活必需品",
         "ticker": "XLP",
         "phase": "低迷",
-        "score": 60.2,
+        "score": 63.1,
         "rel5": -0.1,
-        "rel20": -3.3,
-        "acceleration": 3.98,
+        "rel20": -3.55,
+        "acceleration": 5.7,
         "from_ma20": 1.02,
         "action": "見送り"
       },
@@ -4765,10 +4796,10 @@
         "sector": "金融",
         "ticker": "XLF",
         "phase": "低迷",
-        "score": 57.6,
+        "score": 60.5,
         "rel5": -0.37,
-        "rel20": -0.86,
-        "acceleration": 1.87,
+        "rel20": -1.11,
+        "acceleration": 3.59,
         "from_ma20": 2.02,
         "action": "見送り"
       },
@@ -4776,43 +4807,43 @@
         "sector": "素材",
         "ticker": "XLB",
         "phase": "低迷",
-        "score": 56.8,
+        "score": 58.8,
         "rel5": -0.88,
-        "rel20": -0.22,
-        "acceleration": 1.95,
-        "from_ma20": 1.24,
+        "rel20": -0.98,
+        "acceleration": 3.47,
+        "from_ma20": 1.32,
+        "action": "見送り"
+      },
+      {
+        "sector": "資本財・工業",
+        "ticker": "XLI",
+        "phase": "低迷",
+        "score": 55.9,
+        "rel5": -0.59,
+        "rel20": -0.64,
+        "acceleration": 1.22,
+        "from_ma20": 1.86,
         "action": "見送り"
       },
       {
         "sector": "コミュニケーション",
         "ticker": "XLC",
-        "phase": "中立",
-        "score": 52.9,
+        "phase": "流入初期",
+        "score": 55.8,
         "rel5": 0.08,
-        "rel20": -3.61,
-        "acceleration": -0.58,
+        "rel20": -3.86,
+        "acceleration": 1.14,
         "from_ma20": 2.48,
-        "action": "方向確認待ち"
-      },
-      {
-        "sector": "資本財・工業",
-        "ticker": "XLI",
-        "phase": "流出",
-        "score": 51.0,
-        "rel5": -0.59,
-        "rel20": -0.52,
-        "acceleration": -1.52,
-        "from_ma20": 1.77,
-        "action": "新規ロング停止"
+        "action": "最優先監視・初押し"
       },
       {
         "sector": "公益",
         "ticker": "XLU",
         "phase": "流入初期",
-        "score": 50.7,
+        "score": 52.4,
         "rel5": 0.37,
-        "rel20": -6.66,
-        "acceleration": 6.9,
+        "rel20": -6.91,
+        "acceleration": 8.62,
         "from_ma20": -1.29,
         "action": "最優先監視・初押し"
       },
@@ -4820,21 +4851,21 @@
         "sector": "不動産",
         "ticker": "XLRE",
         "phase": "低迷",
-        "score": 48.6,
+        "score": 49.6,
         "rel5": -0.46,
-        "rel20": -2.08,
-        "acceleration": 4.28,
-        "from_ma20": -0.08,
+        "rel20": -4.52,
+        "acceleration": 6.0,
+        "from_ma20": -0.1,
         "action": "見送り"
       },
       {
         "sector": "一般消費財",
         "ticker": "XLY",
         "phase": "流出",
-        "score": 46.7,
+        "score": 49.5,
         "rel5": -0.85,
-        "rel20": -1.32,
-        "acceleration": -3.0,
+        "rel20": -1.57,
+        "acceleration": -1.28,
         "from_ma20": 2.42,
         "action": "新規ロング停止"
       }
@@ -5046,9 +5077,9 @@
         "phase": "拡大",
         "score": 91,
         "plan": {
-          "entry": 3745,
-          "stop": 3680,
-          "target1": 3840,
+          "entry": 3740,
+          "stop": 3675,
+          "target1": 3835,
           "target2": 3880,
           "risk": 65,
           "tick": 5
@@ -5063,7 +5094,7 @@
         "plan": {
           "entry": 8870,
           "stop": 8680,
-          "target1": 9150,
+          "target1": 9160,
           "target2": 9290,
           "risk": 190,
           "tick": 10
@@ -5078,7 +5109,7 @@
         "plan": {
           "entry": 6390,
           "stop": 6300,
-          "target1": 6520,
+          "target1": 6530,
           "target2": 6590,
           "risk": 90,
           "tick": 10
@@ -5106,10 +5137,10 @@
         "phase": "流入初期",
         "score": 78,
         "plan": {
-          "entry": 1326,
-          "stop": 1286,
-          "target1": 1386,
-          "target2": 1414,
+          "entry": 1329,
+          "stop": 1289,
+          "target1": 1389,
+          "target2": 1417,
           "risk": 40,
           "tick": 1
         },
@@ -5258,14 +5289,14 @@
         "high": 3789.0,
         "low": 3675.0,
         "close": 3778.0,
-        "vwap": 3735.57,
-        "volume": 3173300
+        "vwap": 3732.14,
+        "volume": 4710600
       },
       "rotation_group": "資源・素材・商社",
       "plan": {
-        "entry": 3745,
-        "stop": 3680,
-        "target1": 3840,
+        "entry": 3740,
+        "stop": 3675,
+        "target1": 3835,
         "target2": 3880,
         "risk": 65,
         "tick": 5
@@ -5429,15 +5460,15 @@
         "high": 1348.0,
         "low": 1281.0,
         "close": 1346.0,
-        "vwap": 1323.72,
-        "volume": 3781200
+        "vwap": 1326.55,
+        "volume": 2482800
       },
       "rotation_group": "内需・ディフェンシブ",
       "plan": {
-        "entry": 1326,
-        "stop": 1286,
-        "target1": 1386,
-        "target2": 1414,
+        "entry": 1329,
+        "stop": 1289,
+        "target1": 1389,
+        "target2": 1417,
         "risk": 40,
         "tick": 1
       }
@@ -5657,7 +5688,7 @@
         "target2": 6120
       },
       "result": "継続・未決済",
-      "detail": "終値差 -2円／VWAP 5,782円"
+      "detail": "終値差 -2円／VWAP 5,778円"
     },
     {
       "name": "三菱UFJ FG（8306）",
@@ -5693,7 +5724,7 @@
         "target2": 4005
       },
       "result": "継続・未決済",
-      "detail": "終値差 +13円／VWAP 3,736円"
+      "detail": "終値差 +13円／VWAP 3,732円"
     }
   ],
   "paper_trade_reviews": [
@@ -5711,7 +5742,7 @@
       "triggered": false,
       "result": "未発動（見送り）",
       "close": 6390.0,
-      "vwap": 6373.58,
+      "vwap": 6383.72,
       "pnl_yen": null,
       "r": null,
       "shares": 100
@@ -5730,7 +5761,7 @@
       "triggered": true,
       "result": "時点評価・未決済",
       "close": 5768.0,
-      "vwap": 5782.03,
+      "vwap": 5778.12,
       "pnl_yen": -2200,
       "r": -0.15,
       "shares": 100
@@ -5787,7 +5818,7 @@
       "triggered": true,
       "result": "時点評価・未決済",
       "close": 3778.0,
-      "vwap": 3735.57,
+      "vwap": 3732.14,
       "pnl_yen": 300,
       "r": 0.03,
       "shares": 100
