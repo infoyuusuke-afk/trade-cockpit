@@ -1048,9 +1048,10 @@ def main():
     now = datetime.now(JST)
     if now.hour < 11:
         session = "morning"
-    elif now.hour < 15:
+    elif now.hour < 14 or (now.hour == 14 and now.minute < 30):
         session = "midday"
     else:
+        # 14:45 JST run: build the pre-close carry edition in time for 15:00.
         session = "close"
     intraday_mode = session != "morning"
     config = json.loads((ROOT / "watchlist.json").read_text(encoding="utf-8"))
@@ -1214,7 +1215,7 @@ def main():
         "phase": (
             "寄り付き前8:00版" if session == "morning"
             else "前場検証11:45版" if session == "midday"
-            else "大引け検証15:35版"
+            else "引け前持ち越し15:00版"
         ),
         "session": session,
         "indices": indices, "stocks": stocks,
@@ -1513,7 +1514,7 @@ def main():
 <section class="card wide"><h2>⑩ 持ち越し<span class="pill long">LONG</span>候補 TOP10</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>翌日LONG発動</th><th>損切り</th><th>利確1／2</th><th>予約IFO入力例</th><th>選定理由</th><th>決算・イベントリスク</th></tr></thead>
 <tbody id="overnight-long"><tr><td colspan="9">読み込み中...</td></tr></tbody></table>
-<p class="warning">大引け後に予約IFOを設定し、朝は注文を変更しません。新規買いが発動した場合だけ利確・損切りを自動管理。大幅GUは約定させない価格条件にし、朝一はキオクシア等の値嵩株スキャルへ集中します。すでに保有済みならIFOではなく決済OCOを使用。</p></section>
+<p class="warning">15:00版で候補を確認します。引け成りで無条件に買わず、発動条件を満たした銘柄だけ予約IFOを設定します。新規買いが発動した場合だけ利確・損切りを自動管理。大幅GUは約定させない価格条件にし、朝一はキオクシア等の値嵩株スキャルへ集中します。すでに保有済みならIFOではなく決済OCOを使用。</p></section>
 <section class="card wide"><h2>⑪ 持ち越し<span class="pill short">SHORT</span>候補 TOP10</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>翌日SHORT発動</th><th>損切り</th><th>利確1／2</th><th>選定理由</th><th>決算・イベント／空売り注意</th></tr></thead>
 <tbody id="overnight-short"><tr><td colspan="8">読み込み中...</td></tr></tbody></table>

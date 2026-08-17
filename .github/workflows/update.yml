@@ -15,7 +15,7 @@ on:
   schedule:
     - cron: "0 23 * * *" # 08:00 JST
     - cron: "45 2 * * 1-5" # 11:45 JST, morning-session review
-    - cron: "35 6 * * 1-5" # 15:35 JST, after the Tokyo market close
+    - cron: "45 5 * * 1-5" # 14:45 JST, build the 15:00 pre-close carry edition
     - cron: "0 0 * * 6" # Saturday 09:00 JST, weekly review
 
 permissions:
