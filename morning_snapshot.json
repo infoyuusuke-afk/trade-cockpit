@@ -1,67 +1,67 @@
 {
-  "date": "2026-08-17",
-  "fixed_at": "2026-08-17 08:43:40 JST",
+  "date": "2026-08-18",
+  "fixed_at": "2026-08-18 08:50:23 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
       "name": "日本郵船（9101）",
       "ticker": "9101.T",
       "side": "LONG",
-      "score": 100.0,
-      "entry": 6450,
-      "entry_limit": 6470,
-      "stop": 6310,
-      "target1": 6710,
-      "target2": 6820,
-      "morning_price": 6470
+      "score": 96.0,
+      "entry": 6520,
+      "entry_limit": 6540,
+      "stop": 6390,
+      "target1": 6760,
+      "target2": 6870,
+      "morning_price": 6540
     },
     {
-      "name": "NEC（6701）",
-      "ticker": "6701.T",
+      "name": "NTT（9432）",
+      "ticker": "9432.T",
       "side": "LONG",
-      "score": 92.0,
-      "entry": 5180,
-      "entry_limit": 5200,
-      "stop": 5000,
-      "target1": 5500,
-      "target2": 5640,
-      "morning_price": 5200
-    },
-    {
-      "name": "日立製作所（6501）",
-      "ticker": "6501.T",
-      "side": "LONG",
-      "score": 91.0,
-      "entry": 5840,
-      "entry_limit": 5860,
-      "stop": 5690,
-      "target1": 6120,
-      "target2": 6230,
-      "morning_price": 5860
-    },
-    {
-      "name": "ニデック（6594）",
-      "ticker": "6594.T",
-      "side": "LONG",
-      "score": 88.0,
-      "entry": 2838,
-      "entry_limit": 2840,
-      "stop": 2749,
-      "target1": 2976,
-      "target2": 3040,
-      "morning_price": 2840
+      "score": 94.0,
+      "entry": 163.4,
+      "entry_limit": 163.6,
+      "stop": 160.8,
+      "target1": 167.8,
+      "target2": 169.8,
+      "morning_price": 163.6
     },
     {
       "name": "キヤノン（7751）",
       "ticker": "7751.T",
       "side": "LONG",
-      "score": 85.0,
-      "entry": 4675,
-      "entry_limit": 4685,
-      "stop": 4565,
-      "target1": 4865,
-      "target2": 4950,
-      "morning_price": 4685
+      "score": 76.0,
+      "entry": 4650,
+      "entry_limit": 4660,
+      "stop": 4550,
+      "target1": 4825,
+      "target2": 4900,
+      "morning_price": 4660
+    },
+    {
+      "name": "ソフトバンク（9434）",
+      "ticker": "9434.T",
+      "side": "LONG",
+      "score": 92.0,
+      "entry": 237.3,
+      "entry_limit": 237.5,
+      "stop": 232.6,
+      "target1": 244.8,
+      "target2": 248.3,
+      "morning_price": 237.5
+    },
+    {
+      "name": "INPEX（1605）",
+      "ticker": "1605.T",
+      "side": "LONG",
+      "score": 90.0,
+      "entry": 3875,
+      "entry_limit": 3885,
+      "stop": 3775,
+      "target1": 4050,
+      "target2": 4125,
+      "morning_price": 3885
     }
   ]
 }
