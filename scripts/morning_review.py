@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -182,7 +183,14 @@ def main() -> None:
     now = datetime.now(JST)
     data = load(DATA, {})
     phase = data.get("phase", "")
-    is_review = now.hour >= 11 or "前場検証" in phase or "大引け検証" in phase
+    session_override = os.getenv("COCKPIT_SESSION", "auto").strip().lower()
+    is_review = (
+        session_override in {"midday", "close"}
+        or (
+            session_override == "auto"
+            and (now.hour >= 11 or "前場検証" in phase or "大引け検証" in phase)
+        )
+    )
     if not is_review:
         snap = morning_snapshot(data, now)
         save(SNAPSHOT, snap)
