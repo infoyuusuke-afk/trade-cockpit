@@ -1,4 +1,5 @@
 import json
+import os
 import math
 import re
 from datetime import datetime
@@ -1046,7 +1047,10 @@ def render_day_ifo_cards(candidates):
 
 def main():
     now = datetime.now(JST)
-    if now.hour < 11:
+    session_override = os.getenv("COCKPIT_SESSION", "auto").strip().lower()
+    if session_override in {"morning", "midday", "close"}:
+        session = session_override
+    elif now.hour < 11:
         session = "morning"
     elif now.hour < 14 or (now.hour == 14 and now.minute < 30):
         session = "midday"
