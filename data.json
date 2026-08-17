@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-18 08:49:56 JST",
+  "updated_at": "2026-08-18 08:57:14 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "indices": {
@@ -215,35 +215,35 @@
     },
     "ドル円": {
       "ok": true,
-      "price": 159.31,
+      "price": 159.34,
       "open": 159.38,
       "high": 159.48,
       "low": 159.31,
       "prev_close": 159.22,
-      "change_pct": 0.06,
-      "ret5": 0.1,
+      "change_pct": 0.07,
+      "ret5": 0.11,
       "ret5_prev": 1.03,
-      "ret20": -1.95,
+      "ret20": -1.94,
       "rvol": 0,
       "turnover": 0,
       "atr14": 1.78,
       "atr_pct": 1.12,
-      "ma5": 159.31,
+      "ma5": 159.32,
       "ma20": 160.36,
       "ma60": 160.89,
-      "from_ma5": 0.0,
-      "from_ma20": -0.65,
+      "from_ma5": 0.01,
+      "from_ma20": -0.64,
       "touch_ma5": true,
-      "to_high20": -2.84,
-      "to_high52": -2.84,
+      "to_high20": -2.83,
+      "to_high52": -2.83,
       "bb_upper": 165.22,
       "bb_lower": 155.51,
       "bb_width": 6.06,
-      "bb_width_change": -0.08,
+      "bb_width_change": -0.09,
       "bb_percentile": 95.8,
       "bb_expansion_score": 16.5,
-      "day_score": 1.08,
-      "swing_score": -3.45,
+      "day_score": 1.1,
+      "swing_score": -3.44,
       "stable_score": 0.65,
       "momentum_score": 3.8,
       "high_score": 3.0
@@ -4063,8 +4063,8 @@
     "regime_action": "AI一本へ集中せず、金融・資本財・ヘルスケアの初押しを優先",
     "rate_view": "金利横ばい：業績と需給を優先",
     "rate5": 0.53,
-    "breadth": "5/11",
-    "spread": 5.1,
+    "breadth": "4/11",
+    "spread": 5.6,
     "us_sectors": [
       {
         "sector": "エネルギー",
@@ -4122,28 +4122,6 @@
         "action": "見送り"
       },
       {
-        "sector": "不動産",
-        "ticker": "XLRE",
-        "phase": "流入初期",
-        "score": 53.0,
-        "rel5": 1.07,
-        "rel20": -4.93,
-        "acceleration": 4.81,
-        "from_ma20": -0.68,
-        "action": "最優先監視・初押し"
-      },
-      {
-        "sector": "コミュニケーション",
-        "ticker": "XLC",
-        "phase": "低迷",
-        "score": 50.5,
-        "rel5": -0.8,
-        "rel20": -4.03,
-        "acceleration": 0.77,
-        "from_ma20": 0.79,
-        "action": "見送り"
-      },
-      {
         "sector": "ヘルスケア",
         "ticker": "XLV",
         "phase": "流出",
@@ -4152,6 +4130,17 @@
         "rel20": 0.85,
         "acceleration": -2.54,
         "from_ma20": 1.46,
+        "action": "新規ロング停止"
+      },
+      {
+        "sector": "コミュニケーション",
+        "ticker": "XLC",
+        "phase": "流出",
+        "score": 49.0,
+        "rel5": -0.29,
+        "rel20": -3.9,
+        "acceleration": -1.06,
+        "from_ma20": 0.82,
         "action": "新規ロング停止"
       },
       {
@@ -4164,6 +4153,17 @@
         "acceleration": -1.57,
         "from_ma20": 0.92,
         "action": "新規ロング停止"
+      },
+      {
+        "sector": "不動産",
+        "ticker": "XLRE",
+        "phase": "低迷",
+        "score": 43.4,
+        "rel5": -0.23,
+        "rel20": -5.35,
+        "acceleration": 1.98,
+        "from_ma20": -0.81,
+        "action": "見送り"
       },
       {
         "sector": "素材",
@@ -4845,7 +4845,7 @@
   ],
   "morning_snapshot": {
     "date": "2026-08-18",
-    "fixed_at": "2026-08-18 08:49:56 JST",
+    "fixed_at": "2026-08-18 08:57:14 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": [
       {
@@ -4923,7 +4923,7 @@
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-08-18",
-    "fixed_at": "2026-08-18 08:50:23 JST",
+    "fixed_at": "2026-08-18 08:57:40 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
