@@ -2,6 +2,17 @@ name: Update Trade Cockpit # manual refresh 2026-08-13
 
 on:
   workflow_dispatch:
+    inputs:
+      edition:
+        description: "作成する版"
+        required: false
+        default: morning
+        type: choice
+        options:
+          - morning
+          - midday
+          - close
+          - auto
   push:
     branches: [main]
     paths:
@@ -49,6 +60,7 @@ jobs:
       - name: Update cockpit data
         env:
           TZ: Asia/Tokyo
+          COCKPIT_SESSION: ${{ github.event_name == 'workflow_dispatch' && inputs.edition || (github.event_name == 'push' && 'morning' || 'auto') }}
         run: |
           python scripts/signal_scan.py
           python scripts/update.py
