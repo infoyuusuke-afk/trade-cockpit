@@ -1,6 +1,6 @@
 {
   "date": "2026-08-19",
-  "fixed_at": "2026-08-19 11:39:59 JST",
+  "fixed_at": "2026-08-19 15:41:45 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
@@ -16,22 +16,22 @@
       "morning_price": 6920
     },
     {
-      "name": "NTT（9432）",
-      "ticker": "9432.T",
+      "name": "本田技研工業（7267）",
+      "ticker": "7267.T",
       "side": "LONG",
-      "score": 74.0,
-      "entry": 161.7,
-      "entry_limit": 161.9,
-      "stop": 158.9,
-      "target1": 166.4,
-      "target2": 168.5,
-      "morning_price": 161.9
+      "score": 77.0,
+      "entry": 1730,
+      "entry_limit": 1732,
+      "stop": 1683,
+      "target1": 1806,
+      "target2": 1840,
+      "morning_price": 1732
     },
     {
       "name": "MS&AD（8725）",
       "ticker": "8725.T",
       "side": "LONG",
-      "score": 68.0,
+      "score": 71.0,
       "entry": 5000,
       "entry_limit": 5010,
       "stop": 4895,
@@ -40,28 +40,28 @@
       "morning_price": 5010
     },
     {
+      "name": "ラウンドワン（4680）",
+      "ticker": "4680.T",
+      "side": "LONG",
+      "score": 67.0,
+      "entry": 1370,
+      "entry_limit": 1372,
+      "stop": 1307,
+      "target1": 1470,
+      "target2": 1515,
+      "morning_price": 1372
+    },
+    {
       "name": "INPEX（1605）",
       "ticker": "1605.T",
       "side": "LONG",
-      "score": 94.0,
+      "score": 98.0,
       "entry": 3895,
       "entry_limit": 3905,
       "stop": 3795,
       "target1": 4070,
       "target2": 4145,
       "morning_price": 3905
-    },
-    {
-      "name": "ソフトバンク（9434）",
-      "ticker": "9434.T",
-      "side": "LONG",
-      "score": 71.0,
-      "entry": 236.1,
-      "entry_limit": 236.3,
-      "stop": 231.6,
-      "target1": 243.4,
-      "target2": 246.6,
-      "morning_price": 236.3
     }
   ]
 }
