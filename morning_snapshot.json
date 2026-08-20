@@ -1,6 +1,6 @@
 {
-  "date": "2026-08-20",
-  "fixed_at": "2026-08-20 15:41:01 JST",
+  "date": "2026-08-21",
+  "fixed_at": "2026-08-21 07:57:13 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
@@ -19,7 +19,7 @@
       "name": "本田技研工業（7267）",
       "ticker": "7267.T",
       "side": "LONG",
-      "score": 98.0,
+      "score": 99.0,
       "entry": 1749,
       "entry_limit": 1751,
       "stop": 1708,
@@ -32,18 +32,18 @@
       "ticker": "4680.T",
       "side": "LONG",
       "score": 87.0,
-      "entry": 1391,
-      "entry_limit": 1393,
+      "entry": 1390,
+      "entry_limit": 1392,
       "stop": 1332,
-      "target1": 1484,
-      "target2": 1527,
-      "morning_price": 1393
+      "target1": 1482,
+      "target2": 1524,
+      "morning_price": 1392
     },
     {
       "name": "INPEX（1605）",
       "ticker": "1605.T",
       "side": "LONG",
-      "score": 91.0,
+      "score": 92.0,
       "entry": 3915,
       "entry_limit": 3925,
       "stop": 3845,
@@ -52,16 +52,16 @@
       "morning_price": 3925
     },
     {
-      "name": "GO（581A）",
-      "ticker": "581A.T",
+      "name": "トヨタ自動車（7203）",
+      "ticker": "7203.T",
       "side": "LONG",
-      "score": 88.0,
-      "entry": 3625,
-      "entry_limit": 3635,
-      "stop": 3440,
-      "target1": 3930,
-      "target2": 4065,
-      "morning_price": 3635
+      "score": 90.0,
+      "entry": 3085,
+      "entry_limit": 3095,
+      "stop": 3015,
+      "target1": 3215,
+      "target2": 3270,
+      "morning_price": 3095
     }
   ]
 }
