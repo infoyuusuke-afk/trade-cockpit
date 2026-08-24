@@ -1,13 +1,13 @@
 {
   "date": "2026-08-24",
-  "fixed_at": "2026-08-24 11:40:08 JST",
+  "fixed_at": "2026-08-24 15:41:28 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
       "name": "本田技研工業（7267）",
       "ticker": "7267.T",
       "side": "LONG",
-      "score": 95.0,
+      "score": 98.0,
       "entry": 1752,
       "entry_limit": 1754,
       "stop": 1716,
@@ -19,7 +19,7 @@
       "name": "INPEX（1605）",
       "ticker": "1605.T",
       "side": "LONG",
-      "score": 78.0,
+      "score": 88.0,
       "entry": 3930,
       "entry_limit": 3940,
       "stop": 3835,
@@ -28,40 +28,40 @@
       "morning_price": 3940
     },
     {
-      "name": "JR東日本（9020）",
-      "ticker": "9020.T",
+      "name": "ラウンドワン（4680）",
+      "ticker": "4680.T",
       "side": "LONG",
-      "score": 61.0,
-      "entry": 3570,
-      "entry_limit": 3580,
-      "stop": 3510,
-      "target1": 3685,
-      "target2": 3735,
-      "morning_price": 3580
+      "score": 82.0,
+      "entry": 1367,
+      "entry_limit": 1369,
+      "stop": 1324,
+      "target1": 1436,
+      "target2": 1468,
+      "morning_price": 1369
     },
     {
-      "name": "GO（581A）",
-      "ticker": "581A.T",
+      "name": "トヨタ自動車（7203）",
+      "ticker": "7203.T",
       "side": "LONG",
       "score": 89.0,
-      "entry": 3740,
-      "entry_limit": 3750,
-      "stop": 3555,
-      "target1": 4040,
-      "target2": 4180,
-      "morning_price": 3750
+      "entry": 3145,
+      "entry_limit": 3155,
+      "stop": 3085,
+      "target1": 3260,
+      "target2": 3310,
+      "morning_price": 3155
     },
     {
       "name": "三菱商事（8058）",
       "ticker": "8058.T",
       "side": "LONG",
-      "score": 71.0,
-      "entry": 4780,
-      "entry_limit": 4790,
+      "score": 85.0,
+      "entry": 4805,
+      "entry_limit": 4815,
       "stop": 4720,
-      "target1": 4895,
-      "target2": 4945,
-      "morning_price": 4790
+      "target1": 4960,
+      "target2": 5025,
+      "morning_price": 4815
     }
   ]
 }
