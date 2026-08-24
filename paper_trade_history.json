@@ -2147,7 +2147,7 @@
     "triggered": false,
     "result": "未発動（見送り）",
     "close": 1742.0,
-    "vwap": 1736.4,
+    "vwap": 1737.55,
     "pnl_yen": null,
     "r": null,
     "shares": 100
@@ -2166,8 +2166,8 @@
     "morning_price": 3940,
     "triggered": false,
     "result": "未発動（見送り）",
-    "close": 3871.0,
-    "vwap": 3861.41,
+    "close": 3882.0,
+    "vwap": 3867.73,
     "pnl_yen": null,
     "r": null,
     "shares": 100
@@ -2186,8 +2186,8 @@
     "morning_price": 3580,
     "triggered": false,
     "result": "未発動（見送り）",
-    "close": 3538.0,
-    "vwap": 3540.77,
+    "close": 3534.0,
+    "vwap": 3537.72,
     "pnl_yen": null,
     "r": null,
     "shares": 100
@@ -2206,8 +2206,8 @@
     "morning_price": 3750,
     "triggered": true,
     "result": "IFO損切り",
-    "close": 3910.0,
-    "vwap": 3726.76,
+    "close": 3820.0,
+    "vwap": 3781.1,
     "pnl_yen": -19500,
     "r": -1.0,
     "shares": 100
@@ -2224,12 +2224,12 @@
     "target1": 4895,
     "target2": 4945,
     "morning_price": 4790,
-    "triggered": false,
-    "result": "未発動（見送り）",
-    "close": 4769.0,
-    "vwap": 4757.71,
-    "pnl_yen": null,
-    "r": null,
+    "triggered": true,
+    "result": "時点評価・未決済",
+    "close": 4782.0,
+    "vwap": 4764.13,
+    "pnl_yen": -800,
+    "r": -0.11,
     "shares": 100
   }
 ]
