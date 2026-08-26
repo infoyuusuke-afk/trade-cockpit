@@ -1,67 +1,67 @@
 {
   "date": "2026-08-26",
-  "fixed_at": "2026-08-26 08:27:18 JST",
+  "fixed_at": "2026-08-26 11:41:43 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
+    {
+      "name": "小松製作所（6301）",
+      "ticker": "6301.T",
+      "side": "LONG",
+      "score": 80.0,
+      "entry": 7540,
+      "entry_limit": 7560,
+      "stop": 7390,
+      "target1": 7820,
+      "target2": 7930,
+      "morning_price": 7560
+    },
+    {
+      "name": "MS&AD（8725）",
+      "ticker": "8725.T",
+      "side": "LONG",
+      "score": 79.0,
+      "entry": 5110,
+      "entry_limit": 5130,
+      "stop": 5030,
+      "target1": 5280,
+      "target2": 5350,
+      "morning_price": 5130
+    },
     {
       "name": "本田技研工業（7267）",
       "ticker": "7267.T",
       "side": "LONG",
-      "score": 83.0,
-      "entry": 1734,
-      "entry_limit": 1736,
-      "stop": 1689,
-      "target1": 1806,
-      "target2": 1839,
-      "morning_price": 1736
-    },
-    {
-      "name": "キヤノン（7751）",
-      "ticker": "7751.T",
-      "side": "LONG",
-      "score": 82.0,
-      "entry": 4640,
-      "entry_limit": 4650,
-      "stop": 4575,
-      "target1": 4760,
-      "target2": 4815,
-      "morning_price": 4650
-    },
-    {
-      "name": "INPEX（1605）",
-      "ticker": "1605.T",
-      "side": "LONG",
-      "score": 81.0,
-      "entry": 3960,
-      "entry_limit": 3970,
-      "stop": 3865,
-      "target1": 4130,
-      "target2": 4200,
-      "morning_price": 3970
+      "score": 77.0,
+      "entry": 1708,
+      "entry_limit": 1710,
+      "stop": 1666,
+      "target1": 1776,
+      "target2": 1807,
+      "morning_price": 1710
     },
     {
       "name": "JR東日本（9020）",
       "ticker": "9020.T",
       "side": "LONG",
-      "score": 80.0,
-      "entry": 3670,
-      "entry_limit": 3680,
-      "stop": 3610,
-      "target1": 3785,
-      "target2": 3835,
-      "morning_price": 3680
+      "score": 69.0,
+      "entry": 3630,
+      "entry_limit": 3640,
+      "stop": 3570,
+      "target1": 3745,
+      "target2": 3795,
+      "morning_price": 3640
     },
     {
       "name": "トヨタ自動車（7203）",
       "ticker": "7203.T",
       "side": "LONG",
-      "score": 83.0,
-      "entry": 3125,
-      "entry_limit": 3135,
-      "stop": 3070,
-      "target1": 3230,
-      "target2": 3280,
-      "morning_price": 3135
+      "score": 74.0,
+      "entry": 3110,
+      "entry_limit": 3120,
+      "stop": 3060,
+      "target1": 3210,
+      "target2": 3250,
+      "morning_price": 3120
     }
   ]
 }
