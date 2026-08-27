@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-28 07:04:53 JST",
+  "updated_at": "2026-08-28 07:11:40 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -450,42 +450,74 @@
   ],
   "indices": {
     "日経平均": {
-      "ok": false
+      "ok": true,
+      "price": 66262.16,
+      "open": 65604.49,
+      "high": 66442.34,
+      "low": 65390.55,
+      "prev_close": 65856.43,
+      "change_pct": 0.62,
+      "ret5": 1.43,
+      "ret5_prev": -3.25,
+      "ret20": 6.25,
+      "rvol": 0.73,
+      "turnover": 8580949234375,
+      "atr14": 1250.5,
+      "atr_pct": 1.89,
+      "ma5": 65975.96,
+      "ma20": 65818.52,
+      "ma60": 67139.76,
+      "from_ma5": 0.43,
+      "from_ma20": 0.67,
+      "touch_ma5": true,
+      "to_high20": -4.81,
+      "to_high52": -9.02,
+      "bb_upper": 69787.94,
+      "bb_lower": 61849.1,
+      "bb_width": 12.06,
+      "bb_width_change": -0.94,
+      "bb_percentile": 39.2,
+      "bb_expansion_score": 46.2,
+      "day_score": 5.09,
+      "swing_score": 5.79,
+      "stable_score": 4.85,
+      "momentum_score": 8.67,
+      "high_score": 3.09
     },
     "TOPIX": {
       "ok": true,
-      "price": 428.2,
-      "open": 426.6,
-      "high": 429.7,
-      "low": 426.3,
-      "prev_close": 426.7,
-      "change_pct": 0.35,
-      "ret5": 2.59,
-      "ret5_prev": -3.36,
-      "ret20": 3.71,
-      "rvol": 0.85,
-      "turnover": 5560331311,
-      "atr14": 4.86,
-      "atr_pct": 1.14,
-      "ma5": 425.3,
-      "ma20": 424.13,
-      "ma60": 422.3,
-      "from_ma5": 0.68,
-      "from_ma20": 0.96,
+      "price": 429.4,
+      "open": 430.0,
+      "high": 430.6,
+      "low": 428.2,
+      "prev_close": 428.2,
+      "change_pct": 0.28,
+      "ret5": 1.56,
+      "ret5_prev": -2.89,
+      "ret20": 3.49,
+      "rvol": 0.67,
+      "turnover": 4285991629,
+      "atr14": 4.74,
+      "atr_pct": 1.1,
+      "ma5": 426.62,
+      "ma20": 424.86,
+      "ma60": 422.53,
+      "from_ma5": 0.65,
+      "from_ma20": 1.07,
       "touch_ma5": true,
-      "to_high20": -2.66,
-      "to_high52": -2.66,
-      "bb_upper": 439.66,
-      "bb_lower": 408.6,
-      "bb_width": 7.32,
-      "bb_width_change": -0.34,
-      "bb_percentile": 54.2,
-      "bb_expansion_score": 58.7,
-      "day_score": 5.46,
-      "swing_score": 5.68,
-      "stable_score": 10.51,
-      "momentum_score": 8.97,
-      "high_score": 8.27
+      "to_high20": -2.39,
+      "to_high52": -2.39,
+      "bb_upper": 439.94,
+      "bb_lower": 409.77,
+      "bb_width": 7.1,
+      "bb_width_change": -0.48,
+      "bb_percentile": 48.3,
+      "bb_expansion_score": 59.5,
+      "day_score": 2.77,
+      "swing_score": 5.09,
+      "stable_score": 8.3,
+      "momentum_score": 8.26,
+      "high_score": 6.0
     },
     "NASDAQ": {
       "ok": true,
@@ -629,13 +661,13 @@
     },
     "ドル円": {
       "ok": true,
-      "price": 159.37,
+      "price": 159.36,
       "open": 159.38,
-      "high": 159.38,
+      "high": 159.39,
       "low": 159.35,
       "prev_close": 159.22,
       "change_pct": 0.09,
-      "ret5": 0.69,
+      "ret5": 0.68,
       "ret5_prev": -0.66,
       "ret20": -2.41,
       "rvol": 0,
@@ -645,11 +677,11 @@
       "ma5": 159.1,
       "ma20": 158.8,
       "ma60": 160.83,
-      "from_ma5": 0.17,
-      "from_ma20": 0.36,
+      "from_ma5": 0.16,
+      "from_ma20": 0.35,
       "touch_ma5": true,
       "to_high20": -2.67,
-      "to_high52": -2.81,
+      "to_high52": -2.82,
       "bb_upper": 160.32,
       "bb_lower": 157.27,
       "bb_width": 1.92,
@@ -3575,41 +3607,13 @@
   ],
   "day_ifo_candidates": [
     {
-      "name": "MS&AD（8725）",
-      "code": "8725",
-      "ticker": "8725.T",
-      "side": "LONG",
-      "sector": "金融",
-      "sector_phase": "流入初期",
-      "score": 89,
-      "shares": 100,
-      "trigger": 5100,
-      "entry_limit": 5120,
-      "stop": 5020,
-      "target1": 5270,
-      "target2": 5340,
-      "required_capital": 512000,
-      "max_loss": 10000,
-      "expected_profit": 15000,
-      "risk_reward": 1.5,
-      "reason": "金融＝流入初期 65点／テクニカル 71点／出来高比 0.79倍／売買代金 159億円",
-      "event_risk": "7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。",
-      "order_type": "逆指値注文＋IFO（利益確定＋損切り）",
-      "market": "東証（SOR）",
-      "credit_type": "制度（6カ月）",
-      "entry_expiry": "当日中",
-      "exit_expiry": "当日中",
-      "quote_rule": "8:55気配が5,120円を超えていたら価格を上げず注文取消。",
-      "close_rule": "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。"
-    },
-    {
       "name": "キヤノン（7751）",
       "code": "7751",
       "ticker": "7751.T",
       "side": "LONG",
       "sector": "その他",
-      "sector_phase": "中立",
-      "score": 89,
+      "sector_phase": "拡大",
+      "score": 91,
       "shares": 100,
       "trigger": 4710,
       "entry_limit": 4720,
@@ -3620,7 +3624,7 @@
       "max_loss": 7500,
       "expected_profit": 11000,
       "risk_reward": 1.47,
-      "reason": "その他＝中立 71点／テクニカル 67点／出来高比 0.78倍／売買代金 137億円",
+      "reason": "その他＝拡大 77点／テクニカル 67点／出来高比 0.78倍／売買代金 137億円",
       "event_risk": "7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。",
       "order_type": "逆指値注文＋IFO（利益確定＋損切り）",
       "market": "東証（SOR）",
@@ -3631,13 +3635,41 @@
       "close_rule": "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。"
     },
     {
+      "name": "MS&AD（8725）",
+      "code": "8725",
+      "ticker": "8725.T",
+      "side": "LONG",
+      "sector": "金融",
+      "sector_phase": "流入初期",
+      "score": 90,
+      "shares": 100,
+      "trigger": 5100,
+      "entry_limit": 5120,
+      "stop": 5020,
+      "target1": 5270,
+      "target2": 5340,
+      "required_capital": 512000,
+      "max_loss": 10000,
+      "expected_profit": 15000,
+      "risk_reward": 1.5,
+      "reason": "金融＝流入初期 71点／テクニカル 71点／出来高比 0.79倍／売買代金 159億円",
+      "event_risk": "7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。",
+      "order_type": "逆指値注文＋IFO（利益確定＋損切り）",
+      "market": "東証（SOR）",
+      "credit_type": "制度（6カ月）",
+      "entry_expiry": "当日中",
+      "exit_expiry": "当日中",
+      "quote_rule": "8:55気配が5,120円を超えていたら価格を上げず注文取消。",
+      "close_rule": "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。"
+    },
+    {
       "name": "小松製作所（6301）",
       "code": "6301",
       "ticker": "6301.T",
       "side": "LONG",
       "sector": "資本財・インフラ",
-      "sector_phase": "中立",
-      "score": 88,
+      "sector_phase": "拡大",
+      "score": 90,
       "shares": 100,
       "trigger": 7650,
       "entry_limit": 7670,
@@ -3648,7 +3680,7 @@
       "max_loss": 18000,
       "expected_profit": 27000,
       "risk_reward": 1.5,
-      "reason": "資本財・インフラ＝中立 59点／テクニカル 71点／出来高比 0.96倍／売買代金 207億円",
+      "reason": "資本財・インフラ＝拡大 65点／テクニカル 71点／出来高比 0.96倍／売買代金 207億円",
       "event_risk": "7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。",
       "order_type": "逆指値注文＋IFO（利益確定＋損切り）",
       "market": "東証（SOR）",
@@ -3659,13 +3691,41 @@
       "close_rule": "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。"
     },
     {
+      "name": "NTT（9432）",
+      "code": "9432",
+      "ticker": "9432.T",
+      "side": "LONG",
+      "sector": "AI・テクノロジー",
+      "sector_phase": "中立",
+      "score": 88,
+      "shares": 100,
+      "trigger": 169.6,
+      "entry_limit": 169.8,
+      "stop": 167.1,
+      "target1": 173.9,
+      "target2": 175.7,
+      "required_capital": 16980,
+      "max_loss": 270,
+      "expected_profit": 410,
+      "risk_reward": 1.52,
+      "reason": "AI・テクノロジー＝中立 58点／テクニカル 75点／出来高比 0.67倍／売買代金 278億円",
+      "event_risk": "7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。",
+      "order_type": "逆指値注文＋IFO（利益確定＋損切り）",
+      "market": "東証（SOR）",
+      "credit_type": "制度（6カ月）",
+      "entry_expiry": "当日中",
+      "exit_expiry": "当日中",
+      "quote_rule": "8:55気配が169.8円を超えていたら価格を上げず注文取消。",
+      "close_rule": "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。"
+    },
+    {
       "name": "日本郵船（9101）",
       "code": "9101",
       "ticker": "9101.T",
       "side": "LONG",
       "sector": "資源・素材・商社",
       "sector_phase": "中立",
-      "score": 84,
+      "score": 86,
       "shares": 100,
       "trigger": 6990,
       "entry_limit": 7010,
@@ -3676,7 +3736,7 @@
       "max_loss": 17000,
       "expected_profit": 25000,
       "risk_reward": 1.47,
-      "reason": "資源・素材・商社＝中立 61点／テクニカル 67点／出来高比 0.92倍／売買代金 229億円",
+      "reason": "資源・素材・商社＝中立 67点／テクニカル 67点／出来高比 0.92倍／売買代金 229億円",
       "event_risk": "7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。",
       "order_type": "逆指値注文＋IFO（利益確定＋損切り）",
       "market": "東証（SOR）",
@@ -3684,34 +3744,6 @@
       "entry_expiry": "当日中",
       "exit_expiry": "当日中",
       "quote_rule": "8:55気配が7,010円を超えていたら価格を上げず注文取消。",
-      "close_rule": "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。"
-    },
-    {
-      "name": "オムロン（6645）",
-      "code": "6645",
-      "ticker": "6645.T",
-      "side": "LONG",
-      "sector": "資本財・インフラ",
-      "sector_phase": "中立",
-      "score": 83,
-      "shares": 100,
-      "trigger": 6620,
-      "entry_limit": 6640,
-      "stop": 6390,
-      "target1": 7020,
-      "target2": 7190,
-      "required_capital": 664000,
-      "max_loss": 25000,
-      "expected_profit": 38000,
-      "risk_reward": 1.52,
-      "reason": "資本財・インフラ＝中立 59点／テクニカル 68点／出来高比 0.58倍／売買代金 70億円",
-      "event_risk": "7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。",
-      "order_type": "逆指値注文＋IFO（利益確定＋損切り）",
-      "market": "東証（SOR）",
-      "credit_type": "制度（6カ月）",
-      "entry_expiry": "当日中",
-      "exit_expiry": "当日中",
-      "quote_rule": "8:55気配が6,640円を超えていたら価格を上げず注文取消。",
       "close_rule": "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。"
     }
   ],
@@ -3820,9 +3852,9 @@
   "day_ifo_summary": {
     "count": 5,
     "shares_each": 100,
-    "total_capital": 3116000,
-    "total_profit": 116000,
-    "total_max_loss": 77500,
+    "total_capital": 2468980,
+    "total_profit": 78410,
+    "total_max_loss": 52770,
     "order_time": "8:55",
     "manual_entry": true
   },
@@ -4907,11 +4939,11 @@
     "japan_sectors": [
       {
         "sector": "その他",
-        "phase": "中立",
-        "score": 71.2,
-        "rel5": 1.66,
-        "rel20": 23.54,
-        "acceleration": -1.32,
+        "phase": "拡大",
+        "score": 77.2,
+        "rel5": 2.69,
+        "rel20": 23.76,
+        "acceleration": 0.18,
         "breadth": 66.7,
         "rvol": 0.92,
         "members": 3,
@@ -4932,15 +4964,15 @@
             "rvol": 1.03
           }
         ],
-        "action": "方向確認待ち"
+        "action": "順張り・押し目"
       },
       {
         "sector": "金融",
         "phase": "流入初期",
-        "score": 64.7,
-        "rel5": 2.01,
-        "rel20": -4.45,
-        "acceleration": 3.37,
+        "score": 70.9,
+        "rel5": 3.04,
+        "rel20": -4.23,
+        "acceleration": 4.87,
         "breadth": 100.0,
         "rvol": 0.8,
         "members": 3,
@@ -4966,10 +4998,10 @@
       {
         "sector": "資源・素材・商社",
         "phase": "中立",
-        "score": 60.7,
-        "rel5": 0.99,
-        "rel20": 12.86,
-        "acceleration": -5.72,
+        "score": 66.9,
+        "rel5": 2.02,
+        "rel20": 13.08,
+        "acceleration": -4.23,
         "breadth": 83.3,
         "rvol": 0.81,
         "members": 6,
@@ -4994,11 +5026,11 @@
       },
       {
         "sector": "資本財・インフラ",
-        "phase": "中立",
-        "score": 59.0,
-        "rel5": -0.68,
-        "rel20": 9.97,
-        "acceleration": 1.5,
+        "phase": "拡大",
+        "score": 65.2,
+        "rel5": 0.35,
+        "rel20": 10.19,
+        "acceleration": 3.0,
         "breadth": 47.1,
         "rvol": 0.81,
         "members": 17,
@@ -5019,15 +5051,15 @@
             "rvol": 0.8
           }
         ],
-        "action": "方向確認待ち"
+        "action": "順張り・押し目"
       },
       {
         "sector": "AI・テクノロジー",
-        "phase": "流出",
-        "score": 51.9,
-        "rel5": -1.16,
-        "rel20": 6.33,
-        "acceleration": -0.59,
+        "phase": "中立",
+        "score": 58.1,
+        "rel5": -0.13,
+        "rel20": 6.55,
+        "acceleration": 0.91,
         "breadth": 61.5,
         "rvol": 0.74,
         "members": 26,
@@ -5048,15 +5080,15 @@
             "rvol": 0.91
           }
         ],
-        "action": "新規ロング停止"
+        "action": "方向確認待ち"
       },
       {
         "sector": "自動車・モビリティ",
-        "phase": "流出",
-        "score": 37.2,
-        "rel5": -0.77,
-        "rel20": -0.33,
-        "acceleration": -5.71,
+        "phase": "中立",
+        "score": 43.4,
+        "rel5": 0.26,
+        "rel20": -0.11,
+        "acceleration": -4.21,
         "breadth": 40.0,
         "rvol": 0.95,
         "members": 5,
@@ -5077,15 +5109,15 @@
             "rvol": 0.9
           }
         ],
-        "action": "新規ロング停止"
+        "action": "方向確認待ち"
       },
       {
         "sector": "内需・ディフェンシブ",
         "phase": "流出",
-        "score": 28.5,
-        "rel5": -2.2,
-        "rel20": -4.11,
-        "acceleration": -8.58,
+        "score": 33.7,
+        "rel5": -1.17,
+        "rel20": -3.89,
+        "acceleration": -7.08,
         "breadth": 80.0,
         "rvol": 0.7,
         "members": 5,
@@ -5111,10 +5143,40 @@
     ],
     "picks": [
       {
+        "name": "住友金属鉱山（5713）",
+        "sector": "その他",
+        "phase": "拡大",
+        "score": 88,
+        "plan": {
+          "entry": 11480,
+          "stop": 11050,
+          "target1": 12110,
+          "target2": 12410,
+          "risk": 420,
+          "tick": 10
+        },
+        "reason": "その他が拡大／TOPIX比5日 +2.69%／出来高比 0.95倍"
+      },
+      {
+        "name": "パワーエックス（485A）",
+        "sector": "資本財・インフラ",
+        "phase": "拡大",
+        "score": 85,
+        "plan": {
+          "entry": 1807,
+          "stop": 1716,
+          "target1": 1943,
+          "target2": 2006,
+          "risk": 91,
+          "tick": 1
+        },
+        "reason": "資本財・インフラが拡大／TOPIX比5日 +0.35%／出来高比 1.17倍"
+      },
+      {
         "name": "MS&AD（8725）",
         "sector": "金融",
         "phase": "流入初期",
-        "score": 76,
+        "score": 81,
         "plan": {
           "entry": 5070,
           "stop": 4990,
@@ -5123,13 +5185,58 @@
           "risk": 80,
           "tick": 10
         },
-        "reason": "金融が流入初期／TOPIX比5日 +2.01%／出来高比 0.79倍"
+        "reason": "金融が流入初期／TOPIX比5日 +3.04%／出来高比 0.79倍"
+      },
+      {
+        "name": "小松製作所（6301）",
+        "sector": "資本財・インフラ",
+        "phase": "拡大",
+        "score": 81,
+        "plan": {
+          "entry": 7460,
+          "stop": 7340,
+          "target1": 7650,
+          "target2": 7730,
+          "risk": 120,
+          "tick": 10
+        },
+        "reason": "資本財・インフラが拡大／TOPIX比5日 +0.35%／出来高比 0.96倍"
+      },
+      {
+        "name": "キヤノン（7751）",
+        "sector": "その他",
+        "phase": "拡大",
+        "score": 81,
+        "plan": {
+          "entry": 4650,
+          "stop": 4600,
+          "target1": 4725,
+          "target2": 4760,
+          "risk": 50,
+          "tick": 5
+        },
+        "reason": "その他が拡大／TOPIX比5日 +2.69%／出来高比 0.78倍"
+      },
+      {
+        "name": "古河電気工業（5801）",
+        "sector": "資本財・インフラ",
+        "phase": "拡大",
+        "score": 78,
+        "plan": {
+          "entry": 3945,
+          "stop": 3735,
+          "target1": 4260,
+          "target2": 4405,
+          "risk": 210,
+          "tick": 5
+        },
+        "reason": "資本財・インフラが拡大／TOPIX比5日 +0.35%／出来高比 0.80倍"
       },
       {
         "name": "三菱UFJ FG（8306）",
         "sector": "金融",
         "phase": "流入初期",
-        "score": 73,
+        "score": 78,
         "plan": {
           "entry": 3590,
           "stop": 3535,
@@ -5138,31 +5245,16 @@
           "risk": 55,
           "tick": 5
         },
-        "reason": "金融が流入初期／TOPIX比5日 +2.01%／出来高比 0.78倍"
-      },
-      {
-        "name": "三井住友FG（8316）",
-        "sector": "金融",
-        "phase": "流入初期",
-        "score": 72,
-        "plan": {
-          "entry": 6750,
-          "stop": 6650,
-          "target1": 6890,
-          "target2": 6960,
-          "risk": 100,
-          "tick": 10
-        },
-        "reason": "金融が流入初期／TOPIX比5日 +2.01%／出来高比 0.82倍"
+        "reason": "金融が流入初期／TOPIX比5日 +3.04%／出来高比 0.78倍"
       }
     ],
     "kioxia": {
       "name": "キオクシアHD（285A）",
-      "status": "流出",
-      "action": "追加買い停止",
-      "detail": "会社材料よりセクター需給を優先。セクターが流入初期へ戻り、個別が前日高値を上抜くまで新規資金を入れない。",
-      "sector_score": 51.9,
-      "sector_rel5": -1.16
+      "status": "中立",
+      "action": "新規追加は見送り",
+      "detail": "方向未確定。業績期待だけで平均取得単価を下げず、セクターと個別の両方の反転を待つ。",
+      "sector_score": 58.1,
+      "sector_rel5": -0.13
     },
     "source_note": "米国11業種ETFのS&P500相対強弱と、日本株監視群のTOPIX相対強弱による公開データ代理指標"
   },
@@ -5506,28 +5598,14 @@
   ],
   "morning_snapshot": {
     "date": "2026-08-28",
-    "fixed_at": "2026-08-28 07:04:53 JST",
+    "fixed_at": "2026-08-28 07:11:40 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": [
-      {
-        "name": "MS&AD（8725）",
-        "ticker": "8725.T",
-        "side": "LONG",
-        "score": 89,
-        "price": 5052.0,
-        "plan": {
-          "entry": 5100,
-          "entry_limit": 5120,
-          "stop": 5020,
-          "target1": 5270,
-          "target2": 5340
-        }
-      },
       {
         "name": "キヤノン（7751）",
         "ticker": "7751.T",
         "side": "LONG",
-        "score": 89,
+        "score": 91,
         "price": 4689.0,
         "plan": {
           "entry": 4710,
@@ -5538,10 +5616,24 @@
         }
       },
       {
+        "name": "MS&AD（8725）",
+        "ticker": "8725.T",
+        "side": "LONG",
+        "score": 90,
+        "price": 5052.0,
+        "plan": {
+          "entry": 5100,
+          "entry_limit": 5120,
+          "stop": 5020,
+          "target1": 5270,
+          "target2": 5340
+        }
+      },
+      {
         "name": "小松製作所（6301）",
         "ticker": "6301.T",
         "side": "LONG",
-        "score": 88,
+        "score": 90,
         "price": 7561.0,
         "plan": {
           "entry": 7650,
@@ -5552,10 +5644,24 @@
         }
       },
       {
+        "name": "NTT（9432）",
+        "ticker": "9432.T",
+        "side": "LONG",
+        "score": 88,
+        "price": 168.2,
+        "plan": {
+          "entry": 169.6,
+          "entry_limit": 169.8,
+          "stop": 167.1,
+          "target1": 173.9,
+          "target2": 175.7
+        }
+      },
+      {
         "name": "日本郵船（9101）",
         "ticker": "9101.T",
         "side": "LONG",
-        "score": 84,
+        "score": 86,
         "price": 6932.0,
         "plan": {
           "entry": 6990,
@@ -5564,46 +5670,20 @@
           "target1": 7260,
           "target2": 7380
         }
-      },
-      {
-        "name": "オムロン（6645）",
-        "ticker": "6645.T",
-        "side": "LONG",
-        "score": 83,
-        "price": 6527.0,
-        "plan": {
-          "entry": 6620,
-          "entry_limit": 6640,
-          "stop": 6390,
-          "target1": 7020,
-          "target2": 7190
-        }
       }
     ]
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-08-28",
-    "fixed_at": "2026-08-28 07:05:21 JST",
+    "fixed_at": "2026-08-28 07:12:13 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
-      {
-        "name": "MS&AD（8725）",
-        "ticker": "8725.T",
-        "side": "LONG",
-        "score": 89.0,
-        "entry": 5100,
-        "entry_limit": 5120,
-        "stop": 5020,
-        "target1": 5270,
-        "target2": 5340,
-        "morning_price": 5120
-      },
       {
         "name": "キヤノン（7751）",
         "ticker": "7751.T",
         "side": "LONG",
-        "score": 89.0,
+        "score": 91.0,
         "entry": 4710,
         "entry_limit": 4720,
         "stop": 4645,
@@ -5612,10 +5692,22 @@
         "morning_price": 4720
       },
       {
+        "name": "MS&AD（8725）",
+        "ticker": "8725.T",
+        "side": "LONG",
+        "score": 90.0,
+        "entry": 5100,
+        "entry_limit": 5120,
+        "stop": 5020,
+        "target1": 5270,
+        "target2": 5340,
+        "morning_price": 5120
+      },
+      {
         "name": "小松製作所（6301）",
         "ticker": "6301.T",
         "side": "LONG",
-        "score": 88.0,
+        "score": 90.0,
         "entry": 7650,
         "entry_limit": 7670,
         "stop": 7490,
@@ -5624,28 +5716,28 @@
         "morning_price": 7670
       },
       {
+        "name": "NTT（9432）",
+        "ticker": "9432.T",
+        "side": "LONG",
+        "score": 88.0,
+        "entry": 169.6,
+        "entry_limit": 169.8,
+        "stop": 167.1,
+        "target1": 173.9,
+        "target2": 175.7,
+        "morning_price": 169.8
+      },
+      {
         "name": "日本郵船（9101）",
         "ticker": "9101.T",
         "side": "LONG",
-        "score": 84.0,
+        "score": 86.0,
         "entry": 6990,
         "entry_limit": 7010,
         "stop": 6840,
         "target1": 7260,
         "target2": 7380,
         "morning_price": 7010
-      },
-      {
-        "name": "オムロン（6645）",
-        "ticker": "6645.T",
-        "side": "LONG",
-        "score": 83.0,
-        "entry": 6620,
-        "entry_limit": 6640,
-        "stop": 6390,
-        "target1": 7020,
-        "target2": 7190,
-        "morning_price": 6640
       }
     ]
   }
