@@ -22,6 +22,7 @@ on:
       - "scripts/weekly_tabs.py"
       - "watchlist.json"
       - "credit_supply.json"
+      - "buybacks.json"
       - "requirements.txt"
       - ".github/workflows/update.yml"
   schedule:
