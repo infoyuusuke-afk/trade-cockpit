@@ -76,6 +76,10 @@
     ,"東北電力（9506）": {"ticker": "9506.T", "sector": "電力・データセンター", "style": "swing"}
     ,"高砂熱学工業（1969）": {"ticker": "1969.T", "sector": "データセンター・冷却", "style": "swing"}
     ,"関電工（1942）": {"ticker": "1942.T", "sector": "データセンター・電気設備", "style": "swing"}
+    ,"日鉄鉱業（1515）": {"ticker": "1515.T", "sector": "資源開発・レアアース", "style": "swing"}
+    ,"住友金属鉱山（5713）": {"ticker": "5713.T", "sector": "非鉄・レアメタル", "style": "swing"}
+    ,"双日（2768）": {"ticker": "2768.T", "sector": "資源商社・レアアース", "style": "swing"}
+    ,"DOWA HD（5714）": {"ticker": "5714.T", "sector": "非鉄・資源循環", "style": "swing"}
   },
   "akita_dc_watch": [
     {
@@ -117,6 +121,48 @@
       "evidence": "データセンター向け電気設備・情報通信技術を保有",
       "contract_status": "秋田案件の受注・参画は未確認",
       "source": "https://www.kandenko.co.jp/business/"
+    }
+  ],
+  "gunma_rare_earth_watch": [
+    {
+      "name": "日鉄鉱業（1515）",
+      "role": "国内外の地下資源探査・鉱山開発・鉱石評価",
+      "relation_score": 72,
+      "evidence": "地下資源の探査・開発と鉱山由来の研究開発能力を保有",
+      "contract_status": "茂倉沢鉱山の調査・開発参画は未確認",
+      "source": "https://www.nittetsukou.co.jp/industry/"
+    },
+    {
+      "name": "住友金属鉱山（5713）",
+      "role": "鉱山開発・湿式製錬・レアアース回収",
+      "relation_score": 70,
+      "evidence": "低品位鉱からの金属抽出とスカンジウム回収の実績",
+      "contract_status": "茂倉沢鉱山との関係は未確認",
+      "source": "https://www.smm.co.jp/corp_info/location/overseas/"
+    },
+    {
+      "name": "信越化学工業（4063）",
+      "role": "レアアース分離精製・高性能磁石・リサイクル",
+      "relation_score": 68,
+      "evidence": "レアアースの分離精製から磁石まで一貫生産",
+      "contract_status": "群馬産鉱物の評価・採用は未確認",
+      "source": "https://www.shinetsu.co.jp/jp/sustainability/esg_environment/resource_saving/"
+    },
+    {
+      "name": "双日（2768）",
+      "role": "レアアース鉱山投資・輸入・国内供給網",
+      "relation_score": 66,
+      "evidence": "豪州ライナスと鉱山開発・軽中重希土類供給を展開",
+      "contract_status": "群馬案件への出資・供給契約は未確認",
+      "source": "https://www.sojitz.com/jp/news/article/20260313.html"
+    },
+    {
+      "name": "DOWA HD（5714）",
+      "role": "非鉄製錬・複雑原料処理・金属回収",
+      "relation_score": 58,
+      "evidence": "複雑な二次原料から多種類の有価金属を回収する技術を保有",
+      "contract_status": "群馬産レアアースの分離精製参画は未確認",
+      "source": "https://hd.dowa.co.jp/ja/news/news20200422.html"
     }
   ]
 }
