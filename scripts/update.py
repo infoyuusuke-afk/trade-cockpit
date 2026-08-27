@@ -1475,10 +1475,10 @@ def main():
 <section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{momentum_rows}</table><p class="warning">上向き5日線へのタッチ反発を最優先。場中の一時割れではなく終値回復を確認。終値で5日線を明確に割った場合は候補から外します。</p></section>
 <section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{high_rows}</table></section>
 <section class="card wide"><h2>⑤-D 急騰後の過熱監視・押し目待ち TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>押し目目安</th><th>損切り</th><th>戻り目標</th><th>判定</th></tr>{overheat_rows}</table><p class="warning">ここは即飛び乗り禁止。5日線反発、前日高値更新、出来高再増加の3点を確認してから候補へ昇格。</p></section>
-<section class="card wide"><h2>⑤-E 月足・週足 陽線ハンマー＋移動平均線反発</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>足</th><th>判定</th><th>期待値</th><th>終値</th><th>反発線</th><th>下ヒゲ／実体</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
-<tbody id="hammer-signals"><tr><td colspan="12">全市場を走査中...</td></tr></tbody></table>
-<p class="warning">7月月足は月末まで暫定。高値＋1ティックを翌日以降に上抜いた場合だけ発動し、ハンマーの安値割れで撤退します。</p></section>
+<section class="card wide"><h2>⑤-E 月足・週足反転＋信用需給 TOP5</h2>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>足</th><th>判定</th><th>総合点</th><th>終値</th><th>反発線</th><th>需給点・局面</th><th>下ヒゲ／実体</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
+<tbody id="hammer-signals"><tr><td colspan="13">全市場を走査中...</td></tr></tbody></table>
+<p class="warning">信用買い残1週・4週、信用倍率、機関空売り増減、買い戻し社数を55点で評価。未取得は需給未確認の暫定候補。高値＋1ティックを上抜いた場合だけ発動し、反転足安値割れで撤退します。</p></section>
 <section id="long-term-ma-rebound" class="card wide"><h2>⑤-F 長期右肩上がり・50週線／200日線反発ランキング</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>型</th><th>状態</th><th>期待値</th><th>終値</th><th>支持線</th><th>線の傾斜</th><th>半年騰落</th><th>足型</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
 <tbody id="long-term-ma-signals"><tr><td colspan="14">全市場を走査中...</td></tr></tbody></table>
@@ -1515,16 +1515,16 @@ def main():
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>種類</th><th>期待値</th><th>終値</th><th>IN価格</th><th>損切り</th><th>利確1／2</th><th>出来高比</th><th>20日騰落</th></tr></thead>
 <tbody id="prepared-signals"><tr><td colspan="10">読み込み中...</td></tr></tbody></table>
 <p class="warning">全市場の日足を自動走査し、60点以上を抽出。画面は期待値上位30銘柄、データには上位100銘柄を保存します。</p></section>
-<section class="card wide"><h2>⑩ 持ち越し<span class="pill long">LONG</span>候補 TOP10</h2>
+<section class="card wide"><h2>⑩ 信用需給優先・持ち越し<span class="pill long">LONG</span>候補 TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>翌日LONG発動</th><th>損切り</th><th>利確1／2</th><th>予約IFO入力例</th><th>選定理由</th><th>決算・イベントリスク</th></tr></thead>
 <tbody id="overnight-long"><tr><td colspan="9">読み込み中...</td></tr></tbody></table>
 <p class="warning">15:00版で候補を確認します。引け成りで無条件に買わず、発動条件を満たした銘柄だけ予約IFOを設定します。新規買いが発動した場合だけ利確・損切りを自動管理。大幅GUは約定させない価格条件にし、朝一はキオクシア等の値嵩株スキャルへ集中します。すでに保有済みならIFOではなく決済OCOを使用。</p></section>
-<section class="card wide"><h2>⑪ 持ち越し<span class="pill short">SHORT</span>候補 TOP10</h2>
+<section class="card wide"><h2>⑪ 信用需給優先・持ち越し<span class="pill short">SHORT</span>候補 TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>翌日SHORT発動</th><th>損切り</th><th>利確1／2</th><th>選定理由</th><th>決算・イベント／空売り注意</th></tr></thead>
 <tbody id="overnight-short"><tr><td colspan="8">読み込み中...</td></tr></tbody></table>
 <p class="warning">翌日寄りで無条件に売りません。準備足安値を割った場合だけSHORT。楽天MS2で貸借区分・在庫・逆日歩・空売り規制を必ず確認。大幅GDは追いかけません。</p></section>
 <section class="card"><h2>⑫ 運用ルール</h2><p>最大損失を先に固定／同テーマ集中を避ける／持ち越しは通常の半分の株数／損切りを広げない。</p></section>
-<section class="card"><h2>⑬ 選定ロジック</h2><p>LONG＝上昇トレンド・高値突破。SHORT＝終値＜5日線＜20日線・戻り失敗・安値割れ。低流動性、売られすぎ、踏み上げ危険は除外。</p></section>
+<section class="card"><h2>⑬ 選定ロジック</h2><p>信用需給を最優先。信用買い残の1週・4週減少、低い信用倍率、機関空売りの買い戻し、複数社買い戻しを評価し、週足・月足反転と重なる銘柄を上位表示。需給未取得は暫定候補です。</p></section>
 {hindenburg_html}{fortune_html}
 </main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>{data['updated_at']}</span></footer>
 <script>
@@ -1569,16 +1569,17 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     x.ret20.toFixed(2) + "%</td></tr>").join("");
   document.getElementById("prepared-signals").innerHTML =
     prepared || "<tr><td colspan='10'>本日の準備点灯銘柄なし。</td></tr>";
-  const hammers = (d.monthly_weekly_hammers || []).slice(0, 20).map((x, i) =>
+  const hammers = (d.monthly_weekly_hammers || []).slice(0, 5).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.timeframe +
     "</td><td>" + x.status + "</td><td><b class='up'>" + x.score +
     "/100</b></td><td>" + yen(x.close) + "</td><td>" + x.ma_rebound +
+    "</td><td>" + (x.supply_verified ? x.supply_score + "/55 " + x.supply_phase : "未取得") +
     "</td><td>" + x.lower_wick_ratio.toFixed(1) + "倍</td><td>" +
     x.volume_ratio.toFixed(2) + "倍</td><td><b>" + yen(x.trigger) +
     "</b></td><td class='down'>" + yen(x.stop) + "</td><td>" +
     yen(x.target1) + "／" + yen(x.target2) + "</td></tr>").join("");
   document.getElementById("hammer-signals").innerHTML =
-    hammers || "<tr><td colspan='12'>厳格条件に合格した陽線ハンマー銘柄なし。</td></tr>";
+    hammers || "<tr><td colspan='13'>厳格条件に合格した月足・週足反転銘柄なし。</td></tr>";
   const longTerm = (d.long_term_ma_rebounds || []).slice(0, 30).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.setup +
     "</td><td>" + x.status + "</td><td><b class='up'>" + x.score +
@@ -1603,7 +1604,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     "</td><td>" + x.reason + "</td></tr>").join("");
   document.getElementById("daily-reversal-signals").innerHTML =
     dailyReversals || "<tr><td colspan='12'>本日のセリクラ反転合格銘柄なし。</td></tr>";
-  const carryRows = (items, side) => (items || []).slice(0, 10).map((x, i) => {{
+  const carryRows = (items, side) => (items || []).slice(0, 5).map((x, i) => {{
     const risk100 = Math.abs(x.trigger - x.stop) * 100;
     const tick = x.trigger < 1000 && Math.abs(x.trigger - Math.round(x.trigger)) >= .05
       ? .1 : x.trigger < 3000 ? 1 : x.trigger < 5000 ? 5
@@ -1651,7 +1652,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("signal-meta").textContent = "全銘柄シグナルデータを取得できませんでした。次回自動更新で再試行します。";
   document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>データ取得待ち</td></tr>";
   document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
-  document.getElementById("hammer-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
+  document.getElementById("hammer-signals").innerHTML = "<tr><td colspan='13'>データ取得待ち</td></tr>";
   document.getElementById("long-term-ma-signals").innerHTML = "<tr><td colspan='14'>データ取得待ち</td></tr>";
   document.getElementById("daily-reversal-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
   document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
