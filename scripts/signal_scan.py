@@ -719,6 +719,17 @@ def main():
                 for setup_type in ("週足50週線反発", "日足200日線ハンマー"):
                     rebound = long_term_rebound_row(item, frame, setup_type)
                     if rebound:
+                        rebound.update(supply_view(item["code"], credit_supply))
+                        technical = rebound["score"]
+                        rebound["technical_score"] = technical
+                        if rebound["supply_verified"]:
+                            rebound["score"] = round(
+                                technical * .45
+                                + rebound["supply_score"] / 55 * 100 * .55
+                            )
+                            rebound["status"] += "・需給確認済"
+                        else:
+                            rebound["status"] += "・需給未確認"
                         long_term_rebounds.append(rebound)
                 daily_reversal = analyse_daily_reversal(item, frame)
                 if daily_reversal:
@@ -740,7 +751,13 @@ def main():
         reverse=True,
     )
     long_term_rebounds.sort(
-        key=lambda x: (x["score"], x["setup"] == "日足200日線ハンマー", x["volume_ratio"]),
+        key=lambda x: (
+            1 if x.get("supply_verified") else 0,
+            x.get("supply_score") or -1,
+            x["score"],
+            x["setup"] == "日足200日線ハンマー",
+            x["volume_ratio"],
+        ),
         reverse=True,
     )
     daily_reversals.sort(
@@ -782,7 +799,13 @@ def main():
         "overnight_short": short_results[:5],
         "monthly_weekly_hammers": hammer_results[:5],
         "credit_supply_updated_at": credit_supply_updated_at,
-        "long_term_ma_rebounds": long_term_rebounds[:50],
+        "long_term_ma_rebounds": [
+            x for x in long_term_rebounds
+            if x.get("supply_verified") and (x.get("supply_score") or 0) >= 30
+        ][:5],
+        "long_term_ma_rebounds_unverified": [
+            x for x in long_term_rebounds if not x.get("supply_verified")
+        ][:5],
         "daily_capitulation_reversals": daily_reversals[:40],
         "note": "日足終値ベース。準備足高値を翌日以降に上抜いた場合のみIN。最終判断は板・出来高・会社IRで確認。"
     }
