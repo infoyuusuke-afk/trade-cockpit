@@ -1107,6 +1107,20 @@ def main():
         stocks[name] = row
 
     valid = [(n, r) for n, r in stocks.items() if r.get("ok")]
+    akita_dc_watch = []
+    for item in config.get("akita_dc_watch", []):
+        market = stocks.get(item["name"], {})
+        if market.get("ok"):
+            akita_dc_watch.append({**item, **market})
+    akita_dc_watch.sort(
+        key=lambda x: (
+            x.get("relation_score", 0),
+            x.get("rvol", 0),
+            x.get("change_pct", 0),
+        ),
+        reverse=True,
+    )
+    akita_dc_watch = akita_dc_watch[:5]
     rotation = build_sector_rotation(indices, valid)
     day_rank = sorted(
         [(n, r) for n, r in valid if r["style"] in ("day", "both") and r["turnover"] >= 2_000_000_000],
@@ -1254,6 +1268,7 @@ def main():
         "session": session,
         "active_buybacks": active_buybacks,
         "buybacks_updated_at": buybacks_updated_at,
+        "akita_dc_watch": akita_dc_watch,
         "indices": indices, "stocks": stocks,
         "day_candidates": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in day_rank],
         "day_ifo_candidates": day_ifo_candidates,
@@ -1304,6 +1319,15 @@ def main():
         f"<br><small>{x.get('note', '')}</small></td></tr>"
         for i, x in enumerate(active_buybacks, 1)
     ) or "<tr><td colspan='9'>公式情報を確認できた実施期間中の自社株買い候補なし。推測銘柄は表示しません。</td></tr>"
+    akita_dc_rows = "".join(
+        f"<tr><td>{i}</td><td>{x['name']}</td>"
+        f"<td><b class='up'>{x['relation_score']}/100</b></td>"
+        f"<td>{money(x.get('price'))}</td><td class='{css(x.get('change_pct'))}'>{pct(x.get('change_pct'))}</td>"
+        f"<td>{x.get('rvol', 0):.2f}倍</td><td>{x['role']}</td>"
+        f"<td>{x['evidence']}<br><small>{x['contract_status']}</small></td>"
+        f"<td><a href='{x['source']}' target='_blank' rel='noopener'>公式根拠</a></td></tr>"
+        for i, x in enumerate(akita_dc_watch, 1)
+    ) or "<tr><td colspan='9'>株価データ取得待ち。受注確認前は売買候補に昇格しません。</td></tr>"
     us_rotation_rows = "".join(
         f"<tr><td>{i}</td><td>{row['sector']} <small>{row['ticker']}</small></td>"
         f"<td>{phase_badge(row['phase'])}</td><td><b>{row['score']:.0f}/100</b></td>"
@@ -1479,6 +1503,9 @@ def main():
 <header><div><h1>AIトレードコクピット Ver.3.6</h1><div class="sub">日本株全市場／持ち越しLONG・SHORT発動価格</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;today&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
+<section class="card wide"><h2>②-A 秋田AIデータセンター関連 監視TOP5</h2>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・契約状況</th><th>資料</th></tr></thead><tbody>{akita_dc_rows}</tbody></table>
+<p class="warning">秋田市の計画はエスツーとBitgritが主導し、2030年代前半の稼働、最大500MWを想定。現時点で上場各社の受注は確認できていません。関連度は事業領域と地域性の評価であり、受注確定度ではありません。正式なスイング候補への昇格には、会社IR・適時開示、信用需給30/55点以上、発動価格突破を必須とします。</p></section>
 <section id="sector-rotation" class="card wide"><h2>②-R 機関投資家型 セクターローテーション</h2>
 <div class="rotation-grid">
 <div class="rotation-box"><b>市場レジーム</b><strong>{rotation['regime']}</strong><br>{rotation['regime_action']}</div>
