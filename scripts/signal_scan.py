@@ -247,6 +247,78 @@ def analyse(item, frame):
     }
 
 
+def analyse_speculative(item, frame):
+    """Detect pump-like theme flow for quarantine monitoring, not trade entry."""
+    if frame is None or len(frame) < 65:
+        return None
+    close_s = frame["Close"].astype(float)
+    high_s = frame["High"].astype(float)
+    low_s = frame["Low"].astype(float)
+    open_s = frame["Open"].astype(float)
+    volume_s = frame["Volume"].fillna(0).astype(float)
+    close, high, low, open_ = map(finite, (
+        close_s.iloc[-1], high_s.iloc[-1], low_s.iloc[-1], open_s.iloc[-1]
+    ))
+    if None in (close, high, low, open_) or not 50 <= close <= 10000:
+        return None
+    avg_volume = finite(volume_s.iloc[-21:-1].mean()) or 0
+    volume = finite(volume_s.iloc[-1]) or 0
+    rvol = volume / avg_volume if avg_volume else 0
+    turnover = close * volume
+    ret1 = (close / float(close_s.iloc[-2]) - 1) * 100
+    ret5 = (close / float(close_s.iloc[-6]) - 1) * 100
+    prior5 = (float(close_s.iloc[-6]) / float(close_s.iloc[-11]) - 1) * 100
+    ret20 = (close / float(close_s.iloc[-21]) - 1) * 100
+    ma20 = float(close_s.rolling(20).mean().iloc[-1])
+    ma20_dist = (close / ma20 - 1) * 100 if ma20 else 0
+    tr = pd.concat([
+        high_s - low_s,
+        (high_s - close_s.shift()).abs(),
+        (low_s - close_s.shift()).abs(),
+    ], axis=1).max(axis=1)
+    atr = finite(tr.rolling(14).mean().iloc[-1]) or 0
+    atr_pct = atr / close * 100 if close else 0
+    candle_range = max(high - low, close * .002)
+    upper_wick_pct = (high - max(open_, close)) / candle_range * 100
+    acceleration = ret5 - prior5
+    if rvol < 1.5 or turnover < 100_000_000 or (ret5 < 8 and ret20 < 20):
+        return None
+    score = 20
+    score += 30 if rvol >= 4 else 24 if rvol >= 2.5 else 16
+    score += 24 if ret5 >= 35 else 18 if ret5 >= 20 else 10
+    score += 14 if ret20 >= 50 else 9 if ret20 >= 25 else 4
+    score += 12 if atr_pct >= 8 else 8 if atr_pct >= 5 else 3
+    score += 10 if acceleration >= 10 else 6 if acceleration >= 5 else 0
+    score += 6 if turnover >= 1_000_000_000 else 3
+    score = min(100, score)
+    if score < 58:
+        return None
+    if upper_wick_pct >= 35 and ret1 <= 2:
+        phase = "天井警戒"
+        action = "上ヒゲ高値を回復するまで触らない"
+    elif ret5 >= 35 or ma20_dist >= 30 or atr_pct >= 10:
+        phase = "過熱"
+        action = "飛び乗り禁止・急落監視"
+    elif rvol >= 2.5 and 8 <= ret5 < 25:
+        phase = "初動候補"
+        action = "公式材料と信用需給を確認"
+    else:
+        phase = "資金流入"
+        action = "押し目形成まで監視"
+    return {
+        "code": item["code"], "ticker": item["ticker"],
+        "name": f"{item['name']}（{item['code']}）", "score": int(score),
+        "phase": phase, "action": action, "close": round(close, 2),
+        "ret1": round(ret1, 2), "ret5": round(ret5, 2),
+        "ret20": round(ret20, 2), "rvol": round(rvol, 2),
+        "atr_pct": round(atr_pct, 2), "ma20_dist": round(ma20_dist, 2),
+        "acceleration": round(acceleration, 2),
+        "upper_wick_pct": round(upper_wick_pct, 1),
+        "turnover": round(turnover),
+        "signal_date": pd.Timestamp(frame.index[-1]).strftime("%Y-%m-%d"),
+    }
+
+
 def analyse_short(item, frame):
     """翌日の安値割れで発動する持ち越しショート候補。"""
     if frame is None or len(frame) < 65:
@@ -671,6 +743,14 @@ def main():
     now = datetime.now(JST)
     universe, source = load_universe()
     credit_supply, credit_supply_updated_at = load_credit_supply()
+    try:
+        config = json.loads((ROOT / "watchlist.json").read_text(encoding="utf-8"))
+        theme_by_code = {
+            str(meta["ticker"]).split(".")[0]: meta.get("sector", "テーマ・材料要確認")
+            for meta in config.get("stocks", {}).values()
+        }
+    except Exception:
+        theme_by_code = {}
     old_path = ROOT / "signals.json"
     try:
         old = json.loads(old_path.read_text(encoding="utf-8"))
@@ -683,6 +763,7 @@ def main():
     hammer_results = []
     long_term_rebounds = []
     daily_reversals = []
+    speculative_results = []
     failed = 0
     batch_size = 120
     for start in range(0, len(universe), batch_size):
@@ -699,10 +780,17 @@ def main():
             frame = one_frame(downloaded, item["ticker"], len(batch) == 1)
             row = analyse(item, frame)
             short_row = analyse_short(item, frame)
+            speculative_row = analyse_speculative(item, frame)
             if row:
                 results.append(row)
             if short_row:
                 short_results.append(short_row)
+            if speculative_row:
+                speculative_row.update(supply_view(item["code"], credit_supply))
+                known_theme = theme_by_code.get(item["code"])
+                speculative_row["theme"] = known_theme or "テーマ・材料要確認"
+                speculative_row["theme_status"] = "監視テーマ" if known_theme else "要公式確認"
+                speculative_results.append(speculative_row)
             if frame is not None:
                 for timeframe in ("月足", "週足"):
                     hammer = hammer_row(item, frame, timeframe)
@@ -764,11 +852,17 @@ def main():
         key=lambda x: (x["score"], x["phase"] == "反転確認", x["volume_ratio"]),
         reverse=True,
     )
+    speculative_results.sort(
+        key=lambda x: (x["score"], x["rvol"], x["ret5"]),
+        reverse=True,
+    )
     for row in results:
         row.update(supply_view(row["code"], credit_supply))
     for row in short_results:
         row.update(supply_view(row["code"], credit_supply))
 
+    speculative_top = speculative_results[:5]
+    speculative_codes = {x["code"] for x in speculative_top}
     overnight_long = [
         x for x in sorted(results, key=lambda r: (1 if r.get("supply_verified") else 0, r.get("supply_score") or -1, r["score"]), reverse=True)
         if (
@@ -776,7 +870,11 @@ def main():
             and x["rvol"] >= .90
             and x["atr_pct"] <= 7
             and x["code"] != "285A"  # キオクシアHDは朝スキャル専用
+            and x["code"] not in speculative_codes
         )
+    ][:5]
+    overnight_short = [
+        x for x in short_results if x["code"] not in speculative_codes
     ][:5]
     entered = []
     for row in results:
@@ -796,7 +894,12 @@ def main():
         "prepared": results[:100],
         "entered": entered[:50],
         "overnight_long": overnight_long,
-        "overnight_short": short_results[:5],
+        "overnight_short": overnight_short,
+        "speculative_theme_watch": speculative_top,
+        "speculative_theme_note": (
+            "監視専用。出来高・騰落・値幅の異常度を検出した銘柄を通常LONG/SHORT候補から隔離。"
+            "仕手株との断定ではなく、会社IR・適時開示・信用需給を確認するための警戒リスト。"
+        ),
         "monthly_weekly_hammers": hammer_results[:5],
         "credit_supply_updated_at": credit_supply_updated_at,
         "long_term_ma_rebounds": [
