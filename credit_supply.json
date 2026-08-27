@@ -1,0 +1,13 @@
+{
+  "updated_at": "未取得",
+  "source": "楽天RSS・取引所公表・機関空売り残高を統合予定",
+  "stocks": {},
+  "schema": {
+    "margin_buy_change_1w_pct": "信用買い残の前週比（%）",
+    "margin_buy_change_4w_pct": "信用買い残の4週変化（%）",
+    "credit_ratio": "信用倍率",
+    "institutional_short_change_pct": "機関空売り残高の変化（%）。減少はマイナス",
+    "institutional_buyback_firms": "買い戻した機関数",
+    "note": "任意の確認メモ"
+  }
+}
