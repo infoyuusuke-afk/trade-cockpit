@@ -1121,6 +1121,20 @@ def main():
         reverse=True,
     )
     akita_dc_watch = akita_dc_watch[:5]
+    gunma_rare_earth_watch = []
+    for item in config.get("gunma_rare_earth_watch", []):
+        market = stocks.get(item["name"], {})
+        if market.get("ok"):
+            gunma_rare_earth_watch.append({**item, **market})
+    gunma_rare_earth_watch.sort(
+        key=lambda x: (
+            x.get("relation_score", 0),
+            x.get("rvol", 0),
+            x.get("change_pct", 0),
+        ),
+        reverse=True,
+    )
+    gunma_rare_earth_watch = gunma_rare_earth_watch[:5]
     rotation = build_sector_rotation(indices, valid)
     day_rank = sorted(
         [(n, r) for n, r in valid if r["style"] in ("day", "both") and r["turnover"] >= 2_000_000_000],
@@ -1269,6 +1283,7 @@ def main():
         "active_buybacks": active_buybacks,
         "buybacks_updated_at": buybacks_updated_at,
         "akita_dc_watch": akita_dc_watch,
+        "gunma_rare_earth_watch": gunma_rare_earth_watch,
         "indices": indices, "stocks": stocks,
         "day_candidates": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in day_rank],
         "day_ifo_candidates": day_ifo_candidates,
@@ -1328,6 +1343,15 @@ def main():
         f"<td><a href='{x['source']}' target='_blank' rel='noopener'>公式根拠</a></td></tr>"
         for i, x in enumerate(akita_dc_watch, 1)
     ) or "<tr><td colspan='9'>株価データ取得待ち。受注確認前は売買候補に昇格しません。</td></tr>"
+    gunma_rare_earth_rows = "".join(
+        f"<tr><td>{i}</td><td>{x['name']}</td>"
+        f"<td><b>{x['relation_score']}/100</b></td>"
+        f"<td>{money(x.get('price'))}</td><td class='{css(x.get('change_pct'))}'>{pct(x.get('change_pct'))}</td>"
+        f"<td>{x.get('rvol', 0):.2f}倍</td><td>{x['role']}</td>"
+        f"<td>{x['evidence']}<br><small>{x['contract_status']}</small></td>"
+        f"<td><a href='{x['source']}' target='_blank' rel='noopener'>公式根拠</a></td></tr>"
+        for i, x in enumerate(gunma_rare_earth_watch, 1)
+    ) or "<tr><td colspan='9'>株価データ取得待ち。研究段階のため売買候補には昇格しません。</td></tr>"
     us_rotation_rows = "".join(
         f"<tr><td>{i}</td><td>{row['sector']} <small>{row['ticker']}</small></td>"
         f"<td>{phase_badge(row['phase'])}</td><td><b>{row['score']:.0f}/100</b></td>"
@@ -1506,6 +1530,9 @@ def main():
 <section class="card wide"><h2>②-A 秋田AIデータセンター関連 監視TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・契約状況</th><th>資料</th></tr></thead><tbody>{akita_dc_rows}</tbody></table>
 <p class="warning">秋田市の計画はエスツーとBitgritが主導し、2030年代前半の稼働、最大500MWを想定。現時点で上場各社の受注は確認できていません。関連度は事業領域と地域性の評価であり、受注確定度ではありません。正式なスイング候補への昇格には、会社IR・適時開示、信用需給30/55点以上、発動価格突破を必須とします。</p></section>
+<section class="card wide"><h2>②-B 群馬・茂倉沢レアアース新鉱物 監視TOP5</h2>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・参画状況</th><th>資料</th></tr></thead><tbody>{gunma_rare_earth_rows}</tbody></table>
+<p class="warning">群馬県桐生市の茂倉沢鉱山でランタン・セリウムを含む新鉱物4種が承認された研究成果を監視します。現時点では資源量・採算性・採掘計画・企業参画のいずれも未確認で、商業鉱山案件ではありません。資源量調査、採掘権、自治体・JOGMEC・企業との共同研究、分離精製試験の公式発表が出るまでテーマ監視限定。正式なスイング候補への昇格には信用需給30/55点以上と発動価格突破も必須です。</p></section>
 <section id="sector-rotation" class="card wide"><h2>②-R 機関投資家型 セクターローテーション</h2>
 <div class="rotation-grid">
 <div class="rotation-box"><b>市場レジーム</b><strong>{rotation['regime']}</strong><br>{rotation['regime_action']}</div>
