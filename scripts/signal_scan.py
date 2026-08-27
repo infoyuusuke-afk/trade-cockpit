@@ -12,6 +12,7 @@ import yfinance as yf
 
 ROOT = Path(__file__).resolve().parents[1]
 JST = ZoneInfo("Asia/Tokyo")
+CREDIT_SUPPLY_PATH = ROOT / "credit_supply.json"
 JPX_LIST_URL = (
     "https://www.jpx.co.jp/markets/statistics-equities/"
     "misc/tvdivq0000001vg2-att/data_j.xls"
@@ -24,6 +25,51 @@ def finite(value):
         return value if math.isfinite(value) else None
     except Exception:
         return None
+
+
+def load_credit_supply():
+    """Load refreshed margin and institutional short data by code."""
+    try:
+        payload = json.loads(CREDIT_SUPPLY_PATH.read_text(encoding="utf-8"))
+        return payload.get("stocks", {}), payload.get("updated_at", "未更新")
+    except Exception:
+        return {}, "未取得"
+
+
+def supply_view(code, supply):
+    """Score credit supply on a 55-point scale; unknown data is never guessed."""
+    raw = supply.get(str(code), {})
+    required = ("margin_buy_change_1w_pct", "margin_buy_change_4w_pct",
+                "credit_ratio", "institutional_short_change_pct")
+    if not raw or not all(finite(raw.get(k)) is not None for k in required):
+        return {
+            "supply_verified": False, "supply_score": None,
+            "supply_phase": "需給未確認", "margin_buy_change_1w_pct": None,
+            "margin_buy_change_4w_pct": None, "credit_ratio": None,
+            "institutional_short_change_pct": None,
+            "institutional_buyback_firms": None,
+            "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定",
+        }
+    one = finite(raw.get("margin_buy_change_1w_pct"))
+    four = finite(raw.get("margin_buy_change_4w_pct"))
+    ratio = finite(raw.get("credit_ratio"))
+    inst = finite(raw.get("institutional_short_change_pct"))
+    firms = int(finite(raw.get("institutional_buyback_firms")) or 0)
+    score = 0
+    score += 12 if one <= -5 else 9 if one < 0 else 3 if one <= 3 else 0
+    score += 13 if four <= -10 else 9 if four < 0 else 3 if four <= 5 else 0
+    score += 10 if ratio <= 1 else 8 if ratio <= 2 else 5 if ratio <= 4 else 2 if ratio <= 7 else 0
+    score += 12 if inst <= -10 else 9 if inst < 0 else 4 if inst <= 5 else 0
+    score += 8 if firms >= 2 else 4 if firms == 1 else 0
+    phase = "S 踏み上げ開始" if score >= 48 else "A 需給改善" if score >= 40 else "B 改善待ち" if score >= 30 else "C 需給悪化"
+    return {
+        "supply_verified": True, "supply_score": int(score),
+        "supply_phase": phase, "margin_buy_change_1w_pct": round(one, 1),
+        "margin_buy_change_4w_pct": round(four, 1), "credit_ratio": round(ratio, 2),
+        "institutional_short_change_pct": round(inst, 1),
+        "institutional_buyback_firms": firms,
+        "supply_note": raw.get("note", ""),
+    }
 
 
 def load_universe():
@@ -624,6 +670,7 @@ def analyse_daily_reversal(item, frame):
 def main():
     now = datetime.now(JST)
     universe, source = load_universe()
+    credit_supply, credit_supply_updated_at = load_credit_supply()
     old_path = ROOT / "signals.json"
     try:
         old = json.loads(old_path.read_text(encoding="utf-8"))
@@ -660,6 +707,14 @@ def main():
                 for timeframe in ("月足", "週足"):
                     hammer = hammer_row(item, frame, timeframe)
                     if hammer:
+                        hammer.update(supply_view(item["code"], credit_supply))
+                        technical = hammer["score"]
+                        hammer["technical_score"] = technical
+                        if hammer["supply_verified"]:
+                            hammer["score"] = round(technical * .45 + hammer["supply_score"] / 55 * 100 * .55)
+                            hammer["status"] += "・需給確認済"
+                        else:
+                            hammer["status"] += "・需給未確認"
                         hammer_results.append(hammer)
                 for setup_type in ("週足50週線反発", "日足200日線ハンマー"):
                     rebound = long_term_rebound_row(item, frame, setup_type)
@@ -676,6 +731,8 @@ def main():
     short_results.sort(key=lambda x: (x["score"], x["rvol"], -x["ret20"]), reverse=True)
     hammer_results.sort(
         key=lambda x: (
+            1 if x.get("supply_verified") else 0,
+            x.get("supply_score") or -1,
             x["score"],
             1 if x["timeframe"] == "月足" else 0,
             x["volume_ratio"],
@@ -690,15 +747,20 @@ def main():
         key=lambda x: (x["score"], x["phase"] == "反転確認", x["volume_ratio"]),
         reverse=True,
     )
+    for row in results:
+        row.update(supply_view(row["code"], credit_supply))
+    for row in short_results:
+        row.update(supply_view(row["code"], credit_supply))
+
     overnight_long = [
-        x for x in results
+        x for x in sorted(results, key=lambda r: (1 if r.get("supply_verified") else 0, r.get("supply_score") or -1, r["score"]), reverse=True)
         if (
             x["score"] >= 70
             and x["rvol"] >= .90
             and x["atr_pct"] <= 7
             and x["code"] != "285A"  # キオクシアHDは朝スキャル専用
         )
-    ][:15]
+    ][:5]
     entered = []
     for row in results:
         prior = old_prepared.get(row["ticker"])
@@ -717,8 +779,9 @@ def main():
         "prepared": results[:100],
         "entered": entered[:50],
         "overnight_long": overnight_long,
-        "overnight_short": short_results[:15],
-        "monthly_weekly_hammers": hammer_results[:40],
+        "overnight_short": short_results[:5],
+        "monthly_weekly_hammers": hammer_results[:5],
+        "credit_supply_updated_at": credit_supply_updated_at,
         "long_term_ma_rebounds": long_term_rebounds[:50],
         "daily_capitulation_reversals": daily_reversals[:40],
         "note": "日足終値ベース。準備足高値を翌日以降に上抜いた場合のみIN。最終判断は板・出来高・会社IRで確認。"
