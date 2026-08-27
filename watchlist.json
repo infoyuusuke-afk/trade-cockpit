@@ -72,5 +72,51 @@
     ,"NTT（9432）": {"ticker": "9432.T", "sector": "通信・データセンター", "style": "swing"}
     ,"KDDI（9433）": {"ticker": "9433.T", "sector": "通信・データセンター", "style": "swing"}
     ,"ソフトバンク（9434）": {"ticker": "9434.T", "sector": "通信・AI", "style": "swing"}
-  }
+    ,"ユアテック（1934）": {"ticker": "1934.T", "sector": "データセンター・電力設備", "style": "both"}
+    ,"東北電力（9506）": {"ticker": "9506.T", "sector": "電力・データセンター", "style": "swing"}
+    ,"高砂熱学工業（1969）": {"ticker": "1969.T", "sector": "データセンター・冷却", "style": "swing"}
+    ,"関電工（1942）": {"ticker": "1942.T", "sector": "データセンター・電気設備", "style": "swing"}
+  },
+  "akita_dc_watch": [
+    {
+      "name": "ユアテック（1934）",
+      "role": "東北地盤の電気・空調・情報通信・送変電工事",
+      "relation_score": 92,
+      "evidence": "会社資料で東北のデータセンター建設需要を成長機会として言及",
+      "contract_status": "秋田案件の受注・参画は未確認",
+      "source": "https://www.yurtec.co.jp/ir/pdf/presentation-qa_250529.pdf"
+    },
+    {
+      "name": "東北電力（9506）",
+      "role": "500MW級計画の電力供給・系統増強・再エネ調達候補",
+      "relation_score": 90,
+      "evidence": "東北でデータセンター誘致とGPU向けコンテナ型DCを推進",
+      "contract_status": "秋田案件の供給契約は未確認",
+      "source": "https://www.tohoku-epco.co.jp/news/normal/1247944_2558.html"
+    },
+    {
+      "name": "フジクラ（5803）",
+      "role": "大容量送電・光ファイバー・データセンター配線",
+      "relation_score": 74,
+      "evidence": "大規模DCに必要な電力・光通信部材の供給候補",
+      "contract_status": "秋田案件の採用は未確認",
+      "source": "https://www.fujikura.co.jp/products/"
+    },
+    {
+      "name": "高砂熱学工業（1969）",
+      "role": "AIサーバー向け高効率冷却・空調設備",
+      "relation_score": 68,
+      "evidence": "データセンター用空調技術と秋田営業所を保有",
+      "contract_status": "秋田案件の受注・参画は未確認",
+      "source": "https://www.tte-net.com/lab/public/air-conditioning-and-environment/"
+    },
+    {
+      "name": "関電工（1942）",
+      "role": "特別高圧受変電・非常用電源・電気設備",
+      "relation_score": 62,
+      "evidence": "データセンター向け電気設備・情報通信技術を保有",
+      "contract_status": "秋田案件の受注・参画は未確認",
+      "source": "https://www.kandenko.co.jp/business/"
+    }
+  ]
 }
