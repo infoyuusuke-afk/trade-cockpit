@@ -1479,10 +1479,10 @@ def main():
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>足</th><th>判定</th><th>総合点</th><th>終値</th><th>反発線</th><th>需給点・局面</th><th>下ヒゲ／実体</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
 <tbody id="hammer-signals"><tr><td colspan="13">全市場を走査中...</td></tr></tbody></table>
 <p class="warning">信用買い残1週・4週、信用倍率、機関空売り増減、買い戻し社数を55点で評価。未取得は需給未確認の暫定候補。高値＋1ティックを上抜いた場合だけ発動し、反転足安値割れで撤退します。</p></section>
-<section id="long-term-ma-rebound" class="card wide"><h2>⑤-F 長期右肩上がり・50週線／200日線反発ランキング</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>型</th><th>状態</th><th>期待値</th><th>終値</th><th>支持線</th><th>線の傾斜</th><th>半年騰落</th><th>足型</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
-<tbody id="long-term-ma-signals"><tr><td colspan="14">全市場を走査中...</td></tr></tbody></table>
-<p class="warning"><b>合格条件：</b>50週線または200日線が上向き、半年のトレンドが悪化していない、支持線タッチ後に終値が線上へ回復、流動性合格。200日線型は陽線ハンマー必須。反転足高値＋1ティックを上抜いた場合だけ発動し、反転足安値割れで撤退。決算7日以内・大幅GU・低流動性は見送り。</p></section>
+<section id="long-term-ma-rebound" class="card wide"><h2>⑤-F 長期右肩上がり・50週線／200日線反発＋信用需給 TOP5</h2>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>型</th><th>状態</th><th>総合点</th><th>需給点・局面</th><th>終値</th><th>支持線</th><th>線の傾斜</th><th>半年騰落</th><th>足型</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
+<tbody id="long-term-ma-signals"><tr><td colspan="15">全市場を走査中...</td></tr></tbody></table>
+<p class="warning"><b>必須条件：</b>信用需給を確認済みかつ30/55点以上。信用買い残1週・4週、信用倍率、機関空売り増減、買い戻し社数を確認します。50週線・200日線反発だけでは正式候補にしません。反転足高値＋1ティックを上抜いた場合だけ発動し、反転足安値割れで撤退。</p></section>
 <section id="tv-watchlist-export" class="card wide"><h2>TradingView監視リスト出力</h2>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
 <button id="tv-day" type="button" style="padding:12px 18px;border:0;border-radius:9px;background:#00b894;color:#fff;font-weight:700;cursor:pointer">当日IN・準備を保存</button>
@@ -1580,10 +1580,11 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     yen(x.target1) + "／" + yen(x.target2) + "</td></tr>").join("");
   document.getElementById("hammer-signals").innerHTML =
     hammers || "<tr><td colspan='13'>厳格条件に合格した月足・週足反転銘柄なし。</td></tr>";
-  const longTerm = (d.long_term_ma_rebounds || []).slice(0, 30).map((x, i) =>
+  const longTerm = (d.long_term_ma_rebounds || []).slice(0, 5).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.setup +
     "</td><td>" + x.status + "</td><td><b class='up'>" + x.score +
-    "/100</b></td><td>" + yen(x.close) + "</td><td>" + x.ma_label + " " +
+    "/100</b></td><td>" + x.supply_score + "/55 " + x.supply_phase +
+    "</td><td>" + yen(x.close) + "</td><td>" + x.ma_label + " " +
     yen(x.ma_value) + "</td><td class='" + (x.ma_slope >= 0 ? "up" : "down") +
     "'>" + (x.ma_slope >= 0 ? "+" : "") + x.ma_slope.toFixed(2) +
     "%</td><td class='" + (x.trend_return >= 0 ? "up" : "down") + "'>" +
@@ -1593,7 +1594,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     yen(x.stop) + "</td><td>" + yen(x.target1) + "／" + yen(x.target2) +
     "</td></tr>").join("");
   document.getElementById("long-term-ma-signals").innerHTML =
-    longTerm || "<tr><td colspan='14'>厳格条件に合格した50週線／200日線反発銘柄なし。</td></tr>";
+    longTerm || "<tr><td colspan='15'>信用需給必須条件に合格した50週線／200日線反発銘柄なし。</td></tr>";
   const dailyReversals = (d.daily_capitulation_reversals || []).slice(0, 20).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.phase +
     "</td><td>" + x.setup + "</td><td><b class='up'>" + x.score +
@@ -1653,7 +1654,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>データ取得待ち</td></tr>";
   document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
   document.getElementById("hammer-signals").innerHTML = "<tr><td colspan='13'>データ取得待ち</td></tr>";
-  document.getElementById("long-term-ma-signals").innerHTML = "<tr><td colspan='14'>データ取得待ち</td></tr>";
+  document.getElementById("long-term-ma-signals").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
   document.getElementById("daily-reversal-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
   document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
   document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
