@@ -1,13 +1,37 @@
 {
   "date": "2026-08-27",
-  "fixed_at": "2026-08-27 11:42:55 JST",
+  "fixed_at": "2026-08-27 15:40:53 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
+    {
+      "name": "リクルートHD（6098）",
+      "ticker": "6098.T",
+      "side": "LONG",
+      "score": 94.0,
+      "entry": 17200,
+      "entry_limit": 17220,
+      "stop": 16560,
+      "target1": 18210,
+      "target2": 18670,
+      "morning_price": 17220
+    },
+    {
+      "name": "MS&AD（8725）",
+      "ticker": "8725.T",
+      "side": "LONG",
+      "score": 89.0,
+      "entry": 5100,
+      "entry_limit": 5120,
+      "stop": 5020,
+      "target1": 5270,
+      "target2": 5340,
+      "morning_price": 5120
+    },
     {
       "name": "小松製作所（6301）",
       "ticker": "6301.T",
       "side": "LONG",
-      "score": 87.0,
+      "score": 89.0,
       "entry": 7650,
       "entry_limit": 7670,
       "stop": 7490,
@@ -16,34 +40,10 @@
       "morning_price": 7670
     },
     {
-      "name": "MS&AD（8725）",
-      "ticker": "8725.T",
-      "side": "LONG",
-      "score": 83.0,
-      "entry": 5100,
-      "entry_limit": 5120,
-      "stop": 5030,
-      "target1": 5260,
-      "target2": 5320,
-      "morning_price": 5120
-    },
-    {
-      "name": "ソニーグループ（6758）",
-      "ticker": "6758.T",
-      "side": "LONG",
-      "score": 82.0,
-      "entry": 3925,
-      "entry_limit": 3935,
-      "stop": 3835,
-      "target1": 4085,
-      "target2": 4155,
-      "morning_price": 3935
-    },
-    {
       "name": "キヤノン（7751）",
       "ticker": "7751.T",
       "side": "LONG",
-      "score": 80.0,
+      "score": 87.0,
       "entry": 4710,
       "entry_limit": 4720,
       "stop": 4645,
@@ -55,12 +55,12 @@
       "name": "トヨタ自動車（7203）",
       "ticker": "7203.T",
       "side": "LONG",
-      "score": 68.0,
+      "score": 70.0,
       "entry": 3125,
       "entry_limit": 3135,
-      "stop": 3075,
-      "target1": 3225,
-      "target2": 3265,
+      "stop": 3070,
+      "target1": 3230,
+      "target2": 3280,
       "morning_price": 3135
     }
   ]
