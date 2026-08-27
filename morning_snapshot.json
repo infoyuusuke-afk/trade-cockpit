@@ -1,25 +1,13 @@
 {
   "date": "2026-08-28",
-  "fixed_at": "2026-08-28 06:57:51 JST",
+  "fixed_at": "2026-08-28 07:05:21 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
-    {
-      "name": "キヤノン（7751）",
-      "ticker": "7751.T",
-      "side": "LONG",
-      "score": 91.0,
-      "entry": 4710,
-      "entry_limit": 4720,
-      "stop": 4645,
-      "target1": 4830,
-      "target2": 4885,
-      "morning_price": 4720
-    },
     {
       "name": "MS&AD（8725）",
       "ticker": "8725.T",
       "side": "LONG",
-      "score": 90.0,
+      "score": 89.0,
       "entry": 5100,
       "entry_limit": 5120,
       "stop": 5020,
@@ -28,10 +16,22 @@
       "morning_price": 5120
     },
     {
+      "name": "キヤノン（7751）",
+      "ticker": "7751.T",
+      "side": "LONG",
+      "score": 89.0,
+      "entry": 4710,
+      "entry_limit": 4720,
+      "stop": 4645,
+      "target1": 4830,
+      "target2": 4885,
+      "morning_price": 4720
+    },
+    {
       "name": "小松製作所（6301）",
       "ticker": "6301.T",
       "side": "LONG",
-      "score": 90.0,
+      "score": 88.0,
       "entry": 7650,
       "entry_limit": 7670,
       "stop": 7490,
@@ -40,28 +40,28 @@
       "morning_price": 7670
     },
     {
-      "name": "NTT（9432）",
-      "ticker": "9432.T",
-      "side": "LONG",
-      "score": 88.0,
-      "entry": 169.6,
-      "entry_limit": 169.8,
-      "stop": 167.1,
-      "target1": 173.9,
-      "target2": 175.7,
-      "morning_price": 169.8
-    },
-    {
       "name": "日本郵船（9101）",
       "ticker": "9101.T",
       "side": "LONG",
-      "score": 86.0,
+      "score": 84.0,
       "entry": 6990,
       "entry_limit": 7010,
       "stop": 6840,
       "target1": 7260,
       "target2": 7380,
       "morning_price": 7010
+    },
+    {
+      "name": "オムロン（6645）",
+      "ticker": "6645.T",
+      "side": "LONG",
+      "score": 83.0,
+      "entry": 6620,
+      "entry_limit": 6640,
+      "stop": 6390,
+      "target1": 7020,
+      "target2": 7190,
+      "morning_price": 6640
     }
   ]
 }
