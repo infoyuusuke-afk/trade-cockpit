@@ -1,0 +1,16 @@
+{
+  "updated_at": "未取得",
+  "programs": [],
+  "schema": {
+    "name": "会社名",
+    "code": "銘柄コード",
+    "start_date": "取得開始日 YYYY-MM-DD",
+    "end_date": "取得終了日 YYYY-MM-DD",
+    "max_share_pct": "取得上限株数の発行済株式比率",
+    "progress_pct": "上限株数に対する取得進捗率",
+    "daily_volume_impact_pct": "想定日次買付株数の20日平均出来高比率",
+    "cancellation_planned": "取得株式の消却予定",
+    "official_source": "会社IR・適時開示URL",
+    "note": "取得状況・注意事項"
+  }
+}
