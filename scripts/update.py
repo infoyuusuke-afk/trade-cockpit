@@ -1533,6 +1533,10 @@ def main():
 <section class="card wide"><h2>②-B 群馬・茂倉沢レアアース新鉱物 監視TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・参画状況</th><th>資料</th></tr></thead><tbody>{gunma_rare_earth_rows}</tbody></table>
 <p class="warning">群馬県桐生市の茂倉沢鉱山でランタン・セリウムを含む新鉱物4種が承認された研究成果を監視します。現時点では資源量・採算性・採掘計画・企業参画のいずれも未確認で、商業鉱山案件ではありません。資源量調査、採掘権、自治体・JOGMEC・企業との共同研究、分離精製試験の公式発表が出るまでテーマ監視限定。正式なスイング候補への昇格には信用需給30/55点以上と発動価格突破も必須です。</p></section>
+<section id="speculative-theme-monitor" class="card wide"><h2>②-C テーマ仕手化兆候・隔離監視 TOP5</h2>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>異常度</th><th>テーマ・確認状態</th><th>終値</th><th>1日</th><th>5日</th><th>20日</th><th>出来高比</th><th>ATR</th><th>20日線乖離</th><th>上ヒゲ</th><th>信用需給</th><th>監視行動</th></tr></thead>
+<tbody id="speculative-theme-watch"><tr><td colspan="15">全市場の仕手化兆候を走査中...</td></tr></tbody></table>
+<p class="warning"><b>監視専用・売買候補ではありません。</b> 出来高急増、5日／20日急騰、値幅拡大、加速率、上ヒゲで異常度を算出し、初動候補・資金流入・過熱・天井警戒に分類します。「仕手株」との断定はせず、会社IR・適時開示でテーマを確認し、信用買い残・信用倍率・機関空売り変化も確認。ここに入った銘柄は通常の持ち越しLONG／SHORT TOP5から隔離します。</p></section>
 <section id="sector-rotation" class="card wide"><h2>②-R 機関投資家型 セクターローテーション</h2>
 <div class="rotation-grid">
 <div class="rotation-box"><b>市場レジーム</b><strong>{rotation['regime']}</strong><br>{rotation['regime_action']}</div>
@@ -1588,6 +1592,7 @@ def main():
 <button id="tv-day" type="button" style="padding:12px 18px;border:0;border-radius:9px;background:#00b894;color:#fff;font-weight:700;cursor:pointer">当日IN・準備を保存</button>
 <button id="tv-swing" type="button" style="padding:12px 18px;border:0;border-radius:9px;background:#3867d6;color:#fff;font-weight:700;cursor:pointer">スイング・持越しを保存</button>
 <button id="tv-longterm" type="button" style="padding:12px 18px;border:0;border-radius:9px;background:#8e44ad;color:#fff;font-weight:700;cursor:pointer">50週線／200日線を保存</button>
+<button id="tv-speculative" type="button" style="padding:12px 18px;border:0;border-radius:9px;background:#e84393;color:#fff;font-weight:700;cursor:pointer">仕手化監視TOP5を保存</button>
 <button id="tv-all" type="button" style="padding:12px 18px;border:0;border-radius:9px;background:#f39c12;color:#111;font-weight:700;cursor:pointer">全候補をまとめて保存</button>
 </div>
 <p id="tv-export-status" class="sub">ボタンを押すとTradingView取込用TXTをダウンロードします。</p>
@@ -1629,6 +1634,14 @@ def main():
 </main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>{data['updated_at']}</span></footer>
 <script>
 const yen = v => Number(v).toLocaleString("ja-JP");
+const signedPct = (v, digits = 1) => Number.isFinite(Number(v))
+  ? (Number(v) >= 0 ? "+" : "") + Number(v).toFixed(digits) + "%"
+  : "未取得";
+const supplyText = x => x.supply_verified
+  ? "<b>" + x.supply_score + "/55 " + x.supply_phase + "</b><br><small>買残1週 " +
+    signedPct(x.margin_buy_change_1w_pct) + "／倍率 " + Number(x.credit_ratio).toFixed(2) +
+    "倍／機関空売り " + signedPct(x.institutional_short_change_pct) + "</small>"
+  : "<span class='warning'>需給未確認</span><br><small>正式候補へ昇格不可</small>";
 const tvRows = items => (items || []).map(x => x && x.code ? "TSE:" + String(x.code).toUpperCase() : "").filter(Boolean);
 const uniqueTv = items => [...new Set(items)];
 const saveTvList = (items, filename) => {{
@@ -1669,6 +1682,21 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     x.ret20.toFixed(2) + "%</td></tr>").join("");
   document.getElementById("prepared-signals").innerHTML =
     prepared || "<tr><td colspan='10'>本日の準備点灯銘柄なし。</td></tr>";
+  const speculative = (d.speculative_theme_watch || []).slice(0, 5).map((x, i) =>
+    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td><b class='" +
+    (x.phase === "初動候補" ? "up" : x.phase === "資金流入" ? "warning" : "down") +
+    "'>" + x.phase + "</b></td><td><b class='down'>" + x.score +
+    "/100</b></td><td>" + x.theme + "<br><small>" + x.theme_status +
+    "</small></td><td>" + yen(x.close) + "</td><td class='" +
+    (x.ret1 >= 0 ? "up" : "down") + "'>" + signedPct(x.ret1, 2) +
+    "</td><td class='" + (x.ret5 >= 0 ? "up" : "down") + "'>" +
+    signedPct(x.ret5, 1) + "</td><td class='" + (x.ret20 >= 0 ? "up" : "down") +
+    "'>" + signedPct(x.ret20, 1) + "</td><td>" + Number(x.rvol).toFixed(2) +
+    "倍</td><td>" + Number(x.atr_pct).toFixed(1) + "%</td><td>" +
+    signedPct(x.ma20_dist, 1) + "</td><td>" + Number(x.upper_wick_pct).toFixed(1) +
+    "%</td><td>" + supplyText(x) + "</td><td>" + x.action + "</td></tr>").join("");
+  document.getElementById("speculative-theme-watch").innerHTML =
+    speculative || "<tr><td colspan='15'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</td></tr>";
   const hammers = (d.monthly_weekly_hammers || []).slice(0, 5).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.timeframe +
     "</td><td>" + x.status + "</td><td><b class='up'>" + x.score +
@@ -1743,16 +1771,19 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     ...tvRows(d.monthly_weekly_hammers), ...tvRows(d.overnight_long), ...tvRows(d.overnight_short)
   ]);
   const longTermSymbols = uniqueTv(tvRows(d.long_term_ma_rebounds));
-  const allSymbols = uniqueTv([...daySymbols, ...swingSymbols, ...longTermSymbols]);
+  const speculativeSymbols = uniqueTv(tvRows(d.speculative_theme_watch));
+  const allSymbols = uniqueTv([...daySymbols, ...swingSymbols, ...longTermSymbols, ...speculativeSymbols]);
   const dateTag = String(d.updated_at || "").slice(0, 10).replaceAll("-", "");
   document.getElementById("tv-day").onclick = () => saveTvList(daySymbols, "AIコクピット_当日_" + dateTag + ".txt");
   document.getElementById("tv-swing").onclick = () => saveTvList(swingSymbols, "AIコクピット_スイング_" + dateTag + ".txt");
   document.getElementById("tv-longterm").onclick = () => saveTvList(longTermSymbols, "AIコクピット_長期反発_" + dateTag + ".txt");
+  document.getElementById("tv-speculative").onclick = () => saveTvList(speculativeSymbols, "AIコクピット_仕手化監視_" + dateTag + ".txt");
   document.getElementById("tv-all").onclick = () => saveTvList(allSymbols, "AIコクピット_全候補_" + dateTag + ".txt");
 }}).catch(() => {{
   document.getElementById("signal-meta").textContent = "全銘柄シグナルデータを取得できませんでした。次回自動更新で再試行します。";
   document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>データ取得待ち</td></tr>";
   document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
+  document.getElementById("speculative-theme-watch").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
   document.getElementById("hammer-signals").innerHTML = "<tr><td colspan='13'>データ取得待ち</td></tr>";
   document.getElementById("long-term-ma-signals").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
   document.getElementById("daily-reversal-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
