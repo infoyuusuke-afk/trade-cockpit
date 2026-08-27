@@ -487,6 +487,35 @@ def money(v):
     return f"{value:,.1f}" if abs(value - round(value)) >= .05 else f"{value:,.0f}"
 
 
+def load_active_buybacks(now):
+    """Return officially sourced, currently active buybacks ranked by supply impact."""
+    try:
+        payload = json.loads((ROOT / "buybacks.json").read_text(encoding="utf-8"))
+    except Exception:
+        return [], "未取得"
+    rows = []
+    for raw in payload.get("programs", []):
+        try:
+            start = pd.Timestamp(raw["start_date"]).date()
+            end = pd.Timestamp(raw["end_date"]).date()
+            if not (start <= now.date() <= end) or not raw.get("official_source"):
+                continue
+            cap_pct = float(raw["max_share_pct"])
+            progress = float(raw.get("progress_pct", 0))
+            remaining_pct = max(0.0, 100.0 - progress)
+            daily_impact = float(raw.get("daily_volume_impact_pct", 0))
+            score = min(100, round(
+                min(cap_pct, 10) * 4 + remaining_pct * .25
+                + min(daily_impact, 30)
+                + (5 if raw.get("cancellation_planned") else 0)
+            ))
+            rows.append({**raw, "score": score, "remaining_pct": round(remaining_pct, 1)})
+        except Exception:
+            continue
+    rows.sort(key=lambda x: (x["score"], x["max_share_pct"], x["remaining_pct"]), reverse=True)
+    return rows[:5], payload.get("updated_at", "未更新")
+
+
 def pct(v):
     return "—" if v is None else f"{v:+.2f}%"
 
@@ -1047,6 +1076,7 @@ def render_day_ifo_cards(candidates):
 
 def main():
     now = datetime.now(JST)
+    active_buybacks, buybacks_updated_at = load_active_buybacks(now)
     session_override = os.getenv("COCKPIT_SESSION", "auto").strip().lower()
     if session_override in {"morning", "midday", "close"}:
         session = session_override
@@ -1222,6 +1252,8 @@ def main():
             else "引け前持ち越し15:00版"
         ),
         "session": session,
+        "active_buybacks": active_buybacks,
+        "buybacks_updated_at": buybacks_updated_at,
         "indices": indices, "stocks": stocks,
         "day_candidates": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in day_rank],
         "day_ifo_candidates": day_ifo_candidates,
@@ -1262,6 +1294,16 @@ def main():
         f"<td>{count}銘柄の実測平均</td></tr>"
         for i, (name, score, count, members) in enumerate(themes, 1)
     )
+    buyback_rows = "".join(
+        f"<tr><td>{i}</td><td>{x['name']}（{x['code']}）</td>"
+        f"<td><b class='up'>{x['score']}/100</b></td><td>{float(x['max_share_pct']):.2f}%</td>"
+        f"<td>{float(x.get('progress_pct', 0)):.1f}%</td><td>{x['remaining_pct']:.1f}%</td>"
+        f"<td>{float(x.get('daily_volume_impact_pct', 0)):.1f}%</td>"
+        f"<td>{x['start_date']}～{x['end_date']}</td>"
+        f"<td>{'消却予定' if x.get('cancellation_planned') else '取得後保有等'}"
+        f"<br><small>{x.get('note', '')}</small></td></tr>"
+        for i, x in enumerate(active_buybacks, 1)
+    ) or "<tr><td colspan='9'>公式情報を確認できた実施期間中の自社株買い候補なし。推測銘柄は表示しません。</td></tr>"
     us_rotation_rows = "".join(
         f"<tr><td>{i}</td><td>{row['sector']} <small>{row['ticker']}</small></td>"
         f"<td>{phase_badge(row['phase'])}</td><td><b>{row['score']:.0f}/100</b></td>"
@@ -1483,6 +1525,10 @@ def main():
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>型</th><th>状態</th><th>総合点</th><th>需給点・局面</th><th>終値</th><th>支持線</th><th>線の傾斜</th><th>半年騰落</th><th>足型</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
 <tbody id="long-term-ma-signals"><tr><td colspan="15">全市場を走査中...</td></tr></tbody></table>
 <p class="warning"><b>必須条件：</b>信用需給を確認済みかつ30/55点以上。信用買い残1週・4週、信用倍率、機関空売り増減、買い戻し社数を確認します。50週線・200日線反発だけでは正式候補にしません。反転足高値＋1ティックを上抜いた場合だけ発動し、反転足安値割れで撤退。</p></section>
+<section class="card wide"><h2>⑤-G 自社株買い実施中・需給インパクト TOP5</h2>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>取得上限／発行済株式</th><th>進捗率</th><th>残り余力</th><th>1日出来高への影響</th><th>取得期間</th><th>消却・注意</th></tr></thead>
+<tbody>{buyback_rows}</tbody></table>
+<p class="warning">会社IR・適時開示で取得期間中と確認できる案件だけを表示。発表済みでも取得終了、上限到達、取得実績ゼロ、出来高への影響が小さい案件は減点します。自社株買いだけで買わず、信用買い残の整理・機関空売り買い戻し・週足／月足反転と重なる銘柄を優先します。更新：{buybacks_updated_at}</p></section>
 <section id="tv-watchlist-export" class="card wide"><h2>TradingView監視リスト出力</h2>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
 <button id="tv-day" type="button" style="padding:12px 18px;border:0;border-radius:9px;background:#00b894;color:#fff;font-weight:700;cursor:pointer">当日IN・準備を保存</button>
@@ -1492,7 +1538,7 @@ def main():
 </div>
 <p id="tv-export-status" class="sub">ボタンを押すとTradingView取込用TXTをダウンロードします。</p>
 <p class="warning">TradingView右側の監視リスト名を押す →「リストをインポート」→ ダウンロードしたTXTを選択。日本株はTSE:銘柄コード形式で出力し、重複は自動削除します。</p></section>
-<section class="card wide"><h2>⑤-G 日足セリングクライマックス反転監視</h2>
+<section class="card wide"><h2>⑤-H 日足セリングクライマックス反転監視</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>反転形</th><th>期待値</th><th>終値</th><th>10日下落</th><th>出来高急増</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead>
 <tbody id="daily-reversal-signals"><tr><td colspan="12">全市場を走査中...</td></tr></tbody></table>
 <p class="warning">画像のような「急落→大出来高→安値固め→陽線確認」を検出。逆張りなので、反転足高値＋1ティックを上抜くまで買いません。</p></section>
