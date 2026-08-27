@@ -1,67 +1,67 @@
 {
   "date": "2026-08-28",
-  "fixed_at": "2026-08-28 01:56:38 JST",
+  "fixed_at": "2026-08-28 06:53:31 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
-    {
-      "name": "小松製作所（6301）",
-      "ticker": "6301.T",
-      "side": "LONG",
-      "score": 87.0,
-      "entry": 7540,
-      "entry_limit": 7560,
-      "stop": 7390,
-      "target1": 7820,
-      "target2": 7930,
-      "morning_price": 7560
-    },
     {
       "name": "MS&AD（8725）",
       "ticker": "8725.T",
       "side": "LONG",
-      "score": 87.0,
-      "entry": 5110,
-      "entry_limit": 5130,
-      "stop": 5030,
-      "target1": 5280,
-      "target2": 5350,
-      "morning_price": 5130
+      "score": 89.0,
+      "entry": 5100,
+      "entry_limit": 5120,
+      "stop": 5020,
+      "target1": 5270,
+      "target2": 5340,
+      "morning_price": 5120
     },
     {
-      "name": "本田技研工業（7267）",
-      "ticker": "7267.T",
+      "name": "小松製作所（6301）",
+      "ticker": "6301.T",
       "side": "LONG",
-      "score": 79.0,
-      "entry": 1708,
-      "entry_limit": 1710,
-      "stop": 1666,
-      "target1": 1776,
-      "target2": 1807,
-      "morning_price": 1710
+      "score": 88.0,
+      "entry": 7650,
+      "entry_limit": 7670,
+      "stop": 7490,
+      "target1": 7940,
+      "target2": 8070,
+      "morning_price": 7670
     },
     {
-      "name": "JR東日本（9020）",
-      "ticker": "9020.T",
+      "name": "キヤノン（7751）",
+      "ticker": "7751.T",
       "side": "LONG",
-      "score": 79.0,
-      "entry": 3630,
-      "entry_limit": 3640,
-      "stop": 3570,
-      "target1": 3745,
-      "target2": 3795,
-      "morning_price": 3640
+      "score": 86.0,
+      "entry": 4710,
+      "entry_limit": 4720,
+      "stop": 4645,
+      "target1": 4830,
+      "target2": 4885,
+      "morning_price": 4720
     },
     {
       "name": "オムロン（6645）",
       "ticker": "6645.T",
       "side": "LONG",
-      "score": 78.0,
-      "entry": 6520,
-      "entry_limit": 6540,
-      "stop": 6330,
-      "target1": 6860,
-      "target2": 7000,
-      "morning_price": 6540
+      "score": 83.0,
+      "entry": 6620,
+      "entry_limit": 6640,
+      "stop": 6390,
+      "target1": 7020,
+      "target2": 7190,
+      "morning_price": 6640
+    },
+    {
+      "name": "三菱UFJ FG（8306）",
+      "ticker": "8306.T",
+      "side": "LONG",
+      "score": 79.0,
+      "entry": 3620,
+      "entry_limit": 3630,
+      "stop": 3550,
+      "target1": 3750,
+      "target2": 3805,
+      "morning_price": 3630
     }
   ]
 }
