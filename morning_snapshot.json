@@ -1,8 +1,32 @@
 {
   "date": "2026-08-28",
-  "fixed_at": "2026-08-28 11:42:05 JST",
+  "fixed_at": "2026-08-28 15:42:05 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
+    {
+      "name": "小松製作所（6301）",
+      "ticker": "6301.T",
+      "side": "LONG",
+      "score": 88.0,
+      "entry": 7620,
+      "entry_limit": 7640,
+      "stop": 7510,
+      "target1": 7840,
+      "target2": 7930,
+      "morning_price": 7640
+    },
+    {
+      "name": "MS&AD（8725）",
+      "ticker": "8725.T",
+      "side": "LONG",
+      "score": 88.0,
+      "entry": 5140,
+      "entry_limit": 5160,
+      "stop": 5040,
+      "target1": 5340,
+      "target2": 5420,
+      "morning_price": 5160
+    },
     {
       "name": "NTT（9432）",
       "ticker": "9432.T",
@@ -16,52 +40,28 @@
       "morning_price": 169.9
     },
     {
-      "name": "フジクラ（5803）",
-      "ticker": "5803.T",
-      "side": "LONG",
-      "score": 87.0,
-      "entry": 5500,
-      "entry_limit": 5520,
-      "stop": 5300,
-      "target1": 5850,
-      "target2": 6000,
-      "morning_price": 5520
-    },
-    {
-      "name": "パナソニックHD（6752）",
-      "ticker": "6752.T",
+      "name": "キヤノン（7751）",
+      "ticker": "7751.T",
       "side": "LONG",
       "score": 83.0,
-      "entry": 4495,
-      "entry_limit": 4505,
-      "stop": 4360,
-      "target1": 4720,
-      "target2": 4825,
-      "morning_price": 4505
-    },
-    {
-      "name": "MS&AD（8725）",
-      "ticker": "8725.T",
-      "side": "LONG",
-      "score": 81.0,
-      "entry": 5110,
-      "entry_limit": 5130,
-      "stop": 5010,
-      "target1": 5310,
-      "target2": 5390,
-      "morning_price": 5130
+      "entry": 4725,
+      "entry_limit": 4735,
+      "stop": 4665,
+      "target1": 4840,
+      "target2": 4890,
+      "morning_price": 4735
     },
     {
       "name": "本田技研工業（7267）",
       "ticker": "7267.T",
       "side": "LONG",
-      "score": 80.0,
-      "entry": 1704,
-      "entry_limit": 1706,
-      "stop": 1662,
-      "target1": 1772,
-      "target2": 1803,
-      "morning_price": 1706
+      "score": 82.0,
+      "entry": 1714,
+      "entry_limit": 1716,
+      "stop": 1672,
+      "target1": 1782,
+      "target2": 1813,
+      "morning_price": 1716
     }
   ]
 }
