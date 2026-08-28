@@ -1,67 +1,67 @@
 {
-  "date": "2026-08-28",
-  "fixed_at": "2026-08-28 15:42:05 JST",
+  "date": "2026-08-29",
+  "fixed_at": "2026-08-29 02:49:46 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
-      "name": "小松製作所（6301）",
-      "ticker": "6301.T",
+      "name": "キヤノン（7751）",
+      "ticker": "7751.T",
       "side": "LONG",
-      "score": 88.0,
-      "entry": 7620,
-      "entry_limit": 7640,
-      "stop": 7510,
-      "target1": 7840,
-      "target2": 7930,
-      "morning_price": 7640
+      "score": 91.0,
+      "entry": 4710,
+      "entry_limit": 4720,
+      "stop": 4645,
+      "target1": 4830,
+      "target2": 4885,
+      "morning_price": 4720
     },
     {
       "name": "MS&AD（8725）",
       "ticker": "8725.T",
       "side": "LONG",
-      "score": 88.0,
-      "entry": 5140,
-      "entry_limit": 5160,
-      "stop": 5040,
-      "target1": 5340,
-      "target2": 5420,
-      "morning_price": 5160
+      "score": 90.0,
+      "entry": 5100,
+      "entry_limit": 5120,
+      "stop": 5020,
+      "target1": 5270,
+      "target2": 5340,
+      "morning_price": 5120
+    },
+    {
+      "name": "小松製作所（6301）",
+      "ticker": "6301.T",
+      "side": "LONG",
+      "score": 90.0,
+      "entry": 7650,
+      "entry_limit": 7670,
+      "stop": 7490,
+      "target1": 7940,
+      "target2": 8070,
+      "morning_price": 7670
     },
     {
       "name": "NTT（9432）",
       "ticker": "9432.T",
       "side": "LONG",
       "score": 88.0,
-      "entry": 169.7,
-      "entry_limit": 169.9,
-      "stop": 167.4,
-      "target1": 173.6,
-      "target2": 175.4,
-      "morning_price": 169.9
+      "entry": 169.6,
+      "entry_limit": 169.8,
+      "stop": 167.1,
+      "target1": 173.9,
+      "target2": 175.7,
+      "morning_price": 169.8
     },
     {
-      "name": "キヤノン（7751）",
-      "ticker": "7751.T",
+      "name": "日本郵船（9101）",
+      "ticker": "9101.T",
       "side": "LONG",
-      "score": 83.0,
-      "entry": 4725,
-      "entry_limit": 4735,
-      "stop": 4665,
-      "target1": 4840,
-      "target2": 4890,
-      "morning_price": 4735
-    },
-    {
-      "name": "本田技研工業（7267）",
-      "ticker": "7267.T",
-      "side": "LONG",
-      "score": 82.0,
-      "entry": 1714,
-      "entry_limit": 1716,
-      "stop": 1672,
-      "target1": 1782,
-      "target2": 1813,
-      "morning_price": 1716
+      "score": 86.0,
+      "entry": 6990,
+      "entry_limit": 7010,
+      "stop": 6840,
+      "target1": 7260,
+      "target2": 7380,
+      "morning_price": 7010
     }
   ]
 }
