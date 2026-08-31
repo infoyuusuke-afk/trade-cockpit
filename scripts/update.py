@@ -1540,15 +1540,13 @@ def main():
         f"<td>{x.get('detail','—')}</td></tr>" for x in reviews
     ) or "<tr><td colspan='6'>朝版の同日スナップショットなし。次回8:00版から自動検証します。</td></tr>"
 
-    # Personal astrology is intentionally separated from the trading score.
-    # Birth time is only known as "late night", so ascendant/houses remain unconfirmed.
+    # Public dashboard uses a date-only discipline score and stores no personal birth data.
     today_jst = datetime.now(JST).date()
-    birth_date = datetime(1971, 12, 12, tzinfo=JST).date()
-    lived_days = (today_jst - birth_date).days
+    lived_days = (today_jst - datetime(2000, 1, 1, tzinfo=JST).date()).days
     bio_p = round(math.sin(2 * math.pi * lived_days / 23) * 100)
     bio_e = round(math.sin(2 * math.pi * lived_days / 28) * 100)
     bio_i = round(math.sin(2 * math.pi * lived_days / 33) * 100)
-    personal_day_raw = sum(int(c) for c in f"{today_jst.year}{today_jst.month}{today_jst.day}") + 1 + 2 + 1 + 2
+    personal_day_raw = sum(int(c) for c in f"{today_jst.year}{today_jst.month}{today_jst.day}")
     while personal_day_raw > 9:
         personal_day_raw = sum(int(c) for c in str(personal_day_raw))
     fortune_score = max(0, min(100, round(50 + bio_p * .15 + bio_e * .10 + bio_i * .10)))
@@ -1562,11 +1560,11 @@ def main():
     fortune_html = f"""
 <section class="card wide"><h2>🔮 本格占い・行動管理（売買AI点数とは完全分離）</h2>
 <div class="grid3">
-<div><b>本日の運勢 {fortune_score}/100</b><br>個人日数秘：{personal_day_raw}<br>太陽星座：射手座</div>
+<div><b>本日の行動管理 {fortune_score}/100</b><br>日付数秘：{personal_day_raw}<br>個人情報は非表示</div>
 <div><b>バイオリズム</b><br>身体 {bio_p:+d}／感情 {bio_e:+d}／知性 {bio_i:+d}</div>
 <div><b>今日の行動ルール</b><br>{fortune_action}</div>
 </div>
-<p class="warning">1971年12月12日・愛知県豊橋市・深夜生まれで暫定計算。正確な出生時刻が不明なため、ASC・ハウスは未確定です。娯楽・心理管理用で、銘柄順位や売買期待値には加点しません。</p></section>
+<p class="warning">公開ページには生年月日・出生地・出生時刻を保存しません。娯楽・心理管理用で、銘柄順位や売買期待値には加点しません。</p></section>
 """
     hindenburg_html = """
 <section class="card wide"><h2>🚨 市場警報</h2>
