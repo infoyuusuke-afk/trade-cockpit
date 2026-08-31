@@ -170,6 +170,15 @@ def daily_snapshot(ticker):
             + (10 if ma20 > old_ma20 else 0)
             + (15 if to_high20 >= -3 else 8 if to_high20 >= -8 else 0)
         )
+        chart = [
+            {
+                "o": round(float(r["Open"]), 2),
+                "h": round(float(r["High"]), 2),
+                "l": round(float(r["Low"]), 2),
+                "c": round(float(r["Close"]), 2),
+            }
+            for _, r in df.tail(40).iterrows()
+        ]
         return {
             "ok": True, "price": round(close, 2), "open": round(open_, 2),
             "high": round(high, 2), "low": round(low, 2),
@@ -190,7 +199,7 @@ def daily_snapshot(ticker):
             "day_score": round(day_score, 2), "swing_score": round(swing_score, 2),
             "stable_score": round(stable_score, 2),
             "momentum_score": round(momentum_score, 2),
-            "high_score": round(high_score, 2)
+            "high_score": round(high_score, 2), "chart": chart
         }
     except Exception as e:
         return {"ok": False, "error": type(e).__name__}
@@ -961,6 +970,7 @@ def build_day_ifo_candidates(valid, rotation, official_earnings, now, credit_sup
                 if tick < 1 else
                 f"8:55気配が{entry_limit:,.0f}円を超えていたら価格を上げず注文取消。"
             ),
+            "chart": row.get("chart", []),
             "close_rule": (
                 "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、"
                 "失効する決済注文を必ずOCOで再設定。"
@@ -1124,96 +1134,60 @@ def render_day_ifo_cards(candidates):
 
 
 def render_focus_dashboard(candidates):
-    """Render the first-screen decision panel; detailed lists stay in other tabs."""
+    """A compact, self-contained trading surface with a native price chart."""
     if not candidates:
-        return """
-<section id="action-dashboard" class="card wide focus-dashboard">
-  <div class="focus-title"><div><span>本日の売買判断</span><h2>今買う候補</h2></div><b class="decision-badge decision-wait">見送り</b></div>
-  <div class="focus-empty">条件に合格した銘柄はありません。候補を埋めるための売買はしません。</div>
-</section>"""
-
+        return """<section id="action-dashboard" class="card wide focus-dashboard"><div class="focus-empty"><b>本日は見送り</b><span>条件を満たす候補がありません</span></div></section>"""
     rows = []
     for rank, item in enumerate(candidates[:5], 1):
         risk = max(float(item["entry_limit"]) - float(item["stop"]), 0)
-        pullback_low = float(item["entry_limit"]) - risk * .55
-        pullback_high = float(item["entry_limit"]) - risk * .25
         supply_ok = item.get("supply_verified", False)
-        if rank == 1 and supply_ok and item.get("score", 0) >= 80:
-            decision, cls = "★本命・発動待ち", "decision-go"
-        elif supply_ok:
-            decision, cls = "買い候補・発動待ち", "decision-ready"
-        else:
-            decision, cls = "需給確認まで待機", "decision-wait"
+        decision = "本命・発動待ち" if rank == 1 and supply_ok and item.get("score", 0) >= 80 else "発動待ち" if supply_ok else "需給確認待ち"
         rows.append({
-            **item,
-            "rank": rank,
-            "decision": decision,
-            "decision_class": cls,
-            "pullback_low": pullback_low,
-            "pullback_high": pullback_high,
+            "rank": rank, "name": item["name"], "code": item["code"],
+            "score": item["score"], "decision": decision,
+            "decision_class": "go" if decision.startswith("本命") else "ready" if supply_ok else "wait",
+            "trigger": item["trigger"], "entry": item["entry_limit"],
+            "pullback_low": round(float(item["entry_limit"]) - risk * .55, 2),
+            "pullback_high": round(float(item["entry_limit"]) - risk * .25, 2),
+            "stop": item["stop"], "target1": item["target1"], "target2": item["target2"],
+            "supply": item.get("supply_status", "信用需給未確認"),
+            "reason": item["reason"], "chart": item.get("chart", []),
         })
-
-    first = rows[0]
-    buttons = "".join(
-        f"""<button type="button" class="focus-pick{' active' if x['rank'] == 1 else ''}"
- data-rank="{x['rank']}" data-name="{x['name']}" data-code="{x['code']}"
- data-score="{x['score']}" data-decision="{x['decision']}" data-decision-class="{x['decision_class']}"
- data-trigger="{money(x['trigger'])}" data-entry="{money(x['entry_limit'])}"
- data-pullback="{money(x['pullback_low'])}～{money(x['pullback_high'])}"
- data-stop="{money(x['stop'])}" data-target1="{money(x['target1'])}"
- data-target2="{money(x['target2'])}" data-supply="{x.get('supply_status', '信用需給未確認')}"
- data-reason="{x['reason']}">
- <span class="focus-rank">#{x['rank']}</span><span><b>{x['name']}</b><small>{x['decision']}</small></span><strong>{x['score']}</strong>
-</button>""" for x in rows
-    )
-    tv_symbol = f"TSE%3A{first['code']}"
+    payload = json.dumps(rows, ensure_ascii=False).replace("</", "<\\/")
     return f"""
 <section id="action-dashboard" class="card wide focus-dashboard">
- <div class="focus-title">
-  <div><span>最初にここだけ確認</span><h2>今買う候補 TOP{len(rows)}</h2><small>平日は最大5銘柄。★本命と次点だけを実際の売買対象にします。</small></div>
-  <b id="focus-decision" class="decision-badge {first['decision_class']}">{first['decision']}</b>
+ <div class="focus-topbar">
+  <div><span class="focus-eyebrow">TODAY'S SETUPS</span><h2>今買う候補</h2></div>
+  <div class="focus-legend"><span><i class="dot green"></i>発動</span><span><i class="dot amber"></i>押し目</span><span><i class="dot red"></i>撤退</span></div>
  </div>
  <div class="focus-layout">
-  <div class="focus-picks" id="focus-picks">{buttons}</div>
+  <aside><div class="focus-aside-head"><b>優先順位</b><small>最大5銘柄</small></div><div class="focus-picks" id="focus-picks"></div></aside>
   <div class="focus-chart-wrap">
-   <div class="focus-chart-head"><b id="focus-chart-name">{first['name']}</b><span>15分足チャート</span></div>
-   <iframe id="focus-chart" title="選択銘柄チャート" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://s.tradingview.com/widgetembed/?symbol={tv_symbol}&interval=15&theme=dark&style=1&timezone=Asia%2FTokyo&withdateranges=1&hide_side_toolbar=0&allow_symbol_change=0&saveimage=0"></iframe>
+   <div class="focus-chart-head"><div><b id="focus-chart-name"></b><small id="focus-chart-code"></small></div><span>直近40営業日</span></div>
+   <div id="focus-chart" role="img" aria-label="ローソク足チャート"></div>
   </div>
   <div class="focus-order">
-   <div class="focus-symbol"><span id="focus-rank">#{first['rank']}</span><h3 id="focus-name">{first['name']}</h3><b id="focus-score">{first['score']}/100</b></div>
-   <div class="focus-action"><span>買い発動</span><strong id="focus-trigger">{money(first['trigger'])}円以上</strong><small>5分足終値＋VWAP上＋出来高増加を確認</small></div>
+   <div class="focus-symbol"><span id="focus-rank"></span><div><small>SELECTED</small><h3 id="focus-name"></h3></div><b id="focus-score"></b></div>
+   <div id="focus-decision" class="decision-badge"></div>
+   <div class="focus-action"><span>買い発動ライン</span><strong id="focus-trigger"></strong><small>ローソク足確定・VWAP上・出来高増加</small></div>
    <div class="focus-price-grid">
-    <div><span>買い上限</span><b id="focus-entry">{money(first['entry_limit'])}円</b></div>
-    <div><span>押し目ゾーン</span><b id="focus-pullback">{money(first['pullback_low'])}～{money(first['pullback_high'])}円</b></div>
-    <div><span>損切り</span><b class="down" id="focus-stop">{money(first['stop'])}円</b></div>
-    <div><span>利確1／2</span><b class="up" id="focus-targets">{money(first['target1'])}／{money(first['target2'])}円</b></div>
+    <div><span>買い上限</span><b id="focus-entry"></b></div><div><span>押し目ゾーン</span><b id="focus-pullback"></b></div>
+    <div><span>撤退ライン</span><b class="down" id="focus-stop"></b></div><div><span>利確 1 / 2</span><b class="up" id="focus-targets"></b></div>
    </div>
-   <div class="focus-supply"><b>信用需給</b><span id="focus-supply">{first.get('supply_status', '信用需給未確認')}</span></div>
-   <p id="focus-reason">{first['reason']}</p>
-   <p class="focus-rule">勢いだけで飛び乗らない。発動価格より上へ走った場合は追わず、押し目ゾーンの反発足を待つ。</p>
+   <div class="focus-supply"><span>CREDIT FLOW</span><p id="focus-supply"></p></div>
+   <details><summary>選定根拠を見る</summary><p id="focus-reason"></p></details>
   </div>
  </div>
+ <div class="focus-rule"><b>飛び乗り禁止</b><span>発動ラインを勢いよく通過したら追わない。押し目ゾーンで反発足が確定するまで待つ。</span></div>
 </section>
 <script>
 document.addEventListener("DOMContentLoaded",()=>{{
- document.querySelectorAll(".focus-pick").forEach(btn=>btn.addEventListener("click",()=>{{
-  document.querySelectorAll(".focus-pick").forEach(x=>x.classList.toggle("active",x===btn));
-  const d=btn.dataset;
-  document.getElementById("focus-decision").className="decision-badge "+d.decisionClass;
-  document.getElementById("focus-decision").textContent=d.decision;
-  document.getElementById("focus-chart-name").textContent=d.name;
-  document.getElementById("focus-rank").textContent="#"+d.rank;
-  document.getElementById("focus-name").textContent=d.name;
-  document.getElementById("focus-score").textContent=d.score+"/100";
-  document.getElementById("focus-trigger").textContent=d.trigger+"円以上";
-  document.getElementById("focus-entry").textContent=d.entry+"円";
-  document.getElementById("focus-pullback").textContent=d.pullback+"円";
-  document.getElementById("focus-stop").textContent=d.stop+"円";
-  document.getElementById("focus-targets").textContent=d.target1+"／"+d.target2+"円";
-  document.getElementById("focus-supply").textContent=d.supply;
-  document.getElementById("focus-reason").textContent=d.reason;
-  document.getElementById("focus-chart").src="https://s.tradingview.com/widgetembed/?symbol=TSE%3A"+encodeURIComponent(d.code)+"&interval=15&theme=dark&style=1&timezone=Asia%2FTokyo&withdateranges=1&hide_side_toolbar=0&allow_symbol_change=0&saveimage=0";
- }}));
+ const rows={payload}, yen=n=>Number(n).toLocaleString("ja-JP",{{maximumFractionDigits:1}})+"円";
+ const list=document.getElementById("focus-picks");
+ rows.forEach((x,i)=>{{const b=document.createElement("button");b.className="focus-pick";b.innerHTML=`<span class="focus-rank">${{String(i+1).padStart(2,"0")}}</span><span><b>${{x.name}}</b><small>${{x.decision}}</small></span><strong>${{x.score}}</strong>`;b.onclick=()=>select(i);list.appendChild(b);}});
+ function chart(x){{const a=x.chart||[];if(!a.length)return `<div class="chart-empty">チャートデータ更新待ち</div>`;const W=720,H=390,p=28;let lo=Math.min(...a.map(v=>v.l),x.stop),hi=Math.max(...a.map(v=>v.h),x.trigger,x.target1);const y=v=>p+(hi-v)/(hi-lo||1)*(H-p*2),step=(W-p*2)/a.length,bw=Math.max(3,step*.55);let s=`<svg viewBox="0 0 ${{W}} ${{H}}" preserveAspectRatio="none">`;for(let i=0;i<5;i++){{let yy=p+i*(H-p*2)/4;s+=`<line class="grid" x1="${{p}}" y1="${{yy}}" x2="${{W-p}}" y2="${{yy}}"/>`;}}a.forEach((v,i)=>{{let x0=p+step*(i+.5),up=v.c>=v.o,cl=up?"c-up":"c-down",yo=y(v.o),yc=y(v.c);s+=`<line class="${{cl}}" x1="${{x0}}" y1="${{y(v.h)}}" x2="${{x0}}" y2="${{y(v.l)}}"/><rect class="${{cl}}" x="${{x0-bw/2}}" y="${{Math.min(yo,yc)}}" width="${{bw}}" height="${{Math.max(1,Math.abs(yo-yc))}}"/>`;}});[[x.trigger,"trigger","発動"],[x.pullback_high,"pullback","押し目"],[x.stop,"stop","撤退"]].forEach(z=>{{s+=`<line class="level ${{z[1]}}" x1="${{p}}" y1="${{y(z[0])}}" x2="${{W-p}}" y2="${{y(z[0])}}"/><text class="label ${{z[1]}}" x="${{W-p-3}}" y="${{y(z[0])-5}}">${{z[2]}} ${{yen(z[0])}}</text>`;}});return s+`</svg>`;}}
+ function select(i){{const x=rows[i];[...list.children].forEach((b,j)=>b.classList.toggle("active",i===j));document.getElementById("focus-chart-name").textContent=x.name;document.getElementById("focus-chart-code").textContent=x.code;document.getElementById("focus-chart").innerHTML=chart(x);document.getElementById("focus-rank").textContent="#"+x.rank;document.getElementById("focus-name").textContent=x.name;document.getElementById("focus-score").textContent=x.score+" / 100";const d=document.getElementById("focus-decision");d.className="decision-badge "+x.decision_class;d.textContent=x.decision;document.getElementById("focus-trigger").textContent=yen(x.trigger)+" 以上";document.getElementById("focus-entry").textContent=yen(x.entry);document.getElementById("focus-pullback").textContent=yen(x.pullback_low)+" – "+yen(x.pullback_high);document.getElementById("focus-stop").textContent=yen(x.stop);document.getElementById("focus-targets").textContent=yen(x.target1)+" / "+yen(x.target2);document.getElementById("focus-supply").textContent=x.supply;document.getElementById("focus-reason").textContent=x.reason;}}
+ select(0);
 }});
 </script>"""
 
@@ -1678,7 +1652,8 @@ def main():
 <style>
 .focus-dashboard{{padding:14px;background:radial-gradient(circle at 80% 0,#123454 0,#101923 42%,#081018 100%);border:1px solid #3e83a8;overflow:visible}}.focus-title{{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:12px}}.focus-title h2{{font-size:26px;margin:2px 0;border:0;color:#fff}}.focus-title>div>span{{color:#63d8ff;font-weight:900;letter-spacing:.08em}}.decision-badge{{padding:12px 16px;border-radius:10px;font-size:17px;white-space:nowrap}}.decision-go{{background:#38e477;color:#03140a}}.decision-ready{{background:#ffd84e;color:#191300}}.decision-wait{{background:#5c6874;color:#fff}}.focus-layout{{display:grid;grid-template-columns:minmax(230px,.7fr) minmax(420px,1.45fr) minmax(320px,1fr);gap:12px}}.focus-picks{{display:flex;flex-direction:column;gap:7px}}.focus-pick{{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;text-align:left;color:#e9f4ff;background:#0b1722;border:1px solid #30475b;border-radius:9px;padding:10px;cursor:pointer}}.focus-pick:hover,.focus-pick.active{{border-color:#54d6ff;background:#10283a;box-shadow:0 0 0 1px #54d6ff55}}.focus-pick small{{display:block;margin-top:3px}}.focus-pick strong{{font-size:20px;color:#65e993}}.focus-rank{{background:#20384b;padding:5px;border-radius:5px;font-weight:900}}.focus-chart-wrap,.focus-order{{background:#071019;border:1px solid #2a475d;border-radius:10px;overflow:hidden}}.focus-chart-head{{display:flex;justify-content:space-between;padding:9px 11px;background:#0e2030}}#focus-chart{{width:100%;height:430px;border:0;display:block}}.focus-order{{padding:12px;overflow:auto}}.focus-symbol{{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;border-bottom:1px solid #314354;padding-bottom:9px}}.focus-symbol h3{{margin:0;color:#fff;font-size:18px}}.focus-symbol>b{{font-size:21px;color:#63e990}}.focus-action{{margin:11px 0;padding:12px;border-radius:9px;background:#113421;border:1px solid #2b9c58}}.focus-action span,.focus-action small{{display:block}}.focus-action strong{{display:block;font-size:25px;color:#65ef91;margin:4px 0}}.focus-price-grid{{display:grid;grid-template-columns:1fr 1fr;gap:7px}}.focus-price-grid>div{{background:#101e2a;border-radius:7px;padding:9px}}.focus-price-grid span{{display:block;color:#9fb0bf}}.focus-price-grid b{{font-size:17px}}.focus-supply{{margin-top:9px;padding:9px;border-left:4px solid #ffcf4a;background:#191a14}}.focus-supply b,.focus-supply span{{display:block}}.focus-rule{{color:#ffd75e;border-top:1px solid #4a3d16;padding-top:9px}}.focus-empty{{padding:28px;text-align:center;font-size:17px}}@media(max-width:1100px){{.focus-layout{{grid-template-columns:240px 1fr}}.focus-order{{grid-column:1/-1}}}}@media(max-width:800px){{.focus-layout{{grid-template-columns:1fr}}.focus-order{{grid-column:auto}}#focus-chart{{height:360px}}.focus-title{{align-items:flex-start;flex-direction:column}}}}
 </style>
-<header><div><h1>AIトレードコクピット Ver.4.0</h1><div class="sub">最初の画面で本命・買い時・押し目・撤退を判断</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;today&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
+<link rel="stylesheet" href="focus.css?v=41">
+<header><div><h1>AIトレードコクピット Ver.4.1</h1><div class="sub">最初の画面で本命・買い時・押し目・撤退を判断</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;today&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
 {focus_dashboard}
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
