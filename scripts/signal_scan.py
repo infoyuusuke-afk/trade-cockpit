@@ -247,6 +247,18 @@ def analyse(item, frame):
     }
 
 
+def chart_bars(frame, count=60):
+    if frame is None or frame.empty:
+        return []
+    return [
+        {
+            "o": round(float(r["Open"]), 2), "h": round(float(r["High"]), 2),
+            "l": round(float(r["Low"]), 2), "c": round(float(r["Close"]), 2),
+        }
+        for _, r in frame.tail(count).iterrows()
+    ]
+
+
 def analyse_speculative(item, frame):
     """Detect pump-like theme flow for quarantine monitoring, not trade entry."""
     if frame is None or len(frame) < 65:
@@ -872,23 +884,29 @@ def main():
             short_row = analyse_short(item, frame)
             speculative_row = analyse_speculative(item, frame)
             accumulation_row = analyse_accumulation(item, frame)
+            bars = chart_bars(frame)
             if row:
+                row["chart"] = bars
                 results.append(row)
             if short_row:
+                short_row["chart"] = bars
                 short_results.append(short_row)
             if speculative_row:
+                speculative_row["chart"] = bars
                 speculative_row.update(supply_view(item["code"], credit_supply))
                 known_theme = theme_by_code.get(item["code"])
                 speculative_row["theme"] = known_theme or "テーマ・材料要確認"
                 speculative_row["theme_status"] = "監視テーマ" if known_theme else "要公式確認"
                 speculative_results.append(speculative_row)
             if accumulation_row:
+                accumulation_row["chart"] = bars
                 accumulation_row.update(supply_view(item["code"], credit_supply))
                 accumulation_results.append(accumulation_row)
             if frame is not None:
                 for timeframe in ("月足", "週足"):
                     hammer = hammer_row(item, frame, timeframe)
                     if hammer:
+                        hammer["chart"] = bars
                         hammer.update(supply_view(item["code"], credit_supply))
                         technical = hammer["score"]
                         hammer["technical_score"] = technical
@@ -901,6 +919,7 @@ def main():
                 for setup_type in ("週足50週線反発", "日足200日線ハンマー"):
                     rebound = long_term_rebound_row(item, frame, setup_type)
                     if rebound:
+                        rebound["chart"] = bars
                         rebound.update(supply_view(item["code"], credit_supply))
                         technical = rebound["score"]
                         rebound["technical_score"] = technical
@@ -915,6 +934,7 @@ def main():
                         long_term_rebounds.append(rebound)
                 daily_reversal = analyse_daily_reversal(item, frame)
                 if daily_reversal:
+                    daily_reversal["chart"] = bars
                     daily_reversals.append(daily_reversal)
             if frame is None:
                 failed += 1
