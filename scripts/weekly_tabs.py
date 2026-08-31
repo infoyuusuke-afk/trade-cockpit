@@ -127,6 +127,7 @@ def tabs_block() -> str:
  <button class="cockpit-tab active" data-tab="today">今日の戦略</button>
  <button class="cockpit-tab" data-tab="risk">市場警報・占い</button>
  <button class="cockpit-tab" data-tab="rotation">資金ローテーション</button>
+ <button class="cockpit-tab" data-tab="accumulation">大口買い集め</button>
  <button class="cockpit-tab" data-tab="swing">スイング・決算</button>
  <button class="cockpit-tab" data-tab="audit">仮想トレード検証</button>
  <button class="cockpit-tab" data-tab="weekly">週間レビュー</button>
@@ -134,13 +135,14 @@ def tabs_block() -> str:
 <script>
 document.addEventListener("DOMContentLoaded",()=>{{
  const main=document.querySelector("main"); if(!main)return;
- const panes={{}}; ["today","risk","rotation","swing","audit","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="today"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
+ const panes={{}}; ["today","risk","rotation","accumulation","swing","audit","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="today"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
  [...main.querySelectorAll(":scope > section")].forEach(s=>{{
    const t=(s.querySelector("h2")?.textContent||"").trim();
    let k="today";
    if(t.includes("市場警報")||t.includes("本格占い"))k="risk";
    else if(s.id==="weekly-review"||t.includes("週間振り返り"))k="weekly";
    else if(s.id==="sector-rotation"||t.startsWith("②-R"))k="rotation";
+   else if(s.id==="large-lot-accumulation"||t.includes("大口買い集め"))k="accumulation";
    else if(t.startsWith("④")||t.includes("答え合わせ")||t.includes("仮想トレード"))k="audit";
    else if(t.startsWith("⑤")||t.startsWith("⑥"))k="swing";
    panes[k].appendChild(s);
