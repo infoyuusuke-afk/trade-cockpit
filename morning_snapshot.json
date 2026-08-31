@@ -1,37 +1,37 @@
 {
   "date": "2026-08-31",
-  "fixed_at": "2026-08-31 12:30:04 JST",
+  "fixed_at": "2026-08-31 12:40:29 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
-      "name": "三井住友FG（8316）",
-      "ticker": "8316.T",
+      "name": "リクルートHD（6098）",
+      "ticker": "6098.T",
       "side": "LONG",
-      "score": 88.0,
-      "entry": 6950,
-      "entry_limit": 6970,
-      "stop": 6820,
-      "target1": 7200,
-      "target2": 7300,
-      "morning_price": 6970
+      "score": 63.0,
+      "entry": 17920,
+      "entry_limit": 17940,
+      "stop": 17420,
+      "target1": 18720,
+      "target2": 19080,
+      "morning_price": 17940
     },
     {
-      "name": "NTT（9432）",
-      "ticker": "9432.T",
+      "name": "任天堂（7974）",
+      "ticker": "7974.T",
       "side": "LONG",
-      "score": 88.0,
-      "entry": 172.6,
-      "entry_limit": 172.8,
-      "stop": 170.2,
-      "target1": 176.7,
-      "target2": 178.5,
-      "morning_price": 172.8
+      "score": 61.0,
+      "entry": 9030,
+      "entry_limit": 9050,
+      "stop": 8850,
+      "target1": 9350,
+      "target2": 9490,
+      "morning_price": 9050
     },
     {
       "name": "フジクラ（5803）",
       "ticker": "5803.T",
       "side": "LONG",
-      "score": 85.0,
+      "score": 61.0,
       "entry": 5440,
       "entry_limit": 5460,
       "stop": 5140,
@@ -40,28 +40,28 @@
       "morning_price": 5460
     },
     {
-      "name": "トヨタ自動車（7203）",
-      "ticker": "7203.T",
+      "name": "ソニーグループ（6758）",
+      "ticker": "6758.T",
       "side": "LONG",
-      "score": 83.0,
-      "entry": 3195,
-      "entry_limit": 3205,
-      "stop": 3140,
-      "target1": 3300,
-      "target2": 3350,
-      "morning_price": 3205
+      "score": 59.0,
+      "entry": 3995,
+      "entry_limit": 4005,
+      "stop": 3925,
+      "target1": 4125,
+      "target2": 4180,
+      "morning_price": 4005
     },
     {
-      "name": "JR東日本（9020）",
-      "ticker": "9020.T",
+      "name": "小松製作所（6301）",
+      "ticker": "6301.T",
       "side": "LONG",
-      "score": 61.0,
-      "entry": 3600,
-      "entry_limit": 3610,
-      "stop": 3555,
-      "target1": 3690,
-      "target2": 3730,
-      "morning_price": 3610
+      "score": 58.0,
+      "entry": 7550,
+      "entry_limit": 7570,
+      "stop": 7390,
+      "target1": 7840,
+      "target2": 7970,
+      "morning_price": 7570
     }
   ]
 }
