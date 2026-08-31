@@ -42,14 +42,111 @@ document.addEventListener("DOMContentLoaded",()=>{
 </script>
 <!-- COCKPIT_TABS_END -->
 </head><body>
-<header><div><h1>AIトレードコクピット Ver.3.7</h1><div class="sub">日本株全市場／持ち越しLONG・SHORT発動価格</div></div><div><span class="tag">寄り付き前8:00版</span><div class="sub">2026-08-31 15:40:51 JST／日経想定 取得不能</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;today&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
-<section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr><tr><td>日経平均</td><td>—</td><td class=''>—</td><td>横ばい</td></tr><tr><td>TOPIX</td><td>433.1</td><td class='up'>+0.25%</td><td>横ばい</td></tr><tr><td>NASDAQ</td><td>26,402.4</td><td class='down'>-0.52%</td><td>下向き</td></tr><tr><td>S&P500</td><td>7,711.8</td><td class='down'>-0.25%</td><td>横ばい</td></tr><tr><td>SOX</td><td>11,469.7</td><td class='down'>-3.47%</td><td>下向き</td></tr><tr><td>VIX</td><td>14.4</td><td class='down'>-0.55%</td><td>下向き</td></tr><tr><td>ドル円</td><td>159.9</td><td class='up'>+0.35%</td><td>上向き</td></tr><tr><td>米10年金利</td><td>4.7</td><td class='up'>+1.03%</td><td>上向き</td></tr></table></section>
-<section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr><tr><td>1</td><td>電線・データセンター</td><td class='up'>+8.5</td><td>フジクラ（5803） <small>強度+9.6／+3.41%</small><br>古河電気工業（5801） <small>強度+9.1／+3.10%</small><br>住友電気工業（5802） <small>強度+6.7／+1.95%</small></td><td>3銘柄の実測平均</td></tr><tr><td>2</td><td>ゲーム・半導体</td><td class='up'>+8.0</td><td>ソニーグループ（6758） <small>強度+8.0／+2.57%</small></td><td>1銘柄の実測平均</td></tr><tr><td>3</td><td>サービス・AI</td><td class='up'>+7.9</td><td>リクルートHD（6098） <small>強度+7.9／+1.49%</small></td><td>1銘柄の実測平均</td></tr><tr><td>4</td><td>MaaS・成長株</td><td class='up'>+7.0</td><td>GO（581A） <small>強度+7.0／-2.25%</small></td><td>1銘柄の実測平均</td></tr><tr><td>5</td><td>銀行・金利</td><td class='up'>+6.9</td><td>三井住友FG（8316） <small>強度+7.4／+1.25%</small><br>三菱UFJ FG（8306） <small>強度+6.5／+0.52%</small></td><td>2銘柄の実測平均</td></tr></table></section>
+<style>
+.focus-dashboard{padding:14px;background:radial-gradient(circle at 80% 0,#123454 0,#101923 42%,#081018 100%);border:1px solid #3e83a8;overflow:visible}.focus-title{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:12px}.focus-title h2{font-size:26px;margin:2px 0;border:0;color:#fff}.focus-title>div>span{color:#63d8ff;font-weight:900;letter-spacing:.08em}.decision-badge{padding:12px 16px;border-radius:10px;font-size:17px;white-space:nowrap}.decision-go{background:#38e477;color:#03140a}.decision-ready{background:#ffd84e;color:#191300}.decision-wait{background:#5c6874;color:#fff}.focus-layout{display:grid;grid-template-columns:minmax(230px,.7fr) minmax(420px,1.45fr) minmax(320px,1fr);gap:12px}.focus-picks{display:flex;flex-direction:column;gap:7px}.focus-pick{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;text-align:left;color:#e9f4ff;background:#0b1722;border:1px solid #30475b;border-radius:9px;padding:10px;cursor:pointer}.focus-pick:hover,.focus-pick.active{border-color:#54d6ff;background:#10283a;box-shadow:0 0 0 1px #54d6ff55}.focus-pick small{display:block;margin-top:3px}.focus-pick strong{font-size:20px;color:#65e993}.focus-rank{background:#20384b;padding:5px;border-radius:5px;font-weight:900}.focus-chart-wrap,.focus-order{background:#071019;border:1px solid #2a475d;border-radius:10px;overflow:hidden}.focus-chart-head{display:flex;justify-content:space-between;padding:9px 11px;background:#0e2030}#focus-chart{width:100%;height:430px;border:0;display:block}.focus-order{padding:12px;overflow:auto}.focus-symbol{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;border-bottom:1px solid #314354;padding-bottom:9px}.focus-symbol h3{margin:0;color:#fff;font-size:18px}.focus-symbol>b{font-size:21px;color:#63e990}.focus-action{margin:11px 0;padding:12px;border-radius:9px;background:#113421;border:1px solid #2b9c58}.focus-action span,.focus-action small{display:block}.focus-action strong{display:block;font-size:25px;color:#65ef91;margin:4px 0}.focus-price-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.focus-price-grid>div{background:#101e2a;border-radius:7px;padding:9px}.focus-price-grid span{display:block;color:#9fb0bf}.focus-price-grid b{font-size:17px}.focus-supply{margin-top:9px;padding:9px;border-left:4px solid #ffcf4a;background:#191a14}.focus-supply b,.focus-supply span{display:block}.focus-rule{color:#ffd75e;border-top:1px solid #4a3d16;padding-top:9px}.focus-empty{padding:28px;text-align:center;font-size:17px}@media(max-width:1100px){.focus-layout{grid-template-columns:240px 1fr}.focus-order{grid-column:1/-1}}@media(max-width:800px){.focus-layout{grid-template-columns:1fr}.focus-order{grid-column:auto}#focus-chart{height:360px}.focus-title{align-items:flex-start;flex-direction:column}}
+</style>
+<header><div><h1>AIトレードコクピット Ver.4.0</h1><div class="sub">最初の画面で本命・買い時・押し目・撤退を判断</div></div><div><span class="tag">寄り付き前8:00版</span><div class="sub">2026-08-31 16:14:52 JST／日経想定 取得不能</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;today&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
+
+<section id="action-dashboard" class="card wide focus-dashboard">
+ <div class="focus-title">
+  <div><span>最初にここだけ確認</span><h2>今買う候補 TOP5</h2><small>平日は最大5銘柄。★本命と次点だけを実際の売買対象にします。</small></div>
+  <b id="focus-decision" class="decision-badge decision-wait">需給確認まで待機</b>
+ </div>
+ <div class="focus-layout">
+  <div class="focus-picks" id="focus-picks"><button type="button" class="focus-pick active"
+ data-rank="1" data-name="ソニーグループ（6758）" data-code="6758"
+ data-score="74" data-decision="需給確認まで待機" data-decision-class="decision-wait"
+ data-trigger="4,045" data-entry="4,055"
+ data-pullback="4,002.8～4,031.2"
+ data-stop="3,960" data-target1="4,200"
+ data-target2="4,265" data-supply="信用需給未取得・8:55に板／規制／日計り可否を手動確認"
+ data-reason="当日資金流入／AI・テクノロジー＝流入初期 58点／前日比 +2.24%／出来高比 1.48倍／売買代金 943億円／テクニカル 71点／信用需給未取得・8:55に板／規制／日計り可否を手動確認">
+ <span class="focus-rank">#1</span><span><b>ソニーグループ（6758）</b><small>需給確認まで待機</small></span><strong>74</strong>
+</button><button type="button" class="focus-pick"
+ data-rank="2" data-name="富士通（6702）" data-code="6702"
+ data-score="67" data-decision="需給確認まで待機" data-decision-class="decision-wait"
+ data-trigger="3,930" data-entry="3,940"
+ data-pullback="3,893.2～3,918.8"
+ data-stop="3,855" data-target1="4,070"
+ data-target2="4,125" data-supply="信用需給未取得・8:55に板／規制／日計り可否を手動確認"
+ data-reason="当日資金流入／AI・テクノロジー＝流入初期 58点／前日比 -0.90%／出来高比 1.15倍／売買代金 294億円／テクニカル 63点／信用需給未取得・8:55に板／規制／日計り可否を手動確認">
+ <span class="focus-rank">#2</span><span><b>富士通（6702）</b><small>需給確認まで待機</small></span><strong>67</strong>
+</button><button type="button" class="focus-pick"
+ data-rank="3" data-name="日東電工（6988）" data-code="6988"
+ data-score="66" data-decision="需給確認まで待機" data-decision-class="decision-wait"
+ data-trigger="3,515" data-entry="3,525"
+ data-pullback="3,481～3,505"
+ data-stop="3,445" data-target1="3,645"
+ data-target2="3,700" data-supply="信用需給未取得・8:55に板／規制／日計り可否を手動確認"
+ data-reason="当日資金流入／AI・テクノロジー＝流入初期 58点／前日比 +1.18%／出来高比 1.35倍／売買代金 125億円／テクニカル 57点／信用需給未取得・8:55に板／規制／日計り可否を手動確認">
+ <span class="focus-rank">#3</span><span><b>日東電工（6988）</b><small>需給確認まで待機</small></span><strong>66</strong>
+</button><button type="button" class="focus-pick"
+ data-rank="4" data-name="小松製作所（6301）" data-code="6301"
+ data-score="66" data-decision="需給確認まで待機" data-decision-class="decision-wait"
+ data-trigger="7,560" data-entry="7,580"
+ data-pullback="7,481～7,535"
+ data-stop="7,400" data-target1="7,850"
+ data-target2="7,980" data-supply="信用需給未取得・8:55に板／規制／日計り可否を手動確認"
+ data-reason="当日資金流入／資本財・インフラ＝流入初期 60点／前日比 -1.33%／出来高比 1.31倍／売買代金 262億円／テクニカル 63点／信用需給未取得・8:55に板／規制／日計り可否を手動確認">
+ <span class="focus-rank">#4</span><span><b>小松製作所（6301）</b><small>需給確認まで待機</small></span><strong>66</strong>
+</button><button type="button" class="focus-pick"
+ data-rank="5" data-name="ローム（6963）" data-code="6963"
+ data-score="65" data-decision="需給確認まで待機" data-decision-class="decision-wait"
+ data-trigger="4,890" data-entry="4,900"
+ data-pullback="4,784.5～4,847.5"
+ data-stop="4,690" data-target1="5,215"
+ data-target2="5,360" data-supply="信用需給未取得・8:55に板／規制／日計り可否を手動確認"
+ data-reason="当日資金流入／AI・テクノロジー＝流入初期 58点／前日比 +0.81%／出来高比 0.97倍／売買代金 176億円／テクニカル 64点／信用需給未取得・8:55に板／規制／日計り可否を手動確認">
+ <span class="focus-rank">#5</span><span><b>ローム（6963）</b><small>需給確認まで待機</small></span><strong>65</strong>
+</button></div>
+  <div class="focus-chart-wrap">
+   <div class="focus-chart-head"><b id="focus-chart-name">ソニーグループ（6758）</b><span>15分足チャート</span></div>
+   <iframe id="focus-chart" title="選択銘柄チャート" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://s.tradingview.com/widgetembed/?symbol=TSE%3A6758&interval=15&theme=dark&style=1&timezone=Asia%2FTokyo&withdateranges=1&hide_side_toolbar=0&allow_symbol_change=0&saveimage=0"></iframe>
+  </div>
+  <div class="focus-order">
+   <div class="focus-symbol"><span id="focus-rank">#1</span><h3 id="focus-name">ソニーグループ（6758）</h3><b id="focus-score">74/100</b></div>
+   <div class="focus-action"><span>買い発動</span><strong id="focus-trigger">4,045円以上</strong><small>5分足終値＋VWAP上＋出来高増加を確認</small></div>
+   <div class="focus-price-grid">
+    <div><span>買い上限</span><b id="focus-entry">4,055円</b></div>
+    <div><span>押し目ゾーン</span><b id="focus-pullback">4,002.8～4,031.2円</b></div>
+    <div><span>損切り</span><b class="down" id="focus-stop">3,960円</b></div>
+    <div><span>利確1／2</span><b class="up" id="focus-targets">4,200／4,265円</b></div>
+   </div>
+   <div class="focus-supply"><b>信用需給</b><span id="focus-supply">信用需給未取得・8:55に板／規制／日計り可否を手動確認</span></div>
+   <p id="focus-reason">当日資金流入／AI・テクノロジー＝流入初期 58点／前日比 +2.24%／出来高比 1.48倍／売買代金 943億円／テクニカル 71点／信用需給未取得・8:55に板／規制／日計り可否を手動確認</p>
+   <p class="focus-rule">勢いだけで飛び乗らない。発動価格より上へ走った場合は追わず、押し目ゾーンの反発足を待つ。</p>
+  </div>
+ </div>
+</section>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+ document.querySelectorAll(".focus-pick").forEach(btn=>btn.addEventListener("click",()=>{
+  document.querySelectorAll(".focus-pick").forEach(x=>x.classList.toggle("active",x===btn));
+  const d=btn.dataset;
+  document.getElementById("focus-decision").className="decision-badge "+d.decisionClass;
+  document.getElementById("focus-decision").textContent=d.decision;
+  document.getElementById("focus-chart-name").textContent=d.name;
+  document.getElementById("focus-rank").textContent="#"+d.rank;
+  document.getElementById("focus-name").textContent=d.name;
+  document.getElementById("focus-score").textContent=d.score+"/100";
+  document.getElementById("focus-trigger").textContent=d.trigger+"円以上";
+  document.getElementById("focus-entry").textContent=d.entry+"円";
+  document.getElementById("focus-pullback").textContent=d.pullback+"円";
+  document.getElementById("focus-stop").textContent=d.stop+"円";
+  document.getElementById("focus-targets").textContent=d.target1+"／"+d.target2+"円";
+  document.getElementById("focus-supply").textContent=d.supply;
+  document.getElementById("focus-reason").textContent=d.reason;
+  document.getElementById("focus-chart").src="https://s.tradingview.com/widgetembed/?symbol=TSE%3A"+encodeURIComponent(d.code)+"&interval=15&theme=dark&style=1&timezone=Asia%2FTokyo&withdateranges=1&hide_side_toolbar=0&allow_symbol_change=0&saveimage=0";
+ }));
+});
+</script>
+<section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr><tr><td>日経平均</td><td>—</td><td class=''>—</td><td>横ばい</td></tr><tr><td>TOPIX</td><td>433.5</td><td class='up'>+0.35%</td><td>上向き</td></tr><tr><td>NASDAQ</td><td>26,402.4</td><td class='down'>-0.52%</td><td>下向き</td></tr><tr><td>S&P500</td><td>7,711.8</td><td class='down'>-0.25%</td><td>横ばい</td></tr><tr><td>SOX</td><td>11,469.7</td><td class='down'>-3.47%</td><td>下向き</td></tr><tr><td>VIX</td><td>14.4</td><td class='down'>-0.55%</td><td>下向き</td></tr><tr><td>ドル円</td><td>159.7</td><td class='up'>+0.22%</td><td>横ばい</td></tr><tr><td>米10年金利</td><td>4.7</td><td class='up'>+1.03%</td><td>上向き</td></tr></table></section>
+<section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr><tr><td>1</td><td>サービス・AI</td><td class='up'>+9.8</td><td>リクルートHD（6098） <small>強度+9.8／+2.33%</small></td><td>1銘柄の実測平均</td></tr><tr><td>2</td><td>ゲーム・半導体</td><td class='up'>+8.5</td><td>ソニーグループ（6758） <small>強度+8.5／+2.24%</small></td><td>1銘柄の実測平均</td></tr><tr><td>3</td><td>電線・データセンター</td><td class='up'>+8.5</td><td>フジクラ（5803） <small>強度+9.4／+3.07%</small><br>古河電気工業（5801） <small>強度+9.2／+3.00%</small><br>住友電気工業（5802） <small>強度+7.0／+1.88%</small></td><td>3銘柄の実測平均</td></tr><tr><td>4</td><td>通信・データセンター</td><td class='up'>+7.4</td><td>NTT（9432） <small>強度+8.2／+2.31%</small><br>KDDI（9433） <small>強度+6.7／+1.28%</small></td><td>2銘柄の実測平均</td></tr><tr><td>5</td><td>銀行・金利</td><td class='up'>+7.4</td><td>三井住友FG（8316） <small>強度+7.6／+1.06%</small><br>三菱UFJ FG（8306） <small>強度+7.1／+0.60%</small></td><td>2銘柄の実測平均</td></tr></table></section>
 <section class="card wide"><h2>②-A 秋田AIデータセンター関連 監視TOP5</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・契約状況</th><th>資料</th></tr></thead><tbody><tr><td>1</td><td>ユアテック（1934）</td><td><b class='up'>92/100</b></td><td>2,577</td><td class='up'>+0.04%</td><td>0.69倍</td><td>東北地盤の電気・空調・情報通信・送変電工事</td><td>会社資料で東北のデータセンター建設需要を成長機会として言及<br><small>秋田案件の受注・参画は未確認</small></td><td><a href='https://www.yurtec.co.jp/ir/pdf/presentation-qa_250529.pdf' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>2</td><td>東北電力（9506）</td><td><b class='up'>90/100</b></td><td>1,326</td><td class='up'>+1.73%</td><td>0.69倍</td><td>500MW級計画の電力供給・系統増強・再エネ調達候補</td><td>東北でデータセンター誘致とGPU向けコンテナ型DCを推進<br><small>秋田案件の供給契約は未確認</small></td><td><a href='https://www.tohoku-epco.co.jp/news/normal/1247944_2558.html' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>3</td><td>フジクラ（5803）</td><td><b class='up'>74/100</b></td><td>5,522</td><td class='up'>+3.41%</td><td>0.70倍</td><td>大容量送電・光ファイバー・データセンター配線</td><td>大規模DCに必要な電力・光通信部材の供給候補<br><small>秋田案件の採用は未確認</small></td><td><a href='https://www.fujikura.co.jp/products/' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>4</td><td>高砂熱学工業（1969）</td><td><b class='up'>68/100</b></td><td>4,310</td><td class='down'>-0.19%</td><td>0.39倍</td><td>AIサーバー向け高効率冷却・空調設備</td><td>データセンター用空調技術と秋田営業所を保有<br><small>秋田案件の受注・参画は未確認</small></td><td><a href='https://www.tte-net.com/lab/public/air-conditioning-and-environment/' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>5</td><td>関電工（1942）</td><td><b class='up'>62/100</b></td><td>5,507</td><td class='up'>+0.60%</td><td>0.39倍</td><td>特別高圧受変電・非常用電源・電気設備</td><td>データセンター向け電気設備・情報通信技術を保有<br><small>秋田案件の受注・参画は未確認</small></td><td><a href='https://www.kandenko.co.jp/business/' target='_blank' rel='noopener'>公式根拠</a></td></tr></tbody></table>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・契約状況</th><th>資料</th></tr></thead><tbody><tr><td>1</td><td>ユアテック（1934）</td><td><b class='up'>92/100</b></td><td>2,565</td><td class='down'>-0.43%</td><td>0.96倍</td><td>東北地盤の電気・空調・情報通信・送変電工事</td><td>会社資料で東北のデータセンター建設需要を成長機会として言及<br><small>秋田案件の受注・参画は未確認</small></td><td><a href='https://www.yurtec.co.jp/ir/pdf/presentation-qa_250529.pdf' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>2</td><td>東北電力（9506）</td><td><b class='up'>90/100</b></td><td>1,330</td><td class='up'>+2.03%</td><td>0.98倍</td><td>500MW級計画の電力供給・系統増強・再エネ調達候補</td><td>東北でデータセンター誘致とGPU向けコンテナ型DCを推進<br><small>秋田案件の供給契約は未確認</small></td><td><a href='https://www.tohoku-epco.co.jp/news/normal/1247944_2558.html' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>3</td><td>フジクラ（5803）</td><td><b class='up'>74/100</b></td><td>5,504</td><td class='up'>+3.07%</td><td>0.74倍</td><td>大容量送電・光ファイバー・データセンター配線</td><td>大規模DCに必要な電力・光通信部材の供給候補<br><small>秋田案件の採用は未確認</small></td><td><a href='https://www.fujikura.co.jp/products/' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>4</td><td>高砂熱学工業（1969）</td><td><b class='up'>68/100</b></td><td>4,323</td><td class='up'>+0.12%</td><td>0.57倍</td><td>AIサーバー向け高効率冷却・空調設備</td><td>データセンター用空調技術と秋田営業所を保有<br><small>秋田案件の受注・参画は未確認</small></td><td><a href='https://www.tte-net.com/lab/public/air-conditioning-and-environment/' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>5</td><td>関電工（1942）</td><td><b class='up'>62/100</b></td><td>5,491</td><td class='up'>+0.31%</td><td>0.96倍</td><td>特別高圧受変電・非常用電源・電気設備</td><td>データセンター向け電気設備・情報通信技術を保有<br><small>秋田案件の受注・参画は未確認</small></td><td><a href='https://www.kandenko.co.jp/business/' target='_blank' rel='noopener'>公式根拠</a></td></tr></tbody></table>
 <p class="warning">秋田市の計画はエスツーとBitgritが主導し、2030年代前半の稼働、最大500MWを想定。現時点で上場各社の受注は確認できていません。関連度は事業領域と地域性の評価であり、受注確定度ではありません。正式なスイング候補への昇格には、会社IR・適時開示、信用需給30/55点以上、発動価格突破を必須とします。</p></section>
 <section class="card wide"><h2>②-B 群馬・茂倉沢レアアース新鉱物 監視TOP5</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・参画状況</th><th>資料</th></tr></thead><tbody><tr><td>1</td><td>日鉄鉱業（1515）</td><td><b>72/100</b></td><td>3,855</td><td class='down'>-3.26%</td><td>1.01倍</td><td>国内外の地下資源探査・鉱山開発・鉱石評価</td><td>地下資源の探査・開発と鉱山由来の研究開発能力を保有<br><small>茂倉沢鉱山の調査・開発参画は未確認</small></td><td><a href='https://www.nittetsukou.co.jp/industry/' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>2</td><td>住友金属鉱山（5713）</td><td><b>70/100</b></td><td>11,130</td><td class='down'>-3.43%</td><td>0.59倍</td><td>鉱山開発・湿式製錬・レアアース回収</td><td>低品位鉱からの金属抽出とスカンジウム回収の実績<br><small>茂倉沢鉱山との関係は未確認</small></td><td><a href='https://www.smm.co.jp/corp_info/location/overseas/' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>3</td><td>信越化学工業（4063）</td><td><b>68/100</b></td><td>6,020</td><td class='up'>+0.32%</td><td>0.61倍</td><td>レアアース分離精製・高性能磁石・リサイクル</td><td>レアアースの分離精製から磁石まで一貫生産<br><small>群馬産鉱物の評価・採用は未確認</small></td><td><a href='https://www.shinetsu.co.jp/jp/sustainability/esg_environment/resource_saving/' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>4</td><td>双日（2768）</td><td><b>66/100</b></td><td>5,599</td><td class='down'>-0.55%</td><td>0.69倍</td><td>レアアース鉱山投資・輸入・国内供給網</td><td>豪州ライナスと鉱山開発・軽中重希土類供給を展開<br><small>群馬案件への出資・供給契約は未確認</small></td><td><a href='https://www.sojitz.com/jp/news/article/20260313.html' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>5</td><td>DOWA HD（5714）</td><td><b>58/100</b></td><td>9,968</td><td class='down'>-4.11%</td><td>0.86倍</td><td>非鉄製錬・複雑原料処理・金属回収</td><td>複雑な二次原料から多種類の有価金属を回収する技術を保有<br><small>群馬産レアアースの分離精製参画は未確認</small></td><td><a href='https://hd.dowa.co.jp/ja/news/news20200422.html' target='_blank' rel='noopener'>公式根拠</a></td></tr></tbody></table>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・参画状況</th><th>資料</th></tr></thead><tbody><tr><td>1</td><td>日鉄鉱業（1515）</td><td><b>72/100</b></td><td>3,820</td><td class='down'>-4.14%</td><td>1.17倍</td><td>国内外の地下資源探査・鉱山開発・鉱石評価</td><td>地下資源の探査・開発と鉱山由来の研究開発能力を保有<br><small>茂倉沢鉱山の調査・開発参画は未確認</small></td><td><a href='https://www.nittetsukou.co.jp/industry/' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>2</td><td>住友金属鉱山（5713）</td><td><b>70/100</b></td><td>11,115</td><td class='down'>-3.56%</td><td>0.72倍</td><td>鉱山開発・湿式製錬・レアアース回収</td><td>低品位鉱からの金属抽出とスカンジウム回収の実績<br><small>茂倉沢鉱山との関係は未確認</small></td><td><a href='https://www.smm.co.jp/corp_info/location/overseas/' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>3</td><td>信越化学工業（4063）</td><td><b>68/100</b></td><td>6,023</td><td class='up'>+0.37%</td><td>0.97倍</td><td>レアアース分離精製・高性能磁石・リサイクル</td><td>レアアースの分離精製から磁石まで一貫生産<br><small>群馬産鉱物の評価・採用は未確認</small></td><td><a href='https://www.shinetsu.co.jp/jp/sustainability/esg_environment/resource_saving/' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>4</td><td>双日（2768）</td><td><b>66/100</b></td><td>5,604</td><td class='down'>-0.46%</td><td>1.09倍</td><td>レアアース鉱山投資・輸入・国内供給網</td><td>豪州ライナスと鉱山開発・軽中重希土類供給を展開<br><small>群馬案件への出資・供給契約は未確認</small></td><td><a href='https://www.sojitz.com/jp/news/article/20260313.html' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>5</td><td>DOWA HD（5714）</td><td><b>58/100</b></td><td>9,998</td><td class='down'>-3.82%</td><td>1.04倍</td><td>非鉄製錬・複雑原料処理・金属回収</td><td>複雑な二次原料から多種類の有価金属を回収する技術を保有<br><small>群馬産レアアースの分離精製参画は未確認</small></td><td><a href='https://hd.dowa.co.jp/ja/news/news20200422.html' target='_blank' rel='noopener'>公式根拠</a></td></tr></tbody></table>
 <p class="warning">群馬県桐生市の茂倉沢鉱山でランタン・セリウムを含む新鉱物4種が承認された研究成果を監視します。現時点では資源量・採算性・採掘計画・企業参画のいずれも未確認で、商業鉱山案件ではありません。資源量調査、採掘権、自治体・JOGMEC・企業との共同研究、分離精製試験の公式発表が出るまでテーマ監視限定。正式なスイング候補への昇格には信用需給30/55点以上と発動価格突破も必須です。</p></section>
 <section id="speculative-theme-monitor" class="card wide"><h2>②-C テーマ仕手化兆候・隔離監視 TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>異常度</th><th>テーマ・確認状態</th><th>終値</th><th>1日</th><th>5日</th><th>20日</th><th>出来高比</th><th>ATR</th><th>20日線乖離</th><th>上ヒゲ</th><th>信用需給</th><th>監視行動</th></tr></thead>
@@ -76,23 +173,23 @@ document.addEventListener("DOMContentLoaded",()=>{
 <h3>米国11業種：S&P500に対する相対強弱</h3>
 <table><tr><th>順位</th><th>業種ETF</th><th>資金段階</th><th>点数</th><th>5日相対</th><th>20日相対</th><th>勢い変化</th><th>行動</th></tr><tr><td>1</td><td>情報技術・AI <small>XLK</small></td><td><span class='pill in'>流入初期</span></td><td><b>66/100</b></td><td class='up'>+0.81%</td><td class='up'>+2.94%</td><td class='up'>+2.91pt</td><td>最優先監視・初押し</td></tr><tr><td>2</td><td>コミュニケーション <small>XLC</small></td><td><span class='pill in'>流入初期</span></td><td><b>62/100</b></td><td class='up'>+0.94%</td><td class='up'>+1.43%</td><td class='up'>+0.88pt</td><td>最優先監視・初押し</td></tr><tr><td>3</td><td>金融 <small>XLF</small></td><td><span class='pill '>中立</span></td><td><b>58/100</b></td><td class='up'>+0.59%</td><td class='down'>-0.92%</td><td class='up'>+0.33pt</td><td>方向確認待ち</td></tr><tr><td>4</td><td>素材 <small>XLB</small></td><td><span class='pill short'>流出</span></td><td><b>48/100</b></td><td class='down'>-1.16%</td><td class='up'>+2.49%</td><td class='down'>-4.49pt</td><td>新規ロング停止</td></tr><tr><td>5</td><td>エネルギー <small>XLE</small></td><td><span class='pill short'>流出</span></td><td><b>41/100</b></td><td class='down'>-2.00%</td><td class='up'>+2.30%</td><td class='down'>-6.22pt</td><td>新規ロング停止</td></tr><tr><td>6</td><td>公益 <small>XLU</small></td><td><span class='pill short'>低迷</span></td><td><b>38/100</b></td><td class='down'>-0.58%</td><td class='down'>-6.61%</td><td class='up'>+1.47pt</td><td>見送り</td></tr><tr><td>7</td><td>ヘルスケア <small>XLV</small></td><td><span class='pill short'>流出</span></td><td><b>35/100</b></td><td class='down'>-2.47%</td><td class='up'>+2.34%</td><td class='down'>-8.23pt</td><td>新規ロング停止</td></tr><tr><td>8</td><td>一般消費財 <small>XLY</small></td><td><span class='pill short'>流出</span></td><td><b>33/100</b></td><td class='down'>-1.18%</td><td class='down'>-2.00%</td><td class='down'>-2.46pt</td><td>新規ロング停止</td></tr><tr><td>9</td><td>生活必需品 <small>XLP</small></td><td><span class='pill short'>流出</span></td><td><b>33/100</b></td><td class='down'>-1.12%</td><td class='down'>-2.49%</td><td class='down'>-2.43pt</td><td>新規ロング停止</td></tr><tr><td>10</td><td>資本財・工業 <small>XLI</small></td><td><span class='pill short'>流出</span></td><td><b>32/100</b></td><td class='down'>-2.22%</td><td class='down'>-4.46%</td><td class='down'>-0.29pt</td><td>新規ロング停止</td></tr><tr><td>11</td><td>不動産 <small>XLRE</small></td><td><span class='pill short'>流出</span></td><td><b>28/100</b></td><td class='down'>-1.82%</td><td class='down'>-4.27%</td><td class='down'>-2.83pt</td><td>新規ロング停止</td></tr></table>
 <h3>日本株：TOPIXに対する相対強弱</h3>
-<table><tr><th>順位</th><th>業種群</th><th>資金段階</th><th>点数</th><th>5日相対</th><th>20日相対</th><th>勢い変化</th><th>20日線上比率</th><th>出来高比</th><th>先行銘柄</th><th>行動</th></tr><tr><td>1</td><td>金融</td><td><span class='pill in'>流入初期</span></td><td><b>72/100</b></td><td class='up'>+3.10%</td><td class='down'>-0.74%</td><td class='up'>+3.61pt</td><td>100%</td><td>0.72倍</td><td>三井住友FG（8316）<br>三菱UFJ FG（8306）<br>MS&AD（8725）</td><td>最優先監視・初押し</td></tr><tr><td>2</td><td>資本財・インフラ</td><td><span class='pill in'>流入初期</span></td><td><b>60/100</b></td><td class='up'>+0.23%</td><td class='up'>+2.07%</td><td class='up'>+5.17pt</td><td>41%</td><td>0.68倍</td><td>古河電気工業（5801）<br>フジクラ（5803）<br>オムロン（6645）</td><td>最優先監視・初押し</td></tr><tr><td>3</td><td>AI・テクノロジー</td><td><span class='pill in'>流入初期</span></td><td><b>58/100</b></td><td class='up'>+0.12%</td><td class='up'>+1.41%</td><td class='up'>+3.49pt</td><td>54%</td><td>0.63倍</td><td>マクニカHD（3132）<br>リクルートHD（6098）<br>ソニーグループ（6758）</td><td>最優先監視・初押し</td></tr><tr><td>4</td><td>自動車・モビリティ</td><td><span class='pill '>中立</span></td><td><b>56/100</b></td><td class='up'>+0.28%</td><td class='up'>+8.35%</td><td class='down'>-4.69pt</td><td>80%</td><td>0.98倍</td><td>GO（581A）<br>トヨタ自動車（7203）<br>ニデック（6594）</td><td>方向確認待ち</td></tr><tr><td>5</td><td>その他</td><td><span class='pill short'>流出</span></td><td><b>50/100</b></td><td class='down'>-1.54%</td><td class='up'>+11.62%</td><td class='down'>-6.60pt</td><td>100%</td><td>0.55倍</td><td>パナソニックHD（6752）<br>キヤノン（7751）<br>住友金属鉱山（5713）</td><td>新規ロング停止</td></tr><tr><td>6</td><td>内需・ディフェンシブ</td><td><span class='pill short'>流出</span></td><td><b>49/100</b></td><td class='down'>-0.14%</td><td class='up'>+2.82%</td><td class='down'>-3.71pt</td><td>80%</td><td>0.48倍</td><td>セルシス（3663）<br>任天堂（7974）<br>楽天グループ（4755）</td><td>新規ロング停止</td></tr><tr><td>7</td><td>資源・素材・商社</td><td><span class='pill short'>流出</span></td><td><b>43/100</b></td><td class='down'>-2.67%</td><td class='up'>+9.11%</td><td class='down'>-11.23pt</td><td>100%</td><td>0.73倍</td><td>INPEX（1605）<br>日鉄鉱業（1515）<br>三菱商事（8058）</td><td>新規ロング停止</td></tr></table>
+<table><tr><th>順位</th><th>業種群</th><th>資金段階</th><th>点数</th><th>5日相対</th><th>20日相対</th><th>勢い変化</th><th>20日線上比率</th><th>出来高比</th><th>先行銘柄</th><th>行動</th></tr><tr><td>1</td><td>金融</td><td><span class='pill in'>流入初期</span></td><td><b>73/100</b></td><td class='up'>+2.98%</td><td class='down'>-0.87%</td><td class='up'>+3.50pt</td><td>100%</td><td>1.16倍</td><td>三井住友FG（8316）<br>三菱UFJ FG（8306）<br>MS&AD（8725）</td><td>最優先監視・初押し</td></tr><tr><td>2</td><td>資本財・インフラ</td><td><span class='pill in'>流入初期</span></td><td><b>60/100</b></td><td class='up'>+0.05%</td><td class='up'>+1.88%</td><td class='up'>+5.00pt</td><td>47%</td><td>0.98倍</td><td>古河電気工業（5801）<br>フジクラ（5803）<br>オムロン（6645）</td><td>最優先監視・初押し</td></tr><tr><td>3</td><td>AI・テクノロジー</td><td><span class='pill in'>流入初期</span></td><td><b>58/100</b></td><td class='up'>+0.03%</td><td class='up'>+1.33%</td><td class='up'>+3.40pt</td><td>58%</td><td>0.97倍</td><td>リクルートHD（6098）<br>マクニカHD（3132）<br>ソニーグループ（6758）</td><td>最優先監視・初押し</td></tr><tr><td>4</td><td>自動車・モビリティ</td><td><span class='pill '>中立</span></td><td><b>56/100</b></td><td class='up'>+0.06%</td><td class='up'>+8.10%</td><td class='down'>-4.91pt</td><td>80%</td><td>1.48倍</td><td>GO（581A）<br>トヨタ自動車（7203）<br>ニデック（6594）</td><td>方向確認待ち</td></tr><tr><td>5</td><td>その他</td><td><span class='pill short'>流出</span></td><td><b>52/100</b></td><td class='down'>-1.58%</td><td class='up'>+11.55%</td><td class='down'>-6.64pt</td><td>100%</td><td>1.02倍</td><td>パナソニックHD（6752）<br>キヤノン（7751）<br>住友金属鉱山（5713）</td><td>新規ロング停止</td></tr><tr><td>6</td><td>内需・ディフェンシブ</td><td><span class='pill short'>流出</span></td><td><b>48/100</b></td><td class='down'>-0.33%</td><td class='up'>+2.62%</td><td class='down'>-3.89pt</td><td>80%</td><td>0.78倍</td><td>セルシス（3663）<br>任天堂（7974）<br>JR東日本（9020）</td><td>新規ロング停止</td></tr><tr><td>7</td><td>資源・素材・商社</td><td><span class='pill short'>流出</span></td><td><b>43/100</b></td><td class='down'>-2.86%</td><td class='up'>+8.88%</td><td class='down'>-11.42pt</td><td>100%</td><td>1.13倍</td><td>INPEX（1605）<br>三菱商事（8058）<br>日鉄鉱業（1515）</td><td>新規ロング停止</td></tr></table>
 <h3>セクター追い風＋流動性合格の個別株</h3>
-<table><tr><th>順位</th><th>会社名＋コード</th><th>業種群</th><th>資金段階</th><th>期待値</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr><tr><td>1</td><td>三井住友FG（8316）</td><td>金融</td><td><span class='pill in'>流入初期</span></td><td><b class='up'>82/100</b></td><td>6,920</td><td class='down'>6,820</td><td>7,070／7,140</td><td>金融が流入初期／TOPIX比5日 +3.10%／出来高比 0.84倍</td></tr><tr><td>2</td><td>フジクラ（5803）</td><td>資本財・インフラ</td><td><span class='pill in'>流入初期</span></td><td><b class='up'>81/100</b></td><td>5,380</td><td class='down'>5,150</td><td>5,730／5,890</td><td>資本財・インフラが流入初期／TOPIX比5日 +0.23%／出来高比 0.70倍</td></tr><tr><td>3</td><td>古河電気工業（5801）</td><td>資本財・インフラ</td><td><span class='pill in'>流入初期</span></td><td><b class='up'>81/100</b></td><td>3,940</td><td class='down'>3,745</td><td>4,230／4,365</td><td>資本財・インフラが流入初期／TOPIX比5日 +0.23%／出来高比 0.55倍</td></tr><tr><td>4</td><td>三菱UFJ FG（8306）</td><td>金融</td><td><span class='pill in'>流入初期</span></td><td><b class='up'>81/100</b></td><td>3,670</td><td class='down'>3,610</td><td>3,755／3,795</td><td>金融が流入初期／TOPIX比5日 +3.10%／出来高比 0.76倍</td></tr><tr><td>5</td><td>マクニカHD（3132）</td><td>AI・テクノロジー</td><td><span class='pill in'>流入初期</span></td><td><b class='up'>79/100</b></td><td>3,595</td><td class='down'>3,495</td><td>3,745／3,820</td><td>AI・テクノロジーが流入初期／TOPIX比5日 +0.12%／出来高比 0.80倍</td></tr><tr><td>6</td><td>リクルートHD（6098）</td><td>AI・テクノロジー</td><td><span class='pill in'>流入初期</span></td><td><b class='up'>79/100</b></td><td>17,870</td><td class='down'>17,480</td><td>18,460／18,730</td><td>AI・テクノロジーが流入初期／TOPIX比5日 +0.12%／出来高比 0.62倍</td></tr><tr><td>7</td><td>MS&AD（8725）</td><td>金融</td><td><span class='pill in'>流入初期</span></td><td><b class='up'>77/100</b></td><td>5,120</td><td class='down'>5,040</td><td>5,230／5,290</td><td>金融が流入初期／TOPIX比5日 +3.10%／出来高比 0.57倍</td></tr></table>
+<table><tr><th>順位</th><th>会社名＋コード</th><th>業種群</th><th>資金段階</th><th>期待値</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr><tr><td>1</td><td>リクルートHD（6098）</td><td>AI・テクノロジー</td><td><span class='pill in'>流入初期</span></td><td><b class='up'>83/100</b></td><td>17,870</td><td class='down'>17,480</td><td>18,470／18,740</td><td>AI・テクノロジーが流入初期／TOPIX比5日 +0.03%／出来高比 1.41倍</td></tr><tr><td>2</td><td>三菱UFJ FG（8306）</td><td>金融</td><td><span class='pill in'>流入初期</span></td><td><b class='up'>82/100</b></td><td>3,670</td><td class='down'>3,610</td><td>3,755／3,795</td><td>金融が流入初期／TOPIX比5日 +2.98%／出来高比 1.08倍</td></tr><tr><td>3</td><td>三井住友FG（8316）</td><td>金融</td><td><span class='pill in'>流入初期</span></td><td><b class='up'>82/100</b></td><td>6,920</td><td class='down'>6,820</td><td>7,070／7,140</td><td>金融が流入初期／TOPIX比5日 +2.98%／出来高比 1.16倍</td></tr><tr><td>4</td><td>フジクラ（5803）</td><td>資本財・インフラ</td><td><span class='pill in'>流入初期</span></td><td><b class='up'>81/100</b></td><td>5,380</td><td class='down'>5,150</td><td>5,730／5,890</td><td>資本財・インフラが流入初期／TOPIX比5日 +0.05%／出来高比 0.74倍</td></tr><tr><td>5</td><td>古河電気工業（5801）</td><td>資本財・インフラ</td><td><span class='pill in'>流入初期</span></td><td><b class='up'>81/100</b></td><td>3,940</td><td class='down'>3,745</td><td>4,230／4,365</td><td>資本財・インフラが流入初期／TOPIX比5日 +0.05%／出来高比 0.65倍</td></tr><tr><td>6</td><td>マクニカHD（3132）</td><td>AI・テクノロジー</td><td><span class='pill in'>流入初期</span></td><td><b class='up'>79/100</b></td><td>3,595</td><td class='down'>3,495</td><td>3,745／3,820</td><td>AI・テクノロジーが流入初期／TOPIX比5日 +0.03%／出来高比 1.00倍</td></tr><tr><td>7</td><td>MS&AD（8725）</td><td>金融</td><td><span class='pill in'>流入初期</span></td><td><b class='up'>79/100</b></td><td>5,120</td><td class='down'>5,040</td><td>5,240／5,290</td><td>金融が流入初期／TOPIX比5日 +2.98%／出来高比 1.24倍</td></tr></table>
 <h3>キオクシアHD（285A）セクター判定</h3>
 <div class="rotation-box"><b><span class='pill in'>流入初期</span>　反転条件だけ再評価</b>セクターの追い風は確認。ただし前日高値突破＋VWAP上維持を満たすまで買い増し判定にはしない。</div>
 <p class="warning">これは機関投資家の保有明細そのものではなく、米国11業種ETFのS&P500相対強弱と、日本株監視群のTOPIX相対強弱による公開データ代理指標です。流入初期でも発動価格を上抜かなければ見送り。参考：<a href="https://limo.media/articles/-/133222" target="_blank" rel="noopener">イズミダイズム「セクターローテーション」解説</a></p>
 </section>
 <section id="silicon-photonics-watch" class="card wide"><h2>②-P AI光通信・シリコンフォトニクス監視（朝刊IN／OUT価格）</h2>
-<table><tr><th>順位</th><th>会社名＋コード／役割</th><th>期待値</th><th>基準値</th><th>IN発動／買い上限</th><th>OUT損切り</th><th>OUT利確1</th><th>OUT利確2</th><th>発動条件・リスク</th><th>根拠</th></tr><tr><td>1</td><td><b>NTT（9432）</b><br><small>光電融合デバイス CoPKG・IOWN</small></td><td><b class='up'>88/100</b><br><small>技術関連度 90／株価技術点 86</small></td><td>172.6</td><td><b>173.1</b><br><small>買い上限 173.3</small></td><td class='down'><b>170.9</b><br><small>100株 −240円</small></td><td class='up'><b>176.9</b><br><small>100株 +360円</small></td><td>178.6</td><td>条件成立時だけLONG<br><small>9:15以降、VWAP上＋5分足終値で発動価格を維持＋出来高増加。大幅GUと寄り直後の飛び乗りは禁止。 7日以内のJPX確認済み決算なし。突発IR・米半導体安に注意。</small></td><td><a href='https://group.ntt/en/newsrelease/2024/03/12/240312a.html' target='_blank' rel='noopener'>公式資料</a></td></tr><tr><td>2</td><td><b>古河電気工業（5801）</b><br><small>CPO向け外部光源・光デバイス</small></td><td><b class='up'>83/100</b><br><small>技術関連度 96／株価技術点 68</small></td><td>4,024</td><td><b>4,030</b><br><small>買い上限 4,040</small></td><td class='down'><b>3,785</b><br><small>100株 −25,500円</small></td><td class='up'><b>4,420</b><br><small>100株 +38,000円</small></td><td>4,600</td><td>条件成立時だけLONG<br><small>9:15以降、VWAP上＋5分足終値で発動価格を維持＋出来高増加。大幅GUと寄り直後の飛び乗りは禁止。 7日以内のJPX確認済み決算なし。突発IR・米半導体安に注意。</small></td><td><a href='https://www.furukawa.co.jp/release/2022/comm_20220307.html' target='_blank' rel='noopener'>公式資料</a></td></tr><tr><td>3</td><td><b>フジクラ（5803）</b><br><small>AIデータセンター向け光配線</small></td><td><b class='up'>77/100</b><br><small>技術関連度 84／株価技術点 69</small></td><td>5,522</td><td><b>5,540</b><br><small>買い上限 5,560</small></td><td class='down'><b>5,260</b><br><small>100株 −30,000円</small></td><td class='up'><b>6,010</b><br><small>100株 +45,000円</small></td><td>6,220</td><td>条件成立時だけLONG<br><small>9:15以降、VWAP上＋5分足終値で発動価格を維持＋出来高増加。大幅GUと寄り直後の飛び乗りは禁止。 7日以内のJPX確認済み決算なし。突発IR・米半導体安に注意。</small></td><td><a href='https://www.fujikura.co.jp/news/pressrelease/2026030913824swr_wtc.html' target='_blank' rel='noopener'>公式資料</a></td></tr><tr><td>4</td><td><b>富士通（6702）</b><br><small>光電融合・次世代ネットワーク</small></td><td><b class='up'>71/100</b><br><small>技術関連度 76／株価技術点 64</small></td><td>3,874</td><td><b>3,930</b><br><small>買い上限 3,940</small></td><td class='down'><b>3,855</b><br><small>100株 −8,500円</small></td><td class='up'><b>4,070</b><br><small>100株 +13,000円</small></td><td>4,125</td><td>条件成立時だけLONG<br><small>9:15以降、VWAP上＋5分足終値で発動価格を維持＋出来高増加。大幅GUと寄り直後の飛び乗りは禁止。 7日以内のJPX確認済み決算なし。突発IR・米半導体安に注意。</small></td><td><a href='https://www.fujitsu.com/global/about/resources/news/press-releases/2021/0426-01.html' target='_blank' rel='noopener'>公式資料</a></td></tr><tr><td>5</td><td><b>住友電気工業（5802）</b><br><small>CPO向け高密度光接続部品</small></td><td><b class='up'>67/100</b><br><small>技術関連度 93／株価技術点 35</small></td><td>2,222.5</td><td><b>2,230</b><br><small>買い上限 2,232</small></td><td class='down'><b>2,137</b><br><small>100株 −9,500円</small></td><td class='up'><b>2,374</b><br><small>100株 +14,200円</small></td><td>2,441</td><td>条件成立時だけLONG<br><small>9:15以降、VWAP上＋5分足終値で発動価格を維持＋出来高増加。大幅GUと寄り直後の飛び乗りは禁止。 7日以内のJPX確認済み決算なし。突発IR・米半導体安に注意。</small></td><td><a href='https://sumitomoelectric.com/jp/rd/technical-reviews/j202' target='_blank' rel='noopener'>公式資料</a></td></tr></table>
+<table><tr><th>順位</th><th>会社名＋コード／役割</th><th>期待値</th><th>基準値</th><th>IN発動／買い上限</th><th>OUT損切り</th><th>OUT利確1</th><th>OUT利確2</th><th>発動条件・リスク</th><th>根拠</th></tr><tr><td>1</td><td><b>NTT（9432）</b><br><small>光電融合デバイス CoPKG・IOWN</small></td><td><b class='up'>90/100</b><br><small>技術関連度 90／株価技術点 89</small></td><td>172.5</td><td><b>173.1</b><br><small>買い上限 173.3</small></td><td class='down'><b>170.9</b><br><small>100株 −240円</small></td><td class='up'><b>176.9</b><br><small>100株 +360円</small></td><td>178.6</td><td>条件成立時だけLONG<br><small>9:15以降、VWAP上＋5分足終値で発動価格を維持＋出来高増加。大幅GUと寄り直後の飛び乗りは禁止。 7日以内のJPX確認済み決算なし。突発IR・米半導体安に注意。</small></td><td><a href='https://group.ntt/en/newsrelease/2024/03/12/240312a.html' target='_blank' rel='noopener'>公式資料</a></td></tr><tr><td>2</td><td><b>古河電気工業（5801）</b><br><small>CPO向け外部光源・光デバイス</small></td><td><b class='up'>84/100</b><br><small>技術関連度 96／株価技術点 69</small></td><td>4,020</td><td><b>4,030</b><br><small>買い上限 4,040</small></td><td class='down'><b>3,785</b><br><small>100株 −25,500円</small></td><td class='up'><b>4,420</b><br><small>100株 +38,000円</small></td><td>4,600</td><td>条件成立時だけLONG<br><small>9:15以降、VWAP上＋5分足終値で発動価格を維持＋出来高増加。大幅GUと寄り直後の飛び乗りは禁止。 7日以内のJPX確認済み決算なし。突発IR・米半導体安に注意。</small></td><td><a href='https://www.furukawa.co.jp/release/2022/comm_20220307.html' target='_blank' rel='noopener'>公式資料</a></td></tr><tr><td>3</td><td><b>フジクラ（5803）</b><br><small>AIデータセンター向け光配線</small></td><td><b class='up'>78/100</b><br><small>技術関連度 84／株価技術点 70</small></td><td>5,504</td><td><b>5,540</b><br><small>買い上限 5,560</small></td><td class='down'><b>5,260</b><br><small>100株 −30,000円</small></td><td class='up'><b>6,010</b><br><small>100株 +45,000円</small></td><td>6,220</td><td>条件成立時だけLONG<br><small>9:15以降、VWAP上＋5分足終値で発動価格を維持＋出来高増加。大幅GUと寄り直後の飛び乗りは禁止。 7日以内のJPX確認済み決算なし。突発IR・米半導体安に注意。</small></td><td><a href='https://www.fujikura.co.jp/news/pressrelease/2026030913824swr_wtc.html' target='_blank' rel='noopener'>公式資料</a></td></tr><tr><td>4</td><td><b>富士通（6702）</b><br><small>光電融合・次世代ネットワーク</small></td><td><b class='up'>70/100</b><br><small>技術関連度 76／株価技術点 63</small></td><td>3,869</td><td><b>3,930</b><br><small>買い上限 3,940</small></td><td class='down'><b>3,855</b><br><small>100株 −8,500円</small></td><td class='up'><b>4,070</b><br><small>100株 +13,000円</small></td><td>4,125</td><td>条件成立時だけLONG<br><small>9:15以降、VWAP上＋5分足終値で発動価格を維持＋出来高増加。大幅GUと寄り直後の飛び乗りは禁止。 7日以内のJPX確認済み決算なし。突発IR・米半導体安に注意。</small></td><td><a href='https://www.fujitsu.com/global/about/resources/news/press-releases/2021/0426-01.html' target='_blank' rel='noopener'>公式資料</a></td></tr><tr><td>5</td><td><b>住友電気工業（5802）</b><br><small>CPO向け高密度光接続部品</small></td><td><b class='up'>67/100</b><br><small>技術関連度 93／株価技術点 36</small></td><td>2,221</td><td><b>2,230</b><br><small>買い上限 2,232</small></td><td class='down'><b>2,137</b><br><small>100株 −9,500円</small></td><td class='up'><b>2,374</b><br><small>100株 +14,200円</small></td><td>2,441</td><td>条件成立時だけLONG<br><small>9:15以降、VWAP上＋5分足終値で発動価格を維持＋出来高増加。大幅GUと寄り直後の飛び乗りは禁止。 7日以内のJPX確認済み決算なし。突発IR・米半導体安に注意。</small></td><td><a href='https://sumitomoelectric.com/jp/rd/technical-reviews/j202' target='_blank' rel='noopener'>公式資料</a></td></tr></table>
 <p class="warning"><b>使い方：</b>INは前日高値＋1ティック。寄り成りでは買いません。9:15以降にVWAP上・5分足終値・出来高増加が揃った場合だけ発動し、買い上限を超えたら追わず取消。OUT損切りを約定後すぐ設定し、価格を下げて損切りを広げません。GFSの3億ドルは米商務省とのLOI（予定支援）であり、日本企業への直接受注確定ではありません。<a href="https://gf.com/news-and-events/news/globalfoundries-signs-letter-of-intent-with-the-us-department-of-commerce-for-a-300-million-award-to-accelerate-us-silicon-photonics-leadership/" target="_blank" rel="noopener">GFS公式発表</a></p>
 </section>
 <section id="day-ifo-orders" class="card wide"><h2>②-O 8:55当日勝負・短期資金TOP5（MS2 IFO注文票）</h2>
 <div class="ifo-summary">
 <div class="rotation-box"><b>合格銘柄</b><strong>5 / 5銘柄</strong><br>分散条件を満たす5銘柄を選定</div>
 <div class="rotation-box"><b>注文単位</b><strong>各100株</strong><br>分割注文なし／キオクシアは対象外</div>
-<div class="rotation-box"><b>全候補が約定した場合</b><strong>建玉目安 2,665,500円</strong><br>利確1合計 <span class="up">+147,500円</span></div>
-<div class="rotation-box"><b>損失上限の目安</b><strong class="down">−97,500円</strong><br>5銘柄が全て損切りになった場合</div>
+<div class="rotation-box"><b>全候補が約定した場合</b><strong>建玉目安 2,400,000円</strong><br>利確1合計 <span class="up">+98,000円</span></div>
+<div class="rotation-box"><b>損失上限の目安</b><strong class="down">−65,000円</strong><br>5銘柄が全て損切りになった場合</div>
 </div>
 <p class="warning"><b>毎朝入替：</b>テーマ・マネーゲーム／IPO・グロースを2銘柄、SaaS・AIソフトを2銘柄、残る1枠を当日資金流入最上位から選定。出来高比・売買代金・値動き・信用需給・材料を更新し、固定大型株を使い回しません。</p>
 <p class="warning"><b>8:55の手順：</b>気配、成行買い／売り、特別気配、信用規制・日計り空売り可否を最終確認。買い指値上限を超えた銘柄、特買い張り付き、材料不明の急騰は注文せず監視へ移します。価格を上げて追いかけません。</p>
@@ -101,7 +198,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   <div class="ifo-head">
     <span class="ifo-rank">#1</span>
     <div><h3>ソニーグループ（6758）</h3><small>当日資金流入／AI・テクノロジー／流入初期</small></div>
-    <b class="ifo-score">65/100</b>
+    <b class="ifo-score">74/100</b>
   </div>
   <div class="ifo-columns">
     <div class="order-box entry-order">
@@ -133,135 +230,15 @@ document.addEventListener("DOMContentLoaded",()=>{
     <span>最大損失 <b class="down">−9,500円</b></span>
     <span>RR <b>1.53</b></span>
   </div>
-  <p><b>選定理由：</b>当日資金流入／AI・テクノロジー＝流入初期 58点／前日比 +2.57%／出来高比 0.89倍／売買代金 551億円／テクニカル 67点／信用需給未取得・8:55に板／規制／日計り可否を手動確認</p>
+  <p><b>選定理由：</b>当日資金流入／AI・テクノロジー＝流入初期 58点／前日比 +2.24%／出来高比 1.48倍／売買代金 943億円／テクニカル 71点／信用需給未取得・8:55に板／規制／日計り可否を手動確認</p>
   <p class="warning"><b>8:55確認：</b>8:55気配が4,055円を超えていたら価格を上げず注文取消。</p>
   <p><small>7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。 15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。</small></p>
 </article>
 <article class="ifo-card">
   <div class="ifo-head">
     <span class="ifo-rank">#2</span>
-    <div><h3>フジクラ（5803）</h3><small>当日資金流入／資本財・インフラ／流入初期</small></div>
-    <b class="ifo-score">64/100</b>
-  </div>
-  <div class="ifo-columns">
-    <div class="order-box entry-order">
-      <b>左側｜信用新規・買建</b>
-      <dl>
-        <dt>市場</dt><dd>東証（SOR）</dd>
-        <dt>信用区分</dt><dd>制度（6カ月）</dd>
-        <dt>数量</dt><dd><strong>100株</strong></dd>
-        <dt>新規注文</dt><dd>逆指値注文</dd>
-        <dt>市場価格が</dt><dd><strong>5,540円以上</strong></dd>
-        <dt>買い指値</dt><dd><strong>5,560円</strong></dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-      </dl>
-    </div>
-    <div class="order-box exit-order">
-      <b>右側｜IFO（利益確定＋損切り）</b>
-      <dl>
-        <dt>利益確定</dt><dd>売埋・指値 <strong class="up">6,040円</strong></dd>
-        <dt>損切り条件</dt><dd>市場価格が <strong class="down">5,240円以下</strong></dd>
-        <dt>損切り注文</dt><dd>成行</dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-        <dt>利確2参考</dt><dd>6,260円（注文には未入力）</dd>
-      </dl>
-    </div>
-  </div>
-  <div class="ifo-metrics">
-    <span>建玉目安 <b>556,000円</b></span>
-    <span>利確時 <b class="up">+48,000円</b></span>
-    <span>最大損失 <b class="down">−32,000円</b></span>
-    <span>RR <b>1.50</b></span>
-  </div>
-  <p><b>選定理由：</b>当日資金流入／資本財・インフラ＝流入初期 60点／前日比 +3.41%／出来高比 0.70倍／売買代金 2497億円／テクニカル 69点／信用需給未取得・8:55に板／規制／日計り可否を手動確認</p>
-  <p class="warning"><b>8:55確認：</b>8:55気配が5,560円を超えていたら価格を上げず注文取消。</p>
-  <p><small>7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。 15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。</small></p>
-</article>
-<article class="ifo-card">
-  <div class="ifo-head">
-    <span class="ifo-rank">#3</span>
-    <div><h3>古河電気工業（5801）</h3><small>当日資金流入／資本財・インフラ／流入初期</small></div>
-    <b class="ifo-score">62/100</b>
-  </div>
-  <div class="ifo-columns">
-    <div class="order-box entry-order">
-      <b>左側｜信用新規・買建</b>
-      <dl>
-        <dt>市場</dt><dd>東証（SOR）</dd>
-        <dt>信用区分</dt><dd>制度（6カ月）</dd>
-        <dt>数量</dt><dd><strong>100株</strong></dd>
-        <dt>新規注文</dt><dd>逆指値注文</dd>
-        <dt>市場価格が</dt><dd><strong>4,030円以上</strong></dd>
-        <dt>買い指値</dt><dd><strong>4,040円</strong></dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-      </dl>
-    </div>
-    <div class="order-box exit-order">
-      <b>右側｜IFO（利益確定＋損切り）</b>
-      <dl>
-        <dt>利益確定</dt><dd>売埋・指値 <strong class="up">4,440円</strong></dd>
-        <dt>損切り条件</dt><dd>市場価格が <strong class="down">3,775円以下</strong></dd>
-        <dt>損切り注文</dt><dd>成行</dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-        <dt>利確2参考</dt><dd>4,625円（注文には未入力）</dd>
-      </dl>
-    </div>
-  </div>
-  <div class="ifo-metrics">
-    <span>建玉目安 <b>404,000円</b></span>
-    <span>利確時 <b class="up">+40,000円</b></span>
-    <span>最大損失 <b class="down">−26,500円</b></span>
-    <span>RR <b>1.51</b></span>
-  </div>
-  <p><b>選定理由：</b>当日資金流入／資本財・インフラ＝流入初期 60点／前日比 +3.10%／出来高比 0.55倍／売買代金 755億円／テクニカル 68点／信用需給未取得・8:55に板／規制／日計り可否を手動確認</p>
-  <p class="warning"><b>8:55確認：</b>8:55気配が4,040円を超えていたら価格を上げず注文取消。</p>
-  <p><small>7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。 15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。</small></p>
-</article>
-<article class="ifo-card">
-  <div class="ifo-head">
-    <span class="ifo-rank">#4</span>
-    <div><h3>任天堂（7974）</h3><small>当日資金流入／内需・ディフェンシブ／流出</small></div>
-    <b class="ifo-score">61/100</b>
-  </div>
-  <div class="ifo-columns">
-    <div class="order-box entry-order">
-      <b>左側｜信用新規・買建</b>
-      <dl>
-        <dt>市場</dt><dd>東証（SOR）</dd>
-        <dt>信用区分</dt><dd>制度（6カ月）</dd>
-        <dt>数量</dt><dd><strong>100株</strong></dd>
-        <dt>新規注文</dt><dd>逆指値注文</dd>
-        <dt>市場価格が</dt><dd><strong>9,040円以上</strong></dd>
-        <dt>買い指値</dt><dd><strong>9,060円</strong></dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-      </dl>
-    </div>
-    <div class="order-box exit-order">
-      <b>右側｜IFO（利益確定＋損切り）</b>
-      <dl>
-        <dt>利益確定</dt><dd>売埋・指値 <strong class="up">9,380円</strong></dd>
-        <dt>損切り条件</dt><dd>市場価格が <strong class="down">8,850円以下</strong></dd>
-        <dt>損切り注文</dt><dd>成行</dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-        <dt>利確2参考</dt><dd>9,520円（注文には未入力）</dd>
-      </dl>
-    </div>
-  </div>
-  <div class="ifo-metrics">
-    <span>建玉目安 <b>906,000円</b></span>
-    <span>利確時 <b class="up">+32,000円</b></span>
-    <span>最大損失 <b class="down">−21,000円</b></span>
-    <span>RR <b>1.52</b></span>
-  </div>
-  <p><b>選定理由：</b>当日資金流入／内需・ディフェンシブ＝流出 49点／前日比 +0.39%／出来高比 0.55倍／売買代金 489億円／テクニカル 76点／信用需給未取得・8:55に板／規制／日計り可否を手動確認</p>
-  <p class="warning"><b>8:55確認：</b>8:55気配が9,060円を超えていたら価格を上げず注文取消。</p>
-  <p><small>7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。 15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。</small></p>
-</article>
-<article class="ifo-card">
-  <div class="ifo-head">
-    <span class="ifo-rank">#5</span>
     <div><h3>富士通（6702）</h3><small>当日資金流入／AI・テクノロジー／流入初期</small></div>
-    <b class="ifo-score">60/100</b>
+    <b class="ifo-score">67/100</b>
   </div>
   <div class="ifo-columns">
     <div class="order-box entry-order">
@@ -293,18 +270,138 @@ document.addEventListener("DOMContentLoaded",()=>{
     <span>最大損失 <b class="down">−8,500円</b></span>
     <span>RR <b>1.53</b></span>
   </div>
-  <p><b>選定理由：</b>当日資金流入／AI・テクノロジー＝流入初期 58点／前日比 -0.77%／出来高比 0.58倍／売買代金 143億円／テクニカル 64点／信用需給未取得・8:55に板／規制／日計り可否を手動確認</p>
+  <p><b>選定理由：</b>当日資金流入／AI・テクノロジー＝流入初期 58点／前日比 -0.90%／出来高比 1.15倍／売買代金 294億円／テクニカル 63点／信用需給未取得・8:55に板／規制／日計り可否を手動確認</p>
   <p class="warning"><b>8:55確認：</b>8:55気配が3,940円を超えていたら価格を上げず注文取消。</p>
+  <p><small>7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。 15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。</small></p>
+</article>
+<article class="ifo-card">
+  <div class="ifo-head">
+    <span class="ifo-rank">#3</span>
+    <div><h3>日東電工（6988）</h3><small>当日資金流入／AI・テクノロジー／流入初期</small></div>
+    <b class="ifo-score">66/100</b>
+  </div>
+  <div class="ifo-columns">
+    <div class="order-box entry-order">
+      <b>左側｜信用新規・買建</b>
+      <dl>
+        <dt>市場</dt><dd>東証（SOR）</dd>
+        <dt>信用区分</dt><dd>制度（6カ月）</dd>
+        <dt>数量</dt><dd><strong>100株</strong></dd>
+        <dt>新規注文</dt><dd>逆指値注文</dd>
+        <dt>市場価格が</dt><dd><strong>3,515円以上</strong></dd>
+        <dt>買い指値</dt><dd><strong>3,525円</strong></dd>
+        <dt>執行期限</dt><dd>当日中</dd>
+      </dl>
+    </div>
+    <div class="order-box exit-order">
+      <b>右側｜IFO（利益確定＋損切り）</b>
+      <dl>
+        <dt>利益確定</dt><dd>売埋・指値 <strong class="up">3,645円</strong></dd>
+        <dt>損切り条件</dt><dd>市場価格が <strong class="down">3,445円以下</strong></dd>
+        <dt>損切り注文</dt><dd>成行</dd>
+        <dt>執行期限</dt><dd>当日中</dd>
+        <dt>利確2参考</dt><dd>3,700円（注文には未入力）</dd>
+      </dl>
+    </div>
+  </div>
+  <div class="ifo-metrics">
+    <span>建玉目安 <b>352,500円</b></span>
+    <span>利確時 <b class="up">+12,000円</b></span>
+    <span>最大損失 <b class="down">−8,000円</b></span>
+    <span>RR <b>1.50</b></span>
+  </div>
+  <p><b>選定理由：</b>当日資金流入／AI・テクノロジー＝流入初期 58点／前日比 +1.18%／出来高比 1.35倍／売買代金 125億円／テクニカル 57点／信用需給未取得・8:55に板／規制／日計り可否を手動確認</p>
+  <p class="warning"><b>8:55確認：</b>8:55気配が3,525円を超えていたら価格を上げず注文取消。</p>
+  <p><small>7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。 15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。</small></p>
+</article>
+<article class="ifo-card">
+  <div class="ifo-head">
+    <span class="ifo-rank">#4</span>
+    <div><h3>小松製作所（6301）</h3><small>当日資金流入／資本財・インフラ／流入初期</small></div>
+    <b class="ifo-score">66/100</b>
+  </div>
+  <div class="ifo-columns">
+    <div class="order-box entry-order">
+      <b>左側｜信用新規・買建</b>
+      <dl>
+        <dt>市場</dt><dd>東証（SOR）</dd>
+        <dt>信用区分</dt><dd>制度（6カ月）</dd>
+        <dt>数量</dt><dd><strong>100株</strong></dd>
+        <dt>新規注文</dt><dd>逆指値注文</dd>
+        <dt>市場価格が</dt><dd><strong>7,560円以上</strong></dd>
+        <dt>買い指値</dt><dd><strong>7,580円</strong></dd>
+        <dt>執行期限</dt><dd>当日中</dd>
+      </dl>
+    </div>
+    <div class="order-box exit-order">
+      <b>右側｜IFO（利益確定＋損切り）</b>
+      <dl>
+        <dt>利益確定</dt><dd>売埋・指値 <strong class="up">7,850円</strong></dd>
+        <dt>損切り条件</dt><dd>市場価格が <strong class="down">7,400円以下</strong></dd>
+        <dt>損切り注文</dt><dd>成行</dd>
+        <dt>執行期限</dt><dd>当日中</dd>
+        <dt>利確2参考</dt><dd>7,980円（注文には未入力）</dd>
+      </dl>
+    </div>
+  </div>
+  <div class="ifo-metrics">
+    <span>建玉目安 <b>758,000円</b></span>
+    <span>利確時 <b class="up">+27,000円</b></span>
+    <span>最大損失 <b class="down">−18,000円</b></span>
+    <span>RR <b>1.50</b></span>
+  </div>
+  <p><b>選定理由：</b>当日資金流入／資本財・インフラ＝流入初期 60点／前日比 -1.33%／出来高比 1.31倍／売買代金 262億円／テクニカル 63点／信用需給未取得・8:55に板／規制／日計り可否を手動確認</p>
+  <p class="warning"><b>8:55確認：</b>8:55気配が7,580円を超えていたら価格を上げず注文取消。</p>
+  <p><small>7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。 15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。</small></p>
+</article>
+<article class="ifo-card">
+  <div class="ifo-head">
+    <span class="ifo-rank">#5</span>
+    <div><h3>ローム（6963）</h3><small>当日資金流入／AI・テクノロジー／流入初期</small></div>
+    <b class="ifo-score">65/100</b>
+  </div>
+  <div class="ifo-columns">
+    <div class="order-box entry-order">
+      <b>左側｜信用新規・買建</b>
+      <dl>
+        <dt>市場</dt><dd>東証（SOR）</dd>
+        <dt>信用区分</dt><dd>制度（6カ月）</dd>
+        <dt>数量</dt><dd><strong>100株</strong></dd>
+        <dt>新規注文</dt><dd>逆指値注文</dd>
+        <dt>市場価格が</dt><dd><strong>4,890円以上</strong></dd>
+        <dt>買い指値</dt><dd><strong>4,900円</strong></dd>
+        <dt>執行期限</dt><dd>当日中</dd>
+      </dl>
+    </div>
+    <div class="order-box exit-order">
+      <b>右側｜IFO（利益確定＋損切り）</b>
+      <dl>
+        <dt>利益確定</dt><dd>売埋・指値 <strong class="up">5,215円</strong></dd>
+        <dt>損切り条件</dt><dd>市場価格が <strong class="down">4,690円以下</strong></dd>
+        <dt>損切り注文</dt><dd>成行</dd>
+        <dt>執行期限</dt><dd>当日中</dd>
+        <dt>利確2参考</dt><dd>5,360円（注文には未入力）</dd>
+      </dl>
+    </div>
+  </div>
+  <div class="ifo-metrics">
+    <span>建玉目安 <b>490,000円</b></span>
+    <span>利確時 <b class="up">+31,500円</b></span>
+    <span>最大損失 <b class="down">−21,000円</b></span>
+    <span>RR <b>1.50</b></span>
+  </div>
+  <p><b>選定理由：</b>当日資金流入／AI・テクノロジー＝流入初期 58点／前日比 +0.81%／出来高比 0.97倍／売買代金 176億円／テクニカル 64点／信用需給未取得・8:55に板／規制／日計り可否を手動確認</p>
+  <p class="warning"><b>8:55確認：</b>8:55気配が4,900円を超えていたら価格を上げず注文取消。</p>
   <p><small>7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。 15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。</small></p>
 </article></div>
 <p class="warning">IFOは利確1と損切りの1組を入力します。利確2は翌日以降へ持ち越す判断をした場合の参考値です。本日中の決済注文は失効するため、15:20時点で未決済なら当日手仕舞い、または翌営業日用の決済OCOを自分で再設定してください。</p>
 </section>
-<section class="card wide"><h2>③ 当日狙い目銘柄 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1／2</th><th>発動条件・リスク</th></tr><tr><td>1</td><td>フジクラ（5803）</td><td>5,522</td><td>5,380</td><td>5,150</td><td>5,730／5,890</td><td>寄り後5分足＋VWAP確認<br><small>100株・最大損失 約23,000円</small></td></tr><tr><td>2</td><td>古河電気工業（5801）</td><td>4,024</td><td>3,940</td><td>3,745</td><td>4,230／4,365</td><td>寄り後5分足＋VWAP確認<br><small>100株・最大損失 約19,500円</small></td></tr><tr><td>3</td><td>マクニカHD（3132）</td><td>3,725</td><td>3,595</td><td>3,495</td><td>3,745／3,820</td><td>寄り後5分足＋VWAP確認<br><small>100株・最大損失 約10,000円</small></td></tr><tr><td>4</td><td>ソニーグループ（6758）</td><td>4,029</td><td>3,940</td><td>3,875</td><td>4,040／4,085</td><td>寄り後5分足＋VWAP確認<br><small>100株・最大損失 約6,500円</small></td></tr><tr><td>5</td><td>リクルートHD（6098）</td><td>18,065</td><td>17,870</td><td>17,480</td><td>18,460／18,730</td><td>寄り後5分足＋VWAP確認<br><small>100株・最大損失 約39,000円</small></td></tr><tr><td>6</td><td>GO（581A）</td><td>4,345</td><td>4,375</td><td>4,210</td><td>4,620／4,735</td><td>寄り後5分足＋VWAP確認<br><small>100株・最大損失 約16,500円</small></td></tr><tr><td>7</td><td>住友電気工業（5802）</td><td>2,222.5</td><td>2,193</td><td>2,121</td><td>2,302／2,352</td><td>寄り後5分足＋VWAP確認<br><small>100株・最大損失 約7,200円</small></td></tr></table><p class="warning">入口は指値の断定ではなく発動水準。VWAP・5分足・出来高を満たさなければ見送り。</p></section>
+<section class="card wide"><h2>③ 当日狙い目銘柄 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1／2</th><th>発動条件・リスク</th></tr><tr><td>1</td><td>リクルートHD（6098）</td><td>18,215</td><td>17,870</td><td>17,480</td><td>18,470／18,740</td><td>寄り後5分足＋VWAP確認<br><small>100株・最大損失 約39,000円</small></td></tr><tr><td>2</td><td>フジクラ（5803）</td><td>5,504</td><td>5,380</td><td>5,150</td><td>5,730／5,890</td><td>寄り後5分足＋VWAP確認<br><small>100株・最大損失 約23,000円</small></td></tr><tr><td>3</td><td>古河電気工業（5801）</td><td>4,020</td><td>3,940</td><td>3,745</td><td>4,230／4,365</td><td>寄り後5分足＋VWAP確認<br><small>100株・最大損失 約19,500円</small></td></tr><tr><td>4</td><td>ソニーグループ（6758）</td><td>4,016</td><td>3,940</td><td>3,875</td><td>4,040／4,085</td><td>寄り後5分足＋VWAP確認<br><small>100株・最大損失 約6,500円</small></td></tr><tr><td>5</td><td>マクニカHD（3132）</td><td>3,710</td><td>3,595</td><td>3,495</td><td>3,745／3,820</td><td>寄り後5分足＋VWAP確認<br><small>100株・最大損失 約10,000円</small></td></tr><tr><td>6</td><td>日東電工（6988）</td><td>3,512</td><td>3,480</td><td>3,425</td><td>3,560／3,600</td><td>寄り後5分足＋VWAP確認<br><small>100株・最大損失 約5,500円</small></td></tr><tr><td>7</td><td>住友電気工業（5802）</td><td>2,221</td><td>2,193</td><td>2,121</td><td>2,302／2,352</td><td>寄り後5分足＋VWAP確認<br><small>100株・最大損失 約7,200円</small></td></tr></table><p class="warning">入口は指値の断定ではなく発動水準。VWAP・5分足・出来高を満たさなければ見送り。</p></section>
 <section class="card wide"><h2>④ 朝8:00候補のザラバ答え合わせ</h2><table><tr><th>会社名＋コード</th><th>朝イン</th><th>朝損切り</th><th>朝利確1／2</th><th>結果</th><th>終値・VWAP検証</th></tr><tr><td colspan='6'>朝版の同日スナップショットなし。次回8:00版から自動検証します。</td></tr></table></section>
-<section class="card wide"><h2>⑤-A 安定上昇候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr><tr><td>1</td><td>日本郵船（9101）</td><td>7,028</td><td>-2.39%</td><td>+15.02%</td><td>-5.09%</td><td>0.68倍</td><td>7,050</td><td>6,920</td><td>7,340</td><td>20日線上の押し目</td></tr><tr><td>2</td><td>リクルートHD（6098）</td><td>18,065</td><td>+9.39%</td><td>+43.94%</td><td>-0.28%</td><td>0.62倍</td><td>17,870</td><td>17,480</td><td>18,730</td><td>過熱・押し目待ち</td></tr><tr><td>3</td><td>INPEX（1605）</td><td>3,965</td><td>+1.95%</td><td>+9.32%</td><td>-19.98%</td><td>0.69倍</td><td>3,890</td><td>3,825</td><td>4,030</td><td>20日線上の押し目</td></tr><tr><td>4</td><td>ソニーグループ（6758）</td><td>4,029</td><td>+4.65%</td><td>+6.39%</td><td>-15.64%</td><td>0.89倍</td><td>3,940</td><td>3,875</td><td>4,085</td><td>20日線上の押し目</td></tr><tr><td>5</td><td>小松製作所（6301）</td><td>7,468</td><td>+0.73%</td><td>+6.78%</td><td>-4.74%</td><td>0.49倍</td><td>7,490</td><td>7,370</td><td>7,760</td><td>20日線上の押し目</td></tr></table></section>
-<section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr><tr><td>1</td><td>リクルートHD（6098）</td><td>18,065</td><td>+9.39%</td><td>+43.94%</td><td>-0.28%</td><td>0.62倍</td><td>17,870</td><td>17,480</td><td>18,730</td><td>過熱・押し目待ち</td></tr><tr><td>2</td><td>フジクラ（5803）</td><td>5,522</td><td>+10.09%</td><td>+32.36%</td><td>-30.39%</td><td>0.70倍</td><td>5,380</td><td>5,285</td><td>5,590</td><td>5日線タッチ反発・高値更新で発動</td></tr><tr><td>3</td><td>古河電気工業（5801）</td><td>4,024</td><td>+11.01%</td><td>+27.95%</td><td>-35.52%</td><td>0.55倍</td><td>3,940</td><td>3,895</td><td>4,040</td><td>5日線タッチ反発・高値更新で発動</td></tr><tr><td>4</td><td>ソニーグループ（6758）</td><td>4,029</td><td>+4.65%</td><td>+6.39%</td><td>-15.64%</td><td>0.89倍</td><td>3,940</td><td>3,875</td><td>4,085</td><td>5日線タッチ反発・高値更新で発動</td></tr><tr><td>5</td><td>INPEX（1605）</td><td>3,965</td><td>+1.95%</td><td>+9.32%</td><td>-19.98%</td><td>0.69倍</td><td>3,890</td><td>3,850</td><td>3,980</td><td>5日線タッチ反発・高値更新で発動</td></tr></table><p class="warning">上向き5日線へのタッチ反発を最優先。場中の一時割れではなく終値回復を確認。終値で5日線を明確に割った場合は候補から外します。</p></section>
-<section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr><tr><td>1</td><td>リクルートHD（6098）</td><td>18,065</td><td>+9.39%</td><td>+43.94%</td><td>-0.28%</td><td>0.62倍</td><td>17,870</td><td>17,480</td><td>18,730</td><td>過熱・押し目待ち</td></tr><tr><td>2</td><td>MS&AD（8725）</td><td>5,105</td><td>+3.61%</td><td>+3.68%</td><td>-0.80%</td><td>0.57倍</td><td>5,120</td><td>5,040</td><td>5,290</td><td>20日線上の押し目</td></tr><tr><td>3</td><td>東北電力（9506）</td><td>1,326</td><td>+1.26%</td><td>+12.33%</td><td>-0.67%</td><td>0.69倍</td><td>1,307</td><td>1,288</td><td>1,348</td><td>20日線上の押し目</td></tr><tr><td>4</td><td>フューチャー（4722）</td><td>2,451</td><td>+0.20%</td><td>+0.25%</td><td>-0.85%</td><td>0.38倍</td><td>2,453</td><td>2,441</td><td>2,481</td><td>20日線上の押し目</td></tr><tr><td>5</td><td>三菱UFJ FG（8306）</td><td>3,677</td><td>+5.63%</td><td>+2.97%</td><td>-3.57%</td><td>0.76倍</td><td>3,670</td><td>3,610</td><td>3,795</td><td>20日線上の押し目</td></tr></table></section>
-<section class="card wide"><h2>⑤-D 急騰後の過熱監視・押し目待ち TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>押し目目安</th><th>損切り</th><th>戻り目標</th><th>判定</th></tr><tr><td>1</td><td>リクルートHD（6098）</td><td>18,065</td><td>+9.39%</td><td>+43.94%</td><td>-0.28%</td><td>0.62倍</td><td>17,870</td><td>17,480</td><td>18,730</td><td>過熱・押し目待ち</td></tr><tr><td>2</td><td>古河電気工業（5801）</td><td>4,024</td><td>+11.01%</td><td>+27.95%</td><td>-35.52%</td><td>0.55倍</td><td>3,940</td><td>3,745</td><td>4,365</td><td>20日線上の押し目</td></tr><tr><td>3</td><td>GO（581A）</td><td>4,345</td><td>+12.27%</td><td>+54.35%</td><td>-5.13%</td><td>2.01倍</td><td>4,375</td><td>4,210</td><td>4,735</td><td>過熱・押し目待ち</td></tr></table><p class="warning">ここは即飛び乗り禁止。5日線反発、前日高値更新、出来高再増加の3点を確認してから候補へ昇格。</p></section>
+<section class="card wide"><h2>⑤-A 安定上昇候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr><tr><td>1</td><td>リクルートHD（6098）</td><td>18,215</td><td>+10.29%</td><td>+45.14%</td><td>+0.00%</td><td>1.41倍</td><td>17,870</td><td>17,480</td><td>18,740</td><td>過熱・押し目待ち</td></tr><tr><td>2</td><td>日本郵船（9101）</td><td>7,040</td><td>-2.22%</td><td>+15.22%</td><td>-4.93%</td><td>1.13倍</td><td>7,060</td><td>6,930</td><td>7,350</td><td>20日線上の押し目</td></tr><tr><td>3</td><td>INPEX（1605）</td><td>3,957</td><td>+1.75%</td><td>+9.10%</td><td>-20.14%</td><td>1.19倍</td><td>3,890</td><td>3,825</td><td>4,030</td><td>20日線上の押し目</td></tr><tr><td>4</td><td>ソニーグループ（6758）</td><td>4,016</td><td>+4.31%</td><td>+6.05%</td><td>-15.91%</td><td>1.48倍</td><td>3,940</td><td>3,875</td><td>4,085</td><td>20日線上の押し目</td></tr><tr><td>5</td><td>小松製作所（6301）</td><td>7,438</td><td>+0.32%</td><td>+6.35%</td><td>-5.13%</td><td>1.31倍</td><td>7,460</td><td>7,340</td><td>7,730</td><td>20日線上の押し目</td></tr></table></section>
+<section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr><tr><td>1</td><td>リクルートHD（6098）</td><td>18,215</td><td>+10.29%</td><td>+45.14%</td><td>+0.00%</td><td>1.41倍</td><td>17,870</td><td>17,480</td><td>18,740</td><td>過熱・押し目待ち</td></tr><tr><td>2</td><td>フジクラ（5803）</td><td>5,504</td><td>+9.73%</td><td>+31.93%</td><td>-30.62%</td><td>0.74倍</td><td>5,380</td><td>5,280</td><td>5,600</td><td>5日線タッチ反発・高値更新で発動</td></tr><tr><td>3</td><td>古河電気工業（5801）</td><td>4,020</td><td>+10.90%</td><td>+27.82%</td><td>-35.59%</td><td>0.65倍</td><td>3,940</td><td>3,895</td><td>4,040</td><td>5日線タッチ反発・高値更新で発動</td></tr><tr><td>4</td><td>ソニーグループ（6758）</td><td>4,016</td><td>+4.31%</td><td>+6.05%</td><td>-15.91%</td><td>1.48倍</td><td>3,940</td><td>3,875</td><td>4,085</td><td>5日線タッチ反発・高値更新で発動</td></tr><tr><td>5</td><td>INPEX（1605）</td><td>3,957</td><td>+1.75%</td><td>+9.10%</td><td>-20.14%</td><td>1.19倍</td><td>3,890</td><td>3,850</td><td>3,980</td><td>5日線タッチ反発・高値更新で発動</td></tr></table><p class="warning">上向き5日線へのタッチ反発を最優先。場中の一時割れではなく終値回復を確認。終値で5日線を明確に割った場合は候補から外します。</p></section>
+<section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr><tr><td>1</td><td>リクルートHD（6098）</td><td>18,215</td><td>+10.29%</td><td>+45.14%</td><td>+0.00%</td><td>1.41倍</td><td>17,870</td><td>17,480</td><td>18,740</td><td>過熱・押し目待ち</td></tr><tr><td>2</td><td>MS&AD（8725）</td><td>5,107</td><td>+3.65%</td><td>+3.72%</td><td>-0.76%</td><td>1.24倍</td><td>5,120</td><td>5,040</td><td>5,290</td><td>20日線上の押し目</td></tr><tr><td>3</td><td>本田技研工業（7267）</td><td>1,710</td><td>-2.12%</td><td>+5.20%</td><td>-2.98%</td><td>1.08倍</td><td>1,708</td><td>1,677</td><td>1,777</td><td>20日線上の押し目</td></tr><tr><td>4</td><td>東北電力（9506）</td><td>1,330</td><td>+1.57%</td><td>+12.66%</td><td>-0.37%</td><td>0.98倍</td><td>1,307</td><td>1,288</td><td>1,349</td><td>20日線上の押し目</td></tr><tr><td>5</td><td>フューチャー（4722）</td><td>2,449</td><td>+0.12%</td><td>+0.16%</td><td>-0.93%</td><td>0.43倍</td><td>2,451</td><td>2,439</td><td>2,479</td><td>20日線上の押し目</td></tr></table></section>
+<section class="card wide"><h2>⑤-D 急騰後の過熱監視・押し目待ち TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>押し目目安</th><th>損切り</th><th>戻り目標</th><th>判定</th></tr><tr><td>1</td><td>リクルートHD（6098）</td><td>18,215</td><td>+10.29%</td><td>+45.14%</td><td>+0.00%</td><td>1.41倍</td><td>17,870</td><td>17,480</td><td>18,740</td><td>過熱・押し目待ち</td></tr><tr><td>2</td><td>古河電気工業（5801）</td><td>4,020</td><td>+10.90%</td><td>+27.82%</td><td>-35.59%</td><td>0.65倍</td><td>3,940</td><td>3,745</td><td>4,365</td><td>20日線上の押し目</td></tr><tr><td>3</td><td>GO（581A）</td><td>4,335</td><td>+12.02%</td><td>+54.00%</td><td>-5.35%</td><td>2.06倍</td><td>4,365</td><td>4,200</td><td>4,725</td><td>過熱・押し目待ち</td></tr></table><p class="warning">ここは即飛び乗り禁止。5日線反発、前日高値更新、出来高再増加の3点を確認してから候補へ昇格。</p></section>
 <section class="card wide"><h2>⑤-E 月足・週足反転＋信用需給 TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>足</th><th>判定</th><th>総合点</th><th>終値</th><th>反発線</th><th>需給点・局面</th><th>下ヒゲ／実体</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
 <tbody id="hammer-signals"><tr><td colspan="13">全市場を走査中...</td></tr></tbody></table>
@@ -332,7 +429,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <tbody id="daily-reversal-signals"><tr><td colspan="12">全市場を走査中...</td></tr></tbody></table>
 <p class="warning">画像のような「急落→大出来高→安値固め→陽線確認」を検出。逆張りなので、反転足高値＋1ティックを上抜くまで買いません。</p></section>
 <section class="card wide"><h2>⑥-A 決算勝負候補 TOP15（7日以内・決算期待値順）</h2><table><tr><th>会社名＋コード</th><th>調整後期待値</th><th>コンセンサス警戒</th><th>テクニカル点</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>採点根拠・注意</th></tr><tr><td colspan='10'>今後7日以内で取得確認できた決算候補なし</td></tr></table><p class="warning">高すぎるEPS・売上予想、予想幅の大きさ、下方修正、過去の上振れ不足、決算前の株価上昇を警戒度として減点。好決算でもコンセンサス未達や材料出尽くしになる危険を反映します。</p></section>
-<section class="card wide"><h2>⑥-B BB上方エクスパンション期待 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>現在値</th><th>BB幅</th><th>5日比</th><th>幅順位</th><th>出来高比</th><th>イン</th><th>損切り</th><th>判定</th></tr><tr><td>1</td><td>フューチャー（4722）</td><td><b class='up'>82/100</b></td><td>2,451</td><td>0.34%</td><td>-2.09pt</td><td>2%</td><td>0.38倍</td><td>2,453</td><td>2,441</td><td>スクイーズ中・上抜け待ち</td></tr><tr><td>2</td><td>三菱商事（8058）</td><td><b class='up'>74/100</b></td><td>4,806</td><td>5.17%</td><td>+0.02pt</td><td>3%</td><td>0.48倍</td><td>4,795</td><td>4,735</td><td>バンド拡大・上向き</td></tr><tr><td>3</td><td>三菱UFJ FG（8306）</td><td><b class='up'>71/100</b></td><td>3,677</td><td>8.37%</td><td>+0.03pt</td><td>18%</td><td>0.76倍</td><td>3,670</td><td>3,610</td><td>バンド拡大・上向き</td></tr><tr><td>4</td><td>トヨタ自動車（7203）</td><td><b class='up'>69/100</b></td><td>3,164</td><td>9.39%</td><td>-0.22pt</td><td>22%</td><td>0.70倍</td><td>3,125</td><td>3,080</td><td>スクイーズ中・上抜け待ち</td></tr><tr><td>5</td><td>富士通（6702）</td><td><b class='up'>68/100</b></td><td>3,874</td><td>13.04%</td><td>+0.44pt</td><td>23%</td><td>0.58倍</td><td>3,890</td><td>3,815</td><td>バンド拡大・上向き</td></tr><tr><td>6</td><td>KDDI（9433）</td><td><b class='up'>66/100</b></td><td>2,956</td><td>5.70%</td><td>-2.96pt</td><td>28%</td><td>0.52倍</td><td>2,929</td><td>2,892</td><td>スクイーズ中・上抜け待ち</td></tr><tr><td>7</td><td>NEC（6701）</td><td><b class='up'>65/100</b></td><td>4,905</td><td>11.64%</td><td>-0.99pt</td><td>11%</td><td>0.62倍</td><td>4,925</td><td>4,810</td><td>スクイーズ中・上抜け待ち</td></tr></table><p class="warning">BB幅順位は過去120日の細さ。数値が低いほどスクイーズ状態。上限突破＋BB幅拡大＋出来高増加を最優先します。</p></section>
+<section class="card wide"><h2>⑥-B BB上方エクスパンション期待 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>現在値</th><th>BB幅</th><th>5日比</th><th>幅順位</th><th>出来高比</th><th>イン</th><th>損切り</th><th>判定</th></tr><tr><td>1</td><td>三菱商事（8058）</td><td><b class='up'>78/100</b></td><td>4,804</td><td>5.16%</td><td>+0.02pt</td><td>3%</td><td>1.16倍</td><td>4,795</td><td>4,735</td><td>バンド拡大・上向き</td></tr><tr><td>2</td><td>フューチャー（4722）</td><td><b class='up'>74/100</b></td><td>2,449</td><td>0.32%</td><td>-2.12pt</td><td>2%</td><td>0.43倍</td><td>2,451</td><td>2,439</td><td>スクイーズ中・上抜け待ち</td></tr><tr><td>3</td><td>三菱UFJ FG（8306）</td><td><b class='up'>73/100</b></td><td>3,680</td><td>8.39%</td><td>+0.05pt</td><td>18%</td><td>1.08倍</td><td>3,670</td><td>3,610</td><td>バンド拡大・上向き</td></tr><tr><td>4</td><td>トヨタ自動車（7203）</td><td><b class='up'>72/100</b></td><td>3,156</td><td>9.29%</td><td>-0.32pt</td><td>22%</td><td>1.21倍</td><td>3,125</td><td>3,080</td><td>スクイーズ中・上抜け待ち</td></tr><tr><td>5</td><td>富士通（6702）</td><td><b class='up'>72/100</b></td><td>3,869</td><td>12.99%</td><td>+0.40pt</td><td>23%</td><td>1.15倍</td><td>3,885</td><td>3,810</td><td>バンド拡大・上向き</td></tr><tr><td>6</td><td>キヤノン（7751）</td><td><b class='up'>70/100</b></td><td>4,675</td><td>7.20%</td><td>+0.16pt</td><td>32%</td><td>1.37倍</td><td>4,685</td><td>4,640</td><td>バンド拡大・上向き</td></tr><tr><td>7</td><td>KDDI（9433）</td><td><b class='up'>70/100</b></td><td>2,959.5</td><td>5.74%</td><td>-2.91pt</td><td>28%</td><td>1.08倍</td><td>2,929</td><td>2,892</td><td>スクイーズ中・上抜け待ち</td></tr></table><p class="warning">BB幅順位は過去120日の細さ。数値が低いほどスクイーズ状態。上限突破＋BB幅拡大＋出来高増加を最優先します。</p></section>
 <section class="card wide"><h2>⑦ AIスイングサインの使い方</h2>
 <div class="steps">
 <div class="step"><b>1　<span class="pill prep">準備</span>を探す</b>大引け後に一覧を確認。準備は「まだ買わない」の意味です。</div>
@@ -394,7 +491,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   </div>
 </section>
 <!-- WEEKLY_REVIEW_END -->
-</main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>2026-08-31 15:40:51 JST</span></footer>
+</main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>2026-08-31 16:14:52 JST</span></footer>
 <script>
 const yen = v => Number(v).toLocaleString("ja-JP");
 const signedPct = (v, digits = 1) => Number.isFinite(Number(v))
