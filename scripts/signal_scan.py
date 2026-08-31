@@ -739,6 +739,95 @@ def analyse_daily_reversal(item, frame):
     }
 
 
+def analyse_accumulation(item, frame):
+    """Detect price/volume footprints consistent with quiet large-lot accumulation.
+
+    This is deliberately a footprint detector, not a claim that a named
+    institution is buying.  It rewards absorption and OBV/volume behaviour and
+    rejects already-extended momentum names.
+    """
+    if frame is None or len(frame) < 65:
+        return None
+    close = frame["Close"].astype(float)
+    high = frame["High"].astype(float)
+    low = frame["Low"].astype(float)
+    volume = frame["Volume"].fillna(0).astype(float)
+    if volume.tail(20).mean() <= 0:
+        return None
+
+    c = finite(close.iloc[-1])
+    h = finite(high.iloc[-1])
+    l = finite(low.iloc[-1])
+    if not all(v is not None and v > 0 for v in (c, h, l)):
+        return None
+
+    change = close.pct_change().fillna(0)
+    up_volume = float(volume.tail(20)[change.tail(20) > 0].sum())
+    down_volume = float(volume.tail(20)[change.tail(20) < 0].sum())
+    up_down_ratio = up_volume / max(down_volume, 1)
+    signed_volume = volume.where(change >= 0, -volume)
+    obv = signed_volume.cumsum()
+    avg20 = float(volume.tail(20).mean())
+    obv_impulse = float((obv.iloc[-1] - obv.iloc[-11]) / max(avg20 * 10, 1))
+    ranges = (high - low).replace(0, math.nan)
+    close_location = (((close - low) - (high - close)) / ranges).fillna(0)
+    clv20 = float(close_location.tail(20).mean())
+    down_days = change.tail(20) < 0
+    down_volume_ratio = (
+        float(volume.tail(20)[down_days].mean() / avg20)
+        if down_days.any() else 0
+    )
+    ret20 = float((c / close.iloc[-21] - 1) * 100)
+    ret5 = float((c / close.iloc[-6] - 1) * 100)
+    ma20 = float(close.tail(20).mean())
+    high20 = float(high.iloc[-21:-1].max())
+    low10_now = float(low.tail(10).min())
+    low10_prev = float(low.iloc[-20:-10].min())
+    higher_low_pct = (low10_now / low10_prev - 1) * 100 if low10_prev else 0
+    turnover = c * float(volume.iloc[-1])
+    rvol = float(volume.iloc[-1] / avg20)
+    extension = (c / ma20 - 1) * 100 if ma20 else 0
+
+    score = 0
+    score += 22 if up_down_ratio >= 1.8 else 17 if up_down_ratio >= 1.4 else 11 if up_down_ratio >= 1.1 else 0
+    score += 18 if obv_impulse >= .35 else 13 if obv_impulse >= .15 else 7 if obv_impulse > 0 else 0
+    score += 15 if clv20 >= .20 else 10 if clv20 >= .08 else 4 if clv20 >= 0 else 0
+    score += 12 if down_volume_ratio <= .75 else 8 if down_volume_ratio <= .95 else 2
+    score += 12 if higher_low_pct >= 2 else 8 if higher_low_pct >= 0 else 0
+    score += 11 if 0 <= ret20 <= 12 else 6 if -5 <= ret20 < 0 else 2
+    score += min(max((rvol - .7) * 8, 0), 10)
+    score = min(100, round(score))
+
+    # Quiet accumulation should have tradable liquidity but should not already
+    # be a parabolic chase candidate.
+    if turnover < 100_000_000 or score < 60 or extension > 18 or ret5 > 15:
+        return None
+    tick = .1 if c < 1000 else 1 if c < 3000 else 5 if c < 5000 else 10 if c < 30000 else 50
+    trigger = math.ceil((max(h, high20) + tick) / tick) * tick
+    stop_base = min(low10_now, ma20 * .985)
+    stop = math.floor((stop_base - tick) / tick) * tick
+    risk = max(trigger - stop, tick)
+    phase = "上放れ待ち" if c < high20 else "買い集め後の上放れ"
+    return {
+        "code": item["code"], "ticker": item["ticker"],
+        "name": f"{item['name']}（{item['code']}）", "score": int(score),
+        "phase": phase, "close": round(c, 2), "ret5": round(ret5, 2),
+        "ret20": round(ret20, 2), "rvol": round(rvol, 2),
+        "up_down_volume_ratio": round(up_down_ratio, 2),
+        "obv_impulse": round(obv_impulse, 2), "clv20": round(clv20, 2),
+        "down_volume_ratio": round(down_volume_ratio, 2),
+        "higher_low_pct": round(higher_low_pct, 2),
+        "trigger": round(trigger, 2), "stop": round(stop, 2),
+        "target1": round((trigger + risk * 1.5) / tick) * tick,
+        "target2": round((trigger + risk * 2.5) / tick) * tick,
+        "signal_date": pd.Timestamp(frame.index[-1]).strftime("%Y-%m-%d"),
+        "reason": (
+            f"上昇日/下落日出来高 {up_down_ratio:.2f}倍／OBV {obv_impulse:+.2f}／"
+            f"下落日出来高 {down_volume_ratio:.2f}倍／安値切上げ {higher_low_pct:+.1f}%"
+        ),
+    }
+
+
 def main():
     now = datetime.now(JST)
     universe, source = load_universe()
@@ -764,6 +853,7 @@ def main():
     long_term_rebounds = []
     daily_reversals = []
     speculative_results = []
+    accumulation_results = []
     failed = 0
     batch_size = 120
     for start in range(0, len(universe), batch_size):
@@ -781,6 +871,7 @@ def main():
             row = analyse(item, frame)
             short_row = analyse_short(item, frame)
             speculative_row = analyse_speculative(item, frame)
+            accumulation_row = analyse_accumulation(item, frame)
             if row:
                 results.append(row)
             if short_row:
@@ -791,6 +882,9 @@ def main():
                 speculative_row["theme"] = known_theme or "テーマ・材料要確認"
                 speculative_row["theme_status"] = "監視テーマ" if known_theme else "要公式確認"
                 speculative_results.append(speculative_row)
+            if accumulation_row:
+                accumulation_row.update(supply_view(item["code"], credit_supply))
+                accumulation_results.append(accumulation_row)
             if frame is not None:
                 for timeframe in ("月足", "週足"):
                     hammer = hammer_row(item, frame, timeframe)
@@ -856,6 +950,14 @@ def main():
         key=lambda x: (x["score"], x["rvol"], x["ret5"]),
         reverse=True,
     )
+    accumulation_results.sort(
+        key=lambda x: (
+            1 if x.get("supply_verified") else 0,
+            x.get("supply_score") or -1,
+            x["score"], x["up_down_volume_ratio"], x["obv_impulse"],
+        ),
+        reverse=True,
+    )
     for row in results:
         row.update(supply_view(row["code"], credit_supply))
     for row in short_results:
@@ -896,6 +998,11 @@ def main():
         "overnight_long": overnight_long,
         "overnight_short": overnight_short,
         "speculative_theme_watch": speculative_top,
+        "large_lot_accumulation": accumulation_results[:20],
+        "large_lot_accumulation_note": (
+            "価格・出来高・OBV・終値位置・安値切り上げから買い集めの痕跡を推定。"
+            "大口の実在を断定せず、大量保有報告・信用需給・会社IRで確認する。"
+        ),
         "speculative_theme_note": (
             "監視専用。出来高・騰落・値幅の異常度を検出した銘柄を通常LONG/SHORT候補から隔離。"
             "仕手株との断定ではなく、会社IR・適時開示・信用需給を確認するための警戒リスト。"
