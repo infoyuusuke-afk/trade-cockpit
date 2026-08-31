@@ -1,7 +1,7 @@
 {
-  "updated_at": "2026-08-31 19:35:37 JST",
-  "phase": "寄り付き前8:00版",
-  "session": "morning",
+  "updated_at": "2026-08-31 20:55:38 JST",
+  "phase": "引け前持ち越し15:00版",
+  "session": "close",
   "active_buybacks": [],
   "buybacks_updated_at": "未取得",
   "akita_dc_watch": [
@@ -336,7 +336,16 @@
       "ticker": "1934.T",
       "sector": "データセンター・電力設備",
       "style": "both",
-      "day_bucket": null
+      "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 2563.0,
+        "high": 2577.0,
+        "low": 2530.0,
+        "close": 2577.0,
+        "vwap": 2560.1,
+        "volume": 103700
+      }
     },
     {
       "name": "東北電力（9506）",
@@ -669,7 +678,16 @@
       "ticker": "9506.T",
       "sector": "電力・データセンター",
       "style": "swing",
-      "day_bucket": null
+      "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 1306.0,
+        "high": 1327.5,
+        "low": 1300.5,
+        "close": 1326.0,
+        "vwap": 1319.39,
+        "volume": 1845400
+      }
     },
     {
       "name": "フジクラ（5803）",
@@ -1002,7 +1020,16 @@
       "ticker": "5803.T",
       "sector": "電線・データセンター",
       "style": "both",
-      "day_bucket": null
+      "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 5240.0,
+        "high": 5525.0,
+        "low": 5123.0,
+        "close": 5522.0,
+        "vwap": 5365.25,
+        "volume": 43699200
+      }
     },
     {
       "name": "高砂熱学工業（1969）",
@@ -1335,7 +1362,16 @@
       "ticker": "1969.T",
       "sector": "データセンター・冷却",
       "style": "swing",
-      "day_bucket": null
+      "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 4251.0,
+        "high": 4335.0,
+        "low": 4239.0,
+        "close": 4310.0,
+        "vwap": 4291.95,
+        "volume": 264100
+      }
     },
     {
       "name": "関電工（1942）",
@@ -1668,7 +1704,16 @@
       "ticker": "1942.T",
       "sector": "データセンター・電気設備",
       "style": "swing",
-      "day_bucket": null
+      "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 5474.0,
+        "high": 5513.0,
+        "low": 5401.0,
+        "close": 5507.0,
+        "vwap": 5471.69,
+        "volume": 354100
+      }
     }
   ],
   "gunma_rare_earth_watch": [
@@ -2003,7 +2048,16 @@
       "ticker": "1515.T",
       "sector": "資源開発・レアアース",
       "style": "swing",
-      "day_bucket": null
+      "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3805.0,
+        "high": 3855.0,
+        "low": 3720.0,
+        "close": 3855.0,
+        "vwap": 3794.88,
+        "volume": 674300
+      }
     },
     {
       "name": "住友金属鉱山（5713）",
@@ -2336,7 +2390,16 @@
       "ticker": "5713.T",
       "sector": "非鉄・レアメタル",
       "style": "swing",
-      "day_bucket": null
+      "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 11045.0,
+        "high": 11380.0,
+        "low": 11005.0,
+        "close": 11130.0,
+        "vwap": 11171.16,
+        "volume": 2276200
+      }
     },
     {
       "name": "信越化学工業（4063）",
@@ -2669,7 +2732,16 @@
       "ticker": "4063.T",
       "sector": "半導体・素材",
       "style": "both",
-      "day_bucket": null
+      "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 5956.0,
+        "high": 6028.0,
+        "low": 5925.0,
+        "close": 6020.0,
+        "vwap": 5983.44,
+        "volume": 3387300
+      }
     },
     {
       "name": "双日（2768）",
@@ -3002,7 +3074,16 @@
       "ticker": "2768.T",
       "sector": "資源商社・レアアース",
       "style": "swing",
-      "day_bucket": null
+      "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 5590.0,
+        "high": 5611.0,
+        "low": 5512.0,
+        "close": 5599.0,
+        "vwap": 5573.32,
+        "volume": 756900
+      }
     },
     {
       "name": "DOWA HD（5714）",
@@ -3335,7 +3416,16 @@
       "ticker": "5714.T",
       "sector": "非鉄・資源循環",
       "style": "swing",
-      "day_bucket": null
+      "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 10095.0,
+        "high": 10150.0,
+        "low": 9902.0,
+        "close": 9968.0,
+        "vwap": 10005.63,
+        "volume": 533400
+      }
     }
   ],
   "indices": {
@@ -4959,37 +5049,37 @@
     },
     "ドル円": {
       "ok": true,
-      "price": 159.74,
+      "price": 159.68,
       "open": 160.1,
       "high": 160.2,
       "low": 159.47,
       "prev_close": 159.32,
-      "change_pct": 0.27,
-      "ret5": 0.53,
+      "change_pct": 0.22,
+      "ret5": 0.49,
       "ret5_prev": -0.2,
-      "ret20": 1.37,
+      "ret20": 1.33,
       "rvol": 0,
       "turnover": 0,
       "atr14": 0.76,
       "atr_pct": 0.48,
-      "ma5": 159.34,
-      "ma20": 158.86,
+      "ma5": 159.32,
+      "ma20": 158.85,
       "ma60": 160.81,
-      "from_ma5": 0.26,
-      "from_ma20": 0.56,
+      "from_ma5": 0.22,
+      "from_ma20": 0.52,
       "touch_ma5": true,
-      "to_high20": -0.19,
-      "to_high52": -2.58,
-      "bb_upper": 160.21,
-      "bb_lower": 157.5,
-      "bb_width": 1.71,
-      "bb_width_change": -1.43,
+      "to_high20": -0.23,
+      "to_high52": -2.62,
+      "bb_upper": 160.2,
+      "bb_lower": 157.51,
+      "bb_width": 1.7,
+      "bb_width_change": -1.44,
       "bb_percentile": 37.5,
       "bb_expansion_score": 48.9,
-      "day_score": 1.4,
-      "swing_score": 3.53,
-      "stable_score": 1.25,
-      "momentum_score": 7.33,
+      "day_score": 1.35,
+      "swing_score": 3.5,
+      "stable_score": 1.24,
+      "momentum_score": 7.32,
       "high_score": 3.0,
       "chart": [
         {
@@ -5269,13 +5359,13 @@
           "o": 160.1,
           "h": 160.2,
           "l": 159.47,
-          "c": 159.74,
+          "c": 159.68,
           "v": 0
         }
       ],
-      "market_supply_score": 80,
+      "market_supply_score": 79,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給80点／上昇日出来高÷下落日2.00倍／安値切上げ○",
+      "market_supply_status": "市場需給79点／上昇日出来高÷下落日2.00倍／安値切上げ○",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
@@ -5931,6 +6021,15 @@
       "sector": "半導体・AI",
       "style": "day",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 53800.0,
+        "high": 56150.0,
+        "low": 53360.0,
+        "close": 56070.0,
+        "vwap": 54874.24,
+        "volume": 1730400
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "アドバンテスト（6857）": {
@@ -6259,6 +6358,15 @@
       "sector": "半導体・AI",
       "style": "day",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 32900.0,
+        "high": 33880.0,
+        "low": 32280.0,
+        "close": 33850.0,
+        "vwap": 33117.98,
+        "volume": 7532200
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "マクニカHD（3132）": {
@@ -6587,6 +6695,15 @@
       "sector": "半導体・AI",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3590.0,
+        "high": 3727.0,
+        "low": 3551.0,
+        "close": 3725.0,
+        "vwap": 3661.75,
+        "volume": 674900
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "日東電工（6988）": {
@@ -6915,6 +7032,15 @@
       "sector": "電子材料・AI",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3410.0,
+        "high": 3505.0,
+        "low": 3390.0,
+        "close": 3502.0,
+        "vwap": 3458.12,
+        "volume": 1151000
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "ディスコ（6146）": {
@@ -7243,6 +7369,15 @@
       "sector": "半導体・AI",
       "style": "day",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 56350.0,
+        "high": 58430.0,
+        "low": 55900.0,
+        "close": 58100.0,
+        "vwap": 57049.41,
+        "volume": 1256000
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "レーザーテック（6920）": {
@@ -7571,6 +7706,15 @@
       "sector": "半導体・AI",
       "style": "day",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 33100.0,
+        "high": 33790.0,
+        "low": 32640.0,
+        "close": 33710.0,
+        "vwap": 33123.73,
+        "volume": 2078800
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "キオクシアHD（285A）": {
@@ -7899,6 +8043,15 @@
       "sector": "半導体・AI",
       "style": "day",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 46100.0,
+        "high": 49550.0,
+        "low": 45980.0,
+        "close": 49300.0,
+        "vwap": 48320.34,
+        "volume": 32435100
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "ソシオネクスト（6526）": {
@@ -8227,6 +8380,15 @@
       "sector": "半導体・AI",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 1955.0,
+        "high": 1996.0,
+        "low": 1936.0,
+        "close": 1994.0,
+        "vwap": 1966.18,
+        "volume": 4609500
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "フューチャー（4722）": {
@@ -8555,6 +8717,15 @@
       "sector": "AI・DX",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 2450.0,
+        "high": 2451.0,
+        "low": 2448.0,
+        "close": 2451.0,
+        "vwap": 2450.04,
+        "volume": 424300
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "GO（581A）": {
@@ -8883,6 +9054,15 @@
       "sector": "MaaS・成長株",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 4450.0,
+        "high": 4580.0,
+        "low": 4310.0,
+        "close": 4345.0,
+        "vwap": 4442.83,
+        "volume": 3613200
+      },
       "rotation_group": "自動車・モビリティ"
     },
     "セルシス（3663）": {
@@ -9211,6 +9391,15 @@
       "sector": "コンテンツ・成長株",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 1998.0,
+        "high": 2004.0,
+        "low": 1933.0,
+        "close": 1964.0,
+        "vwap": 1961.59,
+        "volume": 134400
+      },
       "rotation_group": "内需・ディフェンシブ"
     },
     "MS&AD（8725）": {
@@ -9539,6 +9728,15 @@
       "sector": "保険・金利",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 5114.0,
+        "high": 5124.0,
+        "low": 5060.0,
+        "close": 5105.0,
+        "vwap": 5095.37,
+        "volume": 2095800
+      },
       "rotation_group": "金融"
     },
     "ローツェ（6323）": {
@@ -9867,6 +10065,15 @@
       "sector": "半導体・AI",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3902.0,
+        "high": 4103.0,
+        "low": 3894.0,
+        "close": 4079.0,
+        "vwap": 4018.12,
+        "volume": 845800
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "SUMCO（3436）": {
@@ -10195,6 +10402,15 @@
       "sector": "半導体・AI",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3266.0,
+        "high": 3406.0,
+        "low": 3241.0,
+        "close": 3405.0,
+        "vwap": 3319.67,
+        "volume": 7323600
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "フジクラ（5803）": {
@@ -10523,6 +10739,15 @@
       "sector": "電線・データセンター",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 5240.0,
+        "high": 5525.0,
+        "low": 5123.0,
+        "close": 5522.0,
+        "vwap": 5365.25,
+        "volume": 43699200
+      },
       "rotation_group": "資本財・インフラ"
     },
     "古河電気工業（5801）": {
@@ -10851,6 +11076,15 @@
       "sector": "電線・データセンター",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3720.0,
+        "high": 4025.0,
+        "low": 3697.0,
+        "close": 4024.0,
+        "vwap": 3908.19,
+        "volume": 17745100
+      },
       "rotation_group": "資本財・インフラ"
     },
     "住友電気工業（5802）": {
@@ -11179,6 +11413,15 @@
       "sector": "電線・データセンター",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 2150.0,
+        "high": 2228.5,
+        "low": 2123.0,
+        "close": 2222.5,
+        "vwap": 2188.73,
+        "volume": 14920800
+      },
       "rotation_group": "資本財・インフラ"
     },
     "日立製作所（6501）": {
@@ -11507,6 +11750,15 @@
       "sector": "電力・データセンター",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 5452.0,
+        "high": 5480.0,
+        "low": 5395.0,
+        "close": 5454.0,
+        "vwap": 5447.9,
+        "volume": 5404500
+      },
       "rotation_group": "資本財・インフラ"
     },
     "富士電機（6504）": {
@@ -11835,6 +12087,15 @@
       "sector": "電力・データセンター",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 13550.0,
+        "high": 13850.0,
+        "low": 13415.0,
+        "close": 13850.0,
+        "vwap": 13638.69,
+        "volume": 374900
+      },
       "rotation_group": "資本財・インフラ"
     },
     "三菱重工業（7011）": {
@@ -12163,6 +12424,15 @@
       "sector": "防衛・重工",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3962.0,
+        "high": 3966.0,
+        "low": 3844.0,
+        "close": 3876.0,
+        "vwap": 3877.9,
+        "volume": 15383200
+      },
       "rotation_group": "資本財・インフラ"
     },
     "IHI（7013）": {
@@ -12491,6 +12761,15 @@
       "sector": "防衛・重工",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 2725.0,
+        "high": 2734.0,
+        "low": 2664.5,
+        "close": 2694.0,
+        "vwap": 2692.73,
+        "volume": 7266000
+      },
       "rotation_group": "資本財・インフラ"
     },
     "川崎重工業（7012）": {
@@ -12819,6 +13098,15 @@
       "sector": "防衛・重工",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 2598.5,
+        "high": 2598.5,
+        "low": 2547.0,
+        "close": 2574.5,
+        "vwap": 2564.18,
+        "volume": 8706100
+      },
       "rotation_group": "資本財・インフラ"
     },
     "三菱電機（6503）": {
@@ -13147,6 +13435,15 @@
       "sector": "防衛・重工",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 5500.0,
+        "high": 5574.0,
+        "low": 5464.0,
+        "close": 5563.0,
+        "vwap": 5528.57,
+        "volume": 3444400
+      },
       "rotation_group": "資本財・インフラ"
     },
     "ソフトバンクグループ（9984）": {
@@ -13475,6 +13772,15 @@
       "sector": "AI・投資",
       "style": "day",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 4900.0,
+        "high": 5213.0,
+        "low": 4883.0,
+        "close": 5209.0,
+        "vwap": 5073.89,
+        "volume": 25044800
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "任天堂（7974）": {
@@ -13803,6 +14109,15 @@
       "sector": "ゲーム・内需",
       "style": "day",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 9000.0,
+        "high": 9029.0,
+        "low": 8877.0,
+        "close": 9028.0,
+        "vwap": 8959.07,
+        "volume": 5092900
+      },
       "rotation_group": "内需・ディフェンシブ"
     },
     "リクルートHD（6098）": {
@@ -14131,6 +14446,15 @@
       "sector": "サービス・AI",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 17475.0,
+        "high": 18120.0,
+        "low": 17440.0,
+        "close": 18065.0,
+        "vwap": 17895.03,
+        "volume": 2436100
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "楽天グループ（4755）": {
@@ -14459,6 +14783,15 @@
       "sector": "通信・ネット",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 780.0,
+        "high": 788.8,
+        "low": 776.5,
+        "close": 778.4,
+        "vwap": 780.06,
+        "volume": 9447200
+      },
       "rotation_group": "内需・ディフェンシブ"
     },
     "ラウンドワン（4680）": {
@@ -14787,6 +15120,15 @@
       "sector": "サービス・内需",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 1346.5,
+        "high": 1362.0,
+        "low": 1342.0,
+        "close": 1351.0,
+        "vwap": 1351.68,
+        "volume": 949900
+      },
       "rotation_group": "内需・ディフェンシブ"
     },
     "トヨタ自動車（7203）": {
@@ -15115,6 +15457,15 @@
       "sector": "自動車・円安",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3120.0,
+        "high": 3188.0,
+        "low": 3116.0,
+        "close": 3164.0,
+        "vwap": 3165.87,
+        "volume": 18089200
+      },
       "rotation_group": "自動車・モビリティ"
     },
     "三菱UFJ FG（8306）": {
@@ -15443,6 +15794,15 @@
       "sector": "銀行・金利",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3640.0,
+        "high": 3682.0,
+        "low": 3585.0,
+        "close": 3677.0,
+        "vwap": 3648.13,
+        "volume": 25299200
+      },
       "rotation_group": "金融"
     },
     "三井住友FG（8316）": {
@@ -15771,6 +16131,15 @@
       "sector": "銀行・金利",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 6878.0,
+        "high": 7004.0,
+        "low": 6776.0,
+        "close": 6988.0,
+        "vwap": 6925.12,
+        "volume": 8728400
+      },
       "rotation_group": "金融"
     },
     "日本郵船（9101）": {
@@ -16099,6 +16468,15 @@
       "sector": "海運・景気敏感",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 7141.0,
+        "high": 7176.0,
+        "low": 6922.0,
+        "close": 7028.0,
+        "vwap": 6987.45,
+        "volume": 2309100
+      },
       "rotation_group": "資源・素材・商社"
     },
     "INPEX（1605）": {
@@ -16427,6 +16805,15 @@
       "sector": "資源・原油",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3928.0,
+        "high": 3978.0,
+        "low": 3898.0,
+        "close": 3965.0,
+        "vwap": 3946.34,
+        "volume": 2957800
+      },
       "rotation_group": "資源・素材・商社"
     },
     "三菱商事（8058）": {
@@ -16755,6 +17142,15 @@
       "sector": "商社・資源",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 4746.0,
+        "high": 4822.0,
+        "low": 4721.0,
+        "close": 4806.0,
+        "vwap": 4779.76,
+        "volume": 3167900
+      },
       "rotation_group": "資源・素材・商社"
     },
     "パワーエックス（485A）": {
@@ -17083,6 +17479,15 @@
       "sector": "蓄電池・電力",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 1995.0,
+        "high": 2015.0,
+        "low": 1781.0,
+        "close": 1822.0,
+        "vwap": 1873.47,
+        "volume": 6834000
+      },
       "rotation_group": "資本財・インフラ"
     },
     "キーエンス（6861）": {
@@ -17411,6 +17816,15 @@
       "sector": "FA・高値がさ",
       "style": "day",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 81710.0,
+        "high": 84170.0,
+        "low": 81620.0,
+        "close": 84080.0,
+        "vwap": 83040.67,
+        "volume": 251600
+      },
       "rotation_group": "資本財・インフラ"
     },
     "信越化学工業（4063）": {
@@ -17739,6 +18153,15 @@
       "sector": "半導体・素材",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 5956.0,
+        "high": 6028.0,
+        "low": 5925.0,
+        "close": 6020.0,
+        "vwap": 5983.44,
+        "volume": 3387300
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "ファナック（6954）": {
@@ -18067,6 +18490,15 @@
       "sector": "FA・ロボット",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 5890.0,
+        "high": 6078.0,
+        "low": 5870.0,
+        "close": 6058.0,
+        "vwap": 5987.12,
+        "volume": 2800500
+      },
       "rotation_group": "資本財・インフラ"
     },
     "小松製作所（6301）": {
@@ -18395,6 +18827,15 @@
       "sector": "機械・景気敏感",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 7497.0,
+        "high": 7550.0,
+        "low": 7406.0,
+        "close": 7468.0,
+        "vwap": 7498.25,
+        "volume": 1235600
+      },
       "rotation_group": "資本財・インフラ"
     },
     "キヤノン（7751）": {
@@ -18723,6 +19164,15 @@
       "sector": "電機・円安",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 4664.0,
+        "high": 4706.0,
+        "low": 4657.0,
+        "close": 4675.0,
+        "vwap": 4678.81,
+        "volume": 1788700
+      },
       "rotation_group": "その他"
     },
     "NEC（6701）": {
@@ -19051,6 +19501,15 @@
       "sector": "AI・DX",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 4898.0,
+        "high": 4968.0,
+        "low": 4878.0,
+        "close": 4905.0,
+        "vwap": 4928.11,
+        "volume": 3912900
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "富士通（6702）": {
@@ -19379,6 +19838,15 @@
       "sector": "AI・DX",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3900.0,
+        "high": 3923.0,
+        "low": 3864.0,
+        "close": 3874.0,
+        "vwap": 3896.62,
+        "volume": 3593000
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "パナソニックHD（6752）": {
@@ -19707,6 +20175,15 @@
       "sector": "電機・電池",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 4376.0,
+        "high": 4492.0,
+        "low": 4363.0,
+        "close": 4486.0,
+        "vwap": 4438.64,
+        "volume": 3902800
+      },
       "rotation_group": "その他"
     },
     "ソニーグループ（6758）": {
@@ -20035,6 +20512,15 @@
       "sector": "ゲーム・半導体",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3982.0,
+        "high": 4041.0,
+        "low": 3937.0,
+        "close": 4029.0,
+        "vwap": 3994.4,
+        "volume": 13114300
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "安川電機（6506）": {
@@ -20363,6 +20849,15 @@
       "sector": "FA・ロボット",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 4680.0,
+        "high": 4774.0,
+        "low": 4618.0,
+        "close": 4766.0,
+        "vwap": 4704.99,
+        "volume": 2909700
+      },
       "rotation_group": "資本財・インフラ"
     },
     "ニデック（6594）": {
@@ -20691,13 +21186,22 @@
       "sector": "電子部品・EV",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 2592.0,
+        "high": 2613.0,
+        "low": 2535.0,
+        "close": 2601.0,
+        "vwap": 2588.42,
+        "volume": 2615200
+      },
       "rotation_group": "自動車・モビリティ"
     },
     "ローム（6963）": {
       "ok": true,
       "price": 4869.0,
       "open": 4650.0,
-      "high": 4885.0,
+      "high": 4886.0,
       "low": 4637.0,
       "prev_close": 4830.0,
       "change_pct": 0.81,
@@ -20706,7 +21210,7 @@
       "ret20": 12.42,
       "rvol": 0.97,
       "turnover": 17584393500,
-      "atr14": 233.57,
+      "atr14": 233.64,
       "atr_pct": 4.8,
       "ma5": 4799.0,
       "ma20": 4770.9,
@@ -21003,7 +21507,7 @@
         },
         {
           "o": 4650.0,
-          "h": 4885.0,
+          "h": 4886.0,
           "l": 4637.0,
           "c": 4869.0,
           "v": 3611500
@@ -21019,6 +21523,15 @@
       "sector": "半導体・AI",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 4650.0,
+        "high": 4886.0,
+        "low": 4637.0,
+        "close": 4870.0,
+        "vwap": 4769.01,
+        "volume": 2233900
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "TDK（6762）": {
@@ -21347,6 +21860,15 @@
       "sector": "電子部品・AI",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3030.0,
+        "high": 3095.0,
+        "low": 3002.0,
+        "close": 3084.0,
+        "vwap": 3052.88,
+        "volume": 4053200
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "京セラ（6971）": {
@@ -21675,6 +22197,15 @@
       "sector": "電子部品・AI",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3574.0,
+        "high": 3662.0,
+        "low": 3573.0,
+        "close": 3658.0,
+        "vwap": 3617.41,
+        "volume": 2024300
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "SCREEN HD（7735）": {
@@ -22003,6 +22534,15 @@
       "sector": "半導体・AI",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 13210.0,
+        "high": 13680.0,
+        "low": 13105.0,
+        "close": 13650.0,
+        "vwap": 13374.5,
+        "volume": 1228700
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "オムロン（6645）": {
@@ -22331,6 +22871,15 @@
       "sector": "FA・ヘルスケア",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 6570.0,
+        "high": 6706.0,
+        "low": 6475.0,
+        "close": 6681.0,
+        "vwap": 6607.62,
+        "volume": 900800
+      },
       "rotation_group": "資本財・インフラ"
     },
     "本田技研工業（7267）": {
@@ -22659,6 +23208,15 @@
       "sector": "自動車・円安",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 1705.0,
+        "high": 1722.0,
+        "low": 1697.0,
+        "close": 1701.5,
+        "vwap": 1709.03,
+        "volume": 8572100
+      },
       "rotation_group": "自動車・モビリティ"
     },
     "デンソー（6902）": {
@@ -22987,6 +23545,15 @@
       "sector": "自動車・半導体",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 1912.5,
+        "high": 1943.5,
+        "low": 1908.0,
+        "close": 1932.0,
+        "vwap": 1926.91,
+        "volume": 5158700
+      },
       "rotation_group": "自動車・モビリティ"
     },
     "JR東日本（9020）": {
@@ -23315,6 +23882,15 @@
       "sector": "内需・鉄道",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3585.0,
+        "high": 3593.0,
+        "low": 3562.0,
+        "close": 3569.0,
+        "vwap": 3577.54,
+        "volume": 1144300
+      },
       "rotation_group": "内需・ディフェンシブ"
     },
     "NTT（9432）": {
@@ -23643,6 +24219,15 @@
       "sector": "通信・データセンター",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 170.0,
+        "high": 173.0,
+        "low": 169.9,
+        "close": 172.6,
+        "vwap": 171.88,
+        "volume": 222965100
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "KDDI（9433）": {
@@ -23971,6 +24556,15 @@
       "sector": "通信・データセンター",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 2922.0,
+        "high": 2965.0,
+        "low": 2913.5,
+        "close": 2956.0,
+        "vwap": 2940.95,
+        "volume": 4553500
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "ソフトバンク（9434）": {
@@ -24299,6 +24893,15 @@
       "sector": "通信・AI",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 237.7,
+        "high": 239.7,
+        "low": 237.3,
+        "close": 238.1,
+        "vwap": 238.5,
+        "volume": 31624900
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "ユアテック（1934）": {
@@ -24627,6 +25230,15 @@
       "sector": "データセンター・電力設備",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 2563.0,
+        "high": 2577.0,
+        "low": 2530.0,
+        "close": 2577.0,
+        "vwap": 2560.1,
+        "volume": 103700
+      },
       "rotation_group": "資本財・インフラ"
     },
     "東北電力（9506）": {
@@ -24955,6 +25567,15 @@
       "sector": "電力・データセンター",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 1306.0,
+        "high": 1327.5,
+        "low": 1300.5,
+        "close": 1326.0,
+        "vwap": 1319.39,
+        "volume": 1845400
+      },
       "rotation_group": "資本財・インフラ"
     },
     "高砂熱学工業（1969）": {
@@ -25283,6 +25904,15 @@
       "sector": "データセンター・冷却",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 4251.0,
+        "high": 4335.0,
+        "low": 4239.0,
+        "close": 4310.0,
+        "vwap": 4291.95,
+        "volume": 264100
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "関電工（1942）": {
@@ -25611,6 +26241,15 @@
       "sector": "データセンター・電気設備",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 5474.0,
+        "high": 5513.0,
+        "low": 5401.0,
+        "close": 5507.0,
+        "vwap": 5471.69,
+        "volume": 354100
+      },
       "rotation_group": "AI・テクノロジー"
     },
     "日鉄鉱業（1515）": {
@@ -25939,6 +26578,15 @@
       "sector": "資源開発・レアアース",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3805.0,
+        "high": 3855.0,
+        "low": 3720.0,
+        "close": 3855.0,
+        "vwap": 3794.88,
+        "volume": 674300
+      },
       "rotation_group": "資源・素材・商社"
     },
     "住友金属鉱山（5713）": {
@@ -26267,6 +26915,15 @@
       "sector": "非鉄・レアメタル",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 11045.0,
+        "high": 11380.0,
+        "low": 11005.0,
+        "close": 11130.0,
+        "vwap": 11171.16,
+        "volume": 2276200
+      },
       "rotation_group": "その他"
     },
     "双日（2768）": {
@@ -26595,6 +27252,15 @@
       "sector": "資源商社・レアアース",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 5590.0,
+        "high": 5611.0,
+        "low": 5512.0,
+        "close": 5599.0,
+        "vwap": 5573.32,
+        "volume": 756900
+      },
       "rotation_group": "資源・素材・商社"
     },
     "DOWA HD（5714）": {
@@ -26923,6 +27589,15 @@
       "sector": "非鉄・資源循環",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 10095.0,
+        "high": 10150.0,
+        "low": 9902.0,
+        "close": 9968.0,
+        "vwap": 10005.63,
+        "volume": 533400
+      },
       "rotation_group": "資源・素材・商社"
     }
   },
@@ -27254,13 +27929,22 @@
       "sector": "サービス・AI",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 17475.0,
+        "high": 18120.0,
+        "low": 17440.0,
+        "close": 18065.0,
+        "vwap": 17895.03,
+        "volume": 2436100
+      },
       "rotation_group": "AI・テクノロジー",
       "plan": {
-        "entry": 17870,
-        "stop": 17480,
-        "target1": 18470,
-        "target2": 18740,
-        "risk": 400,
+        "entry": 17930,
+        "stop": 17600,
+        "target1": 18430,
+        "target2": 18670,
+        "risk": 340,
         "tick": 10
       }
     },
@@ -27591,13 +28275,22 @@
       "sector": "電線・データセンター",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 5240.0,
+        "high": 5525.0,
+        "low": 5123.0,
+        "close": 5522.0,
+        "vwap": 5365.25,
+        "volume": 43699200
+      },
       "rotation_group": "資本財・インフラ",
       "plan": {
         "entry": 5380,
-        "stop": 5150,
-        "target1": 5730,
-        "target2": 5890,
-        "risk": 230,
+        "stop": 5180,
+        "target1": 5670,
+        "target2": 5810,
+        "risk": 200,
         "tick": 10
       }
     },
@@ -27928,13 +28621,22 @@
       "sector": "ゲーム・半導体",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3982.0,
+        "high": 4041.0,
+        "low": 3937.0,
+        "close": 4029.0,
+        "vwap": 3994.4,
+        "volume": 13114300
+      },
       "rotation_group": "AI・テクノロジー",
       "plan": {
-        "entry": 3940,
-        "stop": 3875,
-        "target1": 4040,
-        "target2": 4085,
-        "risk": 65,
+        "entry": 4000,
+        "stop": 3945,
+        "target1": 4085,
+        "target2": 4125,
+        "risk": 55,
         "tick": 5
       }
     },
@@ -28265,13 +28967,22 @@
       "sector": "半導体・AI",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3590.0,
+        "high": 3727.0,
+        "low": 3551.0,
+        "close": 3725.0,
+        "vwap": 3661.75,
+        "volume": 674900
+      },
       "rotation_group": "AI・テクノロジー",
       "plan": {
-        "entry": 3595,
-        "stop": 3495,
-        "target1": 3745,
-        "target2": 3820,
-        "risk": 100,
+        "entry": 3670,
+        "stop": 3585,
+        "target1": 3795,
+        "target2": 3855,
+        "risk": 85,
         "tick": 5
       }
     },
@@ -28602,13 +29313,22 @@
       "sector": "電子材料・AI",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3410.0,
+        "high": 3505.0,
+        "low": 3390.0,
+        "close": 3502.0,
+        "vwap": 3458.12,
+        "volume": 1151000
+      },
       "rotation_group": "AI・テクノロジー",
       "plan": {
-        "entry": 3480,
-        "stop": 3425,
-        "target1": 3560,
-        "target2": 3600,
-        "risk": 55,
+        "entry": 3465,
+        "stop": 3420,
+        "target1": 3535,
+        "target2": 3565,
+        "risk": 45,
         "tick": 5
       }
     }
@@ -30622,13 +31342,22 @@
         "sector": "サービス・AI",
         "style": "both",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 17475.0,
+          "high": 18120.0,
+          "low": 17440.0,
+          "close": 18065.0,
+          "vwap": 17895.03,
+          "volume": 2436100
+        },
         "rotation_group": "AI・テクノロジー",
         "plan": {
-          "entry": 17870,
-          "stop": 17480,
-          "target1": 18470,
-          "target2": 18740,
-          "risk": 400,
+          "entry": 17930,
+          "stop": 17600,
+          "target1": 18430,
+          "target2": 18670,
+          "risk": 340,
           "tick": 10
         }
       },
@@ -30959,13 +31688,22 @@
         "sector": "海運・景気敏感",
         "style": "swing",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 7141.0,
+          "high": 7176.0,
+          "low": 6922.0,
+          "close": 7028.0,
+          "vwap": 6987.45,
+          "volume": 2309100
+        },
         "rotation_group": "資源・素材・商社",
         "plan": {
-          "entry": 7060,
-          "stop": 6930,
-          "target1": 7260,
-          "target2": 7350,
-          "risk": 130,
+          "entry": 7000,
+          "stop": 6890,
+          "target1": 7170,
+          "target2": 7240,
+          "risk": 110,
           "tick": 10
         }
       },
@@ -31296,13 +32034,22 @@
         "sector": "資源・原油",
         "style": "swing",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 3928.0,
+          "high": 3978.0,
+          "low": 3898.0,
+          "close": 3965.0,
+          "vwap": 3946.34,
+          "volume": 2957800
+        },
         "rotation_group": "資源・素材・商社",
         "plan": {
-          "entry": 3890,
-          "stop": 3825,
-          "target1": 3985,
-          "target2": 4030,
-          "risk": 65,
+          "entry": 3955,
+          "stop": 3900,
+          "target1": 4035,
+          "target2": 4075,
+          "risk": 55,
           "tick": 5
         }
       },
@@ -31633,13 +32380,22 @@
         "sector": "ゲーム・半導体",
         "style": "both",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 3982.0,
+          "high": 4041.0,
+          "low": 3937.0,
+          "close": 4029.0,
+          "vwap": 3994.4,
+          "volume": 13114300
+        },
         "rotation_group": "AI・テクノロジー",
         "plan": {
-          "entry": 3940,
-          "stop": 3875,
-          "target1": 4040,
-          "target2": 4085,
-          "risk": 65,
+          "entry": 4000,
+          "stop": 3945,
+          "target1": 4085,
+          "target2": 4125,
+          "risk": 55,
           "tick": 5
         }
       },
@@ -31970,13 +32726,22 @@
         "sector": "機械・景気敏感",
         "style": "both",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 7497.0,
+          "high": 7550.0,
+          "low": 7406.0,
+          "close": 7468.0,
+          "vwap": 7498.25,
+          "volume": 1235600
+        },
         "rotation_group": "資本財・インフラ",
         "plan": {
-          "entry": 7460,
-          "stop": 7340,
-          "target1": 7640,
-          "target2": 7730,
-          "risk": 120,
+          "entry": 7470,
+          "stop": 7370,
+          "target1": 7620,
+          "target2": 7690,
+          "risk": 100,
           "tick": 10
         }
       }
@@ -32309,13 +33074,22 @@
         "sector": "サービス・AI",
         "style": "both",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 17475.0,
+          "high": 18120.0,
+          "low": 17440.0,
+          "close": 18065.0,
+          "vwap": 17895.03,
+          "volume": 2436100
+        },
         "rotation_group": "AI・テクノロジー",
         "plan": {
-          "entry": 17870,
-          "stop": 17480,
-          "target1": 18470,
-          "target2": 18740,
-          "risk": 400,
+          "entry": 17930,
+          "stop": 17600,
+          "target1": 18430,
+          "target2": 18670,
+          "risk": 340,
           "tick": 10
         }
       },
@@ -32646,13 +33420,22 @@
         "sector": "電線・データセンター",
         "style": "both",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 5240.0,
+          "high": 5525.0,
+          "low": 5123.0,
+          "close": 5522.0,
+          "vwap": 5365.25,
+          "volume": 43699200
+        },
         "rotation_group": "資本財・インフラ",
         "plan": {
           "entry": 5380,
-          "stop": 5150,
-          "target1": 5730,
-          "target2": 5890,
-          "risk": 230,
+          "stop": 5180,
+          "target1": 5670,
+          "target2": 5810,
+          "risk": 200,
           "tick": 10
         }
       },
@@ -32983,13 +33766,22 @@
         "sector": "ゲーム・半導体",
         "style": "both",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 3982.0,
+          "high": 4041.0,
+          "low": 3937.0,
+          "close": 4029.0,
+          "vwap": 3994.4,
+          "volume": 13114300
+        },
         "rotation_group": "AI・テクノロジー",
         "plan": {
-          "entry": 3940,
-          "stop": 3875,
-          "target1": 4040,
-          "target2": 4085,
-          "risk": 65,
+          "entry": 4000,
+          "stop": 3945,
+          "target1": 4085,
+          "target2": 4125,
+          "risk": 55,
           "tick": 5
         }
       },
@@ -33320,13 +34112,22 @@
         "sector": "資源・原油",
         "style": "swing",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 3928.0,
+          "high": 3978.0,
+          "low": 3898.0,
+          "close": 3965.0,
+          "vwap": 3946.34,
+          "volume": 2957800
+        },
         "rotation_group": "資源・素材・商社",
         "plan": {
-          "entry": 3890,
-          "stop": 3825,
-          "target1": 3985,
-          "target2": 4030,
-          "risk": 65,
+          "entry": 3955,
+          "stop": 3900,
+          "target1": 4035,
+          "target2": 4075,
+          "risk": 55,
           "tick": 5
         }
       },
@@ -33657,13 +34458,22 @@
         "sector": "電力・データセンター",
         "style": "swing",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 1306.0,
+          "high": 1327.5,
+          "low": 1300.5,
+          "close": 1326.0,
+          "vwap": 1319.39,
+          "volume": 1845400
+        },
         "rotation_group": "資本財・インフラ",
         "plan": {
-          "entry": 1307,
-          "stop": 1288,
-          "target1": 1335,
-          "target2": 1349,
-          "risk": 19,
+          "entry": 1322,
+          "stop": 1306,
+          "target1": 1346,
+          "target2": 1357,
+          "risk": 16,
           "tick": 1
         }
       }
@@ -33996,13 +34806,22 @@
         "sector": "サービス・AI",
         "style": "both",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 17475.0,
+          "high": 18120.0,
+          "low": 17440.0,
+          "close": 18065.0,
+          "vwap": 17895.03,
+          "volume": 2436100
+        },
         "rotation_group": "AI・テクノロジー",
         "plan": {
-          "entry": 17870,
-          "stop": 17480,
-          "target1": 18470,
-          "target2": 18740,
-          "risk": 400,
+          "entry": 17930,
+          "stop": 17600,
+          "target1": 18430,
+          "target2": 18670,
+          "risk": 340,
           "tick": 10
         }
       },
@@ -34333,13 +35152,22 @@
         "sector": "保険・金利",
         "style": "swing",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 5114.0,
+          "high": 5124.0,
+          "low": 5060.0,
+          "close": 5105.0,
+          "vwap": 5095.37,
+          "volume": 2095800
+        },
         "rotation_group": "金融",
         "plan": {
-          "entry": 5120,
+          "entry": 5100,
           "stop": 5040,
-          "target1": 5240,
-          "target2": 5290,
-          "risk": 80,
+          "target1": 5200,
+          "target2": 5250,
+          "risk": 60,
           "tick": 10
         }
       },
@@ -34670,13 +35498,22 @@
         "sector": "自動車・円安",
         "style": "swing",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 1705.0,
+          "high": 1722.0,
+          "low": 1697.0,
+          "close": 1701.5,
+          "vwap": 1709.03,
+          "volume": 8572100
+        },
         "rotation_group": "自動車・モビリティ",
         "plan": {
-          "entry": 1708,
-          "stop": 1677,
-          "target1": 1755,
-          "target2": 1777,
-          "risk": 31,
+          "entry": 1702,
+          "stop": 1675,
+          "target1": 1741,
+          "target2": 1760,
+          "risk": 27,
           "tick": 1
         }
       },
@@ -35007,13 +35844,22 @@
         "sector": "電力・データセンター",
         "style": "swing",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 1306.0,
+          "high": 1327.5,
+          "low": 1300.5,
+          "close": 1326.0,
+          "vwap": 1319.39,
+          "volume": 1845400
+        },
         "rotation_group": "資本財・インフラ",
         "plan": {
-          "entry": 1307,
-          "stop": 1288,
-          "target1": 1335,
-          "target2": 1349,
-          "risk": 19,
+          "entry": 1322,
+          "stop": 1306,
+          "target1": 1346,
+          "target2": 1357,
+          "risk": 16,
           "tick": 1
         }
       },
@@ -35344,13 +36190,22 @@
         "sector": "AI・DX",
         "style": "both",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 2450.0,
+          "high": 2451.0,
+          "low": 2448.0,
+          "close": 2451.0,
+          "vwap": 2450.04,
+          "volume": 424300
+        },
         "rotation_group": "AI・テクノロジー",
         "plan": {
           "entry": 2451,
-          "stop": 2439,
-          "target1": 2470,
-          "target2": 2479,
-          "risk": 13,
+          "stop": 2430,
+          "target1": 2482,
+          "target2": 2496,
+          "risk": 21,
           "tick": 1
         }
       }
@@ -35683,13 +36538,22 @@
         "sector": "サービス・AI",
         "style": "both",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 17475.0,
+          "high": 18120.0,
+          "low": 17440.0,
+          "close": 18065.0,
+          "vwap": 17895.03,
+          "volume": 2436100
+        },
         "rotation_group": "AI・テクノロジー",
         "plan": {
-          "entry": 17870,
-          "stop": 17480,
-          "target1": 18470,
-          "target2": 18740,
-          "risk": 400,
+          "entry": 17930,
+          "stop": 17600,
+          "target1": 18430,
+          "target2": 18670,
+          "risk": 340,
           "tick": 10
         }
       },
@@ -36020,13 +36884,22 @@
         "sector": "MaaS・成長株",
         "style": "both",
         "day_bucket": null,
+        "intraday": {
+          "ok": true,
+          "open": 4450.0,
+          "high": 4580.0,
+          "low": 4310.0,
+          "close": 4345.0,
+          "vwap": 4442.83,
+          "volume": 3613200
+        },
         "rotation_group": "自動車・モビリティ",
         "plan": {
-          "entry": 4365,
-          "stop": 4200,
-          "target1": 4610,
-          "target2": 4725,
-          "risk": 165,
+          "entry": 4345,
+          "stop": 4205,
+          "target1": 4550,
+          "target2": 4650,
+          "risk": 140,
           "tick": 5
         }
       }
@@ -36458,11 +37331,11 @@
         "phase": "流入初期",
         "score": 83,
         "plan": {
-          "entry": 17870,
-          "stop": 17480,
-          "target1": 18470,
-          "target2": 18740,
-          "risk": 400,
+          "entry": 17930,
+          "stop": 17600,
+          "target1": 18430,
+          "target2": 18670,
+          "risk": 340,
           "tick": 10
         },
         "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +0.03%／出来高比 1.41倍"
@@ -36473,11 +37346,11 @@
         "phase": "流入初期",
         "score": 82,
         "plan": {
-          "entry": 3670,
+          "entry": 3655,
           "stop": 3610,
-          "target1": 3755,
-          "target2": 3795,
-          "risk": 55,
+          "target1": 3725,
+          "target2": 3760,
+          "risk": 50,
           "tick": 5
         },
         "reason": "金融が流入初期／TOPIX比5日 +2.98%／出来高比 1.08倍"
@@ -36488,11 +37361,11 @@
         "phase": "流入初期",
         "score": 82,
         "plan": {
-          "entry": 6920,
-          "stop": 6820,
+          "entry": 6940,
+          "stop": 6850,
           "target1": 7070,
-          "target2": 7140,
-          "risk": 100,
+          "target2": 7130,
+          "risk": 80,
           "tick": 10
         },
         "reason": "金融が流入初期／TOPIX比5日 +2.98%／出来高比 1.16倍"
@@ -36504,10 +37377,10 @@
         "score": 81,
         "plan": {
           "entry": 5380,
-          "stop": 5150,
-          "target1": 5730,
-          "target2": 5890,
-          "risk": 230,
+          "stop": 5180,
+          "target1": 5670,
+          "target2": 5810,
+          "risk": 200,
           "tick": 10
         },
         "reason": "資本財・インフラが流入初期／TOPIX比5日 +0.05%／出来高比 0.74倍"
@@ -36518,11 +37391,11 @@
         "phase": "流入初期",
         "score": 81,
         "plan": {
-          "entry": 3940,
-          "stop": 3745,
-          "target1": 4230,
-          "target2": 4365,
-          "risk": 195,
+          "entry": 3915,
+          "stop": 3750,
+          "target1": 4165,
+          "target2": 4280,
+          "risk": 165,
           "tick": 5
         },
         "reason": "資本財・インフラが流入初期／TOPIX比5日 +0.05%／出来高比 0.65倍"
@@ -36533,11 +37406,11 @@
         "phase": "流入初期",
         "score": 79,
         "plan": {
-          "entry": 3595,
-          "stop": 3495,
-          "target1": 3745,
-          "target2": 3820,
-          "risk": 100,
+          "entry": 3670,
+          "stop": 3585,
+          "target1": 3795,
+          "target2": 3855,
+          "risk": 85,
           "tick": 5
         },
         "reason": "AI・テクノロジーが流入初期／TOPIX比5日 +0.03%／出来高比 1.00倍"
@@ -36548,11 +37421,11 @@
         "phase": "流入初期",
         "score": 79,
         "plan": {
-          "entry": 5120,
+          "entry": 5100,
           "stop": 5040,
-          "target1": 5240,
-          "target2": 5290,
-          "risk": 80,
+          "target1": 5200,
+          "target2": 5250,
+          "risk": 60,
           "tick": 10
         },
         "reason": "金融が流入初期／TOPIX比5日 +2.98%／出来高比 1.24倍"
@@ -36896,13 +37769,22 @@
       "sector": "商社・資源",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 4746.0,
+        "high": 4822.0,
+        "low": 4721.0,
+        "close": 4806.0,
+        "vwap": 4779.76,
+        "volume": 3167900
+      },
       "rotation_group": "資源・素材・商社",
       "plan": {
-        "entry": 4795,
+        "entry": 4790,
         "stop": 4735,
-        "target1": 4890,
-        "target2": 4935,
-        "risk": 60,
+        "target1": 4870,
+        "target2": 4905,
+        "risk": 55,
         "tick": 5
       }
     },
@@ -37233,13 +38115,22 @@
       "sector": "AI・DX",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 2450.0,
+        "high": 2451.0,
+        "low": 2448.0,
+        "close": 2451.0,
+        "vwap": 2450.04,
+        "volume": 424300
+      },
       "rotation_group": "AI・テクノロジー",
       "plan": {
         "entry": 2451,
-        "stop": 2439,
-        "target1": 2470,
-        "target2": 2479,
-        "risk": 13,
+        "stop": 2430,
+        "target1": 2482,
+        "target2": 2496,
+        "risk": 21,
         "tick": 1
       }
     },
@@ -37570,13 +38461,22 @@
       "sector": "銀行・金利",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3640.0,
+        "high": 3682.0,
+        "low": 3585.0,
+        "close": 3677.0,
+        "vwap": 3648.13,
+        "volume": 25299200
+      },
       "rotation_group": "金融",
       "plan": {
-        "entry": 3670,
+        "entry": 3655,
         "stop": 3610,
-        "target1": 3755,
-        "target2": 3795,
-        "risk": 55,
+        "target1": 3725,
+        "target2": 3760,
+        "risk": 50,
         "tick": 5
       }
     },
@@ -37907,13 +38807,22 @@
       "sector": "自動車・円安",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3120.0,
+        "high": 3188.0,
+        "low": 3116.0,
+        "close": 3164.0,
+        "vwap": 3165.87,
+        "volume": 18089200
+      },
       "rotation_group": "自動車・モビリティ",
       "plan": {
-        "entry": 3125,
-        "stop": 3080,
-        "target1": 3185,
-        "target2": 3215,
-        "risk": 40,
+        "entry": 3165,
+        "stop": 3130,
+        "target1": 3215,
+        "target2": 3240,
+        "risk": 35,
         "tick": 5
       }
     },
@@ -38244,13 +39153,22 @@
       "sector": "AI・DX",
       "style": "both",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 3900.0,
+        "high": 3923.0,
+        "low": 3864.0,
+        "close": 3874.0,
+        "vwap": 3896.62,
+        "volume": 3593000
+      },
       "rotation_group": "AI・テクノロジー",
       "plan": {
-        "entry": 3885,
+        "entry": 3875,
         "stop": 3810,
-        "target1": 3995,
-        "target2": 4045,
-        "risk": 75,
+        "target1": 3965,
+        "target2": 4010,
+        "risk": 60,
         "tick": 5
       }
     },
@@ -38581,13 +39499,22 @@
       "sector": "電機・円安",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 4664.0,
+        "high": 4706.0,
+        "low": 4657.0,
+        "close": 4675.0,
+        "vwap": 4678.81,
+        "volume": 1788700
+      },
       "rotation_group": "その他",
       "plan": {
-        "entry": 4685,
-        "stop": 4640,
-        "target1": 4750,
-        "target2": 4785,
-        "risk": 45,
+        "entry": 4675,
+        "stop": 4635,
+        "target1": 4730,
+        "target2": 4760,
+        "risk": 40,
         "tick": 5
       }
     },
@@ -38918,13 +39845,22 @@
       "sector": "通信・データセンター",
       "style": "swing",
       "day_bucket": null,
+      "intraday": {
+        "ok": true,
+        "open": 2922.0,
+        "high": 2965.0,
+        "low": 2913.5,
+        "close": 2956.0,
+        "vwap": 2940.95,
+        "volume": 4553500
+      },
       "rotation_group": "AI・テクノロジー",
       "plan": {
-        "entry": 2929,
-        "stop": 2892,
-        "target1": 2984,
-        "target2": 3010,
-        "risk": 37,
+        "entry": 2947,
+        "stop": 2916,
+        "target1": 2993,
+        "target2": 3015,
+        "risk": 31,
         "tick": 1
       }
     }
@@ -39006,72 +39942,172 @@
       }
     ]
   },
-  "morning_reviews": [],
-  "morning_snapshot_fixed": {
-    "date": "2026-08-31",
-    "fixed_at": "2026-08-31 19:35:59 JST",
-    "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
-    "candidates": [
-      {
-        "name": "ソニーグループ（6758）",
-        "ticker": "6758.T",
-        "side": "LONG",
-        "score": 79.0,
+  "morning_reviews": [
+    {
+      "name": "ソニーグループ（6758）",
+      "plan": {
         "entry": 4045,
         "entry_limit": 4055,
         "stop": 3960,
         "target1": 4200,
-        "target2": 4265,
-        "morning_price": 4055
+        "target2": 4265
       },
-      {
-        "name": "富士通（6702）",
-        "ticker": "6702.T",
-        "side": "LONG",
-        "score": 72.0,
+      "result": "未約定",
+      "detail": "安値3,937／高値4,041"
+    },
+    {
+      "name": "富士通（6702）",
+      "plan": {
         "entry": 3930,
         "entry_limit": 3940,
         "stop": 3855,
         "target1": 4070,
-        "target2": 4125,
-        "morning_price": 3940
+        "target2": 4125
       },
-      {
-        "name": "日東電工（6988）",
-        "ticker": "6988.T",
-        "side": "LONG",
-        "score": 72.0,
+      "result": "未約定",
+      "detail": "安値3,864／高値3,923"
+    },
+    {
+      "name": "日東電工（6988）",
+      "plan": {
         "entry": 3515,
         "entry_limit": 3525,
         "stop": 3445,
         "target1": 3645,
-        "target2": 3700,
-        "morning_price": 3525
+        "target2": 3700
       },
-      {
-        "name": "任天堂（7974）",
-        "ticker": "7974.T",
-        "side": "LONG",
-        "score": 70.0,
+      "result": "未約定",
+      "detail": "安値3,390／高値3,505"
+    },
+    {
+      "name": "任天堂（7974）",
+      "plan": {
         "entry": 9050,
         "entry_limit": 9070,
         "stop": 8850,
         "target1": 9400,
-        "target2": 9550,
-        "morning_price": 9070
+        "target2": 9550
       },
-      {
-        "name": "マクニカHD（3132）",
-        "ticker": "3132.T",
-        "side": "LONG",
-        "score": 69.0,
+      "result": "未約定",
+      "detail": "安値8,877／高値9,029"
+    },
+    {
+      "name": "マクニカHD（3132）",
+      "plan": {
         "entry": 3730,
         "entry_limit": 3740,
         "stop": 3600,
         "target1": 3950,
-        "target2": 4050,
-        "morning_price": 3740
-      }
-    ]
+        "target2": 4050
+      },
+      "result": "未約定",
+      "detail": "安値3,551／高値3,727"
+    }
+  ],
+  "paper_trade_reviews": [
+    {
+      "name": "ソニーグループ（6758）",
+      "ticker": "6758.T",
+      "side": "LONG",
+      "score": 79.0,
+      "entry": 4045.0,
+      "entry_limit": 4055.0,
+      "stop": 3960,
+      "target1": 4200,
+      "target2": 4265,
+      "morning_price": 4055,
+      "triggered": false,
+      "result": "未発動（見送り）",
+      "close": 4029.0,
+      "vwap": 3994.4,
+      "pnl_yen": null,
+      "r": null,
+      "shares": 100
+    },
+    {
+      "name": "富士通（6702）",
+      "ticker": "6702.T",
+      "side": "LONG",
+      "score": 72.0,
+      "entry": 3930.0,
+      "entry_limit": 3940.0,
+      "stop": 3855,
+      "target1": 4070,
+      "target2": 4125,
+      "morning_price": 3940,
+      "triggered": false,
+      "result": "未発動（見送り）",
+      "close": 3874.0,
+      "vwap": 3896.62,
+      "pnl_yen": null,
+      "r": null,
+      "shares": 100
+    },
+    {
+      "name": "日東電工（6988）",
+      "ticker": "6988.T",
+      "side": "LONG",
+      "score": 72.0,
+      "entry": 3515.0,
+      "entry_limit": 3525.0,
+      "stop": 3445,
+      "target1": 3645,
+      "target2": 3700,
+      "morning_price": 3525,
+      "triggered": false,
+      "result": "未発動（見送り）",
+      "close": 3502.0,
+      "vwap": 3458.12,
+      "pnl_yen": null,
+      "r": null,
+      "shares": 100
+    },
+    {
+      "name": "任天堂（7974）",
+      "ticker": "7974.T",
+      "side": "LONG",
+      "score": 70.0,
+      "entry": 9050.0,
+      "entry_limit": 9070.0,
+      "stop": 8850,
+      "target1": 9400,
+      "target2": 9550,
+      "morning_price": 9070,
+      "triggered": false,
+      "result": "未発動（見送り）",
+      "close": 9028.0,
+      "vwap": 8959.07,
+      "pnl_yen": null,
+      "r": null,
+      "shares": 100
+    },
+    {
+      "name": "マクニカHD（3132）",
+      "ticker": "3132.T",
+      "side": "LONG",
+      "score": 69.0,
+      "entry": 3730.0,
+      "entry_limit": 3740.0,
+      "stop": 3600,
+      "target1": 3950,
+      "target2": 4050,
+      "morning_price": 3740,
+      "triggered": false,
+      "result": "未発動（見送り）",
+      "close": 3725.0,
+      "vwap": 3661.75,
+      "pnl_yen": null,
+      "r": null,
+      "shares": 100
+    }
+  ],
+  "paper_trade_stats": {
+    "count": 27,
+    "wins": 9,
+    "win_rate": 33.3,
+    "pf": 0.75,
+    "avg_r": -0.09,
+    "pnl": -12930,
+    "decision": "検証継続・実弾見送り"
   }
 }
