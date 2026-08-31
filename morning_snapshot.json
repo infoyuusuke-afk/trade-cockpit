@@ -1,67 +1,67 @@
 {
-  "date": "2026-08-31",
-  "fixed_at": "2026-08-31 23:21:59 JST",
+  "date": "2026-09-01",
+  "fixed_at": "2026-09-01 07:55:18 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
+    {
+      "name": "アイサンテクノロジー（4667）",
+      "ticker": "4667.T",
+      "side": "LONG",
+      "score": 100.0,
+      "entry": 2701,
+      "entry_limit": 2703,
+      "stop": 2592,
+      "target1": 2870,
+      "target2": 2947,
+      "morning_price": 2703
+    },
     {
       "name": "GO（581A）",
       "ticker": "581A.T",
       "side": "LONG",
-      "score": 95.0,
-      "entry": 4585,
-      "entry_limit": 4595,
-      "stop": 4370,
-      "target1": 4930,
-      "target2": 5090,
-      "morning_price": 4595
+      "score": 100.0,
+      "entry": 4495,
+      "entry_limit": 4505,
+      "stop": 4275,
+      "target1": 4850,
+      "target2": 5010,
+      "morning_price": 4505
     },
     {
-      "name": "Terra Drone（278A）",
-      "ticker": "278A.T",
+      "name": "HENNGE（4475）",
+      "ticker": "4475.T",
       "side": "LONG",
-      "score": 87.0,
-      "entry": 22300,
-      "entry_limit": 22320,
-      "stop": 20810,
-      "target1": 24580,
-      "target2": 25640,
-      "morning_price": 22320
+      "score": 100.0,
+      "entry": 1791,
+      "entry_limit": 1793,
+      "stop": 1722,
+      "target1": 1900,
+      "target2": 1949,
+      "morning_price": 1793
     },
     {
       "name": "サイバーセキュリティクラウド（4493）",
       "ticker": "4493.T",
       "side": "LONG",
-      "score": 89.0,
-      "entry": 2049,
-      "entry_limit": 2051,
-      "stop": 1976,
-      "target1": 2164,
-      "target2": 2216,
-      "morning_price": 2051
+      "score": 100.0,
+      "entry": 2039,
+      "entry_limit": 2041,
+      "stop": 1970,
+      "target1": 2148,
+      "target2": 2197,
+      "morning_price": 2041
     },
     {
-      "name": "チャットプラス（598A）",
-      "ticker": "598A.T",
+      "name": "マネーフォワード（3994）",
+      "ticker": "3994.T",
       "side": "LONG",
-      "score": 88.0,
-      "entry": 1859,
-      "entry_limit": 1861,
-      "stop": 1762,
-      "target1": 2010,
-      "target2": 2079,
-      "morning_price": 1861
-    },
-    {
-      "name": "Sansan（4443）",
-      "ticker": "4443.T",
-      "side": "LONG",
-      "score": 87.0,
-      "entry": 2356,
-      "entry_limit": 2358,
-      "stop": 2272,
-      "target1": 2487,
-      "target2": 2547,
-      "morning_price": 2358
+      "score": 100.0,
+      "entry": 7060,
+      "entry_limit": 7080,
+      "stop": 6710,
+      "target1": 7640,
+      "target2": 7890,
+      "morning_price": 7080
     }
   ]
 }
