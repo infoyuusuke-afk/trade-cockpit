@@ -125,10 +125,13 @@ def tabs_block() -> str:
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
  <button class="cockpit-tab active" data-tab="daytrade">当日デイトレ</button>
+ <button class="cockpit-tab" data-tab="wick">下ヒゲ反転</button>
  <button class="cockpit-tab" data-tab="expansion">エクスパンション</button>
  <button class="cockpit-tab" data-tab="swing">短期スイング</button>
  <button class="cockpit-tab" data-tab="accumulation">大口仕込み</button>
  <button class="cockpit-tab" data-tab="longterm">長期反転</button>
+ <button class="cockpit-tab" data-tab="dividend">配当権利前</button>
+ <button class="cockpit-tab" data-tab="buyback">自社株買い</button>
  <button class="cockpit-tab" data-tab="policy">国策テーマ</button>
  <button class="cockpit-tab" data-tab="market">市場・検証</button>
  <button class="cockpit-tab" data-tab="weekly">週間レビュー</button>
@@ -136,20 +139,23 @@ def tabs_block() -> str:
 <script>
 document.addEventListener("DOMContentLoaded",()=>{{
  const main=document.querySelector("main"); if(!main)return;
- const panes={{}}; ["daytrade","expansion","swing","accumulation","longterm","policy","market","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="daytrade"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
+ const panes={{}}; ["daytrade","wick","expansion","swing","accumulation","longterm","dividend","buyback","policy","market","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="daytrade"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
  [...main.querySelectorAll(":scope > section")].forEach(s=>{{
    const t=(s.querySelector("h2")?.textContent||"").trim();
    let k="market";
    if(s.id==="action-dashboard"||s.id==="day-ifo-orders"||t.startsWith("③ ")||t.includes("IN点灯")||t.includes("準備点灯"))k="daytrade";
+   else if(s.id==="lower-wick-reversal"||t.includes("下ヒゲ吸収反転"))k="wick";
    else if(t.includes("BB上方エクスパンション")||t.includes("短期急騰期待")||t.includes("テーマ仕手化兆候"))k="expansion";
    else if(s.id==="weekly-review"||t.includes("週間振り返り"))k="weekly";
    else if(s.id==="large-lot-accumulation"||t.includes("大口買い集め"))k="accumulation";
-   else if(t.includes("月足・週足反転")||t.includes("50週線")||t.includes("200日線")||t.includes("セリングクライマックス")||t.includes("自社株買い"))k="longterm";
+   else if(s.id==="dividend-rights-watch")k="dividend";
+   else if(s.id==="buyback-watch")k="buyback";
+   else if(t.includes("月足・週足反転")||t.includes("50週線")||t.includes("200日線"))k="longterm";
    else if(t.includes("秋田AI")||t.includes("群馬・茂倉沢")||t.includes("シリコンフォトニクス")||t.includes("当日資金流入テーマ")||s.id==="sector-rotation")k="policy";
    else if(t.includes("安定上昇")||t.includes("52週新高値")||t.includes("過熱監視")||t.includes("持ち越し")||t.includes("AIスイング"))k="swing";
    panes[k].appendChild(s);
  }});
- const intros={{daytrade:["当日デイトレ","需給改善済みの最大5銘柄。実戦対象は上位1～3銘柄。"],expansion:["当日エクスパンション","BB収縮から出来高を伴う拡大が期待できる銘柄。"],swing:["短期スイング","信用需給を主軸に、押し目・新高値・持ち越しを選別。"],accumulation:["大口仕込み","出来高・OBV・安値切上げから吸収と蓄積を監視。"],longterm:["長期右肩上がり・反転","50週線・200日線・月週足反転と需給改善が重なる銘柄。"],policy:["国策監視テーマ","防衛・宇宙・原子力・GX・AI半導体・先端素材を需給付きで監視。"],market:["市場・検証","地合い、警報、答え合わせ、決算リスクを確認。"],weekly:["週間レビュー","週末検証と翌週の改善ルール。"]}};
+ const intros={{daytrade:["当日デイトレ","需給改善済みの最大5銘柄。実戦対象は上位1～3銘柄。"],wick:["最優先・下ヒゲ吸収反転","売り吸収→終値回復→次足上抜けの順で発動。"],expansion:["当日エクスパンション","BB収縮から出来高を伴う拡大が期待できる銘柄。"],swing:["短期スイング","信用需給を主軸に、押し目・新高値・持ち越しを選別。"],accumulation:["大口仕込み","出来高・OBV・安値切上げから吸収と蓄積を監視。"],longterm:["長期右肩上がり・反転","50週線・200日線・月週足反転と需給改善が重なる銘柄。"],dividend:["配当権利前・上下期待","権利前上昇と権利落ち下落を需給付きで監視。"],buyback:["自社株買い監視","実施期間・残り余力・出来高影響と需給改善を確認。"],policy:["国策監視テーマ","防衛・宇宙・原子力・GX・AI半導体・先端素材を需給付きで監視。"],market:["市場・検証","地合い、警報、答え合わせ、決算リスクを確認。"],weekly:["週間レビュー","週末検証と翌週の改善ルール。"]}};
  Object.entries(intros).forEach(([k,v])=>{{const h=document.createElement("div");h.className="pane-intro";h.innerHTML=`<span>SUPPLY IMPROVEMENT REQUIRED</span><h2>${{v[0]}}</h2><p>${{v[1]}}</p>`;panes[k].prepend(h);}});
  document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{{
    document.querySelectorAll(".cockpit-tab").forEach(x=>x.classList.toggle("active",x===b));
