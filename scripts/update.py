@@ -170,12 +170,25 @@ def daily_snapshot(ticker):
             + (10 if ma20 > old_ma20 else 0)
             + (15 if to_high20 >= -3 else 8 if to_high20 >= -8 else 0)
         )
+        supply_frame = df.tail(20)
+        direction = supply_frame["Close"].diff().fillna(0)
+        up_volume = float(supply_frame.loc[direction > 0, "Volume"].sum())
+        down_volume = float(supply_frame.loc[direction < 0, "Volume"].sum())
+        volume_ratio = up_volume / down_volume if down_volume else 2.0
+        obv_impulse = float((direction.apply(lambda x: 1 if x > 0 else -1 if x < 0 else 0) * supply_frame["Volume"]).sum())
+        volume_total = max(float(supply_frame["Volume"].sum()), 1)
+        higher_lows = float(supply_frame["Low"].tail(5).mean()) > float(supply_frame["Low"].iloc[-10:-5].mean())
+        close_location = (close - low) / max(high - low, .01)
+        market_supply_score = round(min(max(
+            35 + min(volume_ratio, 2.5) * 15
+            + max(min(obv_impulse / volume_total, .35), -.35) * 55
+            + (12 if higher_lows else 0) + close_location * 8, 0), 100))
         chart = [
             {
                 "o": round(float(r["Open"]), 2),
                 "h": round(float(r["High"]), 2),
                 "l": round(float(r["Low"]), 2),
-                "c": round(float(r["Close"]), 2),
+                "c": round(float(r["Close"]), 2), "v": round(float(r["Volume"])),
             }
             for _, r in df.tail(40).iterrows()
         ]
@@ -199,7 +212,10 @@ def daily_snapshot(ticker):
             "day_score": round(day_score, 2), "swing_score": round(swing_score, 2),
             "stable_score": round(stable_score, 2),
             "momentum_score": round(momentum_score, 2),
-            "high_score": round(high_score, 2), "chart": chart
+            "high_score": round(high_score, 2), "chart": chart,
+            "market_supply_score": market_supply_score,
+            "market_supply_improved": market_supply_score >= 60,
+            "market_supply_status": f"市場需給{market_supply_score}点／上昇日出来高÷下落日{volume_ratio:.2f}倍／安値切上げ{'○' if higher_lows else '×'}"
         }
     except Exception as e:
         return {"ok": False, "error": type(e).__name__}
@@ -903,8 +919,11 @@ def build_day_ifo_candidates(valid, rotation, official_earnings, now, credit_sup
                 f"倍率{credit_ratio:.2f}倍／機関空売り{short_change:+.1f}%"
             )
         else:
-            supply_score = 40
-            supply_status = "信用需給未取得・8:55に板／規制／日計り可否を手動確認"
+            supply_score = float(row.get("market_supply_score") or 0)
+            supply_known = bool(row.get("market_supply_improved"))
+            supply_status = row.get("market_supply_status") or "需給改善未確認"
+        if not supply_known:
+            continue
         focus_bonus = 12 if bucket else 0
         score = (
             technical * .18
@@ -1290,13 +1309,13 @@ def main():
     gunma_rare_earth_watch = gunma_rare_earth_watch[:5]
     rotation = build_sector_rotation(indices, valid)
     day_rank = sorted(
-        [(n, r) for n, r in valid if r["style"] in ("day", "both") and r["turnover"] >= 2_000_000_000],
+        [(n, r) for n, r in valid if r["style"] in ("day", "both") and r["turnover"] >= 2_000_000_000 and r.get("market_supply_improved")],
         key=lambda x: x[1]["day_score"], reverse=True
-    )[:7]
+    )[:5]
     swing_pool = [
         (n, r) for n, r in valid
         if r["style"] in ("swing", "both") and 500 <= r["price"] <= 30000
-        and r["turnover"] >= 500_000_000
+        and r["turnover"] >= 500_000_000 and r.get("market_supply_improved")
     ]
     stable_rank = sorted(
         [(n, r) for n, r in swing_pool
@@ -1574,7 +1593,7 @@ def main():
         day_rows += (
             f"<tr><td>{i}</td><td>{name}</td><td>{money(r['price'])}</td><td>{money(p['entry'])}</td>"
             f"<td>{money(p['stop'])}</td><td>{money(p['target1'])}／{money(p['target2'])}</td>"
-            f"<td>{trigger}<br><small>{shares}株・最大損失 約{max_loss:,.0f}円</small></td></tr>"
+            f"<td>{trigger}<br><small>{r.get('market_supply_status', '需給未確認')}／{shares}株・最大損失 約{max_loss:,.0f}円</small></td></tr>"
         )
     def swing_rows(rank, kind):
         rows = ""
@@ -1600,7 +1619,7 @@ def main():
                 f"<td>{pct(r['ret5'])}</td><td>{pct(r['ret20'])}</td>"
                 f"<td>{pct(r['to_high52'])}</td><td>{r['rvol']:.2f}倍</td>"
                 f"<td>{money(p['entry'])}</td><td>{money(p['stop'])}</td>"
-                f"<td>{money(p['target2'])}</td><td>{action}</td></tr>"
+                f"<td>{money(p['target2'])}</td><td>{action}<br><small>{r.get('market_supply_status', '需給未確認')}</small></td></tr>"
             )
         return rows or "<tr><td colspan='11'>本日の条件合格銘柄なし。無理に選定しません。</td></tr>"
 
@@ -1630,7 +1649,7 @@ def main():
             f"<tr><td>{i}</td><td>{name}</td><td><b class='up'>{r['bb_expansion_score']:.0f}/100</b></td>"
             f"<td>{money(r['price'])}</td><td>{r['bb_width']:.2f}%</td>"
             f"<td>{r['bb_width_change']:+.2f}pt</td><td>{r['bb_percentile']:.0f}%</td>"
-            f"<td>{r['rvol']:.2f}倍</td><td>{money(p['entry'])}</td><td>{money(p['stop'])}</td><td>{state}</td></tr>"
+            f"<td>{r['rvol']:.2f}倍</td><td>{money(p['entry'])}</td><td>{money(p['stop'])}</td><td>{state}<br><small>{r.get('market_supply_status', '需給未確認')}</small></td></tr>"
         )
     bb_rows = bb_rows or "<tr><td colspan='11'>条件合格銘柄なし</td></tr>"
     review_rows = "".join(
@@ -1682,9 +1701,9 @@ def main():
 <style>
 .focus-dashboard{{padding:14px;background:radial-gradient(circle at 80% 0,#123454 0,#101923 42%,#081018 100%);border:1px solid #3e83a8;overflow:visible}}.focus-title{{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:12px}}.focus-title h2{{font-size:26px;margin:2px 0;border:0;color:#fff}}.focus-title>div>span{{color:#63d8ff;font-weight:900;letter-spacing:.08em}}.decision-badge{{padding:12px 16px;border-radius:10px;font-size:17px;white-space:nowrap}}.decision-go{{background:#38e477;color:#03140a}}.decision-ready{{background:#ffd84e;color:#191300}}.decision-wait{{background:#5c6874;color:#fff}}.focus-layout{{display:grid;grid-template-columns:minmax(230px,.7fr) minmax(420px,1.45fr) minmax(320px,1fr);gap:12px}}.focus-picks{{display:flex;flex-direction:column;gap:7px}}.focus-pick{{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;text-align:left;color:#e9f4ff;background:#0b1722;border:1px solid #30475b;border-radius:9px;padding:10px;cursor:pointer}}.focus-pick:hover,.focus-pick.active{{border-color:#54d6ff;background:#10283a;box-shadow:0 0 0 1px #54d6ff55}}.focus-pick small{{display:block;margin-top:3px}}.focus-pick strong{{font-size:20px;color:#65e993}}.focus-rank{{background:#20384b;padding:5px;border-radius:5px;font-weight:900}}.focus-chart-wrap,.focus-order{{background:#071019;border:1px solid #2a475d;border-radius:10px;overflow:hidden}}.focus-chart-head{{display:flex;justify-content:space-between;padding:9px 11px;background:#0e2030}}#focus-chart{{width:100%;height:430px;border:0;display:block}}.focus-order{{padding:12px;overflow:auto}}.focus-symbol{{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;border-bottom:1px solid #314354;padding-bottom:9px}}.focus-symbol h3{{margin:0;color:#fff;font-size:18px}}.focus-symbol>b{{font-size:21px;color:#63e990}}.focus-action{{margin:11px 0;padding:12px;border-radius:9px;background:#113421;border:1px solid #2b9c58}}.focus-action span,.focus-action small{{display:block}}.focus-action strong{{display:block;font-size:25px;color:#65ef91;margin:4px 0}}.focus-price-grid{{display:grid;grid-template-columns:1fr 1fr;gap:7px}}.focus-price-grid>div{{background:#101e2a;border-radius:7px;padding:9px}}.focus-price-grid span{{display:block;color:#9fb0bf}}.focus-price-grid b{{font-size:17px}}.focus-supply{{margin-top:9px;padding:9px;border-left:4px solid #ffcf4a;background:#191a14}}.focus-supply b,.focus-supply span{{display:block}}.focus-rule{{color:#ffd75e;border-top:1px solid #4a3d16;padding-top:9px}}.focus-empty{{padding:28px;text-align:center;font-size:17px}}@media(max-width:1100px){{.focus-layout{{grid-template-columns:240px 1fr}}.focus-order{{grid-column:1/-1}}}}@media(max-width:800px){{.focus-layout{{grid-template-columns:1fr}}.focus-order{{grid-column:auto}}#focus-chart{{height:360px}}.focus-title{{align-items:flex-start;flex-direction:column}}}}
 </style>
-<link rel="stylesheet" href="theme.css?v=43">
+<link rel="stylesheet" href="theme.css?v=50">
 <link rel="stylesheet" href="focus.css?v=41">
-<header><div><h1>AIトレードコクピット Ver.4.3</h1><div class="sub">最初の画面で本命・買い時・押し目・撤退を判断</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;today&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
+<header><div><h1>AIトレードコクピット Ver.5.0</h1><div class="sub">最初の画面で本命・買い時・押し目・撤退を判断</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;daytrade&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
 {focus_dashboard}
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
