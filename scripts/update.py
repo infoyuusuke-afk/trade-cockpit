@@ -1373,6 +1373,31 @@ def main():
         key=lambda x: x[1], reverse=True
     )[:5]
 
+    # Policy importance is separate from tradability. Only supply-improving
+    # names enter each theme's practical TOP5.
+    policy_theme_specs = [
+        (1, "physical-ai", "フィジカルAI", "S", [("ファナック（6954）", "産業ロボット・制御"), ("安川電機（6506）", "ロボット・モーション制御"), ("川崎重工業（7012）", "産業・サービスロボット"), ("オムロン（6645）", "センシング・FA制御"), ("THK（6481）", "直動部品・ロボット基盤")]),
+        (2, "autonomous-driving", "自動運転", "S", [("ティアフォー（593A）", "自動運転ソフト・社会実装"), ("トヨタ自動車（7203）", "車両・モビリティ基盤"), ("本田技研工業（7267）", "車両・自動運転開発"), ("デンソー（6902）", "車載半導体・センシング"), ("ソニーグループ（6758）", "車載イメージセンサー")]),
+        (3, "ai-drug-discovery", "AI創薬", "A", [("中外製薬（4519）", "創薬研究・データ活用"), ("ペプチドリーム（4587）", "創薬プラットフォーム"), ("FRONTEO（2158）", "AI解析・創薬支援"), ("NEC（6701）", "AI・医療データ基盤"), ("富士通（6702）", "計算基盤・創薬DX")]),
+        (4, "ai-semiconductor", "AI・半導体基盤", "S", [("キオクシアHD（285A）", "AI向けメモリ"), ("東京エレクトロン（8035）", "半導体製造装置"), ("アドバンテスト（6857）", "半導体テスト"), ("ディスコ（6146）", "切断・研削装置"), ("フジクラ（5803）", "データセンター配線")]),
+        (5, "defense-space", "防衛・宇宙", "S", [("三菱重工業（7011）", "防衛・宇宙システム"), ("IHI（7013）", "航空エンジン・宇宙"), ("川崎重工業（7012）", "航空・防衛"), ("三菱電機（6503）", "防衛電子・衛星"), ("アストロスケールHD（186A）", "軌道上サービス")]),
+        (6, "gx-power", "GX・電力基盤", "A", [("日立製作所（6501）", "送配電・デジタル基盤"), ("富士電機（6504）", "パワー半導体・電力設備"), ("東北電力（9506）", "電力供給・系統"), ("パワーエックス（485A）", "蓄電池・電力"), ("住友電気工業（5802）", "送電・電力ケーブル")]),
+        (7, "quantum-computing", "量子・先端計算", "A", [("富士通（6702）", "量子・HPC"), ("NEC（6701）", "量子計算・暗号"), ("NTT（9432）", "光・量子技術"), ("日立製作所（6501）", "計算基盤・研究開発"), ("ソフトバンクグループ（9984）", "AI計算基盤・投資")]),
+    ]
+    valid_map = dict(valid)
+    policy_theme_tabs = []
+    for priority, slug, title, policy_rank, members in policy_theme_specs:
+        ranked = []
+        for name, role in members:
+            r = valid_map.get(name)
+            if not r or not r.get("market_supply_improved"):
+                continue
+            p = trade_plan(r, r.get("intraday"))
+            tradability = round(r.get("market_supply_score", 0) * .55 + max(0, min(100, r.get("day_score", 0))) * .25 + max(0, min(100, 50 + r.get("change_pct", 0) * 5)) * .10 + max(0, min(100, r.get("rvol", 0) * 40)) * .10)
+            ranked.append({"name": name, "role": role, "score": tradability, "plan": p, **r})
+        ranked.sort(key=lambda x: (x["score"], x.get("market_supply_score", 0)), reverse=True)
+        policy_theme_tabs.append({"priority": priority, "slug": slug, "title": title, "policy_rank": policy_rank, "candidates": ranked[:5]})
+
     official_earnings = jpx_earnings_map(now)
     for code, item in config.get("earnings_overrides", {}).items():
         delta = (pd.Timestamp(item["date"]).date() - now.date()).days
@@ -1495,6 +1520,7 @@ def main():
         },
         "earnings_candidates": earnings, "themes": themes,
         "sector_rotation": rotation,
+        "policy_theme_tabs": policy_theme_tabs,
         "bb_expansion_candidates": [
             {"name": n, **r, "plan": trade_plan(r, r.get("intraday"))}
             for n, r in bb_rank
@@ -1514,6 +1540,17 @@ def main():
         f"<td>{count}銘柄の実測平均</td></tr>"
         for i, (name, score, count, members) in enumerate(themes, 1)
     )
+    policy_priority_rows = "".join(
+        f"<tr><td><b>#{x['priority']}</b></td><td>{x['title']}</td><td><span class='pill prep'>{x['policy_rank']}</span></td><td>{len(x['candidates'])}/5</td><td>{'売買候補あり' if x['candidates'] else '需給改善待ち'}</td></tr>"
+        for x in policy_theme_tabs
+    )
+    policy_theme_sections = ""
+    for theme in policy_theme_tabs:
+        rows = "".join(
+            f"<tr><td>{i}</td><td>{x['name']}<br><small>{x['role']}</small></td><td><b class='up'>{x['score']}/100</b></td><td><b>{x.get('market_supply_score', 0)}/100</b><br><small>{x.get('market_supply_status', '')}</small></td><td>{money(x['price'])}</td><td>{x.get('rvol', 0):.2f}倍</td><td>{money(x['plan']['entry'])}</td><td class='down'>{money(x['plan']['stop'])}</td><td>{money(x['plan']['target1'])}／{money(x['plan']['target2'])}</td><td>発動価格上抜け＋出来高増加。未発動は買わない</td></tr>"
+            for i, x in enumerate(theme['candidates'], 1)
+        ) or "<tr><td colspan='10'>信用・市場需給の改善条件に合格した銘柄なし。テーマだけでは買いません。</td></tr>"
+        policy_theme_sections += f'''<section id="policy-{theme['slug']}" class="card wide policy-theme-card" data-policy-tab="{theme['slug']}"><h2>国策優先 #{theme['priority']}｜{theme['title']}・需給改善 TOP5</h2><p class="sub">政策重要度 <b>{theme['policy_rank']}</b>　／　売買順位は信用需給55%・値動き25%・騰落10%・出来高10%</p><table><thead><tr><th>売買順位</th><th>会社名＋コード／関連領域</th><th>実戦点</th><th>需給改善</th><th>現在値</th><th>出来高比</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>条件</th></tr></thead><tbody>{rows}</tbody></table><p class="warning">政策採択・受注を断定する一覧ではありません。需給改善と発動価格を満たした銘柄だけ実戦候補です。</p></section>'''
     buyback_rows = "".join(
         f"<tr><td>{i}</td><td>{x['name']}（{x['code']}）</td>"
         f"<td><b class='up'>{x['score']}/100</b></td><td>{float(x['max_share_pct']):.2f}%</td>"
@@ -1737,6 +1774,8 @@ def main():
 {focus_dashboard}
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
+<section id="policy-priority-overview" class="card wide"><h2>国策テーマ優先順位</h2><table><thead><tr><th>政策優先</th><th>テーマ</th><th>政策重要度</th><th>需給合格数</th><th>現在判定</th></tr></thead><tbody>{policy_priority_rows}</tbody></table><p class="warning">政策優先順位と、今買える順位は別です。各タブでは需給改善済みだけを実戦点で再順位付けします。</p></section>
+{policy_theme_sections}
 <section class="card wide"><h2>②-A 秋田AIデータセンター関連 監視TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・契約状況</th><th>資料</th></tr></thead><tbody>{akita_dc_rows}</tbody></table>
 <p class="warning">秋田市の計画はエスツーとBitgritが主導し、2030年代前半の稼働、最大500MWを想定。現時点で上場各社の受注は確認できていません。関連度は事業領域と地域性の評価であり、受注確定度ではありません。正式なスイング候補への昇格には、会社IR・適時開示、信用需給30/55点以上、発動価格突破を必須とします。</p></section>
