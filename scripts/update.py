@@ -516,6 +516,15 @@ def load_active_buybacks(now):
     return rows[:5], payload.get("updated_at", "未更新")
 
 
+def load_credit_supply_map():
+    """Load verified credit-supply inputs without inventing missing values."""
+    try:
+        payload = json.loads((ROOT / "credit_supply.json").read_text(encoding="utf-8"))
+        return payload.get("stocks", {}), payload.get("updated_at", "未取得")
+    except Exception:
+        return {}, "未取得"
+
+
 def pct(v):
     return "—" if v is None else f"{v:+.2f}%"
 
@@ -783,34 +792,43 @@ def build_sector_rotation(indices, valid):
     }
 
 
-def build_day_ifo_candidates(valid, rotation, official_earnings, now):
-    """Build five diversified, manually entered MS2 IFO order tickets.
+def build_day_ifo_candidates(valid, rotation, official_earnings, now, credit_supply=None):
+    """Build the user's five primary 8:55 MS2 IFO trading candidates.
 
-    These are conditional LONG orders for the user's 8:55 review.  They are
-    deliberately separate from high-priced opening scalps such as Kioxia.
+    Capital follows short-lived themes, so this list must not become a static
+    large-cap watchlist.  Prefer money-game/IPO/growth and SaaS/AI-software
+    names with actual turnover and relative-volume expansion.  Orders remain
+    conditional and are cancelled when the 8:55 indication is already above
+    the entry limit.
     """
     sector_rows = {
         row["sector"]: row for row in rotation.get("japan_sectors", [])
     }
-    excluded_phases = {"流出", "低迷", "過熱・失速注意"}
+    excluded_phases = {"低迷"}
+    credit_supply = credit_supply or {}
     eligible = []
     for name, row in valid:
         code = str(row.get("ticker", "")).split(".")[0]
+        supply = credit_supply.get(code, {})
         price = float(row.get("price") or 0)
         group = row.get("rotation_group") or broad_sector(row.get("sector", ""))
         sector = sector_rows.get(group, {})
         phase = sector.get("phase", "中立")
         if code == "285A" or "キオクシア" in name:
             continue
-        if row.get("style") not in ("swing", "both"):
+        bucket = row.get("day_bucket")
+        if row.get("style") not in ("day", "both"):
             continue
-        if not (100 <= price <= 20000):
+        if not (100 <= price <= 30000):
             continue
-        if row.get("turnover", 0) < 2_000_000_000:
+        min_turnover = 300_000_000 if bucket else 2_000_000_000
+        if row.get("turnover", 0) < min_turnover:
             continue
-        if row.get("atr_pct", 99) > 7.0 or row.get("from_ma20", 99) > 12:
+        if row.get("atr_pct", 99) > (20.0 if bucket else 9.0):
             continue
-        if price < float(row.get("ma20") or price) * .985:
+        if row.get("from_ma20", 99) > (45 if bucket else 15):
+            continue
+        if price < float(row.get("ma20") or price) * (.94 if bucket else .985):
             continue
         if phase in excluded_phases:
             continue
@@ -855,13 +873,39 @@ def build_day_ifo_candidates(valid, rotation, official_earnings, now):
             else 45
         )
         volume_score = clamp(float(row.get("rvol", 1)) * 55, 35, 100)
+        change = float(row.get("change_pct") or 0)
+        momentum = clamp(50 + change * 3.2, 20, 100)
+        supply_known = all(
+            supply.get(key) is not None
+            for key in ("margin_buy_change_1w_pct", "credit_ratio")
+        )
+        if supply_known:
+            margin_change = float(supply["margin_buy_change_1w_pct"])
+            credit_ratio = float(supply["credit_ratio"])
+            short_change = float(supply.get("institutional_short_change_pct") or 0)
+            supply_score = clamp(
+                55 - margin_change * 1.2 - max(credit_ratio - 2, 0) * 4
+                - short_change * .8,
+                10,
+                100,
+            )
+            supply_status = (
+                f"需給{round(supply_score)}点：買残1週{margin_change:+.1f}%／"
+                f"倍率{credit_ratio:.2f}倍／機関空売り{short_change:+.1f}%"
+            )
+        else:
+            supply_score = 40
+            supply_status = "信用需給未取得・8:55に板／規制／日計り可否を手動確認"
+        focus_bonus = 12 if bucket else 0
         score = (
-            15
-            + technical * .38
-            + sector_score * .27
-            + liquidity * .15
+            technical * .18
+            + sector_score * .10
+            + liquidity * .13
             + trend * .10
-            + volume_score * .10
+            + volume_score * .25
+            + momentum * .14
+            + supply_score * .10
+            + focus_bonus
         )
         if event_days is not None and 3 <= event_days <= 7:
             score -= 8
@@ -879,9 +923,10 @@ def build_day_ifo_candidates(valid, rotation, official_earnings, now):
             else "7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。"
         )
         reason = (
-            f"{group}＝{phase} {sector_score:.0f}点／"
-            f"テクニカル {technical}点／出来高比 {row.get('rvol', 0):.2f}倍／"
-            f"売買代金 {row.get('turnover', 0) / 100_000_000:.0f}億円"
+            f"{bucket or '当日資金流入'}／{group}＝{phase} {sector_score:.0f}点／"
+            f"前日比 {change:+.2f}%／出来高比 {row.get('rvol', 0):.2f}倍／"
+            f"売買代金 {row.get('turnover', 0) / 100_000_000:.0f}億円／"
+            f"テクニカル {technical}点／{supply_status}"
         )
         eligible.append({
             "name": name,
@@ -889,6 +934,9 @@ def build_day_ifo_candidates(valid, rotation, official_earnings, now):
             "ticker": row.get("ticker", ""),
             "side": "LONG",
             "sector": group,
+            "day_bucket": bucket or "当日資金流入",
+            "supply_verified": supply_known,
+            "supply_status": supply_status,
             "sector_phase": phase,
             "score": score,
             "shares": shares,
@@ -929,23 +977,24 @@ def build_day_ifo_candidates(valid, rotation, official_earnings, now):
     )
 
     selected = []
-    used_sectors = set()
-    for item in eligible:
-        if item["sector"] in used_sectors:
-            continue
-        selected.append(item)
-        used_sectors.add(item["sector"])
-        if len(selected) == 5:
-            break
-    if len(selected) < 5:
+
+    def take(bucket_names, count):
         for item in eligible:
-            if item in selected:
-                continue
-            if sum(x["sector"] == item["sector"] for x in selected) >= 2:
+            if item in selected or item["day_bucket"] not in bucket_names:
                 continue
             selected.append(item)
-            if len(selected) == 5:
+            if sum(x["day_bucket"] in bucket_names for x in selected) >= count:
                 break
+
+    # Daily core: two speculative/IPO-growth names and two SaaS/AI software
+    # names.  The fifth slot goes to the strongest remaining flow candidate.
+    take({"テーマ・マネーゲーム", "IPO・グロース"}, 2)
+    take({"SaaS・AIソフト"}, 2)
+    for item in eligible:
+        if item not in selected:
+            selected.append(item)
+        if len(selected) == 5:
+            break
     return selected
 
 
@@ -1025,8 +1074,8 @@ def build_silicon_photonics_watch(stocks, official_earnings, now):
 def render_day_ifo_cards(candidates):
     if not candidates:
         return (
-            "<div class='rotation-box'>本日の流動性・分散・セクター条件に"
-            "合格した注文候補なし。5銘柄を無理に埋めません。</div>"
+            "<div class='rotation-box'>本日の短期資金・流動性・過熱度条件に"
+            "合格した注文候補なし。無条件の注文は出しません。</div>"
         )
     cards = []
     for rank, item in enumerate(candidates, 1):
@@ -1034,7 +1083,7 @@ def render_day_ifo_cards(candidates):
 <article class="ifo-card">
   <div class="ifo-head">
     <span class="ifo-rank">#{rank}</span>
-    <div><h3>{item['name']}</h3><small>{item['sector']}／{item['sector_phase']}</small></div>
+    <div><h3>{item['name']}</h3><small>{item['day_bucket']}／{item['sector']}／{item['sector_phase']}</small></div>
     <b class="ifo-score">{item['score']}/100</b>
   </div>
   <div class="ifo-columns">
@@ -1077,6 +1126,7 @@ def render_day_ifo_cards(candidates):
 def main():
     now = datetime.now(JST)
     active_buybacks, buybacks_updated_at = load_active_buybacks(now)
+    credit_supply, credit_supply_updated_at = load_credit_supply_map()
     session_override = os.getenv("COCKPIT_SESSION", "auto").strip().lower()
     if session_override in {"morning", "midday", "close"}:
         session = session_override
@@ -1101,7 +1151,12 @@ def main():
     stocks = {}
     for name, meta in config["stocks"].items():
         row = daily_snapshot(meta["ticker"])
-        row.update({"ticker": meta["ticker"], "sector": meta["sector"], "style": meta["style"]})
+        row.update({
+            "ticker": meta["ticker"],
+            "sector": meta["sector"],
+            "style": meta["style"],
+            "day_bucket": meta.get("day_bucket"),
+        })
         if intraday_mode and row.get("ok"):
             row["intraday"] = intraday_snapshot(meta["ticker"])
         stocks[name] = row
@@ -1213,7 +1268,7 @@ def main():
     earnings = earnings[:15]
 
     generated_day_ifo = build_day_ifo_candidates(
-        valid, rotation, official_earnings, now
+        valid, rotation, official_earnings, now, credit_supply
     )
     generated_photonics_watch = build_silicon_photonics_watch(
         stocks, official_earnings, now
@@ -1290,6 +1345,8 @@ def main():
         "silicon_photonics_watch": photonics_watch,
         "day_ifo_summary": {
             "count": len(day_ifo_candidates),
+            "selection_rule": "マネーゲーム／IPO 2＋SaaS／AIソフト 2＋当日資金最上位 1",
+            "credit_supply_updated_at": credit_supply_updated_at,
             "shares_each": 100,
             "total_capital": total_capital,
             "total_profit": total_profit,
@@ -1524,7 +1581,7 @@ def main():
     phase = data["phase"]
     html = f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="900"><title>AIトレードコクピット</title>
 <style>*{{box-sizing:border-box}}body{{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}}header{{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}}h1{{margin:0;font-size:25px}}h2{{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}}h3{{color:#9fc8ff;margin:15px 0 7px}}a{{color:#70c7ff}}.sub{{color:#aebdcb;margin-top:4px}}.tag{{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}}main{{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}}.card{{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}}.wide{{grid-column:1/-1}}table{{width:100%;border-collapse:collapse}}th{{background:#1b2a39}}th,td{{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}}th:nth-child(-n+2),td:nth-child(-n+2){{text-align:left}}tr:nth-child(even) td{{background:#111923}}.up{{color:#52e46f;font-weight:900}}.down{{color:#ff6262;font-weight:900}}small{{color:#bac6d2}}.warning{{color:#ffe66d}}.steps,.rotation-grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}}.step,.rotation-box{{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}}.step b,.rotation-box b{{display:block;color:#ffe66d;font-size:15px}}.rotation-box strong{{font-size:17px;color:#f4f7fa}}.pill{{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}}.prep{{background:#f2a900;color:#111}}.in{{background:#52e46f;color:#071009}}.long{{background:#2f80ed;color:white}}.short{{background:#e23b3b;color:white}}.ifo-summary{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:9px 0}}.ifo-summary .rotation-box strong{{font-size:19px}}.ifo-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}.ifo-card{{background:linear-gradient(145deg,#101c2a,#081019);border:1px solid #3b6588;border-radius:10px;padding:11px;box-shadow:0 8px 22px #0007}}.ifo-head{{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;border-bottom:1px solid #35506a;padding-bottom:8px}}.ifo-head h3{{margin:0;color:#f4f7fa;font-size:16px}}.ifo-rank{{background:#ffe66d;color:#101820;font-weight:900;border-radius:6px;padding:5px 7px}}.ifo-score{{font-size:18px;color:#52e46f}}.ifo-columns{{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}}.order-box{{background:#07101a;border:1px solid #425a70;border-radius:8px;padding:9px}}.order-box>b{{display:block;color:#79c7ff;margin-bottom:7px}}.exit-order>b{{color:#58e3ae}}.order-box dl{{display:grid;grid-template-columns:minmax(88px,.9fr) 1.25fr;gap:4px 8px;margin:0}}.order-box dt{{color:#9eafbf}}.order-box dd{{margin:0;text-align:right}}.ifo-metrics{{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:8px 0}}.ifo-metrics span{{background:#182637;border-radius:5px;padding:6px;text-align:center}}.ifo-card p{{line-height:1.55;margin:6px 0}}footer{{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}}@media(max-width:800px){{header{{align-items:flex-start;flex-direction:column}}main{{grid-template-columns:1fr}}.wide{{grid-column:1}}table{{min-width:700px}}.steps,.rotation-grid,.ifo-summary,.ifo-grid,.ifo-columns{{grid-template-columns:1fr}}.ifo-metrics{{grid-template-columns:1fr 1fr}}}}</style></head><body>
-<header><div><h1>AIトレードコクピット Ver.3.6</h1><div class="sub">日本株全市場／持ち越しLONG・SHORT発動価格</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;today&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
+<header><div><h1>AIトレードコクピット Ver.3.7</h1><div class="sub">日本株全市場／持ち越しLONG・SHORT発動価格</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;today&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
 <section class="card wide"><h2>②-A 秋田AIデータセンター関連 監視TOP5</h2>
@@ -1537,6 +1594,17 @@ def main():
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>異常度</th><th>テーマ・確認状態</th><th>終値</th><th>1日</th><th>5日</th><th>20日</th><th>出来高比</th><th>ATR</th><th>20日線乖離</th><th>上ヒゲ</th><th>信用需給</th><th>監視行動</th></tr></thead>
 <tbody id="speculative-theme-watch"><tr><td colspan="15">全市場の仕手化兆候を走査中...</td></tr></tbody></table>
 <p class="warning"><b>監視専用・売買候補ではありません。</b> 出来高急増、5日／20日急騰、値幅拡大、加速率、上ヒゲで異常度を算出し、初動候補・資金流入・過熱・天井警戒に分類します。「仕手株」との断定はせず、会社IR・適時開示でテーマを確認し、信用買い残・信用倍率・機関空売り変化も確認。ここに入った銘柄は通常の持ち越しLONG／SHORT TOP5から隔離します。</p></section>
+<section id="large-lot-accumulation" class="card wide"><h2>大口買い集め・吸収監視 TOP20</h2>
+<div id="accumulation-meta" class="sub">全市場の価格・出来高痕跡を走査中...</div>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>総合点</th><th>信用需給</th><th>終値</th><th>5日</th><th>20日</th><th>上昇日/下落日出来高</th><th>OBV</th><th>下落日出来高</th><th>安値切上げ</th><th>発動価格</th><th>損切り</th><th>根拠</th></tr></thead>
+<tbody id="accumulation-signals"><tr><td colspan="15">全市場を走査中...</td></tr></tbody></table>
+<div class="steps">
+<div class="step"><b>1　吸収</b>下落日ほど出来高が減り、売られても安値を更新しない。</div>
+<div class="step"><b>2　蓄積</b>株価横ばいでもOBV上昇、終値が日中レンジ上側へ偏る。</div>
+<div class="step"><b>3　需給確認</b>信用買い残減少・倍率低下・機関空売り買い戻しで正式候補。</div>
+<div class="step"><b>4　発動</b>レンジ高値＋1ティック突破だけ買い候補。途中では先回りしない。</div>
+</div>
+<p class="warning"><b>大口を断定する画面ではありません。</b> 板の大注文は取消可能なので採点しません。市場データの痕跡を抽出し、大量保有報告書・変更報告書・自己株買い・会社IRで裏付けます。信用需給未取得は「暫定」のままです。</p></section>
 <section id="sector-rotation" class="card wide"><h2>②-R 機関投資家型 セクターローテーション</h2>
 <div class="rotation-grid">
 <div class="rotation-box"><b>市場レジーム</b><strong>{rotation['regime']}</strong><br>{rotation['regime_action']}</div>
@@ -1558,14 +1626,15 @@ def main():
 <table><tr><th>順位</th><th>会社名＋コード／役割</th><th>期待値</th><th>基準値</th><th>IN発動／買い上限</th><th>OUT損切り</th><th>OUT利確1</th><th>OUT利確2</th><th>発動条件・リスク</th><th>根拠</th></tr>{photonics_rows}</table>
 <p class="warning"><b>使い方：</b>INは前日高値＋1ティック。寄り成りでは買いません。9:15以降にVWAP上・5分足終値・出来高増加が揃った場合だけ発動し、買い上限を超えたら追わず取消。OUT損切りを約定後すぐ設定し、価格を下げて損切りを広げません。GFSの3億ドルは米商務省とのLOI（予定支援）であり、日本企業への直接受注確定ではありません。<a href="https://gf.com/news-and-events/news/globalfoundries-signs-letter-of-intent-with-the-us-department-of-commerce-for-a-300-million-award-to-accelerate-us-silicon-photonics-leadership/" target="_blank" rel="noopener">GFS公式発表</a></p>
 </section>
-<section id="day-ifo-orders" class="card wide"><h2>②-O 8:55入力用・当日IN分散5銘柄（MS2 IFO注文票）</h2>
+<section id="day-ifo-orders" class="card wide"><h2>②-O 8:55当日勝負・短期資金TOP5（MS2 IFO注文票）</h2>
 <div class="ifo-summary">
 <div class="rotation-box"><b>合格銘柄</b><strong>{len(day_ifo_candidates)} / 5銘柄</strong><br>{ifo_count_note}</div>
 <div class="rotation-box"><b>注文単位</b><strong>各100株</strong><br>分割注文なし／キオクシアは対象外</div>
 <div class="rotation-box"><b>全候補が約定した場合</b><strong>建玉目安 {total_capital:,}円</strong><br>利確1合計 <span class="up">+{total_profit:,}円</span></div>
 <div class="rotation-box"><b>損失上限の目安</b><strong class="down">−{total_loss:,}円</strong><br>5銘柄が全て損切りになった場合</div>
 </div>
-<p class="warning"><b>8:55の手順：</b>気配を確認し、買い指値上限を超えていない銘柄だけ手入力します。価格を上げて追いかけず、発動しなければ注文失効で終了。コクピットから証券会社へ注文は送信しません。</p>
+<p class="warning"><b>毎朝入替：</b>テーマ・マネーゲーム／IPO・グロースを2銘柄、SaaS・AIソフトを2銘柄、残る1枠を当日資金流入最上位から選定。出来高比・売買代金・値動き・信用需給・材料を更新し、固定大型株を使い回しません。</p>
+<p class="warning"><b>8:55の手順：</b>気配、成行買い／売り、特別気配、信用規制・日計り空売り可否を最終確認。買い指値上限を超えた銘柄、特買い張り付き、材料不明の急騰は注文せず監視へ移します。価格を上げて追いかけません。</p>
 <div class="ifo-grid">{ifo_cards}</div>
 <p class="warning">IFOは利確1と損切りの1組を入力します。利確2は翌日以降へ持ち越す判断をした場合の参考値です。本日中の決済注文は失効するため、15:20時点で未決済なら当日手仕舞い、または翌営業日用の決済OCOを自分で再設定してください。</p>
 </section>
@@ -1697,6 +1766,27 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     "%</td><td>" + supplyText(x) + "</td><td>" + x.action + "</td></tr>").join("");
   document.getElementById("speculative-theme-watch").innerHTML =
     speculative || "<tr><td colspan='15'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</td></tr>";
+  const accumulation = (d.large_lot_accumulation || []).slice(0, 20).map((x, i) =>
+    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td><b class='" +
+    (x.phase.includes("上放れ") ? "up" : "warning") + "'>" + x.phase +
+    "</b></td><td><b class='up'>" + x.score + "/100</b></td><td>" +
+    supplyText(x) + "</td><td>" + yen(x.close) + "</td><td class='" +
+    (x.ret5 >= 0 ? "up" : "down") + "'>" + signedPct(x.ret5, 1) +
+    "</td><td class='" + (x.ret20 >= 0 ? "up" : "down") + "'>" +
+    signedPct(x.ret20, 1) + "</td><td><b>" +
+    Number(x.up_down_volume_ratio).toFixed(2) + "倍</b></td><td class='" +
+    (x.obv_impulse > 0 ? "up" : "down") + "'>" +
+    Number(x.obv_impulse).toFixed(2) + "</td><td>" +
+    Number(x.down_volume_ratio).toFixed(2) + "倍</td><td class='" +
+    (x.higher_low_pct >= 0 ? "up" : "down") + "'>" +
+    signedPct(x.higher_low_pct, 1) + "</td><td><b>" + yen(x.trigger) +
+    "</b></td><td class='down'>" + yen(x.stop) + "</td><td>" +
+    x.reason + "</td></tr>").join("");
+  document.getElementById("accumulation-signals").innerHTML =
+    accumulation || "<tr><td colspan='15'>本日の大口買い集め痕跡の合格銘柄なし。</td></tr>";
+  document.getElementById("accumulation-meta").textContent =
+    (d.large_lot_accumulation_note || "価格・出来高痕跡による推定") +
+    "／信用需給更新 " + (d.credit_supply_updated_at || "未取得");
   const hammers = (d.monthly_weekly_hammers || []).slice(0, 5).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.timeframe +
     "</td><td>" + x.status + "</td><td><b class='up'>" + x.score +
@@ -1772,7 +1862,8 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   ]);
   const longTermSymbols = uniqueTv(tvRows(d.long_term_ma_rebounds));
   const speculativeSymbols = uniqueTv(tvRows(d.speculative_theme_watch));
-  const allSymbols = uniqueTv([...daySymbols, ...swingSymbols, ...longTermSymbols, ...speculativeSymbols]);
+  const accumulationSymbols = uniqueTv(tvRows(d.large_lot_accumulation));
+  const allSymbols = uniqueTv([...daySymbols, ...swingSymbols, ...longTermSymbols, ...speculativeSymbols, ...accumulationSymbols]);
   const dateTag = String(d.updated_at || "").slice(0, 10).replaceAll("-", "");
   document.getElementById("tv-day").onclick = () => saveTvList(daySymbols, "AIコクピット_当日_" + dateTag + ".txt");
   document.getElementById("tv-swing").onclick = () => saveTvList(swingSymbols, "AIコクピット_スイング_" + dateTag + ".txt");
@@ -1784,6 +1875,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>データ取得待ち</td></tr>";
   document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
   document.getElementById("speculative-theme-watch").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
+  document.getElementById("accumulation-signals").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
   document.getElementById("hammer-signals").innerHTML = "<tr><td colspan='13'>データ取得待ち</td></tr>";
   document.getElementById("long-term-ma-signals").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
   document.getElementById("daily-reversal-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
