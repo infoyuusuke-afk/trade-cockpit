@@ -4,12 +4,16 @@
 .cockpit-tabs{position:sticky;top:0;z-index:30;display:flex;gap:8px;padding:10px;background:#07111fdd;backdrop-filter:blur(10px);overflow-x:auto}
 .cockpit-tab{border:1px solid #35506d;background:#102238;color:#b9cbe0;border-radius:10px;padding:10px 16px;font-weight:700;white-space:nowrap;cursor:pointer}
 .cockpit-tab.active{color:#07111f;background:#52e0c4;border-color:#52e0c4}
+.cockpit-tab.event-alert{color:#fff;background:#9f2936;border-color:#ff6c78;box-shadow:0 0 0 2px #ff6c7833}
 .tab-pane{display:none}.tab-pane.active{display:block}
 .weekly-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
 .weekly-grid>div{background:#0c1b2d;border:1px solid #243b55;border-radius:12px;padding:14px}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
  <button class="cockpit-tab active" data-tab="daytrade">当日デイトレ</button>
+ <button class="cockpit-tab" data-tab="events">イベント</button>
+ <button class="cockpit-tab" data-tab="correlation">相関・先行銘柄</button>
+ <button class="cockpit-tab" data-tab="kioxia-calendar">キオクシア5分足</button>
  <button class="cockpit-tab" data-tab="wick">下ヒゲ反転</button>
  <button class="cockpit-tab" data-tab="expansion">エクスパンション</button>
  <button class="cockpit-tab" data-tab="swing">短期スイング</button>
@@ -32,11 +36,14 @@
 document.addEventListener("DOMContentLoaded",()=>{
  const main=document.querySelector("main"); if(!main)return;
  const policyTabs=["physical-ai","autonomous-driving","ai-drug-discovery","ai-semiconductor","defense-space","gx-power","quantum-computing"];
- const panes={}; ["daytrade","wick","expansion","swing","accumulation","longterm","dividend","buyback","policy",...policyTabs,"market","weekly"].forEach(k=>{const d=document.createElement("div");d.className="tab-pane"+(k==="daytrade"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;});
+ const panes={}; ["daytrade","events","correlation","kioxia-calendar","wick","expansion","swing","accumulation","longterm","dividend","buyback","policy",...policyTabs,"market","weekly"].forEach(k=>{const d=document.createElement("div");d.className="tab-pane"+(k==="daytrade"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;});
  [...main.querySelectorAll(":scope > section")].forEach(s=>{
    const t=(s.querySelector("h2")?.textContent||"").trim();
    let k="market";
    if(s.dataset.policyTab)k=s.dataset.policyTab;
+   else if(s.id==="event-calendar")k="events";
+   else if(s.id==="correlation-monitor")k="correlation";
+   else if(s.id==="kioxia-5m-calendar")k="kioxia-calendar";
    else if(s.id==="action-dashboard"||s.id==="day-ifo-orders"||t.startsWith("③ ")||t.includes("IN点灯")||t.includes("準備点灯"))k="daytrade";
    else if(s.id==="lower-wick-reversal"||t.includes("下ヒゲ吸収反転"))k="wick";
    else if(t.includes("BB上方エクスパンション")||t.includes("短期急騰期待")||t.includes("テーマ仕手化兆候"))k="expansion";
@@ -50,6 +57,9 @@ document.addEventListener("DOMContentLoaded",()=>{
    panes[k].appendChild(s);
  });
  const intros={daytrade:["当日デイトレ","需給改善済みの最大5銘柄。実戦対象は上位1～3銘柄。"],wick:["最優先・下ヒゲ吸収反転","売り吸収→終値回復→次足上抜けの順で発動。"],expansion:["当日エクスパンション","BB収縮から出来高を伴う拡大が期待できる銘柄。"],swing:["短期スイング","信用需給を主軸に、押し目・新高値・持ち越しを選別。"],accumulation:["大口仕込み","出来高・OBV・安値切上げから吸収と蓄積を監視。"],longterm:["長期右肩上がり・反転","50週線・200日線・月週足反転と需給改善が重なる銘柄。"],dividend:["配当権利前・上下期待","権利前上昇と権利落ち下落を需給付きで監視。"],buyback:["自社株買い監視","実施期間・残り余力・出来高影響と需給改善を確認。"],policy:["国策テーマ・実戦優先順位","政府資料、会社公式、業績寄与、信用需給を分離して確認。"],"physical-ai":["フィジカルAI","本体・AI制御・主要ロボット部品だけを厳格選定。"],"autonomous-driving":["自動運転","社会実装・自動運転ソフト・高精度地図を優先。"],"ai-drug-discovery":["AI創薬","AI創薬を会社公式で事業化している銘柄だけ。"],"ai-semiconductor":["AI・半導体基盤","メモリ、製造装置、テスト、先端SoCに限定。"],"defense-space":["防衛・宇宙","防衛装備、宇宙推進、衛星・官公庁案件を確認。"],"gx-power":["GX・電力基盤","送配電、蓄電池、パワー半導体、電力網。"],"quantum-computing":["量子・先端計算","事業寄与が小さい間は長期研究枠として扱う。"],market:["市場・検証","地合い、警報、答え合わせ、決算リスクを確認。"],weekly:["週間レビュー","週末検証と翌週の改善ルール。"]};
+ intros.correlation=["相関・先行／逆行銘柄","当日候補の方向を、連動株・逆相関株・米国先行株で確認。"];
+ intros.events=["イベントカレンダー","発表日・需給日・指数反映日を分離し、当日の誤認を防止。"];
+ intros["kioxia-calendar"]=["キオクシア5分足カレンダー","過去5分足から本日の途中経過に最も近い日を照合。"];
  Object.entries(intros).forEach(([k,v])=>{const h=document.createElement("div");h.className="pane-intro";h.innerHTML=`<span>SUPPLY IMPROVEMENT REQUIRED</span><h2>${v[0]}</h2><p>${v[1]}</p>`;panes[k].prepend(h);});
  document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{
    document.querySelectorAll(".cockpit-tab").forEach(x=>x.classList.toggle("active",x===b));
@@ -57,6 +67,10 @@ document.addEventListener("DOMContentLoaded",()=>{
    localStorage.setItem("cockpitTabV5",b.dataset.tab);
  });
  const saved=localStorage.getItem("cockpitTabV5"); if(saved)document.querySelector(`.cockpit-tab[data-tab="${saved}"]`)?.click();
+ fetch("event_calendar.json?t="+Date.now()).then(r=>r.json()).then(d=>{
+   const b=document.querySelector('.cockpit-tab[data-tab="events"]');
+   if(d.today_level!=="通常"){b.classList.add("event-alert");b.textContent="⚠ イベント";}
+ }).catch(()=>{});
 });
 </script>
 <!-- COCKPIT_TABS_END -->
@@ -66,47 +80,72 @@ document.addEventListener("DOMContentLoaded",()=>{
 </style>
 <link rel="stylesheet" href="theme.css?v=51">
 <link rel="stylesheet" href="focus.css?v=41">
-<header><div><h1>AIトレードコクピット Ver.5.1</h1><div class="sub">最初の画面で本命・買い時・押し目・撤退を判断</div></div><div><span class="tag">寄り付き前8:00版</span><div class="sub">2026-09-01 07:54:55 JST／日経想定 65,205 ～ 67,606円</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;daytrade&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
-
-<section id="action-dashboard" class="card wide focus-dashboard">
- <div class="focus-topbar">
-  <div><span class="focus-eyebrow">TODAY'S SETUPS</span><h2>今買う候補</h2></div>
-  <div class="focus-legend"><span><i class="dot green"></i>発動</span><span><i class="dot amber"></i>押し目</span><span><i class="dot red"></i>撤退</span></div>
- </div>
- <div class="focus-layout">
-  <aside><div class="focus-aside-head"><b>優先順位</b><small>最大5銘柄</small></div><div class="focus-picks" id="focus-picks"></div></aside>
-  <div class="focus-chart-wrap">
-   <div class="focus-chart-head"><div><b id="focus-chart-name"></b><small id="focus-chart-code"></small></div><span>直近40営業日</span></div>
-   <div id="focus-chart" role="img" aria-label="ローソク足チャート"></div>
-  </div>
-  <div class="focus-order">
-   <div class="focus-symbol"><span id="focus-rank"></span><div><small>SELECTED</small><h3 id="focus-name"></h3></div><b id="focus-score"></b></div>
-   <div id="focus-decision" class="decision-badge"></div>
-   <div class="focus-action"><span>買い発動ライン</span><strong id="focus-trigger"></strong><small>ローソク足確定・VWAP上・出来高増加</small></div>
-   <div class="focus-price-grid">
-    <div><span>買い上限</span><b id="focus-entry"></b></div><div><span>押し目ゾーン</span><b id="focus-pullback"></b></div>
-    <div><span>撤退ライン</span><b class="down" id="focus-stop"></b></div><div><span>利確 1 / 2</span><b class="up" id="focus-targets"></b></div>
-   </div>
-   <div class="focus-supply"><span>CREDIT FLOW</span><p id="focus-supply"></p></div>
-   <details><summary>選定根拠を見る</summary><p id="focus-reason"></p></details>
-  </div>
- </div>
- <div class="focus-rule"><b>飛び乗り禁止</b><span>発動ラインを勢いよく通過したら追わない。押し目ゾーンで反発足が確定するまで待つ。</span></div>
-</section>
-<script>
-document.addEventListener("DOMContentLoaded",()=>{
- const rows=[{"rank": 1, "name": "アイサンテクノロジー（4667）", "code": "4667", "score": 100, "decision": "本命・発動待ち", "decision_class": "go", "trigger": 2701, "entry": 2703, "pullback_low": 2641.95, "pullback_high": 2675.25, "stop": 2592, "target1": 2870, "target2": 2947, "supply": "市場需給100点／上昇日出来高÷下落日3.36倍／安値切上げ○", "reason": "テーマ・マネーゲーム／その他＝拡大 100点／前日比 +20.95%／出来高比 10.50倍／売買代金 21億円／テクニカル 73点／市場需給100点／上昇日出来高÷下落日3.36倍／安値切上げ○", "chart": [{"o": 2009.0, "h": 2015.0, "l": 1980.0, "c": 2006.0, "v": 14500}, {"o": 2043.0, "h": 2170.0, "l": 2005.0, "c": 2170.0, "v": 42900}, {"o": 2250.0, "h": 2290.0, "l": 2191.0, "c": 2249.0, "v": 90300}, {"o": 2250.0, "h": 2330.0, "l": 2249.0, "c": 2289.0, "v": 67700}, {"o": 2250.0, "h": 2291.0, "l": 2134.0, "c": 2138.0, "v": 64300}, {"o": 2095.0, "h": 2122.0, "l": 2039.0, "c": 2070.0, "v": 48100}, {"o": 2097.0, "h": 2140.0, "l": 2093.0, "c": 2117.0, "v": 20400}, {"o": 2147.0, "h": 2150.0, "l": 2041.0, "c": 2107.0, "v": 30400}, {"o": 2107.0, "h": 2110.0, "l": 2007.0, "c": 2049.0, "v": 41400}, {"o": 2060.0, "h": 2121.0, "l": 2050.0, "c": 2114.0, "v": 26900}, {"o": 2076.0, "h": 2101.0, "l": 2066.0, "c": 2080.0, "v": 25200}, {"o": 2051.0, "h": 2051.0, "l": 1940.0, "c": 1957.0, "v": 73500}, {"o": 1981.0, "h": 2036.0, "l": 1980.0, "c": 2030.0, "v": 36900}, {"o": 1907.0, "h": 1908.0, "l": 1828.0, "c": 1838.0, "v": 134700}, {"o": 1848.0, "h": 1881.0, "l": 1840.0, "c": 1881.0, "v": 35300}, {"o": 1864.0, "h": 1875.0, "l": 1816.0, "c": 1871.0, "v": 48900}, {"o": 1877.0, "h": 1934.0, "l": 1873.0, "c": 1919.0, "v": 37500}, {"o": 1924.0, "h": 1924.0, "l": 1792.0, "c": 1800.0, "v": 102400}, {"o": 1802.0, "h": 1817.0, "l": 1744.0, "c": 1762.0, "v": 73700}, {"o": 1755.0, "h": 1798.0, "l": 1734.0, "c": 1772.0, "v": 43600}, {"o": 1772.0, "h": 1827.0, "l": 1772.0, "c": 1818.0, "v": 17200}, {"o": 1806.0, "h": 1845.0, "l": 1772.0, "c": 1829.0, "v": 24900}, {"o": 1842.0, "h": 1849.0, "l": 1818.0, "c": 1833.0, "v": 19300}, {"o": 1834.0, "h": 1870.0, "l": 1834.0, "c": 1863.0, "v": 12800}, {"o": 1859.0, "h": 1864.0, "l": 1825.0, "c": 1825.0, "v": 13700}, {"o": 1854.0, "h": 1871.0, "l": 1725.0, "c": 1746.0, "v": 78400}, {"o": 1811.0, "h": 1920.0, "l": 1811.0, "c": 1909.0, "v": 51300}, {"o": 1920.0, "h": 1988.0, "l": 1920.0, "c": 1967.0, "v": 30300}, {"o": 1970.0, "h": 2013.0, "l": 1931.0, "c": 1997.0, "v": 23600}, {"o": 1997.0, "h": 2039.0, "l": 1966.0, "c": 2017.0, "v": 26800}, {"o": 2020.0, "h": 2049.0, "l": 1988.0, "c": 2002.0, "v": 28600}, {"o": 2016.0, "h": 2017.0, "l": 1953.0, "c": 1953.0, "v": 37700}, {"o": 1951.0, "h": 2010.0, "l": 1932.0, "c": 1992.0, "v": 24500}, {"o": 1980.0, "h": 2130.0, "l": 1980.0, "c": 2112.0, "v": 53600}, {"o": 2095.0, "h": 2200.0, "l": 2095.0, "c": 2105.0, "v": 47400}, {"o": 2103.0, "h": 2123.0, "l": 2071.0, "c": 2082.0, "v": 24000}, {"o": 2100.0, "h": 2165.0, "l": 2091.0, "c": 2133.0, "v": 32600}, {"o": 2151.0, "h": 2266.0, "l": 2151.0, "c": 2266.0, "v": 60100}, {"o": 2280.0, "h": 2349.0, "l": 2195.0, "c": 2200.0, "v": 115600}, {"o": 2330.0, "h": 2700.0, "l": 2330.0, "c": 2661.0, "v": 799200}]}, {"rank": 2, "name": "GO（581A）", "code": "581A", "score": 100, "decision": "発動待ち", "decision_class": "ready", "trigger": 4495, "entry": 4505, "pullback_low": 4378.5, "pullback_high": 4447.5, "stop": 4275, "target1": 4850, "target2": 5010, "supply": "市場需給100点／上昇日出来高÷下落日3.43倍／安値切上げ○", "reason": "IPO・グロース／自動車・モビリティ＝中立 58点／前日比 +7.11%／出来高比 2.17倍／売買代金 182億円／テクニカル 85点／市場需給100点／上昇日出来高÷下落日3.43倍／安値切上げ○", "chart": [{"o": 2255.0, "h": 2322.0, "l": 2193.0, "c": 2201.0, "v": 1421200}, {"o": 2200.0, "h": 2405.0, "l": 2180.0, "c": 2376.0, "v": 1959100}, {"o": 2450.0, "h": 2555.0, "l": 2406.0, "c": 2547.0, "v": 3385400}, {"o": 2497.0, "h": 2666.0, "l": 2462.0, "c": 2500.0, "v": 3001300}, {"o": 2517.0, "h": 2708.0, "l": 2517.0, "c": 2611.0, "v": 3035400}, {"o": 2615.0, "h": 2649.0, "l": 2485.0, "c": 2505.0, "v": 1891300}, {"o": 2499.0, "h": 2499.0, "l": 2350.0, "c": 2408.0, "v": 2100300}, {"o": 2450.0, "h": 2585.0, "l": 2422.0, "c": 2474.0, "v": 1273200}, {"o": 2450.0, "h": 2480.0, "l": 2362.0, "c": 2450.0, "v": 2127800}, {"o": 2850.0, "h": 2950.0, "l": 2783.0, "c": 2950.0, "v": 5309400}, {"o": 2950.0, "h": 3175.0, "l": 2752.0, "c": 2831.0, "v": 11981800}, {"o": 2731.0, "h": 2837.0, "l": 2559.0, "c": 2794.0, "v": 4647400}, {"o": 2875.0, "h": 2922.0, "l": 2643.0, "c": 2806.0, "v": 3808500}, {"o": 2900.0, "h": 3050.0, "l": 2713.0, "c": 3030.0, "v": 6494200}, {"o": 3100.0, "h": 3255.0, "l": 2989.0, "c": 3130.0, "v": 4698500}, {"o": 3040.0, "h": 3095.0, "l": 2886.0, "c": 2998.0, "v": 3240500}, {"o": 3000.0, "h": 3030.0, "l": 2866.0, "c": 2946.0, "v": 2267600}, {"o": 2900.0, "h": 3160.0, "l": 2820.0, "c": 3045.0, "v": 3358000}, {"o": 3035.0, "h": 3130.0, "l": 2970.0, "c": 3065.0, "v": 1994100}, {"o": 3010.0, "h": 3060.0, "l": 2957.0, "c": 2964.0, "v": 1593900}, {"o": 2964.0, "h": 2988.0, "l": 2750.0, "c": 2815.0, "v": 2881900}, {"o": 2815.0, "h": 2932.0, "l": 2758.0, "c": 2885.0, "v": 1515900}, {"o": 2880.0, "h": 2921.0, "l": 2828.0, "c": 2878.0, "v": 897300}, {"o": 2903.0, "h": 3090.0, "l": 2894.0, "c": 3080.0, "v": 1627200}, {"o": 3080.0, "h": 3195.0, "l": 3020.0, "c": 3155.0, "v": 1589100}, {"o": 3100.0, "h": 3320.0, "l": 3045.0, "c": 3290.0, "v": 2509000}, {"o": 3400.0, "h": 3650.0, "l": 3400.0, "c": 3645.0, "v": 2780400}, {"o": 3645.0, "h": 3765.0, "l": 3510.0, "c": 3605.0, "v": 2080400}, {"o": 3600.0, "h": 3690.0, "l": 3460.0, "c": 3475.0, "v": 1289000}, {"o": 3460.0, "h": 3620.0, "l": 3430.0, "c": 3600.0, "v": 1441400}, {"o": 3655.0, "h": 3690.0, "l": 3405.0, "c": 3455.0, "v": 1244100}, {"o": 3525.0, "h": 3580.0, "l": 3425.0, "c": 3520.0, "v": 1000100}, {"o": 3500.0, "h": 3530.0, "l": 3320.0, "c": 3395.0, "v": 1337600}, {"o": 3455.0, "h": 3620.0, "l": 3385.0, "c": 3575.0, "v": 1328500}, {"o": 3590.0, "h": 3670.0, "l": 3530.0, "c": 3640.0, "v": 1170500}, {"o": 3690.0, "h": 3920.0, "l": 3535.0, "c": 3870.0, "v": 2727900}, {"o": 3800.0, "h": 3960.0, "l": 3770.0, "c": 3875.0, "v": 2063400}, {"o": 3900.0, "h": 3925.0, "l": 3790.0, "c": 3835.0, "v": 1054100}, {"o": 3950.0, "h": 4230.0, "l": 3870.0, "c": 4150.0, "v": 3220500}, {"o": 4140.0, "h": 4490.0, "l": 4060.0, "c": 4445.0, "v": 4100300}]}, {"rank": 3, "name": "HENNGE（4475）", "code": "4475", "score": 100, "decision": "発動待ち", "decision_class": "ready", "trigger": 1791, "entry": 1793, "pullback_low": 1753.95, "pullback_high": 1775.25, "stop": 1722, "target1": 1900, "target2": 1949, "supply": "市場需給100点／上昇日出来高÷下落日1.97倍／安値切上げ○", "reason": "SaaS・AIソフト／その他＝拡大 100点／前日比 +11.96%／出来高比 2.31倍／売買代金 29億円／テクニカル 68点／市場需給100点／上昇日出来高÷下落日1.97倍／安値切上げ○", "chart": [{"o": 1175.0, "h": 1243.0, "l": 1159.0, "c": 1227.0, "v": 617400}, {"o": 1221.0, "h": 1256.0, "l": 1201.0, "c": 1248.0, "v": 324300}, {"o": 1248.0, "h": 1259.0, "l": 1226.0, "c": 1253.0, "v": 387800}, {"o": 1245.0, "h": 1277.0, "l": 1240.0, "c": 1244.0, "v": 323000}, {"o": 1240.0, "h": 1262.0, "l": 1153.0, "c": 1213.0, "v": 404100}, {"o": 1221.0, "h": 1221.0, "l": 1196.0, "c": 1196.0, "v": 164900}, {"o": 1184.0, "h": 1227.0, "l": 1184.0, "c": 1213.0, "v": 230400}, {"o": 1207.0, "h": 1219.0, "l": 1188.0, "c": 1204.0, "v": 261000}, {"o": 1204.0, "h": 1253.0, "l": 1204.0, "c": 1245.0, "v": 302400}, {"o": 1250.0, "h": 1310.0, "l": 1234.0, "c": 1310.0, "v": 429300}, {"o": 1315.0, "h": 1326.0, "l": 1300.0, "c": 1321.0, "v": 332400}, {"o": 1321.0, "h": 1336.0, "l": 1283.0, "c": 1336.0, "v": 584500}, {"o": 1350.0, "h": 1389.0, "l": 1338.0, "c": 1338.0, "v": 537400}, {"o": 1328.0, "h": 1349.0, "l": 1314.0, "c": 1334.0, "v": 344300}, {"o": 1319.0, "h": 1329.0, "l": 1291.0, "c": 1319.0, "v": 424100}, {"o": 1291.0, "h": 1296.0, "l": 1232.0, "c": 1251.0, "v": 564800}, {"o": 1273.0, "h": 1338.0, "l": 1268.0, "c": 1331.0, "v": 361900}, {"o": 1347.0, "h": 1368.0, "l": 1318.0, "c": 1326.0, "v": 355800}, {"o": 1326.0, "h": 1334.0, "l": 1302.0, "c": 1330.0, "v": 303200}, {"o": 1358.0, "h": 1359.0, "l": 1278.0, "c": 1292.0, "v": 303100}, {"o": 1275.0, "h": 1319.0, "l": 1263.0, "c": 1302.0, "v": 313900}, {"o": 1280.0, "h": 1293.0, "l": 1256.0, "c": 1284.0, "v": 283000}, {"o": 1288.0, "h": 1370.0, "l": 1277.0, "c": 1301.0, "v": 609700}, {"o": 1451.0, "h": 1577.0, "l": 1431.0, "c": 1519.0, "v": 2540200}, {"o": 1508.0, "h": 1555.0, "l": 1475.0, "c": 1507.0, "v": 935600}, {"o": 1484.0, "h": 1535.0, "l": 1466.0, "c": 1476.0, "v": 456500}, {"o": 1475.0, "h": 1512.0, "l": 1460.0, "c": 1505.0, "v": 475900}, {"o": 1513.0, "h": 1530.0, "l": 1441.0, "c": 1445.0, "v": 489200}, {"o": 1415.0, "h": 1457.0, "l": 1400.0, "c": 1444.0, "v": 467400}, {"o": 1469.0, "h": 1547.0, "l": 1451.0, "c": 1529.0, "v": 630000}, {"o": 1501.0, "h": 1521.0, "l": 1455.0, "c": 1455.0, "v": 511300}, {"o": 1432.0, "h": 1479.0, "l": 1426.0, "c": 1466.0, "v": 369200}, {"o": 1465.0, "h": 1474.0, "l": 1406.0, "c": 1406.0, "v": 403800}, {"o": 1421.0, "h": 1506.0, "l": 1404.0, "c": 1504.0, "v": 539300}, {"o": 1513.0, "h": 1538.0, "l": 1504.0, "c": 1512.0, "v": 609000}, {"o": 1535.0, "h": 1599.0, "l": 1534.0, "c": 1561.0, "v": 605900}, {"o": 1556.0, "h": 1584.0, "l": 1524.0, "c": 1539.0, "v": 544600}, {"o": 1550.0, "h": 1586.0, "l": 1529.0, "c": 1535.0, "v": 463300}, {"o": 1565.0, "h": 1616.0, "l": 1513.0, "c": 1597.0, "v": 994000}, {"o": 1668.0, "h": 1790.0, "l": 1635.0, "c": 1788.0, "v": 1600700}]}, {"rank": 4, "name": "サイバーセキュリティクラウド（4493）", "code": "4493", "score": 100, "decision": "発動待ち", "decision_class": "ready", "trigger": 2039, "entry": 2041, "pullback_low": 2001.95, "pullback_high": 2023.25, "stop": 1970, "target1": 2148, "target2": 2197, "supply": "市場需給100点／上昇日出来高÷下落日2.06倍／安値切上げ○", "reason": "SaaS・AIソフト／その他＝拡大 100点／前日比 +9.57%／出来高比 4.47倍／売買代金 13億円／テクニカル 77点／市場需給100点／上昇日出来高÷下落日2.06倍／安値切上げ○", "chart": [{"o": 1710.0, "h": 1850.0, "l": 1710.0, "c": 1832.0, "v": 215600}, {"o": 1840.0, "h": 1840.0, "l": 1801.0, "c": 1803.0, "v": 108800}, {"o": 1813.0, "h": 1962.0, "l": 1813.0, "c": 1960.0, "v": 411100}, {"o": 1957.0, "h": 1993.0, "l": 1931.0, "c": 1949.0, "v": 214100}, {"o": 1944.0, "h": 1976.0, "l": 1890.0, "c": 1911.0, "v": 125900}, {"o": 1878.0, "h": 1898.0, "l": 1842.0, "c": 1881.0, "v": 73200}, {"o": 1891.0, "h": 1929.0, "l": 1865.0, "c": 1913.0, "v": 60800}, {"o": 1945.0, "h": 1945.0, "l": 1870.0, "c": 1875.0, "v": 72800}, {"o": 1860.0, "h": 1901.0, "l": 1860.0, "c": 1889.0, "v": 43200}, {"o": 1900.0, "h": 1914.0, "l": 1846.0, "c": 1914.0, "v": 71600}, {"o": 1954.0, "h": 1954.0, "l": 1868.0, "c": 1869.0, "v": 74100}, {"o": 1842.0, "h": 1842.0, "l": 1770.0, "c": 1804.0, "v": 143400}, {"o": 1830.0, "h": 1860.0, "l": 1813.0, "c": 1840.0, "v": 102000}, {"o": 1841.0, "h": 1862.0, "l": 1793.0, "c": 1797.0, "v": 129300}, {"o": 1772.0, "h": 1822.0, "l": 1764.0, "c": 1820.0, "v": 58000}, {"o": 1800.0, "h": 1800.0, "l": 1754.0, "c": 1759.0, "v": 94400}, {"o": 1788.0, "h": 1817.0, "l": 1768.0, "c": 1816.0, "v": 48700}, {"o": 1810.0, "h": 1815.0, "l": 1758.0, "c": 1761.0, "v": 78100}, {"o": 1797.0, "h": 1804.0, "l": 1751.0, "c": 1762.0, "v": 104200}, {"o": 1778.0, "h": 1800.0, "l": 1757.0, "c": 1785.0, "v": 60300}, {"o": 1800.0, "h": 1840.0, "l": 1765.0, "c": 1821.0, "v": 91500}, {"o": 1823.0, "h": 1823.0, "l": 1769.0, "c": 1811.0, "v": 63500}, {"o": 1811.0, "h": 1841.0, "l": 1794.0, "c": 1823.0, "v": 66500}, {"o": 1830.0, "h": 1949.0, "l": 1830.0, "c": 1922.0, "v": 171100}, {"o": 1914.0, "h": 1919.0, "l": 1877.0, "c": 1889.0, "v": 68100}, {"o": 1883.0, "h": 1891.0, "l": 1849.0, "c": 1871.0, "v": 66600}, {"o": 1900.0, "h": 1921.0, "l": 1882.0, "c": 1905.0, "v": 86100}, {"o": 1910.0, "h": 1949.0, "l": 1906.0, "c": 1940.0, "v": 73700}, {"o": 1940.0, "h": 1965.0, "l": 1924.0, "c": 1947.0, "v": 105100}, {"o": 1933.0, "h": 2013.0, "l": 1933.0, "c": 1981.0, "v": 221400}, {"o": 1924.0, "h": 1925.0, "l": 1856.0, "c": 1902.0, "v": 280200}, {"o": 1881.0, "h": 1958.0, "l": 1875.0, "c": 1921.0, "v": 129800}, {"o": 1883.0, "h": 1891.0, "l": 1850.0, "c": 1879.0, "v": 86500}, {"o": 1908.0, "h": 1923.0, "l": 1868.0, "c": 1917.0, "v": 72000}, {"o": 1901.0, "h": 1913.0, "l": 1858.0, "c": 1874.0, "v": 66500}, {"o": 1905.0, "h": 1971.0, "l": 1904.0, "c": 1952.0, "v": 114700}, {"o": 1981.0, "h": 1992.0, "l": 1909.0, "c": 1910.0, "v": 88700}, {"o": 1910.0, "h": 1911.0, "l": 1820.0, "c": 1821.0, "v": 175400}, {"o": 1821.0, "h": 1879.0, "l": 1805.0, "c": 1850.0, "v": 167600}, {"o": 1930.0, "h": 2038.0, "l": 1921.0, "c": 2027.0, "v": 632300}]}, {"rank": 5, "name": "マネーフォワード（3994）", "code": "3994", "score": 100, "decision": "発動待ち", "decision_class": "ready", "trigger": 7060, "entry": 7080, "pullback_low": 6876.5, "pullback_high": 6987.5, "stop": 6710, "target1": 7640, "target2": 7890, "supply": "市場需給100点／上昇日出来高÷下落日2.49倍／安値切上げ○", "reason": "SaaS・AIソフト／その他＝拡大 100点／前日比 +4.42%／出来高比 2.14倍／売買代金 81億円／テクニカル 89点／市場需給100点／上昇日出来高÷下落日2.49倍／安値切上げ○", "chart": [{"o": 4363.0, "h": 4498.0, "l": 4317.0, "c": 4444.0, "v": 541600}, {"o": 4565.0, "h": 4622.0, "l": 4408.0, "c": 4538.0, "v": 410300}, {"o": 4537.0, "h": 4714.0, "l": 4431.0, "c": 4699.0, "v": 333800}, {"o": 4720.0, "h": 5074.0, "l": 4648.0, "c": 4858.0, "v": 706600}, {"o": 4879.0, "h": 4944.0, "l": 4722.0, "c": 4936.0, "v": 329700}, {"o": 4936.0, "h": 5050.0, "l": 4826.0, "c": 5010.0, "v": 365200}, {"o": 5110.0, "h": 5145.0, "l": 4912.0, "c": 4935.0, "v": 503500}, {"o": 4935.0, "h": 5071.0, "l": 4815.0, "c": 5071.0, "v": 690400}, {"o": 4850.0, "h": 5198.0, "l": 4619.0, "c": 4830.0, "v": 1085800}, {"o": 4690.0, "h": 4971.0, "l": 4630.0, "c": 4964.0, "v": 729800}, {"o": 5200.0, "h": 5535.0, "l": 5195.0, "c": 5250.0, "v": 1061200}, {"o": 5175.0, "h": 5488.0, "l": 5053.0, "c": 5334.0, "v": 751400}, {"o": 5400.0, "h": 5555.0, "l": 5243.0, "c": 5255.0, "v": 446100}, {"o": 5355.0, "h": 5443.0, "l": 5188.0, "c": 5325.0, "v": 389100}, {"o": 5200.0, "h": 5224.0, "l": 5047.0, "c": 5116.0, "v": 367400}, {"o": 5085.0, "h": 5453.0, "l": 5066.0, "c": 5407.0, "v": 524100}, {"o": 5500.0, "h": 5700.0, "l": 5475.0, "c": 5700.0, "v": 380200}, {"o": 5800.0, "h": 5877.0, "l": 5477.0, "c": 5665.0, "v": 655300}, {"o": 5898.0, "h": 6090.0, "l": 5531.0, "c": 5950.0, "v": 817000}, {"o": 5938.0, "h": 6029.0, "l": 5334.0, "c": 5371.0, "v": 1180000}, {"o": 5271.0, "h": 5514.0, "l": 5115.0, "c": 5455.0, "v": 562800}, {"o": 5455.0, "h": 5455.0, "l": 5030.0, "c": 5228.0, "v": 367500}, {"o": 5258.0, "h": 5337.0, "l": 5079.0, "c": 5079.0, "v": 290800}, {"o": 5137.0, "h": 5200.0, "l": 5086.0, "c": 5168.0, "v": 236700}, {"o": 5100.0, "h": 5377.0, "l": 5098.0, "c": 5342.0, "v": 361700}, {"o": 5323.0, "h": 5469.0, "l": 5250.0, "c": 5396.0, "v": 376300}, {"o": 5397.0, "h": 5457.0, "l": 5225.0, "c": 5381.0, "v": 233700}, {"o": 5550.0, "h": 5828.0, "l": 5536.0, "c": 5796.0, "v": 592900}, {"o": 5696.0, "h": 5910.0, "l": 5670.0, "c": 5874.0, "v": 314600}, {"o": 5990.0, "h": 6584.0, "l": 5947.0, "c": 6479.0, "v": 1220300}, {"o": 6401.0, "h": 6420.0, "l": 5986.0, "c": 6000.0, "v": 521100}, {"o": 5916.0, "h": 6086.0, "l": 5640.0, "c": 5658.0, "v": 665100}, {"o": 5858.0, "h": 5939.0, "l": 5665.0, "c": 5746.0, "v": 528400}, {"o": 6150.0, "h": 6285.0, "l": 6001.0, "c": 6282.0, "v": 879000}, {"o": 6309.0, "h": 6400.0, "l": 6100.0, "c": 6100.0, "v": 521500}, {"o": 6162.0, "h": 6450.0, "l": 6158.0, "c": 6450.0, "v": 639000}, {"o": 6448.0, "h": 6448.0, "l": 6083.0, "c": 6150.0, "v": 475400}, {"o": 6050.0, "h": 6170.0, "l": 5883.0, "c": 6170.0, "v": 546200}, {"o": 6220.0, "h": 6646.0, "l": 6151.0, "c": 6428.0, "v": 755500}, {"o": 6828.0, "h": 7050.0, "l": 6640.0, "c": 6712.0, "v": 1210500}]}], yen=n=>Number(n).toLocaleString("ja-JP",{maximumFractionDigits:1})+"円";
- const list=document.getElementById("focus-picks");
- rows.forEach((x,i)=>{const b=document.createElement("button");b.className="focus-pick";b.innerHTML=`<span class="focus-rank">${String(i+1).padStart(2,"0")}</span><span><b>${x.name}</b><small>${x.decision}</small></span><strong>${x.score}</strong>`;b.onclick=()=>select(i);list.appendChild(b);});
- function chart(x){const a=x.chart||[];if(!a.length)return `<div class="chart-empty">チャートデータ更新待ち</div>`;const W=720,H=390,p=28;let lo=Math.min(...a.map(v=>v.l),x.stop),hi=Math.max(...a.map(v=>v.h),x.trigger,x.target1);const y=v=>p+(hi-v)/(hi-lo||1)*(H-p*2),step=(W-p*2)/a.length,bw=Math.max(3,step*.55);let s=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;for(let i=0;i<5;i++){let yy=p+i*(H-p*2)/4;s+=`<line class="grid" x1="${p}" y1="${yy}" x2="${W-p}" y2="${yy}"/>`;}a.forEach((v,i)=>{let x0=p+step*(i+.5),up=v.c>=v.o,cl=up?"c-up":"c-down",yo=y(v.o),yc=y(v.c);s+=`<line class="${cl}" x1="${x0}" y1="${y(v.h)}" x2="${x0}" y2="${y(v.l)}"/><rect class="${cl}" x="${x0-bw/2}" y="${Math.min(yo,yc)}" width="${bw}" height="${Math.max(1,Math.abs(yo-yc))}"/>`;});[[x.trigger,"trigger","発動"],[x.pullback_high,"pullback","押し目"],[x.stop,"stop","撤退"]].forEach(z=>{s+=`<line class="level ${z[1]}" x1="${p}" y1="${y(z[0])}" x2="${W-p}" y2="${y(z[0])}"/><text class="label ${z[1]}" x="${W-p-3}" y="${y(z[0])-5}">${z[2]} ${yen(z[0])}</text>`;});return s+`</svg>`;}
- function select(i){const x=rows[i];[...list.children].forEach((b,j)=>b.classList.toggle("active",i===j));document.getElementById("focus-chart-name").textContent=x.name;document.getElementById("focus-chart-code").textContent=x.code;document.getElementById("focus-chart").innerHTML=chart(x);document.getElementById("focus-rank").textContent="#"+x.rank;document.getElementById("focus-name").textContent=x.name;document.getElementById("focus-score").textContent=x.score+" / 100";const d=document.getElementById("focus-decision");d.className="decision-badge "+x.decision_class;d.textContent=x.decision;document.getElementById("focus-trigger").textContent=yen(x.trigger)+" 以上";document.getElementById("focus-entry").textContent=yen(x.entry);document.getElementById("focus-pullback").textContent=yen(x.pullback_low)+" – "+yen(x.pullback_high);document.getElementById("focus-stop").textContent=yen(x.stop);document.getElementById("focus-targets").textContent=yen(x.target1)+" / "+yen(x.target2);document.getElementById("focus-supply").textContent=x.supply;document.getElementById("focus-reason").textContent=x.reason;}
- select(0);
-});
-</script>
-<section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr><tr><td>日経平均</td><td>66,405.6</td><td class='up'>+0.41%</td><td>上向き</td></tr><tr><td>TOPIX</td><td>432</td><td class='up'>+0.61%</td><td>上向き</td></tr><tr><td>NASDAQ</td><td>26,370.9</td><td class='down'>-0.12%</td><td>横ばい</td></tr><tr><td>S&P500</td><td>7,686.1</td><td class='down'>-0.33%</td><td>下向き</td></tr><tr><td>SOX</td><td>11,535</td><td class='up'>+0.57%</td><td>上向き</td></tr><tr><td>VIX</td><td>14.9</td><td class='up'>+3.40%</td><td>上向き</td></tr><tr><td>ドル円</td><td>159.8</td><td class='up'>+0.29%</td><td>横ばい</td></tr><tr><td>米10年金利</td><td>4.8</td><td class='up'>+0.81%</td><td>上向き</td></tr></table></section>
-<section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr><tr><td>1</td><td>自動運転・IPO</td><td class='up'>+13.5</td><td>ティアフォー（593A） <small>強度+13.5／+25.02%</small></td><td>1銘柄の実測平均</td></tr><tr><td>2</td><td>ドローン・成長株</td><td class='up'>+13.5</td><td>Terra Drone（278A） <small>強度+13.5／+12.43%</small></td><td>1銘柄の実測平均</td></tr><tr><td>3</td><td>MaaS・成長株</td><td class='up'>+12.2</td><td>GO（581A） <small>強度+12.2／+7.11%</small></td><td>1銘柄の実測平均</td></tr><tr><td>4</td><td>SaaS・フィンテック</td><td class='up'>+11.8</td><td>マネーフォワード（3994） <small>強度+12.2／+4.42%</small><br>freee（4478） <small>強度+11.4／+4.85%</small></td><td>2銘柄の実測平均</td></tr><tr><td>5</td><td>生成AI・クラウド</td><td class='up'>+11.5</td><td>FIXER（5129） <small>強度+11.5／+30.53%</small></td><td>1銘柄の実測平均</td></tr></table></section>
+<header><div><h1>AIトレードコクピット Ver.5.1</h1><div class="sub">最初の画面で本命・買い時・押し目・撤退を判断</div></div><div><span class="tag">寄り付き前8:00版</span><div class="sub">2026-09-01 08:28:29 JST／日経想定 取得不能</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;daytrade&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
+<section id="action-dashboard" class="card wide focus-dashboard"><div class="focus-empty"><b>本日は見送り</b><span>条件を満たす候補がありません</span></div></section>
+<section id="event-calendar" class="card wide event-calendar"><h2>売買イベントカレンダー</h2>
+<div id="event-meta" class="sub">公式日程と需給発生日を照合中...</div>
+<div class="event-guard" id="event-guard"><div><span>本日の警戒</span><b id="event-level">確認中</b></div><p id="event-rule">イベント情報を取得中...</p></div>
+<div class="event-summary">
+ <div><span>本日のイベント</span><b id="event-today-count">—</b></div>
+ <div><span>7日以内・高警戒</span><b id="event-week-high">—</b></div>
+ <div><span>日付未確定</span><b id="event-blocked-count">—</b></div>
+</div>
+<h3>今後30日・売買判断表</h3>
+<div class="event-table-wrap"><table><thead><tr><th>実需・発表日</th><th>時刻</th><th>イベント</th><th>分類</th><th>警戒</th><th>想定需給</th><th>当日の行動</th><th>発表日</th><th>基準日</th><th>需給日</th><th>反映日</th><th>確認状態</th><th>公式資料</th></tr></thead><tbody id="event-upcoming"><tr><td colspan="13">取得中...</td></tr></tbody></table></div>
+<h3>月間カレンダー</h3><div id="event-months" class="event-months"><div class="focus-empty">作成中...</div></div>
+<h3>未確定・売買利用禁止</h3><div id="event-unverified" class="event-unverified">確認中...</div>
+<div class="steps">
+ <div class="step"><b>1　日付を分離</b>発表日・基準日・大引けの需給日・指数反映日を別々に確認。</div>
+ <div class="step"><b>2　方向は断定しない</b>月末・SQ・指数入替は買い一方向ではなく、採用買いと除外売りの双方向。</div>
+ <div class="step"><b>3　未確定は取引禁止</b>公式日程や対象銘柄を確認できるまで、予想日を売買根拠にしない。</div>
+ <div class="step"><b>4　価格で最終確認</b>イベント後もOR15・VWAP・出来高・先物を見て当日の方向を再判定。</div>
+</div></section>
+<section id="correlation-monitor" class="card wide"><h2>当日デイトレ・相関／逆相関／先行銘柄</h2>
+<div id="correlation-meta" class="sub">日足20・60営業日と5分足の関係を更新中...</div>
+<label style="display:inline-flex;gap:8px;align-items:center;margin:10px 0;color:#9db0bc">主役銘柄
+<select id="correlation-anchor" style="min-width:240px;padding:8px;border:1px solid #2c5067;border-radius:7px;background:#0b1720;color:#eaf4fa"><option value="285A.T">キオクシアHD（285A）</option></select></label>
+<table><thead><tr><th>主役銘柄</th><th>確認銘柄</th><th>関係</th><th>成立判定</th><th>信頼度</th><th>20日</th><th>60日</th><th>5分足</th><th>先行</th><th>主役の当日</th><th>確認銘柄の当日</th><th>売買判断</th></tr></thead>
+<tbody id="correlation-rows"><tr><td colspan="12">相関データを取得中...</td></tr></tbody></table>
+<div class="steps">
+<div class="step"><b>1　米国先行</b>サンディスク・Micronの前日終値から、翌日のキオクシア反応を確認。</div>
+<div class="step"><b>2　同方向確認</b>正相関銘柄がOR15・VWAP・EMA9/20で同方向なら信頼度を加点。</div>
+<div class="step"><b>3　資金ローテーション</b>任天堂など逆相関候補が反対方向へ動いた場合だけ補強材料。</div>
+<div class="step"><b>4　不一致は見送り</b>相関株が逆行、または条件3/5以下なら主役銘柄へ飛び乗らない。</div>
+</div>
+<p class="warning"><b>キオクシア―任天堂は固定ルールではありません。</b> 20日・60日・当日5分足の逆相関が安定した期間だけ有効。サンディスクは取引時間が重ならないため「米国前日→キオクシア翌日」で判定します。9:15までは方向を決めず、OR15・VWAP・EMA9/20・高安の4/5一致を優先します。</p></section>
+<section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）5分足カレンダー・類似日予測</h2>
+<div id="kioxia-calendar-meta" class="sub">直近60日の5分足を照合中...</div>
+<div class="kio-summary">
+ <div class="kio-metric"><span>現在の型</span><b id="kio-current-type">判定待ち</b></div>
+ <div class="kio-metric"><span>本日の方向</span><b id="kio-bias">判定保留</b></div>
+ <div class="kio-metric"><span>類似日上昇確率</span><b id="kio-up-prob">—</b></div>
+ <div class="kio-metric"><span>残り時間の平均</span><b id="kio-after-ret">—</b></div>
+ <div class="kio-metric"><span>有効サンプル</span><b id="kio-sample">0日</b></div>
+</div>
+<h3>本日に最も近い過去チャート TOP5</h3>
+<div id="kioxia-match-grid" class="kio-match-grid"><div class="focus-empty">類似日を計算中...</div></div>
+<h3>直近25営業日・5分足カレンダー</h3>
+<div id="kioxia-calendar-grid" class="kio-calendar"><div class="focus-empty">5分足を取得中...</div></div>
+<p class="warning"><b>使い方：</b>9:15までは判定保留。類似度60%以上が3日未満なら「見送り」です。過去類似日よりも、現在のOR15・VWAP・EMA9/20・出来高・ヒゲ反応を優先し、4/5一致しない場合は発注しません。前場引け前11:00～11:30は新規INを見送ります。</p></section>
+<section class="card wide"><h2>市場環境・需給・ポジション 網羅判定</h2>
+<div class="rotation-grid">
+<div class="rotation-box"><b>25日騰落レシオ</b><strong id="breadth-25">走査待ち</strong><br><span id="breadth-regime">全市場終値から算出</span></div>
+<div class="rotation-box"><b>当日騰落</b><strong id="breadth-daily">走査待ち</strong><br><span id="breadth-counts">上昇／下落／変わらず</span></div>
+<div class="rotation-box"><b>新高値・新安値</b><strong id="breadth-highlow">走査待ち</strong><br>20日・52週の両方を確認</div>
+<div class="rotation-box"><b>全市場売買代金</b><strong id="breadth-turnover">走査待ち</strong><br><span id="breadth-coverage">取得率を確認</span></div>
+</div>
+<table><thead><tr><th>分類</th><th>網羅項目</th><th>選定での役割</th><th>現在の扱い</th></tr></thead><tbody>
+<tr><td>市場参加</td><td>騰落レシオ／新高値・新安値／売買代金／日本市況／テクニカル指標</td><td>上昇が一部銘柄だけか、市場全体へ広がっているか</td><td class="up">全市場走査で自動反映</td></tr>
+<tr><td>需給</td><td>空売り比率／信用評価／裁定買い残／投資主体別</td><td>踏み上げ余地、戻り売り圧力、主体別の買い越し</td><td class="warning">公表日時付きデータのみ採点。未取得は判定保留</td></tr>
+<tr><td>ポジション</td><td>先物手口／オプション手口／SQ値／NT倍率</td><td>指数の上値・下値バイアスとリバランス圧力</td><td class="warning">個別銘柄点ではなく地合いゲート</td></tr>
+<tr><td>外部環境</td><td>米国市況／世界株価／先物CFD／ADR／為替／商品／仮想通貨／債券／恐怖指数</td><td>翌朝ギャップ、業種ローテーション、リスク選好</td><td>指数・為替・金利・業種相対で反映</td></tr>
+<tr><td>評価・イベント</td><td>日経225 PER／米国株PER／ドル建て225／225寄与度／経済ニュース／スケジュール／5分足カレンダー</td><td>割高警戒、指数寄与の偏り、決算・指標回避</td><td>加点せず、過熱警戒と売買禁止条件に使用</td></tr>
+</tbody></table>
+<p class="warning"><b>重要：</b>空売り比率、信用残、先物・オプション手口など公表頻度が違う値を同日データとして混ぜません。未取得値を推定で埋めず、正式候補のデータ充足率に反映します。</p></section>
+<section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr><tr><td>日経平均</td><td>—</td><td class=''>—</td><td>横ばい</td></tr><tr><td>TOPIX</td><td>432</td><td class='up'>+0.61%</td><td>上向き</td></tr><tr><td>NASDAQ</td><td>26,370.9</td><td class='down'>-0.12%</td><td>横ばい</td></tr><tr><td>S&P500</td><td>7,686.1</td><td class='down'>-0.33%</td><td>下向き</td></tr><tr><td>SOX</td><td>11,535</td><td class='up'>+0.57%</td><td>上向き</td></tr><tr><td>VIX</td><td>14.9</td><td class='up'>+3.40%</td><td>上向き</td></tr><tr><td>ドル円</td><td>159.8</td><td class='up'>+0.29%</td><td>横ばい</td></tr><tr><td>米10年金利</td><td>4.8</td><td class='up'>+0.81%</td><td>上向き</td></tr></table></section>
+<section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr></table></section>
 <section id="policy-priority-overview" class="card wide"><h2>国策テーマ・実戦優先順位</h2><table><thead><tr><th>実戦優先</th><th>テーマ</th><th>正式候補数</th><th>最高総合点</th><th>現在判定</th><th>政策根拠</th></tr></thead><tbody><tr><td><b>#1</b></td><td>フィジカルAI</td><td>0/5</td><td>—</td><td>信用需給待ち・売買不可</td><td><a href='https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf' target='_blank' rel='noopener'>政策根拠</a></td></tr><tr><td><b>#2</b></td><td>自動運転</td><td>0/5</td><td>—</td><td>信用需給待ち・売買不可</td><td><a href='https://www.meti.go.jp/policy/mono_info_service/mono/automobile/index.html' target='_blank' rel='noopener'>政策根拠</a></td></tr><tr><td><b>#3</b></td><td>AI創薬</td><td>0/5</td><td>—</td><td>信用需給待ち・売買不可</td><td><a href='https://www.meti.go.jp/policy/mono_info_service/geniac/selection_2/index.html' target='_blank' rel='noopener'>政策根拠</a></td></tr><tr><td><b>#4</b></td><td>AI・半導体基盤</td><td>0/5</td><td>—</td><td>信用需給待ち・売買不可</td><td><a href='https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf' target='_blank' rel='noopener'>政策根拠</a></td></tr><tr><td><b>#5</b></td><td>防衛・宇宙</td><td>0/5</td><td>—</td><td>信用需給待ち・売買不可</td><td><a href='https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf' target='_blank' rel='noopener'>政策根拠</a></td></tr><tr><td><b>#6</b></td><td>GX・電力基盤</td><td>0/5</td><td>—</td><td>信用需給待ち・売買不可</td><td><a href='https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf' target='_blank' rel='noopener'>政策根拠</a></td></tr><tr><td><b>#7</b></td><td>量子・先端計算</td><td>0/5</td><td>—</td><td>信用需給待ち・売買不可</td><td><a href='https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf' target='_blank' rel='noopener'>政策根拠</a></td></tr></tbody></table><p class="warning">順位は国の政策分野に勝手な序列を付けたものではありません。正式候補数→最高総合点で毎回入れ替えます。信用需給未取得時は全テーマを売買不可とします。</p></section>
-<section id="policy-physical-ai" class="card wide policy-theme-card" data-policy-tab="physical-ai"><h2>実戦優先 #1｜フィジカルAI・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td>1</td><td>ファナック（6954）<br><small>フィジカルAIロボット本体・制御</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>98</b></td><td>70</td><td><b class=''>52/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>6,052<br><small>出来高比0.65倍</small></td><td>6,050</td><td class='down'>5,930</td><td>6,220／6,310</td><td><a href='https://www.fanuc.co.jp/ja/profile/pr/newsrelease/2026/news20260513.html' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>2</td><td>安川電機（6506）<br><small>AIロボット MOTOMAN NEXT</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>98</b></td><td>72</td><td><b class=''>52/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>4,811<br><small>出来高比1.14倍</small></td><td>4,830</td><td class='down'>4,720</td><td>5,000／5,080</td><td><a href='https://www.yaskawa.co.jp/motoman-next/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>3</td><td>ナブテスコ（6268）<br><small>ロボット関節用精密減速機</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>80</b></td><td>78</td><td><b class=''>49/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>4,706<br><small>出来高比1.56倍</small></td><td>4,600</td><td class='down'>4,495</td><td>4,760／4,840</td><td><a href='https://www.nabtesco.com/products/precision-reduction-gears/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>4</td><td>ハーモニック・ドライブ・システムズ（6324）<br><small>ロボット用精密減速機</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>82</b></td><td>88</td><td><b class=''>48/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>5,750<br><small>出来高比0.41倍</small></td><td>5,800</td><td class='down'>5,550</td><td>6,170／6,340</td><td><a href='https://www.hds.co.jp/company/about/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-autonomous-driving" class="card wide policy-theme-card" data-policy-tab="autonomous-driving"><h2>実戦優先 #2｜自動運転・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td>1</td><td>ティアフォー（593A）<br><small>Autoware・自動運転システム</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>100</b></td><td>95</td><td><b class=''>64/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>1,999<br><small>出来高比4.03倍</small></td><td>1,617</td><td class='down'>1,522</td><td>1,759／1,825</td><td><a href='https://tier4.co.jp/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>2</td><td>アイサンテクノロジー（4667）<br><small>高精度3次元地図・運行支援</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>92</b></td><td>58</td><td><b class=''>55/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>2,661<br><small>出来高比10.50倍</small></td><td>2,215</td><td class='down'>2,132</td><td>2,340／2,398</td><td><a href='https://www.aisantec.co.jp/information/5412/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>3</td><td>デンソー（6902）<br><small>車載半導体・センシング・制御</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>78</b></td><td>35</td><td><b class=''>42/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>1,915.5<br><small>出来高比0.90倍</small></td><td>1,908</td><td class='down'>1,886</td><td>1,941／1,956</td><td><a href='https://www.denso.com/jp/ja/business/automotive/mobility/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.meti.go.jp/policy/mono_info_service/mono/automobile/index.html" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-ai-drug-discovery" class="card wide policy-theme-card" data-policy-tab="ai-drug-discovery"><h2>実戦優先 #3｜AI創薬・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td>1</td><td>FRONTEO（2158）<br><small>AI創薬支援 DDAIF</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>96</b></td><td>55</td><td><b class=''>49/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>644<br><small>出来高比0.98倍</small></td><td>636</td><td class='down'>621</td><td>657／667</td><td><a href='https://lifescience.fronteo.com/products/drug-discovery-ai-factory' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>2</td><td>NEC（6701）<br><small>AI創薬・個別化がんワクチン</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>90</b></td><td>18</td><td><b class=''>48/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>4,908<br><small>出来高比1.11倍</small></td><td>4,755</td><td class='down'>4,640</td><td>4,935／5,015</td><td><a href='https://jpn.nec.com/solution/ai-drug/index.html' target='_blank' rel='noopener'>会社公式根拠</a></td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.meti.go.jp/policy/mono_info_service/geniac/selection_2/index.html" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-ai-semiconductor" class="card wide policy-theme-card" data-policy-tab="ai-semiconductor"><h2>実戦優先 #4｜AI・半導体基盤・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td>1</td><td>アドバンテスト（6857）<br><small>AI半導体テスト</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>94</b></td><td>92</td><td><b class=''>59/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>35,270<br><small>出来高比1.09倍</small></td><td>34,850</td><td class='down'>33,600</td><td>36,750／37,600</td><td><a href='https://www.advantest.com/investors/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>2</td><td>東京エレクトロン（8035）<br><small>先端半導体製造装置</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>94</b></td><td>88</td><td><b class=''>54/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>56,230<br><small>出来高比0.86倍</small></td><td>56,300</td><td class='down'>54,800</td><td>58,500／59,500</td><td><a href='https://www.tel.co.jp/ir/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>3</td><td>ディスコ（6146）<br><small>先端半導体切断・研削</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>88</b></td><td>90</td><td><b class=''>52/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>59,350<br><small>出来高比0.61倍</small></td><td>59,700</td><td class='down'>57,800</td><td>62,500／63,900</td><td><a href='https://www.disco.co.jp/jp/ir/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>4</td><td>ソシオネクスト（6526）<br><small>先端SoC設計</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>86</b></td><td>82</td><td><b class=''>52/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>2,005<br><small>出来高比0.85倍</small></td><td>2,016</td><td class='down'>1,955</td><td>2,108／2,151</td><td><a href='https://www.socionext.com/jp/ir/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>5</td><td>キオクシアHD（285A）<br><small>AI向けNAND・SSD</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>92</b></td><td>95</td><td><b class=''>49/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>47,900<br><small>出来高比0.79倍</small></td><td>48,450</td><td class='down'>45,450</td><td>53,000／55,100</td><td><a href='https://www.kioxia-holdings.com/ja-jp/ir.html' target='_blank' rel='noopener'>会社公式根拠</a></td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-defense-space" class="card wide policy-theme-card" data-policy-tab="defense-space"><h2>実戦優先 #5｜防衛・宇宙・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td>1</td><td>三菱重工業（7011）<br><small>防衛装備・ロケット・宇宙</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>98</b></td><td>78</td><td><b class=''>54/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>4,025<br><small>出来高比0.81倍</small></td><td>4,000</td><td class='down'>3,920</td><td>4,125／4,180</td><td><a href='https://www.mhi.com/jp/finance' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>2</td><td>IHI（7013）<br><small>航空エンジン・宇宙推進</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>92</b></td><td>62</td><td><b class=''>50/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>2,766<br><small>出来高比0.62倍</small></td><td>2,733</td><td class='down'>2,664</td><td>2,835／2,883</td><td><a href='https://www.ihi.co.jp/ir/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>3</td><td>三菱電機（6503）<br><small>防衛電子・衛星</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>90</b></td><td>45</td><td><b class=''>47/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>5,648<br><small>出来高比1.00倍</small></td><td>5,580</td><td class='down'>5,470</td><td>5,750／5,830</td><td><a href='https://www.mitsubishielectric.co.jp/ir/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-gx-power" class="card wide policy-theme-card" data-policy-tab="gx-power"><h2>実戦優先 #6｜GX・電力基盤・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td>1</td><td>パワーエックス（485A）<br><small>大型蓄電池・電力供給</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>95</b></td><td>95</td><td><b class=''>63/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>2,022<br><small>出来高比1.49倍</small></td><td>1,889</td><td class='down'>1,796</td><td>2,030／2,095</td><td><a href='https://power-x.jp/ir' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>2</td><td>日立製作所（6501）<br><small>送配電・系統デジタル化</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>88</b></td><td>38</td><td><b class=''>50/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>5,550<br><small>出来高比1.32倍</small></td><td>5,450</td><td class='down'>5,350</td><td>5,600／5,670</td><td><a href='https://www.hitachi.co.jp/IR/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>3</td><td>富士電機（6504）<br><small>パワー半導体・電力設備</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>90</b></td><td>68</td><td><b class=''>46/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>13,815<br><small>出来高比0.62倍</small></td><td>13,880</td><td class='down'>13,530</td><td>14,390／14,630</td><td><a href='https://www.fujielectric.co.jp/about/ir/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>4</td><td>住友電気工業（5802）<br><small>送電ケーブル・電力網</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>85</b></td><td>48</td><td><b class=''>43/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>2,180<br><small>出来高比0.71倍</small></td><td>2,193</td><td class='down'>2,120</td><td>2,303／2,354</td><td><a href='https://sumitomoelectric.com/jp/ir' target='_blank' rel='noopener'>会社公式根拠</a></td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-quantum-computing" class="card wide policy-theme-card" data-policy-tab="quantum-computing"><h2>実戦優先 #7｜量子・先端計算・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td>1</td><td>富士通（6702）<br><small>量子計算・HPC</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>92</b></td><td>15</td><td><b class=''>48/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>3,904<br><small>出来高比1.24倍</small></td><td>3,765</td><td class='down'>3,690</td><td>3,880／3,935</td><td><a href='https://www.fujitsu.com/jp/about/research/technology/quantum/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>2</td><td>NEC（6701）<br><small>量子アニーリング・量子暗号</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>90</b></td><td>12</td><td><b class=''>47/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>4,908<br><small>出来高比1.11倍</small></td><td>4,755</td><td class='down'>4,640</td><td>4,935／5,015</td><td><a href='https://jpn.nec.com/quantum_annealing/' target='_blank' rel='noopener'>会社公式根拠</a></td></tr><tr><td>3</td><td>NTT（9432）<br><small>光・量子技術</small></td><td><span class='pill prep'>信用需給待ち</span></td><td><b>88</b></td><td>10</td><td><b class=''>44/100</b></td><td>信用需給未取得（正式候補へ昇格不可）</td><td>168.6<br><small>出来高比0.75倍</small></td><td>168.5</td><td class='down'>166.8</td><td>171.2／172.4</td><td><a href='https://group.ntt/jp/rd/technology/quantum.html' target='_blank' rel='noopener'>会社公式根拠</a></td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section>
+<section id="policy-physical-ai" class="card wide policy-theme-card" data-policy-tab="physical-ai"><h2>実戦優先 #1｜フィジカルAI・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-autonomous-driving" class="card wide policy-theme-card" data-policy-tab="autonomous-driving"><h2>実戦優先 #2｜自動運転・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.meti.go.jp/policy/mono_info_service/mono/automobile/index.html" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-ai-drug-discovery" class="card wide policy-theme-card" data-policy-tab="ai-drug-discovery"><h2>実戦優先 #3｜AI創薬・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.meti.go.jp/policy/mono_info_service/geniac/selection_2/index.html" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-ai-semiconductor" class="card wide policy-theme-card" data-policy-tab="ai-semiconductor"><h2>実戦優先 #4｜AI・半導体基盤・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-defense-space" class="card wide policy-theme-card" data-policy-tab="defense-space"><h2>実戦優先 #5｜防衛・宇宙・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-gx-power" class="card wide policy-theme-card" data-policy-tab="gx-power"><h2>実戦優先 #6｜GX・電力基盤・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-quantum-computing" class="card wide policy-theme-card" data-policy-tab="quantum-computing"><h2>実戦優先 #7｜量子・先端計算・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section>
 <section class="card wide"><h2>②-A 秋田AIデータセンター関連 監視TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・契約状況</th><th>資料</th></tr></thead><tbody><tr><td>1</td><td>ユアテック（1934）</td><td><b class='up'>92/100</b></td><td>2,576</td><td class='down'>-0.54%</td><td>1.34倍</td><td>東北地盤の電気・空調・情報通信・送変電工事</td><td>会社資料で東北のデータセンター建設需要を成長機会として言及<br><small>秋田案件の受注・参画は未確認</small></td><td><a href='https://www.yurtec.co.jp/ir/pdf/presentation-qa_250529.pdf' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>2</td><td>東北電力（9506）</td><td><b class='up'>90/100</b></td><td>1,303.5</td><td class='down'>-1.21%</td><td>0.96倍</td><td>500MW級計画の電力供給・系統増強・再エネ調達候補</td><td>東北でデータセンター誘致とGPU向けコンテナ型DCを推進<br><small>秋田案件の供給契約は未確認</small></td><td><a href='https://www.tohoku-epco.co.jp/news/normal/1247944_2558.html' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>3</td><td>フジクラ（5803）</td><td><b class='up'>74/100</b></td><td>5,340</td><td class='down'>-2.91%</td><td>0.60倍</td><td>大容量送電・光ファイバー・データセンター配線</td><td>大規模DCに必要な電力・光通信部材の供給候補<br><small>秋田案件の採用は未確認</small></td><td><a href='https://www.fujikura.co.jp/products/' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>4</td><td>高砂熱学工業（1969）</td><td><b class='up'>68/100</b></td><td>4,318</td><td class='down'>-0.99%</td><td>0.52倍</td><td>AIサーバー向け高効率冷却・空調設備</td><td>データセンター用空調技術と秋田営業所を保有<br><small>秋田案件の受注・参画は未確認</small></td><td><a href='https://www.tte-net.com/lab/public/air-conditioning-and-environment/' target='_blank' rel='noopener'>公式根拠</a></td></tr><tr><td>5</td><td>関電工（1942）</td><td><b class='up'>62/100</b></td><td>5,474</td><td class='down'>-0.16%</td><td>0.49倍</td><td>特別高圧受変電・非常用電源・電気設備</td><td>データセンター向け電気設備・情報通信技術を保有<br><small>秋田案件の受注・参画は未確認</small></td><td><a href='https://www.kandenko.co.jp/business/' target='_blank' rel='noopener'>公式根拠</a></td></tr></tbody></table>
 <p class="warning">秋田市の計画はエスツーとBitgritが主導し、2030年代前半の稼働、最大500MWを想定。現時点で上場各社の受注は確認できていません。関連度は事業領域と地域性の評価であり、受注確定度ではありません。正式なスイング候補への昇格には、会社IR・適時開示、信用需給30/55点以上、発動価格突破を必須とします。</p></section>
@@ -138,11 +177,11 @@ document.addEventListener("DOMContentLoaded",()=>{
 <h3>米国11業種：S&P500に対する相対強弱</h3>
 <table><tr><th>順位</th><th>業種ETF</th><th>資金段階</th><th>点数</th><th>5日相対</th><th>20日相対</th><th>勢い変化</th><th>行動</th></tr><tr><td>1</td><td>情報技術・AI <small>XLK</small></td><td><span class='pill long'>拡大</span></td><td><b>82/100</b></td><td class='up'>+3.15%</td><td class='up'>+3.62%</td><td class='up'>+7.36pt</td><td>順張り・押し目</td></tr><tr><td>2</td><td>エネルギー <small>XLE</small></td><td><span class='pill '>中立</span></td><td><b>66/100</b></td><td class='up'>+0.92%</td><td class='up'>+7.66%</td><td class='down'>-1.12pt</td><td>方向確認待ち</td></tr><tr><td>3</td><td>ヘルスケア <small>XLV</small></td><td><span class='pill short'>流出</span></td><td><b>36/100</b></td><td class='down'>-2.81%</td><td class='up'>+3.99%</td><td class='down'>-8.58pt</td><td>新規ロング停止</td></tr><tr><td>4</td><td>金融 <small>XLF</small></td><td><span class='pill short'>流出</span></td><td><b>32/100</b></td><td class='down'>-1.31%</td><td class='down'>-0.55%</td><td class='down'>-3.61pt</td><td>新規ロング停止</td></tr><tr><td>5</td><td>コミュニケーション <small>XLC</small></td><td><span class='pill short'>流出</span></td><td><b>32/100</b></td><td class='down'>-1.20%</td><td class='down'>-1.02%</td><td class='down'>-3.74pt</td><td>新規ロング停止</td></tr><tr><td>6</td><td>資本財・工業 <small>XLI</small></td><td><span class='pill short'>低迷</span></td><td><b>30/100</b></td><td class='down'>-2.59%</td><td class='down'>-5.51%</td><td class='up'>+0.15pt</td><td>見送り</td></tr><tr><td>7</td><td>素材 <small>XLB</small></td><td><span class='pill short'>流出</span></td><td><b>29/100</b></td><td class='down'>-2.09%</td><td class='up'>+2.16%</td><td class='down'>-5.85pt</td><td>新規ロング停止</td></tr><tr><td>8</td><td>公益 <small>XLU</small></td><td><span class='pill short'>流出</span></td><td><b>27/100</b></td><td class='down'>-2.72%</td><td class='down'>-5.93%</td><td class='down'>-1.74pt</td><td>新規ロング停止</td></tr><tr><td>9</td><td>一般消費財 <small>XLY</small></td><td><span class='pill short'>流出</span></td><td><b>27/100</b></td><td class='down'>-1.88%</td><td class='down'>-2.50%</td><td class='down'>-4.40pt</td><td>新規ロング停止</td></tr><tr><td>10</td><td>不動産 <small>XLRE</small></td><td><span class='pill short'>流出</span></td><td><b>22/100</b></td><td class='down'>-3.12%</td><td class='down'>-3.50%</td><td class='down'>-5.43pt</td><td>新規ロング停止</td></tr><tr><td>11</td><td>生活必需品 <small>XLP</small></td><td><span class='pill short'>流出</span></td><td><b>18/100</b></td><td class='down'>-3.25%</td><td class='down'>-0.99%</td><td class='down'>-7.71pt</td><td>新規ロング停止</td></tr></table>
 <h3>日本株：TOPIXに対する相対強弱</h3>
-<table><tr><th>順位</th><th>業種群</th><th>資金段階</th><th>点数</th><th>5日相対</th><th>20日相対</th><th>勢い変化</th><th>20日線上比率</th><th>出来高比</th><th>先行銘柄</th><th>行動</th></tr><tr><td>1</td><td>その他</td><td><span class='pill long'>拡大</span></td><td><b>100/100</b></td><td class='up'>+17.70%</td><td class='up'>+40.15%</td><td class='up'>+12.30pt</td><td>92%</td><td>2.80倍</td><td>ティアフォー（593A）<br>Terra Drone（278A）<br>アイサンテクノロジー（4667）</td><td>順張り・押し目</td></tr><tr><td>2</td><td>AI・テクノロジー</td><td><span class='pill long'>拡大</span></td><td><b>75/100</b></td><td class='up'>+2.51%</td><td class='up'>+6.84%</td><td class='up'>+2.87pt</td><td>70%</td><td>1.67倍</td><td>FIXER（5129）<br>モビルス（4370）<br>チャットプラス（598A）</td><td>順張り・押し目</td></tr><tr><td>3</td><td>金融</td><td><span class='pill in'>流入初期</span></td><td><b>66/100</b></td><td class='up'>+2.20%</td><td class='down'>-1.40%</td><td class='up'>+1.67pt</td><td>100%</td><td>1.03倍</td><td>三井住友FG（8316）<br>三菱UFJ FG（8306）<br>MS&AD（8725）</td><td>最優先監視・初押し</td></tr><tr><td>4</td><td>資本財・インフラ</td><td><span class='pill long'>拡大</span></td><td><b>63/100</b></td><td class='up'>+0.41%</td><td class='up'>+6.91%</td><td class='up'>+3.91pt</td><td>42%</td><td>0.86倍</td><td>パワーエックス（485A）<br>日立製作所（6501）<br>小松製作所（6301）</td><td>順張り・押し目</td></tr><tr><td>5</td><td>自動車・モビリティ</td><td><span class='pill '>中立</span></td><td><b>58/100</b></td><td class='up'>+1.54%</td><td class='up'>+4.25%</td><td class='down'>-2.59pt</td><td>60%</td><td>1.09倍</td><td>GO（581A）<br>ニデック（6594）<br>トヨタ自動車（7203）</td><td>方向確認待ち</td></tr><tr><td>6</td><td>資源・素材・商社</td><td><span class='pill short'>流出</span></td><td><b>55/100</b></td><td class='down'>-0.06%</td><td class='up'>+12.77%</td><td class='down'>-8.10pt</td><td>100%</td><td>0.74倍</td><td>日鉄鉱業（1515）<br>DOWA HD（5714）<br>日本郵船（9101）</td><td>新規ロング停止</td></tr><tr><td>7</td><td>内需・ディフェンシブ</td><td><span class='pill '>中立</span></td><td><b>51/100</b></td><td class='up'>+0.83%</td><td class='down'>-3.13%</td><td class='down'>-2.11pt</td><td>80%</td><td>0.79倍</td><td>セルシス（3663）<br>任天堂（7974）<br>楽天グループ（4755）</td><td>方向確認待ち</td></tr></table>
+<table><tr><th>順位</th><th>業種群</th><th>資金段階</th><th>点数</th><th>5日相対</th><th>20日相対</th><th>勢い変化</th><th>20日線上比率</th><th>出来高比</th><th>先行銘柄</th><th>行動</th></tr><tr><td colspan='11'>日本株の業種群を計算できませんでした。</td></tr></table>
 <h3>セクター追い風＋流動性合格の個別株</h3>
-<table><tr><th>順位</th><th>会社名＋コード</th><th>業種群</th><th>資金段階</th><th>期待値</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr><tr><td>1</td><td>ティアフォー（593A）</td><td>その他</td><td><span class='pill long'>拡大</span></td><td><b class='up'>100/100</b></td><td>1,617</td><td class='down'>1,522</td><td>1,759／1,825</td><td>その他が拡大／TOPIX比5日 +17.70%／出来高比 4.03倍</td></tr><tr><td>2</td><td>HENNGE（4475）</td><td>その他</td><td><span class='pill long'>拡大</span></td><td><b class='up'>100/100</b></td><td>1,607</td><td class='down'>1,554</td><td>1,686／1,722</td><td>その他が拡大／TOPIX比5日 +17.70%／出来高比 2.31倍</td></tr><tr><td>3</td><td>サイバーセキュリティクラウド（4493）</td><td>その他</td><td><span class='pill long'>拡大</span></td><td><b class='up'>100/100</b></td><td>1,860</td><td class='down'>1,807</td><td>1,939／1,976</td><td>その他が拡大／TOPIX比5日 +17.70%／出来高比 4.47倍</td></tr><tr><td>4</td><td>マネーフォワード（3994）</td><td>その他</td><td><span class='pill long'>拡大</span></td><td><b class='up'>100/100</b></td><td>6,480</td><td class='down'>6,210</td><td>6,880／7,070</td><td>その他が拡大／TOPIX比5日 +17.70%／出来高比 2.14倍</td></tr><tr><td>5</td><td>freee（4478）</td><td>その他</td><td><span class='pill long'>拡大</span></td><td><b class='up'>100/100</b></td><td>4,260</td><td class='down'>4,095</td><td>4,505／4,620</td><td>その他が拡大／TOPIX比5日 +17.70%／出来高比 1.62倍</td></tr><tr><td>6</td><td>Terra Drone（278A）</td><td>その他</td><td><span class='pill long'>拡大</span></td><td><b class='up'>100/100</b></td><td>19,400</td><td class='down'>18,470</td><td>20,800／21,460</td><td>その他が拡大／TOPIX比5日 +17.70%／出来高比 4.18倍</td></tr><tr><td>7</td><td>アイサンテクノロジー（4667）</td><td>その他</td><td><span class='pill long'>拡大</span></td><td><b class='up'>100/100</b></td><td>2,215</td><td class='down'>2,132</td><td>2,340／2,398</td><td>その他が拡大／TOPIX比5日 +17.70%／出来高比 10.50倍</td></tr></table>
+<table><tr><th>順位</th><th>会社名＋コード</th><th>業種群</th><th>資金段階</th><th>期待値</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr><tr><td colspan='9'>流入初期・拡大かつ流動性条件を満たす候補なし。見送りです。</td></tr></table>
 <h3>キオクシアHD（285A）セクター判定</h3>
-<div class="rotation-box"><b><span class='pill long'>拡大</span>　反転条件だけ再評価</b>セクターの追い風は確認。ただし前日高値突破＋VWAP上維持を満たすまで買い増し判定にはしない。</div>
+<div class="rotation-box"><b><span class='pill '>データなし</span>　判定不能</b>株価またはセクターデータを取得できませんでした。</div>
 <p class="warning">これは機関投資家の保有明細そのものではなく、米国11業種ETFのS&P500相対強弱と、日本株監視群のTOPIX相対強弱による公開データ代理指標です。流入初期でも発動価格を上抜かなければ見送り。参考：<a href="https://limo.media/articles/-/133222" target="_blank" rel="noopener">イズミダイズム「セクターローテーション」解説</a></p>
 </section>
 <section id="silicon-photonics-watch" class="card wide"><h2>②-P AI光通信・シリコンフォトニクス監視（朝刊IN／OUT価格）</h2>
@@ -151,222 +190,22 @@ document.addEventListener("DOMContentLoaded",()=>{
 </section>
 <section id="day-ifo-orders" class="card wide"><h2>②-O 8:55当日勝負・短期資金TOP5（MS2 IFO注文票）</h2>
 <div class="ifo-summary">
-<div class="rotation-box"><b>合格銘柄</b><strong>5 / 5銘柄</strong><br>分散条件を満たす5銘柄を選定</div>
+<div class="rotation-box"><b>合格銘柄</b><strong>0 / 5銘柄</strong><br>厳格条件合格は0銘柄。無理に5銘柄へ増やさない</div>
 <div class="rotation-box"><b>注文単位</b><strong>各100株</strong><br>分割注文なし／キオクシアは対象外</div>
-<div class="rotation-box"><b>全候補が約定した場合</b><strong>建玉目安 1,812,200円</strong><br>利確1合計 <span class="up">+128,600円</span></div>
-<div class="rotation-box"><b>損失上限の目安</b><strong class="down">−85,300円</strong><br>5銘柄が全て損切りになった場合</div>
+<div class="rotation-box"><b>全候補が約定した場合</b><strong>建玉目安 0円</strong><br>利確1合計 <span class="up">+0円</span></div>
+<div class="rotation-box"><b>損失上限の目安</b><strong class="down">−0円</strong><br>5銘柄が全て損切りになった場合</div>
 </div>
 <p class="warning"><b>毎朝入替：</b>テーマ・マネーゲーム／IPO・グロースを2銘柄、SaaS・AIソフトを2銘柄、残る1枠を当日資金流入最上位から選定。出来高比・売買代金・値動き・信用需給・材料を更新し、固定大型株を使い回しません。</p>
 <p class="warning"><b>8:55の手順：</b>気配、成行買い／売り、特別気配、信用規制・日計り空売り可否を最終確認。買い指値上限を超えた銘柄、特買い張り付き、材料不明の急騰は注文せず監視へ移します。価格を上げて追いかけません。</p>
-<div class="ifo-grid">
-<article class="ifo-card">
-  <div class="ifo-head">
-    <span class="ifo-rank">#1</span>
-    <div><h3>アイサンテクノロジー（4667）</h3><small>テーマ・マネーゲーム／その他／拡大</small></div>
-    <b class="ifo-score">100/100</b>
-  </div>
-  <div class="ifo-columns">
-    <div class="order-box entry-order">
-      <b>左側｜信用新規・買建</b>
-      <dl>
-        <dt>市場</dt><dd>東証（SOR）</dd>
-        <dt>信用区分</dt><dd>制度（6カ月）</dd>
-        <dt>数量</dt><dd><strong>100株</strong></dd>
-        <dt>新規注文</dt><dd>逆指値注文</dd>
-        <dt>市場価格が</dt><dd><strong>2,701円以上</strong></dd>
-        <dt>買い指値</dt><dd><strong>2,703円</strong></dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-      </dl>
-    </div>
-    <div class="order-box exit-order">
-      <b>右側｜IFO（利益確定＋損切り）</b>
-      <dl>
-        <dt>利益確定</dt><dd>売埋・指値 <strong class="up">2,870円</strong></dd>
-        <dt>損切り条件</dt><dd>市場価格が <strong class="down">2,592円以下</strong></dd>
-        <dt>損切り注文</dt><dd>成行</dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-        <dt>利確2参考</dt><dd>2,947円（注文には未入力）</dd>
-      </dl>
-    </div>
-  </div>
-  <div class="ifo-metrics">
-    <span>建玉目安 <b>270,300円</b></span>
-    <span>利確時 <b class="up">+16,700円</b></span>
-    <span>最大損失 <b class="down">−11,100円</b></span>
-    <span>RR <b>1.50</b></span>
-  </div>
-  <p><b>選定理由：</b>テーマ・マネーゲーム／その他＝拡大 100点／前日比 +20.95%／出来高比 10.50倍／売買代金 21億円／テクニカル 73点／市場需給100点／上昇日出来高÷下落日3.36倍／安値切上げ○</p>
-  <p class="warning"><b>8:55確認：</b>8:55気配が2,703円を超えていたら価格を上げず注文取消。</p>
-  <p><small>7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。 15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。</small></p>
-</article>
-<article class="ifo-card">
-  <div class="ifo-head">
-    <span class="ifo-rank">#2</span>
-    <div><h3>GO（581A）</h3><small>IPO・グロース／自動車・モビリティ／中立</small></div>
-    <b class="ifo-score">100/100</b>
-  </div>
-  <div class="ifo-columns">
-    <div class="order-box entry-order">
-      <b>左側｜信用新規・買建</b>
-      <dl>
-        <dt>市場</dt><dd>東証（SOR）</dd>
-        <dt>信用区分</dt><dd>制度（6カ月）</dd>
-        <dt>数量</dt><dd><strong>100株</strong></dd>
-        <dt>新規注文</dt><dd>逆指値注文</dd>
-        <dt>市場価格が</dt><dd><strong>4,495円以上</strong></dd>
-        <dt>買い指値</dt><dd><strong>4,505円</strong></dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-      </dl>
-    </div>
-    <div class="order-box exit-order">
-      <b>右側｜IFO（利益確定＋損切り）</b>
-      <dl>
-        <dt>利益確定</dt><dd>売埋・指値 <strong class="up">4,850円</strong></dd>
-        <dt>損切り条件</dt><dd>市場価格が <strong class="down">4,275円以下</strong></dd>
-        <dt>損切り注文</dt><dd>成行</dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-        <dt>利確2参考</dt><dd>5,010円（注文には未入力）</dd>
-      </dl>
-    </div>
-  </div>
-  <div class="ifo-metrics">
-    <span>建玉目安 <b>450,500円</b></span>
-    <span>利確時 <b class="up">+34,500円</b></span>
-    <span>最大損失 <b class="down">−23,000円</b></span>
-    <span>RR <b>1.50</b></span>
-  </div>
-  <p><b>選定理由：</b>IPO・グロース／自動車・モビリティ＝中立 58点／前日比 +7.11%／出来高比 2.17倍／売買代金 182億円／テクニカル 85点／市場需給100点／上昇日出来高÷下落日3.43倍／安値切上げ○</p>
-  <p class="warning"><b>8:55確認：</b>8:55気配が4,505円を超えていたら価格を上げず注文取消。</p>
-  <p><small>7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。 15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。</small></p>
-</article>
-<article class="ifo-card">
-  <div class="ifo-head">
-    <span class="ifo-rank">#3</span>
-    <div><h3>HENNGE（4475）</h3><small>SaaS・AIソフト／その他／拡大</small></div>
-    <b class="ifo-score">100/100</b>
-  </div>
-  <div class="ifo-columns">
-    <div class="order-box entry-order">
-      <b>左側｜信用新規・買建</b>
-      <dl>
-        <dt>市場</dt><dd>東証（SOR）</dd>
-        <dt>信用区分</dt><dd>制度（6カ月）</dd>
-        <dt>数量</dt><dd><strong>100株</strong></dd>
-        <dt>新規注文</dt><dd>逆指値注文</dd>
-        <dt>市場価格が</dt><dd><strong>1,791円以上</strong></dd>
-        <dt>買い指値</dt><dd><strong>1,793円</strong></dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-      </dl>
-    </div>
-    <div class="order-box exit-order">
-      <b>右側｜IFO（利益確定＋損切り）</b>
-      <dl>
-        <dt>利益確定</dt><dd>売埋・指値 <strong class="up">1,900円</strong></dd>
-        <dt>損切り条件</dt><dd>市場価格が <strong class="down">1,722円以下</strong></dd>
-        <dt>損切り注文</dt><dd>成行</dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-        <dt>利確2参考</dt><dd>1,949円（注文には未入力）</dd>
-      </dl>
-    </div>
-  </div>
-  <div class="ifo-metrics">
-    <span>建玉目安 <b>179,300円</b></span>
-    <span>利確時 <b class="up">+10,700円</b></span>
-    <span>最大損失 <b class="down">−7,100円</b></span>
-    <span>RR <b>1.51</b></span>
-  </div>
-  <p><b>選定理由：</b>SaaS・AIソフト／その他＝拡大 100点／前日比 +11.96%／出来高比 2.31倍／売買代金 29億円／テクニカル 68点／市場需給100点／上昇日出来高÷下落日1.97倍／安値切上げ○</p>
-  <p class="warning"><b>8:55確認：</b>8:55気配が1,793円を超えていたら価格を上げず注文取消。</p>
-  <p><small>7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。 15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。</small></p>
-</article>
-<article class="ifo-card">
-  <div class="ifo-head">
-    <span class="ifo-rank">#4</span>
-    <div><h3>サイバーセキュリティクラウド（4493）</h3><small>SaaS・AIソフト／その他／拡大</small></div>
-    <b class="ifo-score">100/100</b>
-  </div>
-  <div class="ifo-columns">
-    <div class="order-box entry-order">
-      <b>左側｜信用新規・買建</b>
-      <dl>
-        <dt>市場</dt><dd>東証（SOR）</dd>
-        <dt>信用区分</dt><dd>制度（6カ月）</dd>
-        <dt>数量</dt><dd><strong>100株</strong></dd>
-        <dt>新規注文</dt><dd>逆指値注文</dd>
-        <dt>市場価格が</dt><dd><strong>2,039円以上</strong></dd>
-        <dt>買い指値</dt><dd><strong>2,041円</strong></dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-      </dl>
-    </div>
-    <div class="order-box exit-order">
-      <b>右側｜IFO（利益確定＋損切り）</b>
-      <dl>
-        <dt>利益確定</dt><dd>売埋・指値 <strong class="up">2,148円</strong></dd>
-        <dt>損切り条件</dt><dd>市場価格が <strong class="down">1,970円以下</strong></dd>
-        <dt>損切り注文</dt><dd>成行</dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-        <dt>利確2参考</dt><dd>2,197円（注文には未入力）</dd>
-      </dl>
-    </div>
-  </div>
-  <div class="ifo-metrics">
-    <span>建玉目安 <b>204,100円</b></span>
-    <span>利確時 <b class="up">+10,700円</b></span>
-    <span>最大損失 <b class="down">−7,100円</b></span>
-    <span>RR <b>1.51</b></span>
-  </div>
-  <p><b>選定理由：</b>SaaS・AIソフト／その他＝拡大 100点／前日比 +9.57%／出来高比 4.47倍／売買代金 13億円／テクニカル 77点／市場需給100点／上昇日出来高÷下落日2.06倍／安値切上げ○</p>
-  <p class="warning"><b>8:55確認：</b>8:55気配が2,041円を超えていたら価格を上げず注文取消。</p>
-  <p><small>7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。 15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。</small></p>
-</article>
-<article class="ifo-card">
-  <div class="ifo-head">
-    <span class="ifo-rank">#5</span>
-    <div><h3>マネーフォワード（3994）</h3><small>SaaS・AIソフト／その他／拡大</small></div>
-    <b class="ifo-score">100/100</b>
-  </div>
-  <div class="ifo-columns">
-    <div class="order-box entry-order">
-      <b>左側｜信用新規・買建</b>
-      <dl>
-        <dt>市場</dt><dd>東証（SOR）</dd>
-        <dt>信用区分</dt><dd>制度（6カ月）</dd>
-        <dt>数量</dt><dd><strong>100株</strong></dd>
-        <dt>新規注文</dt><dd>逆指値注文</dd>
-        <dt>市場価格が</dt><dd><strong>7,060円以上</strong></dd>
-        <dt>買い指値</dt><dd><strong>7,080円</strong></dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-      </dl>
-    </div>
-    <div class="order-box exit-order">
-      <b>右側｜IFO（利益確定＋損切り）</b>
-      <dl>
-        <dt>利益確定</dt><dd>売埋・指値 <strong class="up">7,640円</strong></dd>
-        <dt>損切り条件</dt><dd>市場価格が <strong class="down">6,710円以下</strong></dd>
-        <dt>損切り注文</dt><dd>成行</dd>
-        <dt>執行期限</dt><dd>当日中</dd>
-        <dt>利確2参考</dt><dd>7,890円（注文には未入力）</dd>
-      </dl>
-    </div>
-  </div>
-  <div class="ifo-metrics">
-    <span>建玉目安 <b>708,000円</b></span>
-    <span>利確時 <b class="up">+56,000円</b></span>
-    <span>最大損失 <b class="down">−37,000円</b></span>
-    <span>RR <b>1.51</b></span>
-  </div>
-  <p><b>選定理由：</b>SaaS・AIソフト／その他＝拡大 100点／前日比 +4.42%／出来高比 2.14倍／売買代金 81億円／テクニカル 89点／市場需給100点／上昇日出来高÷下落日2.49倍／安値切上げ○</p>
-  <p class="warning"><b>8:55確認：</b>8:55気配が7,080円を超えていたら価格を上げず注文取消。</p>
-  <p><small>7日以内のJPX確認済み決算なし。突発IR・指数急変に注意。 15:20時点で未決済なら手仕舞い判断。持ち越す場合は、失効する決済注文を必ずOCOで再設定。</small></p>
-</article></div>
+<div class="ifo-grid"><div class='rotation-box'>本日の短期資金・流動性・過熱度条件に合格した注文候補なし。無条件の注文は出しません。</div></div>
 <p class="warning">IFOは利確1と損切りの1組を入力します。利確2は翌日以降へ持ち越す判断をした場合の参考値です。本日中の決済注文は失効するため、15:20時点で未決済なら当日手仕舞い、または翌営業日用の決済OCOを自分で再設定してください。</p>
 </section>
-<section class="card wide"><h2>③ 当日狙い目銘柄 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1／2</th><th>発動条件・リスク</th></tr><tr><td>1</td><td>ティアフォー（593A）</td><td>1,999</td><td>1,617</td><td>1,522</td><td>1,759／1,825</td><td>寄り後5分足＋VWAP確認<br><small>市場需給100点／上昇日出来高÷下落日3.23倍／安値切上げ○／100株・最大損失 約9,500円</small></td></tr><tr><td>2</td><td>Terra Drone（278A）</td><td>21,620</td><td>19,400</td><td>18,470</td><td>20,800／21,460</td><td>寄り後5分足＋VWAP確認<br><small>市場需給100点／上昇日出来高÷下落日2.97倍／安値切上げ○／100株・最大損失 約93,000円</small></td></tr><tr><td>3</td><td>GO（581A）</td><td>4,445</td><td>4,180</td><td>4,015</td><td>4,430／4,550</td><td>寄り後5分足＋VWAP確認<br><small>市場需給100点／上昇日出来高÷下落日3.43倍／安値切上げ○／100株・最大損失 約16,500円</small></td></tr><tr><td>4</td><td>マネーフォワード（3994）</td><td>6,712</td><td>6,480</td><td>6,210</td><td>6,880／7,070</td><td>寄り後5分足＋VWAP確認<br><small>市場需給100点／上昇日出来高÷下落日2.49倍／安値切上げ○／100株・最大損失 約27,000円</small></td></tr><tr><td>5</td><td>アイサンテクノロジー（4667）</td><td>2,661</td><td>2,215</td><td>2,132</td><td>2,340／2,398</td><td>寄り後5分足＋VWAP確認<br><small>市場需給100点／上昇日出来高÷下落日3.36倍／安値切上げ○／100株・最大損失 約8,300円</small></td></tr></table><p class="warning">入口は指値の断定ではなく発動水準。VWAP・5分足・出来高を満たさなければ見送り。</p></section>
+<section class="card wide"><h2>③ 当日狙い目銘柄 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1／2</th><th>発動条件・リスク</th></tr></table><p class="warning">入口は指値の断定ではなく発動水準。VWAP・5分足・出来高を満たさなければ見送り。</p></section>
 <section class="card wide"><h2>④ 朝8:00候補のザラバ答え合わせ</h2><table><tr><th>会社名＋コード</th><th>朝イン</th><th>朝損切り</th><th>朝利確1／2</th><th>結果</th><th>終値・VWAP検証</th></tr><tr><td colspan='6'>朝版の同日スナップショットなし。次回8:00版から自動検証します。</td></tr></table></section>
-<section class="card wide"><h2>⑤-A 安定上昇候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr><tr><td>1</td><td>日本郵船（9101）</td><td>7,115</td><td>+0.20%</td><td>+16.62%</td><td>-3.92%</td><td>0.76倍</td><td>6,950</td><td>6,830</td><td>7,230</td><td>20日線上の押し目<br><small>市場需給74点／上昇日出来高÷下落日1.13倍／安値切上げ○</small></td></tr><tr><td>2</td><td>日立製作所（6501）</td><td>5,550</td><td>+6.81%</td><td>+5.61%</td><td>-8.10%</td><td>1.32倍</td><td>5,450</td><td>5,350</td><td>5,670</td><td>20日線上の押し目<br><small>市場需給95点／上昇日出来高÷下落日3.50倍／安値切上げ×</small></td></tr><tr><td>3</td><td>小松製作所（6301）</td><td>7,538</td><td>+6.69%</td><td>+6.36%</td><td>-3.85%</td><td>0.90倍</td><td>7,560</td><td>7,440</td><td>7,820</td><td>20日線上の押し目<br><small>市場需給74点／上昇日出来高÷下落日1.30倍／安値切上げ○</small></td></tr><tr><td>4</td><td>リクルートHD（6098）</td><td>17,800</td><td>+11.95%</td><td>+37.82%</td><td>-0.06%</td><td>1.29倍</td><td>17,060</td><td>16,560</td><td>18,160</td><td>過熱・押し目待ち<br><small>市場需給100点／上昇日出来高÷下落日2.05倍／安値切上げ○</small></td></tr><tr><td>5</td><td>INPEX（1605）</td><td>3,876</td><td>-1.97%</td><td>+6.84%</td><td>-21.78%</td><td>0.70倍</td><td>3,870</td><td>3,800</td><td>4,020</td><td>20日線上の押し目<br><small>市場需給73点／上昇日出来高÷下落日1.21倍／安値切上げ○</small></td></tr></table></section>
-<section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr><tr><td>1</td><td>パワーエックス（485A）</td><td>2,022</td><td>+16.27%</td><td>+38.97%</td><td>-63.74%</td><td>1.49倍</td><td>1,889</td><td>1,840</td><td>1,995</td><td>5日線タッチ反発・高値更新で発動<br><small>市場需給95点／上昇日出来高÷下落日1.74倍／安値切上げ○</small></td></tr><tr><td>2</td><td>リクルートHD（6098）</td><td>17,800</td><td>+11.95%</td><td>+37.82%</td><td>-0.06%</td><td>1.29倍</td><td>17,060</td><td>16,560</td><td>18,160</td><td>過熱・押し目待ち<br><small>市場需給100点／上昇日出来高÷下落日2.05倍／安値切上げ○</small></td></tr><tr><td>3</td><td>住友金属鉱山（5713）</td><td>11,525</td><td>+7.11%</td><td>+55.11%</td><td>-13.35%</td><td>0.60倍</td><td>11,480</td><td>11,050</td><td>12,420</td><td>過熱・押し目待ち<br><small>市場需給89点／上昇日出来高÷下落日1.65倍／安値切上げ○</small></td></tr><tr><td>4</td><td>日鉄鉱業（1515）</td><td>3,985</td><td>+9.93%</td><td>+45.60%</td><td>-12.13%</td><td>0.70倍</td><td>3,955</td><td>3,815</td><td>4,270</td><td>過熱・押し目待ち<br><small>市場需給100点／上昇日出来高÷下落日2.57倍／安値切上げ○</small></td></tr><tr><td>5</td><td>フジクラ（5803）</td><td>5,340</td><td>+1.14%</td><td>+43.55%</td><td>-32.69%</td><td>0.60倍</td><td>5,380</td><td>5,180</td><td>5,820</td><td>5日線タッチ反発・高値更新で発動<br><small>市場需給72点／上昇日出来高÷下落日1.58倍／安値切上げ×</small></td></tr></table><p class="warning">上向き5日線へのタッチ反発を最優先。場中の一時割れではなく終値回復を確認。終値で5日線を明確に割った場合は候補から外します。</p></section>
-<section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr><tr><td>1</td><td>リクルートHD（6098）</td><td>17,800</td><td>+11.95%</td><td>+37.82%</td><td>-0.06%</td><td>1.29倍</td><td>17,060</td><td>16,560</td><td>18,160</td><td>過熱・押し目待ち<br><small>市場需給100点／上昇日出来高÷下落日2.05倍／安値切上げ○</small></td></tr><tr><td>2</td><td>MS&AD（8725）</td><td>5,114</td><td>+3.42%</td><td>+2.53%</td><td>-0.62%</td><td>0.84倍</td><td>5,070</td><td>4,990</td><td>5,240</td><td>20日線上の押し目<br><small>市場需給70点／上昇日出来高÷下落日1.03倍／安値切上げ○</small></td></tr><tr><td>3</td><td>GO（581A）</td><td>4,445</td><td>+22.12%</td><td>+49.97%</td><td>-1.00%</td><td>2.17倍</td><td>4,180</td><td>4,015</td><td>4,550</td><td>過熱・押し目待ち<br><small>市場需給100点／上昇日出来高÷下落日3.43倍／安値切上げ○</small></td></tr><tr><td>4</td><td>アイサンテクノロジー（4667）</td><td>2,661</td><td>+26.41%</td><td>+50.17%</td><td>-1.44%</td><td>10.50倍</td><td>2,215</td><td>2,132</td><td>2,398</td><td>過熱・押し目待ち<br><small>市場需給100点／上昇日出来高÷下落日3.36倍／安値切上げ○</small></td></tr><tr><td>5</td><td>フューチャー（4722）</td><td>2,451</td><td>+0.20%</td><td>+0.08%</td><td>-0.85%</td><td>0.92倍</td><td>2,452</td><td>2,440</td><td>2,480</td><td>20日線上の押し目<br><small>市場需給81点／上昇日出来高÷下落日1.67倍／安値切上げ○</small></td></tr></table></section>
-<section class="card wide"><h2>⑤-D 急騰後の過熱監視・押し目待ち TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>押し目目安</th><th>損切り</th><th>戻り目標</th><th>判定</th></tr><tr><td>1</td><td>パワーエックス（485A）</td><td>2,022</td><td>+16.27%</td><td>+38.97%</td><td>-63.74%</td><td>1.49倍</td><td>1,889</td><td>1,796</td><td>2,095</td><td>20日線上の押し目<br><small>市場需給95点／上昇日出来高÷下落日1.74倍／安値切上げ○</small></td></tr><tr><td>2</td><td>GO（581A）</td><td>4,445</td><td>+22.12%</td><td>+49.97%</td><td>-1.00%</td><td>2.17倍</td><td>4,180</td><td>4,015</td><td>4,550</td><td>過熱・押し目待ち<br><small>市場需給100点／上昇日出来高÷下落日3.43倍／安値切上げ○</small></td></tr><tr><td>3</td><td>アイサンテクノロジー（4667）</td><td>2,661</td><td>+26.41%</td><td>+50.17%</td><td>-1.44%</td><td>10.50倍</td><td>2,215</td><td>2,132</td><td>2,398</td><td>過熱・押し目待ち<br><small>市場需給100点／上昇日出来高÷下落日3.36倍／安値切上げ○</small></td></tr><tr><td>4</td><td>リクルートHD（6098）</td><td>17,800</td><td>+11.95%</td><td>+37.82%</td><td>-0.06%</td><td>1.29倍</td><td>17,060</td><td>16,560</td><td>18,160</td><td>過熱・押し目待ち<br><small>市場需給100点／上昇日出来高÷下落日2.05倍／安値切上げ○</small></td></tr><tr><td>5</td><td>日鉄鉱業（1515）</td><td>3,985</td><td>+9.93%</td><td>+45.60%</td><td>-12.13%</td><td>0.70倍</td><td>3,955</td><td>3,815</td><td>4,270</td><td>過熱・押し目待ち<br><small>市場需給100点／上昇日出来高÷下落日2.57倍／安値切上げ○</small></td></tr></table><p class="warning">ここは即飛び乗り禁止。5日線反発、前日高値更新、出来高再増加の3点を確認してから候補へ昇格。</p></section>
+<section class="card wide"><h2>⑤-A 安定上昇候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr><tr><td colspan='11'>本日の条件合格銘柄なし。無理に選定しません。</td></tr></table></section>
+<section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr><tr><td colspan='11'>本日の条件合格銘柄なし。無理に選定しません。</td></tr></table><p class="warning">上向き5日線へのタッチ反発を最優先。場中の一時割れではなく終値回復を確認。終値で5日線を明確に割った場合は候補から外します。</p></section>
+<section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr><tr><td colspan='11'>本日の条件合格銘柄なし。無理に選定しません。</td></tr></table></section>
+<section class="card wide"><h2>⑤-D 急騰後の過熱監視・押し目待ち TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>押し目目安</th><th>損切り</th><th>戻り目標</th><th>判定</th></tr><tr><td colspan='11'>本日の条件合格銘柄なし。無理に選定しません。</td></tr></table><p class="warning">ここは即飛び乗り禁止。5日線反発、前日高値更新、出来高再増加の3点を確認してから候補へ昇格。</p></section>
 <section class="card wide"><h2>⑤-E 月足・週足反転＋信用需給 TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>足</th><th>判定</th><th>総合点</th><th>終値</th><th>反発線</th><th>需給点・局面</th><th>下ヒゲ／実体</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
 <tbody id="hammer-signals"><tr><td colspan="13">全市場を走査中...</td></tr></tbody></table>
@@ -376,7 +215,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <tbody id="long-term-ma-signals"><tr><td colspan="15">全市場を走査中...</td></tr></tbody></table>
 <p class="warning"><b>必須条件：</b>信用需給を確認済みかつ30/55点以上。信用買い残1週・4週、信用倍率、機関空売り増減、買い戻し社数を確認します。50週線・200日線反発だけでは正式候補にしません。反転足高値＋1ティックを上抜いた場合だけ発動し、反転足安値割れで撤退。</p></section>
 <section id="dividend-rights-watch" class="card wide"><h2>配当権利前・上昇／権利落ち監視 TOP10</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>推定権利日</th><th>直近配当</th><th>需給改善</th><th>現在判定</th><th>上抜け発動</th><th>撤退</th><th>権利落ち注意</th></tr></thead><tbody><tr><td>1</td><td>リクルートHD（6098）</td><td>2026-09-28<br><small>過去実績からの推定・あと27日</small></td><td>12.5</td><td><b>100/100</b><br><small>市場需給100点／上昇日出来高÷下落日2.05倍／安値切上げ○</small></td><td>権利前上昇を監視</td><td>17,820</td><td class='down'>17,101.3</td><td>権利落ち日は配当相当の下落・つなぎ売り増加に注意</td></tr><tr><td>2</td><td>NTT（9432）</td><td>2026-09-28<br><small>過去実績からの推定・あと27日</small></td><td>2.6</td><td><b>100/100</b><br><small>市場需給100点／上昇日出来高÷下落日2.57倍／安値切上げ○</small></td><td>権利前上昇を監視</td><td>169.7</td><td class='down'>166.8</td><td>権利落ち日は配当相当の下落・つなぎ売り増加に注意</td></tr><tr><td>3</td><td>ソフトバンク（9434）</td><td>2026-09-28<br><small>過去実績からの推定・あと27日</small></td><td>4.3</td><td><b>100/100</b><br><small>市場需給100点／上昇日出来高÷下落日2.27倍／安値切上げ○</small></td><td>権利前上昇を監視</td><td>238.8</td><td class='down'>234.6</td><td>権利落ち日は配当相当の下落・つなぎ売り増加に注意</td></tr><tr><td>4</td><td>東北電力（9506）</td><td>2026-09-28<br><small>過去実績からの推定・あと27日</small></td><td>20</td><td><b>100/100</b><br><small>市場需給100点／上昇日出来高÷下落日2.10倍／安値切上げ○</small></td><td>権利前上昇を監視</td><td>1,315</td><td class='down'>1,285.8</td><td>権利落ち日は配当相当の下落・つなぎ売り増加に注意</td></tr><tr><td>5</td><td>日鉄鉱業（1515）</td><td>2026-09-28<br><small>過去実績からの推定・あと27日</small></td><td>48</td><td><b>100/100</b><br><small>市場需給100点／上昇日出来高÷下落日2.57倍／安値切上げ○</small></td><td>権利前上昇を監視</td><td>4,030</td><td class='down'>3,841.4</td><td>権利落ち日は配当相当の下落・つなぎ売り増加に注意</td></tr><tr><td>6</td><td>DOWA HD（5714）</td><td>2026-09-28<br><small>過去実績からの推定・あと27日</small></td><td>368</td><td><b>100/100</b><br><small>市場需給100点／上昇日出来高÷下落日2.43倍／安値切上げ○</small></td><td>権利前上昇を監視</td><td>10,505</td><td class='down'>10,175.6</td><td>権利落ち日は配当相当の下落・つなぎ売り増加に注意</td></tr><tr><td>7</td><td>HENNGE（4475）</td><td>2026-09-28<br><small>過去実績からの推定・あと27日</small></td><td>3</td><td><b>100/100</b><br><small>市場需給100点／上昇日出来高÷下落日1.97倍／安値切上げ○</small></td><td>権利前上昇を監視</td><td>1,791</td><td class='down'>1,618.8</td><td>権利落ち日は配当相当の下落・つなぎ売り増加に注意</td></tr><tr><td>8</td><td>アイサンテクノロジー（4667）</td><td>2026-09-28<br><small>過去実績からの推定・あと27日</small></td><td>37</td><td><b>100/100</b><br><small>市場需給100点／上昇日出来高÷下落日3.36倍／安値切上げ○</small></td><td>権利前上昇を監視</td><td>2,701</td><td class='down'>2,304.5</td><td>権利落ち日は配当相当の下落・つなぎ売り増加に注意</td></tr><tr><td>9</td><td>日東電工（6988）</td><td>2026-09-28<br><small>過去実績からの推定・あと27日</small></td><td>30</td><td><b>95/100</b><br><small>市場需給95点／上昇日出来高÷下落日2.37倍／安値切上げ×</small></td><td>権利前上昇を監視</td><td>3,514</td><td class='down'>3,402</td><td>権利落ち日は配当相当の下落・つなぎ売り増加に注意</td></tr><tr><td>10</td><td>日立製作所（6501）</td><td>2026-09-28<br><small>過去実績からの推定・あと27日</small></td><td>27</td><td><b>95/100</b><br><small>市場需給95点／上昇日出来高÷下落日3.50倍／安値切上げ×</small></td><td>権利前上昇を監視</td><td>5,655</td><td class='down'>5,455.7</td><td>権利落ち日は配当相当の下落・つなぎ売り増加に注意</td></tr></tbody></table>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>推定権利日</th><th>直近配当</th><th>需給改善</th><th>現在判定</th><th>上抜け発動</th><th>撤退</th><th>権利落ち注意</th></tr></thead><tbody><tr><td colspan='9'>45日以内の推定権利日＋需給改善に合格した監視銘柄なし。</td></tr></tbody></table>
 <p class="warning">権利日は過去の配当実績間隔による推定です。会社IR・取引所の権利確定日を必ず確認。権利取り目的で無条件に買わず、需給改善＋発動価格上抜けだけを監視します。</p></section>
 <section id="buyback-watch" class="card wide"><h2>自社株買い実施中・需給インパクト TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>取得上限／発行済株式</th><th>進捗率</th><th>残り余力</th><th>1日出来高への影響</th><th>取得期間</th><th>消却・注意</th></tr></thead>
@@ -397,7 +236,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <tbody id="daily-reversal-signals"><tr><td colspan="12">全市場を走査中...</td></tr></tbody></table>
 <p class="warning">最も入りたい型。①長い下ヒゲで売りを吸収、②終値がレンジ上側へ回復、③次足が反転足の実体上端または高値＋1ティックを上抜く、の3条件で発動。候補足安値割れで撤退し、ナンピンしません。</p></section>
 <section class="card wide"><h2>⑥-A 決算勝負候補 TOP15（7日以内・決算期待値順）</h2><table><tr><th>会社名＋コード</th><th>調整後期待値</th><th>コンセンサス警戒</th><th>テクニカル点</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>採点根拠・注意</th></tr><tr><td colspan='10'>今後7日以内で取得確認できた決算候補なし</td></tr></table><p class="warning">高すぎるEPS・売上予想、予想幅の大きさ、下方修正、過去の上振れ不足、決算前の株価上昇を警戒度として減点。好決算でもコンセンサス未達や材料出尽くしになる危険を反映します。</p></section>
-<section class="card wide"><h2>⑥-B BB上方エクスパンション期待 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>現在値</th><th>BB幅</th><th>5日比</th><th>幅順位</th><th>出来高比</th><th>イン</th><th>損切り</th><th>判定</th></tr><tr><td>1</td><td>フューチャー（4722）</td><td><b class='up'>86/100</b></td><td>2,451</td><td>0.31%</td><td>-3.95pt</td><td>2%</td><td>0.92倍</td><td>2,452</td><td>2,440</td><td>スクイーズ中・上抜け待ち<br><small>市場需給81点／上昇日出来高÷下落日1.67倍／安値切上げ○</small></td></tr><tr><td>2</td><td>富士通（6702）</td><td><b class='up'>83/100</b></td><td>3,904</td><td>12.15%</td><td>-1.26pt</td><td>16%</td><td>1.24倍</td><td>3,765</td><td>3,690</td><td>スクイーズ中・上抜け待ち<br><small>市場需給91点／上昇日出来高÷下落日1.76倍／安値切上げ○</small></td></tr><tr><td>3</td><td>三菱商事（8058）</td><td><b class='up'>77/100</b></td><td>4,786</td><td>5.12%</td><td>-0.18pt</td><td>2%</td><td>0.92倍</td><td>4,750</td><td>4,685</td><td>スクイーズ中・上抜け待ち<br><small>市場需給67点／上昇日出来高÷下落日0.97倍／安値切上げ○</small></td></tr><tr><td>4</td><td>KDDI（9433）</td><td><b class='up'>72/100</b></td><td>2,922</td><td>5.35%</td><td>-4.31pt</td><td>17%</td><td>1.99倍</td><td>2,889</td><td>2,845</td><td>スクイーズ中・上抜け待ち<br><small>市場需給71点／上昇日出来高÷下落日1.03倍／安値切上げ○</small></td></tr><tr><td>5</td><td>パワーエックス（485A）</td><td><b class='up'>70/100</b></td><td>2,022</td><td>24.02%</td><td>-9.92pt</td><td>6%</td><td>1.49倍</td><td>1,889</td><td>1,796</td><td>スクイーズ中・上抜け待ち<br><small>市場需給95点／上昇日出来高÷下落日1.74倍／安値切上げ○</small></td></tr><tr><td>6</td><td>NEC（6701）</td><td><b class='up'>69/100</b></td><td>4,908</td><td>11.42%</td><td>-2.36pt</td><td>10%</td><td>1.11倍</td><td>4,755</td><td>4,640</td><td>スクイーズ中・上抜け待ち<br><small>市場需給94点／上昇日出来高÷下落日1.89倍／安値切上げ○</small></td></tr><tr><td>7</td><td>三井住友FG（8316）</td><td><b class='up'>67/100</b></td><td>6,902</td><td>8.57%</td><td>-0.97pt</td><td>8%</td><td>1.24倍</td><td>6,810</td><td>6,710</td><td>スクイーズ中・上抜け待ち<br><small>市場需給61点／上昇日出来高÷下落日1.12倍／安値切上げ×</small></td></tr></table><p class="warning">BB幅順位は過去120日の細さ。数値が低いほどスクイーズ状態。上限突破＋BB幅拡大＋出来高増加を最優先します。</p></section>
+<section class="card wide"><h2>⑥-B BB上方エクスパンション期待 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>現在値</th><th>BB幅</th><th>5日比</th><th>幅順位</th><th>出来高比</th><th>イン</th><th>損切り</th><th>判定</th></tr><tr><td colspan='11'>条件合格銘柄なし</td></tr></table><p class="warning">BB幅順位は過去120日の細さ。数値が低いほどスクイーズ状態。上限突破＋BB幅拡大＋出来高増加を最優先します。</p></section>
 <section class="card wide"><h2>⑦ AIスイングサインの使い方</h2>
 <div class="steps">
 <div class="step"><b>1　<span class="pill prep">準備</span>を探す</b>大引け後に一覧を確認。準備は「まだ買わない」の意味です。</div>
@@ -459,7 +298,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   </div>
 </section>
 <!-- WEEKLY_REVIEW_END -->
-</main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>2026-09-01 07:54:55 JST</span></footer>
+</main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>2026-09-01 08:28:29 JST</span></footer>
 <script>
 const yen = v => Number(v).toLocaleString("ja-JP");
 const signedPct = (v, digits = 1) => Number.isFinite(Number(v))
@@ -641,6 +480,109 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {
   document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
   document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
 });
+const eventEsc = v => String(v ?? "—").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+fetch("event_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => {
+  document.getElementById("event-meta").textContent = d.source_policy + "／更新 " + d.updated_at;
+  const guard = document.getElementById("event-guard");
+  document.getElementById("event-level").textContent = d.today_level;
+  document.getElementById("event-rule").textContent = d.today_rule;
+  if (d.today_level === "高警戒") guard.classList.add("high");
+  const todayEvents = d.today_events || [];
+  const limit = new Date(d.today + "T00:00:00+09:00"); limit.setDate(limit.getDate()+7);
+  const weekHigh = (d.upcoming || []).filter(x => x.impact === "高" && new Date(x.date+"T00:00:00+09:00") <= limit).length;
+  document.getElementById("event-today-count").textContent = todayEvents.length + "件";
+  document.getElementById("event-week-high").textContent = weekHigh + "件";
+  document.getElementById("event-blocked-count").textContent = (d.unverified || []).length + "件";
+  const end = new Date(d.today + "T00:00:00+09:00"); end.setDate(end.getDate()+30);
+  const rows = (d.upcoming || []).filter(x => new Date(x.date+"T00:00:00+09:00") <= end).map(x =>
+    "<tr><td><b>"+eventEsc(x.date)+"</b></td><td>"+eventEsc(x.time_jst)+"</td><td>"+eventEsc(x.title)+
+    "</td><td>"+eventEsc(x.category)+"</td><td class='"+(x.impact==="高"?"down":"warning")+"'>"+eventEsc(x.impact)+
+    "</td><td>"+eventEsc(x.expected_flow)+"</td><td><b>"+eventEsc(x.action)+"</b><br><small>"+eventEsc(x.note)+
+    "</small></td><td>"+eventEsc(x.announcement_date)+"</td><td>"+eventEsc(x.base_date)+"</td><td>"+eventEsc(x.flow_date)+
+    "</td><td>"+eventEsc(x.effective_date)+"</td><td><span class='event-status "+(x.trade_block?"block":"")+"'>"+eventEsc(x.status)+
+    "</span></td><td><a class='event-source' href='"+eventEsc(x.source_url)+"' target='_blank' rel='noopener'>"+eventEsc(x.source_name)+"</a></td></tr>"
+  ).join("");
+  document.getElementById("event-upcoming").innerHTML = rows || "<tr><td colspan='13'>今後30日の登録イベントなし</td></tr>";
+  const grouped = {};
+  (d.events || []).filter(x=>x.date).forEach(x=>{const k=x.date.slice(0,7);(grouped[k] ||= []).push(x);});
+  const monthKeys = Object.keys(grouped).filter(k=>k>=d.today.slice(0,7)).slice(0,4);
+  document.getElementById("event-months").innerHTML = monthKeys.map(key=>{
+    const [year,month]=key.split("-").map(Number), first=new Date(year,month-1,1), count=new Date(year,month,0).getDate();
+    const mondayFirst=(first.getDay()+6)%7, cells=Array(mondayFirst).fill("<div class='event-day empty'></div>");
+    for(let day=1;day<=count;day++){
+      const iso=key+"-"+String(day).padStart(2,"0"), items=grouped[key].filter(x=>x.date===iso);
+      const chips=items.map(x=>"<span class='event-chip "+(x.trade_block?"block":x.impact==="高"?"high":"")+"' title='"+eventEsc(x.action)+"'>"+eventEsc(x.time_jst)+" "+eventEsc(x.title)+"</span>").join("");
+      cells.push("<div class='event-day "+(iso===d.today?"today":"")+"'><strong>"+day+"</strong>"+chips+"</div>");
+    }
+    return "<div class='event-month'><h4>"+year+"年"+month+"月</h4><div class='event-weekdays'><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span><span>日</span></div><div class='event-days'>"+cells.join("")+"</div></div>";
+  }).join("") || "<div class='focus-empty'>カレンダー対象なし</div>";
+  document.getElementById("event-unverified").innerHTML = (d.unverified || []).map(x=>
+    "<div class='event-block'><b>"+eventEsc(x.title)+"</b><span>"+eventEsc(x.effective_date)+"</span><small>売買禁止："+eventEsc(x.note)+"</small><a href='"+eventEsc(x.source_url)+"' target='_blank' rel='noopener'>公式確認先</a></div>"
+  ).join("") || "<div class='up'>未確定イベントなし</div>";
+}).catch(() => {
+  document.getElementById("event-level").textContent = "取得失敗";
+  document.getElementById("event-rule").textContent = "イベントを確認できないため、イベント需給を根拠に売買しません。";
+  document.getElementById("event-upcoming").innerHTML = "<tr><td colspan='13'>データ取得待ち</td></tr>";
+});
+const corrText = v => v == null ? "—" : (v >= 0 ? "+" : "") + Number(v).toFixed(2);
+const todayText = x => {
+  if (!x || x.ret == null) return "未取得";
+  return signedPct(x.ret, 2) + "／OR15 " + x.or15 + "／VWAP" + x.vwap + "／EMA " + x.ema;
+};
+fetch("correlations.json?t=" + Date.now()).then(r => r.json()).then(d => {
+  document.getElementById("correlation-meta").textContent = d.method + "／更新 " + d.updated_at;
+  const allRelations = d.relationships || [];
+  const select = document.getElementById("correlation-anchor");
+  const anchors = [...new Map(allRelations.map(x => [x.anchor_ticker, x.anchor])).entries()];
+  select.innerHTML = anchors.map(([ticker,name]) => "<option value='" + ticker + "'>" + name + "</option>").join("") || "<option>候補なし</option>";
+  if (anchors.some(x => x[0] === "285A.T")) select.value = "285A.T";
+  const renderRelations = () => {
+   const rows = allRelations.filter(x => x.anchor_ticker === select.value).map(x => {
+    const lead = x.relation.includes("米国前日") ? "米国前日" :
+      x.lead_bars == null ? "—" : x.lead_bars > 0 ? "確認銘柄が" + (x.lead_bars * 5) + "分先行" :
+      x.lead_bars < 0 ? "主役が" + (-x.lead_bars * 5) + "分先行" : "同時";
+    return "<tr><td><b>" + x.anchor + "</b></td><td>" + x.peer + "</td><td>" +
+      x.relation + "<br><small>" + x.expected + "</small></td><td><b class='" +
+      (x.state === "確認" ? "up" : x.state === "不成立" ? "down" : "warning") + "'>" +
+      x.state + "</b></td><td>" + x.confidence + "/100</td><td>" + corrText(x.corr20) +
+      "</td><td>" + corrText(x.corr60) + "</td><td>" + corrText(x.intraday_corr) +
+      "</td><td>" + lead + "</td><td>" + todayText(x.anchor_today) + "</td><td>" +
+      todayText(x.peer_today) + "</td><td><b>" + x.decision + "</b><br><small>" + x.reason +
+      "</small></td></tr>";
+   }).join("");
+   document.getElementById("correlation-rows").innerHTML = rows ||
+    "<tr><td colspan='12'>安定した相関・逆相関はありません。相関を売買根拠にしません。</td></tr>";
+  };
+  select.onchange = renderRelations;
+  renderRelations();
+}).catch(() => {
+  document.getElementById("correlation-meta").textContent = "相関データ未取得。推定で埋めません。";
+  document.getElementById("correlation-rows").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
+});
+const miniPath = (points, stroke="#58d9b4") => {
+  if (!points || points.length < 2) return "<div class='focus-empty'>データなし</div>";
+  const lo = Math.min(...points), hi = Math.max(...points), span = Math.max(hi - lo, .01);
+  const coords = points.map((v,i) => (i/(points.length-1)*116+2).toFixed(1) + "," + (66-(v-lo)/span*60).toFixed(1)).join(" ");
+  const zero = (66-(0-lo)/span*60).toFixed(1);
+  return "<svg viewBox='0 0 120 70' preserveAspectRatio='none'><line x1='2' y1='" + zero + "' x2='118' y2='" + zero + "' stroke='#38505e' stroke-dasharray='3 3'/><polyline points='" + coords + "' fill='none' stroke='" + stroke + "' stroke-width='2'/></svg>";
+};
+fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => {
+  const p = d.prediction || {};
+  document.getElementById("kioxia-calendar-meta").textContent = (d.source || "5分足") + "／更新 " + d.updated_at + "／" + (d.current_is_today ? "本日観測 " + (d.observed_bars || 0) + "本" : "本日9:00開始待ち");
+  document.getElementById("kio-current-type").textContent = d.current_is_today && d.current ? d.current.type + " " + signedPct(d.current.ret, 2) : "本日開始待ち";
+  document.getElementById("kio-bias").textContent = p.bias || "判定保留";
+  document.getElementById("kio-up-prob").textContent = p.up_probability == null ? "—" : Number(p.up_probability).toFixed(1) + "%";
+  document.getElementById("kio-after-ret").textContent = p.expected_after_ret == null ? "—" : signedPct(p.expected_after_ret, 2);
+  document.getElementById("kio-sample").textContent = (p.sample || 0) + "日";
+  const matches = (d.matches || []).map((x,i) => "<div class='kio-match'><div class='kio-day-head'><b>#" + (i+1) + " " + x.date + "</b><strong>" + x.similarity.toFixed(1) + "%</strong></div>" + miniPath(x.path, x.ret >= 0 ? "#58ddb5" : "#ff777e") + "<div>全日 <b class='" + (x.ret >= 0 ? "kio-up" : "kio-down") + "'>" + signedPct(x.ret,2) + "</b>／照合後 " + signedPct(x.after_ret,2) + "</div><small>型：" + x.type + "　残り最大 " + signedPct(x.max_up_after,2) + "／" + signedPct(x.max_down_after,2) + "</small></div>").join("");
+  document.getElementById("kioxia-match-grid").innerHTML = matches || "<div class='focus-empty'>類似度60%以上の比較候補なし</div>";
+  const days = (d.calendar || []).map(x => "<div class='kio-day'><div class='kio-day-head'><b>" + x.date.slice(5).replace("-","/") + "</b><span class='" + (x.ret >= 0 ? "kio-up" : "kio-down") + "'>" + signedPct(x.ret,2) + "</span></div>" + miniPath(x.path, x.ret >= 0 ? "#58ddb5" : "#ff777e") + "<small>" + x.type + "　高安 " + signedPct(x.high,1) + "／" + signedPct(x.low,1) + "</small></div>").join("");
+  document.getElementById("kioxia-calendar-grid").innerHTML = days || "<div class='focus-empty'>5分足データ待ち</div>";
+}).catch(() => {
+  document.getElementById("kioxia-calendar-meta").textContent = "5分足データ未取得。推定で埋めません。";
+  document.getElementById("kioxia-match-grid").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
+  document.getElementById("kioxia-calendar-grid").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
+});
 </script>
 <div id="trade-drawer-backdrop" aria-hidden="true"></div>
 <aside id="trade-drawer" aria-label="銘柄チャートと売買判断" aria-hidden="true">
@@ -660,7 +602,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const drawer=document.getElementById("trade-drawer"),back=document.getElementById("trade-drawer-backdrop"),yen=n=>Number(n).toLocaleString("ja-JP",{maximumFractionDigits:1})+"円",records={};
  const close=()=>{drawer.classList.remove("open");back.classList.remove("open");drawer.setAttribute("aria-hidden","true")};document.getElementById("drawer-close").onclick=close;back.onclick=close;
  const codeOf=(v,key="")=>String(v?.code||v?.ticker||key).match(/(?:TSE:)?([0-9A-Z]{3,5})(?:\.T)?(?:）)?/)?.[1];
- function walk(v,key=""){if(Array.isArray(v)){v.forEach(x=>walk(x,key));return}if(!v||typeof v!=="object")return;const code=codeOf(v,key);if(code){const old=records[code]||{},chart=(v.chart||[]).length?v.chart:old.chart;records[code]={...old,...v,chart,name:v.name||old.name||(key.includes("（")?key:key+"（"+code+"）")}}Object.entries(v).forEach(([k,x])=>{if(typeof x==="object")walk(x,k)})}
+ function walk(v,key=""){if(Array.isArray(v)){v.forEach(x=>walk(x,key));return}if(!v||typeof v!=="object")return;const code=codeOf(v,key);if(code){const old=records[code]||{},incomingDate=String(v.data_date||""),oldDate=String(old.data_date||""),useIncoming=!oldDate||(incomingDate&&incomingDate>=oldDate),chart=useIncoming&&(v.chart||[]).length?v.chart:old.chart,merged=useIncoming?{...old,...v}:{...v,...old};records[code]={...merged,chart,name:(useIncoming?v.name:old.name)||v.name||old.name||(key.includes("（")?key:key+"（"+code+"）")}}Object.entries(v).forEach(([k,x])=>{if(typeof x==="object")walk(x,k)})}
  function chartSvg(x,levels){const a=x.chart||[];if(!a.length)return '<div class="drawer-empty">チャートデータ更新待ち</div>';const W=900,H=430,p=30,vals=[...a.flatMap(v=>[v.h,v.l]),levels.trigger,levels.stop,levels.target1].filter(Number.isFinite),lo=Math.min(...vals),hi=Math.max(...vals),y=v=>p+(hi-v)/(hi-lo||1)*(H-p*2),step=(W-p*2)/a.length,bw=Math.max(3,step*.55);let s=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;for(let i=0;i<5;i++){const yy=p+i*(H-p*2)/4;s+=`<line class="grid" x1="${p}" y1="${yy}" x2="${W-p}" y2="${yy}"/>`}a.forEach((v,i)=>{const xx=p+step*(i+.5),cl=v.c>=v.o?"c-up":"c-down",yo=y(v.o),yc=y(v.c);s+=`<line class="${cl}" x1="${xx}" y1="${y(v.h)}" x2="${xx}" y2="${y(v.l)}"/><rect class="${cl}" x="${xx-bw/2}" y="${Math.min(yo,yc)}" width="${bw}" height="${Math.max(1,Math.abs(yo-yc))}"/>`});[[levels.trigger,"trigger","発動"],[levels.pullback,"pullback","押し目"],[levels.stop,"stop","撤退"]].forEach(z=>{s+=`<line class="level ${z[1]}" x1="${p}" y1="${y(z[0])}" x2="${W-p}" y2="${y(z[0])}"/><text class="label ${z[1]}" x="${W-p-3}" y="${y(z[0])-5}">${z[2]} ${yen(z[0])}</text>`});return s+"</svg>"}
  function openChart(code){const x=records[code];if(!x)return;const a=x.chart||[],last=Number(x.close||x.price||a.at(-1)?.c||0),hi=Math.max(...a.slice(-20).map(v=>v.h)),lo=Math.min(...a.slice(-10).map(v=>v.l)),official=Number.isFinite(Number(x.trigger))&&Number.isFinite(Number(x.stop)),short=official&&Number(x.target1)<Number(x.trigger),tick=last<3000?1:last<5000?5:last<30000?10:last<50000?50:100,trigger=Number(x.trigger)||(short?lo-tick:hi+tick),stop=Number(x.stop)||(short?hi:lo),risk=Math.max(Math.abs(trigger-stop),tick),target1=Number(x.target1)||(short?trigger-risk*1.5:trigger+risk*1.5),target2=Number(x.target2)||(short?trigger-risk*2.2:trigger+risk*2.2),pullback=short?trigger+risk*.35:trigger-risk*.35;let status="発動待ち",cls="ready";if((!short&&last>=trigger)|| (short&&last<=trigger)){status=Math.abs(last-trigger)<=risk*.5?"発動確認・ローソク足待ち":"走り過ぎ・追わない";cls=status.startsWith("発動")?"go":"wait"}if((!short&&last<=stop)||(short&&last>=stop)){status="条件崩れ・見送り";cls="stop"}const levels={trigger,stop,target1,target2,pullback};document.getElementById("drawer-name").textContent=x.name||code;document.getElementById("drawer-chart").innerHTML=chartSvg(x,levels);const st=document.getElementById("drawer-status");st.className="drawer-status "+cls;st.textContent=status;document.getElementById("drawer-trigger").textContent=(short?"売り ":"買い ")+yen(trigger)+(short?" 以下":" 以上");document.getElementById("drawer-pullback").textContent=yen(pullback);document.getElementById("drawer-stop").textContent=yen(stop);document.getElementById("drawer-target1").textContent=yen(target1);document.getElementById("drawer-target2").textContent=yen(target2);document.getElementById("drawer-confirm").textContent=short?"反落足確定・VWAP下・出来高増加":"反発足確定・VWAP上・出来高増加";document.getElementById("drawer-note").textContent=official?"正式候補の注文ライン。発動条件を満たさなければ見送り。":"参考ライン。監視銘柄から自動計算したため、正式候補へ昇格するまで注文しない。";drawer.classList.add("open");back.classList.add("open");drawer.setAttribute("aria-hidden","false")}
  function enhance(){document.querySelectorAll(".tab-pane table tbody tr,.tab-pane table>tr").forEach(tr=>{if(tr.dataset.chartReady)return;const code=tr.textContent.match(/（([0-9A-Z]{3,5})）/)?.[1];if(!code||!records[code]?.chart?.length)return;tr.dataset.chartReady="1";tr.classList.add("chart-row");const cell=[...tr.cells].find(td=>td.textContent.includes("（"+code+"）"))||tr.cells[1]||tr.cells[0];const b=document.createElement("button");b.type="button";b.className="chart-open";b.textContent="▥ チャート";b.onclick=e=>{e.stopPropagation();openChart(code)};cell.appendChild(b)})}
