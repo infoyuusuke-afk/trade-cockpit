@@ -1192,6 +1192,35 @@ document.addEventListener("DOMContentLoaded",()=>{{
 </script>"""
 
 
+def render_trade_drawer():
+    return r"""
+<div id="trade-drawer-backdrop" aria-hidden="true"></div>
+<aside id="trade-drawer" aria-label="銘柄チャートと売買判断" aria-hidden="true">
+ <div class="drawer-head"><div><span>QUICK TRADE VIEW</span><h2 id="drawer-name">銘柄チャート</h2></div><button id="drawer-close" type="button" aria-label="閉じる">×</button></div>
+ <div class="drawer-grid">
+  <div id="drawer-chart" class="drawer-chart"></div>
+  <div class="drawer-plan">
+   <div id="drawer-status" class="drawer-status">判定中</div>
+   <div class="drawer-main"><span>売買発動</span><strong id="drawer-trigger">—</strong><small id="drawer-confirm">ローソク足確定と出来高を確認</small></div>
+   <div class="drawer-levels"><div><span>押し目</span><b id="drawer-pullback">—</b></div><div><span>損切り</span><b id="drawer-stop" class="down">—</b></div><div><span>利確1</span><b id="drawer-target1" class="up">—</b></div><div><span>利確2</span><b id="drawer-target2">—</b></div></div>
+   <p id="drawer-note"></p>
+  </div>
+ </div>
+</aside>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+ const drawer=document.getElementById("trade-drawer"),back=document.getElementById("trade-drawer-backdrop"),yen=n=>Number(n).toLocaleString("ja-JP",{maximumFractionDigits:1})+"円",records={};
+ const close=()=>{drawer.classList.remove("open");back.classList.remove("open");drawer.setAttribute("aria-hidden","true")};document.getElementById("drawer-close").onclick=close;back.onclick=close;
+ const codeOf=(v,key="")=>String(v?.code||v?.ticker||key).match(/(?:TSE:)?([0-9A-Z]{3,5})(?:\.T)?(?:）)?/)?.[1];
+ function walk(v,key=""){if(Array.isArray(v)){v.forEach(x=>walk(x,key));return}if(!v||typeof v!=="object")return;const code=codeOf(v,key);if(code){const old=records[code]||{},chart=(v.chart||[]).length?v.chart:old.chart;records[code]={...old,...v,chart,name:v.name||old.name||(key.includes("（")?key:key+"（"+code+"）")}}Object.entries(v).forEach(([k,x])=>{if(typeof x==="object")walk(x,k)})}
+ function chartSvg(x,levels){const a=x.chart||[];if(!a.length)return '<div class="drawer-empty">チャートデータ更新待ち</div>';const W=900,H=430,p=30,vals=[...a.flatMap(v=>[v.h,v.l]),levels.trigger,levels.stop,levels.target1].filter(Number.isFinite),lo=Math.min(...vals),hi=Math.max(...vals),y=v=>p+(hi-v)/(hi-lo||1)*(H-p*2),step=(W-p*2)/a.length,bw=Math.max(3,step*.55);let s=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;for(let i=0;i<5;i++){const yy=p+i*(H-p*2)/4;s+=`<line class="grid" x1="${p}" y1="${yy}" x2="${W-p}" y2="${yy}"/>`}a.forEach((v,i)=>{const xx=p+step*(i+.5),cl=v.c>=v.o?"c-up":"c-down",yo=y(v.o),yc=y(v.c);s+=`<line class="${cl}" x1="${xx}" y1="${y(v.h)}" x2="${xx}" y2="${y(v.l)}"/><rect class="${cl}" x="${xx-bw/2}" y="${Math.min(yo,yc)}" width="${bw}" height="${Math.max(1,Math.abs(yo-yc))}"/>`});[[levels.trigger,"trigger","発動"],[levels.pullback,"pullback","押し目"],[levels.stop,"stop","撤退"]].forEach(z=>{s+=`<line class="level ${z[1]}" x1="${p}" y1="${y(z[0])}" x2="${W-p}" y2="${y(z[0])}"/><text class="label ${z[1]}" x="${W-p-3}" y="${y(z[0])-5}">${z[2]} ${yen(z[0])}</text>`});return s+"</svg>"}
+ function openChart(code){const x=records[code];if(!x)return;const a=x.chart||[],last=Number(x.close||x.price||a.at(-1)?.c||0),hi=Math.max(...a.slice(-20).map(v=>v.h)),lo=Math.min(...a.slice(-10).map(v=>v.l)),official=Number.isFinite(Number(x.trigger))&&Number.isFinite(Number(x.stop)),short=official&&Number(x.target1)<Number(x.trigger),tick=last<3000?1:last<5000?5:last<30000?10:last<50000?50:100,trigger=Number(x.trigger)||(short?lo-tick:hi+tick),stop=Number(x.stop)||(short?hi:lo),risk=Math.max(Math.abs(trigger-stop),tick),target1=Number(x.target1)||(short?trigger-risk*1.5:trigger+risk*1.5),target2=Number(x.target2)||(short?trigger-risk*2.2:trigger+risk*2.2),pullback=short?trigger+risk*.35:trigger-risk*.35;let status="発動待ち",cls="ready";if((!short&&last>=trigger)|| (short&&last<=trigger)){status=Math.abs(last-trigger)<=risk*.5?"発動確認・ローソク足待ち":"走り過ぎ・追わない";cls=status.startsWith("発動")?"go":"wait"}if((!short&&last<=stop)||(short&&last>=stop)){status="条件崩れ・見送り";cls="stop"}const levels={trigger,stop,target1,target2,pullback};document.getElementById("drawer-name").textContent=x.name||code;document.getElementById("drawer-chart").innerHTML=chartSvg(x,levels);const st=document.getElementById("drawer-status");st.className="drawer-status "+cls;st.textContent=status;document.getElementById("drawer-trigger").textContent=(short?"売り ":"買い ")+yen(trigger)+(short?" 以下":" 以上");document.getElementById("drawer-pullback").textContent=yen(pullback);document.getElementById("drawer-stop").textContent=yen(stop);document.getElementById("drawer-target1").textContent=yen(target1);document.getElementById("drawer-target2").textContent=yen(target2);document.getElementById("drawer-confirm").textContent=short?"反落足確定・VWAP下・出来高増加":"反発足確定・VWAP上・出来高増加";document.getElementById("drawer-note").textContent=official?"正式候補の注文ライン。発動条件を満たさなければ見送り。":"参考ライン。監視銘柄から自動計算したため、正式候補へ昇格するまで注文しない。";drawer.classList.add("open");back.classList.add("open");drawer.setAttribute("aria-hidden","false")}
+ function enhance(){document.querySelectorAll(".tab-pane table tbody tr,.tab-pane table>tr").forEach(tr=>{if(tr.dataset.chartReady)return;const code=tr.textContent.match(/（([0-9A-Z]{3,5})）/)?.[1];if(!code||!records[code]?.chart?.length)return;tr.dataset.chartReady="1";tr.classList.add("chart-row");const cell=[...tr.cells].find(td=>td.textContent.includes("（"+code+"）"))||tr.cells[1]||tr.cells[0];const b=document.createElement("button");b.type="button";b.className="chart-open";b.textContent="▥ チャート";b.onclick=e=>{e.stopPropagation();openChart(code)};cell.appendChild(b)})}
+ Promise.all([fetch("data.json?t="+Date.now()).then(r=>r.json()),fetch("signals.json?t="+Date.now()).then(r=>r.json())]).then(([a,b])=>{walk(a);walk(b);enhance();setTimeout(enhance,700);setTimeout(enhance,1800)}).catch(()=>{});
+});
+</script>"""
+
+
 def main():
     now = datetime.now(JST)
     active_buybacks, buybacks_updated_at = load_active_buybacks(now)
@@ -1527,6 +1556,7 @@ def main():
     )
     ifo_cards = render_day_ifo_cards(day_ifo_candidates)
     focus_dashboard = render_focus_dashboard(day_ifo_candidates)
+    trade_drawer = render_trade_drawer()
     ifo_count_note = (
         "分散条件を満たす5銘柄を選定"
         if len(day_ifo_candidates) == 5
@@ -1652,9 +1682,9 @@ def main():
 <style>
 .focus-dashboard{{padding:14px;background:radial-gradient(circle at 80% 0,#123454 0,#101923 42%,#081018 100%);border:1px solid #3e83a8;overflow:visible}}.focus-title{{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:12px}}.focus-title h2{{font-size:26px;margin:2px 0;border:0;color:#fff}}.focus-title>div>span{{color:#63d8ff;font-weight:900;letter-spacing:.08em}}.decision-badge{{padding:12px 16px;border-radius:10px;font-size:17px;white-space:nowrap}}.decision-go{{background:#38e477;color:#03140a}}.decision-ready{{background:#ffd84e;color:#191300}}.decision-wait{{background:#5c6874;color:#fff}}.focus-layout{{display:grid;grid-template-columns:minmax(230px,.7fr) minmax(420px,1.45fr) minmax(320px,1fr);gap:12px}}.focus-picks{{display:flex;flex-direction:column;gap:7px}}.focus-pick{{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;text-align:left;color:#e9f4ff;background:#0b1722;border:1px solid #30475b;border-radius:9px;padding:10px;cursor:pointer}}.focus-pick:hover,.focus-pick.active{{border-color:#54d6ff;background:#10283a;box-shadow:0 0 0 1px #54d6ff55}}.focus-pick small{{display:block;margin-top:3px}}.focus-pick strong{{font-size:20px;color:#65e993}}.focus-rank{{background:#20384b;padding:5px;border-radius:5px;font-weight:900}}.focus-chart-wrap,.focus-order{{background:#071019;border:1px solid #2a475d;border-radius:10px;overflow:hidden}}.focus-chart-head{{display:flex;justify-content:space-between;padding:9px 11px;background:#0e2030}}#focus-chart{{width:100%;height:430px;border:0;display:block}}.focus-order{{padding:12px;overflow:auto}}.focus-symbol{{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;border-bottom:1px solid #314354;padding-bottom:9px}}.focus-symbol h3{{margin:0;color:#fff;font-size:18px}}.focus-symbol>b{{font-size:21px;color:#63e990}}.focus-action{{margin:11px 0;padding:12px;border-radius:9px;background:#113421;border:1px solid #2b9c58}}.focus-action span,.focus-action small{{display:block}}.focus-action strong{{display:block;font-size:25px;color:#65ef91;margin:4px 0}}.focus-price-grid{{display:grid;grid-template-columns:1fr 1fr;gap:7px}}.focus-price-grid>div{{background:#101e2a;border-radius:7px;padding:9px}}.focus-price-grid span{{display:block;color:#9fb0bf}}.focus-price-grid b{{font-size:17px}}.focus-supply{{margin-top:9px;padding:9px;border-left:4px solid #ffcf4a;background:#191a14}}.focus-supply b,.focus-supply span{{display:block}}.focus-rule{{color:#ffd75e;border-top:1px solid #4a3d16;padding-top:9px}}.focus-empty{{padding:28px;text-align:center;font-size:17px}}@media(max-width:1100px){{.focus-layout{{grid-template-columns:240px 1fr}}.focus-order{{grid-column:1/-1}}}}@media(max-width:800px){{.focus-layout{{grid-template-columns:1fr}}.focus-order{{grid-column:auto}}#focus-chart{{height:360px}}.focus-title{{align-items:flex-start;flex-direction:column}}}}
 </style>
-<link rel="stylesheet" href="theme.css?v=42">
+<link rel="stylesheet" href="theme.css?v=43">
 <link rel="stylesheet" href="focus.css?v=41">
-<header><div><h1>AIトレードコクピット Ver.4.2</h1><div class="sub">最初の画面で本命・買い時・押し目・撤退を判断</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;today&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
+<header><div><h1>AIトレードコクピット Ver.4.3</h1><div class="sub">最初の画面で本命・買い時・押し目・撤退を判断</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;today&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
 {focus_dashboard}
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
@@ -1956,7 +1986,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
   document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
 }});
-</script></body></html>"""
+</script>{trade_drawer}</body></html>"""
     (ROOT / "index.html").write_text(html, encoding="utf-8")
 
 
