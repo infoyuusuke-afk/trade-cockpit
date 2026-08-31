@@ -124,7 +124,8 @@ def tabs_block() -> str:
 .weekly-grid>div{{background:#0c1b2d;border:1px solid #243b55;border-radius:12px;padding:14px}}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
- <button class="cockpit-tab active" data-tab="today">今日の戦略</button>
+ <button class="cockpit-tab active" data-tab="focus">今買う候補</button>
+ <button class="cockpit-tab" data-tab="today">詳細・注文票</button>
  <button class="cockpit-tab" data-tab="risk">市場警報・占い</button>
  <button class="cockpit-tab" data-tab="rotation">資金ローテーション</button>
  <button class="cockpit-tab" data-tab="accumulation">大口買い集め</button>
@@ -135,11 +136,12 @@ def tabs_block() -> str:
 <script>
 document.addEventListener("DOMContentLoaded",()=>{{
  const main=document.querySelector("main"); if(!main)return;
- const panes={{}}; ["today","risk","rotation","accumulation","swing","audit","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="today"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
+ const panes={{}}; ["focus","today","risk","rotation","accumulation","swing","audit","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="focus"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
  [...main.querySelectorAll(":scope > section")].forEach(s=>{{
    const t=(s.querySelector("h2")?.textContent||"").trim();
    let k="today";
-   if(t.includes("市場警報")||t.includes("本格占い"))k="risk";
+   if(s.id==="action-dashboard")k="focus";
+   else if(t.includes("市場警報")||t.includes("本格占い"))k="risk";
    else if(s.id==="weekly-review"||t.includes("週間振り返り"))k="weekly";
    else if(s.id==="sector-rotation"||t.startsWith("②-R"))k="rotation";
    else if(s.id==="large-lot-accumulation"||t.includes("大口買い集め"))k="accumulation";
@@ -150,9 +152,9 @@ document.addEventListener("DOMContentLoaded",()=>{{
  document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{{
    document.querySelectorAll(".cockpit-tab").forEach(x=>x.classList.toggle("active",x===b));
    document.querySelectorAll(".tab-pane").forEach(x=>x.classList.toggle("active",x.dataset.pane===b.dataset.tab));
-   localStorage.setItem("cockpitTab",b.dataset.tab);
+   localStorage.setItem("cockpitTabV4",b.dataset.tab);
  }});
- const saved=localStorage.getItem("cockpitTab"); if(saved)document.querySelector(`.cockpit-tab[data-tab="${{saved}}"]`)?.click();
+ const saved=localStorage.getItem("cockpitTabV4"); if(saved)document.querySelector(`.cockpit-tab[data-tab="${{saved}}"]`)?.click();
 }});
 </script>
 {END}"""
