@@ -78,7 +78,7 @@ def daily_snapshot(ticker):
     try:
         df = flat_columns(yf.download(
             ticker, period="1y", interval="1d", auto_adjust=False,
-            progress=False, threads=False
+            actions=True, progress=False, threads=False
         )).dropna(subset=["Close"])
         if len(df) < 3:
             return {"ok": False}
@@ -183,6 +183,20 @@ def daily_snapshot(ticker):
             35 + min(volume_ratio, 2.5) * 15
             + max(min(obv_impulse / volume_total, .35), -.35) * 55
             + (12 if higher_lows else 0) + close_location * 8, 0), 100))
+        dividend_rows = df[df.get("Dividends", pd.Series(0, index=df.index)).fillna(0) > 0]
+        last_dividend = float(dividend_rows["Dividends"].iloc[-1]) if not dividend_rows.empty else 0
+        estimated_ex_date = None
+        dividend_days = None
+        if not dividend_rows.empty:
+            dates = [pd.Timestamp(x).tz_localize(None) for x in dividend_rows.index]
+            interval_days = int((dates[-1] - dates[-2]).days) if len(dates) >= 2 else 182
+            interval_days = min(max(interval_days, 150), 220)
+            next_date = dates[-1] + pd.Timedelta(days=interval_days)
+            today = pd.Timestamp.now(tz=JST).tz_localize(None).normalize()
+            while next_date < today:
+                next_date += pd.Timedelta(days=interval_days)
+            estimated_ex_date = next_date.strftime("%Y-%m-%d")
+            dividend_days = int((next_date - today).days)
         chart = [
             {
                 "o": round(float(r["Open"]), 2),
@@ -216,6 +230,8 @@ def daily_snapshot(ticker):
             "market_supply_score": market_supply_score,
             "market_supply_improved": market_supply_score >= 60,
             "market_supply_status": f"市場需給{market_supply_score}点／上昇日出来高÷下落日{volume_ratio:.2f}倍／安値切上げ{'○' if higher_lows else '×'}"
+            ,"last_dividend": round(last_dividend, 2), "estimated_ex_date": estimated_ex_date,
+            "dividend_days": dividend_days
         }
     except Exception as e:
         return {"ok": False, "error": type(e).__name__}
@@ -1508,6 +1524,20 @@ def main():
         f"<br><small>{x.get('note', '')}</small></td></tr>"
         for i, x in enumerate(active_buybacks, 1)
     ) or "<tr><td colspan='9'>公式情報を確認できた実施期間中の自社株買い候補なし。推測銘柄は表示しません。</td></tr>"
+    dividend_watch = sorted(
+        [(n, r) for n, r in valid if r.get("dividend_days") is not None
+         and 0 <= r["dividend_days"] <= 45 and r.get("market_supply_improved")],
+        key=lambda x: (x[1]["dividend_days"], -x[1]["market_supply_score"]),
+    )[:10]
+    dividend_rows = "".join(
+        f"<tr><td>{i}</td><td>{name}</td><td>{r['estimated_ex_date']}<br><small>過去実績からの推定・あと{r['dividend_days']}日</small></td>"
+        f"<td>{money(r['last_dividend'])}</td><td><b>{r['market_supply_score']}/100</b><br><small>{r['market_supply_status']}</small></td>"
+        f"<td>{'権利前上昇を監視' if r['price'] >= r['ma20'] else '戻り確認待ち'}</td>"
+        f"<td>{money(max(r['high'], r['price']) + price_tick(r['price']))}</td>"
+        f"<td class='down'>{money(r['low'] - r['atr14'] * .2)}</td>"
+        f"<td>権利落ち日は配当相当の下落・つなぎ売り増加に注意</td></tr>"
+        for i, (name, r) in enumerate(dividend_watch, 1)
+    ) or "<tr><td colspan='9'>45日以内の推定権利日＋需給改善に合格した監視銘柄なし。</td></tr>"
     akita_dc_rows = "".join(
         f"<tr><td>{i}</td><td>{x['name']}</td>"
         f"<td><b class='up'>{x['relation_score']}/100</b></td>"
@@ -1701,9 +1731,9 @@ def main():
 <style>
 .focus-dashboard{{padding:14px;background:radial-gradient(circle at 80% 0,#123454 0,#101923 42%,#081018 100%);border:1px solid #3e83a8;overflow:visible}}.focus-title{{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:12px}}.focus-title h2{{font-size:26px;margin:2px 0;border:0;color:#fff}}.focus-title>div>span{{color:#63d8ff;font-weight:900;letter-spacing:.08em}}.decision-badge{{padding:12px 16px;border-radius:10px;font-size:17px;white-space:nowrap}}.decision-go{{background:#38e477;color:#03140a}}.decision-ready{{background:#ffd84e;color:#191300}}.decision-wait{{background:#5c6874;color:#fff}}.focus-layout{{display:grid;grid-template-columns:minmax(230px,.7fr) minmax(420px,1.45fr) minmax(320px,1fr);gap:12px}}.focus-picks{{display:flex;flex-direction:column;gap:7px}}.focus-pick{{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;text-align:left;color:#e9f4ff;background:#0b1722;border:1px solid #30475b;border-radius:9px;padding:10px;cursor:pointer}}.focus-pick:hover,.focus-pick.active{{border-color:#54d6ff;background:#10283a;box-shadow:0 0 0 1px #54d6ff55}}.focus-pick small{{display:block;margin-top:3px}}.focus-pick strong{{font-size:20px;color:#65e993}}.focus-rank{{background:#20384b;padding:5px;border-radius:5px;font-weight:900}}.focus-chart-wrap,.focus-order{{background:#071019;border:1px solid #2a475d;border-radius:10px;overflow:hidden}}.focus-chart-head{{display:flex;justify-content:space-between;padding:9px 11px;background:#0e2030}}#focus-chart{{width:100%;height:430px;border:0;display:block}}.focus-order{{padding:12px;overflow:auto}}.focus-symbol{{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;border-bottom:1px solid #314354;padding-bottom:9px}}.focus-symbol h3{{margin:0;color:#fff;font-size:18px}}.focus-symbol>b{{font-size:21px;color:#63e990}}.focus-action{{margin:11px 0;padding:12px;border-radius:9px;background:#113421;border:1px solid #2b9c58}}.focus-action span,.focus-action small{{display:block}}.focus-action strong{{display:block;font-size:25px;color:#65ef91;margin:4px 0}}.focus-price-grid{{display:grid;grid-template-columns:1fr 1fr;gap:7px}}.focus-price-grid>div{{background:#101e2a;border-radius:7px;padding:9px}}.focus-price-grid span{{display:block;color:#9fb0bf}}.focus-price-grid b{{font-size:17px}}.focus-supply{{margin-top:9px;padding:9px;border-left:4px solid #ffcf4a;background:#191a14}}.focus-supply b,.focus-supply span{{display:block}}.focus-rule{{color:#ffd75e;border-top:1px solid #4a3d16;padding-top:9px}}.focus-empty{{padding:28px;text-align:center;font-size:17px}}@media(max-width:1100px){{.focus-layout{{grid-template-columns:240px 1fr}}.focus-order{{grid-column:1/-1}}}}@media(max-width:800px){{.focus-layout{{grid-template-columns:1fr}}.focus-order{{grid-column:auto}}#focus-chart{{height:360px}}.focus-title{{align-items:flex-start;flex-direction:column}}}}
 </style>
-<link rel="stylesheet" href="theme.css?v=50">
+<link rel="stylesheet" href="theme.css?v=51">
 <link rel="stylesheet" href="focus.css?v=41">
-<header><div><h1>AIトレードコクピット Ver.5.0</h1><div class="sub">最初の画面で本命・買い時・押し目・撤退を判断</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;daytrade&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
+<header><div><h1>AIトレードコクピット Ver.5.1</h1><div class="sub">最初の画面で本命・買い時・押し目・撤退を判断</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;daytrade&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
 {focus_dashboard}
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
@@ -1775,7 +1805,10 @@ def main():
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>型</th><th>状態</th><th>総合点</th><th>需給点・局面</th><th>終値</th><th>支持線</th><th>線の傾斜</th><th>半年騰落</th><th>足型</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
 <tbody id="long-term-ma-signals"><tr><td colspan="15">全市場を走査中...</td></tr></tbody></table>
 <p class="warning"><b>必須条件：</b>信用需給を確認済みかつ30/55点以上。信用買い残1週・4週、信用倍率、機関空売り増減、買い戻し社数を確認します。50週線・200日線反発だけでは正式候補にしません。反転足高値＋1ティックを上抜いた場合だけ発動し、反転足安値割れで撤退。</p></section>
-<section class="card wide"><h2>⑤-G 自社株買い実施中・需給インパクト TOP5</h2>
+<section id="dividend-rights-watch" class="card wide"><h2>配当権利前・上昇／権利落ち監視 TOP10</h2>
+<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>推定権利日</th><th>直近配当</th><th>需給改善</th><th>現在判定</th><th>上抜け発動</th><th>撤退</th><th>権利落ち注意</th></tr></thead><tbody>{dividend_rows}</tbody></table>
+<p class="warning">権利日は過去の配当実績間隔による推定です。会社IR・取引所の権利確定日を必ず確認。権利取り目的で無条件に買わず、需給改善＋発動価格上抜けだけを監視します。</p></section>
+<section id="buyback-watch" class="card wide"><h2>自社株買い実施中・需給インパクト TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>取得上限／発行済株式</th><th>進捗率</th><th>残り余力</th><th>1日出来高への影響</th><th>取得期間</th><th>消却・注意</th></tr></thead>
 <tbody>{buyback_rows}</tbody></table>
 <p class="warning">会社IR・適時開示で取得期間中と確認できる案件だけを表示。発表済みでも取得終了、上限到達、取得実績ゼロ、出来高への影響が小さい案件は減点します。自社株買いだけで買わず、信用買い残の整理・機関空売り買い戻し・週足／月足反転と重なる銘柄を優先します。更新：{buybacks_updated_at}</p></section>
@@ -1789,10 +1822,10 @@ def main():
 </div>
 <p id="tv-export-status" class="sub">ボタンを押すとTradingView取込用TXTをダウンロードします。</p>
 <p class="warning">TradingView右側の監視リスト名を押す →「リストをインポート」→ ダウンロードしたTXTを選択。日本株はTSE:銘柄コード形式で出力し、重複は自動削除します。</p></section>
-<section class="card wide"><h2>⑤-H 日足セリングクライマックス反転監視</h2>
+<section id="lower-wick-reversal" class="card wide"><h2>最優先・下ヒゲ吸収反転（次足確認）</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>反転形</th><th>期待値</th><th>終値</th><th>10日下落</th><th>出来高急増</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead>
 <tbody id="daily-reversal-signals"><tr><td colspan="12">全市場を走査中...</td></tr></tbody></table>
-<p class="warning">画像のような「急落→大出来高→安値固め→陽線確認」を検出。逆張りなので、反転足高値＋1ティックを上抜くまで買いません。</p></section>
+<p class="warning">最も入りたい型。①長い下ヒゲで売りを吸収、②終値がレンジ上側へ回復、③次足が反転足の実体上端または高値＋1ティックを上抜く、の3条件で発動。候補足安値割れで撤退し、ナンピンしません。</p></section>
 <section class="card wide"><h2>⑥-A 決算勝負候補 TOP15（7日以内・決算期待値順）</h2><table><tr><th>会社名＋コード</th><th>調整後期待値</th><th>コンセンサス警戒</th><th>テクニカル点</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>採点根拠・注意</th></tr>{earning_rows}</table><p class="warning">高すぎるEPS・売上予想、予想幅の大きさ、下方修正、過去の上振れ不足、決算前の株価上昇を警戒度として減点。好決算でもコンセンサス未達や材料出尽くしになる危険を反映します。</p></section>
 <section class="card wide"><h2>⑥-B BB上方エクスパンション期待 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>現在値</th><th>BB幅</th><th>5日比</th><th>幅順位</th><th>出来高比</th><th>イン</th><th>損切り</th><th>判定</th></tr>{bb_rows}</table><p class="warning">BB幅順位は過去120日の細さ。数値が低いほどスクイーズ状態。上限突破＋BB幅拡大＋出来高増加を最優先します。</p></section>
 <section class="card wide"><h2>⑦ AIスイングサインの使い方</h2>
