@@ -1,0 +1,11 @@
+{
+  "updated_at": "未取得",
+  "source": "キオクシア5分足データ取得待ち",
+  "calendar": [],
+  "current": null,
+  "current_is_today": false,
+  "observed_bars": 0,
+  "matches": [],
+  "prediction": {"status": "未取得", "bias": "判定保留", "up_probability": null, "expected_after_ret": null, "expected_max_up": null, "expected_max_down": null, "sample": 0},
+  "rule": "9:15までは判定保留。類似度60%以上が3日未満なら見送り。"
+}

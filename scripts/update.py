@@ -197,6 +197,15 @@ def daily_snapshot(ticker):
                 next_date += pd.Timedelta(days=interval_days)
             estimated_ex_date = next_date.strftime("%Y-%m-%d")
             dividend_days = int((next_date - today).days)
+        data_ts = pd.Timestamp(df.index[-1])
+        if data_ts.tzinfo is not None:
+            data_ts = data_ts.tz_convert(JST).tz_localize(None)
+        data_date = data_ts.date()
+        age_days = (datetime.now(JST).date() - data_date).days
+        ohlc_valid = bool(
+            close > 0 and high >= max(open_, close) and low <= min(open_, close)
+            and high >= low and prev > 0
+        )
         chart = [
             {
                 "o": round(float(r["Open"]), 2),
@@ -206,6 +215,11 @@ def daily_snapshot(ticker):
             }
             for _, r in df.tail(40).iterrows()
         ]
+        chart_close = chart[-1]["c"] if chart else None
+        chart_matches = bool(chart_close is not None and abs(chart_close - close) <= max(.11, close * .0001))
+        # Fail closed: at 8:00 a Friday close can be three calendar days old,
+        # but anything older must never be presented as the current reference.
+        quote_verified = bool(ohlc_valid and chart_matches and 0 <= age_days <= 3)
         return {
             "ok": True, "price": round(close, 2), "open": round(open_, 2),
             "high": round(high, 2), "low": round(low, 2),
@@ -227,6 +241,13 @@ def daily_snapshot(ticker):
             "stable_score": round(stable_score, 2),
             "momentum_score": round(momentum_score, 2),
             "high_score": round(high_score, 2), "chart": chart,
+            "data_date": data_date.isoformat(), "data_age_days": age_days,
+            "chart_last_close": chart_close, "quote_verified": quote_verified,
+            "quote_status": (
+                f"検証済み：{data_date.isoformat()}終値 {close:,.2f}円"
+                if quote_verified else
+                f"売買利用禁止：株価/チャート不整合または古いデータ（{data_date.isoformat()}）"
+            ),
             "market_supply_score": market_supply_score,
             "market_supply_improved": market_supply_score >= 60,
             "market_supply_status": f"市場需給{market_supply_score}点／上昇日出来高÷下落日{volume_ratio:.2f}倍／安値切上げ{'○' if higher_lows else '×'}"
@@ -252,12 +273,17 @@ def intraday_snapshot(ticker):
         vol = df["Volume"].fillna(0)
         typical = (df["High"] + df["Low"] + df["Close"]) / 3
         vwap = float((typical * vol).sum() / vol.sum()) if float(vol.sum()) else float(df["Close"].iloc[-1])
+        data_ts = pd.Timestamp(df.index[-1])
+        if data_ts.tzinfo is not None:
+            data_ts = data_ts.tz_convert(JST)
         return {
             "ok": True, "open": round(float(df["Open"].iloc[0]), 2),
             "high": round(float(df["High"].max()), 2),
             "low": round(float(df["Low"].min()), 2),
             "close": round(float(df["Close"].iloc[-1]), 2),
-            "vwap": round(vwap, 2), "volume": round(float(vol.sum()))
+            "vwap": round(vwap, 2), "volume": round(float(vol.sum())),
+            "data_date": data_ts.strftime("%Y-%m-%d"),
+            "data_time": data_ts.strftime("%Y-%m-%d %H:%M JST"),
         }
     except Exception as e:
         return {"ok": False, "error": type(e).__name__}
@@ -935,9 +961,11 @@ def build_day_ifo_candidates(valid, rotation, official_earnings, now, credit_sup
                 f"倍率{credit_ratio:.2f}倍／機関空売り{short_change:+.1f}%"
             )
         else:
-            supply_score = float(row.get("market_supply_score") or 0)
-            supply_known = bool(row.get("market_supply_improved"))
-            supply_status = row.get("market_supply_status") or "需給改善未確認"
+            # Price/volume absorption is useful context, but it is not credit
+            # supply. Never promote it to a verified 8:55 order candidate.
+            supply_score = 0
+            supply_known = False
+            supply_status = "信用買残・信用倍率未取得（正式候補へ昇格不可）"
         if not supply_known:
             continue
         focus_bonus = 12 if bucket else 0
@@ -1006,6 +1034,9 @@ def build_day_ifo_candidates(valid, rotation, official_earnings, now, credit_sup
                 f"8:55気配が{entry_limit:,.0f}円を超えていたら価格を上げず注文取消。"
             ),
             "chart": row.get("chart", []),
+            "data_date": row.get("data_date"),
+            "chart_last_close": row.get("chart_last_close"),
+            "quote_status": row.get("quote_status", "株価検証不能"),
             "close_rule": (
                 "15:20時点で未決済なら手仕舞い判断。持ち越す場合は、"
                 "失効する決済注文を必ずOCOで再設定。"
@@ -1187,6 +1218,9 @@ def render_focus_dashboard(candidates):
             "stop": item["stop"], "target1": item["target1"], "target2": item["target2"],
             "supply": item.get("supply_status", "信用需給未確認"),
             "reason": item["reason"], "chart": item.get("chart", []),
+            "data_date": item.get("data_date"),
+            "chart_last_close": item.get("chart_last_close"),
+            "quote_status": item.get("quote_status", "株価検証不能"),
         })
     payload = json.dumps(rows, ensure_ascii=False).replace("</", "<\\/")
     return f"""
@@ -1198,7 +1232,7 @@ def render_focus_dashboard(candidates):
  <div class="focus-layout">
   <aside><div class="focus-aside-head"><b>優先順位</b><small>最大5銘柄</small></div><div class="focus-picks" id="focus-picks"></div></aside>
   <div class="focus-chart-wrap">
-   <div class="focus-chart-head"><div><b id="focus-chart-name"></b><small id="focus-chart-code"></small></div><span>直近40営業日</span></div>
+   <div class="focus-chart-head"><div><b id="focus-chart-name"></b><small id="focus-chart-code"></small></div><span id="focus-chart-asof">検証中</span></div>
    <div id="focus-chart" role="img" aria-label="ローソク足チャート"></div>
   </div>
   <div class="focus-order">
@@ -1221,7 +1255,7 @@ document.addEventListener("DOMContentLoaded",()=>{{
  const list=document.getElementById("focus-picks");
  rows.forEach((x,i)=>{{const b=document.createElement("button");b.className="focus-pick";b.innerHTML=`<span class="focus-rank">${{String(i+1).padStart(2,"0")}}</span><span><b>${{x.name}}</b><small>${{x.decision}}</small></span><strong>${{x.score}}</strong>`;b.onclick=()=>select(i);list.appendChild(b);}});
  function chart(x){{const a=x.chart||[];if(!a.length)return `<div class="chart-empty">チャートデータ更新待ち</div>`;const W=720,H=390,p=28;let lo=Math.min(...a.map(v=>v.l),x.stop),hi=Math.max(...a.map(v=>v.h),x.trigger,x.target1);const y=v=>p+(hi-v)/(hi-lo||1)*(H-p*2),step=(W-p*2)/a.length,bw=Math.max(3,step*.55);let s=`<svg viewBox="0 0 ${{W}} ${{H}}" preserveAspectRatio="none">`;for(let i=0;i<5;i++){{let yy=p+i*(H-p*2)/4;s+=`<line class="grid" x1="${{p}}" y1="${{yy}}" x2="${{W-p}}" y2="${{yy}}"/>`;}}a.forEach((v,i)=>{{let x0=p+step*(i+.5),up=v.c>=v.o,cl=up?"c-up":"c-down",yo=y(v.o),yc=y(v.c);s+=`<line class="${{cl}}" x1="${{x0}}" y1="${{y(v.h)}}" x2="${{x0}}" y2="${{y(v.l)}}"/><rect class="${{cl}}" x="${{x0-bw/2}}" y="${{Math.min(yo,yc)}}" width="${{bw}}" height="${{Math.max(1,Math.abs(yo-yc))}}"/>`;}});[[x.trigger,"trigger","発動"],[x.pullback_high,"pullback","押し目"],[x.stop,"stop","撤退"]].forEach(z=>{{s+=`<line class="level ${{z[1]}}" x1="${{p}}" y1="${{y(z[0])}}" x2="${{W-p}}" y2="${{y(z[0])}}"/><text class="label ${{z[1]}}" x="${{W-p-3}}" y="${{y(z[0])-5}}">${{z[2]}} ${{yen(z[0])}}</text>`;}});return s+`</svg>`;}}
- function select(i){{const x=rows[i];[...list.children].forEach((b,j)=>b.classList.toggle("active",i===j));document.getElementById("focus-chart-name").textContent=x.name;document.getElementById("focus-chart-code").textContent=x.code;document.getElementById("focus-chart").innerHTML=chart(x);document.getElementById("focus-rank").textContent="#"+x.rank;document.getElementById("focus-name").textContent=x.name;document.getElementById("focus-score").textContent=x.score+" / 100";const d=document.getElementById("focus-decision");d.className="decision-badge "+x.decision_class;d.textContent=x.decision;document.getElementById("focus-trigger").textContent=yen(x.trigger)+" 以上";document.getElementById("focus-entry").textContent=yen(x.entry);document.getElementById("focus-pullback").textContent=yen(x.pullback_low)+" – "+yen(x.pullback_high);document.getElementById("focus-stop").textContent=yen(x.stop);document.getElementById("focus-targets").textContent=yen(x.target1)+" / "+yen(x.target2);document.getElementById("focus-supply").textContent=x.supply;document.getElementById("focus-reason").textContent=x.reason;}}
+ function select(i){{const x=rows[i];[...list.children].forEach((b,j)=>b.classList.toggle("active",i===j));document.getElementById("focus-chart-name").textContent=x.name;document.getElementById("focus-chart-code").textContent=x.code;document.getElementById("focus-chart-asof").textContent=(x.data_date||"日付未確認")+" 終値 "+yen(x.chart_last_close);document.getElementById("focus-chart").innerHTML=chart(x);document.getElementById("focus-rank").textContent="#"+x.rank;document.getElementById("focus-name").textContent=x.name;document.getElementById("focus-score").textContent=x.score+" / 100";const d=document.getElementById("focus-decision");d.className="decision-badge "+x.decision_class;d.textContent=x.decision;document.getElementById("focus-trigger").textContent=yen(x.trigger)+" 以上";document.getElementById("focus-entry").textContent=yen(x.entry);document.getElementById("focus-pullback").textContent=yen(x.pullback_low)+" – "+yen(x.pullback_high);document.getElementById("focus-stop").textContent=yen(x.stop);document.getElementById("focus-targets").textContent=yen(x.target1)+" / "+yen(x.target2);document.getElementById("focus-supply").textContent=x.supply+"／"+x.quote_status;document.getElementById("focus-reason").textContent=x.reason;}}
  select(0);
 }});
 </script>"""
@@ -1247,7 +1281,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const drawer=document.getElementById("trade-drawer"),back=document.getElementById("trade-drawer-backdrop"),yen=n=>Number(n).toLocaleString("ja-JP",{maximumFractionDigits:1})+"円",records={};
  const close=()=>{drawer.classList.remove("open");back.classList.remove("open");drawer.setAttribute("aria-hidden","true")};document.getElementById("drawer-close").onclick=close;back.onclick=close;
  const codeOf=(v,key="")=>String(v?.code||v?.ticker||key).match(/(?:TSE:)?([0-9A-Z]{3,5})(?:\.T)?(?:）)?/)?.[1];
- function walk(v,key=""){if(Array.isArray(v)){v.forEach(x=>walk(x,key));return}if(!v||typeof v!=="object")return;const code=codeOf(v,key);if(code){const old=records[code]||{},chart=(v.chart||[]).length?v.chart:old.chart;records[code]={...old,...v,chart,name:v.name||old.name||(key.includes("（")?key:key+"（"+code+"）")}}Object.entries(v).forEach(([k,x])=>{if(typeof x==="object")walk(x,k)})}
+ function walk(v,key=""){if(Array.isArray(v)){v.forEach(x=>walk(x,key));return}if(!v||typeof v!=="object")return;const code=codeOf(v,key);if(code){const old=records[code]||{},incomingDate=String(v.data_date||""),oldDate=String(old.data_date||""),useIncoming=!oldDate||(incomingDate&&incomingDate>=oldDate),chart=useIncoming&&(v.chart||[]).length?v.chart:old.chart,merged=useIncoming?{...old,...v}:{...v,...old};records[code]={...merged,chart,name:(useIncoming?v.name:old.name)||v.name||old.name||(key.includes("（")?key:key+"（"+code+"）")}}Object.entries(v).forEach(([k,x])=>{if(typeof x==="object")walk(x,k)})}
  function chartSvg(x,levels){const a=x.chart||[];if(!a.length)return '<div class="drawer-empty">チャートデータ更新待ち</div>';const W=900,H=430,p=30,vals=[...a.flatMap(v=>[v.h,v.l]),levels.trigger,levels.stop,levels.target1].filter(Number.isFinite),lo=Math.min(...vals),hi=Math.max(...vals),y=v=>p+(hi-v)/(hi-lo||1)*(H-p*2),step=(W-p*2)/a.length,bw=Math.max(3,step*.55);let s=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">`;for(let i=0;i<5;i++){const yy=p+i*(H-p*2)/4;s+=`<line class="grid" x1="${p}" y1="${yy}" x2="${W-p}" y2="${yy}"/>`}a.forEach((v,i)=>{const xx=p+step*(i+.5),cl=v.c>=v.o?"c-up":"c-down",yo=y(v.o),yc=y(v.c);s+=`<line class="${cl}" x1="${xx}" y1="${y(v.h)}" x2="${xx}" y2="${y(v.l)}"/><rect class="${cl}" x="${xx-bw/2}" y="${Math.min(yo,yc)}" width="${bw}" height="${Math.max(1,Math.abs(yo-yc))}"/>`});[[levels.trigger,"trigger","発動"],[levels.pullback,"pullback","押し目"],[levels.stop,"stop","撤退"]].forEach(z=>{s+=`<line class="level ${z[1]}" x1="${p}" y1="${y(z[0])}" x2="${W-p}" y2="${y(z[0])}"/><text class="label ${z[1]}" x="${W-p-3}" y="${y(z[0])-5}">${z[2]} ${yen(z[0])}</text>`});return s+"</svg>"}
  function openChart(code){const x=records[code];if(!x)return;const a=x.chart||[],last=Number(x.close||x.price||a.at(-1)?.c||0),hi=Math.max(...a.slice(-20).map(v=>v.h)),lo=Math.min(...a.slice(-10).map(v=>v.l)),official=Number.isFinite(Number(x.trigger))&&Number.isFinite(Number(x.stop)),short=official&&Number(x.target1)<Number(x.trigger),tick=last<3000?1:last<5000?5:last<30000?10:last<50000?50:100,trigger=Number(x.trigger)||(short?lo-tick:hi+tick),stop=Number(x.stop)||(short?hi:lo),risk=Math.max(Math.abs(trigger-stop),tick),target1=Number(x.target1)||(short?trigger-risk*1.5:trigger+risk*1.5),target2=Number(x.target2)||(short?trigger-risk*2.2:trigger+risk*2.2),pullback=short?trigger+risk*.35:trigger-risk*.35;let status="発動待ち",cls="ready";if((!short&&last>=trigger)|| (short&&last<=trigger)){status=Math.abs(last-trigger)<=risk*.5?"発動確認・ローソク足待ち":"走り過ぎ・追わない";cls=status.startsWith("発動")?"go":"wait"}if((!short&&last<=stop)||(short&&last>=stop)){status="条件崩れ・見送り";cls="stop"}const levels={trigger,stop,target1,target2,pullback};document.getElementById("drawer-name").textContent=x.name||code;document.getElementById("drawer-chart").innerHTML=chartSvg(x,levels);const st=document.getElementById("drawer-status");st.className="drawer-status "+cls;st.textContent=status;document.getElementById("drawer-trigger").textContent=(short?"売り ":"買い ")+yen(trigger)+(short?" 以下":" 以上");document.getElementById("drawer-pullback").textContent=yen(pullback);document.getElementById("drawer-stop").textContent=yen(stop);document.getElementById("drawer-target1").textContent=yen(target1);document.getElementById("drawer-target2").textContent=yen(target2);document.getElementById("drawer-confirm").textContent=short?"反落足確定・VWAP下・出来高増加":"反発足確定・VWAP上・出来高増加";document.getElementById("drawer-note").textContent=official?"正式候補の注文ライン。発動条件を満たさなければ見送り。":"参考ライン。監視銘柄から自動計算したため、正式候補へ昇格するまで注文しない。";drawer.classList.add("open");back.classList.add("open");drawer.setAttribute("aria-hidden","false")}
  function enhance(){document.querySelectorAll(".tab-pane table tbody tr,.tab-pane table>tr").forEach(tr=>{if(tr.dataset.chartReady)return;const code=tr.textContent.match(/（([0-9A-Z]{3,5})）/)?.[1];if(!code||!records[code]?.chart?.length)return;tr.dataset.chartReady="1";tr.classList.add("chart-row");const cell=[...tr.cells].find(td=>td.textContent.includes("（"+code+"）"))||tr.cells[1]||tr.cells[0];const b=document.createElement("button");b.type="button";b.className="chart-open";b.textContent="▥ チャート";b.onclick=e=>{e.stopPropagation();openChart(code)};cell.appendChild(b)})}
@@ -1294,7 +1328,12 @@ def main():
             row["intraday"] = intraday_snapshot(meta["ticker"])
         stocks[name] = row
 
-    valid = [(n, r) for n, r in stocks.items() if r.get("ok")]
+    # A missing/stale quote produces zero candidates rather than a plausible
+    # looking but wrong order ticket. This gate applies to every ranking.
+    valid = [
+        (n, r) for n, r in stocks.items()
+        if r.get("ok") and r.get("quote_verified")
+    ]
     akita_dc_watch = []
     for item in config.get("akita_dc_watch", []):
         market = stocks.get(item["name"], {})
@@ -1828,6 +1867,66 @@ def main():
 <link rel="stylesheet" href="focus.css?v=41">
 <header><div><h1>AIトレードコクピット Ver.5.1</h1><div class="sub">最初の画面で本命・買い時・押し目・撤退を判断</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;daytrade&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
 {focus_dashboard}
+<section id="event-calendar" class="card wide event-calendar"><h2>売買イベントカレンダー</h2>
+<div id="event-meta" class="sub">公式日程と需給発生日を照合中...</div>
+<div class="event-guard" id="event-guard"><div><span>本日の警戒</span><b id="event-level">確認中</b></div><p id="event-rule">イベント情報を取得中...</p></div>
+<div class="event-summary">
+ <div><span>本日のイベント</span><b id="event-today-count">—</b></div>
+ <div><span>7日以内・高警戒</span><b id="event-week-high">—</b></div>
+ <div><span>日付未確定</span><b id="event-blocked-count">—</b></div>
+</div>
+<h3>今後30日・売買判断表</h3>
+<div class="event-table-wrap"><table><thead><tr><th>実需・発表日</th><th>時刻</th><th>イベント</th><th>分類</th><th>警戒</th><th>想定需給</th><th>当日の行動</th><th>発表日</th><th>基準日</th><th>需給日</th><th>反映日</th><th>確認状態</th><th>公式資料</th></tr></thead><tbody id="event-upcoming"><tr><td colspan="13">取得中...</td></tr></tbody></table></div>
+<h3>月間カレンダー</h3><div id="event-months" class="event-months"><div class="focus-empty">作成中...</div></div>
+<h3>未確定・売買利用禁止</h3><div id="event-unverified" class="event-unverified">確認中...</div>
+<div class="steps">
+ <div class="step"><b>1　日付を分離</b>発表日・基準日・大引けの需給日・指数反映日を別々に確認。</div>
+ <div class="step"><b>2　方向は断定しない</b>月末・SQ・指数入替は買い一方向ではなく、採用買いと除外売りの双方向。</div>
+ <div class="step"><b>3　未確定は取引禁止</b>公式日程や対象銘柄を確認できるまで、予想日を売買根拠にしない。</div>
+ <div class="step"><b>4　価格で最終確認</b>イベント後もOR15・VWAP・出来高・先物を見て当日の方向を再判定。</div>
+</div></section>
+<section id="correlation-monitor" class="card wide"><h2>当日デイトレ・相関／逆相関／先行銘柄</h2>
+<div id="correlation-meta" class="sub">日足20・60営業日と5分足の関係を更新中...</div>
+<label style="display:inline-flex;gap:8px;align-items:center;margin:10px 0;color:#9db0bc">主役銘柄
+<select id="correlation-anchor" style="min-width:240px;padding:8px;border:1px solid #2c5067;border-radius:7px;background:#0b1720;color:#eaf4fa"><option value="285A.T">キオクシアHD（285A）</option></select></label>
+<table><thead><tr><th>主役銘柄</th><th>確認銘柄</th><th>関係</th><th>成立判定</th><th>信頼度</th><th>20日</th><th>60日</th><th>5分足</th><th>先行</th><th>主役の当日</th><th>確認銘柄の当日</th><th>売買判断</th></tr></thead>
+<tbody id="correlation-rows"><tr><td colspan="12">相関データを取得中...</td></tr></tbody></table>
+<div class="steps">
+<div class="step"><b>1　米国先行</b>サンディスク・Micronの前日終値から、翌日のキオクシア反応を確認。</div>
+<div class="step"><b>2　同方向確認</b>正相関銘柄がOR15・VWAP・EMA9/20で同方向なら信頼度を加点。</div>
+<div class="step"><b>3　資金ローテーション</b>任天堂など逆相関候補が反対方向へ動いた場合だけ補強材料。</div>
+<div class="step"><b>4　不一致は見送り</b>相関株が逆行、または条件3/5以下なら主役銘柄へ飛び乗らない。</div>
+</div>
+<p class="warning"><b>キオクシア―任天堂は固定ルールではありません。</b> 20日・60日・当日5分足の逆相関が安定した期間だけ有効。サンディスクは取引時間が重ならないため「米国前日→キオクシア翌日」で判定します。9:15までは方向を決めず、OR15・VWAP・EMA9/20・高安の4/5一致を優先します。</p></section>
+<section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）5分足カレンダー・類似日予測</h2>
+<div id="kioxia-calendar-meta" class="sub">直近60日の5分足を照合中...</div>
+<div class="kio-summary">
+ <div class="kio-metric"><span>現在の型</span><b id="kio-current-type">判定待ち</b></div>
+ <div class="kio-metric"><span>本日の方向</span><b id="kio-bias">判定保留</b></div>
+ <div class="kio-metric"><span>類似日上昇確率</span><b id="kio-up-prob">—</b></div>
+ <div class="kio-metric"><span>残り時間の平均</span><b id="kio-after-ret">—</b></div>
+ <div class="kio-metric"><span>有効サンプル</span><b id="kio-sample">0日</b></div>
+</div>
+<h3>本日に最も近い過去チャート TOP5</h3>
+<div id="kioxia-match-grid" class="kio-match-grid"><div class="focus-empty">類似日を計算中...</div></div>
+<h3>直近25営業日・5分足カレンダー</h3>
+<div id="kioxia-calendar-grid" class="kio-calendar"><div class="focus-empty">5分足を取得中...</div></div>
+<p class="warning"><b>使い方：</b>9:15までは判定保留。類似度60%以上が3日未満なら「見送り」です。過去類似日よりも、現在のOR15・VWAP・EMA9/20・出来高・ヒゲ反応を優先し、4/5一致しない場合は発注しません。前場引け前11:00～11:30は新規INを見送ります。</p></section>
+<section class="card wide"><h2>市場環境・需給・ポジション 網羅判定</h2>
+<div class="rotation-grid">
+<div class="rotation-box"><b>25日騰落レシオ</b><strong id="breadth-25">走査待ち</strong><br><span id="breadth-regime">全市場終値から算出</span></div>
+<div class="rotation-box"><b>当日騰落</b><strong id="breadth-daily">走査待ち</strong><br><span id="breadth-counts">上昇／下落／変わらず</span></div>
+<div class="rotation-box"><b>新高値・新安値</b><strong id="breadth-highlow">走査待ち</strong><br>20日・52週の両方を確認</div>
+<div class="rotation-box"><b>全市場売買代金</b><strong id="breadth-turnover">走査待ち</strong><br><span id="breadth-coverage">取得率を確認</span></div>
+</div>
+<table><thead><tr><th>分類</th><th>網羅項目</th><th>選定での役割</th><th>現在の扱い</th></tr></thead><tbody>
+<tr><td>市場参加</td><td>騰落レシオ／新高値・新安値／売買代金／日本市況／テクニカル指標</td><td>上昇が一部銘柄だけか、市場全体へ広がっているか</td><td class="up">全市場走査で自動反映</td></tr>
+<tr><td>需給</td><td>空売り比率／信用評価／裁定買い残／投資主体別</td><td>踏み上げ余地、戻り売り圧力、主体別の買い越し</td><td class="warning">公表日時付きデータのみ採点。未取得は判定保留</td></tr>
+<tr><td>ポジション</td><td>先物手口／オプション手口／SQ値／NT倍率</td><td>指数の上値・下値バイアスとリバランス圧力</td><td class="warning">個別銘柄点ではなく地合いゲート</td></tr>
+<tr><td>外部環境</td><td>米国市況／世界株価／先物CFD／ADR／為替／商品／仮想通貨／債券／恐怖指数</td><td>翌朝ギャップ、業種ローテーション、リスク選好</td><td>指数・為替・金利・業種相対で反映</td></tr>
+<tr><td>評価・イベント</td><td>日経225 PER／米国株PER／ドル建て225／225寄与度／経済ニュース／スケジュール／5分足カレンダー</td><td>割高警戒、指数寄与の偏り、決算・指標回避</td><td>加点せず、過熱警戒と売買禁止条件に使用</td></tr>
+</tbody></table>
+<p class="warning"><b>重要：</b>空売り比率、信用残、先物・オプション手口など公表頻度が違う値を同日データとして混ぜません。未取得値を推定で埋めず、正式候補のデータ充足率に反映します。</p></section>
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
 <section id="policy-priority-overview" class="card wide"><h2>国策テーマ・実戦優先順位</h2><table><thead><tr><th>実戦優先</th><th>テーマ</th><th>正式候補数</th><th>最高総合点</th><th>現在判定</th><th>政策根拠</th></tr></thead><tbody>{policy_priority_rows}</tbody></table><p class="warning">順位は国の政策分野に勝手な序列を付けたものではありません。正式候補数→最高総合点で毎回入れ替えます。信用需給未取得時は全テーマを売買不可とします。</p></section>
@@ -2132,6 +2231,109 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("daily-reversal-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
   document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
   document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
+}});
+const eventEsc = v => String(v ?? "—").replace(/[&<>"']/g,c=>({{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}}[c]));
+fetch("event_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => {{
+  document.getElementById("event-meta").textContent = d.source_policy + "／更新 " + d.updated_at;
+  const guard = document.getElementById("event-guard");
+  document.getElementById("event-level").textContent = d.today_level;
+  document.getElementById("event-rule").textContent = d.today_rule;
+  if (d.today_level === "高警戒") guard.classList.add("high");
+  const todayEvents = d.today_events || [];
+  const limit = new Date(d.today + "T00:00:00+09:00"); limit.setDate(limit.getDate()+7);
+  const weekHigh = (d.upcoming || []).filter(x => x.impact === "高" && new Date(x.date+"T00:00:00+09:00") <= limit).length;
+  document.getElementById("event-today-count").textContent = todayEvents.length + "件";
+  document.getElementById("event-week-high").textContent = weekHigh + "件";
+  document.getElementById("event-blocked-count").textContent = (d.unverified || []).length + "件";
+  const end = new Date(d.today + "T00:00:00+09:00"); end.setDate(end.getDate()+30);
+  const rows = (d.upcoming || []).filter(x => new Date(x.date+"T00:00:00+09:00") <= end).map(x =>
+    "<tr><td><b>"+eventEsc(x.date)+"</b></td><td>"+eventEsc(x.time_jst)+"</td><td>"+eventEsc(x.title)+
+    "</td><td>"+eventEsc(x.category)+"</td><td class='"+(x.impact==="高"?"down":"warning")+"'>"+eventEsc(x.impact)+
+    "</td><td>"+eventEsc(x.expected_flow)+"</td><td><b>"+eventEsc(x.action)+"</b><br><small>"+eventEsc(x.note)+
+    "</small></td><td>"+eventEsc(x.announcement_date)+"</td><td>"+eventEsc(x.base_date)+"</td><td>"+eventEsc(x.flow_date)+
+    "</td><td>"+eventEsc(x.effective_date)+"</td><td><span class='event-status "+(x.trade_block?"block":"")+"'>"+eventEsc(x.status)+
+    "</span></td><td><a class='event-source' href='"+eventEsc(x.source_url)+"' target='_blank' rel='noopener'>"+eventEsc(x.source_name)+"</a></td></tr>"
+  ).join("");
+  document.getElementById("event-upcoming").innerHTML = rows || "<tr><td colspan='13'>今後30日の登録イベントなし</td></tr>";
+  const grouped = {{}};
+  (d.events || []).filter(x=>x.date).forEach(x=>{{const k=x.date.slice(0,7);(grouped[k] ||= []).push(x);}});
+  const monthKeys = Object.keys(grouped).filter(k=>k>=d.today.slice(0,7)).slice(0,4);
+  document.getElementById("event-months").innerHTML = monthKeys.map(key=>{{
+    const [year,month]=key.split("-").map(Number), first=new Date(year,month-1,1), count=new Date(year,month,0).getDate();
+    const mondayFirst=(first.getDay()+6)%7, cells=Array(mondayFirst).fill("<div class='event-day empty'></div>");
+    for(let day=1;day<=count;day++){{
+      const iso=key+"-"+String(day).padStart(2,"0"), items=grouped[key].filter(x=>x.date===iso);
+      const chips=items.map(x=>"<span class='event-chip "+(x.trade_block?"block":x.impact==="高"?"high":"")+"' title='"+eventEsc(x.action)+"'>"+eventEsc(x.time_jst)+" "+eventEsc(x.title)+"</span>").join("");
+      cells.push("<div class='event-day "+(iso===d.today?"today":"")+"'><strong>"+day+"</strong>"+chips+"</div>");
+    }}
+    return "<div class='event-month'><h4>"+year+"年"+month+"月</h4><div class='event-weekdays'><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span><span>日</span></div><div class='event-days'>"+cells.join("")+"</div></div>";
+  }}).join("") || "<div class='focus-empty'>カレンダー対象なし</div>";
+  document.getElementById("event-unverified").innerHTML = (d.unverified || []).map(x=>
+    "<div class='event-block'><b>"+eventEsc(x.title)+"</b><span>"+eventEsc(x.effective_date)+"</span><small>売買禁止："+eventEsc(x.note)+"</small><a href='"+eventEsc(x.source_url)+"' target='_blank' rel='noopener'>公式確認先</a></div>"
+  ).join("") || "<div class='up'>未確定イベントなし</div>";
+}}).catch(() => {{
+  document.getElementById("event-level").textContent = "取得失敗";
+  document.getElementById("event-rule").textContent = "イベントを確認できないため、イベント需給を根拠に売買しません。";
+  document.getElementById("event-upcoming").innerHTML = "<tr><td colspan='13'>データ取得待ち</td></tr>";
+}});
+const corrText = v => v == null ? "—" : (v >= 0 ? "+" : "") + Number(v).toFixed(2);
+const todayText = x => {{
+  if (!x || x.ret == null) return "未取得";
+  return signedPct(x.ret, 2) + "／OR15 " + x.or15 + "／VWAP" + x.vwap + "／EMA " + x.ema;
+}};
+fetch("correlations.json?t=" + Date.now()).then(r => r.json()).then(d => {{
+  document.getElementById("correlation-meta").textContent = d.method + "／更新 " + d.updated_at;
+  const allRelations = d.relationships || [];
+  const select = document.getElementById("correlation-anchor");
+  const anchors = [...new Map(allRelations.map(x => [x.anchor_ticker, x.anchor])).entries()];
+  select.innerHTML = anchors.map(([ticker,name]) => "<option value='" + ticker + "'>" + name + "</option>").join("") || "<option>候補なし</option>";
+  if (anchors.some(x => x[0] === "285A.T")) select.value = "285A.T";
+  const renderRelations = () => {{
+   const rows = allRelations.filter(x => x.anchor_ticker === select.value).map(x => {{
+    const lead = x.relation.includes("米国前日") ? "米国前日" :
+      x.lead_bars == null ? "—" : x.lead_bars > 0 ? "確認銘柄が" + (x.lead_bars * 5) + "分先行" :
+      x.lead_bars < 0 ? "主役が" + (-x.lead_bars * 5) + "分先行" : "同時";
+    return "<tr><td><b>" + x.anchor + "</b></td><td>" + x.peer + "</td><td>" +
+      x.relation + "<br><small>" + x.expected + "</small></td><td><b class='" +
+      (x.state === "確認" ? "up" : x.state === "不成立" ? "down" : "warning") + "'>" +
+      x.state + "</b></td><td>" + x.confidence + "/100</td><td>" + corrText(x.corr20) +
+      "</td><td>" + corrText(x.corr60) + "</td><td>" + corrText(x.intraday_corr) +
+      "</td><td>" + lead + "</td><td>" + todayText(x.anchor_today) + "</td><td>" +
+      todayText(x.peer_today) + "</td><td><b>" + x.decision + "</b><br><small>" + x.reason +
+      "</small></td></tr>";
+   }}).join("");
+   document.getElementById("correlation-rows").innerHTML = rows ||
+    "<tr><td colspan='12'>安定した相関・逆相関はありません。相関を売買根拠にしません。</td></tr>";
+  }};
+  select.onchange = renderRelations;
+  renderRelations();
+}}).catch(() => {{
+  document.getElementById("correlation-meta").textContent = "相関データ未取得。推定で埋めません。";
+  document.getElementById("correlation-rows").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
+}});
+const miniPath = (points, stroke="#58d9b4") => {{
+  if (!points || points.length < 2) return "<div class='focus-empty'>データなし</div>";
+  const lo = Math.min(...points), hi = Math.max(...points), span = Math.max(hi - lo, .01);
+  const coords = points.map((v,i) => (i/(points.length-1)*116+2).toFixed(1) + "," + (66-(v-lo)/span*60).toFixed(1)).join(" ");
+  const zero = (66-(0-lo)/span*60).toFixed(1);
+  return "<svg viewBox='0 0 120 70' preserveAspectRatio='none'><line x1='2' y1='" + zero + "' x2='118' y2='" + zero + "' stroke='#38505e' stroke-dasharray='3 3'/><polyline points='" + coords + "' fill='none' stroke='" + stroke + "' stroke-width='2'/></svg>";
+}};
+fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => {{
+  const p = d.prediction || {{}};
+  document.getElementById("kioxia-calendar-meta").textContent = (d.source || "5分足") + "／更新 " + d.updated_at + "／" + (d.current_is_today ? "本日観測 " + (d.observed_bars || 0) + "本" : "本日9:00開始待ち");
+  document.getElementById("kio-current-type").textContent = d.current_is_today && d.current ? d.current.type + " " + signedPct(d.current.ret, 2) : "本日開始待ち";
+  document.getElementById("kio-bias").textContent = p.bias || "判定保留";
+  document.getElementById("kio-up-prob").textContent = p.up_probability == null ? "—" : Number(p.up_probability).toFixed(1) + "%";
+  document.getElementById("kio-after-ret").textContent = p.expected_after_ret == null ? "—" : signedPct(p.expected_after_ret, 2);
+  document.getElementById("kio-sample").textContent = (p.sample || 0) + "日";
+  const matches = (d.matches || []).map((x,i) => "<div class='kio-match'><div class='kio-day-head'><b>#" + (i+1) + " " + x.date + "</b><strong>" + x.similarity.toFixed(1) + "%</strong></div>" + miniPath(x.path, x.ret >= 0 ? "#58ddb5" : "#ff777e") + "<div>全日 <b class='" + (x.ret >= 0 ? "kio-up" : "kio-down") + "'>" + signedPct(x.ret,2) + "</b>／照合後 " + signedPct(x.after_ret,2) + "</div><small>型：" + x.type + "　残り最大 " + signedPct(x.max_up_after,2) + "／" + signedPct(x.max_down_after,2) + "</small></div>").join("");
+  document.getElementById("kioxia-match-grid").innerHTML = matches || "<div class='focus-empty'>類似度60%以上の比較候補なし</div>";
+  const days = (d.calendar || []).map(x => "<div class='kio-day'><div class='kio-day-head'><b>" + x.date.slice(5).replace("-","/") + "</b><span class='" + (x.ret >= 0 ? "kio-up" : "kio-down") + "'>" + signedPct(x.ret,2) + "</span></div>" + miniPath(x.path, x.ret >= 0 ? "#58ddb5" : "#ff777e") + "<small>" + x.type + "　高安 " + signedPct(x.high,1) + "／" + signedPct(x.low,1) + "</small></div>").join("");
+  document.getElementById("kioxia-calendar-grid").innerHTML = days || "<div class='focus-empty'>5分足データ待ち</div>";
+}}).catch(() => {{
+  document.getElementById("kioxia-calendar-meta").textContent = "5分足データ未取得。推定で埋めません。";
+  document.getElementById("kioxia-match-grid").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
+  document.getElementById("kioxia-calendar-grid").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
 }});
 </script>{trade_drawer}</body></html>"""
     (ROOT / "index.html").write_text(html, encoding="utf-8")

@@ -18,6 +18,8 @@ on:
     paths:
       - "scripts/update.py"
       - "scripts/signal_scan.py"
+      - "scripts/correlation_scan.py"
+      - "scripts/kioxia_calendar.py"
       - "scripts/morning_review.py"
       - "scripts/weekly_tabs.py"
       - "watchlist.json"
@@ -27,6 +29,8 @@ on:
       - ".github/workflows/update.yml"
   schedule:
     - cron: "0 23 * * *" # 08:00 JST
+    - cron: "20 0 * * 1-5" # 09:20 JST, OR15 confirmed
+    - cron: "0 1 * * 1-5" # 10:00 JST, pattern continuation check
     - cron: "45 2 * * 1-5" # 11:45 JST, morning-session review
     - cron: "45 5 * * 1-5" # 14:45 JST, build the 15:00 pre-close carry edition
     - cron: "0 0 * * 6" # Saturday 09:00 JST, weekly review
@@ -65,19 +69,25 @@ jobs:
           COCKPIT_SESSION: ${{ github.event_name == 'workflow_dispatch' && inputs.edition || (github.event_name == 'push' && 'morning' || 'auto') }}
         run: |
           python scripts/signal_scan.py
+          python scripts/correlation_scan.py
+          python scripts/kioxia_calendar.py
+          python scripts/event_calendar.py
           python scripts/update.py
           python scripts/morning_review.py
           python scripts/weekly_tabs.py
 
       - name: Commit and push updated files
         run: |
-          if git diff --quiet -- index.html data.json signals.json morning_snapshot.json paper_trade_history.json weekly_review.json; then
+          if git diff --quiet -- index.html data.json signals.json correlations.json kioxia_5m_calendar.json event_calendar.json morning_snapshot.json paper_trade_history.json weekly_review.json; then
             echo "No changes to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html data.json signals.json
+          test ! -f correlations.json || git add correlations.json
+          test ! -f kioxia_5m_calendar.json || git add kioxia_5m_calendar.json
+          test ! -f event_calendar.json || git add event_calendar.json
           test ! -f morning_snapshot.json || git add morning_snapshot.json
           test ! -f paper_trade_history.json || git add paper_trade_history.json
           test ! -f weekly_review.json || git add weekly_review.json
