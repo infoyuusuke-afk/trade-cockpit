@@ -1373,30 +1373,86 @@ def main():
         key=lambda x: x[1], reverse=True
     )[:5]
 
-    # Policy importance is separate from tradability. Only supply-improving
-    # names enter each theme's practical TOP5.
+    # A policy association alone is not a trade thesis.  Keep official/company
+    # evidence, business exposure and verified credit supply separate.
     policy_theme_specs = [
-        (1, "physical-ai", "フィジカルAI", "S", [("ファナック（6954）", "産業ロボット・制御"), ("安川電機（6506）", "ロボット・モーション制御"), ("川崎重工業（7012）", "産業・サービスロボット"), ("オムロン（6645）", "センシング・FA制御"), ("THK（6481）", "直動部品・ロボット基盤")]),
-        (2, "autonomous-driving", "自動運転", "S", [("ティアフォー（593A）", "自動運転ソフト・社会実装"), ("トヨタ自動車（7203）", "車両・モビリティ基盤"), ("本田技研工業（7267）", "車両・自動運転開発"), ("デンソー（6902）", "車載半導体・センシング"), ("ソニーグループ（6758）", "車載イメージセンサー")]),
-        (3, "ai-drug-discovery", "AI創薬", "A", [("中外製薬（4519）", "創薬研究・データ活用"), ("ペプチドリーム（4587）", "創薬プラットフォーム"), ("FRONTEO（2158）", "AI解析・創薬支援"), ("NEC（6701）", "AI・医療データ基盤"), ("富士通（6702）", "計算基盤・創薬DX")]),
-        (4, "ai-semiconductor", "AI・半導体基盤", "S", [("キオクシアHD（285A）", "AI向けメモリ"), ("東京エレクトロン（8035）", "半導体製造装置"), ("アドバンテスト（6857）", "半導体テスト"), ("ディスコ（6146）", "切断・研削装置"), ("フジクラ（5803）", "データセンター配線")]),
-        (5, "defense-space", "防衛・宇宙", "S", [("三菱重工業（7011）", "防衛・宇宙システム"), ("IHI（7013）", "航空エンジン・宇宙"), ("川崎重工業（7012）", "航空・防衛"), ("三菱電機（6503）", "防衛電子・衛星"), ("アストロスケールHD（186A）", "軌道上サービス")]),
-        (6, "gx-power", "GX・電力基盤", "A", [("日立製作所（6501）", "送配電・デジタル基盤"), ("富士電機（6504）", "パワー半導体・電力設備"), ("東北電力（9506）", "電力供給・系統"), ("パワーエックス（485A）", "蓄電池・電力"), ("住友電気工業（5802）", "送電・電力ケーブル")]),
-        (7, "quantum-computing", "量子・先端計算", "A", [("富士通（6702）", "量子・HPC"), ("NEC（6701）", "量子計算・暗号"), ("NTT（9432）", "光・量子技術"), ("日立製作所（6501）", "計算基盤・研究開発"), ("ソフトバンクグループ（9984）", "AI計算基盤・投資")]),
+        ("physical-ai", "フィジカルAI", "https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf", [
+            ("ファナック（6954）", "フィジカルAIロボット本体・制御", 98, 70, "https://www.fanuc.co.jp/ja/profile/pr/newsrelease/2026/news20260513.html"),
+            ("安川電機（6506）", "AIロボット MOTOMAN NEXT", 98, 72, "https://www.yaskawa.co.jp/motoman-next/"),
+            ("ハーモニック・ドライブ・システムズ（6324）", "ロボット用精密減速機", 82, 88, "https://www.hds.co.jp/company/about/"),
+            ("ナブテスコ（6268）", "ロボット関節用精密減速機", 80, 78, "https://www.nabtesco.com/products/precision-reduction-gears/"),
+        ]),
+        ("autonomous-driving", "自動運転", "https://www.meti.go.jp/policy/mono_info_service/mono/automobile/index.html", [
+            ("ティアフォー（593A）", "Autoware・自動運転システム", 100, 95, "https://tier4.co.jp/"),
+            ("アイサンテクノロジー（4667）", "高精度3次元地図・運行支援", 92, 58, "https://www.aisantec.co.jp/information/5412/"),
+            ("デンソー（6902）", "車載半導体・センシング・制御", 78, 35, "https://www.denso.com/jp/ja/business/automotive/mobility/"),
+        ]),
+        ("ai-drug-discovery", "AI創薬", "https://www.meti.go.jp/policy/mono_info_service/geniac/selection_2/index.html", [
+            ("FRONTEO（2158）", "AI創薬支援 DDAIF", 96, 55, "https://lifescience.fronteo.com/products/drug-discovery-ai-factory"),
+            ("NEC（6701）", "AI創薬・個別化がんワクチン", 90, 18, "https://jpn.nec.com/solution/ai-drug/index.html"),
+        ]),
+        ("ai-semiconductor", "AI・半導体基盤", "https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf", [
+            ("キオクシアHD（285A）", "AI向けNAND・SSD", 92, 95, "https://www.kioxia-holdings.com/ja-jp/ir.html"),
+            ("東京エレクトロン（8035）", "先端半導体製造装置", 94, 88, "https://www.tel.co.jp/ir/"),
+            ("アドバンテスト（6857）", "AI半導体テスト", 94, 92, "https://www.advantest.com/investors/"),
+            ("ディスコ（6146）", "先端半導体切断・研削", 88, 90, "https://www.disco.co.jp/jp/ir/"),
+            ("ソシオネクスト（6526）", "先端SoC設計", 86, 82, "https://www.socionext.com/jp/ir/"),
+        ]),
+        ("defense-space", "防衛・宇宙", "https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf", [
+            ("三菱重工業（7011）", "防衛装備・ロケット・宇宙", 98, 78, "https://www.mhi.com/jp/finance"),
+            ("IHI（7013）", "航空エンジン・宇宙推進", 92, 62, "https://www.ihi.co.jp/ir/"),
+            ("三菱電機（6503）", "防衛電子・衛星", 90, 45, "https://www.mitsubishielectric.co.jp/ir/"),
+            ("QPS研究所（5595）", "小型SAR衛星・官公庁案件", 98, 95, "https://i-qps.net/ir/"),
+        ]),
+        ("gx-power", "GX・電力基盤", "https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf", [
+            ("富士電機（6504）", "パワー半導体・電力設備", 90, 68, "https://www.fujielectric.co.jp/about/ir/"),
+            ("日立製作所（6501）", "送配電・系統デジタル化", 88, 38, "https://www.hitachi.co.jp/IR/"),
+            ("パワーエックス（485A）", "大型蓄電池・電力供給", 95, 95, "https://power-x.jp/ir"),
+            ("住友電気工業（5802）", "送電ケーブル・電力網", 85, 48, "https://sumitomoelectric.com/jp/ir"),
+        ]),
+        ("quantum-computing", "量子・先端計算", "https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf", [
+            ("富士通（6702）", "量子計算・HPC", 92, 15, "https://www.fujitsu.com/jp/about/research/technology/quantum/"),
+            ("NEC（6701）", "量子アニーリング・量子暗号", 90, 12, "https://jpn.nec.com/quantum_annealing/"),
+            ("NTT（9432）", "光・量子技術", 88, 10, "https://group.ntt/jp/rd/technology/quantum.html"),
+        ]),
     ]
     valid_map = dict(valid)
     policy_theme_tabs = []
-    for priority, slug, title, policy_rank, members in policy_theme_specs:
+    for slug, title, policy_source, members in policy_theme_specs:
         ranked = []
-        for name, role in members:
+        for name, role, directness, business_impact, evidence in members:
             r = valid_map.get(name)
-            if not r or not r.get("market_supply_improved"):
+            if not r:
                 continue
+            code = str(r.get("ticker", "")).split(".")[0]
+            supply = credit_supply.get(code, {})
+            supply_known = all(supply.get(k) is not None for k in ("margin_buy_change_1w_pct", "margin_buy_change_4w_pct", "credit_ratio"))
+            if supply_known:
+                m1 = float(supply["margin_buy_change_1w_pct"])
+                m4 = float(supply["margin_buy_change_4w_pct"])
+                ratio = float(supply["credit_ratio"])
+                short = float(supply.get("institutional_short_change_pct") or 0)
+                buybacks = float(supply.get("institutional_buyback_firms") or 0)
+                credit70 = round(clamp(38 - m1 * .8 - m4 * .25 - max(ratio - 2, 0) * 3 - short * .45 + buybacks * 3, 0, 70))
+                deteriorating = (m1 > 5 and r.get("change_pct", 0) < 0) or (short > 5 and buybacks == 0)
+                supply_text = f"信用{credit70}/70｜買残1週{m1:+.1f}%・4週{m4:+.1f}%｜倍率{ratio:.2f}｜機関{short:+.1f}%"
+            else:
+                credit70, deteriorating = 0, False
+                supply_text = "信用需給未取得（正式候補へ昇格不可）"
             p = trade_plan(r, r.get("intraday"))
-            tradability = round(r.get("market_supply_score", 0) * .55 + max(0, min(100, r.get("day_score", 0))) * .25 + max(0, min(100, 50 + r.get("change_pct", 0) * 5)) * .10 + max(0, min(100, r.get("rvol", 0) * 40)) * .10)
-            ranked.append({"name": name, "role": role, "score": tradability, "plan": p, **r})
-        ranked.sort(key=lambda x: (x["score"], x.get("market_supply_score", 0)), reverse=True)
-        policy_theme_tabs.append({"priority": priority, "slug": slug, "title": title, "policy_rank": policy_rank, "candidates": ranked[:5]})
+            technical = round(clamp(50 + r.get("change_pct", 0) * 4 + (10 if r.get("price", 0) >= r.get("ma20", 0) else -10) + min(r.get("rvol", 0), 2) * 8, 0, 100))
+            liquidity = 100 if r.get("turnover", 0) >= 10_000_000_000 else 80 if r.get("turnover", 0) >= 2_000_000_000 else 55
+            total = round(directness * .25 + business_impact * .15 + (credit70 / 70 * 100) * .35 + technical * .15 + liquidity * .10)
+            formal = supply_known and credit70 >= 45 and total >= 70 and not deteriorating
+            status = "正式候補" if formal else "需給悪化で除外" if deteriorating else "信用需給待ち" if not supply_known else "監視のみ"
+            ranked.append({"name": name, "role": role, "directness": directness, "business_impact": business_impact, "evidence": evidence, "credit70": credit70, "supply_known": supply_known, "supply_text": supply_text, "formal": formal, "status": status, "score": total, "plan": p, **r})
+        ranked.sort(key=lambda x: (x["formal"], x["score"], x["directness"]), reverse=True)
+        formal_count = sum(x["formal"] for x in ranked)
+        best_score = max((x["score"] for x in ranked if x["formal"]), default=0)
+        policy_theme_tabs.append({"slug": slug, "title": title, "source": policy_source, "formal_count": formal_count, "best_score": best_score, "candidates": ranked[:5]})
+    policy_theme_tabs.sort(key=lambda x: (x["formal_count"], x["best_score"]), reverse=True)
+    for priority, theme in enumerate(policy_theme_tabs, 1):
+        theme["priority"] = priority
 
     official_earnings = jpx_earnings_map(now)
     for code, item in config.get("earnings_overrides", {}).items():
@@ -1541,16 +1597,16 @@ def main():
         for i, (name, score, count, members) in enumerate(themes, 1)
     )
     policy_priority_rows = "".join(
-        f"<tr><td><b>#{x['priority']}</b></td><td>{x['title']}</td><td><span class='pill prep'>{x['policy_rank']}</span></td><td>{len(x['candidates'])}/5</td><td>{'売買候補あり' if x['candidates'] else '需給改善待ち'}</td></tr>"
+        f"<tr><td><b>#{x['priority']}</b></td><td>{x['title']}</td><td>{x['formal_count']}/5</td><td>{x['best_score'] or '—'}</td><td>{'正式候補あり' if x['formal_count'] else '信用需給待ち・売買不可'}</td><td><a href='{x['source']}' target='_blank' rel='noopener'>政策根拠</a></td></tr>"
         for x in policy_theme_tabs
     )
     policy_theme_sections = ""
     for theme in policy_theme_tabs:
         rows = "".join(
-            f"<tr><td>{i}</td><td>{x['name']}<br><small>{x['role']}</small></td><td><b class='up'>{x['score']}/100</b></td><td><b>{x.get('market_supply_score', 0)}/100</b><br><small>{x.get('market_supply_status', '')}</small></td><td>{money(x['price'])}</td><td>{x.get('rvol', 0):.2f}倍</td><td>{money(x['plan']['entry'])}</td><td class='down'>{money(x['plan']['stop'])}</td><td>{money(x['plan']['target1'])}／{money(x['plan']['target2'])}</td><td>発動価格上抜け＋出来高増加。未発動は買わない</td></tr>"
+            f"<tr><td>{i}</td><td>{x['name']}<br><small>{x['role']}</small></td><td><span class='pill {'in' if x['formal'] else 'prep'}'>{x['status']}</span></td><td><b>{x['directness']}</b></td><td>{x['business_impact']}</td><td><b class='{'up' if x['formal'] else ''}'>{x['score']}/100</b></td><td>{x['supply_text']}</td><td>{money(x['price'])}<br><small>出来高比{x.get('rvol', 0):.2f}倍</small></td><td>{money(x['plan']['entry'])}</td><td class='down'>{money(x['plan']['stop'])}</td><td>{money(x['plan']['target1'])}／{money(x['plan']['target2'])}</td><td><a href='{x['evidence']}' target='_blank' rel='noopener'>会社公式根拠</a></td></tr>"
             for i, x in enumerate(theme['candidates'], 1)
-        ) or "<tr><td colspan='10'>信用・市場需給の改善条件に合格した銘柄なし。テーマだけでは買いません。</td></tr>"
-        policy_theme_sections += f'''<section id="policy-{theme['slug']}" class="card wide policy-theme-card" data-policy-tab="{theme['slug']}"><h2>国策優先 #{theme['priority']}｜{theme['title']}・需給改善 TOP5</h2><p class="sub">政策重要度 <b>{theme['policy_rank']}</b>　／　売買順位は信用需給55%・値動き25%・騰落10%・出来高10%</p><table><thead><tr><th>売買順位</th><th>会社名＋コード／関連領域</th><th>実戦点</th><th>需給改善</th><th>現在値</th><th>出来高比</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>条件</th></tr></thead><tbody>{rows}</tbody></table><p class="warning">政策採択・受注を断定する一覧ではありません。需給改善と発動価格を満たした銘柄だけ実戦候補です。</p></section>'''
+        ) or "<tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr>"
+        policy_theme_sections += f'''<section id="policy-{theme['slug']}" class="card wide policy-theme-card" data-policy-tab="{theme['slug']}"><h2>実戦優先 #{theme['priority']}｜{theme['title']}・厳格選定</h2><p class="sub">正式候補 {theme['formal_count']}銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody>{rows}</tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="{theme['source']}" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section>'''
     buyback_rows = "".join(
         f"<tr><td>{i}</td><td>{x['name']}（{x['code']}）</td>"
         f"<td><b class='up'>{x['score']}/100</b></td><td>{float(x['max_share_pct']):.2f}%</td>"
@@ -1774,7 +1830,7 @@ def main():
 {focus_dashboard}
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
-<section id="policy-priority-overview" class="card wide"><h2>国策テーマ優先順位</h2><table><thead><tr><th>政策優先</th><th>テーマ</th><th>政策重要度</th><th>需給合格数</th><th>現在判定</th></tr></thead><tbody>{policy_priority_rows}</tbody></table><p class="warning">政策優先順位と、今買える順位は別です。各タブでは需給改善済みだけを実戦点で再順位付けします。</p></section>
+<section id="policy-priority-overview" class="card wide"><h2>国策テーマ・実戦優先順位</h2><table><thead><tr><th>実戦優先</th><th>テーマ</th><th>正式候補数</th><th>最高総合点</th><th>現在判定</th><th>政策根拠</th></tr></thead><tbody>{policy_priority_rows}</tbody></table><p class="warning">順位は国の政策分野に勝手な序列を付けたものではありません。正式候補数→最高総合点で毎回入れ替えます。信用需給未取得時は全テーマを売買不可とします。</p></section>
 {policy_theme_sections}
 <section class="card wide"><h2>②-A 秋田AIデータセンター関連 監視TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・契約状況</th><th>資料</th></tr></thead><tbody>{akita_dc_rows}</tbody></table>
