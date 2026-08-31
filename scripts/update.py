@@ -1123,6 +1123,101 @@ def render_day_ifo_cards(candidates):
     return "".join(cards)
 
 
+def render_focus_dashboard(candidates):
+    """Render the first-screen decision panel; detailed lists stay in other tabs."""
+    if not candidates:
+        return """
+<section id="action-dashboard" class="card wide focus-dashboard">
+  <div class="focus-title"><div><span>本日の売買判断</span><h2>今買う候補</h2></div><b class="decision-badge decision-wait">見送り</b></div>
+  <div class="focus-empty">条件に合格した銘柄はありません。候補を埋めるための売買はしません。</div>
+</section>"""
+
+    rows = []
+    for rank, item in enumerate(candidates[:5], 1):
+        risk = max(float(item["entry_limit"]) - float(item["stop"]), 0)
+        pullback_low = float(item["entry_limit"]) - risk * .55
+        pullback_high = float(item["entry_limit"]) - risk * .25
+        supply_ok = item.get("supply_verified", False)
+        if rank == 1 and supply_ok and item.get("score", 0) >= 80:
+            decision, cls = "★本命・発動待ち", "decision-go"
+        elif supply_ok:
+            decision, cls = "買い候補・発動待ち", "decision-ready"
+        else:
+            decision, cls = "需給確認まで待機", "decision-wait"
+        rows.append({
+            **item,
+            "rank": rank,
+            "decision": decision,
+            "decision_class": cls,
+            "pullback_low": pullback_low,
+            "pullback_high": pullback_high,
+        })
+
+    first = rows[0]
+    buttons = "".join(
+        f"""<button type="button" class="focus-pick{' active' if x['rank'] == 1 else ''}"
+ data-rank="{x['rank']}" data-name="{x['name']}" data-code="{x['code']}"
+ data-score="{x['score']}" data-decision="{x['decision']}" data-decision-class="{x['decision_class']}"
+ data-trigger="{money(x['trigger'])}" data-entry="{money(x['entry_limit'])}"
+ data-pullback="{money(x['pullback_low'])}～{money(x['pullback_high'])}"
+ data-stop="{money(x['stop'])}" data-target1="{money(x['target1'])}"
+ data-target2="{money(x['target2'])}" data-supply="{x.get('supply_status', '信用需給未確認')}"
+ data-reason="{x['reason']}">
+ <span class="focus-rank">#{x['rank']}</span><span><b>{x['name']}</b><small>{x['decision']}</small></span><strong>{x['score']}</strong>
+</button>""" for x in rows
+    )
+    tv_symbol = f"TSE%3A{first['code']}"
+    return f"""
+<section id="action-dashboard" class="card wide focus-dashboard">
+ <div class="focus-title">
+  <div><span>最初にここだけ確認</span><h2>今買う候補 TOP{len(rows)}</h2><small>平日は最大5銘柄。★本命と次点だけを実際の売買対象にします。</small></div>
+  <b id="focus-decision" class="decision-badge {first['decision_class']}">{first['decision']}</b>
+ </div>
+ <div class="focus-layout">
+  <div class="focus-picks" id="focus-picks">{buttons}</div>
+  <div class="focus-chart-wrap">
+   <div class="focus-chart-head"><b id="focus-chart-name">{first['name']}</b><span>15分足チャート</span></div>
+   <iframe id="focus-chart" title="選択銘柄チャート" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://s.tradingview.com/widgetembed/?symbol={tv_symbol}&interval=15&theme=dark&style=1&timezone=Asia%2FTokyo&withdateranges=1&hide_side_toolbar=0&allow_symbol_change=0&saveimage=0"></iframe>
+  </div>
+  <div class="focus-order">
+   <div class="focus-symbol"><span id="focus-rank">#{first['rank']}</span><h3 id="focus-name">{first['name']}</h3><b id="focus-score">{first['score']}/100</b></div>
+   <div class="focus-action"><span>買い発動</span><strong id="focus-trigger">{money(first['trigger'])}円以上</strong><small>5分足終値＋VWAP上＋出来高増加を確認</small></div>
+   <div class="focus-price-grid">
+    <div><span>買い上限</span><b id="focus-entry">{money(first['entry_limit'])}円</b></div>
+    <div><span>押し目ゾーン</span><b id="focus-pullback">{money(first['pullback_low'])}～{money(first['pullback_high'])}円</b></div>
+    <div><span>損切り</span><b class="down" id="focus-stop">{money(first['stop'])}円</b></div>
+    <div><span>利確1／2</span><b class="up" id="focus-targets">{money(first['target1'])}／{money(first['target2'])}円</b></div>
+   </div>
+   <div class="focus-supply"><b>信用需給</b><span id="focus-supply">{first.get('supply_status', '信用需給未確認')}</span></div>
+   <p id="focus-reason">{first['reason']}</p>
+   <p class="focus-rule">勢いだけで飛び乗らない。発動価格より上へ走った場合は追わず、押し目ゾーンの反発足を待つ。</p>
+  </div>
+ </div>
+</section>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{{
+ document.querySelectorAll(".focus-pick").forEach(btn=>btn.addEventListener("click",()=>{{
+  document.querySelectorAll(".focus-pick").forEach(x=>x.classList.toggle("active",x===btn));
+  const d=btn.dataset;
+  document.getElementById("focus-decision").className="decision-badge "+d.decisionClass;
+  document.getElementById("focus-decision").textContent=d.decision;
+  document.getElementById("focus-chart-name").textContent=d.name;
+  document.getElementById("focus-rank").textContent="#"+d.rank;
+  document.getElementById("focus-name").textContent=d.name;
+  document.getElementById("focus-score").textContent=d.score+"/100";
+  document.getElementById("focus-trigger").textContent=d.trigger+"円以上";
+  document.getElementById("focus-entry").textContent=d.entry+"円";
+  document.getElementById("focus-pullback").textContent=d.pullback+"円";
+  document.getElementById("focus-stop").textContent=d.stop+"円";
+  document.getElementById("focus-targets").textContent=d.target1+"／"+d.target2+"円";
+  document.getElementById("focus-supply").textContent=d.supply;
+  document.getElementById("focus-reason").textContent=d.reason;
+  document.getElementById("focus-chart").src="https://s.tradingview.com/widgetembed/?symbol=TSE%3A"+encodeURIComponent(d.code)+"&interval=15&theme=dark&style=1&timezone=Asia%2FTokyo&withdateranges=1&hide_side_toolbar=0&allow_symbol_change=0&saveimage=0";
+ }}));
+}});
+</script>"""
+
+
 def main():
     now = datetime.now(JST)
     active_buybacks, buybacks_updated_at = load_active_buybacks(now)
@@ -1457,6 +1552,7 @@ def main():
         "価格なしでの注文は行いません。</td></tr>"
     )
     ifo_cards = render_day_ifo_cards(day_ifo_candidates)
+    focus_dashboard = render_focus_dashboard(day_ifo_candidates)
     ifo_count_note = (
         "分散条件を満たす5銘柄を選定"
         if len(day_ifo_candidates) == 5
@@ -1579,7 +1675,11 @@ def main():
     phase = data["phase"]
     html = f"""<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="900"><title>AIトレードコクピット</title>
 <style>*{{box-sizing:border-box}}body{{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}}header{{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}}h1{{margin:0;font-size:25px}}h2{{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}}h3{{color:#9fc8ff;margin:15px 0 7px}}a{{color:#70c7ff}}.sub{{color:#aebdcb;margin-top:4px}}.tag{{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}}main{{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}}.card{{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}}.wide{{grid-column:1/-1}}table{{width:100%;border-collapse:collapse}}th{{background:#1b2a39}}th,td{{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}}th:nth-child(-n+2),td:nth-child(-n+2){{text-align:left}}tr:nth-child(even) td{{background:#111923}}.up{{color:#52e46f;font-weight:900}}.down{{color:#ff6262;font-weight:900}}small{{color:#bac6d2}}.warning{{color:#ffe66d}}.steps,.rotation-grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}}.step,.rotation-box{{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}}.step b,.rotation-box b{{display:block;color:#ffe66d;font-size:15px}}.rotation-box strong{{font-size:17px;color:#f4f7fa}}.pill{{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}}.prep{{background:#f2a900;color:#111}}.in{{background:#52e46f;color:#071009}}.long{{background:#2f80ed;color:white}}.short{{background:#e23b3b;color:white}}.ifo-summary{{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:9px 0}}.ifo-summary .rotation-box strong{{font-size:19px}}.ifo-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}.ifo-card{{background:linear-gradient(145deg,#101c2a,#081019);border:1px solid #3b6588;border-radius:10px;padding:11px;box-shadow:0 8px 22px #0007}}.ifo-head{{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;border-bottom:1px solid #35506a;padding-bottom:8px}}.ifo-head h3{{margin:0;color:#f4f7fa;font-size:16px}}.ifo-rank{{background:#ffe66d;color:#101820;font-weight:900;border-radius:6px;padding:5px 7px}}.ifo-score{{font-size:18px;color:#52e46f}}.ifo-columns{{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}}.order-box{{background:#07101a;border:1px solid #425a70;border-radius:8px;padding:9px}}.order-box>b{{display:block;color:#79c7ff;margin-bottom:7px}}.exit-order>b{{color:#58e3ae}}.order-box dl{{display:grid;grid-template-columns:minmax(88px,.9fr) 1.25fr;gap:4px 8px;margin:0}}.order-box dt{{color:#9eafbf}}.order-box dd{{margin:0;text-align:right}}.ifo-metrics{{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:8px 0}}.ifo-metrics span{{background:#182637;border-radius:5px;padding:6px;text-align:center}}.ifo-card p{{line-height:1.55;margin:6px 0}}footer{{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}}@media(max-width:800px){{header{{align-items:flex-start;flex-direction:column}}main{{grid-template-columns:1fr}}.wide{{grid-column:1}}table{{min-width:700px}}.steps,.rotation-grid,.ifo-summary,.ifo-grid,.ifo-columns{{grid-template-columns:1fr}}.ifo-metrics{{grid-template-columns:1fr 1fr}}}}</style></head><body>
-<header><div><h1>AIトレードコクピット Ver.3.7</h1><div class="sub">日本株全市場／持ち越しLONG・SHORT発動価格</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;today&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
+<style>
+.focus-dashboard{{padding:14px;background:radial-gradient(circle at 80% 0,#123454 0,#101923 42%,#081018 100%);border:1px solid #3e83a8;overflow:visible}}.focus-title{{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:12px}}.focus-title h2{{font-size:26px;margin:2px 0;border:0;color:#fff}}.focus-title>div>span{{color:#63d8ff;font-weight:900;letter-spacing:.08em}}.decision-badge{{padding:12px 16px;border-radius:10px;font-size:17px;white-space:nowrap}}.decision-go{{background:#38e477;color:#03140a}}.decision-ready{{background:#ffd84e;color:#191300}}.decision-wait{{background:#5c6874;color:#fff}}.focus-layout{{display:grid;grid-template-columns:minmax(230px,.7fr) minmax(420px,1.45fr) minmax(320px,1fr);gap:12px}}.focus-picks{{display:flex;flex-direction:column;gap:7px}}.focus-pick{{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;text-align:left;color:#e9f4ff;background:#0b1722;border:1px solid #30475b;border-radius:9px;padding:10px;cursor:pointer}}.focus-pick:hover,.focus-pick.active{{border-color:#54d6ff;background:#10283a;box-shadow:0 0 0 1px #54d6ff55}}.focus-pick small{{display:block;margin-top:3px}}.focus-pick strong{{font-size:20px;color:#65e993}}.focus-rank{{background:#20384b;padding:5px;border-radius:5px;font-weight:900}}.focus-chart-wrap,.focus-order{{background:#071019;border:1px solid #2a475d;border-radius:10px;overflow:hidden}}.focus-chart-head{{display:flex;justify-content:space-between;padding:9px 11px;background:#0e2030}}#focus-chart{{width:100%;height:430px;border:0;display:block}}.focus-order{{padding:12px;overflow:auto}}.focus-symbol{{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;border-bottom:1px solid #314354;padding-bottom:9px}}.focus-symbol h3{{margin:0;color:#fff;font-size:18px}}.focus-symbol>b{{font-size:21px;color:#63e990}}.focus-action{{margin:11px 0;padding:12px;border-radius:9px;background:#113421;border:1px solid #2b9c58}}.focus-action span,.focus-action small{{display:block}}.focus-action strong{{display:block;font-size:25px;color:#65ef91;margin:4px 0}}.focus-price-grid{{display:grid;grid-template-columns:1fr 1fr;gap:7px}}.focus-price-grid>div{{background:#101e2a;border-radius:7px;padding:9px}}.focus-price-grid span{{display:block;color:#9fb0bf}}.focus-price-grid b{{font-size:17px}}.focus-supply{{margin-top:9px;padding:9px;border-left:4px solid #ffcf4a;background:#191a14}}.focus-supply b,.focus-supply span{{display:block}}.focus-rule{{color:#ffd75e;border-top:1px solid #4a3d16;padding-top:9px}}.focus-empty{{padding:28px;text-align:center;font-size:17px}}@media(max-width:1100px){{.focus-layout{{grid-template-columns:240px 1fr}}.focus-order{{grid-column:1/-1}}}}@media(max-width:800px){{.focus-layout{{grid-template-columns:1fr}}.focus-order{{grid-column:auto}}#focus-chart{{height:360px}}.focus-title{{align-items:flex-start;flex-direction:column}}}}
+</style>
+<header><div><h1>AIトレードコクピット Ver.4.0</h1><div class="sub">最初の画面で本命・買い時・押し目・撤退を判断</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;today&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
+{focus_dashboard}
 <section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
 <section class="card wide"><h2>②-A 秋田AIデータセンター関連 監視TOP5</h2>
