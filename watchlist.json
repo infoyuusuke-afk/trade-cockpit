@@ -24,7 +24,7 @@
     "キオクシアHD（285A）": {"ticker": "285A.T", "sector": "半導体・AI", "style": "day"},
     "ソシオネクスト（6526）": {"ticker": "6526.T", "sector": "半導体・AI", "style": "both"},
     "フューチャー（4722）": {"ticker": "4722.T", "sector": "AI・DX", "style": "both"},
-    "GO（581A）": {"ticker": "581A.T", "sector": "MaaS・成長株", "style": "both"},
+    "GO（581A）": {"ticker": "581A.T", "sector": "MaaS・成長株", "style": "both", "day_bucket": "IPO・グロース"},
     "セルシス（3663）": {"ticker": "3663.T", "sector": "コンテンツ・成長株", "style": "both"},
     "MS&AD（8725）": {"ticker": "8725.T", "sector": "保険・金利", "style": "swing"},
     "ローツェ（6323）": {"ticker": "6323.T", "sector": "半導体・AI", "style": "both"},
@@ -49,7 +49,7 @@
     "日本郵船（9101）": {"ticker": "9101.T", "sector": "海運・景気敏感", "style": "swing"},
     "INPEX（1605）": {"ticker": "1605.T", "sector": "資源・原油", "style": "swing"},
     "三菱商事（8058）": {"ticker": "8058.T", "sector": "商社・資源", "style": "swing"},
-    "パワーエックス（485A）": {"ticker": "485A.T", "sector": "蓄電池・電力", "style": "swing"},
+    "パワーエックス（485A）": {"ticker": "485A.T", "sector": "蓄電池・電力", "style": "both", "day_bucket": "テーマ・マネーゲーム"},
     "キーエンス（6861）": {"ticker": "6861.T", "sector": "FA・高値がさ", "style": "day"}
     ,"信越化学工業（4063）": {"ticker": "4063.T", "sector": "半導体・素材", "style": "both"}
     ,"ファナック（6954）": {"ticker": "6954.T", "sector": "FA・ロボット", "style": "both"}
@@ -80,6 +80,25 @@
     ,"住友金属鉱山（5713）": {"ticker": "5713.T", "sector": "非鉄・レアメタル", "style": "swing"}
     ,"双日（2768）": {"ticker": "2768.T", "sector": "資源商社・レアアース", "style": "swing"}
     ,"DOWA HD（5714）": {"ticker": "5714.T", "sector": "非鉄・資源循環", "style": "swing"}
+    ,"FIXER（5129）": {"ticker": "5129.T", "sector": "生成AI・クラウド", "style": "day", "day_bucket": "SaaS・AIソフト"}
+    ,"モビルス（4370）": {"ticker": "4370.T", "sector": "SaaS・AIチャット", "style": "day", "day_bucket": "SaaS・AIソフト"}
+    ,"ティアフォー（593A）": {"ticker": "593A.T", "sector": "自動運転・IPO", "style": "day", "day_bucket": "IPO・グロース"}
+    ,"データセクション（3905）": {"ticker": "3905.T", "sector": "AI・データセンター", "style": "day", "day_bucket": "テーマ・マネーゲーム"}
+    ,"HENNGE（4475）": {"ticker": "4475.T", "sector": "SaaS・セキュリティ", "style": "day", "day_bucket": "SaaS・AIソフト"}
+    ,"チャットプラス（598A）": {"ticker": "598A.T", "sector": "SaaS・生成AI", "style": "day", "day_bucket": "SaaS・AIソフト"}
+    ,"サイバーセキュリティクラウド（4493）": {"ticker": "4493.T", "sector": "SaaS・セキュリティ", "style": "day", "day_bucket": "SaaS・AIソフト"}
+    ,"マネーフォワード（3994）": {"ticker": "3994.T", "sector": "SaaS・フィンテック", "style": "day", "day_bucket": "SaaS・AIソフト"}
+    ,"freee（4478）": {"ticker": "4478.T", "sector": "SaaS・フィンテック", "style": "day", "day_bucket": "SaaS・AIソフト"}
+    ,"Sansan（4443）": {"ticker": "4443.T", "sector": "SaaS・DX", "style": "day", "day_bucket": "SaaS・AIソフト"}
+    ,"プレイド（4165）": {"ticker": "4165.T", "sector": "SaaS・CX", "style": "day", "day_bucket": "SaaS・AIソフト"}
+    ,"note（5243）": {"ticker": "5243.T", "sector": "コンテンツ・AI", "style": "day", "day_bucket": "IPO・グロース"}
+    ,"Terra Drone（278A）": {"ticker": "278A.T", "sector": "ドローン・成長株", "style": "day", "day_bucket": "テーマ・マネーゲーム"}
+    ,"アストロスケールHD（186A）": {"ticker": "186A.T", "sector": "宇宙・成長株", "style": "day", "day_bucket": "テーマ・マネーゲーム"}
+    ,"エクサウィザーズ（4259）": {"ticker": "4259.T", "sector": "生成AI・DX", "style": "day", "day_bucket": "SaaS・AIソフト"}
+    ,"FRONTEO（2158）": {"ticker": "2158.T", "sector": "AI創薬・医療DX", "style": "both", "day_bucket": "テーマ・マネーゲーム"}
+    ,"ペプチドリーム（4587）": {"ticker": "4587.T", "sector": "AI創薬・バイオ", "style": "both", "day_bucket": "テーマ・マネーゲーム"}
+    ,"中外製薬（4519）": {"ticker": "4519.T", "sector": "AI創薬・医薬品", "style": "swing"}
+    ,"THK（6481）": {"ticker": "6481.T", "sector": "フィジカルAI・ロボット", "style": "both"}
   },
   "akita_dc_watch": [
     {
