@@ -35550,7 +35550,10 @@
         "risk": 136,
         "tick": 1,
         "entry_limit": 2424
-      }
+      },
+      "material_stage": "材料出尽くし警戒",
+      "material_action": "飛び乗り禁止・初押し反転待ち",
+      "actionable_day_score": -16.5
     },
     {
       "name": "NEC（6701）",
@@ -35897,7 +35900,9 @@
         "risk": 120,
         "tick": 10,
         "entry_limit": 4930
-      }
+      },
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち"
     },
     {
       "name": "GO（581A）",
@@ -36244,7 +36249,10 @@
         "risk": 165,
         "tick": 5,
         "entry_limit": 4365
-      }
+      },
+      "material_stage": "材料出尽くし警戒",
+      "material_action": "初押し反転まで買い禁止",
+      "actionable_day_score": -21.64
     },
     {
       "name": "富士通（6702）",
@@ -36591,7 +36599,10 @@
         "risk": 75,
         "tick": 5,
         "entry_limit": 3885
-      }
+      },
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": 6.03
     },
     {
       "name": "日東電工（6988）",
@@ -36938,7 +36949,9 @@
         "risk": 55,
         "tick": 5,
         "entry_limit": 3520
-      }
+      },
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち"
     }
   ],
   "day_ifo_candidates": [],
@@ -54499,5 +54512,13 @@
         "morning_price": 3580.0
       }
     ]
+  },
+  "morning_risk": {
+    "date": "2026-09-02",
+    "regime": "半導体・高PERグロース逆風",
+    "priority": "資源・エネルギー相対優先",
+    "nasdaq_pct": -1.03,
+    "sox_pct": -2.14,
+    "nikkei_futures_change": -1270
   }
 }
