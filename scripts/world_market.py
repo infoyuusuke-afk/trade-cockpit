@@ -77,6 +77,17 @@ def number(text: str | None) -> float | None:
         return None
 
 
+def percent(text: str | None) -> float | None:
+    value = number(text)
+    if value is None:
+        return None
+    if text and ("▼" in text or "▽" in text):
+        return -abs(value)
+    if text and ("▲" in text or "△" in text):
+        return abs(value)
+    return value
+
+
 def freshness(stamp: str, kind: str, now: datetime) -> tuple[bool, str]:
     stamp = stamp.strip()
     if re.fullmatch(r"\d{1,2}:\d{2}", stamp):
@@ -111,7 +122,7 @@ def parse(html: str, now: datetime) -> dict:
             "source_name": source_name,
             "value": value,
             "change": number(parser.text(f"Z{code}")),
-            "change_pct": number(parser.text(f"P{code}")),
+            "change_pct": percent(parser.text(f"P{code}")),
             "source_stamp": stamp or None,
             "observed_at": observed_at,
             "verified": verified,
