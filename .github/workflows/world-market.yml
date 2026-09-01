@@ -1,0 +1,50 @@
+name: Update World Market Feed
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/world_market.py"
+      - ".github/workflows/world-market.yml"
+  schedule:
+    # 09:00-15:55 JST on weekdays. GitHub schedules may start a few minutes late.
+    - cron: "*/5 0-6 * * 1-5"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-world-market
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install browser renderer
+        run: |
+          pip install playwright==1.55.0
+          python -m playwright install chromium
+      - name: Collect and validate market data
+        env:
+          TZ: Asia/Tokyo
+        run: python scripts/world_market.py
+      - name: Publish verified feed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add world_market.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Update verified world market feed"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            git push && exit 0
+            sleep $((attempt * 5))
+          done
+          exit 1
