@@ -2,6 +2,7 @@ import json
 import os
 import math
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
@@ -14,6 +15,80 @@ import yfinance as yf
 
 ROOT = Path(__file__).resolve().parents[1]
 JST = ZoneInfo("Asia/Tokyo")
+
+
+def _number(value):
+    """Convert a Japanese quote string to float without guessing."""
+    if value is None:
+        return None
+    value = str(value).replace(",", "").strip()
+    if not re.fullmatch(r"-?\d+(?:\.\d+)?", value):
+        return None
+    return float(value)
+
+
+def nomura_quote(ticker):
+    """Read an independent QUICK-based quote used to verify the primary feed."""
+    code = str(ticker).split(".", 1)[0]
+    if not re.fullmatch(r"[0-9A-Z]{4,5}", code):
+        return {"ok": False, "source": "Nomura/QUICK", "error": "invalid_code"}
+    url = (
+        "https://quote.nomura.co.jp/nomura/cgi-bin/parser.pl?"
+        f"MKTN=T&QCODE={code}&TEMPLATE=nomura_tp_kabu_01"
+    )
+    try:
+        req = Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; TradeCockpitVerifier/1.0)",
+            "Accept-Language": "ja-JP,ja;q=0.9",
+        })
+        html = urlopen(req, timeout=25).read().decode("utf-8", "replace")
+
+        def labelled_value(label):
+            m = re.search(
+                rf'<th[^>]*>\s*{label}\s*</th>\s*<td[^>]*>\s*([0-9,.]+)',
+                html, re.S,
+            )
+            return m.group(1) if m else None
+
+        stamp = re.search(r'<div class="time">\s*(\d{4}/\d{2}/\d{2})', html)
+        values = {
+            "price": _number(labelled_value("現在値")),
+            "open": _number(labelled_value("始値")),
+            "high": _number(labelled_value("高値")),
+            "low": _number(labelled_value("安値")),
+            "prev_close": _number(labelled_value("前日終値")),
+        }
+        quote_date = stamp.group(1).replace("/", "-") if stamp else ""
+        valid = (
+            f"({code}/T)" in html
+            and re.fullmatch(r"\d{4}-\d{2}-\d{2}", quote_date or "")
+            and all(v is not None and v > 0 for v in values.values())
+            and values["high"] >= max(values["open"], values["price"])
+            and values["low"] <= min(values["open"], values["price"])
+        )
+        return {
+            "ok": bool(valid), "source": "Nomura/QUICK", "url": url,
+            "code": code, "data_date": quote_date, **values,
+        }
+    except Exception as exc:
+        return {"ok": False, "source": "Nomura/QUICK", "url": url,
+                "code": code, "error": type(exc).__name__}
+
+
+def fetch_secondary_quotes(tickers, workers=12):
+    """Fetch verification quotes concurrently to keep scheduled runs bounded."""
+    unique = list(dict.fromkeys(tickers))
+    results = {}
+    with ThreadPoolExecutor(max_workers=min(workers, max(1, len(unique)))) as pool:
+        jobs = {pool.submit(nomura_quote, ticker): ticker for ticker in unique}
+        for job in as_completed(jobs):
+            ticker = jobs[job]
+            try:
+                results[ticker] = job.result()
+            except Exception as exc:
+                results[ticker] = {"ok": False, "source": "Nomura/QUICK",
+                                   "error": type(exc).__name__}
+    return results
 
 US_SECTOR_ETFS = {
     "情報技術・AI": "XLK",
@@ -74,7 +149,7 @@ def flat_columns(df):
     return df
 
 
-def daily_snapshot(ticker):
+def daily_snapshot(ticker, secondary=None):
     try:
         df = flat_columns(yf.download(
             ticker, period="1y", interval="1d", auto_adjust=False,
@@ -219,7 +294,23 @@ def daily_snapshot(ticker):
         chart_matches = bool(chart_close is not None and abs(chart_close - close) <= max(.11, close * .0001))
         # Fail closed: at 8:00 a Friday close can be three calendar days old,
         # but anything older must never be presented as the current reference.
-        quote_verified = bool(ohlc_valid and chart_matches and 0 <= age_days <= 3)
+        secondary = secondary or {}
+        secondary_matches = bool(
+            secondary.get("ok")
+            and secondary.get("code") == str(ticker).split(".", 1)[0]
+            and secondary.get("data_date") == data_date.isoformat()
+            and all(
+                abs(float(secondary[field]) - primary) <= .01
+                for field, primary in (
+                    ("price", close), ("open", open_), ("high", high),
+                    ("low", low), ("prev_close", prev),
+                )
+            )
+        )
+        quote_verified = bool(
+            ohlc_valid and chart_matches and secondary_matches
+            and 0 <= age_days <= 3
+        )
         return {
             "ok": True, "price": round(close, 2), "open": round(open_, 2),
             "high": round(high, 2), "low": round(low, 2),
@@ -243,10 +334,14 @@ def daily_snapshot(ticker):
             "high_score": round(high_score, 2), "chart": chart,
             "data_date": data_date.isoformat(), "data_age_days": age_days,
             "chart_last_close": chart_close, "quote_verified": quote_verified,
+            "secondary_source": secondary.get("source", "未取得"),
+            "secondary_price": secondary.get("price"),
+            "secondary_date": secondary.get("data_date"),
+            "secondary_verified": secondary_matches,
             "quote_status": (
-                f"検証済み：{data_date.isoformat()}終値 {close:,.2f}円"
+                f"二経路検証済み：{data_date.isoformat()}終値 {close:,.2f}円"
                 if quote_verified else
-                f"売買利用禁止：株価/チャート不整合または古いデータ（{data_date.isoformat()}）"
+                f"売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（{data_date.isoformat()}）"
             ),
             "market_supply_score": market_supply_score,
             "market_supply_improved": market_supply_score >= 60,
@@ -1322,10 +1417,12 @@ def main():
         indices = previous.get("indices", {})
         stocks = previous.get("stocks", {})
     else:
+        stock_tickers = [meta["ticker"] for meta in config["stocks"].values()]
+        secondary_quotes = fetch_secondary_quotes(stock_tickers)
         indices = {name: daily_snapshot(ticker) for name, ticker in config["indices"].items()}
         stocks = {}
         for name, meta in config["stocks"].items():
-            row = daily_snapshot(meta["ticker"])
+            row = daily_snapshot(meta["ticker"], secondary_quotes.get(meta["ticker"]))
             row.update({
                 "ticker": meta["ticker"],
                 "sector": meta["sector"],
