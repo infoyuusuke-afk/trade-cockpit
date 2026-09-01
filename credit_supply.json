@@ -1,7 +1,39 @@
 {
-  "updated_at": "未取得",
-  "source": "楽天RSS・取引所公表・機関空売り残高を統合予定",
-  "stocks": {},
+  "updated_at": "2026-09-01 16:55 JST",
+  "source": "SBI証券・取引所公表信用残（週次）",
+  "stocks": {
+    "285A": {
+      "name": "キオクシアホールディングス",
+      "margin_date": "2026-08-28",
+      "published_date": "2026-09-01",
+      "margin_buy_balance": 13289500,
+      "margin_buy_change_1w": 1186000,
+      "margin_buy_change_1w_pct": 9.8,
+      "margin_sell_balance": 768200,
+      "margin_sell_change_1w": -1300,
+      "margin_sell_change_1w_pct": -0.17,
+      "credit_ratio": 17.3,
+      "margin_buy_change_4w_pct": null,
+      "institutional_short_change_pct": null,
+      "institutional_buyback_firms": null,
+      "supply_phase": "悪化",
+      "trade_bias": "戻り売り圧力を警戒",
+      "verified": true,
+      "source_url": "https://www.sbisec.co.jp/ETGate/WPLETsiR001Control/WPLETsiR001Ilst10/getDetailOfStockPriceJP?stock_sec_code_mul=285A",
+      "history": [
+        {
+          "date": "2026-08-28",
+          "buy_balance": 13289500,
+          "buy_change": 1186000,
+          "sell_balance": 768200,
+          "sell_change": -1300,
+          "ratio": 17.3,
+          "phase": "悪化"
+        }
+      ],
+      "note": "信用買い残増加・信用売り残減少。買い方の戻り売り圧力が強く、倍率だけで踏み上げ判定しない。"
+    }
+  },
   "schema": {
     "margin_buy_change_1w_pct": "信用買い残の前週比（%）",
     "margin_buy_change_4w_pct": "信用買い残の4週変化（%）",

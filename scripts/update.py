@@ -2005,6 +2005,16 @@ def main():
 <p class="warning"><b>キオクシア―任天堂は固定ルールではありません。</b> 20日・60日・当日5分足の逆相関が安定した期間だけ有効。サンディスクは取引時間が重ならないため「米国前日→キオクシア翌日」で判定します。9:15までは方向を決めず、OR15・VWAP・EMA9/20・高安の4/5一致を優先します。</p></section>
 <section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）5分足カレンダー・類似日予測</h2>
 <div id="kioxia-calendar-meta" class="sub">直近60日の5分足を照合中...</div>
+<div id="kioxia-supply" class="kio-supply-panel">
+ <div class="kio-supply-head"><div><span>信用需給（週次）</span><b id="kio-supply-phase">需給確認中</b></div><small id="kio-supply-date">基準日を確認中</small></div>
+ <div class="kio-supply-grid">
+  <div><span>信用買い残</span><b id="kio-margin-buy">—</b><small id="kio-margin-buy-change">前週比 —</small></div>
+  <div><span>信用売り残</span><b id="kio-margin-sell">—</b><small id="kio-margin-sell-change">前週比 —</small></div>
+  <div><span>信用倍率</span><b id="kio-credit-ratio">—</b><small>高倍率は戻り売り圧力</small></div>
+  <div><span>機関空売り</span><b id="kio-short-flow">未取得</b><small>推定で埋めない</small></div>
+  <div><span>実戦判定</span><b id="kio-supply-bias">判定保留</b><small id="kio-supply-note">公表日を分けて表示</small></div>
+ </div>
+</div>
 <div class="kio-summary">
  <div class="kio-metric"><span>現在の型</span><b id="kio-current-type">判定待ち</b></div>
  <div class="kio-metric"><span>本日の方向</span><b id="kio-bias">判定保留</b></div>
@@ -2443,8 +2453,31 @@ const miniPath = (points, stroke="#58d9b4") => {{
   const zero = (66-(0-lo)/span*60).toFixed(1);
   return "<svg viewBox='0 0 120 70' preserveAspectRatio='none'><line x1='2' y1='" + zero + "' x2='118' y2='" + zero + "' stroke='#38505e' stroke-dasharray='3 3'/><polyline points='" + coords + "' fill='none' stroke='" + stroke + "' stroke-width='2'/></svg>";
 }};
-fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => {{
+Promise.all([
+ fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()),
+ fetch("credit_supply.json?t=" + Date.now()).then(r => r.json()).catch(() => ({{stocks:{{}}}}))
+]).then(([d,credit]) => {{
   const p = d.prediction || {{}};
+  const supply = (credit.stocks || {{}})["285A"] || null;
+  const fmtShares = v => v == null ? "—" : Number(v).toLocaleString("ja-JP") + "株";
+  const fmtSignedShares = v => v == null ? "—" : (Number(v) >= 0 ? "+" : "") + Number(v).toLocaleString("ja-JP") + "株";
+  if (supply && supply.verified) {{
+    const phase = document.getElementById("kio-supply-phase");
+    phase.textContent = supply.supply_phase || "判定保留";
+    phase.className = supply.supply_phase === "改善" ? "kio-supply-good" : supply.supply_phase === "悪化" ? "kio-supply-bad" : "";
+    document.getElementById("kio-supply-date").textContent = "基準 " + supply.margin_date + "／公表 " + supply.published_date + "／週次";
+    document.getElementById("kio-margin-buy").textContent = fmtShares(supply.margin_buy_balance);
+    document.getElementById("kio-margin-buy-change").textContent = "前週比 " + fmtSignedShares(supply.margin_buy_change_1w) + "（" + signedPct(supply.margin_buy_change_1w_pct,1) + "）";
+    document.getElementById("kio-margin-sell").textContent = fmtShares(supply.margin_sell_balance);
+    document.getElementById("kio-margin-sell-change").textContent = "前週比 " + fmtSignedShares(supply.margin_sell_change_1w) + "（" + signedPct(supply.margin_sell_change_1w_pct,2) + "）";
+    document.getElementById("kio-credit-ratio").textContent = Number(supply.credit_ratio).toFixed(2) + "倍";
+    document.getElementById("kio-short-flow").textContent = supply.institutional_short_change_pct == null ? "未取得" : signedPct(supply.institutional_short_change_pct,1);
+    document.getElementById("kio-supply-bias").textContent = supply.trade_bias || "判定保留";
+    document.getElementById("kio-supply-note").textContent = supply.note || "";
+  }} else {{
+    document.getElementById("kio-supply-phase").textContent = "需給未確認・売買利用禁止";
+    document.getElementById("kio-supply-date").textContent = "週次信用残を取得できていません";
+  }}
   document.getElementById("kioxia-calendar-meta").textContent = (d.source || "5分足") + "／更新 " + d.updated_at + "／" + (d.current_is_today ? "本日観測 " + (d.observed_bars || 0) + "本" : "本日9:00開始待ち");
   document.getElementById("kio-current-type").textContent = d.current_is_today && d.current ? d.current.type + " " + signedPct(d.current.ret, 2) : "本日開始待ち";
   document.getElementById("kio-bias").textContent = p.bias || "判定保留";
@@ -2453,10 +2486,12 @@ fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => {
   document.getElementById("kio-sample").textContent = (p.sample || 0) + "日";
   const matches = (d.matches || []).map((x,i) => "<div class='kio-match'><div class='kio-day-head'><b>#" + (i+1) + " " + x.date + "</b><strong>" + x.similarity.toFixed(1) + "%</strong></div>" + miniPath(x.path, x.ret >= 0 ? "#58ddb5" : "#ff777e") + "<div>全日 <b class='" + (x.ret >= 0 ? "kio-up" : "kio-down") + "'>" + signedPct(x.ret,2) + "</b>／照合後 " + signedPct(x.after_ret,2) + "</div><small>型：" + x.type + "　残り最大 " + signedPct(x.max_up_after,2) + "／" + signedPct(x.max_down_after,2) + "</small></div>").join("");
   document.getElementById("kioxia-match-grid").innerHTML = matches || "<div class='focus-empty'>類似度60%以上の比較候補なし</div>";
-  const days = (d.calendar || []).map(x => "<div class='kio-day'><div class='kio-day-head'><b>" + x.date.slice(5).replace("-","/") + "</b><span class='" + (x.ret >= 0 ? "kio-up" : "kio-down") + "'>" + signedPct(x.ret,2) + "</span></div>" + miniPath(x.path, x.ret >= 0 ? "#58ddb5" : "#ff777e") + "<small>" + x.type + "　高安 " + signedPct(x.high,1) + "／" + signedPct(x.low,1) + "</small></div>").join("");
+  const supplyHistory = supply && Array.isArray(supply.history) ? [...supply.history].sort((a,b) => a.date.localeCompare(b.date)) : [];
+  const supplyAt = date => supplyHistory.filter(s => s.date <= date).at(-1) || null;
+  const days = (d.calendar || []).map(x => {{ const cs=supplyAt(x.date), badge=cs ? "<span class='kio-supply-tag " + (cs.phase === "改善" ? "good" : cs.phase === "悪化" ? "bad" : "") + "'>信用" + cs.date.slice(5).replace("-","/") + " " + cs.phase + " " + Number(cs.ratio).toFixed(1) + "倍</span>" : "<span class='kio-supply-tag'>需給履歴未取得</span>"; return "<div class='kio-day'><div class='kio-day-head'><b>" + x.date.slice(5).replace("-","/") + "</b><span class='" + (x.ret >= 0 ? "kio-up" : "kio-down") + "'>" + signedPct(x.ret,2) + "</span></div>" + miniPath(x.path, x.ret >= 0 ? "#58ddb5" : "#ff777e") + "<small>" + x.type + "　高安 " + signedPct(x.high,1) + "／" + signedPct(x.low,1) + "</small>" + badge + "</div>"; }}).join("");
   document.getElementById("kioxia-calendar-grid").innerHTML = days || "<div class='focus-empty'>5分足データ待ち</div>";
 }}).catch(() => {{
-  document.getElementById("kioxia-calendar-meta").textContent = "5分足データ未取得。推定で埋めません。";
+  document.getElementById("kioxia-calendar-meta").textContent = "5分足または信用需給データ未取得。推定で埋めません。";
   document.getElementById("kioxia-match-grid").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
   document.getElementById("kioxia-calendar-grid").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
 }});
