@@ -22,7 +22,7 @@ JST = timezone(timedelta(hours=9))
 INSTRUMENTS = {
     "111": ("日経225", "japan"),
     "112": ("TOPIX", "japan"),
-    "115": ("グロース250", "japan"),
+    "121": ("グロース250", "japan"),
     "751": ("DEX日経225", "realtime"),
     "511": ("ドル円", "realtime"),
     "151": ("日本10年金利", "realtime"),
@@ -149,6 +149,19 @@ def main() -> None:
             charset = response.headers.get_content_charset() or "utf-8"
             html = response.read().decode(charset, errors="replace")
         result = parse(html, now)
+        # Quotes are injected by the site's JavaScript.  If the initial HTML
+        # is only a shell, render it once and parse the resulting DOM.
+        if not result["feed_verified"]:
+            from playwright.sync_api import sync_playwright
+
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+                page.goto(URL, wait_until="domcontentloaded", timeout=30_000)
+                page.wait_for_function("document.querySelector('#V111')?.innerText", timeout=15_000)
+                page.wait_for_timeout(2_000)
+                result = parse(page.content(), now)
+                browser.close()
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"
     OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
