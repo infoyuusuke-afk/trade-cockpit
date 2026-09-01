@@ -1,45 +1,101 @@
 {
-  "updated_at": "2026-09-01 16:55 JST",
-  "source": "SBI証券・取引所公表信用残（週次）",
+  "updated_at": "2026-09-01 21:13:51 JST",
+  "source": "StockScope（株ビジョン）公開需給ページ",
+  "source_url": "https://stockscope.app/en/issues/285A",
   "stocks": {
     "285A": {
       "name": "キオクシアホールディングス",
       "margin_date": "2026-08-28",
-      "published_date": "2026-09-01",
-      "margin_buy_balance": 13289500,
-      "margin_buy_change_1w": 1186000,
-      "margin_buy_change_1w_pct": 9.8,
-      "margin_sell_balance": 768200,
-      "margin_sell_change_1w": -1300,
-      "margin_sell_change_1w_pct": -0.17,
-      "credit_ratio": 17.3,
-      "margin_buy_change_4w_pct": null,
+      "retrieved_date": "2026-09-01",
+      "previous_margin_date": "2026-08-21",
+      "margin_buy_balance": 16165800,
+      "margin_buy_change_1w": 2876300,
+      "margin_buy_change_1w_pct": 21.64,
+      "margin_sell_balance": 457100,
+      "margin_sell_change_1w": -311100,
+      "margin_sell_change_1w_pct": -40.5,
+      "credit_ratio": 35.37,
+      "margin_buy_change_4w_pct": 31.2,
       "institutional_short_change_pct": null,
       "institutional_buyback_firms": null,
       "supply_phase": "悪化",
-      "trade_bias": "戻り売り圧力を警戒",
+      "trade_bias": "戻り売り優先・踏み上げ決め打ち禁止",
       "verified": true,
-      "source_url": "https://www.sbisec.co.jp/ETGate/WPLETsiR001Control/WPLETsiR001Ilst10/getDetailOfStockPriceJP?stock_sec_code_mul=285A",
+      "source_url": "https://stockscope.app/en/issues/285A",
       "history": [
         {
-          "date": "2026-08-28",
+          "date": "2026-07-31",
+          "buy_balance": 12321600,
+          "sell_balance": 544600,
+          "ratio": 22.63,
+          "standardized_buy": 8084100,
+          "negotiable_buy": 4237500,
+          "standardized_sell": 422900,
+          "negotiable_sell": 121700,
+          "buy_change": null,
+          "sell_change": null,
+          "phase": "履歴起点"
+        },
+        {
+          "date": "2026-08-07",
+          "buy_balance": 13231000,
+          "sell_balance": 556200,
+          "ratio": 23.79,
+          "standardized_buy": 8751200,
+          "negotiable_buy": 4479800,
+          "standardized_sell": 456200,
+          "negotiable_sell": 100000,
+          "buy_change": 909400,
+          "sell_change": 11600,
+          "phase": "中立"
+        },
+        {
+          "date": "2026-08-14",
+          "buy_balance": 12103500,
+          "sell_balance": 769500,
+          "ratio": 15.73,
+          "standardized_buy": 8073500,
+          "negotiable_buy": 4030000,
+          "standardized_sell": 644900,
+          "negotiable_sell": 124600,
+          "buy_change": -1127500,
+          "sell_change": 213300,
+          "phase": "改善"
+        },
+        {
+          "date": "2026-08-21",
           "buy_balance": 13289500,
-          "buy_change": 1186000,
           "sell_balance": 768200,
-          "sell_change": -1300,
           "ratio": 17.3,
+          "standardized_buy": 8734000,
+          "negotiable_buy": 4555500,
+          "standardized_sell": 638900,
+          "negotiable_sell": 129300,
+          "buy_change": 1186000,
+          "sell_change": -1300,
+          "phase": "悪化"
+        },
+        {
+          "date": "2026-08-28",
+          "buy_balance": 16165800,
+          "sell_balance": 457100,
+          "ratio": 35.37,
+          "standardized_buy": 10597800,
+          "negotiable_buy": 5568000,
+          "standardized_sell": 382200,
+          "negotiable_sell": 74900,
+          "buy_change": 2876300,
+          "sell_change": -311100,
           "phase": "悪化"
         }
       ],
-      "note": "信用買い残増加・信用売り残減少。買い方の戻り売り圧力が強く、倍率だけで踏み上げ判定しない。"
+      "note": "買い残増加・売り残減少。StockScopeの合計値と制度／一般内訳を照合済み。機関空売りは公表遅延があるため別判定。"
     }
   },
   "schema": {
     "margin_buy_change_1w_pct": "信用買い残の前週比（%）",
     "margin_buy_change_4w_pct": "信用買い残の4週変化（%）",
     "credit_ratio": "信用倍率",
-    "institutional_short_change_pct": "機関空売り残高の変化（%）。減少はマイナス",
-    "institutional_buyback_firms": "買い戻した機関数",
-    "note": "任意の確認メモ"
+    "institutional_short_change_pct": "機関空売り残高の変化（%）。未取得は推定しない"
   }
 }
