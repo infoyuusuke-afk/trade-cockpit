@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-02 07:58:08 JST",
+  "updated_at": "2026-09-02 08:34:57 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -3435,35 +3435,42 @@
       "open": 65668.51,
       "high": 66311.93,
       "low": 64832.1,
-      "prev_close": 66405.56,
-      "change_pct": -0.14,
-      "ret5": 1.2,
-      "ret5_prev": -5.33,
-      "ret20": 3.03,
-      "rvol": 1.12,
+      "prev_close": 66131.98,
+      "change_pct": 0.27,
+      "ret5": 0.45,
+      "ret5_prev": -3.93,
+      "ret20": 7.18,
+      "rvol": 1.09,
       "turnover": 12314125342969,
-      "atr14": 1213.25,
-      "atr_pct": 1.83,
-      "ma5": 66193.61,
-      "ma20": 66377.81,
-      "ma60": 67077.13,
-      "from_ma5": 0.18,
-      "from_ma20": -0.1,
+      "atr14": 1247.24,
+      "atr_pct": 1.88,
+      "ma5": 66018.12,
+      "ma20": 66275.63,
+      "ma60": 67094.89,
+      "from_ma5": 0.45,
+      "from_ma20": 0.05,
       "touch_ma5": true,
       "to_high20": -4.74,
       "to_high52": -8.95,
-      "bb_upper": 69070.65,
-      "bb_lower": 63684.97,
-      "bb_width": 8.11,
-      "bb_width_change": -3.25,
-      "bb_percentile": 3.3,
-      "bb_expansion_score": 59.3,
-      "day_score": 4.99,
-      "swing_score": -0.7,
-      "stable_score": 7.67,
-      "momentum_score": 8.99,
-      "high_score": 5.68,
+      "bb_upper": 69107.97,
+      "bb_lower": 63443.29,
+      "bb_width": 8.55,
+      "bb_width_change": -3.71,
+      "bb_percentile": 4.2,
+      "bb_expansion_score": 60.8,
+      "day_score": 5.02,
+      "swing_score": 2.05,
+      "stable_score": 5.39,
+      "momentum_score": 9.19,
+      "high_score": 3.64,
       "chart": [
+        {
+          "o": 70039.89,
+          "h": 70081.39,
+          "l": 68676.26,
+          "c": 68733.15,
+          "v": 169900000
+        },
         {
           "o": 68676.06,
           "h": 69788.03,
@@ -3731,13 +3738,6 @@
           "v": 133500000
         },
         {
-          "o": 66104.49,
-          "h": 66842.82,
-          "l": 66012.2,
-          "c": 66405.56,
-          "v": 147000000
-        },
-        {
           "o": 65668.51,
           "h": 66311.93,
           "l": 64832.1,
@@ -3754,9 +3754,9 @@
       "secondary_date": null,
       "secondary_verified": false,
       "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-08-31）",
-      "market_supply_score": 70,
+      "market_supply_score": 71,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給70点／上昇日出来高÷下落日1.33倍／安値切上げ×",
+      "market_supply_status": "市場需給71点／上昇日出来高÷下落日1.35倍／安値切上げ×",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
@@ -5097,33 +5097,40 @@
       "low": 14.95,
       "prev_close": 14.92,
       "change_pct": 9.52,
-      "ret5": 5.76,
-      "ret5_prev": -2.46,
-      "ret20": -0.97,
+      "ret5": 3.09,
+      "ret5_prev": 4.34,
+      "ret20": 3.03,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 0.96,
-      "atr_pct": 5.9,
-      "ma5": 15.08,
-      "ma20": 15.19,
-      "ma60": 16.76,
-      "from_ma5": 8.34,
-      "from_ma20": 7.57,
+      "atr14": 0.98,
+      "atr_pct": 6.0,
+      "ma5": 15.29,
+      "ma20": 15.29,
+      "ma60": 16.88,
+      "from_ma5": 6.9,
+      "from_ma20": 6.84,
       "touch_ma5": true,
       "to_high20": -11.34,
       "to_high52": -53.71,
-      "bb_upper": 16.31,
-      "bb_lower": 14.07,
-      "bb_width": 14.76,
-      "bb_width_change": -4.55,
-      "bb_percentile": 5.8,
-      "bb_expansion_score": 53.0,
-      "day_score": 6.22,
-      "swing_score": 0.77,
-      "stable_score": -1.17,
-      "momentum_score": 5.73,
+      "bb_upper": 16.49,
+      "bb_lower": 14.09,
+      "bb_width": 15.7,
+      "bb_width_change": -7.58,
+      "bb_percentile": 8.3,
+      "bb_expansion_score": 44.1,
+      "day_score": 5.28,
+      "swing_score": 0.84,
+      "stable_score": -0.46,
+      "momentum_score": 5.35,
       "high_score": 0.0,
       "chart": [
+        {
+          "o": 15.87,
+          "h": 16.64,
+          "l": 15.53,
+          "c": 16.13,
+          "v": 0
+        },
         {
           "o": 16.55,
           "h": 18.91,
@@ -5384,13 +5391,6 @@
           "v": 0
         },
         {
-          "o": 14.57,
-          "h": 14.84,
-          "l": 14.13,
-          "c": 14.43,
-          "v": 0
-        },
-        {
           "o": 15.24,
           "h": 15.48,
           "l": 14.86,
@@ -5423,46 +5423,39 @@
     },
     "ドル円": {
       "ok": true,
-      "price": 160.19,
+      "price": 160.18,
       "open": 160.14,
-      "high": 160.21,
+      "high": 160.23,
       "low": 160.1,
-      "prev_close": 160.12,
-      "change_pct": 0.04,
-      "ret5": 0.66,
-      "ret5_prev": -0.13,
-      "ret20": 1.69,
+      "prev_close": 159.75,
+      "change_pct": 0.27,
+      "ret5": 0.6,
+      "ret5_prev": -0.2,
+      "ret20": 1.58,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 0.71,
-      "atr_pct": 0.44,
-      "ma5": 159.62,
-      "ma20": 159.01,
-      "ma60": 160.82,
-      "from_ma5": 0.36,
-      "from_ma20": 0.74,
+      "atr14": 0.74,
+      "atr_pct": 0.46,
+      "ma5": 159.72,
+      "ma20": 159.11,
+      "ma60": 160.8,
+      "from_ma5": 0.28,
+      "from_ma20": 0.67,
       "touch_ma5": true,
-      "to_high20": 0.06,
-      "to_high52": -2.31,
+      "to_high20": -0.02,
+      "to_high52": -2.32,
       "bb_upper": 160.39,
-      "bb_lower": 157.63,
-      "bb_width": 1.74,
-      "bb_width_change": -0.8,
-      "bb_percentile": 37.5,
-      "bb_expansion_score": 48.9,
-      "day_score": 1.27,
-      "swing_score": 3.65,
-      "stable_score": 1.3,
-      "momentum_score": 7.41,
-      "high_score": 6.0,
+      "bb_lower": 157.84,
+      "bb_width": 1.6,
+      "bb_width_change": -0.44,
+      "bb_percentile": 30.8,
+      "bb_expansion_score": 51.2,
+      "day_score": 1.43,
+      "swing_score": 3.6,
+      "stable_score": 1.28,
+      "momentum_score": 7.38,
+      "high_score": 3.0,
       "chart": [
-        {
-          "o": 162.36,
-          "h": 162.7,
-          "l": 162.08,
-          "c": 162.36,
-          "v": 0
-        },
         {
           "o": 162.51,
           "h": 162.57,
@@ -5730,25 +5723,32 @@
           "v": 0
         },
         {
+          "o": 159.77,
+          "h": 160.2,
+          "l": 159.64,
+          "c": 159.75,
+          "v": 0
+        },
+        {
           "o": 160.14,
-          "h": 160.21,
+          "h": 160.23,
           "l": 160.1,
-          "c": 160.19,
+          "c": 160.18,
           "v": 0
         }
       ],
-      "data_date": "2026-09-01",
-      "data_age_days": 1,
-      "chart_last_close": 160.19,
+      "data_date": "2026-09-02",
+      "data_age_days": 0,
+      "chart_last_close": 160.18,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-09-01）",
-      "market_supply_score": 84,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-09-02）",
+      "market_supply_score": 82,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給84点／上昇日出来高÷下落日2.00倍／安値切上げ○",
+      "market_supply_status": "市場需給82点／上昇日出来高÷下落日2.00倍／安値切上げ○",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
@@ -6422,7 +6422,10 @@
       "sector": "半導体・AI",
       "style": "day",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": -4.92
     },
     "アドバンテスト（6857）": {
       "ok": true,
@@ -6759,7 +6762,10 @@
       "sector": "半導体・AI",
       "style": "day",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": -4.66
     },
     "マクニカHD（3132）": {
       "ok": true,
@@ -7096,7 +7102,10 @@
       "sector": "半導体・AI",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": 4.37
     },
     "日東電工（6988）": {
       "ok": true,
@@ -7433,7 +7442,10 @@
       "sector": "電子材料・AI",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": 2.92
     },
     "ディスコ（6146）": {
       "ok": true,
@@ -8444,7 +8456,10 @@
       "sector": "半導体・AI",
       "style": "day",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": 0.54
     },
     "ソシオネクスト（6526）": {
       "ok": true,
@@ -8781,7 +8796,10 @@
       "sector": "半導体・AI",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": -2.69
     },
     "フューチャー（4722）": {
       "ok": true,
@@ -9455,7 +9473,10 @@
       "sector": "MaaS・成長株",
       "style": "both",
       "day_bucket": "IPO・グロース",
-      "rotation_group": "自動車・モビリティ"
+      "rotation_group": "自動車・モビリティ",
+      "material_stage": "材料出尽くし警戒",
+      "material_action": "飛び乗り禁止・初押し反転待ち",
+      "actionable_day_score": -21.64
     },
     "セルシス（3663）": {
       "ok": true,
@@ -10466,7 +10487,10 @@
       "sector": "半導体・AI",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": -8.84
     },
     "SUMCO（3436）": {
       "ok": true,
@@ -11140,7 +11164,10 @@
       "sector": "電線・データセンター",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "資本財・インフラ"
+      "rotation_group": "資本財・インフラ",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": -2.97
     },
     "古河電気工業（5801）": {
       "ok": true,
@@ -11814,7 +11841,10 @@
       "sector": "電線・データセンター",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "資本財・インフラ"
+      "rotation_group": "資本財・インフラ",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": -3.36
     },
     "日立製作所（6501）": {
       "ok": true,
@@ -12151,7 +12181,10 @@
       "sector": "電力・データセンター",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "資本財・インフラ"
+      "rotation_group": "資本財・インフラ",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": 2.31
     },
     "富士電機（6504）": {
       "ok": true,
@@ -12488,7 +12521,10 @@
       "sector": "電力・データセンター",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "資本財・インフラ"
+      "rotation_group": "資本財・インフラ",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": -4.94
     },
     "三菱重工業（7011）": {
       "ok": true,
@@ -14173,7 +14209,10 @@
       "sector": "AI・投資",
       "style": "day",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": 1.25
     },
     "任天堂（7974）": {
       "ok": true,
@@ -14510,7 +14549,10 @@
       "sector": "ゲーム・内需",
       "style": "day",
       "day_bucket": null,
-      "rotation_group": "内需・ディフェンシブ"
+      "rotation_group": "内需・ディフェンシブ",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": 3.52
     },
     "リクルートHD（6098）": {
       "ok": true,
@@ -14847,7 +14889,10 @@
       "sector": "サービス・AI",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": -1.19
     },
     "楽天グループ（4755）": {
       "ok": true,
@@ -17880,7 +17925,10 @@
       "sector": "蓄電池・電力",
       "style": "both",
       "day_bucket": "テーマ・マネーゲーム",
-      "rotation_group": "資本財・インフラ"
+      "rotation_group": "資本財・インフラ",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": -7.27
     },
     "キーエンス（6861）": {
       "ok": true,
@@ -19228,7 +19276,10 @@
       "sector": "機械・景気敏感",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "資本財・インフラ"
+      "rotation_group": "資本財・インフラ",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": 3.47
     },
     "キヤノン（7751）": {
       "ok": true,
@@ -19902,7 +19953,10 @@
       "sector": "AI・DX",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": 3.75
     },
     "富士通（6702）": {
       "ok": true,
@@ -20239,7 +20293,10 @@
       "sector": "AI・DX",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": 6.03
     },
     "パナソニックHD（6752）": {
       "ok": true,
@@ -20913,7 +20970,10 @@
       "sector": "ゲーム・半導体",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": 4.97
     },
     "安川電機（6506）": {
       "ok": true,
@@ -21924,7 +21984,10 @@
       "sector": "半導体・AI",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": 4.06
     },
     "TDK（6762）": {
       "ok": true,
@@ -22261,7 +22324,10 @@
       "sector": "電子部品・AI",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": -0.62
     },
     "京セラ（6971）": {
       "ok": true,
@@ -22935,7 +23001,10 @@
       "sector": "半導体・AI",
       "style": "both",
       "day_bucket": null,
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": -0.46
     },
     "オムロン（6645）": {
       "ok": true,
@@ -28924,7 +28993,10 @@
       "sector": "自動運転・IPO",
       "style": "day",
       "day_bucket": "IPO・グロース",
-      "rotation_group": "その他"
+      "rotation_group": "その他",
+      "material_stage": "材料出尽くし警戒",
+      "material_action": "飛び乗り禁止・初押し反転待ち",
+      "actionable_day_score": -16.5
     },
     "データセクション（3905）": {
       "ok": true,
@@ -30553,7 +30625,10 @@
       "sector": "SaaS・フィンテック",
       "style": "day",
       "day_bucket": "SaaS・AIソフト",
-      "rotation_group": "その他"
+      "rotation_group": "その他",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": -3.22
     },
     "freee（4478）": {
       "ok": true,
@@ -30890,7 +30965,10 @@
       "sector": "SaaS・フィンテック",
       "style": "day",
       "day_bucket": "SaaS・AIソフト",
-      "rotation_group": "その他"
+      "rotation_group": "その他",
+      "material_stage": "材料出尽くし警戒",
+      "material_action": "飛び乗り禁止・初押し反転待ち",
+      "actionable_day_score": -29.28
     },
     "Sansan（4443）": {
       "ok": true,
@@ -31227,7 +31305,10 @@
       "sector": "SaaS・DX",
       "style": "day",
       "day_bucket": "SaaS・AIソフト",
-      "rotation_group": "AI・テクノロジー"
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": 0.12
     },
     "プレイド（4165）": {
       "ok": true,
@@ -32238,7 +32319,10 @@
       "sector": "ドローン・成長株",
       "style": "day",
       "day_bucket": "テーマ・マネーゲーム",
-      "rotation_group": "その他"
+      "rotation_group": "その他",
+      "material_stage": "材料出尽くし警戒",
+      "material_action": "飛び乗り禁止・初押し反転待ち",
+      "actionable_day_score": -22.34
     },
     "アストロスケールHD（186A）": {
       "ok": true,
@@ -35271,7 +35355,10 @@
       "sector": "自動運転・高精度地図",
       "style": "both",
       "day_bucket": "テーマ・マネーゲーム",
-      "rotation_group": "その他"
+      "rotation_group": "その他",
+      "material_stage": "材料出尽くし警戒",
+      "material_action": "飛び乗り禁止・初押し反転待ち",
+      "actionable_day_score": -24.9
     },
     "QPS研究所（5595）": {
       "ok": false,
@@ -35283,277 +35370,1404 @@
   },
   "day_candidates": [
     {
-      "name": "ティアフォー（593A）",
+      "name": "富士通（6702）",
       "ok": true,
-      "price": 2539.0,
-      "open": 2249.0,
-      "high": 2773.0,
-      "low": 2156.0,
-      "prev_close": 2399.0,
-      "change_pct": 5.84,
-      "ret5": 82.53,
-      "ret5_prev": 53.53,
-      "ret20": 157.24,
-      "rvol": 6.06,
-      "turnover": 203197693400,
-      "atr14": 208.5,
-      "atr_pct": 8.21,
-      "ma5": 1972.8,
-      "ma20": 1250.85,
-      "ma60": 1250.85,
-      "from_ma5": 28.7,
-      "from_ma20": 102.98,
+      "price": 3947.0,
+      "open": 3915.0,
+      "high": 3991.0,
+      "low": 3900.0,
+      "prev_close": 3869.0,
+      "change_pct": 2.02,
+      "ret5": 5.87,
+      "ret5_prev": 3.53,
+      "ret20": 12.77,
+      "rvol": 0.91,
+      "turnover": 23014562300,
+      "atr14": 117.29,
+      "atr_pct": 2.97,
+      "ma5": 3837.8,
+      "ma20": 3703.1,
+      "ma60": 3470.45,
+      "from_ma5": 2.85,
+      "from_ma20": 6.59,
       "touch_ma5": false,
-      "to_high20": 5.84,
-      "to_high52": -8.44,
-      "bb_upper": 2226.08,
-      "bb_lower": 275.62,
-      "bb_width": 155.93,
-      "bb_width_change": 77.94,
-      "bb_percentile": 100.0,
-      "bb_expansion_score": 55.0,
-      "day_score": 13.5,
-      "swing_score": 11.55,
-      "stable_score": 5.7,
-      "momentum_score": 21.2,
-      "high_score": 6.5,
+      "to_high20": -0.15,
+      "to_high52": -15.45,
+      "bb_upper": 3953.76,
+      "bb_lower": 3452.44,
+      "bb_width": 13.54,
+      "bb_width_change": 1.02,
+      "bb_percentile": 27.5,
+      "bb_expansion_score": 68.4,
+      "day_score": 8.03,
+      "swing_score": 9.16,
+      "stable_score": 12.21,
+      "momentum_score": 11.23,
+      "high_score": 5.36,
       "chart": [
         {
-          "o": 1009.0,
-          "h": 1081.0,
-          "l": 896.0,
-          "c": 1015.0,
-          "v": 19558000
+          "o": 3346.0,
+          "h": 3366.0,
+          "l": 3316.0,
+          "c": 3349.0,
+          "v": 4610400
         },
         {
-          "o": 1085.0,
-          "h": 1268.0,
-          "l": 1055.0,
-          "c": 1240.0,
-          "v": 40755300
+          "o": 3350.0,
+          "h": 3415.0,
+          "l": 3340.0,
+          "c": 3392.0,
+          "v": 6628000
         },
         {
-          "o": 1210.0,
-          "h": 1285.0,
-          "l": 1088.0,
-          "c": 1102.0,
-          "v": 20430100
+          "o": 3412.0,
+          "h": 3464.0,
+          "l": 3345.0,
+          "c": 3354.0,
+          "v": 5116900
         },
         {
-          "o": 1120.0,
-          "h": 1160.0,
-          "l": 1012.0,
-          "c": 1057.0,
-          "v": 9290900
+          "o": 3295.0,
+          "h": 3400.0,
+          "l": 3290.0,
+          "c": 3392.0,
+          "v": 4760200
         },
         {
-          "o": 1009.0,
-          "h": 1064.0,
-          "l": 990.0,
-          "c": 1009.0,
-          "v": 6832900
+          "o": 3380.0,
+          "h": 3384.0,
+          "l": 3337.0,
+          "c": 3347.0,
+          "v": 4375600
         },
         {
-          "o": 1001.0,
-          "h": 1066.0,
-          "l": 992.0,
-          "c": 1055.0,
-          "v": 4127800
+          "o": 3323.0,
+          "h": 3343.0,
+          "l": 3297.0,
+          "c": 3308.0,
+          "v": 5011000
         },
         {
-          "o": 1026.0,
-          "h": 1037.0,
-          "l": 991.0,
-          "c": 1009.0,
-          "v": 3063700
+          "o": 3330.0,
+          "h": 3418.0,
+          "l": 3323.0,
+          "c": 3378.0,
+          "v": 5870300
         },
         {
-          "o": 1013.0,
-          "h": 1048.0,
-          "l": 998.0,
-          "c": 1011.0,
-          "v": 3181300
+          "o": 3270.0,
+          "h": 3290.0,
+          "l": 3182.0,
+          "c": 3218.0,
+          "v": 9877200
         },
         {
-          "o": 1015.0,
-          "h": 1066.0,
-          "l": 957.0,
-          "c": 987.0,
-          "v": 3524800
+          "o": 3200.0,
+          "h": 3294.0,
+          "l": 3191.0,
+          "c": 3257.0,
+          "v": 11778100
         },
         {
-          "o": 1000.0,
-          "h": 1045.0,
-          "l": 989.0,
-          "c": 1016.0,
-          "v": 1920900
+          "o": 3315.0,
+          "h": 3366.0,
+          "l": 3250.0,
+          "c": 3298.0,
+          "v": 9646000
         },
         {
-          "o": 1034.0,
-          "h": 1045.0,
-          "l": 997.0,
-          "c": 1009.0,
-          "v": 2695100
+          "o": 3368.0,
+          "h": 3377.0,
+          "l": 3296.0,
+          "c": 3309.0,
+          "v": 6898400
         },
         {
-          "o": 1009.0,
-          "h": 1012.0,
-          "l": 930.0,
-          "c": 936.0,
-          "v": 4083200
+          "o": 3181.0,
+          "h": 3318.0,
+          "l": 3181.0,
+          "c": 3311.0,
+          "v": 7980100
         },
         {
-          "o": 928.0,
-          "h": 931.0,
-          "l": 871.0,
-          "c": 911.0,
-          "v": 2867800
+          "o": 3266.0,
+          "h": 3280.0,
+          "l": 3221.0,
+          "c": 3244.0,
+          "v": 6480900
         },
         {
-          "o": 916.0,
-          "h": 925.0,
-          "l": 895.0,
-          "c": 909.0,
-          "v": 1020400
+          "o": 3240.0,
+          "h": 3288.0,
+          "l": 3216.0,
+          "c": 3279.0,
+          "v": 4380600
         },
         {
-          "o": 917.0,
-          "h": 1020.0,
-          "l": 916.0,
-          "c": 1008.0,
-          "v": 3128400
+          "o": 3349.0,
+          "h": 3482.0,
+          "l": 3336.0,
+          "c": 3482.0,
+          "v": 9088900
         },
         {
-          "o": 1005.0,
-          "h": 1009.0,
-          "l": 974.0,
-          "c": 999.0,
-          "v": 1397100
+          "o": 3523.0,
+          "h": 3700.0,
+          "l": 3512.0,
+          "c": 3700.0,
+          "v": 18062000
         },
         {
-          "o": 1030.0,
-          "h": 1041.0,
-          "l": 985.0,
-          "c": 998.0,
-          "v": 2284100
+          "o": 3754.0,
+          "h": 3846.0,
+          "l": 3651.0,
+          "c": 3844.0,
+          "v": 17422500
         },
         {
-          "o": 1030.0,
-          "h": 1050.0,
-          "l": 937.0,
-          "c": 952.0,
-          "v": 2656000
+          "o": 3888.0,
+          "h": 3928.0,
+          "l": 3765.0,
+          "c": 3902.0,
+          "v": 13615600
         },
         {
-          "o": 936.0,
-          "h": 950.0,
-          "l": 900.0,
-          "c": 906.0,
-          "v": 1719000
+          "o": 3512.0,
+          "h": 3722.0,
+          "l": 3511.0,
+          "c": 3659.0,
+          "v": 15852800
         },
         {
-          "o": 900.0,
-          "h": 915.0,
-          "l": 880.0,
-          "c": 883.0,
-          "v": 1451700
+          "o": 3695.0,
+          "h": 3698.0,
+          "l": 3480.0,
+          "c": 3500.0,
+          "v": 9682900
         },
         {
-          "o": 890.0,
-          "h": 1033.0,
-          "l": 885.0,
-          "c": 1033.0,
-          "v": 9613200
+          "o": 3511.0,
+          "h": 3520.0,
+          "l": 3395.0,
+          "c": 3436.0,
+          "v": 8850800
         },
         {
-          "o": 1003.0,
-          "h": 1110.0,
-          "l": 985.0,
-          "c": 1057.0,
-          "v": 15193900
+          "o": 3503.0,
+          "h": 3531.0,
+          "l": 3451.0,
+          "c": 3483.0,
+          "v": 8845300
         },
         {
-          "o": 1117.0,
-          "h": 1220.0,
-          "l": 1088.0,
-          "c": 1145.0,
-          "v": 19230000
+          "o": 3518.0,
+          "h": 3591.0,
+          "l": 3496.0,
+          "c": 3579.0,
+          "v": 6566200
         },
         {
-          "o": 1132.0,
-          "h": 1415.0,
-          "l": 1126.0,
-          "c": 1391.0,
-          "v": 29282500
+          "o": 3600.0,
+          "h": 3697.0,
+          "l": 3588.0,
+          "c": 3675.0,
+          "v": 7800400
         },
         {
-          "o": 1340.0,
-          "h": 1429.0,
-          "l": 1285.0,
-          "c": 1328.0,
-          "v": 20244400
+          "o": 3720.0,
+          "h": 3757.0,
+          "l": 3648.0,
+          "c": 3719.0,
+          "v": 5577200
         },
         {
-          "o": 1338.0,
-          "h": 1628.0,
-          "l": 1288.0,
-          "c": 1599.0,
-          "v": 25473400
+          "o": 3751.0,
+          "h": 3758.0,
+          "l": 3695.0,
+          "c": 3701.0,
+          "v": 6491200
         },
         {
-          "o": 1702.0,
-          "h": 1999.0,
-          "l": 1695.0,
-          "c": 1999.0,
-          "v": 38104200
+          "o": 3700.0,
+          "h": 3752.0,
+          "l": 3663.0,
+          "c": 3750.0,
+          "v": 5329100
         },
         {
-          "o": 2339.0,
-          "h": 2399.0,
-          "l": 2300.0,
-          "c": 2399.0,
-          "v": 1948100
+          "o": 3800.0,
+          "h": 3924.0,
+          "l": 3779.0,
+          "c": 3841.0,
+          "v": 9198900
         },
         {
-          "o": 2249.0,
-          "h": 2773.0,
-          "l": 2156.0,
-          "c": 2539.0,
-          "v": 80030600
+          "o": 3737.0,
+          "h": 3781.0,
+          "l": 3664.0,
+          "c": 3664.0,
+          "v": 5846300
+        },
+        {
+          "o": 3630.0,
+          "h": 3676.0,
+          "l": 3592.0,
+          "c": 3601.0,
+          "v": 5871100
+        },
+        {
+          "o": 3642.0,
+          "h": 3645.0,
+          "l": 3553.0,
+          "c": 3607.0,
+          "v": 7069800
+        },
+        {
+          "o": 3711.0,
+          "h": 3777.0,
+          "l": 3707.0,
+          "c": 3743.0,
+          "v": 6982500
+        },
+        {
+          "o": 3690.0,
+          "h": 3737.0,
+          "l": 3646.0,
+          "c": 3646.0,
+          "v": 4139700
+        },
+        {
+          "o": 3670.0,
+          "h": 3741.0,
+          "l": 3664.0,
+          "c": 3700.0,
+          "v": 3256300
+        },
+        {
+          "o": 3700.0,
+          "h": 3769.0,
+          "l": 3680.0,
+          "c": 3728.0,
+          "v": 4344200
+        },
+        {
+          "o": 3730.0,
+          "h": 3785.0,
+          "l": 3707.0,
+          "c": 3716.0,
+          "v": 4152900
+        },
+        {
+          "o": 3716.0,
+          "h": 3819.0,
+          "l": 3703.0,
+          "c": 3753.0,
+          "v": 5785200
+        },
+        {
+          "o": 3848.0,
+          "h": 3953.0,
+          "l": 3844.0,
+          "c": 3904.0,
+          "v": 8703900
+        },
+        {
+          "o": 3900.0,
+          "h": 3923.0,
+          "l": 3864.0,
+          "c": 3869.0,
+          "v": 7590900
+        },
+        {
+          "o": 3915.0,
+          "h": 3991.0,
+          "l": 3900.0,
+          "c": 3947.0,
+          "v": 5830900
         }
       ],
       "data_date": "2026-09-01",
       "data_age_days": 1,
-      "chart_last_close": 2539.0,
+      "chart_last_close": 3947.0,
       "quote_verified": true,
       "secondary_source": "Nomura/QUICK",
-      "secondary_price": 2539.0,
+      "secondary_price": 3947.0,
       "secondary_date": "2026-09-01",
       "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-09-01終値 2,539.00円",
+      "quote_status": "二経路検証済み：2026-09-01終値 3,947.00円",
       "market_supply_score": 100,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給100点／上昇日出来高÷下落日5.49倍／安値切上げ○",
-      "last_dividend": 0,
-      "estimated_ex_date": null,
-      "dividend_days": null,
-      "ticker": "593A.T",
-      "sector": "自動運転・IPO",
-      "style": "day",
-      "day_bucket": "IPO・グロース",
-      "rotation_group": "その他",
+      "market_supply_status": "市場需給100点／上昇日出来高÷下落日2.50倍／安値切上げ○",
+      "last_dividend": 35.0,
+      "estimated_ex_date": "2026-09-28",
+      "dividend_days": 26,
+      "ticker": "6702.T",
+      "sector": "AI・DX",
+      "style": "both",
+      "day_bucket": null,
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": 6.03,
       "plan": {
-        "entry": 2424,
-        "stop": 2288,
-        "target1": 2627,
-        "target2": 2722,
-        "risk": 136,
-        "tick": 1,
-        "entry_limit": 2424
-      },
-      "material_stage": "材料出尽くし警戒",
-      "material_action": "飛び乗り禁止・初押し反転待ち",
-      "actionable_day_score": -16.5
+        "entry": 3885,
+        "stop": 3805,
+        "target1": 3995,
+        "target2": 4050,
+        "risk": 75,
+        "tick": 5,
+        "entry_limit": 3885
+      }
+    },
+    {
+      "name": "ソニーグループ（6758）",
+      "ok": true,
+      "price": 4046.0,
+      "open": 3990.0,
+      "high": 4070.0,
+      "low": 3961.0,
+      "prev_close": 4016.0,
+      "change_pct": 0.75,
+      "ret5": 5.58,
+      "ret5_prev": 3.07,
+      "ret20": 12.73,
+      "rvol": 0.94,
+      "turnover": 58039465400,
+      "atr14": 103.86,
+      "atr_pct": 2.57,
+      "ma5": 3947.6,
+      "ma20": 3787.9,
+      "ma60": 3528.67,
+      "from_ma5": 2.49,
+      "from_ma20": 6.81,
+      "touch_ma5": true,
+      "to_high20": 0.12,
+      "to_high52": -15.28,
+      "bb_upper": 4048.85,
+      "bb_lower": 3526.95,
+      "bb_width": 13.78,
+      "bb_width_change": 2.46,
+      "bb_percentile": 64.2,
+      "bb_expansion_score": 55.8,
+      "day_score": 6.97,
+      "swing_score": 9.08,
+      "stable_score": 12.23,
+      "momentum_score": 14.2,
+      "high_score": 8.41,
+      "chart": [
+        {
+          "o": 3390.0,
+          "h": 3422.0,
+          "l": 3347.0,
+          "c": 3422.0,
+          "v": 12783400
+        },
+        {
+          "o": 3415.0,
+          "h": 3516.0,
+          "l": 3411.0,
+          "c": 3502.0,
+          "v": 21078700
+        },
+        {
+          "o": 3502.0,
+          "h": 3549.0,
+          "l": 3467.0,
+          "c": 3468.0,
+          "v": 15801000
+        },
+        {
+          "o": 3398.0,
+          "h": 3432.0,
+          "l": 3385.0,
+          "c": 3409.0,
+          "v": 15472900
+        },
+        {
+          "o": 3409.0,
+          "h": 3410.0,
+          "l": 3337.0,
+          "c": 3359.0,
+          "v": 17008800
+        },
+        {
+          "o": 3374.0,
+          "h": 3384.0,
+          "l": 3306.0,
+          "c": 3341.0,
+          "v": 10860400
+        },
+        {
+          "o": 3367.0,
+          "h": 3424.0,
+          "l": 3361.0,
+          "c": 3383.0,
+          "v": 13640700
+        },
+        {
+          "o": 3380.0,
+          "h": 3390.0,
+          "l": 3335.0,
+          "c": 3389.0,
+          "v": 12717000
+        },
+        {
+          "o": 3400.0,
+          "h": 3450.0,
+          "l": 3375.0,
+          "c": 3438.0,
+          "v": 14759800
+        },
+        {
+          "o": 3438.0,
+          "h": 3510.0,
+          "l": 3422.0,
+          "c": 3470.0,
+          "v": 22560200
+        },
+        {
+          "o": 3454.0,
+          "h": 3522.0,
+          "l": 3442.0,
+          "c": 3458.0,
+          "v": 15484100
+        },
+        {
+          "o": 3400.0,
+          "h": 3467.0,
+          "l": 3400.0,
+          "c": 3444.0,
+          "v": 14994100
+        },
+        {
+          "o": 3435.0,
+          "h": 3452.0,
+          "l": 3413.0,
+          "c": 3445.0,
+          "v": 11688400
+        },
+        {
+          "o": 3401.0,
+          "h": 3433.0,
+          "l": 3360.0,
+          "c": 3409.0,
+          "v": 10286800
+        },
+        {
+          "o": 3453.0,
+          "h": 3574.0,
+          "l": 3440.0,
+          "c": 3574.0,
+          "v": 16590300
+        },
+        {
+          "o": 3595.0,
+          "h": 3664.0,
+          "l": 3536.0,
+          "c": 3662.0,
+          "v": 21933500
+        },
+        {
+          "o": 3685.0,
+          "h": 3810.0,
+          "l": 3646.0,
+          "c": 3809.0,
+          "v": 32149300
+        },
+        {
+          "o": 3809.0,
+          "h": 3862.0,
+          "l": 3730.0,
+          "c": 3809.0,
+          "v": 25084500
+        },
+        {
+          "o": 3693.0,
+          "h": 3964.0,
+          "l": 3683.0,
+          "c": 3787.0,
+          "v": 39278600
+        },
+        {
+          "o": 3598.0,
+          "h": 3683.0,
+          "l": 3555.0,
+          "c": 3589.0,
+          "v": 27774900
+        },
+        {
+          "o": 3572.0,
+          "h": 3627.0,
+          "l": 3531.0,
+          "c": 3539.0,
+          "v": 18773800
+        },
+        {
+          "o": 3522.0,
+          "h": 3642.0,
+          "l": 3515.0,
+          "c": 3565.0,
+          "v": 16765700
+        },
+        {
+          "o": 3650.0,
+          "h": 3663.0,
+          "l": 3594.0,
+          "c": 3626.0,
+          "v": 17528500
+        },
+        {
+          "o": 3666.0,
+          "h": 3758.0,
+          "l": 3645.0,
+          "c": 3721.0,
+          "v": 16362100
+        },
+        {
+          "o": 3707.0,
+          "h": 3801.0,
+          "l": 3650.0,
+          "c": 3764.0,
+          "v": 16907600
+        },
+        {
+          "o": 3790.0,
+          "h": 3809.0,
+          "l": 3726.0,
+          "c": 3762.0,
+          "v": 16354400
+        },
+        {
+          "o": 3758.0,
+          "h": 3759.0,
+          "l": 3671.0,
+          "c": 3700.0,
+          "v": 14969000
+        },
+        {
+          "o": 3750.0,
+          "h": 3912.0,
+          "l": 3727.0,
+          "c": 3912.0,
+          "v": 23873300
+        },
+        {
+          "o": 3853.0,
+          "h": 3889.0,
+          "l": 3780.0,
+          "c": 3780.0,
+          "v": 14750800
+        },
+        {
+          "o": 3711.0,
+          "h": 3758.0,
+          "l": 3703.0,
+          "c": 3718.0,
+          "v": 12306200
+        },
+        {
+          "o": 3750.0,
+          "h": 3753.0,
+          "l": 3655.0,
+          "c": 3689.0,
+          "v": 15005800
+        },
+        {
+          "o": 3742.0,
+          "h": 3813.0,
+          "l": 3733.0,
+          "c": 3777.0,
+          "v": 11934300
+        },
+        {
+          "o": 3739.0,
+          "h": 3785.0,
+          "l": 3735.0,
+          "c": 3785.0,
+          "v": 9049500
+        },
+        {
+          "o": 3837.0,
+          "h": 3880.0,
+          "l": 3814.0,
+          "c": 3850.0,
+          "v": 10615200
+        },
+        {
+          "o": 3881.0,
+          "h": 3882.0,
+          "l": 3824.0,
+          "c": 3832.0,
+          "v": 10150700
+        },
+        {
+          "o": 3818.0,
+          "h": 3907.0,
+          "l": 3814.0,
+          "c": 3878.0,
+          "v": 10709100
+        },
+        {
+          "o": 3827.0,
+          "h": 3919.0,
+          "l": 3815.0,
+          "c": 3870.0,
+          "v": 10920200
+        },
+        {
+          "o": 3882.0,
+          "h": 3968.0,
+          "l": 3875.0,
+          "c": 3928.0,
+          "v": 19537500
+        },
+        {
+          "o": 3982.0,
+          "h": 4041.0,
+          "l": 3937.0,
+          "c": 4016.0,
+          "v": 23484300
+        },
+        {
+          "o": 3990.0,
+          "h": 4070.0,
+          "l": 3961.0,
+          "c": 4046.0,
+          "v": 14344900
+        }
+      ],
+      "data_date": "2026-09-01",
+      "data_age_days": 1,
+      "chart_last_close": 4046.0,
+      "quote_verified": true,
+      "secondary_source": "Nomura/QUICK",
+      "secondary_price": 4046.0,
+      "secondary_date": "2026-09-01",
+      "secondary_verified": true,
+      "quote_status": "二経路検証済み：2026-09-01終値 4,046.00円",
+      "market_supply_score": 100,
+      "market_supply_improved": true,
+      "market_supply_status": "市場需給100点／上昇日出来高÷下落日2.02倍／安値切上げ○",
+      "last_dividend": 12.5,
+      "estimated_ex_date": "2026-09-28",
+      "dividend_days": 26,
+      "ticker": "6758.T",
+      "sector": "ゲーム・半導体",
+      "style": "both",
+      "day_bucket": null,
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": 4.97,
+      "plan": {
+        "entry": 4030,
+        "stop": 3960,
+        "target1": 4130,
+        "target2": 4175,
+        "risk": 70,
+        "tick": 5,
+        "entry_limit": 4030
+      }
+    },
+    {
+      "name": "マクニカHD（3132）",
+      "ok": true,
+      "price": 3746.0,
+      "open": 3670.0,
+      "high": 3746.0,
+      "low": 3658.0,
+      "prev_close": 3710.0,
+      "change_pct": 0.97,
+      "ret5": 9.12,
+      "ret5_prev": -4.53,
+      "ret20": 14.84,
+      "rvol": 1.2,
+      "turnover": 3979001200,
+      "atr14": 155.86,
+      "atr_pct": 4.16,
+      "ma5": 3630.4,
+      "ma20": 3586.4,
+      "ma60": 3362.5,
+      "from_ma5": 3.18,
+      "from_ma20": 4.45,
+      "touch_ma5": true,
+      "to_high20": -4.29,
+      "to_high52": -4.29,
+      "bb_upper": 3907.32,
+      "bb_lower": 3265.48,
+      "bb_width": 17.9,
+      "bb_width_change": -5.61,
+      "bb_percentile": 54.2,
+      "bb_expansion_score": 54.0,
+      "day_score": 6.37,
+      "swing_score": 10.71,
+      "stable_score": 8.87,
+      "momentum_score": 13.1,
+      "high_score": 3.8,
+      "chart": [
+        {
+          "o": 3234.0,
+          "h": 3352.0,
+          "l": 3215.0,
+          "c": 3307.0,
+          "v": 831100
+        },
+        {
+          "o": 3271.0,
+          "h": 3364.0,
+          "l": 3170.0,
+          "c": 3179.0,
+          "v": 652000
+        },
+        {
+          "o": 3081.0,
+          "h": 3199.0,
+          "l": 3077.0,
+          "c": 3115.0,
+          "v": 641100
+        },
+        {
+          "o": 3152.0,
+          "h": 3222.0,
+          "l": 3131.0,
+          "c": 3173.0,
+          "v": 537200
+        },
+        {
+          "o": 3226.0,
+          "h": 3297.0,
+          "l": 3214.0,
+          "c": 3256.0,
+          "v": 489300
+        },
+        {
+          "o": 3261.0,
+          "h": 3298.0,
+          "l": 3143.0,
+          "c": 3162.0,
+          "v": 447200
+        },
+        {
+          "o": 3178.0,
+          "h": 3255.0,
+          "l": 3125.0,
+          "c": 3253.0,
+          "v": 504300
+        },
+        {
+          "o": 3298.0,
+          "h": 3440.0,
+          "l": 3280.0,
+          "c": 3419.0,
+          "v": 751400
+        },
+        {
+          "o": 3309.0,
+          "h": 3351.0,
+          "l": 3262.0,
+          "c": 3300.0,
+          "v": 549100
+        },
+        {
+          "o": 3250.0,
+          "h": 3282.0,
+          "l": 3110.0,
+          "c": 3201.0,
+          "v": 829700
+        },
+        {
+          "o": 3216.0,
+          "h": 3293.0,
+          "l": 3143.0,
+          "c": 3284.0,
+          "v": 533600
+        },
+        {
+          "o": 3368.0,
+          "h": 3449.0,
+          "l": 3346.0,
+          "c": 3369.0,
+          "v": 589700
+        },
+        {
+          "o": 3368.0,
+          "h": 3440.0,
+          "l": 3355.0,
+          "c": 3409.0,
+          "v": 673300
+        },
+        {
+          "o": 3350.0,
+          "h": 3392.0,
+          "l": 3337.0,
+          "c": 3378.0,
+          "v": 772200
+        },
+        {
+          "o": 3440.0,
+          "h": 3692.0,
+          "l": 3359.0,
+          "c": 3579.0,
+          "v": 3617200
+        },
+        {
+          "o": 3439.0,
+          "h": 3439.0,
+          "l": 3024.0,
+          "c": 3082.0,
+          "v": 3266300
+        },
+        {
+          "o": 3125.0,
+          "h": 3138.0,
+          "l": 2902.0,
+          "c": 2954.0,
+          "v": 1588200
+        },
+        {
+          "o": 2949.5,
+          "h": 3136.0,
+          "l": 2920.0,
+          "c": 3105.0,
+          "v": 1545100
+        },
+        {
+          "o": 3289.0,
+          "h": 3480.0,
+          "l": 3264.0,
+          "c": 3295.0,
+          "v": 1959200
+        },
+        {
+          "o": 3201.0,
+          "h": 3286.0,
+          "l": 3138.0,
+          "c": 3262.0,
+          "v": 920600
+        },
+        {
+          "o": 3300.0,
+          "h": 3478.0,
+          "l": 3290.0,
+          "c": 3450.0,
+          "v": 1338100
+        },
+        {
+          "o": 3550.0,
+          "h": 3855.0,
+          "l": 3524.0,
+          "c": 3846.0,
+          "v": 1437200
+        },
+        {
+          "o": 3724.0,
+          "h": 3819.0,
+          "l": 3681.0,
+          "c": 3705.0,
+          "v": 831000
+        },
+        {
+          "o": 3716.0,
+          "h": 3721.0,
+          "l": 3531.0,
+          "c": 3621.0,
+          "v": 822200
+        },
+        {
+          "o": 3650.0,
+          "h": 3670.0,
+          "l": 3562.0,
+          "c": 3592.0,
+          "v": 699300
+        },
+        {
+          "o": 3647.0,
+          "h": 3676.0,
+          "l": 3594.0,
+          "c": 3676.0,
+          "v": 599900
+        },
+        {
+          "o": 3787.0,
+          "h": 3812.0,
+          "l": 3713.0,
+          "c": 3723.0,
+          "v": 586900
+        },
+        {
+          "o": 3735.0,
+          "h": 3914.0,
+          "l": 3734.0,
+          "c": 3798.0,
+          "v": 1067800
+        },
+        {
+          "o": 3821.0,
+          "h": 3846.0,
+          "l": 3700.0,
+          "c": 3760.0,
+          "v": 424400
+        },
+        {
+          "o": 3765.0,
+          "h": 3812.0,
+          "l": 3584.0,
+          "c": 3596.0,
+          "v": 621500
+        },
+        {
+          "o": 3430.0,
+          "h": 3438.0,
+          "l": 3272.0,
+          "c": 3285.0,
+          "v": 967000
+        },
+        {
+          "o": 3276.0,
+          "h": 3351.0,
+          "l": 3230.0,
+          "c": 3349.0,
+          "v": 828700
+        },
+        {
+          "o": 3290.0,
+          "h": 3340.0,
+          "l": 3237.0,
+          "c": 3332.0,
+          "v": 732900
+        },
+        {
+          "o": 3333.0,
+          "h": 3429.0,
+          "l": 3325.0,
+          "c": 3410.0,
+          "v": 656300
+        },
+        {
+          "o": 3390.0,
+          "h": 3460.0,
+          "l": 3338.0,
+          "c": 3433.0,
+          "v": 880800
+        },
+        {
+          "o": 3440.0,
+          "h": 3535.0,
+          "l": 3431.0,
+          "c": 3520.0,
+          "v": 1167400
+        },
+        {
+          "o": 3633.0,
+          "h": 3711.0,
+          "l": 3565.0,
+          "c": 3599.0,
+          "v": 1129800
+        },
+        {
+          "o": 3647.0,
+          "h": 3706.0,
+          "l": 3567.0,
+          "c": 3577.0,
+          "v": 993500
+        },
+        {
+          "o": 3590.0,
+          "h": 3727.0,
+          "l": 3551.0,
+          "c": 3710.0,
+          "v": 879000
+        },
+        {
+          "o": 3670.0,
+          "h": 3746.0,
+          "l": 3658.0,
+          "c": 3746.0,
+          "v": 1062200
+        }
+      ],
+      "data_date": "2026-09-01",
+      "data_age_days": 1,
+      "chart_last_close": 3746.0,
+      "quote_verified": true,
+      "secondary_source": "Nomura/QUICK",
+      "secondary_price": 3746.0,
+      "secondary_date": "2026-09-01",
+      "secondary_verified": true,
+      "quote_status": "二経路検証済み：2026-09-01終値 3,746.00円",
+      "market_supply_score": 93,
+      "market_supply_improved": true,
+      "market_supply_status": "市場需給93点／上昇日出来高÷下落日1.69倍／安値切上げ○",
+      "last_dividend": 35.0,
+      "estimated_ex_date": "2026-09-28",
+      "dividend_days": 26,
+      "ticker": "3132.T",
+      "sector": "半導体・AI",
+      "style": "both",
+      "day_bucket": null,
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": 4.37,
+      "plan": {
+        "entry": 3730,
+        "stop": 3625,
+        "target1": 3880,
+        "target2": 3950,
+        "risk": 100,
+        "tick": 5,
+        "entry_limit": 3730
+      }
+    },
+    {
+      "name": "ローム（6963）",
+      "ok": true,
+      "price": 4904.0,
+      "open": 4748.0,
+      "high": 4960.0,
+      "low": 4699.0,
+      "prev_close": 4869.0,
+      "change_pct": 0.72,
+      "ret5": 3.94,
+      "ret5_prev": -6.39,
+      "ret20": 13.31,
+      "rvol": 0.74,
+      "turnover": 12930867200,
+      "atr14": 238.36,
+      "atr_pct": 4.86,
+      "ma5": 4836.2,
+      "ma20": 4799.7,
+      "ma60": 4975.97,
+      "from_ma5": 1.4,
+      "from_ma20": 2.17,
+      "touch_ma5": true,
+      "to_high20": -8.76,
+      "to_high52": -19.59,
+      "bb_upper": 5128.71,
+      "bb_lower": 4470.69,
+      "bb_width": 13.71,
+      "bb_width_change": -9.45,
+      "bb_percentile": 2.5,
+      "bb_expansion_score": 51.0,
+      "day_score": 6.06,
+      "swing_score": 8.44,
+      "stable_score": 4.13,
+      "momentum_score": 10.33,
+      "high_score": 3.1,
+      "chart": [
+        {
+          "o": 6037.0,
+          "h": 6099.0,
+          "l": 5646.0,
+          "c": 5782.0,
+          "v": 6091900
+        },
+        {
+          "o": 5703.0,
+          "h": 5787.0,
+          "l": 5303.0,
+          "c": 5361.0,
+          "v": 5552600
+        },
+        {
+          "o": 5205.0,
+          "h": 5542.0,
+          "l": 5139.0,
+          "c": 5332.0,
+          "v": 5204300
+        },
+        {
+          "o": 5395.0,
+          "h": 5672.0,
+          "l": 5367.0,
+          "c": 5556.0,
+          "v": 6657000
+        },
+        {
+          "o": 5701.0,
+          "h": 5817.0,
+          "l": 5583.0,
+          "c": 5600.0,
+          "v": 4907700
+        },
+        {
+          "o": 5600.0,
+          "h": 5768.0,
+          "l": 5204.0,
+          "c": 5243.0,
+          "v": 4810400
+        },
+        {
+          "o": 5143.0,
+          "h": 5288.0,
+          "l": 5010.0,
+          "c": 5208.0,
+          "v": 5982400
+        },
+        {
+          "o": 5261.0,
+          "h": 5335.0,
+          "l": 5121.0,
+          "c": 5257.0,
+          "v": 3500900
+        },
+        {
+          "o": 5101.0,
+          "h": 5163.0,
+          "l": 4950.0,
+          "c": 4999.0,
+          "v": 3014800
+        },
+        {
+          "o": 4753.0,
+          "h": 4759.0,
+          "l": 4372.0,
+          "c": 4531.0,
+          "v": 6309700
+        },
+        {
+          "o": 4562.0,
+          "h": 4785.0,
+          "l": 4471.0,
+          "c": 4734.0,
+          "v": 5230500
+        },
+        {
+          "o": 4978.0,
+          "h": 5018.0,
+          "l": 4785.0,
+          "c": 4785.0,
+          "v": 5297800
+        },
+        {
+          "o": 4925.0,
+          "h": 4994.0,
+          "l": 4855.0,
+          "c": 4863.0,
+          "v": 3505200
+        },
+        {
+          "o": 4845.0,
+          "h": 4875.0,
+          "l": 4614.0,
+          "c": 4688.0,
+          "v": 3868000
+        },
+        {
+          "o": 4699.0,
+          "h": 4753.0,
+          "l": 4519.0,
+          "c": 4628.0,
+          "v": 3475800
+        },
+        {
+          "o": 4430.0,
+          "h": 4431.0,
+          "l": 4074.0,
+          "c": 4117.0,
+          "v": 5791100
+        },
+        {
+          "o": 4121.0,
+          "h": 4272.0,
+          "l": 3784.0,
+          "c": 3925.0,
+          "v": 7238800
+        },
+        {
+          "o": 3916.0,
+          "h": 4065.0,
+          "l": 3775.0,
+          "c": 3891.0,
+          "v": 7377900
+        },
+        {
+          "o": 4381.0,
+          "h": 4457.0,
+          "l": 4280.0,
+          "c": 4331.0,
+          "v": 8443500
+        },
+        {
+          "o": 4275.0,
+          "h": 4416.0,
+          "l": 4211.0,
+          "c": 4328.0,
+          "v": 5063700
+        },
+        {
+          "o": 4457.0,
+          "h": 4539.0,
+          "l": 4374.0,
+          "c": 4525.0,
+          "v": 4475700
+        },
+        {
+          "o": 4623.0,
+          "h": 4799.0,
+          "l": 4610.0,
+          "c": 4749.0,
+          "v": 6291300
+        },
+        {
+          "o": 4819.0,
+          "h": 4877.0,
+          "l": 4555.0,
+          "c": 4600.0,
+          "v": 6198200
+        },
+        {
+          "o": 4670.0,
+          "h": 4697.0,
+          "l": 4427.0,
+          "c": 4571.0,
+          "v": 3320700
+        },
+        {
+          "o": 4641.0,
+          "h": 4756.0,
+          "l": 4587.0,
+          "c": 4710.0,
+          "v": 3219800
+        },
+        {
+          "o": 4780.0,
+          "h": 4881.0,
+          "l": 4686.0,
+          "c": 4793.0,
+          "v": 3299600
+        },
+        {
+          "o": 4907.0,
+          "h": 4985.0,
+          "l": 4850.0,
+          "c": 4886.0,
+          "v": 2896900
+        },
+        {
+          "o": 5126.0,
+          "h": 5166.0,
+          "l": 4958.0,
+          "c": 5016.0,
+          "v": 5574600
+        },
+        {
+          "o": 5081.0,
+          "h": 5239.0,
+          "l": 4968.0,
+          "c": 5239.0,
+          "v": 3245400
+        },
+        {
+          "o": 5290.0,
+          "h": 5375.0,
+          "l": 5040.0,
+          "c": 5040.0,
+          "v": 3307200
+        },
+        {
+          "o": 4800.0,
+          "h": 4874.0,
+          "l": 4746.0,
+          "c": 4843.0,
+          "v": 4052100
+        },
+        {
+          "o": 4791.0,
+          "h": 4807.0,
+          "l": 4623.0,
+          "c": 4755.0,
+          "v": 3553700
+        },
+        {
+          "o": 4685.0,
+          "h": 4732.0,
+          "l": 4596.0,
+          "c": 4699.0,
+          "v": 2586300
+        },
+        {
+          "o": 4894.0,
+          "h": 4945.0,
+          "l": 4627.0,
+          "c": 4669.0,
+          "v": 3519500
+        },
+        {
+          "o": 4599.0,
+          "h": 4733.0,
+          "l": 4524.0,
+          "c": 4718.0,
+          "v": 2187500
+        },
+        {
+          "o": 4700.0,
+          "h": 4786.0,
+          "l": 4666.0,
+          "c": 4748.0,
+          "v": 1907300
+        },
+        {
+          "o": 4944.0,
+          "h": 4990.0,
+          "l": 4766.0,
+          "c": 4830.0,
+          "v": 2955000
+        },
+        {
+          "o": 4949.0,
+          "h": 4975.0,
+          "l": 4788.0,
+          "c": 4830.0,
+          "v": 2862600
+        },
+        {
+          "o": 4650.0,
+          "h": 4886.0,
+          "l": 4637.0,
+          "c": 4869.0,
+          "v": 3611500
+        },
+        {
+          "o": 4748.0,
+          "h": 4960.0,
+          "l": 4699.0,
+          "c": 4904.0,
+          "v": 2636800
+        }
+      ],
+      "data_date": "2026-09-01",
+      "data_age_days": 1,
+      "chart_last_close": 4904.0,
+      "quote_verified": true,
+      "secondary_source": "Nomura/QUICK",
+      "secondary_price": 4904.0,
+      "secondary_date": "2026-09-01",
+      "secondary_verified": true,
+      "quote_status": "二経路検証済み：2026-09-01終値 4,904.00円",
+      "market_supply_score": 83,
+      "market_supply_improved": true,
+      "market_supply_status": "市場需給83点／上昇日出来高÷下落日1.43倍／安値切上げ○",
+      "last_dividend": 25.0,
+      "estimated_ex_date": "2026-09-28",
+      "dividend_days": 26,
+      "ticker": "6963.T",
+      "sector": "半導体・AI",
+      "style": "both",
+      "day_bucket": null,
+      "rotation_group": "AI・テクノロジー",
+      "material_stage": "織り込み進行",
+      "material_action": "押し目反転だけ監視",
+      "actionable_day_score": 4.06,
+      "plan": {
+        "entry": 4900,
+        "stop": 4745,
+        "target1": 5130,
+        "target2": 5240,
+        "risk": 155,
+        "tick": 5,
+        "entry_limit": 4900
+      }
     },
     {
       "name": "NEC（6701）",
@@ -35892,6 +37106,9 @@
       "style": "both",
       "day_bucket": null,
       "rotation_group": "AI・テクノロジー",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": 3.75,
       "plan": {
         "entry": 4930,
         "stop": 4810,
@@ -35900,1058 +37117,7 @@
         "risk": 120,
         "tick": 10,
         "entry_limit": 4930
-      },
-      "material_stage": "事実確認待ち",
-      "material_action": "出来高・需給確認待ち"
-    },
-    {
-      "name": "GO（581A）",
-      "ok": true,
-      "price": 4375.0,
-      "open": 4210.0,
-      "high": 4465.0,
-      "low": 4200.0,
-      "prev_close": 4335.0,
-      "change_pct": 0.92,
-      "ret5": 12.9,
-      "ret5_prev": 10.09,
-      "ret20": 51.65,
-      "rvol": 1.22,
-      "turnover": 10605437500,
-      "atr14": 251.07,
-      "atr_pct": 5.74,
-      "ma5": 4228.0,
-      "ma20": 3659.9,
-      "ma60": 3659.9,
-      "from_ma5": 3.48,
-      "from_ma20": 19.54,
-      "touch_ma5": true,
-      "to_high20": -4.48,
-      "to_high52": -4.48,
-      "bb_upper": 4492.31,
-      "bb_lower": 2827.49,
-      "bb_width": 45.49,
-      "bb_width_change": 2.68,
-      "bb_percentile": 91.4,
-      "bb_expansion_score": 41.1,
-      "day_score": 8.36,
-      "swing_score": 10.77,
-      "stable_score": 7.92,
-      "momentum_score": 12.76,
-      "high_score": 2.82,
-      "chart": [
-        {
-          "o": 2450.0,
-          "h": 2555.0,
-          "l": 2406.0,
-          "c": 2547.0,
-          "v": 3385400
-        },
-        {
-          "o": 2497.0,
-          "h": 2666.0,
-          "l": 2462.0,
-          "c": 2500.0,
-          "v": 3001300
-        },
-        {
-          "o": 2517.0,
-          "h": 2708.0,
-          "l": 2517.0,
-          "c": 2611.0,
-          "v": 3035400
-        },
-        {
-          "o": 2615.0,
-          "h": 2649.0,
-          "l": 2485.0,
-          "c": 2505.0,
-          "v": 1891300
-        },
-        {
-          "o": 2499.0,
-          "h": 2499.0,
-          "l": 2350.0,
-          "c": 2408.0,
-          "v": 2100300
-        },
-        {
-          "o": 2450.0,
-          "h": 2585.0,
-          "l": 2422.0,
-          "c": 2474.0,
-          "v": 1273200
-        },
-        {
-          "o": 2450.0,
-          "h": 2480.0,
-          "l": 2362.0,
-          "c": 2450.0,
-          "v": 2127800
-        },
-        {
-          "o": 2850.0,
-          "h": 2950.0,
-          "l": 2783.0,
-          "c": 2950.0,
-          "v": 5309400
-        },
-        {
-          "o": 2950.0,
-          "h": 3175.0,
-          "l": 2752.0,
-          "c": 2831.0,
-          "v": 11981800
-        },
-        {
-          "o": 2731.0,
-          "h": 2837.0,
-          "l": 2559.0,
-          "c": 2794.0,
-          "v": 4647400
-        },
-        {
-          "o": 2875.0,
-          "h": 2922.0,
-          "l": 2643.0,
-          "c": 2806.0,
-          "v": 3808500
-        },
-        {
-          "o": 2900.0,
-          "h": 3050.0,
-          "l": 2713.0,
-          "c": 3030.0,
-          "v": 6494200
-        },
-        {
-          "o": 3100.0,
-          "h": 3255.0,
-          "l": 2989.0,
-          "c": 3130.0,
-          "v": 4698500
-        },
-        {
-          "o": 3040.0,
-          "h": 3095.0,
-          "l": 2886.0,
-          "c": 2998.0,
-          "v": 3240500
-        },
-        {
-          "o": 3000.0,
-          "h": 3030.0,
-          "l": 2866.0,
-          "c": 2946.0,
-          "v": 2267600
-        },
-        {
-          "o": 2900.0,
-          "h": 3160.0,
-          "l": 2820.0,
-          "c": 3045.0,
-          "v": 3358000
-        },
-        {
-          "o": 3035.0,
-          "h": 3130.0,
-          "l": 2970.0,
-          "c": 3065.0,
-          "v": 1994100
-        },
-        {
-          "o": 3010.0,
-          "h": 3060.0,
-          "l": 2957.0,
-          "c": 2964.0,
-          "v": 1593900
-        },
-        {
-          "o": 2964.0,
-          "h": 2988.0,
-          "l": 2750.0,
-          "c": 2815.0,
-          "v": 2881900
-        },
-        {
-          "o": 2815.0,
-          "h": 2932.0,
-          "l": 2758.0,
-          "c": 2885.0,
-          "v": 1515900
-        },
-        {
-          "o": 2880.0,
-          "h": 2921.0,
-          "l": 2828.0,
-          "c": 2878.0,
-          "v": 897300
-        },
-        {
-          "o": 2903.0,
-          "h": 3090.0,
-          "l": 2894.0,
-          "c": 3080.0,
-          "v": 1627200
-        },
-        {
-          "o": 3080.0,
-          "h": 3195.0,
-          "l": 3020.0,
-          "c": 3155.0,
-          "v": 1589100
-        },
-        {
-          "o": 3100.0,
-          "h": 3320.0,
-          "l": 3045.0,
-          "c": 3290.0,
-          "v": 2509000
-        },
-        {
-          "o": 3400.0,
-          "h": 3650.0,
-          "l": 3400.0,
-          "c": 3645.0,
-          "v": 2780400
-        },
-        {
-          "o": 3645.0,
-          "h": 3765.0,
-          "l": 3510.0,
-          "c": 3605.0,
-          "v": 2080400
-        },
-        {
-          "o": 3600.0,
-          "h": 3690.0,
-          "l": 3460.0,
-          "c": 3475.0,
-          "v": 1289000
-        },
-        {
-          "o": 3460.0,
-          "h": 3620.0,
-          "l": 3430.0,
-          "c": 3600.0,
-          "v": 1441400
-        },
-        {
-          "o": 3655.0,
-          "h": 3690.0,
-          "l": 3405.0,
-          "c": 3455.0,
-          "v": 1244100
-        },
-        {
-          "o": 3525.0,
-          "h": 3580.0,
-          "l": 3425.0,
-          "c": 3520.0,
-          "v": 1000100
-        },
-        {
-          "o": 3500.0,
-          "h": 3530.0,
-          "l": 3320.0,
-          "c": 3395.0,
-          "v": 1337600
-        },
-        {
-          "o": 3455.0,
-          "h": 3620.0,
-          "l": 3385.0,
-          "c": 3575.0,
-          "v": 1328500
-        },
-        {
-          "o": 3590.0,
-          "h": 3670.0,
-          "l": 3530.0,
-          "c": 3640.0,
-          "v": 1170500
-        },
-        {
-          "o": 3690.0,
-          "h": 3920.0,
-          "l": 3535.0,
-          "c": 3870.0,
-          "v": 2727900
-        },
-        {
-          "o": 3800.0,
-          "h": 3960.0,
-          "l": 3770.0,
-          "c": 3875.0,
-          "v": 2063400
-        },
-        {
-          "o": 3900.0,
-          "h": 3925.0,
-          "l": 3790.0,
-          "c": 3835.0,
-          "v": 1054100
-        },
-        {
-          "o": 3950.0,
-          "h": 4230.0,
-          "l": 3870.0,
-          "c": 4150.0,
-          "v": 3220500
-        },
-        {
-          "o": 4140.0,
-          "h": 4490.0,
-          "l": 4060.0,
-          "c": 4445.0,
-          "v": 4100300
-        },
-        {
-          "o": 4450.0,
-          "h": 4580.0,
-          "l": 4310.0,
-          "c": 4335.0,
-          "v": 4008100
-        },
-        {
-          "o": 4210.0,
-          "h": 4465.0,
-          "l": 4200.0,
-          "c": 4375.0,
-          "v": 2424100
-        }
-      ],
-      "data_date": "2026-09-01",
-      "data_age_days": 1,
-      "chart_last_close": 4375.0,
-      "quote_verified": true,
-      "secondary_source": "Nomura/QUICK",
-      "secondary_price": 4375.0,
-      "secondary_date": "2026-09-01",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-09-01終値 4,375.00円",
-      "market_supply_score": 100,
-      "market_supply_improved": true,
-      "market_supply_status": "市場需給100点／上昇日出来高÷下落日2.54倍／安値切上げ○",
-      "last_dividend": 0,
-      "estimated_ex_date": null,
-      "dividend_days": null,
-      "ticker": "581A.T",
-      "sector": "MaaS・成長株",
-      "style": "both",
-      "day_bucket": "IPO・グロース",
-      "rotation_group": "自動車・モビリティ",
-      "plan": {
-        "entry": 4365,
-        "stop": 4200,
-        "target1": 4610,
-        "target2": 4725,
-        "risk": 165,
-        "tick": 5,
-        "entry_limit": 4365
-      },
-      "material_stage": "材料出尽くし警戒",
-      "material_action": "初押し反転まで買い禁止",
-      "actionable_day_score": -21.64
-    },
-    {
-      "name": "富士通（6702）",
-      "ok": true,
-      "price": 3947.0,
-      "open": 3915.0,
-      "high": 3991.0,
-      "low": 3900.0,
-      "prev_close": 3869.0,
-      "change_pct": 2.02,
-      "ret5": 5.87,
-      "ret5_prev": 3.53,
-      "ret20": 12.77,
-      "rvol": 0.91,
-      "turnover": 23014562300,
-      "atr14": 117.29,
-      "atr_pct": 2.97,
-      "ma5": 3837.8,
-      "ma20": 3703.1,
-      "ma60": 3470.45,
-      "from_ma5": 2.85,
-      "from_ma20": 6.59,
-      "touch_ma5": false,
-      "to_high20": -0.15,
-      "to_high52": -15.45,
-      "bb_upper": 3953.76,
-      "bb_lower": 3452.44,
-      "bb_width": 13.54,
-      "bb_width_change": 1.02,
-      "bb_percentile": 27.5,
-      "bb_expansion_score": 68.4,
-      "day_score": 8.03,
-      "swing_score": 9.16,
-      "stable_score": 12.21,
-      "momentum_score": 11.23,
-      "high_score": 5.36,
-      "chart": [
-        {
-          "o": 3346.0,
-          "h": 3366.0,
-          "l": 3316.0,
-          "c": 3349.0,
-          "v": 4610400
-        },
-        {
-          "o": 3350.0,
-          "h": 3415.0,
-          "l": 3340.0,
-          "c": 3392.0,
-          "v": 6628000
-        },
-        {
-          "o": 3412.0,
-          "h": 3464.0,
-          "l": 3345.0,
-          "c": 3354.0,
-          "v": 5116900
-        },
-        {
-          "o": 3295.0,
-          "h": 3400.0,
-          "l": 3290.0,
-          "c": 3392.0,
-          "v": 4760200
-        },
-        {
-          "o": 3380.0,
-          "h": 3384.0,
-          "l": 3337.0,
-          "c": 3347.0,
-          "v": 4375600
-        },
-        {
-          "o": 3323.0,
-          "h": 3343.0,
-          "l": 3297.0,
-          "c": 3308.0,
-          "v": 5011000
-        },
-        {
-          "o": 3330.0,
-          "h": 3418.0,
-          "l": 3323.0,
-          "c": 3378.0,
-          "v": 5870300
-        },
-        {
-          "o": 3270.0,
-          "h": 3290.0,
-          "l": 3182.0,
-          "c": 3218.0,
-          "v": 9877200
-        },
-        {
-          "o": 3200.0,
-          "h": 3294.0,
-          "l": 3191.0,
-          "c": 3257.0,
-          "v": 11778100
-        },
-        {
-          "o": 3315.0,
-          "h": 3366.0,
-          "l": 3250.0,
-          "c": 3298.0,
-          "v": 9646000
-        },
-        {
-          "o": 3368.0,
-          "h": 3377.0,
-          "l": 3296.0,
-          "c": 3309.0,
-          "v": 6898400
-        },
-        {
-          "o": 3181.0,
-          "h": 3318.0,
-          "l": 3181.0,
-          "c": 3311.0,
-          "v": 7980100
-        },
-        {
-          "o": 3266.0,
-          "h": 3280.0,
-          "l": 3221.0,
-          "c": 3244.0,
-          "v": 6480900
-        },
-        {
-          "o": 3240.0,
-          "h": 3288.0,
-          "l": 3216.0,
-          "c": 3279.0,
-          "v": 4380600
-        },
-        {
-          "o": 3349.0,
-          "h": 3482.0,
-          "l": 3336.0,
-          "c": 3482.0,
-          "v": 9088900
-        },
-        {
-          "o": 3523.0,
-          "h": 3700.0,
-          "l": 3512.0,
-          "c": 3700.0,
-          "v": 18062000
-        },
-        {
-          "o": 3754.0,
-          "h": 3846.0,
-          "l": 3651.0,
-          "c": 3844.0,
-          "v": 17422500
-        },
-        {
-          "o": 3888.0,
-          "h": 3928.0,
-          "l": 3765.0,
-          "c": 3902.0,
-          "v": 13615600
-        },
-        {
-          "o": 3512.0,
-          "h": 3722.0,
-          "l": 3511.0,
-          "c": 3659.0,
-          "v": 15852800
-        },
-        {
-          "o": 3695.0,
-          "h": 3698.0,
-          "l": 3480.0,
-          "c": 3500.0,
-          "v": 9682900
-        },
-        {
-          "o": 3511.0,
-          "h": 3520.0,
-          "l": 3395.0,
-          "c": 3436.0,
-          "v": 8850800
-        },
-        {
-          "o": 3503.0,
-          "h": 3531.0,
-          "l": 3451.0,
-          "c": 3483.0,
-          "v": 8845300
-        },
-        {
-          "o": 3518.0,
-          "h": 3591.0,
-          "l": 3496.0,
-          "c": 3579.0,
-          "v": 6566200
-        },
-        {
-          "o": 3600.0,
-          "h": 3697.0,
-          "l": 3588.0,
-          "c": 3675.0,
-          "v": 7800400
-        },
-        {
-          "o": 3720.0,
-          "h": 3757.0,
-          "l": 3648.0,
-          "c": 3719.0,
-          "v": 5577200
-        },
-        {
-          "o": 3751.0,
-          "h": 3758.0,
-          "l": 3695.0,
-          "c": 3701.0,
-          "v": 6491200
-        },
-        {
-          "o": 3700.0,
-          "h": 3752.0,
-          "l": 3663.0,
-          "c": 3750.0,
-          "v": 5329100
-        },
-        {
-          "o": 3800.0,
-          "h": 3924.0,
-          "l": 3779.0,
-          "c": 3841.0,
-          "v": 9198900
-        },
-        {
-          "o": 3737.0,
-          "h": 3781.0,
-          "l": 3664.0,
-          "c": 3664.0,
-          "v": 5846300
-        },
-        {
-          "o": 3630.0,
-          "h": 3676.0,
-          "l": 3592.0,
-          "c": 3601.0,
-          "v": 5871100
-        },
-        {
-          "o": 3642.0,
-          "h": 3645.0,
-          "l": 3553.0,
-          "c": 3607.0,
-          "v": 7069800
-        },
-        {
-          "o": 3711.0,
-          "h": 3777.0,
-          "l": 3707.0,
-          "c": 3743.0,
-          "v": 6982500
-        },
-        {
-          "o": 3690.0,
-          "h": 3737.0,
-          "l": 3646.0,
-          "c": 3646.0,
-          "v": 4139700
-        },
-        {
-          "o": 3670.0,
-          "h": 3741.0,
-          "l": 3664.0,
-          "c": 3700.0,
-          "v": 3256300
-        },
-        {
-          "o": 3700.0,
-          "h": 3769.0,
-          "l": 3680.0,
-          "c": 3728.0,
-          "v": 4344200
-        },
-        {
-          "o": 3730.0,
-          "h": 3785.0,
-          "l": 3707.0,
-          "c": 3716.0,
-          "v": 4152900
-        },
-        {
-          "o": 3716.0,
-          "h": 3819.0,
-          "l": 3703.0,
-          "c": 3753.0,
-          "v": 5785200
-        },
-        {
-          "o": 3848.0,
-          "h": 3953.0,
-          "l": 3844.0,
-          "c": 3904.0,
-          "v": 8703900
-        },
-        {
-          "o": 3900.0,
-          "h": 3923.0,
-          "l": 3864.0,
-          "c": 3869.0,
-          "v": 7590900
-        },
-        {
-          "o": 3915.0,
-          "h": 3991.0,
-          "l": 3900.0,
-          "c": 3947.0,
-          "v": 5830900
-        }
-      ],
-      "data_date": "2026-09-01",
-      "data_age_days": 1,
-      "chart_last_close": 3947.0,
-      "quote_verified": true,
-      "secondary_source": "Nomura/QUICK",
-      "secondary_price": 3947.0,
-      "secondary_date": "2026-09-01",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-09-01終値 3,947.00円",
-      "market_supply_score": 100,
-      "market_supply_improved": true,
-      "market_supply_status": "市場需給100点／上昇日出来高÷下落日2.50倍／安値切上げ○",
-      "last_dividend": 35.0,
-      "estimated_ex_date": "2026-09-28",
-      "dividend_days": 26,
-      "ticker": "6702.T",
-      "sector": "AI・DX",
-      "style": "both",
-      "day_bucket": null,
-      "rotation_group": "AI・テクノロジー",
-      "plan": {
-        "entry": 3885,
-        "stop": 3805,
-        "target1": 3995,
-        "target2": 4050,
-        "risk": 75,
-        "tick": 5,
-        "entry_limit": 3885
-      },
-      "material_stage": "織り込み進行",
-      "material_action": "押し目反転だけ監視",
-      "actionable_day_score": 6.03
-    },
-    {
-      "name": "日東電工（6988）",
-      "ok": true,
-      "price": 3580.0,
-      "open": 3510.0,
-      "high": 3594.0,
-      "low": 3470.0,
-      "prev_close": 3512.0,
-      "change_pct": 1.94,
-      "ret5": 5.89,
-      "ret5_prev": -2.4,
-      "ret20": 6.9,
-      "rvol": 0.87,
-      "turnover": 7935070000,
-      "atr14": 86.21,
-      "atr_pct": 2.41,
-      "ma5": 3475.2,
-      "ma20": 3468.7,
-      "ma60": 3297.33,
-      "from_ma5": 3.02,
-      "from_ma20": 3.21,
-      "touch_ma5": true,
-      "to_high20": -1.27,
-      "to_high52": -12.0,
-      "bb_upper": 3611.0,
-      "bb_lower": 3326.4,
-      "bb_width": 8.2,
-      "bb_width_change": -0.51,
-      "bb_percentile": 14.2,
-      "bb_expansion_score": 72.9,
-      "day_score": 7.92,
-      "swing_score": 7.66,
-      "stable_score": 11.11,
-      "momentum_score": 10.46,
-      "high_score": 5.31,
-      "chart": [
-        {
-          "o": 3237.0,
-          "h": 3238.0,
-          "l": 3184.0,
-          "c": 3231.0,
-          "v": 1999000
-        },
-        {
-          "o": 3240.0,
-          "h": 3247.0,
-          "l": 3203.0,
-          "c": 3213.0,
-          "v": 3156500
-        },
-        {
-          "o": 3196.0,
-          "h": 3200.0,
-          "l": 3136.0,
-          "c": 3136.0,
-          "v": 3162200
-        },
-        {
-          "o": 3125.0,
-          "h": 3150.0,
-          "l": 3105.0,
-          "c": 3130.0,
-          "v": 2361800
-        },
-        {
-          "o": 3133.0,
-          "h": 3198.0,
-          "l": 3130.0,
-          "c": 3193.0,
-          "v": 3070500
-        },
-        {
-          "o": 3224.0,
-          "h": 3239.0,
-          "l": 3153.0,
-          "c": 3221.0,
-          "v": 3095800
-        },
-        {
-          "o": 3249.0,
-          "h": 3364.0,
-          "l": 3222.0,
-          "c": 3324.0,
-          "v": 4007600
-        },
-        {
-          "o": 3352.0,
-          "h": 3367.0,
-          "l": 3279.0,
-          "c": 3323.0,
-          "v": 2620400
-        },
-        {
-          "o": 3300.0,
-          "h": 3355.0,
-          "l": 3273.0,
-          "c": 3315.0,
-          "v": 2847100
-        },
-        {
-          "o": 3300.0,
-          "h": 3338.0,
-          "l": 3201.0,
-          "c": 3222.0,
-          "v": 3899100
-        },
-        {
-          "o": 3319.0,
-          "h": 3324.0,
-          "l": 3260.0,
-          "c": 3284.0,
-          "v": 3831900
-        },
-        {
-          "o": 3283.0,
-          "h": 3324.0,
-          "l": 3270.0,
-          "c": 3294.0,
-          "v": 2737200
-        },
-        {
-          "o": 3301.0,
-          "h": 3338.0,
-          "l": 3286.0,
-          "c": 3318.0,
-          "v": 2268800
-        },
-        {
-          "o": 3280.0,
-          "h": 3344.0,
-          "l": 3256.0,
-          "c": 3322.0,
-          "v": 3194900
-        },
-        {
-          "o": 3406.0,
-          "h": 3471.0,
-          "l": 3360.0,
-          "c": 3451.0,
-          "v": 4326900
-        },
-        {
-          "o": 3493.0,
-          "h": 3502.0,
-          "l": 3400.0,
-          "c": 3446.0,
-          "v": 5219300
-        },
-        {
-          "o": 3572.0,
-          "h": 3630.0,
-          "l": 3483.0,
-          "c": 3549.0,
-          "v": 6117300
-        },
-        {
-          "o": 3547.0,
-          "h": 3578.0,
-          "l": 3354.0,
-          "c": 3442.0,
-          "v": 4250300
-        },
-        {
-          "o": 3452.0,
-          "h": 3452.0,
-          "l": 3273.0,
-          "c": 3325.0,
-          "v": 5790000
-        },
-        {
-          "o": 3395.0,
-          "h": 3415.0,
-          "l": 3254.0,
-          "c": 3349.0,
-          "v": 4221300
-        },
-        {
-          "o": 3360.0,
-          "h": 3408.0,
-          "l": 3316.0,
-          "c": 3374.0,
-          "v": 3019200
-        },
-        {
-          "o": 3377.0,
-          "h": 3437.0,
-          "l": 3377.0,
-          "c": 3420.0,
-          "v": 3303300
-        },
-        {
-          "o": 3420.0,
-          "h": 3524.0,
-          "l": 3405.0,
-          "c": 3489.0,
-          "v": 2852100
-        },
-        {
-          "o": 3477.0,
-          "h": 3548.0,
-          "l": 3470.0,
-          "c": 3517.0,
-          "v": 3758400
-        },
-        {
-          "o": 3555.0,
-          "h": 3587.0,
-          "l": 3512.0,
-          "c": 3555.0,
-          "v": 2442700
-        },
-        {
-          "o": 3604.0,
-          "h": 3626.0,
-          "l": 3544.0,
-          "c": 3575.0,
-          "v": 2554400
-        },
-        {
-          "o": 3542.0,
-          "h": 3579.0,
-          "l": 3503.0,
-          "c": 3551.0,
-          "v": 3031300
-        },
-        {
-          "o": 3551.0,
-          "h": 3604.0,
-          "l": 3524.0,
-          "c": 3577.0,
-          "v": 3251500
-        },
-        {
-          "o": 3556.0,
-          "h": 3562.0,
-          "l": 3456.0,
-          "c": 3476.0,
-          "v": 1939300
-        },
-        {
-          "o": 3467.0,
-          "h": 3492.0,
-          "l": 3451.0,
-          "c": 3464.0,
-          "v": 2129400
-        },
-        {
-          "o": 3439.0,
-          "h": 3445.0,
-          "l": 3347.0,
-          "c": 3359.0,
-          "v": 2729400
-        },
-        {
-          "o": 3415.0,
-          "h": 3513.0,
-          "l": 3410.0,
-          "c": 3439.0,
-          "v": 3002800
-        },
-        {
-          "o": 3384.0,
-          "h": 3441.0,
-          "l": 3384.0,
-          "c": 3414.0,
-          "v": 2230900
-        },
-        {
-          "o": 3392.0,
-          "h": 3426.0,
-          "l": 3371.0,
-          "c": 3407.0,
-          "v": 1119200
-        },
-        {
-          "o": 3402.0,
-          "h": 3419.0,
-          "l": 3366.0,
-          "c": 3381.0,
-          "v": 1422400
-        },
-        {
-          "o": 3370.0,
-          "h": 3419.0,
-          "l": 3347.0,
-          "c": 3392.0,
-          "v": 1822900
-        },
-        {
-          "o": 3420.0,
-          "h": 3430.0,
-          "l": 3386.0,
-          "c": 3421.0,
-          "v": 1784700
-        },
-        {
-          "o": 3422.0,
-          "h": 3509.0,
-          "l": 3418.0,
-          "c": 3471.0,
-          "v": 2651400
-        },
-        {
-          "o": 3410.0,
-          "h": 3512.0,
-          "l": 3390.0,
-          "c": 3512.0,
-          "v": 3552100
-        },
-        {
-          "o": 3510.0,
-          "h": 3594.0,
-          "l": 3470.0,
-          "c": 3580.0,
-          "v": 2216500
-        }
-      ],
-      "data_date": "2026-09-01",
-      "data_age_days": 1,
-      "chart_last_close": 3580.0,
-      "quote_verified": true,
-      "secondary_source": "Nomura/QUICK",
-      "secondary_price": 3580.0,
-      "secondary_date": "2026-09-01",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-09-01終値 3,580.00円",
-      "market_supply_score": 100,
-      "market_supply_improved": true,
-      "market_supply_status": "市場需給100点／上昇日出来高÷下落日2.27倍／安値切上げ○",
-      "last_dividend": 30.0,
-      "estimated_ex_date": "2026-09-28",
-      "dividend_days": 26,
-      "ticker": "6988.T",
-      "sector": "電子材料・AI",
-      "style": "both",
-      "day_bucket": null,
-      "rotation_group": "AI・テクノロジー",
-      "plan": {
-        "entry": 3520,
-        "stop": 3465,
-        "target1": 3605,
-        "target2": 3645,
-        "risk": 55,
-        "tick": 5,
-        "entry_limit": 3520
-      },
-      "material_stage": "事実確認待ち",
-      "material_action": "出来高・需給確認待ち"
+      }
     }
   ],
   "day_ifo_candidates": [],
@@ -37060,7 +37226,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "マネーゲーム／IPO 2＋SaaS／AIソフト 2＋当日資金最上位 1",
-    "credit_supply_updated_at": "2026-09-02 07:57:56 JST",
+    "credit_supply_updated_at": "2026-09-02 08:34:46 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -38445,6 +38611,9 @@
         "style": "both",
         "day_bucket": null,
         "rotation_group": "AI・テクノロジー",
+        "material_stage": "織り込み進行",
+        "material_action": "押し目反転だけ監視",
+        "actionable_day_score": -1.19,
         "plan": {
           "entry": 17570,
           "stop": 17170,
@@ -40177,6 +40346,9 @@
         "style": "both",
         "day_bucket": null,
         "rotation_group": "AI・テクノロジー",
+        "material_stage": "織り込み進行",
+        "material_action": "押し目反転だけ監視",
+        "actionable_day_score": 4.97,
         "plan": {
           "entry": 4030,
           "stop": 3960,
@@ -42603,6 +42775,9 @@
         "style": "both",
         "day_bucket": "テーマ・マネーゲーム",
         "rotation_group": "その他",
+        "material_stage": "材料出尽くし警戒",
+        "material_action": "飛び乗り禁止・初押し反転待ち",
+        "actionable_day_score": -24.9,
         "plan": {
           "entry": 2665,
           "stop": 2544,
@@ -42949,6 +43124,9 @@
         "style": "both",
         "day_bucket": "IPO・グロース",
         "rotation_group": "自動車・モビリティ",
+        "material_stage": "材料出尽くし警戒",
+        "material_action": "飛び乗り禁止・初押し反転待ち",
+        "actionable_day_score": -21.64,
         "plan": {
           "entry": 4365,
           "stop": 4200,
@@ -43030,7 +43208,7 @@
     "rate_view": "金利上昇：高PERグロースに逆風",
     "rate5": 3.38,
     "breadth": "2/11",
-    "spread": 8.2,
+    "spread": 9.2,
     "us_sectors": [
       {
         "sector": "エネルギー",
@@ -43069,11 +43247,11 @@
         "sector": "公益",
         "ticker": "XLU",
         "phase": "流出",
-        "score": 34.6,
-        "rel5": -1.45,
-        "rel20": -3.92,
-        "acceleration": -1.03,
-        "from_ma20": -2.06,
+        "score": 36.0,
+        "rel5": -1.25,
+        "rel20": -4.47,
+        "acceleration": -0.27,
+        "from_ma20": -2.21,
         "action": "新規ロング停止"
       },
       {
@@ -43088,17 +43266,6 @@
         "action": "新規ロング停止"
       },
       {
-        "sector": "生活必需品",
-        "ticker": "XLP",
-        "phase": "流出",
-        "score": 33.5,
-        "rel5": -1.19,
-        "rel20": -0.55,
-        "acceleration": -3.48,
-        "from_ma20": -0.38,
-        "action": "新規ロング停止"
-      },
-      {
         "sector": "金融",
         "ticker": "XLF",
         "phase": "流出",
@@ -43110,25 +43277,36 @@
         "action": "新規ロング停止"
       },
       {
-        "sector": "資本財・工業",
-        "ticker": "XLI",
-        "phase": "流出",
-        "score": 24.8,
-        "rel5": -2.9,
-        "rel20": -7.74,
-        "acceleration": -1.27,
-        "from_ma20": -5.05,
-        "action": "新規ロング停止"
-      },
-      {
         "sector": "素材",
         "ticker": "XLB",
         "phase": "流出",
-        "score": 23.4,
+        "score": 26.8,
         "rel5": -2.54,
-        "rel20": -0.28,
-        "acceleration": -7.21,
-        "from_ma20": -1.38,
+        "rel20": 1.67,
+        "acceleration": -6.3,
+        "from_ma20": -1.27,
+        "action": "新規ロング停止"
+      },
+      {
+        "sector": "資本財・工業",
+        "ticker": "XLI",
+        "phase": "流出",
+        "score": 26.5,
+        "rel5": -3.22,
+        "rel20": -6.1,
+        "acceleration": -0.48,
+        "from_ma20": -5.29,
+        "action": "新規ロング停止"
+      },
+      {
+        "sector": "生活必需品",
+        "ticker": "XLP",
+        "phase": "流出",
+        "score": 24.8,
+        "rel5": -2.24,
+        "rel20": 0.05,
+        "acceleration": -6.7,
+        "from_ma20": -0.37,
         "action": "新規ロング停止"
       },
       {
@@ -43361,25 +43539,12 @@
     ],
     "picks": [
       {
-        "name": "ティアフォー（593A）",
-        "sector": "その他",
-        "phase": "拡大",
-        "score": 100,
-        "plan": {
-          "entry": 2424,
-          "stop": 2288,
-          "target1": 2627,
-          "target2": 2722,
-          "risk": 136,
-          "tick": 1
-        },
-        "reason": "その他が拡大／TOPIX比5日 +11.28%／出来高比 6.06倍"
-      },
-      {
         "name": "HENNGE（4475）",
         "sector": "その他",
         "phase": "拡大",
-        "score": 100,
+        "score": 95,
+        "material_stage": "期待形成中",
+        "material_action": "高値追い禁止・発動足待ち",
         "plan": {
           "entry": 1713,
           "stop": 1660,
@@ -43391,55 +43556,12 @@
         "reason": "その他が拡大／TOPIX比5日 +11.28%／出来高比 0.63倍"
       },
       {
-        "name": "freee（4478）",
-        "sector": "その他",
-        "phase": "拡大",
-        "score": 100,
-        "plan": {
-          "entry": 4215,
-          "stop": 4045,
-          "target1": 4475,
-          "target2": 4595,
-          "risk": 170,
-          "tick": 5
-        },
-        "reason": "その他が拡大／TOPIX比5日 +11.28%／出来高比 1.41倍"
-      },
-      {
-        "name": "Terra Drone（278A）",
-        "sector": "その他",
-        "phase": "拡大",
-        "score": 100,
-        "plan": {
-          "entry": 18000,
-          "stop": 16780,
-          "target1": 19830,
-          "target2": 20680,
-          "risk": 1220,
-          "tick": 10
-        },
-        "reason": "その他が拡大／TOPIX比5日 +11.28%／出来高比 2.57倍"
-      },
-      {
-        "name": "アイサンテクノロジー（4667）",
-        "sector": "その他",
-        "phase": "拡大",
-        "score": 100,
-        "plan": {
-          "entry": 2665,
-          "stop": 2544,
-          "target1": 2847,
-          "target2": 2931,
-          "risk": 121,
-          "tick": 1
-        },
-        "reason": "その他が拡大／TOPIX比5日 +11.28%／出来高比 7.16倍"
-      },
-      {
         "name": "キヤノン（7751）",
         "sector": "その他",
         "phase": "拡大",
-        "score": 92,
+        "score": 87,
+        "material_stage": "事実確認待ち",
+        "material_action": "出来高・需給確認待ち",
         "plan": {
           "entry": 4685,
           "stop": 4635,
@@ -43454,7 +43576,9 @@
         "name": "パナソニックHD（6752）",
         "sector": "その他",
         "phase": "拡大",
-        "score": 92,
+        "score": 87,
+        "material_stage": "事実確認待ち",
+        "material_action": "出来高・需給確認待ち",
         "plan": {
           "entry": 4480,
           "stop": 4375,
@@ -43464,6 +43588,74 @@
           "tick": 5
         },
         "reason": "その他が拡大／TOPIX比5日 +11.28%／出来高比 0.82倍"
+      },
+      {
+        "name": "マネーフォワード（3994）",
+        "sector": "その他",
+        "phase": "拡大",
+        "score": 87,
+        "material_stage": "織り込み進行",
+        "material_action": "押し目反転だけ監視",
+        "plan": {
+          "entry": 6340,
+          "stop": 6070,
+          "target1": 6730,
+          "target2": 6910,
+          "risk": 260,
+          "tick": 10
+        },
+        "reason": "その他が拡大／TOPIX比5日 +11.28%／出来高比 0.71倍"
+      },
+      {
+        "name": "住友金属鉱山（5713）",
+        "sector": "その他",
+        "phase": "拡大",
+        "score": 84,
+        "material_stage": "織り込み進行",
+        "material_action": "押し目反転だけ監視",
+        "plan": {
+          "entry": 11190,
+          "stop": 10800,
+          "target1": 11760,
+          "target2": 12040,
+          "risk": 390,
+          "tick": 10
+        },
+        "reason": "その他が拡大／TOPIX比5日 +11.28%／出来高比 0.52倍"
+      },
+      {
+        "name": "ティアフォー（593A）",
+        "sector": "その他",
+        "phase": "拡大",
+        "score": 80,
+        "material_stage": "材料出尽くし警戒",
+        "material_action": "飛び乗り禁止・初押し反転待ち",
+        "plan": {
+          "entry": 2424,
+          "stop": 2288,
+          "target1": 2627,
+          "target2": 2722,
+          "risk": 136,
+          "tick": 1
+        },
+        "reason": "その他が拡大／TOPIX比5日 +11.28%／出来高比 6.06倍"
+      },
+      {
+        "name": "アイサンテクノロジー（4667）",
+        "sector": "その他",
+        "phase": "拡大",
+        "score": 80,
+        "material_stage": "材料出尽くし警戒",
+        "material_action": "飛び乗り禁止・初押し反転待ち",
+        "plan": {
+          "entry": 2665,
+          "stop": 2544,
+          "target1": 2847,
+          "target2": 2931,
+          "risk": 121,
+          "tick": 1
+        },
+        "reason": "その他が拡大／TOPIX比5日 +11.28%／出来高比 7.16倍"
       }
     ],
     "kioxia": {
@@ -45195,7 +45387,10 @@
           "sector": "自動運転・IPO",
           "style": "day",
           "day_bucket": "IPO・グロース",
-          "rotation_group": "その他"
+          "rotation_group": "その他",
+          "material_stage": "材料出尽くし警戒",
+          "material_action": "飛び乗り禁止・初押し反転待ち",
+          "actionable_day_score": -16.5
         },
         {
           "name": "デンソー（6902）",
@@ -45907,7 +46102,10 @@
           "sector": "自動運転・高精度地図",
           "style": "both",
           "day_bucket": "テーマ・マネーゲーム",
-          "rotation_group": "その他"
+          "rotation_group": "その他",
+          "material_stage": "材料出尽くし警戒",
+          "material_action": "飛び乗り禁止・初押し反転待ち",
+          "actionable_day_score": -24.9
         }
       ],
       "priority": 2
@@ -46273,7 +46471,10 @@
           "sector": "AI・DX",
           "style": "both",
           "day_bucket": null,
-          "rotation_group": "AI・テクノロジー"
+          "rotation_group": "AI・テクノロジー",
+          "material_stage": "事実確認待ち",
+          "material_action": "出来高・需給確認待ち",
+          "actionable_day_score": 3.75
         },
         {
           "name": "FRONTEO（2158）",
@@ -46995,7 +47196,10 @@
           "sector": "半導体・AI",
           "style": "day",
           "day_bucket": null,
-          "rotation_group": "AI・テクノロジー"
+          "rotation_group": "AI・テクノロジー",
+          "material_stage": "事実確認待ち",
+          "material_action": "出来高・需給確認待ち",
+          "actionable_day_score": 0.54
         },
         {
           "name": "アドバンテスト（6857）",
@@ -47351,7 +47555,10 @@
           "sector": "半導体・AI",
           "style": "day",
           "day_bucket": null,
-          "rotation_group": "AI・テクノロジー"
+          "rotation_group": "AI・テクノロジー",
+          "material_stage": "事実確認待ち",
+          "material_action": "出来高・需給確認待ち",
+          "actionable_day_score": -4.66
         },
         {
           "name": "東京エレクトロン（8035）",
@@ -47707,7 +47914,10 @@
           "sector": "半導体・AI",
           "style": "day",
           "day_bucket": null,
-          "rotation_group": "AI・テクノロジー"
+          "rotation_group": "AI・テクノロジー",
+          "material_stage": "事実確認待ち",
+          "material_action": "出来高・需給確認待ち",
+          "actionable_day_score": -4.92
         },
         {
           "name": "ディスコ（6146）",
@@ -48419,7 +48629,10 @@
           "sector": "半導体・AI",
           "style": "both",
           "day_bucket": null,
-          "rotation_group": "AI・テクノロジー"
+          "rotation_group": "AI・テクノロジー",
+          "material_stage": "事実確認待ち",
+          "material_action": "出来高・需給確認待ち",
+          "actionable_day_score": -2.69
         }
       ],
       "priority": 4
@@ -49863,7 +50076,10 @@
           "sector": "蓄電池・電力",
           "style": "both",
           "day_bucket": "テーマ・マネーゲーム",
-          "rotation_group": "資本財・インフラ"
+          "rotation_group": "資本財・インフラ",
+          "material_stage": "事実確認待ち",
+          "material_action": "出来高・需給確認待ち",
+          "actionable_day_score": -7.27
         },
         {
           "name": "日立製作所（6501）",
@@ -50219,7 +50435,10 @@
           "sector": "電力・データセンター",
           "style": "both",
           "day_bucket": null,
-          "rotation_group": "資本財・インフラ"
+          "rotation_group": "資本財・インフラ",
+          "material_stage": "事実確認待ち",
+          "material_action": "出来高・需給確認待ち",
+          "actionable_day_score": 2.31
         },
         {
           "name": "富士電機（6504）",
@@ -50575,7 +50794,10 @@
           "sector": "電力・データセンター",
           "style": "both",
           "day_bucket": null,
-          "rotation_group": "資本財・インフラ"
+          "rotation_group": "資本財・インフラ",
+          "material_stage": "事実確認待ち",
+          "material_action": "出来高・需給確認待ち",
+          "actionable_day_score": -4.94
         },
         {
           "name": "住友電気工業（5802）",
@@ -50931,7 +51153,10 @@
           "sector": "電線・データセンター",
           "style": "both",
           "day_bucket": null,
-          "rotation_group": "資本財・インフラ"
+          "rotation_group": "資本財・インフラ",
+          "material_stage": "事実確認待ち",
+          "material_action": "出来高・需給確認待ち",
+          "actionable_day_score": -3.36
         }
       ],
       "priority": 6
@@ -51297,7 +51522,10 @@
           "sector": "AI・DX",
           "style": "both",
           "day_bucket": null,
-          "rotation_group": "AI・テクノロジー"
+          "rotation_group": "AI・テクノロジー",
+          "material_stage": "織り込み進行",
+          "material_action": "押し目反転だけ監視",
+          "actionable_day_score": 6.03
         },
         {
           "name": "NEC（6701）",
@@ -51653,7 +51881,10 @@
           "sector": "AI・DX",
           "style": "both",
           "day_bucket": null,
-          "rotation_group": "AI・テクノロジー"
+          "rotation_group": "AI・テクノロジー",
+          "material_stage": "事実確認待ち",
+          "material_action": "出来高・需給確認待ち",
+          "actionable_day_score": 3.75
         },
         {
           "name": "NTT（9432）",
@@ -54429,6 +54660,9 @@
       "style": "both",
       "day_bucket": null,
       "rotation_group": "AI・テクノロジー",
+      "material_stage": "事実確認待ち",
+      "material_action": "出来高・需給確認待ち",
+      "actionable_day_score": 2.92,
       "plan": {
         "entry": 3520,
         "stop": 3465,
@@ -54441,52 +54675,16 @@
   ],
   "morning_snapshot": {
     "date": "2026-09-02",
-    "fixed_at": "2026-09-02 07:58:08 JST",
+    "fixed_at": "2026-09-02 08:34:57 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-09-02",
-    "fixed_at": "2026-09-02 07:58:58 JST",
+    "fixed_at": "2026-09-02 08:35:27 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
-      {
-        "name": "ティアフォー（593A）",
-        "ticker": "593A.T",
-        "side": "LONG",
-        "score": 95.0,
-        "entry": 2424,
-        "entry_limit": 2424,
-        "stop": 2288,
-        "target1": 2627,
-        "target2": 2722,
-        "morning_price": 2539.0
-      },
-      {
-        "name": "NEC（6701）",
-        "ticker": "6701.T",
-        "side": "LONG",
-        "score": 95.0,
-        "entry": 4930,
-        "entry_limit": 4930,
-        "stop": 4810,
-        "target1": 5100,
-        "target2": 5180,
-        "morning_price": 5005.0
-      },
-      {
-        "name": "GO（581A）",
-        "ticker": "581A.T",
-        "side": "LONG",
-        "score": 95.0,
-        "entry": 4365,
-        "entry_limit": 4365,
-        "stop": 4200,
-        "target1": 4610,
-        "target2": 4725,
-        "morning_price": 4375.0
-      },
       {
         "name": "富士通（6702）",
         "ticker": "6702.T",
@@ -54500,25 +54698,53 @@
         "morning_price": 3947.0
       },
       {
-        "name": "日東電工（6988）",
-        "ticker": "6988.T",
+        "name": "ソニーグループ（6758）",
+        "ticker": "6758.T",
         "side": "LONG",
-        "score": 94.0,
-        "entry": 3520,
-        "entry_limit": 3520,
-        "stop": 3465,
-        "target1": 3605,
-        "target2": 3645,
-        "morning_price": 3580.0
+        "score": 91.0,
+        "entry": 4030,
+        "entry_limit": 4030,
+        "stop": 3960,
+        "target1": 4130,
+        "target2": 4175,
+        "morning_price": 4046.0
+      },
+      {
+        "name": "マクニカHD（3132）",
+        "ticker": "3132.T",
+        "side": "LONG",
+        "score": 89.0,
+        "entry": 3730,
+        "entry_limit": 3730,
+        "stop": 3625,
+        "target1": 3880,
+        "target2": 3950,
+        "morning_price": 3746.0
+      },
+      {
+        "name": "ローム（6963）",
+        "ticker": "6963.T",
+        "side": "LONG",
+        "score": 88.0,
+        "entry": 4900,
+        "entry_limit": 4900,
+        "stop": 4745,
+        "target1": 5130,
+        "target2": 5240,
+        "morning_price": 4904.0
+      },
+      {
+        "name": "NEC（6701）",
+        "ticker": "6701.T",
+        "side": "LONG",
+        "score": 95.0,
+        "entry": 4930,
+        "entry_limit": 4930,
+        "stop": 4810,
+        "target1": 5100,
+        "target2": 5180,
+        "morning_price": 5005.0
       }
     ]
-  },
-  "morning_risk": {
-    "date": "2026-09-02",
-    "regime": "半導体・高PERグロース逆風",
-    "priority": "資源・エネルギー相対優先",
-    "nasdaq_pct": -1.03,
-    "sox_pct": -2.14,
-    "nikkei_futures_change": -1270
   }
 }

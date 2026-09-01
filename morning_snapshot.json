@@ -1,44 +1,8 @@
 {
   "date": "2026-09-02",
-  "fixed_at": "2026-09-02 07:58:58 JST",
+  "fixed_at": "2026-09-02 08:35:27 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
-    {
-      "name": "ティアフォー（593A）",
-      "ticker": "593A.T",
-      "side": "LONG",
-      "score": 95.0,
-      "entry": 2424,
-      "entry_limit": 2424,
-      "stop": 2288,
-      "target1": 2627,
-      "target2": 2722,
-      "morning_price": 2539.0
-    },
-    {
-      "name": "NEC（6701）",
-      "ticker": "6701.T",
-      "side": "LONG",
-      "score": 95.0,
-      "entry": 4930,
-      "entry_limit": 4930,
-      "stop": 4810,
-      "target1": 5100,
-      "target2": 5180,
-      "morning_price": 5005.0
-    },
-    {
-      "name": "GO（581A）",
-      "ticker": "581A.T",
-      "side": "LONG",
-      "score": 95.0,
-      "entry": 4365,
-      "entry_limit": 4365,
-      "stop": 4200,
-      "target1": 4610,
-      "target2": 4725,
-      "morning_price": 4375.0
-    },
     {
       "name": "富士通（6702）",
       "ticker": "6702.T",
@@ -52,16 +16,52 @@
       "morning_price": 3947.0
     },
     {
-      "name": "日東電工（6988）",
-      "ticker": "6988.T",
+      "name": "ソニーグループ（6758）",
+      "ticker": "6758.T",
       "side": "LONG",
-      "score": 94.0,
-      "entry": 3520,
-      "entry_limit": 3520,
-      "stop": 3465,
-      "target1": 3605,
-      "target2": 3645,
-      "morning_price": 3580.0
+      "score": 91.0,
+      "entry": 4030,
+      "entry_limit": 4030,
+      "stop": 3960,
+      "target1": 4130,
+      "target2": 4175,
+      "morning_price": 4046.0
+    },
+    {
+      "name": "マクニカHD（3132）",
+      "ticker": "3132.T",
+      "side": "LONG",
+      "score": 89.0,
+      "entry": 3730,
+      "entry_limit": 3730,
+      "stop": 3625,
+      "target1": 3880,
+      "target2": 3950,
+      "morning_price": 3746.0
+    },
+    {
+      "name": "ローム（6963）",
+      "ticker": "6963.T",
+      "side": "LONG",
+      "score": 88.0,
+      "entry": 4900,
+      "entry_limit": 4900,
+      "stop": 4745,
+      "target1": 5130,
+      "target2": 5240,
+      "morning_price": 4904.0
+    },
+    {
+      "name": "NEC（6701）",
+      "ticker": "6701.T",
+      "side": "LONG",
+      "score": 95.0,
+      "entry": 4930,
+      "entry_limit": 4930,
+      "stop": 4810,
+      "target1": 5100,
+      "target2": 5180,
+      "morning_price": 5005.0
     }
   ]
 }
