@@ -1,6 +1,67 @@
 {
   "date": "2026-09-01",
-  "fixed_at": "2026-09-01 08:28:51 JST",
+  "fixed_at": "2026-09-01 10:38:13 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
-  "candidates": []
+  "candidates": [
+    {
+      "name": "ティアフォー（593A）",
+      "ticker": "593A.T",
+      "side": "LONG",
+      "score": 95.0,
+      "entry": 2023,
+      "entry_limit": 2023,
+      "stop": 1893,
+      "target1": 2217,
+      "target2": 2308,
+      "morning_price": 2501.0
+    },
+    {
+      "name": "アイサンテクノロジー（4667）",
+      "ticker": "4667.T",
+      "side": "LONG",
+      "score": 95.0,
+      "entry": 2678,
+      "entry_limit": 2678,
+      "stop": 2585,
+      "target1": 2819,
+      "target2": 2884,
+      "morning_price": 2754.0
+    },
+    {
+      "name": "ソニーグループ（6758）",
+      "ticker": "6758.T",
+      "side": "LONG",
+      "score": 90.0,
+      "entry": 3940,
+      "entry_limit": 3940,
+      "stop": 3875,
+      "target1": 4040,
+      "target2": 4085,
+      "morning_price": 4016.0
+    },
+    {
+      "name": "リクルートHD（6098）",
+      "ticker": "6098.T",
+      "side": "LONG",
+      "score": 90.0,
+      "entry": 17870,
+      "entry_limit": 17870,
+      "stop": 17490,
+      "target1": 18440,
+      "target2": 18700,
+      "morning_price": 17880.0
+    },
+    {
+      "name": "フジクラ（5803）",
+      "ticker": "5803.T",
+      "side": "LONG",
+      "score": 89.0,
+      "entry": 5380,
+      "entry_limit": 5380,
+      "stop": 5160,
+      "target1": 5710,
+      "target2": 5870,
+      "morning_price": 5372.0
+    }
+  ]
 }
