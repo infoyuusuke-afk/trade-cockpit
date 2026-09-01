@@ -492,6 +492,25 @@ def trade_plan(r, intraday=None):
     }
 
 
+def material_lifecycle(row):
+    """Classify momentum without treating social buzz as a buy signal."""
+    ret5 = float(row.get("ret5") or 0)
+    ret20 = float(row.get("ret20") or 0)
+    rvol = float(row.get("rvol") or 0)
+    stretched = float(row.get("from_ma20") or 0)
+    if not row.get("quote_verified"):
+        return {"stage": "事実確認待ち", "action": "株価再照合まで売買禁止", "priority_penalty": 99}
+    if ret5 >= 25 or (ret5 >= 15 and rvol >= 2.5) or stretched >= 18:
+        return {"stage": "材料出尽くし警戒", "action": "飛び乗り禁止・初押し反転待ち", "priority_penalty": 30}
+    if ret5 >= 10 or rvol >= 1.8:
+        return {"stage": "期待形成中", "action": "高値追い禁止・発動足待ち", "priority_penalty": 8}
+    if rvol >= 1.25 and 0 <= ret5 <= 10:
+        return {"stage": "先回り候補", "action": "OR15・VWAP一致で発動", "priority_penalty": 0}
+    if ret20 >= 8:
+        return {"stage": "織り込み進行", "action": "押し目反転だけ監視", "priority_penalty": 2}
+    return {"stage": "事実確認待ち", "action": "出来高・需給確認待ち", "priority_penalty": 5}
+
+
 def expectation_score(r, earnings=False):
     score = 0
     score += 20 if r["turnover"] >= 10_000_000_000 else 14 if r["turnover"] >= 3_000_000_000 else 8
@@ -897,15 +916,19 @@ def build_sector_rotation(indices, valid):
         if not group_row or row.get("turnover", 0) < 500_000_000:
             continue
         stock_rel5 = row.get("ret5", 0) - topix.get("ret5", 0)
+        lifecycle = material_lifecycle(row)
         score = clamp(
             group_row["score"] * .55
             + 35
             + clamp(stock_rel5, -8, 8) * 1.8
             + clamp(row.get("rvol", 1) - 1, -1, 2) * 3
+            - lifecycle["priority_penalty"]
         )
         picks.append({
             "name": name, "sector": group, "phase": group_row["phase"],
             "score": round(score),
+            "material_stage": lifecycle["stage"],
+            "material_action": lifecycle["action"],
             "plan": trade_plan(row, row.get("intraday")),
             "reason": (
                 f"{group}が{group_row['phase']}／TOPIX比5日 "
@@ -1468,10 +1491,16 @@ def main():
     )
     gunma_rare_earth_watch = gunma_rare_earth_watch[:5]
     rotation = build_sector_rotation(indices, valid)
-    day_rank = sorted(
-        [(n, r) for n, r in valid if r["style"] in ("day", "both") and r["turnover"] >= 2_000_000_000 and r.get("market_supply_improved")],
-        key=lambda x: x[1]["day_score"], reverse=True
-    )[:5]
+    day_pool = []
+    for n, r in valid:
+        if r["style"] not in ("day", "both") or r["turnover"] < 2_000_000_000 or not r.get("market_supply_improved"):
+            continue
+        lifecycle = material_lifecycle(r)
+        r["material_stage"] = lifecycle["stage"]
+        r["material_action"] = lifecycle["action"]
+        r["actionable_day_score"] = round(r["day_score"] - lifecycle["priority_penalty"], 2)
+        day_pool.append((n, r))
+    day_rank = sorted(day_pool, key=lambda x: x[1]["actionable_day_score"], reverse=True)[:5]
     swing_pool = [
         (n, r) for n, r in valid
         if r["style"] in ("swing", "both") and 500 <= r["price"] <= 30000
@@ -1818,7 +1847,7 @@ def main():
         f"<td>{phase_badge(row['phase'])}</td><td><b class='up'>{row['score']}/100</b></td>"
         f"<td>{money(row['plan']['entry'])}</td><td class='down'>{money(row['plan']['stop'])}</td>"
         f"<td>{money(row['plan']['target1'])}／{money(row['plan']['target2'])}</td>"
-        f"<td>{row['reason']}</td></tr>"
+        f"<td><b>{row.get('material_stage', '事実確認待ち')}</b>｜{row.get('material_action', '')}<br><small>{row['reason']}</small></td></tr>"
         for i, row in enumerate(rotation["picks"], 1)
     ) or "<tr><td colspan='9'>流入初期・拡大かつ流動性条件を満たす候補なし。見送りです。</td></tr>"
     kioxia_view = rotation["kioxia"]
@@ -1860,7 +1889,8 @@ def main():
         day_rows += (
             f"<tr><td>{i}</td><td>{name}</td><td>{money(r['price'])}</td><td>{money(p['entry'])}</td>"
             f"<td>{money(p['stop'])}</td><td>{money(p['target1'])}／{money(p['target2'])}</td>"
-            f"<td>{trigger}<br><small>{r.get('market_supply_status', '需給未確認')}／{shares}株・最大損失 約{max_loss:,.0f}円</small></td></tr>"
+            f"<td><b>{r.get('material_stage', '事実確認待ち')}</b>｜{r.get('material_action', trigger)}<br>"
+            f"<small>{trigger}／{r.get('market_supply_status', '需給未確認')}／{shares}株・最大損失 約{max_loss:,.0f}円</small></td></tr>"
         )
     def swing_rows(rank, kind):
         rows = ""
@@ -2110,7 +2140,7 @@ def main():
 <div class="ifo-grid">{ifo_cards}</div>
 <p class="warning">IFOは利確1と損切りの1組を入力します。利確2は翌日以降へ持ち越す判断をした場合の参考値です。本日中の決済注文は失効するため、15:20時点で未決済なら当日手仕舞い、または翌営業日用の決済OCOを自分で再設定してください。</p>
 </section>
-<section class="card wide"><h2>③ 当日狙い目銘柄 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1／2</th><th>発動条件・リスク</th></tr>{day_rows}</table><p class="warning">入口は指値の断定ではなく発動水準。VWAP・5分足・出来高を満たさなければ見送り。</p></section>
+<section class="card wide"><h2>③ 当日狙い目銘柄 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1／2</th><th>材料段階・発動条件</th></tr>{day_rows}</table><p class="warning">入口は指値の断定ではなく発動水準。材料出尽くし警戒は初押し反転まで飛び乗り禁止。VWAP・5分足・出来高を満たさなければ見送り。</p></section>
 <section class="card wide"><h2>④ 朝8:00候補のザラバ答え合わせ</h2><table><tr><th>会社名＋コード</th><th>朝イン</th><th>朝損切り</th><th>朝利確1／2</th><th>結果</th><th>終値・VWAP検証</th></tr>{review_rows}</table></section>
 <section class="card wide"><h2>⑤-A 安定上昇候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{stable_rows}</table></section>
 <section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{momentum_rows}</table><p class="warning">上向き5日線へのタッチ反発を最優先。場中の一時割れではなく終値回復を確認。終値で5日線を明確に割った場合は候補から外します。</p></section>
@@ -2484,7 +2514,8 @@ Promise.all([
   }}
   document.getElementById("kioxia-calendar-meta").textContent = (d.source || "5分足") + "／更新 " + d.updated_at + "／" + (d.current_is_today ? "本日観測 " + (d.observed_bars || 0) + "本" : (d.selection_mode || "寄り前選定"));
   document.getElementById("kio-current-type").textContent = d.current_is_today && d.current ? d.current.type + " " + signedPct(d.current.ret, 2) : "本日開始待ち";
-  document.getElementById("kio-bias").textContent = p.bias || "判定保留";
+  const riskOverlay = d.risk_overlay || {{}};
+  document.getElementById("kio-bias").textContent = riskOverlay.status ? riskOverlay.status + "｜" + (p.bias || "判定保留") : (p.bias || "判定保留");
   document.getElementById("kio-up-prob").textContent = p.up_probability == null ? "—" : Number(p.up_probability).toFixed(1) + "%";
   document.getElementById("kio-after-ret").textContent = p.expected_after_ret == null ? "—" : signedPct(p.expected_after_ret, 2);
   document.getElementById("kio-sample").textContent = (p.sample || 0) + "日";
@@ -2497,7 +2528,7 @@ Promise.all([
     document.getElementById("kio-best-score").textContent = Number(best.similarity).toFixed(1) + "%";
     document.getElementById("kio-best-path").innerHTML = miniPath(best.path, best.ret >= 0 ? "#58ddb5" : "#ff777e");
     document.getElementById("kio-best-type").textContent = best.type + "／全日 " + signedPct(best.ret,2);
-    document.getElementById("kio-best-plan").textContent = "類似日の照合後 " + signedPct(best.after_ret,2) + "、最大上振れ " + signedPct(best.max_up_after,2) + "、最大下振れ " + signedPct(best.max_down_after,2) + "。" + (p.sample < 3 ? "サンプル不足のため売買利用禁止。" : "9:15以降のローソク足確認が必須。" );
+    document.getElementById("kio-best-plan").textContent = "類似日の照合後 " + signedPct(best.after_ret,2) + "、最大上振れ " + signedPct(best.max_up_after,2) + "、最大下振れ " + signedPct(best.max_down_after,2) + "。" + (riskOverlay.action || (p.sample < 3 ? "サンプル不足のため売買利用禁止。" : "9:15以降のローソク足確認が必須。" ));
   }} else {{
     document.getElementById("kio-best-date").textContent = "選定不能";
     document.getElementById("kio-best-plan").textContent = "米国市場または5分足データ不足。推定で埋めません。";
