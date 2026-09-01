@@ -3,6 +3,10 @@ from __future__ import annotations
 
 import json
 import math
+import html
+import re
+import urllib.parse
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -17,6 +21,8 @@ CREDIT = ROOT / "credit_supply.json"
 JST = ZoneInfo("Asia/Tokyo")
 US_TICKERS = {"sndk": "SNDK", "mu": "MU", "sox": "^SOX", "nasdaq": "^IXIC"}
 US_LABELS = {"sndk": "SanDisk", "mu": "Micron", "sox": "SOX", "nasdaq": "NASDAQ"}
+UA = "Mozilla/5.0 (compatible; TradeCockpit/1.0; +https://infoyuusuke-afk.github.io/trade-cockpit/)"
+PAGE_PAYLOADS = {}
 
 
 def finite(value):
@@ -32,6 +38,101 @@ def flat(frame):
         frame.columns = frame.columns.get_level_values(0)
     frame.columns = [str(x).title() for x in frame.columns]
     return frame.dropna(subset=["Close"])
+
+
+def yahoo_embedded_payload(symbol, endpoint_fragment, page="history"):
+    """Read Yahoo's public page-embedded response when the chart API is rate limited."""
+    cache_key = (symbol, page)
+    if cache_key not in PAGE_PAYLOADS:
+        quoted = urllib.parse.quote(symbol, safe="")
+        url = f"https://finance.yahoo.com/quote/{quoted}/{page}/"
+        request = urllib.request.Request(url, headers={"User-Agent": UA, "Accept-Language": "en-US,en;q=0.8"})
+        with urllib.request.urlopen(request, timeout=45) as response:
+            source = response.read().decode("utf-8", "ignore")
+        pattern = re.compile(r'<script[^>]+data-sveltekit-fetched[^>]*>(.*?)</script>', re.S)
+        decoded = []
+        for raw in pattern.findall(source):
+            try:
+                wrapper = json.loads(html.unescape(raw))
+                body = wrapper.get("body", "")
+                decoded.append((raw, body, json.loads(body)))
+            except Exception:
+                continue
+        PAGE_PAYLOADS[cache_key] = decoded
+    for raw, body, payload in PAGE_PAYLOADS[cache_key]:
+        if endpoint_fragment in body or endpoint_fragment in raw:
+            return payload
+    return None
+
+
+def yahoo_daily_html(symbol):
+    payload = yahoo_embedded_payload(symbol, '"chart"', "history") or {}
+    result = ((payload.get("chart") or {}).get("result") or [None])[0]
+    if not result:
+        return pd.Series(dtype=float)
+    stamps = result.get("timestamp") or []
+    quotes = (((result.get("indicators") or {}).get("quote") or [{}])[0].get("close") or [])
+    if not stamps or len(stamps) != len(quotes):
+        return pd.Series(dtype=float)
+    return pd.Series(quotes, index=pd.to_datetime(stamps, unit="s", utc=True)).dropna().astype(float)
+
+
+def yahoo_latest_change(symbol):
+    payload = yahoo_embedded_payload(symbol, '"quoteSummary"', "history") or {}
+    result = ((payload.get("quoteSummary") or {}).get("result") or [None])[0]
+    price = (result or {}).get("price") or {}
+    if price.get("symbol") != symbol:
+        return None
+    value = (price.get("regularMarketChangePercent") or {}).get("raw")
+    stamp = price.get("regularMarketTime")
+    if value is None or not stamp:
+        return None
+    date = str(pd.to_datetime(stamp, unit="s", utc=True).tz_convert("America/New_York").date())
+    return date, float(value) * 100
+
+
+def yahoo_intraday_html(symbol):
+    """Fallback current 5-minute closes. Volume is deliberately left zero, never estimated."""
+    payload = yahoo_embedded_payload(symbol, '"spark"', "chart") or {}
+    responses = ((payload.get("spark") or {}).get("result") or [])
+    if not responses:
+        return pd.DataFrame()
+    response = (responses[0].get("response") or [None])[0]
+    if not response:
+        return pd.DataFrame()
+    stamps = response.get("timestamp") or []
+    closes = (((response.get("indicators") or {}).get("quote") or [{}])[0].get("close") or [])
+    if not stamps or len(stamps) != len(closes):
+        return pd.DataFrame()
+    close = pd.Series(closes, index=pd.to_datetime(stamps, unit="s", utc=True), dtype=float).dropna()
+    frame = pd.DataFrame({"Open": close, "High": close, "Low": close, "Close": close, "Volume": 0.0})
+    return frame
+
+
+def stored_sessions():
+    """Recover normalized historical paths only; no missing OHLC or volume is invented."""
+    try:
+        payload = json.loads(OUT.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    sessions = []
+    for row in payload.get("calendar", []):
+        path = row.get("path") or []
+        if len(path) < 3:
+            continue
+        close = pd.Series([100.0 * (1 + float(value) / 100) for value in path])
+        volume = pd.Series(row.get("volume_path") or [0.0] * len(close)).reindex(range(len(close))).fillna(0.0)
+        frame = pd.DataFrame({"Open": close, "High": close, "Low": close, "Close": close, "Volume": volume})
+        sessions.append((row["date"], frame))
+    return sessions
+
+
+def stored_views():
+    try:
+        payload = json.loads(OUT.read_text(encoding="utf-8"))
+        return {row["date"]: row for row in payload.get("calendar", []) if row.get("date")}
+    except Exception:
+        return {}
 
 
 def session_days(frame):
@@ -137,6 +238,27 @@ def us_market_history():
                 result.setdefault(str(pd.Timestamp(stamp).date()), {})[key] = round(float(value), 3)
         except Exception:
             continue
+    # Yahoo occasionally throttles its JSON chart endpoint. Its public quote page
+    # embeds the same completed daily series, so use it only for missing symbols.
+    for key, ticker in US_TICKERS.items():
+        if any(key in values for values in result.values()):
+            continue
+        try:
+            pct = yahoo_daily_html(ticker).pct_change() * 100
+            for stamp, value in pct.dropna().items():
+                result.setdefault(str(pd.Timestamp(stamp).date()), {})[key] = round(float(value), 3)
+        except Exception as exc:
+            print(f"{ticker} 公開ページ履歴取得失敗: {exc}")
+    # The history widget can omit the immediately preceding session for an index.
+    # QuoteSummary provides the exchange-calculated percentage, so it wins for the latest date.
+    for key, ticker in US_TICKERS.items():
+        try:
+            latest = yahoo_latest_change(ticker)
+            if latest:
+                date, value = latest
+                result.setdefault(date, {})[key] = round(value, 3)
+        except Exception as exc:
+            print(f"{ticker} 最新騰落率取得失敗: {exc}")
     return result
 
 
@@ -193,21 +315,40 @@ def supply_similarity(current, past):
 
 
 def main():
+    intraday_source = "Yahoo Finance 285A.T 5分足"
     try:
         raw = yf.download("285A.T", period="60d", interval="5m", auto_adjust=False,
                           progress=False, threads=False, timeout=45)
         frame = flat(raw)
     except Exception as exc:
-        print(f"キオクシア5分足取得失敗。前回値を保持: {exc}")
-        return
+        print(f"キオクシア5分足API取得失敗。公開ページへ切替: {exc}")
+        frame = pd.DataFrame()
+    if frame.empty:
+        try:
+            frame = yahoo_intraday_html("285A.T")
+            intraday_source = "Yahoo Finance公開ページ 285A.T 5分足終値（出来高判定なし）"
+        except Exception as exc:
+            print(f"キオクシア公開ページ取得失敗。前回正常取得足で再判定: {exc}")
+            frame = pd.DataFrame()
     sessions = session_days(frame)
     if len(sessions) < 2:
-        print("キオクシア5分足の比較可能日数が不足。前回値を保持")
-        return
-    views = [day_view(date, day) for date, day in sessions]
+        current_only = sessions[-1:] if sessions else []
+        stored = stored_sessions()
+        if current_only:
+            current_date = current_only[0][0]
+            sessions = [(date, day) for date, day in stored if date != current_date] + current_only
+        elif stored:
+            sessions = stored
+            intraday_source = "前回正常取得の285A.T 5分足（API制限時保持）"
+        if len(sessions) < 2:
+            print("キオクシア5分足の比較可能日数が不足。前回値を保持")
+            return
+    prior_views = stored_views() if "前回正常取得" in intraday_source else {}
+    views = [prior_views.get(date) or day_view(date, day) for date, day in sessions]
     current_date, current = sessions[-1]
     today = datetime.now(JST).date().isoformat()
     current_is_today = current_date == today
+    market_closed = current_is_today and datetime.now(JST).strftime("%H:%M") > "15:30"
     analysis_date = today if not current_is_today else current_date
     try:
         us_history = us_market_history()
@@ -218,7 +359,8 @@ def main():
     stock_supply = supply_data()
     current_supply = supply_at(analysis_date, stock_supply)
     # At most the available current bars; before 9:15 no direction prediction is issued.
-    observed = min(len(current), 78) if current_is_today else 0
+    observed_cap = 61 if "出来高判定なし" in intraday_source else 78
+    observed = min(len(current), observed_cap) if current_is_today else 0
     selection_mode = "米国市場＋信用需給（寄り前）" if not current_is_today else "5分足＋米国市場＋信用需給"
     matches = []
     for (date, past), view in zip(sessions[:-1], views[:-1]):
@@ -270,6 +412,9 @@ def main():
         else:
             up_prob = sum(x["after_ret"] > 0 for x in valid) / len(valid) * 100
             bias = "上方向候補" if up_prob >= 65 else "下方向候補" if up_prob <= 35 else "レンジ候補"
+    elif market_closed:
+        status = "大引け後・当日照合完了"
+        bias = "翌営業日の米国市場確定待ち"
     elif len(current) < 4:
         status = "9:15まで判定保留"
         bias = "判定保留"
@@ -280,11 +425,11 @@ def main():
         status = "類似日あり"
         up_prob = sum(x["after_ret"] > 0 for x in valid) / len(valid) * 100
         bias = "上方向優位" if up_prob >= 65 else "下方向優位" if up_prob <= 35 else "レンジ優位"
-    up_prob = (sum(x["after_ret"] > 0 for x in valid) / len(valid) * 100) if valid else None
-    current_view = day_view(current_date, current)
+    up_prob = (sum(x["after_ret"] > 0 for x in valid) / len(valid) * 100) if valid and not market_closed else None
+    current_view = prior_views.get(current_date) or day_view(current_date, current)
     output = {
         "updated_at": datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S JST"),
-        "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
+        "source": intraday_source + "（取得可能な直近60日）",
         "calendar": views[-25:], "current": current_view,
         "current_is_today": current_is_today,
         "analysis_date": analysis_date,
@@ -296,9 +441,9 @@ def main():
         "prediction": {
             "status": status, "bias": bias,
             "up_probability": round(up_prob, 1) if up_prob is not None else None,
-            "expected_after_ret": round(float(np.mean([x["after_ret"] for x in valid])), 2) if valid else None,
-            "expected_max_up": round(float(np.mean([x["max_up_after"] for x in valid])), 2) if valid else None,
-            "expected_max_down": round(float(np.mean([x["max_down_after"] for x in valid])), 2) if valid else None,
+            "expected_after_ret": round(float(np.mean([x["after_ret"] for x in valid])), 2) if valid and not market_closed else None,
+            "expected_max_up": round(float(np.mean([x["max_up_after"] for x in valid])), 2) if valid and not market_closed else None,
+            "expected_max_down": round(float(np.mean([x["max_down_after"] for x in valid])), 2) if valid and not market_closed else None,
             "sample": len(valid),
         },
         "rule": "寄り前は前夜のSanDisk・Micron・SOX・NASDAQと信用需給で事前類似日を選定。9:15以降は当日5分足を65%へ引き上げる。類似度60%以上が3日未満なら見送り。OR15・VWAP・EMA9/20・出来高の4/5一致が最終条件。",
