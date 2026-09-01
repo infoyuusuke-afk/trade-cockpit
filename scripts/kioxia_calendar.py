@@ -426,6 +426,22 @@ def main():
         up_prob = sum(x["after_ret"] > 0 for x in valid) / len(valid) * 100
         bias = "上方向優位" if up_prob >= 65 else "下方向優位" if up_prob <= 35 else "レンジ優位"
     up_prob = (sum(x["after_ret"] > 0 for x in valid) / len(valid) * 100) if valid and not market_closed else None
+    market_values = (current_market or {}).get("values", {})
+    negative_us = sum(float(market_values.get(k) or 0) < 0 for k in ("sndk", "mu", "sox", "nasdaq"))
+    credit_bad = bool(current_supply and (
+        current_supply.get("phase") == "悪化"
+        or float(current_supply.get("ratio") or 0) >= 10
+    ))
+    if not current_is_today and negative_us == 4 and credit_bad:
+        risk_overlay = {
+            "status": "下方向リスク優勢",
+            "action": "寄り買い禁止。OR15安値割れは戻り売り、VWAP回復・OR15高値突破で無効化",
+        }
+    else:
+        risk_overlay = {
+            "status": "方向確認待ち",
+            "action": "OR15・VWAP・EMA9/20・出来高の4/5一致まで見送り",
+        }
     current_view = prior_views.get(current_date) or day_view(current_date, current)
     output = {
         "updated_at": datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S JST"),
@@ -446,6 +462,7 @@ def main():
             "expected_max_down": round(float(np.mean([x["max_down_after"] for x in valid])), 2) if valid and not market_closed else None,
             "sample": len(valid),
         },
+        "risk_overlay": risk_overlay,
         "rule": "寄り前は前夜のSanDisk・Micron・SOX・NASDAQと信用需給で事前類似日を選定。9:15以降は当日5分足を65%へ引き上げる。類似度60%以上が3日未満なら見送り。OR15・VWAP・EMA9/20・出来高の4/5一致が最終条件。",
     }
     OUT.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
