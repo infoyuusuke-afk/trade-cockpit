@@ -684,7 +684,8 @@ def build_sector_rotation(indices, valid):
     sp500 = indices.get("S&P500", {})
     topix = indices.get("TOPIX", {})
     us_rows = []
-    for sector, ticker in US_SECTOR_ETFS.items():
+    sector_items = [] if os.getenv("COCKPIT_OFFLINE_RENDER", "0") == "1" else US_SECTOR_ETFS.items()
+    for sector, ticker in sector_items:
         snap = daily_snapshot(ticker)
         if not snap.get("ok") or not sp500.get("ok"):
             continue
@@ -1314,19 +1315,26 @@ def main():
         except Exception:
             previous = {}
 
-    indices = {name: daily_snapshot(ticker) for name, ticker in config["indices"].items()}
-    stocks = {}
-    for name, meta in config["stocks"].items():
-        row = daily_snapshot(meta["ticker"])
-        row.update({
-            "ticker": meta["ticker"],
-            "sector": meta["sector"],
-            "style": meta["style"],
-            "day_bucket": meta.get("day_bucket"),
-        })
-        if intraday_mode and row.get("ok"):
-            row["intraday"] = intraday_snapshot(meta["ticker"])
-        stocks[name] = row
+    offline_render = os.getenv("COCKPIT_OFFLINE_RENDER", "0") == "1"
+    if offline_render:
+        # Rebuild the page shell (calendar/tabs/safety notices) without
+        # touching quotes. This mode never upgrades a stale quote to valid.
+        indices = previous.get("indices", {})
+        stocks = previous.get("stocks", {})
+    else:
+        indices = {name: daily_snapshot(ticker) for name, ticker in config["indices"].items()}
+        stocks = {}
+        for name, meta in config["stocks"].items():
+            row = daily_snapshot(meta["ticker"])
+            row.update({
+                "ticker": meta["ticker"],
+                "sector": meta["sector"],
+                "style": meta["style"],
+                "day_bucket": meta.get("day_bucket"),
+            })
+            if intraday_mode and row.get("ok"):
+                row["intraday"] = intraday_snapshot(meta["ticker"])
+            stocks[name] = row
 
     # A missing/stale quote produces zero candidates rather than a plausible
     # looking but wrong order ticket. This gate applies to every ranking.
@@ -1912,6 +1920,12 @@ def main():
 <h3>直近25営業日・5分足カレンダー</h3>
 <div id="kioxia-calendar-grid" class="kio-calendar"><div class="focus-empty">5分足を取得中...</div></div>
 <p class="warning"><b>使い方：</b>9:15までは判定保留。類似度60%以上が3日未満なら「見送り」です。過去類似日よりも、現在のOR15・VWAP・EMA9/20・出来高・ヒゲ反応を優先し、4/5一致しない場合は発注しません。前場引け前11:00～11:30は新規INを見送ります。</p></section>
+<section id="world-market-live" class="card wide"><h2>世界市況リアルタイム・地合い確認</h2>
+<div id="world-market-meta" class="sub">世界の株価リアルタイムチャートを検証中...</div>
+<div class="rotation-grid" id="world-market-cards"><div class="focus-empty">市場データ取得待ち</div></div>
+<table><thead><tr><th>市場</th><th>現在値</th><th>変化</th><th>更新時刻</th><th>検証</th></tr></thead>
+<tbody id="world-market-rows"><tr><td colspan="5">取得中...</td></tr></tbody></table>
+<p class="warning"><b>用途を分離：</b>世界市況・先物・為替・金利・リスク選好の確認専用です。日本の個別株価・ローソク足・発注価格には使用しません。</p></section>
 <section class="card wide"><h2>市場環境・需給・ポジション 網羅判定</h2>
 <div class="rotation-grid">
 <div class="rotation-box"><b>25日騰落レシオ</b><strong id="breadth-25">走査待ち</strong><br><span id="breadth-regime">全市場終値から算出</span></div>
@@ -2231,6 +2245,20 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("daily-reversal-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
   document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
   document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
+}});
+const worldEsc = v => String(v ?? "—").replace(/[&<>"']/g,c=>({{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}}[c]));
+fetch("world_market.json?t=" + Date.now()).then(r => r.json()).then(d => {{
+  const rows = Object.values(d.rows || {{}});
+  document.getElementById("world-market-meta").textContent = d.source + "／更新 " + d.updated_at + "／検証 " + d.verified_count + "/" + d.expected_count;
+  document.getElementById("world-market-cards").innerHTML = rows.filter(x=>x.verified).slice(0,8).map(x =>
+    "<div class='rotation-box'><b>"+worldEsc(x.name)+"</b><strong>"+Number(x.value).toLocaleString("ja-JP")+"</strong><br><span class='"+(Number(x.change_pct)>=0?"up":"down")+"'>"+(x.change_pct==null?"—":(Number(x.change_pct)>=0?"+":"")+Number(x.change_pct).toFixed(2)+"%")+"</span><br><small>"+worldEsc(x.source_stamp)+"</small></div>"
+  ).join("") || "<div class='focus-empty'>鮮度確認済みデータなし</div>";
+  document.getElementById("world-market-rows").innerHTML = rows.map(x =>
+    "<tr><td><b>"+worldEsc(x.name)+"</b></td><td>"+(x.value==null?"—":Number(x.value).toLocaleString("ja-JP"))+"</td><td class='"+(Number(x.change_pct)>=0?"up":"down")+"'>"+(x.change_pct==null?"—":(Number(x.change_pct)>=0?"+":"")+Number(x.change_pct).toFixed(2)+"%")+"</td><td>"+worldEsc(x.source_stamp)+"</td><td class='"+(x.verified?"up":"down")+"'>"+worldEsc(x.status)+"</td></tr>"
+  ).join("");
+}}).catch(() => {{
+  document.getElementById("world-market-meta").textContent = "世界市況データ取得失敗・地合い判定に使用しません";
+  document.getElementById("world-market-rows").innerHTML = "<tr><td colspan='5'>取得失敗・売買利用禁止</td></tr>";
 }});
 const eventEsc = v => String(v ?? "—").replace(/[&<>"']/g,c=>({{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}}[c]));
 fetch("event_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => {{
