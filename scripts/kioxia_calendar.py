@@ -13,7 +13,10 @@ import yfinance as yf
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "kioxia_5m_calendar.json"
+CREDIT = ROOT / "credit_supply.json"
 JST = ZoneInfo("Asia/Tokyo")
+US_TICKERS = {"sndk": "SNDK", "mu": "MU", "sox": "^SOX", "nasdaq": "^IXIC"}
+US_LABELS = {"sndk": "SanDisk", "mu": "Micron", "sox": "SOX", "nasdaq": "NASDAQ"}
 
 
 def finite(value):
@@ -120,6 +123,75 @@ def match_distance(current, past, observed):
     return distance
 
 
+def us_market_history():
+    """Return completed US-session percentage changes keyed by US date."""
+    tickers = list(US_TICKERS.values())
+    raw = yf.download(tickers, period="120d", interval="1d", auto_adjust=False,
+                      progress=False, threads=True, timeout=45)
+    result = {}
+    for key, ticker in US_TICKERS.items():
+        try:
+            close = raw["Close"][ticker] if isinstance(raw.columns, pd.MultiIndex) else raw["Close"]
+            pct = close.dropna().astype(float).pct_change() * 100
+            for stamp, value in pct.dropna().items():
+                result.setdefault(str(pd.Timestamp(stamp).date()), {})[key] = round(float(value), 3)
+        except Exception:
+            continue
+    return result
+
+
+def prior_us_context(japan_date, history):
+    eligible = [date for date in history if date < japan_date and len(history[date]) >= 3]
+    if not eligible:
+        return None
+    date = max(eligible)
+    values = history[date]
+    return {
+        "date": date,
+        "values": values,
+        "labels": {key: US_LABELS[key] for key in values},
+    }
+
+
+def market_similarity(current, past):
+    if not current or not past:
+        return None
+    scales = {"sndk": 4.0, "mu": 3.0, "sox": 2.0, "nasdaq": 1.5}
+    common = [key for key in scales if key in current["values"] and key in past["values"]]
+    if len(common) < 3:
+        return None
+    distance = math.sqrt(np.mean([
+        ((current["values"][key] - past["values"][key]) / scales[key]) ** 2
+        for key in common
+    ]))
+    return max(0.0, min(100.0, 100.0 - distance * 18.0))
+
+
+def supply_data():
+    try:
+        payload = json.loads(CREDIT.read_text(encoding="utf-8"))
+        stock = payload.get("stocks", {}).get("285A", {})
+        return stock if stock.get("verified") else {}
+    except Exception:
+        return {}
+
+
+def supply_at(date, stock):
+    rows = [x for x in stock.get("history", []) if x.get("date", "") <= date]
+    return sorted(rows, key=lambda x: x["date"])[-1] if rows else None
+
+
+def supply_similarity(current, past):
+    if not current or not past:
+        return None
+    phase_score = 100 if current.get("phase") == past.get("phase") else 78
+    cur_ratio, old_ratio = current.get("ratio"), past.get("ratio")
+    if cur_ratio and old_ratio:
+        ratio_score = max(0, 100 - abs(math.log(cur_ratio / old_ratio)) * 45)
+        return phase_score * .55 + ratio_score * .45
+    return phase_score
+
+
 def main():
     try:
         raw = yf.download("285A.T", period="60d", interval="5m", auto_adjust=False,
@@ -136,33 +208,68 @@ def main():
     current_date, current = sessions[-1]
     today = datetime.now(JST).date().isoformat()
     current_is_today = current_date == today
+    analysis_date = today if not current_is_today else current_date
+    try:
+        us_history = us_market_history()
+    except Exception as exc:
+        print(f"米国市場履歴取得失敗。5分足だけで判定: {exc}")
+        us_history = {}
+    current_market = prior_us_context(analysis_date, us_history)
+    stock_supply = supply_data()
+    current_supply = supply_at(analysis_date, stock_supply)
     # At most the available current bars; before 9:15 no direction prediction is issued.
-    observed = min(len(current), 78)
+    observed = min(len(current), 78) if current_is_today else 0
+    selection_mode = "米国市場＋信用需給（寄り前）" if not current_is_today else "5分足＋米国市場＋信用需給"
     matches = []
     for (date, past), view in zip(sessions[:-1], views[:-1]):
-        distance = match_distance(current, past, observed)
-        if distance is None:
+        path_similarity = None
+        if observed:
+            distance = match_distance(current, past, observed)
+            if distance is None:
+                continue
+            path_similarity = max(0, min(100, 100 - distance * 18))
+        past_market = prior_us_context(date, us_history)
+        us_similarity = market_similarity(current_market, past_market)
+        historical_supply = supply_at(date, stock_supply)
+        credit_similarity = supply_similarity(current_supply, historical_supply)
+        components = []
+        if path_similarity is not None:
+            components.append((path_similarity, .65))
+        if us_similarity is not None:
+            components.append((us_similarity, .25 if observed else .80))
+        if credit_similarity is not None:
+            components.append((credit_similarity, .10 if observed else .20))
+        if not components:
             continue
-        open_ = float(past["Open"].iloc[0])
-        at_match = float(past["Close"].iloc[observed - 1])
-        rest = past.iloc[observed - 1:]
+        similarity = sum(value * weight for value, weight in components) / sum(weight for _, weight in components)
+        at_match = float(past["Close"].iloc[observed - 1]) if observed else float(past["Open"].iloc[0])
+        rest = past.iloc[max(observed - 1, 0):]
         final = float(past["Close"].iloc[-1])
         after = (final / at_match - 1) * 100
         max_up = (float(rest["High"].max()) / at_match - 1) * 100
         max_down = (float(rest["Low"].min()) / at_match - 1) * 100
-        similarity = max(0, min(100, 100 - distance * 18))
         matches.append({
             **view, "similarity": round(similarity, 1),
             "after_ret": round(after, 2), "max_up_after": round(max_up, 2),
             "max_down_after": round(max_down, 2),
+            "score_components": {
+                "five_minute": round(path_similarity, 1) if path_similarity is not None else None,
+                "us_market": round(us_similarity, 1) if us_similarity is not None else None,
+                "credit_supply": round(credit_similarity, 1) if credit_similarity is not None else None,
+            },
+            "us_context": past_market,
+            "supply_context": historical_supply,
         })
     matches.sort(key=lambda x: x["similarity"], reverse=True)
     top = matches[:5]
     valid = [x for x in top if x["similarity"] >= 60]
     if not current_is_today:
-        status = "本日9:00開始待ち"
-        bias = "判定保留"
-        valid = []
+        status = "寄り前・米国市場と信用需給から事前選定"
+        if len(valid) < 3:
+            bias = "事前類似度不足・見送り"
+        else:
+            up_prob = sum(x["after_ret"] > 0 for x in valid) / len(valid) * 100
+            bias = "上方向候補" if up_prob >= 65 else "下方向候補" if up_prob <= 35 else "レンジ候補"
     elif len(current) < 4:
         status = "9:15まで判定保留"
         bias = "判定保留"
@@ -180,7 +287,12 @@ def main():
         "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
         "calendar": views[-25:], "current": current_view,
         "current_is_today": current_is_today,
+        "analysis_date": analysis_date,
         "observed_bars": observed, "matches": top,
+        "best_match": top[0] if top else None,
+        "selection_mode": selection_mode,
+        "market_context": current_market,
+        "credit_context": current_supply,
         "prediction": {
             "status": status, "bias": bias,
             "up_probability": round(up_prob, 1) if up_prob is not None else None,
@@ -189,7 +301,7 @@ def main():
             "expected_max_down": round(float(np.mean([x["max_down_after"] for x in valid])), 2) if valid else None,
             "sample": len(valid),
         },
-        "rule": "9:15までは判定保留。類似度60%以上が3日未満なら見送り。OR15・VWAP・EMA9/20・出来高の4/5一致が優先。",
+        "rule": "寄り前は前夜のSanDisk・Micron・SOX・NASDAQと信用需給で事前類似日を選定。9:15以降は当日5分足を65%へ引き上げる。類似度60%以上が3日未満なら見送り。OR15・VWAP・EMA9/20・出来高の4/5一致が最終条件。",
     }
     OUT.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
