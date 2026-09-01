@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-01 16:32:01 JST",
+  "updated_at": "2026-09-01 16:40:13 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -1424,6 +1424,37 @@
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
+      },
+      "decision": "売買の確認材料に使用"
+    },
+    {
+      "anchor": "ユアテック（1934）",
+      "anchor_ticker": "1934.T",
+      "peer": "小松製作所（6301）",
+      "peer_ticker": "6301.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.56,
+      "corr60": 0.45,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": 0.51,
+      "lead_bars": 0,
+      "bars": 300,
+      "state": "確認",
+      "confidence": 75,
+      "anchor_today": {
+        "ret": 2.5,
+        "or15": "上抜け",
+        "vwap": "上",
+        "ema": "上向き"
+      },
+      "peer_today": {
+        "ret": 1.07,
+        "or15": "レンジ内",
+        "vwap": "下",
+        "ema": "下向き"
       },
       "decision": "売買の確認材料に使用"
     },
