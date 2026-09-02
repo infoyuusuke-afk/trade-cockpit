@@ -1,43 +1,67 @@
 {
   "date": "2026-09-02",
-  "fixed_at": "2026-09-02 09:49:46 JST",
+  "fixed_at": "2026-09-02 11:41:51 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
-      "name": "富士通（6702）",
-      "ticker": "6702.T",
+      "name": "GO（581A）",
+      "ticker": "581A.T",
       "side": "LONG",
-      "score": 70.0,
-      "entry": 3845,
-      "entry_limit": 3845,
-      "stop": 3765,
-      "target1": 3960,
-      "target2": 4015,
-      "morning_price": 3829.0
+      "score": 73.0,
+      "entry": 4080,
+      "entry_limit": 4080,
+      "stop": 3915,
+      "target1": 4335,
+      "target2": 4450,
+      "morning_price": 4050.0
     },
     {
-      "name": "ソニーグループ（6758）",
-      "ticker": "6758.T",
+      "name": "リクルートHD（6098）",
+      "ticker": "6098.T",
       "side": "LONG",
       "score": 70.0,
-      "entry": 3940,
-      "entry_limit": 3940,
-      "stop": 3875,
-      "target1": 4045,
-      "target2": 4095,
-      "morning_price": 3929.0
+      "entry": 16780,
+      "entry_limit": 16780,
+      "stop": 16370,
+      "target1": 17400,
+      "target2": 17690,
+      "morning_price": 16705.0
     },
     {
-      "name": "SCREEN HD（7735）",
-      "ticker": "7735.T",
+      "name": "IHI（7013）",
+      "ticker": "7013.T",
       "side": "LONG",
       "score": 70.0,
-      "entry": 13280,
-      "entry_limit": 13280,
-      "stop": 12920,
-      "target1": 13830,
-      "target2": 14090,
-      "morning_price": 13215.0
+      "entry": 2623,
+      "entry_limit": 2623,
+      "stop": 2552,
+      "target1": 2729,
+      "target2": 2779,
+      "morning_price": 2610.0
+    },
+    {
+      "name": "ローム（6963）",
+      "ticker": "6963.T",
+      "side": "LONG",
+      "score": 70.0,
+      "entry": 4725,
+      "entry_limit": 4725,
+      "stop": 4570,
+      "target1": 4960,
+      "target2": 5065,
+      "morning_price": 4695.0
+    },
+    {
+      "name": "日東電工（6988）",
+      "ticker": "6988.T",
+      "side": "LONG",
+      "score": 70.0,
+      "entry": 3470,
+      "entry_limit": 3470,
+      "stop": 3410,
+      "target1": 3560,
+      "target2": 3600,
+      "morning_price": 3460.0
     }
   ]
 }
