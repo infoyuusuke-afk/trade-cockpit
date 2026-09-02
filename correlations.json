@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-02 16:26:50 JST",
+  "updated_at": "2026-09-02 19:01:24 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -529,6 +529,68 @@
       "decision": "売買の確認材料に使用"
     },
     {
+      "anchor": "マネーフォワード（3994）",
+      "anchor_ticker": "3994.T",
+      "peer": "freee（4478）",
+      "peer_ticker": "4478.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.75,
+      "corr60": 0.75,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": 0.7,
+      "lead_bars": 0,
+      "bars": 300,
+      "state": "確認",
+      "confidence": 87,
+      "anchor_today": {
+        "ret": -1.88,
+        "or15": "レンジ内",
+        "vwap": "上",
+        "ema": "下向き"
+      },
+      "peer_today": {
+        "ret": -1.0,
+        "or15": "レンジ内",
+        "vwap": "下",
+        "ema": "下向き"
+      },
+      "decision": "売買の確認材料に使用"
+    },
+    {
+      "anchor": "freee（4478）",
+      "anchor_ticker": "4478.T",
+      "peer": "マネーフォワード（3994）",
+      "peer_ticker": "3994.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.75,
+      "corr60": 0.75,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": 0.7,
+      "lead_bars": 0,
+      "bars": 300,
+      "state": "確認",
+      "confidence": 87,
+      "anchor_today": {
+        "ret": -1.0,
+        "or15": "レンジ内",
+        "vwap": "下",
+        "ema": "下向き"
+      },
+      "peer_today": {
+        "ret": -1.88,
+        "or15": "レンジ内",
+        "vwap": "上",
+        "ema": "下向き"
+      },
+      "decision": "売買の確認材料に使用"
+    },
+    {
       "anchor": "フジクラ（5803）",
       "anchor_ticker": "5803.T",
       "peer": "古河電気工業（5801）",
@@ -810,16 +872,16 @@
     {
       "anchor": "Sansan（4443）",
       "anchor_ticker": "4443.T",
-      "peer": "NEC（6701）",
-      "peer_ticker": "6701.T",
+      "peer": "freee（4478）",
+      "peer_ticker": "4478.T",
       "relation": "自動検出・正相関",
       "expected": "正相関",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.72,
-      "corr60": 0.66,
+      "corr20": 0.78,
+      "corr60": 0.64,
       "sample20": 20,
       "sample60": 60,
-      "intraday_corr": 0.81,
+      "intraday_corr": 0.76,
       "lead_bars": 0,
       "bars": 300,
       "state": "確認",
@@ -831,8 +893,8 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": -2.16,
-        "or15": "下抜け",
+        "ret": -1.0,
+        "or15": "レンジ内",
         "vwap": "下",
         "ema": "下向き"
       },
@@ -894,37 +956,6 @@
       },
       "peer_today": {
         "ret": -4.99,
-        "or15": "下抜け",
-        "vwap": "下",
-        "ema": "下向き"
-      },
-      "decision": "売買の確認材料に使用"
-    },
-    {
-      "anchor": "マネーフォワード（3994）",
-      "anchor_ticker": "3994.T",
-      "peer": "Sansan（4443）",
-      "peer_ticker": "4443.T",
-      "relation": "自動検出・正相関",
-      "expected": "正相関",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.77,
-      "corr60": 0.54,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": 0.8,
-      "lead_bars": 0,
-      "bars": 300,
-      "state": "確認",
-      "confidence": 85,
-      "anchor_today": {
-        "ret": -1.88,
-        "or15": "レンジ内",
-        "vwap": "上",
-        "ema": "下向き"
-      },
-      "peer_today": {
-        "ret": -3.48,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -1118,37 +1149,6 @@
       "decision": "売買の確認材料に使用"
     },
     {
-      "anchor": "プレイド（4165）",
-      "anchor_ticker": "4165.T",
-      "peer": "Sansan（4443）",
-      "peer_ticker": "4443.T",
-      "relation": "自動検出・正相関",
-      "expected": "正相関",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.62,
-      "corr60": 0.6,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": 0.67,
-      "lead_bars": 0,
-      "bars": 300,
-      "state": "確認",
-      "confidence": 82,
-      "anchor_today": {
-        "ret": 2.2,
-        "or15": "上抜け",
-        "vwap": "上",
-        "ema": "上向き"
-      },
-      "peer_today": {
-        "ret": -3.48,
-        "or15": "下抜け",
-        "vwap": "下",
-        "ema": "下向き"
-      },
-      "decision": "売買の確認材料に使用"
-    },
-    {
       "anchor": "ソフトバンクグループ（9984）",
       "anchor_ticker": "9984.T",
       "peer": "住友電気工業（5802）",
@@ -1176,6 +1176,37 @@
         "or15": "下抜け",
         "vwap": "下",
         "ema": "上向き"
+      },
+      "decision": "売買の確認材料に使用"
+    },
+    {
+      "anchor": "プレイド（4165）",
+      "anchor_ticker": "4165.T",
+      "peer": "freee（4478）",
+      "peer_ticker": "4478.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.74,
+      "corr60": 0.52,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": 0.61,
+      "lead_bars": 0,
+      "bars": 300,
+      "state": "確認",
+      "confidence": 81,
+      "anchor_today": {
+        "ret": 2.2,
+        "or15": "上抜け",
+        "vwap": "上",
+        "ema": "上向き"
+      },
+      "peer_today": {
+        "ret": -1.0,
+        "or15": "レンジ内",
+        "vwap": "下",
+        "ema": "下向き"
       },
       "decision": "売買の確認材料に使用"
     },
@@ -1486,37 +1517,6 @@
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
-      },
-      "decision": "売買の確認材料に使用"
-    },
-    {
-      "anchor": "ペプチドリーム（4587）",
-      "anchor_ticker": "4587.T",
-      "peer": "FRONTEO（2158）",
-      "peer_ticker": "2158.T",
-      "relation": "自動検出・正相関",
-      "expected": "正相関",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.49,
-      "corr60": 0.42,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": 0.45,
-      "lead_bars": 0,
-      "bars": 297,
-      "state": "確認",
-      "confidence": 73,
-      "anchor_today": {
-        "ret": -0.18,
-        "or15": "レンジ内",
-        "vwap": "下",
-        "ema": "下向き"
-      },
-      "peer_today": {
-        "ret": -1.91,
-        "or15": "レンジ内",
-        "vwap": "下",
-        "ema": "下向き"
       },
       "decision": "売買の確認材料に使用"
     },
