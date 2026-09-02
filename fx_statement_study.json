@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-09-03 07:02:57 JST",
-  "price_source": "取得失敗・前回値保持（RuntimeError）",
+  "updated_at": "2026-09-03 07:42:07 JST",
+  "price_source": "Yahoo Finance JPY=X 日足",
   "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
   "current": {
     "date": "2026-09-02",
@@ -13,19 +13,73 @@
     "note": "高田委員が機動的な利上げを主張。植田総裁は9月会合で物価リスクを議論。レートチェック観測もあり発言単独効果とは断定しない。",
     "source": "https://www.boj.or.jp/about/press/index.htm",
     "news_source": "https://www.reuters.com/world/china/dollar-holds-firm-middle-east-hostilities-lift-oil-2026-09-02/",
-    "reaction": null,
+    "reaction": {
+      "base": 159.747,
+      "close_0d": 158.77,
+      "move_0d_pct": -0.612,
+      "move_1d_pct": -0.612
+    },
     "comparable": false,
     "hit": null
   },
   "summary": {
     "grade": "統計不足・参考のみ",
     "signal_score": 0,
-    "sample": 0,
-    "hit_rate": null,
+    "sample": 6,
+    "hit_rate": 16.7,
     "minimum_sample": 10,
     "warning": "N<10は先回り点へ加算しない。実弾介入・重要指標重複日は除外。"
   },
-  "by_category": [],
+  "by_category": [
+    {
+      "label": "強い口先介入・対応制限なし",
+      "sample": 1,
+      "hits": 1,
+      "hit_rate": 100.0,
+      "median_1d_pct": -0.538,
+      "reliable": false
+    },
+    {
+      "label": "介入必要性を弱める発言",
+      "sample": 1,
+      "hits": 0,
+      "hit_rate": 0.0,
+      "median_1d_pct": 0.267,
+      "reliable": false
+    },
+    {
+      "label": "口先介入・いつでも対応",
+      "sample": 1,
+      "hits": 0,
+      "hit_rate": 0.0,
+      "median_1d_pct": 0.542,
+      "reliable": false
+    },
+    {
+      "label": "日米連携・適切な対応",
+      "sample": 1,
+      "hits": 0,
+      "hit_rate": 0.0,
+      "median_1d_pct": 0.385,
+      "reliable": false
+    },
+    {
+      "label": "行動を示唆する強い口先介入",
+      "sample": 1,
+      "hits": 0,
+      "hit_rate": 0.0,
+      "median_1d_pct": 1.403,
+      "reliable": false
+    },
+    {
+      "label": "介入警戒",
+      "sample": 1,
+      "hits": 0,
+      "hit_rate": 0.0,
+      "median_1d_pct": -0.194,
+      "reliable": false
+    }
+  ],
   "events": [
     {
       "date": "2026-09-02",
@@ -38,7 +92,12 @@
       "note": "高田委員が機動的な利上げを主張。植田総裁は9月会合で物価リスクを議論。レートチェック観測もあり発言単独効果とは断定しない。",
       "source": "https://www.boj.or.jp/about/press/index.htm",
       "news_source": "https://www.reuters.com/world/china/dollar-holds-firm-middle-east-hostilities-lift-oil-2026-09-02/",
-      "reaction": null,
+      "reaction": {
+        "base": 159.747,
+        "close_0d": 158.77,
+        "move_0d_pct": -0.612,
+        "move_1d_pct": -0.612
+      },
       "comparable": false,
       "hit": null
     },
@@ -52,9 +111,14 @@
       "confounded": false,
       "note": "円相場は秩序的で共同介入を必要とする状態ではないとの見方。円高期待を弱める材料。",
       "source": "https://www.reuters.com/world/asia-pacific/bessent-says-yen-moves-pretty-contained-not-disorderly-2026-08-30/",
-      "reaction": null,
-      "comparable": false,
-      "hit": null
+      "reaction": {
+        "base": 159.321,
+        "close_0d": 160.122,
+        "move_0d_pct": 0.503,
+        "move_1d_pct": 0.267
+      },
+      "comparable": true,
+      "hit": false
     },
     {
       "date": "2026-07-31",
@@ -66,7 +130,12 @@
       "confounded": true,
       "note": "実弾介入と金融政策要因が重なるため、口先介入の統計から除外。",
       "source": "https://www.reuters.com/world/asia-pacific/boj-keep-rates-steady-deliver-hawkish-signal-price-pressures-mount-2026-07-30/",
-      "reaction": null,
+      "reaction": {
+        "base": 163.3,
+        "close_0d": 160.183,
+        "move_0d_pct": -1.909,
+        "move_1d_pct": -3.502
+      },
       "comparable": false,
       "hit": null
     },
@@ -80,9 +149,14 @@
       "confounded": false,
       "note": "為替変動へいつでも適切に対応すると表明。発言後の持続性を検証対象にする。",
       "source": "https://www.reuters.com/world/asia-pacific/japan-ready-respond-appropriately-yen-moves-government-spokesperson-says-2026-06-18/",
-      "reaction": null,
-      "comparable": false,
-      "hit": null
+      "reaction": {
+        "base": 160.419,
+        "close_0d": 160.6,
+        "move_0d_pct": 0.113,
+        "move_1d_pct": 0.542
+      },
+      "comparable": true,
+      "hit": false
     },
     {
       "date": "2026-05-07",
@@ -94,9 +168,14 @@
       "confounded": false,
       "note": "為替対応に制限はないとの姿勢。前日の介入観測とは日付を分離して集計。",
       "source": "https://www.reuters.com/world/asia-pacific/japan-forex-czar-says-imf-floating-rate-label-does-not-limit-currency-action-2026-05-07/",
-      "reaction": null,
-      "comparable": false,
-      "hit": null
+      "reaction": {
+        "base": 157.677,
+        "close_0d": 156.508,
+        "move_0d_pct": -0.741,
+        "move_1d_pct": -0.538
+      },
+      "comparable": true,
+      "hit": true
     },
     {
       "date": "2026-02-03",
@@ -108,9 +187,14 @@
       "confounded": false,
       "note": "日米当局で緊密に連携し必要に応じ適切に対応すると表明。",
       "source": "https://www.mof.go.jp/public_relations/conference/my20260203.html",
-      "reaction": null,
-      "comparable": false,
-      "hit": null
+      "reaction": {
+        "base": 155.202,
+        "close_0d": 155.443,
+        "move_0d_pct": 0.155,
+        "move_1d_pct": 0.385
+      },
+      "comparable": true,
+      "hit": false
     },
     {
       "date": "2026-01-26",
@@ -122,7 +206,12 @@
       "confounded": true,
       "note": "急激な円高が発生したが、介入観測を含むため純粋な発言効果から除外。",
       "source": "https://www.reuters.com/world/china/global-markets-global-markets-2026-01-26/",
-      "reaction": null,
+      "reaction": {
+        "base": 158.501,
+        "close_0d": 155.166,
+        "move_0d_pct": -2.104,
+        "move_1d_pct": -2.628
+      },
       "comparable": false,
       "hit": null
     },
@@ -136,9 +225,14 @@
       "confounded": false,
       "note": "円安進行に対して行動へ移す姿勢を示した発言。",
       "source": "https://www.mof.go.jp/public_relations/conference/my20251219a.html",
-      "reaction": null,
-      "comparable": false,
-      "hit": null
+      "reaction": {
+        "base": 155.495,
+        "close_0d": 155.586,
+        "move_0d_pct": 0.059,
+        "move_1d_pct": 1.403
+      },
+      "comparable": true,
+      "hit": false
     },
     {
       "date": "2025-11-21",
@@ -150,9 +244,14 @@
       "confounded": false,
       "note": "介入警戒が強まった局面。実際の円高持続性を価格で検証。",
       "source": "https://www.reuters.com/world/asia-pacific/yen-intervention-looms-large-it-may-not-work-2025-11-21/",
-      "reaction": null,
-      "comparable": false,
-      "hit": null
+      "reaction": {
+        "base": 156.992,
+        "close_0d": 157.369,
+        "move_0d_pct": 0.24,
+        "move_1d_pct": -0.194
+      },
+      "comparable": true,
+      "hit": false
     }
   ]
 }

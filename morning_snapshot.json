@@ -1,67 +1,19 @@
 {
-  "date": "2026-09-02",
-  "fixed_at": "2026-09-02 15:41:11 JST",
+  "date": "2026-09-03",
+  "fixed_at": "2026-09-03 07:42:56 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
-      "name": "GO（581A）",
-      "ticker": "581A.T",
+      "name": "ニトリHD（9843）",
+      "ticker": "9843.T",
       "side": "LONG",
-      "score": 74.0,
-      "entry": 3970,
-      "entry_limit": 3970,
-      "stop": 3800,
-      "target1": 4230,
-      "target2": 4355,
-      "morning_price": 3940.0
-    },
-    {
-      "name": "キオクシアHD（285A）",
-      "ticker": "285A.T",
-      "side": "LONG",
-      "score": 82.0,
-      "entry": 51200,
-      "entry_limit": 51200,
-      "stop": 48400,
-      "target1": 55400,
-      "target2": 57400,
-      "morning_price": 50700.0
-    },
-    {
-      "name": "任天堂（7974）",
-      "ticker": "7974.T",
-      "side": "LONG",
-      "score": 70.0,
-      "entry": 8870,
-      "entry_limit": 8870,
-      "stop": 8670,
-      "target1": 9170,
-      "target2": 9310,
-      "morning_price": 8835.0
-    },
-    {
-      "name": "ソニーグループ（6758）",
-      "ticker": "6758.T",
-      "side": "LONG",
-      "score": 70.0,
-      "entry": 3920,
-      "entry_limit": 3920,
-      "stop": 3850,
-      "target1": 4025,
-      "target2": 4070,
-      "morning_price": 3905.0
-    },
-    {
-      "name": "富士通（6702）",
-      "ticker": "6702.T",
-      "side": "LONG",
-      "score": 70.0,
-      "entry": 3805,
-      "entry_limit": 3805,
-      "stop": 3725,
-      "target1": 3925,
-      "target2": 3980,
-      "morning_price": 3789.0
+      "score": 76.0,
+      "entry": 3030,
+      "entry_limit": 3030,
+      "stop": 2980,
+      "target1": 3105,
+      "target2": 3140,
+      "morning_price": 3021.0
     }
   ]
 }
