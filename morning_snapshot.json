@@ -1,67 +1,43 @@
 {
   "date": "2026-09-02",
-  "fixed_at": "2026-09-02 08:35:27 JST",
+  "fixed_at": "2026-09-02 09:49:46 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
       "name": "富士通（6702）",
       "ticker": "6702.T",
       "side": "LONG",
-      "score": 94.0,
-      "entry": 3885,
-      "entry_limit": 3885,
-      "stop": 3805,
-      "target1": 3995,
-      "target2": 4050,
-      "morning_price": 3947.0
+      "score": 70.0,
+      "entry": 3845,
+      "entry_limit": 3845,
+      "stop": 3765,
+      "target1": 3960,
+      "target2": 4015,
+      "morning_price": 3829.0
     },
     {
       "name": "ソニーグループ（6758）",
       "ticker": "6758.T",
       "side": "LONG",
-      "score": 91.0,
-      "entry": 4030,
-      "entry_limit": 4030,
-      "stop": 3960,
-      "target1": 4130,
-      "target2": 4175,
-      "morning_price": 4046.0
+      "score": 70.0,
+      "entry": 3940,
+      "entry_limit": 3940,
+      "stop": 3875,
+      "target1": 4045,
+      "target2": 4095,
+      "morning_price": 3929.0
     },
     {
-      "name": "マクニカHD（3132）",
-      "ticker": "3132.T",
+      "name": "SCREEN HD（7735）",
+      "ticker": "7735.T",
       "side": "LONG",
-      "score": 89.0,
-      "entry": 3730,
-      "entry_limit": 3730,
-      "stop": 3625,
-      "target1": 3880,
-      "target2": 3950,
-      "morning_price": 3746.0
-    },
-    {
-      "name": "ローム（6963）",
-      "ticker": "6963.T",
-      "side": "LONG",
-      "score": 88.0,
-      "entry": 4900,
-      "entry_limit": 4900,
-      "stop": 4745,
-      "target1": 5130,
-      "target2": 5240,
-      "morning_price": 4904.0
-    },
-    {
-      "name": "NEC（6701）",
-      "ticker": "6701.T",
-      "side": "LONG",
-      "score": 95.0,
-      "entry": 4930,
-      "entry_limit": 4930,
-      "stop": 4810,
-      "target1": 5100,
-      "target2": 5180,
-      "morning_price": 5005.0
+      "score": 70.0,
+      "entry": 13280,
+      "entry_limit": 13280,
+      "stop": 12920,
+      "target1": 13830,
+      "target2": 14090,
+      "morning_price": 13215.0
     }
   ]
 }
