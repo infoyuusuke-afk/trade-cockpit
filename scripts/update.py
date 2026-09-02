@@ -142,6 +142,16 @@ SILICON_PHOTONICS_WATCH = [
     },
 ]
 
+STRONG_YEN_WATCH = [
+    {"name": "ニトリHD（9843）", "sensitivity": 96, "reason": "海外調達比率が高い家具・生活用品。円高は仕入原価の低下要因", "source": "https://www.nitorihd.co.jp/ir/"},
+    {"name": "セリア（2782）", "sensitivity": 94, "reason": "輸入雑貨の原価負担が大きく、円高による仕入採算改善を確認する銘柄", "source": "https://www.seria-group.com/corporate/ir/"},
+    {"name": "神戸物産（3038）", "sensitivity": 90, "reason": "業務スーパーの輸入商品・PB調達。円高は輸入原価の低下要因", "source": "https://www.gyomusuper.jp/ir/"},
+    {"name": "エービーシー・マート（2670）", "sensitivity": 86, "reason": "海外ブランド靴の仕入コスト低下余地を確認する小売銘柄", "source": "https://www.abc-mart.co.jp/ir/"},
+    {"name": "良品計画（7453）", "sensitivity": 78, "reason": "海外調達コスト低下は追い風だが、海外利益の円換算減少もあるため相殺を考慮", "source": "https://www.ryohin-keikaku.jp/ir"},
+    {"name": "ワークマン（7564）", "sensitivity": 76, "reason": "PB商品の海外生産・調達コスト低下余地を監視", "source": "https://www.workman.co.jp/ir"},
+    {"name": "サイゼリヤ（7581）", "sensitivity": 68, "reason": "輸入食材コストは低下要因だが、アジア事業の円換算減少を差し引く", "source": "https://www.saizeriya.co.jp/corporate/ir/"},
+]
+
 
 def flat_columns(df):
     if isinstance(df.columns, pd.MultiIndex):
@@ -1193,6 +1203,249 @@ def build_day_ifo_candidates(valid, rotation, official_earnings, now, credit_sup
     return selected
 
 
+def build_precision_top5(valid, rotation, official_earnings, now, credit_supply=None):
+    """Return at most five *verified* forecasts for the main screen.
+
+    This is deliberately separate from the MS2 order list.  A row may appear
+    here as a monitored forecast when price identity/date verification passed,
+    but it is promoted to an executable setup only after formal credit-supply
+    data also passed.  Missing data never receives a neutral estimate.
+    """
+    sector_rows = {row["sector"]: row for row in rotation.get("japan_sectors", [])}
+    credit_supply = credit_supply or {}
+    ranked = []
+    for name, row in valid:
+        code = str(row.get("ticker", "")).split(".")[0]
+        if code == "285A" or "キオクシア" in name:
+            continue
+        if row.get("style") not in ("day", "both"):
+            continue
+        if float(row.get("turnover") or 0) < 2_000_000_000:
+            continue
+
+        price = float(row.get("price") or 0)
+        if price <= 0:
+            continue
+        lifecycle = material_lifecycle(row)
+        # A leading-indicator list must not be topped by already overheated,
+        # post-announcement names. They remain available in the reference tabs.
+        if lifecycle["stage"] in {"材料出尽くし警戒", "買い禁止"}:
+            continue
+        group = row.get("rotation_group") or broad_sector(row.get("sector", ""))
+        sector = sector_rows.get(group, {})
+        supply = credit_supply.get(code, {})
+        supply_known = all(
+            supply.get(key) is not None
+            for key in ("margin_buy_change_1w_pct", "credit_ratio")
+        )
+        if supply_known:
+            margin_change = float(supply["margin_buy_change_1w_pct"])
+            credit_ratio = float(supply["credit_ratio"])
+            short_change = float(supply.get("institutional_short_change_pct") or 0)
+            supply_score = clamp(
+                55 - margin_change * 1.2 - max(credit_ratio - 2, 0) * 4
+                - short_change * .8,
+                10,
+                100,
+            )
+            supply_status = (
+                f"需給{round(supply_score)}点：買残1週{margin_change:+.1f}%／"
+                f"倍率{credit_ratio:.2f}倍／機関空売り{short_change:+.1f}%"
+            )
+        else:
+            supply_score = None
+            supply_status = "信用買残・倍率の照合未完了（監視のみ・注文禁止）"
+
+        event = official_earnings.get(code)
+        event_days = None
+        if event and event.get("date"):
+            event_days = (pd.Timestamp(event["date"]).date() - now.date()).days
+        technical = expectation_score(row)
+        sector_score = float(sector.get("score", 50))
+        flow_score = clamp(
+            45 + float(row.get("change_pct") or 0) * 3
+            + min(float(row.get("rvol") or 0), 3) * 12
+            + (10 if row.get("market_supply_improved") else -15),
+            0,
+            100,
+        )
+        # Unknown credit supply is a hard execution penalty, not an invented 50.
+        observed_score = technical * .34 + sector_score * .18 + flow_score * .28
+        if supply_score is None:
+            # Forecast quality is normalized across the actually observed 80%,
+            # while execution remains blocked. Do not pretend missing supply=50.
+            score = observed_score / .80 - 10
+        else:
+            score = observed_score + supply_score * .20
+        score -= float(lifecycle.get("priority_penalty") or 0) * .55
+        if event_days is not None and 0 <= event_days <= 2:
+            score -= 20
+        score = round(clamp(score))
+
+        plan = trade_plan(row, row.get("intraday"))
+        tick = price_tick(price)
+        trigger = round_to_tick(max(float(plan["entry"]), float(row.get("high") or price) + tick), tick)
+        entry_limit = round_to_tick(trigger + tick * 2, tick)
+        stop = float(plan["stop"])
+        if stop >= trigger:
+            stop = round_to_tick(trigger - max(tick, float(row.get("atr14") or price * .02) * .55), tick)
+        risk = max(entry_limit - stop, tick)
+        target1 = round_to_tick(entry_limit + risk * 1.5, tick)
+        target2 = round_to_tick(entry_limit + risk * 2.2, tick)
+        executable = (
+            supply_known and supply_score >= 50 and score >= 68
+            and lifecycle["stage"] not in {"材料出尽くし警戒", "買い禁止"}
+            and not (event_days is not None and 0 <= event_days <= 2)
+        )
+        reason = (
+            f"{lifecycle['stage']}／{group} {sector.get('phase', '中立')} {sector_score:.0f}点／"
+            f"前日比 {float(row.get('change_pct') or 0):+.2f}%／出来高比 "
+            f"{float(row.get('rvol') or 0):.2f}倍／売買代金 "
+            f"{float(row.get('turnover') or 0) / 100_000_000:.0f}億円／{supply_status}"
+        )
+        ranked.append({
+            "name": name, "code": code, "ticker": row.get("ticker", ""),
+            "score": score, "executable": executable,
+            "supply_verified": supply_known and supply_score >= 50,
+            "supply_status": supply_status,
+            "material_stage": lifecycle["stage"],
+            "material_action": lifecycle["action"],
+            "trigger": trigger, "entry_limit": entry_limit, "stop": stop,
+            "target1": target1, "target2": target2,
+            "reason": reason,
+            "chart": row.get("chart", []), "data_date": row.get("data_date"),
+            "chart_last_close": row.get("chart_last_close"),
+            "quote_status": row.get("quote_status", "株価検証不能"),
+        })
+
+    stage_priority = {
+        "先回り候補": 4, "期待形成中": 3,
+        "事実確認待ち": 2, "織り込み進行": 1,
+    }
+    ranked.sort(
+        key=lambda x: (
+            x["executable"], x["supply_verified"],
+            stage_priority.get(x["material_stage"], 0), x["score"],
+        ),
+        reverse=True,
+    )
+    return ranked[:5]
+
+
+def build_strong_yen_top5(valid, indices, credit_supply=None):
+    """Rank verified yen-strength beneficiaries; never infer missing credit data."""
+    valid_map = dict(valid)
+    credit_supply = credit_supply or {}
+    try:
+        statement_study = json.loads((ROOT / "fx_statement_study.json").read_text(encoding="utf-8"))
+    except Exception:
+        statement_study = {"summary": {"grade": "未取得", "signal_score": 0, "sample": 0}, "events": []}
+    statement_summary = statement_study.get("summary") or {}
+    # Only a statistically mature event study can alter ranking points.
+    statement_signal = (
+        float(statement_summary.get("signal_score") or 0)
+        if int(statement_summary.get("sample") or 0) >= int(statement_summary.get("minimum_sample") or 10)
+        else 0
+    )
+    fx = indices.get("ドル円", {})
+    fx_source = "Yahoo Finance"
+    fx_observed_at = fx.get("data_date")
+    try:
+        world = json.loads((ROOT / "world_market.json").read_text(encoding="utf-8"))
+        live_fx = (world.get("rows") or {}).get("511", {})
+        if world.get("feed_verified") and live_fx.get("verified"):
+            fx = {**fx, "price": live_fx.get("value"), "change_pct": live_fx.get("change_pct")}
+            fx_source = world.get("source", "世界の株価リアルタイムチャート")
+            fx_observed_at = live_fx.get("observed_at")
+    except Exception:
+        pass
+    usd_jpy_change = float(fx.get("change_pct") or 0)
+    usd_jpy_ret5 = float(fx.get("ret5") or 0)
+    # JPY=X is USD/JPY: a fall means yen appreciation.
+    yen_impulse = clamp(50 - usd_jpy_change * 10 - usd_jpy_ret5 * 5, 0, 100)
+    yen_active = usd_jpy_change <= -.15 or usd_jpy_ret5 <= -.75
+    rows = []
+    for spec in STRONG_YEN_WATCH:
+        row = valid_map.get(spec["name"])
+        if not row:
+            continue
+        code = str(row.get("ticker", "")).split(".")[0]
+        supply = credit_supply.get(code, {})
+        supply_known = all(
+            supply.get(key) is not None
+            for key in ("margin_buy_change_1w_pct", "credit_ratio")
+        )
+        if supply_known:
+            margin_change = float(supply["margin_buy_change_1w_pct"])
+            credit_ratio = float(supply["credit_ratio"])
+            short_change = float(supply.get("institutional_short_change_pct") or 0)
+            supply_score = clamp(
+                58 - margin_change * 1.5 - max(credit_ratio - 2, 0) * 5
+                - short_change * .7,
+                0,
+                100,
+            )
+            supply_improved = margin_change <= 0 and credit_ratio <= 5 and supply_score >= 50
+            supply_text = (
+                f"買残1週{margin_change:+.1f}%／倍率{credit_ratio:.2f}倍／"
+                f"機関空売り{short_change:+.1f}%"
+            )
+        else:
+            supply_score = None
+            supply_improved = False
+            supply_text = "信用買残・倍率未照合（監視のみ）"
+        technical = expectation_score(row)
+        flow = clamp(
+            45 + float(row.get("change_pct") or 0) * 4
+            + min(float(row.get("rvol") or 0), 3) * 12
+            + (8 if row.get("market_supply_improved") else -12),
+            0,
+            100,
+        )
+        observed = (
+            spec["sensitivity"] * .35 + technical * .22 + flow * .23
+            + yen_impulse * .20 + clamp(statement_signal, -10, 10)
+        )
+        score = observed if supply_score is None else observed * .72 + supply_score * .28
+        score = round(clamp(score - (8 if supply_score is None else 0)))
+        plan = trade_plan(row, row.get("intraday"))
+        formal = yen_active and supply_improved and score >= 65
+        status = (
+            "円高＋需給改善・発動待ち" if formal
+            else "為替確認待ち" if not yen_active
+            else "信用需給確認待ち" if not supply_known
+            else "需給条件未達・監視のみ"
+        )
+        rows.append({
+            "name": spec["name"], "code": code, "ticker": row.get("ticker"),
+            "price": row.get("price"), "change_pct": row.get("change_pct"),
+            "score": score, "sensitivity": spec["sensitivity"],
+            "reason": spec["reason"], "source": spec["source"],
+            "status": status, "executable": formal,
+            "supply_verified": supply_known, "supply_improved": supply_improved,
+            "supply_status": supply_text,
+            "trigger": plan["entry"], "stop": plan["stop"],
+            "target1": plan["target1"], "target2": plan["target2"],
+            "chart": row.get("chart", []), "data_date": row.get("data_date"),
+            "chart_last_close": row.get("chart_last_close"),
+            "quote_status": row.get("quote_status", "株価検証不能"),
+        })
+    rows.sort(
+        key=lambda x: (x["executable"], x["supply_improved"], x["score"]),
+        reverse=True,
+    )
+    return {
+        "usd_jpy": fx.get("price"), "usd_jpy_change_pct": round(usd_jpy_change, 2),
+        "usd_jpy_ret5": round(usd_jpy_ret5, 2),
+        "fx_source": fx_source, "fx_observed_at": fx_observed_at,
+        "statement_study": statement_study,
+        "yen_active": yen_active,
+        "regime": "円高進行" if yen_active else "円高確認待ち",
+        "rule": "USD/JPY下落＋信用買残減少・倍率5倍以下＋発動価格上抜けを必須化",
+        "candidates": rows[:5],
+    }
+
+
 def build_silicon_photonics_watch(stocks, official_earnings, now):
     """Create conditional IN/OUT levels for the morning CPO theme watch.
 
@@ -1326,11 +1579,17 @@ def render_focus_dashboard(candidates):
     for rank, item in enumerate(candidates[:5], 1):
         risk = max(float(item["entry_limit"]) - float(item["stop"]), 0)
         supply_ok = item.get("supply_verified", False)
-        decision = "本命・発動待ち" if rank == 1 and supply_ok and item.get("score", 0) >= 80 else "発動待ち" if supply_ok else "需給確認待ち"
+        executable = item.get("executable", False)
+        decision = (
+            "本命・発動待ち" if rank == 1 and executable
+            else "条件付き発動待ち" if executable
+            else "需給確認待ち" if not supply_ok
+            else "監視のみ・注文禁止"
+        )
         rows.append({
             "rank": rank, "name": item["name"], "code": item["code"],
             "score": item["score"], "decision": decision,
-            "decision_class": "go" if decision.startswith("本命") else "ready" if supply_ok else "wait",
+            "decision_class": "go" if decision.startswith("本命") else "ready" if executable else "wait",
             "trigger": item["trigger"], "entry": item["entry_limit"],
             "pullback_low": round(float(item["entry_limit"]) - risk * .55, 2),
             "pullback_high": round(float(item["entry_limit"]) - risk * .25, 2),
@@ -1340,12 +1599,14 @@ def render_focus_dashboard(candidates):
             "data_date": item.get("data_date"),
             "chart_last_close": item.get("chart_last_close"),
             "quote_status": item.get("quote_status", "株価検証不能"),
+            "material_stage": item.get("material_stage", "事実確認待ち"),
+            "material_action": item.get("material_action", ""),
         })
     payload = json.dumps(rows, ensure_ascii=False).replace("</", "<\\/")
     return f"""
 <section id="action-dashboard" class="card wide focus-dashboard">
  <div class="focus-topbar">
-  <div><span class="focus-eyebrow">TODAY'S SETUPS</span><h2>今買う候補</h2></div>
+  <div><span class="focus-eyebrow">VERIFIED FORECAST TOP 5</span><h2>精査TOP5</h2><small>信用需給合格のみ売買候補。未確認は監視止まり</small></div>
   <div class="focus-legend"><span><i class="dot green"></i>発動</span><span><i class="dot amber"></i>押し目</span><span><i class="dot red"></i>撤退</span></div>
  </div>
  <div class="focus-layout">
@@ -1370,11 +1631,12 @@ def render_focus_dashboard(candidates):
 </section>
 <script>
 document.addEventListener("DOMContentLoaded",()=>{{
- const rows={payload}, yen=n=>Number(n).toLocaleString("ja-JP",{{maximumFractionDigits:1}})+"円";
+ let rows={payload}, activeIndex=0, yen=n=>Number(n).toLocaleString("ja-JP",{{maximumFractionDigits:1}})+"円";
  const list=document.getElementById("focus-picks");
  rows.forEach((x,i)=>{{const b=document.createElement("button");b.className="focus-pick";b.innerHTML=`<span class="focus-rank">${{String(i+1).padStart(2,"0")}}</span><span><b>${{x.name}}</b><small>${{x.decision}}</small></span><strong>${{x.score}}</strong>`;b.onclick=()=>select(i);list.appendChild(b);}});
  function chart(x){{const a=x.chart||[];if(!a.length)return `<div class="chart-empty">チャートデータ更新待ち</div>`;const W=720,H=390,p=28;let lo=Math.min(...a.map(v=>v.l),x.stop),hi=Math.max(...a.map(v=>v.h),x.trigger,x.target1);const y=v=>p+(hi-v)/(hi-lo||1)*(H-p*2),step=(W-p*2)/a.length,bw=Math.max(3,step*.55);let s=`<svg viewBox="0 0 ${{W}} ${{H}}" preserveAspectRatio="none">`;for(let i=0;i<5;i++){{let yy=p+i*(H-p*2)/4;s+=`<line class="grid" x1="${{p}}" y1="${{yy}}" x2="${{W-p}}" y2="${{yy}}"/>`;}}a.forEach((v,i)=>{{let x0=p+step*(i+.5),up=v.c>=v.o,cl=up?"c-up":"c-down",yo=y(v.o),yc=y(v.c);s+=`<line class="${{cl}}" x1="${{x0}}" y1="${{y(v.h)}}" x2="${{x0}}" y2="${{y(v.l)}}"/><rect class="${{cl}}" x="${{x0-bw/2}}" y="${{Math.min(yo,yc)}}" width="${{bw}}" height="${{Math.max(1,Math.abs(yo-yc))}}"/>`;}});[[x.trigger,"trigger","発動"],[x.pullback_high,"pullback","押し目"],[x.stop,"stop","撤退"]].forEach(z=>{{s+=`<line class="level ${{z[1]}}" x1="${{p}}" y1="${{y(z[0])}}" x2="${{W-p}}" y2="${{y(z[0])}}"/><text class="label ${{z[1]}}" x="${{W-p-3}}" y="${{y(z[0])-5}}">${{z[2]}} ${{yen(z[0])}}</text>`;}});return s+`</svg>`;}}
- function select(i){{const x=rows[i];[...list.children].forEach((b,j)=>b.classList.toggle("active",i===j));document.getElementById("focus-chart-name").textContent=x.name;document.getElementById("focus-chart-code").textContent=x.code;document.getElementById("focus-chart-asof").textContent=(x.data_date||"日付未確認")+" 終値 "+yen(x.chart_last_close);document.getElementById("focus-chart").innerHTML=chart(x);document.getElementById("focus-rank").textContent="#"+x.rank;document.getElementById("focus-name").textContent=x.name;document.getElementById("focus-score").textContent=x.score+" / 100";const d=document.getElementById("focus-decision");d.className="decision-badge "+x.decision_class;d.textContent=x.decision;document.getElementById("focus-trigger").textContent=yen(x.trigger)+" 以上";document.getElementById("focus-entry").textContent=yen(x.entry);document.getElementById("focus-pullback").textContent=yen(x.pullback_low)+" – "+yen(x.pullback_high);document.getElementById("focus-stop").textContent=yen(x.stop);document.getElementById("focus-targets").textContent=yen(x.target1)+" / "+yen(x.target2);document.getElementById("focus-supply").textContent=x.supply+"／"+x.quote_status;document.getElementById("focus-reason").textContent=x.reason;}}
+ function select(i){{activeIndex=i;const x=rows[i];[...list.children].forEach((b,j)=>b.classList.toggle("active",i===j));document.getElementById("focus-chart-name").textContent=x.name;document.getElementById("focus-chart-code").textContent=x.code;document.getElementById("focus-chart-asof").textContent=(x.data_date||"日付未確認")+" 終値 "+yen(x.chart_last_close);document.getElementById("focus-chart").innerHTML=chart(x);document.getElementById("focus-rank").textContent="#"+x.rank;document.getElementById("focus-name").textContent=x.name;document.getElementById("focus-score").textContent=x.score+" / 100";const d=document.getElementById("focus-decision");d.className="decision-badge "+x.decision_class;d.textContent=x.decision;document.getElementById("focus-trigger").textContent=yen(x.trigger)+" 以上";document.getElementById("focus-entry").textContent=yen(x.entry);document.getElementById("focus-pullback").textContent=yen(x.pullback_low)+" – "+yen(x.pullback_high);document.getElementById("focus-stop").textContent=yen(x.stop);document.getElementById("focus-targets").textContent=yen(x.target1)+" / "+yen(x.target2);document.getElementById("focus-supply").textContent=x.supply+"／"+x.quote_status;document.getElementById("focus-reason").textContent=x.reason;}}
+ document.addEventListener("liveFocusUpdate",e=>{{const live=e.detail?.rows||{{}},alerts=[];rows=rows.map(x=>{{const q=live[x.code];if(!q?.verified)return x;const before=Number(x.live_price??x.chart_last_close),now=Number(q.price);if(Number.isFinite(before)&&Number.isFinite(now)){{if(before<Number(x.trigger)&&now>=Number(x.trigger))alerts.push(x.name+"、買い発動ライン到達。現在値"+yen(now)+"、発動"+yen(x.trigger));if(before>Number(x.stop)&&now<=Number(x.stop))alerts.push(x.name+"、撤退ライン到達。現在値"+yen(now)+"、撤退"+yen(x.stop));}}return {{...x,chart:q.chart,chart_last_close:q.price,live_price:q.price,data_date:q.quote_time,quote_status:q.status}};}});select(Math.min(activeIndex,rows.length-1));if(alerts.length)setTimeout(()=>window.cockpitSpeak?.(alerts.join("。")),300);}});
  select(0);
 }});
 </script>"""
@@ -1456,12 +1718,42 @@ def main():
                 row["intraday"] = intraday_snapshot(meta["ticker"])
             stocks[name] = row
 
-    # A missing/stale quote produces zero candidates rather than a plausible
-    # looking but wrong order ticket. This gate applies to every ranking.
+    # Fail closed at the identity layer too.  A correct price attached to the
+    # wrong company is more dangerous than a missing quote.
+    for display_name, row in stocks.items():
+        shown = re.search(r"（([0-9A-Z]{3,5})）$", display_name)
+        ticker_code = str(row.get("ticker") or "").split(".", 1)[0]
+        row["identity_verified"] = bool(shown and shown.group(1) == ticker_code)
+        if not row["identity_verified"]:
+            row["quote_verified"] = False
+            row["quote_status"] = "売買利用禁止：会社名の銘柄コードとティッカーが不一致"
+
+    verified_dates = [
+        r.get("data_date") for r in stocks.values()
+        if r.get("ok") and r.get("quote_verified") and r.get("identity_verified")
+        and r.get("data_date")
+    ]
+    freshest_stock_date = max(verified_dates) if verified_dates else None
+    # Every ranking uses one common market date. Mixed-date TOP5 is forbidden.
     valid = [
         (n, r) for n, r in stocks.items()
         if r.get("ok") and r.get("quote_verified")
+        and r.get("identity_verified")
+        and r.get("data_date") == freshest_stock_date
     ]
+    quality_gate = {
+        "status": "合格" if valid else "停止",
+        "market_date": freshest_stock_date,
+        "universe": len(stocks),
+        "verified": len(valid),
+        "excluded": len(stocks) - len(valid),
+        "requirements": [
+            "会社名コード＝ティッカー", "一次OHLC＝QUICK", "チャート終値＝表示株価",
+            "全候補の取引日一致",
+        ],
+        "primary_source": "Yahoo Finance OHLC",
+        "secondary_source": "野村證券/QUICK",
+    }
     akita_dc_watch = []
     for item in config.get("akita_dc_watch", []):
         market = stocks.get(item["name"], {})
@@ -1500,7 +1792,11 @@ def main():
         r["material_action"] = lifecycle["action"]
         r["actionable_day_score"] = round(r["day_score"] - lifecycle["priority_penalty"], 2)
         day_pool.append((n, r))
-    day_rank = sorted(day_pool, key=lambda x: x[1]["actionable_day_score"], reverse=True)[:5]
+    # Negative/zero edge is an empty slot, never a forced fifth pick.
+    day_rank = [
+        x for x in sorted(day_pool, key=lambda x: x[1]["actionable_day_score"], reverse=True)
+        if x[1]["actionable_day_score"] > 0
+    ][:5]
     swing_pool = [
         (n, r) for n, r in valid
         if r["style"] in ("swing", "both") and 500 <= r["price"] <= 30000
@@ -1657,6 +1953,10 @@ def main():
     generated_day_ifo = build_day_ifo_candidates(
         valid, rotation, official_earnings, now, credit_supply
     )
+    precision_top5 = build_precision_top5(
+        valid, rotation, official_earnings, now, credit_supply
+    )
+    strong_yen = build_strong_yen_top5(valid, indices, credit_supply)
     generated_photonics_watch = build_silicon_photonics_watch(
         stocks, official_earnings, now
     )
@@ -1727,12 +2027,15 @@ def main():
         "akita_dc_watch": akita_dc_watch,
         "gunma_rare_earth_watch": gunma_rare_earth_watch,
         "indices": indices, "stocks": stocks,
+        "quality_gate": quality_gate,
+        "precision_top5": precision_top5,
+        "strong_yen_top5": strong_yen,
         "day_candidates": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in day_rank],
         "day_ifo_candidates": day_ifo_candidates,
         "silicon_photonics_watch": photonics_watch,
         "day_ifo_summary": {
             "count": len(day_ifo_candidates),
-            "selection_rule": "マネーゲーム／IPO 2＋SaaS／AIソフト 2＋当日資金最上位 1",
+            "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
             "credit_supply_updated_at": credit_supply_updated_at,
             "shares_each": 100,
             "total_capital": total_capital,
@@ -1870,7 +2173,7 @@ def main():
         "価格なしでの注文は行いません。</td></tr>"
     )
     ifo_cards = render_day_ifo_cards(day_ifo_candidates)
-    focus_dashboard = render_focus_dashboard(day_ifo_candidates)
+    focus_dashboard = render_focus_dashboard(precision_top5)
     trade_drawer = render_trade_drawer()
     ifo_count_note = (
         "分散条件を満たす5銘柄を選定"
@@ -1988,6 +2291,87 @@ def main():
 <tr><td>ヒンデンブルグ・オーメン</td><td><b class="up">OFF（直近確認）</b></td><td>2026-08-05</td><td>本日分は未確認。古いOFFを安全宣言として使わない。</td></tr></table>
 <p class="warning">点灯時も暴落確定ではありません。新高値・新安値、騰落、指数トレンドの複合警報として、株数を落とす判断にだけ使います。</p></section>
 """
+    yen_rows = "".join(
+        f"<tr><td><b>#{i}</b></td><td><b>{x['name']}</b><br><small>{x['status']}</small></td>"
+        f"<td>{money(x['price'])}<br><small class='{css(x.get('change_pct'))}'>{pct(x.get('change_pct'))}</small></td>"
+        f"<td><b>{x['score']}/100</b><br><small>円高感応度 {x['sensitivity']}</small></td>"
+        f"<td>{x['supply_status']}</td><td><b>{money(x['trigger'])}</b></td>"
+        f"<td class='down'>{money(x['stop'])}</td><td>{money(x['target1'])}／{money(x['target2'])}</td>"
+        f"<td>{x['reason']}<br><a href='{x['source']}' target='_blank' rel='noopener'>会社IR</a></td></tr>"
+        for i, x in enumerate(strong_yen["candidates"], 1)
+    ) or "<tr><td colspan='9'>株価・コード・取引日の完全照合待ち。推定価格では表示しません。</td></tr>"
+    fx_study = strong_yen.get("statement_study") or {}
+    fx_summary = fx_study.get("summary") or {}
+    fx_event_rows = "".join(
+        f"<tr><td>{x.get('date','—')}</td><td>{x.get('speaker','—')}</td>"
+        f"<td>{x.get('category','—')}<br><small>強度 {x.get('strength','—')}/5</small></td>"
+        f"<td>{money((x.get('reaction') or {}).get('move_0d_pct')) + '%' if x.get('reaction') else '未取得'}</td>"
+        f"<td>{money((x.get('reaction') or {}).get('move_1d_pct')) + '%' if x.get('reaction') else '未取得'}</td>"
+        f"<td>{'的中' if x.get('hit') is True else '不発' if x.get('hit') is False else '統計除外'}</td>"
+        f"<td>{x.get('note','')}<br><a href='{x.get('source','#')}' target='_blank' rel='noopener'>確認資料</a></td></tr>"
+        for x in (fx_study.get("events") or [])[:8]
+    ) or "<tr><td colspan='7'>要人発言イベントの価格照合待ち。</td></tr>"
+    strong_yen_html = f"""
+<section id="strong-yen-top5" class="card wide">
+ <h2>円高恩恵銘柄 TOP5｜信用需給必須</h2>
+ <p class="sub">USD/JPY {money(strong_yen.get('usd_jpy'))}／当日 {pct(strong_yen.get('usd_jpy_change_pct'))}／5日 {pct(strong_yen.get('usd_jpy_ret5'))}　<b>{strong_yen['regime']}</b><br><small>{strong_yen.get('fx_source')}・{strong_yen.get('fx_observed_at') or '時刻未確認'}</small></p>
+ <div class="rotation-grid">
+  <div class="rotation-box"><b>発言統計判定</b><strong>{fx_summary.get('grade','未取得')}</strong></div>
+  <div class="rotation-box"><b>比較可能回数</b><strong>{fx_summary.get('sample',0)}回</strong></div>
+  <div class="rotation-box"><b>同方向へ動いた割合</b><strong>{money(fx_summary.get('hit_rate')) if fx_summary.get('hit_rate') is not None else '—'}%</strong></div>
+  <div class="rotation-box"><b>ランキング補正</b><strong>{float(fx_summary.get('signal_score') or 0):+.0f}点</strong></div>
+ </div>
+ <table><thead><tr><th>順位</th><th>会社名＋コード／判定</th><th>株価</th><th>総合点</th><th>信用需給</th><th>買い発動</th><th>損切り</th><th>利確1／2</th><th>円高恩恵の根拠</th></tr></thead><tbody>{yen_rows}</tbody></table>
+ <h3>要人発言イベントスタディ</h3>
+ <table><thead><tr><th>日付</th><th>発言者</th><th>分類</th><th>当日USD/JPY</th><th>翌日まで</th><th>判定</th><th>内容・根拠</th></tr></thead><tbody>{fx_event_rows}</tbody></table>
+ <p class="sub">{fx_study.get('method','同日発言をクラスター化して集計')}／価格：{fx_study.get('price_source','未取得')}</p>
+ <p class="warning">{strong_yen['rule']}。円高だけでは買いません。海外売上の円換算減少、ヘッジ済み為替予約、原材料価格上昇で恩恵が相殺される場合があります。</p>
+</section>"""
+    live_focus_html = """
+<section id="live-focus-status" class="card wide" style="border-color:#35a7ff">
+ <h2>ザラバ5分更新｜キオクシア＋精査TOP5　<button id="voice-toggle" type="button" style="float:right;padding:5px 12px;border-radius:7px">音声OFF</button></h2>
+ <div class="rotation-grid">
+  <div class="rotation-box"><b>稼働状態</b><strong id="live-status">確認中</strong></div>
+  <div class="rotation-box"><b>最終更新</b><strong id="live-updated">—</strong></div>
+  <div class="rotation-box"><b>完全照合</b><strong id="live-verified">—</strong></div>
+  <div class="rotation-box"><b>キオクシア</b><strong id="live-kioxia">—</strong></div>
+ </div>
+ <p class="sub" id="live-rule">8:00～15:30、バックエンド5分・画面60秒更新。二経路不一致や12分超の遅延は売買禁止。</p>
+</section>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+ let voiceOn=localStorage.getItem("cockpitVoiceV1")==="on";
+ const voiceButton=document.getElementById("voice-toggle");
+ const setVoiceLabel=()=>voiceButton.textContent=voiceOn?"🔊 音声ON":"🔇 音声OFF";setVoiceLabel();
+ window.cockpitSpeak=msg=>{if(!voiceOn||!msg||!("speechSynthesis" in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(msg);u.lang="ja-JP";u.rate=1.05;window.speechSynthesis.speak(u);};
+ voiceButton.onclick=()=>{voiceOn=!voiceOn;localStorage.setItem("cockpitVoiceV1",voiceOn?"on":"off");setVoiceLabel();if(voiceOn)window.cockpitSpeak("AIコクピットの自動読み上げを開始します");};
+ const loadLive=()=>fetch("live_focus.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(d=>{
+   document.getElementById("live-status").textContent=d.status||"停止";
+   document.getElementById("live-updated").textContent=d.updated_at||"—";
+   document.getElementById("live-verified").textContent=(d.verified_count||0)+" / "+(d.expected_count||0)+"銘柄";
+   const k=(d.rows||{})["285A"];
+   document.getElementById("live-kioxia").textContent=k?.verified?Number(k.price).toLocaleString("ja-JP")+"円｜"+(k.signal||"判定待ち"):(k?.status||"停止");
+   document.getElementById("live-rule").textContent=d.rule||"取得失敗時は売買禁止";
+   document.dispatchEvent(new CustomEvent("liveFocusUpdate",{detail:d}));
+   const spoken=localStorage.getItem("cockpitLastSpokenUpdate");
+   if(voiceOn&&d.updated_at&&d.updated_at!==spoken){const kt=k?.verified?"キオクシアは"+Number(k.price).toLocaleString("ja-JP")+"円。"+(k.signal||"判定待ち"):"キオクシアは更新停止、売買禁止";window.cockpitSpeak("AIコクピットを更新。"+(d.verified_count||0)+"銘柄を照合。"+kt);localStorage.setItem("cockpitLastSpokenUpdate",d.updated_at);}
+ }).catch(()=>{document.getElementById("live-status").textContent="通信停止・売買禁止";});
+ loadLive();setInterval(loadLive,60000);
+});
+</script>"""
+    quality_html = f"""
+<section id="data-quality-gate" class="card wide" style="border-color:#2fc6a5">
+ <h2>データ品質ゲート｜ランキング前の必須検査</h2>
+ <div class="rotation-grid">
+  <div class="rotation-box"><b>判定</b><strong class="{'up' if quality_gate['status']=='合格' else 'down'}">{quality_gate['status']}</strong></div>
+  <div class="rotation-box"><b>統一取引日</b><strong>{quality_gate['market_date'] or '取得不能'}</strong></div>
+  <div class="rotation-box"><b>完全照合</b><strong>{quality_gate['verified']} / {quality_gate['universe']}銘柄</strong></div>
+  <div class="rotation-box"><b>除外</b><strong>{quality_gate['excluded']}銘柄</strong></div>
+ </div>
+ <p class="sub">一次：Yahoo Finance OHLC／二次：野村證券・QUICK。会社名コード＝ティッカー、OHLC、チャート終値、取引日の全一致が必須。</p>
+ <p class="warning">不一致・取得失敗・別取引日のデータは推定補完しません。条件合格が5銘柄未満なら空席のまま表示します。</p>
+</section>
+"""
 
     nikkei = indices.get("日経平均", {}).get("price")
     atr_n = indices.get("日経平均", {}).get("atr14")
@@ -2000,8 +2384,11 @@ def main():
 </style>
 <link rel="stylesheet" href="theme.css?v=51">
 <link rel="stylesheet" href="focus.css?v=41">
-<header><div><h1>AIトレードコクピット Ver.5.1</h1><div class="sub">最初の画面で本命・買い時・押し目・撤退を判断</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／日経想定 {day_range}</div></div></header><div class="tv-quick-link" style="max-width:1500px;margin:12px auto 0;padding:0 18px"><a href="#tv-watchlist-export" onclick="document.querySelector('.cockpit-tab[data-tab=&quot;daytrade&quot;]')?.click()" style="display:inline-block;padding:12px 18px;border-radius:10px;background:linear-gradient(135deg,#00b894,#0984e3);color:#fff;text-decoration:none;font-weight:800;box-shadow:0 5px 18px rgba(9,132,227,.25)">📥 TradingViewへ候補を登録</a></div><main>
+<header><div><h1>AIトレードコクピット Ver.5.2</h1><div class="sub">精査TOP5＋キオクシア専用。照合不一致は表示しない</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／統一取引日 {quality_gate['market_date'] or '取得不能'}</div></div></header><main>
+{quality_html}
+{live_focus_html}
 {focus_dashboard}
+{strong_yen_html}
 <section id="event-calendar" class="card wide event-calendar"><h2>売買イベントカレンダー</h2>
 <div id="event-meta" class="sub">公式日程と需給発生日を照合中...</div>
 <div class="event-guard" id="event-guard"><div><span>本日の警戒</span><b id="event-level">確認中</b></div><p id="event-rule">イベント情報を取得中...</p></div>
@@ -2035,6 +2422,13 @@ def main():
 <p class="warning"><b>キオクシア―任天堂は固定ルールではありません。</b> 20日・60日・当日5分足の逆相関が安定した期間だけ有効。サンディスクは取引時間が重ならないため「米国前日→キオクシア翌日」で判定します。9:15までは方向を決めず、OR15・VWAP・EMA9/20・高安の4/5一致を優先します。</p></section>
 <section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）5分足カレンダー・類似日予測</h2>
 <div id="kioxia-calendar-meta" class="sub">直近60日の5分足を照合中...</div>
+<div id="kio-decision-panel" class="rotation-grid" style="margin:10px 0">
+ <div class="rotation-box"><b>利用判定</b><strong id="kio-decision-grade">計算中</strong></div>
+ <div class="rotation-box"><b>方向一致率</b><strong id="kio-agreement">—</strong></div>
+ <div class="rotation-box"><b>類似日ばらつき</b><strong id="kio-dispersion">—</strong></div>
+ <div class="rotation-box"><b>無効化条件</b><span id="kio-invalidate">確認中</span></div>
+</div>
+<p id="kio-decision-reason" class="warning">類似日上位5件の合意度を確認中です。</p>
 <div id="kio-best-analog" class="kio-best-analog">
  <div class="kio-best-chart"><div class="kio-best-title"><div><span>本日最有力5分足</span><b id="kio-best-date">選定中</b></div><strong id="kio-best-score">—</strong></div><div id="kio-best-path" class="focus-empty">米国市場を照合中...</div></div>
  <div class="kio-best-detail"><span id="kio-selection-mode">選定方式を確認中</span><h3 id="kio-best-type">判定待ち</h3><div id="kio-us-context" class="kio-us-context"></div><p id="kio-best-plan">前夜の米国市場と信用需給を確認中です。</p></div>
@@ -2492,6 +2886,14 @@ Promise.all([
  fetch("credit_supply.json?t=" + Date.now()).then(r => r.json()).catch(() => ({{stocks:{{}}}}))
 ]).then(([d,credit]) => {{
   const p = d.prediction || {{}};
+  const decision = d.decision || {{}};
+  const grade = document.getElementById("kio-decision-grade");
+  grade.textContent = decision.grade || "見送り";
+  grade.className = decision.tradable ? "up" : "down";
+  document.getElementById("kio-agreement").textContent = decision.agreement == null ? "—" : Number(decision.agreement).toFixed(1) + "%";
+  document.getElementById("kio-dispersion").textContent = decision.dispersion == null ? "—" : Number(decision.dispersion).toFixed(2) + "%";
+  document.getElementById("kio-invalidate").textContent = decision.invalidate || "OR15・VWAP逆行で無効";
+  document.getElementById("kio-decision-reason").textContent = decision.reason || "十分な一致がないため予測だけで入らない";
   const supply = (credit.stocks || {{}})["285A"] || null;
   const fmtShares = v => v == null ? "—" : Number(v).toLocaleString("ja-JP") + "株";
   const fmtSignedShares = v => v == null ? "—" : (Number(v) >= 0 ? "+" : "") + Number(v).toLocaleString("ja-JP") + "株";

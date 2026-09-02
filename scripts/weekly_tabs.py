@@ -120,38 +120,29 @@ def tabs_block() -> str:
 .cockpit-tab{{border:1px solid #35506d;background:#102238;color:#b9cbe0;border-radius:10px;padding:10px 16px;font-weight:700;white-space:nowrap;cursor:pointer}}
 .cockpit-tab.active{{color:#07111f;background:#52e0c4;border-color:#52e0c4}}
 .cockpit-tab.event-alert{{color:#fff;background:#9f2936;border-color:#ff6c78;box-shadow:0 0 0 2px #ff6c7833}}
+.secondary-tabs{{margin-left:auto;white-space:nowrap}}.secondary-tabs summary{{cursor:pointer;color:#8fa4b9;padding:10px}}.secondary-tabs[open]{{display:flex;gap:6px}}
 .tab-pane{{display:none}}.tab-pane.active{{display:block}}
 .weekly-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}}
 .weekly-grid>div{{background:#0c1b2d;border:1px solid #243b55;border-radius:12px;padding:14px}}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
- <button class="cockpit-tab active" data-tab="daytrade">当日デイトレ</button>
- <button class="cockpit-tab" data-tab="events">イベント</button>
- <button class="cockpit-tab" data-tab="correlation">相関・先行銘柄</button>
- <button class="cockpit-tab" data-tab="kioxia-calendar">キオクシア5分足</button>
- <button class="cockpit-tab" data-tab="wick">下ヒゲ反転</button>
- <button class="cockpit-tab" data-tab="expansion">エクスパンション</button>
- <button class="cockpit-tab" data-tab="swing">短期スイング</button>
- <button class="cockpit-tab" data-tab="accumulation">大口仕込み</button>
- <button class="cockpit-tab" data-tab="longterm">長期反転</button>
- <button class="cockpit-tab" data-tab="dividend">配当権利前</button>
- <button class="cockpit-tab" data-tab="buyback">自社株買い</button>
- <button class="cockpit-tab" data-tab="policy">国策テーマ</button>
- <button class="cockpit-tab" data-tab="physical-ai">フィジカルAI</button>
- <button class="cockpit-tab" data-tab="autonomous-driving">自動運転</button>
- <button class="cockpit-tab" data-tab="ai-drug-discovery">AI創薬</button>
- <button class="cockpit-tab" data-tab="ai-semiconductor">AI半導体</button>
- <button class="cockpit-tab" data-tab="defense-space">防衛・宇宙</button>
- <button class="cockpit-tab" data-tab="gx-power">GX・電力</button>
- <button class="cockpit-tab" data-tab="quantum-computing">量子・先端計算</button>
- <button class="cockpit-tab" data-tab="market">市場・検証</button>
- <button class="cockpit-tab" data-tab="weekly">週間レビュー</button>
+ <button class="cockpit-tab active" data-tab="daytrade">精査TOP5</button>
+ <button class="cockpit-tab" data-tab="kioxia-calendar">キオクシア専用</button>
+ <button class="cockpit-tab" data-tab="strong-yen">円高恩恵TOP5</button>
+ <button class="cockpit-tab" data-tab="events">重要イベント</button>
+ <button class="cockpit-tab" data-tab="market">検証・除外</button>
+ <details class="secondary-tabs"><summary>参考タブ</summary>
+  <button class="cockpit-tab" data-tab="correlation">相関</button><button class="cockpit-tab" data-tab="wick">下ヒゲ</button>
+  <button class="cockpit-tab" data-tab="expansion">拡大</button><button class="cockpit-tab" data-tab="swing">スイング</button>
+  <button class="cockpit-tab" data-tab="accumulation">大口</button><button class="cockpit-tab" data-tab="longterm">長期</button>
+  <button class="cockpit-tab" data-tab="policy">国策</button><button class="cockpit-tab" data-tab="weekly">週間</button>
+ </details>
 </nav>
 <script>
 document.addEventListener("DOMContentLoaded",()=>{{
  const main=document.querySelector("main"); if(!main)return;
  const policyTabs=["physical-ai","autonomous-driving","ai-drug-discovery","ai-semiconductor","defense-space","gx-power","quantum-computing"];
- const panes={{}}; ["daytrade","events","correlation","kioxia-calendar","wick","expansion","swing","accumulation","longterm","dividend","buyback","policy",...policyTabs,"market","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="daytrade"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
+ const panes={{}}; ["daytrade","events","correlation","kioxia-calendar","strong-yen","wick","expansion","swing","accumulation","longterm","dividend","buyback","policy",...policyTabs,"market","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="daytrade"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
  [...main.querySelectorAll(":scope > section")].forEach(s=>{{
    const t=(s.querySelector("h2")?.textContent||"").trim();
    let k="market";
@@ -159,7 +150,8 @@ document.addEventListener("DOMContentLoaded",()=>{{
    else if(s.id==="event-calendar")k="events";
    else if(s.id==="correlation-monitor")k="correlation";
    else if(s.id==="kioxia-5m-calendar")k="kioxia-calendar";
-   else if(s.id==="action-dashboard"||s.id==="day-ifo-orders"||t.startsWith("③ ")||t.includes("IN点灯")||t.includes("準備点灯"))k="daytrade";
+   else if(s.id==="strong-yen-top5")k="strong-yen";
+   else if(s.id==="live-focus-status"||s.id==="data-quality-gate"||s.id==="action-dashboard"||s.id==="day-ifo-orders"||t.startsWith("③ ")||t.includes("IN点灯")||t.includes("準備点灯"))k="daytrade";
    else if(s.id==="lower-wick-reversal"||t.includes("下ヒゲ吸収反転"))k="wick";
    else if(t.includes("BB上方エクスパンション")||t.includes("短期急騰期待")||t.includes("テーマ仕手化兆候"))k="expansion";
    else if(s.id==="weekly-review"||t.includes("週間振り返り"))k="weekly";
@@ -171,10 +163,11 @@ document.addEventListener("DOMContentLoaded",()=>{{
    else if(t.includes("安定上昇")||t.includes("52週新高値")||t.includes("過熱監視")||t.includes("持ち越し")||t.includes("AIスイング"))k="swing";
    panes[k].appendChild(s);
  }});
- const intros={{daytrade:["当日デイトレ","需給改善済みの最大5銘柄。実戦対象は上位1～3銘柄。"],wick:["最優先・下ヒゲ吸収反転","売り吸収→終値回復→次足上抜けの順で発動。"],expansion:["当日エクスパンション","BB収縮から出来高を伴う拡大が期待できる銘柄。"],swing:["短期スイング","信用需給を主軸に、押し目・新高値・持ち越しを選別。"],accumulation:["大口仕込み","出来高・OBV・安値切上げから吸収と蓄積を監視。"],longterm:["長期右肩上がり・反転","50週線・200日線・月週足反転と需給改善が重なる銘柄。"],dividend:["配当権利前・上下期待","権利前上昇と権利落ち下落を需給付きで監視。"],buyback:["自社株買い監視","実施期間・残り余力・出来高影響と需給改善を確認。"],policy:["国策テーマ・実戦優先順位","政府資料、会社公式、業績寄与、信用需給を分離して確認。"],"physical-ai":["フィジカルAI","本体・AI制御・主要ロボット部品だけを厳格選定。"],"autonomous-driving":["自動運転","社会実装・自動運転ソフト・高精度地図を優先。"],"ai-drug-discovery":["AI創薬","AI創薬を会社公式で事業化している銘柄だけ。"],"ai-semiconductor":["AI・半導体基盤","メモリ、製造装置、テスト、先端SoCに限定。"],"defense-space":["防衛・宇宙","防衛装備、宇宙推進、衛星・官公庁案件を確認。"],"gx-power":["GX・電力基盤","送配電、蓄電池、パワー半導体、電力網。"],"quantum-computing":["量子・先端計算","事業寄与が小さい間は長期研究枠として扱う。"],market:["市場・検証","地合い、警報、答え合わせ、決算リスクを確認。"],weekly:["週間レビュー","週末検証と翌週の改善ルール。"]}};
+ const intros={{daytrade:["精査TOP5","二経路で株価・コード・取引日が完全一致した銘柄だけ。5枠を無理に埋めません。"],wick:["最優先・下ヒゲ吸収反転","売り吸収→終値回復→次足上抜けの順で発動。"],expansion:["当日エクスパンション","BB収縮から出来高を伴う拡大が期待できる銘柄。"],swing:["短期スイング","信用需給を主軸に、押し目・新高値・持ち越しを選別。"],accumulation:["大口仕込み","出来高・OBV・安値切上げから吸収と蓄積を監視。"],longterm:["長期右肩上がり・反転","50週線・200日線・月週足反転と需給改善が重なる銘柄。"],dividend:["配当権利前・上下期待","権利前上昇と権利落ち下落を需給付きで監視。"],buyback:["自社株買い監視","実施期間・残り余力・出来高影響と需給改善を確認。"],policy:["国策テーマ・実戦優先順位","政府資料、会社公式、業績寄与、信用需給を分離して確認。"],"physical-ai":["フィジカルAI","本体・AI制御・主要ロボット部品だけを厳格選定。"],"autonomous-driving":["自動運転","社会実装・自動運転ソフト・高精度地図を優先。"],"ai-drug-discovery":["AI創薬","AI創薬を会社公式で事業化している銘柄だけ。"],"ai-semiconductor":["AI・半導体基盤","メモリ、製造装置、テスト、先端SoCに限定。"],"defense-space":["防衛・宇宙","防衛装備、宇宙推進、衛星・官公庁案件を確認。"],"gx-power":["GX・電力基盤","送配電、蓄電池、パワー半導体、電力網。"],"quantum-computing":["量子・先端計算","事業寄与が小さい間は長期研究枠として扱う。"],market:["市場・検証","地合い、警報、答え合わせ、決算リスクを確認。"],weekly:["週間レビュー","週末検証と翌週の改善ルール。"]}};
  intros.correlation=["相関・先行／逆行銘柄","当日候補の方向を、連動株・逆相関株・米国先行株で確認。"];
  intros.events=["イベントカレンダー","発表日・需給日・指数反映日を分離し、当日の誤認を防止。"];
  intros["kioxia-calendar"]=["キオクシア5分足カレンダー","過去5分足から本日の途中経過に最も近い日を照合。"];
+ intros["strong-yen"]=["円高恩恵銘柄 TOP5","円高感応度だけでなく、信用需給・当日資金流入・発動価格まで確認。"];
  Object.entries(intros).forEach(([k,v])=>{{const h=document.createElement("div");h.className="pane-intro";h.innerHTML=`<span>SUPPLY IMPROVEMENT REQUIRED</span><h2>${{v[0]}}</h2><p>${{v[1]}}</p>`;panes[k].prepend(h);}});
  document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{{
    document.querySelectorAll(".cockpit-tab").forEach(x=>x.classList.toggle("active",x===b));

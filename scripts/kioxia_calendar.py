@@ -405,12 +405,23 @@ def main():
     matches.sort(key=lambda x: x["similarity"], reverse=True)
     top = matches[:5]
     valid = [x for x in top if x["similarity"] >= 60]
+    total_similarity = sum(float(x["similarity"]) for x in valid)
+    up_prob = (
+        sum(float(x["similarity"]) for x in valid if x["after_ret"] > 0)
+        / total_similarity * 100
+        if total_similarity else None
+    )
+    weighted_after = (
+        sum(float(x["after_ret"]) * float(x["similarity"]) for x in valid)
+        / total_similarity if total_similarity else None
+    )
+    direction_agreement = max(up_prob or 0, 100 - (up_prob or 0)) if up_prob is not None else None
+    return_dispersion = float(np.std([x["after_ret"] for x in valid])) if len(valid) >= 2 else None
     if not current_is_today:
         status = "寄り前・米国市場と信用需給から事前選定"
         if len(valid) < 3:
             bias = "事前類似度不足・見送り"
         else:
-            up_prob = sum(x["after_ret"] > 0 for x in valid) / len(valid) * 100
             bias = "上方向候補" if up_prob >= 65 else "下方向候補" if up_prob <= 35 else "レンジ候補"
     elif market_closed:
         status = "大引け後・当日照合完了"
@@ -423,9 +434,9 @@ def main():
         bias = "見送り"
     else:
         status = "類似日あり"
-        up_prob = sum(x["after_ret"] > 0 for x in valid) / len(valid) * 100
         bias = "上方向優位" if up_prob >= 65 else "下方向優位" if up_prob <= 35 else "レンジ優位"
-    up_prob = (sum(x["after_ret"] > 0 for x in valid) / len(valid) * 100) if valid and not market_closed else None
+    if market_closed:
+        up_prob = None
     market_values = (current_market or {}).get("values", {})
     negative_us = sum(float(market_values.get(k) or 0) < 0 for k in ("sndk", "mu", "sox", "nasdaq"))
     credit_bad = bool(current_supply and (
@@ -442,8 +453,29 @@ def main():
             "status": "方向確認待ち",
             "action": "OR15・VWAP・EMA9/20・出来高の4/5一致まで見送り",
         }
+    low_confidence = (
+        market_closed
+        or len(valid) < 3
+        or direction_agreement is None or direction_agreement < 65
+        or return_dispersion is None or return_dispersion > 4.0
+        or weighted_after is None or abs(weighted_after) < .30
+    )
+    decision = {
+        "grade": "見送り" if low_confidence else "条件付き",
+        "tradable": not low_confidence,
+        "agreement": round(direction_agreement, 1) if direction_agreement is not None else None,
+        "dispersion": round(return_dispersion, 2) if return_dispersion is not None else None,
+        "reason": (
+            "類似日間の方向または値幅が揃っていないため、予測だけで入らない"
+            if low_confidence else
+            "類似日が同方向へ収束。OR15・VWAP・出来高一致後だけ利用"
+        ),
+        "invalidate": "OR15とVWAPが予測方向と逆へ同時確定したら無効",
+    }
     current_view = prior_views.get(current_date) or day_view(current_date, current)
     output = {
+        "name": "キオクシアHD（285A）",
+        "ticker": "285A.T",
         "updated_at": datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S JST"),
         "source": intraday_source + "（取得可能な直近60日）",
         "calendar": views[-25:], "current": current_view,
@@ -457,12 +489,13 @@ def main():
         "prediction": {
             "status": status, "bias": bias,
             "up_probability": round(up_prob, 1) if up_prob is not None else None,
-            "expected_after_ret": round(float(np.mean([x["after_ret"] for x in valid])), 2) if valid and not market_closed else None,
+            "expected_after_ret": round(weighted_after, 2) if weighted_after is not None and not market_closed else None,
             "expected_max_up": round(float(np.mean([x["max_up_after"] for x in valid])), 2) if valid and not market_closed else None,
             "expected_max_down": round(float(np.mean([x["max_down_after"] for x in valid])), 2) if valid and not market_closed else None,
             "sample": len(valid),
         },
         "risk_overlay": risk_overlay,
+        "decision": decision,
         "rule": "寄り前は前夜のSanDisk・Micron・SOX・NASDAQと信用需給で事前類似日を選定。9:15以降は当日5分足を65%へ引き上げる。類似度60%以上が3日未満なら見送り。OR15・VWAP・EMA9/20・出来高の4/5一致が最終条件。",
     }
     OUT.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

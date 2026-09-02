@@ -1,0 +1,83 @@
+{
+  "updated_at": "2026-09-03 07:11:03 JST",
+  "refresh_seconds": 60,
+  "backend_interval_minutes": 5,
+  "verified_count": 0,
+  "expected_count": 6,
+  "status": "一部停止",
+  "rows": {
+    "4478": {
+      "name": "freee（4478）",
+      "ticker": "4478.T",
+      "price": 3965.0,
+      "primary_price": null,
+      "quote_time": null,
+      "age_minutes": null,
+      "verified": false,
+      "status": "更新停止・売買禁止",
+      "chart": [],
+      "signal": "更新停止・売買禁止"
+    },
+    "581A": {
+      "name": "GO（581A）",
+      "ticker": "581A.T",
+      "price": 3935.0,
+      "primary_price": null,
+      "quote_time": null,
+      "age_minutes": null,
+      "verified": false,
+      "status": "更新停止・売買禁止",
+      "chart": [],
+      "signal": "更新停止・売買禁止"
+    },
+    "6301": {
+      "name": "小松製作所（6301）",
+      "ticker": "6301.T",
+      "price": 7400.0,
+      "primary_price": null,
+      "quote_time": null,
+      "age_minutes": null,
+      "verified": false,
+      "status": "更新停止・売買禁止",
+      "chart": [],
+      "signal": "更新停止・売買禁止"
+    },
+    "6988": {
+      "name": "日東電工（6988）",
+      "ticker": "6988.T",
+      "price": 3468.0,
+      "primary_price": null,
+      "quote_time": null,
+      "age_minutes": null,
+      "verified": false,
+      "status": "更新停止・売買禁止",
+      "chart": [],
+      "signal": "更新停止・売買禁止"
+    },
+    "6701": {
+      "name": "NEC（6701）",
+      "ticker": "6701.T",
+      "price": 4775.0,
+      "primary_price": null,
+      "quote_time": null,
+      "age_minutes": null,
+      "verified": false,
+      "status": "更新停止・売買禁止",
+      "chart": [],
+      "signal": "更新停止・売買禁止"
+    },
+    "285A": {
+      "name": "キオクシアHD（285A）",
+      "ticker": "285A.T",
+      "price": 51000.0,
+      "primary_price": null,
+      "quote_time": null,
+      "age_minutes": null,
+      "verified": false,
+      "status": "更新停止・売買禁止",
+      "chart": [],
+      "signal": "更新停止・売買禁止"
+    }
+  },
+  "rule": "Yahoo 5分足と野村/QUICK現在値、コード、取引日、鮮度が一致した銘柄だけ更新。"
+}

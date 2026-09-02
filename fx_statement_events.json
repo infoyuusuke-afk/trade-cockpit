@@ -1,0 +1,106 @@
+{
+  "updated_at": "2026-09-02",
+  "rule": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
+  "events": [
+    {
+      "date": "2026-09-02",
+      "speaker": "植田日銀総裁・高田日銀審議委員・米ベッセント財務長官",
+      "category": "日銀利上げ示唆・日米協調",
+      "direction": "yen_up",
+      "strength": 4,
+      "verified": true,
+      "confounded": true,
+      "note": "高田委員が機動的な利上げを主張。植田総裁は9月会合で物価リスクを議論。レートチェック観測もあり発言単独効果とは断定しない。",
+      "source": "https://www.boj.or.jp/about/press/index.htm",
+      "news_source": "https://www.reuters.com/world/china/dollar-holds-firm-middle-east-hostilities-lift-oil-2026-09-02/"
+    },
+    {
+      "date": "2026-08-30",
+      "speaker": "米ベッセント財務長官",
+      "category": "介入必要性を弱める発言",
+      "direction": "yen_down",
+      "strength": 2,
+      "verified": true,
+      "confounded": false,
+      "note": "円相場は秩序的で共同介入を必要とする状態ではないとの見方。円高期待を弱める材料。",
+      "source": "https://www.reuters.com/world/asia-pacific/bessent-says-yen-moves-pretty-contained-not-disorderly-2026-08-30/"
+    },
+    {
+      "date": "2026-07-31",
+      "speaker": "日本銀行・日米通貨当局",
+      "category": "実弾介入・利上げ示唆",
+      "direction": "yen_up",
+      "strength": 5,
+      "verified": true,
+      "confounded": true,
+      "note": "実弾介入と金融政策要因が重なるため、口先介入の統計から除外。",
+      "source": "https://www.reuters.com/world/asia-pacific/boj-keep-rates-steady-deliver-hawkish-signal-price-pressures-mount-2026-07-30/"
+    },
+    {
+      "date": "2026-06-18",
+      "speaker": "日本政府官房長官",
+      "category": "口先介入・いつでも対応",
+      "direction": "yen_up",
+      "strength": 3,
+      "verified": true,
+      "confounded": false,
+      "note": "為替変動へいつでも適切に対応すると表明。発言後の持続性を検証対象にする。",
+      "source": "https://www.reuters.com/world/asia-pacific/japan-ready-respond-appropriately-yen-moves-government-spokesperson-says-2026-06-18/"
+    },
+    {
+      "date": "2026-05-07",
+      "speaker": "日本政府財務官",
+      "category": "強い口先介入・対応制限なし",
+      "direction": "yen_up",
+      "strength": 4,
+      "verified": true,
+      "confounded": false,
+      "note": "為替対応に制限はないとの姿勢。前日の介入観測とは日付を分離して集計。",
+      "source": "https://www.reuters.com/world/asia-pacific/japan-forex-czar-says-imf-floating-rate-label-does-not-limit-currency-action-2026-05-07/"
+    },
+    {
+      "date": "2026-02-03",
+      "speaker": "片山財務大臣",
+      "category": "日米連携・適切な対応",
+      "direction": "yen_up",
+      "strength": 3,
+      "verified": true,
+      "confounded": false,
+      "note": "日米当局で緊密に連携し必要に応じ適切に対応すると表明。",
+      "source": "https://www.mof.go.jp/public_relations/conference/my20260203.html"
+    },
+    {
+      "date": "2026-01-26",
+      "speaker": "日米通貨当局",
+      "category": "レートチェック・介入観測",
+      "direction": "yen_up",
+      "strength": 4,
+      "verified": true,
+      "confounded": true,
+      "note": "急激な円高が発生したが、介入観測を含むため純粋な発言効果から除外。",
+      "source": "https://www.reuters.com/world/china/global-markets-global-markets-2026-01-26/"
+    },
+    {
+      "date": "2025-12-19",
+      "speaker": "片山財務大臣",
+      "category": "行動を示唆する強い口先介入",
+      "direction": "yen_up",
+      "strength": 4,
+      "verified": true,
+      "confounded": false,
+      "note": "円安進行に対して行動へ移す姿勢を示した発言。",
+      "source": "https://www.mof.go.jp/public_relations/conference/my20251219a.html"
+    },
+    {
+      "date": "2025-11-21",
+      "speaker": "日本政府通貨当局",
+      "category": "介入警戒",
+      "direction": "yen_up",
+      "strength": 3,
+      "verified": true,
+      "confounded": false,
+      "note": "介入警戒が強まった局面。実際の円高持続性を価格で検証。",
+      "source": "https://www.reuters.com/world/asia-pacific/yen-intervention-looms-large-it-may-not-work-2025-11-21/"
+    }
+  ]
+}
