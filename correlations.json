@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-03 07:41:55 JST",
+  "updated_at": "2026-09-03 07:55:37 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -994,68 +994,6 @@
       "decision": "売買の確認材料に使用"
     },
     {
-      "anchor": "ハーモニック・ドライブ・システムズ（6324）",
-      "anchor_ticker": "6324.T",
-      "peer": "THK（6481）",
-      "peer_ticker": "6481.T",
-      "relation": "自動検出・正相関",
-      "expected": "正相関",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.67,
-      "corr60": 0.77,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": 0.61,
-      "lead_bars": 0,
-      "bars": 300,
-      "state": "確認",
-      "confidence": 84,
-      "anchor_today": {
-        "ret": -2.55,
-        "or15": "下抜け",
-        "vwap": "下",
-        "ema": "下向き"
-      },
-      "peer_today": {
-        "ret": -5.19,
-        "or15": "下抜け",
-        "vwap": "下",
-        "ema": "下向き"
-      },
-      "decision": "売買の確認材料に使用"
-    },
-    {
-      "anchor": "マクニカHD（3132）",
-      "anchor_ticker": "3132.T",
-      "peer": "THK（6481）",
-      "peer_ticker": "6481.T",
-      "relation": "自動検出・正相関",
-      "expected": "正相関",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.76,
-      "corr60": 0.77,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": 0.44,
-      "lead_bars": 0,
-      "bars": 300,
-      "state": "確認",
-      "confidence": 83,
-      "anchor_today": {
-        "ret": -1.8,
-        "or15": "下抜け",
-        "vwap": "上",
-        "ema": "上向き"
-      },
-      "peer_today": {
-        "ret": -5.19,
-        "or15": "下抜け",
-        "vwap": "下",
-        "ema": "下向き"
-      },
-      "decision": "売買の確認材料に使用"
-    },
-    {
       "anchor": "日東電工（6988）",
       "anchor_ticker": "6988.T",
       "peer": "日立製作所（6501）",
@@ -1087,33 +1025,33 @@
       "decision": "売買の確認材料に使用"
     },
     {
-      "anchor": "THK（6481）",
-      "anchor_ticker": "6481.T",
-      "peer": "マクニカHD（3132）",
-      "peer_ticker": "3132.T",
+      "anchor": "マクニカHD（3132）",
+      "anchor_ticker": "3132.T",
+      "peer": "富士電機（6504）",
+      "peer_ticker": "6504.T",
       "relation": "自動検出・正相関",
       "expected": "正相関",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.76,
-      "corr60": 0.77,
+      "corr20": 0.82,
+      "corr60": 0.7,
       "sample20": 20,
       "sample60": 60,
-      "intraday_corr": 0.44,
+      "intraday_corr": 0.43,
       "lead_bars": 0,
       "bars": 300,
       "state": "確認",
-      "confidence": 83,
+      "confidence": 82,
       "anchor_today": {
-        "ret": -5.19,
-        "or15": "下抜け",
-        "vwap": "下",
-        "ema": "下向き"
-      },
-      "peer_today": {
         "ret": -1.8,
         "or15": "下抜け",
         "vwap": "上",
         "ema": "上向き"
+      },
+      "peer_today": {
+        "ret": -1.89,
+        "or15": "下抜け",
+        "vwap": "下",
+        "ema": "下向き"
       },
       "decision": "売買の確認材料に使用"
     },
@@ -1142,6 +1080,37 @@
       },
       "peer_today": {
         "ret": -2.16,
+        "or15": "下抜け",
+        "vwap": "下",
+        "ema": "下向き"
+      },
+      "decision": "売買の確認材料に使用"
+    },
+    {
+      "anchor": "ハーモニック・ドライブ・システムズ（6324）",
+      "anchor_ticker": "6324.T",
+      "peer": "安川電機（6506）",
+      "peer_ticker": "6506.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.62,
+      "corr60": 0.75,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": 0.56,
+      "lead_bars": 0,
+      "bars": 300,
+      "state": "確認",
+      "confidence": 82,
+      "anchor_today": {
+        "ret": -2.55,
+        "or15": "下抜け",
+        "vwap": "下",
+        "ema": "下向き"
+      },
+      "peer_today": {
+        "ret": -2.03,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -2044,37 +2013,6 @@
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
-      },
-      "decision": "売買の確認材料に使用"
-    },
-    {
-      "anchor": "THK（6481）",
-      "anchor_ticker": "6481.T",
-      "peer": "神戸物産（3038）",
-      "peer_ticker": "3038.T",
-      "relation": "自動検出・逆相関",
-      "expected": "逆相関仮説",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": -0.42,
-      "corr60": -0.61,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": -0.31,
-      "lead_bars": 0,
-      "bars": 300,
-      "state": "確認",
-      "confidence": 72,
-      "anchor_today": {
-        "ret": -5.19,
-        "or15": "下抜け",
-        "vwap": "下",
-        "ema": "下向き"
-      },
-      "peer_today": {
-        "ret": -0.44,
-        "or15": "下抜け",
-        "vwap": "上",
-        "ema": "上向き"
       },
       "decision": "売買の確認材料に使用"
     },
