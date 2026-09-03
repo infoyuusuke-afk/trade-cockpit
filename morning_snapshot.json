@@ -1,8 +1,20 @@
 {
-  "date": "2026-09-03",
-  "fixed_at": "2026-09-03 15:36:34 JST",
+  "date": "2026-09-04",
+  "fixed_at": "2026-09-04 07:51:23 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
+    {
+      "name": "ニトリHD（9843）",
+      "ticker": "9843.T",
+      "side": "LONG",
+      "score": 95.0,
+      "entry": 3030,
+      "entry_limit": 3030,
+      "stop": 2975,
+      "target1": 3120,
+      "target2": 3160,
+      "morning_price": 3275.0
+    },
     {
       "name": "任天堂（7974）",
       "ticker": "7974.T",
@@ -13,7 +25,7 @@
       "stop": 8670,
       "target1": 9120,
       "target2": 9250,
-      "morning_price": 8854.0
+      "morning_price": 8855.0
     },
     {
       "name": "小松製作所（6301）",
@@ -25,7 +37,31 @@
       "stop": 7300,
       "target1": 7610,
       "target2": 7700,
-      "morning_price": 7540.0
+      "morning_price": 7513.0
+    },
+    {
+      "name": "富士通（6702）",
+      "ticker": "6702.T",
+      "side": "LONG",
+      "score": 77.0,
+      "entry": 3810,
+      "entry_limit": 3810,
+      "stop": 3735,
+      "target1": 3920,
+      "target2": 3970,
+      "morning_price": 3795.0
+    },
+    {
+      "name": "ソニーグループ（6758）",
+      "ticker": "6758.T",
+      "side": "LONG",
+      "score": 76.0,
+      "entry": 3905,
+      "entry_limit": 3905,
+      "stop": 3845,
+      "target1": 4000,
+      "target2": 4045,
+      "morning_price": 3895.0
     }
   ]
 }
