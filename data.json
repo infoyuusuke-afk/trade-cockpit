@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-04 07:51:03 JST",
+  "updated_at": "2026-09-04 08:07:17 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -5433,46 +5433,39 @@
     },
     "ドル円": {
       "ok": true,
-      "price": 156.0,
+      "price": 156.07,
       "open": 155.82,
-      "high": 156.01,
+      "high": 156.17,
       "low": 155.77,
-      "prev_close": 160.2,
-      "change_pct": -2.62,
+      "prev_close": 158.92,
+      "change_pct": -1.79,
       "ret5": -2.04,
-      "ret5_prev": 0.62,
-      "ret20": -1.01,
+      "ret5_prev": 0.28,
+      "ret20": -1.47,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 1.11,
-      "atr_pct": 0.71,
-      "ma5": 159.08,
-      "ma20": 159.03,
-      "ma60": 160.73,
-      "from_ma5": -1.93,
-      "from_ma20": -1.91,
+      "atr14": 1.32,
+      "atr_pct": 0.85,
+      "ma5": 159.01,
+      "ma20": 159.06,
+      "ma60": 160.71,
+      "from_ma5": -1.85,
+      "from_ma20": -1.88,
       "touch_ma5": false,
-      "to_high20": -2.73,
-      "to_high52": -4.86,
-      "bb_upper": 160.79,
-      "bb_lower": 157.28,
-      "bb_width": 2.21,
-      "bb_width_change": 0.46,
-      "bb_percentile": 60.0,
-      "bb_expansion_score": 29.0,
-      "day_score": -3.81,
-      "swing_score": 0.03,
-      "stable_score": 0.82,
-      "momentum_score": -0.78,
+      "to_high20": -2.69,
+      "to_high52": -4.82,
+      "bb_upper": 160.77,
+      "bb_lower": 157.35,
+      "bb_width": 2.15,
+      "bb_width_change": 0.51,
+      "bb_percentile": 59.2,
+      "bb_expansion_score": 29.3,
+      "day_score": -3.15,
+      "swing_score": -4.08,
+      "stable_score": 0.73,
+      "momentum_score": -0.83,
       "high_score": 0.0,
       "chart": [
-        {
-          "o": 162.34,
-          "h": 162.42,
-          "l": 161.29,
-          "c": 162.36,
-          "v": 0
-        },
         {
           "o": 161.89,
           "h": 162.39,
@@ -5740,25 +5733,32 @@
           "v": 0
         },
         {
+          "o": 158.9,
+          "h": 158.94,
+          "l": 155.35,
+          "c": 158.92,
+          "v": 0
+        },
+        {
           "o": 155.82,
-          "h": 156.01,
+          "h": 156.17,
           "l": 155.77,
-          "c": 156.0,
+          "c": 156.07,
           "v": 0
         }
       ],
-      "data_date": "2026-09-03",
-      "data_age_days": 1,
-      "chart_last_close": 156.0,
+      "data_date": "2026-09-04",
+      "data_age_days": 0,
+      "chart_last_close": 156.07,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-09-03）",
-      "market_supply_score": 73,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-09-04）",
+      "market_supply_score": 71,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給73点／上昇日出来高÷下落日2.00倍／安値切上げ×",
+      "market_supply_status": "市場需給71点／上昇日出来高÷下落日2.00倍／安値切上げ×",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
@@ -39376,13 +39376,13 @@
     }
   ],
   "strong_yen_top5": {
-    "usd_jpy": 155.998,
-    "usd_jpy_change_pct": 0.13,
+    "usd_jpy": 156.097,
+    "usd_jpy_change_pct": 0.2,
     "usd_jpy_ret5": -2.04,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-09-04T07:50:00+09:00",
+    "fx_observed_at": "2026-09-04T08:07:00+09:00",
     "statement_study": {
-      "updated_at": "2026-09-04 07:51:02 JST",
+      "updated_at": "2026-09-04 08:07:16 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -39400,7 +39400,7 @@
           "base": 159.747,
           "close_0d": 160.196,
           "move_0d_pct": 0.281,
-          "move_1d_pct": -2.349
+          "move_1d_pct": -0.516
         },
         "comparable": false,
         "hit": null
@@ -39479,7 +39479,7 @@
             "base": 159.747,
             "close_0d": 160.196,
             "move_0d_pct": 0.281,
-            "move_1d_pct": -2.349
+            "move_1d_pct": -0.516
           },
           "comparable": false,
           "hit": null
@@ -40258,7 +40258,7 @@
         "ticker": "2782.T",
         "price": 4380.0,
         "change_pct": -1.35,
-        "score": 64,
+        "score": 63,
         "sensitivity": 94,
         "reason": "輸入雑貨の原価負担が大きく、円高による仕入採算改善を確認する銘柄",
         "source": "https://www.seria-group.com/corporate/ir/",
@@ -43032,7 +43032,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-09-04 07:50:54 JST",
+    "credit_supply_updated_at": "2026-09-04 08:07:06 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -60208,14 +60208,14 @@
   ],
   "morning_snapshot": {
     "date": "2026-09-04",
-    "fixed_at": "2026-09-04 07:51:03 JST",
+    "fixed_at": "2026-09-04 08:07:17 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-09-04",
-    "fixed_at": "2026-09-04 07:51:23 JST",
+    "fixed_at": "2026-09-04 08:08:00 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
