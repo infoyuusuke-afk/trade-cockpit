@@ -99,6 +99,14 @@ def main():
     for marker in ("AIトレードコクピット Ver.5.2", "データ品質ゲート", "精査TOP5", "kio-decision-grade", "円高恩恵銘柄 TOP5", "要人発言イベントスタディ", "ザラバ5分更新", "音声OFF", "cockpitSpeak"):
         if marker not in html:
             errors.append(f"index.html missing marker: {marker}")
+    yen_tab = html.find('data-tab="strong-yen"')
+    secondary_tabs = html.find('<details class="secondary-tabs"')
+    if yen_tab < 0:
+        errors.append("top navigation is missing the strong-yen tab")
+    elif secondary_tabs >= 0 and yen_tab > secondary_tabs:
+        errors.append("strong-yen tab was demoted into secondary navigation")
+    if '"kioxia-calendar","strong-yen"' not in html or 's.id==="strong-yen-top5"' not in html:
+        errors.append("strong-yen tab routing is missing")
 
     if errors:
         raise SystemExit("PUBLICATION BLOCKED\n- " + "\n- ".join(errors))
