@@ -1,6 +1,6 @@
 {
-  "updated_at": "2026-09-03 07:55:47 JST",
-  "price_source": "取得失敗・前回値保持（RuntimeError）",
+  "updated_at": "2026-09-03 09:53:56 JST",
+  "price_source": "Yahoo Finance JPY=X 日足",
   "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
   "current": {
     "date": "2026-09-02",
@@ -15,9 +15,9 @@
     "news_source": "https://www.reuters.com/world/china/dollar-holds-firm-middle-east-hostilities-lift-oil-2026-09-02/",
     "reaction": {
       "base": 159.747,
-      "close_0d": 158.77,
-      "move_0d_pct": -0.612,
-      "move_1d_pct": -0.612
+      "close_0d": 160.196,
+      "move_0d_pct": 0.281,
+      "move_1d_pct": -0.726
     },
     "comparable": false,
     "hit": null
@@ -94,9 +94,9 @@
       "news_source": "https://www.reuters.com/world/china/dollar-holds-firm-middle-east-hostilities-lift-oil-2026-09-02/",
       "reaction": {
         "base": 159.747,
-        "close_0d": 158.77,
-        "move_0d_pct": -0.612,
-        "move_1d_pct": -0.612
+        "close_0d": 160.196,
+        "move_0d_pct": 0.281,
+        "move_1d_pct": -0.726
       },
       "comparable": false,
       "hit": null
