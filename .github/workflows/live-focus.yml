@@ -36,6 +36,10 @@ jobs:
           p=json.load(open('live_focus.json',encoding='utf-8'))
           assert p['expected_count'] <= 11
           assert all((not x['verified']) or (x['price'] and x['chart']) for x in p['rows'].values())
+          k=p['rows']['285A']
+          assert k['ticker']=='285A.T'
+          assert k['trade_signal'] in {'見送り','売買禁止','押し目買い候補','戻り売り候補'}
+          assert all(x in k for x in ('monitor_status','signal_reason','attention_state','signal_key','voice_message'))
           PY
           if git diff --quiet -- live_focus.json; then exit 0; fi
           git config user.name "github-actions[bot]"
