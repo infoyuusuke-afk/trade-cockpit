@@ -1,0 +1,11 @@
+{
+  "ticker": "285A.T",
+  "updated_at": null,
+  "records": [],
+  "summary": {
+    "sample": 0,
+    "direction_hit_rate": null,
+    "mean_absolute_error": null
+  },
+  "rule": "15:25以降の二経路照合済み実績だけを1営業日1件保存。方向一致率と絶対誤差を翌回の信頼度監査に使用。"
+}
