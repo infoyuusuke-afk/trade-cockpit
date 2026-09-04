@@ -2353,8 +2353,6 @@ document.addEventListener("DOMContentLoaded",()=>{
    document.getElementById("live-kioxia").textContent=k?.verified?Number(k.price).toLocaleString("ja-JP")+"円｜"+(k.signal||"判定待ち"):(k?.status||"停止");
    document.getElementById("live-rule").textContent=d.rule||"取得失敗時は売買禁止";
    document.dispatchEvent(new CustomEvent("liveFocusUpdate",{detail:d}));
-   const spoken=localStorage.getItem("cockpitLastSpokenUpdate");
-   if(voiceOn&&d.updated_at&&d.updated_at!==spoken){const kt=k?.verified?"キオクシアは"+Number(k.price).toLocaleString("ja-JP")+"円。"+(k.signal||"判定待ち"):"キオクシアは更新停止、売買禁止";window.cockpitSpeak("AIコクピットを更新。"+(d.verified_count||0)+"銘柄を照合。"+kt);localStorage.setItem("cockpitLastSpokenUpdate",d.updated_at);}
  }).catch(()=>{document.getElementById("live-status").textContent="通信停止・売買禁止";});
  loadLive();setInterval(loadLive,60000);
 });
@@ -2383,7 +2381,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 .focus-dashboard{{padding:14px;background:radial-gradient(circle at 80% 0,#123454 0,#101923 42%,#081018 100%);border:1px solid #3e83a8;overflow:visible}}.focus-title{{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:12px}}.focus-title h2{{font-size:26px;margin:2px 0;border:0;color:#fff}}.focus-title>div>span{{color:#63d8ff;font-weight:900;letter-spacing:.08em}}.decision-badge{{padding:12px 16px;border-radius:10px;font-size:17px;white-space:nowrap}}.decision-go{{background:#38e477;color:#03140a}}.decision-ready{{background:#ffd84e;color:#191300}}.decision-wait{{background:#5c6874;color:#fff}}.focus-layout{{display:grid;grid-template-columns:minmax(230px,.7fr) minmax(420px,1.45fr) minmax(320px,1fr);gap:12px}}.focus-picks{{display:flex;flex-direction:column;gap:7px}}.focus-pick{{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;text-align:left;color:#e9f4ff;background:#0b1722;border:1px solid #30475b;border-radius:9px;padding:10px;cursor:pointer}}.focus-pick:hover,.focus-pick.active{{border-color:#54d6ff;background:#10283a;box-shadow:0 0 0 1px #54d6ff55}}.focus-pick small{{display:block;margin-top:3px}}.focus-pick strong{{font-size:20px;color:#65e993}}.focus-rank{{background:#20384b;padding:5px;border-radius:5px;font-weight:900}}.focus-chart-wrap,.focus-order{{background:#071019;border:1px solid #2a475d;border-radius:10px;overflow:hidden}}.focus-chart-head{{display:flex;justify-content:space-between;padding:9px 11px;background:#0e2030}}#focus-chart{{width:100%;height:430px;border:0;display:block}}.focus-order{{padding:12px;overflow:auto}}.focus-symbol{{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;border-bottom:1px solid #314354;padding-bottom:9px}}.focus-symbol h3{{margin:0;color:#fff;font-size:18px}}.focus-symbol>b{{font-size:21px;color:#63e990}}.focus-action{{margin:11px 0;padding:12px;border-radius:9px;background:#113421;border:1px solid #2b9c58}}.focus-action span,.focus-action small{{display:block}}.focus-action strong{{display:block;font-size:25px;color:#65ef91;margin:4px 0}}.focus-price-grid{{display:grid;grid-template-columns:1fr 1fr;gap:7px}}.focus-price-grid>div{{background:#101e2a;border-radius:7px;padding:9px}}.focus-price-grid span{{display:block;color:#9fb0bf}}.focus-price-grid b{{font-size:17px}}.focus-supply{{margin-top:9px;padding:9px;border-left:4px solid #ffcf4a;background:#191a14}}.focus-supply b,.focus-supply span{{display:block}}.focus-rule{{color:#ffd75e;border-top:1px solid #4a3d16;padding-top:9px}}.focus-empty{{padding:28px;text-align:center;font-size:17px}}@media(max-width:1100px){{.focus-layout{{grid-template-columns:240px 1fr}}.focus-order{{grid-column:1/-1}}}}@media(max-width:800px){{.focus-layout{{grid-template-columns:1fr}}.focus-order{{grid-column:auto}}#focus-chart{{height:360px}}.focus-title{{align-items:flex-start;flex-direction:column}}}}
 </style>
 <link rel="stylesheet" href="theme.css?v=51">
-<link rel="stylesheet" href="focus.css?v=41">
+<link rel="stylesheet" href="focus.css?v=42">
 <header><div><h1>AIトレードコクピット Ver.5.2</h1><div class="sub">精査TOP5＋キオクシア専用。照合不一致は表示しない</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／統一取引日 {quality_gate['market_date'] or '取得不能'}</div></div></header><main>
 {quality_html}
 {live_focus_html}
@@ -2429,6 +2427,18 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div class="rotation-box"><b>無効化条件</b><span id="kio-invalidate">確認中</span></div>
 </div>
 <p id="kio-decision-reason" class="warning">類似日上位5件の合意度を確認中です。</p>
+<div id="kio-live-monitor" class="kio-live-monitor" aria-live="polite">
+ <div class="kio-live-head"><div><span>予測対実績・5分監視</span><b id="kio-monitor-state">ザラバ開始待ち</b></div><strong id="kio-trade-signal">見送り</strong></div>
+ <div class="kio-monitor-grid">
+  <div><span>照合時刻</span><b id="kio-compare-time">予測 09:00／実績 —</b></div>
+  <div><span>予測／実績</span><b id="kio-compare-return">—</b></div>
+  <div><span>差異・一致度</span><b id="kio-path-gap">—</b></div>
+  <div><span>次の注意時間</span><b id="kio-attention-time">09:00–09:15</b><small id="kio-attention-reason">寄り直後・OR15形成</small></div>
+  <div><span>発動価格（成行禁止）</span><b id="kio-entry-price">—</b><small id="kio-entry-order">条件成立後の逆指値</small></div>
+  <div><span>撤退価格</span><b id="kio-stop-price">—</b><small>発動足を否定したら撤退</small></div>
+ </div>
+ <p id="kio-signal-reason">OR15、VWAP、EMA9/20、出来高と予測方向が一致するまで発注しません。</p>
+</div>
 <div id="kio-best-analog" class="kio-best-analog">
  <div class="kio-best-chart"><div class="kio-best-title"><div><span>本日最有力5分足</span><b id="kio-best-date">選定中</b></div><strong id="kio-best-score">—</strong></div><div id="kio-best-path" class="focus-empty">米国市場を照合中...</div></div>
  <div class="kio-best-detail"><span id="kio-selection-mode">選定方式を確認中</span><h3 id="kio-best-type">判定待ち</h3><div id="kio-us-context" class="kio-us-context"></div><p id="kio-best-plan">前夜の米国市場と信用需給を確認中です。</p></div>
@@ -2881,6 +2891,15 @@ const miniPath = (points, stroke="#58d9b4") => {{
   const zero = (66-(0-lo)/span*60).toFixed(1);
   return "<svg viewBox='0 0 120 70' preserveAspectRatio='none'><line x1='2' y1='" + zero + "' x2='118' y2='" + zero + "' stroke='#38505e' stroke-dasharray='3 3'/><polyline points='" + coords + "' fill='none' stroke='" + stroke + "' stroke-width='2'/></svg>";
 }};
+const timedPath = (points, stroke="#58d9b4") => {{
+  if (!points || points.length < 2) return "<div class='focus-empty'>データなし</div>";
+  const lo=Math.min(...points),hi=Math.max(...points),span=Math.max(hi-lo,.01);
+  const x=i=>6+i/(points.length-1)*108,y=v=>61-(v-lo)/span*50;
+  const coords=points.map((v,i)=>x(i).toFixed(1)+","+y(v).toFixed(1)).join(" ");
+  const marks=[{{p:0,t:"09:00"}},{{p:.277,t:"10:30"}},{{p:.462,t:"11:30"}},{{p:.738,t:"14:00"}},{{p:1,t:"15:30"}}];
+  const guides=marks.map(m=>{{const px=(6+m.p*108).toFixed(1);return "<line x1='"+px+"' y1='7' x2='"+px+"' y2='63' stroke='#263844' stroke-dasharray='2 3'/><text x='"+px+"' y='70' text-anchor='middle' fill='#8fa5b5' font-size='4'>"+m.t+"</text>";}}).join("");
+  return "<svg viewBox='0 0 120 73' preserveAspectRatio='none' aria-label='09時から15時30分の予測経路'>"+guides+"<polyline points='"+coords+"' fill='none' stroke='"+stroke+"' stroke-width='2.2'/></svg>";
+}};
 Promise.all([
  fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()),
  fetch("credit_supply.json?t=" + Date.now()).then(r => r.json()).catch(() => ({{stocks:{{}}}}))
@@ -2928,7 +2947,7 @@ Promise.all([
   if (best) {{
     document.getElementById("kio-best-date").textContent = best.date;
     document.getElementById("kio-best-score").textContent = Number(best.similarity).toFixed(1) + "%";
-    document.getElementById("kio-best-path").innerHTML = miniPath(best.path, best.ret >= 0 ? "#58ddb5" : "#ff777e");
+    document.getElementById("kio-best-path").innerHTML = timedPath(best.path, best.ret >= 0 ? "#58ddb5" : "#ff777e");
     document.getElementById("kio-best-type").textContent = best.type + "／全日 " + signedPct(best.ret,2);
     document.getElementById("kio-best-plan").textContent = "類似日の照合後 " + signedPct(best.after_ret,2) + "、最大上振れ " + signedPct(best.max_up_after,2) + "、最大下振れ " + signedPct(best.max_down_after,2) + "。" + (riskOverlay.action || (p.sample < 3 ? "サンプル不足のため売買利用禁止。" : "9:15以降のローソク足確認が必須。" ));
   }} else {{
@@ -2946,6 +2965,30 @@ Promise.all([
   document.getElementById("kioxia-calendar-meta").textContent = "5分足または信用需給データ未取得。推定で埋めません。";
   document.getElementById("kioxia-match-grid").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
   document.getElementById("kioxia-calendar-grid").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
+}});
+document.addEventListener("liveFocusUpdate",e=>{{
+  const k=(e.detail?.rows||{{}})["285A"];
+  if(!k)return;
+  const fmtPct=v=>v==null?"—":(Number(v)>=0?"+":"")+Number(v).toFixed(2)+"%";
+  const state=document.getElementById("kio-monitor-state"),signal=document.getElementById("kio-trade-signal");
+  state.textContent=k.verified?(k.monitor_status||"判定待ち"):(k.status||"更新停止・売買禁止");
+  state.className=k.monitor_status==="予測内"?"up":k.monitor_status==="予測崩れ"?"down":"warning";
+  signal.textContent=k.verified?(k.trade_signal||"見送り"):"売買禁止";
+  signal.className=(k.trade_signal==="押し目買い候補"?"buy":k.trade_signal==="戻り売り候補"?"sell":"wait");
+  document.getElementById("kio-compare-time").textContent="予測 "+(k.forecast_time||"—")+"／実績 "+(k.actual_time||"—");
+  document.getElementById("kio-compare-return").textContent=fmtPct(k.forecast_return)+"／"+fmtPct(k.actual_return);
+  document.getElementById("kio-path-gap").textContent=fmtPct(k.deviation_pct)+"／"+(k.path_fit==null?"—":Number(k.path_fit).toFixed(1)+"%一致");
+  document.getElementById("kio-attention-time").textContent=k.attention_start?(k.attention_start+"–"+k.attention_end):"本日終了";
+  document.getElementById("kio-attention-reason").textContent=(k.attention_state||"")+"｜"+(k.attention_reason||"—");
+  document.getElementById("kio-entry-price").textContent=k.entry_price==null?"—":Number(k.entry_price).toLocaleString("ja-JP")+"円";
+  document.getElementById("kio-entry-order").textContent=k.entry_order||"条件成立後の逆指値";
+  document.getElementById("kio-stop-price").textContent=k.stop_price==null?"—":Number(k.stop_price).toLocaleString("ja-JP")+"円";
+  document.getElementById("kio-signal-reason").textContent=k.signal_reason||"条件未確認";
+  const lastKey=localStorage.getItem("kioLastSignalKey");
+  if(k.verified&&k.signal_key&&k.signal_key!==lastKey){{
+    window.cockpitSpeak?.(k.voice_message||("キオクシア、"+(k.trade_signal||"見送り")));
+    localStorage.setItem("kioLastSignalKey",k.signal_key);
+  }}
 }});
 </script>{trade_drawer}</body></html>"""
     (ROOT / "index.html").write_text(html, encoding="utf-8")
