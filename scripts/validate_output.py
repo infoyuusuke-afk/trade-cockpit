@@ -22,6 +22,8 @@ def close_enough(a, b):
 def main():
     data = load("data.json")
     kio = load("kioxia_5m_calendar.json")
+    catalysts = load("kioxia_catalysts.json")
+    kio_history = load("kioxia_prediction_history.json")
     fx_study = load("fx_statement_study.json")
     live = load("live_focus.json")
     html = (ROOT / "index.html").read_text(encoding="utf-8")
@@ -75,6 +77,17 @@ def main():
 
     if kio.get("name") != "キオクシアHD（285A）" or kio.get("ticker") != "285A.T":
         errors.append("Kioxia identity is not fixed to 285A.T")
+    if catalysts.get("name") != "キオクシアHD（285A）" or catalysts.get("ticker") != "285A.T":
+        errors.append("Kioxia catalyst identity is not fixed to 285A.T")
+    if kio_history.get("ticker") != "285A.T":
+        errors.append("Kioxia prediction history identity mismatch")
+    for item in catalysts.get("items") or []:
+        if not str(item.get("source_url") or "").startswith(("https://www.kioxia.com/", "https://www.kioxia-holdings.com/", "https://ssl4.eir-parts.net/")):
+            errors.append("Kioxia catalyst uses a non-primary source")
+        if not item.get("verified") and item.get("trade_use") != "確認待ち・売買利用禁止":
+            errors.append("unverified Kioxia catalyst is tradable")
+    if len(kio.get("gap_studies") or []) != 7 or not kio.get("ma_playbook"):
+        errors.append("Kioxia GU/GD study or MA playbook is missing")
     decision = kio.get("decision") or {}
     for key in ("grade", "tradable", "agreement", "dispersion", "reason", "invalidate"):
         if key not in decision:
@@ -102,7 +115,7 @@ def main():
     for code, row in live_rows.items():
         if row.get("verified") and (row.get("price") is None or not row.get("chart")):
             errors.append(f"verified live row lacks price/chart: {code}")
-    for marker in ("AIトレードコクピット Ver.5.2", "データ品質ゲート", "精査TOP5", "kio-decision-grade", "円高恩恵銘柄 TOP5", "要人発言イベントスタディ", "ザラバ5分更新", "音声OFF", "cockpitSpeak", "予測対実績・5分監視", "次の注意時間", "発動価格（成行禁止）", "kio-trade-signal", "timedPath"):
+    for marker in ("AIトレードコクピット Ver.5.2", "データ品質ゲート", "精査TOP5", "kio-decision-grade", "円高恩恵銘柄 TOP5", "要人発言イベントスタディ", "ザラバ5分更新", "音声OFF", "cockpitSpeak", "予測対実績・5分監視", "次の注意時間", "発動価格（成行禁止）", "kio-trade-signal", "timedPath", "GU／GD幅別", "材料レーダー", "kio-setup-type", "kio-audit-hit"):
         if marker not in html:
             errors.append(f"index.html missing marker: {marker}")
     yen_tab = html.find('data-tab="strong-yen"')
