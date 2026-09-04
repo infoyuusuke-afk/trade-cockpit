@@ -302,39 +302,45 @@ def main():
                 confirmed = session[session.index.map(lambda value: iso_jst(value).to_pydatetime().timestamp() + 300 <= now.timestamp())]
                 if not confirmed.empty:
                     session = confirmed
-                for stamp, bar in session.iterrows():
-                    session_chart.append({
-                        "t": iso_jst(stamp).strftime("%H:%M"),
-                        "o": round(float(bar["Open"]), 3),
-                        "h": round(float(bar["High"]), 3),
-                        "l": round(float(bar["Low"]), 3),
-                        "c": round(float(bar["Close"]), 3),
-                        "v": round(float(bar.get("Volume") or 0)),
-                    })
-                close = session["Close"].astype(float)
-                volume = session["Volume"].fillna(0).astype(float)
-                typical = (session["High"].astype(float) + session["Low"].astype(float) + close) / 3
-                cumulative_volume = volume.cumsum()
-                vwap_series = (typical * volume).cumsum() / cumulative_volume.replace(0, math.nan)
-                ema9_series = close.ewm(span=9, adjust=False).mean()
-                ema20_series = close.ewm(span=20, adjust=False).mean()
-                or15 = session.head(3)
-                recent_vwap = vwap_series.dropna()
-                vwap_crosses = 0
-                if len(recent_vwap) >= 4:
-                    signed = close.reindex(recent_vwap.index).iloc[-6:] - recent_vwap.iloc[-6:]
-                    vwap_crosses = int(((signed * signed.shift(1)) < 0).sum())
-                indicators = {
-                    "vwap": round(float(vwap_series.iloc[-1]), 3) if len(vwap_series) and not pd.isna(vwap_series.iloc[-1]) else None,
-                    "ema9": round(float(ema9_series.iloc[-1]), 3) if len(ema9_series) else None,
-                    "ema20": round(float(ema20_series.iloc[-1]), 3) if len(ema20_series) else None,
-                    "ema9_slope": round(float(ema9_series.iloc[-1] - ema9_series.iloc[-2]), 3) if len(ema9_series) > 1 else 0,
-                    "ema20_slope": round(float(ema20_series.iloc[-1] - ema20_series.iloc[-2]), 3) if len(ema20_series) > 1 else 0,
-                    "vwap_crosses_6": vwap_crosses,
-                    "confirmed_bar_time": iso_jst(session.index[-1]).strftime("%H:%M") if len(session) else None,
-                    "or15_high": round(float(or15["High"].max()), 3) if len(or15) == 3 else None,
-                    "or15_low": round(float(or15["Low"].min()), 3) if len(or15) == 3 else None,
-                }
+                # On weekends/holidays (and before the first completed bar), the
+                # current-session slice is empty. Keep the last verified forecast
+                # visible, but never manufacture intraday indicators or a signal.
+                if not session.empty and all(
+                    column in session.columns for column in ("Open", "High", "Low", "Close", "Volume")
+                ):
+                    for stamp, bar in session.iterrows():
+                        session_chart.append({
+                            "t": iso_jst(stamp).strftime("%H:%M"),
+                            "o": round(float(bar["Open"]), 3),
+                            "h": round(float(bar["High"]), 3),
+                            "l": round(float(bar["Low"]), 3),
+                            "c": round(float(bar["Close"]), 3),
+                            "v": round(float(bar.get("Volume") or 0)),
+                        })
+                    close = session["Close"].astype(float)
+                    volume = session["Volume"].fillna(0).astype(float)
+                    typical = (session["High"].astype(float) + session["Low"].astype(float) + close) / 3
+                    cumulative_volume = volume.cumsum()
+                    vwap_series = (typical * volume).cumsum() / cumulative_volume.replace(0, math.nan)
+                    ema9_series = close.ewm(span=9, adjust=False).mean()
+                    ema20_series = close.ewm(span=20, adjust=False).mean()
+                    or15 = session.head(3)
+                    recent_vwap = vwap_series.dropna()
+                    vwap_crosses = 0
+                    if len(recent_vwap) >= 4:
+                        signed = close.reindex(recent_vwap.index).iloc[-6:] - recent_vwap.iloc[-6:]
+                        vwap_crosses = int(((signed * signed.shift(1)) < 0).sum())
+                    indicators = {
+                        "vwap": round(float(vwap_series.iloc[-1]), 3) if len(vwap_series) and not pd.isna(vwap_series.iloc[-1]) else None,
+                        "ema9": round(float(ema9_series.iloc[-1]), 3) if len(ema9_series) else None,
+                        "ema20": round(float(ema20_series.iloc[-1]), 3) if len(ema20_series) else None,
+                        "ema9_slope": round(float(ema9_series.iloc[-1] - ema9_series.iloc[-2]), 3) if len(ema9_series) > 1 else 0,
+                        "ema20_slope": round(float(ema20_series.iloc[-1] - ema20_series.iloc[-2]), 3) if len(ema20_series) > 1 else 0,
+                        "vwap_crosses_6": vwap_crosses,
+                        "confirmed_bar_time": iso_jst(session.index[-1]).strftime("%H:%M"),
+                        "or15_high": round(float(or15["High"].max()), 3) if len(or15) == 3 else None,
+                        "or15_low": round(float(or15["Low"].min()), 3) if len(or15) == 3 else None,
+                    }
         secondary_price = sec.get("price") if sec.get("ok") else None
         tolerance = max(price_tick(secondary_price or primary_price or 1) * 2, (secondary_price or 0) * .002)
         prices_match = (
