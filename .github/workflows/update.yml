@@ -20,6 +20,7 @@ on:
       - "scripts/signal_scan.py"
       - "scripts/correlation_scan.py"
       - "scripts/kioxia_calendar.py"
+      - "scripts/kioxia_catalysts.py"
       - "scripts/stockscope_credit.py"
       - "scripts/morning_review.py"
       - "scripts/weekly_tabs.py"
@@ -32,6 +33,7 @@ on:
       - "fx_statement_events.json"
       - "watchlist.json"
       - "credit_supply.json"
+      - "kioxia_prediction_history.json"
       - "buybacks.json"
       - "requirements.txt"
       - ".github/workflows/update.yml"
@@ -82,6 +84,7 @@ jobs:
           python scripts/signal_scan.py
           python scripts/correlation_scan.py
           python scripts/stockscope_credit.py
+          python scripts/kioxia_catalysts.py
           python scripts/kioxia_calendar.py
           python scripts/event_calendar.py
           python scripts/world_market.py
@@ -94,7 +97,7 @@ jobs:
 
       - name: Commit and push updated files
         run: |
-          if git diff --quiet -- index.html data.json signals.json correlations.json credit_supply.json kioxia_5m_calendar.json event_calendar.json world_market.json fx_statement_study.json live_focus.json morning_snapshot.json paper_trade_history.json weekly_review.json; then
+          if git diff --quiet -- index.html data.json signals.json correlations.json credit_supply.json kioxia_5m_calendar.json kioxia_catalysts.json kioxia_prediction_history.json event_calendar.json world_market.json fx_statement_study.json live_focus.json morning_snapshot.json paper_trade_history.json weekly_review.json; then
             echo "No changes to commit."
             exit 0
           fi
@@ -104,6 +107,8 @@ jobs:
           test ! -f correlations.json || git add correlations.json
           test ! -f credit_supply.json || git add credit_supply.json
           test ! -f kioxia_5m_calendar.json || git add kioxia_5m_calendar.json
+          test ! -f kioxia_catalysts.json || git add kioxia_catalysts.json
+          test ! -f kioxia_prediction_history.json || git add kioxia_prediction_history.json
           test ! -f event_calendar.json || git add event_calendar.json
           test ! -f world_market.json || git add world_market.json
           test ! -f fx_statement_study.json || git add fx_statement_study.json
