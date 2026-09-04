@@ -4546,5 +4546,125 @@
     "reason": "類似日間の方向または値幅が揃っていないため、予測だけで入らない",
     "invalidate": "OR15とVWAPが予測方向と逆へ同時確定したら無効"
   },
-  "rule": "寄り前は前夜のSanDisk・Micron・SOX・NASDAQと信用需給で事前類似日を選定。9:15以降は当日5分足を65%へ引き上げる。類似度60%以上が3日未満なら見送り。OR15・VWAP・EMA9/20・出来高の4/5一致が最終条件。"
+  "rule": "寄り前は前夜のSanDisk・Micron・SOX・NASDAQと信用需給で事前類似日を選定。9:15以降は当日5分足を65%へ引き上げる。類似度60%以上が3日未満なら見送り。OR15・VWAP・EMA9/20・出来高の4/5一致が最終条件。",
+  "gap_studies": [
+    {
+      "bucket": "GD 5%以上",
+      "sample": 5,
+      "usable": true,
+      "source": "検証済み日足OHLC",
+      "close_up_rate": 0.0,
+      "gap_fill_rate": 0.0,
+      "median_day_ret": -4.95,
+      "median_max_up": 1.52,
+      "median_max_down": -5.65
+    },
+    {
+      "bucket": "GD 3–5%",
+      "sample": 1,
+      "usable": false,
+      "source": "検証済み日足OHLC",
+      "close_up_rate": 100.0,
+      "gap_fill_rate": 100.0,
+      "median_day_ret": 8.44,
+      "median_max_up": 8.44,
+      "median_max_down": -0.26
+    },
+    {
+      "bucket": "GD 1–3%",
+      "sample": 10,
+      "usable": true,
+      "source": "検証済み日足OHLC",
+      "close_up_rate": 50.0,
+      "gap_fill_rate": 80.0,
+      "median_day_ret": 0.74,
+      "median_max_up": 3.43,
+      "median_max_down": -2.55
+    },
+    {
+      "bucket": "±1%以内",
+      "sample": 4,
+      "usable": true,
+      "source": "検証済み日足OHLC",
+      "close_up_rate": 75.0,
+      "gap_fill_rate": 100.0,
+      "median_day_ret": 3.01,
+      "median_max_up": 7.06,
+      "median_max_down": -2.36
+    },
+    {
+      "bucket": "GU 1–3%",
+      "sample": 9,
+      "usable": true,
+      "source": "検証済み日足OHLC",
+      "close_up_rate": 55.6,
+      "gap_fill_rate": 77.8,
+      "median_day_ret": 1.28,
+      "median_max_up": 6.89,
+      "median_max_down": -6.59
+    },
+    {
+      "bucket": "GU 3–5%",
+      "sample": 3,
+      "usable": true,
+      "source": "検証済み日足OHLC",
+      "close_up_rate": 66.7,
+      "gap_fill_rate": 66.7,
+      "median_day_ret": 0.19,
+      "median_max_up": 2.0,
+      "median_max_down": -7.26
+    },
+    {
+      "bucket": "GU 5%以上",
+      "sample": 7,
+      "usable": true,
+      "source": "検証済み日足OHLC",
+      "close_up_rate": 14.3,
+      "gap_fill_rate": 14.3,
+      "median_day_ret": -3.04,
+      "median_max_up": 2.4,
+      "median_max_down": -4.49
+    }
+  ],
+  "forecast_turns": [
+    {
+      "time": "09:50",
+      "kind": "予測ピーク",
+      "ret": 4.29
+    },
+    {
+      "time": "10:00",
+      "kind": "予測ボトム",
+      "ret": 4.1
+    },
+    {
+      "time": "10:05",
+      "kind": "予測ピーク",
+      "ret": 4.54
+    },
+    {
+      "time": "10:10",
+      "kind": "予測ピーク",
+      "ret": 4.73
+    },
+    {
+      "time": "10:20",
+      "kind": "予測ボトム",
+      "ret": 3.93
+    },
+    {
+      "time": "10:25",
+      "kind": "予測ボトム",
+      "ret": 4.4
+    }
+  ],
+  "ma_playbook": {
+    "note": "EMA9/20は日数ではなく5分足の9本・20本。日足移動平均とは分けて判定。",
+    "long_first_pullback": "EMA9>EMA20、VWAP上、EMA9上向き。EMA9へ下ヒゲ接触後、5分足終値で回復し、その足の高値+1ティックで発動。",
+    "long_deep_pullback": "EMA20またはVWAPまでの押し。下ヒゲ回収と出来高減速を確認し、反発足高値+1ティック。OR15安値割れなら禁止。",
+    "short_first_return": "EMA9<EMA20、VWAP下、EMA9下向き。EMA9へ上ヒゲ接触後、5分足終値で拒否し、その足の安値-1ティックで発動。",
+    "short_deep_return": "EMA20またはVWAPまでの戻り。上ヒゲ拒否と買い出来高失速後、反落足安値-1ティック。OR15高値超えなら禁止。",
+    "whipsaw_guard": "OR15内、EMA9/20交差、VWAPを2本連続往復、長い上下ヒゲは往復ピンタ帯。新規注文を置かない。"
+  },
+  "weekend_status": "休場日：直前営業日の検証済み予測を保持。次営業日版は当日8:00に更新。"
 }
