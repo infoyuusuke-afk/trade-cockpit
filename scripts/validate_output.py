@@ -93,10 +93,16 @@ def main():
     kio_live = live_rows.get("285A") or {}
     if kio_live.get("ticker") != "285A.T" or "キオクシア" not in kio_live.get("name", ""):
         errors.append("live Kioxia identity mismatch")
+    for key in ("forecast_status", "monitor_status", "trade_signal", "signal_reason",
+                "attention_state", "attention_reason", "signal_key", "voice_message"):
+        if key not in kio_live:
+            errors.append(f"live Kioxia monitor field is missing: {key}")
+    if kio_live.get("trade_signal") not in {"見送り", "売買禁止", "押し目買い候補", "戻り売り候補"}:
+        errors.append("live Kioxia trade signal is invalid")
     for code, row in live_rows.items():
         if row.get("verified") and (row.get("price") is None or not row.get("chart")):
             errors.append(f"verified live row lacks price/chart: {code}")
-    for marker in ("AIトレードコクピット Ver.5.2", "データ品質ゲート", "精査TOP5", "kio-decision-grade", "円高恩恵銘柄 TOP5", "要人発言イベントスタディ", "ザラバ5分更新", "音声OFF", "cockpitSpeak"):
+    for marker in ("AIトレードコクピット Ver.5.2", "データ品質ゲート", "精査TOP5", "kio-decision-grade", "円高恩恵銘柄 TOP5", "要人発言イベントスタディ", "ザラバ5分更新", "音声OFF", "cockpitSpeak", "予測対実績・5分監視", "次の注意時間", "発動価格（成行禁止）", "kio-trade-signal", "timedPath"):
         if marker not in html:
             errors.append(f"index.html missing marker: {marker}")
     yen_tab = html.find('data-tab="strong-yen"')
