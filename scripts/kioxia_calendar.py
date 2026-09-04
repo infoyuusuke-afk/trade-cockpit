@@ -18,6 +18,7 @@ import yfinance as yf
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "kioxia_5m_calendar.json"
 CREDIT = ROOT / "credit_supply.json"
+DATA = ROOT / "data.json"
 JST = ZoneInfo("Asia/Tokyo")
 US_TICKERS = {"sndk": "SNDK", "mu": "MU", "sox": "^SOX", "nasdaq": "^IXIC"}
 US_LABELS = {"sndk": "SanDisk", "mu": "Micron", "sox": "SOX", "nasdaq": "NASDAQ"}
@@ -314,7 +315,133 @@ def supply_similarity(current, past):
     return phase_score
 
 
+def gap_bucket(value):
+    if value <= -5: return "GD 5%以上"
+    if value <= -3: return "GD 3–5%"
+    if value <= -1: return "GD 1–3%"
+    if value < 1: return "±1%以内"
+    if value < 3: return "GU 1–3%"
+    if value < 5: return "GU 3–5%"
+    return "GU 5%以上"
+
+
+def gap_studies(sessions):
+    """Describe actual post-gap behavior; never manufacture a rule from tiny samples."""
+    groups = {}
+    for i in range(1, len(sessions)):
+        date, day = sessions[i]
+        prev_close = float(sessions[i - 1][1]["Close"].iloc[-1])
+        open_ = float(day["Open"].iloc[0])
+        if prev_close <= 0 or open_ <= 0:
+            continue
+        gap = (open_ / prev_close - 1) * 100
+        first = day.iloc[:min(4, len(day))]
+        or_high, or_low = float(first["High"].max()), float(first["Low"].min())
+        close = float(day["Close"].iloc[-1])
+        filled = (gap > 0 and float(day["Low"].min()) <= prev_close) or (gap < 0 and float(day["High"].max()) >= prev_close)
+        groups.setdefault(gap_bucket(gap), []).append({
+            "date": date, "gap": gap, "or15_ret": (float(first["Close"].iloc[-1]) / open_ - 1) * 100,
+            "day_ret": (close / open_ - 1) * 100, "max_up": (float(day["High"].max()) / open_ - 1) * 100,
+            "max_down": (float(day["Low"].min()) / open_ - 1) * 100, "gap_fill": filled,
+            "or15_range": (or_high / or_low - 1) * 100 if or_low else 0,
+        })
+    order = ["GD 5%以上", "GD 3–5%", "GD 1–3%", "±1%以内", "GU 1–3%", "GU 3–5%", "GU 5%以上"]
+    result = []
+    for label in order:
+        rows = groups.get(label, [])
+        sample = len(rows)
+        if not rows:
+            result.append({"bucket": label, "sample": 0, "usable": False})
+            continue
+        result.append({
+            "bucket": label, "sample": sample, "usable": sample >= 3,
+            "or15_up_rate": round(sum(x["or15_ret"] > 0 for x in rows) / sample * 100, 1),
+            "close_up_rate": round(sum(x["day_ret"] > 0 for x in rows) / sample * 100, 1),
+            "gap_fill_rate": round(sum(x["gap_fill"] for x in rows) / sample * 100, 1),
+            "median_day_ret": round(float(np.median([x["day_ret"] for x in rows])), 2),
+            "median_max_up": round(float(np.median([x["max_up"] for x in rows])), 2),
+            "median_max_down": round(float(np.median([x["max_down"] for x in rows])), 2),
+            "median_or15_range": round(float(np.median([x["or15_range"] for x in rows])), 2),
+        })
+    return result
+
+
+def daily_gap_studies():
+    """Use identity/price-gated daily OHLC; OR15 is deliberately not inferred."""
+    try:
+        payload = json.loads(DATA.read_text(encoding="utf-8"))
+        row = (payload.get("stocks") or {}).get("キオクシアHD（285A）") or {}
+        if not row.get("quote_verified") or not row.get("identity_verified") or row.get("ticker") != "285A.T":
+            return []
+        chart = row.get("chart") or []
+        groups = {}
+        for i in range(1, len(chart)):
+            prev, bar = chart[i - 1], chart[i]
+            prev_close, open_ = float(prev["c"]), float(bar["o"])
+            gap = (open_ / prev_close - 1) * 100
+            groups.setdefault(gap_bucket(gap), []).append({
+                "day_ret": (float(bar["c"]) / open_ - 1) * 100,
+                "max_up": (float(bar["h"]) / open_ - 1) * 100,
+                "max_down": (float(bar["l"]) / open_ - 1) * 100,
+                "gap_fill": (gap > 0 and float(bar["l"]) <= prev_close) or (gap < 0 and float(bar["h"]) >= prev_close),
+            })
+        order = ["GD 5%以上", "GD 3–5%", "GD 1–3%", "±1%以内", "GU 1–3%", "GU 3–5%", "GU 5%以上"]
+        out = []
+        for label in order:
+            rows = groups.get(label, [])
+            n = len(rows)
+            out.append({"bucket": label, "sample": n, "usable": n >= 3, "source": "検証済み日足OHLC",
+                        **({"close_up_rate": round(sum(x["day_ret"] > 0 for x in rows) / n * 100, 1),
+                            "gap_fill_rate": round(sum(x["gap_fill"] for x in rows) / n * 100, 1),
+                            "median_day_ret": round(float(np.median([x["day_ret"] for x in rows])), 2),
+                            "median_max_up": round(float(np.median([x["max_up"] for x in rows])), 2),
+                            "median_max_down": round(float(np.median([x["max_down"] for x in rows])), 2)} if n else {})})
+        return out
+    except Exception:
+        return []
+
+
+def turning_points(path):
+    labels = []
+    if len(path) < 5:
+        return labels
+    # 78 five-minute bars across the split Tokyo session; this is display timing,
+    # not a promise that the turn will occur.
+    minutes = list(range(9 * 60, 11 * 60 + 31, 5)) + list(range(12 * 60 + 30, 15 * 60 + 31, 5))
+    for i in range(2, len(path) - 2):
+        left, mid, right = path[i - 2], path[i], path[i + 2]
+        if (mid - left) * (right - mid) < 0 and max(abs(mid - left), abs(right - mid)) >= .25:
+            m = minutes[min(i, len(minutes) - 1)]
+            labels.append({"time": f"{m//60:02d}:{m%60:02d}", "kind": "予測ピーク" if mid > left else "予測ボトム", "ret": round(float(mid), 2)})
+    return labels[:6]
+
+
+def ma_playbook():
+    return {
+        "note": "EMA9/20は日数ではなく5分足の9本・20本。日足移動平均とは分けて判定。",
+        "long_first_pullback": "EMA9>EMA20、VWAP上、EMA9上向き。EMA9へ下ヒゲ接触後、5分足終値で回復し、その足の高値+1ティックで発動。",
+        "long_deep_pullback": "EMA20またはVWAPまでの押し。下ヒゲ回収と出来高減速を確認し、反発足高値+1ティック。OR15安値割れなら禁止。",
+        "short_first_return": "EMA9<EMA20、VWAP下、EMA9下向き。EMA9へ上ヒゲ接触後、5分足終値で拒否し、その足の安値-1ティックで発動。",
+        "short_deep_return": "EMA20またはVWAPまでの戻り。上ヒゲ拒否と買い出来高失速後、反落足安値-1ティック。OR15高値超えなら禁止。",
+        "whipsaw_guard": "OR15内、EMA9/20交差、VWAPを2本連続往復、長い上下ヒゲは往復ピンタ帯。新規注文を置かない。",
+    }
+
+
 def main():
+    now = datetime.now(JST)
+    # There is no Tokyo cash session on weekends. Preserve Friday's verified
+    # prediction instead of relabeling it as a Saturday forecast.
+    if now.weekday() >= 5 and OUT.exists():
+        try:
+            previous = json.loads(OUT.read_text(encoding="utf-8"))
+            previous["gap_studies"] = daily_gap_studies()
+            previous["forecast_turns"] = turning_points(((previous.get("best_match") or {}).get("path") or []))
+            previous["ma_playbook"] = ma_playbook()
+            previous["weekend_status"] = "休場日：直前営業日の検証済み予測を保持。次営業日版は当日8:00に更新。"
+            OUT.write_text(json.dumps(previous, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            return
+        except Exception:
+            pass
     intraday_source = "Yahoo Finance 285A.T 5分足"
     try:
         raw = yf.download("285A.T", period="60d", interval="5m", auto_adjust=False,
@@ -346,6 +473,10 @@ def main():
     prior_views = stored_views() if "前回正常取得" in intraday_source else {}
     views = [prior_views.get(date) or day_view(date, day) for date, day in sessions]
     current_date, current = sessions[-1]
+    current_gap_pct = None
+    if len(sessions) >= 2:
+        previous_close = float(sessions[-2][1]["Close"].iloc[-1])
+        current_gap_pct = round((float(current["Open"].iloc[0]) / previous_close - 1) * 100, 2) if previous_close else None
     today = datetime.now(JST).date().isoformat()
     current_is_today = current_date == today
     market_closed = current_is_today and datetime.now(JST).strftime("%H:%M") > "15:30"
@@ -480,6 +611,7 @@ def main():
         "source": intraday_source + "（取得可能な直近60日）",
         "calendar": views[-25:], "current": current_view,
         "current_is_today": current_is_today,
+        "current_gap_pct": current_gap_pct if current_is_today else None,
         "analysis_date": analysis_date,
         "observed_bars": observed, "matches": top,
         "best_match": top[0] if top else None,
@@ -496,6 +628,9 @@ def main():
         },
         "risk_overlay": risk_overlay,
         "decision": decision,
+        "gap_studies": daily_gap_studies(),
+        "forecast_turns": turning_points((top[0] if top else {}).get("path") or []),
+        "ma_playbook": ma_playbook(),
         "rule": "寄り前は前夜のSanDisk・Micron・SOX・NASDAQと信用需給で事前類似日を選定。9:15以降は当日5分足を65%へ引き上げる。類似度60%以上が3日未満なら見送り。OR15・VWAP・EMA9/20・出来高の4/5一致が最終条件。",
     }
     OUT.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
