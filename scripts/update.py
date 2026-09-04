@@ -2985,7 +2985,7 @@ document.addEventListener("liveFocusUpdate",e=>{{
   document.getElementById("kio-stop-price").textContent=k.stop_price==null?"—":Number(k.stop_price).toLocaleString("ja-JP")+"円";
   document.getElementById("kio-signal-reason").textContent=k.signal_reason||"条件未確認";
   const lastKey=localStorage.getItem("kioLastSignalKey");
-  if(k.verified&&k.signal_key&&k.signal_key!==lastKey){{
+  if(k.signal_key&&k.signal_key!==lastKey){{
     window.cockpitSpeak?.(k.voice_message||("キオクシア、"+(k.trade_signal||"見送り")));
     localStorage.setItem("kioLastSignalKey",k.signal_key);
   }}

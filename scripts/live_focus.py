@@ -293,10 +293,12 @@ def main():
             ))
             attention = (f"{monitor.get('attention_start')}から{monitor.get('attention_end')}、{monitor.get('attention_reason')}"
                          if monitor.get("attention_start") else monitor.get("attention_reason"))
+            fit_spoken = (f"{monitor.get('path_fit')}パーセント"
+                          if monitor.get("path_fit") is not None else "未算出")
             monitor["voice_message"] = (
                 f"キオクシア、{monitor.get('trade_signal')}。{monitor.get('signal_reason')}。"
                 + (f"発動価格{monitor.get('entry_price')}円。" if monitor.get("entry_price") else "")
-                + f"予測一致度{monitor.get('path_fit')}パーセント。{attention}。"
+                + f"予測一致度{fit_spoken}。{attention}。"
             )
         rows[code] = {
             "name": name, "ticker": ticker, "price": secondary_price,
