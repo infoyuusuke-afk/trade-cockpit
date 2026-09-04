@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data.json"
 OUT = ROOT / "live_focus.json"
 KIOXIA = ROOT / "kioxia_5m_calendar.json"
+KIOXIA_HISTORY = ROOT / "kioxia_prediction_history.json"
 JST = ZoneInfo("Asia/Tokyo")
 
 
@@ -92,6 +93,7 @@ def compare_kioxia(actual, forecast, indicators, now):
         "forecast_return": None, "deviation_pct": None,
         "path_mae_pct": None, "path_fit": None,
         "expected_next": "判定待ち", "trade_signal": "見送り",
+        "setup_type": "判定待ち", "whipsaw_guard": False,
         "signal_reason": "9:15以降にOR15と実績を確認",
         "entry_price": None, "stop_price": None, "entry_order": None,
     }
@@ -134,19 +136,40 @@ def compare_kioxia(actual, forecast, indicators, now):
     elif status == "予測崩れ":
         result["signal_reason"] = "予測と実績の差が許容幅を超過"
     else:
-        price = float(actual[idx]["c"])
+        bar = actual[idx]
+        price = float(bar["c"])
+        open_, high, low = float(bar["o"]), float(bar["h"]), float(bar["l"])
+        body = abs(price - open_)
+        lower_wick = min(open_, price) - low
+        upper_wick = high - max(open_, price)
         vols = [float(x.get("v") or 0) for x in actual]
         volume_ok = len(vols) < 7 or vols[-1] >= (sum(vols[-7:-1]) / max(1, len(vols[-7:-1]))) * .8
-        long_ok = (price > indicators["vwap"] and price > indicators["or15_high"]
-                   and indicators["ema9"] > indicators["ema20"] and expected_next != "下向き" and volume_ok)
-        short_ok = (price < indicators["vwap"] and price < indicators["or15_low"]
-                    and indicators["ema9"] < indicators["ema20"] and expected_next != "上向き" and volume_ok)
+        trend_gap = abs(indicators["ema9"] - indicators["ema20"]) / max(price, 1)
+        whipsaw = indicators.get("vwap_crosses_6", 0) >= 2 or trend_gap < .0007
+        result["whipsaw_guard"] = whipsaw
+        ema9_long_touch = low <= indicators["ema9"] * 1.0015 and price > indicators["ema9"]
+        ema20_long_touch = low <= max(indicators["ema20"], indicators["vwap"]) * 1.0015 and price > indicators["ema20"] and price > indicators["vwap"]
+        ema9_short_touch = high >= indicators["ema9"] * .9985 and price < indicators["ema9"]
+        ema20_short_touch = high >= min(indicators["ema20"], indicators["vwap"]) * .9985 and price < indicators["ema20"] and price < indicators["vwap"]
+        bullish_rejection = price >= open_ and lower_wick >= max(body * .45, price * .00035)
+        bearish_rejection = price <= open_ and upper_wick >= max(body * .45, price * .00035)
+        long_trend = (price > indicators["vwap"] and price > indicators["or15_high"]
+                      and indicators["ema9"] > indicators["ema20"]
+                      and indicators.get("ema9_slope", 0) > 0 and expected_next != "下向き")
+        short_trend = (price < indicators["vwap"] and price < indicators["or15_low"]
+                       and indicators["ema9"] < indicators["ema20"]
+                       and indicators.get("ema9_slope", 0) < 0 and expected_next != "上向き")
+        long_ok = long_trend and (ema9_long_touch or ema20_long_touch) and bullish_rejection and volume_ok and not whipsaw
+        short_ok = short_trend and (ema9_short_touch or ema20_short_touch) and bearish_rejection and volume_ok and not whipsaw
         if long_ok:
             tick = price_tick(price)
             entry = math.ceil(float(actual[idx]["h"]) / tick) * tick + tick
             stop = math.floor(float(actual[idx]["l"]) / tick) * tick - tick
             result.update({"trade_signal": "押し目買い候補",
-                           "signal_reason": "OR15上抜け・VWAP上・EMA上向き・予測方向一致",
+                           "setup_type": "EMA20/VWAP深押し" if ema20_long_touch else "EMA9初押し",
+                           "signal_reason": ("上昇配列・OR15上・VWAP上。"
+                                             + ("EMA20/VWAP深押し" if ema20_long_touch else "EMA9初押し")
+                                             + "を下ヒゲ陽線で回収し、予測方向と一致"),
                            "entry_price": round(entry, 3), "stop_price": round(stop, 3),
                            "entry_order": "逆指値買い"})
         elif short_ok:
@@ -154,11 +177,24 @@ def compare_kioxia(actual, forecast, indicators, now):
             entry = math.floor(float(actual[idx]["l"]) / tick) * tick - tick
             stop = math.ceil(float(actual[idx]["h"]) / tick) * tick + tick
             result.update({"trade_signal": "戻り売り候補",
-                           "signal_reason": "OR15下抜け・VWAP下・EMA下向き・予測方向一致",
+                           "setup_type": "EMA20/VWAP深戻り" if ema20_short_touch else "EMA9初戻り",
+                           "signal_reason": ("下降配列・OR15下・VWAP下。"
+                                             + ("EMA20/VWAP深戻り" if ema20_short_touch else "EMA9初戻り")
+                                             + "を上ヒゲ陰線で拒否し、予測方向と一致"),
                            "entry_price": round(entry, 3), "stop_price": round(stop, 3),
                            "entry_order": "逆指値売り"})
         else:
-            result["signal_reason"] = "価格・VWAP・EMA・予測方向が未一致"
+            if whipsaw:
+                result["setup_type"] = "往復ピンタ回避"
+                result["signal_reason"] = "VWAP往復またはEMA9/20密集。レンジ離脱まで注文禁止"
+            elif long_trend:
+                result["setup_type"] = "上昇・押し待ち"
+                result["signal_reason"] = "上昇方向は一致。EMA9/20への押しと下ヒゲ回収を待つ（飛び乗り禁止）"
+            elif short_trend:
+                result["setup_type"] = "下降・戻り待ち"
+                result["signal_reason"] = "下降方向は一致。EMA9/20への戻りと上ヒゲ拒否を待つ（追い売り禁止）"
+            else:
+                result["signal_reason"] = "価格・OR15・VWAP・EMA配列・ローソク足が未一致"
     return {**result, **next_attention(labels, path, observed, now)}
 
 
@@ -178,6 +214,38 @@ def iso_jst(value):
     if stamp.tzinfo is None:
         stamp = stamp.tz_localize("UTC")
     return stamp.tz_convert(JST)
+
+
+def record_kioxia_result(now, row):
+    """Persist one verified close per session; this is an audit, not opaque ML."""
+    if now.strftime("%H:%M") < "15:25" or not row.get("verified") or row.get("actual_return") is None:
+        return
+    try:
+        payload = json.loads(KIOXIA_HISTORY.read_text(encoding="utf-8"))
+    except Exception:
+        payload = {"ticker": "285A.T", "records": []}
+    actual = float(row["actual_return"])
+    forecast_path = row.get("forecast_path") or []
+    predicted = float(forecast_path[-1]) if forecast_path else None
+    record = {
+        "date": now.date().isoformat(), "analog_date": row.get("analog_date"),
+        "similarity": row.get("analog_similarity"), "predicted_close_ret": round(predicted, 3) if predicted is not None else None,
+        "actual_close_ret": round(actual, 3), "absolute_error": round(abs(actual - predicted), 3) if predicted is not None else None,
+        "direction_hit": bool(predicted is not None and predicted * actual > 0),
+        "path_fit": row.get("path_fit"), "decision": row.get("trade_signal"),
+    }
+    records = [x for x in payload.get("records", []) if x.get("date") != record["date"]]
+    records.append(record)
+    records = sorted(records, key=lambda x: x["date"])[-60:]
+    scored = [x for x in records[-20:] if x.get("predicted_close_ret") is not None]
+    payload.update({
+        "updated_at": now.strftime("%Y-%m-%d %H:%M:%S JST"), "records": records,
+        "summary": {"sample": len(scored),
+                    "direction_hit_rate": round(sum(x["direction_hit"] for x in scored) / len(scored) * 100, 1) if scored else None,
+                    "mean_absolute_error": round(sum(x["absolute_error"] for x in scored) / len(scored), 3) if scored else None},
+        "rule": "15:25以降の二経路照合済み実績だけを1営業日1件保存。方向一致率と絶対誤差を翌回の信頼度監査に使用。",
+    })
+    KIOXIA_HISTORY.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def main():
@@ -227,17 +295,13 @@ def main():
                         "v": round(float(bar.get("Volume") or 0)),
                     })
                 work = frame.copy()
-                close = work["Close"].astype(float)
-                volume = work["Volume"].fillna(0).astype(float)
-                typical = (
-                    work["High"].astype(float)
-                    + work["Low"].astype(float)
-                    + close
-                ) / 3
-                cumulative_volume = volume.cumsum()
-                vwap_series = (typical * volume).cumsum() / cumulative_volume.replace(0, math.nan)
                 session = work[work.index.map(lambda value: iso_jst(value).date() == now.date())]
                 session = session[session.index.map(lambda value: "09:00" <= iso_jst(value).strftime("%H:%M") <= "15:30")]
+                # A decision uses completed five-minute candles only. Live quote can
+                # still be displayed, but an unfinished candle cannot trigger an order.
+                confirmed = session[session.index.map(lambda value: iso_jst(value).to_pydatetime().timestamp() + 300 <= now.timestamp())]
+                if not confirmed.empty:
+                    session = confirmed
                 for stamp, bar in session.iterrows():
                     session_chart.append({
                         "t": iso_jst(stamp).strftime("%H:%M"),
@@ -247,11 +311,27 @@ def main():
                         "c": round(float(bar["Close"]), 3),
                         "v": round(float(bar.get("Volume") or 0)),
                     })
+                close = session["Close"].astype(float)
+                volume = session["Volume"].fillna(0).astype(float)
+                typical = (session["High"].astype(float) + session["Low"].astype(float) + close) / 3
+                cumulative_volume = volume.cumsum()
+                vwap_series = (typical * volume).cumsum() / cumulative_volume.replace(0, math.nan)
+                ema9_series = close.ewm(span=9, adjust=False).mean()
+                ema20_series = close.ewm(span=20, adjust=False).mean()
                 or15 = session.head(3)
+                recent_vwap = vwap_series.dropna()
+                vwap_crosses = 0
+                if len(recent_vwap) >= 4:
+                    signed = close.reindex(recent_vwap.index).iloc[-6:] - recent_vwap.iloc[-6:]
+                    vwap_crosses = int(((signed * signed.shift(1)) < 0).sum())
                 indicators = {
-                    "vwap": round(float(vwap_series.iloc[-1]), 3) if not pd.isna(vwap_series.iloc[-1]) else None,
-                    "ema9": round(float(close.ewm(span=9, adjust=False).mean().iloc[-1]), 3),
-                    "ema20": round(float(close.ewm(span=20, adjust=False).mean().iloc[-1]), 3),
+                    "vwap": round(float(vwap_series.iloc[-1]), 3) if len(vwap_series) and not pd.isna(vwap_series.iloc[-1]) else None,
+                    "ema9": round(float(ema9_series.iloc[-1]), 3) if len(ema9_series) else None,
+                    "ema20": round(float(ema20_series.iloc[-1]), 3) if len(ema20_series) else None,
+                    "ema9_slope": round(float(ema9_series.iloc[-1] - ema9_series.iloc[-2]), 3) if len(ema9_series) > 1 else 0,
+                    "ema20_slope": round(float(ema20_series.iloc[-1] - ema20_series.iloc[-2]), 3) if len(ema20_series) > 1 else 0,
+                    "vwap_crosses_6": vwap_crosses,
+                    "confirmed_bar_time": iso_jst(session.index[-1]).strftime("%H:%M") if len(session) else None,
                     "or15_high": round(float(or15["High"].max()), 3) if len(or15) == 3 else None,
                     "or15_low": round(float(or15["Low"].min()), 3) if len(or15) == 3 else None,
                 }
@@ -321,6 +401,7 @@ def main():
         "rule": "Yahoo 5分足と野村/QUICK現在値、コード、取引日、鮮度が一致した銘柄だけ更新。キオクシアは予測差・OR15・VWAP・EMA・出来高一致時だけ条件付きサイン。",
     }
     OUT.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    record_kioxia_result(now, rows.get("285A") or {})
 
 
 if __name__ == "__main__":
