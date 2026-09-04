@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-04 16:25:54 JST",
+  "updated_at": "2026-09-04 18:58:16 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -40,7 +40,7 @@
       "relation": "米国前日→日本翌日",
       "expected": "正相関",
       "reason": "NAND・SSD価格と米国メモリ株の先行確認",
-      "corr20": 0.4,
+      "corr20": 0.39,
       "corr60": 0.38,
       "sample20": 20,
       "sample60": 60,
@@ -48,7 +48,7 @@
       "lead_bars": null,
       "bars": 0,
       "state": "確認",
-      "confidence": 70,
+      "confidence": 69,
       "anchor_today": {
         "ret": 5.32,
         "or15": "上抜け",
@@ -71,15 +71,15 @@
       "relation": "米国前日→日本翌日",
       "expected": "正相関",
       "reason": "DRAM/NANDを含む米国メモリ地合い",
-      "corr20": 0.41,
-      "corr60": 0.31,
+      "corr20": 0.39,
+      "corr60": 0.3,
       "sample20": 20,
       "sample60": 60,
       "intraday_corr": null,
       "lead_bars": null,
       "bars": 0,
       "state": "確認",
-      "confidence": 68,
+      "confidence": 67,
       "anchor_today": {
         "ret": 5.32,
         "or15": "上抜け",
