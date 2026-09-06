@@ -2329,7 +2329,7 @@ def main():
 </section>"""
     live_focus_html = """
 <section id="live-focus-status" class="card wide" style="border-color:#35a7ff">
- <h2>ザラバ5分更新｜キオクシア＋精査TOP5　<button id="voice-toggle" type="button" style="float:right;padding:5px 12px;border-radius:7px">音声OFF</button></h2>
+ <h2>ザラバ5分更新｜キオクシア＋精査TOP5　<button class="voice-toggle" data-voice-toggle type="button" style="float:right;padding:5px 12px;border-radius:7px">🔇 音声OFF</button></h2>
  <div class="rotation-grid">
   <div class="rotation-box"><b>稼働状態</b><strong id="live-status">確認中</strong></div>
   <div class="rotation-box"><b>最終更新</b><strong id="live-updated">—</strong></div>
@@ -2341,10 +2341,10 @@ def main():
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
  let voiceOn=localStorage.getItem("cockpitVoiceV1")==="on";
- const voiceButton=document.getElementById("voice-toggle");
- const setVoiceLabel=()=>voiceButton.textContent=voiceOn?"🔊 音声ON":"🔇 音声OFF";setVoiceLabel();
+ const voiceButtons=[...document.querySelectorAll("[data-voice-toggle]")];
+ const setVoiceLabel=()=>voiceButtons.forEach(button=>button.textContent=voiceOn?"🔊 音声ON":"🔇 音声OFF");setVoiceLabel();
  window.cockpitSpeak=msg=>{if(!voiceOn||!msg||!("speechSynthesis" in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(msg);u.lang="ja-JP";u.rate=1.05;window.speechSynthesis.speak(u);};
- voiceButton.onclick=()=>{voiceOn=!voiceOn;localStorage.setItem("cockpitVoiceV1",voiceOn?"on":"off");setVoiceLabel();if(voiceOn)window.cockpitSpeak("AIコクピットの自動読み上げを開始します");};
+ voiceButtons.forEach(button=>button.onclick=()=>{voiceOn=!voiceOn;localStorage.setItem("cockpitVoiceV1",voiceOn?"on":"off");setVoiceLabel();if(voiceOn)window.cockpitSpeak("AIコクピットの自動読み上げを開始します");});
  const loadLive=()=>fetch("live_focus.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(d=>{
    document.getElementById("live-status").textContent=d.status||"停止";
    document.getElementById("live-updated").textContent=d.updated_at||"—";
@@ -2418,7 +2418,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div class="step"><b>4　不一致は見送り</b>相関株が逆行、または条件3/5以下なら主役銘柄へ飛び乗らない。</div>
 </div>
 <p class="warning"><b>キオクシア―任天堂は固定ルールではありません。</b> 20日・60日・当日5分足の逆相関が安定した期間だけ有効。サンディスクは取引時間が重ならないため「米国前日→キオクシア翌日」で判定します。9:15までは方向を決めず、OR15・VWAP・EMA9/20・高安の4/5一致を優先します。</p></section>
-<section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）5分足カレンダー・類似日予測</h2>
+<section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）5分足カレンダー・類似日予測 <button class="voice-toggle" data-voice-toggle type="button" style="float:right;padding:5px 12px;border-radius:7px">🔇 音声OFF</button></h2>
 <div id="kioxia-calendar-meta" class="sub">直近60日の5分足を照合中...</div>
 <div id="kio-decision-panel" class="rotation-grid" style="margin:10px 0">
  <div class="rotation-box"><b>利用判定</b><strong id="kio-decision-grade">計算中</strong></div>
