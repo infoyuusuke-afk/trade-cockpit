@@ -1,11 +1,11 @@
 {
-  "updated_at": "2026-09-05T01:55:32.448232+09:00",
+  "updated_at": "2026-09-07T00:15:25.683052+09:00",
   "source": "世界の株価リアルタイムチャート",
   "source_url": "https://nikkei225jp.com/",
-  "usage": "市場環境専用。個別株価・個別チャートには使用禁止。",
-  "verified_count": 13,
+  "usage": "市場環境専用。個別株価・個別チャートには使用禁止。 休場・取引時間外の値は当日方向判定に使用禁止。",
+  "verified_count": 7,
   "expected_count": 13,
-  "feed_verified": true,
+  "feed_verified": false,
   "rows": {
     "111": {
       "code": "111",
@@ -16,8 +16,8 @@
       "change_pct": 1.26,
       "source_stamp": "09/04",
       "observed_at": "2026-09-04",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "112": {
       "code": "112",
@@ -28,8 +28,8 @@
       "change_pct": 0.03,
       "source_stamp": "09/04",
       "observed_at": "2026-09-04",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "121": {
       "code": "121",
@@ -40,128 +40,129 @@
       "change_pct": 2.67,
       "source_stamp": "09/04",
       "observed_at": "2026-09-04",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "751": {
       "code": "751",
       "name": "DEX日経225",
       "source_name": "DEX日本225 フルタイム",
-      "value": 65836.0,
+      "value": 65813.0,
       "change": null,
       "change_pct": null,
-      "source_stamp": "01:55",
-      "observed_at": "2026-09-05T01:55:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "source_stamp": "00:15",
+      "observed_at": "2026-09-07T00:15:00+09:00",
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "511": {
       "code": "511",
       "name": "ドル円",
       "source_name": "ドル円",
-      "value": 156.068,
-      "change": 0.276,
-      "change_pct": 0.18,
-      "source_stamp": "01:55",
-      "observed_at": "2026-09-05T01:55:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "value": 156.262,
+      "change": 0.47,
+      "change_pct": 0.3,
+      "source_stamp": "05:59",
+      "observed_at": "2026-09-07T05:59:00+09:00",
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "151": {
       "code": "151",
       "name": "日本10年金利",
       "source_name": "日本国債10年利回り",
-      "value": 2.905,
-      "change": -0.001,
-      "change_pct": -0.03,
-      "source_stamp": "01:00",
-      "observed_at": "2026-09-05T01:00:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "value": 2.913,
+      "change": 0.007,
+      "change_pct": 0.24,
+      "source_stamp": "04:00",
+      "observed_at": "2026-09-07T04:00:00+09:00",
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "211": {
       "code": "211",
       "name": "NYダウ",
       "source_name": "NYダウ",
-      "value": 53442.94,
-      "change": -243.17,
-      "change_pct": -0.45,
-      "source_stamp": "01:55",
-      "observed_at": "2026-09-05T01:55:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "value": 53414.25,
+      "change": -271.86,
+      "change_pct": -0.51,
+      "source_stamp": "09/04",
+      "observed_at": "2026-09-04",
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "212": {
       "code": "212",
       "name": "NASDAQ",
       "source_name": "NASDAQ",
-      "value": 26523.06,
-      "change": -61.0,
-      "change_pct": -0.23,
-      "source_stamp": "01:55",
-      "observed_at": "2026-09-05T01:55:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "value": 26506.99,
+      "change": -77.07,
+      "change_pct": -0.29,
+      "source_stamp": "09/04",
+      "observed_at": "2026-09-04",
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "214": {
       "code": "214",
       "name": "NASDAQ100",
       "source_name": "NASDAQ100",
-      "value": 29552.66,
-      "change": 70.34,
-      "change_pct": 0.24,
-      "source_stamp": "01:55",
-      "observed_at": "2026-09-05T01:55:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "value": 29544.16,
+      "change": 61.84,
+      "change_pct": 0.21,
+      "source_stamp": "09/04",
+      "observed_at": "2026-09-04",
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "213": {
       "code": "213",
       "name": "S&P500",
       "source_name": "S&P500",
-      "value": 7726.73,
-      "change": -20.98,
-      "change_pct": -0.27,
-      "source_stamp": "01:55",
-      "observed_at": "2026-09-05T01:55:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "value": 7718.6,
+      "change": -29.11,
+      "change_pct": -0.38,
+      "source_stamp": "09/04",
+      "observed_at": "2026-09-04",
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "611": {
       "code": "611",
       "name": "SOX",
       "source_name": "SOX PHL半導体",
-      "value": 11723.97,
-      "change": 371.84,
-      "change_pct": 3.28,
-      "source_stamp": "01:55",
-      "observed_at": "2026-09-05T01:55:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "value": 11735.26,
+      "change": 383.13,
+      "change_pct": 3.38,
+      "source_stamp": "09/04",
+      "observed_at": "2026-09-04",
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "621": {
       "code": "621",
       "name": "VIX",
       "source_name": "VIX恐怖指数",
-      "value": 13.99,
-      "change": -0.33,
-      "change_pct": -2.3,
-      "source_stamp": "01:40",
-      "observed_at": "2026-09-05T01:40:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "value": 14.53,
+      "change": 0.21,
+      "change_pct": 1.47,
+      "source_stamp": "09/04",
+      "observed_at": "2026-09-04",
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "811": {
       "code": "811",
       "name": "米国10年金利",
       "source_name": "米国債10年利回り",
-      "value": 4.763,
-      "change": 0.001,
-      "change_pct": 0.02,
-      "source_stamp": "01:54",
-      "observed_at": "2026-09-05T01:54:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "value": 4.782,
+      "change": 0.02,
+      "change_pct": 0.42,
+      "source_stamp": "05:59",
+      "observed_at": "2026-09-07T05:59:00+09:00",
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     }
-  }
+  },
+  "refresh_status": "取引時間外・市場休場のため更新停止"
 }
