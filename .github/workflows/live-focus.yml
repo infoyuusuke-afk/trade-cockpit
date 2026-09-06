@@ -11,8 +11,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: live-focus-tape
-  cancel-in-progress: true
+  group: trade-cockpit-writer
+  cancel-in-progress: false
 
 jobs:
   update:
