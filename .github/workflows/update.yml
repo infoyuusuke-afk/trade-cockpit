@@ -41,7 +41,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: update-trade-cockpit
+  group: trade-cockpit-writer
   cancel-in-progress: false
 
 jobs:
