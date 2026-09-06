@@ -29,6 +29,8 @@ SOURCES = {
     "nikkei": ("日経平均プロフィル・Guidebook", "https://indexes.nikkei.co.jp/nkave/archives/file/nikkei_stock_average_guidebook_en.pdf"),
     "topix": ("JPX・TOPIX見直し", "https://www.jpx.co.jp/english/markets/indices/revisions-indices/02.html"),
     "msci": ("MSCI・Index Review", "https://www.msci.com/indexes/index-resources/index-review"),
+    "nyse": ("NYSE・Holidays & Trading Hours", "https://www.nyse.com/markets/hours-calendars"),
+    "cao": ("内閣府・景気統計公表予定", "https://www.esri.cao.go.jp/jp/stat/stat-schedule.html"),
 }
 
 
@@ -58,6 +60,18 @@ def build() -> dict:
     now = datetime.now(JST)
     today = now.date()
     e: list[dict] = []
+
+    # One-off confirmed events that directly affect the current Tokyo session.
+    e.append(event("us-holiday-2026-09-07", "米国市場休場（Labor Day）", "2026-09-07",
+        "米国休場", "nyse", impact="高",
+        flow="米国個別株の当日終値更新なし。東京後場は海外参加低下・薄商いの振れを警戒",
+        action="SanDisk・Micronの同日比較を停止。翌朝の米国確認は1営業日遅れる",
+        note="NYSE公式休場日。休場を株価ゼロ変動や材料消失と誤解しない。"))
+    e.append(event("japan-leading-2026-09-07", "7月景気動向指数・速報", "2026-09-07",
+        "日本経済", "cao", time_jst="14:00", impact="中",
+        flow="指数・ドル円経由で後場の大型株に短期波及する可能性",
+        action="13:55～14:05は新規成行を避け、公表後にOR15・VWAPを再確認",
+        note="内閣府の公表予定に基づく。数値の方向は事前断定しない。"))
 
     # Monthly SQ: the second Friday.  SQ flow occurs at the opening, not close.
     for month, label in [(9, "メジャーSQ"), (10, "月例SQ"), (11, "月例SQ"), (12, "メジャーSQ")]:
