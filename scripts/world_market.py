@@ -175,8 +175,19 @@ def main() -> None:
                 browser.close()
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"
+    # A market-wide page cannot pass an intraday freshness gate while the
+    # relevant markets are closed.  Publish an explicit non-tradable state so
+    # the rest of the cockpit (official catalysts, calendar and audits) can
+    # still refresh; never reuse stale values as if they were current.
+    decision_window = now.weekday() < 5 and 7 <= now.hour <= 16
+    if not result["feed_verified"] and not decision_window:
+        result["refresh_status"] = "取引時間外・市場休場のため更新停止"
+        result["usage"] += " 休場・取引時間外の値は当日方向判定に使用禁止。"
+        for row in result.get("rows", {}).values():
+            row["verified"] = False
+            row["status"] = "取引時間外・売買利用禁止"
     OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
-    if not result["feed_verified"]:
+    if not result["feed_verified"] and decision_window:
         raise SystemExit("world market feed failed freshness/coverage validation")
 
 
