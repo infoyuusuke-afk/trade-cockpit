@@ -2941,7 +2941,7 @@ const kioOneMinuteChart = (points,actual=[],turns=[]) => {{
   let lo=Math.min(...vals),hi=Math.max(...vals),span=Math.max(hi-lo,.2);lo-=span*.12;hi+=span*.12;span=hi-lo;
   const W=1200,H=520,L=64,R=24,T=24,B=48,x=i=>L+i/331*(W-L-R),y=v=>T+(hi-v)/span*(H-T-B);
   const grid=Array.from({{length:6}},(_,i)=>{{const value=hi-i*span/5,py=y(value);return "<line x1='"+L+"' y1='"+py+"' x2='"+(W-R)+"' y2='"+py+"' stroke='#1c303c'/><text x='"+(L-9)+"' y='"+(py+4)+"' text-anchor='end' fill='#8fa5b5' font-size='12'>"+(value>=0?"+":"")+value.toFixed(2)+"%</text>";}}).join("");
-  const marks=[[0,"09:00"],[60,"10:00"],[120,"11:00"],[150,"11:30"],[151,"12:30"],[211,"13:30"],[271,"14:30"],[331,"15:30"]];
+  const marks=[[0,"09:00"],[60,"10:00"],[120,"11:00"],[150.5,"11:30｜12:30"],[211,"13:30"],[271,"14:30"],[331,"15:30"]];
   const timeGrid=marks.map(m=>"<line x1='"+x(m[0])+"' y1='"+T+"' x2='"+x(m[0])+"' y2='"+(H-B)+"' stroke='#233744' stroke-dasharray='4 6'/><text x='"+x(m[0])+"' y='"+(H-18)+"' text-anchor='middle' fill='#9bb0bd' font-size='12'>"+m[1]+"</text>").join("");
   const forecastLine=forecast.map((v,i)=>x(i).toFixed(1)+","+y(v).toFixed(1)).join(" ");
   const candles=actualRows.map(r=>{{const i=tradingMinuteIndex(r.t),px=x(i),up=Number(r.c)>=Number(r.o),color=up?"#3ed5ae":"#ef646b",yo=y(Number(r.o)),yc=y(Number(r.c));return "<line x1='"+px+"' y1='"+y(Number(r.h))+"' x2='"+px+"' y2='"+y(Number(r.l))+"' stroke='"+color+"' stroke-width='1'/><rect x='"+(px-1.25)+"' y='"+Math.min(yo,yc)+"' width='2.5' height='"+Math.max(1,Math.abs(yo-yc))+"' fill='"+color+"'/>";}}).join("");
@@ -2949,7 +2949,9 @@ const kioOneMinuteChart = (points,actual=[],turns=[]) => {{
   const ema9=makeLine(emaLine(actualRows,9),"#58a6ff",1.8),ema20=makeLine(emaLine(actualRows,20),"#d59bff",1.8);
   let pv=0,vol=0;const vwapPairs=[];actualRows.forEach(r=>{{const v=Number(r.v)||0;if(v>0){{pv+=((Number(r.h)+Number(r.l)+Number(r.c))/3)*v;vol+=v;vwapPairs.push([tradingMinuteIndex(r.t),pv/vol]);}}}});
   const vwap=makeLine(vwapPairs,"#f5f7fa",1.5,"5 4");
-  const turnMarks=(turns||[]).map(turn=>{{const i=tradingMinuteIndex(turn.time);if(i==null)return "";const py=y(forecast[i]);return "<circle cx='"+x(i)+"' cy='"+py+"' r='4' fill='#f1c75b'/><text x='"+x(i)+"' y='"+(py-9)+"' text-anchor='middle' fill='#f1c75b' font-size='11'>"+turn.time+" "+turn.kind+"</text>";}}).join("");
+  let lastTurn=-99,turnOrder=0;
+  const spacedTurns=(turns||[]).filter(turn=>{{const i=tradingMinuteIndex(turn.time);if(i==null||i-lastTurn<25)return false;lastTurn=i;return true;}});
+  const turnMarks=spacedTurns.map(turn=>{{const i=tradingMinuteIndex(turn.time),py=y(forecast[i]),below=(turnOrder++%2)===1,labelY=below?py+18:py-10;return "<circle cx='"+x(i)+"' cy='"+py+"' r='4' fill='#f1c75b'/><text x='"+x(i)+"' y='"+labelY+"' text-anchor='middle' fill='#f1c75b' font-size='11'>"+turn.time+" "+turn.kind+"</text>";}}).join("");
   const last=actualRows.length?tradingMinuteIndex(actualRows.at(-1).t):null;
   const divider=last==null?"":"<line x1='"+x(last)+"' y1='"+T+"' x2='"+x(last)+"' y2='"+(H-B)+"' stroke='#ffffff88' stroke-dasharray='3 5'/><text x='"+(x(last)+5)+"' y='"+(T+13)+"' fill='#d9e7ef' font-size='11'>実績ここまで</text>";
   return "<svg viewBox='0 0 "+W+" "+H+"' preserveAspectRatio='none' aria-label='キオクシア本日予測と実測1分足'>"+grid+timeGrid+"<polyline points='"+forecastLine+"' fill='none' stroke='#f1c75b' stroke-width='3' stroke-dasharray='10 5'/>"+candles+ema9+ema20+vwap+turnMarks+divider+"</svg>";
