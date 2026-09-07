@@ -86,7 +86,7 @@ def next_attention(labels, path, observed, now):
             "attention_end": None, "attention_reason": "大引け後"}
 
 
-def compare_kioxia(actual, forecast, indicators, now):
+def compare_kioxia(actual, forecast, indicators, minute, now):
     result = {
         "monitor_status": "開始待ち", "actual_time": None,
         "forecast_time": None, "actual_return": None,
@@ -96,6 +96,9 @@ def compare_kioxia(actual, forecast, indicators, now):
         "setup_type": "判定待ち", "whipsaw_guard": False,
         "signal_reason": "9:15以降にOR15と実績を確認",
         "entry_price": None, "stop_price": None, "entry_order": None,
+        "signal_type": "NONE", "signal_time": None, "signal_price": None,
+        "signal_return_pct": None, "one_minute_volume_ratio": None,
+        "one_minute_vwap": None, "one_minute_bar_time": None,
     }
     path = forecast.get("forecast_path") or []
     labels = forecast.get("forecast_times") or []
@@ -129,10 +132,13 @@ def compare_kioxia(actual, forecast, indicators, now):
         "observed_bars": observed,
     })
     needed = ("vwap", "ema9", "ema20", "or15_high", "or15_low")
+    minute_needed = ("close", "open", "high", "low", "vwap", "volume_ratio", "bar_time")
     if not forecast.get("forecast_tradable"):
         result["signal_reason"] = "類似日合意度不足・予測単独では見送り"
     elif observed < 4 or not all(indicators.get(x) is not None for x in needed):
         result["signal_reason"] = "OR15確定と4本以上の実績を待つ"
+    elif not minute or not all(minute.get(x) is not None for x in minute_needed):
+        result["signal_reason"] = "完成1分足・VWAP・出来高倍率の取得待ち"
     elif status == "予測崩れ":
         result["signal_reason"] = "予測と実績の差が許容幅を超過"
     else:
@@ -142,8 +148,16 @@ def compare_kioxia(actual, forecast, indicators, now):
         body = abs(price - open_)
         lower_wick = min(open_, price) - low
         upper_wick = high - max(open_, price)
-        vols = [float(x.get("v") or 0) for x in actual]
-        volume_ok = len(vols) < 7 or vols[-1] >= (sum(vols[-7:-1]) / max(1, len(vols[-7:-1]))) * .8
+        minute_close = float(minute["close"])
+        minute_open = float(minute["open"])
+        volume_ratio = float(minute["volume_ratio"])
+        minute_vwap = float(minute["vwap"])
+        volume_ok = volume_ratio >= 1.5
+        result.update({
+            "one_minute_volume_ratio": round(volume_ratio, 2),
+            "one_minute_vwap": round(minute_vwap, 3),
+            "one_minute_bar_time": minute["bar_time"],
+        })
         trend_gap = abs(indicators["ema9"] - indicators["ema20"]) / max(price, 1)
         whipsaw = indicators.get("vwap_crosses_6", 0) >= 2 or trend_gap < .0007
         result["whipsaw_guard"] = whipsaw
@@ -159,32 +173,37 @@ def compare_kioxia(actual, forecast, indicators, now):
         short_trend = (price < indicators["vwap"] and price < indicators["or15_low"]
                        and indicators["ema9"] < indicators["ema20"]
                        and indicators.get("ema9_slope", 0) < 0 and expected_next != "上向き")
-        long_ok = long_trend and (ema9_long_touch or ema20_long_touch) and bullish_rejection and volume_ok and not whipsaw
-        short_ok = short_trend and (ema9_short_touch or ema20_short_touch) and bearish_rejection and volume_ok and not whipsaw
+        minute_long = minute_close > minute_vwap and minute_close > minute_open
+        minute_short = minute_close < minute_vwap and minute_close < minute_open
+        long_ok = long_trend and minute_long and volume_ok and not whipsaw
+        short_ok = short_trend and minute_short and volume_ok and not whipsaw
         if long_ok:
-            tick = price_tick(price)
-            entry = math.ceil(float(actual[idx]["h"]) / tick) * tick + tick
-            stop = math.floor(float(actual[idx]["l"]) / tick) * tick - tick
-            result.update({"trade_signal": "押し目買い候補",
-                           "setup_type": "EMA20/VWAP深押し" if ema20_long_touch else "EMA9初押し",
-                           "signal_reason": ("上昇配列・OR15上・VWAP上。"
-                                             + ("EMA20/VWAP深押し" if ema20_long_touch else "EMA9初押し")
-                                             + "を下ヒゲ陽線で回収し、予測方向と一致"),
+            tick = price_tick(minute_close)
+            entry = math.ceil(float(minute["high"]) / tick) * tick + tick
+            stop = math.floor(float(minute["low"]) / tick) * tick - tick
+            result.update({"trade_signal": "買いサイン点灯", "signal_type": "BUY",
+                           "setup_type": "EMA9/20上昇・1分足VWAP上",
+                           "signal_reason": ("OR15上・5分EMA9/20上昇配列。完成1分足がVWAP上の陽線、"
+                                             f"出来高{volume_ratio:.2f}倍で同時確認"),
                            "entry_price": round(entry, 3), "stop_price": round(stop, 3),
-                           "entry_order": "逆指値買い"})
+                           "signal_time": minute["bar_time"], "signal_price": round(minute_close, 3),
+                           "signal_return_pct": minute.get("return_pct"),
+                           "entry_order": "高値+1ティック逆指値買い"})
         elif short_ok:
-            tick = price_tick(price)
-            entry = math.floor(float(actual[idx]["l"]) / tick) * tick - tick
-            stop = math.ceil(float(actual[idx]["h"]) / tick) * tick + tick
-            result.update({"trade_signal": "戻り売り候補",
-                           "setup_type": "EMA20/VWAP深戻り" if ema20_short_touch else "EMA9初戻り",
-                           "signal_reason": ("下降配列・OR15下・VWAP下。"
-                                             + ("EMA20/VWAP深戻り" if ema20_short_touch else "EMA9初戻り")
-                                             + "を上ヒゲ陰線で拒否し、予測方向と一致"),
+            tick = price_tick(minute_close)
+            entry = math.floor(float(minute["low"]) / tick) * tick - tick
+            stop = math.ceil(float(minute["high"]) / tick) * tick + tick
+            result.update({"trade_signal": "空売りサイン点灯", "signal_type": "SHORT",
+                           "setup_type": "EMA9/20下降・1分足VWAP下",
+                           "signal_reason": ("OR15下・5分EMA9/20下降配列。完成1分足がVWAP下の陰線、"
+                                             f"出来高{volume_ratio:.2f}倍で同時確認"),
                            "entry_price": round(entry, 3), "stop_price": round(stop, 3),
-                           "entry_order": "逆指値売り"})
+                           "signal_time": minute["bar_time"], "signal_price": round(minute_close, 3),
+                           "signal_return_pct": minute.get("return_pct"),
+                           "entry_order": "安値-1ティック逆指値売り"})
         else:
             if whipsaw:
+                result["signal_type"] = "BLOCK"
                 result["setup_type"] = "往復ピンタ回避"
                 result["signal_reason"] = "VWAP往復またはEMA9/20密集。レンジ離脱まで注文禁止"
             elif long_trend:
@@ -252,8 +271,11 @@ def main():
     now = datetime.now(JST)
     weekday = now.weekday() < 5
     clock = (now.hour, now.minute)
-    speech_enabled = bool(weekday and (8, 0) <= clock <= (15, 30))
-    market_phase = "ザラバ監視中" if speech_enabled else "ザラバ終了・PTS非対応"
+    morning_session = (9, 0) <= clock <= (11, 30)
+    afternoon_session = (12, 30) <= clock <= (15, 30)
+    speech_enabled = bool(weekday and (morning_session or afternoon_session))
+    premarket = bool(weekday and (8, 0) <= clock < (9, 0))
+    market_phase = "ザラバ監視中" if speech_enabled else "寄り前監視・音声停止" if premarket else "ザラバ終了・PTS非対応"
     data = json.loads(DATA.read_text(encoding="utf-8"))
     names = {}
     for item in data.get("precision_top5", []):
@@ -272,6 +294,46 @@ def main():
     except Exception:
         raw = pd.DataFrame()
     secondary = fetch_secondary_quotes(tickers, workers=min(8, len(tickers)))
+    minute_confirmation = {}
+    try:
+        raw_1m = yf.download(
+            "285A.T", period="1d", interval="1m", auto_adjust=False,
+            progress=False, threads=False, timeout=20,
+        )
+    except Exception:
+        raw_1m = pd.DataFrame()
+    if not raw_1m.empty and "Close" in raw_1m:
+        raw_1m = raw_1m.dropna(subset=["Close"])
+        one_session = raw_1m[raw_1m.index.map(
+            lambda value: iso_jst(value).date() == now.date()
+            and ("09:00" <= iso_jst(value).strftime("%H:%M") <= "11:30"
+                 or "12:30" <= iso_jst(value).strftime("%H:%M") <= "15:30")
+        )]
+        one_confirmed = one_session[one_session.index.map(
+            lambda value: iso_jst(value).to_pydatetime().timestamp() + 60 <= now.timestamp()
+        )]
+        if len(one_confirmed) >= 6:
+            one_close = one_confirmed["Close"].astype(float)
+            one_volume = one_confirmed["Volume"].fillna(0).astype(float)
+            one_typical = (one_confirmed["High"].astype(float)
+                           + one_confirmed["Low"].astype(float) + one_close) / 3
+            one_cum_volume = one_volume.cumsum()
+            one_vwap = (one_typical * one_volume).cumsum() / one_cum_volume.replace(0, math.nan)
+            baseline = one_volume.iloc[-21:-1]
+            average_volume = float(baseline.mean()) if len(baseline) else 0
+            last = one_confirmed.iloc[-1]
+            session_open = float(one_confirmed["Open"].iloc[0])
+            minute_confirmation = {
+                "bar_time": iso_jst(one_confirmed.index[-1]).strftime("%H:%M"),
+                "open": round(float(last["Open"]), 3),
+                "high": round(float(last["High"]), 3),
+                "low": round(float(last["Low"]), 3),
+                "close": round(float(last["Close"]), 3),
+                "vwap": round(float(one_vwap.iloc[-1]), 3) if not pd.isna(one_vwap.iloc[-1]) else None,
+                "volume": round(float(last.get("Volume") or 0)),
+                "volume_ratio": round(float(last.get("Volume") or 0) / average_volume, 3) if average_volume > 0 else None,
+                "return_pct": round((float(last["Close"]) / session_open - 1) * 100, 3),
+            }
     rows = {}
     kio_forecast = kioxia_forecast(now)
     for ticker, name in names.items():
@@ -375,7 +437,7 @@ def main():
                 signal = "OR15内・往復警戒"
         monitor = {}
         if code == "285A":
-            monitor = compare_kioxia(session_chart, kio_forecast, indicators, now)
+            monitor = compare_kioxia(session_chart, kio_forecast, indicators, minute_confirmation, now)
             if not speech_enabled:
                 monitor.update({
                     "monitor_status": "ザラバ終了", "trade_signal": "売買禁止",
@@ -384,18 +446,23 @@ def main():
                 })
             if verified:
                 signal = monitor["trade_signal"]
-            monitor["signal_key"] = "|".join(str(monitor.get(x) or "") for x in (
-                "trade_signal", "monitor_status", "attention_state", "attention_start"
-            ))
+            monitor["signal_key"] = (
+                f"{monitor.get('signal_type')}|{monitor.get('signal_time')}"
+                if monitor.get("signal_type") in ("BUY", "SHORT") else ""
+            )
             attention = (f"{monitor.get('attention_start')}から{monitor.get('attention_end')}、{monitor.get('attention_reason')}"
                          if monitor.get("attention_start") else monitor.get("attention_reason"))
             fit_spoken = (f"{monitor.get('path_fit')}パーセント"
                           if monitor.get("path_fit") is not None else "未算出")
-            monitor["voice_message"] = (
-                f"キオクシア、{monitor.get('trade_signal')}。{monitor.get('signal_reason')}。"
-                + (f"発動価格{monitor.get('entry_price')}円。" if monitor.get("entry_price") else "")
-                + f"予測一致度{fit_spoken}。{attention}。"
-            )
+            if monitor.get("signal_type") in ("BUY", "SHORT"):
+                monitor["voice_message"] = (
+                    f"キオクシア、{monitor.get('trade_signal')}。"
+                    + (f"発動価格{monitor.get('entry_price')}円。"
+                       f"撤退価格{monitor.get('stop_price')}円。" if monitor.get("entry_price") else "")
+                    + f"{monitor.get('signal_reason')}。予測一致度{fit_spoken}。"
+                )
+            else:
+                monitor["voice_message"] = ""
         rows[code] = {
             "name": name, "ticker": ticker, "price": secondary_price,
             "primary_price": primary_price, "quote_time": last_stamp.isoformat() if last_stamp is not None else None,
@@ -419,7 +486,7 @@ def main():
         "speech_enabled": speech_enabled,
         "pts_supported": False,
         "rows": rows,
-        "rule": ("Yahoo 5分足と野村/QUICK現在値、コード、取引日、鮮度が一致した銘柄だけ更新。キオクシアは予測差・OR15・VWAP・EMA・出来高一致時だけ条件付きサイン。"
+        "rule": ("Yahoo 5分足・1分足と野村/QUICK現在値、コード、取引日、鮮度が一致した銘柄だけ更新。キオクシアは完成1分足VWAP、1分出来高1.5倍、5分EMA9/20、OR15、往復ピンタ防止が同時一致した時だけ価格付きサイン。"
                  if speech_enabled else "ザラバ終了後は全売買サインと音声を停止。表示値は東証終値でありPTS価格ではありません。"),
     }
     OUT.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
