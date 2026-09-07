@@ -2343,9 +2343,9 @@ document.addEventListener("DOMContentLoaded",()=>{
  let voiceOn=localStorage.getItem("cockpitVoiceV1")==="on";
  const voiceButtons=[...document.querySelectorAll("[data-voice-toggle]")];
  const jstClock=()=>{const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Tokyo",weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).filter(x=>x.type!=="literal").map(x=>[x.type,x.value]));return {weekday:p.weekday,minutes:Number(p.hour)*60+Number(p.minute)}};
- const isTseVoiceWindow=()=>{const t=jstClock();return !["Sat","Sun"].includes(t.weekday)&&t.minutes>=8*60&&t.minutes<=15*60+30};
+ const isTseVoiceWindow=()=>{const t=jstClock(),weekday=!["Sat","Sun"].includes(t.weekday),morning=t.minutes>=9*60&&t.minutes<=11*60+30,afternoon=t.minutes>=12*60+30&&t.minutes<=15*60+30;return weekday&&(morning||afternoon)};
  window.cockpitLiveSpeechEnabled=true;
- const setVoiceLabel=()=>voiceButtons.forEach(button=>{button.textContent=!isTseVoiceWindow()?"🔇 ザラバ終了":voiceOn?"🔊 音声ON":"🔇 音声OFF";button.title="東証8:00～15:30のみ。PTSデータには対応していません";});setVoiceLabel();
+ const setVoiceLabel=()=>voiceButtons.forEach(button=>{button.textContent=!isTseVoiceWindow()?"🔇 ザラバ終了":voiceOn?"🔊 音声ON":"🔇 音声OFF";button.title="東証9:00～11:30・12:30～15:30のみ。PTSデータには対応していません";});setVoiceLabel();
  window.cockpitSpeak=msg=>{if(!voiceOn||!msg||!isTseVoiceWindow()||window.cockpitLiveSpeechEnabled===false||!("speechSynthesis" in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(msg);u.lang="ja-JP";u.rate=1.05;window.speechSynthesis.speak(u);};
  voiceButtons.forEach(button=>button.onclick=()=>{if(!isTseVoiceWindow()){voiceOn=false;localStorage.setItem("cockpitVoiceV1","off");setVoiceLabel();return}voiceOn=!voiceOn;localStorage.setItem("cockpitVoiceV1",voiceOn?"on":"off");setVoiceLabel();if(voiceOn)window.cockpitSpeak("AIコクピットの自動読み上げを開始します");});
  const loadLive=()=>fetch("live_focus.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(d=>{
@@ -2447,7 +2447,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  <p id="kio-signal-reason">OR15、VWAP、EMA9/20、出来高と予測方向が一致するまで発注しません。</p>
 </div>
 <div id="kio-best-analog" class="kio-best-analog">
- <div class="kio-best-chart"><div class="kio-best-title"><div><span>本日予測・実測1分足（大判）</span><b id="kio-best-date">選定中</b></div><strong id="kio-best-score">—</strong></div><div id="kio-best-path" class="focus-empty">米国市場と1分足を照合中...</div><div class="kio-chart-legend"><span style="--legend-color:#f1c75b">予測1分経路</span><span style="--legend-color:#3ed5ae">実測1分足</span><span style="--legend-color:#58a6ff">EMA9</span><span style="--legend-color:#d59bff">EMA20</span><span style="--legend-color:#f5f7fa">VWAP</span></div><p id="kio-one-minute-note" class="kio-one-minute-note">類似日選定は5分足、主画面は1分刻み。実測1分足は取得確認後だけ重ねます。</p></div>
+ <div class="kio-best-chart"><div class="kio-best-title"><div><span>本日予測・実測1分足（大判）</span><b id="kio-best-date">選定中</b></div><div id="kio-chart-signal" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px solid #39505d;border-radius:12px;background:#10202a;color:#b8c8d2;font-weight:800"><span id="kio-chart-signal-label">サイン待ち</span><strong id="kio-chart-signal-price">—</strong></div><strong id="kio-best-score">—</strong></div><div id="kio-best-path" class="focus-empty">米国市場と1分足を照合中...</div><div class="kio-chart-legend"><span style="--legend-color:#f1c75b">予測1分経路</span><span style="--legend-color:#3ed5ae">実測1分足</span><span style="--legend-color:#58a6ff">EMA9</span><span style="--legend-color:#d59bff">EMA20</span><span style="--legend-color:#f5f7fa">VWAP</span></div><p id="kio-one-minute-note" class="kio-one-minute-note">類似日選定は5分足、主画面は1分刻み。実測1分足は取得確認後だけ重ねます。</p></div>
  <div class="kio-best-detail"><span id="kio-selection-mode">選定方式を確認中</span><h3 id="kio-best-type">判定待ち</h3><div id="kio-us-context" class="kio-us-context"></div><p id="kio-best-plan">前夜の米国市場と信用需給を確認中です。</p></div>
 </div>
 <div class="kio-detail-grid">
@@ -2934,10 +2934,10 @@ const emaLine = (rows,length) => {{
   (rows||[]).forEach(r=>{{const v=Number(r.c);value=value==null?v:value+alpha*(v-value);out.push([tradingMinuteIndex(r.t),value]);}});
   return out.filter(x=>x[0]!=null);
 }};
-const kioOneMinuteChart = (points,actual=[],turns=[]) => {{
+const kioOneMinuteChart = (points,actual=[],turns=[],signals=[]) => {{
   if(!points||points.length<2) return "<div class='focus-empty'>予測データなし</div>";
   const forecast=resampleMinutePath(points),actualRows=(actual||[]).filter(r=>tradingMinuteIndex(r.t)!=null);
-  const vals=[...forecast,...actualRows.flatMap(r=>[Number(r.h),Number(r.l)])].filter(Number.isFinite);
+  const vals=[...forecast,...actualRows.flatMap(r=>[Number(r.h),Number(r.l)]),...(signals||[]).map(r=>Number(r.ret))].filter(Number.isFinite);
   let lo=Math.min(...vals),hi=Math.max(...vals),span=Math.max(hi-lo,.2);lo-=span*.12;hi+=span*.12;span=hi-lo;
   const W=1200,H=520,L=64,R=24,T=24,B=48,x=i=>L+i/331*(W-L-R),y=v=>T+(hi-v)/span*(H-T-B);
   const grid=Array.from({{length:6}},(_,i)=>{{const value=hi-i*span/5,py=y(value);return "<line x1='"+L+"' y1='"+py+"' x2='"+(W-R)+"' y2='"+py+"' stroke='#1c303c'/><text x='"+(L-9)+"' y='"+(py+4)+"' text-anchor='end' fill='#8fa5b5' font-size='12'>"+(value>=0?"+":"")+value.toFixed(2)+"%</text>";}}).join("");
@@ -2952,9 +2952,10 @@ const kioOneMinuteChart = (points,actual=[],turns=[]) => {{
   let lastTurn=-99,turnOrder=0;
   const spacedTurns=(turns||[]).filter(turn=>{{const i=tradingMinuteIndex(turn.time);if(i==null||i-lastTurn<25)return false;lastTurn=i;return true;}});
   const turnMarks=spacedTurns.map(turn=>{{const i=tradingMinuteIndex(turn.time),py=y(forecast[i]),below=(turnOrder++%2)===1,labelY=below?py+18:py-10;return "<circle cx='"+x(i)+"' cy='"+py+"' r='4' fill='#f1c75b'/><text x='"+x(i)+"' y='"+labelY+"' text-anchor='middle' fill='#f1c75b' font-size='11'>"+turn.time+" "+turn.kind+"</text>";}}).join("");
+  const signalMarks=(signals||[]).map((m,n)=>{{const i=tradingMinuteIndex(m.time),ret=Number(m.ret);if(i==null||!Number.isFinite(ret))return "";const px=x(i),py=y(ret),buy=m.type==="BUY",color=buy?"#24e39a":"#ff5d66",tip=buy?py-5:py+5,base=buy?py+9:py-9,labelY=buy?py+27:py-17,label=(buy?"買い ":"空売り ")+Number(m.price).toLocaleString("ja-JP")+"円";return "<g><polygon points='"+px+","+tip+" "+(px-7)+","+base+" "+(px+7)+","+base+"' fill='"+color+"' stroke='#071218' stroke-width='2'/><text x='"+px+"' y='"+labelY+"' text-anchor='middle' fill='"+color+"' font-size='13' font-weight='800'>"+label+"</text></g>";}}).join("");
   const last=actualRows.length?tradingMinuteIndex(actualRows.at(-1).t):null;
   const divider=last==null?"":"<line x1='"+x(last)+"' y1='"+T+"' x2='"+x(last)+"' y2='"+(H-B)+"' stroke='#ffffff88' stroke-dasharray='3 5'/><text x='"+(x(last)+5)+"' y='"+(T+13)+"' fill='#d9e7ef' font-size='11'>実績ここまで</text>";
-  return "<svg viewBox='0 0 "+W+" "+H+"' preserveAspectRatio='none' aria-label='キオクシア本日予測と実測1分足'>"+grid+timeGrid+"<polyline points='"+forecastLine+"' fill='none' stroke='#f1c75b' stroke-width='3' stroke-dasharray='10 5'/>"+candles+ema9+ema20+vwap+turnMarks+divider+"</svg>";
+  return "<svg viewBox='0 0 "+W+" "+H+"' preserveAspectRatio='none' aria-label='キオクシア本日予測と実測1分足'>"+grid+timeGrid+"<polyline points='"+forecastLine+"' fill='none' stroke='#f1c75b' stroke-width='3' stroke-dasharray='10 5'/>"+candles+ema9+ema20+vwap+turnMarks+signalMarks+divider+"</svg>";
 }};
 Promise.all([
  fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()),
@@ -3008,7 +3009,9 @@ Promise.all([
   if (best) {{
     document.getElementById("kio-best-date").textContent = best.date;
     document.getElementById("kio-best-score").textContent = Number(best.similarity).toFixed(1) + "%";
-    document.getElementById("kio-best-path").innerHTML = kioOneMinuteChart(best.path, d.one_minute_verified ? (d.current_1m || []) : [], d.forecast_turns || []);
+    window.kioChartState={{points:best.path,actual:d.one_minute_verified?(d.current_1m||[]):[],turns:d.forecast_turns||[]}};
+    window.kioSignalMarkers=[];
+    document.getElementById("kio-best-path").innerHTML = kioOneMinuteChart(window.kioChartState.points,window.kioChartState.actual,window.kioChartState.turns,window.kioSignalMarkers);
     document.getElementById("kio-one-minute-note").textContent = (d.forecast_resolution || "1分刻み予測") + "／" + (d.one_minute_verified ? (d.one_minute_source + " 実測" + (d.current_1m || []).length + "本") : "実測1分足は未取得。予測線のみ表示") + "／類似日選定は5分足・米国市場・信用需給";
     document.getElementById("kio-best-type").textContent = best.type + "／全日 " + signedPct(best.ret,2);
     document.getElementById("kio-best-plan").textContent = "類似日の照合後 " + signedPct(best.after_ret,2) + "、最大上振れ " + signedPct(best.max_up_after,2) + "、最大下振れ " + signedPct(best.max_down_after,2) + "。" + (riskOverlay.action || (p.sample < 3 ? "サンプル不足のため売買利用禁止。" : "9:15以降のローソク足確認が必須。" ));
@@ -3045,7 +3048,14 @@ document.addEventListener("liveFocusUpdate",e=>{{
   state.textContent=k.verified?(k.monitor_status||"判定待ち"):(k.status||"更新停止・売買禁止");
   state.className=k.monitor_status==="予測内"?"up":k.monitor_status==="予測崩れ"?"down":"warning";
   signal.textContent=k.verified?(k.trade_signal||"見送り"):"売買禁止";
-  signal.className=(k.trade_signal==="押し目買い候補"?"buy":k.trade_signal==="戻り売り候補"?"sell":"wait");
+  signal.className=(k.signal_type==="BUY"?"buy":k.signal_type==="SHORT"?"sell":"wait");
+  const chartLamp=document.getElementById("kio-chart-signal"),chartLabel=document.getElementById("kio-chart-signal-label"),chartPrice=document.getElementById("kio-chart-signal-price");
+  const actionable=k.verified&&(k.signal_type==="BUY"||k.signal_type==="SHORT");
+  chartLabel.textContent=actionable?k.trade_signal:(k.whipsaw_guard?"往復ピンタ回避":"サイン待ち");
+  chartPrice.textContent=actionable&&k.entry_price!=null?"発動 "+Number(k.entry_price).toLocaleString("ja-JP")+"円":"—";
+  chartLamp.style.borderColor=actionable?(k.signal_type==="BUY"?"#24e39a":"#ff5d66"):"#39505d";
+  chartLamp.style.background=actionable?(k.signal_type==="BUY"?"#0d3b2c":"#421b22"):"#10202a";
+  chartLamp.style.color=actionable?(k.signal_type==="BUY"?"#62f5bc":"#ff9298"):"#b8c8d2";
   document.getElementById("kio-compare-time").textContent="予測 "+(k.forecast_time||"—")+"／実績 "+(k.actual_time||"—");
   document.getElementById("kio-compare-return").textContent=fmtPct(k.forecast_return)+"／"+fmtPct(k.actual_return);
   document.getElementById("kio-path-gap").textContent=fmtPct(k.deviation_pct)+"／"+(k.path_fit==null?"—":Number(k.path_fit).toFixed(1)+"%一致");
@@ -3055,13 +3065,23 @@ document.addEventListener("liveFocusUpdate",e=>{{
   document.getElementById("kio-entry-order").textContent=k.entry_order||"条件成立後の逆指値";
   document.getElementById("kio-stop-price").textContent=k.stop_price==null?"—":Number(k.stop_price).toLocaleString("ja-JP")+"円";
   document.getElementById("kio-setup-type").textContent=k.setup_type||"判定待ち";
-  document.getElementById("kio-confirmed-bar").textContent=(k.confirmed_bar_time||"—")+" 完成5分足で判定";
+  document.getElementById("kio-confirmed-bar").textContent=(k.one_minute_bar_time||"—")+" 完成1分足／出来高 "+(k.one_minute_volume_ratio==null?"—":Number(k.one_minute_volume_ratio).toFixed(2)+"倍");
   document.getElementById("kio-live-ma").textContent=[k.ema9,k.ema20,k.vwap].map(v=>v==null?"—":Number(v).toLocaleString("ja-JP",{{maximumFractionDigits:1}})).join("／");
   document.getElementById("kio-signal-reason").textContent=k.signal_reason||"条件未確認";
-  const lastKey=localStorage.getItem("kioLastSignalKey");
-  if(k.signal_key&&k.signal_key!==lastKey){{
-    window.cockpitSpeak?.(k.voice_message||("キオクシア、"+(k.trade_signal||"見送り")));
-    localStorage.setItem("kioLastSignalKey",k.signal_key);
+  if(actionable&&k.signal_key){{
+    window.kioSignalMarkers=window.kioSignalMarkers||[];
+    if(!window.kioSignalMarkers.some(m=>m.key===k.signal_key)){{
+      window.kioSignalMarkers.push({{key:k.signal_key,type:k.signal_type,time:k.signal_time,ret:k.signal_return_pct,price:k.entry_price}});
+      window.kioSignalMarkers=window.kioSignalMarkers.slice(-12);
+      if(window.kioChartState)document.getElementById("kio-best-path").innerHTML=kioOneMinuteChart(window.kioChartState.points,window.kioChartState.actual,window.kioChartState.turns,window.kioSignalMarkers);
+    }}
+    let voiceState={{}};
+    try{{voiceState=JSON.parse(localStorage.getItem("kioVoiceSignalState")||"{{}}")}}catch(_e){{voiceState={{}}}}
+    const nowMs=Date.now(),sameDirection=voiceState.type===k.signal_type,insideCooldown=sameDirection&&nowMs-Number(voiceState.at||0)<600000;
+    if(k.signal_key!==voiceState.key&&!insideCooldown&&e.detail?.speech_enabled===true){{
+      window.cockpitSpeak?.(k.voice_message);
+      localStorage.setItem("kioVoiceSignalState",JSON.stringify({{key:k.signal_key,type:k.signal_type,at:nowMs}}));
+    }}
   }}
 }});
 </script>{trade_drawer}</body></html>"""
