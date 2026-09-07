@@ -470,7 +470,8 @@ def main():
     if now.weekday() >= 5 and OUT.exists():
         try:
             previous = json.loads(OUT.read_text(encoding="utf-8"))
-            previous["gap_studies"] = daily_gap_studies()
+            verified_daily_gaps = daily_gap_studies()
+            previous["gap_studies"] = verified_daily_gaps or previous.get("gap_studies") or gap_studies(stored_sessions())
             previous["forecast_turns"] = turning_points(((previous.get("best_match") or {}).get("path") or []))
             previous["ma_playbook"] = ma_playbook()
             previous["weekend_status"] = "休場日：直前営業日の検証済み予測を保持。次営業日版は当日8:00に更新。"
@@ -678,7 +679,7 @@ def main():
         },
         "risk_overlay": risk_overlay,
         "decision": decision,
-        "gap_studies": daily_gap_studies(),
+        "gap_studies": daily_gap_studies() or gap_studies(sessions),
         "forecast_turns": turning_points((top[0] if top else {}).get("path") or []),
         "ma_playbook": ma_playbook(),
         "rule": "寄り前は前夜のSanDisk・Micron・SOX・NASDAQと信用需給で事前類似日を選定。9:15以降は当日5分足を65%へ引き上げる。類似度60%以上が3日未満なら見送り。OR15・VWAP・EMA9/20・出来高の4/5一致が最終条件。",
