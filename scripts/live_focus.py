@@ -302,6 +302,7 @@ def main():
         )
     except Exception:
         raw_1m = pd.DataFrame()
+    raw_1m = frame_for(raw_1m, "285A.T")
     if not raw_1m.empty and "Close" in raw_1m:
         raw_1m = raw_1m.dropna(subset=["Close"])
         one_session = raw_1m[raw_1m.index.map(
