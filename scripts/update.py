@@ -2385,8 +2385,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 <style>
 .focus-dashboard{{padding:14px;background:radial-gradient(circle at 80% 0,#123454 0,#101923 42%,#081018 100%);border:1px solid #3e83a8;overflow:visible}}.focus-title{{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:12px}}.focus-title h2{{font-size:26px;margin:2px 0;border:0;color:#fff}}.focus-title>div>span{{color:#63d8ff;font-weight:900;letter-spacing:.08em}}.decision-badge{{padding:12px 16px;border-radius:10px;font-size:17px;white-space:nowrap}}.decision-go{{background:#38e477;color:#03140a}}.decision-ready{{background:#ffd84e;color:#191300}}.decision-wait{{background:#5c6874;color:#fff}}.focus-layout{{display:grid;grid-template-columns:minmax(230px,.7fr) minmax(420px,1.45fr) minmax(320px,1fr);gap:12px}}.focus-picks{{display:flex;flex-direction:column;gap:7px}}.focus-pick{{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;text-align:left;color:#e9f4ff;background:#0b1722;border:1px solid #30475b;border-radius:9px;padding:10px;cursor:pointer}}.focus-pick:hover,.focus-pick.active{{border-color:#54d6ff;background:#10283a;box-shadow:0 0 0 1px #54d6ff55}}.focus-pick small{{display:block;margin-top:3px}}.focus-pick strong{{font-size:20px;color:#65e993}}.focus-rank{{background:#20384b;padding:5px;border-radius:5px;font-weight:900}}.focus-chart-wrap,.focus-order{{background:#071019;border:1px solid #2a475d;border-radius:10px;overflow:hidden}}.focus-chart-head{{display:flex;justify-content:space-between;padding:9px 11px;background:#0e2030}}#focus-chart{{width:100%;height:430px;border:0;display:block}}.focus-order{{padding:12px;overflow:auto}}.focus-symbol{{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;border-bottom:1px solid #314354;padding-bottom:9px}}.focus-symbol h3{{margin:0;color:#fff;font-size:18px}}.focus-symbol>b{{font-size:21px;color:#63e990}}.focus-action{{margin:11px 0;padding:12px;border-radius:9px;background:#113421;border:1px solid #2b9c58}}.focus-action span,.focus-action small{{display:block}}.focus-action strong{{display:block;font-size:25px;color:#65ef91;margin:4px 0}}.focus-price-grid{{display:grid;grid-template-columns:1fr 1fr;gap:7px}}.focus-price-grid>div{{background:#101e2a;border-radius:7px;padding:9px}}.focus-price-grid span{{display:block;color:#9fb0bf}}.focus-price-grid b{{font-size:17px}}.focus-supply{{margin-top:9px;padding:9px;border-left:4px solid #ffcf4a;background:#191a14}}.focus-supply b,.focus-supply span{{display:block}}.focus-rule{{color:#ffd75e;border-top:1px solid #4a3d16;padding-top:9px}}.focus-empty{{padding:28px;text-align:center;font-size:17px}}@media(max-width:1100px){{.focus-layout{{grid-template-columns:240px 1fr}}.focus-order{{grid-column:1/-1}}}}@media(max-width:800px){{.focus-layout{{grid-template-columns:1fr}}.focus-order{{grid-column:auto}}#focus-chart{{height:360px}}.focus-title{{align-items:flex-start;flex-direction:column}}}}
 </style>
-<link rel="stylesheet" href="theme.css?v=51">
-<link rel="stylesheet" href="focus.css?v=42">
+<link rel="stylesheet" href="theme.css?v=52">
+<link rel="stylesheet" href="focus.css?v=43">
 <header><div><h1>AIトレードコクピット Ver.5.2</h1><div class="sub">精査TOP5＋キオクシア専用。照合不一致は表示しない</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／統一取引日 {quality_gate['market_date'] or '取得不能'}</div></div></header><main>
 {quality_html}
 {live_focus_html}
@@ -2423,7 +2423,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div class="step"><b>4　不一致は見送り</b>相関株が逆行、または条件3/5以下なら主役銘柄へ飛び乗らない。</div>
 </div>
 <p class="warning"><b>キオクシア―任天堂は固定ルールではありません。</b> 20日・60日・当日5分足の逆相関が安定した期間だけ有効。サンディスクは取引時間が重ならないため「米国前日→キオクシア翌日」で判定します。9:15までは方向を決めず、OR15・VWAP・EMA9/20・高安の4/5一致を優先します。</p></section>
-<section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）5分足カレンダー・類似日予測 <button class="voice-toggle" data-voice-toggle type="button" style="float:right;padding:5px 12px;border-radius:7px">🔇 音声OFF</button></h2>
+<section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）本日1分足予測・5分足類似日 <button class="voice-toggle" data-voice-toggle type="button" style="float:right;padding:5px 12px;border-radius:7px">🔇 音声OFF</button></h2>
 <div id="kioxia-calendar-meta" class="sub">直近60日の5分足を照合中...</div>
 <div id="kio-decision-panel" class="rotation-grid" style="margin:10px 0">
  <div class="rotation-box"><b>利用判定</b><strong id="kio-decision-grade">計算中</strong></div>
@@ -2447,7 +2447,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  <p id="kio-signal-reason">OR15、VWAP、EMA9/20、出来高と予測方向が一致するまで発注しません。</p>
 </div>
 <div id="kio-best-analog" class="kio-best-analog">
- <div class="kio-best-chart"><div class="kio-best-title"><div><span>本日最有力5分足</span><b id="kio-best-date">選定中</b></div><strong id="kio-best-score">—</strong></div><div id="kio-best-path" class="focus-empty">米国市場を照合中...</div></div>
+ <div class="kio-best-chart"><div class="kio-best-title"><div><span>本日予測・実測1分足（大判）</span><b id="kio-best-date">選定中</b></div><strong id="kio-best-score">—</strong></div><div id="kio-best-path" class="focus-empty">米国市場と1分足を照合中...</div><div class="kio-chart-legend"><span style="--legend-color:#f1c75b">予測1分経路</span><span style="--legend-color:#3ed5ae">実測1分足</span><span style="--legend-color:#58a6ff">EMA9</span><span style="--legend-color:#d59bff">EMA20</span><span style="--legend-color:#f5f7fa">VWAP</span></div><p id="kio-one-minute-note" class="kio-one-minute-note">類似日選定は5分足、主画面は1分刻み。実測1分足は取得確認後だけ重ねます。</p></div>
  <div class="kio-best-detail"><span id="kio-selection-mode">選定方式を確認中</span><h3 id="kio-best-type">判定待ち</h3><div id="kio-us-context" class="kio-us-context"></div><p id="kio-best-plan">前夜の米国市場と信用需給を確認中です。</p></div>
 </div>
 <div class="kio-detail-grid">
@@ -2915,6 +2915,45 @@ const timedPath = (points, stroke="#58d9b4", turns=[]) => {{
   const turnMarks=(turns||[]).map(turn=>{{const raw=Number(turn.time.slice(0,2))*60+Number(turn.time.slice(3)),sessionMinute=raw-540-(turn.time>="12:30"?60:0),i=Math.max(0,Math.min(points.length-1,Math.round(sessionMinute/330*(points.length-1)))),px=x(i).toFixed(1),py=y(points[i]).toFixed(1);return "<circle cx='"+px+"' cy='"+py+"' r='1.8' fill='#f2bd55'/><text x='"+px+"' y='"+(Number(py)-3)+"' text-anchor='middle' fill='#f2bd55' font-size='3.6'>"+turn.time+" "+turn.kind+"</text>";}}).join("");
   return "<svg viewBox='0 0 120 73' preserveAspectRatio='none' aria-label='09時から15時30分の予測経路'>"+guides+"<polyline points='"+coords+"' fill='none' stroke='"+stroke+"' stroke-width='2.2'/>"+turnMarks+"</svg>";
 }};
+const tradingMinuteIndex = t => {{
+  if(!t || !t.includes(":")) return null;
+  const parts=t.split(":").map(Number),m=parts[0]*60+parts[1];
+  if(m>=540&&m<=690) return m-540;
+  if(m>=750&&m<=930) return 151+(m-750);
+  return null;
+}};
+const resampleMinutePath = (points,count=332) => {{
+  if(!points||points.length<2) return [];
+  return Array.from({{length:count}},(_,i)=>{{
+    const pos=i*(points.length-1)/(count-1),a=Math.floor(pos),b=Math.min(points.length-1,a+1),w=pos-a;
+    return Number(points[a])*(1-w)+Number(points[b])*w;
+  }});
+}};
+const emaLine = (rows,length) => {{
+  const alpha=2/(length+1),out=[];let value=null;
+  (rows||[]).forEach(r=>{{const v=Number(r.c);value=value==null?v:value+alpha*(v-value);out.push([tradingMinuteIndex(r.t),value]);}});
+  return out.filter(x=>x[0]!=null);
+}};
+const kioOneMinuteChart = (points,actual=[],turns=[]) => {{
+  if(!points||points.length<2) return "<div class='focus-empty'>予測データなし</div>";
+  const forecast=resampleMinutePath(points),actualRows=(actual||[]).filter(r=>tradingMinuteIndex(r.t)!=null);
+  const vals=[...forecast,...actualRows.flatMap(r=>[Number(r.h),Number(r.l)])].filter(Number.isFinite);
+  let lo=Math.min(...vals),hi=Math.max(...vals),span=Math.max(hi-lo,.2);lo-=span*.12;hi+=span*.12;span=hi-lo;
+  const W=1200,H=520,L=64,R=24,T=24,B=48,x=i=>L+i/331*(W-L-R),y=v=>T+(hi-v)/span*(H-T-B);
+  const grid=Array.from({{length:6}},(_,i)=>{{const value=hi-i*span/5,py=y(value);return "<line x1='"+L+"' y1='"+py+"' x2='"+(W-R)+"' y2='"+py+"' stroke='#1c303c'/><text x='"+(L-9)+"' y='"+(py+4)+"' text-anchor='end' fill='#8fa5b5' font-size='12'>"+(value>=0?"+":"")+value.toFixed(2)+"%</text>";}}).join("");
+  const marks=[[0,"09:00"],[60,"10:00"],[120,"11:00"],[150,"11:30"],[151,"12:30"],[211,"13:30"],[271,"14:30"],[331,"15:30"]];
+  const timeGrid=marks.map(m=>"<line x1='"+x(m[0])+"' y1='"+T+"' x2='"+x(m[0])+"' y2='"+(H-B)+"' stroke='#233744' stroke-dasharray='4 6'/><text x='"+x(m[0])+"' y='"+(H-18)+"' text-anchor='middle' fill='#9bb0bd' font-size='12'>"+m[1]+"</text>").join("");
+  const forecastLine=forecast.map((v,i)=>x(i).toFixed(1)+","+y(v).toFixed(1)).join(" ");
+  const candles=actualRows.map(r=>{{const i=tradingMinuteIndex(r.t),px=x(i),up=Number(r.c)>=Number(r.o),color=up?"#3ed5ae":"#ef646b",yo=y(Number(r.o)),yc=y(Number(r.c));return "<line x1='"+px+"' y1='"+y(Number(r.h))+"' x2='"+px+"' y2='"+y(Number(r.l))+"' stroke='"+color+"' stroke-width='1'/><rect x='"+(px-1.25)+"' y='"+Math.min(yo,yc)+"' width='2.5' height='"+Math.max(1,Math.abs(yo-yc))+"' fill='"+color+"'/>";}}).join("");
+  const makeLine=(pairs,color,width,dash="")=>pairs.length<2?"":"<polyline points='"+pairs.map(v=>x(v[0]).toFixed(1)+","+y(v[1]).toFixed(1)).join(" ")+"' fill='none' stroke='"+color+"' stroke-width='"+width+"' "+(dash?"stroke-dasharray='"+dash+"'":"")+"/>";
+  const ema9=makeLine(emaLine(actualRows,9),"#58a6ff",1.8),ema20=makeLine(emaLine(actualRows,20),"#d59bff",1.8);
+  let pv=0,vol=0;const vwapPairs=[];actualRows.forEach(r=>{{const v=Number(r.v)||0;if(v>0){{pv+=((Number(r.h)+Number(r.l)+Number(r.c))/3)*v;vol+=v;vwapPairs.push([tradingMinuteIndex(r.t),pv/vol]);}}}});
+  const vwap=makeLine(vwapPairs,"#f5f7fa",1.5,"5 4");
+  const turnMarks=(turns||[]).map(turn=>{{const i=tradingMinuteIndex(turn.time);if(i==null)return "";const py=y(forecast[i]);return "<circle cx='"+x(i)+"' cy='"+py+"' r='4' fill='#f1c75b'/><text x='"+x(i)+"' y='"+(py-9)+"' text-anchor='middle' fill='#f1c75b' font-size='11'>"+turn.time+" "+turn.kind+"</text>";}}).join("");
+  const last=actualRows.length?tradingMinuteIndex(actualRows.at(-1).t):null;
+  const divider=last==null?"":"<line x1='"+x(last)+"' y1='"+T+"' x2='"+x(last)+"' y2='"+(H-B)+"' stroke='#ffffff88' stroke-dasharray='3 5'/><text x='"+(x(last)+5)+"' y='"+(T+13)+"' fill='#d9e7ef' font-size='11'>実績ここまで</text>";
+  return "<svg viewBox='0 0 "+W+" "+H+"' preserveAspectRatio='none' aria-label='キオクシア本日予測と実測1分足'>"+grid+timeGrid+"<polyline points='"+forecastLine+"' fill='none' stroke='#f1c75b' stroke-width='3' stroke-dasharray='10 5'/>"+candles+ema9+ema20+vwap+turnMarks+divider+"</svg>";
+}};
 Promise.all([
  fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()),
  fetch("credit_supply.json?t=" + Date.now()).then(r => r.json()).catch(() => ({{stocks:{{}}}})),
@@ -2967,12 +3006,14 @@ Promise.all([
   if (best) {{
     document.getElementById("kio-best-date").textContent = best.date;
     document.getElementById("kio-best-score").textContent = Number(best.similarity).toFixed(1) + "%";
-    document.getElementById("kio-best-path").innerHTML = timedPath(best.path, best.ret >= 0 ? "#58ddb5" : "#ff777e", d.forecast_turns || []);
+    document.getElementById("kio-best-path").innerHTML = kioOneMinuteChart(best.path, d.one_minute_verified ? (d.current_1m || []) : [], d.forecast_turns || []);
+    document.getElementById("kio-one-minute-note").textContent = (d.forecast_resolution || "1分刻み予測") + "／" + (d.one_minute_verified ? (d.one_minute_source + " 実測" + (d.current_1m || []).length + "本") : "実測1分足は未取得。予測線のみ表示") + "／類似日選定は5分足・米国市場・信用需給";
     document.getElementById("kio-best-type").textContent = best.type + "／全日 " + signedPct(best.ret,2);
     document.getElementById("kio-best-plan").textContent = "類似日の照合後 " + signedPct(best.after_ret,2) + "、最大上振れ " + signedPct(best.max_up_after,2) + "、最大下振れ " + signedPct(best.max_down_after,2) + "。" + (riskOverlay.action || (p.sample < 3 ? "サンプル不足のため売買利用禁止。" : "9:15以降のローソク足確認が必須。" ));
   }} else {{
     document.getElementById("kio-best-date").textContent = "選定不能";
     document.getElementById("kio-best-plan").textContent = "米国市場または5分足データ不足。推定で埋めません。";
+    document.getElementById("kio-one-minute-note").textContent = "予測の根拠データ不足。1分足を推定表示しません。";
   }}
   document.getElementById("kio-us-context").innerHTML = context && context.values ? Object.entries(context.values).map(([k,v]) => "<div><span>" + (usLabels[k] || k) + "</span><b class='" + (v >= 0 ? "kio-up" : "kio-down") + "'>" + signedPct(v,2) + "</b></div>").join("") : "<div><span>米国市場</span><b>未取得</b></div>";
   const gaps=d.gap_studies||[];
