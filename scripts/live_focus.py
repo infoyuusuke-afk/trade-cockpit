@@ -250,6 +250,10 @@ def record_kioxia_result(now, row):
 
 def main():
     now = datetime.now(JST)
+    weekday = now.weekday() < 5
+    clock = (now.hour, now.minute)
+    speech_enabled = bool(weekday and (8, 0) <= clock <= (15, 30))
+    market_phase = "ザラバ監視中" if speech_enabled else "ザラバ終了・PTS非対応"
     data = json.loads(DATA.read_text(encoding="utf-8"))
     names = {}
     for item in data.get("precision_top5", []):
@@ -372,6 +376,12 @@ def main():
         monitor = {}
         if code == "285A":
             monitor = compare_kioxia(session_chart, kio_forecast, indicators, now)
+            if not speech_enabled:
+                monitor.update({
+                    "monitor_status": "ザラバ終了", "trade_signal": "売買禁止",
+                    "signal_reason": "ザラバ終了。PTSデータ非対応",
+                    "entry_price": None, "stop_price": None, "entry_order": None,
+                })
             if verified:
                 signal = monitor["trade_signal"]
             monitor["signal_key"] = "|".join(str(monitor.get(x) or "") for x in (
@@ -390,9 +400,11 @@ def main():
             "name": name, "ticker": ticker, "price": secondary_price,
             "primary_price": primary_price, "quote_time": last_stamp.isoformat() if last_stamp is not None else None,
             "age_minutes": age_minutes, "verified": verified,
-            "status": "リアルタイム照合済み" if verified else "更新停止・売買禁止",
+            "status": (("リアルタイム照合済み" if speech_enabled else "ザラバ終了・終値照合済み（PTS非対応）")
+                       if verified else "更新停止・売買禁止"),
             "chart": chart if verified else [],
-            "signal": signal if verified else "更新停止・売買禁止",
+            "signal": ((signal if speech_enabled else "ザラバ終了・売買禁止")
+                       if verified else "更新停止・売買禁止"),
             **(indicators if verified else {}),
             **(kio_forecast if code == "285A" else {}),
             **(monitor if code == "285A" else {}),
@@ -402,9 +414,13 @@ def main():
         "updated_at": now.strftime("%Y-%m-%d %H:%M:%S JST"),
         "refresh_seconds": 60, "backend_interval_minutes": 5,
         "verified_count": verified_count, "expected_count": len(rows),
-        "status": "稼働" if verified_count == len(rows) and rows else "一部停止",
+        "status": ("稼働" if verified_count == len(rows) and rows else "一部停止") if speech_enabled else "停止",
+        "market_phase": market_phase,
+        "speech_enabled": speech_enabled,
+        "pts_supported": False,
         "rows": rows,
-        "rule": "Yahoo 5分足と野村/QUICK現在値、コード、取引日、鮮度が一致した銘柄だけ更新。キオクシアは予測差・OR15・VWAP・EMA・出来高一致時だけ条件付きサイン。",
+        "rule": ("Yahoo 5分足と野村/QUICK現在値、コード、取引日、鮮度が一致した銘柄だけ更新。キオクシアは予測差・OR15・VWAP・EMA・出来高一致時だけ条件付きサイン。"
+                 if speech_enabled else "ザラバ終了後は全売買サインと音声を停止。表示値は東証終値でありPTS価格ではありません。"),
     }
     OUT.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     record_kioxia_result(now, rows.get("285A") or {})
