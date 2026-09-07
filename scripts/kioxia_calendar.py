@@ -195,6 +195,42 @@ def day_view(date, day):
     }
 
 
+def one_minute_view(frame, target_date):
+    """Return verified Yahoo 1-minute OHLC as returns from the session open."""
+    if frame.empty or not target_date:
+        return []
+    view = frame.copy()
+    idx = pd.to_datetime(view.index)
+    if idx.tz is None:
+        idx = idx.tz_localize("UTC").tz_convert(JST)
+    else:
+        idx = idx.tz_convert(JST)
+    view.index = idx
+    view = view.between_time("09:00", "15:30")
+    view = view[view.index.date.astype(str) == str(target_date)]
+    if view.empty:
+        return []
+    session_open = finite(view["Open"].iloc[0])
+    if not session_open or session_open <= 0:
+        return []
+    rows = []
+    for stamp, bar in view.iterrows():
+        values = [finite(bar.get(k)) for k in ("Open", "High", "Low", "Close")]
+        if any(value is None for value in values):
+            continue
+        o, h, l, close = values
+        rows.append({
+            "t": stamp.strftime("%H:%M"),
+            "o": round((o / session_open - 1) * 100, 4),
+            "h": round((h / session_open - 1) * 100, 4),
+            "l": round((l / session_open - 1) * 100, 4),
+            "c": round((close / session_open - 1) * 100, 4),
+            "price": round(close, 1),
+            "v": int(finite(bar.get("Volume")) or 0),
+        })
+    return rows
+
+
 def scaled(values, count):
     values = np.asarray(values, dtype=float)
     if len(values) == count:
@@ -604,12 +640,26 @@ def main():
         "invalidate": "OR15とVWAPが予測方向と逆へ同時確定したら無効",
     }
     current_view = prior_views.get(current_date) or day_view(current_date, current)
+    one_minute_source = "Yahoo Finance 285A.T 1分足"
+    current_1m = []
+    try:
+        raw_1m = yf.download("285A.T", period="7d", interval="1m", auto_adjust=False,
+                             progress=False, threads=False, timeout=45)
+        frame_1m = flat(raw_1m)
+        current_1m = one_minute_view(frame_1m, analysis_date)
+    except Exception as exc:
+        one_minute_source = f"1分足取得失敗（{type(exc).__name__}）"
+        print(f"キオクシア1分足取得失敗。5分足表示を維持: {exc}")
     output = {
         "name": "キオクシアHD（285A）",
         "ticker": "285A.T",
         "updated_at": datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S JST"),
         "source": intraday_source + "（取得可能な直近60日）",
         "calendar": views[-25:], "current": current_view,
+        "current_1m": current_1m,
+        "one_minute_source": one_minute_source,
+        "one_minute_verified": bool(current_1m),
+        "forecast_resolution": "1分刻み表示（類似日5分足を補間）",
         "current_is_today": current_is_today,
         "current_gap_pct": current_gap_pct if current_is_today else None,
         "analysis_date": analysis_date,
