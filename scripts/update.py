@@ -2376,6 +2376,53 @@ document.addEventListener("DOMContentLoaded",()=>{
 </section>
 """
 
+    ms2_live_html = """
+<section id="ms2-live-top5" class="card wide ms2-live-panel">
+ <div class="ms2-live-head"><div><span>LOCAL MARKET DATA</span><h2>デイトレ100銘柄・MS2 LIVE TOP5</h2></div><div id="ms2-live-health" class="ms2-health waiting">ローカル収集待ち</div></div>
+ <div id="ms2-live-meta" class="sub">MarketSpeed II RSSのローカル収集データを確認中...</div>
+ <div id="ms2-live-cards" class="ms2-live-grid"><div class="focus-empty"><b>未接続</b><span>Windows用100銘柄コレクターを起動してください</span></div></div>
+ <h3>夜間PTS期待TOP5</h3>
+ <div id="ms2-pts-cards" class="ms2-live-grid"><div class="focus-empty"><span>JNXデータ待ち</span></div></div>
+ <h3>IR急騰PTS TOP5</h3>
+ <div id="ms2-ir-pts-meta" class="sub">TDnet公式開示とJNXを照合中...</div>
+ <div id="ms2-ir-pts-cards" class="ms2-live-grid"><div class="focus-empty"><span>公式IR＋PTS反応待ち</span></div></div>
+ <p><a class="ms2-download" href="downloads/MS2_RSS_100_Stocks_Live_Kit.zip" download>Windows用・100銘柄LIVEキットをダウンロード</a></p>
+ <p class="warning"><b>判定順：</b>OR15 → VWAP → 歩み値の買売偏り → 出来高加速 → UNDER/OVER変化。板比率だけの買い・空売りは禁止。データが60秒以上古い場合は全サインを無効化します。</p>
+</section>
+"""
+    ms2_live_script = r"""
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ const yen=v=>Number(v||0).toLocaleString("ja-JP",{maximumFractionDigits:1})+"円";
+ const fetchJson=async(url,timeout=1800)=>{const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),timeout);try{const r=await fetch(url,{cache:"no-store",signal:ctl.signal});if(!r.ok)throw new Error("not found");return await r.json()}finally{clearTimeout(timer)}};
+ const fetchMs2=async()=>{try{const d=await fetchJson("http://127.0.0.1:28580/live_ms2.json?t="+Date.now());d.connection_source="自宅PC・MS2 RSS LIVE";return d}catch(e){const d=await fetchJson("live_ms2.json?t="+Date.now(),3000);d.connection_source="公開スナップショット";return d}};
+ async function loadMs2Live(){
+  const health=document.getElementById("ms2-live-health"),meta=document.getElementById("ms2-live-meta"),cards=document.getElementById("ms2-live-cards"),ptsCards=document.getElementById("ms2-pts-cards"),irCards=document.getElementById("ms2-ir-pts-cards"),irMeta=document.getElementById("ms2-ir-pts-meta");
+  if(!health||!cards)return;
+  try{
+   const d=await fetchMs2();
+   const parsed=new Date(String(d.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,stale=d.stale||age>60;
+   health.className="ms2-health "+(stale?"stale":"live"); health.textContent=stale?"データ停止・売買禁止":"LIVE 接続中";
+   meta.textContent=`${d.updated_at||"更新時刻不明"} / 有効 ${d.valid||0}/${d.universe||100}銘柄 / ${d.connection_source||d.source||"MS2 RSS"}`;
+   const xs=Array.isArray(d.top5)?d.top5:[];
+   cards.innerHTML=xs.length?xs.slice(0,5).map((x,i)=>{const cls=x.signal==="買いサイン"?"buy":x.signal==="空売りサイン"?"sell":x.signal?.includes("回避")?"block":"watch",cr=x.credit_ratio==null?"未取得":`${esc(x.credit_ratio)}倍`;return `<article class="ms2-live-card ${cls}"><div class="top"><span class="signal">${stale?"無効":esc(x.signal)}</span><h3>#${i+1} ${esc(x.name)}</h3><b class="score">${esc(x.score)}</b></div><div class="live-price">${yen(x.price)}</div><div class="ms2-metrics"><span>VWAP<b>${yen(x.vwap)}</b></span><span>UNDER<b>${esc(x.under_ratio)}%</b></span><span>板変化<b>${esc(x.under_change)}pt</b></span><span>約定偏り<b>${esc(x.flow_bias)}%</b></span><span>出来高加速<b>${esc(x.volume_burst)}倍</b></span><span>信用倍率<b>${cr}</b></span><span>OR15<b>${yen(x.or_low)}–${yen(x.or_high)}</b></span></div><small>${esc(x.sector)}</small></article>`}).join(""):`<div class="focus-empty"><b>発動なし</b><span>条件一致銘柄を待っています</span></div>`;
+   const pts=Array.isArray(d.pts_top5)?d.pts_top5:[];
+   if(ptsCards)ptsCards.innerHTML=pts.length?pts.slice(0,5).map((x,i)=>`<article class="ms2-live-card ${Number(x.bias_score)>=0?"buy":"sell"}"><div class="top"><span class="signal">${stale?"無効":esc(x.stance)}</span><h3>#${i+1} ${esc(x.name)}</h3><b class="score">${esc(x.expectation_score)}</b></div><div class="live-price">${yen(x.price)}</div><div class="ms2-metrics"><span>東証終値比<b>${Number(x.gap_pct)>=0?"+":""}${Number(x.gap_pct).toFixed(2)}%</b></span><span>売買代金<b>${(Number(x.turnover||0)/1000000).toFixed(1)}百万円</b></span><span>スプレッド<b>${esc(x.spread_pct)}%</b></span><span>UNDER<b>${esc(x.under_ratio)}%</b></span></div></article>`).join(""):`<div class="focus-empty"><span>流動性条件を満たすPTS候補なし</span></div>`;
+   const ir=Array.isArray(d.ir_pts_top5)?d.ir_pts_top5:[];
+   if(irMeta)irMeta.textContent=d.tdnet_status||"TDnet確認待ち";
+   if(irCards)irCards.innerHTML=ir.length?ir.slice(0,5).map((x,i)=>{const official=String(x.official_url||"").startsWith("https://www.release.tdnet.info/")?`<a href="${esc(x.official_url)}" target="_blank" rel="noopener">TDnet原文</a>`:"TDnetリンク確認待ち";return `<article class="ms2-live-card buy"><div class="top"><span class="signal">${stale?"無効":esc(x.material_label)}</span><h3>#${i+1} ${esc(x.name)}（${esc(x.code)}）</h3><b class="score">${esc(x.total_score)}</b></div><div class="live-price">${yen(x.pts_price)}</div><div class="ms2-metrics"><span>開示<b>${esc(x.disclosure_time)}</b></span><span>東証終値比<b>+${Number(x.gap_pct).toFixed(2)}%</b></span><span>売買代金<b>${(Number(x.turnover||0)/1000000).toFixed(1)}百万円</b></span><span>判定<b>${esc(x.judgement)}</b></span></div><small>${esc(x.title)}／${official}</small></article>`}).join(""):`<div class="focus-empty"><span>公式IR・PTS反応・流動性の三条件を満たす候補なし</span></div>`;
+   document.dispatchEvent(new CustomEvent("ms2RssUpdate",{detail:{...d,stale}}));
+  }catch(e){health.className="ms2-health waiting";health.textContent="ローカル収集待ち";meta.textContent="Windowsの100銘柄コレクターを起動してください。";document.dispatchEvent(new CustomEvent("ms2RssUpdate",{detail:{stale:true}}));}
+ }
+ document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},live=d.stale===false,bar=document.getElementById("unified-mode");if(!bar)return;bar.className="unified-mode "+(live?"live":"stale");document.getElementById("unified-mode-title").textContent=live?"MS2 RSS LIVE接続中":"事前分析モード";document.getElementById("unified-mode-note").textContent=live?"歩み値・板・VWAP・OR15を同じ画面へ反映":"LIVE値は未接続。公開分析は閲覧できますが売買サインは無効";document.getElementById("unified-mode-time").textContent=live?(d.updated_at||"更新中"):"LIVE売買禁止";});
+ document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},k=d.kioxia,stale=d.stale!==false;if(!document.getElementById("kio-ms2-state"))return;const put=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};if(!k||stale){put("kio-ms2-state","未接続・売買利用禁止");put("kio-ms2-source","Windowsコレクター待ち");return}const signed=v=>v==null?"—":`${Number(v)>=0?"+":""}${Number(v).toFixed(1)}pt`,pct=v=>v==null?"—":`${Number(v)>=0?"+":""}${Number(v).toFixed(2)}%`,h=k.historical_prediction;put("kio-ms2-state",k.orderflow_state||"判定待ち");put("kio-ms2-source",`${d.updated_at}／${d.connection_source||"MS2 RSS LIVE"}`);put("kio-preopen-plan",k.preopen_plan||"判定待ち");put("kio-preopen-score",`スコア ${k.preopen_score??"—"}`);put("kio-preopen-quote",k.preopen_quote?`${Number(k.preopen_quote).toLocaleString("ja-JP")}円`:"—");put("kio-preopen-gap",`基準比 ${pct(k.preopen_gap_pct)}`);put("kio-preopen-imbalance",pct(k.preopen_market_imbalance));put("kio-preopen-change",`気配5分 ${pct(k.preopen_quote_change_5m)}`);put("kio-open-decision",k.open_decision||"寄り待ち");put("kio-special-quote",`特別気配 ${k.special_quote||"—"}／始値 ${k.open_price?Number(k.open_price).toLocaleString("ja-JP")+"円":"—"}`);put("kio-ms2-band",k.time_band||"—");put("kio-ms2-under",`${Number(k.under_ratio).toFixed(1)}%`);put("kio-ms2-under-change",`1分 ${signed(k.under_change_1m)}／5分 ${signed(k.under_change_5m)}`);put("kio-ms2-flow",`${Number(k.flow_bias).toFixed(1)}%`);put("kio-ms2-flow-detail",`買い ${Number(k.buy_flow||0).toLocaleString("ja-JP")}／売り ${Number(k.sell_flow||0).toLocaleString("ja-JP")}`);put("kio-ms2-ticks",k.tick_watch||"常時監視中");put("kio-ms2-stat",h?.prediction||`蓄積中 ${k.completed_stat_days||0}/10日`);put("kio-ms2-stat-detail",h?`5分後 上${h.up_rate_5m}%／下${h.down_rate_5m}%・平均 ${Number(h.average_return_5m)>=0?"+":""}${h.average_return_5m}%・${h.sample_days}日`:`10営業日まで方向を出しません`);const panel=document.getElementById("kio-ms2-orderflow");panel.classList.toggle("buy",k.orderflow_state==="買い優勢");panel.classList.toggle("sell",k.orderflow_state==="売り優勢");panel.classList.toggle("conflict",String(k.orderflow_state).includes("不一致"));});
+ document.addEventListener("ms2RssUpdate",e=>{const k=e.detail?.kioxia,el=document.getElementById("kio-preopen-stat");if(!el||!k)return;const h=k.preopen_historical;el.textContent=h?(h.ready?`${h.prediction}（n=${h.sample_days}日）`:`蓄積中 ${h.sample_days}/10日`):"統計蓄積中";});
+ loadMs2Live(); setInterval(loadMs2Live,5000);
+});
+</script>
+"""
+
     nikkei = indices.get("日経平均", {}).get("price")
     atr_n = indices.get("日経平均", {}).get("atr14")
     day_range = "取得不能" if not nikkei else f"{nikkei-(atr_n or nikkei*.015):,.0f} ～ {nikkei+(atr_n or nikkei*.015):,.0f}円"
@@ -2386,11 +2433,14 @@ document.addEventListener("DOMContentLoaded",()=>{
 .focus-dashboard{{padding:14px;background:radial-gradient(circle at 80% 0,#123454 0,#101923 42%,#081018 100%);border:1px solid #3e83a8;overflow:visible}}.focus-title{{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:12px}}.focus-title h2{{font-size:26px;margin:2px 0;border:0;color:#fff}}.focus-title>div>span{{color:#63d8ff;font-weight:900;letter-spacing:.08em}}.decision-badge{{padding:12px 16px;border-radius:10px;font-size:17px;white-space:nowrap}}.decision-go{{background:#38e477;color:#03140a}}.decision-ready{{background:#ffd84e;color:#191300}}.decision-wait{{background:#5c6874;color:#fff}}.focus-layout{{display:grid;grid-template-columns:minmax(230px,.7fr) minmax(420px,1.45fr) minmax(320px,1fr);gap:12px}}.focus-picks{{display:flex;flex-direction:column;gap:7px}}.focus-pick{{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;text-align:left;color:#e9f4ff;background:#0b1722;border:1px solid #30475b;border-radius:9px;padding:10px;cursor:pointer}}.focus-pick:hover,.focus-pick.active{{border-color:#54d6ff;background:#10283a;box-shadow:0 0 0 1px #54d6ff55}}.focus-pick small{{display:block;margin-top:3px}}.focus-pick strong{{font-size:20px;color:#65e993}}.focus-rank{{background:#20384b;padding:5px;border-radius:5px;font-weight:900}}.focus-chart-wrap,.focus-order{{background:#071019;border:1px solid #2a475d;border-radius:10px;overflow:hidden}}.focus-chart-head{{display:flex;justify-content:space-between;padding:9px 11px;background:#0e2030}}#focus-chart{{width:100%;height:430px;border:0;display:block}}.focus-order{{padding:12px;overflow:auto}}.focus-symbol{{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;border-bottom:1px solid #314354;padding-bottom:9px}}.focus-symbol h3{{margin:0;color:#fff;font-size:18px}}.focus-symbol>b{{font-size:21px;color:#63e990}}.focus-action{{margin:11px 0;padding:12px;border-radius:9px;background:#113421;border:1px solid #2b9c58}}.focus-action span,.focus-action small{{display:block}}.focus-action strong{{display:block;font-size:25px;color:#65ef91;margin:4px 0}}.focus-price-grid{{display:grid;grid-template-columns:1fr 1fr;gap:7px}}.focus-price-grid>div{{background:#101e2a;border-radius:7px;padding:9px}}.focus-price-grid span{{display:block;color:#9fb0bf}}.focus-price-grid b{{font-size:17px}}.focus-supply{{margin-top:9px;padding:9px;border-left:4px solid #ffcf4a;background:#191a14}}.focus-supply b,.focus-supply span{{display:block}}.focus-rule{{color:#ffd75e;border-top:1px solid #4a3d16;padding-top:9px}}.focus-empty{{padding:28px;text-align:center;font-size:17px}}@media(max-width:1100px){{.focus-layout{{grid-template-columns:240px 1fr}}.focus-order{{grid-column:1/-1}}}}@media(max-width:800px){{.focus-layout{{grid-template-columns:1fr}}.focus-order{{grid-column:auto}}#focus-chart{{height:360px}}.focus-title{{align-items:flex-start;flex-direction:column}}}}
 </style>
 <link rel="stylesheet" href="theme.css?v=52">
-<link rel="stylesheet" href="focus.css?v=43">
-<header><div><h1>AIトレードコクピット Ver.5.2</h1><div class="sub">精査TOP5＋キオクシア専用。照合不一致は表示しない</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／統一取引日 {quality_gate['market_date'] or '取得不能'}</div></div></header><main>
+<link rel="stylesheet" href="focus.css?v=44">
+<style>.unified-mode{{margin:8px 6px 0;padding:10px 14px;border:1px solid #365267;border-radius:10px;background:#09141d;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}}.unified-mode .lamp{{width:12px;height:12px;border-radius:50%;background:#77838c;box-shadow:0 0 0 5px #77838c18}}.unified-mode.live{{border-color:#28c998;background:#082019}}.unified-mode.live .lamp{{background:#35e2ae;box-shadow:0 0 16px #35e2ae}}.unified-mode.stale{{border-color:#f0b74c}}.unified-mode strong{{font-size:16px}}.unified-mode span{{color:#a8bbc9}}.unified-mode b{{color:#fff}}@media(max-width:700px){{.unified-mode{{grid-template-columns:auto 1fr}}.unified-mode>b{{grid-column:2}}}}</style>
+<header><div><h1>AIトレードコクピット Ver.5.2</h1><div class="sub">事前分析とMS2 RSS LIVEをこの1画面に統一</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／統一取引日 {quality_gate['market_date'] or '取得不能'}</div></div></header>
+<div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span></div><b id="unified-mode-time">—</b></div><main>
 {quality_html}
 {live_focus_html}
 {focus_dashboard}
+{ms2_live_html}
 {strong_yen_html}
 <section id="event-calendar" class="card wide event-calendar"><h2>売買イベントカレンダー</h2>
 <div id="event-meta" class="sub">公式日程と需給発生日を照合中...</div>
@@ -2445,6 +2495,23 @@ document.addEventListener("DOMContentLoaded",()=>{
   <div><span>5分足 EMA9／EMA20／VWAP</span><b id="kio-live-ma">—</b><small>日足移動平均とは別</small></div>
  </div>
  <p id="kio-signal-reason">OR15、VWAP、EMA9/20、出来高と予測方向が一致するまで発注しません。</p>
+</div>
+<div id="kio-ms2-orderflow" class="kio-ms2-orderflow" aria-live="polite">
+ <div class="kio-ms2-title"><div><span>MARKETSPEED II RSS・2秒監視</span><b>キオクシア 板変化＋歩み値LIVE</b></div><strong id="kio-ms2-state">Windowsコレクター待ち</strong></div>
+ <div id="kio-ms2-source" class="sub">自宅PCのリアルタイムデータへ接続中...</div>
+ <div class="kio-ms2-grid">
+  <div><span>8:55 寄り前作戦</span><b id="kio-preopen-plan">判定待ち</b><small id="kio-preopen-score">スコア —</small></div>
+  <div><span>気配値／GU・GD</span><b id="kio-preopen-quote">—</b><small id="kio-preopen-gap">基準値照合待ち</small></div>
+  <div><span>成行買売偏り</span><b id="kio-preopen-imbalance">—</b><small id="kio-preopen-change">気配5分変化 —</small></div>
+  <div><span>寄り後の再判定</span><b id="kio-open-decision">寄り待ち</b><small id="kio-special-quote">特別気配 —</small></div>
+  <div><span>同じ寄り前条件の実績</span><b id="kio-preopen-stat">統計蓄積中</b><small>10営業日未満は方向を出さない</small></div>
+  <div><span>現在の時間帯</span><b id="kio-ms2-band">—</b></div>
+  <div><span>UNDER比率</span><b id="kio-ms2-under">—</b><small id="kio-ms2-under-change">1分 —／5分 —</small></div>
+  <div><span>歩み値の買売偏り</span><b id="kio-ms2-flow">—</b><small id="kio-ms2-flow-detail">買い —／売り —</small></div>
+  <div><span>歩み値取得</span><b id="kio-ms2-ticks">未接続</b><small>最新4本を2秒ごとに重複除外</small></div>
+  <div><span>同時間帯・過去統計</span><b id="kio-ms2-stat">統計蓄積中</b><small id="kio-ms2-stat-detail">10営業日まで方向を出しません</small></div>
+ </div>
+ <p>8:55は準備判定だけです。寄り後60秒は待機し、始値・VWAP・歩み値・UNDER変化が同方向になった場合だけ初動候補を音声通知します。板単独・寄り成行では入りません。</p>
 </div>
 <div id="kio-best-analog" class="kio-best-analog">
  <div class="kio-best-chart"><div class="kio-best-title"><div><span>本日予測・実測1分足（大判）</span><b id="kio-best-date">選定中</b></div><div id="kio-chart-signal" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px solid #39505d;border-radius:12px;background:#10202a;color:#b8c8d2;font-weight:800"><span id="kio-chart-signal-label">サイン待ち</span><strong id="kio-chart-signal-price">—</strong></div><strong id="kio-best-score">—</strong></div><div id="kio-best-path" class="focus-empty">米国市場と1分足を照合中...</div><div class="kio-chart-legend"><span style="--legend-color:#f1c75b">予測1分経路</span><span style="--legend-color:#3ed5ae">実測1分足</span><span style="--legend-color:#58a6ff">EMA9</span><span style="--legend-color:#d59bff">EMA20</span><span style="--legend-color:#f5f7fa">VWAP</span></div><p id="kio-one-minute-note" class="kio-one-minute-note">類似日選定は5分足、主画面は1分刻み。実測1分足は取得確認後だけ重ねます。</p></div>
@@ -3084,7 +3151,7 @@ document.addEventListener("liveFocusUpdate",e=>{{
     }}
   }}
 }});
-</script>{trade_drawer}</body></html>"""
+</script>{trade_drawer}{ms2_live_script}</body></html>"""
     (ROOT / "index.html").write_text(html, encoding="utf-8")
 
 

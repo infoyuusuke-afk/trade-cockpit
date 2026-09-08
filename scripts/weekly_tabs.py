@@ -126,8 +126,9 @@ def tabs_block() -> str:
 .weekly-grid>div{{background:#0c1b2d;border:1px solid #243b55;border-radius:12px;padding:14px}}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
- <button class="cockpit-tab active" data-tab="daytrade">精査TOP5</button>
- <button class="cockpit-tab" data-tab="kioxia-calendar">キオクシア専用</button>
+ <button class="cockpit-tab active" data-tab="daytrade">今日の作戦</button>
+ <button class="cockpit-tab" data-tab="ms2-live">LIVE売買</button>
+ <button class="cockpit-tab" data-tab="kioxia-calendar">キオクシア</button>
  <button class="cockpit-tab" data-tab="strong-yen">円高恩恵TOP5</button>
  <button class="cockpit-tab" data-tab="events">重要イベント</button>
  <button class="cockpit-tab" data-tab="market">検証・除外</button>
@@ -142,11 +143,12 @@ def tabs_block() -> str:
 document.addEventListener("DOMContentLoaded",()=>{{
  const main=document.querySelector("main"); if(!main)return;
  const policyTabs=["physical-ai","autonomous-driving","ai-drug-discovery","ai-semiconductor","defense-space","gx-power","quantum-computing"];
- const panes={{}}; ["daytrade","events","correlation","kioxia-calendar","strong-yen","wick","expansion","swing","accumulation","longterm","dividend","buyback","policy",...policyTabs,"market","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="daytrade"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
+ const panes={{}}; ["daytrade","ms2-live","events","correlation","kioxia-calendar","strong-yen","wick","expansion","swing","accumulation","longterm","dividend","buyback","policy",...policyTabs,"market","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="daytrade"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
  [...main.querySelectorAll(":scope > section")].forEach(s=>{{
    const t=(s.querySelector("h2")?.textContent||"").trim();
    let k="market";
-   if(s.dataset.policyTab)k=s.dataset.policyTab;
+   if(s.id==="ms2-live-top5")k="ms2-live";
+   else if(s.dataset.policyTab)k=s.dataset.policyTab;
    else if(s.id==="event-calendar")k="events";
    else if(s.id==="correlation-monitor")k="correlation";
    else if(s.id==="kioxia-5m-calendar")k="kioxia-calendar";
@@ -168,13 +170,15 @@ document.addEventListener("DOMContentLoaded",()=>{{
  intros.events=["イベントカレンダー","発表日・需給日・指数反映日を分離し、当日の誤認を防止。"];
  intros["kioxia-calendar"]=["キオクシア5分足カレンダー","過去5分足から本日の途中経過に最も近い日を照合。"];
  intros["strong-yen"]=["円高恩恵銘柄 TOP5","円高感応度だけでなく、信用需給・当日資金流入・発動価格まで確認。"];
+ intros["ms2-live"]=["MS2 RSS・ザラバLIVE TOP5","100銘柄を裏側で監視し、OR15・VWAP・歩み値・板変化が一致した上位だけ表示。"];
  Object.entries(intros).forEach(([k,v])=>{{const h=document.createElement("div");h.className="pane-intro";h.innerHTML=`<span>SUPPLY IMPROVEMENT REQUIRED</span><h2>${{v[0]}}</h2><p>${{v[1]}}</p>`;panes[k].prepend(h);}});
  document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{{
    document.querySelectorAll(".cockpit-tab").forEach(x=>x.classList.toggle("active",x===b));
    document.querySelectorAll(".tab-pane").forEach(x=>x.classList.toggle("active",x.dataset.pane===b.dataset.tab));
    localStorage.setItem("cockpitTabV5",b.dataset.tab);
  }});
- const saved=localStorage.getItem("cockpitTabV5"); if(saved)document.querySelector(`.cockpit-tab[data-tab="${{saved}}"]`)?.click();
+ const requested=new URLSearchParams(location.search).get("live")==="1"?"ms2-live":null;
+ const saved=requested||localStorage.getItem("cockpitTabV5"); if(saved)document.querySelector(`.cockpit-tab[data-tab="${{saved}}"]`)?.click();
  fetch("event_calendar.json?t="+Date.now()).then(r=>r.json()).then(d=>{{
    const b=document.querySelector('.cockpit-tab[data-tab="events"]');
    if(d.today_level!=="通常"){{b.classList.add("event-alert");b.textContent="⚠ イベント";}}
