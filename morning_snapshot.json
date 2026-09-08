@@ -1,43 +1,6 @@
 {
   "date": "2026-09-08",
-  "fixed_at": "2026-09-08 11:36:39 JST",
+  "fixed_at": "2026-09-08 15:37:04 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
-  "candidates": [
-    {
-      "name": "パワーエックス（485A）",
-      "ticker": "485A.T",
-      "side": "LONG",
-      "score": 93.0,
-      "entry": 1850,
-      "entry_limit": 1850,
-      "stop": 1760,
-      "target1": 1985,
-      "target2": 2048,
-      "morning_price": 1916.0
-    },
-    {
-      "name": "ニトリHD（9843）",
-      "ticker": "9843.T",
-      "side": "LONG",
-      "score": 95.0,
-      "entry": 3230,
-      "entry_limit": 3230,
-      "stop": 3160,
-      "target1": 3330,
-      "target2": 3380,
-      "morning_price": 3379.0
-    },
-    {
-      "name": "SCREEN HD（7735）",
-      "ticker": "7735.T",
-      "side": "LONG",
-      "score": 89.0,
-      "entry": 13570,
-      "entry_limit": 13570,
-      "stop": 13260,
-      "target1": 14040,
-      "target2": 14260,
-      "morning_price": 13830.0
-    }
-  ]
+  "candidates": []
 }
