@@ -2477,7 +2477,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div class="step"><b>4　不一致は見送り</b>相関株が逆行、または条件3/5以下なら主役銘柄へ飛び乗らない。</div>
 </div>
 <p class="warning"><b>キオクシア―任天堂は固定ルールではありません。</b> 20日・60日・当日5分足の逆相関が安定した期間だけ有効。サンディスクは取引時間が重ならないため「米国前日→キオクシア翌日」で判定します。9:15までは方向を決めず、OR15・VWAP・EMA9/20・高安の4/5一致を優先します。</p></section>
-<section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）本日1分足予測・5分足類似日 <button class="voice-toggle" data-voice-toggle type="button" style="float:right;padding:5px 12px;border-radius:7px">🔇 音声OFF</button></h2>
+<section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）本日の作戦マップ <button class="voice-toggle" data-voice-toggle type="button" style="float:right;padding:5px 12px;border-radius:7px">🔇 音声OFF</button></h2>
 <div id="kioxia-calendar-meta" class="sub">直近60日の5分足を照合中...</div>
 <div id="kio-decision-panel" class="rotation-grid" style="margin:10px 0">
  <div class="rotation-box"><b>利用判定</b><strong id="kio-decision-grade">計算中</strong></div>
@@ -2486,6 +2486,12 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div class="rotation-box"><b>無効化条件</b><span id="kio-invalidate">確認中</span></div>
 </div>
 <p id="kio-decision-reason" class="warning">類似日上位5件の合意度を確認中です。</p>
+<div class="kio-action-board" aria-label="本日の売買条件">
+ <div class="kio-action-main"><span>今の結論</span><strong id="kio-plain-action">予測だけでは入らない</strong><small id="kio-plain-reason">実測ローソク足とEMAを待ちます</small></div>
+ <div class="kio-action-long"><span>買いを考える形</span><b id="kio-plain-long">EMA20・25が上向き＋初押し下髭</b><small>反発足高値を超えてから</small></div>
+ <div class="kio-action-short"><span>空売りを考える形</span><b id="kio-plain-short">EMA20・25が下向き＋初戻り上髭</b><small>反落足安値を割ってから</small></div>
+ <div class="kio-action-stop"><span>触らない状態</span><b id="kio-plain-stop">EMA横向き・VWAP往復・長大足</b><small>OR15突破だけでは入らない</small></div>
+</div>
 <div id="kio-live-monitor" class="kio-live-monitor" aria-live="polite">
  <div class="kio-live-head"><div><span>予測対実績・5分監視</span><b id="kio-monitor-state">ザラバ開始待ち</b></div><strong id="kio-trade-signal">見送り</strong></div>
  <div class="kio-monitor-grid">
@@ -2496,9 +2502,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   <div><span>発動価格（成行禁止）</span><b id="kio-entry-price">—</b><small id="kio-entry-order">条件成立後の逆指値</small></div>
   <div><span>撤退価格</span><b id="kio-stop-price">—</b><small>発動足を否定したら撤退</small></div>
   <div><span>現在のセットアップ</span><b id="kio-setup-type">判定待ち</b><small id="kio-confirmed-bar">完成足のみ判定</small></div>
-  <div><span>5分足 EMA9／EMA20／VWAP</span><b id="kio-live-ma">—</b><small>日足移動平均とは別</small></div>
+  <div><span>LIVE補助 EMA9／EMA20／VWAP</span><b id="kio-live-ma">—</b><small>予測チャートの5分EMA20/25とは別</small></div>
  </div>
- <p id="kio-signal-reason">OR15、VWAP、EMA9/20、出来高と予測方向が一致するまで発注しません。</p>
+ <p id="kio-signal-reason">OR5後の初押し・初戻りを優先。EMA20/25、VWAP、ピボット、歩み値が揃うまで発注しません。</p>
 </div>
 <div id="kio-ms2-orderflow" class="kio-ms2-orderflow" aria-live="polite">
  <div class="kio-ms2-title"><div><span>MARKETSPEED II RSS・2秒監視</span><b>キオクシア 板変化＋歩み値LIVE</b></div><strong id="kio-ms2-state">Windowsコレクター待ち</strong></div>
@@ -2518,7 +2524,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  <p>8:55は準備判定だけです。寄り後60秒は待機し、始値・VWAP・歩み値・UNDER変化が同方向になった場合だけ初動候補を音声通知します。板単独・寄り成行では入りません。</p>
 </div>
 <div id="kio-best-analog" class="kio-best-analog">
- <div class="kio-best-chart"><div class="kio-best-title"><div><span>本日予測・実測1分足（大判）</span><b id="kio-best-date">選定中</b></div><div id="kio-chart-signal" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px solid #39505d;border-radius:12px;background:#10202a;color:#b8c8d2;font-weight:800"><span id="kio-chart-signal-label">サイン待ち</span><strong id="kio-chart-signal-price">—</strong></div><strong id="kio-best-score">—</strong></div><div id="kio-best-path" class="focus-empty">米国市場と1分足を照合中...</div><div class="kio-chart-legend"><span style="--legend-color:#f1c75b">予測1分経路</span><span style="--legend-color:#3ed5ae">実測1分足</span><span style="--legend-color:#58a6ff">EMA9</span><span style="--legend-color:#d59bff">EMA20</span><span style="--legend-color:#f5f7fa">VWAP</span></div><p id="kio-one-minute-note" class="kio-one-minute-note">類似日選定は5分足、主画面は1分刻み。実測1分足は取得確認後だけ重ねます。</p></div>
+ <div class="kio-best-chart"><div class="kio-best-title"><div><span>黄色＝参考予測　ローソク＝実際の値動き</span><b id="kio-best-date">選定中</b></div><div id="kio-chart-signal" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px solid #39505d;border-radius:12px;background:#10202a;color:#b8c8d2;font-weight:800"><span id="kio-chart-signal-label">サイン待ち</span><strong id="kio-chart-signal-price">—</strong></div><strong id="kio-best-score">—</strong></div><div class="kio-chart-alert">予測線では注文しない　実測の反転足＋EMA20/25＋VWAPで発動</div><div id="kio-best-path" class="focus-empty">米国市場と1分足を照合中...</div><div class="kio-chart-legend"><span style="--legend-color:#f1c75b">参考予測</span><span style="--legend-color:#3ed5ae">実測ローソク</span><span style="--legend-color:#45a8ff">5分EMA20</span><span style="--legend-color:#c987ff">5分EMA25</span><span style="--legend-color:#f5f7fa">VWAP</span><span style="--legend-color:#b7e86b">日足5日線</span><span style="--legend-color:#54d6c5">ピボット P/R1/S1</span><span style="--legend-color:#ff9f43">OR15 高/安</span></div><div class="kio-chart-read"><span><b>①</b> 9:00～9:05は待つ</span><span><b>②</b> OR5後の初押し・初戻り</span><span><b>③</b> 矢印と発動価格が出た時だけ確認</span></div><p id="kio-one-minute-note" class="kio-one-minute-note">類似日選定は5分足、主画面は1分刻み。実測1分足は取得確認後だけ重ねます。</p></div>
  <div class="kio-best-detail"><span id="kio-selection-mode">選定方式を確認中</span><h3 id="kio-best-type">判定待ち</h3><div id="kio-us-context" class="kio-us-context"></div><p id="kio-best-plan">前夜の米国市場と信用需給を確認中です。</p></div>
 </div>
 <div class="kio-detail-grid">
@@ -2549,7 +2555,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div id="kioxia-match-grid" class="kio-match-grid"><div class="focus-empty">類似日を計算中...</div></div>
 <h3>直近25営業日・5分足カレンダー</h3>
 <div id="kioxia-calendar-grid" class="kio-calendar"><div class="focus-empty">5分足を取得中...</div></div>
-<p class="warning"><b>使い方：</b>寄り前は前夜のSanDisk・Micron・SOX・NASDAQ、GU/GD帯、信用需給、公式材料の織り込み段階から仮説を作ります。9:15以降は当日5分足を65%へ引き上げて再計算。類似度60%以上が3日未満なら「見送り」。発動は完成5分足のOR15・VWAP・EMA9/20・出来高・ヒゲ反転の一致が条件で、事前予測だけでは注文しません。</p></section>
+<p class="warning"><b>使い方：</b>黄色の予測線は時間帯の注意用で、注文線ではありません。9:00～9:05は待ち、OR5後の5分EMA20/25初押し・初戻りを優先します。VWAP・ピボット・OR15・出来高・歩み値が同方向に揃った時だけ発動し、OR15突破だけでは追いかけません。</p></section>
 <section id="world-market-live" class="card wide"><h2>世界市況リアルタイム・地合い確認</h2>
 <div id="world-market-meta" class="sub">世界の株価リアルタイムチャートを検証中...</div>
 <div class="rotation-grid" id="world-market-cards"><div class="focus-empty">市場データ取得待ち</div></div>
@@ -3005,28 +3011,34 @@ const emaLine = (rows,length) => {{
   (rows||[]).forEach(r=>{{const v=Number(r.c);value=value==null?v:value+alpha*(v-value);out.push([tradingMinuteIndex(r.t),value]);}});
   return out.filter(x=>x[0]!=null);
 }};
-const kioOneMinuteChart = (points,actual=[],turns=[],signals=[]) => {{
+const kioOneMinuteChart = (points,actual=[],turns=[],signals=[],levels={{}}) => {{
   if(!points||points.length<2) return "<div class='focus-empty'>予測データなし</div>";
   const forecast=resampleMinutePath(points),actualRows=(actual||[]).filter(r=>tradingMinuteIndex(r.t)!=null);
-  const vals=[...forecast,...actualRows.flatMap(r=>[Number(r.h),Number(r.l)]),...(signals||[]).map(r=>Number(r.ret))].filter(Number.isFinite);
+  const levelValues=Object.values(levels.return_pct||{{}}).map(Number).filter(Number.isFinite);
+  const vals=[...forecast,...actualRows.flatMap(r=>[Number(r.h),Number(r.l)]),...(signals||[]).map(r=>Number(r.ret)),...levelValues].filter(Number.isFinite);
   let lo=Math.min(...vals),hi=Math.max(...vals),span=Math.max(hi-lo,.2);lo-=span*.12;hi+=span*.12;span=hi-lo;
   const W=1200,H=520,L=64,R=24,T=24,B=48,x=i=>L+i/331*(W-L-R),y=v=>T+(hi-v)/span*(H-T-B);
   const grid=Array.from({{length:6}},(_,i)=>{{const value=hi-i*span/5,py=y(value);return "<line x1='"+L+"' y1='"+py+"' x2='"+(W-R)+"' y2='"+py+"' stroke='#1c303c'/><text x='"+(L-9)+"' y='"+(py+4)+"' text-anchor='end' fill='#8fa5b5' font-size='12'>"+(value>=0?"+":"")+value.toFixed(2)+"%</text>";}}).join("");
+  const zeroLine=lo<=0&&hi>=0?"<line x1='"+L+"' y1='"+y(0)+"' x2='"+(W-R)+"' y2='"+y(0)+"' stroke='#718592' stroke-width='1.6'/><text x='"+(L+5)+"' y='"+(y(0)-6)+"' fill='#b9c7cf' font-size='11'>始値 0%</text>":"";
   const marks=[[0,"09:00"],[60,"10:00"],[120,"11:00"],[150.5,"11:30｜12:30"],[211,"13:30"],[271,"14:30"],[331,"15:30"]];
   const timeGrid=marks.map(m=>"<line x1='"+x(m[0])+"' y1='"+T+"' x2='"+x(m[0])+"' y2='"+(H-B)+"' stroke='#233744' stroke-dasharray='4 6'/><text x='"+x(m[0])+"' y='"+(H-18)+"' text-anchor='middle' fill='#9bb0bd' font-size='12'>"+m[1]+"</text>").join("");
   const forecastLine=forecast.map((v,i)=>x(i).toFixed(1)+","+y(v).toFixed(1)).join(" ");
   const candles=actualRows.map(r=>{{const i=tradingMinuteIndex(r.t),px=x(i),up=Number(r.c)>=Number(r.o),color=up?"#3ed5ae":"#ef646b",yo=y(Number(r.o)),yc=y(Number(r.c));return "<line x1='"+px+"' y1='"+y(Number(r.h))+"' x2='"+px+"' y2='"+y(Number(r.l))+"' stroke='"+color+"' stroke-width='1'/><rect x='"+(px-1.25)+"' y='"+Math.min(yo,yc)+"' width='2.5' height='"+Math.max(1,Math.abs(yo-yc))+"' fill='"+color+"'/>";}}).join("");
   const makeLine=(pairs,color,width,dash="")=>pairs.length<2?"":"<polyline points='"+pairs.map(v=>x(v[0]).toFixed(1)+","+y(v[1]).toFixed(1)).join(" ")+"' fill='none' stroke='"+color+"' stroke-width='"+width+"' "+(dash?"stroke-dasharray='"+dash+"'":"")+"/>";
-  const ema9=makeLine(emaLine(actualRows,9),"#58a6ff",1.8),ema20=makeLine(emaLine(actualRows,20),"#d59bff",1.8);
+  const fiveMinuteRows=[];actualRows.forEach(r=>{{const i=tradingMinuteIndex(r.t);if(i==null)return;const bucket=i<=150?Math.floor(i/5):31+Math.floor((i-151)/5);const old=fiveMinuteRows.at(-1);if(old&&old.bucket===bucket){{old.c=r.c;old.i=i}}else fiveMinuteRows.push({{bucket,c:r.c,i}});}});
+  const fiveMinuteEma=length=>{{const alpha=2/(length+1),out=[];let value=null;fiveMinuteRows.forEach(r=>{{const v=Number(r.c);value=value==null?v:value+alpha*(v-value);out.push([r.i,value]);}});return out;}};
+  const ema20=makeLine(fiveMinuteEma(20),"#45a8ff",2.2),ema25=makeLine(fiveMinuteEma(25),"#c987ff",2.2);
   let pv=0,vol=0;const vwapPairs=[];actualRows.forEach(r=>{{const v=Number(r.v)||0;if(v>0){{pv+=((Number(r.h)+Number(r.l)+Number(r.c))/3)*v;vol+=v;vwapPairs.push([tradingMinuteIndex(r.t),pv/vol]);}}}});
   const vwap=makeLine(vwapPairs,"#f5f7fa",1.5,"5 4");
+  const levelStyles={{daily_ma5:["日足5日","#b7e86b"],or15_high:["OR15高","#ff9f43"],or15_low:["OR15安","#ff9f43"],pivot_p:["P","#54d6c5"],pivot_r1:["R1","#ef6d75"],pivot_s1:["S1","#68a8ff"]}};
+  const levelLines=Object.entries(levels.return_pct||{{}}).map(([key,value])=>{{const meta=levelStyles[key];if(!meta||!Number.isFinite(Number(value)))return "";const py=y(Number(value)),price=Number(levels[key]);return "<line x1='"+L+"' y1='"+py+"' x2='"+(W-R)+"' y2='"+py+"' stroke='"+meta[1]+"' stroke-width='1.5' stroke-dasharray='7 5'/><text x='"+(W-R-5)+"' y='"+(py-5)+"' text-anchor='end' fill='"+meta[1]+"' font-size='12' font-weight='800'>"+meta[0]+" "+price.toLocaleString("ja-JP")+"円</text>";}}).join("");
   let lastTurn=-99,turnOrder=0;
   const spacedTurns=(turns||[]).filter(turn=>{{const i=tradingMinuteIndex(turn.time);if(i==null||i-lastTurn<25)return false;lastTurn=i;return true;}});
   const turnMarks=spacedTurns.map(turn=>{{const i=tradingMinuteIndex(turn.time),py=y(forecast[i]),below=(turnOrder++%2)===1,labelY=below?py+18:py-10;return "<circle cx='"+x(i)+"' cy='"+py+"' r='4' fill='#f1c75b'/><text x='"+x(i)+"' y='"+labelY+"' text-anchor='middle' fill='#f1c75b' font-size='11'>"+turn.time+" "+turn.kind+"</text>";}}).join("");
   const signalMarks=(signals||[]).map((m,n)=>{{const i=tradingMinuteIndex(m.time),ret=Number(m.ret);if(i==null||!Number.isFinite(ret))return "";const px=x(i),py=y(ret),buy=m.type==="BUY",color=buy?"#24e39a":"#ff5d66",tip=buy?py-5:py+5,base=buy?py+9:py-9,labelY=buy?py+27:py-17,label=(buy?"買い ":"空売り ")+Number(m.price).toLocaleString("ja-JP")+"円";return "<g><polygon points='"+px+","+tip+" "+(px-7)+","+base+" "+(px+7)+","+base+"' fill='"+color+"' stroke='#071218' stroke-width='2'/><text x='"+px+"' y='"+labelY+"' text-anchor='middle' fill='"+color+"' font-size='13' font-weight='800'>"+label+"</text></g>";}}).join("");
   const last=actualRows.length?tradingMinuteIndex(actualRows.at(-1).t):null;
   const divider=last==null?"":"<line x1='"+x(last)+"' y1='"+T+"' x2='"+x(last)+"' y2='"+(H-B)+"' stroke='#ffffff88' stroke-dasharray='3 5'/><text x='"+(x(last)+5)+"' y='"+(T+13)+"' fill='#d9e7ef' font-size='11'>実績ここまで</text>";
-  return "<svg viewBox='0 0 "+W+" "+H+"' preserveAspectRatio='none' aria-label='キオクシア本日予測と実測1分足'>"+grid+timeGrid+"<polyline points='"+forecastLine+"' fill='none' stroke='#f1c75b' stroke-width='3' stroke-dasharray='10 5'/>"+candles+ema9+ema20+vwap+turnMarks+signalMarks+divider+"</svg>";
+  return "<svg viewBox='0 0 "+W+" "+H+"' preserveAspectRatio='none' aria-label='キオクシア本日予測と実測1分足'>"+grid+zeroLine+timeGrid+levelLines+"<polyline points='"+forecastLine+"' fill='none' stroke='#f1c75b' stroke-width='3' stroke-dasharray='10 5'/>"+candles+ema20+ema25+vwap+turnMarks+signalMarks+divider+"</svg>";
 }};
 Promise.all([
  fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()),
@@ -3043,6 +3055,11 @@ Promise.all([
   document.getElementById("kio-dispersion").textContent = decision.dispersion == null ? "—" : Number(decision.dispersion).toFixed(2) + "%";
   document.getElementById("kio-invalidate").textContent = decision.invalidate || "OR15・VWAP逆行で無効";
   document.getElementById("kio-decision-reason").textContent = decision.reason || "十分な一致がないため予測だけで入らない";
+  const plainAction=document.getElementById("kio-plain-action"),plainReason=document.getElementById("kio-plain-reason");
+  if(!decision.tradable){{plainAction.textContent="見送り・予測線では入らない";plainReason.textContent=decision.reason||"類似日が揃っていません";}}
+  else if(String(p.bias||"").includes("上")){{plainAction.textContent="買いは初押し反転だけ";plainReason.textContent="OR5後、EMA20/25とVWAPを守る下髭を待つ";}}
+  else if(String(p.bias||"").includes("下")){{plainAction.textContent="空売りは初戻り反落だけ";plainReason.textContent="OR5後、EMA20/25とVWAPで止まる上髭を待つ";}}
+  else{{plainAction.textContent="方向待ち・レンジ内は触らない";plainReason.textContent="OR15突破では追わず、初押し・初戻りを待つ";}}
   const supply = (credit.stocks || {{}})["285A"] || null;
   const fmtShares = v => v == null ? "—" : Number(v).toLocaleString("ja-JP") + "株";
   const fmtSignedShares = v => v == null ? "—" : (Number(v) >= 0 ? "+" : "") + Number(v).toLocaleString("ja-JP") + "株";
@@ -3080,9 +3097,9 @@ Promise.all([
   if (best) {{
     document.getElementById("kio-best-date").textContent = best.date;
     document.getElementById("kio-best-score").textContent = Number(best.similarity).toFixed(1) + "%";
-    window.kioChartState={{points:best.path,actual:d.one_minute_verified?(d.current_1m||[]):[],turns:d.forecast_turns||[]}};
+    window.kioChartState={{points:best.path,actual:d.one_minute_verified?(d.current_1m||[]):[],turns:d.forecast_turns||[],levels:d.technical_levels||{{}}}};
     window.kioSignalMarkers=[];
-    document.getElementById("kio-best-path").innerHTML = kioOneMinuteChart(window.kioChartState.points,window.kioChartState.actual,window.kioChartState.turns,window.kioSignalMarkers);
+    document.getElementById("kio-best-path").innerHTML = kioOneMinuteChart(window.kioChartState.points,window.kioChartState.actual,window.kioChartState.turns,window.kioSignalMarkers,window.kioChartState.levels);
     document.getElementById("kio-one-minute-note").textContent = (d.forecast_resolution || "1分刻み予測") + "／" + (d.one_minute_verified ? (d.one_minute_source + " 実測" + (d.current_1m || []).length + "本") : "実測1分足は未取得。予測線のみ表示") + "／類似日選定は5分足・米国市場・信用需給";
     document.getElementById("kio-best-type").textContent = best.type + "／全日 " + signedPct(best.ret,2);
     document.getElementById("kio-best-plan").textContent = "類似日の照合後 " + signedPct(best.after_ret,2) + "、最大上振れ " + signedPct(best.max_up_after,2) + "、最大下振れ " + signedPct(best.max_down_after,2) + "。" + (riskOverlay.action || (p.sample < 3 ? "サンプル不足のため売買利用禁止。" : "9:15以降のローソク足確認が必須。" ));
@@ -3120,6 +3137,14 @@ document.addEventListener("liveFocusUpdate",e=>{{
   state.className=k.monitor_status==="予測内"?"up":k.monitor_status==="予測崩れ"?"down":"warning";
   signal.textContent=k.verified?(k.trade_signal||"見送り"):"売買禁止";
   signal.className=(k.signal_type==="BUY"?"buy":k.signal_type==="SHORT"?"sell":"wait");
+  const plainAction=document.getElementById("kio-plain-action"),plainReason=document.getElementById("kio-plain-reason");
+  if(plainAction&&plainReason){{
+    if(!k.verified){{plainAction.textContent="データ停止・売買禁止";plainReason.textContent=k.status||"LIVEデータを確認できません";}}
+    else if(k.whipsaw_guard){{plainAction.textContent="往復ピンタ帯・触らない";plainReason.textContent="VWAP往復またはEMA横向き。別銘柄を優先";}}
+    else if(k.signal_type==="BUY"){{plainAction.textContent="買い点灯 "+(k.entry_price==null?"":Number(k.entry_price).toLocaleString("ja-JP")+"円以上");plainReason.textContent=k.signal_reason||"反発足と需給を確認";}}
+    else if(k.signal_type==="SHORT"){{plainAction.textContent="空売り点灯 "+(k.entry_price==null?"":Number(k.entry_price).toLocaleString("ja-JP")+"円以下");plainReason.textContent=k.signal_reason||"反落足と需給を確認";}}
+    else{{plainAction.textContent=k.setup_type||"準備条件待ち";plainReason.textContent=k.signal_reason||"初押し・初戻りの反転足を待つ";}}
+  }}
   const chartLamp=document.getElementById("kio-chart-signal"),chartLabel=document.getElementById("kio-chart-signal-label"),chartPrice=document.getElementById("kio-chart-signal-price");
   const actionable=k.verified&&(k.signal_type==="BUY"||k.signal_type==="SHORT");
   chartLabel.textContent=actionable?k.trade_signal:(k.whipsaw_guard?"往復ピンタ回避":"サイン待ち");
@@ -3144,7 +3169,7 @@ document.addEventListener("liveFocusUpdate",e=>{{
     if(!window.kioSignalMarkers.some(m=>m.key===k.signal_key)){{
       window.kioSignalMarkers.push({{key:k.signal_key,type:k.signal_type,time:k.signal_time,ret:k.signal_return_pct,price:k.entry_price}});
       window.kioSignalMarkers=window.kioSignalMarkers.slice(-12);
-      if(window.kioChartState)document.getElementById("kio-best-path").innerHTML=kioOneMinuteChart(window.kioChartState.points,window.kioChartState.actual,window.kioChartState.turns,window.kioSignalMarkers);
+      if(window.kioChartState)document.getElementById("kio-best-path").innerHTML=kioOneMinuteChart(window.kioChartState.points,window.kioChartState.actual,window.kioChartState.turns,window.kioSignalMarkers,window.kioChartState.levels);
     }}
     let voiceState={{}};
     try{{voiceState=JSON.parse(localStorage.getItem("kioVoiceSignalState")||"{{}}")}}catch(_e){{voiceState={{}}}}
