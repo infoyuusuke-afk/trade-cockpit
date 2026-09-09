@@ -2378,16 +2378,18 @@ document.addEventListener("DOMContentLoaded",()=>{
 
     ms2_live_html = """
 <section id="ms2-live-top5" class="card wide ms2-live-panel">
- <div class="ms2-live-head"><div><span>LOCAL MARKET DATA</span><h2>デイトレ100銘柄・MS2 LIVE TOP5</h2></div><div id="ms2-live-health" class="ms2-health waiting">ローカル収集待ち</div></div>
+ <div class="ms2-live-head"><div><span>LOCAL MARKET DATA・試運転 Ver.1</span><h2>デイトレ100銘柄・MS2 LIVE TOP5</h2></div><div id="ms2-live-health" class="ms2-health waiting">ローカル収集待ち</div></div>
  <div id="ms2-live-meta" class="sub">MarketSpeed II RSSのローカル収集データを確認中...</div>
  <div id="ms2-live-cards" class="ms2-live-grid"><div class="focus-empty"><b>未接続</b><span>Windows用100銘柄コレクターを起動してください</span></div></div>
+ <h3>15時・翌日持ち越し候補TOP5</h3>
+ <div id="ms2-hold-cards" class="ms2-live-grid"><div class="focus-empty"><span>15:00判定待ち</span></div></div>
  <h3>夜間PTS期待TOP5</h3>
  <div id="ms2-pts-cards" class="ms2-live-grid"><div class="focus-empty"><span>JNXデータ待ち</span></div></div>
  <h3>IR急騰PTS TOP5</h3>
  <div id="ms2-ir-pts-meta" class="sub">TDnet公式開示とJNXを照合中...</div>
  <div id="ms2-ir-pts-cards" class="ms2-live-grid"><div class="focus-empty"><span>公式IR＋PTS反応待ち</span></div></div>
  <p><a class="ms2-download" href="downloads/MS2_RSS_100_Stocks_Live_Kit.zip" download>Windows用・100銘柄LIVEキットをダウンロード</a></p>
- <p class="warning"><b>判定順：</b>OR15 → VWAP → 歩み値の買売偏り → 出来高加速 → UNDER/OVER変化。板比率だけの買い・空売りは禁止。データが60秒以上古い場合は全サインを無効化します。</p>
+ <p class="warning"><b>Ver.1判定：</b>確定1分足 → OR5/OR15 → VWAP・EMA9/20 → 出来高 → 歩み値 → 地合い・業種 → UNDER/OVER補助。OR15追随は地合い不一致なら利確警戒。データが60秒以上古い場合は全サイン無効です。</p>
 </section>
 """
     ms2_live_script = r"""
@@ -2398,15 +2400,17 @@ document.addEventListener("DOMContentLoaded",()=>{
  const fetchJson=async(url,timeout=1800)=>{const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),timeout);try{const r=await fetch(url,{cache:"no-store",signal:ctl.signal});if(!r.ok)throw new Error("not found");return await r.json()}finally{clearTimeout(timer)}};
  const fetchMs2=async()=>{try{const d=await fetchJson("http://127.0.0.1:28580/live_ms2.json?t="+Date.now());d.connection_source="自宅PC・MS2 RSS LIVE";return d}catch(e){const d=await fetchJson("live_ms2.json?t="+Date.now(),3000);d.connection_source="公開スナップショット";return d}};
  async function loadMs2Live(){
-  const health=document.getElementById("ms2-live-health"),meta=document.getElementById("ms2-live-meta"),cards=document.getElementById("ms2-live-cards"),ptsCards=document.getElementById("ms2-pts-cards"),irCards=document.getElementById("ms2-ir-pts-cards"),irMeta=document.getElementById("ms2-ir-pts-meta");
+  const health=document.getElementById("ms2-live-health"),meta=document.getElementById("ms2-live-meta"),cards=document.getElementById("ms2-live-cards"),holdCards=document.getElementById("ms2-hold-cards"),ptsCards=document.getElementById("ms2-pts-cards"),irCards=document.getElementById("ms2-ir-pts-cards"),irMeta=document.getElementById("ms2-ir-pts-meta");
   if(!health||!cards)return;
   try{
    const d=await fetchMs2();
    const parsed=new Date(String(d.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,stale=d.stale||age>60;
    health.className="ms2-health "+(stale?"stale":"live"); health.textContent=stale?"データ停止・売買禁止":"LIVE 接続中";
-   meta.textContent=`${d.updated_at||"更新時刻不明"} / 有効 ${d.valid||0}/${d.universe||100}銘柄 / ${d.connection_source||d.source||"MS2 RSS"}`;
+   meta.textContent=`${d.updated_at||"更新時刻不明"} / 有効 ${d.valid||0}/${d.universe||100}銘柄 / ${d.market_state||"地合い確認待ち"} VWAP上${d.breadth_pct??"—"}% / ${d.connection_source||d.source||"MS2 RSS"}`;
    const xs=Array.isArray(d.top5)?d.top5:[];
-   cards.innerHTML=xs.length?xs.slice(0,5).map((x,i)=>{const cls=x.signal==="買いサイン"?"buy":x.signal==="空売りサイン"?"sell":x.signal?.includes("回避")?"block":"watch",cr=x.credit_ratio==null?"未取得":`${esc(x.credit_ratio)}倍`;return `<article class="ms2-live-card ${cls}"><div class="top"><span class="signal">${stale?"無効":esc(x.signal)}</span><h3>#${i+1} ${esc(x.name)}</h3><b class="score">${esc(x.score)}</b></div><div class="live-price">${yen(x.price)}</div><div class="ms2-metrics"><span>VWAP<b>${yen(x.vwap)}</b></span><span>UNDER<b>${esc(x.under_ratio)}%</b></span><span>板変化<b>${esc(x.under_change)}pt</b></span><span>約定偏り<b>${esc(x.flow_bias)}%</b></span><span>出来高加速<b>${esc(x.volume_burst)}倍</b></span><span>信用倍率<b>${cr}</b></span><span>OR15<b>${yen(x.or_low)}–${yen(x.or_high)}</b></span></div><small>${esc(x.sector)}</small></article>`}).join(""):`<div class="focus-empty"><b>発動なし</b><span>条件一致銘柄を待っています</span></div>`;
+   cards.innerHTML=xs.length?xs.slice(0,5).map((x,i)=>{const cls=x.signal==="買いサイン"?"buy":x.signal==="空売りサイン"?"sell":x.signal?.includes("回避")?"block":"watch",cr=x.credit_ratio==null?"未取得":`${esc(x.credit_ratio)}倍`,order=x.entry_price==null?"条件未完成":`発動 ${yen(x.entry_price)} / 損切 ${yen(x.stop_price)} / 1R ${yen(x.target1)}`;return `<article class="ms2-live-card ${cls}"><div class="top"><span class="signal">${stale?"無効":esc(x.signal)}</span><h3>#${i+1} ${esc(x.name)}</h3><b class="score">${esc(x.score)}</b></div><div class="live-price">${yen(x.price)}</div><div class="ms2-metrics"><span>戦略<b>${esc(x.strategy)}</b></span><span>注文目安<b>${order}</b></span><span>地合い<b>${esc(x.market_state)}</b></span><span>業種強度<b>${esc(x.sector_breadth_pct)}%</b></span><span>VWAP<b>${yen(x.vwap)}</b></span><span>EMA9/20<b>${yen(x.ema9)} / ${yen(x.ema20)}</b></span><span>出来高加速<b>${esc(x.volume_burst)}倍</b></span><span>信用倍率<b>${cr}</b></span><span>OR5<b>${yen(x.or5_low)}–${yen(x.or5_high)}</b></span><span>OR15<b>${yen(x.or_low)}–${yen(x.or_high)}</b></span></div><small>確定1分足だけで判定／${esc(x.sector)}</small></article>`}).join(""):`<div class="focus-empty"><b>発動なし</b><span>条件一致銘柄を待っています</span></div>`;
+   const holds=Array.isArray(d.hold_top5)?d.hold_top5:[];
+   if(holdCards)holdCards.innerHTML=holds.length?holds.slice(0,5).map((x,i)=>`<article class="ms2-live-card ${x.hold_signal==="持ち越しロング候補"?"buy":"sell"}"><div class="top"><span class="signal">${stale?"無効":esc(x.hold_signal)}</span><h3>#${i+1} ${esc(x.name)}</h3><b class="score">${esc(x.hold_score)}</b></div><div class="ms2-metrics"><span>後場OR上維持<b>${esc(x.pm_above_minutes)}分</b></span><span>後場OR下維持<b>${esc(x.pm_below_minutes)}分</b></span><span>引け位置<b>${esc(x.close_location_pct)}%</b></span><span>地合い<b>${esc(x.market_state)}</b></span></div><small>イベント・PTS・米国市場を翌朝まで再確認</small></article>`).join(""):`<div class="focus-empty"><span>15:00判定待ち、または条件未達のため持ち越し禁止</span></div>`;
    const pts=Array.isArray(d.pts_top5)?d.pts_top5:[];
    if(ptsCards)ptsCards.innerHTML=pts.length?pts.slice(0,5).map((x,i)=>`<article class="ms2-live-card ${Number(x.bias_score)>=0?"buy":"sell"}"><div class="top"><span class="signal">${stale?"無効":esc(x.stance)}</span><h3>#${i+1} ${esc(x.name)}</h3><b class="score">${esc(x.expectation_score)}</b></div><div class="live-price">${yen(x.price)}</div><div class="ms2-metrics"><span>東証終値比<b>${Number(x.gap_pct)>=0?"+":""}${Number(x.gap_pct).toFixed(2)}%</b></span><span>売買代金<b>${(Number(x.turnover||0)/1000000).toFixed(1)}百万円</b></span><span>スプレッド<b>${esc(x.spread_pct)}%</b></span><span>UNDER<b>${esc(x.under_ratio)}%</b></span></div></article>`).join(""):`<div class="focus-empty"><span>流動性条件を満たすPTS候補なし</span></div>`;
    const ir=Array.isArray(d.ir_pts_top5)?d.ir_pts_top5:[];

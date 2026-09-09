@@ -454,12 +454,12 @@ def turning_points(path):
 
 def ma_playbook():
     return {
-        "note": "EMA9/20は日数ではなく5分足の9本・20本。日足移動平均とは分けて判定。",
-        "long_first_pullback": "EMA9>EMA20、VWAP上、EMA9上向き。EMA9へ下ヒゲ接触後、5分足終値で回復し、その足の高値+1ティックで発動。",
-        "long_deep_pullback": "EMA20またはVWAPまでの押し。下ヒゲ回収と出来高減速を確認し、反発足高値+1ティック。OR15安値割れなら禁止。",
-        "short_first_return": "EMA9<EMA20、VWAP下、EMA9下向き。EMA9へ上ヒゲ接触後、5分足終値で拒否し、その足の安値-1ティックで発動。",
-        "short_deep_return": "EMA20またはVWAPまでの戻り。上ヒゲ拒否と買い出来高失速後、反落足安値-1ティック。OR15高値超えなら禁止。",
-        "whipsaw_guard": "OR15内、EMA9/20交差、VWAPを2本連続往復、長い上下ヒゲは往復ピンタ帯。新規注文を置かない。",
+        "note": "EMA20/25は5分足。日足5日線、VWAP、前日HLCから計算するピボットとは分けて表示。",
+        "long_first_pullback": "OR5後、EMA20>EMA25で両線上向き、VWAP上。EMA20/25帯へ下ヒゲ接触後、反発足高値+1ティックで発動。",
+        "long_deep_pullback": "VWAP、ピボットP、日足5日線までの押し。下ヒゲ回収後に買い歩み値が戻った場合だけ。OR15安値割れなら禁止。",
+        "short_first_return": "OR5後、EMA20<EMA25で両線下向き、VWAP下。EMA20/25帯へ上ヒゲ接触後、反落足安値-1ティックで発動。",
+        "short_deep_return": "VWAPまたはピボットPまでの戻り。上ヒゲ拒否と買い失速後だけ。OR15高値超えなら禁止。",
+        "whipsaw_guard": "OR15内でEMA20/25が横向き、VWAPを2回以上往復、長い上下ヒゲは往復ピンタ帯。新規注文を置かない。",
     }
 
 
@@ -641,6 +641,31 @@ def main():
         "invalidate": "OR15とVWAPが予測方向と逆へ同時確定したら無効",
     }
     current_view = prior_views.get(current_date) or day_view(current_date, current)
+    pivot_day = sessions[-2][1] if current_is_today and len(sessions) >= 2 else sessions[-1][1]
+    pivot_high = float(pivot_day["High"].max())
+    pivot_low = float(pivot_day["Low"].min())
+    pivot_close = float(pivot_day["Close"].iloc[-1])
+    pivot_p = (pivot_high + pivot_low + pivot_close) / 3
+    recent_daily_closes = [float(day["Close"].iloc[-1]) for _, day in sessions[-5:]]
+    daily_ma5 = float(np.mean(recent_daily_closes)) if len(recent_daily_closes) == 5 else None
+    technical_levels = {
+        "session_open": round(float(current["Open"].iloc[0]), 1) if current_is_today else None,
+        "daily_ma5": round(daily_ma5, 1) if daily_ma5 is not None else None,
+        "pivot_p": round(pivot_p, 1),
+        "pivot_r1": round(2 * pivot_p - pivot_low, 1),
+        "pivot_s1": round(2 * pivot_p - pivot_high, 1),
+        "or15_high": round(float(current.iloc[:3]["High"].max()), 1) if current_is_today and len(current) >= 3 else None,
+        "or15_low": round(float(current.iloc[:3]["Low"].min()), 1) if current_is_today and len(current) >= 3 else None,
+    }
+    if technical_levels["session_open"]:
+        opening = technical_levels["session_open"]
+        technical_levels["return_pct"] = {
+            key: round((value / opening - 1) * 100, 4)
+            for key, value in technical_levels.items()
+            if key != "session_open" and value is not None
+        }
+    else:
+        technical_levels["return_pct"] = {}
     one_minute_source = "Yahoo Finance 285A.T 1分足"
     current_1m = []
     try:
@@ -660,6 +685,7 @@ def main():
         "current_1m": current_1m,
         "one_minute_source": one_minute_source,
         "one_minute_verified": bool(current_1m),
+        "technical_levels": technical_levels,
         "forecast_resolution": "1分刻み表示（類似日5分足を補間）",
         "current_is_today": current_is_today,
         "current_gap_pct": current_gap_pct if current_is_today else None,
@@ -682,7 +708,7 @@ def main():
         "gap_studies": daily_gap_studies() or gap_studies(sessions),
         "forecast_turns": turning_points((top[0] if top else {}).get("path") or []),
         "ma_playbook": ma_playbook(),
-        "rule": "寄り前は前夜のSanDisk・Micron・SOX・NASDAQと信用需給で事前類似日を選定。9:15以降は当日5分足を65%へ引き上げる。類似度60%以上が3日未満なら見送り。OR15・VWAP・EMA9/20・出来高の4/5一致が最終条件。",
+        "rule": "寄り前は前夜のSanDisk・Micron・SOX・NASDAQと信用需給で事前類似日を選定。9:00～9:05は待機。OR5後のEMA20/25初押し・初戻りを優先し、VWAP・ピボット・歩み値を確認。OR15突破だけでは追わない。",
     }
     OUT.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
