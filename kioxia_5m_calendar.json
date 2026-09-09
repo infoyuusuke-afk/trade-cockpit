@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-09-09 19:09:13 JST",
+  "updated_at": "2026-09-09 19:54:09 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -6382,6 +6382,23 @@
   ],
   "one_minute_source": "Yahoo Finance 285A.T 1分足",
   "one_minute_verified": true,
+  "technical_levels": {
+    "session_open": 58160.0,
+    "daily_ma5": 56044.0,
+    "pivot_p": 58543.3,
+    "pivot_r1": 60046.7,
+    "pivot_s1": 56046.7,
+    "or15_high": 58290.0,
+    "or15_low": 56680.0,
+    "return_pct": {
+      "daily_ma5": -3.6382,
+      "pivot_p": 0.659,
+      "pivot_r1": 3.244,
+      "pivot_s1": -3.6336,
+      "or15_high": 0.2235,
+      "or15_low": -2.5447
+    }
+  },
   "forecast_resolution": "1分刻み表示（類似日5分足を補間）",
   "current_is_today": true,
   "current_gap_pct": 1.06,
@@ -7541,12 +7558,12 @@
     }
   ],
   "ma_playbook": {
-    "note": "EMA9/20は日数ではなく5分足の9本・20本。日足移動平均とは分けて判定。",
-    "long_first_pullback": "EMA9>EMA20、VWAP上、EMA9上向き。EMA9へ下ヒゲ接触後、5分足終値で回復し、その足の高値+1ティックで発動。",
-    "long_deep_pullback": "EMA20またはVWAPまでの押し。下ヒゲ回収と出来高減速を確認し、反発足高値+1ティック。OR15安値割れなら禁止。",
-    "short_first_return": "EMA9<EMA20、VWAP下、EMA9下向き。EMA9へ上ヒゲ接触後、5分足終値で拒否し、その足の安値-1ティックで発動。",
-    "short_deep_return": "EMA20またはVWAPまでの戻り。上ヒゲ拒否と買い出来高失速後、反落足安値-1ティック。OR15高値超えなら禁止。",
-    "whipsaw_guard": "OR15内、EMA9/20交差、VWAPを2本連続往復、長い上下ヒゲは往復ピンタ帯。新規注文を置かない。"
+    "note": "EMA20/25は5分足。日足5日線、VWAP、前日HLCから計算するピボットとは分けて表示。",
+    "long_first_pullback": "OR5後、EMA20>EMA25で両線上向き、VWAP上。EMA20/25帯へ下ヒゲ接触後、反発足高値+1ティックで発動。",
+    "long_deep_pullback": "VWAP、ピボットP、日足5日線までの押し。下ヒゲ回収後に買い歩み値が戻った場合だけ。OR15安値割れなら禁止。",
+    "short_first_return": "OR5後、EMA20<EMA25で両線下向き、VWAP下。EMA20/25帯へ上ヒゲ接触後、反落足安値-1ティックで発動。",
+    "short_deep_return": "VWAPまたはピボットPまでの戻り。上ヒゲ拒否と買い失速後だけ。OR15高値超えなら禁止。",
+    "whipsaw_guard": "OR15内でEMA20/25が横向き、VWAPを2回以上往復、長い上下ヒゲは往復ピンタ帯。新規注文を置かない。"
   },
-  "rule": "寄り前は前夜のSanDisk・Micron・SOX・NASDAQと信用需給で事前類似日を選定。9:15以降は当日5分足を65%へ引き上げる。類似度60%以上が3日未満なら見送り。OR15・VWAP・EMA9/20・出来高の4/5一致が最終条件。"
+  "rule": "寄り前は前夜のSanDisk・Micron・SOX・NASDAQと信用需給で事前類似日を選定。9:00～9:05は待機。OR5後のEMA20/25初押し・初戻りを優先し、VWAP・ピボット・歩み値を確認。OR15突破だけでは追わない。"
 }
