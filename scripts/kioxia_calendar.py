@@ -454,12 +454,12 @@ def turning_points(path):
 
 def ma_playbook():
     return {
-        "note": "EMA20/25は5分足。日足5日線、VWAP、前日HLCから計算するピボットとは分けて表示。",
-        "long_first_pullback": "OR5後、EMA20>EMA25で両線上向き、VWAP上。EMA20/25帯へ下ヒゲ接触後、反発足高値+1ティックで発動。",
-        "long_deep_pullback": "VWAP、ピボットP、日足5日線までの押し。下ヒゲ回収後に買い歩み値が戻った場合だけ。OR15安値割れなら禁止。",
-        "short_first_return": "OR5後、EMA20<EMA25で両線下向き、VWAP下。EMA20/25帯へ上ヒゲ接触後、反落足安値-1ティックで発動。",
+        "note": "表示線は5分足EMA20、VWAP、OR15高安、前日HLCから計算するピボットP/R1/S1に限定。",
+        "long_first_pullback": "OR5後、EMA20が上向きでVWAP上。EMA20へ下ヒゲ接触後、反発足高値+1ティックで発動。",
+        "long_deep_pullback": "VWAPまたはピボットPまでの押し。下ヒゲ回収後に買い歩み値が戻った場合だけ。OR15安値割れなら禁止。",
+        "short_first_return": "OR5後、EMA20が下向きでVWAP下。EMA20へ上ヒゲ接触後、反落足安値-1ティックで発動。",
         "short_deep_return": "VWAPまたはピボットPまでの戻り。上ヒゲ拒否と買い失速後だけ。OR15高値超えなら禁止。",
-        "whipsaw_guard": "OR15内でEMA20/25が横向き、VWAPを2回以上往復、長い上下ヒゲは往復ピンタ帯。新規注文を置かない。",
+        "whipsaw_guard": "OR15内でEMA20が横向き、VWAPを2回以上往復、長い上下ヒゲは往復ピンタ帯。新規注文を置かない。",
     }
 
 
@@ -708,7 +708,7 @@ def main():
         "gap_studies": daily_gap_studies() or gap_studies(sessions),
         "forecast_turns": turning_points((top[0] if top else {}).get("path") or []),
         "ma_playbook": ma_playbook(),
-        "rule": "寄り前は前夜のSanDisk・Micron・SOX・NASDAQと信用需給で事前類似日を選定。9:00～9:05は待機。OR5後のEMA20/25初押し・初戻りを優先し、VWAP・ピボット・歩み値を確認。OR15突破だけでは追わない。",
+        "rule": "寄り前は前夜のSanDisk・Micron・SOX・NASDAQと信用需給で事前類似日を選定。9:00～9:05は待機。OR5後のEMA20初押し・初戻りを優先し、VWAP・ピボット・歩み値を確認。OR15突破だけでは追わない。",
     }
     OUT.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
