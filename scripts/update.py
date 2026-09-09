@@ -2388,7 +2388,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  <h3>IR急騰PTS TOP5</h3>
  <div id="ms2-ir-pts-meta" class="sub">TDnet公式開示とJNXを照合中...</div>
  <div id="ms2-ir-pts-cards" class="ms2-live-grid"><div class="focus-empty"><span>公式IR＋PTS反応待ち</span></div></div>
- <p><a class="ms2-download" href="downloads/MS2_RSS_100_Stocks_Live_Kit.zip" download>Windows用・100銘柄LIVEキットをダウンロード</a></p>
+ <p><a class="ms2-download" href="https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/downloads/MS2_RSS_100_Stocks_Live_Kit.zip" target="_blank" rel="noopener" download="MS2_RSS_100_Stocks_Live_Kit.zip">Windows用・100銘柄LIVEキット（ZIP）を直接ダウンロード</a></p>
  <p class="warning"><b>Ver.1判定：</b>確定1分足 → OR5/OR15 → VWAP・EMA9/20 → 出来高 → 歩み値 → 地合い・業種 → UNDER/OVER補助。OR15追随は地合い不一致なら利確警戒。データが60秒以上古い場合は全サイン無効です。</p>
 </section>
 """
