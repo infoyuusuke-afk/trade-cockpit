@@ -1,7 +1,7 @@
 {
   "model_version": "investor-regime-1.1.0",
-  "generated_at": "2026-09-10T18:02:35+09:00",
-  "decision_at": "2026-09-10T18:02:35+09:00",
+  "generated_at": "2026-09-10T18:22:33+09:00",
+  "decision_at": "2026-09-10T18:22:33+09:00",
   "source": {
     "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
     "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -9,15 +9,15 @@
     "publication_rule": "毎週第4営業日15:30。実取得確認時刻を利用し、予定時刻では解禁しない。"
   },
   "asof": {
-    "period_end": null,
-    "retrieved_at": null,
-    "revision": null,
-    "sha256": null
+    "period_end": "2026-09-01",
+    "retrieved_at": "2026-09-10T18:22:33+09:00",
+    "revision": 2,
+    "sha256": "35fd17daa9b7f07594d72082cb48231cd2c7d4eefc1e80d53f6bbcd272d6e2b2"
   },
   "connection": {
-    "equity": "未取得",
-    "derivative": "先物公式CSV未取得",
-    "observed_weeks": 0
+    "equity": "接続済み",
+    "derivative": "CSV形式確認待ち",
+    "observed_weeks": 3
   },
   "regime": {
     "name": "判定不能",
@@ -184,17 +184,17 @@
     {
       "subject": "life_insurance",
       "label": "生保",
-      "net": null,
-      "previous_week_change": null,
-      "cumulative_4w": null,
-      "cumulative_13w": null,
-      "cumulative_52w": null,
-      "mean_4w": null,
-      "deviation_from_mean_4w": null,
-      "mean_13w": null,
-      "deviation_from_mean_13w": null,
-      "mean_52w": null,
-      "deviation_from_mean_52w": null,
+      "net": 0.0,
+      "previous_week_change": 265.0,
+      "cumulative_4w": -530.0,
+      "cumulative_13w": -530.0,
+      "cumulative_52w": -530.0,
+      "mean_4w": -176.66666666666666,
+      "deviation_from_mean_4w": 176.66666666666666,
+      "mean_13w": -176.66666666666666,
+      "deviation_from_mean_13w": 176.66666666666666,
+      "mean_52w": -176.66666666666666,
+      "deviation_from_mean_52w": 176.66666666666666,
       "z52": null,
       "flow_impulse": null,
       "streak_weeks": null,
@@ -228,10 +228,10 @@
   ],
   "foreign_futures_alignment": {
     "available": false,
-    "status": "先物公式CSV未取得",
-    "source": null,
-    "period_end": null,
-    "retrieved_at": null,
+    "status": "CSV形式確認待ち",
+    "source": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/t13vrt000001y00l-att/Tousi_DV_W_20260831_20260904.csv",
+    "period_end": "2026-09-04",
+    "retrieved_at": "2026-09-10T18:22:33+09:00",
     "foreign_nikkei225_futures_net": null,
     "aligned": null
   },
