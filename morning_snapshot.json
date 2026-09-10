@@ -1,43 +1,43 @@
 {
   "date": "2026-09-10",
-  "fixed_at": "2026-09-10 11:36:35 JST",
+  "fixed_at": "2026-09-10 15:36:42 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
+    {
+      "name": "レーザーテック（6920）",
+      "ticker": "6920.T",
+      "side": "LONG",
+      "score": 95.0,
+      "entry": 35500,
+      "entry_limit": 35500,
+      "stop": 34350,
+      "target1": 37250,
+      "target2": 38050,
+      "morning_price": 36280.0
+    },
     {
       "name": "神戸物産（3038）",
       "ticker": "3038.T",
       "side": "LONG",
-      "score": 82.0,
-      "entry": 3105,
-      "entry_limit": 3105,
-      "stop": 3045,
-      "target1": 3200,
-      "target2": 3245,
-      "morning_price": 3095.0
+      "score": 79.0,
+      "entry": 3065,
+      "entry_limit": 3065,
+      "stop": 3000,
+      "target1": 3160,
+      "target2": 3205,
+      "morning_price": 3052.0
     },
     {
-      "name": "ニトリHD（9843）",
-      "ticker": "9843.T",
+      "name": "キオクシアHD（285A）",
+      "ticker": "285A.T",
       "side": "LONG",
-      "score": 77.0,
-      "entry": 3300,
-      "entry_limit": 3300,
-      "stop": 3230,
-      "target1": 3400,
-      "target2": 3450,
-      "morning_price": 3301.0
-    },
-    {
-      "name": "Terra Drone（278A）",
-      "ticker": "278A.T",
-      "side": "LONG",
-      "score": 76.0,
-      "entry": 19090,
-      "entry_limit": 19090,
-      "stop": 17540,
-      "target1": 21410,
-      "target2": 22500,
-      "morning_price": 18840.0
+      "score": 95.0,
+      "entry": 57400,
+      "entry_limit": 57400,
+      "stop": 55200,
+      "target1": 60600,
+      "target2": 62200,
+      "morning_price": 58000.0
     }
   ]
 }
