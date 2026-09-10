@@ -4,6 +4,7 @@ $ErrorActionPreference = "Stop"
 $speaker = New-Object -ComObject SAPI.SpVoice
 $workbook = Join-Path $PSScriptRoot "Kioxia_MS2_RSS_Live_Signals.xlsx"
 $collector = Join-Path $PSScriptRoot "MS2_RSS_100_Collector.ps1"
+$strategySpeaker = Join-Path $PSScriptRoot "SPEAK_TODAY_STRATEGY.ps1"
 $log = Join-Path $PSScriptRoot "auto_start.log"
 
 function Write-Log([string]$message) {
@@ -65,6 +66,11 @@ if (-not $ready) {
     Write-Log "Excel workbook was not ready within timeout"
     $speaker.Speak("エクセルを確認できないため、自動監視を開始できませんでした。",1) | Out-Null
     exit 2
+}
+
+if (Test-Path $strategySpeaker) {
+    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File',$strategySpeaker)
+    Write-Log "today strategy speaker started"
 }
 
 Write-Log "collector starting"
