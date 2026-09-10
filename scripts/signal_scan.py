@@ -988,9 +988,8 @@ def main():
         row.update(supply_view(row["code"], credit_supply))
 
     regime_name = (investor_regime.get("regime") or {}).get("name", "判定不能")
-    regime_weeks = int((investor_regime.get("connection") or {}).get("observed_weeks") or 0)
     regime_usable = ((investor_regime.get("type_filter") or {}).get("status") == "利用可"
-                     and regime_weeks >= 13)
+                     and int((investor_regime.get("connection") or {}).get("observed_weeks") or 0) >= 13)
     def apply_regime(rows, side):
         for row in rows:
             row["legacy_score_before_regime"] = row["score"]
@@ -1000,7 +999,7 @@ def main():
             if not regime_usable:
                 row["regime_fit_20"] = None
                 row["regime_applied"] = False
-                row["regime_reason"] = f"JPX履歴{regime_weeks}週・学習履歴不足のため既存採点を維持"
+                row["regime_reason"] = "JPX履歴未取得・既存採点を維持"
                 continue
             fit = 10
             turnover = float(row.get("close") or 0) * float(row.get("volume") or 0)
