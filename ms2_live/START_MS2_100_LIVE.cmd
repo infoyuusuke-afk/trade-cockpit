@@ -13,6 +13,7 @@ echo 4. Keep Excel open
 echo.
 pause
 
+start "AI Cockpit Strategy Voice" /min powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0SPEAK_TODAY_STRATEGY.ps1"
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -NoExit -File "%~dp0MS2_RSS_100_Collector.ps1"
 
 echo.
