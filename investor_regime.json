@@ -1,7 +1,7 @@
 {
   "model_version": "investor-regime-1.2.0",
-  "generated_at": "2026-09-10T19:47:06+09:00",
-  "decision_at": "2026-09-10T19:47:06+09:00",
+  "generated_at": "2026-09-10T19:52:59+09:00",
+  "decision_at": "2026-09-10T19:52:59+09:00",
   "source": {
     "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
     "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -20,7 +20,9 @@
     "derivative": "接続済み",
     "observed_weeks": 5,
     "parsed_subjects": 8,
-    "insurer_split": "JPX公式は生保・損保合算。単独系列は未取得"
+    "insurer_split": "JPX公式は生保・損保合算。単独系列は未取得",
+    "equity_unit": "thousand_yen",
+    "derivative_unit": "yen_trading_value"
   },
   "regime": {
     "name": "MIXED",
