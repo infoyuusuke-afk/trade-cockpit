@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-11 05:40:05 JST",
+  "updated_at": "2026-09-11 05:42:15 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -4115,7 +4115,7 @@
       "ret5_prev": 0.34,
       "ret20": -1.91,
       "rvol": 0.84,
-      "turnover": 162982088911523,
+      "turnover": 163039990340156,
       "atr14": 264.43,
       "atr_pct": 1.01,
       "ma5": 26369.51,
@@ -4416,7 +4416,7 @@
           "h": 26178.25,
           "l": 25979.54,
           "c": 26081.72,
-          "v": 6248900000
+          "v": 6251120000
         }
       ],
       "data_date": "2026-09-10",
@@ -5450,13 +5450,13 @@
       "ma20": 158.16,
       "ma60": 160.32,
       "from_ma5": -0.19,
-      "from_ma20": -2.35,
+      "from_ma20": -2.36,
       "touch_ma5": false,
       "to_high20": -3.71,
       "to_high52": -5.82,
       "bb_upper": 162.34,
       "bb_lower": 153.98,
-      "bb_width": 5.28,
+      "bb_width": 5.29,
       "bb_width_change": 2.24,
       "bb_percentile": 90.8,
       "bb_expansion_score": 11.2,
@@ -39605,8 +39605,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-09-11T05:39:14+09:00",
-    "decision_at": "2026-09-11T05:39:14+09:00",
+    "generated_at": "2026-09-11T05:41:14+09:00",
+    "decision_at": "2026-09-11T05:41:14+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -41456,13 +41456,13 @@
     }
   ],
   "strong_yen_top5": {
-    "usd_jpy": 154.433,
+    "usd_jpy": 154.431,
     "usd_jpy_change_pct": 0.59,
     "usd_jpy_ret5": -2.83,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-09-11T05:39:00+09:00",
+    "fx_observed_at": "2026-09-11T05:42:00+09:00",
     "statement_study": {
-      "updated_at": "2026-09-11 05:40:04 JST",
+      "updated_at": "2026-09-11 05:42:14 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -45112,7 +45112,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-09-11 05:39:44 JST",
+    "credit_supply_updated_at": "2026-09-11 05:41:59 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -61957,14 +61957,14 @@
   ],
   "morning_snapshot": {
     "date": "2026-09-11",
-    "fixed_at": "2026-09-11 05:40:05 JST",
+    "fixed_at": "2026-09-11 05:42:15 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-09-11",
-    "fixed_at": "2026-09-11 05:40:33 JST",
+    "fixed_at": "2026-09-11 05:43:01 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
