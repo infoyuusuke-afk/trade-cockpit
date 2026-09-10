@@ -5,6 +5,7 @@ $speaker = New-Object -ComObject SAPI.SpVoice
 $workbook = Join-Path $PSScriptRoot "Kioxia_MS2_RSS_Live_Signals.xlsx"
 $collector = Join-Path $PSScriptRoot "MS2_RSS_100_Collector.ps1"
 $strategySpeaker = Join-Path $PSScriptRoot "SPEAK_TODAY_STRATEGY.ps1"
+$methodAudit = Join-Path $PSScriptRoot "METHOD_PROFIT_AUDIT.ps1"
 $log = Join-Path $PSScriptRoot "auto_start.log"
 
 function Write-Log([string]$message) {
@@ -71,6 +72,10 @@ if (-not $ready) {
 if (Test-Path $strategySpeaker) {
     Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File',$strategySpeaker)
     Write-Log "today strategy speaker started"
+}
+if (Test-Path $methodAudit) {
+    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File',$methodAudit)
+    Write-Log "method profit audit started"
 }
 
 Write-Log "collector starting"
