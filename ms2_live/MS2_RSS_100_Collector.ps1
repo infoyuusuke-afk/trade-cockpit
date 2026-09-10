@@ -99,6 +99,37 @@ function Limit([double]$value, [double]$low, [double]$high) {
     return [Math]::Max($low, [Math]::Min($high, $value))
 }
 
+function Get-RegimeFit([string]$regime, [string]$side, [string]$sector, [double]$turnover) {
+    if ([string]::IsNullOrWhiteSpace($regime) -or $regime -in @("判定不能","MIXED")) { return $null }
+    $fit = 10.0
+    if ($regime -in @("FOREIGN RISK-ON","FOREIGN RE-ENTRY")) {
+        if ($side -eq "SHORT") { return 0.0 }
+        if ($turnover -ge 10000000000) { $fit += 5 }
+        if ($sector -match "半導体|電機|重工|金融") { $fit += 5 }
+    } elseif ($regime -eq "DOMESTIC SUPPORT") {
+        $fit = if($side -eq "LONG"){15.0}else{5.0}
+    } elseif ($regime -in @("RETAIL REVERSAL","CREDIT SPECULATION")) {
+        $fit = if($side -eq "LONG"){14.0}else{4.0}
+    } elseif ($regime -in @("DISTRIBUTION","RISK-OFF")) {
+        $fit = if($side -eq "SHORT"){20.0}else{0.0}
+    } elseif ($regime -eq "LATE RISK-ON") {
+        $fit = if($side -eq "SHORT"){15.0}else{5.0}
+    }
+    return Limit $fit 0 20
+}
+
+function Write-ImmutableJson([string]$path, [object]$payload) {
+    $json = $payload | ConvertTo-Json -Depth 12
+    try {
+        $stream = [IO.File]::Open($path,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write,[IO.FileShare]::Read)
+        try {
+            $bytes = [Text.UTF8Encoding]::new($false).GetBytes($json)
+            $stream.Write($bytes,0,$bytes.Length)
+        } finally { $stream.Dispose() }
+        return $true
+    } catch [IO.IOException] { return $false }
+}
+
 function Get-EmaValue([object[]]$bars, [int]$period) {
     if ($null -eq $bars -or $bars.Count -lt 3) { return $null }
     $alpha = 2.0 / ($period + 1.0)
@@ -403,8 +434,18 @@ $dataRoot = Join-Path $PSScriptRoot "records"
 New-Item -ItemType Directory -Force -Path $dataRoot | Out-Null
 $holdHistoryPath = Join-Path $PSScriptRoot "overnight_hold_history.csv"
 $holdStatsPath = Join-Path $PSScriptRoot "overnight_hold_stats.json"
+$actualFillsPath = Join-Path $PSScriptRoot "overnight_actual_fills.csv"
+$auditV2Path = Join-Path $PSScriptRoot "overnight_hold_results_v2.csv"
 $holdHistoryHeader = "decision_date,finalized_at,rank,ticker,name,side,hold_score,reference_price_1525,entry_close_price,entry_date,evaluation_date,next_open,next_close,next_high,next_low,return_open_pct,return_close_pct,mfe_pct,mae_pct,result,status"
 Ensure-Csv $holdHistoryPath $holdHistoryHeader
+Ensure-Csv $actualFillsPath "decision_date,ticker,side,actual_fill_price,actual_fill_time,quantity,fee_yen,note"
+Ensure-Csv $auditV2Path "decision_date,rank,ticker,name,side,model_version,snapshot_sha256,reference_price_1525,actual_fill_price,fill_source,cost_bps,benchmark,next_trade_date,next_open,next_high,next_low,next_close,return_open_pct,return_close_pct,excess_open_pct,excess_close_pct,mfe_pct,mae_pct,result,missing_reason"
+$regimePath = Join-Path (Split-Path $PSScriptRoot -Parent) "investor_regime.json"
+if(-not (Test-Path $regimePath)){
+    $regimePath = Join-Path $PSScriptRoot "investor_regime.json"
+}
+$investorRegime = $null
+try { if(Test-Path $regimePath){$investorRegime=Get-Content -Raw -Encoding UTF8 $regimePath|ConvertFrom-Json} } catch {}
 $statsScript = Join-Path $PSScriptRoot "BUILD_KIOXIA_TIME_STATS.ps1"
 $statsJsonPath = Join-Path $PSScriptRoot "kioxia_time_stats.json"
 if (Test-Path $statsScript) {
@@ -506,6 +547,7 @@ try {
         $signalCsv = Join-Path $dayDir "trade_signals.csv"
         $holdFinalCsv = Join-Path $dayDir "overnight_hold_final.csv"
         $holdFinalMarker = Join-Path $dayDir "overnight_hold_finalized.json"
+        $holdImmutableJson = Join-Path $dayDir "overnight_hold_immutable.json"
         Ensure-Csv $tickCsv "captured_at,ticker,name,exchange_time,price,direction_estimate,bid,ask,note"
         Ensure-Csv $supplyCsv "captured_at,ticker,name,price,over,under,under_ratio,over_under_change,vwap"
         Ensure-Csv $snapshotCsv "captured_at,ticker,name,price,volume,vwap,bid,ask,bid_qty,ask_qty,market_sell,market_buy,over,under"
@@ -993,6 +1035,17 @@ try {
             if($result.whipsaw){$longHold-=20;$shortHold-=20}
             if($result.chase_guard){$longHold-=10;$shortHold-=10}
             $longHold=Limit $longHold 0 100; $shortHold=Limit $shortHold 0 100
+            $regimeName=if($null -ne $investorRegime){[string]$investorRegime.regime.name}else{"判定不能"}
+            $regimePeriod=if($null -ne $investorRegime){[string]$investorRegime.asof.period_end}else{""}
+            $regimeRetrieved=if($null -ne $investorRegime){[string]$investorRegime.asof.retrieved_at}else{""}
+            $regimeObservedAt=$null
+            try{$regimeObservedAt=[DateTimeOffset]::Parse($regimeRetrieved)}catch{}
+            $regimeUsable=($null -ne $investorRegime -and [string]$investorRegime.type_filter.status -eq "利用可" -and $null -ne $regimeObservedAt -and $regimeObservedAt -le [DateTimeOffset]$now)
+            $turnover=[double]$result.price*[double]$result.volume
+            $longRegimeFit=if($regimeUsable){Get-RegimeFit $regimeName "LONG" ([string]$result.sector) $turnover}else{$null}
+            $shortRegimeFit=if($regimeUsable){Get-RegimeFit $regimeName "SHORT" ([string]$result.sector) $turnover}else{$null}
+            if($null -ne $longRegimeFit){$longHold=Limit (($longHold*.70)+[double]$longRegimeFit) 0 100}
+            if($null -ne $shortRegimeFit){$shortHold=Limit (($shortHold*.70)+[double]$shortRegimeFit) 0 100}
             $holdSignal="15時判定待ち"; $holdScore=[Math]::Max($longHold,$shortHold)
             if($now.TimeOfDay -ge [TimeSpan]::Parse("15:00:00")){
                 if($longHold -ge 70 -and $longHold -ge $shortHold+15){$holdSignal="持ち越しロング候補";$holdScore=$longHold}
@@ -1005,6 +1058,12 @@ try {
             $result|Add-Member -NotePropertyName sector_breadth_pct -NotePropertyValue $sectorPct -Force
             $result|Add-Member -NotePropertyName close_location_pct -NotePropertyValue ([Math]::Round($closeLocation*100,1)) -Force
             $result|Add-Member -NotePropertyName event_check_required -NotePropertyValue $true -Force
+            $result|Add-Member -NotePropertyName regime_name -NotePropertyValue $regimeName -Force
+            $result|Add-Member -NotePropertyName regime_period_end -NotePropertyValue $regimePeriod -Force
+            $result|Add-Member -NotePropertyName regime_retrieved_at -NotePropertyValue $regimeRetrieved -Force
+            $result|Add-Member -NotePropertyName regime_fit_long_20 -NotePropertyValue $longRegimeFit -Force
+            $result|Add-Member -NotePropertyName regime_fit_short_20 -NotePropertyValue $shortRegimeFit -Force
+            $result|Add-Member -NotePropertyName subject_sensitivity_10 -NotePropertyValue $null -Force
 
             if($result.signal -in @("買いサイン","空売りサイン") -and -not [string]::IsNullOrWhiteSpace([string]$result.signal_bar_time)){
                 $logKey=([string]$result.ticker+'|'+[string]$result.strategy+'|'+[string]$result.signal_bar_time)
@@ -1028,6 +1087,11 @@ try {
                     or_high=$_.or_high;or_low=$_.or_low;pm_above_minutes=$_.pm_above_minutes;pm_below_minutes=$_.pm_below_minutes
                     close_location_pct=$_.close_location_pct;market_state=$_.market_state;breadth_pct=$_.breadth_pct
                     sector_breadth_pct=$_.sector_breadth_pct;flow_bias=$_.flow_bias;under_ratio=$_.under_ratio
+                    model_version="ms2-hold-2.0+investor-regime-1.1.0";regime_name=$_.regime_name
+                    regime_period_end=$_.regime_period_end;regime_retrieved_at=$_.regime_retrieved_at
+                    regime_fit_20=if($_.hold_signal -match "ロング"){$_.regime_fit_long_20}else{$_.regime_fit_short_20}
+                    subject_sensitivity_10=$null;score_coverage=if($null -ne $_.regime_fit_long_20){90}else{70}
+                    feature_snapshot=[ordered]@{sector=$_.sector;price=$_.price;volume=$_.volume;vwap=$_.vwap;ema9=$_.ema9;ema20=$_.ema20;or15_high=$_.or_high;or15_low=$_.or_low;day_high=$_.day_high;day_low=$_.day_low;flow_bias=$_.flow_bias;under_ratio=$_.under_ratio;pm_above_minutes=$_.pm_above_minutes;pm_below_minutes=$_.pm_below_minutes;close_location_pct=$_.close_location_pct;market_state=$_.market_state;sector_breadth_pct=$_.sector_breadth_pct}
                 }
             })
             if($finalHoldTop5.Count -gt 0){
@@ -1043,7 +1107,10 @@ try {
             }
             $holdFinalized=$true
             $holdFinalizedAt=$now.ToString("yyyy-MM-dd HH:mm:ss")
-            Write-AtomicUtf8 $holdFinalMarker (([ordered]@{finalized_at=$holdFinalizedAt;candidate_count=$finalHoldTop5.Count}|ConvertTo-Json))
+            $immutable=[ordered]@{decision_at=$now.ToString("yyyy-MM-ddTHH:mm:sszzz");decision_price_type="15:25参照価格（実約定ではない）";model_version="ms2-hold-2.0+investor-regime-1.1.0";regime=[ordered]@{name=$regimeName;period_end=$regimePeriod;retrieved_at=$regimeRetrieved;future_boundary="retrieved_atがdecision_at以前の版のみ"};cost_assumption=[ordered]@{fee_bps=0;slippage_bps_per_side=5;round_trip_cost_bps=10};benchmark="TOPIX（未接続時は超過収益を未取得表示）";candidates=$finalHoldTop5}
+            $created=Write-ImmutableJson $holdImmutableJson $immutable
+            $snapshotHash=if(Test-Path $holdImmutableJson){(Get-FileHash -Algorithm SHA256 $holdImmutableJson).Hash.ToLower()}else{""}
+            Write-AtomicUtf8 $holdFinalMarker (([ordered]@{finalized_at=$holdFinalizedAt;candidate_count=$finalHoldTop5.Count;immutable_created=$created;snapshot_sha256=$snapshotHash;model_version=$immutable.model_version}|ConvertTo-Json))
             $speaker.Speak(("15時25分、翌日持ち越しTOP5を確定しました。候補数"+$finalHoldTop5.Count+"。銘柄と方向を保存しました。注文前に決算とイベントを確認してください。"),1)|Out-Null
         }
         $holdTop5=if($holdFinalized){@($finalHoldTop5)}else{@($provisionalHoldTop5)}
@@ -1062,6 +1129,8 @@ try {
         # 次にコレクターが稼働した取引日の大引け後、方向別の終値損益とMFE/MAEを採点する。
         if($now.TimeOfDay -ge [TimeSpan]::Parse("15:30:00")){
             $auditChanged=$false
+            try{$actualFills=@(Import-Csv -Encoding UTF8 $actualFillsPath)}catch{$actualFills=@()}
+            try{$auditV2=@(Import-Csv -Encoding UTF8 $auditV2Path)}catch{$auditV2=@()}
             foreach($record in $holdHistory|Where-Object{$_.status -eq "翌日検証待ち" -and $_.decision_date -lt $activeDay}){
                 $live=$results|Where-Object{$_.ticker -eq $record.ticker}|Select-Object -First 1
                 $entry=Get-SafeNumber $record.entry_close_price 0.01 10000000
@@ -1074,8 +1143,20 @@ try {
                 $record.evaluation_date=$activeDay;$record.next_open=[Math]::Round($open,2);$record.next_close=[Math]::Round($close,2);$record.next_high=[Math]::Round($high,2);$record.next_low=[Math]::Round($low,2)
                 $record.return_open_pct=[Math]::Round($retOpen,2);$record.return_close_pct=[Math]::Round($retClose,2);$record.mfe_pct=[Math]::Round($mfe,2);$record.mae_pct=[Math]::Round($mae,2)
                 $record.result=if($retClose -gt 0){"勝ち"}elseif($retClose -lt 0){"負け"}else{"引分"};$record.status="検証済み";$auditChanged=$true
+                $already=@($auditV2|Where-Object{$_.decision_date -eq $record.decision_date -and $_.ticker -eq $record.ticker}).Count -gt 0
+                if(-not $already){
+                    $fill=$actualFills|Where-Object{$_.decision_date -eq $record.decision_date -and $_.ticker -eq $record.ticker -and $_.side -eq $record.side}|Select-Object -First 1
+                    $actual=if($null -ne $fill){Get-SafeNumber $fill.actual_fill_price 0.01 10000000}else{$null}
+                    $auditEntry=if($null -ne $actual){$actual}else{$entry}
+                    $fillSource=if($null -ne $actual){"実約定入力"}else{"15:30終値代理（実約定未入力）"}
+                    if($record.side -eq "LONG"){$v2Open=($open/$auditEntry-1)*100-.10;$v2Close=($close/$auditEntry-1)*100-.10;$v2Mfe=($high/$auditEntry-1)*100-.10;$v2Mae=($low/$auditEntry-1)*100-.10}
+                    else{$v2Open=($auditEntry/$open-1)*100-.10;$v2Close=($auditEntry/$close-1)*100-.10;$v2Mfe=($auditEntry/$low-1)*100-.10;$v2Mae=($auditEntry/$high-1)*100-.10}
+                    $daySnapshot=Join-Path (Join-Path $dataRoot $record.decision_date) "overnight_hold_finalized.json"
+                    $markerV2=$null;try{if(Test-Path $daySnapshot){$markerV2=Get-Content -Raw -Encoding UTF8 $daySnapshot|ConvertFrom-Json}}catch{}
+                    $auditV2 += [pscustomobject]@{decision_date=$record.decision_date;rank=$record.rank;ticker=$record.ticker;name=$record.name;side=$record.side;model_version=if($null -ne $markerV2){$markerV2.model_version}else{"legacy"};snapshot_sha256=if($null -ne $markerV2){$markerV2.snapshot_sha256}else{""};reference_price_1525=$record.reference_price_1525;actual_fill_price=if($null -ne $actual){$actual}else{""};fill_source=$fillSource;cost_bps=10;benchmark="TOPIX未接続";next_trade_date=$activeDay;next_open=$open;next_high=$high;next_low=$low;next_close=$close;return_open_pct=[Math]::Round($v2Open,2);return_close_pct=[Math]::Round($v2Close,2);excess_open_pct="";excess_close_pct="";mfe_pct=[Math]::Round($v2Mfe,2);mae_pct=[Math]::Round($v2Mae,2);result=if($v2Close -gt 0){"勝ち"}elseif($v2Close -lt 0){"負け"}else{"引分"};missing_reason=if($null -eq $actual){"実約定未入力・ベンチマーク未接続"}else{"ベンチマーク未接続"}}
+                }
             }
-            if($auditChanged){Write-CsvObjects $holdHistoryPath $holdHistory}
+            if($auditChanged){Write-CsvObjects $holdHistoryPath $holdHistory;Write-CsvObjects $auditV2Path $auditV2}
         }
         $holdStats=Get-OvernightHoldStats $holdHistory
         Write-AtomicUtf8 $holdStatsPath (($holdStats|ConvertTo-Json -Depth 6))

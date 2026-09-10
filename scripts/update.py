@@ -1673,6 +1673,15 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 def main():
     now = datetime.now(JST)
+    try:
+        investor_regime = json.loads((ROOT / "investor_regime.json").read_text(encoding="utf-8"))
+    except Exception:
+        investor_regime = {
+            "model_version": "investor-regime-unavailable", "regime": {"name": "判定不能", "confidence": 0},
+            "connection": {"equity": "未取得", "derivative": "未取得", "observed_weeks": 0},
+            "asof": {}, "subjects": [], "learning": {"status": "学習不足"},
+            "type_filter": {"status": "未適用", "tailwind": [], "avoid": []},
+        }
     active_buybacks, buybacks_updated_at = load_active_buybacks(now)
     credit_supply, credit_supply_updated_at = load_credit_supply_map()
     session_override = os.getenv("COCKPIT_SESSION", "auto").strip().lower()
@@ -1782,7 +1791,10 @@ def main():
         reverse=True,
     )
     gunma_rare_earth_watch = gunma_rare_earth_watch[:5]
-    rotation = build_sector_rotation(indices, valid)
+    if offline_render and (previous.get("sector_rotation") or {}).get("us_sectors"):
+        rotation = previous["sector_rotation"]
+    else:
+        rotation = build_sector_rotation(indices, valid)
     day_pool = []
     for n, r in valid:
         if r["style"] not in ("day", "both") or r["turnover"] < 2_000_000_000 or not r.get("market_supply_improved"):
@@ -1923,13 +1935,14 @@ def main():
     for priority, theme in enumerate(policy_theme_tabs, 1):
         theme["priority"] = priority
 
-    official_earnings = jpx_earnings_map(now)
-    for code, item in config.get("earnings_overrides", {}).items():
-        delta = (pd.Timestamp(item["date"]).date() - now.date()).days
-        if -1 <= delta <= 7:
-            official_earnings[code] = item
-    earnings = []
-    for name, r in valid:
+    official_earnings = {} if offline_render else jpx_earnings_map(now)
+    if not offline_render:
+        for code, item in config.get("earnings_overrides", {}).items():
+            delta = (pd.Timestamp(item["date"]).date() - now.date()).days
+            if -1 <= delta <= 7:
+                official_earnings[code] = item
+    earnings = list(previous.get("earnings_candidates") or []) if offline_render else []
+    for name, r in ([] if offline_render else valid):
         code = r["ticker"].split(".")[0]
         official = official_earnings.get(code)
         dt = official["date"] if official else earnings_date(r["ticker"], now)
@@ -1956,6 +1969,38 @@ def main():
     precision_top5 = build_precision_top5(
         valid, rotation, official_earnings, now, credit_supply
     )
+    regime_name = (investor_regime.get("regime") or {}).get("name", "判定不能")
+    regime_available = (
+        (investor_regime.get("type_filter") or {}).get("status") == "利用可"
+        and int((investor_regime.get("connection") or {}).get("observed_weeks") or 0) >= 13
+    )
+    for item in precision_top5:
+        row = stocks.get(item["name"], {})
+        sector = str(row.get("sector") or "")
+        turnover = float(row.get("turnover") or 0)
+        rvol = float(row.get("rvol") or 0)
+        fit, fit_reasons = None, ["JPX履歴未取得のため上位フィルター未適用"]
+        if regime_available:
+            fit = 10.0
+            fit_reasons = []
+            if regime_name in {"FOREIGN RISK-ON", "FOREIGN RE-ENTRY"}:
+                if turnover >= 10_000_000_000: fit += 5; fit_reasons.append("大型売買代金")
+                if any(x in sector for x in ("半導体", "電機", "重工", "金融")): fit += 5; fit_reasons.append("海外資金感応セクター")
+            elif regime_name in {"RETAIL REVERSAL", "CREDIT SPECULATION"}:
+                if rvol >= 1.5: fit += 5; fit_reasons.append("出来高加速")
+                if row.get("style") in {"day", "both"}: fit += 5; fit_reasons.append("短期資金型")
+            elif regime_name in {"DISTRIBUTION", "RISK-OFF", "LATE RISK-ON"}:
+                fit = max(0, fit - (5 if rvol >= 2 else 0)); fit_reasons.append("過熱・高β型を抑制")
+            fit = max(0, min(20, fit))
+            legacy = float(item["score"])
+            item["score"] = round(max(0, min(100, legacy * .70 + fit)), 1)
+        item["regime_name"] = regime_name
+        item["regime_fit_20"] = fit
+        item["subject_sensitivity_10"] = None
+        item["score_coverage"] = 90 if fit is not None else 70
+        item["regime_applied"] = fit is not None
+        item["regime_adjustment_reason"] = "／".join(fit_reasons) + "／個別感応度は学習不足"
+        item["reason"] += f"／主体レジーム {regime_name}：{item['regime_adjustment_reason']}"
     strong_yen = build_strong_yen_top5(valid, indices, credit_supply)
     generated_photonics_watch = build_silicon_photonics_watch(
         stocks, official_earnings, now
@@ -2028,6 +2073,7 @@ def main():
         "gunma_rare_earth_watch": gunma_rare_earth_watch,
         "indices": indices, "stocks": stocks,
         "quality_gate": quality_gate,
+        "investor_regime": investor_regime,
         "precision_top5": precision_top5,
         "strong_yen_top5": strong_yen,
         "day_candidates": [{"name": n, **r, "plan": trade_plan(r, r.get("intraday"))} for n, r in day_rank],
@@ -2327,6 +2373,40 @@ def main():
  <p class="sub">{fx_study.get('method','同日発言をクラスター化して集計')}／価格：{fx_study.get('price_source','未取得')}</p>
  <p class="warning">{strong_yen['rule']}。円高だけでは買いません。海外売上の円換算減少、ヘッジ済み為替予約、原材料価格上昇で恩恵が相殺される場合があります。</p>
 </section>"""
+    regime = investor_regime.get("regime") or {}
+    regime_asof = investor_regime.get("asof") or {}
+    regime_connection = investor_regime.get("connection") or {}
+    regime_learning = investor_regime.get("learning") or {}
+    regime_filter = investor_regime.get("type_filter") or {}
+    subject_rows = "".join(
+        f"<tr><td><b>{x.get('label','—')}</b></td><td>{money(x.get('net'))}</td>"
+        f"<td>{money(x.get('previous_week_change'))}</td>"
+        f"<td>{money(x.get('cumulative_4w'))}<br><small>平均との差 {money(x.get('deviation_from_mean_4w'))}</small></td>"
+        f"<td>{money(x.get('cumulative_13w'))}<br><small>平均との差 {money(x.get('deviation_from_mean_13w'))}</small></td>"
+        f"<td>{money(x.get('cumulative_52w'))}<br><small>平均との差 {money(x.get('deviation_from_mean_52w'))}</small></td>"
+        f"<td>{'—' if x.get('z52') is None else f'{float(x.get(chr(122)+chr(53)+chr(50))):+.2f}'}</td>"
+        f"<td>{'—' if x.get('flow_impulse') is None else f'{float(x.get(chr(102)+chr(108)+chr(111)+chr(119)+chr(95)+chr(105)+chr(109)+chr(112)+chr(117)+chr(108)+chr(115)+chr(101))):+.2f}'}</td>"
+        f"<td>{x.get('streak_weeks') if x.get('streak_weeks') is not None else '—'}</td>"
+        f"<td>{x.get('reversal') or '—'}</td><td>{'—' if x.get('turnover_share_pct') is None else str(x.get('turnover_share_pct'))+'%'}</td>"
+        f"<td>225 {x.get('nikkei225_alignment') or '—'}／TOPIX {x.get('topix_alignment') or '—'}</td></tr>"
+        for x in (investor_regime.get("subjects") or [])
+    ) or "<tr><td colspan='12'>JPX公式ファイル未取得。欠測をゼロにせず、レジーム加点を停止しています。</td></tr>"
+    regime_reason = "／".join(regime.get("reasons") or ["必要データ不足"])
+    investor_regime_html = f"""
+<section id="investor-regime" class="card wide" style="border-color:#8b7cf6">
+ <h2>投資主体別レジーム｜JPX公式・時点管理</h2>
+ <div class="rotation-grid">
+  <div class="rotation-box"><b>今週レジーム</b><strong>{regime.get('name','判定不能')}</strong><small>{regime_reason}</small></div>
+  <div class="rotation-box"><b>信頼度</b><strong>{regime.get('confidence',0)}%</strong><small>欠測は信頼度を低下</small></div>
+  <div class="rotation-box"><b>公表基準日</b><strong>{regime_asof.get('period_end') or '未取得'}</strong><small>取得 {regime_asof.get('retrieved_at') or '—'}／改訂 {regime_asof.get('revision') or '—'}</small></div>
+  <div class="rotation-box"><b>海外現物／先物</b><strong>{regime_connection.get('derivative','未取得')}</strong><small>現物 {regime_connection.get('equity','未取得')}／{regime_connection.get('observed_weeks',0)}週</small></div>
+ </div>
+ <p class="sub"><b>追い風タイプ：</b>{'・'.join(regime_filter.get('tailwind') or []) or '未判定'}　／　<b>避けるタイプ：</b>{'・'.join(regime_filter.get('avoid') or []) or '未判定'}</p>
+ <table><thead><tr><th>主体</th><th>当週差引</th><th>前週比</th><th>4週累計</th><th>13週累計</th><th>52週累計</th><th>Z52</th><th>FLOW IMPULSE</th><th>継続週</th><th>反転</th><th>売買代金比</th><th>225／TOPIX</th></tr></thead><tbody>{subject_rows}</tbody></table>
+ <p class="sub">学習：{regime_learning.get('status','学習不足')}／最低独立週 {regime_learning.get('minimum_independent_weeks',26)}／52週＋長期・半減期 {regime_learning.get('time_decay_half_life_weeks',26)}週／ウォークフォワード {regime_learning.get('walk_forward',True)}</p>
+ <p class="warning">週次主体データは銘柄タイプの上位フィルターで、OR15・VWAP・EMAのザラバ発動条件ではありません。市場全体集計から個別銘柄の買い主体を断定せず、感応度が未学習なら加点しません。</p>
+ <p><a href="{investor_regime.get('source',{}).get('equity_page','#')}" target="_blank" rel="noopener">JPX株式・投資部門別</a> ／ <a href="{investor_regime.get('source',{}).get('derivative_page','#')}" target="_blank" rel="noopener">JPX先物・投資部門別</a></p>
+</section>"""
     live_focus_html = """
 <section id="live-focus-status" class="card wide" style="border-color:#35a7ff">
  <h2>ザラバ5分更新｜キオクシア＋精査TOP5　<button class="voice-toggle" data-voice-toggle type="button" style="float:right;padding:5px 12px;border-radius:7px">🔇 音声OFF</button></h2>
@@ -2450,6 +2530,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <header><div><h1>AIトレードコクピット Ver.5.2</h1><div class="sub">事前分析とMS2 RSS LIVEをこの1画面に統一</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／統一取引日 {quality_gate['market_date'] or '取得不能'}</div></div></header>
 <div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span></div><b id="unified-mode-time">—</b></div><main>
 {quality_html}
+{investor_regime_html}
 {live_focus_html}
 {focus_dashboard}
 {ms2_live_html}
@@ -2848,7 +2929,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     (side === "LONG" ? "up" : "down") + "'>" + x.score + "/100</b></td><td><b>" +
     yen(x.trigger) + "</b></td><td class='down'>" + yen(x.stop) + "</td><td>" +
     yen(x.target1) + "／" + yen(x.target2) + "</td><td>" + ifo +
-    "</td><td>" + x.reason + "</td><td>" + x.event_risk +
+    "</td><td>" + x.reason + "<br><small>" + (x.regime_reason || "主体レジーム未接続") + "</small></td><td>" + x.event_risk +
     "<br><small>" + x.caution + "</small></td></tr>");
   }}).join("");
   document.getElementById("overnight-long").innerHTML =

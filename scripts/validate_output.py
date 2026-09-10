@@ -26,8 +26,23 @@ def main():
     kio_history = load("kioxia_prediction_history.json")
     fx_study = load("fx_statement_study.json")
     live = load("live_focus.json")
+    investor = load("investor_regime.json")
     html = (ROOT / "index.html").read_text(encoding="utf-8")
     errors = []
+
+    if investor.get("model_version") != "investor-regime-1.1.0":
+        errors.append("investor regime model version is missing")
+    connection = investor.get("connection") or {}
+    asof = investor.get("asof") or {}
+    if connection.get("equity") == "接続済み" and not all(asof.get(k) for k in ("period_end", "retrieved_at", "revision", "sha256")):
+        errors.append("connected JPX data lacks point-in-time metadata")
+    if connection.get("equity") != "接続済み" and (investor.get("regime") or {}).get("name") not in {"判定不能", "MIXED"}:
+        errors.append("regime was inferred without connected JPX equity data")
+    for subject in investor.get("subjects") or []:
+        if subject.get("z52") == 0 and int(connection.get("observed_weeks") or 0) < 13:
+            errors.append("missing Z-score was zero-filled")
+    if (investor.get("learning") or {}).get("individual_stock_sensitivity") == "利用可" and int(connection.get("observed_weeks") or 0) < 26:
+        errors.append("stock sensitivity enabled below minimum sample")
 
     quality = data.get("quality_gate") or {}
     market_date = quality.get("market_date")
@@ -115,7 +130,7 @@ def main():
     for code, row in live_rows.items():
         if row.get("verified") and (row.get("price") is None or not row.get("chart")):
             errors.append(f"verified live row lacks price/chart: {code}")
-    for marker in ("AIトレードコクピット Ver.5.2", "データ品質ゲート", "精査TOP5", "kio-decision-grade", "円高恩恵銘柄 TOP5", "要人発言イベントスタディ", "ザラバ5分更新", "音声OFF", "cockpitSpeak", "予測対実績・5分監視", "次の注意時間", "発動価格（成行禁止）", "kio-trade-signal", "timedPath", "GU／GD幅別", "材料レーダー", "kio-setup-type", "kio-audit-hit", "kio-ms2-orderflow", "kio-ms2-stat", "kio-preopen-plan", "kio-open-decision", "127.0.0.1:28580/live_ms2.json"):
+    for marker in ("AIトレードコクピット Ver.5.2", "データ品質ゲート", "精査TOP5", "kio-decision-grade", "円高恩恵銘柄 TOP5", "要人発言イベントスタディ", "投資主体別レジーム", "FLOW IMPULSE", "市場全体集計から個別銘柄", "ザラバ5分更新", "音声OFF", "cockpitSpeak", "予測対実績・5分監視", "次の注意時間", "発動価格（成行禁止）", "kio-trade-signal", "timedPath", "GU／GD幅別", "材料レーダー", "kio-setup-type", "kio-audit-hit", "kio-ms2-orderflow", "kio-ms2-stat", "kio-preopen-plan", "kio-open-decision", "127.0.0.1:28580/live_ms2.json"):
         if marker not in html:
             errors.append(f"index.html missing marker: {marker}")
     yen_tab = html.find('data-tab="strong-yen"')
@@ -126,6 +141,8 @@ def main():
         errors.append("strong-yen tab was demoted into secondary navigation")
     if '"kioxia-calendar","strong-yen"' not in html or 's.id==="strong-yen-top5"' not in html:
         errors.append("strong-yen tab routing is missing")
+    if 'data-tab="investor-regime"' not in html or 's.id==="investor-regime"' not in html:
+        errors.append("investor-regime tab routing is missing")
 
     if errors:
         raise SystemExit("PUBLICATION BLOCKED\n- " + "\n- ".join(errors))

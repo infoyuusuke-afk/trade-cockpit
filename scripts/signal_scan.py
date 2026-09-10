@@ -845,6 +845,10 @@ def main():
     universe, source = load_universe()
     credit_supply, credit_supply_updated_at = load_credit_supply()
     try:
+        investor_regime = json.loads((ROOT / "investor_regime.json").read_text(encoding="utf-8"))
+    except Exception:
+        investor_regime = {"regime": {"name": "判定不能"}, "type_filter": {"status": "未適用"}, "connection": {"observed_weeks": 0}}
+    try:
         config = json.loads((ROOT / "watchlist.json").read_text(encoding="utf-8"))
         theme_by_code = {
             str(meta["ticker"]).split(".")[0]: meta.get("sector", "テーマ・材料要確認")
@@ -983,6 +987,38 @@ def main():
     for row in short_results:
         row.update(supply_view(row["code"], credit_supply))
 
+    regime_name = (investor_regime.get("regime") or {}).get("name", "判定不能")
+    regime_usable = ((investor_regime.get("type_filter") or {}).get("status") == "利用可"
+                     and int((investor_regime.get("connection") or {}).get("observed_weeks") or 0) >= 13)
+    def apply_regime(rows, side):
+        for row in rows:
+            row["legacy_score_before_regime"] = row["score"]
+            row["regime_name"] = regime_name
+            row["subject_sensitivity_10"] = None
+            row["sensitivity_status"] = "学習不足"
+            if not regime_usable:
+                row["regime_fit_20"] = None
+                row["regime_applied"] = False
+                row["regime_reason"] = "JPX履歴未取得・既存採点を維持"
+                continue
+            fit = 10
+            turnover = float(row.get("close") or 0) * float(row.get("volume") or 0)
+            if regime_name in {"FOREIGN RISK-ON", "FOREIGN RE-ENTRY"}:
+                fit = 0 if side == "SHORT" else 15 + (5 if turnover >= 10_000_000_000 else 0)
+            elif regime_name == "DOMESTIC SUPPORT": fit = 15 if side == "LONG" else 5
+            elif regime_name in {"RETAIL REVERSAL", "CREDIT SPECULATION"}: fit = 15 if side == "LONG" else 5
+            elif regime_name in {"DISTRIBUTION", "RISK-OFF"}: fit = 20 if side == "SHORT" else 0
+            elif regime_name == "LATE RISK-ON": fit = 15 if side == "SHORT" else 5
+            row["regime_fit_20"] = max(0, min(20, fit))
+            row["regime_applied"] = True
+            row["score"] = round(max(0, min(100, row["score"] * .70 + row["regime_fit_20"])))
+            row["regime_reason"] = f"既存70点＋レジーム適合{row['regime_fit_20']}/20＋感応度未学習/10"
+
+    apply_regime(results, "LONG")
+    apply_regime(short_results, "SHORT")
+    results.sort(key=lambda x: (x["score"], x["rvol"], x["ret20"]), reverse=True)
+    short_results.sort(key=lambda x: (x["score"], x["rvol"], -x["ret20"]), reverse=True)
+
     speculative_top = speculative_results[:5]
     speculative_codes = {x["code"] for x in speculative_top}
     overnight_long = [
@@ -1017,6 +1053,7 @@ def main():
         "entered": entered[:50],
         "overnight_long": overnight_long,
         "overnight_short": overnight_short,
+        "investor_regime": investor_regime,
         "speculative_theme_watch": speculative_top,
         "large_lot_accumulation": accumulation_results[:20],
         "large_lot_accumulation_note": (
