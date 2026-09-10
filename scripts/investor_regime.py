@@ -106,16 +106,20 @@ def subject_metrics(weekly: list[dict], subject: str) -> dict:
     nets = [r.get("subjects", {}).get(subject, {}).get("net") for r in rows]
     current = nets[-1] if nets else None
     previous = nets[-2] if len(nets) >= 2 else None
-    z = safe_z(current, nets[-52:])
-    prior_z = safe_z(previous, nets[-53:-1]) if len(nets) >= 2 else None
+    z = safe_z(current, nets[-52:], minimum=52)
+    prior_z = safe_z(previous, nets[-53:-1], minimum=52) if len(nets) >= 53 else None
 
     def cumulative(window: int):
-        vals = [x for x in nets[-window:] if x is not None]
-        return sum(vals) if len(vals) == min(window, len(nets)) and vals else None
+        if len(nets) < window:
+            return None
+        vals = nets[-window:]
+        return sum(vals) if all(x is not None for x in vals) else None
 
     def mean_and_deviation(window: int):
-        vals = [x for x in nets[-window:] if x is not None]
-        if not vals or len(vals) != min(window, len(nets)) or current is None:
+        if len(nets) < window:
+            return None, None
+        vals = nets[-window:]
+        if any(x is None for x in vals) or current is None:
             return None, None
         mean = statistics.mean(vals)
         return mean, current - mean

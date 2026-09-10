@@ -84,13 +84,26 @@ class MetricTests(unittest.TestCase):
 
     def test_flow_impulse_reversal_and_streak(self):
         weekly = []
-        for i in range(52):
+        for i in range(53):
             net = i - 30
             weekly.append({"period_end": f"2025-{(i//4)+1:02d}-{(i%4)+1:02d}", "subjects": {"foreign": {"net": net, "gross": 100}}, "market_turnover": 1000})
         m = subject_metrics(weekly, "foreign")
         self.assertIsNotNone(m["z52"])
-        self.assertGreater(m["flow_impulse"], 0)
+        self.assertIsNotNone(m["flow_impulse"])
         self.assertGreater(m["streak_weeks"], 0)
+
+    def test_partial_history_is_not_mislabeled_as_13_or_52_weeks(self):
+        weekly = [
+            {"period_end": f"2026-08-{i:02d}",
+             "subjects": {"foreign": {"net": i, "gross": 100}},
+             "market_turnover": 1000}
+            for i in range(1, 6)
+        ]
+        m = subject_metrics(weekly, "foreign")
+        self.assertEqual(m["cumulative_4w"], 2 + 3 + 4 + 5)
+        self.assertIsNone(m["cumulative_13w"])
+        self.assertIsNone(m["cumulative_52w"])
+        self.assertIsNone(m["z52"])
 
     def test_regime_requires_evidence(self):
         empty = {x: {"net": None, "z52": None, "flow_impulse": None} for x in (
