@@ -1,9 +1,48 @@
 {
-  "updated_at": "2026-09-10 20:05 JST",
-  "today": "2026-09-10",
-  "today_level": "通常",
-  "today_rule": "通常ルール。OR15・VWAP・需給を確認。",
-  "today_events": [],
+  "updated_at": "2026-09-11 05:39 JST",
+  "today": "2026-09-11",
+  "today_level": "高警戒",
+  "today_rule": "イベント由来の方向を決め打ちしない。発表・実需確認後にOR15/VWAPで再判定。",
+  "today_events": [
+    {
+      "id": "cpi-2026-09-11",
+      "title": "米CPI（8月）",
+      "date": "2026-09-11",
+      "category": "米経済",
+      "time_jst": "21:30",
+      "status": "公式確認済み",
+      "impact": "高",
+      "expected_flow": "米金利・ドル円・グロースのボラティリティ拡大",
+      "action": "発表直前の新規持ち越し禁止。翌朝は気配を再判定",
+      "announcement_date": "—",
+      "base_date": "—",
+      "flow_date": "2026-09-11",
+      "effective_date": "—",
+      "trade_block": false,
+      "note": "",
+      "source_name": "U.S. BLS・CPI release schedule",
+      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm"
+    },
+    {
+      "id": "sq-9",
+      "title": "メジャーSQ",
+      "date": "2026-09-11",
+      "category": "日本需給",
+      "time_jst": "寄り付き",
+      "status": "公式確認済み",
+      "impact": "高",
+      "expected_flow": "寄り付きに先物・オプション精算需給（方向は事前断定不可）",
+      "action": "寄り成行禁止。OR15確定まで往復ピンタを警戒",
+      "announcement_date": "—",
+      "base_date": "—",
+      "flow_date": "2026-09-11",
+      "effective_date": "—",
+      "trade_block": false,
+      "note": "第2金曜の規則計算。休場変更時はJPX最終売買日を再確認。",
+      "source_name": "JPX・先物オプション最終取引日",
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/"
+    }
+  ],
   "upcoming": [
     {
       "id": "cpi-2026-09-11",
