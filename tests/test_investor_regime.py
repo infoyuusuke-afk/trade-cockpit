@@ -5,8 +5,10 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import pandas as pd
+
 from scripts.investor_regime import (
-    _period_from_name,
+    _equity_period, _equity_subjects, _period_from_name,
     detect_regime, directional_return, independent_week_count, learn_sensitivity,
     parse_derivative_csv, performance_metrics, safe_z, score_with_regime,
     select_asof, subject_metrics,
@@ -49,6 +51,33 @@ class PointInTimeTests(unittest.TestCase):
 
 
 class MetricTests(unittest.TestCase):
+    def test_equity_workbook_uses_covered_range_and_current_columns(self):
+        frame = pd.DataFrame([[None] * 11 for _ in range(78)])
+        frame.iat[3, 0] = "2026年9月第1週 2026/9 week1  ( 8/31 - 9/4 )"
+        frame.iat[8, 1] = "100,845,017,660"
+        blocks = {
+            12: ("自己計", 5_324_742_290, 5_242_555_463),
+            29: ("海外投資家", 29_610_539_594, 30_299_882_474),
+            37: ("投資信託", 1_079_043_527, 775_211_875),
+            40: ("事業法人", 365_696_869, 643_687_123),
+            51: ("生保・損保", 69_086_002, 20_736_097),
+            57: ("信託銀行", 1_294_765_354, 847_843_066),
+        }
+        for i, (label, sell, buy) in blocks.items():
+            frame.iat[i, 0] = label; frame.iat[i, 8] = sell
+            frame.iat[i + 1, 8] = buy
+        frame.iat[67, 0] = "個人現金\nIndividual Cash"
+        frame.iat[67, 2] = 2_534_211_897; frame.iat[67, 4] = 2_447_219_131
+        frame.iat[68, 0] = "個人信用\nIndividual Margin"
+        frame.iat[68, 2] = 9_470_088_390; frame.iat[68, 4] = 9_555_213_558
+        self.assertEqual(_equity_period(frame), ("2026-08-31", "2026-09-04"))
+        subjects, turnover = _equity_subjects(frame)
+        self.assertEqual(subjects["foreign"]["net"], 689_342_880)
+        self.assertEqual(subjects["individual_margin"]["net"], 85_125_168)
+        self.assertEqual(subjects["life_insurance"]["source_label"], "生保・損保（公式合算）")
+        self.assertNotIn("non_life_insurance", subjects)
+        self.assertEqual(turnover, 100_845_017_660)
+
     def test_missing_and_zero_variance_do_not_become_zero_z(self):
         self.assertIsNone(safe_z(None, [1] * 52))
         self.assertIsNone(safe_z(1, [1] * 52))
@@ -82,6 +111,25 @@ class MetricTests(unittest.TestCase):
             parsed = parse_derivative_csv(path, "2026-09-04")
         self.assertEqual(parsed["net"], 40)
         self.assertEqual(parsed["matched_rows"], 1)
+
+    def test_derivative_current_code_format_uses_value_rows_only(self):
+        content = ("帳票種別 Product type,サイクル区分 Cycle,\"年月週 Year, Month, Week\","
+                   "報告年月日（自）Period covered - from,報告年月日（至）Period covered - to,"
+                   "投資部門コード Type of Investor,数量金額区分 Volume/Value,売 Sales,"
+                   "売-差引 Balance,買 Purchases,買-差引 Balance,合計 Total\n"
+                   "301,1,2026091,20260831,20260904,60,1,100,0,140,40,240\n"
+                   "301,1,2026091,20260831,20260904,60,2,100000,0,140000,40000,240000\n"
+                   "313,1,2026091,20260831,20260904,60,2,200000,50000,150000,0,350000\n"
+                   "314,1,2026091,20260831,20260904,60,2,1,0,999,998,1000\n"
+                   "301,1,2026091,20260831,20260904,51,2,1,0,999,998,1000\n")
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "f.csv"
+            path.write_text(content, encoding="utf-8-sig")
+            parsed = parse_derivative_csv(path, "bad-fallback")
+        self.assertEqual(parsed["period_end"], "2026-09-04")
+        self.assertEqual(parsed["net"], -10_000)
+        self.assertEqual(parsed["matched_rows"], 2)
+        self.assertEqual(parsed["basis"], "trading_value_yen")
 
 
 class ScoringAndAuditTests(unittest.TestCase):

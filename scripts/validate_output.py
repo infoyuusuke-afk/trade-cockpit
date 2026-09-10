@@ -30,19 +30,22 @@ def main():
     html = (ROOT / "index.html").read_text(encoding="utf-8")
     errors = []
 
-    if investor.get("model_version") != "investor-regime-1.1.0":
+    if investor.get("model_version") != "investor-regime-1.2.0":
         errors.append("investor regime model version is missing")
     connection = investor.get("connection") or {}
     asof = investor.get("asof") or {}
-    if connection.get("equity") == "接続済み" and not all(asof.get(k) for k in ("period_end", "retrieved_at", "revision", "sha256")):
+    equity_connected = str(connection.get("equity") or "").startswith("接続済み")
+    if equity_connected and not all(asof.get(k) for k in ("period_end", "retrieved_at", "revision", "sha256")):
         errors.append("connected JPX data lacks point-in-time metadata")
-    if connection.get("equity") != "接続済み" and (investor.get("regime") or {}).get("name") not in {"判定不能", "MIXED"}:
+    if not equity_connected and (investor.get("regime") or {}).get("name") not in {"判定不能", "MIXED"}:
         errors.append("regime was inferred without connected JPX equity data")
     for subject in investor.get("subjects") or []:
         if subject.get("z52") == 0 and int(connection.get("observed_weeks") or 0) < 13:
             errors.append("missing Z-score was zero-filled")
     if (investor.get("learning") or {}).get("individual_stock_sensitivity") == "利用可" and int(connection.get("observed_weeks") or 0) < 26:
         errors.append("stock sensitivity enabled below minimum sample")
+    if int(connection.get("observed_weeks") or 0) < 13 and (investor.get("type_filter") or {}).get("status") == "利用可":
+        errors.append("regime type filter enabled below minimum sample")
 
     quality = data.get("quality_gate") or {}
     market_date = quality.get("market_date")

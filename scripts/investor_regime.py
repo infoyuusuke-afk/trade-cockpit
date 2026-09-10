@@ -29,7 +29,7 @@ JST = ZoneInfo("Asia/Tokyo")
 ARCHIVE = ROOT / "data" / "jpx_investor"
 MANIFEST = ARCHIVE / "manifest.json"
 OUTPUT = ROOT / "investor_regime.json"
-MODEL_VERSION = "investor-regime-1.1.0"
+MODEL_VERSION = "investor-regime-1.2.0"
 
 EQUITY_PAGE = "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html"
 DERIVATIVE_PAGE = "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html"
@@ -49,8 +49,8 @@ SUBJECT_LABELS = {
     "foreign": "海外", "individual_cash": "個人現金",
     "individual_margin": "個人信用", "business_corporations": "事業法人",
     "investment_trusts": "投資信託", "trust_banks": "信託銀行",
-    "proprietary": "証券自己", "life_insurance": "生保",
-    "non_life_insurance": "損保",
+    "proprietary": "証券自己", "life_insurance": "生保・損保（合算）",
+    "non_life_insurance": "損保（単独未取得）",
 }
 
 
@@ -121,6 +121,7 @@ def subject_metrics(weekly: list[dict], subject: str) -> dict:
         return mean, current - mean
 
     gross = rows[-1].get("subjects", {}).get(subject, {}).get("gross") if rows else None
+    source_label = rows[-1].get("subjects", {}).get(subject, {}).get("source_label") if rows else None
     market_turnover = rows[-1].get("market_turnover") if rows else None
     reversal = None
     if current is not None and previous is not None and current * previous < 0:
@@ -140,6 +141,8 @@ def subject_metrics(weekly: list[dict], subject: str) -> dict:
         "flow_impulse": None if z is None or prior_z is None else round(z - prior_z, 4),
         "streak_weeks": signed_streak(nets), "reversal": reversal,
         "turnover_share_pct": None if gross is None or not market_turnover else round(gross / market_turnover * 100, 4),
+        "source_label": source_label,
+        "availability": "available" if current is not None else "missing",
         "nikkei225_alignment": None,
         "topix_alignment": None,
     }
@@ -330,7 +333,12 @@ def archive_official_files(now: datetime) -> list[dict]:
     for dataset, page, extensions in specs:
         try: links = discover_official_files(page, extensions)
         except Exception: continue
-        for url in links[:12]:
+        for url in links[:24]:
+            # The equity page publishes both share-volume and trading-value
+            # workbooks.  Regime calculations use value only; the two files
+            # are different series, not revisions of one another.
+            if dataset == "equity" and "stock_val_" not in url.lower():
+                continue
             try: blob = _fetch(url)
             except Exception: continue
             digest = hashlib.sha256(blob).hexdigest()
@@ -357,33 +365,106 @@ def _num(value):
     except ValueError: return None
 
 
-def parse_equity_workbook(path: Path, period_end: str) -> dict | None:
-    """Parse JPX sheets conservatively; ambiguous rows remain missing."""
-    try: sheets = pd.read_excel(path, sheet_name=None, header=None)
-    except Exception: return None
+def _normalise_label(value) -> str:
+    return re.sub(r"[\s　]+", "", str(value or ""))
+
+
+def _equity_period(frame: pd.DataFrame) -> tuple[str | None, str | None]:
+    """Read the covered dates from the workbook body, never the week-number filename."""
+    text = " ".join(str(x) for x in frame.iloc[:8].to_numpy().flatten() if pd.notna(x))
+    year_match = re.search(r"(20\d{2})年", text)
+    range_match = re.search(
+        r"\(\s*(\d{1,2})/(\d{1,2})\s*[-－―〜～]\s*(\d{1,2})/(\d{1,2})\s*\)", text
+    )
+    if not year_match or not range_match:
+        return None, None
+    end_year = int(year_match.group(1))
+    sm, sd, em, ed = map(int, range_match.groups())
+    start_year = end_year - 1 if sm > em else end_year
+    return f"{start_year:04d}-{sm:02d}-{sd:02d}", f"{end_year:04d}-{em:02d}-{ed:02d}"
+
+
+def _equity_subjects(frame: pd.DataFrame) -> tuple[dict[str, dict], float | None]:
+    """Parse the current-week columns of the JPX value workbook.
+
+    The official sheet uses three-row blocks for most subjects and a separate
+    cash/margin table for individuals.  We calculate net from sales and
+    purchases and require the displayed balance, when present, to agree.
+    """
+    grid = frame.copy()
+    labels = [_normalise_label(x) for x in grid.iloc[:, 0].tolist()]
+
+    def row_for(*aliases: str) -> int | None:
+        wanted = [_normalise_label(x) for x in aliases]
+        return next((i for i, label in enumerate(labels)
+                     if any(label == x or label.startswith(x) for x in wanted)), None)
+
+    def block(key: str, *aliases: str, source_label: str | None = None):
+        i = row_for(*aliases)
+        if i is None or i + 1 >= len(grid):
+            return
+        sell = _num(grid.iat[i, 8]) if grid.shape[1] > 8 else None
+        buy = _num(grid.iat[i + 1, 8]) if grid.shape[1] > 8 else None
+        if sell is None or buy is None:
+            return
+        shown = None
+        if grid.shape[1] > 10:
+            shown = _num(grid.iat[i, 10])
+            if shown is None:
+                shown = _num(grid.iat[i + 1, 10])
+        net = buy - sell
+        if shown is not None and abs(net - shown) > max(2, abs(shown) * .002):
+            return
+        subjects[key] = {"sell": sell, "buy": buy, "net": net,
+                         "gross": sell + buy,
+                         "source_label": source_label or aliases[0],
+                         "availability": "available"}
+
+    def single_row(key: str, *aliases: str):
+        i = row_for(*aliases)
+        if i is None:
+            return
+        sell = _num(grid.iat[i, 2]) if grid.shape[1] > 2 else None
+        buy = _num(grid.iat[i, 4]) if grid.shape[1] > 4 else None
+        if sell is None or buy is None:
+            return
+        subjects[key] = {"sell": sell, "buy": buy, "net": buy - sell,
+                         "gross": sell + buy, "source_label": aliases[0],
+                         "availability": "available"}
+
     subjects: dict[str, dict] = {}
-    market_turnover = None
-    for frame in sheets.values():
-        grid = frame.fillna("").astype(str)
-        for ri, row in grid.iterrows():
-            joined = " ".join(row.tolist()).replace(" ", "")
-            key = next((k for k, aliases in SUBJECT_ALIASES.items() if any(a in joined for a in aliases)), None)
-            if not key: continue
-            nums = [_num(x) for x in row.tolist()]
-            nums = [x for x in nums if x is not None]
-            if len(nums) < 2: continue
-            # Official layouts place sales/buys/net adjacently. Require the
-            # third value to equal buy-sales within rounding tolerance.
-            found = None
-            for i in range(len(nums) - 2):
-                sell, buy, net = nums[i:i+3]
-                if abs((buy - sell) - net) <= max(2, abs(net) * .002):
-                    found = (sell, buy, net)
-            if found:
-                sell, buy, net = found
-                subjects[key] = {"sell": sell, "buy": buy, "net": net, "gross": sell + buy}
-    if not subjects: return None
-    return {"period_end": period_end, "subjects": subjects, "market_turnover": market_turnover}
+    block("proprietary", "自己計")
+    block("foreign", "海外投資家")
+    block("investment_trusts", "投資信託")
+    block("business_corporations", "事業法人")
+    block("trust_banks", "信託銀行")
+    # JPX's equity workbook publishes life and non-life insurers as one row.
+    # Keep the combined observation once and do not fabricate a split.
+    block("life_insurance", "生保・損保", source_label="生保・損保（公式合算）")
+    single_row("individual_cash", "個人現金")
+    single_row("individual_margin", "個人信用")
+    market_turnover = _num(grid.iat[8, 1]) if len(grid) > 8 and grid.shape[1] > 1 else None
+    return subjects, market_turnover
+
+
+def parse_equity_workbook(path: Path, period_end: str | None = None) -> dict | None:
+    """Parse JPX trading-value workbook; ambiguous fields remain missing."""
+    try:
+        sheets = pd.read_excel(path, sheet_name=None, header=None)
+    except Exception:
+        return None
+    preferred = next((frame for name, frame in sheets.items()
+                      if "Tokyo & Nagoya" in str(name) or "二市場" in str(name)), None)
+    if preferred is None:
+        preferred = max(sheets.values(), key=lambda x: len(x), default=None)
+    if preferred is None:
+        return None
+    period_start, actual_end = _equity_period(preferred)
+    subjects, market_turnover = _equity_subjects(preferred)
+    if not subjects or not (actual_end or period_end):
+        return None
+    return {"period_start": period_start, "period_end": actual_end or period_end,
+            "subjects": subjects, "market_turnover": market_turnover}
 
 
 def parse_derivative_csv(path: Path, period_end: str) -> dict | None:
@@ -423,6 +504,44 @@ def parse_derivative_csv(path: Path, period_end: str) -> dict | None:
     sell_col = column("売り取引高", "売取引高", "売り", "売")
     buy_col = column("買い取引高", "買取引高", "買い", "買")
     net_col = column("差引", "ネット")
+    # Current (2026-04-13 onward) official format identifies subjects and
+    # products by JPX codes.  60=overseas; 301/313/331=Nikkei 225
+    # large/mini/micro; value rows (2) make contract sizes comparable.
+    code_format = all(any(term in name for name in header) for term in
+                      ("帳票種別", "投資部門コード", "数量金額区分"))
+    if code_format:
+        product_col = column("帳票種別")
+        value_col = column("数量金額区分")
+        period_start_col = column("報告年月日（自）")
+        period_end_col = column("報告年月日（至）")
+        if None in (subject_col, product_col, value_col, sell_col, buy_col):
+            return None
+        sell_total = buy_total = 0.0
+        matched = 0
+        actual_start = actual_end = None
+        for row in rows[header_index + 1:]:
+            if max(subject_col, product_col, value_col, sell_col, buy_col) >= len(row):
+                continue
+            if row[subject_col].strip() != "60" or row[product_col].strip() not in {"301", "313", "331"}:
+                continue
+            if row[value_col].strip() != "2":
+                continue
+            sell, buy = _num(row[sell_col]), _num(row[buy_col])
+            if sell is None or buy is None:
+                continue
+            sell_total += sell; buy_total += buy; matched += 1
+            if period_start_col is not None and period_start_col < len(row):
+                token = re.sub(r"\D", "", row[period_start_col])
+                if len(token) == 8: actual_start = f"{token[:4]}-{token[4:6]}-{token[6:]}"
+            if period_end_col is not None and period_end_col < len(row):
+                token = re.sub(r"\D", "", row[period_end_col])
+                if len(token) == 8: actual_end = f"{token[:4]}-{token[4:6]}-{token[6:]}"
+        if not matched:
+            return None
+        return {"period_start": actual_start, "period_end": actual_end or period_end,
+                "sell": sell_total, "buy": buy_total, "net": buy_total - sell_total,
+                "matched_rows": matched, "basis": "trading_value_yen",
+                "product_codes": ["301", "313", "331"], "investor_code": "60"}
     if None in (subject_col, product_col, sell_col, buy_col):
         return None
     sell_total = buy_total = 0.0
@@ -455,15 +574,34 @@ def parse_derivative_csv(path: Path, period_end: str) -> dict | None:
 def build_output(now: datetime, decision_at: datetime | None = None, fetch: bool = True) -> dict:
     manifest = archive_official_files(now) if fetch else _load_manifest()
     decision_at = decision_at or now
-    chosen = select_asof(manifest, decision_at, "equity")
-    weekly = []
+    weekly_records = []
     for record in manifest:
         if record.get("dataset") != "equity" or parse_dt(record["retrieved_at"]) > decision_at: continue
+        if "stock_val_" not in str(record.get("source_url", "")).lower():
+            continue
         parsed = parse_equity_workbook(ROOT / record["local_file"], record["period_end"])
-        if parsed: weekly.append(parsed)
-    # Keep only the newest observable revision for each week.
-    weekly_by_end = {x["period_end"]: x for x in weekly}
-    weekly = [weekly_by_end[k] for k in sorted(weekly_by_end)]
+        if parsed:
+            weekly_records.append({"record": record, "parsed": parsed})
+    # Keep only the newest actually observed revision for each covered week.
+    weekly_by_end = {}
+    for item in weekly_records:
+        end = item["parsed"]["period_end"]
+        prior = weekly_by_end.get(end)
+        key = (item["record"].get("retrieved_at", ""), item["record"].get("revision", 0))
+        if prior is None or key > (prior["record"].get("retrieved_at", ""), prior["record"].get("revision", 0)):
+            weekly_by_end[end] = item
+    ordered = [weekly_by_end[k] for k in sorted(weekly_by_end)]
+    weekly = [x["parsed"] for x in ordered]
+    chosen_item = ordered[-1] if ordered else None
+    chosen = chosen_item["record"] if chosen_item else None
+    chosen_parsed = chosen_item["parsed"] if chosen_item else None
+    effective_revision = None
+    if chosen_item:
+        same_period_hashes = {
+            x["record"].get("sha256") for x in weekly_records
+            if x["parsed"].get("period_end") == chosen_parsed.get("period_end")
+        }
+        effective_revision = len({x for x in same_period_hashes if x}) or 1
     metrics = {key: subject_metrics(weekly, key) for key in SUBJECT_ALIASES}
     derivative = select_asof(manifest, decision_at, "derivative")
     parsed_futures = None
@@ -475,7 +613,7 @@ def build_output(now: datetime, decision_at: datetime | None = None, fetch: bool
         "available": parsed_futures is not None,
         "status": "接続済み" if parsed_futures else ("CSV形式確認待ち" if derivative else "先物公式CSV未取得"),
         "source": derivative.get("source_url") if derivative else None,
-        "period_end": derivative.get("period_end") if derivative else None,
+        "period_end": parsed_futures.get("period_end") if parsed_futures else (derivative.get("period_end") if derivative else None),
         "retrieved_at": derivative.get("retrieved_at") if derivative else None,
         "foreign_nikkei225_futures_net": futures_net,
         "aligned": None if foreign_net is None or futures_net is None or foreign_net == 0 or futures_net == 0 else foreign_net * futures_net > 0,
@@ -488,12 +626,15 @@ def build_output(now: datetime, decision_at: datetime | None = None, fetch: bool
         "source": {"equity_page": EQUITY_PAGE, "derivative_page": DERIVATIVE_PAGE,
             "definition_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/07.html",
             "publication_rule": "毎週第4営業日15:30。実取得確認時刻を利用し、予定時刻では解禁しない。"},
-        "asof": {"period_end": chosen.get("period_end") if chosen else None,
+        "asof": {"period_end": chosen_parsed.get("period_end") if chosen_parsed else None,
+            "period_start": chosen_parsed.get("period_start") if chosen_parsed else None,
             "retrieved_at": chosen.get("retrieved_at") if chosen else None,
-            "revision": chosen.get("revision") if chosen else None,
+            "revision": effective_revision,
             "sha256": chosen.get("sha256") if chosen else None},
-        "connection": {"equity": "接続済み" if weekly else "未取得", "derivative": futures["status"],
-            "observed_weeks": observed_weeks},
+        "connection": {"equity": "接続済み（現物・金額）" if weekly else "未取得", "derivative": futures["status"],
+            "observed_weeks": observed_weeks,
+            "parsed_subjects": sum(1 for x in metrics.values() if x.get("net") is not None),
+            "insurer_split": "JPX公式は生保・損保合算。単独系列は未取得"},
         "regime": regime, "subjects": list(metrics.values()), "foreign_futures_alignment": futures,
         "learning": {"status": "利用可" if observed_weeks >= 52 else "学習不足",
             "minimum_independent_weeks": 26, "recent_window_weeks": 52,
@@ -505,7 +646,7 @@ def build_output(now: datetime, decision_at: datetime | None = None, fetch: bool
             "requires_verified_connection": ["size_bucket", "market_cap", "beta", "nikkei225_relative_strength", "topix_relative_strength", "growth_value", "ROE", "PBR", "buyback", "foreign_ownership", "overseas_sales", "lending_balance"],
             "policy": "未取得特徴はゼロ補完せず、採点にも使用しない。",
         },
-        "type_filter": {"status": "利用可" if regime["name"] not in ("判定不能",) else "未適用",
+        "type_filter": {"status": "利用可" if observed_weeks >= 13 and regime["name"] not in ("判定不能",) else "学習不足・未適用",
             "tailwind": tailwind, "avoid": avoid, "note": "週次主体データは上位フィルターであり、ザラバ発動サインではありません。"},
         "warnings": ["市場全体集計から個別銘柄の買い主体を断定しません。", "欠測はゼロ補完しません。"],
     }
