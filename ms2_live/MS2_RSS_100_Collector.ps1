@@ -629,6 +629,7 @@ try {
         $jnxValues = $jnxPacket.Data
         $results = @()
         $validCount = 0
+        $preopenQuoteCount = 0
         $snapshotDue = (($now - $lastSnapshotAt).TotalSeconds -ge $SnapshotSeconds)
 
         for ($i=0; $i -lt $stocks.Count; $i++) {
@@ -653,7 +654,27 @@ try {
             $specialSell=Get-TextValue (Get-TableValue $values $r 29)
             $specialBuy=Get-TextValue (Get-TableValue $values $r 30)
             $openPrice=Get-SafeNumber (Get-TableValue $values $r 31) 0.01 10000000
-            if ($null -eq $price) { continue }
+            $clock=$now.TimeOfDay
+            $inOr5=($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -lt [TimeSpan]::Parse("09:05:00"))
+            $afterOr5=($clock -ge [TimeSpan]::Parse("09:05:00"))
+            $inOr=($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -lt [TimeSpan]::Parse("09:15:00"))
+            $inPreopen=($clock -ge [TimeSpan]::Parse("08:00:00") -and $clock -lt [TimeSpan]::Parse("09:00:00"))
+            $afterOr=($clock -ge [TimeSpan]::Parse("09:15:00")); $inSession=(($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -le [TimeSpan]::Parse("11:30:00")) -or ($clock -ge [TimeSpan]::Parse("12:30:00") -and $clock -le [TimeSpan]::Parse("15:30:00")))
+
+            # Before the opening auction, RSS may leave Current Price blank even
+            # though bid/ask and the reference price are already populated.  Do
+            # not discard those rows: the pre-open model is driven by the quote.
+            $quoteCenter=0.0
+            if($bid -gt 0 -and $ask -gt 0){$quoteCenter=($bid+$ask)/2}
+            elseif($bid -gt 0){$quoteCenter=$bid}
+            elseif($ask -gt 0){$quoteCenter=$ask}
+            if($inPreopen -and $quoteCenter -gt 0){$preopenQuoteCount++}
+            $reference=if($null -ne $referencePrice -and $referencePrice -gt 0){$referencePrice}else{Get-SafeNumber (Get-TableValue $values $r 3) 0.01 10000000}
+            if ($null -eq $price) {
+                if($inPreopen -and $quoteCenter -gt 0){$price=$quoteCenter}
+                elseif($inPreopen -and $null -ne $reference -and $reference -gt 0){$price=$reference}
+                else{continue}
+            }
             $validCount++
             if ($null -eq $volume) {$volume=0}; if ($null -eq $vwap) {$vwap=0}; if ($null -eq $bid) {$bid=0}; if ($null -eq $ask) {$ask=0}
             if ($null -eq $bidQty) {$bidQty=0}; if ($null -eq $askQty) {$askQty=0}; if ($null -eq $marketSell) {$marketSell=0}; if ($null -eq $marketBuy) {$marketBuy=0}
@@ -664,12 +685,6 @@ try {
             $priceDelta = if ($null -ne $prev) {$price-$prev.Price} else {0}
             $uoChange = if ($null -ne $prev) {$underRatio-$prev.UnderRatio} else {0}
 
-            $clock=$now.TimeOfDay
-            $inOr5=($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -lt [TimeSpan]::Parse("09:05:00"))
-            $afterOr5=($clock -ge [TimeSpan]::Parse("09:05:00"))
-            $inOr=($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -lt [TimeSpan]::Parse("09:15:00"))
-            $inPreopen=($clock -ge [TimeSpan]::Parse("08:00:00") -and $clock -lt [TimeSpan]::Parse("09:00:00"))
-            $afterOr=($clock -ge [TimeSpan]::Parse("09:15:00")); $inSession=(($clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -le [TimeSpan]::Parse("11:30:00")) -or ($clock -ge [TimeSpan]::Parse("12:30:00") -and $clock -le [TimeSpan]::Parse("15:30:00")))
             if ($inOr) {
                 if (-not $orHigh.ContainsKey($ticker) -or $price -gt $orHigh[$ticker]) {$orHigh[$ticker]=$price}
                 if (-not $orLow.ContainsKey($ticker) -or $price -lt $orLow[$ticker]) {$orLow[$ticker]=$price}
@@ -746,11 +761,6 @@ try {
             $trendLong=($vwap -gt 0 -and $null -ne $lastBar -and [double]$lastBar.Close -gt $vwap -and (($emaReady -and $ema9 -gt $ema20) -or (-not $emaReady -and [double]$lastBar.Close -gt [double]$completedBars[0].Close)))
             $trendShort=($vwap -gt 0 -and $null -ne $lastBar -and [double]$lastBar.Close -lt $vwap -and (($emaReady -and $ema9 -lt $ema20) -or (-not $emaReady -and [double]$lastBar.Close -lt [double]$completedBars[0].Close)))
 
-            $quoteCenter=0.0
-            if($bid -gt 0 -and $ask -gt 0){$quoteCenter=($bid+$ask)/2}
-            elseif($bid -gt 0){$quoteCenter=$bid}
-            elseif($ask -gt 0){$quoteCenter=$ask}
-            $reference=if($null -ne $referencePrice -and $referencePrice -gt 0){$referencePrice}else{Get-SafeNumber (Get-TableValue $values $r 3) 0.01 10000000}
             $gapPct=if($null -ne $reference -and $reference -gt 0 -and $quoteCenter -gt 0){(($quoteCenter/$reference)-1)*100}else{$null}
             $marketTotal=$marketBuy+$marketSell
             $marketImbalance=if($marketTotal -gt 0){($marketBuy-$marketSell)/$marketTotal}else{0}
@@ -915,6 +925,12 @@ try {
                 open_price=$openPrice;open_decision=$openDecision;score=[Math]::Round($score);signal=$signal;hold_signal="持ち越し判定前";hold_score=0;data="LIVE"
             }
             $previous[$ticker]=[pscustomobject]@{Price=$price;Volume=$volume;UnderRatio=$underRatio}
+        }
+        $preopenRecordingStatus=if($now.TimeOfDay -ge [TimeSpan]::Parse("08:00:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:00:00")){
+            if($preopenQuoteCount -gt 0){"記録中 $preopenQuoteCount/100"}else{"RSS気配未取得"}
+        }else{"時間外"}
+        if($snapshotDue -and $preopenRecordingStatus -eq "RSS気配未取得"){
+            Write-Host "警告: 寄り前の売買気配をまだ取得できません。MS2ログイン、ExcelのRSS接続、買気配・売気配セルを確認してください。" -ForegroundColor Red
         }
         if ($snapshotDue) {$lastSnapshotAt=$now}
         foreach ($key in @($seenTicks.Keys)) {if (($now-$seenTicks[$key]).TotalMinutes -gt 30) {$seenTicks.Remove($key)}}
@@ -1204,7 +1220,7 @@ try {
         $holdStats=Get-OvernightHoldStats $holdHistory
         Write-AtomicUtf8 $holdStatsPath (($holdStats|ConvertTo-Json -Depth 6))
         $qualified=@($results|Where-Object{$_.signal -in @("買いサイン","空売りサイン","OR5上抜け・地合待ち","OR5下抜け・地合待ち","OR15利確警戒","OR15戻り警戒","押し目待ち","戻り待ち","初動買い候補","初動ショート候補","買い準備","ショート準備","監視")}|Sort-Object @{Expression={if($_.signal -in @("買いサイン","空売りサイン")){0}elseif($_.signal -in @("OR5上抜け・地合待ち","OR5下抜け・地合待ち","OR15利確警戒","OR15戻り警戒","押し目待ち","戻り待ち")){1}elseif($_.signal -in @("初動買い候補","初動ショート候補")){2}elseif($_.signal -in @("買い準備","ショート準備")){3}else{4}}},@{Expression={[Math]::Abs($_.score)};Descending=$true}|Select-Object -First 5)
-        $payload=[ordered]@{updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;stale=($validCount -lt 90);market_state=$marketState;breadth_pct=$breadthPct;notice="Ver.1試運転。確定1分足・VWAP・EMA・出来高・地合いを確認。UNDER/OVER単独では判定しません。注文は武蔵で手動です。";tdnet_status=$tdnetStatus;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified}
+        $payload=[ordered]@{updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;stale=($validCount -lt 90);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="Ver.1試運転。確定1分足・VWAP・EMA・出来高・地合いを確認。UNDER/OVER単独では判定しません。注文は武蔵で手動です。";tdnet_status=$tdnetStatus;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified}
         $jsonText=$payload|ConvertTo-Json -Depth 6
         Write-AtomicUtf8 $jsonPath $jsonText
         if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $jsonText }
