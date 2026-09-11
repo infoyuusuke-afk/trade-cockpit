@@ -156,6 +156,37 @@ function Get-Median([double[]]$values) {
     return [double]$sorted[$mid]
 }
 
+function Convert-LiveBars([object[]]$bars, [int]$minutes, [double]$currentVwap = 0) {
+    if ($null -eq $bars -or $bars.Count -eq 0) { return @() }
+    $groups = [ordered]@{}
+    foreach ($bar in $bars) {
+        $rawTime = if ($null -ne $bar.ts) { [string]$bar.ts } elseif ($null -ne $bar.Key) { [string]$bar.Key } else { "" }
+        try { $at = [DateTime]::Parse($rawTime) } catch { continue }
+        $open = if ($null -ne $bar.o) { [double]$bar.o } else { [double]$bar.Open }
+        $high = if ($null -ne $bar.h) { [double]$bar.h } else { [double]$bar.High }
+        $low = if ($null -ne $bar.l) { [double]$bar.l } else { [double]$bar.Low }
+        $close = if ($null -ne $bar.c) { [double]$bar.c } else { [double]$bar.Close }
+        $volume = if ($null -ne $bar.v) { [double]$bar.v } else { [double]$bar.Volume }
+        $bucketMinute = [Math]::Floor($at.Minute / $minutes) * $minutes
+        $bucket = [DateTime]::new($at.Year,$at.Month,$at.Day,$at.Hour,$bucketMinute,0)
+        $key = $bucket.ToString("yyyy-MM-dd HH:mm:ss")
+        if (-not $groups.Contains($key)) {
+            $groups[$key] = [pscustomobject]@{
+                ts=$key; t=$bucket.ToString("HH:mm"); o=$open; h=$high;
+                l=$low; c=$close; v=$volume; vwap=$currentVwap
+            }
+        } else {
+            $x = $groups[$key]
+            $x.h = [Math]::Max([double]$x.h,$high)
+            $x.l = [Math]::Min([double]$x.l,$low)
+            $x.c = $close
+            $x.v = [double]$x.v + $volume
+            $x.vwap = $currentVwap
+        }
+    }
+    return @($groups.Values | Select-Object -Last 180)
+}
+
 function Get-MarketTimeBand([DateTime]$at) {
     $clock = $at.TimeOfDay
     if ($clock -lt [TimeSpan]::Parse("09:00:00")) { return "寄り前" }
@@ -460,6 +491,7 @@ if (Test-Path $statsJsonPath) {
 $jsonPath = Join-Path $PSScriptRoot "live_ms2.json"
 $cockpitJsonPath = Join-Path (Split-Path $PSScriptRoot -Parent) "live_ms2.json"
 $htmlPath = Join-Path $PSScriptRoot "AI_Cockpit_MS2_LIVE.html"
+$multiLivePath = Join-Path $PSScriptRoot "KIOXIA_MULTI_LIVE.html"
 $publicCockpitUrl = "https://infoyuusuke-afk.github.io/trade-cockpit/?live=1"
 $speaker = New-Object -ComObject SAPI.SpVoice
 $previous = @{}
@@ -509,7 +541,8 @@ $bridgeJob = Start-LocalJsonBridge $jsonPath 28580
 
 Write-Host "100銘柄のRSS監視を開始しました。誤値は保存しません。終了は Ctrl+C。" -ForegroundColor Cyan
 Write-Host "統一AIコクピット: $publicCockpitUrl" -ForegroundColor Cyan
-Write-Host "予備画面（通常は使用しません）: $htmlPath" -ForegroundColor DarkGray
+Write-Host "キオクシア4画面LIVE: $multiLivePath" -ForegroundColor Cyan
+Write-Host "予備画面: $htmlPath" -ForegroundColor DarkGray
 Write-Host "AIコクピット連携: http://127.0.0.1:28580/live_ms2.json" -ForegroundColor Cyan
 $speaker.Speak("キオクシアを含む、100銘柄の音声監視を開始しました。",1) | Out-Null
 
@@ -663,7 +696,10 @@ try {
             if ($null -eq $building -or $building.Key -ne $minuteKey) {
                 if ($null -ne $building) {
                     [void]$minuteBars[$ticker].Add($building)
-                    while ($minuteBars[$ticker].Count -gt 60) {$minuteBars[$ticker].RemoveAt(0)}
+                    # Keep one full TSE session.  This gives the 15-minute panel enough
+                    # history to remain useful in the afternoon without changing the
+                    # raw CSV retention policy.
+                    while ($minuteBars[$ticker].Count -gt 390) {$minuteBars[$ticker].RemoveAt(0)}
                 }
                 $building=[pscustomobject]@{Key=$minuteKey;At=$now;Open=$price;High=$price;Low=$price;Close=$price;Volume=0.0}
                 $currentMinuteBars[$ticker]=$building
@@ -886,6 +922,15 @@ try {
         foreach ($key in @($seenTicks.Keys)) {if (($now-$seenTicks[$key]).TotalMinutes -gt 30) {$seenTicks.Remove($key)}}
 
         $kioxia=$results|Where-Object{$_.ticker -eq "285A.T"}|Select-Object -First 1
+        if ($null -ne $kioxia) {
+            $kioxiaBars = @()
+            if ($minuteBars.ContainsKey("285A.T")) { $kioxiaBars += @($minuteBars["285A.T"]) }
+            if ($currentMinuteBars.ContainsKey("285A.T") -and $null -ne $currentMinuteBars["285A.T"]) { $kioxiaBars += $currentMinuteBars["285A.T"] }
+            $kioxia | Add-Member -NotePropertyName bars_1m -NotePropertyValue @(Convert-LiveBars $kioxiaBars 1 ([double]$kioxia.vwap)) -Force
+            $kioxia | Add-Member -NotePropertyName bars_3m -NotePropertyValue @(Convert-LiveBars $kioxiaBars 3 ([double]$kioxia.vwap)) -Force
+            $kioxia | Add-Member -NotePropertyName bars_5m -NotePropertyValue @(Convert-LiveBars $kioxiaBars 5 ([double]$kioxia.vwap)) -Force
+            $kioxia | Add-Member -NotePropertyName bars_15m -NotePropertyValue @(Convert-LiveBars $kioxiaBars 15 ([double]$kioxia.vwap)) -Force
+        }
         $inPts=($now.TimeOfDay -ge [TimeSpan]::Parse("16:30:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("23:59:00"))
         $tseIndex=@{}
         foreach($item in $results){$tseIndex[[string]$item.ticker]=$item}
@@ -1208,7 +1253,10 @@ try {
         }
         $html='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta http-equiv="refresh" content="3"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MS2 LIVE TOP5 Ver.1</title><style>body{margin:0;background:#05090d;color:#edf5fa;font-family:Segoe UI,Yu Gothic,sans-serif}main{max-width:1300px;margin:auto;padding:22px}header{display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid #253541;padding-bottom:16px}h1{margin:0;font-size:29px}h2{margin:28px 0 2px;font-size:22px}.sub{margin:0;color:#8296a5;font-size:12px}header span,.note{color:#8296a5}.status{color:#4be0b6}.focus{margin-top:16px;padding:18px;background:linear-gradient(135deg,#102433,#0b151d);border:1px solid #39708e;border-left:6px solid #42b8f5;border-radius:14px}.focus.buy{border-left-color:#36dfa9}.focus.sell{border-left-color:#ff6370}.focus.block{border-left-color:#f5c451}.focus-title{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center}.focus-title span{font-size:20px;font-weight:800}.focus-title b{padding:7px 12px;border-radius:99px;background:#172630}.focus-title strong{font-size:26px}.focus-body{display:grid;grid-template-columns:210px 1fr;gap:14px;align-items:center}.focus small{display:block;color:#8eb3c8;margin-top:10px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:16px}.pick{background:#0d161e;border:1px solid #253744;border-left:4px solid #789;border-radius:12px;padding:15px}.pick.buy{border-left-color:#36dfa9}.pick.sell{border-left-color:#ff6370}.pick.block{border-left-color:#f5c451}.head{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}.head span{font-size:11px;border-radius:99px;background:#172630;padding:5px 8px}.head b{font-size:16px}.head strong{font-size:22px}.price{font-size:29px;font-weight:800;margin:12px 0}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:5px}.metrics span{background:#111f29;border-radius:7px;padding:8px;color:#8296a5;font-size:10px}.metrics b{color:#e9f3f8;font-size:14px}.pick small{display:block;color:#758895;margin-top:12px}.pick a{color:#55c8ff}.note{margin-top:18px;padding:12px;background:#10171d;border-radius:8px}.empty{padding:50px;text-align:center;color:#8ca0ae}@media(max-width:650px){header{align-items:start;flex-direction:column}.focus-body{grid-template-columns:1fr}.focus-title{grid-template-columns:1fr auto}.metrics{grid-template-columns:1fr 1fr}}</style></head><body><main><header><div><span>MARKETSPEED II RSS・試運転 Ver.1</span><h1>デイトレ100銘柄 LIVE TOP5</h1></div><div><b class="status">'+ (Escape-Html $marketState) +' / VWAP上 '+([string]$breadthPct)+'%</b><br>有効 '+$validCount+'/100<br>'+ (Escape-Html $now.ToString("yyyy-MM-dd HH:mm:ss")) +'</div></header>'+$kioxiaCard+'<section class="grid">'+$cards+'</section>'+$holdSection+$ptsSection+$irPtsSection+'<p class="note">確定1分足だけを使用。OR5は初動、OR15は地合いが弱ければ利確警戒、押し戻りは反転足を確認します。UNDER/OVER単独では売買しません。注文は武蔵で手動、特別気配・往復ピンタ・データ不足時は売買禁止です。</p></main></body></html>'
         Write-AtomicUtf8 $htmlPath $html
-        if (-not $browserOpened) { Start-Process $publicCockpitUrl; $browserOpened=$true }
+        if (-not $browserOpened) {
+            if (Test-Path $multiLivePath) { Start-Process $multiLivePath } else { Start-Process $publicCockpitUrl }
+            $browserOpened=$true
+        }
 
         if($inPts){
             foreach($ir in @($irPtsTop5|Select-Object -First 3)){
