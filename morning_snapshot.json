@@ -1,19 +1,19 @@
 {
   "date": "2026-09-11",
-  "fixed_at": "2026-09-11 12:21:24 JST",
+  "fixed_at": "2026-09-11 13:28:23 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
-      "name": "古河電気工業（5801）",
-      "ticker": "5801.T",
+      "name": "Terra Drone（278A）",
+      "ticker": "278A.T",
       "side": "LONG",
-      "score": 86.0,
-      "entry": 4050,
-      "entry_limit": 4050,
-      "stop": 3885,
-      "target1": 4300,
-      "target2": 4420,
-      "morning_price": 4020.0
+      "score": 89.0,
+      "entry": 19530,
+      "entry_limit": 19530,
+      "stop": 17940,
+      "target1": 21920,
+      "target2": 23030,
+      "morning_price": 20230.0
     }
   ]
 }
