@@ -3351,5 +3351,25 @@
     "pnl_yen": 7000,
     "r": 0.04,
     "shares": 100
+  },
+  {
+    "date": "2026-09-11",
+    "name": "Terra Drone（278A）",
+    "ticker": "278A.T",
+    "side": "LONG",
+    "score": 89.0,
+    "entry": 19530.0,
+    "entry_limit": 19530.0,
+    "stop": 17940,
+    "target1": 21920,
+    "target2": 23030,
+    "morning_price": 20230.0,
+    "triggered": true,
+    "result": "時点評価・未決済",
+    "close": 20170.0,
+    "vwap": 20125.4,
+    "pnl_yen": 64000,
+    "r": 0.4,
+    "shares": 100
   }
 ]
