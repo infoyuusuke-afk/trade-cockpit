@@ -18,6 +18,7 @@ DATA = ROOT / "data.json"
 PAGE = ROOT / "index.html"
 SNAPSHOT = ROOT / "morning_snapshot.json"
 HISTORY = ROOT / "paper_trade_history.json"
+SHORT_CANDIDATES = ROOT / "day_ifo_candidates_short.json"
 JST = ZoneInfo("Asia/Tokyo")
 
 
@@ -39,10 +40,33 @@ def price_text(value) -> str:
     return f"{value:,.1f}" if abs(value - round(value)) >= .05 else f"{value:,.0f}"
 
 
+def load_short_candidates() -> list[dict]:
+    """SHORT側のMVP候補（scripts/short_candidates.py が出力）を読み込む。
+    存在しない/生成前なら空リスト（LONGの動作には影響しない）。"""
+    short_data = load(SHORT_CANDIDATES, {})
+    out = []
+    for row in short_data.get("candidates", []):
+        out.append({
+            "name": row.get("name", ""),
+            "ticker": row.get("ticker", ""),
+            "side": "SHORT",
+            "score": row.get("score", 60),
+            "plan": {
+                "entry": row.get("trigger"),
+                "entry_limit": row.get("trigger"),
+                "stop": row.get("stop"),
+                "target1": row.get("target1"),
+                "target2": row.get("target2"),
+            },
+            "price": row.get("trigger"),
+        })
+    return out
+
+
 def morning_snapshot(data: dict, now: datetime) -> dict:
     candidates = []
     source = data.get("day_ifo_candidates") or data.get("day_candidates", [])
-    for row in source[:5]:
+    for row in list(source[:5]) + load_short_candidates():
         plan = row.get("plan") or {
             "entry": row.get("trigger"),
             "entry_limit": row.get("entry_limit"),
@@ -69,6 +93,13 @@ def morning_snapshot(data: dict, now: datetime) -> dict:
                 "target1": plan["target1"],
                 "target2": plan["target2"],
                 "morning_price": row.get("price", row.get("entry_limit")),
+                # 診断用に生の特徴量も残す（勝敗との相関を後から検証するため）
+                "rvol": row.get("rvol"),
+                "ret20": row.get("ret20"),
+                "atr_pct": row.get("atr_pct"),
+                "day_score": row.get("day_score"),
+                "swing_score": row.get("swing_score"),
+                "material_stage": row.get("material_stage"),
             }
         )
     return {
@@ -127,13 +158,14 @@ def audit_one(plan: dict, stock: dict) -> dict:
     }
 
 
-def statistics(history: list[dict]) -> dict:
-    trades = [x for x in history if x.get("pnl_yen") is not None]
+def statistics_for(trades: list[dict]) -> dict:
     gains = sum(max(0, x["pnl_yen"]) for x in trades)
     losses = abs(sum(min(0, x["pnl_yen"]) for x in trades))
     pf = round(gains / losses, 2) if losses else (99.0 if gains else 0.0)
     wins = sum(x["pnl_yen"] > 0 for x in trades)
     avg_r = round(sum(x.get("r", 0) for x in trades) / len(trades), 2) if trades else 0
+    # LONG/SHORT別に集計するため、n=20は「その側だけ」で見た最低ライン。
+    # n未満は実戦判定を出さず、常に「検証継続」に固定する（依頼要件：確立前は表示しない）。
     ready = len(trades) >= 20 and pf >= 1.2 and avg_r > 0
     return {
         "count": len(trades),
@@ -142,8 +174,18 @@ def statistics(history: list[dict]) -> dict:
         "pf": pf,
         "avg_r": avg_r,
         "pnl": sum(x["pnl_yen"] for x in trades),
-        "decision": "少額の実戦検討" if ready else "検証継続・実弾見送り",
+        "decision": "少額の実戦検討" if ready else "検証継続・実弾見送り（試運転中）",
     }
+
+
+def statistics(history: list[dict]) -> dict:
+    """LONG/SHORTを合算せず、side別に独立集計する（合算はscore混同の温床になるため廃止）。"""
+    trades = [x for x in history if x.get("pnl_yen") is not None]
+    by_side = {
+        side: statistics_for([x for x in trades if x.get("side") == side])
+        for side in ("LONG", "SHORT")
+    }
+    return {"LONG": by_side["LONG"], "SHORT": by_side["SHORT"]}
 
 
 def render(reviews: list[dict], stats: dict, message: str) -> str:
@@ -162,18 +204,26 @@ def render(reviews: list[dict], stats: dict, message: str) -> str:
             "</tr>"
         )
     body = "".join(rows) or '<tr><td colspan="6">同日8:00版の固定スナップショットがないため検証不成立。候補成績には加算しません。</td></tr>'
+
+    def side_cards(label: str, s: dict) -> str:
+        return f"""
+  <h3>{label}（試運転・検証中、n={s['count']}件）</h3>
+  <div class="cards">
+    <div class="card"><b>累計検証</b><span>{s['count']}件</span></div>
+    <div class="card"><b>勝率</b><span>{s['win_rate']:.1f}%</span></div>
+    <div class="card"><b>PF</b><span>{s['pf']:.2f}</span></div>
+    <div class="card"><b>平均R</b><span>{s['avg_r']:+.2f}R</span></div>
+    <div class="card"><b>仮想損益</b><span>{s['pnl']:+,}円</span></div>
+    <div class="card"><b>実戦判定</b><span>{s['decision']}</span></div>
+  </div>"""
+
     return f"""
 <section class="panel morning-audit">
   <h2>④ 朝8:00版との答え合わせ・仮想トレード</h2>
   <p>{html.escape(message)}</p>
-  <div class="cards">
-    <div class="card"><b>累計検証</b><span>{stats['count']}件</span></div>
-    <div class="card"><b>勝率</b><span>{stats['win_rate']:.1f}%</span></div>
-    <div class="card"><b>PF</b><span>{stats['pf']:.2f}</span></div>
-    <div class="card"><b>平均R</b><span>{stats['avg_r']:+.2f}R</span></div>
-    <div class="card"><b>仮想損益</b><span>{stats['pnl']:+,}円</span></div>
-    <div class="card"><b>実戦判定</b><span>{stats['decision']}</span></div>
-  </div>
+  <p><small>LONGとSHORTは別集計。件数が少ないうちは実戦判定を出さず「試運転・検証中」として扱う。</small></p>
+  {side_cards("LONG", stats["LONG"])}
+  {side_cards("SHORT", stats["SHORT"])}
   <p><small>全銘柄100株、買い指値上限を仮想約定値として保守的に計算。IFOは利確1または損切りで全株決済。同じ期間内に両方へ触れて順序を確定できない取引は成績から除外。</small></p>
   <div class="table-wrap"><table><thead><tr><th>銘柄</th><th>朝評価</th><th>発動 / 上限 / 損切</th><th>IFO利確 / 参考利確2</th><th>時点判定</th><th>仮想損益</th></tr></thead><tbody>{body}</tbody></table></div>
 </section>"""
