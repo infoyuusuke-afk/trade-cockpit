@@ -130,6 +130,7 @@ def tabs_block() -> str:
  <button class="cockpit-tab" data-tab="ms2-live">LIVE売買</button>
  <button class="cockpit-tab" data-tab="kioxia-calendar">キオクシア</button>
  <button class="cockpit-tab" data-tab="strong-yen">円高恩恵TOP5</button>
+ <button class="cockpit-tab" data-tab="us-smr">対米投資・SMR</button>
  <button class="cockpit-tab" data-tab="investor-regime">主体レジーム</button>
  <button class="cockpit-tab" data-tab="events">重要イベント</button>
  <button class="cockpit-tab" data-tab="market">検証・除外</button>
@@ -144,7 +145,7 @@ def tabs_block() -> str:
 document.addEventListener("DOMContentLoaded",()=>{{
  const main=document.querySelector("main"); if(!main)return;
  const policyTabs=["physical-ai","autonomous-driving","ai-drug-discovery","ai-semiconductor","defense-space","gx-power","quantum-computing"];
- const panes={{}}; ["daytrade","ms2-live","events","correlation","kioxia-calendar","strong-yen","investor-regime","wick","expansion","swing","accumulation","longterm","dividend","buyback","policy",...policyTabs,"market","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="daytrade"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
+ const panes={{}}; ["daytrade","ms2-live","events","correlation","kioxia-calendar","strong-yen","us-smr","investor-regime","wick","expansion","swing","accumulation","longterm","dividend","buyback","policy",...policyTabs,"market","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="daytrade"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
  [...main.querySelectorAll(":scope > section")].forEach(s=>{{
    const t=(s.querySelector("h2")?.textContent||"").trim();
    let k="market";
@@ -154,6 +155,7 @@ document.addEventListener("DOMContentLoaded",()=>{{
    else if(s.id==="correlation-monitor")k="correlation";
    else if(s.id==="kioxia-5m-calendar")k="kioxia-calendar";
    else if(s.id==="strong-yen-top5")k="strong-yen";
+   else if(s.id==="us-smr-watch")k="us-smr";
    else if(s.id==="investor-regime")k="investor-regime";
    else if(s.id==="live-focus-status"||s.id==="data-quality-gate"||s.id==="action-dashboard"||s.id==="day-ifo-orders"||t.startsWith("③ ")||t.includes("IN点灯")||t.includes("準備点灯"))k="daytrade";
    else if(s.id==="lower-wick-reversal"||t.includes("下ヒゲ吸収反転"))k="wick";
@@ -173,6 +175,7 @@ document.addEventListener("DOMContentLoaded",()=>{{
  intros["investor-regime"]=["投資主体別レジーム","JPX公式の当時利用可能な版だけで、銘柄タイプの追い風・逆風を判定。"];
  intros["kioxia-calendar"]=["キオクシア5分足カレンダー","過去5分足から本日の途中経過に最も近い日を照合。"];
  intros["strong-yen"]=["円高恩恵銘柄 TOP5","円高感応度だけでなく、信用需給・当日資金流入・発動価格まで確認。"];
+ intros["us-smr"]=["対米投資・SMR","政策発表と個社受注を区別し、事業化・需給・価格の確認順に監視。"];
  intros["ms2-live"]=["MS2 RSS・ザラバLIVE TOP5","100銘柄を裏側で監視し、OR15・VWAP・歩み値・板変化が一致した上位だけ表示。"];
  Object.entries(intros).forEach(([k,v])=>{{const h=document.createElement("div");h.className="pane-intro";h.innerHTML=`<span>SUPPLY IMPROVEMENT REQUIRED</span><h2>${{v[0]}}</h2><p>${{v[1]}}</p>`;panes[k].prepend(h);}});
  document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{{

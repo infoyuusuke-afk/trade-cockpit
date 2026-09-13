@@ -29,6 +29,11 @@ def main():
     investor = load("investor_regime.json")
     html = (ROOT / "index.html").read_text(encoding="utf-8")
     errors = []
+    if not all(token in html for token in (
+        'data-tab="us-smr"', '"us-smr","investor-regime"', 'id="us-smr-watch"',
+        '政府発表済み・個社収益は確認待ち', '監視のみ・自動買い禁止',
+    )):
+        errors.append("US-SMR tab or its no-trade evidence guard is missing")
 
     if investor.get("model_version") != "investor-regime-1.2.0":
         errors.append("investor regime model version is missing")

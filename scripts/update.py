@@ -2129,6 +2129,31 @@ def main():
             for i, x in enumerate(theme['candidates'], 1)
         ) or "<tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr>"
         policy_theme_sections += f'''<section id="policy-{theme['slug']}" class="card wide policy-theme-card" data-policy-tab="{theme['slug']}"><h2>実戦優先 #{theme['priority']}｜{theme['title']}・厳格選定</h2><p class="sub">正式候補 {theme['formal_count']}銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody>{rows}</tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="{theme['source']}" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section>'''
+    # US/Japan SMR is a separate event watch: a project ceiling is not a
+    # purchase order or booked revenue for any Japanese listed company.
+    smr_hitachi = valid_map.get("日立製作所（6501）")
+    smr_price = money(smr_hitachi.get("price")) if smr_hitachi else "株価照合待ち"
+    smr_volume = f"出来高比{smr_hitachi.get('rvol', 0):.2f}倍" if smr_hitachi else "取得待ち"
+    smr_supply = credit_supply.get("6501", {})
+    smr_supply_ready = all(smr_supply.get(k) is not None for k in
+                           ("margin_buy_change_1w_pct", "credit_ratio"))
+    smr_supply_text = (
+        f"買残1週{float(smr_supply['margin_buy_change_1w_pct']):+.1f}%／倍率{float(smr_supply['credit_ratio']):.2f}"
+        if smr_supply_ready else "信用需給未取得"
+    )
+    smr_html = f'''<section id="us-smr-watch" class="card wide us-smr-watch">
+<h2>対米投資・SMR｜先回り監視</h2>
+<p class="sub">政策発表：2026-03-19／表示する株価は二経路照合済みの場合のみ。発注候補は個社受注・資金流入・信用需給を別途確認。</p>
+<div class="smr-grid"><div><span>政策・案件</span><b>GE Vernova Hitachi／米テネシー・アラバマ</b><small>日米共同発表：事業規模の上限は400億ドル。契約額・日立の売上高ではありません。</small></div>
+<div><span>材料段階</span><b>政府発表済み・個社収益は確認待ち</b><small>受注IR、NRC審査・許認可、建設投資決定を次の確認点にします。</small></div>
+<div><span>売買判定</span><b>監視のみ・自動買い禁止</b><small>政策名だけでエントリーしない。値動き・出来高・需給・受注の裏付けを優先。</small></div></div>
+<table><thead><tr><th>区分</th><th>日本株／ティッカー</th><th>関係と確認水準</th><th>照合済み価格</th><th>信用需給</th><th>次の触媒／先回り条件</th></tr></thead><tbody>
+<tr><td>直接関連・監視</td><td>日立製作所（6501）</td><td>GE Vernova Hitachiの共同事業。ただし米案件の個社受注額・利益寄与は未確認</td><td>{smr_price}<br><small>{smr_volume}</small></td><td>{smr_supply_text}</td><td>企業IRの個別契約→売買代金増→5分足VWAP・OR15の順に確認</td></tr>
+<tr><td>周辺・別案件</td><td>三菱重工業（7011）／IHI（7013）</td><td>Westinghouse等の原子力サプライチェーンに関する別枠。上記GE Vernova Hitachi案件への参画は未確認</td><td>この枠では非表示</td><td>未評価</td><td>個社IRで受注・供給契約を確認するまで買い候補にしない</td></tr>
+</tbody></table>
+<p class="warning">政府発表の「最大400億ドル」を日本の上場銘柄の売上・利益へ転記しません。現時点でSMR専用の正式TOP5は作りません。関連会社を数合わせで増やさず、一次情報と需給が揃った場合だけ昇格します。</p>
+<p class="sub">一次情報：<a href="https://www.meti.go.jp/press/2025/03/20260320001/20260320001.html" target="_blank" rel="noopener">経済産業省・日米首脳会談関連</a>／<a href="https://www.hitachi.com/IR/" target="_blank" rel="noopener">日立IR</a>。資料更新日時と発表内容を取引前に確認。</p>
+</section>'''
     buyback_rows = "".join(
         f"<tr><td>{i}</td><td>{x['name']}（{x['code']}）</td>"
         f"<td><b class='up'>{x['score']}/100</b></td><td>{float(x['max_share_pct']):.2f}%</td>"
@@ -2665,6 +2690,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
 <section id="policy-priority-overview" class="card wide"><h2>国策テーマ・実戦優先順位</h2><table><thead><tr><th>実戦優先</th><th>テーマ</th><th>正式候補数</th><th>最高総合点</th><th>現在判定</th><th>政策根拠</th></tr></thead><tbody>{policy_priority_rows}</tbody></table><p class="warning">順位は国の政策分野に勝手な序列を付けたものではありません。正式候補数→最高総合点で毎回入れ替えます。信用需給未取得時は全テーマを売買不可とします。</p></section>
 {policy_theme_sections}
+{smr_html}
 <section class="card wide"><h2>②-A 秋田AIデータセンター関連 監視TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・契約状況</th><th>資料</th></tr></thead><tbody>{akita_dc_rows}</tbody></table>
 <p class="warning">秋田市の計画はエスツーとBitgritが主導し、2030年代前半の稼働、最大500MWを想定。現時点で上場各社の受注は確認できていません。関連度は事業領域と地域性の評価であり、受注確定度ではありません。正式なスイング候補への昇格には、会社IR・適時開示、信用需給30/55点以上、発動価格突破を必須とします。</p></section>
