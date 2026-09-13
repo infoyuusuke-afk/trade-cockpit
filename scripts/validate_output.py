@@ -32,6 +32,7 @@ def main():
     if not all(token in html for token in (
         'data-tab="us-smr"', '"us-smr","investor-regime"', 'id="us-smr-watch"',
         '政府発表済み・個社収益は確認待ち', '監視のみ・自動買い禁止',
+        'IHI（7013）／日本製鋼所（5631）', '契約・受注は未確定',
     )):
         errors.append("US-SMR tab or its no-trade evidence guard is missing")
 
