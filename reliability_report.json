@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-09-14 04:13:32 JST",
+  "note": "resolved_n が30件未満の区分は、勝率・PFを『確立した手法』として扱わないこと。95%信頼区間の幅が広いほど、まだ結論を出せる段階ではない。",
+  "by_side": {
+    "LONG": {
+      "total_recorded": 169,
+      "resolved_n": 43,
+      "win_rate_pct": 39.5,
+      "win_rate_95ci": [
+        26.4,
+        54.4
+      ],
+      "avg_r": 0.033,
+      "profit_factor": 1.17,
+      "max_drawdown_r": 4.55,
+      "status": "参考値（要検証）",
+      "min_n_threshold": 30
+    },
+    "SHORT": {
+      "total_recorded": 0,
+      "resolved_n": 0,
+      "win_rate_pct": null,
+      "win_rate_95ci": null,
+      "avg_r": null,
+      "profit_factor": null,
+      "max_drawdown_r": null,
+      "status": "試運転・検証中（サンプル不足）",
+      "min_n_threshold": 30
+    }
+  }
+}

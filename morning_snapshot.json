@@ -1,6 +1,6 @@
 {
   "date": "2026-09-14",
-  "fixed_at": "2026-09-14 04:11:34 JST",
+  "fixed_at": "2026-09-14 04:13:29 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
@@ -20,6 +20,60 @@
       "day_score": 6.79,
       "swing_score": 6.06,
       "material_stage": "事実確認待ち"
+    },
+    {
+      "name": "ローツェ（6323）",
+      "ticker": "6323.T",
+      "side": "SHORT",
+      "score": 68.0,
+      "entry": 3360.0,
+      "entry_limit": 3360.0,
+      "stop": 3710.0,
+      "target1": 2835.0,
+      "target2": 2485.0,
+      "morning_price": 3360.0,
+      "rvol": null,
+      "ret20": null,
+      "atr_pct": null,
+      "day_score": null,
+      "swing_score": null,
+      "material_stage": null
+    },
+    {
+      "name": "安川電機（6506）",
+      "ticker": "6506.T",
+      "side": "SHORT",
+      "score": 68.0,
+      "entry": 4200.0,
+      "entry_limit": 4200.0,
+      "stop": 4520.0,
+      "target1": 3720.0,
+      "target2": 3400.0,
+      "morning_price": 4200.0,
+      "rvol": null,
+      "ret20": null,
+      "atr_pct": null,
+      "day_score": null,
+      "swing_score": null,
+      "material_stage": null
+    },
+    {
+      "name": "THK（6481）",
+      "ticker": "6481.T",
+      "side": "SHORT",
+      "score": 68.0,
+      "entry": 5700.0,
+      "entry_limit": 5700.0,
+      "stop": 6190.0,
+      "target1": 4965.0,
+      "target2": 4475.0,
+      "morning_price": 5700.0,
+      "rvol": null,
+      "ret20": null,
+      "atr_pct": null,
+      "day_score": null,
+      "swing_score": null,
+      "material_stage": null
     }
   ]
 }
