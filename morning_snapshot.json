@@ -1,6 +1,6 @@
 {
-  "date": "2026-09-13",
-  "fixed_at": "2026-09-13 22:08:56 JST",
+  "date": "2026-09-14",
+  "fixed_at": "2026-09-14 04:11:34 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
@@ -13,7 +13,13 @@
       "stop": 3590,
       "target1": 3845,
       "target2": 3920,
-      "morning_price": 3761.0
+      "morning_price": 3761.0,
+      "rvol": 1.19,
+      "ret20": -0.97,
+      "atr_pct": 4.19,
+      "day_score": 6.79,
+      "swing_score": 6.06,
+      "material_stage": "事実確認待ち"
     }
   ]
 }
