@@ -99,15 +99,17 @@ jobs:
           python scripts/world_market.py
           python scripts/fx_statement_study.py
           python scripts/update.py
+          python scripts/short_candidates.py
           python scripts/morning_review.py
           python scripts/weekly_tabs.py
           python scripts/live_focus.py
+          python scripts/reliability_report.py
           python -m unittest discover -s tests -v
           python scripts/validate_output.py
 
       - name: Commit and push updated files
         run: |
-          if git diff --quiet -- index.html data.json signals.json correlations.json credit_supply.json kioxia_5m_calendar.json kioxia_catalysts.json kioxia_prediction_history.json event_calendar.json world_market.json fx_statement_study.json live_focus.json morning_snapshot.json paper_trade_history.json weekly_review.json investor_regime.json data/jpx_investor; then
+          if git diff --quiet -- index.html data.json signals.json correlations.json credit_supply.json kioxia_5m_calendar.json kioxia_catalysts.json kioxia_prediction_history.json event_calendar.json world_market.json fx_statement_study.json live_focus.json morning_snapshot.json paper_trade_history.json weekly_review.json investor_regime.json data/jpx_investor day_ifo_candidates_short.json reliability_report.json; then
             echo "No changes to commit."
             exit 0
           fi
@@ -128,6 +130,8 @@ jobs:
           test ! -f weekly_review.json || git add weekly_review.json
           test ! -f investor_regime.json || git add investor_regime.json
           test ! -d data/jpx_investor || git add data/jpx_investor
+          test ! -f day_ifo_candidates_short.json || git add day_ifo_candidates_short.json
+          test ! -f reliability_report.json || git add reliability_report.json
           git commit -m "Auto-update trade cockpit"
           for attempt in 1 2 3; do
             git pull --rebase origin main

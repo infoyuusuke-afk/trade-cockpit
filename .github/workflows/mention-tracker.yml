@@ -1,0 +1,37 @@
+name: Jumping Point Mention Tracker
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 日曜18:00〜22:00 JST を15分おき（毎週日曜20:00更新に備える）
+    - cron: "*/15 9-13 * * 0"
+    # 平日は1日1回、朝の巡回にあわせて検知漏れがないか確認
+    - cron: "50 22 * * 0-4" # 07:50 JST 平日
+
+permissions:
+  contents: write
+
+concurrency:
+  group: trade-cockpit-writer
+  cancel-in-progress: false
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Track new Jumping Point videos
+        run: python scripts/mention_tracker.py
+      - name: Commit and push
+        run: |
+          if git diff --quiet -- mentions.json; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mentions.json
+          git commit -m "Track new Jumping Point mentions"
+          git pull --rebase origin main
+          git push
