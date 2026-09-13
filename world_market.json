@@ -1,11 +1,11 @@
 {
-  "updated_at": "2026-09-12T11:38:48.600599+09:00",
+  "updated_at": "2026-09-13T21:57:37.346132+09:00",
   "source": "世界の株価リアルタイムチャート",
   "source_url": "https://nikkei225jp.com/",
-  "usage": "市場環境専用。個別株価・個別チャートには使用禁止。",
-  "verified_count": 10,
+  "usage": "市場環境専用。個別株価・個別チャートには使用禁止。 休場・取引時間外の値は当日方向判定に使用禁止。",
+  "verified_count": 7,
   "expected_count": 13,
-  "feed_verified": true,
+  "feed_verified": false,
   "rows": {
     "111": {
       "code": "111",
@@ -16,8 +16,8 @@
       "change_pct": -1.93,
       "source_stamp": "09/11",
       "observed_at": "2026-09-11",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "112": {
       "code": "112",
@@ -28,8 +28,8 @@
       "change_pct": -0.65,
       "source_stamp": "09/11",
       "observed_at": "2026-09-11",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "121": {
       "code": "121",
@@ -40,20 +40,20 @@
       "change_pct": -1.83,
       "source_stamp": "09/11",
       "observed_at": "2026-09-11",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "751": {
       "code": "751",
       "name": "DEX日経225",
       "source_name": "DEX日本225 フルタイム",
-      "value": 64764.0,
+      "value": 63968.0,
       "change": null,
       "change_pct": null,
-      "source_stamp": "11:38",
-      "observed_at": "2026-09-12T11:38:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "source_stamp": "21:57",
+      "observed_at": "2026-09-13T21:57:00+09:00",
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "511": {
       "code": "511",
@@ -63,9 +63,9 @@
       "change": -0.81,
       "change_pct": -0.52,
       "source_stamp": "05:59",
-      "observed_at": "2026-09-12T05:59:00+09:00",
+      "observed_at": "2026-09-13T05:59:00+09:00",
       "verified": false,
-      "status": "未取得または時刻不整合・売買利用禁止"
+      "status": "取引時間外・売買利用禁止"
     },
     "151": {
       "code": "151",
@@ -75,9 +75,9 @@
       "change": 0.003,
       "change_pct": 0.1,
       "source_stamp": "02:26",
-      "observed_at": "2026-09-12T02:26:00+09:00",
+      "observed_at": "2026-09-13T02:26:00+09:00",
       "verified": false,
-      "status": "未取得または時刻不整合・売買利用禁止"
+      "status": "取引時間外・売買利用禁止"
     },
     "211": {
       "code": "211",
@@ -88,8 +88,8 @@
       "change_pct": 0.98,
       "source_stamp": "09/11",
       "observed_at": "2026-09-11",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "212": {
       "code": "212",
@@ -100,8 +100,8 @@
       "change_pct": 0.96,
       "source_stamp": "09/11",
       "observed_at": "2026-09-11",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "214": {
       "code": "214",
@@ -112,8 +112,8 @@
       "change_pct": 0.91,
       "source_stamp": "09/11",
       "observed_at": "2026-09-11",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "213": {
       "code": "213",
@@ -124,8 +124,8 @@
       "change_pct": 0.86,
       "source_stamp": "09/11",
       "observed_at": "2026-09-11",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "611": {
       "code": "611",
@@ -136,8 +136,8 @@
       "change_pct": 1.81,
       "source_stamp": "09/11",
       "observed_at": "2026-09-11",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "621": {
       "code": "621",
@@ -148,8 +148,8 @@
       "change_pct": -11.21,
       "source_stamp": "09/11",
       "observed_at": "2026-09-11",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "取引時間外・売買利用禁止"
     },
     "811": {
       "code": "811",
@@ -159,9 +159,10 @@
       "change": 0.028,
       "change_pct": 0.57,
       "source_stamp": "05:59",
-      "observed_at": "2026-09-12T05:59:00+09:00",
+      "observed_at": "2026-09-13T05:59:00+09:00",
       "verified": false,
-      "status": "未取得または時刻不整合・売買利用禁止"
+      "status": "取引時間外・売買利用禁止"
     }
-  }
+  },
+  "refresh_status": "取引時間外・市場休場のため更新停止"
 }
