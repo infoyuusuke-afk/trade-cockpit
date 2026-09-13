@@ -47,6 +47,23 @@ def fetch_html(url: str) -> str:
         return resp.read().decode("utf-8", errors="replace")
 
 
+def fetch_html_rendered(url: str) -> str:
+    """JPXのページはJavaScriptで表を描画しているため、素のHTMLだけでは
+    0件抽出になることを実行結果で確認した（2026-09-14）。world_market.pyで
+    実績のあるPlaywrightフォールバック方式を踏襲する。"""
+    from playwright.sync_api import sync_playwright
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+        page.wait_for_selector("table", timeout=15_000)
+        page.wait_for_timeout(1_500)
+        html = page.content()
+        browser.close()
+        return html
+
+
 def parse_designated(html: str) -> tuple[list[dict], list[dict]]:
     try:
         tables = pd.read_html(io.StringIO(html))
@@ -89,7 +106,16 @@ def main():
 
     designated, released = parse_designated(html)
     if not designated:
-        print("警告: 0件抽出。HTML構造が変わった可能性が高い。手動で確認してください。")
+        print("素のHTMLで0件抽出。JavaScriptレンダリングが必要な可能性が高いため、Playwrightで再取得します。")
+        try:
+            html = fetch_html_rendered(URL)
+            designated, released = parse_designated(html)
+        except Exception as e:  # noqa: BLE001
+            print(f"Playwrightでの再取得も失敗: {e}")
+            return
+
+    if not designated:
+        print("警告: Playwright経由でも0件抽出。HTML構造が変わった可能性が高い。手動で確認してください。")
         return
 
     out = {
