@@ -82,6 +82,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install lxml
           python -m playwright install chromium
 
       - name: Update cockpit data
@@ -99,6 +100,7 @@ jobs:
           python scripts/world_market.py
           python scripts/fx_statement_study.py
           python scripts/update.py
+          python scripts/margin_caution_check.py
           python scripts/short_candidates.py
           python scripts/morning_review.py
           python scripts/weekly_tabs.py
@@ -109,7 +111,7 @@ jobs:
 
       - name: Commit and push updated files
         run: |
-          if git diff --quiet -- index.html data.json signals.json correlations.json credit_supply.json kioxia_5m_calendar.json kioxia_catalysts.json kioxia_prediction_history.json event_calendar.json world_market.json fx_statement_study.json live_focus.json morning_snapshot.json paper_trade_history.json weekly_review.json investor_regime.json data/jpx_investor day_ifo_candidates_short.json reliability_report.json; then
+          if git diff --quiet -- index.html data.json signals.json correlations.json credit_supply.json kioxia_5m_calendar.json kioxia_catalysts.json kioxia_prediction_history.json event_calendar.json world_market.json fx_statement_study.json live_focus.json morning_snapshot.json paper_trade_history.json weekly_review.json investor_regime.json data/jpx_investor day_ifo_candidates_short.json reliability_report.json margin_caution.json; then
             echo "No changes to commit."
             exit 0
           fi
@@ -132,6 +134,7 @@ jobs:
           test ! -d data/jpx_investor || git add data/jpx_investor
           test ! -f day_ifo_candidates_short.json || git add day_ifo_candidates_short.json
           test ! -f reliability_report.json || git add reliability_report.json
+          test ! -f margin_caution.json || git add margin_caution.json
           git commit -m "Auto-update trade cockpit"
           for attempt in 1 2 3; do
             git pull --rebase origin main

@@ -30,7 +30,17 @@ def price_tick(price: float) -> float:
     return 1.0 if price < 3000 else 5.0
 
 
+def load_margin_caution() -> dict:
+    """東証の日々公表銘柄リストを読み込む。存在しない/未取得なら空。"""
+    p = Path("margin_caution.json")
+    if not p.exists():
+        return {}
+    data = json.loads(p.read_text(encoding="utf-8"))
+    return {d["code"]: d for d in data.get("designated", [])}
+
+
 def build_short_candidates(stocks: dict, credit_supply: dict) -> list[dict]:
+    margin_caution = load_margin_caution()
     eligible = []
     for name, row in stocks.items():
         if row.get("style") not in ("day", "both"):
@@ -60,6 +70,11 @@ def build_short_candidates(stocks: dict, credit_supply: dict) -> list[dict]:
         supply_phase = supply.get("supply_phase")
         # 信用需給が「改善（＝戻り売り圧力低下）」の銘柄はSHORT候補として矛盾するため除外
         if supply_phase == "改善":
+            continue
+
+        caution = margin_caution.get(code)
+        if caution and caution.get("regulated"):
+            # 東証が新規信用取引等を規制中の銘柄はSHORT候補から除外
             continue
 
         tick = price_tick(price)
@@ -94,11 +109,16 @@ def build_short_candidates(stocks: dict, credit_supply: dict) -> list[dict]:
             "rvol": round(rvol, 2),
             "atr_pct": round(atr_pct, 2),
             "supply_phase": supply_phase,
+            "margin_caution_flagged": caution is not None,
             "reason": (
                 f"下降配列（終値<5日線<20日線）／20日線からの乖離{from_ma20:.1f}%／"
                 f"出来高比{rvol:.2f}倍／信用需給{supply_phase or '不明'}"
             ),
-            "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
+            "caution": (
+                "東証の日々公表銘柄に指定中。品貸料・在庫を必ず確認。"
+                if caution else
+                "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。"
+            ),
             "status": "試運転・検証中（LONG側と異なりまだ実績なし）",
         })
 
