@@ -91,6 +91,23 @@ Jumping Point!! は一例に過ぎず、それに固執しない方針に変更�
   Actionsのログとboard_buzz_history.jsonの中身を目視確認すること。
   抽出0件が続く場合はHTML構造変更を疑う。
 
+## デプロイ状況（2026-09-14 全て本番反映・稼働確認済み）
+
+STATUS.md含む全14ファイルをGitHub Web UIから手動アップロードし、各ワークフローを手動実行して
+以下を確認済み：
+- signals_day.json / signals_swing.json / signals_long.json / watch_top5.json（スイング&ロング系）
+- mentions.json（180件、12チャンネル分のRSS取得成功。Jumping Pointの本日9/14公開分も検知済み）
+- board_buzz_history.json（Yahoo!ファイナンス掲示板投稿数ランキング、285Aが1位で取得成功）
+- day_ifo_candidates_short.json / reliability_report.json（LONG/SHORT混在の朝スナップショット）
+
+デプロイ中に見つけたバグ2件を修正済み：
+1. swing-long-signals.yml / mention-tracker.yml / board-buzz.yml の3ワークフローで、
+   `git diff --quiet`が新規ファイル（リポジトリに一度も存在しないファイル）を検知できず、
+   コミット処理がスキップされていた。`git add`してから`git diff --cached --quiet`で判定する方式に修正。
+2. board_buzz_ranking.pyの初版は正規表現でHTMLをパースする方式だったが、実際のYahoo側HTML構造と
+   合わず0件抽出だった。pandas.read_html()で`<table>`要素を直接読む方式に変更し、対応する
+   `pip install pandas lxml`ステップもboard-buzz.ymlに追加して解決。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
