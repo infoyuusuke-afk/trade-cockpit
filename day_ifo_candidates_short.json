@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-14 04:22:32 JST",
+  "updated_at": "2026-09-14 05:40:17 JST",
   "side": "SHORT",
   "status": "試運転・検証中",
   "count": 3,
@@ -17,6 +17,7 @@
       "rvol": 1.23,
       "atr_pct": 4.81,
       "supply_phase": null,
+      "margin_caution_flagged": false,
       "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-11.3%／出来高比1.23倍／信用需給不明",
       "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
       "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
@@ -34,6 +35,7 @@
       "rvol": 1.42,
       "atr_pct": 3.54,
       "supply_phase": null,
+      "margin_caution_flagged": false,
       "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-9.9%／出来高比1.42倍／信用需給不明",
       "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
       "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
@@ -51,6 +53,7 @@
       "rvol": 1.32,
       "atr_pct": 3.89,
       "supply_phase": null,
+      "margin_caution_flagged": false,
       "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-11.2%／出来高比1.32倍／信用需給不明",
       "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
       "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
