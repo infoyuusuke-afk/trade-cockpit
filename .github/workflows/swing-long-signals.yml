@@ -33,10 +33,10 @@ jobs:
         run: python scripts/watch_top5.py
       - name: Commit and push
         run: |
-          if git diff --quiet -- signals_day.json signals_swing.json signals_long.json watch_top5.json; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add signals_day.json signals_swing.json signals_long.json watch_top5.json
+          if git diff --cached --quiet; then exit 0; fi
           git commit -m "Update swing/long horizon signals"
           git pull --rebase origin main
           git push
