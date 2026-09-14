@@ -87,6 +87,14 @@ $rss.Range("B15").Value2 = "週次データを別取得"
 $rss.Range("A20").FormulaLocal = '=RssChart(,"285A.T","1M",500)'
 $rss.Range("L20").FormulaLocal = '=RssChart(,"285A.T","5M",200)'
 $rss.Range("B16").Value2 = "接続中"
+# Issue #17追記（2026-09-14・JNX発見を受けて追加）: 夜間PTS(JNX)価格は参考表示専用。
+# MS2_RSS_100_Collector.ps1のKIOXIA_JNXシートで実データ取得を確認済み（285A.JNX形式）。
+# 売買サイン($buy/$short/$inSession)には一切使わない。DASHBOARDの参考表示にのみ使う。
+$rss.Range("B18").FormulaLocal = '=RssMarket("285A.JNX","現在値")'
+$rss.Range("B19").FormulaLocal = '=RssMarket("285A.JNX","前日比率")'
+$rss.Range("B20").FormulaLocal = '=RssMarket("285A.JNX","最良買気配値")'
+$rss.Range("B21").FormulaLocal = '=RssMarket("285A.JNX","最良売気配値")'
+$rss.Range("B22").FormulaLocal = '=RssMarket("285A.JNX","現在値詳細時刻")'
 $excel.CalculateFull()
 
 # Issue #17対応: 「最終更新」「足時刻」がExcelのシリアル数値に化けないよう、明示的に日時書式を固定する。
@@ -98,7 +106,14 @@ $dash.Range("D22").NumberFormat = "mm/dd hh:mm"
 $dash.Range("A24").Value2 = "データ鮮度"
 $dash.Range("B24").FormulaLocal = '=IF(計算!B18=0,"未取得",IF((NOW()-計算!B18)*1440>1,"古いデータ("&TEXT((NOW()-計算!B18)*1440,"0")&"分前)","最新"))'
 # 東証RSSの現在値・気配は夜間PTS(JNX)の価格ではないため、時間帯ラベルにその旨を明記する（売買判定は変更しない）。
-$dash.Range("H17").Value2 = "9:00–11:30 / 12:30–15:30（夜間PTSは別時間帯・本ツールは未対応）"
+$dash.Range("H17").Value2 = "9:00–11:30 / 12:30–15:30（夜間PTSは別時間帯・参考表示のみ）"
+# 夜間PTS(JNX)参考表示欄（売買サインには使わない・表示専用）
+$dash.Range("A25").Value2 = "JNX参考"
+$dash.Range("B25").NumberFormat = "#,##0"
+$dash.Range("C25").Value2 = "前日比"
+$dash.Range("E25").Value2 = "気配(買/売)"
+$dash.Range("G25").Value2 = "時刻"
+$dash.Range("G25").NumberFormat = "hh:mm:ss"
 
 $speaker = New-Object -ComObject SAPI.SpVoice
 $lastSpokenSignal = ""
@@ -153,11 +168,30 @@ try {
             $lastBoardLoggedMinute = $boardMinuteKey
         }
 
+        # 夜間PTS(JNX)参考表示。東証現在値の有無に関わらず更新する（表示専用・売買サインには使わない）。
+        $ptsPrice = Get-SafeNumber $rss.Range("B18").Value2 0.01 10000000
+        $ptsChangePct = Get-SafeNumber $rss.Range("B19").Value2 -100 100
+        $ptsBid = Get-SafeNumber $rss.Range("B20").Value2 0.01 10000000
+        $ptsAsk = Get-SafeNumber $rss.Range("B21").Value2 0.01 10000000
+        if ($null -eq $ptsPrice) {
+            $dash.Range("B25").Value2 = "—"
+            $dash.Range("D25").Value2 = ""
+            $dash.Range("F25").Value2 = ""
+            $dash.Range("H25").Value2 = "未取得"
+        } else {
+            $dash.Range("B25").Value2 = $ptsPrice
+            $dash.Range("D25").Value2 = if ($null -ne $ptsChangePct) { ([string][math]::Round($ptsChangePct,2)) + "%" } else { "" }
+            $dash.Range("F25").Value2 = if ($null -ne $ptsBid -and $null -ne $ptsAsk) { "$ptsBid / $ptsAsk" } else { "" }
+            $ptsTimeRaw = $rss.Range("B22").Value2
+            $ptsTimeText = try { if ($ptsTimeRaw -is [double]) { [DateTime]::FromOADate($ptsTimeRaw).ToString("HH:mm:ss") } else { [string]$ptsTimeRaw } } catch { [string]$ptsTimeRaw }
+            $dash.Range("H25").Value2 = $ptsTimeText
+        }
+
         if ($null -eq $price) {
             $rss.Range("B16").Value2 = "RSS取得エラー"
             $calc.Range("B2").Value2 = "売買禁止"
             $calc.Range("B3").Value2 = "—"
-            $calc.Range("B25").Value2 = if ($inNightPts -or $inDayPts) { "現在値が未取得（JNX PTS時間帯は東証RSSの対象外・本ツールはPTS価格に未対応/未取得）" } else { "現在値が未取得。MS2ログイン→ExcelのRSSタブ→接続を確認" }
+            $calc.Range("B25").Value2 = if ($inNightPts -or $inDayPts) { "現在値が未取得（JNX PTS時間帯は東証RSSの対象外。PTS参考価格はDASHBOARD下部を参照・売買サインには使わない）" } else { "現在値が未取得。MS2ログイン→ExcelのRSSタブ→接続を確認" }
             $dash.Range("A5:H9").Interior.Color = 0x2A8CFF
             Write-Host "現在値はExcelエラーまたは未取得です。誤データは保存しません。" -ForegroundColor Yellow
             Start-Sleep -Seconds 3
@@ -170,7 +204,7 @@ try {
 
         $signal = "待機"
         $entry = 0; $stop = 0; $target1 = 0; $target2 = 0
-        $state = if ($inSession) { "監視中" } elseif ($inNightPts) { "東証終了・JNX夜間PTS時間帯（本ツールはPTS価格未対応）" } elseif ($inDayPts) { "東証寄付前・JNXデイタイムPTS時間帯（本ツールはPTS価格未対応）" } else { "市場時間外" }
+        $state = if ($inSession) { "監視中" } elseif ($inNightPts) { "東証終了・JNX夜間PTS時間帯（PTS参考価格はDASHBOARD下部・売買サインには使わない）" } elseif ($inDayPts) { "東証寄付前・JNXデイタイムPTS時間帯（PTS参考価格はDASHBOARD下部・売買サインには使わない）" } else { "市場時間外" }
         $condPrice = "データ待ち"; $condVol = "データ待ち"; $condEma = "データ待ち"; $condOr = "データ待ち"
         $close1 = 0; $open1 = 0; $volRatio = 0; $ema9 = 0; $ema20 = 0; $orHigh = 0; $orLow = 0; $crosses = 0; $barTime = "-"
 

@@ -78,5 +78,19 @@ if (Test-Path $methodAudit) {
     Write-Log "method profit audit started"
 }
 
+# ゆうすけの意向（2026-09-14）: MS2ログインだけ手動で、あとは自動化したい。
+# Kioxia_RSS_Live_Watcher.ps1は既存の自動起動チェーンに含まれていなかったため追加する。
+# 手動起動時と同じくウィンドウは表示したままにする（停止したいときにCtrl+Cで安全に止められるように）。
+$kioxiaWatcher = Join-Path $PSScriptRoot "Kioxia_RSS_Live_Watcher.ps1"
+$alreadyRunning = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*Kioxia_RSS_Live_Watcher.ps1*" })
+if ($alreadyRunning.Count -gt 0) {
+    Write-Log "kioxia watcher already running"
+} elseif (Test-Path $kioxiaWatcher) {
+    Start-Process powershell.exe -ArgumentList @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-NoExit','-File',$kioxiaWatcher)
+    Write-Log "kioxia watcher started"
+} else {
+    Write-Log "kioxia watcher script not found: $kioxiaWatcher"
+}
+
 Write-Log "collector starting"
 & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $collector -StopAfterClose
