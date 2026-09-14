@@ -31,6 +31,20 @@ function Get-SafeNumber($value, [double]$minValue, [double]$maxValue) {
     return [double]$number
 }
 
+function Set-CellValue($range, $value, [int]$maxAttempts = 4, [int]$delayMs = 150) {
+    # Excel COMへの書き込みが原因不明の一時的なキャスト例外で失敗することがある（切り分け済み・単発では成功する）。
+    # 少し待って再試行すれば成功するため、書き込みのたびに使うヘルパー。全て失敗した場合のみ例外を投げる。
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        try {
+            $range.Value2 = $value
+            return
+        } catch {
+            if ($attempt -eq $maxAttempts) { throw }
+            Start-Sleep -Milliseconds $delayMs
+        }
+    }
+}
+
 function Read-Chart($sheet, [string]$anchor) {
     try {
         $region = $sheet.Range($anchor).CurrentRegion.Value2
@@ -134,6 +148,10 @@ $dash.Activate()
 
 try {
     while ($true) {
+      # 100銘柄収集器等との同時COMアクセスで、書き込みが一時的にキャスト例外を起こすことがあるため、
+      # 監視ループ本体を丸ごとtry/catchで守る（1回失敗しても次のループで復帰する。売買サインの状態が
+      # 更新されないまま古い値で残るのを避けるため、失敗時は短く待って次のループへ）。
+      try {
         $excel.Calculate()
         $now = Get-Date
         $t = $now.TimeOfDay
@@ -155,36 +173,49 @@ try {
         $under = Get-SafeNumber $rss.Range("B10").Value2 0 1000000000000
 
         # 気配値比率ログ: $price(現在値)が寄り前で未取得でも、気配数量が取れていれば1分に1回記録する。
-        $askQuote = Get-SafeNumber $rss.Range("B7").Value2 0.01 10000000
-        $bidQuote = Get-SafeNumber $rss.Range("B8").Value2 0.01 10000000
-        $boardMinuteKey = $now.ToString("yyyy-MM-dd HH:mm")
-        if (($null -ne $over -or $null -ne $under) -and $boardMinuteKey -ne $lastBoardLoggedMinute) {
-            $ou = if ($null -eq $over) { 0 } else { $over }
-            $un = if ($null -eq $under) { 0 } else { $under }
-            $ratioText = if (($ou + $un) -gt 0) { [string][math]::Round($un / ($ou + $un), 4) } else { "" }
-            $boardState = if ($null -eq $price) { "寄り前/未約定" } else { "約定あり" }
-            $row = "$($now.ToString('yyyy-MM-dd')),$($now.ToString('HH:mm')),$ou,$un,$ratioText,$askQuote,$bidQuote,$boardState"
-            Add-Content -Path $boardLogPath -Value $row -Encoding utf8
-            $lastBoardLoggedMinute = $boardMinuteKey
+        # 他プロセスとのCOM同時アクセスで一時的に失敗することがあるため、監視ループを止めないよう保護する。
+        try {
+            $askQuote = Get-SafeNumber $rss.Range("B7").Value2 0.01 10000000
+            $bidQuote = Get-SafeNumber $rss.Range("B8").Value2 0.01 10000000
+            $boardMinuteKey = $now.ToString("yyyy-MM-dd HH:mm")
+            if (($null -ne $over -or $null -ne $under) -and $boardMinuteKey -ne $lastBoardLoggedMinute) {
+                $ou = if ($null -eq $over) { 0 } else { $over }
+                $un = if ($null -eq $under) { 0 } else { $under }
+                $ratioText = if (($ou + $un) -gt 0) { [string][math]::Round($un / ($ou + $un), 4) } else { "" }
+                $boardState = if ($null -eq $price) { "寄り前/未約定" } else { "約定あり" }
+                $row = "$($now.ToString('yyyy-MM-dd')),$($now.ToString('HH:mm')),$ou,$un,$ratioText,$askQuote,$bidQuote,$boardState"
+                Add-Content -Path $boardLogPath -Value $row -Encoding utf8
+                $lastBoardLoggedMinute = $boardMinuteKey
+            }
+        } catch {
+            Write-Host ("気配値ログの記録に失敗（次のループで再試行）: " + $_.Exception.Message) -ForegroundColor DarkYellow
         }
 
         # 夜間PTS(JNX)参考表示。東証現在値の有無に関わらず更新する（表示専用・売買サインには使わない）。
-        $ptsPrice = Get-SafeNumber $rss.Range("B18").Value2 0.01 10000000
-        $ptsChangePct = Get-SafeNumber $rss.Range("B19").Value2 -100 100
-        $ptsBid = Get-SafeNumber $rss.Range("B20").Value2 0.01 10000000
-        $ptsAsk = Get-SafeNumber $rss.Range("B21").Value2 0.01 10000000
-        if ($null -eq $ptsPrice) {
-            $dash.Range("B25").Value2 = "—"
-            $dash.Range("D25").Value2 = ""
-            $dash.Range("F25").Value2 = ""
-            $dash.Range("H25").Value2 = "未取得"
-        } else {
-            $dash.Range("B25").Value2 = $ptsPrice
-            $dash.Range("D25").Value2 = if ($null -ne $ptsChangePct) { ([string][math]::Round($ptsChangePct,2)) + "%" } else { "" }
-            $dash.Range("F25").Value2 = if ($null -ne $ptsBid -and $null -ne $ptsAsk) { "$ptsBid / $ptsAsk" } else { "" }
-            $ptsTimeRaw = $rss.Range("B22").Value2
-            $ptsTimeText = try { if ($ptsTimeRaw -is [double]) { [DateTime]::FromOADate($ptsTimeRaw).ToString("HH:mm:ss") } else { [string]$ptsTimeRaw } } catch { [string]$ptsTimeRaw }
-            $dash.Range("H25").Value2 = $ptsTimeText
+        # COM経由の書き込みは他プロセス（100銘柄収集器等）との同時アクセスで一時的に失敗することがあるため、
+        # ここでの失敗が監視ループ全体を止めないようtry/catchで守る（次のループでまた更新される）。
+        try {
+            $ptsPrice = Get-SafeNumber $rss.Range("B18").Value2 0.01 10000000
+            $ptsChangePct = Get-SafeNumber $rss.Range("B19").Value2 -100 100
+            $ptsBid = Get-SafeNumber $rss.Range("B20").Value2 0.01 10000000
+            $ptsAsk = Get-SafeNumber $rss.Range("B21").Value2 0.01 10000000
+            if ($null -eq $ptsPrice) {
+                Set-CellValue $dash.Range("B25") "—"
+                Set-CellValue $dash.Range("D25") ""
+                Set-CellValue $dash.Range("F25") ""
+                Set-CellValue $dash.Range("H25") "未取得"
+            } else {
+                Set-CellValue $dash.Range("B25") $ptsPrice
+                $ptsChangeText = if ($null -ne $ptsChangePct) { ([string][math]::Round($ptsChangePct,2)) + "%" } else { "" }
+                $ptsQuoteText = if ($null -ne $ptsBid -and $null -ne $ptsAsk) { "$ptsBid / $ptsAsk" } else { "" }
+                Set-CellValue $dash.Range("D25") $ptsChangeText
+                Set-CellValue $dash.Range("F25") $ptsQuoteText
+                $ptsTimeRaw = $rss.Range("B22").Value2
+                $ptsTimeText = try { if ($ptsTimeRaw -is [double]) { [DateTime]::FromOADate($ptsTimeRaw).ToString("HH:mm:ss") } else { [string]$ptsTimeRaw } } catch { [string]$ptsTimeRaw }
+                Set-CellValue $dash.Range("H25") $ptsTimeText
+            }
+        } catch {
+            Write-Host ("JNX参考表示の更新に失敗（次のループで再試行）: " + $_.Exception.Message) -ForegroundColor DarkYellow
         }
 
         if ($null -eq $price) {
@@ -246,30 +277,30 @@ try {
             $condOr = if ($price -gt $orHigh) { "OR15上" } elseif ($price -lt $orLow) { "OR15下" } else { "OR15内" }
         }
 
-        $calc.Range("B2").Value2 = $signal
-        $calc.Range("B3").Value2 = [string]$price
-        $calc.Range("B4").Value2 = [string]$entry
-        $calc.Range("B5").Value2 = [string]$stop
-        $calc.Range("B6").Value2 = [string]$target1
-        $calc.Range("B7").Value2 = [string]$target2
-        $calc.Range("B8").Value2 = [string]$close1
-        $calc.Range("B9").Value2 = [string]$vwap
-        $calc.Range("B10").Value2 = [string]$open1
-        $calc.Range("B11").Value2 = [string]$volRatio
-        $calc.Range("B12").Value2 = [string]$ema9
-        $calc.Range("B13").Value2 = [string]$ema20
-        $calc.Range("B14").Value2 = [string]$orHigh
-        $calc.Range("B15").Value2 = [string]$orLow
-        $calc.Range("B16").Value2 = [string]$underRatio
-        $calc.Range("B17").Value2 = [string]$crosses
-        $calc.Range("B18").Value2 = $now.ToString("yyyy-MM-dd HH:mm:ss")
-        $calc.Range("B19").Value2 = $barTime
-        $calc.Range("B20").Value2 = $condPrice
-        $calc.Range("B21").Value2 = $condVol
-        $calc.Range("B22").Value2 = $condEma
-        $calc.Range("B23").Value2 = $condOr
-        $calc.Range("B24").Value2 = ("UNDER " + [math]::Round($underRatio*100,1) + "%")
-        $calc.Range("B25").Value2 = $state
+        Set-CellValue $calc.Range("B2") $signal
+        Set-CellValue $calc.Range("B3") ([string]$price)
+        Set-CellValue $calc.Range("B4") ([string]$entry)
+        Set-CellValue $calc.Range("B5") ([string]$stop)
+        Set-CellValue $calc.Range("B6") ([string]$target1)
+        Set-CellValue $calc.Range("B7") ([string]$target2)
+        Set-CellValue $calc.Range("B8") ([string]$close1)
+        Set-CellValue $calc.Range("B9") ([string]$vwap)
+        Set-CellValue $calc.Range("B10") ([string]$open1)
+        Set-CellValue $calc.Range("B11") ([string]$volRatio)
+        Set-CellValue $calc.Range("B12") ([string]$ema9)
+        Set-CellValue $calc.Range("B13") ([string]$ema20)
+        Set-CellValue $calc.Range("B14") ([string]$orHigh)
+        Set-CellValue $calc.Range("B15") ([string]$orLow)
+        Set-CellValue $calc.Range("B16") ([string]$underRatio)
+        Set-CellValue $calc.Range("B17") ([string]$crosses)
+        Set-CellValue $calc.Range("B18") ($now.ToString("yyyy-MM-dd HH:mm:ss"))
+        Set-CellValue $calc.Range("B19") $barTime
+        Set-CellValue $calc.Range("B20") $condPrice
+        Set-CellValue $calc.Range("B21") $condVol
+        Set-CellValue $calc.Range("B22") $condEma
+        Set-CellValue $calc.Range("B23") $condOr
+        Set-CellValue $calc.Range("B24") ("UNDER " + [math]::Round($underRatio*100,1) + "%")
+        Set-CellValue $calc.Range("B25") $state
         $dash.Range("A5:H9").Interior.Color = if ($signal -eq "買いサイン") { 0x62B14C } elseif ($signal -eq "空売りサイン") { 0x4E4EFF } elseif ($signal -eq "往復ピンタ回避") { 0x2A8CFF } else { 0x483117 }
 
         if ($inSession -and ($signal -eq "買いサイン" -or $signal -eq "空売りサイン") -and (($signal -ne $lastSpokenSignal) -or (((Get-Date) - $lastSpokenAt).TotalMinutes -ge 10))) {
@@ -301,7 +332,10 @@ try {
             if (-not $item.Done15 -and $mins -ge 15) { $log.Cells($item.Row,12).Value2 = [string]($price - $item.BasePrice); $item.Done15 = $true }
         }
         $pendingEvaluations = @($pendingEvaluations | Where-Object { -not $_.Done15 })
-        Start-Sleep -Seconds 2
+      } catch {
+          Write-Host ("監視ループ内でエラー（継続します）: " + $_.Exception.Message + " | 行: " + $_.InvocationInfo.ScriptLineNumber + " | " + $_.InvocationInfo.Line.Trim()) -ForegroundColor DarkYellow
+      }
+      Start-Sleep -Seconds 2
     }
 } finally {
     $rss.Range("B16").Value2 = "停止"
