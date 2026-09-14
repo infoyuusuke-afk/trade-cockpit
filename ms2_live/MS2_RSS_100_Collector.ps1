@@ -510,6 +510,24 @@ $cockpitJsonPath = Join-Path (Split-Path $PSScriptRoot -Parent) "live_ms2.json"
 $htmlPath = Join-Path $PSScriptRoot "AI_Cockpit_MS2_LIVE.html"
 $publicCockpitUrl = "https://infoyuusuke-afk.github.io/trade-cockpit/?live=1"
 $speaker = New-Object -ComObject SAPI.SpVoice
+$speaker.Volume = 100
+$speaker.Rate = -2   # ユーザー指摘（2026-09-15・聞き取りづらい）への対応。標準(0)よりやや遅くする
+# Watcher・Heartbeat・AUTO_START等と共有の名前付きMutexで音声を直列化し、
+# 複数プロセスの発話が重ならないようにする。
+function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 20000) {
+    if ($null -eq $speaker -or [string]::IsNullOrEmpty($text)) { return }
+    $mutex = $null
+    $acquired = $false
+    try {
+        $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
+        $acquired = $mutex.WaitOne($timeoutMs)
+        $speaker.Speak($text, 0) | Out-Null
+    } catch {
+    } finally {
+        if ($acquired -and $null -ne $mutex) { try { $mutex.ReleaseMutex() } catch {} }
+        if ($null -ne $mutex) { $mutex.Dispose() }
+    }
+}
 $previous = @{}
 $history = @{}
 $seenTicks = @{}
@@ -559,7 +577,7 @@ Write-Host "100銘柄のRSS監視を開始しました。誤値は保存しま�
 Write-Host "統一AIコクピット: $publicCockpitUrl" -ForegroundColor Cyan
 Write-Host "予備画面: $htmlPath" -ForegroundColor DarkGray
 Write-Host "AIコクピット連携: http://127.0.0.1:28580/live_ms2.json" -ForegroundColor Cyan
-$speaker.Speak("キオクシアを含む、100銘柄の音声監視を開始しました。",1) | Out-Null
+Invoke-SerializedSpeak $speaker "キオクシアを含む、100銘柄の音声監視を開始しました。"
 
 try {
     while ($true) {
@@ -571,7 +589,7 @@ try {
                 try { & $statsScript -RecordsRoot $dataRoot -OutputJson $statsJsonPath -OutputCsv (Join-Path $PSScriptRoot "kioxia_time_stats.csv") }
                 catch { Write-Host ("引け後統計の更新を保留: "+$_.Exception.Message) -ForegroundColor Yellow }
             }
-            $speaker.Speak("東証と夜間PTSの記録を終了し、キオクシアの時間帯統計を更新しました。",1) | Out-Null
+            Invoke-SerializedSpeak $speaker "東証と夜間PTSの記録を終了し、キオクシアの時間帯統計を更新しました。"
             break
         }
         if ($now.ToString("yyyy-MM-dd") -ne $activeDay) {
@@ -1187,7 +1205,7 @@ try {
             $created=Write-ImmutableJson $holdImmutableJson $immutable
             $snapshotHash=if(Test-Path $holdImmutableJson){(Get-FileHash -Algorithm SHA256 $holdImmutableJson).Hash.ToLower()}else{""}
             Write-AtomicUtf8 $holdFinalMarker (([ordered]@{finalized_at=$holdFinalizedAt;candidate_count=$finalHoldTop5.Count;immutable_created=$created;snapshot_sha256=$snapshotHash;model_version=$immutable.model_version}|ConvertTo-Json))
-            $speaker.Speak(("15時25分、翌日持ち越しTOP5を確定しました。候補数"+$finalHoldTop5.Count+"。銘柄と方向を保存しました。注文前に決算とイベントを確認してください。"),1)|Out-Null
+            Invoke-SerializedSpeak $speaker ("15時25分、翌日持ち越しTOP5を確定しました。候補数"+$finalHoldTop5.Count+"。銘柄と方向を保存しました。注文前に決算とイベントを確認してください。")
         }
         $holdTop5=if($holdFinalized){@($finalHoldTop5)}else{@($provisionalHoldTop5)}
 
@@ -1290,7 +1308,7 @@ try {
             foreach($ir in @($irPtsTop5|Select-Object -First 3)){
                 $irVoiceKey=[string]$ir.code+'|'+[string]$ir.disclosure_time+'|'+[string]$ir.title
                 if(-not $lastIrVoiceCodes.ContainsKey($irVoiceKey)){
-                    $speaker.Speak(("IR急騰PTS候補。"+$ir.name+"、"+$ir.material_label+"。PTSは東証終値比プラス"+[Math]::Round([double]$ir.gap_pct,2)+"パーセント。"+$ir.judgement+"。TDnet原文と翌朝の気配を確認してください。"),1)|Out-Null
+                    Invoke-SerializedSpeak $speaker ("IR急騰PTS候補。"+$ir.name+"、"+$ir.material_label+"。PTSは東証終値比プラス"+[Math]::Round([double]$ir.gap_pct,2)+"パーセント。"+$ir.judgement+"。TDnet原文と翌朝の気配を確認してください。")
                     $lastIrVoiceCodes[$irVoiceKey]=$now
                 }
             }
@@ -1306,7 +1324,7 @@ try {
             if ($speakable -and $old -ne $x.signal -and ($null -eq $spokenAt -or ($now-$spokenAt).TotalMinutes -ge 10)) {
                 $side=if($x.signal -eq "買いサイン"){"買いサイン点灯"}elseif($x.signal -eq "空売りサイン"){"空売りサイン点灯"}else{"往復ピンタ警戒"}
                 $orderVoice=if($null -eq $x.entry_price){"注文条件は未完成です"}else{"発動価格"+$x.entry_price+"円。損切り"+$x.stop_price+"円。第一目標"+$x.target1+"円"}
-                $speaker.Speak(($x.name+"、"+$x.strategy+"、"+$side+"。"+$orderVoice+"。"+$x.market_state+"。確定ローソク足を確認し、注文は武蔵で手動です。"),1)|Out-Null
+                Invoke-SerializedSpeak $speaker ($x.name+"、"+$x.strategy+"、"+$side+"。"+$orderVoice+"。"+$x.market_state+"。確定ローソク足を確認し、注文は武蔵で手動です。")
                 $lastSpoken[$key]=$now
             }
             $lastSignal[$key]=$x.signal
@@ -1316,7 +1334,7 @@ try {
                 $holdKey=[string]$x.ticker+'|'+[string]$x.hold_signal
                 $holdAt=$lastHoldSpoken[$holdKey]
                 if($null -eq $holdAt -or ($now-$holdAt).TotalMinutes -ge 20){
-                    $speaker.Speak(($x.name+"、"+$x.hold_signal+"、評価"+$x.hold_score+"点。後場のOR15維持と引け位置を確認しました。決算、IR、PTS、米国市場が未確認なら持ち越し禁止です。"),1)|Out-Null
+                    Invoke-SerializedSpeak $speaker ($x.name+"、"+$x.hold_signal+"、評価"+$x.hold_score+"点。後場のOR15維持と引け位置を確認しました。決算、IR、PTS、米国市場が未確認なら持ち越し禁止です。")
                     $lastHoldSpoken[$holdKey]=$now
                 }
             }
@@ -1326,18 +1344,18 @@ try {
                 $ptsBand=if($ptsGap -ge 2){2}elseif($ptsGap -ge 1){1}elseif($ptsGap -le -2){-2}elseif($ptsGap -le -1){-1}else{0}
                 if($ptsBand -ne 0 -and ($ptsBand -ne $lastPtsBand -or ($now-$lastPtsVoiceAt).TotalMinutes -ge 30)){
                     $ptsDirection=if($ptsBand -gt 0){"上昇"}else{"下落"}
-                    $speaker.Speak(("キオクシア夜間PTS。東証終値から"+$ptsDirection+"、"+[Math]::Abs([Math]::Round($ptsGap,2))+"パーセント。現在値"+$ptsPrice+"円。出来高"+$ptsVolume+"株。アンダー比率"+[Math]::Round($ptsUnderRatio,1)+"パーセント。PTSは参考値です。翌朝の気配で再確認してください。"),1)|Out-Null
+                    Invoke-SerializedSpeak $speaker ("キオクシア夜間PTS。東証終値から"+$ptsDirection+"、"+[Math]::Abs([Math]::Round($ptsGap,2))+"パーセント。現在値"+$ptsPrice+"円。出来高"+$ptsVolume+"株。アンダー比率"+[Math]::Round($ptsUnderRatio,1)+"パーセント。PTSは参考値です。翌朝の気配で再確認してください。")
                     $lastPtsBand=$ptsBand
                     $lastPtsVoiceAt=$now
                 }
             }
             if($now.TimeOfDay -ge [TimeSpan]::Parse("08:55:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:00:00") -and $lastPreopenVoice -ne [string]$kioxia.preopen_plan){
                 $gapVoice=if($null -eq $kioxia.preopen_gap_pct){"GU、GDは算出不能"}else{"GU、GD、"+$kioxia.preopen_gap_pct+"パーセント"}
-                $speaker.Speak(("キオクシア、8時55分判定。"+$kioxia.preopen_plan+"。"+$gapVoice+"。成行偏り"+$kioxia.preopen_market_imbalance+"パーセント。これは準備判定です。寄った直後は注文せず、実価格と歩み値を確認してください。"),1)|Out-Null
+                Invoke-SerializedSpeak $speaker ("キオクシア、8時55分判定。"+$kioxia.preopen_plan+"。"+$gapVoice+"。成行偏り"+$kioxia.preopen_market_imbalance+"パーセント。これは準備判定です。寄った直後は注文せず、実価格と歩み値を確認してください。")
                 $lastPreopenVoice=[string]$kioxia.preopen_plan
             }
             if($now.TimeOfDay -ge [TimeSpan]::Parse("09:01:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:15:00") -and $kioxia.open_decision -in @("初動買い候補","初動ショート候補") -and $lastOpenDecisionVoice -ne [string]$kioxia.open_decision){
-                $speaker.Speak(("キオクシア、"+$kioxia.open_decision+"。現在値"+$kioxia.price+"円。始値"+$kioxia.open_price+"円。歩み値とローソク足を確認し、逆指値で発動してください。"),1)|Out-Null
+                Invoke-SerializedSpeak $speaker ("キオクシア、"+$kioxia.open_decision+"。現在値"+$kioxia.price+"円。始値"+$kioxia.open_price+"円。歩み値とローソク足を確認し、逆指値で発動してください。")
                 $lastOpenDecisionVoice=[string]$kioxia.open_decision
             }
             $flowState=[string]$kioxia.orderflow_state
@@ -1352,7 +1370,7 @@ try {
                     if ($null -ne $kioxia.historical_prediction -and $kioxia.historical_prediction.ready) {
                         $statText="同時間帯の過去統計は"+$kioxia.historical_prediction.prediction+"。5分後の上昇率"+$kioxia.historical_prediction.up_rate_5m+"パーセント、下落率"+$kioxia.historical_prediction.down_rate_5m+"パーセントです"
                     }
-                    $speaker.Speak(("キオクシア。"+$kioxia.time_band+"。"+$directionText+"。アンダー比率"+$kioxia.under_ratio+"パーセント。"+$oneMinuteText+"。歩み値偏り"+$kioxia.flow_bias+"パーセント。"+$statText+"。"),1)|Out-Null
+                    Invoke-SerializedSpeak $speaker ("キオクシア。"+$kioxia.time_band+"。"+$directionText+"。アンダー比率"+$kioxia.under_ratio+"パーセント。"+$oneMinuteText+"。歩み値偏り"+$kioxia.flow_bias+"パーセント。"+$statText+"。")
                     $lastKioFlowSpoken=$flowState
                     $lastKioFlowSpokenAt=$now
                 }
