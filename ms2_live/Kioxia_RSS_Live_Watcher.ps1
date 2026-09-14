@@ -106,6 +106,14 @@ $lastSpokenAt = Get-Date "2000-01-01"
 $lastLoggedBar = ""
 $pendingEvaluations = @()
 
+# 気配値比率ログ: 寄り前（現在値がまだ無い時間帯）でも記録できるよう、同じフォルダーにCSVで保存する。
+# このファイルはローカル専用（.gitignore管理外の場所）。公開リポジトリへは一切アップロードしない。
+$boardLogPath = Join-Path $PSScriptRoot "気配値ログ.csv"
+if (-not (Test-Path $boardLogPath)) {
+    "日付,時刻,OVER気配数量,UNDER気配数量,UNDER比率,最良売気配値,最良買気配値,状態" | Out-File -FilePath $boardLogPath -Encoding utf8
+}
+$lastBoardLoggedMinute = ""
+
 Write-Host "キオクシアLIVE監視を開始しました。終了はこの画面で Ctrl+C。" -ForegroundColor Cyan
 $dash.Activate()
 
@@ -130,6 +138,21 @@ try {
         $vwap = Get-SafeNumber $rss.Range("B5").Value2 0 10000000
         $over = Get-SafeNumber $rss.Range("B9").Value2 0 1000000000000
         $under = Get-SafeNumber $rss.Range("B10").Value2 0 1000000000000
+
+        # 気配値比率ログ: $price(現在値)が寄り前で未取得でも、気配数量が取れていれば1分に1回記録する。
+        $askQuote = Get-SafeNumber $rss.Range("B7").Value2 0.01 10000000
+        $bidQuote = Get-SafeNumber $rss.Range("B8").Value2 0.01 10000000
+        $boardMinuteKey = $now.ToString("yyyy-MM-dd HH:mm")
+        if (($null -ne $over -or $null -ne $under) -and $boardMinuteKey -ne $lastBoardLoggedMinute) {
+            $ou = if ($null -eq $over) { 0 } else { $over }
+            $un = if ($null -eq $under) { 0 } else { $under }
+            $ratioText = if (($ou + $un) -gt 0) { [string][math]::Round($un / ($ou + $un), 4) } else { "" }
+            $boardState = if ($null -eq $price) { "寄り前/未約定" } else { "約定あり" }
+            $row = "$($now.ToString('yyyy-MM-dd')),$($now.ToString('HH:mm')),$ou,$un,$ratioText,$askQuote,$bidQuote,$boardState"
+            Add-Content -Path $boardLogPath -Value $row -Encoding utf8
+            $lastBoardLoggedMinute = $boardMinuteKey
+        }
+
         if ($null -eq $price) {
             $rss.Range("B16").Value2 = "RSS取得エラー"
             $calc.Range("B2").Value2 = "売買禁止"
