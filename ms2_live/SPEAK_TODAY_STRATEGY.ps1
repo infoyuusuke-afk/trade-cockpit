@@ -12,7 +12,7 @@ try { $hasMutex = $mutex.WaitOne(0, $false) } catch { $hasMutex = $false }
 if (-not $hasMutex) { exit 0 }
 
 $speaker = New-Object -ComObject SAPI.SpVoice
-$speaker.Rate = 0
+$speaker.Rate = -2   # ユーザー指摘（聞き取りづらい）への対応。標準(0)よりやや遅くする
 $speaker.Volume = 100
 $activeDay = (Get-Date).ToString("yyyy-MM-dd")
 $preopenSpoken = $false
@@ -20,9 +20,22 @@ $openingRuleSpoken = $false
 $lastMode = ""
 $lastModeSpokenAt = [datetime]::MinValue
 
+# ユーザー指摘（2026-09-15）: 「全体的に音声が聞き取りづらい」への対応。Watcher・Heartbeat・
+# AUTO_START等と共有の名前付きMutex（Global\KioxiaVoiceMutex）で音声を直列化し、
+# 複数プロセスの発話が重ならないようにする（このスクリプト自身の多重起動防止用$mutexとは別物）。
 function Speak-Text([string]$text) {
     if ([string]::IsNullOrWhiteSpace($text)) { return }
-    try { $speaker.Speak($text, 1) | Out-Null } catch {}
+    $voiceMutex = $null
+    $voiceAcquired = $false
+    try {
+        $voiceMutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
+        $voiceAcquired = $voiceMutex.WaitOne(20000)
+        $speaker.Speak($text, 0) | Out-Null
+    } catch {
+    } finally {
+        if ($voiceAcquired -and $null -ne $voiceMutex) { try { $voiceMutex.ReleaseMutex() } catch {} }
+        if ($null -ne $voiceMutex) { $voiceMutex.Dispose() }
+    }
 }
 
 function Get-Mode([object]$data) {

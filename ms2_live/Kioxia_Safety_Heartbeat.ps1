@@ -108,8 +108,30 @@ if (-not (Test-Path $diagLogPath)) {
     "日時,状態,連続失敗回数,詳細" | Out-File -FilePath $diagLogPath -Encoding utf8
 }
 
+# ユーザー指摘（2026-09-15）: 「全体的に音声が聞き取りづらい」への対応。他プロセス
+# （Watcher・AUTO_START等）と共有の名前付きMutexで音声を直列化し、複数プロセスの発話が
+# 重ならないようにする。話速もやや遅くする。
+function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 20000) {
+    if ($null -eq $speaker -or [string]::IsNullOrEmpty($text)) { return }
+    $mutex = $null
+    $acquired = $false
+    try {
+        $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
+        $acquired = $mutex.WaitOne($timeoutMs)
+        $speaker.Speak($text, 0) | Out-Null
+    } catch {
+    } finally {
+        if ($acquired -and $null -ne $mutex) { try { $mutex.ReleaseMutex() } catch {} }
+        if ($null -ne $mutex) { $mutex.Dispose() }
+    }
+}
+
 $speaker = $null
-try { $speaker = New-Object -ComObject SAPI.SpVoice } catch {}
+try {
+    $speaker = New-Object -ComObject SAPI.SpVoice
+    $speaker.Volume = 100
+    $speaker.Rate = -2
+} catch {}
 
 $consecutiveFailures = 0
 $lastAlertAt = Get-Date "2000-01-01"
@@ -139,7 +161,7 @@ while ($true) {
         Write-Host "[$(Get-Date -Format 'HH:mm:ss')] 心拍失敗（連続${consecutiveFailures}回）: $errorDetail" -ForegroundColor Yellow
         if ($consecutiveFailures -ge $alertThreshold -and ((Get-Date) - $lastAlertAt).TotalMinutes -ge $alertRepeatMinutes) {
             Write-Host "[$(Get-Date -Format 'HH:mm:ss')] 心拍プロセスがExcelへ接続できない状態が続いています。安全ゲートが更新されていない可能性があります。" -ForegroundColor Red
-            if ($speaker) { try { $speaker.Speak("心拍プロセスがエクセルへ接続できていません。安全ゲートが古いままの可能性があります。確認してください。",1) | Out-Null } catch {} }
+            if ($speaker) { Invoke-SerializedSpeak $speaker "心拍プロセスがエクセルへ接続できていません。安全ゲートが古いままの可能性があります。確認してください。" }
             $lastAlertAt = Get-Date
         }
     } else {

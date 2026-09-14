@@ -2,6 +2,8 @@
 
 $ErrorActionPreference = "Stop"
 $speaker = New-Object -ComObject SAPI.SpVoice
+$speaker.Volume = 100
+$speaker.Rate = -2   # ユーザー指摘（聞き取りづらい）への対応。標準(0)よりやや遅くする
 $workbook = Join-Path $PSScriptRoot "Kioxia_MS2_RSS_Live_Signals.xlsx"
 $collector = Join-Path $PSScriptRoot "MS2_RSS_100_Collector.ps1"
 $strategySpeaker = Join-Path $PSScriptRoot "SPEAK_TODAY_STRATEGY.ps1"
@@ -12,6 +14,23 @@ function Write-Log([string]$message) {
     Add-Content -Path $log -Encoding UTF8 -Value ((Get-Date).ToString("yyyy-MM-dd HH:mm:ss")+" "+$message)
 }
 
+# ユーザー指摘（2026-09-15）: 「全体的に音声が聞き取りづらい」への対応。Watcher・Heartbeat等と
+# 共有の名前付きMutexで音声を直列化し、複数プロセスの発話が重ならないようにする。
+function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 20000) {
+    if ($null -eq $speaker -or [string]::IsNullOrEmpty($text)) { return }
+    $mutex = $null
+    $acquired = $false
+    try {
+        $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
+        $acquired = $mutex.WaitOne($timeoutMs)
+        $speaker.Speak($text, 0) | Out-Null
+    } catch {
+    } finally {
+        if ($acquired -and $null -ne $mutex) { try { $mutex.ReleaseMutex() } catch {} }
+        if ($null -ne $mutex) { $mutex.Dispose() }
+    }
+}
+
 $existing = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*MS2_RSS_100_Collector.ps1*" })
 if ($existing.Count -gt 0) { Write-Log "collector already running"; exit 0 }
 
@@ -20,7 +39,7 @@ if ($existing.Count -gt 0) { Write-Log "collector already running"; exit 0 }
 $excelProcesses = @(Get-Process EXCEL -ErrorAction SilentlyContinue)
 if ($excelProcesses.Count -gt 0) {
     Write-Log "Excel process already exists; automatic start stopped to protect unsaved work"
-    $speaker.Speak("エクセルがすでに起動しています。タスクマネージャーを確認し、すべてのエクセルを終了してから、今すぐ自動起動テストを実行してください。",1) | Out-Null
+    Invoke-SerializedSpeak $speaker "エクセルがすでに起動しています。タスクマネージャーを確認し、すべてのエクセルを終了してから、今すぐ自動起動テストを実行してください。"
     Add-Type -AssemblyName PresentationFramework
     [System.Windows.MessageBox]::Show("Excelがバックグラウンドに残っています。`n未保存データ保護のため自動起動を止めました。`nExcelをすべて終了してから再実行してください。","AIコクピット自動起動") | Out-Null
     exit 3
@@ -49,7 +68,7 @@ else { Write-Log "MarketSpeed II shortcut not found; waiting for manual launch" 
 # ゆうすけの指摘（2026-09-14）: MS2はパスキー認証等でログイン完了までの時間が読めず、
 # ログイン完了前にExcelを開くとRSSタブ自体が出ずRSS接続できない。固定待機時間では
 # 短すぎる日もあるため、ログイン完了をユーザー自身に確定させ、Enterキーで進める。
-$speaker.Speak("マーケットスピードツーへログインしてください。ログインが完了したら、エンターキーを押してください。",1) | Out-Null
+Invoke-SerializedSpeak $speaker "マーケットスピードツーへログインしてください。ログインが完了したら、エンターキーを押してください。"
 Write-Host "MarketSpeed IIへのログインが完了したら、Enterキーを押してください。" -ForegroundColor Cyan
 Read-Host | Out-Null
 Write-Log "user confirmed MS2 login complete"
@@ -57,7 +76,7 @@ Write-Log "user confirmed MS2 login complete"
 if (Test-Path $workbook) { Start-Process $workbook; Write-Log "workbook launch requested" }
 else { throw "Excelファイルがありません: $workbook" }
 
-$speaker.Speak("マーケットスピードツーへログインし、エクセルのRSS接続を確認してください。接続後、自動で監視を開始します。",1) | Out-Null
+Invoke-SerializedSpeak $speaker "マーケットスピードツーへログインし、エクセルのRSS接続を確認してください。接続後、自動で監視を開始します。"
 $deadline = (Get-Date).AddMinutes($WaitMinutes)
 $ready = $false
 while ((Get-Date) -lt $deadline) {
@@ -72,7 +91,7 @@ while ((Get-Date) -lt $deadline) {
 }
 if (-not $ready) {
     Write-Log "Excel workbook was not ready within timeout"
-    $speaker.Speak("エクセルを確認できないため、自動監視を開始できませんでした。",1) | Out-Null
+    Invoke-SerializedSpeak $speaker "エクセルを確認できないため、自動監視を開始できませんでした。"
     exit 2
 }
 

@@ -69,6 +69,29 @@ function Get-StopClusterZones([double]$price, [double]$orHigh, [double]$orLow, [
     return @($zones | Sort-Object Level)
 }
 
+# ユーザー指摘（2026-09-15）: 「全体的に音声が聞き取りづらい」への対応。
+# Watcher・Heartbeat・AUTO_START・100銘柄収集器はそれぞれ別プロセスで独立したSAPI音声を
+# 持っているため、複数の音声通知がほぼ同時に鳴ると別々の音声出力が重なって聞き取りづらくなる。
+# システム全体で共有する名前付きMutex（Global\KioxiaVoiceMutex）を使い、他プロセスの発話が
+# 終わるまで待ってから同期的に(Speak flag=0)話すことで、重なりを防ぐ。
+function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 20000) {
+    if ($null -eq $speaker -or [string]::IsNullOrEmpty($text)) { return }
+    $mutex = $null
+    $acquired = $false
+    try {
+        $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
+        $acquired = $mutex.WaitOne($timeoutMs)
+        # flag=0は同期発話（話し終わるまで戻らない）。これによりMutex保持中に他プロセスの
+        # 音声と時間的に重ならないことが保証される。取得できなくても発話自体は試みる
+        # （音声通知が完全に鳴らないより、多少重なっても鳴る方を優先）。
+        $speaker.Speak($text, 0) | Out-Null
+    } catch {
+    } finally {
+        if ($acquired -and $null -ne $mutex) { try { $mutex.ReleaseMutex() } catch {} }
+        if ($null -ne $mutex) { $mutex.Dispose() }
+    }
+}
+
 function Get-SafeNumber($value, [double]$minValue, [double]$maxValue) {
     if ($null -eq $value -or $value -is [System.Array]) { return $null }
     try { $number = [Convert]::ToDouble($value) } catch { return $null }
@@ -286,6 +309,8 @@ $dash.Range("G25").NumberFormat = "hh:mm:ss"
 # ラベルと値を1つの文字列に結合してA26へ毎ループ書き込む。
 
 $speaker = New-Object -ComObject SAPI.SpVoice
+$speaker.Volume = 100
+$speaker.Rate = -2   # ユーザー指摘（聞き取りづらい）への対応。標準(0)よりやや遅くして聞き取りやすくする
 $lastSpokenSignal = ""
 $lastSpokenAt = Get-Date "2000-01-01"
 $lastLoggedBar = ""
@@ -506,7 +531,7 @@ try {
 
         if ($inSession -and ($signal -eq "買いサイン" -or $signal -eq "空売りサイン") -and (($signal -ne $lastSpokenSignal) -or (((Get-Date) - $lastSpokenAt).TotalMinutes -ge 10))) {
             $spoken = if ($signal -eq "買いサイン") { "キオクシア、買いサイン点灯。発動価格 $entry 円。損切り $stop 円。" } else { "キオクシア、空売りサイン点灯。発動価格 $entry 円。損切り $stop 円。" }
-            $speaker.Speak($spoken) | Out-Null
+            Invoke-SerializedSpeak $speaker $spoken
             $lastSpokenSignal = $signal; $lastSpokenAt = Get-Date
         }
 
