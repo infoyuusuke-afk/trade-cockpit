@@ -1,0 +1,237 @@
+﻿$ErrorActionPreference = "Stop"
+
+$bookPath = Join-Path $PSScriptRoot "Kioxia_MS2_RSS_Live_Signals.xlsx"
+if (-not (Test-Path $bookPath)) {
+    Write-Host "同じフォルダーに Kioxia_MS2_RSS_Live_Signals.xlsx を置いてください。" -ForegroundColor Red
+    Read-Host "Enterで終了"
+    exit 1
+}
+
+function Get-Ema([double[]]$values, [int]$period) {
+    if ($values.Count -lt $period) { return 0 }
+    $k = 2.0 / ($period + 1.0)
+    $ema = ($values[0..($period-1)] | Measure-Object -Average).Average
+    for ($i = $period; $i -lt $values.Count; $i++) { $ema = ($values[$i] * $k) + ($ema * (1.0 - $k)) }
+    return [double]$ema
+}
+
+function Get-Tick([double]$price) {
+    if ($price -lt 3000) { return 1 }
+    if ($price -lt 5000) { return 5 }
+    if ($price -lt 30000) { return 10 }
+    if ($price -lt 50000) { return 50 }
+    return 100
+}
+
+function Get-SafeNumber($value, [double]$minValue, [double]$maxValue) {
+    if ($null -eq $value -or $value -is [System.Array]) { return $null }
+    try { $number = [Convert]::ToDouble($value) } catch { return $null }
+    if ([double]::IsNaN($number) -or [double]::IsInfinity($number)) { return $null }
+    if ($number -lt $minValue -or $number -gt $maxValue) { return $null }
+    return [double]$number
+}
+
+function Read-Chart($sheet, [string]$anchor) {
+    try {
+        $region = $sheet.Range($anchor).CurrentRegion.Value2
+        $rows = @()
+        if ($region -is [System.Array] -and $region.Rank -eq 2) {
+            for ($r = 1; $r -le $region.GetLength(0); $r++) {
+                $o = $region[$r,6]; $h = $region[$r,7]; $l = $region[$r,8]; $c = $region[$r,9]; $v = $region[$r,10]
+                if ($o -is [double] -and $c -is [double]) {
+                    $rawDate = $region[$r,4]; $rawTime = $region[$r,5]
+                    try { $dateKey = if ($rawDate -is [double]) { [DateTime]::FromOADate($rawDate).ToString("yyyy-MM-dd") } else { ([DateTime]::Parse([string]$rawDate)).ToString("yyyy-MM-dd") } } catch { $dateKey = [string]$rawDate }
+                    try { $timeText = if ($rawTime -is [double]) { [DateTime]::FromOADate($rawTime).ToString("HH:mm") } else { ([DateTime]::Parse([string]$rawTime)).ToString("HH:mm") } } catch { $timeText = [string]$rawTime }
+                    $rows += [pscustomobject]@{ DateKey=$dateKey; TimeText=$timeText; SortKey=("$dateKey $timeText"); Open=[double]$o; High=[double]$h; Low=[double]$l; Close=[double]$c; Volume=[double]$v }
+                }
+            }
+        }
+        return @($rows | Sort-Object SortKey)
+    } catch { return @() }
+}
+
+try {
+    $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
+    Write-Host "RSS接続済みのExcelへ接続しました。" -ForegroundColor Green
+} catch {
+    $excel = New-Object -ComObject Excel.Application
+    Write-Host "Excelを起動しました。RSSタブで『接続』を確認してください。" -ForegroundColor Yellow
+}
+$excel.Visible = $true
+$excel.DisplayAlerts = $false
+$book = $null
+foreach ($candidate in $excel.Workbooks) {
+    if ($candidate.FullName -eq $bookPath -or $candidate.Name -eq "Kioxia_MS2_RSS_Live_Signals.xlsx") {
+        $book = $candidate
+        break
+    }
+}
+if ($null -eq $book) { $book = $excel.Workbooks.Open($bookPath) }
+$rss = $book.Worksheets.Item("RSS接続")
+$calc = $book.Worksheets.Item("計算")
+$dash = $book.Worksheets.Item("DASHBOARD")
+$log = $book.Worksheets.Item("検証ログ")
+
+$rss.Range("B4").FormulaLocal = '=RssMarket("285A.T","現在値")'
+$rss.Range("B5").FormulaLocal = '=RssMarket("285A.T","出来高加重平均")'
+$rss.Range("B6").FormulaLocal = '=RssMarket("285A.T","出来高")'
+$rss.Range("B7").FormulaLocal = '=RssMarket("285A.T","最良売気配値")'
+$rss.Range("B8").FormulaLocal = '=RssMarket("285A.T","最良買気配値")'
+$rss.Range("B9").FormulaLocal = '=RssMarket("285A.T","OVER気配数量")'
+$rss.Range("B10").FormulaLocal = '=RssMarket("285A.T","UNDER気配数量")'
+$rss.Range("B11").FormulaLocal = '=RssMarket("285A.T","売成行数量")'
+$rss.Range("B12").FormulaLocal = '=RssMarket("285A.T","買成行数量")'
+$rss.Range("B13").Value2 = "RSS対象外"
+$rss.Range("B14").Value2 = "RSS対象外"
+$rss.Range("B15").Value2 = "週次データを別取得"
+$rss.Range("A20").FormulaLocal = '=RssChart(,"285A.T","1M",500)'
+$rss.Range("L20").FormulaLocal = '=RssChart(,"285A.T","5M",200)'
+$rss.Range("B16").Value2 = "接続中"
+$excel.CalculateFull()
+
+$speaker = New-Object -ComObject SAPI.SpVoice
+$lastSpokenSignal = ""
+$lastSpokenAt = Get-Date "2000-01-01"
+$lastLoggedBar = ""
+$pendingEvaluations = @()
+
+Write-Host "キオクシアLIVE監視を開始しました。終了はこの画面で Ctrl+C。" -ForegroundColor Cyan
+$dash.Activate()
+
+try {
+    while ($true) {
+        $excel.Calculate()
+        $now = Get-Date
+        $t = $now.TimeOfDay
+        $inSession = (($t -ge [TimeSpan]::Parse("09:00:00") -and $t -le [TimeSpan]::Parse("11:30:00")) -or ($t -ge [TimeSpan]::Parse("12:30:00") -and $t -le [TimeSpan]::Parse("15:30:00")))
+        $afterOR = ($t -ge [TimeSpan]::Parse("09:15:00"))
+        $cutoff1 = $now.ToString("yyyy-MM-dd HH:mm")
+        $bucket5 = Get-Date -Year $now.Year -Month $now.Month -Day $now.Day -Hour $now.Hour -Minute ([math]::Floor($now.Minute / 5) * 5) -Second 0
+        $cutoff5 = $bucket5.ToString("yyyy-MM-dd HH:mm")
+        $one = @(Read-Chart $rss "A20" | Where-Object { $_.SortKey -lt $cutoff1 })
+        $five = @(Read-Chart $rss "L20" | Where-Object { $_.SortKey -lt $cutoff5 })
+        $price = Get-SafeNumber $rss.Range("B4").Value2 0.01 10000000
+        $vwap = Get-SafeNumber $rss.Range("B5").Value2 0 10000000
+        $over = Get-SafeNumber $rss.Range("B9").Value2 0 1000000000000
+        $under = Get-SafeNumber $rss.Range("B10").Value2 0 1000000000000
+        if ($null -eq $price) {
+            $rss.Range("B16").Value2 = "RSS取得エラー"
+            $calc.Range("B2").Value2 = "売買禁止"
+            $calc.Range("B3").Value2 = "—"
+            $calc.Range("B25").Value2 = "現在値が未取得。MS2ログイン→ExcelのRSSタブ→接続を確認"
+            $dash.Range("A5:H9").Interior.Color = 0x2A8CFF
+            Write-Host "現在値はExcelエラーまたは未取得です。誤データは保存しません。" -ForegroundColor Yellow
+            Start-Sleep -Seconds 3
+            continue
+        }
+        if ($null -eq $vwap) { $vwap = 0 }
+        if ($null -eq $over) { $over = 0 }
+        if ($null -eq $under) { $under = 0 }
+        $underRatio = if (($over + $under) -gt 0) { $under / ($over + $under) } else { 0.5 }
+
+        $signal = "待機"
+        $entry = 0; $stop = 0; $target1 = 0; $target2 = 0
+        $state = if ($inSession) { "監視中" } else { "市場時間外" }
+        $condPrice = "データ待ち"; $condVol = "データ待ち"; $condEma = "データ待ち"; $condOr = "データ待ち"
+        $close1 = 0; $open1 = 0; $volRatio = 0; $ema9 = 0; $ema20 = 0; $orHigh = 0; $orLow = 0; $crosses = 0; $barTime = "-"
+
+        if ($one.Count -ge 25 -and $five.Count -ge 21 -and $price -gt 0 -and $vwap -gt 0) {
+            $completedOne = $one | Select-Object -Last 21
+            $last = $completedOne[-1]
+            $close1 = $last.Close; $open1 = $last.Open; $barTime = $last.SortKey
+            $avgVol = (($completedOne | Select-Object -First 20 | Measure-Object Volume -Average).Average)
+            if ($avgVol -gt 0) { $volRatio = $last.Volume / $avgVol }
+            $fiveCloses = @($five | ForEach-Object { [double]$_.Close })
+            $ema9 = Get-Ema $fiveCloses 9
+            $ema20 = Get-Ema $fiveCloses 20
+            $latestDate = $one[-1].DateKey
+            $orRows = @($one | Where-Object { $_.DateKey -eq $latestDate -and $_.TimeText -ge "09:00" -and $_.TimeText -lt "09:15" })
+            if ($orRows.Count -gt 0) {
+                $orHigh = ($orRows | Measure-Object High -Maximum).Maximum
+                $orLow = ($orRows | Measure-Object Low -Minimum).Minimum
+            }
+            $recent10 = @($one | Select-Object -Last 10)
+            for ($i = 1; $i -lt $recent10.Count; $i++) {
+                if ((($recent10[$i-1].Close - $vwap) * ($recent10[$i].Close - $vwap)) -lt 0) { $crosses++ }
+            }
+            $emaCompressed = if ($price -gt 0) { ([math]::Abs($ema9 - $ema20) / $price) -lt 0.0015 } else { $true }
+            $whipsaw = ($crosses -ge 2 -or $emaCompressed)
+            $buy = ($inSession -and $afterOR -and -not $whipsaw -and $close1 -gt $vwap -and $close1 -gt $open1 -and $volRatio -ge 1.5 -and $ema9 -gt $ema20 -and $price -gt $orHigh)
+            $short = ($inSession -and $afterOR -and -not $whipsaw -and $close1 -lt $vwap -and $close1 -lt $open1 -and $volRatio -ge 1.5 -and $ema9 -lt $ema20 -and $price -lt $orLow)
+            $tick = Get-Tick $price
+            if ($whipsaw -and $inSession) { $signal = "往復ピンタ回避"; $state = "新規注文禁止" }
+            elseif ($buy) { $signal = "買いサイン"; $entry = $last.High + $tick; $stop = $last.Low - $tick }
+            elseif ($short) { $signal = "空売りサイン"; $entry = $last.Low - $tick; $stop = $last.High + $tick }
+            if ($entry -gt 0) {
+                $risk = [math]::Abs($entry - $stop)
+                if ($signal -eq "買いサイン") { $target1 = $entry + $risk; $target2 = $entry + 2*$risk }
+                if ($signal -eq "空売りサイン") { $target1 = $entry - $risk; $target2 = $entry - 2*$risk }
+            }
+            $condPrice = if ($close1 -gt $vwap) { "VWAP上" } elseif ($close1 -lt $vwap) { "VWAP下" } else { "VWAP同値" }
+            $condVol = if ($volRatio -ge 1.5) { "出来高OK" } else { "出来高不足" }
+            $condEma = if ($ema9 -gt $ema20) { "上向き" } elseif ($ema9 -lt $ema20) { "下向き" } else { "収束" }
+            $condOr = if ($price -gt $orHigh) { "OR15上" } elseif ($price -lt $orLow) { "OR15下" } else { "OR15内" }
+        }
+
+        $calc.Range("B2").Value2 = $signal
+        $calc.Range("B3").Value2 = [string]$price
+        $calc.Range("B4").Value2 = [string]$entry
+        $calc.Range("B5").Value2 = [string]$stop
+        $calc.Range("B6").Value2 = [string]$target1
+        $calc.Range("B7").Value2 = [string]$target2
+        $calc.Range("B8").Value2 = [string]$close1
+        $calc.Range("B9").Value2 = [string]$vwap
+        $calc.Range("B10").Value2 = [string]$open1
+        $calc.Range("B11").Value2 = [string]$volRatio
+        $calc.Range("B12").Value2 = [string]$ema9
+        $calc.Range("B13").Value2 = [string]$ema20
+        $calc.Range("B14").Value2 = [string]$orHigh
+        $calc.Range("B15").Value2 = [string]$orLow
+        $calc.Range("B16").Value2 = [string]$underRatio
+        $calc.Range("B17").Value2 = [string]$crosses
+        $calc.Range("B18").Value2 = $now.ToString("yyyy-MM-dd HH:mm:ss")
+        $calc.Range("B19").Value2 = $barTime
+        $calc.Range("B20").Value2 = $condPrice
+        $calc.Range("B21").Value2 = $condVol
+        $calc.Range("B22").Value2 = $condEma
+        $calc.Range("B23").Value2 = $condOr
+        $calc.Range("B24").Value2 = ("UNDER " + [math]::Round($underRatio*100,1) + "%")
+        $calc.Range("B25").Value2 = $state
+        $dash.Range("A5:H9").Interior.Color = if ($signal -eq "買いサイン") { 0x62B14C } elseif ($signal -eq "空売りサイン") { 0x4E4EFF } elseif ($signal -eq "往復ピンタ回避") { 0x2A8CFF } else { 0x483117 }
+
+        if ($inSession -and ($signal -eq "買いサイン" -or $signal -eq "空売りサイン") -and (($signal -ne $lastSpokenSignal) -or (((Get-Date) - $lastSpokenAt).TotalMinutes -ge 10))) {
+            $spoken = if ($signal -eq "買いサイン") { "キオクシア、買いサイン点灯。発動価格 $entry 円。損切り $stop 円。" } else { "キオクシア、空売りサイン点灯。発動価格 $entry 円。損切り $stop 円。" }
+            $speaker.Speak($spoken) | Out-Null
+            $lastSpokenSignal = $signal; $lastSpokenAt = Get-Date
+        }
+
+        if ($barTime -ne "-" -and $barTime -ne $lastLoggedBar) {
+            $row = $log.Cells($log.Rows.Count,1).End(-4162).Row + 1
+            $log.Cells($row,1).Value2 = $now.ToString("yyyy-MM-dd HH:mm:ss")
+            $log.Cells($row,2).Value2 = $barTime
+            $log.Cells($row,3).Value2 = [string]$price
+            $log.Cells($row,4).Value2 = $signal
+            $log.Cells($row,5).Value2 = [string]$entry
+            $log.Cells($row,6).Value2 = [string]$stop
+            $log.Cells($row,7).Value2 = [string]$underRatio
+            $log.Cells($row,8).Value2 = [string]$volRatio
+            $log.Cells($row,9).Value2 = [string]($ema9 - $ema20)
+            $lastLoggedBar = $barTime
+            $pendingEvaluations += @{ Row=$row; Started=$now; BasePrice=$price; Done1=$false; Done5=$false; Done15=$false }
+            $book.Save()
+        }
+
+        foreach ($item in @($pendingEvaluations)) {
+            $mins = ($now - $item.Started).TotalMinutes
+            if (-not $item.Done1 -and $mins -ge 1) { $log.Cells($item.Row,10).Value2 = [string]($price - $item.BasePrice); $item.Done1 = $true }
+            if (-not $item.Done5 -and $mins -ge 5) { $log.Cells($item.Row,11).Value2 = [string]($price - $item.BasePrice); $item.Done5 = $true }
+            if (-not $item.Done15 -and $mins -ge 15) { $log.Cells($item.Row,12).Value2 = [string]($price - $item.BasePrice); $item.Done15 = $true }
+        }
+        $pendingEvaluations = @($pendingEvaluations | Where-Object { -not $_.Done15 })
+        Start-Sleep -Seconds 2
+    }
+} finally {
+    $rss.Range("B16").Value2 = "停止"
+    $book.Save()
+    Write-Host "監視を停止しました。Excelは開いたままです。" -ForegroundColor Yellow
+}
