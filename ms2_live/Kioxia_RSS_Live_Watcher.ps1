@@ -228,6 +228,16 @@ Set-CellValue $dash.Range("C25") "前日比"
 Set-CellValue $dash.Range("E25") "気配(買/売)"
 Set-CellValue $dash.Range("G25") "時刻"
 $dash.Range("G25").NumberFormat = "hh:mm:ss"
+# ユーザー方針（2026-09-15未明・次フェーズ開始）: 「その日の状況に適応する売買サイン」構築の
+# 第一歩として、まずは$buy/$shortの条件式には一切手を加えず、気配値比率(UNDER比率)を
+# 単純な固定しきい値(0.4/0.6)で言語化した参考表示のみを追加する。ChatGPTへも共有済み
+# （docs/AI_SHARED_SHEET.md C-017）：気配値ログの蓄積が今夜の夜間PTS帯のみでまだ検証材料が
+# なく、本格的な適応型モデルは今日のザラバ実データが揃ってから設計する。このしきい値自体は
+# 未検証の暫定値であり、あくまでユーザー自身の判断を助ける参考情報として位置づける
+# （売買サイン・音声通知・発動条件には一切使わない）。
+# A26:L27は既存の結合セルで、アンカーはA26。ラベルと値を分けてB26等へ書こうとすると
+# 過去のA5/B5と同じ理由（非アンカーセルへの書き込みは無音で無視される）で表示されないため、
+# ラベルと値を1つの文字列に結合してA26へ毎ループ書き込む。
 
 $speaker = New-Object -ComObject SAPI.SpVoice
 $lastSpokenSignal = ""
@@ -364,6 +374,8 @@ try {
         if ($null -eq $over) { $over = 0 }
         if ($null -eq $under) { $under = 0 }
         $underRatio = if (($over + $under) -gt 0) { $under / ($over + $under) } else { 0.5 }
+        # 参考表示のみ（売買判定には使わない）。しきい値0.4/0.6は暫定・未検証（C-017参照）。
+        $boardBiasLabel = if (($over + $under) -le 0) { "データなし" } elseif ($underRatio -ge 0.6) { "買い気配優勢" } elseif ($underRatio -le 0.4) { "売り気配優勢" } else { "中立" }
 
         $signal = "待機"
         $entry = 0; $stop = 0; $target1 = 0; $target2 = 0
@@ -433,6 +445,7 @@ try {
         Set-CellValue $calc.Range("B23") $condOr
         Set-CellValue $calc.Range("B24") ("UNDER " + [math]::Round($underRatio*100,1) + "%")
         Set-CellValue $calc.Range("B25") $state
+        Set-CellValue $dash.Range("A26") ("気配地合い(参考・未検証): " + $boardBiasLabel + "（UNDER " + [math]::Round($underRatio*100,1) + "%）")
         $dash.Range("A5:H9").Interior.Color = if ($signal -eq "買いサイン") { 0x62B14C } elseif ($signal -eq "空売りサイン") { 0x4E4EFF } elseif ($signal -eq "往復ピンタ回避") { 0x2A8CFF } else { 0x483117 }
 
         if ($inSession -and ($signal -eq "買いサイン" -or $signal -eq "空売りサイン") -and (($signal -ne $lastSpokenSignal) -or (((Get-Date) - $lastSpokenAt).TotalMinutes -ge 10))) {
