@@ -6,6 +6,21 @@
 
 $ErrorActionPreference = "Stop"
 
+function ConvertTo-SafeDateTime($value, [ref]$result) {
+    # CSVの列が配列やnullになっている行（$row.captured_atが[object[]]になる等）があると、
+    # [DateTime]::TryParse($value,[ref]$at) が「2引数のオーバーロードが見つからない」で
+    # 例外になり、時間帯統計の更新全体が止まっていた（2026-09-14に確認）。
+    # ここで必ず単一のstringへ変換してから渡すことで、その行だけをスキップできるようにする。
+    if ($null -eq $value) { return $false }
+    if ($value -is [array]) {
+        if ($value.Count -eq 0) { return $false }
+        $value = $value[0]
+    }
+    $text = [string]$value
+    if ([string]::IsNullOrWhiteSpace($text)) { return $false }
+    return [DateTime]::TryParse($text, [ref]$result.Value)
+}
+
 function Get-TimeBand([DateTime]$at) {
     $clock = $at.TimeOfDay
     if ($clock -lt [TimeSpan]::Parse("09:15:00")) { return "9時00分から9時15分・OR形成" }
@@ -107,7 +122,7 @@ if (Test-Path $RecordsRoot) {
         $snapByMinute = @{}
         foreach ($row in @(Import-Csv -Path $marketPath | Where-Object { $_.ticker -eq "285A.T" })) {
             $at = $null; $price = 0.0
-            if (-not [DateTime]::TryParse($row.captured_at,[ref]$at)) { continue }
+            if (-not (ConvertTo-SafeDateTime $row.captured_at ([ref]$at))) { continue }
             if (-not [Double]::TryParse($row.price,[Globalization.NumberStyles]::Any,[Globalization.CultureInfo]::InvariantCulture,[ref]$price)) { continue }
             if ($price -le 0) { continue }
             $snapByMinute[$at.ToString("yyyyMMddHHmm")] = $price
@@ -116,7 +131,7 @@ if (Test-Path $RecordsRoot) {
         $minuteRows = @{}
         foreach ($row in @(Import-Csv -Path $uoPath | Where-Object { $_.ticker -eq "285A.T" })) {
             $at = $null; $ratio = 0.0
-            if (-not [DateTime]::TryParse($row.captured_at,[ref]$at)) { continue }
+            if (-not (ConvertTo-SafeDateTime $row.captured_at ([ref]$at))) { continue }
             if (-not [Double]::TryParse($row.under_ratio,[Globalization.NumberStyles]::Any,[Globalization.CultureInfo]::InvariantCulture,[ref]$ratio)) { continue }
             if ($at.TimeOfDay -lt [TimeSpan]::Parse("09:00:00") -or $at.TimeOfDay -gt [TimeSpan]::Parse("15:30:00")) { continue }
             if ($at.TimeOfDay -gt [TimeSpan]::Parse("11:30:00") -and $at.TimeOfDay -lt [TimeSpan]::Parse("12:30:00")) { continue }
@@ -130,7 +145,7 @@ if (Test-Path $RecordsRoot) {
         if(Test-Path $preopenPath){
             $preRows=@(Import-Csv -Path $preopenPath|Where-Object{$_.ticker -eq "285A.T"}|ForEach-Object{
                 $at=$null; $gap=0.0; $quote=0.0
-                if([DateTime]::TryParse($_.captured_at,[ref]$at) -and [Double]::TryParse($_.gap_pct,[Globalization.NumberStyles]::Any,[Globalization.CultureInfo]::InvariantCulture,[ref]$gap) -and [Double]::TryParse($_.quote_center,[Globalization.NumberStyles]::Any,[Globalization.CultureInfo]::InvariantCulture,[ref]$quote)){
+                if((ConvertTo-SafeDateTime $_.captured_at ([ref]$at)) -and [Double]::TryParse($_.gap_pct,[Globalization.NumberStyles]::Any,[Globalization.CultureInfo]::InvariantCulture,[ref]$gap) -and [Double]::TryParse($_.quote_center,[Globalization.NumberStyles]::Any,[Globalization.CultureInfo]::InvariantCulture,[ref]$quote)){
                     [pscustomobject]@{At=$at;Gap=$gap;Quote=$quote;Plan=[string]$_.plan}
                 }
             }|Where-Object{$null -ne $_ -and $_.At.TimeOfDay -le [TimeSpan]::Parse("08:58:59")}|Sort-Object At)

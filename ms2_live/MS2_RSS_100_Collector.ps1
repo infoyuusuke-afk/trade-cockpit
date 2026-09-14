@@ -57,7 +57,24 @@ function Get-TableValue([object]$table, [int]$row, [int]$column, [int]$columnCou
 function Write-AtomicUtf8([string]$path, [string]$content) {
     $tmp = "$path.tmp"
     [IO.File]::WriteAllText($tmp, $content, [Text.UTF8Encoding]::new($false))
-    Move-Item -Force $tmp $path
+    # live_ms2.json 等は127.0.0.1:28580経由で他プロセスから同時に読まれているため、
+    # Move-Item -Force が「Cannot create a file when that file already exists」で
+    # 失敗することがある（宛先ファイルが一瞬読み取りロックされているため）。
+    # 数回だけ短い間隔でリトライする。既存の他ファイル（recordsのCSV等）には触れない。
+    $maxAttempts = 5
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        try {
+            Move-Item -Force $tmp $path -ErrorAction Stop
+            return
+        } catch {
+            if ($attempt -ge $maxAttempts) {
+                Write-Host ("Write-AtomicUtf8: " + $path + " への書き込みに" + $maxAttempts + "回失敗: " + $_.Exception.Message) -ForegroundColor Yellow
+                if (Test-Path $tmp) { Remove-Item -Force $tmp -ErrorAction SilentlyContinue }
+                throw
+            }
+            Start-Sleep -Milliseconds 150
+        }
+    }
 }
 
 function Ensure-Csv([string]$path, [string]$header) {
