@@ -103,5 +103,20 @@ if ($alreadyRunning.Count -gt 0) {
     Write-Log "kioxia watcher script not found: $kioxiaWatcher"
 }
 
+# 2026-09-15未明・ChatGPT C-011指摘への対応: DASHBOARD!A5等のNOW()ベース安全ゲートは、
+# Watcherが完全に落ちると再計算が止まり凍結してしまう（実機の独立テストで確認済み）。
+# Watcher本体とは別の最小限プロセスが再計算だけを担うことで、Watcherがどんな理由で
+# 落ちても安全ゲートが正しく機能し続けるようにする。
+$heartbeat = Join-Path $PSScriptRoot "Kioxia_Safety_Heartbeat.ps1"
+$heartbeatRunning = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*Kioxia_Safety_Heartbeat.ps1*" })
+if ($heartbeatRunning.Count -gt 0) {
+    Write-Log "safety heartbeat already running"
+} elseif (Test-Path $heartbeat) {
+    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $heartbeat + '"')
+    Write-Log "safety heartbeat started"
+} else {
+    Write-Log "safety heartbeat script not found: $heartbeat"
+}
+
 Write-Log "collector starting"
 & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File $collector -StopAfterClose
