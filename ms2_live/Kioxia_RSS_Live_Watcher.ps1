@@ -306,6 +306,31 @@ try {
             Write-Host ("JNX参考表示の更新に失敗（次のループで再試行）: " + $_.Exception.Message) -ForegroundColor DarkYellow
         }
 
+        # ゆうすけの指摘（2026-09-14深夜）: ラベルを「現在値(東証)」に変えるだけでは、
+        # 夜間PTS時間帯に画面の目立つ位置（I5/I7）が古い東証値のまま止まって見えて
+        # 実用上わかりにくいとの指摘を受けた。表示だけを、今の時間帯で実際に意味のある
+        # 値（東証立会中は東証値、それ以外はJNX参考値）に切り替える。
+        # 重要: これは表示のみの変更。$buy/$short等の売買判定は引き続き$price（東証値）
+        # だけを使い、このブロックの影響を一切受けない（下のシグナル計算ブロックは変更していない）。
+        try {
+            if ($inSession -and $null -ne $price) {
+                Set-CellValue $dash.Range("I5") "現在値(東証)"
+                Set-CellValue $dash.Range("I7") ([string]$price)
+            } elseif ($null -ne $ptsPrice) {
+                $ptsLabel = if ($inNightPts) { "現在値(JNX夜間PTS参考)" } elseif ($inDayPts) { "現在値(JNXデイタイムPTS参考)" } else { "現在値(JNX参考)" }
+                Set-CellValue $dash.Range("I5") $ptsLabel
+                Set-CellValue $dash.Range("I7") ([string]$ptsPrice)
+            } elseif ($null -ne $price) {
+                Set-CellValue $dash.Range("I5") "現在値(東証)"
+                Set-CellValue $dash.Range("I7") ([string]$price)
+            } else {
+                Set-CellValue $dash.Range("I5") "現在値(未取得)"
+                Set-CellValue $dash.Range("I7") "—"
+            }
+        } catch {
+            Write-Host ("現在値表示の更新に失敗（次のループで再試行）: " + $_.Exception.Message) -ForegroundColor DarkYellow
+        }
+
         if ($null -eq $price) {
             $rss.Range("B16").Value2 = "RSS取得エラー"
             $calc.Range("B2").Value2 = "売買禁止"
