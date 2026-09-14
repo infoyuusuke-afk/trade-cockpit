@@ -87,6 +87,22 @@ function Set-CellFormula($range, $formula, [int]$maxAttempts = 4, [int]$delayMs 
     }
 }
 
+function Invoke-ComRetry([scriptblock]$Action, [int]$maxAttempts = 8, [int]$delayMs = 500) {
+    # 2026-09-15実機で判明: 起動直後（RSS接続・再計算がまだ進行中の間）はExcel自体がCOM呼び出しを
+    # 拒否することがあり（HRESULT 0x80010001 RPC_E_CALL_REJECTED、いわゆる「サーバーがビジー」）、
+    # $excel.Visible = $trueのような起動時の単発呼び出しがこれで丸ごと落ちて$ErrorActionPreference=Stop
+    # によりスクリプト自体が終了する事例を確認した。Set-CellValue/Set-CellFormula同様のリトライを
+    # 起動時の一連のCOM呼び出しにも適用する。
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        try {
+            return & $Action
+        } catch {
+            if ($attempt -eq $maxAttempts) { throw }
+            Start-Sleep -Milliseconds $delayMs
+        }
+    }
+}
+
 function Read-Chart($sheet, [string]$anchor) {
     try {
         $region = $sheet.Range($anchor).CurrentRegion.Value2
@@ -130,20 +146,23 @@ try {
     }
     Write-Host "Excelへ接続しました。RSSタブで『接続』を確認してください。" -ForegroundColor Yellow
 }
-$excel.Visible = $true
-$excel.DisplayAlerts = $false
-$book = $null
-foreach ($candidate in $excel.Workbooks) {
-    if ($candidate.FullName -eq $bookPath -or $candidate.Name -eq "Kioxia_MS2_RSS_Live_Signals.xlsx") {
-        $book = $candidate
-        break
+Invoke-ComRetry { $excel.Visible = $true } | Out-Null
+Invoke-ComRetry { $excel.DisplayAlerts = $false } | Out-Null
+$book = Invoke-ComRetry {
+    $found = $null
+    foreach ($candidate in $excel.Workbooks) {
+        if ($candidate.FullName -eq $bookPath -or $candidate.Name -eq "Kioxia_MS2_RSS_Live_Signals.xlsx") {
+            $found = $candidate
+            break
+        }
     }
+    if ($null -eq $found) { $found = $excel.Workbooks.Open($bookPath) }
+    return $found
 }
-if ($null -eq $book) { $book = $excel.Workbooks.Open($bookPath) }
-$rss = $book.Worksheets.Item("RSS接続")
-$calc = $book.Worksheets.Item("計算")
-$dash = $book.Worksheets.Item("DASHBOARD")
-$log = $book.Worksheets.Item("検証ログ")
+$rss = Invoke-ComRetry { $book.Worksheets.Item("RSS接続") }
+$calc = Invoke-ComRetry { $book.Worksheets.Item("計算") }
+$dash = Invoke-ComRetry { $book.Worksheets.Item("DASHBOARD") }
+$log = Invoke-ComRetry { $book.Worksheets.Item("検証ログ") }
 
 Set-CellFormula $rss.Range("B4") '=RssMarket("285A.T","現在値")'
 Set-CellFormula $rss.Range("B5") '=RssMarket("285A.T","出来高加重平均")'

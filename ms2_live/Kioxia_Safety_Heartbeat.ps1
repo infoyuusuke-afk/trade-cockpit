@@ -1,4 +1,4 @@
-# Kioxia安全ゲート用の独立した最小限プロセス（2026-09-15 未明・ChatGPT C-011指摘への対応）。
+﻿# Kioxia安全ゲート用の独立した最小限プロセス（2026-09-15 未明・ChatGPT C-011指摘への対応）。
 #
 # 背景: DASHBOARD!A5等のNOW()ベースの鮮度ゲートは、Excelの仕様上「時間が経過しただけ」では
 # 再評価されない（volatile関数は再計算がトリガーされた時にだけ再評価される）。
@@ -20,15 +20,29 @@
 # いたが、これはシート指定を誤っている可能性があるため、安全ゲート数式があるDASHBOARDシート
 # を明示指定する形に修正した。
 #
-# 2回目の失敗（真因）: DASHBOARDシートを明示指定しても改善しなかった。原因は
+# 2回目の失敗: DASHBOARDシートを明示指定しても改善しなかった。原因は
 # `GetActiveObject("Excel.Application")`が、Excelインスタンスが複数（本番＋検証用の残骸等）
 # 存在する場合にどのインスタンスへ接続するか不定であること。テスト対象のワークブックを
 # 持たない別インスタンスへ接続してしまい、ワークブック名が一致せず何も再計算されていなかった。
-# 通常運用ではAUTO_START_MS2_100.ps1がExcel多重起動を防止するが、それでも不定な接続方法に
-# 依存するのは危険なため、ファイルパスのモニカーで目的のワークブックへ直接バインドする方式
-# （`Marshal.BindToMoniker`）に変更した。これはExcelインスタンスの数に関わらず、目的の
-# ワークブックだけを確実に指す。実機の隔離テストで、複数Excelインスタンスが存在する状態でも
-# 正しく安全ゲートが更新されることを確認済み。
+# ファイルパスのモニカーで目的のワークブックへ直接バインドする方式（`Marshal.BindToMoniker`）
+# に変更し、非OneDrive同期のローカルテストブックでは正しく機能することを確認した。
+#
+# 3回目の失敗（本番実機で判明）: 本番ワークブックはOneDriveで同期されたフォルダーにあるため、
+# ExcelはROT(Running Object Table)へローカルファイルパスではなく
+# `https://d.docs.live.net/...`形式のOneDriveクラウドURLで登録することを実機で確認した。
+# 隔離テストではOneDrive同期されない一時フォルダーを使っていたため、この問題を検知できて
+# いなかった。
+#
+# 4回目の失敗（真因）: 見つけたクラウドURL文字列を`Marshal.BindToMoniker(文字列)`へ渡しても
+# 「クラスが登録されていません」で失敗し続けた。これは`BindToMoniker(string)`が内部で
+# `MkParseDisplayName`により文字列を毎回IMonikerへ**再解釈**する処理をしており、
+# OneDrive/Office共同編集機能が使う独自のアイテムモニカー形式はこの汎用パーサーに
+# 対応していないためと考えられる。
+#
+# 最終修正（本番実機で動作確認）: 文字列を介した再解釈をやめ、ROTから見つけたIMonikerを
+# `IRunningObjectTable.GetObject(moniker)`へ直接渡して、生きているCOMオブジェクト参照を
+# そのまま取得する方式に変更した。これは文字列解析を経由しないため、モニカーの種類
+# （ローカルパスかOneDriveクラウドURLか）に関わらず機能する。
 
 # ChatGPT C-013指摘への対応（2026-09-15）: 当初のcatchは全例外を黙殺しており、この心拍プロセス
 # 自体がExcelへ接続できなくなっても何も分からなかった（「監視されていない状態」が「正常稼働」と
@@ -41,7 +55,49 @@
 # には、このPC自体を定期的に見るか、心拍プロセスとは別の外部監視の仕組みが必要（未実装、
 # 次の課題としてSTATUS.md/共有シートに記載）。
 
-$bookPath = Join-Path $PSScriptRoot "Kioxia_MS2_RSS_Live_Signals.xlsx"
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+using System.Collections.Generic;
+
+public class KioxiaRotFinder {
+    [DllImport("ole32.dll")]
+    public static extern int GetRunningObjectTable(int reserved, out IRunningObjectTable prot);
+    [DllImport("ole32.dll")]
+    public static extern int CreateBindCtx(int reserved, out IBindCtx ppbc);
+
+    // ROT(Running Object Table)を毎回列挙し、表示名の末尾がbookFileNameと一致するモニカーを
+    // 見つけたら、そのモニカーの指す生きているCOMオブジェクトをIRunningObjectTable.GetObject()で
+    // 直接取得して返す。文字列を介した再解釈(BindToMoniker(string))はOneDriveのクラウドURL形式の
+    // モニカーに対応していないため使わない。ローカルパス・クラウドURLのどちらでも対応できる。
+    public static object FindLiveObject(string bookFileName) {
+        IRunningObjectTable rot;
+        GetRunningObjectTable(0, out rot);
+        IEnumMoniker enumMoniker;
+        rot.EnumRunning(out enumMoniker);
+        enumMoniker.Reset();
+        IMoniker[] moniker = new IMoniker[1];
+        IntPtr fetched = IntPtr.Zero;
+        while (enumMoniker.Next(1, moniker, fetched) == 0) {
+            IBindCtx bindCtx;
+            CreateBindCtx(0, out bindCtx);
+            string displayName;
+            try {
+                moniker[0].GetDisplayName(bindCtx, null, out displayName);
+                if (displayName != null && displayName.EndsWith(bookFileName, StringComparison.OrdinalIgnoreCase)) {
+                    object obj;
+                    rot.GetObject(moniker[0], out obj);
+                    return obj;
+                }
+            } catch { }
+        }
+        return null;
+    }
+}
+'@ -ErrorAction SilentlyContinue
+
+$bookFileName = "Kioxia_MS2_RSS_Live_Signals.xlsx"
 $dashboardSheetName = "DASHBOARD"
 $intervalSeconds = 5
 $diagLogPath = Join-Path $PSScriptRoot "heartbeat_diag.csv"
@@ -65,9 +121,10 @@ while ($true) {
     $failed = $false
     $errorDetail = ""
     try {
-        # ファイルパスのモニカーで目的のワークブックへ直接バインドする。
-        # Excel.Applicationが複数起動していても、このワークブックだけを確実に指す。
-        $book = [Runtime.InteropServices.Marshal]::BindToMoniker($bookPath)
+        # ROTを毎回列挙し、ファイル名が一致するモニカーの指す生きているCOMオブジェクトを
+        # 直接取得する（文字列の再解釈はしない。ローカルパス・OneDriveクラウドURLのどちらでも対応）。
+        $book = [KioxiaRotFinder]::FindLiveObject($bookFileName)
+        if ($null -eq $book) { throw "ワークブックがROTに見つかりません（Excel未起動またはブック未オープン）" }
         # 安全ゲート数式(NOW()ベース)があるDASHBOARDシートを明示的に指定して再計算する。
         # 別シートを再計算してもDASHBOARDのNOW()は再評価されないため、シート指定が必須。
         $book.Worksheets.Item($dashboardSheetName).Calculate()
