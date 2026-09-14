@@ -42,10 +42,17 @@ if (-not $marketSpeed) {
 }
 if ($marketSpeed) {
     Start-Process $marketSpeed
-    Write-Log "MarketSpeed II launch requested; waiting before Excel launch"
-    Start-Sleep -Seconds 15
+    Write-Log "MarketSpeed II launch requested"
 }
 else { Write-Log "MarketSpeed II shortcut not found; waiting for manual launch" }
+
+# ゆうすけの指摘（2026-09-14）: MS2はパスキー認証等でログイン完了までの時間が読めず、
+# ログイン完了前にExcelを開くとRSSタブ自体が出ずRSS接続できない。固定待機時間では
+# 短すぎる日もあるため、ログイン完了をユーザー自身に確定させ、Enterキーで進める。
+$speaker.Speak("マーケットスピードツーへログインしてください。ログインが完了したら、エンターキーを押してください。",1) | Out-Null
+Write-Host "MarketSpeed IIへのログインが完了したら、Enterキーを押してください。" -ForegroundColor Cyan
+Read-Host | Out-Null
+Write-Log "user confirmed MS2 login complete"
 
 if (Test-Path $workbook) { Start-Process $workbook; Write-Log "workbook launch requested" }
 else { throw "Excelファイルがありません: $workbook" }
