@@ -76,12 +76,16 @@ if (-not $ready) {
     exit 2
 }
 
+# 2026-09-14夜の実機テストで判明したバグ修正: -ArgumentListに配列でパスを渡すと、
+# パスにスペースが含まれる場合（このフォルダー自体がそう）引用符が付かず、
+# 子プロセスが-Fileの引数を正しく受け取れず起動直後に終了していた（プロセスが一切残らない）。
+# 単一の文字列でパスを明示的にダブルクォートすることで回避する。
 if (Test-Path $strategySpeaker) {
-    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File',$strategySpeaker)
+    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $strategySpeaker + '"')
     Write-Log "today strategy speaker started"
 }
 if (Test-Path $methodAudit) {
-    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File',$methodAudit)
+    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $methodAudit + '"')
     Write-Log "method profit audit started"
 }
 
@@ -93,7 +97,7 @@ $alreadyRunning = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'
 if ($alreadyRunning.Count -gt 0) {
     Write-Log "kioxia watcher already running"
 } elseif (Test-Path $kioxiaWatcher) {
-    Start-Process powershell.exe -ArgumentList @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-NoExit','-File',$kioxiaWatcher)
+    Start-Process powershell.exe -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -NoExit -File "' + $kioxiaWatcher + '"')
     Write-Log "kioxia watcher started"
 } else {
     Write-Log "kioxia watcher script not found: $kioxiaWatcher"
