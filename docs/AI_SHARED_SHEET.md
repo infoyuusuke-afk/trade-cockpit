@@ -1,4 +1,3 @@
-C-020
 # AIコクピット 共有シート（ChatGPT ↔ Claude Code）
 
 最終確認: 2026-09-14 JST / 記録担当: ChatGPT  
