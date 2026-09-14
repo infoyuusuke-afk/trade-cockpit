@@ -23,6 +23,52 @@ function Get-Tick([double]$price) {
     return 100
 }
 
+# ユーザー方針（2026-09-15）: 「大口が入った値段・足跡」「個人の損切りを誘発しそうな価格帯」の
+# 分析依頼への対応。既存の1分足データ・OR15・VWAPだけを使い、表示専用の参考情報として追加する
+# （$buy/$shortの条件式・音声通知には一切使わない）。
+#
+# 大口フットプリント: 完成済み1分足を1本ずつ、直前20本の平均出来高と比較し、出来高が
+# しきい値(倍率)以上だった足を「大口の可能性がある出来高」として検出する。あくまで出来高が
+# 平常時より大きかった、という事実の検知であり、実際に大口（機関・仕手筋等）の注文だったと
+# identifyできるわけではない（歩み値の個別約定明細までは現状取得していないため）。
+function Get-VolumeFootprints($bars, [int]$window = 20, [double]$ratioThreshold = 2.5, [int]$maxResults = 3) {
+    $results = @()
+    if ($null -eq $bars -or $bars.Count -le $window) { return $results }
+    for ($i = $window; $i -lt $bars.Count; $i++) {
+        $windowBars = $bars[($i - $window)..($i - 1)]
+        $avgVol = ($windowBars | Measure-Object Volume -Average).Average
+        if ($avgVol -le 0) { continue }
+        $ratio = $bars[$i].Volume / $avgVol
+        if ($ratio -ge $ratioThreshold) {
+            $dir = if ($bars[$i].Close -gt $bars[$i].Open) { "買い優勢" } elseif ($bars[$i].Close -lt $bars[$i].Open) { "売り優勢" } else { "拮抗" }
+            $results += [pscustomobject]@{ Time = $bars[$i].TimeText; Price = $bars[$i].Close; Ratio = $ratio; Dir = $dir }
+        }
+    }
+    return @($results | Select-Object -Last $maxResults)
+}
+
+# 損切り誘発想定ゾーン: 個人投資家の損切り注文が集中しやすいと一般的に言われる価格帯
+# （OR15高値/安値、VWAP、キリの良い節目の価格）を機械的にリストアップするだけの参考情報。
+# 実際にその価格帯に損切り注文が集積しているかは板の厚み等からは確認できておらず、
+# 一般的な経験則に基づく仮説的な目安に過ぎない点に注意。
+function Get-StopClusterZones([double]$price, [double]$orHigh, [double]$orLow, [double]$vwap) {
+    $zones = @()
+    if ($orHigh -gt 0) { $zones += [pscustomobject]@{ Level = $orHigh; Label = "OR15高値" } }
+    if ($orLow -gt 0) { $zones += [pscustomobject]@{ Level = $orLow; Label = "OR15安値" } }
+    if ($vwap -gt 0) { $zones += [pscustomobject]@{ Level = $vwap; Label = "VWAP" } }
+    if ($price -gt 0) {
+        $roundStep = 500.0
+        $nearestRound = [math]::Round($price / $roundStep) * $roundStep
+        foreach ($mult in @(-1, 0, 1)) {
+            $lvl = $nearestRound + ($mult * $roundStep)
+            if ([math]::Abs($lvl - $price) -le ($price * 0.02) -and $lvl -gt 0) {
+                $zones += [pscustomobject]@{ Level = $lvl; Label = "節目" }
+            }
+        }
+    }
+    return @($zones | Sort-Object Level)
+}
+
 function Get-SafeNumber($value, [double]$minValue, [double]$maxValue) {
     if ($null -eq $value -or $value -is [System.Array]) { return $null }
     try { $number = [Convert]::ToDouble($value) } catch { return $null }
@@ -382,6 +428,7 @@ try {
         $state = if ($inSession) { "監視中" } elseif ($inNightPts) { "東証終了・JNX夜間PTS時間帯（PTS参考価格はDASHBOARD下部・売買サインには使わない）" } elseif ($inDayPts) { "東証寄付前・JNXデイタイムPTS時間帯（PTS参考価格はDASHBOARD下部・売買サインには使わない）" } else { "市場時間外" }
         $condPrice = "データ待ち"; $condVol = "データ待ち"; $condEma = "データ待ち"; $condOr = "データ待ち"
         $close1 = 0; $open1 = 0; $volRatio = 0; $ema9 = 0; $ema20 = 0; $orHigh = 0; $orLow = 0; $crosses = 0; $barTime = "-"
+        $footprintText = "データ待ち"; $stopZoneText = "データ待ち"
 
         if ($one.Count -ge 25 -and $five.Count -ge 21 -and $price -gt 0 -and $vwap -gt 0) {
             $completedOne = $one | Select-Object -Last 21
@@ -419,6 +466,12 @@ try {
             $condVol = if ($volRatio -ge 1.5) { "出来高OK" } else { "出来高不足" }
             $condEma = if ($ema9 -gt $ema20) { "上向き" } elseif ($ema9 -lt $ema20) { "下向き" } else { "収束" }
             $condOr = if ($price -gt $orHigh) { "OR15上" } elseif ($price -lt $orLow) { "OR15下" } else { "OR15内" }
+
+            # 参考表示のみ（売買判定には使わない）。ユーザー依頼: 大口出来高フットプリント・損切り誘発想定ゾーン
+            $footprints = Get-VolumeFootprints $one 20 2.5 3
+            $footprintText = if ($footprints.Count -eq 0) { "検出なし（過去約" + $one.Count + "分）" } else { ($footprints | ForEach-Object { "$($_.Time) $([math]::Round($_.Price,0))円 出来高比$([math]::Round($_.Ratio,1))倍($($_.Dir))" }) -join " / " }
+            $stopZones = Get-StopClusterZones $price $orHigh $orLow $vwap
+            $stopZoneText = if ($stopZones.Count -eq 0) { "データ待ち" } else { (($stopZones | Select-Object -Unique -Property Level,Label | ForEach-Object { "$([math]::Round($_.Level,0))円($($_.Label))" }) -join " / ") }
         }
 
         Set-CellValue $calc.Range("B2") $signal
@@ -446,6 +499,9 @@ try {
         Set-CellValue $calc.Range("B24") ("UNDER " + [math]::Round($underRatio*100,1) + "%")
         Set-CellValue $calc.Range("B25") $state
         Set-CellValue $dash.Range("A26") ("気配地合い(参考・未検証): " + $boardBiasLabel + "（UNDER " + [math]::Round($underRatio*100,1) + "%）")
+        # A28・A32は非結合セル（既存レイアウトで空いている行）。
+        Set-CellValue $dash.Range("A28") ("大口出来高フットプリント(参考・出来高比2.5倍以上・未検証): " + $footprintText)
+        Set-CellValue $dash.Range("A32") ("損切り誘発想定ゾーン(参考・経験則・未検証): " + $stopZoneText)
         $dash.Range("A5:H9").Interior.Color = if ($signal -eq "買いサイン") { 0x62B14C } elseif ($signal -eq "空売りサイン") { 0x4E4EFF } elseif ($signal -eq "往復ピンタ回避") { 0x2A8CFF } else { 0x483117 }
 
         if ($inSession -and ($signal -eq "買いサイン" -or $signal -eq "空売りサイン") -and (($signal -ne $lastSpokenSignal) -or (((Get-Date) - $lastSpokenAt).TotalMinutes -ge 10))) {
