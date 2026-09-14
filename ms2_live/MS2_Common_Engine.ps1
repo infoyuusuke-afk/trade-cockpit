@@ -1,4 +1,12 @@
-Set-StrictMode -Version Latest
+﻿# 注意（2026-09-15実機検証で判明）: Set-StrictMode -Version Latest はここに置かない。
+# このファイルはMS2_RSS_100_Collector.ps1から`. (dot-source)`で読み込まれるため、
+# StrictModeが呼び出し元スクリプト全体のスコープへ漏れ出し続ける（PowerShellの仕様）。
+# 1300行超の既存収集器コードはStrictMode非対応で、COMオブジェクト（Excel）操作との
+# 相性問題（Windows PowerShell 5.1の既知の不具合）により、100銘柄分のJNX RSS数式設定
+# ループの途中で「null 値の式ではメソッドを呼び出せません」という実行時エラーが発生し、
+# 収集器プロセス全体がクラッシュすることを実機で確認した。この関数群自体は単純な計算のみで
+# StrictModeがなくても`tests/test_ms2_common_engine.ps1`のテストで十分に検証できるため、
+# ここでは設定しない。
 
 function Get-MS2CommonDecision {
     param(

@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\ms2_live\MS2_Common_Engine.ps1')
 
 $long = Get-MS2CommonDecision @{price=105;vwap=100;ema9=104;ema20=101;volume_burst=1.8;flow_bias=18;under_ratio=57;market_alignment='LONG';or15_break='UP';rebound=$false}
