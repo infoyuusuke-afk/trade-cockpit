@@ -31,6 +31,31 @@ function Get-SafeNumber($value, [double]$minValue, [double]$maxValue) {
     return [double]$number
 }
 
+$script:diagLogPath = Join-Path $PSScriptRoot "com_error_diag.csv"
+if (-not (Test-Path $script:diagLogPath)) {
+    "日時,セル,シート,試行,例外型,HResult,InnerException型,InnerExceptionメッセージ,値の型,値,ApartmentState" | Out-File -FilePath $script:diagLogPath -Encoding utf8
+}
+$script:comApartmentState = [System.Threading.Thread]::CurrentThread.GetApartmentState()
+
+function Write-ComErrorDiag($range, $value, [int]$attempt, $errorRecord) {
+    # C-006対応: InvalidCastExceptionとCOMException（ビジー等）を混同しないよう、
+    # 例外の型・HResult・InnerExceptionを都度記録する。ここでの失敗は握りつぶす（診断用のため）。
+    try {
+        $ex = $errorRecord.Exception
+        $cellAddr = try { $range.Address() } catch { "不明" }
+        $sheetName = try { $range.Worksheet.Name } catch { "不明" }
+        $valueType = if ($null -eq $value) { "null" } else { $value.GetType().FullName }
+        $innerType = if ($null -ne $ex.InnerException) { $ex.InnerException.GetType().FullName } else { "" }
+        $innerMsg = if ($null -ne $ex.InnerException) { $ex.InnerException.Message } else { "" }
+        $hresultHex = try { "0x{0:X8}" -f $ex.HResult } catch { "" }
+        $row = @(
+            (Get-Date).ToString('yyyy-MM-dd HH:mm:ss.fff'), $cellAddr, $sheetName, $attempt,
+            $ex.GetType().FullName, $hresultHex, $innerType, $innerMsg, $valueType, $value, $script:comApartmentState
+        ) -join ","
+        Add-Content -Path $script:diagLogPath -Value $row -Encoding utf8
+    } catch {}
+}
+
 function Set-CellValue($range, $value, [int]$maxAttempts = 4, [int]$delayMs = 150) {
     # Excel COMへの書き込みが原因不明の一時的なキャスト例外で失敗することがある（切り分け済み・単発では成功する）。
     # 少し待って再試行すれば成功するため、書き込みのたびに使うヘルパー。全て失敗した場合のみ例外を投げる。
@@ -39,6 +64,7 @@ function Set-CellValue($range, $value, [int]$maxAttempts = 4, [int]$delayMs = 15
             $range.Value2 = $value
             return
         } catch {
+            Write-ComErrorDiag $range $value $attempt $_
             if ($attempt -eq $maxAttempts) { throw }
             Start-Sleep -Milliseconds $delayMs
         }
@@ -119,6 +145,13 @@ $dash.Range("D22").NumberFormat = "mm/dd hh:mm"
 # データ鮮度: スクリプトが停止していてもExcel側のNOW()で判定できるよう、書式でなく数式で持たせる。
 $dash.Range("A24").Value2 = "データ鮮度"
 $dash.Range("B24").FormulaLocal = '=IF(計算!B18=0,"未取得",IF((NOW()-計算!B18)*1440>1,"古いデータ("&TEXT((NOW()-計算!B18)*1440,"0")&"分前)","最新"))'
+# 安全対策（C-005/C-006対応・最優先）: COM書き込み失敗時、DASHBOARDの売買サイン表示が
+# 古い値のまま「有効な現在のサイン」に見えてしまう問題への対処。計算!B18（最終更新）は
+# 計算!B2（サイン）と同じ書き込みバッチの一部で、B2の書き込みが失敗すればbatch全体が
+# 中断されB18も更新されない（コードレビューで確認済み）。そのためB18の鮮度をそのまま
+# サイン表示のゲートとして使う。PowerShell側の書き込みに一切依存せず、Excel自身のNOW()
+# だけで判定するため、監視ループが完全に停止していても機能する。
+$dash.Range("B5").FormulaLocal = '=IF(計算!B18=0,"未取得",IF((NOW()-計算!B18)*1440>1,"⚠古い・使用不可",計算!B2))'
 # 東証RSSの現在値・気配は夜間PTS(JNX)の価格ではないため、時間帯ラベルにその旨を明記する（売買判定は変更しない）。
 $dash.Range("H17").Value2 = "9:00–11:30 / 12:30–15:30（夜間PTSは別時間帯・参考表示のみ）"
 # 夜間PTS(JNX)参考表示欄（売買サインには使わない・表示専用）
