@@ -30,13 +30,40 @@
 # ワークブックだけを確実に指す。実機の隔離テストで、複数Excelインスタンスが存在する状態でも
 # 正しく安全ゲートが更新されることを確認済み。
 
+# ChatGPT C-013指摘への対応（2026-09-15）: 当初のcatchは全例外を黙殺しており、この心拍プロセス
+# 自体がExcelへ接続できなくなっても何も分からなかった（「監視されていない状態」が「正常稼働」と
+# 見分けがつかない）。連続失敗を診断ログへ記録し、一定回数続いたら音声でも警告するようにした。
+#
+# なお、C-013で指摘された通りの根本的な限界が残る：ExcelのNOW()は再計算のトリガーなしには
+# 自走しないため、Watcherとこの心拍プロセスの**両方**が同時に停止した場合、Excel数式だけでは
+# 表示（DASHBOARD!A5等）を自動的に無効化できない。この心拍プロセスの役目は「Watcherだけが
+# 落ちたケース」への対策であり、「両方落ちたケース」への対策ではない。両方落ちた場合に備える
+# には、このPC自体を定期的に見るか、心拍プロセスとは別の外部監視の仕組みが必要（未実装、
+# 次の課題としてSTATUS.md/共有シートに記載）。
+
 $bookPath = Join-Path $PSScriptRoot "Kioxia_MS2_RSS_Live_Signals.xlsx"
 $dashboardSheetName = "DASHBOARD"
 $intervalSeconds = 5
+$diagLogPath = Join-Path $PSScriptRoot "heartbeat_diag.csv"
+$alertThreshold = 3           # 連続失敗3回（約15秒）で音声警告
+$alertRepeatMinutes = 5       # 警告が続く間、再警告する間隔
+
+if (-not (Test-Path $diagLogPath)) {
+    "日時,状態,連続失敗回数,詳細" | Out-File -FilePath $diagLogPath -Encoding utf8
+}
+
+$speaker = $null
+try { $speaker = New-Object -ComObject SAPI.SpVoice } catch {}
+
+$consecutiveFailures = 0
+$lastAlertAt = Get-Date "2000-01-01"
+$lastLoggedOk = Get-Date "2000-01-01"
 
 Write-Host "安全ゲート用の心拍プロセスを開始しました（${intervalSeconds}秒ごとに再計算）。終了はCtrl+C。" -ForegroundColor Cyan
 
 while ($true) {
+    $failed = $false
+    $errorDetail = ""
     try {
         # ファイルパスのモニカーで目的のワークブックへ直接バインドする。
         # Excel.Applicationが複数起動していても、このワークブックだけを確実に指す。
@@ -45,8 +72,31 @@ while ($true) {
         # 別シートを再計算してもDASHBOARDのNOW()は再評価されないため、シート指定が必須。
         $book.Worksheets.Item($dashboardSheetName).Calculate()
     } catch {
-        # ワークブック未オープン・COM一時エラー等はすべて無視して次のループへ。
-        # このプロセス自体は何があっても止めない。
+        $failed = $true
+        $errorDetail = $_.Exception.Message
+    }
+
+    if ($failed) {
+        $consecutiveFailures++
+        Add-Content -Path $diagLogPath -Encoding UTF8 -Value ((Get-Date).ToString("yyyy-MM-dd HH:mm:ss")+",失敗,"+$consecutiveFailures+","+($errorDetail -replace ",","；"))
+        Write-Host "[$(Get-Date -Format 'HH:mm:ss')] 心拍失敗（連続${consecutiveFailures}回）: $errorDetail" -ForegroundColor Yellow
+        if ($consecutiveFailures -ge $alertThreshold -and ((Get-Date) - $lastAlertAt).TotalMinutes -ge $alertRepeatMinutes) {
+            Write-Host "[$(Get-Date -Format 'HH:mm:ss')] 心拍プロセスがExcelへ接続できない状態が続いています。安全ゲートが更新されていない可能性があります。" -ForegroundColor Red
+            if ($speaker) { try { $speaker.Speak("心拍プロセスがエクセルへ接続できていません。安全ゲートが古いままの可能性があります。確認してください。",1) | Out-Null } catch {} }
+            $lastAlertAt = Get-Date
+        }
+    } else {
+        # 成功時は毎回ログに書かず、1分に1回だけ「生存記録」を残す（ログ肥大化防止、
+        # かつ「ログが止まっている＝プロセス自体が落ちた」ことも見分けられるようにする）。
+        if ($consecutiveFailures -gt 0) {
+            Add-Content -Path $diagLogPath -Encoding UTF8 -Value ((Get-Date).ToString("yyyy-MM-dd HH:mm:ss")+",復帰,0,")
+            Write-Host "[$(Get-Date -Format 'HH:mm:ss')] 心拍復帰（連続失敗${consecutiveFailures}回から回復）" -ForegroundColor Green
+        }
+        $consecutiveFailures = 0
+        if (((Get-Date) - $lastLoggedOk).TotalMinutes -ge 1) {
+            Add-Content -Path $diagLogPath -Encoding UTF8 -Value ((Get-Date).ToString("yyyy-MM-dd HH:mm:ss")+",正常,0,")
+            $lastLoggedOk = Get-Date
+        }
     }
     Start-Sleep -Seconds $intervalSeconds
 }
