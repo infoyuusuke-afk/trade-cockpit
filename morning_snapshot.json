@@ -1,26 +1,8 @@
 {
-  "date": "2026-09-14",
-  "fixed_at": "2026-09-14 23:56:58 JST",
+  "date": "2026-09-15",
+  "fixed_at": "2026-09-15 00:00:35 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
-    {
-      "name": "神戸物産（3038）",
-      "ticker": "3038.T",
-      "side": "LONG",
-      "score": 95.0,
-      "entry": 2980,
-      "entry_limit": 2980,
-      "stop": 2905,
-      "target1": 3095,
-      "target2": 3145,
-      "morning_price": 3167.0,
-      "rvol": 1.73,
-      "ret20": 14.06,
-      "atr_pct": 3.68,
-      "day_score": 10.93,
-      "swing_score": 10.38,
-      "material_stage": "先回り候補"
-    },
     {
       "name": "NEC（6701）",
       "ticker": "6701.T",
@@ -91,6 +73,24 @@
       "atr_pct": 5.6,
       "day_score": 6.81,
       "swing_score": 2.53,
+      "material_stage": "事実確認待ち"
+    },
+    {
+      "name": "日立製作所（6501）",
+      "ticker": "6501.T",
+      "side": "LONG",
+      "score": 88.0,
+      "entry": 5220,
+      "entry_limit": 5220,
+      "stop": 5120,
+      "target1": 5360,
+      "target2": 5420,
+      "morning_price": 5325.0,
+      "rvol": 0.95,
+      "ret20": -4.42,
+      "atr_pct": 2.72,
+      "day_score": 6.15,
+      "swing_score": -3.37,
       "material_stage": "事実確認待ち"
     }
   ]
