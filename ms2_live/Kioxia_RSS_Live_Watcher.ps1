@@ -71,6 +71,22 @@ function Set-CellValue($range, $value, [int]$maxAttempts = 4, [int]$delayMs = 15
     }
 }
 
+function Set-CellFormula($range, $formula, [int]$maxAttempts = 4, [int]$delayMs = 150) {
+    # Set-CellValueと同じ理由（起動時の数式設定も同じCOM書き込みの脆さの影響を受けることが実機で判明。
+    # 特にDASHBOARD!B5の安全ゲート数式が無音で設定に失敗する事例があったため、起動時の数式設定も
+    # 必ずこちらを使う）。
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        try {
+            $range.FormulaLocal = $formula
+            return
+        } catch {
+            Write-ComErrorDiag $range $formula $attempt $_
+            if ($attempt -eq $maxAttempts) { throw }
+            Start-Sleep -Milliseconds $delayMs
+        }
+    }
+}
+
 function Read-Chart($sheet, [string]$anchor) {
     try {
         $region = $sheet.Range($anchor).CurrentRegion.Value2
@@ -94,8 +110,25 @@ try {
     $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
     Write-Host "RSS接続済みのExcelへ接続しました。" -ForegroundColor Green
 } catch {
-    $excel = New-Object -ComObject Excel.Application
-    Write-Host "Excelを起動しました。RSSタブで『接続』を確認してください。" -ForegroundColor Yellow
+    # 2026-09-14深夜の実機検証で判明: New-Object -ComObject Excel.Applicationで生成した
+    # Excelインスタンスは、MS2 RSSアドイン（COMアドイン）が読み込まれずRssMarket等が
+    # #NAME?エラーになり、RSSリボンタブ自体も存在しないことを確認した。ファイルを通常どおり
+    # 開く（シェル経由でExcel.exeを起動する）必要があるため、Start-Processでファイルを開き、
+    # Excelプロセスが起動するのを待ってからGetActiveObjectで接続し直す。
+    Write-Host "Excelが起動していません。ファイルを開いてアドインを正しく読み込みます。" -ForegroundColor Yellow
+    Start-Process $bookPath
+    $excel = $null
+    $connectDeadline = (Get-Date).AddSeconds(60)
+    while ($null -eq $excel -and (Get-Date) -lt $connectDeadline) {
+        Start-Sleep -Seconds 2
+        try { $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application") } catch {}
+    }
+    if ($null -eq $excel) {
+        Write-Host "Excelの起動を確認できませんでした。" -ForegroundColor Red
+        Read-Host "Enterで終了"
+        exit 1
+    }
+    Write-Host "Excelへ接続しました。RSSタブで『接続』を確認してください。" -ForegroundColor Yellow
 }
 $excel.Visible = $true
 $excel.DisplayAlerts = $false
@@ -112,30 +145,34 @@ $calc = $book.Worksheets.Item("計算")
 $dash = $book.Worksheets.Item("DASHBOARD")
 $log = $book.Worksheets.Item("検証ログ")
 
-$rss.Range("B4").FormulaLocal = '=RssMarket("285A.T","現在値")'
-$rss.Range("B5").FormulaLocal = '=RssMarket("285A.T","出来高加重平均")'
-$rss.Range("B6").FormulaLocal = '=RssMarket("285A.T","出来高")'
-$rss.Range("B7").FormulaLocal = '=RssMarket("285A.T","最良売気配値")'
-$rss.Range("B8").FormulaLocal = '=RssMarket("285A.T","最良買気配値")'
-$rss.Range("B9").FormulaLocal = '=RssMarket("285A.T","OVER気配数量")'
-$rss.Range("B10").FormulaLocal = '=RssMarket("285A.T","UNDER気配数量")'
-$rss.Range("B11").FormulaLocal = '=RssMarket("285A.T","売成行数量")'
-$rss.Range("B12").FormulaLocal = '=RssMarket("285A.T","買成行数量")'
-$rss.Range("B13").Value2 = "RSS対象外"
-$rss.Range("B14").Value2 = "RSS対象外"
-$rss.Range("B15").Value2 = "週次データを別取得"
-$rss.Range("A20").FormulaLocal = '=RssChart(,"285A.T","1M",500)'
-$rss.Range("L20").FormulaLocal = '=RssChart(,"285A.T","5M",200)'
-$rss.Range("B16").Value2 = "接続中"
+Set-CellFormula $rss.Range("B4") '=RssMarket("285A.T","現在値")'
+Set-CellFormula $rss.Range("B5") '=RssMarket("285A.T","出来高加重平均")'
+Set-CellFormula $rss.Range("B6") '=RssMarket("285A.T","出来高")'
+Set-CellFormula $rss.Range("B7") '=RssMarket("285A.T","最良売気配値")'
+Set-CellFormula $rss.Range("B8") '=RssMarket("285A.T","最良買気配値")'
+Set-CellFormula $rss.Range("B9") '=RssMarket("285A.T","OVER気配数量")'
+Set-CellFormula $rss.Range("B10") '=RssMarket("285A.T","UNDER気配数量")'
+Set-CellFormula $rss.Range("B11") '=RssMarket("285A.T","売成行数量")'
+Set-CellFormula $rss.Range("B12") '=RssMarket("285A.T","買成行数量")'
+Set-CellValue $rss.Range("B13") "RSS対象外"
+Set-CellValue $rss.Range("B14") "RSS対象外"
+Set-CellValue $rss.Range("B15") "週次データを別取得"
+Set-CellFormula $rss.Range("A20") '=RssChart(,"285A.T","1M",500)'
+Set-CellFormula $rss.Range("L20") '=RssChart(,"285A.T","5M",200)'
+Set-CellValue $rss.Range("B16") "接続中"
 # Issue #17追記（2026-09-14・JNX発見を受けて追加）: 夜間PTS(JNX)価格は参考表示専用。
 # MS2_RSS_100_Collector.ps1のKIOXIA_JNXシートで実データ取得を確認済み（285A.JNX形式）。
 # 売買サイン($buy/$short/$inSession)には一切使わない。DASHBOARDの参考表示にのみ使う。
-$rss.Range("B18").FormulaLocal = '=RssMarket("285A.JNX","現在値")'
-$rss.Range("B19").FormulaLocal = '=RssMarket("285A.JNX","前日比率")'
-$rss.Range("B20").FormulaLocal = '=RssMarket("285A.JNX","最良買気配値")'
-$rss.Range("B21").FormulaLocal = '=RssMarket("285A.JNX","最良売気配値")'
-$rss.Range("B22").FormulaLocal = '=RssMarket("285A.JNX","現在値詳細時刻")'
-$excel.CalculateFull()
+Set-CellFormula $rss.Range("B18") '=RssMarket("285A.JNX","現在値")'
+Set-CellFormula $rss.Range("B19") '=RssMarket("285A.JNX","前日比率")'
+Set-CellFormula $rss.Range("B20") '=RssMarket("285A.JNX","最良買気配値")'
+Set-CellFormula $rss.Range("B21") '=RssMarket("285A.JNX","最良売気配値")'
+Set-CellFormula $rss.Range("B22") '=RssMarket("285A.JNX","現在値詳細時刻")'
+# 2026-09-14深夜の実機検証で判明: CalculateFull()はワークブック全体（100銘柄収集器の
+# 100銘柄RSS・KIOXIA_JNXシート、合計数千セルのRssMarket数式を含む）を再計算するため、
+# 非常に重く、これが原因でWatcherがCPU使用率ゼロのままハングする事例を確認した。
+# 必要なのはRSS接続シートの値だけなので、そのシートだけに絞って再計算する。
+$rss.Calculate()
 
 # Issue #17対応: 「最終更新」「足時刻」がExcelのシリアル数値に化けないよう、明示的に日時書式を固定する。
 $calc.Range("B18").NumberFormat = "mm/dd hh:mm:ss"
@@ -143,23 +180,29 @@ $calc.Range("B19").NumberFormat = "mm/dd hh:mm"
 $dash.Range("B22").NumberFormat = "mm/dd hh:mm:ss"
 $dash.Range("D22").NumberFormat = "mm/dd hh:mm"
 # データ鮮度: スクリプトが停止していてもExcel側のNOW()で判定できるよう、書式でなく数式で持たせる。
-$dash.Range("A24").Value2 = "データ鮮度"
-$dash.Range("B24").FormulaLocal = '=IF(計算!B18=0,"未取得",IF((NOW()-計算!B18)*1440>1,"古いデータ("&TEXT((NOW()-計算!B18)*1440,"0")&"分前)","最新"))'
+Set-CellValue $dash.Range("A24") "データ鮮度"
+Set-CellFormula $dash.Range("B24") '=IF(計算!B18=0,"未取得",IF((NOW()-計算!B18)*1440>1,"古いデータ("&TEXT((NOW()-計算!B18)*1440,"0")&"分前)","最新"))'
 # 安全対策（C-005/C-006対応・最優先）: COM書き込み失敗時、DASHBOARDの売買サイン表示が
 # 古い値のまま「有効な現在のサイン」に見えてしまう問題への対処。計算!B18（最終更新）は
 # 計算!B2（サイン）と同じ書き込みバッチの一部で、B2の書き込みが失敗すればbatch全体が
 # 中断されB18も更新されない（コードレビューで確認済み）。そのためB18の鮮度をそのまま
 # サイン表示のゲートとして使う。PowerShell側の書き込みに一切依存せず、Excel自身のNOW()
 # だけで判定するため、監視ループが完全に停止していても機能する。
-$dash.Range("B5").FormulaLocal = '=IF(計算!B18=0,"未取得",IF((NOW()-計算!B18)*1440>1,"⚠古い・使用不可",計算!B2))'
+# 2026-09-14深夜: 実機検証で判明した重大な誤り訂正。DASHBOARD!B5はA5:H9の結合セルの
+# 非アンカーセルで、非アンカーセルへの書き込みはExcelが無音で無視する（エラーにもならない）。
+# 実際に画面へ表示されるのは結合セルの左上(アンカー)であるA5であり、B5への設定はずっと
+# 無効だった。安全ゲートは必ずA5へ設定する。
+# また、このFormulaLocal設定自体が無音で失敗する事例も実機で確認したため、
+# 必ずSet-CellFormula（リトライ付き）で設定する。安全ゲートが無いと本末転倒のため最重要。
+Set-CellFormula $dash.Range("A5") '=IF(計算!B18=0,"未取得",IF((NOW()-計算!B18)*1440>1,"古い・使用不可",計算!B2))'
 # 東証RSSの現在値・気配は夜間PTS(JNX)の価格ではないため、時間帯ラベルにその旨を明記する（売買判定は変更しない）。
-$dash.Range("H17").Value2 = "9:00–11:30 / 12:30–15:30（夜間PTSは別時間帯・参考表示のみ）"
+Set-CellValue $dash.Range("H17") "9:00–11:30 / 12:30–15:30（夜間PTSは別時間帯・参考表示のみ）"
 # 夜間PTS(JNX)参考表示欄（売買サインには使わない・表示専用）
-$dash.Range("A25").Value2 = "JNX参考"
+Set-CellValue $dash.Range("A25") "JNX参考"
 $dash.Range("B25").NumberFormat = "#,##0"
-$dash.Range("C25").Value2 = "前日比"
-$dash.Range("E25").Value2 = "気配(買/売)"
-$dash.Range("G25").Value2 = "時刻"
+Set-CellValue $dash.Range("C25") "前日比"
+Set-CellValue $dash.Range("E25") "気配(買/売)"
+Set-CellValue $dash.Range("G25") "時刻"
 $dash.Range("G25").NumberFormat = "hh:mm:ss"
 
 $speaker = New-Object -ComObject SAPI.SpVoice
@@ -185,7 +228,10 @@ try {
       # 監視ループ本体を丸ごとtry/catchで守る（1回失敗しても次のループで復帰する。売買サインの状態が
       # 更新されないまま古い値で残るのを避けるため、失敗時は短く待って次のループへ）。
       try {
-        $excel.Calculate()
+        # 2026-09-14深夜: $excel.Calculate()はExcelの仕様上「開いている全ブックを再計算」する
+        # （Microsoft公式ドキュメント）。100銘柄収集器のシートを含む全体再計算は非常に重く、
+        # ハング・COMエラーの一因と見て、このシート単体の再計算に変更した。
+        $rss.Calculate()
         $now = Get-Date
         $t = $now.TimeOfDay
         $inSession = (($t -ge [TimeSpan]::Parse("09:00:00") -and $t -le [TimeSpan]::Parse("11:30:00")) -or ($t -ge [TimeSpan]::Parse("12:30:00") -and $t -le [TimeSpan]::Parse("15:30:00")))
@@ -238,13 +284,17 @@ try {
                 Set-CellValue $dash.Range("F25") ""
                 Set-CellValue $dash.Range("H25") "未取得"
             } else {
-                Set-CellValue $dash.Range("B25") $ptsPrice
+                Set-CellValue $dash.Range("B25") ([string]$ptsPrice)
                 $ptsChangeText = if ($null -ne $ptsChangePct) { ([string][math]::Round($ptsChangePct,2)) + "%" } else { "" }
                 $ptsQuoteText = if ($null -ne $ptsBid -and $null -ne $ptsAsk) { "$ptsBid / $ptsAsk" } else { "" }
                 Set-CellValue $dash.Range("D25") $ptsChangeText
                 Set-CellValue $dash.Range("F25") $ptsQuoteText
                 $ptsTimeRaw = $rss.Range("B22").Value2
-                $ptsTimeText = try { if ($ptsTimeRaw -is [double]) { [DateTime]::FromOADate($ptsTimeRaw).ToString("HH:mm:ss") } else { [string]$ptsTimeRaw } } catch { [string]$ptsTimeRaw }
+                $ptsTimeText = ""
+                try {
+                    if ($ptsTimeRaw -is [double]) { $ptsTimeText = [DateTime]::FromOADate($ptsTimeRaw).ToString("HH:mm:ss") }
+                    elseif ($null -ne $ptsTimeRaw) { $ptsTimeText = [string]$ptsTimeRaw }
+                } catch { $ptsTimeText = "" }
                 Set-CellValue $dash.Range("H25") $ptsTimeText
             }
         } catch {
