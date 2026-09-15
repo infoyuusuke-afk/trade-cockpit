@@ -1,10 +1,10 @@
 {
-  "updated_at": "2026-09-15 10:12:16 JST",
+  "updated_at": "2026-09-15 11:35:43 JST",
   "source": "固定監視リスト（JPX取得失敗）",
   "universe_count": 100,
   "scanned_count": 100,
   "failed_count": 0,
-  "signal_count": 4,
+  "signal_count": 7,
   "prepared": [
     {
       "code": "7014",
@@ -18,11 +18,11 @@
       "target1": 5170,
       "target2": 5410,
       "ma5": 4734.0,
-      "rvol": 0.27,
+      "rvol": 0.37,
       "ret20": 3.35,
       "atr_pct": 4.9,
       "signal_date": "2026-09-15",
-      "reason": "安定押し目／終値が主要移動平均線上／出来高比0.27倍",
+      "reason": "安定押し目／終値が主要移動平均線上／出来高比0.37倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
       "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
       "chart": [
@@ -410,17 +410,17 @@
       "name": "東北電力（9506）",
       "setup": "5日線反発",
       "score": 85,
-      "close": 1419.5,
-      "trigger": 1423,
-      "stop": 1404,
-      "target1": 1452,
-      "target2": 1470,
-      "ma5": 1415.5,
-      "rvol": 0.22,
-      "ret20": 8.69,
-      "atr_pct": 2.59,
+      "close": 1417.0,
+      "trigger": 1426,
+      "stop": 1403,
+      "target1": 1460,
+      "target2": 1484,
+      "ma5": 1415.0,
+      "rvol": 0.36,
+      "ret20": 8.5,
+      "atr_pct": 2.61,
       "signal_date": "2026-09-15",
-      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.22倍",
+      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.36倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
       "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
       "chart": [
@@ -780,9 +780,9 @@
         },
         {
           "o": 1416.0,
-          "h": 1422.0,
+          "h": 1424.5,
           "l": 1402.0,
-          "c": 1419.5
+          "c": 1417.0
         }
       ],
       "supply_verified": false,
@@ -808,17 +808,17 @@
       "name": "マクニカHD（3132）",
       "setup": "5日線反発",
       "score": 85,
-      "close": 3734.0,
-      "trigger": 3760,
-      "stop": 3645,
-      "target1": 3930,
-      "target2": 4050,
-      "ma5": 3696.0,
-      "rvol": 0.21,
-      "ret20": 3.84,
-      "atr_pct": 4.21,
+      "close": 3786.0,
+      "trigger": 3820,
+      "stop": 3655,
+      "target1": 4070,
+      "target2": 4230,
+      "ma5": 3706.4,
+      "rvol": 0.33,
+      "ret20": 5.28,
+      "atr_pct": 4.26,
       "signal_date": "2026-09-15",
-      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.21倍",
+      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.33倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
       "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
       "chart": [
@@ -1178,9 +1178,9 @@
         },
         {
           "o": 3695.0,
-          "h": 3751.0,
+          "h": 3815.0,
           "l": 3665.0,
-          "c": 3734.0
+          "c": 3786.0
         }
       ],
       "supply_verified": false,
@@ -1206,17 +1206,17 @@
       "name": "INPEX（1605）",
       "setup": "安定押し目",
       "score": 85,
-      "close": 3943.0,
+      "close": 3957.0,
       "trigger": 3965,
       "stop": 3840,
       "target1": 4150,
       "target2": 4280,
-      "ma5": 3928.4,
-      "rvol": 0.2,
-      "ret20": 1.1,
-      "atr_pct": 3.08,
+      "ma5": 3931.2,
+      "rvol": 0.3,
+      "ret20": 1.46,
+      "atr_pct": 3.07,
       "signal_date": "2026-09-15",
-      "reason": "安定押し目／終値が主要移動平均線上／出来高比0.20倍",
+      "reason": "安定押し目／終値が主要移動平均線上／出来高比0.30倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
       "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
       "chart": [
@@ -1576,9 +1576,9 @@
         },
         {
           "o": 3932.0,
-          "h": 3958.0,
+          "h": 3960.0,
           "l": 3920.0,
-          "c": 3943.0
+          "c": 3957.0
         }
       ],
       "supply_verified": false,
@@ -1597,2709 +1597,26 @@
       "regime_fit_20": null,
       "regime_applied": false,
       "regime_reason": "JPX履歴未取得・既存採点を維持"
-    }
-  ],
-  "entered": [
-    {
-      "code": "7014",
-      "ticker": "7014.T",
-      "name": "名村造船所（7014）",
-      "setup": "安定押し目",
-      "score": 85,
-      "close": 4775.0,
-      "trigger": 4770,
-      "stop": 4555,
-      "target1": 5170,
-      "target2": 5410,
-      "ma5": 4734.0,
-      "rvol": 0.27,
-      "ret20": 3.35,
-      "atr_pct": 4.9,
-      "signal_date": "2026-09-15",
-      "reason": "安定押し目／終値が主要移動平均線上／出来高比0.27倍",
-      "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
-      "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
-      "chart": [
-        {
-          "o": 3800.0,
-          "h": 3865.0,
-          "l": 3705.0,
-          "c": 3840.0
-        },
-        {
-          "o": 3875.0,
-          "h": 3905.0,
-          "l": 3620.0,
-          "c": 3675.0
-        },
-        {
-          "o": 3670.0,
-          "h": 3755.0,
-          "l": 3630.0,
-          "c": 3660.0
-        },
-        {
-          "o": 3730.0,
-          "h": 3775.0,
-          "l": 3605.0,
-          "c": 3640.0
-        },
-        {
-          "o": 3620.0,
-          "h": 3730.0,
-          "l": 3620.0,
-          "c": 3690.0
-        },
-        {
-          "o": 3655.0,
-          "h": 3755.0,
-          "l": 3540.0,
-          "c": 3590.0
-        },
-        {
-          "o": 3620.0,
-          "h": 3645.0,
-          "l": 3520.0,
-          "c": 3545.0
-        },
-        {
-          "o": 3510.0,
-          "h": 3615.0,
-          "l": 3505.0,
-          "c": 3515.0
-        },
-        {
-          "o": 3510.0,
-          "h": 3680.0,
-          "l": 3510.0,
-          "c": 3570.0
-        },
-        {
-          "o": 3640.0,
-          "h": 3710.0,
-          "l": 3535.0,
-          "c": 3640.0
-        },
-        {
-          "o": 3675.0,
-          "h": 4185.0,
-          "l": 3660.0,
-          "c": 4180.0
-        },
-        {
-          "o": 4250.0,
-          "h": 4395.0,
-          "l": 4085.0,
-          "c": 4200.0
-        },
-        {
-          "o": 4090.0,
-          "h": 4245.0,
-          "l": 3890.0,
-          "c": 3890.0
-        },
-        {
-          "o": 3880.0,
-          "h": 3905.0,
-          "l": 3720.0,
-          "c": 3760.0
-        },
-        {
-          "o": 3760.0,
-          "h": 3885.0,
-          "l": 3740.0,
-          "c": 3800.0
-        },
-        {
-          "o": 3770.0,
-          "h": 3925.0,
-          "l": 3760.0,
-          "c": 3795.0
-        },
-        {
-          "o": 3750.0,
-          "h": 3935.0,
-          "l": 3660.0,
-          "c": 3880.0
-        },
-        {
-          "o": 3950.0,
-          "h": 4050.0,
-          "l": 3880.0,
-          "c": 4015.0
-        },
-        {
-          "o": 4015.0,
-          "h": 4110.0,
-          "l": 3905.0,
-          "c": 3960.0
-        },
-        {
-          "o": 3755.0,
-          "h": 3785.0,
-          "l": 3650.0,
-          "c": 3785.0
-        },
-        {
-          "o": 3800.0,
-          "h": 3925.0,
-          "l": 3720.0,
-          "c": 3895.0
-        },
-        {
-          "o": 3960.0,
-          "h": 4270.0,
-          "l": 3930.0,
-          "c": 4160.0
-        },
-        {
-          "o": 4160.0,
-          "h": 4270.0,
-          "l": 4130.0,
-          "c": 4240.0
-        },
-        {
-          "o": 4235.0,
-          "h": 4410.0,
-          "l": 4150.0,
-          "c": 4285.0
-        },
-        {
-          "o": 4345.0,
-          "h": 4520.0,
-          "l": 4320.0,
-          "c": 4460.0
-        },
-        {
-          "o": 4530.0,
-          "h": 4605.0,
-          "l": 4325.0,
-          "c": 4375.0
-        },
-        {
-          "o": 4435.0,
-          "h": 4440.0,
-          "l": 3995.0,
-          "c": 4135.0
-        },
-        {
-          "o": 4135.0,
-          "h": 4315.0,
-          "l": 4060.0,
-          "c": 4250.0
-        },
-        {
-          "o": 4390.0,
-          "h": 4475.0,
-          "l": 4240.0,
-          "c": 4340.0
-        },
-        {
-          "o": 4200.0,
-          "h": 4210.0,
-          "l": 4055.0,
-          "c": 4125.0
-        },
-        {
-          "o": 4090.0,
-          "h": 4230.0,
-          "l": 4070.0,
-          "c": 4155.0
-        },
-        {
-          "o": 4195.0,
-          "h": 4340.0,
-          "l": 4140.0,
-          "c": 4300.0
-        },
-        {
-          "o": 4195.0,
-          "h": 4410.0,
-          "l": 4160.0,
-          "c": 4360.0
-        },
-        {
-          "o": 4580.0,
-          "h": 4680.0,
-          "l": 4245.0,
-          "c": 4330.0
-        },
-        {
-          "o": 4220.0,
-          "h": 4405.0,
-          "l": 4110.0,
-          "c": 4310.0
-        },
-        {
-          "o": 4290.0,
-          "h": 4445.0,
-          "l": 4280.0,
-          "c": 4385.0
-        },
-        {
-          "o": 4385.0,
-          "h": 4545.0,
-          "l": 4385.0,
-          "c": 4420.0
-        },
-        {
-          "o": 4430.0,
-          "h": 4580.0,
-          "l": 4425.0,
-          "c": 4455.0
-        },
-        {
-          "o": 4470.0,
-          "h": 4595.0,
-          "l": 4440.0,
-          "c": 4510.0
-        },
-        {
-          "o": 4440.0,
-          "h": 4670.0,
-          "l": 4390.0,
-          "c": 4620.0
-        },
-        {
-          "o": 4480.0,
-          "h": 4500.0,
-          "l": 4265.0,
-          "c": 4290.0
-        },
-        {
-          "o": 4640.0,
-          "h": 4950.0,
-          "l": 4500.0,
-          "c": 4585.0
-        },
-        {
-          "o": 4445.0,
-          "h": 4505.0,
-          "l": 4230.0,
-          "c": 4420.0
-        },
-        {
-          "o": 4405.0,
-          "h": 4535.0,
-          "l": 4325.0,
-          "c": 4490.0
-        },
-        {
-          "o": 4490.0,
-          "h": 4630.0,
-          "l": 4445.0,
-          "c": 4550.0
-        },
-        {
-          "o": 4560.0,
-          "h": 4670.0,
-          "l": 4505.0,
-          "c": 4605.0
-        },
-        {
-          "o": 4730.0,
-          "h": 4775.0,
-          "l": 4645.0,
-          "c": 4775.0
-        },
-        {
-          "o": 4775.0,
-          "h": 4950.0,
-          "l": 4760.0,
-          "c": 4880.0
-        },
-        {
-          "o": 4740.0,
-          "h": 4875.0,
-          "l": 4685.0,
-          "c": 4840.0
-        },
-        {
-          "o": 4835.0,
-          "h": 4895.0,
-          "l": 4520.0,
-          "c": 4565.0
-        },
-        {
-          "o": 4450.0,
-          "h": 4535.0,
-          "l": 4405.0,
-          "c": 4485.0
-        },
-        {
-          "o": 4510.0,
-          "h": 4700.0,
-          "l": 4510.0,
-          "c": 4600.0
-        },
-        {
-          "o": 4650.0,
-          "h": 4815.0,
-          "l": 4625.0,
-          "c": 4800.0
-        },
-        {
-          "o": 4870.0,
-          "h": 5140.0,
-          "l": 4850.0,
-          "c": 5080.0
-        },
-        {
-          "o": 5060.0,
-          "h": 5070.0,
-          "l": 4865.0,
-          "c": 4865.0
-        },
-        {
-          "o": 4815.0,
-          "h": 4980.0,
-          "l": 4765.0,
-          "c": 4895.0
-        },
-        {
-          "o": 4825.0,
-          "h": 4830.0,
-          "l": 4620.0,
-          "c": 4670.0
-        },
-        {
-          "o": 4405.0,
-          "h": 4660.0,
-          "l": 4390.0,
-          "c": 4580.0
-        },
-        {
-          "o": 4540.0,
-          "h": 4765.0,
-          "l": 4495.0,
-          "c": 4750.0
-        },
-        {
-          "o": 4650.0,
-          "h": 4795.0,
-          "l": 4635.0,
-          "c": 4775.0
-        }
-      ],
-      "supply_verified": false,
-      "supply_score": null,
-      "supply_phase": "需給未確認",
-      "margin_buy_change_1w_pct": null,
-      "margin_buy_change_4w_pct": null,
-      "credit_ratio": null,
-      "institutional_short_change_pct": null,
-      "institutional_buyback_firms": null,
-      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定",
-      "legacy_score_before_regime": 85,
-      "regime_name": "MIXED",
-      "subject_sensitivity_10": null,
-      "sensitivity_status": "学習不足",
-      "regime_fit_20": null,
-      "regime_applied": false,
-      "regime_reason": "JPX履歴未取得・既存採点を維持",
-      "prepared_date": "2026-09-14"
-    }
-  ],
-  "overnight_long": [],
-  "overnight_short": [],
-  "investor_regime": {
-    "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-09-15T10:12:11+09:00",
-    "decision_at": "2026-09-15T10:12:11+09:00",
-    "source": {
-      "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
-      "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
-      "definition_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/07.html",
-      "publication_rule": "毎週第4営業日15:30。実取得確認時刻を利用し、予定時刻では解禁しない。"
-    },
-    "asof": {
-      "period_end": "2026-09-04",
-      "period_start": "2026-08-31",
-      "retrieved_at": "2026-09-10T18:22:33+09:00",
-      "revision": 1,
-      "sha256": "35fd17daa9b7f07594d72082cb48231cd2c7d4eefc1e80d53f6bbcd272d6e2b2"
-    },
-    "connection": {
-      "equity": "接続済み（現物・金額）",
-      "derivative": "接続済み",
-      "observed_weeks": 5,
-      "parsed_subjects": 8,
-      "insurer_split": "JPX公式は生保・損保合算。単独系列は未取得",
-      "equity_unit": "thousand_yen",
-      "derivative_unit": "yen_trading_value"
-    },
-    "regime": {
-      "name": "MIXED",
-      "confidence": 36,
-      "reasons": [
-        "単一レジームの条件未達"
-      ]
-    },
-    "subjects": [
-      {
-        "subject": "foreign",
-        "label": "海外",
-        "net": 689342880.0,
-        "previous_week_change": 821281417.0,
-        "cumulative_4w": 333062047.0,
-        "cumulative_13w": null,
-        "cumulative_52w": null,
-        "mean_4w": 83265511.75,
-        "deviation_from_mean_4w": 606077368.25,
-        "mean_13w": null,
-        "deviation_from_mean_13w": null,
-        "mean_52w": null,
-        "deviation_from_mean_52w": null,
-        "z52": null,
-        "flow_impulse": null,
-        "streak_weeks": 1,
-        "reversal": "売→買",
-        "turnover_share_pct": 59.4084,
-        "source_label": "海外投資家",
-        "availability": "available",
-        "nikkei225_alignment": null,
-        "topix_alignment": null
-      },
-      {
-        "subject": "individual_cash",
-        "label": "個人現金",
-        "net": -86992766.0,
-        "previous_week_change": 198370191.0,
-        "cumulative_4w": -775447627.0,
-        "cumulative_13w": null,
-        "cumulative_52w": null,
-        "mean_4w": -193861906.75,
-        "deviation_from_mean_4w": 106869140.75,
-        "mean_13w": null,
-        "deviation_from_mean_13w": null,
-        "mean_52w": null,
-        "deviation_from_mean_52w": null,
-        "z52": null,
-        "flow_impulse": null,
-        "streak_weeks": -2,
-        "reversal": null,
-        "turnover_share_pct": 4.9397,
-        "source_label": "個人現金",
-        "availability": "available",
-        "nikkei225_alignment": null,
-        "topix_alignment": null
-      },
-      {
-        "subject": "individual_margin",
-        "label": "個人信用",
-        "net": 85125168.0,
-        "previous_week_change": -84663229.0,
-        "cumulative_4w": 699961178.0,
-        "cumulative_13w": null,
-        "cumulative_52w": null,
-        "mean_4w": 174990294.5,
-        "deviation_from_mean_4w": -89865126.5,
-        "mean_13w": null,
-        "deviation_from_mean_13w": null,
-        "mean_52w": null,
-        "deviation_from_mean_52w": null,
-        "z52": null,
-        "flow_impulse": null,
-        "streak_weeks": 3,
-        "reversal": null,
-        "turnover_share_pct": 18.8659,
-        "source_label": "個人信用",
-        "availability": "available",
-        "nikkei225_alignment": null,
-        "topix_alignment": null
-      },
-      {
-        "subject": "business_corporations",
-        "label": "事業法人",
-        "net": 277990254.0,
-        "previous_week_change": 65494724.0,
-        "cumulative_4w": 926077774.0,
-        "cumulative_13w": null,
-        "cumulative_52w": null,
-        "mean_4w": 231519443.5,
-        "deviation_from_mean_4w": 46470810.5,
-        "mean_13w": null,
-        "deviation_from_mean_13w": null,
-        "mean_52w": null,
-        "deviation_from_mean_52w": null,
-        "z52": null,
-        "flow_impulse": null,
-        "streak_weeks": 5,
-        "reversal": null,
-        "turnover_share_pct": 1.0009,
-        "source_label": "事業法人",
-        "availability": "available",
-        "nikkei225_alignment": null,
-        "topix_alignment": null
-      },
-      {
-        "subject": "investment_trusts",
-        "label": "投資信託",
-        "net": -303831652.0,
-        "previous_week_change": -249309436.0,
-        "cumulative_4w": -396683684.0,
-        "cumulative_13w": null,
-        "cumulative_52w": null,
-        "mean_4w": -99170921.0,
-        "deviation_from_mean_4w": -204660731.0,
-        "mean_13w": null,
-        "deviation_from_mean_13w": null,
-        "mean_52w": null,
-        "deviation_from_mean_52w": null,
-        "z52": null,
-        "flow_impulse": null,
-        "streak_weeks": -3,
-        "reversal": null,
-        "turnover_share_pct": 1.8387,
-        "source_label": "投資信託",
-        "availability": "available",
-        "nikkei225_alignment": null,
-        "topix_alignment": null
-      },
-      {
-        "subject": "trust_banks",
-        "label": "信託銀行",
-        "net": -446922288.0,
-        "previous_week_change": -255323028.0,
-        "cumulative_4w": -1229209633.0,
-        "cumulative_13w": null,
-        "cumulative_52w": null,
-        "mean_4w": -307302408.25,
-        "deviation_from_mean_4w": -139619879.75,
-        "mean_13w": null,
-        "deviation_from_mean_13w": null,
-        "mean_52w": null,
-        "deviation_from_mean_52w": null,
-        "z52": null,
-        "flow_impulse": null,
-        "streak_weeks": -4,
-        "reversal": null,
-        "turnover_share_pct": 2.1247,
-        "source_label": "信託銀行",
-        "availability": "available",
-        "nikkei225_alignment": null,
-        "topix_alignment": null
-      },
-      {
-        "subject": "proprietary",
-        "label": "証券自己",
-        "net": -82186827.0,
-        "previous_week_change": -398833043.0,
-        "cumulative_4w": 847332160.0,
-        "cumulative_13w": null,
-        "cumulative_52w": null,
-        "mean_4w": 211833040.0,
-        "deviation_from_mean_4w": -294019867.0,
-        "mean_13w": null,
-        "deviation_from_mean_13w": null,
-        "mean_52w": null,
-        "deviation_from_mean_52w": null,
-        "z52": null,
-        "flow_impulse": null,
-        "streak_weeks": -1,
-        "reversal": "買→売",
-        "turnover_share_pct": 10.4788,
-        "source_label": "自己計",
-        "availability": "available",
-        "nikkei225_alignment": null,
-        "topix_alignment": null
-      },
-      {
-        "subject": "life_insurance",
-        "label": "生保・損保（合算）",
-        "net": -48349905.0,
-        "previous_week_change": -35326101.0,
-        "cumulative_4w": -117044139.0,
-        "cumulative_13w": null,
-        "cumulative_52w": null,
-        "mean_4w": -29261034.75,
-        "deviation_from_mean_4w": -19088870.25,
-        "mean_13w": null,
-        "deviation_from_mean_13w": null,
-        "mean_52w": null,
-        "deviation_from_mean_52w": null,
-        "z52": null,
-        "flow_impulse": null,
-        "streak_weeks": -5,
-        "reversal": null,
-        "turnover_share_pct": 0.0891,
-        "source_label": "生保・損保（公式合算）",
-        "availability": "available",
-        "nikkei225_alignment": null,
-        "topix_alignment": null
-      },
-      {
-        "subject": "non_life_insurance",
-        "label": "損保（単独未取得）",
-        "net": null,
-        "previous_week_change": null,
-        "cumulative_4w": null,
-        "cumulative_13w": null,
-        "cumulative_52w": null,
-        "mean_4w": null,
-        "deviation_from_mean_4w": null,
-        "mean_13w": null,
-        "deviation_from_mean_13w": null,
-        "mean_52w": null,
-        "deviation_from_mean_52w": null,
-        "z52": null,
-        "flow_impulse": null,
-        "streak_weeks": null,
-        "reversal": null,
-        "turnover_share_pct": null,
-        "source_label": null,
-        "availability": "missing",
-        "nikkei225_alignment": null,
-        "topix_alignment": null
-      }
-    ],
-    "foreign_futures_alignment": {
-      "available": true,
-      "status": "接続済み",
-      "source": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/t13vrt000001y00l-att/Tousi_DV_W_20260831_20260904.csv",
-      "period_end": "2026-09-04",
-      "retrieved_at": "2026-09-10T18:22:33+09:00",
-      "foreign_nikkei225_futures_net": -301084703344.0,
-      "aligned": false
-    },
-    "learning": {
-      "status": "学習不足",
-      "minimum_independent_weeks": 26,
-      "recent_window_weeks": 52,
-      "time_decay_half_life_weeks": 26,
-      "walk_forward": true,
-      "overlap_guard": "翌日/3日/5日は各ホライズンで非重複週を別集計",
-      "individual_stock_sensitivity": "未接続"
-    },
-    "stock_feature_schema": {
-      "connected_existing": [
-        "sector",
-        "turnover",
-        "volume_acceleration",
-        "20d_high_position",
-        "VWAP",
-        "EMA",
-        "OR15",
-        "ATR",
-        "margin_ratio",
-        "margin_balance_change",
-        "institutional_short"
-      ],
-      "requires_verified_connection": [
-        "size_bucket",
-        "market_cap",
-        "beta",
-        "nikkei225_relative_strength",
-        "topix_relative_strength",
-        "growth_value",
-        "ROE",
-        "PBR",
-        "buyback",
-        "foreign_ownership",
-        "overseas_sales",
-        "lending_balance"
-      ],
-      "policy": "未取得特徴はゼロ補完せず、採点にも使用しない。"
-    },
-    "type_filter": {
-      "status": "学習不足・未適用",
-      "tailwind": [],
-      "avoid": [],
-      "note": "週次主体データは上位フィルターであり、ザラバ発動サインではありません。"
-    },
-    "warnings": [
-      "市場全体集計から個別銘柄の買い主体を断定しません。",
-      "欠測はゼロ補完しません。"
-    ]
-  },
-  "speculative_theme_watch": [],
-  "large_lot_accumulation": [
-    {
-      "code": "9984",
-      "ticker": "9984.T",
-      "name": "ソフトバンクグループ（9984）",
-      "score": 77,
-      "phase": "上放れ待ち",
-      "close": 6240.0,
-      "ret5": -4.82,
-      "ret20": 7.03,
-      "rvol": 0.58,
-      "up_down_volume_ratio": 2.01,
-      "obv_impulse": 0.69,
-      "clv20": 0.19,
-      "down_volume_ratio": 0.87,
-      "higher_low_pct": 0.59,
-      "trigger": 6970,
-      "stop": 4900,
-      "target1": 10080,
-      "target2": 12140,
-      "signal_date": "2026-09-15",
-      "reason": "上昇日/下落日出来高 2.01倍／OBV +0.69／下落日出来高 0.87倍／安値切上げ +0.6%",
-      "chart": [
-        {
-          "o": 7300.0,
-          "h": 7394.0,
-          "l": 7104.0,
-          "c": 7244.0
-        },
-        {
-          "o": 6944.0,
-          "h": 6977.0,
-          "l": 6500.0,
-          "c": 6513.0
-        },
-        {
-          "o": 6521.0,
-          "h": 6723.0,
-          "l": 6356.0,
-          "c": 6597.0
-        },
-        {
-          "o": 6797.0,
-          "h": 7188.0,
-          "l": 6401.0,
-          "c": 7118.0
-        },
-        {
-          "o": 6412.0,
-          "h": 6489.0,
-          "l": 6114.0,
-          "c": 6226.0
-        },
-        {
-          "o": 6320.0,
-          "h": 6322.0,
-          "l": 5828.0,
-          "c": 5894.0
-        },
-        {
-          "o": 5968.0,
-          "h": 6047.0,
-          "l": 5711.0,
-          "c": 5963.0
-        },
-        {
-          "o": 6089.0,
-          "h": 6239.0,
-          "l": 5975.0,
-          "c": 6000.0
-        },
-        {
-          "o": 5757.0,
-          "h": 6266.0,
-          "l": 5741.0,
-          "c": 6195.0
-        },
-        {
-          "o": 6000.0,
-          "h": 6169.0,
-          "l": 5831.0,
-          "c": 6169.0
-        },
-        {
-          "o": 6130.0,
-          "h": 6147.0,
-          "l": 5866.0,
-          "c": 5979.0
-        },
-        {
-          "o": 5962.0,
-          "h": 6113.0,
-          "l": 5691.0,
-          "c": 5771.0
-        },
-        {
-          "o": 5571.0,
-          "h": 5916.0,
-          "l": 5567.0,
-          "c": 5763.0
-        },
-        {
-          "o": 5796.0,
-          "h": 5958.0,
-          "l": 5724.0,
-          "c": 5757.0
-        },
-        {
-          "o": 6021.0,
-          "h": 6556.0,
-          "l": 6004.0,
-          "c": 6370.0
-        },
-        {
-          "o": 6370.0,
-          "h": 6542.0,
-          "l": 6231.0,
-          "c": 6364.0
-        },
-        {
-          "o": 6181.0,
-          "h": 6574.0,
-          "l": 6018.0,
-          "c": 6574.0
-        },
-        {
-          "o": 6450.0,
-          "h": 6660.0,
-          "l": 6311.0,
-          "c": 6360.0
-        },
-        {
-          "o": 6123.0,
-          "h": 6145.0,
-          "l": 5858.0,
-          "c": 5961.0
-        },
-        {
-          "o": 5663.0,
-          "h": 5676.0,
-          "l": 5191.0,
-          "c": 5424.0
-        },
-        {
-          "o": 5524.0,
-          "h": 5789.0,
-          "l": 5364.0,
-          "c": 5751.0
-        },
-        {
-          "o": 5929.0,
-          "h": 6032.0,
-          "l": 5690.0,
-          "c": 5703.0
-        },
-        {
-          "o": 5846.0,
-          "h": 5928.0,
-          "l": 5687.0,
-          "c": 5918.0
-        },
-        {
-          "o": 5800.0,
-          "h": 5800.0,
-          "l": 5411.0,
-          "c": 5500.0
-        },
-        {
-          "o": 5584.0,
-          "h": 5671.0,
-          "l": 5219.0,
-          "c": 5331.0
-        },
-        {
-          "o": 5202.0,
-          "h": 5270.0,
-          "l": 4982.0,
-          "c": 5095.0
-        },
-        {
-          "o": 5083.0,
-          "h": 5130.0,
-          "l": 4580.0,
-          "c": 4741.0
-        },
-        {
-          "o": 4526.0,
-          "h": 4755.0,
-          "l": 4500.0,
-          "c": 4622.0
-        },
-        {
-          "o": 5303.0,
-          "h": 5322.0,
-          "l": 5228.0,
-          "c": 5260.0
-        },
-        {
-          "o": 5255.0,
-          "h": 5430.0,
-          "l": 5061.0,
-          "c": 5393.0
-        },
-        {
-          "o": 5418.0,
-          "h": 5530.0,
-          "l": 5118.0,
-          "c": 5228.0
-        },
-        {
-          "o": 5628.0,
-          "h": 5958.0,
-          "l": 5605.0,
-          "c": 5958.0
-        },
-        {
-          "o": 5760.0,
-          "h": 5881.0,
-          "l": 5542.0,
-          "c": 5695.0
-        },
-        {
-          "o": 5557.0,
-          "h": 5594.0,
-          "l": 5321.0,
-          "c": 5552.0
-        },
-        {
-          "o": 5491.0,
-          "h": 5569.0,
-          "l": 5388.0,
-          "c": 5484.0
-        },
-        {
-          "o": 5484.0,
-          "h": 5554.0,
-          "l": 5416.0,
-          "c": 5520.0
-        },
-        {
-          "o": 5607.0,
-          "h": 5682.0,
-          "l": 5568.0,
-          "c": 5575.0
-        },
-        {
-          "o": 5834.0,
-          "h": 5970.0,
-          "l": 5730.0,
-          "c": 5739.0
-        },
-        {
-          "o": 5750.0,
-          "h": 5915.0,
-          "l": 5653.0,
-          "c": 5886.0
-        },
-        {
-          "o": 5801.0,
-          "h": 6230.0,
-          "l": 5781.0,
-          "c": 5830.0
-        },
-        {
-          "o": 5530.0,
-          "h": 5573.0,
-          "l": 5200.0,
-          "c": 5227.0
-        },
-        {
-          "o": 5280.0,
-          "h": 5520.0,
-          "l": 5231.0,
-          "c": 5387.0
-        },
-        {
-          "o": 5248.0,
-          "h": 5357.0,
-          "l": 5223.0,
-          "c": 5255.0
-        },
-        {
-          "o": 5240.0,
-          "h": 5259.0,
-          "l": 4975.0,
-          "c": 4975.0
-        },
-        {
-          "o": 4950.0,
-          "h": 5090.0,
-          "l": 4882.0,
-          "c": 5087.0
-        },
-        {
-          "o": 5138.0,
-          "h": 5235.0,
-          "l": 5043.0,
-          "c": 5163.0
-        },
-        {
-          "o": 5300.0,
-          "h": 5335.0,
-          "l": 5074.0,
-          "c": 5200.0
-        },
-        {
-          "o": 5249.0,
-          "h": 5263.0,
-          "l": 5136.0,
-          "c": 5161.0
-        },
-        {
-          "o": 4900.0,
-          "h": 5213.0,
-          "l": 4883.0,
-          "c": 5200.0
-        },
-        {
-          "o": 5178.0,
-          "h": 5310.0,
-          "l": 5068.0,
-          "c": 5262.0
-        },
-        {
-          "o": 5026.0,
-          "h": 5056.0,
-          "l": 4911.0,
-          "c": 4924.0
-        },
-        {
-          "o": 4980.0,
-          "h": 5080.0,
-          "l": 4933.0,
-          "c": 5001.0
-        },
-        {
-          "o": 5197.0,
-          "h": 5611.0,
-          "l": 5181.0,
-          "c": 5590.0
-        },
-        {
-          "o": 5842.0,
-          "h": 6217.0,
-          "l": 5814.0,
-          "c": 6217.0
-        },
-        {
-          "o": 6125.0,
-          "h": 6745.0,
-          "l": 6111.0,
-          "c": 6556.0
-        },
-        {
-          "o": 6600.0,
-          "h": 6959.0,
-          "l": 6560.0,
-          "c": 6810.0
-        },
-        {
-          "o": 6630.0,
-          "h": 6894.0,
-          "l": 6605.0,
-          "c": 6810.0
-        },
-        {
-          "o": 6410.0,
-          "h": 6555.0,
-          "l": 6358.0,
-          "c": 6540.0
-        },
-        {
-          "o": 5887.0,
-          "h": 5953.0,
-          "l": 5678.0,
-          "c": 5839.0
-        },
-        {
-          "o": 5828.0,
-          "h": 6278.0,
-          "l": 5775.0,
-          "c": 6240.0
-        }
-      ],
-      "supply_verified": false,
-      "supply_score": null,
-      "supply_phase": "需給未確認",
-      "margin_buy_change_1w_pct": null,
-      "margin_buy_change_4w_pct": null,
-      "credit_ratio": null,
-      "institutional_short_change_pct": null,
-      "institutional_buyback_firms": null,
-      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定"
-    },
-    {
-      "code": "9432",
-      "ticker": "9432.T",
-      "name": "NTT（9432）",
-      "score": 75,
-      "phase": "上放れ待ち",
-      "close": 177.1,
-      "ret5": 2.97,
-      "ret20": 10.41,
-      "rvol": 0.21,
-      "up_down_volume_ratio": 2.31,
-      "obv_impulse": 0.06,
-      "clv20": 0.25,
-      "down_volume_ratio": 0.86,
-      "higher_low_pct": 5.35,
-      "trigger": 179.5,
-      "stop": 167.2,
-      "target1": 197.9,
-      "target2": 210.20000000000002,
-      "signal_date": "2026-09-15",
-      "reason": "上昇日/下落日出来高 2.31倍／OBV +0.06／下落日出来高 0.86倍／安値切上げ +5.3%",
-      "chart": [
-        {
-          "o": 144.3,
-          "h": 144.8,
-          "l": 143.1,
-          "c": 144.0
-        },
-        {
-          "o": 144.0,
-          "h": 144.8,
-          "l": 142.6,
-          "c": 144.2
-        },
-        {
-          "o": 143.5,
-          "h": 145.7,
-          "l": 143.4,
-          "c": 145.1
-        },
-        {
-          "o": 145.0,
-          "h": 145.2,
-          "l": 143.0,
-          "c": 143.8
-        },
-        {
-          "o": 143.1,
-          "h": 144.4,
-          "l": 142.6,
-          "c": 144.3
-        },
-        {
-          "o": 144.7,
-          "h": 146.4,
-          "l": 144.5,
-          "c": 146.0
-        },
-        {
-          "o": 146.0,
-          "h": 146.7,
-          "l": 145.0,
-          "c": 145.0
-        },
-        {
-          "o": 144.0,
-          "h": 144.2,
-          "l": 142.6,
-          "c": 142.8
-        },
-        {
-          "o": 143.8,
-          "h": 146.1,
-          "l": 143.5,
-          "c": 146.1
-        },
-        {
-          "o": 147.1,
-          "h": 148.4,
-          "l": 146.1,
-          "c": 146.1
-        },
-        {
-          "o": 146.5,
-          "h": 147.4,
-          "l": 146.2,
-          "c": 147.0
-        },
-        {
-          "o": 147.5,
-          "h": 148.5,
-          "l": 146.3,
-          "c": 148.0
-        },
-        {
-          "o": 148.8,
-          "h": 150.6,
-          "l": 148.7,
-          "c": 149.5
-        },
-        {
-          "o": 149.5,
-          "h": 150.1,
-          "l": 148.6,
-          "c": 149.0
-        },
-        {
-          "o": 149.0,
-          "h": 149.1,
-          "l": 147.6,
-          "c": 147.6
-        },
-        {
-          "o": 148.1,
-          "h": 149.3,
-          "l": 147.8,
-          "c": 149.1
-        },
-        {
-          "o": 150.0,
-          "h": 152.2,
-          "l": 149.7,
-          "c": 150.2
-        },
-        {
-          "o": 150.4,
-          "h": 151.3,
-          "l": 149.7,
-          "c": 150.0
-        },
-        {
-          "o": 150.5,
-          "h": 151.6,
-          "l": 150.0,
-          "c": 150.9
-        },
-        {
-          "o": 151.5,
-          "h": 152.8,
-          "l": 151.1,
-          "c": 151.1
-        },
-        {
-          "o": 153.0,
-          "h": 154.2,
-          "l": 151.5,
-          "c": 151.7
-        },
-        {
-          "o": 150.5,
-          "h": 152.1,
-          "l": 149.7,
-          "c": 152.0
-        },
-        {
-          "o": 151.0,
-          "h": 151.2,
-          "l": 149.3,
-          "c": 149.7
-        },
-        {
-          "o": 150.0,
-          "h": 151.3,
-          "l": 149.2,
-          "c": 151.3
-        },
-        {
-          "o": 151.5,
-          "h": 154.3,
-          "l": 151.5,
-          "c": 154.3
-        },
-        {
-          "o": 155.0,
-          "h": 156.7,
-          "l": 154.4,
-          "c": 156.4
-        },
-        {
-          "o": 156.4,
-          "h": 161.2,
-          "l": 156.2,
-          "c": 160.3
-        },
-        {
-          "o": 160.0,
-          "h": 160.9,
-          "l": 157.1,
-          "c": 159.0
-        },
-        {
-          "o": 155.5,
-          "h": 155.8,
-          "l": 151.9,
-          "c": 152.4
-        },
-        {
-          "o": 152.5,
-          "h": 152.5,
-          "l": 150.2,
-          "c": 152.5
-        },
-        {
-          "o": 153.0,
-          "h": 153.2,
-          "l": 150.4,
-          "c": 150.4
-        },
-        {
-          "o": 150.3,
-          "h": 151.3,
-          "l": 149.7,
-          "c": 151.0
-        },
-        {
-          "o": 150.2,
-          "h": 154.5,
-          "l": 149.9,
-          "c": 154.5
-        },
-        {
-          "o": 154.8,
-          "h": 159.3,
-          "l": 154.0,
-          "c": 158.5
-        },
-        {
-          "o": 157.9,
-          "h": 159.9,
-          "l": 157.0,
-          "c": 159.9
-        },
-        {
-          "o": 160.0,
-          "h": 160.5,
-          "l": 158.3,
-          "c": 158.4
-        },
-        {
-          "o": 159.8,
-          "h": 160.7,
-          "l": 159.0,
-          "c": 160.5
-        },
-        {
-          "o": 160.0,
-          "h": 162.7,
-          "l": 159.4,
-          "c": 162.7
-        },
-        {
-          "o": 163.0,
-          "h": 163.3,
-          "l": 161.1,
-          "c": 161.5
-        },
-        {
-          "o": 160.0,
-          "h": 161.0,
-          "l": 158.8,
-          "c": 160.4
-        },
-        {
-          "o": 161.4,
-          "h": 161.6,
-          "l": 158.9,
-          "c": 159.4
-        },
-        {
-          "o": 161.5,
-          "h": 162.8,
-          "l": 160.5,
-          "c": 161.4
-        },
-        {
-          "o": 162.0,
-          "h": 166.2,
-          "l": 161.7,
-          "c": 166.1
-        },
-        {
-          "o": 166.5,
-          "h": 167.4,
-          "l": 164.9,
-          "c": 166.5
-        },
-        {
-          "o": 167.4,
-          "h": 169.4,
-          "l": 167.2,
-          "c": 169.2
-        },
-        {
-          "o": 168.7,
-          "h": 170.0,
-          "l": 168.2,
-          "c": 169.6
-        },
-        {
-          "o": 169.2,
-          "h": 169.5,
-          "l": 167.4,
-          "c": 168.2
-        },
-        {
-          "o": 168.2,
-          "h": 169.6,
-          "l": 167.3,
-          "c": 168.6
-        },
-        {
-          "o": 170.0,
-          "h": 173.0,
-          "l": 169.9,
-          "c": 172.5
-        },
-        {
-          "o": 172.7,
-          "h": 175.6,
-          "l": 171.7,
-          "c": 175.6
-        },
-        {
-          "o": 175.1,
-          "h": 175.8,
-          "l": 173.7,
-          "c": 175.2
-        },
-        {
-          "o": 175.0,
-          "h": 176.0,
-          "l": 172.5,
-          "c": 173.2
-        },
-        {
-          "o": 173.2,
-          "h": 173.5,
-          "l": 171.6,
-          "c": 172.6
-        },
-        {
-          "o": 172.6,
-          "h": 172.7,
-          "l": 168.3,
-          "c": 168.8
-        },
-        {
-          "o": 168.0,
-          "h": 172.4,
-          "l": 167.4,
-          "c": 172.0
-        },
-        {
-          "o": 170.0,
-          "h": 173.3,
-          "l": 169.5,
-          "c": 172.2
-        },
-        {
-          "o": 172.8,
-          "h": 175.5,
-          "l": 171.3,
-          "c": 175.2
-        },
-        {
-          "o": 174.0,
-          "h": 176.4,
-          "l": 173.9,
-          "c": 175.7
-        },
-        {
-          "o": 176.1,
-          "h": 178.9,
-          "l": 176.0,
-          "c": 178.3
-        },
-        {
-          "o": 178.4,
-          "h": 179.3,
-          "l": 176.5,
-          "c": 177.1
-        }
-      ],
-      "supply_verified": false,
-      "supply_score": null,
-      "supply_phase": "需給未確認",
-      "margin_buy_change_1w_pct": null,
-      "margin_buy_change_4w_pct": null,
-      "credit_ratio": null,
-      "institutional_short_change_pct": null,
-      "institutional_buyback_firms": null,
-      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定"
-    },
-    {
-      "code": "9434",
-      "ticker": "9434.T",
-      "name": "ソフトバンク（9434）",
-      "score": 75,
-      "phase": "上放れ待ち",
-      "close": 250.2,
-      "ret5": 3.82,
-      "ret20": 6.92,
-      "rvol": 0.28,
-      "up_down_volume_ratio": 2.28,
-      "obv_impulse": 0.4,
-      "clv20": 0.05,
-      "down_volume_ratio": 0.87,
-      "higher_low_pct": 2.39,
-      "trigger": 252.5,
-      "stop": 236.0,
-      "target1": 277.2,
-      "target2": 293.8,
-      "signal_date": "2026-09-15",
-      "reason": "上昇日/下落日出来高 2.28倍／OBV +0.40／下落日出来高 0.87倍／安値切上げ +2.4%",
-      "chart": [
-        {
-          "o": 210.5,
-          "h": 210.5,
-          "l": 208.0,
-          "c": 208.8
-        },
-        {
-          "o": 207.0,
-          "h": 208.0,
-          "l": 205.2,
-          "c": 205.6
-        },
-        {
-          "o": 205.3,
-          "h": 208.0,
-          "l": 204.4,
-          "c": 205.3
-        },
-        {
-          "o": 205.4,
-          "h": 206.5,
-          "l": 202.9,
-          "c": 203.3
-        },
-        {
-          "o": 203.0,
-          "h": 205.7,
-          "l": 202.6,
-          "c": 204.7
-        },
-        {
-          "o": 205.9,
-          "h": 208.1,
-          "l": 205.4,
-          "c": 207.8
-        },
-        {
-          "o": 207.8,
-          "h": 208.7,
-          "l": 205.7,
-          "c": 208.1
-        },
-        {
-          "o": 207.9,
-          "h": 207.9,
-          "l": 205.6,
-          "c": 206.4
-        },
-        {
-          "o": 208.2,
-          "h": 210.1,
-          "l": 207.3,
-          "c": 210.1
-        },
-        {
-          "o": 212.1,
-          "h": 212.5,
-          "l": 209.1,
-          "c": 209.1
-        },
-        {
-          "o": 209.5,
-          "h": 210.7,
-          "l": 208.2,
-          "c": 210.4
-        },
-        {
-          "o": 211.5,
-          "h": 212.6,
-          "l": 209.8,
-          "c": 211.6
-        },
-        {
-          "o": 213.0,
-          "h": 215.0,
-          "l": 212.6,
-          "c": 213.1
-        },
-        {
-          "o": 212.8,
-          "h": 216.8,
-          "l": 211.5,
-          "c": 214.4
-        },
-        {
-          "o": 213.9,
-          "h": 214.4,
-          "l": 211.4,
-          "c": 211.4
-        },
-        {
-          "o": 212.3,
-          "h": 214.9,
-          "l": 211.9,
-          "c": 214.6
-        },
-        {
-          "o": 216.0,
-          "h": 221.9,
-          "l": 215.6,
-          "c": 218.8
-        },
-        {
-          "o": 219.0,
-          "h": 221.4,
-          "l": 217.6,
-          "c": 220.0
-        },
-        {
-          "o": 220.9,
-          "h": 223.0,
-          "l": 218.7,
-          "c": 219.6
-        },
-        {
-          "o": 222.2,
-          "h": 223.0,
-          "l": 218.7,
-          "c": 220.5
-        },
-        {
-          "o": 222.8,
-          "h": 226.0,
-          "l": 221.6,
-          "c": 222.1
-        },
-        {
-          "o": 220.8,
-          "h": 222.4,
-          "l": 219.3,
-          "c": 221.4
-        },
-        {
-          "o": 221.6,
-          "h": 221.6,
-          "l": 218.3,
-          "c": 219.5
-        },
-        {
-          "o": 220.1,
-          "h": 221.6,
-          "l": 218.9,
-          "c": 221.6
-        },
-        {
-          "o": 225.0,
-          "h": 229.2,
-          "l": 224.5,
-          "c": 228.3
-        },
-        {
-          "o": 229.1,
-          "h": 232.0,
-          "l": 227.6,
-          "c": 230.8
-        },
-        {
-          "o": 232.2,
-          "h": 237.7,
-          "l": 230.8,
-          "c": 235.9
-        },
-        {
-          "o": 233.3,
-          "h": 237.2,
-          "l": 230.3,
-          "c": 232.0
-        },
-        {
-          "o": 226.0,
-          "h": 228.1,
-          "l": 221.9,
-          "c": 223.4
-        },
-        {
-          "o": 223.5,
-          "h": 224.5,
-          "l": 220.1,
-          "c": 224.5
-        },
-        {
-          "o": 223.9,
-          "h": 224.1,
-          "l": 219.6,
-          "c": 220.4
-        },
-        {
-          "o": 224.1,
-          "h": 231.9,
-          "l": 221.9,
-          "c": 230.8
-        },
-        {
-          "o": 227.4,
-          "h": 229.5,
-          "l": 225.4,
-          "c": 228.6
-        },
-        {
-          "o": 231.0,
-          "h": 233.5,
-          "l": 228.8,
-          "c": 230.9
-        },
-        {
-          "o": 229.6,
-          "h": 230.8,
-          "l": 227.6,
-          "c": 228.4
-        },
-        {
-          "o": 230.0,
-          "h": 231.7,
-          "l": 228.8,
-          "c": 229.3
-        },
-        {
-          "o": 232.1,
-          "h": 235.1,
-          "l": 230.7,
-          "c": 233.4
-        },
-        {
-          "o": 233.8,
-          "h": 236.3,
-          "l": 231.5,
-          "c": 234.9
-        },
-        {
-          "o": 235.2,
-          "h": 237.2,
-          "l": 233.2,
-          "c": 234.9
-        },
-        {
-          "o": 231.5,
-          "h": 236.2,
-          "l": 230.9,
-          "c": 234.0
-        },
-        {
-          "o": 235.8,
-          "h": 236.0,
-          "l": 232.0,
-          "c": 232.4
-        },
-        {
-          "o": 233.3,
-          "h": 234.6,
-          "l": 230.6,
-          "c": 233.1
-        },
-        {
-          "o": 232.9,
-          "h": 236.1,
-          "l": 232.5,
-          "c": 233.8
-        },
-        {
-          "o": 233.8,
-          "h": 236.0,
-          "l": 232.0,
-          "c": 235.0
-        },
-        {
-          "o": 236.5,
-          "h": 240.5,
-          "l": 236.2,
-          "c": 239.3
-        },
-        {
-          "o": 240.0,
-          "h": 241.6,
-          "l": 238.8,
-          "c": 239.5
-        },
-        {
-          "o": 239.5,
-          "h": 239.8,
-          "l": 236.4,
-          "c": 237.5
-        },
-        {
-          "o": 236.2,
-          "h": 238.7,
-          "l": 235.4,
-          "c": 237.7
-        },
-        {
-          "o": 237.7,
-          "h": 239.7,
-          "l": 237.1,
-          "c": 237.1
-        },
-        {
-          "o": 238.0,
-          "h": 241.3,
-          "l": 237.5,
-          "c": 241.1
-        },
-        {
-          "o": 242.0,
-          "h": 242.6,
-          "l": 240.2,
-          "c": 241.3
-        },
-        {
-          "o": 240.1,
-          "h": 241.9,
-          "l": 237.6,
-          "c": 237.6
-        },
-        {
-          "o": 237.6,
-          "h": 239.6,
-          "l": 237.3,
-          "c": 239.2
-        },
-        {
-          "o": 239.4,
-          "h": 239.5,
-          "l": 236.8,
-          "c": 238.6
-        },
-        {
-          "o": 236.8,
-          "h": 241.6,
-          "l": 236.1,
-          "c": 241.0
-        },
-        {
-          "o": 239.8,
-          "h": 242.0,
-          "l": 238.9,
-          "c": 239.2
-        },
-        {
-          "o": 240.1,
-          "h": 245.0,
-          "l": 238.7,
-          "c": 243.2
-        },
-        {
-          "o": 240.9,
-          "h": 248.1,
-          "l": 240.9,
-          "c": 246.9
-        },
-        {
-          "o": 248.0,
-          "h": 251.5,
-          "l": 246.5,
-          "c": 250.8
-        },
-        {
-          "o": 252.0,
-          "h": 252.3,
-          "l": 249.1,
-          "c": 250.2
-        }
-      ],
-      "supply_verified": false,
-      "supply_score": null,
-      "supply_phase": "需給未確認",
-      "margin_buy_change_1w_pct": null,
-      "margin_buy_change_4w_pct": null,
-      "credit_ratio": null,
-      "institutional_short_change_pct": null,
-      "institutional_buyback_firms": null,
-      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定"
-    },
-    {
-      "code": "4667",
-      "ticker": "4667.T",
-      "name": "アイサンテクノロジー（4667）",
-      "score": 66,
-      "phase": "上放れ待ち",
-      "close": 3290.0,
-      "ret5": -3.24,
-      "ret20": 68.46,
-      "rvol": 0.1,
-      "up_down_volume_ratio": 3.09,
-      "obv_impulse": 0.99,
-      "clv20": -0.01,
-      "down_volume_ratio": 0.61,
-      "higher_low_pct": 29.5,
-      "trigger": 4105,
-      "stop": 2495,
-      "target1": 6520,
-      "target2": 8130,
-      "signal_date": "2026-09-15",
-      "reason": "上昇日/下落日出来高 3.09倍／OBV +0.99／下落日出来高 0.61倍／安値切上げ +29.5%",
-      "chart": [
-        {
-          "o": 2150.0,
-          "h": 2264.0,
-          "l": 2014.0,
-          "c": 2104.0
-        },
-        {
-          "o": 2088.0,
-          "h": 2110.0,
-          "l": 2000.0,
-          "c": 2020.0
-        },
-        {
-          "o": 2003.0,
-          "h": 2050.0,
-          "l": 1985.0,
-          "c": 1996.0
-        },
-        {
-          "o": 2019.0,
-          "h": 2076.0,
-          "l": 1970.0,
-          "c": 2076.0
-        },
-        {
-          "o": 2089.0,
-          "h": 2089.0,
-          "l": 1961.0,
-          "c": 1978.0
-        },
-        {
-          "o": 2018.0,
-          "h": 2098.0,
-          "l": 1970.0,
-          "c": 1994.0
-        },
-        {
-          "o": 2034.0,
-          "h": 2034.0,
-          "l": 1920.0,
-          "c": 2001.0
-        },
-        {
-          "o": 2030.0,
-          "h": 2046.0,
-          "l": 1995.0,
-          "c": 2003.0
-        },
-        {
-          "o": 2009.0,
-          "h": 2015.0,
-          "l": 1980.0,
-          "c": 2006.0
-        },
-        {
-          "o": 2043.0,
-          "h": 2170.0,
-          "l": 2005.0,
-          "c": 2170.0
-        },
-        {
-          "o": 2250.0,
-          "h": 2290.0,
-          "l": 2191.0,
-          "c": 2249.0
-        },
-        {
-          "o": 2250.0,
-          "h": 2330.0,
-          "l": 2249.0,
-          "c": 2289.0
-        },
-        {
-          "o": 2250.0,
-          "h": 2291.0,
-          "l": 2134.0,
-          "c": 2138.0
-        },
-        {
-          "o": 2095.0,
-          "h": 2122.0,
-          "l": 2039.0,
-          "c": 2070.0
-        },
-        {
-          "o": 2097.0,
-          "h": 2140.0,
-          "l": 2093.0,
-          "c": 2117.0
-        },
-        {
-          "o": 2147.0,
-          "h": 2150.0,
-          "l": 2041.0,
-          "c": 2107.0
-        },
-        {
-          "o": 2107.0,
-          "h": 2110.0,
-          "l": 2007.0,
-          "c": 2049.0
-        },
-        {
-          "o": 2060.0,
-          "h": 2121.0,
-          "l": 2050.0,
-          "c": 2114.0
-        },
-        {
-          "o": 2076.0,
-          "h": 2101.0,
-          "l": 2066.0,
-          "c": 2080.0
-        },
-        {
-          "o": 2051.0,
-          "h": 2051.0,
-          "l": 1940.0,
-          "c": 1957.0
-        },
-        {
-          "o": 1981.0,
-          "h": 2036.0,
-          "l": 1980.0,
-          "c": 2030.0
-        },
-        {
-          "o": 1907.0,
-          "h": 1908.0,
-          "l": 1828.0,
-          "c": 1838.0
-        },
-        {
-          "o": 1848.0,
-          "h": 1881.0,
-          "l": 1840.0,
-          "c": 1881.0
-        },
-        {
-          "o": 1864.0,
-          "h": 1875.0,
-          "l": 1816.0,
-          "c": 1871.0
-        },
-        {
-          "o": 1877.0,
-          "h": 1934.0,
-          "l": 1873.0,
-          "c": 1919.0
-        },
-        {
-          "o": 1924.0,
-          "h": 1924.0,
-          "l": 1792.0,
-          "c": 1800.0
-        },
-        {
-          "o": 1802.0,
-          "h": 1817.0,
-          "l": 1744.0,
-          "c": 1762.0
-        },
-        {
-          "o": 1755.0,
-          "h": 1798.0,
-          "l": 1734.0,
-          "c": 1772.0
-        },
-        {
-          "o": 1772.0,
-          "h": 1827.0,
-          "l": 1772.0,
-          "c": 1818.0
-        },
-        {
-          "o": 1806.0,
-          "h": 1845.0,
-          "l": 1772.0,
-          "c": 1829.0
-        },
-        {
-          "o": 1842.0,
-          "h": 1849.0,
-          "l": 1818.0,
-          "c": 1833.0
-        },
-        {
-          "o": 1834.0,
-          "h": 1870.0,
-          "l": 1834.0,
-          "c": 1863.0
-        },
-        {
-          "o": 1859.0,
-          "h": 1864.0,
-          "l": 1825.0,
-          "c": 1825.0
-        },
-        {
-          "o": 1854.0,
-          "h": 1871.0,
-          "l": 1725.0,
-          "c": 1746.0
-        },
-        {
-          "o": 1811.0,
-          "h": 1920.0,
-          "l": 1811.0,
-          "c": 1909.0
-        },
-        {
-          "o": 1920.0,
-          "h": 1988.0,
-          "l": 1920.0,
-          "c": 1967.0
-        },
-        {
-          "o": 1970.0,
-          "h": 2013.0,
-          "l": 1931.0,
-          "c": 1997.0
-        },
-        {
-          "o": 1997.0,
-          "h": 2039.0,
-          "l": 1966.0,
-          "c": 2017.0
-        },
-        {
-          "o": 2020.0,
-          "h": 2049.0,
-          "l": 1988.0,
-          "c": 2002.0
-        },
-        {
-          "o": 2016.0,
-          "h": 2017.0,
-          "l": 1953.0,
-          "c": 1953.0
-        },
-        {
-          "o": 1951.0,
-          "h": 2010.0,
-          "l": 1932.0,
-          "c": 1992.0
-        },
-        {
-          "o": 1980.0,
-          "h": 2130.0,
-          "l": 1980.0,
-          "c": 2112.0
-        },
-        {
-          "o": 2095.0,
-          "h": 2200.0,
-          "l": 2095.0,
-          "c": 2105.0
-        },
-        {
-          "o": 2103.0,
-          "h": 2123.0,
-          "l": 2071.0,
-          "c": 2082.0
-        },
-        {
-          "o": 2100.0,
-          "h": 2165.0,
-          "l": 2091.0,
-          "c": 2133.0
-        },
-        {
-          "o": 2151.0,
-          "h": 2266.0,
-          "l": 2151.0,
-          "c": 2266.0
-        },
-        {
-          "o": 2280.0,
-          "h": 2349.0,
-          "l": 2195.0,
-          "c": 2200.0
-        },
-        {
-          "o": 2330.0,
-          "h": 2700.0,
-          "l": 2330.0,
-          "c": 2661.0
-        },
-        {
-          "o": 2911.0,
-          "h": 3165.0,
-          "l": 2853.0,
-          "c": 3165.0
-        },
-        {
-          "o": 2855.0,
-          "h": 3025.0,
-          "l": 2601.0,
-          "c": 2643.0
-        },
-        {
-          "o": 2511.0,
-          "h": 3145.0,
-          "l": 2502.0,
-          "c": 3145.0
-        },
-        {
-          "o": 3845.0,
-          "h": 3845.0,
-          "l": 3245.0,
-          "c": 3670.0
-        },
-        {
-          "o": 3650.0,
-          "h": 3775.0,
-          "l": 2970.0,
-          "c": 2970.0
-        },
-        {
-          "o": 2870.0,
-          "h": 3295.0,
-          "l": 2838.0,
-          "c": 3155.0
-        },
-        {
-          "o": 3365.0,
-          "h": 3565.0,
-          "l": 3195.0,
-          "c": 3400.0
-        },
-        {
-          "o": 3365.0,
-          "h": 4100.0,
-          "l": 3220.0,
-          "c": 3625.0
-        },
-        {
-          "o": 3695.0,
-          "h": 3725.0,
-          "l": 3315.0,
-          "c": 3330.0
-        },
-        {
-          "o": 3260.0,
-          "h": 3950.0,
-          "l": 3250.0,
-          "c": 3635.0
-        },
-        {
-          "o": 3635.0,
-          "h": 3850.0,
-          "l": 3285.0,
-          "c": 3365.0
-        },
-        {
-          "o": 3295.0,
-          "h": 3415.0,
-          "l": 3260.0,
-          "c": 3290.0
-        }
-      ],
-      "supply_verified": false,
-      "supply_score": null,
-      "supply_phase": "需給未確認",
-      "margin_buy_change_1w_pct": null,
-      "margin_buy_change_4w_pct": null,
-      "credit_ratio": null,
-      "institutional_short_change_pct": null,
-      "institutional_buyback_firms": null,
-      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定"
-    },
-    {
-      "code": "9506",
-      "ticker": "9506.T",
-      "name": "東北電力（9506）",
-      "score": 64,
-      "phase": "上放れ待ち",
-      "close": 1419.5,
-      "ret5": 3.12,
-      "ret20": 8.69,
-      "rvol": 0.22,
-      "up_down_volume_ratio": 1.37,
-      "obv_impulse": 0.12,
-      "clv20": 0.24,
-      "down_volume_ratio": 0.94,
-      "higher_low_pct": 6.03,
-      "trigger": 1446,
-      "stop": 1336,
-      "target1": 1611,
-      "target2": 1721,
-      "signal_date": "2026-09-15",
-      "reason": "上昇日/下落日出来高 1.37倍／OBV +0.12／下落日出来高 0.94倍／安値切上げ +6.0%",
-      "chart": [
-        {
-          "o": 1048.5,
-          "h": 1049.0,
-          "l": 1033.0,
-          "c": 1041.0
-        },
-        {
-          "o": 1041.0,
-          "h": 1049.5,
-          "l": 1030.5,
-          "c": 1030.5
-        },
-        {
-          "o": 1030.0,
-          "h": 1039.5,
-          "l": 1027.5,
-          "c": 1029.5
-        },
-        {
-          "o": 1040.0,
-          "h": 1048.0,
-          "l": 1035.5,
-          "c": 1044.0
-        },
-        {
-          "o": 1055.0,
-          "h": 1057.0,
-          "l": 1032.5,
-          "c": 1042.0
-        },
-        {
-          "o": 1047.5,
-          "h": 1060.0,
-          "l": 1039.0,
-          "c": 1050.0
-        },
-        {
-          "o": 1052.5,
-          "h": 1073.0,
-          "l": 1050.0,
-          "c": 1064.5
-        },
-        {
-          "o": 1052.0,
-          "h": 1064.0,
-          "l": 1048.0,
-          "c": 1062.0
-        },
-        {
-          "o": 1067.0,
-          "h": 1073.5,
-          "l": 1052.5,
-          "c": 1063.5
-        },
-        {
-          "o": 1061.0,
-          "h": 1072.5,
-          "l": 1060.5,
-          "c": 1069.0
-        },
-        {
-          "o": 1080.5,
-          "h": 1097.5,
-          "l": 1073.5,
-          "c": 1097.5
-        },
-        {
-          "o": 1095.0,
-          "h": 1097.5,
-          "l": 1073.0,
-          "c": 1087.0
-        },
-        {
-          "o": 1087.0,
-          "h": 1097.0,
-          "l": 1084.5,
-          "c": 1093.0
-        },
-        {
-          "o": 1095.5,
-          "h": 1109.5,
-          "l": 1091.5,
-          "c": 1095.0
-        },
-        {
-          "o": 1092.5,
-          "h": 1100.0,
-          "l": 1088.0,
-          "c": 1089.5
-        },
-        {
-          "o": 1095.0,
-          "h": 1100.5,
-          "l": 1077.0,
-          "c": 1088.0
-        },
-        {
-          "o": 1094.0,
-          "h": 1107.0,
-          "l": 1092.0,
-          "c": 1103.0
-        },
-        {
-          "o": 1111.5,
-          "h": 1136.5,
-          "l": 1111.5,
-          "c": 1127.5
-        },
-        {
-          "o": 1121.0,
-          "h": 1139.0,
-          "l": 1115.5,
-          "c": 1132.0
-        },
-        {
-          "o": 1134.5,
-          "h": 1143.0,
-          "l": 1114.0,
-          "c": 1127.0
-        },
-        {
-          "o": 1135.0,
-          "h": 1159.5,
-          "l": 1130.0,
-          "c": 1146.0
-        },
-        {
-          "o": 1138.0,
-          "h": 1144.5,
-          "l": 1126.5,
-          "c": 1140.5
-        },
-        {
-          "o": 1143.0,
-          "h": 1149.5,
-          "l": 1141.5,
-          "c": 1146.5
-        },
-        {
-          "o": 1142.5,
-          "h": 1148.5,
-          "l": 1133.5,
-          "c": 1142.0
-        },
-        {
-          "o": 1158.0,
-          "h": 1179.0,
-          "l": 1156.0,
-          "c": 1177.5
-        },
-        {
-          "o": 1164.5,
-          "h": 1171.5,
-          "l": 1156.5,
-          "c": 1163.5
-        },
-        {
-          "o": 1162.5,
-          "h": 1210.0,
-          "l": 1162.5,
-          "c": 1192.5
-        },
-        {
-          "o": 1168.0,
-          "h": 1199.0,
-          "l": 1166.5,
-          "c": 1179.0
-        },
-        {
-          "o": 1180.5,
-          "h": 1187.0,
-          "l": 1174.5,
-          "c": 1180.5
-        },
-        {
-          "o": 1175.5,
-          "h": 1194.0,
-          "l": 1139.5,
-          "c": 1190.5
-        },
-        {
-          "o": 1199.0,
-          "h": 1212.5,
-          "l": 1183.0,
-          "c": 1186.5
-        },
-        {
-          "o": 1192.0,
-          "h": 1208.0,
-          "l": 1183.0,
-          "c": 1183.5
-        },
-        {
-          "o": 1178.5,
-          "h": 1211.5,
-          "l": 1174.5,
-          "c": 1205.0
-        },
-        {
-          "o": 1218.0,
-          "h": 1235.0,
-          "l": 1216.0,
-          "c": 1217.0
-        },
-        {
-          "o": 1233.5,
-          "h": 1234.0,
-          "l": 1211.0,
-          "c": 1218.0
-        },
-        {
-          "o": 1228.5,
-          "h": 1234.5,
-          "l": 1214.5,
-          "c": 1223.0
-        },
-        {
-          "o": 1224.5,
-          "h": 1240.5,
-          "l": 1222.0,
-          "c": 1238.5
-        },
-        {
-          "o": 1236.5,
-          "h": 1254.0,
-          "l": 1232.0,
-          "c": 1254.0
-        },
-        {
-          "o": 1254.0,
-          "h": 1265.0,
-          "l": 1249.0,
-          "c": 1257.0
-        },
-        {
-          "o": 1265.5,
-          "h": 1320.0,
-          "l": 1261.0,
-          "c": 1306.0
-        },
-        {
-          "o": 1296.0,
-          "h": 1300.0,
-          "l": 1268.5,
-          "c": 1283.5
-        },
-        {
-          "o": 1296.5,
-          "h": 1319.5,
-          "l": 1285.5,
-          "c": 1312.0
-        },
-        {
-          "o": 1307.5,
-          "h": 1330.5,
-          "l": 1298.5,
-          "c": 1330.5
-        },
-        {
-          "o": 1328.5,
-          "h": 1328.5,
-          "l": 1291.5,
-          "c": 1309.5
-        },
-        {
-          "o": 1323.0,
-          "h": 1332.5,
-          "l": 1311.0,
-          "c": 1313.5
-        },
-        {
-          "o": 1316.0,
-          "h": 1334.0,
-          "l": 1314.5,
-          "c": 1327.0
-        },
-        {
-          "o": 1328.0,
-          "h": 1335.0,
-          "l": 1311.5,
-          "c": 1319.5
-        },
-        {
-          "o": 1312.5,
-          "h": 1314.0,
-          "l": 1291.5,
-          "c": 1303.5
-        },
-        {
-          "o": 1306.0,
-          "h": 1330.0,
-          "l": 1300.5,
-          "c": 1330.0
-        },
-        {
-          "o": 1320.0,
-          "h": 1384.5,
-          "l": 1319.0,
-          "c": 1384.5
-        },
-        {
-          "o": 1367.0,
-          "h": 1379.0,
-          "l": 1345.0,
-          "c": 1356.5
-        },
-        {
-          "o": 1350.5,
-          "h": 1388.0,
-          "l": 1349.0,
-          "c": 1376.0
-        },
-        {
-          "o": 1381.0,
-          "h": 1381.0,
-          "l": 1346.0,
-          "c": 1367.5
-        },
-        {
-          "o": 1381.0,
-          "h": 1412.5,
-          "l": 1374.0,
-          "c": 1386.0
-        },
-        {
-          "o": 1388.0,
-          "h": 1388.0,
-          "l": 1362.0,
-          "c": 1376.5
-        },
-        {
-          "o": 1370.0,
-          "h": 1397.0,
-          "l": 1364.5,
-          "c": 1395.5
-        },
-        {
-          "o": 1409.5,
-          "h": 1441.5,
-          "l": 1395.0,
-          "c": 1423.5
-        },
-        {
-          "o": 1393.5,
-          "h": 1428.5,
-          "l": 1379.0,
-          "c": 1417.5
-        },
-        {
-          "o": 1410.5,
-          "h": 1445.0,
-          "l": 1410.0,
-          "c": 1421.5
-        },
-        {
-          "o": 1416.0,
-          "h": 1422.0,
-          "l": 1402.0,
-          "c": 1419.5
-        }
-      ],
-      "supply_verified": false,
-      "supply_score": null,
-      "supply_phase": "需給未確認",
-      "margin_buy_change_1w_pct": null,
-      "margin_buy_change_4w_pct": null,
-      "credit_ratio": null,
-      "institutional_short_change_pct": null,
-      "institutional_buyback_firms": null,
-      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定"
     },
     {
       "code": "2782",
       "ticker": "2782.T",
       "name": "セリア（2782）",
-      "score": 62,
-      "phase": "買い集め後の上放れ",
-      "close": 4855.0,
-      "ret5": 2.21,
-      "ret20": 19.58,
-      "rvol": 0.14,
-      "up_down_volume_ratio": 1.99,
-      "obv_impulse": 0.5,
-      "clv20": -0.02,
-      "down_volume_ratio": 0.84,
-      "higher_low_pct": 8.27,
+      "setup": "5日線反発",
+      "score": 85,
+      "close": 4885.0,
       "trigger": 4900,
-      "stop": 4315,
-      "target1": 5780,
-      "target2": 6360,
+      "stop": 4740,
+      "target1": 5140,
+      "target2": 5300,
+      "ma5": 4786.0,
+      "rvol": 0.23,
+      "ret20": 20.32,
+      "atr_pct": 2.87,
       "signal_date": "2026-09-15",
-      "reason": "上昇日/下落日出来高 1.99倍／OBV +0.50／下落日出来高 0.84倍／安値切上げ +8.3%",
+      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.23倍",
+      "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
+      "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
       "chart": [
         {
           "o": 3645.0,
@@ -4659,7 +1976,4270 @@
           "o": 4865.0,
           "h": 4895.0,
           "l": 4820.0,
-          "c": 4855.0
+          "c": 4885.0
+        }
+      ],
+      "supply_verified": false,
+      "supply_score": null,
+      "supply_phase": "需給未確認",
+      "margin_buy_change_1w_pct": null,
+      "margin_buy_change_4w_pct": null,
+      "credit_ratio": null,
+      "institutional_short_change_pct": null,
+      "institutional_buyback_firms": null,
+      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定",
+      "legacy_score_before_regime": 85,
+      "regime_name": "MIXED",
+      "subject_sensitivity_10": null,
+      "sensitivity_status": "学習不足",
+      "regime_fit_20": null,
+      "regime_applied": false,
+      "regime_reason": "JPX履歴未取得・既存採点を維持"
+    },
+    {
+      "code": "1934",
+      "ticker": "1934.T",
+      "name": "ユアテック（1934）",
+      "setup": "安定押し目",
+      "score": 85,
+      "close": 2619.0,
+      "trigger": 2628,
+      "stop": 2547,
+      "target1": 2750,
+      "target2": 2830,
+      "ma5": 2621.6,
+      "rvol": 0.21,
+      "ret20": 5.48,
+      "atr_pct": 2.24,
+      "signal_date": "2026-09-15",
+      "reason": "安定押し目／終値が主要移動平均線上／出来高比0.21倍",
+      "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
+      "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
+      "chart": [
+        {
+          "o": 2420.0,
+          "h": 2443.0,
+          "l": 2398.0,
+          "c": 2436.0
+        },
+        {
+          "o": 2450.0,
+          "h": 2469.0,
+          "l": 2397.0,
+          "c": 2397.0
+        },
+        {
+          "o": 2397.0,
+          "h": 2427.0,
+          "l": 2384.0,
+          "c": 2402.0
+        },
+        {
+          "o": 2442.0,
+          "h": 2442.0,
+          "l": 2398.0,
+          "c": 2406.0
+        },
+        {
+          "o": 2406.0,
+          "h": 2458.0,
+          "l": 2406.0,
+          "c": 2448.0
+        },
+        {
+          "o": 2449.0,
+          "h": 2473.0,
+          "l": 2409.0,
+          "c": 2436.0
+        },
+        {
+          "o": 2436.0,
+          "h": 2445.0,
+          "l": 2396.0,
+          "c": 2413.0
+        },
+        {
+          "o": 2430.0,
+          "h": 2434.0,
+          "l": 2397.0,
+          "c": 2407.0
+        },
+        {
+          "o": 2408.0,
+          "h": 2444.0,
+          "l": 2384.0,
+          "c": 2429.0
+        },
+        {
+          "o": 2445.0,
+          "h": 2461.0,
+          "l": 2422.0,
+          "c": 2453.0
+        },
+        {
+          "o": 2455.0,
+          "h": 2497.0,
+          "l": 2449.0,
+          "c": 2472.0
+        },
+        {
+          "o": 2466.0,
+          "h": 2488.0,
+          "l": 2451.0,
+          "c": 2451.0
+        },
+        {
+          "o": 2452.0,
+          "h": 2454.0,
+          "l": 2410.0,
+          "c": 2410.0
+        },
+        {
+          "o": 2383.0,
+          "h": 2432.0,
+          "l": 2381.0,
+          "c": 2422.0
+        },
+        {
+          "o": 2435.0,
+          "h": 2435.0,
+          "l": 2396.0,
+          "c": 2401.0
+        },
+        {
+          "o": 2410.0,
+          "h": 2424.0,
+          "l": 2341.0,
+          "c": 2346.0
+        },
+        {
+          "o": 2345.0,
+          "h": 2373.0,
+          "l": 2320.0,
+          "c": 2359.0
+        },
+        {
+          "o": 2382.0,
+          "h": 2415.0,
+          "l": 2380.0,
+          "c": 2399.0
+        },
+        {
+          "o": 2410.0,
+          "h": 2427.0,
+          "l": 2379.0,
+          "c": 2382.0
+        },
+        {
+          "o": 2369.0,
+          "h": 2385.0,
+          "l": 2291.0,
+          "c": 2317.0
+        },
+        {
+          "o": 2318.0,
+          "h": 2360.0,
+          "l": 2303.0,
+          "c": 2342.0
+        },
+        {
+          "o": 2340.0,
+          "h": 2356.0,
+          "l": 2332.0,
+          "c": 2333.0
+        },
+        {
+          "o": 2328.0,
+          "h": 2356.0,
+          "l": 2323.0,
+          "c": 2336.0
+        },
+        {
+          "o": 2304.0,
+          "h": 2348.0,
+          "l": 2297.0,
+          "c": 2336.0
+        },
+        {
+          "o": 2361.0,
+          "h": 2385.0,
+          "l": 2328.0,
+          "c": 2384.0
+        },
+        {
+          "o": 2380.0,
+          "h": 2555.0,
+          "l": 2340.0,
+          "c": 2442.0
+        },
+        {
+          "o": 2392.0,
+          "h": 2435.0,
+          "l": 2361.0,
+          "c": 2397.0
+        },
+        {
+          "o": 2369.0,
+          "h": 2429.0,
+          "l": 2352.0,
+          "c": 2403.0
+        },
+        {
+          "o": 2434.0,
+          "h": 2456.0,
+          "l": 2374.0,
+          "c": 2392.0
+        },
+        {
+          "o": 2363.0,
+          "h": 2363.0,
+          "l": 2294.0,
+          "c": 2327.0
+        },
+        {
+          "o": 2339.0,
+          "h": 2360.0,
+          "l": 2306.0,
+          "c": 2340.0
+        },
+        {
+          "o": 2348.0,
+          "h": 2375.0,
+          "l": 2336.0,
+          "c": 2374.0
+        },
+        {
+          "o": 2365.0,
+          "h": 2519.0,
+          "l": 2365.0,
+          "c": 2464.0
+        },
+        {
+          "o": 2548.0,
+          "h": 2548.0,
+          "l": 2451.0,
+          "c": 2465.0
+        },
+        {
+          "o": 2465.0,
+          "h": 2467.0,
+          "l": 2422.0,
+          "c": 2428.0
+        },
+        {
+          "o": 2453.0,
+          "h": 2461.0,
+          "l": 2427.0,
+          "c": 2449.0
+        },
+        {
+          "o": 2453.0,
+          "h": 2480.0,
+          "l": 2438.0,
+          "c": 2480.0
+        },
+        {
+          "o": 2476.0,
+          "h": 2486.0,
+          "l": 2453.0,
+          "c": 2479.0
+        },
+        {
+          "o": 2499.0,
+          "h": 2538.0,
+          "l": 2489.0,
+          "c": 2498.0
+        },
+        {
+          "o": 2500.0,
+          "h": 2537.0,
+          "l": 2481.0,
+          "c": 2483.0
+        },
+        {
+          "o": 2470.0,
+          "h": 2470.0,
+          "l": 2404.0,
+          "c": 2419.0
+        },
+        {
+          "o": 2419.0,
+          "h": 2468.0,
+          "l": 2419.0,
+          "c": 2466.0
+        },
+        {
+          "o": 2516.0,
+          "h": 2556.0,
+          "l": 2474.0,
+          "c": 2515.0
+        },
+        {
+          "o": 2525.0,
+          "h": 2549.0,
+          "l": 2501.0,
+          "c": 2529.0
+        },
+        {
+          "o": 2537.0,
+          "h": 2546.0,
+          "l": 2502.0,
+          "c": 2519.0
+        },
+        {
+          "o": 2527.0,
+          "h": 2548.0,
+          "l": 2518.0,
+          "c": 2548.0
+        },
+        {
+          "o": 2579.0,
+          "h": 2608.0,
+          "l": 2564.0,
+          "c": 2590.0
+        },
+        {
+          "o": 2610.0,
+          "h": 2611.0,
+          "l": 2555.0,
+          "c": 2576.0
+        },
+        {
+          "o": 2563.0,
+          "h": 2577.0,
+          "l": 2530.0,
+          "c": 2565.0
+        },
+        {
+          "o": 2575.0,
+          "h": 2670.0,
+          "l": 2571.0,
+          "c": 2666.0
+        },
+        {
+          "o": 2638.0,
+          "h": 2659.0,
+          "l": 2565.0,
+          "c": 2568.0
+        },
+        {
+          "o": 2567.0,
+          "h": 2610.0,
+          "l": 2563.0,
+          "c": 2596.0
+        },
+        {
+          "o": 2586.0,
+          "h": 2600.0,
+          "l": 2567.0,
+          "c": 2590.0
+        },
+        {
+          "o": 2603.0,
+          "h": 2675.0,
+          "l": 2603.0,
+          "c": 2650.0
+        },
+        {
+          "o": 2648.0,
+          "h": 2663.0,
+          "l": 2619.0,
+          "c": 2622.0
+        },
+        {
+          "o": 2614.0,
+          "h": 2676.0,
+          "l": 2605.0,
+          "c": 2662.0
+        },
+        {
+          "o": 2641.0,
+          "h": 2649.0,
+          "l": 2611.0,
+          "c": 2620.0
+        },
+        {
+          "o": 2570.0,
+          "h": 2612.0,
+          "l": 2565.0,
+          "c": 2587.0
+        },
+        {
+          "o": 2587.0,
+          "h": 2622.0,
+          "l": 2585.0,
+          "c": 2620.0
+        },
+        {
+          "o": 2606.0,
+          "h": 2627.0,
+          "l": 2599.0,
+          "c": 2619.0
+        }
+      ],
+      "supply_verified": false,
+      "supply_score": null,
+      "supply_phase": "需給未確認",
+      "margin_buy_change_1w_pct": null,
+      "margin_buy_change_4w_pct": null,
+      "credit_ratio": null,
+      "institutional_short_change_pct": null,
+      "institutional_buyback_firms": null,
+      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定",
+      "legacy_score_before_regime": 85,
+      "regime_name": "MIXED",
+      "subject_sensitivity_10": null,
+      "sensitivity_status": "学習不足",
+      "regime_fit_20": null,
+      "regime_applied": false,
+      "regime_reason": "JPX履歴未取得・既存採点を維持"
+    },
+    {
+      "code": "4259",
+      "ticker": "4259.T",
+      "name": "エクサウィザーズ（4259）",
+      "setup": "5日線反発",
+      "score": 75,
+      "close": 868.0,
+      "trigger": 871,
+      "stop": 820,
+      "target1": 948,
+      "target2": 998,
+      "ma5": 833.4,
+      "rvol": 0.38,
+      "ret20": 11.14,
+      "atr_pct": 4.9,
+      "signal_date": "2026-09-15",
+      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.38倍",
+      "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
+      "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
+      "chart": [
+        {
+          "o": 880.0,
+          "h": 906.0,
+          "l": 871.0,
+          "c": 893.0
+        },
+        {
+          "o": 906.0,
+          "h": 913.0,
+          "l": 861.0,
+          "c": 876.0
+        },
+        {
+          "o": 890.0,
+          "h": 912.0,
+          "l": 842.0,
+          "c": 859.0
+        },
+        {
+          "o": 862.0,
+          "h": 865.0,
+          "l": 821.0,
+          "c": 828.0
+        },
+        {
+          "o": 813.0,
+          "h": 823.0,
+          "l": 772.0,
+          "c": 777.0
+        },
+        {
+          "o": 822.0,
+          "h": 836.0,
+          "l": 767.0,
+          "c": 789.0
+        },
+        {
+          "o": 810.0,
+          "h": 819.0,
+          "l": 764.0,
+          "c": 800.0
+        },
+        {
+          "o": 808.0,
+          "h": 860.0,
+          "l": 805.0,
+          "c": 811.0
+        },
+        {
+          "o": 817.0,
+          "h": 866.0,
+          "l": 809.0,
+          "c": 834.0
+        },
+        {
+          "o": 858.0,
+          "h": 896.0,
+          "l": 839.0,
+          "c": 886.0
+        },
+        {
+          "o": 930.0,
+          "h": 976.0,
+          "l": 921.0,
+          "c": 937.0
+        },
+        {
+          "o": 922.0,
+          "h": 928.0,
+          "l": 901.0,
+          "c": 903.0
+        },
+        {
+          "o": 885.0,
+          "h": 892.0,
+          "l": 847.0,
+          "c": 857.0
+        },
+        {
+          "o": 866.0,
+          "h": 895.0,
+          "l": 850.0,
+          "c": 886.0
+        },
+        {
+          "o": 900.0,
+          "h": 903.0,
+          "l": 868.0,
+          "c": 872.0
+        },
+        {
+          "o": 872.0,
+          "h": 898.0,
+          "l": 840.0,
+          "c": 847.0
+        },
+        {
+          "o": 877.0,
+          "h": 939.0,
+          "l": 862.0,
+          "c": 928.0
+        },
+        {
+          "o": 898.0,
+          "h": 900.0,
+          "l": 808.0,
+          "c": 845.0
+        },
+        {
+          "o": 845.0,
+          "h": 846.0,
+          "l": 809.0,
+          "c": 828.0
+        },
+        {
+          "o": 807.0,
+          "h": 814.0,
+          "l": 765.0,
+          "c": 783.0
+        },
+        {
+          "o": 798.0,
+          "h": 815.0,
+          "l": 775.0,
+          "c": 812.0
+        },
+        {
+          "o": 821.0,
+          "h": 821.0,
+          "l": 800.0,
+          "c": 804.0
+        },
+        {
+          "o": 792.0,
+          "h": 801.0,
+          "l": 784.0,
+          "c": 791.0
+        },
+        {
+          "o": 779.0,
+          "h": 799.0,
+          "l": 758.0,
+          "c": 799.0
+        },
+        {
+          "o": 810.0,
+          "h": 819.0,
+          "l": 792.0,
+          "c": 817.0
+        },
+        {
+          "o": 802.0,
+          "h": 804.0,
+          "l": 777.0,
+          "c": 788.0
+        },
+        {
+          "o": 799.0,
+          "h": 799.0,
+          "l": 725.0,
+          "c": 751.0
+        },
+        {
+          "o": 758.0,
+          "h": 762.0,
+          "l": 742.0,
+          "c": 751.0
+        },
+        {
+          "o": 766.0,
+          "h": 789.0,
+          "l": 747.0,
+          "c": 777.0
+        },
+        {
+          "o": 779.0,
+          "h": 786.0,
+          "l": 762.0,
+          "c": 777.0
+        },
+        {
+          "o": 802.0,
+          "h": 811.0,
+          "l": 793.0,
+          "c": 805.0
+        },
+        {
+          "o": 820.0,
+          "h": 861.0,
+          "l": 813.0,
+          "c": 854.0
+        },
+        {
+          "o": 850.0,
+          "h": 858.0,
+          "l": 835.0,
+          "c": 838.0
+        },
+        {
+          "o": 845.0,
+          "h": 848.0,
+          "l": 816.0,
+          "c": 836.0
+        },
+        {
+          "o": 846.0,
+          "h": 850.0,
+          "l": 824.0,
+          "c": 840.0
+        },
+        {
+          "o": 870.0,
+          "h": 875.0,
+          "l": 833.0,
+          "c": 842.0
+        },
+        {
+          "o": 707.0,
+          "h": 716.0,
+          "l": 692.0,
+          "c": 692.0
+        },
+        {
+          "o": 692.0,
+          "h": 723.0,
+          "l": 667.0,
+          "c": 705.0
+        },
+        {
+          "o": 711.0,
+          "h": 747.0,
+          "l": 692.0,
+          "c": 740.0
+        },
+        {
+          "o": 740.0,
+          "h": 798.0,
+          "l": 738.0,
+          "c": 781.0
+        },
+        {
+          "o": 766.0,
+          "h": 793.0,
+          "l": 756.0,
+          "c": 774.0
+        },
+        {
+          "o": 784.0,
+          "h": 805.0,
+          "l": 769.0,
+          "c": 800.0
+        },
+        {
+          "o": 794.0,
+          "h": 817.0,
+          "l": 783.0,
+          "c": 804.0
+        },
+        {
+          "o": 802.0,
+          "h": 811.0,
+          "l": 774.0,
+          "c": 779.0
+        },
+        {
+          "o": 769.0,
+          "h": 770.0,
+          "l": 743.0,
+          "c": 750.0
+        },
+        {
+          "o": 753.0,
+          "h": 766.0,
+          "l": 751.0,
+          "c": 754.0
+        },
+        {
+          "o": 753.0,
+          "h": 804.0,
+          "l": 753.0,
+          "c": 801.0
+        },
+        {
+          "o": 810.0,
+          "h": 867.0,
+          "l": 807.0,
+          "c": 848.0
+        },
+        {
+          "o": 833.0,
+          "h": 859.0,
+          "l": 829.0,
+          "c": 840.0
+        },
+        {
+          "o": 835.0,
+          "h": 842.0,
+          "l": 811.0,
+          "c": 837.0
+        },
+        {
+          "o": 827.0,
+          "h": 830.0,
+          "l": 801.0,
+          "c": 815.0
+        },
+        {
+          "o": 830.0,
+          "h": 843.0,
+          "l": 796.0,
+          "c": 800.0
+        },
+        {
+          "o": 814.0,
+          "h": 875.0,
+          "l": 808.0,
+          "c": 860.0
+        },
+        {
+          "o": 861.0,
+          "h": 875.0,
+          "l": 834.0,
+          "c": 870.0
+        },
+        {
+          "o": 870.0,
+          "h": 878.0,
+          "l": 850.0,
+          "c": 850.0
+        },
+        {
+          "o": 850.0,
+          "h": 853.0,
+          "l": 805.0,
+          "c": 810.0
+        },
+        {
+          "o": 806.0,
+          "h": 833.0,
+          "l": 796.0,
+          "c": 833.0
+        },
+        {
+          "o": 810.0,
+          "h": 817.0,
+          "l": 797.0,
+          "c": 814.0
+        },
+        {
+          "o": 800.0,
+          "h": 842.0,
+          "l": 800.0,
+          "c": 842.0
+        },
+        {
+          "o": 854.0,
+          "h": 870.0,
+          "l": 843.0,
+          "c": 868.0
+        }
+      ],
+      "supply_verified": false,
+      "supply_score": null,
+      "supply_phase": "需給未確認",
+      "margin_buy_change_1w_pct": null,
+      "margin_buy_change_4w_pct": null,
+      "credit_ratio": null,
+      "institutional_short_change_pct": null,
+      "institutional_buyback_firms": null,
+      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定",
+      "legacy_score_before_regime": 75,
+      "regime_name": "MIXED",
+      "subject_sensitivity_10": null,
+      "sensitivity_status": "学習不足",
+      "regime_fit_20": null,
+      "regime_applied": false,
+      "regime_reason": "JPX履歴未取得・既存採点を維持"
+    }
+  ],
+  "entered": [],
+  "overnight_long": [],
+  "overnight_short": [],
+  "investor_regime": {
+    "model_version": "investor-regime-1.2.0",
+    "generated_at": "2026-09-15T11:35:36+09:00",
+    "decision_at": "2026-09-15T11:35:36+09:00",
+    "source": {
+      "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
+      "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
+      "definition_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/07.html",
+      "publication_rule": "毎週第4営業日15:30。実取得確認時刻を利用し、予定時刻では解禁しない。"
+    },
+    "asof": {
+      "period_end": "2026-09-04",
+      "period_start": "2026-08-31",
+      "retrieved_at": "2026-09-10T18:22:33+09:00",
+      "revision": 1,
+      "sha256": "35fd17daa9b7f07594d72082cb48231cd2c7d4eefc1e80d53f6bbcd272d6e2b2"
+    },
+    "connection": {
+      "equity": "接続済み（現物・金額）",
+      "derivative": "接続済み",
+      "observed_weeks": 5,
+      "parsed_subjects": 8,
+      "insurer_split": "JPX公式は生保・損保合算。単独系列は未取得",
+      "equity_unit": "thousand_yen",
+      "derivative_unit": "yen_trading_value"
+    },
+    "regime": {
+      "name": "MIXED",
+      "confidence": 36,
+      "reasons": [
+        "単一レジームの条件未達"
+      ]
+    },
+    "subjects": [
+      {
+        "subject": "foreign",
+        "label": "海外",
+        "net": 689342880.0,
+        "previous_week_change": 821281417.0,
+        "cumulative_4w": 333062047.0,
+        "cumulative_13w": null,
+        "cumulative_52w": null,
+        "mean_4w": 83265511.75,
+        "deviation_from_mean_4w": 606077368.25,
+        "mean_13w": null,
+        "deviation_from_mean_13w": null,
+        "mean_52w": null,
+        "deviation_from_mean_52w": null,
+        "z52": null,
+        "flow_impulse": null,
+        "streak_weeks": 1,
+        "reversal": "売→買",
+        "turnover_share_pct": 59.4084,
+        "source_label": "海外投資家",
+        "availability": "available",
+        "nikkei225_alignment": null,
+        "topix_alignment": null
+      },
+      {
+        "subject": "individual_cash",
+        "label": "個人現金",
+        "net": -86992766.0,
+        "previous_week_change": 198370191.0,
+        "cumulative_4w": -775447627.0,
+        "cumulative_13w": null,
+        "cumulative_52w": null,
+        "mean_4w": -193861906.75,
+        "deviation_from_mean_4w": 106869140.75,
+        "mean_13w": null,
+        "deviation_from_mean_13w": null,
+        "mean_52w": null,
+        "deviation_from_mean_52w": null,
+        "z52": null,
+        "flow_impulse": null,
+        "streak_weeks": -2,
+        "reversal": null,
+        "turnover_share_pct": 4.9397,
+        "source_label": "個人現金",
+        "availability": "available",
+        "nikkei225_alignment": null,
+        "topix_alignment": null
+      },
+      {
+        "subject": "individual_margin",
+        "label": "個人信用",
+        "net": 85125168.0,
+        "previous_week_change": -84663229.0,
+        "cumulative_4w": 699961178.0,
+        "cumulative_13w": null,
+        "cumulative_52w": null,
+        "mean_4w": 174990294.5,
+        "deviation_from_mean_4w": -89865126.5,
+        "mean_13w": null,
+        "deviation_from_mean_13w": null,
+        "mean_52w": null,
+        "deviation_from_mean_52w": null,
+        "z52": null,
+        "flow_impulse": null,
+        "streak_weeks": 3,
+        "reversal": null,
+        "turnover_share_pct": 18.8659,
+        "source_label": "個人信用",
+        "availability": "available",
+        "nikkei225_alignment": null,
+        "topix_alignment": null
+      },
+      {
+        "subject": "business_corporations",
+        "label": "事業法人",
+        "net": 277990254.0,
+        "previous_week_change": 65494724.0,
+        "cumulative_4w": 926077774.0,
+        "cumulative_13w": null,
+        "cumulative_52w": null,
+        "mean_4w": 231519443.5,
+        "deviation_from_mean_4w": 46470810.5,
+        "mean_13w": null,
+        "deviation_from_mean_13w": null,
+        "mean_52w": null,
+        "deviation_from_mean_52w": null,
+        "z52": null,
+        "flow_impulse": null,
+        "streak_weeks": 5,
+        "reversal": null,
+        "turnover_share_pct": 1.0009,
+        "source_label": "事業法人",
+        "availability": "available",
+        "nikkei225_alignment": null,
+        "topix_alignment": null
+      },
+      {
+        "subject": "investment_trusts",
+        "label": "投資信託",
+        "net": -303831652.0,
+        "previous_week_change": -249309436.0,
+        "cumulative_4w": -396683684.0,
+        "cumulative_13w": null,
+        "cumulative_52w": null,
+        "mean_4w": -99170921.0,
+        "deviation_from_mean_4w": -204660731.0,
+        "mean_13w": null,
+        "deviation_from_mean_13w": null,
+        "mean_52w": null,
+        "deviation_from_mean_52w": null,
+        "z52": null,
+        "flow_impulse": null,
+        "streak_weeks": -3,
+        "reversal": null,
+        "turnover_share_pct": 1.8387,
+        "source_label": "投資信託",
+        "availability": "available",
+        "nikkei225_alignment": null,
+        "topix_alignment": null
+      },
+      {
+        "subject": "trust_banks",
+        "label": "信託銀行",
+        "net": -446922288.0,
+        "previous_week_change": -255323028.0,
+        "cumulative_4w": -1229209633.0,
+        "cumulative_13w": null,
+        "cumulative_52w": null,
+        "mean_4w": -307302408.25,
+        "deviation_from_mean_4w": -139619879.75,
+        "mean_13w": null,
+        "deviation_from_mean_13w": null,
+        "mean_52w": null,
+        "deviation_from_mean_52w": null,
+        "z52": null,
+        "flow_impulse": null,
+        "streak_weeks": -4,
+        "reversal": null,
+        "turnover_share_pct": 2.1247,
+        "source_label": "信託銀行",
+        "availability": "available",
+        "nikkei225_alignment": null,
+        "topix_alignment": null
+      },
+      {
+        "subject": "proprietary",
+        "label": "証券自己",
+        "net": -82186827.0,
+        "previous_week_change": -398833043.0,
+        "cumulative_4w": 847332160.0,
+        "cumulative_13w": null,
+        "cumulative_52w": null,
+        "mean_4w": 211833040.0,
+        "deviation_from_mean_4w": -294019867.0,
+        "mean_13w": null,
+        "deviation_from_mean_13w": null,
+        "mean_52w": null,
+        "deviation_from_mean_52w": null,
+        "z52": null,
+        "flow_impulse": null,
+        "streak_weeks": -1,
+        "reversal": "買→売",
+        "turnover_share_pct": 10.4788,
+        "source_label": "自己計",
+        "availability": "available",
+        "nikkei225_alignment": null,
+        "topix_alignment": null
+      },
+      {
+        "subject": "life_insurance",
+        "label": "生保・損保（合算）",
+        "net": -48349905.0,
+        "previous_week_change": -35326101.0,
+        "cumulative_4w": -117044139.0,
+        "cumulative_13w": null,
+        "cumulative_52w": null,
+        "mean_4w": -29261034.75,
+        "deviation_from_mean_4w": -19088870.25,
+        "mean_13w": null,
+        "deviation_from_mean_13w": null,
+        "mean_52w": null,
+        "deviation_from_mean_52w": null,
+        "z52": null,
+        "flow_impulse": null,
+        "streak_weeks": -5,
+        "reversal": null,
+        "turnover_share_pct": 0.0891,
+        "source_label": "生保・損保（公式合算）",
+        "availability": "available",
+        "nikkei225_alignment": null,
+        "topix_alignment": null
+      },
+      {
+        "subject": "non_life_insurance",
+        "label": "損保（単独未取得）",
+        "net": null,
+        "previous_week_change": null,
+        "cumulative_4w": null,
+        "cumulative_13w": null,
+        "cumulative_52w": null,
+        "mean_4w": null,
+        "deviation_from_mean_4w": null,
+        "mean_13w": null,
+        "deviation_from_mean_13w": null,
+        "mean_52w": null,
+        "deviation_from_mean_52w": null,
+        "z52": null,
+        "flow_impulse": null,
+        "streak_weeks": null,
+        "reversal": null,
+        "turnover_share_pct": null,
+        "source_label": null,
+        "availability": "missing",
+        "nikkei225_alignment": null,
+        "topix_alignment": null
+      }
+    ],
+    "foreign_futures_alignment": {
+      "available": true,
+      "status": "接続済み",
+      "source": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/t13vrt000001y00l-att/Tousi_DV_W_20260831_20260904.csv",
+      "period_end": "2026-09-04",
+      "retrieved_at": "2026-09-10T18:22:33+09:00",
+      "foreign_nikkei225_futures_net": -301084703344.0,
+      "aligned": false
+    },
+    "learning": {
+      "status": "学習不足",
+      "minimum_independent_weeks": 26,
+      "recent_window_weeks": 52,
+      "time_decay_half_life_weeks": 26,
+      "walk_forward": true,
+      "overlap_guard": "翌日/3日/5日は各ホライズンで非重複週を別集計",
+      "individual_stock_sensitivity": "未接続"
+    },
+    "stock_feature_schema": {
+      "connected_existing": [
+        "sector",
+        "turnover",
+        "volume_acceleration",
+        "20d_high_position",
+        "VWAP",
+        "EMA",
+        "OR15",
+        "ATR",
+        "margin_ratio",
+        "margin_balance_change",
+        "institutional_short"
+      ],
+      "requires_verified_connection": [
+        "size_bucket",
+        "market_cap",
+        "beta",
+        "nikkei225_relative_strength",
+        "topix_relative_strength",
+        "growth_value",
+        "ROE",
+        "PBR",
+        "buyback",
+        "foreign_ownership",
+        "overseas_sales",
+        "lending_balance"
+      ],
+      "policy": "未取得特徴はゼロ補完せず、採点にも使用しない。"
+    },
+    "type_filter": {
+      "status": "学習不足・未適用",
+      "tailwind": [],
+      "avoid": [],
+      "note": "週次主体データは上位フィルターであり、ザラバ発動サインではありません。"
+    },
+    "warnings": [
+      "市場全体集計から個別銘柄の買い主体を断定しません。",
+      "欠測はゼロ補完しません。"
+    ]
+  },
+  "speculative_theme_watch": [
+    {
+      "code": "4493",
+      "ticker": "4493.T",
+      "name": "サイバーセキュリティクラウド（4493）",
+      "score": 74,
+      "phase": "初動候補",
+      "action": "公式材料と信用需給を確認",
+      "close": 1928.0,
+      "ret1": 5.47,
+      "ret5": 8.25,
+      "ret20": 0.36,
+      "rvol": 2.87,
+      "atr_pct": 4.44,
+      "ma20_dist": 4.23,
+      "acceleration": 12.29,
+      "upper_wick_pct": 6.8,
+      "turnover": 884759200,
+      "signal_date": "2026-09-15",
+      "chart": [
+        {
+          "o": 1708.0,
+          "h": 1730.0,
+          "l": 1686.0,
+          "c": 1710.0
+        },
+        {
+          "o": 1710.0,
+          "h": 1710.0,
+          "l": 1677.0,
+          "c": 1685.0
+        },
+        {
+          "o": 1681.0,
+          "h": 1682.0,
+          "l": 1642.0,
+          "c": 1661.0
+        },
+        {
+          "o": 1666.0,
+          "h": 1677.0,
+          "l": 1610.0,
+          "c": 1661.0
+        },
+        {
+          "o": 1668.0,
+          "h": 1699.0,
+          "l": 1650.0,
+          "c": 1675.0
+        },
+        {
+          "o": 1705.0,
+          "h": 1729.0,
+          "l": 1682.0,
+          "c": 1695.0
+        },
+        {
+          "o": 1700.0,
+          "h": 1764.0,
+          "l": 1700.0,
+          "c": 1760.0
+        },
+        {
+          "o": 1757.0,
+          "h": 1759.0,
+          "l": 1703.0,
+          "c": 1706.0
+        },
+        {
+          "o": 1710.0,
+          "h": 1850.0,
+          "l": 1710.0,
+          "c": 1832.0
+        },
+        {
+          "o": 1840.0,
+          "h": 1840.0,
+          "l": 1801.0,
+          "c": 1803.0
+        },
+        {
+          "o": 1813.0,
+          "h": 1962.0,
+          "l": 1813.0,
+          "c": 1960.0
+        },
+        {
+          "o": 1957.0,
+          "h": 1993.0,
+          "l": 1931.0,
+          "c": 1949.0
+        },
+        {
+          "o": 1944.0,
+          "h": 1976.0,
+          "l": 1890.0,
+          "c": 1911.0
+        },
+        {
+          "o": 1878.0,
+          "h": 1898.0,
+          "l": 1842.0,
+          "c": 1881.0
+        },
+        {
+          "o": 1891.0,
+          "h": 1929.0,
+          "l": 1865.0,
+          "c": 1913.0
+        },
+        {
+          "o": 1945.0,
+          "h": 1945.0,
+          "l": 1870.0,
+          "c": 1875.0
+        },
+        {
+          "o": 1860.0,
+          "h": 1901.0,
+          "l": 1860.0,
+          "c": 1889.0
+        },
+        {
+          "o": 1900.0,
+          "h": 1914.0,
+          "l": 1846.0,
+          "c": 1914.0
+        },
+        {
+          "o": 1954.0,
+          "h": 1954.0,
+          "l": 1868.0,
+          "c": 1869.0
+        },
+        {
+          "o": 1842.0,
+          "h": 1842.0,
+          "l": 1770.0,
+          "c": 1804.0
+        },
+        {
+          "o": 1830.0,
+          "h": 1860.0,
+          "l": 1813.0,
+          "c": 1840.0
+        },
+        {
+          "o": 1841.0,
+          "h": 1862.0,
+          "l": 1793.0,
+          "c": 1797.0
+        },
+        {
+          "o": 1772.0,
+          "h": 1822.0,
+          "l": 1764.0,
+          "c": 1820.0
+        },
+        {
+          "o": 1800.0,
+          "h": 1800.0,
+          "l": 1754.0,
+          "c": 1759.0
+        },
+        {
+          "o": 1788.0,
+          "h": 1817.0,
+          "l": 1768.0,
+          "c": 1816.0
+        },
+        {
+          "o": 1810.0,
+          "h": 1815.0,
+          "l": 1758.0,
+          "c": 1761.0
+        },
+        {
+          "o": 1797.0,
+          "h": 1804.0,
+          "l": 1751.0,
+          "c": 1762.0
+        },
+        {
+          "o": 1778.0,
+          "h": 1800.0,
+          "l": 1757.0,
+          "c": 1785.0
+        },
+        {
+          "o": 1800.0,
+          "h": 1840.0,
+          "l": 1765.0,
+          "c": 1821.0
+        },
+        {
+          "o": 1823.0,
+          "h": 1823.0,
+          "l": 1769.0,
+          "c": 1811.0
+        },
+        {
+          "o": 1811.0,
+          "h": 1841.0,
+          "l": 1794.0,
+          "c": 1823.0
+        },
+        {
+          "o": 1830.0,
+          "h": 1949.0,
+          "l": 1830.0,
+          "c": 1922.0
+        },
+        {
+          "o": 1914.0,
+          "h": 1919.0,
+          "l": 1877.0,
+          "c": 1889.0
+        },
+        {
+          "o": 1883.0,
+          "h": 1891.0,
+          "l": 1849.0,
+          "c": 1871.0
+        },
+        {
+          "o": 1900.0,
+          "h": 1921.0,
+          "l": 1882.0,
+          "c": 1905.0
+        },
+        {
+          "o": 1910.0,
+          "h": 1949.0,
+          "l": 1906.0,
+          "c": 1940.0
+        },
+        {
+          "o": 1940.0,
+          "h": 1965.0,
+          "l": 1924.0,
+          "c": 1947.0
+        },
+        {
+          "o": 1933.0,
+          "h": 2013.0,
+          "l": 1933.0,
+          "c": 1981.0
+        },
+        {
+          "o": 1924.0,
+          "h": 1925.0,
+          "l": 1856.0,
+          "c": 1902.0
+        },
+        {
+          "o": 1881.0,
+          "h": 1958.0,
+          "l": 1875.0,
+          "c": 1921.0
+        },
+        {
+          "o": 1883.0,
+          "h": 1891.0,
+          "l": 1850.0,
+          "c": 1879.0
+        },
+        {
+          "o": 1908.0,
+          "h": 1923.0,
+          "l": 1868.0,
+          "c": 1917.0
+        },
+        {
+          "o": 1901.0,
+          "h": 1913.0,
+          "l": 1858.0,
+          "c": 1874.0
+        },
+        {
+          "o": 1905.0,
+          "h": 1971.0,
+          "l": 1904.0,
+          "c": 1952.0
+        },
+        {
+          "o": 1981.0,
+          "h": 1992.0,
+          "l": 1909.0,
+          "c": 1910.0
+        },
+        {
+          "o": 1910.0,
+          "h": 1911.0,
+          "l": 1820.0,
+          "c": 1821.0
+        },
+        {
+          "o": 1821.0,
+          "h": 1879.0,
+          "l": 1805.0,
+          "c": 1850.0
+        },
+        {
+          "o": 1930.0,
+          "h": 2038.0,
+          "l": 1921.0,
+          "c": 2027.0
+        },
+        {
+          "o": 2048.0,
+          "h": 2048.0,
+          "l": 1930.0,
+          "c": 1940.0
+        },
+        {
+          "o": 1951.0,
+          "h": 1968.0,
+          "l": 1848.0,
+          "c": 1856.0
+        },
+        {
+          "o": 1840.0,
+          "h": 1841.0,
+          "l": 1790.0,
+          "c": 1800.0
+        },
+        {
+          "o": 1796.0,
+          "h": 1804.0,
+          "l": 1760.0,
+          "c": 1760.0
+        },
+        {
+          "o": 1780.0,
+          "h": 1820.0,
+          "l": 1740.0,
+          "c": 1808.0
+        },
+        {
+          "o": 1792.0,
+          "h": 1829.0,
+          "l": 1779.0,
+          "c": 1807.0
+        },
+        {
+          "o": 1800.0,
+          "h": 1825.0,
+          "l": 1781.0,
+          "c": 1781.0
+        },
+        {
+          "o": 1787.0,
+          "h": 1788.0,
+          "l": 1761.0,
+          "c": 1770.0
+        },
+        {
+          "o": 1760.0,
+          "h": 1779.0,
+          "l": 1749.0,
+          "c": 1763.0
+        },
+        {
+          "o": 1750.0,
+          "h": 1750.0,
+          "l": 1713.0,
+          "c": 1724.0
+        },
+        {
+          "o": 1757.0,
+          "h": 1840.0,
+          "l": 1753.0,
+          "c": 1828.0
+        },
+        {
+          "o": 2009.0,
+          "h": 2019.0,
+          "l": 1872.0,
+          "c": 1928.0
+        }
+      ],
+      "supply_verified": false,
+      "supply_score": null,
+      "supply_phase": "需給未確認",
+      "margin_buy_change_1w_pct": null,
+      "margin_buy_change_4w_pct": null,
+      "credit_ratio": null,
+      "institutional_short_change_pct": null,
+      "institutional_buyback_firms": null,
+      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定",
+      "theme": "SaaS・セキュリティ",
+      "theme_status": "監視テーマ"
+    }
+  ],
+  "large_lot_accumulation": [
+    {
+      "code": "9984",
+      "ticker": "9984.T",
+      "name": "ソフトバンクグループ（9984）",
+      "score": 79,
+      "phase": "上放れ待ち",
+      "close": 6373.0,
+      "ret5": -2.79,
+      "ret20": 9.31,
+      "rvol": 0.91,
+      "up_down_volume_ratio": 2.07,
+      "obv_impulse": 0.71,
+      "clv20": 0.2,
+      "down_volume_ratio": 0.86,
+      "higher_low_pct": 0.59,
+      "trigger": 6970,
+      "stop": 4900,
+      "target1": 10080,
+      "target2": 12140,
+      "signal_date": "2026-09-15",
+      "reason": "上昇日/下落日出来高 2.07倍／OBV +0.71／下落日出来高 0.86倍／安値切上げ +0.6%",
+      "chart": [
+        {
+          "o": 7300.0,
+          "h": 7394.0,
+          "l": 7104.0,
+          "c": 7244.0
+        },
+        {
+          "o": 6944.0,
+          "h": 6977.0,
+          "l": 6500.0,
+          "c": 6513.0
+        },
+        {
+          "o": 6521.0,
+          "h": 6723.0,
+          "l": 6356.0,
+          "c": 6597.0
+        },
+        {
+          "o": 6797.0,
+          "h": 7188.0,
+          "l": 6401.0,
+          "c": 7118.0
+        },
+        {
+          "o": 6412.0,
+          "h": 6489.0,
+          "l": 6114.0,
+          "c": 6226.0
+        },
+        {
+          "o": 6320.0,
+          "h": 6322.0,
+          "l": 5828.0,
+          "c": 5894.0
+        },
+        {
+          "o": 5968.0,
+          "h": 6047.0,
+          "l": 5711.0,
+          "c": 5963.0
+        },
+        {
+          "o": 6089.0,
+          "h": 6239.0,
+          "l": 5975.0,
+          "c": 6000.0
+        },
+        {
+          "o": 5757.0,
+          "h": 6266.0,
+          "l": 5741.0,
+          "c": 6195.0
+        },
+        {
+          "o": 6000.0,
+          "h": 6169.0,
+          "l": 5831.0,
+          "c": 6169.0
+        },
+        {
+          "o": 6130.0,
+          "h": 6147.0,
+          "l": 5866.0,
+          "c": 5979.0
+        },
+        {
+          "o": 5962.0,
+          "h": 6113.0,
+          "l": 5691.0,
+          "c": 5771.0
+        },
+        {
+          "o": 5571.0,
+          "h": 5916.0,
+          "l": 5567.0,
+          "c": 5763.0
+        },
+        {
+          "o": 5796.0,
+          "h": 5958.0,
+          "l": 5724.0,
+          "c": 5757.0
+        },
+        {
+          "o": 6021.0,
+          "h": 6556.0,
+          "l": 6004.0,
+          "c": 6370.0
+        },
+        {
+          "o": 6370.0,
+          "h": 6542.0,
+          "l": 6231.0,
+          "c": 6364.0
+        },
+        {
+          "o": 6181.0,
+          "h": 6574.0,
+          "l": 6018.0,
+          "c": 6574.0
+        },
+        {
+          "o": 6450.0,
+          "h": 6660.0,
+          "l": 6311.0,
+          "c": 6360.0
+        },
+        {
+          "o": 6123.0,
+          "h": 6145.0,
+          "l": 5858.0,
+          "c": 5961.0
+        },
+        {
+          "o": 5663.0,
+          "h": 5676.0,
+          "l": 5191.0,
+          "c": 5424.0
+        },
+        {
+          "o": 5524.0,
+          "h": 5789.0,
+          "l": 5364.0,
+          "c": 5751.0
+        },
+        {
+          "o": 5929.0,
+          "h": 6032.0,
+          "l": 5690.0,
+          "c": 5703.0
+        },
+        {
+          "o": 5846.0,
+          "h": 5928.0,
+          "l": 5687.0,
+          "c": 5918.0
+        },
+        {
+          "o": 5800.0,
+          "h": 5800.0,
+          "l": 5411.0,
+          "c": 5500.0
+        },
+        {
+          "o": 5584.0,
+          "h": 5671.0,
+          "l": 5219.0,
+          "c": 5331.0
+        },
+        {
+          "o": 5202.0,
+          "h": 5270.0,
+          "l": 4982.0,
+          "c": 5095.0
+        },
+        {
+          "o": 5083.0,
+          "h": 5130.0,
+          "l": 4580.0,
+          "c": 4741.0
+        },
+        {
+          "o": 4526.0,
+          "h": 4755.0,
+          "l": 4500.0,
+          "c": 4622.0
+        },
+        {
+          "o": 5303.0,
+          "h": 5322.0,
+          "l": 5228.0,
+          "c": 5260.0
+        },
+        {
+          "o": 5255.0,
+          "h": 5430.0,
+          "l": 5061.0,
+          "c": 5393.0
+        },
+        {
+          "o": 5418.0,
+          "h": 5530.0,
+          "l": 5118.0,
+          "c": 5228.0
+        },
+        {
+          "o": 5628.0,
+          "h": 5958.0,
+          "l": 5605.0,
+          "c": 5958.0
+        },
+        {
+          "o": 5760.0,
+          "h": 5881.0,
+          "l": 5542.0,
+          "c": 5695.0
+        },
+        {
+          "o": 5557.0,
+          "h": 5594.0,
+          "l": 5321.0,
+          "c": 5552.0
+        },
+        {
+          "o": 5491.0,
+          "h": 5569.0,
+          "l": 5388.0,
+          "c": 5484.0
+        },
+        {
+          "o": 5484.0,
+          "h": 5554.0,
+          "l": 5416.0,
+          "c": 5520.0
+        },
+        {
+          "o": 5607.0,
+          "h": 5682.0,
+          "l": 5568.0,
+          "c": 5575.0
+        },
+        {
+          "o": 5834.0,
+          "h": 5970.0,
+          "l": 5730.0,
+          "c": 5739.0
+        },
+        {
+          "o": 5750.0,
+          "h": 5915.0,
+          "l": 5653.0,
+          "c": 5886.0
+        },
+        {
+          "o": 5801.0,
+          "h": 6230.0,
+          "l": 5781.0,
+          "c": 5830.0
+        },
+        {
+          "o": 5530.0,
+          "h": 5573.0,
+          "l": 5200.0,
+          "c": 5227.0
+        },
+        {
+          "o": 5280.0,
+          "h": 5520.0,
+          "l": 5231.0,
+          "c": 5387.0
+        },
+        {
+          "o": 5248.0,
+          "h": 5357.0,
+          "l": 5223.0,
+          "c": 5255.0
+        },
+        {
+          "o": 5240.0,
+          "h": 5259.0,
+          "l": 4975.0,
+          "c": 4975.0
+        },
+        {
+          "o": 4950.0,
+          "h": 5090.0,
+          "l": 4882.0,
+          "c": 5087.0
+        },
+        {
+          "o": 5138.0,
+          "h": 5235.0,
+          "l": 5043.0,
+          "c": 5163.0
+        },
+        {
+          "o": 5300.0,
+          "h": 5335.0,
+          "l": 5074.0,
+          "c": 5200.0
+        },
+        {
+          "o": 5249.0,
+          "h": 5263.0,
+          "l": 5136.0,
+          "c": 5161.0
+        },
+        {
+          "o": 4900.0,
+          "h": 5213.0,
+          "l": 4883.0,
+          "c": 5200.0
+        },
+        {
+          "o": 5178.0,
+          "h": 5310.0,
+          "l": 5068.0,
+          "c": 5262.0
+        },
+        {
+          "o": 5026.0,
+          "h": 5056.0,
+          "l": 4911.0,
+          "c": 4924.0
+        },
+        {
+          "o": 4980.0,
+          "h": 5080.0,
+          "l": 4933.0,
+          "c": 5001.0
+        },
+        {
+          "o": 5197.0,
+          "h": 5611.0,
+          "l": 5181.0,
+          "c": 5590.0
+        },
+        {
+          "o": 5842.0,
+          "h": 6217.0,
+          "l": 5814.0,
+          "c": 6217.0
+        },
+        {
+          "o": 6125.0,
+          "h": 6745.0,
+          "l": 6111.0,
+          "c": 6556.0
+        },
+        {
+          "o": 6600.0,
+          "h": 6959.0,
+          "l": 6560.0,
+          "c": 6810.0
+        },
+        {
+          "o": 6630.0,
+          "h": 6894.0,
+          "l": 6605.0,
+          "c": 6810.0
+        },
+        {
+          "o": 6410.0,
+          "h": 6555.0,
+          "l": 6358.0,
+          "c": 6540.0
+        },
+        {
+          "o": 5887.0,
+          "h": 5953.0,
+          "l": 5678.0,
+          "c": 5839.0
+        },
+        {
+          "o": 5828.0,
+          "h": 6373.0,
+          "l": 5775.0,
+          "c": 6373.0
+        }
+      ],
+      "supply_verified": false,
+      "supply_score": null,
+      "supply_phase": "需給未確認",
+      "margin_buy_change_1w_pct": null,
+      "margin_buy_change_4w_pct": null,
+      "credit_ratio": null,
+      "institutional_short_change_pct": null,
+      "institutional_buyback_firms": null,
+      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定"
+    },
+    {
+      "code": "9434",
+      "ticker": "9434.T",
+      "name": "ソフトバンク（9434）",
+      "score": 75,
+      "phase": "買い集め後の上放れ",
+      "close": 251.6,
+      "ret5": 4.4,
+      "ret20": 7.52,
+      "rvol": 0.42,
+      "up_down_volume_ratio": 2.46,
+      "obv_impulse": 0.46,
+      "clv20": 0.09,
+      "down_volume_ratio": 0.96,
+      "higher_low_pct": 2.39,
+      "trigger": 252.5,
+      "stop": 236.0,
+      "target1": 277.2,
+      "target2": 293.8,
+      "signal_date": "2026-09-15",
+      "reason": "上昇日/下落日出来高 2.46倍／OBV +0.46／下落日出来高 0.96倍／安値切上げ +2.4%",
+      "chart": [
+        {
+          "o": 210.5,
+          "h": 210.5,
+          "l": 208.0,
+          "c": 208.8
+        },
+        {
+          "o": 207.0,
+          "h": 208.0,
+          "l": 205.2,
+          "c": 205.6
+        },
+        {
+          "o": 205.3,
+          "h": 208.0,
+          "l": 204.4,
+          "c": 205.3
+        },
+        {
+          "o": 205.4,
+          "h": 206.5,
+          "l": 202.9,
+          "c": 203.3
+        },
+        {
+          "o": 203.0,
+          "h": 205.7,
+          "l": 202.6,
+          "c": 204.7
+        },
+        {
+          "o": 205.9,
+          "h": 208.1,
+          "l": 205.4,
+          "c": 207.8
+        },
+        {
+          "o": 207.8,
+          "h": 208.7,
+          "l": 205.7,
+          "c": 208.1
+        },
+        {
+          "o": 207.9,
+          "h": 207.9,
+          "l": 205.6,
+          "c": 206.4
+        },
+        {
+          "o": 208.2,
+          "h": 210.1,
+          "l": 207.3,
+          "c": 210.1
+        },
+        {
+          "o": 212.1,
+          "h": 212.5,
+          "l": 209.1,
+          "c": 209.1
+        },
+        {
+          "o": 209.5,
+          "h": 210.7,
+          "l": 208.2,
+          "c": 210.4
+        },
+        {
+          "o": 211.5,
+          "h": 212.6,
+          "l": 209.8,
+          "c": 211.6
+        },
+        {
+          "o": 213.0,
+          "h": 215.0,
+          "l": 212.6,
+          "c": 213.1
+        },
+        {
+          "o": 212.8,
+          "h": 216.8,
+          "l": 211.5,
+          "c": 214.4
+        },
+        {
+          "o": 213.9,
+          "h": 214.4,
+          "l": 211.4,
+          "c": 211.4
+        },
+        {
+          "o": 212.3,
+          "h": 214.9,
+          "l": 211.9,
+          "c": 214.6
+        },
+        {
+          "o": 216.0,
+          "h": 221.9,
+          "l": 215.6,
+          "c": 218.8
+        },
+        {
+          "o": 219.0,
+          "h": 221.4,
+          "l": 217.6,
+          "c": 220.0
+        },
+        {
+          "o": 220.9,
+          "h": 223.0,
+          "l": 218.7,
+          "c": 219.6
+        },
+        {
+          "o": 222.2,
+          "h": 223.0,
+          "l": 218.7,
+          "c": 220.5
+        },
+        {
+          "o": 222.8,
+          "h": 226.0,
+          "l": 221.6,
+          "c": 222.1
+        },
+        {
+          "o": 220.8,
+          "h": 222.4,
+          "l": 219.3,
+          "c": 221.4
+        },
+        {
+          "o": 221.6,
+          "h": 221.6,
+          "l": 218.3,
+          "c": 219.5
+        },
+        {
+          "o": 220.1,
+          "h": 221.6,
+          "l": 218.9,
+          "c": 221.6
+        },
+        {
+          "o": 225.0,
+          "h": 229.2,
+          "l": 224.5,
+          "c": 228.3
+        },
+        {
+          "o": 229.1,
+          "h": 232.0,
+          "l": 227.6,
+          "c": 230.8
+        },
+        {
+          "o": 232.2,
+          "h": 237.7,
+          "l": 230.8,
+          "c": 235.9
+        },
+        {
+          "o": 233.3,
+          "h": 237.2,
+          "l": 230.3,
+          "c": 232.0
+        },
+        {
+          "o": 226.0,
+          "h": 228.1,
+          "l": 221.9,
+          "c": 223.4
+        },
+        {
+          "o": 223.5,
+          "h": 224.5,
+          "l": 220.1,
+          "c": 224.5
+        },
+        {
+          "o": 223.9,
+          "h": 224.1,
+          "l": 219.6,
+          "c": 220.4
+        },
+        {
+          "o": 224.1,
+          "h": 231.9,
+          "l": 221.9,
+          "c": 230.8
+        },
+        {
+          "o": 227.4,
+          "h": 229.5,
+          "l": 225.4,
+          "c": 228.6
+        },
+        {
+          "o": 231.0,
+          "h": 233.5,
+          "l": 228.8,
+          "c": 230.9
+        },
+        {
+          "o": 229.6,
+          "h": 230.8,
+          "l": 227.6,
+          "c": 228.4
+        },
+        {
+          "o": 230.0,
+          "h": 231.7,
+          "l": 228.8,
+          "c": 229.3
+        },
+        {
+          "o": 232.1,
+          "h": 235.1,
+          "l": 230.7,
+          "c": 233.4
+        },
+        {
+          "o": 233.8,
+          "h": 236.3,
+          "l": 231.5,
+          "c": 234.9
+        },
+        {
+          "o": 235.2,
+          "h": 237.2,
+          "l": 233.2,
+          "c": 234.9
+        },
+        {
+          "o": 231.5,
+          "h": 236.2,
+          "l": 230.9,
+          "c": 234.0
+        },
+        {
+          "o": 235.8,
+          "h": 236.0,
+          "l": 232.0,
+          "c": 232.4
+        },
+        {
+          "o": 233.3,
+          "h": 234.6,
+          "l": 230.6,
+          "c": 233.1
+        },
+        {
+          "o": 232.9,
+          "h": 236.1,
+          "l": 232.5,
+          "c": 233.8
+        },
+        {
+          "o": 233.8,
+          "h": 236.0,
+          "l": 232.0,
+          "c": 235.0
+        },
+        {
+          "o": 236.5,
+          "h": 240.5,
+          "l": 236.2,
+          "c": 239.3
+        },
+        {
+          "o": 240.0,
+          "h": 241.6,
+          "l": 238.8,
+          "c": 239.5
+        },
+        {
+          "o": 239.5,
+          "h": 239.8,
+          "l": 236.4,
+          "c": 237.5
+        },
+        {
+          "o": 236.2,
+          "h": 238.7,
+          "l": 235.4,
+          "c": 237.7
+        },
+        {
+          "o": 237.7,
+          "h": 239.7,
+          "l": 237.1,
+          "c": 237.1
+        },
+        {
+          "o": 238.0,
+          "h": 241.3,
+          "l": 237.5,
+          "c": 241.1
+        },
+        {
+          "o": 242.0,
+          "h": 242.6,
+          "l": 240.2,
+          "c": 241.3
+        },
+        {
+          "o": 240.1,
+          "h": 241.9,
+          "l": 237.6,
+          "c": 237.6
+        },
+        {
+          "o": 237.6,
+          "h": 239.6,
+          "l": 237.3,
+          "c": 239.2
+        },
+        {
+          "o": 239.4,
+          "h": 239.5,
+          "l": 236.8,
+          "c": 238.6
+        },
+        {
+          "o": 236.8,
+          "h": 241.6,
+          "l": 236.1,
+          "c": 241.0
+        },
+        {
+          "o": 239.8,
+          "h": 242.0,
+          "l": 238.9,
+          "c": 239.2
+        },
+        {
+          "o": 240.1,
+          "h": 245.0,
+          "l": 238.7,
+          "c": 243.2
+        },
+        {
+          "o": 240.9,
+          "h": 248.1,
+          "l": 240.9,
+          "c": 246.9
+        },
+        {
+          "o": 248.0,
+          "h": 251.5,
+          "l": 246.5,
+          "c": 250.8
+        },
+        {
+          "o": 252.0,
+          "h": 252.3,
+          "l": 249.1,
+          "c": 251.6
+        }
+      ],
+      "supply_verified": false,
+      "supply_score": null,
+      "supply_phase": "需給未確認",
+      "margin_buy_change_1w_pct": null,
+      "margin_buy_change_4w_pct": null,
+      "credit_ratio": null,
+      "institutional_short_change_pct": null,
+      "institutional_buyback_firms": null,
+      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定"
+    },
+    {
+      "code": "9432",
+      "ticker": "9432.T",
+      "name": "NTT（9432）",
+      "score": 75,
+      "phase": "上放れ待ち",
+      "close": 177.3,
+      "ret5": 3.08,
+      "ret20": 10.54,
+      "rvol": 0.32,
+      "up_down_volume_ratio": 2.27,
+      "obv_impulse": 0.05,
+      "clv20": 0.26,
+      "down_volume_ratio": 0.87,
+      "higher_low_pct": 5.35,
+      "trigger": 179.5,
+      "stop": 167.2,
+      "target1": 197.9,
+      "target2": 210.20000000000002,
+      "signal_date": "2026-09-15",
+      "reason": "上昇日/下落日出来高 2.27倍／OBV +0.05／下落日出来高 0.87倍／安値切上げ +5.3%",
+      "chart": [
+        {
+          "o": 144.3,
+          "h": 144.8,
+          "l": 143.1,
+          "c": 144.0
+        },
+        {
+          "o": 144.0,
+          "h": 144.8,
+          "l": 142.6,
+          "c": 144.2
+        },
+        {
+          "o": 143.5,
+          "h": 145.7,
+          "l": 143.4,
+          "c": 145.1
+        },
+        {
+          "o": 145.0,
+          "h": 145.2,
+          "l": 143.0,
+          "c": 143.8
+        },
+        {
+          "o": 143.1,
+          "h": 144.4,
+          "l": 142.6,
+          "c": 144.3
+        },
+        {
+          "o": 144.7,
+          "h": 146.4,
+          "l": 144.5,
+          "c": 146.0
+        },
+        {
+          "o": 146.0,
+          "h": 146.7,
+          "l": 145.0,
+          "c": 145.0
+        },
+        {
+          "o": 144.0,
+          "h": 144.2,
+          "l": 142.6,
+          "c": 142.8
+        },
+        {
+          "o": 143.8,
+          "h": 146.1,
+          "l": 143.5,
+          "c": 146.1
+        },
+        {
+          "o": 147.1,
+          "h": 148.4,
+          "l": 146.1,
+          "c": 146.1
+        },
+        {
+          "o": 146.5,
+          "h": 147.4,
+          "l": 146.2,
+          "c": 147.0
+        },
+        {
+          "o": 147.5,
+          "h": 148.5,
+          "l": 146.3,
+          "c": 148.0
+        },
+        {
+          "o": 148.8,
+          "h": 150.6,
+          "l": 148.7,
+          "c": 149.5
+        },
+        {
+          "o": 149.5,
+          "h": 150.1,
+          "l": 148.6,
+          "c": 149.0
+        },
+        {
+          "o": 149.0,
+          "h": 149.1,
+          "l": 147.6,
+          "c": 147.6
+        },
+        {
+          "o": 148.1,
+          "h": 149.3,
+          "l": 147.8,
+          "c": 149.1
+        },
+        {
+          "o": 150.0,
+          "h": 152.2,
+          "l": 149.7,
+          "c": 150.2
+        },
+        {
+          "o": 150.4,
+          "h": 151.3,
+          "l": 149.7,
+          "c": 150.0
+        },
+        {
+          "o": 150.5,
+          "h": 151.6,
+          "l": 150.0,
+          "c": 150.9
+        },
+        {
+          "o": 151.5,
+          "h": 152.8,
+          "l": 151.1,
+          "c": 151.1
+        },
+        {
+          "o": 153.0,
+          "h": 154.2,
+          "l": 151.5,
+          "c": 151.7
+        },
+        {
+          "o": 150.5,
+          "h": 152.1,
+          "l": 149.7,
+          "c": 152.0
+        },
+        {
+          "o": 151.0,
+          "h": 151.2,
+          "l": 149.3,
+          "c": 149.7
+        },
+        {
+          "o": 150.0,
+          "h": 151.3,
+          "l": 149.2,
+          "c": 151.3
+        },
+        {
+          "o": 151.5,
+          "h": 154.3,
+          "l": 151.5,
+          "c": 154.3
+        },
+        {
+          "o": 155.0,
+          "h": 156.7,
+          "l": 154.4,
+          "c": 156.4
+        },
+        {
+          "o": 156.4,
+          "h": 161.2,
+          "l": 156.2,
+          "c": 160.3
+        },
+        {
+          "o": 160.0,
+          "h": 160.9,
+          "l": 157.1,
+          "c": 159.0
+        },
+        {
+          "o": 155.5,
+          "h": 155.8,
+          "l": 151.9,
+          "c": 152.4
+        },
+        {
+          "o": 152.5,
+          "h": 152.5,
+          "l": 150.2,
+          "c": 152.5
+        },
+        {
+          "o": 153.0,
+          "h": 153.2,
+          "l": 150.4,
+          "c": 150.4
+        },
+        {
+          "o": 150.3,
+          "h": 151.3,
+          "l": 149.7,
+          "c": 151.0
+        },
+        {
+          "o": 150.2,
+          "h": 154.5,
+          "l": 149.9,
+          "c": 154.5
+        },
+        {
+          "o": 154.8,
+          "h": 159.3,
+          "l": 154.0,
+          "c": 158.5
+        },
+        {
+          "o": 157.9,
+          "h": 159.9,
+          "l": 157.0,
+          "c": 159.9
+        },
+        {
+          "o": 160.0,
+          "h": 160.5,
+          "l": 158.3,
+          "c": 158.4
+        },
+        {
+          "o": 159.8,
+          "h": 160.7,
+          "l": 159.0,
+          "c": 160.5
+        },
+        {
+          "o": 160.0,
+          "h": 162.7,
+          "l": 159.4,
+          "c": 162.7
+        },
+        {
+          "o": 163.0,
+          "h": 163.3,
+          "l": 161.1,
+          "c": 161.5
+        },
+        {
+          "o": 160.0,
+          "h": 161.0,
+          "l": 158.8,
+          "c": 160.4
+        },
+        {
+          "o": 161.4,
+          "h": 161.6,
+          "l": 158.9,
+          "c": 159.4
+        },
+        {
+          "o": 161.5,
+          "h": 162.8,
+          "l": 160.5,
+          "c": 161.4
+        },
+        {
+          "o": 162.0,
+          "h": 166.2,
+          "l": 161.7,
+          "c": 166.1
+        },
+        {
+          "o": 166.5,
+          "h": 167.4,
+          "l": 164.9,
+          "c": 166.5
+        },
+        {
+          "o": 167.4,
+          "h": 169.4,
+          "l": 167.2,
+          "c": 169.2
+        },
+        {
+          "o": 168.7,
+          "h": 170.0,
+          "l": 168.2,
+          "c": 169.6
+        },
+        {
+          "o": 169.2,
+          "h": 169.5,
+          "l": 167.4,
+          "c": 168.2
+        },
+        {
+          "o": 168.2,
+          "h": 169.6,
+          "l": 167.3,
+          "c": 168.6
+        },
+        {
+          "o": 170.0,
+          "h": 173.0,
+          "l": 169.9,
+          "c": 172.5
+        },
+        {
+          "o": 172.7,
+          "h": 175.6,
+          "l": 171.7,
+          "c": 175.6
+        },
+        {
+          "o": 175.1,
+          "h": 175.8,
+          "l": 173.7,
+          "c": 175.2
+        },
+        {
+          "o": 175.0,
+          "h": 176.0,
+          "l": 172.5,
+          "c": 173.2
+        },
+        {
+          "o": 173.2,
+          "h": 173.5,
+          "l": 171.6,
+          "c": 172.6
+        },
+        {
+          "o": 172.6,
+          "h": 172.7,
+          "l": 168.3,
+          "c": 168.8
+        },
+        {
+          "o": 168.0,
+          "h": 172.4,
+          "l": 167.4,
+          "c": 172.0
+        },
+        {
+          "o": 170.0,
+          "h": 173.3,
+          "l": 169.5,
+          "c": 172.2
+        },
+        {
+          "o": 172.8,
+          "h": 175.5,
+          "l": 171.3,
+          "c": 175.2
+        },
+        {
+          "o": 174.0,
+          "h": 176.4,
+          "l": 173.9,
+          "c": 175.7
+        },
+        {
+          "o": 176.1,
+          "h": 178.9,
+          "l": 176.0,
+          "c": 178.3
+        },
+        {
+          "o": 178.4,
+          "h": 179.3,
+          "l": 176.5,
+          "c": 177.3
+        }
+      ],
+      "supply_verified": false,
+      "supply_score": null,
+      "supply_phase": "需給未確認",
+      "margin_buy_change_1w_pct": null,
+      "margin_buy_change_4w_pct": null,
+      "credit_ratio": null,
+      "institutional_short_change_pct": null,
+      "institutional_buyback_firms": null,
+      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定"
+    },
+    {
+      "code": "4667",
+      "ticker": "4667.T",
+      "name": "アイサンテクノロジー（4667）",
+      "score": 66,
+      "phase": "上放れ待ち",
+      "close": 3230.0,
+      "ret5": -5.0,
+      "ret20": 65.39,
+      "rvol": 0.17,
+      "up_down_volume_ratio": 3.05,
+      "obv_impulse": 0.98,
+      "clv20": -0.02,
+      "down_volume_ratio": 0.62,
+      "higher_low_pct": 29.5,
+      "trigger": 4105,
+      "stop": 2495,
+      "target1": 6520,
+      "target2": 8130,
+      "signal_date": "2026-09-15",
+      "reason": "上昇日/下落日出来高 3.05倍／OBV +0.98／下落日出来高 0.62倍／安値切上げ +29.5%",
+      "chart": [
+        {
+          "o": 2150.0,
+          "h": 2264.0,
+          "l": 2014.0,
+          "c": 2104.0
+        },
+        {
+          "o": 2088.0,
+          "h": 2110.0,
+          "l": 2000.0,
+          "c": 2020.0
+        },
+        {
+          "o": 2003.0,
+          "h": 2050.0,
+          "l": 1985.0,
+          "c": 1996.0
+        },
+        {
+          "o": 2019.0,
+          "h": 2076.0,
+          "l": 1970.0,
+          "c": 2076.0
+        },
+        {
+          "o": 2089.0,
+          "h": 2089.0,
+          "l": 1961.0,
+          "c": 1978.0
+        },
+        {
+          "o": 2018.0,
+          "h": 2098.0,
+          "l": 1970.0,
+          "c": 1994.0
+        },
+        {
+          "o": 2034.0,
+          "h": 2034.0,
+          "l": 1920.0,
+          "c": 2001.0
+        },
+        {
+          "o": 2030.0,
+          "h": 2046.0,
+          "l": 1995.0,
+          "c": 2003.0
+        },
+        {
+          "o": 2009.0,
+          "h": 2015.0,
+          "l": 1980.0,
+          "c": 2006.0
+        },
+        {
+          "o": 2043.0,
+          "h": 2170.0,
+          "l": 2005.0,
+          "c": 2170.0
+        },
+        {
+          "o": 2250.0,
+          "h": 2290.0,
+          "l": 2191.0,
+          "c": 2249.0
+        },
+        {
+          "o": 2250.0,
+          "h": 2330.0,
+          "l": 2249.0,
+          "c": 2289.0
+        },
+        {
+          "o": 2250.0,
+          "h": 2291.0,
+          "l": 2134.0,
+          "c": 2138.0
+        },
+        {
+          "o": 2095.0,
+          "h": 2122.0,
+          "l": 2039.0,
+          "c": 2070.0
+        },
+        {
+          "o": 2097.0,
+          "h": 2140.0,
+          "l": 2093.0,
+          "c": 2117.0
+        },
+        {
+          "o": 2147.0,
+          "h": 2150.0,
+          "l": 2041.0,
+          "c": 2107.0
+        },
+        {
+          "o": 2107.0,
+          "h": 2110.0,
+          "l": 2007.0,
+          "c": 2049.0
+        },
+        {
+          "o": 2060.0,
+          "h": 2121.0,
+          "l": 2050.0,
+          "c": 2114.0
+        },
+        {
+          "o": 2076.0,
+          "h": 2101.0,
+          "l": 2066.0,
+          "c": 2080.0
+        },
+        {
+          "o": 2051.0,
+          "h": 2051.0,
+          "l": 1940.0,
+          "c": 1957.0
+        },
+        {
+          "o": 1981.0,
+          "h": 2036.0,
+          "l": 1980.0,
+          "c": 2030.0
+        },
+        {
+          "o": 1907.0,
+          "h": 1908.0,
+          "l": 1828.0,
+          "c": 1838.0
+        },
+        {
+          "o": 1848.0,
+          "h": 1881.0,
+          "l": 1840.0,
+          "c": 1881.0
+        },
+        {
+          "o": 1864.0,
+          "h": 1875.0,
+          "l": 1816.0,
+          "c": 1871.0
+        },
+        {
+          "o": 1877.0,
+          "h": 1934.0,
+          "l": 1873.0,
+          "c": 1919.0
+        },
+        {
+          "o": 1924.0,
+          "h": 1924.0,
+          "l": 1792.0,
+          "c": 1800.0
+        },
+        {
+          "o": 1802.0,
+          "h": 1817.0,
+          "l": 1744.0,
+          "c": 1762.0
+        },
+        {
+          "o": 1755.0,
+          "h": 1798.0,
+          "l": 1734.0,
+          "c": 1772.0
+        },
+        {
+          "o": 1772.0,
+          "h": 1827.0,
+          "l": 1772.0,
+          "c": 1818.0
+        },
+        {
+          "o": 1806.0,
+          "h": 1845.0,
+          "l": 1772.0,
+          "c": 1829.0
+        },
+        {
+          "o": 1842.0,
+          "h": 1849.0,
+          "l": 1818.0,
+          "c": 1833.0
+        },
+        {
+          "o": 1834.0,
+          "h": 1870.0,
+          "l": 1834.0,
+          "c": 1863.0
+        },
+        {
+          "o": 1859.0,
+          "h": 1864.0,
+          "l": 1825.0,
+          "c": 1825.0
+        },
+        {
+          "o": 1854.0,
+          "h": 1871.0,
+          "l": 1725.0,
+          "c": 1746.0
+        },
+        {
+          "o": 1811.0,
+          "h": 1920.0,
+          "l": 1811.0,
+          "c": 1909.0
+        },
+        {
+          "o": 1920.0,
+          "h": 1988.0,
+          "l": 1920.0,
+          "c": 1967.0
+        },
+        {
+          "o": 1970.0,
+          "h": 2013.0,
+          "l": 1931.0,
+          "c": 1997.0
+        },
+        {
+          "o": 1997.0,
+          "h": 2039.0,
+          "l": 1966.0,
+          "c": 2017.0
+        },
+        {
+          "o": 2020.0,
+          "h": 2049.0,
+          "l": 1988.0,
+          "c": 2002.0
+        },
+        {
+          "o": 2016.0,
+          "h": 2017.0,
+          "l": 1953.0,
+          "c": 1953.0
+        },
+        {
+          "o": 1951.0,
+          "h": 2010.0,
+          "l": 1932.0,
+          "c": 1992.0
+        },
+        {
+          "o": 1980.0,
+          "h": 2130.0,
+          "l": 1980.0,
+          "c": 2112.0
+        },
+        {
+          "o": 2095.0,
+          "h": 2200.0,
+          "l": 2095.0,
+          "c": 2105.0
+        },
+        {
+          "o": 2103.0,
+          "h": 2123.0,
+          "l": 2071.0,
+          "c": 2082.0
+        },
+        {
+          "o": 2100.0,
+          "h": 2165.0,
+          "l": 2091.0,
+          "c": 2133.0
+        },
+        {
+          "o": 2151.0,
+          "h": 2266.0,
+          "l": 2151.0,
+          "c": 2266.0
+        },
+        {
+          "o": 2280.0,
+          "h": 2349.0,
+          "l": 2195.0,
+          "c": 2200.0
+        },
+        {
+          "o": 2330.0,
+          "h": 2700.0,
+          "l": 2330.0,
+          "c": 2661.0
+        },
+        {
+          "o": 2911.0,
+          "h": 3165.0,
+          "l": 2853.0,
+          "c": 3165.0
+        },
+        {
+          "o": 2855.0,
+          "h": 3025.0,
+          "l": 2601.0,
+          "c": 2643.0
+        },
+        {
+          "o": 2511.0,
+          "h": 3145.0,
+          "l": 2502.0,
+          "c": 3145.0
+        },
+        {
+          "o": 3845.0,
+          "h": 3845.0,
+          "l": 3245.0,
+          "c": 3670.0
+        },
+        {
+          "o": 3650.0,
+          "h": 3775.0,
+          "l": 2970.0,
+          "c": 2970.0
+        },
+        {
+          "o": 2870.0,
+          "h": 3295.0,
+          "l": 2838.0,
+          "c": 3155.0
+        },
+        {
+          "o": 3365.0,
+          "h": 3565.0,
+          "l": 3195.0,
+          "c": 3400.0
+        },
+        {
+          "o": 3365.0,
+          "h": 4100.0,
+          "l": 3220.0,
+          "c": 3625.0
+        },
+        {
+          "o": 3695.0,
+          "h": 3725.0,
+          "l": 3315.0,
+          "c": 3330.0
+        },
+        {
+          "o": 3260.0,
+          "h": 3950.0,
+          "l": 3250.0,
+          "c": 3635.0
+        },
+        {
+          "o": 3635.0,
+          "h": 3850.0,
+          "l": 3285.0,
+          "c": 3365.0
+        },
+        {
+          "o": 3295.0,
+          "h": 3415.0,
+          "l": 3200.0,
+          "c": 3230.0
+        }
+      ],
+      "supply_verified": false,
+      "supply_score": null,
+      "supply_phase": "需給未確認",
+      "margin_buy_change_1w_pct": null,
+      "margin_buy_change_4w_pct": null,
+      "credit_ratio": null,
+      "institutional_short_change_pct": null,
+      "institutional_buyback_firms": null,
+      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定"
+    },
+    {
+      "code": "2782",
+      "ticker": "2782.T",
+      "name": "セリア（2782）",
+      "score": 66,
+      "phase": "買い集め後の上放れ",
+      "close": 4885.0,
+      "ret5": 2.84,
+      "ret20": 20.32,
+      "rvol": 0.23,
+      "up_down_volume_ratio": 2.01,
+      "obv_impulse": 0.51,
+      "clv20": 0.02,
+      "down_volume_ratio": 0.83,
+      "higher_low_pct": 8.27,
+      "trigger": 4900,
+      "stop": 4315,
+      "target1": 5780,
+      "target2": 6360,
+      "signal_date": "2026-09-15",
+      "reason": "上昇日/下落日出来高 2.01倍／OBV +0.51／下落日出来高 0.83倍／安値切上げ +8.3%",
+      "chart": [
+        {
+          "o": 3645.0,
+          "h": 3730.0,
+          "l": 3575.0,
+          "c": 3580.0
+        },
+        {
+          "o": 3645.0,
+          "h": 3695.0,
+          "l": 3615.0,
+          "c": 3675.0
+        },
+        {
+          "o": 3700.0,
+          "h": 3775.0,
+          "l": 3655.0,
+          "c": 3675.0
+        },
+        {
+          "o": 3670.0,
+          "h": 3765.0,
+          "l": 3670.0,
+          "c": 3680.0
+        },
+        {
+          "o": 3700.0,
+          "h": 3745.0,
+          "l": 3675.0,
+          "c": 3715.0
+        },
+        {
+          "o": 3600.0,
+          "h": 3715.0,
+          "l": 3595.0,
+          "c": 3700.0
+        },
+        {
+          "o": 3690.0,
+          "h": 3725.0,
+          "l": 3620.0,
+          "c": 3635.0
+        },
+        {
+          "o": 3585.0,
+          "h": 3610.0,
+          "l": 3485.0,
+          "c": 3535.0
+        },
+        {
+          "o": 3595.0,
+          "h": 3655.0,
+          "l": 3570.0,
+          "c": 3580.0
+        },
+        {
+          "o": 3520.0,
+          "h": 3620.0,
+          "l": 3500.0,
+          "c": 3580.0
+        },
+        {
+          "o": 3600.0,
+          "h": 3640.0,
+          "l": 3575.0,
+          "c": 3595.0
+        },
+        {
+          "o": 3660.0,
+          "h": 3760.0,
+          "l": 3635.0,
+          "c": 3670.0
+        },
+        {
+          "o": 3725.0,
+          "h": 3770.0,
+          "l": 3700.0,
+          "c": 3735.0
+        },
+        {
+          "o": 3665.0,
+          "h": 3685.0,
+          "l": 3565.0,
+          "c": 3660.0
+        },
+        {
+          "o": 3635.0,
+          "h": 3660.0,
+          "l": 3555.0,
+          "c": 3625.0
+        },
+        {
+          "o": 3660.0,
+          "h": 3685.0,
+          "l": 3590.0,
+          "c": 3635.0
+        },
+        {
+          "o": 3590.0,
+          "h": 3660.0,
+          "l": 3590.0,
+          "c": 3645.0
+        },
+        {
+          "o": 3660.0,
+          "h": 3685.0,
+          "l": 3625.0,
+          "c": 3685.0
+        },
+        {
+          "o": 3685.0,
+          "h": 3700.0,
+          "l": 3655.0,
+          "c": 3660.0
+        },
+        {
+          "o": 3700.0,
+          "h": 3795.0,
+          "l": 3685.0,
+          "c": 3730.0
+        },
+        {
+          "o": 3740.0,
+          "h": 3845.0,
+          "l": 3700.0,
+          "c": 3750.0
+        },
+        {
+          "o": 3735.0,
+          "h": 3815.0,
+          "l": 3720.0,
+          "c": 3765.0
+        },
+        {
+          "o": 3760.0,
+          "h": 3785.0,
+          "l": 3710.0,
+          "c": 3725.0
+        },
+        {
+          "o": 3710.0,
+          "h": 3815.0,
+          "l": 3700.0,
+          "c": 3805.0
+        },
+        {
+          "o": 3805.0,
+          "h": 3815.0,
+          "l": 3705.0,
+          "c": 3785.0
+        },
+        {
+          "o": 3825.0,
+          "h": 3850.0,
+          "l": 3780.0,
+          "c": 3845.0
+        },
+        {
+          "o": 3885.0,
+          "h": 3905.0,
+          "l": 3805.0,
+          "c": 3900.0
+        },
+        {
+          "o": 3930.0,
+          "h": 3935.0,
+          "l": 3855.0,
+          "c": 3935.0
+        },
+        {
+          "o": 3830.0,
+          "h": 3955.0,
+          "l": 3770.0,
+          "c": 3850.0
+        },
+        {
+          "o": 3885.0,
+          "h": 4200.0,
+          "l": 3880.0,
+          "c": 4195.0
+        },
+        {
+          "o": 3985.0,
+          "h": 4105.0,
+          "l": 3900.0,
+          "c": 3970.0
+        },
+        {
+          "o": 3980.0,
+          "h": 4080.0,
+          "l": 3920.0,
+          "c": 3930.0
+        },
+        {
+          "o": 4000.0,
+          "h": 4180.0,
+          "l": 3990.0,
+          "c": 4130.0
+        },
+        {
+          "o": 4110.0,
+          "h": 4290.0,
+          "l": 4100.0,
+          "c": 4160.0
+        },
+        {
+          "o": 4160.0,
+          "h": 4250.0,
+          "l": 4120.0,
+          "c": 4200.0
+        },
+        {
+          "o": 4200.0,
+          "h": 4270.0,
+          "l": 4170.0,
+          "c": 4220.0
+        },
+        {
+          "o": 4220.0,
+          "h": 4240.0,
+          "l": 4100.0,
+          "c": 4130.0
+        },
+        {
+          "o": 4110.0,
+          "h": 4130.0,
+          "l": 4030.0,
+          "c": 4090.0
+        },
+        {
+          "o": 4135.0,
+          "h": 4150.0,
+          "l": 4045.0,
+          "c": 4070.0
+        },
+        {
+          "o": 4090.0,
+          "h": 4115.0,
+          "l": 4035.0,
+          "c": 4060.0
+        },
+        {
+          "o": 4090.0,
+          "h": 4130.0,
+          "l": 3990.0,
+          "c": 4055.0
+        },
+        {
+          "o": 4350.0,
+          "h": 4370.0,
+          "l": 4225.0,
+          "c": 4305.0
+        },
+        {
+          "o": 4300.0,
+          "h": 4365.0,
+          "l": 4215.0,
+          "c": 4250.0
+        },
+        {
+          "o": 4265.0,
+          "h": 4315.0,
+          "l": 4225.0,
+          "c": 4275.0
+        },
+        {
+          "o": 4460.0,
+          "h": 4485.0,
+          "l": 4385.0,
+          "c": 4435.0
+        },
+        {
+          "o": 4465.0,
+          "h": 4485.0,
+          "l": 4395.0,
+          "c": 4395.0
+        },
+        {
+          "o": 4395.0,
+          "h": 4435.0,
+          "l": 4320.0,
+          "c": 4430.0
+        },
+        {
+          "o": 4385.0,
+          "h": 4470.0,
+          "l": 4385.0,
+          "c": 4440.0
+        },
+        {
+          "o": 4470.0,
+          "h": 4495.0,
+          "l": 4425.0,
+          "c": 4425.0
+        },
+        {
+          "o": 4410.0,
+          "h": 4425.0,
+          "l": 4335.0,
+          "c": 4375.0
+        },
+        {
+          "o": 4335.0,
+          "h": 4450.0,
+          "l": 4320.0,
+          "c": 4440.0
+        },
+        {
+          "o": 4450.0,
+          "h": 4465.0,
+          "l": 4350.0,
+          "c": 4380.0
+        },
+        {
+          "o": 4450.0,
+          "h": 4660.0,
+          "l": 4420.0,
+          "c": 4595.0
+        },
+        {
+          "o": 4595.0,
+          "h": 4625.0,
+          "l": 4550.0,
+          "c": 4570.0
+        },
+        {
+          "o": 4780.0,
+          "h": 4825.0,
+          "l": 4645.0,
+          "c": 4750.0
+        },
+        {
+          "o": 4715.0,
+          "h": 4830.0,
+          "l": 4675.0,
+          "c": 4775.0
+        },
+        {
+          "o": 4770.0,
+          "h": 4840.0,
+          "l": 4730.0,
+          "c": 4815.0
+        },
+        {
+          "o": 4770.0,
+          "h": 4810.0,
+          "l": 4620.0,
+          "c": 4660.0
+        },
+        {
+          "o": 4715.0,
+          "h": 4845.0,
+          "l": 4715.0,
+          "c": 4795.0
+        },
+        {
+          "o": 4865.0,
+          "h": 4895.0,
+          "l": 4820.0,
+          "c": 4885.0
+        }
+      ],
+      "supply_verified": false,
+      "supply_score": null,
+      "supply_phase": "需給未確認",
+      "margin_buy_change_1w_pct": null,
+      "margin_buy_change_4w_pct": null,
+      "credit_ratio": null,
+      "institutional_short_change_pct": null,
+      "institutional_buyback_firms": null,
+      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定"
+    },
+    {
+      "code": "3132",
+      "ticker": "3132.T",
+      "name": "マクニカHD（3132）",
+      "score": 64,
+      "phase": "上放れ待ち",
+      "close": 3786.0,
+      "ret5": 9.9,
+      "ret20": 5.28,
+      "rvol": 0.33,
+      "up_down_volume_ratio": 1.71,
+      "obv_impulse": 0.05,
+      "clv20": 0.28,
+      "down_volume_ratio": 1.05,
+      "higher_low_pct": 6.22,
+      "trigger": 3835,
+      "stop": 3425,
+      "target1": 4450,
+      "target2": 4860,
+      "signal_date": "2026-09-15",
+      "reason": "上昇日/下落日出来高 1.71倍／OBV +0.05／下落日出来高 1.05倍／安値切上げ +6.2%",
+      "chart": [
+        {
+          "o": 3383.0,
+          "h": 3483.0,
+          "l": 3360.0,
+          "c": 3414.0
+        },
+        {
+          "o": 3420.0,
+          "h": 3520.0,
+          "l": 3327.0,
+          "c": 3329.0
+        },
+        {
+          "o": 3270.0,
+          "h": 3363.0,
+          "l": 3175.0,
+          "c": 3210.0
+        },
+        {
+          "o": 3400.0,
+          "h": 3430.0,
+          "l": 3294.0,
+          "c": 3329.0
+        },
+        {
+          "o": 3275.0,
+          "h": 3300.0,
+          "l": 3135.0,
+          "c": 3184.0
+        },
+        {
+          "o": 3228.0,
+          "h": 3228.0,
+          "l": 3098.0,
+          "c": 3187.0
+        },
+        {
+          "o": 3194.0,
+          "h": 3205.0,
+          "l": 3121.0,
+          "c": 3144.0
+        },
+        {
+          "o": 3240.0,
+          "h": 3269.0,
+          "l": 3203.0,
+          "c": 3211.0
+        },
+        {
+          "o": 3189.0,
+          "h": 3204.0,
+          "l": 3132.0,
+          "c": 3137.0
+        },
+        {
+          "o": 3067.0,
+          "h": 3175.0,
+          "l": 3024.0,
+          "c": 3175.0
+        },
+        {
+          "o": 3234.0,
+          "h": 3352.0,
+          "l": 3215.0,
+          "c": 3307.0
+        },
+        {
+          "o": 3271.0,
+          "h": 3364.0,
+          "l": 3170.0,
+          "c": 3179.0
+        },
+        {
+          "o": 3081.0,
+          "h": 3199.0,
+          "l": 3077.0,
+          "c": 3115.0
+        },
+        {
+          "o": 3152.0,
+          "h": 3222.0,
+          "l": 3131.0,
+          "c": 3173.0
+        },
+        {
+          "o": 3226.0,
+          "h": 3297.0,
+          "l": 3214.0,
+          "c": 3256.0
+        },
+        {
+          "o": 3261.0,
+          "h": 3298.0,
+          "l": 3143.0,
+          "c": 3162.0
+        },
+        {
+          "o": 3178.0,
+          "h": 3255.0,
+          "l": 3125.0,
+          "c": 3253.0
+        },
+        {
+          "o": 3298.0,
+          "h": 3440.0,
+          "l": 3280.0,
+          "c": 3419.0
+        },
+        {
+          "o": 3309.0,
+          "h": 3351.0,
+          "l": 3262.0,
+          "c": 3300.0
+        },
+        {
+          "o": 3250.0,
+          "h": 3282.0,
+          "l": 3110.0,
+          "c": 3201.0
+        },
+        {
+          "o": 3216.0,
+          "h": 3293.0,
+          "l": 3143.0,
+          "c": 3284.0
+        },
+        {
+          "o": 3368.0,
+          "h": 3449.0,
+          "l": 3346.0,
+          "c": 3369.0
+        },
+        {
+          "o": 3368.0,
+          "h": 3440.0,
+          "l": 3355.0,
+          "c": 3409.0
+        },
+        {
+          "o": 3350.0,
+          "h": 3392.0,
+          "l": 3337.0,
+          "c": 3378.0
+        },
+        {
+          "o": 3440.0,
+          "h": 3692.0,
+          "l": 3359.0,
+          "c": 3579.0
+        },
+        {
+          "o": 3439.0,
+          "h": 3439.0,
+          "l": 3024.0,
+          "c": 3082.0
+        },
+        {
+          "o": 3125.0,
+          "h": 3138.0,
+          "l": 2902.0,
+          "c": 2954.0
+        },
+        {
+          "o": 2949.5,
+          "h": 3136.0,
+          "l": 2920.0,
+          "c": 3105.0
+        },
+        {
+          "o": 3289.0,
+          "h": 3480.0,
+          "l": 3264.0,
+          "c": 3295.0
+        },
+        {
+          "o": 3201.0,
+          "h": 3286.0,
+          "l": 3138.0,
+          "c": 3262.0
+        },
+        {
+          "o": 3300.0,
+          "h": 3478.0,
+          "l": 3290.0,
+          "c": 3450.0
+        },
+        {
+          "o": 3550.0,
+          "h": 3855.0,
+          "l": 3524.0,
+          "c": 3846.0
+        },
+        {
+          "o": 3724.0,
+          "h": 3819.0,
+          "l": 3681.0,
+          "c": 3705.0
+        },
+        {
+          "o": 3716.0,
+          "h": 3721.0,
+          "l": 3531.0,
+          "c": 3621.0
+        },
+        {
+          "o": 3650.0,
+          "h": 3670.0,
+          "l": 3562.0,
+          "c": 3592.0
+        },
+        {
+          "o": 3647.0,
+          "h": 3676.0,
+          "l": 3594.0,
+          "c": 3676.0
+        },
+        {
+          "o": 3787.0,
+          "h": 3812.0,
+          "l": 3713.0,
+          "c": 3723.0
+        },
+        {
+          "o": 3735.0,
+          "h": 3914.0,
+          "l": 3734.0,
+          "c": 3798.0
+        },
+        {
+          "o": 3821.0,
+          "h": 3846.0,
+          "l": 3700.0,
+          "c": 3760.0
+        },
+        {
+          "o": 3765.0,
+          "h": 3812.0,
+          "l": 3584.0,
+          "c": 3596.0
+        },
+        {
+          "o": 3430.0,
+          "h": 3438.0,
+          "l": 3272.0,
+          "c": 3285.0
+        },
+        {
+          "o": 3276.0,
+          "h": 3351.0,
+          "l": 3230.0,
+          "c": 3349.0
+        },
+        {
+          "o": 3290.0,
+          "h": 3340.0,
+          "l": 3237.0,
+          "c": 3332.0
+        },
+        {
+          "o": 3333.0,
+          "h": 3429.0,
+          "l": 3325.0,
+          "c": 3410.0
+        },
+        {
+          "o": 3390.0,
+          "h": 3460.0,
+          "l": 3338.0,
+          "c": 3433.0
+        },
+        {
+          "o": 3440.0,
+          "h": 3535.0,
+          "l": 3431.0,
+          "c": 3520.0
+        },
+        {
+          "o": 3633.0,
+          "h": 3711.0,
+          "l": 3565.0,
+          "c": 3599.0
+        },
+        {
+          "o": 3647.0,
+          "h": 3706.0,
+          "l": 3567.0,
+          "c": 3577.0
+        },
+        {
+          "o": 3590.0,
+          "h": 3727.0,
+          "l": 3551.0,
+          "c": 3710.0
+        },
+        {
+          "o": 3670.0,
+          "h": 3746.0,
+          "l": 3658.0,
+          "c": 3746.0
+        },
+        {
+          "o": 3606.0,
+          "h": 3645.0,
+          "l": 3493.0,
+          "c": 3544.0
+        },
+        {
+          "o": 3535.0,
+          "h": 3577.0,
+          "l": 3465.0,
+          "c": 3501.0
+        },
+        {
+          "o": 3547.0,
+          "h": 3564.0,
+          "l": 3476.0,
+          "c": 3547.0
+        },
+        {
+          "o": 3605.0,
+          "h": 3692.0,
+          "l": 3600.0,
+          "c": 3649.0
+        },
+        {
+          "o": 3600.0,
+          "h": 3626.0,
+          "l": 3445.0,
+          "c": 3445.0
+        },
+        {
+          "o": 3476.0,
+          "h": 3567.0,
+          "l": 3431.0,
+          "c": 3551.0
+        },
+        {
+          "o": 3516.0,
+          "h": 3674.0,
+          "l": 3495.0,
+          "c": 3674.0
+        },
+        {
+          "o": 3500.0,
+          "h": 3762.0,
+          "l": 3492.0,
+          "c": 3761.0
+        },
+        {
+          "o": 3752.0,
+          "h": 3827.0,
+          "l": 3702.0,
+          "c": 3760.0
+        },
+        {
+          "o": 3695.0,
+          "h": 3815.0,
+          "l": 3665.0,
+          "c": 3786.0
+        }
+      ],
+      "supply_verified": false,
+      "supply_score": null,
+      "supply_phase": "需給未確認",
+      "margin_buy_change_1w_pct": null,
+      "margin_buy_change_4w_pct": null,
+      "credit_ratio": null,
+      "institutional_short_change_pct": null,
+      "institutional_buyback_firms": null,
+      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定"
+    },
+    {
+      "code": "9506",
+      "ticker": "9506.T",
+      "name": "東北電力（9506）",
+      "score": 64,
+      "phase": "上放れ待ち",
+      "close": 1417.0,
+      "ret5": 2.94,
+      "ret20": 8.5,
+      "rvol": 0.36,
+      "up_down_volume_ratio": 1.34,
+      "obv_impulse": 0.1,
+      "clv20": 0.22,
+      "down_volume_ratio": 0.95,
+      "higher_low_pct": 6.03,
+      "trigger": 1446,
+      "stop": 1336,
+      "target1": 1611,
+      "target2": 1721,
+      "signal_date": "2026-09-15",
+      "reason": "上昇日/下落日出来高 1.34倍／OBV +0.10／下落日出来高 0.95倍／安値切上げ +6.0%",
+      "chart": [
+        {
+          "o": 1048.5,
+          "h": 1049.0,
+          "l": 1033.0,
+          "c": 1041.0
+        },
+        {
+          "o": 1041.0,
+          "h": 1049.5,
+          "l": 1030.5,
+          "c": 1030.5
+        },
+        {
+          "o": 1030.0,
+          "h": 1039.5,
+          "l": 1027.5,
+          "c": 1029.5
+        },
+        {
+          "o": 1040.0,
+          "h": 1048.0,
+          "l": 1035.5,
+          "c": 1044.0
+        },
+        {
+          "o": 1055.0,
+          "h": 1057.0,
+          "l": 1032.5,
+          "c": 1042.0
+        },
+        {
+          "o": 1047.5,
+          "h": 1060.0,
+          "l": 1039.0,
+          "c": 1050.0
+        },
+        {
+          "o": 1052.5,
+          "h": 1073.0,
+          "l": 1050.0,
+          "c": 1064.5
+        },
+        {
+          "o": 1052.0,
+          "h": 1064.0,
+          "l": 1048.0,
+          "c": 1062.0
+        },
+        {
+          "o": 1067.0,
+          "h": 1073.5,
+          "l": 1052.5,
+          "c": 1063.5
+        },
+        {
+          "o": 1061.0,
+          "h": 1072.5,
+          "l": 1060.5,
+          "c": 1069.0
+        },
+        {
+          "o": 1080.5,
+          "h": 1097.5,
+          "l": 1073.5,
+          "c": 1097.5
+        },
+        {
+          "o": 1095.0,
+          "h": 1097.5,
+          "l": 1073.0,
+          "c": 1087.0
+        },
+        {
+          "o": 1087.0,
+          "h": 1097.0,
+          "l": 1084.5,
+          "c": 1093.0
+        },
+        {
+          "o": 1095.5,
+          "h": 1109.5,
+          "l": 1091.5,
+          "c": 1095.0
+        },
+        {
+          "o": 1092.5,
+          "h": 1100.0,
+          "l": 1088.0,
+          "c": 1089.5
+        },
+        {
+          "o": 1095.0,
+          "h": 1100.5,
+          "l": 1077.0,
+          "c": 1088.0
+        },
+        {
+          "o": 1094.0,
+          "h": 1107.0,
+          "l": 1092.0,
+          "c": 1103.0
+        },
+        {
+          "o": 1111.5,
+          "h": 1136.5,
+          "l": 1111.5,
+          "c": 1127.5
+        },
+        {
+          "o": 1121.0,
+          "h": 1139.0,
+          "l": 1115.5,
+          "c": 1132.0
+        },
+        {
+          "o": 1134.5,
+          "h": 1143.0,
+          "l": 1114.0,
+          "c": 1127.0
+        },
+        {
+          "o": 1135.0,
+          "h": 1159.5,
+          "l": 1130.0,
+          "c": 1146.0
+        },
+        {
+          "o": 1138.0,
+          "h": 1144.5,
+          "l": 1126.5,
+          "c": 1140.5
+        },
+        {
+          "o": 1143.0,
+          "h": 1149.5,
+          "l": 1141.5,
+          "c": 1146.5
+        },
+        {
+          "o": 1142.5,
+          "h": 1148.5,
+          "l": 1133.5,
+          "c": 1142.0
+        },
+        {
+          "o": 1158.0,
+          "h": 1179.0,
+          "l": 1156.0,
+          "c": 1177.5
+        },
+        {
+          "o": 1164.5,
+          "h": 1171.5,
+          "l": 1156.5,
+          "c": 1163.5
+        },
+        {
+          "o": 1162.5,
+          "h": 1210.0,
+          "l": 1162.5,
+          "c": 1192.5
+        },
+        {
+          "o": 1168.0,
+          "h": 1199.0,
+          "l": 1166.5,
+          "c": 1179.0
+        },
+        {
+          "o": 1180.5,
+          "h": 1187.0,
+          "l": 1174.5,
+          "c": 1180.5
+        },
+        {
+          "o": 1175.5,
+          "h": 1194.0,
+          "l": 1139.5,
+          "c": 1190.5
+        },
+        {
+          "o": 1199.0,
+          "h": 1212.5,
+          "l": 1183.0,
+          "c": 1186.5
+        },
+        {
+          "o": 1192.0,
+          "h": 1208.0,
+          "l": 1183.0,
+          "c": 1183.5
+        },
+        {
+          "o": 1178.5,
+          "h": 1211.5,
+          "l": 1174.5,
+          "c": 1205.0
+        },
+        {
+          "o": 1218.0,
+          "h": 1235.0,
+          "l": 1216.0,
+          "c": 1217.0
+        },
+        {
+          "o": 1233.5,
+          "h": 1234.0,
+          "l": 1211.0,
+          "c": 1218.0
+        },
+        {
+          "o": 1228.5,
+          "h": 1234.5,
+          "l": 1214.5,
+          "c": 1223.0
+        },
+        {
+          "o": 1224.5,
+          "h": 1240.5,
+          "l": 1222.0,
+          "c": 1238.5
+        },
+        {
+          "o": 1236.5,
+          "h": 1254.0,
+          "l": 1232.0,
+          "c": 1254.0
+        },
+        {
+          "o": 1254.0,
+          "h": 1265.0,
+          "l": 1249.0,
+          "c": 1257.0
+        },
+        {
+          "o": 1265.5,
+          "h": 1320.0,
+          "l": 1261.0,
+          "c": 1306.0
+        },
+        {
+          "o": 1296.0,
+          "h": 1300.0,
+          "l": 1268.5,
+          "c": 1283.5
+        },
+        {
+          "o": 1296.5,
+          "h": 1319.5,
+          "l": 1285.5,
+          "c": 1312.0
+        },
+        {
+          "o": 1307.5,
+          "h": 1330.5,
+          "l": 1298.5,
+          "c": 1330.5
+        },
+        {
+          "o": 1328.5,
+          "h": 1328.5,
+          "l": 1291.5,
+          "c": 1309.5
+        },
+        {
+          "o": 1323.0,
+          "h": 1332.5,
+          "l": 1311.0,
+          "c": 1313.5
+        },
+        {
+          "o": 1316.0,
+          "h": 1334.0,
+          "l": 1314.5,
+          "c": 1327.0
+        },
+        {
+          "o": 1328.0,
+          "h": 1335.0,
+          "l": 1311.5,
+          "c": 1319.5
+        },
+        {
+          "o": 1312.5,
+          "h": 1314.0,
+          "l": 1291.5,
+          "c": 1303.5
+        },
+        {
+          "o": 1306.0,
+          "h": 1330.0,
+          "l": 1300.5,
+          "c": 1330.0
+        },
+        {
+          "o": 1320.0,
+          "h": 1384.5,
+          "l": 1319.0,
+          "c": 1384.5
+        },
+        {
+          "o": 1367.0,
+          "h": 1379.0,
+          "l": 1345.0,
+          "c": 1356.5
+        },
+        {
+          "o": 1350.5,
+          "h": 1388.0,
+          "l": 1349.0,
+          "c": 1376.0
+        },
+        {
+          "o": 1381.0,
+          "h": 1381.0,
+          "l": 1346.0,
+          "c": 1367.5
+        },
+        {
+          "o": 1381.0,
+          "h": 1412.5,
+          "l": 1374.0,
+          "c": 1386.0
+        },
+        {
+          "o": 1388.0,
+          "h": 1388.0,
+          "l": 1362.0,
+          "c": 1376.5
+        },
+        {
+          "o": 1370.0,
+          "h": 1397.0,
+          "l": 1364.5,
+          "c": 1395.5
+        },
+        {
+          "o": 1409.5,
+          "h": 1441.5,
+          "l": 1395.0,
+          "c": 1423.5
+        },
+        {
+          "o": 1393.5,
+          "h": 1428.5,
+          "l": 1379.0,
+          "c": 1417.5
+        },
+        {
+          "o": 1410.5,
+          "h": 1445.0,
+          "l": 1410.0,
+          "c": 1421.5
+        },
+        {
+          "o": 1416.0,
+          "h": 1424.5,
+          "l": 1402.0,
+          "c": 1417.0
         }
       ],
       "supply_verified": false,
@@ -4675,8 +6255,401 @@
   ],
   "large_lot_accumulation_note": "価格・出来高・OBV・終値位置・安値切り上げから買い集めの痕跡を推定。大口の実在を断定せず、大量保有報告・信用需給・会社IRで確認する。",
   "speculative_theme_note": "監視専用。出来高・騰落・値幅の異常度を検出した銘柄を通常LONG/SHORT候補から隔離。仕手株との断定ではなく、会社IR・適時開示・信用需給を確認するための警戒リスト。",
-  "monthly_weekly_hammers": [],
-  "credit_supply_updated_at": "2026-09-15 07:51:08 JST",
+  "monthly_weekly_hammers": [
+    {
+      "code": "6594",
+      "ticker": "6594.T",
+      "name": "ニデック（6594）",
+      "timeframe": "週足",
+      "status": "暫定・需給未確認",
+      "score": 83,
+      "close": 2666.0,
+      "trigger": 2672,
+      "stop": 2610,
+      "target1": 2765,
+      "target2": 2827,
+      "ma_rebound": "10週線・20週線",
+      "lower_wick_ratio": 5.9,
+      "upper_wick_ratio": 0.6,
+      "volume_ratio": 0.12,
+      "signal_date": "2026-09-15",
+      "reason": "週足陽線ハンマー／下ヒゲ5.9倍／10週線・20週線反発／出来高比0.12倍",
+      "caution": "高値＋1ティックを上抜くまで準備。月足・週足確定前に形が崩れた場合は除外。",
+      "chart": [
+        {
+          "o": 2700.0,
+          "h": 2808.0,
+          "l": 2685.0,
+          "c": 2759.0
+        },
+        {
+          "o": 2755.0,
+          "h": 2837.0,
+          "l": 2749.0,
+          "c": 2789.0
+        },
+        {
+          "o": 2751.0,
+          "h": 2797.0,
+          "l": 2718.0,
+          "c": 2750.0
+        },
+        {
+          "o": 2790.0,
+          "h": 2834.0,
+          "l": 2654.0,
+          "c": 2654.0
+        },
+        {
+          "o": 2620.0,
+          "h": 2677.0,
+          "l": 2533.0,
+          "c": 2543.0
+        },
+        {
+          "o": 2550.0,
+          "h": 2632.0,
+          "l": 2518.0,
+          "c": 2610.0
+        },
+        {
+          "o": 2580.0,
+          "h": 2693.0,
+          "l": 2559.0,
+          "c": 2645.0
+        },
+        {
+          "o": 2670.0,
+          "h": 2748.0,
+          "l": 2638.0,
+          "c": 2747.0
+        },
+        {
+          "o": 2701.0,
+          "h": 2778.0,
+          "l": 2654.0,
+          "c": 2678.0
+        },
+        {
+          "o": 2640.0,
+          "h": 2812.0,
+          "l": 2638.0,
+          "c": 2787.0
+        },
+        {
+          "o": 2687.0,
+          "h": 2749.0,
+          "l": 2676.0,
+          "c": 2708.0
+        },
+        {
+          "o": 2678.0,
+          "h": 2715.0,
+          "l": 2656.0,
+          "c": 2656.0
+        },
+        {
+          "o": 2619.0,
+          "h": 2662.0,
+          "l": 2568.0,
+          "c": 2583.0
+        },
+        {
+          "o": 2607.0,
+          "h": 2665.0,
+          "l": 2594.0,
+          "c": 2613.0
+        },
+        {
+          "o": 2629.0,
+          "h": 2711.0,
+          "l": 2621.0,
+          "c": 2660.0
+        },
+        {
+          "o": 2682.0,
+          "h": 2696.0,
+          "l": 2621.0,
+          "c": 2645.0
+        },
+        {
+          "o": 2655.0,
+          "h": 2659.0,
+          "l": 2587.0,
+          "c": 2608.0
+        },
+        {
+          "o": 2650.0,
+          "h": 2665.0,
+          "l": 2594.0,
+          "c": 2626.0
+        },
+        {
+          "o": 2593.0,
+          "h": 2618.0,
+          "l": 2569.0,
+          "c": 2583.0
+        },
+        {
+          "o": 2563.0,
+          "h": 2581.0,
+          "l": 2406.0,
+          "c": 2482.0
+        },
+        {
+          "o": 2477.0,
+          "h": 2497.0,
+          "l": 2440.0,
+          "c": 2467.0
+        },
+        {
+          "o": 2494.0,
+          "h": 2525.0,
+          "l": 2466.0,
+          "c": 2480.0
+        },
+        {
+          "o": 2483.0,
+          "h": 2573.0,
+          "l": 2480.0,
+          "c": 2556.0
+        },
+        {
+          "o": 2580.0,
+          "h": 2588.0,
+          "l": 2510.0,
+          "c": 2549.0
+        },
+        {
+          "o": 2538.0,
+          "h": 2580.0,
+          "l": 2532.0,
+          "c": 2557.0
+        },
+        {
+          "o": 2600.0,
+          "h": 2625.0,
+          "l": 2537.0,
+          "c": 2564.0
+        },
+        {
+          "o": 2614.0,
+          "h": 2615.0,
+          "l": 2488.0,
+          "c": 2567.0
+        },
+        {
+          "o": 2588.0,
+          "h": 2602.0,
+          "l": 2447.0,
+          "c": 2480.0
+        },
+        {
+          "o": 2568.0,
+          "h": 2595.0,
+          "l": 2470.0,
+          "c": 2591.0
+        },
+        {
+          "o": 2568.0,
+          "h": 2687.0,
+          "l": 2560.0,
+          "c": 2687.0
+        },
+        {
+          "o": 2700.0,
+          "h": 2755.0,
+          "l": 2642.0,
+          "c": 2718.0
+        },
+        {
+          "o": 2753.0,
+          "h": 2812.0,
+          "l": 2718.0,
+          "c": 2785.0
+        },
+        {
+          "o": 2713.0,
+          "h": 2758.0,
+          "l": 2694.0,
+          "c": 2752.0
+        },
+        {
+          "o": 2781.0,
+          "h": 2805.0,
+          "l": 2665.0,
+          "c": 2712.0
+        },
+        {
+          "o": 2736.0,
+          "h": 2810.0,
+          "l": 2719.0,
+          "c": 2759.0
+        },
+        {
+          "o": 2759.0,
+          "h": 2768.0,
+          "l": 2697.0,
+          "c": 2734.0
+        },
+        {
+          "o": 2769.0,
+          "h": 2811.0,
+          "l": 2754.0,
+          "c": 2778.0
+        },
+        {
+          "o": 2728.0,
+          "h": 2837.0,
+          "l": 2720.0,
+          "c": 2772.0
+        },
+        {
+          "o": 2802.0,
+          "h": 2839.0,
+          "l": 2778.0,
+          "c": 2815.0
+        },
+        {
+          "o": 2817.0,
+          "h": 2847.0,
+          "l": 2781.0,
+          "c": 2810.0
+        },
+        {
+          "o": 2770.0,
+          "h": 2785.0,
+          "l": 2632.0,
+          "c": 2633.0
+        },
+        {
+          "o": 2677.0,
+          "h": 2693.0,
+          "l": 2605.0,
+          "c": 2619.0
+        },
+        {
+          "o": 2609.0,
+          "h": 2631.0,
+          "l": 2570.0,
+          "c": 2627.0
+        },
+        {
+          "o": 2621.0,
+          "h": 2634.0,
+          "l": 2578.0,
+          "c": 2580.0
+        },
+        {
+          "o": 2600.0,
+          "h": 2623.0,
+          "l": 2548.0,
+          "c": 2606.0
+        },
+        {
+          "o": 2590.0,
+          "h": 2647.0,
+          "l": 2586.0,
+          "c": 2590.0
+        },
+        {
+          "o": 2605.0,
+          "h": 2640.0,
+          "l": 2590.0,
+          "c": 2603.0
+        },
+        {
+          "o": 2589.0,
+          "h": 2636.0,
+          "l": 2585.0,
+          "c": 2626.0
+        },
+        {
+          "o": 2592.0,
+          "h": 2613.0,
+          "l": 2535.0,
+          "c": 2581.0
+        },
+        {
+          "o": 2581.0,
+          "h": 2602.0,
+          "l": 2550.0,
+          "c": 2571.0
+        },
+        {
+          "o": 2521.0,
+          "h": 2544.0,
+          "l": 2454.0,
+          "c": 2480.0
+        },
+        {
+          "o": 2500.0,
+          "h": 2524.0,
+          "l": 2470.0,
+          "c": 2470.0
+        },
+        {
+          "o": 2497.0,
+          "h": 2743.0,
+          "l": 2488.0,
+          "c": 2611.0
+        },
+        {
+          "o": 2711.0,
+          "h": 2812.0,
+          "l": 2652.0,
+          "c": 2812.0
+        },
+        {
+          "o": 2777.0,
+          "h": 2793.0,
+          "l": 2712.0,
+          "c": 2722.0
+        },
+        {
+          "o": 2723.0,
+          "h": 2734.0,
+          "l": 2591.0,
+          "c": 2591.0
+        },
+        {
+          "o": 2602.0,
+          "h": 2749.0,
+          "l": 2597.0,
+          "c": 2737.0
+        },
+        {
+          "o": 2753.0,
+          "h": 2758.0,
+          "l": 2654.0,
+          "c": 2691.0
+        },
+        {
+          "o": 2658.0,
+          "h": 2670.0,
+          "l": 2617.0,
+          "c": 2655.0
+        },
+        {
+          "o": 2625.0,
+          "h": 2671.0,
+          "l": 2611.0,
+          "c": 2666.0
+        }
+      ],
+      "supply_verified": false,
+      "supply_score": null,
+      "supply_phase": "需給未確認",
+      "margin_buy_change_1w_pct": null,
+      "margin_buy_change_4w_pct": null,
+      "credit_ratio": null,
+      "institutional_short_change_pct": null,
+      "institutional_buyback_firms": null,
+      "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定",
+      "technical_score": 83
+    }
+  ],
+  "credit_supply_updated_at": "2026-09-15 10:12:44 JST",
   "long_term_ma_rebounds": [],
   "long_term_ma_rebounds_unverified": [
     {
@@ -4687,19 +6660,19 @@
       "timeframe": "週足",
       "status": "暫定・需給未確認",
       "score": 96,
-      "close": 5919.0,
+      "close": 5985.0,
       "ma_label": "50週線",
-      "ma_value": 5584.48,
-      "ma_slope": 3.15,
-      "trend_return": 23.44,
+      "ma_value": 5585.8,
+      "ma_slope": 3.18,
+      "trend_return": 24.82,
       "candle": "陽線反発",
-      "volume_ratio": 0.24,
-      "trigger": 5935,
+      "volume_ratio": 0.25,
+      "trigger": 5995,
       "stop": 5650,
-      "target1": 6360,
-      "target2": 6650,
+      "target1": 6510,
+      "target2": 6860,
       "signal_date": "2026-09-15",
-      "reason": "週足50週線反発／50週線傾斜+3.2%／半年騰落+23.4%／出来高比0.24倍",
+      "reason": "週足50週線反発／50週線傾斜+3.2%／半年騰落+24.8%／出来高比0.25倍",
       "caution": "反転足高値＋1ティックを上抜くまで買わない。反転足安値割れで撤退。決算7日以内・大幅GUは見送り。",
       "chart": [
         {
@@ -5058,9 +7031,9 @@
         },
         {
           "o": 5779.0,
-          "h": 5930.0,
+          "h": 5987.0,
           "l": 5754.0,
-          "c": 5919.0
+          "c": 5985.0
         }
       ],
       "supply_verified": false,
@@ -5082,19 +7055,19 @@
       "timeframe": "週足",
       "status": "暫定・需給未確認",
       "score": 96,
-      "close": 2818.5,
+      "close": 2848.0,
       "ma_label": "50週線",
-      "ma_value": 2699.26,
-      "ma_slope": 2.46,
-      "trend_return": 32.48,
+      "ma_value": 2699.85,
+      "ma_slope": 2.48,
+      "trend_return": 33.87,
       "candle": "陽線反発",
-      "volume_ratio": 0.14,
-      "trigger": 2843,
+      "volume_ratio": 0.15,
+      "trigger": 2857,
       "stop": 2741,
-      "target1": 2996,
-      "target2": 3098,
+      "target1": 3031,
+      "target2": 3147,
       "signal_date": "2026-09-15",
-      "reason": "週足50週線反発／50週線傾斜+2.5%／半年騰落+32.5%／出来高比0.14倍",
+      "reason": "週足50週線反発／50週線傾斜+2.5%／半年騰落+33.9%／出来高比0.15倍",
       "caution": "反転足高値＋1ティックを上抜くまで買わない。反転足安値割れで撤退。決算7日以内・大幅GUは見送り。",
       "chart": [
         {
@@ -5453,9 +7426,9 @@
         },
         {
           "o": 2766.5,
-          "h": 2830.5,
+          "h": 2856.0,
           "l": 2760.5,
-          "c": 2818.5
+          "c": 2848.0
         }
       ],
       "supply_verified": false,
@@ -5477,19 +7450,19 @@
       "timeframe": "週足",
       "status": "暫定・需給未確認",
       "score": 96,
-      "close": 3397.0,
+      "close": 3456.0,
       "ma_label": "50週線",
-      "ma_value": 3312.38,
-      "ma_slope": 3.95,
-      "trend_return": 22.35,
+      "ma_value": 3313.56,
+      "ma_slope": 3.99,
+      "trend_return": 24.47,
       "candle": "陽線反発",
-      "volume_ratio": 0.12,
-      "trigger": 3425,
+      "volume_ratio": 0.13,
+      "trigger": 3465,
       "stop": 3255,
-      "target1": 3680,
-      "target2": 3850,
+      "target1": 3780,
+      "target2": 3990,
       "signal_date": "2026-09-15",
-      "reason": "週足50週線反発／50週線傾斜+3.9%／半年騰落+22.3%／出来高比0.12倍",
+      "reason": "週足50週線反発／50週線傾斜+4.0%／半年騰落+24.5%／出来高比0.13倍",
       "caution": "反転足高値＋1ティックを上抜くまで買わない。反転足安値割れで撤退。決算7日以内・大幅GUは見送り。",
       "chart": [
         {
@@ -5848,9 +7821,9 @@
         },
         {
           "o": 3314.0,
-          "h": 3418.0,
+          "h": 3456.0,
           "l": 3306.0,
-          "c": 3397.0
+          "c": 3456.0
         }
       ],
       "supply_verified": false,
@@ -5871,20 +7844,20 @@
       "setup": "週足50週線反発",
       "timeframe": "週足",
       "status": "暫定・需給未確認",
-      "score": 95,
-      "close": 12595.0,
+      "score": 92,
+      "close": 12640.0,
       "ma_label": "50週線",
-      "ma_value": 12462.8,
+      "ma_value": 12463.7,
       "ma_slope": 2.05,
-      "trend_return": 12.96,
+      "trend_return": 13.36,
       "candle": "陽線反発",
-      "volume_ratio": 0.15,
-      "trigger": 12655,
+      "volume_ratio": 0.16,
+      "trigger": 12710,
       "stop": 12255,
-      "target1": 13255,
-      "target2": 13655,
+      "target1": 13390,
+      "target2": 13850,
       "signal_date": "2026-09-15",
-      "reason": "週足50週線反発／50週線傾斜+2.0%／半年騰落+13.0%／出来高比0.15倍",
+      "reason": "週足50週線反発／50週線傾斜+2.1%／半年騰落+13.4%／出来高比0.16倍",
       "caution": "反転足高値＋1ティックを上抜くまで買わない。反転足安値割れで撤退。決算7日以内・大幅GUは見送り。",
       "chart": [
         {
@@ -6243,9 +8216,9 @@
         },
         {
           "o": 12395.0,
-          "h": 12640.0,
+          "h": 12705.0,
           "l": 12395.0,
-          "c": 12595.0
+          "c": 12640.0
         }
       ],
       "supply_verified": false,
@@ -6257,7 +8230,7 @@
       "institutional_short_change_pct": null,
       "institutional_buyback_firms": null,
       "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定",
-      "technical_score": 95
+      "technical_score": 92
     },
     {
       "code": "6702",
@@ -6267,19 +8240,19 @@
       "timeframe": "週足",
       "status": "暫定・需給未確認",
       "score": 83,
-      "close": 3993.0,
+      "close": 3952.0,
       "ma_label": "50週線",
-      "ma_value": 3734.68,
-      "ma_slope": 0.53,
-      "trend_return": 19.55,
+      "ma_value": 3733.86,
+      "ma_slope": 0.51,
+      "trend_return": 18.32,
       "candle": "陽線反発",
-      "volume_ratio": 0.44,
+      "volume_ratio": 0.49,
       "trigger": 4080,
       "stop": 3810,
       "target1": 4485,
       "target2": 4755,
       "signal_date": "2026-09-15",
-      "reason": "週足50週線反発／50週線傾斜+0.5%／半年騰落+19.6%／出来高比0.44倍",
+      "reason": "週足50週線反発／50週線傾斜+0.5%／半年騰落+18.3%／出来高比0.49倍",
       "caution": "反転足高値＋1ティックを上抜くまで買わない。反転足安値割れで撤退。決算7日以内・大幅GUは見送り。",
       "chart": [
         {
@@ -6639,8 +8612,8 @@
         {
           "o": 4069.0,
           "h": 4075.0,
-          "l": 3938.0,
-          "c": 3993.0
+          "l": 3934.0,
+          "c": 3952.0
         }
       ],
       "supply_verified": false,

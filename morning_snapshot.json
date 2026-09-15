@@ -1,6 +1,61 @@
 {
   "date": "2026-09-15",
-  "fixed_at": "2026-09-15 10:13:57 JST",
+  "fixed_at": "2026-09-15 11:37:25 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
-  "candidates": []
+  "candidates": [
+    {
+      "name": "ソフトバンクグループ（9984）",
+      "ticker": "9984.T",
+      "side": "LONG",
+      "score": 84.0,
+      "entry": 5890,
+      "entry_limit": 5890,
+      "stop": 5610,
+      "target1": 6300,
+      "target2": 6500,
+      "morning_price": 6369.0,
+      "rvol": 0.91,
+      "ret20": 9.25,
+      "atr_pct": 6.67,
+      "day_score": 4.56,
+      "swing_score": 5.22,
+      "material_stage": "織り込み進行"
+    },
+    {
+      "name": "ソシオネクスト（6526）",
+      "ticker": "6526.T",
+      "side": "LONG",
+      "score": 89.0,
+      "entry": 1869,
+      "entry_limit": 1869,
+      "stop": 1818,
+      "target1": 1946,
+      "target2": 1982,
+      "morning_price": 1912.5,
+      "rvol": 0.48,
+      "ret20": -5.27,
+      "atr_pct": 4.12,
+      "day_score": 6.2,
+      "swing_score": -3.64,
+      "material_stage": "事実確認待ち"
+    },
+    {
+      "name": "神戸物産（3038）",
+      "ticker": "3038.T",
+      "side": "LONG",
+      "score": 79.0,
+      "entry": 3180,
+      "entry_limit": 3180,
+      "stop": 3105,
+      "target1": 3295,
+      "target2": 3350,
+      "morning_price": 3184.0,
+      "rvol": 0.53,
+      "ret20": 14.8,
+      "atr_pct": 3.73,
+      "day_score": 3.07,
+      "swing_score": 8.08,
+      "material_stage": "織り込み進行"
+    }
+  ]
 }
