@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-15T15:45:21.930078+09:00",
+  "updated_at": "2026-09-15T22:26:45.957091+09:00",
   "calendar": [
     {
       "code": "1436",
@@ -1445,9 +1445,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "配当変更・内容要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260914536052.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -5107,6 +5111,13 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
+      },
+      "momentum": {
+        "available": true,
+        "last_close": 96300.0,
+        "return_5d_pct": 1.16,
+        "return_20d_pct": -0.82,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -12078,9 +12089,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260915536821.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -14866,6 +14881,91 @@
   ],
   "catalysts": [
     {
+      "code": "1445",
+      "name": "Ｐ－ひかりＨＤ",
+      "title": "業績予想の修正に関するお知らせ",
+      "published_at": "2026-09-15T18:00:00+09:00",
+      "date": "2026-09-15",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260915536483.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "244A",
+      "name": "Ｇ－グロースエクスパ",
+      "title": "2026年８月期連結業績予想の修正に関するお知らせ",
+      "published_at": "2026-09-15T18:00:00+09:00",
+      "date": "2026-09-15",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260915536821.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4935",
+      "name": "リベルタ",
+      "title": "連結業績予想及び配当予想の修正（無配）に関するお知らせ",
+      "published_at": "2026-09-15T17:30:00+09:00",
+      "date": "2026-09-15",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260915536788.pdf",
+      "tags": [
+        "減配・無配",
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2291",
+      "name": "福留ハム",
+      "title": "固定資産の譲渡および特別利益の計上に関するお知らせ",
+      "published_at": "2026-09-15T17:00:00+09:00",
+      "date": "2026-09-15",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260915536368.pdf",
+      "tags": [
+        "一過性利益"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6036",
+      "name": "ＫｅｅＰｅｒ技研",
+      "title": "株式分割、株主優待制度の一部変更及び配当予想の修正に関するお知らせ",
+      "published_at": "2026-09-15T16:40:00+09:00",
+      "date": "2026-09-15",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260915536785.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3121",
+      "name": "マーチャント",
+      "title": "2026 年10 月期（第103 期）配当予想の修正に関するお知らせ",
+      "published_at": "2026-09-15T16:00:00+09:00",
+      "date": "2026-09-15",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260914536052.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
       "code": "2531",
       "name": "宝ＨＬＤ",
       "title": "不動産の売却および特別利益（固定資産売却益）の計上に関するお知らせ",
@@ -17142,5 +17242,13 @@
   "calendar_status": "ok",
   "coverage_note": "JPX掲載月次表の前7日〜先60日（掲載対象のみ、全銘柄網羅ではない）。TDnetは直近4暦日・各日最大8ページ。",
   "kabutan_calendar_url": "https://s.kabutan.jp/warnings/news_schedule/",
-  "analysis_note": "上方修正等は表題で明示されたものだけ分類。方向不明の修正は要確認。確率や決算前の上昇予測は未算出。"
+  "analysis_note": "上方修正等は表題で明示されたものだけ分類。方向不明の修正は要確認。確率や決算前の上昇予測は未算出。",
+  "momentum_target_date": "2026-09-16",
+  "momentum_validation": {
+    "resolved_n": 0,
+    "hit_rate_pct": null,
+    "min_n_threshold": 20,
+    "status": "試運転・検証中（サンプル不足）"
+  },
+  "momentum_note": "momentum_directionは決算内容そのものの予測ではなく、直近5日/20日の株価モメンタムのみに基づく仮説的な参考値。カレンダー中、直近の発表日の銘柄だけに付与する。"
 }
