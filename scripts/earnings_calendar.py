@@ -179,6 +179,12 @@ def disclosures(now):
             pages += 1
             next_urls = [urljoin(url, a.get('href')) for a in doc.xpath('//a[@href]')
                          if '次へ' in (a.text_content() + ' '.join(a.xpath('.//img/@alt'))) and f'_{compact}.html' in a.get('href')]
+            for node in doc.xpath('//*[@onclick]'):
+                if '次へ' not in node.text_content():
+                    continue
+                match = re.fullmatch(r"pager\('(I_list_\d{3}_\d{8}\.html)'\)", node.get('onclick', ''))
+                if match and f'_{compact}.html' in match.group(1):
+                    next_urls.append(urljoin(url, match.group(1)))
             url = next_urls[0] if next_urls else None
         coverage.append({'date': day, 'pages': pages, 'truncated': bool(url and pages >= 8)})
     return list({e['source_url']: e for e in events}.values()), coverage, errors
