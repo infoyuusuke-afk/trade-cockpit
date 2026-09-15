@@ -1,0 +1,15 @@
+{
+  "updated_at": "2026-09-15 13:51:48 JST",
+  "source": "https://www.jpx.co.jp/listing/event-schedules/financial-announcement/index.html",
+  "source_note": "JPX公式『翌営業日決算発表予定会社』。3月期・9月期決算会社の本決算・四半期決算のみが対象。2日以上先の確定リストは無料の公式ソースからは取得できない。",
+  "fetch_error": null,
+  "target_date": "2026-09-16",
+  "picks": [],
+  "direction_score_note": "momentum_directionは決算内容そのものの予測ではなく、直近5日/20日の株価モメンタムのみに基づく仮説的な参考値。ChatGPTへ別途この銘柄リストを共有し、決算内容・ガイダンスを踏まえた定性的な検討コメントを依頼する運用とする。",
+  "validation": {
+    "resolved_n": 0,
+    "hit_rate_pct": null,
+    "min_n_threshold": 20,
+    "status": "試運転・検証中（サンプル不足）"
+  }
+}
