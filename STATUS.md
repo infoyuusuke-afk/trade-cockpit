@@ -1,6 +1,6 @@
 # trade-cockpit STATUS
 
-最終更新: 2026-09-15（Claude・注意アラートの基盤（A/B区分・通知タイミング）をevent_calendar.pyへ実装、P0完了）
+最終更新: 2026-09-15（Claude・P1着手：地合い共通判定エンジン(regime_policy.py)を実装、実行ワークフローはpush待ち）
 役割分担確定：ChatGPT=戦略の壁打ちのみ（リポジトリは変更しない）／Claude=実コーディング担当
 運用体制: ChatGPT（戦略・相場観）＋ Claude/Claude Code（コーディング・診断）＋ Genspark（必要時のみ、現在未課金）
 
@@ -1184,6 +1184,45 @@ P0の最後の項目「注意アラート」に対応した。ロードマップ
 注意アラート）のうち、保存失敗の解消（C-031、Codex引き継ぎ待ち）を除く4項目の基盤を
 実装した**。次はP1（デイトレTOP5・決算発表後の監視候補・地合い共通判定・非公開売買
 ログ）が控えている。
+
+## P1着手：地合い共通判定エンジンを実装（2026-09-15）
+
+P1の4項目（デイトレTOP5・決算発表後の監視候補・地合い共通判定・非公開売買ログ）のうち、
+他の3項目が依存する「地合い共通判定」から着手した。ロードマップ第3節の仕様に沿って
+`scripts/regime_policy.py`を新規実装した。
+
+**実装内容（純粋関数・単体テスト済み）**：
+- `classify_base_regime`：TOPIX代替の現在値・当日VWAP・直近3本の5分EMA20・監視母集団の
+  上昇比率からUP/DOWN/RANGE/UNKNOWNを判定。必須値のいずれか欠落でUNKNOWN（推定補完しない）
+- `event_lock_active`：C-030で実装したevent_calendar.jsonのtier=Aイベントの
+  `scheduled_at_utc`を使い、T-10分〜T+15分の新規停止窓を判定（架空時刻は対象にしない）
+- `high_vol_active`：直近60日同時間帯の5分リターン分布95%点との比較
+- `apply_hysteresis`：状態機械。通常切替は2回連続成立＋最短保持15分、UNKNOWN/EVENT_LOCKは
+  即時切替。ロードマップ受入基準#5（RANGE→UPが1回だけでは切替なし、2回＋保持成立で切替、
+  UNKNOWNは即停止）を単体テストで直接検証
+- `resolve_policy`：確定地合いごとの許可セットアップ・リスク倍率（HIGH_VOL中は0.5との
+  小さい方）
+
+**実装内容（main()のデータ取得・正直な制約）**：
+- TOPIXは`watchlist_100.json`の既存の慣習と同じ代替ティッカー（1306.T、NEXT FUNDS TOPIX
+  連動型上場投信）の5分足をyfinanceから取得。真の指数系列そのものではない
+- ブレッドス（固定監視母集団の前日比上昇比率）は、本来PC側のMS2 RSSリアルタイム気配が
+  最も正確だが、クラウド側(GitHub Actions)はPC側データに接続できないため、
+  `ms2_live/watchlist_100.json`の100銘柄をyfinanceの**日次終値**で代替計算している。
+  **真の日中5分足ブレッドスではない**ことを明記する
+- RATE_SHOCK・POLICY_EVENTは未実装（常にFalse）。金利変化データ・政策発表分類の別途接続が必要
+- 状態は`data/regime_state.json`に永続化、出力は`market_regime.json`
+
+**テスト**：`tests/test_regime_policy.py`（25件、classify/event_lock/hysteresis/policy/
+high_volの単体テスト、外部通信なし）。
+
+**未検証のまま残る部分（正直な申告）**：この機能を定期実行する`.github/workflows/
+market-regime.yml`を新規作成したが、**ワークフローファイルのためこのセッションから
+pushできない**（C-023/C-031と同じ既知の制約）。したがって`main()`のyfinance実データ
+取得・ファイル書き込み部分は、単体テスト（純粋関数のみ対象）を除きまだ実機検証していない。
+純粋な判定ロジックは`tests/test_regime_policy.py`が次回のUpdate Trade Cockpit実行
+（`python -m unittest discover -s tests`が自動収集）で検証されるが、実データ接続の
+検証にはこのワークフローファイルの反映が必要。
 
 ## 現在の未決事項・注意点
 
