@@ -7,6 +7,68 @@ if (-not (Test-Path $bookPath)) {
     exit 1
 }
 
+function Write-AtomicUtf8([string]$path, [string]$content) {
+    $tmp = "$path.tmp"
+    [IO.File]::WriteAllText($tmp, $content, [Text.UTF8Encoding]::new($false))
+    # kioxia_watcher_live.json は127.0.0.1経由で他プロセス(ブラウザ)から同時に読まれるため、
+    # Move-Item -Force が読み取りロックで失敗することがある。数回だけ短い間隔でリトライする。
+    $maxAttempts = 5
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        try {
+            Move-Item -Force $tmp $path -ErrorAction Stop
+            return
+        } catch {
+            if ($attempt -ge $maxAttempts) {
+                Write-Host ("Write-AtomicUtf8: " + $path + " への書き込みに" + $maxAttempts + "回失敗: " + $_.Exception.Message) -ForegroundColor Yellow
+                if (Test-Path $tmp) { Remove-Item -Force $tmp -ErrorAction SilentlyContinue }
+                throw
+            }
+            Start-Sleep -Milliseconds 150
+        }
+    }
+}
+
+function Start-LocalJsonBridge([string]$jsonFile, [int]$port) {
+    # MS2_RSS_100_Collector.ps1と同じ方式のローカルHTTPサーバー。ブラウザ(公開コクピット)が
+    # 同一PC上から直接このJSONを読みに来られるようにする（キオクシアタブの一本化のため）。
+    return Start-Job -Name ("KIOXIA_WATCHER_JSON_BRIDGE_" + $PID) -ArgumentList $jsonFile,$port -ScriptBlock {
+        param($JsonFile,$Port)
+        $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,[int]$Port)
+        $utf8 = [Text.UTF8Encoding]::new($false)
+        try {
+            $listener.Start()
+            while ($true) {
+                $client = $listener.AcceptTcpClient()
+                try {
+                    $stream = $client.GetStream()
+                    $reader = [IO.StreamReader]::new($stream,[Text.Encoding]::ASCII,$false,1024,$true)
+                    $requestLine = $reader.ReadLine()
+                    while (($line = $reader.ReadLine()) -ne $null -and $line -ne "") {}
+                    $method = if ($requestLine) { ($requestLine -split ' ')[0] } else { "GET" }
+                    if ($method -eq "OPTIONS") {
+                        $bodyBytes = [byte[]]@()
+                        $status = "204 No Content"
+                        $contentType = "text/plain"
+                    } elseif (Test-Path $JsonFile) {
+                        $bodyBytes = $utf8.GetBytes([IO.File]::ReadAllText($JsonFile,[Text.Encoding]::UTF8))
+                        $status = "200 OK"
+                        $contentType = "application/json; charset=utf-8"
+                    } else {
+                        $bodyBytes = $utf8.GetBytes('{"status":"waiting"}')
+                        $status = "503 Service Unavailable"
+                        $contentType = "application/json; charset=utf-8"
+                    }
+                    $headers = "HTTP/1.1 $status`r`nContent-Type: $contentType`r`nContent-Length: $($bodyBytes.Length)`r`nCache-Control: no-store`r`nAccess-Control-Allow-Origin: *`r`nAccess-Control-Allow-Methods: GET, OPTIONS`r`nAccess-Control-Allow-Headers: *`r`nAccess-Control-Allow-Private-Network: true`r`nConnection: close`r`n`r`n"
+                    $headerBytes = [Text.Encoding]::ASCII.GetBytes($headers)
+                    $stream.Write($headerBytes,0,$headerBytes.Length)
+                    if ($bodyBytes.Length -gt 0) { $stream.Write($bodyBytes,0,$bodyBytes.Length) }
+                    $stream.Flush()
+                } catch {} finally { $client.Close() }
+            }
+        } finally { $listener.Stop() }
+    }
+}
+
 function Get-Ema([double[]]$values, [int]$period) {
     if ($values.Count -lt $period) { return 0 }
     $k = 2.0 / ($period + 1.0)
@@ -419,6 +481,15 @@ if (-not (Test-Path $boardLogPath)) {
 }
 $lastBoardLoggedMinute = ""
 
+# キオクシアタブの一本化（ユーザー指示・2026-09-15）: これまでExcelのDASHBOARDシートと
+# 公開コクピットのキオクシアタブが別々の計算式で似た指標を出しており「どちらを見ればいいか
+# わからない」状態だった。WatcherのDASHBOARD計算結果をJSONとして書き出し、ローカルHTTP
+# （127.0.0.1:28581）で配信することで、ブラウザ側がこのJSONを直接読みに行けるようにする。
+# Excelは裏で動かしたまま、PC上ではブラウザだけを見ればよい構成にするための土台。
+$watcherJsonPath = Join-Path $PSScriptRoot "kioxia_watcher_live.json"
+$watcherBridgeJob = Start-LocalJsonBridge $watcherJsonPath 28581
+Write-Host "キオクシアWatcher連携: http://127.0.0.1:28581/kioxia_watcher_live.json" -ForegroundColor Cyan
+
 Write-Host "キオクシアLIVE監視を開始しました。終了はこの画面で Ctrl+C。" -ForegroundColor Cyan
 $dash.Activate()
 
@@ -475,6 +546,9 @@ try {
         # 夜間PTS(JNX)参考表示。東証現在値の有無に関わらず更新する（表示専用・売買サインには使わない）。
         # COM経由の書き込みは他プロセス（100銘柄収集器等）との同時アクセスで一時的に失敗することがあるため、
         # ここでの失敗が監視ループ全体を止めないようtry/catchで守る（次のループでまた更新される）。
+        # $ptsChangeText等は$ptsPriceがnullの分岐では代入されないため、JSON出力用に
+        # 毎ループ明示的にリセットする（stale変数バグの再発防止）。
+        $ptsChangeText = ""; $ptsQuoteText = ""; $ptsTimeText = ""
         try {
             $ptsPrice = Get-SafeNumber $rss.Range("B18").Value2 0.01 10000000
             $ptsChangePct = Get-SafeNumber $rss.Range("B19").Value2 -100 100
@@ -553,7 +627,9 @@ try {
         $footprintText = "データ待ち"; $stopZoneText = "データ待ち"
         # 実データの個別ティック（RssTickList）ベース。1分足25本の蓄積を待つ必要がないため、
         # 寄り直後から機能する（歩み1〜4ベースの$footprintTextとは別に併記する）。
-        $tickFootprintText = "データ待ち"; $tickFlowBiasText = "データ待ち"
+        # $biasは条件付きでしか代入されないため、JSON出力(kioxia_watcher_live.json)用に
+        # 毎ループ明示的にリセットする（100銘柄収集器で見つけた同種のstale変数バグの再発防止）。
+        $tickFootprintText = "データ待ち"; $tickFlowBiasText = "データ待ち"; $bias = $null
         if ($ticks.Count -ge 10) {
             $tickFootprints = Get-TickFootprints $ticks 8.0 3
             $tickFootprintText = if ($tickFootprints.Count -eq 0) { "検出なし（直近" + $ticks.Count + "ティック中）" } else { ($tickFootprints | ForEach-Object { "$($_.TimeText) $([math]::Round($_.Price,0))円 $([math]::Round($_.Volume,0))株" }) -join " / " }
@@ -567,7 +643,9 @@ try {
         }
 
         # 10本板（実データ）。売買判定には使わない、板圧力の参考表示専用。
+        # $pct等も条件付きでしか代入されないためJSON出力用に毎ループリセットする（上と同じ理由）。
         $boardDepthText = "データ待ち"
+        $pct = $null; $totalBidQty = $null; $totalAskQty = $null; $maxBidLevel = $null; $maxAskLevel = $null
         $validLevels = @($board | Where-Object { $null -ne $_.AskQty -or $null -ne $_.BidQty })
         if ($validLevels.Count -ge 3) {
             $totalAskQty = ($validLevels | Measure-Object -Property AskQty -Sum).Sum
@@ -658,6 +736,54 @@ try {
         Set-CellValue $dash.Range("A35") ("歩み値偏り(実ティックベース・未検証): " + $tickFlowBiasText)
         Set-CellValue $dash.Range("A37") ("10本板(実データ): " + $boardDepthText)
         $dash.Range("A5:H9").Interior.Color = if ($signal -eq "買いサイン") { 0x62B14C } elseif ($signal -eq "空売りサイン") { 0x4E4EFF } elseif ($signal -eq "往復ピンタ回避") { 0x2A8CFF } else { 0x483117 }
+
+        # キオクシアタブ一本化: DASHBOARDへ書いた内容と同じ生の値をJSONでも出力する。
+        # ブラウザ側(公開コクピットのキオクシアタブ)がこのJSONを読むことで、Excelを直接
+        # 開かなくても同じ内容を見られるようにする。書き込み失敗は監視ループを止めない。
+        try {
+            $watcherPayload = [ordered]@{
+                schema_version = "kioxia-watcher-1.0"
+                updated_at = $now.ToString("yyyy-MM-dd HH:mm:ss")
+                source = "Kioxia_RSS_Live_Watcher (Excel RSS)"
+                state = $state
+                signal = $signal
+                price = $price
+                entry_price = $(if ($entry -ne 0) { $entry } else { $null })
+                stop_price = $(if ($stop -ne 0) { $stop } else { $null })
+                target1 = $(if ($target1 -ne 0) { $target1 } else { $null })
+                target2 = $(if ($target2 -ne 0) { $target2 } else { $null })
+                close_1m = $(if ($close1 -ne 0) { $close1 } else { $null })
+                open_1m = $(if ($open1 -ne 0) { $open1 } else { $null })
+                vwap = $vwap
+                ema9 = $(if ($ema9 -ne 0) { $ema9 } else { $null })
+                ema20 = $(if ($ema20 -ne 0) { $ema20 } else { $null })
+                or15_high = $(if ($orHigh -ne 0) { $orHigh } else { $null })
+                or15_low = $(if ($orLow -ne 0) { $orLow } else { $null })
+                under_ratio_pct = [math]::Round($underRatio*100,1)
+                volume_ratio = $(if ($volRatio -ne 0) { [math]::Round($volRatio,2) } else { $null })
+                bar_time = $barTime
+                conditions = [ordered]@{ price=$condPrice; volume=$condVol; ema=$condEma; or15=$condOr }
+                board_bias_label = $boardBiasLabel
+                footprint_text = $footprintText
+                stop_zone_text = $stopZoneText
+                tick_footprint_text = $tickFootprintText
+                tick_flow_bias_text = $tickFlowBiasText
+                tick_flow_bias_score = $bias
+                board_depth_text = $boardDepthText
+                board_bid_ratio_pct = $pct
+                board_total_bid_qty = $totalBidQty
+                board_total_ask_qty = $totalAskQty
+                pts_price = $ptsPrice
+                pts_change_pct_text = $ptsChangeText
+                pts_quote_text = $ptsQuoteText
+                pts_time_text = $ptsTimeText
+                tick_count = $ticks.Count
+            }
+            $watcherJsonText = $watcherPayload | ConvertTo-Json -Depth 4
+            Write-AtomicUtf8 $watcherJsonPath $watcherJsonText
+        } catch {
+            Write-Host ("kioxia_watcher_live.json書き込み失敗（継続します）: " + $_.Exception.Message) -ForegroundColor Yellow
+        }
 
         if ($inSession -and ($signal -eq "買いサイン" -or $signal -eq "空売りサイン") -and (($signal -ne $lastSpokenSignal) -or (((Get-Date) - $lastSpokenAt).TotalMinutes -ge 10))) {
             $spoken = if ($signal -eq "買いサイン") { "キオクシア、買いサイン点灯。発動価格 $entry 円。損切り $stop 円。" } else { "キオクシア、空売りサイン点灯。発動価格 $entry 円。損切り $stop 円。" }

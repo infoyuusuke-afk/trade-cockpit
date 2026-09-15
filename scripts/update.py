@@ -2540,7 +2540,38 @@ document.addEventListener("DOMContentLoaded",()=>{
  document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},live=d.stale===false,bar=document.getElementById("unified-mode");if(!bar)return;bar.className="unified-mode "+(live?"live":"stale");document.getElementById("unified-mode-title").textContent=live?"MS2 RSS LIVE接続中":"事前分析モード";document.getElementById("unified-mode-note").textContent=live?"歩み値・板・VWAP・OR15を同じ画面へ反映":"LIVE値は未接続。公開分析は閲覧できますが売買サインは無効";document.getElementById("unified-mode-time").textContent=live?(d.updated_at||"更新中"):"LIVE売買禁止";});
  document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},k=d.kioxia,stale=d.stale!==false;if(!document.getElementById("kio-ms2-state"))return;const put=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};if(!k||stale){put("kio-ms2-state","未接続・売買利用禁止");put("kio-ms2-source","Windowsコレクター待ち");return}const signed=v=>v==null?"—":`${Number(v)>=0?"+":""}${Number(v).toFixed(1)}pt`,pct=v=>v==null?"—":`${Number(v)>=0?"+":""}${Number(v).toFixed(2)}%`,h=k.historical_prediction;put("kio-ms2-state",k.orderflow_state||"判定待ち");put("kio-ms2-source",`${d.updated_at}／${d.connection_source||"MS2 RSS LIVE"}`);put("kio-preopen-plan",k.preopen_plan||"判定待ち");put("kio-preopen-score",`スコア ${k.preopen_score??"—"}`);put("kio-preopen-quote",k.preopen_quote?`${Number(k.preopen_quote).toLocaleString("ja-JP")}円`:"—");put("kio-preopen-gap",`基準比 ${pct(k.preopen_gap_pct)}`);put("kio-preopen-imbalance",pct(k.preopen_market_imbalance));put("kio-preopen-change",`気配5分 ${pct(k.preopen_quote_change_5m)}`);put("kio-open-decision",k.open_decision||"寄り待ち");put("kio-special-quote",`特別気配 ${k.special_quote||"—"}／始値 ${k.open_price?Number(k.open_price).toLocaleString("ja-JP")+"円":"—"}`);put("kio-ms2-band",k.time_band||"—");put("kio-ms2-under",`${Number(k.under_ratio).toFixed(1)}%`);put("kio-ms2-under-change",`1分 ${signed(k.under_change_1m)}／5分 ${signed(k.under_change_5m)}`);put("kio-ms2-flow",`${Number(k.flow_bias).toFixed(1)}%`);put("kio-ms2-flow-detail",`買い ${Number(k.buy_flow||0).toLocaleString("ja-JP")}／売り ${Number(k.sell_flow||0).toLocaleString("ja-JP")}`);put("kio-ms2-ticks",k.tick_watch||"常時監視中");put("kio-ms2-stat",h?.prediction||`蓄積中 ${k.completed_stat_days||0}/10日`);put("kio-ms2-stat-detail",h?`5分後 上${h.up_rate_5m}%／下${h.down_rate_5m}%・平均 ${Number(h.average_return_5m)>=0?"+":""}${h.average_return_5m}%・${h.sample_days}日`:`10営業日まで方向を出しません`);const panel=document.getElementById("kio-ms2-orderflow");panel.classList.toggle("buy",k.orderflow_state==="買い優勢");panel.classList.toggle("sell",k.orderflow_state==="売り優勢");panel.classList.toggle("conflict",String(k.orderflow_state).includes("不一致"));});
  document.addEventListener("ms2RssUpdate",e=>{const k=e.detail?.kioxia,el=document.getElementById("kio-preopen-stat");if(!el||!k)return;const h=k.preopen_historical;el.textContent=h?(h.ready?`${h.prediction}（n=${h.sample_days}日）`:`蓄積中 ${h.sample_days}/10日`):"統計蓄積中";});
+
+ // キオクシアタブの一本化（2026-09-15）: Excel(Kioxia_RSS_Live_Watcher.ps1)がローカルの
+ // 127.0.0.1:28581で配信するJSONを直接読み、Excelを開かなくても同じ内容を確認できるようにする。
+ // 公開スナップショットは無い（自宅PC上でブラウザを開いた時だけ意味を持つデータのため）。
+ async function loadWatcherKioxia(){
+  const stateEl=document.getElementById("kio-watcher-state");
+  if(!stateEl)return;
+  const put=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};
+  try{
+   const w=await fetchJson("http://127.0.0.1:28581/kioxia_watcher_live.json?t="+Date.now(),1800);
+   const parsed=new Date(String(w.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,stale=age>60;
+   if(stale){stateEl.textContent="データ停止（60秒超未更新）";put("kio-watcher-conditions","");return}
+   const yen1=v=>v==null?"—":Number(v).toLocaleString("ja-JP")+"円";
+   stateEl.textContent=`${esc(w.signal||"判定待ち")}／${esc(w.state||"")}`;
+   document.getElementById("kio-watcher-source").textContent=`${w.updated_at}／${w.source||"Excel Watcher"}`;
+   put("kio-watcher-conditions",`価格${esc(w.conditions?.price)}・出来高${esc(w.conditions?.volume)}・EMA${esc(w.conditions?.ema)}・${esc(w.conditions?.or15)}`);
+   put("kio-watcher-entry",w.entry_price!=null?`発動 ${yen1(w.entry_price)} ／ 損切 ${yen1(w.stop_price)}`:"条件未成立");
+   put("kio-watcher-target",w.target1!=null?`1R ${yen1(w.target1)}／2R ${yen1(w.target2)}`:"1R／2R —");
+   put("kio-watcher-under",w.under_ratio_pct!=null?`${w.under_ratio_pct}%`:"—");
+   put("kio-watcher-flow",esc(w.tick_flow_bias_text||"—"));
+   put("kio-watcher-tick",esc(w.tick_footprint_text||"データ待ち"));
+   put("kio-watcher-board",esc(w.board_depth_text||"データ待ち"));
+   put("kio-watcher-bias",esc(w.board_bias_label||"データ待ち"));
+   put("kio-watcher-stopzone",esc(w.stop_zone_text||"データ待ち"));
+   put("kio-watcher-pts",w.pts_price!=null?`${yen1(w.pts_price)}／前日比${esc(w.pts_change_pct_text||"—")}／気配${esc(w.pts_quote_text||"—")}（${esc(w.pts_time_text||"—")}）`:"未取得");
+  }catch(e){
+   stateEl.textContent="Excel Watcher未接続（自宅PC上でのみ表示されます）";
+   document.getElementById("kio-watcher-source").textContent="http://127.0.0.1:28581 へ接続できません";
+  }
+ }
  loadMs2Live(); setInterval(loadMs2Live,5000);
+ loadWatcherKioxia(); setInterval(loadWatcherKioxia,3000);
 });
 </script>
 """
@@ -2649,6 +2680,20 @@ document.addEventListener("DOMContentLoaded",()=>{
   <div><span>同時間帯・過去統計</span><b id="kio-ms2-stat">統計蓄積中</b><small id="kio-ms2-stat-detail">10営業日まで方向を出しません</small></div>
  </div>
  <p>8:55は準備判定だけです。寄り後60秒は待機し、始値・VWAP・歩み値・UNDER変化が同方向になった場合だけ初動候補を音声通知します。板単独・寄り成行では入りません。</p>
+ <div class="kio-ms2-title" style="margin-top:14px"><div><span>EXCEL WATCHER・2秒監視</span><b>キオクシア 売買サイン＋10本板＋実ティック検知</b></div><strong id="kio-watcher-state">Excel Watcher待ち</strong></div>
+ <div id="kio-watcher-source" class="sub">Excel側(Kioxia_RSS_Live_Watcher.ps1)のライブ判定へ接続中...</div>
+ <div class="kio-ms2-grid">
+  <div><span>売買サイン</span><b id="kio-watcher-signal">判定待ち</b><small id="kio-watcher-conditions">条件確認中</small></div>
+  <div><span>発動／損切り</span><b id="kio-watcher-entry">条件未成立</b><small id="kio-watcher-target">1R／2R —</small></div>
+  <div><span>UNDER比率(実データ)</span><b id="kio-watcher-under">—</b></div>
+  <div><span>歩み値偏り(実ティックベース)</span><b id="kio-watcher-flow">—</b></div>
+  <div><span>大口ティック検知</span><b id="kio-watcher-tick">データ待ち</b></div>
+  <div><span>10本板(実データ)</span><b id="kio-watcher-board">データ待ち</b></div>
+  <div><span>気配地合い</span><b id="kio-watcher-bias">データ待ち</b></div>
+  <div><span>損切り誘発想定ゾーン</span><b id="kio-watcher-stopzone">データ待ち</b></div>
+  <div><span>夜間PTS参考(JNX)</span><b id="kio-watcher-pts">—</b></div>
+ </div>
+ <p class="warning">Excel Watcher側の全項目は「参考・未検証」であり、$buy/$shortの売買サイン条件式・音声通知には一切使っていません（変更は行っていません）。この欄はExcelを直接開かなくても同じ内容を確認できるようにするための表示専用ミラーです。</p>
 </div>
 <div id="kio-best-analog" class="kio-best-analog">
  <div class="kio-best-chart"><div class="kio-best-title"><div><span>本日予測・実測1分足（大判）</span><b id="kio-best-date">選定中</b></div><div id="kio-chart-signal" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px solid #39505d;border-radius:12px;background:#10202a;color:#b8c8d2;font-weight:800"><span id="kio-chart-signal-label">サイン待ち</span><strong id="kio-chart-signal-price">—</strong></div><strong id="kio-best-score">—</strong></div><div id="kio-best-path" class="focus-empty">米国市場と1分足を照合中...</div><div class="kio-chart-legend"><span style="--legend-color:#f1c75b">予測1分経路</span><span style="--legend-color:#3ed5ae">実測1分足</span><span style="--legend-color:#d59bff">EMA20</span><span style="--legend-color:#f5f7fa">VWAP</span><span style="--legend-color:#ffb454">ピボット P/R1/S1</span><span style="--legend-color:#ff6b72">OR15 高/安</span></div><p id="kio-one-minute-note" class="kio-one-minute-note">類似日選定は5分足、主画面は1分刻み。実測1分足は取得確認後だけ重ねます。</p></div>
