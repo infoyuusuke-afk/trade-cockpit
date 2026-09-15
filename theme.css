@@ -108,3 +108,21 @@ footer{font-size:11px;color:#a1a1a6;padding:24px 32px;border-top:1px solid #2626
 @media(max-width:760px){header{padding:32px 20px 24px}header h1{font-size:30px}.cockpit-tabs{padding:8px 12px}main{padding:0 16px 40px}body .unified-mode{margin:0 16px 8px}.pane-intro{padding:28px 4px 18px}.pane-intro h2{font-size:32px}.pane-intro p{font-size:13px}.tab-pane.active{gap:16px}.card{padding:18px;border-radius:20px}.card h2{font-size:18px}.rotation-grid,.steps,.ifo-summary{grid-template-columns:repeat(2,minmax(0,1fr))}th,td{padding:11px 9px}.ms2-live-head h2{font-size:22px}}
 @media(max-width:440px){.rotation-grid,.steps,.ifo-summary{grid-template-columns:1fr}header h1{font-size:27px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+
+/* POWER GRADIENT v1 — orange / gold / silver / blue accents. */
+:root{--power-gradient:linear-gradient(110deg,#e89735 0%,#f4d77e 28%,#d5e4de 54%,#83bde9 76%,#3789dc 100%);--power-surface:linear-gradient(110deg,#302014 0%,#262319 30%,#1b2429 58%,#112440 100%)}
+body .unified-mode.live{background:var(--power-surface);border-color:#8e998f;box-shadow:inset 0 1px 0 #eddda32b}
+body .unified-mode.live .lamp{background:var(--power-gradient);box-shadow:0 0 14px #e8c27466}
+body .unified-mode.live strong{color:#f4d77e}
+.ms2-health.live,.in,.decision-badge.go,.decision-go,.drawer-status.go,.kio-live-head>strong.buy,.kio-ms2-orderflow.buy .kio-ms2-title strong{background:var(--power-gradient);color:#10151c}
+.focus-action,.drawer-main{background:var(--power-surface);border-color:#9c9879}
+.focus-action strong,.drawer-main strong{color:#f4d77e}
+.ifo-score,.focus-eyebrow,.ms2-live-head>span,.drawer-head>span{color:#eacb83}
+.ms2-download{background:var(--power-gradient);border-color:transparent;color:#111722}
+.ms2-download:hover{background:linear-gradient(110deg,#f5ab4b,#ffe9a0 30%,#d9edee 58%,#70b2f1)}
+@supports(background-clip:text){
+ body .unified-mode.live strong,.focus-action strong,.drawer-main strong,.ifo-score{
+ background-image:var(--power-gradient);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent;
+ }
+}
+/* Price direction, chart candles, warnings and disabled states keep semantic colors. */
