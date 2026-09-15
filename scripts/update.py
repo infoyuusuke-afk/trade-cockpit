@@ -3311,7 +3311,7 @@ document.addEventListener("liveFocusUpdate",e=>{{
     }}
   }}
 }});
-</script>{trade_drawer}{ms2_live_script}</body></html>"""
+</script>{trade_drawer}{ms2_live_script}<script src="earnings-calendar.js" defer></script></body></html>"""
     (ROOT / "index.html").write_text(html, encoding="utf-8")
 
 
