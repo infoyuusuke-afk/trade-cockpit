@@ -1056,6 +1056,23 @@ JPX日程表が持つ銘柄ごとの実際の発表日を直接参照するた�
 （括弧の対応関係を目視で確認したのみ）。GitHub Actions上の次回実行（`earnings-calendar.yml`が
 `test_earnings_calendar.py`を実行してから本番取得する）が実質的な初検証になる。
 
+## 決算カレンダー統合の実機初回実行：テストとデータ取得は成功、保存ステップのみ失敗（2026-09-15）
+
+統合後の`earnings_calendar.py`をGitHub Actions上で初めて実行した（run 34962617624）。
+**テスト（新規追加分含む）・JPX/TDnet取得・モメンタムレーン計算は全て成功**し、ロジック自体は
+正しく動作することを確認した。しかし最後の「Save data and source status」ステップで失敗
+（exit code 128、`cannot pull with rebase: You have unstaged changes`）。原因は、
+`apply_momentum`が新たに`data/earnings_predictions_log.json`へ書き込むようになったにも
+かかわらず、ワークフローの`git add`がこのファイルを含めていなかったこと。結果、この回の
+`earnings_calendar.json`更新（モメンタムレーン・的中率検証データ含む）はmainへ反映されずに
+失われた（データの誤りではなく、単なる保存漏れ）。
+
+修正自体（`git add`に`data/earnings_predictions_log.json`を追加する1行）は特定済みで
+ローカルにコミット済みだが、`.github/workflows/earnings-calendar.yml`の変更となるため
+このセッションのgh CLIトークンでは`workflow`スコープ不足によりpushできない（C-023と同じ
+既知の制約）。docs/AI_SHARED_SHEET.md（C-031）でCodexへ引き継いだ。反映後、初めて本番の
+`earnings_calendar.json`にモメンタムレーン・的中率検証データが載ることになる。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
