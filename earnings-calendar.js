@@ -1,4 +1,5 @@
 (() => {
+ const boot = () => {
   if (document.getElementById('earnings-calendar-panel')) return;
   const root = document.createElement('section');
   root.id = 'earnings-calendar-panel'; root.className = 'card wide';
@@ -18,8 +19,14 @@
   <div id="ec-grid" class="ec-grid"></div><h3 id="ec-date-title">決算予定</h3><div id="ec-events"></div>
   <h3>直近の発表済み材料</h3><div id="ec-catalysts"></div>
   <p class="ec-note">上方修正・増配の表題が確認できた開示を表示します。「業績予想の修正」だけでは方向を決めません。好材料でも市場予想未達・織り込み済みで下落する場合があります。</p>`;
-  const anchor = document.getElementById('upcoming-earnings');
-  if (anchor) anchor.before(root); else (document.querySelector('main') || document.body).append(root);
+  const main=document.querySelector('main')||document.body;
+  const nav=document.querySelector('.cockpit-tabs');
+  if(nav){
+    const pane=document.createElement('div');pane.className='tab-pane';pane.dataset.pane='earnings';pane.append(root);main.append(pane);
+    const button=document.createElement('button');button.className='cockpit-tab';button.dataset.tab='earnings';button.textContent='決算カレンダー';button.type='button';nav.insertBefore(button,nav.querySelector('.secondary-tabs'));
+    button.onclick=()=>{document.querySelectorAll('.cockpit-tab').forEach(x=>x.classList.toggle('active',x===button));document.querySelectorAll('.tab-pane').forEach(x=>x.classList.toggle('active',x===pane));localStorage.setItem('cockpitTabV5','earnings');};
+    if(new URLSearchParams(location.search).get('earnings')==='1'||localStorage.getItem('cockpitTabV5')==='earnings')button.click();
+  }else main.append(root);
   const find = id => root.querySelector('#'+id);
   function text(parent, tag, value, cls) { const el=document.createElement(tag); el.textContent=value; if(cls)el.className=cls; parent.append(el);return el; }
   function link(parent, value, url) { try { const u=new URL(url);if(u.protocol!=='https:')return;const a=text(parent,'a',value);a.href=u.href;a.target='_blank';a.rel='noopener'; }catch{} }
@@ -55,4 +62,6 @@
     }
     month.onchange=()=>{selected=null;render();};find('ec-watched').onchange=render;render();
   }).catch(e=>{find('ec-status').textContent='決算データ取得待ち／取得失敗：'+e.message;find('ec-status').classList.add('ec-error');});
+ };
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 })();
