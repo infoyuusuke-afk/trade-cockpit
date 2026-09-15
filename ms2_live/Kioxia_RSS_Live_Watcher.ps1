@@ -125,9 +125,15 @@ function Write-ComErrorDiag($range, $value, [int]$attempt, $errorRecord) {
     } catch {}
 }
 
-function Set-CellValue($range, $value, [int]$maxAttempts = 4, [int]$delayMs = 150) {
+function Set-CellValue($range, $value, [int]$maxAttempts = 20, [int]$delayMs = 300) {
     # Excel COMへの書き込みが原因不明の一時的なキャスト例外で失敗することがある（切り分け済み・単発では成功する）。
     # 少し待って再試行すれば成功するため、書き込みのたびに使うヘルパー。全て失敗した場合のみ例外を投げる。
+    # 既定値は元々4回・150ms（最大600ms）だったが、2026-09-15実機で10本板追加（40セルの一括書込み）に
+    # 伴い起動シーケンスが長くなったところ、Heartbeat・100銘柄収集器との同時COMアクセスにより
+    # 起動時のセル書き込みが4回リトライを使い切って落ちる事例を2回連続で実機確認した（RssTickList数式、
+    # 直後のデータ鮮度セルと、失敗箇所が毎回変わる＝この関数自体の耐性不足が根本原因と判断）。
+    # 100銘柄収集器のInvoke-ExcelCom（最大240回・250ms間隔=最大60秒）ほどではないが、
+    # 20回・300ms間隔（最大6秒）まで引き上げる（この時点では未検証、これから実機確認する）。
     for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
         try {
             $range.Value2 = $value
@@ -140,10 +146,10 @@ function Set-CellValue($range, $value, [int]$maxAttempts = 4, [int]$delayMs = 15
     }
 }
 
-function Set-CellFormula($range, $formula, [int]$maxAttempts = 4, [int]$delayMs = 150) {
+function Set-CellFormula($range, $formula, [int]$maxAttempts = 20, [int]$delayMs = 300) {
     # Set-CellValueと同じ理由（起動時の数式設定も同じCOM書き込みの脆さの影響を受けることが実機で判明。
     # 特にDASHBOARD!B5の安全ゲート数式が無音で設定に失敗する事例があったため、起動時の数式設定も
-    # 必ずこちらを使う）。
+    # 必ずこちらを使う）。既定値は2026-09-15実機検証でSet-CellValueと同じ理由により20回・300msへ引き上げ。
     for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
         try {
             $range.FormulaLocal = $formula
@@ -225,6 +231,24 @@ function Get-TickFlowBias($ticks, [double]$bid, [double]$ask) {
     return [math]::Round((($buyVol - $sellVol) / $total) * 100, 1)
 }
 
+# 10本板を読み取る（A870:D879）。$sheet.Range().CurrentRegionは使わず、固定範囲を
+# 直接読む（この範囲は隣接する空セルがなく、CurrentRegionが意図せず広い範囲を拾う
+# リスクを避けるため）。売買判定には使わない、板圧力の参考表示専用。
+function Read-BoardDepth($sheet) {
+    $levels = @()
+    for ($lvl = 1; $lvl -le 10; $lvl++) {
+        try {
+            $row = 869 + $lvl
+            $askPrice = Get-SafeNumber $sheet.Cells.Item($row,1).Value2 0.01 10000000
+            $askQty = Get-SafeNumber $sheet.Cells.Item($row,2).Value2 0 1000000000
+            $bidPrice = Get-SafeNumber $sheet.Cells.Item($row,3).Value2 0.01 10000000
+            $bidQty = Get-SafeNumber $sheet.Cells.Item($row,4).Value2 0 1000000000
+            $levels += [pscustomobject]@{ Level=$lvl; AskPrice=$askPrice; AskQty=$askQty; BidPrice=$bidPrice; BidQty=$bidQty }
+        } catch { continue }
+    }
+    return @($levels)
+}
+
 function Read-Chart($sheet, [string]$anchor) {
     try {
         $region = $sheet.Range($anchor).CurrentRegion.Value2
@@ -303,6 +327,21 @@ Set-CellFormula $rss.Range("L20") '=RssChart(,"285A.T","5M",200)'
 # 実機確認済み（2026-09-15）: A530に数式を置くと、ヘッダー行(時刻/出来高/約定値)がA531に、
 # データがA532以降300行に展開される（1M/5Mチャートの表示範囲より十分下のため衝突しない）。
 Set-CellFormula $rss.Range("A530") '=RssTickList(,"285A.T",300)'
+# 実機確認済み（2026-09-15）: 「RssBoard」という独立関数は存在しない（#NAME?エラーで実機確認）。
+# 10本板は既存のRssMarketに「最良売気配値1〜10」「最良買気配値1〜10」（と各数量）という
+# 項目名が用意されており、これで取得できることを楽天証券公式ヘルプで確認・実機でも動作確認済み
+# （例: 2本目の買いに16,100株の大口壁を実データで検出）。A870〜A879(4列)に配置。
+# 40セルを一括で書き込むため、起動直後は他プロセス（Heartbeat・100銘柄収集器）とのCOM競合で
+# Set-CellFormula（4回リトライ）を使い切って起動時クラッシュすることを実機で確認した
+# （1回目失敗・2回目は正常起動という再現性のあるパターン）。より粘り強いInvoke-ComRetry
+# （8回リトライ・500ms間隔、他の起動時COM呼び出しと同じもの）に変更して解消する。
+for ($boardLevel = 1; $boardLevel -le 10; $boardLevel++) {
+    $boardRow = 869 + $boardLevel
+    Invoke-ComRetry { $rss.Range("A$boardRow").FormulaLocal = '=RssMarket("285A.T","最良売気配値' + $boardLevel + '")' } | Out-Null
+    Invoke-ComRetry { $rss.Range("B$boardRow").FormulaLocal = '=RssMarket("285A.T","最良売気配数量' + $boardLevel + '")' } | Out-Null
+    Invoke-ComRetry { $rss.Range("C$boardRow").FormulaLocal = '=RssMarket("285A.T","最良買気配値' + $boardLevel + '")' } | Out-Null
+    Invoke-ComRetry { $rss.Range("D$boardRow").FormulaLocal = '=RssMarket("285A.T","最良買気配数量' + $boardLevel + '")' } | Out-Null
+}
 Set-CellValue $rss.Range("B16") "接続中"
 # Issue #17追記（2026-09-14・JNX発見を受けて追加）: 夜間PTS(JNX)価格は参考表示専用。
 # MS2_RSS_100_Collector.ps1のKIOXIA_JNXシートで実データ取得を確認済み（285A.JNX形式）。
@@ -408,6 +447,7 @@ try {
         $one = @(Read-Chart $rss "A20" | Where-Object { $_.SortKey -lt $cutoff1 })
         $five = @(Read-Chart $rss "L20" | Where-Object { $_.SortKey -lt $cutoff5 })
         $ticks = @(Read-TickList $rss "A531")
+        $board = @(Read-BoardDepth $rss)
         $price = Get-SafeNumber $rss.Range("B4").Value2 0.01 10000000
         $vwap = Get-SafeNumber $rss.Range("B5").Value2 0 10000000
         $over = Get-SafeNumber $rss.Range("B9").Value2 0 1000000000000
@@ -526,6 +566,20 @@ try {
             }
         }
 
+        # 10本板（実データ）。売買判定には使わない、板圧力の参考表示専用。
+        $boardDepthText = "データ待ち"
+        $validLevels = @($board | Where-Object { $null -ne $_.AskQty -or $null -ne $_.BidQty })
+        if ($validLevels.Count -ge 3) {
+            $totalAskQty = ($validLevels | Measure-Object -Property AskQty -Sum).Sum
+            $totalBidQty = ($validLevels | Measure-Object -Property BidQty -Sum).Sum
+            $totalQty = $totalAskQty + $totalBidQty
+            $pressureText = if ($totalQty -gt 0) { $pct = [math]::Round(($totalBidQty / $totalQty) * 100, 1); "買い厚み比率${pct}%（買計" + [math]::Round($totalBidQty,0) + "株/売計" + [math]::Round($totalAskQty,0) + "株）" } else { "厚み算出不可" }
+            $maxBidLevel = $validLevels | Sort-Object BidQty -Descending | Select-Object -First 1
+            $maxAskLevel = $validLevels | Sort-Object AskQty -Descending | Select-Object -First 1
+            $wallText = "壁: 買$($maxBidLevel.Level)本目$([math]::Round($maxBidLevel.BidPrice,0))円$([math]::Round($maxBidLevel.BidQty,0))株 / 売$($maxAskLevel.Level)本目$([math]::Round($maxAskLevel.AskPrice,0))円$([math]::Round($maxAskLevel.AskQty,0))株"
+            $boardDepthText = "$pressureText / $wallText"
+        }
+
         if ($one.Count -ge 25 -and $five.Count -ge 21 -and $price -gt 0 -and $vwap -gt 0) {
             $completedOne = $one | Select-Object -Last 21
             $last = $completedOne[-1]
@@ -602,6 +656,7 @@ try {
         # 上のA28（歩み1〜4ベースの推定）より個々の約定出来高そのものを見ているため精度が高い。
         Set-CellValue $dash.Range("A34") ("大口ティック検知(実ティック・数量あり・未検証): " + $tickFootprintText)
         Set-CellValue $dash.Range("A35") ("歩み値偏り(実ティックベース・未検証): " + $tickFlowBiasText)
+        Set-CellValue $dash.Range("A37") ("10本板(実データ): " + $boardDepthText)
         $dash.Range("A5:H9").Interior.Color = if ($signal -eq "買いサイン") { 0x62B14C } elseif ($signal -eq "空売りサイン") { 0x4E4EFF } elseif ($signal -eq "往復ピンタ回避") { 0x2A8CFF } else { 0x483117 }
 
         if ($inSession -and ($signal -eq "買いサイン" -or $signal -eq "空売りサイン") -and (($signal -ne $lastSpokenSignal) -or (((Get-Date) - $lastSpokenAt).TotalMinutes -ge 10))) {
