@@ -15,6 +15,22 @@ def at(y, m, d, h=9, mi=0, s=0):
     return datetime(y, m, d, h, mi, s, tzinfo=JST)
 
 
+class ParseTimestampTests(unittest.TestCase):
+    def test_parses_iso_format(self):
+        dt = sc.parse_jst_timestamp('2026-09-15T21:03:13+09:00')
+        self.assertEqual(dt, at(2026, 9, 15, 21, 3, 13))
+
+    def test_parses_space_jst_format(self):
+        dt = sc.parse_jst_timestamp('2026-09-15 21:03:43 JST')
+        self.assertEqual(dt, at(2026, 9, 15, 21, 3, 43))
+
+    def test_unobtained_sentinel_is_none_not_guessed(self):
+        self.assertIsNone(sc.parse_jst_timestamp('未取得'))
+
+    def test_none_input_is_none(self):
+        self.assertIsNone(sc.parse_jst_timestamp(None))
+
+
 class FreshnessTests(unittest.TestCase):
     def test_missing_when_point_is_none(self):
         self.assertEqual(sc.check_freshness(None, 60, at(2026, 9, 15)), 'missing')

@@ -29,6 +29,29 @@ def now_jst() -> datetime:
     return datetime.now(JST)
 
 
+def parse_jst_timestamp(text: Optional[str]) -> Optional[datetime]:
+    """このリポジトリの各JSONで使われている2種類の時刻表記を解析する共通ヘルパー。
+    - ISO形式: "2026-09-15T21:03:13+09:00"（investor_regime.json等）
+    - 独自形式: "2026-09-15 21:03:43 JST"（credit_supply.json・correlations.json等）
+    "未取得"のような非時刻文字列や欠損はNoneを返す（呼び出し側はcheck_freshnessで
+    missing扱いにする。ここで例外を投げたり0時などへ推定補完したりしない）。
+    """
+    if not text or not isinstance(text, str):
+        return None
+    text = text.strip()
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        pass
+    if text.endswith(" JST"):
+        try:
+            naive = datetime.strptime(text[: -len(" JST")], "%Y-%m-%d %H:%M:%S")
+            return naive.replace(tzinfo=JST)
+        except ValueError:
+            return None
+    return None
+
+
 class DataPoint:
     """1件の観測値。value/source_url/published_at/fetched_at/available_at/qualityを持つ。
     C-031-GPT第3節: available_at = max(published_at, fetched_at) <= decision_asof の

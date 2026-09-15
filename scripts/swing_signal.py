@@ -15,9 +15,18 @@ swing_signal.py
       horizon="swing" のタグを付けて記録し、weekly_review的な集計で行うこと。
 """
 import json
+import sys
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import signal_contract as sc
 
 JST = timezone(timedelta(hours=9))
+
+# 週次更新データのため秒単位TTLは適用しない（C-031-GPT第3節）。
+# 更新が完全に止まっていないかを確認する大まかな健全性チェックとして10日を使う。
+WEEKLY_TTL_SECONDS = 10 * 24 * 3600
 
 
 def foreign_flow_bias(investor_regime: dict) -> tuple[int, list[str]]:
@@ -72,15 +81,35 @@ def classify(score: int) -> str:
 
 
 def main():
+    now = sc.now_jst()
     with open("credit_supply.json", encoding="utf-8") as f:
         credit = json.load(f)
     with open("investor_regime.json", encoding="utf-8") as f:
         regime = json.load(f)
 
-    market_score, market_reasons = foreign_flow_bias(regime)
+    # RSS鮮度・欠測ゲート（C-031-GPT P0）。信用需給・投資部門別データが更新停止していたら、
+    # 古い週次データのままスコアリングせず全銘柄WAITとする（EV・スコアをゼロ補完しない）。
+    credit_point = sc.DataPoint(credit, fetched_at=sc.parse_jst_timestamp(credit.get("updated_at")))
+    regime_point = sc.DataPoint(regime, fetched_at=sc.parse_jst_timestamp(
+        regime.get("generated_at") or regime.get("decision_at")))
+    credit_quality = sc.check_freshness(credit_point, WEEKLY_TTL_SECONDS, now)
+    regime_quality = sc.check_freshness(regime_point, WEEKLY_TTL_SECONDS, now)
+    trade_allowed, block_reasons = sc.gate_no_trade(credit_quality, regime_quality)
+
+    market_score, market_reasons = foreign_flow_bias(regime) if trade_allowed else (0, [])
 
     signals = []
     for code, entry in credit.get("stocks", {}).items():
+        if not trade_allowed:
+            signals.append({
+                "code": code,
+                "name": entry.get("name"),
+                "score": None,
+                "direction": "WAIT",
+                "reasons": [f"データ鮮度不足のため判定保留（{', '.join(block_reasons)}）"],
+                "horizon": "swing",
+            })
+            continue
         c_score, c_reasons = credit_bias(entry)
         total = c_score + market_score
         signals.append({
@@ -97,8 +126,14 @@ def main():
         })
 
     out = {
-        "updated_at": datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S JST"),
+        "updated_at": now.strftime("%Y-%m-%d %H:%M:%S JST"),
         "horizon": "swing",
+        "data_quality": {
+            "credit_supply": credit_quality,
+            "investor_regime": regime_quality,
+            "trade_allowed": trade_allowed,
+            "block_reasons": block_reasons,
+        },
         "universe_count": len(signals),
         "market_score": market_score,
         "market_reasons": market_reasons,

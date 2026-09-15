@@ -15,9 +15,18 @@ long_signal.py
       これはKioxiaが自社株買いを発表した際に自動で効いてくる設計。
 """
 import json
+import sys
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import signal_contract as sc
 
 JST = timezone(timedelta(hours=9))
+
+# 週次〜不定期更新データのため秒単位TTLは適用しない（C-031-GPT第3節）。
+# 更新が完全に止まっていないかを確認する大まかな健全性チェックとして10日を使う。
+WEEKLY_TTL_SECONDS = 10 * 24 * 3600
 
 
 def credit_4w_bias(entry: dict) -> tuple[int, list[str]]:
@@ -73,6 +82,7 @@ def classify(score: int) -> str:
 
 
 def main():
+    now = sc.now_jst()
     with open("credit_supply.json", encoding="utf-8") as f:
         credit = json.load(f)
     with open("buybacks.json", encoding="utf-8") as f:
@@ -80,8 +90,27 @@ def main():
     with open("correlations.json", encoding="utf-8") as f:
         correlations = json.load(f)
 
+    # RSS鮮度・欠測ゲート（C-031-GPT P0）。buybacks.jsonは現状「未取得」の空プレースホルダー
+    # （programs=[]なら加点なしという既存設計）のため鮮度ゲートの対象に含めない。
+    # 実データを継続的に更新しているcredit_supply.json・correlations.jsonだけを対象にする。
+    credit_point = sc.DataPoint(credit, fetched_at=sc.parse_jst_timestamp(credit.get("updated_at")))
+    corr_point = sc.DataPoint(correlations, fetched_at=sc.parse_jst_timestamp(correlations.get("updated_at")))
+    credit_quality = sc.check_freshness(credit_point, WEEKLY_TTL_SECONDS, now)
+    corr_quality = sc.check_freshness(corr_point, WEEKLY_TTL_SECONDS, now)
+    trade_allowed, block_reasons = sc.gate_no_trade(credit_quality, corr_quality)
+
     signals = []
     for code, entry in credit.get("stocks", {}).items():
+        if not trade_allowed:
+            signals.append({
+                "code": code,
+                "name": entry.get("name"),
+                "score": None,
+                "direction": "WAIT",
+                "reasons": [f"データ鮮度不足のため判定保留（{', '.join(block_reasons)}）"],
+                "horizon": "long",
+            })
+            continue
         c_score, c_reasons = credit_4w_bias(entry)
         b_score, b_reasons = buyback_bias(code, buybacks)
         s_score, s_reasons = sector_alignment_bias(f"{code}.T", correlations)
@@ -97,8 +126,14 @@ def main():
         })
 
     out = {
-        "updated_at": datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S JST"),
+        "updated_at": now.strftime("%Y-%m-%d %H:%M:%S JST"),
         "horizon": "long",
+        "data_quality": {
+            "credit_supply": credit_quality,
+            "correlations": corr_quality,
+            "trade_allowed": trade_allowed,
+            "block_reasons": block_reasons,
+        },
         "universe_count": len(signals),
         "signals": signals,
     }

@@ -1,6 +1,6 @@
 # trade-cockpit STATUS
 
-最終更新: 2026-09-15（Claude・ChatGPT戦略回答C-031-GPTのP0着手：共通シグナル契約の基盤を実装）
+最終更新: 2026-09-15（Claude・RSS鮮度ゲートをswing_signal.py/long_signal.pyへ実運用組み込み）
 役割分担確定：ChatGPT=戦略の壁打ちのみ（リポジトリは変更しない）／Claude=実コーディング担当
 運用体制: ChatGPT（戦略・相場観）＋ Claude/Claude Code（コーディング・診断）＋ Genspark（必要時のみ、現在未課金）
 
@@ -1110,6 +1110,39 @@ P1で地合い判定・デイトレTOP5を実装する際の土台として使�
 - **RSS鮮度・欠測・再起動の実運用ゲート**：上記モジュールは基盤のみで、実際にMS2 RSSの
   各スクリプトへ組み込む作業はまだ
 - **注意アラート**：ロードマップ第5節の要人発言等の通知システムは未着手
+
+## RSS鮮度ゲートを実運用スクリプトへ組み込み（2026-09-15）
+
+P0の「RSS鮮度・欠測・再起動」に対応し、`scripts/signal_contract.py`の鮮度ゲートを
+実際のシグナル生成スクリプトへ接続した。対象は`scripts/swing_signal.py`・
+`scripts/long_signal.py`（スイングTOP5・長期TOP5のMVP、いずれも入力データの鮮度を
+一切チェックせず使っていた）。
+
+**実装内容**：
+- `signal_contract.py`に`parse_jst_timestamp`を追加。このリポジトリのJSONで使われる
+  2種類の時刻表記（ISO形式・"YYYY-MM-DD HH:MM:SS JST"形式）を解析し、"未取得"のような
+  非時刻文字列は推定補完せずNoneを返す
+- `swing_signal.py`：`credit_supply.json`・`investor_regime.json`の`updated_at`を
+  `check_freshness`で判定（週次データのため秒単位TTLではなく10日を健全性チェックの
+  目安として使用）。いずれかがstale/missingなら全銘柄`direction="WAIT"`・`score=null`
+  とし、既存のスコアリングロジックを一切実行しない（古いデータでスコアを計算して
+  ゼロ補完することはしない）
+- `long_signal.py`：`credit_supply.json`・`correlations.json`を同様にゲート。
+  `buybacks.json`は現状「未取得」の空プレースホルダー（programs=[]なら加点なしという
+  既存設計）であり、実データを継続更新している別ファイルと同列に鮮度判定すると
+  常時WAITになってしまうため、ゲート対象から意図的に除外した
+- 両スクリプトの出力JSONに`data_quality`ブロック（各入力の鮮度判定・trade_allowed・
+  block_reasons）を追加し、公開コクピット側でも判定保留の理由を確認できるようにした
+
+**テスト**：`parse_jst_timestamp`の単体テストを`tests/test_signal_contract.py`に追加
+（ISO形式・独自JST形式・"未取得"・None入力の4パターン）。
+
+**正直な制約**：`swing_signal.py`・`long_signal.py`自体は独立ワークフロー
+（`.github/workflows/swing-long-signals.yml`、平日15:40 JST実行）で動くが、
+このワークフローには単体テスト実行ステップが無く、`main()`もファイルパスが
+ハードコードされているため今回は単体テストを追加していない（既存のこの2ファイルも
+元々無テストで、他のスクリプト群と同じ慣習）。ローカルにPython未導入のため構文は
+目視確認のみで、次回のワークフロー実行が実質的な初検証になる。
 
 ## 現在の未決事項・注意点
 
