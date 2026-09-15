@@ -1,6 +1,6 @@
 # trade-cockpit STATUS
 
-最終更新: 2026-09-15（Claude・P1着手：地合い共通判定エンジン(regime_policy.py)を実装、実行ワークフローはpush待ち）
+最終更新: 2026-09-15（Claude・P1続き：決算発表後の監視候補(earnings_watch.py)を実装、実行ワークフローはpush待ち）
 役割分担確定：ChatGPT=戦略の壁打ちのみ（リポジトリは変更しない）／Claude=実コーディング担当
 運用体制: ChatGPT（戦略・相場観）＋ Claude/Claude Code（コーディング・診断）＋ Genspark（必要時のみ、現在未課金）
 
@@ -1223,6 +1223,40 @@ pushできない**（C-023/C-031と同じ既知の制約）。したがって`ma
 純粋な判定ロジックは`tests/test_regime_policy.py`が次回のUpdate Trade Cockpit実行
 （`python -m unittest discover -s tests`が自動収集）で検証されるが、実データ接続の
 検証にはこのワークフローファイルの反映が必要。
+
+## P1続き：決算発表後の監視候補を実装（2026-09-15）
+
+P1の「決算発表後の監視候補」に対応した。ロードマップ第4節「別カレンダーを乱立させない」に
+従い、C-030で統合済みの`earnings_calendar.py`をデータ源とし、新規`scripts/earnings_watch.py`
+を実装した。出力をpre_event_watch（方向未定）／post_event_bias（材料判定はできたが売買候補
+には未達）／trade_candidate（LONG/SHORT方向まで判定）の3段階に分離する。
+
+**実装内容**：
+- `classify_material_proxy`：earnings_calendar.pyの`analysis.label`（発表済み好材料あり／
+  警戒材料あり／関連開示を確認／未発表・期待判断の根拠不足）をPOSITIVE/NEGATIVE/NEUTRALへ
+  写像
+- `classify_stage`：材料方向・反応（後述）・地合い（regime_policy.pyのmarket_regime.json）の
+  3条件を順に確認し3段階に分類。SHORT方向は判定ロジックが通っても
+  `short_eligibility_unconfirmed`のblock_reasonを必ず付け、実行可能扱いにしない
+- `fetch_reaction_pct`：発表日前日の終値を基準にした直近終値の変化率
+- 出力は`signal_contract.build_signal`で共通スキーマ化。ただしentry/stopを持たないため
+  schema側の`side`は常に`"WAIT"`固定とし、方向としての有望さは`candidate_direction`という
+  別フィールドに分離して記録する（執行可能なシグナルに見せない）
+
+**正直な制約**：
+- 発表内容の判定はearnings_calendar.pyの表題キーワード分類による代理指標であり、
+  ロードマップが本来求める決算数値の実比較（g=(new-old)/abs(old)）ではない
+- PTS反応もyfinance日次終値ベースの代理指標であり、真のPTS約定データ（PC側MS2 RSSが
+  最も正確）ではない
+- 証券会社の売禁・在庫・借株費用・価格規制の確認は未接続
+
+**テスト**：`tests/test_earnings_watch.py`（16件、材料判定・3段階分類の単体テスト、外部通信なし）。
+
+**未検証のまま残る部分**：この機能もregime_policy.py同様、実行にはワークフローが必要。
+既存の`.github/workflows/market-regime.yml`（まだmainに未反映、C-036参照）に
+`python scripts/earnings_watch.py`の実行ステップを追加し、1つのワークフローとして
+まとめて引き継ぐことにした（regime評価の直後に実行することで、同じジョブ内で
+`market_regime.json`を読める）。
 
 ## 現在の未決事項・注意点
 
