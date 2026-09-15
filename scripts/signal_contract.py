@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import json
 import uuid
-from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -30,19 +29,21 @@ def now_jst() -> datetime:
     return datetime.now(JST)
 
 
-@dataclass
 class DataPoint:
     """1件の観測値。value/source_url/published_at/fetched_at/available_at/qualityを持つ。
     C-031-GPT第3節: available_at = max(published_at, fetched_at) <= decision_asof の
-    観測だけを意思決定に使ってよい。"""
-    value: Any
-    source_url: Optional[str] = None
-    published_at: Optional[datetime] = None
-    fetched_at: Optional[datetime] = None
+    観測だけを意思決定に使ってよい。
+    （このリポジトリのテストはimportlib.util経由でsys.modules登録なしにモジュールを
+    ロードする慣習があり、@dataclassはこの読み込み方式でAttributeErrorになるため、
+    他ファイルの慣習に合わせて通常クラスとして実装する）
+    """
 
-    def __post_init__(self):
-        if self.fetched_at is None:
-            self.fetched_at = now_jst()
+    def __init__(self, value: Any, source_url: Optional[str] = None,
+                 published_at: Optional[datetime] = None, fetched_at: Optional[datetime] = None):
+        self.value = value
+        self.source_url = source_url
+        self.published_at = published_at
+        self.fetched_at = fetched_at if fetched_at is not None else now_jst()
 
     @property
     def available_at(self) -> Optional[datetime]:
