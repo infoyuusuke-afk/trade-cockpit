@@ -99,6 +99,7 @@ jobs:
           python scripts/event_calendar.py
           python scripts/world_market.py
           python scripts/fx_statement_study.py
+          python scripts/market_ranking_watch.py
           python scripts/update.py
           python scripts/margin_caution_check.py
           python scripts/short_candidates.py
@@ -112,7 +113,7 @@ jobs:
 
       - name: Commit and push updated files
         run: |
-          if git diff --quiet -- index.html data.json signals.json correlations.json credit_supply.json kioxia_5m_calendar.json kioxia_catalysts.json kioxia_prediction_history.json event_calendar.json world_market.json fx_statement_study.json live_focus.json morning_snapshot.json paper_trade_history.json weekly_review.json investor_regime.json data/jpx_investor day_ifo_candidates_short.json reliability_report.json margin_caution.json vwap_entry_analysis.json; then
+          if git diff --quiet -- index.html data.json signals.json correlations.json credit_supply.json kioxia_5m_calendar.json kioxia_catalysts.json kioxia_prediction_history.json event_calendar.json world_market.json fx_statement_study.json market_ranking_watch.json live_focus.json morning_snapshot.json paper_trade_history.json weekly_review.json investor_regime.json data/jpx_investor day_ifo_candidates_short.json reliability_report.json margin_caution.json vwap_entry_analysis.json; then
             echo "No changes to commit."
             exit 0
           fi
@@ -127,6 +128,7 @@ jobs:
           test ! -f event_calendar.json || git add event_calendar.json
           test ! -f world_market.json || git add world_market.json
           test ! -f fx_statement_study.json || git add fx_statement_study.json
+          test ! -f market_ranking_watch.json || git add market_ranking_watch.json
           test ! -f live_focus.json || git add live_focus.json
           test ! -f morning_snapshot.json || git add morning_snapshot.json
           test ! -f paper_trade_history.json || git add paper_trade_history.json
