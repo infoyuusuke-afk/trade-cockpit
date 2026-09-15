@@ -1,6 +1,6 @@
 # trade-cockpit STATUS
 
-最終更新: 2026-09-15（Claude・決算カレンダーの2系統重複を統合。ユーザーが製品ビジョン確定）
+最終更新: 2026-09-15（Claude・ChatGPT戦略回答C-031-GPTのP0着手：共通シグナル契約の基盤を実装）
 役割分担確定：ChatGPT=戦略の壁打ちのみ（リポジトリは変更しない）／Claude=実コーディング担当
 運用体制: ChatGPT（戦略・相場観）＋ Claude/Claude Code（コーディング・診断）＋ Genspark（必要時のみ、現在未課金）
 
@@ -1072,6 +1072,44 @@ JPX日程表が持つ銘柄ごとの実際の発表日を直接参照するた�
 このセッションのgh CLIトークンでは`workflow`スコープ不足によりpushできない（C-023と同じ
 既知の制約）。docs/AI_SHARED_SHEET.md（C-031）でCodexへ引き継いだ。反映後、初めて本番の
 `earnings_calendar.json`にモメンタムレーン・的中率検証データが載ることになる。
+
+## P0着手：共通シグナル契約の基盤を実装（2026-09-15）
+
+ChatGPTの戦略回答（docs/C-031-GPT_STRATEGY_ROADMAP.md）のP0「保存失敗の解消、RSS鮮度・欠測・
+再起動、時点固定ログ、共通期待値契約、注意アラート」のうち、地合い判定・決算判定より前に
+必要な「共通の型」の部分から着手した。
+
+**新規実装：`scripts/signal_contract.py`**（+`tests/test_signal_contract.py`）
+
+- `DataPoint`：観測値1件（value/source_url/published_at/fetched_at）。`available_at`
+  （=max(published_at, fetched_at)）を持つ
+- `check_freshness`：観測値がdecision_asof時点で利用可能・鮮度内かを判定
+  （ok/stale/missing/future）。`future`は「発表後データを発表前asofへ渡していないか」の
+  未来情報漏洩検知（ロードマップ受入基準#2）
+- `gate_no_trade`：いずれかの入力がok以外ならNO TRADE（WAIT）とする。呼び出し側は
+  ブロック時にEV・勝率をゼロ補完してはならない（受入基準#1）
+- `build_signal`：ロードマップ第7節の共通出力スキーマ（schema_version・policy_version・
+  decision_asof・snapshot_id・horizon・side・ev_net_r・block_reasons等）でシグナル辞書を
+  組み立てる。`trading_enabled`は引数として受け付けず常にFalse固定で出力する
+  （CLAUDE.mdの自動発注禁止方針を、呼び出し側のミスでも破れない形で強制）
+- `record_snapshot`／`read_snapshots`：意思決定の時点固定ログ。1日1ファイルのJSON Linesで
+  追記保存し、後から「その時点で本当に入手可能だったデータだけ」から意思決定されたかを
+  検証できるようにする（受入基準#2・#8）
+
+このモジュール自体は戦略ロジック（地合い判定式・決算判定式）を持たない共通基盤であり、
+現時点ではどの本番シグナル（$buy/$short・LIVE売買パネル等）にも接続していない。
+P1で地合い判定・デイトレTOP5を実装する際の土台として使う想定。
+
+**テスト**：`tests/test_signal_contract.py`（鮮度判定・NO TRADEゲート・schema・snapshot往復の
+単体テスト、外部通信なし）。`.github/workflows/update.yml`の`python -m unittest discover -s tests`
+に自動的に含まれるため、次回のUpdate Trade Cockpit実行で自動検証される。
+
+**未対応のまま残るP0項目**：
+- **保存失敗の解消**（C-031、決算カレンダーワークフローのgit add漏れ）：修正1行を特定済みだが
+  ワークフローファイルのためこのセッションからpushできず、Codexへの引き継ぎ待ちが続いている
+- **RSS鮮度・欠測・再起動の実運用ゲート**：上記モジュールは基盤のみで、実際にMS2 RSSの
+  各スクリプトへ組み込む作業はまだ
+- **注意アラート**：ロードマップ第5節の要人発言等の通知システムは未着手
 
 ## 現在の未決事項・注意点
 
