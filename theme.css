@@ -38,3 +38,73 @@ button{font-family:inherit}a{color:#70b8e6;text-underline-offset:2px}details{bor
 .ms2-health{border-radius:999px;padding:7px 11px;font-weight:800}.ms2-health.live{background:#153d32;color:#5ce6be}.ms2-health.stale,.ms2-health.waiting{background:#442f19;color:#f3c66b}
 .ms2-live-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:9px;margin:13px 0}.ms2-live-card{border:1px solid #253947;border-left:4px solid #71828e;border-radius:10px;background:#0d171f;padding:12px}.ms2-live-card.buy{border-left-color:#3ee1ad}.ms2-live-card.sell{border-left-color:#ff6472}.ms2-live-card.block{border-left-color:#f1bd4b}.ms2-live-card .top{display:grid;grid-template-columns:auto 1fr auto;gap:7px;align-items:center}.ms2-live-card .signal{font-size:12px;padding:4px 6px;border-radius:99px;background:#172631}.ms2-live-card h3{margin:0;color:#ecf5fa;font-size:15px}.ms2-live-card .score{font-size:19px}.ms2-live-card .live-price{font-size:25px;font-weight:900;margin:9px 0}.ms2-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.ms2-metrics span{background:#111f29;border-radius:6px;padding:7px;color:#8294a1;font-size:12px}.ms2-metrics b{display:block;color:#eaf3f7;font-size:14px;margin-top:2px}.ms2-live-card small{display:block;margin-top:8px;color:#768996}.ms2-download{display:inline-block;padding:10px 14px;border:1px solid #2f9f85;border-radius:8px;background:#0d2d26;color:#69e5c2;font-weight:800;text-decoration:none}.ms2-download:hover{background:#123c33}
 @media(max-width:700px){.ms2-live-head{align-items:start;flex-direction:column}.ms2-metrics{grid-template-columns:1fr 1fr}}
+
+/* OBSIDIAN DESIGN v1 — 2026-09-15. Presentation only; retain data and safety states. */
+:root{--bg:#000;--panel:#111113;--panel-2:#1c1c1e;--line:#303033;--line-soft:#262629;--text:#f5f5f7;--muted:#a1a1a6;--green:#5cddb0;--red:#ff8089;--amber:#f5ca75;--blue:#8bbcff;--radius:24px}
+html{background:#000;color-scheme:dark;scrollbar-color:#48484a #000}
+body{background:#000;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI","Yu Gothic UI",sans-serif;font-size:14px;line-height:1.6;letter-spacing:0}
+header{max-width:1480px;padding:52px 32px 36px;align-items:center;gap:24px}
+header h1{font-size:clamp(26px,3.4vw,48px);font-weight:700;line-height:1.18;letter-spacing:-.055em}
+header .sub{font-size:12px;line-height:1.7;color:#a1a1a6;margin-top:12px}
+header>div:last-child{flex-shrink:0;text-align:right}
+.tag{background:#1c1c1e;color:#f5f5f7;border:1px solid #424245;font-size:11px;padding:8px 14px;font-weight:600}
+.cockpit-tabs{max-width:none;margin:0;padding:10px max(20px,calc((100vw - 1416px)/2));gap:5px;background:rgba(12,12,14,.9);border:0;border-bottom:1px solid #29292c;backdrop-filter:blur(22px);scrollbar-width:thin}
+.cockpit-tab{min-height:44px;padding:10px 15px;border-radius:999px;font-size:12px;line-height:1.3;color:#b5b5ba;transition:background .2s,color .2s}
+.cockpit-tab:hover{background:#242426;color:#fff}
+.cockpit-tab.active{background:#f5f5f7;color:#161617;box-shadow:none}
+.cockpit-tab.event-alert{background:#4c2025;color:#ffbdc2;border:1px solid #ad525c}
+.cockpit-tab.event-alert.active{background:#ffbdc2;color:#3e1016}
+.secondary-tabs summary{min-height:44px;color:#b5b5ba;font-size:12px}
+body .unified-mode{max-width:1416px;margin:0 auto 12px;padding:15px 20px;background:#111113;border-radius:16px;border-color:#3b3b40}
+body .unified-mode.stale{border-color:#806538}
+body .unified-mode.live{background:#10251d;border-color:#318263}
+body .unified-mode span{color:#b5b5ba;font-size:12px}
+main{padding:0 32px 64px}
+.tab-pane.active{gap:24px}
+.pane-intro{padding:40px 0 28px;margin:0;border:0}
+.pane-intro>span{color:#a1a1a6;font-size:10px;letter-spacing:.2em}
+.pane-intro h2{font-size:clamp(28px,3.5vw,48px);line-height:1.2;letter-spacing:-.055em;font-weight:700;border:0;color:#f5f5f7;margin:12px 0}
+.pane-intro p{font-size:14px;line-height:1.7;color:#a1a1a6;max-width:780px}
+.card{background:#111113;border:1px solid #303033!important;border-radius:24px;padding:26px;box-shadow:none}
+.card:hover{border-color:#48484a!important}
+.card h2{font-size:20px;line-height:1.4;letter-spacing:-.025em;color:#f5f5f7;border-color:#303033;padding-bottom:18px;margin-bottom:20px;flex-wrap:wrap}
+.card h2:before{content:none}
+.card h3{font-size:16px;letter-spacing:-.02em;color:#d2d2d7;margin:24px 0 12px}
+.card p{line-height:1.75}
+.step,.rotation-box,.ifo-card,.order-box,.weekly-grid>div,#weekly-review .weekly-grid>div,.ms2-live-card,.smr-grid>div{background:#1c1c1e;border-color:#333336;border-radius:16px;box-shadow:none}
+.steps,.rotation-grid,.ifo-summary{gap:12px}
+.rotation-box{padding:18px;min-width:0}
+.step b,.rotation-box b{font-size:12px;color:#a1a1a6;font-weight:600}
+.rotation-box strong{display:block;font-size:clamp(17px,1.65vw,24px);letter-spacing:-.03em;line-height:1.4;margin-top:7px;overflow-wrap:anywhere}
+.rotation-box small{font-size:12px}
+table{font-size:13px}
+thead th,table>tbody:first-child>tr:first-child th,table>tr:first-child th{background:#1c1c1e;color:#b5b5ba;font-size:11px}
+th,td{border-bottom:1px solid #303033;padding:13px 10px}
+tr:nth-child(even) td{background:#161618}
+tbody tr:hover td{background:#242426}
+.warning{background:#282114;border-color:#66522c;color:#f5ca75;padding:14px 16px;font-size:12px;border-radius:12px}
+.pill{font-size:11px;padding:5px 10px}
+a{color:#8bbcff}
+button{cursor:pointer}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid #8bbcff;outline-offset:4px}
+button:disabled{cursor:not-allowed;opacity:.55}
+.ifo-card{padding:20px}.ifo-head h3{font-size:17px}.ifo-head{border-color:#3a3a3d}.ifo-rank{background:#333336;color:#f5f5f7}.ifo-metrics span{background:#232326;border-color:#38383c;color:#b5b5ba}.order-box dt{color:#b5b5ba}
+.ms2-live-panel,.event-calendar{background:#111113}
+.ms2-live-head{border-color:#333336;flex-wrap:wrap}
+.ms2-live-head span{color:#a1a1a6;font-size:11px}
+.ms2-live-head h2{font-size:26px}
+.ms2-live-grid{gap:16px}.ms2-live-card{padding:20px}.ms2-live-card h3{font-size:18px}.ms2-live-card .live-price{font-size:34px;letter-spacing:-.04em}.ms2-metrics span{background:#28282b;color:#b5b5ba}.ms2-live-card small{color:#a1a1a6}
+.ms2-download{background:#f5f5f7;color:#161617;border-color:#f5f5f7;border-radius:999px;font-size:13px;font-weight:600;padding:12px 20px}.ms2-download:hover{background:#d2d2d7}
+.event-summary>div,.event-month,.event-unverified>div{background:#1c1c1e}
+.event-month h4,.event-weekdays span{background:#242426}
+.event-day{border-color:#3a3a3c}
+.event-guard:not(.high){background:#202024;border-color:#55555a}
+.event-summary span,.event-guard>div span{color:#b5b5ba}
+.kio-metric,.kio-day,.kio-match,.kio-supply-panel,.kio-supply-grid>div,.kio-best-analog,.kio-best-chart,.kio-best-detail,.kio-us-context>div{background:#1c1c1e;border-color:#3a3a3d}
+#trade-drawer{background:#111113;border-color:#48484a;border-radius:24px 24px 0 0}
+.drawer-chart,.drawer-plan,.drawer-levels>div{background:#1c1c1e;border-color:#3a3a3d}
+footer{font-size:11px;color:#a1a1a6;padding:24px 32px;border-top:1px solid #262629;gap:20px;flex-wrap:wrap}
+@media(max-width:1100px){header{align-items:flex-start;flex-direction:column}header>div:last-child{text-align:left}.tab-pane.active{grid-template-columns:1fr}}
+@media(max-width:760px){header{padding:32px 20px 24px}header h1{font-size:30px}.cockpit-tabs{padding:8px 12px}main{padding:0 16px 40px}body .unified-mode{margin:0 16px 8px}.pane-intro{padding:28px 4px 18px}.pane-intro h2{font-size:32px}.pane-intro p{font-size:13px}.tab-pane.active{gap:16px}.card{padding:18px;border-radius:20px}.card h2{font-size:18px}.rotation-grid,.steps,.ifo-summary{grid-template-columns:repeat(2,minmax(0,1fr))}th,td{padding:11px 9px}.ms2-live-head h2{font-size:22px}}
+@media(max-width:440px){.rotation-grid,.steps,.ifo-summary{grid-template-columns:1fr}header h1{font-size:27px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
