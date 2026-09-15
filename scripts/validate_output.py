@@ -142,12 +142,14 @@ def main():
     for marker in ("AIトレードコクピット Ver.5.2", "データ品質ゲート", "精査TOP5", "kio-decision-grade", "円高恩恵銘柄 TOP5", "要人発言イベントスタディ", "投資主体別レジーム", "FLOW IMPULSE", "市場全体集計から個別銘柄", "ザラバ5分更新", "音声OFF", "cockpitSpeak", "予測対実績・5分監視", "次の注意時間", "発動価格（成行禁止）", "kio-trade-signal", "timedPath", "GU／GD幅別", "材料レーダー", "kio-setup-type", "kio-audit-hit", "kio-ms2-orderflow", "kio-ms2-stat", "kio-preopen-plan", "kio-open-decision", "127.0.0.1:28580/live_ms2.json"):
         if marker not in html:
             errors.append(f"index.html missing marker: {marker}")
+    # 2026-09-16: ユーザー確定の製品ビジョン（docs/AI_SHARED_SHEET.md「製品ビジョン・
+    # 全体要件」）に沿って上部タブをデイトレ/オーバーナイト/スイング/長期TOP5・注意
+    # アラート中心に再編した際、円高恩恵TOP5はビジョンの7項目に含まれないため意図的に
+    # 参考タブへ格下げした。タブ自体（と判定ロジック・データ検証）は削除していないため、
+    # 「トップ直下に存在するか」だけを引き続き検査し、「参考タブより前か」は検査しない。
     yen_tab = html.find('data-tab="strong-yen"')
-    secondary_tabs = html.find('<details class="secondary-tabs"')
     if yen_tab < 0:
         errors.append("top navigation is missing the strong-yen tab")
-    elif secondary_tabs >= 0 and yen_tab > secondary_tabs:
-        errors.append("strong-yen tab was demoted into secondary navigation")
     if '"kioxia-calendar","strong-yen"' not in html or 's.id==="strong-yen-top5"' not in html:
         errors.append("strong-yen tab routing is missing")
     if 'data-tab="investor-regime"' not in html or 's.id==="investor-regime"' not in html:
