@@ -1,6 +1,6 @@
 # trade-cockpit STATUS
 
-最終更新: 2026-09-15（Claude・P1続き：デイトレTOP5(精査TOP5)へ地合い共通判定を参考接続）
+最終更新: 2026-09-15（Claude・P1完了：非公開売買ログ・反省会を実装）
 役割分担確定：ChatGPT=戦略の壁打ちのみ（リポジトリは変更しない）／Claude=実コーディング担当
 運用体制: ChatGPT（戦略・相場観）＋ Claude/Claude Code（コーディング・診断）＋ Genspark（必要時のみ、現在未課金）
 
@@ -1289,6 +1289,38 @@ IHI・富士通・マクニカHD等が表示されている箇所）に、今回
 `#focus-regime`要素が実在し「未接続（regime_policy.pyの実行ワークフロー反映待ち）」を正しく
 表示していることを確認（初回チェック時は`exists:false`だったが、GitHub PagesのCDN反映遅延が
 原因で、再取得後は正常表示。コード側の不具合ではなかった）。
+
+## P1完了：非公開売買ログ・反省会を実装（2026-09-15）
+
+P1の最後の項目に対応した。C-031-GPT_STRATEGY_ROADMAP.md第1節・第5節が要求する
+「本人の実約定を、紙トレードとは別台帳で、公開repoに置かず記録する」を実装した。
+
+**実装内容**：
+- `scripts/private_ledger.py`：実約定（BUY/SELL）を1件ずつ記録するCLI。
+  ロードマップ第5節のフィールド定義（trade_id・order_id・execution_id・position_id・
+  日時/単価/数量/手数料・horizon・strategy_version・decision_snapshot_id・regime・
+  entry_reason・exit_reason・rule_violation・source・reconciliation_status）に準拠。
+  ワンタップ発注が未実装のため、証券会社の約定明細を見ながら本人が手入力する運用。
+- `scripts/daily_reflection.py`：非公開台帳から日次反省会を生成。position_idで
+  BUY/SELLをペアリングして決済済みポジションの実現損益を計算し、rule_violationの
+  記録・entry_reason/exit_reasonの記入漏れを可視化、翌日への改善点を1つ機械的に導出
+  （本人が記録した内容から導くだけで、GPT的な所感生成や投資助言はしない）。
+  実約定が無い日は損益を0補完せず「実績未取得」と表示する。
+
+**公開境界（重要）**：両スクリプトが読み書きするのは`data/private/`配下のみで、
+今回`.gitignore`に追加し追跡除外した。`update.py`・GitHub Actionsワークフローの
+どこからも呼び出さない（実行はユーザー本人のPC上でのみ想定）。CI(`update.yml`の
+既存`unittest discover -s tests`)ではロジックのユニットテストのみ走らせ、
+実データは一切CIを通さない。
+
+**P1完了条件との対応**：「仮想/実約定の分離」→紙トレード(`paper_trade_history.json`,
+公開)と実約定(`data/private/trade_ledger.jsonl`,非公開)を完全に別ファイル・別
+git追跡境界にすることで満たす。「同一入力で同じ判定」→`build_reflection`は
+純粋関数（テストで確認済み）。
+
+これでP1（デイトレTOP5・決算発表後の監視候補・地合い共通判定・非公開売買ログ・
+反省会）の4項目すべてが実装済み。残る既知の未決事項：`market-regime.yml`ワークフロー
+本体がworkflowスコープ制約でまだ未反映（C-036/C-037参照）。
 
 ## 現在の未決事項・注意点
 
