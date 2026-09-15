@@ -172,6 +172,59 @@ function Invoke-ComRetry([scriptblock]$Action, [int]$maxAttempts = 8, [int]$dela
     }
 }
 
+# ユーザー方針（2026-09-15）: RssMarketの「歩み1〜4」は価格・時刻のみで約定数量を含まないため、
+# 出来高急増（1分足ベース）だけでは「本当の大口注文」か「小口の積み重ね」かを区別できないという
+# 限界があった。MS2 RSSには`RssTickList`という別関数があり、直近最大300件のティック（時刻・出来高・
+# 約定値）を個別に取得できることを実機で確認した（例: 引け時点で408,700株の単一ティックと、
+# その直前の100株刻みの小口ティックを明確に区別できた）。この関数を使い、本当の意味での
+# 大口ティック検知と、ティック単位の方向（気配との比較）による歩み値偏りを追加する。
+function Read-TickList($sheet, [string]$headerAnchor) {
+    try {
+        $region = $sheet.Range($headerAnchor).CurrentRegion.Value2
+        $rows = @()
+        if ($region -is [System.Array] -and $region.Rank -eq 2) {
+            for ($r = 2; $r -le $region.GetLength(0); $r++) {
+                $rawTime = $region[$r,1]; $vol = $region[$r,2]; $price = $region[$r,3]
+                if ($vol -is [double] -and $price -is [double] -and $vol -gt 0 -and $price -gt 0) {
+                    try { $timeText = if ($rawTime -is [double]) { [DateTime]::FromOADate($rawTime).ToString("HH:mm:ss") } else { [string]$rawTime } } catch { $timeText = [string]$rawTime }
+                    $rows += [pscustomobject]@{ TimeText=$timeText; Volume=[double]$vol; Price=[double]$price }
+                }
+            }
+        }
+        return @($rows)
+    } catch { return @() }
+}
+
+# 実際に約定した個別ティックのうち、直近ティック群の中央値出来高の$multiplier倍以上のものを
+# 「大口ティック候補」として抽出する。歩み1〜4ベースの推定(Get-VolumeFootprints)と異なり、
+# これは個々の約定の出来高そのものを見ているため、単一の大口注文であった可能性がより高い
+# （それでも複数の小口が同一ティックで約定した結果である可能性はゼロではない）。
+function Get-TickFootprints($ticks, [double]$multiplier = 8.0, [int]$maxResults = 3) {
+    if ($null -eq $ticks -or $ticks.Count -lt 10) { return @() }
+    $sortedVol = @($ticks | ForEach-Object { $_.Volume } | Sort-Object)
+    $mid = [int]([math]::Floor($sortedVol.Count / 2))
+    $median = if ($sortedVol.Count % 2 -eq 0) { ($sortedVol[$mid-1] + $sortedVol[$mid]) / 2.0 } else { $sortedVol[$mid] }
+    if ($median -le 0) { return @() }
+    return @($ticks | Where-Object { $_.Volume -ge $median * $multiplier } | Select-Object -First $maxResults)
+}
+
+# ティックの約定値を最良気配（買/売）と比較し、買い方主導/売り方主導を出来高で重み付けして
+# 歩み値の方向偏りを-100〜+100で算出する。100銘柄収集器の板比率ベースの推定より、実際の
+# 約定に基づくため精度が高い。ただし「気配との比較による推定」である点は変わらない。
+function Get-TickFlowBias($ticks, [double]$bid, [double]$ask) {
+    if ($null -eq $ticks -or $ticks.Count -eq 0 -or $bid -le 0 -or $ask -le 0) { return $null }
+    $buyVol = 0.0; $sellVol = 0.0; $mid = ($bid + $ask) / 2.0
+    foreach ($t in $ticks) {
+        if ($t.Price -ge $ask) { $buyVol += $t.Volume }
+        elseif ($t.Price -le $bid) { $sellVol += $t.Volume }
+        elseif ($t.Price -gt $mid) { $buyVol += $t.Volume * 0.5 }
+        elseif ($t.Price -lt $mid) { $sellVol += $t.Volume * 0.5 }
+    }
+    $total = $buyVol + $sellVol
+    if ($total -le 0) { return $null }
+    return [math]::Round((($buyVol - $sellVol) / $total) * 100, 1)
+}
+
 function Read-Chart($sheet, [string]$anchor) {
     try {
         $region = $sheet.Range($anchor).CurrentRegion.Value2
@@ -247,6 +300,9 @@ Set-CellValue $rss.Range("B14") "RSS対象外"
 Set-CellValue $rss.Range("B15") "週次データを別取得"
 Set-CellFormula $rss.Range("A20") '=RssChart(,"285A.T","1M",500)'
 Set-CellFormula $rss.Range("L20") '=RssChart(,"285A.T","5M",200)'
+# 実機確認済み（2026-09-15）: A530に数式を置くと、ヘッダー行(時刻/出来高/約定値)がA531に、
+# データがA532以降300行に展開される（1M/5Mチャートの表示範囲より十分下のため衝突しない）。
+Set-CellFormula $rss.Range("A530") '=RssTickList(,"285A.T",300)'
 Set-CellValue $rss.Range("B16") "接続中"
 # Issue #17追記（2026-09-14・JNX発見を受けて追加）: 夜間PTS(JNX)価格は参考表示専用。
 # MS2_RSS_100_Collector.ps1のKIOXIA_JNXシートで実データ取得を確認済み（285A.JNX形式）。
@@ -351,6 +407,7 @@ try {
         $cutoff5 = $bucket5.ToString("yyyy-MM-dd HH:mm")
         $one = @(Read-Chart $rss "A20" | Where-Object { $_.SortKey -lt $cutoff1 })
         $five = @(Read-Chart $rss "L20" | Where-Object { $_.SortKey -lt $cutoff5 })
+        $ticks = @(Read-TickList $rss "A531")
         $price = Get-SafeNumber $rss.Range("B4").Value2 0.01 10000000
         $vwap = Get-SafeNumber $rss.Range("B5").Value2 0 10000000
         $over = Get-SafeNumber $rss.Range("B9").Value2 0 1000000000000
@@ -454,6 +511,20 @@ try {
         $condPrice = "データ待ち"; $condVol = "データ待ち"; $condEma = "データ待ち"; $condOr = "データ待ち"
         $close1 = 0; $open1 = 0; $volRatio = 0; $ema9 = 0; $ema20 = 0; $orHigh = 0; $orLow = 0; $crosses = 0; $barTime = "-"
         $footprintText = "データ待ち"; $stopZoneText = "データ待ち"
+        # 実データの個別ティック（RssTickList）ベース。1分足25本の蓄積を待つ必要がないため、
+        # 寄り直後から機能する（歩み1〜4ベースの$footprintTextとは別に併記する）。
+        $tickFootprintText = "データ待ち"; $tickFlowBiasText = "データ待ち"
+        if ($ticks.Count -ge 10) {
+            $tickFootprints = Get-TickFootprints $ticks 8.0 3
+            $tickFootprintText = if ($tickFootprints.Count -eq 0) { "検出なし（直近" + $ticks.Count + "ティック中）" } else { ($tickFootprints | ForEach-Object { "$($_.TimeText) $([math]::Round($_.Price,0))円 $([math]::Round($_.Volume,0))株" }) -join " / " }
+            if ($askQuote -gt 0 -and $bidQuote -gt 0) {
+                $bias = Get-TickFlowBias $ticks $bidQuote $askQuote
+                if ($null -ne $bias) {
+                    $biasLabel = if ($bias -ge 20) { "買い優勢" } elseif ($bias -le -20) { "売り優勢" } else { "拮抗" }
+                    $tickFlowBiasText = "$biasLabel（$bias、直近$($ticks.Count)ティック）"
+                }
+            }
+        }
 
         if ($one.Count -ge 25 -and $five.Count -ge 21 -and $price -gt 0 -and $vwap -gt 0) {
             $completedOne = $one | Select-Object -Last 21
@@ -527,6 +598,10 @@ try {
         # A28・A32は非結合セル（既存レイアウトで空いている行）。
         Set-CellValue $dash.Range("A28") ("大口出来高フットプリント(参考・出来高比2.5倍以上・未検証): " + $footprintText)
         Set-CellValue $dash.Range("A32") ("損切り誘発想定ゾーン(参考・経験則・未検証): " + $stopZoneText)
+        # A34・A35も非結合セル。RssTickList（実ティック・数量あり）ベースの検知で、
+        # 上のA28（歩み1〜4ベースの推定）より個々の約定出来高そのものを見ているため精度が高い。
+        Set-CellValue $dash.Range("A34") ("大口ティック検知(実ティック・数量あり・未検証): " + $tickFootprintText)
+        Set-CellValue $dash.Range("A35") ("歩み値偏り(実ティックベース・未検証): " + $tickFlowBiasText)
         $dash.Range("A5:H9").Interior.Color = if ($signal -eq "買いサイン") { 0x62B14C } elseif ($signal -eq "空売りサイン") { 0x4E4EFF } elseif ($signal -eq "往復ピンタ回避") { 0x2A8CFF } else { 0x483117 }
 
         if ($inSession -and ($signal -eq "買いサイン" -or $signal -eq "空売りサイン") -and (($signal -ne $lastSpokenSignal) -or (((Get-Date) - $lastSpokenAt).TotalMinutes -ge 10))) {
