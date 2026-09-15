@@ -1,0 +1,87 @@
+name: Earnings Calendar and Catalysts
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/earnings_calendar.py
+      - tests/test_earnings_calendar.py
+      - earnings-calendar.js
+      - .github/workflows/earnings-calendar.yml
+  schedule:
+    - cron: '45 22 * * 0-4'
+    - cron: '45 8 * * 1-5'
+
+permissions:
+  contents: write
+concurrency:
+  group: trade-cockpit-writer
+  cancel-in-progress: false
+
+jobs:
+  calendar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: git pull --rebase origin main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Dependencies
+        run: pip install -r requirements.txt lxml
+      - name: Tests
+        run: |
+          python -m unittest discover -s tests -p test_earnings_calendar.py -v
+          node --check earnings-calendar.js
+      - name: Fetch official calendar and disclosures
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/earnings-calendar
+          git rev-parse HEAD > artifacts/earnings-calendar/source-commit.txt
+          python -u scripts/earnings_calendar.py 2>&1 | tee artifacts/earnings-calendar/run.log
+      - name: Attach calendar to current page
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('index.html')
+          text = path.read_text(encoding='utf-8')
+          loader = '<script src="earnings-calendar.js" defer></script>'
+          if loader not in text:
+              assert '</body>' in text
+              path.write_text(text.replace('</body>', loader + '</body>'), encoding='utf-8')
+          PY
+      - name: Save data and source status
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add earnings_calendar.json index.html
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Update earnings calendar and disclosure catalysts'
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push; then exit 0; fi
+            sleep 5
+          done
+          exit 1
+      - name: Verify source health
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('earnings_calendar.json').read_text())
+          assert data['calendar_status']=='ok', data['errors']
+          assert any(c['pages'] for c in data['disclosure_coverage']), data['errors']
+          print('Verified:', len(data['calendar']), 'calendar entries,', len(data['catalysts']), 'disclosures')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: earnings-calendar-evidence-${{ github.run_id }}
+          retention-days: 14
+          path: |
+            artifacts/earnings-calendar/
+            earnings_calendar.json
