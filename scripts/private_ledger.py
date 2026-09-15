@@ -34,11 +34,12 @@ LEDGER_PATH = LEDGER_DIR / "trade_ledger.jsonl"
 
 # 第5節: 非公開ledgerのフィールド定義
 REQUIRED_FIELDS = (
-    "trade_id", "ticker", "name", "side", "executed_at",
+    "ticker", "name", "side", "executed_at",
     "price", "quantity", "fee", "horizon", "strategy_version", "source",
 )
+# trade_idは呼び出し側の必須入力ではない（未指定ならnormalize_entryが自動発番する）。
 OPTIONAL_FIELDS = (
-    "order_id", "execution_id", "position_id",
+    "trade_id", "order_id", "execution_id", "position_id",
     "decision_snapshot_id", "regime", "entry_reason", "exit_reason",
     "rule_violation", "reconciliation_status",
 )
