@@ -11,18 +11,18 @@
 .weekly-grid>div{background:#0c1b2d;border:1px solid #243b55;border-radius:12px;padding:14px}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
- <button class="cockpit-tab active" data-tab="daytrade">今日の作戦</button>
+ <button class="cockpit-tab active" data-tab="daytrade">デイトレTOP5</button>
+ <button class="cockpit-tab" data-tab="overnight">オーバーナイトTOP5</button>
+ <button class="cockpit-tab" data-tab="swing">スイングTOP5</button>
+ <button class="cockpit-tab" data-tab="longterm">長期TOP5</button>
+ <button class="cockpit-tab" data-tab="events">注意アラート</button>
  <button class="cockpit-tab" data-tab="ms2-live">LIVE売買</button>
  <button class="cockpit-tab" data-tab="kioxia-calendar">キオクシア</button>
- <button class="cockpit-tab" data-tab="strong-yen">円高恩恵TOP5</button>
- <button class="cockpit-tab" data-tab="us-smr">対米投資・SMR</button>
- <button class="cockpit-tab" data-tab="investor-regime">主体レジーム</button>
- <button class="cockpit-tab" data-tab="events">重要イベント</button>
- <button class="cockpit-tab" data-tab="market">検証・除外</button>
  <details class="secondary-tabs"><summary>参考タブ</summary>
+  <button class="cockpit-tab" data-tab="strong-yen">円高恩恵TOP5</button><button class="cockpit-tab" data-tab="us-smr">対米投資・SMR</button>
+  <button class="cockpit-tab" data-tab="investor-regime">主体レジーム</button><button class="cockpit-tab" data-tab="market">検証・除外</button>
   <button class="cockpit-tab" data-tab="correlation">相関</button><button class="cockpit-tab" data-tab="wick">下ヒゲ</button>
-  <button class="cockpit-tab" data-tab="expansion">拡大</button><button class="cockpit-tab" data-tab="swing">スイング</button>
-  <button class="cockpit-tab" data-tab="accumulation">大口</button><button class="cockpit-tab" data-tab="longterm">長期</button>
+  <button class="cockpit-tab" data-tab="expansion">拡大</button><button class="cockpit-tab" data-tab="accumulation">大口</button>
   <button class="cockpit-tab" data-tab="policy">国策</button><button class="cockpit-tab" data-tab="weekly">週間</button>
  </details>
 </nav>
@@ -30,11 +30,12 @@
 document.addEventListener("DOMContentLoaded",()=>{
  const main=document.querySelector("main"); if(!main)return;
  const policyTabs=["physical-ai","autonomous-driving","ai-drug-discovery","ai-semiconductor","defense-space","gx-power","quantum-computing"];
- const panes={}; ["daytrade","ms2-live","events","correlation","kioxia-calendar","strong-yen","us-smr","investor-regime","wick","expansion","swing","accumulation","longterm","dividend","buyback","policy",...policyTabs,"market","weekly"].forEach(k=>{const d=document.createElement("div");d.className="tab-pane"+(k==="daytrade"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;});
+ const panes={}; ["daytrade","overnight","ms2-live","events","correlation","kioxia-calendar","strong-yen","us-smr","investor-regime","wick","expansion","swing","accumulation","longterm","dividend","buyback","policy",...policyTabs,"market","weekly"].forEach(k=>{const d=document.createElement("div");d.className="tab-pane"+(k==="daytrade"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;});
  [...main.querySelectorAll(":scope > section")].forEach(s=>{
    const t=(s.querySelector("h2")?.textContent||"").trim();
    let k="market";
    if(s.id==="ms2-live-top5")k="ms2-live";
+   else if(s.id==="overnight-top5")k="overnight";
    else if(s.dataset.policyTab)k=s.dataset.policyTab;
    else if(s.id==="event-calendar")k="events";
    else if(s.id==="correlation-monitor")k="correlation";
@@ -54,7 +55,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    else if(t.includes("安定上昇")||t.includes("52週新高値")||t.includes("過熱監視")||t.includes("持ち越し")||t.includes("AIスイング"))k="swing";
    panes[k].appendChild(s);
  });
- const intros={daytrade:["精査TOP5","二経路で株価・コード・取引日が完全一致した銘柄だけ。5枠を無理に埋めません。"],wick:["最優先・下ヒゲ吸収反転","売り吸収→終値回復→次足上抜けの順で発動。"],expansion:["当日エクスパンション","BB収縮から出来高を伴う拡大が期待できる銘柄。"],swing:["短期スイング","信用需給を主軸に、押し目・新高値・持ち越しを選別。"],accumulation:["大口仕込み","出来高・OBV・安値切上げから吸収と蓄積を監視。"],longterm:["長期右肩上がり・反転","50週線・200日線・月週足反転と需給改善が重なる銘柄。"],dividend:["配当権利前・上下期待","権利前上昇と権利落ち下落を需給付きで監視。"],buyback:["自社株買い監視","実施期間・残り余力・出来高影響と需給改善を確認。"],policy:["国策テーマ・実戦優先順位","政府資料、会社公式、業績寄与、信用需給を分離して確認。"],"physical-ai":["フィジカルAI","本体・AI制御・主要ロボット部品だけを厳格選定。"],"autonomous-driving":["自動運転","社会実装・自動運転ソフト・高精度地図を優先。"],"ai-drug-discovery":["AI創薬","AI創薬を会社公式で事業化している銘柄だけ。"],"ai-semiconductor":["AI・半導体基盤","メモリ、製造装置、テスト、先端SoCに限定。"],"defense-space":["防衛・宇宙","防衛装備、宇宙推進、衛星・官公庁案件を確認。"],"gx-power":["GX・電力基盤","送配電、蓄電池、パワー半導体、電力網。"],"quantum-computing":["量子・先端計算","事業寄与が小さい間は長期研究枠として扱う。"],market:["市場・検証","地合い、警報、答え合わせ、決算リスクを確認。"],weekly:["週間レビュー","週末検証と翌週の改善ルール。"]};
+ const intros={daytrade:["デイトレTOP5","今日いちばん期待値の高い候補だけを表示。二経路で株価・コード・取引日が完全一致した銘柄だけを対象にし、5枠を無理に埋めません。"],wick:["最優先・下ヒゲ吸収反転","売り吸収→終値回復→次足上抜けの順で発動。"],expansion:["当日エクスパンション","BB収縮から出来高を伴う拡大が期待できる銘柄。"],swing:["スイングTOP5","1週間保有の候補。信用需給を主軸に、押し目・新高値・持ち越しを選別。"],accumulation:["大口仕込み","出来高・OBV・安値切上げから吸収と蓄積を監視。"],longterm:["長期TOP5","1か月保有の候補。50週線・200日線・月週足反転と需給改善が重なる銘柄。"],dividend:["配当権利前・上下期待","権利前上昇と権利落ち下落を需給付きで監視。"],buyback:["自社株買い監視","実施期間・残り余力・出来高影響と需給改善を確認。"],policy:["国策テーマ・実戦優先順位","政府資料、会社公式、業績寄与、信用需給を分離して確認。"],"physical-ai":["フィジカルAI","本体・AI制御・主要ロボット部品だけを厳格選定。"],"autonomous-driving":["自動運転","社会実装・自動運転ソフト・高精度地図を優先。"],"ai-drug-discovery":["AI創薬","AI創薬を会社公式で事業化している銘柄だけ。"],"ai-semiconductor":["AI・半導体基盤","メモリ、製造装置、テスト、先端SoCに限定。"],"defense-space":["防衛・宇宙","防衛装備、宇宙推進、衛星・官公庁案件を確認。"],"gx-power":["GX・電力基盤","送配電、蓄電池、パワー半導体、電力網。"],"quantum-computing":["量子・先端計算","事業寄与が小さい間は長期研究枠として扱う。"],market:["市場・検証","地合い、警報、答え合わせ、決算リスクを確認。"],weekly:["週間レビュー","週末検証と翌週の改善ルール。"]};
  intros.correlation=["相関・先行／逆行銘柄","当日候補の方向を、連動株・逆相関株・米国先行株で確認。"];
  intros.events=["イベントカレンダー","発表日・需給日・指数反映日を分離し、当日の誤認を防止。"];
  intros["investor-regime"]=["投資主体別レジーム","JPX公式の当時利用可能な版だけで、銘柄タイプの追い風・逆風を判定。"];
@@ -62,6 +63,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  intros["strong-yen"]=["円高恩恵銘柄 TOP5","円高感応度だけでなく、信用需給・当日資金流入・発動価格まで確認。"];
  intros["us-smr"]=["対米投資・SMR","政策発表と個社受注を区別し、事業化・需給・価格の確認順に監視。"];
  intros["ms2-live"]=["MS2 RSS・ザラバLIVE TOP5","100銘柄を裏側で監視し、OR15・VWAP・歩み値・板変化が一致した上位だけ表示。"];
+ intros.overnight=["オーバーナイトTOP5","引けで建て、翌朝の寄り付きで反対売買する持ち越し候補。15:25に銘柄・方向を確定し、後から書き換えません。"];
  Object.entries(intros).forEach(([k,v])=>{const h=document.createElement("div");h.className="pane-intro";h.innerHTML=`<span>SUPPLY IMPROVEMENT REQUIRED</span><h2>${v[0]}</h2><p>${v[1]}</p>`;panes[k].prepend(h);});
  document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{
    document.querySelectorAll(".cockpit-tab").forEach(x=>x.classList.toggle("active",x===b));
@@ -72,7 +74,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const saved=requested||localStorage.getItem("cockpitTabV5"); if(saved)document.querySelector(`.cockpit-tab[data-tab="${saved}"]`)?.click();
  fetch("event_calendar.json?t="+Date.now()).then(r=>r.json()).then(d=>{
    const b=document.querySelector('.cockpit-tab[data-tab="events"]');
-   if(d.today_level!=="通常"){b.classList.add("event-alert");b.textContent="⚠ イベント";}
+   if(d.today_level!=="通常"){b.classList.add("event-alert");b.textContent="⚠ 注意アラート";}
  }).catch(()=>{});
 });
 </script>
@@ -88,7 +90,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <link rel="stylesheet" href="theme.css?v=20260915-type4">
 <link rel="stylesheet" href="focus.css?v=20260915-power3">
 <style>.unified-mode{margin:8px 6px 0;padding:10px 14px;border:1px solid #365267;border-radius:10px;background:#09141d;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}.unified-mode .lamp{width:12px;height:12px;border-radius:50%;background:#77838c;box-shadow:0 0 0 5px #77838c18}.unified-mode.live{border-color:#28c998;background:#082019}.unified-mode.live .lamp{background:#35e2ae;box-shadow:0 0 16px #35e2ae}.unified-mode.stale{border-color:#f0b74c}.unified-mode strong{font-size:16px}.unified-mode span{color:#a8bbc9}.unified-mode b{color:#fff}@media(max-width:700px){.unified-mode{grid-template-columns:auto 1fr}.unified-mode>b{grid-column:2}}</style>
-<header><div><h1>AIトレードコクピット Ver.5.2</h1><div class="sub">事前分析とMS2 RSS LIVEをこの1画面に統一</div></div><div><span class="tag">寄り付き前8:00版</span><div class="sub">2026-09-16 00:15:17 JST／統一取引日 取得不能</div></div></header>
+<header><div><h1>AIトレードコクピット Ver.5.2</h1><div class="sub">事前分析とMS2 RSS LIVEをこの1画面に統一</div></div><div><span class="tag">寄り付き前8:00版</span><div class="sub">2026-09-16 01:24:05 JST／統一取引日 取得不能</div></div></header>
 <div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span></div><b id="unified-mode-time">—</b></div><main>
 
 <section id="data-quality-gate" class="card wide" style="border-color:#2fc6a5">
@@ -160,11 +162,6 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div id="ms2-live-meta" class="sub">MarketSpeed II RSSのローカル収集データを確認中...</div>
  <div id="ms2-common-status" class="ms2-live-card watch" style="margin-top:10px"><div class="top"><span class="signal">COMMON ENGINE</span><h3>全対象銘柄・共通判定基盤</h3><b class="score">確認中</b></div><div class="ms2-metrics"><span>判定<b>TREND LONG / TREND SHORT / REBOUND / RANGE / NO TRADE</b></span><span>自動発注<b>OFF（既定）</b></span><span>10本板<b>未確認</b></span><span>口座ゲート<b>未確認・売買禁止</b></span></div><small>未取得項目は推測せず未確認。口座数値は公開JSONへ出力しません。</small></div>
  <div id="ms2-live-cards" class="ms2-live-grid"><div class="focus-empty"><b>未接続</b><span>Windows用100銘柄コレクターを起動してください</span></div></div>
- <h3>15:25確定・翌日持ち越しTOP5</h3>
- <div id="ms2-hold-status" class="sub">15:00から暫定採点、15:25に銘柄と方向を固定します。</div>
- <div id="ms2-hold-cards" class="ms2-live-grid"><div class="focus-empty"><span>15:25確定待ち</span></div></div>
- <div id="ms2-hold-stats" class="ms2-live-grid"><div class="focus-empty"><span>翌営業日の大引け後から勝率を記録</span></div></div>
- <div id="ms2-hold-history" class="ms2-live-grid"></div>
  <h3>夜間PTS期待TOP5</h3>
  <div id="ms2-pts-cards" class="ms2-live-grid"><div class="focus-empty"><span>JNXデータ待ち</span></div></div>
  <h3>IR急騰PTS TOP5</h3>
@@ -174,11 +171,20 @@ document.addEventListener("DOMContentLoaded",()=>{
  <p class="sub">元の統合AIコクピットへMS2 RSSの歩み値・板・VWAP・OR15を反映します。キオクシア専用タブはVWAP・OR15・ピボット・EMA20に表示を限定します。</p>
  <p class="warning"><b>Ver.1判定：</b>確定1分足 → OR5/OR15 → VWAP・EMA9/20 → 出来高 → 歩み値 → 地合い・業種 → UNDER/OVER補助。OR15追随は地合い不一致なら利確警戒。データが60秒以上古い場合は全サイン無効です。</p>
 </section>
+<section id="overnight-top5" class="card wide ms2-live-panel">
+ <div class="ms2-live-head"><div><span>LOCAL MARKET DATA・試運転 Ver.1</span><h2>オーバーナイトTOP5</h2></div></div>
+ <p class="sub">引けで建て、翌朝の寄り付きで反対売買する持ち越し候補。15:00から暫定採点、15:25に銘柄と方向を固定します。</p>
+ <div id="ms2-hold-status" class="sub">15:00から暫定採点、15:25に銘柄と方向を固定します。</div>
+ <div id="ms2-hold-cards" class="ms2-live-grid"><div class="focus-empty"><span>15:25確定待ち</span></div></div>
+ <h3>持ち越し成績</h3>
+ <div id="ms2-hold-stats" class="ms2-live-grid"><div class="focus-empty"><span>翌営業日の大引け後から勝率を記録</span></div></div>
+ <div id="ms2-hold-history" class="ms2-live-grid"></div>
+</section>
 
 
 <section id="strong-yen-top5" class="card wide">
  <h2>円高恩恵銘柄 TOP5｜信用需給必須</h2>
- <p class="sub">USD/JPY 155.1／当日 +0.53%／5日 +0.83%　<b>円高確認待ち</b><br><small>世界の株価リアルタイムチャート・2026-09-16T00:15:00+09:00</small></p>
+ <p class="sub">USD/JPY 155.1／当日 +0.49%／5日 +0.80%　<b>円高確認待ち</b><br><small>世界の株価リアルタイムチャート・2026-09-16T01:23:00+09:00</small></p>
  <div class="rotation-grid">
   <div class="rotation-box"><b>発言統計判定</b><strong>統計不足・参考のみ</strong></div>
   <div class="rotation-box"><b>比較可能回数</b><strong>6回</strong></div>
@@ -330,7 +336,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <tr><td>評価・イベント</td><td>日経225 PER／米国株PER／ドル建て225／225寄与度／経済ニュース／スケジュール／5分足カレンダー</td><td>割高警戒、指数寄与の偏り、決算・指標回避</td><td>加点せず、過熱警戒と売買禁止条件に使用</td></tr>
 </tbody></table>
 <p class="warning"><b>重要：</b>空売り比率、信用残、先物・オプション手口など公表頻度が違う値を同日データとして混ぜません。未取得値を推定で埋めず、正式候補のデータ充足率に反映します。</p></section>
-<section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr><tr><td>日経平均</td><td>63,493</td><td class='down'>-0.81%</td><td>下向き</td></tr><tr><td>TOPIX</td><td>423.3</td><td class='up'>+0.86%</td><td>上向き</td></tr><tr><td>NASDAQ</td><td>26,004.3</td><td class='down'>-0.70%</td><td>下向き</td></tr><tr><td>S&P500</td><td>7,581.2</td><td class='down'>-0.51%</td><td>下向き</td></tr><tr><td>SOX</td><td>11,180.2</td><td class='up'>+0.44%</td><td>上向き</td></tr><tr><td>VIX</td><td>17.8</td><td class='up'>+3.86%</td><td>上向き</td></tr><tr><td>ドル円</td><td>155.1</td><td class='up'>+1.11%</td><td>上向き</td></tr><tr><td>米10年金利</td><td>5</td><td class='up'>+0.87%</td><td>上向き</td></tr></table></section>
+<section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr><tr><td>日経平均</td><td>63,493</td><td class='down'>-0.81%</td><td>下向き</td></tr><tr><td>TOPIX</td><td>423.3</td><td class='up'>+0.86%</td><td>上向き</td></tr><tr><td>NASDAQ</td><td>26,019.9</td><td class='down'>-0.64%</td><td>下向き</td></tr><tr><td>S&P500</td><td>7,587.2</td><td class='down'>-0.43%</td><td>下向き</td></tr><tr><td>SOX</td><td>11,170</td><td class='up'>+0.35%</td><td>上向き</td></tr><tr><td>VIX</td><td>17.7</td><td class='up'>+3.57%</td><td>上向き</td></tr><tr><td>ドル円</td><td>155.1</td><td class='up'>+1.08%</td><td>上向き</td></tr><tr><td>米10年金利</td><td>5</td><td class='up'>+0.71%</td><td>上向き</td></tr></table></section>
 <section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr></table></section>
 <section id="policy-priority-overview" class="card wide"><h2>国策テーマ・実戦優先順位</h2><table><thead><tr><th>実戦優先</th><th>テーマ</th><th>正式候補数</th><th>最高総合点</th><th>現在判定</th><th>政策根拠</th></tr></thead><tbody><tr><td><b>#1</b></td><td>フィジカルAI</td><td>0/5</td><td>—</td><td>信用需給待ち・売買不可</td><td><a href='https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf' target='_blank' rel='noopener'>政策根拠</a></td></tr><tr><td><b>#2</b></td><td>自動運転</td><td>0/5</td><td>—</td><td>信用需給待ち・売買不可</td><td><a href='https://www.meti.go.jp/policy/mono_info_service/mono/automobile/index.html' target='_blank' rel='noopener'>政策根拠</a></td></tr><tr><td><b>#3</b></td><td>AI創薬</td><td>0/5</td><td>—</td><td>信用需給待ち・売買不可</td><td><a href='https://www.meti.go.jp/policy/mono_info_service/geniac/selection_2/index.html' target='_blank' rel='noopener'>政策根拠</a></td></tr><tr><td><b>#4</b></td><td>AI・半導体基盤</td><td>0/5</td><td>—</td><td>信用需給待ち・売買不可</td><td><a href='https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf' target='_blank' rel='noopener'>政策根拠</a></td></tr><tr><td><b>#5</b></td><td>防衛・宇宙</td><td>0/5</td><td>—</td><td>信用需給待ち・売買不可</td><td><a href='https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf' target='_blank' rel='noopener'>政策根拠</a></td></tr><tr><td><b>#6</b></td><td>GX・電力基盤</td><td>0/5</td><td>—</td><td>信用需給待ち・売買不可</td><td><a href='https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf' target='_blank' rel='noopener'>政策根拠</a></td></tr><tr><td><b>#7</b></td><td>量子・先端計算</td><td>0/5</td><td>—</td><td>信用需給待ち・売買不可</td><td><a href='https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf' target='_blank' rel='noopener'>政策根拠</a></td></tr></tbody></table><p class="warning">順位は国の政策分野に勝手な序列を付けたものではありません。正式候補数→最高総合点で毎回入れ替えます。信用需給未取得時は全テーマを売買不可とします。</p></section>
 <section id="policy-physical-ai" class="card wide policy-theme-card" data-policy-tab="physical-ai"><h2>実戦優先 #1｜フィジカルAI・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-autonomous-driving" class="card wide policy-theme-card" data-policy-tab="autonomous-driving"><h2>実戦優先 #2｜自動運転・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.meti.go.jp/policy/mono_info_service/mono/automobile/index.html" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-ai-drug-discovery" class="card wide policy-theme-card" data-policy-tab="ai-drug-discovery"><h2>実戦優先 #3｜AI創薬・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.meti.go.jp/policy/mono_info_service/geniac/selection_2/index.html" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-ai-semiconductor" class="card wide policy-theme-card" data-policy-tab="ai-semiconductor"><h2>実戦優先 #4｜AI・半導体基盤・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-defense-space" class="card wide policy-theme-card" data-policy-tab="defense-space"><h2>実戦優先 #5｜防衛・宇宙・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-gx-power" class="card wide policy-theme-card" data-policy-tab="gx-power"><h2>実戦優先 #6｜GX・電力基盤・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section><section id="policy-quantum-computing" class="card wide policy-theme-card" data-policy-tab="quantum-computing"><h2>実戦優先 #7｜量子・先端計算・厳格選定</h2><p class="sub">正式候補 0銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody><tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr></tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="https://www.cas.go.jp/jp/seisaku/nipponseichosenryaku/pdf/rm2026.pdf" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section>
@@ -371,13 +377,13 @@ document.addEventListener("DOMContentLoaded",()=>{
 <p class="warning"><b>大口を断定する画面ではありません。</b> 板の大注文は取消可能なので採点しません。市場データの痕跡を抽出し、大量保有報告書・変更報告書・自己株買い・会社IRで裏付けます。信用需給未取得は「暫定」のままです。</p></section>
 <section id="sector-rotation" class="card wide"><h2>②-R 機関投資家型 セクターローテーション</h2>
 <div class="rotation-grid">
-<div class="rotation-box"><b>市場レジーム</b><strong>グロース回帰</strong><br>AI・情報技術の押し目を優先。ただし過熱判定なら追わない</div>
-<div class="rotation-box"><b>金利スイッチ</b><strong>金利上昇：高PERグロースに逆風</strong><br>米10年金利 5日変化 +4.12%</div>
+<div class="rotation-box"><b>市場レジーム</b><strong>混在・切替中</strong><br>指数ではなく、流入初期または拡大のセクターだけを選ぶ</div>
+<div class="rotation-box"><b>金利スイッチ</b><strong>金利上昇：高PERグロースに逆風</strong><br>米10年金利 5日変化 +3.95%</div>
 <div class="rotation-box"><b>米国業種の広がり</b><strong>4/11業種</strong><br>S&P500を5日で上回った業種数</div>
 <div class="rotation-box"><b>判定順序</b><strong>資産 → 業種 → 個別株</strong><br>個別材料だけで逆風業種を買わない</div>
 </div>
 <h3>米国11業種：S&P500に対する相対強弱</h3>
-<table><tr><th>順位</th><th>業種ETF</th><th>資金段階</th><th>点数</th><th>5日相対</th><th>20日相対</th><th>勢い変化</th><th>行動</th></tr><tr><td>1</td><td>コミュニケーション <small>XLC</small></td><td><span class='pill long'>拡大</span></td><td><b>78/100</b></td><td class='up'>+3.66%</td><td class='up'>+5.22%</td><td class='up'>+3.45pt</td><td>順張り・押し目</td></tr><tr><td>2</td><td>エネルギー <small>XLE</small></td><td><span class='pill long'>拡大</span></td><td><b>70/100</b></td><td class='up'>+2.27%</td><td class='up'>+6.73%</td><td class='up'>+0.84pt</td><td>順張り・押し目</td></tr><tr><td>3</td><td>ヘルスケア <small>XLV</small></td><td><span class='pill in'>流入初期</span></td><td><b>52/100</b></td><td class='up'>+1.18%</td><td class='up'>+2.15%</td><td class='up'>+3.02pt</td><td>最優先監視・初押し</td></tr><tr><td>4</td><td>生活必需品 <small>XLP</small></td><td><span class='pill in'>流入初期</span></td><td><b>49/100</b></td><td class='up'>+0.94%</td><td class='up'>+1.09%</td><td class='up'>+1.91pt</td><td>最優先監視・初押し</td></tr><tr><td>5</td><td>金融 <small>XLF</small></td><td><span class='pill '>中立</span></td><td><b>41/100</b></td><td class='down'>-0.17%</td><td class='up'>+0.27%</td><td class='up'>+0.38pt</td><td>方向確認待ち</td></tr><tr><td>6</td><td>不動産 <small>XLRE</small></td><td><span class='pill short'>流出</span></td><td><b>37/100</b></td><td class='down'>-0.62%</td><td class='down'>-1.74%</td><td class='down'>-0.30pt</td><td>新規ロング停止</td></tr><tr><td>7</td><td>一般消費財 <small>XLY</small></td><td><span class='pill short'>低迷</span></td><td><b>35/100</b></td><td class='down'>-1.24%</td><td class='down'>-2.63%</td><td class='up'>+0.83pt</td><td>見送り</td></tr><tr><td>8</td><td>情報技術・AI <small>XLK</small></td><td><span class='pill short'>流出</span></td><td><b>35/100</b></td><td class='down'>-0.84%</td><td class='down'>-1.18%</td><td class='down'>-1.73pt</td><td>新規ロング停止</td></tr><tr><td>9</td><td>素材 <small>XLB</small></td><td><span class='pill short'>流出</span></td><td><b>31/100</b></td><td class='down'>-1.98%</td><td class='down'>-1.61%</td><td class='down'>-0.72pt</td><td>新規ロング停止</td></tr><tr><td>10</td><td>資本財・工業 <small>XLI</small></td><td><span class='pill short'>流出</span></td><td><b>23/100</b></td><td class='down'>-2.16%</td><td class='down'>-7.41%</td><td class='down'>-1.91pt</td><td>新規ロング停止</td></tr><tr><td>11</td><td>公益 <small>XLU</small></td><td><span class='pill short'>流出</span></td><td><b>15/100</b></td><td class='down'>-3.28%</td><td class='down'>-3.93%</td><td class='down'>-6.33pt</td><td>新規ロング停止</td></tr></table>
+<table><tr><th>順位</th><th>業種ETF</th><th>資金段階</th><th>点数</th><th>5日相対</th><th>20日相対</th><th>勢い変化</th><th>行動</th></tr><tr><td>1</td><td>コミュニケーション <small>XLC</small></td><td><span class='pill long'>拡大</span></td><td><b>77/100</b></td><td class='up'>+3.36%</td><td class='up'>+4.93%</td><td class='up'>+3.15pt</td><td>順張り・押し目</td></tr><tr><td>2</td><td>エネルギー <small>XLE</small></td><td><span class='pill long'>拡大</span></td><td><b>73/100</b></td><td class='up'>+2.63%</td><td class='up'>+7.11%</td><td class='up'>+1.20pt</td><td>順張り・押し目</td></tr><tr><td>3</td><td>ヘルスケア <small>XLV</small></td><td><span class='pill in'>流入初期</span></td><td><b>54/100</b></td><td class='up'>+1.44%</td><td class='up'>+2.41%</td><td class='up'>+3.28pt</td><td>最優先監視・初押し</td></tr><tr><td>4</td><td>生活必需品 <small>XLP</small></td><td><span class='pill in'>流入初期</span></td><td><b>48/100</b></td><td class='up'>+0.73%</td><td class='up'>+0.88%</td><td class='up'>+1.70pt</td><td>最優先監視・初押し</td></tr><tr><td>5</td><td>金融 <small>XLF</small></td><td><span class='pill '>中立</span></td><td><b>42/100</b></td><td class='down'>-0.15%</td><td class='up'>+0.29%</td><td class='up'>+0.40pt</td><td>方向確認待ち</td></tr><tr><td>6</td><td>一般消費財 <small>XLY</small></td><td><span class='pill short'>低迷</span></td><td><b>36/100</b></td><td class='down'>-1.21%</td><td class='down'>-2.60%</td><td class='up'>+0.86pt</td><td>見送り</td></tr><tr><td>7</td><td>情報技術・AI <small>XLK</small></td><td><span class='pill short'>流出</span></td><td><b>36/100</b></td><td class='down'>-0.81%</td><td class='down'>-1.15%</td><td class='down'>-1.70pt</td><td>新規ロング停止</td></tr><tr><td>8</td><td>素材 <small>XLB</small></td><td><span class='pill short'>流出</span></td><td><b>34/100</b></td><td class='down'>-1.59%</td><td class='down'>-1.23%</td><td class='down'>-0.33pt</td><td>新規ロング停止</td></tr><tr><td>9</td><td>不動産 <small>XLRE</small></td><td><span class='pill short'>流出</span></td><td><b>34/100</b></td><td class='down'>-1.10%</td><td class='down'>-2.21%</td><td class='down'>-0.78pt</td><td>新規ロング停止</td></tr><tr><td>10</td><td>資本財・工業 <small>XLI</small></td><td><span class='pill short'>流出</span></td><td><b>24/100</b></td><td class='down'>-2.04%</td><td class='down'>-7.30%</td><td class='down'>-1.79pt</td><td>新規ロング停止</td></tr><tr><td>11</td><td>公益 <small>XLU</small></td><td><span class='pill short'>流出</span></td><td><b>14/100</b></td><td class='down'>-3.62%</td><td class='down'>-4.28%</td><td class='down'>-6.67pt</td><td>新規ロング停止</td></tr></table>
 <h3>日本株：TOPIXに対する相対強弱</h3>
 <table><tr><th>順位</th><th>業種群</th><th>資金段階</th><th>点数</th><th>5日相対</th><th>20日相対</th><th>勢い変化</th><th>20日線上比率</th><th>出来高比</th><th>先行銘柄</th><th>行動</th></tr><tr><td colspan='11'>日本株の業種群を計算できませんでした。</td></tr></table>
 <h3>セクター追い風＋流動性合格の個別株</h3>
@@ -500,7 +506,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   </div>
 </section>
 <!-- WEEKLY_REVIEW_END -->
-</main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>2026-09-16 00:15:17 JST</span></footer>
+</main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>2026-09-16 01:24:05 JST</span></footer>
 <script>
 const yen = v => Number(v).toLocaleString("ja-JP");
 const signedPct = (v, digits = 1) => Number.isFinite(Number(v))
