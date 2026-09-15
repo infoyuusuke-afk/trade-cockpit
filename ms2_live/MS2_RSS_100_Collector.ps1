@@ -267,6 +267,16 @@ function Get-IrMaterialAssessment([string]$title) {
     return [pscustomobject]@{ score=$score; label=$label; blocked=$blocked }
 }
 
+function Get-Utf8WebContent([string]$Uri, [int]$TimeoutSec = 15) {
+    # Invoke-WebRequestの.Contentは、HTTPヘッダーにcharsetが無くHTML内<meta>頼みのページ
+    # （TDnetがまさにこれ）では文字コード判定を誤り、日本語が文字化けすることを実機で確認した。
+    # TDnetの実ページは実際にはUTF-8（メタタグでも明示）のため、生バイトから明示的に
+    # UTF-8としてデコードする（2026-09-15・ユーザー指摘「IR急騰PTSが常に0件」の根本原因の一つ）。
+    $resp = Invoke-WebRequest -UseBasicParsing -TimeoutSec $TimeoutSec -Uri $Uri
+    $bytes = $resp.RawContentStream.ToArray()
+    return [System.Text.Encoding]::UTF8.GetString($bytes)
+}
+
 function Get-TdnetDisclosures([DateTime]$date) {
     # 無料のTDnet閲覧サービスを利用する。公式有料APIの代替ではないため、
     # 取得失敗時は推定せず空配列を返し、画面上で「確認待ち」にする。
@@ -274,8 +284,8 @@ function Get-TdnetDisclosures([DateTime]$date) {
     $base = 'https://www.release.tdnet.info/inbs/'
     $urls = @()
     try {
-        $main = Invoke-WebRequest -UseBasicParsing -TimeoutSec 15 -Uri ($base+'I_main_00.html')
-        foreach($match in [regex]::Matches([string]$main.Content,'(?i)(?:src|href)=["'']([^"'']*I_list_[^"'']+\.html[^"'']*)')) {
+        $main = Get-Utf8WebContent ($base+'I_main_00.html')
+        foreach($match in [regex]::Matches($main,'(?i)(?:src|href)=["'']([^"'']*I_list_[^"'']+\.html[^"'']*)')) {
             $href = [Net.WebUtility]::HtmlDecode($match.Groups[1].Value)
             if($href -notmatch '^https?://'){ $href = $base + $href.TrimStart('./') }
             $urls += $href
@@ -286,19 +296,26 @@ function Get-TdnetDisclosures([DateTime]$date) {
     }
     $found = @{}
     foreach($url in @($urls|Select-Object -Unique)) {
-        try { $html = [string](Invoke-WebRequest -UseBasicParsing -TimeoutSec 15 -Uri $url).Content } catch { continue }
+        try { $html = Get-Utf8WebContent $url } catch { continue }
         foreach($rowMatch in [regex]::Matches($html,'(?is)<tr\b[^>]*>(.*?)</tr>')) {
             $rowHtml = $rowMatch.Groups[1].Value
             $cells = @([regex]::Matches($rowHtml,'(?is)<td\b[^>]*>(.*?)</td>')|ForEach-Object{
                 [Net.WebUtility]::HtmlDecode(([regex]::Replace($_.Groups[1].Value,'<[^>]+>',' '))) -replace '\s+',' '
             }|ForEach-Object{$_.Trim()})
-            if($cells.Count -lt 3){continue}
-            $plain = ($cells -join ' | ')
-            $timeMatch = [regex]::Match($plain,'(?<!\d)(\d{2}:\d{2})(?!\d)')
-            $codeMatch = [regex]::Match($plain,'(?<![0-9A-Z])([0-9]{4}|[0-9]{3}[A-Z])(?![0-9A-Z])')
-            if(-not $timeMatch.Success -or -not $codeMatch.Success){continue}
-            $title = @($cells|Where-Object{$_.Length -ge 8 -and $_ -notmatch '^\d{2}:\d{2}$' -and $_ -notmatch '^([0-9]{4}|[0-9]{3}[A-Z])$'}|Sort-Object Length -Descending|Select-Object -First 1)[0]
+            # TDnetの列順は固定（時刻・コード・会社名・表題・...）。実機確認済み。
+            # コード欄は「4桁コード+検査数字1桁」（例: 82810）または
+            # 「3桁+英字+検査数字1桁」（例: 266A0）の5文字で、先頭4文字が実コード。
+            # 以前は全セル結合テキストから正規表現で汎用検索していたため、
+            # 表題内の西暦（例: "2026年"）を誤ってコードと誤認する不具合があった
+            # （2026-09-15実機確認・修正）。列位置を直接指定する方式に変更する。
+            if($cells.Count -lt 4){continue}
+            $timeMatch = [regex]::Match([string]$cells[0],'^(\d{2}:\d{2})$')
+            if(-not $timeMatch.Success){continue}
+            $codeMatch = [regex]::Match([string]$cells[1],'^([0-9]{4}|[0-9]{3}[A-Z])')
+            if(-not $codeMatch.Success){continue}
+            $title = [string]$cells[3]
             if([string]::IsNullOrWhiteSpace($title)){continue}
+            $nameGuess = [string]$cells[2]
             $link = $url
             $pdfMatch = [regex]::Match($rowHtml,'(?is)href=["'']([^"'']+\.pdf[^"'']*)')
             if($pdfMatch.Success){
@@ -306,7 +323,7 @@ function Get-TdnetDisclosures([DateTime]$date) {
                 if($link -notmatch '^https?://'){ $link=$base+$link.TrimStart('./') }
             }
             $key=$codeMatch.Groups[1].Value+'|'+$timeMatch.Groups[1].Value+'|'+$title
-            $found[$key]=[pscustomobject]@{code=$codeMatch.Groups[1].Value;time=$timeMatch.Groups[1].Value;title=$title;url=$link}
+            $found[$key]=[pscustomobject]@{code=$codeMatch.Groups[1].Value;time=$timeMatch.Groups[1].Value;title=$title;url=$link;name=$nameGuess}
         }
     }
     return @($found.Values|Sort-Object time -Descending)
@@ -485,6 +502,29 @@ Invoke-ExcelCom -Label "JNX見出し強調" -Action { $jnxSheet.Rows.Item(1).Fon
 Invoke-ExcelCom -Label "JNX列幅設定" -Action { $jnxSheet.Range("A:P").ColumnWidth = 14 } | Out-Null
 Invoke-ExcelCom -Label "JNXシート非表示" -Action { $jnxSheet.Visible = 0 } | Out-Null
 
+# 決算・IR開示があった銘柄（固定100銘柄リスト外を含む）を引け後に動的追跡するための専用シート。
+# TDnetで好材料判定された銘柄をその場でRssMarket式として追加し、100銘柄リストに
+# 偶然含まれていなくてもPTS反応を検知できるようにする（ユーザー指示: 2026-09-15）。
+# 固定100銘柄・KIOXIA_JNXシートの設定には一切触れない。起動時はヘッダーのみ作成し、
+# 数式は開示が来た時点で1銘柄ずつ追加する（起動時の一括COM負荷を避けるため）。
+$irDynamicCapacity = 30
+$irDynamicSheet = $null
+try {
+    $irDynamicSheet = Invoke-ExcelCom -Label "IR動的追跡シート確認" -Action { $book.Worksheets.Item("IR_DYNAMIC_PTS") }
+} catch {
+    $irDynamicSheet = Invoke-ExcelCom -Label "IR動的追跡シート作成" -Action { $book.Worksheets.Add() }
+    Invoke-ExcelCom -Label "IR動的追跡シート命名" -Action { $irDynamicSheet.Name = "IR_DYNAMIC_PTS" } | Out-Null
+}
+$irDynamicHeaders = @("コード","TSE現在値","JNX現在値","JNX時刻","出来高","VWAP","買気配","売気配","買数量","売数量","OVER","UNDER","歩み1","現在日付")
+for ($c=0; $c -lt $irDynamicHeaders.Count; $c++) {
+    $irHeaderCol = $c + 1
+    $irHeaderText = [string]$irDynamicHeaders[$c]
+    Invoke-ExcelCom -Label "IR動的見出し設定" -Action { $irDynamicSheet.Cells.Item(1,$irHeaderCol).Value2 = $irHeaderText } | Out-Null
+}
+Invoke-ExcelCom -Label "IR動的見出し強調" -Action { $irDynamicSheet.Rows.Item(1).Font.Bold = $true } | Out-Null
+Invoke-ExcelCom -Label "IR動的列幅設定" -Action { $irDynamicSheet.Range("A:N").ColumnWidth = 14 } | Out-Null
+Invoke-ExcelCom -Label "IR動的シート非表示" -Action { $irDynamicSheet.Visible = 0 } | Out-Null
+
 $dataRoot = Join-Path $PSScriptRoot "records"
 New-Item -ItemType Directory -Force -Path $dataRoot | Out-Null
 $holdHistoryPath = Join-Path $PSScriptRoot "overnight_hold_history.csv"
@@ -567,6 +607,7 @@ $tdnetDisclosures = @()
 $lastTdnetFetchAt = Get-Date "2000-01-01"
 $tdnetStatus = "取得待ち"
 $lastIrVoiceCodes = @{}
+$irDynamicSlots = @{}
 $lastSnapshotAt = Get-Date "2000-01-01"
 $activeDay = (Get-Date).ToString("yyyy-MM-dd")
 $loadedHoldDay = ""
@@ -605,7 +646,7 @@ try {
             $kioFlowCandidate=""; $lastKioFlowSpoken=""; $lastKioFlowSpokenAt=Get-Date "2000-01-01"
             $lastPreopenVoice=""; $lastOpenDecisionVoice=""
             $lastPtsBand=0; $lastPtsVoiceAt=Get-Date "2000-01-01"
-            $tdnetDisclosures=@(); $lastTdnetFetchAt=Get-Date "2000-01-01"; $tdnetStatus="取得待ち"; $lastIrVoiceCodes=@{}
+            $tdnetDisclosures=@(); $lastTdnetFetchAt=Get-Date "2000-01-01"; $tdnetStatus="取得待ち"; $lastIrVoiceCodes=@{}; $irDynamicSlots=@{}
             $loadedHoldDay=""; $holdFinalized=$false; $holdFinalizedAt=$null; $holdEntryCaptured=$false; $finalHoldTop5=@()
         }
         $dayDir = Join-Path $dataRoot $now.ToString("yyyy-MM-dd")
@@ -664,6 +705,33 @@ try {
                 $tdnetStatus="TDnet取得失敗・推定禁止"
             }
             $lastTdnetFetchAt=$now
+
+            # 引け後(15:30以降)の開示のうち好材料判定(スコア>0・非ブロック)の銘柄を、
+            # 固定100銘柄リスト外でも動的追跡枠(IR_DYNAMIC_PTS)へ登録する。
+            # 登録は新規銘柄1件ごとに数式十数個を追加するのみで、起動時のような
+            # 一括追加は行わないためCOM負荷は小さい。枠(既定30件)を超えたら追加しない。
+            $fixedTickerCodes = @($stocks | ForEach-Object { ($_.Ticker -replace '\.T$','') })
+            foreach ($disclosure in @($tdnetDisclosures)) {
+                if ([string]$disclosure.time -lt "15:30") { continue }
+                $dynCode = [string]$disclosure.code
+                if ($fixedTickerCodes -contains $dynCode) { continue }
+                if ($irDynamicSlots.ContainsKey($dynCode)) { continue }
+                if ($irDynamicSlots.Count -ge $irDynamicCapacity) { continue }
+                $dynAssessment = Get-IrMaterialAssessment ([string]$disclosure.title)
+                if ($dynAssessment.blocked -or [double]$dynAssessment.score -le 0) { continue }
+                $dynRowNum = $irDynamicSlots.Count + 2
+                $dynTseTicker = "$dynCode.T"; $dynJnxTicker = "$dynCode.JNX"
+                Invoke-ExcelCom -Label "IR動的コード設定" -Action { $irDynamicSheet.Cells.Item($dynRowNum,1).Value2 = $dynCode } | Out-Null
+                Invoke-ExcelCom -Label "IR動的TSE式設定" -Action { $irDynamicSheet.Cells.Item($dynRowNum,2).FormulaLocal = '=RssMarket("' + $dynTseTicker + '","現在値")' } | Out-Null
+                $dynJnxCols = @("現在値","現在値詳細時刻","出来高","出来高加重平均","最良買気配値","最良売気配値","最良買気配数量1","最良売気配数量1","OVER気配数量","UNDER気配数量","歩み1","現在日付")
+                for ($dynJc=0; $dynJc -lt $dynJnxCols.Count; $dynJc++) {
+                    $dynCol = $dynJc + 3
+                    $dynFormula = '=RssMarket("' + $dynJnxTicker + '","' + [string]$dynJnxCols[$dynJc] + '")'
+                    Invoke-ExcelCom -Label "IR動的JNX式設定" -Action { $irDynamicSheet.Cells.Item($dynRowNum,$dynCol).FormulaLocal = $dynFormula } | Out-Null
+                }
+                $irDynamicSlots[$dynCode] = $dynRowNum
+                Write-Host ("IR動的追跡に追加: " + $dynCode + "（" + $disclosure.name + "） " + $disclosure.title) -ForegroundColor Cyan
+            }
         }
 
         $valuePacket = Invoke-ExcelCom -Label "リアルタイム値取得" -Action {
@@ -1058,13 +1126,59 @@ try {
                 Add-Content -Encoding UTF8 -Path $ptsCsv -Value ($line -join ',')
             }
         }
-        $ptsTop5=@($ptsResults|Where-Object{$_.turnover -ge 10000000 -and $_.spread_pct -le 1 -and $_.stance -ne "方向確認待ち"}|Sort-Object expectation_score -Descending|Select-Object -First 5)
+
+        # IR動的追跡枠（固定100銘柄リスト外の開示銘柄）の実データを読み取り、
+        # 固定100銘柄と同じ計算式でPTSスコアを算出する。枠が未使用(0件)なら読み取り自体を省略する。
+        $dynamicPtsResults=@()
+        if ($irDynamicSlots.Count -gt 0) {
+            $irDynamicPacket = Invoke-ExcelCom -Label "IR動的値取得" -Action {
+                [pscustomobject]@{ Data = $irDynamicSheet.Range("A2:N31").Value2 }
+            }
+            $irDynamicValues = $irDynamicPacket.Data
+            foreach ($dynCode in @($irDynamicSlots.Keys)) {
+                $dynRowIdx = $irDynamicSlots[$dynCode] - 1
+                $dynRowCode = Get-TableValue $irDynamicValues $dynRowIdx 1 14
+                if ([string]::IsNullOrWhiteSpace([string]$dynRowCode)) { continue }
+                $dynTseClose = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 2 14) 0.01 10000000
+                $dynPtsPrice = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 3 14) 0.01 10000000
+                $dynPtsTime = Get-TimeText (Get-TableValue $irDynamicValues $dynRowIdx 4 14)
+                $dynPtsVolume = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 5 14) 0 1000000000000
+                $dynPtsVwap = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 6 14) 0 10000000
+                $dynPtsBid = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 7 14) 0 10000000
+                $dynPtsAsk = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 8 14) 0 10000000
+                $dynPtsOver = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 9 14) 0 1000000000000
+                $dynPtsUnder = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 10 14) 0 1000000000000
+                $dynPtsDate = Get-DateText (Get-TableValue $irDynamicValues $dynRowIdx 14 14)
+                if ($null -eq $dynPtsPrice -or $null -eq $dynPtsVolume -or $dynPtsVolume -le 0) { continue }
+                if ($null -eq $dynTseClose -or $dynTseClose -le 0) { continue }
+                if ($dynPtsDate -ne $now.ToString("yyyy-MM-dd")) { continue }
+                $dynGap = (($dynPtsPrice/$dynTseClose)-1)*100
+                $dynUnderRatio = if ($null -ne $dynPtsOver -and $null -ne $dynPtsUnder -and ($dynPtsOver+$dynPtsUnder) -gt 0) { $dynPtsUnder/($dynPtsOver+$dynPtsUnder)*100 } else { 50.0 }
+                $dynTurnover = $dynPtsPrice*$dynPtsVolume
+                $dynMid = if ($dynPtsBid -gt 0 -and $dynPtsAsk -gt 0) { ($dynPtsBid+$dynPtsAsk)/2 } else { $dynPtsPrice }
+                $dynSpreadPct = if ($dynMid -gt 0 -and $dynPtsBid -gt 0 -and $dynPtsAsk -gt 0) { ($dynPtsAsk-$dynPtsBid)/$dynMid*100 } else { 99 }
+                $dynVwapBias = if ($dynPtsVwap -gt 0) { (($dynPtsPrice/$dynPtsVwap)-1)*100 } else { 0 }
+                $dynDirectionScore = (Limit ($dynGap*10) -35 35)+(Limit ($dynVwapBias*15) -15 15)+(Limit (($dynUnderRatio-50)*1.2) -15 15)
+                $dynActivityScore = (Limit ([Math]::Log10(1+[Math]::Max(0,$dynTurnover/1000000))*12) 0 30)
+                $dynSpreadPenalty = Limit ($dynSpreadPct*18) 0 30
+                $dynSignedActivity = if ($dynDirectionScore -gt 0) { $dynActivityScore*0.55 } elseif ($dynDirectionScore -lt 0) { -$dynActivityScore*0.55 } else { 0 }
+                $dynBiasScore = Limit ($dynDirectionScore+$dynSignedActivity-($(if($dynDirectionScore -ge 0){$dynSpreadPenalty}else{-$dynSpreadPenalty}))) -100 100
+                $dynExpectation = [Math]::Abs($dynBiasScore)
+                $dynStance = if ($dynTurnover -lt 10000000) { "薄商い・対象外" } elseif ($dynSpreadPct -gt 1) { "スプレッド過大" } elseif ($dynBiasScore -ge 25) { "翌日上方向注目" } elseif ($dynBiasScore -le -25) { "翌日下方向警戒" } else { "方向確認待ち" }
+                $dynDisclosureMatch = $tdnetDisclosures | Where-Object { [string]$_.code -eq $dynCode } | Select-Object -First 1
+                $dynDisplayName = if ($dynDisclosureMatch -and -not [string]::IsNullOrWhiteSpace([string]$dynDisclosureMatch.name)) { "$($dynDisclosureMatch.name)（$dynCode）" } else { $dynCode }
+                $dynamicPtsResults += [pscustomobject]@{ticker="$dynCode.JNX";tse_ticker="$dynCode.T";name=$dynDisplayName;sector="開示銘柄(動的追跡)";pts_date=$dynPtsDate;exchange_time=$dynPtsTime;price=$dynPtsPrice;tse_close=$dynTseClose;gap_pct=[Math]::Round($dynGap,2);volume=$dynPtsVolume;tse_volume=0;pts_volume_ratio=0;turnover=[Math]::Round($dynTurnover);vwap=$dynPtsVwap;bid=$dynPtsBid;ask=$dynPtsAsk;spread_pct=[Math]::Round($dynSpreadPct,3);over=$dynPtsOver;under=$dynPtsUnder;under_ratio=[Math]::Round($dynUnderRatio,1);last_tick=$null;bias_score=[Math]::Round($dynBiasScore);expectation_score=[Math]::Round($dynExpectation);stance=$dynStance;state="IR動的追跡"}
+            }
+        }
+        $combinedPtsResults = @($ptsResults + $dynamicPtsResults)
+
+        $ptsTop5=@($combinedPtsResults|Where-Object{$_.turnover -ge 10000000 -and $_.spread_pct -le 1 -and $_.stance -ne "方向確認待ち"}|Sort-Object expectation_score -Descending|Select-Object -First 5)
         $irPtsCandidates=@()
         foreach($disclosure in @($tdnetDisclosures)) {
             if([string]$disclosure.time -lt "15:30"){continue}
             $assessment=Get-IrMaterialAssessment ([string]$disclosure.title)
             if($assessment.blocked -or [double]$assessment.score -le 0){continue}
-            $ptsMatch=$ptsResults|Where-Object{($_.tse_ticker -replace '\.T$','') -eq [string]$disclosure.code}|Select-Object -First 1
+            $ptsMatch=$combinedPtsResults|Where-Object{($_.tse_ticker -replace '\.T$','') -eq [string]$disclosure.code}|Select-Object -First 1
             if($null -eq $ptsMatch){continue}
             if([double]$ptsMatch.turnover -lt 10000000 -or [double]$ptsMatch.spread_pct -gt 1.5 -or [double]$ptsMatch.gap_pct -lt 1 -or [double]$ptsMatch.bias_score -le 0){continue}
             $total=Limit (([double]$assessment.score*1.4)+[double]$ptsMatch.expectation_score) 0 100
