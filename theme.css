@@ -140,7 +140,11 @@ body .unified-mode.live strong{color:#f4d77e}
 @media(max-width:600px){#ms2-common-status .top{grid-template-columns:1fr auto}#ms2-common-status .signal{grid-column:1/-1}.ms2-metrics{grid-template-columns:1fr;gap:0}}
 
 /* APPLE-STYLE TYPOGRAPHY v1: use installed fonts; no proprietary webfont redistribution. */
-:root{--cockpit-font:"SF Pro JP","SF Pro Display",-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic Pro","Hiragino Sans","ヒラギノ角ゴ Pro W3",Meiryo,"メイリオ","Helvetica Neue",Helvetica,Arial,sans-serif}
+/* TRADING VIEW STYLE FONT v1: matches the live font-family computed on tradingview.com/chart/
+   (-apple-system,BlinkMacSystemFont,"Trebuchet MS",Roboto,Ubuntu,sans-serif) verbatim, with
+   Japanese fallbacks inserted before the generic sans-serif since TradingView itself is
+   Latin-script only and this cockpit is not. */
+:root{--cockpit-font:-apple-system,BlinkMacSystemFont,"Trebuchet MS",Roboto,Ubuntu,"Hiragino Kaku Gothic Pro","Hiragino Sans","ヒラギノ角ゴ Pro W3",Meiryo,"メイリオ",sans-serif}
 body,button,input,select,textarea{font-family:var(--cockpit-font);-webkit-font-smoothing:antialiased}
 body{font-weight:400;letter-spacing:normal}
 /* TRADING VIEW STYLE NUMERALS v1: fixed-width digits so price columns/ladders align like a real trading app. */
