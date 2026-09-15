@@ -29,3 +29,7 @@
 #kio-best-path{background:#101012;border-color:#3a3a3d}
 .kio-monitor-grid span,.kio-monitor-grid small,.kio-ms2-grid span,.kio-ms2-grid small,.kio-subpanel>p,.kio-catalyst small,.kio-catalyst p{color:#b5b5ba}
 @media(max-width:760px){.focus-dashboard{padding:18px;border-radius:20px}.focus-topbar{flex-wrap:wrap;gap:12px}.focus-topbar h2{font-size:25px}.focus-picks{grid-template-columns:1fr}.focus-pick small{font-size:12px}.focus-price-grid span{font-size:12px}}
+
+/* POWER GRADIENT v1: match main theme while retaining directional chart colors. */
+.focus-action{background:var(--power-surface);border-color:#9c9879}.focus-action strong{color:#f4d77e}.focus-eyebrow{color:#eacb83}
+@supports(background-clip:text){.focus-action strong{background-image:var(--power-gradient);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}}
