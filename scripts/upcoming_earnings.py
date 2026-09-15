@@ -101,7 +101,7 @@ def fetch_html_rendered(url: str) -> str:
 def parse_companies(html: str) -> list[dict]:
     record("pandas.read_html", status="started")
     try:
-        tables = pd.read_html(io.StringIO(html))
+        tables = pd.read_html(io.StringIO(html), flavor="lxml")
     except ValueError as exc:
         record("pandas.read_html", status="no_tables", exception=type(exc).__name__, message=str(exc))
         return []
