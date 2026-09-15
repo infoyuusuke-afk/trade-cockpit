@@ -143,6 +143,9 @@ body .unified-mode.live strong{color:#f4d77e}
 :root{--cockpit-font:"SF Pro JP","SF Pro Display",-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic Pro","Hiragino Sans","ヒラギノ角ゴ Pro W3",Meiryo,"メイリオ","Helvetica Neue",Helvetica,Arial,sans-serif}
 body,button,input,select,textarea{font-family:var(--cockpit-font);-webkit-font-smoothing:antialiased}
 body{font-weight:400;letter-spacing:normal}
+/* TRADING VIEW STYLE NUMERALS v1: fixed-width digits so price columns/ladders align like a real trading app. */
+body{font-variant-numeric:tabular-nums}
+table{font-variant-numeric:tabular-nums}
 header h1,.pane-intro h2,.card h2,.card h3,.focus-topbar h2,.focus-symbol h3{font-weight:600;letter-spacing:normal}
 .cockpit-tab,.tag,.pill,.ms2-health,.ms2-download{font-weight:600;letter-spacing:normal}
 .rotation-box strong,.ms2-metrics b,.ms2-live-card .live-price,.ifo-score,.focus-pick strong,td b,.up,.down{font-weight:600}
