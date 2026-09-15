@@ -1,6 +1,6 @@
 # trade-cockpit STATUS
 
-最終更新: 2026-09-15（Claude・ユーザーが製品ビジョン確定。キオクシアタブをExcel Watcherデータで一本化）
+最終更新: 2026-09-15（Claude・決算カレンダーの2系統重複を統合。ユーザーが製品ビジョン確定）
 役割分担確定：ChatGPT=戦略の壁打ちのみ（リポジトリは変更しない）／Claude=実コーディング担当
 運用体制: ChatGPT（戦略・相場観）＋ Claude/Claude Code（コーディング・診断）＋ Genspark（必要時のみ、現在未課金）
 
@@ -1013,6 +1013,48 @@ http://127.0.0.1:28581/kioxia_watcher_live.json が全項目実データで応�
 [docs/AI_SHARED_SHEET.md「製品ビジョン・全体要件」セクション](docs/AI_SHARED_SHEET.md)に記載した。
 実装はChatGPTの戦略回答を待って着手する。ワンタップ確定・実発注機能は安全設計が特に重要なため、
 着手前に改めてユーザーの承認を得る。
+
+## 決算カレンダーの2系統統合（2026-09-15）
+
+ユーザーから「決算カレンダーの2系統統合」を指示された。以前から`scripts/upcoming_earnings.py`
+（Claude製）と`scripts/earnings_calendar.py`（Codex製）が並行して存在し、公開コクピットにも
+別々のパネルとして表示されていた問題（C-025で指摘・放置していた）への対応。
+
+調べた結果、単純な重複ではなく役割が異なっていた：
+
+- `earnings_calendar.py`：JPX予定表（今日から60日先まで）＋TDnet開示のキーワード分類
+  （上方修正/下方修正/増配/減配等）で「好材料あり／警戒材料あり」を判定。カバレッジが広いが、
+  方向性の的中率を検証する仕組みがなかった
+- `upcoming_earnings.py`：JPX翌営業日分のみでカバレッジは狭いが、株価モメンタムに基づく
+  方向レーンを出し、その的中率を継続的に自己検証（resolved_n・hit_rate_pct）していた
+
+ユーザーに3つの統合案（①earnings_calendar.pyへ一本化しupcoming_earnings.pyは廃止、
+②データは両方残し表示だけ一つに、③モメンタム・検証ループをearnings_calendar.pyへ完全統合）を
+提示し、③を選択された。
+
+**実装**：`momentum_lean`・`load_log`・`save_log`・`resolve_pending`を`earnings_calendar.py`へ
+ロジック変更なしで移植し、新規に`apply_momentum`関数を追加。カレンダー中「直近で最も近い次の
+決算発表日」に該当する銘柄だけにモメンタムレーンを付与する（60日分全銘柄に付けると計算コストが
+大きく、決算直前の参考情報という原意からも外れるため）。予測ログ`data/earnings_predictions_log.json`
+は同じパスを使い続け、過去の検証履歴をそのまま引き継いでいる。
+
+**副次的に直ったバグ**：旧`upcoming_earnings.py`は「翌営業日」を`今日+1暦日`で計算していたため、
+週末を挟むとJPXが実際に示す翌営業日（例: 金曜なら月曜）とズレる可能性があった。統合版は
+JPX日程表が持つ銘柄ごとの実際の発表日を直接参照するため、このズレは発生しない。
+
+**表示側**：`earnings-calendar.js`（Codexの決算カレンダータブ）に、モメンタムレーンと
+的中率検証状況の表示を追加。`update.py`から重複していた旧パネル（試運転・決算発表予定候補）と
+そのJSフェッチを削除した。
+
+**削除したファイル**：`scripts/upcoming_earnings.py`、`tests/test_upcoming_earnings.py`、
+`.github/workflows/upcoming-earnings.yml`、`upcoming_earnings.json`。
+
+**テスト**：`tests/test_earnings_calendar.py`にログ往復・的中判定・対象日選定のテストを追加
+（yfinance呼び出しはモック化、ネットワーク接続不要）。
+
+**正直な制約**：この開発環境にPythonが導入されておらずローカル実行・構文チェックができていない
+（括弧の対応関係を目視で確認したのみ）。GitHub Actions上の次回実行（`earnings-calendar.yml`が
+`test_earnings_calendar.py`を実行してから本番取得する）が実質的な初検証になる。
 
 ## 現在の未決事項・注意点
 

@@ -36,6 +36,10 @@
     const age=(Date.now()-Date.parse(data.updated_at))/3600000;
     find('ec-status').textContent=`更新 ${data.updated_at.replace('T',' ')} ／ ${data.coverage_note}`;
     if(age>26 || data.errors.length){text(find('ec-status'),'div',(age>26?'更新から26時間超・鮮度注意。 ':'')+(data.errors.length?'一部の取得に失敗。確認できた範囲のみ表示。':''),'ec-error');}
+    if(data.momentum_target_date){
+      const v=data.momentum_validation||{};
+      text(find('ec-status'),'div',`モメンタムレーン対象日 ${data.momentum_target_date}（${v.status||'未確認'}／resolved_n=${v.resolved_n??0}${v.hit_rate_pct!=null?'／的中率'+v.hit_rate_pct+'%（参考）':''}）`,'ec-note');
+    }
     function render(){
       const watched=find('ec-watched').checked;
       const events=data.calendar.filter(x=>(!watched||x.watched)&&x.date.startsWith(month.value));
@@ -52,7 +56,7 @@
       const list=find('ec-events');list.replaceChildren();find('ec-date-title').textContent=(selected||month.value)+' の決算予定';
       const shown=events.filter(x=>!selected||x.date===selected);
       if(!shown.length)text(list,'p',data.calendar_status==='error'?'JPX予定を取得できませんでした。株探・会社IRで確認してください。':'取得したJPX掲載範囲に予定がありません。全市場の決算なしを意味しません。','ec-note');
-      shown.slice(0,100).forEach(x=>{const item=text(list,'div','','ec-item');text(item,'strong',`${x.date}　${x.name}（${x.code}）${x.watched?' ★監視':''}`);text(item,'div',x.analysis.label);text(item,'div',x.analysis.note,'ec-note');link(item,'JPX原資料',x.source_url);const details=text(item,'details','');text(details,'summary','上方修正・決算材料の確認ポイント');x.analysis.checks.forEach(c=>text(details,'div','・'+c));x.analysis.evidence_urls.forEach(u=>link(details,'関連開示',u));});
+      shown.slice(0,100).forEach(x=>{const item=text(list,'div','','ec-item');text(item,'strong',`${x.date}　${x.name}（${x.code}）${x.watched?' ★監視':''}`);text(item,'div',x.analysis.label);text(item,'div',x.analysis.note,'ec-note');if(x.momentum){const m=x.momentum;text(item,'div',m.available?`モメンタムレーン: ${m.momentum_direction}（直近5日${m.return_5d_pct==null?'—':(m.return_5d_pct>=0?'+':'')+m.return_5d_pct+'%'}）`:`モメンタムレーン: 取得不可（${m.reason||'—'}）`,'ec-note');}link(item,'JPX原資料',x.source_url);const details=text(item,'details','');text(details,'summary','上方修正・決算材料の確認ポイント');x.analysis.checks.forEach(c=>text(details,'div','・'+c));x.analysis.evidence_urls.forEach(u=>link(details,'関連開示',u));});
       if(shown.length>100)text(list,'p','先頭100社を表示。日付を選択すると絞り込めます。');
       const catalysts=find('ec-catalysts');catalysts.replaceChildren();
       const items=data.catalysts.filter(x=>!watched||x.watched);

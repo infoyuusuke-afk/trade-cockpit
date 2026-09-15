@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.parse import urljoin
 
 import pandas as pd
+import yfinance as yf
 from lxml import html as LH
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +21,13 @@ JPX = 'https://www.jpx.co.jp/listing/event-schedules/financial-announcement/inde
 TDNET = 'https://www.release.tdnet.info/inbs/'
 OUT = ROOT / 'earnings_calendar.json'
 EVIDENCE = ROOT / 'artifacts/earnings-calendar'
+
+# モメンタムレーン＋的中率自己検証（旧scripts/upcoming_earnings.pyより統合、2026-09-15）。
+# 2系統に分かれていた決算カレンダーをこのファイルへ一本化する際、upcoming_earnings.py
+# 独自の価値だった「方向レーンの継続的な的中率検証」だけを移植した。ログファイルは
+# 同じパスを使い続けることで、これまでの検証履歴を引き継ぐ。
+LOG_PATH = ROOT / 'data/earnings_predictions_log.json'
+MOMENTUM_MIN_N = 20
 
 
 def fetch(url):
@@ -208,6 +216,133 @@ def analysis(event, items):
             'note': '直近開示の整理。次回上方修正や株価上昇の予測ではありません。'}
 
 
+def momentum_lean(code):
+    """直近モメンタムに基づく仮説的な方向レーン。決算内容そのものの予測ではない。
+    旧upcoming_earnings.pyから移植（ロジックは変更していない）。"""
+    ticker = code + '.T'
+    try:
+        raw = yf.download(ticker, period='30d', interval='1d', auto_adjust=False, progress=False)
+        if raw is None or raw.empty or len(raw) < 6:
+            return {'available': False, 'reason': '価格データ不足'}
+        closes = raw['Close'].dropna()
+        if hasattr(closes, 'squeeze'):
+            closes = closes.squeeze()
+        last = float(closes.iloc[-1])
+        ret5 = (last / float(closes.iloc[-6]) - 1) * 100 if len(closes) >= 6 else None
+        ret20 = (last / float(closes.iloc[-21]) - 1) * 100 if len(closes) >= 21 else None
+        lean_source = ret5 if ret5 is not None else ret20
+        if lean_source is None:
+            direction = '中立'
+        elif lean_source >= 2:
+            direction = '上昇レーン（モメンタムのみ・決算内容は未考慮）'
+        elif lean_source <= -2:
+            direction = '下落レーン（モメンタムのみ・決算内容は未考慮）'
+        else:
+            direction = '中立'
+        return {
+            'available': True,
+            'last_close': round(last, 1),
+            'return_5d_pct': round(ret5, 2) if ret5 is not None else None,
+            'return_20d_pct': round(ret20, 2) if ret20 is not None else None,
+            'momentum_direction': direction,
+        }
+    except Exception as e:  # noqa: BLE001
+        return {'available': False, 'reason': str(e)}
+
+
+def load_log():
+    if not LOG_PATH.exists():
+        return []
+    try:
+        return json.loads(LOG_PATH.read_text(encoding='utf-8'))
+    except Exception:
+        return []
+
+
+def save_log(log):
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    LOG_PATH.write_text(json.dumps(log, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+
+def resolve_pending(log, today):
+    """target_dateを過ぎた過去の予想について、実際の値動きを取得し的中判定を確定する。"""
+    for entry in log:
+        if entry.get('status') != 'pending':
+            continue
+        try:
+            target = datetime.strptime(entry['target_date'], '%Y-%m-%d').date()
+        except Exception:
+            continue
+        if target >= today:
+            continue  # まだ結果が出る日を迎えていない
+        ticker = entry['code'] + '.T'
+        try:
+            raw = yf.download(ticker, period='10d', interval='1d', auto_adjust=False, progress=False)
+            if raw is None or raw.empty:
+                continue
+            raw = raw[raw.index.date >= target]
+            if len(raw) < 2:
+                continue
+            before = float(raw['Close'].iloc[0])
+            after = float(raw['Close'].iloc[1])
+            actual_pct = (after / before - 1) * 100
+            actual_direction = '上昇' if actual_pct > 0.5 else ('下落' if actual_pct < -0.5 else '中立')
+            predicted = entry.get('momentum_direction', '')
+            hit = (
+                ('上昇' in predicted and actual_direction == '上昇')
+                or ('下落' in predicted and actual_direction == '下落')
+                or (predicted == '中立' and actual_direction == '中立')
+            )
+            entry['status'] = 'resolved'
+            entry['actual_return_pct'] = round(actual_pct, 2)
+            entry['actual_direction'] = actual_direction
+            entry['hit'] = hit
+        except Exception:  # noqa: BLE001
+            continue
+    return log
+
+
+def apply_momentum(events, today):
+    """カレンダー中、直近で最も近い『次の決算発表日』の銘柄だけにモメンタムレーンを付与する。
+    60日先まで全銘柄に付けると計算コストが大きく、決算直前の参考情報という原意からも外れるため。
+    JPXの日程表は銘柄ごとに実際の発表日を持つので、旧upcoming_earnings.pyが抱えていた
+    『翌営業日』とカレンダー上の翌暦日のズレ（土日を挟むと不一致になる）は発生しない。"""
+    future_dates = sorted({e['date'] for e in events if e['date'] > today.isoformat()})
+    target_date = future_dates[0] if future_dates else None
+    log = load_log()
+    existing_keys = {(e.get('code'), e.get('target_date')) for e in log}
+    if target_date:
+        for event in events:
+            if event['date'] != target_date:
+                continue
+            momentum = momentum_lean(event['code'])
+            event['momentum'] = momentum
+            key = (event['code'], target_date)
+            if key not in existing_keys and momentum.get('available'):
+                log.append({
+                    'code': event['code'],
+                    'name': event['name'],
+                    'target_date': target_date,
+                    'logged_at': datetime.now(JST).strftime('%Y-%m-%d %H:%M:%S JST'),
+                    'momentum_direction': momentum.get('momentum_direction'),
+                    'return_5d_pct': momentum.get('return_5d_pct'),
+                    'status': 'pending',
+                })
+    log = resolve_pending(log, today)
+    save_log(log)
+    resolved = [e for e in log if e.get('status') == 'resolved']
+    n = len(resolved)
+    hits = sum(1 for e in resolved if e.get('hit'))
+    hit_rate = round(hits / n * 100, 1) if n else None
+    validation = {
+        'resolved_n': n,
+        'hit_rate_pct': hit_rate,
+        'min_n_threshold': MOMENTUM_MIN_N,
+        'status': '参考値（要検証）' if n >= MOMENTUM_MIN_N else '試運転・検証中（サンプル不足）',
+    }
+    return target_date, validation
+
+
 def main():
     now = datetime.now(JST)
     EVIDENCE.mkdir(parents=True, exist_ok=True)
@@ -227,13 +362,18 @@ def main():
         event['analysis'] = analysis(event, items)
     for item in items:
         item['watched'] = item['code'] in watched
+    momentum_target_date, momentum_validation = apply_momentum(events, now.date())
     result = {'schema_version': 1, 'updated_at': now.isoformat(), 'calendar': events,
               'catalysts': sorted(items, key=lambda x:x['published_at'], reverse=True),
               'sources': sources, 'disclosure_coverage': coverage, 'errors': errors,
               'calendar_status': 'error' if any(e.get('source') == 'JPX' for e in errors) else 'ok',
               'coverage_note': 'JPX掲載月次表の前7日〜先60日（掲載対象のみ、全銘柄網羅ではない）。TDnetは直近4暦日・各日最大8ページ。',
               'kabutan_calendar_url': 'https://s.kabutan.jp/warnings/news_schedule/',
-              'analysis_note': '上方修正等は表題で明示されたものだけ分類。方向不明の修正は要確認。確率や決算前の上昇予測は未算出。'}
+              'analysis_note': '上方修正等は表題で明示されたものだけ分類。方向不明の修正は要確認。確率や決算前の上昇予測は未算出。',
+              'momentum_target_date': momentum_target_date,
+              'momentum_validation': momentum_validation,
+              'momentum_note': 'momentum_directionは決算内容そのものの予測ではなく、直近5日/20日の株価モメンタムのみに'
+                                '基づく仮説的な参考値。カレンダー中、直近の発表日の銘柄だけに付与する。'}
     OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
     print(json.dumps({'calendar': len(events), 'catalysts': len(items), 'errors': errors}, ensure_ascii=False))
     # Always publish fresh source status; the workflow validates health after committing.

@@ -2614,20 +2614,6 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div class="step"><b>3　未確定は取引禁止</b>公式日程や対象銘柄を確認できるまで、予想日を売買根拠にしない。</div>
  <div class="step"><b>4　価格で最終確認</b>イベント後もOR15・VWAP・出来高・先物を見て当日の方向を再判定。</div>
 </div></section>
-<section id="upcoming-earnings" class="card wide"><h2>決算発表予定・注目候補（試運転）</h2>
-<div id="earnings-meta" class="sub">JPX公式「翌営業日決算発表予定会社」を確認中...</div>
-<div class="event-summary">
- <div><span>対象日</span><b id="earnings-target-date">—</b></div>
- <div><span>候補件数</span><b id="earnings-count">—</b></div>
- <div><span>方向レーン検証状況</span><b id="earnings-validation">—</b></div>
-</div>
-<div class="event-table-wrap"><table><thead><tr><th>コード</th><th>会社名</th><th>既存監視</th><th>直近5日</th><th>直近20日</th><th>モメンタムレーン（未検証）</th></tr></thead><tbody id="earnings-rows"><tr><td colspan="6">取得中...</td></tr></tbody></table></div>
-<div class="steps">
- <div class="step"><b>1　JPX公式・翌営業日のみ</b>2日以上先の確定リストは無料の公式ソースから取得できない。3月期・9月期決算会社が対象で、該当日はゼロのことも多い。</div>
- <div class="step"><b>2　モメンタムレーンは決算予測ではない</b>直近の株価モメンタムだけの仮説的な参考値。増減益・ガイダンス・コンセンサスは一切考慮していない。</div>
- <div class="step"><b>3　試運転中は的中率を信用しない</b>resolved_nが閾値に届くまで「試運転・検証中」表示を維持し、優位性が確立したかのように扱わない。</div>
- <div class="step"><b>4　ChatGPTの定性検討と合わせて判断</b>このリストは共有シート経由でChatGPTへ共有し、決算内容を踏まえた検討コメントを別途求める運用。</div>
-</div></section>
 <section id="correlation-monitor" class="card wide"><h2>当日デイトレ・相関／逆相関／先行銘柄</h2>
 <div id="correlation-meta" class="sub">日足20・60営業日と5分足の関係を更新中...</div>
 <label style="display:inline-flex;gap:8px;align-items:center;margin:10px 0;color:#9db0bc">主役銘柄
@@ -3112,24 +3098,6 @@ fetch("event_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("event-level").textContent = "取得失敗";
   document.getElementById("event-rule").textContent = "イベントを確認できないため、イベント需給を根拠に売買しません。";
   document.getElementById("event-upcoming").innerHTML = "<tr><td colspan='13'>データ取得待ち</td></tr>";
-}});
-fetch("upcoming_earnings.json?t=" + Date.now()).then(r => r.json()).then(d => {{
-  document.getElementById("earnings-meta").textContent = (d.fetch_error ? "取得エラー：" + eventEsc(d.fetch_error) + "／" : "") + d.source_note + "／更新 " + d.updated_at;
-  document.getElementById("earnings-target-date").textContent = d.target_date || "—";
-  const picks = d.picks || [];
-  document.getElementById("earnings-count").textContent = picks.length + "件";
-  const v = d.validation || {{}};
-  document.getElementById("earnings-validation").textContent = (v.status || "未確認") + "（resolved_n=" + (v.resolved_n ?? 0) + (v.hit_rate_pct != null ? "／的中率" + v.hit_rate_pct + "%（参考）" : "") + "）";
-  const rows = picks.map(x =>
-    "<tr><td><b>"+eventEsc(x.code)+"</b></td><td>"+eventEsc(x.name)+"</td><td>"+(x.in_existing_watchlist?"監視中":"—")+
-    "</td><td>"+(x.return_5d_pct==null?"—":(x.return_5d_pct>=0?"+":"")+x.return_5d_pct+"%")+
-    "</td><td>"+(x.return_20d_pct==null?"—":(x.return_20d_pct>=0?"+":"")+x.return_20d_pct+"%")+
-    "</td><td>"+eventEsc(x.momentum_direction || x.reason || "データなし")+"</td></tr>"
-  ).join("");
-  document.getElementById("earnings-rows").innerHTML = rows || "<tr><td colspan='6'>本日時点、翌営業日の該当銘柄なし（3月期・9月期決算会社のみ対象のため、季節的にゼロの日も多い）</td></tr>";
-}}).catch(() => {{
-  document.getElementById("earnings-meta").textContent = "取得失敗";
-  document.getElementById("earnings-rows").innerHTML = "<tr><td colspan='6'>データ取得待ち</td></tr>";
 }});
 const corrText = v => v == null ? "—" : (v >= 0 ? "+" : "") + Number(v).toFixed(2);
 const todayText = x => {{

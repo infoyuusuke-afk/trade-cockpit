@@ -1,7 +1,9 @@
 import importlib.util
+import tempfile
 import unittest
 from datetime import date, datetime
 from pathlib import Path
+from unittest.mock import patch
 import pandas as pd
 
 spec=importlib.util.spec_from_file_location('ec', Path(__file__).parents[1]/'scripts/earnings_calendar.py')
@@ -28,5 +30,40 @@ class CalendarTests(unittest.TestCase):
         self.assertEqual(rows[0]['code'],'285A');self.assertIn('上方修正',rows[0]['tags'])
     def test_no_disclosure_does_not_invent_probability(self):
         a=ec.analysis({'code':'285A'},[]);self.assertIsNone(a['upward_revision_probability'])
+
+class MomentumTests(unittest.TestCase):
+    """旧scripts/upcoming_earnings.pyから移植したモメンタムレーン・的中率検証の統合分。"""
+    def test_load_save_log_roundtrip(self):
+        with tempfile.TemporaryDirectory() as d:
+            with patch.object(ec, 'LOG_PATH', Path(d)/'log.json'):
+                self.assertEqual(ec.load_log(), [])
+                ec.save_log([{'code': '285A'}])
+                self.assertEqual(ec.load_log(), [{'code': '285A'}])
+
+    def test_resolve_pending_marks_hit(self):
+        entry = {'code': '285A', 'target_date': '2026-09-01',
+                  'momentum_direction': '上昇レーン（モメンタムのみ・決算内容は未考慮）', 'status': 'pending'}
+        df = pd.DataFrame({'Close': [100.0, 105.0]}, index=pd.to_datetime(['2026-09-01', '2026-09-02']))
+        with patch.object(ec.yf, 'download', return_value=df):
+            resolved = ec.resolve_pending([entry], date(2026, 9, 15))
+        self.assertEqual(resolved[0]['status'], 'resolved')
+        self.assertTrue(resolved[0]['hit'])
+
+    def test_resolve_pending_leaves_future_target_untouched(self):
+        entry = {'code': '285A', 'target_date': '2099-01-01', 'status': 'pending'}
+        resolved = ec.resolve_pending([entry], date(2026, 9, 15))
+        self.assertEqual(resolved[0]['status'], 'pending')
+
+    def test_apply_momentum_targets_nearest_future_date_only(self):
+        events = [{'code': '285A', 'name': 'K', 'date': '2026-09-16'},
+                  {'code': '7203', 'name': 'T', 'date': '2026-09-20'}]
+        with tempfile.TemporaryDirectory() as d, \
+             patch.object(ec, 'LOG_PATH', Path(d)/'log.json'), \
+             patch.object(ec, 'momentum_lean', return_value={'available': True, 'momentum_direction': '中立', 'return_5d_pct': 0.1}):
+            target_date, validation = ec.apply_momentum(events, date(2026, 9, 15))
+        self.assertEqual(target_date, '2026-09-16')
+        self.assertIn('momentum', events[0])
+        self.assertNotIn('momentum', events[1])
+        self.assertEqual(validation['min_n_threshold'], ec.MOMENTUM_MIN_N)
 
 if __name__=='__main__':unittest.main()
