@@ -7,8 +7,12 @@ MS2 RSSには市場全体のランキング（値上がり率・出来高急増�
 （ms2_live/watchlist_100.json）に入っていない銘柄の急騰・出来高急増は、
 このリポジトリの既存パイプラインでは検知できていなかった。
 
-Yahoo!ファイナンスの公開ランキングページ（値上がり率・出来高急増率・売買代金上位）
-を取得し、固定ウォッチリストに無い銘柄を一覧化する。
+Yahoo!ファイナンスの公開ランキングページ（値上がり率・値下がり率・出来高急増率・
+売買代金上位）を取得し、固定ウォッチリストに無い銘柄を一覧化する。値下がり率は
+2026-09-16にユーザーから追加依頼（ストップ安・小型株の急落も拾いたい）があり
+追加した。ストップ高・ストップ安銘柄は定義上、値上がり率／値下がり率ランキングの
+上位に現れるため、この2つを両方見ることが固定100銘柄ウォッチリスト外の急騰・
+急落を拾う最も直接的な方法になる。
 
 ## 正直な制約
 - Yahoo!ファイナンスの遅延/日次データであり、MS2 RSSのリアルタイムデータではない。
@@ -33,6 +37,7 @@ OUT_PATH = ROOT / "market_ranking_watch.json"
 
 RANKINGS = [
     ("up", "値上がり率", "https://finance.yahoo.co.jp/stocks/ranking/up?market=tokyo1"),
+    ("down", "値下がり率", "https://finance.yahoo.co.jp/stocks/ranking/down?market=tokyo1"),
     ("volume_increase", "出来高急増率", "https://finance.yahoo.co.jp/stocks/ranking/volumeIncrease?market=all"),
     ("trading_value", "売買代金上位", "https://finance.yahoo.co.jp/stocks/ranking/tradingValueHigh?market=all"),
 ]
@@ -162,7 +167,7 @@ def main() -> None:
     payload = {
         "schema_version": "market-ranking-watch-1.0",
         "updated_at": now.strftime("%Y-%m-%d %H:%M:%S JST"),
-        "source": "Yahoo!ファイナンス 日本株ランキング（値上がり率/出来高急増率/売買代金上位）",
+        "source": "Yahoo!ファイナンス 日本株ランキング（値上がり率/値下がり率/出来高急増率/売買代金上位）",
         "note": (
             "参考・未検証。MS2 RSSのリアルタイムデータではなくYahoo!ファイナンスの"
             "遅延/日次データ。$buy/$short判定・音声通知には一切使用しない。"

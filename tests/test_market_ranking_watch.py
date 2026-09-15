@@ -57,6 +57,13 @@ SAMPLE_HTML = """
 EMPTY_HTML = "<html><body><p>no table here</p></body></html>"
 
 
+class RankingsConfigTests(unittest.TestCase):
+    def test_includes_both_up_and_down_for_stop_high_and_stop_low(self):
+        keys = [key for key, _, _ in mrw.RANKINGS]
+        self.assertIn("up", keys)
+        self.assertIn("down", keys)
+
+
 class ParseRankingHtmlTests(unittest.TestCase):
     def test_parses_two_rows_in_order(self):
         rows = mrw.parse_ranking_html(SAMPLE_HTML)
