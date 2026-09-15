@@ -193,6 +193,7 @@ def render(reviews: list[dict], stats: dict, message: str) -> str:
     for x in reviews:
         pnl = "—" if x["pnl_yen"] is None else f'{x["pnl_yen"]:+,}円'
         r = "—" if x["r"] is None else f'{x["r"]:+.2f}R'
+        pnl_class = "" if x["pnl_yen"] is None else ("up" if x["pnl_yen"] > 0 else "down" if x["pnl_yen"] < 0 else "")
         rows.append(
             "<tr>"
             f"<td>{html.escape(x['name'])}</td>"
@@ -200,7 +201,7 @@ def render(reviews: list[dict], stats: dict, message: str) -> str:
             f"<td>{price_text(x['entry'])}<br><small>上限 {price_text(x['entry_limit'])}／損切 {price_text(x['stop'])}</small></td>"
             f"<td>{price_text(x['target1'])}<br><small>参考 {price_text(x['target2'])}</small></td>"
             f"<td><strong>{html.escape(x['result'])}</strong><br><small>時点値 {price_text(x['close'])}</small></td>"
-            f"<td>{pnl}<br><small>{r}</small></td>"
+            f"<td class='{pnl_class}'>{pnl}<br><small>{r}</small></td>"
             "</tr>"
         )
     body = "".join(rows) or '<tr><td colspan="6">同日8:00版の固定スナップショットがないため検証不成立。候補成績には加算しません。</td></tr>'

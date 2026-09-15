@@ -2313,7 +2313,7 @@ def main():
         if session == "morning":
             trigger = "寄り後5分足＋VWAP確認"
         day_rows += (
-            f"<tr><td>{i}</td><td>{name}</td><td>{money(r['price'])}</td><td>{money(p['entry'])}</td>"
+            f"<tr><td>{i}</td><td>{name}</td><td>{money(r['price'])}<br><small class='{css(r.get('change_pct'))}'>{pct(r.get('change_pct'))}</small></td><td>{money(p['entry'])}</td>"
             f"<td>{money(p['stop'])}</td><td>{money(p['target1'])}／{money(p['target2'])}</td>"
             f"<td><b>{r.get('material_stage', '事実確認待ち')}</b>｜{r.get('material_action', trigger)}<br>"
             f"<small>{trigger}／{r.get('market_supply_status', '需給未確認')}／{shares}株・最大損失 約{max_loss:,.0f}円</small></td></tr>"
@@ -2339,8 +2339,8 @@ def main():
                 action = "20日線上の押し目"
             rows += (
                 f"<tr><td>{i}</td><td>{name}</td><td>{money(r['price'])}</td>"
-                f"<td>{pct(r['ret5'])}</td><td>{pct(r['ret20'])}</td>"
-                f"<td>{pct(r['to_high52'])}</td><td>{r['rvol']:.2f}倍</td>"
+                f"<td class='{css(r['ret5'])}'>{pct(r['ret5'])}</td><td class='{css(r['ret20'])}'>{pct(r['ret20'])}</td>"
+                f"<td class='{css(r['to_high52'])}'>{pct(r['to_high52'])}</td><td>{r['rvol']:.2f}倍</td>"
                 f"<td>{money(p['entry'])}</td><td>{money(p['stop'])}</td>"
                 f"<td>{money(p['target2'])}</td><td>{action}<br><small>{r.get('market_supply_status', '需給未確認')}</small></td></tr>"
             )
@@ -2963,7 +2963,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     "</td><td><b class='up'>" + x.score + "/100</b></td><td>" + yen(x.close) +
     "</td><td><b>" + yen(x.trigger) + "</b></td><td class='down'>" + yen(x.stop) +
     "</td><td>" + yen(x.target1) + "／" + yen(x.target2) + "</td><td>" +
-    x.rvol.toFixed(2) + "倍</td><td>" + (x.ret20 >= 0 ? "+" : "") +
+    x.rvol.toFixed(2) + "倍</td><td class='" + (x.ret20 >= 0 ? "up" : "down") + "'>" + (x.ret20 >= 0 ? "+" : "") +
     x.ret20.toFixed(2) + "%</td></tr>").join("");
   document.getElementById("prepared-signals").innerHTML =
     prepared || "<tr><td colspan='10'>本日の準備点灯銘柄なし。</td></tr>";
@@ -2977,8 +2977,8 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     "</td><td class='" + (x.ret5 >= 0 ? "up" : "down") + "'>" +
     signedPct(x.ret5, 1) + "</td><td class='" + (x.ret20 >= 0 ? "up" : "down") +
     "'>" + signedPct(x.ret20, 1) + "</td><td>" + Number(x.rvol).toFixed(2) +
-    "倍</td><td>" + Number(x.atr_pct).toFixed(1) + "%</td><td>" +
-    signedPct(x.ma20_dist, 1) + "</td><td>" + Number(x.upper_wick_pct).toFixed(1) +
+    "倍</td><td>" + Number(x.atr_pct).toFixed(1) + "%</td><td class='" +
+    (x.ma20_dist >= 0 ? "up" : "down") + "'>" + signedPct(x.ma20_dist, 1) + "</td><td>" + Number(x.upper_wick_pct).toFixed(1) +
     "%</td><td>" + supplyText(x) + "</td><td>" + x.action + "</td></tr>").join("");
   document.getElementById("speculative-theme-watch").innerHTML =
     speculative || "<tr><td colspan='15'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</td></tr>";
@@ -3032,7 +3032,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   const dailyReversals = (d.daily_capitulation_reversals || []).slice(0, 20).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.phase +
     "</td><td>" + x.setup + "</td><td><b class='up'>" + x.score +
-    "/100</b></td><td>" + yen(x.close) + "</td><td>−" +
+    "/100</b></td><td>" + yen(x.close) + "</td><td class='down'>−" +
     x.fall_from_10d.toFixed(1) + "%</td><td>" + x.volume_ratio.toFixed(2) +
     "倍</td><td><b>" + yen(x.trigger) + "</b></td><td class='down'>" +
     yen(x.stop) + "</td><td>" + yen(x.target1) + "／" + yen(x.target2) +
@@ -3165,7 +3165,7 @@ fetch("event_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => {{
 const corrText = v => v == null ? "—" : (v >= 0 ? "+" : "") + Number(v).toFixed(2);
 const todayText = x => {{
   if (!x || x.ret == null) return "未取得";
-  return signedPct(x.ret, 2) + "／OR15 " + x.or15 + "／VWAP" + x.vwap + "／EMA " + x.ema;
+  return "<span class='" + (x.ret >= 0 ? "up" : "down") + "'>" + signedPct(x.ret, 2) + "</span>／OR15 " + x.or15 + "／VWAP" + x.vwap + "／EMA " + x.ema;
 }};
 fetch("correlations.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("correlation-meta").textContent = d.method + "／更新 " + d.updated_at;
