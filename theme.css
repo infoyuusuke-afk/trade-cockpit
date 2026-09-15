@@ -155,3 +155,16 @@ header h1,.pane-intro h2,.card h2,.card h3,.focus-topbar h2,.focus-symbol h3{fon
 .rotation-box strong,.ms2-metrics b,.ms2-live-card .live-price,.ifo-score,.focus-pick strong,td b,.up,.down{font-weight:600}
 table,.ms2-metrics,.rotation-box strong,.live-price{font-variant-numeric:tabular-nums}
 .drawer-chart .label,#focus-chart .label{font-family:var(--cockpit-font)}
+
+/* TRADING VIEW STYLE STOCK CARDS v1: rank badge + name/tag stacked, muted score,
+   price and colored %change on one line (reuses .fp-change from the focus-pick cards
+   so up/down coloring stays consistent across every stock panel on the site). */
+.ms2-live-card .rank{background:#20384b;color:#8fb3c9;font-size:11px;font-weight:700;border-radius:5px;padding:3px 7px;align-self:start}
+.ms2-live-card .name-block{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ms2-live-card .name-block .tag-chip{display:block;color:#8fb3c9;font-size:10px;font-weight:600;letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms2-live-card .name-block h3{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms2-live-card .score{align-self:start;font-size:13px;color:#8fb3c9}
+.ms2-live-card .live-price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ms2-live-card .ms2-metrics{grid-template-columns:repeat(auto-fit,minmax(90px,1fr))}
+.ms2-live-card .score.up{color:var(--green)}
+.ms2-live-card .score.down{color:var(--red)}
