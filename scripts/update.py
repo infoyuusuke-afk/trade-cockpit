@@ -2533,6 +2533,14 @@ document.addEventListener("DOMContentLoaded",()=>{
 </section>
 """
 
+    watchlist_html = """
+<section id="watchlist-100" class="card wide">
+ <h2>監視銘柄（精査TOP5以外・気配値/出来高/板ランキング）</h2>
+ <p class="sub">精査TOP5・当日狙い目に入らなかった残りの監視対象を、出来高加速の大きい順に並べたものです。売買候補ではなく、当日の活況度を把握するための一覧です。</p>
+ <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>出来高加速</th><th>気配（買数量/売数量）</th><th>成行（買/売）</th><th>UNDER</th></tr></thead><tbody id="watchlist-100-rows"><tr><td colspan="7">Windowsコレクター接続待ち</td></tr></tbody></table>
+</section>
+"""
+
     ms2_live_html = """
 <section id="ms2-live-top5" class="card wide ms2-live-panel">
  <div class="ms2-live-head"><div><span>LOCAL MARKET DATA・試運転 Ver.1</span><h2>デイトレ100銘柄・MS2 LIVE TOP5</h2></div><div id="ms2-live-health" class="ms2-health waiting">ローカル収集待ち</div></div>
@@ -2595,6 +2603,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   }catch(e){health.className="ms2-health waiting";health.textContent="ローカル収集待ち";meta.textContent="Windowsの100銘柄コレクターを起動してください。";document.dispatchEvent(new CustomEvent("ms2RssUpdate",{detail:{stale:true}}));}
  }
  document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},live=d.stale===false,bar=document.getElementById("unified-mode");if(!bar)return;bar.className="unified-mode "+(live?"live":"stale");document.getElementById("unified-mode-title").textContent=live?"MS2 RSS LIVE接続中":"事前分析モード";document.getElementById("unified-mode-note").textContent=live?"歩み値・板・VWAP・OR15を同じ画面へ反映":"LIVE値は未接続。公開分析は閲覧できますが売買サインは無効";document.getElementById("unified-mode-time").textContent=live?(d.updated_at||"更新中"):"LIVE売買禁止";});
+ document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},tbody=document.getElementById("watchlist-100-rows");if(!tbody)return;const all=Array.isArray(d.all_targets)?d.all_targets:[],topTickers=new Set((Array.isArray(d.top5)?d.top5:[]).map(x=>x.ticker)),rest=all.filter(x=>!topTickers.has(x.ticker)).slice().sort((a,b)=>(Number(b.volume_burst)||0)-(Number(a.volume_burst)||0));tbody.innerHTML=rest.length?rest.slice(0,50).map((x,i)=>{const bidQty=x.bid_qty==null?"—":Number(x.bid_qty).toLocaleString("ja-JP"),askQty=x.ask_qty==null?"—":Number(x.ask_qty).toLocaleString("ja-JP"),mBuy=x.market_buy==null?"—":Number(x.market_buy).toLocaleString("ja-JP"),mSell=x.market_sell==null?"—":Number(x.market_sell).toLocaleString("ja-JP"),under=x.under_ratio==null?"—":Number(x.under_ratio).toFixed(1)+"%";return `<tr><td>${i+1}</td><td><b>${esc(x.name)}</b></td><td>${yen(x.price)}${changeBadge(x.change_pct)}</td><td>${x.volume_burst==null?"—":Number(x.volume_burst).toFixed(2)+"倍"}</td><td>${bidQty} / ${askQty}</td><td>${mBuy} / ${mSell}</td><td>${under}</td></tr>`;}).join(""):"<tr><td colspan='7'>データ取得待ち</td></tr>";});
  document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},k=d.kioxia,stale=d.stale!==false;if(!document.getElementById("kio-ms2-state"))return;const put=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};if(!k||stale){put("kio-ms2-state","未接続・売買利用禁止");put("kio-ms2-source","Windowsコレクター待ち");return}const signed=v=>v==null?"—":`${Number(v)>=0?"+":""}${Number(v).toFixed(1)}pt`,pct=v=>v==null?"—":`${Number(v)>=0?"+":""}${Number(v).toFixed(2)}%`,h=k.historical_prediction;put("kio-ms2-state",k.orderflow_state||"判定待ち");put("kio-ms2-source",`${d.updated_at}／${d.connection_source||"MS2 RSS LIVE"}`);put("kio-preopen-plan",k.preopen_plan||"判定待ち");put("kio-preopen-score",`スコア ${k.preopen_score??"—"}`);put("kio-preopen-quote",k.preopen_quote?`${Number(k.preopen_quote).toLocaleString("ja-JP")}円`:"—");put("kio-preopen-gap",`基準比 ${pct(k.preopen_gap_pct)}`);put("kio-preopen-imbalance",pct(k.preopen_market_imbalance));put("kio-preopen-change",`気配5分 ${pct(k.preopen_quote_change_5m)}`);put("kio-open-decision",k.open_decision||"寄り待ち");put("kio-special-quote",`特別気配 ${k.special_quote||"—"}／始値 ${k.open_price?Number(k.open_price).toLocaleString("ja-JP")+"円":"—"}`);put("kio-ms2-band",k.time_band||"—");put("kio-ms2-under",`${Number(k.under_ratio).toFixed(1)}%`);put("kio-ms2-under-change",`1分 ${signed(k.under_change_1m)}／5分 ${signed(k.under_change_5m)}`);put("kio-ms2-flow",`${Number(k.flow_bias).toFixed(1)}%`);put("kio-ms2-flow-detail",`買い ${Number(k.buy_flow||0).toLocaleString("ja-JP")}／売り ${Number(k.sell_flow||0).toLocaleString("ja-JP")}`);put("kio-ms2-ticks",k.tick_watch||"常時監視中");put("kio-ms2-stat",h?.prediction||`蓄積中 ${k.completed_stat_days||0}/10日`);put("kio-ms2-stat-detail",h?`5分後 上${h.up_rate_5m}%／下${h.down_rate_5m}%・平均 ${Number(h.average_return_5m)>=0?"+":""}${h.average_return_5m}%・${h.sample_days}日`:`10営業日まで方向を出しません`);const panel=document.getElementById("kio-ms2-orderflow");panel.classList.toggle("buy",k.orderflow_state==="買い優勢");panel.classList.toggle("sell",k.orderflow_state==="売り優勢");panel.classList.toggle("conflict",String(k.orderflow_state).includes("不一致"));});
  document.addEventListener("ms2RssUpdate",e=>{const k=e.detail?.kioxia,el=document.getElementById("kio-preopen-stat");if(!el||!k)return;const h=k.preopen_historical;el.textContent=h?(h.ready?`${h.prediction}（n=${h.sample_days}日）`:`蓄積中 ${h.sample_days}/10日`):"統計蓄積中";});
 
@@ -2655,6 +2664,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 {investor_regime_html}
 {live_focus_html}
 {focus_dashboard}
+{watchlist_html}
 {ms2_live_html}
 {strong_yen_html}
 <section id="event-calendar" class="card wide event-calendar"><h2>売買イベントカレンダー</h2>
