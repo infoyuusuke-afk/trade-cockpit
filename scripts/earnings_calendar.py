@@ -123,7 +123,7 @@ def classify(title):
 
 
 def parse_disclosures(raw, day, now):
-    doc = LH.fromstring(raw)
+    doc = LH.fromstring(raw.decode('utf-8') if isinstance(raw, bytes) else raw)
     events = []
     for tr in doc.xpath('//tr'):
         cells = tr.xpath('./td')
@@ -178,7 +178,7 @@ def disclosures(now):
             events.extend(parsed)
             pages += 1
             next_urls = [urljoin(url, a.get('href')) for a in doc.xpath('//a[@href]')
-                         if '次へ' in a.text_content() and f'_{compact}.html' in a.get('href')]
+                         if '次へ' in (a.text_content() + ' '.join(a.xpath('.//img/@alt'))) and f'_{compact}.html' in a.get('href')]
             url = next_urls[0] if next_urls else None
         coverage.append({'date': day, 'pages': pages, 'truncated': bool(url and pages >= 8)})
     return list({e['source_url']: e for e in events}.values()), coverage, errors
