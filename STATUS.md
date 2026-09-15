@@ -1,6 +1,6 @@
 # trade-cockpit STATUS
 
-最終更新: 2026-09-15（Claude・P1続き：決算発表後の監視候補(earnings_watch.py)を実装、実行ワークフローはpush待ち）
+最終更新: 2026-09-15（Claude・P1続き：デイトレTOP5(精査TOP5)へ地合い共通判定を参考接続）
 役割分担確定：ChatGPT=戦略の壁打ちのみ（リポジトリは変更しない）／Claude=実コーディング担当
 運用体制: ChatGPT（戦略・相場観）＋ Claude/Claude Code（コーディング・診断）＋ Genspark（必要時のみ、現在未課金）
 
@@ -1257,6 +1257,33 @@ P1の「決算発表後の監視候補」に対応した。ロードマップ第
 `python scripts/earnings_watch.py`の実行ステップを追加し、1つのワークフローとして
 まとめて引き継ぐことにした（regime評価の直後に実行することで、同じジョブ内で
 `market_regime.json`を読める）。
+
+## P1続き：デイトレTOP5（精査TOP5）へ地合い共通判定を参考接続（2026-09-15）
+
+P1の「デイトレTOP5」に対応した。既存の`scripts/signal_scan.py`（デイトレ判定エンジン、
+1010行、実運用中）を書き換えるのはリスクが大きいと判断し、`scripts/update.py`の
+`build_precision_top5`が出す精査TOP5（公開コクピットの「精査TOP5」パネル、実際に
+IHI・富士通・マクニカHD等が表示されている箇所）に、今回作った`regime_policy.py`の
+地合い判定結果を**参考情報として追加**する形にした。
+
+**重要な発見**：このリポジトリには既に`investor_regime.json`（週次・投資部門別フロー
+ベースの「主体レジーム」、FOREIGN RISK-ON/DOMESTIC SUPPORT等）という、別の「地合い」概念が
+存在し、既に`signal_scan.py`・`update.py`双方でスコアに直接ブレンドされていた。今回の
+`regime_policy.py`の日中TOPIX価格ベースの地合い（UP/DOWN/RANGE/UNKNOWN）とは時間軸も
+データ源も異なる別物であり、両者を混同しないよう、新しい方は`market_regime.json`という
+別名で出力し、`item["score"]`には一切混ぜず`item["intraday_regime"]`という完全に独立した
+参考フィールドとして追加した。
+
+**実装内容**：
+- `build_precision_top5`が返す各候補に、`market_regime.json`の`confirmed_regime`・
+  `risk_multiplier`・`updated_at`を参考情報として付与（ファイルが無ければ「未接続」表示）
+- 公開コクピットの精査TOP5詳細パネルに「地合い（参考・未検証）」欄を新設し表示
+
+**正直な制約**：`market_regime.json`自体はまだ本番に存在しない（C-036/C-037の
+ワークフロー未反映のため）。現時点では公開ページに「未接続（regime_policy.pyの
+実行ワークフロー反映待ち）」と表示される。ワークフローが反映され次第、実際の地合い値が
+表示されるようになる想定。既存の主体レジームスコアリング・$buy/$short判定ロジック自体は
+一切変更していない。
 
 ## 現在の未決事項・注意点
 

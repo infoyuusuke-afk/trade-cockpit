@@ -1601,6 +1601,7 @@ def render_focus_dashboard(candidates):
             "quote_status": item.get("quote_status", "株価検証不能"),
             "material_stage": item.get("material_stage", "事実確認待ち"),
             "material_action": item.get("material_action", ""),
+            "intraday_regime": item.get("intraday_regime"),
         })
     payload = json.dumps(rows, ensure_ascii=False).replace("</", "<\\/")
     return f"""
@@ -1624,6 +1625,7 @@ def render_focus_dashboard(candidates):
     <div><span>撤退ライン</span><b class="down" id="focus-stop"></b></div><div><span>利確 1 / 2</span><b class="up" id="focus-targets"></b></div>
    </div>
    <div class="focus-supply"><span>CREDIT FLOW</span><p id="focus-supply"></p></div>
+   <div class="focus-supply"><span>地合い（参考・未検証）</span><p id="focus-regime"></p></div>
    <details><summary>選定根拠を見る</summary><p id="focus-reason"></p></details>
   </div>
  </div>
@@ -1648,7 +1650,7 @@ document.addEventListener("DOMContentLoaded",()=>{{
  }}
  rows.forEach((x,i)=>{{const b=document.createElement("button");b.className="focus-pick";b.innerHTML=pickHtml(x,i);b.onclick=()=>select(i);list.appendChild(b);}});
  function chart(x){{const a=x.chart||[];if(!a.length)return `<div class="chart-empty">チャートデータ更新待ち</div>`;const W=720,H=390,p=28;let lo=Math.min(...a.map(v=>v.l),x.stop),hi=Math.max(...a.map(v=>v.h),x.trigger,x.target1);const y=v=>p+(hi-v)/(hi-lo||1)*(H-p*2),step=(W-p*2)/a.length,bw=Math.max(3,step*.55);let s=`<svg viewBox="0 0 ${{W}} ${{H}}" preserveAspectRatio="none">`;for(let i=0;i<5;i++){{let yy=p+i*(H-p*2)/4;s+=`<line class="grid" x1="${{p}}" y1="${{yy}}" x2="${{W-p}}" y2="${{yy}}"/>`;}}a.forEach((v,i)=>{{let x0=p+step*(i+.5),up=v.c>=v.o,cl=up?"c-up":"c-down",yo=y(v.o),yc=y(v.c);s+=`<line class="${{cl}}" x1="${{x0}}" y1="${{y(v.h)}}" x2="${{x0}}" y2="${{y(v.l)}}"/><rect class="${{cl}}" x="${{x0-bw/2}}" y="${{Math.min(yo,yc)}}" width="${{bw}}" height="${{Math.max(1,Math.abs(yo-yc))}}"/>`;}});[[x.trigger,"trigger","発動"],[x.pullback_high,"pullback","押し目"],[x.stop,"stop","撤退"]].forEach(z=>{{s+=`<line class="level ${{z[1]}}" x1="${{p}}" y1="${{y(z[0])}}" x2="${{W-p}}" y2="${{y(z[0])}}"/><text class="label ${{z[1]}}" x="${{W-p-3}}" y="${{y(z[0])-5}}">${{z[2]}} ${{yen(z[0])}}</text>`;}});return s+`</svg>`;}}
- function select(i){{activeIndex=i;const x=rows[i];[...list.children].forEach((b,j)=>b.classList.toggle("active",i===j));document.getElementById("focus-chart-name").textContent=x.name;document.getElementById("focus-chart-code").textContent=x.code;document.getElementById("focus-chart-asof").textContent=(x.data_date||"日付未確認")+" 終値 "+yen(x.chart_last_close);document.getElementById("focus-chart").innerHTML=chart(x);document.getElementById("focus-rank").textContent="#"+x.rank;document.getElementById("focus-name").textContent=x.name;document.getElementById("focus-score").textContent=x.score+" / 100";const d=document.getElementById("focus-decision");d.className="decision-badge "+x.decision_class;d.textContent=x.decision;document.getElementById("focus-trigger").textContent=yen(x.trigger)+" 以上";document.getElementById("focus-entry").textContent=yen(x.entry);document.getElementById("focus-pullback").textContent=yen(x.pullback_low)+" – "+yen(x.pullback_high);document.getElementById("focus-stop").textContent=yen(x.stop);document.getElementById("focus-targets").textContent=yen(x.target1)+" / "+yen(x.target2);document.getElementById("focus-supply").textContent=x.supply+"／"+x.quote_status;document.getElementById("focus-reason").textContent=x.reason;}}
+ function select(i){{activeIndex=i;const x=rows[i];[...list.children].forEach((b,j)=>b.classList.toggle("active",i===j));document.getElementById("focus-chart-name").textContent=x.name;document.getElementById("focus-chart-code").textContent=x.code;document.getElementById("focus-chart-asof").textContent=(x.data_date||"日付未確認")+" 終値 "+yen(x.chart_last_close);document.getElementById("focus-chart").innerHTML=chart(x);document.getElementById("focus-rank").textContent="#"+x.rank;document.getElementById("focus-name").textContent=x.name;document.getElementById("focus-score").textContent=x.score+" / 100";const d=document.getElementById("focus-decision");d.className="decision-badge "+x.decision_class;d.textContent=x.decision;document.getElementById("focus-trigger").textContent=yen(x.trigger)+" 以上";document.getElementById("focus-entry").textContent=yen(x.entry);document.getElementById("focus-pullback").textContent=yen(x.pullback_low)+" – "+yen(x.pullback_high);document.getElementById("focus-stop").textContent=yen(x.stop);document.getElementById("focus-targets").textContent=yen(x.target1)+" / "+yen(x.target2);document.getElementById("focus-supply").textContent=x.supply+"／"+x.quote_status;const ir=x.intraday_regime;document.getElementById("focus-regime").textContent=ir&&ir.confirmed_regime?(ir.confirmed_regime+"（リスク倍率"+ir.risk_multiplier+"）／"+(ir.updated_at||"")+"／"+ir.note):(ir?ir.note:"未接続");document.getElementById("focus-reason").textContent=x.reason;}}
  document.addEventListener("liveFocusUpdate",e=>{{const live=e.detail?.rows||{{}},alerts=[];const speechEnabled=e.detail?.speech_enabled===true;rows=rows.map(x=>{{const q=live[x.code];if(!q?.verified)return x;const before=Number(x.live_price??x.chart_last_close),now=Number(q.price);if(Number.isFinite(before)&&Number.isFinite(now)){{if(before<Number(x.trigger)&&now>=Number(x.trigger))alerts.push(x.name+"、買い発動ライン到達。現在値"+yen(now)+"、発動"+yen(x.trigger));if(before>Number(x.stop)&&now<=Number(x.stop))alerts.push(x.name+"、撤退ライン到達。現在値"+yen(now)+"、撤退"+yen(x.stop));}}return {{...x,chart:q.chart,chart_last_close:q.price,live_price:q.price,data_date:q.quote_time,quote_status:q.status}};}});[...list.children].forEach((b,i)=>{{if(rows[i])b.innerHTML=pickHtml(rows[i],i);}});select(Math.min(activeIndex,rows.length-1));if(speechEnabled&&alerts.length)setTimeout(()=>window.cockpitSpeak?.(alerts.join("。")),300);}});
  select(0);
 }});
@@ -1987,7 +1989,28 @@ def main():
         (investor_regime.get("type_filter") or {}).get("status") == "利用可"
         and int((investor_regime.get("connection") or {}).get("observed_weeks") or 0) >= 13
     )
+    # 地合い共通判定（C-031-GPT P1、regime_policy.py）の参考表示。既存の主体レジーム
+    # （investor_regime.json＝週次投資部門別フロー）とは別の指標で、日中のTOPIX代替
+    # 価格・VWAP・EMA20に基づく短期の地合い判定（UP/DOWN/RANGE/UNKNOWN）。
+    # スコア(item["score"])には一切混ぜず、純粋な参考情報として別フィールドへ付与する。
+    # regime_policy.pyの実行ワークフローが反映される前はファイル自体が無く「未接続」になる。
+    try:
+        market_regime = json.loads((ROOT / "market_regime.json").read_text(encoding="utf-8"))
+    except Exception:
+        market_regime = None
     for item in precision_top5:
+        if market_regime:
+            item["intraday_regime"] = {
+                "confirmed_regime": market_regime.get("confirmed_regime"),
+                "risk_multiplier": (market_regime.get("policy") or {}).get("risk_multiplier"),
+                "updated_at": market_regime.get("updated_at"),
+                "note": "参考・未検証。地合い共通判定(regime_policy.py)。スコアには未反映",
+            }
+        else:
+            item["intraday_regime"] = {
+                "confirmed_regime": None, "risk_multiplier": None, "updated_at": None,
+                "note": "未接続（regime_policy.pyの実行ワークフロー反映待ち）",
+            }
         row = stocks.get(item["name"], {})
         sector = str(row.get("sector") or "")
         turnover = float(row.get("turnover") or 0)
