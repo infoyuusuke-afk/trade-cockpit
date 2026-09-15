@@ -24,7 +24,7 @@ class CalendarTests(unittest.TestCase):
         raw='<table><tr><td>15:00</td><td>285A0</td><td>K</td><td><a href="x.pdf">業績予想の上方修正</a></td></tr></table>'
         rows,_=ec.parse_disclosures(raw,'2026-09-15',datetime.fromisoformat('2026-09-15T14:00:00+09:00'))
         self.assertEqual(rows,[])
-        rows,_=ec.parse_disclosures(raw,'2026-09-15',datetime.fromisoformat('2026-09-15T16:00:00+09:00'))
+        rows,_=ec.parse_disclosures(raw.encode('utf-8'),'2026-09-15',datetime.fromisoformat('2026-09-15T16:00:00+09:00'))
         self.assertEqual(rows[0]['code'],'285A');self.assertIn('上方修正',rows[0]['tags'])
     def test_no_disclosure_does_not_invent_probability(self):
         a=ec.analysis({'code':'285A'},[]);self.assertIsNone(a['upward_revision_probability'])
