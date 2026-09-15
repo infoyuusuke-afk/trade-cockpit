@@ -618,6 +618,7 @@ try {
         $ptsCsv = Join-Path $dayDir "kioxia_jnx_pts.csv"
         $irPtsCsv = Join-Path $dayDir "ir_pts_snapshots.csv"
         $signalCsv = Join-Path $dayDir "trade_signals.csv"
+        $conditionCsv = Join-Path $dayDir "condition_log.csv"
         $holdFinalCsv = Join-Path $dayDir "overnight_hold_final.csv"
         $holdFinalMarker = Join-Path $dayDir "overnight_hold_finalized.json"
         $holdImmutableJson = Join-Path $dayDir "overnight_hold_immutable.json"
@@ -629,6 +630,10 @@ try {
         Ensure-Csv $ptsCsv "captured_at,ticker,name,pts_date,exchange_time,price,tse_close,gap_pct,volume,tse_volume,pts_volume_ratio,turnover,vwap,bid,ask,spread_pct,bid_qty,ask_qty,over,under,under_ratio,last_tick,bias_score,expectation_score,stance"
         Ensure-Csv $irPtsCsv "captured_at,code,ticker,name,disclosure_time,material_label,material_score,title,official_url,pts_price,tse_close,gap_pct,turnover,spread_pct,under_ratio,pts_score,total_score,judgement"
         Ensure-Csv $signalCsv "captured_at,ticker,name,signal,strategy,signal_bar,entry,stop,target1,target2,market_state,breadth_pct,sector_breadth_pct,hold_signal,hold_score"
+        # ユーザー依頼（2026-09-15・引け後分析）: シグナルが発火しなかった銘柄について「そもそも
+        # 条件外だったのか、あと一歩で届かなかったのか」を後から検証できるよう、実際に発火したものだけ
+        # ではなく、毎分すべての銘柄の条件評価値そのものを記録する。売買判定ロジック自体は変更しない。
+        Ensure-Csv $conditionCsv "captured_at,ticker,name,price,vwap,ema9,ema20,trend_long,trend_short,or5_high,or5_low,or15_high,or15_low,bar_burst,flow_bias,whipsaw,chase_guard,or5_long,or5_short,or15_long,or15_short,pullback_long,pullback_short,signal,strategy"
         Ensure-Csv $holdFinalCsv "finalized_at,rank,ticker,name,hold_signal,hold_score,reference_price_1525,vwap,or15_high,or15_low,pm_above_minutes,pm_below_minutes,close_location_pct,market_state,breadth_pct,sector_breadth_pct,flow_bias,under_ratio"
         if($loadedHoldDay -ne $activeDay){
             $loadedHoldDay=$activeDay
@@ -866,6 +871,14 @@ try {
             if ($barBurst -ge 1.2 -and $null -ne $lastBar) {$score += $(if ([double]$lastBar.Close -gt [double]$lastBar.Open) {10} elseif ([double]$lastBar.Close -lt [double]$lastBar.Open) {-10} else {0})}
             if($inPreopen){$score=$preopenScore}
             $whipsaw=($crosses -ge 2)
+            # 条件ログ追加（2026-09-15）で判明: or5Long等はこの下のelseif分岐（$inSession -and
+            # $null -ne $lastBar のとき）に到達した銘柄でしか代入されないため、初期化しないと
+            # 寄り前・往復ピンタ回避等で分岐に到達しなかった銘柄に、配列上1つ前の銘柄の値が
+            # 残ったまま次に読まれるバグがあった（ログ追加時に発見。売買判定ロジック自体には
+            # 影響しない箇所だが、条件ログの信頼性のため明示的に初期化する）。
+            # $trendLong/$trendShort/$chaseGuardはこれより前で毎回計算済みのため対象外（誤って
+            # リセットすると実際の売買判定を壊すため、ここでは触らない）。
+            $or5Long=$false; $or5Short=$false; $or15Long=$false; $or15Short=$false; $pullbackLong=$false; $pullbackShort=$false
             $signal="監視"
             $strategy="条件待ち"
             $rawDirection=""
@@ -929,6 +942,12 @@ try {
             }
 
             if ($snapshotDue -and $inSession) {
+                $or5HighValue=if($or5High.ContainsKey($ticker)){$or5High[$ticker]}else{0}
+                $or5LowValue=if($or5Low.ContainsKey($ticker)){$or5Low[$ticker]}else{0}
+                $orHighForLog=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
+                $orLowForLog=if($orLow.ContainsKey($ticker)){$orLow[$ticker]}else{0}
+                $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$vwap,$ema9,$ema20,$trendLong,$trendShort,$or5HighValue,$or5LowValue,$orHighForLog,$orLowForLog,[Math]::Round($barBurst,3),[Math]::Round($flowBias,4),$whipsaw,$chaseGuard,$or5Long,$or5Short,$or15Long,$or15Short,$pullbackLong,$pullbackShort,$signal,$strategy)|ForEach-Object{Escape-Csv $_}
+                Add-Content -Encoding UTF8 -Path $conditionCsv -Value ($line -join ',')
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$over,$under,[Math]::Round($underRatio,5),[Math]::Round($uoChange,5),$vwap)|ForEach-Object{Escape-Csv $_}
                 Add-Content -Encoding UTF8 -Path $supplyCsv -Value ($line -join ',')
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$volume,$vwap,$bid,$ask,$bidQty,$askQty,$marketSell,$marketBuy,$over,$under)|ForEach-Object{Escape-Csv $_}
