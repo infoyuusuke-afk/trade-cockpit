@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-15 22:07 JST",
+  "updated_at": "2026-09-15 22:10 JST",
   "today": "2026-09-15",
   "today_level": "通常",
   "today_rule": "通常ルール。OR15・VWAP・需給を確認。",
@@ -22,7 +22,30 @@
       "trade_block": false,
       "note": "表示日は日本時間の声明公表日（米会合最終日の翌暦日）。",
       "source_name": "Federal Reserve・FOMC calendar",
-      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
+      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "event_id": "fomc-2026-09-17",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-09-16T18:00:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-09-16T17:30:00+00:00",
+          "at_jst": "2026-09-17 02:30"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-09-16T17:55:00+00:00",
+          "at_jst": "2026-09-17 02:55"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-09-16T18:00:00+00:00",
+          "at_jst": "2026-09-17 03:00"
+        }
+      ]
     },
     {
       "id": "boj-2026-09-18",
@@ -41,7 +64,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "日本銀行・金融政策決定会合",
-      "source_url": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm"
+      "source_url": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm",
+      "event_id": "boj-2026-09-18",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "ftse-2026-09-18",
@@ -60,7 +90,14 @@
       "trade_block": false,
       "note": "FTSE公式の『第3金曜引け後に実施』に基づく。買い一方向ではない。",
       "source_name": "FTSE Russell・review timing",
-      "source_url": "https://www.lseg.com/en/ftse-russell/indices/ftseall-world"
+      "source_url": "https://www.lseg.com/en/ftse-russell/indices/ftseall-world",
+      "event_id": "ftse-2026-09-18",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "holiday-2026-09-21",
@@ -79,7 +116,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "JPX・Holiday Trading",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/",
+      "event_id": "holiday-2026-09-21",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "date_only",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "holiday-2026-09-22",
@@ -98,7 +142,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "JPX・Holiday Trading",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/",
+      "event_id": "holiday-2026-09-22",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "date_only",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "holiday-2026-09-23",
@@ -117,7 +168,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "JPX・Holiday Trading",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/",
+      "event_id": "holiday-2026-09-23",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "date_only",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "bea-2026-09-30",
@@ -136,7 +194,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BEA・release schedule",
-      "source_url": "https://www.bea.gov/news/schedule"
+      "source_url": "https://www.bea.gov/news/schedule",
+      "event_id": "bea-2026-09-30",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-09-30T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-09-30T12:00:00+00:00",
+          "at_jst": "2026-09-30 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-09-30T12:25:00+00:00",
+          "at_jst": "2026-09-30 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-09-30T12:30:00+00:00",
+          "at_jst": "2026-09-30 21:30"
+        }
+      ]
     },
     {
       "id": "nikkei-2026-10",
@@ -155,7 +236,14 @@
       "trade_block": true,
       "note": "10月第1営業日反映から逆算した需給候補日。正式発表で解除する。",
       "source_name": "日経平均プロフィル・Guidebook",
-      "source_url": "https://indexes.nikkei.co.jp/nkave/archives/file/nikkei_stock_average_guidebook_en.pdf"
+      "source_url": "https://indexes.nikkei.co.jp/nkave/archives/file/nikkei_stock_average_guidebook_en.pdf",
+      "event_id": "nikkei-2026-10",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "monthend-2026-09-30",
@@ -174,7 +262,14 @@
       "trade_block": false,
       "note": "需給の方向は当日の先物・現物乖離と引け板で確認。",
       "source_name": "JPX・内国株の売買制度",
-      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html"
+      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html",
+      "event_id": "monthend-2026-09-30",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "jobs-2026-10-02",
@@ -193,7 +288,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BLS・Employment Situation",
-      "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm"
+      "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm",
+      "event_id": "jobs-2026-10-02",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-10-02T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-10-02T12:00:00+00:00",
+          "at_jst": "2026-10-02 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-10-02T12:25:00+00:00",
+          "at_jst": "2026-10-02 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-10-02T12:30:00+00:00",
+          "at_jst": "2026-10-02 21:30"
+        }
+      ]
     },
     {
       "id": "sq-10",
@@ -212,7 +330,14 @@
       "trade_block": false,
       "note": "第2金曜の規則計算。休場変更時はJPX最終売買日を再確認。",
       "source_name": "JPX・先物オプション最終取引日",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/",
+      "event_id": "sq-10",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "holiday-2026-10-12",
@@ -231,7 +356,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "JPX・Holiday Trading",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/",
+      "event_id": "holiday-2026-10-12",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "date_only",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "cpi-2026-10-14",
@@ -250,7 +382,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BLS・CPI release schedule",
-      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm"
+      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm",
+      "event_id": "cpi-2026-10-14",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-10-14T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-10-14T12:00:00+00:00",
+          "at_jst": "2026-10-14 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-10-14T12:25:00+00:00",
+          "at_jst": "2026-10-14 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-10-14T12:30:00+00:00",
+          "at_jst": "2026-10-14 21:30"
+        }
+      ]
     },
     {
       "id": "fomc-2026-10-29",
@@ -269,7 +424,30 @@
       "trade_block": false,
       "note": "表示日は日本時間の声明公表日（米会合最終日の翌暦日）。",
       "source_name": "Federal Reserve・FOMC calendar",
-      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
+      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "event_id": "fomc-2026-10-29",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-10-28T18:00:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-10-28T17:30:00+00:00",
+          "at_jst": "2026-10-29 02:30"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-10-28T17:55:00+00:00",
+          "at_jst": "2026-10-29 02:55"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-10-28T18:00:00+00:00",
+          "at_jst": "2026-10-29 03:00"
+        }
+      ]
     },
     {
       "id": "bea-2026-10-29",
@@ -288,7 +466,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BEA・release schedule",
-      "source_url": "https://www.bea.gov/news/schedule"
+      "source_url": "https://www.bea.gov/news/schedule",
+      "event_id": "bea-2026-10-29",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-10-29T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-10-29T12:00:00+00:00",
+          "at_jst": "2026-10-29 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-10-29T12:25:00+00:00",
+          "at_jst": "2026-10-29 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-10-29T12:30:00+00:00",
+          "at_jst": "2026-10-29 21:30"
+        }
+      ]
     },
     {
       "id": "boj-2026-10-30",
@@ -307,7 +508,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "日本銀行・金融政策決定会合",
-      "source_url": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm"
+      "source_url": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm",
+      "event_id": "boj-2026-10-30",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "monthend-2026-10-30",
@@ -326,7 +534,14 @@
       "trade_block": false,
       "note": "需給の方向は当日の先物・現物乖離と引け板で確認。",
       "source_name": "JPX・内国株の売買制度",
-      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html"
+      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html",
+      "event_id": "monthend-2026-10-30",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "holiday-2026-11-03",
@@ -345,7 +560,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "JPX・Holiday Trading",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/",
+      "event_id": "holiday-2026-11-03",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "date_only",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "jobs-2026-11-06",
@@ -364,7 +586,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BLS・Employment Situation",
-      "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm"
+      "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm",
+      "event_id": "jobs-2026-11-06",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-11-06T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-11-06T12:00:00+00:00",
+          "at_jst": "2026-11-06 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-11-06T12:25:00+00:00",
+          "at_jst": "2026-11-06 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-11-06T12:30:00+00:00",
+          "at_jst": "2026-11-06 21:30"
+        }
+      ]
     },
     {
       "id": "cpi-2026-11-10",
@@ -383,7 +628,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BLS・CPI release schedule",
-      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm"
+      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm",
+      "event_id": "cpi-2026-11-10",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-11-10T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-11-10T12:00:00+00:00",
+          "at_jst": "2026-11-10 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-11-10T12:25:00+00:00",
+          "at_jst": "2026-11-10 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-11-10T12:30:00+00:00",
+          "at_jst": "2026-11-10 21:30"
+        }
+      ]
     },
     {
       "id": "sq-11",
@@ -402,7 +670,14 @@
       "trade_block": false,
       "note": "第2金曜の規則計算。休場変更時はJPX最終売買日を再確認。",
       "source_name": "JPX・先物オプション最終取引日",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/",
+      "event_id": "sq-11",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "holiday-2026-11-23",
@@ -421,7 +696,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "JPX・Holiday Trading",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/",
+      "event_id": "holiday-2026-11-23",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "date_only",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "bea-2026-11-25",
@@ -440,7 +722,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BEA・release schedule",
-      "source_url": "https://www.bea.gov/news/schedule"
+      "source_url": "https://www.bea.gov/news/schedule",
+      "event_id": "bea-2026-11-25",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-11-25T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-11-25T12:00:00+00:00",
+          "at_jst": "2026-11-25 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-11-25T12:25:00+00:00",
+          "at_jst": "2026-11-25 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-11-25T12:30:00+00:00",
+          "at_jst": "2026-11-25 21:30"
+        }
+      ]
     },
     {
       "id": "monthend-2026-11-30",
@@ -459,7 +764,14 @@
       "trade_block": false,
       "note": "需給の方向は当日の先物・現物乖離と引け板で確認。",
       "source_name": "JPX・内国株の売買制度",
-      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html"
+      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html",
+      "event_id": "monthend-2026-11-30",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "jobs-2026-12-04",
@@ -478,7 +790,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BLS・Employment Situation",
-      "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm"
+      "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm",
+      "event_id": "jobs-2026-12-04",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-12-04T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-12-04T12:00:00+00:00",
+          "at_jst": "2026-12-04 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-12-04T12:25:00+00:00",
+          "at_jst": "2026-12-04 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-12-04T12:30:00+00:00",
+          "at_jst": "2026-12-04 21:30"
+        }
+      ]
     },
     {
       "id": "fomc-2026-12-10",
@@ -497,7 +832,30 @@
       "trade_block": false,
       "note": "表示日は日本時間の声明公表日（米会合最終日の翌暦日）。",
       "source_name": "Federal Reserve・FOMC calendar",
-      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
+      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "event_id": "fomc-2026-12-10",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-12-09T19:00:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-12-09T18:30:00+00:00",
+          "at_jst": "2026-12-10 03:30"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-12-09T18:55:00+00:00",
+          "at_jst": "2026-12-10 03:55"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-12-09T19:00:00+00:00",
+          "at_jst": "2026-12-10 04:00"
+        }
+      ]
     },
     {
       "id": "cpi-2026-12-10",
@@ -516,7 +874,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BLS・CPI release schedule",
-      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm"
+      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm",
+      "event_id": "cpi-2026-12-10",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-12-10T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-12-10T12:00:00+00:00",
+          "at_jst": "2026-12-10 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-12-10T12:25:00+00:00",
+          "at_jst": "2026-12-10 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-12-10T12:30:00+00:00",
+          "at_jst": "2026-12-10 21:30"
+        }
+      ]
     },
     {
       "id": "sq-12",
@@ -535,7 +916,14 @@
       "trade_block": false,
       "note": "第2金曜の規則計算。休場変更時はJPX最終売買日を再確認。",
       "source_name": "JPX・先物オプション最終取引日",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/",
+      "event_id": "sq-12",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "boj-2026-12-18",
@@ -554,7 +942,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "日本銀行・金融政策決定会合",
-      "source_url": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm"
+      "source_url": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm",
+      "event_id": "boj-2026-12-18",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "ftse-2026-12-18",
@@ -573,7 +968,14 @@
       "trade_block": false,
       "note": "FTSE公式の『第3金曜引け後に実施』に基づく。買い一方向ではない。",
       "source_name": "FTSE Russell・review timing",
-      "source_url": "https://www.lseg.com/en/ftse-russell/indices/ftseall-world"
+      "source_url": "https://www.lseg.com/en/ftse-russell/indices/ftseall-world",
+      "event_id": "ftse-2026-12-18",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "monthend-2026-12-30",
@@ -592,7 +994,14 @@
       "trade_block": false,
       "note": "需給の方向は当日の先物・現物乖離と引け板で確認。",
       "source_name": "JPX・内国株の売買制度",
-      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html"
+      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html",
+      "event_id": "monthend-2026-12-30",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     }
   ],
   "unverified": [
@@ -613,7 +1022,14 @@
       "trade_block": true,
       "note": "10月第1営業日反映から逆算した需給候補日。正式発表で解除する。",
       "source_name": "日経平均プロフィル・Guidebook",
-      "source_url": "https://indexes.nikkei.co.jp/nkave/archives/file/nikkei_stock_average_guidebook_en.pdf"
+      "source_url": "https://indexes.nikkei.co.jp/nkave/archives/file/nikkei_stock_average_guidebook_en.pdf",
+      "event_id": "nikkei-2026-10",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "msci-2026-11",
@@ -632,7 +1048,14 @@
       "trade_block": true,
       "note": "推測の日付を表示しない。",
       "source_name": "MSCI・Index Review",
-      "source_url": "https://www.msci.com/indexes/index-resources/index-review"
+      "source_url": "https://www.msci.com/indexes/index-resources/index-review",
+      "event_id": "msci-2026-11",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": null,
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "topix-2026-10",
@@ -651,7 +1074,14 @@
       "trade_block": true,
       "note": "2026年10月実施のみ公式確認。正確な需給日は未入力。",
       "source_name": "JPX・TOPIX見直し",
-      "source_url": "https://www.jpx.co.jp/english/markets/indices/revisions-indices/02.html"
+      "source_url": "https://www.jpx.co.jp/english/markets/indices/revisions-indices/02.html",
+      "event_id": "topix-2026-10",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": null,
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     }
   ],
   "events": [
@@ -672,7 +1102,14 @@
       "trade_block": false,
       "note": "需給の方向は当日の先物・現物乖離と引け板で確認。",
       "source_name": "JPX・内国株の売買制度",
-      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html"
+      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html",
+      "event_id": "monthend-2026-08-31",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "jobs-2026-09-04",
@@ -691,7 +1128,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BLS・Employment Situation",
-      "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm"
+      "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm",
+      "event_id": "jobs-2026-09-04",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-09-04T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-09-04T12:00:00+00:00",
+          "at_jst": "2026-09-04 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-09-04T12:25:00+00:00",
+          "at_jst": "2026-09-04 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-09-04T12:30:00+00:00",
+          "at_jst": "2026-09-04 21:30"
+        }
+      ]
     },
     {
       "id": "japan-leading-2026-09-07",
@@ -710,7 +1170,30 @@
       "trade_block": false,
       "note": "内閣府の公表予定に基づく。数値の方向は事前断定しない。",
       "source_name": "内閣府・景気統計公表予定",
-      "source_url": "https://www.esri.cao.go.jp/jp/stat/stat-schedule.html"
+      "source_url": "https://www.esri.cao.go.jp/jp/stat/stat-schedule.html",
+      "event_id": "japan-leading-2026-09-07",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-09-07T05:00:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-09-07T04:30:00+00:00",
+          "at_jst": "2026-09-07 13:30"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-09-07T04:55:00+00:00",
+          "at_jst": "2026-09-07 13:55"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-09-07T05:00:00+00:00",
+          "at_jst": "2026-09-07 14:00"
+        }
+      ]
     },
     {
       "id": "us-holiday-2026-09-07",
@@ -729,7 +1212,14 @@
       "trade_block": false,
       "note": "NYSE公式休場日。休場を株価ゼロ変動や材料消失と誤解しない。",
       "source_name": "NYSE・Holidays & Trading Hours",
-      "source_url": "https://www.nyse.com/markets/hours-calendars"
+      "source_url": "https://www.nyse.com/markets/hours-calendars",
+      "event_id": "us-holiday-2026-09-07",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "date_only",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "cpi-2026-09-11",
@@ -748,7 +1238,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BLS・CPI release schedule",
-      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm"
+      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm",
+      "event_id": "cpi-2026-09-11",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-09-11T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-09-11T12:00:00+00:00",
+          "at_jst": "2026-09-11 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-09-11T12:25:00+00:00",
+          "at_jst": "2026-09-11 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-09-11T12:30:00+00:00",
+          "at_jst": "2026-09-11 21:30"
+        }
+      ]
     },
     {
       "id": "sq-9",
@@ -767,7 +1280,14 @@
       "trade_block": false,
       "note": "第2金曜の規則計算。休場変更時はJPX最終売買日を再確認。",
       "source_name": "JPX・先物オプション最終取引日",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/",
+      "event_id": "sq-9",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "fomc-2026-09-17",
@@ -786,7 +1306,30 @@
       "trade_block": false,
       "note": "表示日は日本時間の声明公表日（米会合最終日の翌暦日）。",
       "source_name": "Federal Reserve・FOMC calendar",
-      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
+      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "event_id": "fomc-2026-09-17",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-09-16T18:00:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-09-16T17:30:00+00:00",
+          "at_jst": "2026-09-17 02:30"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-09-16T17:55:00+00:00",
+          "at_jst": "2026-09-17 02:55"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-09-16T18:00:00+00:00",
+          "at_jst": "2026-09-17 03:00"
+        }
+      ]
     },
     {
       "id": "boj-2026-09-18",
@@ -805,7 +1348,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "日本銀行・金融政策決定会合",
-      "source_url": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm"
+      "source_url": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm",
+      "event_id": "boj-2026-09-18",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "ftse-2026-09-18",
@@ -824,7 +1374,14 @@
       "trade_block": false,
       "note": "FTSE公式の『第3金曜引け後に実施』に基づく。買い一方向ではない。",
       "source_name": "FTSE Russell・review timing",
-      "source_url": "https://www.lseg.com/en/ftse-russell/indices/ftseall-world"
+      "source_url": "https://www.lseg.com/en/ftse-russell/indices/ftseall-world",
+      "event_id": "ftse-2026-09-18",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "holiday-2026-09-21",
@@ -843,7 +1400,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "JPX・Holiday Trading",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/",
+      "event_id": "holiday-2026-09-21",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "date_only",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "holiday-2026-09-22",
@@ -862,7 +1426,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "JPX・Holiday Trading",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/",
+      "event_id": "holiday-2026-09-22",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "date_only",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "holiday-2026-09-23",
@@ -881,7 +1452,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "JPX・Holiday Trading",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/",
+      "event_id": "holiday-2026-09-23",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "date_only",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "bea-2026-09-30",
@@ -900,7 +1478,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BEA・release schedule",
-      "source_url": "https://www.bea.gov/news/schedule"
+      "source_url": "https://www.bea.gov/news/schedule",
+      "event_id": "bea-2026-09-30",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-09-30T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-09-30T12:00:00+00:00",
+          "at_jst": "2026-09-30 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-09-30T12:25:00+00:00",
+          "at_jst": "2026-09-30 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-09-30T12:30:00+00:00",
+          "at_jst": "2026-09-30 21:30"
+        }
+      ]
     },
     {
       "id": "nikkei-2026-10",
@@ -919,7 +1520,14 @@
       "trade_block": true,
       "note": "10月第1営業日反映から逆算した需給候補日。正式発表で解除する。",
       "source_name": "日経平均プロフィル・Guidebook",
-      "source_url": "https://indexes.nikkei.co.jp/nkave/archives/file/nikkei_stock_average_guidebook_en.pdf"
+      "source_url": "https://indexes.nikkei.co.jp/nkave/archives/file/nikkei_stock_average_guidebook_en.pdf",
+      "event_id": "nikkei-2026-10",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "monthend-2026-09-30",
@@ -938,7 +1546,14 @@
       "trade_block": false,
       "note": "需給の方向は当日の先物・現物乖離と引け板で確認。",
       "source_name": "JPX・内国株の売買制度",
-      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html"
+      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html",
+      "event_id": "monthend-2026-09-30",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "jobs-2026-10-02",
@@ -957,7 +1572,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BLS・Employment Situation",
-      "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm"
+      "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm",
+      "event_id": "jobs-2026-10-02",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-10-02T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-10-02T12:00:00+00:00",
+          "at_jst": "2026-10-02 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-10-02T12:25:00+00:00",
+          "at_jst": "2026-10-02 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-10-02T12:30:00+00:00",
+          "at_jst": "2026-10-02 21:30"
+        }
+      ]
     },
     {
       "id": "sq-10",
@@ -976,7 +1614,14 @@
       "trade_block": false,
       "note": "第2金曜の規則計算。休場変更時はJPX最終売買日を再確認。",
       "source_name": "JPX・先物オプション最終取引日",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/",
+      "event_id": "sq-10",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "holiday-2026-10-12",
@@ -995,7 +1640,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "JPX・Holiday Trading",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/",
+      "event_id": "holiday-2026-10-12",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "date_only",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "cpi-2026-10-14",
@@ -1014,7 +1666,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BLS・CPI release schedule",
-      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm"
+      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm",
+      "event_id": "cpi-2026-10-14",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-10-14T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-10-14T12:00:00+00:00",
+          "at_jst": "2026-10-14 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-10-14T12:25:00+00:00",
+          "at_jst": "2026-10-14 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-10-14T12:30:00+00:00",
+          "at_jst": "2026-10-14 21:30"
+        }
+      ]
     },
     {
       "id": "fomc-2026-10-29",
@@ -1033,7 +1708,30 @@
       "trade_block": false,
       "note": "表示日は日本時間の声明公表日（米会合最終日の翌暦日）。",
       "source_name": "Federal Reserve・FOMC calendar",
-      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
+      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "event_id": "fomc-2026-10-29",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-10-28T18:00:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-10-28T17:30:00+00:00",
+          "at_jst": "2026-10-29 02:30"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-10-28T17:55:00+00:00",
+          "at_jst": "2026-10-29 02:55"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-10-28T18:00:00+00:00",
+          "at_jst": "2026-10-29 03:00"
+        }
+      ]
     },
     {
       "id": "bea-2026-10-29",
@@ -1052,7 +1750,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BEA・release schedule",
-      "source_url": "https://www.bea.gov/news/schedule"
+      "source_url": "https://www.bea.gov/news/schedule",
+      "event_id": "bea-2026-10-29",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-10-29T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-10-29T12:00:00+00:00",
+          "at_jst": "2026-10-29 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-10-29T12:25:00+00:00",
+          "at_jst": "2026-10-29 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-10-29T12:30:00+00:00",
+          "at_jst": "2026-10-29 21:30"
+        }
+      ]
     },
     {
       "id": "boj-2026-10-30",
@@ -1071,7 +1792,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "日本銀行・金融政策決定会合",
-      "source_url": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm"
+      "source_url": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm",
+      "event_id": "boj-2026-10-30",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "monthend-2026-10-30",
@@ -1090,7 +1818,14 @@
       "trade_block": false,
       "note": "需給の方向は当日の先物・現物乖離と引け板で確認。",
       "source_name": "JPX・内国株の売買制度",
-      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html"
+      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html",
+      "event_id": "monthend-2026-10-30",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "holiday-2026-11-03",
@@ -1109,7 +1844,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "JPX・Holiday Trading",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/",
+      "event_id": "holiday-2026-11-03",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "date_only",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "jobs-2026-11-06",
@@ -1128,7 +1870,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BLS・Employment Situation",
-      "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm"
+      "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm",
+      "event_id": "jobs-2026-11-06",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-11-06T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-11-06T12:00:00+00:00",
+          "at_jst": "2026-11-06 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-11-06T12:25:00+00:00",
+          "at_jst": "2026-11-06 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-11-06T12:30:00+00:00",
+          "at_jst": "2026-11-06 21:30"
+        }
+      ]
     },
     {
       "id": "cpi-2026-11-10",
@@ -1147,7 +1912,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BLS・CPI release schedule",
-      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm"
+      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm",
+      "event_id": "cpi-2026-11-10",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-11-10T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-11-10T12:00:00+00:00",
+          "at_jst": "2026-11-10 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-11-10T12:25:00+00:00",
+          "at_jst": "2026-11-10 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-11-10T12:30:00+00:00",
+          "at_jst": "2026-11-10 21:30"
+        }
+      ]
     },
     {
       "id": "sq-11",
@@ -1166,7 +1954,14 @@
       "trade_block": false,
       "note": "第2金曜の規則計算。休場変更時はJPX最終売買日を再確認。",
       "source_name": "JPX・先物オプション最終取引日",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/",
+      "event_id": "sq-11",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "holiday-2026-11-23",
@@ -1185,7 +1980,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "JPX・Holiday Trading",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/holidaytrading/",
+      "event_id": "holiday-2026-11-23",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "date_only",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "bea-2026-11-25",
@@ -1204,7 +2006,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BEA・release schedule",
-      "source_url": "https://www.bea.gov/news/schedule"
+      "source_url": "https://www.bea.gov/news/schedule",
+      "event_id": "bea-2026-11-25",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-11-25T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-11-25T12:00:00+00:00",
+          "at_jst": "2026-11-25 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-11-25T12:25:00+00:00",
+          "at_jst": "2026-11-25 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-11-25T12:30:00+00:00",
+          "at_jst": "2026-11-25 21:30"
+        }
+      ]
     },
     {
       "id": "monthend-2026-11-30",
@@ -1223,7 +2048,14 @@
       "trade_block": false,
       "note": "需給の方向は当日の先物・現物乖離と引け板で確認。",
       "source_name": "JPX・内国株の売買制度",
-      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html"
+      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html",
+      "event_id": "monthend-2026-11-30",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "jobs-2026-12-04",
@@ -1242,7 +2074,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BLS・Employment Situation",
-      "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm"
+      "source_url": "https://www.bls.gov/schedule/news_release/empsit.htm",
+      "event_id": "jobs-2026-12-04",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-12-04T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-12-04T12:00:00+00:00",
+          "at_jst": "2026-12-04 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-12-04T12:25:00+00:00",
+          "at_jst": "2026-12-04 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-12-04T12:30:00+00:00",
+          "at_jst": "2026-12-04 21:30"
+        }
+      ]
     },
     {
       "id": "fomc-2026-12-10",
@@ -1261,7 +2116,30 @@
       "trade_block": false,
       "note": "表示日は日本時間の声明公表日（米会合最終日の翌暦日）。",
       "source_name": "Federal Reserve・FOMC calendar",
-      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
+      "source_url": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
+      "event_id": "fomc-2026-12-10",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-12-09T19:00:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-12-09T18:30:00+00:00",
+          "at_jst": "2026-12-10 03:30"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-12-09T18:55:00+00:00",
+          "at_jst": "2026-12-10 03:55"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-12-09T19:00:00+00:00",
+          "at_jst": "2026-12-10 04:00"
+        }
+      ]
     },
     {
       "id": "cpi-2026-12-10",
@@ -1280,7 +2158,30 @@
       "trade_block": false,
       "note": "",
       "source_name": "U.S. BLS・CPI release schedule",
-      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm"
+      "source_url": "https://www.bls.gov/schedule/news_release/cpi.htm",
+      "event_id": "cpi-2026-12-10",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "exact",
+      "scheduled_at_utc": "2026-12-10T12:30:00+00:00",
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": [
+        {
+          "stage": "T-30分",
+          "at_utc": "2026-12-10T12:00:00+00:00",
+          "at_jst": "2026-12-10 21:00"
+        },
+        {
+          "stage": "T-5分",
+          "at_utc": "2026-12-10T12:25:00+00:00",
+          "at_jst": "2026-12-10 21:25"
+        },
+        {
+          "stage": "T時点",
+          "at_utc": "2026-12-10T12:30:00+00:00",
+          "at_jst": "2026-12-10 21:30"
+        }
+      ]
     },
     {
       "id": "sq-12",
@@ -1299,7 +2200,14 @@
       "trade_block": false,
       "note": "第2金曜の規則計算。休場変更時はJPX最終売買日を再確認。",
       "source_name": "JPX・先物オプション最終取引日",
-      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/"
+      "source_url": "https://www.jpx.co.jp/english/derivatives/rules/last-trading-day/",
+      "event_id": "sq-12",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "boj-2026-12-18",
@@ -1318,7 +2226,14 @@
       "trade_block": false,
       "note": "",
       "source_name": "日本銀行・金融政策決定会合",
-      "source_url": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm"
+      "source_url": "https://www.boj.or.jp/en/mopo/mpmsche_minu/index.htm",
+      "event_id": "boj-2026-12-18",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "ftse-2026-12-18",
@@ -1337,7 +2252,14 @@
       "trade_block": false,
       "note": "FTSE公式の『第3金曜引け後に実施』に基づく。買い一方向ではない。",
       "source_name": "FTSE Russell・review timing",
-      "source_url": "https://www.lseg.com/en/ftse-russell/indices/ftseall-world"
+      "source_url": "https://www.lseg.com/en/ftse-russell/indices/ftseall-world",
+      "event_id": "ftse-2026-12-18",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "monthend-2026-12-30",
@@ -1356,7 +2278,14 @@
       "trade_block": false,
       "note": "需給の方向は当日の先物・現物乖離と引け板で確認。",
       "source_name": "JPX・内国株の売買制度",
-      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html"
+      "source_url": "https://www.jpx.co.jp/english/equities/trading/domestic/01.html",
+      "event_id": "monthend-2026-12-30",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": "window",
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "msci-2026-11",
@@ -1375,7 +2304,14 @@
       "trade_block": true,
       "note": "推測の日付を表示しない。",
       "source_name": "MSCI・Index Review",
-      "source_url": "https://www.msci.com/indexes/index-resources/index-review"
+      "source_url": "https://www.msci.com/indexes/index-resources/index-review",
+      "event_id": "msci-2026-11",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": null,
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     },
     {
       "id": "topix-2026-10",
@@ -1394,7 +2330,14 @@
       "trade_block": true,
       "note": "2026年10月実施のみ公式確認。正確な需給日は未入力。",
       "source_name": "JPX・TOPIX見直し",
-      "source_url": "https://www.jpx.co.jp/english/markets/indices/revisions-indices/02.html"
+      "source_url": "https://www.jpx.co.jp/english/markets/indices/revisions-indices/02.html",
+      "event_id": "topix-2026-10",
+      "revision": 1,
+      "tier": "A",
+      "time_certainty": null,
+      "scheduled_at_utc": null,
+      "fetched_at": "2026-09-15T22:10:25.192559+09:00",
+      "notification_schedule": []
     }
   ],
   "source_policy": "公式一次資料のみ。推定日は取引ブロックし、発表日・需給日・反映日を分離。"
