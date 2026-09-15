@@ -678,6 +678,18 @@ def money(v):
     return f"{value:,.1f}" if abs(value - round(value)) >= .05 else f"{value:,.0f}"
 
 
+def change_badge(pct):
+    """Server-rendered twin of the JS changeBadge() used by the live MS2 cards
+    (scripts/update.py's ms2_live_script), so a stock's price and colored
+    %change look the same whether the card is drawn at build time or client-side."""
+    if pct is None:
+        return ""
+    value = float(pct)
+    direction = "up" if value >= 0 else "down"
+    sign = "+" if value >= 0 else ""
+    return f'<span class="fp-change {direction}">{sign}{value:.2f}%</span>'
+
+
 def load_active_buybacks(now):
     """Return officially sourced, currently active buybacks ranked by supply impact."""
     try:
@@ -1134,6 +1146,8 @@ def build_day_ifo_candidates(valid, rotation, official_earnings, now, credit_sup
             "code": code,
             "ticker": row.get("ticker", ""),
             "side": "LONG",
+            "price": price,
+            "change_pct": change,
             "sector": group,
             "day_bucket": bucket or "当日資金流入",
             "supply_verified": supply_known,
@@ -1534,6 +1548,7 @@ def render_day_ifo_cards(candidates):
     <div><h3>{item['name']}</h3><small>{item['day_bucket']}／{item['sector']}／{item['sector_phase']}</small></div>
     <b class="ifo-score">{item['score']}/100</b>
   </div>
+  <div class="fp-price-row"><b class="fp-price">{money(item.get('price'))}円</b>{change_badge(item.get('change_pct'))}</div>
   <div class="ifo-columns">
     <div class="order-box entry-order">
       <b>左側｜信用新規・買建</b>
@@ -2624,6 +2639,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 .focus-dashboard{{padding:14px;background:radial-gradient(circle at 80% 0,#123454 0,#101923 42%,#081018 100%);border:1px solid #3e83a8;overflow:visible}}.focus-title{{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:12px}}.focus-title h2{{font-size:26px;margin:2px 0;border:0;color:#fff}}.focus-title>div>span{{color:#63d8ff;font-weight:900;letter-spacing:.08em}}.decision-badge{{padding:12px 16px;border-radius:10px;font-size:17px;white-space:nowrap}}.decision-go{{background:#38e477;color:#03140a}}.decision-ready{{background:#ffd84e;color:#191300}}.decision-wait{{background:#5c6874;color:#fff}}.focus-layout{{display:grid;grid-template-columns:minmax(230px,.7fr) minmax(420px,1.45fr) minmax(320px,1fr);gap:12px}}.focus-picks{{display:flex;flex-direction:column;gap:7px}}.focus-pick{{display:flex;flex-direction:column;gap:6px;text-align:left;color:#e9f4ff;background:#0b1722;border:1px solid #30475b;border-radius:9px;padding:10px;cursor:pointer;font-family:inherit}}.focus-pick:hover,.focus-pick.active{{border-color:#54d6ff;background:#10283a;box-shadow:0 0 0 1px #54d6ff55}}.focus-pick small{{display:block;margin-top:3px}}.focus-pick strong{{font-size:20px;color:#65e993}}.focus-rank{{background:#20384b;padding:5px;border-radius:5px;font-weight:900}}
 .fp-top{{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center}}.fp-name{{min-width:0}}.fp-name b{{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}.fp-score{{font-size:16px;color:#8fb3c9;font-variant-numeric:tabular-nums}}
 .fp-price-row{{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}}.fp-price{{font-size:16px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:#f4f7fa;white-space:nowrap}}.fp-change{{font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;padding:1px 6px;border-radius:5px;white-space:nowrap}}.fp-change.up{{color:#3ed5ae;background:#3ed5ae1a}}.fp-change.down{{color:#ef646b;background:#ef646b1a}}
+.ifo-card .fp-price-row{{margin:10px 0}}.ifo-card .fp-price{{font-size:22px}}
 .fp-range{{display:flex;flex-direction:column;gap:3px}}.fp-range-track{{position:relative;height:4px;border-radius:2px;background:linear-gradient(90deg,#ef646b,#5a6472 50%,#3ed5ae)}}.fp-range-fill{{position:absolute;top:50%;width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid #0b1722;box-shadow:0 0 0 1px #0006;transform:translate(-50%,-50%)}}.fp-range-labels{{display:flex;justify-content:space-between;font-size:10px;color:#8398a7;font-variant-numeric:tabular-nums}}.fp-range-empty{{padding:2px 0}}.fp-range-empty small{{color:#5c6874}}.focus-chart-wrap,.focus-order{{background:#071019;border:1px solid #2a475d;border-radius:10px;overflow:hidden}}.focus-chart-head{{display:flex;justify-content:space-between;padding:9px 11px;background:#0e2030}}#focus-chart{{width:100%;height:430px;border:0;display:block}}.focus-order{{padding:12px;overflow:auto}}.focus-symbol{{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;border-bottom:1px solid #314354;padding-bottom:9px}}.focus-symbol h3{{margin:0;color:#fff;font-size:18px}}.focus-symbol>b{{font-size:21px;color:#63e990}}.focus-action{{margin:11px 0;padding:12px;border-radius:9px;background:#113421;border:1px solid #2b9c58}}.focus-action span,.focus-action small{{display:block}}.focus-action strong{{display:block;font-size:25px;color:#65ef91;margin:4px 0}}.focus-price-grid{{display:grid;grid-template-columns:1fr 1fr;gap:7px}}.focus-price-grid>div{{background:#101e2a;border-radius:7px;padding:9px}}.focus-price-grid span{{display:block;color:#9fb0bf}}.focus-price-grid b{{font-size:17px}}.focus-supply{{margin-top:9px;padding:9px;border-left:4px solid #ffcf4a;background:#191a14}}.focus-supply b,.focus-supply span{{display:block}}.focus-rule{{color:#ffd75e;border-top:1px solid #4a3d16;padding-top:9px}}.focus-empty{{padding:28px;text-align:center;font-size:17px}}@media(max-width:1100px){{.focus-layout{{grid-template-columns:240px 1fr}}.focus-order{{grid-column:1/-1}}}}@media(max-width:800px){{.focus-layout{{grid-template-columns:1fr}}.focus-order{{grid-column:auto}}#focus-chart{{height:360px}}.focus-title{{align-items:flex-start;flex-direction:column}}}}
 </style>
 <link rel="stylesheet" href="theme.css?v=20260915-type4">
