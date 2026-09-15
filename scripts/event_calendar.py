@@ -34,12 +34,57 @@ SOURCES = {
 }
 
 
+def time_certainty_and_utc(day: str | None, time_jst: str) -> tuple[str | None, str | None]:
+    """time_jstの表記からtime_certainty(exact/window/date_only)と、exactの場合の
+    scheduled_at_utc(ISO8601)を算出する。C-031-GPT第5節: 時刻不明の日銀政策公表を
+    架空の正午に設定しない、を守るため、厳密時刻が無い場合は絶対に時刻を推定しない。
+    """
+    if not day:
+        return None, None
+    if time_jst in ("終日",):
+        return "date_only", None
+    if time_jst in ("寄り付き", "大引け", "会合終了後"):
+        return "window", None
+    if len(time_jst) == 5 and time_jst[2] == ":" and time_jst[:2].isdigit() and time_jst[3:].isdigit():
+        hh, mm = int(time_jst[:2]), int(time_jst[3:])
+        local = datetime.fromisoformat(day).replace(hour=hh, minute=mm, tzinfo=JST)
+        return "exact", local.astimezone(ZoneInfo("UTC")).isoformat()
+    return "window", None
+
+
+def notification_schedule(scheduled_at_utc: str | None, tier: str) -> list[dict]:
+    """C-031-GPT第5節: Aランクは T-30分/T-5分/T時点、Bランクは T-5分/T時点の通知
+    チェックポイントを生成する。scheduled_at_utcが無い（時刻確度がexactでない）場合は
+    架空の時刻を基準にしないため、空リストを返す（呼び出し側は不定時イベントとして
+    別途扱う）。"""
+    if not scheduled_at_utc:
+        return []
+    t = datetime.fromisoformat(scheduled_at_utc)
+    offsets = [("T-30分", -30), ("T-5分", -5), ("T時点", 0)] if tier == "A" else [("T-5分", -5), ("T時点", 0)]
+    schedule = []
+    for stage, minutes in offsets:
+        at = t + timedelta(minutes=minutes)
+        schedule.append({
+            "stage": stage,
+            "at_utc": at.isoformat(),
+            "at_jst": at.astimezone(JST).strftime("%Y-%m-%d %H:%M"),
+        })
+    return schedule
+
+
 def event(event_id: str, title: str, day: str | None, category: str, source: str,
           *, time_jst: str = "終日", status: str = "公式確認済み",
           impact: str = "中", flow: str = "双方向", action: str = "確認のみ",
           announcement: str = "—", effective: str = "—", base: str = "—",
-          actual_flow: str | None = None, block: bool = False, note: str = "") -> dict:
+          actual_flow: str | None = None, block: bool = False, note: str = "",
+          tier: str = "A", fetched_at: str = "") -> dict:
+    """tierはC-031-GPT第5節のA（市場全体・確認済みの一次情報のみ）/B（その他の政策関連
+    予定発言・主要統計）区分。このファイルの既存イベントは日銀・FOMC・CPI・雇用統計・
+    取引所休場・指数入替等、すべて公式一次情報に基づく市場全体材料のため既定でA。
+    人物名だけ・SNS未確認情報はB以下にも上げない（ロードマップの明記どおり、この
+    ファイルには一切追加しない）。"""
     source_name, source_url = SOURCES[source]
+    certainty, scheduled_at_utc = time_certainty_and_utc(day, time_jst)
     return {
         "id": event_id, "title": title, "date": day, "category": category,
         "time_jst": time_jst, "status": status, "impact": impact,
@@ -48,6 +93,10 @@ def event(event_id: str, title: str, day: str | None, category: str, source: str
         "flow_date": actual_flow or day or "未確定", "effective_date": effective,
         "trade_block": block, "note": note,
         "source_name": source_name, "source_url": source_url,
+        "event_id": event_id, "revision": 1, "tier": tier,
+        "time_certainty": certainty, "scheduled_at_utc": scheduled_at_utc,
+        "fetched_at": fetched_at,
+        "notification_schedule": notification_schedule(scheduled_at_utc, tier),
     }
 
 
@@ -162,6 +211,10 @@ def build() -> dict:
             action="次の現物寄りでギャップ拡大を想定。先物終値を確認"))
     e.append(event("holiday-2026-11-23", "日本株・先物とも休場", "2026-11-23", "休場", "jpx_holiday",
         impact="中", flow="海外材料を次営業日にまとめて織り込む", action="持ち越し日数を確認"))
+
+    fetched_at_iso = now.isoformat()
+    for item in e:
+        item["fetched_at"] = fetched_at_iso
 
     e.sort(key=lambda x: (x["date"] or "9999-99-99", x["time_jst"], x["title"]))
     upcoming = [x for x in e if x["date"] and x["date"] >= today.isoformat()]

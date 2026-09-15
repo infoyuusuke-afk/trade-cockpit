@@ -2605,7 +2605,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div><span>日付未確定</span><b id="event-blocked-count">—</b></div>
 </div>
 <h3>今後30日・売買判断表</h3>
-<div class="event-table-wrap"><table><thead><tr><th>実需・発表日</th><th>時刻</th><th>イベント</th><th>分類</th><th>警戒</th><th>想定需給</th><th>当日の行動</th><th>発表日</th><th>基準日</th><th>需給日</th><th>反映日</th><th>確認状態</th><th>公式資料</th></tr></thead><tbody id="event-upcoming"><tr><td colspan="13">取得中...</td></tr></tbody></table></div>
+<div class="event-table-wrap"><table><thead><tr><th>実需・発表日</th><th>時刻</th><th>次の通知</th><th>イベント</th><th>分類</th><th>警戒</th><th>想定需給</th><th>当日の行動</th><th>発表日</th><th>基準日</th><th>需給日</th><th>反映日</th><th>確認状態</th><th>公式資料</th></tr></thead><tbody id="event-upcoming"><tr><td colspan="14">取得中...</td></tr></tbody></table></div>
 <h3>月間カレンダー</h3><div id="event-months" class="event-months"><div class="focus-empty">作成中...</div></div>
 <h3>未確定・売買利用禁止</h3><div id="event-unverified" class="event-unverified">確認中...</div>
 <div class="steps">
@@ -3069,15 +3069,21 @@ fetch("event_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("event-week-high").textContent = weekHigh + "件";
   document.getElementById("event-blocked-count").textContent = (d.unverified || []).length + "件";
   const end = new Date(d.today + "T00:00:00+09:00"); end.setDate(end.getDate()+30);
+  const nextNotice = x => {{
+    const sched = x.notification_schedule || [];
+    if (!sched.length) return (x.tier || "—") + "・時刻未確定（" + (x.time_certainty || "不明") + "）";
+    const t = sched[sched.length - 1];
+    return (x.tier || "—") + "・" + t.at_jst + " JST";
+  }};
   const rows = (d.upcoming || []).filter(x => new Date(x.date+"T00:00:00+09:00") <= end).map(x =>
-    "<tr><td><b>"+eventEsc(x.date)+"</b></td><td>"+eventEsc(x.time_jst)+"</td><td>"+eventEsc(x.title)+
+    "<tr><td><b>"+eventEsc(x.date)+"</b></td><td>"+eventEsc(x.time_jst)+"</td><td>"+eventEsc(nextNotice(x))+"</td><td>"+eventEsc(x.title)+
     "</td><td>"+eventEsc(x.category)+"</td><td class='"+(x.impact==="高"?"down":"warning")+"'>"+eventEsc(x.impact)+
     "</td><td>"+eventEsc(x.expected_flow)+"</td><td><b>"+eventEsc(x.action)+"</b><br><small>"+eventEsc(x.note)+
     "</small></td><td>"+eventEsc(x.announcement_date)+"</td><td>"+eventEsc(x.base_date)+"</td><td>"+eventEsc(x.flow_date)+
     "</td><td>"+eventEsc(x.effective_date)+"</td><td><span class='event-status "+(x.trade_block?"block":"")+"'>"+eventEsc(x.status)+
     "</span></td><td><a class='event-source' href='"+eventEsc(x.source_url)+"' target='_blank' rel='noopener'>"+eventEsc(x.source_name)+"</a></td></tr>"
   ).join("");
-  document.getElementById("event-upcoming").innerHTML = rows || "<tr><td colspan='13'>今後30日の登録イベントなし</td></tr>";
+  document.getElementById("event-upcoming").innerHTML = rows || "<tr><td colspan='14'>今後30日の登録イベントなし</td></tr>";
   const grouped = {{}};
   (d.events || []).filter(x=>x.date).forEach(x=>{{const k=x.date.slice(0,7);(grouped[k] ||= []).push(x);}});
   const monthKeys = Object.keys(grouped).filter(k=>k>=d.today.slice(0,7)).slice(0,4);
@@ -3097,7 +3103,7 @@ fetch("event_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => {{
 }}).catch(() => {{
   document.getElementById("event-level").textContent = "取得失敗";
   document.getElementById("event-rule").textContent = "イベントを確認できないため、イベント需給を根拠に売買しません。";
-  document.getElementById("event-upcoming").innerHTML = "<tr><td colspan='13'>データ取得待ち</td></tr>";
+  document.getElementById("event-upcoming").innerHTML = "<tr><td colspan='14'>データ取得待ち</td></tr>";
 }});
 const corrText = v => v == null ? "—" : (v >= 0 ? "+" : "") + Number(v).toFixed(2);
 const todayText = x => {{
