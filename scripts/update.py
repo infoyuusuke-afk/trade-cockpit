@@ -2541,6 +2541,60 @@ document.addEventListener("DOMContentLoaded",()=>{
 </section>
 """
 
+    # 外部ランキング発掘（C-041の代替案・docs/AI_SHARED_SHEET.md C-041参照）。
+    # MS2 RSSには市場全体のランキング取得関数が存在しないため、固定100銘柄ウォッチ
+    # リストに無い銘柄の急騰・出来高急増はこのパイプラインでは元々検知できなかった。
+    # market_ranking_watch.pyがYahoo!ファイナンスのランキングページから発掘した
+    # 銘柄を、参考・未検証として表示するだけ。$buy/$short判定には一切使わない。
+    try:
+        ranking_watch = json.loads((ROOT / "market_ranking_watch.json").read_text(encoding="utf-8"))
+    except Exception:
+        ranking_watch = None
+    def ranking_watch_row(x):
+        change_pct = x.get("change_pct")
+        if change_pct is None:
+            change_html = ""
+        elif str(change_pct).startswith("+"):
+            change_html = f"<br><small class='up'>{change_pct}%</small>"
+        else:
+            change_html = f"<br><small class='down'>{change_pct}%</small>"
+        status_html = (
+            "<span class='pill' style='background:#453918;color:#f3cd69'>未監視</span>"
+            if not x.get("already_watched") else "監視中"
+        )
+        return (
+            f"<tr><td>{x.get('rank')}</td>"
+            f"<td>{x.get('name')}（{x.get('code')}）</td>"
+            f"<td>{x.get('price') or '—'}円{change_html}</td>"
+            f"<td>{x.get('volume') or '—'}株</td>"
+            f"<td>{status_html}</td></tr>"
+        )
+
+    if ranking_watch and ranking_watch.get("rankings"):
+        sections = []
+        for key, block in ranking_watch["rankings"].items():
+            items = (block.get("items") or [])[:10]
+            rows = "".join(ranking_watch_row(x) for x in items) or "<tr><td colspan='5'>取得できた銘柄なし</td></tr>"
+            sections.append(
+                f"<h3>{block.get('label', key)}</h3>"
+                f"<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>出来高</th><th>状態</th></tr></thead><tbody>{rows}</tbody></table>"
+            )
+        ranking_watch_html = f"""
+<section id="market-ranking-watch" class="card wide">
+ <h2>外部ランキング発掘（参考・未検証）</h2>
+ <p class="sub">{ranking_watch.get('source', '')}／更新 {ranking_watch.get('updated_at', '')}</p>
+ <p class="warning">{ranking_watch.get('note', '')}</p>
+ {''.join(sections)}
+</section>
+"""
+    else:
+        ranking_watch_html = """
+<section id="market-ranking-watch" class="card wide">
+ <h2>外部ランキング発掘（参考・未検証）</h2>
+ <p class="sub">未接続（market_ranking_watch.pyの実行ワークフロー反映待ち）</p>
+</section>
+"""
+
     ms2_live_html = """
 <section id="ms2-live-top5" class="card wide ms2-live-panel">
  <div class="ms2-live-head"><div><span>LOCAL MARKET DATA・試運転 Ver.1</span><h2>デイトレ100銘柄・MS2 LIVE TOP5</h2></div><div id="ms2-live-health" class="ms2-health waiting">ローカル収集待ち</div></div>
@@ -2665,6 +2719,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 {live_focus_html}
 {focus_dashboard}
 {watchlist_html}
+{ranking_watch_html}
 {ms2_live_html}
 {strong_yen_html}
 <section id="event-calendar" class="card wide event-calendar"><h2>売買イベントカレンダー</h2>
