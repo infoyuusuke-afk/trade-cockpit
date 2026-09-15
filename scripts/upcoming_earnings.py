@@ -31,6 +31,7 @@ from __future__ import annotations
 import io
 import json
 import re
+import traceback
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -52,32 +53,59 @@ MIN_N = 20  # 銘柄横断で件数が貯まりやすいため既存のreliabili
 CODE_RE = re.compile(r"\b(\d{4}|\d{3}[A-Z])\b")
 
 
+DIAGNOSTICS: list[dict] = []
+
+
+def record(stage: str, **details) -> None:
+    item = {"stage": stage, **details}
+    DIAGNOSTICS.append(item)
+    print("[earnings] " + json.dumps(item, ensure_ascii=False), flush=True)
+
+
+def save_evidence(name: str, html: str) -> None:
+    path = Path("artifacts/upcoming-earnings") / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(html, encoding="utf-8")
+
+
 def fetch_html(url: str) -> str:
+    record("jpx_http", status="started", url=url)
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (trade-cockpit-earnings-check/1.0)"})
     with urllib.request.urlopen(req, timeout=20) as resp:
-        return resp.read().decode("utf-8", errors="replace")
+        html = resp.read().decode("utf-8", errors="replace")
+        save_evidence("raw.html", html)
+        record("jpx_http", status="success", http_status=resp.status, characters=len(html))
+        return html
 
 
 def fetch_html_rendered(url: str) -> str:
     """JPXのページはJavaScriptで表を描画するため、素のHTMLだけでは0件抽出になることが
     margin_caution_check.py の実行結果で既に確認済み。同じPlaywrightフォールバックを使う。"""
+    record("playwright", status="started", url=url)
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-        page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+        response = page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+        if response is None or not response.ok:
+            raise RuntimeError(f"Playwright HTTP error: {response.status if response else 'no response'}")
         page.wait_for_timeout(2_000)
         html = page.content()
         browser.close()
+        save_evidence("rendered.html", html)
+        record("playwright", status="success", http_status=response.status, characters=len(html))
         return html
 
 
 def parse_companies(html: str) -> list[dict]:
+    record("pandas.read_html", status="started")
     try:
         tables = pd.read_html(io.StringIO(html))
-    except ValueError:
+    except ValueError as exc:
+        record("pandas.read_html", status="no_tables", exception=type(exc).__name__, message=str(exc))
         return []
+    record("pandas.read_html", status="success", tables=len(tables))
     companies: list[dict] = []
     for df in tables:
         cols = [str(c) for c in df.columns]
@@ -93,6 +121,7 @@ def parse_companies(html: str) -> list[dict]:
             if not m:
                 continue
             companies.append({"code": m.group(1), "name": str(row.get(name_col, "")).strip()})
+    record("parse_companies", status="success", companies=len(companies))
     return companies
 
 
@@ -202,16 +231,29 @@ def resolve_pending(log: list[dict]) -> list[dict]:
 
 
 def main():
+    DIAGNOSTICS.clear()
+    record("main", status="started")
     fetch_error = None
     companies: list[dict] = []
     try:
         html = fetch_html(URL)
         companies = parse_companies(html)
         if not companies:
+            record("fallback", status="triggered", reason="raw HTML yielded zero companies")
             html = fetch_html_rendered(URL)
             companies = parse_companies(html)
+        else:
+            record("fallback", status="skipped", reason="raw HTML yielded companies")
+        if not companies:
+            if "翌営業日の開示予定会社はございません" not in html:
+                raise RuntimeError("No companies parsed and JPX explicit no-company notice not found")
+            record("source_result", status="confirmed_empty", reason="JPX explicit no-company notice")
+        else:
+            record("source_result", status="success", companies=len(companies))
     except Exception as e:  # noqa: BLE001
-        fetch_error = str(e)
+        fetch_error = f"{type(e).__name__}: {e}"
+        record("source_result", status="failed", exception=type(e).__name__, message=str(e))
+        traceback.print_exc()
 
     watch_universe = load_watch_universe()
     tomorrow = (datetime.now(JST) + timedelta(days=1)).strftime("%Y-%m-%d")
@@ -257,6 +299,7 @@ def main():
             "2日以上先の確定リストは無料の公式ソースからは取得できない。"
         ),
         "fetch_error": fetch_error,
+        "diagnostics": DIAGNOSTICS,
         "target_date": tomorrow,
         "picks": picks,
         "direction_score_note": (
@@ -271,8 +314,12 @@ def main():
             "status": "参考値（要検証）" if n >= MIN_N else "試運転・検証中（サンプル不足）",
         },
     }
+    record("json_output", status="success", files=[str(OUT), str(LOG_PATH)],
+           picks=len(picks), prediction_records=len(log))
     OUT.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(out, ensure_ascii=False, indent=2))
+    if fetch_error:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
