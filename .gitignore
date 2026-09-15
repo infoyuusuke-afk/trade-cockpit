@@ -1,2 +1,6 @@
 .claude/settings.local.json
 ms2_live/*.csv
+
+# 非公開売買ログ・反省会（実約定データ）。公開repoに置かない方針
+# （docs/C-031-GPT_STRATEGY_ROADMAP.md 第5節、CLAUDE.md）。
+data/private/
