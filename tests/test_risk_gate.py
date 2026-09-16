@@ -251,6 +251,102 @@ class DoesNotTouchOtherSafetyFlagsTests(unittest.TestCase):
         self.assertIn('"real_submit_allowed": False', execution_contract_src)
 
 
+class CashCapTests(unittest.TestCase):
+    """Phase 3.1 Blocker 1: test_capital_yen（30万円）をnotional上限として効かせる。"""
+
+    def test_golden_21_notional_plus_fees_never_exceeds_test_capital(self):
+        """Golden #21: available_cash=1,000,000円でもnotional+feesが300,000円を超えない。"""
+        entry = 500.0
+        out = evaluate(scenario(entry=entry, stop=499.0), cash=1_000_000.0, fees=100.0)
+        self.assertEqual(out["decision"], "PASS")
+        notional = out["allowed_qty"] * entry
+        self.assertLessEqual(notional + 100.0, 300000)
+
+    def test_golden_22_large_cash_does_not_bypass_300k_cap(self):
+        """Golden #22: entry=500/stop=499/lot100/cash=1,000,000 -> 700株ではなく
+        30万円cap内の最大数量だけPASS。"""
+        out = evaluate(scenario(entry=500.0, stop=499.0), cash=1_000_000.0, fees=100.0)
+        self.assertEqual(out["decision"], "PASS")
+        self.assertNotEqual(out["allowed_qty"], 700)  # cashのみで計算した場合の(誤った)値
+        self.assertEqual(out["allowed_qty"], 500)  # test_capitalでcapされた正しい値
+        self.assertLessEqual(out["allowed_qty"] * 500.0 + 100.0, 300000)
+
+
+class PolicyValidationTests(unittest.TestCase):
+    """Phase 3.1 Blocker 2: 壊れた/未対応のv0.1 policyをfail closedにする。"""
+
+    def test_golden_23_unsupported_account_mode_blocks(self):
+        for mode in ("MARGIN", "UNKNOWN", None, ""):
+            out = evaluate(policy={**POLICY, "account_mode": mode})
+            self.assertEqual(out["decision"], "BLOCK", msg=f"account_mode={mode!r}")
+            self.assertIn("BLOCK_POLICY_UNSUPPORTED_ACCOUNT_MODE", out["block_reasons"])
+
+    def test_golden_24_margin_leverage_true_blocks(self):
+        out = evaluate(policy={**POLICY, "allow_margin_leverage": True})
+        self.assertEqual(out["decision"], "BLOCK")
+        self.assertIn("BLOCK_POLICY_MARGIN_LEVERAGE_NOT_ALLOWED", out["block_reasons"])
+
+    def test_golden_25_unsafe_trade_mode_flags_block(self):
+        for flag in ("allow_averaging_down", "allow_flip", "allow_pyramiding"):
+            out = evaluate(policy={**POLICY, flag: True})
+            self.assertEqual(out["decision"], "BLOCK", msg=f"{flag}=True")
+
+    def test_golden_26_missing_or_invalid_policy_numeric_fields_block_not_raise(self):
+        """Golden #26: policy必須key欠損/NaN/負値はexceptionではなくBLOCKで返す。"""
+        broken_policies = [
+            {k: v for k, v in POLICY.items() if k != "test_capital_yen"},  # missing key
+            {**POLICY, "risk_per_trade_yen": float("nan")},
+            {**POLICY, "daily_stop_yen": -3000},
+            {**POLICY, "max_open_positions": 0},
+            {**POLICY, "max_open_positions": 1.5},
+            {**POLICY, "max_open_positions": None},
+        ]
+        for bad_policy in broken_policies:
+            try:
+                out = evaluate(policy=bad_policy)
+            except Exception as exc:  # noqa: BLE001
+                self.fail(f"evaluate_risk raised {exc!r} for policy={bad_policy} instead of returning BLOCK")
+            self.assertEqual(out["decision"], "BLOCK", msg=f"policy={bad_policy}")
+
+
+class ScenarioAndSnapshotValidationTests(unittest.TestCase):
+    """Phase 3.1 Blocker 3: symbol/merge_hash/available_cash/open_positions_countの検証。"""
+
+    def test_golden_27_empty_symbol_or_merge_hash_blocks(self):
+        out_symbol = evaluate(scenario(symbol=""))
+        self.assertEqual(out_symbol["decision"], "BLOCK")
+        self.assertIn("BLOCK_SYMBOL_INVALID", out_symbol["block_reasons"])
+
+        out_merge_hash = evaluate(scenario(merge_hash=""))
+        self.assertEqual(out_merge_hash["decision"], "BLOCK")
+        self.assertIn("BLOCK_MERGE_HASH_INVALID", out_merge_hash["block_reasons"])
+
+        out_none = evaluate(scenario(symbol=None))
+        self.assertEqual(out_none["decision"], "BLOCK")
+
+    def test_golden_28_negative_available_cash_blocks(self):
+        out = evaluate(cash=-1.0)
+        self.assertEqual(out["decision"], "BLOCK")
+        self.assertIn("BLOCK_AVAILABLE_CASH_INVALID", out["block_reasons"])
+
+    def test_golden_29_non_integer_or_invalid_open_positions_count_blocks(self):
+        for bad_count in (0.5, -1, float("nan"), float("inf")):
+            out = evaluate(open_positions=bad_count)
+            self.assertEqual(out["decision"], "BLOCK", msg=f"open_positions_count={bad_count}")
+            self.assertIn("OPEN_POSITIONS_COUNT_INVALID", out["block_reasons"])
+
+
+class Phase31NoRegressionTests(unittest.TestCase):
+    def test_golden_30_canonical_policy_golden_1_and_2_still_pass(self):
+        """Golden #30: normal canonical policy + Golden #1〜20は回帰しない
+        （代表として#1と#2だけここでも再確認し、詳細は既存テストクラス群が担保する）。"""
+        shadow = evaluate(scenario(entry=3000.0, stop=2980.0))
+        self.assertEqual(shadow["decision"], "SHADOW_ONLY")
+        passed = evaluate(scenario(entry=1000.0, stop=995.0))
+        self.assertEqual(passed["decision"], "PASS")
+        self.assertEqual(passed["allowed_qty"], 100)
+
+
 class LoadPolicyTests(unittest.TestCase):
     def test_default_policy_file_loads_and_matches_v0_1_fixed_values(self):
         policy = rg.load_policy()

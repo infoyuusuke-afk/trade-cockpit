@@ -1,7 +1,8 @@
 """scripts/risk_gate.py
 
 Position Sizing / Risk Gate（GitHub Issue #18 Execution Stack Phase 3、
-C-050-GPT comment 5703809332への対応）。
+C-050-GPT comment 5703809332 + Phase 3.1 hardening C-050R-GPT comment
+5703948448への対応）。
 
 Conflict Resolver（scripts/conflict_resolver.py）が出力するResolvedScenario
 （原則resolved_status=="CANDIDATE_READY"）を受け取り、数量（allowed_qty）を
@@ -33,7 +34,24 @@ Risk Gateは`real_submit_allowed`というフィールドを一切作らない�
   では0株（例: risk budget超過、cash不足、daily stop到達、
   max_open_positions到達、regime multiplier=0、CASH modeでの新規SELL）。
 - `BLOCK`: malformed/stale/contradictory入力等でRisk計算自体を信用しない
-  （resolved_status不一致、数値異常、stop方向不正、lot_size不明 等）。
+  （resolved_status不一致、数値異常、stop方向不正、lot_size不明、policy
+  自体が壊れている 等）。
+
+## Phase 3.1 hardening（3 blocker、C-050R-GPT）
+1. `test_capital_yen`（30万円）がnotional上限として効いていなかった。
+   従来の`max_lots_by_cash`は`available_cash_yen`だけを見ており、実口座の
+   余力が30万円を超えていると30万円テスト資金を超える建玉がPASSしえた。
+   投下可能現金を`min(available_cash_yen, test_capital_yen)`でcapしてから
+   fees_bufferを引く（entry*allowed_qty + feesが常に30万円以内になる）。
+2. v0.1 policyが壊れた/未対応値になった場合の一部fail-openを解消。
+   `validate_policy_v0_1()`でaccount_mode（CASH以外は未対応）・
+   margin_leverage/averaging_down/flip/pyramiding（Falseでなければ不可）・
+   数値項目（非数値・非正値）・max_open_positions（正整数でない）を検査し、
+   1つでも違反があれば例外を投げずBLOCKで返す。将来MARGINを許可する場合は
+   policy versionを上げて別途実装する（v0.1の設定変更だけで売買範囲が
+   広がらないようにする）。
+3. symbol・merge_hashの必須値検証、available_cash_yenの負値拒否、
+   open_positions_countが0以上の整数であることの検証を追加。
 
 ## Phase 4へ送らないもの（意図的に扱わない）
 DUPLICATE_INTENT_HASH・REAL_ORDER_PERMISSION_FALSE・KILL_SWITCH_ACTIVE・
@@ -49,7 +67,7 @@ from pathlib import Path
 from typing import Optional
 
 JST = timezone(timedelta(hours=9))
-SCHEMA_VERSION = "risk-gate-1.0"
+SCHEMA_VERSION = "risk-gate-1.1"
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POLICY_PATH = ROOT / "config" / "risk_gate_v0_1.json"
 
@@ -70,6 +88,37 @@ def load_policy(path: Path = DEFAULT_POLICY_PATH) -> dict:
 
 def _is_finite_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _is_positive_finite_number(value) -> bool:
+    return _is_finite_number(value) and value > 0
+
+
+def validate_policy_v0_1(policy: dict) -> list[str]:
+    """v0.1 policyが安全境界の前提を満たしているか検証する純粋関数。
+    キー欠損はKeyErrorを送出せず`.get()`で拾い、違反として報告する
+    （C-050R-GPT Blocker 2: 壊れたpolicyがfail-openにならないようにする）。
+    違反が無ければ空リストを返す。
+    """
+    violations = []
+    if policy.get("account_mode") != "CASH":
+        violations.append("BLOCK_POLICY_UNSUPPORTED_ACCOUNT_MODE")
+    if policy.get("allow_margin_leverage") is not False:
+        violations.append("BLOCK_POLICY_MARGIN_LEVERAGE_NOT_ALLOWED")
+    if policy.get("allow_averaging_down") is not False:
+        violations.append("BLOCK_POLICY_AVERAGING_DOWN_NOT_ALLOWED")
+    if policy.get("allow_flip") is not False:
+        violations.append("BLOCK_POLICY_FLIP_NOT_ALLOWED")
+    if policy.get("allow_pyramiding") is not False:
+        violations.append("BLOCK_POLICY_PYRAMIDING_NOT_ALLOWED")
+    for key in ("test_capital_yen", "risk_per_trade_yen", "risk_per_trade_pct", "daily_stop_yen"):
+        if not _is_positive_finite_number(policy.get(key)):
+            violations.append("BLOCK_POLICY_INVALID_NUMERIC_VALUE")
+            break
+    max_open = policy.get("max_open_positions")
+    if not _is_positive_finite_number(max_open) or int(max_open) != max_open:
+        violations.append("BLOCK_POLICY_INVALID_MAX_OPEN_POSITIONS")
+    return violations
 
 
 def _block(base: dict, reasons: list[str]) -> dict:
@@ -96,7 +145,7 @@ def evaluate_risk(scenario: dict, *, available_cash_yen, open_positions_count,
     generated_at = now_jst().isoformat()
     base = {
         "schema_version": SCHEMA_VERSION,
-        "policy_version": policy["policy_version"],
+        "policy_version": policy.get("policy_version"),
         "generated_at": generated_at,
         "symbol": scenario.get("symbol"),
         "side": scenario.get("side"),
@@ -112,9 +161,22 @@ def evaluate_risk(scenario: dict, *, available_cash_yen, open_positions_count,
         "block_reasons": [],
     }
 
+    # --- BLOCK: policy自体の安全境界検証（Blocker 2、最優先） --------------
+    policy_violations = validate_policy_v0_1(policy)
+    if policy_violations:
+        return _block(base, policy_violations)
+
     # --- BLOCK: 上流scenarioの状態検証 -----------------------------------
     if scenario.get("resolved_status") != "CANDIDATE_READY":
         return _block(base, ["RESOLVED_STATUS_NOT_CANDIDATE_READY"])
+
+    symbol = scenario.get("symbol")
+    if not symbol or not isinstance(symbol, str):
+        return _block(base, ["BLOCK_SYMBOL_INVALID"])
+
+    merge_hash = scenario.get("merge_hash")
+    if not merge_hash or not isinstance(merge_hash, str):
+        return _block(base, ["BLOCK_MERGE_HASH_INVALID"])
 
     horizon = scenario.get("horizon")
     if not horizon or not isinstance(horizon, str):
@@ -142,15 +204,18 @@ def evaluate_risk(scenario: dict, *, available_cash_yen, open_positions_count,
         return _block(base, ["LOT_SIZE_INVALID"])
     lot_size = int(lot_size)
 
-    if not _is_finite_number(available_cash_yen):
-        return _block(base, ["AVAILABLE_CASH_INVALID"])
+    # Blocker 3: 非数値/NaN/infに加えて負値も拒否する。
+    if not _is_finite_number(available_cash_yen) or available_cash_yen < 0:
+        return _block(base, ["BLOCK_AVAILABLE_CASH_INVALID"])
     if not _is_finite_number(realized_pnl_today_yen):
         return _block(base, ["REALIZED_PNL_INVALID"])
     if not _is_finite_number(regime_risk_multiplier) or regime_risk_multiplier < 0:
         return _block(base, ["REGIME_MULTIPLIER_INVALID"])
     if not _is_finite_number(estimated_fees_buffer_yen) or estimated_fees_buffer_yen < 0:
         return _block(base, ["FEES_BUFFER_INVALID"])
-    if not _is_finite_number(open_positions_count) or open_positions_count < 0:
+    # Blocker 3: 0以上の"整数"であることを要求する（0.5等の小数を拒否）。
+    if (not _is_finite_number(open_positions_count) or open_positions_count < 0
+            or int(open_positions_count) != open_positions_count):
         return _block(base, ["OPEN_POSITIONS_COUNT_INVALID"])
 
     stop_distance_yen = abs(entry - stop)
@@ -181,8 +246,14 @@ def evaluate_risk(scenario: dict, *, available_cash_yen, open_positions_count,
 
     risk_per_lot_yen = stop_distance_yen * lot_size
     max_lots_by_risk = math.floor(effective_risk_budget / risk_per_lot_yen) if risk_per_lot_yen > 0 else 0
-    max_lots_by_cash = math.floor(max(0.0, available_cash_yen - estimated_fees_buffer_yen)
-                                   / (entry * lot_size))
+
+    # Blocker 1: 投下可能現金はtest_capital_yen（30万円）を上限にcapする。
+    # available_cash_yenだけで計算すると、実口座余力が30万円を超えている場合に
+    # 30万円テスト資金の枠を超える建玉がPASSしうる。
+    cash_budget_yen = min(available_cash_yen, policy["test_capital_yen"])
+    investable_cash_yen = max(0.0, cash_budget_yen - estimated_fees_buffer_yen)
+    max_lots_by_cash = math.floor(investable_cash_yen / (entry * lot_size))
+
     allowed_lots = min(max_lots_by_risk, max_lots_by_cash)
 
     if allowed_lots <= 0:
