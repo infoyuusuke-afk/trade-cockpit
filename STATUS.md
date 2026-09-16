@@ -1502,11 +1502,17 @@ JSON API）を実機で検証し、`name`/`description`/`close`/`volume`/`change
 **正直な制約**：非公式・無保証のAPIであり将来ブロック・仕様変更のリスクが
 ある。TradingView AI側との自動連携（cockpit→ChatGPT/Claude→共有シートの
 パイプライン化）は今回未着手、現状はcockpit上への参考表示までにとどまる。
-`.github/workflows/update.yml`への実行ステップ追加はworkflowスコープ制約
-によりpush不可のため、共有シートC-044で引き継ぎ依頼中。反映されるまでは
-公開ページに「未接続」と表示される。純粋関数の単体テストは追加したが、
-この開発環境にPythonが導入されておらずローカル実行はできず、GitHub Actions
-上の`python -m unittest discover`が初検証（このセッション内でCI実行中）。
+
+**ワークフロー反映・本番稼働確認済み（2026-09-17）**：`.github/workflows/
+update.yml`はworkflowスコープ制約によりpushできなかったため、ユーザーが
+GitHub Web UIで全文を貼り替えて手動反映した（`python scripts/
+tradingview_screener_watch.py`実行ステップ、コミット対象への
+`tradingview_screener_watch.json`追加）。workflow_dispatchで実行し成功を
+確認、公開コクピットで実データ表示（値上がり率TOP・値下がり率TOP・相対
+出来高・ATR比率・セクターバッジ・「監視中」判定）をブラウザで確認した。
+純粋関数の単体テストはこのセッションにローカルPythonが無く未実行だったが、
+GitHub Actions上の`python -m unittest discover`が成功したことで初検証を
+兼ねた。
 
 ## 現在の未決事項・注意点
 
