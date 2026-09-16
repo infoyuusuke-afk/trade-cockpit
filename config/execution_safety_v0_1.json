@@ -1,0 +1,10 @@
+{
+  "policy_version": "execution-safety-0.1.0",
+  "max_ticket_age_sec": 15,
+  "max_price_drift_bps": 50,
+  "authorization_ttl_sec": 3600,
+  "master_kill_ttl_sec": 3600,
+  "daily_stop_yen": 3000,
+  "max_open_positions": 1,
+  "note": "Issue #18 C-053-GPT Phase 4。max_ticket_age_sec/max_price_drift_bpsは安全側の仮TTLで最適化対象ではない。daily_stop_yen/max_open_positionsはconfig/risk_gate_v0_1.jsonと同じv0.1値をここでも独立に持ち、Risk Gate通過後もPermission Gateでdefense-in-depthとして再確認する（C-055 9節・C-053 4節）。"
+}
