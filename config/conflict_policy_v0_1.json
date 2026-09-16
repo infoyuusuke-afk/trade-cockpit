@@ -1,0 +1,11 @@
+{
+  "policy_version": "conflict-policy-0.1",
+  "account_lane": "execution_test_300k_v1",
+  "max_open_positions": 1,
+  "execution_priority": [
+    "day_ifo_long",
+    "day_rank_long",
+    "day_short_mvp"
+  ],
+  "note": "execution_priorityはsame-timestamp tie-break専用の事前固定順位（scripts/strategy_schema.pyのSTRATEGY_REGISTRYに現存する戦略のみ記載）。当日成績・後知恵での並べ替えは禁止（Issue #18 Conflict Resolver design comment 5702288572 第3節）。P0-1等のStrategy Registry戦略が実装され次第この配列へ追記する。優先順位変更時はpolicy_versionを上げること。"
+}
