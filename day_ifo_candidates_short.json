@@ -1,7 +1,26 @@
 {
-  "updated_at": "2026-09-16 11:37:18 JST",
+  "updated_at": "2026-09-16 13:58:00 JST",
   "side": "SHORT",
   "status": "試運転・検証中",
-  "count": 0,
-  "candidates": []
+  "count": 1,
+  "candidates": [
+    {
+      "name": "メルカリ（4385）",
+      "code": "4385",
+      "ticker": "4385.T",
+      "side": "SHORT",
+      "score": 68,
+      "trigger": 3620.0,
+      "stop": 3885.0,
+      "target1": 3220.0,
+      "target2": 2960.0,
+      "rvol": 1.35,
+      "atr_pct": 4.66,
+      "supply_phase": null,
+      "margin_caution_flagged": false,
+      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-15.3%／出来高比1.35倍／信用需給不明",
+      "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
+      "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
+    }
+  ]
 }
