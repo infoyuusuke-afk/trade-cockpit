@@ -1559,6 +1559,60 @@ strategy_id未記録の過去レコードは"UNTAGGED_LEGACY"として明示的�
 Strategy Lab+バックテスト基盤、LIVE Shadow検証、TOB/短期テーマ専用シナリオ、
 UIへの期待値表示。いずれも次回以降のセッションで順次対応する。
 
+## Execution Stack Phase 0/1を実装（Issue #18 C-047-GPT、2026-09-17）
+
+ChatGPT/CodexがGitHub Issue #18へ「Execution Stack Implementation Plan v0.1」
+（Conflict Resolver・Risk Gate・Permission・Shadow Execution・Reconciliation・
+Calibrationに至る全11フェーズ構想）と、そのうち**Phase 0→Phase 1が実装され
+ない限り先へ進まない**というゲートコメント（C-047-GPT）を投稿した。ユーザー
+指示「新しい設計を増やさず、C-047に従ってPhase 0→Phase 1を実装」を受け、
+**Phase 0とPhase 1のみ**を実装した。Phase 2以降（Conflict Resolver/Risk Gate/
+Permission Gate/Shadow Execution Engine/Reconciliation/Calibration Report）は
+今回一切着手していない。
+
+**Phase 0（`.gitignore`保護・最優先ブロッカー）**：既存の`ms2_live/*.csv`だけ
+ではMS2 100銘柄収集器が書く日別ネストデータ（`ms2_live/records/YYYY-MM-DD/
+...`）を保護できていなかった。`git ls-files`で追跡済みファイルが無いことを
+確認した上で`ms2_live/records/`を追加。実機で`git check-ignore`・ダミーの
+ネストCSVに対する`git status --ignored`・`git add`拒否（`-f`無しでは追加不可）
+を確認した。`data/private/`の既存ignoreは維持。
+
+**Phase 1（`scripts/execution_contract.py`新規）**：発注そのものは一切行わない、
+Execution Intentの共通schema・決定論的intent_hash・状態遷移だけを提供する
+純粋関数群。`build_intent()`はBUY/SELL・MARKET/LIMIT・数量（正の整数のみ、
+NaN/inf/負数/0拒否）・価格（NaN/inf/負数拒否、LIMITはlimit_price必須・
+MARKETはnull許可）・strategy_id等の必須文字列・signal_known_atのタイムスタン
+プ形式を検証し、不正なら推測補完せずValueErrorで拒否する。`compute_intent_
+hash()`はC-047が指定した11フィールドだけをkey-sortしたcanonical JSONから
+SHA256する（created_at・audit_id・status・block_reasons・real_submit_allowed
+はhash対象外——timestampや可変状態でhashが変わらないようにする明示的要求）。
+`is_duplicate_intent()`はintent_hashの完全一致のみで判定。`transition_status()`
+は許可表に無い遷移を拒否し、UNKNOWN等は全て終端（自動再送を表現する遷移が
+存在しない設計）。`real_submit_allowed`は`build_intent()`の引数として一切
+受け付けず（渡すとTypeError）、常にFalse固定。`scripts/signal_contract.py`の
+`trading_enabled=False`は変更していない。
+
+**テスト**：`tests/test_execution_contract.py`にC-047のGolden Fixtures 12項目
+全てを実装。**1回目のCI実行（run 35135843015）は失敗**——自作テストの単純
+文字列検索が、`execution_contract.py`自身のdocstring内にある「RssOrderは
+実装しない」という安全性の説明文言に反応してしまったため（false positive、
+本体ロジックの不備ではない）。ASTベースの検査へ書き直し、**2回目のCI実行
+（run 35136243525）で解消・成功を確認**：`python -m unittest discover -s
+tests -v`を実行し、**221件全て成功（failures=0, errors=0）**。
+
+commit 0c1c61eac217b520b41cd674bfce38a84159903d（Phase 0/1本体）、
+commit 1c14e07e292eb557da34ffe3e41745c896778058（テスト修正）。両方main
+反映済み・CI成功確認済み。`RssOrder`・broker API呼び出し・Excel注文式・
+自動submit・実ポジション変更は一切実装していない（AST検査でCI上も確認済み）。
+
+**未着手（Phase 2以降）**：Conflict Resolver、30万円ベースのPosition Sizing/
+Risk Gate、Execution Permission/Kill/Duplicate Guard、Shadow Execution
+Engine、Shadow Forward Acceptance、Real Ledger拡張+Reconciliation、
+Execution Calibration Report、Shadow Fill Model v0.2、Integration
+Orchestrator、Small Real Execution Test（人間承認別途必須）。Issue #18の
+定義では、これら全てがGreenになるまでReal submit adapterの着手可否検討
+すら行わない。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
