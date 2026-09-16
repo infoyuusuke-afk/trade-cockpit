@@ -74,13 +74,31 @@ def main():
     for side in ("LONG", "SHORT"):
         by_side[side] = summarize([r for r in history if r.get("side") == side])
 
+    # Issue #18「C-045-GPT」優先順位1: strategy_id別の集計を追加。
+    # strategy_schema.pyを経由していない過去レコードにはstrategy_idキー自体が無いため、
+    # それらは推測でどれかの戦略に割り当てず"UNTAGGED_LEGACY"として明示的に分離する
+    # （件数を消さず、旧スキーマ由来だと分かる形で残す）。
+    strategy_ids = sorted({r.get("strategy_id") for r in history if r.get("strategy_id")})
+    by_strategy = {sid: summarize([r for r in history if r.get("strategy_id") == sid]) for sid in strategy_ids}
+    untagged = [r for r in history if not r.get("strategy_id")]
+    if untagged:
+        by_strategy["UNTAGGED_LEGACY"] = summarize(untagged)
+
+    # regimeも同じ理由でregime未記録の過去レコードを別集計にする。
+    regimes = sorted({r.get("regime") for r in history if r.get("regime")})
+    by_regime = {reg: summarize([r for r in history if r.get("regime") == reg]) for reg in regimes}
+
     out = {
         "generated_at": datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S JST"),
         "note": (
             f"resolved_n が{MIN_N}件未満の区分は、勝率・PFを『確立した手法』として"
             "扱わないこと。95%信頼区間の幅が広いほど、まだ結論を出せる段階ではない。"
+            "by_strategy/by_regimeはstrategy_schema.py導入(2026-09-17)以降のレコードのみ"
+            "区分でき、それ以前のレコードはUNTAGGED_LEGACYにまとめている。"
         ),
         "by_side": by_side,
+        "by_strategy": by_strategy,
+        "by_regime": by_regime,
     }
     Path("reliability_report.json").write_text(
         json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"

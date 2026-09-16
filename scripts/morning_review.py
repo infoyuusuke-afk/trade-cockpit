@@ -2,6 +2,12 @@
 
 The audit is deliberately conservative: when daily data cannot establish
 whether a stop or a target was reached first, the trade is excluded.
+
+MFE/MAE (Issue #18 "C-045-GPT" schema) are approximated from the day's full
+OHLC range relative to the simulated fill, not from true intraday path
+tracking -- only daily bars are available here, so this can overstate the
+excursion if the extreme happened before entry was triggered. Treat them as
+a rough bound, not a precise per-second MFE/MAE.
 """
 from __future__ import annotations
 
@@ -9,9 +15,13 @@ import html
 import json
 import os
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import strategy_schema
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data.json"
@@ -59,30 +69,40 @@ def load_short_candidates() -> list[dict]:
                 "target2": row.get("target2"),
             },
             "price": row.get("trigger"),
+            "atr_pct": row.get("atr_pct"),
         })
     return out
 
 
 def morning_snapshot(data: dict, now: datetime) -> dict:
+    long_rows, long_strategy_id = data.get("day_ifo_candidates"), "day_ifo_long"
+    if not long_rows:
+        long_rows, long_strategy_id = data.get("day_candidates", []), "day_rank_long"
+    tagged_sources = [
+        (list(long_rows[:5]), long_strategy_id),
+        (load_short_candidates(), "day_short_mvp"),
+    ]
+    signal_time = now.strftime("%Y-%m-%d %H:%M:%S JST")
+    regime_snapshot = strategy_schema.current_regime()
+
     candidates = []
-    source = data.get("day_ifo_candidates") or data.get("day_candidates", [])
-    for row in list(source[:5]) + load_short_candidates():
-        plan = row.get("plan") or {
-            "entry": row.get("trigger"),
-            "entry_limit": row.get("entry_limit"),
-            "stop": row.get("stop"),
-            "target1": row.get("target1"),
-            "target2": row.get("target2"),
-        }
-        if not all(plan.get(k) is not None for k in ("entry", "stop", "target1", "target2")):
-            continue
-        if plan.get("entry_limit") is None:
-            plan["entry_limit"] = plan["entry"]
-        fallback_score = 70 + min(
-            25, max(0, float(row.get("day_score", 0)) * 3)
-        )
-        candidates.append(
-            {
+    for rows, strategy_id in tagged_sources:
+        for row in rows:
+            plan = row.get("plan") or {
+                "entry": row.get("trigger"),
+                "entry_limit": row.get("entry_limit"),
+                "stop": row.get("stop"),
+                "target1": row.get("target1"),
+                "target2": row.get("target2"),
+            }
+            if not all(plan.get(k) is not None for k in ("entry", "stop", "target1", "target2")):
+                continue
+            if plan.get("entry_limit") is None:
+                plan["entry_limit"] = plan["entry"]
+            fallback_score = 70 + min(
+                25, max(0, float(row.get("day_score", 0)) * 3)
+            )
+            candidate = {
                 "name": row.get("name", ""),
                 "ticker": row.get("ticker", ""),
                 "side": row.get("side", "LONG"),
@@ -101,7 +121,11 @@ def morning_snapshot(data: dict, now: datetime) -> dict:
                 "swing_score": row.get("swing_score"),
                 "material_stage": row.get("material_stage"),
             }
-        )
+            candidates.append(strategy_schema.tag_record(
+                candidate, strategy_id=strategy_id, signal_time=signal_time,
+                turnover=row.get("turnover"), atr_pct=row.get("atr_pct"),
+                regime_snapshot=regime_snapshot, source="morning_snapshot",
+            ))
     return {
         "date": now.date().isoformat(),
         "fixed_at": now.strftime("%Y-%m-%d %H:%M:%S JST"),
@@ -144,16 +168,32 @@ def audit_one(plan: dict, stock: dict) -> dict:
             pnl = (close - entry) if side == "LONG" else (entry - close)
     risk = abs(entry - stop) or 1
     shares = 100
+    r = None if pnl is None else round(pnl / risk, 2)
+    # MFE/MAE: 発動しなかった取引にはポジションが無いため計算しない（推測しない）。
+    mfe = mae = None
+    if triggered:
+        mfe = round((high - entry) / risk, 2) if side == "LONG" else round((entry - low) / risk, 2)
+        mae = round((entry - low) / risk, 2) if side == "LONG" else round((high - entry) / risk, 2)
     return {
         **plan,
         "entry": trigger,
         "entry_limit": entry,
         "triggered": triggered,
         "result": result,
+        "exit_reason": strategy_schema.exit_reason_code(result),
         "close": close,
         "vwap": vwap,
         "pnl_yen": None if pnl is None else round(pnl * shares),
-        "r": None if pnl is None else round(pnl / risk, 2),
+        "r": r,
+        "R": r,
+        "entry_trigger": trigger,
+        "simulated_fill": entry,
+        # 手数料モデル未接続。既存のpnl計算も暗黙に手数料ゼロを前提にしており、
+        # この0はその既存前提をスキーマ上に明示しているだけ（新しい仮定は作っていない）。
+        "fees": 0,
+        "slippage": 0,
+        "MFE": mfe,
+        "MAE": mae,
         "shares": shares,
     }
 
