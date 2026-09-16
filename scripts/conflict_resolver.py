@@ -1,7 +1,8 @@
 """scripts/conflict_resolver.py
 
 Conflict Resolver / Position Merge（GitHub Issue #18 Execution Stack Phase 2、
-comment 5702288572の基本設計 + C-048-GPT comment 5702907356の上書き解釈）。
+comment 5702288572の基本設計 + C-048-GPT comment 5702907356の上書き解釈 +
+C-048R-GPT comment 5703181981のPhase 2.1 hardening＝3 blocker修正）。
 
 同一symbolで複数戦略が同時・近接発火した場合に、①各戦略の研究上の成績を
 壊さず、②現実の口座では1つのphysical positionだけを安全に管理する、という
@@ -14,7 +15,7 @@ Risk Gate、という接続。後段のPhase 3 Risk Gate・Phase 4 Permission Ga
 このファイルも発注・broker/RSS呼び出し・Excel注文式・実ポジション変更は
 一切行わない（scripts/execution_contract.pyと同じ境界）。
 
-## C-048-GPTによる上書き解釈（重要）
+## C-048-GPTによる上書き解釈
 - `intent_hash`という名前は scripts/execution_contract.py の11フィールド
   SHA256だけがcanonicalに使う。このファイルは同名のhashを絶対に作らない。
   Resolver固有の決定論的キーは`merge_hash`という別名にする。
@@ -25,7 +26,26 @@ Risk Gate、という接続。後段のPhase 3 Risk Gate・Phase 4 Permission Ga
 - signal側の LONG/SHORT は研究語彙として保持してよいが、Execution境界の
   出力では明示的に LONG→BUY・SHORT→SELL へ正規化する。
 
-## このPhase 2が決めないこと（正直な制約）
+## C-048R-GPTによるPhase 2.1 hardening（3 blocker）
+1. `merge_hash`へ`owner_decision_asof`を必須で含める。同一signalの再読込
+   （decision_asof同一）は同じmerge_hashのまま、EXIT後の次completed bar
+   での正当な再Entry（同じgeometry/strategyでもdecision_asofが違う）は
+   別のmerge_hashになるようにする——decision_asofを含めなければ、正当な
+   再Entryが過去のmerge_hashと衝突しBLOCKED_DUPLICATE_ORDERへ誤判定
+   されてしまう。
+2. `session_date`は必ずowner側のdecision_asof（新規はowner signal、
+   confirmationは既存positionのowner_decision_asof）から算出する。また
+   同一resolve対象のsignal群に複数のJST session_dateが混在していたら
+   黙ってmergeせず`BLOCKED_SESSION_MISMATCH`にする。
+3. same-side mergeの対象を`symbol + side + horizon`に限定する。DAYTRADE
+   とSWINGのように保有期間・exit条件が異なるhorizonの信号は、同じ方向
+   でも別々のscenarioとして扱い、confirming_strategy_idsへ混ぜない。
+   Researchは両方独立して残るが、real physical候補はmax_open_positions
+   の口座レベル上限で横断的に絞り込む（1銘柄内の複数horizonが同時に
+   real候補になっても、その上限適用でどちらか一方だけがCANDIDATE_READY
+   に残り、他はBLOCKED_MAX_OPEN_POSITIONSになる）。
+
+## このPhase 2.1が決めないこと（正直な制約）
 - 数量（qty）はこのファイルでは一切決めない。Position Sizing/Risk Gate
   （Phase 3、未実装）の責務であり、ここで100株等をダミーで埋めると実装
   されていないPhaseの判断を先取りして見せてしまうため、意図的に出力
@@ -46,7 +66,7 @@ from pathlib import Path
 from typing import Optional
 
 JST = timezone(timedelta(hours=9))
-SCHEMA_VERSION = "conflict-resolver-1.0"
+SCHEMA_VERSION = "conflict-resolver-1.1"
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POLICY_PATH = ROOT / "config" / "conflict_policy_v0_1.json"
 
@@ -60,6 +80,7 @@ RESOLVED_STATUSES = (
     "BLOCKED_MAX_OPEN_POSITIONS",
     "BLOCKED_DUPLICATE_ORDER",
     "BLOCKED_DATA_QUALITY",
+    "BLOCKED_SESSION_MISMATCH",
 )
 
 
@@ -98,13 +119,17 @@ def _canonical_json(payload: dict) -> bytes:
 
 
 def compute_merge_hash(*, account_lane: str, session_date: str, symbol: str, side: str,
-                        execution_owner_strategy_id: str, entry: float, stop: float,
-                        target: Optional[float]) -> str:
+                        execution_owner_strategy_id: str, owner_decision_asof: str,
+                        entry: float, stop: float, target: Optional[float]) -> str:
     """Resolver固有の決定論的キー。C-047/C-048の`intent_hash`とは別名・別定義
     （このファイルでは絶対に`intent_hash`という名前を使わない）。
-    scenario_idやUUIDのような非決定値は対象に含めない。同じ状況（同じ口座
-    レーン・同じ意思決定日・同じ銘柄/方向・同じowner戦略・同じ発動条件）なら
-    何度計算しても同じ値になる。
+    scenario_idやUUIDのような非決定値は対象に含めない。
+
+    C-048R-GPT Blocker 1: owner_decision_asofを必須で含める。同一signalの
+    再読込（decision_asof同一）は同じhashのまま、EXIT後の次completed bar
+    での正当な再Entry（decision_asofが違う）は別hashになる——これが無いと
+    同じgeometry/strategyの正当な再Entryが過去のhashと衝突し、duplicate
+    として誤ってblockされてしまう。
     """
     payload = {
         "account_lane": account_lane,
@@ -112,6 +137,7 @@ def compute_merge_hash(*, account_lane: str, session_date: str, symbol: str, sid
         "symbol": symbol,
         "side": side,
         "execution_owner_strategy_id": execution_owner_strategy_id,
+        "owner_decision_asof": owner_decision_asof,
         "entry": float(entry),
         "stop": float(stop),
         "target": None if target is None else float(target),
@@ -131,18 +157,28 @@ def _owner_sort_key(signal: dict, execution_priority: list[str]):
     return (ts, priority_rank, strategy_id)
 
 
+def _session_date_of(dt: datetime) -> str:
+    return dt.astimezone(JST).strftime("%Y-%m-%d")
+
+
+def _blocked_scenario(base: dict, status: str, reason: str) -> dict:
+    return {**base, "resolved_status": status, "block_reasons": [reason]}
+
+
 def resolve_conflicts(signals: list[dict], open_positions: list[dict], policy: dict,
                        known_merge_hashes: Optional[set] = None) -> list[dict]:
-    """Conflict Resolverの中核となる純粋関数。symbolごとに1件のResolvedScenarioを
-    返す。同一入力（順序違いを含む）からは常に同一の結果になる。
+    """Conflict Resolverの中核となる純粋関数。symbol×horizonごとに1件の
+    ResolvedScenarioを返す（同一symbolでも異なるhorizonは別scenario。
+    C-048R-GPT Blocker 3）。同一入力（順序違いを含む）からは常に同一の
+    結果になる。
 
     signals: scripts/signal_contract.build_signal()が出力する形の辞書のリスト。
         少なくとも code/side/strategy_id/decision_asof/source_quality/entry/
-        stop/target/snapshot_id を持つことを期待する。
+        stop/target/snapshot_id/horizon を持つことを期待する。
     open_positions: 現在OPEN中のphysical position（symbol/side[BUY|SELL]/
-        execution_owner_strategy_id/entry/stop/targetを持つ辞書のリスト）。
-        まだExecution Ledgerが無いため呼び出し側が別途管理する前提で、
-        このPhaseでは単純な入力として受け取るだけ。
+        horizon/execution_owner_strategy_id/owner_decision_asof/entry/stop/
+        targetを持つ辞書のリスト）。まだExecution Ledgerが無いため呼び出し
+        側が別途管理する前提で、このPhaseでは単純な入力として受け取るだけ。
     policy: load_policy()が返す辞書（policy_version/account_lane/
         max_open_positions/execution_priority）。
     known_merge_hashes: 既知のmerge_hash集合（渡された場合のみ重複判定に使う）。
@@ -156,37 +192,32 @@ def resolve_conflicts(signals: list[dict], open_positions: list[dict], policy: d
     for signal in signals:
         by_symbol.setdefault(signal["code"], []).append(signal)
 
-    open_by_symbol: dict[str, dict[str, dict]] = {}
+    open_by_key: dict[tuple, dict] = {}
+    open_sides_by_symbol: dict[str, set] = {}
     for pos in open_positions:
-        open_by_symbol.setdefault(pos["symbol"], {})[pos["side"]] = pos
+        open_by_key[(pos["symbol"], pos["side"], pos["horizon"])] = pos
+        open_sides_by_symbol.setdefault(pos["symbol"], set()).add(pos["side"])
 
     scenarios = []
-    owner_ts_by_symbol: dict[str, datetime] = {}
+    owner_ts_by_key: dict[tuple, datetime] = {}  # key = (symbol, horizon)
+
     # 銘柄名でソートしてから処理することで、入力signalsの並び順に関わらず
-    # 出力リストの並び順自体も決定論的にする（Golden #7/#16）。
+    # 出力リストの並び順自体も決定論的にする（Golden #7/#16/#21）。
     for symbol in sorted(by_symbol):
         symbol_signals = by_symbol[symbol]
-        # sortedにするのは、Golden #7/#16（input順序を変えても同じresolve結果）を
-        # research_signal_idsの並び順自体にも及ぼすため——中身の集合は入力順序に
-        # 関わらず同じだが、単純にappend順だと出力list自体が順序依存になってしまう。
-        research_signal_ids = sorted(s["snapshot_id"] for s in symbol_signals)
+        symbol_research_ids = sorted(s["snapshot_id"] for s in symbol_signals)
 
-        eligible = [s for s in symbol_signals if s.get("side") in ("LONG", "SHORT")
-                    and s.get("source_quality") == "ok"]
-        long_eligible = [s for s in eligible if s["side"] == "LONG"]
-        short_eligible = [s for s in eligible if s["side"] == "SHORT"]
-        open_sides = set(open_by_symbol.get(symbol, {}))
-
-        base = {
+        symbol_base = {
             "schema_version": SCHEMA_VERSION,
             "policy_version": policy["policy_version"],
             "generated_at": generated_at,
             "symbol": symbol,
             "side": None,
+            "horizon": None,
             "resolved_status": None,
             "execution_owner_strategy_id": None,
             "confirming_strategy_ids": [],
-            "research_signal_ids": research_signal_ids,
+            "research_signal_ids": symbol_research_ids,
             "entry": None,
             "stop": None,
             "target": None,
@@ -197,78 +228,111 @@ def resolve_conflicts(signals: list[dict], open_positions: list[dict], policy: d
             "real_submit_allowed": False,
         }
 
+        eligible = [s for s in symbol_signals if s.get("side") in ("LONG", "SHORT")
+                    and s.get("source_quality") == "ok"]
+        long_eligible = [s for s in eligible if s["side"] == "LONG"]
+        short_eligible = [s for s in eligible if s["side"] == "SHORT"]
+        open_sides = open_sides_by_symbol.get(symbol, set())
+
+        # opposite-side競合はhorizonをまたいでsymbol単位で見る（実口座の
+        # physical positionはhorizonを問わず銘柄単位で1つしか持てないため）。
         opposite_conflict = (
             (bool(long_eligible) and bool(short_eligible))
             or (bool(long_eligible) and "SELL" in open_sides)
             or (bool(short_eligible) and "BUY" in open_sides)
         )
         if opposite_conflict:
-            scenarios.append({
-                **base,
-                "resolved_status": "CONFLICT_BLOCKED_OPPOSITE_SIDE",
-                "block_reasons": ["CONFLICT_BLOCKED_OPPOSITE_SIDE"],
-            })
+            scenarios.append(_blocked_scenario(symbol_base, "CONFLICT_BLOCKED_OPPOSITE_SIDE",
+                                                "CONFLICT_BLOCKED_OPPOSITE_SIDE"))
             continue
 
         if not long_eligible and not short_eligible:
-            scenarios.append({
-                **base,
-                "resolved_status": "BLOCKED_DATA_QUALITY",
-                "block_reasons": ["NO_ELIGIBLE_OK_QUALITY_SIGNAL"],
-            })
+            scenarios.append(_blocked_scenario(symbol_base, "BLOCKED_DATA_QUALITY",
+                                                "NO_ELIGIBLE_OK_QUALITY_SIGNAL"))
             continue
 
-        side_signals = long_eligible or short_eligible
-        side = _normalize_side(side_signals[0]["side"])
-        existing_open = open_by_symbol.get(symbol, {}).get(side)
+        side_signals_all = long_eligible or short_eligible
+        side = _normalize_side(side_signals_all[0]["side"])
 
-        if existing_open is not None:
-            owner_strategy_id = (existing_open.get("execution_owner_strategy_id")
-                                  or existing_open.get("strategy_id"))
-            entry, stop, target = existing_open["entry"], existing_open["stop"], existing_open.get("target")
-            confirming = sorted({s["strategy_id"] for s in side_signals} - {owner_strategy_id})
-            status = "MERGED_CONFIRMATION"
-        else:
-            owner = min(side_signals, key=lambda s: _owner_sort_key(s, execution_priority))
-            owner_strategy_id = owner["strategy_id"]
-            entry, stop, target = owner["entry"], owner["stop"], owner.get("target")
-            confirming = sorted({s["strategy_id"] for s in side_signals} - {owner_strategy_id})
-            status = "CANDIDATE_READY"
-            owner_ts_by_symbol[symbol] = _parse_aware_timestamp(owner["decision_asof"])
+        # C-048R-GPT Blocker 3: same-side mergeはsymbol+side+horizonに限定する。
+        by_horizon: dict[str, list[dict]] = {}
+        for s in side_signals_all:
+            by_horizon.setdefault(s.get("horizon"), []).append(s)
 
-        session_date = _parse_aware_timestamp(side_signals[0]["decision_asof"]).astimezone(JST).strftime("%Y-%m-%d")
-        merge_hash = compute_merge_hash(
-            account_lane=account_lane, session_date=session_date, symbol=symbol, side=side,
-            execution_owner_strategy_id=owner_strategy_id, entry=entry, stop=stop, target=target,
-        )
-        if status == "CANDIDATE_READY" and merge_hash in known_merge_hashes:
-            status = "BLOCKED_DUPLICATE_ORDER"
+        for horizon in sorted(by_horizon, key=lambda h: (h is None, h or "")):
+            horizon_signals = by_horizon[horizon]
+            base = {
+                **symbol_base,
+                "side": side,
+                "horizon": horizon,
+                "research_signal_ids": sorted(s["snapshot_id"] for s in horizon_signals),
+            }
 
-        scenarios.append({
-            **base,
-            "side": side,
-            "resolved_status": status,
-            "execution_owner_strategy_id": owner_strategy_id,
-            "confirming_strategy_ids": confirming,
-            "entry": entry,
-            "stop": stop,
-            "target": target,
-            "merge_hash": merge_hash,
-            "block_reasons": [] if status != "BLOCKED_DUPLICATE_ORDER" else ["BLOCKED_DUPLICATE_ORDER"],
-        })
+            # C-048R-GPT Blocker 2: 混在session_dateを黙ってmergeしない。
+            session_dates = {_session_date_of(_parse_aware_timestamp(s["decision_asof"]))
+                              for s in horizon_signals}
+            if len(session_dates) > 1:
+                scenarios.append(_blocked_scenario(base, "BLOCKED_SESSION_MISMATCH",
+                                                    "SESSION_DATE_MISMATCH"))
+                continue
 
-    _apply_max_open_positions(scenarios, open_positions, policy, execution_priority, owner_ts_by_symbol)
+            existing_open = open_by_key.get((symbol, side, horizon))
+            if existing_open is not None:
+                owner_strategy_id = (existing_open.get("execution_owner_strategy_id")
+                                      or existing_open.get("strategy_id"))
+                entry, stop, target = existing_open["entry"], existing_open["stop"], existing_open.get("target")
+                owner_decision_asof_text = existing_open["owner_decision_asof"]
+                confirming = sorted({s["strategy_id"] for s in horizon_signals} - {owner_strategy_id})
+                status = "MERGED_CONFIRMATION"
+            else:
+                owner = min(horizon_signals, key=lambda s: _owner_sort_key(s, execution_priority))
+                owner_strategy_id = owner["strategy_id"]
+                entry, stop, target = owner["entry"], owner["stop"], owner.get("target")
+                owner_decision_asof_text = owner["decision_asof"]
+                confirming = sorted({s["strategy_id"] for s in horizon_signals} - {owner_strategy_id})
+                status = "CANDIDATE_READY"
+
+            owner_decision_asof = _parse_aware_timestamp(owner_decision_asof_text)
+            if status == "CANDIDATE_READY":
+                owner_ts_by_key[(symbol, horizon)] = owner_decision_asof
+            session_date = _session_date_of(owner_decision_asof)
+
+            merge_hash = compute_merge_hash(
+                account_lane=account_lane, session_date=session_date, symbol=symbol, side=side,
+                execution_owner_strategy_id=owner_strategy_id,
+                owner_decision_asof=owner_decision_asof.isoformat(),
+                entry=entry, stop=stop, target=target,
+            )
+            if status == "CANDIDATE_READY" and merge_hash in known_merge_hashes:
+                status = "BLOCKED_DUPLICATE_ORDER"
+
+            scenarios.append({
+                **base,
+                "resolved_status": status,
+                "execution_owner_strategy_id": owner_strategy_id,
+                "confirming_strategy_ids": confirming,
+                "entry": entry,
+                "stop": stop,
+                "target": target,
+                "merge_hash": merge_hash,
+                "block_reasons": [] if status != "BLOCKED_DUPLICATE_ORDER" else ["BLOCKED_DUPLICATE_ORDER"],
+            })
+
+    _apply_max_open_positions(scenarios, open_positions, policy, execution_priority, owner_ts_by_key)
     return scenarios
 
 
 def _apply_max_open_positions(scenarios: list[dict], open_positions: list[dict], policy: dict,
-                               execution_priority: list[str], owner_ts_by_symbol: dict[str, datetime]) -> None:
-    """口座レベルのmax_open_positions上限を、symbol横断でCANDIDATE_READYの
-    候補に対して適用する（in-place）。上限を超えた分はBLOCKED_MAX_OPEN_
-    POSITIONSへ差し替える。優先順位はowner決定と同じ規則（owner signalの
-    decision_asofが早い→execution_priority→symbol名）で決定論的に並べる
-    （generated_atはこの呼び出し内で全scenario共通のため、ランキングには
-    使わない——タイになって非決定的にならないようowner側の実時刻を使う）。
+                               execution_priority: list[str],
+                               owner_ts_by_key: dict[tuple, datetime]) -> None:
+    """口座レベルのmax_open_positions上限を、symbol×horizon横断でCANDIDATE_READY
+    の候補に対して適用する（in-place）。上限を超えた分はBLOCKED_MAX_OPEN_
+    POSITIONSへ差し替える（C-048R-GPT Blocker 3: 同一銘柄の複数horizonが
+    同時にCANDIDATE_READYになった場合も、この上限適用で最終的に1件だけが
+    real候補として残る）。優先順位はowner決定と同じ規則（owner signalの
+    decision_asofが早い→execution_priority→symbol名→horizon名）で決定論的
+    に並べる（generated_atはこの呼び出し内で全scenario共通のため、
+    ランキングには使わない）。
     """
     max_open = policy.get("max_open_positions")
     if max_open is None:
@@ -284,7 +348,8 @@ def _apply_max_open_positions(scenarios: list[dict], open_positions: list[dict],
             priority_rank = execution_priority.index(scenario["execution_owner_strategy_id"])
         except ValueError:
             priority_rank = len(execution_priority)
-        return (owner_ts_by_symbol[scenario["symbol"]], priority_rank, scenario["symbol"])
+        key = (scenario["symbol"], scenario["horizon"])
+        return (owner_ts_by_key[key], priority_rank, scenario["symbol"], scenario["horizon"] or "")
 
     ready_sorted = sorted(ready, key=rank)
     keep = set(id(s) for s in ready_sorted[:remaining])
