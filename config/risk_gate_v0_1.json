@@ -1,0 +1,14 @@
+{
+  "policy_version": "risk-gate-0.1.0",
+  "test_capital_yen": 300000,
+  "risk_per_trade_pct": 0.0025,
+  "risk_per_trade_yen": 750,
+  "daily_stop_yen": 3000,
+  "max_open_positions": 1,
+  "account_mode": "CASH",
+  "allow_averaging_down": false,
+  "allow_flip": false,
+  "allow_pyramiding": false,
+  "allow_margin_leverage": false,
+  "note": "30万円は収益最大化資金ではなく、Execution経路・安全ゲート検証用（Issue #18 C-050-GPT）。750円/回・3,000円/日は統計的最適値ではなくv0.1工学安全値。account_mode=CASHのためallow_margin_leverage=falseかつ新規SELL/SHORTはRealでは常にSHADOW_ONLY。"
+}
