@@ -2,7 +2,8 @@
 
 Execution Permission / Kill Switch / Price Drift Guard（GitHub Issue #18
 Execution Stack Phase 4、base design C-055 comment 5702335837 +
-C-053-GPT comment 5704719373の上書き条件への対応）。
+C-053-GPT comment 5704719373 + Phase 4.1 hardening C-053R-GPT comment
+5705124424の上書き条件への対応）。
 
 canonical pipeline:
     Signal → Conflict Resolver → Risk Gate(PASS/qty)
@@ -15,29 +16,47 @@ canonical pipeline:
 引数として受け取る純粋関数だけを提供する。wall-clock（`datetime.now()`）
 は判定関数の内部で一切呼ばない——`now`は呼び出し側が明示的に渡す。
 
-## C-053-GPTによる上書き解釈（重要）
-1. canonical `intent_hash`を再定義しない。scripts/execution_contract.py
-   の`compute_intent_hash()`だけがcanonical。ここでは渡されたIntentの
-   `intent_hash`が改ざんされていないか（`compute_intent_hash(intent)`と
-   再計算一致するか）を検証するだけで、新しいhash方式は作らない。
-2. `real_submit_allowed`は最後までFalse固定。Phase 4がPASSしても
-   Intentの`real_submit_allowed`をTrueへ書き換えない・出力にもTrueを
-   一切含めない。Phase 4のPASS結果は別フィールド`permission_status`
-   （例: `ORDER_TICKET_READY`）として表現する。
+## C-053-GPTによる上書き解釈
+1. canonical `intent_hash`を再定義しない。`compute_intent_hash()`だけが
+   canonical。ここでは渡されたIntentの`intent_hash`が改ざんされていない
+   か（再計算一致するか）を検証するだけ。
+2. `real_submit_allowed`は最後までFalse固定。成功は別フィールド
+   `permission_status`（`ORDER_TICKET_READY`）として表現する。
 3. Permission Gateは既存Intent + RiskDecision + 外部snapshotを読むだけ。
 4. ALL-PASS方式：1つでもFalse/UNKNOWN/missing/staleならBLOCKED。
 5. MASTER_KILLはdefault DISARMED。`default_kill_switch_state()`は常に
-   DISARMEDを返す——プロセス起動時は必ずこの関数を呼ぶことで、永続化された
-   古いARMED状態を誤って復元しない設計にする（自動再ARM禁止）。
+   DISARMEDを返す。
 6. Duplicate/UNKNOWNは再送禁止（scripts/order_guard.pyに委譲）。
-7. Price Drift Guardは2箇所で確認する：①ORDER_TICKET_READY生成直前
-   （`evaluate_permission()`）、②human confirm直前
-   （`evaluate_reconfirmation()`）。基準超過は`EXPIRED_REQUOTE_REQUIRED`
-   とし、既存Intentを書き換えず新しいIntentを作り直す前提にする。
-8. TTL/freshness判定に使う時刻は全てtimezone-aware必須。naiveはBLOCK。
-9. human confirmationは`intent_hash`だけでなく、RiskDecision lineage・
-   quote鮮度・authorization・broker snapshot・policy versionを含む
-   `ticket_fingerprint`に結び付ける。fingerprintが変わったら再確認必須。
+7. Price Drift Guardは2箇所で確認する。基準超過は`EXPIRED_REQUOTE_
+   REQUIRED`とし、既存Intentを書き換えず新しいIntentを作り直す前提。
+8. TTL/freshness判定に使う時刻は全てtimezone-aware必須。
+9. human confirmationは`ticket_fingerprint`に結び付ける。
+
+## Phase 4.1 hardening（5 blocker、C-053R-GPT）
+1. **Intent/RiskDecisionのlineage結合**：`risk_decision.decision==PASS`
+   だけでなく、symbol/side/quantity(=allowed_qty)/risk_policy_versionの
+   完全一致、merge_hashの非空性、allowed_qtyの正整数性、conflict_state
+   （snapshotの明示入力）を検証する。どれか1つでも不一致なら
+   `BLOCK_RISK_LINEAGE_MISMATCH`等でfail closed。
+2. **reconfirmationで全ゲートを再評価**：`evaluate_reconfirmation()`は
+   `evaluate_permission()`と同じゲート群（`_evaluate_all_gates()`）を
+   fresh snapshotに対して再実行してからprice drift/fingerprintを見る。
+   `planned_entry`はIntent、`ticket_created_at`相当は`intent["created_at"]`
+   （Intent自身の不変な生成時刻）を正とし、fresh snapshot側からは一切
+   受け取らない——古いticketをfresh snapshotの値で若く見せかけられない。
+3. **execution safety policyのv0.1 envelope固定**：
+   `validate_execution_policy_v0_1()`でpolicy_version完全一致・
+   各TTL/上限のv0.1範囲（縮小のみ許可）・非dict/NaN/inf/bool/型不正を
+   例外を投げずBLOCKにする。MASTER_KILLは`armed_at`〜`expires_at`が
+   `master_kill_ttl_sec`以内であることを、Human Authorizationは
+   `authorization_issued_at`〜`authorization_expires_at`が
+   `authorization_ttl_sec`以内であることを実際に検証する。
+4. **timezone/input fail-closedの完全化**：`now`自体のaware必須化、
+   Intentの`signal_known_at`のaware必須化・未来禁止、`snapshot`の
+   dict型必須化、`known_intents`/`pending_orders`のlist[dict]必須化、
+   `authorization_session_id`/`broker_snapshot_fingerprint`の非空必須化。
+5. **REJECTED/CANCELLEDの再利用禁止**：scripts/order_guard.py側で対応
+   （TICKET_READY以降に到達したintent_hashは一切再利用しない）。
 """
 from __future__ import annotations
 
@@ -54,10 +73,22 @@ import order_guard as og
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POLICY_PATH = ROOT / "config" / "execution_safety_v0_1.json"
-SCHEMA_VERSION = "execution-permission-1.0"
+SCHEMA_VERSION = "execution-permission-1.1"
 
 PERMISSION_STATUSES = ("ORDER_TICKET_READY", "BLOCKED", "EXPIRED_REQUOTE_REQUIRED")
 RECONFIRM_STATUSES = ("CONFIRM_READY", "RECONFIRM_REQUIRED", "EXPIRED_REQUOTE_REQUIRED", "BLOCKED")
+
+# v0.1で凍結した安全上限そのもの。ここに書いた数値を緩める変更は、この
+# コメントを含むコードレビューを経ずに行わない前提とする。将来緩める場合は
+# policy_versionを上げて新しいv0.2検証を別途実装する（risk_gate.pyの
+# validate_policy_v0_1と同じ方針）。
+EXECUTION_POLICY_VERSION_V0_1 = "execution-safety-0.1.0"
+V0_1_MAX_TICKET_AGE_SEC = 15
+V0_1_MAX_PRICE_DRIFT_BPS = 50
+V0_1_MAX_AUTHORIZATION_TTL_SEC = 3600
+V0_1_MAX_MASTER_KILL_TTL_SEC = 3600
+V0_1_MAX_DAILY_STOP_YEN = 3000
+V0_1_MAX_OPEN_POSITIONS = 1
 
 
 def load_policy(path: Path = DEFAULT_POLICY_PATH) -> dict:
@@ -74,12 +105,24 @@ def default_kill_switch_state() -> dict:
 
 
 def _is_finite_number(value) -> bool:
-    return isinstance(value, (int, float)) and not isinstance(value, bool) and _finite(value)
-
-
-def _finite(value) -> bool:
     import math
-    return math.isfinite(value)
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _is_positive_finite_number(value) -> bool:
+    return _is_finite_number(value) and value > 0
+
+
+def _is_positive_integer(value) -> bool:
+    return _is_positive_finite_number(value) and int(value) == value
+
+
+def _in_range_0_exclusive_to(value, upper_inclusive) -> bool:
+    return _is_finite_number(value) and 0 < value <= upper_inclusive
+
+
+def _non_empty_str(value) -> bool:
+    return isinstance(value, str) and len(value) > 0
 
 
 def _parse_aware(text) -> Optional[datetime]:
@@ -96,26 +139,77 @@ def _parse_aware(text) -> Optional[datetime]:
     return parsed
 
 
-def check_master_kill(kill_state: dict, *, now: datetime) -> tuple[bool, list[str]]:
-    """master kill switchがARMEDかつ有効期限内かを確認する純粋関数。
+def validate_execution_policy_v0_1(policy) -> list[str]:
+    """execution safety policyがv0.1の安全境界を満たしているか検証する
+    純粋関数（Phase 4.1 Blocker 3）。非dictはBLOCK_POLICY_INVALID_TYPEを
+    即座に返し`.get()`を一切呼ばない。安全側への縮小は許可し、上限拡大は
+    BLOCKする。違反が無ければ空リストを返す。
+    """
+    if not isinstance(policy, dict):
+        return ["BLOCK_POLICY_INVALID_TYPE"]
+    violations = []
+    if policy.get("policy_version") != EXECUTION_POLICY_VERSION_V0_1:
+        violations.append("BLOCK_POLICY_VERSION_UNSUPPORTED")
+    if not _in_range_0_exclusive_to(policy.get("max_ticket_age_sec"), V0_1_MAX_TICKET_AGE_SEC):
+        violations.append("BLOCK_POLICY_MAX_TICKET_AGE_OUT_OF_RANGE")
+    if not _in_range_0_exclusive_to(policy.get("max_price_drift_bps"), V0_1_MAX_PRICE_DRIFT_BPS):
+        violations.append("BLOCK_POLICY_MAX_PRICE_DRIFT_OUT_OF_RANGE")
+    if not _in_range_0_exclusive_to(policy.get("authorization_ttl_sec"), V0_1_MAX_AUTHORIZATION_TTL_SEC):
+        violations.append("BLOCK_POLICY_AUTHORIZATION_TTL_OUT_OF_RANGE")
+    if not _in_range_0_exclusive_to(policy.get("master_kill_ttl_sec"), V0_1_MAX_MASTER_KILL_TTL_SEC):
+        violations.append("BLOCK_POLICY_MASTER_KILL_TTL_OUT_OF_RANGE")
+    if not _in_range_0_exclusive_to(policy.get("daily_stop_yen"), V0_1_MAX_DAILY_STOP_YEN):
+        violations.append("BLOCK_POLICY_DAILY_STOP_OUT_OF_RANGE")
+    max_open = policy.get("max_open_positions")
+    if not (_is_positive_integer(max_open) and max_open == V0_1_MAX_OPEN_POSITIONS):
+        violations.append("BLOCK_POLICY_MAX_OPEN_POSITIONS_OUT_OF_RANGE")
+    return violations
+
+
+def check_master_kill(kill_state: dict, *, now: datetime, policy: dict) -> tuple[bool, list[str]]:
+    """master kill switchがARMED・有効期限内・TTL内かを確認する純粋関数。
     デフォルト（default_kill_switch_state()）はDISARMEDなので、呼び出し側が
-    明示的にARMED状態を渡さない限り常にBLOCKされる。
+    明示的にARMED状態を渡さない限り常にBLOCKされる（Phase 4.1: armed_atの
+    aware検証とTTL検証を追加）。
     """
     if not isinstance(kill_state, dict) or kill_state.get("status") != "ARMED":
         return False, ["BLOCK_MASTER_KILL_DISARMED"]
+    armed_at = _parse_aware(kill_state.get("armed_at"))
     expires_at = _parse_aware(kill_state.get("expires_at"))
-    if expires_at is None:
+    if armed_at is None or expires_at is None:
         return False, ["BLOCK_MASTER_KILL_EXPIRY_INVALID"]
-    if expires_at <= now:
+    if not (armed_at <= now < expires_at):
         return False, ["BLOCK_MASTER_KILL_EXPIRED"]
+    if (expires_at - armed_at).total_seconds() > policy["master_kill_ttl_sec"]:
+        return False, ["BLOCK_MASTER_KILL_TTL_EXCEEDED"]
     return True, []
+
+
+def check_authorization(snapshot: dict, *, now: datetime, policy: dict) -> tuple[bool, list[str]]:
+    """human authorizationがtrue・有効期限内・TTL内かを確認する純粋関数
+    （Phase 4.1: authorization_issued_atを追加しTTLを実検証する）。
+    """
+    reasons = []
+    if snapshot.get("human_session_authorized") is not True:
+        reasons.append("BLOCK_HUMAN_AUTHORIZATION_MISSING")
+    issued_at = _parse_aware(snapshot.get("authorization_issued_at"))
+    expires_at = _parse_aware(snapshot.get("authorization_expires_at"))
+    if issued_at is None or expires_at is None:
+        reasons.append("BLOCK_AUTHORIZATION_EXPIRY_INVALID")
+        return (len(reasons) == 0), reasons
+    if expires_at <= now:
+        reasons.append("BLOCK_AUTHORIZATION_EXPIRED")
+    if (expires_at - issued_at).total_seconds() > policy["authorization_ttl_sec"]:
+        reasons.append("BLOCK_AUTHORIZATION_TTL_EXCEEDED")
+    return (len(reasons) == 0), reasons
 
 
 def check_price_drift(*, planned_entry: float, quote_price: float, quote_asof: str,
                        ticket_created_at: str, now: datetime, policy: dict) -> tuple[bool, list[str]]:
-    """quoteの鮮度とplanned entryからの価格乖離を確認する。Signal生成時だけ
-    でなく、Phase 4の2箇所（ticket生成直前・human confirm直前）で同じ
-    ロジックを呼ぶことを想定する（C-053第7節）。
+    """quoteの鮮度とplanned entryからの価格乖離を確認する。Phase 4の2箇所
+    （ticket生成直前・human confirm直前）で同じロジックを呼ぶ（C-053第7節）。
+    ticket_created_atは常にIntent自身の`created_at`から渡すこと（呼び出し側
+    がsnapshot由来の値で若く見せかけられないようにするのは呼び出し側の責務）。
     """
     reasons = []
     quote_ts = _parse_aware(quote_asof)
@@ -146,9 +240,7 @@ def compute_ticket_fingerprint(*, intent_hash: str, merge_hash: str, risk_policy
                                 authorization_session_id: str, authorization_expires_at: str,
                                 broker_snapshot_fingerprint: str, permission_policy_version: str) -> str:
     """human confirmationを結び付けるための決定論的fingerprint。canonical
-    `intent_hash`とは別物（C-053第9節）——RiskDecision lineage・quote鮮度・
-    authorization・broker snapshot・permission policy versionをまとめて
-    1つのhashにすることで、そのどれか1つでも変わったら再確認が必要になる。
+    `intent_hash`とは別物（C-053第9節）。
     """
     payload = {
         "intent_hash": intent_hash,
@@ -166,84 +258,88 @@ def compute_ticket_fingerprint(*, intent_hash: str, merge_hash: str, risk_policy
     return hashlib.sha256(encoded).hexdigest()
 
 
-def evaluate_permission(intent: dict, risk_decision: dict, snapshot: dict, policy: dict,
-                         *, now: datetime) -> dict:
-    """Permission Gateの中核となる純粋関数。ALL-PASS方式——1つでもゲートが
-    False/UNKNOWN/missing/staleならBLOCKED。同一入力からは常に同一の
-    PermissionDecisionを返す（nowは明示引数、内部でdatetime.now()を呼ばない）。
-
-    intent: scripts/execution_contract.build_intent()が返すExecution
-        Intent。real_submit_allowedは常にFalseである前提（このファイルは
-        それをTrueへ書き換えない）。
-    risk_decision: scripts/risk_gate.evaluate_risk()が返すRiskDecision。
-    snapshot: 呼び出し側が別途集計するbroker/session/quote/kill-switch等の
-        外部状態スナップショット（このファイルはbroker/RSS等へ取りに
-        行かない）。必須キーは docstring内の各チェックを参照。
-    policy: load_policy()が返す辞書。
+def _validate_intent_integrity(intent, *, now: datetime) -> Optional[list[str]]:
+    """Intentの型・改ざん・signal_known_atのaware/未来チェック。問題が
+    あれば理由リストを返し、無ければNoneを返す（Phase 4.1 Blocker 4）。
     """
-    base = {
-        "schema_version": SCHEMA_VERSION,
-        "policy_version": policy.get("policy_version"),
-        "generated_at": now.isoformat(),
-        "intent_hash": intent.get("intent_hash") if isinstance(intent, dict) else None,
-        "symbol": intent.get("symbol") if isinstance(intent, dict) else None,
-        "permission_status": None,
-        "ticket_fingerprint": None,
-        "block_reasons": [],
-    }
-
-    # --- 0. Intentの完全性検証（改ざん検知） -------------------------------
     if not isinstance(intent, dict):
-        return {**base, "permission_status": "BLOCKED", "block_reasons": ["BLOCK_INTENT_INVALID_TYPE"]}
+        return ["BLOCK_INTENT_INVALID_TYPE"]
     try:
         recomputed = ec.compute_intent_hash(intent)
     except Exception:  # noqa: BLE001 - 壊れたIntentは安全側でBLOCK
-        return {**base, "permission_status": "BLOCKED", "block_reasons": ["BLOCK_INTENT_MALFORMED"]}
+        return ["BLOCK_INTENT_MALFORMED"]
     if intent.get("intent_hash") != recomputed:
-        return {**base, "permission_status": "BLOCKED", "block_reasons": ["BLOCK_INTENT_HASH_TAMPERED"]}
-    # real_submit_allowedは絶対にTrueへ書き換えない。入力が既にTrueへ
-    # 改ざんされていた場合も、このGate自体がTrueを作る経路を持たないことで
-    # 安全側に倒す（execution_contract側のFalse固定と二重の防御になる）。
+        return ["BLOCK_INTENT_HASH_TAMPERED"]
     if intent.get("real_submit_allowed") is not False:
-        return {**base, "permission_status": "BLOCKED", "block_reasons": ["BLOCK_REAL_SUBMIT_ALLOWED_TAMPERED"]}
+        return ["BLOCK_REAL_SUBMIT_ALLOWED_TAMPERED"]
+    signal_known_at = _parse_aware(intent.get("signal_known_at"))
+    if signal_known_at is None:
+        return ["BLOCK_SIGNAL_KNOWN_AT_NOT_TIMEZONE_AWARE"]
+    if signal_known_at > now:
+        return ["BLOCK_SIGNAL_KNOWN_AT_FUTURE"]
+    created_at = _parse_aware(intent.get("created_at"))
+    if created_at is None:
+        return ["BLOCK_INTENT_CREATED_AT_NOT_TIMEZONE_AWARE"]
+    return None
 
-    # --- 1. Price drift（ticket生成直前のチェックポイント①、最優先で短絡） ---
-    # 他のゲートより先に判定する。価格が乖離/失効している時点でこのIntentは
-    # 使い回せない（新しいIntentをやり直す）ため、他の理由と混ぜて曖昧にする
-    # より、まず明確にEXPIRED_REQUOTE_REQUIREDを返す方が呼び出し側の動作が
-    # 単純になる（再取得後の再評価では他のゲートも当然に再チェックされる）。
-    quote_price = snapshot.get("quote_price")
-    quote_asof = snapshot.get("quote_asof")
-    ticket_created_at = snapshot.get("ticket_created_at")
-    planned_entry = intent.get("planned_entry") if intent.get("planned_entry") is not None else intent.get("limit_price")
-    drift_ok, drift_reasons = check_price_drift(
-        planned_entry=planned_entry, quote_price=quote_price, quote_asof=quote_asof,
-        ticket_created_at=ticket_created_at, now=now, policy=policy,
-    )
-    if not drift_ok:
-        return {**base, "permission_status": "EXPIRED_REQUOTE_REQUIRED", "block_reasons": drift_reasons}
 
+def _validate_snapshot_shape(snapshot) -> Optional[list[str]]:
+    """snapshotの型と、known_intents/pending_orders等のlist[dict]性を検証
+    する（Phase 4.1 Blocker 4）。問題が無ければNoneを返す。"""
+    if not isinstance(snapshot, dict):
+        return ["BLOCK_SNAPSHOT_INVALID_TYPE"]
+    for key in ("known_intents", "pending_orders"):
+        value = snapshot.get(key)
+        if value is None or not isinstance(value, list) or not all(isinstance(x, dict) for x in value):
+            return [f"BLOCK_{key.upper()}_INVALID"]
+    if not _non_empty_str(snapshot.get("authorization_session_id")):
+        return ["BLOCK_AUTHORIZATION_SESSION_ID_MISSING"]
+    if not _non_empty_str(snapshot.get("broker_snapshot_fingerprint")):
+        return ["BLOCK_BROKER_SNAPSHOT_FINGERPRINT_MISSING"]
+    return None
+
+
+def _evaluate_all_gates(intent: dict, risk_decision: dict, snapshot: dict, policy: dict,
+                         *, now: datetime) -> list[str]:
+    """price drift/fingerprint以外の全ゲートをsnapshotに対して評価し、違反
+    理由のリストを返す純粋関数。evaluate_permission()とevaluate_
+    reconfirmation()の両方がこの同じcoreを呼ぶ（Phase 4.1 Blocker 2:
+    reconfirm直前がticket生成時より弱いチェックにならないようにする）。
+    """
     reasons = []
 
-    # --- 2. Risk Gate ------------------------------------------------------
+    # --- lineage: RiskDecisionが本当にこのIntentのものか（Blocker 1） -------
     if not isinstance(risk_decision, dict) or risk_decision.get("decision") != "PASS":
         reasons.append("BLOCK_RISK_GATE_NOT_PASS")
+    else:
+        allowed_qty = risk_decision.get("allowed_qty")
+        if not _is_positive_integer(allowed_qty):
+            reasons.append("BLOCK_ALLOWED_QTY_INVALID")
+        elif intent.get("quantity") != int(allowed_qty):
+            reasons.append("BLOCK_RISK_LINEAGE_MISMATCH")
+        if risk_decision.get("symbol") != intent.get("symbol"):
+            reasons.append("BLOCK_RISK_LINEAGE_MISMATCH")
+        if risk_decision.get("side") != intent.get("side"):
+            reasons.append("BLOCK_RISK_LINEAGE_MISMATCH")
+        if risk_decision.get("policy_version") != intent.get("risk_policy_version"):
+            reasons.append("BLOCK_RISK_LINEAGE_MISMATCH")
+        if not _non_empty_str(risk_decision.get("merge_hash")):
+            reasons.append("BLOCK_MERGE_HASH_INVALID")
 
-    # --- 3. Master Kill ------------------------------------------------------
-    kill_ok, kill_reasons = check_master_kill(snapshot.get("kill_switch", {}), now=now)
+    if snapshot.get("conflict_state") not in ("PASS", "CANDIDATE_READY"):
+        reasons.append("BLOCK_CONFLICT_STATE_NOT_PASS")
+
+    # --- Master Kill ---------------------------------------------------------
+    kill_ok, kill_reasons = check_master_kill(snapshot.get("kill_switch", {}), now=now, policy=policy)
     if not kill_ok:
         reasons.extend(kill_reasons)
 
-    # --- 4. Human Authorization ---------------------------------------------
-    if snapshot.get("human_session_authorized") is not True:
-        reasons.append("BLOCK_HUMAN_AUTHORIZATION_MISSING")
-    auth_expiry = _parse_aware(snapshot.get("authorization_expires_at"))
-    if auth_expiry is None:
-        reasons.append("BLOCK_AUTHORIZATION_EXPIRY_INVALID")
-    elif auth_expiry <= now:
-        reasons.append("BLOCK_AUTHORIZATION_EXPIRED")
+    # --- Human Authorization --------------------------------------------------
+    auth_ok, auth_reasons = check_authorization(snapshot, now=now, policy=policy)
+    if not auth_ok:
+        reasons.extend(auth_reasons)
 
-    # --- 5. Data freshness / session / tradeability -------------------------
+    # --- Data freshness / session / tradeability ------------------------------
     if snapshot.get("data_freshness") != "OK":
         reasons.append("BLOCK_DATA_FRESHNESS_NOT_OK")
     if snapshot.get("market_session_allowed") is not True:
@@ -253,7 +349,7 @@ def evaluate_permission(intent: dict, risk_decision: dict, snapshot: dict, polic
     if snapshot.get("broker_link_health") != "OK":
         reasons.append("BLOCK_BROKER_LINK_UNHEALTHY")
 
-    # --- 6. Position reconciliation / buying power / shortable -------------
+    # --- Position reconciliation / buying power / shortable -------------------
     recon_blocked, recon_reasons = og.check_position_reconciliation(
         snapshot.get("expected_position_qty"), snapshot.get("broker_position_qty"))
     if recon_blocked:
@@ -263,7 +359,7 @@ def evaluate_permission(intent: dict, risk_decision: dict, snapshot: dict, polic
     if intent.get("side") == "SELL" and snapshot.get("short_availability_check") is not True:
         reasons.append("BLOCK_SHORT_AVAILABILITY_NOT_CONFIRMED")
 
-    # --- 7. Daily loss / max positions（Risk Gate通過後もdefense-in-depthで再確認） --
+    # --- Daily loss / max positions（Risk Gate通過後もdefense-in-depthで再確認） --
     realized_pnl_today = snapshot.get("realized_pnl_today_yen")
     if not _is_finite_number(realized_pnl_today):
         reasons.append("BLOCK_REALIZED_PNL_UNKNOWN")
@@ -275,22 +371,71 @@ def evaluate_permission(intent: dict, risk_decision: dict, snapshot: dict, polic
     elif open_positions_count >= policy["max_open_positions"]:
         reasons.append("BLOCK_MAX_OPEN_POSITIONS_REACHED")
 
-    # --- 8. Duplicate / pending guard ---------------------------------------
-    dup_blocked, dup_reasons = og.is_duplicate_submission(
-        intent["intent_hash"], snapshot.get("known_intents", []))
+    # --- Duplicate / pending guard ---------------------------------------------
+    dup_blocked, dup_reasons = og.is_duplicate_submission(intent["intent_hash"], snapshot["known_intents"])
     if dup_blocked:
         reasons.extend(dup_reasons)
     pending_blocked, pending_reasons = og.check_pending_duplicate(
-        intent.get("symbol"), intent.get("side"), snapshot.get("pending_orders", []))
+        intent.get("symbol"), intent.get("side"), snapshot["pending_orders"])
     if pending_blocked:
         reasons.extend(pending_reasons)
 
-    # --- 9. Order fields / tick / lot（外部が精査した結果を受け取るだけ） -----
+    # --- Order fields / tick / lot（外部が精査した結果を受け取るだけ） ---------
     if snapshot.get("price_tick_valid") is not True:
         reasons.append("BLOCK_PRICE_TICK_INVALID")
     if snapshot.get("qty_lot_valid") is not True:
         reasons.append("BLOCK_QTY_LOT_INVALID")
 
+    return reasons
+
+
+def evaluate_permission(intent: dict, risk_decision: dict, snapshot: dict, policy: dict,
+                         *, now: datetime) -> dict:
+    """Permission Gateの中核となる純粋関数。ALL-PASS方式——1つでもゲートが
+    False/UNKNOWN/missing/staleならBLOCKED。同一入力からは常に同一の
+    PermissionDecisionを返す。
+    """
+    base = {
+        "schema_version": SCHEMA_VERSION,
+        "policy_version": policy.get("policy_version") if isinstance(policy, dict) else None,
+        "generated_at": now.isoformat() if isinstance(now, datetime) and now.tzinfo else None,
+        "intent_hash": intent.get("intent_hash") if isinstance(intent, dict) else None,
+        "symbol": intent.get("symbol") if isinstance(intent, dict) else None,
+        "permission_status": None,
+        "ticket_fingerprint": None,
+        "block_reasons": [],
+    }
+
+    if not isinstance(now, datetime) or now.tzinfo is None:
+        return {**base, "permission_status": "BLOCKED", "block_reasons": ["BLOCK_NOW_NOT_TIMEZONE_AWARE"]}
+
+    policy_violations = validate_execution_policy_v0_1(policy)
+    if policy_violations:
+        return {**base, "permission_status": "BLOCKED", "block_reasons": policy_violations}
+
+    intent_violations = _validate_intent_integrity(intent, now=now)
+    if intent_violations:
+        return {**base, "permission_status": "BLOCKED", "block_reasons": intent_violations}
+
+    snapshot_violations = _validate_snapshot_shape(snapshot)
+    if snapshot_violations:
+        return {**base, "permission_status": "BLOCKED", "block_reasons": snapshot_violations}
+
+    # --- Price drift（ticket生成直前のチェックポイント①、最優先で短絡） -------
+    # ticket_created_atは必ずIntent自身のcreated_atから取る（snapshot経由の
+    # 値でticketを若く見せかけられない、Phase 4.1 Blocker 2）。
+    quote_price = snapshot.get("quote_price")
+    quote_asof = snapshot.get("quote_asof")
+    ticket_created_at = intent.get("created_at")
+    planned_entry = intent.get("planned_entry") if intent.get("planned_entry") is not None else intent.get("limit_price")
+    drift_ok, drift_reasons = check_price_drift(
+        planned_entry=planned_entry, quote_price=quote_price, quote_asof=quote_asof,
+        ticket_created_at=ticket_created_at, now=now, policy=policy,
+    )
+    if not drift_ok:
+        return {**base, "permission_status": "EXPIRED_REQUOTE_REQUIRED", "block_reasons": drift_reasons}
+
+    reasons = _evaluate_all_gates(intent, risk_decision, snapshot, policy, now=now)
     if reasons:
         return {**base, "permission_status": "BLOCKED", "block_reasons": sorted(set(reasons))}
 
@@ -308,28 +453,48 @@ def evaluate_permission(intent: dict, risk_decision: dict, snapshot: dict, polic
     return {**base, "permission_status": "ORDER_TICKET_READY", "ticket_fingerprint": fingerprint}
 
 
-def evaluate_reconfirmation(ticket: dict, fresh_snapshot: dict, policy: dict, *, now: datetime) -> dict:
-    """human confirmを受け付ける直前のチェックポイント②（C-053第7節・第9節）。
-    ticketはevaluate_permission()がORDER_TICKET_READYを返した結果そのもの。
-    fresh_snapshotはconfirm時点で取り直したquote/authorization/broker状態。
-    fingerprintが変わっていれば再確認必須、priceが乖離/失効していれば
-    EXPIRED_REQUOTE_REQUIRED（新しいIntentをやり直す）。
+def evaluate_reconfirmation(intent: dict, risk_decision: dict, ticket: dict, fresh_snapshot: dict,
+                             policy: dict, *, now: datetime) -> dict:
+    """human confirmを受け付ける直前のチェックポイント②（C-053第7節・第9節、
+    Phase 4.1 Blocker 2）。ticket生成時と同じ全ゲート（`_evaluate_all_gates`）
+    をfresh_snapshotに対して再実行してから、price drift/fingerprintを見る
+    ——confirm直前がticket生成時より弱いチェックになってはいけない。
+    `planned_entry`/`ticket_created_at`相当は常にIntent自身の値を使い、
+    fresh_snapshot側の値では上書きできない。
     """
     base = {
         "schema_version": SCHEMA_VERSION,
-        "policy_version": policy.get("policy_version"),
-        "generated_at": now.isoformat(),
-        "intent_hash": ticket.get("intent_hash"),
+        "policy_version": policy.get("policy_version") if isinstance(policy, dict) else None,
+        "generated_at": now.isoformat() if isinstance(now, datetime) and now.tzinfo else None,
+        "intent_hash": intent.get("intent_hash") if isinstance(intent, dict) else None,
         "reconfirm_status": None,
         "block_reasons": [],
     }
-    if ticket.get("permission_status") != "ORDER_TICKET_READY":
+
+    if not isinstance(now, datetime) or now.tzinfo is None:
+        return {**base, "reconfirm_status": "BLOCKED", "block_reasons": ["BLOCK_NOW_NOT_TIMEZONE_AWARE"]}
+
+    policy_violations = validate_execution_policy_v0_1(policy)
+    if policy_violations:
+        return {**base, "reconfirm_status": "BLOCKED", "block_reasons": policy_violations}
+
+    intent_violations = _validate_intent_integrity(intent, now=now)
+    if intent_violations:
+        return {**base, "reconfirm_status": "BLOCKED", "block_reasons": intent_violations}
+
+    if not isinstance(ticket, dict) or ticket.get("permission_status") != "ORDER_TICKET_READY":
         return {**base, "reconfirm_status": "BLOCKED", "block_reasons": ["BLOCK_TICKET_NOT_READY"]}
+    if ticket.get("intent_hash") != intent.get("intent_hash"):
+        return {**base, "reconfirm_status": "BLOCKED", "block_reasons": ["BLOCK_TICKET_INTENT_MISMATCH"]}
+
+    snapshot_violations = _validate_snapshot_shape(fresh_snapshot)
+    if snapshot_violations:
+        return {**base, "reconfirm_status": "BLOCKED", "block_reasons": snapshot_violations}
 
     quote_price = fresh_snapshot.get("quote_price")
     quote_asof = fresh_snapshot.get("quote_asof")
-    ticket_created_at = fresh_snapshot.get("ticket_created_at")
-    planned_entry = fresh_snapshot.get("planned_entry")
+    ticket_created_at = intent.get("created_at")
+    planned_entry = intent.get("planned_entry") if intent.get("planned_entry") is not None else intent.get("limit_price")
     drift_ok, drift_reasons = check_price_drift(
         planned_entry=planned_entry, quote_price=quote_price, quote_asof=quote_asof,
         ticket_created_at=ticket_created_at, now=now, policy=policy,
@@ -337,11 +502,15 @@ def evaluate_reconfirmation(ticket: dict, fresh_snapshot: dict, policy: dict, *,
     if not drift_ok:
         return {**base, "reconfirm_status": "EXPIRED_REQUOTE_REQUIRED", "block_reasons": drift_reasons}
 
+    reasons = _evaluate_all_gates(intent, risk_decision, fresh_snapshot, policy, now=now)
+    if reasons:
+        return {**base, "reconfirm_status": "BLOCKED", "block_reasons": sorted(set(reasons))}
+
     fresh_fingerprint = compute_ticket_fingerprint(
-        intent_hash=ticket.get("intent_hash"),
-        merge_hash=fresh_snapshot.get("merge_hash"),
-        risk_policy_version=fresh_snapshot.get("risk_policy_version"),
-        allowed_qty=fresh_snapshot.get("allowed_qty"),
+        intent_hash=intent["intent_hash"],
+        merge_hash=risk_decision.get("merge_hash"),
+        risk_policy_version=risk_decision.get("policy_version"),
+        allowed_qty=risk_decision.get("allowed_qty"),
         quote_price=quote_price, quote_asof=quote_asof,
         authorization_session_id=fresh_snapshot.get("authorization_session_id"),
         authorization_expires_at=fresh_snapshot.get("authorization_expires_at"),

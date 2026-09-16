@@ -39,8 +39,19 @@ class IsDuplicateSubmissionTests(unittest.TestCase):
         self.assertTrue(blocked)
         self.assertIn("BLOCK_DUPLICATE_PENDING_UNKNOWN", reasons)
 
-    def test_same_hash_rejected_or_cancelled_does_not_block(self):
+    def test_same_hash_rejected_or_cancelled_still_blocks(self):
+        """Phase 4.1 Blocker 5 (Golden #18): TICKET_READY以降に到達した
+        intent_hashは、REJECTED/CANCELLEDを含め再利用しない。"""
         for status in ("REJECTED", "CANCELLED"):
+            known = [{"intent_hash": "a" * 64, "status": status}]
+            blocked, reasons = og.is_duplicate_submission("a" * 64, known)
+            self.assertTrue(blocked, msg=f"status={status}")
+            self.assertIn("BLOCK_DUPLICATE_INTENT_HASH", reasons)
+
+    def test_same_hash_pre_ticket_status_does_not_block(self):
+        """TICKET_READYへ到達する前（broker/人の確認に一切到達していない）
+        状態だけは、同じhashでの再評価を許可する。"""
+        for status in ("CREATED", "RISK_BLOCKED", "PERMISSION_BLOCKED"):
             known = [{"intent_hash": "a" * 64, "status": status}]
             blocked, reasons = og.is_duplicate_submission("a" * 64, known)
             self.assertFalse(blocked, msg=f"status={status}")

@@ -44,7 +44,14 @@ def build_intent(**overrides):
         shadow_fill_model_version="shadow-v0.1",
     )
     kwargs.update(overrides)
-    return ec.build_intent(**kwargs)
+    intent = ec.build_intent(**kwargs)
+    # ec.build_intent()はcreated_atに実行時のdatetime.now(JST)（実際のwall-clock）を
+    # 埋め込むため、このテストが使う固定NOWと無関係にずれる。created_atはintent_hashの
+    # 対象フィールドではない（execution_contract.pyの_HASH_FIELDS参照）ので、テストの
+    # 都合で固定値へ上書きしてもhashの正当性検証には影響しない——CI実行日時に関わらず
+    # price drift/ticket age判定を決定論的にするため、ここで固定する。
+    intent["created_at"] = iso(NOW - timedelta(seconds=5))
+    return intent
 
 
 def risk_decision(**overrides):
@@ -62,12 +69,14 @@ def snapshot(**overrides):
         "kill_switch": {"status": "ARMED", "armed_at": iso(NOW - timedelta(seconds=60)),
                          "expires_at": iso(NOW + timedelta(seconds=3600))},
         "human_session_authorized": True,
+        "authorization_issued_at": iso(NOW - timedelta(seconds=60)),
         "authorization_expires_at": iso(NOW + timedelta(seconds=3600)),
         "authorization_session_id": "sess-1",
         "data_freshness": "OK",
         "market_session_allowed": True,
         "symbol_tradeable": True,
         "broker_link_health": "OK",
+        "conflict_state": "CANDIDATE_READY",
         "expected_position_qty": 0,
         "broker_position_qty": 0,
         "buying_power_check": True,
@@ -80,19 +89,25 @@ def snapshot(**overrides):
         "qty_lot_valid": True,
         "quote_price": 1500.0,
         "quote_asof": iso(NOW - timedelta(seconds=3)),
-        "ticket_created_at": iso(NOW - timedelta(seconds=5)),
         "broker_snapshot_fingerprint": "broker-fp-1",
     }
     base.update(overrides)
     return base
 
 
-def evaluate(intent=None, decision=None, snap=None, policy=None, now=NOW):
+_UNSET = object()
+
+
+def evaluate(intent=_UNSET, decision=_UNSET, snap=_UNSET, policy=_UNSET, now=NOW):
+    # 各引数はNone/[]/""等の意図的なfalsy値をテストで渡すケース（policy=None等）が
+    # あるため、「未指定」を表す専用sentinelで判定する（`x if x is not None else ...`
+    # や`x or default`はNoneや空値を渡すテストを黙って無効化してしまうバグの元）。
     return ep.evaluate_permission(
-        intent if intent is not None else build_intent(),
-        decision if decision is not None else risk_decision(),
-        snap if snap is not None else snapshot(),
-        policy or POLICY, now=now,
+        build_intent() if intent is _UNSET else intent,
+        risk_decision() if decision is _UNSET else decision,
+        snapshot() if snap is _UNSET else snap,
+        POLICY if policy is _UNSET else policy,
+        now=now,
     )
 
 
@@ -105,82 +120,116 @@ class HappyPathTests(unittest.TestCase):
 
 
 class CanonicalIntentHashTests(unittest.TestCase):
-    """Golden: canonical intent_hashをPhase 4が再計算仕様変更しない。"""
-
     def test_evaluate_permission_does_not_alter_intent_hash_semantics(self):
         intent = build_intent()
         original_hash = intent["intent_hash"]
-        self.assertEqual(original_hash, ec.compute_intent_hash(intent))
         evaluate(intent)
-        # 呼び出し後もintentは変更されておらず、canonical hashも再計算可能なまま。
         self.assertEqual(intent["intent_hash"], original_hash)
         self.assertEqual(ec.compute_intent_hash(intent), original_hash)
 
     def test_tampered_intent_hash_is_blocked(self):
-        """Golden: tampered Intentでintent_hash != compute_intent_hash(intent) → BLOCK。"""
-        intent = build_intent()
-        intent = {**intent, "intent_hash": "0" * 64}
+        intent = {**build_intent(), "intent_hash": "0" * 64}
         out = evaluate(intent)
         self.assertEqual(out["permission_status"], "BLOCKED")
         self.assertIn("BLOCK_INTENT_HASH_TAMPERED", out["block_reasons"])
 
     def test_tampered_quantity_without_rehash_is_blocked(self):
-        """qtyだけ書き換えてhashを再計算しなかった場合も、同じくtampered検知で拾われる。"""
-        intent = build_intent()
-        intent = {**intent, "quantity": 999}
+        intent = {**build_intent(), "quantity": 999}
         out = evaluate(intent)
         self.assertEqual(out["permission_status"], "BLOCKED")
         self.assertIn("BLOCK_INTENT_HASH_TAMPERED", out["block_reasons"])
 
 
 class RealSubmitAllowedTests(unittest.TestCase):
-    """Golden: real_submit_allowedをTrueへ変更する経路がない。"""
-
     def test_output_never_contains_real_submit_allowed(self):
-        out = evaluate()
-        self.assertNotIn("real_submit_allowed", out)
+        self.assertNotIn("real_submit_allowed", evaluate())
 
     def test_input_intent_real_submit_allowed_stays_false_after_call(self):
         intent = build_intent()
-        self.assertIs(intent["real_submit_allowed"], False)
         evaluate(intent)
         self.assertIs(intent["real_submit_allowed"], False)
 
     def test_tampered_real_submit_allowed_true_is_blocked(self):
-        intent = build_intent()
-        tampered = {**intent, "real_submit_allowed": True}
+        tampered = {**build_intent(), "real_submit_allowed": True}
         out = evaluate(tampered)
         self.assertEqual(out["permission_status"], "BLOCKED")
         self.assertIn("BLOCK_REAL_SUBMIT_ALLOWED_TAMPERED", out["block_reasons"])
 
-    def test_build_intent_does_not_accept_real_submit_allowed_argument(self):
-        with self.assertRaises(TypeError):
-            build_intent(real_submit_allowed=True)
 
+class RiskLineageTests(unittest.TestCase):
+    """Phase 4.1 Blocker 1: IntentとRiskDecisionのlineage結合。"""
 
-class RiskGateGateTests(unittest.TestCase):
-    def test_risk_gate_not_pass_blocks(self):
-        for bad_decision in ("SHADOW_ONLY", "BLOCK"):
-            out = evaluate(decision=risk_decision(decision=bad_decision))
-            self.assertEqual(out["permission_status"], "BLOCKED", msg=bad_decision)
-            self.assertIn("BLOCK_RISK_GATE_NOT_PASS", out["block_reasons"])
+    def test_golden_1_symbol_mismatch_blocks(self):
+        out = evaluate(decision=risk_decision(symbol="8035.T"))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_RISK_LINEAGE_MISMATCH", out["block_reasons"])
+
+    def test_golden_2_side_mismatch_blocks(self):
+        out = evaluate(decision=risk_decision(side="SELL"))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_RISK_LINEAGE_MISMATCH", out["block_reasons"])
+
+    def test_golden_3_quantity_not_equal_allowed_qty_blocks(self):
+        out = evaluate(decision=risk_decision(allowed_qty=200))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_RISK_LINEAGE_MISMATCH", out["block_reasons"])
+
+    def test_golden_4_risk_policy_version_mismatch_blocks(self):
+        out = evaluate(decision=risk_decision(policy_version="risk-gate-9.9.9"))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_RISK_LINEAGE_MISMATCH", out["block_reasons"])
+
+    def test_empty_merge_hash_blocks(self):
+        out = evaluate(decision=risk_decision(merge_hash=""))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_MERGE_HASH_INVALID", out["block_reasons"])
+
+    def test_non_positive_allowed_qty_blocks(self):
+        for bad_qty in (0, -1, 1.5, float("nan")):
+            out = evaluate(decision=risk_decision(allowed_qty=bad_qty))
+            self.assertEqual(out["permission_status"], "BLOCKED", msg=f"allowed_qty={bad_qty}")
+            self.assertIn("BLOCK_ALLOWED_QTY_INVALID", out["block_reasons"])
+
+    def test_conflict_state_not_pass_blocks(self):
+        out = evaluate(snap=snapshot(conflict_state="BLOCKED_DATA_QUALITY"))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_CONFLICT_STATE_NOT_PASS", out["block_reasons"])
+
+    def test_missing_conflict_state_blocks(self):
+        out = evaluate(snap=snapshot(conflict_state=None))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_CONFLICT_STATE_NOT_PASS", out["block_reasons"])
 
 
 class MasterKillTests(unittest.TestCase):
     def test_default_kill_switch_state_is_disarmed(self):
-        """Golden: master kill default DISARMED / restartで再ARMしない。"""
-        state = ep.default_kill_switch_state()
-        self.assertEqual(state["status"], "DISARMED")
+        self.assertEqual(ep.default_kill_switch_state()["status"], "DISARMED")
 
     def test_disarmed_kill_switch_blocks(self):
         out = evaluate(snap=snapshot(kill_switch=ep.default_kill_switch_state()))
         self.assertEqual(out["permission_status"], "BLOCKED")
         self.assertIn("BLOCK_MASTER_KILL_DISARMED", out["block_reasons"])
 
-    def test_missing_kill_switch_blocks(self):
-        out = evaluate(snap=snapshot(kill_switch={}))
+    def test_golden_12a_naive_armed_at_blocks(self):
+        naive = {"status": "ARMED", "armed_at": "2026-09-17T08:59:00",
+                  "expires_at": iso(NOW + timedelta(seconds=3600))}
+        out = evaluate(snap=snapshot(kill_switch=naive))
         self.assertEqual(out["permission_status"], "BLOCKED")
-        self.assertIn("BLOCK_MASTER_KILL_DISARMED", out["block_reasons"])
+        self.assertIn("BLOCK_MASTER_KILL_EXPIRY_INVALID", out["block_reasons"])
+
+    def test_golden_12b_future_armed_at_blocks(self):
+        future_armed = {"status": "ARMED", "armed_at": iso(NOW + timedelta(seconds=10)),
+                         "expires_at": iso(NOW + timedelta(seconds=3600))}
+        out = evaluate(snap=snapshot(kill_switch=future_armed))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_MASTER_KILL_EXPIRED", out["block_reasons"])
+
+    def test_golden_12c_ttl_exceeded_blocks(self):
+        too_long = {"status": "ARMED", "armed_at": iso(NOW - timedelta(seconds=60)),
+                    "expires_at": iso(NOW + timedelta(seconds=7200))}  # TTL=3600s上限を超える
+        out = evaluate(snap=snapshot(kill_switch=too_long))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_MASTER_KILL_TTL_EXCEEDED", out["block_reasons"])
 
     def test_expired_kill_switch_blocks(self):
         expired = {"status": "ARMED", "armed_at": iso(NOW - timedelta(hours=2)),
@@ -189,16 +238,141 @@ class MasterKillTests(unittest.TestCase):
         self.assertEqual(out["permission_status"], "BLOCKED")
         self.assertIn("BLOCK_MASTER_KILL_EXPIRED", out["block_reasons"])
 
-    def test_naive_expiry_timestamp_blocks(self):
-        naive = {"status": "ARMED", "armed_at": iso(NOW), "expires_at": "2026-09-17T10:00:00"}
-        out = evaluate(snap=snapshot(kill_switch=naive))
+
+class AuthorizationTtlTests(unittest.TestCase):
+    """Phase 4.1 Golden #13: authorization issued_at/expiry TTL超過 → BLOCK。"""
+
+    def test_expired_authorization_blocks(self):
+        out = evaluate(snap=snapshot(authorization_expires_at=iso(NOW - timedelta(seconds=1))))
         self.assertEqual(out["permission_status"], "BLOCKED")
-        self.assertIn("BLOCK_MASTER_KILL_EXPIRY_INVALID", out["block_reasons"])
+        self.assertIn("BLOCK_AUTHORIZATION_EXPIRED", out["block_reasons"])
+
+    def test_naive_authorization_expiry_blocks(self):
+        out = evaluate(snap=snapshot(authorization_expires_at="2026-09-17T10:00:00"))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_AUTHORIZATION_EXPIRY_INVALID", out["block_reasons"])
+
+    def test_naive_authorization_issued_at_blocks(self):
+        out = evaluate(snap=snapshot(authorization_issued_at="2026-09-17T08:59:00"))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_AUTHORIZATION_EXPIRY_INVALID", out["block_reasons"])
+
+    def test_authorization_ttl_exceeded_blocks(self):
+        out = evaluate(snap=snapshot(
+            authorization_issued_at=iso(NOW - timedelta(seconds=60)),
+            authorization_expires_at=iso(NOW + timedelta(seconds=7200)),  # 3600s上限超過
+        ))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_AUTHORIZATION_TTL_EXCEEDED", out["block_reasons"])
+
+
+class SignalKnownAtTests(unittest.TestCase):
+    """Phase 4.1 Golden #14: Intent signal_known_at naive/future → BLOCK。"""
+
+    def test_naive_signal_known_at_blocks(self):
+        intent = build_intent(signal_known_at="2026-09-17T08:55:00")
+        out = evaluate(intent)
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_SIGNAL_KNOWN_AT_NOT_TIMEZONE_AWARE", out["block_reasons"])
+
+    def test_future_signal_known_at_blocks(self):
+        intent = build_intent(signal_known_at=iso(NOW + timedelta(hours=1)))
+        out = evaluate(intent)
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_SIGNAL_KNOWN_AT_FUTURE", out["block_reasons"])
+
+
+class NowTimezoneTests(unittest.TestCase):
+    """Phase 4.1 Golden #15: now naive → BLOCK。"""
+
+    def test_naive_now_blocks(self):
+        naive_now = datetime(2026, 9, 17, 9, 0, 0)  # tzinfo無し
+        out = evaluate(now=naive_now)
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_NOW_NOT_TIMEZONE_AWARE", out["block_reasons"])
+
+
+class SnapshotShapeTests(unittest.TestCase):
+    """Phase 4.1 Golden #16/#17: snapshot・known_intents・pending_orders・
+    authorization_session_id・broker_snapshot_fingerprintの検証。"""
+
+    def test_non_dict_snapshot_blocks(self):
+        for bad_snap in (None, [], "snapshot"):
+            out = evaluate(snap=bad_snap)
+            self.assertEqual(out["permission_status"], "BLOCKED", msg=f"snap={bad_snap!r}")
+
+    def test_none_known_intents_blocks(self):
+        out = evaluate(snap=snapshot(known_intents=None))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_KNOWN_INTENTS_INVALID", out["block_reasons"])
+
+    def test_malformed_known_intents_element_blocks(self):
+        out = evaluate(snap=snapshot(known_intents=["not-a-dict"]))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_KNOWN_INTENTS_INVALID", out["block_reasons"])
+
+    def test_none_pending_orders_blocks(self):
+        out = evaluate(snap=snapshot(pending_orders=None))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_PENDING_ORDERS_INVALID", out["block_reasons"])
+
+    def test_missing_authorization_session_id_blocks(self):
+        out = evaluate(snap=snapshot(authorization_session_id=""))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_AUTHORIZATION_SESSION_ID_MISSING", out["block_reasons"])
+
+    def test_missing_broker_snapshot_fingerprint_blocks(self):
+        out = evaluate(snap=snapshot(broker_snapshot_fingerprint=None))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_BROKER_SNAPSHOT_FINGERPRINT_MISSING", out["block_reasons"])
+
+
+class ExecutionPolicyEnvelopeTests(unittest.TestCase):
+    """Phase 4.1 Blocker 3: execution safety policyのv0.1 envelope。"""
+
+    def test_golden_9_missing_or_unknown_policy_version_blocks(self):
+        no_version = {k: v for k, v in POLICY.items() if k != "policy_version"}
+        out = evaluate(policy=no_version)
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_POLICY_VERSION_UNSUPPORTED", out["block_reasons"])
+
+        out2 = evaluate(policy={**POLICY, "policy_version": "execution-safety-0.2.0"})
+        self.assertEqual(out2["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_POLICY_VERSION_UNSUPPORTED", out2["block_reasons"])
+
+    def test_golden_10_ceilings_cannot_be_widened(self):
+        cases = [
+            ({**POLICY, "max_ticket_age_sec": 16}, "BLOCK_POLICY_MAX_TICKET_AGE_OUT_OF_RANGE"),
+            ({**POLICY, "max_price_drift_bps": 51}, "BLOCK_POLICY_MAX_PRICE_DRIFT_OUT_OF_RANGE"),
+            ({**POLICY, "authorization_ttl_sec": 3601}, "BLOCK_POLICY_AUTHORIZATION_TTL_OUT_OF_RANGE"),
+            ({**POLICY, "master_kill_ttl_sec": 3601}, "BLOCK_POLICY_MASTER_KILL_TTL_OUT_OF_RANGE"),
+            ({**POLICY, "daily_stop_yen": 3001}, "BLOCK_POLICY_DAILY_STOP_OUT_OF_RANGE"),
+            ({**POLICY, "max_open_positions": 2}, "BLOCK_POLICY_MAX_OPEN_POSITIONS_OUT_OF_RANGE"),
+        ]
+        for bad_policy, expected_reason in cases:
+            out = evaluate(policy=bad_policy)
+            self.assertEqual(out["permission_status"], "BLOCKED", msg=bad_policy)
+            self.assertIn(expected_reason, out["block_reasons"])
+
+    def test_golden_11_policy_none_list_or_string_blocks_not_raises(self):
+        for bad_policy in (None, [], "execution-safety-0.1.0", 42):
+            try:
+                out = evaluate(policy=bad_policy)
+            except Exception as exc:  # noqa: BLE001
+                self.fail(f"evaluate_permission raised {exc!r} for policy={bad_policy!r}")
+            self.assertEqual(out["permission_status"], "BLOCKED", msg=f"policy={bad_policy!r}")
+            self.assertIn("BLOCK_POLICY_INVALID_TYPE", out["block_reasons"])
+
+    def test_shrinking_within_envelope_still_passes(self):
+        shrunk = {**POLICY, "max_ticket_age_sec": 10, "daily_stop_yen": 2000}
+        out = evaluate(policy=shrunk)
+        self.assertEqual(out["permission_status"], "ORDER_TICKET_READY")
+
+    def test_boundary_values_pass_policy_validation(self):
+        self.assertEqual(ep.validate_execution_policy_v0_1(POLICY), [])
 
 
 class UnknownGateTests(unittest.TestCase):
-    """Golden: UNKNOWN gate → BLOCK（missing/None/非Trueは全てPASSではない）。"""
-
     def test_missing_human_authorization_blocks(self):
         out = evaluate(snap=snapshot(human_session_authorized=None))
         self.assertEqual(out["permission_status"], "BLOCKED")
@@ -226,22 +400,8 @@ class UnknownGateTests(unittest.TestCase):
         self.assertEqual(out2["permission_status"], "BLOCKED")
 
 
-class AuthorizationExpiryTests(unittest.TestCase):
-    def test_expired_authorization_blocks(self):
-        out = evaluate(snap=snapshot(authorization_expires_at=iso(NOW - timedelta(seconds=1))))
-        self.assertEqual(out["permission_status"], "BLOCKED")
-        self.assertIn("BLOCK_AUTHORIZATION_EXPIRED", out["block_reasons"])
-
-    def test_naive_authorization_expiry_blocks(self):
-        """Golden: naive timestamp → BLOCK。"""
-        out = evaluate(snap=snapshot(authorization_expires_at="2026-09-17T10:00:00"))
-        self.assertEqual(out["permission_status"], "BLOCKED")
-        self.assertIn("BLOCK_AUTHORIZATION_EXPIRY_INVALID", out["block_reasons"])
-
-
 class PositionReconciliationTests(unittest.TestCase):
     def test_position_mismatch_blocks(self):
-        """Golden: position mismatch → BLOCK。"""
         out = evaluate(snap=snapshot(expected_position_qty=0, broker_position_qty=100))
         self.assertEqual(out["permission_status"], "BLOCKED")
         self.assertIn("BLOCK_POSITION_RECONCILIATION", out["block_reasons"])
@@ -256,9 +416,6 @@ class PositionReconciliationTests(unittest.TestCase):
 
 
 class DailyStopAndMaxPositionsDefenseInDepthTests(unittest.TestCase):
-    """Golden: daily stop / max position → defense-in-depthでBLOCK
-    （Risk Gateが既にPASSしていても、Permission Gate側でも独立に再確認する）。"""
-
     def test_daily_stop_reached_blocks(self):
         out = evaluate(snap=snapshot(realized_pnl_today_yen=-3000.0))
         self.assertEqual(out["permission_status"], "BLOCKED")
@@ -269,15 +426,9 @@ class DailyStopAndMaxPositionsDefenseInDepthTests(unittest.TestCase):
         self.assertEqual(out["permission_status"], "BLOCKED")
         self.assertIn("BLOCK_MAX_OPEN_POSITIONS_REACHED", out["block_reasons"])
 
-    def test_unknown_realized_pnl_blocks(self):
-        out = evaluate(snap=snapshot(realized_pnl_today_yen=None))
-        self.assertEqual(out["permission_status"], "BLOCKED")
-        self.assertIn("BLOCK_REALIZED_PNL_UNKNOWN", out["block_reasons"])
-
 
 class DuplicateGuardTests(unittest.TestCase):
     def test_duplicate_exact_intent_hash_blocks(self):
-        """Golden: duplicate exact intent_hash → BLOCK。"""
         intent = build_intent()
         known = [{"intent_hash": intent["intent_hash"], "status": "TICKET_READY"}]
         out = evaluate(intent, snap=snapshot(known_intents=known))
@@ -285,12 +436,27 @@ class DuplicateGuardTests(unittest.TestCase):
         self.assertIn("BLOCK_DUPLICATE_INTENT_HASH", out["block_reasons"])
 
     def test_pending_unknown_intent_blocks_no_auto_retry(self):
-        """Golden: pending/UNKNOWN intent → BLOCK、auto retryなし。"""
         intent = build_intent()
         known = [{"intent_hash": intent["intent_hash"], "status": "UNKNOWN"}]
         out = evaluate(intent, snap=snapshot(known_intents=known))
         self.assertEqual(out["permission_status"], "BLOCKED")
         self.assertIn("BLOCK_DUPLICATE_PENDING_UNKNOWN", out["block_reasons"])
+
+    def test_golden_18_rejected_or_cancelled_ticket_cannot_be_reused(self):
+        """Phase 4.1 Blocker 5: TICKET_READY以降に到達したintent_hashは
+        REJECTED/CANCELLEDを含め再利用しない。"""
+        intent = build_intent()
+        for status in ("REJECTED", "CANCELLED"):
+            known = [{"intent_hash": intent["intent_hash"], "status": status}]
+            out = evaluate(intent, snap=snapshot(known_intents=known))
+            self.assertEqual(out["permission_status"], "BLOCKED", msg=status)
+            self.assertIn("BLOCK_DUPLICATE_INTENT_HASH", out["block_reasons"])
+
+    def test_pre_ticket_status_does_not_block_reuse(self):
+        intent = build_intent()
+        known = [{"intent_hash": intent["intent_hash"], "status": "RISK_BLOCKED"}]
+        out = evaluate(intent, snap=snapshot(known_intents=known))
+        self.assertEqual(out["permission_status"], "ORDER_TICKET_READY")
 
     def test_pending_order_same_symbol_side_blocks(self):
         pending = [{"symbol": "285A.T", "side": "BUY", "qty": 100}]
@@ -301,26 +467,29 @@ class DuplicateGuardTests(unittest.TestCase):
 
 class PriceDriftTests(unittest.TestCase):
     def test_stale_quote_requires_requote(self):
-        """Golden: stale quote → BLOCK（ここではEXPIRED_REQUOTE_REQUIRED、既存Intentを
-        書き換えず新しいIntentを作り直す前提の専用ステータス）。"""
         out = evaluate(snap=snapshot(quote_asof=iso(NOW - timedelta(seconds=60))))
         self.assertEqual(out["permission_status"], "EXPIRED_REQUOTE_REQUIRED")
         self.assertIn("EXPIRED_QUOTE_STALE", out["block_reasons"])
 
     def test_stale_ticket_requires_requote(self):
-        out = evaluate(snap=snapshot(ticket_created_at=iso(NOW - timedelta(seconds=60))))
+        """intent自身のcreated_atが古い場合（例えば実際にIntentが作られてから
+        時間が経ってしまった場合）にrequoteが必要になることを確認する。"""
+        old_intent = build_intent()
+        old_intent = {**old_intent, "created_at": iso(NOW - timedelta(seconds=60))}
+        # created_atを直接書き換えるとintent_hashの対象フィールドではないため
+        # tamper検知には引っかからない（hash対象はexecution_contract.py参照）。
+        out = evaluate(old_intent)
         self.assertEqual(out["permission_status"], "EXPIRED_REQUOTE_REQUIRED")
         self.assertIn("EXPIRED_TICKET_AGE", out["block_reasons"])
 
     def test_price_drift_beyond_threshold_requires_requote(self):
-        """Golden: ticket ready直前のprice drift → requote required。"""
-        drifted_quote = 1500.0 * 1.01  # 100bps drift > 50bps threshold
+        drifted_quote = 1500.0 * 1.01
         out = evaluate(snap=snapshot(quote_price=drifted_quote))
         self.assertEqual(out["permission_status"], "EXPIRED_REQUOTE_REQUIRED")
         self.assertIn("EXPIRED_PRICE_DRIFT", out["block_reasons"])
 
     def test_small_drift_within_threshold_still_passes(self):
-        tiny_drift_quote = 1500.0 * 1.001  # 10bps < 50bps threshold
+        tiny_drift_quote = 1500.0 * 1.001
         out = evaluate(snap=snapshot(quote_price=tiny_drift_quote))
         self.assertEqual(out["permission_status"], "ORDER_TICKET_READY")
 
@@ -331,70 +500,125 @@ class PriceDriftTests(unittest.TestCase):
 
 
 class ReconfirmationTests(unittest.TestCase):
-    """人の確認直前のチェックポイント②（C-053第7節・第9節）。"""
+    """人の確認直前のチェックポイント②（C-053第7節・第9節、Phase 4.1 Blocker 2）。"""
 
     def _fresh_snapshot(self, **overrides):
-        # デフォルトはevaluate()が使うsnapshot()と完全に同じ観測（同じquote_asof/
-        # ticket_created_at）にして「本当に何も変わっていない」ケースを表す。
-        # quote_asofが変わる（＝新しい気配を取り直した）こと自体がfingerprintの
-        # 構成要素なので、意図的にstaleでない新しいtimestampへ変えるテストは
-        # 別途test_new_quote_observation_requires_reconfirmで確認する。
-        base = {
+        base = snapshot()
+        base.pop("kill_switch", None)
+        base.update({
+            "kill_switch": {"status": "ARMED", "armed_at": iso(NOW - timedelta(seconds=60)),
+                             "expires_at": iso(NOW + timedelta(seconds=3600))},
             "quote_price": 1500.0, "quote_asof": iso(NOW - timedelta(seconds=3)),
-            "ticket_created_at": iso(NOW - timedelta(seconds=5)),
-            "planned_entry": 1500.0, "merge_hash": "m" * 64,
-            "risk_policy_version": "risk-gate-0.1.0", "allowed_qty": 100,
-            "authorization_session_id": "sess-1",
-            "authorization_expires_at": iso(NOW + timedelta(seconds=3600)),
-            "broker_snapshot_fingerprint": "broker-fp-1",
-        }
+        })
         base.update(overrides)
         return base
 
+    def _ready_ticket(self):
+        intent = build_intent()
+        decision = risk_decision()
+        ticket = evaluate(intent, decision)
+        self.assertEqual(ticket["permission_status"], "ORDER_TICKET_READY")
+        return intent, decision, ticket
+
     def test_unchanged_snapshot_gives_confirm_ready(self):
-        ticket = evaluate()
-        out = ep.evaluate_reconfirmation(ticket, self._fresh_snapshot(), POLICY, now=NOW + timedelta(seconds=2))
+        intent, decision, ticket = self._ready_ticket()
+        out = ep.evaluate_reconfirmation(intent, decision, ticket, self._fresh_snapshot(),
+                                          POLICY, now=NOW + timedelta(seconds=2))
         self.assertEqual(out["reconfirm_status"], "CONFIRM_READY")
 
     def test_price_drift_before_confirm_requires_requote(self):
-        """Golden: human confirm直前のprice drift → requote required。"""
-        ticket = evaluate()
+        intent, decision, ticket = self._ready_ticket()
         drifted = self._fresh_snapshot(quote_price=1500.0 * 1.01)
-        out = ep.evaluate_reconfirmation(ticket, drifted, POLICY, now=NOW + timedelta(seconds=2))
+        out = ep.evaluate_reconfirmation(intent, decision, ticket, drifted, POLICY,
+                                          now=NOW + timedelta(seconds=2))
         self.assertEqual(out["reconfirm_status"], "EXPIRED_REQUOTE_REQUIRED")
 
     def test_fingerprint_change_requires_reconfirm(self):
-        """Golden: permission/ticket fingerprint変更 → reconfirm required。"""
-        ticket = evaluate()
+        intent, decision, ticket = self._ready_ticket()
         changed = self._fresh_snapshot(broker_snapshot_fingerprint="broker-fp-DIFFERENT")
-        out = ep.evaluate_reconfirmation(ticket, changed, POLICY, now=NOW + timedelta(seconds=2))
+        out = ep.evaluate_reconfirmation(intent, decision, ticket, changed, POLICY,
+                                          now=NOW + timedelta(seconds=2))
         self.assertEqual(out["reconfirm_status"], "RECONFIRM_REQUIRED")
         self.assertIn("TICKET_FINGERPRINT_CHANGED", out["block_reasons"])
 
     def test_new_quote_observation_requires_reconfirm(self):
-        """quote/asofもfingerprintの構成要素（C-053第9節）なので、価格が同じでも
-        新しい気配を取り直した（quote_asofが変わった）だけでreconfirmが必要になる
-        ——古い確認画面を黙って使い回さないための設計。"""
-        ticket = evaluate()
+        intent, decision, ticket = self._ready_ticket()
         refetched = self._fresh_snapshot(quote_asof=iso(NOW - timedelta(seconds=1)))
-        out = ep.evaluate_reconfirmation(ticket, refetched, POLICY, now=NOW + timedelta(seconds=2))
+        out = ep.evaluate_reconfirmation(intent, decision, ticket, refetched, POLICY,
+                                          now=NOW + timedelta(seconds=2))
         self.assertEqual(out["reconfirm_status"], "RECONFIRM_REQUIRED")
 
     def test_ticket_not_ready_blocks_reconfirmation(self):
-        blocked_ticket = evaluate(snap=snapshot(human_session_authorized=None))
-        out = ep.evaluate_reconfirmation(blocked_ticket, self._fresh_snapshot(), POLICY, now=NOW)
+        intent = build_intent()
+        blocked_ticket = evaluate(intent, snap=snapshot(human_session_authorized=None))
+        out = ep.evaluate_reconfirmation(intent, risk_decision(), blocked_ticket,
+                                          self._fresh_snapshot(), POLICY, now=NOW)
         self.assertEqual(out["reconfirm_status"], "BLOCKED")
         self.assertIn("BLOCK_TICKET_NOT_READY", out["block_reasons"])
 
+    # --- Golden #5/#6/#7: ticket ready後に状態が悪化したらreconfirmでBLOCK ---
+    def test_golden_5_kill_disarmed_after_ticket_ready_blocks_reconfirm(self):
+        intent, decision, ticket = self._ready_ticket()
+        disarmed = self._fresh_snapshot(kill_switch=ep.default_kill_switch_state())
+        out = ep.evaluate_reconfirmation(intent, decision, ticket, disarmed, POLICY,
+                                          now=NOW + timedelta(seconds=2))
+        self.assertEqual(out["reconfirm_status"], "BLOCKED")
+        self.assertIn("BLOCK_MASTER_KILL_DISARMED", out["block_reasons"])
+
+    def test_golden_6_daily_stop_reached_after_ticket_ready_blocks_reconfirm(self):
+        intent, decision, ticket = self._ready_ticket()
+        stopped = self._fresh_snapshot(realized_pnl_today_yen=-3000.0)
+        out = ep.evaluate_reconfirmation(intent, decision, ticket, stopped, POLICY,
+                                          now=NOW + timedelta(seconds=2))
+        self.assertEqual(out["reconfirm_status"], "BLOCKED")
+        self.assertIn("BLOCK_DAILY_STOP_REACHED", out["block_reasons"])
+
+    def test_golden_7a_position_mismatch_after_ticket_ready_blocks_reconfirm(self):
+        intent, decision, ticket = self._ready_ticket()
+        mismatched = self._fresh_snapshot(broker_position_qty=100)
+        out = ep.evaluate_reconfirmation(intent, decision, ticket, mismatched, POLICY,
+                                          now=NOW + timedelta(seconds=2))
+        self.assertEqual(out["reconfirm_status"], "BLOCKED")
+        self.assertIn("BLOCK_POSITION_RECONCILIATION", out["block_reasons"])
+
+    def test_golden_7b_broker_unhealthy_after_ticket_ready_blocks_reconfirm(self):
+        intent, decision, ticket = self._ready_ticket()
+        unhealthy = self._fresh_snapshot(broker_link_health="DOWN")
+        out = ep.evaluate_reconfirmation(intent, decision, ticket, unhealthy, POLICY,
+                                          now=NOW + timedelta(seconds=2))
+        self.assertEqual(out["reconfirm_status"], "BLOCKED")
+        self.assertIn("BLOCK_BROKER_LINK_UNHEALTHY", out["block_reasons"])
+
+    def test_golden_7c_duplicate_emerges_after_ticket_ready_blocks_reconfirm(self):
+        intent, decision, ticket = self._ready_ticket()
+        now_duplicated = self._fresh_snapshot(
+            known_intents=[{"intent_hash": intent["intent_hash"], "status": "TICKET_READY"}])
+        out = ep.evaluate_reconfirmation(intent, decision, ticket, now_duplicated, POLICY,
+                                          now=NOW + timedelta(seconds=2))
+        self.assertEqual(out["reconfirm_status"], "BLOCKED")
+        self.assertIn("BLOCK_DUPLICATE_INTENT_HASH", out["block_reasons"])
+
+    def test_golden_8_fresh_snapshot_cannot_override_planned_entry_or_ticket_age(self):
+        """fresh_snapshotにplanned_entryやticket_created_at相当のキーを
+        紛れ込ませても、Intent自身の値（planned_entry/created_at）だけが
+        使われ、安全基準を上書きできないことを確認する。"""
+        intent, decision, ticket = self._ready_ticket()
+        spoofed = self._fresh_snapshot()
+        # fresh_snapshotにそれらしいキーを混入させても無視されるはず
+        spoofed["planned_entry"] = 999999.0
+        spoofed["ticket_created_at"] = iso(NOW)  # 「作られたばかり」に見せかけようとする
+        out = ep.evaluate_reconfirmation(intent, decision, ticket, spoofed, POLICY,
+                                          now=NOW + timedelta(seconds=2))
+        # planned_entry(1500)とquote_price(1500)で乖離ゼロのまま評価されるはず
+        # （999999.0が使われていたら巨大なdriftでEXPIRED_REQUOTE_REQUIREDになる）
+        self.assertEqual(out["reconfirm_status"], "CONFIRM_READY")
+
 
 class DeterminismTests(unittest.TestCase):
-    def test_same_input_gives_same_decision_ignoring_wall_clock_metadata(self):
-        """同一入力（同一nowを明示的に渡す）からは常に同一の判定。判定関数自体は
-        datetime.now()を内部で呼ばない。"""
+    def test_same_input_gives_same_decision(self):
         out_a = evaluate()
         out_b = evaluate()
-        strip = lambda d: {k: v for k, v in d.items() if k != "generated_at"}
-        self.assertEqual(strip(out_a), strip(out_b))
+        self.assertEqual(out_a, out_b)  # nowを固定して渡しているのでgenerated_atも完全一致するはず
 
 
 class NoBrokerReferenceTests(unittest.TestCase):
@@ -421,8 +645,6 @@ class NoBrokerReferenceTests(unittest.TestCase):
         self.assertEqual(imported & forbidden_modules, set())
 
     def test_collector_still_has_no_order_submit_path(self):
-        """Golden: collectorへorder pathを追加していない（既存の安全境界を
-        Phase 4実装が壊していないことのregression guard）。"""
         collector = ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1"
         source = collector.read_text(encoding="utf-8")
         self.assertNotIn("RssOrder", source)

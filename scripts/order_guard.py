@@ -14,6 +14,17 @@ Intent台帳・broker残高スナップショット等は全て引数として�
 - `status`の語彙もscripts/execution_contract.pyのINTENT_STATUSESを
   そのまま使う（C-055が使っていた古い独自語彙CONFIRMED/PARTIALLY_FILLED
   /EXPIRED等は使わない——Phase 1で確立したcanonical語彙を優先する）。
+
+## Phase 4.1 hardening（Blocker 5、C-053R-GPT comment 5705124424）
+Phase 4当初はREJECTED/CANCELLEDを「新しい試行に道を譲ってよい終端状態」
+として同一intent_hashの再利用を許していたが、これはC-055/C-053の
+「送信結果や状態が変わったら照合し、新しいIntentでやり直す」という安全
+思想と合わないと指摘された。v0.1では**TICKET_READY以降に到達した
+intent_hashは、REJECTED/CANCELLEDを含め一切再利用しない**。再試行は
+broker reconciliation後、新しいdecision snapshot/Intentとして明示的に
+作り直す前提にする。TICKET_READYへ到達する前（CREATED/RISK_BLOCKED/
+PERMISSION_BLOCKEDで止まった＝broker側と一切接触していない）場合だけ、
+同じhashでの再評価を許可する。
 """
 from __future__ import annotations
 
@@ -23,14 +34,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import execution_contract as ec
 
-# REJECTED/CANCELLEDだけが「新しい試行に道を譲ってよい」終端状態。それ以外
-# （UNKNOWNを含む）は同一intent_hashへの再送・重複作成を全てblockする
-# （C-055第6節：ACK不明を失敗と決めつけて自動再送しない、の具体化）。
-_SAFE_TO_RETRY_STATUSES = frozenset({"REJECTED", "CANCELLED"})
+# TICKET_READY以前（broker/人の確認に一切到達していない）状態だけが
+# 「新しい試行に道を譲ってよい」。それ以外は全て同一intent_hashの再利用を
+# blockする（UNKNOWNは別理由コードで区別する）。
+_PRE_TICKET_STATUSES = frozenset({"CREATED", "RISK_BLOCKED", "PERMISSION_BLOCKED"})
 
 
 def is_duplicate_submission(intent_hash: str, known_intents: list[dict]) -> tuple[bool, list[str]]:
-    """同一intent_hashを持つ既知Intentが、再送禁止の状態のまま存在するかを
+    """同一intent_hashを持つ既知Intentが、再利用禁止の状態のまま存在するかを
     判定する純粋関数。戻り値は(duplicate_blocked, reasons)。
 
     known_intents: 各要素が少なくとも{"intent_hash": str, "status": str}を
@@ -47,7 +58,7 @@ def is_duplicate_submission(intent_hash: str, known_intents: list[dict]) -> tupl
             reasons.append("BLOCK_DUPLICATE_MALFORMED_LEDGER_ENTRY")
         elif status == "UNKNOWN":
             reasons.append("BLOCK_DUPLICATE_PENDING_UNKNOWN")
-        elif status not in _SAFE_TO_RETRY_STATUSES:
+        elif status not in _PRE_TICKET_STATUSES:
             reasons.append("BLOCK_DUPLICATE_INTENT_HASH")
     return (len(reasons) > 0), sorted(set(reasons))
 
