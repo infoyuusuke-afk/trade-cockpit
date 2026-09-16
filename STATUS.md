@@ -1613,6 +1613,62 @@ Orchestrator、Small Real Execution Test（人間承認別途必須）。Issue #
 定義では、これら全てがGreenになるまでReal submit adapterの着手可否検討
 すら行わない。
 
+## Execution Stack Phase 2を実装（Issue #18 C-048-GPT、2026-09-17）
+
+C-048-GPTがPhase 0/1をmain上の実コード・CI・共有記録まで再確認し、
+**Phase 2 Conflict Resolverへ進んでよい（Risk Gateにはまだ進まない）**
+とのGOサインを出した。あわせて、旧Conflict Resolver設計案（comment
+5702288572）を基本設計として有効としつつ、Phase 1で確立した
+`execution_contract.py`のcanonical `intent_hash`（11フィールドSHA256）
+と二重定義しないこと、許可フィールド名は`real_submit_allowed`に一本化
+すること、という2点の上書き解釈を明示した。ユーザー指示「Phase 2 Conflict
+Resolverの実装を開始し、Phase 3 Risk Gateにはまだ進まない」を受け、
+**Phase 2のみ**を実装した。
+
+**新規`config/conflict_policy_v0_1.json`**：推奨は`.yml`だったが、
+`requirements.txt`にPyYAMLが無く、このリポジトリの既存設定は全てJSONの
+ため、新規依存を避けてJSONで実装（拡張子は「推奨」であり必須ではないと
+元comment自身が明記）。`execution_priority`は現時点で実在する戦略
+（`scripts/strategy_schema.py`のSTRATEGY_REGISTRY）だけを記載。
+
+**新規`scripts/conflict_resolver.py`**：純粋関数`resolve_conflicts(signals,
+open_positions, policy)`。同一symbol・同方向の複数signalを1つのscenario
+へmerge（最も早いdecision_asofの戦略をowner、他はconfirming_strategy_ids
+として添付するだけでqty/entry/stop/targetを書き換えない、同時刻は
+policyのexecution_priorityでtie-break）。opposite-side競合（新規signal
+同士、または既存open positionと逆方向の新規signal）は
+`CONFLICT_BLOCKED_OPPOSITE_SIDE`で自動ドテンなし。stale/future/missing
+品質やWAITのみのsymbolは`BLOCKED_DATA_QUALITY`として物理候補へ昇格させ
+ない。`known_merge_hashes`に既存なら`BLOCKED_DUPLICATE_ORDER`。全symbol
+解決後にmax_open_positions（口座レベル上限）を銘柄横断で適用し、超過分
+は`BLOCKED_MAX_OPEN_POSITIONS`へ差し替える。Resolver固有の決定論的キー
+は`merge_hash`という別名にし（`intent_hash`は絶対に使わない）、
+`real_submit_allowed`は常にFalse固定・入力信号からは一切読み取らない。
+入力signalsの順序を変えても出力が完全に同一になるよう、symbol名・
+安定した並べ替えキーで処理する。decision_asofはtimezone-awareな
+ISO8601文字列を必須とし、naiveはValueErrorで拒否する。
+
+**テスト**：`tests/test_conflict_resolver.py`に旧comment（5702288572）の
+Golden Fixtures 12項目とC-048が追加した5項目、broker/RSS/COM/network
+参照が無いことのAST検査を実装。**1回目のCI実行（run 35138364588）は
+失敗**——`research_signal_ids`が入力順序をそのまま保持しており、順序
+非依存性のGolden Fixtureで1件失敗した（研究シグナルの集合自体は正しく、
+並び順だけの問題）。`sorted()`で修正し、**2回目のCI実行（run
+35138709539）で解消・成功を確認**：**249件全て成功（failures=0,
+errors=0）**。
+
+commit 0855044ba2a488f18e3e0587ceaeae8df84f2c57（Phase 2本体）、
+commit 1b2a80ecea2269a70677ac02407b25d94cabe0cc（順序依存性の修正）。
+両方main反映済み・CI成功確認済み。`RssOrder`・broker API呼び出し・
+Excel注文式・自動submit・実ポジション変更は一切実装していない
+（AST検査でCI上も確認済み）。
+
+**未着手（Phase 3以降）**：30万円ベースのPosition Sizing/Risk Gate、
+Execution Permission/Kill/Duplicate Guard、Shadow Execution Engine、
+Shadow Forward Acceptance、Real Ledger拡張+Reconciliation、Execution
+Calibration Report、Shadow Fill Model v0.2、Integration Orchestrator、
+Small Real Execution Test（人間承認別途必須）。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
