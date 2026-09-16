@@ -2484,17 +2484,13 @@ def main():
  <p class="warning">週次主体データは銘柄タイプの上位フィルターで、OR15・VWAP・EMAのザラバ発動条件ではありません。市場全体集計から個別銘柄の買い主体を断定せず、感応度が未学習なら加点しません。</p>
  <p><a href="{investor_regime.get('source',{}).get('equity_page','#')}" target="_blank" rel="noopener">JPX株式・投資部門別</a> ／ <a href="{investor_regime.get('source',{}).get('derivative_page','#')}" target="_blank" rel="noopener">JPX先物・投資部門別</a></p>
 </section>"""
+    # 2026-09-17: 「ザラバ5分更新｜キオクシア＋リアルタイムTOP5」の独立カードはユーザー指摘により
+    # 廃止し、ページ最上部の#unified-modeバーへ統合した（稼働状態・最終更新はunified-modeが既に
+    # 別データソース(MS2 RSS PC側)で表示している内容と役割が重複、キオクシア価格・シグナルは
+    # 専用タブと重複していたため、ここでは表示しない）。完全照合件数と音声トグルだけを
+    # #unified-modeバー側の新しい要素(unified-mode-verified・音声ボタン)へ書き込む形に変更。
+    # liveFocusUpdateイベントの発火（他のリスナーが使用）とvoiceトグルのロジック自体は変更なし。
     live_focus_html = """
-<section id="live-focus-status" class="card wide" style="border-color:#35a7ff">
- <h2>ザラバ5分更新｜キオクシア＋リアルタイムTOP5　<button class="voice-toggle" data-voice-toggle type="button" style="float:right;padding:5px 12px;border-radius:7px">🔇 音声OFF</button></h2>
- <div class="rotation-grid">
-  <div class="rotation-box"><b>稼働状態</b><strong id="live-status">確認中</strong></div>
-  <div class="rotation-box"><b>最終更新</b><strong id="live-updated">—</strong></div>
-  <div class="rotation-box"><b>完全照合</b><strong id="live-verified">—</strong></div>
-  <div class="rotation-box"><b>キオクシア</b><strong id="live-kioxia">—</strong></div>
- </div>
- <p class="sub" id="live-rule">8:00～15:30、バックエンド5分・画面60秒更新。二経路不一致や12分超の遅延は売買禁止。</p>
-</section>
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
  let voiceOn=localStorage.getItem("cockpitVoiceV1")==="on";
@@ -2508,14 +2504,10 @@ document.addEventListener("DOMContentLoaded",()=>{
  const loadLive=()=>fetch("live_focus.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(d=>{
    window.cockpitLiveSpeechEnabled=d.speech_enabled===true;
    setVoiceLabel();
-   document.getElementById("live-status").textContent=d.market_phase||d.status||"停止";
-   document.getElementById("live-updated").textContent=d.updated_at||"—";
-   document.getElementById("live-verified").textContent=(d.verified_count||0)+" / "+(d.expected_count||0)+"銘柄";
-   const k=(d.rows||{})["285A"];
-   document.getElementById("live-kioxia").textContent=k?.verified?Number(k.price).toLocaleString("ja-JP")+"円｜"+(k.signal||"判定待ち"):(k?.status||"停止");
-   document.getElementById("live-rule").textContent=d.rule||"取得失敗時は売買禁止";
+   const verifiedEl=document.getElementById("unified-mode-verified");
+   if(verifiedEl)verifiedEl.textContent="完全照合 "+(d.verified_count||0)+" / "+(d.expected_count||0)+"銘柄（"+(d.updated_at||"更新時刻不明")+"）";
    document.dispatchEvent(new CustomEvent("liveFocusUpdate",{detail:d}));
- }).catch(()=>{document.getElementById("live-status").textContent="通信停止・売買禁止";});
+ }).catch(()=>{const verifiedEl=document.getElementById("unified-mode-verified");if(verifiedEl)verifiedEl.textContent="通信停止・売買禁止";});
  loadLive();setInterval(loadLive,60000);
 });
 </script>"""
@@ -2717,9 +2709,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 </style>
 <link rel="stylesheet" href="theme.css?v=20260915-type4">
 <link rel="stylesheet" href="focus.css?v=20260915-power3">
-<style>.unified-mode{{margin:8px 6px 0;padding:10px 14px;border:1px solid #365267;border-radius:10px;background:#09141d;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}}.unified-mode .lamp{{width:12px;height:12px;border-radius:50%;background:#77838c;box-shadow:0 0 0 5px #77838c18}}.unified-mode.live{{border-color:#28c998;background:#082019}}.unified-mode.live .lamp{{background:#35e2ae;box-shadow:0 0 16px #35e2ae}}.unified-mode.stale{{border-color:#f0b74c}}.unified-mode strong{{font-size:16px}}.unified-mode span{{color:#a8bbc9}}.unified-mode b{{color:#fff}}@media(max-width:700px){{.unified-mode{{grid-template-columns:auto 1fr}}.unified-mode>b{{grid-column:2}}}}</style>
+<style>.unified-mode{{margin:8px 6px 0;padding:10px 14px;border:1px solid #365267;border-radius:10px;background:#09141d;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}}.unified-mode .lamp{{width:12px;height:12px;border-radius:50%;background:#77838c;box-shadow:0 0 0 5px #77838c18}}.unified-mode.live{{border-color:#28c998;background:#082019}}.unified-mode.live .lamp{{background:#35e2ae;box-shadow:0 0 16px #35e2ae}}.unified-mode.stale{{border-color:#f0b74c}}.unified-mode strong{{font-size:16px}}.unified-mode span{{color:#a8bbc9}}.unified-mode b{{color:#fff}}.unified-mode small{{color:#a8bbc9;display:block;margin-top:2px}}@media(max-width:700px){{.unified-mode{{grid-template-columns:auto 1fr auto}}.unified-mode>b{{grid-column:3}}.unified-mode .voice-toggle{{grid-column:1/-1}}}}</style>
 <header><div><h1>AIトレードコクピット Ver.5.2</h1><div class="sub">事前分析とMS2 RSS LIVEをこの1画面に統一</div></div><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／統一取引日 {quality_gate['market_date'] or '取得不能'}</div></div></header>
-<div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span></div><b id="unified-mode-time">—</b></div><main>
+<div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><button class="voice-toggle" data-voice-toggle type="button" style="padding:5px 12px;border-radius:7px">🔇 音声OFF</button><b id="unified-mode-time">—</b></div><main>
 {quality_html}
 {investor_regime_html}
 {live_focus_html}
