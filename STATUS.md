@@ -1757,6 +1757,44 @@ Shadow Execution Engine、Shadow Forward Acceptance、Real Ledger拡張+
 Reconciliation、Execution Calibration Report、Integration Orchestrator、
 Small Real Execution Test（人間承認別途必須）。
 
+## Execution Stack Phase 3.1 hardening（Issue #18 C-050R-GPT、2026-09-17）
+
+C-050R-GPTがPhase 3（初回CI実行から279件成功）を確認した上で、30万円
+実運用テストの安全境界として3点の追加修正を要求し、**Phase 4 Permission
+GateへはPhase 3.1が完了するまで進まない**とHOLDした。ユーザー指示により
+Phase 3.1のみ実装した。
+
+**Blocker 1（test_capital_yen=300000がnotional上限として効いていない）**：
+従来の`max_lots_by_cash`は`available_cash_yen`のみで計算しており、実口座
+余力が30万円を超えていると30万円テスト資金枠を超える建玉がPASSしえた
+（指摘例：entry=500/stop=499/lot100/cash=1,000,000でrisk側は7lot=
+350,000円分を許容してしまう）。投下可能現金を`min(available_cash_yen,
+test_capital_yen)`でcapしてからfees_bufferを引く方式へ修正。
+
+**Blocker 2（v0.1 policyが壊れると一部fail-open）**：新規
+`validate_policy_v0_1(policy)`をevaluate_risk()の最初に必ず検証する形で
+追加。account_mode≠CASH・4つのallow_*フラグがFalse以外・数値項目が非
+数値/非正値・max_open_positionsが正整数でない、のいずれかがあれば例外を
+投げずBLOCKで返す。全チェックは`.get()`ベースで必須key欠損もKeyErrorに
+ならずBLOCKになる。
+
+**Blocker 3（symbol/merge_hash/account snapshotの検証不足）**：symbol・
+merge_hashの空値検証、available_cash_yenの負値拒否（既存チェックを
+拡張）、open_positions_countの整数検証を追加。
+
+`tests/test_risk_gate.py`にGolden Fixtures 21〜30を追加。既存のPhase 3
+テスト群は使用cash値が全て30万円以内だったため、Blocker 1の修正による
+影響を受けず無変更のまま通ることを確認した。commit
+8f167e5fa21f958e19418f559651dbac4c36c391。`python -m unittest discover
+-s tests -v`をGitHub Actions run 35146469821で実行し、**289件全て成功
+（failures=0, errors=0）**、初回実行から成功。main反映済み・CI成功
+確認済み。
+
+**未着手（Phase 4以降）**：Execution Permission/Kill/Duplicate Guard、
+Shadow Execution Engine、Shadow Forward Acceptance、Real Ledger拡張+
+Reconciliation、Execution Calibration Report、Integration Orchestrator、
+Small Real Execution Test（人間承認別途必須）。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
