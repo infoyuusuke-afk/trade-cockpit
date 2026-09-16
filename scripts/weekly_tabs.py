@@ -126,12 +126,11 @@ def tabs_block() -> str:
 .weekly-grid>div{{background:#0c1b2d;border:1px solid #243b55;border-radius:12px;padding:14px}}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
- <button class="cockpit-tab active" data-tab="daytrade">デイトレTOP5</button>
+ <button class="cockpit-tab active" data-tab="ms2-live">LIVE売買</button>
  <button class="cockpit-tab" data-tab="overnight">オーバーナイトTOP5</button>
  <button class="cockpit-tab" data-tab="swing">スイングTOP5</button>
  <button class="cockpit-tab" data-tab="longterm">長期TOP5</button>
  <button class="cockpit-tab" data-tab="events">注意アラート</button>
- <button class="cockpit-tab" data-tab="ms2-live">LIVE売買</button>
  <button class="cockpit-tab" data-tab="kioxia-calendar">キオクシア</button>
  <details class="secondary-tabs"><summary>参考タブ</summary>
   <button class="cockpit-tab" data-tab="strong-yen">円高恩恵TOP5</button><button class="cockpit-tab" data-tab="us-smr">対米投資・SMR</button>
@@ -145,7 +144,7 @@ def tabs_block() -> str:
 document.addEventListener("DOMContentLoaded",()=>{{
  const main=document.querySelector("main"); if(!main)return;
  const policyTabs=["physical-ai","autonomous-driving","ai-drug-discovery","ai-semiconductor","defense-space","gx-power","quantum-computing"];
- const panes={{}}; ["daytrade","overnight","ms2-live","events","correlation","kioxia-calendar","strong-yen","us-smr","investor-regime","wick","expansion","swing","accumulation","longterm","dividend","buyback","policy",...policyTabs,"market","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="daytrade"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
+ const panes={{}}; ["overnight","ms2-live","events","correlation","kioxia-calendar","strong-yen","us-smr","investor-regime","wick","expansion","swing","accumulation","longterm","dividend","buyback","policy",...policyTabs,"market","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="ms2-live"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
  [...main.querySelectorAll(":scope > section")].forEach(s=>{{
    const t=(s.querySelector("h2")?.textContent||"").trim();
    let k="market";
@@ -158,7 +157,7 @@ document.addEventListener("DOMContentLoaded",()=>{{
    else if(s.id==="strong-yen-top5")k="strong-yen";
    else if(s.id==="us-smr-watch")k="us-smr";
    else if(s.id==="investor-regime")k="investor-regime";
-   else if(s.id==="live-focus-status"||s.id==="data-quality-gate"||s.id==="action-dashboard"||s.id==="day-ifo-orders"||s.id==="watchlist-100"||s.id==="market-ranking-watch"||s.id==="premarket-gap-ranking"||t.startsWith("③ ")||t.includes("IN点灯")||t.includes("準備点灯"))k="daytrade";
+   else if(s.id==="live-focus-status"||s.id==="data-quality-gate"||s.id==="action-dashboard"||s.id==="day-ifo-orders"||s.id==="watchlist-100"||s.id==="market-ranking-watch"||s.id==="premarket-gap-ranking"||t.startsWith("③ ")||t.includes("IN点灯")||t.includes("準備点灯"))k="ms2-live";
    else if(s.id==="lower-wick-reversal"||t.includes("下ヒゲ吸収反転"))k="wick";
    else if(t.includes("BB上方エクスパンション")||t.includes("短期急騰期待")||t.includes("テーマ仕手化兆候"))k="expansion";
    else if(s.id==="weekly-review"||t.includes("週間振り返り"))k="weekly";
@@ -170,14 +169,14 @@ document.addEventListener("DOMContentLoaded",()=>{{
    else if(t.includes("安定上昇")||t.includes("52週新高値")||t.includes("過熱監視")||t.includes("持ち越し")||t.includes("AIスイング"))k="swing";
    panes[k].appendChild(s);
  }});
- const intros={{daytrade:["デイトレTOP5","今日いちばん期待値の高い候補だけを表示。二経路で株価・コード・取引日が完全一致した銘柄だけを対象にし、5枠を無理に埋めません。"],wick:["最優先・下ヒゲ吸収反転","売り吸収→終値回復→次足上抜けの順で発動。"],expansion:["当日エクスパンション","BB収縮から出来高を伴う拡大が期待できる銘柄。"],swing:["スイングTOP5","1週間保有の候補。信用需給を主軸に、押し目・新高値・持ち越しを選別。"],accumulation:["大口仕込み","出来高・OBV・安値切上げから吸収と蓄積を監視。"],longterm:["長期TOP5","1か月保有の候補。50週線・200日線・月週足反転と需給改善が重なる銘柄。"],dividend:["配当権利前・上下期待","権利前上昇と権利落ち下落を需給付きで監視。"],buyback:["自社株買い監視","実施期間・残り余力・出来高影響と需給改善を確認。"],policy:["国策テーマ・実戦優先順位","政府資料、会社公式、業績寄与、信用需給を分離して確認。"],"physical-ai":["フィジカルAI","本体・AI制御・主要ロボット部品だけを厳格選定。"],"autonomous-driving":["自動運転","社会実装・自動運転ソフト・高精度地図を優先。"],"ai-drug-discovery":["AI創薬","AI創薬を会社公式で事業化している銘柄だけ。"],"ai-semiconductor":["AI・半導体基盤","メモリ、製造装置、テスト、先端SoCに限定。"],"defense-space":["防衛・宇宙","防衛装備、宇宙推進、衛星・官公庁案件を確認。"],"gx-power":["GX・電力基盤","送配電、蓄電池、パワー半導体、電力網。"],"quantum-computing":["量子・先端計算","事業寄与が小さい間は長期研究枠として扱う。"],market:["市場・検証","地合い、警報、答え合わせ、決算リスクを確認。"],weekly:["週間レビュー","週末検証と翌週の改善ルール。"]}};
+ const intros={{wick:["最優先・下ヒゲ吸収反転","売り吸収→終値回復→次足上抜けの順で発動。"],expansion:["当日エクスパンション","BB収縮から出来高を伴う拡大が期待できる銘柄。"],swing:["スイングTOP5","1週間保有の候補。信用需給を主軸に、押し目・新高値・持ち越しを選別。"],accumulation:["大口仕込み","出来高・OBV・安値切上げから吸収と蓄積を監視。"],longterm:["長期TOP5","1か月保有の候補。50週線・200日線・月週足反転と需給改善が重なる銘柄。"],dividend:["配当権利前・上下期待","権利前上昇と権利落ち下落を需給付きで監視。"],buyback:["自社株買い監視","実施期間・残り余力・出来高影響と需給改善を確認。"],policy:["国策テーマ・実戦優先順位","政府資料、会社公式、業績寄与、信用需給を分離して確認。"],"physical-ai":["フィジカルAI","本体・AI制御・主要ロボット部品だけを厳格選定。"],"autonomous-driving":["自動運転","社会実装・自動運転ソフト・高精度地図を優先。"],"ai-drug-discovery":["AI創薬","AI創薬を会社公式で事業化している銘柄だけ。"],"ai-semiconductor":["AI・半導体基盤","メモリ、製造装置、テスト、先端SoCに限定。"],"defense-space":["防衛・宇宙","防衛装備、宇宙推進、衛星・官公庁案件を確認。"],"gx-power":["GX・電力基盤","送配電、蓄電池、パワー半導体、電力網。"],"quantum-computing":["量子・先端計算","事業寄与が小さい間は長期研究枠として扱う。"],market:["市場・検証","地合い、警報、答え合わせ、決算リスクを確認。"],weekly:["週間レビュー","週末検証と翌週の改善ルール。"]}};
  intros.correlation=["相関・先行／逆行銘柄","当日候補の方向を、連動株・逆相関株・米国先行株で確認。"];
  intros.events=["イベントカレンダー","発表日・需給日・指数反映日を分離し、当日の誤認を防止。"];
  intros["investor-regime"]=["投資主体別レジーム","JPX公式の当時利用可能な版だけで、銘柄タイプの追い風・逆風を判定。"];
  intros["kioxia-calendar"]=["キオクシア5分足カレンダー","過去5分足から本日の途中経過に最も近い日を照合。"];
  intros["strong-yen"]=["円高恩恵銘柄 TOP5","円高感応度だけでなく、信用需給・当日資金流入・発動価格まで確認。"];
  intros["us-smr"]=["対米投資・SMR","政策発表と個社受注を区別し、事業化・需給・価格の確認順に監視。"];
- intros["ms2-live"]=["MS2 RSS・ザラバLIVE TOP5","100銘柄を裏側で監視し、OR15・VWAP・歩み値・板変化が一致した上位だけ表示。"];
+ intros["ms2-live"]=["LIVE売買・デイトレTOP5","今日いちばん期待値の高い候補（二経路で株価・コード・取引日が完全一致した銘柄だけ、5枠を無理に埋めない精査TOP5）と、100銘柄を裏側で監視するMS2 RSSザラバLIVEを統合。OR15・VWAP・歩み値・板変化が一致した上位だけ表示。"];
  intros.overnight=["オーバーナイトTOP5","引けで建て、翌朝の寄り付きで反対売買する持ち越し候補。15:25に銘柄・方向を確定し、後から書き換えません。"];
  Object.entries(intros).forEach(([k,v])=>{{const h=document.createElement("div");h.className="pane-intro";h.innerHTML=`<span>SUPPLY IMPROVEMENT REQUIRED</span><h2>${{v[0]}}</h2><p>${{v[1]}}</p>`;panes[k].prepend(h);}});
  document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{{
