@@ -1622,7 +1622,7 @@ def render_focus_dashboard(candidates):
     return f"""
 <section id="action-dashboard" class="card wide focus-dashboard">
  <div class="focus-topbar">
-  <div><span class="focus-eyebrow">VERIFIED FORECAST TOP 5</span><h2>精査TOP5</h2><small>信用需給合格のみ売買候補。未確認は監視止まり</small></div>
+  <div><span class="focus-eyebrow">VERIFIED FORECAST TOP 5</span><h2>リアルタイムTOP5</h2><small>今、この5銘柄に期待値がある。信用需給合格のみ売買候補、未確認は監視止まり</small></div>
   <div class="focus-legend"><span><i class="dot green"></i>発動</span><span><i class="dot amber"></i>押し目</span><span><i class="dot red"></i>撤退</span></div>
  </div>
  <div class="focus-layout">
@@ -2486,7 +2486,7 @@ def main():
 </section>"""
     live_focus_html = """
 <section id="live-focus-status" class="card wide" style="border-color:#35a7ff">
- <h2>ザラバ5分更新｜キオクシア＋精査TOP5　<button class="voice-toggle" data-voice-toggle type="button" style="float:right;padding:5px 12px;border-radius:7px">🔇 音声OFF</button></h2>
+ <h2>ザラバ5分更新｜キオクシア＋リアルタイムTOP5　<button class="voice-toggle" data-voice-toggle type="button" style="float:right;padding:5px 12px;border-radius:7px">🔇 音声OFF</button></h2>
  <div class="rotation-grid">
   <div class="rotation-box"><b>稼働状態</b><strong id="live-status">確認中</strong></div>
   <div class="rotation-box"><b>最終更新</b><strong id="live-updated">—</strong></div>
@@ -2535,8 +2535,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 
     watchlist_html = """
 <section id="watchlist-100" class="card wide">
- <h2>監視銘柄（精査TOP5以外・気配値/出来高/板ランキング）</h2>
- <p class="sub">精査TOP5・当日狙い目に入らなかった残りの監視対象を、出来高加速の大きい順に並べたものです。売買候補ではなく、当日の活況度を把握するための一覧です。</p>
+ <h2>監視銘柄（リアルタイムTOP5以外・気配値/出来高/板ランキング）</h2>
+ <p class="sub">リアルタイムTOP5・当日狙い目に入らなかった残りの監視対象を、出来高加速の大きい順に並べたものです。売買候補ではなく、当日の活況度を把握するための一覧です。</p>
  <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>出来高加速</th><th>気配（買数量/売数量）</th><th>成行（買/売）</th><th>UNDER</th></tr></thead><tbody id="watchlist-100-rows"><tr><td colspan="7">Windowsコレクター接続待ち</td></tr></tbody></table>
 </section>
 <section id="premarket-gap-ranking" class="card wide">

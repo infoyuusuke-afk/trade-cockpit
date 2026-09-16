@@ -176,7 +176,7 @@ document.addEventListener("DOMContentLoaded",()=>{{
  intros["kioxia-calendar"]=["キオクシア5分足カレンダー","過去5分足から本日の途中経過に最も近い日を照合。"];
  intros["strong-yen"]=["円高恩恵銘柄 TOP5","円高感応度だけでなく、信用需給・当日資金流入・発動価格まで確認。"];
  intros["us-smr"]=["対米投資・SMR","政策発表と個社受注を区別し、事業化・需給・価格の確認順に監視。"];
- intros["ms2-live"]=["LIVE売買・デイトレTOP5","今日いちばん期待値の高い候補（二経路で株価・コード・取引日が完全一致した銘柄だけ、5枠を無理に埋めない精査TOP5）と、100銘柄を裏側で監視するMS2 RSSザラバLIVEを統合。OR15・VWAP・歩み値・板変化が一致した上位だけ表示。"];
+ intros["ms2-live"]=["LIVE売買・デイトレTOP5","今、この5銘柄に期待値がある（二経路で株価・コード・取引日が完全一致した銘柄だけを対象にした、リアルタイムTOP5）と、100銘柄を裏側で監視するMS2 RSSザラバLIVEを統合。OR15・VWAP・歩み値・板変化が一致した上位だけ表示。"];
  intros.overnight=["オーバーナイトTOP5","引けで建て、翌朝の寄り付きで反対売買する持ち越し候補。15:25に銘柄・方向を確定し、後から書き換えません。"];
  Object.entries(intros).forEach(([k,v])=>{{const h=document.createElement("div");h.className="pane-intro";h.innerHTML=`<span>SUPPLY IMPROVEMENT REQUIRED</span><h2>${{v[0]}}</h2><p>${{v[1]}}</p>`;panes[k].prepend(h);}});
  document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{{

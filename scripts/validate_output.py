@@ -139,7 +139,7 @@ def main():
     for code, row in live_rows.items():
         if row.get("verified") and (row.get("price") is None or not row.get("chart")):
             errors.append(f"verified live row lacks price/chart: {code}")
-    for marker in ("AIトレードコクピット Ver.5.2", "データ品質ゲート", "精査TOP5", "kio-decision-grade", "円高恩恵銘柄 TOP5", "要人発言イベントスタディ", "投資主体別レジーム", "FLOW IMPULSE", "市場全体集計から個別銘柄", "ザラバ5分更新", "音声OFF", "cockpitSpeak", "予測対実績・5分監視", "次の注意時間", "発動価格（成行禁止）", "kio-trade-signal", "timedPath", "GU／GD幅別", "材料レーダー", "kio-setup-type", "kio-audit-hit", "kio-ms2-orderflow", "kio-ms2-stat", "kio-preopen-plan", "kio-open-decision", "127.0.0.1:28580/live_ms2.json"):
+    for marker in ("AIトレードコクピット Ver.5.2", "データ品質ゲート", "リアルタイムTOP5", "kio-decision-grade", "円高恩恵銘柄 TOP5", "要人発言イベントスタディ", "投資主体別レジーム", "FLOW IMPULSE", "市場全体集計から個別銘柄", "ザラバ5分更新", "音声OFF", "cockpitSpeak", "予測対実績・5分監視", "次の注意時間", "発動価格（成行禁止）", "kio-trade-signal", "timedPath", "GU／GD幅別", "材料レーダー", "kio-setup-type", "kio-audit-hit", "kio-ms2-orderflow", "kio-ms2-stat", "kio-preopen-plan", "kio-open-decision", "127.0.0.1:28580/live_ms2.json"):
         if marker not in html:
             errors.append(f"index.html missing marker: {marker}")
     # 2026-09-16: ユーザー確定の製品ビジョン（docs/AI_SHARED_SHEET.md「製品ビジョン・
