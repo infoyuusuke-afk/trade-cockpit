@@ -1,5 +1,8 @@
 .claude/settings.local.json
 ms2_live/*.csv
+# MS2 100銘柄収集器が書く日別ネストデータ（ms2_live/records/YYYY-MM-DD/...）。
+# ms2_live/*.csv だけではネスト配下を保護できないため別途追加（Issue #18 C-047 Phase 0）。
+ms2_live/records/
 
 # 非公開売買ログ・反省会（実約定データ）。公開repoに置かない方針
 # （docs/C-031-GPT_STRATEGY_ROADMAP.md 第5節、CLAUDE.md）。
