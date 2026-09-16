@@ -1514,6 +1514,51 @@ tradingview_screener_watch.py`実行ステップ、コミット対象への
 GitHub Actions上の`python -m unittest discover`が成功したことで初検証を
 兼ねた。
 
+## GitHub Issue #18「C-045-GPT」への対応開始：統一検証スキーマ（2026-09-17）
+
+ChatGPT/Codexが現行サイトをレビューし、次フェーズの大型提案をGitHub Issue #18
+として投稿した（共有シートC-045）。要旨：①今のところ「期待値のある戦略が
+確立した」とは言えない（LONG resolved_n=50・勝率46.0%・95%CI 33.0-59.6%、
+SHORT resolved_n=0）ため、画面項目を増やすより検証基盤を先に強化すべき、
+②戦略ごと（デイトレ/オーバーナイト/スイング/長期決算/TOB・M&A/短期テーマ）に
+別々の評価を持つStrategy Routerと、統一検証スキーマ（strategy_id/horizon/
+symbol_class/regime/MFE/MAE等）が優先順位1、③TradingView Communityや
+著名トレーダーの手法（ORB、VWAP pullback、Minervini VCP、O'Neil CANSLIM等）
+を「著名性」ではなく東証での実測期待値だけで採否判断する研究レーン
+（Strategy Lab）、④実発注はまだ使わずシグナル後の値動きを記録するLIVE
+Shadow検証、という優先順位1〜6の多段階ロードマップ。
+
+ユーザー指示「Issue #18見て進めて」を受け、6フェーズを一度に作ると中途半端に
+なるため、Issue自身が明記した優先順位に従い**優先順位1（新統計スキーマ＋
+strategy_id/version）のみ**を今回完成させた（共有シートC-046）。
+
+新規`scripts/strategy_schema.py`：`classify_liquidity_bucket()`（売買代金の
+流動性バケット、既存しきい値を踏襲）、`classify_symbol_class()`（Issueが
+要求する6分類のうちHIGH_VOL_HIGH_TURNOVERのみ実装——残り5分類は時価総額・
+グロース/バリュー区分が必要で、investor_regime.pyが既に「未接続」と明記
+している項目と同じ制約のため推測せずUNCLASSIFIEDとする）、`current_regime()`
+（独自に地合いを判定し直さず、scripts/regime_policy.pyのmarket_regime.json
+のconfirmed_regime＝UP/DOWN/RANGE/UNKNOWNをそのまま再利用）、`tag_record()`
+（既存レコードへ追記するだけの純粋関数）。`scripts/morning_review.py`（
+paper_trade_history.jsonの唯一の書き込み元）を修正し、候補の生成元に応じた
+strategy_id付与（day_ifo_long/day_rank_long/day_short_mvp）と、
+entry_trigger/simulated_fill/fees・slippage（0固定、既存計算の暗黙の前提を
+明示しただけ）/MFE・MAE（日足高安からの近似値と明記）/exit_reasonを追加。
+`scripts/reliability_report.py`にby_strategy・by_regime集計を追加、
+strategy_id未記録の過去レコードは"UNTAGGED_LEGACY"として明示的に分離した
+（推測で割り当てない）。純粋関数の単体テストを追加、CIで成功確認済み。
+
+**あわせて発見・対応**：regimeフィールドが依拠する`scripts/regime_policy.py`
+の実行ワークフロー（`.github/workflows/market-regime.yml`）が、2日前
+（C-036/C-037）に作成されたまま一度もpushされておらず、`market_regime.json`
+は本番に一度も存在していなかったと判明。gh CLIのworkflowスコープ制約により
+引き継ぎを依頼中（反映までregime関連フィールドは全てnullのまま記録される、
+推測補完はしていないので安全側）。
+
+**未着手（Issueの優先順位2〜6）**：Strategy Router/銘柄プロファイルの本実装、
+Strategy Lab+バックテスト基盤、LIVE Shadow検証、TOB/短期テーマ専用シナリオ、
+UIへの期待値表示。いずれも次回以降のセッションで順次対応する。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
