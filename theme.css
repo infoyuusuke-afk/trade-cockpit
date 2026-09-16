@@ -156,6 +156,11 @@ header h1,.pane-intro h2,.card h2,.card h3,.focus-topbar h2,.focus-symbol h3{fon
 table,.ms2-metrics,.rotation-box strong,.live-price{font-variant-numeric:tabular-nums}
 .drawer-chart .label,#focus-chart .label{font-family:var(--cockpit-font)}
 
+/* TRADING VIEW STYLE BADGE v1: matches the asset-tag chips on jp.tradingview.com/data-coverage/
+   verbatim (badge bg rgba(184,184,184,.2), 3px radius, 11px/600, 0 4px padding) — used for
+   sector/exchange tags in the TradingView-sourced external-ranking-watch table. */
+.tv-badge{display:inline-block;background:rgba(184,184,184,.2);color:var(--text);border-radius:3px;font-size:11px;font-weight:600;padding:0 4px;white-space:nowrap}
+
 /* TRADING VIEW STYLE STOCK CARDS v1: rank badge + name/tag stacked, muted score,
    price and colored %change on one line (reuses .fp-change from the focus-pick cards
    so up/down coloring stays consistent across every stock panel on the site). */

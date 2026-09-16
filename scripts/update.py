@@ -2601,13 +2601,14 @@ document.addEventListener("DOMContentLoaded",()=>{
         atr_pct = x.get("atr_pct")
         atr_html = f"{atr_pct:.2f}%" if isinstance(atr_pct, (int, float)) else "—"
         price_html = f"{x.get('price')}円" if x.get("price") is not None else "—"
+        sector_html = f"<span class='tv-badge'>{x.get('sector')}</span>" if x.get("sector") else "—"
         return (
             f"<tr><td>{rank}</td>"
             f"<td>{x.get('name')}（{x.get('code')}）</td>"
             f"<td>{price_html}{change_html}</td>"
             f"<td>{rel_vol_html}</td>"
             f"<td>{atr_html}</td>"
-            f"<td>{x.get('sector') or '—'}</td>"
+            f"<td>{sector_html}</td>"
             f"<td>{status_html}</td></tr>"
         )
 
