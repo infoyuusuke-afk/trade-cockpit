@@ -166,7 +166,10 @@ def resolve_conflicts(signals: list[dict], open_positions: list[dict], policy: d
     # 出力リストの並び順自体も決定論的にする（Golden #7/#16）。
     for symbol in sorted(by_symbol):
         symbol_signals = by_symbol[symbol]
-        research_signal_ids = [s["snapshot_id"] for s in symbol_signals]
+        # sortedにするのは、Golden #7/#16（input順序を変えても同じresolve結果）を
+        # research_signal_idsの並び順自体にも及ぼすため——中身の集合は入力順序に
+        # 関わらず同じだが、単純にappend順だと出力list自体が順序依存になってしまう。
+        research_signal_ids = sorted(s["snapshot_id"] for s in symbol_signals)
 
         eligible = [s for s in symbol_signals if s.get("side") in ("LONG", "SHORT")
                     and s.get("source_quality") == "ok"]
