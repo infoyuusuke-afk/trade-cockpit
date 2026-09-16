@@ -1669,6 +1669,48 @@ Shadow Forward Acceptance、Real Ledger拡張+Reconciliation、Execution
 Calibration Report、Shadow Fill Model v0.2、Integration Orchestrator、
 Small Real Execution Test（人間承認別途必須）。
 
+## Execution Stack Phase 2.1 hardening（Issue #18 C-048R-GPT、2026-09-17）
+
+C-048R-GPTがPhase 2（Conflict Resolver）をCI Green・実コードまで確認した
+上で、既存Golden testsが拾えていない3つの意味的な穴を指摘し、**Phase 3
+Risk GateへはこのPhase 2.1が完了するまで進まない**とHOLDした。ユーザー
+指示によりPhase 2.1のみ実装した。
+
+**Blocker 1（merge_hashが正当な再Entryをduplicate誤判定しうる）**：
+`compute_merge_hash()`にowner_decision_asof（ownerの意思決定時刻、
+`.isoformat()`で正規化）を必須で追加。同一signalの再読込は同じ
+merge_hashのまま、EXIT後の次completed barでの正当な再Entry（同じ
+geometry・戦略でもdecision_asofが異なる）は別のmerge_hashになる。
+
+**Blocker 2（session_dateがownerではなくside_signals[0]由来）**：
+session_dateを必ずowner側のdecision_asofから算出するよう変更
+（`open_positions`の入力契約に`owner_decision_asof`・`horizon`を追加）。
+同一symbol+side+horizonのsignal群に複数のJST session_dateが混在して
+いたら黙ってmergeせず、新設した`BLOCKED_SESSION_MISMATCH`状態にする。
+
+**Blocker 3（cross-horizonの同方向をconfirmationへmergeしていた）**：
+same-side mergeの対象を`symbol+side+horizon`に限定。DAYTRADE LONGと
+SWING LONGは別々のscenarioとして解決され、confirming_strategy_idsへ
+混ざらない。両方が同時にCANDIDATE_READYになった場合は、max_open_
+positions（symbol×horizon横断へ拡張）でどちらか1件だけに絞り込み、
+research側は両horizonとも保持したまま失われない。
+
+`tests/test_conflict_resolver.py`にGolden Fixtures 18〜23を追加、既存
+`open_positions`フィクスチャを新フィールドへ更新、Blocker 3が誤りと
+指摘した旧テストを置き換えた。commit
+61d999e33c17d80db9aca16f7d945b899f2ab46d。`python -m unittest discover
+-s tests -v`をGitHub Actions上で実行し、**256件全て成功（failures=0,
+errors=0）**を確認（run 35140461596、今回は初回CI実行から成功）。main
+反映済み・CI成功確認済み。`RssOrder`・broker API呼び出し・Excel注文式・
+自動submit・実ポジション変更は一切実装していない。
+
+**未着手（Phase 3以降）**：30万円ベースのPosition Sizing/Risk Gate、
+Execution Permission/Kill/Duplicate Guard、Shadow Execution Engine等
+（C-048R-GPTが示したPhase 3更新契約：quantityはRisk Gateが決め、
+canonical intent_hashはquantity確定後にexecution_contract.build_intent()
+で作る——Risk Gate自体はmerge_hashをlineage keyとして受け取り、
+CANDIDATE_READYだけを新規Sizing対象にする、という順序が明示された）。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
