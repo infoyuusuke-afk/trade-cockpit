@@ -1832,6 +1832,52 @@ Small Real Execution Test（人間承認別途必須）。C-051R-GPTはPhase 4�
 priceでも30万円notional上限を再確認する二重防御」を求めている（market/
 price drift対策）。
 
+## Execution Stack Phase 4を実装（Issue #18 C-053-GPT、2026-09-17）
+
+C-053-GPTがPhase 3.2（初回CI実行から299件成功）を確認した上で、**Phase 4
+Permission/Kill/Duplicate Guardへ進んでよい（Phase 5 Shadow Engineには
+まだ進まない）**とのGOサインを出した。基礎設計（旧C-055、comment
+5702335837）を土台に、Phase 1〜3で確立済みのcanonical契約と衝突する
+古い案を明示的に上書きした：①canonical `intent_hash`を再定義せず
+`execution_contract.py`の`compute_intent_hash()`のみを信頼、Duplicate
+Guardはintent_hash完全一致のみで判定（merge_hashは上流lineage、重複
+判定keyにしない）。②`real_submit_allowed`は最後までFalse固定、Phase 4
+のPASS結果は別フィールド`permission_status`（`ORDER_TICKET_READY`）で
+表現しIntent自体は書き換えない。③Permission Gateは既存Intent+
+RiskDecision+外部snapshotを読むだけ。④ALL-PASS方式でFalse/UNKNOWN/
+missing/staleは全てBLOCKED。⑤MASTER_KILLはdefault DISARMED、
+`default_kill_switch_state()`が常にDISARMEDを返し自動再ARM禁止を実現。
+⑥Duplicate/UNKNOWNは再送禁止。⑦Price Drift Guardを2箇所（ticket生成
+直前・human confirm直前）で確認、基準超過は`EXPIRED_REQUOTE_REQUIRED`
+として新しいIntentを作り直す前提。⑧TTL判定の時刻は全てtimezone-aware
+必須。⑨human confirmationはintent_hash・RiskDecision lineage・quote
+鮮度・authorization・broker snapshot・permission policy versionを含む
+決定論的`ticket_fingerprint`（intent_hashとは別物）に結び付け。
+
+**新規ファイル**：`config/execution_safety_v0_1.json`、
+`scripts/order_guard.py`（重複判定・pending重複判定・position
+reconciliationの純粋関数3つ）、`scripts/execution_permission.py`
+（`evaluate_permission()`：Intentの改ざん検知→price drift（最優先短絡）
+→Risk Gate PASS→Master Kill→Human Authorization→freshness/session等
+→position reconciliation等→daily stop/max positions（defense-in-depth）
+→duplicate/pending guard→tick/lot validityの順で評価。
+`evaluate_reconfirmation()`：human confirm直前のチェックポイント②）。
+
+`tests/test_order_guard.py`・`tests/test_execution_permission.py`に
+C-053-GPT指定のGolden Fixtures全てを実装（Phase 4だけで57件の新規
+テスト）。commit 9ef6602e8a4ca7b06b4c237ab4bf64c905f8c555。
+`python -m unittest discover -s tests -v`をGitHub Actions run
+35153999886で実行し、**356件全て成功（failures=0, errors=0）**、初回
+実行から成功。main反映済み・CI成功確認済み。`RssOrder`・broker API
+呼び出し・Excel注文式・自動submit・実ポジション変更は一切実装しておらず
+（AST検査でCI上も確認済み）、MS2_RSS_100_Collector.ps1への発注経路追加
+もない（回帰確認済み）。
+
+**未着手（Phase 5以降）**：Shadow Execution Engine、Shadow Forward
+Acceptance、Real Ledger拡張+Reconciliation、Execution Calibration
+Report、Shadow Fill Model v0.2、Integration Orchestrator、Small Real
+Execution Test（人間承認別途必須）。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
