@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-16 14:54:10 JST",
+  "updated_at": "2026-09-16 15:37:06 JST",
   "side": "SHORT",
   "status": "試運転・検証中",
   "count": 1,
@@ -10,15 +10,15 @@
       "ticker": "4385.T",
       "side": "SHORT",
       "score": 75,
-      "trigger": 3615.0,
+      "trigger": 3605.0,
       "stop": 3880.0,
-      "target1": 3220.0,
-      "target2": 2950.0,
-      "rvol": 1.58,
-      "atr_pct": 4.68,
+      "target1": 3190.0,
+      "target2": 2920.0,
+      "rvol": 1.82,
+      "atr_pct": 4.73,
       "supply_phase": null,
       "margin_caution_flagged": false,
-      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-15.4%／出来高比1.58倍／信用需給不明",
+      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-15.9%／出来高比1.82倍／信用需給不明",
       "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
       "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
     }
