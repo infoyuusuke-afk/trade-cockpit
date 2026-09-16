@@ -33,13 +33,19 @@ def scenario(symbol="285A.T", side="BUY", horizon="day", merge_hash="a" * 64,
     }
 
 
+_UNSET = object()
+
+
 def evaluate(sc=None, *, cash=300000.0, open_positions=0, pnl_today=0.0, multiplier=1.0,
-             fees=100.0, lot_size=100, policy=None):
+             fees=100.0, lot_size=100, policy=_UNSET):
+    # `policy or POLICY`はNone/[]/""等の意図的なfalsy値を渡すテスト（Golden #38）で
+    # 黙ってPOLICYへすり替わってしまうため、未指定を表す専用sentinelで判定する。
+    resolved_policy = POLICY if policy is _UNSET else policy
     return rg.evaluate_risk(
         sc if sc is not None else scenario(), available_cash_yen=cash,
         open_positions_count=open_positions, realized_pnl_today_yen=pnl_today,
         regime_risk_multiplier=multiplier, estimated_fees_buffer_yen=fees,
-        lot_size=lot_size, policy=policy or POLICY,
+        lot_size=lot_size, policy=resolved_policy,
     )
 
 
@@ -345,6 +351,68 @@ class Phase31NoRegressionTests(unittest.TestCase):
         passed = evaluate(scenario(entry=1000.0, stop=995.0))
         self.assertEqual(passed["decision"], "PASS")
         self.assertEqual(passed["allowed_qty"], 100)
+
+
+class V0_1SafetyEnvelopeTests(unittest.TestCase):
+    """Phase 3.2 hardening（C-051R-GPT）: v0.1で凍結した安全上限そのものを
+    policyのvalidationで固定する。「正の値であること」だけでは、桁が正しい
+    限り設定変更だけで上限を拡大できてしまう穴があった。"""
+
+    def test_golden_31_missing_policy_version_blocks(self):
+        policy = {k: v for k, v in POLICY.items() if k != "policy_version"}
+        out = evaluate(policy=policy)
+        self.assertEqual(out["decision"], "BLOCK")
+        self.assertIn("BLOCK_POLICY_VERSION_UNSUPPORTED", out["block_reasons"])
+
+    def test_golden_32_unknown_policy_version_blocks(self):
+        out = evaluate(policy={**POLICY, "policy_version": "risk-gate-0.2.0"})
+        self.assertEqual(out["decision"], "BLOCK")
+        self.assertIn("BLOCK_POLICY_VERSION_UNSUPPORTED", out["block_reasons"])
+
+    def test_golden_33_test_capital_above_v0_1_ceiling_blocks(self):
+        out = evaluate(policy={**POLICY, "test_capital_yen": 300001})
+        self.assertEqual(out["decision"], "BLOCK")
+        self.assertIn("BLOCK_POLICY_TEST_CAPITAL_OUT_OF_RANGE", out["block_reasons"])
+
+    def test_golden_34_risk_per_trade_yen_above_v0_1_ceiling_blocks(self):
+        out = evaluate(policy={**POLICY, "risk_per_trade_yen": 751})
+        self.assertEqual(out["decision"], "BLOCK")
+        self.assertIn("BLOCK_POLICY_RISK_PER_TRADE_YEN_OUT_OF_RANGE", out["block_reasons"])
+
+    def test_golden_35_risk_per_trade_pct_above_v0_1_ceiling_blocks(self):
+        out = evaluate(policy={**POLICY, "risk_per_trade_pct": 0.0026})
+        self.assertEqual(out["decision"], "BLOCK")
+        self.assertIn("BLOCK_POLICY_RISK_PER_TRADE_PCT_OUT_OF_RANGE", out["block_reasons"])
+
+    def test_golden_36_daily_stop_above_v0_1_ceiling_blocks(self):
+        out = evaluate(policy={**POLICY, "daily_stop_yen": 3001})
+        self.assertEqual(out["decision"], "BLOCK")
+        self.assertIn("BLOCK_POLICY_DAILY_STOP_OUT_OF_RANGE", out["block_reasons"])
+
+    def test_golden_37_max_open_positions_above_one_blocks(self):
+        out = evaluate(policy={**POLICY, "max_open_positions": 2})
+        self.assertEqual(out["decision"], "BLOCK")
+        self.assertIn("BLOCK_POLICY_MAX_OPEN_POSITIONS_OUT_OF_RANGE", out["block_reasons"])
+
+    def test_golden_38_policy_none_list_or_string_blocks_not_raises(self):
+        for bad_policy in (None, [], "risk-gate-0.1.0", 42, {"only": "irrelevant keys"}):
+            try:
+                out = evaluate(policy=bad_policy)
+            except Exception as exc:  # noqa: BLE001
+                self.fail(f"evaluate_risk raised {exc!r} for policy={bad_policy!r} instead of returning BLOCK")
+            self.assertEqual(out["decision"], "BLOCK", msg=f"policy={bad_policy!r}")
+
+    def test_scaling_down_within_v0_1_envelope_still_passes(self):
+        """安全側への縮小（例: test_capital_yen=200000）はBLOCKされずPASS対象になる
+        ことを1件確認する（C-051R-GPTの追加確認事項）。"""
+        shrunk_policy = {**POLICY, "test_capital_yen": 200000, "risk_per_trade_yen": 500}
+        out = evaluate(scenario(entry=1000.0, stop=995.0), policy=shrunk_policy)
+        self.assertEqual(out["decision"], "PASS")
+
+    def test_exact_v0_1_boundary_values_pass_policy_validation(self):
+        """境界値そのもの（300000/750/0.0025/3000/1）はBLOCKされない
+        （上限は含む=inclusiveであることの確認）。"""
+        self.assertEqual(rg.validate_policy_v0_1(POLICY), [])
 
 
 class LoadPolicyTests(unittest.TestCase):

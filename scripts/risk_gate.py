@@ -53,6 +53,27 @@ Risk Gateは`real_submit_allowed`というフィールドを一切作らない�
 3. symbol・merge_hashの必須値検証、available_cash_yenの負値拒否、
    open_positions_countが0以上の整数であることの検証を追加。
 
+## Phase 3.2 hardening（1 blocker、C-051R-GPT）
+Phase 3.1の`validate_policy_v0_1()`は「正の有限値であるか」しか見ておらず、
+v0.1で凍結したはずの安全上限（30万円/750円/0.25%/3,000円/ポジション数1）
+そのものは検証していなかった。設定ファイルが誤ってtest_capital_yen=
+3,000,000等に書き換わっても、桁が正の数でありさえすればPASSしてしまう穴が
+あった。修正：
+1. `policy_version`が`"risk-gate-0.1.0"`と完全一致しない場合はBLOCK
+   （`BLOCK_POLICY_VERSION_UNSUPPORTED`）。
+2. test_capital_yen/risk_per_trade_yen/risk_per_trade_pct/daily_stop_yen
+   がv0.1の上限（それぞれ300000/750/0.0025/3000）を超えていたらBLOCK。
+   安全側への縮小（例: test_capital_yen=200000）はPASS対象として許可する。
+3. max_open_positionsはv0.1では1固定。1以外は全てBLOCK
+   （`BLOCK_POLICY_MAX_OPEN_POSITIONS_OUT_OF_RANGE`）。
+4. `validate_policy_v0_1()`の入口でpolicyがdictかどうかを最初に検証し、
+   None/list/文字列等ではその場で`BLOCK_POLICY_INVALID_TYPE`を返す
+   （`.get()`を一切呼ばない）。呼び出し側のevaluate_risk()でもbase辞書の
+   組み立てより前にこの検証を行うよう順序を修正し、非dict policyでも
+   例外を出さずBLOCKを返せるようにした。
+将来v0.1の上限を緩める場合は、この検証関数の定数を書き換えるのではなく
+policy_versionを上げて新しいv0.2検証を別途実装する。
+
 ## Phase 4へ送らないもの（意図的に扱わない）
 DUPLICATE_INTENT_HASH・REAL_ORDER_PERMISSION_FALSE・KILL_SWITCH_ACTIVE・
 BROKER_LINK_HEALTH・SHORT_AVAILABILITY・ORDER_PRICE_OUT_OF_TICK・ACK/
@@ -67,7 +88,7 @@ from pathlib import Path
 from typing import Optional
 
 JST = timezone(timedelta(hours=9))
-SCHEMA_VERSION = "risk-gate-1.1"
+SCHEMA_VERSION = "risk-gate-1.2"
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POLICY_PATH = ROOT / "config" / "risk_gate_v0_1.json"
 
@@ -94,13 +115,47 @@ def _is_positive_finite_number(value) -> bool:
     return _is_finite_number(value) and value > 0
 
 
-def validate_policy_v0_1(policy: dict) -> list[str]:
+def _in_range_0_exclusive_to(value, upper_inclusive) -> bool:
+    return _is_finite_number(value) and 0 < value <= upper_inclusive
+
+
+# v0.1で凍結した安全上限そのもの（Issue #18 C-051R-GPT Phase 3.2）。ここに書いた
+# 数値を緩める変更は、このコメントを含むコードレビューを経ずに行わない前提とする。
+# 将来2ポジション以上・より広いrisk予算を許可する場合は、この定数を書き換えるのでは
+# なくpolicy_versionを上げて新しいv0.2の検証関数を別途実装する。
+POLICY_VERSION_V0_1 = "risk-gate-0.1.0"
+V0_1_MAX_TEST_CAPITAL_YEN = 300000
+V0_1_MAX_RISK_PER_TRADE_YEN = 750
+V0_1_MAX_RISK_PER_TRADE_PCT = 0.0025
+V0_1_MAX_DAILY_STOP_YEN = 3000
+V0_1_MAX_OPEN_POSITIONS = 1
+
+
+def validate_policy_v0_1(policy) -> list[str]:
     """v0.1 policyが安全境界の前提を満たしているか検証する純粋関数。
-    キー欠損はKeyErrorを送出せず`.get()`で拾い、違反として報告する
-    （C-050R-GPT Blocker 2: 壊れたpolicyがfail-openにならないようにする）。
+
+    2段階で守る（C-051R-GPT Phase 3.2）:
+    1. 型そのものがdictでなければ（None/list/文字列等）、.get()を一切呼ばず
+       即座にBLOCK_POLICY_INVALID_TYPEを返す——ここで例外を出さないことが
+       呼び出し側（evaluate_risk）がpolicy.get()へ触れる前に安全側へ倒れる
+       前提になる。
+    2. dictであっても、policy_versionが"risk-gate-0.1.0"と完全一致しない場合
+       や、各数値がv0.1で凍結した上限（30万円/750円/0.25%/3,000円/
+       ポジション数1）を超えている場合はBLOCKにする。安全側への縮小
+       （例: test_capital_yen=200000）はPASS対象として許可する——縮小と
+       拡大を区別するのが本Phaseの目的であり、単なる「正の数であるか」
+       だけのチェックでは設定変更だけでv0.1の安全境界を拡大できてしまう
+       （C-051R-GPTが実例で指摘した穴）。
+
+    キー欠損はKeyErrorを送出せず`.get()`で拾い、違反として報告する。
     違反が無ければ空リストを返す。
     """
+    if not isinstance(policy, dict):
+        return ["BLOCK_POLICY_INVALID_TYPE"]
+
     violations = []
+    if policy.get("policy_version") != POLICY_VERSION_V0_1:
+        violations.append("BLOCK_POLICY_VERSION_UNSUPPORTED")
     if policy.get("account_mode") != "CASH":
         violations.append("BLOCK_POLICY_UNSUPPORTED_ACCOUNT_MODE")
     if policy.get("allow_margin_leverage") is not False:
@@ -111,13 +166,21 @@ def validate_policy_v0_1(policy: dict) -> list[str]:
         violations.append("BLOCK_POLICY_FLIP_NOT_ALLOWED")
     if policy.get("allow_pyramiding") is not False:
         violations.append("BLOCK_POLICY_PYRAMIDING_NOT_ALLOWED")
-    for key in ("test_capital_yen", "risk_per_trade_yen", "risk_per_trade_pct", "daily_stop_yen"):
-        if not _is_positive_finite_number(policy.get(key)):
-            violations.append("BLOCK_POLICY_INVALID_NUMERIC_VALUE")
-            break
+
+    if not _in_range_0_exclusive_to(policy.get("test_capital_yen"), V0_1_MAX_TEST_CAPITAL_YEN):
+        violations.append("BLOCK_POLICY_TEST_CAPITAL_OUT_OF_RANGE")
+    if not _in_range_0_exclusive_to(policy.get("risk_per_trade_yen"), V0_1_MAX_RISK_PER_TRADE_YEN):
+        violations.append("BLOCK_POLICY_RISK_PER_TRADE_YEN_OUT_OF_RANGE")
+    if not _in_range_0_exclusive_to(policy.get("risk_per_trade_pct"), V0_1_MAX_RISK_PER_TRADE_PCT):
+        violations.append("BLOCK_POLICY_RISK_PER_TRADE_PCT_OUT_OF_RANGE")
+    if not _in_range_0_exclusive_to(policy.get("daily_stop_yen"), V0_1_MAX_DAILY_STOP_YEN):
+        violations.append("BLOCK_POLICY_DAILY_STOP_OUT_OF_RANGE")
+
     max_open = policy.get("max_open_positions")
-    if not _is_positive_finite_number(max_open) or int(max_open) != max_open:
-        violations.append("BLOCK_POLICY_INVALID_MAX_OPEN_POSITIONS")
+    if not (_is_positive_finite_number(max_open) and int(max_open) == max_open
+            and max_open == V0_1_MAX_OPEN_POSITIONS):
+        violations.append("BLOCK_POLICY_MAX_OPEN_POSITIONS_OUT_OF_RANGE")
+
     return violations
 
 
@@ -143,9 +206,18 @@ def evaluate_risk(scenario: dict, *, available_cash_yen, open_positions_count,
     policy: load_policy()が返す辞書。
     """
     generated_at = now_jst().isoformat()
+
+    # policy自体の安全境界検証を最優先・最初に行う（C-051R-GPT Phase 3.2）。
+    # policyがNone/list/文字列等の非dictでも、base辞書組み立て（旧実装は
+    # policy.get(...)を先に呼んでいたため非dictで例外になっていた）より前に
+    # validate_policy_v0_1()内で型チェックだけを行い、.get()には一切触れずに
+    # 判定するため、ここでは例外が発生しない。
+    policy_violations = validate_policy_v0_1(policy)
+    safe_policy_version = policy.get("policy_version") if isinstance(policy, dict) else None
+
     base = {
         "schema_version": SCHEMA_VERSION,
-        "policy_version": policy.get("policy_version"),
+        "policy_version": safe_policy_version,
         "generated_at": generated_at,
         "symbol": scenario.get("symbol"),
         "side": scenario.get("side"),
@@ -161,8 +233,6 @@ def evaluate_risk(scenario: dict, *, available_cash_yen, open_positions_count,
         "block_reasons": [],
     }
 
-    # --- BLOCK: policy自体の安全境界検証（Blocker 2、最優先） --------------
-    policy_violations = validate_policy_v0_1(policy)
     if policy_violations:
         return _block(base, policy_violations)
 
