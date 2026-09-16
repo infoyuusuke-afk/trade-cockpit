@@ -1711,6 +1711,52 @@ canonical intent_hashはquantity確定後にexecution_contract.build_intent()
 で作る——Risk Gate自体はmerge_hashをlineage keyとして受け取り、
 CANDIDATE_READYだけを新規Sizing対象にする、という順序が明示された）。
 
+## Execution Stack Phase 3を実装（Issue #18 C-050-GPT、2026-09-17）
+
+C-050-GPTがPhase 2.1（初回CI実行から256件成功）を確認し、**Phase 3
+Position Sizing / Risk Gateへ進んでよい（Phase 4 Permission Gateには
+まだ進まない）**とのGOサインを出した。canonical順序を固定：Signal→
+Conflict Resolver→Risk Gate（数量決定）→execution_contract.build_intent()
+（canonical intent_hashをここで初めて生成）→Phase 4。**Risk Gateへ
+canonical intent_hashを入力・生成しない**——現行intent_hashはquantityを
+hash対象に含むため、数量決定前に存在すると循環依存になる。Resolverの
+merge_hashを上流scenarioのlineage keyとして保持するだけにした。
+
+**新規`config/risk_gate_v0_1.json`**：C-050-GPT指定の固定値そのまま
+（test_capital_yen=300000、risk_per_trade_yen=750、daily_stop_yen=3000、
+max_open_positions=1、account_mode=CASH、averaging_down/flip/
+pyramiding/margin_leverage全てfalse）。30万円は収益最大化資金ではなく
+Execution経路・安全ゲート検証用と明記。
+
+**新規`scripts/risk_gate.py`**：純粋関数`evaluate_risk(scenario, *,
+available_cash_yen, open_positions_count, realized_pnl_today_yen,
+regime_risk_multiplier, estimated_fees_buffer_yen, lot_size, policy)`。
+broker/Excel/RSS/private ledger/networkへ一切取りに行かず、必要な値は
+全て引数で受け取る。判定は`PASS`（sizing上のみ通過、発注許可ではない）/
+`SHADOW_ONLY`（研究継続可だがReal laneでは0株）/`BLOCK`（入力を信用し
+ない）の3語彙。誤読しやすい`ALLOW`は不採用。BLOCK条件はresolved_status
+不一致・horizon欠損・entry/stop異常・stop方向不正（厳密不等号でentry==
+stopも自動的に弾く）・lot_size非正整数・cash/pnl/multiplier/fees_buffer
+異常。SHADOW_ONLY条件はCASH modeの新規SELL・max_open_positions到達・
+daily stop到達（これらはsizing計算前のhard gate）・risk budget超過また
+はcash不足。regime倍率は縮小側のみ（`min(1.0, multiplier)`でcap）。
+出力に`real_submit_allowed`・`intent_hash`キーは一切存在しない。
+confirming_strategy_idsは読み取らずsizingへ影響しない。
+
+`tests/test_risk_gate.py`にGolden Fixtures 1〜20全てを実装。#20は
+risk_gate.pyがsignal_contract.py/execution_contract.pyを一切import
+していないこと（AST）と、両ファイルの`trading_enabled=False`/
+`real_submit_allowed=False`が実際に無変更で残っていること（ソース
+確認）の二重チェック。commit 31da648933a39401ad45bd82bcf0f64174a96c0e。
+`python -m unittest discover -s tests -v`をGitHub Actions run
+35145273754で実行し、**279件全て成功（failures=0, errors=0）**、初回
+実行から成功。main反映済み・CI成功確認済み。
+
+**未着手（Phase 4以降）**：Execution Permission/Kill/Duplicate Guard、
+Shadow Execution Engine、Shadow Forward Acceptance、Real Ledger拡張+
+Reconciliation、Execution Calibration Report、Integration Orchestrator、
+Small Real Execution Test（人間承認別途必須）。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
