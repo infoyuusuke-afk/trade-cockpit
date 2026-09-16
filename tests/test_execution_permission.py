@@ -65,11 +65,15 @@ def risk_decision(**overrides):
 
 
 def snapshot(**overrides):
+    # kill_switch/authorizationとも、armed_at(issued_at)〜expires_atの幅を
+    # policyのTTL上限（3600秒）ちょうどに収める。60秒早くarmed/issueして
+    # +3600秒後にexpireさせると幅が3660秒になりTTL超過でBLOCKされてしまう
+    # ため、armed_at/issued_atをNOW自身にして幅=3600秒ぴったりにしている。
     base = {
-        "kill_switch": {"status": "ARMED", "armed_at": iso(NOW - timedelta(seconds=60)),
+        "kill_switch": {"status": "ARMED", "armed_at": iso(NOW),
                          "expires_at": iso(NOW + timedelta(seconds=3600))},
         "human_session_authorized": True,
-        "authorization_issued_at": iso(NOW - timedelta(seconds=60)),
+        "authorization_issued_at": iso(NOW),
         "authorization_expires_at": iso(NOW + timedelta(seconds=3600)),
         "authorization_session_id": "sess-1",
         "data_freshness": "OK",
@@ -503,13 +507,12 @@ class ReconfirmationTests(unittest.TestCase):
     """人の確認直前のチェックポイント②（C-053第7節・第9節、Phase 4.1 Blocker 2）。"""
 
     def _fresh_snapshot(self, **overrides):
+        # snapshot()のkill_switch/authorizationデフォルトが既にTTL上限
+        # ぴったりに調整済みなので、ここで別の値へ上書きする必要は無い
+        # （以前はarmed_at=NOW-60sで独自に上書きしており、expires_atとの
+        # 幅が3660秒になりTTL上限3600秒を超えて誤ってBLOCKされていた）。
         base = snapshot()
-        base.pop("kill_switch", None)
-        base.update({
-            "kill_switch": {"status": "ARMED", "armed_at": iso(NOW - timedelta(seconds=60)),
-                             "expires_at": iso(NOW + timedelta(seconds=3600))},
-            "quote_price": 1500.0, "quote_asof": iso(NOW - timedelta(seconds=3)),
-        })
+        base.update({"quote_price": 1500.0, "quote_asof": iso(NOW - timedelta(seconds=3))})
         base.update(overrides)
         return base
 
