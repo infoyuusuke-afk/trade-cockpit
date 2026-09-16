@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-09-17 01:25:05 JST",
-  "note": "resolved_n が30件未満の区分は、勝率・PFを『確立した手法』として扱わないこと。95%信頼区間の幅が広いほど、まだ結論を出せる段階ではない。",
+  "generated_at": "2026-09-17 01:40:44 JST",
+  "note": "resolved_n が30件未満の区分は、勝率・PFを『確立した手法』として扱わないこと。95%信頼区間の幅が広いほど、まだ結論を出せる段階ではない。by_strategy/by_regimeはstrategy_schema.py導入(2026-09-17)以降のレコードのみ区分でき、それ以前のレコードはUNTAGGED_LEGACYにまとめている。",
   "by_side": {
     "LONG": {
       "total_recorded": 183,
@@ -27,5 +27,22 @@
       "status": "試運転・検証中（サンプル不足）",
       "min_n_threshold": 30
     }
-  }
+  },
+  "by_strategy": {
+    "UNTAGGED_LEGACY": {
+      "total_recorded": 185,
+      "resolved_n": 50,
+      "win_rate_pct": 46.0,
+      "win_rate_95ci": [
+        33.0,
+        59.6
+      ],
+      "avg_r": 0.056,
+      "profit_factor": 1.31,
+      "max_drawdown_r": 4.55,
+      "status": "参考値（要検証）",
+      "min_n_threshold": 30
+    }
+  },
+  "by_regime": {}
 }
