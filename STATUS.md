@@ -1878,6 +1878,56 @@ Acceptance、Real Ledger拡張+Reconciliation、Execution Calibration
 Report、Shadow Fill Model v0.2、Integration Orchestrator、Small Real
 Execution Test（人間承認別途必須）。
 
+## Execution Stack Phase 4.1 hardening（Issue #18 C-053R-GPT、2026-09-17）
+
+C-053R-GPTがPhase 4（初回CI実行から356件成功）を確認した上で、ALL-PASS
+安全境界としてPhase 5前に塞ぐべき5つの穴を指摘し、**Phase 5 Shadow
+Execution EngineへはPhase 4.1が完了するまで進まない**とHOLDした。
+
+**Blocker 1（Intent/RiskDecisionのlineage未結合）**：symbol/side/
+quantity(=allowed_qty)/risk_policy_versionの完全一致、merge_hashの
+非空性、allowed_qtyの正整数性、conflict_state（snapshotへの明示入力）を
+新たに検証し、不一致は`BLOCK_RISK_LINEAGE_MISMATCH`等でblock。
+
+**Blocker 2（reconfirm直前の全ゲート再評価が未実装）**：全ゲート評価を
+`_evaluate_all_gates()`という共通coreへ切り出し、`evaluate_permission()`
+と`evaluate_reconfirmation()`（シグネチャを`(intent, risk_decision,
+ticket, fresh_snapshot, policy, now)`へ変更）の両方が同じ基準でfresh
+snapshotを再評価する。`planned_entry`/`ticket_created_at`相当はIntent
+自身の値（`planned_entry`・`created_at`）に固定し、fresh snapshot側から
+古いticketを若く見せかけられない構造にした。
+
+**Blocker 3（execution safety policyがconfigだけで緩められる）**：
+`validate_execution_policy_v0_1()`を新規追加（risk_gate.pyのPhase 3.2と
+同じ方式）。MASTER_KILLの`armed_at`〜`expires_at`、Human Authorizationの
+`authorization_issued_at`〜`authorization_expires_at`のTTL実検証も追加。
+
+**Blocker 4（timezone/input fail-closedの未完了）**：`now`・
+`signal_known_at`のaware必須化、`snapshot`のdict型必須化、
+`known_intents`/`pending_orders`のlist[dict]必須化、
+`authorization_session_id`/`broker_snapshot_fingerprint`の非空必須化。
+
+**Blocker 5（REJECTED/CANCELLEDの再利用を許していた）**：TICKET_READY
+以降に到達したintent_hashは、REJECTED/CANCELLEDを含め一切再利用しない
+方針へ変更（CREATED/RISK_BLOCKED/PERMISSION_BLOCKEDだけが再評価可能）。
+
+`tests/test_order_guard.py`・`tests/test_execution_permission.py`に
+C-053R-GPT指定のGolden Fixtures全てを実装。実装中、テストヘルパーの
+バグ2件を発見・修正（①`policy or POLICY`等の真偽値判定によるfalsy値
+すり替え、②`build_intent()`が実際のwall-clockをcreated_atに使っていた
+ためCI実行日時依存になっていた問題）。**1回目のCI実行（run
+35155630978）は失敗**——snapshot()フィクスチャのTTL幅が新設した上限
+（3600秒）を60秒超過しており13件が誤ってBLOCKされた。修正し2回目の
+CI実行（run 35155993585）で成功を確認。commit
+06c0893ce0942f879e50bd90cd748a414cfd2770（Phase 4.1本体）、commit
+518c8646746afc70eaeac3975861c712a096ca2b（TTLフィクスチャ修正）。
+`python -m unittest discover -s tests -v`で**387件全て成功
+（failures=0, errors=0）**。main反映済み・CI成功確認済み。
+
+**未着手（Phase 5以降）**：Shadow Execution Engine、Shadow Forward
+Acceptance、Real Ledger拡張+Reconciliation、Execution Calibration
+Report、Integration Orchestrator、Small Real Execution Test。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
