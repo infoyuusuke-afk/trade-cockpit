@@ -116,7 +116,9 @@ def weekly_html(w: dict) -> str:
 def tabs_block() -> str:
     return f"""{START}
 <style>
-.cockpit-tabs{{position:sticky;top:0;z-index:30;display:flex;gap:8px;padding:10px;background:#07111fdd;backdrop-filter:blur(10px);overflow-x:auto}}
+.cockpit-tabs{{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:8px;padding:10px;background:#07111fdd;backdrop-filter:blur(10px);overflow-x:auto}}
+.cockpit-brand{{display:flex;align-items:baseline;gap:7px;padding-right:6px;margin-right:2px;border-right:1px solid #2a3f56;font-weight:800;font-size:15px;letter-spacing:-.01em;color:#fff;white-space:nowrap}}
+.cockpit-brand small{{font-size:10px;font-weight:700;color:#52e0c4;background:#0d2a24;border:1px solid #1f5a49;padding:2px 6px;border-radius:5px;letter-spacing:0}}
 .cockpit-tab{{border:1px solid #35506d;background:#102238;color:#b9cbe0;border-radius:10px;padding:10px 16px;font-weight:700;white-space:nowrap;cursor:pointer}}
 .cockpit-tab.active{{color:#07111f;background:#52e0c4;border-color:#52e0c4}}
 .cockpit-tab.event-alert{{color:#fff;background:#9f2936;border-color:#ff6c78;box-shadow:0 0 0 2px #ff6c7833}}
@@ -126,6 +128,7 @@ def tabs_block() -> str:
 .weekly-grid>div{{background:#0c1b2d;border:1px solid #243b55;border-radius:12px;padding:14px}}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
+ <span class="cockpit-brand">AIトレードコクピット<small>Ver.5.2</small></span>
  <button class="cockpit-tab active" data-tab="ms2-live">LIVE売買</button>
  <button class="cockpit-tab" data-tab="overnight">オーバーナイトTOP5</button>
  <button class="cockpit-tab" data-tab="swing">スイングTOP5</button>
@@ -176,7 +179,7 @@ document.addEventListener("DOMContentLoaded",()=>{{
  intros["kioxia-calendar"]=["キオクシア5分足カレンダー","過去5分足から本日の途中経過に最も近い日を照合。"];
  intros["strong-yen"]=["円高恩恵銘柄 TOP5","円高感応度だけでなく、信用需給・当日資金流入・発動価格まで確認。"];
  intros["us-smr"]=["対米投資・SMR","政策発表と個社受注を区別し、事業化・需給・価格の確認順に監視。"];
- intros["ms2-live"]=["LIVE売買・デイトレTOP5","今、この5銘柄に期待値がある（二経路で株価・コード・取引日が完全一致した銘柄だけを対象にした、リアルタイムTOP5）と、100銘柄を裏側で監視するMS2 RSSザラバLIVEを統合。OR15・VWAP・歩み値・板変化が一致した上位だけ表示。"];
+ intros["ms2-live"]=["LIVE TRADING","今、この5銘柄に期待値がある（二経路で株価・コード・取引日が完全一致した銘柄だけを対象にした、リアルタイムTOP5）と、100銘柄を裏側で監視するMS2 RSSザラバLIVEを統合。OR15・VWAP・歩み値・板変化が一致した上位だけ表示。"];
  intros.overnight=["オーバーナイトTOP5","引けで建て、翌朝の寄り付きで反対売買する持ち越し候補。15:25に銘柄・方向を確定し、後から書き換えません。"];
  Object.entries(intros).forEach(([k,v])=>{{const h=document.createElement("div");h.className="pane-intro";h.innerHTML=`<span>SUPPLY IMPROVEMENT REQUIRED</span><h2>${{v[0]}}</h2><p>${{v[1]}}</p>`;panes[k].prepend(h);}});
  document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{{
