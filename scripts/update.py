@@ -2295,29 +2295,15 @@ def main():
         "<tr><td colspan='10'>株価データを取得できませんでした。"
         "価格なしでの注文は行いません。</td></tr>"
     )
-    ifo_cards = render_day_ifo_cards(day_ifo_candidates)
+    # 2026-09-17: ②-O(IFO注文票)・③(当日狙い目銘柄TOP5)は、ユーザー指摘により銘柄選定の
+    # 並立を整理し廃止した（「①リアルタイムTOP5のみ、あとは監視銘柄」という方針）。
+    # 選定ロジック自体(build_day_ifo_candidates・day_rank)とdata.json出力
+    # (day_ifo_candidates・day_candidates・day_ifo_summary)はmorning_review.py（④朝8:00
+    # 答え合わせ）が引き続き参照するため保持し、HTML描画（ifo_cards・day_rows・ifo_count_note）
+    # だけを削除する。「注文票を承認したら実際に発注する」機能は別途設計してから着手する
+    # （PC側のRssOrder実装が必要な、より重い安全設計マター）。
     focus_dashboard = render_focus_dashboard(precision_top5)
     trade_drawer = render_trade_drawer()
-    ifo_count_note = (
-        "分散条件を満たす5銘柄を選定"
-        if len(day_ifo_candidates) == 5
-        else f"厳格条件合格は{len(day_ifo_candidates)}銘柄。無理に5銘柄へ増やさない"
-    )
-    day_rows = ""
-    for i, (name, r) in enumerate(day_rank, 1):
-        p = trade_plan(r, r.get("intraday"))
-        shares = 100
-        max_loss = abs(p["entry"] - p["stop"]) * shares
-        intra = r.get("intraday") or {}
-        trigger = "VWAP上維持" if intra.get("close", 0) >= intra.get("vwap", float("inf")) else "VWAP回復待ち"
-        if session == "morning":
-            trigger = "寄り後5分足＋VWAP確認"
-        day_rows += (
-            f"<tr><td>{i}</td><td>{name}</td><td>{money(r['price'])}<br><small class='{css(r.get('change_pct'))}'>{pct(r.get('change_pct'))}</small></td><td>{money(p['entry'])}</td>"
-            f"<td>{money(p['stop'])}</td><td>{money(p['target1'])}／{money(p['target2'])}</td>"
-            f"<td><b>{r.get('material_stage', '事実確認待ち')}</b>｜{r.get('material_action', trigger)}<br>"
-            f"<small>{trigger}／{r.get('market_supply_status', '需給未確認')}／{shares}株・最大損失 約{max_loss:,.0f}円</small></td></tr>"
-        )
     def swing_rows(rank, kind):
         rows = ""
         for i, (name, r) in enumerate(rank, 1):
@@ -2906,19 +2892,6 @@ document.addEventListener("DOMContentLoaded",()=>{
 <table><tr><th>順位</th><th>会社名＋コード／役割</th><th>期待値</th><th>基準値</th><th>IN発動／買い上限</th><th>OUT損切り</th><th>OUT利確1</th><th>OUT利確2</th><th>発動条件・リスク</th><th>根拠</th></tr>{photonics_rows}</table>
 <p class="warning"><b>使い方：</b>INは前日高値＋1ティック。寄り成りでは買いません。9:15以降にVWAP上・5分足終値・出来高増加が揃った場合だけ発動し、買い上限を超えたら追わず取消。OUT損切りを約定後すぐ設定し、価格を下げて損切りを広げません。GFSの3億ドルは米商務省とのLOI（予定支援）であり、日本企業への直接受注確定ではありません。<a href="https://gf.com/news-and-events/news/globalfoundries-signs-letter-of-intent-with-the-us-department-of-commerce-for-a-300-million-award-to-accelerate-us-silicon-photonics-leadership/" target="_blank" rel="noopener">GFS公式発表</a></p>
 </section>
-<section id="day-ifo-orders" class="card wide"><h2>②-O 8:55当日勝負・短期資金TOP5（MS2 IFO注文票）</h2>
-<div class="ifo-summary">
-<div class="rotation-box"><b>合格銘柄</b><strong>{len(day_ifo_candidates)} / 5銘柄</strong><br>{ifo_count_note}</div>
-<div class="rotation-box"><b>注文単位</b><strong>各100株</strong><br>分割注文なし／キオクシアは対象外</div>
-<div class="rotation-box"><b>全候補が約定した場合</b><strong>建玉目安 {total_capital:,}円</strong><br>利確1合計 <span class="up">+{total_profit:,}円</span></div>
-<div class="rotation-box"><b>損失上限の目安</b><strong class="down">−{total_loss:,}円</strong><br>5銘柄が全て損切りになった場合</div>
-</div>
-<p class="warning"><b>毎朝入替：</b>テーマ・マネーゲーム／IPO・グロースを2銘柄、SaaS・AIソフトを2銘柄、残る1枠を当日資金流入最上位から選定。出来高比・売買代金・値動き・信用需給・材料を更新し、固定大型株を使い回しません。</p>
-<p class="warning"><b>8:55の手順：</b>気配、成行買い／売り、特別気配、信用規制・日計り空売り可否を最終確認。買い指値上限を超えた銘柄、特買い張り付き、材料不明の急騰は注文せず監視へ移します。価格を上げて追いかけません。</p>
-<div class="ifo-grid">{ifo_cards}</div>
-<p class="warning">IFOは利確1と損切りの1組を入力します。利確2は翌日以降へ持ち越す判断をした場合の参考値です。本日中の決済注文は失効するため、15:20時点で未決済なら当日手仕舞い、または翌営業日用の決済OCOを自分で再設定してください。</p>
-</section>
-<section class="card wide"><h2>③ 当日狙い目銘柄 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1／2</th><th>材料段階・発動条件</th></tr>{day_rows}</table><p class="warning">入口は指値の断定ではなく発動水準。材料出尽くし警戒は初押し反転まで飛び乗り禁止。VWAP・5分足・出来高を満たさなければ見送り。</p></section>
 <section class="card wide"><h2>④ 朝8:00候補のザラバ答え合わせ</h2><table><tr><th>会社名＋コード</th><th>朝イン</th><th>朝損切り</th><th>朝利確1／2</th><th>結果</th><th>終値・VWAP検証</th></tr>{review_rows}</table></section>
 <section class="card wide"><h2>⑤-A 安定上昇候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{stable_rows}</table></section>
 <section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{momentum_rows}</table><p class="warning">上向き5日線へのタッチ反発を最優先。場中の一時割れではなく終値回復を確認。終値で5日線を明確に割った場合は候補から外します。</p></section>
