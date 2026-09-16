@@ -1795,6 +1795,43 @@ Shadow Execution Engine、Shadow Forward Acceptance、Real Ledger拡張+
 Reconciliation、Execution Calibration Report、Integration Orchestrator、
 Small Real Execution Test（人間承認別途必須）。
 
+## Execution Stack Phase 3.2 hardening（Issue #18 C-051R-GPT、2026-09-17）
+
+C-051R-GPTがPhase 3.1（初回CI実行から289件成功）を確認した上で、
+`validate_policy_v0_1()`が「正の有限値か」しか見ておらずv0.1で凍結した
+はずの安全上限（30万円/750円/0.25%/3,000円/ポジション数1）そのものは
+検証していない穴を指摘した（test_capital_yen=3,000,000等でも桁が正の
+数でありさえすれば全チェックを通過してしまう）。**Phase 4 Permission
+GateへはPhase 3.2が完了するまで進まない**とHOLDした。
+
+**修正**：①policy_versionが"risk-gate-0.1.0"と完全一致しない場合はBLOCK
+（欠損・別バージョンとも）。②test_capital_yen/risk_per_trade_yen/
+risk_per_trade_pct/daily_stop_yenがv0.1の上限を超えたらBLOCK、安全側への
+縮小はPASS対象として明示的に許可。③max_open_positionsはv0.1では1固定。
+④`validate_policy_v0_1()`の入口でpolicyがdictかどうかを最初に検証し、
+非dictでは`.get()`を一切呼ばず`BLOCK_POLICY_INVALID_TYPE`を返す。あわせて
+`evaluate_risk()`の実装順序も修正——旧実装はbase辞書組み立て時に
+policy検証より先に`policy.get(...)`を呼んでいたため、非dict policyで
+例外（AttributeError）になっていた。この順序を入れ替え、非dict policy
+でも例外を出さずBLOCKを返せるようにした。
+
+`tests/test_risk_gate.py`にGolden Fixtures 31〜38を追加。実装中、既存の
+`evaluate()`テストヘルパーが`policy=policy or POLICY`という真偽値判定
+バグを持っていたため（None/[]等のfalsy値を渡しても暗黙的に正常な
+POLICYへすり替わる）、専用sentinelへ置き換えて修正した（コードのバグ
+ではなくテスト側のバグ）。commit
+3b0c9c5d4ed84130853377c513f2f5537f296459。`python -m unittest discover
+-s tests -v`をGitHub Actions run 35148167626で実行し、**299件全て成功
+（failures=0, errors=0）**。main反映済み・CI成功確認済み。
+
+**未着手（Phase 4以降）**：Execution Permission/Kill/Duplicate Guard、
+Shadow Execution Engine、Shadow Forward Acceptance、Real Ledger拡張+
+Reconciliation、Execution Calibration Report、Integration Orchestrator、
+Small Real Execution Test（人間承認別途必須）。C-051R-GPTはPhase 4で
+「Risk Gateのplanned entryだけを信頼せず、ticket/current executable
+priceでも30万円notional上限を再確認する二重防御」を求めている（market/
+price drift対策）。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
