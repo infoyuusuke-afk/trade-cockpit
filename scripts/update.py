@@ -2578,6 +2578,67 @@ document.addEventListener("DOMContentLoaded",()=>{
 </section>
 """
 
+    # TradingViewスクリーナー版・外部ランキング発掘（C-041/C-044・market_ranking_watch.pyの
+    # Yahoo!ファイナンス版とは別の独立データ源）。片方のエンドポイントがブロック・仕様変更
+    # されても、もう一方は影響を受けないよう、意図的に別ファイル・別セクションにしている。
+    try:
+        tv_screener = json.loads((ROOT / "tradingview_screener_watch.json").read_text(encoding="utf-8"))
+    except Exception:
+        tv_screener = None
+
+    def tv_screener_row(rank, x):
+        change_pct = x.get("change_pct")
+        change_html = ""
+        if isinstance(change_pct, (int, float)):
+            cls = "up" if change_pct >= 0 else "down"
+            change_html = f"<br><small class='{cls}'>{change_pct:+.2f}%</small>"
+        status_html = (
+            "<span class='pill' style='background:#453918;color:#f3cd69'>未監視</span>"
+            if not x.get("already_watched") else "監視中"
+        )
+        rel_vol = x.get("relative_volume")
+        rel_vol_html = f"{rel_vol:.2f}倍" if isinstance(rel_vol, (int, float)) else "—"
+        atr_pct = x.get("atr_pct")
+        atr_html = f"{atr_pct:.2f}%" if isinstance(atr_pct, (int, float)) else "—"
+        price_html = f"{x.get('price')}円" if x.get("price") is not None else "—"
+        return (
+            f"<tr><td>{rank}</td>"
+            f"<td>{x.get('name')}（{x.get('code')}）</td>"
+            f"<td>{price_html}{change_html}</td>"
+            f"<td>{rel_vol_html}</td>"
+            f"<td>{atr_html}</td>"
+            f"<td>{x.get('sector') or '—'}</td>"
+            f"<td>{status_html}</td></tr>"
+        )
+
+    if tv_screener and tv_screener.get("rankings"):
+        sections = []
+        for key, block in tv_screener["rankings"].items():
+            items = (block.get("items") or [])[:10]
+            rows = "".join(tv_screener_row(i + 1, x) for i, x in enumerate(items)) or "<tr><td colspan='6'>取得できた銘柄なし</td></tr>"
+            sections.append(
+                f"<h3>{block.get('label', key)}</h3>"
+                f"<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>相対出来高</th><th>ATR比率</th><th>セクター</th><th>状態</th></tr></thead><tbody>{rows}</tbody></table>"
+            )
+        error = tv_screener.get("error")
+        error_html = f"<p class='warning'>取得失敗：{error}</p>" if error else ""
+        tv_screener_html = f"""
+<section id="tradingview-screener-watch" class="card wide">
+ <h2>外部ランキング発掘・TradingView版（参考・未検証）</h2>
+ <p class="sub">{tv_screener.get('source', '')}／更新 {tv_screener.get('updated_at', '')}</p>
+ <p class="warning">{tv_screener.get('note', '')}</p>
+ {error_html}
+ {''.join(sections)}
+</section>
+"""
+    else:
+        tv_screener_html = """
+<section id="tradingview-screener-watch" class="card wide">
+ <h2>外部ランキング発掘・TradingView版（参考・未検証）</h2>
+ <p class="sub">未接続（tradingview_screener_watch.pyの実行ワークフロー反映待ち）</p>
+</section>
+"""
+
     ms2_live_html = """
 <section id="ms2-live-top5" class="card wide ms2-live-panel">
  <div class="ms2-live-head"><div><span>LOCAL MARKET DATA・試運転 Ver.1</span><h2>デイトレ100銘柄・MS2 LIVE TOP5</h2></div><div id="ms2-live-health" class="ms2-health waiting">ローカル収集待ち</div></div>
@@ -2704,6 +2765,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 {focus_dashboard}
 {watchlist_html}
 {ranking_watch_html}
+{tv_screener_html}
 {ms2_live_html}
 {strong_yen_html}
 <section id="event-calendar" class="card wide event-calendar"><h2>売買イベントカレンダー</h2>

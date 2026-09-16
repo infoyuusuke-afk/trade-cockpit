@@ -157,7 +157,7 @@ document.addEventListener("DOMContentLoaded",()=>{{
    else if(s.id==="strong-yen-top5")k="strong-yen";
    else if(s.id==="us-smr-watch")k="us-smr";
    else if(s.id==="investor-regime")k="investor-regime";
-   else if(s.id==="data-quality-gate"||s.id==="action-dashboard"||s.id==="watchlist-100"||s.id==="market-ranking-watch"||s.id==="premarket-gap-ranking"||t.includes("IN点灯")||t.includes("準備点灯"))k="ms2-live";
+   else if(s.id==="data-quality-gate"||s.id==="action-dashboard"||s.id==="watchlist-100"||s.id==="market-ranking-watch"||s.id==="tradingview-screener-watch"||s.id==="premarket-gap-ranking"||t.includes("IN点灯")||t.includes("準備点灯"))k="ms2-live";
    else if(s.id==="lower-wick-reversal"||t.includes("下ヒゲ吸収反転"))k="wick";
    else if(t.includes("BB上方エクスパンション")||t.includes("短期急騰期待")||t.includes("テーマ仕手化兆候"))k="expansion";
    else if(s.id==="weekly-review"||t.includes("週間振り返り"))k="weekly";
