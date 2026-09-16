@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-17 06:45:19 JST",
+  "updated_at": "2026-09-17 07:08:08 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -3773,46 +3773,39 @@
     },
     "TOPIX": {
       "ok": true,
-      "price": 421.3,
-      "open": 423.1,
-      "high": 423.3,
-      "low": 419.6,
-      "prev_close": 423.3,
-      "change_pct": -0.47,
-      "ret5": -0.21,
-      "ret5_prev": -3.1,
-      "ret20": -2.25,
-      "rvol": 0.98,
-      "turnover": 5647370455,
-      "atr14": 6.06,
-      "atr_pct": 1.44,
-      "ma5": 421.68,
-      "ma20": 425.72,
-      "ma60": 424.14,
-      "from_ma5": -0.09,
-      "from_ma20": -1.04,
-      "touch_ma5": false,
-      "to_high20": -3.7,
-      "to_high52": -4.23,
-      "bb_upper": 434.99,
-      "bb_lower": 416.45,
-      "bb_width": 4.35,
-      "bb_width_change": -0.45,
-      "bb_percentile": 1.7,
-      "bb_expansion_score": 58.9,
-      "day_score": 2.02,
-      "swing_score": -2.66,
-      "stable_score": 6.57,
-      "momentum_score": 3.62,
-      "high_score": 5.47,
+      "price": 423.9,
+      "open": 422.9,
+      "high": 424.7,
+      "low": 422.1,
+      "prev_close": 421.3,
+      "change_pct": 0.62,
+      "ret5": 0.59,
+      "ret5_prev": -0.73,
+      "ret20": 1.56,
+      "rvol": 0.89,
+      "turnover": 4934369728,
+      "atr14": 6.14,
+      "atr_pct": 1.45,
+      "ma5": 422.18,
+      "ma20": 426.05,
+      "ma60": 423.96,
+      "from_ma5": 0.41,
+      "from_ma20": -0.5,
+      "touch_ma5": true,
+      "to_high20": -3.11,
+      "to_high52": -3.64,
+      "bb_upper": 434.55,
+      "bb_lower": 417.54,
+      "bb_width": 3.99,
+      "bb_width_change": -0.71,
+      "bb_percentile": 0.8,
+      "bb_expansion_score": 58.6,
+      "day_score": 3.04,
+      "swing_score": -1.51,
+      "stable_score": 5.17,
+      "momentum_score": 8.16,
+      "high_score": 3.34,
       "chart": [
-        {
-          "o": 411.9,
-          "h": 418.3,
-          "l": 409.7,
-          "c": 418.3,
-          "v": 20619610
-        },
         {
           "o": 421.6,
           "h": 424.1,
@@ -4085,20 +4078,27 @@
           "l": 419.6,
           "c": 421.3,
           "v": 13404630
+        },
+        {
+          "o": 422.9,
+          "h": 424.7,
+          "l": 422.1,
+          "c": 423.9,
+          "v": 11640410
         }
       ],
-      "data_date": "2026-09-15",
-      "data_age_days": 2,
-      "chart_last_close": 421.3,
+      "data_date": "2026-09-16",
+      "data_age_days": 1,
+      "chart_last_close": 423.9,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-09-15）",
-      "market_supply_score": 92,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-09-16）",
+      "market_supply_score": 93,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給92点／上昇日出来高÷下落日2.26倍／安値切上げ×",
+      "market_supply_status": "市場需給93点／上昇日出来高÷下落日2.23倍／安値切上げ×",
       "last_dividend": 7.9,
       "estimated_ex_date": "2027-01-08",
       "dividend_days": 113
@@ -5433,37 +5433,37 @@
     },
     "ドル円": {
       "ok": true,
-      "price": 156.2,
-      "open": 155.08,
-      "high": 156.42,
-      "low": 154.82,
+      "price": 156.25,
+      "open": 156.23,
+      "high": 156.29,
+      "low": 156.21,
       "prev_close": 154.38,
-      "change_pct": 1.17,
-      "ret5": 1.77,
+      "change_pct": 1.21,
+      "ret5": 1.8,
       "ret5_prev": -4.19,
-      "ret20": -2.1,
+      "ret20": -2.07,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 1.93,
+      "atr14": 1.92,
       "atr_pct": 1.23,
-      "ma5": 154.41,
+      "ma5": 154.42,
       "ma20": 157.16,
       "ma60": 159.85,
-      "from_ma5": 1.16,
-      "from_ma20": -0.61,
-      "touch_ma5": true,
-      "to_high20": -2.61,
-      "to_high52": -4.74,
+      "from_ma5": 1.18,
+      "from_ma20": -0.58,
+      "touch_ma5": false,
+      "to_high20": -2.58,
+      "to_high52": -4.72,
       "bb_upper": 162.11,
-      "bb_lower": 152.21,
+      "bb_lower": 152.22,
       "bb_width": 6.3,
       "bb_width_change": 0.54,
       "bb_percentile": 99.2,
       "bb_expansion_score": 15.3,
-      "day_score": 2.56,
-      "swing_score": -2.9,
-      "stable_score": 0.62,
-      "momentum_score": 4.32,
+      "day_score": 2.6,
+      "swing_score": -2.89,
+      "stable_score": 0.63,
+      "momentum_score": 1.33,
       "high_score": 0.0,
       "chart": [
         {
@@ -5740,25 +5740,25 @@
           "v": 0
         },
         {
-          "o": 155.08,
-          "h": 156.42,
-          "l": 154.82,
-          "c": 156.2,
+          "o": 156.23,
+          "h": 156.29,
+          "l": 156.21,
+          "c": 156.25,
           "v": 0
         }
       ],
       "data_date": "2026-09-16",
       "data_age_days": 1,
-      "chart_last_close": 156.2,
+      "chart_last_close": 156.25,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
       "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-09-16）",
-      "market_supply_score": 72,
+      "market_supply_score": 69,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給72点／上昇日出来高÷下落日2.00倍／安値切上げ×",
+      "market_supply_status": "市場需給69点／上昇日出来高÷下落日2.00倍／安値切上げ×",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
@@ -39641,8 +39641,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-09-17T06:44:36+09:00",
-    "decision_at": "2026-09-17T06:44:36+09:00",
+    "generated_at": "2026-09-17T07:07:11+09:00",
+    "decision_at": "2026-09-17T07:07:11+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -39954,7 +39954,7 @@
       "name": "マクニカHD（3132）",
       "code": "3132",
       "ticker": "3132.T",
-      "score": 58,
+      "score": 57,
       "executable": false,
       "supply_verified": false,
       "supply_status": "信用買残・倍率の照合未完了（監視のみ・注文禁止）",
@@ -39965,7 +39965,7 @@
       "stop": 3745.0,
       "target1": 4210,
       "target2": 4335,
-      "reason": "期待形成中／AI・テクノロジー 中立 45点／前日比 +2.27%／出来高比 1.01倍／売買代金 33億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム MIXED：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
+      "reason": "期待形成中／AI・テクノロジー 流出 42点／前日比 +2.27%／出来高比 1.01倍／売買代金 33億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム MIXED：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
       "chart": [
         {
           "o": 3368.0,
@@ -40268,7 +40268,7 @@
       "name": "リクルートHD（6098）",
       "code": "6098",
       "ticker": "6098.T",
-      "score": 50,
+      "score": 49,
       "executable": false,
       "supply_verified": false,
       "supply_status": "信用買残・倍率の照合未完了（監視のみ・注文禁止）",
@@ -40279,7 +40279,7 @@
       "stop": 16500.0,
       "target1": 18350,
       "target2": 18870,
-      "reason": "期待形成中／AI・テクノロジー 中立 45点／前日比 +1.84%／出来高比 1.23倍／売買代金 921億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム MIXED：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
+      "reason": "期待形成中／AI・テクノロジー 流出 42点／前日比 +1.84%／出来高比 1.23倍／売買代金 921億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム MIXED：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
       "chart": [
         {
           "o": 12500.0,
@@ -40582,7 +40582,7 @@
       "name": "パワーエックス（485A）",
       "code": "485A",
       "ticker": "485A.T",
-      "score": 29,
+      "score": 28,
       "executable": false,
       "supply_verified": false,
       "supply_status": "信用買残・倍率の照合未完了（監視のみ・注文禁止）",
@@ -40593,7 +40593,7 @@
       "stop": 1981.0,
       "target1": 3128,
       "target2": 3450,
-      "reason": "期待形成中／資本財・インフラ 流出 26点／前日比 -13.12%／出来高比 2.02倍／売買代金 351億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム MIXED：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
+      "reason": "期待形成中／資本財・インフラ 流出 20点／前日比 -13.12%／出来高比 2.02倍／売買代金 351億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム MIXED：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
       "chart": [
         {
           "o": 1945.0,
@@ -40896,7 +40896,7 @@
       "name": "メルカリ（4385）",
       "code": "4385",
       "ticker": "4385.T",
-      "score": 26,
+      "score": 25,
       "executable": false,
       "supply_verified": false,
       "supply_status": "信用買残・倍率の照合未完了（監視のみ・注文禁止）",
@@ -40907,7 +40907,7 @@
       "stop": 3530.0,
       "target1": 4280,
       "target2": 4490,
-      "reason": "期待形成中／その他 流出 42点／前日比 -6.36%／出来高比 2.11倍／売買代金 145億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム MIXED：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
+      "reason": "期待形成中／その他 流出 39点／前日比 -6.36%／出来高比 2.11倍／売買代金 145億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム MIXED：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
       "chart": [
         {
           "o": 4432.0,
@@ -41210,7 +41210,7 @@
       "name": "GO（581A）",
       "code": "581A",
       "ticker": "581A.T",
-      "score": 21,
+      "score": 20,
       "executable": false,
       "supply_verified": false,
       "supply_status": "信用買残・倍率の照合未完了（監視のみ・注文禁止）",
@@ -41221,7 +41221,7 @@
       "stop": 2990.0,
       "target1": 4665,
       "target2": 5135,
-      "reason": "期待形成中／自動車・モビリティ 流入初期 50点／前日比 -8.31%／出来高比 2.42倍／売買代金 249億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム MIXED：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
+      "reason": "期待形成中／自動車・モビリティ 低迷 47点／前日比 -8.31%／出来高比 2.42倍／売買代金 249億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム MIXED：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
       "chart": [
         {
           "o": 2900.0,
@@ -41522,13 +41522,13 @@
     }
   ],
   "strong_yen_top5": {
-    "usd_jpy": 156.201,
-    "usd_jpy_change_pct": -0.02,
-    "usd_jpy_ret5": 1.77,
+    "usd_jpy": 156.247,
+    "usd_jpy_change_pct": 0.0,
+    "usd_jpy_ret5": 1.8,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-09-17T06:45:00+09:00",
+    "fx_observed_at": "2026-09-17T07:07:00+09:00",
     "statement_study": {
-      "updated_at": "2026-09-17 06:45:14 JST",
+      "updated_at": "2026-09-17 07:08:00 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -45178,7 +45178,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-09-17 06:45:01 JST",
+    "credit_supply_updated_at": "2026-09-17 07:07:47 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -50607,10 +50607,10 @@
       {
         "sector": "金融",
         "phase": "拡大",
-        "score": 69.7,
-        "rel5": 2.31,
-        "rel20": 7.19,
-        "acceleration": 1.99,
+        "score": 66.6,
+        "rel5": 1.51,
+        "rel20": 3.38,
+        "acceleration": 3.56,
         "breadth": 66.7,
         "rvol": 1.0,
         "members": 3,
@@ -50635,11 +50635,11 @@
       },
       {
         "sector": "自動車・モビリティ",
-        "phase": "流入初期",
-        "score": 49.9,
-        "rel5": 0.33,
-        "rel20": 1.93,
-        "acceleration": 1.13,
+        "phase": "低迷",
+        "score": 46.7,
+        "rel5": -0.47,
+        "rel20": -1.88,
+        "acceleration": 2.7,
         "breadth": 20.0,
         "rvol": 1.08,
         "members": 5,
@@ -50660,15 +50660,15 @@
             "rvol": 0.75
           }
         ],
-        "action": "最優先監視・初押し"
+        "action": "見送り"
       },
       {
         "sector": "AI・テクノロジー",
-        "phase": "中立",
-        "score": 44.8,
-        "rel5": 0.04,
-        "rel20": 4.42,
-        "acceleration": -3.9,
+        "phase": "流出",
+        "score": 41.6,
+        "rel5": -0.76,
+        "rel20": 0.61,
+        "acceleration": -2.33,
         "breadth": 39.5,
         "rvol": 0.79,
         "members": 38,
@@ -50689,15 +50689,15 @@
             "rvol": 0.51
           }
         ],
-        "action": "方向確認待ち"
+        "action": "新規ロング停止"
       },
       {
         "sector": "その他",
         "phase": "流出",
-        "score": 42.3,
-        "rel5": -2.34,
-        "rel20": 12.59,
-        "acceleration": -4.16,
+        "score": 39.1,
+        "rel5": -3.14,
+        "rel20": 8.78,
+        "acceleration": -2.59,
         "breadth": 30.0,
         "rvol": 0.82,
         "members": 20,
@@ -50723,10 +50723,10 @@
       {
         "sector": "内需・ディフェンシブ",
         "phase": "低迷",
-        "score": 39.5,
-        "rel5": -0.49,
-        "rel20": -1.14,
-        "acceleration": 0.25,
+        "score": 36.4,
+        "rel5": -1.29,
+        "rel20": -4.95,
+        "acceleration": 1.82,
         "breadth": 0.0,
         "rvol": 0.89,
         "members": 5,
@@ -50752,10 +50752,10 @@
       {
         "sector": "資源・素材・商社",
         "phase": "流出",
-        "score": 37.3,
-        "rel5": -1.76,
-        "rel20": 6.6,
-        "acceleration": -7.75,
+        "score": 34.2,
+        "rel5": -2.56,
+        "rel20": 2.79,
+        "acceleration": -6.18,
         "breadth": 66.7,
         "rvol": 0.76,
         "members": 6,
@@ -50781,10 +50781,10 @@
       {
         "sector": "資本財・インフラ",
         "phase": "流出",
-        "score": 25.9,
-        "rel5": -2.27,
-        "rel20": 1.33,
-        "acceleration": -9.34,
+        "score": 20.3,
+        "rel5": -3.07,
+        "rel20": -2.48,
+        "acceleration": -7.77,
         "breadth": 28.6,
         "rvol": 0.88,
         "members": 21,
@@ -50813,7 +50813,7 @@
         "name": "MS&AD（8725）",
         "sector": "金融",
         "phase": "拡大",
-        "score": 77,
+        "score": 74,
         "material_stage": "事実確認待ち",
         "material_action": "出来高・需給確認待ち",
         "plan": {
@@ -50824,13 +50824,13 @@
           "risk": 70,
           "tick": 10
         },
-        "reason": "金融が拡大／TOPIX比5日 +2.31%／出来高比 1.16倍"
+        "reason": "金融が拡大／TOPIX比5日 +1.51%／出来高比 1.16倍"
       },
       {
         "name": "三菱UFJ FG（8306）",
         "sector": "金融",
         "phase": "拡大",
-        "score": 71,
+        "score": 68,
         "material_stage": "事実確認待ち",
         "material_action": "出来高・需給確認待ち",
         "plan": {
@@ -50841,13 +50841,13 @@
           "risk": 60,
           "tick": 5
         },
-        "reason": "金融が拡大／TOPIX比5日 +2.31%／出来高比 0.92倍"
+        "reason": "金融が拡大／TOPIX比5日 +1.51%／出来高比 0.92倍"
       },
       {
         "name": "三井住友FG（8316）",
         "sector": "金融",
         "phase": "拡大",
-        "score": 70,
+        "score": 66,
         "material_stage": "事実確認待ち",
         "material_action": "出来高・需給確認待ち",
         "plan": {
@@ -50858,16 +50858,16 @@
           "risk": 120,
           "tick": 10
         },
-        "reason": "金融が拡大／TOPIX比5日 +2.31%／出来高比 0.93倍"
+        "reason": "金融が拡大／TOPIX比5日 +1.51%／出来高比 0.93倍"
       }
     ],
     "kioxia": {
       "name": "キオクシアHD（285A）",
-      "status": "中立",
-      "action": "新規追加は見送り",
-      "detail": "方向未確定。業績期待だけで平均取得単価を下げず、セクターと個別の両方の反転を待つ。",
-      "sector_score": 44.8,
-      "sector_rel5": 0.04
+      "status": "流出",
+      "action": "追加買い停止",
+      "detail": "会社材料よりセクター需給を優先。セクターが流入初期へ戻り、個別が前日高値を上抜くまで新規資金を入れない。",
+      "sector_score": 41.6,
+      "sector_rel5": -0.76
     },
     "source_note": "米国11業種ETFのS&P500相対強弱と、日本株監視群のTOPIX相対強弱による公開データ代理指標"
   },
@@ -61614,14 +61614,14 @@
   ],
   "morning_snapshot": {
     "date": "2026-09-17",
-    "fixed_at": "2026-09-17 06:45:19 JST",
+    "fixed_at": "2026-09-17 07:08:08 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-09-17",
-    "fixed_at": "2026-09-17 06:46:01 JST",
+    "fixed_at": "2026-09-17 07:09:06 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
@@ -61650,7 +61650,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-17 06:46:01 JST",
+        "signal_time": "2026-09-17 07:09:06 JST",
         "source": "morning_snapshot"
       },
       {
@@ -61679,7 +61679,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-17 06:46:01 JST",
+        "signal_time": "2026-09-17 07:09:06 JST",
         "source": "morning_snapshot"
       },
       {
@@ -61708,7 +61708,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-17 06:46:01 JST",
+        "signal_time": "2026-09-17 07:09:06 JST",
         "source": "morning_snapshot"
       },
       {
@@ -61737,7 +61737,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-17 06:46:01 JST",
+        "signal_time": "2026-09-17 07:09:06 JST",
         "source": "morning_snapshot"
       },
       {
@@ -61766,7 +61766,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-17 06:46:01 JST",
+        "signal_time": "2026-09-17 07:09:06 JST",
         "source": "morning_snapshot"
       },
       {
@@ -61795,7 +61795,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-17 06:46:01 JST",
+        "signal_time": "2026-09-17 07:09:06 JST",
         "source": "morning_snapshot"
       },
       {
@@ -61824,7 +61824,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-17 06:46:01 JST",
+        "signal_time": "2026-09-17 07:09:06 JST",
         "source": "morning_snapshot"
       },
       {
@@ -61853,7 +61853,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-17 06:46:01 JST",
+        "signal_time": "2026-09-17 07:09:06 JST",
         "source": "morning_snapshot"
       }
     ]
