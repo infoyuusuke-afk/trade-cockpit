@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-16 21:03:03 JST",
+  "updated_at": "2026-09-17 21:05:35 JST",
   "horizon": "swing",
   "data_quality": {
     "credit_supply": "ok",
@@ -8,22 +8,24 @@
     "block_reasons": []
   },
   "universe_count": 1,
-  "market_score": 15,
+  "market_score": -15,
   "market_reasons": [
-    "海外投資家が売→買に転換（1週目）"
+    "海外投資家が買→売に転換（-1週目）",
+    "市場レジーム: DISTRIBUTION（確信度87）"
   ],
   "signals": [
     {
       "code": "285A",
       "name": "キオクシアホールディングス",
-      "score": 15,
+      "score": -15,
       "direction": "WATCH",
       "supply_phase": "中立",
       "trade_bias": "価格確認を優先",
       "margin_buy_change_1w_pct": 3.23,
       "credit_ratio": 19.97,
       "reasons": [
-        "海外投資家が売→買に転換（1週目）"
+        "海外投資家が買→売に転換（-1週目）",
+        "市場レジーム: DISTRIBUTION（確信度87）"
       ],
       "horizon": "swing"
     }
