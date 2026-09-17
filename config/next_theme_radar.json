@@ -1,0 +1,18 @@
+{
+  "schema_version": "next-theme-config-0.1",
+  "alert_threshold": 75,
+  "confirm_threshold": 80,
+  "themes": [
+    {
+      "id": "jpy-stablecoin",
+      "label": "円ステーブルコイン",
+      "aliases": ["JPYC", "JPY stablecoin", "円ステーブルコイン", "yen stablecoin"],
+      "feed_query": "JPYC stablecoin exchange listing",
+      "relations": [
+        {"code": "3853", "name": "アステリア", "type": "資本・業務提携", "group": "本命", "source_url": "https://www.asteria.com/jp/news/press/2021/04/06_01.php"},
+        {"code": "4072", "name": "電算システムHD", "type": "資本・業務提携", "group": "本命", "source_url": "https://www.densan-s.co.jp/wp/wp-content/uploads/2024/05/20240507JPYC.pdf"},
+        {"code": "4382", "name": "HEROZ", "type": "資本・業務提携", "group": "第2群", "source_url": "https://heroz.jp/ir-files/en/20260226/Notice_Regarding_Business_Alliance_with_JPYC_Inc_and_Subscription_of_Series_B1_Preferred_Share.pdf"}
+      ]
+    }
+  ]
+}
