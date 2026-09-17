@@ -137,9 +137,10 @@ def _validate_provenance(record) -> list[str]:
     if not isinstance(known_ids, list) or not all(isinstance(x, str) for x in known_ids):
         reasons.append("PROVENANCE_KNOWN_ORDER_IDS_INVALID")
 
-    source_path = record.get("source_path")
-    if source_path is not None and not is_approved_private_path(source_path):
-        reasons.append("PROVENANCE_SOURCE_PATH_NOT_PRIVATE")
+    # source_pathの承認済みroot判定は呼び出し側（evaluate_shadow_forward_
+    # acceptance()）が専用のprivate_path_leak_nとして独立に数える——ここで
+    # 二重にreasonsへ入れるとambiguous_provenance_n側が先にrecordを
+    # 除外してしまい、private_path_leak_nが決して増えなくなる。
 
     return reasons
 
