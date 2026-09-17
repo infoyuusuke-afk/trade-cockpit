@@ -1984,6 +1984,56 @@ commit b4f2976b9c96bd23fadc5619868c139a6f5eea1d。CI run
 Forward Acceptance、Real Ledger拡張+Reconciliation、Execution
 Calibration Report、Integration Orchestrator、Small Real Execution Test。
 
+## Execution Stack Phase 4.3 lineage hardening（Issue #18 C-055R-GPT、2026-09-17）
+
+C-055R-GPT（comment 5707245444）がPhase 4.2（397件成功、first attempt）を
+確認した上で、**Phase 5にはまだ進まず**Permission Gateのlineage結合に
+残っていた1つの穴を指摘した。
+
+**残存Blocker（RiskDecisionのmerge_hashがIntentへlineage bindingされて
+いない）**：Permission Gateは従来、symbol/side/quantity(=allowed_qty)/
+risk_policy_versionの完全一致と、RiskDecisionの`merge_hash`が非空である
+ことまでは確認していたが、Intent側には`merge_hash`という概念自体が
+存在せず、「そのmerge_hashが本当にこのIntentの元scenarioのものか」を
+一切照合できていなかった。そのため、同一symbol/side/qty/policy_version
+を持つ別scenarioのPASS済みRiskDecisionが誤って別Intentへcross-wireされ
+ても、merge_hashが非空でありさえすればlineage checkを通過しうる穴が
+あった。Phase 5がこのPermission済みIntentをそのままShadow Engineへ流す
+前提のため、Shadow Engine実装前に塞ぐ必要があると指摘された。
+
+**対応**：`scripts/execution_contract.py`の`build_intent()`へ、Risk Gate
+から引き継ぐ必須非空stringの`merge_hash`パラメータを新規追加した。
+**canonical `_HASH_FIELDS`／`intent_hash`のsemanticsは変更していない**
+——`merge_hash`はhash対象に追加せず、Phase 1で確立したhashを再定義しない
+（回帰テストでmerge_hashの値を変えても同一order-contentならintent_hash
+が変化しないことを確認済み）。`scripts/execution_permission.py`の
+`_evaluate_all_gates()`が`intent.merge_hash == risk_decision.merge_hash`
+の完全一致を新たに検証し、不一致（missing/empty/非string/別scenarioの
+値も含む）なら`BLOCK_RISK_LINEAGE_MISMATCH`でfail closedする。
+`evaluate_permission()`は一致確認後の値をticketの新フィールド
+`merge_hash`として保存し、`ticket_fingerprint`のpayloadへも含める
+（Phase 4.2のintent_created_at/signal_known_atと同じ扱い）。
+`evaluate_reconfirmation()`は現在のIntent・ticket-bound値・現在の
+RiskDecisionの3者一致を再確認し、ticket発行後にどちらか一方だけ
+merge_hashが差し替えられた場合は`BLOCK_INTENT_MERGE_HASH_MISMATCH`／
+`BLOCK_RISK_DECISION_MERGE_HASH_MISMATCH`でBLOCKする。
+
+**テスト**：`tests/test_execution_contract.py`・`tests/test_execution_
+permission.py`にC-055R-GPT指定のGolden Fixturesを実装（merge_hash一致
+→ORDER_TICKET_READY、同一lineage fieldsだがmerge_hashだけ別scenario→
+BLOCKED、Intent merge_hash欠損/空/非string→BLOCKED、ticket発行後の
+Intent側/RiskDecision側それぞれのmerge_hash改ざん→reconfirm BLOCKED、
+build_intent()自体がmerge_hash欠損/空/非stringをreject、merge_hash変更
+がintent_hashへ影響しないことの回帰確認）。1回目のCI実行（run
+35175458181）で成功。`python -m unittest discover -s tests -v`で
+**406件全て成功（failures=0, errors=0、Phase 4.2の397件から新規9件
+追加）**。commit 00434e4df7b1c9b764b41f9916eee8ed63bc1e35（本体実装）。
+main反映済み。
+
+**未着手（Phase 5以降、変更なし）**：Shadow Execution Engine、Shadow
+Forward Acceptance、Real Ledger拡張+Reconciliation、Execution
+Calibration Report、Integration Orchestrator、Small Real Execution Test。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
