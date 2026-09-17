@@ -1,13 +1,15 @@
 ﻿param(
     [int]$PollSeconds = 5,
     [int]$ModeChangeCooldownMinutes = 10,
+    [int]$MaxDataAgeSeconds = 30,
     [string]$SbV2BaseUrl = "http://127.0.0.1:5000",
     [string]$SbV2ModelName = "amitaro",
     [string]$SbV2SpeakerName = "あみたろ",
     [string]$SbV2Style = "Neutral",
     [double]$SbV2StyleWeight = 0.4,
     [double]$SbV2Length = 1.2,
-    [double]$SbV2SplitInterval = 0.7
+    [double]$SbV2SplitInterval = 0.7,
+    [switch]$Once
 )
 
 $ErrorActionPreference = "SilentlyContinue"
@@ -126,27 +128,38 @@ function Invoke-SbV2Speech([string]$text) {
 
 # Shared voice mutex serializes all cockpit voice processes.
 function Speak-Text([string]$text) {
-    if ([string]::IsNullOrWhiteSpace($text)) { return }
+    if ([string]::IsNullOrWhiteSpace($text)) { return $false }
     $voiceMutex = $null
     $voiceAcquired = $false
     try {
         $voiceMutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
         $voiceAcquired = $voiceMutex.WaitOne(20000)
+        if (-not $voiceAcquired) { return $false }
 
         $spoken = Invoke-SbV2Speech $text
         if (-not $spoken) {
             # Fail-safe: keep an audible warning even if SBV2 is down.
             $speaker.Speak((Normalize-SpeechText $text), 0) | Out-Null
         }
+        return $true
     } catch {
+        return $false
     } finally {
         if ($voiceAcquired -and $null -ne $voiceMutex) { try { $voiceMutex.ReleaseMutex() } catch {} }
         if ($null -ne $voiceMutex) { $voiceMutex.Dispose() }
     }
 }
 
+function Test-DataFresh([object]$data) {
+    if ($null -eq $data) { return $false }
+    $capturedAt = [datetime]::MinValue
+    $hasTime = [datetime]::TryParseExact([string]$data.updated_at, 'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$capturedAt)
+    $age = ((Get-Date) - $capturedAt).TotalSeconds
+    return ($hasTime -and $age -ge -5 -and $age -le $MaxDataAgeSeconds)
+}
+
 function Get-Mode([object]$data) {
-    if ($null -eq $data) { return "NO TRADE" }
+    if (-not (Test-DataFresh $data)) { return "NO TRADE" }
     $valid = 0
     try { $valid = [int]$data.valid } catch {}
     if ([bool]$data.stale -or $valid -lt 90) { return "NO TRADE" }
@@ -199,6 +212,10 @@ function Get-MethodGate([string]$mode) {
 }
 
 function Get-ModeVoice([string]$mode, [object]$data) {
+    if (-not (Test-DataFresh $data)) { return 'AIコクピット。MS2のデータ更新を確認できません。相場判定は停止。新規判断はしないでください。' }
+    $valid = 0
+    try { $valid = [int]$data.valid } catch {}
+    if ([bool]$data.stale -or $valid -lt 90) { return 'AIコクピット。MS2の取得データが不足しています。相場判定は停止。新規判断はしないでください。' }
     $state = [string]$data.market_state
     $breadthText = ""
     try { if ($null -ne $data.breadth_pct) { $breadthText = "。VWAP上の銘柄比率は" + [Math]::Round([double]$data.breadth_pct) + "パーセント" } } catch {}
@@ -222,8 +239,7 @@ function Invoke-MarketClockAnnouncements([datetime]$now) {
         $at = [TimeSpan]::Parse([string]$item.Time)
         $until = $at.Add([TimeSpan]::FromMinutes(1.5))
         if ($clock -ge $at -and $clock -lt $until) {
-            Speak-Text ([string]$item.Text)
-            $spokenClock[$item.Key] = $true
+            if (Speak-Text ([string]$item.Text)) { $spokenClock[$item.Key] = $true }
         }
     }
 }
@@ -240,17 +256,15 @@ try {
             $lastModeSpokenAt=[datetime]::MinValue
             $spokenClock.Clear()
         }
-        if ($now.DayOfWeek -in @([DayOfWeek]::Saturday,[DayOfWeek]::Sunday)) { Start-Sleep -Seconds 60; continue }
+        if ($now.DayOfWeek -in @([DayOfWeek]::Saturday,[DayOfWeek]::Sunday)) { if ($Once) { break }; Start-Sleep -Seconds 60; continue }
         $clock = $now.TimeOfDay
         if ($clock -gt [TimeSpan]::Parse("15:35:00")) { break }
 
         if (-not $preopenSpoken -and $clock -ge [TimeSpan]::Parse("08:55:00") -and $clock -lt [TimeSpan]::Parse("09:00:00")) {
-            Speak-Text "AIコクピット。まもなく寄り付きです。9時15分までは原則ノートレード。寄り直後は見学。焦って飛び乗らない。モードが決まるまで入るな。"
-            $preopenSpoken=$true
+            if (Speak-Text "AIコクピット。まもなく寄り付きです。9時15分までは原則ノートレード。寄り直後は見学。焦って飛び乗らない。モードが決まるまで入るな。") { $preopenSpoken=$true }
         }
         if (-not $openingRuleSpoken -and $clock -ge [TimeSpan]::Parse("09:00:00") -and $clock -lt [TimeSpan]::Parse("09:15:00")) {
-            Speak-Text "寄り付きました。9時15分までは入らない。OR15を作る時間です。板、歩み値、出来高、VWAP、指数方向を観察してください。"
-            $openingRuleSpoken=$true
+            if (Speak-Text "寄り付きました。9時15分までは入らない。OR15を作る時間です。板、歩み値、出来高、VWAP、指数方向を観察してください。") { $openingRuleSpoken=$true }
         }
 
         Invoke-MarketClockAnnouncements $now
@@ -261,9 +275,10 @@ try {
                 $mode=Get-Mode $data; $shouldSpeak=$false
                 if ([string]::IsNullOrWhiteSpace($lastMode)) { $shouldSpeak=$true }
                 elseif ($mode -ne $lastMode -and ($now-$lastModeSpokenAt).TotalMinutes -ge $ModeChangeCooldownMinutes) { $shouldSpeak=$true }
-                if ($shouldSpeak) { Speak-Text (Get-ModeVoice $mode $data); $lastMode=$mode; $lastModeSpokenAt=$now }
+                if ($shouldSpeak -and (Speak-Text (Get-ModeVoice $mode $data))) { $lastMode=$mode; $lastModeSpokenAt=$now }
             }
         }
+        if ($Once) { break }
         Start-Sleep -Seconds ([Math]::Max(2,$PollSeconds))
     }
 }

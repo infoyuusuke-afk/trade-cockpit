@@ -2,6 +2,8 @@
     [int]$PollSeconds = 3,
     [int]$CooldownSeconds = 90,
     [int]$HotRepeatSeconds = 180,
+    [int]$MaxDataAgeSeconds = 30,
+    [int]$DebounceSeconds = 6,
     [string]$JsonPath = (Join-Path $PSScriptRoot "live_ms2.json"),
     [string]$SbV2BaseUrl = "http://127.0.0.1:5000",
     [string]$SbV2ModelName = "amitaro",
@@ -25,6 +27,8 @@ $lastKey = ""
 $lastSpokenAt = [datetime]::MinValue
 $lastHotAt = [datetime]::MinValue
 $lastScore = 0
+$candidateKey = ""
+$candidateSince = [datetime]::MinValue
 
 function Limit([double]$value, [double]$low, [double]$high) {
     return [Math]::Max($low, [Math]::Min($high, $value))
@@ -38,7 +42,9 @@ function Num($value, [double]$fallback = 0) {
 }
 
 function Bool($value) {
-    try { return [bool]$value } catch { return $false }
+    if ($value -is [bool]) { return $value }
+    if ($null -eq $value) { return $false }
+    return ([string]$value -match '^(?i:true|1)$')
 }
 
 function Normalize-SpeechText([string]$text) {
@@ -86,11 +92,11 @@ function Test-SbV2Ready {
 }
 
 function Invoke-Voice([string]$text, [string]$level) {
-    if ([string]::IsNullOrWhiteSpace($text)) { return }
+    if ([string]::IsNullOrWhiteSpace($text)) { return $false }
     $normalized = Normalize-SpeechText $text
     if ($DryRun) {
         Write-Host ("[" + $level + "] " + $normalized)
-        return
+        return $true
     }
 
     $voiceMutex = $null
@@ -98,6 +104,7 @@ function Invoke-Voice([string]$text, [string]$level) {
     try {
         $voiceMutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
         $voiceAcquired = $voiceMutex.WaitOne(20000)
+        if (-not $voiceAcquired) { return $false }
         if (Test-SbV2Ready) {
             $profile = Get-VoiceProfile $level
             $q = [ordered]@{
@@ -123,31 +130,42 @@ function Invoke-Voice([string]$text, [string]$level) {
                 $player.Load()
                 $player.PlaySync()
                 $player.Dispose()
+                return $true
+            } catch {
+                # A healthy /status does not guarantee that synthesis succeeds.
+                $sapi.Speak($normalized, 0) | Out-Null
+                return $true
             } finally {
                 if (Test-Path $wav) { Remove-Item -Force $wav -ErrorAction SilentlyContinue }
             }
         } else {
             $sapi.Speak($normalized, 0) | Out-Null
+            return $true
         }
     } catch {
+        return $false
     } finally {
         if ($voiceAcquired -and $null -ne $voiceMutex) { try { $voiceMutex.ReleaseMutex() } catch {} }
         if ($null -ne $voiceMutex) { $voiceMutex.Dispose() }
     }
 }
 
-function Get-EmotionState([object]$data) {
-    if ($null -eq $data) { return $null }
+function Get-EmotionState([object]$data, [datetime]$now = (Get-Date)) {
+    $dataWarning = [pscustomobject]@{level='DANGER';side='NONE';score=100;key='DANGER:DATA';reasons=@('データ更新不足');text='注意。MS2のデータが不足しています。リアルタイム判定を止めます。新規判断はしないでください。'}
+    if ($null -eq $data) { return $dataWarning }
     $valid = [int](Num $data.valid 0)
-    if ((Bool $data.stale) -or $valid -lt 90) {
-        return [pscustomobject]@{level='DANGER';side='NONE';score=100;key='DANGER:DATA';reasons=@('データ更新不足');text='注意。MS2のデータが不足しています。リアルタイム判定を止めます。新規判断はしないでください。'}
+    $capturedAt = [datetime]::MinValue
+    $hasTime = [datetime]::TryParseExact([string]$data.updated_at, 'yyyy-MM-dd HH:mm:ss', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$capturedAt)
+    $age = ($now - $capturedAt).TotalSeconds
+    if (-not $hasTime -or $age -lt -5 -or $age -gt $MaxDataAgeSeconds -or (Bool $data.stale) -or $valid -lt 90) {
+        return $dataWarning
     }
 
     $k = $data.kioxia
-    if ($null -eq $k) { return $null }
+    if ($null -eq $k) { return $dataWarning }
     $price = Num $k.price 0
     $vwap = Num $k.vwap 0
-    if ($price -le 0) { return $null }
+    if ($price -le 0) { return $dataWarning }
 
     $signal = [string]$k.signal
     $strategy = [string]$k.strategy
@@ -281,18 +299,24 @@ try {
         if (Test-Path $JsonPath) {
             try { $data = Get-Content -Raw -Encoding UTF8 $JsonPath | ConvertFrom-Json } catch {}
         }
-        $state = Get-EmotionState $data
+        $state = Get-EmotionState $data $now
+        if ($null -ne $state -and $state.key -ne $candidateKey) {
+            $candidateKey = [string]$state.key
+            $candidateSince = $now
+        }
         if ($DryRun -and $null -ne $state) {
             Write-Host ("LEVEL="+$state.level+" SIDE="+$state.side+" SCORE="+$state.score+" LEAD="+$state.lead+" KEY="+$state.key)
             Write-Host ("REASONS="+($state.reasons -join ' / '))
         }
 
-        if (Should-Speak $state $now) {
-            Invoke-Voice ([string]$state.text) ([string]$state.level)
-            $lastKey = [string]$state.key
-            $lastScore = [int]$state.score
-            $lastSpokenAt = $now
-            if ($state.level -eq 'HOT') { $lastHotAt = $now }
+        $stable = ($null -ne $state -and ($state.level -eq 'DANGER' -or ($now - $candidateSince).TotalSeconds -ge $DebounceSeconds))
+        if ($stable -and (Should-Speak $state $now)) {
+            if (Invoke-Voice ([string]$state.text) ([string]$state.level)) {
+                $lastKey = [string]$state.key
+                $lastScore = [int]$state.score
+                $lastSpokenAt = $now
+                if ($state.level -eq 'HOT') { $lastHotAt = $now }
+            }
         } elseif ($null -ne $state -and $lastKey -eq '') {
             $lastKey = [string]$state.key
             $lastScore = [int]$state.score

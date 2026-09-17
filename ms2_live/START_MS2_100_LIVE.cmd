@@ -13,6 +13,13 @@ echo 4. Keep Excel open
 echo.
 pause
 
+rem Stop before launching background voices if the collector cannot attach to its workbook.
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0TEST_MS2_WORKBOOK_READY.ps1"
+if errorlevel 1 (
+  echo Open the MS2 RSS workbook in Excel, confirm RSS connection, then start again.
+  exit /b 1
+)
+
 rem ---------------------------------------------------
 rem Voice API: start Style-Bert-VITS2 only when needed.
 rem If SBV2 is unavailable, voice scripts fall back to
