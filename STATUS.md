@@ -2605,6 +2605,131 @@ Integration Orchestrator、Small Real Execution Test、RssOrder、
 Excel注文式、broker API submit、実ポジション変更、
 `real_submit_allowed=True`。
 
+## Execution Stack Phase 6 Shadow Forward Acceptance v0.1（Issue #18 C-068-GPT、2026-09-17）
+
+C-068-GPT（comment 5711025033）がPhase 5.1.1（CI Green・588件成功、
+run 35192222715、C-066-GPTの4 blocker全てCLOSED）をACCEPTEDとした
+上で、Phase 6へGOを出した。**Phase 6はShadow Forward Acceptance v0.1
+のみ——引き続き100% Shadow、Real発注への昇格判定は一切行わない**。
+`50件`は最低限のevidence閾値であり、Real取引の許可条件ではない。
+新規`scripts/shadow_forward_acceptance.py`を実装。
+
+**設計**：`evaluate_shadow_forward_acceptance(records, *, now)`は、
+呼び出し側が別途privateに永続化したforward evidence record
+（1件=1つのShadow Intentの捕捉済みjourney：生のIntent/RiskDecision/
+Ticket、submit時刻、observation/nowを伴う`ORDER_FILL`/
+`POSITION_EXIT`のstep列、forward運用で実際に記録された最終status）
+の配列を受け取り、決定論的なacceptance reportを返す純粋関数
+（ファイルI/O一切なし、Phase 5.0.x/5.1と同じpure core方針）。
+
+1. **provenance検証**：`source`が正確に`"SHADOW_FORWARD"`であること
+   （unit test/backtest/手動fixtureへのbackfillを禁止）、lineage/
+   chronology必須フィールドの存在、`steps`の非空性、宣言された
+   `source_path`が承認済みprivate root（`data/private/shadow_forward/`
+   ／`ms2_live/records/`、共に既存`.gitignore`で除外済み）配下である
+   ことを検証。曖昧/欠損なprovenanceは推測補完せずeligible集合から
+   除外する。
+2. **deterministic replay**：recordの記録済みpoint-in-time inputを
+   既存のcanonical純粋関数
+   （`shadow_execution.submit_shadow_order`/`evaluate_shadow_fill`、
+   `shadow_position.create_shadow_position`/`sync_entry_fill`/
+   `evaluate_position_exit`）へそのまま再投入し、結果として得られる
+   Shadow Order/Position最終stateと、recordが主張する
+   `recorded_final_*`を突き合わせる。この1回の比較で以下を同時に
+   検出する：
+   - **permission/kill lineage bypass**：canonical lineage検証が
+     REJECTEDだと言っているのに、記録が「受理された」と主張して
+     いる（`kill_or_permission_bypass_n`、0でなければFAIL_INTEGRITY）。
+   - **deterministic replay mismatch**：それ以外のあらゆる乖離
+     （`deterministic_replay_mismatch_n`）。
+   - **duplicate guard fidelity**：`known_shadow_order_ids_at_
+     submission`により、replay自体が本物のDUPLICATE_IGNOREDを再現
+     できる——正しくguardされたrecordは`duplicate_guard_hit_n`として
+     診断カウントするだけで別exposureとして数えない。guard-hitでは
+     ない形で同一`shadow_order_id`が2回目「受理」として現れれば
+     `effective_duplicate_accept_n`（0でなければFAIL_INTEGRITY）。
+   - replay自体は新しいforward intentとしてカウントしない——同じ
+     recordsで2回呼んでも`eligible_unique_intents`は変化しない。
+3. **stale/future observation**：各stepのobservation妥当性
+   （`shadow_fill_model.validate_observation()`）を
+   `invalid_input_observation_n`/`stale_input_n`/`future_input_n`
+   として診断的に集計しつつ、無効なobservationが実際に
+   filled_qty/position stateを変化させていないかを
+   `stale_or_future_state_advance_n`として別途検証する（Phase 5.0.2/
+   5.1.1で既に硬化済みの挙動に対するdefense-in-depth、および
+   entry fillより前のPOSITION_EXIT step等の構造的に矛盾した
+   イベント順序も検出する）。
+4. **status語彙**：`INSUFFICIENT_SAMPLE`/`FAIL_INTEGRITY`/
+   `SHADOW_FORWARD_REVIEW_ELIGIBLE`の3つのみ。`REAL_ALLOWED`/
+   `REAL_READY`/`AUTHORIZED_FOR_REAL`等の自動昇格状態は語彙に一切
+   存在しない。`SHADOW_FORWARD_REVIEW_ELIGIBLE`は人間のレビューを
+   促すシグナルであり、Real発注許可ではない。どのreportも
+   `real_submit_allowed`は常にFalse固定。
+5. **診断**：`unique_session_days`/strategy分布/symbol分布/
+   fill-confidence分布を報告するが、戦略の収益性判定やOOS要件の
+   代替には使わない——Phase 6はexecution-stackのintegrityだけを
+   検証する。
+6. `is_approved_private_path()`を独立した純粋ヘルパーとして公開
+   （将来のprivate recorderが自身の出力先を書き込み前に自己検証
+   できるように）。このモジュール自体は private root への書き込みを
+   一切実装しない。
+
+**テスト**：`tests/test_shadow_forward_acceptance.py`にC-068-GPT
+指定の16件Golden Fixturesを全て実装（<50件は`INSUFFICIENT_SAMPLE`、
+ちょうど50件の健全なrecordは全gateがzero-violationの場合のみ
+`SHADOW_FORWARD_REVIEW_ELIGIBLE`（1件でも違反があれば不適格）、
+同一`shadow_order_id`の繰り返しはeligible数を増やさず
+`FAIL_INTEGRITY`になること、正当なduplicate guard hitは診断上
+カウントされるだけで別exposureにならないこと、正しく無視された
+stale observationは入力品質診断だけを増やしstate-advance違反には
+ならないこと・虚偽にfilledと記録されたものはreplay mismatchで
+`FAIL_INTEGRITY`になること（future観測でも同様）、risk-BLOCKEDや
+permission未readyのrecordが虚偽に受理済みと記録されていれば
+kill/permission bypassとして検出されること、intent_hash改ざんが
+deterministic replay mismatchとして検出されること、同一recordsの
+2回のreplayがeligible数を増やさないこと、unit test/backtest由来の
+recordはforward evidenceとして一切数えないこと、欠損/不一致な
+provenanceフィールドを持つrecordは不適格になること、承認済み
+private root外を指す`source_path`がヘルパー単体・record単位の
+両方で拒否されること、entry fillより前のPOSITION_EXIT stepが
+検出されること、既存588件全てが引き続きGreenであること、
+broker/RssOrder/Excel-order/COM/network/file-I/Oが一切無いことを
+確認するAST検査とstatus語彙にReal昇格状態が含まれないことの検査）に
+加え、既存全回帰テストを実行。**1回目のCI実行（run 35198359311）は
+失敗**——`_validate_provenance()`が`source_path`の承認済みroot判定を
+独自に二重チェックしており、main loop側の専用`private_path_leak_n`
+カウンタへ到達する前に`ambiguous_provenance_n`側が先にrecordを
+除外してしまい、`private_path_leak_n`が決して増えない欠陥だった
+（617件中1件失敗）。`_validate_provenance()`から重複チェックを削除し、
+2回目のCI実行（run 35198634642）で成功を確認した。
+`python -m unittest discover -s tests -v`で**617件全て成功
+（failures=0, errors=0、Phase 5.1.1の588件から新規29件追加）**。
+commit 13cbf102b0097df4e375f86502c46cee824c22b8（本体実装）、
+commit 9afd26af5191f29733e1f3170773c20e3ca6ec24（private_path_leak_n
+修正）。main反映済み。
+
+**安全境界の明示的声明**：本Phaseの実装は
+`signal_contract.trading_enabled`/`execution_contract.
+real_submit_allowed`/Shadow出力の`real_submit_allowed`/収集器の
+`$AutoOrderEnabled`のいずれにも一切触れていない（全てFalse/false
+固定のまま）。RssOrder・broker submit/cancel/modify・Excel注文式・
+実ポジション変更は一切実装していない。
+
+**実運用上のPhase 6 acceptanceについて**：このセッションはPhase 6の
+フレームワーク自体を初めて実装したものであり、実際のShadow forward
+運用証跡（MS2由来のforward capture）は本リポジトリにまだ1件も
+蓄積されていない。ソフトウェアは実装済み・テストGreenだが、
+**実運用上のPhase 6 acceptanceは`INSUFFICIENT_SAMPLE`（実record数
+0件）のままである**——C-068-GPT section 12の指示通り、閾値を満たす
+ためにデータを捏造していない。50件の実forward recordが蓄積された
+時点で改めて評価し、GPTへ報告する。
+
+**未着手（Phase 7以降）**：Real-vs-Shadow reconciliation（Phase 7）、
+calibration/fill-model v0.2（Phase 8/9）、Integration Orchestrator
+（Phase 10）、Small Real Execution Test/Real adapter（Phase 11）、
+RssOrder、Excel注文式、broker API submit、実ポジション変更、
+`real_submit_allowed=True`。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
