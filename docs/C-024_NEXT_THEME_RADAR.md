@@ -35,4 +35,6 @@
 
 ## 公開と次の接続
 
-現在の定期ワークフローは読み取り権限のみで15分間隔のプレビュー証跡を保存する。公開JSONをmainへ自動書き込みする変更は承認審査で止められたため、公開画面の自動更新は未接続。C-025ではTradingView News Flow、カレンダー、Screener、Pine Alert/Webhookの正式な入力契約、C-026では需給データを別途設計する。
+ユーザーの明示承認を受け、15分間隔の定期ワークフローが `next_theme_radar.json` と `data/next_theme_log.jsonl` のみをmainへ更新する。既存の公開更新ワークフローと同じWriter Mutexを使い、検知結果が変わらない場合はコミットしない。Actions artifactにも証跡を保存する。C-025ではTradingView News Flow、カレンダー、Screener、Pine Alert/Webhookの正式な入力契約、C-026では需給データを別途設計する。
+
+この文書の「C-024」はユーザーが指定したNEXT THEME RADARの名称。`AI_SHARED_SHEET.md`の既存C-024は2026-09-15の別件記録なので上書きしない。
