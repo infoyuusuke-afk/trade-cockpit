@@ -182,3 +182,25 @@ Claude側は上記が決まり次第、実装可能な範囲から順にコー�
 ## 連携の限界
 
 GitHubの共有ページは双方が参照できる受け渡し場所であり、ChatGPTとClaude間の常時接続・自律対話・Claudeセッションの自動起動ではない。GitHub未同期のローカル成果、会話内容、MS2の非公開ライブデータは自動流入しない。本人への完了報告は、書込確認・Claude側の処理確認・公開画面の確認を混ぜずに伝える。
+
+
+## C-071｜2026-09-18 Cloud向け作業引き継ぎ（Codex記録）
+
+**目的**：ユーザー依頼「これまでの作業と今後の改修事項をcloudに共有」。公開リポジトリ上の記録であり、Cloud/Claudeの受領・自動起動や次工程の実装完了を意味しない。着手時は最新main、PR、Actions、公開画面を再確認する。
+
+### ここまでの作業
+
+- Execution StackはIssue #18のPhase 5.1、5.1.1、6までmain反映。[Phase 6 CI run 35198634642](https://github.com/infoyuusuke-afk/trade-cockpit/actions/runs/35198634642)で617件成功。ただし実Forward recordは0件で、実運用acceptanceはINSUFFICIENT_SAMPLE。模擬記録を実績へ混ぜない。Phase 7以降、RssOrder、Excel発注、broker submitは未着手、実発注OFF（既存C-066〜C-069参照）。
+- [PR #19](https://github.com/infoyuusuke-afk/trade-cockpit/pull/19)はSBV2起動音声のDraft。実機APIテストとコードレビューの報告はあるが、ユーザーの発音・起動確認待ち。起動音声が旧版のままという実機報告があり、PC実使用版と起動経路の一致確認が必要。
+- [PR #20](https://github.com/infoyuusuke-afk/trade-cockpit/pull/20)はPhase 6の検証状況・データ鮮度表示とブラウザー音声SBV2優先のDraft。2026-09-18時点でmain未マージ。実市場時間帯の音声と公開画面は未検証。
+- C-024 NEXT THEME RADARは[PR #21](https://github.com/infoyuusuke-afk/trade-cockpit/pull/21)でmain反映。公開更新の競合修正は[PR #22](https://github.com/infoyuusuke-afk/trade-cockpit/pull/22)、初回検知時刻の修正は[PR #23](https://github.com/infoyuusuke-afk/trade-cockpit/pull/23)。[Actions](https://github.com/infoyuusuke-afk/trade-cockpit/actions/workflows/next-theme-radar.yml)の成功実行と公開カードを確認。2026-09-18 08:18 JSTの観測はJPYC/円ステーブルコインがWATCH 50/100、資金流入証拠未取得、市場反応0銘柄でCONFIRMEDではない。時点付き観測を現在値として流用しない。[設計と制限](C-024_NEXT_THEME_RADAR.md)参照。
+
+### 今後の改修事項（順序を維持）
+
+1. **C-024の実用化・検証**：15分定期実行の遅延、鮮度、障害、状態変化ログ、Pages反映を計測。現状は設定済みJPYCテーマのニュースRSSと静的な関連3銘柄だけ。未知テーマの自動発掘、海外取引所の取引代金・ペッグ乖離の自動入力、動的な資本/提携関係展開、第3群分類、PTS/GU、即時通知は未完成。一次資料がない関係は自動確定せず、欠損は未取得と表示。模擬リプレイを当時の早期検知実績としない。実Forwardイベントで発見・公開時刻、誤報、見逃し、先行時間を検証する。
+2. **C-025 TradingView BRIDGE**：News Flow、重要カレンダー、Screener、Pine Alert/Webhookの入力契約、認証、時刻、重複除去、鮮度、障害時の扱いを設計し実データ検証。ニュースの事実確認と株価反応を分離する。
+3. **C-026 POSITIONING RADAR**：先物外資ネット、SQ、裁定残、信用残、空売り比率を公表時刻・対象日・更新周期・欠損表示付きで統合。公表前の値や未来情報をバックテストに使わない。
+4. **C-027 → C-028 → C-029**：ユーザー指定の順序を維持。各番号の具体仕様と完了条件は着手前に確認し、既存MS2/RSS、FLOW RADAR、OR5/OR15、VWAP、TradingView環境を壊さない追加方式とする。
+5. **PC側の別課題**：VSD Craft手動起動、START MS2 100 LIVEの旧音声報告、MS2_RSS_100_Collector.ps1のシート取得null問題は公開C-024と分け、実使用版を照合して修正・実機確認する。KIOXIA_JNXと100銘柄RSSは取得結果がnullなら作成し、作成失敗時は明示的に停止する方針。ローカルExcel/MS2の非公開データは公開しない。
+
+**安全境界**：Shadowの結果と実取引を混同しない。実発注・自動submitへの接続はこの引き継ぎの対象外。Cloud側は着手、検証、main反映、公開確認を別々に報告する。
