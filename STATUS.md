@@ -2314,6 +2314,77 @@ protective-stop execution、profit target execution、Shadow position
 lifecycle、Real-vs-Shadow reconciliation、calibration自動更新、
 Shadow Forward promotion判定、Small Real Execution Test。
 
+## Execution Stack Phase 5.0.4 final pre-position integrity hardening（Issue #18 C-062R-GPT、2026-09-17）
+
+C-062R-GPT（comment 5708835773）がPhase 5.0.3（522件成功）をACCEPTED
+とした上で、**Phase 5.1がこれらのshadow orderからShadow Positionを
+組み立てる最終段階の前に**、3つの穴を指摘した（間にC-063-GPT comment
+5709045480でmain未反映を指摘され、C-062R-GPTの実装自体は本セッションで
+初めて着手・完了した）。
+
+**Blocker A（order identityのbindingが未完了）**：
+`submission_context_fingerprint`は`shadow_order_id`と`submitted_at`
+しか束縛しておらず、`intent_hash`/`merge_hash`/`ticket_fingerprint`/
+`symbol`/`side`/`order_type`/`limit_price`/`requested_qty`/
+`shadow_fill_model_version`はsubmit後もmutableな辞書に置かれたまま
+後続のfill評価から信頼されていた（例: BUY 100が40株partial約定後、
+`side`だけ"SELL"へ改変されても検出できず、残り60株がbid側で評価されて
+しまう）。新設の`order_context_fingerprint`（sorted-key canonical JSON
+のsha256）がこの10フィールド+`submitted_at`を束縛し、
+`evaluate_shadow_fill()`は非minimal評価の直前に`shadow_order_id`の
+再計算一致（`REJECTED_STATE_SHADOW_ORDER_ID_MISMATCH`）と
+`order_context_fingerprint`の再計算一致（`REJECTED_STATE_ORDER_
+CONTEXT_MISMATCH`）を両方照合する。
+
+**Blocker B（chronology不変条件の未完了）**：
+`last_applied_observation_at is None`のとき`first_observation_at`の
+未来値チェックが漏れており、`filled_qty>0`なのに`first_observation_at`
+/`last_applied_observation_at`が欠損した状態も通過しえた。健全な
+full-schema orderの正準chronologyを`submitted_at < first_observation_at
+<= last_applied_observation_at <= now`（observationを受理していれば）、
+`filled_qty>0`なら両watermarkフィールドが必須、として明示的に検証する
+よう拡張した。
+
+**Blocker C（最初のpartial fill時刻の喪失）**：従来`fill_at`は
+incremental fillのたびに上書きされ、最初のpartial fill時刻が失われて
+いた——Phase 5.1のprotective riskはfirst positive fillから起算すべきで
+最終完了時刻からではない。`first_fill_at`（最初のincremental fill時に
+のみ設定し以後変更しない）と`last_fill_at`（正のincremental fillの
+たびに更新）を新設。`fill_at`はPhase 5.0.x向けの後方互換aliasとして
+`last_fill_at`と常に一致させる。`filled_qty>0`の不変条件は
+`submitted_at < first_observation_at <= first_fill_at <= last_fill_at
+<= last_applied_observation_at <= now`。
+
+**テスト**：`tests/test_shadow_execution.py`にC-062R-GPT指定のGolden
+Fixturesを実装（partial約定後の`side`改変が拒否され以降のfillが適用
+されないこと、`requested_qty`を`remaining_qty`と数値上整合させたまま
+改変してもidentity bindingで拒否されること、他の識別フィールド全て
+（symbol/order_type/limit_price/intent_hash/merge_hash/
+ticket_fingerprint/fill-model-version）の改変が拒否されること、
+`shadow_order_id`改変が専用reasonで拒否されること、watermarkなしの
+未来`first_observation_at`、`first_observation_at`のみで
+`last_applied_observation_at`欠損、`filled_qty>0`でwatermark自体が
+欠損、`first_observation_at>first_fill_at`/`first_fill_at>last_fill_at`
+/`last_fill_at>watermark`の3パターン、partial→completionで
+`first_fill_at`が保存され`last_fill_at`だけ進むこと、1回のfull fillで
+`first_fill_at==last_fill_at`になること）。**1回目のCI実行（run
+35187432898）は失敗**——既存Phase 5.0.3の`fill_at`欠損検証テストが、
+新設の`first_fill_at`/`last_fill_at`チェックと統合した際に`fill_at`
+自体の欠損/naive/submit前を直接検出できていなかったのが原因（535件中
+1件失敗）。`fill_at`単体のaware/submitted_at/now範囲チェックを
+`first_fill_at`/`last_fill_at`と同じパターンで追加し、2回目のCI実行
+（run 35187719766）で成功を確認した。`python -m unittest discover -s
+tests -v`で**535件全て成功（failures=0, errors=0、Phase 5.0.3の522件
+から新規13件追加）**。commit 5ad626b0cc634ca76166c65ebc6affd6e8371a2a
+（本体実装）、commit 7616955e295c5903b5ed14a4d010609255b5adf8
+（fill_at検証修正）。main反映済み。
+
+**未着手（Phase 5.1以降、変更なし）**：RssOrder、Excel注文式、broker
+API submit、実ポジション変更、`real_submit_allowed=True`、
+protective-stop execution、profit target execution、Shadow position
+lifecycle、Real-vs-Shadow reconciliation、calibration自動更新、
+Shadow Forward promotion判定、Small Real Execution Test。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
