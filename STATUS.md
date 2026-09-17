@@ -2757,8 +2757,38 @@ CDN: jsdelivr、v5.2.1）へ置き換えた。TradingView Advanced Charts（無�
   「Update Trade Cockpit」run 35287572037がGreenで完走し、実データ再生成後の
   index.htmlに`"t"`フィールドとLightweight Charts読み込みが反映されたことを確認。
 
-キオクシア専用チャート（`kioOneMinuteChart`）は対象外（別途、軸潰れ等の不具合は
-確認されていないため今回は変更していない）。
+キオクシア専用チャート（`kioOneMinuteChart`）は本セッション後半で別途移行（下記参照）。
+
+発注・シグナル生成・執行系（RssOrder、broker submit等）には一切触れていない。
+
+## キオクシア専用チャートもTradingView Lightweight Chartsへ移行（2026-09-18）
+
+上記フォーカスダッシュボードに続き、キオクシア専用の大判チャート（`#kio-best-path`、
+`kioOneMinuteChart`）もLightweight Chartsへ移行した。ユーザー指示「キオクシア専用もお願い」に
+対応。こちらは予測経路＋実測1分足＋EMA20＋VWAP＋ピボット/OR15参照線＋転換点・売買サインの
+マーカーを、すべて％リターン軸・昼休み圧縮済みの独自セッション分足インデックス上に重ねる
+複合チャートで、フォーカスダッシュボードより設計が複雑。
+
+- `series.priceFormat={type:"percent"}`で既存の％リターン軸表現を維持。
+- 独自の「セッション分インデックス」（0-150=9:00-11:30、151-331=12:30-15:30、昼休みを
+  詰めて表示）はそのまま時刻値として使用し、`timeScale.tickMarkFormatter`でHH:MM表示へ
+  変換する形でLightweight Chartsに移植（実時刻タイムスタンプを使うと昼休み分の空白が
+  出てしまうため、旧SVGと同じ「詰めた」見た目を維持する必要があった）。
+- ローソク足/予測線/EMA20/VWAPは`CandlestickSeries`/`LineSeries`、ピボット・OR15ラインは
+  `createPriceLine()`。転換点・売買サインのマーカーはLightweight Charts v5の新API
+  `LightweightCharts.createSeriesMarkers()`（v5で`series.setMarkers()`から置き換え）を
+  ローカルCDN実機テストで確認した上で採用。
+- 旧「実績ここまで」の縦線はv5に直接の代替がないため、最終実測足の位置に打つマーカーへ
+  簡略化した。
+- 類似日一覧（`kio-match`/`kioxia-calendar-grid`）内のミニプレビューSVG（`miniPath`）は
+  小さな一覧表示のみのため対象外（フルインタラクティブ化は過剰と判断）。
+
+ローカル`.claude/static-server.ps1`＋Claude Browserで合成データによる実機確認
+（ローソク足・予測線・EMA/VWAP・ピボットライン・転換点/売買サインマーカー、いずれも
+ズームして視認）と、実際にコミット済みのindex.htmlの実データでの表示確認
+（予測経路は描画、実測1分足は未検証のため重畳なし＝既存仕様通り）を実施、コンソール
+エラーなし。commit 23c5f63をmainへpush後、GitHub Actions run 35288740866がGreenで完走し、
+実データ再生成後のindex.htmlに新コードが反映されたことを確認。
 
 発注・シグナル生成・執行系（RssOrder、broker submit等）には一切触れていない。
 
