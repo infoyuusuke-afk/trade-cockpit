@@ -207,6 +207,7 @@ class LineageRejectionTests(unittest.TestCase):
         tkt = ticket(intent)
         out = se.submit_shadow_order(intent, decision, tkt, known_orders=None)
         self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_KNOWN_ORDERS_INVALID", out["reject_reasons"])
 
 
 class ShadowFillModelVersionBindingTests(unittest.TestCase):
@@ -237,7 +238,6 @@ class ShadowFillModelVersionBindingTests(unittest.TestCase):
         self.assertEqual(out["shadow_fill_model_version"], se.sfm.FILL_MODEL_VERSION)
         expected_id = se.compute_shadow_order_id(intent["intent_hash"], se.sfm.FILL_MODEL_VERSION)
         self.assertEqual(out["shadow_order_id"], expected_id)
-        self.assertIn("REJECTED_KNOWN_ORDERS_INVALID", out["reject_reasons"])
 
 
 class EvaluateShadowFillTests(unittest.TestCase):
