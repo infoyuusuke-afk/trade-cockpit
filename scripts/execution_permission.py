@@ -41,9 +41,10 @@ canonical pipeline:
 2. **reconfirmationで全ゲートを再評価**：`evaluate_reconfirmation()`は
    `evaluate_permission()`と同じゲート群（`_evaluate_all_gates()`）を
    fresh snapshotに対して再実行してからprice drift/fingerprintを見る。
-   `planned_entry`はIntent、`ticket_created_at`相当は`intent["created_at"]`
-   （Intent自身の不変な生成時刻）を正とし、fresh snapshot側からは一切
-   受け取らない——古いticketをfresh snapshotの値で若く見せかけられない。
+   `planned_entry`はIntentを正とし、`ticket_created_at`相当は
+   （Phase 4.2でticket-bound値`ticket["intent_created_at"]`に変更、
+   下記参照）fresh snapshot側からは一切受け取らない——古いticketを
+   fresh snapshotの値で若く見せかけられない。
 3. **execution safety policyのv0.1 envelope固定**：
    `validate_execution_policy_v0_1()`でpolicy_version完全一致・
    各TTL/上限のv0.1範囲（縮小のみ許可）・非dict/NaN/inf/bool/型不正を
@@ -57,6 +58,31 @@ canonical pipeline:
    `authorization_session_id`/`broker_snapshot_fingerprint`の非空必須化。
 5. **REJECTED/CANCELLEDの再利用禁止**：scripts/order_guard.py側で対応
    （TICKET_READY以降に到達したintent_hashは一切再利用しない）。
+
+## Phase 4.2 hardening（2 blocker + 1 small hardening、C-054R-GPT comment
+   5705359392）
+1. **intent_created_at/signal_known_atのticket-bind（Blocker 1）**：
+   canonical `intent_hash`はcreated_at/signal_known_atを含まないため、
+   ticket発行後にIntentオブジェクト側のこの2フィールドだけを書き換えても
+   hash一致のままticket ageを若く見せかけられる。`evaluate_permission()`
+   はticket発行時のこの2値を`ticket_fingerprint`のpayloadに含めつつ、
+   ticket dictの新フィールド`intent_created_at`/`signal_known_at`にも
+   保存する。`evaluate_reconfirmation()`は現在のIntentの値をこの
+   ticket-bound値と比較し、不一致なら`BLOCK_INTENT_CREATED_AT_MISMATCH`/
+   `BLOCK_SIGNAL_KNOWN_AT_MISMATCH`でBLOCKする。price drift計算の
+   `ticket_created_at`も常に`ticket.get("intent_created_at")`（ticket-bound
+   値）を使い、mutableな`intent.get("created_at")`を直接使わない。
+2. **authorization_issued_atの未来禁止・順序検証（Blocker 2）**：
+   `check_authorization()`に`issued_at > now`（`BLOCK_AUTHORIZATION_
+   ISSUED_AT_FUTURE`）と`expires_at <= issued_at`（`BLOCK_AUTHORIZATION_
+   EXPIRY_BEFORE_ISSUED`）を追加。`authorization_issued_at`も
+   `ticket_fingerprint`へ含める（fresh_snapshot側から都度読み直すため、
+   正当な再認証はfingerprint不一致→RECONFIRM_REQUIREDとして検出される）。
+3. **open_positions_countの離散値検証（small hardening）**：finiteなだけ
+   では-1や0.5を通してしまうため、0以上の整数のみを許可する
+   （`BLOCK_OPEN_POSITIONS_COUNT_UNKNOWN`）。physical position quantityの
+   離散値検証はscripts/order_guard.pyの`check_position_reconciliation()`
+   側で対応（整数のみ許可）。
 """
 from __future__ import annotations
 
@@ -197,6 +223,15 @@ def check_authorization(snapshot: dict, *, now: datetime, policy: dict) -> tuple
     if issued_at is None or expires_at is None:
         reasons.append("BLOCK_AUTHORIZATION_EXPIRY_INVALID")
         return (len(reasons) == 0), reasons
+    # Phase 4.2 hardening（C-054R-GPT Blocker 2）: issued_atが未来なら、まだ
+    # 発行されていないauthorizationを有効扱いしてしまう。またexpires_atが
+    # issued_at以下だと、TTL差分が負値になり`> ttl_sec`判定をすり抜けて
+    # TTL超過を見逃しうる（負の秒数は`policy["authorization_ttl_sec"]`より
+    # 大きくならないため）。両方を明示的に検証する。
+    if issued_at > now:
+        reasons.append("BLOCK_AUTHORIZATION_ISSUED_AT_FUTURE")
+    if expires_at <= issued_at:
+        reasons.append("BLOCK_AUTHORIZATION_EXPIRY_BEFORE_ISSUED")
     if expires_at <= now:
         reasons.append("BLOCK_AUTHORIZATION_EXPIRED")
     if (expires_at - issued_at).total_seconds() > policy["authorization_ttl_sec"]:
@@ -236,20 +271,33 @@ def check_price_drift(*, planned_entry: float, quote_price: float, quote_asof: s
 
 
 def compute_ticket_fingerprint(*, intent_hash: str, merge_hash: str, risk_policy_version: str,
-                                allowed_qty: int, quote_price: float, quote_asof: str,
-                                authorization_session_id: str, authorization_expires_at: str,
+                                allowed_qty: int, intent_created_at: str, signal_known_at: str,
+                                quote_price: float, quote_asof: str,
+                                authorization_session_id: str, authorization_issued_at: str,
+                                authorization_expires_at: str,
                                 broker_snapshot_fingerprint: str, permission_policy_version: str) -> str:
     """human confirmationを結び付けるための決定論的fingerprint。canonical
     `intent_hash`とは別物（C-053第9節）。
+
+    Phase 4.2 hardening（C-054R-GPT Blocker 1/2）: `intent_created_at`
+    （canonical intent_hashの対象外だがticket ageの安全な基準になる値）・
+    `signal_known_at`（同じくhash対象外）・`authorization_issued_at`を
+    fingerprintへ含める。これにより、mutableなIntentの`created_at`/
+    `signal_known_at`だけを後から書き換えても（canonical hashは変わらない
+    ため検出できない）、あるいはauthorizationのissued_atだけ差し替えても、
+    fingerprintの不一致として検出できる。
     """
     payload = {
         "intent_hash": intent_hash,
         "merge_hash": merge_hash,
         "risk_policy_version": risk_policy_version,
         "allowed_qty": int(allowed_qty),
+        "intent_created_at": intent_created_at,
+        "signal_known_at": signal_known_at,
         "quote_price": float(quote_price),
         "quote_asof": quote_asof,
         "authorization_session_id": authorization_session_id,
+        "authorization_issued_at": authorization_issued_at,
         "authorization_expires_at": authorization_expires_at,
         "broker_snapshot_fingerprint": broker_snapshot_fingerprint,
         "permission_policy_version": permission_policy_version,
@@ -365,8 +413,11 @@ def _evaluate_all_gates(intent: dict, risk_decision: dict, snapshot: dict, polic
         reasons.append("BLOCK_REALIZED_PNL_UNKNOWN")
     elif max(0.0, -realized_pnl_today) >= policy["daily_stop_yen"]:
         reasons.append("BLOCK_DAILY_STOP_REACHED")
+    # Phase 4.2 hardening（C-054R-GPT small hardening節）: open_positions_countは
+    # 0以上の整数のみを許可する。finiteなだけでは-1や0.5を通してしまう。
     open_positions_count = snapshot.get("open_positions_count")
-    if not _is_finite_number(open_positions_count):
+    if not _is_finite_number(open_positions_count) or int(open_positions_count) != open_positions_count \
+            or open_positions_count < 0:
         reasons.append("BLOCK_OPEN_POSITIONS_COUNT_UNKNOWN")
     elif open_positions_count >= policy["max_open_positions"]:
         reasons.append("BLOCK_MAX_OPEN_POSITIONS_REACHED")
@@ -439,18 +490,34 @@ def evaluate_permission(intent: dict, risk_decision: dict, snapshot: dict, polic
     if reasons:
         return {**base, "permission_status": "BLOCKED", "block_reasons": sorted(set(reasons))}
 
+    intent_created_at = intent.get("created_at")
+    signal_known_at = intent.get("signal_known_at")
+    authorization_issued_at = snapshot.get("authorization_issued_at")
+
     fingerprint = compute_ticket_fingerprint(
         intent_hash=intent["intent_hash"],
         merge_hash=risk_decision.get("merge_hash"),
         risk_policy_version=risk_decision.get("policy_version"),
         allowed_qty=risk_decision.get("allowed_qty"),
+        intent_created_at=intent_created_at, signal_known_at=signal_known_at,
         quote_price=quote_price, quote_asof=quote_asof,
         authorization_session_id=snapshot.get("authorization_session_id"),
+        authorization_issued_at=authorization_issued_at,
         authorization_expires_at=snapshot.get("authorization_expires_at"),
         broker_snapshot_fingerprint=snapshot.get("broker_snapshot_fingerprint"),
         permission_policy_version=policy.get("policy_version"),
     )
-    return {**base, "permission_status": "ORDER_TICKET_READY", "ticket_fingerprint": fingerprint}
+    # Phase 4.2 hardening（C-054R-GPT Blocker 1）: intent_created_at /
+    # signal_known_atをticketの安全コンテキストへdeterministicにbindする。
+    # reconfirm時はこのticket-bound値だけを信頼し、mutableなIntent側の
+    # 現在値でticket ageを若く見せかけられないようにする。
+    return {
+        **base,
+        "permission_status": "ORDER_TICKET_READY",
+        "ticket_fingerprint": fingerprint,
+        "intent_created_at": intent_created_at,
+        "signal_known_at": signal_known_at,
+    }
 
 
 def evaluate_reconfirmation(intent: dict, risk_decision: dict, ticket: dict, fresh_snapshot: dict,
@@ -459,8 +526,9 @@ def evaluate_reconfirmation(intent: dict, risk_decision: dict, ticket: dict, fre
     Phase 4.1 Blocker 2）。ticket生成時と同じ全ゲート（`_evaluate_all_gates`）
     をfresh_snapshotに対して再実行してから、price drift/fingerprintを見る
     ——confirm直前がticket生成時より弱いチェックになってはいけない。
-    `planned_entry`/`ticket_created_at`相当は常にIntent自身の値を使い、
-    fresh_snapshot側の値では上書きできない。
+    `planned_entry`はIntent自身の値、`ticket_created_at`相当はticket-bound
+    値（`ticket["intent_created_at"]`、Phase 4.2）を使い、fresh_snapshot側
+    の値でもmutableなIntent側の値でも上書きできない。
     """
     base = {
         "schema_version": SCHEMA_VERSION,
@@ -487,13 +555,30 @@ def evaluate_reconfirmation(intent: dict, risk_decision: dict, ticket: dict, fre
     if ticket.get("intent_hash") != intent.get("intent_hash"):
         return {**base, "reconfirm_status": "BLOCKED", "block_reasons": ["BLOCK_TICKET_INTENT_MISMATCH"]}
 
+    # Phase 4.2 hardening（C-054R-GPT Blocker 1）: ticket発行時にbindした
+    # intent_created_at / signal_known_atと、現在のIntentの値を比較する。
+    # canonical intent_hashはこの2フィールドを含まないため、hash一致だけでは
+    # mutableなIntentオブジェクト側でcreated_at/signal_known_atだけを後から
+    # 書き換える改ざんを検出できない——ここで明示的にBLOCKする。
+    binding_reasons = []
+    if intent.get("created_at") != ticket.get("intent_created_at"):
+        binding_reasons.append("BLOCK_INTENT_CREATED_AT_MISMATCH")
+    if intent.get("signal_known_at") != ticket.get("signal_known_at"):
+        binding_reasons.append("BLOCK_SIGNAL_KNOWN_AT_MISMATCH")
+    if binding_reasons:
+        return {**base, "reconfirm_status": "BLOCKED", "block_reasons": sorted(set(binding_reasons))}
+
     snapshot_violations = _validate_snapshot_shape(fresh_snapshot)
     if snapshot_violations:
         return {**base, "reconfirm_status": "BLOCKED", "block_reasons": snapshot_violations}
 
     quote_price = fresh_snapshot.get("quote_price")
     quote_asof = fresh_snapshot.get("quote_asof")
-    ticket_created_at = intent.get("created_at")
+    # ticket_created_atはticket-bound値（intent_created_at）のみを正とする。
+    # mutableな現在のIntentの`created_at`を直接使うと、fresh_snapshot経由
+    # ではなくIntentオブジェクト自体を書き換えてticket ageを若く見せかける
+    # 攻撃を防げない（C-054R-GPT Blocker 1の core）。
+    ticket_created_at = ticket.get("intent_created_at")
     planned_entry = intent.get("planned_entry") if intent.get("planned_entry") is not None else intent.get("limit_price")
     drift_ok, drift_reasons = check_price_drift(
         planned_entry=planned_entry, quote_price=quote_price, quote_asof=quote_asof,
@@ -506,13 +591,19 @@ def evaluate_reconfirmation(intent: dict, risk_decision: dict, ticket: dict, fre
     if reasons:
         return {**base, "reconfirm_status": "BLOCKED", "block_reasons": sorted(set(reasons))}
 
+    # authorization_issued_atはfresh_snapshot側から都度読み直す——これは
+    # 正当な再認証（issued_atの更新）をfingerprint不一致→RECONFIRM_REQUIRED
+    # として自然に検出させるためで、intent_created_at/signal_known_atの
+    # ticket-bind（上のBlocker 1チェック）とは別の意図（Blocker 2）。
     fresh_fingerprint = compute_ticket_fingerprint(
         intent_hash=intent["intent_hash"],
         merge_hash=risk_decision.get("merge_hash"),
         risk_policy_version=risk_decision.get("policy_version"),
         allowed_qty=risk_decision.get("allowed_qty"),
+        intent_created_at=ticket.get("intent_created_at"), signal_known_at=ticket.get("signal_known_at"),
         quote_price=quote_price, quote_asof=quote_asof,
         authorization_session_id=fresh_snapshot.get("authorization_session_id"),
+        authorization_issued_at=fresh_snapshot.get("authorization_issued_at"),
         authorization_expires_at=fresh_snapshot.get("authorization_expires_at"),
         broker_snapshot_fingerprint=fresh_snapshot.get("broker_snapshot_fingerprint"),
         permission_policy_version=policy.get("policy_version"),

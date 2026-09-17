@@ -269,6 +269,30 @@ class AuthorizationTtlTests(unittest.TestCase):
         self.assertEqual(out["permission_status"], "BLOCKED")
         self.assertIn("BLOCK_AUTHORIZATION_TTL_EXCEEDED", out["block_reasons"])
 
+    def test_golden_19_future_authorization_issued_at_blocks(self):
+        """Phase 4.2 Blocker 2: まだ発行されていない（未来の）authorizationを
+        有効扱いしない。"""
+        out = evaluate(snap=snapshot(authorization_issued_at=iso(NOW + timedelta(seconds=10))))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_AUTHORIZATION_ISSUED_AT_FUTURE", out["block_reasons"])
+
+    def test_golden_20_expiry_before_or_equal_issued_at_blocks(self):
+        """Phase 4.2 Blocker 2: expires_at<=issued_atだとTTL差分が負値になり
+        `> ttl_sec`判定をすり抜けてTTL超過を見逃しうるため、明示的に検証する。"""
+        out = evaluate(snap=snapshot(
+            authorization_issued_at=iso(NOW),
+            authorization_expires_at=iso(NOW - timedelta(seconds=1)),
+        ))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_AUTHORIZATION_EXPIRY_BEFORE_ISSUED", out["block_reasons"])
+
+        out2 = evaluate(snap=snapshot(
+            authorization_issued_at=iso(NOW),
+            authorization_expires_at=iso(NOW),
+        ))
+        self.assertEqual(out2["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_AUTHORIZATION_EXPIRY_BEFORE_ISSUED", out2["block_reasons"])
+
 
 class SignalKnownAtTests(unittest.TestCase):
     """Phase 4.1 Golden #14: Intent signal_known_at naive/future → BLOCK。"""
@@ -429,6 +453,18 @@ class DailyStopAndMaxPositionsDefenseInDepthTests(unittest.TestCase):
         out = evaluate(snap=snapshot(open_positions_count=1))
         self.assertEqual(out["permission_status"], "BLOCKED")
         self.assertIn("BLOCK_MAX_OPEN_POSITIONS_REACHED", out["block_reasons"])
+
+    def test_golden_21_negative_open_positions_count_blocks(self):
+        """Phase 4.2 small hardening: open_positions_countは0以上の整数のみ
+        許可する。finiteなだけでは-1を通してしまう。"""
+        out = evaluate(snap=snapshot(open_positions_count=-1))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_OPEN_POSITIONS_COUNT_UNKNOWN", out["block_reasons"])
+
+    def test_golden_22_fractional_open_positions_count_blocks(self):
+        out = evaluate(snap=snapshot(open_positions_count=0.5))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_OPEN_POSITIONS_COUNT_UNKNOWN", out["block_reasons"])
 
 
 class DuplicateGuardTests(unittest.TestCase):
@@ -615,6 +651,47 @@ class ReconfirmationTests(unittest.TestCase):
         # planned_entry(1500)とquote_price(1500)で乖離ゼロのまま評価されるはず
         # （999999.0が使われていたら巨大なdriftでEXPIRED_REQUOTE_REQUIREDになる）
         self.assertEqual(out["reconfirm_status"], "CONFIRM_READY")
+
+    # --- Phase 4.2 Golden: intent_created_at/signal_known_atのticket-bind ---
+    def test_golden_23_intent_created_at_tamper_after_ticket_ready_blocks_reconfirm(self):
+        """ticket発行後にIntentオブジェクトのcreated_atだけを書き換えても
+        （created_atはintent_hashの対象フィールドではないためhash検証は
+        すり抜ける）、ticket-bound値との不一致でBLOCKされることを確認する
+        （C-054R-GPT Blocker 1）。"""
+        intent, decision, ticket = self._ready_ticket()
+        tampered_intent = {**intent, "created_at": iso(NOW)}  # ticketより若く見せかける
+        out = ep.evaluate_reconfirmation(tampered_intent, decision, ticket, self._fresh_snapshot(),
+                                          POLICY, now=NOW + timedelta(seconds=2))
+        self.assertEqual(out["reconfirm_status"], "BLOCKED")
+        self.assertIn("BLOCK_INTENT_CREATED_AT_MISMATCH", out["block_reasons"])
+
+    def test_golden_24_signal_known_at_mismatch_after_ticket_ready_blocks_reconfirm(self):
+        intent, decision, ticket = self._ready_ticket()
+        tampered_intent = {**intent, "signal_known_at": iso(NOW - timedelta(minutes=1))}
+        out = ep.evaluate_reconfirmation(tampered_intent, decision, ticket, self._fresh_snapshot(),
+                                          POLICY, now=NOW + timedelta(seconds=2))
+        self.assertEqual(out["reconfirm_status"], "BLOCKED")
+        self.assertIn("BLOCK_SIGNAL_KNOWN_AT_MISMATCH", out["block_reasons"])
+
+    def test_golden_25_authorization_reissued_after_ticket_ready_requires_reconfirm(self):
+        """正当な再認証（authorization_issued_atの更新）はintent_created_at/
+        signal_known_atのtamperとは別物——fingerprint不一致による
+        RECONFIRM_REQUIREDとして検出され、BLOCKにはならない（C-054R-GPT
+        Blocker 2）。"""
+        intent, decision, ticket = self._ready_ticket()
+        reauthorized = self._fresh_snapshot(
+            authorization_issued_at=iso(NOW + timedelta(seconds=1)),
+            authorization_expires_at=iso(NOW + timedelta(seconds=3601)),
+        )
+        out = ep.evaluate_reconfirmation(intent, decision, ticket, reauthorized, POLICY,
+                                          now=NOW + timedelta(seconds=2))
+        self.assertEqual(out["reconfirm_status"], "RECONFIRM_REQUIRED")
+        self.assertIn("TICKET_FINGERPRINT_CHANGED", out["block_reasons"])
+
+    def test_ticket_stores_intent_created_at_and_signal_known_at(self):
+        intent, decision, ticket = self._ready_ticket()
+        self.assertEqual(ticket["intent_created_at"], intent["created_at"])
+        self.assertEqual(ticket["signal_known_at"], intent["signal_known_at"])
 
 
 class DeterminismTests(unittest.TestCase):

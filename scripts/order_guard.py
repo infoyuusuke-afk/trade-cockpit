@@ -25,6 +25,10 @@ broker reconciliation後、新しいdecision snapshot/Intentとして明示的�
 作り直す前提にする。TICKET_READYへ到達する前（CREATED/RISK_BLOCKED/
 PERMISSION_BLOCKEDで止まった＝broker側と一切接触していない）場合だけ、
 同じhashでの再評価を許可する。
+
+## Phase 4.2 hardening（C-054R-GPT comment 5705359392）
+`check_position_reconciliation()`にphysical quantityの整数検証を追加した
+（下記関数docstring参照）。
 """
 from __future__ import annotations
 
@@ -79,8 +83,15 @@ def check_position_reconciliation(expected_position_qty, broker_position_qty) ->
     を確認する。不一致なら発注前提が崩れているためblockする（C-055第7節）。
     NaN/None等の未確認値は「一致」とみなさずblockする（推測で一致扱いに
     しない）。
+
+    Phase 4.2 hardening（C-054R-GPT comment 5705359392、small hardening節）:
+    日本株現物CASH-only v0.1のphysical quantityは整数のみを許可する。
+    finiteかつ数値として等しくても（例: 0.5 == 0.5）、整数でなければ
+    BLOCK_POSITION_RECONCILIATION_UNKNOWNとして拒否する——将来信用SHORTを
+    扱う場合も、fractional株数はv0.1では想定しない。
     """
-    if not _is_finite_number(expected_position_qty) or not _is_finite_number(broker_position_qty):
+    if (not _is_integer_value(expected_position_qty)
+            or not _is_integer_value(broker_position_qty)):
         return True, ["BLOCK_POSITION_RECONCILIATION_UNKNOWN"]
     if expected_position_qty != broker_position_qty:
         return True, ["BLOCK_POSITION_RECONCILIATION"]
@@ -90,3 +101,10 @@ def check_position_reconciliation(expected_position_qty, broker_position_qty) ->
 def _is_finite_number(value) -> bool:
     import math
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def _is_integer_value(value) -> bool:
+    """finiteな数値で、かつ整数値であること（0.5等のfractionalを拒否する）。
+    boolは除外する（Trueは1と等しいが意図せず整数扱いされるべきではない）。
+    """
+    return _is_finite_number(value) and int(value) == value

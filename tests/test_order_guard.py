@@ -107,6 +107,23 @@ class CheckPositionReconciliationTests(unittest.TestCase):
             self.assertTrue(blocked, msg=f"expected={expected}, broker={broker}")
             self.assertIn("BLOCK_POSITION_RECONCILIATION_UNKNOWN", reasons)
 
+    def test_golden_fractional_quantities_block_even_when_equal(self):
+        """Phase 4.2 hardening (C-054R-GPT small hardening節): 日本株現物
+        CASH-only v0.1のphysical quantityは整数のみ許可する。0.5==0.5の
+        ようにfiniteかつ数値として一致していても、fractionalならBLOCK。"""
+        blocked, reasons = og.check_position_reconciliation(0.5, 0.5)
+        self.assertTrue(blocked)
+        self.assertIn("BLOCK_POSITION_RECONCILIATION_UNKNOWN", reasons)
+        blocked, reasons = og.check_position_reconciliation(100.5, 100)
+        self.assertTrue(blocked)
+        self.assertIn("BLOCK_POSITION_RECONCILIATION_UNKNOWN", reasons)
+
+    def test_bool_quantities_block(self):
+        """boolはintのサブクラスだが、意図せず整数扱いされるべきではない。"""
+        blocked, reasons = og.check_position_reconciliation(True, True)
+        self.assertTrue(blocked)
+        self.assertIn("BLOCK_POSITION_RECONCILIATION_UNKNOWN", reasons)
+
 
 class NoBrokerReferenceTests(unittest.TestCase):
     def test_source_has_no_broker_rss_or_network_references(self):
