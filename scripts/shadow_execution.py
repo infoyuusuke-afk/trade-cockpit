@@ -130,10 +130,49 @@ Phase 5.1がこれらのshadow orderからShadow positionを組み立てる前�
    `submitted_at`をIDへ混ぜるとduplicate検知が弱まる（同一Intentが
    timestampごとに別IDになってしまう）ため、これは意図的に別フィールド
    にする。
+
+## Phase 5.0.4 final pre-position integrity hardening（3 blocker、
+C-062R-GPT comment 5708835773）
+Phase 5.1がこれらのshadow orderからShadow Positionを組み立てる前の
+最終ハードニング。
+1. **order identityのbinding未完了（Blocker A）**：
+   `submission_context_fingerprint`は`shadow_order_id`と`submitted_at`
+   しか束縛しておらず、`intent_hash`/`merge_hash`/`ticket_fingerprint`/
+   `symbol`/`side`/`order_type`/`limit_price`/`requested_qty`/
+   `shadow_fill_model_version`はsubmit後もmutableな辞書に置かれたまま
+   後続のfill評価から信頼されていた（例: BUY 100が40株partial約定後、
+   `side`だけ"SELL"へ改変されても検出できず、残り60株がbid側で評価
+   されてしまう）。新設の`order_context_fingerprint`
+   （`compute_order_context_fingerprint()`、sorted-key canonical JSON
+   のsha256）がこの10フィールド+`submitted_at`を束縛する。
+   `evaluate_shadow_fill()`は非minimalなshadow order評価の直前に
+   `shadow_order_id`の再計算一致（`REJECTED_STATE_SHADOW_ORDER_ID_
+   MISMATCH`）と`order_context_fingerprint`の再計算一致
+   （`REJECTED_STATE_ORDER_CONTEXT_MISMATCH`）を両方照合する。
+2. **chronology不変条件の未完了（Blocker B）**：
+   `last_applied_observation_at is None`のとき`first_observation_at`の
+   未来値チェックが漏れていた。また`filled_qty>0`なのに
+   `first_observation_at`/`last_applied_observation_at`が欠損した状態
+   も通過しえた。健全なfull-schema orderの正準chronologyを
+   `submitted_at < first_observation_at <= last_applied_observation_at
+   <= now`（observationを受理していれば）、`filled_qty>0`なら
+   `first_observation_at`/`last_applied_observation_at`の両方が必須、
+   として明示的に検証する。
+3. **最初のpartial fill時刻の喪失（Blocker C）**：従来`fill_at`は
+   incremental fillのたびに上書きされ、最初のpartial fill時刻が失われて
+   いた——Phase 5.1のprotective riskはfirst positive fillから起算すべき
+   で、最終完了時刻からではない。`first_fill_at`（最初のincremental
+   fill時にのみ設定し以後変更しない）と`last_fill_at`（正のincremental
+   fillのたびに更新）を新設。`fill_at`はPhase 5.0.x向けの後方互換alias
+   として`last_fill_at`と常に一致させる。`filled_qty>0`の場合の不変条件は
+   `submitted_at < first_observation_at <= first_fill_at <= last_fill_at
+   <= last_applied_observation_at <= now`。1回のfull fillでは
+   `first_fill_at == last_fill_at`。
 """
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import sys
 from datetime import datetime
@@ -193,6 +232,38 @@ def compute_submission_context_fingerprint(shadow_order_id: str, submitted_at: d
     binding）。"""
     payload = f"{shadow_order_id}|{submitted_at.isoformat()}".encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def compute_order_context_fingerprint(*, shadow_order_id, intent_hash, merge_hash, ticket_fingerprint,
+                                       symbol, side, order_type, limit_price, requested_qty,
+                                       shadow_fill_model_version, submitted_at) -> str:
+    """Phase 5.0.4 hardening（Blocker A、C-062R-GPT comment 5708835773）:
+    `submission_context_fingerprint`は`shadow_order_id`と`submitted_at`
+    しか束縛していなかったため、submit後も`side`/`symbol`/`order_type`/
+    `limit_price`/`requested_qty`/`intent_hash`/`merge_hash`/
+    `ticket_fingerprint`/`shadow_fill_model_version`はmutableな辞書に
+    置かれたまま後続のfill評価から信頼されていた（例: BUY 100が40株
+    partial約定後、`side`だけ"SELL"へ改変されても検出できず、残り60株が
+    bid側で評価されてしまう）。この10フィールド+`submitted_at`の
+    sorted-key canonical JSONをsha256したfingerprintを発行時に保存し、
+    fill評価の直前に毎回再計算・照合する——adversarialな暗号的境界では
+    なく、integrity/audit binding。
+    """
+    payload = {
+        "shadow_order_id": shadow_order_id,
+        "intent_hash": intent_hash,
+        "merge_hash": merge_hash,
+        "ticket_fingerprint": ticket_fingerprint,
+        "symbol": symbol,
+        "side": side,
+        "order_type": order_type,
+        "limit_price": float(limit_price) if _is_finite_number(limit_price) else None,
+        "requested_qty": int(requested_qty) if _is_finite_number(requested_qty) else requested_qty,
+        "shadow_fill_model_version": shadow_fill_model_version,
+        "submitted_at": submitted_at.isoformat() if isinstance(submitted_at, datetime) else None,
+    }
+    encoded = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _validate_lineage(intent, risk_decision, ticket) -> list[str]:
@@ -317,17 +388,29 @@ def submit_shadow_order(intent: dict, risk_decision: dict, ticket: dict, *, know
             }
 
     quantity = intent.get("quantity")
+    merge_hash = intent.get("merge_hash")
+    ticket_fingerprint = ticket.get("ticket_fingerprint")
+    symbol = intent.get("symbol")
+    side = intent.get("side")
+    order_type = intent.get("order_type")
+    limit_price = intent.get("limit_price")
+    order_context_fingerprint = compute_order_context_fingerprint(
+        shadow_order_id=shadow_order_id, intent_hash=intent_hash, merge_hash=merge_hash,
+        ticket_fingerprint=ticket_fingerprint, symbol=symbol, side=side, order_type=order_type,
+        limit_price=limit_price, requested_qty=quantity, shadow_fill_model_version=shadow_fill_model_version,
+        submitted_at=submitted_at,
+    )
     return {
         "schema_version": SCHEMA_VERSION,
         "shadow_order_id": shadow_order_id,
         "intent_hash": intent_hash,
-        "merge_hash": intent.get("merge_hash"),
-        "ticket_fingerprint": ticket.get("ticket_fingerprint"),
+        "merge_hash": merge_hash,
+        "ticket_fingerprint": ticket_fingerprint,
         "shadow_fill_model_version": shadow_fill_model_version,
-        "symbol": intent.get("symbol"),
-        "side": intent.get("side"),
-        "order_type": intent.get("order_type"),
-        "limit_price": intent.get("limit_price"),
+        "symbol": symbol,
+        "side": side,
+        "order_type": order_type,
+        "limit_price": limit_price,
         "requested_qty": quantity,
         "filled_qty": 0,
         "remaining_qty": quantity,
@@ -341,8 +424,11 @@ def submit_shadow_order(intent: dict, risk_decision: dict, ticket: dict, *, know
         "slippage_model_status": None,
         "submitted_at": submitted_at,
         "submission_context_fingerprint": submission_context_fingerprint,
+        "order_context_fingerprint": order_context_fingerprint,
         "first_observation_at": None,
         "fill_at": None,
+        "first_fill_at": None,
+        "last_fill_at": None,
         "last_applied_observation_at": None,
         "ambiguity_flags": [],
         "reject_reasons": [],
@@ -357,13 +443,42 @@ _NO_FILL_STATUSES = frozenset({"NEW", "ACCEPTED", "WORKING", "UNOBSERVABLE"})
 
 
 def _validate_shadow_order_state(shadow_order: dict, *, now: datetime) -> list[str]:
-    """Phase 5.0.2/5.0.3 hardening（C-060-GPT / C-060R-GPT）: 永続化された
-    shadow orderの不変条件をfail-closedで検証する。違反があれば既存値を
-    推測補正せず、理由コードのリストを返す（空なら健全）。例外は投げない
-    ——壊れたchronology（naive datetime同士の比較等）はREJECTED理由へ
-    倒す。
+    """Phase 5.0.2/5.0.3/5.0.4 hardening（C-060-GPT / C-060R-GPT /
+    C-062R-GPT）: 永続化されたshadow orderの不変条件をfail-closedで検証
+    する。違反があれば既存値を推測補正せず、理由コードのリストを返す
+    （空なら健全）。例外は投げない——壊れたchronology（naive datetime
+    同士の比較等）はREJECTED理由へ倒す。
     """
     reasons = []
+
+    # --- Phase 5.0.4 Blocker A: order identityのbinding再照合 -----------------
+    # shadow_order_id自体、およびintent_hash/merge_hash/ticket_fingerprint/
+    # symbol/side/order_type/limit_price/requested_qty/shadow_fill_model_
+    # version/submitted_atがsubmit後にmutableな辞書のまま改変されても、
+    # 従来の数量検証だけでは検出できなかった（例: side="SELL"へ改変されて
+    # も残数量がbid側で評価されてしまう）。発行時に保存したfingerprintと
+    # 再計算値を照合する。
+    expected_shadow_order_id = compute_shadow_order_id(
+        shadow_order.get("intent_hash"), shadow_order.get("shadow_fill_model_version"))
+    if shadow_order.get("shadow_order_id") != expected_shadow_order_id:
+        reasons.append("REJECTED_STATE_SHADOW_ORDER_ID_MISMATCH")
+
+    expected_order_context_fingerprint = compute_order_context_fingerprint(
+        shadow_order_id=shadow_order.get("shadow_order_id"),
+        intent_hash=shadow_order.get("intent_hash"),
+        merge_hash=shadow_order.get("merge_hash"),
+        ticket_fingerprint=shadow_order.get("ticket_fingerprint"),
+        symbol=shadow_order.get("symbol"),
+        side=shadow_order.get("side"),
+        order_type=shadow_order.get("order_type"),
+        limit_price=shadow_order.get("limit_price"),
+        requested_qty=shadow_order.get("requested_qty"),
+        shadow_fill_model_version=shadow_order.get("shadow_fill_model_version"),
+        submitted_at=shadow_order.get("submitted_at"),
+    )
+    if shadow_order.get("order_context_fingerprint") != expected_order_context_fingerprint:
+        reasons.append("REJECTED_STATE_ORDER_CONTEXT_MISMATCH")
+
     requested_qty = shadow_order.get("requested_qty")
     filled_qty = shadow_order.get("filled_qty")
     remaining_qty = shadow_order.get("remaining_qty")
@@ -435,32 +550,75 @@ def _validate_shadow_order_state(shadow_order: dict, *, now: datetime) -> list[s
                 reasons.append("REJECTED_STATE_LAST_APPLIED_OBSERVATION_AT_INVALID")
                 last_applied_ok = False
 
+    # Phase 5.0.4 Blocker B: "observationが一度でも受理されたか"は
+    # first_observation_at/last_applied_observation_atが両方揃っている
+    # ことで表す——片方だけ設定されている状態は矛盾。
     first_observation_at = shadow_order.get("first_observation_at")
+    first_observation_ok = False
     if first_observation_at is not None:
         if not _is_aware_datetime(first_observation_at):
             reasons.append("REJECTED_STATE_FIRST_OBSERVATION_AT_INVALID")
         else:
+            first_observation_ok = True
             if submitted_ok and first_observation_at <= submitted_at:
                 reasons.append("REJECTED_STATE_FIRST_OBSERVATION_AT_INVALID")
+                first_observation_ok = False
+            # Phase 5.0.4: last_applied_observation_atが未設定（watermarkなし）
+            # でもfirst_observation_atがnowより未来なら見逃さない。
+            if now_ok and first_observation_at > now:
+                reasons.append("REJECTED_STATE_FIRST_OBSERVATION_AT_INVALID")
+                first_observation_ok = False
             if last_applied is not None and last_applied_ok and first_observation_at > last_applied:
                 reasons.append("REJECTED_STATE_FIRST_OBSERVATION_AT_INVALID")
+                first_observation_ok = False
 
+    if (first_observation_at is not None) != (last_applied is not None):
+        # 「observationを一度受理した」ことを示す2フィールドが片方だけ
+        # 設定されている——どちらの欠損かを明示するreasonを付ける。
+        if first_observation_at is None:
+            reasons.append("REJECTED_STATE_FIRST_OBSERVATION_AT_INVALID")
+        if last_applied is None:
+            reasons.append("REJECTED_STATE_LAST_APPLIED_OBSERVATION_AT_INVALID")
+
+    if filled_ok and filled_qty > 0:
+        # Phase 5.0.4: filled_qty>0はobservationが受理されていたことを
+        # 意味するはず——watermarkが片方でも欠けていればfail closed。
+        if first_observation_at is None:
+            reasons.append("REJECTED_STATE_FIRST_OBSERVATION_AT_INVALID")
+        if last_applied is None:
+            reasons.append("REJECTED_STATE_LAST_APPLIED_OBSERVATION_AT_INVALID")
+
+    # Phase 5.0.4 Blocker C: first_fill_at/last_fill_atを新設し、fill_atは
+    # 後方互換のためlast_fill_atのaliasとして扱う（Phase 5.1はposition_
+    # opened_atとしてfirst_fill_atを使う）。
     fill_at = shadow_order.get("fill_at")
+    first_fill_at = shadow_order.get("first_fill_at")
+    last_fill_at = shadow_order.get("last_fill_at")
     if filled_ok and filled_qty == 0:
-        if fill_at is not None:
+        if fill_at is not None or first_fill_at is not None or last_fill_at is not None:
             reasons.append("REJECTED_STATE_FILL_AT_INVALID")
     elif filled_ok and filled_qty > 0:
-        if not _is_aware_datetime(fill_at):
+        first_fill_ok = _is_aware_datetime(first_fill_at)
+        last_fill_ok = _is_aware_datetime(last_fill_at)
+        if not first_fill_ok:
+            reasons.append("REJECTED_STATE_FIRST_FILL_AT_INVALID")
+        if not last_fill_ok:
+            reasons.append("REJECTED_STATE_LAST_FILL_AT_INVALID")
+        if first_fill_ok and last_fill_ok:
+            if first_fill_at > last_fill_at:
+                reasons.append("REJECTED_STATE_FIRST_FILL_AT_INVALID")
+            if first_observation_ok and first_fill_at < first_observation_at:
+                reasons.append("REJECTED_STATE_FIRST_FILL_AT_INVALID")
+            if last_applied is not None and last_applied_ok and last_fill_at > last_applied:
+                reasons.append("REJECTED_STATE_LAST_FILL_AT_INVALID")
+            if now_ok and last_fill_at > now:
+                reasons.append("REJECTED_STATE_LAST_FILL_AT_INVALID")
+        # fill_atはlast_fill_atのaliasとして常に一致していなければならない
+        # （後方互換フィールドのdriftを許さない）。
+        if fill_at != last_fill_at:
             reasons.append("REJECTED_STATE_FILL_AT_INVALID")
-        else:
-            if submitted_ok and fill_at <= submitted_at:
-                reasons.append("REJECTED_STATE_FILL_AT_INVALID")
-            if now_ok and fill_at > now:
-                reasons.append("REJECTED_STATE_FILL_AT_INVALID")
-            elif last_applied is not None and last_applied_ok and fill_at > last_applied:
-                reasons.append("REJECTED_STATE_FILL_AT_INVALID")
 
-    # --- Phase 5.0.3 Blocker 3: submission_context_fingerprintの再照合 -------
+    # --- Phase 5.0.3 Blocker 3 / Phase 5.0.4 Blocker A: fingerprintの再照合 ---
     if submitted_ok:
         shadow_order_id = shadow_order.get("shadow_order_id")
         expected_fingerprint = compute_submission_context_fingerprint(shadow_order_id, submitted_at)
@@ -576,6 +734,20 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
     if observation_processed and (last_applied is None or observed_at > last_applied):
         new_last_applied = observed_at
 
+    # Phase 5.0.4 hardening（Blocker C、C-062R-GPT comment 5708835773）:
+    # 従来`fill_at`は毎回のincremental fillで上書きされ、最初のpartial
+    # fill時刻が失われていた（Phase 5.1のprotective riskはfirst positive
+    # fillから起算するべきで、最終完了時刻からではない）。`first_fill_at`
+    # は最初のincremental fill時にだけ設定し以後変更せず、`last_fill_at`
+    # は正のincremental fillのたびに更新する。`fill_at`はPhase 5.0.x向けの
+    # 後方互換aliasとして`last_fill_at`と常に一致させる。
+    new_first_fill_at = shadow_order.get("first_fill_at")
+    new_last_fill_at = shadow_order.get("last_fill_at")
+    if incremental_fill > 0:
+        if new_first_fill_at is None:
+            new_first_fill_at = observed_at
+        new_last_fill_at = observed_at
+
     return {
         **shadow_order,
         "status": new_status,
@@ -593,7 +765,9 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
         "slippage_model_status": result["slippage_model_status"],
         "first_observation_at": shadow_order.get("first_observation_at")
         or (observed_at if observation_processed else None),
-        "fill_at": observed_at if incremental_fill > 0 else shadow_order.get("fill_at"),
+        "fill_at": new_last_fill_at,
+        "first_fill_at": new_first_fill_at,
+        "last_fill_at": new_last_fill_at,
         "last_applied_observation_at": new_last_applied,
         "ambiguity_flags": ambiguity_flags,
         "real_submit_allowed": False,

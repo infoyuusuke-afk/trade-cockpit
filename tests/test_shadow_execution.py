@@ -721,6 +721,145 @@ class StateMachineIntegrityTests(unittest.TestCase):
         self.assertEqual(order["submission_context_fingerprint"], expected)
 
 
+class OrderIdentityAndFillChronologyTests(unittest.TestCase):
+    """Phase 5.0.4 hardening（C-062R-GPT comment 5708835773）: 発行時に
+    保存した`order_context_fingerprint`によるIntent/RiskDecision/ticket
+    由来フィールドのdeterministic binding（Blocker A）、完全なchronology
+    不変条件（Blocker B）、`first_fill_at`/`last_fill_at`の新設
+    （Blocker C）。"""
+
+    def _order(self):
+        intent = build_intent(order_type="MARKET", limit_price=None)
+        return submit(intent, risk_decision(), ticket(intent))
+
+    def test_order_context_fingerprint_stored_and_matches(self):
+        order = self._order()
+        expected = se.compute_order_context_fingerprint(
+            shadow_order_id=order["shadow_order_id"], intent_hash=order["intent_hash"],
+            merge_hash=order["merge_hash"], ticket_fingerprint=order["ticket_fingerprint"],
+            symbol=order["symbol"], side=order["side"], order_type=order["order_type"],
+            limit_price=order["limit_price"], requested_qty=order["requested_qty"],
+            shadow_fill_model_version=order["shadow_fill_model_version"], submitted_at=order["submitted_at"],
+        )
+        self.assertEqual(order["order_context_fingerprint"], expected)
+
+    # --- Blocker A: order identity binding ------------------------------------
+    def test_golden_a1_partial_then_side_mutated_rejected_no_further_fill(self):
+        order = self._order()
+        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW)
+        self.assertEqual(round1["filled_qty"], 40)
+        tampered = {**round1, "side": "SELL"}
+        later = NOW + timedelta(seconds=5)
+        out = se.evaluate_shadow_fill(tampered, observation(observed_at=later, bid_qty=60), now=later)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_ORDER_CONTEXT_MISMATCH", out["reject_reasons"])
+        self.assertEqual(out["filled_qty"], 40)
+
+    def test_golden_a2_mutated_requested_qty_with_consistent_remaining_still_rejected(self):
+        order = self._order()
+        tampered = {**order, "requested_qty": 200, "remaining_qty": 200}
+        out = se.evaluate_shadow_fill(tampered, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_ORDER_CONTEXT_MISMATCH", out["reject_reasons"])
+
+    def test_golden_a3_mutating_any_identity_field_fails_closed(self):
+        order = self._order()
+        for field, value in [
+            ("symbol", "9999.T"),
+            ("order_type", "LIMIT"),
+            ("limit_price", 1234.0),
+            ("intent_hash", "0" * 64),
+            ("merge_hash", "z" * 64),
+            ("ticket_fingerprint", "different-fp"),
+            ("shadow_fill_model_version", "shadow-fill-model-9.9"),
+        ]:
+            tampered = {**order, field: value}
+            out = se.evaluate_shadow_fill(tampered, observation(), now=NOW)
+            self.assertEqual(out["status"], "REJECTED", msg=field)
+            self.assertIn("REJECTED_STATE_ORDER_CONTEXT_MISMATCH", out["reject_reasons"], msg=field)
+
+    def test_golden_a4_mutated_shadow_order_id_rejected(self):
+        order = self._order()
+        tampered = {**order, "shadow_order_id": "0" * 64}
+        out = se.evaluate_shadow_fill(tampered, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_SHADOW_ORDER_ID_MISMATCH", out["reject_reasons"])
+
+    # --- Blocker B: complete chronology invariants -----------------------------
+    def test_golden_b1_future_first_observation_at_without_watermark_rejected(self):
+        order = self._order()
+        tampered = {**order, "first_observation_at": NOW + timedelta(seconds=5)}
+        out = se.evaluate_shadow_fill(tampered, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_FIRST_OBSERVATION_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_b2_first_observation_at_without_last_applied_rejected(self):
+        order = self._order()
+        tampered = {**order, "first_observation_at": NOW}
+        out = se.evaluate_shadow_fill(tampered, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_LAST_APPLIED_OBSERVATION_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_b3_filled_positive_without_observation_watermark_rejected(self):
+        order = self._order()
+        tampered = {**order, "filled_qty": 40, "remaining_qty": 60, "avg_fill_price": 1500.0,
+                    "status": "PARTIAL_FILLED", "first_fill_at": NOW, "last_fill_at": NOW, "fill_at": NOW}
+        out = se.evaluate_shadow_fill(tampered, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_FIRST_OBSERVATION_AT_INVALID", out["reject_reasons"])
+        self.assertIn("REJECTED_STATE_LAST_APPLIED_OBSERVATION_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_b4_first_observation_after_first_fill_rejected(self):
+        order = self._order()
+        tampered = {**order, "filled_qty": 40, "remaining_qty": 60, "avg_fill_price": 1500.0,
+                    "status": "PARTIAL_FILLED",
+                    "first_observation_at": NOW + timedelta(seconds=2),
+                    "last_applied_observation_at": NOW + timedelta(seconds=2),
+                    "first_fill_at": NOW, "last_fill_at": NOW, "fill_at": NOW}
+        out = se.evaluate_shadow_fill(tampered, observation(), now=NOW + timedelta(seconds=10))
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_FIRST_FILL_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_b4_first_fill_after_last_fill_rejected(self):
+        order = self._order()
+        tampered = {**order, "filled_qty": 40, "remaining_qty": 60, "avg_fill_price": 1500.0,
+                    "status": "PARTIAL_FILLED",
+                    "first_observation_at": NOW, "last_applied_observation_at": NOW + timedelta(seconds=5),
+                    "first_fill_at": NOW + timedelta(seconds=3), "last_fill_at": NOW + timedelta(seconds=1),
+                    "fill_at": NOW + timedelta(seconds=1)}
+        out = se.evaluate_shadow_fill(tampered, observation(), now=NOW + timedelta(seconds=10))
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_FIRST_FILL_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_b4_last_fill_after_watermark_rejected(self):
+        order = self._order()
+        tampered = {**order, "filled_qty": 40, "remaining_qty": 60, "avg_fill_price": 1500.0,
+                    "status": "PARTIAL_FILLED",
+                    "first_observation_at": NOW, "last_applied_observation_at": NOW + timedelta(seconds=2),
+                    "first_fill_at": NOW, "last_fill_at": NOW + timedelta(seconds=5),
+                    "fill_at": NOW + timedelta(seconds=5)}
+        out = se.evaluate_shadow_fill(tampered, observation(), now=NOW + timedelta(seconds=10))
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_LAST_FILL_AT_INVALID", out["reject_reasons"])
+
+    # --- Blocker C: first_fill_at / last_fill_at --------------------------------
+    def test_golden_9_partial_then_completion_first_fill_at_preserved(self):
+        order = self._order()
+        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW)
+        self.assertEqual(round1["first_fill_at"], NOW)
+        self.assertEqual(round1["last_fill_at"], NOW)
+        later = NOW + timedelta(seconds=5)
+        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask_qty=60), now=later)
+        self.assertEqual(round2["first_fill_at"], NOW)
+        self.assertEqual(round2["last_fill_at"], later)
+
+    def test_golden_10_one_shot_full_fill_first_equals_last_fill_at(self):
+        order = self._order()
+        out = se.evaluate_shadow_fill(order, observation(), now=NOW)
+        self.assertEqual(out["first_fill_at"], out["last_fill_at"])
+        self.assertEqual(out["fill_at"], out["last_fill_at"])
+
+
 class RealSubmitAllowedTests(unittest.TestCase):
     """Golden #19: real_submit_allowedは常にfalse。"""
 
