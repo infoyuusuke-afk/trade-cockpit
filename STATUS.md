@@ -2034,6 +2034,80 @@ main反映済み。
 Forward Acceptance、Real Ledger拡張+Reconciliation、Execution
 Calibration Report、Integration Orchestrator、Small Real Execution Test。
 
+## Execution Stack Phase 5.0 Shadow Execution Core + Entry Fill Model v0.1（Issue #18 C-057-GPT、2026-09-17）
+
+C-057-GPT（comment 5707721299）がPhase 4.3（406件成功、first attempt）を
+ACCEPTEDとした上で、**Phase 5.0（Shadow Execution Core + Entry Fill
+Model v0.1、entry executionのみ）実装へGO**を出した。旧Shadow設計
+（comment 5702363228、`LONG|SHORT`/`STOP_MARKET|STOP_LIMIT`語彙）は
+現行canonical Execution Contractの`BUY|SELL`/`MARKET|LIMIT`と衝突する
+ため、このC-057を最新canonical契約として優先し実装した。
+
+**目的**：Real brokerへ一切の副作用を出さず、Phase 1〜4.3で生成済みの
+canonical Intent/RiskDecision/PermissionTicket（`ORDER_TICKET_READY`）
+をそのまま使い、entryのShadow約定品質を決定論的に評価・記録する。
+protective stop/target/position lifecycle/Real reconciliation/
+calibration/RssOrderはまだ実装しない（出口側はPhase 5.1以降）。
+
+**scripts/shadow_execution.py（Shadow Execution Core）**：
+`submit_shadow_order()`がC-057指定の7条件（real_submit_allowed==false、
+intent_hash==ticket.intent_hash、merge_hashがIntent/RiskDecision/ticket
+の3者一致、quantity==allowed_qty、risk_policy_version一致、side/
+order_typeの妥当性）に加えintent_hash改ざんの再検証を行い、不備があれば
+REJECTED。`compute_shadow_order_id()`は`sha256(intent_hash + "|" +
+shadow_fill_model_version)`による決定論的ID（ランダムUUIDは使わない）
+——同一Intentの再投入は`known_orders`ledgerと突き合わせて
+DUPLICATE_IGNOREDとし、二重orderを作らない。`evaluate_shadow_fill()`は
+1件のMarketObservationを適用してfillを評価し、terminal状態
+（FILLED/EXPIRED/REJECTED/DUPLICATE_IGNORED）からは一切再評価しない
+（自動retryを表現しない）。
+
+**scripts/shadow_fill_model.py（Entry Fill Model v0.1）**：
+`evaluate_market_fill()`はMARKET BUYが`ask`/`ask_qty`、SELLが`bid`/
+`bid_qty`のみを参照し（mid/last_tradeは一切参照しない）、可視数量が
+不足していれば可視分だけpartial fillとし残数量を架空にfillしない。
+`evaluate_limit_fill()`は「Shadow submit後のtrade observationのみ」を
+使う（`observed_at <= submitted_at`のobservationは一切使わない）——
+trade-throughはCERTAIN full fill（limit価格で、より有利なtrade価格は
+使わない保守的な見積り）、limit価格ちょうどのtouchはUNCERTAINで確定
+fill扱いにしない、post-submit tradeの観測が無ければno fill。欠損・
+NaN・inf・bid>ask・非正値・naive timestamp・future observationは
+`validate_observation()`が推測補完せずUNOBSERVABLE（no fill）へ倒す。
+
+**設計判断（C-057仕様の範囲内での明示的選択、レビュー時に確認希望）**：
+MARKETのfillは「表示されている気配に基づく推定」であり約定確認ではない
+ため`fill_confidence`を`PROBABLE`とし、LIMITのtrade-through確認済み
+fillに使う`CERTAIN`と区別した。MARKETのavg_fill_priceは常に
+reference_price（ask/bid）と同値とし、v0.1では板の厚み以上の
+walk-the-book slippageはモデル化していない（slippage_yen/bpsは常に0）。
+
+**public/private境界**：`scripts/shadow_execution.py`・
+`scripts/shadow_fill_model.py`はどちらもファイルI/Oを一切行わない
+pure coreであり公開repoに置いている。data/private/shadow/配下への
+実際のMS2由来Shadow order/fillイベントの永続化はこのPhaseでは実装
+していない（呼び出し側の将来の責務）。`data/private/trade_ledger.jsonl`
+（Real ledger）は一切参照・変更していない。
+
+**テスト**：`tests/test_shadow_fill_model.py`・`tests/test_shadow_
+execution.py`にC-057-GPT指定のGolden Fixtures 21件を実装（決定論的
+shadow_order_id、重複投入のDUPLICATE_IGNORED、intent_hash/merge_hash
+不一致・RiskDecision非PASS・ticket未readyない・real_submit_allowed
+非falseのREJECTED、MARKET BUY/SELLがask/bidのみ参照、可視数量不足の
+partial-onlyフィル、LIMIT trade-through/touch-only/no-trade、stale/
+missing/future/malformed/crossedデータのno-fill、terminal状態からの
+自動retry禁止、broker/RSS/COM/network/Excel発注のside effectゼロ
+——AST基準でI/O呼び出し自体が存在しないことを確認、regression 406件
+維持）。1回目のCI実行（run 35176545786）で成功。`python -m unittest
+discover -s tests -v`で**461件全て成功（failures=0, errors=0、
+Phase 4.3の406件から新規55件追加）**。commit
+6c821db798a36bb62c5a7d48ef0f1764e96fb14d（本体実装）。main反映済み。
+
+**未着手（Phase 5.1以降）**：RssOrder、Excel注文式、broker API submit、
+実ポジション変更、`real_submit_allowed=True`、protective-stop execution、
+profit target execution、Shadow position lifecycle、Real-vs-Shadow
+reconciliation、calibration自動更新、Shadow Forward promotion判定、
+Small Real Execution Test。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
