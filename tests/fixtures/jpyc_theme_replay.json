@@ -1,0 +1,22 @@
+{
+  "scenario": "SIMULATED_JPYC_REPLAY_NOT_HISTORICAL_EVIDENCE",
+  "now": "2026-09-18T08:05:00+09:00",
+  "events": {
+    "jpy-stablecoin": [
+      {"title": "JPYC stablecoin exchange listing announced", "url": "https://example.org/replay-only/1", "source": "SIMULATED", "published_at": "2026-09-17T18:03:00+09:00"},
+      {"title": "JPYC peg dislocation reported", "url": "https://example.org/replay-only/2", "source": "SIMULATED", "published_at": "2026-09-17T18:10:00+09:00"}
+    ]
+  },
+  "observations": {
+    "jpy-stablecoin": {"observed_at": "2026-09-18T08:00:00+09:00", "source_url": "https://example.org/replay-only/market", "turnover_vs_baseline": 5.1, "peg_deviation_pct": 2.2}
+  },
+  "screener": {
+    "updated_at": "2026-09-18 08:05:00 JST",
+    "error": null,
+    "scan_rows": [
+      {"code": "3853", "price": 1000, "volume": 2500000, "change_pct": 7.1, "relative_volume": 3.2, "market_cap": 20000000000},
+      {"code": "4072", "price": 3000, "volume": 1700000, "change_pct": 5.4, "relative_volume": 2.1, "market_cap": 45000000000},
+      {"code": "4382", "price": 700, "volume": 120000, "change_pct": 1.0, "relative_volume": 0.9, "market_cap": 9000000000}
+    ]
+  }
+}
