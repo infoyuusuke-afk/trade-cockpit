@@ -2487,9 +2487,11 @@ document.addEventListener("DOMContentLoaded",()=>{
  const jstClock=()=>{const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Tokyo",weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).filter(x=>x.type!=="literal").map(x=>[x.type,x.value]));return {weekday:p.weekday,minutes:Number(p.hour)*60+Number(p.minute)}};
  const isTseVoiceWindow=()=>{const t=jstClock(),weekday=!["Sat","Sun"].includes(t.weekday),morning=t.minutes>=9*60&&t.minutes<=11*60+30,afternoon=t.minutes>=12*60+30&&t.minutes<=15*60+30;return weekday&&(morning||afternoon)};
  window.cockpitLiveSpeechEnabled=true;
- const setVoiceLabel=()=>voiceButtons.forEach(button=>{button.textContent=!isTseVoiceWindow()?"🔇 ザラバ終了":voiceOn?"🔊 音声ON":"🔇 音声OFF";button.title="東証9:00～11:30・12:30～15:30のみ。PTSデータには対応していません";});setVoiceLabel();
- window.cockpitSpeak=msg=>{if(!voiceOn||!msg||!isTseVoiceWindow()||window.cockpitLiveSpeechEnabled===false||!("speechSynthesis" in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(msg);u.lang="ja-JP";u.rate=1.05;window.speechSynthesis.speak(u);};
- voiceButtons.forEach(button=>button.onclick=()=>{if(!isTseVoiceWindow()){voiceOn=false;localStorage.setItem("cockpitVoiceV1","off");setVoiceLabel();return}voiceOn=!voiceOn;localStorage.setItem("cockpitVoiceV1",voiceOn?"on":"off");setVoiceLabel();if(voiceOn)window.cockpitSpeak("AIコクピットの自動読み上げを開始します");});
+ let voiceRoute="SBV2優先";
+ const setVoiceLabel=()=>voiceButtons.forEach(button=>{button.textContent=!isTseVoiceWindow()?"🔇 ザラバ終了":voiceOn?"🔊 音声ON・"+voiceRoute:"🔇 音声OFF";button.title="東証9:00～11:30・12:30～15:30のみ。現在の音声: "+voiceRoute+"。PTSデータには対応していません";});setVoiceLabel();
+ document.addEventListener("cockpitVoiceRoute",e=>{voiceRoute=e.detail?.route||"未確認";setVoiceLabel();});
+ window.cockpitSpeak=msg=>{if(!voiceOn||!msg||!isTseVoiceWindow()||window.cockpitLiveSpeechEnabled===false)return;window.cockpitVoice?.speak(msg);};
+ voiceButtons.forEach(button=>button.onclick=()=>{if(!isTseVoiceWindow()){voiceOn=false;window.cockpitVoice?.cancel();localStorage.setItem("cockpitVoiceV1","off");setVoiceLabel();return}voiceOn=!voiceOn;if(!voiceOn)window.cockpitVoice?.cancel();localStorage.setItem("cockpitVoiceV1",voiceOn?"on":"off");setVoiceLabel();if(voiceOn)window.cockpitSpeak("AIコクピットの自動読み上げを開始します");});
  const loadLive=()=>fetch("live_focus.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(d=>{
    window.cockpitLiveSpeechEnabled=d.speech_enabled===true;
    setVoiceLabel();
@@ -2760,12 +2762,24 @@ document.addEventListener("DOMContentLoaded",()=>{
 </style>
 <link rel="stylesheet" href="theme.css?v=20260915-type4">
 <link rel="stylesheet" href="focus.css?v=20260915-power3">
+<link rel="stylesheet" href="phase6-status.css?v=20260918-1">
+<script defer src="phase6-status.js?v=20260918-1"></script>
+<script defer src="cockpit-voice.js?v=20260918-1"></script>
 <style>.unified-mode{{margin:8px 6px 0;padding:10px 14px;border:1px solid #365267;border-radius:10px;background:#09141d;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}}.unified-mode .lamp{{width:12px;height:12px;border-radius:50%;background:#77838c;box-shadow:0 0 0 5px #77838c18}}.unified-mode.live{{border-color:#28c998;background:#082019}}.unified-mode.live .lamp{{background:#35e2ae;box-shadow:0 0 16px #35e2ae}}.unified-mode.stale{{border-color:#f0b74c}}.unified-mode strong{{font-size:16px}}.unified-mode span{{color:#a8bbc9}}.unified-mode b{{color:#fff}}.unified-mode small{{color:#a8bbc9;display:block;margin-top:2px}}@media(max-width:700px){{.unified-mode{{grid-template-columns:auto 1fr auto}}.unified-mode>b{{grid-column:3}}.unified-mode .voice-toggle{{grid-column:1/-1}}}}</style>
 <header><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／統一取引日 {quality_gate['market_date'] or '取得不能'}</div></div></header>
 <div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><button class="voice-toggle" data-voice-toggle type="button" style="padding:5px 12px;border-radius:7px">🔇 音声OFF</button><b id="unified-mode-time">—</b></div><main>
 {quality_html}
 {investor_regime_html}
 {live_focus_html}
+<section id="phase6-status" class="card wide" aria-label="Phase 6検証とデータ鮮度">
+ <h2>Phase 6検証状況・データ鮮度</h2>
+ <div class="phase6-grid">
+  <div class="phase6-item"><span>Shadow Forward Acceptance</span><strong id="phase6-acceptance">確認中</strong><small id="phase6-acceptance-time">実forward記録を確認しています</small></div>
+  <div class="phase6-item"><span>日次データ</span><strong id="phase6-daily">確認中</strong><small id="phase6-daily-time">更新時刻を確認しています</small></div>
+  <div class="phase6-item"><span>実機MS2 RSS</span><strong id="phase6-ms2">確認中</strong><small id="phase6-ms2-time">接続と鮮度を確認しています</small></div>
+ </div>
+ <p class="phase6-note"><b id="phase6-permission">実発注状態を確認中</b>。Phase 6はShadow検証です。実forward記録の前回確認値を現在値として扱わず、実機RSSが未接続または60秒を超えて古い場合は売買禁止です。</p>
+</section>
 {focus_dashboard}
 {watchlist_html}
 {ranking_watch_html}
