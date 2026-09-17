@@ -6,7 +6,10 @@
     "logged_at": "2026-09-15 22:26:50 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 1.16,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 0.73,
+    "actual_direction": "上昇",
+    "hit": false
   },
   {
     "code": "2796",
@@ -60,6 +63,24 @@
     "logged_at": "2026-09-16 09:48:52 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.0,
+    "status": "pending"
+  },
+  {
+    "code": "3544",
+    "name": "サツドラホールディングス",
+    "target_date": "2026-09-18",
+    "logged_at": "2026-09-17 09:53:00 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.08,
+    "status": "pending"
+  },
+  {
+    "code": "6905",
+    "name": "コーセル",
+    "target_date": "2026-09-18",
+    "logged_at": "2026-09-17 09:53:00 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 2.47,
     "status": "pending"
   }
 ]
