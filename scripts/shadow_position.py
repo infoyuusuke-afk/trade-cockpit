@@ -82,6 +82,27 @@ timestampの場合は順序を捏造せずexitを拒否する
 ## real_submit_allowedについて
 このモジュールが返すどの辞書も`real_submit_allowed`は常にFalse固定。
 RssOrder・Excel注文式・broker submit・実ポジション変更は一切実装しない。
+
+## Phase 5.1.1 hardening（C-066-GPT comment 5710232677、4 blocker）
+1. **entry-fill同期のlineage binding不足**：`shadow_order_id`だけでは
+   `merge_hash`/`ticket_fingerprint`/`order_context_fingerprint`/
+   `submitted_at`を束縛しない（Phase 5.0.4のorder_context_fingerprintが
+   別フィールドとして担う設計のため）。`sync_entry_fill()`は
+   `_ENTRY_SYNC_IDENTITY_FIELDS`の9フィールド全てがPosition生成時に
+   保存した値と一致することを要求する。
+2. **entry-fill chronologyが前進を要求していない**：cumulative fill増加を
+   受け付けるには、incoming Shadow Orderの`first_fill_at`が
+   `position_opened_at`と一致し、`last_fill_at`が既存
+   `last_entry_fill_at`より厳密に新しいことを要求する。
+3. **stale/future observationがwatermarkを汚染する**：
+   `evaluate_position_exit()`は`shadow_fill_model.validate_observation()`
+   のdata-quality gateを通過したobservationだけをwatermark前進・
+   fill評価の対象にする。
+4. **status別の不変条件が不完全**：`_validate_position_state()`へ
+   `STOP_TRIGGERED`/`STOP_EXIT_PARTIAL`/`CLOSED`各状態の正準パターン
+   （数量・`avg_exit_price`・stop-exit fill timestampの組み合わせ、
+   `CLOSED`+`TARGET`が stop trigger chronologyを一切持たないこと）を
+   追加した。
 """
 from __future__ import annotations
 
@@ -108,7 +129,15 @@ _MINIMAL_TERMINAL_STATUSES = frozenset({"REJECTED", "DUPLICATE_IGNORED"})
 _FULL_TERMINAL_STATUSES = frozenset({"CLOSED"})
 _TERMINAL_STATUSES = _MINIMAL_TERMINAL_STATUSES | _FULL_TERMINAL_STATUSES
 
-_OPEN_LIKE_STATUSES = frozenset({"OPEN", "STOP_TRIGGERED", "STOP_EXIT_PARTIAL"})
+# Phase 5.1.1 Blocker 1（C-066-GPT）: sync_entry_fill()が「同一Shadow Order
+# lineageの延長」と認めるために一致を要求するフィールド。shadow_order_id
+# 単体はintent_hash/shadow_fill_model_versionしか束縛しないため、
+# merge_hash/ticket_fingerprint/order_context_fingerprintを含めここで
+# 明示的に束縛する。
+_ENTRY_SYNC_IDENTITY_FIELDS = (
+    "shadow_order_id", "order_context_fingerprint", "intent_hash", "merge_hash",
+    "ticket_fingerprint", "symbol", "side", "requested_qty", "shadow_fill_model_version",
+)
 
 
 def _is_finite_number(value) -> bool:
@@ -306,6 +335,11 @@ def create_shadow_position(intent: dict, shadow_order: dict, *, now: datetime,
         "intent_hash": intent["intent_hash"],
         "merge_hash": intent.get("merge_hash"),
         "ticket_fingerprint": ticket_fingerprint,
+        # requested_qty/shadow_fill_model_versionはPhase 5.1.1（C-066-GPT
+        # Blocker 1）でsync_entry_fill()のlineage識別に使うため、Position
+        # 生成時のShadow Orderからそのまま保持する。
+        "requested_qty": shadow_order.get("requested_qty"),
+        "shadow_fill_model_version": shadow_order.get("shadow_fill_model_version"),
         "symbol": intent.get("symbol"),
         "side": side,
         "planned_entry": planned_entry,
@@ -388,15 +422,31 @@ def _validate_position_state(position: dict, *, now: datetime) -> list[str]:
     status = position.get("status")
     if status not in POSITION_STATUSES:
         reasons.append("REJECTED_POSITION_STATUS_INVALID")
-    elif current_ok:
-        if status == "CLOSED" and current_qty != 0:
-            reasons.append("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH")
-        elif status in _OPEN_LIKE_STATUSES and current_qty <= 0:
-            reasons.append("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH")
-    # OPENはまだ一度もexitを経験していない状態——exit_filled_qty>0のOPENは
-    # 矛盾した状態遷移を意味するので推測補正せずREJECTEDにする。
-    if status == "OPEN" and exit_ok and exit_filled != 0:
-        reasons.append("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH")
+    else:
+        # Phase 5.1.1 Blocker 4（C-066-GPT）: 各statusの正準パターンを
+        # 明示的に検証する——数量が算術的に整合していても、その状態遷移
+        # 自体が到達不可能な組み合わせなら推測補正せずREJECTEDにする。
+        avg_exit_price_val = position.get("avg_exit_price")
+        if status == "OPEN":
+            if exit_ok and exit_filled != 0:
+                reasons.append("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH")
+        elif status == "STOP_TRIGGERED":
+            if exit_ok and exit_filled != 0:
+                reasons.append("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH")
+            if entry_ok and current_ok and current_qty != entry_seen:
+                reasons.append("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH")
+            if avg_exit_price_val is not None:
+                reasons.append("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH")
+        elif status == "STOP_EXIT_PARTIAL":
+            if not (exit_ok and entry_ok and 0 < exit_filled < entry_seen):
+                reasons.append("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH")
+            if not (current_ok and entry_ok and 0 < current_qty < entry_seen):
+                reasons.append("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH")
+        elif status == "CLOSED":
+            if not (current_ok and current_qty == 0):
+                reasons.append("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH")
+            if not (exit_ok and entry_ok and exit_filled == entry_seen):
+                reasons.append("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH")
 
     # position_id / position_plan_fingerprintの再照合（Golden #7）。
     expected_position_id = compute_position_id(position.get("shadow_order_id"))
@@ -473,6 +523,12 @@ def _validate_position_state(position: dict, *, now: datetime) -> list[str]:
     stop_triggered_ok = False
     if stop_triggered_at is not None:
         if status == "OPEN":
+            reasons.append("REJECTED_POSITION_STOP_TRIGGERED_AT_INVALID")
+        # Phase 5.1.1 Blocker 4（C-066-GPT）: CLOSED+TARGETはtarget
+        # ロジックだけでcloseした経路であり、STOP trigger chronologyを
+        # 一切持たないはず——他のフィールドが内部的に整合していても
+        # exit_reason="TARGET"とstop_triggered_atの併存は矛盾。
+        if status == "CLOSED" and position.get("exit_reason") == "TARGET":
             reasons.append("REJECTED_POSITION_STOP_TRIGGERED_AT_INVALID")
         if not _is_aware_datetime(stop_triggered_at):
             reasons.append("REJECTED_POSITION_STOP_TRIGGERED_AT_INVALID")
@@ -562,9 +618,15 @@ def sync_entry_fill(position: dict, shadow_order: dict, *, now: datetime) -> dic
         return {**position, "entry_sync_reasons": ["REJECTED_SHADOW_ORDER_INVALID_TYPE"],
                 "real_submit_allowed": False}
 
-    if shadow_order.get("shadow_order_id") != position.get("shadow_order_id"):
-        return {**position, "entry_sync_reasons": ["REJECTED_SHADOW_ORDER_IDENTITY_MISMATCH"],
-                "real_submit_allowed": False}
+    # Phase 5.1.1 Blocker 1（C-066-GPT）: shadow_order_id単体は
+    # intent_hash/shadow_fill_model_versionしか束縛しない——別の
+    # merge_hash/ticket_fingerprint/order_context_fingerprintを持つ
+    # 独立した有効stateが同じshadow_order_idを共有しうるため、
+    # Position生成時に保存した全識別フィールドと一致することを要求する。
+    for field in _ENTRY_SYNC_IDENTITY_FIELDS:
+        if shadow_order.get(field) != position.get(field):
+            return {**position, "entry_sync_reasons": ["REJECTED_SHADOW_ORDER_IDENTITY_MISMATCH"],
+                    "real_submit_allowed": False}
 
     order_state_reasons = se.validate_shadow_order_state(shadow_order, now=now)
     if order_state_reasons:
@@ -583,6 +645,16 @@ def sync_entry_fill(position: dict, shadow_order: dict, *, now: datetime) -> dic
     if new_filled == entry_seen:
         return {**position, "entry_sync_reasons": [], "real_submit_allowed": False}
 
+    # Phase 5.1.1 Blocker 2（C-066-GPT）: cumulative fill増加を主張する
+    # incoming stateは、Positionが起算した最初のfillと同じlineageの延長で
+    # あることをchronologyでも証明しなければならない——first_fill_atが
+    # position_opened_atと一致し、last_fill_atが既存last_entry_fill_atより
+    # 厳密に新しいことを要求する。満たさなければ数量・時刻を一切変更せず
+    # block（推測で補正しない）。
+    if shadow_order.get("first_fill_at") != position.get("position_opened_at"):
+        return {**position, "entry_sync_reasons": ["REJECTED_ENTRY_FILL_FIRST_FILL_AT_MISMATCH"],
+                "real_submit_allowed": False}
+
     new_avg_entry = shadow_order.get("avg_fill_price")
     if not (_is_finite_number(new_avg_entry) and new_avg_entry > 0):
         return {**position, "entry_sync_reasons": ["REJECTED_SHADOW_ORDER_AVG_FILL_PRICE_INVALID"],
@@ -591,6 +663,9 @@ def sync_entry_fill(position: dict, shadow_order: dict, *, now: datetime) -> dic
     new_last_entry_fill_at = shadow_order.get("last_fill_at")
     if not _is_aware_datetime(new_last_entry_fill_at):
         return {**position, "entry_sync_reasons": ["REJECTED_SHADOW_ORDER_LAST_FILL_AT_INVALID"],
+                "real_submit_allowed": False}
+    if new_last_entry_fill_at <= position.get("last_entry_fill_at"):
+        return {**position, "entry_sync_reasons": ["REJECTED_ENTRY_FILL_NOT_FORWARD"],
                 "real_submit_allowed": False}
 
     return {
@@ -637,32 +712,41 @@ def evaluate_position_exit(position: dict, observation: dict, *, now: datetime) 
     planned_stop = position.get("planned_stop")
     planned_target = position.get("planned_target")
 
-    observed_at = observation.get("observed_at") if isinstance(observation, dict) else None
-    observed_at_valid = isinstance(observed_at, datetime) and observed_at.tzinfo is not None
+    # Phase 5.1.1 Blocker 3（C-066-GPT）: STALE/MISSING/FUTURE/malformedな
+    # observationは、canonical data-quality gate（shadow_fill_model.
+    # validate_observation()）を通過するまでwatermark前進にもfill評価にも
+    # 一切使わない。先にaware timestampの有無だけでwatermarkを前進させて
+    # いると、未来timestampが「受理済み」として記録され、次回呼び出しで
+    # _validate_position_state()がfuture watermarkを検出してPositionごと
+    # REJECTEDにしてしまう（stale観測が同一timestampの訂正版を
+    # duplicate扱いにする問題も同様）。
+    obs_ok, obs_reasons = sfm.validate_observation(observation, now=now)
+    if not obs_ok:
+        reason = obs_reasons[0] if obs_reasons else "OBSERVATION_INVALID"
+        return {**position, "fill_reason": reason, "real_submit_allowed": False}
+
+    observed_at = observation["observed_at"]
 
     # Golden #18: entryとexitの同一/巻き戻りtimestampの順序を捏造しない。
-    if observed_at_valid and observed_at <= last_entry_fill_at:
+    if observed_at <= last_entry_fill_at:
         return {**position, "fill_reason": "AMBIGUOUS_ENTRY_EXIT_ORDERING", "real_submit_allowed": False}
 
     # Golden #15: position-level watermarkでduplicate/out-of-orderを防ぐ。
     last_pos_obs = position.get("last_position_observation_at")
-    if observed_at_valid and last_pos_obs is not None and observed_at <= last_pos_obs:
+    if last_pos_obs is not None and observed_at <= last_pos_obs:
         reason = "DUPLICATE_POSITION_OBSERVATION" if observed_at == last_pos_obs else "OUT_OF_ORDER_POSITION_OBSERVATION"
         return {**position, "fill_reason": reason, "real_submit_allowed": False}
 
-    new_first_pos_obs = position.get("first_position_observation_at")
-    new_last_pos_obs = last_pos_obs
-    if observed_at_valid:
-        if new_first_pos_obs is None:
-            new_first_pos_obs = observed_at
-        if new_last_pos_obs is None or observed_at > new_last_pos_obs:
-            new_last_pos_obs = observed_at
+    # ここまで到達したobservationだけがaccepted（data-quality gate通過・
+    # 順序も健全）——このobservationだけでwatermarkを前進させる。
+    first_pos_obs = position.get("first_position_observation_at")
+    new_first_pos_obs = first_pos_obs if first_pos_obs is not None else observed_at
+    new_last_pos_obs = observed_at
 
     if status == "OPEN":
-        ok, _obs_reasons = sfm.validate_observation(observation, now=now)
-        last_trade_price = observation.get("last_trade_price") if isinstance(observation, dict) else None
+        last_trade_price = observation.get("last_trade_price")
         stop_hit = False
-        if ok and _is_finite_positive(last_trade_price):
+        if _is_finite_positive(last_trade_price):
             if side == "BUY" and last_trade_price <= planned_stop:
                 stop_hit = True
             elif side == "SELL" and last_trade_price >= planned_stop:

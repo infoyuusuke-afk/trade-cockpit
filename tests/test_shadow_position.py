@@ -176,6 +176,97 @@ class Golden4RollbackIdentityTests(unittest.TestCase):
         self.assertEqual(out["current_qty"], 40)
 
 
+class Blocker1EntrySyncLineageBindingTests(unittest.TestCase):
+    """Phase 5.1.1 C-066-GPT Blocker 1: shadow_order_id単体はmerge_hash/
+    ticket_fingerprint/order_context_fingerprintを束縛しない——別lineageの
+    有効stateが同じshadow_order_idを共有してもPosition成長へ使えない
+    ことを確認する（C-066-GPT required Golden #1）。"""
+
+    def test_same_shadow_order_id_different_merge_hash_cannot_grow_position(self):
+        intent1 = entry_intent()
+        order1 = filled_order(intent1, ask_qty=40)
+        pos = sp.create_shadow_position(intent1, order1, now=NOW, known_positions=[])
+
+        intent2 = entry_intent(merge_hash="n" * 64)
+        order2 = submit(intent2, risk_decision(merge_hash="n" * 64), ticket(intent2))
+        order2 = se.evaluate_shadow_fill(order2, observation(ask_qty=100), now=NOW)
+        self.assertEqual(order2["shadow_order_id"], order1["shadow_order_id"])
+        self.assertNotEqual(order2["merge_hash"], order1["merge_hash"])
+        self.assertNotEqual(order2["order_context_fingerprint"], order1["order_context_fingerprint"])
+
+        synced = sp.sync_entry_fill(pos, order2, now=NOW)
+        self.assertIn("REJECTED_SHADOW_ORDER_IDENTITY_MISMATCH", synced["entry_sync_reasons"])
+        self.assertEqual(synced["current_qty"], 40)
+
+    def test_same_shadow_order_id_different_ticket_fingerprint_cannot_grow_position(self):
+        intent1 = entry_intent()
+        order1 = filled_order(intent1, ask_qty=40)
+        pos = sp.create_shadow_position(intent1, order1, now=NOW, known_positions=[])
+
+        intent2 = entry_intent()
+        order2 = submit(intent2, risk_decision(), ticket(intent2, ticket_fingerprint="fp-" + "b" * 60))
+        order2 = se.evaluate_shadow_fill(order2, observation(ask_qty=100), now=NOW)
+        self.assertEqual(order2["shadow_order_id"], order1["shadow_order_id"])
+        self.assertNotEqual(order2["ticket_fingerprint"], order1["ticket_fingerprint"])
+
+        synced = sp.sync_entry_fill(pos, order2, now=NOW)
+        self.assertIn("REJECTED_SHADOW_ORDER_IDENTITY_MISMATCH", synced["entry_sync_reasons"])
+        self.assertEqual(synced["current_qty"], 40)
+
+
+class Blocker2EntryFillChronologyForwardTests(unittest.TestCase):
+    """Phase 5.1.1 C-066-GPT Blocker 2: cumulative fill増加は
+    first_fill_atの一致とlast_fill_atの厳密な前進を要求する
+    （C-066-GPT required Golden #2/#3）。"""
+
+    def test_larger_fill_with_non_forward_last_fill_at_is_blocked(self):
+        intent = entry_intent()
+        order1 = filled_order(intent, ask_qty=40)
+        pos = sp.create_shadow_position(intent, order1, now=NOW, known_positions=[])
+
+        divergent = {
+            **order1, "filled_qty": 60, "remaining_qty": 40,
+            "first_fill_at": NOW, "last_fill_at": NOW, "fill_at": NOW,
+            "first_observation_at": NOW, "last_applied_observation_at": NOW,
+        }
+        state_reasons = se.validate_shadow_order_state(divergent, now=NOW)
+        self.assertEqual(state_reasons, [])
+
+        synced = sp.sync_entry_fill(pos, divergent, now=NOW)
+        self.assertIn("REJECTED_ENTRY_FILL_NOT_FORWARD", synced["entry_sync_reasons"])
+        self.assertEqual(synced["current_qty"], 40)
+        self.assertEqual(synced["last_entry_fill_at"], NOW)
+
+    def test_different_first_fill_at_cannot_rewrite_position_opened_at(self):
+        intent = entry_intent()
+        order1 = filled_order(intent, ask_qty=40)
+        pos = sp.create_shadow_position(intent, order1, now=NOW, known_positions=[])
+
+        later = NOW + timedelta(seconds=5)
+        divergent = {
+            **order1, "filled_qty": 60, "remaining_qty": 40,
+            "first_fill_at": later, "last_fill_at": later, "fill_at": later,
+            "first_observation_at": later, "last_applied_observation_at": later,
+        }
+        state_reasons = se.validate_shadow_order_state(divergent, now=later)
+        self.assertEqual(state_reasons, [])
+
+        synced = sp.sync_entry_fill(pos, divergent, now=later)
+        self.assertIn("REJECTED_ENTRY_FILL_FIRST_FILL_AT_MISMATCH", synced["entry_sync_reasons"])
+        self.assertEqual(synced["current_qty"], 40)
+        self.assertEqual(synced["position_opened_at"], NOW)
+
+    def test_forward_growth_with_matching_first_fill_at_still_applies(self):
+        intent = entry_intent()
+        order1 = filled_order(intent, ask_qty=40)
+        pos = sp.create_shadow_position(intent, order1, now=NOW, known_positions=[])
+        later = NOW + timedelta(seconds=5)
+        order2 = se.evaluate_shadow_fill(order1, observation(observed_at=later, ask_qty=60), now=later)
+        synced = sp.sync_entry_fill(pos, order2, now=later)
+        self.assertEqual(synced["entry_sync_reasons"], [])
+        self.assertEqual(synced["current_qty"], 100)
+
+
 class Golden5IntentHashTamperTests(unittest.TestCase):
     def test_golden_5_intent_hash_tamper_rejected(self):
         intent = entry_intent()
@@ -431,6 +522,132 @@ class Golden16StaleMalformedTests(unittest.TestCase):
         pos = sp.create_shadow_position(intent, order, now=NOW, known_positions=[])
         out = sp.evaluate_position_exit(pos, None, now=NOW + timedelta(seconds=5))
         self.assertEqual(out["status"], "OPEN")
+
+
+class Blocker3ObservationWatermarkGateTests(unittest.TestCase):
+    """Phase 5.1.1 C-066-GPT Blocker 3: STALE/FUTUREなobservationは
+    data-quality gateを通過するまでwatermarkを前進させない
+    （C-066-GPT required Golden #4/#5）。"""
+
+    def test_future_observation_leaves_watermark_unchanged_then_later_valid_processes(self):
+        intent = entry_intent()
+        order = filled_order(intent)
+        pos = sp.create_shadow_position(intent, order, now=NOW, known_positions=[])
+        later = NOW + timedelta(seconds=5)
+        far_future = later + timedelta(days=1)
+        out1 = sp.evaluate_position_exit(pos, observation(observed_at=far_future, last_trade_price=1440.0), now=later)
+        self.assertEqual(out1["status"], "OPEN")
+        self.assertIsNone(out1["last_position_observation_at"])
+        self.assertIsNone(out1["first_position_observation_at"])
+
+        out2 = sp.evaluate_position_exit(out1, observation(observed_at=later, last_trade_price=1440.0), now=later)
+        self.assertEqual(out2["status"], "STOP_TRIGGERED")
+        self.assertEqual(out2["last_position_observation_at"], later)
+        self.assertEqual(out2["first_position_observation_at"], later)
+
+    def test_stale_observation_leaves_watermark_unchanged_then_corrected_same_timestamp_processes(self):
+        intent = entry_intent()
+        order = filled_order(intent)
+        pos = sp.create_shadow_position(intent, order, now=NOW, known_positions=[])
+        later = NOW + timedelta(seconds=5)
+        stale_obs = observation(observed_at=later, last_trade_price=1440.0, data_freshness="STALE")
+        out1 = sp.evaluate_position_exit(pos, stale_obs, now=later)
+        self.assertEqual(out1["status"], "OPEN")
+        self.assertIsNone(out1["last_position_observation_at"])
+
+        corrected_obs = observation(observed_at=later, last_trade_price=1440.0, data_freshness="OK")
+        out2 = sp.evaluate_position_exit(out1, corrected_obs, now=later)
+        self.assertEqual(out2["status"], "STOP_TRIGGERED")
+        self.assertEqual(out2["last_position_observation_at"], later)
+
+    def test_repeated_state_validation_after_future_rejection_stays_healthy(self):
+        """Blocker 3の根本症状の再現防止：future observationでwatermarkが
+        汚染されていれば、次回_validate_position_state()がfuture watermark
+        を検出してPositionをREJECTEDにしてしまっていた。"""
+        intent = entry_intent()
+        order = filled_order(intent)
+        pos = sp.create_shadow_position(intent, order, now=NOW, known_positions=[])
+        later = NOW + timedelta(seconds=5)
+        far_future = later + timedelta(days=1)
+        out1 = sp.evaluate_position_exit(pos, observation(observed_at=far_future, last_trade_price=1440.0), now=later)
+        reasons = sp._validate_position_state(out1, now=later + timedelta(seconds=1))
+        self.assertEqual(reasons, [])
+
+
+class Blocker4StatusPatternTests(unittest.TestCase):
+    """Phase 5.1.1 C-066-GPT Blocker 4: status別の正準パターンを
+    明示的に検証する（C-066-GPT required Golden #6/#7/#8/#9/#10）。"""
+
+    def test_stop_triggered_with_nonzero_exit_filled_qty_rejected(self):
+        intent = entry_intent()
+        order = filled_order(intent)
+        pos = sp.create_shadow_position(intent, order, now=NOW, known_positions=[])
+        later = NOW + timedelta(seconds=5)
+        triggered = sp.evaluate_position_exit(pos, observation(observed_at=later, last_trade_price=1440.0), now=later)
+        self.assertEqual(triggered["status"], "STOP_TRIGGERED")
+        corrupted = {**triggered, "exit_filled_qty": 10}
+        reasons = sp._validate_position_state(corrupted, now=later)
+        self.assertIn("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH", reasons)
+
+    def test_stop_exit_partial_with_zero_exit_filled_qty_rejected(self):
+        intent = entry_intent()
+        order = filled_order(intent)
+        pos = sp.create_shadow_position(intent, order, now=NOW, known_positions=[])
+        later = NOW + timedelta(seconds=5)
+        triggered = sp.evaluate_position_exit(pos, observation(observed_at=later, last_trade_price=1440.0), now=later)
+        corrupted = {**triggered, "status": "STOP_EXIT_PARTIAL"}
+        reasons = sp._validate_position_state(corrupted, now=later)
+        self.assertIn("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH", reasons)
+
+    def test_closed_target_with_stop_chronology_rejected(self):
+        intent = entry_intent()
+        order = filled_order(intent)
+        pos = sp.create_shadow_position(intent, order, now=NOW, known_positions=[])
+        later = NOW + timedelta(seconds=5)
+        closed = sp.evaluate_position_exit(pos, observation(observed_at=later, last_trade_price=1601.0), now=later)
+        self.assertEqual(closed["status"], "CLOSED")
+        self.assertEqual(closed["exit_reason"], "TARGET")
+        much_later = later + timedelta(seconds=100)
+        corrupted = {
+            **closed,
+            "stop_triggered_at": NOW + timedelta(seconds=1),
+            "first_stop_exit_fill_at": later,
+            "last_stop_exit_fill_at": later,
+        }
+        reasons = sp._validate_position_state(corrupted, now=much_later)
+        self.assertIn("REJECTED_POSITION_STOP_TRIGGERED_AT_INVALID", reasons)
+
+    def test_full_stop_lifecycle_passes_validator_at_every_step(self):
+        intent = entry_intent()
+        order = filled_order(intent)
+        pos = sp.create_shadow_position(intent, order, now=NOW, known_positions=[])
+        self.assertEqual(sp._validate_position_state(pos, now=NOW), [])
+
+        later = NOW + timedelta(seconds=5)
+        triggered = sp.evaluate_position_exit(pos, observation(observed_at=later, last_trade_price=1440.0), now=later)
+        self.assertEqual(triggered["status"], "STOP_TRIGGERED")
+        self.assertEqual(sp._validate_position_state(triggered, now=later), [])
+
+        t2 = later + timedelta(seconds=5)
+        partial = sp.evaluate_position_exit(triggered, observation(observed_at=t2, bid=1439.0, bid_qty=30), now=t2)
+        self.assertEqual(partial["status"], "STOP_EXIT_PARTIAL")
+        self.assertEqual(sp._validate_position_state(partial, now=t2), [])
+
+        t3 = t2 + timedelta(seconds=5)
+        closed = sp.evaluate_position_exit(partial, observation(observed_at=t3, bid=1438.0, bid_qty=70), now=t3)
+        self.assertEqual(closed["status"], "CLOSED")
+        self.assertEqual(closed["exit_reason"], "STOP")
+        self.assertEqual(sp._validate_position_state(closed, now=t3 + timedelta(seconds=100)), [])
+
+    def test_full_target_lifecycle_passes_validator(self):
+        intent = entry_intent()
+        order = filled_order(intent)
+        pos = sp.create_shadow_position(intent, order, now=NOW, known_positions=[])
+        later = NOW + timedelta(seconds=5)
+        closed = sp.evaluate_position_exit(pos, observation(observed_at=later, last_trade_price=1601.0), now=later)
+        self.assertEqual(closed["status"], "CLOSED")
+        self.assertEqual(closed["exit_reason"], "TARGET")
+        self.assertEqual(sp._validate_position_state(closed, now=later + timedelta(seconds=100)), [])
 
 
 class Golden17StopDisablesTargetAndEntryGrowthTests(unittest.TestCase):
