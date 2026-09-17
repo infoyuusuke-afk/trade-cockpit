@@ -97,6 +97,19 @@ class SubmitShadowOrderHappyPathTests(unittest.TestCase):
         self.assertEqual(out["requested_qty"], 100)
         self.assertEqual(out["remaining_qty"], 100)
 
+    def test_canonical_status_field_name_only(self):
+        """Phase 5.0.1 small schema correction（C-057R-GPT）: canonical field
+        名は`status`のみに統一する。`fill_status`という二重フィールドは
+        作らない。"""
+        intent = build_intent()
+        out = se.submit_shadow_order(intent, risk_decision(), ticket(intent), known_orders=[])
+        self.assertIn("status", out)
+        self.assertNotIn("fill_status", out)
+        filled = se.evaluate_shadow_fill(
+            {**out, "order_type": "MARKET"}, observation(), now=NOW, submitted_at=NOW - timedelta(seconds=5))
+        self.assertIn("status", filled)
+        self.assertNotIn("fill_status", filled)
+
 
 class DuplicateGuardTests(unittest.TestCase):
     def test_golden_2_duplicate_intent_gives_duplicate_ignored_no_double_order(self):
@@ -194,6 +207,36 @@ class LineageRejectionTests(unittest.TestCase):
         tkt = ticket(intent)
         out = se.submit_shadow_order(intent, decision, tkt, known_orders=None)
         self.assertEqual(out["status"], "REJECTED")
+
+
+class ShadowFillModelVersionBindingTests(unittest.TestCase):
+    """Phase 5.0.1 hardening Blocker 2（C-057R-GPT comment 5707963859）:
+    宣言されたshadow_fill_model_versionが、実際に呼ぶscripts/shadow_
+    fill_model.pyのFILL_MODEL_VERSIONと完全一致することを必須にする。"""
+
+    def test_hardening_golden_5_exact_version_match_gives_new(self):
+        intent = build_intent(shadow_fill_model_version=se.sfm.FILL_MODEL_VERSION)
+        out = se.submit_shadow_order(intent, risk_decision(), ticket(intent), known_orders=[])
+        self.assertEqual(out["status"], "NEW")
+
+    def test_hardening_golden_6_unknown_or_newer_or_older_version_rejected(self):
+        # build_intent()自体はshadow_fill_model_versionに非空stringしか要求しない
+        # （versionの中身までは検証しない）ため、まず正常にbuildしてからintent側だけ
+        # 改ざんして再現する（tamperしてもintent_hashは影響を受けない——hash対象外）。
+        for bad_version in ("shadow-fill-model-9.9", "shadow-fill-model-0.0", "", None, 123):
+            intent = build_intent()
+            tampered = {**intent, "shadow_fill_model_version": bad_version}
+            out = se.submit_shadow_order(tampered, risk_decision(), ticket(tampered), known_orders=[])
+            self.assertEqual(out["status"], "REJECTED", msg=f"version={bad_version!r}")
+            self.assertIn("REJECTED_SHADOW_FILL_MODEL_VERSION_MISMATCH", out["reject_reasons"],
+                           msg=f"version={bad_version!r}")
+
+    def test_hardening_golden_7_recorded_version_matches_version_actually_used(self):
+        intent = build_intent(shadow_fill_model_version=se.sfm.FILL_MODEL_VERSION)
+        out = se.submit_shadow_order(intent, risk_decision(), ticket(intent), known_orders=[])
+        self.assertEqual(out["shadow_fill_model_version"], se.sfm.FILL_MODEL_VERSION)
+        expected_id = se.compute_shadow_order_id(intent["intent_hash"], se.sfm.FILL_MODEL_VERSION)
+        self.assertEqual(out["shadow_order_id"], expected_id)
         self.assertIn("REJECTED_KNOWN_ORDERS_INVALID", out["reject_reasons"])
 
 
@@ -278,6 +321,89 @@ class EvaluateShadowFillTests(unittest.TestCase):
         self.assertEqual(duplicate["status"], "DUPLICATE_IGNORED")
         out = se.evaluate_shadow_fill(duplicate, observation(), now=NOW, submitted_at=NOW)
         self.assertEqual(out, duplicate)
+
+
+class PartialFillAccumulationTests(unittest.TestCase):
+    """Phase 5.0.1 hardening Blocker 1（C-057R-GPT comment 5707963859）:
+    複数回のobservationにまたがるpartial fillを累積し、既存fillを
+    上書き/巻き戻ししない。avg_fill_priceは数量加重平均にする。"""
+
+    def _new_market_order(self):
+        intent = build_intent(order_type="MARKET", limit_price=None)
+        return se.submit_shadow_order(intent, risk_decision(), ticket(intent), known_orders=[])
+
+    def test_hardening_golden_1_second_round_completes_to_filled(self):
+        order = self._new_market_order()
+        submitted_at = NOW - timedelta(seconds=10)
+        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW, submitted_at=submitted_at)
+        self.assertEqual(round1["status"], "PARTIAL_FILLED")
+        self.assertEqual(round1["filled_qty"], 40)
+        later = NOW + timedelta(seconds=5)
+        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask_qty=60), now=later,
+                                          submitted_at=submitted_at)
+        self.assertEqual(round2["status"], "FILLED")
+        self.assertEqual(round2["filled_qty"], 100)
+        self.assertEqual(round2["remaining_qty"], 0)
+
+    def test_hardening_golden_2_second_round_stays_partial_with_correct_total(self):
+        order = self._new_market_order()
+        submitted_at = NOW - timedelta(seconds=10)
+        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW, submitted_at=submitted_at)
+        self.assertEqual(round1["filled_qty"], 40)
+        later = NOW + timedelta(seconds=5)
+        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask_qty=20), now=later,
+                                          submitted_at=submitted_at)
+        self.assertEqual(round2["status"], "PARTIAL_FILLED")
+        self.assertEqual(round2["filled_qty"], 60)
+        self.assertEqual(round2["remaining_qty"], 40)
+
+    def test_hardening_golden_3_unusable_second_observation_does_not_roll_back_existing_fill(self):
+        order = self._new_market_order()
+        submitted_at = NOW - timedelta(seconds=10)
+        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW, submitted_at=submitted_at)
+        self.assertEqual(round1["filled_qty"], 40)
+        later = NOW + timedelta(seconds=5)
+        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, data_freshness="STALE"), now=later,
+                                          submitted_at=submitted_at)
+        self.assertEqual(round2["filled_qty"], 40)
+        self.assertEqual(round2["status"], "PARTIAL_FILLED")
+
+    def test_hardening_golden_4_quantity_weighted_average_fill_price(self):
+        order = self._new_market_order()
+        submitted_at = NOW - timedelta(seconds=10)
+        round1 = se.evaluate_shadow_fill(order, observation(ask=1500.0, ask_qty=40), now=NOW,
+                                          submitted_at=submitted_at)
+        self.assertEqual(round1["avg_fill_price"], 1500.0)
+        later = NOW + timedelta(seconds=5)
+        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask=1510.0, ask_qty=60), now=later,
+                                          submitted_at=submitted_at)
+        self.assertEqual(round2["filled_qty"], 100)
+        # (1500*40 + 1510*60) / 100 = 1506.0
+        self.assertAlmostEqual(round2["avg_fill_price"], 1506.0)
+
+    def test_new_total_filled_never_exceeds_requested_qty(self):
+        order = self._new_market_order()
+        submitted_at = NOW - timedelta(seconds=10)
+        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=90), now=NOW, submitted_at=submitted_at)
+        self.assertEqual(round1["filled_qty"], 90)
+        later = NOW + timedelta(seconds=5)
+        # 2回目のobservationがvisible qty=500（requested全量超）でも、
+        # 残数量(10)を超えてfillしない。
+        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask_qty=500), now=later,
+                                          submitted_at=submitted_at)
+        self.assertEqual(round2["filled_qty"], 100)
+        self.assertEqual(round2["remaining_qty"], 0)
+        self.assertEqual(round2["status"], "FILLED")
+
+    def test_hardening_golden_10_none_slippage_not_implicitly_converted_to_zero(self):
+        """Golden #10: downstream（evaluate_shadow_fillのmerge処理）が
+        Noneを0へ暗黙変換しない契約テスト。"""
+        order = self._new_market_order()
+        out = se.evaluate_shadow_fill(order, observation(), now=NOW, submitted_at=NOW - timedelta(seconds=5))
+        self.assertIsNone(out["slippage_yen"])
+        self.assertIsNone(out["slippage_bps"])
+        self.assertNotEqual(out["slippage_yen"], 0)
+        self.assertEqual(out["slippage_model_status"], "NOT_MODELED_V0_1")
 
 
 class RealSubmitAllowedTests(unittest.TestCase):

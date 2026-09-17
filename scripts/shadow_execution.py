@@ -30,6 +30,29 @@ networkへは直接アクセスしない。発注は一切行わない。
 ## real_submit_allowedについて
 このモジュールが返すどの辞書も`real_submit_allowed`は常にFalse固定。
 これをTrueへ変更する経路は存在しない。
+
+## Phase 5.0.1 hardening（3 blocker、C-057R-GPT comment 5707963859）
+1. **partial fillの累積（Blocker 1）**：`evaluate_shadow_fill()`は毎回
+   Fill Modelへ「まだ約定していない残数量」だけを渡し、その結果
+   （incremental fill）を既存の`filled_qty`へ加算する。複数回の
+   observationをまたぐpartial fillの累積が失われたり、既存fillが
+   巻き戻されたりしない。`avg_fill_price`は複数回のfillをまたぐ
+   数量加重平均。`new_total_filled`が`requested_qty`を超えることは
+   防御的にcapして起こさない。
+2. **shadow_fill_model_versionの完全binding（Blocker 2）**：
+   `intent.shadow_fill_model_version`が実際に呼ぶ
+   `scripts/shadow_fill_model.FILL_MODEL_VERSION`と完全一致することを
+   必須にした。不一致（欠損・非string・不明・新旧いずれのversionも）は
+   `REJECTED_SHADOW_FILL_MODEL_VERSION_MISMATCH`。将来v0.2を追加する
+   時は明示的なversion routerを実装し、暗黙fallbackはしない。
+3. **未モデル化slippageのNone化（Blocker 3）**：`scripts/shadow_fill_
+   model.py`側の対応。fill成立時も`slippage_yen`/`slippage_bps`は
+   実測/推定していない限り`None`のまま（0.0を書いて「計測したらゼロ
+   だった」と誤記録しない）。`slippage_model_status="NOT_MODELED_V0_1"`
+   を明示。
+
+canonical field名は`status`のみに統一（`fill_status`という二重
+フィールドは作らない）。
 """
 from __future__ import annotations
 
@@ -115,9 +138,15 @@ def _validate_lineage(intent, risk_decision, ticket) -> list[str]:
     if intent.get("order_type") not in ec.VALID_ORDER_TYPES:
         reasons.append("REJECTED_ORDER_TYPE_INVALID")
 
+    # Phase 5.0.1 hardening（Blocker 2、C-057R-GPT comment 5707963859）:
+    # 宣言されたshadow_fill_model_versionが、実際に呼ぶscripts/shadow_
+    # fill_model.pyのFILL_MODEL_VERSIONと完全一致することを必須にする。
+    # 不一致（欠損・非string・不明・新旧いずれのversionも）は暗黙fallback
+    # せずREJECTEDにする——将来v0.2を追加する時は明示的なversion router
+    # を実装し、ここでの暗黙一致緩和はしない。
     shadow_fill_model_version = intent.get("shadow_fill_model_version")
-    if not shadow_fill_model_version or not isinstance(shadow_fill_model_version, str):
-        reasons.append("REJECTED_SHADOW_FILL_MODEL_VERSION_MISSING")
+    if shadow_fill_model_version != sfm.FILL_MODEL_VERSION:
+        reasons.append("REJECTED_SHADOW_FILL_MODEL_VERSION_MISMATCH")
 
     try:
         recomputed = ec.compute_intent_hash(intent)
@@ -193,6 +222,7 @@ def submit_shadow_order(intent: dict, risk_decision: dict, ticket: dict, *, know
         "fill_reason": None,
         "best_bid": None, "best_ask": None, "bid_qty": None, "ask_qty": None,
         "spread_yen": None, "slippage_yen": None, "slippage_bps": None,
+        "slippage_model_status": None,
         "first_observation_at": None,
         "fill_at": None,
         "ambiguity_flags": [],
@@ -207,6 +237,13 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
     状態（FILLED/EXPIRED/REJECTED/DUPLICATE_IGNORED）からは一切再評価
     しない——自動retryは行わない（Golden #17）。新しいdictを返し、引数の
     `shadow_order`自体は書き換えない。
+
+    Phase 5.0.1 hardening（Blocker 1、C-057R-GPT comment 5707963859）:
+    Fill Modelへ渡す数量は常に「まだ約定していない残数量」であり、
+    その結果（incremental fill）を既存のfilled_qtyへ加算する。以前は
+    毎回requested_qty全量を渡し、結果でfilled_qtyを丸ごと上書きしていた
+    ため、複数回のobservationにまたがるpartial fillの累積が失われて
+    いた。avg_fill_priceは複数回のfillをまたぐ数量加重平均にする。
     """
     if not isinstance(shadow_order, dict):
         raise ValueError("shadow_order must be a dict")
@@ -216,24 +253,38 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
     side = shadow_order.get("side")
     order_type = shadow_order.get("order_type")
     requested_qty = shadow_order.get("requested_qty")
+    already_filled_qty = shadow_order.get("filled_qty") or 0
+    if not _is_finite_number(already_filled_qty) or already_filled_qty < 0:
+        already_filled_qty = 0
+    remaining_before = requested_qty - already_filled_qty if _is_finite_number(requested_qty) else 0
 
     if order_type == "MARKET":
-        result = sfm.evaluate_market_fill(side=side, requested_qty=requested_qty, observation=observation, now=now)
+        result = sfm.evaluate_market_fill(side=side, requested_qty=remaining_before, observation=observation, now=now)
     elif order_type == "LIMIT":
         result = sfm.evaluate_limit_fill(
-            side=side, requested_qty=requested_qty, limit_price=shadow_order.get("limit_price"),
+            side=side, requested_qty=remaining_before, limit_price=shadow_order.get("limit_price"),
             observation=observation, now=now, submitted_at=submitted_at,
         )
     else:
         result = sfm._base_result(observation if isinstance(observation, dict) else {}, fill_reason="ORDER_TYPE_INVALID")
 
-    filled_qty = result["filled_qty"]
-    remaining_qty = (requested_qty - filled_qty) if _is_finite_number(requested_qty) else None
+    # Fill Modelはrequested_qty=remaining_before以下しか返さない設計だが、
+    # new_total_filled > requested_qtyを絶対に起こさないよう防御的にcapする。
+    incremental_fill = max(0, min(result["filled_qty"], int(remaining_before) if remaining_before > 0 else 0))
+    new_total_filled = already_filled_qty + incremental_fill
+    remaining_qty = (requested_qty - new_total_filled) if _is_finite_number(requested_qty) else None
 
-    if result["fill_confidence"] == "UNOBSERVABLE":
-        status = "UNOBSERVABLE"
-    elif filled_qty <= 0:
-        status = "WORKING"
+    previous_avg = shadow_order.get("avg_fill_price")
+    if incremental_fill > 0 and result["avg_fill_price"] is not None:
+        if previous_avg is not None and already_filled_qty > 0:
+            avg_fill_price = (previous_avg * already_filled_qty + result["avg_fill_price"] * incremental_fill) / new_total_filled
+        else:
+            avg_fill_price = result["avg_fill_price"]
+    else:
+        avg_fill_price = previous_avg
+
+    if new_total_filled <= 0:
+        status = "UNOBSERVABLE" if result["fill_confidence"] == "UNOBSERVABLE" else "WORKING"
     elif remaining_qty is not None and remaining_qty > 0:
         status = "PARTIAL_FILLED"
     else:
@@ -242,7 +293,7 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
     ambiguity_flags = []
     if result["fill_confidence"] in ("UNCERTAIN", "PROBABLE"):
         ambiguity_flags.append(result["fill_reason"])
-    if _is_finite_number(requested_qty) and 0 < filled_qty < requested_qty:
+    if _is_finite_number(requested_qty) and 0 < new_total_filled < requested_qty:
         ambiguity_flags.append("PARTIAL_FILL")
 
     observed_at = observation.get("observed_at") if isinstance(observation, dict) else None
@@ -250,10 +301,10 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
     return {
         **shadow_order,
         "status": status,
-        "filled_qty": filled_qty,
+        "filled_qty": new_total_filled,
         "remaining_qty": remaining_qty,
         "reference_price": result["reference_price"],
-        "avg_fill_price": result["avg_fill_price"],
+        "avg_fill_price": avg_fill_price,
         "fill_confidence": result["fill_confidence"],
         "fill_reason": result["fill_reason"],
         "best_bid": result["best_bid"], "best_ask": result["best_ask"],
@@ -261,8 +312,9 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
         "spread_yen": result["spread_yen"],
         "slippage_yen": result["slippage_yen"],
         "slippage_bps": result["slippage_bps"],
+        "slippage_model_status": result["slippage_model_status"],
         "first_observation_at": shadow_order.get("first_observation_at") or observed_at,
-        "fill_at": observed_at if filled_qty > 0 else shadow_order.get("fill_at"),
+        "fill_at": observed_at if incremental_fill > 0 else shadow_order.get("fill_at"),
         "ambiguity_flags": ambiguity_flags,
         "real_submit_allowed": False,
     }

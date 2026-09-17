@@ -81,6 +81,37 @@ class MarketFillTests(unittest.TestCase):
         self.assertEqual(result["fill_reason"], "VISIBLE_QTY_ZERO")
 
 
+class SlippageNotModeledTests(unittest.TestCase):
+    """Phase 5.0.1 hardening Blocker 3（C-057R-GPT comment 5707963859）:
+    v0.1はslippageを実測/推定していないため、fill時も常にNoneのまま
+    ——0.0を「計測したらゼロだった」と誤記録しない。"""
+
+    def test_hardening_golden_8_market_full_fill_slippage_not_modeled(self):
+        obs = observation(ask_qty=500)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        self.assertEqual(result["filled_qty"], 100)
+        self.assertIsNone(result["slippage_yen"])
+        self.assertIsNone(result["slippage_bps"])
+        self.assertEqual(result["slippage_model_status"], "NOT_MODELED_V0_1")
+
+    def test_hardening_golden_8_market_partial_fill_slippage_not_modeled(self):
+        obs = observation(ask_qty=40)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        self.assertEqual(result["filled_qty"], 40)
+        self.assertIsNone(result["slippage_yen"])
+        self.assertIsNone(result["slippage_bps"])
+        self.assertEqual(result["slippage_model_status"], "NOT_MODELED_V0_1")
+
+    def test_no_fill_slippage_model_status_is_none_too(self):
+        """fillしていない場合はslippageの問い自体が成立しないため、
+        slippage_model_statusもNoneのまま（"NOT_MODELED_V0_1"にしない）。"""
+        obs = observation(ask_qty=0)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        self.assertEqual(result["filled_qty"], 0)
+        self.assertIsNone(result["slippage_yen"])
+        self.assertIsNone(result["slippage_model_status"])
+
+
 class DataQualityGuardTests(unittest.TestCase):
     """Golden #14/#15/#16: stale/missing/future/malformed/crossed data -> no fill.
     MARKET経由で代表確認する（validate_observation()はLIMITとも共通）。"""
@@ -199,6 +230,18 @@ class LimitFillTests(unittest.TestCase):
                                           observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 0)
         self.assertEqual(result["fill_confidence"], "UNOBSERVABLE")
+
+    def test_hardening_golden_9_limit_trade_through_slippage_not_modeled(self):
+        """Phase 5.0.1 Blocker 3 Golden #9: LIMIT trade-throughでも
+        未モデル化slippageはNone（limit価格の保守的fillと"slippage=0"は
+        同義ではない）。"""
+        obs = observation(observed_at=NOW, last_trade_price=1490.0)
+        result = sfm.evaluate_limit_fill(side="BUY", requested_qty=100, limit_price=1500.0,
+                                          observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
+        self.assertEqual(result["filled_qty"], 100)
+        self.assertIsNone(result["slippage_yen"])
+        self.assertIsNone(result["slippage_bps"])
+        self.assertEqual(result["slippage_model_status"], "NOT_MODELED_V0_1")
 
     def test_limit_naive_submitted_at_rejected(self):
         obs = observation(observed_at=NOW, last_trade_price=1490.0)

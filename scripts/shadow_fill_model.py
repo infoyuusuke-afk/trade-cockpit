@@ -28,12 +28,24 @@ MARKET/LIMIT entry注文について、外部から渡されたpoint-in-time
   確認済みfillに使う`CERTAIN`とは区別する）。
 - MARKETのavg_fill_priceは常にreference_price（ask/bid）と同値とし、
   v0.1では板の厚み以上のwalk-the-book slippageはモデル化しない
-  （spread_yenは出力するが、fillそのもののslippage_yen/bpsは常に0）。
+  （spread_yenは出力するが、fillそのもののslippage_yen/bpsは未モデル化
+  としてNoneのまま——詳細はPhase 5.0.1 hardening節参照）。
 - LIMITは「Shadow submit後のtrade observationのみ」を使う——
   `observation.observed_at <= submitted_at`のobservationは一切使わない。
   trade-throughで約定したとみなす場合もavg_fill_priceはlimit_price
   そのもの（trade printのより有利な価格ではなく）を使う、保守的な
   見積りとする。
+
+## Phase 5.0.1 hardening（Blocker 3、C-057R-GPT comment 5707963859）
+v0.1はL1（top-of-book）だけを見ており、MARKET partialの板walkや実約定
+slippageを一切観測していない。にもかかわらずfill成立時に
+`slippage_yen=0.0`/`slippage_bps=0.0`を書き込むと、「未モデル化」を
+「ゼロslippage」として記録してしまい、将来のCalibration Reportが
+Execution品質を過大評価する。v0.1でslippageを実測/推定していない
+ケースは常に`None`のままとし、fillが成立した場合だけ
+`slippage_model_status="NOT_MODELED_V0_1"`を明示する（fillしていない
+場合はslippageの問い自体が成立しないため`slippage_model_status`も
+`None`のまま）。
 """
 from __future__ import annotations
 
@@ -109,8 +121,12 @@ def _base_result(observation, *, reference_price=None, fill_confidence="UNOBSERV
         "bid_qty": bid_qty,
         "ask_qty": ask_qty,
         "spread_yen": spread_yen,
+        # Phase 5.0.1 hardening（Blocker 3）: v0.1はslippageを実測/推定して
+        # いないため、fillしていない限りNoneのまま——0.0を書いて「計測した
+        # 結果ゼロだった」と誤解させない。
         "slippage_yen": None,
         "slippage_bps": None,
+        "slippage_model_status": None,
     }
 
 
@@ -151,8 +167,9 @@ def evaluate_market_fill(*, side: str, requested_qty, observation: dict, now: da
         "avg_fill_price": avg_fill_price,
         "fill_confidence": "PROBABLE",
         "fill_reason": reason,
-        "slippage_yen": 0.0,
-        "slippage_bps": 0.0,
+        "slippage_yen": None,
+        "slippage_bps": None,
+        "slippage_model_status": "NOT_MODELED_V0_1",
     }
 
 
@@ -208,6 +225,7 @@ def evaluate_limit_fill(*, side: str, requested_qty, limit_price, observation: d
         **base,
         "filled_qty": filled_qty,
         "avg_fill_price": avg_fill_price,
-        "slippage_yen": 0.0,
-        "slippage_bps": 0.0,
+        "slippage_yen": None,
+        "slippage_bps": None,
+        "slippage_model_status": "NOT_MODELED_V0_1",
     }
