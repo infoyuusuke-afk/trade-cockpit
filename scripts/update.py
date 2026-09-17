@@ -2760,12 +2760,19 @@ document.addEventListener("DOMContentLoaded",()=>{
 </style>
 <link rel="stylesheet" href="theme.css?v=20260915-type4">
 <link rel="stylesheet" href="focus.css?v=20260915-power3">
+<link rel="stylesheet" href="next-theme-radar.css?v=c024-1">
+<script defer src="next-theme-radar.js?v=c024-1"></script>
 <style>.unified-mode{{margin:8px 6px 0;padding:10px 14px;border:1px solid #365267;border-radius:10px;background:#09141d;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}}.unified-mode .lamp{{width:12px;height:12px;border-radius:50%;background:#77838c;box-shadow:0 0 0 5px #77838c18}}.unified-mode.live{{border-color:#28c998;background:#082019}}.unified-mode.live .lamp{{background:#35e2ae;box-shadow:0 0 16px #35e2ae}}.unified-mode.stale{{border-color:#f0b74c}}.unified-mode strong{{font-size:16px}}.unified-mode span{{color:#a8bbc9}}.unified-mode b{{color:#fff}}.unified-mode small{{color:#a8bbc9;display:block;margin-top:2px}}@media(max-width:700px){{.unified-mode{{grid-template-columns:auto 1fr auto}}.unified-mode>b{{grid-column:3}}.unified-mode .voice-toggle{{grid-column:1/-1}}}}</style>
 <header><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／統一取引日 {quality_gate['market_date'] or '取得不能'}</div></div></header>
 <div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><button class="voice-toggle" data-voice-toggle type="button" style="padding:5px 12px;border-radius:7px">🔇 音声OFF</button><b id="unified-mode-time">—</b></div><main>
 {quality_html}
 {investor_regime_html}
 {live_focus_html}
+<section id="next-theme-radar" class="card wide" aria-label="NEXT THEME RADAR">
+ <h2>NEXT THEME RADAR｜海外発の新テーマ監視</h2>
+ <p id="next-theme-meta" class="next-theme-meta">検知ログとデータ鮮度を確認中です。</p>
+ <div id="next-theme-content">海外ニュース・市場反応を確認中です。</div>
+</section>
 {focus_dashboard}
 {watchlist_html}
 {ranking_watch_html}

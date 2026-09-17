@@ -1,0 +1,65 @@
+name: NEXT THEME RADAR C-024
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/next-theme-radar.yml"
+      - "scripts/next_theme_radar.py"
+      - "config/next_theme_radar.json"
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: trade-cockpit-writer
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync latest generated state
+        run: git pull --rebase origin main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Scan overseas news and TradingView reference data
+        run: |
+          python scripts/tradingview_screener_watch.py
+          python scripts/next_theme_radar.py
+          python -m unittest discover -s tests -p 'test_next_theme_radar.py'
+      - name: Publish C-024 result and append-only detection log
+        run: |
+          if git diff --quiet -- next_theme_radar.json data/next_theme_log.jsonl; then
+            echo "No C-024 changes to publish."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add next_theme_radar.json
+          test ! -f data/next_theme_log.jsonl || git add data/next_theme_log.jsonl
+          git commit -m "Update C-024 theme radar evidence"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          exit 1
+      - name: Keep evidence for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-theme-radar-preview
+          path: |
+            next_theme_radar.json
+            data/next_theme_log.jsonl
+          if-no-files-found: warn
+          retention-days: 30
