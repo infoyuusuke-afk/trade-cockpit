@@ -1928,6 +1928,62 @@ CI実行（run 35155993585）で成功を確認。commit
 Acceptance、Real Ledger拡張+Reconciliation、Execution Calibration
 Report、Integration Orchestrator、Small Real Execution Test。
 
+## Execution Stack Phase 4.2 hardening（Issue #18 C-054R-GPT、2026-09-17）
+
+C-054R-GPT（comment 5705359392）がPhase 4.1（387件成功）を確認した上で、
+**Phase 5にはまだ進まず**2つのblockerと1つのsmall hardening項目を指摘した。
+
+**Blocker 1（intent_created_at/signal_known_atがticketにbindされていない）**：
+canonical `intent_hash`はcreated_at/signal_known_atを対象フィールドに
+含まない（scripts/execution_contract.py `_HASH_FIELDS`参照）ため、
+ticket発行後にmutableなIntentオブジェクト側のこの2値だけを書き換えても
+hash検証をすり抜け、reconfirm時にticket ageを若く見せかけられる穴が
+あった。`evaluate_permission()`がticket発行時のこの2値を`ticket_
+fingerprint`のpayloadに含めるだけでなく、ticket dictの新フィールド
+`intent_created_at`/`signal_known_at`として明示的に保存するよう変更。
+`evaluate_reconfirmation()`は現在のIntentの値をこのticket-bound値と
+比較し、不一致なら`BLOCK_INTENT_CREATED_AT_MISMATCH`/`BLOCK_SIGNAL_
+KNOWN_AT_MISMATCH`でBLOCKする。price drift計算のticket ageも常に
+`ticket.get("intent_created_at")`（ticket-bound値）を使うよう変更し、
+mutableな`intent.get("created_at")`を直接使わないようにした。
+
+**Blocker 2（authorization_issued_atの未来値・順序異常が未検証）**：
+`check_authorization()`に`issued_at > now`（`BLOCK_AUTHORIZATION_
+ISSUED_AT_FUTURE`）と`expires_at <= issued_at`（`BLOCK_AUTHORIZATION_
+EXPIRY_BEFORE_ISSUED`）を追加。後者は従来、TTL差分が負値になり
+`> ttl_sec`判定をすり抜けてTTL超過を見逃しうる穴だった。
+`authorization_issued_at`も`ticket_fingerprint`へ含め、
+`evaluate_reconfirmation()`側はfresh_snapshotから都度読み直すことで、
+正当な再認証はfingerprint不一致→`RECONFIRM_REQUIRED`として自然に検出
+される（Blocker 1のticket-bind改ざん検出とは異なる経路として区別）。
+
+**Small hardening（open_positions_count/physical position quantityの
+離散値検証）**：`_evaluate_all_gates()`のopen_positions_countチェックへ
+整数性・非負性の検証を追加（`BLOCK_OPEN_POSITIONS_COUNT_UNKNOWN`）。
+scripts/order_guard.pyの`check_position_reconciliation()`にも
+`_is_integer_value()`ヘルパーを追加し、日本株現物CASH-only v0.1の
+physical quantityは整数のみ許可するよう変更（0.5==0.5のようにfiniteかつ
+数値として一致していてもfractionalならBLOCK）。
+
+`compute_ticket_fingerprint()`のシグネチャに`intent_created_at`/
+`signal_known_at`/`authorization_issued_at`の3つの必須keyword-only
+引数を追加し、`evaluate_permission()`・`evaluate_reconfirmation()`
+両方の呼び出し箇所を更新。
+
+`tests/test_execution_permission.py`・`tests/test_order_guard.py`に
+C-054R-GPT指定のGolden Fixturesを実装（future/順序異常authorization
+issued_at、open_positions_count負値/小数、ticket-bound created_at/
+signal_known_atの改ざん検知、正当な再認証はRECONFIRM_REQUIREDのまま
+（BLOCKにならない）ことの確認、position quantityの小数/bool値拒否）。
+commit b4f2976b9c96bd23fadc5619868c139a6f5eea1d。CI run
+35170290907で成功確認、`python -m unittest discover -s tests -v`で
+**397件全て成功（failures=0, errors=0、Phase 4.1の387件から新規10件
+追加）**。main反映済み。
+
+**未着手（Phase 5以降、変更なし）**：Shadow Execution Engine、Shadow
+Forward Acceptance、Real Ledger拡張+Reconciliation、Execution
+Calibration Report、Integration Orchestrator、Small Real Execution Test。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
