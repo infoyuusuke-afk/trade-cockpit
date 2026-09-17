@@ -2730,6 +2730,38 @@ calibration/fill-model v0.2（Phase 8/9）、Integration Orchestrator
 RssOrder、Excel注文式、broker API submit、実ポジション変更、
 `real_submit_allowed=True`。
 
+## リアルタイムTOP5チャートをTradingView Lightweight Chartsへ移行（2026-09-18）
+
+手描きSVGだったフォーカスダッシュボードのローソク足チャート（`#focus-chart`）を、
+TradingView社のオープンソースChartingライブラリ「Lightweight Charts」（Apache 2.0、
+CDN: jsdelivr、v5.2.1）へ置き換えた。TradingView Advanced Charts（無料版）は
+「公開リポジトリでの利用禁止」規約があり本リポジトリの構成（公開GitHub Pages）に
+使えないことを確認済みのため、再配布制限のないLightweight Chartsを採用。
+
+- `LightweightCharts.createChart()` + `addSeries(CandlestickSeries)` + `setData()`で描画。
+- 発動/押し目/撤退/利確1/利確2の5本の水平線は`createPriceLine()`で描画。
+  Lightweight Chartsの価格ラインはデフォルトでは自動スケールに影響しないことを
+  ローカルCDN実機テストで確認済み（遠い利確ラインで軸が潰れる旧SVGの不具合を回避）。
+  `series.applyOptions({autoscaleInfoProvider})`で発動/撤退ラインを含む可視レンジを
+  明示指定し、利確ラインのみ除外する形で旧ロジックの意図を再現。
+  可視レンジ外の利確ラインは▲/▼バッジ（HTML要素）で代替表示。
+- `daily_snapshot()`の日足チャート配列（40本）に`"t":"YYYY-MM-DD"`を新規追加
+  （従来は日付フィールドなし）。`live_focus.py`の5分足`"t":"HH:MM"`と合わせて、
+  クライアント側`toSeriesData()`/`barTime()`で両形式をLightweight Chartsの時刻値へ変換。
+  `"t"`が無い旧データ（次回パイプライン実行まで残る埋め込みJSON）は連番の日付へ
+  フォールバック合成し、空白チャートにならないようにした。
+- ローカル`.claude/static-server.ps1`＋Claude Browserでの実機確認：CDN読み込み、
+  ローソク足描画、5分/15分切替、チャートデータなし時のフォールバック表示、
+  実際にコミット済みのindex.html（"t"無し旧データ）での表示、いずれも
+  コンソールエラーなし。commit 312dbc9をmainへpush後、GitHub Actions
+  「Update Trade Cockpit」run 35287572037がGreenで完走し、実データ再生成後の
+  index.htmlに`"t"`フィールドとLightweight Charts読み込みが反映されたことを確認。
+
+キオクシア専用チャート（`kioOneMinuteChart`）は対象外（別途、軸潰れ等の不具合は
+確認されていないため今回は変更していない）。
+
+発注・シグナル生成・執行系（RssOrder、broker submit等）には一切触れていない。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
