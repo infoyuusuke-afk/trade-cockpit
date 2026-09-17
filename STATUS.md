@@ -2242,6 +2242,78 @@ protective-stop execution、profit target execution、Shadow position
 lifecycle、Real-vs-Shadow reconciliation、calibration自動更新、
 Shadow Forward promotion判定、Small Real Execution Test。
 
+## Execution Stack Phase 5.0.3 state-machine integrity hardening（Issue #18 C-060R-GPT、2026-09-17）
+
+C-060R-GPT（comment 5708645191）がPhase 5.0.2（502件成功、実コード・
+commit・Actionsログまで再確認）をACCEPTEDとした上で、**Phase 5.1が
+これらのshadow orderからShadow positionを組み立てる前に**、内部矛盾
+したterminal orderからpositionが作られうる3つの穴を指摘した。
+
+**Blocker 1（statusと数量の不整合が検証されていない）**：
+`status="FILLED"`なのに`filled_qty<requested_qty`という内部矛盾した
+terminal orderが、既存の数量チェックだけを通過してそのまま返っていた。
+`status`が`ORDER_STATUSES`に含まれることを必須にし（不明/欠損は
+`REJECTED_STATE_STATUS_INVALID`）、`NEW/ACCEPTED/WORKING/
+UNOBSERVABLE`は`filled_qty==0 かつ remaining_qty==requested_qty かつ
+avg_fill_price is None`、`PARTIAL_FILLED`は`0<filled_qty<requested_qty
+かつ remaining_qty>0 かつ avg_fill_priceがfinite positive`、`FILLED`は
+`filled_qty==requested_qty かつ remaining_qty==0 かつ avg_fill_price
+がfinite positive`を要求する（`REJECTED_STATE_STATUS_QUANTITY_
+MISMATCH`）。`EXPIRED`はpartial-expiry未実装のため専用パターンを
+新規に発明せず、既存の汎用数量検証だけを適用する。terminal状態の
+short-circuitは、この検証を通過した後にのみ行うよう順序を維持した。
+
+**Blocker 2（chronology各フィールドが検証されていない）**：
+`submitted_at`/`last_applied_observation_at`/`first_observation_at`/
+`fill_at`は今やposition構築に使われる重要なstateだが、従来検証されて
+おらず、naiveなtimestamp同士の比較が例外を投げるリスクもあった。
+`_validate_shadow_order_state()`へ`now`を渡し、`submitted_at`はaware
+必須・`<=now`、`last_applied_observation_at`はNoneまたはaware・
+存在すれば`>submitted_at かつ <=now`、`first_observation_at`はNone
+または aware・存在すれば`>submitted_at`かつ（watermarkがあれば）
+`<=last_applied_observation_at`、`fill_at`は`filled_qty==0`ならNone
+必須・`filled_qty>0`ならaware必須で`>submitted_at かつ <=now かつ
+(watermarkがあれば)<=last_applied_observation_at`を要求し、壊れて
+いれば例外を投げず`REJECTED`へfail closedする。また、submit前の
+observationが`first_observation_at`を設定してしまうbugも修正した
+（fill modelが`OBSERVATION_BEFORE_SUBMISSION`として正しく拒否した
+observationは、`first_observation_at`にも一切反映されない）。
+
+**Blocker 3（submitted_atがmutableな辞書に格納されているだけで
+immutable/boundと説明されていた）**：関数引数から`submitted_at`を
+除いただけでは、呼び出し側がshadow order辞書をclone/改変して
+`submitted_at`だけ差し替えることを防げない（Permission ticketで既に
+対応した種類の問題と同じ）。`submit_shadow_order()`が
+`submission_context_fingerprint = sha256(shadow_order_id + "|" +
+submitted_at.isoformat())`を発行時に計算・保存し、
+`evaluate_shadow_fill()`は非minimal（REJECTED/DUPLICATE_IGNORED
+以外）のshadow order評価の直前に毎回再計算・照合する。`submitted_at`
+だけ変更されfingerprintが古いままなら`REJECTED_STATE_SUBMISSION_
+CONTEXT_MISMATCH`。`shadow_order_id`自体（canonical intent_hash/
+決定論的ID）は変更していない——`submitted_at`をIDへ混ぜると同一
+Intentがtimestampごとに別IDになりduplicate検知が弱まるため、意図的に
+別フィールドにした。
+
+**テスト**：`tests/test_shadow_execution.py`にC-060R-GPT指定の
+Golden Fixturesを実装（FILLED状態のpartial/zero fill、PARTIAL_FILLED
+のfilled=0/filled=requested、不明/欠損status、既存orderの欠損/naive/
+未来submitted_at、naive/submit前/未来のlast_applied_observation_at
+（例外を投げないことを含む）、未fill状態でのfill_at存在、fill済み
+なのに欠損/naive/submit前のfill_at、submit前observationがfirst_
+observation_atを設定しないこと、submitted_at改ざん時のfingerprint
+不一致検出、健全なNEW→PARTIAL_FILLED→FILLEDの遷移が全chronology
+検証を通過し続けること）。1回目のCI実行（run 35183169313）で成功。
+`python -m unittest discover -s tests -v`で**522件全て成功
+（failures=0, errors=0、Phase 5.0.2の502件から新規20件追加）**。
+commit 32da18dd34d1bdf5f3f17ce0b8a019c7c0670fbf（本体実装）。main
+反映済み。
+
+**未着手（Phase 5.1以降、変更なし）**：RssOrder、Excel注文式、broker
+API submit、実ポジション変更、`real_submit_allowed=True`、
+protective-stop execution、profit target execution、Shadow position
+lifecycle、Real-vs-Shadow reconciliation、calibration自動更新、
+Shadow Forward promotion判定、Small Real Execution Test。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
