@@ -2385,6 +2385,113 @@ protective-stop execution、profit target execution、Shadow position
 lifecycle、Real-vs-Shadow reconciliation、calibration自動更新、
 Shadow Forward promotion判定、Small Real Execution Test。
 
+## Execution Stack Phase 5.1 Shadow Position Lifecycle + Protective Exit Model v0.1（Issue #18 C-065-GPT、2026-09-17）
+
+C-065-GPT（comment 5709773735）がPhase 5.0.4（535件成功、run
+35187719766）をACCEPTEDとした上で（C-063-GPTのmain未反映指摘は
+timing raceだったと確認済み）、Phase 5.1へGOを出した。100% Shadow、
+broker/RSS/Excel/実ポジションへの副作用は一切なし。新規
+`scripts/shadow_position.py`を実装。
+
+**canonical入力とlineage**：Positionは(1) canonical Intent、(2)
+`filled_qty>0`かつstatusが`PARTIAL_FILLED`/`FILLED`のPhase 5.0.x
+full-schema Shadow Order、(3) 明示的なaware `now`からのみ作る。
+`create_shadow_position()`は`intent_hash`を再計算して改ざん検出し、
+Shadow Order自体のstate-integrityは新設した`shadow_execution.
+validate_shadow_order_state()`（既存`_validate_shadow_order_state()`
+の公開wrapper）をそのまま再利用して弱い独自コピーを作らない。
+Intent↔Shadow Orderのlineage（intent_hash/merge_hash/symbol/side/
+requested_qty/shadow_order_id）、非空`ticket_fingerprint`/
+`order_context_fingerprint`、planned_stop/planned_targetの方向
+（BUY: stop<entry<target、SELL: stop>entry>target、
+`planned_target=None`は許容）を検証する。canonical `intent_hash`の
+`_HASH_FIELDS`は`planned_target`を含まないため、mutableな
+`Intent.planned_target`を`intent_hash`一致だけでは信頼できない——
+新設の`position_plan_fingerprint`が`position_id`/`shadow_order_id`/
+`order_context_fingerprint`/`intent_hash`/`merge_hash`/
+`ticket_fingerprint`/`symbol`/`side`/`planned_entry`/`planned_stop`/
+`planned_target`/`strategy_id`/`strategy_version`/
+`risk_policy_version`/`position_opened_at`を束縛し、
+`_validate_position_state()`が評価のたびに再計算・照合する。
+
+**position identity/state**：`position_id = sha256(shadow_order_id +
+"|shadow-position-0.1")`（決定論的、ランダムUUID不使用）。state:
+`OPEN`/`STOP_TRIGGERED`/`STOP_EXIT_PARTIAL`/`CLOSED`（+
+`REJECTED`/`DUPLICATE_IGNORED`）。同一`shadow_order_id`からの二重生成
+は`DUPLICATE_IGNORED`。`position_opened_at = shadow_order.
+first_fill_at`（最終fill時刻ではなく最初のpositive fill時刻）。
+
+**partial entry fill同期**：`sync_entry_fill()`はOPEN中のみ同一Shadow
+Orderの累積`filled_qty`/`avg_fill_price`の増加を反映し（推測で
+再計算しない）、減少/巻き戻しはfail-closed、OPEN以外へ進んだ後の
+entry増加は`entry_sync_reasons`に理由を明示して無視する（position
+自体はREJECTEDへ倒さない）。
+
+**protective stop semantics（保守的v0.1）**：`evaluate_position_exit()`
+がBUY `last_trade_price<=planned_stop`/SELL `>=planned_stop`で
+trigger。trigger観測と同一observationではfillせず（`STOP_TRIGGERED`
++`stop_triggered_at`のみ記録）、次の厳密に新しいobservationから
+`shadow_fill_model.evaluate_market_fill()`をそのまま反対側MARKET
+exitとして再利用する（`submitted_at=stop_triggered_at`をFill Model
+自身の既存gateへ渡すことでtrigger観測の除外を実現）。可視数量不足は
+`STOP_EXIT_PARTIAL`として後続観測で完了。gapは実際に観測された
+adverse BBOを使い、planned stop価格そのものは使わない。
+
+**planned target semantics**：1本のみ、`planned_target=None`は
+stop-onlyとして有効。OPEN中のみ`shadow_fill_model.
+evaluate_limit_fill()`を反対側LIMIT exitとして再利用
+（`submitted_at=position_opened_at`）——trade-throughはCERTAIN
+close、touch-onlyはUNCERTAINで確定closeにしない。STOP trigger後は
+targetロジックが構造的に到達不能（別コード分岐）になる。
+
+**position chronology/observation watermark**：Shadow Order本体とは
+別の`first_position_observation_at`/`last_position_observation_at`
+watermarkでduplicate/out-of-order observationのexit二重計上を防止。
+entry fillとexit observationが同一/巻き戻りtimestampの場合は順序を
+捏造せず`AMBIGUOUS_ENTRY_EXIT_ORDERING`で拒否する。
+
+**テスト**：`tests/test_shadow_position.py`にC-065-GPT指定の24件
+Golden Fixturesを全て実装（zero-fillは作成不可、first partial fillで
+OPEN生成、later entry fillでのqty増加、rollback/identity不一致の
+fail-closed、intent_hash改ざん検出、fingerprint欠損検出、
+`position_plan_fingerprint`によるplanned_target改ざん検出、stop/
+target方向検証、target trade-through/touch-onlyの区別、quote-only
+touchでcloseしないこと、stop trigger時の無fill、次観測でのbid/ask
+fill、gap-through-stopでの実観測BBO使用、insufficient qtyでの
+partial→完了、duplicate/out-of-order観測の二重fill防止、stale/
+future/malformed/None観測でのfill不能、stop trigger後のtarget無効化
+とentry成長ブロック、同一timestamp ambiguity、CLOSED terminal
+idempotency、BUY/SELL鏡像、決定論的position id、real_submit_allowed
+常時False、AST-based no-broker参照チェック）に加え、
+`test_shadow_execution.py`のNoBrokerReferenceTestsと同一方針の
+AST検査、既存全回帰テストを実行。
+
+**1回目のCI実行（run 35189925473）は失敗**——`_validate_position_
+state()`が`exit_filled_qty>0`ならず一律`first_stop_exit_fill_at`/
+`last_stop_exit_fill_at`をaware datetimeとして要求していたが、この
+2フィールドはSTOP経路（`STOP_TRIGGERED`以降のmarket exit）でしか
+設定されず、planned targetの一括LIMIT closeは`exit_filled_qty>0`でも
+一切設定しない。TARGET closeしたpositionを（CLOSED terminal
+idempotencyのGolden #19が要求する通り）再評価すると誤って`REJECTED`
+になっていた（575件中1件失敗）。判定条件を`exit_filled_qty`の符号
+ではなく`stop_triggered_at`の有無に付け替えて修正
+（commit e495bf298feee75db4021dbfc5dbfaeea44ba47f）。ついでに
+OPEN状態で`exit_filled_qty!=0`という矛盾した状態も明示的に
+fail-closedするhardeningを追加。**2回目のCI実行（run
+35190289268）で成功を確認**——`python -m unittest discover -s tests
+-v`で**575件全て成功（failures=0, errors=0、Phase 5.0.4の535件から
+新規40件追加）**。commit c0316d320fa545df7f7ed4af0060f25e29a5fde1
+（本体実装、`scripts/shadow_position.py`新規・
+`tests/test_shadow_position.py`新規・`scripts/shadow_execution.py`に
+公開wrapper追加）、commit e495bf298feee75db4021dbfc5dbfaeea44ba47f
+（state validation修正）。main反映済み。
+
+**未着手（Phase 6以降）**：Shadow Forward acceptance判定、
+Real-vs-Shadow reconciliation、calibration/fill-model v0.2、
+Integration Orchestrator、Small Real Execution Test、RssOrder、
+Excel注文式、broker API submit、実ポジション変更、
+`real_submit_allowed=True`。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
