@@ -171,6 +171,7 @@ def main() -> None:
             "（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。"
         ),
         "rankings": rankings,
+        "scan_rows": rows if error is None else [],
         "error": error,
     }
     OUT_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
