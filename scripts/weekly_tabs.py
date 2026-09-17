@@ -119,6 +119,8 @@ def tabs_block() -> str:
 .cockpit-tabs{{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:8px;padding:10px;background:#07111fdd;backdrop-filter:blur(10px);overflow-x:auto}}
 .cockpit-brand{{display:flex;align-items:baseline;gap:7px;padding-right:6px;margin-right:2px;border-right:1px solid #2a3f56;font-weight:800;font-size:15px;letter-spacing:-.01em;color:#fff;white-space:nowrap}}
 .cockpit-brand small{{font-size:10px;font-weight:700;color:#52e0c4;background:#0d2a24;border:1px solid #1f5a49;padding:2px 6px;border-radius:5px;letter-spacing:0}}
+.cockpit-brand small.status-warn{{color:#1a1400;background:#ffe66d;border-color:#c9a233}}
+.cockpit-brand small.status-error{{color:#fff;background:#7a1f26;border-color:#ff6262}}
 .cockpit-tab{{border:1px solid #35506d;background:#102238;color:#b9cbe0;border-radius:10px;padding:10px 16px;font-weight:700;white-space:nowrap;cursor:pointer}}
 .cockpit-tab.active{{color:#07111f;background:#52e0c4;border-color:#52e0c4}}
 .cockpit-tab.event-alert{{color:#fff;background:#9f2936;border-color:#ff6c78;box-shadow:0 0 0 2px #ff6c7833}}
@@ -128,7 +130,7 @@ def tabs_block() -> str:
 .weekly-grid>div{{background:#0c1b2d;border:1px solid #243b55;border-radius:12px;padding:14px}}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
- <span class="cockpit-brand">AIトレードコクピット<small>Ver.5.2</small></span>
+ <span class="cockpit-brand">AIトレードコクピット<small id="cockpit-status">Ver.5.2</small></span>
  <button class="cockpit-tab active" data-tab="ms2-live">LIVE売買</button>
  <button class="cockpit-tab" data-tab="overnight">オーバーナイトTOP5</button>
  <button class="cockpit-tab" data-tab="swing">スイングTOP5</button>
@@ -192,6 +194,23 @@ document.addEventListener("DOMContentLoaded",()=>{{
  fetch("event_calendar.json?t="+Date.now()).then(r=>r.json()).then(d=>{{
    const b=document.querySelector('.cockpit-tab[data-tab="events"]');
    if(d.today_level!=="通常"){{b.classList.add("event-alert");b.textContent="⚠ 注意アラート";}}
+ }}).catch(()=>{{}});
+ fetch("signals.json?t="+Date.now()).then(r=>r.json()).then(d=>{{
+   const badge=document.getElementById("cockpit-status"); if(!badge)return;
+   const todayJst=new Intl.DateTimeFormat("en-CA",{{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}}).format(new Date());
+   const nowHm=new Intl.DateTimeFormat("en-GB",{{timeZone:"Asia/Tokyo",hour:"2-digit",minute:"2-digit",hour12:false}}).format(new Date());
+   const weekdayJst=new Intl.DateTimeFormat("en-US",{{timeZone:"Asia/Tokyo",weekday:"short"}}).format(new Date());
+   const isWeekend=weekdayJst==="Sat"||weekdayJst==="Sun";
+   const updatedAt=String(d.updated_at||"");
+   const isToday=updatedAt.slice(0,10)===todayJst;
+   let cls="status-ok",title="正常稼働中／最終更新 "+(updatedAt||"不明");
+   if(!isToday&&!isWeekend){{
+     if(nowHm<"08:20"){{cls="status-warn";title="本日の初回更新前（前営業日分を表示中）／最終更新 "+(updatedAt||"不明");}}
+     else{{cls="status-error";title="更新停止の疑い／最終更新 "+(updatedAt||"不明");}}
+   }}
+   badge.classList.remove("status-ok","status-warn","status-error");
+   badge.classList.add(cls);
+   badge.title=title;
  }}).catch(()=>{{}});
 }});
 </script>
