@@ -104,8 +104,7 @@ def evaluate(theme, events, observations, screener, now, previous=None):
                        "relative_volume": rvol if tv_fresh else None,
                        "turnover_yen": round(price * volume) if reaction else None})
     responders = [s for s in stocks if s["market_reaction_verified"]]
-    first_seen = parse_time((previous or {}).get("first_seen")) or min(
-        (parse_time(e.get("published_at")) for e in matched), default=None)
+    first_seen = (parse_time((previous or {}).get("first_seen")) or now) if matched else None
     money_ratio = observations.get("turnover_vs_baseline") if obs_fresh else None
     peg_deviation = observations.get("peg_deviation_pct") if obs_fresh else None
     money_ok = (isinstance(money_ratio, (int, float)) and money_ratio >= 3) or (
@@ -144,7 +143,7 @@ def evaluate(theme, events, observations, screener, now, previous=None):
 def run(now, config, events, observations, screener, previous):
     results = [evaluate(t, events.get(t["id"], []), observations.get(t["id"], {}),
                         screener, now, (previous or {}).get(t["id"])) for t in config["themes"]]
-    return {"schema_version": "next-theme-radar-0.1", "updated_at": now.isoformat(),
+    return {"schema_version": "next-theme-radar-0.2", "updated_at": now.isoformat(),
             "source_note": "ニュース集約RSSは一次資料ではない。価格・資金流入は取得済み証拠だけで採点。",
             "themes": results, "trading_enabled": False, "real_submit_allowed": False}
 
@@ -164,7 +163,8 @@ def main():
     old_path = ROOT / "next_theme_radar.json"
     try:
         old = json.loads(old_path.read_text(encoding="utf-8"))
-        previous = {t["theme_id"]: t for t in old.get("themes", [])}
+        previous = ({t["theme_id"]: t for t in old.get("themes", [])}
+                    if old.get("schema_version") == "next-theme-radar-0.2" else {})
     except (FileNotFoundError, ValueError):
         old = {}
         previous = {}
@@ -183,7 +183,8 @@ def main():
     screener = load(ROOT / "tradingview_screener_watch.json")
     report = run(now, config, events, observations, screener, previous)
     def identity(item):
-        return (item.get("status"), item.get("score"), item.get("last_event_at"),
+        return (item.get("status"), item.get("score"), item.get("first_seen"),
+                item.get("last_event_at"),
                 item.get("reacting_stock_count"), item.get("evidence"))
     unchanged = all(identity(item) == identity(previous.get(item["theme_id"], {}))
                     for item in report["themes"])
@@ -200,6 +201,7 @@ def main():
                 log.write(json.dumps({"detected_at": now.isoformat(), "theme_id": item["theme_id"],
                                       "status": item["status"], "score": item["score"],
                                       "score_breakdown": item["score_breakdown"],
+                                      "first_seen": item["first_seen"],
                                       "last_event_at": item["last_event_at"],
                                       "reacting_stock_count": item["reacting_stock_count"],
                                       "evidence": item["evidence"]}, ensure_ascii=False) + "\n")
