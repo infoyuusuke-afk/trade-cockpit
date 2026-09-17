@@ -2492,6 +2492,119 @@ Integration Orchestrator、Small Real Execution Test、RssOrder、
 Excel注文式、broker API submit、実ポジション変更、
 `real_submit_allowed=True`。
 
+## Execution Stack Phase 5.1.1 hardening（Issue #18 C-066-GPT、2026-09-17）
+
+C-066-GPT（comment 5710232677）がPhase 5.1のcore architecture（正の
+partial/full entry fill→1件のdeterministic position、
+`position_opened_at=first_fill_at`、OPEN中のpartial entry成長、
+protective stop trigger、次観測でのmarket-style stop exit、partial
+stop exit、保守的なtarget trade-through/touch semantics、BUY/SELL
+symmetry、`position_plan_fingerprint`によるplan改ざん検出、
+`shadow_execution.validate_shadow_order_state()`の再利用、
+`real_submit_allowed`常時False、no broker/RSS/Excel/network/Real
+ledger I/O、CI run 35190289268 Green・575件成功）をACCEPTEDとした
+上で、Phase 6開始前に塞ぐべき4つのlifecycle-integrity blockerを
+指摘した。**Phase 5.1.1 hardeningのみ実装。Phase 6・RssOrder・
+Excel発注・broker submit・実ポジション変更には一切着手していない**。
+
+**Blocker 1（entry-fill同期のlineage binding不足）**：
+`sync_entry_fill()`は従来`shadow_order_id`のみを照合していたが、
+canonical `shadow_order_id = sha256(intent_hash + "|"
++ shadow_fill_model_version)`は`merge_hash`を対象に含まない
+（Phase 4.3で意図的に`_HASH_FIELDS`から除外——Phase 5.0.4の
+`order_context_fingerprint`が別フィールドとして束縛する設計）。
+そのため、同一`intent_hash`だが異なる`merge_hash`/
+`ticket_fingerprint`を持つ独立した有効Shadow Order stateが同じ
+`shadow_order_id`を共有しうる（`submit_shadow_order()`の
+lineage検証は`merge_hash`が3者一致していることしか要求せず、
+`intent_hash`自体は`merge_hash`非依存で同一になりうるため）。
+新設の`_ENTRY_SYNC_IDENTITY_FIELDS`（`shadow_order_id`/
+`order_context_fingerprint`/`intent_hash`/`merge_hash`/
+`ticket_fingerprint`/`symbol`/`side`/`requested_qty`/
+`shadow_fill_model_version`の9フィールド）がPosition生成時に保存した
+値と完全一致することを要求し、不一致は数量・時刻を一切変更せず
+`REJECTED_SHADOW_ORDER_IDENTITY_MISMATCH`でblockする。
+`create_shadow_position()`も`requested_qty`/
+`shadow_fill_model_version`をPositionへ新たに保存する。
+
+**Blocker 2（entry-fill chronologyが前進を要求していない）**：
+cumulative fill増加を受け付ける際、従来incoming
+`shadow_order.last_fill_at`が`timezone-aware`でありさえすれば
+そのままPosition側`last_entry_fill_at`を上書きしており、既存値より
+前進していることを要求していなかった。`sync_entry_fill()`は
+incoming `first_fill_at`が`position_opened_at`と一致し、incoming
+`last_fill_at`が既存`last_entry_fill_at`より厳密に新しいことを
+要求するよう変更（`REJECTED_ENTRY_FILL_FIRST_FILL_AT_MISMATCH`/
+`REJECTED_ENTRY_FILL_NOT_FORWARD`）。満たさなければPositionの
+数量・時刻を一切変更しない。
+
+**Blocker 3（stale/future observationがwatermarkを汚染する）**：
+`evaluate_position_exit()`は従来`observed_at`がtimezone-awareで
+ありさえすれば`shadow_fill_model.validate_observation()`の
+data-quality gateを通す前にPosition観測watermark
+（`first_position_observation_at`/`last_position_observation_at`）を
+前進させていた。FUTURE observationが到達すると、stop/targetは
+正しくfillしないもののwatermarkだけ未来timestampへ前進し、次回
+`_validate_position_state()`呼び出しでfuture watermarkが検出されて
+Positionごと`REJECTED`へ倒れる欠陥があった（STALE observationも
+同様にtimestampを消費してしまい、同一timestampの訂正済み
+observationがduplicate扱いされる恐れがあった）。
+`evaluate_position_exit()`は`validate_observation()`を最初に実行し、
+data-quality gateを通過したobservationだけがwatermark前進・
+fill評価の対象になるよう順序を変更した——STALE/MISSING/FUTURE/
+malformedなobservationはPosition chronologyを一切変更せず、
+具体的な理由コード（`OBSERVATION_FRESHNESS_STALE`等）を
+`fill_reason`に記録するのみで即座に返す。
+
+**Blocker 4（status別の不変条件が不完全）**：従来の検証は数量の
+算術的整合性と`OPEN`/`CLOSED`の基本パターンしか見ておらず、到達
+不可能な組み合わせ（`STOP_TRIGGERED`で`exit_filled_qty>0`、
+`STOP_EXIT_PARTIAL`で`exit_filled_qty==0`、内部的にconsistentな
+stop trigger chronologyを持つ`CLOSED`+`exit_reason="TARGET"`——
+target logicはstop trigger後構造的に到達不能だが、forgeされた
+レコードなら通過しえた）を通過させていた。
+`_validate_position_state()`へstatus別の正準パターン（`OPEN`:
+`exit_filled_qty==0`；`STOP_TRIGGERED`: `exit_filled_qty==0`かつ
+`current_qty==entry_filled_qty_seen`かつ`avg_exit_price is None`；
+`STOP_EXIT_PARTIAL`: `0<exit_filled_qty<entry_filled_qty_seen`かつ
+`0<current_qty<entry_filled_qty_seen`；`CLOSED`: `current_qty==0`
+かつ`exit_filled_qty==entry_filled_qty_seen`）を追加し、
+`CLOSED`+`exit_reason="TARGET"`が`stop_triggered_at`を一切
+持たないことをクロスチェックする条件を`stop_triggered_at`の
+検証ブロックへ追加した。既存値を推測補正せず、いずれの違反も
+fail-closedで`REJECTED_POSITION_STATUS_QUANTITY_MISMATCH`/
+`REJECTED_POSITION_STOP_TRIGGERED_AT_INVALID`へ倒す。
+
+**テスト**：`tests/test_shadow_position.py`へ4つの新規テストクラス
+（`Blocker1EntrySyncLineageBindingTests`・
+`Blocker2EntryFillChronologyForwardTests`・
+`Blocker3ObservationWatermarkGateTests`・
+`Blocker4StatusPatternTests`）を追加し、C-066-GPT指定の12件Golden
+Fixturesを全て実装（同一`shadow_order_id`だが異なる
+`merge_hash`/`ticket_fingerprint`を持つstateはPosition成長に
+使えないこと、`last_fill_at`が前進しない/`first_fill_at`が
+一致しないcumulative fill増加はblockされchronologyが変化しない
+こと、正当な前進成長は引き続き適用されること、FUTURE
+observationはwatermarkを変えず後続の正当なobservationは正常に
+処理されること、STALE observationはwatermarkを変えず同一
+timestampの訂正版が失われないこと、`STOP_TRIGGERED`+
+`exit_filled_qty>0`と`STOP_EXIT_PARTIAL`+`exit_filled_qty==0`が
+共に拒否されること、forgeされた`CLOSED`+`TARGET`+stop
+chronologyが拒否されること、健全なOPEN→STOP_TRIGGERED→
+STOP_EXIT_PARTIAL→CLOSED/STOPとOPEN→CLOSED/TARGETの両lifecycleが
+各ステップでvalidatorを通過し続けること）に加え、既存全回帰
+テストとno-broker AST検査を実行。1回目のCI実行（run
+35192222715）で成功。`python -m unittest discover -s tests -v`で
+**588件全て成功（failures=0, errors=0、Phase 5.1の575件から
+新規13件追加）**。commit 7aa7cb9f1bdd8a3011329be0d3e4e1eb3670711f。
+main反映済み。
+
+**未着手（Phase 6以降、変更なし）**：Shadow Forward acceptance判定、
+Real-vs-Shadow reconciliation、calibration/fill-model v0.2、
+Integration Orchestrator、Small Real Execution Test、RssOrder、
+Excel注文式、broker API submit、実ポジション変更、
+`real_submit_allowed=True`。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
