@@ -35,6 +35,8 @@ jobs:
           python scripts/tradingview_screener_watch.py
           python scripts/next_theme_radar.py
           python -m unittest discover -s tests -p 'test_next_theme_radar.py'
+      - name: Discard reference snapshot generated only for this scan
+        run: git restore -- tradingview_screener_watch.json
       - name: Publish C-024 result and append-only detection log
         run: |
           if git diff --quiet -- next_theme_radar.json data/next_theme_log.jsonl; then
