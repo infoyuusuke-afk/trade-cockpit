@@ -25,6 +25,7 @@ def base_kwargs(**overrides):
         risk_policy_version="risk-v0.1",
         execution_policy_version="exec-v0.1",
         shadow_fill_model_version="shadow-v0.1",
+        merge_hash="m" * 64,
     )
     kwargs.update(overrides)
     return kwargs
@@ -104,6 +105,24 @@ class BuildIntentValidationTests(unittest.TestCase):
             ec.build_intent(**base_kwargs(strategy_id=""))
         with self.assertRaises(ValueError):
             ec.build_intent(**base_kwargs(symbol=""))
+
+    def test_merge_hash_is_required_non_empty_string(self):
+        """Phase 4.3 lineage hardening（C-055R-GPT）Golden #3: merge_hashが
+        missing/empty/non-stringならbuild_intent()自体がreject。"""
+        kwargs = base_kwargs()
+        del kwargs["merge_hash"]
+        with self.assertRaises(TypeError):
+            ec.build_intent(**kwargs)
+        with self.assertRaises(ValueError):
+            ec.build_intent(**base_kwargs(merge_hash=""))
+        with self.assertRaises(ValueError):
+            ec.build_intent(**base_kwargs(merge_hash=None))
+        with self.assertRaises(ValueError):
+            ec.build_intent(**base_kwargs(merge_hash=12345))
+
+    def test_merge_hash_is_stored_on_intent(self):
+        intent = ec.build_intent(**base_kwargs(merge_hash="deadbeef" * 8))
+        self.assertEqual(intent["merge_hash"], "deadbeef" * 8)
 
     def test_limit_order_missing_limit_price_rejected(self):
         with self.assertRaises(ValueError):
@@ -200,6 +219,14 @@ class IntentHashDeterminismTests(unittest.TestCase):
         b = ec.build_intent(**base_kwargs(planned_target=1999.0, risk_policy_version="risk-v9.9",
                                             shadow_fill_model_version="shadow-v9.9",
                                             signal_known_at="2026-09-17T09:00:00+09:00"))
+        self.assertEqual(a["intent_hash"], b["intent_hash"])
+
+    def test_merge_hash_change_does_not_affect_intent_hash(self):
+        """Phase 4.3 lineage hardening（C-055R-GPT）Golden #6: merge_hashは
+        canonical intent_hashの対象フィールドではないため、値を変えても
+        同一order-contentならintent_hashは変化しない（回帰テスト）。"""
+        a = ec.build_intent(**base_kwargs(merge_hash="m" * 64))
+        b = ec.build_intent(**base_kwargs(merge_hash="n" * 64))
         self.assertEqual(a["intent_hash"], b["intent_hash"])
 
     def test_block_reasons_order_does_not_affect_hash(self):

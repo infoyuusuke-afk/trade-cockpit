@@ -83,6 +83,20 @@ canonical pipeline:
    （`BLOCK_OPEN_POSITIONS_COUNT_UNKNOWN`）。physical position quantityの
    離散値検証はscripts/order_guard.pyの`check_position_reconciliation()`
    側で対応（整数のみ許可）。
+
+## Phase 4.3 lineage hardening（C-055R-GPT comment 5707245444）
+Conflict Resolver由来の`merge_hash`は、symbol/side/qty/policy_versionが
+一致していても「このIntentの元scenarioのものである」ことまでは保証しない
+——RiskDecision側のmerge_hashが非空でありさえすれば、別scenarioのPASS済み
+RiskDecisionが誤って別Intentへcross-wireされてもlineage checkを通過し
+うる穴があった。scripts/execution_contract.pyの`build_intent()`へ必須
+非空stringの`merge_hash`を追加（canonical `_HASH_FIELDS`には追加しない）
+した上で、`_evaluate_all_gates()`が`intent.merge_hash == risk_decision.
+merge_hash`の完全一致を検証し、不一致なら`BLOCK_RISK_LINEAGE_MISMATCH`
+でfail closedする。ticketにも一致確認後の値を`merge_hash`として保存し、
+`evaluate_reconfirmation()`は現在のIntent・ticket-bound値・現在の
+RiskDecisionの3者一致を再確認（`BLOCK_INTENT_MERGE_HASH_MISMATCH`/
+`BLOCK_RISK_DECISION_MERGE_HASH_MISMATCH`）してからfingerprintを見る。
 """
 from __future__ import annotations
 
@@ -373,6 +387,12 @@ def _evaluate_all_gates(intent: dict, risk_decision: dict, snapshot: dict, polic
             reasons.append("BLOCK_RISK_LINEAGE_MISMATCH")
         if not _non_empty_str(risk_decision.get("merge_hash")):
             reasons.append("BLOCK_MERGE_HASH_INVALID")
+        elif intent.get("merge_hash") != risk_decision.get("merge_hash"):
+            # Phase 4.3 lineage hardening（C-055R-GPT）: RiskDecisionのmerge_hashが
+            # 非空でも、それがこのIntentの元scenarioのものとは限らない。symbol/side/
+            # qty/policy_versionが一致していてもmerge_hash不一致ならcross-wireを疑い
+            # fail closedする。
+            reasons.append("BLOCK_RISK_LINEAGE_MISMATCH")
 
     if snapshot.get("conflict_state") not in ("PASS", "CANDIDATE_READY"):
         reasons.append("BLOCK_CONFLICT_STATE_NOT_PASS")
@@ -493,10 +513,15 @@ def evaluate_permission(intent: dict, risk_decision: dict, snapshot: dict, polic
     intent_created_at = intent.get("created_at")
     signal_known_at = intent.get("signal_known_at")
     authorization_issued_at = snapshot.get("authorization_issued_at")
+    # Phase 4.3 lineage hardening（C-055R-GPT）: _evaluate_all_gates()で
+    # intent.merge_hash == risk_decision.merge_hashが既に確認済みなので、
+    # ここから先はIntent側の値をticket-boundの単一の正とする（両者が
+    # 一致した後の値へ統一し、以後はこれだけを信頼する）。
+    merge_hash = intent.get("merge_hash")
 
     fingerprint = compute_ticket_fingerprint(
         intent_hash=intent["intent_hash"],
-        merge_hash=risk_decision.get("merge_hash"),
+        merge_hash=merge_hash,
         risk_policy_version=risk_decision.get("policy_version"),
         allowed_qty=risk_decision.get("allowed_qty"),
         intent_created_at=intent_created_at, signal_known_at=signal_known_at,
@@ -510,13 +535,15 @@ def evaluate_permission(intent: dict, risk_decision: dict, snapshot: dict, polic
     # Phase 4.2 hardening（C-054R-GPT Blocker 1）: intent_created_at /
     # signal_known_atをticketの安全コンテキストへdeterministicにbindする。
     # reconfirm時はこのticket-bound値だけを信頼し、mutableなIntent側の
-    # 現在値でticket ageを若く見せかけられないようにする。
+    # 現在値でticket ageを若く見せかけられないようにする。Phase 4.3で
+    # merge_hashも同じ扱いに揃えた。
     return {
         **base,
         "permission_status": "ORDER_TICKET_READY",
         "ticket_fingerprint": fingerprint,
         "intent_created_at": intent_created_at,
         "signal_known_at": signal_known_at,
+        "merge_hash": merge_hash,
     }
 
 
@@ -565,6 +592,16 @@ def evaluate_reconfirmation(intent: dict, risk_decision: dict, ticket: dict, fre
         binding_reasons.append("BLOCK_INTENT_CREATED_AT_MISMATCH")
     if intent.get("signal_known_at") != ticket.get("signal_known_at"):
         binding_reasons.append("BLOCK_SIGNAL_KNOWN_AT_MISMATCH")
+    # Phase 4.3 lineage hardening（C-055R-GPT）: ticket発行時にbindしたmerge_hashと、
+    # 現在のIntent・現在のRiskDecisionそれぞれのmerge_hashの3者一致を再確認する。
+    # canonical intent_hashにmerge_hashは含まれないため、ticket発行後にIntent側/
+    # RiskDecision側どちらかのmerge_hashだけを別scenarioのものへ差し替えても
+    # hash一致検証はすり抜ける——ここで明示的にBLOCKする。
+    if intent.get("merge_hash") != ticket.get("merge_hash"):
+        binding_reasons.append("BLOCK_INTENT_MERGE_HASH_MISMATCH")
+    risk_decision_merge_hash = risk_decision.get("merge_hash") if isinstance(risk_decision, dict) else None
+    if risk_decision_merge_hash != ticket.get("merge_hash"):
+        binding_reasons.append("BLOCK_RISK_DECISION_MERGE_HASH_MISMATCH")
     if binding_reasons:
         return {**base, "reconfirm_status": "BLOCKED", "block_reasons": sorted(set(binding_reasons))}
 
@@ -597,7 +634,7 @@ def evaluate_reconfirmation(intent: dict, risk_decision: dict, ticket: dict, fre
     # ticket-bind（上のBlocker 1チェック）とは別の意図（Blocker 2）。
     fresh_fingerprint = compute_ticket_fingerprint(
         intent_hash=intent["intent_hash"],
-        merge_hash=risk_decision.get("merge_hash"),
+        merge_hash=ticket.get("merge_hash"),
         risk_policy_version=risk_decision.get("policy_version"),
         allowed_qty=risk_decision.get("allowed_qty"),
         intent_created_at=ticket.get("intent_created_at"), signal_known_at=ticket.get("signal_known_at"),

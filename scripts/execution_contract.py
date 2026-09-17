@@ -140,6 +140,7 @@ def build_intent(
     risk_policy_version: str,
     execution_policy_version: str,
     shadow_fill_model_version: str,
+    merge_hash: str,
     limit_price: Optional[float] = None,
     planned_entry: Optional[float] = None,
     planned_stop: Optional[float] = None,
@@ -148,6 +149,14 @@ def build_intent(
     """Execution Intentを1件組み立てる純粋関数。不正な入力はValueErrorで拒否し、
     推測で補完しない。real_submit_allowedは引数として受け付けない
     （常にFalse固定でレコードへ書き込む）。
+
+    Phase 4.3 lineage hardening（C-055R-GPT comment 5707245444）:
+    `merge_hash`はConflict Resolver由来のRiskDecisionからそのままIntentへ
+    引き継ぐ必須非空string。canonical `intent_hash`の対象フィールド
+    （`_HASH_FIELDS`）には追加しない——Phase 4のexecution_permission.pyが
+    `intent.merge_hash == risk_decision.merge_hash`を照合し、Intent↔
+    RiskDecisionのlineageが正しく結合されているかをここで検証する
+    （このモジュール自体はlineage検証をしない、値を運ぶだけ）。
     """
     if not symbol or not isinstance(symbol, str):
         raise ValueError("symbol is required and must be a non-empty string")
@@ -171,6 +180,7 @@ def build_intent(
         ("risk_policy_version", risk_policy_version),
         ("execution_policy_version", execution_policy_version),
         ("shadow_fill_model_version", shadow_fill_model_version),
+        ("merge_hash", merge_hash),
     ):
         if not value or not isinstance(value, str):
             raise ValueError(f"{name} is required and must be a non-empty string")
@@ -196,6 +206,7 @@ def build_intent(
         "risk_policy_version": risk_policy_version,
         "execution_policy_version": execution_policy_version,
         "shadow_fill_model_version": shadow_fill_model_version,
+        "merge_hash": merge_hash,
         "status": "CREATED",
         "block_reasons": [],
         "real_submit_allowed": False,

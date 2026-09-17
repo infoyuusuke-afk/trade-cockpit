@@ -41,7 +41,7 @@ def build_intent(**overrides):
         strategy_id="day_ifo_long", strategy_version="1.0",
         decision_snapshot_id="snap-1", signal_known_at="2026-09-17T08:55:00+09:00",
         risk_policy_version="risk-gate-0.1.0", execution_policy_version="exec-v0.1",
-        shadow_fill_model_version="shadow-v0.1",
+        shadow_fill_model_version="shadow-v0.1", merge_hash="m" * 64,
     )
     kwargs.update(overrides)
     intent = ec.build_intent(**kwargs)
@@ -203,6 +203,31 @@ class RiskLineageTests(unittest.TestCase):
         out = evaluate(snap=snapshot(conflict_state=None))
         self.assertEqual(out["permission_status"], "BLOCKED")
         self.assertIn("BLOCK_CONFLICT_STATE_NOT_PASS", out["block_reasons"])
+
+
+class MergeHashLineageTests(unittest.TestCase):
+    """Phase 4.3 lineage hardening（C-055R-GPT comment 5707245444）: symbol/side/
+    qty/policy_versionが一致していても、merge_hashそのものが一致しなければ
+    このIntentの元scenarioのRiskDecisionとは言えない（cross-wire対策）。"""
+
+    def test_golden_1_matching_merge_hash_gives_order_ticket_ready(self):
+        out = evaluate()
+        self.assertEqual(out["permission_status"], "ORDER_TICKET_READY")
+        self.assertEqual(out["merge_hash"], "m" * 64)
+
+    def test_golden_2_same_lineage_fields_but_different_merge_hash_blocks(self):
+        """symbol/side/qty/policy_versionは一致するがmerge_hashだけ別scenario
+        のものへcross-wireされたケース。"""
+        out = evaluate(decision=risk_decision(merge_hash="z" * 64))
+        self.assertEqual(out["permission_status"], "BLOCKED")
+        self.assertIn("BLOCK_RISK_LINEAGE_MISMATCH", out["block_reasons"])
+
+    def test_golden_3_intent_merge_hash_missing_or_non_string_blocks(self):
+        for bad_value in (None, "", 12345):
+            tampered = {**build_intent(), "merge_hash": bad_value}
+            out = evaluate(tampered)
+            self.assertEqual(out["permission_status"], "BLOCKED", msg=f"merge_hash={bad_value!r}")
+            self.assertIn("BLOCK_RISK_LINEAGE_MISMATCH", out["block_reasons"])
 
 
 class MasterKillTests(unittest.TestCase):
@@ -692,6 +717,33 @@ class ReconfirmationTests(unittest.TestCase):
         intent, decision, ticket = self._ready_ticket()
         self.assertEqual(ticket["intent_created_at"], intent["created_at"])
         self.assertEqual(ticket["signal_known_at"], intent["signal_known_at"])
+
+    # --- Phase 4.3 lineage hardening（C-055R-GPT）: merge_hashの3者bind ---
+    def test_golden_26_intent_merge_hash_tamper_after_ticket_ready_blocks_reconfirm(self):
+        """Golden #4: ticket発行後にIntentオブジェクトのmerge_hashだけ書き換え
+        ても（merge_hashはintent_hashの対象フィールドではないためhash検証は
+        すり抜ける）、ticket-bound値との不一致でBLOCKされることを確認する。"""
+        intent, decision, ticket = self._ready_ticket()
+        tampered_intent = {**intent, "merge_hash": "z" * 64}
+        out = ep.evaluate_reconfirmation(tampered_intent, decision, ticket, self._fresh_snapshot(),
+                                          POLICY, now=NOW + timedelta(seconds=2))
+        self.assertEqual(out["reconfirm_status"], "BLOCKED")
+        self.assertIn("BLOCK_INTENT_MERGE_HASH_MISMATCH", out["block_reasons"])
+
+    def test_golden_27_risk_decision_merge_hash_tamper_after_ticket_ready_blocks_reconfirm(self):
+        """Golden #5: ticket発行後にRiskDecision側のmerge_hashだけ差し替え
+        られた場合もBLOCK。"""
+        intent, decision, ticket = self._ready_ticket()
+        tampered_decision = {**decision, "merge_hash": "z" * 64}
+        out = ep.evaluate_reconfirmation(intent, tampered_decision, ticket, self._fresh_snapshot(),
+                                          POLICY, now=NOW + timedelta(seconds=2))
+        self.assertEqual(out["reconfirm_status"], "BLOCKED")
+        self.assertIn("BLOCK_RISK_DECISION_MERGE_HASH_MISMATCH", out["block_reasons"])
+
+    def test_ticket_stores_merge_hash(self):
+        intent, decision, ticket = self._ready_ticket()
+        self.assertEqual(ticket["merge_hash"], intent["merge_hash"])
+        self.assertEqual(ticket["merge_hash"], decision["merge_hash"])
 
 
 class DeterminismTests(unittest.TestCase):
