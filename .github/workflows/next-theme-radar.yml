@@ -1,0 +1,33 @@
+name: NEXT THEME RADAR C-024 preview
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Scan overseas news and TradingView reference data
+        run: |
+          python scripts/tradingview_screener_watch.py
+          python scripts/next_theme_radar.py
+          python -m unittest discover -s tests -p 'test_next_theme_radar.py'
+      - name: Keep evidence for review without publishing
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-theme-radar-preview
+          path: |
+            next_theme_radar.json
+            data/next_theme_log.jsonl
+          if-no-files-found: warn
+          retention-days: 30
