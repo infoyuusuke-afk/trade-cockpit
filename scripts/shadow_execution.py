@@ -80,6 +80,56 @@ C-060-GPT comment 5708285624）
    finite positiveであること、`shadow_fill_model_version`一致、
    `real_submit_allowed is False`を検証し、いずれか1つでも違反すれば
    既存値を推測補正せず`REJECTED`（terminal）へ倒す。
+
+## Phase 5.0.3 state-machine integrity hardening（3 blocker、
+C-060R-GPT comment 5708645191）
+Phase 5.1がこれらのshadow orderからShadow positionを組み立てる前に、
+内部矛盾したterminal orderからpositionが作られる経路を塞ぐ。
+1. **statusと数量の不整合検証（Blocker 1）**：Phase 5.0.2までの
+   `_validate_shadow_order_state()`は数量そのものの妥当性は見ていたが、
+   `status`との整合性は見ていなかった——`status="FILLED"`なのに
+   `filled_qty<requested_qty`という内部矛盾したterminal orderがそのまま
+   通っていた。`status`がまず`ORDER_STATUSES`に含まれることを必須にし
+   （不明/欠損は`REJECTED_STATE_STATUS_INVALID`）、`NEW/ACCEPTED/
+   WORKING/UNOBSERVABLE`は`filled_qty==0 かつ remaining_qty==
+   requested_qty かつ avg_fill_price is None`、`PARTIAL_FILLED`は
+   `0<filled_qty<requested_qty かつ remaining_qty>0 かつ avg_fill_price
+   がfinite positive`、`FILLED`は`filled_qty==requested_qty かつ
+   remaining_qty==0 かつ avg_fill_priceがfinite positive`を要求する
+   （`REJECTED_STATE_STATUS_QUANTITY_MISMATCH`）。`EXPIRED`は
+   partial-expiry未実装のため専用パターンを新規に発明せず、既存の
+   汎用数量検証だけを適用する。terminal状態のshort-circuitは、この
+   検証を通過した後にのみ行う。
+2. **chronology各フィールドのfail-closed検証（Blocker 2）**：
+   `submitted_at`/`last_applied_observation_at`/`first_observation_at`/
+   `fill_at`は今やposition構築に使われる重要なstateだが、従来
+   検証されていなかった——naiveなtimestamp同士の比較が例外を投げる
+   リスクもあった。`_validate_shadow_order_state()`へ`now`を渡し、
+   `submitted_at`はaware必須・`<=now`、`last_applied_observation_at`は
+   Noneまたはaware・存在すれば`>submitted_at かつ <=now`、
+   `first_observation_at`はNoneまたはaware・存在すれば`>submitted_at`
+   かつ（watermarkがあれば）`<=last_applied_observation_at`、
+   `fill_at`は`filled_qty==0`ならNone必須・`filled_qty>0`ならaware
+   必須で`>submitted_at かつ <=now かつ (watermarkがあれば)
+   <=last_applied_observation_at`を要求し、壊れていれば例外を投げず
+   `REJECTED`へfail closedする。また、submit前のobservationが
+   `first_observation_at`を設定してしまうbugも修正した（fill modelが
+   `OBSERVATION_BEFORE_SUBMISSION`として正しく拒否したobservationは、
+   `first_observation_at`にも一切反映されない）。
+3. **submitted_atのdeterministic binding（Blocker 3）**：関数引数から
+   `submitted_at`を除いただけでは、呼び出し側がshadow order辞書を
+   clone/改変して`submitted_at`だけ差し替えることを防げない（Permission
+   ticketで既に対応した種類の問題と同じ）。`submit_shadow_order()`が
+   `submission_context_fingerprint = sha256(shadow_order_id + "|" +
+   submitted_at.isoformat())`を発行時に計算・保存し、
+   `evaluate_shadow_fill()`は非minimal（REJECTED/DUPLICATE_IGNORED
+   以外）のshadow order評価の直前に毎回再計算・照合する。`submitted_at`
+   だけ変更されfingerprintが古いままなら
+   `REJECTED_STATE_SUBMISSION_CONTEXT_MISMATCH`。`shadow_order_id`
+   自体（canonical intent_hash/決定論的ID）は変更しない——
+   `submitted_at`をIDへ混ぜるとduplicate検知が弱まる（同一Intentが
+   timestampごとに別IDになってしまう）ため、これは意図的に別フィールド
+   にする。
 """
 from __future__ import annotations
 
@@ -120,11 +170,28 @@ def _is_finite_number(value) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
+def _is_aware_datetime(value) -> bool:
+    return isinstance(value, datetime) and value.tzinfo is not None
+
+
 def compute_shadow_order_id(intent_hash: str, shadow_fill_model_version: str) -> str:
     """`sha256(intent_hash + "|" + shadow_fill_model_version)`による決定論的
     ID。同一(intent_hash, fill_model_version)は常に同じIDになる
     （ランダムUUIDは使わない、Golden #1）。"""
     payload = f"{intent_hash}|{shadow_fill_model_version}".encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def compute_submission_context_fingerprint(shadow_order_id: str, submitted_at: datetime) -> str:
+    """Phase 5.0.3 hardening（Blocker 3、C-060R-GPT comment 5708645191）:
+    `sha256(shadow_order_id + "|" + submitted_at.isoformat())`。
+    `submitted_at`をshadow_order_id自体へ混ぜない（duplicate検知が
+    timestampごとに別IDになって弱まるのを避けるため）代わりに、この
+    別フィールドで束縛する——呼び出し側がshadow order辞書を改変して
+    `submitted_at`だけ差し替えても、再計算したfingerprintが食い違う
+    ことで検出できる（adversarialな暗号的境界ではなく、integrity/audit
+    binding）。"""
+    payload = f"{shadow_order_id}|{submitted_at.isoformat()}".encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -236,6 +303,7 @@ def submit_shadow_order(intent: dict, risk_decision: dict, ticket: dict, *, know
 
     shadow_fill_model_version = intent["shadow_fill_model_version"]
     shadow_order_id = compute_shadow_order_id(intent["intent_hash"], shadow_fill_model_version)
+    submission_context_fingerprint = compute_submission_context_fingerprint(shadow_order_id, submitted_at)
 
     for known in known_orders:
         if known.get("shadow_order_id") == shadow_order_id:
@@ -272,6 +340,7 @@ def submit_shadow_order(intent: dict, risk_decision: dict, ticket: dict, *, know
         "spread_yen": None, "slippage_yen": None, "slippage_bps": None,
         "slippage_model_status": None,
         "submitted_at": submitted_at,
+        "submission_context_fingerprint": submission_context_fingerprint,
         "first_observation_at": None,
         "fill_at": None,
         "last_applied_observation_at": None,
@@ -281,10 +350,18 @@ def submit_shadow_order(intent: dict, risk_decision: dict, ticket: dict, *, know
     }
 
 
-def _validate_shadow_order_state(shadow_order: dict) -> list[str]:
-    """Phase 5.0.2 hardening（Blocker 3、C-060-GPT comment 5708285624）:
-    永続化されたshadow orderの不変条件をfail-closedで検証する。違反が
-    あれば既存値を推測補正せず、理由コードのリストを返す（空なら健全）。
+# status別のfilled_qty/remaining_qty/avg_fill_priceパターン
+# （Blocker 1、C-060R-GPT）。EXPIREDはpartial-expiry未実装のため
+# 専用パターンを発明せず、汎用数量検証だけを適用する（ここには含めない）。
+_NO_FILL_STATUSES = frozenset({"NEW", "ACCEPTED", "WORKING", "UNOBSERVABLE"})
+
+
+def _validate_shadow_order_state(shadow_order: dict, *, now: datetime) -> list[str]:
+    """Phase 5.0.2/5.0.3 hardening（C-060-GPT / C-060R-GPT）: 永続化された
+    shadow orderの不変条件をfail-closedで検証する。違反があれば既存値を
+    推測補正せず、理由コードのリストを返す（空なら健全）。例外は投げない
+    ——壊れたchronology（naive datetime同士の比較等）はREJECTED理由へ
+    倒す。
     """
     reasons = []
     requested_qty = shadow_order.get("requested_qty")
@@ -313,6 +390,82 @@ def _validate_shadow_order_state(shadow_order: dict) -> list[str]:
 
     if shadow_order.get("real_submit_allowed") is not False:
         reasons.append("REJECTED_STATE_REAL_SUBMIT_ALLOWED_NOT_FALSE")
+
+    # --- Phase 5.0.3 Blocker 1: statusと数量の整合性 --------------------------
+    status = shadow_order.get("status")
+    if status not in ORDER_STATUSES:
+        reasons.append("REJECTED_STATE_STATUS_INVALID")
+    elif requested_ok and filled_ok:
+        if status in _NO_FILL_STATUSES:
+            if filled_qty != 0 or remaining_qty != requested_qty or avg_fill_price is not None:
+                reasons.append("REJECTED_STATE_STATUS_QUANTITY_MISMATCH")
+        elif status == "PARTIAL_FILLED":
+            if not (0 < filled_qty < requested_qty) or not (remaining_qty is not None and remaining_qty > 0) \
+                    or not (_is_finite_number(avg_fill_price) and avg_fill_price > 0):
+                reasons.append("REJECTED_STATE_STATUS_QUANTITY_MISMATCH")
+        elif status == "FILLED":
+            if filled_qty != requested_qty or remaining_qty != 0 \
+                    or not (_is_finite_number(avg_fill_price) and avg_fill_price > 0):
+                reasons.append("REJECTED_STATE_STATUS_QUANTITY_MISMATCH")
+        # EXPIRED: 専用パターンなし（上の汎用数量検証だけが適用される）。
+
+    # --- Phase 5.0.3 Blocker 2: chronologyフィールドのfail-closed検証 ---------
+    now_ok = _is_aware_datetime(now)
+    if not now_ok:
+        reasons.append("REJECTED_STATE_NOW_INVALID")
+
+    submitted_at = shadow_order.get("submitted_at")
+    submitted_ok = _is_aware_datetime(submitted_at)
+    if not submitted_ok:
+        reasons.append("REJECTED_STATE_SUBMITTED_AT_INVALID")
+    elif now_ok and submitted_at > now:
+        reasons.append("REJECTED_STATE_SUBMITTED_AT_INVALID")
+
+    last_applied = shadow_order.get("last_applied_observation_at")
+    last_applied_ok = True
+    if last_applied is not None:
+        if not _is_aware_datetime(last_applied):
+            reasons.append("REJECTED_STATE_LAST_APPLIED_OBSERVATION_AT_INVALID")
+            last_applied_ok = False
+        else:
+            if submitted_ok and last_applied <= submitted_at:
+                reasons.append("REJECTED_STATE_LAST_APPLIED_OBSERVATION_AT_INVALID")
+                last_applied_ok = False
+            if now_ok and last_applied > now:
+                reasons.append("REJECTED_STATE_LAST_APPLIED_OBSERVATION_AT_INVALID")
+                last_applied_ok = False
+
+    first_observation_at = shadow_order.get("first_observation_at")
+    if first_observation_at is not None:
+        if not _is_aware_datetime(first_observation_at):
+            reasons.append("REJECTED_STATE_FIRST_OBSERVATION_AT_INVALID")
+        else:
+            if submitted_ok and first_observation_at <= submitted_at:
+                reasons.append("REJECTED_STATE_FIRST_OBSERVATION_AT_INVALID")
+            if last_applied is not None and last_applied_ok and first_observation_at > last_applied:
+                reasons.append("REJECTED_STATE_FIRST_OBSERVATION_AT_INVALID")
+
+    fill_at = shadow_order.get("fill_at")
+    if filled_ok and filled_qty == 0:
+        if fill_at is not None:
+            reasons.append("REJECTED_STATE_FILL_AT_INVALID")
+    elif filled_ok and filled_qty > 0:
+        if not _is_aware_datetime(fill_at):
+            reasons.append("REJECTED_STATE_FILL_AT_INVALID")
+        else:
+            if submitted_ok and fill_at <= submitted_at:
+                reasons.append("REJECTED_STATE_FILL_AT_INVALID")
+            if now_ok and fill_at > now:
+                reasons.append("REJECTED_STATE_FILL_AT_INVALID")
+            elif last_applied is not None and last_applied_ok and fill_at > last_applied:
+                reasons.append("REJECTED_STATE_FILL_AT_INVALID")
+
+    # --- Phase 5.0.3 Blocker 3: submission_context_fingerprintの再照合 -------
+    if submitted_ok:
+        shadow_order_id = shadow_order.get("shadow_order_id")
+        expected_fingerprint = compute_submission_context_fingerprint(shadow_order_id, submitted_at)
+        if shadow_order.get("submission_context_fingerprint") != expected_fingerprint:
+            reasons.append("REJECTED_STATE_SUBMISSION_CONTEXT_MISMATCH")
 
     return reasons
 
@@ -345,7 +498,7 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
     if status in _MINIMAL_TERMINAL_STATUSES:
         return dict(shadow_order)
 
-    state_reasons = _validate_shadow_order_state(shadow_order)
+    state_reasons = _validate_shadow_order_state(shadow_order, now=now)
     if state_reasons:
         return {
             **shadow_order,
@@ -412,10 +565,15 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
         ambiguity_flags.append("PARTIAL_FILL")
 
     # このobservationが実際に処理された（submit後・有効なtimestamp）場合だけ
-    # last_applied_observation_atを前進させる——過去への巻き戻りは起こさない。
+    # last_applied_observation_at / first_observation_atへ反映する——過去への
+    # 巻き戻りは起こさず、submit前として拒否されたobservationをfirst_
+    # observation_atへ取り込むこともしない（Phase 5.0.3 Blocker 2）。
+    observation_processed = (
+        observed_at_valid and isinstance(submitted_at, datetime) and submitted_at.tzinfo is not None
+        and observed_at > submitted_at
+    )
     new_last_applied = last_applied
-    if observed_at_valid and isinstance(submitted_at, datetime) and submitted_at.tzinfo is not None \
-            and observed_at > submitted_at and (last_applied is None or observed_at > last_applied):
+    if observation_processed and (last_applied is None or observed_at > last_applied):
         new_last_applied = observed_at
 
     return {
@@ -433,7 +591,8 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
         "slippage_yen": result["slippage_yen"],
         "slippage_bps": result["slippage_bps"],
         "slippage_model_status": result["slippage_model_status"],
-        "first_observation_at": shadow_order.get("first_observation_at") or observed_at,
+        "first_observation_at": shadow_order.get("first_observation_at")
+        or (observed_at if observation_processed else None),
         "fill_at": observed_at if incremental_fill > 0 else shadow_order.get("fill_at"),
         "last_applied_observation_at": new_last_applied,
         "ambiguity_flags": ambiguity_flags,

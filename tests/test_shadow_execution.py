@@ -578,6 +578,149 @@ class ShadowOrderStateIntegrityTests(unittest.TestCase):
         self.assertNotIn("REJECTED_STATE_REQUESTED_QTY_INVALID", out.get("reject_reasons", []))
 
 
+class StateMachineIntegrityTests(unittest.TestCase):
+    """Phase 5.0.3 hardening（C-060R-GPT comment 5708645191）: statusと
+    数量の整合性、chronology各フィールドのfail-closed検証、
+    submission_context_fingerprintによるsubmitted_atのdeterministic
+    binding。"""
+
+    def _order(self):
+        intent = build_intent(order_type="MARKET", limit_price=None)
+        return submit(intent, risk_decision(), ticket(intent))
+
+    def test_golden_1_filled_with_partial_quantities_rejected(self):
+        corrupted = {**self._order(), "status": "FILLED", "filled_qty": 40, "remaining_qty": 60,
+                     "avg_fill_price": 1500.0}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_STATUS_QUANTITY_MISMATCH", out["reject_reasons"])
+
+    def test_golden_2_filled_with_zero_fill_rejected(self):
+        corrupted = {**self._order(), "status": "FILLED"}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_STATUS_QUANTITY_MISMATCH", out["reject_reasons"])
+
+    def test_golden_3_partial_filled_with_filled_zero_rejected(self):
+        corrupted = {**self._order(), "status": "PARTIAL_FILLED"}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_STATUS_QUANTITY_MISMATCH", out["reject_reasons"])
+
+    def test_golden_3_partial_filled_with_filled_equals_requested_rejected(self):
+        corrupted = {**self._order(), "status": "PARTIAL_FILLED", "filled_qty": 100,
+                     "remaining_qty": 0, "avg_fill_price": 1500.0}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_STATUS_QUANTITY_MISMATCH", out["reject_reasons"])
+
+    def test_golden_4_unknown_status_rejected(self):
+        corrupted = {**self._order(), "status": "BOGUS_STATUS"}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_STATUS_INVALID", out["reject_reasons"])
+
+    def test_golden_4_missing_status_rejected(self):
+        order = self._order()
+        corrupted = {k: v for k, v in order.items() if k != "status"}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_STATUS_INVALID", out["reject_reasons"])
+
+    def test_golden_5_missing_submitted_at_rejected(self):
+        corrupted = {**self._order(), "submitted_at": None}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_SUBMITTED_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_5_naive_submitted_at_rejected(self):
+        corrupted = {**self._order(), "submitted_at": datetime(2026, 9, 17, 8, 59, 0)}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_SUBMITTED_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_5_future_submitted_at_rejected(self):
+        corrupted = {**self._order(), "submitted_at": NOW + timedelta(seconds=1)}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_SUBMITTED_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_6_naive_last_applied_observation_at_rejected_no_exception(self):
+        corrupted = {**self._order(), "last_applied_observation_at": datetime(2026, 9, 17, 8, 59, 0)}
+        try:
+            out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        except Exception as exc:  # noqa: BLE001
+            self.fail(f"evaluate_shadow_fill raised {exc!r} instead of failing closed")
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_LAST_APPLIED_OBSERVATION_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_7_last_applied_observation_at_before_submitted_at_rejected(self):
+        corrupted = {**self._order(), "last_applied_observation_at": SUBMITTED_AT - timedelta(seconds=1)}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_LAST_APPLIED_OBSERVATION_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_7_last_applied_observation_at_future_rejected(self):
+        corrupted = {**self._order(), "last_applied_observation_at": NOW + timedelta(seconds=1)}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_LAST_APPLIED_OBSERVATION_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_8_fill_at_present_while_unfilled_rejected(self):
+        corrupted = {**self._order(), "fill_at": NOW}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_FILL_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_9_filled_positive_with_missing_fill_at_rejected(self):
+        corrupted = {**self._order(), "filled_qty": 40, "remaining_qty": 60, "avg_fill_price": 1500.0,
+                     "status": "PARTIAL_FILLED", "fill_at": None}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_FILL_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_9_filled_positive_with_naive_fill_at_rejected(self):
+        corrupted = {**self._order(), "filled_qty": 40, "remaining_qty": 60, "avg_fill_price": 1500.0,
+                     "status": "PARTIAL_FILLED", "fill_at": datetime(2026, 9, 17, 8, 59, 0)}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_FILL_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_9_filled_positive_with_pre_submit_fill_at_rejected(self):
+        corrupted = {**self._order(), "filled_qty": 40, "remaining_qty": 60, "avg_fill_price": 1500.0,
+                     "status": "PARTIAL_FILLED", "fill_at": SUBMITTED_AT - timedelta(seconds=1)}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_FILL_AT_INVALID", out["reject_reasons"])
+
+    def test_golden_10_pre_submit_observation_does_not_set_first_observation_at(self):
+        order = self._order()
+        self.assertIsNone(order["first_observation_at"])
+        early = observation(observed_at=SUBMITTED_AT - timedelta(seconds=1))
+        out = se.evaluate_shadow_fill(order, early, now=NOW)
+        self.assertIsNone(out["first_observation_at"])
+
+    def test_golden_11_mutated_submitted_at_with_stale_fingerprint_rejected(self):
+        order = self._order()
+        tampered = {**order, "submitted_at": order["submitted_at"] + timedelta(seconds=1)}
+        out = se.evaluate_shadow_fill(tampered, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_SUBMISSION_CONTEXT_MISMATCH", out["reject_reasons"])
+
+    def test_golden_12_healthy_new_partial_filled_chronology_passes(self):
+        order = self._order()
+        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW)
+        self.assertEqual(round1["status"], "PARTIAL_FILLED")
+        later = NOW + timedelta(seconds=5)
+        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask_qty=60), now=later)
+        self.assertEqual(round2["status"], "FILLED")
+
+    def test_submission_context_fingerprint_stored_and_matches(self):
+        order = self._order()
+        expected = se.compute_submission_context_fingerprint(order["shadow_order_id"], order["submitted_at"])
+        self.assertEqual(order["submission_context_fingerprint"], expected)
+
+
 class RealSubmitAllowedTests(unittest.TestCase):
     """Golden #19: real_submit_allowedは常にfalse。"""
 
