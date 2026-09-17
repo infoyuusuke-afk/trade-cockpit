@@ -15,8 +15,8 @@ pause
 
 rem ---------------------------------------------------
 rem Voice API: start Style-Bert-VITS2 only when needed.
-rem If SBV2 is unavailable, SPEAK_TODAY_STRATEGY.ps1
-rem automatically falls back to Windows SAPI.
+rem If SBV2 is unavailable, voice scripts fall back to
+rem Windows SAPI and MS2 collection continues.
 rem ---------------------------------------------------
 powershell.exe -NoLogo -NoProfile -Command "try { $r=Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:5000/status' -TimeoutSec 2; if($r.StatusCode -eq 200){exit 0} } catch {}; exit 1"
 if errorlevel 1 (
@@ -38,6 +38,7 @@ if errorlevel 1 (
 )
 
 start "AI Cockpit Strategy Voice" /min powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0SPEAK_TODAY_STRATEGY.ps1"
+start "AI Cockpit Live Emotion" /min powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0SPEAK_LIVE_EMOTION.ps1"
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -NoExit -File "%~dp0MS2_RSS_100_Collector.ps1"
 
 echo.
