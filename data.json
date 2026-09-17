@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-18 07:51:27 JST",
+  "updated_at": "2026-09-18 08:02:31 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -5437,42 +5437,35 @@
       "open": 155.91,
       "high": 156.03,
       "low": 155.9,
-      "prev_close": 155.27,
-      "change_pct": 0.44,
-      "ret5": 1.54,
-      "ret5_prev": -3.37,
-      "ret20": -1.47,
+      "prev_close": 156.01,
+      "change_pct": -0.04,
+      "ret5": 0.95,
+      "ret5_prev": -0.76,
+      "ret20": -1.85,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 1.86,
-      "atr_pct": 1.19,
-      "ma5": 154.7,
-      "ma20": 157.0,
-      "ma60": 159.73,
-      "from_ma5": 0.8,
-      "from_ma20": -0.67,
+      "atr14": 1.83,
+      "atr_pct": 1.17,
+      "ma5": 155.01,
+      "ma20": 156.86,
+      "ma60": 159.64,
+      "from_ma5": 0.61,
+      "from_ma20": -0.58,
       "touch_ma5": true,
-      "to_high20": -2.77,
+      "to_high20": -2.76,
       "to_high52": -4.9,
-      "bb_upper": 162.0,
-      "bb_lower": 152.0,
-      "bb_width": 6.37,
-      "bb_width_change": 0.31,
-      "bb_percentile": 98.3,
-      "bb_expansion_score": 15.6,
-      "day_score": 1.89,
-      "swing_score": -2.83,
-      "stable_score": 0.73,
-      "momentum_score": 4.32,
+      "bb_upper": 161.79,
+      "bb_lower": 151.92,
+      "bb_width": 6.3,
+      "bb_width_change": 0.06,
+      "bb_percentile": 97.5,
+      "bb_expansion_score": 15.9,
+      "day_score": 1.3,
+      "swing_score": -3.13,
+      "stable_score": 0.67,
+      "momentum_score": 4.08,
       "high_score": 0.0,
       "chart": [
-        {
-          "o": 163.88,
-          "h": 163.93,
-          "l": 163.65,
-          "c": 163.83,
-          "v": 0
-        },
         {
           "o": 163.59,
           "h": 163.76,
@@ -5740,6 +5733,13 @@
           "v": 0
         },
         {
+          "o": 156.03,
+          "h": 156.27,
+          "l": 155.34,
+          "c": 156.01,
+          "v": 0
+        },
+        {
           "o": 155.91,
           "h": 156.03,
           "l": 155.9,
@@ -5747,15 +5747,15 @@
           "v": 0
         }
       ],
-      "data_date": "2026-09-17",
-      "data_age_days": 1,
+      "data_date": "2026-09-18",
+      "data_age_days": 0,
       "chart_last_close": 155.95,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-09-17）",
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-09-18）",
       "market_supply_score": 80,
       "market_supply_improved": true,
       "market_supply_status": "市場需給80点／上昇日出来高÷下落日2.00倍／安値切上げ○",
@@ -39657,8 +39657,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-09-18T07:50:37+09:00",
-    "decision_at": "2026-09-18T07:50:37+09:00",
+    "generated_at": "2026-09-18T08:01:38+09:00",
+    "decision_at": "2026-09-18T08:01:38+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -41543,13 +41543,13 @@
     }
   ],
   "strong_yen_top5": {
-    "usd_jpy": 155.959,
+    "usd_jpy": 155.958,
     "usd_jpy_change_pct": 0.0,
-    "usd_jpy_ret5": 1.54,
+    "usd_jpy_ret5": 0.95,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-09-18T07:51:00+09:00",
+    "fx_observed_at": "2026-09-18T08:02:00+09:00",
     "statement_study": {
-      "updated_at": "2026-09-18 07:51:20 JST",
+      "updated_at": "2026-09-18 08:02:25 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -41815,7 +41815,7 @@
         "ticker": "2782.T",
         "price": 4785.0,
         "change_pct": -0.21,
-        "score": 64,
+        "score": 65,
         "sensitivity": 94,
         "reason": "輸入雑貨の原価負担が大きく、円高による仕入採算改善を確認する銘柄",
         "source": "https://www.seria-group.com/corporate/ir/",
@@ -42120,7 +42120,7 @@
         "ticker": "3038.T",
         "price": 3143.0,
         "change_pct": 2.05,
-        "score": 61,
+        "score": 62,
         "sensitivity": 90,
         "reason": "業務スーパーの輸入商品・PB調達。円高は輸入原価の低下要因",
         "source": "https://www.gyomusuper.jp/ir/",
@@ -42425,7 +42425,7 @@
         "ticker": "9843.T",
         "price": 3118.0,
         "change_pct": 1.23,
-        "score": 53,
+        "score": 54,
         "sensitivity": 96,
         "reason": "海外調達比率が高い家具・生活用品。円高は仕入原価の低下要因",
         "source": "https://www.nitorihd.co.jp/ir/",
@@ -45199,7 +45199,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-09-18 07:51:07 JST",
+    "credit_supply_updated_at": "2026-09-18 08:02:12 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -61998,14 +61998,14 @@
   ],
   "morning_snapshot": {
     "date": "2026-09-18",
-    "fixed_at": "2026-09-18 07:51:27 JST",
+    "fixed_at": "2026-09-18 08:02:31 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-09-18",
-    "fixed_at": "2026-09-18 07:52:11 JST",
+    "fixed_at": "2026-09-18 08:03:32 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
@@ -62034,7 +62034,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-18 07:52:11 JST",
+        "signal_time": "2026-09-18 08:03:32 JST",
         "source": "morning_snapshot"
       },
       {
@@ -62063,7 +62063,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-18 07:52:11 JST",
+        "signal_time": "2026-09-18 08:03:32 JST",
         "source": "morning_snapshot"
       },
       {
@@ -62092,7 +62092,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-18 07:52:11 JST",
+        "signal_time": "2026-09-18 08:03:32 JST",
         "source": "morning_snapshot"
       },
       {
@@ -62121,7 +62121,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-18 07:52:11 JST",
+        "signal_time": "2026-09-18 08:03:32 JST",
         "source": "morning_snapshot"
       },
       {
@@ -62150,7 +62150,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-18 07:52:11 JST",
+        "signal_time": "2026-09-18 08:03:32 JST",
         "source": "morning_snapshot"
       },
       {
@@ -62179,7 +62179,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-18 07:52:11 JST",
+        "signal_time": "2026-09-18 08:03:32 JST",
         "source": "morning_snapshot"
       }
     ]
