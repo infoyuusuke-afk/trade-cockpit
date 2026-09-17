@@ -393,6 +393,10 @@ def _validate_position_state(position: dict, *, now: datetime) -> list[str]:
             reasons.append("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH")
         elif status in _OPEN_LIKE_STATUSES and current_qty <= 0:
             reasons.append("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH")
+    # OPENはまだ一度もexitを経験していない状態——exit_filled_qty>0のOPENは
+    # 矛盾した状態遷移を意味するので推測補正せずREJECTEDにする。
+    if status == "OPEN" and exit_ok and exit_filled != 0:
+        reasons.append("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH")
 
     # position_id / position_plan_fingerprintの再照合（Golden #7）。
     expected_position_id = compute_position_id(position.get("shadow_order_id"))
@@ -485,9 +489,18 @@ def _validate_position_state(position: dict, *, now: datetime) -> list[str]:
     elif status == "CLOSED" and position.get("exit_reason") == "STOP":
         reasons.append("REJECTED_POSITION_STOP_TRIGGERED_AT_INVALID")
 
+    # first_stop_exit_fill_at/last_stop_exit_fill_atはSTOP経路（STOP_TRIGGERED
+    # 以降のmarket exit）でのみ埋まるフィールドであり、planned targetの
+    # 一括LIMIT closeではexit_filled_qty>0でも一切設定されない
+    # （evaluate_position_exit()のOPEN分岐参照）。したがって「値が入って
+    # いるべきか」はexit_filled_qtyの符号ではなくstop_triggered_atの有無で
+    # 判定する——さもないとTARGET closeが毎回REJECTEDになってしまう。
     first_stop_exit_fill_at = position.get("first_stop_exit_fill_at")
     last_stop_exit_fill_at = position.get("last_stop_exit_fill_at")
-    if exit_ok and exit_filled == 0:
+    if stop_triggered_at is None:
+        if first_stop_exit_fill_at is not None or last_stop_exit_fill_at is not None:
+            reasons.append("REJECTED_POSITION_STOP_EXIT_FILL_AT_INVALID")
+    elif exit_ok and exit_filled == 0:
         if first_stop_exit_fill_at is not None or last_stop_exit_fill_at is not None:
             reasons.append("REJECTED_POSITION_STOP_EXIT_FILL_AT_INVALID")
     elif exit_ok and exit_filled > 0:

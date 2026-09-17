@@ -468,6 +468,27 @@ class Golden18AmbiguousOrderingTests(unittest.TestCase):
 
 
 class Golden19ClosedTerminalTests(unittest.TestCase):
+    def test_target_closed_position_passes_state_validation(self):
+        """TARGET closeはfirst_stop_exit_fill_at/last_stop_exit_fill_atを
+        一切設定しない（STOP経路専用のフィールドのため）——exit_filled_qty>0
+        だけを理由にREJECTEDにしてはならない。"""
+        intent = entry_intent()
+        order = filled_order(intent)
+        pos = sp.create_shadow_position(intent, order, now=NOW, known_positions=[])
+        later = NOW + timedelta(seconds=5)
+        closed = sp.evaluate_position_exit(pos, observation(observed_at=later, last_trade_price=1601.0), now=later)
+        self.assertEqual(closed["status"], "CLOSED")
+        reasons = sp._validate_position_state(closed, now=later + timedelta(seconds=100))
+        self.assertEqual(reasons, [])
+
+    def test_open_position_with_nonzero_exit_filled_qty_rejected(self):
+        intent = entry_intent()
+        order = filled_order(intent)
+        pos = sp.create_shadow_position(intent, order, now=NOW, known_positions=[])
+        corrupted = {**pos, "exit_filled_qty": 10}
+        reasons = sp._validate_position_state(corrupted, now=NOW)
+        self.assertIn("REJECTED_POSITION_STATUS_QUANTITY_MISMATCH", reasons)
+
     def test_golden_19_closed_is_terminal_and_idempotent(self):
         intent = entry_intent()
         order = filled_order(intent)
