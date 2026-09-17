@@ -600,22 +600,44 @@ def _validate_shadow_order_state(shadow_order: dict, *, now: datetime) -> list[s
     elif filled_ok and filled_qty > 0:
         first_fill_ok = _is_aware_datetime(first_fill_at)
         last_fill_ok = _is_aware_datetime(last_fill_at)
+        fill_at_ok = _is_aware_datetime(fill_at)
         if not first_fill_ok:
             reasons.append("REJECTED_STATE_FIRST_FILL_AT_INVALID")
         if not last_fill_ok:
             reasons.append("REJECTED_STATE_LAST_FILL_AT_INVALID")
-        if first_fill_ok and last_fill_ok:
-            if first_fill_at > last_fill_at:
+        if not fill_at_ok:
+            reasons.append("REJECTED_STATE_FILL_AT_INVALID")
+
+        if first_fill_ok:
+            if submitted_ok and first_fill_at <= submitted_at:
                 reasons.append("REJECTED_STATE_FIRST_FILL_AT_INVALID")
+                first_fill_ok = False
             if first_observation_ok and first_fill_at < first_observation_at:
                 reasons.append("REJECTED_STATE_FIRST_FILL_AT_INVALID")
-            if last_applied is not None and last_applied_ok and last_fill_at > last_applied:
-                reasons.append("REJECTED_STATE_LAST_FILL_AT_INVALID")
+                first_fill_ok = False
+
+        if last_fill_ok:
             if now_ok and last_fill_at > now:
                 reasons.append("REJECTED_STATE_LAST_FILL_AT_INVALID")
+                last_fill_ok = False
+            if last_applied is not None and last_applied_ok and last_fill_at > last_applied:
+                reasons.append("REJECTED_STATE_LAST_FILL_AT_INVALID")
+                last_fill_ok = False
+
+        if first_fill_ok and last_fill_ok and first_fill_at > last_fill_at:
+            reasons.append("REJECTED_STATE_FIRST_FILL_AT_INVALID")
+
+        if fill_at_ok:
+            if submitted_ok and fill_at <= submitted_at:
+                reasons.append("REJECTED_STATE_FILL_AT_INVALID")
+                fill_at_ok = False
+            if now_ok and fill_at > now:
+                reasons.append("REJECTED_STATE_FILL_AT_INVALID")
+                fill_at_ok = False
+
         # fill_atはlast_fill_atのaliasとして常に一致していなければならない
         # （後方互換フィールドのdriftを許さない）。
-        if fill_at != last_fill_at:
+        if fill_at_ok and last_fill_ok and fill_at != last_fill_at:
             reasons.append("REJECTED_STATE_FILL_AT_INVALID")
 
     # --- Phase 5.0.3 Blocker 3 / Phase 5.0.4 Blocker A: fingerprintの再照合 ---
