@@ -2108,6 +2108,74 @@ profit target execution、Shadow position lifecycle、Real-vs-Shadow
 reconciliation、calibration自動更新、Shadow Forward promotion判定、
 Small Real Execution Test。
 
+## Execution Stack Phase 5.0.1 hardening（Issue #18 C-057R-GPT、2026-09-17）
+
+C-057R-GPT（comment 5707963859）がPhase 5.0（461件成功、first attempt）
+の骨格を確認した上で、**Phase 5.1（exit/position lifecycle）にはまだ
+進まず**、Shadow Execution Core自体に残る3つのhardening項目を指摘した。
+
+**Blocker 1（partial fillが累積されず、次observationで上書きされる）**：
+従来`evaluate_shadow_fill()`は毎回`requested_qty`全量をFill Modelへ渡し、
+結果の`filled_qty`をそのままorderへ上書きしていた。100株orderで1回目
+40株partial後、2回目60株visibleならtotal=100は正しく出るが、2回目が
+20株visibleなら既存40株を無視して`filled_qty=20`へ縮んでしまい、
+2回目100株visibleなら既存40株を無視して100株へ上書きし約定履歴・VWAP
+が失われる欠陥だった。Fill Modelへ渡す数量を「まだ約定していない残数量」
+だけにし、結果（incremental fill）を既存の`filled_qty`へ加算、
+`avg_fill_price`は複数回のfillをまたぐ数量加重平均へ変更した。
+`new_total_filled`が`requested_qty`を超えることは防御的にcapして
+起こさない。
+
+**Blocker 2（宣言versionが実装versionへbindされていない）**：
+`intent.shadow_fill_model_version`は任意の非空stringをそのまま受け付け
+`shadow_order_id`へ含めていたが、実際に呼ぶのは常に現在の
+`scripts/shadow_fill_model.py`（v0.1）であり、Intent側を
+`shadow-fill-model-9.9`等に変えてもID/記録上は9.9なのに中身はv0.1で
+評価される欠陥だった。reproducibility/calibrationを壊すため、
+`intent.shadow_fill_model_version == scripts.shadow_fill_model.
+FILL_MODEL_VERSION`の完全一致を必須にし、不一致（欠損・非string・
+不明・新旧いずれのversionも）は`REJECTED_SHADOW_FILL_MODEL_VERSION_
+MISMATCH`。将来v0.2実装時は明示的なversion routerを追加し、暗黙
+fallbackはしない。
+
+**Blocker 3（slippage=0は「未モデル化」を「ゼロslippage」と誤記録
+する）**：v0.1はtop-of-bookのみを見ており、MARKET partialの板walkや
+実約定slippageを一切観測していないにもかかわらず、fill成立時に
+`slippage_yen=0.0`/`slippage_bps=0.0`を書き込んでいた。将来の
+Calibration Reportがこれを実測ゼロとして集計しExecution品質を過大
+評価する欠陥だった。fill成立時も`slippage_yen`/`slippage_bps`は常に
+`None`のままとし、新フィールド`slippage_model_status="NOT_MODELED_
+V0_1"`で「未モデル化」であることを明示（fillしていない場合は
+`slippage_model_status`も`None`のまま）。
+
+**Small schema correction**：canonical field名を`status`のみに統一
+（`fill_status`という二重フィールドは作らない——実装は元々`status`の
+みだったため変更なし、ドキュメント上の呼称を統一）。
+
+**テスト**：`tests/test_shadow_execution.py`・`tests/test_shadow_fill_
+model.py`にC-057R-GPT指定のGolden Fixturesを実装（複数回observation
+にまたがるpartial fill累積→FILLED、累積がPARTIAL_FILLEDのまま継続、
+不使用な2回目observationが既存fillを巻き戻さない、異なる価格の
+partialが数量加重平均になる、`new_total_filled`が`requested_qty`を
+超えない、exact/不一致のshadow_fill_model_version、記録versionと
+実際に使ったversionの一致、slippageがNoneのまま0へ暗黙変換されない
+契約テスト）。**1回目のCI実行（run 35178239638）は失敗**——テスト
+挿入時に既存`test_non_list_known_orders_rejected`の末尾assertion行が
+誤って別のtest関数（`test_hardening_golden_7_...`）の末尾へ紛れ込んで
+いたのが原因（475件中1件失敗）。該当行を正しい場所へ戻し、2回目の
+CI実行（run 35178490193）で成功を確認した。`python -m unittest
+discover -s tests -v`で**475件全て成功（failures=0, errors=0、
+Phase 5.0の461件から新規14件追加）**。commit
+526ff8880dac5938c61fc983da29be23b37223cb（本体実装）、commit
+1e14bd86d4ef33845ab2cfdaa089907970adec25（テストファイル修正）。
+main反映済み。
+
+**未着手（Phase 5.1以降、変更なし）**：RssOrder、Excel注文式、broker
+API submit、実ポジション変更、`real_submit_allowed=True`、
+protective-stop execution、profit target execution、Shadow position
+lifecycle、Real-vs-Shadow reconciliation、calibration自動更新、
+Shadow Forward promotion判定、Small Real Execution Test。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
