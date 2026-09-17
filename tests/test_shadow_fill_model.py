@@ -43,7 +43,7 @@ class MarketFillTests(unittest.TestCase):
 
     def test_golden_8_market_buy_uses_ask_never_mid_or_last(self):
         obs = observation(bid=1400.0, ask=1500.0, last_trade_price=9999.0)
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["reference_price"], 1500.0)
         self.assertEqual(result["avg_fill_price"], 1500.0)
         self.assertEqual(result["filled_qty"], 100)
@@ -51,34 +51,67 @@ class MarketFillTests(unittest.TestCase):
 
     def test_golden_9_market_sell_uses_bid_never_mid_or_last(self):
         obs = observation(bid=1400.0, ask=1500.0, last_trade_price=9999.0)
-        result = sfm.evaluate_market_fill(side="SELL", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="SELL", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["reference_price"], 1400.0)
         self.assertEqual(result["avg_fill_price"], 1400.0)
         self.assertEqual(result["filled_qty"], 100)
 
     def test_golden_10_visible_qty_insufficient_partial_only(self):
         obs = observation(ask_qty=40)
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 40)
         self.assertEqual(result["fill_reason"], "PARTIAL_FILL_VISIBLE_QTY_ONLY")
 
     def test_full_fill_when_visible_qty_sufficient(self):
         obs = observation(ask_qty=500)
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 100)
         self.assertEqual(result["fill_reason"], "FULL_FILL_VISIBLE_QTY_SUFFICIENT")
 
     def test_missing_ask_qty_does_not_assume_full_fill(self):
         obs = observation(ask_qty=None)
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 0)
         self.assertEqual(result["fill_reason"], "VISIBLE_QTY_UNAVAILABLE")
 
     def test_zero_visible_qty_no_fill(self):
         obs = observation(ask_qty=0)
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 0)
         self.assertEqual(result["fill_reason"], "VISIBLE_QTY_ZERO")
+
+
+class MarketSubmittedAtGateTests(unittest.TestCase):
+    """Phase 5.0.2 hardening Blocker 1（C-060-GPT comment 5708285624）:
+    MARKETもLIMIT同様、Shadow submit後のobservationのみを使う——従来
+    MARKETだけこの制約が無く、submit前のquoteでもfillできてしまっていた。"""
+
+    def test_hardening_golden_1_market_observation_before_submitted_at_no_fill(self):
+        obs = observation(observed_at=SUBMITTED_AT - timedelta(seconds=1))
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW,
+                                           submitted_at=SUBMITTED_AT)
+        self.assertEqual(result["filled_qty"], 0)
+        self.assertEqual(result["fill_reason"], "OBSERVATION_BEFORE_SUBMISSION")
+
+    def test_market_observation_exactly_at_submitted_at_no_fill(self):
+        obs = observation(observed_at=SUBMITTED_AT)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW,
+                                           submitted_at=SUBMITTED_AT)
+        self.assertEqual(result["filled_qty"], 0)
+        self.assertEqual(result["fill_reason"], "OBSERVATION_BEFORE_SUBMISSION")
+
+    def test_market_naive_submitted_at_rejected(self):
+        obs = observation(observed_at=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW,
+                                           submitted_at=datetime(2026, 9, 17, 8, 59, 0))
+        self.assertEqual(result["filled_qty"], 0)
+        self.assertEqual(result["fill_reason"], "SUBMITTED_AT_NOT_TIMEZONE_AWARE")
+
+    def test_market_observation_after_submitted_at_fills_normally(self):
+        obs = observation(observed_at=SUBMITTED_AT + timedelta(seconds=1))
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW,
+                                           submitted_at=SUBMITTED_AT)
+        self.assertEqual(result["filled_qty"], 100)
 
 
 class SlippageNotModeledTests(unittest.TestCase):
@@ -88,7 +121,7 @@ class SlippageNotModeledTests(unittest.TestCase):
 
     def test_hardening_golden_8_market_full_fill_slippage_not_modeled(self):
         obs = observation(ask_qty=500)
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 100)
         self.assertIsNone(result["slippage_yen"])
         self.assertIsNone(result["slippage_bps"])
@@ -96,7 +129,7 @@ class SlippageNotModeledTests(unittest.TestCase):
 
     def test_hardening_golden_8_market_partial_fill_slippage_not_modeled(self):
         obs = observation(ask_qty=40)
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 40)
         self.assertIsNone(result["slippage_yen"])
         self.assertIsNone(result["slippage_bps"])
@@ -106,7 +139,7 @@ class SlippageNotModeledTests(unittest.TestCase):
         """fillしていない場合はslippageの問い自体が成立しないため、
         slippage_model_statusもNoneのまま（"NOT_MODELED_V0_1"にしない）。"""
         obs = observation(ask_qty=0)
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 0)
         self.assertIsNone(result["slippage_yen"])
         self.assertIsNone(result["slippage_model_status"])
@@ -118,43 +151,43 @@ class DataQualityGuardTests(unittest.TestCase):
 
     def test_golden_14_stale_data_no_fill(self):
         obs = observation(data_freshness="STALE")
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 0)
         self.assertEqual(result["fill_confidence"], "UNOBSERVABLE")
 
     def test_golden_14_missing_data_no_fill(self):
         obs = observation(data_freshness="MISSING")
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 0)
 
     def test_golden_14_future_timestamp_no_fill(self):
         obs = observation(observed_at=NOW + timedelta(seconds=5))
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 0)
 
     def test_golden_15_naive_timestamp_no_fill(self):
         obs = observation(observed_at=datetime(2026, 9, 17, 9, 0, 0))
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 0)
 
     def test_golden_15_non_datetime_timestamp_no_fill(self):
         obs = observation(observed_at="2026-09-17T09:00:00+09:00")
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 0)
 
     def test_golden_16_bid_greater_than_ask_no_fill(self):
         obs = observation(bid=1501.0, ask=1500.0)
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 0)
 
     def test_golden_16_nan_no_fill(self):
         obs = observation(ask=float("nan"))
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 0)
 
     def test_golden_16_inf_no_fill(self):
         obs = observation(bid=float("inf"))
-        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW)
+        result = sfm.evaluate_market_fill(side="BUY", requested_qty=100, observation=obs, now=NOW, submitted_at=SUBMITTED_AT)
         self.assertEqual(result["filled_qty"], 0)
 
 

@@ -130,11 +130,17 @@ def _base_result(observation, *, reference_price=None, fill_confidence="UNOBSERV
     }
 
 
-def evaluate_market_fill(*, side: str, requested_qty, observation: dict, now: datetime) -> dict:
+def evaluate_market_fill(*, side: str, requested_qty, observation: dict, now: datetime,
+                          submitted_at: datetime) -> dict:
     """MARKET entryのEntry Fill Model v0.1。BUYは`ask`/`ask_qty`、SELLは
     `bid`/`bid_qty`のみを参照する——mid/last_tradeは一切参照しない
     （Golden #8/#9）。可視数量が不足していれば可視分だけpartial fillとし、
     残数量を架空にfillしない（Golden #10）。
+
+    Phase 5.0.2 hardening（C-060-GPT comment 5708285624 Blocker 1）:
+    LIMIT同様、Shadow submit後のobservationのみを使う——
+    `observation.observed_at <= submitted_at`はfillに使わない
+    （従来MARKETだけこの制約が無く、submit前のquoteでもfillできた）。
     """
     ok, reasons = validate_observation(observation, now=now)
     if not ok:
@@ -143,6 +149,10 @@ def evaluate_market_fill(*, side: str, requested_qty, observation: dict, now: da
         return _base_result(observation, fill_reason="SIDE_INVALID")
     if not _is_finite_positive(requested_qty) or int(requested_qty) != requested_qty:
         return _base_result(observation, fill_reason="REQUESTED_QTY_INVALID")
+    if not isinstance(submitted_at, datetime) or submitted_at.tzinfo is None:
+        return _base_result(observation, fill_reason="SUBMITTED_AT_NOT_TIMEZONE_AWARE")
+    if observation["observed_at"] <= submitted_at:
+        return _base_result(observation, fill_reason="OBSERVATION_BEFORE_SUBMISSION")
 
     if side == "BUY":
         reference_price = observation["ask"]

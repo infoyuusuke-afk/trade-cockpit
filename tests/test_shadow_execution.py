@@ -1,4 +1,5 @@
 import importlib.util
+import inspect
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -18,6 +19,7 @@ ec = _load('ec', 'scripts/execution_contract.py')
 se = _load('se', 'scripts/shadow_execution.py')
 
 NOW = datetime(2026, 9, 17, 9, 0, 0, tzinfo=JST)
+SUBMITTED_AT = NOW - timedelta(seconds=10)
 
 
 def build_intent(**overrides):
@@ -66,6 +68,16 @@ def observation(**overrides):
     return base
 
 
+def submit(intent, decision, tkt, *, known_orders=None, submitted_at=SUBMITTED_AT, now=NOW):
+    """Phase 5.0.2 hardening（C-060-GPT comment 5708285624）: submit_shadow_
+    order()がsubmitted_at/nowを必須keyword-only引数として要求するように
+    なったため、ほとんどのテストで共通利用するデフォルト値を持つ薄い
+    wrapper。submitted_at/now自体の検証をテストするケースはse.submit_
+    shadow_order()を直接呼ぶ。"""
+    return se.submit_shadow_order(intent, decision, tkt, known_orders=[] if known_orders is None else known_orders,
+                                   submitted_at=submitted_at, now=now)
+
+
 class ShadowOrderIdTests(unittest.TestCase):
     def test_golden_1_same_intent_and_model_gives_same_id(self):
         a = se.compute_shadow_order_id("h" * 64, "shadow-fill-model-0.1")
@@ -88,7 +100,7 @@ class SubmitShadowOrderHappyPathTests(unittest.TestCase):
         intent = build_intent()
         decision = risk_decision()
         tkt = ticket(intent)
-        out = se.submit_shadow_order(intent, decision, tkt, known_orders=[])
+        out = submit(intent, decision, tkt)
         self.assertEqual(out["status"], "NEW")
         self.assertEqual(out["real_submit_allowed"], False)
         expected_id = se.compute_shadow_order_id(intent["intent_hash"], intent["shadow_fill_model_version"])
@@ -102,11 +114,10 @@ class SubmitShadowOrderHappyPathTests(unittest.TestCase):
         名は`status`のみに統一する。`fill_status`という二重フィールドは
         作らない。"""
         intent = build_intent()
-        out = se.submit_shadow_order(intent, risk_decision(), ticket(intent), known_orders=[])
+        out = submit(intent, risk_decision(), ticket(intent))
         self.assertIn("status", out)
         self.assertNotIn("fill_status", out)
-        filled = se.evaluate_shadow_fill(
-            {**out, "order_type": "MARKET"}, observation(), now=NOW, submitted_at=NOW - timedelta(seconds=5))
+        filled = se.evaluate_shadow_fill({**out, "order_type": "MARKET"}, observation(), now=NOW)
         self.assertIn("status", filled)
         self.assertNotIn("fill_status", filled)
 
@@ -116,8 +127,8 @@ class DuplicateGuardTests(unittest.TestCase):
         intent = build_intent()
         decision = risk_decision()
         tkt = ticket(intent)
-        first = se.submit_shadow_order(intent, decision, tkt, known_orders=[])
-        second = se.submit_shadow_order(intent, decision, tkt, known_orders=[first])
+        first = submit(intent, decision, tkt)
+        second = submit(intent, decision, tkt, known_orders=[first])
         self.assertEqual(second["status"], "DUPLICATE_IGNORED")
         self.assertEqual(second["shadow_order_id"], first["shadow_order_id"])
 
@@ -126,7 +137,7 @@ class DuplicateGuardTests(unittest.TestCase):
         decision = risk_decision()
         tkt = ticket(intent)
         unrelated = {"shadow_order_id": "z" * 64}
-        out = se.submit_shadow_order(intent, decision, tkt, known_orders=[unrelated])
+        out = submit(intent, decision, tkt, known_orders=[unrelated])
         self.assertEqual(out["status"], "NEW")
 
 
@@ -137,7 +148,7 @@ class LineageRejectionTests(unittest.TestCase):
         intent = build_intent()
         decision = risk_decision()
         tkt = ticket(intent, intent_hash="0" * 64)
-        out = se.submit_shadow_order(intent, decision, tkt, known_orders=[])
+        out = submit(intent, decision, tkt)
         self.assertEqual(out["status"], "REJECTED")
         self.assertIn("REJECTED_INTENT_HASH_MISMATCH", out["reject_reasons"])
         self.assertIsNone(out["shadow_order_id"])
@@ -146,7 +157,7 @@ class LineageRejectionTests(unittest.TestCase):
         intent = build_intent()
         decision = risk_decision(merge_hash="z" * 64)
         tkt = ticket(intent)
-        out = se.submit_shadow_order(intent, decision, tkt, known_orders=[])
+        out = submit(intent, decision, tkt)
         self.assertEqual(out["status"], "REJECTED")
         self.assertIn("REJECTED_MERGE_HASH_MISMATCH", out["reject_reasons"])
 
@@ -154,42 +165,42 @@ class LineageRejectionTests(unittest.TestCase):
         intent = build_intent()
         decision = risk_decision()
         tkt = ticket(intent, merge_hash="z" * 64)
-        out = se.submit_shadow_order(intent, decision, tkt, known_orders=[])
+        out = submit(intent, decision, tkt)
         self.assertIn("REJECTED_MERGE_HASH_MISMATCH", out["reject_reasons"])
 
     def test_golden_5_risk_decision_not_pass_rejected(self):
         intent = build_intent()
         decision = risk_decision(decision="BLOCK")
         tkt = ticket(intent)
-        out = se.submit_shadow_order(intent, decision, tkt, known_orders=[])
+        out = submit(intent, decision, tkt)
         self.assertIn("REJECTED_RISK_DECISION_NOT_PASS", out["reject_reasons"])
 
     def test_golden_6_permission_status_not_ready_rejected(self):
         intent = build_intent()
         decision = risk_decision()
         tkt = ticket(intent, permission_status="BLOCKED")
-        out = se.submit_shadow_order(intent, decision, tkt, known_orders=[])
+        out = submit(intent, decision, tkt)
         self.assertIn("REJECTED_TICKET_NOT_READY", out["reject_reasons"])
 
     def test_golden_7_real_submit_allowed_true_rejected(self):
         intent = {**build_intent(), "real_submit_allowed": True}
         decision = risk_decision()
         tkt = ticket(intent)
-        out = se.submit_shadow_order(intent, decision, tkt, known_orders=[])
+        out = submit(intent, decision, tkt)
         self.assertIn("REJECTED_REAL_SUBMIT_ALLOWED_NOT_FALSE", out["reject_reasons"])
 
     def test_quantity_mismatch_rejected(self):
         intent = build_intent(quantity=100)
         decision = risk_decision(allowed_qty=200)
         tkt = ticket(intent)
-        out = se.submit_shadow_order(intent, decision, tkt, known_orders=[])
+        out = submit(intent, decision, tkt)
         self.assertIn("REJECTED_QUANTITY_MISMATCH", out["reject_reasons"])
 
     def test_risk_policy_version_mismatch_rejected(self):
         intent = build_intent(risk_policy_version="risk-gate-0.1.0")
         decision = risk_decision(policy_version="risk-gate-9.9.9")
         tkt = ticket(intent)
-        out = se.submit_shadow_order(intent, decision, tkt, known_orders=[])
+        out = submit(intent, decision, tkt)
         self.assertIn("REJECTED_RISK_POLICY_VERSION_MISMATCH", out["reject_reasons"])
 
     def test_intent_hash_tampered_rejected(self):
@@ -198,14 +209,15 @@ class LineageRejectionTests(unittest.TestCase):
         intent = {**build_intent(), "quantity": 999}
         decision = risk_decision(allowed_qty=999)
         tkt = ticket(intent)
-        out = se.submit_shadow_order(intent, decision, tkt, known_orders=[])
+        out = submit(intent, decision, tkt)
         self.assertIn("REJECTED_INTENT_HASH_TAMPERED", out["reject_reasons"])
 
     def test_non_list_known_orders_rejected(self):
         intent = build_intent()
         decision = risk_decision()
         tkt = ticket(intent)
-        out = se.submit_shadow_order(intent, decision, tkt, known_orders=None)
+        out = se.submit_shadow_order(intent, decision, tkt, known_orders=None,
+                                      submitted_at=SUBMITTED_AT, now=NOW)
         self.assertEqual(out["status"], "REJECTED")
         self.assertIn("REJECTED_KNOWN_ORDERS_INVALID", out["reject_reasons"])
 
@@ -217,7 +229,7 @@ class ShadowFillModelVersionBindingTests(unittest.TestCase):
 
     def test_hardening_golden_5_exact_version_match_gives_new(self):
         intent = build_intent(shadow_fill_model_version=se.sfm.FILL_MODEL_VERSION)
-        out = se.submit_shadow_order(intent, risk_decision(), ticket(intent), known_orders=[])
+        out = submit(intent, risk_decision(), ticket(intent))
         self.assertEqual(out["status"], "NEW")
 
     def test_hardening_golden_6_unknown_or_newer_or_older_version_rejected(self):
@@ -227,17 +239,69 @@ class ShadowFillModelVersionBindingTests(unittest.TestCase):
         for bad_version in ("shadow-fill-model-9.9", "shadow-fill-model-0.0", "", None, 123):
             intent = build_intent()
             tampered = {**intent, "shadow_fill_model_version": bad_version}
-            out = se.submit_shadow_order(tampered, risk_decision(), ticket(tampered), known_orders=[])
+            out = submit(tampered, risk_decision(), ticket(tampered))
             self.assertEqual(out["status"], "REJECTED", msg=f"version={bad_version!r}")
             self.assertIn("REJECTED_SHADOW_FILL_MODEL_VERSION_MISMATCH", out["reject_reasons"],
                            msg=f"version={bad_version!r}")
 
     def test_hardening_golden_7_recorded_version_matches_version_actually_used(self):
         intent = build_intent(shadow_fill_model_version=se.sfm.FILL_MODEL_VERSION)
-        out = se.submit_shadow_order(intent, risk_decision(), ticket(intent), known_orders=[])
+        out = submit(intent, risk_decision(), ticket(intent))
         self.assertEqual(out["shadow_fill_model_version"], se.sfm.FILL_MODEL_VERSION)
         expected_id = se.compute_shadow_order_id(intent["intent_hash"], se.sfm.FILL_MODEL_VERSION)
         self.assertEqual(out["shadow_order_id"], expected_id)
+
+
+class SubmittedAtBindingTests(unittest.TestCase):
+    """Phase 5.0.2 hardening Blocker 1（C-060-GPT comment 5708285624）:
+    submitted_atはshadow orderへimmutable/bound contextとして保存され、
+    evaluate_shadow_fill()は外部からsubmitted_atを受け取らない。"""
+
+    def test_hardening_golden_1_market_observation_before_submitted_at_no_fill(self):
+        intent = build_intent(order_type="MARKET", limit_price=None)
+        order = submit(intent, risk_decision(), ticket(intent), submitted_at=NOW)
+        early = observation(observed_at=NOW - timedelta(seconds=1))
+        out = se.evaluate_shadow_fill(order, early, now=NOW)
+        self.assertEqual(out["filled_qty"], 0)
+
+    def test_hardening_golden_2_limit_observation_before_submitted_at_no_fill(self):
+        intent = build_intent(order_type="LIMIT", limit_price=1500.0)
+        order = submit(intent, risk_decision(), ticket(intent), submitted_at=NOW)
+        early = observation(observed_at=NOW - timedelta(seconds=1), last_trade_price=1490.0)
+        out = se.evaluate_shadow_fill(order, early, now=NOW)
+        self.assertEqual(out["filled_qty"], 0)
+
+    def test_hardening_golden_3_evaluate_shadow_fill_does_not_accept_submitted_at(self):
+        """呼び出し側が別のsubmitted_atを注入して過去tradeを有効化する
+        経路が構造的に存在しないことを確認する。"""
+        params = inspect.signature(se.evaluate_shadow_fill).parameters
+        self.assertNotIn("submitted_at", params)
+
+    def test_submit_shadow_order_requires_aware_submitted_at(self):
+        intent = build_intent()
+        out = se.submit_shadow_order(intent, risk_decision(), ticket(intent), known_orders=[],
+                                      submitted_at=datetime(2026, 9, 17, 8, 59, 0), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_SUBMITTED_AT_NOT_TIMEZONE_AWARE", out["reject_reasons"])
+
+    def test_submit_shadow_order_rejects_future_submitted_at(self):
+        intent = build_intent()
+        out = se.submit_shadow_order(intent, risk_decision(), ticket(intent), known_orders=[],
+                                      submitted_at=NOW + timedelta(seconds=1), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_SUBMITTED_AT_FUTURE", out["reject_reasons"])
+
+    def test_submit_shadow_order_requires_aware_now(self):
+        intent = build_intent()
+        out = se.submit_shadow_order(intent, risk_decision(), ticket(intent), known_orders=[],
+                                      submitted_at=SUBMITTED_AT, now=datetime(2026, 9, 17, 9, 0, 0))
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_NOW_NOT_TIMEZONE_AWARE", out["reject_reasons"])
+
+    def test_order_stores_bound_submitted_at(self):
+        intent = build_intent()
+        out = submit(intent, risk_decision(), ticket(intent))
+        self.assertEqual(out["submitted_at"], SUBMITTED_AT)
 
 
 class EvaluateShadowFillTests(unittest.TestCase):
@@ -249,11 +313,11 @@ class EvaluateShadowFillTests(unittest.TestCase):
         intent = build_intent(**overrides)
         decision = risk_decision()
         tkt = ticket(intent)
-        return se.submit_shadow_order(intent, decision, tkt, known_orders=[])
+        return submit(intent, decision, tkt)
 
     def test_market_fill_transitions_to_filled(self):
         order = self._new_order("MARKET")
-        out = se.evaluate_shadow_fill(order, observation(), now=NOW, submitted_at=NOW - timedelta(seconds=5))
+        out = se.evaluate_shadow_fill(order, observation(), now=NOW)
         self.assertEqual(out["status"], "FILLED")
         self.assertEqual(out["filled_qty"], 100)
         self.assertEqual(out["remaining_qty"], 0)
@@ -263,8 +327,7 @@ class EvaluateShadowFillTests(unittest.TestCase):
 
     def test_market_partial_fill_status(self):
         order = self._new_order("MARKET")
-        out = se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW,
-                                       submitted_at=NOW - timedelta(seconds=5))
+        out = se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW)
         self.assertEqual(out["status"], "PARTIAL_FILLED")
         self.assertEqual(out["filled_qty"], 40)
         self.assertEqual(out["remaining_qty"], 60)
@@ -272,23 +335,20 @@ class EvaluateShadowFillTests(unittest.TestCase):
 
     def test_limit_touch_only_stays_working_with_ambiguity_flag(self):
         order = self._new_order("LIMIT", limit_price=1500.0)
-        submitted_at = NOW - timedelta(seconds=5)
-        out = se.evaluate_shadow_fill(order, observation(last_trade_price=1500.0), now=NOW, submitted_at=submitted_at)
+        out = se.evaluate_shadow_fill(order, observation(last_trade_price=1500.0), now=NOW)
         self.assertEqual(out["status"], "WORKING")
         self.assertIn("TOUCH_ONLY", out["ambiguity_flags"])
         self.assertEqual(out["filled_qty"], 0)
 
     def test_limit_trade_through_fills(self):
         order = self._new_order("LIMIT", limit_price=1500.0)
-        submitted_at = NOW - timedelta(seconds=5)
-        out = se.evaluate_shadow_fill(order, observation(last_trade_price=1490.0), now=NOW, submitted_at=submitted_at)
+        out = se.evaluate_shadow_fill(order, observation(last_trade_price=1490.0), now=NOW)
         self.assertEqual(out["status"], "FILLED")
         self.assertEqual(out["filled_qty"], 100)
 
     def test_unobservable_data_gives_unobservable_status(self):
         order = self._new_order("MARKET")
-        out = se.evaluate_shadow_fill(order, observation(data_freshness="STALE"), now=NOW,
-                                       submitted_at=NOW - timedelta(seconds=5))
+        out = se.evaluate_shadow_fill(order, observation(data_freshness="STALE"), now=NOW)
         self.assertEqual(out["status"], "UNOBSERVABLE")
         self.assertEqual(out["filled_qty"], 0)
 
@@ -296,30 +356,29 @@ class EvaluateShadowFillTests(unittest.TestCase):
         """FILLED状態のshadow_orderへ、全く異なるobservationを渡しても
         一切変化しない（自動retryしない）。"""
         order = self._new_order("MARKET")
-        filled = se.evaluate_shadow_fill(order, observation(), now=NOW, submitted_at=NOW - timedelta(seconds=5))
+        filled = se.evaluate_shadow_fill(order, observation(), now=NOW)
         self.assertEqual(filled["status"], "FILLED")
         later = NOW + timedelta(seconds=30)
-        reevaluated = se.evaluate_shadow_fill(
-            filled, observation(observed_at=later, ask=9999.0), now=later, submitted_at=NOW - timedelta(seconds=5))
+        reevaluated = se.evaluate_shadow_fill(filled, observation(observed_at=later, ask=9999.0), now=later)
         self.assertEqual(reevaluated, filled)
 
     def test_golden_17_rejected_state_not_reevaluated(self):
         intent = build_intent()
         decision = risk_decision(decision="BLOCK")
         tkt = ticket(intent)
-        rejected = se.submit_shadow_order(intent, decision, tkt, known_orders=[])
+        rejected = submit(intent, decision, tkt)
         self.assertEqual(rejected["status"], "REJECTED")
-        out = se.evaluate_shadow_fill(rejected, observation(), now=NOW, submitted_at=NOW)
+        out = se.evaluate_shadow_fill(rejected, observation(), now=NOW)
         self.assertEqual(out, rejected)
 
     def test_golden_17_duplicate_ignored_state_not_reevaluated(self):
         intent = build_intent()
         decision = risk_decision()
         tkt = ticket(intent)
-        first = se.submit_shadow_order(intent, decision, tkt, known_orders=[])
-        duplicate = se.submit_shadow_order(intent, decision, tkt, known_orders=[first])
+        first = submit(intent, decision, tkt)
+        duplicate = submit(intent, decision, tkt, known_orders=[first])
         self.assertEqual(duplicate["status"], "DUPLICATE_IGNORED")
-        out = se.evaluate_shadow_fill(duplicate, observation(), now=NOW, submitted_at=NOW)
+        out = se.evaluate_shadow_fill(duplicate, observation(), now=NOW)
         self.assertEqual(out, duplicate)
 
 
@@ -330,67 +389,56 @@ class PartialFillAccumulationTests(unittest.TestCase):
 
     def _new_market_order(self):
         intent = build_intent(order_type="MARKET", limit_price=None)
-        return se.submit_shadow_order(intent, risk_decision(), ticket(intent), known_orders=[])
+        return submit(intent, risk_decision(), ticket(intent))
 
     def test_hardening_golden_1_second_round_completes_to_filled(self):
         order = self._new_market_order()
-        submitted_at = NOW - timedelta(seconds=10)
-        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW, submitted_at=submitted_at)
+        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW)
         self.assertEqual(round1["status"], "PARTIAL_FILLED")
         self.assertEqual(round1["filled_qty"], 40)
         later = NOW + timedelta(seconds=5)
-        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask_qty=60), now=later,
-                                          submitted_at=submitted_at)
+        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask_qty=60), now=later)
         self.assertEqual(round2["status"], "FILLED")
         self.assertEqual(round2["filled_qty"], 100)
         self.assertEqual(round2["remaining_qty"], 0)
 
     def test_hardening_golden_2_second_round_stays_partial_with_correct_total(self):
         order = self._new_market_order()
-        submitted_at = NOW - timedelta(seconds=10)
-        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW, submitted_at=submitted_at)
+        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW)
         self.assertEqual(round1["filled_qty"], 40)
         later = NOW + timedelta(seconds=5)
-        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask_qty=20), now=later,
-                                          submitted_at=submitted_at)
+        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask_qty=20), now=later)
         self.assertEqual(round2["status"], "PARTIAL_FILLED")
         self.assertEqual(round2["filled_qty"], 60)
         self.assertEqual(round2["remaining_qty"], 40)
 
     def test_hardening_golden_3_unusable_second_observation_does_not_roll_back_existing_fill(self):
         order = self._new_market_order()
-        submitted_at = NOW - timedelta(seconds=10)
-        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW, submitted_at=submitted_at)
+        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW)
         self.assertEqual(round1["filled_qty"], 40)
         later = NOW + timedelta(seconds=5)
-        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, data_freshness="STALE"), now=later,
-                                          submitted_at=submitted_at)
+        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, data_freshness="STALE"), now=later)
         self.assertEqual(round2["filled_qty"], 40)
         self.assertEqual(round2["status"], "PARTIAL_FILLED")
 
     def test_hardening_golden_4_quantity_weighted_average_fill_price(self):
         order = self._new_market_order()
-        submitted_at = NOW - timedelta(seconds=10)
-        round1 = se.evaluate_shadow_fill(order, observation(ask=1500.0, ask_qty=40), now=NOW,
-                                          submitted_at=submitted_at)
+        round1 = se.evaluate_shadow_fill(order, observation(ask=1500.0, ask_qty=40), now=NOW)
         self.assertEqual(round1["avg_fill_price"], 1500.0)
         later = NOW + timedelta(seconds=5)
-        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask=1510.0, ask_qty=60), now=later,
-                                          submitted_at=submitted_at)
+        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask=1510.0, ask_qty=60), now=later)
         self.assertEqual(round2["filled_qty"], 100)
         # (1500*40 + 1510*60) / 100 = 1506.0
         self.assertAlmostEqual(round2["avg_fill_price"], 1506.0)
 
     def test_new_total_filled_never_exceeds_requested_qty(self):
         order = self._new_market_order()
-        submitted_at = NOW - timedelta(seconds=10)
-        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=90), now=NOW, submitted_at=submitted_at)
+        round1 = se.evaluate_shadow_fill(order, observation(ask_qty=90), now=NOW)
         self.assertEqual(round1["filled_qty"], 90)
         later = NOW + timedelta(seconds=5)
         # 2回目のobservationがvisible qty=500（requested全量超）でも、
         # 残数量(10)を超えてfillしない。
-        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask_qty=500), now=later,
-                                          submitted_at=submitted_at)
+        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask_qty=500), now=later)
         self.assertEqual(round2["filled_qty"], 100)
         self.assertEqual(round2["remaining_qty"], 0)
         self.assertEqual(round2["status"], "FILLED")
@@ -399,11 +447,135 @@ class PartialFillAccumulationTests(unittest.TestCase):
         """Golden #10: downstream（evaluate_shadow_fillのmerge処理）が
         Noneを0へ暗黙変換しない契約テスト。"""
         order = self._new_market_order()
-        out = se.evaluate_shadow_fill(order, observation(), now=NOW, submitted_at=NOW - timedelta(seconds=5))
+        out = se.evaluate_shadow_fill(order, observation(), now=NOW)
         self.assertIsNone(out["slippage_yen"])
         self.assertIsNone(out["slippage_bps"])
         self.assertNotEqual(out["slippage_yen"], 0)
         self.assertEqual(out["slippage_model_status"], "NOT_MODELED_V0_1")
+
+
+class ObservationChronologyTests(unittest.TestCase):
+    """Phase 5.0.2 hardening Blocker 2（C-060-GPT comment 5708285624）:
+    同一/古いMarketObservationの再適用でfillを二重計上できない。"""
+
+    def _partial_order(self):
+        intent = build_intent(order_type="MARKET", limit_price=None)
+        order = submit(intent, risk_decision(), ticket(intent))
+        return se.evaluate_shadow_fill(order, observation(ask_qty=40), now=NOW)
+
+    def test_hardening_golden_4_replaying_same_observation_does_not_increase_fill(self):
+        round1 = self._partial_order()
+        self.assertEqual(round1["filled_qty"], 40)
+        replay = se.evaluate_shadow_fill(round1, observation(ask_qty=40), now=NOW)
+        self.assertEqual(replay["filled_qty"], 40)
+        self.assertEqual(replay["fill_reason"], "DUPLICATE_OBSERVATION")
+
+    def test_hardening_golden_5_older_observation_does_not_increase_fill(self):
+        round1 = self._partial_order()
+        self.assertEqual(round1["filled_qty"], 40)
+        older = observation(observed_at=NOW - timedelta(seconds=1), ask_qty=40)
+        out = se.evaluate_shadow_fill(round1, older, now=NOW)
+        self.assertEqual(out["filled_qty"], 40)
+        self.assertEqual(out["fill_reason"], "OUT_OF_ORDER_OBSERVATION")
+
+    def test_hardening_golden_6_strictly_newer_observation_accumulates_normally(self):
+        round1 = self._partial_order()
+        self.assertEqual(round1["filled_qty"], 40)
+        later = NOW + timedelta(seconds=5)
+        round2 = se.evaluate_shadow_fill(round1, observation(observed_at=later, ask_qty=60), now=later)
+        self.assertEqual(round2["filled_qty"], 100)
+        self.assertEqual(round2["status"], "FILLED")
+
+    def test_last_applied_observation_at_advances(self):
+        round1 = self._partial_order()
+        self.assertEqual(round1["last_applied_observation_at"], NOW)
+
+
+class ShadowOrderStateIntegrityTests(unittest.TestCase):
+    """Phase 5.0.2 hardening Blocker 3（C-060-GPT comment 5708285624）:
+    壊れた既存shadow stateを推測補正せずfail-closedにする。"""
+
+    def _order(self):
+        intent = build_intent(order_type="MARKET", limit_price=None)
+        return submit(intent, risk_decision(), ticket(intent))
+
+    def test_hardening_golden_7_negative_filled_qty_fails_closed(self):
+        corrupted = {**self._order(), "filled_qty": -5}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_FILLED_QTY_INVALID", out["reject_reasons"])
+
+    def test_hardening_golden_7_nan_filled_qty_fails_closed(self):
+        corrupted = {**self._order(), "filled_qty": float("nan")}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_FILLED_QTY_INVALID", out["reject_reasons"])
+
+    def test_hardening_golden_7_fractional_filled_qty_fails_closed(self):
+        corrupted = {**self._order(), "filled_qty": 40.5, "remaining_qty": 59.5}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_FILLED_QTY_INVALID", out["reject_reasons"])
+
+    def test_hardening_golden_8_remaining_qty_inconsistent_fails_closed(self):
+        corrupted = {**self._order(), "filled_qty": 40, "remaining_qty": 999}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_REMAINING_QTY_INCONSISTENT", out["reject_reasons"])
+
+    def test_hardening_golden_9_filled_qty_positive_but_avg_fill_price_missing_fails_closed(self):
+        corrupted = {**self._order(), "filled_qty": 40, "remaining_qty": 60, "avg_fill_price": None}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_AVG_FILL_PRICE_INVALID", out["reject_reasons"])
+
+    def test_hardening_golden_9_avg_fill_price_non_positive_fails_closed(self):
+        corrupted = {**self._order(), "filled_qty": 40, "remaining_qty": 60, "avg_fill_price": 0.0}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_AVG_FILL_PRICE_INVALID", out["reject_reasons"])
+
+    def test_requested_qty_invalid_fails_closed(self):
+        corrupted = {**self._order(), "requested_qty": 0}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_REQUESTED_QTY_INVALID", out["reject_reasons"])
+
+    def test_fill_model_version_mismatch_fails_closed(self):
+        corrupted = {**self._order(), "shadow_fill_model_version": "shadow-fill-model-9.9"}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_FILL_MODEL_VERSION_MISMATCH", out["reject_reasons"])
+
+    def test_real_submit_allowed_true_fails_closed(self):
+        corrupted = {**self._order(), "real_submit_allowed": True}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["status"], "REJECTED")
+        self.assertIn("REJECTED_STATE_REAL_SUBMIT_ALLOWED_NOT_FALSE", out["reject_reasons"])
+
+    def test_healthy_new_order_passes_state_validation(self):
+        order = self._order()
+        out = se.evaluate_shadow_fill(order, observation(), now=NOW)
+        self.assertNotEqual(out["status"], "REJECTED")
+
+    def test_corrupted_filled_state_does_not_get_silently_reset_to_zero(self):
+        """壊れたfilled_qtyが0へ黙って補正され処理が継続してしまわない
+        ことを確認する——REJECTEDへfail closedし、filled_qtyの値自体は
+        書き換えない（推測補正しない）。"""
+        corrupted = {**self._order(), "filled_qty": -5}
+        out = se.evaluate_shadow_fill(corrupted, observation(), now=NOW)
+        self.assertEqual(out["filled_qty"], -5)
+        self.assertEqual(out["status"], "REJECTED")
+
+    def test_rejected_and_duplicate_ignored_records_skip_state_validation(self):
+        """REJECTED/DUPLICATE_IGNOREDはrequested_qty等の完全なスキーマを
+        持たない最小フィールドの辞書のため、state-integrity検証の対象
+        から除外される（誤ってREJECTED_STATE_*で再REJECTされない）。"""
+        intent = build_intent()
+        rejected = submit(intent, risk_decision(decision="BLOCK"), ticket(intent))
+        out = se.evaluate_shadow_fill(rejected, observation(), now=NOW)
+        self.assertEqual(out, rejected)
+        self.assertNotIn("REJECTED_STATE_REQUESTED_QTY_INVALID", out.get("reject_reasons", []))
 
 
 class RealSubmitAllowedTests(unittest.TestCase):
@@ -411,18 +583,18 @@ class RealSubmitAllowedTests(unittest.TestCase):
 
     def test_new_order_real_submit_allowed_false(self):
         intent = build_intent()
-        out = se.submit_shadow_order(intent, risk_decision(), ticket(intent), known_orders=[])
+        out = submit(intent, risk_decision(), ticket(intent))
         self.assertIs(out["real_submit_allowed"], False)
 
     def test_rejected_real_submit_allowed_false(self):
         intent = build_intent()
-        out = se.submit_shadow_order(intent, risk_decision(decision="BLOCK"), ticket(intent), known_orders=[])
+        out = submit(intent, risk_decision(decision="BLOCK"), ticket(intent))
         self.assertIs(out["real_submit_allowed"], False)
 
     def test_evaluated_fill_real_submit_allowed_false(self):
         intent = build_intent(order_type="MARKET", limit_price=None)
-        order = se.submit_shadow_order(intent, risk_decision(), ticket(intent), known_orders=[])
-        out = se.evaluate_shadow_fill(order, observation(), now=NOW, submitted_at=NOW - timedelta(seconds=5))
+        order = submit(intent, risk_decision(), ticket(intent))
+        out = se.evaluate_shadow_fill(order, observation(), now=NOW)
         self.assertIs(out["real_submit_allowed"], False)
 
 

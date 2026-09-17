@@ -53,6 +53,33 @@ networkへは直接アクセスしない。発注は一切行わない。
 
 canonical field名は`status`のみに統一（`fill_status`という二重
 フィールドは作らない）。
+
+## Phase 5.0.2 chronology/state-integrity hardening（3 blocker、
+C-060-GPT comment 5708285624）
+1. **submitted_atのbind（Blocker 1）**：`submit_shadow_order()`が
+   必須keyword-only引数`submitted_at`/`now`を受け取り、`submitted_at`を
+   shadow orderのimmutable/bound contextとして保存する（内部で
+   wall-clockを勝手に生成しない）。`evaluate_shadow_fill()`は外部から
+   `submitted_at`を受け取らなくなり、order-bound値だけを使う——呼び出し
+   側が別のsubmitted_atを注入して過去tradeを有効化する経路は存在しない。
+   MARKET fillもLIMIT同様に`observation.observed_at <= submitted_at`を
+   fillに使わないよう`scripts/shadow_fill_model.evaluate_market_fill()`
+   へ`submitted_at`を追加した（従来MARKETだけsubmit前のquoteでもfill
+   できた）。
+2. **同一/古いobservationの二重計上防止（Blocker 2）**：orderに
+   `last_applied_observation_at`を保持し、`observation.observed_at`が
+   その値以下（同一timestampの再適用、または過去への巻き戻し）なら
+   incremental fill=0のまま`fill_reason`に`DUPLICATE_OBSERVATION`/
+   `OUT_OF_ORDER_OBSERVATION`を明示し、fillを一切適用しない。厳密に
+   新しいobservationだけがfilled_qtyを前進させる。
+3. **壊れたshadow stateのfail-closed化（Blocker 3）**：以前は
+   `filled_qty`がNaN/負値等なら0へ黙って補正し処理を続けていた。
+   `_validate_shadow_order_state()`が`requested_qty`（正整数）、
+   `filled_qty`（`0<=filled_qty<=requested_qty`の整数）、
+   `remaining_qty`の整合性、`filled_qty>0`なら`avg_fill_price`が
+   finite positiveであること、`shadow_fill_model_version`一致、
+   `real_submit_allowed is False`を検証し、いずれか1つでも違反すれば
+   既存値を推測補正せず`REJECTED`（terminal）へ倒す。
 """
 from __future__ import annotations
 
@@ -81,7 +108,12 @@ ORDER_STATUSES = (
 )
 
 # terminalな状態からは一切再評価しない（自動retryを表現しない、Golden #17）。
-_TERMINAL_STATUSES = frozenset({"FILLED", "EXPIRED", "REJECTED", "DUPLICATE_IGNORED"})
+# REJECTED/DUPLICATE_IGNOREDはsubmit_shadow_order()の早期rejectパスが返す
+# 最小フィールドの辞書（requested_qty/filled_qty等を持たない）なので、
+# state-integrity検証（Blocker 3）の対象から明示的に除外する。
+_MINIMAL_TERMINAL_STATUSES = frozenset({"REJECTED", "DUPLICATE_IGNORED"})
+_FULL_TERMINAL_STATUSES = frozenset({"FILLED", "EXPIRED"})
+_TERMINAL_STATUSES = _MINIMAL_TERMINAL_STATUSES | _FULL_TERMINAL_STATUSES
 
 
 def _is_finite_number(value) -> bool:
@@ -170,16 +202,32 @@ def _rejected(intent_hash, reasons: list[str]) -> dict:
     }
 
 
-def submit_shadow_order(intent: dict, risk_decision: dict, ticket: dict, *, known_orders: list[dict]) -> dict:
+def submit_shadow_order(intent: dict, risk_decision: dict, ticket: dict, *, known_orders: list[dict],
+                         submitted_at: datetime, now: datetime) -> dict:
     """Shadow orderを1件生成する純粋関数。lineageが不正ならREJECTED、
     同一(intent_hash, fill_model_version)が`known_orders`に既に存在すれば
     DUPLICATE_IGNOREDを返す——二重orderを作らない（Golden #2）。
+
+    Phase 5.0.2 hardening（Blocker 1、C-060-GPT comment 5708285624）:
+    `submitted_at`はここでshadow orderへimmutable/bound contextとして
+    保存され、`evaluate_shadow_fill()`は以後この値だけを使う。この関数
+    自体が内部でwall-clockを生成することはなく、`now`は呼び出し側が
+    明示的に渡す（`submitted_at`のnaive/未来値をfail-closedするための
+    基準時刻）。
 
     `known_orders`: 既知のshadow orderレコードのリスト（各要素は最低
     `shadow_order_id`を持つ辞書）。永続化はこの関数の外の責務。
     """
     intent_hash = intent.get("intent_hash") if isinstance(intent, dict) else None
     lineage_reasons = _validate_lineage(intent, risk_decision, ticket)
+
+    if not isinstance(now, datetime) or now.tzinfo is None:
+        lineage_reasons.append("REJECTED_NOW_NOT_TIMEZONE_AWARE")
+    if not isinstance(submitted_at, datetime) or submitted_at.tzinfo is None:
+        lineage_reasons.append("REJECTED_SUBMITTED_AT_NOT_TIMEZONE_AWARE")
+    elif isinstance(now, datetime) and now.tzinfo is not None and submitted_at > now:
+        lineage_reasons.append("REJECTED_SUBMITTED_AT_FUTURE")
+
     if lineage_reasons:
         return _rejected(intent_hash, lineage_reasons)
 
@@ -223,15 +271,53 @@ def submit_shadow_order(intent: dict, risk_decision: dict, ticket: dict, *, know
         "best_bid": None, "best_ask": None, "bid_qty": None, "ask_qty": None,
         "spread_yen": None, "slippage_yen": None, "slippage_bps": None,
         "slippage_model_status": None,
+        "submitted_at": submitted_at,
         "first_observation_at": None,
         "fill_at": None,
+        "last_applied_observation_at": None,
         "ambiguity_flags": [],
         "reject_reasons": [],
         "real_submit_allowed": False,
     }
 
 
-def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime, submitted_at: datetime) -> dict:
+def _validate_shadow_order_state(shadow_order: dict) -> list[str]:
+    """Phase 5.0.2 hardening（Blocker 3、C-060-GPT comment 5708285624）:
+    永続化されたshadow orderの不変条件をfail-closedで検証する。違反が
+    あれば既存値を推測補正せず、理由コードのリストを返す（空なら健全）。
+    """
+    reasons = []
+    requested_qty = shadow_order.get("requested_qty")
+    filled_qty = shadow_order.get("filled_qty")
+    remaining_qty = shadow_order.get("remaining_qty")
+    avg_fill_price = shadow_order.get("avg_fill_price")
+
+    requested_ok = _is_finite_number(requested_qty) and requested_qty > 0 and int(requested_qty) == requested_qty
+    if not requested_ok:
+        reasons.append("REJECTED_STATE_REQUESTED_QTY_INVALID")
+
+    filled_ok = _is_finite_number(filled_qty) and int(filled_qty) == filled_qty and filled_qty >= 0
+    if filled_ok and requested_ok and filled_qty > requested_qty:
+        filled_ok = False
+    if not filled_ok:
+        reasons.append("REJECTED_STATE_FILLED_QTY_INVALID")
+
+    if requested_ok and filled_ok and remaining_qty != requested_qty - filled_qty:
+        reasons.append("REJECTED_STATE_REMAINING_QTY_INCONSISTENT")
+
+    if filled_ok and filled_qty > 0 and (not _is_finite_number(avg_fill_price) or avg_fill_price <= 0):
+        reasons.append("REJECTED_STATE_AVG_FILL_PRICE_INVALID")
+
+    if shadow_order.get("shadow_fill_model_version") != sfm.FILL_MODEL_VERSION:
+        reasons.append("REJECTED_STATE_FILL_MODEL_VERSION_MISMATCH")
+
+    if shadow_order.get("real_submit_allowed") is not False:
+        reasons.append("REJECTED_STATE_REAL_SUBMIT_ALLOWED_NOT_FALSE")
+
+    return reasons
+
+
+def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime) -> dict:
     """既存のshadow_order（`submit_shadow_order()`の戻り値）へ、1件の
     MarketObservationを適用してentry fillを評価する純粋関数。terminal
     状態（FILLED/EXPIRED/REJECTED/DUPLICATE_IGNORED）からは一切再評価
@@ -244,22 +330,51 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
     毎回requested_qty全量を渡し、結果でfilled_qtyを丸ごと上書きしていた
     ため、複数回のobservationにまたがるpartial fillの累積が失われて
     いた。avg_fill_priceは複数回のfillをまたぐ数量加重平均にする。
+
+    Phase 5.0.2 hardening（C-060-GPT comment 5708285624）: `submitted_at`
+    は外部から受け取らず、`shadow_order`自身のbound値だけを使う
+    （Blocker 1）。`observation.observed_at`が`shadow_order.
+    last_applied_observation_at`以下（同一/巻き戻り）ならfillを一切
+    適用しない（Blocker 2）。state不変条件違反はREJECTEDへfail-closed
+    する（Blocker 3）。
     """
     if not isinstance(shadow_order, dict):
         raise ValueError("shadow_order must be a dict")
-    if shadow_order.get("status") in _TERMINAL_STATUSES:
+
+    status = shadow_order.get("status")
+    if status in _MINIMAL_TERMINAL_STATUSES:
+        return dict(shadow_order)
+
+    state_reasons = _validate_shadow_order_state(shadow_order)
+    if state_reasons:
+        return {
+            **shadow_order,
+            "status": "REJECTED",
+            "reject_reasons": sorted(set(shadow_order.get("reject_reasons") or []) | set(state_reasons)),
+            "real_submit_allowed": False,
+        }
+
+    if status in _FULL_TERMINAL_STATUSES:
         return dict(shadow_order)
 
     side = shadow_order.get("side")
     order_type = shadow_order.get("order_type")
     requested_qty = shadow_order.get("requested_qty")
-    already_filled_qty = shadow_order.get("filled_qty") or 0
-    if not _is_finite_number(already_filled_qty) or already_filled_qty < 0:
-        already_filled_qty = 0
-    remaining_before = requested_qty - already_filled_qty if _is_finite_number(requested_qty) else 0
+    already_filled_qty = shadow_order.get("filled_qty")
+    submitted_at = shadow_order.get("submitted_at")
+
+    observed_at = observation.get("observed_at") if isinstance(observation, dict) else None
+    last_applied = shadow_order.get("last_applied_observation_at")
+    observed_at_valid = isinstance(observed_at, datetime) and observed_at.tzinfo is not None
+    if observed_at_valid and last_applied is not None and observed_at <= last_applied:
+        reason = "DUPLICATE_OBSERVATION" if observed_at == last_applied else "OUT_OF_ORDER_OBSERVATION"
+        return {**shadow_order, "fill_reason": reason, "real_submit_allowed": False}
+
+    remaining_before = requested_qty - already_filled_qty
 
     if order_type == "MARKET":
-        result = sfm.evaluate_market_fill(side=side, requested_qty=remaining_before, observation=observation, now=now)
+        result = sfm.evaluate_market_fill(side=side, requested_qty=remaining_before, observation=observation,
+                                           now=now, submitted_at=submitted_at)
     elif order_type == "LIMIT":
         result = sfm.evaluate_limit_fill(
             side=side, requested_qty=remaining_before, limit_price=shadow_order.get("limit_price"),
@@ -272,7 +387,7 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
     # new_total_filled > requested_qtyを絶対に起こさないよう防御的にcapする。
     incremental_fill = max(0, min(result["filled_qty"], int(remaining_before) if remaining_before > 0 else 0))
     new_total_filled = already_filled_qty + incremental_fill
-    remaining_qty = (requested_qty - new_total_filled) if _is_finite_number(requested_qty) else None
+    remaining_qty = requested_qty - new_total_filled
 
     previous_avg = shadow_order.get("avg_fill_price")
     if incremental_fill > 0 and result["avg_fill_price"] is not None:
@@ -284,23 +399,28 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
         avg_fill_price = previous_avg
 
     if new_total_filled <= 0:
-        status = "UNOBSERVABLE" if result["fill_confidence"] == "UNOBSERVABLE" else "WORKING"
-    elif remaining_qty is not None and remaining_qty > 0:
-        status = "PARTIAL_FILLED"
+        new_status = "UNOBSERVABLE" if result["fill_confidence"] == "UNOBSERVABLE" else "WORKING"
+    elif remaining_qty > 0:
+        new_status = "PARTIAL_FILLED"
     else:
-        status = "FILLED"
+        new_status = "FILLED"
 
     ambiguity_flags = []
     if result["fill_confidence"] in ("UNCERTAIN", "PROBABLE"):
         ambiguity_flags.append(result["fill_reason"])
-    if _is_finite_number(requested_qty) and 0 < new_total_filled < requested_qty:
+    if 0 < new_total_filled < requested_qty:
         ambiguity_flags.append("PARTIAL_FILL")
 
-    observed_at = observation.get("observed_at") if isinstance(observation, dict) else None
+    # このobservationが実際に処理された（submit後・有効なtimestamp）場合だけ
+    # last_applied_observation_atを前進させる——過去への巻き戻りは起こさない。
+    new_last_applied = last_applied
+    if observed_at_valid and isinstance(submitted_at, datetime) and submitted_at.tzinfo is not None \
+            and observed_at > submitted_at and (last_applied is None or observed_at > last_applied):
+        new_last_applied = observed_at
 
     return {
         **shadow_order,
-        "status": status,
+        "status": new_status,
         "filled_qty": new_total_filled,
         "remaining_qty": remaining_qty,
         "reference_price": result["reference_price"],
@@ -315,6 +435,7 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
         "slippage_model_status": result["slippage_model_status"],
         "first_observation_at": shadow_order.get("first_observation_at") or observed_at,
         "fill_at": observed_at if incremental_fill > 0 else shadow_order.get("fill_at"),
+        "last_applied_observation_at": new_last_applied,
         "ambiguity_flags": ambiguity_flags,
         "real_submit_allowed": False,
     }
