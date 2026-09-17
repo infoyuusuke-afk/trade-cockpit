@@ -650,6 +650,17 @@ def _validate_shadow_order_state(shadow_order: dict, *, now: datetime) -> list[s
     return reasons
 
 
+def validate_shadow_order_state(shadow_order: dict, *, now: datetime) -> list[str]:
+    """`_validate_shadow_order_state()`の公開wrapper（Phase 5.1、C-065-GPT
+    section 8対応）。Phase 5.1（scripts/shadow_position.py）がPosition
+    生成前にShadow Orderのstate-integrityを再検証する必要があるが、
+    Permission Gate/Kill/duplicate guardと同様「ここで別実装して矛盾
+    させない」方針を維持するため、このモジュールのcanonical検証ロジック
+    をそのまま公開する——Phase 5.1側で弱い独自コピーを作らせない。
+    """
+    return _validate_shadow_order_state(shadow_order, now=now)
+
+
 def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime) -> dict:
     """既存のshadow_order（`submit_shadow_order()`の戻り値）へ、1件の
     MarketObservationを適用してentry fillを評価する純粋関数。terminal
