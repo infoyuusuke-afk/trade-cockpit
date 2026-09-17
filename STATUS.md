@@ -2176,6 +2176,72 @@ protective-stop execution、profit target execution、Shadow position
 lifecycle、Real-vs-Shadow reconciliation、calibration自動更新、
 Shadow Forward promotion判定、Small Real Execution Test。
 
+## Execution Stack Phase 5.0.2 chronology/state-integrity hardening（Issue #18 C-060-GPT、2026-09-17）
+
+C-060-GPT（comment 5708285624）がPhase 5.0.1（475件成功）を実コード・
+commit・Actionsログ・STATUS/共有シートまで再確認しACCEPTEDとした上で、
+**Phase 5.1（protective stop/target + Shadow position lifecycle）には
+まだ進まず**、entry fillの時系列がそのままposition quantity/PnLへ
+伝播する前に塞ぐべきchronology/state-integrityの3点を指摘した。
+
+**Blocker 1（submitted_atがshadow orderへbindされていない）**：
+従来`submit_shadow_order()`はsubmission時刻をorderへ保存せず、
+`evaluate_shadow_fill(..., submitted_at=...)`の呼び出し側が毎回任意に
+渡す構造だった。MARKETはそもそも`submitted_at`をFill Modelへ渡して
+おらず、submit前のquoteでもfillできてしまう欠陥があった。
+`submit_shadow_order()`が必須keyword-only引数`submitted_at`/`now`を
+受け取り、`submitted_at`をshadow orderのimmutable/bound contextとして
+保存するよう変更。naive/欠損/未来値の`submitted_at`、naive/欠損の
+`now`はfail-closed（`REJECTED_SUBMITTED_AT_NOT_TIMEZONE_AWARE`/
+`REJECTED_SUBMITTED_AT_FUTURE`/`REJECTED_NOW_NOT_TIMEZONE_AWARE`）。
+`evaluate_shadow_fill()`は外部から`submitted_at`を受け取らなくなり、
+order-bound値だけを使う——呼び出し側が別のsubmitted_atを注入して過去
+tradeを有効化する経路は構造的に存在しない。MARKET fillも
+`scripts/shadow_fill_model.evaluate_market_fill()`へ`submitted_at`を
+追加し、LIMIT同様`observation.observed_at <= submitted_at`をfillに
+使わないよう修正した。
+
+**Blocker 2（同一/古いMarketObservationの再適用でfillを二重計上でき
+る）**：Phase 5.0.1でpartial fillを累積するようになったため、同じ
+snapshotを2回処理すると同じvisible qtyを2回加算できたり、過去の
+observationで既存fillの巻き戻しが起きうる穴があった。shadow orderに
+`last_applied_observation_at`を保持し、`observation.observed_at`が
+その値以下（同一timestampの再適用、または過去への巻き戻し）なら
+incremental fill=0のまま`fill_reason`に`DUPLICATE_OBSERVATION`/
+`OUT_OF_ORDER_OBSERVATION`を明示し、fillを一切適用しない。厳密に
+新しい、かつ実際に処理されたobservationだけが
+`last_applied_observation_at`を前進させる。
+
+**Blocker 3（壊れた既存shadow stateを0へ補正して処理継続している）**：
+従来`already_filled_qty`がNaN/負値等なら0へ黙って補正し処理を続けて
+いた。新設の`_validate_shadow_order_state()`が`requested_qty`（正
+整数）、`filled_qty`（`0<=filled_qty<=requested_qty`の整数）、
+`remaining_qty`の整合性、`filled_qty>0`なら`avg_fill_price`がfinite
+positiveであること、`shadow_fill_model_version`一致、
+`real_submit_allowed is False`を検証し、いずれか1つでも違反すれば
+既存値を推測補正せず`REJECTED`（terminal）へ倒す。REJECTED/
+DUPLICATE_IGNORED（完全なスキーマを持たない最小フィールドのレコード）
+はこの検証の対象から明示的に除外し、誤って再REJECTされないようにした。
+
+**テスト**：`tests/test_shadow_execution.py`・`tests/test_shadow_fill_
+model.py`にC-060-GPT指定のGolden Fixturesを実装（MARKET/LIMITとも
+submitted_at以前のobservationはno fill、evaluate_shadow_fill()が
+submitted_atを一切受け付けない構造の確認、submitted_at/nowのnaive/
+未来値検証、同一/古いobservationの再適用でfilled_qtyが増えないこと、
+厳密に新しいobservationは正常に累積を継続すること、negative/NaN/
+fractionalなfilled_qtyやremaining_qty不整合・avg_fill_price欠損が
+fail-closedすること、REJECTED/DUPLICATE_IGNOREDがstate検証をスキップ
+すること）。1回目のCI実行（run 35181382996）で成功。`python -m
+unittest discover -s tests -v`で**502件全て成功（failures=0,
+errors=0、Phase 5.0.1の475件から新規27件追加）**。commit
+21ff96de84cb9392fff13614cdd5018f33e0b519（本体実装）。main反映済み。
+
+**未着手（Phase 5.1以降、変更なし）**：RssOrder、Excel注文式、broker
+API submit、実ポジション変更、`real_submit_allowed=True`、
+protective-stop execution、profit target execution、Shadow position
+lifecycle、Real-vs-Shadow reconciliation、calibration自動更新、
+Shadow Forward promotion判定、Small Real Execution Test。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
