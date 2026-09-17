@@ -22,6 +22,7 @@ class NextThemeRadarTest(unittest.TestCase):
         item = self.report(self.fixture)
         self.assertEqual(item["status"], "CONFIRMED")
         self.assertEqual(item["score"], 95)
+        self.assertEqual(item["first_seen"], self.fixture["now"])
         self.assertEqual(item["handoff_codes"], ["3853", "4072", "4382"])
         self.assertFalse(item["real_submit_allowed"])
 
