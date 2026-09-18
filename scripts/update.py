@@ -1331,6 +1331,7 @@ def build_precision_top5(valid, rotation, official_earnings, now, credit_supply=
             "chart": row.get("chart", []), "data_date": row.get("data_date"),
             "chart_last_close": row.get("chart_last_close"),
             "quote_status": row.get("quote_status", "株価検証不能"),
+            "prev_close": row.get("prev_close"), "change_pct": row.get("change_pct"),
         })
 
     stage_priority = {
@@ -1618,6 +1619,7 @@ def render_focus_dashboard(candidates):
             "material_stage": item.get("material_stage", "事実確認待ち"),
             "material_action": item.get("material_action", ""),
             "intraday_regime": item.get("intraday_regime"),
+            "prev_close": item.get("prev_close"), "change_pct": item.get("change_pct"),
         })
     payload = json.dumps(rows, ensure_ascii=False).replace("</", "<\\/")
     return f"""
@@ -1657,9 +1659,9 @@ document.addEventListener("DOMContentLoaded",()=>{{
  let rows={payload}, activeIndex=0, tfMultiplier=[1,3].includes(Number(localStorage.getItem("focusChartTf")))?Number(localStorage.getItem("focusChartTf")):1, yen=n=>Number(n).toLocaleString("ja-JP",{{maximumFractionDigits:1}})+"円";
  const list=document.getElementById("focus-picks");
  function pickHtml(x,i){{
-  const bars=x.chart||[],last=bars[bars.length-1],prev=bars[bars.length-2];
-  const price=Number(x.chart_last_close),prevClose=prev?Number(prev.c):null;
-  const chg=(Number.isFinite(price)&&Number.isFinite(prevClose)&&prevClose)?((price-prevClose)/prevClose*100):null;
+  const bars=x.chart||[],last=bars[bars.length-1];
+  const price=Number(x.chart_last_close),prevClose=Number(x.prev_close);
+  const chg=(Number.isFinite(price)&&Number.isFinite(prevClose)&&prevClose)?((price-prevClose)/prevClose*100):(Number.isFinite(x.change_pct)?x.change_pct:null);
   const dayLow=last?Number(last.l):null,dayHigh=last?Number(last.h):null;
   const rangePct=(Number.isFinite(price)&&Number.isFinite(dayLow)&&Number.isFinite(dayHigh)&&dayHigh>dayLow)?Math.max(0,Math.min(100,(price-dayLow)/(dayHigh-dayLow)*100)):null;
   const chgClass=chg==null?"":(chg>=0?"up":"down");
