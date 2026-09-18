@@ -46,11 +46,17 @@ entryMode = input.string(entryModeOfficial, "REBOUND LONGの発動方式", optio
 
 grpFilter = "確認フィルター"
 emaLen        = input.int(9, "EMA期間", group=grpFilter)
+emaSlopeBars  = input.int(3, "EMA方向判定に使う遡りバー数（45秒足の1バー判定は誤爆しやすいため）", group=grpFilter)
 volLookback   = input.int(20, "出来高平均の期間", group=grpFilter)
 volExpandMult = input.float(1.2, "出来高増加とみなす倍率（対平均）", group=grpFilter)
 idxTrendLen   = input.int(5, "指数の方向判定に使う本数（Nバー前比）", group=grpFilter)
+idxTimeframe  = input.timeframe("1", "指数トレンド判定に使う時間足（チャートの45秒足そのままだと指数側が荒れるため上位足を推奨）", group=grpFilter)
 idxSymbol  = input.symbol("TVC:NI225", "日経平均シンボル（環境に応じて変更）", group=grpFilter)
 semiSymbol = input.symbol("TVC:SOX", "半導体指数シンボル（環境に応じて変更、SOX等）", group=grpFilter)
+
+grpDebounce = "過剰発火防止（このセッションの検証で追加）"
+cooldownBars = input.int(40, "シグナル間の最短バー数（クールダウン、45秒足で40=約30分）", group=grpDebounce)
+onlyPlotRealEntries = input.bool(true, "チャート上の▲▼は『条件成立した全瞬間』ではなく『実際にエントリーした瞬間』だけ表示", group=grpDebounce)
 
 grpExit = "損切り・利確・持ち越し"
 shortReclaimBars = input.int(2, "SHORT損切り確定に必要な連続VWAP上抜けバー数（定着判定）", group=grpExit)
@@ -86,14 +92,16 @@ if not na(orLow) and low < orLow
 // ---------------------------------------------------------------------------
 vwapVal = ta.vwap(hlc3)
 emaVal  = ta.ema(close, emaLen)
-emaUp   = emaVal > emaVal[1]
-emaDown = emaVal < emaVal[1]
+emaUp   = emaVal > emaVal[emaSlopeBars]
+emaDown = emaVal < emaVal[emaSlopeBars]
 
 volAvg      = ta.sma(volume, volLookback)
 volExpanding = volume > volAvg * volExpandMult
 
-idxClose  = request.security(idxSymbol, timeframe.period, close, lookahead=barmerge.lookahead_off, gaps=barmerge.gaps_off)
-semiClose = request.security(semiSymbol, timeframe.period, close, lookahead=barmerge.lookahead_off, gaps=barmerge.gaps_off)
+// 45秒足そのままだと指数側のデータが薄くノイズになりやすいため、
+// 明示的に上位時間足（既定1分足）でリクエストして地合い判定を安定させる。
+idxClose  = request.security(idxSymbol, idxTimeframe, close, lookahead=barmerge.lookahead_off, gaps=barmerge.gaps_off)
+semiClose = request.security(semiSymbol, idxTimeframe, close, lookahead=barmerge.lookahead_off, gaps=barmerge.gaps_off)
 idxUp   = idxClose > idxClose[idxTrendLen]
 semiUp  = semiClose > semiClose[idxTrendLen]
 semiDown = semiClose < semiClose[idxTrendLen]
@@ -137,13 +145,29 @@ reboundLongTrigger = entryMode == entryModeOfficial ? reboundTriggerOfficial : r
 trendShortTrigger = (not or15LowHeld) and crossedBelowVwap and emaDown and volExpanding and semiDown
 
 // ---------------------------------------------------------------------------
-// エントリー
+// 過剰発火防止：条件が揃った瞬間すべてに反応すると45秒足のノイズで連射される
+// （スクリーンショットで確認済み）。直近エントリーからcooldownBars未満は
+// 新規シグナルを一切出さない。これによりチャート上のREBOUND/SHORT表示と
+// 実際のエントリー回数を一致させる。
 // ---------------------------------------------------------------------------
-if strategy.position_size == 0 and reboundLongTrigger
-    strategy.entry("REBOUND_LONG", strategy.long, comment="REBOUND LONG発動")
+var int lastSignalBar = na
+canSignal = na(lastSignalBar) or (bar_index - lastSignalBar) >= cooldownBars
 
-if strategy.position_size == 0 and trendShortTrigger
+// ---------------------------------------------------------------------------
+// エントリー（実際に約定させる条件は「フラット＋条件成立＋クールダウン明け」のみ）
+// ---------------------------------------------------------------------------
+reboundEntryFired = false
+shortEntryFired = false
+
+if strategy.position_size == 0 and reboundLongTrigger and canSignal
+    strategy.entry("REBOUND_LONG", strategy.long, comment="REBOUND LONG発動")
+    lastSignalBar := bar_index
+    reboundEntryFired := true
+
+if strategy.position_size == 0 and trendShortTrigger and canSignal
     strategy.entry("TREND_SHORT", strategy.short, comment="TREND SHORT発動")
+    lastSignalBar := bar_index
+    shortEntryFired := true
 
 // ---------------------------------------------------------------------------
 // REBOUND LONGの損切り・利確
@@ -191,13 +215,13 @@ plot(orHigh, "OR15高値", color=color.new(color.fuchsia, 30), style=plot.style_
 plot(orLow, "OR15安値", color=color.new(color.fuchsia, 30), style=plot.style_circles)
 plot(reboundOriginLow, "反発起点安値（LONG損切り基準）", color=color.new(color.red, 0), style=plot.style_linebr)
 
-plotshape(reboundLongTrigger, title="REBOUND LONG発動", location=location.belowbar, style=shape.triangleup, color=color.new(color.lime, 0), size=size.small)
-plotshape(trendShortTrigger, title="TREND SHORT発動", location=location.abovebar, style=shape.triangledown, color=color.new(color.red, 0), size=size.small)
+plotshape(onlyPlotRealEntries ? reboundEntryFired : reboundLongTrigger, title="REBOUND LONG発動", location=location.belowbar, style=shape.triangleup, color=color.new(color.lime, 0), size=size.small)
+plotshape(onlyPlotRealEntries ? shortEntryFired : trendShortTrigger, title="TREND SHORT発動", location=location.abovebar, style=shape.triangledown, color=color.new(color.red, 0), size=size.small)
 
 // ---------------------------------------------------------------------------
 // 確認チェックリスト表（板・歩み値は手動確認、それ以外は自動判定）
 // ---------------------------------------------------------------------------
-var table checklist = table.new(position.top_right, 2, 7, border_width=1)
+var table checklist = table.new(position.top_right, 2, 8, border_width=1)
 mark(cond) => cond ? "✅" : "❌"
 if barstate.islast
     table.cell(checklist, 0, 0, "REBOUND LONGチェック", text_color=color.white, bgcolor=color.new(color.gray, 60))
@@ -214,11 +238,13 @@ if barstate.islast
     table.cell(checklist, 1, 5, mark(idxUp and semiUp))
     table.cell(checklist, 0, 6, "板・歩み値が買い優勢（手動確認・未自動化）")
     table.cell(checklist, 1, 6, "―")
+    table.cell(checklist, 0, 7, "クールダウン明け（連射防止）")
+    table.cell(checklist, 1, 7, mark(canSignal))
 
 bgcolor(inFlattenWindow ? color.new(color.orange, 85) : na, title="強制手仕舞い時間帯")
 
 // ---------------------------------------------------------------------------
 // アラート（人間への通知のみ。自動発注・Webhook執行は行わない）
 // ---------------------------------------------------------------------------
-alertcondition(reboundLongTrigger, title="REBOUND LONG発動候補", message="REBOUND LONG条件成立。板・歩み値は未確認のため必ず目視確認してから判断すること（自動発注なし）")
-alertcondition(trendShortTrigger, title="TREND SHORT発動候補", message="TREND SHORT条件成立。板・歩み値は未確認のため必ず目視確認してから判断すること（自動発注なし）")
+alertcondition(reboundEntryFired, title="REBOUND LONG発動候補", message="REBOUND LONG条件成立。板・歩み値は未確認のため必ず目視確認してから判断すること（自動発注なし）")
+alertcondition(shortEntryFired, title="TREND SHORT発動候補", message="TREND SHORT条件成立。板・歩み値は未確認のため必ず目視確認してから判断すること（自動発注なし）")
