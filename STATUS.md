@@ -2828,6 +2828,31 @@ autosize反映（ResizeObserverによる非同期処理）と競合して直ら�
 
 発注・シグナル生成・執行系（RssOrder、broker submit等）には一切触れていない。
 
+## リアルタイムTOP5の変動率がライブ中に壊れるバグを修正（2026-09-18）
+
+ユーザー報告「リアルタイムTOP５の変動率もおかしい、株価がリアルタイムにとれないから」。
+
+原因：ピック一覧の変動率バッジ（`pickHtml()`）は`x.chart`の末尾2本
+（`bars[-1].c`と`bars[-2].c`）の差分で計算していた。既定状態（非ライブ）では
+`x.chart`は日足40本なので`bars[-2]`が実質前日終値となり偶然動いていたが、
+ザラバ中に`liveFocusUpdate`が`x.chart`をlive_focus.pyの5分足イントラデイ配列へ
+差し替えると、`bars[-2]`は「5分前の足」になり、価格はライブ更新されるのに
+変動率だけ数分単位の微小な値（例：+0.02%等）へ壊れていた。
+
+修正：`daily_snapshot()`が既に計算している安定した`prev_close`/`change_pct`を
+`build_precision_top5()`→`render_focus_dashboard()`経由でフロントへ渡し、
+`pickHtml()`側は`(price - x.prev_close) / x.prev_close * 100`で計算するよう変更。
+`x.prev_close`は`liveFocusUpdate`のspreadで上書きされないため、ライブ中も
+正しい前日比を維持したまま最新株価に追従する。
+
+ローカルで`render_focus_dashboard()`合成データ検証：prev_close=1000／
+chart_last_close=1024で"+2.40%"、その後liveFocusUpdate相当のイベントで
+price=1040へ更新すると"+4.00%"に正しく再計算されることを確認
+（旧ロジックでは約+0.1%という誤った値になるところ）。commit b746f53を
+mainへpush後、GitHub Actionsも正常稼働、実データでの表示も確認済み。
+
+発注・シグナル生成・執行系（RssOrder、broker submit等）には一切触れていない。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
