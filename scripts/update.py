@@ -1684,6 +1684,7 @@ document.addEventListener("DOMContentLoaded",()=>{{
   box.style.display="block";empty.style.display="none";
   if(!ensureLwc())return;
   lwcSeries.setData(data);
+  lwcChart.timeScale().fitContent();
   const rawLo=Math.min(...a.map(v=>v.l),x.stop),rawHi=Math.max(...a.map(v=>v.h),x.trigger);
   const pad=Math.max((rawHi-rawLo)*.06,1),lo=rawLo-pad,hi=rawHi+pad;
   lwcSeries.applyOptions({{autoscaleInfoProvider:()=>({{priceRange:{{minValue:lo,maxValue:hi}}}})}});
@@ -3399,6 +3400,7 @@ const kioOneMinuteChart = (points,actual=[],turns=[],signals=[],levels={{}}) => 
   kioEmaSeries.setData(kioSeriesData(emaLine(actualRows,20)));
   let pv=0,vol=0;const vwapPairs=[];actualRows.forEach(r=>{{const v=Number(r.v)||0;if(v>0){{pv+=((Number(r.h)+Number(r.l)+Number(r.c))/3)*v;vol+=v;vwapPairs.push([tradingMinuteIndex(r.t),pv/vol]);}}}});
   kioVwapSeries.setData(kioSeriesData(vwapPairs));
+  kioChart.timeScale().fitContent();
   kioPriceLines.forEach(l=>kioCandleSeries.removePriceLine(l));kioPriceLines=[];
   const visibleLevelKeys={{pivot_p:["P","#ffb454"],pivot_r1:["R1","#ffb454"],pivot_s1:["S1","#ffb454"],or15_high:["OR15高","#ff6b72"],or15_low:["OR15安","#ff6b72"]}};
   Object.entries(levels.return_pct||{{}}).forEach(([key,value])=>{{
