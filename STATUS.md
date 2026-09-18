@@ -2946,6 +2946,29 @@ trigger/stop/target1/target2の自動算出ロジック（公式シグナルが�
 のフォールバック計算）はコード変更なし。発注・シグナル生成・執行系
 （RssOrder、broker submit等）には一切触れていない。
 
+## リアルタイムTOP5カードの幅ズレを修正（2026-09-18）
+
+ユーザー報告「幅が今まで揃っていたのにずれたのなおして」（スクリーンショット添付）。
+NEXT THEME RADAR等の他カードと比べ、リアルタイムTOP5カードだけ幅が狭く中央寄りに
+表示されていた。
+
+原因：`.focus-dashboard{max-width:1480px;margin:0 auto;...}`が以前から存在していた
+（今回のチャート作業とは無関係の既存コード）。このセクションは`.tab-pane.active`
+（2カラムCSS Grid）内で`grid-column:1/-1`を持つグリッドアイテムだが、**インライン軸の
+マージンが`auto`だとCSS Gridの既定のstretch配置が無効になり、代わりにコンテンツの
+minmax()下限に基づくshrink-to-fitサイズになる**という仕様がある。実機で`max-width`
+だけ外しても幅は変わらず、`margin:0`（autoを外す）だけで即座に約1109px→1416px
+（他カードと同じ幅）に広がることを確認して特定した。`max-width:1480px`自体は
+1416pxより大きく元々効いていなかったため、`margin:0`のみに変更（`max-width`は
+超ワイド画面向けの保険として維持）。
+
+キャッシュなしの新規読み込みで、`.focus-dashboard`と`#next-theme-radar`の幅
+（1416px）・左端位置（84.5px）が一致すること、フォーカスチャートのcanvasが新しい
+幅へ正しく追従することを確認済み。commit b526abeをmainへpush後、GitHub Actionsも
+正常稼働を確認済み。
+
+発注・シグナル生成・執行系（RssOrder、broker submit等）には一切触れていない。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
