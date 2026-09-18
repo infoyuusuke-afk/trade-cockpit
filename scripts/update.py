@@ -1635,6 +1635,7 @@ def render_focus_dashboard(candidates):
    <div class="focus-chart-canvas-wrap">
     <div id="focus-chart" role="img" aria-label="ローソク足チャート"></div>
     <div id="focus-chart-empty" class="chart-empty" style="display:none">チャートデータ更新待ち</div>
+    <div id="focus-chart-line-labels" class="lwc-line-labels"></div>
     <div id="focus-chart-badges-top" class="lwc-badges-top"></div>
     <div id="focus-chart-badges-bottom" class="lwc-badges-bottom"></div>
    </div>
@@ -1676,10 +1677,10 @@ document.addEventListener("DOMContentLoaded",()=>{{
  function barTime(t,rowDate){{if(/^\\d{{4}}-\\d{{2}}-\\d{{2}}$/.test(t))return t;const m=/^(\\d{{2}}):(\\d{{2}})$/.exec(t);if(m){{const dm=/^(\\d{{4}})-(\\d{{2}})-(\\d{{2}})/.exec(rowDate||"");if(!dm)return null;return Math.floor(Date.UTC(+dm[1],+dm[2]-1,+dm[3],+m[1]-9,+m[2])/1000);}}return null;}}
  function toSeriesData(bars,rowDate){{const today=new Date(),out=[];bars.forEach((b,i)=>{{let time=b.t?barTime(b.t,rowDate):null;if(time==null){{if(b.t)return;const d=new Date(today);d.setDate(d.getDate()-(bars.length-1-i));time=d.toISOString().slice(0,10);}}out.push({{time,open:b.o,high:b.h,low:b.l,close:b.c}});}});return out;}}
  let lwcChart=null,lwcSeries=null,lwcLines=[];
- function ensureLwc(){{if(lwcChart||typeof LightweightCharts==="undefined")return lwcChart;lwcChart=LightweightCharts.createChart(document.getElementById("focus-chart"),{{layout:{{background:{{color:"transparent"}},textColor:"#8ea2b3",fontSize:11}},grid:{{vertLines:{{color:"#152230"}},horzLines:{{color:"#152230"}}}},rightPriceScale:{{borderColor:"#1c2c37"}},timeScale:{{borderColor:"#1c2c37",timeVisible:true,secondsVisible:false}},crosshair:{{mode:LightweightCharts.CrosshairMode.Normal}},autoSize:true}});lwcSeries=lwcChart.addSeries(LightweightCharts.CandlestickSeries,{{upColor:"#3ed5ae",downColor:"#ef646b",borderUpColor:"#3ed5ae",borderDownColor:"#ef646b",wickUpColor:"#3ed5ae",wickDownColor:"#ef646b"}});return lwcChart;}}
+ function ensureLwc(){{if(lwcChart||typeof LightweightCharts==="undefined")return lwcChart;lwcChart=LightweightCharts.createChart(document.getElementById("focus-chart"),{{layout:{{background:{{color:"transparent"}},textColor:"#8ea2b3",fontSize:11}},grid:{{vertLines:{{color:"#152230"}},horzLines:{{color:"#152230"}}}},rightPriceScale:{{borderColor:"#1c2c37"}},timeScale:{{borderColor:"#1c2c37",timeVisible:true,secondsVisible:false,rightOffset:8}},crosshair:{{mode:LightweightCharts.CrosshairMode.Normal}},autoSize:true}});lwcSeries=lwcChart.addSeries(LightweightCharts.CandlestickSeries,{{upColor:"#3ed5ae",downColor:"#ef646b",borderUpColor:"#3ed5ae",borderDownColor:"#ef646b",wickUpColor:"#3ed5ae",wickDownColor:"#ef646b"}});return lwcChart;}}
  function chart(x,isRefresh){{
-  const box=document.getElementById("focus-chart"),empty=document.getElementById("focus-chart-empty"),topBadges=document.getElementById("focus-chart-badges-top"),botBadges=document.getElementById("focus-chart-badges-bottom");
-  topBadges.innerHTML="";botBadges.innerHTML="";
+  const box=document.getElementById("focus-chart"),empty=document.getElementById("focus-chart-empty"),topBadges=document.getElementById("focus-chart-badges-top"),botBadges=document.getElementById("focus-chart-badges-bottom"),lineLabels=document.getElementById("focus-chart-line-labels");
+  topBadges.innerHTML="";botBadges.innerHTML="";lineLabels.innerHTML="";
   const a=aggregateBars(x.chart||[],tfMultiplier);
   const data=a.length?toSeriesData(a,x.data_date):[];
   if(!data.length){{box.style.display="none";empty.style.display="grid";return;}}
@@ -1693,7 +1694,11 @@ document.addEventListener("DOMContentLoaded",()=>{{
   lwcLines.forEach(l=>lwcSeries.removePriceLine(l));lwcLines=[];
   [[x.trigger,"発動","#50e8c0"],[x.pullback_high,"押し目","#f2c45a"],[x.stop,"撤退","#ff787e"],[x.target1,"利確1","#f0c85e"],[x.target2,"利確2","#f0c85e"]].forEach(z=>{{
    const v=z[0];if(v==null||!Number.isFinite(v))return;
-   if(v>=lo&&v<=hi){{lwcLines.push(lwcSeries.createPriceLine({{price:v,color:z[2],lineWidth:1,lineStyle:2,axisLabelVisible:true,title:z[1]}}));}}
+   if(v>=lo&&v<=hi){{
+    lwcLines.push(lwcSeries.createPriceLine({{price:v,color:z[2],lineWidth:1,lineStyle:2,axisLabelVisible:true}}));
+    const y=lwcSeries.priceToCoordinate(v);
+    if(y!=null){{const el=document.createElement("span");el.className="lwc-line-label";el.style.top=y+"px";el.style.color=z[2];el.textContent=z[1]+" "+yen(v);lineLabels.appendChild(el);}}
+   }}
    else{{const b=document.createElement("span");b.className="lwc-badge";b.style.color=z[2];if(v>hi){{b.textContent="▲ "+z[1]+" "+yen(v);topBadges.appendChild(b);}}else{{b.textContent="▼ "+z[1]+" "+yen(v);botBadges.appendChild(b);}}}}
   }});
  }}
@@ -2896,7 +2901,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  <p class="warning">Excel Watcher側の全項目は「参考・未検証」であり、$buy/$shortの売買サイン条件式・音声通知には一切使っていません（変更は行っていません）。この欄はExcelを直接開かなくても同じ内容を確認できるようにするための表示専用ミラーです。</p>
 </div>
 <div id="kio-best-analog" class="kio-best-analog">
- <div class="kio-best-chart"><div class="kio-best-title"><div><span>本日予測・実測1分足（大判）</span><b id="kio-best-date">選定中</b></div><div id="kio-chart-signal" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px solid #39505d;border-radius:12px;background:#10202a;color:#b8c8d2;font-weight:800"><span id="kio-chart-signal-label">サイン待ち</span><strong id="kio-chart-signal-price">—</strong></div><strong id="kio-best-score">—</strong></div><div class="kio-best-path-wrap"><div id="kio-best-path" style="display:none"></div><div id="kio-best-path-empty" class="focus-empty">米国市場と1分足を照合中...</div></div><div class="kio-chart-legend"><span style="--legend-color:#f1c75b">予測1分経路</span><span style="--legend-color:#3ed5ae">実測1分足</span><span style="--legend-color:#d59bff">EMA20</span><span style="--legend-color:#f5f7fa">VWAP</span><span style="--legend-color:#ffb454">ピボット P/R1/S1</span><span style="--legend-color:#ff6b72">OR15 高/安</span></div><p id="kio-one-minute-note" class="kio-one-minute-note">類似日選定は5分足、主画面は1分刻み。実測1分足は取得確認後だけ重ねます。</p></div>
+ <div class="kio-best-chart"><div class="kio-best-title"><div><span>本日予測・実測1分足（大判）</span><b id="kio-best-date">選定中</b></div><div id="kio-chart-signal" style="display:flex;align-items:center;gap:10px;padding:9px 14px;border:1px solid #39505d;border-radius:12px;background:#10202a;color:#b8c8d2;font-weight:800"><span id="kio-chart-signal-label">サイン待ち</span><strong id="kio-chart-signal-price">—</strong></div><strong id="kio-best-score">—</strong></div><div class="kio-best-path-wrap"><div id="kio-best-path" style="display:none"></div><div id="kio-best-path-empty" class="focus-empty">米国市場と1分足を照合中...</div><div id="kio-best-path-line-labels" class="lwc-line-labels"></div></div><div class="kio-chart-legend"><span style="--legend-color:#f1c75b">予測1分経路</span><span style="--legend-color:#3ed5ae">実測1分足</span><span style="--legend-color:#d59bff">EMA20</span><span style="--legend-color:#f5f7fa">VWAP</span><span style="--legend-color:#ffb454">ピボット P/R1/S1</span><span style="--legend-color:#ff6b72">OR15 高/安</span></div><p id="kio-one-minute-note" class="kio-one-minute-note">類似日選定は5分足、主画面は1分刻み。実測1分足は取得確認後だけ重ねます。</p></div>
  <div class="kio-best-detail"><span id="kio-selection-mode">選定方式を確認中</span><h3 id="kio-best-type">判定待ち</h3><div id="kio-us-context" class="kio-us-context"></div><p id="kio-best-plan">前夜の米国市場と信用需給を確認中です。</p></div>
 </div>
 <div class="kio-detail-grid">
@@ -3404,14 +3409,18 @@ const kioOneMinuteChart = (points,actual=[],turns=[],signals=[],levels={{}},isRe
   let pv=0,vol=0;const vwapPairs=[];actualRows.forEach(r=>{{const v=Number(r.v)||0;if(v>0){{pv+=((Number(r.h)+Number(r.l)+Number(r.c))/3)*v;vol+=v;vwapPairs.push([tradingMinuteIndex(r.t),pv/vol]);}}}});
   kioVwapSeries.setData(kioSeriesData(vwapPairs));
   const lastActualIndex=actualRows.length?tradingMinuteIndex(actualRows.at(-1).t):null;
-  if(isRefresh&&lastActualIndex!=null){{kioChart.timeScale().setVisibleLogicalRange({{from:Math.max(0,lastActualIndex-40),to:Math.min(331,lastActualIndex+10)}});}}else{{kioChart.timeScale().fitContent();}}
+  if(isRefresh&&lastActualIndex!=null){{kioChart.timeScale().setVisibleLogicalRange({{from:Math.max(0,lastActualIndex-40),to:Math.min(331,lastActualIndex+18)}});}}else{{kioChart.timeScale().fitContent();}}
   kioPriceLines.forEach(l=>kioCandleSeries.removePriceLine(l));kioPriceLines=[];
+  const kioLineLabels=document.getElementById("kio-best-path-line-labels");
+  if(kioLineLabels)kioLineLabels.innerHTML="";
   const visibleLevelKeys={{pivot_p:["P","#ffb454"],pivot_r1:["R1","#ffb454"],pivot_s1:["S1","#ffb454"],or15_high:["OR15高","#ff6b72"],or15_low:["OR15安","#ff6b72"]}};
   Object.entries(levels.return_pct||{{}}).forEach(([key,value])=>{{
     const meta=visibleLevelKeys[key],v=Number(value);
     if(!meta||!Number.isFinite(v))return;
     const price=Number(levels[key]);
-    kioPriceLines.push(kioCandleSeries.createPriceLine({{price:v,color:meta[1],lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true,title:meta[0]+(Number.isFinite(price)?" "+price.toLocaleString("ja-JP"):"")}}));
+    kioPriceLines.push(kioCandleSeries.createPriceLine({{price:v,color:meta[1],lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,axisLabelVisible:true}}));
+    const y=kioCandleSeries.priceToCoordinate(v);
+    if(y!=null&&kioLineLabels){{const el=document.createElement("span");el.className="lwc-line-label";el.style.top=y+"px";el.style.color=meta[1];el.textContent=meta[0]+(Number.isFinite(price)?" "+price.toLocaleString("ja-JP"):"");kioLineLabels.appendChild(el);}}
   }});
   const markers=[];
   let lastTurn=-99;
