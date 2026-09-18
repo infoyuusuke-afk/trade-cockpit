@@ -1,0 +1,159 @@
+//@version=5
+// =============================================================================
+// JP Day-IFO Breakout (trade-cockpit移植版)
+//
+// trade-cockpit（GitHub Pages公開ダッシュボード）が毎朝8:55にMS2向けIFO
+// （逆指値トリガー＋指値エントリー）プランとして計算している売買条件を
+// TradingView Pine Script v5へ移植したもの。ロジックの出典:
+//   - scripts/update.py: build_day_ifo_candidates() / price_tick() / round_to_tick()
+//   - scripts/kioxia_calendar.py: pivot_p/pivot_r1/pivot_s1 / or15_high / or15_low
+//
+// 安全境界（trade-cockpitのCLAUDE.md / STATUS.mdの方針と同じ）:
+//   このスクリプトはTradingViewのストラテジーテスター上でのバックテスト・
+//   チャート表示・alertcondition()による「人間への通知」のみを行う。
+//   ブローカーへの自動発注・Webhook経由の自動執行は一切行わない。
+//   シグナルは必ず人間が確認したうえで、任意の手段で自分の判断により
+//   発注すること（モデル予測を自動売買注文に直結させない）。
+// =============================================================================
+strategy("JP Day-IFO Breakout (trade-cockpit)", shorttitle="DayIFO",
+     overlay=true, initial_capital=1000000,
+     default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+     pyramiding=0, process_orders_on_close=false, calc_on_every_tick=true)
+
+// ---------------------------------------------------------------------------
+// 銘柄フィルター（build_day_ifo_candidatesのeligible判定を移植）
+// ---------------------------------------------------------------------------
+grpFilter = "銘柄フィルター（IFO対象になり得るか）"
+minPrice     = input.float(100,   "価格下限（円）",               group=grpFilter)
+maxPrice     = input.float(30000, "価格上限（円）",               group=grpFilter)
+maxAtrPct    = input.float(9.0,   "ATR%上限（対終値、%）",        group=grpFilter)
+maxFromMa20  = input.float(15.0,  "MA20乖離率上限（%）",          group=grpFilter)
+minMa20Ratio = input.float(0.985, "価格/MA20 下限比率",           group=grpFilter)
+useFilter    = input.bool(true,   "フィルターを満たす日だけエントリーを許可", group=grpFilter)
+
+// ---------------------------------------------------------------------------
+// エントリー条件（IFO：前日高値ブレイクのトリガー＋指値）
+// ---------------------------------------------------------------------------
+grpEntry = "エントリー条件（IFO）"
+triggerTicks = input.int(1,   "トリガー上乗せ（呼値数、前日高値＋n呼値）", group=grpEntry)
+limitTicks   = input.int(2,   "指値上乗せ（呼値数、トリガー＋n呼値＝entry_limit）", group=grpEntry)
+stopAtrTight = input.float(0.85, "損切りATR倍率（トリガー基準）",          group=grpEntry)
+stopLowBuf   = input.float(0.10, "損切り安値バッファ（ATR倍率）",          group=grpEntry)
+stopFallback = input.float(0.55, "損切りフォールバックATR倍率",           group=grpEntry)
+target1R     = input.float(1.5,  "利確1（Rの倍数）",                      group=grpEntry)
+target2R     = input.float(2.2,  "利確2（Rの倍数）",                      group=grpEntry)
+exit1Pct     = input.float(50,   "利確1で手仕舞う比率（%、残りは利確2/損切りまで保有）", minval=1, maxval=99, group=grpEntry)
+
+// ---------------------------------------------------------------------------
+// 参考レベル（キオクシア専用チャート方式：ピボットP/R1/S1 + OR15）
+// ---------------------------------------------------------------------------
+grpRef = "参考レベル（キオクシア方式）"
+showPivot = input.bool(true, "ピボットP / R1 / S1 を表示", group=grpRef)
+showOR15  = input.bool(true, "OR15（寄付き15分レンジ）を表示", group=grpRef)
+
+// ---------------------------------------------------------------------------
+// 呼値（TSE tick size）: scripts/update.py の price_tick() を移植
+// ---------------------------------------------------------------------------
+tseTick(p) =>
+    p < 1000 and math.abs(p - math.round(p)) >= 0.05 ? 0.1 :
+     p < 3000  ? 1.0 :
+     p < 5000  ? 5.0 :
+     p < 30000 ? 10.0 :
+     p < 50000 ? 50.0 : 100.0
+
+roundToTick(v, tick) =>
+    r = math.round(v / tick) * tick
+    tick < 1 ? math.round(r * 10) / 10 : math.round(r)
+
+// ---------------------------------------------------------------------------
+// 前日OHLC・MA20・ATR14（日足ベース、update.pyのrow["high"]/["low"]/ma20/atr14相当）
+// ---------------------------------------------------------------------------
+[prevHigh, prevLow, prevClose] = request.security(syminfo.tickerid, "D", [high[1], low[1], close[1]], lookahead=barmerge.lookahead_off)
+ma20  = ta.sma(close, 20)
+atr14 = ta.atr(14)
+atr   = math.max(atr14, close * 0.008)
+atrPct    = atr / close * 100
+fromMa20  = ma20 != 0 ? math.abs(close - ma20) / ma20 * 100 : na
+
+passPrice    = close >= minPrice and close <= maxPrice
+passAtr      = atrPct <= maxAtrPct
+passMa20Gap  = fromMa20 <= maxFromMa20
+passMa20Ratio = close >= ma20 * minMa20Ratio
+eligible = passPrice and passAtr and passMa20Gap and passMa20Ratio
+
+// ---------------------------------------------------------------------------
+// IFOプラン計算（build_day_ifo_candidatesと同じ式）
+// ---------------------------------------------------------------------------
+tick = tseTick(close)
+trigger    = roundToTick(math.max(prevHigh, close) + tick * triggerTicks, tick)
+entryLimit = roundToTick(trigger + tick * limitTicks, tick)
+
+stopRaw = math.max(prevLow - atr * stopLowBuf, trigger - atr * stopAtrTight)
+stopLevel = roundToTick(stopRaw >= trigger ? trigger - math.max(tick, atr * stopFallback) : stopRaw, tick)
+
+riskPerShare = math.max(entryLimit - stopLevel, tick)
+target1 = roundToTick(entryLimit + riskPerShare * target1R, tick)
+target2 = roundToTick(entryLimit + riskPerShare * target2R, tick)
+
+// ---------------------------------------------------------------------------
+// 参考レベル: ピボットP/R1/S1（前日H/L/Cベース）
+// ---------------------------------------------------------------------------
+pivotP  = (prevHigh + prevLow + prevClose) / 3
+pivotR1 = 2 * pivotP - prevLow
+pivotS1 = 2 * pivotP - prevHigh
+
+// ---------------------------------------------------------------------------
+// 参考レベル: OR15（寄付き15分のレンジ高安、セッション開始からの経過時間で判定）
+// ---------------------------------------------------------------------------
+newSession = ta.change(time("D")) != 0
+var float orHigh = na
+var float orLow  = na
+var int sessionStart = na
+
+if newSession
+    sessionStart := time
+    orHigh := high
+    orLow  := low
+else if not na(sessionStart) and time <= sessionStart + 15 * 60 * 1000
+    orHigh := math.max(orHigh, high)
+    orLow  := math.min(orLow, low)
+
+// ---------------------------------------------------------------------------
+// エントリー・エグジット（IFO＝逆指値トリガー到達で指値成立を模したstop-limit）
+// ---------------------------------------------------------------------------
+canEnter = useFilter ? eligible : true
+longCondition = canEnter and strategy.position_size == 0 and not na(trigger) and not na(stopLevel)
+
+if longCondition
+    strategy.entry("IFO_LONG", strategy.long, stop=trigger, limit=entryLimit, comment="IFO発動")
+
+if strategy.position_size > 0
+    strategy.exit("利確1/損切り", from_entry="IFO_LONG", stop=stopLevel, limit=target1, qty_percent=exit1Pct, comment_profit="利確1", comment_loss="損切り")
+    strategy.exit("利確2/損切り", from_entry="IFO_LONG", stop=stopLevel, limit=target2, qty_percent=100 - exit1Pct, comment_profit="利確2", comment_loss="損切り")
+
+// ---------------------------------------------------------------------------
+// 描画
+// ---------------------------------------------------------------------------
+planActive = canEnter and not na(trigger)
+
+plot(planActive ? trigger : na, "発動（トリガー）", color=color.new(color.orange, 0), style=plot.style_linebr, linewidth=1)
+plot(planActive ? entryLimit : na, "指値エントリー", color=color.new(color.orange, 40), style=plot.style_linebr, linewidth=1)
+plot(planActive ? stopLevel : na, "損切り", color=color.new(color.red, 0), style=plot.style_linebr, linewidth=1)
+plot(planActive ? target1 : na, "利確1", color=color.new(color.teal, 0), style=plot.style_linebr, linewidth=1)
+plot(planActive ? target2 : na, "利確2", color=color.new(color.green, 0), style=plot.style_linebr, linewidth=1)
+
+plot(showPivot ? pivotP : na,  "Pivot P",  color=color.new(color.yellow, 30), style=plot.style_circles)
+plot(showPivot ? pivotR1 : na, "Pivot R1", color=color.new(color.yellow, 50), style=plot.style_circles)
+plot(showPivot ? pivotS1 : na, "Pivot S1", color=color.new(color.yellow, 50), style=plot.style_circles)
+plot(showOR15 ? orHigh : na, "OR15高", color=color.new(color.fuchsia, 30), style=plot.style_circles)
+plot(showOR15 ? orLow  : na, "OR15安", color=color.new(color.fuchsia, 30), style=plot.style_circles)
+
+bgcolor(useFilter and not eligible ? color.new(color.gray, 90) : na, title="フィルター非該当日")
+
+// ---------------------------------------------------------------------------
+// アラート（人間への通知のみ。自動発注・Webhook執行は行わない）
+// ---------------------------------------------------------------------------
+alertcondition(longCondition, title="IFO発動候補", message="IFO発動条件成立（要人間確認・自動発注なし）")
+alertcondition(strategy.position_size[1] > 0 and strategy.position_size == 0 and close <= stopLevel, title="損切り水準到達", message="損切り水準に到達（要人間確認）")
+alertcondition(strategy.position_size > 0 and high >= target1, title="利確1水準到達", message="利確1水準に到達（要人間確認）")
+alertcondition(strategy.position_size > 0 and high >= target2, title="利確2水準到達", message="利確2水準に到達（要人間確認）")

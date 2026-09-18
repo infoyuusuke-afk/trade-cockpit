@@ -1,0 +1,224 @@
+//@version=5
+// =============================================================================
+// Kioxia REBOUND LONG / TREND SHORT (trade-cockpit移植版)
+//
+// STATUS.md「## Kioxiaデイトレ（TradingView・45秒足）戦略の要点」を移植。
+// 出典: STATUS.md 2026-09-14「キオクシア大幅GD当日の値動き検証」および
+//       同セクションの正式ルール（OR15/VWAP/EMA/出来高/日経・半導体連動/
+//       板・歩み値、損切り・利確・持ち越し原則）。
+//
+// 【重要な未解決の論点（正直な制約として明記）】
+// STATUS.mdの実データ検証（2026-09-14訂正版、C-002/C-003）では、
+// 「VWAPを割らずに保持した押し目（entry<VWAP、押し目型）」の方が
+// 「VWAP奪還後の追随エントリー（entry>=VWAP、追随型）」よりR倍数・勝率が
+// 優位という結果（vwap_entry_analysis.py: 押し目型 勝率61.9%/PF4.28 ＞
+// 追随型 勝率18.2%/PF0.08）が出ている。一方、STATUS.mdの正式なREBOUND LONG
+// ルールは「VWAP奪還」を発動トリガーとしており、この定義に従うと
+// エントリーは構造的に「追随型」に分類されてしまう。この矛盾はChatGPT/
+// Claude間でもまだ結論が出ていない未解決論点のため、本スクリプトは
+// entryMode入力で両方を切り替えて検証できるようにしてある。
+//
+// 【Pine Scriptで再現できない条件（板・歩み値）】
+// 「板・歩み値が買い優勢」はTradingViewの気配値・歩み値APIがPine Scriptから
+// 参照できないため自動判定不可。右上のチェックリスト表に手動確認項目として
+// 残しているだけで、エントリー条件には一切使っていない（無いものを
+// 満たしたことにして自動発注しない、という既存プロジェクトの安全方針と同じ）。
+//
+// 【安全境界】
+// 本スクリプトはTradingViewのストラテジーテスター上でのバックテスト・
+// チャート表示・alertcondition()による人間への通知のみを行う。
+// ブローカーへの自動発注・Webhook経由の自動執行は一切行わない。
+// アラートは必ず人間が板・歩み値・地合いを目視確認したうえで、
+// 自分の判断で発注すること。
+// =============================================================================
+strategy("Kioxia REBOUND/TREND SHORT (trade-cockpit)", shorttitle="KioREBOUND",
+     overlay=true, initial_capital=1000000,
+     default_qty_type=strategy.percent_of_equity, default_qty_value=100,
+     pyramiding=0, process_orders_on_close=false, calc_on_every_tick=true)
+
+// ---------------------------------------------------------------------------
+// 入力
+// ---------------------------------------------------------------------------
+grpMode = "エントリー方式"
+entryModeOfficial = "VWAP奪還（STATUS.md公式REBOUND LONGルール）"
+entryModePullback = "VWAP割れ押し目保持（vwap_entry_analysis.py優位パターン）"
+entryMode = input.string(entryModeOfficial, "REBOUND LONGの発動方式", options=[entryModeOfficial, entryModePullback], group=grpMode)
+
+grpFilter = "確認フィルター"
+emaLen        = input.int(9, "EMA期間", group=grpFilter)
+volLookback   = input.int(20, "出来高平均の期間", group=grpFilter)
+volExpandMult = input.float(1.2, "出来高増加とみなす倍率（対平均）", group=grpFilter)
+idxTrendLen   = input.int(5, "指数の方向判定に使う本数（Nバー前比）", group=grpFilter)
+idxSymbol  = input.symbol("TVC:NI225", "日経平均シンボル（環境に応じて変更）", group=grpFilter)
+semiSymbol = input.symbol("TVC:SOX", "半導体指数シンボル（環境に応じて変更、SOX等）", group=grpFilter)
+
+grpExit = "損切り・利確・持ち越し"
+shortReclaimBars = input.int(2, "SHORT損切り確定に必要な連続VWAP上抜けバー数（定着判定）", group=grpExit)
+longExit1Pct  = input.float(50, "REBOUND LONG：OR15高値到達時の一部利確比率(%)", minval=1, maxval=99, group=grpExit)
+shortExit1Pct = input.float(50, "TREND SHORT：直近安値到達時の一部利確比率(%)", minval=1, maxval=99, group=grpExit)
+flattenSession = input.session("1455-1500", "強制手仕舞い時間帯（持ち越し原則なし）", group=grpExit)
+
+// ---------------------------------------------------------------------------
+// セッション・OR15（scripts/kioxia_calendar.pyのor15_high/lowと同じ定義：
+// セッション最初の15分の高値・安値、以後は固定）
+// ---------------------------------------------------------------------------
+newSession = ta.change(time("D")) != 0
+
+var float orHigh = na
+var float orLow  = na
+var int sessionStart = na
+var bool or15LowHeld = true
+
+if newSession
+    sessionStart := time
+    orHigh := high
+    orLow  := low
+    or15LowHeld := true
+else if not na(sessionStart) and time <= sessionStart + 15 * 60 * 1000
+    orHigh := math.max(orHigh, high)
+    orLow  := math.min(orLow, low)
+
+if not na(orLow) and low < orLow
+    or15LowHeld := false
+
+// ---------------------------------------------------------------------------
+// VWAP・EMA・出来高・指数（日経／半導体）
+// ---------------------------------------------------------------------------
+vwapVal = ta.vwap(hlc3)
+emaVal  = ta.ema(close, emaLen)
+emaUp   = emaVal > emaVal[1]
+emaDown = emaVal < emaVal[1]
+
+volAvg      = ta.sma(volume, volLookback)
+volExpanding = volume > volAvg * volExpandMult
+
+idxClose  = request.security(idxSymbol, timeframe.period, close, lookahead=barmerge.lookahead_off, gaps=barmerge.gaps_off)
+semiClose = request.security(semiSymbol, timeframe.period, close, lookahead=barmerge.lookahead_off, gaps=barmerge.gaps_off)
+idxUp   = idxClose > idxClose[idxTrendLen]
+semiUp  = semiClose > semiClose[idxTrendLen]
+semiDown = semiClose < semiClose[idxTrendLen]
+
+// ---------------------------------------------------------------------------
+// 反発起点安値（VWAP初奪還時点のセッション安値を記録、REBOUND LONGの損切り基準）
+// ---------------------------------------------------------------------------
+var float sessionLow = na
+var bool vwapReclaimed = false
+var float reboundOriginLow = na
+
+if newSession
+    sessionLow := low
+    vwapReclaimed := false
+    reboundOriginLow := na
+else
+    sessionLow := math.min(sessionLow, low)
+
+crossedAboveVwap = ta.crossover(close, vwapVal)
+crossedBelowVwap = ta.crossunder(close, vwapVal)
+
+if crossedAboveVwap and not vwapReclaimed
+    reboundOriginLow := sessionLow
+    vwapReclaimed := true
+
+// ---------------------------------------------------------------------------
+// REBOUND LONG 発動条件（OR15安値維持→VWAP奪還（or 押し目保持）→EMA上向き→
+// 出来高増加→日経/半導体も上向き、全部揃ってからのみ）
+// ---------------------------------------------------------------------------
+pivotLowConfirmed = not na(ta.pivotlow(low, 2, 2))
+
+reboundTriggerOfficial = or15LowHeld and crossedAboveVwap and emaUp and volExpanding and idxUp and semiUp
+reboundTriggerPullback = or15LowHeld and close < vwapVal and pivotLowConfirmed and emaUp and volExpanding and idxUp and semiUp
+
+reboundLongTrigger = entryMode == entryModeOfficial ? reboundTriggerOfficial : reboundTriggerPullback
+
+// ---------------------------------------------------------------------------
+// REBOUND破棄→TREND SHORT 発動条件（OR15安値割れ＋VWAP下＋EMA下向き＋
+// 出来高増加＋半導体全体が再び弱い場合、VWAP割れの瞬間をトリガーに一度だけ発動）
+// ---------------------------------------------------------------------------
+trendShortTrigger = (not or15LowHeld) and crossedBelowVwap and emaDown and volExpanding and semiDown
+
+// ---------------------------------------------------------------------------
+// エントリー
+// ---------------------------------------------------------------------------
+if strategy.position_size == 0 and reboundLongTrigger
+    strategy.entry("REBOUND_LONG", strategy.long, comment="REBOUND LONG発動")
+
+if strategy.position_size == 0 and trendShortTrigger
+    strategy.entry("TREND_SHORT", strategy.short, comment="TREND SHORT発動")
+
+// ---------------------------------------------------------------------------
+// REBOUND LONGの損切り・利確
+// 損切り: VWAP再割れ or 反発起点安値割れ
+// 利確: OR15高値で一部利確（残りは出来高伴う突破のみ伸ばす＝VWAP再割れまで保有）
+// ---------------------------------------------------------------------------
+if strategy.position_size > 0
+    longStop = crossedBelowVwap or (not na(reboundOriginLow) and close < reboundOriginLow)
+    if longStop
+        strategy.close("REBOUND_LONG", comment="損切り（VWAP再割れ/起点安値割れ）")
+    else if not na(orHigh)
+        strategy.order("REBOUND_LONG_TP1", strategy.short, qty=strategy.position_size * longExit1Pct / 100,
+             limit=orHigh, comment="利確1（OR15高値）")
+
+// ---------------------------------------------------------------------------
+// TREND SHORTの損切り・利確
+// 損切り: VWAPを明確に奪還して定着（連続shortReclaimBars本、終値がVWAP上）
+// 利確: 直近安値（確定ピボット安値）で一部利確
+// ---------------------------------------------------------------------------
+var int barsAboveVwap = 0
+barsAboveVwap := close > vwapVal ? barsAboveVwap + 1 : 0
+recentSwingLow = ta.valuewhen(not na(ta.pivotlow(low, 2, 2)), low[2], 0)
+
+if strategy.position_size < 0
+    shortStop = barsAboveVwap >= shortReclaimBars
+    if shortStop
+        strategy.close("TREND_SHORT", comment="損切り（VWAP奪還・定着）")
+    else if not na(recentSwingLow) and recentSwingLow < close
+        strategy.order("TREND_SHORT_TP1", strategy.long, qty=math.abs(strategy.position_size) * shortExit1Pct / 100,
+             limit=recentSwingLow, comment="利確1（直近安値）")
+
+// ---------------------------------------------------------------------------
+// 持ち越し原則なし：強制手仕舞い
+// ---------------------------------------------------------------------------
+inFlattenWindow = not na(time(timeframe.period, flattenSession))
+if inFlattenWindow and strategy.position_size != 0
+    strategy.close_all(comment="持ち越しなし：強制手仕舞い")
+
+// ---------------------------------------------------------------------------
+// 描画
+// ---------------------------------------------------------------------------
+plot(vwapVal, "VWAP", color=color.new(color.yellow, 0), linewidth=1)
+plot(emaVal, "EMA", color=color.new(color.aqua, 0), linewidth=1)
+plot(orHigh, "OR15高値", color=color.new(color.fuchsia, 30), style=plot.style_circles)
+plot(orLow, "OR15安値", color=color.new(color.fuchsia, 30), style=plot.style_circles)
+plot(reboundOriginLow, "反発起点安値（LONG損切り基準）", color=color.new(color.red, 0), style=plot.style_linebr)
+
+plotshape(reboundLongTrigger, title="REBOUND LONG発動", location=location.belowbar, style=shape.triangleup, color=color.new(color.lime, 0), size=size.small)
+plotshape(trendShortTrigger, title="TREND SHORT発動", location=location.abovebar, style=shape.triangledown, color=color.new(color.red, 0), size=size.small)
+
+// ---------------------------------------------------------------------------
+// 確認チェックリスト表（板・歩み値は手動確認、それ以外は自動判定）
+// ---------------------------------------------------------------------------
+var table checklist = table.new(position.top_right, 2, 7, border_width=1)
+mark(cond) => cond ? "✅" : "❌"
+if barstate.islast
+    table.cell(checklist, 0, 0, "REBOUND LONGチェック", text_color=color.white, bgcolor=color.new(color.gray, 60))
+    table.cell(checklist, 1, 0, "状態", text_color=color.white, bgcolor=color.new(color.gray, 60))
+    table.cell(checklist, 0, 1, "OR15安値維持")
+    table.cell(checklist, 1, 1, mark(or15LowHeld))
+    table.cell(checklist, 0, 2, "VWAP奪還/押し目保持")
+    table.cell(checklist, 1, 2, mark(entryMode == entryModeOfficial ? close > vwapVal : close < vwapVal))
+    table.cell(checklist, 0, 3, "EMA上向き")
+    table.cell(checklist, 1, 3, mark(emaUp))
+    table.cell(checklist, 0, 4, "出来高増加")
+    table.cell(checklist, 1, 4, mark(volExpanding))
+    table.cell(checklist, 0, 5, "日経/半導体が上向き")
+    table.cell(checklist, 1, 5, mark(idxUp and semiUp))
+    table.cell(checklist, 0, 6, "板・歩み値が買い優勢（手動確認・未自動化）")
+    table.cell(checklist, 1, 6, "―")
+
+bgcolor(inFlattenWindow ? color.new(color.orange, 85) : na, title="強制手仕舞い時間帯")
+
+// ---------------------------------------------------------------------------
+// アラート（人間への通知のみ。自動発注・Webhook執行は行わない）
+// ---------------------------------------------------------------------------
+alertcondition(reboundLongTrigger, title="REBOUND LONG発動候補", message="REBOUND LONG条件成立。板・歩み値は未確認のため必ず目視確認してから判断すること（自動発注なし）")
+alertcondition(trendShortTrigger, title="TREND SHORT発動候補", message="TREND SHORT条件成立。板・歩み値は未確認のため必ず目視確認してから判断すること（自動発注なし）")
