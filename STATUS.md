@@ -2792,6 +2792,42 @@ CDN: jsdelivr、v5.2.1）へ置き換えた。TradingView Advanced Charts（無�
 
 発注・シグナル生成・執行系（RssOrder、broker submit等）には一切触れていない。
 
+## Lightweight Charts移行後のタイムフレーム/タブ切替バグを2件修正（2026-09-18）
+
+ユーザー報告「チャートの描写の時間軸がおかしいへんにずれる」を受けて調査・修正。
+
+**バグ1：フォーカスダッシュボードのタイムフレーム切替（5分/15分）でチャートが右に
+片寄る**。原因：Lightweight Chartsは`setData()`のたびに表示範囲を自動フィットしない
+（データが空→非空へ遷移する最初の1回のみ）。同一チャートインスタンスを使い回して
+タイムフレーム/銘柄を切り替えると、本数が変わっても表示範囲（ズーム状態）が
+そのまま残り、少ない本数のデータが古い広い範囲の中で片寄って表示されていた。
+修正：`setData()`直後に`chart.timeScale().fitContent()`を追加（フォーカス・
+キオクシア両チャート、update.py/index.html）。
+
+**バグ2（ユーザー指示「他のタイムフレームも全部確認して」で発見）：キオクシア
+チャートは上記修正後も、初回表示時（非表示タブ内）に不整合が残ったまま**。
+原因：`kioOneMinuteChart()`はページ読み込み時に自動実行されるが、キオクシアタブは
+既定で非表示（`display:none`）のため、その時点でのコンテナ幅は0。
+`chart.timeScale().getVisibleLogicalRange()`で実測すると`{from:-1076, to:331}`
+（本来`{from:0, to:331}`のはずが約1400ロジカル単位分の空白を含む異常値）。
+タブを開いた後にLightweight Chartsのautosizeがcanvasを実サイズへリサイズしても、
+以前の（幅0時点で計算された）bar spacingを維持したまま表示範囲だけ引き伸ばされる
+ため、直らない。修正：タブ切替ハンドラ（`scripts/weekly_tabs.py`の`tabs_block()`と
+index.htmlのミラー）で、キオクシアタブがアクティブになった際に
+`kioChart.timeScale().fitContent()`を呼ぶよう追加。`kioChart`は元々
+別クロージャ内の`let`変数でタブ切替スクリプトから見えないため`window.kioChart`
+として公開。さらに、クリック直後の即時呼び出しでは新しいcanvasサイズへの
+autosize反映（ResizeObserverによる非同期処理）と競合して直らないことを確認した
+ため、`requestAnimationFrame`を二重にネストして遅延実行するよう修正。
+
+ローカル実機（ピクセルスキャンによる描画範囲測定＋`getVisibleLogicalRange()`直接
+確認）で両方の修正を検証。フォーカスダッシュボード側は5分/15分×全5銘柄の組合せ、
+および合成データによるライブ更新（日足→ザラバ5分足への差し替え）でも回帰なしを
+確認。commit 33cb89bをmainへpush後、GitHub Actions run 35293377145がGreenで
+完走し、実データでの最終確認も完了。
+
+発注・シグナル生成・執行系（RssOrder、broker submit等）には一切触れていない。
+
 ## 現在の未決事項・注意点
 
 - **Stage①（紹介前検出率）の検証は遡って行えない**：過去の株Tube公開時刻を正確に記録したログが
