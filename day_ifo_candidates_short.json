@@ -1,7 +1,44 @@
 {
-  "updated_at": "2026-09-18 15:37:37 JST",
+  "updated_at": "2026-09-18 16:39:16 JST",
   "side": "SHORT",
   "status": "試運転・検証中",
-  "count": 0,
-  "candidates": []
+  "count": 2,
+  "candidates": [
+    {
+      "name": "マネーフォワード（3994）",
+      "code": "3994",
+      "ticker": "3994.T",
+      "side": "SHORT",
+      "score": 68,
+      "trigger": 5825.0,
+      "stop": 6185.0,
+      "target1": 5285.0,
+      "target2": 4925.0,
+      "rvol": 1.68,
+      "atr_pct": 5.12,
+      "supply_phase": null,
+      "margin_caution_flagged": false,
+      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-5.0%／出来高比1.68倍／信用需給不明",
+      "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
+      "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
+    },
+    {
+      "name": "ニトリHD（9843）",
+      "code": "9843",
+      "ticker": "9843.T",
+      "side": "SHORT",
+      "score": 68,
+      "trigger": 2970.0,
+      "stop": 3175.0,
+      "target1": 2660.0,
+      "target2": 2460.0,
+      "rvol": 1.27,
+      "atr_pct": 4.22,
+      "supply_phase": null,
+      "margin_caution_flagged": false,
+      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-3.8%／出来高比1.27倍／信用需給不明",
+      "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
+      "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
+    }
+  ]
 }
