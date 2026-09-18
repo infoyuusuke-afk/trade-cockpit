@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-18 13:52:52 JST",
+  "generated_at": "2026-09-18 14:48:29 JST",
   "note": "resolved_n が30件未満の区分は、勝率・PFを『確立した手法』として扱わないこと。95%信頼区間の幅が広いほど、まだ結論を出せる段階ではない。by_strategy/by_regimeはstrategy_schema.py導入(2026-09-17)以降のレコードのみ区分でき、それ以前のレコードはUNTAGGED_LEGACYにまとめている。",
   "by_side": {
     "LONG": {
@@ -10,8 +10,8 @@
         36.4,
         61.9
       ],
-      "avg_r": 0.117,
-      "profit_factor": 1.7,
+      "avg_r": 0.116,
+      "profit_factor": 1.68,
       "max_drawdown_r": 4.55,
       "status": "参考値（要検証）",
       "min_n_threshold": 30
@@ -37,9 +37,9 @@
         37.6,
         96.4
       ],
-      "avg_r": 0.726,
-      "profit_factor": 73.6,
-      "max_drawdown_r": 0.05,
+      "avg_r": 0.712,
+      "profit_factor": 15.24,
+      "max_drawdown_r": 0.25,
       "status": "試運転・検証中（サンプル不足）",
       "min_n_threshold": 30
     },
