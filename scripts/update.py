@@ -1677,7 +1677,7 @@ document.addEventListener("DOMContentLoaded",()=>{{
  function toSeriesData(bars,rowDate){{const today=new Date(),out=[];bars.forEach((b,i)=>{{let time=b.t?barTime(b.t,rowDate):null;if(time==null){{if(b.t)return;const d=new Date(today);d.setDate(d.getDate()-(bars.length-1-i));time=d.toISOString().slice(0,10);}}out.push({{time,open:b.o,high:b.h,low:b.l,close:b.c}});}});return out;}}
  let lwcChart=null,lwcSeries=null,lwcLines=[];
  function ensureLwc(){{if(lwcChart||typeof LightweightCharts==="undefined")return lwcChart;lwcChart=LightweightCharts.createChart(document.getElementById("focus-chart"),{{layout:{{background:{{color:"transparent"}},textColor:"#8ea2b3",fontSize:11}},grid:{{vertLines:{{color:"#152230"}},horzLines:{{color:"#152230"}}}},rightPriceScale:{{borderColor:"#1c2c37"}},timeScale:{{borderColor:"#1c2c37",timeVisible:true,secondsVisible:false}},crosshair:{{mode:LightweightCharts.CrosshairMode.Normal}},autoSize:true}});lwcSeries=lwcChart.addSeries(LightweightCharts.CandlestickSeries,{{upColor:"#3ed5ae",downColor:"#ef646b",borderUpColor:"#3ed5ae",borderDownColor:"#ef646b",wickUpColor:"#3ed5ae",wickDownColor:"#ef646b"}});return lwcChart;}}
- function chart(x){{
+ function chart(x,isRefresh){{
   const box=document.getElementById("focus-chart"),empty=document.getElementById("focus-chart-empty"),topBadges=document.getElementById("focus-chart-badges-top"),botBadges=document.getElementById("focus-chart-badges-bottom");
   topBadges.innerHTML="";botBadges.innerHTML="";
   const a=aggregateBars(x.chart||[],tfMultiplier);
@@ -1686,7 +1686,7 @@ document.addEventListener("DOMContentLoaded",()=>{{
   box.style.display="block";empty.style.display="none";
   if(!ensureLwc())return;
   lwcSeries.setData(data);
-  lwcChart.timeScale().fitContent();
+  if(isRefresh)lwcChart.timeScale().scrollToRealTime();else lwcChart.timeScale().fitContent();
   const rawLo=Math.min(...a.map(v=>v.l),x.stop),rawHi=Math.max(...a.map(v=>v.h),x.trigger);
   const pad=Math.max((rawHi-rawLo)*.06,1),lo=rawLo-pad,hi=rawHi+pad;
   lwcSeries.applyOptions({{autoscaleInfoProvider:()=>({{priceRange:{{minValue:lo,maxValue:hi}}}})}});
@@ -1697,8 +1697,8 @@ document.addEventListener("DOMContentLoaded",()=>{{
    else{{const b=document.createElement("span");b.className="lwc-badge";b.style.color=z[2];if(v>hi){{b.textContent="▲ "+z[1]+" "+yen(v);topBadges.appendChild(b);}}else{{b.textContent="▼ "+z[1]+" "+yen(v);botBadges.appendChild(b);}}}}
   }});
  }}
- function select(i){{activeIndex=i;const x=rows[i];[...list.children].forEach((b,j)=>b.classList.toggle("active",i===j));document.getElementById("focus-chart-name").textContent=x.name;document.getElementById("focus-chart-code").textContent=x.code;document.getElementById("focus-chart-asof").textContent=(x.data_date||"日付未確認")+" 終値 "+yen(x.chart_last_close);chart(x);document.getElementById("focus-rank").textContent="#"+x.rank;document.getElementById("focus-name").textContent=x.name;document.getElementById("focus-score").textContent=x.score+" / 100";const d=document.getElementById("focus-decision");d.className="decision-badge "+x.decision_class;d.textContent=x.decision;document.getElementById("focus-trigger").textContent=yen(x.trigger)+" 以上";document.getElementById("focus-entry").textContent=yen(x.entry);document.getElementById("focus-pullback").textContent=yen(x.pullback_low)+" – "+yen(x.pullback_high);document.getElementById("focus-stop").textContent=yen(x.stop);document.getElementById("focus-targets").textContent=yen(x.target1)+" / "+yen(x.target2);document.getElementById("focus-supply").textContent=x.supply+"／"+x.quote_status;const ir=x.intraday_regime;document.getElementById("focus-regime").textContent=ir&&ir.confirmed_regime?(ir.confirmed_regime+"（リスク倍率"+ir.risk_multiplier+"）／"+(ir.updated_at||"")+"／"+ir.note):(ir?ir.note:"未接続");document.getElementById("focus-reason").textContent=x.reason;}}
- document.addEventListener("liveFocusUpdate",e=>{{const live=e.detail?.rows||{{}},alerts=[];const speechEnabled=e.detail?.speech_enabled===true;rows=rows.map(x=>{{const q=live[x.code];if(!q?.verified)return x;const before=Number(x.live_price??x.chart_last_close),now=Number(q.price);if(Number.isFinite(before)&&Number.isFinite(now)){{if(before<Number(x.trigger)&&now>=Number(x.trigger))alerts.push(x.name+"、買い発動ライン到達。現在値"+yen(now)+"、発動"+yen(x.trigger));if(before>Number(x.stop)&&now<=Number(x.stop))alerts.push(x.name+"、撤退ライン到達。現在値"+yen(now)+"、撤退"+yen(x.stop));}}return {{...x,chart:q.chart,chart_last_close:q.price,live_price:q.price,data_date:q.quote_time,quote_status:q.status}};}});[...list.children].forEach((b,i)=>{{if(rows[i])b.innerHTML=pickHtml(rows[i],i);}});select(Math.min(activeIndex,rows.length-1));if(speechEnabled&&alerts.length)setTimeout(()=>window.cockpitSpeak?.(alerts.join("。")),300);}});
+ function select(i,isRefresh){{activeIndex=i;const x=rows[i];[...list.children].forEach((b,j)=>b.classList.toggle("active",i===j));document.getElementById("focus-chart-name").textContent=x.name;document.getElementById("focus-chart-code").textContent=x.code;document.getElementById("focus-chart-asof").textContent=(x.data_date||"日付未確認")+" 終値 "+yen(x.chart_last_close);chart(x,isRefresh);document.getElementById("focus-rank").textContent="#"+x.rank;document.getElementById("focus-name").textContent=x.name;document.getElementById("focus-score").textContent=x.score+" / 100";const d=document.getElementById("focus-decision");d.className="decision-badge "+x.decision_class;d.textContent=x.decision;document.getElementById("focus-trigger").textContent=yen(x.trigger)+" 以上";document.getElementById("focus-entry").textContent=yen(x.entry);document.getElementById("focus-pullback").textContent=yen(x.pullback_low)+" – "+yen(x.pullback_high);document.getElementById("focus-stop").textContent=yen(x.stop);document.getElementById("focus-targets").textContent=yen(x.target1)+" / "+yen(x.target2);document.getElementById("focus-supply").textContent=x.supply+"／"+x.quote_status;const ir=x.intraday_regime;document.getElementById("focus-regime").textContent=ir&&ir.confirmed_regime?(ir.confirmed_regime+"（リスク倍率"+ir.risk_multiplier+"）／"+(ir.updated_at||"")+"／"+ir.note):(ir?ir.note:"未接続");document.getElementById("focus-reason").textContent=x.reason;}}
+ document.addEventListener("liveFocusUpdate",e=>{{const live=e.detail?.rows||{{}},alerts=[];const speechEnabled=e.detail?.speech_enabled===true;rows=rows.map(x=>{{const q=live[x.code];if(!q?.verified)return x;const before=Number(x.live_price??x.chart_last_close),now=Number(q.price);if(Number.isFinite(before)&&Number.isFinite(now)){{if(before<Number(x.trigger)&&now>=Number(x.trigger))alerts.push(x.name+"、買い発動ライン到達。現在値"+yen(now)+"、発動"+yen(x.trigger));if(before>Number(x.stop)&&now<=Number(x.stop))alerts.push(x.name+"、撤退ライン到達。現在値"+yen(now)+"、撤退"+yen(x.stop));}}return {{...x,chart:q.chart,chart_last_close:q.price,live_price:q.price,data_date:q.quote_time,quote_status:q.status}};}});[...list.children].forEach((b,i)=>{{if(rows[i])b.innerHTML=pickHtml(rows[i],i);}});select(Math.min(activeIndex,rows.length-1),true);if(speechEnabled&&alerts.length)setTimeout(()=>window.cockpitSpeak?.(alerts.join("。")),300);}});
  const tfBtns=[...document.querySelectorAll(".focus-tf")];
  tfBtns.forEach(b=>{{b.classList.toggle("active",Number(b.dataset.tf)===tfMultiplier);b.onclick=()=>{{tfMultiplier=Number(b.dataset.tf);localStorage.setItem("focusChartTf",String(tfMultiplier));tfBtns.forEach(x=>x.classList.toggle("active",x===b));select(activeIndex);}};}});
  select(0);
@@ -3390,7 +3390,7 @@ function ensureKioChart(){{
   return kioChart;
 }}
 function kioSeriesData(pairs){{const m=new Map();pairs.forEach(([t,v])=>{{if(t!=null&&Number.isFinite(v))m.set(t,v);}});return [...m.entries()].sort((a,b)=>a[0]-b[0]).map(([time,value])=>({{time,value}}));}}
-const kioOneMinuteChart = (points,actual=[],turns=[],signals=[],levels={{}}) => {{
+const kioOneMinuteChart = (points,actual=[],turns=[],signals=[],levels={{}},isRefresh) => {{
   const box=document.getElementById("kio-best-path"),empty=document.getElementById("kio-best-path-empty");
   if(!points||points.length<2){{box.style.display="none";empty.style.display="flex";empty.textContent="予測データなし";return;}}
   box.style.display="block";empty.style.display="none";
@@ -3403,7 +3403,8 @@ const kioOneMinuteChart = (points,actual=[],turns=[],signals=[],levels={{}}) => 
   kioEmaSeries.setData(kioSeriesData(emaLine(actualRows,20)));
   let pv=0,vol=0;const vwapPairs=[];actualRows.forEach(r=>{{const v=Number(r.v)||0;if(v>0){{pv+=((Number(r.h)+Number(r.l)+Number(r.c))/3)*v;vol+=v;vwapPairs.push([tradingMinuteIndex(r.t),pv/vol]);}}}});
   kioVwapSeries.setData(kioSeriesData(vwapPairs));
-  kioChart.timeScale().fitContent();
+  const lastActualIndex=actualRows.length?tradingMinuteIndex(actualRows.at(-1).t):null;
+  if(isRefresh&&lastActualIndex!=null){{kioChart.timeScale().setVisibleLogicalRange({{from:Math.max(0,lastActualIndex-40),to:Math.min(331,lastActualIndex+10)}});}}else{{kioChart.timeScale().fitContent();}}
   kioPriceLines.forEach(l=>kioCandleSeries.removePriceLine(l));kioPriceLines=[];
   const visibleLevelKeys={{pivot_p:["P","#ffb454"],pivot_r1:["R1","#ffb454"],pivot_s1:["S1","#ffb454"],or15_high:["OR15高","#ff6b72"],or15_low:["OR15安","#ff6b72"]}};
   Object.entries(levels.return_pct||{{}}).forEach(([key,value])=>{{
@@ -3416,7 +3417,6 @@ const kioOneMinuteChart = (points,actual=[],turns=[],signals=[],levels={{}}) => 
   let lastTurn=-99;
   (turns||[]).forEach(turn=>{{const i=tradingMinuteIndex(turn.time);if(i==null||i-lastTurn<25)return;lastTurn=i;markers.push({{time:i,position:"aboveBar",color:"#f1c75b",shape:"circle",text:turn.time+" "+turn.kind}});}});
   (signals||[]).forEach(m=>{{const i=tradingMinuteIndex(m.time),ret=Number(m.ret);if(i==null||!Number.isFinite(ret))return;const buy=m.type==="BUY";markers.push({{time:i,position:buy?"belowBar":"aboveBar",color:buy?"#24e39a":"#ff5d66",shape:buy?"arrowUp":"arrowDown",text:(buy?"買い ":"空売り ")+Number(m.price).toLocaleString("ja-JP")+"円"}});}});
-  const lastActualIndex=actualRows.length?tradingMinuteIndex(actualRows.at(-1).t):null;
   if(lastActualIndex!=null)markers.push({{time:lastActualIndex,position:"inBar",color:"#e7f0f5",shape:"circle",text:"実績ここまで"}});
   markers.sort((a,b)=>a.time-b.time);
   if(!kioMarkersPrimitive)kioMarkersPrimitive=LightweightCharts.createSeriesMarkers(kioCandleSeries,markers);
@@ -3538,7 +3538,7 @@ document.addEventListener("liveFocusUpdate",e=>{{
     if(!window.kioSignalMarkers.some(m=>m.key===k.signal_key)){{
       window.kioSignalMarkers.push({{key:k.signal_key,type:k.signal_type,time:k.signal_time,ret:k.signal_return_pct,price:k.entry_price}});
       window.kioSignalMarkers=window.kioSignalMarkers.slice(-12);
-      if(window.kioChartState)kioOneMinuteChart(window.kioChartState.points,window.kioChartState.actual,window.kioChartState.turns,window.kioSignalMarkers,window.kioChartState.levels);
+      if(window.kioChartState)kioOneMinuteChart(window.kioChartState.points,window.kioChartState.actual,window.kioChartState.turns,window.kioSignalMarkers,window.kioChartState.levels,true);
     }}
     let voiceState={{}};
     try{{voiceState=JSON.parse(localStorage.getItem("kioVoiceSignalState")||"{{}}")}}catch(_e){{voiceState={{}}}}
