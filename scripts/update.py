@@ -3380,6 +3380,7 @@ let kioChart=null,kioCandleSeries=null,kioForecastSeries=null,kioEmaSeries=null,
 function ensureKioChart(){{
   if(kioChart||typeof LightweightCharts==="undefined")return kioChart;
   kioChart=LightweightCharts.createChart(document.getElementById("kio-best-path"),{{layout:{{background:{{color:"transparent"}},textColor:"#9bb0bd",fontSize:11}},grid:{{vertLines:{{color:"#1c303c"}},horzLines:{{color:"#1c303c"}}}},rightPriceScale:{{borderColor:"#233744"}},timeScale:{{borderColor:"#233744",tickMarkFormatter:t=>kioIndexToClock(Number(t))}},crosshair:{{mode:LightweightCharts.CrosshairMode.Normal}},autoSize:true}});
+  window.kioChart=kioChart;
   kioForecastSeries=kioChart.addSeries(LightweightCharts.LineSeries,{{color:"#f1c75b",lineWidth:2,lineStyle:LightweightCharts.LineStyle.Dashed,priceFormat:{{type:"percent",precision:2}},lastValueVisible:false,priceLineVisible:false}});
   kioCandleSeries=kioChart.addSeries(LightweightCharts.CandlestickSeries,{{upColor:"#3ed5ae",downColor:"#ef646b",borderUpColor:"#3ed5ae",borderDownColor:"#ef646b",wickUpColor:"#3ed5ae",wickDownColor:"#ef646b",priceFormat:{{type:"percent",precision:2}}}});
   kioEmaSeries=kioChart.addSeries(LightweightCharts.LineSeries,{{color:"#d59bff",lineWidth:2,priceFormat:{{type:"percent",precision:2}},lastValueVisible:false,priceLineVisible:false}});

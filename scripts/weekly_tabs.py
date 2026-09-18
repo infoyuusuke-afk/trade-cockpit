@@ -188,6 +188,7 @@ document.addEventListener("DOMContentLoaded",()=>{{
    document.querySelectorAll(".cockpit-tab").forEach(x=>x.classList.toggle("active",x===b));
    document.querySelectorAll(".tab-pane").forEach(x=>x.classList.toggle("active",x.dataset.pane===b.dataset.tab));
    localStorage.setItem("cockpitTabV5",b.dataset.tab);
+   if(b.dataset.tab==="kioxia-calendar"&&window.kioChart)requestAnimationFrame(()=>requestAnimationFrame(()=>window.kioChart.timeScale().fitContent()));
  }});
  const requested=new URLSearchParams(location.search).get("live")==="1"?"ms2-live":null;
  const saved=requested||localStorage.getItem("cockpitTabV5"); if(saved)document.querySelector(`.cockpit-tab[data-tab="${{saved}}"]`)?.click();
