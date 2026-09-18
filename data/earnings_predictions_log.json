@@ -18,7 +18,10 @@
     "logged_at": "2026-09-16 09:48:51 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.39,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -3.31,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "2989",
@@ -27,7 +30,10 @@
     "logged_at": "2026-09-16 09:48:52 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.31,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -0.73,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "3249",
@@ -36,7 +42,10 @@
     "logged_at": "2026-09-16 09:48:52 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.15,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 0.52,
+    "actual_direction": "上昇",
+    "hit": false
   },
   {
     "code": "3269",
@@ -45,7 +54,10 @@
     "logged_at": "2026-09-16 09:48:52 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -0.69,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -0.21,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "3463",
@@ -54,7 +66,10 @@
     "logged_at": "2026-09-16 09:48:52 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.09,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -1.89,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "3471",
@@ -63,7 +78,10 @@
     "logged_at": "2026-09-16 09:48:52 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.0,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 0.29,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "3544",
@@ -81,6 +99,15 @@
     "logged_at": "2026-09-17 09:53:00 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 2.47,
+    "status": "pending"
+  },
+  {
+    "code": "3160",
+    "name": "大光",
+    "target_date": "2026-09-24",
+    "logged_at": "2026-09-18 09:46:59 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.0,
     "status": "pending"
   }
 ]
