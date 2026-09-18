@@ -1,6 +1,6 @@
 {
   "schema_version": "next-theme-radar-0.2",
-  "updated_at": "2026-09-18T10:17:18.403839+09:00",
+  "updated_at": "2026-09-18T15:21:37.190809+09:00",
   "source_note": "ニュース集約RSSは一次資料ではない。価格・資金流入は取得済み証拠だけで採点。",
   "themes": [
     {
@@ -29,8 +29,14 @@
         "price_confirmation": 5
       },
       "first_seen": "2026-09-18T08:18:15.639395+09:00",
-      "last_event_at": "2026-09-18T06:30:05+09:00",
+      "last_event_at": "2026-09-18T13:00:00+09:00",
       "events": [
+        {
+          "title": "Upbit fuels speculative frenzy as yen stablecoin spikes then crashes in Korea - CHOSUNBIZ - Chosunbiz",
+          "url": "https://news.google.com/rss/articles/CBMigAFBVV95cUxOUFBHNnJxU3QzYkJGelhGSllUUWFUVWYzSUpWRzRBWlo0dnV2a1V6U1Jqb09ZZjcwNzFRLUVndVBqdEcwalk0NmlLY0xEdlZrdVJsbmhHc09ELWNPczdlR2d1SVBBVzA5ajFqeFZsX2R4ZDJXY2pKY3dIOC04Um1KTtIBlAFBVV95cUxNZTZOV0FwRG0wY1BKaWhGU2hESWMwZHdPMGtrUGt6UlEyZGZLLU5zS0lfU25BcE4yN1NiYWR3MTQ3SnRXdU5uODBLVjBNTzV6VDhJY0dDREhHa19iSUpxTUJVdk5ESE9hU1RKQmdPend5R2F4d1h0WnJwTTdjZTlWUlpwZm1OR2hZdG1wMk9TSXQyU29M?oc=5",
+          "published_at": "2026-09-18T13:00:00+09:00",
+          "source": "Chosunbiz"
+        },
         {
           "title": "JPYC Upbit trading delayed three hours to 3 p.m. - Cryptonews.net",
           "url": "https://news.google.com/rss/articles/CBMiV0FVX3lxTFBHVUNBZ0dQOXJPOVdybmkxMnBVcVpfaFNYd2I1b19YSV8walkwTGJHbjF4RmJ2bHJFS3ZYMkJOMHl0M3RSZjNhU3NBeEM5VDhhRk9qSEUxbw?oc=5",
@@ -38,10 +44,10 @@
           "source": "Cryptonews.net"
         },
         {
-          "title": "Yen-Pegged Stablecoin JPYC Lists on South Korea's Upbit with KRW, BTC, and USDT Markets - finance.biggo.com",
-          "url": "https://news.google.com/rss/articles/CBMidkFVX3lxTE81WnNEbHFqcVdZUWZPSWFLbjhWQnVDV3dkWlVkQ0dvRmIwdVVKa2lxV2JBbVhBak1XVVVESmtvX2dhaWxtWE1WZUZnYi04RUhhRlJJa0xnUUJ0UlNNSGVhVDZQZVZUTlNyR2Ixbk9sZlc4SkVZc0E?oc=5",
-          "published_at": "2026-09-17T16:06:00+09:00",
-          "source": "finance.biggo.com"
+          "title": "JPYC, a yen stablecoin listed by Upbit on the 17th, has surged 200% compared to the listed price due.. - 매일경제",
+          "url": "https://news.google.com/rss/articles/CBMiT0FVX3lxTE53WU0ydUJGWV94dkFPLUt4bkJBTGNPaXN3Wl96VkhYWFh0T0xORFNFbE5iX251M3NfNmdScVZMcWpjUEtweEZ4TXJvbnNZSlU?oc=5",
+          "published_at": "2026-09-18T09:13:32+09:00",
+          "source": "매일경제"
         },
         {
           "title": "JPYC halts minting on Ethereum and Polygon amid surge from Korean exchange listing - Pluang",
@@ -54,6 +60,12 @@
           "url": "https://news.google.com/rss/articles/CBMinwFBVV95cUxOSzZRa25tNUZmMkNmcThuWm9CZ2FJOTJQVHl2eHlvNEJUYWN5VmlIaDZpSmgzbFZ0YVdSOW9YeHZ6TjRPRjNnWC1LWENkSzJXekVwOHdEX3RaalM3bExzT1JIbmR6SkZGaUFiVEJwVlkzSllUOFBFTnhwVzAwU056YnQ2SzVOT3dqVlJSV25xTjctSGljQmhDbVI0ZnptQ0E?oc=5",
           "published_at": "2026-09-18T06:30:05+09:00",
           "source": "Seoul Economic Daily"
+        },
+        {
+          "title": "Yen-Pegged Stablecoin JPYC Lists on South Korea's Upbit with KRW, BTC, and USDT Markets - finance.biggo.com",
+          "url": "https://news.google.com/rss/articles/CBMidkFVX3lxTE81WnNEbHFqcVdZUWZPSWFLbjhWQnVDV3dkWlVkQ0dvRmIwdVVKa2lxV2JBbVhBak1XVVVESmtvX2dhaWxtWE1WZUZnYi04RUhhRlJJa0xnUUJ0UlNNSGVhVDZQZVZUTlNyR2Ixbk9sZlc4SkVZc0E?oc=5",
+          "published_at": "2026-09-17T16:06:00+09:00",
+          "source": "finance.biggo.com"
         }
       ],
       "stocks": [
