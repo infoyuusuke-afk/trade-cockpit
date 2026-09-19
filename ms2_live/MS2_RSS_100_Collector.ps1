@@ -383,7 +383,7 @@ function Invoke-ExcelCom {
             $excelIsBusy = ($errorCode -eq -2147418111 -or $errorCode -eq -2147417846 -or $errorCode -eq -2146777998)
             if ($excelIsBusy -and $attempt -lt $Retries) {
                 if ($attempt -eq 1) {
-                    Write-Host ($Label + "：ExcelのRSS更新完了を待っています...") -ForegroundColor Yellow
+                    Write-Host "[EXCEL] RSS update in progress..." -ForegroundColor Yellow
                 }
                 Start-Sleep -Milliseconds $DelayMilliseconds
                 continue
@@ -426,7 +426,7 @@ if ($null -eq $book) {
     $names = if ($openBookNames.Count -gt 0) { $openBookNames -join ", " } else { "認識なし" }
     throw "$WorkbookName を認識できません。Excelで認識したブック: $names"
 }
-Write-Host ("接続ブック: " + $book.Name) -ForegroundColor Green
+Write-Host ("[BOOK] " + $book.Name) -ForegroundColor Green
 Start-Sleep -Milliseconds 500
 
 $sheet = $null
