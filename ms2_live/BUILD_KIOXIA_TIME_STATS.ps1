@@ -121,6 +121,9 @@ function Get-GapBucket([double]$gap) {
 $samplesByKey = @{}
 $preopenByKey = @{}
 $completedDays = [Collections.ArrayList]::new()
+$scannedDays = [Collections.ArrayList]::new()
+$incompleteDays = [Collections.ArrayList]::new()
+$lastCompletedDay = $null
 $today = (Get-Date).Date
 $includeToday = ((Get-Date).TimeOfDay -ge [TimeSpan]::Parse("15:35:00"))
 
@@ -129,10 +132,14 @@ if (Test-Path $RecordsRoot) {
         try { $dayDate = [DateTime]::ParseExact($directory.Name,"yyyy-MM-dd",[Globalization.CultureInfo]::InvariantCulture) }
         catch { continue }
         if ($dayDate.Date -gt $today -or ($dayDate.Date -eq $today -and -not $includeToday)) { continue }
+        [void]$scannedDays.Add($directory.Name)
         $uoPath = Join-Path $directory.FullName "under_over.csv"
         $marketPath = Join-Path $directory.FullName "market_snapshots.csv"
         $preopenPath = Join-Path $directory.FullName "preopen.csv"
-        if (-not (Test-Path $uoPath) -or -not (Test-Path $marketPath)) { continue }
+        if (-not (Test-Path $uoPath) -or -not (Test-Path $marketPath)) {
+            [void]$incompleteDays.Add([pscustomobject]@{day=$directory.Name;reason="missing_required_csv"})
+            continue
+        }
 
         $snapByMinute = @{}
         foreach ($row in @(Import-Csv -Path $marketPath | Where-Object { $_.ticker -eq "285A.T" })) {
@@ -153,10 +160,20 @@ if (Test-Path $RecordsRoot) {
             $minuteRows[$at.ToString("yyyyMMddHHmm")] = [pscustomobject]@{At=$at;Ratio=$ratio}
         }
         $ordered = @($minuteRows.Values | Sort-Object At)
-        if ($ordered.Count -lt 30) { continue }
-        if ($ordered[0].At.TimeOfDay -gt [TimeSpan]::Parse("09:05:00")) { continue }
-        if ($ordered[-1].At.TimeOfDay -lt [TimeSpan]::Parse("15:20:00")) { continue }
+        if ($ordered.Count -lt 30) {
+            [void]$incompleteDays.Add([pscustomobject]@{day=$directory.Name;reason=("insufficient_rows:"+$ordered.Count)})
+            continue
+        }
+        if ($ordered[0].At.TimeOfDay -gt [TimeSpan]::Parse("09:05:00")) {
+            [void]$incompleteDays.Add([pscustomobject]@{day=$directory.Name;reason=("late_start:"+$ordered[0].At.ToString("HH:mm"))})
+            continue
+        }
+        if ($ordered[-1].At.TimeOfDay -lt [TimeSpan]::Parse("15:20:00")) {
+            [void]$incompleteDays.Add([pscustomobject]@{day=$directory.Name;reason=("early_end:"+$ordered[-1].At.ToString("HH:mm"))})
+            continue
+        }
         [void]$completedDays.Add($directory.Name)
+        $lastCompletedDay = $directory.Name
         if(Test-Path $preopenPath){
             $preRows=@(Import-Csv -Path $preopenPath|Where-Object{$_.ticker -eq "285A.T"}|ForEach-Object{
                 $at=$null; $gap=0.0; $quote=0.0
@@ -202,17 +219,35 @@ foreach($key in @($preopenByKey.Keys|Sort-Object)){
     $parts=$key -split '\|',2
     [void]$preopenSummary.Add((Summarize-Preopen $parts[0] $parts[1] @($preopenByKey[$key])))
 }
+$completedCount = @($completedDays | Select-Object -Unique).Count
+$scannedCount = @($scannedDays | Select-Object -Unique).Count
+$incompleteCount = @($incompleteDays).Count
+$statsStatus = if ($completedCount -ge 10 -and $summary.Count -gt 0) {
+    "READY"
+} elseif ($completedCount -gt 0) {
+    "ACCUMULATING"
+} elseif ($scannedCount -gt 0) {
+    "WAITING_FOR_FULL_SESSION_LOGS"
+} else {
+    "NO_RECORDS"
+}
+
 $payload = [ordered]@{
     generated_at = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
     ticker = "285A.T"
-    completed_days = @($completedDays | Select-Object -Unique).Count
+    status = $statsStatus
+    scanned_days = $scannedCount
+    completed_days = $completedCount
+    incomplete_day_count = $incompleteCount
+    last_completed_day = $lastCompletedDay
+    incomplete_days = @($incompleteDays | Select-Object -Last 20)
     minimum_days = 10
     minimum_samples = 50
     methodology = "ザラバは1分間隔のUNDER比率と1分変化を5分後・15分後で検証。寄り前は8:55前後のGU/GD帯と準備判定を9:05・9:15で検証。ザラバは10日・50標本、寄り前は10日未満で方向を出さない。"
     rows = @($summary)
     preopen_rows = @($preopenSummary)
 }
-$json = $payload | ConvertTo-Json -Depth 6
+$json = $payload | ConvertTo-Json -Depth 8
 [IO.File]::WriteAllText($OutputJson,$json,[Text.UTF8Encoding]::new($false))
 @($summary) | Export-Csv -Path $OutputCsv -NoTypeInformation -Encoding UTF8
-Write-Host ("[STATS] KIOXIA time stats: days=" + $payload.completed_days + " rows=" + $summary.Count) -ForegroundColor Green
+Write-Host ("[STATS] status=" + $payload.status + " completed=" + $payload.completed_days + " scanned=" + $payload.scanned_days + " incomplete=" + $payload.incomplete_day_count + " rows=" + $summary.Count) -ForegroundColor Green
