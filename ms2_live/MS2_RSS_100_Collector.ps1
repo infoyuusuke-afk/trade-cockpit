@@ -473,34 +473,67 @@ for ($i=0; $i -lt $stocks.Count; $i++) {
 Invoke-ExcelCom -Label "RSSシート非表示" -Action { $sheet.Visible = 0 } | Out-Null
 Invoke-ExcelCom -Label "画面更新再開" -Action { $excel.ScreenUpdating = $true } | Out-Null
 
-# キオクシア夜間PTS（JNX）は東証データと混ぜず、専用行で取得する。
+# キオクシア夜間PTS（JNX）は東証データと混ぜず、専用シートで取得する。
+# JNXは補助データのため、Excel/RSSが起動直後で不安定でもCollector本体を停止させない。
 $jnxSheet = $null
+$jnxReady = $false
 try {
-    $jnxSheet = Invoke-ExcelCom -Label "JNXシート確認" -Action { $book.Worksheets.Item("KIOXIA_JNX") }
-} catch {
-    $jnxSheet = Invoke-ExcelCom -Label "JNXシート作成" -Action { $book.Worksheets.Add() }
-    Invoke-ExcelCom -Label "JNXシート命名" -Action { $jnxSheet.Name = "KIOXIA_JNX" } | Out-Null
-}
-$jnxHeaders = @("コード","現在値","時刻","前日終値","前日比率","出来高","VWAP","買気配","売気配","買数量","売数量","OVER","UNDER","歩み1","歩み1時刻","現在日付")
-$jnxItems = @("現在値","現在値詳細時刻","前日終値","前日比率","出来高","出来高加重平均","最良買気配値","最良売気配値","最良買気配数量1","最良売気配数量1","OVER気配数量","UNDER気配数量","歩み1","歩み1詳細時刻","現在日付")
-for ($c=0; $c -lt $jnxHeaders.Count; $c++) {
-    $jnxCol = $c + 1
-    $jnxHeader = [string]$jnxHeaders[$c]
-    Invoke-ExcelCom -Label "JNX見出し設定" -Action { $jnxSheet.Cells.Item(1,$jnxCol).Value2 = $jnxHeader } | Out-Null
-}
-for ($i=0; $i -lt $stocks.Count; $i++) {
-    $jnxRow = $i + 2
-    $jnxTicker = (([string]$stocks[$i].Ticker) -replace '\.T$','') + '.JNX'
-    Invoke-ExcelCom -Label "JNXコード設定" -Action { $jnxSheet.Cells.Item($jnxRow,1).Value2 = [string]$jnxTicker } | Out-Null
-    for ($j=0; $j -lt $jnxItems.Count; $j++) {
-        $jnxCol = $j + 2
-        $jnxFormula = '=RssMarket("' + [string]$jnxTicker + '","' + [string]$jnxItems[$j] + '")'
-        Invoke-ExcelCom -Label "JNX RSS式設定" -Action { $jnxSheet.Cells.Item($jnxRow,$jnxCol).FormulaLocal = [string]$jnxFormula } | Out-Null
+    try {
+        $jnxSheet = Invoke-ExcelCom -Label "JNXシート確認" -Action { $book.Worksheets.Item("KIOXIA_JNX") }
+    } catch {
+        $jnxSheet = Invoke-ExcelCom -Label "JNXシート作成" -Action { $book.Worksheets.Add() }
+        if ($null -ne $jnxSheet) {
+            Invoke-ExcelCom -Label "JNXシート命名" -Action { $jnxSheet.Name = "KIOXIA_JNX" } | Out-Null
+        }
     }
+
+    if ($null -eq $jnxSheet) {
+        throw "KIOXIA_JNX worksheet is unavailable."
+    }
+
+    $jnxHeaders = @("コード","現在値","時刻","前日終値","前日比率","出来高","VWAP","買気配","売気配","買数量","売数量","OVER","UNDER","歩み1","歩み1時刻","現在日付")
+    $jnxItems = @("現在値","現在値詳細時刻","前日終値","前日比率","出来高","出来高加重平均","最良買気配値","最良売気配値","最良買気配数量1","最良売気配数量1","OVER気配数量","UNDER気配数量","歩み1","歩み1詳細時刻","現在日付")
+
+    for ($c=0; $c -lt $jnxHeaders.Count; $c++) {
+        $jnxCol = $c + 1
+        $jnxHeader = [string]$jnxHeaders[$c]
+        Invoke-ExcelCom -Label "JNX見出し設定" -Action {
+            $cell = $jnxSheet.Cells.Item(1,$jnxCol)
+            if ($null -eq $cell) { throw "JNX header cell unavailable." }
+            $cell.Value2 = $jnxHeader
+        } | Out-Null
+    }
+
+    for ($i=0; $i -lt $stocks.Count; $i++) {
+        $jnxRow = $i + 2
+        $jnxTicker = (([string]$stocks[$i].Ticker) -replace '\\.T$','') + '.JNX'
+        Invoke-ExcelCom -Label "JNXコード設定" -Action {
+            $cell = $jnxSheet.Cells.Item($jnxRow,1)
+            if ($null -eq $cell) { throw "JNX ticker cell unavailable." }
+            $cell.Value2 = [string]$jnxTicker
+        } | Out-Null
+
+        for ($j=0; $j -lt $jnxItems.Count; $j++) {
+            $jnxCol = $j + 2
+            $jnxFormula = '=RssMarket("' + [string]$jnxTicker + '","' + [string]$jnxItems[$j] + '")'
+            Invoke-ExcelCom -Label "JNX RSS式設定" -Action {
+                $cell = $jnxSheet.Cells.Item($jnxRow,$jnxCol)
+                if ($null -eq $cell) { throw "JNX formula cell unavailable." }
+                $cell.FormulaLocal = [string]$jnxFormula
+            } | Out-Null
+        }
+    }
+
+    Invoke-ExcelCom -Label "JNX見出し強調" -Action { $jnxSheet.Rows.Item(1).Font.Bold = $true } | Out-Null
+    Invoke-ExcelCom -Label "JNX列幅設定" -Action { $jnxSheet.Range("A:P").ColumnWidth = 14 } | Out-Null
+    Invoke-ExcelCom -Label "JNXシート非表示" -Action { $jnxSheet.Visible = 0 } | Out-Null
+    $jnxReady = $true
+    Write-Host "[JNX] READY" -ForegroundColor Green
+} catch {
+    $jnxSheet = $null
+    $jnxReady = $false
+    Write-Host "[JNX] SKIPPED - Collector continues" -ForegroundColor DarkYellow
 }
-Invoke-ExcelCom -Label "JNX見出し強調" -Action { $jnxSheet.Rows.Item(1).Font.Bold = $true } | Out-Null
-Invoke-ExcelCom -Label "JNX列幅設定" -Action { $jnxSheet.Range("A:P").ColumnWidth = 14 } | Out-Null
-Invoke-ExcelCom -Label "JNXシート非表示" -Action { $jnxSheet.Visible = 0 } | Out-Null
 
 # 決算・IR開示があった銘柄（固定100銘柄リスト外を含む）を引け後に動的追跡するための専用シート。
 # TDnetで好材料判定された銘柄をその場でRssMarket式として追加し、100銘柄リストに
