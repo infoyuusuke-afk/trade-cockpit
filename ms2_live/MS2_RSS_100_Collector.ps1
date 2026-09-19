@@ -558,18 +558,109 @@ $htmlPath = Join-Path $PSScriptRoot "AI_Cockpit_MS2_LIVE.html"
 $publicCockpitUrl = "https://infoyuusuke-afk.github.io/trade-cockpit/?live=1"
 $speaker = New-Object -ComObject SAPI.SpVoice
 $speaker.Volume = 100
-$speaker.Rate = -2   # ユーザー指摘（2026-09-15・聞き取りづらい）への対応。標準(0)よりやや遅くする
-# Watcher・Heartbeat・AUTO_START等と共有の名前付きMutexで音声を直列化し、
-# 複数プロセスの発話が重ならないようにする。
-function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 20000) {
-    if ($null -eq $speaker -or [string]::IsNullOrEmpty($text)) { return }
+$speaker.Rate = -2   # SBV2 APIが使えない場合だけ使うフォールバック音声
+
+# AIコクピットの標準音声は Style-Bert-VITS2 FastAPI (server_fastapi.py / port 5000)。
+# App.bat のWebUI(port 7860)を起動しただけでは音声経路は変わらないため、CollectorからAPIへ直接送る。
+$SbV2ApiBase = "http://127.0.0.1:5000"
+$SbV2ModelId = 0
+$SbV2SpeakerId = 0
+$SbV2Style = "Neutral"
+$SbV2Length = 1.10
+
+function Convert-ToCockpitSpeechText([string]$text) {
+    if ([string]::IsNullOrWhiteSpace($text)) { return "" }
+    $s = [string]$text
+    # 読み間違いを避ける発声用テキスト。表示用文字列には影響させない。
+    $s = $s.Replace("キオクシア","きおくしあ")
+    $s = $s.Replace("VWAP","ぶいわっぷ")
+    $s = $s.Replace("OR15","おーあーるじゅうご")
+    $s = $s.Replace("OR5","おーあーるご")
+    $s = $s.Replace("EMA20","いーえむえーにじゅう")
+    $s = $s.Replace("EMA9","いーえむえーきゅう")
+    $s = $s.Replace("PTS","ぴーてぃーえす")
+    $s = $s.Replace("TDnet","てぃーでぃーねっと")
+    $s = $s.Replace("IR","あいあーる")
+    $s = $s.Replace("UNDER","アンダー")
+    $s = $s.Replace("OVER","オーバー")
+    $s = $s.Replace("GU","ギャップアップ")
+    $s = $s.Replace("GD","ギャップダウン")
+    return $s
+}
+
+function Split-CockpitSpeechText([string]$text, [int]$maxLength = 88) {
+    $result = New-Object System.Collections.Generic.List[string]
+    if ([string]::IsNullOrWhiteSpace($text)) { return @() }
+    $parts = [regex]::Split($text,'(?<=。|！|？)')
+    $buffer = ""
+    foreach($part in $parts) {
+        if ([string]::IsNullOrWhiteSpace($part)) { continue }
+        if (($buffer.Length + $part.Length) -le $maxLength) {
+            $buffer += $part
+            continue
+        }
+        if (-not [string]::IsNullOrWhiteSpace($buffer)) {
+            $result.Add($buffer)
+            $buffer = ""
+        }
+        $rest = $part
+        while($rest.Length -gt $maxLength) {
+            $result.Add($rest.Substring(0,$maxLength))
+            $rest = $rest.Substring($maxLength)
+        }
+        $buffer = $rest
+    }
+    if (-not [string]::IsNullOrWhiteSpace($buffer)) { $result.Add($buffer) }
+    return @($result)
+}
+
+function Invoke-SbV2Speak([string]$text) {
+    $speechText = Convert-ToCockpitSpeechText $text
+    if ([string]::IsNullOrWhiteSpace($speechText)) { return $true }
+    foreach($chunk in @(Split-CockpitSpeechText $speechText)) {
+        $tmp = Join-Path $env:TEMP ("ai_cockpit_sbv2_" + [Guid]::NewGuid().ToString("N") + ".wav")
+        try {
+            $encoded = [Uri]::EscapeDataString($chunk)
+            $styleEncoded = [Uri]::EscapeDataString($SbV2Style)
+            $url = $SbV2ApiBase + "/voice?text=" + $encoded +
+                   "&model_id=" + $SbV2ModelId +
+                   "&speaker_id=" + $SbV2SpeakerId +
+                   "&length=" + $SbV2Length +
+                   "&language=JP&style=" + $styleEncoded
+            Invoke-WebRequest -Method Post -Uri $url -OutFile $tmp -UseBasicParsing -TimeoutSec 45
+            if (-not (Test-Path -LiteralPath $tmp) -or (Get-Item -LiteralPath $tmp).Length -lt 1000) {
+                throw "SBV2 audio response is empty."
+            }
+            $player = New-Object System.Media.SoundPlayer $tmp
+            $player.PlaySync()
+            $player.Dispose()
+        } catch {
+            if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+            return $false
+        } finally {
+            if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+        }
+    }
+    return $true
+}
+
+# Watcher・Heartbeat・AUTO_START等と共有の名前付きMutexで音声を直列化する。
+function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 30000) {
+    if ([string]::IsNullOrEmpty($text)) { return }
     $mutex = $null
     $acquired = $false
     try {
         $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
         $acquired = $mutex.WaitOne($timeoutMs)
-        $speaker.Speak($text, 0) | Out-Null
+        $sbv2Ok = Invoke-SbV2Speak $text
+        if (-not $sbv2Ok -and $null -ne $speaker) {
+            # API停止時も重要な警告を無音にしない。
+            $speaker.Speak((Convert-ToCockpitSpeechText $text), 0) | Out-Null
+        }
     } catch {
+        try {
+            if ($null -ne $speaker) { $speaker.Speak((Convert-ToCockpitSpeechText $text), 0) | Out-Null }
+        } catch {}
     } finally {
         if ($acquired -and $null -ne $mutex) { try { $mutex.ReleaseMutex() } catch {} }
         if ($null -ne $mutex) { $mutex.Dispose() }
