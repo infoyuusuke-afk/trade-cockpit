@@ -32,6 +32,7 @@ $Cmd = Join-Path $Root "START_AI_COCKPIT.cmd"
 $Gateway = Join-Path $Root "AI_Cockpit_Local_Gateway.ps1"
 $ApiStarter = Join-Path $Root "START_SBV2_API.ps1"
 $Collector = Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"
+$Heartbeat = Join-Path $RuntimeDir "Kioxia_Safety_Heartbeat.ps1"
 
 foreach($p in @($Ps1,$Cmd,$Collector)){
     if(-not(Test-Path -LiteralPath $p)){ throw "Required file not found: $p" }
@@ -43,6 +44,7 @@ Copy-Item -LiteralPath $Cmd -Destination ($Cmd+".bak_clean_"+$stamp) -Force
 Copy-Item -LiteralPath $Collector -Destination ($Collector+".bak_clean_"+$stamp) -Force
 
 Invoke-WebRequest "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/ms2_live/MS2_RSS_100_Collector.ps1" -OutFile $Collector -UseBasicParsing -TimeoutSec 30
+Invoke-WebRequest "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/ms2_live/Kioxia_Safety_Heartbeat.ps1" -OutFile $Heartbeat -UseBasicParsing -TimeoutSec 30
 Invoke-WebRequest "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/downloads/AI_Cockpit_Local_Gateway.ps1" -OutFile $Gateway -UseBasicParsing -TimeoutSec 30
 Invoke-WebRequest "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/downloads/START_SBV2_API.ps1" -OutFile $ApiStarter -UseBasicParsing -TimeoutSec 30
 
