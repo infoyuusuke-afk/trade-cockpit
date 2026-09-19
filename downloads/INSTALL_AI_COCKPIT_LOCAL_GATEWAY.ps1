@@ -1,55 +1,58 @@
 param(
-    [string]$Root = "C:\AI_Cockpit_OneClick_Starter"
+    [string]$Root = "C:\\AI_Cockpit_OneClick_Starter"
 )
 
 $ErrorActionPreference="Stop"
 $GatewayUrl="https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/downloads/AI_Cockpit_Local_Gateway.ps1"
 $Gateway=Join-Path $Root "AI_Cockpit_Local_Gateway.ps1"
-$Launcher=Join-Path $Root "START_AI_COCKPIT.ps1"
+$LauncherPs1=Join-Path $Root "START_AI_COCKPIT.ps1"
+$LauncherCmd=Join-Path $Root "START_AI_COCKPIT.cmd"
 
-if(-not(Test-Path -LiteralPath $Launcher)){throw "Launcher not found: $Launcher"}
+if(-not(Test-Path -LiteralPath $Root)){throw "Root not found: $Root"}
+if(-not(Test-Path -LiteralPath $LauncherPs1)){throw "Launcher PS1 not found: $LauncherPs1"}
+if(-not(Test-Path -LiteralPath $LauncherCmd)){throw "Launcher CMD not found: $LauncherCmd"}
 
 Invoke-WebRequest -Uri $GatewayUrl -OutFile $Gateway -UseBasicParsing -TimeoutSec 30
 
 $stamp=Get-Date -Format "yyyyMMdd_HHmmss"
-$backup="$Launcher.bak_localgateway_$stamp"
-Copy-Item -LiteralPath $Launcher -Destination $backup -Force
-$c=[IO.File]::ReadAllText($Launcher)
-$marker='# AI_COCKPIT_LOCAL_GATEWAY_V1'
-if($c -notmatch [regex]::Escape($marker)){
-    $needle='Write-Log "Collector port 28580 PASS." "OK"'
-    if(-not $c.Contains($needle)){throw "Expected launcher marker not found. Backup: $backup"}
-    $patch=@'
-Write-Log "Collector port 28580 PASS." "OK"
+$backup="$LauncherCmd.bak_localgateway_$stamp"
+Copy-Item -LiteralPath $LauncherCmd -Destination $backup -Force
 
-# AI_COCKPIT_LOCAL_GATEWAY_V1
-$GatewayScript = Join-Path $Root "AI_Cockpit_Local_Gateway.ps1"
-$GatewayPort = 28581
-if (Test-Path -LiteralPath $GatewayScript) {
-    if (-not (Test-TcpPort "127.0.0.1" $GatewayPort)) {
-        Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $GatewayScript + '"') | Out-Null
-        $gwDeadline=(Get-Date).AddSeconds(15)
-        while((Get-Date) -lt $gwDeadline){
-            if(Test-TcpPort "127.0.0.1" $GatewayPort){break}
-            Start-Sleep -Milliseconds 500
-        }
-    }
-    if(Test-TcpPort "127.0.0.1" $GatewayPort){
-        Start-Process ("http://127.0.0.1:{0}/?live=1" -f $GatewayPort) | Out-Null
-        Write-Log ("Local cockpit gateway opened on port {0}" -f $GatewayPort) "OK"
-    } else {
-        Write-Log "Local cockpit gateway did not start. Falling back to existing cockpit open behavior." "WARN"
-    }
-}
+$cmd = @'
+@echo off
+setlocal
+cd /d "%~dp0"
+title AI Cockpit Launcher
+chcp 65001 >nul
+
+REM Start local LIVE gateway first. If already running, the second instance will exit when port is busy.
+start "" /min powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0AI_Cockpit_Local_Gateway.ps1"
+
+REM Start the existing AI Cockpit sequence (MarketSpeed II / Excel / Collector / checks).
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0START_AI_COCKPIT.ps1"
+
+REM Open the LIVE cockpit from localhost so browser security does not block local MS2 data.
+start "" "http://127.0.0.1:28581/?live=1"
+
+echo.
+echo ========================================
+echo  AI Cockpit LIVE: http://127.0.0.1:28581/?live=1
+echo  Press any key to close this window.
+echo ========================================
+pause >nul
+endlocal
 '@
-    $c=$c.Replace($needle,$patch)
-    $utf8bom=New-Object System.Text.UTF8Encoding($true)
-    [IO.File]::WriteAllText($Launcher,$c,$utf8bom)
-}
+
+$utf8bom=New-Object System.Text.UTF8Encoding($true)
+[IO.File]::WriteAllText($LauncherCmd,$cmd,$utf8bom)
+
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
 Write-Host " Local LIVE Gateway installed" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
-Write-Host ("Gateway : "+$Gateway)
-Write-Host ("Backup  : "+$backup)
-Write-Host "Next launch will open http://127.0.0.1:28581/?live=1" -ForegroundColor Cyan
+Write-Host ("Gateway     : "+$Gateway)
+Write-Host ("CMD backup  : "+$backup)
+Write-Host ""
+Write-Host "The installer no longer patches START_AI_COCKPIT.ps1." -ForegroundColor Cyan
+Write-Host "START_AI_COCKPIT.cmd now starts the gateway, runs the existing launcher, then opens localhost LIVE." -ForegroundColor Cyan
+Write-Host "Next start URL: http://127.0.0.1:28581/?live=1" -ForegroundColor Green
