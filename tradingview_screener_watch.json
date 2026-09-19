@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-09-19 18:20:06 JST",
+  "updated_at": "2026-09-19 19:53:13 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -344,7 +344,7 @@
           "vwap": 1123.6666666666667,
           "high": 1315,
           "low": 1019,
-          "market_cap": null,
+          "market_cap": 6493839464,
           "sector": "Consumer Services",
           "already_watched": false
         },
@@ -360,7 +360,7 @@
           "vwap": 591.3333333333334,
           "high": 650,
           "low": 562,
-          "market_cap": null,
+          "market_cap": 6322500000,
           "sector": "Finance",
           "already_watched": false
         },
@@ -1218,7 +1218,7 @@
           "vwap": 3146.6666666666665,
           "high": 3225,
           "low": 3045,
-          "market_cap": 259873416000,
+          "market_cap": 259818589000,
           "sector": "Technology Services",
           "already_watched": true
         },
@@ -2395,7 +2395,7 @@
       "vwap": 1123.6666666666667,
       "high": 1315,
       "low": 1019,
-      "market_cap": null,
+      "market_cap": 6493839464,
       "sector": "Consumer Services",
       "already_watched": false
     },
@@ -2651,7 +2651,7 @@
       "vwap": 591.3333333333334,
       "high": 650,
       "low": 562,
-      "market_cap": null,
+      "market_cap": 6322500000,
       "sector": "Finance",
       "already_watched": false
     },
@@ -4251,7 +4251,7 @@
       "vwap": 3146.6666666666665,
       "high": 3225,
       "low": 3045,
-      "market_cap": 259873416000,
+      "market_cap": 259818589000,
       "sector": "Technology Services",
       "already_watched": true
     },
