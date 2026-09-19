@@ -2,10 +2,10 @@
   "schema": 1,
   "channel": "stable",
   "version": "2026.09.19.2",
-  "published_at": "2026-09-19T14:55:00+09:00",
-  "kit_name": "AI_Cockpit_OneClick_Starter_20260919.zip",
+  "published_at": "2026-09-19T15:05:00+09:00",
+  "kit_name": "AI_Cockpit_OneClick_Starter_20260919_v2.zip",
   "kit_type": "launcher_updater",
-  "download_url": "https://infoyuusuke-afk.github.io/trade-cockpit/downloads/AI_Cockpit_OneClick_Starter_20260919.zip",
+  "download_url": "https://infoyuusuke-afk.github.io/trade-cockpit/downloads/AI_Cockpit_OneClick_Starter_20260919_v2.zip",
   "sha256": "a4b88cf8e73a7245adc835af5a83c9fc68c442c81aab6ec3080c116dfad5c762",
   "size_bytes": 7506,
   "updater_url": "https://infoyuusuke-afk.github.io/trade-cockpit/downloads/AI_Cockpit_Updater.ps1",
@@ -15,5 +15,5 @@
     "url": "https://infoyuusuke-afk.github.io/trade-cockpit/downloads/MS2_RSS_100_Stocks_Live_Kit.zip",
     "published_commit_date": "2026-09-11"
   },
-  "notes": "Latest stable launcher/update kit. It downloads new stable kits to Updates and never overwrites trading runtime files automatically. The full MS2 runtime kit is provided separately."
+  "notes": "Latest stable launcher/update kit. New versions download into Updates and never overwrite trading runtime files automatically. The full MS2 runtime kit is provided separately."
 }
