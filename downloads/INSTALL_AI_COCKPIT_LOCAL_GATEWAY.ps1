@@ -26,7 +26,7 @@ title AI Cockpit Launcher
 chcp 65001 >nul
 
 REM Start local LIVE gateway first. If already running, the second instance will exit when port is busy.
-start "" /min powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0AI_Cockpit_Local_Gateway.ps1"
+start "" /min powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0AI_Cockpit_Local_Gateway.ps1" -RuntimeDir "%USERPROFILE%\Desktop\デイトレ\MarketSpeed II RSS\files"
 
 REM Start the existing AI Cockpit sequence (MarketSpeed II / Excel / Collector / checks).
 powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0START_AI_COCKPIT.ps1"
