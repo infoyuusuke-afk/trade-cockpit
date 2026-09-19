@@ -545,12 +545,12 @@ $statsScript = Join-Path $PSScriptRoot "BUILD_KIOXIA_TIME_STATS.ps1"
 $statsJsonPath = Join-Path $PSScriptRoot "kioxia_time_stats.json"
 if (Test-Path $statsScript) {
     try { & $statsScript -RecordsRoot $dataRoot -OutputJson $statsJsonPath -OutputCsv (Join-Path $PSScriptRoot "kioxia_time_stats.csv") }
-    catch { Write-Host ("時間帯統計の更新を保留: "+$_.Exception.Message) -ForegroundColor Yellow }
+    catch { Write-Host "[STATS] 時間帯統計: 保留" -ForegroundColor DarkYellow }
 }
 $kioxiaStats = $null
 if (Test-Path $statsJsonPath) {
     try { $kioxiaStats = Get-Content -Raw -Encoding UTF8 $statsJsonPath | ConvertFrom-Json }
-    catch { Write-Host "時間帯統計JSONを読み込めません。統計は表示せず監視を続けます。" -ForegroundColor Yellow }
+    catch { Write-Host "[STATS] 統計JSON: 読込保留" -ForegroundColor DarkYellow }
 }
 $jsonPath = Join-Path $PSScriptRoot "live_ms2.json"
 $cockpitJsonPath = Join-Path (Split-Path $PSScriptRoot -Parent) "live_ms2.json"
@@ -712,10 +712,9 @@ $holdStats = Get-OvernightHoldStats $holdHistory
 $browserOpened = $false
 $bridgeJob = Start-LocalJsonBridge $jsonPath 28580
 
-Write-Host "100銘柄のRSS監視を開始しました。誤値は保存しません。終了は Ctrl+C。" -ForegroundColor Cyan
-Write-Host "統一AIコクピット: $publicCockpitUrl" -ForegroundColor Cyan
-Write-Host "予備画面: $htmlPath" -ForegroundColor DarkGray
-Write-Host "AIコクピット連携: http://127.0.0.1:28580/live_ms2.json" -ForegroundColor Cyan
+Write-Host "[RSS] 100銘柄監視: START / Ctrl+Cで停止" -ForegroundColor Green
+Write-Host "[LIVE] 127.0.0.1:28580 : READY" -ForegroundColor Cyan
+Write-Host "[VOICE] Style-Bert-VITS2優先 / SAPIフォールバック" -ForegroundColor Cyan
 Invoke-SerializedSpeak $speaker "キオクシアを含む、100銘柄の音声監視を開始しました。"
 
 try {
@@ -726,7 +725,7 @@ try {
         if ($StopAfterClose -and $now.TimeOfDay -ge [TimeSpan]::Parse("23:59:00")) {
             if (Test-Path $statsScript) {
                 try { & $statsScript -RecordsRoot $dataRoot -OutputJson $statsJsonPath -OutputCsv (Join-Path $PSScriptRoot "kioxia_time_stats.csv") }
-                catch { Write-Host ("引け後統計の更新を保留: "+$_.Exception.Message) -ForegroundColor Yellow }
+                catch { Write-Host "[STATS] 引け後統計: 保留" -ForegroundColor DarkYellow }
             }
             Invoke-SerializedSpeak $speaker "東証と夜間PTSの記録を終了し、キオクシアの時間帯統計を更新しました。"
             break
