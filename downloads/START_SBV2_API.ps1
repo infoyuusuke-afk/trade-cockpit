@@ -1,6 +1,7 @@
 param(
     [string]$SbV2Root = "C:\\sbv2\\Style-Bert-VITS2",
-    [int]$Port = 5000
+    [int]$Port = 5000,
+    [string]$LogDir = "C:\\AI_Cockpit_OneClick_Starter\\Logs"
 )
 
 $ErrorActionPreference="Stop"
@@ -19,27 +20,33 @@ if(Test-Port $Port){
     exit 0
 }
 
-$py=Join-Path $SbV2Root "venv\Scripts\python.exe"
+$pythonw=Join-Path $SbV2Root "venv\Scripts\pythonw.exe"
+$python=Join-Path $SbV2Root "venv\Scripts\python.exe"
 $server=Join-Path $SbV2Root "server_fastapi.py"
 
-if(-not(Test-Path -LiteralPath $py)){throw "SBV2 Python not found: $py"}
 if(-not(Test-Path -LiteralPath $server)){throw "server_fastapi.py not found: $server"}
 
-Write-Host "Starting Style-Bert-VITS2 FastAPI..." -ForegroundColor Cyan
-Start-Process -FilePath $py -ArgumentList "server_fastapi.py" -WorkingDirectory $SbV2Root -WindowStyle Hidden | Out-Null
+if(-not(Test-Path -LiteralPath $LogDir)){
+    New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+}
+$stdout=Join-Path $LogDir "sbv2_api_stdout.log"
+$stderr=Join-Path $LogDir "sbv2_api_stderr.log"
+
+if(Test-Path -LiteralPath $pythonw){
+    Start-Process -FilePath $pythonw -ArgumentList "server_fastapi.py" -WorkingDirectory $SbV2Root -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr | Out-Null
+}elseif(Test-Path -LiteralPath $python){
+    Start-Process -FilePath $python -ArgumentList "server_fastapi.py" -WorkingDirectory $SbV2Root -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr | Out-Null
+}else{
+    throw "SBV2 Python not found."
+}
 
 $deadline=(Get-Date).AddSeconds(120)
 while((Get-Date) -lt $deadline){
     if(Test-Port $Port){
-        try{
-            $models=Invoke-RestMethod ("http://127.0.0.1:{0}/models/info" -f $Port) -TimeoutSec 5
-            Write-Host ("SBV2 API READY: http://127.0.0.1:{0}" -f $Port) -ForegroundColor Green
-            Write-Host ("Loaded models: " + (($models.PSObject.Properties.Name) -join ", ")) -ForegroundColor DarkGray
-        }catch{
-            Write-Host ("SBV2 API port {0} is open." -f $Port) -ForegroundColor Green
-        }
+        Write-Host ("SBV2 API READY (hidden): http://127.0.0.1:{0}" -f $Port) -ForegroundColor Green
         exit 0
     }
     Start-Sleep -Seconds 2
 }
-throw "SBV2 API did not start within 120 seconds."
+
+throw "SBV2 API did not start within 120 seconds. Check: $stderr"
