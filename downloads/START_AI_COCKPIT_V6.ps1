@@ -203,6 +203,19 @@ try{
     }
     if(-not $liveOk){ throw "LIVE JSON was not ready." }
 
+    $jnxState = if($null -ne $j.jnx_status){ [string]$j.jnx_status } else { "UNKNOWN" }
+    $statsState = if($null -ne $j.stats_status){ [string]$j.stats_status } else { "UNKNOWN" }
+    $statsCompleted = 0
+    $statsScanned = 0
+    $statsIncomplete = 0
+    if($null -ne $j.kioxia_stats_meta){
+        if($null -ne $j.kioxia_stats_meta.completed_days){ $statsCompleted = [int]$j.kioxia_stats_meta.completed_days }
+        if($null -ne $j.kioxia_stats_meta.scanned_days){ $statsScanned = [int]$j.kioxia_stats_meta.scanned_days }
+        if($null -ne $j.kioxia_stats_meta.incomplete_day_count){ $statsIncomplete = [int]$j.kioxia_stats_meta.incomplete_day_count }
+    }
+    Write-Host ("      JNX   : " + $jnxState) -ForegroundColor $(if($jnxState -like "WARN*"){"Yellow"}else{"Green"})
+    Write-Host ("      STATS : " + $statsState + " / completed=" + $statsCompleted + " scanned=" + $statsScanned + " incomplete=" + $statsIncomplete) -ForegroundColor Cyan
+
     Show-Step 95 "Checking cockpit gateway..."
     $h=Invoke-RestMethod ("http://127.0.0.1:28581/health?t="+[DateTimeOffset]::Now.ToUnixTimeMilliseconds()) -TimeoutSec 5
     if(-not $h.live_json_exists){ throw "Gateway cannot see live_ms2.json." }
