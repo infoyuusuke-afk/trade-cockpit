@@ -7,10 +7,8 @@
 $ErrorActionPreference = "Stop"
 
 function ConvertTo-SafeDateTime($value, [ref]$result) {
-    # CSVの列が配列やnullになっている行（$row.captured_atが[object[]]になる等）があると、
-    # [DateTime]::TryParse($value,[ref]$at) が「2引数のオーバーロードが見つからない」で
-    # 例外になり、時間帯統計の更新全体が止まっていた（2026-09-14に確認）。
-    # ここで必ず単一のstringへ変換してから渡すことで、その行だけをスキップできるようにする。
+    # PowerShell 5.1では [ref]$result.Value を TryParse のout引数へ直接渡すと
+    # オーバーロード解決に失敗するため、ローカル変数で受けてから戻す。
     if ($null -eq $value) { return $false }
     if ($value -is [array]) {
         if ($value.Count -eq 0) { return $false }
@@ -18,7 +16,24 @@ function ConvertTo-SafeDateTime($value, [ref]$result) {
     }
     $text = [string]$value
     if ([string]::IsNullOrWhiteSpace($text)) { return $false }
-    return [DateTime]::TryParse($text, [ref]$result.Value)
+
+    [DateTime]$parsed = [DateTime]::MinValue
+    $ok = [DateTime]::TryParse(
+        $text,
+        [Globalization.CultureInfo]::CurrentCulture,
+        [Globalization.DateTimeStyles]::AllowWhiteSpaces,
+        [ref]$parsed
+    )
+    if (-not $ok) {
+        $ok = [DateTime]::TryParse(
+            $text,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::AllowWhiteSpaces,
+            [ref]$parsed
+        )
+    }
+    if ($ok) { $result.Value = $parsed }
+    return $ok
 }
 
 function Get-TimeBand([DateTime]$at) {
