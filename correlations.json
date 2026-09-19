@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-19 11:40:32 JST",
+  "updated_at": "2026-09-19 12:11:58 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -153,6 +153,68 @@
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
+      },
+      "decision": "この関係を売買根拠にしない"
+    },
+    {
+      "anchor": "キオクシアHD（285A）",
+      "anchor_ticker": "285A.T",
+      "peer": "005930.KS",
+      "peer_ticker": "005930.KS",
+      "relation": "韓国前日→日本翌日",
+      "expected": "正相関",
+      "reason": "Samsung Electronics、メモリ半導体地合いの先行確認",
+      "corr20": -0.15,
+      "corr60": 0.05,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": null,
+      "lead_bars": null,
+      "bars": 0,
+      "state": "不成立",
+      "confidence": 48,
+      "anchor_today": {
+        "ret": 5.3,
+        "or15": "上抜け",
+        "vwap": "上",
+        "ema": "上向き"
+      },
+      "peer_today": {
+        "ret": null,
+        "or15": "未取得",
+        "vwap": "未取得",
+        "ema": "未取得"
+      },
+      "decision": "この関係を売買根拠にしない"
+    },
+    {
+      "anchor": "キオクシアHD（285A）",
+      "anchor_ticker": "285A.T",
+      "peer": "000660.KS",
+      "peer_ticker": "000660.KS",
+      "relation": "韓国前日→日本翌日",
+      "expected": "正相関",
+      "reason": "SK Hynix、DRAM/NAND価格連動の先行確認",
+      "corr20": -0.22,
+      "corr60": -0.05,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": null,
+      "lead_bars": null,
+      "bars": 0,
+      "state": "不成立",
+      "confidence": 43,
+      "anchor_today": {
+        "ret": 5.3,
+        "or15": "上抜け",
+        "vwap": "上",
+        "ema": "上向き"
+      },
+      "peer_today": {
+        "ret": null,
+        "or15": "未取得",
+        "vwap": "未取得",
+        "ema": "未取得"
       },
       "decision": "この関係を売買根拠にしない"
     },
@@ -3071,6 +3133,6 @@
       "decision": "この関係を売買根拠にしない"
     }
   ],
-  "method": "日足20/60営業日＋日本株5分足5日。米国株は前営業日から日本翌営業日への先行相関。",
+  "method": "日足20/60営業日＋日本株5分足5日。米国株・韓国株は前営業日から日本翌営業日への先行相関。",
   "rule": "OR15・VWAP・EMA9/20を含む4/5一致が前提。相関だけで発注せず、3/5以下は見送り。"
 }
