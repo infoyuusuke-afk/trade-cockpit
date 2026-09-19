@@ -3043,6 +3043,19 @@ document.addEventListener("DOMContentLoaded",()=>{
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・参画状況</th><th>資料</th></tr></thead><tbody>{gunma_rare_earth_rows}</tbody></table>
 <p class="warning">群馬県桐生市の茂倉沢鉱山でランタン・セリウムを含む新鉱物4種が承認された研究成果を監視します。現時点では資源量・採算性・採掘計画・企業参画のいずれも未確認で、商業鉱山案件ではありません。資源量調査、採掘権、自治体・JOGMEC・企業との共同研究、分離精製試験の公式発表が出るまでテーマ監視限定。正式なスイング候補への昇格には信用需給30/55点以上と発動価格突破も必須です。</p></section>
 <section id="speculative-theme-monitor" class="card wide"><h2>②-C テーマ仕手化兆候・隔離監視 TOP5</h2>
+<style>
+#speculative-theme-monitor table{min-width:1320px;table-layout:auto}
+#speculative-theme-monitor th,#speculative-theme-monitor td{vertical-align:middle}
+#speculative-theme-monitor th:nth-child(2),#speculative-theme-monitor td:nth-child(2){min-width:210px}
+#speculative-theme-monitor th:nth-child(3),#speculative-theme-monitor td:nth-child(3){min-width:92px;white-space:nowrap}
+#speculative-theme-monitor th:nth-child(4),#speculative-theme-monitor td:nth-child(4){min-width:78px;white-space:nowrap}
+#speculative-theme-monitor th:nth-child(5),#speculative-theme-monitor td:nth-child(5){min-width:130px}
+#speculative-theme-monitor th:nth-child(10),#speculative-theme-monitor td:nth-child(10){min-width:72px;white-space:nowrap}
+#speculative-theme-monitor th:nth-child(12),#speculative-theme-monitor td:nth-child(12){min-width:92px;white-space:nowrap}
+#speculative-theme-monitor th:nth-child(14),#speculative-theme-monitor td:nth-child(14){min-width:145px;line-height:1.45}
+#speculative-theme-monitor th:nth-child(15),#speculative-theme-monitor td:nth-child(15){min-width:190px;line-height:1.45}
+#speculative-theme-monitor td:nth-child(3)>b,#speculative-theme-monitor td:nth-child(14)>b{display:inline-block;white-space:nowrap}
+</style>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>異常度</th><th>テーマ・確認状態</th><th>終値</th><th>1日</th><th>5日</th><th>20日</th><th>出来高比</th><th>ATR</th><th>20日線乖離</th><th>上ヒゲ</th><th>信用需給</th><th>監視行動</th></tr></thead>
 <tbody id="speculative-theme-watch"><tr><td colspan="15">全市場の仕手化兆候を走査中...</td></tr></tbody></table>
 <p class="warning"><b>監視専用・売買候補ではありません。</b> 出来高急増、5日／20日急騰、値幅拡大、加速率、上ヒゲで異常度を算出し、初動候補・資金流入・過熱・天井警戒に分類します。「仕手株」との断定はせず、会社IR・適時開示でテーマを確認し、信用買い残・信用倍率・機関空売り変化も確認。ここに入った銘柄は通常の持ち越しLONG／SHORT TOP5から隔離します。</p></section>
