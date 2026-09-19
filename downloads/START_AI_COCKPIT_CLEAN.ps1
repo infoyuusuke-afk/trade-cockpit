@@ -120,9 +120,9 @@ $RuntimeDir = Resolve-RuntimeDir
 $Collector = Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"
 $Heartbeat = Join-Path $RuntimeDir "Kioxia_Safety_Heartbeat.ps1"
 $Gateway = Join-Path $Root "AI_Cockpit_Local_Gateway.ps1"
-$SbV2Starter = Join-Path $Root "START_SBV2_API.ps1"
+$SbV2Root = "C:\sbv2\Style-Bert-VITS2"
 
-foreach($p in @($Collector,$Heartbeat,$Gateway,$SbV2Starter)){
+foreach($p in @($Collector,$Heartbeat,$Gateway)){
     if(-not(Test-Path -LiteralPath $p)){ throw "Required file not found: $p" }
 }
 
@@ -146,9 +146,41 @@ if($ms2.Count -eq 0){
 }
 
 Show-Step 30 "Starting SBV2 voice engine in background..."
-& $SbV2Starter | Out-Host
+$sbvPy = Join-Path $SbV2Root "venv\Scripts\pythonw.exe"
+if(-not(Test-Path -LiteralPath $sbvPy)){
+    $sbvPy = Join-Path $SbV2Root "venv\Scripts\python.exe"
+}
+$sbvServer = Join-Path $SbV2Root "server_fastapi.py"
+if(-not(Test-Path -LiteralPath $sbvPy)){ throw "SBV2 Python not found: $sbvPy" }
+if(-not(Test-Path -LiteralPath $sbvServer)){ throw "SBV2 server_fastapi.py not found: $sbvServer" }
+
 if(-not(Test-Port 5000 700)){
-    throw "SBV2 API did not become ready on port 5000."
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $sbvPy
+    $psi.Arguments = "server_fastapi.py"
+    $psi.WorkingDirectory = $SbV2Root
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $sbvProc = [Diagnostics.Process]::Start($psi)
+
+    $sbvStarted = Get-Date
+    $sbvNextNotice = 5
+    while(-not(Test-Port 5000 700)){
+        $elapsed = [int]((Get-Date)-$sbvStarted).TotalSeconds
+        Write-Progress -Activity "AI Cockpit startup" -Status ("SBV2 model loading... {0}s" -f $elapsed) -PercentComplete 30
+        if($elapsed -ge $sbvNextNotice){
+            Write-Host ("      SBV2 model loading... {0}s / 120s" -f $elapsed) -ForegroundColor DarkGray
+            $sbvNextNotice += 5
+        }
+        if($sbvProc.HasExited){
+            throw ("SBV2 process exited before port 5000 opened. ExitCode=" + $sbvProc.ExitCode)
+        }
+        if($elapsed -ge 120){
+            try { Stop-Process -Id $sbvProc.Id -Force -ErrorAction SilentlyContinue } catch {}
+            throw "SBV2 API did not become ready on port 5000 within 120 seconds."
+        }
+        Start-Sleep -Seconds 1
+    }
 }
 Write-Host "      SBV2 voice: READY (port 5000)" -ForegroundColor Green
 
