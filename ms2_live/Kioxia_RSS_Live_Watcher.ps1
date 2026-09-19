@@ -263,6 +263,47 @@ function Read-TickList($sheet, [string]$headerAnchor) {
     } catch { return @() }
 }
 
+# 15秒足バックテスト用の生ティック永続化（共有シートC-075、GPT提案への対応・2026-09-19）。
+# RssTickListは直近最大300件のローリングウィンドウしか保持しないため、既存の2秒間隔ループに
+# 便乗して毎回差分（前回まだ見ていないティック）だけを追記し、ザラバ中の全ティックを
+# 失わずに蓄積する。ティックは(時刻,価格,出来高)の組でしか識別できず、MS2側に個別約定IDが
+# 無いため、同一秒・同価格・同出来高の複数約定は理論上区別不能（GPTが懸念していた重複排除・
+# 時刻精度の制約そのもの）。この関数はその制約を回避しようとせず、代わりに「前回ポーリングの
+# ティックが今回のウィンドウに1件も残っていない」状態を欠損の疑いとして診断ログに記録する
+# ことで、実機で実際にどの程度発生するかを後から検証できるようにする（未検証・要実機確認）。
+function Write-TickLogDiff($ticks) {
+    $script:tickPollSeq++
+    $now = Get-Date
+    $windowSize = $ticks.Count
+    $currentPollKeys = [System.Collections.Generic.HashSet[string]]::new()
+    $newLines = New-Object System.Collections.Generic.List[string]
+    foreach ($t in $ticks) {
+        $key = $t.TimeText + "|" + $t.Price + "|" + $t.Volume
+        [void]$currentPollKeys.Add($key)
+        if (-not $script:recentTickKeySet.Contains($key)) {
+            [void]$script:recentTickKeySet.Add($key)
+            $script:recentTickKeyOrder.Add($key)
+            $newLines.Add($now.ToString("yyyy-MM-dd HH:mm:ss") + "," + $t.TimeText + "," + $t.Price + "," + $t.Volume + "," + $script:tickPollSeq)
+        }
+    }
+    # 直近キー保持数を350件程度に制限（300件ウィンドウより少し余裕を持たせた上限、メモリ・比較コスト対策）。
+    while ($script:recentTickKeyOrder.Count -gt 350) {
+        $oldest = $script:recentTickKeyOrder[0]
+        $script:recentTickKeyOrder.RemoveAt(0)
+        [void]$script:recentTickKeySet.Remove($oldest)
+    }
+    if ($newLines.Count -gt 0) {
+        $newLines | Out-File -FilePath $script:tickLogPath -Append -Encoding utf8
+    }
+    $overlap = 0
+    foreach ($k in $script:prevPollTickKeys) { if ($currentPollKeys.Contains($k)) { $overlap++ } }
+    # 前回ポーリング時点のティックが今回のウィンドウに1件も残っていない＝2秒間で300件が
+    # 丸ごと入れ替わった可能性（欠損の疑い）。初回ループ（前回が空）は対象外。
+    $suspectedGap = ($script:prevPollTickKeys.Count -gt 0 -and $overlap -eq 0 -and $windowSize -gt 0)
+    ($now.ToString("yyyy-MM-dd HH:mm:ss") + "," + $windowSize + "," + $overlap + "," + $newLines.Count + "," + $suspectedGap) | Out-File -FilePath $script:tickDiagLogPath -Append -Encoding utf8
+    $script:prevPollTickKeys = $currentPollKeys
+}
+
 # 実際に約定した個別ティックのうち、直近ティック群の中央値出来高の$multiplier倍以上のものを
 # 「大口ティック候補」として抽出する。歩み1〜4ベースの推定(Get-VolumeFootprints)と異なり、
 # これは個々の約定の出来高そのものを見ているため、単一の大口注文であった可能性がより高い
@@ -481,6 +522,31 @@ if (-not (Test-Path $boardLogPath)) {
 }
 $lastBoardLoggedMinute = ""
 
+# 15秒足バックテスト用の生ティックログ（共有シートC-075）。ms2_live/*.csvは.gitignore対象
+# のためローカル専用、公開リポジトリへは一切アップロードしない（気配値ログ.csvと同じ扱い）。
+$script:tickLogPath = Join-Path $PSScriptRoot ("kioxia_ticks_" + (Get-Date -Format "yyyyMMdd") + ".csv")
+if (-not (Test-Path $script:tickLogPath)) {
+    "recorded_at,tick_time,price,volume,poll_seq" | Out-File -FilePath $script:tickLogPath -Encoding utf8
+}
+$script:tickDiagLogPath = Join-Path $PSScriptRoot ("kioxia_tick_diag_" + (Get-Date -Format "yyyyMMdd") + ".csv")
+if (-not (Test-Path $script:tickDiagLogPath)) {
+    "poll_time,window_size,overlap_with_prev,new_appended,suspected_gap" | Out-File -FilePath $script:tickDiagLogPath -Encoding utf8
+}
+# 途中再起動時に同じティックを二重記録しないよう、既存ログの末尾から直近キーを復元する。
+$script:recentTickKeyOrder = [System.Collections.Generic.List[string]]::new()
+if (Test-Path $script:tickLogPath) {
+    try {
+        foreach ($line in (Get-Content $script:tickLogPath -Tail 350)) {
+            if ($line -eq "recorded_at,tick_time,price,volume,poll_seq") { continue }
+            $cols = $line -split ","
+            if ($cols.Count -ge 4) { $script:recentTickKeyOrder.Add($cols[1] + "|" + $cols[2] + "|" + $cols[3]) }
+        }
+    } catch {}
+}
+$script:recentTickKeySet = [System.Collections.Generic.HashSet[string]]::new([string[]]$script:recentTickKeyOrder)
+$script:prevPollTickKeys = [System.Collections.Generic.HashSet[string]]::new()
+$script:tickPollSeq = 0
+
 # キオクシアタブの一本化（ユーザー指示・2026-09-15）: これまでExcelのDASHBOARDシートと
 # 公開コクピットのキオクシアタブが別々の計算式で似た指標を出しており「どちらを見ればいいか
 # わからない」状態だった。WatcherのDASHBOARD計算結果をJSONとして書き出し、ローカルHTTP
@@ -518,6 +584,7 @@ try {
         $one = @(Read-Chart $rss "A20" | Where-Object { $_.SortKey -lt $cutoff1 })
         $five = @(Read-Chart $rss "L20" | Where-Object { $_.SortKey -lt $cutoff5 })
         $ticks = @(Read-TickList $rss "A531")
+        Write-TickLogDiff $ticks
         $board = @(Read-BoardDepth $rss)
         $price = Get-SafeNumber $rss.Range("B4").Value2 0.01 10000000
         $vwap = Get-SafeNumber $rss.Range("B5").Value2 0 10000000
