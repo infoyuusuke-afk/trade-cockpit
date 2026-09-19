@@ -1,21 +1,21 @@
 {
   "schema_version": "next-theme-radar-0.2",
-  "updated_at": "2026-09-19T10:24:50.188329+09:00",
+  "updated_at": "2026-09-19T15:19:31.039852+09:00",
   "source_note": "ニュース集約RSSは一次資料ではない。価格・資金流入は取得済み証拠だけで採点。",
   "themes": [
     {
       "theme_id": "jpy-stablecoin",
       "theme": "円ステーブルコイン",
-      "status": "WATCH",
-      "score": 45,
+      "status": "NO_EVENT",
+      "score": 15,
       "score_breakdown": {
-        "novelty": 15,
-        "catalyst": 5,
+        "novelty": 0,
+        "catalyst": 0,
         "money_flow": 0,
         "japan_link": 15,
         "breadth": 0,
         "small_cap": 0,
-        "overseas_lead": 10,
+        "overseas_lead": 0,
         "price_confirmation": 0
       },
       "weights": {
@@ -28,16 +28,9 @@
         "overseas_lead": 10,
         "price_confirmation": 5
       },
-      "first_seen": "2026-09-18T08:18:15.639395+09:00",
-      "last_event_at": "2026-09-18T13:00:00+09:00",
-      "events": [
-        {
-          "title": "Upbit fuels speculative frenzy as yen stablecoin spikes then crashes in Korea - CHOSUNBIZ - Chosunbiz",
-          "url": "https://news.google.com/rss/articles/CBMilAFBVV95cUxNZTZOV0FwRG0wY1BKaWhGU2hESWMwZHdPMGtrUGt6UlEyZGZLLU5zS0lfU25BcE4yN1NiYWR3MTQ3SnRXdU5uODBLVjBNTzV6VDhJY0dDREhHa19iSUpxTUJVdk5ESE9hU1RKQmdPend5R2F4d1h0WnJwTTdjZTlWUlpwZm1OR2hZdG1wMk9TSXQyU29M0gGUAUFVX3lxTE1lNk5XQXBEbTBjUEppaEZTaERJYzBkd08wa2tQa3pSUTJkZkstTnNLSV9TbkFwTjI3U2JhZHcxNDdKdFd1Tm44MEtWME1PNXpUOEljR0NESEdrX2JJSnFNQlV2TkRIT2FTVEpCZ096d3lHYXh3WHRacnBNN2NlOVZSWnBmbU5HaFl0bXAyT1NJdDJTb0w?oc=5",
-          "published_at": "2026-09-18T13:00:00+09:00",
-          "source": "Chosunbiz"
-        }
-      ],
+      "first_seen": null,
+      "last_event_at": null,
+      "events": [],
       "stocks": [
         {
           "code": "3853",
@@ -75,18 +68,14 @@
       ],
       "reacting_stock_count": 0,
       "evidence": {
-        "news_fresh": true,
+        "news_fresh": false,
         "money_flow_fresh": false,
         "money_flow_anomaly": false,
         "tv_fresh": true,
         "money_flow_source": null
       },
       "emergency_display": false,
-      "handoff_codes": [
-        "3853",
-        "4072",
-        "4382"
-      ],
+      "handoff_codes": [],
       "trading_enabled": false,
       "real_submit_allowed": false
     }
