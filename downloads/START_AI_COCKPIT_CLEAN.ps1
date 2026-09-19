@@ -3,6 +3,20 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# AI_COCKPIT_FATAL_TRAP_V1
+trap {
+    Write-Progress -Activity "AI Cockpit startup" -Completed
+    Write-Host ""
+    Write-Host "==============================================" -ForegroundColor Red
+    Write-Host " AI COCKPIT STARTUP FAILED" -ForegroundColor Red
+    Write-Host "==============================================" -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "This window will stay open so the error can be checked." -ForegroundColor Cyan
+    Read-Host "Press Enter to close"
+    exit 1
+}
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
 function Show-Step([int]$Percent,[string]$Message,[ConsoleColor]$Color=[ConsoleColor]::Cyan) {
