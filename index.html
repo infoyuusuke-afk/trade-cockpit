@@ -15,6 +15,9 @@
 .weekly-grid>div{background:#0c1b2d;border:1px solid #243b55;border-radius:12px;padding:14px}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
+ <!-- AI_COCKPIT_DOWNLOADS_V1 -->
+ <a id="cockpit-kit-download" href="downloads/MS2_RSS_100_Stocks_Live_Kit.zip" download style="display:inline-flex;align-items:center;gap:5px;padding:9px 12px;border:1px solid #2f8e73;border-radius:9px;background:#0d2a24;color:#6ff0c7;font-weight:800;text-decoration:none;white-space:nowrap" title="MS2 RSS 100銘柄LIVE 最新安定版キット">最新版キット</a>
+ <a id="cockpit-updater-download" href="downloads/INSTALL_AI_COCKPIT_UPDATER.ps1" download style="display:inline-flex;align-items:center;gap:5px;padding:9px 12px;border:1px solid #4b6682;border-radius:9px;background:#102238;color:#a8d5ff;font-weight:800;text-decoration:none;white-space:nowrap" title="一括起動ランチャーへ自動更新チェックを追加">更新機能を導入</a>
  <span class="cockpit-brand">AIトレードコクピット<small id="cockpit-status">Ver.5.2</small></span>
  <button class="cockpit-tab active" data-tab="ms2-live">LIVE売買</button>
  <button class="cockpit-tab" data-tab="overnight">オーバーナイトTOP5</button>
@@ -31,6 +34,12 @@
  </details>
 </nav>
 <script>
+document.addEventListener("DOMContentLoaded",()=>{
+ fetch("downloads/version.json?t="+Date.now()).then(r=>r.json()).then(v=>{
+  const a=document.getElementById("cockpit-kit-download");
+  if(a&&v.version)a.textContent="最新版キット "+v.version;
+ }).catch(()=>{});
+});
 document.addEventListener("DOMContentLoaded",()=>{
  const main=document.querySelector("main"); if(!main)return;
  const policyTabs=["physical-ai","autonomous-driving","ai-drug-discovery","ai-semiconductor","defense-space","gx-power","quantum-computing"];
