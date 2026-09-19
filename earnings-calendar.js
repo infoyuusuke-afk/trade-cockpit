@@ -22,8 +22,10 @@
   const main=document.querySelector('main')||document.body;
   const nav=document.querySelector('.cockpit-tabs');
   if(nav){
-    const pane=document.createElement('div');pane.className='tab-pane';pane.dataset.pane='earnings';pane.append(root);main.append(pane);
-    const button=document.createElement('button');button.className='cockpit-tab';button.dataset.tab='earnings';button.textContent='決算カレンダー';button.type='button';nav.insertBefore(button,nav.querySelector('.secondary-tabs'));
+    const pane=document.createElement('div');pane.className='tab-pane';pane.dataset.pane='earnings';pane.append(root);
+    [...main.querySelectorAll('section')].filter(s=>(s.querySelector('h2')?.textContent||'').includes('決算勝負候補')).forEach(s=>pane.append(s));
+    main.append(pane);
+    const button=document.createElement('button');button.className='cockpit-tab';button.dataset.tab='earnings';button.textContent='決算日程';button.type='button';nav.insertBefore(button,nav.querySelector('.cockpit-tab[data-tab="events"]')||nav.querySelector('.secondary-tabs'));
     button.onclick=()=>{document.querySelectorAll('.cockpit-tab').forEach(x=>x.classList.toggle('active',x===button));document.querySelectorAll('.tab-pane').forEach(x=>x.classList.toggle('active',x===pane));localStorage.setItem('cockpitTabV5','earnings');};
     if(new URLSearchParams(location.search).get('earnings')==='1'||localStorage.getItem('cockpitTabV5')==='earnings')button.click();
   }else main.append(root);
