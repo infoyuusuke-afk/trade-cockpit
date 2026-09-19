@@ -214,6 +214,8 @@ try{
     Write-Host ("Startup completed in {0:N1}s." -f $sw.Elapsed.TotalSeconds) -ForegroundColor Green
     Write-Host "Visible: Collector + one browser page" -ForegroundColor Cyan
     Write-Host "Hidden : Heartbeat + Gateway + SBV2" -ForegroundColor DarkCyan
+    Start-Sleep -Seconds 2
+    exit 0
 }catch{
     Write-Progress -Activity "AI Cockpit startup" -Completed
     Write-Host ""
