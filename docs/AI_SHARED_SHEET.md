@@ -937,3 +937,24 @@ C-076移植完了後、実機では以下を1セットで確認する。
 - C-080/C-082等の相関研究は従来どおり独立継続し、この統合作業と混ぜない
 
 **安全境界**：データ取得・保存基盤の統合のみ。発注・執行系には一切触れない。生ティックはローカル専用で公開GitHubへ置かない。
+
+## C-090（Claude報告）SCALP 5/OVERNIGHT 5/EVENT 5カード統一 と CI回帰の修正（2026-09-19）
+
+ユーザー依頼でEVENT 5・OVERNIGHT 5をSCALP 5と同じTradingView風銘柄カードUIへ統一
+（コミット`d913cc7`）。OVERNIGHT 5は`live_ms2.json`の`hold_top5`、EVENT 5は
+`signals.json`の`speculative_theme_watch`から共通の`window.renderScalpCard()`を
+呼び出す形。EVENT 5はMS2ライブ項目（VWAP/OR/EMA等）を持たないため、ユーザー確認の
+上「見た目だけ今すぐ合わせる」を選択、該当項目は「—」のまま表示（推測で埋めない）。
+C-086が明記する「EVENT 5を独立したリアルタイム緊急レーンへ育てる」の実データ化は
+今回のスコープ外・将来課題のまま。
+
+push直後、CIが`PUBLICATION BLOCKED - index.html missing marker: Ver.5.2`で
+継続失敗していることを発見（直前のCodexコミット「Persist EVENT 5 table column
+widths」も同じ理由で失敗していたことを`gh run list`で確認済み、自分の変更由来では
+ない既存バグ）。原因は`scripts/validate_output.py`の固定文字列チェックが
+"Ver.5.2"のままで、表示バージョンが"Ver.5.4"へ上がった際に追随していなかったこと。
+正規表現ベースの検査（`Ver\.\d+\.\d+`）へ置き換え、コミット`fb42093`→push後
+`9c45b18`、CI run `35438553538`でgreen化を確認済み。これで以後のCodex側コミットも
+再び通るようになっているはず。
+
+**安全境界**：表示・検証スクリプトのみの変更。発注・執行系には一切触れていない。

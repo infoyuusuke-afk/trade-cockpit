@@ -3182,4 +3182,33 @@ V6（`C:\AI_Cockpit_OneClick_Starter`）を実機確認し、C-076（15秒足バ
 
 Claude側は現在待機。C-080/C-082の相関研究は従来通り独立継続してよいとのこと。
 
+## SCALP 5・OVERNIGHT 5・EVENT 5を同一の銘柄カードUIへ統一（2026-09-19）
+
+ユーザー依頼「EVENT 5とOVERNIGHT 5をSCALP 5と一緒の銘柄タブに変更して」に対応。
+
+**実装**：`weekly_tabs.py`にSCALP 5のカードテンプレートを`window.renderScalpCard(x, sv, tf)`
+として共通関数化（`<head>`スクリプトなので`update.py`の本文スクリプトより先に定義される）。
+OVERNIGHT 5（`live_ms2.json`の`hold_top5`）とEVENT 5（`signals.json`の
+`speculative_theme_watch`）双方からこの共通関数を呼び出すよう`update.py`を改修。
+
+**データ有無の確認と対応**：OVERNIGHT 5はMS2 RSSライブデータ（VWAP・OR・EMA9/20等）を
+持つが、EVENT 5は全市場走査専用でMS2ライブ項目を持たない。ユーザーにAskUserQuestionで
+確認し「見た目だけ今すぐ合わせる」を選択。EVENT 5では該当項目は未確認時の既存表示に
+合わせて「—」のまま表示し、推測で埋めない。
+
+**検証**：構文チェック（`ast.parse`）、ローカルパイプライン実行、ブラウザでEVENT 5の
+実データ表示確認、OVERNIGHT 5はテストデータ注入で表示確認。コミット`d913cc7`。
+
+**別件で発覚したCI回帰の修正**：上記push直後、CIが
+`PUBLICATION BLOCKED - index.html missing marker: Ver.5.2`で失敗しているのを発見。
+`scripts/validate_output.py`が"Ver.5.2"固定文字列を検査していたが、Codex側の作業で
+表示バージョンが"Ver.5.4"へ上がった際にこのチェックだけ取り残されていたのが原因
+（直前のCodexコミットも同じ理由で失敗していたことを`gh run list`で確認、自分の変更
+とは無関係の既存バグと判断）。固定文字列チェックを`re.search(r"Ver\.\d+\.\d+", html)`
+という正規表現ベースの検査に置き換え、以後バージョン番号を上げるたびにこのファイルを
+更新しなくて済むようにした。コミット`fb42093`→push後`9c45b18`。CI run `35438553538`で
+green化を確認済み。
+
+発注・執行系には一切触れていない。表示・検証スクリプトのみの修正。
+
 発注・執行系には一切触れていない。
