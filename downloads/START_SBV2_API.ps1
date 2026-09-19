@@ -26,7 +26,7 @@ if(-not(Test-Path -LiteralPath $py)){throw "SBV2 Python not found: $py"}
 if(-not(Test-Path -LiteralPath $server)){throw "server_fastapi.py not found: $server"}
 
 Write-Host "Starting Style-Bert-VITS2 FastAPI..." -ForegroundColor Cyan
-Start-Process -FilePath $py -ArgumentList "server_fastapi.py" -WorkingDirectory $SbV2Root -WindowStyle Minimized | Out-Null
+Start-Process -FilePath $py -ArgumentList "server_fastapi.py" -WorkingDirectory $SbV2Root -WindowStyle Hidden | Out-Null
 
 $deadline=(Get-Date).AddSeconds(120)
 while((Get-Date) -lt $deadline){
