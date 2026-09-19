@@ -154,8 +154,8 @@ function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 20000
         $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
         $acquired = $mutex.WaitOne($timeoutMs)
         $sbv2Ok = Invoke-SbV2HeartbeatSpeak $text
-        if (-not $sbv2Ok -and $null -ne $speaker) {
-            $speaker.Speak((Convert-ToHeartbeatSpeechText $text), 0) | Out-Null
+        if (-not $sbv2Ok) {
+            Write-Host "[HEARTBEAT] SBV2 voice request failed" -ForegroundColor Red
         }
     } catch {
     } finally {
@@ -164,12 +164,7 @@ function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 20000
     }
 }
 
-$speaker = $null
-try {
-    $speaker = New-Object -ComObject SAPI.SpVoice
-    $speaker.Volume = 100
-    $speaker.Rate = -2
-} catch {}
+$speaker = $null # SBV2 only; Windows SAPI is intentionally disabled
 
 $consecutiveFailures = 0
 $lastAlertAt = Get-Date "2000-01-01"
