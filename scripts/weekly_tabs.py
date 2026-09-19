@@ -114,30 +114,37 @@ def weekly_html(w: dict) -> str:
 
 
 def tabs_block() -> str:
-    return f"""{START}
+    return START + """
 <style>
-.cockpit-tabs{{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:8px;padding:10px;background:#07111fdd;backdrop-filter:blur(10px);overflow-x:auto}}
-.cockpit-brand{{display:flex;align-items:baseline;gap:7px;padding-right:6px;margin-right:2px;border-right:1px solid #2a3f56;font-weight:800;font-size:15px;letter-spacing:-.01em;color:#fff;white-space:nowrap}}
-.cockpit-brand small{{font-size:10px;font-weight:700;color:#52e0c4;background:#0d2a24;border:1px solid #1f5a49;padding:2px 6px;border-radius:5px;letter-spacing:0}}
-.cockpit-brand small.status-warn{{color:#1a1400;background:#ffe66d;border-color:#c9a233}}
-.cockpit-brand small.status-error{{color:#fff;background:#7a1f26;border-color:#ff6262}}
-.cockpit-tab{{border:1px solid #35506d;background:#102238;color:#b9cbe0;border-radius:10px;padding:10px 16px;font-weight:700;white-space:nowrap;cursor:pointer}}
-.cockpit-tab.active{{color:#07111f;background:#52e0c4;border-color:#52e0c4}}
-.cockpit-tab.event-alert{{color:#fff;background:#9f2936;border-color:#ff6c78;box-shadow:0 0 0 2px #ff6c7833}}
-.secondary-tabs{{margin-left:auto;white-space:nowrap}}.secondary-tabs summary{{cursor:pointer;color:#8fa4b9;padding:10px}}.secondary-tabs[open]{{display:flex;gap:6px}}
-.tab-pane{{display:none}}.tab-pane.active{{display:block}}
-.weekly-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}}
-.weekly-grid>div{{background:#0c1b2d;border:1px solid #243b55;border-radius:12px;padding:14px}}
+.cockpit-tabs{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:6px;padding:8px;background:#07111fdd;backdrop-filter:blur(10px);overflow-x:auto}
+.cockpit-brand{display:flex;align-items:baseline;gap:7px;padding-right:6px;margin-right:2px;border-right:1px solid #2a3f56;font-weight:800;font-size:14px;letter-spacing:-.01em;color:#fff;white-space:nowrap}
+.cockpit-brand small{font-size:10px;font-weight:700;color:#52e0c4;background:#0d2a24;border:1px solid #1f5a49;padding:2px 6px;border-radius:5px;letter-spacing:0}
+.cockpit-brand small.status-warn{color:#1a1400;background:#ffe66d;border-color:#c9a233}
+.cockpit-brand small.status-error{color:#fff;background:#7a1f26;border-color:#ff6262}
+.cockpit-tab{border:1px solid #35506d;background:#102238;color:#b9cbe0;border-radius:9px;padding:8px 11px;font-weight:800;white-space:nowrap;cursor:pointer}
+.cockpit-tab.active{color:#07111f;background:#52e0c4;border-color:#52e0c4}
+.cockpit-tab.event-alert{color:#fff;background:#9f2936;border-color:#ff6c78;box-shadow:0 0 0 2px #ff6c7833}
+.secondary-tabs{margin-left:auto;white-space:nowrap}.secondary-tabs summary{cursor:pointer;color:#8fa4b9;padding:8px 10px}.secondary-tabs[open]{display:flex;gap:6px}
+.tab-pane{display:none}.tab-pane.active{display:block}
+.weekly-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.weekly-grid>div{background:#0c1b2d;border:1px solid #243b55;border-radius:12px;padding:14px}
+.scalp-strip{display:grid;grid-template-columns:repeat(5,minmax(170px,1fr));gap:8px}
+.scalp-card{background:#0c1b2d;border:1px solid #2f526e;border-radius:10px;padding:10px}
+.scalp-card strong{display:block;color:#fff;font-size:15px;margin-bottom:5px}.scalp-card small{display:block;color:#94aabd;line-height:1.5}
+@media(max-width:1100px){.scalp-strip{grid-template-columns:repeat(2,minmax(180px,1fr))}}
+@media(max-width:650px){.scalp-strip{grid-template-columns:1fr}}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
- <span class="cockpit-brand">AIトレードコクピット<small id="cockpit-status">Ver.5.2</small></span>
- <button class="cockpit-tab active" data-tab="ms2-live">LIVE売買</button>
- <button class="cockpit-tab" data-tab="overnight">オーバーナイトTOP5</button>
- <button class="cockpit-tab" data-tab="swing">スイングTOP5</button>
- <button class="cockpit-tab" data-tab="longterm">長期TOP5</button>
- <button class="cockpit-tab" data-tab="events">注意アラート</button>
- <button class="cockpit-tab" data-tab="kioxia-calendar">キオクシア</button>
- <details class="secondary-tabs"><summary>参考タブ</summary>
+ <span class="cockpit-brand">AIトレードコクピット<small id="cockpit-status">Ver.5.3</small></span>
+ <button class="cockpit-tab active" data-tab="scalp">SCALP 5</button>
+ <button class="cockpit-tab" data-tab="event-hot">EVENT 5</button>
+ <button class="cockpit-tab" data-tab="ms2-live">REALTIME 5</button>
+ <button class="cockpit-tab" data-tab="overnight">OVERNIGHT 5</button>
+ <button class="cockpit-tab" data-tab="swing">SWING 5</button>
+ <button class="cockpit-tab" data-tab="value">VALUE 5</button>
+ <button class="cockpit-tab" data-tab="kioxia-calendar">KIOXIA</button>
+ <button class="cockpit-tab" data-tab="events">注意</button>
+ <details class="secondary-tabs"><summary>参考</summary>
   <button class="cockpit-tab" data-tab="strong-yen">円高恩恵TOP5</button><button class="cockpit-tab" data-tab="us-smr">対米投資・SMR</button>
   <button class="cockpit-tab" data-tab="investor-regime">主体レジーム</button><button class="cockpit-tab" data-tab="market">検証・除外</button>
   <button class="cockpit-tab" data-tab="correlation">相関</button><button class="cockpit-tab" data-tab="wick">下ヒゲ</button>
@@ -146,77 +153,100 @@ def tabs_block() -> str:
  </details>
 </nav>
 <script>
-document.addEventListener("DOMContentLoaded",()=>{{
+document.addEventListener("DOMContentLoaded",()=>{
  const main=document.querySelector("main"); if(!main)return;
  const policyTabs=["physical-ai","autonomous-driving","ai-drug-discovery","ai-semiconductor","defense-space","gx-power","quantum-computing"];
- const panes={{}}; ["overnight","ms2-live","events","correlation","kioxia-calendar","strong-yen","us-smr","investor-regime","wick","expansion","swing","accumulation","longterm","dividend","buyback","policy",...policyTabs,"market","weekly"].forEach(k=>{{const d=document.createElement("div");d.className="tab-pane"+(k==="ms2-live"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;}});
- [...main.querySelectorAll(":scope > section")].forEach(s=>{{
+ const panes={}; ["scalp","event-hot","overnight","ms2-live","events","correlation","kioxia-calendar","strong-yen","us-smr","investor-regime","wick","expansion","swing","accumulation","value","policy",...policyTabs,"market","weekly"].forEach(k=>{const d=document.createElement("div");d.className="tab-pane"+(k==="scalp"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;});
+
+ const scalpPanel=document.createElement("section");
+ scalpPanel.className="card wide";
+ scalpPanel.innerHTML='<h2>SCALP 5</h2><p class="sub">キオクシア・ソフトバンクG・東京エレクトロン・レーザーテック・アドバンテストを固定監視。既存MS2 RSSの値だけを表示し、新しい売買ロジックは追加しません。</p><div id="scalp-fixed-5" class="scalp-strip"><div class="focus-empty">MS2 RSS接続待ち</div></div>';
+ panes.scalp.appendChild(scalpPanel);
+
+ const eventIntro=document.createElement("section");
+ eventIntro.className="card wide";
+ eventIntro.innerHTML='<h2>EVENT 5</h2><p class="sub">小型グロース・テーマ株・材料急騰・場中決算の初動監視枠。現時点では全市場の仕手化兆候／短期急騰スキャンを集約し、リアルタイム材料スキャナはこの枠へ接続します。</p>';
+ panes["event-hot"].appendChild(eventIntro);
+
+ [...main.querySelectorAll(":scope > section")].forEach(s=>{
+   if(s===scalpPanel||s===eventIntro)return;
    const t=(s.querySelector("h2")?.textContent||"").trim();
    let k="market";
    if(s.id==="ms2-live-top5")k="ms2-live";
    else if(s.id==="overnight-top5")k="overnight";
    else if(s.dataset.policyTab)k=s.dataset.policyTab;
-   else if(s.id==="event-calendar")k="events";
+   else if(s.id==="event-calendar"||t.includes("市場警報"))k="events";
    else if(s.id==="correlation-monitor")k="correlation";
    else if(s.id==="kioxia-5m-calendar")k="kioxia-calendar";
    else if(s.id==="strong-yen-top5")k="strong-yen";
    else if(s.id==="us-smr-watch")k="us-smr";
    else if(s.id==="investor-regime")k="investor-regime";
+   else if(s.id==="speculative-theme-monitor"||t.includes("短期急騰期待"))k="event-hot";
    else if(s.id==="data-quality-gate"||s.id==="next-theme-radar"||s.id==="action-dashboard"||s.id==="watchlist-100"||s.id==="market-ranking-watch"||s.id==="tradingview-screener-watch"||s.id==="premarket-gap-ranking"||t.includes("IN点灯")||t.includes("準備点灯"))k="ms2-live";
    else if(s.id==="lower-wick-reversal"||t.includes("下ヒゲ吸収反転"))k="wick";
-   else if(t.includes("BB上方エクスパンション")||t.includes("短期急騰期待")||t.includes("テーマ仕手化兆候"))k="expansion";
+   else if(t.includes("BB上方エクスパンション"))k="expansion";
    else if(s.id==="weekly-review"||t.includes("週間振り返り"))k="weekly";
    else if(s.id==="large-lot-accumulation"||t.includes("大口買い集め"))k="accumulation";
-   else if(s.id==="dividend-rights-watch")k="dividend";
-   else if(s.id==="buyback-watch")k="buyback";
-   else if(t.includes("月足・週足反転")||t.includes("50週線")||t.includes("200日線"))k="longterm";
+   else if(s.id==="dividend-rights-watch"||s.id==="buyback-watch"||t.includes("月足・週足反転")||t.includes("50週線")||t.includes("200日線"))k="value";
    else if(t.includes("秋田AI")||t.includes("群馬・茂倉沢")||t.includes("シリコンフォトニクス")||t.includes("当日資金流入テーマ")||s.id==="sector-rotation"||s.id==="policy-priority-overview")k="policy";
    else if(t.includes("安定上昇")||t.includes("52週新高値")||t.includes("過熱監視")||t.includes("持ち越し")||t.includes("AIスイング"))k="swing";
    panes[k].appendChild(s);
- }});
- const intros={{wick:["最優先・下ヒゲ吸収反転","売り吸収→終値回復→次足上抜けの順で発動。"],expansion:["当日エクスパンション","BB収縮から出来高を伴う拡大が期待できる銘柄。"],swing:["スイングTOP5","1週間保有の候補。信用需給を主軸に、押し目・新高値・持ち越しを選別。"],accumulation:["大口仕込み","出来高・OBV・安値切上げから吸収と蓄積を監視。"],longterm:["長期TOP5","1か月保有の候補。50週線・200日線・月週足反転と需給改善が重なる銘柄。"],dividend:["配当権利前・上下期待","権利前上昇と権利落ち下落を需給付きで監視。"],buyback:["自社株買い監視","実施期間・残り余力・出来高影響と需給改善を確認。"],policy:["国策テーマ・実戦優先順位","政府資料、会社公式、業績寄与、信用需給を分離して確認。"],"physical-ai":["フィジカルAI","本体・AI制御・主要ロボット部品だけを厳格選定。"],"autonomous-driving":["自動運転","社会実装・自動運転ソフト・高精度地図を優先。"],"ai-drug-discovery":["AI創薬","AI創薬を会社公式で事業化している銘柄だけ。"],"ai-semiconductor":["AI・半導体基盤","メモリ、製造装置、テスト、先端SoCに限定。"],"defense-space":["防衛・宇宙","防衛装備、宇宙推進、衛星・官公庁案件を確認。"],"gx-power":["GX・電力基盤","送配電、蓄電池、パワー半導体、電力網。"],"quantum-computing":["量子・先端計算","事業寄与が小さい間は長期研究枠として扱う。"],market:["市場・検証","地合い、警報、答え合わせ、決算リスクを確認。"],weekly:["週間レビュー","週末検証と翌週の改善ルール。"]}};
+ });
+
+ const intros={wick:["最優先・下ヒゲ吸収反転","売り吸収→終値回復→次足上抜けの順で発動。"],expansion:["当日エクスパンション","BB収縮から出来高を伴う拡大が期待できる銘柄。"],swing:["SWING 5","数日〜数週間。デイトレ・オーバーナイト後も強さが継続する候補を確認。"],accumulation:["大口仕込み","出来高・OBV・安値切上げから吸収と蓄積を監視。"],value:["VALUE 5","長期バリュー・高配当・自社株買い・長期反転候補をまとめて確認。"],policy:["国策テーマ・実戦優先順位","政府資料、会社公式、業績寄与、信用需給を分離して確認。"],"physical-ai":["フィジカルAI","本体・AI制御・主要ロボット部品だけを厳格選定。"],"autonomous-driving":["自動運転","社会実装・自動運転ソフト・高精度地図を優先。"],"ai-drug-discovery":["AI創薬","AI創薬を会社公式で事業化している銘柄だけ。"],"ai-semiconductor":["AI・半導体基盤","メモリ、製造装置、テスト、先端SoCに限定。"],"defense-space":["防衛・宇宙","防衛装備、宇宙推進、衛星・官公庁案件を確認。"],"gx-power":["GX・電力基盤","送配電、蓄電池、パワー半導体、電力網。"],"quantum-computing":["量子・先端計算","事業寄与が小さい間は長期研究枠として扱う。"],market:["市場・検証","地合い、答え合わせ、補助分析を確認。"],weekly:["週間レビュー","週末検証と翌週の改善ルール。"]};
  intros.correlation=["相関・先行／逆行銘柄","当日候補の方向を、連動株・逆相関株・米国先行株で確認。"];
- intros.events=["イベントカレンダー","発表日・需給日・指数反映日を分離し、当日の誤認を防止。"];
+ intros.events=["注意","重要イベント・市場警報・売買禁止条件を確認。"];
  intros["investor-regime"]=["投資主体別レジーム","JPX公式の当時利用可能な版だけで、銘柄タイプの追い風・逆風を判定。"];
- intros["kioxia-calendar"]=["キオクシア5分足カレンダー","過去5分足から本日の途中経過に最も近い日を照合。"];
+ intros["kioxia-calendar"]=["KIOXIA","キオクシア専用。5分足カレンダー、MS2 RSS、時間帯統計を集約。"];
  intros["strong-yen"]=["円高恩恵銘柄 TOP5","円高感応度だけでなく、信用需給・当日資金流入・発動価格まで確認。"];
  intros["us-smr"]=["対米投資・SMR","政策発表と個社受注を区別し、事業化・需給・価格の確認順に監視。"];
- intros["ms2-live"]=["LIVE TRADING","今、この5銘柄に期待値がある（二経路で株価・コード・取引日が完全一致した銘柄だけを対象にした、リアルタイムTOP5）と、100銘柄を裏側で監視するMS2 RSSザラバLIVEを統合。OR15・VWAP・歩み値・板変化が一致した上位だけ表示。"];
- intros.overnight=["オーバーナイトTOP5","引けで建て、翌朝の寄り付きで反対売買する持ち越し候補。15:25に銘柄・方向を確定し、後から書き換えません。"];
- Object.entries(intros).forEach(([k,v])=>{{const h=document.createElement("div");h.className="pane-intro";h.innerHTML=`<span>SUPPLY IMPROVEMENT REQUIRED</span><h2>${{v[0]}}</h2><p>${{v[1]}}</p>`;panes[k].prepend(h);}});
- document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{{
+ intros["ms2-live"]=["REALTIME 5","100銘柄をMS2 RSSで監視し、数十分〜数時間の候補を表示。"];
+ intros.overnight=["OVERNIGHT 5","15時前後から採点し、翌朝GU/GDを狙う候補。15:25に銘柄と方向を固定。"];
+ Object.entries(intros).forEach(([k,v])=>{if(!panes[k])return;const h=document.createElement("div");h.className="pane-intro";h.innerHTML='<span>AI COCKPIT</span><h2>'+v[0]+'</h2><p>'+v[1]+'</p>';panes[k].prepend(h);});
+
+ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ const yen=v=>v==null||!Number.isFinite(Number(v))?"—":Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1})+"円";
+ document.addEventListener("ms2RssUpdate",e=>{
+   const d=e.detail||{},all=Array.isArray(d.all_targets)?d.all_targets:[],stale=d.stale!==false;
+   const fixed=["285A.T","9984.T","8035.T","6920.T","6857.T"];
+   const box=document.getElementById("scalp-fixed-5"); if(!box)return;
+   const rows=fixed.map(t=>all.find(x=>String(x.ticker)===t)).filter(Boolean);
+   box.innerHTML=rows.length?rows.map(x=>'<article class="scalp-card"><strong>'+esc(x.name)+'</strong><b>'+yen(x.price)+'</b><small>'+esc(stale?"NO TRADE":(x.signal||"監視"))+' / '+esc(x.strategy||"条件待ち")+'</small><small>VWAP '+yen(x.vwap)+' / OR5 '+esc(x.or5_low)+'–'+esc(x.or5_high)+'</small><small>Flow '+esc(x.flow_bias)+'% / Vol '+esc(x.volume_burst)+'x</small></article>').join(""):'<div class="focus-empty">SCALP 5のMS2 RSSデータ待ち</div>';
+ });
+
+ document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{
    document.querySelectorAll(".cockpit-tab").forEach(x=>x.classList.toggle("active",x===b));
    document.querySelectorAll(".tab-pane").forEach(x=>x.classList.toggle("active",x.dataset.pane===b.dataset.tab));
    localStorage.setItem("cockpitTabV5",b.dataset.tab);
    if(b.dataset.tab==="kioxia-calendar"&&window.kioChart)requestAnimationFrame(()=>requestAnimationFrame(()=>window.kioChart.timeScale().fitContent()));
- }});
- const requested=new URLSearchParams(location.search).get("live")==="1"?"ms2-live":null;
- const saved=requested||localStorage.getItem("cockpitTabV5"); if(saved)document.querySelector(`.cockpit-tab[data-tab="${{saved}}"]`)?.click();
- fetch("event_calendar.json?t="+Date.now()).then(r=>r.json()).then(d=>{{
+ });
+ const requested=new URLSearchParams(location.search).get("live")==="1"?"scalp":null;
+ const saved=requested||localStorage.getItem("cockpitTabV5"); if(saved)document.querySelector('.cockpit-tab[data-tab="'+saved+'"]')?.click();
+
+ fetch("event_calendar.json?t="+Date.now()).then(r=>r.json()).then(d=>{
    const b=document.querySelector('.cockpit-tab[data-tab="events"]');
-   if(d.today_level!=="通常"){{b.classList.add("event-alert");b.textContent="⚠ 注意アラート";}}
- }}).catch(()=>{{}});
- fetch("signals.json?t="+Date.now()).then(r=>r.json()).then(d=>{{
+   if(d.today_level!=="通常"){b.classList.add("event-alert");b.textContent="⚠ 注意";}
+ }).catch(()=>{});
+ fetch("signals.json?t="+Date.now()).then(r=>r.json()).then(d=>{
    const badge=document.getElementById("cockpit-status"); if(!badge)return;
-   const todayJst=new Intl.DateTimeFormat("en-CA",{{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}}).format(new Date());
-   const nowHm=new Intl.DateTimeFormat("en-GB",{{timeZone:"Asia/Tokyo",hour:"2-digit",minute:"2-digit",hour12:false}}).format(new Date());
-   const weekdayJst=new Intl.DateTimeFormat("en-US",{{timeZone:"Asia/Tokyo",weekday:"short"}}).format(new Date());
+   const todayJst=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+   const nowHm=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Tokyo",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());
+   const weekdayJst=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Tokyo",weekday:"short"}).format(new Date());
    const isWeekend=weekdayJst==="Sat"||weekdayJst==="Sun";
    const updatedAt=String(d.updated_at||"");
    const isToday=updatedAt.slice(0,10)===todayJst;
    let cls="status-ok",title="正常稼働中／最終更新 "+(updatedAt||"不明");
-   if(!isToday&&!isWeekend){{
-     if(nowHm<"08:20"){{cls="status-warn";title="本日の初回更新前（前営業日分を表示中）／最終更新 "+(updatedAt||"不明");}}
-     else{{cls="status-error";title="更新停止の疑い／最終更新 "+(updatedAt||"不明");}}
-   }}
+   if(!isToday&&!isWeekend){
+     if(nowHm<"08:20"){cls="status-warn";title="本日の初回更新前（前営業日分を表示中）／最終更新 "+(updatedAt||"不明");}
+     else{cls="status-error";title="更新停止の疑い／最終更新 "+(updatedAt||"不明");}
+   }
    badge.classList.remove("status-ok","status-warn","status-error");
    badge.classList.add(cls);
    badge.title=title;
- }}).catch(()=>{{}});
-}});
+ }).catch(()=>{});
+});
 </script>
-{END}"""
-
+""" + END
 
 def main() -> None:
     now = datetime.now(JST)
