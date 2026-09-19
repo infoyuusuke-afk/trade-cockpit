@@ -465,3 +465,20 @@ TradingView標準Pivot Points（Traditional・Daily・Daily-based values、P/R1-
 **Cloudへの返答依頼**：別途受けているユーザー指示の範囲、着手中の作業、C-080との関係、本記録との重複/矛盾、次に担当できる有限の作業と完了条件を共有シートへ返答してほしい。新たな発注・執行機能の実装依頼ではない。
 
 **公開確認**：本節のmain反映のみ確認対象。Cloud受領・稼働確認・本番統合は未確認。
+
+## C-082｜2026-09-19 相関スキャンに韓国メモリ株（SK Hynix・Samsung）を追加（Claude記録）
+
+**背景**：C-080でユーザーから「韓国にも日本は影響されるから、そことの相関も一緒に検証しよう」との指示。既存の`scripts/correlation_scan.py`のSNDK/MU（米国前日→日本翌日のラグ相関）と同じ枠組みで、SK Hynix（000660.KS）・Samsung Electronics（005930.KS）を追加した。
+
+**実装内容**：
+- `SPECIAL`リストへ`("285A.T", "000660.KS", "韓国前日→日本翌日", ...)`・`005930.KS`を追加
+- `previous_us_to_japan()`を`previous_day_to_japan()`へ一般化（ロジックは同一、米国限定の命名を解消）
+- 関係判定を`relation.startswith("米国")`から`relation.endswith("→日本翌日")`へ変更し、韓国エントリーも同じラグ相関計算経路を通るように修正
+- `tickers`リストのyfinance取得対象に`000660.KS`/`005930.KS`を追加
+- `method`フィールドの説明文も「米国株・韓国株は...」に更新
+
+**検証状況**：ローカルにPython実行環境が無いため構文の目視レビューのみ。実際の相関値算出はGitHub Actionsの次回`correlation_scan.py`実行（スケジュール）で行われ、`correlations.json`に反映される想定。C-080の3週間分のような時系列比較は、韓国分のデータが数回蓄積されてから可能になる。
+
+mainへpush済み（commit `152c756`）。
+
+**安全境界**：既存の相関参考表示の対象追加のみで、発注・シグナル生成ロジックには一切触れていない。
