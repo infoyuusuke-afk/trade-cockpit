@@ -714,7 +714,7 @@ $bridgeJob = Start-LocalJsonBridge $jsonPath 28580
 
 Write-Host "[RSS] 100銘柄監視: START / Ctrl+Cで停止" -ForegroundColor Green
 Write-Host "[LIVE] 127.0.0.1:28580 : READY" -ForegroundColor Cyan
-Write-Host "[VOICE] Style-Bert-VITS2優先 / SAPIフォールバック" -ForegroundColor Cyan
+Write-Host "[VOICE] SBV2 API : READY (SAPI fallback)" -ForegroundColor Cyan
 Invoke-SerializedSpeak $speaker "キオクシアを含む、100銘柄の音声監視を開始しました。"
 
 try {
