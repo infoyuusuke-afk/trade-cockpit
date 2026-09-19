@@ -110,20 +110,19 @@ try{
 
     Show-Step 30 "Starting SBV2 voice engine..."
     $SbV2Root="C:\sbv2\Style-Bert-VITS2"
-    $py=Join-Path $SbV2Root "venv\Scripts\pythonw.exe"
-    if(-not(Test-Path -LiteralPath $py)){ $py=Join-Path $SbV2Root "venv\Scripts\python.exe" }
+    $py=Join-Path $SbV2Root "venv\Scripts\python.exe"
     $server=Join-Path $SbV2Root "server_fastapi.py"
-    if(-not(Test-Path -LiteralPath $py)){ throw "SBV2 Python not found." }
-    if(-not(Test-Path -LiteralPath $server)){ throw "SBV2 server_fastapi.py not found." }
+    if(-not(Test-Path -LiteralPath $py)){ throw "SBV2 python.exe not found: $py" }
+    if(-not(Test-Path -LiteralPath $server)){ throw "SBV2 server_fastapi.py not found: $server" }
 
     if(-not(Test-Port 5000 700)){
-        $psi=New-Object System.Diagnostics.ProcessStartInfo
-        $psi.FileName=$py
-        $psi.Arguments="server_fastapi.py"
-        $psi.WorkingDirectory=$SbV2Root
-        $psi.UseShellExecute=$false
-        $psi.CreateNoWindow=$true
-        $proc=[Diagnostics.Process]::Start($psi)
+        $logDir=Join-Path $Root "Logs"
+        if(-not(Test-Path -LiteralPath $logDir)){ New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
+        $stdout=Join-Path $logDir "sbv2_v4_stdout.log"
+        $stderr=Join-Path $logDir "sbv2_v4_stderr.log"
+        Remove-Item $stdout,$stderr -Force -ErrorAction SilentlyContinue
+
+        $proc=Start-Process -FilePath $py -ArgumentList "server_fastapi.py" -WorkingDirectory $SbV2Root -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
         $started=Get-Date
         $next=5
         while(-not(Test-Port 5000 700)){
@@ -133,8 +132,18 @@ try{
                 Write-Host ("      SBV2 loading... {0}s / 120s" -f $elapsed) -ForegroundColor DarkGray
                 $next+=5
             }
-            if($proc.HasExited){ throw ("SBV2 exited early. ExitCode="+$proc.ExitCode) }
-            if($elapsed -ge 120){ throw "SBV2 did not become ready within 120 seconds." }
+            if($proc.HasExited){
+                $err=""
+                if(Test-Path -LiteralPath $stderr){ $err=(Get-Content -LiteralPath $stderr -Tail 20 -ErrorAction SilentlyContinue) -join " | " }
+                if([string]::IsNullOrWhiteSpace($err) -and (Test-Path -LiteralPath $stdout)){ $err=(Get-Content -LiteralPath $stdout -Tail 20 -ErrorAction SilentlyContinue) -join " | " }
+                throw ("SBV2 exited early. ExitCode="+$proc.ExitCode+" Log="+$err)
+            }
+            if($elapsed -ge 120){
+                try{ Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue }catch{}
+                $err=""
+                if(Test-Path -LiteralPath $stderr){ $err=(Get-Content -LiteralPath $stderr -Tail 20 -ErrorAction SilentlyContinue) -join " | " }
+                throw ("SBV2 did not become ready within 120 seconds. Log="+$err)
+            }
             Start-Sleep -Seconds 1
         }
     }
