@@ -32,6 +32,8 @@ $Cmd = Join-Path $Root "START_AI_COCKPIT.cmd"
 $Gateway = Join-Path $Root "AI_Cockpit_Local_Gateway.ps1"
 $ApiStarter = Join-Path $Root "START_SBV2_API.ps1"
 $Collector = Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"
+$StopPs1 = Join-Path $Root "STOP_AI_COCKPIT.ps1"
+$StopCmd = Join-Path $Root "STOP_AI_COCKPIT.cmd"
 $Heartbeat = Join-Path $RuntimeDir "Kioxia_Safety_Heartbeat.ps1"
 
 foreach($p in @($Ps1,$Cmd,$Collector)){
@@ -47,6 +49,7 @@ Invoke-WebRequest "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockp
 Invoke-WebRequest "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/ms2_live/Kioxia_Safety_Heartbeat.ps1" -OutFile $Heartbeat -UseBasicParsing -TimeoutSec 30
 Invoke-WebRequest "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/downloads/AI_Cockpit_Local_Gateway.ps1" -OutFile $Gateway -UseBasicParsing -TimeoutSec 30
 Invoke-WebRequest "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/downloads/START_SBV2_API.ps1" -OutFile $ApiStarter -UseBasicParsing -TimeoutSec 30
+Invoke-WebRequest "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/downloads/STOP_AI_COCKPIT.ps1" -OutFile $StopPs1 -UseBasicParsing -TimeoutSec 30
 
 $c=[IO.File]::ReadAllText($Ps1)
 
@@ -102,6 +105,20 @@ Where-Object {
 ForEach-Object {
     Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
 }
+
+$stopCmdText=@'
+@echo off
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0STOP_AI_COCKPIT.ps1"
+pause
+'@
+[IO.File]::WriteAllText($StopCmd,$stopCmdText,$utf8bom)
+
+# Replace an already-visible old SBV2 server with the hidden pythonw version.
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+Where-Object { $_.CommandLine -and $_.CommandLine -match 'server_fastapi\.py' } |
+ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+
+& $ApiStarter
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
