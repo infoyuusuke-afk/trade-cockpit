@@ -17,6 +17,10 @@ OUT = ROOT / "correlations.json"
 SPECIAL = [
     ("285A.T", "SNDK", "米国前日→日本翌日", "正相関", "NAND・SSD価格と米国メモリ株の先行確認"),
     ("285A.T", "MU", "米国前日→日本翌日", "正相関", "DRAM/NANDを含む米国メモリ地合い"),
+    # ユーザー仮説（2026-09-19、共有シートC-080）: 米国メモリ株との相関が最近弱まり、
+    # 相対的に近隣アジア（特に韓国メモリ株）の影響が強まっている可能性の検証用。
+    ("285A.T", "000660.KS", "韓国前日→日本翌日", "正相関", "SK Hynix、DRAM/NAND価格連動の先行確認"),
+    ("285A.T", "005930.KS", "韓国前日→日本翌日", "正相関", "Samsung Electronics、メモリ半導体地合いの先行確認"),
     ("285A.T", "7974.T", "日本同時", "逆相関仮説", "大型グロース内の資金ローテーション仮説"),
 ]
 
@@ -51,9 +55,15 @@ def corr(a, b, count):
     return finite(joined["a"].corr(joined["b"])), len(joined)
 
 
-def previous_us_to_japan(jp_close, us_close):
+def previous_day_to_japan(jp_close, peer_close):
+    """Prior-session peer return vs next-session Japan return.
+
+    Originally US-only (SNDK/MU); reused as-is for Korean peers (000660.KS/
+    005930.KS) since the lag relationship is identical, just a different
+    prior market.
+    """
     jp = jp_close.copy()
-    us = us_close.copy()
+    us = peer_close.copy()
     jp.index = pd.to_datetime(jp.index).tz_localize(None).normalize()
     us.index = pd.to_datetime(us.index).tz_localize(None).normalize()
     us_ret = us.pct_change().dropna().sort_index()
@@ -137,7 +147,7 @@ def main():
     cfg = json.loads((ROOT / "watchlist.json").read_text(encoding="utf-8"))
     names = {meta["ticker"]: name for name, meta in cfg["stocks"].items()}
     jp_day = [meta["ticker"] for meta in cfg["stocks"].values() if meta.get("style") in ("day", "both")]
-    tickers = list(dict.fromkeys(jp_day + ["SNDK", "MU"]))
+    tickers = list(dict.fromkeys(jp_day + ["SNDK", "MU", "000660.KS", "005930.KS"]))
     daily_raw = yf.download(tickers, period="6mo", interval="1d", auto_adjust=False,
                             group_by="ticker", progress=False, threads=True, timeout=45)
     intra_raw = yf.download(jp_day, period="5d", interval="5m", auto_adjust=False,
@@ -151,8 +161,8 @@ def main():
     for anchor, peer, relation, expected, reason in SPECIAL:
         if anchor not in daily or peer not in daily or daily[anchor].empty or daily[peer].empty:
             continue
-        if relation.startswith("米国"):
-            a, b = previous_us_to_japan(daily[anchor]["Close"], daily[peer]["Close"])
+        if relation.endswith("→日本翌日"):
+            a, b = previous_day_to_japan(daily[anchor]["Close"], daily[peer]["Close"])
             intra_view = {"intraday_corr": None, "lead_bars": None, "bars": 0}
         else:
             a, b = returns[anchor], returns[peer]
@@ -216,7 +226,7 @@ def main():
     output = {
         "updated_at": datetime.now(JST).strftime("%Y-%m-%d %H:%M:%S JST"),
         "relationships": rows,
-        "method": "日足20/60営業日＋日本株5分足5日。米国株は前営業日から日本翌営業日への先行相関。",
+        "method": "日足20/60営業日＋日本株5分足5日。米国株・韓国株は前営業日から日本翌営業日への先行相関。",
         "rule": "OR15・VWAP・EMA9/20を含む4/5一致が前提。相関だけで発注せず、3/5以下は見送り。",
     }
     OUT.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
