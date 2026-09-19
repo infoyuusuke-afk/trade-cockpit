@@ -856,10 +856,23 @@ try {
             [pscustomobject]@{ Data = $sheet.Range("E2:AJ101").Value2 }
         }
         $values = $valuePacket.Data
-        $jnxPacket = Invoke-ExcelCom -Label "JNXリアルタイム値取得" -Action {
-            [pscustomobject]@{ Data = $jnxSheet.Range("B2:P101").Value2 }
+        $jnxValues = $null
+        if ($jnxReady -and $null -ne $jnxSheet) {
+            try {
+                $jnxPacket = Invoke-ExcelCom -Label "JNXリアルタイム値取得" -Action {
+                    if ($null -eq $jnxSheet) { throw "KIOXIA_JNX worksheet is unavailable." }
+                    $range = $jnxSheet.Range("B2:P101")
+                    if ($null -eq $range) { throw "KIOXIA_JNX range is unavailable." }
+                    [pscustomobject]@{ Data = $range.Value2 }
+                }
+                if ($null -ne $jnxPacket) { $jnxValues = $jnxPacket.Data }
+            } catch {
+                $jnxReady = $false
+                $jnxSheet = $null
+                $jnxValues = $null
+                Write-Host "[JNX] LIVE READ SKIPPED - Collector continues" -ForegroundColor DarkYellow
+            }
         }
-        $jnxValues = $jnxPacket.Data
         $results = @()
         $validCount = 0
         $preopenQuoteCount = 0
