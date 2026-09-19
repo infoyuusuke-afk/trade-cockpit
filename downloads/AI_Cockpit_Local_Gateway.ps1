@@ -5,6 +5,32 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($RuntimeDir)) {
+    $runtimeCandidates = @(
+        (Join-Path $env:USERPROFILE "Desktop\デイトレ\MarketSpeed II RSS\files"),
+        (Join-Path ([Environment]::GetFolderPath("Desktop")) "デイトレ\MarketSpeed II RSS\files"),
+        (Join-Path $env:USERPROFILE "OneDrive\Desktop\デイトレ\MarketSpeed II RSS\files")
+    ) | Select-Object -Unique
+    foreach ($candidate in $runtimeCandidates) {
+        if (Test-Path -LiteralPath (Join-Path $candidate "live_ms2.json")) {
+            $RuntimeDir = $candidate
+            break
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($RuntimeDir)) {
+        foreach ($candidate in $runtimeCandidates) {
+            if (Test-Path -LiteralPath $candidate) {
+                $RuntimeDir = $candidate
+                break
+            }
+        }
+    }
+}
+if ([string]::IsNullOrWhiteSpace($RuntimeDir)) {
+    throw "MS2 runtime directory could not be resolved."
+}
+
 $liveJson = Join-Path $RuntimeDir "live_ms2.json"
 $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,$Port)
 $utf8 = [Text.UTF8Encoding]::new($false)
