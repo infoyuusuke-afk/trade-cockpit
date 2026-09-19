@@ -395,6 +395,40 @@ def intraday_snapshot(ticker):
         return {"ok": False, "error": type(e).__name__}
 
 
+def chart_bars_5m(ticker, days=2):
+    """Real 5-minute OHLCV bars for a single ticker, trimmed to the most recent
+    `days` trading days. Deliberately separate from intraday_snapshot() and
+    called only for the handful of tickers actually shown on a chart (e.g. the
+    リアルタイムTOP5 top 5) rather than every tracked day-trading stock: fetching
+    and storing this for all ~70 watchlist stocks made data.json balloon from
+    1.7MB to 12MB+ in a local trial run, most of it for charts nobody opens.
+    """
+    try:
+        df = flat_columns(yf.download(
+            ticker, period="5d", interval="5m", auto_adjust=False,
+            progress=False, threads=False, prepost=False
+        )).dropna(subset=["Close"])
+        if df.empty:
+            return []
+        recent_dates = sorted(pd.unique(pd.Index(df.index.date)))[-days:]
+        bars = []
+        for ts, r in df.iterrows():
+            t = pd.Timestamp(ts)
+            if t.tzinfo is not None:
+                t = t.tz_convert(JST)
+            if t.date() not in recent_dates:
+                continue
+            bars.append({
+                "t": t.strftime("%Y-%m-%d %H:%M"),
+                "o": round(float(r["Open"]), 2), "h": round(float(r["High"]), 2),
+                "l": round(float(r["Low"]), 2), "c": round(float(r["Close"]), 2),
+                "v": round(float(r["Volume"])),
+            })
+        return bars
+    except Exception:
+        return []
+
+
 def earnings_date(ticker, now):
     try:
         cal = yf.Ticker(ticker).get_earnings_dates(limit=4)
@@ -1345,7 +1379,12 @@ def build_precision_top5(valid, rotation, official_earnings, now, credit_supply=
         ),
         reverse=True,
     )
-    return ranked[:5]
+    top5 = ranked[:5]
+    # Real 5分足/15分足 data is fetched only for the 5 names actually shown here,
+    # not the full ~70-stock watchlist (see chart_bars_5m docstring).
+    for item in top5:
+        item["chart_5m"] = chart_bars_5m(item["ticker"])
+    return top5
 
 
 def build_strong_yen_top5(valid, indices, credit_supply=None):
@@ -1613,6 +1652,7 @@ def render_focus_dashboard(candidates):
             "stop": item["stop"], "target1": item["target1"], "target2": item["target2"],
             "supply": item.get("supply_status", "信用需給未確認"),
             "reason": item["reason"], "chart": item.get("chart", []),
+            "chart_5m": item.get("chart_5m", []),
             "data_date": item.get("data_date"),
             "chart_last_close": item.get("chart_last_close"),
             "quote_status": item.get("quote_status", "株価検証不能"),
@@ -1631,7 +1671,7 @@ def render_focus_dashboard(candidates):
  <div class="focus-layout">
   <aside><div class="focus-aside-head"><b>優先順位</b><small>最大5銘柄</small></div><div class="focus-picks" id="focus-picks"></div></aside>
   <div class="focus-chart-wrap">
-   <div class="focus-chart-head"><div><b id="focus-chart-name"></b><small id="focus-chart-code"></small></div><div class="focus-chart-meta"><div class="focus-tf-group" role="group" aria-label="足の切替"><button class="focus-tf" data-tf="1">5分</button><button class="focus-tf" data-tf="3">15分</button></div><span id="focus-chart-asof">検証中</span></div></div>
+   <div class="focus-chart-head"><div><b id="focus-chart-name"></b><small id="focus-chart-code"></small></div><div class="focus-chart-meta"><div class="focus-tf-group" role="group" aria-label="足の切替"><button class="focus-tf" data-tf="5m">5分</button><button class="focus-tf" data-tf="15m">15分</button><button class="focus-tf" data-tf="1d">日足</button></div><span id="focus-chart-asof">検証中</span></div></div>
    <div class="focus-chart-canvas-wrap">
     <div id="focus-chart" role="img" aria-label="ローソク足チャート"></div>
     <div id="focus-chart-empty" class="chart-empty" style="display:none">チャートデータ更新待ち</div>
@@ -1657,7 +1697,7 @@ def render_focus_dashboard(candidates):
 </section>
 <script>
 document.addEventListener("DOMContentLoaded",()=>{{
- let rows={payload}, activeIndex=0, tfMultiplier=[1,3].includes(Number(localStorage.getItem("focusChartTf")))?Number(localStorage.getItem("focusChartTf")):1, yen=n=>Number(n).toLocaleString("ja-JP",{{maximumFractionDigits:1}})+"円";
+ let rows={payload}, activeIndex=0, tf=["5m","15m","1d"].includes(localStorage.getItem("focusChartTf"))?localStorage.getItem("focusChartTf"):"5m", yen=n=>Number(n).toLocaleString("ja-JP",{{maximumFractionDigits:1}})+"円";
  const list=document.getElementById("focus-picks");
  function pickHtml(x,i){{
   const bars=x.chart||[],last=bars[bars.length-1];
@@ -1674,14 +1714,15 @@ document.addEventListener("DOMContentLoaded",()=>{{
  }}
  rows.forEach((x,i)=>{{const b=document.createElement("button");b.className="focus-pick";b.innerHTML=pickHtml(x,i);b.onclick=()=>select(i);list.appendChild(b);}});
  function aggregateBars(bars,n){{if(n<=1)return bars;const out=[];for(let i=0;i<bars.length;i+=n){{const g=bars.slice(i,i+n);if(!g.length)continue;out.push({{t:g[0].t,o:g[0].o,c:g[g.length-1].c,h:Math.max(...g.map(v=>v.h)),l:Math.min(...g.map(v=>v.l)),v:g.reduce((s,v)=>s+(v.v||0),0)}});}}return out;}}
- function barTime(t,rowDate){{if(/^\\d{{4}}-\\d{{2}}-\\d{{2}}$/.test(t))return t;const m=/^(\\d{{2}}):(\\d{{2}})$/.exec(t);if(m){{const dm=/^(\\d{{4}})-(\\d{{2}})-(\\d{{2}})/.exec(rowDate||"");if(!dm)return null;return Math.floor(Date.UTC(+dm[1],+dm[2]-1,+dm[3],+m[1]-9,+m[2])/1000);}}return null;}}
+ function barTime(t,rowDate){{if(/^\\d{{4}}-\\d{{2}}-\\d{{2}}$/.test(t))return t;const dt=/^(\\d{{4}})-(\\d{{2}})-(\\d{{2}}) (\\d{{2}}):(\\d{{2}})$/.exec(t);if(dt)return Math.floor(Date.UTC(+dt[1],+dt[2]-1,+dt[3],+dt[4]-9,+dt[5])/1000);const m=/^(\\d{{2}}):(\\d{{2}})$/.exec(t);if(m){{const dm=/^(\\d{{4}})-(\\d{{2}})-(\\d{{2}})/.exec(rowDate||"");if(!dm)return null;return Math.floor(Date.UTC(+dm[1],+dm[2]-1,+dm[3],+m[1]-9,+m[2])/1000);}}return null;}}
+ function barsForTf(x,tfKey){{if(tfKey==="1d")return x.chart||[];const m5=x.chart_5m||[];if(tfKey==="15m")return aggregateBars(m5,3);return m5;}}
  function toSeriesData(bars,rowDate){{const today=new Date(),out=[];bars.forEach((b,i)=>{{let time=b.t?barTime(b.t,rowDate):null;if(time==null){{if(b.t)return;const d=new Date(today);d.setDate(d.getDate()-(bars.length-1-i));time=d.toISOString().slice(0,10);}}out.push({{time,open:b.o,high:b.h,low:b.l,close:b.c}});}});return out;}}
  let lwcChart=null,lwcSeries=null,lwcLines=[];
  function ensureLwc(){{if(lwcChart||typeof LightweightCharts==="undefined")return lwcChart;lwcChart=LightweightCharts.createChart(document.getElementById("focus-chart"),{{layout:{{background:{{color:"transparent"}},textColor:"#8ea2b3",fontSize:11}},grid:{{vertLines:{{color:"#152230"}},horzLines:{{color:"#152230"}}}},rightPriceScale:{{borderColor:"#1c2c37"}},timeScale:{{borderColor:"#1c2c37",timeVisible:true,secondsVisible:false,rightOffset:8}},crosshair:{{mode:LightweightCharts.CrosshairMode.Normal}},autoSize:true}});lwcSeries=lwcChart.addSeries(LightweightCharts.CandlestickSeries,{{upColor:"#3ed5ae",downColor:"#ef646b",borderUpColor:"#3ed5ae",borderDownColor:"#ef646b",wickUpColor:"#3ed5ae",wickDownColor:"#ef646b"}});return lwcChart;}}
  function chart(x,isRefresh){{
   const box=document.getElementById("focus-chart"),empty=document.getElementById("focus-chart-empty"),topBadges=document.getElementById("focus-chart-badges-top"),botBadges=document.getElementById("focus-chart-badges-bottom"),lineLabels=document.getElementById("focus-chart-line-labels");
   topBadges.innerHTML="";botBadges.innerHTML="";lineLabels.innerHTML="";
-  const a=aggregateBars(x.chart||[],tfMultiplier);
+  const a=barsForTf(x,tf);
   const data=a.length?toSeriesData(a,x.data_date):[];
   if(!data.length){{box.style.display="none";empty.style.display="grid";return;}}
   box.style.display="block";empty.style.display="none";
@@ -1705,7 +1746,7 @@ document.addEventListener("DOMContentLoaded",()=>{{
  function select(i,isRefresh){{activeIndex=i;const x=rows[i];[...list.children].forEach((b,j)=>b.classList.toggle("active",i===j));document.getElementById("focus-chart-name").textContent=x.name;document.getElementById("focus-chart-code").textContent=x.code;document.getElementById("focus-chart-asof").textContent=(x.data_date||"日付未確認")+" 終値 "+yen(x.chart_last_close);chart(x,isRefresh);document.getElementById("focus-rank").textContent="#"+x.rank;document.getElementById("focus-name").textContent=x.name;document.getElementById("focus-score").textContent=x.score+" / 100";const d=document.getElementById("focus-decision");d.className="decision-badge "+x.decision_class;d.textContent=x.decision;document.getElementById("focus-trigger").textContent=yen(x.trigger)+" 以上";document.getElementById("focus-entry").textContent=yen(x.entry);document.getElementById("focus-pullback").textContent=yen(x.pullback_low)+" – "+yen(x.pullback_high);document.getElementById("focus-stop").textContent=yen(x.stop);document.getElementById("focus-targets").textContent=yen(x.target1)+" / "+yen(x.target2);document.getElementById("focus-supply").textContent=x.supply+"／"+x.quote_status;const ir=x.intraday_regime;document.getElementById("focus-regime").textContent=ir&&ir.confirmed_regime?(ir.confirmed_regime+"（リスク倍率"+ir.risk_multiplier+"）／"+(ir.updated_at||"")+"／"+ir.note):(ir?ir.note:"未接続");document.getElementById("focus-reason").textContent=x.reason;}}
  document.addEventListener("liveFocusUpdate",e=>{{const live=e.detail?.rows||{{}},alerts=[];const speechEnabled=e.detail?.speech_enabled===true;rows=rows.map(x=>{{const q=live[x.code];if(!q?.verified)return x;const before=Number(x.live_price??x.chart_last_close),now=Number(q.price);if(Number.isFinite(before)&&Number.isFinite(now)){{if(before<Number(x.trigger)&&now>=Number(x.trigger))alerts.push(x.name+"、買い発動ライン到達。現在値"+yen(now)+"、発動"+yen(x.trigger));if(before>Number(x.stop)&&now<=Number(x.stop))alerts.push(x.name+"、撤退ライン到達。現在値"+yen(now)+"、撤退"+yen(x.stop));}}return {{...x,chart:q.chart,chart_last_close:q.price,live_price:q.price,data_date:q.quote_time,quote_status:q.status}};}});[...list.children].forEach((b,i)=>{{if(rows[i])b.innerHTML=pickHtml(rows[i],i);}});select(Math.min(activeIndex,rows.length-1),true);if(speechEnabled&&alerts.length)setTimeout(()=>window.cockpitSpeak?.(alerts.join("。")),300);}});
  const tfBtns=[...document.querySelectorAll(".focus-tf")];
- tfBtns.forEach(b=>{{b.classList.toggle("active",Number(b.dataset.tf)===tfMultiplier);b.onclick=()=>{{tfMultiplier=Number(b.dataset.tf);localStorage.setItem("focusChartTf",String(tfMultiplier));tfBtns.forEach(x=>x.classList.toggle("active",x===b));select(activeIndex);}};}});
+ tfBtns.forEach(b=>{{b.classList.toggle("active",b.dataset.tf===tf);b.onclick=()=>{{tf=b.dataset.tf;localStorage.setItem("focusChartTf",tf);tfBtns.forEach(x=>x.classList.toggle("active",x===b));select(activeIndex);}};}});
  select(0);
 }});
 </script>"""
