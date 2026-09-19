@@ -215,4 +215,4 @@ $payload = [ordered]@{
 $json = $payload | ConvertTo-Json -Depth 6
 [IO.File]::WriteAllText($OutputJson,$json,[Text.UTF8Encoding]::new($false))
 @($summary) | Export-Csv -Path $OutputCsv -NoTypeInformation -Encoding UTF8
-Write-Host ("キオクシア時間帯統計: 完了日 " + $payload.completed_days + "日 / 行 " + $summary.Count) -ForegroundColor Green
+Write-Host ("[STATS] KIOXIA time stats: days=" + $payload.completed_days + " rows=" + $summary.Count) -ForegroundColor Green
