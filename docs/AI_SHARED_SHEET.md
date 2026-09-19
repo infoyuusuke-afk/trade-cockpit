@@ -687,3 +687,97 @@ Claudeに以下を確認してほしい：
 - 100銘柄の条件別統計を広げる前に、ログ容量・Excel/RSS負荷・保存粒度の見積もりと、まず285Aで固定すべきschemaを提案してほしい
 
 **安全境界**：本節はUI・監視・研究設計の共有。新しい自動発注・実売買執行の依頼ではない。既存の固定検証条件を変更しない。公開repoへ生MS2ティック、口座情報、個人情報を追加しない。
+
+
+## C-087｜2026-09-19 AIコクピット手動起動手順（GPT共有・V6正本）
+
+**依頼元**：ユーザーから「手動起動のやりかたもCloudへ共有」と依頼。現行の正本は `downloads/START_AI_COCKPIT_V6.ps1`。旧 `AUTO_START_MS2_100.ps1` の手動運用と混同しないこと。
+
+### 手動起動の標準手順
+
+1. **MarketSpeed IIを起動してログイン完了まで待つ**
+   - V6はMarketSpeed IIのプロセスが起動していることを確認するが、ログイン操作そのものは代行しない。
+   - パスキー等を含む認証を完了し、MarketSpeed IIが通常画面まで開いている状態にする。
+
+2. **デスクトップの `AI Cockpit START V6` をダブルクリック**
+   - インストーラー `INSTALL_AI_COCKPIT_V6.ps1` が作る正規ショートカット。
+   - 実体は `C:\AI_Cockpit_OneClick_Starter\START_AI_COCKPIT_V6.ps1`。
+   - 成功時は起動画面が自動で閉じる。失敗時のみエラー画面を残す。
+
+3. **V6が自動で行う処理**
+   - 旧Collector / Heartbeat / Gatewayを停止して重複起動を回避
+   - MarketSpeed II起動確認
+   - Style-Bert-VITS2 FastAPIをポート5000で確認、停止していれば非表示で起動
+   - `C:\AI_Cockpit_OneClick_Starter\Excel` 配下の最新xlsxを開く
+   - ローカルGatewayを `127.0.0.1:28581` で非表示起動
+   - Safety Heartbeatを非表示起動
+   - `MS2_RSS_100_Collector.ps1` を表示ウィンドウで起動
+   - Collectorの `127.0.0.1:28580/live_ms2.json` が読めるまで待機
+   - JNX状態・時間帯統計状態を起動画面に表示
+   - Gatewayのhealthを確認
+   - 最後にブラウザを **1枚だけ** `http://127.0.0.1:28581/?live=1` で開く
+
+4. **正常起動後に画面で確認するもの**
+   - Collector PowerShell：
+     - `[RSS] 100 STOCKS : RUNNING`
+     - `[LIVE] 127.0.0.1:28580 : READY`
+     - `[VOICE] SBV2 API : READY / SBV2 ONLY`
+   - ブラウザ：ローカルのAIコクピット1枚だけ
+   - 営業日ザラバ中はExcel RSSの更新時刻/価格も動いていることを確認
+   - 休場日や市場時間外にOR5/Flow等が0・CLOSEDでも、それだけでは故障としない
+
+### 正常時に見えてよいウィンドウ
+
+原則：
+- Collector PowerShell 1枚
+- AIコクピットのブラウザ 1枚
+
+非表示で動くもの：
+- Safety Heartbeat
+- Local Gateway
+- SBV2 FastAPI
+
+**開かないもの**：
+- 公開GitHub Pagesの重複タブ
+- ローカルHTMLの重複タブ
+- SBV2 Gradio(7860)画面
+
+### ショートカットが無い場合の直接起動
+
+PowerShellから以下で同じV6ランチャーを起動できる。
+
+```powershell
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "C:\AI_Cockpit_OneClick_Starter\START_AI_COCKPIT_V6.ps1"
+```
+
+### 起動に失敗した場合
+
+- 起動ウィンドウは意図的に閉じず、エラー文を残す。
+- まず表示されたエラー文をそのまま確認する。
+- `MarketSpeed II is not running` の場合は、MarketSpeed IIを起動・ログイン後にV6を再実行。
+- `Workbook was not ready` の場合はExcel起動/既存Excelプロセス/RSSアドイン状態を確認。
+- `SBV2 did not become ready` の場合は `C:\AI_Cockpit_OneClick_Starter\Logs\sbv2_v5_*.log` を確認。
+- `Collector did not become ready` / `LIVE JSON was not ready` の場合はCollector画面の赤エラーを確認。
+- 推測で再起動を繰り返さず、最初のエラーを保存して原因を切り分ける。
+
+### 手動停止
+
+現行停止スクリプト：
+`C:\AI_Cockpit_OneClick_Starter\STOP_AI_COCKPIT.ps1` 相当の `downloads/STOP_AI_COCKPIT.ps1`
+
+停止対象：
+- Collector
+- Heartbeat
+- Gateway
+- SBV2 FastAPI
+
+MarketSpeed II / Excel自体の終了はこの停止スクリプトの対象外。
+
+### 重要な運用上の整理
+
+- **日常の手動起動は「MarketSpeed IIへログイン → AI Cockpit START V6」の2段階を正本とする。**
+- 旧 `AUTO_START_MS2_100.ps1` は過去の自動起動系で、SAPI音声やWatcherを含む別経路。現行V6のSBV2-only・single-browser設計と混ぜない。
+- Windows Scheduled Taskの自動起動と手動V6を同時に重複起動させない。既にCollectorが動いている場合、V6は管理対象プロセスを一度止めて正規構成で起動し直す。
+- 次回営業日の実機確認では「MarketSpeed IIログイン済み」「Excel RSS更新」「Collector READY」「ブラウザ1枚」「SBV2 READY」をセットで確認する。
+
+**安全境界**：これは起動・監視環境の手順共有のみ。自動発注・実売買執行の追加は含まない。
