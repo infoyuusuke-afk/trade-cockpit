@@ -332,3 +332,45 @@ GitHubの共有ページは双方が参照できる受け渡し場所であり�
 **Cloud側の対応**：この検証はTradingViewへのログインアクセスが無いCloud側では実施できず、全てユーザー側の手動確認。結果の記録のみ共有シートへ反映した。隣接区間の一致検証・自動結合の実装（必要であれば）はユーザーからCSVを渡してもらった時点でCloud側が対応可能。
 
 **安全境界**：データ取得方法の検証のみで、発注・執行系には一切触れていない。
+
+## C-078｜2026-09-19 285A Python自動バックテスト移植・引き継ぎ仕様（GPT記録・ユーザー共有）
+
+**経緯**：ユーザーがChatGPT共有リンク（キオクシア株価分析スレッド）を共有。TradingViewで作り込んできた285Aの売買ロジックをPython自動バックテストへ移植し、時間足・各フィルターの有効性を再現性のある形で検証する計画。TradingViewは最終照合用、大量検証はPython側。GPT側はこの内容を「285ACSV比較」というWorkスレッドへの引き継ぎ仕様として整理していた。
+
+### 固定テスト条件
+銘柄TSE:285A、期間2025-09-18〜2026-09-18固定、初期資金1,000万円、100株、手数料0・スリッページ0、通常ローソク足、東京時間（前場09:00-11:30／後場12:30-15:30）、新規エントリー09:05-15:25、EOD決済。指標ウォームアップ用に対象期間より前のデータ（日中5営業日以上・日足80営業日以上）も必要。
+
+### 必要データ
+`data/285A_15s.csv`、`285A_daily.csv`。ユーザー手元に`TSE_285A, 15S_701f9.csv`／`285A_15s_TradingView_MAX_RAW.csv`あり（TradingView Bar Replay経由の分割取得、C-077参照）。
+
+### 現行BASEロジック（主に45秒足で執行）
+OR5(09:00-09:05)／OR15(09:00-09:15)／VWAP／5分EMA9・EMA25／日足5日線（※標準の確定日足SMAではなく「当日イントラデイclose＋前日〜4日前close」÷5のLIVE版）／前日OR15 High・Mid・Low／QQE（RSI期間14・平滑5・Fast Factor 4.238、Threshold10は実質未使用のためOFF）。OR15強トレンド判定＝OR15幅／前日日足ATR≧0.20。ライン接触＝許容0.20ATR・有効10bar・最低confluence1。決済は反対QQEシグナル＋EOD。
+
+### TradingView確定基準値（Python移植のゴール）
+v4.3 Ablation Mode 1「OR FLOW + MTF EMA」：純利益+5,675,000円／PF1.757／最大DD1,027,000円(7.93%)／勝率49.65%／取引431件（勝214）。Python移植は最終損益だけでなく、エントリー時刻・LONG/SHORT・価格・決済時刻・価格を正規化して**この431件と順番に一致**させることを目標とする。不一致はsignals.csvで最初の乖離バーから原因追跡。
+
+参考（未確定・アブレーション途中経過）：Mode2（+日足一目）純利益+3,872,000円／PF2.145／DD634,000円(5.08%)／勝率51.59%／252件。**v4.4（直近改修版）はBASE結果がv4.3の431件と一致せず（+3,954,000円／PF1.243／DD1,254,000円／勝率40.52%／1,762件）、未検証版扱い**。原因（バー読み込み量／時間足設定／Deep Backtest差／回帰バグ）は未切り分け。Python移植の正本は**v4.3のBASE結果**であり、v4.4ではない。
+
+### FVG仕様
+「FVG with Probabilities | GainzAlgo」を基準。最初のアブレーションはコア部分のみ：ATR期間14／最小FVG 0.3ATR／Displacement必須ON／最小body 0.6ATR／body比0.6／CE50%。将来候補：Quality Score・IFVG・BOS・Premium/Discount・Relative Volume。GainzAlgoの米国市場向けKillzone・NY Opening Rangeは285Aへ移植しない。Quality Scoreの「85%」は実測勝率ではなく品質スコア（最大0.85にClamp）。
+
+### Pivot仕様
+TradingView標準Pivot Points（Traditional・Daily・Daily-based values、P/R1-R3/S1-S3）。最初はPをセンターライン・方向フィルター、R/Sはターゲット/反応帯として評価。エントリー条件とエグジット条件を同時に変更しない。
+
+### TradingView検証ルール
+通常バックテストはチャートの読み込みバー数で結果が変わることを実機確認済み。正式比較は期間固定のDeep Backtestのみを正本とし、チャート上の矢印ではなくStrategy TesterのDeep Backtestレポートを基準にする。
+
+### Python実装の着手順序（最初のタスクはこれのみ）
+1. `285A_15s_TradingView_MAX_RAW.csv`の品質確認（重複・欠損・時刻・昼休み・営業日）
+2. 45秒へリサンプル
+3. TradingView v4.3 BASEの431件と照合（signals.csvで乖離箇所を特定）
+4. 完全一致または説明可能な差になってから時間足比較（30/45/60/120/180/300秒）へ進む
+5. その後、一目→FVG→Pivotの順にON/OFFアブレーション、最後に複合条件
+6. **パラメータ最適化は最初は行わない**。まずTradingViewロジックの再現を優先
+
+出力スキーマ：実験単位＝experiment_id/code_version/data_hash/date_from/date_to/timeframe/logic_flags/parameters/net_profit/profit_factor/max_drawdown/max_drawdown_pct/win_rate/trades/long_trades/short_trades/long_pnl/short_pnl/avg_trade/avg_hold_seconds。取引単位＝entry_time/entry_price/direction/exit_time/exit_price/pnl/entry_reason/exit_reason。
+
+### Cloud側の着手状況
+**未着手・データ待ち**。上記Step1（CSV品質確認）を始めるには`285A_15s_TradingView_MAX_RAW.csv`（または`TSE_285A, 15S_701f9.csv`）と、できれば`285A_daily.csv`の実ファイルをユーザーから受け取る必要がある。また、v4.3の正式Pineソース（実際に431件／PF1.757を出したコード）もGPT側が「次回、正本として保存してから」としており、まだ確定版が手元にない可能性がある。合成・推測データでの見切り発車は行わない方針。
+
+**安全境界**：本件はバックテスト検証手法の設計・データ準備段階であり、発注・執行系には一切触れていない。手数料0・スリッページ0の理想条件での再現性検証が目的で、実売買パラメータの最適化・自動発注化はこのフェーズの対象外。
