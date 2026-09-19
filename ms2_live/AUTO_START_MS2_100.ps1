@@ -45,6 +45,27 @@ if ($excelProcesses.Count -gt 0) {
     exit 3
 }
 
+# SBV2音声ブリッジ（PR #19・共有シートC-032/C-033、ユーザー依頼2026-09-19）: インストール
+# されていれば自動起動する。モデル読み込みに数十秒かかるため、この後のMS2ログイン待ち
+# （ユーザーの手動操作＋Read-Host）と並行して進むよう、ここで早めに起動要求だけ出す。
+# 未インストール・起動失敗時は何もしない。SPEAK_LIVE_EMOTION.ps1側に既存のSAPIフォール
+# バックがあるため、音声自体が出なくなることはない（Test-SbV2Ready→ダメならSAPI）。
+$sbv2Root = "C:\sbv2\Style-Bert-VITS2"
+$sbv2Server = Join-Path $sbv2Root "Server.bat"
+$sbv2Running = @(Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*server_fastapi.py*" })
+if ($sbv2Running.Count -gt 0) {
+    Write-Log "sbv2 api already running"
+} elseif (Test-Path $sbv2Server) {
+    try {
+        Start-Process -FilePath $sbv2Server -WorkingDirectory $sbv2Root -WindowStyle Minimized
+        Write-Log "sbv2 api launch requested"
+    } catch {
+        Write-Log ("sbv2 api launch failed: " + $_.Exception.Message)
+    }
+} else {
+    Write-Log "sbv2 not installed at $sbv2Root; voice will use SAPI fallback"
+}
+
 $marketSpeed = $null
 $candidates = @(
     "$env:ProgramFiles\MARKETSPEED2\MARKETSPEED2.exe",

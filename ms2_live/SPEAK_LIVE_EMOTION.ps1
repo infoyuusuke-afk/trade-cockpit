@@ -63,6 +63,10 @@ function Normalize-SpeechText([string]$text) {
         'EMA' = 'いーえむえー'
         'GU' = 'ぎゃっぷあっぷ'
         'GD' = 'ぎゃっぷだうん'
+        # ユーザー指摘（2026-09-19）: 「歩み値」の「値」がTTSに「ち」と読まれていた
+        # （正しくは相場用語として「あゆみね」）。他の漢字表記より先に変換する必要はない
+        # （文字列としての重複が無いため順序非依存）。
+        '歩み値' = 'あゆみね'
     }
     foreach ($entry in $replacements.GetEnumerator()) {
         $result = $result.Replace([string]$entry.Key, [string]$entry.Value)
@@ -186,7 +190,7 @@ function Get-EmotionState([object]$data, [datetime]$now = (Get-Date)) {
         $reason = if ($whipsaw) {'往復ピンタ警戒'} elseif ($chaseGuard) {'高値安値追い警戒'} else {'安全ゲート警戒'}
         return [pscustomobject]@{
             level='DANGER'; side='NONE'; score=95; key=('DANGER:'+$reason); reasons=@($reason)
-            text=('危ない。キオクシア、'+$reason+'です。いったん追わない。VWAPと板、歩み値が落ち着くまで待ってください。')
+            text=('危ない。キオクシア、'+$reason+'です。いったん追わない。VWAPと板、歩み値が、落ち着くまで待ってください。')
         }
     }
 

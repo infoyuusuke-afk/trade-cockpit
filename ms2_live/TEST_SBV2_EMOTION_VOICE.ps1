@@ -46,8 +46,8 @@ if ($status.StatusCode -ne 200) { throw 'SBV2 API is not ready.' }
 $samples = @(
     [pscustomobject]@{name='CALM'; length=1.20; weight=0.35; split=0.60; text='きおくしあ、熱量は低めです。今は待ち。無理に入らないでください。'},
     [pscustomobject]@{name='WATCH'; length=1.13; weight=0.50; split=0.50; text='きおくしあ、ロング寄り。ぶいわっぷ、うえです。まだ加速確認待ち。飛び乗らないでください。'},
-    [pscustomobject]@{name='HOT'; length=1.03; weight=0.70; split=0.35; text='来た。きおくしあ、ロング優勢。出来高、加速。歩み値も買い優勢。ぶいわっぷ、うえを維持。いけいけムード。ただし、高値追いは禁止。押し目だけ。'},
-    [pscustomobject]@{name='DANGER'; length=1.10; weight=0.80; split=0.45; text='危ない。きおくしあ、往復警戒です。いったん追わない。ぶいわっぷと板、歩み値が落ち着くまで待ってください。'}
+    [pscustomobject]@{name='HOT'; length=1.03; weight=0.70; split=0.35; text='来た。きおくしあ、ロング優勢。出来高、加速。あゆみねも買い優勢。ぶいわっぷ、うえを維持。いけいけムード。ただし、高値追いは禁止。押し目だけ。'},
+    [pscustomobject]@{name='DANGER'; length=1.10; weight=0.80; split=0.45; text='危ない。きおくしあ、往復警戒です。いったん追わない。ぶいわっぷと板、あゆみねが、落ち着くまで待ってください。'}
 )
 
 $targets = if ($Level -eq 'ALL') { $samples } else { @($samples | Where-Object { $_.name -eq $Level }) }
