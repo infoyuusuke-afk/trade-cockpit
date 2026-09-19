@@ -84,6 +84,12 @@ try {
     if ($manifest.size_bytes -and [int64]$item.Length -ne [int64]$manifest.size_bytes) {
         throw "Downloaded size mismatch. Expected $($manifest.size_bytes), got $($item.Length)."
     }
+    if ($manifest.sha256) {
+        $actual = (Get-FileHash -LiteralPath $tmp -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($actual -ne ([string]$manifest.sha256).ToLowerInvariant()) {
+            throw "SHA256 mismatch. Download rejected."
+        }
+    }
 
     Move-Item -LiteralPath $tmp -Destination $target -Force
     $state.downloaded_version = [string]$manifest.version
