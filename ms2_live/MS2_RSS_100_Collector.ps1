@@ -589,9 +589,7 @@ $jsonPath = Join-Path $PSScriptRoot "live_ms2.json"
 $cockpitJsonPath = Join-Path (Split-Path $PSScriptRoot -Parent) "live_ms2.json"
 $htmlPath = Join-Path $PSScriptRoot "AI_Cockpit_MS2_LIVE.html"
 $publicCockpitUrl = "" # Browser launch is owned by START_AI_COCKPIT.cmd
-$speaker = New-Object -ComObject SAPI.SpVoice
-$speaker.Volume = 100
-$speaker.Rate = -2   # SBV2 APIが使えない場合だけ使うフォールバック音声
+$speaker = $null # AI Cockpit uses SBV2 only; Windows SAPI is intentionally disabled
 
 # AIコクピットの標準音声は Style-Bert-VITS2 FastAPI (server_fastapi.py / port 5000)。
 # App.bat のWebUI(port 7860)を起動しただけでは音声経路は変わらないため、CollectorからAPIへ直接送る。
@@ -686,14 +684,11 @@ function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 30000
         $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
         $acquired = $mutex.WaitOne($timeoutMs)
         $sbv2Ok = Invoke-SbV2Speak $text
-        if (-not $sbv2Ok -and $null -ne $speaker) {
-            # API停止時も重要な警告を無音にしない。
-            $speaker.Speak((Convert-ToCockpitSpeechText $text), 0) | Out-Null
+        if (-not $sbv2Ok) {
+            Write-Host "[VOICE] SBV2 request failed - no SAPI fallback" -ForegroundColor Red
         }
     } catch {
-        try {
-            if ($null -ne $speaker) { $speaker.Speak((Convert-ToCockpitSpeechText $text), 0) | Out-Null }
-        } catch {}
+        Write-Host "[VOICE] SBV2 request failed - no SAPI fallback" -ForegroundColor Red
     } finally {
         if ($acquired -and $null -ne $mutex) { try { $mutex.ReleaseMutex() } catch {} }
         if ($null -ne $mutex) { $mutex.Dispose() }
@@ -747,7 +742,7 @@ $bridgeJob = Start-LocalJsonBridge $jsonPath 28580
 
 Write-Host "[RSS] 100 STOCKS : RUNNING / CTRL+C TO STOP" -ForegroundColor Green
 Write-Host "[LIVE] 127.0.0.1:28580 : READY" -ForegroundColor Cyan
-Write-Host "[VOICE] SBV2 API : READY (SAPI fallback)" -ForegroundColor Cyan
+Write-Host "[VOICE] SBV2 API : READY / SBV2 ONLY" -ForegroundColor Cyan
 Invoke-SerializedSpeak $speaker "キオクシアを含む、100銘柄の音声監視を開始しました。"
 
 try {
