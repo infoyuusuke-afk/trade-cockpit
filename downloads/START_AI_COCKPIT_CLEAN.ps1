@@ -14,8 +14,8 @@ trap {
     Write-Host $_.Exception.Message -ForegroundColor Yellow
     Write-Host ""
     Write-Host "This window will stay open so the error can be checked." -ForegroundColor Cyan
-    Read-Host "Press Enter to close"
-    exit 1
+    Read-Host "Press Enter to keep this diagnostic window open"
+    break
 }
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
@@ -91,7 +91,7 @@ function Resolve-MarketSpeedShortcut {
     ) | Where-Object { Test-Path -LiteralPath $_ }
     foreach($m in $menus){
         $lnk = Get-ChildItem -LiteralPath $m -Filter "*.lnk" -Recurse -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -match "MARKETSPEED|マーケットスピード" } |
+            Where-Object { $_.Name -match "MARKETSPEED" } |
             Select-Object -First 1
         if($lnk){ return $lnk.FullName }
     }
@@ -275,3 +275,4 @@ Write-Host ("Startup completed in {0:N1} seconds." -f $sw.Elapsed.TotalSeconds) 
 Write-Host "Visible: Collector + AI Cockpit browser" -ForegroundColor Cyan
 Write-Host "Hidden : Heartbeat + Gateway + SBV2 API" -ForegroundColor DarkCyan
 Start-Sleep -Seconds 3
+exit 0
