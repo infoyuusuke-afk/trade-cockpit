@@ -111,3 +111,35 @@ try {
     Log ("Download failed safely: " + $_.Exception.Message) "ERROR"
     exit 0
 }
+
+
+# AI_COCKPIT_RUNTIME_DEPENDENCY_REPAIR_V1
+# Repair only missing non-secret runtime support files. Existing files are never overwritten here.
+try {
+    $runtimeDir = Join-Path ([Environment]::GetFolderPath("Desktop")) "デイトレ\MarketSpeed II RSS\files"
+    if (Test-Path -LiteralPath $runtimeDir) {
+        $required = @(
+            @{
+                Name = "watchlist_100.json"
+                Url  = "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/ms2_live/watchlist_100.json"
+            },
+            @{
+                Name = "MS2_Common_Engine.ps1"
+                Url  = "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/ms2_live/MS2_Common_Engine.ps1"
+            }
+        )
+        foreach ($dep in $required) {
+            $dest = Join-Path $runtimeDir $dep.Name
+            if (-not (Test-Path -LiteralPath $dest)) {
+                Log ("Missing runtime dependency detected: " + $dep.Name) "WARN"
+                Invoke-WebRequest -Uri $dep.Url -OutFile $dest -UseBasicParsing -TimeoutSec 30
+                if (-not (Test-Path -LiteralPath $dest) -or (Get-Item -LiteralPath $dest).Length -le 0) {
+                    throw ("Runtime dependency repair failed: " + $dep.Name)
+                }
+                Log ("Runtime dependency repaired: " + $dest) "OK"
+            }
+        }
+    }
+} catch {
+    Log ("Runtime dependency repair failed safely: " + $_.Exception.Message) "WARN"
+}
