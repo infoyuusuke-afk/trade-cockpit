@@ -2771,11 +2771,9 @@ document.addEventListener("DOMContentLoaded",()=>{
  <p class="sub">元の統合AIコクピットへMS2 RSSの歩み値・板・VWAP・OR15を反映します。キオクシア専用タブはVWAP・OR15・ピボット・EMA20に表示を限定します。</p>
  <p class="warning"><b>Ver.1判定：</b>確定1分足 → OR5/OR15 → VWAP・EMA9/20 → 出来高 → 歩み値 → 地合い・業種 → UNDER/OVER補助。OR15追随は地合い不一致なら利確警戒。データが60秒以上古い場合は全サイン無効です。</p>
 </section>
-<section id="overnight-top5" class="card wide ms2-live-panel">
- <div class="ms2-live-head"><div><span>LOCAL MARKET DATA・試運転 Ver.1</span><h2>オーバーナイトTOP5</h2></div></div>
- <p class="sub">引けで建て、翌朝の寄り付きで反対売買する持ち越し候補。15:00から暫定採点、15:25に銘柄と方向を固定します。</p>
- <div id="ms2-hold-status" class="sub">15:00から暫定採点、15:25に銘柄と方向を固定します。</div>
- <div id="ms2-hold-cards" class="ms2-live-grid"><div class="focus-empty"><span>15:25確定待ち</span></div></div>
+<section id="overnight-top5" class="card wide scalp-tv">
+ <div class="scalp-tv-toolbar"><div class="scalp-tv-title"><h2>OVERNIGHT 5</h2><span>15:25確定 / MS2 RSS</span></div><div class="scalp-tv-legend"><span id="ms2-hold-status">15:00から暫定採点、15:25に銘柄と方向を固定します。</span></div></div>
+ <div id="ms2-hold-cards" class="scalp-strip"><div class="focus-empty"><span>15:25確定待ち</span></div></div>
  <h3>持ち越し成績</h3>
  <div id="ms2-hold-stats" class="ms2-live-grid"><div class="focus-empty"><span>翌営業日の大引け後から勝率を記録</span></div></div>
  <div id="ms2-hold-history" class="ms2-live-grid"></div>
@@ -2804,7 +2802,13 @@ document.addEventListener("DOMContentLoaded",()=>{
    cards.innerHTML=xs.length?xs.slice(0,5).map((x,i)=>{const cls=x.common_decision==="TREND LONG"?"buy":x.common_decision==="TREND SHORT"?"sell":x.signal?.includes("回避")?"block":"watch",cr=x.credit_ratio==null?"未確認":`${esc(x.credit_ratio)}倍`,shortable=x.shortable_quantity==null?"未確認":Number(x.shortable_quantity).toLocaleString("ja-JP"),order=x.entry_price==null?"条件未完成":`発動 ${yen(x.entry_price)} / 損切 ${yen(x.stop_price)} / 1R ${yen(x.target1)}`;return `<article class="ms2-live-card ${cls}">${cardTop(i+1,stale?"NO TRADE":esc(x.common_decision||"NO TRADE"),esc(x.name),x.common_score==null?"未確認":x.common_score)}<div class="live-price">${yen(x.price)}${changeBadge(x.change_pct)}</div><div class="ms2-metrics"><span>既存戦略<b>${esc(x.strategy)}</b></span><span>注文目安<b>${order}</b></span><span>地合い<b>${esc(x.market_state)}</b></span><span>VWAP<b>${yen(x.vwap)}</b></span><span>EMA9/20<b>${yen(x.ema9)} / ${yen(x.ema20)}</b></span><span>出来高加速<b>${esc(x.volume_burst)}倍</b></span><span>歩み値<b>${esc(x.flow_bias)}%</b></span><span>UNDER<b>${esc(x.under_ratio)}%</b></span><span>信用倍率<b>${cr}</b></span><span>売建可能数量<b>${shortable}</b></span><span>OR5<b>${yen(x.or5_low)}–${yen(x.or5_high)}</b></span><span>OR15<b>${yen(x.or_low)}–${yen(x.or_high)}</b></span></div><small>1分足・5分足を全対象へ共通生成／未取得は未確認／${esc(x.sector)}</small></article>`}).join(""):`<div class="focus-empty"><b>発動なし</b><span>条件一致銘柄を待っています</span></div>`;
    const holds=Array.isArray(d.hold_top5)?d.hold_top5:[];
    if(holdStatus)holdStatus.textContent=d.hold_finalized?`確定済み ${d.hold_finalized_at||"15:25"}／この候補と方向は翌日検証まで固定`:`15:00から暫定採点中。15:25までは候補が入れ替わります。`;
-   if(holdCards)holdCards.innerHTML=holds.length?holds.slice(0,5).map((x,i)=>`<article class="ms2-live-card ${String(x.hold_signal).includes("ロング")?"buy":"sell"}">${cardTop(i+1,stale?"無効":esc(x.hold_signal),`${esc(x.name)}（${esc(x.ticker)}）`,x.hold_score)}<div class="live-price">${yen(x.reference_price_1525??x.price)}${changeBadge(x.change_pct)}</div><div class="ms2-metrics"><span>後場OR上維持<b>${esc(x.pm_above_minutes)}分</b></span><span>後場OR下維持<b>${esc(x.pm_below_minutes)}分</b></span><span>引け位置<b>${esc(x.close_location_pct)}%</b></span><span>地合い<b>${esc(x.market_state)}</b></span></div><small>${d.hold_finalized?"15:25候補固定／15:30終値を取得後、翌取引日引けで採点":"暫定候補／15:25まで注文しない"}</small></article>`).join(""):`<div class="focus-empty"><span>${d.hold_finalized?"15:25確定候補なし・持ち越し禁止":"15:25確定待ち、または条件未達"}</span></div>`;
+   if(holdCards)holdCards.innerHTML=holds.length?holds.slice(0,5).map(x=>{
+    const label=String(x.hold_signal||"");
+    const sv=stale?{label:"CLOSED",cls:"wait"}:label.includes("ロング")?{label:"BUY",cls:"long"}:label.includes("ショート")?{label:"SHORT",cls:"short"}:{label:"WAIT",cls:"wait"};
+    const fs=x.feature_snapshot||{};
+    const foot=(d.hold_finalized?"15:25候補固定・翌取引日引けで採点":"暫定候補・15:25まで注文しない")+"／後場OR上"+esc(x.pm_above_minutes??"—")+"分・下"+esc(x.pm_below_minutes??"—")+"分・引け位置"+esc(x.close_location_pct??"—")+"%・"+esc(x.market_state??"地合い未確認");
+    return window.renderScalpCard({name:x.name,ticker:x.ticker,price:x.reference_price_1525??x.price,vwap:x.vwap,or_low:x.or_low,or_high:x.or_high,ema9:fs.ema9,ema20:fs.ema20,flow_bias:x.flow_bias,foot},sv,"日足");
+   }).join(""):`<div class="focus-empty"><span>${d.hold_finalized?"15:25確定候補なし・持ち越し禁止":"15:25確定待ち、または条件未達"}</span></div>`;
    const hs=d.hold_stats||{},stat=v=>v==null?"—":`${Number(v).toFixed(1)}%`;
    if(holdStats)holdStats.innerHTML=`<article class="ms2-live-card watch"><div class="top"><span class="signal">翌日終値基準</span><h3>持ち越し成績</h3><b class="score">${hs.samples||0}件</b></div><div class="ms2-metrics"><span>累積勝率<b>${stat(hs.win_rate)}</b></span><span>平均損益<b>${stat(hs.avg_return_pct)}</b></span><span>LONG勝率<b>${stat(hs.long_win_rate)}（${hs.long_samples||0}件）</b></span><span>SHORT勝率<b>${stat(hs.short_win_rate)}（${hs.short_samples||0}件）</b></span></div><small>勝敗＝15:30終値から翌取引日15:30終値まで。場中はMFE・MAEも別記録。</small></article>`;
    const recent=Array.isArray(hs.recent)?hs.recent:[];
@@ -3042,23 +3046,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 <section class="card wide"><h2>②-B 群馬・茂倉沢レアアース新鉱物 監視TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・参画状況</th><th>資料</th></tr></thead><tbody>{gunma_rare_earth_rows}</tbody></table>
 <p class="warning">群馬県桐生市の茂倉沢鉱山でランタン・セリウムを含む新鉱物4種が承認された研究成果を監視します。現時点では資源量・採算性・採掘計画・企業参画のいずれも未確認で、商業鉱山案件ではありません。資源量調査、採掘権、自治体・JOGMEC・企業との共同研究、分離精製試験の公式発表が出るまでテーマ監視限定。正式なスイング候補への昇格には信用需給30/55点以上と発動価格突破も必須です。</p></section>
-<section id="speculative-theme-monitor" class="card wide"><h2>②-C テーマ仕手化兆候・隔離監視 TOP5</h2>
-<style>
-#speculative-theme-monitor table{min-width:1320px;table-layout:auto}
-#speculative-theme-monitor th,#speculative-theme-monitor td{vertical-align:middle}
-#speculative-theme-monitor th:nth-child(2),#speculative-theme-monitor td:nth-child(2){min-width:210px}
-#speculative-theme-monitor th:nth-child(3),#speculative-theme-monitor td:nth-child(3){min-width:92px;white-space:nowrap}
-#speculative-theme-monitor th:nth-child(4),#speculative-theme-monitor td:nth-child(4){min-width:78px;white-space:nowrap}
-#speculative-theme-monitor th:nth-child(5),#speculative-theme-monitor td:nth-child(5){min-width:130px}
-#speculative-theme-monitor th:nth-child(10),#speculative-theme-monitor td:nth-child(10){min-width:72px;white-space:nowrap}
-#speculative-theme-monitor th:nth-child(12),#speculative-theme-monitor td:nth-child(12){min-width:92px;white-space:nowrap}
-#speculative-theme-monitor th:nth-child(14),#speculative-theme-monitor td:nth-child(14){min-width:145px;line-height:1.45}
-#speculative-theme-monitor th:nth-child(15),#speculative-theme-monitor td:nth-child(15){min-width:190px;line-height:1.45}
-#speculative-theme-monitor td:nth-child(3)>b,#speculative-theme-monitor td:nth-child(14)>b{display:inline-block;white-space:nowrap}
-</style>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>異常度</th><th>テーマ・確認状態</th><th>終値</th><th>1日</th><th>5日</th><th>20日</th><th>出来高比</th><th>ATR</th><th>20日線乖離</th><th>上ヒゲ</th><th>信用需給</th><th>監視行動</th></tr></thead>
-<tbody id="speculative-theme-watch"><tr><td colspan="15">全市場の仕手化兆候を走査中...</td></tr></tbody></table>
-<p class="warning"><b>監視専用・売買候補ではありません。</b> 出来高急増、5日／20日急騰、値幅拡大、加速率、上ヒゲで異常度を算出し、初動候補・資金流入・過熱・天井警戒に分類します。「仕手株」との断定はせず、会社IR・適時開示でテーマを確認し、信用買い残・信用倍率・機関空売り変化も確認。ここに入った銘柄は通常の持ち越しLONG／SHORT TOP5から隔離します。</p></section>
+<section id="speculative-theme-monitor" class="card wide scalp-tv">
+ <div class="scalp-tv-toolbar"><div class="scalp-tv-title"><h2>EVENT 5</h2><span>全市場走査 / 監視専用</span></div><div class="scalp-tv-legend"><span>売買候補ではない<b>監視専用</b></span></div></div>
+ <div id="speculative-theme-watch" class="scalp-strip"><div class="focus-empty">全市場の仕手化兆候を走査中...</div></div>
+<p class="warning"><b>監視専用・売買候補ではありません。</b> 出来高急増、5日／20日急騰、値幅拡大、加速率、上ヒゲで異常度を算出し、初動候補・資金流入・過熱・天井警戒に分類します。「仕手株」との断定はせず、会社IR・適時開示でテーマを確認し、信用買い残・信用倍率・機関空売り変化も確認。ここに入った銘柄は通常の持ち越しLONG／SHORT TOP5から隔離します。VWAP・OR5・OR15・EMA・ENTRY/STOP/T1はMS2ライブ対象100銘柄外だと未取得のため「—」表示です。</p></section>
 <section id="large-lot-accumulation" class="card wide"><h2>大口買い集め・吸収監視 TOP20</h2>
 <div id="accumulation-meta" class="sub">全市場の価格・出来高痕跡を走査中...</div>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>総合点</th><th>信用需給</th><th>終値</th><th>5日</th><th>20日</th><th>上昇日/下落日出来高</th><th>OBV</th><th>下落日出来高</th><th>安値切上げ</th><th>発動価格</th><th>損切り</th><th>根拠</th></tr></thead>
@@ -3206,21 +3197,17 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     x.ret20.toFixed(2) + "%</td></tr>").join("");
   document.getElementById("prepared-signals").innerHTML =
     prepared || "<tr><td colspan='10'>本日の準備点灯銘柄なし。</td></tr>";
-  const speculative = (d.speculative_theme_watch || []).slice(0, 5).map((x, i) =>
-    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td><b class='" +
-    (x.phase === "初動候補" ? "up" : x.phase === "資金流入" ? "warning" : "down") +
-    "'>" + x.phase + "</b></td><td><b class='down'>" + x.score +
-    "/100</b></td><td>" + x.theme + "<br><small>" + x.theme_status +
-    "</small></td><td>" + yen(x.close) + "</td><td class='" +
-    (x.ret1 >= 0 ? "up" : "down") + "'>" + signedPct(x.ret1, 2) +
-    "</td><td class='" + (x.ret5 >= 0 ? "up" : "down") + "'>" +
-    signedPct(x.ret5, 1) + "</td><td class='" + (x.ret20 >= 0 ? "up" : "down") +
-    "'>" + signedPct(x.ret20, 1) + "</td><td>" + Number(x.rvol).toFixed(2) +
-    "倍</td><td>" + Number(x.atr_pct).toFixed(1) + "%</td><td class='" +
-    (x.ma20_dist >= 0 ? "up" : "down") + "'>" + signedPct(x.ma20_dist, 1) + "</td><td>" + Number(x.upper_wick_pct).toFixed(1) +
-    "%</td><td>" + supplyText(x) + "</td><td>" + x.action + "</td></tr>").join("");
+  // ユーザー依頼2026-09-19：SCALP 5と同じ銘柄カード見た目に統一。ただしEVENT 5は全市場走査
+  // （MS2ライブ100銘柄の外側も含む）が元データのため、VWAP・OR5・OR15・EMA・ENTRY/STOP/T1・
+  // FLOWはこのデータソースに存在せず「—」のまま（推測で埋めない）。出来高比(rvol)だけは
+  // VOLUME欄へ転用できる実データなのでそこに載せる。
+  const speculative = (d.speculative_theme_watch || []).slice(0, 5).map(x => {{
+    const sv = x.phase === "初動候補" ? {{label:"初動候補",cls:"long"}} : x.phase === "資金流入" ? {{label:"資金流入",cls:"wait"}} : {{label:x.phase||"警戒",cls:"short"}};
+    const foot = (x.theme||"") + "／" + (x.theme_status||"") + "／" + (x.action||"");
+    return window.renderScalpCard({{name:x.name,code:x.code,price:x.close,change_pct:x.ret1,volume_burst:Number.isFinite(Number(x.rvol))?Number(x.rvol).toFixed(2):null,foot}},sv,"日足");
+  }}).join("");
   document.getElementById("speculative-theme-watch").innerHTML =
-    speculative || "<tr><td colspan='15'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</td></tr>";
+    speculative || "<div class='focus-empty'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</div>";
   const accumulation = (d.large_lot_accumulation || []).slice(0, 20).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td><b class='" +
     (x.phase.includes("上放れ") ? "up" : "warning") + "'>" + x.phase +
