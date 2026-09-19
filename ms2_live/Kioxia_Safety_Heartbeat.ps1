@@ -103,6 +103,7 @@ $intervalSeconds = 5
 $diagLogPath = Join-Path $PSScriptRoot "heartbeat_diag.csv"
 $alertThreshold = 3           # 連続失敗3回（約15秒）で音声警告
 $alertRepeatMinutes = 5       # 警告が続く間、再警告する間隔
+$startupGraceSeconds = 90     # 起動直後はExcel/Workbook準備待ち。誤警告を出さない
 
 if (-not (Test-Path $diagLogPath)) {
     "日時,状態,連続失敗回数,詳細" | Out-File -FilePath $diagLogPath -Encoding utf8
@@ -111,6 +112,40 @@ if (-not (Test-Path $diagLogPath)) {
 # ユーザー指摘（2026-09-15）: 「全体的に音声が聞き取りづらい」への対応。他プロセス
 # （Watcher・AUTO_START等）と共有の名前付きMutexで音声を直列化し、複数プロセスの発話が
 # 重ならないようにする。話速もやや遅くする。
+$SbV2ApiBase = "http://127.0.0.1:5000"
+$SbV2ModelId = 0
+$SbV2SpeakerId = 0
+$SbV2Style = "Neutral"
+$SbV2Length = 1.10
+
+function Convert-ToHeartbeatSpeechText([string]$text) {
+    if ([string]::IsNullOrWhiteSpace($text)) { return "" }
+    $s = [string]$text
+    $s = $s.Replace("キオクシア","きおくしあ")
+    $s = $s.Replace("Excel","エクセル")
+    return $s
+}
+
+function Invoke-SbV2HeartbeatSpeak([string]$text) {
+    $speechText = Convert-ToHeartbeatSpeechText $text
+    if ([string]::IsNullOrWhiteSpace($speechText)) { return $true }
+    $tmp = Join-Path $env:TEMP ("heartbeat_sbv2_" + [Guid]::NewGuid().ToString("N") + ".wav")
+    try {
+        $encoded = [Uri]::EscapeDataString($speechText)
+        $styleEncoded = [Uri]::EscapeDataString($SbV2Style)
+        $url = $SbV2ApiBase + "/voice?text=" + $encoded + "&model_id=" + $SbV2ModelId + "&speaker_id=" + $SbV2SpeakerId + "&length=" + $SbV2Length + "&language=JP&style=" + $styleEncoded
+        Invoke-WebRequest -Method Post -Uri $url -OutFile $tmp -UseBasicParsing -TimeoutSec 45
+        if (-not (Test-Path -LiteralPath $tmp) -or (Get-Item -LiteralPath $tmp).Length -lt 1000) { throw "SBV2 audio response is empty." }
+        $player = New-Object System.Media.SoundPlayer $tmp
+        $player.PlaySync()
+        $player.Dispose()
+        return $true
+    } catch {
+        return $false
+    } finally {
+        if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+    }
+}
 function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 20000) {
     if ($null -eq $speaker -or [string]::IsNullOrEmpty($text)) { return }
     $mutex = $null
@@ -118,7 +153,10 @@ function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 20000
     try {
         $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
         $acquired = $mutex.WaitOne($timeoutMs)
-        $speaker.Speak($text, 0) | Out-Null
+        $sbv2Ok = Invoke-SbV2HeartbeatSpeak $text
+        if (-not $sbv2Ok -and $null -ne $speaker) {
+            $speaker.Speak((Convert-ToHeartbeatSpeechText $text), 0) | Out-Null
+        }
     } catch {
     } finally {
         if ($acquired -and $null -ne $mutex) { try { $mutex.ReleaseMutex() } catch {} }
@@ -136,8 +174,9 @@ try {
 $consecutiveFailures = 0
 $lastAlertAt = Get-Date "2000-01-01"
 $lastLoggedOk = Get-Date "2000-01-01"
+$heartbeatStartedAt = Get-Date
 
-Write-Host "安全ゲート用の心拍プロセスを開始しました（${intervalSeconds}秒ごとに再計算）。終了はCtrl+C。" -ForegroundColor Cyan
+Write-Host "[HEARTBEAT] SAFETY GATE : STARTING / 90s GRACE" -ForegroundColor Cyan
 
 while ($true) {
     $failed = $false
@@ -159,9 +198,10 @@ while ($true) {
         $consecutiveFailures++
         Add-Content -Path $diagLogPath -Encoding UTF8 -Value ((Get-Date).ToString("yyyy-MM-dd HH:mm:ss")+",失敗,"+$consecutiveFailures+","+($errorDetail -replace ",","；"))
         Write-Host "[$(Get-Date -Format 'HH:mm:ss')] 心拍失敗（連続${consecutiveFailures}回）: $errorDetail" -ForegroundColor Yellow
-        if ($consecutiveFailures -ge $alertThreshold -and ((Get-Date) - $lastAlertAt).TotalMinutes -ge $alertRepeatMinutes) {
-            Write-Host "[$(Get-Date -Format 'HH:mm:ss')] 心拍プロセスがExcelへ接続できない状態が続いています。安全ゲートが更新されていない可能性があります。" -ForegroundColor Red
-            if ($speaker) { Invoke-SerializedSpeak $speaker "心拍プロセスがエクセルへ接続できていません。安全ゲートが古いままの可能性があります。確認してください。" }
+        $pastStartupGrace = ((Get-Date) - $heartbeatStartedAt).TotalSeconds -ge $startupGraceSeconds
+        if ($pastStartupGrace -and $consecutiveFailures -ge $alertThreshold -and ((Get-Date) - $lastAlertAt).TotalMinutes -ge $alertRepeatMinutes) {
+            Write-Host "[$(Get-Date -Format 'HH:mm:ss')] SAFETY HEARTBEAT ERROR: Excel connection unavailable." -ForegroundColor Red
+            Invoke-SerializedSpeak $speaker "心拍プロセスがエクセルへ接続できていません。安全ゲートを確認してください。"
             $lastAlertAt = Get-Date
         }
     } else {
