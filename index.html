@@ -15,10 +15,6 @@
 .weekly-grid>div{background:#0c1b2d;border:1px solid #243b55;border-radius:12px;padding:14px}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
- <!-- AI_COCKPIT_DOWNLOADS_V1 -->
- <a id="cockpit-kit-download" href="downloads/AI_Cockpit_OneClick_Starter_20260919_v2.zip" download style="display:inline-flex;align-items:center;gap:5px;padding:9px 12px;border:1px solid #2f8e73;border-radius:9px;background:#0d2a24;color:#6ff0c7;font-weight:800;text-decoration:none;white-space:nowrap" title="AIコクピット 最新起動・更新キット">最新版 起動/更新キット</a>
- <a id="cockpit-updater-download" href="downloads/INSTALL_AI_COCKPIT_UPDATER.ps1" download style="display:inline-flex;align-items:center;gap:5px;padding:9px 12px;border:1px solid #4b6682;border-radius:9px;background:#102238;color:#a8d5ff;font-weight:800;text-decoration:none;white-space:nowrap" title="一括起動ランチャーへ自動更新チェックを追加">更新機能を導入</a>
- <a id="cockpit-runtime-download" href="downloads/MS2_RSS_100_Stocks_Live_Kit.zip" download style="display:inline-flex;align-items:center;gap:5px;padding:9px 12px;border:1px solid #6b5b32;border-radius:9px;background:#2a2412;color:#ffe08a;font-weight:800;text-decoration:none;white-space:nowrap" title="MS2 RSS 100銘柄LIVE 実行キット（公開版）">MS2実行キット</a>
  <span class="cockpit-brand">AIトレードコクピット<small id="cockpit-status">Ver.5.2</small></span>
  <button class="cockpit-tab active" data-tab="ms2-live">LIVE売買</button>
  <button class="cockpit-tab" data-tab="overnight">オーバーナイトTOP5</button>
@@ -307,7 +303,26 @@ document.addEventListener("DOMContentLoaded",()=>{
  <h3>IR急騰PTS TOP5</h3>
  <div id="ms2-ir-pts-meta" class="sub">TDnet公式開示とJNXを照合中...</div>
  <div id="ms2-ir-pts-cards" class="ms2-live-grid"><div class="focus-empty"><span>公式IR＋PTS反応待ち</span></div></div>
- <p><a class="ms2-download" href="https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/downloads/MS2_RSS_100_Stocks_Live_Kit.zip" target="_blank" rel="noopener" download="MS2_RSS_100_Stocks_Live_Kit.zip">Windows用・100銘柄LIVEキット（ZIP）を直接ダウンロード</a></p>
+ <div id="cockpit-download-center" style="margin:22px 0 14px;padding:16px 18px;border:1px solid #2b3a47;border-radius:12px;background:linear-gradient(180deg,#0d151d,#0a1016);box-shadow:0 8px 24px #0004">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+   <div>
+    <div style="font-size:12px;color:#7f93a5;font-weight:800;letter-spacing:.08em">DOWNLOAD / SETUP</div>
+    <div style="font-size:18px;font-weight:900;color:#f2f7fb;margin-top:2px">AIコクピット セットアップ</div>
+   </div>
+   <div style="font-size:12px;color:#8ea1b2">初回は① ／ 既存環境は② ／ 完全実行キットは③</div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+   <a id="cockpit-kit-download" href="downloads/AI_Cockpit_OneClick_Starter_20260919_v2.zip" download style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;border:1px solid #2d8f73;border-radius:9px;background:#0d2a24;color:#6ff0c7;font-weight:900;text-decoration:none">
+    <span><small style="display:block;color:#86aa9f;font-weight:700;margin-bottom:2px">① 初回セットアップ</small><span>最新版 起動/更新キット</span></span><span style="font-size:16px">↓</span>
+   </a>
+   <a id="cockpit-updater-download" href="downloads/INSTALL_AI_COCKPIT_UPDATER.ps1" download style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;border:1px solid #405f80;border-radius:9px;background:#102238;color:#a8d5ff;font-weight:900;text-decoration:none">
+    <span><small style="display:block;color:#8296ad;font-weight:700;margin-bottom:2px">② 既存環境へ追加</small><span>更新機能を導入</span></span><span style="font-size:16px">↓</span>
+   </a>
+   <a id="cockpit-runtime-download" href="downloads/MS2_RSS_100_Stocks_Live_Kit.zip" download style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;border:1px solid #6b5b32;border-radius:9px;background:#241f11;color:#ffe08a;font-weight:900;text-decoration:none">
+    <span><small style="display:block;color:#a99d78;font-weight:700;margin-bottom:2px">③ MS2一式</small><span>MS2実行キット</span></span><span style="font-size:16px">↓</span>
+   </a>
+  </div>
+ </div>
  <p class="sub">元の統合AIコクピットへMS2 RSSの歩み値・板・VWAP・OR15を反映します。キオクシア専用タブはVWAP・OR15・ピボット・EMA20に表示を限定します。</p>
  <p class="warning"><b>Ver.1判定：</b>確定1分足 → OR5/OR15 → VWAP・EMA9/20 → 出来高 → 歩み値 → 地合い・業種 → UNDER/OVER補助。OR15追随は地合い不一致なら利確警戒。データが60秒以上古い場合は全サイン無効です。</p>
 </section>
