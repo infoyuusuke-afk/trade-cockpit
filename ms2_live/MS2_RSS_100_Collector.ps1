@@ -221,6 +221,12 @@ function Get-MarketTimeBand([DateTime]$at) {
     return "ザラバ終了"
 }
 
+function Test-JnxSession([DateTime]$at) {
+    if ($at.DayOfWeek -in @([DayOfWeek]::Saturday,[DayOfWeek]::Sunday)) { return $false }
+    $clock = $at.TimeOfDay
+    return ($clock -ge [TimeSpan]::Parse("16:30:00") -and $clock -lt [TimeSpan]::Parse("23:59:00"))
+}
+
 function Get-UnderRatioAt([object]$samples, [DateTime]$cutoff) {
     $baseline = $null
     foreach ($sample in $samples) {
@@ -477,6 +483,8 @@ Invoke-ExcelCom -Label "画面更新再開" -Action { $excel.ScreenUpdating = $t
 # JNXは補助データのため、Excel/RSSが起動直後で不安定でもCollector本体を停止させない。
 $jnxSheet = $null
 $jnxReady = $false
+$jnxStatus = "STANDBY"
+$jnxExpectedOpen = Test-JnxSession (Get-Date)
 try {
     try {
         $jnxSheet = Invoke-ExcelCom -Label "JNXシート確認" -Action { $book.Worksheets.Item("KIOXIA_JNX") }
@@ -528,11 +536,23 @@ try {
     Invoke-ExcelCom -Label "JNX列幅設定" -Action { $jnxSheet.Range("A:P").ColumnWidth = 14 } | Out-Null
     Invoke-ExcelCom -Label "JNXシート非表示" -Action { $jnxSheet.Visible = 0 } | Out-Null
     $jnxReady = $true
-    Write-Host "[JNX] READY" -ForegroundColor Green
+    if ($jnxExpectedOpen) {
+        $jnxStatus = "READY"
+        Write-Host "[JNX] READY" -ForegroundColor Green
+    } else {
+        $jnxStatus = "OFF / MARKET CLOSED"
+        Write-Host "[JNX] OFF / MARKET CLOSED" -ForegroundColor DarkGray
+    }
 } catch {
     $jnxSheet = $null
     $jnxReady = $false
-    Write-Host "[JNX] SKIPPED - Collector continues" -ForegroundColor DarkYellow
+    if ($jnxExpectedOpen) {
+        $jnxStatus = "WARN / UNAVAILABLE"
+        Write-Host "[JNX] WARN / UNAVAILABLE - Collector continues" -ForegroundColor DarkYellow
+    } else {
+        $jnxStatus = "OFF / MARKET CLOSED"
+        Write-Host "[JNX] OFF / MARKET CLOSED" -ForegroundColor DarkGray
+    }
 }
 
 # 決算・IR開示があった銘柄（固定100銘柄リスト外を含む）を引け後に動的追跡するための専用シート。
@@ -581,8 +601,14 @@ if (Test-Path $statsScript) {
     catch { Write-Host "[STATS] 時間帯統計: 保留" -ForegroundColor DarkYellow }
 }
 $kioxiaStats = $null
+$statsStatus = "NO_RECORDS"
+$lastStatsRefreshDay = ""
 if (Test-Path $statsJsonPath) {
-    try { $kioxiaStats = Get-Content -Raw -Encoding UTF8 $statsJsonPath | ConvertFrom-Json }
+    try {
+        $kioxiaStats = Get-Content -Raw -Encoding UTF8 $statsJsonPath | ConvertFrom-Json
+        if ($null -ne $kioxiaStats.status) { $statsStatus = [string]$kioxiaStats.status }
+        elseif ([int]$kioxiaStats.completed_days -gt 0) { $statsStatus = "ACCUMULATING" }
+    }
     catch { Write-Host "[STATS] 統計JSON: 読込保留" -ForegroundColor DarkYellow }
 }
 $jsonPath = Join-Path $PSScriptRoot "live_ms2.json"
@@ -767,6 +793,24 @@ try {
             $tdnetDisclosures=@(); $lastTdnetFetchAt=Get-Date "2000-01-01"; $tdnetStatus="取得待ち"; $lastIrVoiceCodes=@{}; $irDynamicSlots=@{}
             $loadedHoldDay=""; $holdFinalized=$false; $holdFinalizedAt=$null; $holdEntryCaptured=$false; $finalHoldTop5=@()
         }
+        # STATS DAILY REFRESH: once after the TSE session is complete.
+        if ($now.TimeOfDay -ge [TimeSpan]::Parse("15:35:00") -and $lastStatsRefreshDay -ne $activeDay) {
+            if (Test-Path $statsScript) {
+                try {
+                    & $statsScript -RecordsRoot $dataRoot -OutputJson $statsJsonPath -OutputCsv (Join-Path $PSScriptRoot "kioxia_time_stats.csv")
+                    if (Test-Path $statsJsonPath) {
+                        $kioxiaStats = Get-Content -Raw -Encoding UTF8 $statsJsonPath | ConvertFrom-Json
+                        $statsStatus = if ($null -ne $kioxiaStats.status) { [string]$kioxiaStats.status } else { "ACCUMULATING" }
+                    }
+                    $lastStatsRefreshDay = $activeDay
+                    Write-Host ("[STATS] daily refresh: " + $statsStatus) -ForegroundColor Green
+                } catch {
+                    $statsStatus = "WARN / REFRESH FAILED"
+                    Write-Host "[STATS] daily refresh failed - Collector continues" -ForegroundColor DarkYellow
+                }
+            }
+        }
+
         $dayDir = Join-Path $dataRoot $now.ToString("yyyy-MM-dd")
         New-Item -ItemType Directory -Force -Path $dayDir | Out-Null
         $tickCsv = Join-Path $dayDir "ticks.csv"
@@ -856,6 +900,15 @@ try {
             [pscustomobject]@{ Data = $sheet.Range("E2:AJ101").Value2 }
         }
         $values = $valuePacket.Data
+        $jnxExpectedOpen = Test-JnxSession $now
+        if (-not $jnxExpectedOpen) {
+            $jnxStatus = "OFF / MARKET CLOSED"
+        } elseif ($jnxReady) {
+            $jnxStatus = "READY"
+        } else {
+            $jnxStatus = "WARN / UNAVAILABLE"
+        }
+
         $jnxValues = $null
         if ($jnxReady -and $null -ne $jnxSheet) {
             try {
@@ -870,7 +923,12 @@ try {
                 $jnxReady = $false
                 $jnxSheet = $null
                 $jnxValues = $null
-                Write-Host "[JNX] LIVE READ SKIPPED - Collector continues" -ForegroundColor DarkYellow
+                if ($jnxExpectedOpen) {
+                    $jnxStatus = "WARN / LIVE READ FAILED"
+                    Write-Host "[JNX] WARN / LIVE READ FAILED - Collector continues" -ForegroundColor DarkYellow
+                } else {
+                    $jnxStatus = "OFF / MARKET CLOSED"
+                }
             }
         }
         $results = @()
@@ -1209,7 +1267,7 @@ try {
             $kioxia | Add-Member -NotePropertyName bars_5m -NotePropertyValue @(Convert-LiveBars $kioxiaBars 5 ([double]$kioxia.vwap)) -Force
             $kioxia | Add-Member -NotePropertyName bars_15m -NotePropertyValue @(Convert-LiveBars $kioxiaBars 15 ([double]$kioxia.vwap)) -Force
         }
-        $inPts=($now.TimeOfDay -ge [TimeSpan]::Parse("16:30:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("23:59:00"))
+        $inPts = Test-JnxSession $now
         $tseIndex=@{}
         foreach($item in $results){$tseIndex[[string]$item.ticker]=$item}
         $ptsResults=@()
@@ -1256,6 +1314,18 @@ try {
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ptsTicker,$stock.Name,$ptsDate,$ptsTime,$ptsPrice,$tseClose,$ptsGap,$ptsVolume,$tseVolume,$ptsVolumeRatio,$turnover,$ptsVwap,$ptsBid,$ptsAsk,$spreadPct,$ptsBidQty,$ptsAskQty,$ptsOver,$ptsUnder,$ptsUnderRatio,$ptsTick,$biasScore,$expectation,$stance)|ForEach-Object{Escape-Csv $_}
                 Add-Content -Encoding UTF8 -Path $ptsCsv -Value ($line -join ',')
             }
+        }
+
+        if ($inPts) {
+            if (-not $jnxReady) {
+                $jnxStatus = "WARN / UNAVAILABLE"
+            } elseif ($ptsResults.Count -eq 0) {
+                $jnxStatus = "WARN / NO LIVE DATA"
+            } else {
+                $jnxStatus = "READY"
+            }
+        } else {
+            $jnxStatus = "OFF / MARKET CLOSED"
         }
 
         # IR動的追跡枠（固定100銘柄リスト外の開示銘柄）の実データを読み取り、
@@ -1324,7 +1394,10 @@ try {
             }
         }
         $kioxiaPts=$ptsResults|Where-Object{$_.tse_ticker -eq "285A.T"}|Select-Object -First 1
-        if($null -eq $kioxiaPts){$kioxiaPts=[pscustomobject]@{ticker="285A.JNX";price=$null;gap_pct=$null;volume=$null;under_ratio=$null;stance="取得待ち";state="取得待ち"}}
+        if($null -eq $kioxiaPts){
+            $defaultPtsState = if ($inPts) { "取得待ち" } else { "市場時間外" }
+            $kioxiaPts=[pscustomobject]@{ticker="285A.JNX";price=$null;gap_pct=$null;volume=$null;under_ratio=$null;stance=$defaultPtsState;state=$jnxStatus}
+        }
         $ptsPrice=$kioxiaPts.price; $ptsGap=$kioxiaPts.gap_pct; $ptsVolume=$kioxiaPts.volume; $ptsUnderRatio=$kioxiaPts.under_ratio; $ptsState=$kioxiaPts.stance
         if ($null -ne $kioxia) {
             $historical=$null
@@ -1556,7 +1629,19 @@ try {
             account=@{status='未確認';fields=@('注文','約定','建玉','含み損益','信用余力','保証金率');privacy='公開JSONへ口座数値を出力しない'}
             auto_order=@{enabled=$false;status='既定で無効';implementation='発注関数なし'}
         }
-        $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;stale=($validCount -lt 90);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
+        $statsMeta = if ($null -ne $kioxiaStats) {
+            [ordered]@{
+                status=$statsStatus
+                scanned_days=$kioxiaStats.scanned_days
+                completed_days=$kioxiaStats.completed_days
+                incomplete_day_count=$kioxiaStats.incomplete_day_count
+                last_completed_day=$kioxiaStats.last_completed_day
+                minimum_days=$kioxiaStats.minimum_days
+            }
+        } else {
+            [ordered]@{status=$statsStatus;scanned_days=0;completed_days=0;incomplete_day_count=0;last_completed_day=$null;minimum_days=10}
+        }
+        $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;stale=($validCount -lt 90);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
         $jsonText=$payload|ConvertTo-Json -Depth 6
         Write-AtomicUtf8 $jsonPath $jsonText
         if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $jsonText }
