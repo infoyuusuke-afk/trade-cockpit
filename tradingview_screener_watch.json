@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-09-19 12:20:10 JST",
+  "updated_at": "2026-09-19 15:29:37 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -67,7 +67,7 @@
           "vwap": 2309.3333333333335,
           "high": 2414,
           "low": 2110,
-          "market_cap": 245810685806,
+          "market_cap": 246801446716,
           "sector": "Producer Manufacturing",
           "already_watched": true
         },
@@ -99,7 +99,7 @@
           "vwap": 53246.666666666664,
           "high": 54570,
           "low": 50600,
-          "market_cap": 27356787075195,
+          "market_cap": 27366112175293,
           "sector": "Electronic Technology",
           "already_watched": true
         },
@@ -131,7 +131,7 @@
           "vwap": 3175,
           "high": 3260,
           "low": 3015,
-          "market_cap": 196983046394,
+          "market_cap": 197049701111,
           "sector": "Health Technology",
           "already_watched": false
         },
@@ -147,7 +147,7 @@
           "vwap": 1128,
           "high": 1156,
           "low": 1075,
-          "market_cap": 151927025116,
+          "market_cap": 151938035477,
           "sector": "Electronic Technology",
           "already_watched": true
         },
@@ -179,7 +179,7 @@
           "vwap": 6590,
           "high": 6850,
           "low": 6150,
-          "market_cap": 185404195404,
+          "market_cap": 185687695885,
           "sector": "Health Technology",
           "already_watched": false
         },
@@ -227,7 +227,7 @@
           "vwap": 1514.3333333333333,
           "high": 1560,
           "low": 1441,
-          "market_cap": 49668087959,
+          "market_cap": 55115947975,
           "sector": "Technology Services",
           "already_watched": true
         },
@@ -408,7 +408,7 @@
           "vwap": 17.666666666666668,
           "high": 20,
           "low": 16,
-          "market_cap": 3103001862,
+          "market_cap": 3141001862,
           "sector": "Consumer Durables",
           "already_watched": false
         },
@@ -488,7 +488,7 @@
           "vwap": 43.333333333333336,
           "high": 47,
           "low": 41,
-          "market_cap": 6849461792,
+          "market_cap": 6937461792,
           "sector": "Technology Services",
           "already_watched": false
         },
@@ -733,7 +733,7 @@
           "vwap": 17.666666666666668,
           "high": 20,
           "low": 16,
-          "market_cap": 3103001862,
+          "market_cap": 3141001862,
           "sector": "Consumer Durables",
           "already_watched": false
         },
@@ -765,7 +765,7 @@
           "vwap": 234.66666666666666,
           "high": 240,
           "low": 232,
-          "market_cap": 31314283173,
+          "market_cap": 31314995590,
           "sector": "Technology Services",
           "already_watched": false
         },
@@ -893,7 +893,7 @@
           "vwap": 3170,
           "high": 3216,
           "low": 3094,
-          "market_cap": 2379982062012,
+          "market_cap": 2381267703613,
           "sector": "Technology Services",
           "already_watched": false
         },
@@ -909,7 +909,7 @@
           "vwap": 1730,
           "high": 1770,
           "low": 1710,
-          "market_cap": 568416375244,
+          "market_cap": 568458735962,
           "sector": "Health Technology",
           "already_watched": false
         },
@@ -1138,7 +1138,7 @@
           "vwap": 17.666666666666668,
           "high": 20,
           "low": 16,
-          "market_cap": 3103001862,
+          "market_cap": 3141001862,
           "sector": "Consumer Durables",
           "already_watched": false
         },
@@ -1154,7 +1154,7 @@
           "vwap": 43.333333333333336,
           "high": 47,
           "low": 41,
-          "market_cap": 6849461792,
+          "market_cap": 6937461792,
           "sector": "Technology Services",
           "already_watched": false
         },
@@ -1202,7 +1202,7 @@
           "vwap": 2309.3333333333335,
           "high": 2414,
           "low": 2110,
-          "market_cap": 245810685806,
+          "market_cap": 246801446716,
           "sector": "Producer Manufacturing",
           "already_watched": true
         },
@@ -1234,7 +1234,7 @@
           "vwap": 6590,
           "high": 6850,
           "low": 6150,
-          "market_cap": 185404195404,
+          "market_cap": 185687695885,
           "sector": "Health Technology",
           "already_watched": false
         },
@@ -1250,7 +1250,7 @@
           "vwap": 1514.3333333333333,
           "high": 1560,
           "low": 1441,
-          "market_cap": 49668087959,
+          "market_cap": 55115947975,
           "sector": "Technology Services",
           "already_watched": true
         },
@@ -1266,7 +1266,7 @@
           "vwap": 53246.666666666664,
           "high": 54570,
           "low": 50600,
-          "market_cap": 27356787075195,
+          "market_cap": 27366112175293,
           "sector": "Electronic Technology",
           "already_watched": true
         },
@@ -1319,7 +1319,7 @@
           "vwap": 53246.666666666664,
           "high": 54570,
           "low": 50600,
-          "market_cap": 27356787075195,
+          "market_cap": 27366112175293,
           "sector": "Electronic Technology",
           "already_watched": true
         },
@@ -1399,7 +1399,7 @@
           "vwap": 19323.333333333332,
           "high": 19665,
           "low": 18750,
-          "market_cap": 5215845220947,
+          "market_cap": 5216957058716,
           "sector": "Electronic Technology",
           "already_watched": false
         },
@@ -1707,7 +1707,7 @@
       "vwap": 248.73333333333335,
       "high": 251,
       "low": 247.1,
-      "market_cap": 12019820754086,
+      "market_cap": 12011593630449,
       "sector": "Communications",
       "already_watched": true
     },
@@ -1883,7 +1883,7 @@
       "vwap": 53246.666666666664,
       "high": 54570,
       "low": 50600,
-      "market_cap": 27356787075195,
+      "market_cap": 27366112175293,
       "sector": "Electronic Technology",
       "already_watched": true
     },
@@ -1947,7 +1947,7 @@
       "vwap": 541.0666666666667,
       "high": 553.4,
       "low": 533,
-      "market_cap": 3738302428927,
+      "market_cap": 3738821346006,
       "sector": "Technology Services",
       "already_watched": false
     },
@@ -2139,7 +2139,7 @@
       "vwap": 711.2333333333332,
       "high": 718.3,
       "low": 707.1,
-      "market_cap": 1558596818506,
+      "market_cap": 1559941013893,
       "sector": "Retail Trade",
       "already_watched": true
     },
@@ -2203,7 +2203,7 @@
       "vwap": 2309.3333333333335,
       "high": 2414,
       "low": 2110,
-      "market_cap": 245810685806,
+      "market_cap": 246801446716,
       "sector": "Producer Manufacturing",
       "already_watched": true
     },
@@ -2587,7 +2587,7 @@
       "vwap": 3170,
       "high": 3216,
       "low": 3094,
-      "market_cap": 2379982062012,
+      "market_cap": 2381267703613,
       "sector": "Technology Services",
       "already_watched": false
     },
@@ -2763,7 +2763,7 @@
       "vwap": 19323.333333333332,
       "high": 19665,
       "low": 18750,
-      "market_cap": 5215845220947,
+      "market_cap": 5216957058716,
       "sector": "Electronic Technology",
       "already_watched": false
     },
@@ -2923,7 +2923,7 @@
       "vwap": 43.333333333333336,
       "high": 47,
       "low": 41,
-      "market_cap": 6849461792,
+      "market_cap": 6937461792,
       "sector": "Technology Services",
       "already_watched": false
     },
@@ -2987,7 +2987,7 @@
       "vwap": 1988,
       "high": 2020.5,
       "low": 1943.5,
-      "market_cap": 353717930145,
+      "market_cap": 353736220093,
       "sector": "Electronic Technology",
       "already_watched": true
     },
@@ -3323,7 +3323,7 @@
       "vwap": 5979.666666666668,
       "high": 6012,
       "low": 5959,
-      "market_cap": 9490398841553,
+      "market_cap": 9490604251465,
       "sector": "Health Technology",
       "already_watched": false
     },
@@ -3435,7 +3435,7 @@
       "vwap": 1235.8333333333333,
       "high": 1255,
       "low": 1226,
-      "market_cap": 774633276978,
+      "market_cap": 774655567322,
       "sector": "Consumer Durables",
       "already_watched": false
     },
@@ -3515,7 +3515,7 @@
       "vwap": 241,
       "high": 243,
       "low": 239,
-      "market_cap": 145595568970,
+      "market_cap": 147056638062,
       "sector": "Commercial Services",
       "already_watched": false
     },
@@ -3899,7 +3899,7 @@
       "vwap": 1128,
       "high": 1156,
       "low": 1075,
-      "market_cap": 151927025116,
+      "market_cap": 151938035477,
       "sector": "Electronic Technology",
       "already_watched": true
     },
@@ -4059,7 +4059,7 @@
       "vwap": 3263,
       "high": 3296,
       "low": 3221,
-      "market_cap": 2152644661621.0002,
+      "market_cap": 2152756546875,
       "sector": "Finance",
       "already_watched": false
     },
@@ -4235,7 +4235,7 @@
       "vwap": 1730,
       "high": 1770,
       "low": 1710,
-      "market_cap": 568416375244,
+      "market_cap": 568458735962,
       "sector": "Health Technology",
       "already_watched": false
     },
@@ -4459,7 +4459,7 @@
       "vwap": 2142,
       "high": 2192,
       "low": 2105.5,
-      "market_cap": 1012106786255,
+      "market_cap": 1028179476929,
       "sector": "Utilities",
       "already_watched": false
     },
@@ -4539,7 +4539,7 @@
       "vwap": 1260.5,
       "high": 1267,
       "low": 1254.5,
-      "market_cap": 644718254150,
+      "market_cap": 644753850586,
       "sector": "Technology Services",
       "already_watched": false
     },
@@ -4555,7 +4555,7 @@
       "vwap": 2178.5,
       "high": 2212.5,
       "low": 2161.5,
-      "market_cap": 999147489624,
+      "market_cap": 999454934692,
       "sector": "Retail Trade",
       "already_watched": false
     },
@@ -4603,7 +4603,7 @@
       "vwap": 234.66666666666666,
       "high": 240,
       "low": 232,
-      "market_cap": 31314283173,
+      "market_cap": 31314995590,
       "sector": "Technology Services",
       "already_watched": false
     },
@@ -4683,7 +4683,7 @@
       "vwap": 7320.333333333333,
       "high": 7481,
       "low": 7240,
-      "market_cap": 2695225399414,
+      "market_cap": 2695303483887,
       "sector": "Transportation",
       "already_watched": false
     },
@@ -4731,7 +4731,7 @@
       "vwap": 17.666666666666668,
       "high": 20,
       "low": 16,
-      "market_cap": 3103001862,
+      "market_cap": 3141001862,
       "sector": "Consumer Durables",
       "already_watched": false
     },
@@ -4859,7 +4859,7 @@
       "vwap": 1773.5,
       "high": 1794.5,
       "low": 1753,
-      "market_cap": 1220646550140,
+      "market_cap": 1220650938568,
       "sector": "Technology Services",
       "already_watched": false
     },
@@ -4891,7 +4891,7 @@
       "vwap": 4324.666666666667,
       "high": 4360,
       "low": 4291,
-      "market_cap": 1944030128479,
+      "market_cap": 1944049194336,
       "sector": "Producer Manufacturing",
       "already_watched": false
     },
@@ -5387,7 +5387,7 @@
       "vwap": 1587.3333333333333,
       "high": 1615,
       "low": 1555,
-      "market_cap": 350873435837,
+      "market_cap": 350988991577,
       "sector": "Health Technology",
       "already_watched": false
     },
@@ -5419,7 +5419,7 @@
       "vwap": 6590,
       "high": 6850,
       "low": 6150,
-      "market_cap": 185404195404,
+      "market_cap": 185687695885,
       "sector": "Health Technology",
       "already_watched": false
     },
@@ -5659,7 +5659,7 @@
       "vwap": 1514.3333333333333,
       "high": 1560,
       "low": 1441,
-      "market_cap": 49668087959,
+      "market_cap": 55115947975,
       "sector": "Technology Services",
       "already_watched": true
     },
@@ -6027,7 +6027,7 @@
       "vwap": 3175,
       "high": 3260,
       "low": 3015,
-      "market_cap": 196983046394,
+      "market_cap": 197049701111,
       "sector": "Health Technology",
       "already_watched": false
     },
