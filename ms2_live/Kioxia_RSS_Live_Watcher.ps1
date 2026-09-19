@@ -568,7 +568,19 @@ try {
         # 2026-09-14深夜: $excel.Calculate()はExcelの仕様上「開いている全ブックを再計算」する
         # （Microsoft公式ドキュメント）。100銘柄収集器のシートを含む全体再計算は非常に重く、
         # ハング・COMエラーの一因と見て、このシート単体の再計算に変更した。
-        $rss.Calculate()
+        #
+        # 2026-09-16診断（Heartbeatと同根の問題）: RPC_E_CALL_REJECTED(0x80010001)・
+        # VBA_E_IGNORE(0x800AC472)は、Watcher・Heartbeat・100銘柄収集器の同時COMアクセス
+        # 競合による一時的なビジー状態が原因と判明した。このCalculate()はループ本体の一番
+        # 最初にあり、ここで失敗すると（このtry/catchの外側の仕様どおり）以降の全処理が
+        # スキップされ2秒後の次サイクルまで持ち越される。再計算自体は何度呼んでも安全（副作用
+        # なし）なため、ここだけはHeartbeatと同様に外側の2秒サイクルを待たず短時間で
+        # その場再試行する。ループ本体の残り（ログ書き込み・音声通知等、副作用を伴う処理）は
+        # 冪等でないため、丸ごとのリトライはせず既存の「失敗したら次サイクルへ」のままにする。
+        for ($calcAttempt = 1; $calcAttempt -le 3; $calcAttempt++) {
+            try { $rss.Calculate(); break }
+            catch { if ($calcAttempt -eq 3) { throw }; Start-Sleep -Milliseconds 400 }
+        }
         $now = Get-Date
         $t = $now.TimeOfDay
         $inSession = (($t -ge [TimeSpan]::Parse("09:00:00") -and $t -le [TimeSpan]::Parse("11:30:00")) -or ($t -ge [TimeSpan]::Parse("12:30:00") -and $t -le [TimeSpan]::Parse("15:30:00")))
