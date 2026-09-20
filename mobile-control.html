@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090d14">
+<title>AI Cockpit Mobile Control</title>
+<style>
+:root{color-scheme:dark;--bg:#090d14;--panel:#111824;--panel2:#171f2d;--line:#283244;--text:#f5f7fb;--muted:#8f9bad;--good:#38d996;--bad:#ff6577;--warn:#ffc857;--blue:#6aa9ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button{font:inherit}.shell{max-width:1180px;margin:auto;padding:calc(14px + env(safe-area-inset-top)) 14px calc(22px + env(safe-area-inset-bottom))}
+.top{position:sticky;top:0;z-index:5;background:rgba(9,13,20,.92);backdrop-filter:blur(14px);display:flex;gap:10px;align-items:center;padding:10px 0}
+.brand{font-weight:800;letter-spacing:.08em}.status{margin-left:auto;color:var(--good);font-size:12px}.stop{border:1px solid #71313a;background:#35151b;color:#ff9aa7;border-radius:12px;padding:10px 13px;font-weight:800}
+.grid{display:grid;grid-template-columns:360px 1fr;gap:14px}.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:18px;padding:15px;box-shadow:0 14px 35px rgba(0,0,0,.18)}
+h1{font-size:18px;margin:8px 0 14px}h2{font-size:13px;color:var(--muted);margin:0 0 10px;text-transform:uppercase;letter-spacing:.08em}
+.queue{display:grid;gap:9px}.request{width:100%;text-align:left;color:inherit;border:1px solid var(--line);background:#0d131d;border-radius:14px;padding:12px}
+.request.active{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}.row{display:flex;justify-content:space-between;gap:10px;align-items:center}.symbol{font-size:17px;font-weight:800}.pill{padding:4px 8px;border-radius:999px;font-weight:800;font-size:11px}.long{background:#123d30;color:#7ff0bf}.short{background:#431d26;color:#ff9eaa}.wait{background:#403719;color:#ffe08a}
+.metricGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.metric{background:#0d131d;border:1px solid var(--line);border-radius:13px;padding:11px}.metric b{display:block;font-size:19px;margin-top:4px}.muted{color:var(--muted);font-size:12px}.reason{margin-top:12px;padding:12px;border-left:3px solid var(--blue);background:#0d131d;border-radius:8px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.approve,.reject{border:0;border-radius:14px;padding:14px;font-weight:900}.approve{background:var(--good);color:#06150f}.reject{background:#322028;color:#ff9eaa;border:1px solid #6d3340}.audit{margin-top:14px;max-height:190px;overflow:auto}.audit div{padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}.blocked{opacity:.45;pointer-events:none}.banner{display:none;margin-bottom:12px;padding:11px;border-radius:12px;background:#4a3411;color:#ffe19a;border:1px solid #7c5b20}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.metricGrid{grid-template-columns:1fr 1fr}.detail{order:-1}.shell{padding-left:10px;padding-right:10px}.status{display:none}}
+</style>
+</head>
+<body><main class="shell">
+<header class="top"><div class="brand">AI COCKPIT · CONTROL</div><div class="status">● CONTROL ONLINE</div><button class="stop" id="stop">緊急停止</button></header>
+<div id="banner" class="banner"></div>
+<div class="grid">
+<section class="card"><h2>Approval Queue</h2><div id="queue" class="queue"></div></section>
+<section class="card detail"><h2>Decision</h2><div id="detail"></div><div class="audit"><h2>Audit Log</h2><div id="audit"></div></div></section>
+</div>
+</main>
+<script>
+const now=Date.now();
+const requests=[
+{id:"MC-001",symbol:"285A",name:"キオクシアHD",action:"LONG",ev:74,n:128,pf:1.42,avg:"+0.31%",dd:"-1.8%",fresh:now-12000,expires:now+15*60e3,reason:"OR15上抜け + VWAP上維持 + 出来高増加。v0.1モック。実注文は送信しません。",status:"pending"},
+{id:"MC-002",symbol:"6857",name:"アドバンテスト",action:"WAIT",ev:48,n:96,pf:1.03,avg:"+0.04%",dd:"-2.4%",fresh:now-18000,expires:now+10*60e3,reason:"方向性不足。VWAP近辺で優位性が閾値未満。",status:"pending"},
+{id:"MC-003",symbol:"6146",name:"ディスコ",action:"SHORT",ev:67,n:83,pf:1.29,avg:"+0.22%",dd:"-2.1%",fresh:now-9*60e3,expires:now+5*60e3,reason:"データ鮮度ゲートの動作確認用。5分超のため承認不可。",status:"pending"}
+];
+let selected=requests[0].id;
+const audit=JSON.parse(localStorage.getItem("aiCockpitMobileAudit")||"[]");
+function stale(r){return Date.now()-r.fresh>5*60e3}
+function expired(r){return Date.now()>r.expires}
+function log(type,r){audit.unshift({at:new Date().toLocaleString("ja-JP"),type,id:r?.id||"-",symbol:r?.symbol||"-"});localStorage.setItem("aiCockpitMobileAudit",JSON.stringify(audit.slice(0,100)))}
+function render(){
+ document.getElementById("queue").innerHTML=requests.map(r=>`<button class="request ${selected===r.id?"active":""}" onclick="selected='${r.id}';render()"><div class="row"><span class="symbol">${r.symbol} ${r.name}</span><span class="pill ${r.action.toLowerCase()}">${r.action}</span></div><div class="muted">EV ${r.ev} · N=${r.n} · ${r.status.toUpperCase()}</div></button>`).join("");
+ const r=requests.find(x=>x.id===selected); const blocked=stale(r)||expired(r)||r.status!=="pending";
+ document.getElementById("detail").innerHTML=`<h1>${r.symbol} ${r.name} <span class="pill ${r.action.toLowerCase()}">${r.action}</span></h1>
+ <div class="metricGrid"><div class="metric"><span class="muted">EV SCORE</span><b>${r.ev}</b></div><div class="metric"><span class="muted">SAMPLE</span><b>N=${r.n}</b></div><div class="metric"><span class="muted">PF</span><b>${r.pf}</b></div><div class="metric"><span class="muted">AVG P/L</span><b>${r.avg}</b></div></div>
+ <div class="reason">${r.reason}<br><span class="muted">Max DD ${r.dd} · Data: ${Math.round((Date.now()-r.fresh)/1000)}秒前 · Request ${r.id}</span></div>
+ ${blocked?`<div class="banner" style="display:block;margin-top:12px">${stale(r)?"データが古いため承認禁止":expired(r)?"承認期限切れ":"処理済み: "+r.status}</div>`:""}
+ <div class="actions ${blocked?"blocked":""}"><button class="reject" onclick="decide('rejected')">却下</button><button class="approve" onclick="decide('approved')">承認</button></div>`;
+ document.getElementById("audit").innerHTML=audit.length?audit.map(a=>`<div>${a.at} · ${a.type} · ${a.symbol} · ${a.id}</div>`).join(""):"<div class='muted'>操作履歴はまだありません。</div>";
+}
+window.decide=s=>{const r=requests.find(x=>x.id===selected);if(stale(r)||expired(r)||r.status!=="pending")return;r.status=s;log(s,r);render()}
+document.getElementById("stop").onclick=()=>{if(confirm("AIコクピットを緊急停止状態にしますか？\n（v0.1では実注文には接続されていません）")){log("EMERGENCY_STOP");const b=document.getElementById("banner");b.textContent="EMERGENCY STOP — 新規承認を停止しました";b.style.display="block";document.querySelector(".grid").classList.add("blocked")}}
+render();
+</script></body></html>
