@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090d14">
+<title>AI Cockpit Mobile Control</title>
+<style>
+:root{color-scheme:dark;--bg:#090d14;--panel:#111824;--panel2:#171f2d;--line:#283244;--text:#f5f7fb;--muted:#8f9bad;--good:#38d996;--bad:#ff6577;--warn:#ffc857;--blue:#6aa9ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button{font:inherit}.shell{max-width:1180px;margin:auto;padding:calc(14px + env(safe-area-inset-top)) 14px calc(22px + env(safe-area-inset-bottom))}
+.top{position:sticky;top:0;z-index:5;background:rgba(9,13,20,.92);backdrop-filter:blur(14px);display:flex;gap:10px;align-items:center;padding:10px 0}
+.brand{font-weight:800;letter-spacing:.08em}.status{margin-left:auto;color:var(--good);font-size:12px}.stop{border:1px solid #71313a;background:#35151b;color:#ff9aa7;border-radius:12px;padding:10px 13px;font-weight:800}
+.grid{display:grid;grid-template-columns:360px 1fr;gap:14px}.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:18px;padding:15px;box-shadow:0 14px 35px rgba(0,0,0,.18)}
+h1{font-size:18px;margin:8px 0 14px}h2{font-size:13px;color:var(--muted);margin:0 0 10px;text-transform:uppercase;letter-spacing:.08em}
+.queue{display:grid;gap:9px}.request{width:100%;text-align:left;color:inherit;border:1px solid var(--line);background:#0d131d;border-radius:14px;padding:12px}
+.request.active{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue) inset}.row{display:flex;justify-content:space-between;gap:10px;align-items:center}.symbol{font-size:17px;font-weight:800}.pill{padding:4px 8px;border-radius:999px;font-weight:800;font-size:11px}.long{background:#123d30;color:#7ff0bf}.short{background:#431d26;color:#ff9eaa}.wait{background:#403719;color:#ffe08a}
+.metricGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.metric{background:#0d131d;border:1px solid var(--line);border-radius:13px;padding:11px}.metric b{display:block;font-size:19px;margin-top:4px}.muted{color:var(--muted);font-size:12px}.reason{margin-top:12px;padding:12px;border-left:3px solid var(--blue);background:#0d131d;border-radius:8px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.approve,.reject{border:0;border-radius:14px;padding:14px;font-weight:900}.approve{background:var(--good);color:#06150f}.reject{background:#322028;color:#ff9eaa;border:1px solid #6d3340}.audit{margin-top:14px;max-height:190px;overflow:auto}.audit div{padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}.blocked{opacity:.45;pointer-events:none}.banner{display:none;margin-bottom:12px;padding:11px;border-radius:12px;background:#4a3411;color:#ffe19a;border:1px solid #7c5b20}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.metricGrid{grid-template-columns:1fr 1fr}.detail{order:-1}.shell{padding-left:10px;padding-right:10px}.status{display:none}}
+</style>
+</head>
+<body><main class="shell">
+<header class="top"><div class="brand">AI COCKPIT · CONTROL</div><div class="status">● CONTROL ONLINE</div><button class="stop" id="stop">緊急停止</button></header>
+<div id="banner" class="banner"></div>
+<div class="grid">
+<section class="card"><h2>Approval Queue</h2><div id="queue" class="queue"></div></section>
+<section class="card detail"><h2>Decision</h2><div id="detail"></div><div class="audit"><h2>Audit Log</h2><div id="audit"></div></div></section>
+</div>
+</main>
+<script>
+let requests=[],selected=null;const audit=JSON.parse(localStorage.getItem("aiCockpitMobileAudit")||"[]");
+function stale(r){return r.risk_gate!=="PASS"||r.data_freshness_sec>300} function expired(r){return Date.now()>r.expires}
+function log(type,r){audit.unshift({at:new Date().toLocaleString("ja-JP"),type,id:r?.id||"-",symbol:r?.symbol||"-"});localStorage.setItem("aiCockpitMobileAudit",JSON.stringify(audit.slice(0,100)))}
+function render(){if(!requests.length){queue.innerHTML="<div class='muted'>承認要求はありません。</div>";detail.innerHTML="<h1>NO REQUEST</h1><div class='muted'>新しい要求を待機しています。</div>";return}queue.innerHTML=requests.map(r=>`<button class="request ${selected===r.id?"active":""}" onclick="selected='${r.id}';render()"><div class="row"><span class="symbol">${r.symbol} ${r.name}</span><span class="pill ${r.action.toLowerCase()}">${r.action}</span></div><div class="muted">EV ${r.ev} · N=${r.n} · ${r.status.toUpperCase()}</div></button>`).join("");const r=requests.find(x=>x.id===selected)||requests[0];selected=r.id;const blocked=stale(r)||expired(r)||r.status!=="pending";detail.innerHTML=`<h1>${r.symbol} ${r.name} <span class="pill ${r.action.toLowerCase()}">${r.action}</span></h1><div class="metricGrid"><div class="metric"><span class="muted">EV SCORE</span><b>${r.ev}</b></div><div class="metric"><span class="muted">SAMPLE</span><b>N=${r.n}</b></div><div class="metric"><span class="muted">PF</span><b>${r.pf}</b></div><div class="metric"><span class="muted">AVG P/L</span><b>${r.avg}</b></div></div><div class="reason">${r.reason}<br><span class="muted">Max DD ${r.dd} · Data: ${r.data_freshness_sec}秒前 · Risk: ${r.risk_gate} · ${r.id}</span></div>${blocked?`<div class="banner" style="display:block;margin-top:12px">${stale(r)?"鮮度/Risk Gateにより承認禁止":expired(r)?"承認期限切れ":"処理済み: "+r.status}</div>`:""}<div class="actions ${blocked?"blocked":""}"><button class="reject" onclick="decide('rejected')">却下</button><button class="approve" onclick="decide('approved')">承認</button></div>`;document.getElementById("audit").innerHTML=audit.length?audit.map(a=>`<div>${a.at} · ${a.type} · ${a.symbol} · ${a.id}</div>`).join(""):"<div class='muted'>操作履歴はまだありません。</div>"}
+window.decide=v=>{const r=requests.find(x=>x.id===selected);if(!r||stale(r)||expired(r)||r.status!=="pending")return;r.status=v;log(v,r);render()}
+stop.onclick=()=>{if(confirm("AIコクピットを緊急停止状態にしますか？\n（v0.1では実注文には接続されていません）")){log("EMERGENCY_STOP");banner.textContent="EMERGENCY STOP — 新規承認を停止しました";banner.style.display="block";document.querySelector(".grid").classList.add("blocked")}}
+async function loadRequests(){try{const res=await fetch("data/mobile_approval_requests.json?ts="+Date.now(),{cache:"no-store"});if(!res.ok)throw Error();const p=await res.json();requests=(p.requests||[]).map(r=>({id:r.request_id,symbol:r.symbol||"-",name:r.name||"",action:r.action||"WAIT",ev:r.ev_score??0,n:r.sample_size??0,pf:r.profit_factor??"-",avg:(r.avg_pl_pct>=0?"+":"")+String(r.avg_pl_pct??"-")+"%",dd:String(r.max_dd_pct??"-")+"%",reason:r.trigger_summary||"",data_freshness_sec:r.data_freshness_sec??999999,risk_gate:r.risk_gate||"BLOCK",status:r.status||"pending",expires:Date.now()+(r.expires_in_sec??0)*1000}));if(!selected&&requests.length)selected=requests[0].id;render()}catch(e){banner.textContent="CONTROL DATA ERROR — 承認データを取得できません。承認操作を停止します。";banner.style.display="block";requests=[];render()}}
+loadRequests();setInterval(loadRequests,15000);
+</script></body></html>
