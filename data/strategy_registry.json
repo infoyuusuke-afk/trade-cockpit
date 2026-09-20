@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "strategies": [
+    {"strategy_key":"OR15_BREAKOUT_LONG","family":"OR15","side":"LONG","horizon":"intraday","status":"research"},
+    {"strategy_key":"OR15_BREAKOUT_SHORT","family":"OR15","side":"SHORT","horizon":"intraday","status":"research"},
+    {"strategy_key":"OR15_RETEST_LONG","family":"OR15","side":"LONG","horizon":"intraday","status":"research"},
+    {"strategy_key":"OR15_RETEST_SHORT","family":"OR15","side":"SHORT","horizon":"intraday","status":"research"},
+    {"strategy_key":"OR5_VWAP_RECLAIM_LONG","family":"OR5_VWAP","side":"LONG","horizon":"scalp","status":"research"},
+    {"strategy_key":"OR5_VWAP_REJECT_SHORT","family":"OR5_VWAP","side":"SHORT","horizon":"scalp","status":"research"},
+    {"strategy_key":"EMA_TOUCH_RECLAIM_LONG","family":"EMA","side":"LONG","horizon":"scalp","status":"research"},
+    {"strategy_key":"EMA_TOUCH_REJECT_SHORT","family":"EMA","side":"SHORT","horizon":"scalp","status":"research"},
+    {"strategy_key":"FVG_REACTION_LONG","family":"FVG","side":"LONG","horizon":"intraday","status":"research"},
+    {"strategy_key":"FVG_REACTION_SHORT","family":"FVG","side":"SHORT","horizon":"intraday","status":"research"},
+    {"strategy_key":"ICHIMOKU_DAILY_LONG","family":"ICHIMOKU","side":"LONG","horizon":"swing","status":"research"},
+    {"strategy_key":"ICHIMOKU_DAILY_SHORT","family":"ICHIMOKU","side":"SHORT","horizon":"swing","status":"research"}
+  ]
+}
