@@ -5,7 +5,7 @@ on:
   push:
     paths:
       - "signals.json"
-      - "scripts/build_mobile_approvals.py"
+      - "scripts/build_mobile_approvals.py"\n      - "data/ev_calibration.json"
 
 permissions:
   contents: write
