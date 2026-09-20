@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-21T08:30:00+09:00",
+  "mode": "paper",
+  "requests": [
+    {
+      "request_id": "MC-DEMO-001",
+      "request_type": "trade",
+      "symbol": "285A",
+      "name": "キオクシアHD",
+      "action": "LONG",
+      "ev_score": 74,
+      "sample_size": 128,
+      "profit_factor": 1.42,
+      "avg_pl_pct": 0.31,
+      "max_dd_pct": -1.8,
+      "trigger_summary": "OR15上抜け + VWAP上維持 + 出来高増加",
+      "data_freshness_sec": 12,
+      "risk_gate": "PASS",
+      "status": "pending",
+      "expires_in_sec": 900,
+      "paper_only": true
+    },
+    {
+      "request_id": "MC-DEMO-002",
+      "request_type": "trade",
+      "symbol": "6857",
+      "name": "アドバンテスト",
+      "action": "WAIT",
+      "ev_score": 48,
+      "sample_size": 96,
+      "profit_factor": 1.03,
+      "avg_pl_pct": 0.04,
+      "max_dd_pct": -2.4,
+      "trigger_summary": "方向性不足。VWAP近辺で優位性が閾値未満",
+      "data_freshness_sec": 18,
+      "risk_gate": "PASS",
+      "status": "pending",
+      "expires_in_sec": 600,
+      "paper_only": true
+    },
+    {
+      "request_id": "MC-DEMO-003",
+      "request_type": "trade",
+      "symbol": "6146",
+      "name": "ディスコ",
+      "action": "SHORT",
+      "ev_score": 67,
+      "sample_size": 83,
+      "profit_factor": 1.29,
+      "avg_pl_pct": 0.22,
+      "max_dd_pct": -2.1,
+      "trigger_summary": "データ鮮度ゲート動作確認用",
+      "data_freshness_sec": 540,
+      "risk_gate": "BLOCK",
+      "status": "pending",
+      "expires_in_sec": 300,
+      "paper_only": true
+    }
+  ]
+}
