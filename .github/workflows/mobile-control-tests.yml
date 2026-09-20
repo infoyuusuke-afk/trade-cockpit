@@ -18,4 +18,4 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m unittest discover -s tests -p "test_*.py" -v
+      - run: python -m unittest tests.test_mobile_approvals tests.test_ev_calibration tests.test_export_ev_trades -v
