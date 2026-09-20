@@ -3,6 +3,7 @@
 import csv, argparse
 from pathlib import Path
 from scripts.strategy_registry import validate
+from scripts.signal_features import signal_features
 
 def f(x): return float(x)
 
@@ -22,7 +23,7 @@ def or_range(rows, bars):
     xs=rows[:bars]
     return max(x["high"] for x in xs),min(x["low"] for x in xs)
 
-def backtest_or_breakout(rows, side="LONG", cost_pct=0.10, stop_pct=None, target_pct=None):
+def backtest_or_breakout(rows, side="LONG", cost_pct=0.10, stop_pct=None, target_pct=None, prev_close=None, market=None):
     # 15 sec bars: OR15 = first 60 bars. Signal uses completed OR plus next completed bar.
     if len(rows)<62: return []
     key=f"OR15_BREAKOUT_{side}"
@@ -56,7 +57,7 @@ def backtest_or_breakout(rows, side="LONG", cost_pct=0.10, stop_pct=None, target
                     exit_px=target_px; exit_reason="TARGET"
                 exit_ts=x["ts"]; break
         gross=((exit_px-entry)/entry*100)*(1 if side=="LONG" else -1)
-        trades.append({"strategy_key":key,"entry_ts":rows[i+1]["ts"],"exit_ts":exit_ts,"side":side,"entry":entry,"exit":exit_px,"pnl_pct":round(gross-cost_pct,6),"cost_pct":cost_pct,"exit_reason":exit_reason})
+        trade={"strategy_key":key,"entry_ts":rows[i+1]["ts"],"exit_ts":exit_ts,"side":side,"entry":entry,"exit":exit_px,"pnl_pct":round(gross-cost_pct,6),"cost_pct":cost_pct,"exit_reason":exit_reason}\n        trade.update(signal_features(rows,i,prev_close,market)); trades.append(trade)
         break
     return trades
 
@@ -82,7 +83,7 @@ def find_or5_vwap_signal(rows, side="LONG"):
         if ok: return i
     return None
 
-def backtest_or5_vwap(rows, side="LONG", cost_pct=0.10):
+def backtest_or5_vwap(rows, side="LONG", cost_pct=0.10, prev_close=None, market=None):
     key="OR5_VWAP_RECLAIM_LONG" if side=="LONG" else "OR5_VWAP_REJECT_SHORT"
     if not validate(key): raise ValueError("unregistered strategy_key")
     i=find_or5_vwap_signal(rows,side)
