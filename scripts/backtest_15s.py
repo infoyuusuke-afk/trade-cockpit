@@ -57,7 +57,8 @@ def backtest_or_breakout(rows, side="LONG", cost_pct=0.10, stop_pct=None, target
                     exit_px=target_px; exit_reason="TARGET"
                 exit_ts=x["ts"]; break
         gross=((exit_px-entry)/entry*100)*(1 if side=="LONG" else -1)
-        trade={"strategy_key":key,"entry_ts":rows[i+1]["ts"],"exit_ts":exit_ts,"side":side,"entry":entry,"exit":exit_px,"pnl_pct":round(gross-cost_pct,6),"cost_pct":cost_pct,"exit_reason":exit_reason}\n        trade.update(signal_features(rows,i,prev_close,market)); trades.append(trade)
+        trade={"strategy_key":key,"entry_ts":rows[i+1]["ts"],"exit_ts":exit_ts,"side":side,"entry":entry,"exit":exit_px,"pnl_pct":round(gross-cost_pct,6),"cost_pct":cost_pct,"exit_reason":exit_reason}
+        trade.update(signal_features(rows,i,prev_close,market)); trades.append(trade)
         break
     return trades
 
