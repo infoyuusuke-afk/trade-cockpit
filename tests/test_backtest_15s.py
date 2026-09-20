@@ -18,6 +18,12 @@ class Backtest15sTests(unittest.TestCase):
         t=backtest_or_breakout(x,"LONG",0.1)[0]
         self.assertEqual(t["entry"],103)
         self.assertEqual(t["strategy_key"],"OR15_BREAKOUT_LONG")
+    def test_same_bar_stop_and_target_uses_stop(self):
+        x=self.bars(66);x[60]["close"]=102;x[61]["open"]=102
+        x[62]["low"]=100;x[62]["high"]=104
+        t=backtest_or_breakout(x,"LONG",0,1,1)[0]
+        self.assertEqual(t["exit_reason"],"STOP")
+        self.assertAlmostEqual(t["pnl_pct"],-1.0)
     def test_no_breakout_no_trade(self):
         self.assertEqual(backtest_or_breakout(self.bars(),"LONG"),[])
 if __name__=="__main__": unittest.main()
