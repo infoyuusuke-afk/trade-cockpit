@@ -4,7 +4,10 @@ on:
     paths:
       - "scripts/build_mobile_approvals.py"
       - "scripts/calibrate_ev.py"
-      - "tests/test_mobile_approvals.py"\n      - "tests/test_ev_calibration.py"
+      - "scripts/export_ev_trades.py"
+      - "tests/test_mobile_approvals.py"
+      - "tests/test_ev_calibration.py"
+      - "tests/test_export_ev_trades.py"
       - "data/ev_calibration.json"
   workflow_dispatch:
 jobs:
