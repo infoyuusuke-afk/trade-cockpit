@@ -60,6 +60,39 @@ def backtest_or_breakout(rows, side="LONG", cost_pct=0.10, stop_pct=None, target
         break
     return trades
 
+def rolling_vwap(rows, end):
+    return vwap(rows[:end+1])
+
+def find_or5_vwap_signal(rows, side="LONG"):
+    """OR5 = first 20x15s bars. After OR5, require a VWAP cross on a completed bar.
+    LONG: previous close <= previous VWAP and current close > current VWAP.
+    SHORT: previous close >= previous VWAP and current close < current VWAP.
+    The current close must also be beyond OR5 midpoint in trade direction.
+    Returns signal bar index; caller enters next bar open.
+    """
+    if len(rows)<22: return None
+    hi,lo=or_range(rows,20); mid=(hi+lo)/2
+    for i in range(20,len(rows)-1):
+        pv=rolling_vwap(rows,i-1); cv=rolling_vwap(rows,i)
+        if pv is None or cv is None: continue
+        if side=="LONG":
+            ok=rows[i-1]["close"]<=pv and rows[i]["close"]>cv and rows[i]["close"]>mid
+        else:
+            ok=rows[i-1]["close"]>=pv and rows[i]["close"]<cv and rows[i]["close"]<mid
+        if ok: return i
+    return None
+
+def backtest_or5_vwap(rows, side="LONG", cost_pct=0.10):
+    key="OR5_VWAP_RECLAIM_LONG" if side=="LONG" else "OR5_VWAP_REJECT_SHORT"
+    if not validate(key): raise ValueError("unregistered strategy_key")
+    i=find_or5_vwap_signal(rows,side)
+    if i is None: return []
+    entry=rows[i+1]["open"]; exit_px=rows[-1]["close"]
+    gross=((exit_px-entry)/entry*100)*(1 if side=="LONG" else -1)
+    return [{"strategy_key":key,"entry_ts":rows[i+1]["ts"],"exit_ts":rows[-1]["ts"],"side":side,
+             "entry":entry,"exit":exit_px,"pnl_pct":round(gross-cost_pct,6),
+             "cost_pct":cost_pct,"exit_reason":"EOD"}]
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("csv")
