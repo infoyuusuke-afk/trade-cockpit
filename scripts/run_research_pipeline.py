@@ -14,7 +14,7 @@ from scripts.analyze_ev_features import analyze
 
 FIELDS=["strategy_key","entry_ts","exit_ts","side","entry","exit","gross_pnl_pct","cost_pct","net_pnl_pct","pnl_pct","exit_reason",
 "volume_ratio_20","bar_turnover","vwap_deviation_pct","or5_width_pct","intraday_range_pct","gap_pct",
-"nikkei_return_pct","topix_return_pct","futures_return_pct","session_date","first_print_ts","open_delay_sec","open_state"]
+"nikkei_return_pct","topix_return_pct","futures_return_pct","session_date","first_print_ts","open_delay_sec","open_state","opening_observed_bars","opening_irregular_intervals","opening_data_quality"]
 
 FORMATS=("%Y-%m-%d %H:%M:%S","%Y-%m-%dT%H:%M:%S","%Y/%m/%d %H:%M:%S")
 
@@ -52,26 +52,32 @@ def split_sessions(rows):
     return sessions
 
 def validate_tse_session(session):
-    """Validate 15s continuity from the first observed execution bar.
+    """Validate that a session is usable without inventing missing-data causes.
 
-    A delayed first print is NOT treated as missing data: it may be a special
-    quote/opening auction condition. OHLCV alone cannot prove 特買い/特売り, so
-    classification must remain UNKNOWN until order-book/tape evidence exists.
-    Lunch gaps are allowed because only the opening OR segment is checked here.
+    Delayed first prints and gaps between observed bars are preserved. OHLCV
+    alone cannot distinguish no-trade intervals, special quotes, halts, or
+    vendor/data loss. Exact cause must be enriched from MS2/order-book/tape.
     """
     if not session: return False
     dts=[parse_ts(r["ts"]) for r in session]
     first=dts[0]
     if first.time().strftime("%H:%M:%S")<"09:00:00":
         return False
-    opening=dts[:60]
-    if len(opening)<60: return False
-    for i,dt in enumerate(opening):
-        expected_seconds=i*15
-        actual=(dt-first).total_seconds()
-        if actual!=expected_seconds:
-            raise ValueError("broken 15s opening grid: "+str(session[i]["ts"]))
+    if len(dts)<62: return False
+    if any(b<=a for a,b in zip(dts,dts[1:])):
+        raise ValueError("non-increasing timestamps")
     return True
+
+def opening_quality(session):
+    dts=[parse_ts(r["ts"]) for r in session]
+    first=dts[0]
+    first60=dts[:60]
+    irregular=sum(1 for a,b in zip(first60,first60[1:]) if (b-a).total_seconds()!=15)
+    return {
+        "opening_observed_bars":len(first60),
+        "opening_irregular_intervals":irregular,
+        "opening_data_quality":"CONTINUOUS_15S" if irregular==0 else "IRREGULAR_UNCLASSIFIED"
+    }
 
 def run(input_csv,out_dir,cost_pct=0.10,prev_close=None):
     validate_input(input_csv); rows=load_bars(input_csv)
@@ -85,12 +91,13 @@ def run(input_csv,out_dir,cost_pct=0.10,prev_close=None):
             open_dt=first_dt.replace(hour=9,minute=0,second=0,microsecond=0)
             delay=max(0,int((first_dt-open_dt).total_seconds()))
             open_state="NORMAL_OPEN" if delay==0 else "DELAYED_OPEN_UNCLASSIFIED"
+            quality=opening_quality(session)
             day_trades=[]
             for side in ("LONG","SHORT"):
                 day_trades += backtest_or_breakout(session,side,cost_pct,prev_close=prior_close)
                 day_trades += backtest_or5_vwap(session,side,cost_pct,prev_close=prior_close)
             for trade in day_trades:
-                trade.update({"session_date":day,"first_print_ts":session[0]["ts"],"open_delay_sec":delay,"open_state":open_state})
+                trade.update({"session_date":day,"first_print_ts":session[0]["ts"],"open_delay_sec":delay,"open_state":open_state,**quality})
             trades += day_trades
         prior_close=session[-1]["close"] if session else prior_close
     if usable==0: raise ValueError("no session has at least 62 x 15s bars")
