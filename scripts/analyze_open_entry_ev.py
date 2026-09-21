@@ -49,3 +49,27 @@ def compare_entry_delays(rows, side, cost_pct=0.10):
           "information_policy":"PREOPEN_PLUS_FIRST_PRINT" if delay==0 else f"OBSERVED_THROUGH_{delay}S"
         })
     return out
+
+
+def summarize_entry_policies(results):
+    """Aggregate comparable entry policies. Descriptive research, not a live gate."""
+    groups={}
+    for r in results:
+        groups.setdefault(r["entry_policy"],[]).append(r)
+    out=[]
+    for policy,rs in sorted(groups.items()):
+        pnls=[float(x["net_pnl_pct"]) for x in rs]
+        wins=sum(x for x in pnls if x>0)
+        losses=-sum(x for x in pnls if x<0)
+        pf=(wins/losses) if losses>0 else (float("inf") if wins>0 else 0.0)
+        out.append({
+          "entry_policy":policy,"sample_size":len(rs),
+          "win_rate":sum(1 for x in pnls if x>0)/len(rs),
+          "avg_net_pnl_pct":sum(pnls)/len(rs),
+          "profit_factor":pf,
+          "avg_mfe_pct":sum(float(x["mfe_pct"]) for x in rs)/len(rs),
+          "avg_mae_pct":sum(float(x["mae_pct"]) for x in rs)/len(rs),
+          "avg_missed_move_pct_vs_open":sum(float(x["missed_move_pct_vs_open"]) for x in rs)/len(rs),
+          "research_only":True
+        })
+    return out
