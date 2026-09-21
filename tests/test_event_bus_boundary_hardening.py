@@ -19,3 +19,5 @@ class EventBusBoundaryHardeningTest(unittest.TestCase):
         self.assertFalse(validate_event(e))
     def test_naive_timestamp_rejected(self):
         with self.assertRaises(ValueError): build_event(timestamp="2026-09-21T15:00:00",domain="SYSTEM",event_type="TEST",source="TEST",payload={})
+
+# ci-trigger: replacement PR on latest main
