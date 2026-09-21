@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Point-in-time catalyst lifecycle contract. Research only."""
 
-VALID_STATES=("SOCIAL","RUMOR","REPORTED","CONFIRMED","DENIED")
+from scripts.time_utils import parse_market_ts\n\nVALID_STATES=("SOCIAL","RUMOR","REPORTED","CONFIRMED","DENIED")
 
 def validate_catalyst_event(event, decision_ts):
     from datetime import datetime
@@ -23,7 +23,7 @@ def catalyst_snapshot(events, decision_ts):
             if str(ex)=="future catalyst information": continue
             raise
     latest={}
-    for e in sorted(valid,key=lambda x:x["observed_at"]):
+    for e in sorted(valid,key=lambda x:parse_market_ts(x["observed_at"])):
         latest[e["event_id"]]=e
     return list(latest.values())
 
