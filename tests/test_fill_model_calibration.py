@@ -69,3 +69,10 @@ class CalibrationDeduplicationTest(unittest.TestCase):
   o=m.evaluate(rows);self.assertEqual(o["sample_size"],1);self.assertEqual(o["duplicate_record_n"],99);self.assertEqual(o["status"],"INSUFFICIENT_SAMPLE")
  def test_missing_order_identity_is_invalid(self):
   o=m.evaluate([rec(shadow_order_id="")]);self.assertEqual(o["sample_size"],0);self.assertEqual(o["invalid_record_n"],1)
+
+class CalibrationDuplicateConflictTest(unittest.TestCase):
+ def test_identical_duplicate_is_benign_dedupe(self):
+  r=rec(shadow_order_id="same");o=m.evaluate([r,dict(r)]);self.assertEqual(o["duplicate_record_n"],1);self.assertEqual(o["conflicting_duplicate_n"],0);self.assertEqual(o["evidence_integrity_status"],"OK")
+ def test_same_order_id_with_different_observed_fill_is_conflict(self):
+  a=rec(shadow_order_id="collision",observed_fill_qty=40);b=rec(shadow_order_id="collision",observed_fill_qty=80)
+  o=m.evaluate([a,b]);self.assertEqual(o["sample_size"],1);self.assertEqual(o["conflicting_duplicate_n"],1);self.assertEqual(o["evidence_integrity_status"],"CONFLICTING_DUPLICATE")
