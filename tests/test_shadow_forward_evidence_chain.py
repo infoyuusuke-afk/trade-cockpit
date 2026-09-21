@@ -69,6 +69,27 @@ class ShadowForwardEvidenceChainTests(unittest.TestCase):
             sfec.make_event(event_type="CAPTURE_START", captured_at=datetime(2026, 9, 22, 9),
                             payload={})
 
+    def test_separately_retained_anchor_detects_full_chain_rewrite(self):
+        original = chain()
+        anchor = sfec.compute_chain_anchor(original)
+        # Rebuild an internally self-consistent but different chain.
+        a = sfec.make_event(event_type="CAPTURE_START", captured_at=NOW - timedelta(seconds=3),
+                            payload={"intent_hash": "rewritten"})
+        b = sfec.make_event(event_type="LIFECYCLE_STEP", captured_at=NOW - timedelta(seconds=2),
+                            payload={"step": "ORDER_FILL"}, previous_hash=a["event_hash"])
+        c = sfec.make_event(event_type="FINALIZE", captured_at=NOW - timedelta(seconds=1),
+                            payload={"status": "FILLED"}, previous_hash=b["event_hash"])
+        rewritten = [a, b, c]
+        self.assertTrue(sfec.verify_chain(rewritten, now=NOW)["valid"])
+        result = sfec.verify_chain(rewritten, now=NOW, expected_anchor=anchor)
+        self.assertFalse(result["valid"])
+        self.assertIn("CHAIN_ANCHOR_MISMATCH", result["reasons"])
+
+    def test_matching_anchor_passes(self):
+        x = chain()
+        self.assertTrue(sfec.verify_chain(
+            x, now=NOW, expected_anchor=sfec.compute_chain_anchor(x))["valid"])
+
     def test_source_tamper_fails(self):
         x = deepcopy(chain()); x[0]["source"] = "BACKTEST"
         self.assertFalse(sfec.verify_chain(x, now=NOW)["valid"])
