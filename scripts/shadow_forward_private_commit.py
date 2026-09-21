@@ -5,12 +5,12 @@ Inactive library only: no service, scheduler, broker, RSS, or Real-submit path.
 from __future__ import annotations
 
 import os
-from pathlib import Path
+from dataclasses import dataclass\nfrom pathlib import Path
 
 import shadow_forward_private_path as path_policy
 
 
-def commit_new_private_artifact(repo_root: Path, relative_path: str, data: bytes) -> Path:
+def commit_new_private_artifact(repo_root: Path, relative_path: str, data: bytes) -> CommitResult:
     """Create one immutable artifact; never overwrite an existing final path."""
     if not isinstance(data, bytes) or not data:
         raise ValueError("non-empty bytes required")
