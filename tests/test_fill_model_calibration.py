@@ -1,5 +1,5 @@
 import importlib.util,unittest
-from datetime import datetime,timezone
+from datetime import datetime,timezone,timedelta
 from pathlib import Path
 ROOT=Path(__file__).parents[1];spec=importlib.util.spec_from_file_location("fmc",ROOT/"scripts/fill_model_calibration.py");m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 def rec(**kw):
@@ -40,3 +40,17 @@ class CalibrationCoverageGateTest(unittest.TestCase):
   for ot in ("MARKET","LIMIT"):
    for side in ("BUY","SELL"): rows += [rec(order_type=ot,side=side) for _ in range(m.MIN_SAMPLE)]
   o=m.evaluate(rows);self.assertEqual(o["coverage_status"],"COVERAGE_SUFFICIENT");self.assertFalse(o["parameter_update_allowed"])
+
+class MultiSessionCoverageTest(unittest.TestCase):
+ def test_one_day_cannot_satisfy_coverage(self):
+  rows=[]
+  for ot in ("MARKET","LIMIT"):
+   for side in ("BUY","SELL"): rows += [rec(order_type=ot,side=side) for _ in range(m.MIN_SAMPLE)]
+  o=m.evaluate(rows);self.assertEqual(o["day_coverage_status"],"DAY_COVERAGE_INSUFFICIENT");self.assertEqual(o["coverage_status"],"COVERAGE_INSUFFICIENT")
+ def test_five_days_plus_base_strata_can_satisfy_coverage(self):
+  rows=[]
+  base=datetime(2026,9,1,tzinfo=timezone.utc)
+  for ot in ("MARKET","LIMIT"):
+   for side in ("BUY","SELL"):
+    rows += [rec(order_type=ot,side=side,observed_at=base+timedelta(days=i % m.MIN_SESSION_DAYS)) for i in range(m.MIN_SAMPLE)]
+  o=m.evaluate(rows);self.assertEqual(o["unique_session_days"],m.MIN_SESSION_DAYS);self.assertEqual(o["coverage_status"],"COVERAGE_SUFFICIENT");self.assertFalse(o["parameter_update_allowed"])
