@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """One-command research pipeline for TradingView 15s CSV. Research only."""
-import argparse,csv,json
+import argparse,csv,json\nfrom datetime import datetime
 from pathlib import Path
 from scripts.backtest_15s import load_bars,backtest_or_breakout,backtest_or5_vwap
 from scripts.analyze_ev_features import analyze
 
-FIELDS=["strategy_key","entry_ts","exit_ts","side","entry","exit","pnl_pct","cost_pct","exit_reason",
+FIELDS=["strategy_key","entry_ts","exit_ts","side","entry","exit","gross_pnl_pct","cost_pct","net_pnl_pct","pnl_pct","exit_reason",
 "volume_ratio_20","bar_turnover","vwap_deviation_pct","or5_width_pct","intraday_range_pct","gap_pct",
 "nikkei_return_pct","topix_return_pct","futures_return_pct"]
 
@@ -20,17 +20,24 @@ def validate_input(path):
 
 def run(input_csv,out_dir,cost_pct=0.10,prev_close=None):
     validate_input(input_csv); rows=load_bars(input_csv)
-    if len(rows)<62: raise ValueError("need at least 62 x 15s bars")
-    trades=[]
-    for side in ("LONG","SHORT"):
-        trades += backtest_or_breakout(rows,side,cost_pct,prev_close=prev_close)
-        trades += backtest_or5_vwap(rows,side,cost_pct,prev_close=prev_close)
+    sessions=split_sessions(rows)
+    if not sessions: raise ValueError("no sessions")
+    trades=[]; prior_close=prev_close
+    usable=0
+    for day,session in sessions:
+        if len(session)>=62:
+            usable+=1
+            for side in ("LONG","SHORT"):
+                trades += backtest_or_breakout(session,side,cost_pct,prev_close=prior_close)
+                trades += backtest_or5_vwap(session,side,cost_pct,prev_close=prior_close)
+        prior_close=session[-1]["close"] if session else prior_close
+    if usable==0: raise ValueError("no session has at least 62 x 15s bars")
     out=Path(out_dir);out.mkdir(parents=True,exist_ok=True)
     trade_csv=out/"trade_results.csv"
     with trade_csv.open("w",encoding="utf-8",newline="") as fh:
         w=csv.DictWriter(fh,fieldnames=FIELDS,extrasaction="ignore");w.writeheader();w.writerows(trades)
     ev={"schema_version":1,"input_file":Path(input_csv).name,"bar_count":len(rows),"trade_count":len(trades),
-        "cost_pct":cost_pct,"feature_groups":analyze(trade_csv)}
+        "cost_pct":cost_pct,"session_count":len(sessions),"usable_session_count":usable,"feature_groups":analyze(trade_csv)}
     ev_path=out/"ev_feature_buckets.json";ev_path.write_text(json.dumps(ev,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     return trade_csv,ev_path,ev
 
