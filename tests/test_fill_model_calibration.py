@@ -22,3 +22,11 @@ class StratifiedCalibrationTest(unittest.TestCase):
   o=m.evaluate(rows);self.assertEqual(o["status"],"CALIBRATION_REVIEW_ELIGIBLE");self.assertEqual(o["strata"]["shadow-fill-model-0.1|LIMIT|BUY"]["status"],"INSUFFICIENT_SAMPLE");self.assertEqual(o["strata"]["shadow-fill-model-0.1|MARKET|BUY"]["status"],"INSUFFICIENT_SAMPLE")
  def test_buy_and_sell_are_separate(self):
   o=m.evaluate([rec(side="BUY"),rec(side="SELL")]);self.assertEqual(len(o["strata"]),2)
+
+class LiquidityContextStrataTest(unittest.TestCase):
+ def test_spread_liquidity_time_context_is_separate(self):
+  a=rec(spread_yen=1.0,tick_size=1.0,visible_qty=50)
+  b=rec(spread_yen=4.0,tick_size=1.0,visible_qty=400)
+  o=m.evaluate([a,b]);self.assertEqual(len(o["context_strata"]),2);self.assertTrue(all(v["status"]=="INSUFFICIENT_SAMPLE" for v in o["context_strata"].values()))
+ def test_invalid_optional_context_is_rejected(self):
+  o=m.evaluate([rec(spread_yen=-1.0,tick_size=1.0,visible_qty=100)]);self.assertEqual(o["sample_size"],0);self.assertEqual(o["invalid_record_n"],1)
