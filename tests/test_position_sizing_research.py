@@ -1,5 +1,5 @@
 import unittest
-from scripts.position_sizing_research import simulate_staged_long,compare_fixed_vs_staged
+from scripts.position_sizing_research import simulate_staged_long,compare_fixed_vs_staged,validate_add_signal,gated_staged_long
 
 class PositionSizingResearchTests(unittest.TestCase):
  def rows(self):
@@ -24,5 +24,23 @@ class PositionSizingResearchTests(unittest.TestCase):
  def test_weights_must_sum_to_one(self):
   with self.assertRaises(ValueError):
    simulate_staged_long(self.rows(),[{"index":0,"weight":.5}])
+
+ def test_fake_absorption_without_ms2_fails_closed(self):
+  with self.assertRaises(ValueError):
+   validate_add_signal({"level":"VWAP","level_reaction_confirmed":True,
+    "sell_absorption_confirmed":True,"absorption_source":"TRADINGVIEW"})
+
+ def test_level_reaction_can_remain_price_only_research(self):
+  x=validate_add_signal({"level":"OR15_LOW","level_reaction_confirmed":True})
+  self.assertTrue(x["eligible"])
+  self.assertEqual(x["evidence_tier"],"PRICE_LEVEL_ONLY")
+
+ def test_missing_level_reaction_blocks_staged_add(self):
+  sig=[{"index":0,"level":"VWAP","level_reaction_confirmed":True},
+       {"index":1,"level":"OR5_LOW","level_reaction_confirmed":False},
+       {"index":2,"level":"OR15_LOW","level_reaction_confirmed":True}]
+  x=gated_staged_long(self.rows(),sig)
+  self.assertFalse(x["executed"])
+  self.assertEqual(x["reason"],"ADD_GATE_BLOCKED")
 
 if __name__=="__main__": unittest.main()
