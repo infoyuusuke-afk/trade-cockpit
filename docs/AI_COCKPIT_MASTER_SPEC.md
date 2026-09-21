@@ -416,6 +416,228 @@ Important: current-condition score is not expected value.
 
 ---
 
+## 4.7.1 AI Strategy Supervisor Layer / AI戦略統括層
+
+The cockpit shall have an explicit multi-supervisor architecture above individual strategy modules and below Owner approval.
+
+The purpose is not to let an LLM bypass deterministic controls. The purpose is to separate domain responsibility, keep strategy reasoning auditable, and present a coherent real-time advisory view.
+
+### Supervisors / 統括者
+
+| English | 日本語 | Primary responsibility |
+|---|---|---|
+| Chief AI Strategy Supervisor | 総合AI戦略統括 | Aggregate lane outputs, surface conflicts, produce the final advisory strategy view |
+| Data Quality Supervisor | データ品質統括 | Freshness, source integrity, missing/stale/conflicting evidence, point-in-time checks |
+| Market Regime Supervisor | 地合い・レジーム統括 | UP/DOWN/RANGE/HIGH_VOL/RATE_SHOCK/EVENT_LOCK/UNKNOWN state |
+| SCALP Supervisor | スキャル戦略統括 | Seconds-to-minutes OR5/VWAP/EMA/flow/tape scenarios |
+| Event Supervisor | イベント戦略統括 | Theme/material/TDnet/earnings/sudden-volume event lane |
+| Realtime Daytrade Supervisor | リアルタイム・デイトレ戦略統括 | Minutes-to-hours intraday candidate management |
+| Overnight Supervisor | オーバーナイト戦略統括 | Close-to-next-open scenarios and gap risk |
+| Swing Supervisor | スイング戦略統括 | Multi-day/multi-week trend/catalyst scenarios |
+| Value / Long Catalyst Supervisor | バリュー・中長期カタリスト統括 | Earnings, revisions, valuation, capital return, long-horizon catalyst |
+| TOB / M&A Supervisor | TOB・M&A統括 | Event-specific takeover / merger scenarios |
+| KIOXIA Dedicated Supervisor | キオクシア専任統括 | 285A dedicated OR/VWAP/flow/time-of-day/deep-dive logic |
+| Risk & Safety Supervisor | リスク・安全統括 | Risk Gate, stale/missing state, kill conditions, exposure constraints |
+| Shadow Execution Supervisor | シャドー執行統括 | Shadow order/fill/position lifecycle only |
+| Reconciliation Supervisor | 照合統括 | Intent/order/fill/position/evidence consistency |
+| Calibration Supervisor | キャリブレーション統括 | Fill-model error, execution evidence, evidence sufficiency |
+| Journal / Content Export Supervisor | 日記・コンテンツ出力統括 | Export only sanitized events to the separate AI Trading Journal system |
+
+A supervisor is a logical responsibility boundary. It may be implemented by deterministic code, an LLM-assisted reviewer, or both.
+
+### Hard boundary: deterministic core vs AI commentary
+
+For every supervisor:
+
+1. deterministic facts/state are authoritative;
+2. LLM/AI text may summarize, compare, explain, and propose;
+3. AI commentary may not mutate canonical hashes, Risk Gate, Permission Gate, Shadow state, reconciliation state, or broker state;
+4. AI commentary is never a direct order-submit command;
+5. unavailable LLM service must not stop the deterministic safety layer;
+6. stale/missing/conflicting evidence forces WAIT_DATA/BLOCK/UNKNOWN as appropriate.
+
+---
+
+## 4.7.2 AI Strategy LIVE / リアルタイムAI戦略LIVE
+
+The cockpit shall expose a dedicated real-time advisory surface:
+
+**AI Strategy LIVE / AI戦略LIVE**
+
+This surface aggregates the latest supervisor snapshots without becoming an execution bypass.
+
+### Required per-supervisor snapshot
+
+Each supervisor shall emit a point-in-time snapshot containing at least:
+
+- supervisor_id;
+- supervisor_version;
+- strategy_id / strategy_version where applicable;
+- symbol / universe;
+- horizon;
+- observed_at;
+- generated_at;
+- data_freshness;
+- source/provenance references;
+- regime;
+- advisory direction: LONG / SHORT / NEUTRAL / WAIT;
+- state: ACTIVE / WATCH / WAIT_DATA / BLOCK / CLOSED / UNKNOWN;
+- trigger conditions;
+- invalidation conditions;
+- stop/target proposal when defined;
+- current-condition score;
+- historical EV statistics where available;
+- N / sample sufficiency;
+- evidence_quality;
+- conflict flags;
+- risk-gate status;
+- shadow-execution status;
+- explanatory commentary;
+- real_submit_allowed = false.
+
+### LIVE aggregation flow
+
+```text
+MS2 / TradingView / public event feeds
+        |
+        v
+Data Quality Supervisor
+        |
+        +--> Market Regime Supervisor
+        |
+        +--> SCALP Supervisor
+        +--> EVENT Supervisor
+        +--> REALTIME Daytrade Supervisor
+        +--> OVERNIGHT Supervisor
+        +--> SWING Supervisor
+        +--> VALUE / Long Catalyst Supervisor
+        +--> TOB / M&A Supervisor
+        +--> KIOXIA Dedicated Supervisor
+                    |
+                    v
+          Chief AI Strategy Supervisor
+                    |
+             Conflict Resolver
+                    |
+          Risk & Safety Supervisor
+                    |
+          AI Strategy LIVE display
+                    |
+                    +--> Shadow Execution only
+                    |
+                    +--> sanitized Journal Event Export
+```
+
+### Chief AI Strategy Supervisor / 総合AI戦略統括
+
+The Chief supervisor must not simply majority-vote.
+
+It must preserve lane independence and show, for example:
+
+- SCALP: LONG candidate
+- REALTIME: WATCH
+- OVERNIGHT: BLOCK
+- SWING: LONG WATCH
+- VALUE: NEUTRAL
+
+for the same symbol when that is what the evidence supports.
+
+Its responsibilities:
+
+- combine supervisor snapshots;
+- identify cross-horizon agreement/disagreement;
+- call Conflict Resolver when deterministic rules apply;
+- surface unresolved conflict rather than invent a consensus;
+- expose why a lane is blocked;
+- distinguish current-condition strength from historical expected value;
+- provide Owner-facing summary;
+- never authorize real submit.
+
+### AI Strategy LIVE UI / AI戦略LIVE画面
+
+Minimum display:
+
+- current JST timestamp;
+- source freshness;
+- Data Quality state;
+- Market Regime;
+- one card per supervisor/lane;
+- symbol;
+- direction/state;
+- trigger;
+- invalidation;
+- Entry/Stop/Target proposal when available;
+- OR5/OR15/VWAP/EMA/Flow/Volume where relevant;
+- current-condition score;
+- historical EV / PF / DD / N when statistically available;
+- conflict state;
+- Risk Gate state;
+- Shadow state;
+- last-update age;
+- voice-alert state.
+
+The UI must visibly distinguish:
+
+- observed data;
+- deterministic derived state;
+- statistical evidence;
+- AI-generated commentary.
+
+Never label a current heuristic score as EV.
+
+### Real-time update policy
+
+The LIVE system should be event-driven where possible and polling-based where necessary.
+
+Target behavior:
+
+- MS2 facts update on local collector cadence;
+- supervisor snapshots recompute only from fresh input;
+- a new input event can invalidate an older advisory immediately;
+- stale threshold expiry invalidates the advisory even when no new market tick arrives;
+- no “last BUY” may remain visually active after its evidence expires;
+- supervisor snapshot IDs / timestamps must permit replay and audit.
+
+### AI disagreement
+
+If GPT/Claude/other AI reviewers produce different interpretations:
+
+- preserve each interpretation as advisory metadata;
+- deterministic contract/risk state remains authoritative;
+- unresolved AI disagreement is not converted into a trade;
+- Chief supervisor reports CONFLICT / NEEDS_REVIEW when necessary.
+
+### Voice
+
+AI Strategy LIVE may speak:
+
+- supervisor state changes;
+- major conflict;
+- Risk Gate block;
+- data stale;
+- candidate activation/invalidation.
+
+Voice is informational only and cannot trigger execution.
+
+### Journal handoff
+
+AI Strategy LIVE emits sanitized high-level events such as:
+
+- SUPERVISOR_STATE_CHANGED
+- STRATEGY_CANDIDATE_ACTIVATED
+- STRATEGY_INVALIDATED
+- CONFLICT_DETECTED
+- RISK_GATE_BLOCKED
+- SHADOW_POSITION_OPENED
+- SHADOW_POSITION_CLOSED
+- DAILY_STRATEGY_SUMMARY
+
+These can be consumed by the separate **Trading Journal System / AIトレード日記システム**.
+
+Raw private MS2/account/order payloads must not cross that boundary.
+
+---
+
 ## 4.8 Strategy families
 
 Initial Strategy Lab families:
