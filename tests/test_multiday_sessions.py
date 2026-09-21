@@ -17,7 +17,7 @@ class MultiDaySessionTests(unittest.TestCase):
   with self.assertRaises(ValueError): split_sessions([{"ts":"bad"}])
 
  def test_tse_opening_grid_accepts_exact_15s(self):
-  rows=[{"ts":f"2026-09-17 09:{(i*15)//60:02d}:{(i*15)%60:02d}"} for i in range(60)]
+  rows=[{"ts":f"2026-09-17 09:{(i*15)//60:02d}:{(i*15)%60:02d}"} for i in range(62)]
   self.assertTrue(validate_tse_session(rows))
 
  def test_delayed_first_print_is_preserved(self):
