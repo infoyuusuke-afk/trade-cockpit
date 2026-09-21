@@ -14,7 +14,7 @@ from scripts.analyze_ev_features import analyze
 
 FIELDS=["strategy_key","entry_ts","exit_ts","side","entry","exit","gross_pnl_pct","cost_pct","net_pnl_pct","pnl_pct","exit_reason",
 "volume_ratio_20","bar_turnover","vwap_deviation_pct","or5_width_pct","intraday_range_pct","gap_pct",
-"nikkei_return_pct","topix_return_pct","futures_return_pct"]
+"nikkei_return_pct","topix_return_pct","futures_return_pct","session_date","first_print_ts","open_delay_sec","open_state"]
 
 FORMATS=("%Y-%m-%d %H:%M:%S","%Y-%m-%dT%H:%M:%S","%Y/%m/%d %H:%M:%S")
 
@@ -79,11 +79,19 @@ def run(input_csv,out_dir,cost_pct=0.10,prev_close=None):
     if not sessions: raise ValueError("no sessions")
     trades=[]; prior_close=prev_close; usable=0
     for day,session in sessions:
-        if len(session)>=62:
+        if len(session)>=62 and validate_tse_session(session):
             usable+=1
+            first_dt=parse_ts(session[0]["ts"])
+            open_dt=first_dt.replace(hour=9,minute=0,second=0,microsecond=0)
+            delay=max(0,int((first_dt-open_dt).total_seconds()))
+            open_state="NORMAL_OPEN" if delay==0 else "DELAYED_OPEN_UNCLASSIFIED"
+            day_trades=[]
             for side in ("LONG","SHORT"):
-                trades += backtest_or_breakout(session,side,cost_pct,prev_close=prior_close)
-                trades += backtest_or5_vwap(session,side,cost_pct,prev_close=prior_close)
+                day_trades += backtest_or_breakout(session,side,cost_pct,prev_close=prior_close)
+                day_trades += backtest_or5_vwap(session,side,cost_pct,prev_close=prior_close)
+            for trade in day_trades:
+                trade.update({"session_date":day,"first_print_ts":session[0]["ts"],"open_delay_sec":delay,"open_state":open_state})
+            trades += day_trades
         prior_close=session[-1]["close"] if session else prior_close
     if usable==0: raise ValueError("no session has at least 62 x 15s bars")
     out=Path(out_dir); out.mkdir(parents=True,exist_ok=True)
