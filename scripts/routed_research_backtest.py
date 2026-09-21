@@ -28,7 +28,7 @@ def run_routed_backtest(route_result,out_dir,cost_pct=0.10,prev_close=None):
     source_promotion_eligible=bool(route_result.get("promotion_eligible",False))
     if not source_promotion_eligible:
         with Path(trade).open(encoding="utf-8-sig",newline="") as fh:
-            rows=list(csv.DictReader(fh)); fields=fh.fieldnames
+            reader=csv.DictReader(fh); rows=list(reader); fields=reader.fieldnames
         for row in rows: row["promotion_eligible"]="False"
         with Path(trade).open("w",encoding="utf-8",newline="") as fh:
             w=csv.DictWriter(fh,fieldnames=fields);w.writeheader();w.writerows(rows)
