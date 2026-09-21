@@ -30,3 +30,13 @@ class LiquidityContextStrataTest(unittest.TestCase):
   o=m.evaluate([a,b]);self.assertEqual(len(o["context_strata"]),2);self.assertTrue(all(v["status"]=="INSUFFICIENT_SAMPLE" for v in o["context_strata"].values()))
  def test_invalid_optional_context_is_rejected(self):
   o=m.evaluate([rec(spread_yen=-1.0,tick_size=1.0,visible_qty=100)]);self.assertEqual(o["sample_size"],0);self.assertEqual(o["invalid_record_n"],1)
+
+class CalibrationCoverageGateTest(unittest.TestCase):
+ def test_total_n_does_not_hide_missing_base_strata(self):
+  o=m.evaluate([rec(order_type="LIMIT",side="BUY") for _ in range(200)])
+  self.assertEqual(o["status"],"CALIBRATION_REVIEW_ELIGIBLE");self.assertEqual(o["coverage_status"],"COVERAGE_INSUFFICIENT");self.assertIn("shadow-fill-model-0.1|MARKET|SELL",o["insufficient_base_strata"])
+ def test_all_base_strata_need_minimum_sample(self):
+  rows=[]
+  for ot in ("MARKET","LIMIT"):
+   for side in ("BUY","SELL"): rows += [rec(order_type=ot,side=side) for _ in range(m.MIN_SAMPLE)]
+  o=m.evaluate(rows);self.assertEqual(o["coverage_status"],"COVERAGE_SUFFICIENT");self.assertFalse(o["parameter_update_allowed"])
