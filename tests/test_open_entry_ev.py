@@ -1,5 +1,5 @@
 import unittest
-from scripts.analyze_open_entry_ev import compare_entry_delays
+from scripts.analyze_open_entry_ev import compare_entry_delays,summarize_entry_policies
 
 class OpenEntryEVTests(unittest.TestCase):
  def rows(self):
@@ -40,5 +40,19 @@ class OpenEntryEVTests(unittest.TestCase):
   long=compare_entry_delays(self.rows(),"LONG",0)[0]
   short=compare_entry_delays(self.rows(),"SHORT",0)[0]
   self.assertAlmostEqual(long["gross_pnl_pct"],-short["gross_pnl_pct"])
+
+ def test_summary_is_research_only_and_has_risk_metrics(self):
+  all_results=[]
+  for side in ("LONG","SHORT"):
+   all_results += compare_entry_delays(self.rows(),side,0.1)
+  s=summarize_entry_policies(all_results)
+  self.assertEqual({x["entry_policy"] for x in s},{"OPEN","WAIT_15S","WAIT_30S","WAIT_60S","OR5_WAIT"})
+  for x in s:
+   self.assertEqual(x["sample_size"],2)
+   self.assertTrue(x["research_only"])
+   self.assertIn("profit_factor",x)
+   self.assertIn("avg_mfe_pct",x)
+   self.assertIn("avg_mae_pct",x)
+   self.assertIn("avg_missed_move_pct_vs_open",x)
 
 if __name__=="__main__": unittest.main()
