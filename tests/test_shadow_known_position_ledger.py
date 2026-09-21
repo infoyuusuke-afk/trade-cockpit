@@ -19,3 +19,5 @@ class KnownPositionLedgerBoundaryTest(unittest.TestCase):
   i,o=valid_pair();out=sp.create_shadow_position(i,o,now=NOW,known_positions=[{}]);self.assertEqual(out["status"],"REJECTED");self.assertIn("REJECTED_KNOWN_POSITIONS_INVALID",out["reject_reasons"])
  def test_non_string_position_id_rejected(self):
   i,o=valid_pair();out=sp.create_shadow_position(i,o,now=NOW,known_positions=[{"position_id":123}]);self.assertEqual(out["status"],"REJECTED");self.assertIn("REJECTED_KNOWN_POSITIONS_INVALID",out["reject_reasons"])
+ def test_whitespace_only_position_id_rejected(self):
+  i,o=valid_pair();out=sp.create_shadow_position(i,o,now=NOW,known_positions=[{"position_id":"   "}]);self.assertEqual(out["status"],"REJECTED");self.assertIn("REJECTED_KNOWN_POSITIONS_INVALID",out["reject_reasons"])
