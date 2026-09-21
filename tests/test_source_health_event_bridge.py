@@ -5,7 +5,7 @@ from scripts import guarded_council as g
 from scripts import council_cycle_projection as p
 class SourceHealthBridgeE2E(unittest.TestCase):
  def snap(self,state,at="2026-09-21T09:10:00+09:00"):
-  return {"source":"MS2_RSS","state":state,"observed_at":at,"last_data_at":"2026-09-21T09:09:59+09:00","symbol":"TSE:285A","consecutive_failures":3}
+  return {"schema_version":"local-source-health-1.0","source":"MS2_RSS","state":state,"observed_at":at,"last_data_at":"2026-09-21T09:09:59+09:00","symbol":"TSE:285A","correlation_id":None,"consecutive_failures":3,"reasons":[]}
  def test_stopped_blocks_council_and_warns(self):
   e=b.source_health_event(self.snap("STOPPED"))
   self.assertEqual(e["severity"],"CRITICAL")
