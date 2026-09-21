@@ -28,12 +28,22 @@ def compare_entry_delays(rows, side, cost_pct=0.10):
         entry=rows[i]["open"]; exit_px=exit_bar["close"]
         gross=((exit_px/entry)-1)*100
         if side=="SHORT": gross=-gross
+        future=rows[i:]
+        if side=="LONG":
+            mfe=(max(x["high"] for x in future)/entry-1)*100
+            mae=(min(x["low"] for x in future)/entry-1)*100
+            missed=((entry/rows[0]["open"])-1)*100
+        else:
+            mfe=(1-min(x["low"] for x in future)/entry)*100
+            mae=(1-max(x["high"] for x in future)/entry)*100
+            missed=((rows[0]["open"]/entry)-1)*100
         net=gross-cost_pct
         out.append({
           "side":side,"entry_delay_sec":delay,"entry_ts":rows[i]["ts"],
           "exit_ts":exit_bar["ts"],"entry":entry,"exit":exit_px,
           "gross_pnl_pct":gross,"cost_pct":cost_pct,"net_pnl_pct":net,
-          "pnl_pct":net,
+          "pnl_pct":net,"mfe_pct":mfe,"mae_pct":mae,
+          "missed_move_pct_vs_open":missed,
           "entry_policy":"OPEN" if delay==0 else ("OR5_WAIT" if delay==300 else f"WAIT_{delay}S")
         })
     return out
