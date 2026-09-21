@@ -101,6 +101,7 @@ $bookFileName = "Kioxia_MS2_RSS_Live_Signals.xlsx"
 $dashboardSheetName = "DASHBOARD"
 $intervalSeconds = 5
 $diagLogPath = Join-Path $PSScriptRoot "heartbeat_diag.csv"
+$healthStatePath = Join-Path $PSScriptRoot "runtime\heartbeat_source_health.json"
 $alertThreshold = 3           # 連続失敗3回（約15秒）で音声警告
 $alertRepeatMinutes = 5       # 警告が続く間、再警告する間隔
 $startupGraceSeconds = 90     # 起動直後はExcel/Workbook準備待ち。誤警告を出さない
@@ -117,6 +118,31 @@ $SbV2ModelId = 0
 $SbV2SpeakerId = 0
 $SbV2Style = "Neutral"
 $SbV2Length = 1.10
+
+function Write-LocalSourceHealth([string]$state, [int]$failures, [string[]]$reasons) {
+    # Local runtime health only. Never include board/tape/order/fill/position/account data.
+    try {
+        $dir = Split-Path -Parent $healthStatePath
+        if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        $now = [DateTimeOffset]::Now
+        $obj = [ordered]@{
+            schema_version = "local-source-health-1.0"
+            source = "KIOXIA_SAFETY_HEARTBEAT"
+            state = $state
+            observed_at = $now.ToString("o")
+            last_data_at = $null
+            symbol = "TSE:285A"
+            correlation_id = $null
+            consecutive_failures = $failures
+            reasons = @($reasons)
+        }
+        $tmp = $healthStatePath + ".tmp"
+        [IO.File]::WriteAllText($tmp, ($obj | ConvertTo-Json -Depth 3), [Text.UTF8Encoding]::new($false))
+        Move-Item -LiteralPath $tmp -Destination $healthStatePath -Force
+    } catch {
+        Write-Host "[HEARTBEAT] local health state write failed: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
+}
 
 function Convert-ToHeartbeatSpeechText([string]$text) {
     if ([string]::IsNullOrWhiteSpace($text)) { return "" }
@@ -193,6 +219,8 @@ while ($true) {
         $consecutiveFailures++
         Add-Content -Path $diagLogPath -Encoding UTF8 -Value ((Get-Date).ToString("yyyy-MM-dd HH:mm:ss")+",失敗,"+$consecutiveFailures+","+($errorDetail -replace ",","；"))
         Write-Host "[$(Get-Date -Format 'HH:mm:ss')] 心拍失敗（連続${consecutiveFailures}回）: $errorDetail" -ForegroundColor Yellow
+        $healthState = if ($consecutiveFailures -ge $alertThreshold) { "STOPPED" } else { "DEGRADED" }
+        Write-LocalSourceHealth $healthState $consecutiveFailures @("EXCEL_RECALC_FAILURE")
         $pastStartupGrace = ((Get-Date) - $heartbeatStartedAt).TotalSeconds -ge $startupGraceSeconds
         if ($pastStartupGrace -and $consecutiveFailures -ge $alertThreshold -and ((Get-Date) - $lastAlertAt).TotalMinutes -ge $alertRepeatMinutes) {
             Write-Host "[$(Get-Date -Format 'HH:mm:ss')] SAFETY HEARTBEAT ERROR: Excel connection unavailable." -ForegroundColor Red
@@ -207,6 +235,7 @@ while ($true) {
             Write-Host "[$(Get-Date -Format 'HH:mm:ss')] 心拍復帰（連続失敗${consecutiveFailures}回から回復）" -ForegroundColor Green
         }
         $consecutiveFailures = 0
+        Write-LocalSourceHealth "HEALTHY" 0 @()
         if (((Get-Date) - $lastLoggedOk).TotalMinutes -ge 1) {
             Add-Content -Path $diagLogPath -Encoding UTF8 -Value ((Get-Date).ToString("yyyy-MM-dd HH:mm:ss")+",正常,0,")
             $lastLoggedOk = Get-Date
