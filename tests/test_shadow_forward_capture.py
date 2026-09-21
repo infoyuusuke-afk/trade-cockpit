@@ -57,6 +57,15 @@ class CaptureStateTests(unittest.TestCase):
             cap.append_capture_event(x, event_type="LIFECYCLE_STEP",
                 capture_now=T0 + timedelta(seconds=1), observation_now=T0, payload={})
 
+    def test_unknown_prior_event_type_rejected_even_with_rehashed_event(self):
+        a = self.start()
+        x = deepcopy(a["events"])
+        x[0]["event_type"] = "UNKNOWN_EVENT"
+        x[0]["event_hash"] = chain.compute_event_hash(x[0])
+        with self.assertRaises(ValueError):
+            cap.append_capture_event(x, event_type="LIFECYCLE_STEP",
+                capture_now=T0 + timedelta(seconds=1), observation_now=T0, payload={})
+
     def test_finalize_twice_rejected(self):
         a = self.start()
         b = cap.append_capture_event(a["events"], event_type="FINALIZE",
