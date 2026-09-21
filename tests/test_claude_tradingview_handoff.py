@@ -1,4 +1,4 @@
-import json,tempfile,unittest
+import hashlib,json,tempfile,unittest
 from pathlib import Path
 from scripts.run_claude_tradingview_handoff import run_handoff
 class ClaudeTradingViewHandoffTests(unittest.TestCase):
@@ -14,6 +14,10 @@ class ClaudeTradingViewHandoffTests(unittest.TestCase):
    rp,trade,ev,manifest,summary=run_handoff(p,out);r=json.loads(rp.read_text())
    self.assertEqual(r["route_status"],"READY_UNCROSSCHECKED");self.assertFalse(r["promotion_eligible"])
    self.assertTrue(r["research_only"]);self.assertFalse(r["auto_execute"])
+   self.assertEqual(r["actual_symbol"],"TSE:285A");self.assertEqual(r["actual_timeframe"],"15S")
+   self.assertEqual(r["actual_timezone"],"Asia/Tokyo");self.assertEqual(r["raw_bar_count"],70)
+   self.assertEqual(r["first_raw_timestamp"],"2026-09-18T09:00:00+09:00");self.assertEqual(r["last_raw_timestamp"],"2026-09-18T09:17:15+09:00")
+   self.assertEqual(r["input_sha256"],hashlib.sha256(p.read_bytes()).hexdigest())
    self.assertEqual(r["session_count"],1);self.assertEqual(r["session_status_counts"]["ACCEPT"],1)
    self.assertEqual(r["promotion_session_count"],1);self.assertTrue(Path(r["quality_file"]).exists())
    self.assertTrue(trade.exists());self.assertTrue(ev.exists());self.assertTrue(manifest.exists());self.assertEqual(summary["bar_count"],70)
