@@ -2,7 +2,8 @@
 from __future__ import annotations
 from datetime import datetime
 APPROVAL_TYPES={"MAIN_MERGE","REAL_MONEY_SUBMIT","EXTERNAL_PUBLISH"}
-INPUT_FIELDS={"approval_id","approval_type","created_at","summary"}
+REQUIRED_INPUT_FIELDS={"approval_id","approval_type","created_at"}
+OPTIONAL_INPUT_FIELDS={"summary"}
 def _aware(value,name):
     if not isinstance(value,str) or not value: raise ValueError(f"{name} required")
     d=datetime.fromisoformat(value)
@@ -12,7 +13,7 @@ def build_queue(items):
     if not isinstance(items,list): raise ValueError("items must be list")
     out=[]; seen=set()
     for i in items:
-        if not isinstance(i,dict) or set(i)!=INPUT_FIELDS: raise ValueError("invalid approval item fields")
+        if not isinstance(i,dict) or not REQUIRED_INPUT_FIELDS.issubset(i) or not set(i).issubset(REQUIRED_INPUT_FIELDS|OPTIONAL_INPUT_FIELDS): raise ValueError("invalid approval item fields")
         aid=i["approval_id"]
         if not isinstance(aid,str) or not aid.strip(): raise ValueError("approval_id required")
         if aid in seen: raise ValueError("duplicate approval_id")
@@ -20,7 +21,7 @@ def build_queue(items):
         t=i["approval_type"]
         if t not in APPROVAL_TYPES: raise ValueError("invalid approval_type")
         created=_aware(i["created_at"],"created_at")
-        out.append({"approval_id":aid,"approval_type":t,"created_at":created,"summary":i["summary"],"status":"PENDING_OWNER","auto_approve":False})
+        out.append({"approval_id":aid,"approval_type":t,"created_at":created,"summary":i.get("summary"),"status":"PENDING_OWNER","auto_approve":False})
     return sorted(out,key=lambda x:(x["created_at"],x["approval_id"]))
 def decide(item,decision,*,decided_at,actor="OWNER"):
     if not isinstance(item,dict) or item.get("status")!="PENDING_OWNER": raise ValueError("approval is not pending")
