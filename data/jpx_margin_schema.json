@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "dataset": "jpx_daily_margin_balance",
+  "effective_from": "2026-09-28",
+  "source": "JPX_FREE_WEB",
+  "publication_time_jst": "16:00",
+  "information_lag": "PREVIOUS_BUSINESS_DAY",
+  "point_in_time_rule": "Never expose a record to a strategy decision before its actual JPX publication timestamp.",
+  "fields": [
+    "as_of_date",
+    "published_at_jst",
+    "symbol",
+    "name",
+    "margin_sell_shares",
+    "margin_buy_shares",
+    "margin_sell_value",
+    "margin_buy_value",
+    "general_sell_shares",
+    "general_buy_shares",
+    "system_sell_shares",
+    "system_buy_shares",
+    "sell_change_shares",
+    "buy_change_shares",
+    "margin_ratio",
+    "sell_pct_listed_shares",
+    "buy_pct_listed_shares",
+    "source_url",
+    "source_file",
+    "retrieved_at_jst"
+  ],
+  "derived_features": [
+    "margin_ratio",
+    "sell_change_pct",
+    "buy_change_pct",
+    "net_margin_pressure",
+    "short_pressure_change",
+    "long_pressure_change"
+  ],
+  "research_only": true,
+  "notes": [
+    "Free JPX web publication is distinct from paid JPX Research Institute daily distribution services.",
+    "Do not treat margin balance as intraday real-time flow.",
+    "Join to a trading session only if published_at_jst is earlier than the strategy information cutoff."
+  ]
+}
