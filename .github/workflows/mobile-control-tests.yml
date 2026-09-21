@@ -17,6 +17,9 @@ on:
       - "scripts/validate_oos.py"
       - "scripts/walk_forward.py"
       - "scripts/promotion_gate.py"
+      - "scripts/export_ev_trades.py"
+      - "scripts/calibrate_ev.py"
+      - "scripts/analyze_ev_features.py"
       - "tests/test_strategy_registry.py"
       - "tests/test_backtest_15s.py"
       - "tests/test_or5_vwap_backtest.py"
@@ -28,6 +31,7 @@ on:
       - "tests/test_oos_validation.py"
       - "tests/test_walk_forward.py"
       - "tests/test_promotion_gate.py"
+      - "tests/test_pnl_contract.py"
       - "data/ev_calibration.json"
       - "data/strategy_registry.json"
   workflow_dispatch:
@@ -39,4 +43,4 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m unittest tests.test_mobile_approvals tests.test_ev_calibration tests.test_export_ev_trades tests.test_strategy_registry tests.test_backtest_15s tests.test_or5_vwap_backtest tests.test_signal_features tests.test_backtest_feature_snapshots tests.test_ev_feature_buckets tests.test_research_pipeline tests.test_research_report tests.test_oos_validation tests.test_walk_forward tests.test_promotion_gate -v
+      - run: python -m unittest tests.test_mobile_approvals tests.test_ev_calibration tests.test_export_ev_trades tests.test_strategy_registry tests.test_backtest_15s tests.test_or5_vwap_backtest tests.test_signal_features tests.test_backtest_feature_snapshots tests.test_ev_feature_buckets tests.test_research_pipeline tests.test_research_report tests.test_oos_validation tests.test_walk_forward tests.test_promotion_gate tests.test_pnl_contract -v
