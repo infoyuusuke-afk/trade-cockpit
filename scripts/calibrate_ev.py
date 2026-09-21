@@ -45,7 +45,7 @@ def main():
     if src.exists():
         with src.open(encoding="utf-8-sig",newline="") as f:
             for r in csv.DictReader(f):
-                try: groups[r["strategy_key"]].append(float(r["pnl_pct"])-float(r.get("cost_pct") or 0))
+                try: groups[r["strategy_key"]].append(float(r.get("net_pnl_pct") or r["pnl_pct"]))
                 except (KeyError,ValueError,TypeError): continue
     out={"schema_version":1,"generated_at":datetime.now(timezone.utc).isoformat(),"score_is_probability":False,"minimum_sample":MIN_N,"groups":{k:stats(v) for k,v in groups.items()}}
     dst=Path(a.output);dst.parent.mkdir(parents=True,exist_ok=True);dst.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")

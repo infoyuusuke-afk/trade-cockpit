@@ -3,7 +3,7 @@
 import csv,json,argparse
 from pathlib import Path
 
-FIELDS=["strategy_key","pnl_pct","cost_pct","symbol","side","entry_ts","exit_ts"]
+FIELDS=["strategy_key","gross_pnl_pct","cost_pct","net_pnl_pct","pnl_pct","symbol","side","entry_ts","exit_ts"]
 
 def rows(history):
     out=[]
@@ -14,7 +14,8 @@ def rows(history):
         if not entry or close is None or side not in {"LONG","SHORT"}: continue
         raw=(float(close)-float(entry))/float(entry)*100
         if side=="SHORT": raw=-raw
-        out.append({"strategy_key":key,"pnl_pct":round(raw,6),"cost_pct":float(r.get("cost_pct") or 0),
+        cost=float(r.get("cost_pct") or 0); net=raw-cost
+        out.append({"strategy_key":key,"gross_pnl_pct":round(raw,6),"cost_pct":cost,"net_pnl_pct":round(net,6),"pnl_pct":round(net,6),
           "symbol":str(r.get("ticker") or "").replace(".T",""),"side":side,
           "entry_ts":r.get("entry_ts") or r.get("date") or "","exit_ts":r.get("exit_ts") or r.get("date") or ""})
     return out

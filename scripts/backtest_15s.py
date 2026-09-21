@@ -57,7 +57,7 @@ def backtest_or_breakout(rows, side="LONG", cost_pct=0.10, stop_pct=None, target
                     exit_px=target_px; exit_reason="TARGET"
                 exit_ts=x["ts"]; break
         gross=((exit_px-entry)/entry*100)*(1 if side=="LONG" else -1)
-        trade={"strategy_key":key,"entry_ts":rows[i+1]["ts"],"exit_ts":exit_ts,"side":side,"entry":entry,"exit":exit_px,"pnl_pct":round(gross-cost_pct,6),"cost_pct":cost_pct,"exit_reason":exit_reason}
+        trade={"strategy_key":key,"entry_ts":rows[i+1]["ts"],"exit_ts":exit_ts,"side":side,"entry":entry,"exit":exit_px,"gross_pnl_pct":round(gross,6),"cost_pct":cost_pct,"net_pnl_pct":round(gross-cost_pct,6),"pnl_pct":round(gross-cost_pct,6),"exit_reason":exit_reason}
         trade.update(signal_features(rows,i,prev_close,market)); trades.append(trade)
         break
     return trades
@@ -108,7 +108,7 @@ def main():
     a=ap.parse_args()
     rows=load_bars(a.csv); trades=backtest_or_breakout(rows,a.side,a.cost_pct,a.stop_pct,a.target_pct)
     Path(a.out).parent.mkdir(parents=True,exist_ok=True)
-    fields=["strategy_key","entry_ts","exit_ts","side","entry","exit","pnl_pct","cost_pct","exit_reason"]
+    fields=["strategy_key","entry_ts","exit_ts","side","entry","exit","gross_pnl_pct","cost_pct","net_pnl_pct","pnl_pct","exit_reason"]
     with Path(a.out).open("w",encoding="utf-8",newline="") as fh:
         w=csv.DictWriter(fh,fieldnames=fields);w.writeheader();w.writerows(trades)
 if __name__=="__main__": main()
