@@ -46,6 +46,6 @@ class MultiDaySessionTests(unittest.TestCase):
     self.assertEqual(r["entry_ts"][:10],r["exit_ts"][:10])
     self.assertNotEqual(r["gross_pnl_pct"],"")
     self.assertNotEqual(r["net_pnl_pct"],"")
-    self.assertAlmostEqual(float(r["pnl_pct"]),float(r["net_pnl_pct"]),places=6)
+    self.assertAlmostEqual(float(r["pnl_pct"]),float(r["net_pnl_pct"]),places=6)\n    self.assertEqual(r["open_state"],"NORMAL_OPEN")\n    self.assertEqual(int(r["open_delay_sec"]),0)
 
 if __name__=="__main__": unittest.main()
