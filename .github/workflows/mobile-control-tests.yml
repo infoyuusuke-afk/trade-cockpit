@@ -13,6 +13,7 @@ on:
       - "scripts/signal_features.py"
       - "scripts/analyze_ev_features.py"
       - "scripts/run_research_pipeline.py"
+      - "scripts/generate_research_report.py"
       - "tests/test_strategy_registry.py"
       - "tests/test_backtest_15s.py"
       - "tests/test_or5_vwap_backtest.py"
@@ -20,6 +21,7 @@ on:
       - "tests/test_backtest_feature_snapshots.py"
       - "tests/test_ev_feature_buckets.py"
       - "tests/test_research_pipeline.py"
+      - "tests/test_research_report.py"
       - "data/ev_calibration.json"
       - "data/strategy_registry.json"
   workflow_dispatch:
@@ -31,4 +33,4 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python -m unittest tests.test_mobile_approvals tests.test_ev_calibration tests.test_export_ev_trades tests.test_strategy_registry tests.test_backtest_15s tests.test_or5_vwap_backtest tests.test_signal_features tests.test_backtest_feature_snapshots tests.test_ev_feature_buckets tests.test_research_pipeline -v
+      - run: python -m unittest tests.test_mobile_approvals tests.test_ev_calibration tests.test_export_ev_trades tests.test_strategy_registry tests.test_backtest_15s tests.test_or5_vwap_backtest tests.test_signal_features tests.test_backtest_feature_snapshots tests.test_ev_feature_buckets tests.test_research_pipeline tests.test_research_report -v
