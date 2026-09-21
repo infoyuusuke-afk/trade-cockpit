@@ -1,5 +1,5 @@
 import unittest
-from scripts.position_sizing_research import simulate_staged_long,compare_fixed_vs_staged,validate_add_signal,gated_staged_long,evaluate_long_exit_policies
+from scripts.position_sizing_research import simulate_staged_long,compare_fixed_vs_staged,validate_add_signal,gated_staged_long,evaluate_long_exit_policies,sizing_kill_switch,gated_add_with_risk
 
 class PositionSizingResearchTests(unittest.TestCase):
  def rows(self):
@@ -57,5 +57,28 @@ class PositionSizingResearchTests(unittest.TestCase):
   x=evaluate_long_exit_policies(self.rows(),95,2,1,None,0.1)
   for r in x:
    self.assertAlmostEqual(r["net_pnl_pct"],r["gross_pnl_pct"]-0.1)
+
+ def test_stale_data_kills_add(self):
+  x=sizing_kill_switch({"data_fresh":False,"trade_pnl_pct":0,"day_pnl_pct":0},
+                       {"max_trade_loss_pct":1,"max_day_loss_pct":3})
+  self.assertTrue(x["kill"]); self.assertFalse(x["allow_add"])
+  self.assertIn("DATA_STALE_OR_UNKNOWN",x["reasons"])
+
+ def test_support_break_kills_add_even_before_loss_limit(self):
+  x=sizing_kill_switch({"data_fresh":True,"support_broken":True,
+                        "trade_pnl_pct":-0.2,"day_pnl_pct":-0.2},
+                       {"max_trade_loss_pct":1,"max_day_loss_pct":3})
+  self.assertIn("SUPPORT_BROKEN",x["reasons"])
+
+ def test_trade_and_day_loss_limits_are_independent(self):
+  x=sizing_kill_switch({"data_fresh":True,"trade_pnl_pct":-1.1,"day_pnl_pct":-3.2},
+                       {"max_trade_loss_pct":1,"max_day_loss_pct":3})
+  self.assertIn("MAX_TRADE_LOSS",x["reasons"])
+  self.assertIn("MAX_DAY_LOSS",x["reasons"])
+
+ def test_missing_limits_fail_closed(self):
+  x=sizing_kill_switch({"data_fresh":True}, {})
+  self.assertTrue(x["kill"])
+  self.assertIn("INVALID_RISK_LIMITS",x["reasons"])
 
 if __name__=="__main__": unittest.main()
