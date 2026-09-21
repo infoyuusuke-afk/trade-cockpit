@@ -85,4 +85,16 @@ class OpenEntryEVTests(unittest.TestCase):
    self.assertIn("avg_mae_improvement_vs_open_pct",x)
    self.assertIn("max_dd_improvement_vs_open_pct",x)
 
+ def test_irregular_bars_record_actual_delay(self):
+  rows=[
+   {"ts":"2026-09-18 09:00:00","open":100.0,"high":101.0,"low":99.0,"close":100.0},
+   {"ts":"2026-09-18 09:00:30","open":102.0,"high":103.0,"low":101.0,"close":102.0},
+   {"ts":"2026-09-18 15:30:00","open":103.0,"high":104.0,"low":102.0,"close":103.0},
+  ]
+  r=compare_entry_delays(rows,"LONG",0)
+  w15=next(x for x in r if x["entry_policy"]=="WAIT_15S")
+  self.assertEqual(w15["requested_entry_delay_sec"],15)
+  self.assertEqual(w15["actual_entry_delay_sec"],30)
+  self.assertEqual(w15["entry_delay_slippage_sec"],15)
+
 if __name__=="__main__": unittest.main()
