@@ -53,7 +53,7 @@ def compare_entry_delays(rows, side, cost_pct=0.10):
             missed=((rows[0]["open"]/entry)-1)*100
         net=gross-cost_pct
         out.append({
-          "side":side,"entry_delay_sec":delay,"requested_entry_delay_sec":delay,
+          "side":side,"entry_delay_sec":delay,"requested_entry_delay_sec":delay,\n          "entry_anchor":"FIRST_OBSERVED_PRINT","clock_target_ts":None,"clock_entry_slippage_sec":None,
           "actual_entry_delay_sec":actual_delay,
           "entry_delay_slippage_sec":actual_delay-delay,
           "decision_ts":rows[i]["ts"],
