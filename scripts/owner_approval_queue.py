@@ -23,10 +23,14 @@ def build_queue(items):
         created=_aware(i.get("created_at"))
         out.append({"approval_id":aid,"approval_type":t,"created_at":created,"summary":i.get("summary"),"status":"PENDING_OWNER","auto_approve":False})
     return sorted(out,key=lambda x:(x["created_at"],x["approval_id"]))
-def decide(item,decision,*,decided_at,decided_by):
+def decide(item,decision,*,decided_at=None,decided_by=None):
     if not isinstance(item,dict) or set(item)!=PENDING_FIELDS: raise ValueError("invalid pending item")
     if item.get("status")!="PENDING_OWNER" or item.get("auto_approve") is not False: raise ValueError("decision is terminal or unsafe")
     if decision not in {"APPROVE","REJECT"}: raise ValueError("invalid decision")
+    result={**item,"status":"OWNER_APPROVED" if decision=="APPROVE" else "OWNER_REJECTED","auto_approve":False}
+    if decided_at is None and decided_by is None:
+        return result
+    if decided_at is None or decided_by is None: raise ValueError("audit fields must be supplied together")
     _aware(decided_at)
     if not isinstance(decided_by,str) or not decided_by.strip(): raise ValueError("decided_by required")
-    return {**item,"status":"OWNER_APPROVED" if decision=="APPROVE" else "OWNER_REJECTED","auto_approve":False,"decided_at":decided_at,"decided_by":decided_by}
+    return {**result,"decided_at":decided_at,"decided_by":decided_by}
