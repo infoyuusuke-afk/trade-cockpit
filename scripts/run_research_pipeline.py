@@ -52,16 +52,23 @@ def split_sessions(rows):
     return sessions
 
 def validate_tse_session(session):
-    """Validate the opening segment needed by OR5/OR15. Lunch gaps are allowed."""
+    """Validate 15s continuity from the first observed execution bar.
+
+    A delayed first print is NOT treated as missing data: it may be a special
+    quote/opening auction condition. OHLCV alone cannot prove 特買い/特売り, so
+    classification must remain UNKNOWN until order-book/tape evidence exists.
+    Lunch gaps are allowed because only the opening OR segment is checked here.
+    """
     if not session: return False
     dts=[parse_ts(r["ts"]) for r in session]
-    if dts[0].time().strftime("%H:%M:%S")!="09:00:00":
+    first=dts[0]
+    if first.time().strftime("%H:%M:%S")<"09:00:00":
         return False
     opening=dts[:60]
     if len(opening)<60: return False
     for i,dt in enumerate(opening):
         expected_seconds=i*15
-        actual=(dt-opening[0]).total_seconds()
+        actual=(dt-first).total_seconds()
         if actual!=expected_seconds:
             raise ValueError("broken 15s opening grid: "+str(session[i]["ts"]))
     return True
