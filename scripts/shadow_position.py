@@ -149,7 +149,7 @@ def _is_finite_positive(value) -> bool:
 
 
 def _is_aware_datetime(value) -> bool:
-    return isinstance(value, datetime) and value.tzinfo is not None
+    return isinstance(value, datetime) and value.tzinfo is not None and value.utcoffset() is not None
 
 
 def compute_position_id(shadow_order_id: str) -> str:
