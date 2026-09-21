@@ -123,7 +123,7 @@ def summarize_entry_policies(results):
           "worst_mae_pct":min(float(x["mae_pct"]) for x in rs),
           "avg_missed_move_pct_vs_open":sum(float(x["missed_move_pct_vs_open"]) for x in rs)/len(rs),
           "avg_actual_entry_delay_sec":sum(float(x["actual_entry_delay_sec"]) for x in rs)/len(rs),
-          "avg_entry_delay_slippage_sec":sum(float(x["entry_delay_slippage_sec"]) for x in rs)/len(rs),
+          "avg_entry_delay_slippage_sec": (sum(float(x["entry_delay_slippage_sec"]) for x in rs if x["entry_delay_slippage_sec"] is not None) / sum(1 for x in rs if x["entry_delay_slippage_sec"] is not None)) if any(x["entry_delay_slippage_sec"] is not None for x in rs) else None,
           "research_only":True
         })
     return out
