@@ -102,8 +102,8 @@ class QuantityConservationAdversarialTest(unittest.TestCase):
 
     def test_closed_position_is_terminal_immutable(self):
         p=self._position(); closed=dict(p)
-        closed.update(status="CLOSED",current_qty=0,remaining_position_qty=0,exit_filled_qty=p["entry_filled_qty_seen"],avg_exit_price=1500.0,closed_at=NOW)
-        out=sp.evaluate_position_exit(closed,observation(observed_at=NOW+timedelta(seconds=1)),now=NOW+timedelta(seconds=1))
+        closed.update(status="CLOSED",current_qty=0,remaining_position_qty=0,exit_filled_qty=p["entry_filled_qty_seen"],avg_exit_price=1500.0,closed_at=NOW+timedelta(seconds=1),first_position_observation_at=NOW+timedelta(seconds=1),last_position_observation_at=NOW+timedelta(seconds=1))
+        out=sp.evaluate_position_exit(closed,observation(observed_at=NOW+timedelta(seconds=2)),now=NOW+timedelta(seconds=2))
         self.assertEqual(out,closed)
 
     def test_entry_sync_quantity_rollback_is_blocked(self):
