@@ -92,8 +92,9 @@ def backtest_or5_vwap(rows, side="LONG", cost_pct=0.10, prev_close=None, market=
     entry=rows[i+1]["open"]; exit_px=rows[-1]["close"]
     gross=((exit_px-entry)/entry*100)*(1 if side=="LONG" else -1)
     trade={"strategy_key":key,"entry_ts":rows[i+1]["ts"],"exit_ts":rows[-1]["ts"],"side":side,
-             "entry":entry,"exit":exit_px,"pnl_pct":round(gross-cost_pct,6),
-             "cost_pct":cost_pct,"exit_reason":"EOD"}
+             "entry":entry,"exit":exit_px,"gross_pnl_pct":round(gross,6),
+             "cost_pct":cost_pct,"net_pnl_pct":round(gross-cost_pct,6),
+             "pnl_pct":round(gross-cost_pct,6),"exit_reason":"EOD"}
     trade.update(signal_features(rows,i,prev_close,market))
     return [trade]
 
