@@ -5,7 +5,7 @@ and verify real paths/reparse points before any write.
 """
 from __future__ import annotations
 
-from pathlib import Path, PurePosixPath
+import os\nfrom pathlib import Path, PurePosixPath
 
 ALLOWED_ROOTS = (
     PurePosixPath("data/private/shadow_forward"),
