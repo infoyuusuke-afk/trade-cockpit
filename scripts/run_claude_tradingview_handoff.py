@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Research-only Claude -> TradingView MCP handoff runner."""
-import argparse,json
+import argparse,csv,json
 from pathlib import Path
 from scripts.tradingview_source_router import route_tradingview_data
 from scripts.routed_research_backtest import run_routed_backtest
@@ -20,6 +20,12 @@ def run_handoff(payload_path,out_dir,required_timeframe="15S",cost_pct=0.10,prev
     rp=out/"claude_handoff_receipt.json";rp.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     if not route.get("rows"): raise ValueError("CLAUDE_HANDOFF_NOT_READY:"+str(route.get("status"))+":"+str(route.get("mcp_error")))
     trade,ev,manifest,summary=run_routed_backtest(route,out,cost_pct,prev_close)
+    quality_path=Path(summary["session_quality_file"])
+    with quality_path.open(encoding="utf-8",newline="") as fh: quality=list(csv.DictReader(fh))
+    counts={k:sum(1 for r in quality if r.get("research_status")==k) for k in ("ACCEPT","REVIEW","EXCLUDE")}
+    receipt.update({"session_count":len(quality),"session_status_counts":counts,
+      "quality_file":str(quality_path),"promotion_session_count":counts["ACCEPT"]})
+    rp.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     return rp,trade,ev,manifest,summary
 
 def main():
