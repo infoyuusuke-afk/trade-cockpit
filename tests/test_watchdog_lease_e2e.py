@@ -8,7 +8,7 @@ class WatchdogLeaseE2E(unittest.TestCase):
   now=datetime.fromisoformat("2026-09-21T09:10:15+09:00")
   s={"schema_version":"local-source-health-1.0","source":"EXTERNAL_HEALTH_WATCHDOG","state":"HEALTHY","observed_at":"2026-09-21T09:09:59+09:00","last_data_at":None,"symbol":"TSE:285A","correlation_id":None,"consecutive_failures":0,"reasons":[]}
   d=evaluate_watchdog_lease(s,now=now,lease_seconds=15); e=lease_event(d,timestamp=now.isoformat()); r=guarded_orchestrate([e],now=now)
-  self.assertEqual(d["status"],"BLOCK"); self.assertEqual(r["council"]["status"],"BLOCK"); self.assertEqual(r["command_center"]["status"],"ATTENTION"); self.assertFalse(r["real_submit_allowed"])
+  self.assertEqual(d["status"],"BLOCK"); self.assertEqual(r["council"]["status"],"BLOCK"); self.assertEqual(r["command_center"]["system_status"],"ATTENTION"); self.assertFalse(r["real_submit_allowed"])
  def test_recovery_requires_new_fresh_record(self):
   now=datetime.fromisoformat("2026-09-21T09:10:15+09:00")
   def s(ts): return {"schema_version":"local-source-health-1.0","source":"EXTERNAL_HEALTH_WATCHDOG","state":"HEALTHY","observed_at":ts,"last_data_at":None,"symbol":"TSE:285A","correlation_id":None,"consecutive_failures":0,"reasons":[]}
