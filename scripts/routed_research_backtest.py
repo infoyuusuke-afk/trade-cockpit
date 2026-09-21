@@ -25,7 +25,7 @@ def run_routed_backtest(route_result,out_dir,cost_pct=0.10,prev_close=None):
     cross=route_result.get("crosscheck")
     manifest={"selected_source":route_result.get("selected_source"),
               "route_status":route_result.get("status"),
-              "mcp_error":route_result.get("mcp_error"),
+              "mcp_error":route_result.get("mcp_error"),\n              "replay_error":route_result.get("replay_error"),\n              "promotion_eligible":bool(route_result.get("promotion_eligible",False)),
               "crosscheck_status":cross.get("status") if cross else None,
               "crosscheck_overlap_n":cross.get("overlap_n") if cross else None,
               "input_rows":len(route_result["rows"]),
