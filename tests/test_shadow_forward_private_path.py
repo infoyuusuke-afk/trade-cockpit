@@ -1,5 +1,5 @@
 import sys
-import unittest
+import tempfile\nimport unittest
 from pathlib import Path
 
 ROOT = Path(__file__).parents[1]
@@ -49,6 +49,29 @@ class PrivatePathPolicyTests(unittest.TestCase):
                 "data/private/shadow_forward/2026-09-22/a.jsonl"),
             "data/private/shadow_forward/2026-09-22/a.jsonl",
         )
+
+    def test_resolved_private_path_inside_root(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "data/private/shadow_forward").mkdir(parents=True)
+            result = policy.require_resolved_private_path(
+                root, "data/private/shadow_forward/day/session.jsonl")
+            self.assertTrue(result.is_relative_to(
+                (root / "data/private/shadow_forward").resolve()))
+
+    def test_symlink_escape_rejected(self):
+        with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as outside:
+            root = Path(td)
+            private = root / "data/private/shadow_forward"
+            private.mkdir(parents=True)
+            link = private / "escape"
+            try:
+                link.symlink_to(Path(outside), target_is_directory=True)
+            except OSError:
+                self.skipTest("symlink creation unavailable")
+            with self.assertRaises(ValueError):
+                policy.require_resolved_private_path(
+                    root, "data/private/shadow_forward/escape/session.jsonl")
 
     def test_require_raises_outside_private_root(self):
         with self.assertRaises(ValueError):
