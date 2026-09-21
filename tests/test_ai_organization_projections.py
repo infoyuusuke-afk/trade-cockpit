@@ -17,7 +17,7 @@ class ProjectionTests(unittest.TestCase):
   before=dict(a); rows=jp.journal_rows([a,b])
   self.assertEqual([r["summary"] for r in rows],["move","risk"]); self.assertEqual(a,before)
  def test_commentary_cooldown(self):
-  xs=[{"event_id":"a","priority":1,"timestamp":"2026-09-21T21:00:10+09:00","text":"a","speech_text":"a"},{"event_id":"b","priority":2,"timestamp":"2026-09-21T21:00:25+09:00","text":"b","speech_text":"b"},{"event_id":"c","priority":3,"timestamp":"2026-09-21T21:00:35+09:00","text":"c","speech_text":"c"}]
+  xs=[{"event_id":"a","priority":1,"timestamp":"2026-09-21T21:00:10+09:00","text":"a","speech_text":"a","real_submit_allowed":False},{"event_id":"b","priority":2,"timestamp":"2026-09-21T21:00:25+09:00","text":"b","speech_text":"b","real_submit_allowed":False},{"event_id":"c","priority":3,"timestamp":"2026-09-21T21:00:35+09:00","text":"c","speech_text":"c","real_submit_allowed":False}]
   out=cs.schedule(xs,cooldown_seconds=20,max_items=2); self.assertEqual([x["event_id"] for x in out],["a","c"])
  def test_storyboard_never_publishes(self):
   c={"event_id":"x","title_seed":"勝負","external_publish_allowed":False}
