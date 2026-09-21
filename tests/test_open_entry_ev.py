@@ -1,5 +1,5 @@
 import unittest
-from scripts.analyze_open_entry_ev import compare_entry_delays,summarize_entry_policies,fixed_preopen_regime_labels,attach_preopen_regime,summarize_by_regime,compare_policy_tradeoffs
+from scripts.analyze_open_entry_ev import compare_entry_delays,summarize_entry_policies,fixed_preopen_regime_labels,attach_preopen_regime,summarize_by_regime,compare_policy_tradeoffs,summarize_open_regimes
 
 class OpenEntryEVTests(unittest.TestCase):
  def rows(self):
@@ -110,5 +110,15 @@ class OpenEntryEVTests(unittest.TestCase):
   self.assertEqual(clock["entry_ts"],"2026-09-18 09:05:00")
   self.assertEqual(first["entry_ts"],"2026-09-18 09:08:00")
   self.assertNotEqual(clock["entry"],first["entry"])
+
+ def test_delayed_open_evidence_is_not_pooled_with_normal(self):
+  base=compare_entry_delays(self.rows(),"LONG",0.1)
+  normal=[{**x,"open_regime":"NORMAL_OPEN"} for x in base]
+  delayed=[{**x,"open_regime":"DELAYED_OPEN_UNCLASSIFIED"} for x in base]
+  out=summarize_open_regimes(normal+delayed)
+  self.assertIn("NORMAL_OPEN",out)
+  self.assertIn("DELAYED_OPEN_UNCLASSIFIED",out)
+  self.assertTrue(all(x["sample_size"]==1 for x in out["DELAYED_OPEN_UNCLASSIFIED"]))
+  self.assertTrue(all(x["evidence_status"]=="REFERENCE_ONLY" for x in out["DELAYED_OPEN_UNCLASSIFIED"]))
 
 if __name__=="__main__": unittest.main()
