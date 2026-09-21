@@ -8,6 +8,7 @@ import math
 
 SCHEMA_VERSION="fill-model-calibration-0.1"
 MIN_SAMPLE=50
+MIN_SESSION_DAYS=5
 REQUIRED=("model_version","observed_at","order_type","side","requested_qty","predicted_fill_qty","observed_fill_qty")
 OPTIONAL_CONTEXT=("spread_yen","visible_qty","tick_size")
 def _num(x): return isinstance(x,(int,float)) and not isinstance(x,bool) and math.isfinite(x)
@@ -24,6 +25,7 @@ def evaluate(records):
         if any(k in r and (not _num(r[k]) or r[k] < 0) for k in OPTIONAL_CONTEXT): invalid+=1; continue
         valid.append(r)
     n=len(valid)
+    session_days=sorted({r["observed_at"].date().isoformat() for r in valid})
     pred_rate=sum(1 for r in valid if r["predicted_fill_qty"]>0)/n if n else None
     obs_rate=sum(1 for r in valid if r["observed_fill_qty"]>0)/n if n else None
     qty_mae=sum(abs(r["predicted_fill_qty"]-r["observed_fill_qty"]) for r in valid)/n if n else None
@@ -48,5 +50,6 @@ def evaluate(records):
         context_strata["|".join(key)]={"sample_size":sn,"status":"CALIBRATION_REVIEW_ELIGIBLE" if sn>=MIN_SAMPLE else "INSUFFICIENT_SAMPLE","fill_qty_mae":sum(abs(r["predicted_fill_qty"]-r["observed_fill_qty"]) for r in rows)/sn}
     required_base=[f"{mv}|{ot}|{side}" for mv in sorted({r["model_version"] for r in valid}) for ot in ("MARKET","LIMIT") for side in ("BUY","SELL")]
     missing_base=[k for k in required_base if k not in strata or strata[k]["status"]!="CALIBRATION_REVIEW_ELIGIBLE"]
-    coverage_status="COVERAGE_SUFFICIENT" if required_base and not missing_base else "COVERAGE_INSUFFICIENT"
-    return {"schema_version":SCHEMA_VERSION,"strata":strata,"context_strata":context_strata,"coverage_status":coverage_status,"required_base_strata":required_base,"insufficient_base_strata":missing_base,"status":"CALIBRATION_REVIEW_ELIGIBLE" if n>=MIN_SAMPLE else "INSUFFICIENT_SAMPLE","minimum_sample":MIN_SAMPLE,"sample_size":n,"invalid_record_n":invalid,"predicted_fill_rate":pred_rate,"observed_fill_rate":obs_rate,"fill_rate_bias":(pred_rate-obs_rate) if n else None,"fill_qty_mae":qty_mae,"fill_price_mae_yen":price_mae,"price_pair_n":len(price_pairs),"parameter_update_allowed":False,"real_submit_allowed":False}
+    day_coverage_status="DAY_COVERAGE_SUFFICIENT" if len(session_days)>=MIN_SESSION_DAYS else "DAY_COVERAGE_INSUFFICIENT"
+    coverage_status="COVERAGE_SUFFICIENT" if required_base and not missing_base and day_coverage_status=="DAY_COVERAGE_SUFFICIENT" else "COVERAGE_INSUFFICIENT"
+    return {"schema_version":SCHEMA_VERSION,"strata":strata,"context_strata":context_strata,"coverage_status":coverage_status,"required_base_strata":required_base,"insufficient_base_strata":missing_base,"minimum_session_days":MIN_SESSION_DAYS,"unique_session_days":len(session_days),"session_days":session_days,"day_coverage_status":day_coverage_status,"status":"CALIBRATION_REVIEW_ELIGIBLE" if n>=MIN_SAMPLE else "INSUFFICIENT_SAMPLE","minimum_sample":MIN_SAMPLE,"sample_size":n,"invalid_record_n":invalid,"predicted_fill_rate":pred_rate,"observed_fill_rate":obs_rate,"fill_rate_bias":(pred_rate-obs_rate) if n else None,"fill_qty_mae":qty_mae,"fill_price_mae_yen":price_mae,"price_pair_n":len(price_pairs),"parameter_update_allowed":False,"real_submit_allowed":False}
