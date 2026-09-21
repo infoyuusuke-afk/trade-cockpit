@@ -13,3 +13,10 @@ class ExternalHealthWatchdogTests(unittest.TestCase):
   x=self.snap(); x["position_qty"]=100; self.assertEqual(evaluate(x,now=self.now())["state"],"UNKNOWN")
  def test_existing_stopped_remains_stopped(self): self.assertEqual(evaluate(self.snap(state="STOPPED"),now=self.now())["state"],"STOPPED")
  def test_real_submit_never_enabled(self): self.assertFalse(evaluate(self.snap(),now=self.now())["real_submit_allowed"])
+
+ def test_exact_threshold_is_fresh(self):
+  r=evaluate(self.snap("2026-09-21T09:09:50+09:00"),now=self.now(),stale_after_seconds=15); self.assertEqual(r["reason"],"FRESH")
+ def test_timezone_offset_equivalence(self):
+  r=evaluate(self.snap("2026-09-21T00:10:00+00:00"),now=self.now()); self.assertEqual((r["age_seconds"],r["state"]),(5.0,"HEALTHY"))
+ def test_naive_now_rejected(self):
+  with self.assertRaises(ValueError): evaluate(self.snap(),now=datetime.fromisoformat("2026-09-21T09:10:05"))
