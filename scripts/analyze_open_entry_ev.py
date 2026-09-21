@@ -54,6 +54,7 @@ def compare_entry_delays(rows, side, cost_pct=0.10):
         net=gross-cost_pct
         out.append({
           "side":side,"entry_delay_sec":delay,"requested_entry_delay_sec":delay,
+          "entry_anchor":"FIRST_OBSERVED_PRINT","clock_target_ts":None,"clock_entry_slippage_sec":None,
           "actual_entry_delay_sec":actual_delay,
           "entry_delay_slippage_sec":actual_delay-delay,
           "decision_ts":rows[i]["ts"],
@@ -81,7 +82,12 @@ def compare_entry_delays(rows, side, cost_pct=0.10):
             mae=(1-max(x["high"] for x in future)/entry)*100
             missed=((rows[0]["open"]/entry)-1)*100
         actual=(parse_ts(rows[ci]["ts"])-parse_ts(rows[0]["ts"])).total_seconds()
+        target=datetime.combine(parse_ts(rows[0]["ts"]).date(),datetime.strptime(CLOCK_OR5_TIME,"%H:%M:%S").time())
+        first_ts=parse_ts(rows[0]["ts"])
+        if getattr(first_ts,"tzinfo",None) is not None: target=target.replace(tzinfo=first_ts.tzinfo)
+        clock_slippage=(parse_ts(rows[ci]["ts"])-target).total_seconds()
         out.append({"side":side,"entry_delay_sec":None,"requested_entry_delay_sec":None,
+          "entry_anchor":"CLOCK_09_05","clock_target_ts":target.isoformat(),"clock_entry_slippage_sec":clock_slippage,
           "actual_entry_delay_sec":actual,"entry_delay_slippage_sec":None,
           "decision_ts":rows[ci]["ts"],"information_cutoff_ts":rows[ci]["ts"],
           "entry_ts":rows[ci]["ts"],"exit_ts":exit_bar["ts"],"entry":entry,"exit":exit_px,

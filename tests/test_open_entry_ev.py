@@ -114,6 +114,11 @@ class OpenEntryEVTests(unittest.TestCase):
   self.assertEqual(clock["entry_ts"],"2026-09-18 09:05:00")
   self.assertEqual(first["entry_ts"],"2026-09-18 09:08:00")
   self.assertNotEqual(clock["entry"],first["entry"])
+  self.assertEqual(first["entry_anchor"],"FIRST_OBSERVED_PRINT")
+  self.assertIsNone(first["clock_target_ts"])
+  self.assertEqual(clock["entry_anchor"],"CLOCK_09_05")
+  self.assertTrue(clock["clock_target_ts"].endswith("09:05:00+09:00") or clock["clock_target_ts"].endswith("09:05:00"))
+  self.assertEqual(clock["clock_entry_slippage_sec"],0.0)
 
  def test_delayed_open_evidence_is_not_pooled_with_normal(self):
   base=compare_entry_delays(self.rows(),"LONG",0.1)
