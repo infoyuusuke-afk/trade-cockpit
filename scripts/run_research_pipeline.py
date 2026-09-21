@@ -83,15 +83,19 @@ def run(input_csv,out_dir,cost_pct=0.10,prev_close=None):
     validate_input(input_csv); rows=load_bars(input_csv)
     sessions=split_sessions(rows)
     if not sessions: raise ValueError("no sessions")
-    trades=[]; prior_close=prev_close; usable=0
+    trades=[]; quality_rows=[]; prior_close=prev_close; usable=0
     for day,session in sessions:
-        if len(session)>=62 and validate_tse_session(session):
+        first_dt=parse_ts(session[0]["ts"]) if session else None
+        delay=max(0,int((first_dt-first_dt.replace(hour=9,minute=0,second=0,microsecond=0)).total_seconds())) if first_dt else None
+        open_state=("NORMAL_OPEN" if delay==0 else "DELAYED_OPEN_UNCLASSIFIED") if first_dt else "NO_OBSERVATION"
+        quality=opening_quality(session) if session else {"opening_observed_bars":0,"opening_irregular_intervals":None,"opening_data_quality":"NO_OBSERVATION"}
+        accepted=len(session)>=62 and validate_tse_session(session)
+        quality_rows.append({"session_date":day,"first_print_ts":session[0]["ts"] if session else "","open_delay_sec":delay,
+          "bar_count":len(session),"open_state":open_state,**quality,
+          "research_status":"ACCEPT" if accepted else "EXCLUDE",
+          "research_reason":"OK" if accepted else "INSUFFICIENT_OBSERVED_BARS"})
+        if accepted:
             usable+=1
-            first_dt=parse_ts(session[0]["ts"])
-            open_dt=first_dt.replace(hour=9,minute=0,second=0,microsecond=0)
-            delay=max(0,int((first_dt-open_dt).total_seconds()))
-            open_state="NORMAL_OPEN" if delay==0 else "DELAYED_OPEN_UNCLASSIFIED"
-            quality=opening_quality(session)
             day_trades=[]
             for side in ("LONG","SHORT"):
                 day_trades += backtest_or_breakout(session,side,cost_pct,prev_close=prior_close)
@@ -107,6 +111,11 @@ def run(input_csv,out_dir,cost_pct=0.10,prev_close=None):
         w=csv.DictWriter(fh,fieldnames=FIELDS,extrasaction="ignore"); w.writeheader(); w.writerows(trades)
     ev={"schema_version":1,"input_file":Path(input_csv).name,"bar_count":len(rows),"trade_count":len(trades),
         "cost_pct":cost_pct,"session_count":len(sessions),"usable_session_count":usable,"feature_groups":analyze(trade_csv)}
+    quality_csv=out/"session_quality.csv"
+    qfields=["session_date","first_print_ts","open_delay_sec","bar_count","open_state","opening_observed_bars","opening_irregular_intervals","opening_data_quality","research_status","research_reason"]
+    with quality_csv.open("w",encoding="utf-8",newline="") as fh:
+        w=csv.DictWriter(fh,fieldnames=qfields); w.writeheader(); w.writerows(quality_rows)
+    ev["session_quality_file"]=str(quality_csv)
     ev_path=out/"ev_feature_buckets.json"; ev_path.write_text(json.dumps(ev,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     return trade_csv,ev_path,ev
 
