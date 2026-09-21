@@ -14,6 +14,18 @@ class TradingViewMCPAdapterTests(unittest.TestCase):
  def test_timeframe_mismatch_fails_instead_of_resampling(self):
   rows=adapt_mcp_payload(self.payload("5"))
   with self.assertRaises(ValueError):require_timeframe(rows,"15S")
+ def test_handoff_identity_mismatch_fails_closed(self):
+  for field,value,error in (("symbol","TSE:9999","MCP_SYMBOL_MISMATCH"),("timeframe","5","MCP_TIMEFRAME_MISMATCH"),("timezone","UTC","MCP_TIMEZONE_MISMATCH")):
+   p=self.payload();p["meta"][field]=value
+   with self.assertRaisesRegex(ValueError,error):adapt_mcp_payload(p)
+ def test_empty_bars_and_negative_volume_fail(self):
+  p=self.payload();p["bars"]=[]
+  with self.assertRaisesRegex(ValueError,"EMPTY_MCP_BARS"):adapt_mcp_payload(p)
+  p=self.payload();p["bars"][0]["volume"]=-1
+  with self.assertRaisesRegex(ValueError,"INVALID_VOLUME"):adapt_mcp_payload(p)
+ def test_missing_required_bar_field_fails(self):
+  p=self.payload();del p["bars"][0]["close"]
+  with self.assertRaisesRegex(ValueError,"MISSING_MCP_BAR:close"):adapt_mcp_payload(p)
  def test_missing_retrieval_time_fails(self):
   p=self.payload();del p["meta"]["retrieved_at"]
   with self.assertRaises(ValueError):adapt_mcp_payload(p)
