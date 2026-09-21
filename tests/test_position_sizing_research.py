@@ -1,5 +1,5 @@
 import unittest
-from scripts.position_sizing_research import simulate_staged_long,compare_fixed_vs_staged,validate_add_signal,gated_staged_long,evaluate_long_exit_policies,sizing_kill_switch,gated_add_with_risk,risk_response,evaluate_kill_switch_impact
+from scripts.position_sizing_research import simulate_staged_long,compare_fixed_vs_staged,validate_add_signal,gated_staged_long,evaluate_long_exit_policies,sizing_kill_switch,gated_add_with_risk,risk_response,evaluate_kill_switch_impact,summarize_kill_switch_trials
 
 class PositionSizingResearchTests(unittest.TestCase):
  def rows(self):
@@ -100,5 +100,17 @@ class PositionSizingResearchTests(unittest.TestCase):
   self.assertAlmostEqual(x["trigger_exit_pnl_pct"],-5)
   self.assertAlmostEqual(x["hold_pnl_pct"],-20)
   self.assertAlmostEqual(x["loss_avoided_pct"],15)
+
+ def test_kill_summary_counts_premature_exits(self):
+  trials=[{"loss_avoided_pct":10},{"loss_avoided_pct":-4},{"loss_avoided_pct":2}]
+  x=summarize_kill_switch_trials(trials)
+  self.assertEqual(x["N"],3)
+  self.assertAlmostEqual(x["premature_exit_rate"],1/3)
+  self.assertEqual(x["evidence_status"],"REFERENCE_ONLY")
+
+ def test_kill_summary_needs_30_for_initial_evidence(self):
+  x=summarize_kill_switch_trials([{"loss_avoided_pct":1} for _ in range(30)])
+  self.assertEqual(x["evidence_status"],"INITIAL_EVIDENCE")
+  self.assertFalse(x["auto_execute"])
 
 if __name__=="__main__": unittest.main()
