@@ -44,13 +44,18 @@ class MultiDaySessionTests(unittest.TestCase):
       close=102 if i==60 else 100
       w.writerow({"time":f"{day} {hh:02d}:{mm:02d}:{ss:02d}","open":100,"high":101,"low":99,"close":close,"volume":10})
    trade,ev,s=run(p,Path(d)/"out",0.1)
-   self.assertEqual(s["session_count"],2); self.assertEqual(s["usable_session_count"],2)\n   q=list(csv.DictReader(Path(s["session_quality_file"]).open()))\n   self.assertEqual(len(q),2)\n   self.assertTrue(all(x["research_status"]=="ACCEPT" for x in q))
+   self.assertEqual(s["session_count"],2); self.assertEqual(s["usable_session_count"],2)
+   q=list(csv.DictReader(Path(s["session_quality_file"]).open()))
+   self.assertEqual(len(q),2)
+   self.assertTrue(all(x["research_status"]=="ACCEPT" for x in q))
    rows=list(csv.DictReader(trade.open())); self.assertTrue(rows)
    for r in rows:
     self.assertEqual(r["entry_ts"][:10],r["exit_ts"][:10])
     self.assertNotEqual(r["gross_pnl_pct"],"")
     self.assertNotEqual(r["net_pnl_pct"],"")
-    self.assertAlmostEqual(float(r["pnl_pct"]),float(r["net_pnl_pct"]),places=6)\n    self.assertEqual(r["open_state"],"NORMAL_OPEN")\n    self.assertEqual(int(r["open_delay_sec"]),0)
+    self.assertAlmostEqual(float(r["pnl_pct"]),float(r["net_pnl_pct"]),places=6)
+    self.assertEqual(r["open_state"],"NORMAL_OPEN")
+    self.assertEqual(int(r["open_delay_sec"]),0)
 
  def test_delayed_open_gap_uses_prior_close(self):
   with tempfile.TemporaryDirectory() as d:
@@ -66,7 +71,10 @@ class MultiDaySessionTests(unittest.TestCase):
    rows=list(csv.DictReader(trade.open()))
    day2=[r for r in rows if r["session_date"]=="2026-09-18"]
    self.assertTrue(day2)
-   self.assertTrue(all(r["open_state"]=="DELAYED_OPEN_UNCLASSIFIED" for r in day2))\n   q=list(csv.DictReader(Path(s["session_quality_file"]).open()))\n   q2=next(x for x in q if x["session_date"]=="2026-09-18")\n   self.assertEqual(q2["research_status"],"REVIEW")
+   self.assertTrue(all(r["open_state"]=="DELAYED_OPEN_UNCLASSIFIED" for r in day2))
+   q=list(csv.DictReader(Path(s["session_quality_file"]).open()))
+   q2=next(x for x in q if x["session_date"]=="2026-09-18")
+   self.assertEqual(q2["research_status"],"REVIEW")
    self.assertTrue(all(int(r["open_delay_sec"])==300 for r in day2))
    self.assertTrue(all(r["gap_pct"]!="" for r in day2))
 
