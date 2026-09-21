@@ -1,5 +1,5 @@
 import unittest
-from scripts.position_sizing_research import simulate_staged_long,compare_fixed_vs_staged,validate_add_signal,gated_staged_long,evaluate_long_exit_policies,sizing_kill_switch,gated_add_with_risk
+from scripts.position_sizing_research import simulate_staged_long,compare_fixed_vs_staged,validate_add_signal,gated_staged_long,evaluate_long_exit_policies,sizing_kill_switch,gated_add_with_risk,risk_response,evaluate_kill_switch_impact
 
 class PositionSizingResearchTests(unittest.TestCase):
  def rows(self):
@@ -80,5 +80,25 @@ class PositionSizingResearchTests(unittest.TestCase):
   x=sizing_kill_switch({"data_fresh":True}, {})
   self.assertTrue(x["kill"])
   self.assertIn("INVALID_RISK_LIMITS",x["reasons"])
+
+ def test_stale_data_freezes_without_claiming_exit(self):
+  x=risk_response({"data_fresh":False,"trade_pnl_pct":0,"day_pnl_pct":0},
+                  {"max_trade_loss_pct":1,"max_day_loss_pct":3})
+  self.assertEqual(x["risk_response"],"FREEZE_NO_NEW_RISK")
+  self.assertFalse(x["allow_add"])
+
+ def test_support_break_requires_exit_research_response(self):
+  x=risk_response({"data_fresh":True,"support_broken":True,
+                   "trade_pnl_pct":-.2,"day_pnl_pct":-.2},
+                  {"max_trade_loss_pct":1,"max_day_loss_pct":3})
+  self.assertEqual(x["risk_response"],"EXIT_REQUIRED")
+  self.assertFalse(x["auto_execute"])
+
+ def test_kill_switch_impact_can_show_loss_avoided(self):
+  rows=[{"close":100},{"close":95},{"close":80}]
+  x=evaluate_kill_switch_impact(rows,1,100)
+  self.assertAlmostEqual(x["trigger_exit_pnl_pct"],-5)
+  self.assertAlmostEqual(x["hold_pnl_pct"],-20)
+  self.assertAlmostEqual(x["loss_avoided_pct"],15)
 
 if __name__=="__main__": unittest.main()
