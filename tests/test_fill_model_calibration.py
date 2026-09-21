@@ -39,7 +39,7 @@ class CalibrationCoverageGateTest(unittest.TestCase):
   rows=[]
   for ot in ("MARKET","LIMIT"):
    for side in ("BUY","SELL"): rows += [rec(order_type=ot,side=side) for _ in range(m.MIN_SAMPLE)]
-  o=m.evaluate(rows);self.assertEqual(o["coverage_status"],"COVERAGE_SUFFICIENT");self.assertFalse(o["parameter_update_allowed"])
+  o=m.evaluate(rows);self.assertTrue(all(o["strata"][f"shadow-fill-model-0.1|{ot}|{side}"]["status"]=="CALIBRATION_REVIEW_ELIGIBLE" for ot in ("MARKET","LIMIT") for side in ("BUY","SELL")));self.assertEqual(o["day_coverage_status"],"DAY_COVERAGE_INSUFFICIENT");self.assertFalse(o["parameter_update_allowed"])
 
 class MultiSessionCoverageTest(unittest.TestCase):
  def test_one_day_cannot_satisfy_coverage(self):
