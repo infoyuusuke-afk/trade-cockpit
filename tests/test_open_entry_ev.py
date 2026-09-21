@@ -53,7 +53,7 @@ class OpenEntryEVTests(unittest.TestCase):
    self.assertIn("profit_factor",x)
    self.assertIn("avg_mfe_pct",x)
    self.assertIn("avg_mae_pct",x)
-   self.assertIn("avg_missed_move_pct_vs_open",x)
+   self.assertIn("avg_missed_move_pct_vs_open",x)\n   self.assertIn("worst_net_pnl_pct",x)\n   self.assertIn("bottom_10pct_avg_net_pnl_pct",x)\n   self.assertIn("worst_mae_pct",x)
 
  def test_fixed_regimes_are_deterministic(self):
   x=fixed_preopen_regime_labels({"gap_pct":2.0,"prior_day_range_pct":2.5,"open_state":"DELAYED_OPEN_UNCLASSIFIED"})
