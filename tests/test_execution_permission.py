@@ -323,10 +323,10 @@ class SignalKnownAtTests(unittest.TestCase):
     """Phase 4.1 Golden #14: Intent signal_known_at naive/future → BLOCK。"""
 
     def test_naive_signal_known_at_blocks(self):
-        intent = build_intent(signal_known_at="2026-09-17T08:55:00")
-        out = evaluate(intent)
-        self.assertEqual(out["permission_status"], "BLOCKED")
-        self.assertIn("BLOCK_SIGNAL_KNOWN_AT_NOT_TIMEZONE_AWARE", out["block_reasons"])
+        # C-101 moves this fail-closed boundary earlier: a naive timestamp
+        # must never become a valid Execution Intent.
+        with self.assertRaises(ValueError):
+            build_intent(signal_known_at="2026-09-17T08:55:00")
 
     def test_future_signal_known_at_blocks(self):
         intent = build_intent(signal_known_at=iso(NOW + timedelta(hours=1)))
