@@ -44,7 +44,7 @@ class MultiDaySessionTests(unittest.TestCase):
       close=102 if i==60 else 100
       w.writerow({"time":f"{day} {hh:02d}:{mm:02d}:{ss:02d}","open":100,"high":101,"low":99,"close":close,"volume":10})
    trade,ev,s=run(p,Path(d)/"out",0.1)
-   self.assertEqual(s["session_count"],2); self.assertEqual(s["usable_session_count"],2)
+   self.assertEqual(s["session_count"],2); self.assertEqual(s["usable_session_count"],2)\n   q=list(csv.DictReader(Path(s["session_quality_file"]).open()))\n   self.assertEqual(len(q),2)\n   self.assertTrue(all(x["research_status"]=="ACCEPT" for x in q))
    rows=list(csv.DictReader(trade.open())); self.assertTrue(rows)
    for r in rows:
     self.assertEqual(r["entry_ts"][:10],r["exit_ts"][:10])
