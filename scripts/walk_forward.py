@@ -23,7 +23,7 @@ def summarize(rows):
     return {k:stats(v) for k,v in sorted(g.items())}
 
 def validate(path,min_train=30,test_size=10):
-    with Path(path).open(encoding="utf-8-sig",newline="") as f:rows=list(csv.DictReader(f))
+    with Path(path).open(encoding="utf-8-sig",newline="") as f:rows=[r for r in csv.DictReader(f) if str(r.get("promotion_eligible","")).strip().lower()=="true"]
     folds=[]
     for i,(train,test) in enumerate(windows(rows,min_train,test_size),1):
         folds.append({"fold":i,"train_n":len(train),"oos_n":len(test),

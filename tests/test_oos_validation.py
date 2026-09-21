@@ -7,11 +7,18 @@ class OOSTests(unittest.TestCase):
   self.assertEqual([x["entry_ts"] for x in train],["1","2"]);self.assertEqual([x["entry_ts"] for x in oos],["3","4"])
  def test_net_pnl_does_not_subtract_cost_twice(self):
   self.assertEqual(net_pnl({"pnl_pct":"0.9","cost_pct":"0.1"}),0.9)
+ def test_review_rows_are_excluded_from_oos_evidence(self):
+  with tempfile.TemporaryDirectory() as d:
+   p=Path(d)/"t.csv"
+   with p.open("w",newline="") as f:
+    w=csv.DictWriter(f,fieldnames=["strategy_key","entry_ts","pnl_pct","promotion_eligible"]);w.writeheader()
+    for i in range(10):w.writerow({"strategy_key":"A","entry_ts":f"{i:02d}","pnl_pct":1,"promotion_eligible":"true" if i<8 else "false"})
+   x=validate(p,.5);self.assertEqual(x["train"]["n"]+x["oos"]["n"],8)
  def test_oos_is_later_holdout(self):
   with tempfile.TemporaryDirectory() as d:
    p=Path(d)/"t.csv"
    with p.open("w",newline="") as f:
-    w=csv.DictWriter(f,fieldnames=["strategy_key","entry_ts","pnl_pct","cost_pct"]);w.writeheader()
-    for i in range(10):w.writerow({"strategy_key":"A","entry_ts":f"2026-01-{i+1:02d}","pnl_pct":1 if i<7 else -1,"cost_pct":.1})
+    w=csv.DictWriter(f,fieldnames=["strategy_key","entry_ts","pnl_pct","cost_pct","promotion_eligible"]);w.writeheader()
+    for i in range(10):w.writerow({"strategy_key":"A","entry_ts":f"2026-01-{i+1:02d}","pnl_pct":1 if i<7 else -1,"cost_pct":.1,"promotion_eligible":"true"})
    x=validate(p,.7);self.assertEqual(x["train"]["n"],7);self.assertEqual(x["oos"]["n"],3);self.assertEqual(x["oos"]["groups"]["A"]["avg_pl_pct"],-1.0)
 if __name__=="__main__":unittest.main()

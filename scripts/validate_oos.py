@@ -23,7 +23,7 @@ def summarize(rows):
     return {k:stats(v) for k,v in sorted(groups.items())}
 
 def validate(path,train_ratio=.70):
-    with Path(path).open(encoding="utf-8-sig",newline="") as f: rows=list(csv.DictReader(f))
+    with Path(path).open(encoding="utf-8-sig",newline="") as f: rows=[r for r in csv.DictReader(f) if str(r.get("promotion_eligible","")).strip().lower()=="true"]
     train,oos=split_rows(rows,train_ratio)
     return {"schema_version":1,"split_policy":"chronological_holdout","train_ratio":train_ratio,
       "pnl_semantics":"pnl_pct_is_net_cost_already_applied","train":{"n":len(train),"groups":summarize(train)},
