@@ -1,7 +1,7 @@
-"""Pure path policy for private Shadow Forward evidence.
+"""Path policy for private Shadow Forward evidence.
 
-No filesystem access is performed here. Runtime code must additionally resolve
-and verify real paths/reparse points before any write.
+Pure string checks are paired with runtime filesystem containment checks.
+No file is created by this module.
 """
 from __future__ import annotations
 
@@ -32,14 +32,12 @@ def allowed_private_path(path: str) -> bool:
         p = normalize_repo_relative(path)
     except ValueError:
         return False
-    for root in ALLOWED_ROOTS:
+    for approved in ALLOWED_ROOTS:
         try:
-            p.relative_to(root)
+            p.relative_to(approved)
         except ValueError:
             continue
-        if p == root:
-            return False
-        return True
+        return p != approved
     return False
 
 
@@ -49,36 +47,54 @@ def require_private_evidence_path(path: str) -> str:
     return str(normalize_repo_relative(path))
 
 
-def require_resolved_private_path(repo_root: Path, candidate: str) -> Path:
-    """Resolve existing parents and require final target containment.
+def _is_junction(path: Path) -> bool:
+    check = getattr(os.path, "isjunction", None)
+    return bool(callable(check) and check(path))
 
-    This is the runtime companion to the pure string policy. It does not create
-    files. Callers must run it immediately before each write and must still use
-    exclusive/atomic creation semantics to reduce TOCTOU exposure.
-    """
+
+def _reject_existing_linklike_components(root: Path, target: Path) -> None:
+    current = root
+    for part in target.relative_to(root).parts:
+        current = current / part
+        # is_symlink must be checked even for dangling links.
+        if current.is_symlink():
+            raise ValueError("symlink component prohibited in private evidence path")
+        if _is_junction(current):
+            raise ValueError("junction component prohibited in private evidence path")
+        if not current.exists():
+            break
+
+
+def require_resolved_private_path(repo_root: Path, candidate: str) -> Path:
+    """Require lexical + resolved containment without following link aliases."""
     relative = require_private_evidence_path(candidate)
     root = Path(repo_root).resolve(strict=True)
-    target = root.joinpath(*PurePosixPath(relative).parts)
+    lexical_target = root.joinpath(*PurePosixPath(relative).parts)
 
-    # Resolve the deepest existing parent so symlink/junction/reparse escapes in
-    # the directory chain are visible before a new leaf is created.
-    probe = target
-    missing = []
+    # Never permit approved roots or existing candidate components to be aliases.
+    for approved in ALLOWED_ROOTS:
+        _reject_existing_linklike_components(root, root.joinpath(*approved.parts))
+    _reject_existing_linklike_components(root, lexical_target)
+
+    probe = lexical_target
+    missing: list[str] = []
     while not probe.exists():
+        if probe.is_symlink():
+            raise ValueError("dangling symlink prohibited in private evidence path")
         missing.append(probe.name)
         parent = probe.parent
         if parent == probe:
             raise ValueError("cannot resolve candidate parent")
         probe = parent
+
     resolved = probe.resolve(strict=True)
     for part in reversed(missing):
         resolved = resolved / part
 
-    allowed = [
-        root.joinpath(*r.parts).resolve(strict=False)
-        for r in ALLOWED_ROOTS
-    ]
-    if not any(resolved != ar and resolved.is_relative_to(ar) for ar in allowed):
+    # Compare against lexical approved roots. Because linklike components above
+    # were rejected, resolving must not redefine an approved root elsewhere.
+    approved_targets = [root.joinpath(*a.parts) for a in ALLOWED_ROOTS]
+    if not any(resolved != a and resolved.is_relative_to(a) for a in approved_targets):
         raise ValueError("resolved evidence path escapes approved private roots")
     if not resolved.is_relative_to(root):
         raise ValueError("resolved evidence path escapes repository")
