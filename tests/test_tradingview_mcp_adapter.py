@@ -12,8 +12,7 @@ class TradingViewMCPAdapterTests(unittest.TestCase):
   self.assertEqual(x["source"],"TRADINGVIEW_MCP")
   self.assertFalse(x["synthetic_timeframe"])
  def test_timeframe_mismatch_fails_instead_of_resampling(self):
-  rows=adapt_mcp_payload(self.payload("5"))
-  with self.assertRaises(ValueError):require_timeframe(rows,"15S")
+  with self.assertRaisesRegex(ValueError,"MCP_TIMEFRAME_MISMATCH"):adapt_mcp_payload(self.payload("5"))
  def test_handoff_identity_mismatch_fails_closed(self):
   for field,value,error in (("symbol","TSE:9999","MCP_SYMBOL_MISMATCH"),("timeframe","5","MCP_TIMEFRAME_MISMATCH"),("timezone","UTC","MCP_TIMEZONE_MISMATCH")):
    p=self.payload();p["meta"][field]=value
