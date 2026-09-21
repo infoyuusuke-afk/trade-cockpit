@@ -18,6 +18,9 @@ class OpenEntryEVTests(unittest.TestCase):
   self.assertEqual(by["WAIT_30S"]["entry_ts"],"2026-09-18 09:00:30")
   self.assertEqual(by["WAIT_60S"]["entry_ts"],"2026-09-18 09:01:00")
   self.assertEqual(by["OR5_WAIT"]["entry_ts"],"2026-09-18 09:05:00")
+  for x in r:
+   self.assertEqual(x["decision_ts"],x["information_cutoff_ts"])
+   self.assertEqual(x["decision_ts"],x["entry_ts"])
 
  def test_cost_is_subtracted_once(self):
   r=compare_entry_delays(self.rows(),"LONG",0.1)
