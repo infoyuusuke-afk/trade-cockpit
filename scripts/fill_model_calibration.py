@@ -27,4 +27,9 @@ def evaluate(records):
     qty_mae=sum(abs(r["predicted_fill_qty"]-r["observed_fill_qty"]) for r in valid)/n if n else None
     price_pairs=[r for r in valid if _num(r.get("predicted_fill_price")) and _num(r.get("observed_fill_price")) and r["predicted_fill_price"]>0 and r["observed_fill_price"]>0]
     price_mae=(sum(abs(r["predicted_fill_price"]-r["observed_fill_price"]) for r in price_pairs)/len(price_pairs)) if price_pairs else None
-    return {"schema_version":SCHEMA_VERSION,"status":"CALIBRATION_REVIEW_ELIGIBLE" if n>=MIN_SAMPLE else "INSUFFICIENT_SAMPLE","minimum_sample":MIN_SAMPLE,"sample_size":n,"invalid_record_n":invalid,"predicted_fill_rate":pred_rate,"observed_fill_rate":obs_rate,"fill_rate_bias":(pred_rate-obs_rate) if n else None,"fill_qty_mae":qty_mae,"fill_price_mae_yen":price_mae,"price_pair_n":len(price_pairs),"parameter_update_allowed":False,"real_submit_allowed":False}
+    strata={}
+    for key in sorted({(r["model_version"],r["order_type"],r["side"]) for r in valid}):
+        rows=[r for r in valid if (r["model_version"],r["order_type"],r["side"])==key]
+        sn=len(rows); pr=sum(1 for r in rows if r["predicted_fill_qty"]>0)/sn; orate=sum(1 for r in rows if r["observed_fill_qty"]>0)/sn
+        strata["|".join(key)]={"sample_size":sn,"status":"CALIBRATION_REVIEW_ELIGIBLE" if sn>=MIN_SAMPLE else "INSUFFICIENT_SAMPLE","fill_rate_bias":pr-orate,"fill_qty_mae":sum(abs(r["predicted_fill_qty"]-r["observed_fill_qty"]) for r in rows)/sn}
+    return {"schema_version":SCHEMA_VERSION,"strata":strata,"status":"CALIBRATION_REVIEW_ELIGIBLE" if n>=MIN_SAMPLE else "INSUFFICIENT_SAMPLE","minimum_sample":MIN_SAMPLE,"sample_size":n,"invalid_record_n":invalid,"predicted_fill_rate":pred_rate,"observed_fill_rate":obs_rate,"fill_rate_bias":(pred_rate-obs_rate) if n else None,"fill_qty_mae":qty_mae,"fill_price_mae_yen":price_mae,"price_pair_n":len(price_pairs),"parameter_update_allowed":False,"real_submit_allowed":False}
