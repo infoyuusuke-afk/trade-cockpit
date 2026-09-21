@@ -3,7 +3,7 @@ from datetime import datetime,timezone,timedelta
 from pathlib import Path
 ROOT=Path(__file__).parents[1];spec=importlib.util.spec_from_file_location("fmc",ROOT/"scripts/fill_model_calibration.py");m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 def rec(**kw):
- r={"model_version":"shadow-fill-model-0.1","observed_at":datetime(2026,9,21,tzinfo=timezone.utc),"order_type":"LIMIT","side":"BUY","requested_qty":100,"predicted_fill_qty":100,"observed_fill_qty":40,"predicted_fill_price":1500.0,"observed_fill_price":1501.0};r.update(kw);return r
+ r={"shadow_order_id":kw.pop("shadow_order_id","order-default"),"model_version":"shadow-fill-model-0.1","observed_at":datetime(2026,9,21,tzinfo=timezone.utc),"order_type":"LIMIT","side":"BUY","requested_qty":100,"predicted_fill_qty":100,"observed_fill_qty":40,"predicted_fill_price":1500.0,"observed_fill_price":1501.0};r.update(kw);return r
 class CalibrationContractTest(unittest.TestCase):
  def test_small_sample_remains_unknown(self):
   o=m.evaluate([rec()]);self.assertEqual(o["status"],"INSUFFICIENT_SAMPLE");self.assertFalse(o["parameter_update_allowed"]);self.assertFalse(o["real_submit_allowed"])
@@ -33,12 +33,12 @@ class LiquidityContextStrataTest(unittest.TestCase):
 
 class CalibrationCoverageGateTest(unittest.TestCase):
  def test_total_n_does_not_hide_missing_base_strata(self):
-  o=m.evaluate([rec(order_type="LIMIT",side="BUY") for _ in range(200)])
+  o=m.evaluate([rec(order_type="LIMIT",side="BUY",shadow_order_id=f"limit-buy-{i}") for i in range(200)])
   self.assertEqual(o["status"],"CALIBRATION_REVIEW_ELIGIBLE");self.assertEqual(o["coverage_status"],"COVERAGE_INSUFFICIENT");self.assertIn("shadow-fill-model-0.1|MARKET|SELL",o["insufficient_base_strata"])
  def test_all_base_strata_need_minimum_sample(self):
   rows=[]
   for ot in ("MARKET","LIMIT"):
-   for side in ("BUY","SELL"): rows += [rec(order_type=ot,side=side) for _ in range(m.MIN_SAMPLE)]
+   for side in ("BUY","SELL"): rows += [rec(order_type=ot,side=side,shadow_order_id=f"{ot}-{side}-{i}") for i in range(m.MIN_SAMPLE)]
   o=m.evaluate(rows);self.assertTrue(all(o["strata"][f"shadow-fill-model-0.1|{ot}|{side}"]["status"]=="CALIBRATION_REVIEW_ELIGIBLE" for ot in ("MARKET","LIMIT") for side in ("BUY","SELL")));self.assertEqual(o["day_coverage_status"],"DAY_COVERAGE_INSUFFICIENT");self.assertFalse(o["parameter_update_allowed"])
 
 class MultiSessionCoverageTest(unittest.TestCase):
@@ -52,7 +52,7 @@ class MultiSessionCoverageTest(unittest.TestCase):
   base=datetime(2026,9,1,tzinfo=timezone.utc)
   for ot in ("MARKET","LIMIT"):
    for side in ("BUY","SELL"):
-    rows += [rec(order_type=ot,side=side,observed_at=base+timedelta(days=i % m.MIN_SESSION_DAYS)) for i in range(m.MIN_SAMPLE)]
+    rows += [rec(order_type=ot,side=side,shadow_order_id=f"{ot}-{side}-{i}",observed_at=base+timedelta(days=i % m.MIN_SESSION_DAYS)) for i in range(m.MIN_SAMPLE)]
   o=m.evaluate(rows);self.assertEqual(o["unique_session_days"],m.MIN_SESSION_DAYS);self.assertEqual(o["coverage_status"],"COVERAGE_SUFFICIENT");self.assertFalse(o["parameter_update_allowed"])
 
 class RegimeProvenanceTest(unittest.TestCase):
@@ -62,3 +62,10 @@ class RegimeProvenanceTest(unittest.TestCase):
   o=m.evaluate([rec(market_regime="HIGH_VOL")]);self.assertEqual(o["regime_diagnostic_status"],"REGIME_CONTEXT_AVAILABLE");self.assertTrue(any(k.endswith("|HIGH_VOL") for k in o["context_strata"]))
  def test_unrecognized_regime_is_not_guessed(self):
   o=m.evaluate([rec(market_regime="BULLISH_MAYBE")]);self.assertEqual(o["sample_size"],0);self.assertEqual(o["invalid_record_n"],1)
+
+class CalibrationDeduplicationTest(unittest.TestCase):
+ def test_same_shadow_order_cannot_inflate_sample_size(self):
+  rows=[rec(shadow_order_id="same-order") for _ in range(100)]
+  o=m.evaluate(rows);self.assertEqual(o["sample_size"],1);self.assertEqual(o["duplicate_record_n"],99);self.assertEqual(o["status"],"INSUFFICIENT_SAMPLE")
+ def test_missing_order_identity_is_invalid(self):
+  o=m.evaluate([rec(shadow_order_id="")]);self.assertEqual(o["sample_size"],0);self.assertEqual(o["invalid_record_n"],1)
