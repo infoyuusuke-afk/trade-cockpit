@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Research-only TradingView source router with fail-closed provenance."""
+import math
 from scripts.tradingview_mcp_adapter import adapt_mcp_payload,require_timeframe
 from scripts.tradingview_source_crosscheck import crosscheck_sources
 from scripts.time_utils import parse_market_ts
@@ -14,6 +15,7 @@ def _validate_replay(rows,required_timeframe):
         for k in ("open","high","low","close","volume"):
             if r.get(k) in (None,""): raise ValueError("REPLAY_MISSING_"+k.upper())
         o,h,l,c,v=[float(r[k]) for k in ("open","high","low","close","volume")]
+        if not all(math.isfinite(x) for x in (o,h,l,c,v)): raise ValueError("REPLAY_NONFINITE_OHLCV")
         if h<max(o,c,l) or l>min(o,c,h): raise ValueError("REPLAY_INVALID_OHLC")
         if v<0: raise ValueError("REPLAY_INVALID_VOLUME")
         q=dict(r);q["timestamp"]=ts.isoformat();out.append(q)

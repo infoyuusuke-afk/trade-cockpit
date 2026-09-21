@@ -11,6 +11,12 @@ class SourceRouterTests(unittest.TestCase):
   x=route_tradingview_data(mcp_payload=payload(tf="5"),replay_rows=replay());self.assertEqual(x["status"],"READY_FALLBACK_UNCROSSCHECKED");self.assertFalse(x["promotion_eligible"])
  def test_bad_replay_provenance_is_rejected(self):
   x=route_tradingview_data(replay_rows=replay(source="TRADINGVIEW_15S"));self.assertEqual(x["status"],"NO_USABLE_SOURCE");self.assertEqual(x["replay_error"],"REPLAY_PROVENANCE_MISSING")
+ def test_nonfinite_replay_is_rejected(self):
+  for field,value in (("open","nan"),("high","inf"),("low","-inf"),("close","nan"),("volume","nan")):
+   rows=replay();rows[0][field]=value
+   x=route_tradingview_data(replay_rows=rows)
+   self.assertEqual(x["status"],"NO_USABLE_SOURCE")
+   self.assertEqual(x["replay_error"],"REPLAY_NONFINITE_OHLCV")
  def test_bad_replay_timeframe_is_rejected(self):
   x=route_tradingview_data(replay_rows=replay(tf="5"));self.assertEqual(x["status"],"NO_USABLE_SOURCE");self.assertEqual(x["replay_error"],"REPLAY_TIMEFRAME_MISMATCH")
  def test_mismatch_blocks(self):
