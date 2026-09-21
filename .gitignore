@@ -7,3 +7,6 @@ ms2_live/records/
 # 非公開売買ログ・反省会（実約定データ）。公開repoに置かない方針
 # （docs/C-031-GPT_STRATEGY_ROADMAP.md 第5節、CLAUDE.md）。
 data/private/
+
+# Local runtime health/PID/log state. Never commit machine runtime artifacts.
+ms2_live/runtime/
