@@ -958,3 +958,33 @@ widths」も同じ理由で失敗していたことを`gh run list`で確認済�
 再び通るようになっているはず。
 
 **安全境界**：表示・検証スクリプトのみの変更。発注・執行系には一切触れていない。
+
+
+## C-110｜2026-09-22 AIコクピット全体仕様・Claude自律実装キュー（GPT共有）
+
+**目的**：AIコクピットの全体仕様、現在地、役割分担、開発期間、全自動化可能範囲を一本化し、Claudeがリポジトリ作業を継続できる正本を作る。
+
+**新しい正本**：
+- [AI_COCKPIT_MASTER_SPEC.md](AI_COCKPIT_MASTER_SPEC.md)
+- 本節より新しい承認済みIssueコメントがある場合は、そちらを優先する。
+- 実コード・テスト・Actions・実機証拠が文章と矛盾する場合は、検証済み実装/証拠を優先する。
+
+**Claudeの直近優先順位**：
+1. P0: 最新mainに対するopen Draft PRの棚卸し。必要/obsolete/重複/rebase必要/canonical riskを一覧化。勝手にmerge/closeしない。
+2. P1: Issue #169の「15秒足 no-trade interval と acquisition gap の分離」設計・純粋関数・回帰テスト。欠損バーを合成しない。
+3. P1: PR #168を最新mainへ安全にreconcileし、TSE昼休み/closing auction分類を保持。DraftのままGPTレビュー待ち。
+4. P2: Issue #57のClaude TradingView 15S handoff。取得可能なら実データ契約で実行、不可ならBLOCKED理由を返す。代替時間足で埋めない。
+5. P3: private Shadow Forward persistence/capture boundary。inactive-by-default、append-only、private ignored root、backfill禁止。
+6. P4: PR #166 calibration contractは最新mainへreconcileして再検証。Fill Model挙動変更・自動parameter update・real submitは禁止。
+7. P5: 安全基盤が安定した後にStrategy Router / Strategy Lab統一統計へ進む。
+
+**自律作業ルール**：
+- repo内で完結する低リスク作業は、細切れにユーザー確認を求めず、実装→テスト→Draft PR→CI→STATUS/bridge更新まで進める。
+- canonical hash / Execution Contract / Permission / Risk / Shadow state semanticsを変更する場合は停止してGPTレビューを要求する。
+- Scheduled Task有効化、MS2実注文、broker submit、private data uploadは実施しない。
+- ユーザーのPC操作が必要な項目は、必要最小限の手順にまとめてOwnerへ返す。
+
+**完了報告に必須**：
+main SHA、branch/PR、変更ファイル、追加テスト、CI、state transition、canonical hash変更有無、private data接触有無、real-submit関連変更有無、残リスク、次のblocker。
+
+本節はClaudeの作業開始指示であり、real orderの承認ではない。
