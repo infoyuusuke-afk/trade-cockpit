@@ -54,6 +54,19 @@ class PrivateCommitTests(unittest.TestCase):
             self.assertEqual(final.read_bytes(), b"competitor")
             self.assertTrue(final.with_name("a.bin.pending").exists())
 
+    def test_unsupported_hardlink_fails_closed_without_fallback(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = self.root(td)
+            with mock.patch("shadow_forward_private_commit.os.link",
+                            side_effect=OSError("hardlink unsupported")):
+                with self.assertRaises(OSError):
+                    commit.commit_new_private_artifact(
+                        root, "data/private/shadow_forward/a.bin", b"ours")
+            final = root / "data/private/shadow_forward/a.bin"
+            self.assertFalse(final.exists())
+            self.assertTrue(final.with_name("a.bin.pending").exists())
+            self.assertEqual(final.with_name("a.bin.pending").read_bytes(), b"ours")
+
     def test_existing_pending_blocks_commit(self):
         with tempfile.TemporaryDirectory() as td:
             root = self.root(td)
