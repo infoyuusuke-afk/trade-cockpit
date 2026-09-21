@@ -21,4 +21,16 @@ class StitcherTests(unittest.TestCase):
  def test_overnight_gap_not_flagged(self):
   x=stitch_segments([[r("2026-09-17T15:30:00+09:00"),r("2026-09-18T09:00:00+09:00")]])
   self.assertEqual(x["audit"]["gap_count"],0)
+ def test_lunch_recess_is_expected_break(self):
+  x=stitch_segments([[r("2026-09-18T11:29:45+09:00"),r("2026-09-18T12:30:00+09:00")]])
+  self.assertEqual(x["audit"]["gap_count"],0);self.assertEqual(x["audit"]["expected_session_break_count"],1);self.assertEqual(x["audit"]["expected_session_breaks"][0]["reason"],"LUNCH_RECESS")
+ def test_closing_auction_is_expected_break(self):
+  x=stitch_segments([[r("2026-09-18T15:24:45+09:00"),r("2026-09-18T15:30:00+09:00")]])
+  self.assertEqual(x["audit"]["gap_count"],0);self.assertEqual(x["audit"]["expected_session_break_count"],1);self.assertEqual(x["audit"]["expected_session_breaks"][0]["reason"],"CLOSING_AUCTION")
+ def test_observed_1525_bar_is_preserved_before_closing_break(self):
+  rows=[r("2026-09-18T15:24:45+09:00"),r("2026-09-18T15:25:00+09:00"),r("2026-09-18T15:30:00+09:00")]
+  x=stitch_segments([rows]);self.assertEqual(len(x["rows"]),3);self.assertEqual(x["audit"]["gap_count"],0);self.assertEqual(x["audit"]["expected_session_break_count"],1)
+ def test_missing_last_pre_lunch_bar_is_not_hidden(self):
+  x=stitch_segments([[r("2026-09-18T11:29:30+09:00"),r("2026-09-18T12:30:00+09:00")]])
+  self.assertEqual(x["audit"]["gap_count"],1)
 if __name__=="__main__":unittest.main()
