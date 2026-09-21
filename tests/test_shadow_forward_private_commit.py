@@ -77,11 +77,20 @@ class PrivateCommitTests(unittest.TestCase):
                     root, "data/private/shadow_forward/a.bin", b"new")
             self.assertEqual(pending.read_bytes(), b"uncertain")
 
-    def test_pending_is_never_committed_evidence(self):
+    def test_filename_alone_has_no_commit_eligibility_api(self):
+        self.assertFalse(hasattr(commit, "is_committed_artifact"))
+
+    def test_unverified_windows_durability_never_publishes_final(self):
         with tempfile.TemporaryDirectory() as td:
-            p = Path(td) / "x.pending"
-            p.write_bytes(b"x")
-            self.assertFalse(commit.is_committed_artifact(p))
+            root = self.root(td)
+            with mock.patch("shadow_forward_private_commit.os.name", "nt"):
+                with self.assertRaises(OSError):
+                    commit.commit_new_private_artifact(
+                        root, "data/private/shadow_forward/a.bin", b"ours")
+            final = root / "data/private/shadow_forward/a.bin"
+            self.assertFalse(final.exists())
+            self.assertTrue(final.with_name("a.bin.pending").exists())
+            self.assertEqual(final.with_name("a.bin.pending").read_bytes(), b"ours")
 
     def test_unverified_directory_durability_blocks_acceptance(self):
         result = commit.CommitResult(Path("private.bin"), True, False)
@@ -114,6 +123,29 @@ class PrivateCommitTests(unittest.TestCase):
             root = self.root(td)
             with self.assertRaises(ValueError):
                 commit.commit_new_private_artifact(root, "docs/a.bin", b"x")
+
+    def test_directory_fsync_failure_never_returns_success(self):
+        if commit.os.name != "posix":
+            self.skipTest("POSIX directory fsync test")
+        with tempfile.TemporaryDirectory() as td:
+            root = self.root(td)
+            real_fsync = commit.os.fsync
+            calls = {"n": 0}
+
+            def fail_first_directory_fsync(fd):
+                calls["n"] += 1
+                if calls["n"] == 2:
+                    raise OSError("directory fsync failed")
+                return real_fsync(fd)
+
+            with mock.patch("shadow_forward_private_commit.os.fsync",
+                            side_effect=fail_first_directory_fsync):
+                with self.assertRaises(OSError):
+                    commit.commit_new_private_artifact(
+                        root, "data/private/shadow_forward/a.bin", b"x")
+            final = root / "data/private/shadow_forward/a.bin"
+            self.assertTrue(final.exists())
+            self.assertTrue(final.with_name("a.bin.pending").exists())
 
     def test_fsync_failure_does_not_create_final(self):
         with tempfile.TemporaryDirectory() as td:
