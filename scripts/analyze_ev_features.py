@@ -19,10 +19,18 @@ def bucket(name,value):
         if lo<=x<hi:return label
     return None
 
-def analyze(path):
-    groups=defaultdict(list)
+def _promotion_eligible(row):
+    value=row.get("promotion_eligible")
+    if value in (None,""): return True  # legacy rows before quality propagation
+    return str(value).strip().lower() in ("true","1","yes")
+
+def analyze_with_audit(path):
+    groups=defaultdict(list); included=0; excluded=0
     with Path(path).open(encoding="utf-8-sig",newline="") as fh:
         for r in csv.DictReader(fh):
+            if not _promotion_eligible(r):
+                excluded+=1; continue
+            included+=1
             try:
                 pnl=float(r.get("net_pnl_pct") or r["pnl_pct"])
                 key=r["strategy_key"]
@@ -30,10 +38,22 @@ def analyze(path):
             for feature in BUCKETS:
                 b=bucket(feature,r.get(feature))
                 if b is not None: groups[(key,feature,b)].append(pnl)
-    return [{"strategy_key":k[0],"feature":k[1],"bucket":k[2],**stats(v)} for k,v in sorted(groups.items())]
+    groups_out=[{"strategy_key":k[0],"feature":k[1],"bucket":k[2],**stats(v)} for k,v in sorted(groups.items())]
+    return groups_out,{"included_trade_count":included,"excluded_nonpromotion_trade_count":excluded}
+
+def analyze(path):
+    return analyze_with_audit(path)[0]
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument("--input",default="data/trade_results.csv");ap.add_argument("--output",default="data/ev_feature_buckets.json");a=ap.parse_args()
-    out={"schema_version":1,"generated_at":datetime.now(timezone.utc).isoformat(),"score_is_probability":False,"bucket_policy":"fixed_v0.1_not_optimized","groups":analyze(a.input) if Path(a.input).exists() else []}
+    if Path(a.input).exists():
+        groups,audit=analyze_with_audit(a.input)
+    else:
+        groups,audit=[],{"included_trade_count":0,"excluded_nonpromotion_trade_count":0}
+    out={"schema_version":1,"generated_at":datetime.now(timezone.utc).isoformat(),
+         "score_is_probability":False,"bucket_policy":"fixed_v0.1_not_optimized",
+         "groups":groups,
+         "promotion_filter":"promotion_eligible=true; legacy missing field included",
+         "promotion_filter_audit":audit}
     dst=Path(a.output);dst.parent.mkdir(parents=True,exist_ok=True);dst.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 if __name__=="__main__":main()
