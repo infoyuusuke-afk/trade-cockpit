@@ -56,7 +56,10 @@ def is_duplicate_submission(intent_hash: str, known_intents: list[dict]) -> tupl
     if not isinstance(intent_hash,str) or not intent_hash or not isinstance(known_intents,list):
         return True, ["BLOCK_DUPLICATE_MALFORMED_LEDGER_ENTRY"]
     for known in known_intents:
-        if not isinstance(known,dict):
+        if (not isinstance(known, dict)
+                or not isinstance(known.get("intent_hash"), str)
+                or not known.get("intent_hash")
+                or known.get("status") not in ec.INTENT_STATUSES):
             reasons.append("BLOCK_DUPLICATE_MALFORMED_LEDGER_ENTRY")
             continue
         if known.get("intent_hash") != intent_hash:
@@ -80,7 +83,10 @@ def check_pending_duplicate(symbol: str, side: str, pending_orders: list[dict]) 
     if not isinstance(symbol,str) or not symbol or side not in ec.VALID_SIDES or not isinstance(pending_orders,list):
         return True, ["BLOCK_DUPLICATE_PENDING_UNKNOWN"]
     for pending in pending_orders:
-        if not isinstance(pending,dict):
+        if (not isinstance(pending, dict)
+                or not isinstance(pending.get("symbol"), str)
+                or not pending.get("symbol")
+                or pending.get("side") not in ec.VALID_SIDES):
             return True, ["BLOCK_DUPLICATE_PENDING_UNKNOWN"]
         if pending.get("symbol") == symbol and pending.get("side") == side:
             return True, ["BLOCK_DUPLICATE_PENDING"]
