@@ -1,6 +1,6 @@
 # trade-cockpit: shared AI coordination
 
-At the beginning of each Claude Code session in this repository, read [STATUS.md](STATUS.md) for implementation status and [docs/AI_SHARED_SHEET.md](docs/AI_SHARED_SHEET.md) for strategy/coordination. After a local clone, fetch/pull the current main branch first where safe; do not overwrite uncommitted work.
+At the beginning of each Claude Code session in this repository, read [STATUS.md](STATUS.md) for implementation status, [docs/AI_COCKPIT_MASTER_SPEC.md](docs/AI_COCKPIT_MASTER_SPEC.md) for the current target architecture / phase gates, and [docs/AI_SHARED_SHEET.md](docs/AI_SHARED_SHEET.md) for strategy/coordination. After a local clone, fetch/pull the current main branch first where safe; do not overwrite uncommitted work.
 
 Responsibilities: Claude/Claude Code owns coding, tests, deployment and updates implementation facts in STATUS.md. ChatGPT owns strategy review and records proposed decisions in the shared sheet. A proposal or chat summary is not a completed implementation; check source files, timestamps, data and tests before reporting success. Respond to user with verified outcomes, not an assumed state.
 
