@@ -18,10 +18,13 @@ class PrivateCommitTests(unittest.TestCase):
     def test_new_artifact_commits(self):
         with tempfile.TemporaryDirectory() as td:
             root = self.root(td)
-            p = commit.commit_new_private_artifact(
+            result = commit.commit_new_private_artifact(
                 root, "data/private/shadow_forward/a.bin", b"evidence")
-            self.assertEqual(p.read_bytes(), b"evidence")
-            self.assertFalse(p.with_name("a.bin.pending").exists())
+            self.assertEqual(result.path.read_bytes(), b"evidence")
+            self.assertTrue(result.file_fsync)
+            self.assertEqual(result.directory_fsync, commit.os.name == "posix")
+            self.assertEqual(result.durability_verified, commit.os.name == "posix")
+            self.assertFalse(result.path.with_name("a.bin.pending").exists())
 
     def test_existing_final_is_never_overwritten(self):
         with tempfile.TemporaryDirectory() as td:
