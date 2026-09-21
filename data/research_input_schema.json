@@ -1,0 +1,30 @@
+{
+  "schema_version":"1.0",
+  "research_only":true,
+  "layers":{
+    "CORE":{
+      "required":true,
+      "fields":["symbol","market_date","timestamp","open","high","low","close","volume"],
+      "sources":["TRADINGVIEW_15S","OTHER_OHLCV"]
+    },
+    "CONTEXT":{
+      "required":false,
+      "fields":["top100_rank","cockpit_tabs","declared_categories","turnover","gap_pct","market_return_pct","futures_return_pct","us_semiconductor_return_pct","korea_semiconductor_return_pct","known_catalyst_score","rumor_state"],
+      "sources":["DAYTRADE_TOP100","COCKPIT_TAB","PREOPEN_CONTEXT"]
+    },
+    "MICROSTRUCTURE":{
+      "required":false,
+      "fields":["quote_state","bid_depth","ask_depth","aggressive_buy_volume","aggressive_sell_volume","trade_count","avg_trade_size","spread_bps","observed_at"],
+      "sources":["MS2"]
+    }
+  },
+  "rules":{
+    "timestamps":"ISO-8601; Japan market naive timestamps interpreted JST only where source contract permits",
+    "point_in_time":true,
+    "future_information_forbidden":true,
+    "missing_optional_fields":"null",
+    "special_quote_classification":"MS2 evidence required",
+    "microstructure_claims_without_ms2":"forbidden",
+    "auto_execute":false
+  }
+}
