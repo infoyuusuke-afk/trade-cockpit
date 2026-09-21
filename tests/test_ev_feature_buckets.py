@@ -11,11 +11,19 @@ class EVFeatureBucketTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as d:
    p=Path(d)/"x.csv"
    with p.open("w",newline="") as f:
-    w=csv.DictWriter(f,fieldnames=["strategy_key","pnl_pct","cost_pct","volume_ratio_20"]);w.writeheader()
-    w.writerow({"strategy_key":"A","pnl_pct":"1","cost_pct":"0","volume_ratio_20":"0.5"})
-    w.writerow({"strategy_key":"A","pnl_pct":"2","cost_pct":"0","volume_ratio_20":"2.5"})
+    w=csv.DictWriter(f,fieldnames=["strategy_key","pnl_pct","cost_pct","volume_ratio_20","promotion_eligible"]);w.writeheader()
+    w.writerow({"strategy_key":"A","pnl_pct":"1","cost_pct":"0","volume_ratio_20":"0.5","promotion_eligible":"True"})
+    w.writerow({"strategy_key":"A","pnl_pct":"2","cost_pct":"0","volume_ratio_20":"2.5","promotion_eligible":"True"})
    x=analyze(p)
    self.assertEqual(len([r for r in x if r["feature"]=="volume_ratio_20"]),2)
+ def test_missing_promotion_flag_is_excluded(self):
+  with tempfile.TemporaryDirectory() as d:
+   p=Path(d)/"legacy.csv"
+   with p.open("w",newline="") as f:
+    w=csv.DictWriter(f,fieldnames=["strategy_key","net_pnl_pct","volume_ratio_20"]);w.writeheader()
+    w.writerow({"strategy_key":"A","net_pnl_pct":"99","volume_ratio_20":"2.5"})
+   groups,audit=analyze_with_audit(p)
+   self.assertEqual(groups,[]);self.assertEqual(audit["included_trade_count"],0);self.assertEqual(audit["excluded_nonpromotion_trade_count"],1)
  def test_review_trade_is_excluded_from_promotion_ev(self):
   with tempfile.TemporaryDirectory() as d:
    p=Path(d)/"x.csv"
