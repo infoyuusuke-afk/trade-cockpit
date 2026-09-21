@@ -15,7 +15,8 @@ class OrganizationTests(unittest.TestCase):
   self.assertEqual(out[0]["text"],"urgent"); self.assertEqual(sum(x["text"]=="same" for x in out),1)
  def test_entertainment_is_draft_only(self):
   x=e.build_event(timestamp="2026-09-21T21:00:00+09:00",domain="SYSTEM",event_type="DEVELOPMENT_MILESTONE",source="ChatGPT",payload={"summary":"827 tests pass"})
-  cs=ep.story_candidates([x]); self.assertEqual(len(cs),1)
+  from scripts.content_sanitizer import sanitize_event
+        cs=ep.story_candidates([sanitize_event(x)]); self.assertEqual(len(cs),1)
   p=ep.publishing_package(cs[0]); self.assertEqual(p["status"],"DRAFT_INTERNAL"); self.assertFalse(p["external_publish_allowed"]); self.assertTrue(p["owner_approval_required"])
  def test_progress(self):
   self.assertEqual(pp.summarize([{"progress":50,"status":"進行中"},{"progress":100,"status":"完了"},{"progress":0,"status":"Blocked"}]),{"overall_progress":50.0,"blocked":1,"open":2})
