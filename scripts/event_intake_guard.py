@@ -3,10 +3,14 @@ from __future__ import annotations
 from datetime import datetime
 from scripts.event_bus import validate_event
 def intake(events,*,now,max_age_seconds=60):
-    if not isinstance(now,datetime) or now.tzinfo is None: raise ValueError("now must be timezone-aware")
+    if not isinstance(now,datetime) or now.tzinfo is None or now.utcoffset() is None: raise ValueError("now must be timezone-aware")
     if max_age_seconds<0: raise ValueError("max_age_seconds must be >= 0")
     accepted=[]; rejected=[]; seen=set()
-    for e in sorted(events,key=lambda x:(x.get("timestamp",""),x.get("event_id",""))):
+    if not isinstance(events,list): raise ValueError("events must be list")
+    safe_events=[e for e in events if isinstance(e,dict)]
+    for bad in events:
+        if not isinstance(bad,dict): rejected.append({"event_id":None,"reason":"INVALID_EVENT"})
+    for e in sorted(safe_events,key=lambda x:(str(x.get("timestamp","")),str(x.get("event_id","")))):
         eid=e.get("event_id")
         if eid in seen:
             rejected.append({"event_id":eid,"reason":"DUPLICATE_EVENT"})
