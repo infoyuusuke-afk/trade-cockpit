@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Point-in-time contract for pre-open research features."""
-from datetime import datetime
+from scripts.time_utils import parse_market_ts
 
 ALLOWED_PREOPEN_FIELDS={
  "gap_pct","prior_day_range_pct","prior_day_volume","prior_day_turnover",
@@ -17,7 +17,7 @@ DEFAULT_MAX_AGE_SEC={
 }
 
 def validate_preopen_context(context, decision_ts):
-    decision=datetime.fromisoformat(str(decision_ts).replace("Z","+00:00"))
+    decision=parse_market_ts(decision_ts)
     values=context.get("values",{})
     observed=context.get("observed_at",{})
     unknown=set(values)-ALLOWED_PREOPEN_FIELDS
@@ -26,7 +26,7 @@ def validate_preopen_context(context, decision_ts):
     for key in values:
         if key not in observed:
             raise ValueError("missing observed_at for "+key)
-        ts=datetime.fromisoformat(str(observed[key]).replace("Z","+00:00"))
+        ts=parse_market_ts(observed[key])
         if ts>decision:
             raise ValueError("future information for "+key)
         age=(decision-ts).total_seconds()
