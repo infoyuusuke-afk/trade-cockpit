@@ -25,6 +25,14 @@ class OpenEntryEVTests(unittest.TestCase):
    self.assertAlmostEqual(x["net_pnl_pct"],x["gross_pnl_pct"]-0.1)
    self.assertEqual(x["pnl_pct"],x["net_pnl_pct"])
 
+ def test_mfe_mae_and_waiting_opportunity_cost(self):
+  r=compare_entry_delays(self.rows(),"LONG",0)
+  by={x["entry_policy"]:x for x in r}
+  self.assertGreater(by["OPEN"]["mfe_pct"],0)
+  self.assertLess(by["OPEN"]["mae_pct"],0)
+  self.assertEqual(by["OPEN"]["missed_move_pct_vs_open"],0)
+  self.assertGreater(by["WAIT_60S"]["missed_move_pct_vs_open"],0)
+
  def test_short_direction_is_symmetric(self):
   long=compare_entry_delays(self.rows(),"LONG",0)[0]
   short=compare_entry_delays(self.rows(),"SHORT",0)[0]
