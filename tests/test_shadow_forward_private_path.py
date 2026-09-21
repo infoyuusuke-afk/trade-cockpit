@@ -60,6 +60,21 @@ class PrivatePathPolicyTests(unittest.TestCase):
             self.assertTrue(result.is_relative_to(
                 (root / "data/private/shadow_forward").resolve()))
 
+    def test_allowed_root_symlink_to_repo_public_area_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "data/private").mkdir(parents=True)
+            public = root / "docs/public_sink"
+            public.mkdir(parents=True)
+            approved = root / "data/private/shadow_forward"
+            try:
+                approved.symlink_to(public, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                self.skipTest("symlink creation unavailable")
+            with self.assertRaises(ValueError):
+                policy.require_resolved_private_path(
+                    root, "data/private/shadow_forward/session/evidence.json")
+
     def test_symlink_escape_rejected(self):
         with tempfile.TemporaryDirectory() as td, tempfile.TemporaryDirectory() as outside:
             root = Path(td)
