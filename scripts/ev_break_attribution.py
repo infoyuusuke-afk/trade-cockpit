@@ -35,3 +35,39 @@ def summarize_break_reasons(attributions):
     return [{"reason":r,"N":len(v),"avg_net_pnl":sum(v)/len(v),
              "evidence_status":"INITIAL_EVIDENCE" if len(v)>=30 else "REFERENCE_ONLY",
              "causal_claim":False,"research_only":True} for r,v in sorted(groups.items())]
+
+
+def audit_preventability(trade, events, required_pretrade_checks=None):
+    """Separate missed observable risk from genuinely later shocks."""
+    dec=parse_market_ts(trade["decision_ts"])
+    checks=set(trade.get("pretrade_checks_completed",[]))
+    required=set(required_pretrade_checks or [])
+    missed_checks=sorted(required-checks)
+    pre=[]; post=[]
+    for e in events:
+        obs=parse_market_ts(e["observed_at"])
+        item={"reason":e["reason"],"observed_at":obs.isoformat(),
+              "magnitude":e.get("magnitude"),"evidence":e.get("evidence",{})}
+        (pre if obs<=dec else post).append(item)
+    if pre:
+        classification="MISSED_PRETRADE_RISK"
+    elif missed_checks:
+        classification="INCOMPLETE_PRETRADE_AUDIT"
+    elif post:
+        classification="POST_DECISION_SHOCK"
+    else:
+        classification="NO_IDENTIFIED_BREAK"
+    return {"trade_id":trade.get("trade_id"),"classification":classification,
+            "preexisting_risks":pre,"post_decision_events":post,
+            "missed_required_checks":missed_checks,
+            "preventable_claim":False,"research_only":True}
+
+def summarize_preventability(audits):
+    out={}
+    for a in audits:
+        k=a["classification"]; out[k]=out.get(k,0)+1
+    n=len(audits)
+    return {"N":n,"counts":out,
+            "rates":{k:v/n for k,v in out.items()} if n else {},
+            "evidence_status":"INITIAL_EVIDENCE" if n>=30 else "REFERENCE_ONLY",
+            "research_only":True}
