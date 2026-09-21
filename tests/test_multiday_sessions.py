@@ -21,7 +21,7 @@ class MultiDaySessionTests(unittest.TestCase):
   self.assertTrue(validate_tse_session(rows))
 
  def test_delayed_first_print_is_preserved(self):
-  rows=[{"ts":f"2026-09-17 09:{(5*60+i*15)//60:02d}:{(5*60+i*15)%60:02d}"} for i in range(60)]
+  rows=[{"ts":f"2026-09-17 09:{(5*60+i*15)//60:02d}:{(5*60+i*15)%60:02d}"} for i in range(62)]
   self.assertTrue(validate_tse_session(rows))
 
  def test_irregular_opening_is_preserved_unclassified(self):
