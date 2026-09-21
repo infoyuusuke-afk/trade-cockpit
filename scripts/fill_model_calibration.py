@@ -11,6 +11,7 @@ MIN_SAMPLE=50
 MIN_SESSION_DAYS=5
 REQUIRED=("model_version","observed_at","order_type","side","requested_qty","predicted_fill_qty","observed_fill_qty")
 OPTIONAL_CONTEXT=("spread_yen","visible_qty","tick_size")
+VALID_REGIMES=("TREND_UP","TREND_DOWN","RANGE","HIGH_VOL","UNKNOWN")
 def _num(x): return isinstance(x,(int,float)) and not isinstance(x,bool) and math.isfinite(x)
 def _aware(x): return isinstance(x,datetime) and x.tzinfo is not None and x.utcoffset() is not None
 def evaluate(records):
@@ -23,6 +24,7 @@ def evaluate(records):
         if not all(_num(x) and int(x)==x and x>=0 for x in nums) or r["requested_qty"]<=0: invalid+=1; continue
         if r["predicted_fill_qty"]>r["requested_qty"] or r["observed_fill_qty"]>r["requested_qty"]: invalid+=1; continue
         if any(k in r and (not _num(r[k]) or r[k] < 0) for k in OPTIONAL_CONTEXT): invalid+=1; continue
+        if "market_regime" in r and r["market_regime"] not in VALID_REGIMES: invalid+=1; continue
         valid.append(r)
     n=len(valid)
     session_days=sorted({r["observed_at"].date().isoformat() for r in valid})
@@ -38,7 +40,8 @@ def evaluate(records):
         liquidity_ratio=(visible/r["requested_qty"]) if _num(visible) else None
         liq_bucket="LIQ_UNKNOWN" if liquidity_ratio is None else ("LIQ_LT1X" if liquidity_ratio<1 else ("LIQ_1_3X" if liquidity_ratio<3 else "LIQ_3P_X"))
         h=r["observed_at"].hour; time_bucket="OPEN_0900_0930" if h==9 and r["observed_at"].minute<30 else ("CLOSE_1430_1530" if (h==14 and r["observed_at"].minute>=30) or h==15 else "MID_SESSION")
-        return spread_bucket,liq_bucket,time_bucket
+        regime=r.get("market_regime","UNKNOWN")
+        return spread_bucket,liq_bucket,time_bucket,regime
     strata={}
     context_strata={}
     for key in sorted({(r["model_version"],r["order_type"],r["side"]) for r in valid}):
@@ -51,5 +54,7 @@ def evaluate(records):
     required_base=[f"{mv}|{ot}|{side}" for mv in sorted({r["model_version"] for r in valid}) for ot in ("MARKET","LIMIT") for side in ("BUY","SELL")]
     missing_base=[k for k in required_base if k not in strata or strata[k]["status"]!="CALIBRATION_REVIEW_ELIGIBLE"]
     day_coverage_status="DAY_COVERAGE_SUFFICIENT" if len(session_days)>=MIN_SESSION_DAYS else "DAY_COVERAGE_INSUFFICIENT"
+    known_regime_n=sum(1 for r in valid if r.get("market_regime","UNKNOWN")!="UNKNOWN")
+    regime_diagnostic_status="REGIME_CONTEXT_AVAILABLE" if known_regime_n else "REGIME_CONTEXT_UNKNOWN"
     coverage_status="COVERAGE_SUFFICIENT" if required_base and not missing_base and day_coverage_status=="DAY_COVERAGE_SUFFICIENT" else "COVERAGE_INSUFFICIENT"
-    return {"schema_version":SCHEMA_VERSION,"strata":strata,"context_strata":context_strata,"coverage_status":coverage_status,"required_base_strata":required_base,"insufficient_base_strata":missing_base,"minimum_session_days":MIN_SESSION_DAYS,"unique_session_days":len(session_days),"session_days":session_days,"day_coverage_status":day_coverage_status,"status":"CALIBRATION_REVIEW_ELIGIBLE" if n>=MIN_SAMPLE else "INSUFFICIENT_SAMPLE","minimum_sample":MIN_SAMPLE,"sample_size":n,"invalid_record_n":invalid,"predicted_fill_rate":pred_rate,"observed_fill_rate":obs_rate,"fill_rate_bias":(pred_rate-obs_rate) if n else None,"fill_qty_mae":qty_mae,"fill_price_mae_yen":price_mae,"price_pair_n":len(price_pairs),"parameter_update_allowed":False,"real_submit_allowed":False}
+    return {"schema_version":SCHEMA_VERSION,"strata":strata,"context_strata":context_strata,"coverage_status":coverage_status,"required_base_strata":required_base,"insufficient_base_strata":missing_base,"minimum_session_days":MIN_SESSION_DAYS,"unique_session_days":len(session_days),"session_days":session_days,"day_coverage_status":day_coverage_status,"regime_diagnostic_status":regime_diagnostic_status,"known_regime_n":known_regime_n,"status":"CALIBRATION_REVIEW_ELIGIBLE" if n>=MIN_SAMPLE else "INSUFFICIENT_SAMPLE","minimum_sample":MIN_SAMPLE,"sample_size":n,"invalid_record_n":invalid,"predicted_fill_rate":pred_rate,"observed_fill_rate":obs_rate,"fill_rate_bias":(pred_rate-obs_rate) if n else None,"fill_qty_mae":qty_mae,"fill_price_mae_yen":price_mae,"price_pair_n":len(price_pairs),"parameter_update_allowed":False,"real_submit_allowed":False}
