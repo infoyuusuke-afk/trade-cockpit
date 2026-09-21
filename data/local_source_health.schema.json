@@ -1,0 +1,18 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Local Source Health v1",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["schema_version","source","state","observed_at","consecutive_failures","reasons"],
+  "properties":{
+    "schema_version":{"const":"local-source-health-1.0"},
+    "source":{"type":"string","minLength":1},
+    "state":{"enum":["HEALTHY","DEGRADED","STOPPED","UNKNOWN"]},
+    "observed_at":{"type":"string","format":"date-time"},
+    "last_data_at":{"type":["string","null"],"format":"date-time"},
+    "symbol":{"type":["string","null"]},
+    "correlation_id":{"type":["string","null"]},
+    "consecutive_failures":{"type":"integer","minimum":0},
+    "reasons":{"type":"array","items":{"type":"string"}}
+  }
+}
