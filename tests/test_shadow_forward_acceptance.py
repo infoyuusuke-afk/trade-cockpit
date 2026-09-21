@@ -472,3 +472,49 @@ class C103HardeningTests(unittest.TestCase):
                 report = sfa.evaluate_shadow_forward_acceptance([r], now=NOW)
                 self.assertEqual(report["eligible_unique_intents"], 0)
                 self.assertEqual(report["ambiguous_provenance_n"], 1)
+
+
+class C104ChronologyTests(unittest.TestCase):
+    def _report(self, **changes):
+        r = healthy_filled_record(decision_snapshot_id="c104-" + str(len(changes)))
+        r.update(changes)
+        return sfa.evaluate_shadow_forward_acceptance([r], now=NOW)
+
+    def test_reversed_submit_chronology_rejected(self):
+        report = self._report(submitted_at=NOW + timedelta(seconds=1))
+        self.assertEqual(report["status"], "FAIL_INTEGRITY")
+        self.assertEqual(report["eligible_unique_intents"], 0)
+
+    def test_future_submit_now_rejected(self):
+        future = NOW + timedelta(seconds=1)
+        report = self._report(submit_now=future)
+        self.assertEqual(report["status"], "FAIL_INTEGRITY")
+
+    def test_jst_session_date_mismatch_rejected(self):
+        report = self._report(session_date="2026-09-16")
+        self.assertEqual(report["status"], "FAIL_INTEGRITY")
+
+    def test_cross_zone_submit_uses_jst_calendar_date(self):
+        r = healthy_filled_record(decision_snapshot_id="c104-zone")
+        utc_submit = NOW.astimezone(timezone.utc)
+        r["submit_now"] = utc_submit
+        report = sfa.evaluate_shadow_forward_acceptance([r], now=NOW)
+        self.assertEqual(report["eligible_unique_intents"], 1)
+
+    def test_step_before_submit_rejected(self):
+        r = healthy_filled_record(decision_snapshot_id="c104-before")
+        r["steps"][0]["now"] = NOW - timedelta(seconds=1)
+        report = sfa.evaluate_shadow_forward_acceptance([r], now=NOW)
+        self.assertEqual(report["status"], "FAIL_INTEGRITY")
+
+    def test_non_monotonic_steps_rejected(self):
+        r = healthy_filled_record(decision_snapshot_id="c104-order")
+        r["steps"].append({"type":"ORDER_FILL","observation":observation(), "now": NOW - timedelta(milliseconds=1)})
+        report = sfa.evaluate_shadow_forward_acceptance([r], now=NOW)
+        self.assertEqual(report["status"], "FAIL_INTEGRITY")
+
+    def test_future_step_rejected(self):
+        r = healthy_filled_record(decision_snapshot_id="c104-future-step")
+        r["steps"][0]["now"] = NOW + timedelta(seconds=1)
+        report = sfa.evaluate_shadow_forward_acceptance([r], now=NOW)
+        self.assertEqual(report["status"], "FAIL_INTEGRITY")

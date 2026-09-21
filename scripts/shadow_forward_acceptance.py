@@ -63,7 +63,7 @@ acceptance()`を同じ入力で何度呼んでも`eligible_unique_intents`は
 from __future__ import annotations
 
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -72,6 +72,7 @@ import shadow_fill_model as sfm
 import shadow_position as sp
 
 SCHEMA_VERSION = "shadow-forward-acceptance-0.1"
+JST = timezone(timedelta(hours=9))
 
 MIN_ELIGIBLE_UNIQUE_INTENTS = 50
 
@@ -163,6 +164,32 @@ def _validate_provenance(record) -> list[str]:
     # 二重にreasonsへ入れるとambiguous_provenance_n側が先にrecordを
     # 除外してしまい、private_path_leak_nが決して増えなくなる。
 
+    return reasons
+
+
+def _chronology_reasons(record: dict, *, now: datetime) -> list[str]:
+    reasons = []
+    submitted_at = record["submitted_at"]
+    submit_now = record["submit_now"]
+    if submitted_at > submit_now:
+        reasons.append("CHRONOLOGY_SUBMITTED_AFTER_SUBMIT_NOW")
+    if submit_now > now:
+        reasons.append("CHRONOLOGY_SUBMIT_NOW_FUTURE")
+    if record["session_date"] != submit_now.astimezone(JST).date().isoformat():
+        reasons.append("CHRONOLOGY_SESSION_DATE_MISMATCH")
+    previous = submit_now
+    for step in record["steps"]:
+        step_now = step.get("now") if isinstance(step, dict) else None
+        if not isinstance(step_now, datetime) or step_now.tzinfo is None or step_now.utcoffset() is None:
+            reasons.append("CHRONOLOGY_STEP_NOW_INVALID")
+            continue
+        if step_now < submit_now:
+            reasons.append("CHRONOLOGY_STEP_BEFORE_SUBMIT")
+        if step_now < previous:
+            reasons.append("CHRONOLOGY_STEP_NON_MONOTONIC")
+        if step_now > now:
+            reasons.append("CHRONOLOGY_STEP_FUTURE")
+        previous = step_now
     return reasons
 
 
@@ -285,6 +312,12 @@ def evaluate_shadow_forward_acceptance(records, *, now: datetime) -> dict:
         provenance_reasons = _validate_provenance(record)
         if provenance_reasons:
             ambiguous_provenance_n += 1
+            continue
+
+        chronology_reasons = _chronology_reasons(record, now=now)
+        if chronology_reasons:
+            ambiguous_provenance_n += 1
+            integrity_violation = True
             continue
 
         source_path = record.get("source_path")
