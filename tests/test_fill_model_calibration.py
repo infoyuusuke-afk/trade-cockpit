@@ -76,3 +76,9 @@ class CalibrationDuplicateConflictTest(unittest.TestCase):
  def test_same_order_id_with_different_observed_fill_is_conflict(self):
   a=rec(shadow_order_id="collision",observed_fill_qty=40);b=rec(shadow_order_id="collision",observed_fill_qty=80)
   o=m.evaluate([a,b]);self.assertEqual(o["sample_size"],1);self.assertEqual(o["conflicting_duplicate_n"],1);self.assertEqual(o["evidence_integrity_status"],"CONFLICTING_DUPLICATE")
+
+class CalibrationIntegrityGateTest(unittest.TestCase):
+ def test_conflict_blocks_review_even_when_sample_threshold_met(self):
+  rows=[rec(shadow_order_id=f"ok-{i}") for i in range(m.MIN_SAMPLE)]
+  rows.append(rec(shadow_order_id="ok-0",observed_fill_qty=99))
+  o=m.evaluate(rows);self.assertEqual(o["sample_size"],m.MIN_SAMPLE);self.assertEqual(o["status"],"EVIDENCE_CONFLICT");self.assertEqual(o["coverage_status"],"COVERAGE_INSUFFICIENT");self.assertFalse(o["parameter_update_allowed"]);self.assertFalse(o["real_submit_allowed"])
