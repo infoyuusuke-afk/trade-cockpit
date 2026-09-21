@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-09-19T20:16:28.912394+09:00",
+  "updated_at": "2026-09-21T09:53:05.570177+09:00",
   "source": "世界の株価リアルタイムチャート",
   "source_url": "https://nikkei225jp.com/",
   "usage": "市場環境専用。個別株価・個別チャートには使用禁止。",
-  "verified_count": 10,
+  "verified_count": 9,
   "expected_count": 13,
   "feed_verified": true,
   "rows": {
@@ -16,8 +16,8 @@
       "change_pct": 1.38,
       "source_stamp": "09/18",
       "observed_at": "2026-09-18",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "未取得または時刻不整合・売買利用禁止"
     },
     "112": {
       "code": "112",
@@ -28,8 +28,8 @@
       "change_pct": -0.07,
       "source_stamp": "09/18",
       "observed_at": "2026-09-18",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "未取得または時刻不整合・売買利用禁止"
     },
     "121": {
       "code": "121",
@@ -40,18 +40,18 @@
       "change_pct": 2.49,
       "source_stamp": "09/18",
       "observed_at": "2026-09-18",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "未取得または時刻不整合・売買利用禁止"
     },
     "751": {
       "code": "751",
       "name": "DEX日経225",
       "source_name": "DEX日本225 フルタイム",
-      "value": 65130.0,
+      "value": 65143.0,
       "change": null,
       "change_pct": null,
-      "source_stamp": "20:16",
-      "observed_at": "2026-09-19T20:16:00+09:00",
+      "source_stamp": "09:53",
+      "observed_at": "2026-09-21T09:53:00+09:00",
       "verified": true,
       "status": "表示可"
     },
@@ -59,13 +59,13 @@
       "code": "511",
       "name": "ドル円",
       "source_name": "ドル円",
-      "value": 156.874,
-      "change": 0.921,
-      "change_pct": 0.59,
-      "source_stamp": "05:59",
-      "observed_at": "2026-09-19T05:59:00+09:00",
-      "verified": false,
-      "status": "未取得または時刻不整合・売買利用禁止"
+      "value": 156.715,
+      "change": -0.159,
+      "change_pct": -0.1,
+      "source_stamp": "09:53",
+      "observed_at": "2026-09-21T09:53:00+09:00",
+      "verified": true,
+      "status": "表示可"
     },
     "151": {
       "code": "151",
@@ -75,7 +75,7 @@
       "change": 0.009,
       "change_pct": 0.3,
       "source_stamp": "02:05",
-      "observed_at": "2026-09-19T02:05:00+09:00",
+      "observed_at": "2026-09-21T02:05:00+09:00",
       "verified": false,
       "status": "未取得または時刻不整合・売買利用禁止"
     },
@@ -155,13 +155,13 @@
       "code": "811",
       "name": "米国10年金利",
       "source_name": "米国債10年利回り",
-      "value": 4.998,
-      "change": 0.051,
-      "change_pct": 1.03,
-      "source_stamp": "05:59",
-      "observed_at": "2026-09-19T05:59:00+09:00",
-      "verified": false,
-      "status": "未取得または時刻不整合・売買利用禁止"
+      "value": 4.979,
+      "change": -0.017,
+      "change_pct": -0.34,
+      "source_stamp": "09:51",
+      "observed_at": "2026-09-21T09:51:00+09:00",
+      "verified": true,
+      "status": "表示可"
     }
   }
 }
