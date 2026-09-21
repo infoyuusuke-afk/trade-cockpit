@@ -10,20 +10,28 @@ def run_handoff(payload_path,out_dir,required_timeframe="15S",cost_pct=0.10,prev
     meta=payload.get("meta") or {}
     bars=payload.get("bars") if isinstance(payload.get("bars"),list) else []
     input_sha256=hashlib.sha256(raw).hexdigest()
-    if meta.get("symbol")!=required_symbol: raise ValueError("CLAUDE_HANDOFF_SYMBOL_MISMATCH:required=%s actual=%s"%(required_symbol,meta.get("symbol")))
-    if meta.get("timezone")!=required_timezone: raise ValueError("CLAUDE_HANDOFF_TIMEZONE_MISMATCH:required=%s actual=%s"%(required_timezone,meta.get("timezone")))
-    route=route_tradingview_data(required_timeframe=required_timeframe,mcp_payload=payload)
     out=Path(out_dir);out.mkdir(parents=True,exist_ok=True)
     receipt={"input_file":str(src),"input_sha256":input_sha256,"actual_symbol":meta.get("symbol"),
       "actual_timeframe":meta.get("timeframe"),"actual_timezone":meta.get("timezone"),"retrieved_at":meta.get("retrieved_at"),
       "raw_bar_count":len(bars),"first_raw_timestamp":bars[0].get("timestamp") if bars else None,
       "last_raw_timestamp":bars[-1].get("timestamp") if bars else None,
       "required_symbol":required_symbol,"required_timezone":required_timezone,
-      "required_timeframe":required_timeframe,"route_status":route.get("status"),
+      "required_timeframe":required_timeframe,"research_only":True,"auto_execute":False}
+    rp=out/"claude_handoff_receipt.json"
+    if meta.get("symbol")!=required_symbol:
+        receipt.update({"handoff_status":"REJECTED_IDENTITY","rejection_reason":"CLAUDE_HANDOFF_SYMBOL_MISMATCH","promotion_eligible":False})
+        rp.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\\n",encoding="utf-8")
+        raise ValueError("CLAUDE_HANDOFF_SYMBOL_MISMATCH:required=%s actual=%s"%(required_symbol,meta.get("symbol")))
+    if meta.get("timezone")!=required_timezone:
+        receipt.update({"handoff_status":"REJECTED_IDENTITY","rejection_reason":"CLAUDE_HANDOFF_TIMEZONE_MISMATCH","promotion_eligible":False})
+        rp.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\\n",encoding="utf-8")
+        raise ValueError("CLAUDE_HANDOFF_TIMEZONE_MISMATCH:required=%s actual=%s"%(required_timezone,meta.get("timezone")))
+    route=route_tradingview_data(required_timeframe=required_timeframe,mcp_payload=payload)
+    receipt.update({"handoff_status":"ROUTED","route_status":route.get("status"),
       "selected_source":route.get("selected_source"),"mcp_error":route.get("mcp_error"),
       "promotion_eligible":bool(route.get("promotion_eligible",False)),"input_rows":len(route.get("rows") or []),
-      "research_only":True,"auto_execute":False}
-    rp=out/"claude_handoff_receipt.json";rp.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+      "research_only":True,"auto_execute":False})
+    rp.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     if not route.get("rows"): raise ValueError("CLAUDE_HANDOFF_NOT_READY:"+str(route.get("status"))+":"+str(route.get("mcp_error")))
     trade,ev,manifest,summary=run_routed_backtest(route,out,cost_pct,prev_close)
     quality_path=Path(summary["session_quality_file"])
