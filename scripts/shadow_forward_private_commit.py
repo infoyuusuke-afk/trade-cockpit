@@ -5,7 +5,8 @@ Inactive library only: no service, scheduler, broker, RSS, or Real-submit path.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass\nfrom pathlib import Path
+from dataclasses import dataclass
+from pathlib import Path
 
 import shadow_forward_private_path as path_policy
 
