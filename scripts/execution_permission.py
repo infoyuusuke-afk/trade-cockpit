@@ -174,7 +174,7 @@ def _parse_aware(text) -> Optional[datetime]:
         parsed = datetime.fromisoformat(text)
     except ValueError:
         return None
-    if parsed.tzinfo is None:
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
         return None
     return parsed
 
@@ -469,7 +469,7 @@ def evaluate_permission(intent: dict, risk_decision: dict, snapshot: dict, polic
     base = {
         "schema_version": SCHEMA_VERSION,
         "policy_version": policy.get("policy_version") if isinstance(policy, dict) else None,
-        "generated_at": now.isoformat() if isinstance(now, datetime) and now.tzinfo else None,
+        "generated_at": now.isoformat() if isinstance(now, datetime) and now.tzinfo is not None and now.utcoffset() is not None else None,
         "intent_hash": intent.get("intent_hash") if isinstance(intent, dict) else None,
         "symbol": intent.get("symbol") if isinstance(intent, dict) else None,
         "permission_status": None,
@@ -477,7 +477,7 @@ def evaluate_permission(intent: dict, risk_decision: dict, snapshot: dict, polic
         "block_reasons": [],
     }
 
-    if not isinstance(now, datetime) or now.tzinfo is None:
+    if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
         return {**base, "permission_status": "BLOCKED", "block_reasons": ["BLOCK_NOW_NOT_TIMEZONE_AWARE"]}
 
     policy_violations = validate_execution_policy_v0_1(policy)
@@ -560,13 +560,13 @@ def evaluate_reconfirmation(intent: dict, risk_decision: dict, ticket: dict, fre
     base = {
         "schema_version": SCHEMA_VERSION,
         "policy_version": policy.get("policy_version") if isinstance(policy, dict) else None,
-        "generated_at": now.isoformat() if isinstance(now, datetime) and now.tzinfo else None,
+        "generated_at": now.isoformat() if isinstance(now, datetime) and now.tzinfo is not None and now.utcoffset() is not None else None,
         "intent_hash": intent.get("intent_hash") if isinstance(intent, dict) else None,
         "reconfirm_status": None,
         "block_reasons": [],
     }
 
-    if not isinstance(now, datetime) or now.tzinfo is None:
+    if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
         return {**base, "reconfirm_status": "BLOCKED", "block_reasons": ["BLOCK_NOW_NOT_TIMEZONE_AWARE"]}
 
     policy_violations = validate_execution_policy_v0_1(policy)
