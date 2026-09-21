@@ -9,6 +9,10 @@ Status: research-only. No automatic order execution.
 - Required timeframe: `15S`.
 - Required timezone: `Asia/Tokyo`.
 
+Machine-readable schema: `data/claude_tradingview_handoff.schema.json`.
+
+The schema locks the required identity and payload shape. Runtime intake remains authoritative for semantic checks such as finite OHLCV, OHLC relationships, strictly increasing timestamps, routing and session quality.
+
 ## Required JSON
 ```json
 {
