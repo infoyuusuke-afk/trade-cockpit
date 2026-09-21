@@ -1,9 +1,11 @@
 """Internal entertainment/publishing preparation. External publish is always disabled."""
 from __future__ import annotations
+from scripts.content_privacy_boundary import sanitize_event_for_content
 SCORES={"TRADE_RESULT":5,"AI_DISAGREEMENT":4,"SYSTEM_INCIDENT":4,"STRATEGY_DISCOVERY":4,"DEVELOPMENT_MILESTONE":3,"DAILY_NOTE":1}
 def story_candidates(events,min_score=3):
     out=[]
-    for e in events:
+    for source_event in events:
+        e=sanitize_event_for_content(source_event)
         kind=e.get("event_type","")
         score=SCORES.get(kind,0)
         if score<min_score: continue
