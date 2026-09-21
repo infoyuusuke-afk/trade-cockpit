@@ -5,7 +5,7 @@ from scripts.time_utils import parse_market_ts
 
 REQUIRED_META=("symbol","timeframe","retrieved_at","timezone")
 REQUIRED_BAR=("timestamp","open","high","low","close","volume")
-ALLOWED_TOP={"meta","bars"};ALLOWED_META=set(REQUIRED_META);ALLOWED_BAR=set(REQUIRED_BAR)
+ALLOWED_TOP={"meta","bars"};ALLOWED_META=set(REQUIRED_META);ALLOWED_BAR=set(REQUIRED_BAR)\nREQUIRED_SYMBOL="TSE:285A";REQUIRED_TIMEFRAME="15S";REQUIRED_TIMEZONE="Asia/Tokyo"
 
 def _validate_contract_shape(payload):
     if not isinstance(payload,dict): raise ValueError("MCP_PAYLOAD_NOT_OBJECT")
