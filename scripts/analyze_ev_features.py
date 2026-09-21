@@ -24,7 +24,7 @@ def analyze(path):
     with Path(path).open(encoding="utf-8-sig",newline="") as fh:
         for r in csv.DictReader(fh):
             try:
-                pnl=float(r["pnl_pct"])-float(r.get("cost_pct") or 0)
+                pnl=float(r.get("net_pnl_pct") or r["pnl_pct"])
                 key=r["strategy_key"]
             except (KeyError,TypeError,ValueError):continue
             for feature in BUCKETS:
