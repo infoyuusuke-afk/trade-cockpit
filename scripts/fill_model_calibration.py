@@ -16,18 +16,23 @@ def _num(x): return isinstance(x,(int,float)) and not isinstance(x,bool) and mat
 def _aware(x): return isinstance(x,datetime) and x.tzinfo is not None and x.utcoffset() is not None
 def evaluate(records):
     if not isinstance(records,list): raise ValueError("records must be list")
-    valid=[]; invalid=0; duplicate_record_n=0; seen_order_ids=set()
+    valid=[]; invalid=0; duplicate_record_n=0; conflicting_duplicate_n=0; seen_order_records={}
     for r in records:
         if not isinstance(r,dict) or any(k not in r for k in REQUIRED): invalid+=1; continue
         if not isinstance(r["shadow_order_id"],str) or not r["shadow_order_id"].strip(): invalid+=1; continue
-        if r["shadow_order_id"] in seen_order_ids: duplicate_record_n+=1; continue
+        if r["shadow_order_id"] in seen_order_records:
+            prior=seen_order_records[r["shadow_order_id"]]
+            comparable={k:r.get(k) for k in REQUIRED if k!="observed_at"} | {"observed_at":r["observed_at"]}
+            if comparable != prior: conflicting_duplicate_n+=1
+            else: duplicate_record_n+=1
+            continue
         if not _aware(r["observed_at"]) or r["order_type"] not in ("MARKET","LIMIT") or r["side"] not in ("BUY","SELL"): invalid+=1; continue
         nums=(r["requested_qty"],r["predicted_fill_qty"],r["observed_fill_qty"])
         if not all(_num(x) and int(x)==x and x>=0 for x in nums) or r["requested_qty"]<=0: invalid+=1; continue
         if r["predicted_fill_qty"]>r["requested_qty"] or r["observed_fill_qty"]>r["requested_qty"]: invalid+=1; continue
         if any(k in r and (not _num(r[k]) or r[k] < 0) for k in OPTIONAL_CONTEXT): invalid+=1; continue
         if "market_regime" in r and r["market_regime"] not in VALID_REGIMES: invalid+=1; continue
-        seen_order_ids.add(r["shadow_order_id"])
+        seen_order_records[r["shadow_order_id"]]={k:r.get(k) for k in REQUIRED if k!="observed_at"} | {"observed_at":r["observed_at"]}
         valid.append(r)
     n=len(valid)
     session_days=sorted({r["observed_at"].date().isoformat() for r in valid})
@@ -60,4 +65,4 @@ def evaluate(records):
     known_regime_n=sum(1 for r in valid if r.get("market_regime","UNKNOWN")!="UNKNOWN")
     regime_diagnostic_status="REGIME_CONTEXT_AVAILABLE" if known_regime_n else "REGIME_CONTEXT_UNKNOWN"
     coverage_status="COVERAGE_SUFFICIENT" if required_base and not missing_base and day_coverage_status=="DAY_COVERAGE_SUFFICIENT" else "COVERAGE_INSUFFICIENT"
-    return {"schema_version":SCHEMA_VERSION,"strata":strata,"context_strata":context_strata,"coverage_status":coverage_status,"required_base_strata":required_base,"insufficient_base_strata":missing_base,"minimum_session_days":MIN_SESSION_DAYS,"unique_session_days":len(session_days),"session_days":session_days,"day_coverage_status":day_coverage_status,"regime_diagnostic_status":regime_diagnostic_status,"known_regime_n":known_regime_n,"status":"CALIBRATION_REVIEW_ELIGIBLE" if n>=MIN_SAMPLE else "INSUFFICIENT_SAMPLE","minimum_sample":MIN_SAMPLE,"sample_size":n,"invalid_record_n":invalid,"duplicate_record_n":duplicate_record_n,"predicted_fill_rate":pred_rate,"observed_fill_rate":obs_rate,"fill_rate_bias":(pred_rate-obs_rate) if n else None,"fill_qty_mae":qty_mae,"fill_price_mae_yen":price_mae,"price_pair_n":len(price_pairs),"parameter_update_allowed":False,"real_submit_allowed":False}
+    return {"schema_version":SCHEMA_VERSION,"strata":strata,"context_strata":context_strata,"coverage_status":coverage_status,"required_base_strata":required_base,"insufficient_base_strata":missing_base,"minimum_session_days":MIN_SESSION_DAYS,"unique_session_days":len(session_days),"session_days":session_days,"day_coverage_status":day_coverage_status,"regime_diagnostic_status":regime_diagnostic_status,"known_regime_n":known_regime_n,"status":"CALIBRATION_REVIEW_ELIGIBLE" if n>=MIN_SAMPLE else "INSUFFICIENT_SAMPLE","minimum_sample":MIN_SAMPLE,"sample_size":n,"invalid_record_n":invalid,"duplicate_record_n":duplicate_record_n,"conflicting_duplicate_n":conflicting_duplicate_n,"evidence_integrity_status":"CONFLICTING_DUPLICATE" if conflicting_duplicate_n else "OK","predicted_fill_rate":pred_rate,"observed_fill_rate":obs_rate,"fill_rate_bias":(pred_rate-obs_rate) if n else None,"fill_qty_mae":qty_mae,"fill_price_mae_yen":price_mae,"price_pair_n":len(price_pairs),"parameter_update_allowed":False,"real_submit_allowed":False}
