@@ -65,3 +65,31 @@ def gated_staged_long(rows, stage_signals):
         indices.append(int(s["index"]))
     result=compare_fixed_vs_staged(rows,indices)
     return {"executed":True,"result":result,"audit":audits,"research_only":True}
+
+
+def evaluate_long_exit_policies(rows, avg_entry, start_index, tick_size, vwap_values=None, cost_pct=0.0):
+    """Compare fixed research exits without selecting a winner."""
+    if tick_size<=0: raise ValueError("tick_size must be positive")
+    if start_index<0 or start_index>=len(rows): raise ValueError("bad start_index")
+    candidates={}
+    target=avg_entry+tick_size
+    tick_i=next((i for i in range(start_index,len(rows)) if float(rows[i]["high"])>=target),None)
+    if tick_i is not None:
+        candidates["ONE_TICK"]=(tick_i,target)
+    if vwap_values is not None:
+        if len(vwap_values)!=len(rows): raise ValueError("vwap length mismatch")
+        vi=next((i for i in range(start_index,len(rows))
+                 if vwap_values[i] is not None and float(rows[i]["high"])>=float(vwap_values[i])),None)
+        if vi is not None:
+            candidates["VWAP_REVERSION"]=(vi,float(vwap_values[vi]))
+    candidates["EOD"]=(len(rows)-1,float(rows[-1]["close"]))
+    out=[]
+    for policy,(i,px) in candidates.items():
+        gross=(px/avg_entry-1)*100
+        path=rows[start_index:i+1]
+        out.append({"exit_policy":policy,"exit_index":i,"exit_price":px,
+                    "gross_pnl_pct":gross,"cost_pct":cost_pct,
+                    "net_pnl_pct":gross-cost_pct,
+                    "mae_pct":(min(float(r["low"]) for r in path)/avg_entry-1)*100,
+                    "research_only":True})
+    return out
