@@ -988,3 +988,72 @@ widths」も同じ理由で失敗していたことを`gh run list`で確認済�
 main SHA、branch/PR、変更ファイル、追加テスト、CI、state transition、canonical hash変更有無、private data接触有無、real-submit関連変更有無、残リスク、次のblocker。
 
 本節はClaudeの作業開始指示であり、real orderの承認ではない。
+
+
+## C-112｜2026-09-22 AI Strategy Supervisor / リアルタイムAI戦略LIVEを全体仕様へ正式追加（GPT共有）
+
+**ユーザー確認事項**：「各統括者のリアルタイムAI戦略LIVEなども全体構成に組み込まれ、Claudeへ共有されているか」。
+
+確認の結果、既存Master SpecにはSCALP/EVENT/REALTIME/OVERNIGHT/SWING/VALUE/KIOXIAおよびStrategy Routerは含まれていたが、**各AI統括者とAI Strategy LIVEを独立した正式レイヤーとして明文化していなかった**ため、C-112で正式追加した。
+
+### 正式追加した統括者
+- Chief AI Strategy Supervisor / 総合AI戦略統括
+- Data Quality Supervisor / データ品質統括
+- Market Regime Supervisor / 地合い・レジーム統括
+- SCALP Supervisor / スキャル戦略統括
+- Event Supervisor / イベント戦略統括
+- Realtime Daytrade Supervisor / リアルタイム・デイトレ戦略統括
+- Overnight Supervisor / オーバーナイト戦略統括
+- Swing Supervisor / スイング戦略統括
+- Value / Long Catalyst Supervisor / バリュー・中長期カタリスト統括
+- TOB / M&A Supervisor / TOB・M&A統括
+- KIOXIA Dedicated Supervisor / キオクシア専任統括
+- Risk & Safety Supervisor / リスク・安全統括
+- Shadow Execution Supervisor / シャドー執行統括
+- Reconciliation Supervisor / 照合統括
+- Calibration Supervisor / キャリブレーション統括
+- Journal / Content Export Supervisor / 日記・コンテンツ出力統括
+
+### AI Strategy LIVE / AI戦略LIVE
+各統括者はpoint-in-timeのsnapshotを出力し、総合AI戦略統括がクロスホライズンの一致/不一致を表示する。ただしAI文面はcanonical stateを変更できず、Risk/Permission/Shadow/Real submitを迂回できない。
+
+同一銘柄で以下のような併存を許可する：
+- SCALP: LONG candidate
+- REALTIME: WATCH
+- OVERNIGHT: BLOCK
+- SWING: LONG WATCH
+- VALUE: NEUTRAL
+
+無理に単一の総合BUY/SHORTへ丸めない。
+
+### LIVE画面で最低限表示するもの
+- JST時刻 / データ鮮度 / Data Quality
+- Market Regime
+- 各統括者カード
+- direction/state
+- trigger / invalidation
+- Entry / Stop / Target案
+- OR5/OR15/VWAP/EMA/Flow/Volume等
+- current-condition score
+- historical EV/PF/DD/N（存在する場合のみ）
+- conflict
+- Risk Gate
+- Shadow state
+- last-update age
+- voice state
+
+観測値、決定論的派生状態、統計、AIコメントはUI上も区別する。
+
+### 日記連携
+AI Strategy LIVEから外へ出すのはサニタイズ済みイベントのみ：
+- SUPERVISOR_STATE_CHANGED
+- STRATEGY_CANDIDATE_ACTIVATED
+- STRATEGY_INVALIDATED
+- CONFLICT_DETECTED
+- RISK_GATE_BLOCKED
+- SHADOW_POSITION_OPENED/CLOSED
+- DAILY_STRATEGY_SUMMARY
+
+これを別プロジェクトのTrading Journal System / AIトレード日記システムへ渡す。private MS2/account/order payloadは渡さない。
+
+**Claudeへの依頼**：Master Specの4.7.1/4.7.2を読み、今後Strategy Router / LIVE UI / Event Bus / Journal exportを設計する際の正式アーキテクチャとして扱う。実注文経路の有効化は含まれない。
