@@ -1,5 +1,5 @@
 import unittest
-from scripts.analyze_open_entry_ev import compare_entry_delays,summarize_entry_policies,fixed_preopen_regime_labels,attach_preopen_regime,summarize_by_regime
+from scripts.analyze_open_entry_ev import compare_entry_delays,summarize_entry_policies,fixed_preopen_regime_labels,attach_preopen_regime,summarize_by_regime,compare_policy_tradeoffs
 
 class OpenEntryEVTests(unittest.TestCase):
  def rows(self):
@@ -53,7 +53,7 @@ class OpenEntryEVTests(unittest.TestCase):
    self.assertIn("profit_factor",x)
    self.assertIn("avg_mfe_pct",x)
    self.assertIn("avg_mae_pct",x)
-   self.assertIn("avg_missed_move_pct_vs_open",x)\n   self.assertIn("worst_net_pnl_pct",x)\n   self.assertIn("bottom_10pct_avg_net_pnl_pct",x)\n   self.assertIn("worst_mae_pct",x)
+   self.assertIn("avg_missed_move_pct_vs_open",x)\n   self.assertIn("worst_net_pnl_pct",x)\n   self.assertIn("bottom_10pct_avg_net_pnl_pct",x)\n   self.assertIn("worst_mae_pct",x)\n   self.assertIn("max_drawdown_pct",x)
 
  def test_fixed_regimes_are_deterministic(self):
   x=fixed_preopen_regime_labels({"gap_pct":2.0,"prior_day_range_pct":2.5,"open_state":"DELAYED_OPEN_UNCLASSIFIED"})
@@ -71,5 +71,18 @@ class OpenEntryEVTests(unittest.TestCase):
  def test_preopen_regime_ignores_same_day_realized_range(self):
   x=fixed_preopen_regime_labels({"gap_pct":0,"intraday_range_pct":9.9})
   self.assertEqual(x["prior_vol_regime"],"UNKNOWN")
+
+ def test_wait_tradeoff_is_relative_to_open(self):
+  all_results=[]
+  for side in ("LONG","SHORT"):
+   all_results += compare_entry_delays(self.rows(),side,0.1)
+  s=summarize_entry_policies(all_results)
+  d=compare_policy_tradeoffs(s)
+  self.assertEqual(len(d),4)
+  self.assertTrue(all(x["entry_policy"]!="OPEN" for x in d))
+  for x in d:
+   self.assertIn("avg_pnl_delta_vs_open_pct",x)
+   self.assertIn("avg_mae_improvement_vs_open_pct",x)
+   self.assertIn("max_dd_improvement_vs_open_pct",x)
 
 if __name__=="__main__": unittest.main()
