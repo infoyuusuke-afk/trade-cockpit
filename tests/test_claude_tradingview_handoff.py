@@ -15,6 +15,16 @@ class ClaudeTradingViewHandoffTests(unittest.TestCase):
    self.assertEqual(r["route_status"],"READY_UNCROSSCHECKED");self.assertFalse(r["promotion_eligible"])
    self.assertTrue(r["research_only"]);self.assertFalse(r["auto_execute"])
    self.assertTrue(trade.exists());self.assertTrue(ev.exists());self.assertTrue(manifest.exists());self.assertEqual(summary["bar_count"],70)
+ def test_wrong_symbol_fails_before_research(self):
+  with tempfile.TemporaryDirectory() as d:
+   pld=self.payload();pld["meta"]["symbol"]="TSE:9999"
+   p=Path(d)/"claude.json";p.write_text(json.dumps(pld),encoding="utf-8")
+   with self.assertRaisesRegex(ValueError,"CLAUDE_HANDOFF_SYMBOL_MISMATCH"):run_handoff(p,Path(d)/"out")
+ def test_wrong_timezone_fails_before_research(self):
+  with tempfile.TemporaryDirectory() as d:
+   pld=self.payload();pld["meta"]["timezone"]="UTC"
+   p=Path(d)/"claude.json";p.write_text(json.dumps(pld),encoding="utf-8")
+   with self.assertRaisesRegex(ValueError,"CLAUDE_HANDOFF_TIMEZONE_MISMATCH"):run_handoff(p,Path(d)/"out")
  def test_wrong_timeframe_fails_closed_but_keeps_receipt(self):
   with tempfile.TemporaryDirectory() as d:
    p=Path(d)/"claude.json";p.write_text(json.dumps(self.payload("5")),encoding="utf-8");out=Path(d)/"out"
