@@ -101,10 +101,12 @@ class QuantityConservationAdversarialTest(unittest.TestCase):
         self.assertIn("REJECTED_POSITION_QTY_INCONSISTENT",reasons)
 
     def test_closed_position_is_terminal_immutable(self):
-        p=self._position(); closed=dict(p)
-        closed.update(status="CLOSED",current_qty=0,remaining_position_qty=0,exit_filled_qty=p["entry_filled_qty_seen"],avg_exit_price=1500.0,closed_at=NOW+timedelta(seconds=1),first_position_observation_at=NOW+timedelta(seconds=1),last_position_observation_at=NOW+timedelta(seconds=1))
-        out=sp.evaluate_position_exit(closed,observation(observed_at=NOW+timedelta(seconds=2)),now=NOW+timedelta(seconds=2))
-        self.assertEqual(out,closed)
+        p=self._position()
+        later=NOW+timedelta(seconds=5)
+        closed=sp.evaluate_position_exit(p,observation(observed_at=later,last_trade_price=1601.0),now=later)
+        self.assertEqual(closed["status"],"CLOSED")
+        replay=sp.evaluate_position_exit(closed,observation(observed_at=later+timedelta(seconds=1),last_trade_price=1700.0),now=later+timedelta(seconds=1))
+        self.assertEqual(replay,closed)
 
     def test_entry_sync_quantity_rollback_is_blocked(self):
         p=self._position(); intent=entry_intent(); order=filled_order(intent)
