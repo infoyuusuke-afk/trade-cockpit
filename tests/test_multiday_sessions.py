@@ -1,6 +1,6 @@
 import csv,tempfile,unittest
 from pathlib import Path
-from scripts.run_research_pipeline import split_sessions,validate_tse_session,run
+from scripts.run_research_pipeline import split_sessions,validate_tse_session,opening_quality,run
 
 class MultiDaySessionTests(unittest.TestCase):
  def test_split_sessions_sorts_and_resets_by_date(self):
@@ -24,10 +24,14 @@ class MultiDaySessionTests(unittest.TestCase):
   rows=[{"ts":f"2026-09-17 09:{(5*60+i*15)//60:02d}:{(5*60+i*15)%60:02d}"} for i in range(60)]
   self.assertTrue(validate_tse_session(rows))
 
- def test_broken_opening_grid_fails_closed(self):
-  rows=[{"ts":f"2026-09-17 09:{(i*15)//60:02d}:{(i*15)%60:02d}"} for i in range(60)]
+ def test_irregular_opening_is_preserved_unclassified(self):
+  rows=[{"ts":f"2026-09-17 09:{(i*15)//60:02d}:{(i*15)%60:02d}"} for i in range(62)]
   rows[10]={"ts":"2026-09-17 09:02:31"}
-  with self.assertRaises(ValueError): validate_tse_session(rows)
+  rows=sorted(rows,key=lambda r:r["ts"])
+  self.assertTrue(validate_tse_session(rows))
+  q=opening_quality(rows)
+  self.assertEqual(q["opening_data_quality"],"IRREGULAR_UNCLASSIFIED")
+  self.assertGreater(q["opening_irregular_intervals"],0)
 
  def test_each_day_exits_same_day_and_pnl_contract(self):
   with tempfile.TemporaryDirectory() as d:
