@@ -78,7 +78,7 @@ class OpenEntryEVTests(unittest.TestCase):
    all_results += compare_entry_delays(self.rows(),side,0.1)
   s=summarize_entry_policies(all_results)
   d=compare_policy_tradeoffs(s)
-  self.assertEqual(len(d),4)
+  self.assertEqual(len(d),5)
   self.assertTrue(all(x["entry_policy"]!="OPEN" for x in d))
   for x in d:
    self.assertIn("avg_pnl_delta_vs_open_pct",x)
@@ -96,5 +96,19 @@ class OpenEntryEVTests(unittest.TestCase):
   self.assertEqual(w15["requested_entry_delay_sec"],15)
   self.assertEqual(w15["actual_entry_delay_sec"],30)
   self.assertEqual(w15["entry_delay_slippage_sec"],15)
+
+ def test_delayed_open_separates_clock_and_first_print_or5(self):
+  rows=[
+   {"ts":"2026-09-18 09:03:00","open":100.0,"high":101.0,"low":99.0,"close":100.0},
+   {"ts":"2026-09-18 09:05:00","open":105.0,"high":106.0,"low":104.0,"close":105.0},
+   {"ts":"2026-09-18 09:08:00","open":110.0,"high":111.0,"low":109.0,"close":110.0},
+   {"ts":"2026-09-18 15:30:00","open":112.0,"high":113.0,"low":111.0,"close":112.0},
+  ]
+  r=compare_entry_delays(rows,"LONG",0)
+  clock=next(x for x in r if x["entry_policy"]=="CLOCK_OR5_WAIT")
+  first=next(x for x in r if x["entry_policy"]=="OR5_WAIT")
+  self.assertEqual(clock["entry_ts"],"2026-09-18 09:05:00")
+  self.assertEqual(first["entry_ts"],"2026-09-18 09:08:00")
+  self.assertNotEqual(clock["entry"],first["entry"])
 
 if __name__=="__main__": unittest.main()
