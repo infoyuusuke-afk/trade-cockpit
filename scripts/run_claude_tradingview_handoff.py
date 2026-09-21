@@ -6,8 +6,16 @@ from scripts.tradingview_source_router import route_tradingview_data
 from scripts.routed_research_backtest import run_routed_backtest
 
 def run_handoff(payload_path,out_dir,required_timeframe="15S",cost_pct=0.10,prev_close=None,required_symbol="TSE:285A",required_timezone="Asia/Tokyo"):
-    src=Path(payload_path);raw=src.read_bytes();input_sha256=hashlib.sha256(raw).hexdigest()
-    out=Path(out_dir);out.mkdir(parents=True,exist_ok=True);rp=out/"claude_handoff_receipt.json"
+    src=Path(payload_path);out=Path(out_dir);out.mkdir(parents=True,exist_ok=True);rp=out/"claude_handoff_receipt.json"
+    try:
+        raw=src.read_bytes()
+    except OSError as e:
+        receipt={"input_file":str(src),"input_sha256":None,"handoff_status":"INPUT_UNAVAILABLE",
+          "rejection_reason":"CLAUDE_HANDOFF_INPUT_UNAVAILABLE","input_error":type(e).__name__,
+          "promotion_eligible":False,"research_only":True,"auto_execute":False}
+        rp.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+        raise ValueError("CLAUDE_HANDOFF_INPUT_UNAVAILABLE:"+type(e).__name__) from e
+    input_sha256=hashlib.sha256(raw).hexdigest()
     try:
         payload=json.loads(raw.decode("utf-8-sig"))
     except (UnicodeDecodeError,json.JSONDecodeError) as e:

@@ -67,4 +67,12 @@ class ClaudeTradingViewHandoffTests(unittest.TestCase):
    r=json.loads((out/"claude_handoff_receipt.json").read_text())
    self.assertEqual(r["handoff_status"],"REJECTED_PARSE");self.assertEqual(r["rejection_reason"],"CLAUDE_HANDOFF_ROOT_NOT_OBJECT")
    self.assertFalse(r["promotion_eligible"])
+ def test_missing_input_is_unavailable_not_payload_rejection(self):
+  with tempfile.TemporaryDirectory() as d:
+   p=Path(d)/"missing.json";out=Path(d)/"out"
+   with self.assertRaisesRegex(ValueError,"CLAUDE_HANDOFF_INPUT_UNAVAILABLE"):run_handoff(p,out)
+   r=json.loads((out/"claude_handoff_receipt.json").read_text())
+   self.assertEqual(r["handoff_status"],"INPUT_UNAVAILABLE");self.assertEqual(r["rejection_reason"],"CLAUDE_HANDOFF_INPUT_UNAVAILABLE")
+   self.assertIsNone(r["input_sha256"]);self.assertEqual(r["input_error"],"FileNotFoundError")
+   self.assertFalse(r["promotion_eligible"]);self.assertTrue(r["research_only"]);self.assertFalse(r["auto_execute"])
 if __name__=="__main__":unittest.main()
