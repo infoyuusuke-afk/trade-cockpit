@@ -130,4 +130,14 @@ def verify_chain(events: list[dict], *, now: datetime, expected_anchor: str | No
 
     if not finalized:
         reasons.append("CHAIN_NOT_FINALIZED")
+    if expected_anchor is not None:
+        if not isinstance(expected_anchor, str) or len(expected_anchor) != 64:
+            reasons.append("EXPECTED_ANCHOR_INVALID")
+        else:
+            try:
+                actual_anchor = compute_chain_anchor(events)
+            except (TypeError, ValueError):
+                actual_anchor = None
+            if actual_anchor != expected_anchor:
+                reasons.append("CHAIN_ANCHOR_MISMATCH")
     return {"valid": not reasons, "reasons": reasons, "finalized": finalized}
