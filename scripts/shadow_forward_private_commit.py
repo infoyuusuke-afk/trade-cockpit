@@ -39,13 +39,18 @@ def commit_new_private_artifact(repo_root: Path, relative_path: str, data: bytes
             raise FileExistsError("final artifact appeared during commit")
         temp.rename(final_path)
 
-        # Best-effort directory durability where supported. Failure is surfaced.
-        flags = getattr(os, "O_RDONLY", 0)
-        dir_fd = os.open(parent, flags)
-        try:
-            os.fsync(dir_fd)
-        finally:
-            os.close(dir_fd)
+        # Directory fsync is required on POSIX for the durability claim. Windows
+        # needs a separately validated native directory-flush implementation;
+        # until then the artifact is committed but not "durability verified".
+        directory_durable = False
+        if os.name == "posix":
+            flags = getattr(os, "O_RDONLY", 0)
+            dir_fd = os.open(parent, flags)
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+            directory_durable = True
         return final_path
     except Exception:
         # Do not guess whether a failed commit is safe. A .pending artifact is
