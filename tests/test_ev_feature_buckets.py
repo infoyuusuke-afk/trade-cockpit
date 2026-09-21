@@ -25,5 +25,5 @@ class EVFeatureBucketTests(unittest.TestCase):
     w.writerow({"strategy_key":"A","net_pnl_pct":"99","volume_ratio_20":"2.5","promotion_eligible":"False"})
    groups,audit=analyze_with_audit(p)
    g=next(x for x in groups if x["feature"]=="volume_ratio_20")
-   self.assertEqual(g["n"],1); self.assertEqual(audit["included_trade_count"],1); self.assertEqual(audit["excluded_nonpromotion_trade_count"],1)
+   self.assertEqual(g["sample_size"],1); self.assertEqual(audit["included_trade_count"],1); self.assertEqual(audit["excluded_nonpromotion_trade_count"],1)
 if __name__=="__main__":unittest.main()
