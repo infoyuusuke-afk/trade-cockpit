@@ -297,7 +297,7 @@ def create_shadow_position(intent: dict, shadow_order: dict, *, now: datetime,
 
     if (not isinstance(known_positions, list)
             or not all(isinstance(x, dict) for x in known_positions)
-            or not all(isinstance(x.get("position_id"), str) and x.get("position_id") for x in known_positions)):
+            or not all(isinstance(x.get("position_id"), str) and x.get("position_id").strip() for x in known_positions)):
         return _rejected_position(["REJECTED_KNOWN_POSITIONS_INVALID"], shadow_order_id=shadow_order_id_in,
                                    intent_hash=intent_hash_in)
 
