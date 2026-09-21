@@ -24,4 +24,17 @@ class PreopenContextTests(unittest.TestCase):
   with self.assertRaises(ValueError):
    validate_preopen_context({"values":{"pts_return_pct":1.0},"observed_at":{}},"2026-09-18T09:00:00")
 
+ def test_stale_fast_market_feature_fails_closed(self):
+  c={"values":{"futures_return_pct":1.0},
+     "observed_at":{"futures_return_pct":"2026-09-18T08:30:00"}}
+  with self.assertRaises(ValueError):
+   validate_preopen_context(c,"2026-09-18T09:00:00")
+
+ def test_feature_specific_freshness_can_be_tightened(self):
+  c={"values":{"pts_return_pct":1.0},
+     "observed_at":{"pts_return_pct":"2026-09-18T08:50:00"},
+     "max_age_sec":{"pts_return_pct":300}}
+  with self.assertRaises(ValueError):
+   validate_preopen_context(c,"2026-09-18T09:00:00")
+
 if __name__=="__main__": unittest.main()
