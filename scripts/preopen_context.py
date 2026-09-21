@@ -9,6 +9,13 @@ ALLOWED_PREOPEN_FIELDS={
  "known_catalyst_score","rumor_state"
 }
 
+DEFAULT_MAX_AGE_SEC={
+ "gap_pct":3600,"prior_day_range_pct":129600,"prior_day_volume":129600,"prior_day_turnover":129600,
+ "pts_return_pct":43200,"us_market_return_pct":43200,"us_semiconductor_return_pct":43200,
+ "futures_return_pct":900,"margin_buy_shares":259200,"margin_sell_shares":259200,"margin_ratio":259200,
+ "known_catalyst_score":604800,"rumor_state":86400
+}
+
 def validate_preopen_context(context, decision_ts):
     decision=datetime.fromisoformat(str(decision_ts).replace("Z","+00:00"))
     values=context.get("values",{})
@@ -22,4 +29,8 @@ def validate_preopen_context(context, decision_ts):
         ts=datetime.fromisoformat(str(observed[key]).replace("Z","+00:00"))
         if ts>decision:
             raise ValueError("future information for "+key)
+        age=(decision-ts).total_seconds()
+        max_age=context.get("max_age_sec",{}).get(key,DEFAULT_MAX_AGE_SEC[key])
+        if age>max_age:
+            raise ValueError("stale information for "+key)
     return values.copy()
