@@ -49,6 +49,25 @@ class PrivateCommitTests(unittest.TestCase):
             p.write_bytes(b"x")
             self.assertFalse(commit.is_committed_artifact(p))
 
+    def test_unverified_directory_durability_blocks_acceptance(self):
+        result = commit.CommitResult(Path("private.bin"), True, False)
+        self.assertEqual(commit.evidence_commit_status(result),
+                         "HOLD_DURABILITY_UNVERIFIED")
+        with self.assertRaises(ValueError):
+            commit.require_durable_for_acceptance(result)
+
+    def test_unverified_file_durability_blocks_acceptance(self):
+        result = commit.CommitResult(Path("private.bin"), False, True)
+        self.assertEqual(commit.evidence_commit_status(result),
+                         "HOLD_FILE_DURABILITY_UNVERIFIED")
+        with self.assertRaises(ValueError):
+            commit.require_durable_for_acceptance(result)
+
+    def test_verified_durable_commit_may_enter_next_validation_layer(self):
+        result = commit.CommitResult(Path("private.bin"), True, True)
+        self.assertEqual(commit.evidence_commit_status(result), "COMMITTED_DURABLE")
+        self.assertEqual(commit.require_durable_for_acceptance(result), result.path)
+
     def test_empty_payload_rejected(self):
         with tempfile.TemporaryDirectory() as td:
             root = self.root(td)
