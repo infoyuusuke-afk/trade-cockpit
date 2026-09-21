@@ -17,6 +17,10 @@ class TradingViewMCPAdapterTests(unittest.TestCase):
  def test_missing_retrieval_time_fails(self):
   p=self.payload();del p["meta"]["retrieved_at"]
   with self.assertRaises(ValueError):adapt_mcp_payload(p)
+ def test_nonfinite_ohlcv_fails(self):
+  for field,value in (("open","nan"),("high","inf"),("low","-inf"),("close","nan"),("volume","nan")):
+   p=self.payload();p["bars"][0][field]=value
+   with self.assertRaisesRegex(ValueError,"NONFINITE_OHLCV"):adapt_mcp_payload(p)
  def test_invalid_ohlc_fails(self):
   p=self.payload();p["bars"][0]["high"]=98
   with self.assertRaises(ValueError):adapt_mcp_payload(p)

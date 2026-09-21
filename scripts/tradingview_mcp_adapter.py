@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """TradingView MCP payload -> research CORE rows. Never synthesize lower timeframes."""
+import math
 from scripts.time_utils import parse_market_ts
 
 REQUIRED_META=("symbol","timeframe","retrieved_at","timezone")
@@ -18,6 +19,7 @@ def adapt_mcp_payload(payload):
         ts=parse_market_ts(bar["timestamp"])
         o,h,l,c=[float(bar[k]) for k in ("open","high","low","close")]
         v=float(bar["volume"])
+        if not all(math.isfinite(x) for x in (o,h,l,c,v)): raise ValueError("NONFINITE_OHLCV")
         if h<max(o,c,l) or l>min(o,c,h): raise ValueError("INVALID_OHLC")
         if v<0: raise ValueError("INVALID_VOLUME")
         out.append({"symbol":meta["symbol"],"market_date":ts.date().isoformat(),
