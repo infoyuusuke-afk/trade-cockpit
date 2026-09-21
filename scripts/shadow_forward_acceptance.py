@@ -71,7 +71,8 @@ import shadow_execution as se
 import shadow_fill_model as sfm
 import shadow_position as sp
 
-SCHEMA_VERSION = "shadow-forward-acceptance-0.1"\nJST = timezone(timedelta(hours=9))
+SCHEMA_VERSION = "shadow-forward-acceptance-0.1"
+JST = timezone(timedelta(hours=9))
 
 MIN_ELIGIBLE_UNIQUE_INTENTS = 50
 
