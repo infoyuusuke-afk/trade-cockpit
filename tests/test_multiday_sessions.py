@@ -1,23 +1,38 @@
 import csv,tempfile,unittest
 from pathlib import Path
 from scripts.run_research_pipeline import split_sessions,run
+
 class MultiDaySessionTests(unittest.TestCase):
- def test_split_sessions_resets_by_date(self):
-  rows=[{"ts":"2026-09-17 09:00:00"},{"ts":"2026-09-17 09:00:15"},{"ts":"2026-09-18 09:00:00"}]
-  s=split_sessions(rows);self.assertEqual([len(x[1]) for x in s],[2,1])
- def test_each_day_exits_same_day_and_or_resets(self):
+ def test_split_sessions_sorts_and_resets_by_date(self):
+  rows=[{"ts":"2026-09-18 09:00:00"},{"ts":"2026-09-17 09:00:15"},{"ts":"2026-09-17 09:00:00"}]
+  s=split_sessions(rows)
+  self.assertEqual([x[0] for x in s],["2026-09-17","2026-09-18"])
+  self.assertEqual([r["ts"] for r in s[0][1]],["2026-09-17 09:00:00","2026-09-17 09:00:15"])
+
+ def test_duplicate_timestamp_fails_closed(self):
+  rows=[{"ts":"2026-09-17 09:00:00"},{"ts":"2026-09-17 09:00:00"}]
+  with self.assertRaises(ValueError): split_sessions(rows)
+
+ def test_bad_timestamp_fails_closed(self):
+  with self.assertRaises(ValueError): split_sessions([{"ts":"bad"}])
+
+ def test_each_day_exits_same_day_and_pnl_contract(self):
   with tempfile.TemporaryDirectory() as d:
    p=Path(d)/"multi.csv"
    with p.open("w",newline="") as f:
-    w=csv.DictWriter(f,fieldnames=["time","open","high","low","close","volume"]);w.writeheader()
+    w=csv.DictWriter(f,fieldnames=["time","open","high","low","close","volume"]); w.writeheader()
     for day in ("2026-09-17","2026-09-18"):
      for i in range(70):
-      hh=9+(i*15)//3600; mm=((i*15)%3600)//60; ss=(i*15)%60
+      sec=i*15; hh=9+sec//3600; mm=(sec%3600)//60; ss=sec%60
       close=102 if i==60 else 100
       w.writerow({"time":f"{day} {hh:02d}:{mm:02d}:{ss:02d}","open":100,"high":101,"low":99,"close":close,"volume":10})
-   trade,ev,s=run(p,Path(d)/"out",0)
-   self.assertEqual(s["session_count"],2);self.assertEqual(s["usable_session_count"],2)
-   rows=list(csv.DictReader(trade.open()))
-   self.assertTrue(rows)
-   for r in rows:self.assertEqual(r["entry_ts"][:10],r["exit_ts"][:10])
-if __name__=="__main__":unittest.main()
+   trade,ev,s=run(p,Path(d)/"out",0.1)
+   self.assertEqual(s["session_count"],2); self.assertEqual(s["usable_session_count"],2)
+   rows=list(csv.DictReader(trade.open())); self.assertTrue(rows)
+   for r in rows:
+    self.assertEqual(r["entry_ts"][:10],r["exit_ts"][:10])
+    self.assertNotEqual(r["gross_pnl_pct"],"")
+    self.assertNotEqual(r["net_pnl_pct"],"")
+    self.assertAlmostEqual(float(r["pnl_pct"]),float(r["net_pnl_pct"]),places=6)
+
+if __name__=="__main__": unittest.main()
