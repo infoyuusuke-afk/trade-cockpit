@@ -9,7 +9,8 @@ class ResearchPipelineTests(unittest.TestCase):
    w=csv.DictWriter(f,fieldnames=["time","open","high","low","close","volume"]);w.writeheader()
    for i in range(n):
     c=102 if i==60 else 100
-    w.writerow({"time":str(i),"open":100,"high":101,"low":99,"close":c,"volume":20 if i==60 else 10})
+    sec=i*15; mm=sec//60; ss=sec%60
+    w.writerow({"time":f"2026-09-18 09:{mm:02d}:{ss:02d}","open":100,"high":101,"low":99,"close":c,"volume":20 if i==60 else 10})
  def test_rejects_missing_columns(self):
   with tempfile.TemporaryDirectory() as d:
    p=Path(d)/"x.csv";p.write_text("time,open\n0,100\n")
