@@ -1,0 +1,61 @@
+{
+  "version": "ai-organization-1.0",
+  "owner": "YUSUKE",
+  "roles": [
+    {
+      "id": "ORCHESTRATOR",
+      "lead": "ChatGPT",
+      "mission": "architecture integration CI progress"
+    },
+    {
+      "id": "DATA",
+      "lead": "Claude",
+      "mission": "market data acquisition and provenance"
+    },
+    {
+      "id": "STRATEGY",
+      "lead": "AI_STRATEGY_CHIEF",
+      "mission": "strategy evidence and EV"
+    },
+    {
+      "id": "RISK",
+      "lead": "AI_RISK_CHIEF",
+      "mission": "fail-closed safety and promotion gates",
+      "veto": true
+    },
+    {
+      "id": "EXECUTION",
+      "lead": "AI_EXECUTION_CHIEF",
+      "mission": "paper shadow and approved execution planning"
+    },
+    {
+      "id": "MARKET_INTEL",
+      "lead": "AI_MARKET_INTEL_CHIEF",
+      "mission": "regime flow catalysts"
+    },
+    {
+      "id": "COMMENTARY",
+      "lead": "AI_COMMENTARY_CHIEF",
+      "mission": "live text and speech commentary"
+    },
+    {
+      "id": "ENTERTAINMENT",
+      "lead": "AI_ENTERTAINMENT_CHIEF",
+      "mission": "event-to-story pipeline"
+    },
+    {
+      "id": "PUBLISHING",
+      "lead": "AI_PUBLISHING_CHIEF",
+      "mission": "internal publishing packages"
+    }
+  ],
+  "owner_approval_required_for": [
+    "main_merge",
+    "real_money_submit",
+    "external_publish"
+  ],
+  "defaults": {
+    "real_submit_allowed": false,
+    "external_publish_allowed": false
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Cockpit Event v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "timestamp",
+    "domain",
+    "event_type",
+    "source",
+    "severity",
+    "payload",
+    "event_id",
+    "real_submit_allowed",
+    "external_publish_allowed"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "cockpit-event-1.0"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "domain": {
+      "enum": [
+        "MARKET",
+        "DATA",
+        "STRATEGY",
+        "RISK",
+        "EXECUTION",
+        "COUNCIL",
+        "COMMENTARY",
+        "JOURNAL",
+        "ENTERTAINMENT",
+        "PUBLISHING",
+        "SYSTEM"
+      ]
+    },
+    "event_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "severity": {
+      "enum": [
+        "INFO",
+        "NOTICE",
+        "IMPORTANT",
+        "CRITICAL"
+      ]
+    },
+    "symbol": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "correlation_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "real_submit_allowed": {
+      "const": false
+    },
+    "external_publish_allowed": {
+      "const": false
+    }
+  },
+  "additionalProperties": false
+}
