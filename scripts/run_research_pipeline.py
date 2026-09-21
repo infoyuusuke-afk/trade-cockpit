@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One-command research pipeline for TradingView 15s CSV. Research only."""
+"""One-command research pipeline for TradingView 15s CSV. Research only.\n\nMulti-day inputs are isolated by trading date: OR/VWAP state resets daily,\nEOD exits cannot cross dates, and prior close is context only for the next day.\n"""
 import argparse,csv,json\nfrom datetime import datetime
 from pathlib import Path
 from scripts.backtest_15s import load_bars,backtest_or_breakout,backtest_or5_vwap
