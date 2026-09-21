@@ -36,6 +36,24 @@ class PrivateCommitTests(unittest.TestCase):
                     root, "data/private/shadow_forward/a.bin", b"replacement")
             self.assertEqual(p.read_bytes(), b"original")
 
+    def test_publish_race_never_overwrites_competing_final(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = self.root(td)
+            final = root / "data/private/shadow_forward/a.bin"
+            real_link = commit.os.link
+
+            def competing_link(src, dst):
+                Path(dst).write_bytes(b"competitor")
+                return real_link(src, dst)
+
+            with mock.patch("shadow_forward_private_commit.os.link",
+                            side_effect=competing_link):
+                with self.assertRaises(FileExistsError):
+                    commit.commit_new_private_artifact(
+                        root, "data/private/shadow_forward/a.bin", b"ours")
+            self.assertEqual(final.read_bytes(), b"competitor")
+            self.assertTrue(final.with_name("a.bin.pending").exists())
+
     def test_existing_pending_blocks_commit(self):
         with tempfile.TemporaryDirectory() as td:
             root = self.root(td)
