@@ -153,3 +153,26 @@ def evaluate_kill_switch_impact(rows, trigger_index, avg_entry, hypothetical_exi
             "loss_avoided_pct":trigger_pnl-hold_pnl,
             "trigger_index":trigger_index,"hold_index":hold_i,
             "research_only":True}
+
+
+def summarize_kill_switch_trials(trials):
+    """Aggregate exit-vs-hold counterfactuals without optimizing a threshold."""
+    if not trials:
+        return {"N":0,"evidence_status":"REFERENCE_ONLY","research_only":True}
+    diffs=[float(x["loss_avoided_pct"]) for x in trials]
+    wins=sum(1 for x in diffs if x>0)
+    premature=sum(1 for x in diffs if x<0)
+    sorted_d=sorted(diffs)
+    k=max(1,int(len(sorted_d)*0.1))
+    return {
+      "N":len(diffs),
+      "avg_exit_advantage_pct":sum(diffs)/len(diffs),
+      "exit_better_rate":wins/len(diffs),
+      "premature_exit_rate":premature/len(diffs),
+      "worst_exit_disadvantage_pct":min(diffs),
+      "best_loss_avoided_pct":max(diffs),
+      "bottom_10pct_avg_pct":sum(sorted_d[:k])/k,
+      "evidence_status":"INITIAL_EVIDENCE" if len(diffs)>=30 else "REFERENCE_ONLY",
+      "research_only":True,
+      "auto_execute":False,
+    }
