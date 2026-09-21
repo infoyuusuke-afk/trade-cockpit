@@ -64,6 +64,11 @@ def summarize_entry_policies(results):
         pf=(wins/losses) if losses>0 else (float("inf") if wins>0 else 0.0)
         ordered=sorted(pnls)
         tail_n=max(1,(len(ordered)+9)//10)
+        equity=0.0; peak=0.0; max_dd=0.0
+        for p in pnls:
+            equity+=p
+            peak=max(peak,equity)
+            max_dd=min(max_dd,equity-peak)
         out.append({
           "entry_policy":policy,"sample_size":len(rs),
           "win_rate":sum(1 for x in pnls if x>0)/len(rs),
@@ -71,6 +76,7 @@ def summarize_entry_policies(results):
           "profit_factor":pf,
           "worst_net_pnl_pct":ordered[0],
           "bottom_10pct_avg_net_pnl_pct":sum(ordered[:tail_n])/tail_n,
+          "max_drawdown_pct":max_dd,
           "avg_mfe_pct":sum(float(x["mfe_pct"]) for x in rs)/len(rs),
           "avg_mae_pct":sum(float(x["mae_pct"]) for x in rs)/len(rs),
           "worst_mae_pct":min(float(x["mae_pct"]) for x in rs),
@@ -103,3 +109,23 @@ def summarize_by_regime(results, regime_key):
     for r in results:
         groups.setdefault(r.get(regime_key,"UNKNOWN"),[]).append(r)
     return {k:summarize_entry_policies(v) for k,v in sorted(groups.items())}
+
+
+def compare_policy_tradeoffs(summary):
+    """Compare waiting policies with OPEN. Positive risk improvement is better."""
+    by={x["entry_policy"]:x for x in summary}
+    base=by.get("OPEN")
+    if not base: raise ValueError("OPEN baseline required")
+    out=[]
+    for policy,x in sorted(by.items()):
+        if policy=="OPEN": continue
+        out.append({
+          "entry_policy":policy,
+          "avg_pnl_delta_vs_open_pct":x["avg_net_pnl_pct"]-base["avg_net_pnl_pct"],
+          "avg_mae_improvement_vs_open_pct":x["avg_mae_pct"]-base["avg_mae_pct"],
+          "worst_loss_improvement_vs_open_pct":x["worst_net_pnl_pct"]-base["worst_net_pnl_pct"],
+          "max_dd_improvement_vs_open_pct":x["max_drawdown_pct"]-base["max_drawdown_pct"],
+          "missed_move_delta_vs_open_pct":x["avg_missed_move_pct_vs_open"]-base["avg_missed_move_pct_vs_open"],
+          "research_only":True
+        })
+    return out
