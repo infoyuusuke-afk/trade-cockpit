@@ -1,5 +1,5 @@
 import unittest
-from scripts.position_sizing_research import simulate_staged_long,compare_fixed_vs_staged,validate_add_signal,gated_staged_long
+from scripts.position_sizing_research import simulate_staged_long,compare_fixed_vs_staged,validate_add_signal,gated_staged_long,evaluate_long_exit_policies
 
 class PositionSizingResearchTests(unittest.TestCase):
  def rows(self):
@@ -42,5 +42,20 @@ class PositionSizingResearchTests(unittest.TestCase):
   x=gated_staged_long(self.rows(),sig)
   self.assertFalse(x["executed"])
   self.assertEqual(x["reason"],"ADD_GATE_BLOCKED")
+
+ def test_exit_policies_are_reported_not_ranked(self):
+  rows=self.rows()
+  vwap=[100,99,98,100]
+  x=evaluate_long_exit_policies(rows,95,2,1,vwap,0.1)
+  names={r["exit_policy"] for r in x}
+  self.assertIn("ONE_TICK",names)
+  self.assertIn("VWAP_REVERSION",names)
+  self.assertIn("EOD",names)
+  self.assertTrue(all("rank" not in r and "winner" not in r for r in x))
+
+ def test_exit_cost_is_subtracted_once(self):
+  x=evaluate_long_exit_policies(self.rows(),95,2,1,None,0.1)
+  for r in x:
+   self.assertAlmostEqual(r["net_pnl_pct"],r["gross_pnl_pct"]-0.1)
 
 if __name__=="__main__": unittest.main()
