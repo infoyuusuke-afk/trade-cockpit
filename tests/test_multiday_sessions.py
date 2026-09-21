@@ -66,7 +66,7 @@ class MultiDaySessionTests(unittest.TestCase):
    rows=list(csv.DictReader(trade.open()))
    day2=[r for r in rows if r["session_date"]=="2026-09-18"]
    self.assertTrue(day2)
-   self.assertTrue(all(r["open_state"]=="DELAYED_OPEN_UNCLASSIFIED" for r in day2))
+   self.assertTrue(all(r["open_state"]=="DELAYED_OPEN_UNCLASSIFIED" for r in day2))\n   q=list(csv.DictReader(Path(s["session_quality_file"]).open()))\n   q2=next(x for x in q if x["session_date"]=="2026-09-18")\n   self.assertEqual(q2["research_status"],"REVIEW")
    self.assertTrue(all(int(r["open_delay_sec"])==300 for r in day2))
    self.assertTrue(all(r["gap_pct"]!="" for r in day2))
 
