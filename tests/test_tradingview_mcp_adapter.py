@@ -24,4 +24,15 @@ class TradingViewMCPAdapterTests(unittest.TestCase):
  def test_invalid_ohlc_fails(self):
   p=self.payload();p["bars"][0]["high"]=98
   with self.assertRaises(ValueError):adapt_mcp_payload(p)
+ def test_unknown_fields_fail_closed(self):
+  for where,key in (("top","extra"),("meta","vendor"),("bar","trade_count")):
+   p=self.payload()
+   if where=="top":p[key]=1
+   elif where=="meta":p["meta"][key]=1
+   else:p["bars"][0][key]=1
+   with self.assertRaisesRegex(ValueError,"UNKNOWN_MCP_"):adapt_mcp_payload(p)
+ def test_numeric_strings_and_bool_fail_contract(self):
+  for field,value in (("open","100"),("volume","1000"),("close",True)):
+   p=self.payload();p["bars"][0][field]=value
+   with self.assertRaisesRegex(ValueError,"MCP_BAR_NOT_NUMERIC:"+field):adapt_mcp_payload(p)
 if __name__=="__main__":unittest.main()
