@@ -25,12 +25,20 @@ class ClaudeTradingViewHandoffTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as d:
    pld=self.payload();pld["meta"]["symbol"]="TSE:9999"
    p=Path(d)/"claude.json";p.write_text(json.dumps(pld),encoding="utf-8")
-   with self.assertRaisesRegex(ValueError,"CLAUDE_HANDOFF_SYMBOL_MISMATCH"):run_handoff(p,Path(d)/"out")
+   out=Path(d)/"out"
+   with self.assertRaisesRegex(ValueError,"CLAUDE_HANDOFF_SYMBOL_MISMATCH"):run_handoff(p,out)
+   r=json.loads((out/"claude_handoff_receipt.json").read_text());self.assertEqual(r["handoff_status"],"REJECTED_IDENTITY")
+   self.assertEqual(r["rejection_reason"],"CLAUDE_HANDOFF_SYMBOL_MISMATCH");self.assertFalse(r["promotion_eligible"])
+   self.assertEqual(r["input_sha256"],hashlib.sha256(p.read_bytes()).hexdigest())
  def test_wrong_timezone_fails_before_research(self):
   with tempfile.TemporaryDirectory() as d:
    pld=self.payload();pld["meta"]["timezone"]="UTC"
    p=Path(d)/"claude.json";p.write_text(json.dumps(pld),encoding="utf-8")
-   with self.assertRaisesRegex(ValueError,"CLAUDE_HANDOFF_TIMEZONE_MISMATCH"):run_handoff(p,Path(d)/"out")
+   out=Path(d)/"out"
+   with self.assertRaisesRegex(ValueError,"CLAUDE_HANDOFF_TIMEZONE_MISMATCH"):run_handoff(p,out)
+   r=json.loads((out/"claude_handoff_receipt.json").read_text());self.assertEqual(r["handoff_status"],"REJECTED_IDENTITY")
+   self.assertEqual(r["rejection_reason"],"CLAUDE_HANDOFF_TIMEZONE_MISMATCH");self.assertFalse(r["promotion_eligible"])
+   self.assertEqual(r["input_sha256"],hashlib.sha256(p.read_bytes()).hexdigest())
  def test_wrong_timeframe_fails_closed_but_keeps_receipt(self):
   with tempfile.TemporaryDirectory() as d:
    p=Path(d)/"claude.json";p.write_text(json.dumps(self.payload("5")),encoding="utf-8");out=Path(d)/"out"
