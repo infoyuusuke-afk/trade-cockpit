@@ -435,3 +435,40 @@ class Golden16NoBrokerReferenceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NullOffsetTZ(timezone.__base__):
+    def utcoffset(self, dt): return None
+    def dst(self, dt): return None
+    def tzname(self, dt): return "NULL"
+
+
+class C103HardeningTests(unittest.TestCase):
+    def test_null_offset_now_fails_closed(self):
+        bad_now = NOW.replace(tzinfo=NullOffsetTZ())
+        report = sfa.evaluate_shadow_forward_acceptance([], now=bad_now)
+        self.assertEqual(report["status"], "FAIL_INTEGRITY")
+
+    def test_null_offset_submitted_at_is_ambiguous(self):
+        r = healthy_filled_record(decision_snapshot_id="c103-null")
+        r["submitted_at"] = SUBMITTED_AT.replace(tzinfo=NullOffsetTZ())
+        report = sfa.evaluate_shadow_forward_acceptance([r], now=NOW)
+        self.assertEqual(report["eligible_unique_intents"], 0)
+        self.assertEqual(report["ambiguous_provenance_n"], 1)
+
+    def test_invalid_session_date_is_ambiguous(self):
+        r = healthy_filled_record(decision_snapshot_id="c103-date")
+        r["session_date"] = "2026-02-31"
+        report = sfa.evaluate_shadow_forward_acceptance([r], now=NOW)
+        self.assertEqual(report["eligible_unique_intents"], 0)
+
+    def test_outer_provenance_mismatches_are_rejected(self):
+        fields = ["intent_hash","strategy_id","strategy_version","shadow_fill_model_version",
+                  "execution_policy_version","risk_policy_version","merge_hash","ticket_fingerprint"]
+        for field in fields:
+            with self.subTest(field=field):
+                r = healthy_filled_record(decision_snapshot_id="c103-" + field)
+                r[field] = "mismatch"
+                report = sfa.evaluate_shadow_forward_acceptance([r], now=NOW)
+                self.assertEqual(report["eligible_unique_intents"], 0)
+                self.assertEqual(report["ambiguous_provenance_n"], 1)

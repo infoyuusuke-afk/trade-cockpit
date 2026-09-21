@@ -63,7 +63,7 @@ acceptance()`を同じ入力で何度呼んでも`eligible_unique_intents`は
 from __future__ import annotations
 
 import sys
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -126,12 +126,33 @@ def _validate_provenance(record) -> list[str]:
         reasons.append("PROVENANCE_NO_STEPS")
 
     submitted_at = record.get("submitted_at")
-    if not isinstance(submitted_at, datetime) or submitted_at.tzinfo is None:
+    if not isinstance(submitted_at, datetime) or submitted_at.tzinfo is None or submitted_at.utcoffset() is None:
         reasons.append("PROVENANCE_SUBMITTED_AT_INVALID")
 
     submit_now = record.get("submit_now")
-    if not isinstance(submit_now, datetime) or submit_now.tzinfo is None:
+    if not isinstance(submit_now, datetime) or submit_now.tzinfo is None or submit_now.utcoffset() is None:
         reasons.append("PROVENANCE_SUBMIT_NOW_INVALID")
+
+    try:
+        date.fromisoformat(record.get("session_date", ""))
+    except (TypeError, ValueError):
+        reasons.append("PROVENANCE_SESSION_DATE_INVALID")
+
+    intent = record.get("intent") if isinstance(record.get("intent"), dict) else {}
+    ticket = record.get("ticket") if isinstance(record.get("ticket"), dict) else {}
+    crosschecks = {
+        "intent_hash": intent.get("intent_hash"),
+        "strategy_id": intent.get("strategy_id"),
+        "strategy_version": intent.get("strategy_version"),
+        "shadow_fill_model_version": intent.get("shadow_fill_model_version"),
+        "execution_policy_version": intent.get("execution_policy_version"),
+        "risk_policy_version": intent.get("risk_policy_version"),
+        "merge_hash": intent.get("merge_hash"),
+        "ticket_fingerprint": ticket.get("ticket_fingerprint"),
+    }
+    for field, canonical in crosschecks.items():
+        if record.get(field) != canonical:
+            reasons.append("PROVENANCE_MISMATCH_" + field.upper())
 
     known_ids = record.get("known_shadow_order_ids_at_submission", [])
     if not isinstance(known_ids, list) or not all(isinstance(x, str) for x in known_ids):
@@ -172,7 +193,7 @@ def _replay_record(record: dict, *, now: datetime) -> dict:
             step_obs = step.get("observation") if isinstance(step, dict) else None
             step_now = step.get("now") if isinstance(step, dict) else None
 
-            if not isinstance(step_now, datetime) or step_now.tzinfo is None:
+            if not isinstance(step_now, datetime) or step_now.tzinfo is None or step_now.utcoffset() is None:
                 # 壊れたstepはreplay全体を止めず、chronology整合性違反として扱う。
                 stale_or_future_state_advance = True
                 continue
@@ -235,7 +256,7 @@ def evaluate_shadow_forward_acceptance(records, *, now: datetime) -> dict:
     fail-closedに評価するだけで、recordの真正性を保証しない
     （真正性は呼び出し側の収集プロセスの責務）。
     """
-    if not isinstance(now, datetime) or now.tzinfo is None:
+    if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
         return _early_fail_report(["NOW_NOT_TIMEZONE_AWARE"])
     if not isinstance(records, list):
         return _early_fail_report(["RECORDS_INVALID_TYPE"])
