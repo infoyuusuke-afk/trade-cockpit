@@ -10,3 +10,4 @@ class CouncilInputHardeningTest(unittest.TestCase):
  def test_real_submit_never_enabled(self): self.assertFalse(council_snapshot([self.msg()])["real_submit_allowed"])
 
 # ci-trigger: approved replacement on latest main
+# ci-trigger-2
