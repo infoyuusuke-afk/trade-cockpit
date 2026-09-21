@@ -8,6 +8,8 @@ on:
       - "data/strategy_registry.json"
       - "data/research_input_schema.json"
       - "data/claude_tradingview_handoff.schema.json"
+      - "data/cockpit_event.schema.json"
+      - "config/ai_organization_v1.json"
       - ".github/workflows/mobile-control-tests.yml"
   workflow_dispatch:
 jobs:
