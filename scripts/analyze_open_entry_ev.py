@@ -26,6 +26,7 @@ def compare_entry_delays(rows, side, cost_pct=0.10):
         i=_entry_index(rows,delay)
         if i is None: continue
         entry=rows[i]["open"]; exit_px=exit_bar["close"]
+        actual_delay=(parse_ts(rows[i]["ts"])-parse_ts(rows[0]["ts"])).total_seconds()
         gross=((exit_px/entry)-1)*100
         if side=="SHORT": gross=-gross
         future=rows[i:]
@@ -39,7 +40,10 @@ def compare_entry_delays(rows, side, cost_pct=0.10):
             missed=((rows[0]["open"]/entry)-1)*100
         net=gross-cost_pct
         out.append({
-          "side":side,"entry_delay_sec":delay,"decision_ts":rows[i]["ts"],
+          "side":side,"entry_delay_sec":delay,"requested_entry_delay_sec":delay,
+          "actual_entry_delay_sec":actual_delay,
+          "entry_delay_slippage_sec":actual_delay-delay,
+          "decision_ts":rows[i]["ts"],
           "information_cutoff_ts":rows[i]["ts"],"entry_ts":rows[i]["ts"],
           "exit_ts":exit_bar["ts"],"entry":entry,"exit":exit_px,
           "gross_pnl_pct":gross,"cost_pct":cost_pct,"net_pnl_pct":net,
@@ -81,6 +85,8 @@ def summarize_entry_policies(results):
           "avg_mae_pct":sum(float(x["mae_pct"]) for x in rs)/len(rs),
           "worst_mae_pct":min(float(x["mae_pct"]) for x in rs),
           "avg_missed_move_pct_vs_open":sum(float(x["missed_move_pct_vs_open"]) for x in rs)/len(rs),
+          "avg_actual_entry_delay_sec":sum(float(x["actual_entry_delay_sec"]) for x in rs)/len(rs),
+          "avg_entry_delay_slippage_sec":sum(float(x["entry_delay_slippage_sec"]) for x in rs)/len(rs),
           "research_only":True
         })
     return out
