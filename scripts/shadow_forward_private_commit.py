@@ -11,6 +11,17 @@ from pathlib import Path
 import shadow_forward_private_path as path_policy
 
 
+@dataclass(frozen=True)
+class CommitResult:
+    path: Path
+    file_fsync: bool
+    directory_fsync: bool
+
+    @property
+    def durability_verified(self) -> bool:
+        return self.file_fsync and self.directory_fsync
+
+
 def commit_new_private_artifact(repo_root: Path, relative_path: str, data: bytes) -> CommitResult:
     """Create one immutable artifact; never overwrite an existing final path."""
     if not isinstance(data, bytes) or not data:
@@ -52,7 +63,7 @@ def commit_new_private_artifact(repo_root: Path, relative_path: str, data: bytes
             finally:
                 os.close(dir_fd)
             directory_durable = True
-        return final_path
+        return CommitResult(final_path, file_fsync=True, directory_fsync=directory_durable)
     except Exception:
         # Do not guess whether a failed commit is safe. A .pending artifact is
         # intentionally left for investigation if it exists.
