@@ -1,6 +1,6 @@
 import csv,tempfile,unittest
 from pathlib import Path
-from scripts.run_research_pipeline import split_sessions,run
+from scripts.run_research_pipeline import split_sessions,validate_tse_session,run
 
 class MultiDaySessionTests(unittest.TestCase):
  def test_split_sessions_sorts_and_resets_by_date(self):
@@ -15,6 +15,19 @@ class MultiDaySessionTests(unittest.TestCase):
 
  def test_bad_timestamp_fails_closed(self):
   with self.assertRaises(ValueError): split_sessions([{"ts":"bad"}])
+
+ def test_tse_opening_grid_accepts_exact_15s(self):
+  rows=[{"ts":f"2026-09-17 09:{(i*15)//60:02d}:{(i*15)%60:02d}"} for i in range(60)]
+  self.assertTrue(validate_tse_session(rows))
+
+ def test_missing_0900_is_not_usable(self):
+  rows=[{"ts":f"2026-09-17 09:{((i+1)*15)//60:02d}:{((i+1)*15)%60:02d}"} for i in range(60)]
+  self.assertFalse(validate_tse_session(rows))
+
+ def test_broken_opening_grid_fails_closed(self):
+  rows=[{"ts":f"2026-09-17 09:{(i*15)//60:02d}:{(i*15)%60:02d}"} for i in range(60)]
+  rows[10]={"ts":"2026-09-17 09:02:31"}
+  with self.assertRaises(ValueError): validate_tse_session(rows)
 
  def test_each_day_exits_same_day_and_pnl_contract(self):
   with tempfile.TemporaryDirectory() as d:
