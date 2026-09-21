@@ -62,13 +62,18 @@ def summarize_entry_policies(results):
         wins=sum(x for x in pnls if x>0)
         losses=-sum(x for x in pnls if x<0)
         pf=(wins/losses) if losses>0 else (float("inf") if wins>0 else 0.0)
+        ordered=sorted(pnls)
+        tail_n=max(1,(len(ordered)+9)//10)
         out.append({
           "entry_policy":policy,"sample_size":len(rs),
           "win_rate":sum(1 for x in pnls if x>0)/len(rs),
           "avg_net_pnl_pct":sum(pnls)/len(rs),
           "profit_factor":pf,
+          "worst_net_pnl_pct":ordered[0],
+          "bottom_10pct_avg_net_pnl_pct":sum(ordered[:tail_n])/tail_n,
           "avg_mfe_pct":sum(float(x["mfe_pct"]) for x in rs)/len(rs),
           "avg_mae_pct":sum(float(x["mae_pct"]) for x in rs)/len(rs),
+          "worst_mae_pct":min(float(x["mae_pct"]) for x in rs),
           "avg_missed_move_pct_vs_open":sum(float(x["missed_move_pct_vs_open"]) for x in rs)/len(rs),
           "research_only":True
         })
