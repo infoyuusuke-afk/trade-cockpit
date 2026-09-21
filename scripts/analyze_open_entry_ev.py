@@ -172,3 +172,19 @@ def compare_policy_tradeoffs(summary):
           "research_only":True
         })
     return out
+
+
+def summarize_open_regimes(results):
+    """Keep normal and delayed-open evidence separate."""
+    groups={}
+    for r in results:
+        regime=r.get("open_regime","UNKNOWN")
+        groups.setdefault(regime,[]).append(r)
+    out={}
+    for regime,rs in sorted(groups.items()):
+        summaries=summarize_entry_policies(rs)
+        for s in summaries:
+            s["open_regime"]=regime
+            s["evidence_status"]="INITIAL_EVIDENCE" if s["sample_size"]>=30 else "REFERENCE_ONLY"
+        out[regime]=summaries
+    return out
