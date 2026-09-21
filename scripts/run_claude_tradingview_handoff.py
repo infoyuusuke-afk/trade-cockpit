@@ -20,7 +20,7 @@ def run_handoff(payload_path,out_dir,required_timeframe="15S",cost_pct=0.10,prev
     rp=out/"claude_handoff_receipt.json"
     if meta.get("symbol")!=required_symbol:
         receipt.update({"handoff_status":"REJECTED_IDENTITY","rejection_reason":"CLAUDE_HANDOFF_SYMBOL_MISMATCH","promotion_eligible":False})
-        rp.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\\n",encoding="utf-8")
+        rp.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
         raise ValueError("CLAUDE_HANDOFF_SYMBOL_MISMATCH:required=%s actual=%s"%(required_symbol,meta.get("symbol")))
     if meta.get("timezone")!=required_timezone:
         receipt.update({"handoff_status":"REJECTED_IDENTITY","rejection_reason":"CLAUDE_HANDOFF_TIMEZONE_MISMATCH","promotion_eligible":False})
