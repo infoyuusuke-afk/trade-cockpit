@@ -14,19 +14,19 @@ class CalibrationContractTest(unittest.TestCase):
  def test_overfill_invalid(self):
   o=m.evaluate([rec(observed_fill_qty=101)]);self.assertEqual(o["sample_size"],0)
  def test_threshold_only_enables_review_not_parameter_update(self):
-  o=m.evaluate([rec() for _ in range(m.MIN_SAMPLE)]);self.assertEqual(o["status"],"CALIBRATION_REVIEW_ELIGIBLE");self.assertFalse(o["parameter_update_allowed"]);self.assertFalse(o["real_submit_allowed"])
+  o=m.evaluate([rec(shadow_order_id=f"threshold-{i}") for i in range(m.MIN_SAMPLE)]);self.assertEqual(o["status"],"CALIBRATION_REVIEW_ELIGIBLE");self.assertFalse(o["parameter_update_allowed"]);self.assertFalse(o["real_submit_allowed"])
 
 class StratifiedCalibrationTest(unittest.TestCase):
  def test_market_and_limit_do_not_share_stratum_threshold(self):
-  rows=[rec(order_type="LIMIT") for _ in range(25)]+[rec(order_type="MARKET") for _ in range(25)]
+  rows=[rec(order_type="LIMIT",shadow_order_id=f"limit-{i}") for i in range(25)]+[rec(order_type="MARKET",shadow_order_id=f"market-{i}") for i in range(25)]
   o=m.evaluate(rows);self.assertEqual(o["status"],"CALIBRATION_REVIEW_ELIGIBLE");self.assertEqual(o["strata"]["shadow-fill-model-0.1|LIMIT|BUY"]["status"],"INSUFFICIENT_SAMPLE");self.assertEqual(o["strata"]["shadow-fill-model-0.1|MARKET|BUY"]["status"],"INSUFFICIENT_SAMPLE")
  def test_buy_and_sell_are_separate(self):
-  o=m.evaluate([rec(side="BUY"),rec(side="SELL")]);self.assertEqual(len(o["strata"]),2)
+  o=m.evaluate([rec(side="BUY",shadow_order_id="buy-1"),rec(side="SELL",shadow_order_id="sell-1")]);self.assertEqual(len(o["strata"]),2)
 
 class LiquidityContextStrataTest(unittest.TestCase):
  def test_spread_liquidity_time_context_is_separate(self):
-  a=rec(spread_yen=1.0,tick_size=1.0,visible_qty=50)
-  b=rec(spread_yen=4.0,tick_size=1.0,visible_qty=400)
+  a=rec(shadow_order_id="liq-a",spread_yen=1.0,tick_size=1.0,visible_qty=50)
+  b=rec(shadow_order_id="liq-b",spread_yen=4.0,tick_size=1.0,visible_qty=400)
   o=m.evaluate([a,b]);self.assertEqual(len(o["context_strata"]),2);self.assertTrue(all(v["status"]=="INSUFFICIENT_SAMPLE" for v in o["context_strata"].values()))
  def test_invalid_optional_context_is_rejected(self):
   o=m.evaluate([rec(spread_yen=-1.0,tick_size=1.0,visible_qty=100)]);self.assertEqual(o["sample_size"],0);self.assertEqual(o["invalid_record_n"],1)
