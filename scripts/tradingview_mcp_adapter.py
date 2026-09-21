@@ -5,8 +5,28 @@ from scripts.time_utils import parse_market_ts
 
 REQUIRED_META=("symbol","timeframe","retrieved_at","timezone")
 REQUIRED_BAR=("timestamp","open","high","low","close","volume")
+ALLOWED_TOP={"meta","bars"};ALLOWED_META=set(REQUIRED_META);ALLOWED_BAR=set(REQUIRED_BAR)
+
+def _validate_contract_shape(payload):
+    if not isinstance(payload,dict): raise ValueError("MCP_PAYLOAD_NOT_OBJECT")
+    extra=set(payload)-ALLOWED_TOP
+    if extra: raise ValueError("UNKNOWN_MCP_TOP_FIELD:"+",".join(sorted(extra)))
+    meta=payload.get("meta")
+    if not isinstance(meta,dict): raise ValueError("MCP_META_NOT_OBJECT")
+    extra=set(meta)-ALLOWED_META
+    if extra: raise ValueError("UNKNOWN_MCP_META_FIELD:"+",".join(sorted(extra)))
+    bars=payload.get("bars")
+    if not isinstance(bars,list) or not bars: raise ValueError("EMPTY_MCP_BARS")
+    for bar in bars:
+        if not isinstance(bar,dict): raise ValueError("MCP_BAR_NOT_OBJECT")
+        extra=set(bar)-ALLOWED_BAR
+        if extra: raise ValueError("UNKNOWN_MCP_BAR_FIELD:"+",".join(sorted(extra)))
+        for k in ("open","high","low","close","volume"):
+            if k in bar and (not isinstance(bar[k],(int,float)) or isinstance(bar[k],bool)):
+                raise ValueError("MCP_BAR_NOT_NUMERIC:"+k)
 
 def adapt_mcp_payload(payload):
+    _validate_contract_shape(payload)
     meta=payload.get("meta") or {}
     missing=[k for k in REQUIRED_META if meta.get(k) in (None,"")]
     if missing: raise ValueError("MISSING_MCP_META:"+",".join(missing))
