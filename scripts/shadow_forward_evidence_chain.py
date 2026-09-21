@@ -63,7 +63,25 @@ def make_event(*, event_type: str, captured_at: datetime, payload: dict,
     return event
 
 
-def verify_chain(events: list[dict], *, now: datetime) -> dict:
+def compute_chain_anchor(events: list[dict]) -> str:
+    """Return a public-safe fingerprint of a completed chain.
+
+    The caller must persist this anchor separately in private append-only state
+    at capture/finalization time. Rebuilding the whole chain later changes the
+    anchor and is detectable only when compared with that separately retained
+    value. This function does not claim cryptographic proof of wall-clock
+    occurrence or protect against an attacker who can rewrite both stores.
+    """
+    if not isinstance(events, list) or not events:
+        raise ValueError("chain required")
+    final_hash = events[-1].get("event_hash")
+    if not isinstance(final_hash, str) or len(final_hash) != 64:
+        raise ValueError("invalid final hash")
+    raw = (SCHEMA_VERSION + ":" + str(len(events)) + ":" + final_hash).encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()
+
+
+def verify_chain(events: list[dict], *, now: datetime, expected_anchor: str | None = None) -> dict:
     reasons = []
     if not _aware(now):
         return {"valid": False, "reasons": ["NOW_NOT_TIMEZONE_AWARE"], "finalized": False}
