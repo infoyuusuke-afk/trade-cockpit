@@ -220,12 +220,10 @@ def parse_signal_known_at(text: str) -> Optional[datetime]:
     if not text or not isinstance(text, str):
         return None
     try:
-        parsed = datetime.fromisoformat(text)
-        if parsed.tzinfo is None or parsed.utcoffset() is None:
-            return None
-        return parsed
+        return datetime.fromisoformat(text)
     except ValueError:
         return None
+
 
 
 def is_duplicate_intent(candidate: dict, existing: list[dict]) -> bool:
