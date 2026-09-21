@@ -25,12 +25,19 @@ def run_routed_backtest(route_result,out_dir,cost_pct=0.10,prev_close=None):
     out=Path(out_dir);out.mkdir(parents=True,exist_ok=True)
     bt_input=write_backtest_input(route_result["rows"],out/"routed_15s_input.csv")
     trade,ev,summary=run(bt_input,out,cost_pct,prev_close)
+    source_promotion_eligible=bool(route_result.get("promotion_eligible",False))
+    if not source_promotion_eligible:
+        with Path(trade).open(encoding="utf-8-sig",newline="") as fh:
+            reader=csv.DictReader(fh); rows=list(reader); fields=reader.fieldnames
+        for row in rows: row["promotion_eligible"]="False"
+        with Path(trade).open("w",encoding="utf-8",newline="") as fh:
+            w=csv.DictWriter(fh,fieldnames=fields);w.writeheader();w.writerows(rows)
     cross=route_result.get("crosscheck")
     manifest={"selected_source":route_result.get("selected_source"),
               "route_status":status,
               "mcp_error":route_result.get("mcp_error"),
               "replay_error":route_result.get("replay_error"),
-              "promotion_eligible":bool(route_result.get("promotion_eligible",False)),
+              "promotion_eligible":source_promotion_eligible,
               "crosscheck_status":cross.get("status") if cross else None,
               "crosscheck_overlap_n":cross.get("overlap_n") if cross else None,
               "input_rows":len(route_result["rows"]),

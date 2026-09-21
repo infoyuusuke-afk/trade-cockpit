@@ -16,4 +16,6 @@ class ClaudeFullResearchTests(unittest.TestCase):
    for k in ("calibration","oos","walk_forward","promotion_gate"):self.assertTrue(Path(m[k]).exists())
    gate=json.loads(Path(m["promotion_gate"]).read_text())
    self.assertTrue(gate["research_only"]);self.assertFalse(gate["auto_execute"]);self.assertFalse(gate["direct_live_promotion"])
+   self.assertEqual(m["eligible_trade_count"],0);self.assertEqual(m["evidence_status"],"NO_PROMOTION_ELIGIBLE_TRADES")
+   self.assertEqual(gate["evidence_status"],"NO_PROMOTION_ELIGIBLE_TRADES");self.assertEqual(gate["results"],[])
 if __name__=="__main__":unittest.main()
