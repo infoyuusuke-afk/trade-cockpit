@@ -48,4 +48,22 @@ class MultiDaySessionTests(unittest.TestCase):
     self.assertNotEqual(r["net_pnl_pct"],"")
     self.assertAlmostEqual(float(r["pnl_pct"]),float(r["net_pnl_pct"]),places=6)\n    self.assertEqual(r["open_state"],"NORMAL_OPEN")\n    self.assertEqual(int(r["open_delay_sec"]),0)
 
+ def test_delayed_open_gap_uses_prior_close(self):
+  with tempfile.TemporaryDirectory() as d:
+   p=Path(d)/"gap.csv"
+   with p.open("w",newline="") as f:
+    w=csv.DictWriter(f,fieldnames=["time","open","high","low","close","volume"]); w.writeheader()
+    for day,start_min,px in (("2026-09-17",0,100),("2026-09-18",5,105)):
+     for i in range(70):
+      sec=start_min*60+i*15; hh=9+sec//3600; mm=(sec%3600)//60; ss=sec%60
+      close=px+2 if i==60 else px
+      w.writerow({"time":f"{day} {hh:02d}:{mm:02d}:{ss:02d}","open":px,"high":px+1,"low":px-1,"close":close,"volume":10})
+   trade,ev,s=run(p,Path(d)/"out",0)
+   rows=list(csv.DictReader(trade.open()))
+   day2=[r for r in rows if r["session_date"]=="2026-09-18"]
+   self.assertTrue(day2)
+   self.assertTrue(all(r["open_state"]=="DELAYED_OPEN_UNCLASSIFIED" for r in day2))
+   self.assertTrue(all(int(r["open_delay_sec"])==300 for r in day2))
+   self.assertTrue(all(r["gap_pct"]!="" for r in day2))
+
 if __name__=="__main__": unittest.main()
