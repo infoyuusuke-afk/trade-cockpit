@@ -73,3 +73,25 @@ def summarize_entry_policies(results):
           "research_only":True
         })
     return out
+
+
+def fixed_regime_labels(context):
+    """Predefined, non-optimized regime labels for descriptive EV segmentation."""
+    gap=context.get("gap_pct")
+    vol=context.get("intraday_range_pct")
+    state=context.get("open_state")
+    return {
+      "gap_regime": "UNKNOWN" if gap is None else ("GD_LT_-1" if gap < -1 else ("GU_GT_1" if gap > 1 else "FLAT_-1_TO_1")),
+      "open_regime": state or "UNKNOWN",
+      "vol_regime": "UNKNOWN" if vol is None else ("LOW_LT_1" if vol < 1 else ("HIGH_GE_2" if vol >= 2 else "MID_1_TO_2"))
+    }
+
+def attach_regime(results, context):
+    labels=fixed_regime_labels(context)
+    return [{**r,**labels} for r in results]
+
+def summarize_by_regime(results, regime_key):
+    groups={}
+    for r in results:
+        groups.setdefault(r.get(regime_key,"UNKNOWN"),[]).append(r)
+    return {k:summarize_entry_policies(v) for k,v in sorted(groups.items())}
