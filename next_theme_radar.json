@@ -1,21 +1,21 @@
 {
   "schema_version": "next-theme-radar-0.2",
-  "updated_at": "2026-09-21T16:14:11.138314+09:00",
+  "updated_at": "2026-09-21T23:17:01.838359+09:00",
   "source_note": "ニュース集約RSSは一次資料ではない。価格・資金流入は取得済み証拠だけで採点。",
   "themes": [
     {
       "theme_id": "jpy-stablecoin",
       "theme": "円ステーブルコイン",
-      "status": "NO_EVENT",
-      "score": 15,
+      "status": "WATCH",
+      "score": 50,
       "score_breakdown": {
-        "novelty": 0,
-        "catalyst": 0,
+        "novelty": 15,
+        "catalyst": 10,
         "money_flow": 0,
         "japan_link": 15,
         "breadth": 0,
         "small_cap": 0,
-        "overseas_lead": 0,
+        "overseas_lead": 10,
         "price_confirmation": 0
       },
       "weights": {
@@ -28,9 +28,28 @@
         "overseas_lead": 10,
         "price_confirmation": 5
       },
-      "first_seen": null,
-      "last_event_at": null,
-      "events": [],
+      "first_seen": "2026-09-21T23:17:01.838359+09:00",
+      "last_event_at": "2026-09-21T18:39:00+09:00",
+      "events": [
+        {
+          "title": "JPYC Gets More Than Half of Global Trading From South Korea as Volume Jumps 500-Fold After Listing - bloomingbit",
+          "url": "https://news.google.com/rss/articles/CBMiVEFVX3lxTE9nSmJJd1hwRkp4a09xTV9feTY4cWNQNU9fdXpmRFVmaHY3Zk1hUzhGX2xDZHdINFE2LUhsbWhpd1JUSzRqamNxanlkMGlIV1I0ZV9RRA?oc=5",
+          "published_at": "2026-09-21T18:39:00+09:00",
+          "source": "bloomingbit"
+        },
+        {
+          "title": "Yen Stablecoin JPYC Spreads in Korea With 2% Yield, 15% Clinic Discounts - Seoul Economic Daily",
+          "url": "https://news.google.com/rss/articles/CBMioAFBVV95cUxNcVhzR1o1SzVNX3JXeV9rS192b2hwNHBtV192d1ZGMzFwXzhEYVJab0VPZGRnd05DaENCZ2tOb3hRN2FqQURiX1Q2Z3RuUWlTOE9uT0xvd1dlT0pFNXROZFpoa2FmNHJYOUVMNS1fV0d4aHM5aVFESFEwRGxNQm5xNTdRb2RaTUxoU1JJQlRIOWpBa0I5ZE9GWFRldnZzcWNu?oc=5",
+          "published_at": "2026-09-21T17:33:58+09:00",
+          "source": "Seoul Economic Daily"
+        },
+        {
+          "title": "Korea Accounts for 54% of Japan's Yen Stablecoin Trading - Seoul Economic Daily",
+          "url": "https://news.google.com/rss/articles/CBMiogFBVV95cUxPbjk5STVBUzZ5Q2IxZmtQZ29aUXdIdFExdTFUTjdJZWw4Vy1VU3dRS3B5SmFrV0VFdEhmZzBjYVBuWkx4UEVfQ0JJdm9CMEI1VjUxeVAyeTJVOW1HNzJRR1UzOHVXTzFaNUlyZ2hiMzNNSXl4V1J3Nm14WWJxTGVfOUNrb0NtWEFINFk1UXBmV1ZQZmRKUkMyanU5R01LNmRNWlE?oc=5",
+          "published_at": "2026-09-21T17:34:10+09:00",
+          "source": "Seoul Economic Daily"
+        }
+      ],
       "stocks": [
         {
           "code": "3853",
@@ -68,14 +87,18 @@
       ],
       "reacting_stock_count": 0,
       "evidence": {
-        "news_fresh": false,
+        "news_fresh": true,
         "money_flow_fresh": false,
         "money_flow_anomaly": false,
         "tv_fresh": true,
         "money_flow_source": null
       },
       "emergency_display": false,
-      "handoff_codes": [],
+      "handoff_codes": [
+        "3853",
+        "4072",
+        "4382"
+      ],
       "trading_enabled": false,
       "real_submit_allowed": false
     }
