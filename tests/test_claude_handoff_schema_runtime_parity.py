@@ -1,6 +1,6 @@
 import json,unittest
 from pathlib import Path
-from scripts.tradingview_mcp_adapter import REQUIRED_META,REQUIRED_BAR,ALLOWED_TOP,ALLOWED_META,ALLOWED_BAR
+from scripts.tradingview_mcp_adapter import REQUIRED_META,REQUIRED_BAR,ALLOWED_TOP,ALLOWED_META,ALLOWED_BAR,REQUIRED_SYMBOL,REQUIRED_TIMEFRAME,REQUIRED_TIMEZONE
 
 SCHEMA=Path("data/claude_tradingview_handoff.schema.json")
 
@@ -20,9 +20,9 @@ class ClaudeHandoffSchemaRuntimeParityTests(unittest.TestCase):
   self.assertFalse(bar["additionalProperties"])
  def test_identity_constants_are_frozen(self):
   meta=self.schema()["properties"]["meta"]["properties"]
-  self.assertEqual(meta["symbol"]["const"],"TSE:285A")
-  self.assertEqual(meta["timeframe"]["const"],"15S")
-  self.assertEqual(meta["timezone"]["const"],"Asia/Tokyo")
+  self.assertEqual(meta["symbol"]["const"],REQUIRED_SYMBOL)
+  self.assertEqual(meta["timeframe"]["const"],REQUIRED_TIMEFRAME)
+  self.assertEqual(meta["timezone"]["const"],REQUIRED_TIMEZONE)
  def test_bar_numeric_contract_is_frozen(self):
   props=self.schema()["properties"]["bars"]["items"]["properties"]
   for key in ("open","high","low","close","volume"): self.assertEqual(props[key]["type"],"number")
