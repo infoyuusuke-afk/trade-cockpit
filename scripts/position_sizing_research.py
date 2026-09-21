@@ -93,3 +93,33 @@ def evaluate_long_exit_policies(rows, avg_entry, start_index, tick_size, vwap_va
                     "mae_pct":(min(float(r["low"]) for r in path)/avg_entry-1)*100,
                     "research_only":True})
     return out
+
+
+def sizing_kill_switch(state, limits):
+    """Fail-closed research risk gate. Any breach blocks further adds."""
+    reasons=[]
+    if not bool(state.get("data_fresh",False)):
+        reasons.append("DATA_STALE_OR_UNKNOWN")
+    if bool(state.get("support_broken",False)):
+        reasons.append("SUPPORT_BROKEN")
+    trade_loss=float(state.get("trade_pnl_pct",0))
+    day_loss=float(state.get("day_pnl_pct",0))
+    max_trade_loss=abs(float(limits.get("max_trade_loss_pct",0)))
+    max_day_loss=abs(float(limits.get("max_day_loss_pct",0)))
+    if max_trade_loss<=0 or max_day_loss<=0:
+        reasons.append("INVALID_RISK_LIMITS")
+    else:
+        if trade_loss<=-max_trade_loss:
+            reasons.append("MAX_TRADE_LOSS")
+        if day_loss<=-max_day_loss:
+            reasons.append("MAX_DAY_LOSS")
+    return {"kill":bool(reasons),"allow_add":not reasons,"reasons":reasons,
+            "research_only":True,"auto_execute":False}
+
+def gated_add_with_risk(signal, state, limits):
+    risk=sizing_kill_switch(state,limits)
+    if risk["kill"]:
+        return {"eligible":False,"reason":"RISK_KILL_SWITCH","risk":risk,
+                "research_only":True,"auto_execute":False}
+    gate=validate_add_signal(signal)
+    return {**gate,"risk":risk,"auto_execute":False}
