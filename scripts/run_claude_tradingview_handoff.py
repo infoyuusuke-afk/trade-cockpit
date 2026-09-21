@@ -6,18 +6,29 @@ from scripts.tradingview_source_router import route_tradingview_data
 from scripts.routed_research_backtest import run_routed_backtest
 
 def run_handoff(payload_path,out_dir,required_timeframe="15S",cost_pct=0.10,prev_close=None,required_symbol="TSE:285A",required_timezone="Asia/Tokyo"):
-    src=Path(payload_path);raw=src.read_bytes();payload=json.loads(raw.decode("utf-8-sig"))
-    meta=payload.get("meta") or {}
+    src=Path(payload_path);raw=src.read_bytes();input_sha256=hashlib.sha256(raw).hexdigest()
+    out=Path(out_dir);out.mkdir(parents=True,exist_ok=True);rp=out/"claude_handoff_receipt.json"
+    try:
+        payload=json.loads(raw.decode("utf-8-sig"))
+    except (UnicodeDecodeError,json.JSONDecodeError) as e:
+        receipt={"input_file":str(src),"input_sha256":input_sha256,"handoff_status":"REJECTED_PARSE",
+          "rejection_reason":"CLAUDE_HANDOFF_INVALID_JSON","parse_error":type(e).__name__,
+          "promotion_eligible":False,"research_only":True,"auto_execute":False}
+        rp.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+        raise ValueError("CLAUDE_HANDOFF_INVALID_JSON:"+type(e).__name__) from e
+    if not isinstance(payload,dict):
+        receipt={"input_file":str(src),"input_sha256":input_sha256,"handoff_status":"REJECTED_PARSE",
+          "rejection_reason":"CLAUDE_HANDOFF_ROOT_NOT_OBJECT","promotion_eligible":False,"research_only":True,"auto_execute":False}
+        rp.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+        raise ValueError("CLAUDE_HANDOFF_ROOT_NOT_OBJECT")
+    meta=payload.get("meta") if isinstance(payload.get("meta"),dict) else {}
     bars=payload.get("bars") if isinstance(payload.get("bars"),list) else []
-    input_sha256=hashlib.sha256(raw).hexdigest()
-    out=Path(out_dir);out.mkdir(parents=True,exist_ok=True)
     receipt={"input_file":str(src),"input_sha256":input_sha256,"actual_symbol":meta.get("symbol"),
       "actual_timeframe":meta.get("timeframe"),"actual_timezone":meta.get("timezone"),"retrieved_at":meta.get("retrieved_at"),
       "raw_bar_count":len(bars),"first_raw_timestamp":bars[0].get("timestamp") if bars else None,
       "last_raw_timestamp":bars[-1].get("timestamp") if bars else None,
       "required_symbol":required_symbol,"required_timezone":required_timezone,
       "required_timeframe":required_timeframe,"research_only":True,"auto_execute":False}
-    rp=out/"claude_handoff_receipt.json"
     rejection=None
     if meta.get("symbol")!=required_symbol:
         rejection=("CLAUDE_HANDOFF_SYMBOL_MISMATCH",required_symbol,meta.get("symbol"))
