@@ -54,3 +54,11 @@ class MultiSessionCoverageTest(unittest.TestCase):
    for side in ("BUY","SELL"):
     rows += [rec(order_type=ot,side=side,observed_at=base+timedelta(days=i % m.MIN_SESSION_DAYS)) for i in range(m.MIN_SAMPLE)]
   o=m.evaluate(rows);self.assertEqual(o["unique_session_days"],m.MIN_SESSION_DAYS);self.assertEqual(o["coverage_status"],"COVERAGE_SUFFICIENT");self.assertFalse(o["parameter_update_allowed"])
+
+class RegimeProvenanceTest(unittest.TestCase):
+ def test_missing_regime_stays_unknown_without_inference(self):
+  o=m.evaluate([rec()]);self.assertEqual(o["regime_diagnostic_status"],"REGIME_CONTEXT_UNKNOWN");self.assertEqual(o["known_regime_n"],0);self.assertTrue(any(k.endswith("|UNKNOWN") for k in o["context_strata"]))
+ def test_explicit_point_in_time_regime_is_preserved(self):
+  o=m.evaluate([rec(market_regime="HIGH_VOL")]);self.assertEqual(o["regime_diagnostic_status"],"REGIME_CONTEXT_AVAILABLE");self.assertTrue(any(k.endswith("|HIGH_VOL") for k in o["context_strata"]))
+ def test_unrecognized_regime_is_not_guessed(self):
+  o=m.evaluate([rec(market_regime="BULLISH_MAYBE")]);self.assertEqual(o["sample_size"],0);self.assertEqual(o["invalid_record_n"],1)
