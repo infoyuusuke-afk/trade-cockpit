@@ -46,10 +46,13 @@ def commit_new_private_artifact(repo_root: Path, relative_path: str, data: bytes
             fh.flush()
             os.fsync(fh.fileno())
 
-        # Never use replace(): it would permit silent overwrite.
+        # Publish without an overwrite-capable rename. Hard-link creation is
+        # atomic and fails if the final name already exists. The pending inode
+        # is removed only after the final name has been created successfully.
         if final_path.exists():
             raise FileExistsError("final artifact appeared during commit")
-        temp.rename(final_path)
+        os.link(temp, final_path)
+        temp.unlink()
 
         # Directory fsync is required on POSIX for the durability claim. Windows
         # needs a separately validated native directory-flush implementation;
