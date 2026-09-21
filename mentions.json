@@ -3093,6 +3093,33 @@
       "auto_extracted_tickers": [],
       "confirmed_tickers": [],
       "note": "自動抽出は誤検出の可能性あり。confirmed_tickersへ手動で確定させてから分析に使うこと。"
+    },
+    {
+      "channel_id": "UCmvEkXw4pLZsOlDxCOwEWIw",
+      "channel_label": "【株Biz】勉強会TV",
+      "video_id": "hgg7qOjmSj8",
+      "title": "【株BizPV】リロンちゃん 理論株価Web編【MiniMaxH3 15秒】",
+      "published_at": "2026-09-21T00:07:19+00:00",
+      "detected_at": "2026-09-21 09:34:07 JST",
+      "auto_extracted_tickers": [],
+      "confirmed_tickers": [],
+      "note": "自動抽出は誤検出の可能性あり。confirmed_tickersへ手動で確定させてから分析に使うこと。"
+    },
+    {
+      "channel_id": "UCdQdRRLoajrt-5TEaAxslxA",
+      "channel_label": "トレーダーTOMO",
+      "video_id": "l3-MrFGdi4k",
+      "title": "キオクシア（285A）株式分割後のポイント。株式テクニカルチャート分析",
+      "published_at": "2026-09-21T00:30:04+00:00",
+      "detected_at": "2026-09-21 09:34:07 JST",
+      "auto_extracted_tickers": [
+        {
+          "code": "285A",
+          "name": "キオクシア"
+        }
+      ],
+      "confirmed_tickers": [],
+      "note": "自動抽出は誤検出の可能性あり。confirmed_tickersへ手動で確定させてから分析に使うこと。"
     }
   ]
 }
