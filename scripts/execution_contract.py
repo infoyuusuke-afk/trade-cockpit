@@ -220,14 +220,25 @@ def parse_signal_known_at(text: str) -> Optional[datetime]:
     if not text or not isinstance(text, str):
         return None
     try:
-        return datetime.fromisoformat(text)
+        parsed = datetime.fromisoformat(text)
     except ValueError:
         return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    return parsed
 
 
 def is_duplicate_intent(candidate: dict, existing: list[dict]) -> bool:
     """intent_hashの完全一致だけで重複判定する純粋関数（fuzzy matchはしない）。"""
+    if not isinstance(candidate, dict):
+        raise ValueError("candidate must be dict")
+    if not isinstance(existing, list):
+        raise ValueError("existing must be list")
+    if any(not isinstance(e, dict) for e in existing):
+        raise ValueError("existing entries must be dict")
     candidate_hash = candidate.get("intent_hash") or compute_intent_hash(candidate)
+    if not isinstance(candidate_hash, str) or not candidate_hash:
+        raise ValueError("candidate intent_hash invalid")
     return any(e.get("intent_hash") == candidate_hash for e in existing)
 
 
