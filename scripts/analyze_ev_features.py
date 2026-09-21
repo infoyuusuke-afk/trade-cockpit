@@ -46,6 +46,14 @@ def analyze(path):
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument("--input",default="data/trade_results.csv");ap.add_argument("--output",default="data/ev_feature_buckets.json");a=ap.parse_args()
-    if Path(a.input).exists(): groups,audit=analyze_with_audit(a.input)\n    else: groups,audit=[],{"included_trade_count":0,"excluded_nonpromotion_trade_count":0}\n    out={"schema_version":1,"generated_at":datetime.now(timezone.utc).isoformat(),"score_is_probability":False,"bucket_policy":"fixed_v0.1_not_optimized","groups":groups,"promotion_filter":"promotion_eligible=true; legacy missing field included","promotion_filter_audit":audit}
+    if Path(a.input).exists():
+        groups,audit=analyze_with_audit(a.input)
+    else:
+        groups,audit=[],{"included_trade_count":0,"excluded_nonpromotion_trade_count":0}
+    out={"schema_version":1,"generated_at":datetime.now(timezone.utc).isoformat(),
+         "score_is_probability":False,"bucket_policy":"fixed_v0.1_not_optimized",
+         "groups":groups,
+         "promotion_filter":"promotion_eligible=true; legacy missing field included",
+         "promotion_filter_audit":audit}
     dst=Path(a.output);dst.parent.mkdir(parents=True,exist_ok=True);dst.write_text(json.dumps(out,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 if __name__=="__main__":main()
