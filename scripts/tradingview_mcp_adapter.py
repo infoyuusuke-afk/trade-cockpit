@@ -15,6 +15,9 @@ def _validate_contract_shape(payload):
     if not isinstance(meta,dict): raise ValueError("MCP_META_NOT_OBJECT")
     extra=set(meta)-ALLOWED_META
     if extra: raise ValueError("UNKNOWN_MCP_META_FIELD:"+",".join(sorted(extra)))
+    if meta.get("symbol") not in (None,"",REQUIRED_SYMBOL): raise ValueError("MCP_SYMBOL_MISMATCH")
+    if meta.get("timeframe") not in (None,"",REQUIRED_TIMEFRAME): raise ValueError("MCP_TIMEFRAME_MISMATCH")
+    if meta.get("timezone") not in (None,"",REQUIRED_TIMEZONE): raise ValueError("MCP_TIMEZONE_MISMATCH")
     bars=payload.get("bars")
     if not isinstance(bars,list) or not bars: raise ValueError("EMPTY_MCP_BARS")
     for bar in bars:
