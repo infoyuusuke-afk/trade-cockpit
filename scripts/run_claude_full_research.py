@@ -29,15 +29,18 @@ def run(payload,out_dir,cost_pct=.10,prev_close=None,train_ratio=.70,min_train=3
     cal_path=out/"ev_calibration_promotion.json";cal_path.write_text(json.dumps(calibration,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     oos=validate_oos(trade,train_ratio);oos_path=out/"oos_validation.json";oos_path.write_text(json.dumps(oos,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     wf=validate_wf(trade,min_train,test_size);wf_path=out/"walk_forward.json";wf_path.write_text(json.dumps(wf,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+    eligible_count=len(eligible_rows(trade))
     keys=sorted(set(calibration["groups"])|set(oos["oos"]["groups"])|set(wf["stability"]))
+    evidence_status="EVALUATED" if eligible_count else "NO_PROMOTION_ELIGIBLE_TRADES"
     gate={"schema_version":1,"policy":"fixed_conservative_v0.1","direct_live_promotion":False,
-      "research_only":True,"auto_execute":False,
+      "research_only":True,"auto_execute":False,"evidence_status":evidence_status,
       "results":[evaluate(k,calibration,oos,wf) for k in keys]}
     gate_path=out/"promotion_gate.json";gate_path.write_text(json.dumps(gate,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     manifest={"receipt":str(receipt),"trade_results":str(trade),"feature_ev":str(feature_ev),
       "source_manifest":str(source_manifest),"calibration":str(cal_path),"oos":str(oos_path),
       "walk_forward":str(wf_path),"promotion_gate":str(gate_path),
-      "eligible_trade_count":len(eligible_rows(trade)),"research_only":True,"auto_execute":False}
+      "eligible_trade_count":eligible_count,"evidence_status":evidence_status,
+      "research_only":True,"auto_execute":False}
     mp=out/"full_research_manifest.json";mp.write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
     return mp,manifest
 
