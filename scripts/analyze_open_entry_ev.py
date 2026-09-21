@@ -75,19 +75,22 @@ def summarize_entry_policies(results):
     return out
 
 
-def fixed_regime_labels(context):
-    """Predefined, non-optimized regime labels for descriptive EV segmentation."""
+def fixed_preopen_regime_labels(context):
+    """Only labels knowable no later than the opening decision boundary.
+
+    Never use same-day realized range, OR5/OR15, VWAP, or later tape here.
+    """
     gap=context.get("gap_pct")
-    vol=context.get("intraday_range_pct")
     state=context.get("open_state")
+    prior_vol=context.get("prior_day_range_pct")
     return {
       "gap_regime": "UNKNOWN" if gap is None else ("GD_LT_-1" if gap < -1 else ("GU_GT_1" if gap > 1 else "FLAT_-1_TO_1")),
       "open_regime": state or "UNKNOWN",
-      "vol_regime": "UNKNOWN" if vol is None else ("LOW_LT_1" if vol < 1 else ("HIGH_GE_2" if vol >= 2 else "MID_1_TO_2"))
+      "prior_vol_regime": "UNKNOWN" if prior_vol is None else ("LOW_LT_1" if prior_vol < 1 else ("HIGH_GE_2" if prior_vol >= 2 else "MID_1_TO_2"))
     }
 
-def attach_regime(results, context):
-    labels=fixed_regime_labels(context)
+def attach_preopen_regime(results, context):
+    labels=fixed_preopen_regime_labels(context)
     return [{**r,**labels} for r in results]
 
 def summarize_by_regime(results, regime_key):
