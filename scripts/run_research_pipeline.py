@@ -90,10 +90,15 @@ def run(input_csv,out_dir,cost_pct=0.10,prev_close=None):
         open_state=("NORMAL_OPEN" if delay==0 else "DELAYED_OPEN_UNCLASSIFIED") if first_dt else "NO_OBSERVATION"
         quality=opening_quality(session) if session else {"opening_observed_bars":0,"opening_irregular_intervals":None,"opening_data_quality":"NO_OBSERVATION"}
         accepted=len(session)>=62 and validate_tse_session(session)
+        if not accepted:
+            research_status="EXCLUDE"; research_reason="INSUFFICIENT_OR_INVALID_SESSION"
+        elif open_state!="NORMAL_OPEN" or quality["opening_data_quality"]!="CONTINUOUS_15S":
+            research_status="REVIEW"; research_reason="DELAYED_OR_IRREGULAR_OPENING"
+        else:
+            research_status="ACCEPT"; research_reason="OK"
         quality_rows.append({"session_date":day,"first_print_ts":session[0]["ts"] if session else "","open_delay_sec":delay,
           "bar_count":len(session),"open_state":open_state,**quality,
-          "research_status":"ACCEPT" if accepted else "EXCLUDE",
-          "research_reason":"OK" if accepted else "INSUFFICIENT_OBSERVED_BARS"})
+          "research_status":research_status,"research_reason":research_reason})
         if accepted:
             usable+=1
             day_trades=[]
