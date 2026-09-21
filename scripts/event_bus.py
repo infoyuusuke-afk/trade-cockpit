@@ -7,7 +7,7 @@ VALID_DOMAINS={"MARKET","DATA","STRATEGY","RISK","EXECUTION","COUNCIL","COMMENTA
 VALID_SEVERITIES={"INFO","NOTICE","IMPORTANT","CRITICAL"}
 def _aware(ts):
     d=datetime.fromisoformat(ts)
-    if d.tzinfo is None: raise ValueError("timestamp must be timezone-aware")
+    if d.tzinfo is None or d.utcoffset() is None: raise ValueError("timestamp must be timezone-aware")
     return d
 def build_event(*,timestamp,domain,event_type,source,payload,severity="INFO",symbol=None,correlation_id=None):
     _aware(timestamp)
@@ -18,8 +18,8 @@ def build_event(*,timestamp,domain,event_type,source,payload,severity="INFO",sym
     raw=json.dumps(canonical,sort_keys=True,ensure_ascii=False,separators=(",",":")).encode()
     return {**canonical,"event_id":hashlib.sha256(raw).hexdigest(),"real_submit_allowed":False,"external_publish_allowed":False}
 def validate_event(e):
-    required={"schema_version","timestamp","domain","event_type","source","severity","payload","event_id","real_submit_allowed","external_publish_allowed"}
-    if not required.issubset(e): return False
+    allowed={"schema_version","timestamp","domain","event_type","source","severity","symbol","correlation_id","payload","event_id","real_submit_allowed","external_publish_allowed"}
+    if not isinstance(e,dict) or set(e)!=allowed: return False
     if e["schema_version"]!=SCHEMA_VERSION or e["real_submit_allowed"] is not False or e["external_publish_allowed"] is not False:return False
     try:
         rebuilt=build_event(timestamp=e["timestamp"],domain=e["domain"],event_type=e["event_type"],source=e["source"],payload=e["payload"],severity=e["severity"],symbol=e.get("symbol"),correlation_id=e.get("correlation_id"))
