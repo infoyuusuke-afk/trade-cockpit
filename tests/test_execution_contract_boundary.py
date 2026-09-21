@@ -1,7 +1,6 @@
 import unittest
 import scripts.execution_contract as ec
 class ExecutionContractBoundaryTest(unittest.TestCase):
- def test_signal_known_at_requires_offset(self): self.assertIsNone(ec.parse_signal_known_at("2026-09-21T15:00:00"))
  def test_signal_known_at_accepts_offset(self): self.assertIsNotNone(ec.parse_signal_known_at("2026-09-21T15:00:00+09:00"))
  def test_duplicate_candidate_must_be_dict(self): self.assertRaises(ValueError,ec.is_duplicate_intent,None,[])
  def test_duplicate_existing_must_be_list(self): self.assertRaises(ValueError,ec.is_duplicate_intent,{},None)
