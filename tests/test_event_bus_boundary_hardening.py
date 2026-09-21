@@ -21,3 +21,4 @@ class EventBusBoundaryHardeningTest(unittest.TestCase):
         with self.assertRaises(ValueError): build_event(timestamp="2026-09-21T15:00:00",domain="SYSTEM",event_type="TEST",source="TEST",payload={})
 
 # ci-trigger: replacement PR on latest main
+
