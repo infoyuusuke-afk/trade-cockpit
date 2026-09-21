@@ -1,5 +1,5 @@
 import unittest
-from scripts.ev_break_attribution import make_break_event,attribute_trade_breaks,summarize_break_reasons
+from scripts.ev_break_attribution import make_break_event,attribute_trade_breaks,summarize_break_reasons,audit_preventability,summarize_preventability
 
 class EVBreakAttributionTests(unittest.TestCase):
  def test_preexisting_event_is_not_post_trade_excuse(self):
@@ -21,5 +21,26 @@ class EVBreakAttributionTests(unittest.TestCase):
   rows=[{"net_pnl":-1,"break_reasons":["TIME_REGIME_SHIFT"]} for _ in range(30)]
   x=summarize_break_reasons(rows)
   self.assertEqual(x[0]["evidence_status"],"INITIAL_EVIDENCE")
+
+ def test_preexisting_risk_is_flagged_as_missed(self):
+  t={"trade_id":"T","decision_ts":"2026-09-18T10:00:00+09:00",
+     "pretrade_checks_completed":["MARKET"]}
+  e=[{"reason":"KOREA_SEMICON_CONTAGION","observed_at":"2026-09-18T09:58:00+09:00"}]
+  x=audit_preventability(t,e,["MARKET"])
+  self.assertEqual(x["classification"],"MISSED_PRETRADE_RISK")
+  self.assertFalse(x["preventable_claim"])
+
+ def test_later_shock_is_separate(self):
+  t={"decision_ts":"2026-09-18T10:00:00+09:00",
+     "pretrade_checks_completed":["MARKET","CATALYST"]}
+  e=[{"reason":"SURPRISE_NEGATIVE_CATALYST","observed_at":"2026-09-18T10:01:00+09:00"}]
+  x=audit_preventability(t,e,["MARKET","CATALYST"])
+  self.assertEqual(x["classification"],"POST_DECISION_SHOCK")
+
+ def test_missing_required_check_is_visible(self):
+  t={"decision_ts":"2026-09-18T10:00:00+09:00","pretrade_checks_completed":["MARKET"]}
+  x=audit_preventability(t,[],["MARKET","KOREA_SEMICON"])
+  self.assertEqual(x["classification"],"INCOMPLETE_PRETRADE_AUDIT")
+  self.assertIn("KOREA_SEMICON",x["missed_required_checks"])
 
 if __name__=="__main__": unittest.main()
