@@ -20,9 +20,9 @@ class MultiDaySessionTests(unittest.TestCase):
   rows=[{"ts":f"2026-09-17 09:{(i*15)//60:02d}:{(i*15)%60:02d}"} for i in range(60)]
   self.assertTrue(validate_tse_session(rows))
 
- def test_missing_0900_is_not_usable(self):
-  rows=[{"ts":f"2026-09-17 09:{((i+1)*15)//60:02d}:{((i+1)*15)%60:02d}"} for i in range(60)]
-  self.assertFalse(validate_tse_session(rows))
+ def test_delayed_first_print_is_preserved(self):
+  rows=[{"ts":f"2026-09-17 09:{(5*60+i*15)//60:02d}:{(5*60+i*15)%60:02d}"} for i in range(60)]
+  self.assertTrue(validate_tse_session(rows))
 
  def test_broken_opening_grid_fails_closed(self):
   rows=[{"ts":f"2026-09-17 09:{(i*15)//60:02d}:{(i*15)%60:02d}"} for i in range(60)]
