@@ -7,25 +7,17 @@ EOD exits cannot cross dates, and prior close is context only for the next day.
 import argparse
 import csv
 import json
-from datetime import datetime
+from scripts.time_utils import parse_market_ts
 from pathlib import Path
 from scripts.backtest_15s import load_bars, backtest_or_breakout, backtest_or5_vwap
 from scripts.analyze_ev_features import analyze
 
 FIELDS=["strategy_key","entry_ts","exit_ts","side","entry","exit","gross_pnl_pct","cost_pct","net_pnl_pct","pnl_pct","exit_reason",
 "volume_ratio_20","bar_turnover","vwap_deviation_pct","or5_width_pct","intraday_range_pct","gap_pct",
-"nikkei_return_pct","topix_return_pct","futures_return_pct","session_date","first_print_ts","open_delay_sec","open_state","opening_observed_bars","opening_irregular_intervals","opening_data_quality"]
-
-FORMATS=("%Y-%m-%d %H:%M:%S","%Y-%m-%dT%H:%M:%S","%Y/%m/%d %H:%M:%S")
+"nikkei_return_pct","topix_return_pct","futures_return_pct","session_date","first_print_ts","open_delay_sec","open_state","opening_observed_bars","opening_irregular_intervals","opening_data_quality","research_status","research_reason","promotion_eligible"]
 
 def parse_ts(ts):
-    s=str(ts).strip()
-    for fmt in FORMATS:
-        try:
-            return datetime.strptime(s[:19],fmt)
-        except ValueError:
-            pass
-    raise ValueError("unparseable timestamp: "+s)
+    return parse_market_ts(ts)
 
 def validate_input(path):
     p=Path(path)
@@ -106,7 +98,7 @@ def run(input_csv,out_dir,cost_pct=0.10,prev_close=None):
                 day_trades += backtest_or_breakout(session,side,cost_pct,prev_close=prior_close)
                 day_trades += backtest_or5_vwap(session,side,cost_pct,prev_close=prior_close)
             for trade in day_trades:
-                trade.update({"session_date":day,"first_print_ts":session[0]["ts"],"open_delay_sec":delay,"open_state":open_state,**quality})
+                trade.update({"session_date":day,"first_print_ts":session[0]["ts"],"open_delay_sec":delay,"open_state":open_state,**quality,"research_status":research_status,"research_reason":research_reason,"promotion_eligible":research_status=="ACCEPT"})
             trades += day_trades
         prior_close=session[-1]["close"] if session else prior_close
     if usable==0: raise ValueError("no session has at least 62 x 15s bars")
