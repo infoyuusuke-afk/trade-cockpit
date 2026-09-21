@@ -14,7 +14,8 @@ def rows(history):
         if not entry or close is None or side not in {"LONG","SHORT"}: continue
         raw=(float(close)-float(entry))/float(entry)*100
         if side=="SHORT": raw=-raw
-        cost=float(r.get("cost_pct") or 0); net=raw-cost\n        out.append({"strategy_key":key,"gross_pnl_pct":round(raw,6),"cost_pct":cost,"net_pnl_pct":round(net,6),"pnl_pct":round(net,6),
+        cost=float(r.get("cost_pct") or 0); net=raw-cost
+        out.append({"strategy_key":key,"gross_pnl_pct":round(raw,6),"cost_pct":cost,"net_pnl_pct":round(net,6),"pnl_pct":round(net,6),
           "symbol":str(r.get("ticker") or "").replace(".T",""),"side":side,
           "entry_ts":r.get("entry_ts") or r.get("date") or "","exit_ts":r.get("exit_ts") or r.get("date") or ""})
     return out
