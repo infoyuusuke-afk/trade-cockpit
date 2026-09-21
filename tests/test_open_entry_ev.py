@@ -46,7 +46,7 @@ class OpenEntryEVTests(unittest.TestCase):
   for side in ("LONG","SHORT"):
    all_results += compare_entry_delays(self.rows(),side,0.1)
   s=summarize_entry_policies(all_results)
-  self.assertEqual({x["entry_policy"] for x in s},{"OPEN","WAIT_15S","WAIT_30S","WAIT_60S","OR5_WAIT"})
+  self.assertEqual({x["entry_policy"] for x in s},{"OPEN","WAIT_15S","WAIT_30S","WAIT_60S","OR5_WAIT","CLOCK_OR5_WAIT"})
   for x in s:
    self.assertEqual(x["sample_size"],2)
    self.assertTrue(x["research_only"])
@@ -66,7 +66,7 @@ class OpenEntryEVTests(unittest.TestCase):
   r=attach_preopen_regime(r,{"gap_pct":-2.0,"prior_day_range_pct":1.5,"open_state":"NORMAL_OPEN"})
   s=summarize_by_regime(r,"gap_regime")
   self.assertIn("GD_LT_-1",s)
-  self.assertEqual(len(s["GD_LT_-1"]),5)
+  self.assertEqual(len(s["GD_LT_-1"]),6)
 
  def test_preopen_regime_ignores_same_day_realized_range(self):
   x=fixed_preopen_regime_labels({"gap_pct":0,"intraday_range_pct":9.9})
