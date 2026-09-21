@@ -9,3 +9,5 @@ class CouncilInputHardeningTest(unittest.TestCase):
  def test_unstructured_evidence(self): m=self.msg();m["evidence"]="trust me";self.assertRaises(ValueError,council_snapshot,[m])
  def test_real_submit_never_enabled(self): self.assertFalse(council_snapshot([self.msg()])["real_submit_allowed"])
 
+
+# ci-trigger
