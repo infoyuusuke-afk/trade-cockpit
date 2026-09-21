@@ -30,4 +30,18 @@ class RoutedResearchE2ETests(unittest.TestCase):
    self.assertTrue(rows);self.assertTrue(all(r["promotion_eligible"].lower()=="false" for r in rows))
    self.assertEqual(summary["bar_count"],70)
 
+ def test_crosschecked_mcp_replay_preserves_promotion_eligibility(self):
+  payload=self.payload()
+  replay=[]
+  for b in payload["bars"]:
+   replay.append({**b,"source":"TRADINGVIEW_REPLAY","source_timeframe":"15S"})
+  route=route_tradingview_data(mcp_payload=payload,replay_rows=replay)
+  self.assertEqual(route["status"],"READY");self.assertTrue(route["promotion_eligible"])
+  self.assertEqual(route["crosscheck"]["status"],"PASS")
+  with tempfile.TemporaryDirectory() as d:
+   trade,ev,manifest,summary=run_routed_backtest(route,Path(d))
+   m=json.loads(manifest.read_text());self.assertTrue(m["promotion_eligible"])
+   with trade.open(encoding="utf-8-sig",newline="") as fh: rows=list(csv.DictReader(fh))
+   self.assertTrue(rows);self.assertTrue(all(r["promotion_eligible"].lower()=="true" for r in rows))
+
 if __name__=="__main__":unittest.main()
