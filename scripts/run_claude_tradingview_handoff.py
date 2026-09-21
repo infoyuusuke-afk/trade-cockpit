@@ -5,11 +5,15 @@ from pathlib import Path
 from scripts.tradingview_source_router import route_tradingview_data
 from scripts.routed_research_backtest import run_routed_backtest
 
-def run_handoff(payload_path,out_dir,required_timeframe="15S",cost_pct=0.10,prev_close=None):
+def run_handoff(payload_path,out_dir,required_timeframe="15S",cost_pct=0.10,prev_close=None,required_symbol="TSE:285A",required_timezone="Asia/Tokyo"):
     src=Path(payload_path);payload=json.loads(src.read_text(encoding="utf-8-sig"))
+    meta=payload.get("meta") or {}
+    if meta.get("symbol")!=required_symbol: raise ValueError("CLAUDE_HANDOFF_SYMBOL_MISMATCH:required=%s actual=%s"%(required_symbol,meta.get("symbol")))
+    if meta.get("timezone")!=required_timezone: raise ValueError("CLAUDE_HANDOFF_TIMEZONE_MISMATCH:required=%s actual=%s"%(required_timezone,meta.get("timezone")))
     route=route_tradingview_data(required_timeframe=required_timeframe,mcp_payload=payload)
     out=Path(out_dir);out.mkdir(parents=True,exist_ok=True)
-    receipt={"input_file":str(src),"required_timeframe":required_timeframe,"route_status":route.get("status"),
+    receipt={"input_file":str(src),"required_symbol":required_symbol,"required_timezone":required_timezone,
+      "required_timeframe":required_timeframe,"route_status":route.get("status"),
       "selected_source":route.get("selected_source"),"mcp_error":route.get("mcp_error"),
       "promotion_eligible":bool(route.get("promotion_eligible",False)),"input_rows":len(route.get("rows") or []),
       "research_only":True,"auto_execute":False}
