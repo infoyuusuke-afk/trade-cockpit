@@ -43,5 +43,14 @@ class ClaudeTradingViewHandoffTests(unittest.TestCase):
   with tempfile.TemporaryDirectory() as d:
    p=Path(d)/"claude.json";p.write_text(json.dumps(self.payload("5")),encoding="utf-8");out=Path(d)/"out"
    with self.assertRaisesRegex(ValueError,"CLAUDE_HANDOFF_NOT_READY"):run_handoff(p,out)
-   r=json.loads((out/"claude_handoff_receipt.json").read_text());self.assertEqual(r["route_status"],"NO_USABLE_SOURCE");self.assertFalse(r["promotion_eligible"])
+   r=json.loads((out/"claude_handoff_receipt.json").read_text());self.assertEqual(r["handoff_status"],"REJECTED_ROUTE")
+   self.assertEqual(r["rejection_reason"],"CLAUDE_HANDOFF_NOT_READY");self.assertEqual(r["route_status"],"NO_USABLE_SOURCE");self.assertFalse(r["promotion_eligible"])
+ def test_contract_violation_keeps_rejected_receipt(self):
+  with tempfile.TemporaryDirectory() as d:
+   pld=self.payload();pld["bars"][0]["open"]="100"
+   p=Path(d)/"claude.json";p.write_text(json.dumps(pld),encoding="utf-8");out=Path(d)/"out"
+   with self.assertRaisesRegex(ValueError,"CLAUDE_HANDOFF_NOT_READY"):run_handoff(p,out)
+   r=json.loads((out/"claude_handoff_receipt.json").read_text())
+   self.assertEqual(r["handoff_status"],"REJECTED_ROUTE");self.assertEqual(r["rejection_reason"],"CLAUDE_HANDOFF_NOT_READY")
+   self.assertIn("MCP_BAR_NOT_NUMERIC:open",r["mcp_error"]);self.assertFalse(r["promotion_eligible"])
 if __name__=="__main__":unittest.main()

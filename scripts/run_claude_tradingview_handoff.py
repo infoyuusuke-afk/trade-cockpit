@@ -29,12 +29,14 @@ def run_handoff(payload_path,out_dir,required_timeframe="15S",cost_pct=0.10,prev
         rp.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
         raise ValueError("%s:required=%s actual=%s"%(reason,required,actual))
     route=route_tradingview_data(required_timeframe=required_timeframe,mcp_payload=payload)
-    receipt.update({"handoff_status":"ROUTED","route_status":route.get("status"),
+    ready=bool(route.get("rows"))
+    receipt.update({"handoff_status":"ROUTED" if ready else "REJECTED_ROUTE","route_status":route.get("status"),
       "selected_source":route.get("selected_source"),"mcp_error":route.get("mcp_error"),
-      "promotion_eligible":bool(route.get("promotion_eligible",False)),"input_rows":len(route.get("rows") or []),
+      "promotion_eligible":bool(route.get("promotion_eligible",False)) if ready else False,"input_rows":len(route.get("rows") or []),
       "research_only":True,"auto_execute":False})
+    if not ready: receipt["rejection_reason"]="CLAUDE_HANDOFF_NOT_READY"
     rp.write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
-    if not route.get("rows"): raise ValueError("CLAUDE_HANDOFF_NOT_READY:"+str(route.get("status"))+":"+str(route.get("mcp_error")))
+    if not ready: raise ValueError("CLAUDE_HANDOFF_NOT_READY:"+str(route.get("status"))+":"+str(route.get("mcp_error")))
     trade,ev,manifest,summary=run_routed_backtest(route,out,cost_pct,prev_close)
     quality_path=Path(summary["session_quality_file"])
     with quality_path.open(encoding="utf-8",newline="") as fh: quality=list(csv.DictReader(fh))
