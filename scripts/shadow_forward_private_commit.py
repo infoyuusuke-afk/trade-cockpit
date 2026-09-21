@@ -62,3 +62,24 @@ def commit_new_private_artifact(repo_root: Path, relative_path: str, data: bytes
 def is_committed_artifact(path: Path) -> bool:
     """Pending files are never eligible evidence."""
     return path.is_file() and not path.name.endswith(".pending")
+
+
+def evidence_commit_status(result: CommitResult) -> str:
+    """Return the only persistence-level eligibility status.
+
+    COMMITTED_DURABLE is necessary but not sufficient for Phase 6 acceptance;
+    all C-105/C-106/acceptance checks still apply.
+    """
+    if not isinstance(result, CommitResult):
+        raise ValueError("CommitResult required")
+    if not result.file_fsync:
+        return "HOLD_FILE_DURABILITY_UNVERIFIED"
+    if not result.directory_fsync:
+        return "HOLD_DURABILITY_UNVERIFIED"
+    return "COMMITTED_DURABLE"
+
+
+def require_durable_for_acceptance(result: CommitResult) -> Path:
+    if evidence_commit_status(result) != "COMMITTED_DURABLE":
+        raise ValueError("artifact durability unverified; acceptance prohibited")
+    return result.path
