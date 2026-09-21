@@ -75,6 +75,8 @@ class MultiDaySessionTests(unittest.TestCase):
    q=list(csv.DictReader(Path(s["session_quality_file"]).open()))
    q2=next(x for x in q if x["session_date"]=="2026-09-18")
    self.assertEqual(q2["research_status"],"REVIEW")
+   self.assertTrue(all(r["research_status"]=="REVIEW" for r in day2))
+   self.assertTrue(all(r["promotion_eligible"]=="False" for r in day2))
    self.assertTrue(all(int(r["open_delay_sec"])==300 for r in day2))
    self.assertTrue(all(r["gap_pct"]!="" for r in day2))
 
