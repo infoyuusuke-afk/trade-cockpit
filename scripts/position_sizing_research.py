@@ -123,3 +123,33 @@ def gated_add_with_risk(signal, state, limits):
                 "research_only":True,"auto_execute":False}
     gate=validate_add_signal(signal)
     return {**gate,"risk":risk,"auto_execute":False}
+
+
+def risk_response(state, limits):
+    """Map risk evidence to a research response; never submits an order."""
+    risk=sizing_kill_switch(state,limits)
+    reasons=set(risk["reasons"])
+    exit_reasons={"SUPPORT_BROKEN","MAX_TRADE_LOSS","MAX_DAY_LOSS"}
+    if reasons & exit_reasons:
+        response="EXIT_REQUIRED"
+    elif "DATA_STALE_OR_UNKNOWN" in reasons or "INVALID_RISK_LIMITS" in reasons:
+        response="FREEZE_NO_NEW_RISK"
+    else:
+        response="CONTINUE"
+    return {"risk_response":response,"reasons":risk["reasons"],
+            "allow_add":response=="CONTINUE","research_only":True,
+            "auto_execute":False}
+
+def evaluate_kill_switch_impact(rows, trigger_index, avg_entry, hypothetical_exit_index=None):
+    """Measure trigger exit versus holding longer; descriptive counterfactual only."""
+    if trigger_index<0 or trigger_index>=len(rows): raise ValueError("bad trigger_index")
+    hold_i=len(rows)-1 if hypothetical_exit_index is None else int(hypothetical_exit_index)
+    if hold_i<trigger_index or hold_i>=len(rows): raise ValueError("bad hypothetical_exit_index")
+    trigger_px=float(rows[trigger_index]["close"])
+    hold_px=float(rows[hold_i]["close"])
+    trigger_pnl=(trigger_px/avg_entry-1)*100
+    hold_pnl=(hold_px/avg_entry-1)*100
+    return {"trigger_exit_pnl_pct":trigger_pnl,"hold_pnl_pct":hold_pnl,
+            "loss_avoided_pct":trigger_pnl-hold_pnl,
+            "trigger_index":trigger_index,"hold_index":hold_i,
+            "research_only":True}
