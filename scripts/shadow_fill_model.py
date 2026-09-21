@@ -78,10 +78,10 @@ def validate_observation(observation, *, now: datetime) -> tuple[bool, list[str]
     reasons = []
     if not isinstance(observation, dict):
         return False, ["OBSERVATION_INVALID_TYPE"]
-    if not isinstance(now, datetime) or now.tzinfo is None:
+    if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
         reasons.append("NOW_NOT_TIMEZONE_AWARE")
     observed_at = observation.get("observed_at")
-    if not isinstance(observed_at, datetime) or observed_at.tzinfo is None:
+    if not isinstance(observed_at, datetime) or observed_at.tzinfo is None or observed_at.utcoffset() is None:
         reasons.append("OBSERVATION_TIMESTAMP_NOT_TIMEZONE_AWARE")
     elif not reasons and observed_at > now:
         reasons.append("OBSERVATION_TIMESTAMP_FUTURE")
@@ -149,7 +149,7 @@ def evaluate_market_fill(*, side: str, requested_qty, observation: dict, now: da
         return _base_result(observation, fill_reason="SIDE_INVALID")
     if not _is_finite_positive(requested_qty) or int(requested_qty) != requested_qty:
         return _base_result(observation, fill_reason="REQUESTED_QTY_INVALID")
-    if not isinstance(submitted_at, datetime) or submitted_at.tzinfo is None:
+    if not isinstance(submitted_at, datetime) or submitted_at.tzinfo is None or submitted_at.utcoffset() is None:
         return _base_result(observation, fill_reason="SUBMITTED_AT_NOT_TIMEZONE_AWARE")
     if observation["observed_at"] <= submitted_at:
         return _base_result(observation, fill_reason="OBSERVATION_BEFORE_SUBMISSION")
@@ -199,7 +199,7 @@ def evaluate_limit_fill(*, side: str, requested_qty, limit_price, observation: d
         return _base_result(observation, fill_reason="REQUESTED_QTY_INVALID")
     if not _is_finite_positive(limit_price):
         return _base_result(observation, fill_reason="LIMIT_PRICE_INVALID")
-    if not isinstance(submitted_at, datetime) or submitted_at.tzinfo is None:
+    if not isinstance(submitted_at, datetime) or submitted_at.tzinfo is None or submitted_at.utcoffset() is None:
         return _base_result(observation, fill_reason="SUBMITTED_AT_NOT_TIMEZONE_AWARE")
 
     observed_at = observation["observed_at"]

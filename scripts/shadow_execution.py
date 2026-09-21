@@ -210,7 +210,7 @@ def _is_finite_number(value) -> bool:
 
 
 def _is_aware_datetime(value) -> bool:
-    return isinstance(value, datetime) and value.tzinfo is not None
+    return isinstance(value, datetime) and value.tzinfo is not None and value.utcoffset() is not None
 
 
 def compute_shadow_order_id(intent_hash: str, shadow_fill_model_version: str) -> str:
@@ -359,11 +359,11 @@ def submit_shadow_order(intent: dict, risk_decision: dict, ticket: dict, *, know
     intent_hash = intent.get("intent_hash") if isinstance(intent, dict) else None
     lineage_reasons = _validate_lineage(intent, risk_decision, ticket)
 
-    if not isinstance(now, datetime) or now.tzinfo is None:
+    if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
         lineage_reasons.append("REJECTED_NOW_NOT_TIMEZONE_AWARE")
-    if not isinstance(submitted_at, datetime) or submitted_at.tzinfo is None:
+    if not isinstance(submitted_at, datetime) or submitted_at.tzinfo is None or submitted_at.utcoffset() is None:
         lineage_reasons.append("REJECTED_SUBMITTED_AT_NOT_TIMEZONE_AWARE")
-    elif isinstance(now, datetime) and now.tzinfo is not None and submitted_at > now:
+    elif isinstance(now, datetime) and now.tzinfo is not None and now.utcoffset() is not None and submitted_at > now:
         lineage_reasons.append("REJECTED_SUBMITTED_AT_FUTURE")
 
     if lineage_reasons:
@@ -709,7 +709,7 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
 
     observed_at = observation.get("observed_at") if isinstance(observation, dict) else None
     last_applied = shadow_order.get("last_applied_observation_at")
-    observed_at_valid = isinstance(observed_at, datetime) and observed_at.tzinfo is not None
+    observed_at_valid = isinstance(observed_at, datetime) and observed_at.tzinfo is not None and observed_at.utcoffset() is not None
     if observed_at_valid and last_applied is not None and observed_at <= last_applied:
         reason = "DUPLICATE_OBSERVATION" if observed_at == last_applied else "OUT_OF_ORDER_OBSERVATION"
         return {**shadow_order, "fill_reason": reason, "real_submit_allowed": False}
@@ -760,7 +760,7 @@ def evaluate_shadow_fill(shadow_order: dict, observation: dict, *, now: datetime
     # 巻き戻りは起こさず、submit前として拒否されたobservationをfirst_
     # observation_atへ取り込むこともしない（Phase 5.0.3 Blocker 2）。
     observation_processed = (
-        observed_at_valid and isinstance(submitted_at, datetime) and submitted_at.tzinfo is not None
+        observed_at_valid and isinstance(submitted_at, datetime) and submitted_at.tzinfo is not None and submitted_at.utcoffset() is not None
         and observed_at > submitted_at
     )
     new_last_applied = last_applied
