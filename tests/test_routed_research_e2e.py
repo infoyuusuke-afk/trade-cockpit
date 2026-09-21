@@ -1,4 +1,4 @@
-import json,tempfile,unittest
+import csv,json,tempfile,unittest
 from pathlib import Path
 from scripts.tradingview_source_router import route_tradingview_data
 from scripts.routed_research_backtest import run_routed_backtest
@@ -25,7 +25,9 @@ class RoutedResearchE2ETests(unittest.TestCase):
    self.assertTrue(trade.exists());self.assertTrue(ev.exists());self.assertTrue(manifest.exists())
    m=json.loads(manifest.read_text())
    self.assertEqual(m["selected_source"],"TRADINGVIEW_MCP")
-   self.assertEqual(m["input_rows"],70)
+   self.assertEqual(m["input_rows"],70);self.assertFalse(m["promotion_eligible"])
+   with trade.open(encoding="utf-8-sig",newline="") as fh: rows=list(csv.DictReader(fh))
+   self.assertTrue(rows);self.assertTrue(all(r["promotion_eligible"].lower()=="false" for r in rows))
    self.assertEqual(summary["bar_count"],70)
 
 if __name__=="__main__":unittest.main()
