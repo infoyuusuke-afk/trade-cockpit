@@ -1,0 +1,38 @@
+name: Authenticated ChatGPT to Claude Routine
+on:
+  issue_comment:
+    types: [created]
+permissions: {}
+concurrency:
+  group: gpt-claude-routine
+  cancel-in-progress: false
+jobs:
+  fire:
+    if: >-
+      github.repository == 'infoyuusuke-afk/trade-cockpit' &&
+      github.ref == 'refs/heads/main' &&
+      github.ref_protected == true &&
+      vars.CLAUDE_ROUTINE_BRIDGE_ENABLED == 'true' &&
+      github.event.issue.number == 171 &&
+      !github.event.issue.pull_request &&
+      format('{0}', github.event.sender.id) == '307830101' &&
+      startsWith(github.event.comment.body, 'GPT-CLAUDE-NEXT-V2') &&
+      github.run_attempt == 1
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    environment: claude-routine-bridge
+    permissions:
+      contents: write # Atomic, permanent deduplication/budget refs only.
+      issues: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }} # Default-branch SHA for issue_comment; never PR code.
+          persist-credentials: false
+      - name: Verify ChatGPT GitHub App provenance, claim attempt, then fire once
+        env:
+          BRIDGE_ENABLED: ${{ vars.CLAUDE_ROUTINE_BRIDGE_ENABLED }}
+          ROUTINE_ID: ${{ secrets.CLAUDE_ROUTINE_ID }}
+          ROUTINE_TOKEN: ${{ secrets.CLAUDE_ROUTINE_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/routine_bridge.mjs
