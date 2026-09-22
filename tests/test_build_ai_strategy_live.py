@@ -87,16 +87,24 @@ class BuildStatesTests(unittest.TestCase):
         self.assertEqual((states, unresolved), ([], []))
         self.assertEqual(card_symbols, set())
 
-    def test_scalp_is_long_watch_but_not_card_worthy(self):
-        # signals.json:prepared is update.py's own "上位30" candidate pool,
-        # not an existing TOP5 -- per the Owner/GPT card/list directive
-        # (2026-09-22), a prepared-only symbol must never become a card
-        # merely because this module happens to label the lane "SCALP".
+    def test_prepared_is_realtime_daytrade_not_scalp(self):
+        # signals.json:prepared is update.py's "⑨ 本日準備点灯銘柄 上位30"
+        # section, which scripts/weekly_tabs.py's own routing
+        # (t.includes("準備点灯")) sends to the real REALTIME 5 tab -- not
+        # SCALP, which has no signals.json source at all (the real SCALP 5
+        # panel is a hardcoded 5-ticker list whose live values come only
+        # from local MS2 RSS, never committed to this repo). A prepared-
+        # only symbol must never become a card merely because it is
+        # labeled REALTIME_DAYTRADE, since prepared is a 30-wide pool, not
+        # an existing TOP5.
         states, _, card_symbols = b.build_states(fixture_signals(), NOW)
-        scalp = [s for s in states if s["supervisor"] == "SCALP"]
-        self.assertEqual(scalp[0]["direction"], "LONG_WATCH")
-        self.assertEqual(scalp[0]["provenance"], "signals.json:prepared")
+        self.assertFalse([s for s in states if s["supervisor"] == "SCALP"])
+        realtime = [s for s in states if s["supervisor"] == "REALTIME_DAYTRADE"]
+        self.assertEqual(realtime[0]["direction"], "LONG_WATCH")
+        self.assertEqual(realtime[0]["provenance"], "signals.json:prepared")
         self.assertNotIn("3132.T", card_symbols)
+        self.assertNotIn("SCALP", b.CONNECTED_SUPERVISORS)
+        self.assertIn("REALTIME_DAYTRADE", b.CONNECTED_SUPERVISORS)
 
     def test_value_long_catalyst_hammer_and_ma_rebound_are_card_worthy(self):
         states, _, card_symbols = b.build_states(fixture_signals(), NOW)
@@ -159,7 +167,7 @@ class BuildStatesTests(unittest.TestCase):
         self.assertEqual(event_issues[0]["symbol"], "485A.T")
 
     def test_row_missing_signal_date_falls_back_to_signals_as_of(self):
-        # OVERNIGHT/SCALP/VALUE_LONG_CATALYST rows *do* have their own
+        # OVERNIGHT/REALTIME_DAYTRADE/VALUE_LONG_CATALYST rows *do* have their own
         # signal_date normally; if a row is missing it but signals.json's
         # own updated_at is valid, that's still an honest timestamp, not
         # "now".

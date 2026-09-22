@@ -41,7 +41,13 @@ invents a new "strong" ranking:
   an honest empty result, not a reason to substitute the unverified
   sibling list.)
 - signals.json:prepared -> update.py's "⑨ 本日準備点灯銘柄 **上位30**"
-  section -- its own title says 30, not 5. WATCHLIST (candidate pool).
+  section -- its own title says 30, not 5. Traced through
+  scripts/weekly_tabs.py's client-side routing (its h2 text contains
+  "準備点灯", matching the `t.includes("準備点灯")` rule), this section
+  is the real **REALTIME 5** tab's own data -- so this field is mapped
+  to the REALTIME_DAYTRADE Supervisor (an earlier version of this
+  module mapped it to SCALP instead; see the SCALP note below for why
+  that was wrong). A top-30 pool, not a TOP5 -> WATCHLIST only.
 - signals.json:large_lot_accumulation -> update.py's "大口買い集め・
   吸収監視 **TOP20**" section, its own dedicated tab. WATCHLIST.
 - signals.json:long_term_ma_rebounds_unverified -> not rendered by any
@@ -58,6 +64,28 @@ different, not-yet-investigated computation, not from signals.json.
 SWING is therefore reported unmapped (see CONNECTED_SUPERVISORS)
 rather than guessed.
 
+SCALP has no signals.json source at all and is intentionally left
+unmapped (Owner/GPT directive, 2026-09-23). The real "SCALP 5" display
+(scripts/weekly_tabs.py's `#scalp-fixed-5` panel) is a permanently
+fixed set of 5 tickers hardcoded directly in that file's JS
+(`["285A.T","9984.T","8035.T","6920.T","6857.T"]`) -- there is no
+Python script or signals.json field that produces or scores this list;
+grepping the repository for it turns up only that one literal. Its
+live judgment (price, ENTRY/STOP/T1, OR5/OR15, VWAP, EMA, flow_bias,
+volume_burst) is populated exclusively by the browser's own
+`ms2RssUpdate` event, i.e. local MS2 RSS data that is never committed
+to this repository (see the module docstring's opening paragraph on
+the live_ms2.json/signals.json boundary). Even though the 5 ticker
+symbols themselves are public (hardcoded in a committed file), that
+alone carries no live SCALP judgment to reuse -- there is nothing
+in signals.json this module could honestly attach to the SCALP
+Supervisor, so it is reported unmapped rather than borrowing an
+unrelated candidate pool for it. (An earlier version of this module
+emitted SCALP states from signals.json:prepared; that was a naming
+coincidence, not a real connection -- prepared is actually the
+REALTIME 5 tab's data, see above.) The existing SCALP 5 panel's own
+display is untouched by this change.
+
 A symbol qualifying for CARD treatment under any mapping keeps every
 Supervisor lane it has (including ones sourced from a WATCHLIST-only
 list, e.g. a large_lot_accumulation row for a symbol that is also an
@@ -71,10 +99,10 @@ Router decision therefore resolves to UNKNOWN via DATA_QUALITY_UNKNOWN
 rather than a guessed "OK". Wiring a real Data Quality Supervisor is
 separate follow-up work, not something to fabricate here.
 
-Still unmapped, no verified source found/chosen yet: REALTIME_DAYTRADE,
-SWING, TOB_MA, KIOXIA_DEDICATED, GLOBAL_MACRO, MARKET_REGIME,
-RISK_SAFETY, SHADOW_EXECUTION, RECONCILIATION, CALIBRATION,
-JOURNAL_CONTENT_EXPORT, CHIEF_AI_STRATEGY. signals.json's
+Still unmapped, no verified source found/chosen yet: SCALP, SWING,
+TOB_MA, KIOXIA_DEDICATED, GLOBAL_MACRO, MARKET_REGIME, RISK_SAFETY,
+SHADOW_EXECUTION, RECONCILIATION, CALIBRATION, JOURNAL_CONTENT_EXPORT,
+CHIEF_AI_STRATEGY. signals.json's
 daily_capitulation_reversals is currently always empty in this
 repository, so no mapping for it has been verified against real data;
 do not add one until it is.
@@ -129,7 +157,7 @@ SUPERVISOR_ORDER = [
     "VALUE_LONG_CATALYST", "TOB_MA", "KIOXIA_DEDICATED", "GLOBAL_MACRO",
 ]
 
-CONNECTED_SUPERVISORS = {"SCALP", "EVENT", "OVERNIGHT", "VALUE_LONG_CATALYST"}
+CONNECTED_SUPERVISORS = {"REALTIME_DAYTRADE", "EVENT", "OVERNIGHT", "VALUE_LONG_CATALYST"}
 
 # provenance strings whose upstream section is an already-selected TOP5
 # (see the module docstring's per-source trace). Only these make a
@@ -144,7 +172,7 @@ CARD_QUALIFYING_PROVENANCE = {
 
 LANE_STALE_AFTER_SECONDS = {
     "OVERNIGHT": 20 * 60 * 60,
-    "SCALP": 20 * 60 * 60,
+    "REALTIME_DAYTRADE": 20 * 60 * 60,
     "EVENT": 24 * 60 * 60,
     "VALUE_LONG_CATALYST": 10 * 24 * 60 * 60,
     "default": 48 * 60 * 60,
@@ -270,14 +298,18 @@ def _value_long_catalyst_rows(states, unresolved, card_symbols, hammer_rows, ma_
               condition_score=r.get("score"))
 
 
-def _scalp_rows(states, unresolved, card_symbols, rows, fallback_as_of):
-    """signals.json:prepared is a 30-wide candidate pool (update.py's own
-    "上位30" heading), not an existing TOP5 -- these rows are always
-    WATCHLIST-eligible only (never added to card_symbols) unless the
-    same ticker separately qualifies via a card-worthy source above.
+def _realtime_daytrade_rows(states, unresolved, card_symbols, rows, fallback_as_of):
+    """signals.json:prepared is update.py's "⑨ 本日準備点灯銘柄 上位30"
+    section, confirmed via scripts/weekly_tabs.py's routing
+    (t.includes("準備点灯")) to be the real REALTIME 5 tab's own data --
+    not SCALP (see the module docstring for why SCALP itself has no
+    signals.json source at all). A 30-wide candidate pool, not an
+    existing TOP5 -- these rows are always WATCHLIST-eligible only
+    (never added to card_symbols) unless the same ticker separately
+    qualifies via a card-worthy source above.
     """
     for r in rows:
-        _emit(states, unresolved, card_symbols, supervisor="SCALP", ticker=r.get("ticker"), direction="LONG_WATCH",
+        _emit(states, unresolved, card_symbols, supervisor="REALTIME_DAYTRADE", ticker=r.get("ticker"), direction="LONG_WATCH",
               as_of_value=_as_of(r.get("signal_date"), fallback_as_of),
               provenance="signals.json:prepared",
               entry=r.get("trigger"), stop=r.get("stop"), target=r.get("target1"),
@@ -301,7 +333,7 @@ def build_states(signals, now_iso):
         signals.get("large_lot_accumulation") or [],
         signals_as_of,
     )
-    _scalp_rows(states, unresolved, card_symbols, signals.get("prepared") or [], signals_as_of)
+    _realtime_daytrade_rows(states, unresolved, card_symbols, signals.get("prepared") or [], signals_as_of)
     return states, unresolved, card_symbols
 
 

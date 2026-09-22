@@ -1,13 +1,13 @@
 {
  "schema_version": "ai-strategy-live-board-1.0",
- "generated_at": "2026-09-22T21:23:04.206208+09:00",
+ "generated_at": "2026-09-23T00:03:31.369839+09:00",
  "feature_flag_enabled": false,
  "is_entry_trigger": false,
  "real_submit_allowed": false,
  "connected_supervisors": [
   "EVENT",
   "OVERNIGHT",
-  "SCALP",
+  "REALTIME_DAYTRADE",
   "VALUE_LONG_CATALYST"
  ],
  "unconnected_supervisors": [
@@ -18,9 +18,9 @@
   "JOURNAL_CONTENT_EXPORT",
   "KIOXIA_DEDICATED",
   "MARKET_REGIME",
-  "REALTIME_DAYTRADE",
   "RECONCILIATION",
   "RISK_SAFETY",
+  "SCALP",
   "SHADOW_EXECUTION",
   "SWING",
   "TOB_MA"
@@ -58,14 +58,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "186A.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "LONG_WATCH"
@@ -78,7 +78,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -94,7 +94,7 @@
    "symbol": "1969.T",
    "rows": [
     {
-     "supervisor": "SCALP",
+     "supervisor": "REALTIME_DAYTRADE",
      "direction": "LONG_WATCH",
      "direction_label": "LONG WATCH",
      "css_class": "long-watch",
@@ -120,7 +120,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     },
     {
@@ -150,7 +150,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     },
     {
@@ -180,19 +180,19 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "1969.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
      "VALUE_LONG_CATALYST": "LONG_WATCH",
-     "SCALP": "LONG_WATCH"
+     "REALTIME_DAYTRADE": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -202,14 +202,14 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
     "stale_supervisors": [
      "OVERNIGHT",
-     "SCALP"
+     "REALTIME_DAYTRADE"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -220,36 +220,6 @@
   {
    "symbol": "3132.T",
    "rows": [
-    {
-     "supervisor": "SCALP",
-     "direction": "LONG_WATCH",
-     "direction_label": "LONG WATCH",
-     "css_class": "long-watch",
-     "as_of": "2026-09-18T15:30:00+09:00",
-     "correlation_id": null,
-     "trigger": null,
-     "invalidation": null,
-     "entry": 4125,
-     "stop": 3885,
-     "target": 4485,
-     "or5_low": null,
-     "or5_high": null,
-     "or15_low": null,
-     "or15_high": null,
-     "vwap": null,
-     "ema9": null,
-     "ema20": null,
-     "flow_bias": null,
-     "volume_burst": null,
-     "condition_score": 100,
-     "historical_ev": null,
-     "historical_pf": null,
-     "historical_dd": null,
-     "historical_n": null,
-     "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 366784.206208,
-     "is_stale": true
-    },
     {
      "supervisor": "EVENT",
      "direction": "WATCH",
@@ -277,7 +247,37 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 617.206208,
+     "last_update_age_seconds": 10244.369839,
+     "is_stale": true
+    },
+    {
+     "supervisor": "REALTIME_DAYTRADE",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 4125,
+     "stop": 3885,
+     "target": 4485,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 100,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:prepared",
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     },
     {
@@ -307,19 +307,19 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "3132.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "EVENT": "WATCH",
      "VALUE_LONG_CATALYST": "LONG_WATCH",
-     "SCALP": "LONG_WATCH"
+     "REALTIME_DAYTRADE": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -329,13 +329,13 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
     "stale_supervisors": [
-     "SCALP"
+     "REALTIME_DAYTRADE"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -346,36 +346,6 @@
   {
    "symbol": "4259.T",
    "rows": [
-    {
-     "supervisor": "SCALP",
-     "direction": "LONG_WATCH",
-     "direction_label": "LONG WATCH",
-     "css_class": "long-watch",
-     "as_of": "2026-09-18T15:30:00+09:00",
-     "correlation_id": null,
-     "trigger": null,
-     "invalidation": null,
-     "entry": 966,
-     "stop": 836,
-     "target": 1161,
-     "or5_low": null,
-     "or5_high": null,
-     "or15_low": null,
-     "or15_high": null,
-     "vwap": null,
-     "ema9": null,
-     "ema20": null,
-     "flow_bias": null,
-     "volume_burst": null,
-     "condition_score": 100,
-     "historical_ev": null,
-     "historical_pf": null,
-     "historical_dd": null,
-     "historical_n": null,
-     "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 366784.206208,
-     "is_stale": true
-    },
     {
      "supervisor": "EVENT",
      "direction": "WATCH",
@@ -403,18 +373,48 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 617.206208,
+     "last_update_age_seconds": 10244.369839,
+     "is_stale": true
+    },
+    {
+     "supervisor": "REALTIME_DAYTRADE",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 966,
+     "stop": 836,
+     "target": 1161,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 100,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:prepared",
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4259.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "EVENT": "WATCH",
-     "SCALP": "LONG_WATCH"
+     "REALTIME_DAYTRADE": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -424,13 +424,13 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
     "stale_supervisors": [
-     "SCALP"
+     "REALTIME_DAYTRADE"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -468,14 +468,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4385.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -488,7 +488,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -506,7 +506,7 @@
    "symbol": "4475.T",
    "rows": [
     {
-     "supervisor": "SCALP",
+     "supervisor": "REALTIME_DAYTRADE",
      "direction": "LONG_WATCH",
      "direction_label": "LONG WATCH",
      "css_class": "long-watch",
@@ -532,7 +532,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     },
     {
@@ -562,18 +562,18 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4475.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
-     "SCALP": "LONG_WATCH"
+     "REALTIME_DAYTRADE": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -583,14 +583,14 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
     "stale_supervisors": [
      "OVERNIGHT",
-     "SCALP"
+     "REALTIME_DAYTRADE"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -628,14 +628,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4755.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -648,7 +648,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -692,14 +692,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 617.206208,
+     "last_update_age_seconds": 10244.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "485A.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "EVENT": "WATCH"
@@ -712,7 +712,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -728,7 +728,7 @@
    "symbol": "6324.T",
    "rows": [
     {
-     "supervisor": "SCALP",
+     "supervisor": "REALTIME_DAYTRADE",
      "direction": "LONG_WATCH",
      "direction_label": "LONG WATCH",
      "css_class": "long-watch",
@@ -754,7 +754,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     },
     {
@@ -784,7 +784,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     },
     {
@@ -814,19 +814,19 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6324.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
      "VALUE_LONG_CATALYST": "LONG_WATCH",
-     "SCALP": "LONG_WATCH"
+     "REALTIME_DAYTRADE": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -836,14 +836,14 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
     "stale_supervisors": [
      "OVERNIGHT",
-     "SCALP"
+     "REALTIME_DAYTRADE"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -855,7 +855,7 @@
    "symbol": "6501.T",
    "rows": [
     {
-     "supervisor": "SCALP",
+     "supervisor": "REALTIME_DAYTRADE",
      "direction": "LONG_WATCH",
      "direction_label": "LONG WATCH",
      "css_class": "long-watch",
@@ -881,7 +881,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     },
     {
@@ -911,7 +911,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     },
     {
@@ -941,19 +941,19 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6501.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
      "VALUE_LONG_CATALYST": "LONG_WATCH",
-     "SCALP": "LONG_WATCH"
+     "REALTIME_DAYTRADE": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -963,14 +963,14 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
     "stale_supervisors": [
      "OVERNIGHT",
-     "SCALP"
+     "REALTIME_DAYTRADE"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -982,7 +982,7 @@
    "symbol": "6594.T",
    "rows": [
     {
-     "supervisor": "SCALP",
+     "supervisor": "REALTIME_DAYTRADE",
      "direction": "LONG_WATCH",
      "direction_label": "LONG WATCH",
      "css_class": "long-watch",
@@ -1008,7 +1008,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     },
     {
@@ -1038,7 +1038,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     },
     {
@@ -1068,19 +1068,19 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6594.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
      "VALUE_LONG_CATALYST": "LONG_WATCH",
-     "SCALP": "LONG_WATCH"
+     "REALTIME_DAYTRADE": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -1090,14 +1090,14 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
     "stale_supervisors": [
      "OVERNIGHT",
-     "SCALP"
+     "REALTIME_DAYTRADE"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -1135,14 +1135,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6902.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -1155,7 +1155,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -1173,7 +1173,7 @@
    "symbol": "7013.T",
    "rows": [
     {
-     "supervisor": "SCALP",
+     "supervisor": "REALTIME_DAYTRADE",
      "direction": "LONG_WATCH",
      "direction_label": "LONG WATCH",
      "css_class": "long-watch",
@@ -1199,7 +1199,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     },
     {
@@ -1229,18 +1229,18 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7013.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "LONG_WATCH",
-     "SCALP": "LONG_WATCH"
+     "REALTIME_DAYTRADE": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -1250,13 +1250,13 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
     "stale_supervisors": [
-     "SCALP"
+     "REALTIME_DAYTRADE"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -1268,7 +1268,7 @@
    "symbol": "7014.T",
    "rows": [
     {
-     "supervisor": "SCALP",
+     "supervisor": "REALTIME_DAYTRADE",
      "direction": "LONG_WATCH",
      "direction_label": "LONG WATCH",
      "css_class": "long-watch",
@@ -1294,7 +1294,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     },
     {
@@ -1324,18 +1324,18 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7014.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "LONG_WATCH",
-     "SCALP": "LONG_WATCH"
+     "REALTIME_DAYTRADE": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -1345,13 +1345,13 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
     "stale_supervisors": [
-     "SCALP"
+     "REALTIME_DAYTRADE"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -1389,14 +1389,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7453.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -1409,7 +1409,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -1453,14 +1453,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7564.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -1473,7 +1473,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -1517,7 +1517,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 617.206208,
+     "last_update_age_seconds": 10244.369839,
      "is_stale": true
     },
     {
@@ -1547,14 +1547,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "9984.T",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "conflict": false,
     "directions": {
      "EVENT": "WATCH",
@@ -1568,7 +1568,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T21:23:04.206208+09:00",
+    "as_of": "2026-09-23T00:03:31.369839+09:00",
     "reasons": [
      "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -1617,7 +1617,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
@@ -1666,7 +1666,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
@@ -1682,14 +1682,14 @@
   },
   {
    "symbol": "4443.T",
-   "headline_supervisor": "SCALP",
+   "headline_supervisor": "REALTIME_DAYTRADE",
    "headline_direction": "LONG_WATCH",
    "headline_direction_label": "LONG WATCH",
    "headline_css_class": "long-watch",
    "headline_is_stale": true,
    "rows": [
     {
-     "supervisor": "SCALP",
+     "supervisor": "REALTIME_DAYTRADE",
      "direction": "LONG_WATCH",
      "direction_label": "LONG WATCH",
      "css_class": "long-watch",
@@ -1715,7 +1715,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
@@ -1764,7 +1764,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
@@ -1780,14 +1780,14 @@
   },
   {
    "symbol": "5243.T",
-   "headline_supervisor": "SCALP",
+   "headline_supervisor": "REALTIME_DAYTRADE",
    "headline_direction": "LONG_WATCH",
    "headline_direction_label": "LONG WATCH",
    "headline_css_class": "long-watch",
    "headline_is_stale": true,
    "rows": [
     {
-     "supervisor": "SCALP",
+     "supervisor": "REALTIME_DAYTRADE",
      "direction": "LONG_WATCH",
      "direction_label": "LONG WATCH",
      "css_class": "long-watch",
@@ -1813,7 +1813,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
@@ -1829,14 +1829,14 @@
   },
   {
    "symbol": "6920.T",
-   "headline_supervisor": "SCALP",
+   "headline_supervisor": "REALTIME_DAYTRADE",
    "headline_direction": "LONG_WATCH",
    "headline_direction_label": "LONG WATCH",
    "headline_css_class": "long-watch",
    "headline_is_stale": true,
    "rows": [
     {
-     "supervisor": "SCALP",
+     "supervisor": "REALTIME_DAYTRADE",
      "direction": "LONG_WATCH",
      "direction_label": "LONG WATCH",
      "css_class": "long-watch",
@@ -1862,7 +1862,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     },
     {
@@ -1892,7 +1892,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
@@ -1941,7 +1941,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
@@ -1990,7 +1990,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
@@ -2039,7 +2039,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
@@ -2088,7 +2088,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
@@ -2137,7 +2137,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 366784.206208,
+     "last_update_age_seconds": 376411.369839,
      "is_stale": true
     }
    ],
