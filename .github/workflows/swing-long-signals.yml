@@ -6,7 +6,7 @@ on:
     - cron: "40 6 * * 1-5" # 15:40 JST 平日（引け後、credit_supply/investor_regime更新後を想定）
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: trade-cockpit-writer
@@ -14,10 +14,14 @@ concurrency:
 
 jobs:
   update:
+    environment: main-data-writer
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ssh-key: ${{ secrets.MAIN_DATA_WRITER_DEPLOY_KEY }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
