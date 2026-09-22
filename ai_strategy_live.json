@@ -1,0 +1,1077 @@
+{
+ "schema_version": "ai-strategy-live-board-1.0",
+ "generated_at": "2026-09-22T20:33:43.533800+09:00",
+ "feature_flag_enabled": false,
+ "is_entry_trigger": false,
+ "real_submit_allowed": false,
+ "board": [
+  {
+   "symbol": "186A.T",
+   "rows": [
+    {
+     "supervisor": "SWING",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 1157,
+     "stop": 970,
+     "target": 1438,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 85,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:monthly_weekly_hammers",
+     "last_update_age_seconds": 363823.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "186A.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "SWING": "LONG_WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "1969.T",
+   "rows": [
+    {
+     "supervisor": "OVERNIGHT",
+     "direction": "LONG",
+     "direction_label": "LONG",
+     "css_class": "long",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 4760,
+     "stop": 4410,
+     "target": 5285,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 95,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:overnight_long",
+     "last_update_age_seconds": 363823.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "1969.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "OVERNIGHT": "LONG"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "3132.T",
+   "rows": [
+    {
+     "supervisor": "EVENT",
+     "direction": "WATCH",
+     "direction_label": "WATCH",
+     "css_class": "watch",
+     "as_of": "2026-09-22T20:23:54+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 59,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:speculative_theme_watch",
+     "last_update_age_seconds": 589.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "3132.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "EVENT": "WATCH"
+    },
+    "has_long": false,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "DATA_QUALITY_UNKNOWN",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "4259.T",
+   "rows": [
+    {
+     "supervisor": "EVENT",
+     "direction": "WATCH",
+     "direction_label": "WATCH",
+     "css_class": "watch",
+     "as_of": "2026-09-22T20:23:54+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 69,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:speculative_theme_watch",
+     "last_update_age_seconds": 589.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "4259.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "EVENT": "WATCH"
+    },
+    "has_long": false,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "DATA_QUALITY_UNKNOWN",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "4385.T",
+   "rows": [
+    {
+     "supervisor": "OVERNIGHT",
+     "direction": "SHORT",
+     "direction_label": "SHORT",
+     "css_class": "short",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 3680,
+     "stop": 3880,
+     "target": 3380,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 93,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:overnight_short",
+     "last_update_age_seconds": 363823.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "4385.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "OVERNIGHT": "SHORT"
+    },
+    "has_long": false,
+    "has_short": true,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "4475.T",
+   "rows": [
+    {
+     "supervisor": "OVERNIGHT",
+     "direction": "LONG",
+     "direction_label": "LONG",
+     "css_class": "long",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 1800,
+     "stop": 1722,
+     "target": 1917,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 100,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:overnight_long",
+     "last_update_age_seconds": 363823.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "4475.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "OVERNIGHT": "LONG"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "4755.T",
+   "rows": [
+    {
+     "supervisor": "OVERNIGHT",
+     "direction": "SHORT",
+     "direction_label": "SHORT",
+     "css_class": "short",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 706,
+     "stop": 727,
+     "target": 674,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 95,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:overnight_short",
+     "last_update_age_seconds": 363823.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "4755.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "OVERNIGHT": "SHORT"
+    },
+    "has_long": false,
+    "has_short": true,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "485A.T",
+   "rows": [
+    {
+     "supervisor": "EVENT",
+     "direction": "WATCH",
+     "direction_label": "WATCH",
+     "css_class": "watch",
+     "as_of": "2026-09-22T20:23:54+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 73,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:speculative_theme_watch",
+     "last_update_age_seconds": 589.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "485A.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "EVENT": "WATCH"
+    },
+    "has_long": false,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "DATA_QUALITY_UNKNOWN",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "6324.T",
+   "rows": [
+    {
+     "supervisor": "OVERNIGHT",
+     "direction": "LONG",
+     "direction_label": "LONG",
+     "css_class": "long",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 6265,
+     "stop": 5785,
+     "target": 6985,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 95,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:overnight_long",
+     "last_update_age_seconds": 363823.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "6324.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "OVERNIGHT": "LONG"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "6501.T",
+   "rows": [
+    {
+     "supervisor": "OVERNIGHT",
+     "direction": "LONG",
+     "direction_label": "LONG",
+     "css_class": "long",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 5535,
+     "stop": 5340,
+     "target": 5830,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 100,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:overnight_long",
+     "last_update_age_seconds": 363823.5338,
+     "is_stale": true
+    },
+    {
+     "supervisor": "SWING",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 5580,
+     "stop": 5035,
+     "target": 6400,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 87,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:monthly_weekly_hammers",
+     "last_update_age_seconds": 363823.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "6501.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "OVERNIGHT": "LONG",
+     "SWING": "LONG_WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "6594.T",
+   "rows": [
+    {
+     "supervisor": "OVERNIGHT",
+     "direction": "LONG",
+     "direction_label": "LONG",
+     "css_class": "long",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 2878,
+     "stop": 2639,
+     "target": 3236,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 95,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:overnight_long",
+     "last_update_age_seconds": 363823.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "6594.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "OVERNIGHT": "LONG"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "6902.T",
+   "rows": [
+    {
+     "supervisor": "OVERNIGHT",
+     "direction": "SHORT",
+     "direction_label": "SHORT",
+     "css_class": "short",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 1914,
+     "stop": 1959,
+     "target": 1846,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 100,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:overnight_short",
+     "last_update_age_seconds": 363823.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "6902.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "OVERNIGHT": "SHORT"
+    },
+    "has_long": false,
+    "has_short": true,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "7013.T",
+   "rows": [
+    {
+     "supervisor": "SWING",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 2880,
+     "stop": 2567,
+     "target": 3350,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 77,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:monthly_weekly_hammers",
+     "last_update_age_seconds": 363823.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "7013.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "SWING": "LONG_WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "7014.T",
+   "rows": [
+    {
+     "supervisor": "SWING",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 5145,
+     "stop": 4385,
+     "target": 6285,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 84,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:monthly_weekly_hammers",
+     "last_update_age_seconds": 363823.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "7014.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "SWING": "LONG_WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "7453.T",
+   "rows": [
+    {
+     "supervisor": "OVERNIGHT",
+     "direction": "SHORT",
+     "direction_label": "SHORT",
+     "css_class": "short",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 3895,
+     "stop": 4020,
+     "target": 3710,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 95,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:overnight_short",
+     "last_update_age_seconds": 363823.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "7453.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "OVERNIGHT": "SHORT"
+    },
+    "has_long": false,
+    "has_short": true,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "7564.T",
+   "rows": [
+    {
+     "supervisor": "OVERNIGHT",
+     "direction": "SHORT",
+     "direction_label": "SHORT",
+     "css_class": "short",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 5305,
+     "stop": 5525,
+     "target": 4975,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 90,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:overnight_short",
+     "last_update_age_seconds": 363823.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "7564.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "OVERNIGHT": "SHORT"
+    },
+    "has_long": false,
+    "has_short": true,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "9984.T",
+   "rows": [
+    {
+     "supervisor": "EVENT",
+     "direction": "WATCH",
+     "direction_label": "WATCH",
+     "css_class": "watch",
+     "as_of": "2026-09-22T20:23:54+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": null,
+     "stop": null,
+     "target": null,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 64,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:speculative_theme_watch",
+     "last_update_age_seconds": 589.5338,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "9984.T",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "conflict": false,
+    "directions": {
+     "EVENT": "WATCH"
+    },
+    "has_long": false,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "reasons": [
+     "DATA_QUALITY_UNKNOWN",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  }
+ ]
+}

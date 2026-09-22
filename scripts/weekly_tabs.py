@@ -145,6 +145,29 @@ def tabs_block() -> str:
 @media(max-width:1250px){.scalp-strip{grid-template-columns:repeat(3,minmax(205px,1fr))}.scalp-card{border-bottom:1px solid #2a2e39}}
 @media(max-width:850px){.scalp-strip{grid-template-columns:repeat(2,minmax(205px,1fr))}}
 @media(max-width:560px){.scalp-strip{grid-template-columns:1fr}}
+.live-flagbar{display:flex;align-items:center;gap:8px;background:#0d1f16;border:1px solid #1f4a30;border-radius:6px;padding:9px 12px;margin-bottom:12px;font-size:11px;color:#7fc9a0}
+.live-flagbar b{color:#6fe3ac}.live-flagbar .dot{width:7px;height:7px;border-radius:50%;background:#6fe3ac;box-shadow:0 0 6px #6fe3ac;flex:none}
+.live-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.live-card{background:#131722;border:1px solid #2a2e39;border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:9px}
+.live-card.conflict{border-color:#5a2a2f}
+.live-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.live-card-head .name{color:#d1d4dc;font-size:14px;font-weight:700}.live-card-head .code{color:#787b86;font-size:11px;margin-left:5px}
+.live-router-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.03em;white-space:nowrap}
+.live-router-pill.hold{background:#332811;color:#f7a600}.live-router-pill.unknown{background:#0d2338;color:#64a9e8}.live-router-pill.no-action{background:#1e222d;color:#787b86}
+.live-router-pill .dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+.live-conflict-flag{font-size:10.5px;color:#f23645;background:#2a1418;border:1px solid #5a2a2f;border-radius:5px;padding:5px 8px}.live-conflict-flag b{font-weight:700}
+.live-lanes{display:flex;flex-direction:column;gap:1px;background:#2a2e39;border-radius:5px;overflow:hidden}
+.live-lane{background:#131722;padding:6px 8px;display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center}
+.live-lane .sup{font-size:10.5px;color:#787b86;font-weight:600}
+.live-lane .badge{font-size:10px;font-weight:800;padding:2px 6px;border-radius:3px;justify-self:end}
+.live-lane .badge.long,.live-lane .badge.long-watch{background:#082e28;color:#089981}
+.live-lane .badge.short,.live-lane .badge.short-watch{background:#37191e;color:#f23645}
+.live-lane .badge.watch{background:#332811;color:#f7a600}
+.live-lane .badge.block{background:#2a1418;color:#f23645}
+.live-lane .badge.neutral{background:#1e222d;color:#787b86}
+.live-lane .detail{grid-column:1/-1;font-size:10.5px;color:#5b636e}.live-lane .detail b{color:#787b86}
+.live-lane .stale{color:#f7a600;font-weight:600}
+.live-foot{border-top:1px solid #2a2e39;padding-top:7px;font-size:10px;color:#5b636e;line-height:1.5}.live-foot b{color:#787b86}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
  <span class="cockpit-brand">AIトレードコクピット<small id="cockpit-status">Ver.5.4</small></span>
@@ -162,13 +185,14 @@ def tabs_block() -> str:
   <button class="cockpit-tab" data-tab="correlation">相関</button><button class="cockpit-tab" data-tab="wick">下ヒゲ</button>
   <button class="cockpit-tab" data-tab="expansion">拡大</button><button class="cockpit-tab" data-tab="accumulation">大口</button>
   <button class="cockpit-tab" data-tab="policy">国策</button><button class="cockpit-tab" data-tab="weekly">週間</button>
+  <button class="cockpit-tab" data-tab="ai-strategy-live">AI戦略LIVE</button>
  </details>
 </nav>
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
  const main=document.querySelector("main"); if(!main)return;
  const policyTabs=["physical-ai","autonomous-driving","ai-drug-discovery","ai-semiconductor","defense-space","gx-power","quantum-computing"];
- const panes={}; ["scalp","event-hot","overnight","ms2-live","events","correlation","kioxia-calendar","strong-yen","us-smr","investor-regime","wick","expansion","swing","accumulation","value","policy",...policyTabs,"market","weekly"].forEach(k=>{const d=document.createElement("div");d.className="tab-pane"+(k==="scalp"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;});
+ const panes={}; ["scalp","event-hot","overnight","ms2-live","events","correlation","kioxia-calendar","strong-yen","us-smr","investor-regime","wick","expansion","swing","accumulation","value","policy",...policyTabs,"market","weekly","ai-strategy-live"].forEach(k=>{const d=document.createElement("div");d.className="tab-pane"+(k==="scalp"?" active":"");d.dataset.pane=k;main.appendChild(d);panes[k]=d;});
 
  const scalpPanel=document.createElement("section");
  scalpPanel.className="card wide scalp-tv";
@@ -179,6 +203,11 @@ document.addEventListener("DOMContentLoaded",()=>{
  eventIntro.className="card wide";
  eventIntro.innerHTML='<h2>EVENT 5</h2><p class="sub">小型グロース・テーマ株・材料急騰・場中決算の初動監視枠。現時点では全市場の仕手化兆候／短期急騰スキャンを集約し、リアルタイム材料スキャナはこの枠へ接続します。</p>';
  panes["event-hot"].appendChild(eventIntro);
+
+ const liveBoardPanel=document.createElement("section");
+ liveBoardPanel.className="card wide";
+ liveBoardPanel.innerHTML='<h2>AI Strategy LIVE</h2><div class="live-flagbar"><span class="dot"></span><b>Phase 2・表示専用</b><span>feature_flag_enabled = false（既存の正式シグナル・発注経路には一切影響しません）</span></div><div id="ai-strategy-live-board" class="live-board"><div class="focus-empty">読み込み中...</div></div>';
+ panes["ai-strategy-live"].appendChild(liveBoardPanel);
 
  [...main.querySelectorAll(":scope > section")].forEach(s=>{
    if(s===scalpPanel||s===eventIntro)return;
@@ -214,6 +243,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  intros["us-smr"]=["対米投資・SMR","政策発表と個社受注を区別し、事業化・需給・価格の確認順に監視。"];
  intros["ms2-live"]=["REALTIME 5","100銘柄をMS2 RSSで監視し、数十分〜数時間の候補を表示。"];
  intros.overnight=["OVERNIGHT 5","15時前後から採点し、翌朝GU/GDを狙う候補。15:25に銘柄と方向を固定。"];
+ intros["ai-strategy-live"]=["AI Strategy LIVE","各AI統括者の独立判断をホライズンごとに並列表示。売買判断には一切影響しません（Phase 1・表示専用）。"];
  Object.entries(intros).forEach(([k,v])=>{if(!panes[k])return;const h=document.createElement("div");h.className="pane-intro";h.innerHTML='<span>AI COCKPIT</span><h2>'+v[0]+'</h2><p>'+v[1]+'</p>';panes[k].prepend(h);});
 
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -289,6 +319,30 @@ document.addEventListener("DOMContentLoaded",()=>{
    badge.classList.add(cls);
    badge.title=title;
  }).catch(()=>{});
+
+ const liveDetail=row=>{
+   const parts=[];
+   if(row.entry!=null||row.stop!=null||row.target!=null)parts.push("Entry "+yen(row.entry)+" Stop "+yen(row.stop)+(row.target!=null?" Target "+yen(row.target):""));
+   if(row.condition_score!=null)parts.push("スコア "+esc(row.condition_score));
+   if(row.historical_ev!=null)parts.push("EV "+esc(row.historical_ev)+(row.historical_n!=null?"（N="+esc(row.historical_n)+"）":""));
+   if(row.trigger)parts.push(esc(row.trigger));
+   if(!parts.length&&row.provenance)parts.push(esc(row.provenance));
+   return parts.join("／")||"—";
+ };
+ const renderLiveCard=card=>{
+   const code=String(card.symbol||"").replace(".T","");
+   const rows=(card.rows||[]).map(row=>'<div class="live-lane"><span class="sup">'+esc(row.supervisor)+'</span><span class="badge '+esc(row.css_class)+'">'+esc(row.direction_label)+'</span><span class="detail'+(row.is_stale?" stale":"")+'">'+(row.is_stale?"⚠ 鮮度切れ・":"")+liveDetail(row)+'</span></div>').join("");
+   const conflictFlag=card.conflict_state&&card.conflict_state.conflict?'<div class="live-conflict-flag"><b>Conflict</b> — 統括者間でホライズンの判断が分かれています</div>':"";
+   const r=card.router||{};
+   return '<article class="live-card'+(card.conflict_state&&card.conflict_state.conflict?" conflict":"")+'"><div class="live-card-head"><div><span class="name">'+esc(code)+'</span><span class="code">TSE:'+esc(code)+'</span></div><span class="live-router-pill '+esc(r.css_class||"unknown")+'"><span class="dot"></span>'+esc(r.state_label||r.state||"—")+'</span></div>'+conflictFlag+'<div class="live-lanes">'+rows+'</div><div class="live-foot"><b>Router reasons</b> '+esc((r.reasons||[]).join(", ")||"—")+'</div></article>';
+ };
+ fetch("ai_strategy_live.json?t="+Date.now()).then(r=>r.json()).then(d=>{
+   const box=document.getElementById("ai-strategy-live-board"); if(!box)return;
+   const board=Array.isArray(d.board)?d.board:[];
+   box.innerHTML=board.length?board.map(renderLiveCard).join(""):'<div class="focus-empty">対象銘柄なし（既存シグナルの統括者マッピングは段階的に拡大予定）</div>';
+ }).catch(()=>{
+   const box=document.getElementById("ai-strategy-live-board"); if(box)box.innerHTML='<div class="focus-empty">AI Strategy LIVEデータ取得待ち</div>';
+ });
 });
 </script>
 """ + END
