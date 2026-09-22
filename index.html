@@ -4,6 +4,7 @@
 
 
 
+
 <!-- COCKPIT_TABS_START -->
 <style>
 .cockpit-tabs{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:2px;padding:5px 7px;background:#131722f2;border-bottom:1px solid #2a2e39;backdrop-filter:blur(10px);overflow-x:auto}
@@ -41,37 +42,37 @@
 .live-notice.info{background:#0d2338;border:1px solid #1f3f5c;color:#8fc4ea}
 .live-notice.warn{background:#332811;border:1px solid #6b5426;color:#f7a600}
 .live-notice b{font-weight:700}
-.live-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
-.live-card{background:#131722;border:1px solid #2a2e39;border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:9px}
+.live-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.live-card{background:#090A0C;border:1px solid #22252A;border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:9px}
 .live-card.conflict{border-color:#5a2a2f}
 .live-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
-.live-card-head .name{color:#d1d4dc;font-size:14px;font-weight:700}.live-card-head .code{color:#787b86;font-size:11px;margin-left:5px}
+.live-card-head .name{color:#E8EAED;font-size:14px;font-weight:700}.live-card-head .code{color:#9AA0AA;font-size:11px;margin-left:5px}
 .live-router-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.03em;white-space:nowrap}
-.live-router-pill.hold{background:#332811;color:#f7a600}.live-router-pill.unknown{background:#0d2338;color:#64a9e8}.live-router-pill.no-action{background:#1e222d;color:#787b86}
+.live-router-pill.hold{background:#332811;color:#f7a600}.live-router-pill.unknown{background:#0d2338;color:#64a9e8}.live-router-pill.no-action{background:#0E1013;color:#9AA0AA}
 .live-router-pill .dot{width:5px;height:5px;border-radius:50%;background:currentColor}
 .live-conflict-flag{font-size:10.5px;color:#f23645;background:#2a1418;border:1px solid #5a2a2f;border-radius:5px;padding:5px 8px}.live-conflict-flag b{font-weight:700}
-.live-lanes{display:flex;flex-direction:column;gap:1px;background:#2a2e39;border-radius:5px;overflow:hidden}
-.live-lane{background:#131722;padding:6px 8px;display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center}
-.live-lane .sup{font-size:10.5px;color:#787b86;font-weight:600}
+.live-lanes{display:flex;flex-direction:column;gap:1px;background:#22252A;border-radius:5px;overflow:hidden}
+.live-lane{background:#0E1013;padding:6px 8px;display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:center}
+.live-lane .sup{font-size:10.5px;color:#9AA0AA;font-weight:600}
 .live-lane .badge{font-size:10px;font-weight:800;padding:2px 6px;border-radius:3px;justify-self:end}
 .live-lane .badge.long,.live-lane .badge.long-watch{background:#082e28;color:#089981}
 .live-lane .badge.short,.live-lane .badge.short-watch{background:#37191e;color:#f23645}
 .live-lane .badge.watch{background:#332811;color:#f7a600}
 .live-lane .badge.block{background:#2a1418;color:#f23645}
-.live-lane .badge.neutral{background:#1e222d;color:#787b86}
-.live-lane .detail{grid-column:1/-1;font-size:10.5px;color:#5b636e}.live-lane .detail b{color:#787b86}
+.live-lane .badge.neutral{background:#16181C;color:#9AA0AA}
+.live-lane .detail{grid-column:1/-1;font-size:10.5px;color:#9AA0AA}.live-lane .detail b{color:#9AA0AA}
 .live-lane .stale{color:#f7a600;font-weight:600}
-.live-foot{border-top:1px solid #2a2e39;padding-top:7px;font-size:10px;color:#5b636e;line-height:1.5}.live-foot b{color:#787b86}
-.live-section-head{display:flex;align-items:baseline;gap:8px;margin:18px 0 8px}.live-section-head h3{margin:0;font-size:13px;color:#d1d4dc}.live-section-head span{font-size:10.5px;color:#5b636e}
-.live-watchlist{display:flex;flex-direction:column;gap:1px;background:#2a2e39;border-radius:6px;overflow:hidden}
-.live-watch-row{background:#131722}
+.live-foot{border-top:1px solid #22252A;padding-top:7px;font-size:10px;color:#9AA0AA;line-height:1.5}.live-foot b{color:#9AA0AA}
+.live-section-head{display:flex;align-items:baseline;gap:8px;margin:18px 0 8px}.live-section-head h3{margin:0;font-size:13px;color:#E8EAED}.live-section-head span{font-size:10.5px;color:#9AA0AA}
+.live-watchlist{display:flex;flex-direction:column;gap:1px;background:#22252A;border-radius:6px;overflow:hidden}
+.live-watch-row{background:#090A0C}
 .live-watch-row summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto auto auto auto;gap:10px;align-items:center;padding:8px 10px}
 .live-watch-row summary::-webkit-details-marker{display:none}
-.live-watch-row summary::before{content:"▸";color:#5b636e;font-size:9px;margin-right:2px}
+.live-watch-row summary::before{content:"▸";color:#9AA0AA;font-size:9px;margin-right:2px}
 .live-watch-row[open] summary::before{content:"▾"}
-.live-watch-symbol{color:#d1d4dc;font-size:12.5px;font-weight:700}
-.live-watch-reason{color:#787b86;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.live-watch-fresh{font-size:10px;color:#5b636e;white-space:nowrap}
+.live-watch-symbol{color:#E8EAED;font-size:12.5px;font-weight:700}
+.live-watch-reason{color:#9AA0AA;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.live-watch-fresh{font-size:10px;color:#9AA0AA;white-space:nowrap}
 .live-watch-fresh.stale{color:#f7a600;font-weight:600}
 .live-watch-detail{padding:0 10px 10px;display:flex;flex-direction:column;gap:8px}
 @media(max-width:640px){.live-watch-row summary{grid-template-columns:1fr auto;grid-template-rows:auto auto}.live-watch-reason{grid-column:1/-1}}
@@ -707,6 +708,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div><b>今日の行動ルール</b><br>判断がぶれやすい日。発注前の指差し確認を1回増やす。</div>
 </div>
 <p class="warning">公開ページには生年月日・出生地・出生時刻を保存しません。娯楽・心理管理用で、銘柄順位や売買期待値には加点しません。</p></section>
+
 
 
 
