@@ -3334,3 +3334,72 @@ Owner/GPTがGitHub Actions UIで該当runを手動承認するか、PR #175マ�
 **安全境界**：発注・ブローカー・RssOrder・Windows Scheduled Task・real_submit・
 Fill Model挙動・カノニカルハッシュには一切触れていない。非公開MS2/Excel/口座/
 建玉データは読み書きしていない。
+
+## Issue #171 (C-112) スタックPR #183/#186 の照合（マージなし・publication有効化なし、2026-09-22）
+
+ChatGPTからの指示（Issue #171、タスク`C112_PR186_HEAD_1845FF7462E2`、指示上のmain
+`8faae5857976efeaa6db18cc071db6b52a35051c`）を受け、C-112スタックPR #183/#186を
+現在の保護対象mainと照合した。作業はリポジトリ照合のみで、ブランチへのpush・
+マージ・クローズ・publication有効化は一切行っていない。
+
+**mainの取得**：セッション開始時に`origin/main`を`8faae585...`として記録したが、
+照合作業中に自動更新bot（`mobile-approval-feed.yml`系、データのみ）が2コミット
+進め、`origin/main`は`59577b53e587082924986f4e4cb6bab59c99b839`へ進んだ。以降の
+照合はこの実際の最新mainを基準にした（古いSHAに固定して検証したと主張しない）。
+
+**PR #186 head独立検証**：GitHub APIで`pull_request_read get`を呼び、head
+`1845ff7462e225baed761cc85b5a7dc817c30cd7`（ChatGPT指示のSHAと一致）を確認。
+`get_check_runs`は`test`・`approve`の2件のみを返したため、名指しされた
+「Mobile Control Tests」は`actions_list list_workflow_runs`
+（workflow=`mobile-control-tests.yml`、branch=`feat/ai-strategy-live-v1-phase2`）で
+別途確認し、run `35727123380`（head_sha一致）が`conclusion: success`であることを
+独立に検証した。PR #183 head `d75e2dba399fa6994ef0d3c83367939ccc2cbc9e`の
+CIも同様にsuccess/skippedを確認した。
+
+**マージ可能性の独立検証**：GitHub側`mergeable_state`は両PRとも`clean`と表示して
+いたが、これをそのまま信じず`git merge-tree --write-tree`でローカルに再現した。
+`origin/main`（`59577b53`）に対し#183 head・#186 head（#183の全コミットを含む
+スタック）とも競合なしでツリーが得られ、実際のドリフトは無いことを確認した
+（当初のshallowクローンで「unrelated histories」誤検出があったため
+`git fetch --unshallow`で解消した上での再検証）。
+
+**テスト再実行**：`/tmp`の使い捨てworktreeに#186 head（`1845ff74...`）を
+checkoutし、（1）PRが自己申告するターゲットスイート
+（`test_ai_strategy_live`/`test_strategy_router`/`test_ai_strategy_live_view`/
+`test_build_ai_strategy_live`/`test_main_data_writer_security`、計97件）が
+全件passすることを確認、（2）フルスイート（`unittest discover`）は1065件実行、
+エラー3件はいずれもこのサンドボックスに`pandas`/`lxml`が未インストールである
+ことによる既知の事前存在ImportError（このセッションの素のmain上でも同じ
+importが同様に失敗することを個別に確認済み）で新規リグレッションではない。
+続けて、このworktree内だけで`origin/main`をローカルマージ（bot起源のJSON/データ
+19ファイルのみが変更対象、コード側の競合なし）し、同じターゲット97件・フル
+スイート1065件（同じ3件の既知エラーのみ）を再実行して結果が変わらないことを
+確認した。**このマージコミットはローカルworktreeのみで作成し、どちらのPR
+ブランチにもpushしていない**（過去にPRブランチへmainをマージしてpushした際、
+`mobile-approval-feed.yml`等の自己コミットワークフローが誤発火しMobile Control
+Testsを`action_required`のまま凍結させた前例が本ファイル直前のセクションに
+記録されており、GitHub側が既に`mergeable_state: clean`を報告していて実際の
+ドリフトも無い以上、同じリスクを冒してpushする理由がないと判断した）。
+worktreeは検証後に`git worktree remove --force`で削除済み。
+
+**安全境界の維持確認**：`scripts/ai_strategy_live.py`・`ai_strategy_live_view.py`・
+`build_ai_strategy_live.py`・`event_bus.py`・`conflict_resolver.py`いずれも
+`real_submit_allowed`は`False`固定のみ、`strategy_router.py`の
+`FEATURE_FLAG_LIVE_INFLUENCE_ENABLED = False`は変更なし。`update.yml`への
+`build_ai_strategy_live`呼び出し配線はPR説明どおり`if: github.ref ==
+'refs/heads/main'`＋`environment: main-data-writer`にスコープされており、
+両PRがDraft・未マージのままである限り一切発火しない。`real_submit_allowed`
+またはfeature flagをTrueにする変更、Scheduled Task起動、BUY/SHORTの新規
+canonical状態、いずれも見つからなかった。PR #186本文に明記された
+「公式LIVE公開は保留（Owner/GPT判断）」方針にも一致する変更は加えていない。
+
+**結果**：PR #183 head `d75e2dba399fa6994ef0d3c83367939ccc2cbc9e`、PR #186 head
+`1845ff7462e225baed761cc85b5a7dc817c30cd7`（#183を包含するスタック）はいずれも
+現在のmain `59577b53e587082924986f4e4cb6bab59c99b839`に対しclean・deterministic
+にマージ可能で、対象テスト97件・フルスイート1065件（無関係の事前存在エラー3件
+のみ）が通過することを独立に確認した。GitHub上のPRブランチ・main・CI設定には
+一切変更を加えていない。マージ・クローズ・publication有効化は行っていない。
+
+**次のブロッカー**：技術的なブロッカーはない。#186のOwner/GPT明示の
+「公式LIVE公開保留」方針は本セッションでは変更していないため、実際のマージ判断
+はOwner/GPTのレビューゲート待ちのまま。
