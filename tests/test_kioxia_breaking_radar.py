@@ -38,6 +38,20 @@ class KioxiaBreakingRadarTests(unittest.TestCase):
         self.assertTrue(row["urgent"])
         self.assertLess(row["priority"], 98)
 
+    def test_sec_discovery_via_media_is_alerted_but_unverified(self):
+        row = classify({
+            "event_id": "sec-discovery",
+            "source": "SEC.gov",
+            "source_kind": "media",
+            "title": "Kioxia Holdings F-6 filing",
+            "url": "https://example.test/sec",
+            "published_at": "2026-09-22T12:00:00+09:00",
+            "published_precision": "timestamp",
+        })
+        self.assertEqual(row["stage"], "SEC_DISCOVERY_UNVERIFIED")
+        self.assertTrue(row["urgent"])
+        self.assertFalse(row["real_submit_allowed"])
+
     def test_official_parser_uses_url_date_and_dedupes(self):
         payload = b"""
         <html><a href="/ja-jp/news/2026/20260915-1.html">Notice Regarding Certain Media Reports</a>
