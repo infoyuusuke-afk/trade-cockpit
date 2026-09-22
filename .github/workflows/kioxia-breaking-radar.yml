@@ -2,6 +2,12 @@ name: Kioxia Breaking Radar
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/kioxia-breaking-radar.yml"
+      - "scripts/kioxia_breaking_radar.py"
+      - "tests/test_kioxia_breaking_radar.py"
+      - "docs/KIOXIA_BREAKING_RADAR.md"
   push:
     branches: [main]
     paths:
@@ -14,15 +20,33 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: kioxia-breaking-radar
   cancel-in-progress: false
 
 jobs:
+  bootstrap-check:
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify live public-source reachability without writes
+        run: python scripts/kioxia_breaking_radar.py --dry-run
+      - name: Run deterministic radar tests
+        run: python -m unittest tests.test_kioxia_breaking_radar
+
   scan:
     environment: main-data-writer
+    permissions:
+      contents: read
+      issues: write
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
