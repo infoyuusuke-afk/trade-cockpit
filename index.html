@@ -1,11 +1,5 @@
 <!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="900"><title>AIトレードコクピット</title><script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
-<style>*{box-sizing:border-box}body{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}header{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}h1{margin:0;font-size:25px}h2{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}h3{color:#9fc8ff;margin:15px 0 7px}a{color:#70c7ff}.sub{color:#aebdcb;margin-top:4px}.tag{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}main{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}.card{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}.wide{grid-column:1/-1}table{width:100%;border-collapse:collapse}th{background:#1b2a39}th,td{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}th:nth-child(-n+2),td:nth-child(-n+2){text-align:left}tr:nth-child(even) td{background:#111923}.up{color:#52e46f;font-weight:900}.down{color:#ff6262;font-weight:900}small{color:#bac6d2}.warning{color:#ffe66d}.steps,.rotation-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.step,.rotation-box{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}.step b,.rotation-box b{display:block;color:#ffe66d;font-size:15px}.rotation-box strong{font-size:17px;color:#f4f7fa}.pill{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}.prep{background:#f2a900;color:#111}.in{background:#52e46f;color:#071009}.long{background:#2f80ed;color:white}.short{background:#e23b3b;color:white}.ifo-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:9px 0}.ifo-summary .rotation-box strong{font-size:19px}.ifo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ifo-card{background:linear-gradient(145deg,#101c2a,#081019);border:1px solid #3b6588;border-radius:10px;padding:11px;box-shadow:0 8px 22px #0007}.ifo-head{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;border-bottom:1px solid #35506a;padding-bottom:8px}.ifo-head h3{margin:0;color:#f4f7fa;font-size:16px}.ifo-rank{background:#ffe66d;color:#101820;font-weight:900;border-radius:6px;padding:5px 7px}.ifo-score{font-size:18px;color:#52e46f}.ifo-columns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.order-box{background:#07101a;border:1px solid #425a70;border-radius:8px;padding:9px}.order-box>b{display:block;color:#79c7ff;margin-bottom:7px}.exit-order>b{color:#58e3ae}.order-box dl{display:grid;grid-template-columns:minmax(88px,.9fr) 1.25fr;gap:4px 8px;margin:0}.order-box dt{color:#9eafbf}.order-box dd{margin:0;text-align:right}.ifo-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:8px 0}.ifo-metrics span{background:#182637;border-radius:5px;padding:6px;text-align:center}.ifo-card p{line-height:1.55;margin:6px 0}footer{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}@media(max-width:800px){header{align-items:flex-start;flex-direction:column}main{grid-template-columns:1fr}.wide{grid-column:1}table{min-width:700px}.steps,.rotation-grid,.ifo-summary,.ifo-grid,.ifo-columns{grid-template-columns:1fr}.ifo-metrics{grid-template-columns:1fr 1fr}}</style>
-
-
-
-
-
-<!-- COCKPIT_TABS_START -->
+<style>*{box-sizing:border-box}body{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}header{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}h1{margin:0;font-size:25px}h2{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}h3{color:#9fc8ff;margin:15px 0 7px}a{color:#70c7ff}.sub{color:#aebdcb;margin-top:4px}.tag{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}main{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}.card{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}.wide{grid-column:1/-1}table{width:100%;border-collapse:collapse}th{background:#1b2a39}th,td{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}th:nth-child(-n+2),td:nth-child(-n+2){text-align:left}tr:nth-child(even) td{background:#111923}.up{color:#52e46f;font-weight:900}.down{color:#ff6262;font-weight:900}small{color:#bac6d2}.warning{color:#ffe66d}.steps,.rotation-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.step,.rotation-box{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}.step b,.rotation-box b{display:block;color:#ffe66d;font-size:15px}.rotation-box strong{font-size:17px;color:#f4f7fa}.pill{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}.prep{background:#f2a900;color:#111}.in{background:#52e46f;color:#071009}.long{background:#2f80ed;color:white}.short{background:#e23b3b;color:white}.ifo-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:9px 0}.ifo-summary .rotation-box strong{font-size:19px}.ifo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ifo-card{background:linear-gradient(145deg,#101c2a,#081019);border:1px solid #3b6588;border-radius:10px;padding:11px;box-shadow:0 8px 22px #0007}.ifo-head{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;border-bottom:1px solid #35506a;padding-bottom:8px}.ifo-head h3{margin:0;color:#f4f7fa;font-size:16px}.ifo-rank{background:#ffe66d;color:#101820;font-weight:900;border-radius:6px;padding:5px 7px}.ifo-score{font-size:18px;color:#52e46f}.ifo-columns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.order-box{background:#07101a;border:1px solid #425a70;border-radius:8px;padding:9px}.order-box>b{display:block;color:#79c7ff;margin-bottom:7px}.exit-order>b{color:#58e3ae}.order-box dl{display:grid;grid-template-columns:minmax(88px,.9fr) 1.25fr;gap:4px 8px;margin:0}.order-box dt{color:#9eafbf}.order-box dd{margin:0;text-align:right}.ifo-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:8px 0}.ifo-metrics span{background:#182637;border-radius:5px;padding:6px;text-align:center}.ifo-card p{line-height:1.55;margin:6px 0}footer{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}@media(max-width:800px){header{align-items:flex-start;flex-direction:column}main{grid-template-columns:1fr}.wide{grid-column:1}table{min-width:700px}.steps,.rotation-grid,.ifo-summary,.ifo-grid,.ifo-columns{grid-template-columns:1fr}.ifo-metrics{grid-template-columns:1fr 1fr}}</style><!-- COCKPIT_TABS_START -->
 <style>
 .cockpit-tabs{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:2px;padding:5px 7px;background:#131722f2;border-bottom:1px solid #2a2e39;backdrop-filter:blur(10px);overflow-x:auto}
 .cockpit-brand{display:flex;align-items:baseline;gap:7px;padding:0 10px 0 4px;margin-right:4px;border-right:1px solid #2a2e39;font-weight:700;font-size:14px;letter-spacing:-.01em;color:#d1d4dc;white-space:nowrap}
@@ -61,21 +55,28 @@
 .live-lane .badge.block{background:#2a1418;color:#f23645}
 .live-lane .badge.neutral{background:#16181C;color:#9AA0AA}
 .live-lane .detail{grid-column:1/-1;font-size:10.5px;color:#9AA0AA}.live-lane .detail b{color:#9AA0AA}
-.live-lane .stale{color:#f7a600;font-weight:600}
+.live-lane .detail .stale-flag{color:#f7a600;font-weight:600;margin-right:5px}
 .live-foot{border-top:1px solid #22252A;padding-top:7px;font-size:10px;color:#9AA0AA;line-height:1.5}.live-foot b{color:#9AA0AA}
 .live-section-head{display:flex;align-items:baseline;gap:8px;margin:18px 0 8px}.live-section-head h3{margin:0;font-size:13px;color:#E8EAED}.live-section-head span{font-size:10.5px;color:#9AA0AA}
 .live-watchlist{display:flex;flex-direction:column;gap:1px;background:#22252A;border-radius:6px;overflow:hidden}
 .live-watch-row{background:#090A0C}
-.live-watch-row summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto auto auto auto;gap:10px;align-items:center;padding:8px 10px}
+.live-watch-row summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:14px minmax(150px,240px) minmax(110px,170px) auto auto auto;gap:8px 12px;align-items:center;padding:10px 12px}
 .live-watch-row summary::-webkit-details-marker{display:none}
-.live-watch-row summary::before{content:"▸";color:#9AA0AA;font-size:9px;margin-right:2px}
-.live-watch-row[open] summary::before{content:"▾"}
-.live-watch-symbol{color:#E8EAED;font-size:12.5px;font-weight:700}
+.live-watch-caret{font-size:9px;color:#9AA0AA;text-align:center;flex:none}
+.live-watch-caret::before{content:"▸"}
+.live-watch-row[open] .live-watch-caret::before{content:"▾"}
+.live-watch-symbol{display:flex;align-items:baseline;gap:6px;min-width:0}
+.live-watch-symbol b{color:#E8EAED;font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.live-watch-symbol small{color:#9AA0AA;font-size:10px;white-space:nowrap;flex:none}
 .live-watch-reason{color:#9AA0AA;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .live-watch-fresh{font-size:10px;color:#9AA0AA;white-space:nowrap}
 .live-watch-fresh.stale{color:#f7a600;font-weight:600}
-.live-watch-detail{padding:0 10px 10px;display:flex;flex-direction:column;gap:8px}
-@media(max-width:640px){.live-watch-row summary{grid-template-columns:1fr auto;grid-template-rows:auto auto}.live-watch-reason{grid-column:1/-1}}
+.live-watch-detail{padding:0 12px 10px;display:flex;flex-direction:column;gap:8px}
+@media(max-width:640px){
+ .live-watch-row summary{display:flex;flex-wrap:wrap;align-items:center;column-gap:10px;row-gap:6px;padding:10px 12px}
+ .live-watch-symbol{flex:1 1 100%}
+ .live-watch-symbol b{white-space:normal}
+}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
  <span class="cockpit-brand">AIトレードコクピット<small id="cockpit-status">Ver.5.4</small></span>
@@ -237,17 +238,29 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(!parts.length&&row.provenance)parts.push(esc(row.provenance));
    return parts.join("／")||"—";
  };
+ // 鮮度切れは短い警告ラベルだけをオレンジにし、Entry/Stop/Target/スコア等の
+ // 数値本文は通常色のまま分離する（数値まで全文警告色にしない）。
+ const liveLaneRow=row=>{
+   const staleFlag=row.is_stale?'<span class="stale-flag">⚠ 鮮度切れ・過去データ参考値</span>':"";
+   return '<div class="live-lane"><span class="sup">'+esc(row.supervisor)+'</span><span class="badge '+esc(row.css_class)+'">'+esc(row.direction_label)+'</span><span class="detail">'+staleFlag+liveDetail(row)+'</span></div>';
+ };
+ // signals.jsonの既存"name"（例：キオクシアHD（285A））を主表示にし、コードは補助表示に
+ // 回す。既存データに名称が無い銘柄だけ、従来通りコードを主表示のまま維持する。
+ const symbolNameCode=(symbol,name)=>{
+   const code=String(symbol||"").replace(".T","");
+   return {code, display: name||code};
+ };
  const renderLiveCard=card=>{
-   const code=String(card.symbol||"").replace(".T","");
-   const rows=(card.rows||[]).map(row=>'<div class="live-lane"><span class="sup">'+esc(row.supervisor)+'</span><span class="badge '+esc(row.css_class)+'">'+esc(row.direction_label)+'</span><span class="detail'+(row.is_stale?" stale":"")+'">'+(row.is_stale?"⚠ 鮮度切れ・":"")+liveDetail(row)+'</span></div>').join("");
+   const {code,display}=symbolNameCode(card.symbol,card.symbol_name);
+   const rows=(card.rows||[]).map(liveLaneRow).join("");
    const conflictFlag=card.conflict_state&&card.conflict_state.conflict?'<div class="live-conflict-flag"><b>Conflict</b> — 統括者間でホライズンの判断が分かれています</div>':"";
    const r=card.router||{};
-   return '<article class="live-card'+(card.conflict_state&&card.conflict_state.conflict?" conflict":"")+'"><div class="live-card-head"><div><span class="name">'+esc(code)+'</span><span class="code">TSE:'+esc(code)+'</span></div><span class="live-router-pill '+esc(r.css_class||"unknown")+'"><span class="dot"></span>'+esc(r.state_label||r.state||"—")+'</span></div>'+conflictFlag+'<div class="live-lanes">'+rows+'</div><div class="live-foot"><b>Router reasons</b> '+esc((r.reasons||[]).join(", ")||"—")+'</div></article>';
+   return '<article class="live-card'+(card.conflict_state&&card.conflict_state.conflict?" conflict":"")+'"><div class="live-card-head"><div><span class="name">'+esc(display)+'</span><span class="code">TSE:'+esc(code)+'</span></div><span class="live-router-pill '+esc(r.css_class||"unknown")+'"><span class="dot"></span>'+esc(r.state_label||r.state||"—")+'</span></div>'+conflictFlag+'<div class="live-lanes">'+rows+'</div><div class="live-foot"><b>Router reasons</b> '+esc((r.reasons||[]).join(", ")||"—")+'</div></article>';
  };
  const renderLiveWatchRow=w=>{
-   const code=String(w.symbol||"").replace(".T","");
-   const rows=(w.rows||[]).map(row=>'<div class="live-lane"><span class="sup">'+esc(row.supervisor)+'</span><span class="badge '+esc(row.css_class)+'">'+esc(row.direction_label)+'</span><span class="detail'+(row.is_stale?" stale":"")+'">'+(row.is_stale?"⚠ 鮮度切れ・":"")+liveDetail(row)+'</span></div>').join("");
-   return '<details class="live-watch-row"><summary><span class="live-watch-symbol">TSE:'+esc(code)+'</span><span class="live-watch-reason">'+esc(w.headline_supervisor)+'</span><span class="badge '+esc(w.headline_css_class)+'">'+esc(w.headline_direction_label)+'</span><span class="live-watch-fresh'+(w.headline_is_stale?" stale":"")+'">'+(w.headline_is_stale?"⚠ 鮮度切れ":"鮮度OK")+'</span><span class="live-router-pill '+esc(w.router_css_class||"unknown")+'"><span class="dot"></span>'+esc(w.router_state_label||w.router_state||"—")+'</span></summary><div class="live-watch-detail"><div class="live-lanes">'+rows+'</div><div class="live-foot"><b>Router reasons</b> '+esc((w.router_reasons||[]).join(", ")||"—")+'</div></div></details>';
+   const {code,display}=symbolNameCode(w.symbol,w.symbol_name);
+   const rows=(w.rows||[]).map(liveLaneRow).join("");
+   return '<details class="live-watch-row"><summary><span class="live-watch-caret"></span><span class="live-watch-symbol"><b>'+esc(display)+'</b><small>TSE:'+esc(code)+'</small></span><span class="live-watch-reason">'+esc(w.headline_supervisor)+'</span><span class="badge '+esc(w.headline_css_class)+'">'+esc(w.headline_direction_label)+'</span><span class="live-watch-fresh'+(w.headline_is_stale?" stale":"")+'">'+(w.headline_is_stale?"⚠ 鮮度切れ":"鮮度OK")+'</span><span class="live-router-pill '+esc(w.router_css_class||"unknown")+'"><span class="dot"></span>'+esc(w.router_state_label||w.router_state||"—")+'</span></summary><div class="live-watch-detail"><div class="live-lanes">'+rows+'</div><div class="live-foot"><b>Router reasons</b> '+esc((w.router_reasons||[]).join(", ")||"—")+'</div></div></details>';
  };
  const GENERATION_STALE_AFTER_MS=24*60*60*1000;
  const renderLiveNotices=d=>{
@@ -308,7 +321,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <link rel="stylesheet" href="next-theme-radar.css?v=c024-1">
 <script defer src="next-theme-radar.js?v=c024-1"></script>
 <style>.unified-mode{margin:8px 6px 0;padding:10px 14px;border:1px solid #365267;border-radius:10px;background:#09141d;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}.unified-mode .lamp{width:12px;height:12px;border-radius:50%;background:#77838c;box-shadow:0 0 0 5px #77838c18}.unified-mode.live{border-color:#28c998;background:#082019}.unified-mode.live .lamp{background:#35e2ae;box-shadow:0 0 16px #35e2ae}.unified-mode.stale{border-color:#f0b74c}.unified-mode strong{font-size:16px}.unified-mode span{color:#a8bbc9}.unified-mode b{color:#fff}.unified-mode small{color:#a8bbc9;display:block;margin-top:2px}@media(max-width:700px){.unified-mode{grid-template-columns:auto 1fr auto}.unified-mode>b{grid-column:3}.unified-mode .voice-toggle{grid-column:1/-1}}</style>
-<header><div><span class="tag">寄り付き前8:00版</span><div class="sub">2026-09-22 21:13:34 JST／統一取引日 取得不能</div></div></header>
+<header><div><span class="tag">寄り付き前8:00版</span><div class="sub">2026-09-23 00:51:44 JST／統一取引日 取得不能</div></div></header>
 <div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><button class="voice-toggle" data-voice-toggle type="button" style="padding:5px 12px;border-radius:7px">🔇 音声OFF</button><b id="unified-mode-time">—</b></div></div><main>
 
 <section id="data-quality-gate" class="card wide" style="border-color:#2fc6a5">
@@ -703,17 +716,11 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 <section class="card wide"><h2>🔮 本格占い・行動管理（売買AI点数とは完全分離）</h2>
 <div class="grid3">
-<div><b>本日の行動管理 44/100</b><br>日付数秘：5<br>個人情報は非表示</div>
-<div><b>バイオリズム</b><br>身体 +63／感情 -62／知性 -97</div>
+<div><b>本日の行動管理 39/100</b><br>日付数秘：6<br>個人情報は非表示</div>
+<div><b>バイオリズム</b><br>身体 +40／感情 -78／知性 -91</div>
 <div><b>今日の行動ルール</b><br>判断がぶれやすい日。発注前の指差し確認を1回増やす。</div>
 </div>
 <p class="warning">公開ページには生年月日・出生地・出生時刻を保存しません。娯楽・心理管理用で、銘柄順位や売買期待値には加点しません。</p></section>
-
-
-
-
-
-
 
 <!-- WEEKLY_REVIEW_START -->
 <section id="weekly-review" class="panel">
@@ -735,7 +742,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   </div>
 </section>
 <!-- WEEKLY_REVIEW_END -->
-</main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>2026-09-22 21:13:34 JST</span></footer>
+</main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>2026-09-23 00:51:44 JST</span></footer>
 <script>
 const yen = v => Number(v).toLocaleString("ja-JP");
 const signedPct = (v, digits = 1) => Number.isFinite(Number(v))

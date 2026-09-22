@@ -170,21 +170,28 @@ def tabs_block() -> str:
 .live-lane .badge.block{background:#2a1418;color:#f23645}
 .live-lane .badge.neutral{background:#16181C;color:#9AA0AA}
 .live-lane .detail{grid-column:1/-1;font-size:10.5px;color:#9AA0AA}.live-lane .detail b{color:#9AA0AA}
-.live-lane .stale{color:#f7a600;font-weight:600}
+.live-lane .detail .stale-flag{color:#f7a600;font-weight:600;margin-right:5px}
 .live-foot{border-top:1px solid #22252A;padding-top:7px;font-size:10px;color:#9AA0AA;line-height:1.5}.live-foot b{color:#9AA0AA}
 .live-section-head{display:flex;align-items:baseline;gap:8px;margin:18px 0 8px}.live-section-head h3{margin:0;font-size:13px;color:#E8EAED}.live-section-head span{font-size:10.5px;color:#9AA0AA}
 .live-watchlist{display:flex;flex-direction:column;gap:1px;background:#22252A;border-radius:6px;overflow:hidden}
 .live-watch-row{background:#090A0C}
-.live-watch-row summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto auto auto auto;gap:10px;align-items:center;padding:8px 10px}
+.live-watch-row summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:14px minmax(150px,240px) minmax(110px,170px) auto auto auto;gap:8px 12px;align-items:center;padding:10px 12px}
 .live-watch-row summary::-webkit-details-marker{display:none}
-.live-watch-row summary::before{content:"▸";color:#9AA0AA;font-size:9px;margin-right:2px}
-.live-watch-row[open] summary::before{content:"▾"}
-.live-watch-symbol{color:#E8EAED;font-size:12.5px;font-weight:700}
+.live-watch-caret{font-size:9px;color:#9AA0AA;text-align:center;flex:none}
+.live-watch-caret::before{content:"▸"}
+.live-watch-row[open] .live-watch-caret::before{content:"▾"}
+.live-watch-symbol{display:flex;align-items:baseline;gap:6px;min-width:0}
+.live-watch-symbol b{color:#E8EAED;font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.live-watch-symbol small{color:#9AA0AA;font-size:10px;white-space:nowrap;flex:none}
 .live-watch-reason{color:#9AA0AA;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .live-watch-fresh{font-size:10px;color:#9AA0AA;white-space:nowrap}
 .live-watch-fresh.stale{color:#f7a600;font-weight:600}
-.live-watch-detail{padding:0 10px 10px;display:flex;flex-direction:column;gap:8px}
-@media(max-width:640px){.live-watch-row summary{grid-template-columns:1fr auto;grid-template-rows:auto auto}.live-watch-reason{grid-column:1/-1}}
+.live-watch-detail{padding:0 12px 10px;display:flex;flex-direction:column;gap:8px}
+@media(max-width:640px){
+ .live-watch-row summary{display:flex;flex-wrap:wrap;align-items:center;column-gap:10px;row-gap:6px;padding:10px 12px}
+ .live-watch-symbol{flex:1 1 100%}
+ .live-watch-symbol b{white-space:normal}
+}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
  <span class="cockpit-brand">AIトレードコクピット<small id="cockpit-status">Ver.5.4</small></span>
@@ -346,17 +353,29 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(!parts.length&&row.provenance)parts.push(esc(row.provenance));
    return parts.join("／")||"—";
  };
+ // 鮮度切れは短い警告ラベルだけをオレンジにし、Entry/Stop/Target/スコア等の
+ // 数値本文は通常色のまま分離する（数値まで全文警告色にしない）。
+ const liveLaneRow=row=>{
+   const staleFlag=row.is_stale?'<span class="stale-flag">⚠ 鮮度切れ・過去データ参考値</span>':"";
+   return '<div class="live-lane"><span class="sup">'+esc(row.supervisor)+'</span><span class="badge '+esc(row.css_class)+'">'+esc(row.direction_label)+'</span><span class="detail">'+staleFlag+liveDetail(row)+'</span></div>';
+ };
+ // signals.jsonの既存"name"（例：キオクシアHD（285A））を主表示にし、コードは補助表示に
+ // 回す。既存データに名称が無い銘柄だけ、従来通りコードを主表示のまま維持する。
+ const symbolNameCode=(symbol,name)=>{
+   const code=String(symbol||"").replace(".T","");
+   return {code, display: name||code};
+ };
  const renderLiveCard=card=>{
-   const code=String(card.symbol||"").replace(".T","");
-   const rows=(card.rows||[]).map(row=>'<div class="live-lane"><span class="sup">'+esc(row.supervisor)+'</span><span class="badge '+esc(row.css_class)+'">'+esc(row.direction_label)+'</span><span class="detail'+(row.is_stale?" stale":"")+'">'+(row.is_stale?"⚠ 鮮度切れ・":"")+liveDetail(row)+'</span></div>').join("");
+   const {code,display}=symbolNameCode(card.symbol,card.symbol_name);
+   const rows=(card.rows||[]).map(liveLaneRow).join("");
    const conflictFlag=card.conflict_state&&card.conflict_state.conflict?'<div class="live-conflict-flag"><b>Conflict</b> — 統括者間でホライズンの判断が分かれています</div>':"";
    const r=card.router||{};
-   return '<article class="live-card'+(card.conflict_state&&card.conflict_state.conflict?" conflict":"")+'"><div class="live-card-head"><div><span class="name">'+esc(code)+'</span><span class="code">TSE:'+esc(code)+'</span></div><span class="live-router-pill '+esc(r.css_class||"unknown")+'"><span class="dot"></span>'+esc(r.state_label||r.state||"—")+'</span></div>'+conflictFlag+'<div class="live-lanes">'+rows+'</div><div class="live-foot"><b>Router reasons</b> '+esc((r.reasons||[]).join(", ")||"—")+'</div></article>';
+   return '<article class="live-card'+(card.conflict_state&&card.conflict_state.conflict?" conflict":"")+'"><div class="live-card-head"><div><span class="name">'+esc(display)+'</span><span class="code">TSE:'+esc(code)+'</span></div><span class="live-router-pill '+esc(r.css_class||"unknown")+'"><span class="dot"></span>'+esc(r.state_label||r.state||"—")+'</span></div>'+conflictFlag+'<div class="live-lanes">'+rows+'</div><div class="live-foot"><b>Router reasons</b> '+esc((r.reasons||[]).join(", ")||"—")+'</div></article>';
  };
  const renderLiveWatchRow=w=>{
-   const code=String(w.symbol||"").replace(".T","");
-   const rows=(w.rows||[]).map(row=>'<div class="live-lane"><span class="sup">'+esc(row.supervisor)+'</span><span class="badge '+esc(row.css_class)+'">'+esc(row.direction_label)+'</span><span class="detail'+(row.is_stale?" stale":"")+'">'+(row.is_stale?"⚠ 鮮度切れ・":"")+liveDetail(row)+'</span></div>').join("");
-   return '<details class="live-watch-row"><summary><span class="live-watch-symbol">TSE:'+esc(code)+'</span><span class="live-watch-reason">'+esc(w.headline_supervisor)+'</span><span class="badge '+esc(w.headline_css_class)+'">'+esc(w.headline_direction_label)+'</span><span class="live-watch-fresh'+(w.headline_is_stale?" stale":"")+'">'+(w.headline_is_stale?"⚠ 鮮度切れ":"鮮度OK")+'</span><span class="live-router-pill '+esc(w.router_css_class||"unknown")+'"><span class="dot"></span>'+esc(w.router_state_label||w.router_state||"—")+'</span></summary><div class="live-watch-detail"><div class="live-lanes">'+rows+'</div><div class="live-foot"><b>Router reasons</b> '+esc((w.router_reasons||[]).join(", ")||"—")+'</div></div></details>';
+   const {code,display}=symbolNameCode(w.symbol,w.symbol_name);
+   const rows=(w.rows||[]).map(liveLaneRow).join("");
+   return '<details class="live-watch-row"><summary><span class="live-watch-caret"></span><span class="live-watch-symbol"><b>'+esc(display)+'</b><small>TSE:'+esc(code)+'</small></span><span class="live-watch-reason">'+esc(w.headline_supervisor)+'</span><span class="badge '+esc(w.headline_css_class)+'">'+esc(w.headline_direction_label)+'</span><span class="live-watch-fresh'+(w.headline_is_stale?" stale":"")+'">'+(w.headline_is_stale?"⚠ 鮮度切れ":"鮮度OK")+'</span><span class="live-router-pill '+esc(w.router_css_class||"unknown")+'"><span class="dot"></span>'+esc(w.router_state_label||w.router_state||"—")+'</span></summary><div class="live-watch-detail"><div class="live-lanes">'+rows+'</div><div class="live-foot"><b>Router reasons</b> '+esc((w.router_reasons||[]).join(", ")||"—")+'</div></div></details>';
  };
  const GENERATION_STALE_AFTER_MS=24*60*60*1000;
  const renderLiveNotices=d=>{

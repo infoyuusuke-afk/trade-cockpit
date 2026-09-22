@@ -212,7 +212,7 @@ def _parse_signals_updated_at(value):
     return dt.replace(tzinfo=JST).isoformat()
 
 
-def _emit(states, unresolved, card_symbols, *, supervisor, ticker, direction, as_of_value, provenance, **fields):
+def _emit(states, unresolved, card_symbols, symbol_names, *, supervisor, ticker, direction, as_of_value, provenance, name=None, **fields):
     """Shared row builder for every mapping below.
 
     If as_of_value is None (see _as_of()), the row is recorded in
@@ -222,9 +222,19 @@ def _emit(states, unresolved, card_symbols, *, supervisor, ticker, direction, as
     (a set, shared across the whole build) so build_artifact() can
     later route every symbol's full set of lanes to either the card
     board or the compact watchlist, never both.
+
+    `name` is signals.json's own "name" field for this row (e.g.
+    "キオクシアHD（285A）") -- an existing, already-verified display name
+    from the same pipeline, not a new lookup. It is recorded into
+    `symbol_names` (ticker -> name, first-seen wins) regardless of
+    whether the row itself ends up card/watchlist/unresolved, since the
+    name is a property of the symbol, not of this one row. It is never
+    passed into build_supervisor_state() (not a STATE_FIELDS member).
     """
     if not ticker:
         return
+    if name:
+        symbol_names.setdefault(ticker, name)
     if as_of_value is None:
         unresolved.append({
             "supervisor": supervisor, "symbol": ticker, "provenance": provenance,
@@ -246,23 +256,23 @@ def _emit(states, unresolved, card_symbols, *, supervisor, ticker, direction, as
         card_symbols.add(ticker)
 
 
-def _overnight_rows(states, unresolved, card_symbols, rows, direction, fallback_as_of):
+def _overnight_rows(states, unresolved, card_symbols, symbol_names, rows, direction, fallback_as_of):
     for r in rows:
-        _emit(states, unresolved, card_symbols, supervisor="OVERNIGHT", ticker=r.get("ticker"), direction=direction,
+        _emit(states, unresolved, card_symbols, symbol_names, supervisor="OVERNIGHT", ticker=r.get("ticker"), direction=direction,
               as_of_value=_as_of(r.get("signal_date"), fallback_as_of),
-              provenance="signals.json:overnight_" + direction.lower(),
+              provenance="signals.json:overnight_" + direction.lower(), name=r.get("name"),
               entry=r.get("trigger"), stop=r.get("stop"), target=r.get("target1"),
               condition_score=r.get("score"))
 
 
-def _event_rows(states, unresolved, card_symbols, rows, signals_as_of):
+def _event_rows(states, unresolved, card_symbols, symbol_names, rows, signals_as_of):
     for r in rows:
-        _emit(states, unresolved, card_symbols, supervisor="EVENT", ticker=r.get("ticker"), direction="WATCH",
-              as_of_value=signals_as_of, provenance="signals.json:speculative_theme_watch",
+        _emit(states, unresolved, card_symbols, symbol_names, supervisor="EVENT", ticker=r.get("ticker"), direction="WATCH",
+              as_of_value=signals_as_of, provenance="signals.json:speculative_theme_watch", name=r.get("name"),
               condition_score=r.get("score"))
 
 
-def _value_long_catalyst_rows(states, unresolved, card_symbols, hammer_rows, ma_rebound_rows, accumulation_rows, fallback_as_of):
+def _value_long_catalyst_rows(states, unresolved, card_symbols, symbol_names, hammer_rows, ma_rebound_rows, accumulation_rows, fallback_as_of):
     """VALUE_LONG_CATALYST draws from three signals.json lists that can
     overlap on the same ticker (e.g. one symbol with both an
     accumulation footprint and a monthly/weekly hammer). It is one
@@ -292,13 +302,13 @@ def _value_long_catalyst_rows(states, unresolved, card_symbols, hammer_rows, ma_
 
     for ticker, options in candidates.items():
         _, direction, r, provenance = min(options, key=lambda o: o[0])
-        _emit(states, unresolved, card_symbols, supervisor="VALUE_LONG_CATALYST", ticker=ticker, direction=direction,
-              as_of_value=_as_of(r.get("signal_date"), fallback_as_of), provenance=provenance,
+        _emit(states, unresolved, card_symbols, symbol_names, supervisor="VALUE_LONG_CATALYST", ticker=ticker, direction=direction,
+              as_of_value=_as_of(r.get("signal_date"), fallback_as_of), provenance=provenance, name=r.get("name"),
               entry=r.get("trigger"), stop=r.get("stop"), target=r.get("target1"),
               condition_score=r.get("score"))
 
 
-def _realtime_daytrade_rows(states, unresolved, card_symbols, rows, fallback_as_of):
+def _realtime_daytrade_rows(states, unresolved, card_symbols, symbol_names, rows, fallback_as_of):
     """signals.json:prepared is update.py's "⑨ 本日準備点灯銘柄 上位30"
     section, confirmed via scripts/weekly_tabs.py's routing
     (t.includes("準備点灯")) to be the real REALTIME 5 tab's own data --
@@ -309,35 +319,37 @@ def _realtime_daytrade_rows(states, unresolved, card_symbols, rows, fallback_as_
     qualifies via a card-worthy source above.
     """
     for r in rows:
-        _emit(states, unresolved, card_symbols, supervisor="REALTIME_DAYTRADE", ticker=r.get("ticker"), direction="LONG_WATCH",
+        _emit(states, unresolved, card_symbols, symbol_names, supervisor="REALTIME_DAYTRADE", ticker=r.get("ticker"), direction="LONG_WATCH",
               as_of_value=_as_of(r.get("signal_date"), fallback_as_of),
-              provenance="signals.json:prepared",
+              provenance="signals.json:prepared", name=r.get("name"),
               entry=r.get("trigger"), stop=r.get("stop"), target=r.get("target1"),
               condition_score=r.get("score"))
 
 
 def build_states(signals, now_iso):
-    """Returns (states, unresolved, card_symbols). `now_iso` is used only
-    as the Router's decision-time "now" for freshness comparisons
-    downstream -- it is never used as a row's own as_of.
+    """Returns (states, unresolved, card_symbols, symbol_names). `now_iso`
+    is used only as the Router's decision-time "now" for freshness
+    comparisons downstream -- it is never used as a row's own as_of.
+    `symbol_names` maps ticker -> signals.json's own "name" field (e.g.
+    "キオクシアHD（285A）"), for display; see _emit()'s docstring.
     """
     signals_as_of = _parse_signals_updated_at(signals.get("updated_at"))
-    states, unresolved, card_symbols = [], [], set()
-    _overnight_rows(states, unresolved, card_symbols, signals.get("overnight_long") or [], "LONG", signals_as_of)
-    _overnight_rows(states, unresolved, card_symbols, signals.get("overnight_short") or [], "SHORT", signals_as_of)
-    _event_rows(states, unresolved, card_symbols, signals.get("speculative_theme_watch") or [], signals_as_of)
+    states, unresolved, card_symbols, symbol_names = [], [], set(), {}
+    _overnight_rows(states, unresolved, card_symbols, symbol_names, signals.get("overnight_long") or [], "LONG", signals_as_of)
+    _overnight_rows(states, unresolved, card_symbols, symbol_names, signals.get("overnight_short") or [], "SHORT", signals_as_of)
+    _event_rows(states, unresolved, card_symbols, symbol_names, signals.get("speculative_theme_watch") or [], signals_as_of)
     _value_long_catalyst_rows(
-        states, unresolved, card_symbols,
+        states, unresolved, card_symbols, symbol_names,
         signals.get("monthly_weekly_hammers") or [],
         signals.get("long_term_ma_rebounds") or [],
         signals.get("large_lot_accumulation") or [],
         signals_as_of,
     )
-    _realtime_daytrade_rows(states, unresolved, card_symbols, signals.get("prepared") or [], signals_as_of)
-    return states, unresolved, card_symbols
+    _realtime_daytrade_rows(states, unresolved, card_symbols, symbol_names, signals.get("prepared") or [], signals_as_of)
+    return states, unresolved, card_symbols, symbol_names
 
 
-def _watchlist_entry(symbol, snapshot_entry, router_decision):
+def _watchlist_entry(symbol, snapshot_entry, router_decision, symbol_name):
     """One compact watchlist row: the symbol, its most notable reporting
     Supervisor (first in SUPERVISOR_ORDER order, for a stable, non-
     arbitrary pick), that Supervisor's direction, freshness and the
@@ -365,6 +377,7 @@ def _watchlist_entry(symbol, snapshot_entry, router_decision):
     r = router_decision
     return {
         "symbol": symbol,
+        "symbol_name": symbol_name,
         "headline_supervisor": headline["supervisor"],
         "headline_direction": headline["direction"],
         "headline_direction_label": headline["direction_label"],
@@ -386,7 +399,7 @@ def build_artifact(signals, now_iso, data_quality_ok_by_symbol=None):
             "refusing to build the AI Strategy LIVE artifact: "
             "FEATURE_FLAG_LIVE_INFLUENCE_ENABLED must be False in Phase 2"
         )
-    states, unresolved, card_symbols = build_states(signals, now_iso)
+    states, unresolved, card_symbols, symbol_names = build_states(signals, now_iso)
     snapshot = strategy_live_snapshot(states, now_iso)
     decisions = route_snapshot(snapshot, now_iso, data_quality_ok_by_symbol=data_quality_ok_by_symbol,
                                 stale_after_seconds=LANE_STALE_AFTER_SECONDS)
@@ -394,9 +407,11 @@ def build_artifact(signals, now_iso, data_quality_ok_by_symbol=None):
     card_snapshot = {sym: entry for sym, entry in snapshot.items() if sym in card_symbols}
     card_decisions = {sym: dec for sym, dec in decisions.items() if sym in card_symbols}
     board = build_live_board_view(card_snapshot, card_decisions, supervisor_order=SUPERVISOR_ORDER)
+    for card in board:
+        card["symbol_name"] = symbol_names.get(card["symbol"])
 
     watchlist = [
-        _watchlist_entry(sym, snapshot[sym], decisions[sym])
+        _watchlist_entry(sym, snapshot[sym], decisions[sym], symbol_names.get(sym))
         for sym in sorted(snapshot)
         if sym not in card_symbols
     ]

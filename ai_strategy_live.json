@@ -1,6 +1,6 @@
 {
  "schema_version": "ai-strategy-live-board-1.0",
- "generated_at": "2026-09-23T00:03:31.369839+09:00",
+ "generated_at": "2026-09-23T00:51:43.571095+09:00",
  "feature_flag_enabled": false,
  "is_entry_trigger": false,
  "real_submit_allowed": false,
@@ -58,14 +58,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "186A.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "LONG_WATCH"
@@ -78,7 +78,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -88,7 +88,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "アストロスケールHD（186A）"
   },
   {
    "symbol": "1969.T",
@@ -120,7 +121,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     },
     {
@@ -150,7 +151,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     },
     {
@@ -180,14 +181,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "1969.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
@@ -202,7 +203,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -215,7 +216,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "高砂熱学工業（1969）"
   },
   {
    "symbol": "3132.T",
@@ -247,7 +249,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 10244.369839,
+     "last_update_age_seconds": 13136.571095,
      "is_stale": true
     },
     {
@@ -277,7 +279,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     },
     {
@@ -307,14 +309,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "3132.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "EVENT": "WATCH",
@@ -329,7 +331,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -341,7 +343,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "マクニカHD（3132）"
   },
   {
    "symbol": "4259.T",
@@ -373,7 +376,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 10244.369839,
+     "last_update_age_seconds": 13136.571095,
      "is_stale": true
     },
     {
@@ -403,14 +406,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4259.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "EVENT": "WATCH",
@@ -424,7 +427,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -436,7 +439,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "エクサウィザーズ（4259）"
   },
   {
    "symbol": "4385.T",
@@ -468,14 +472,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4385.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -488,7 +492,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -500,7 +504,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "メルカリ（4385）"
   },
   {
    "symbol": "4475.T",
@@ -532,7 +537,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     },
     {
@@ -562,14 +567,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4475.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
@@ -583,7 +588,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -596,7 +601,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "HENNGE（4475）"
   },
   {
    "symbol": "4755.T",
@@ -628,14 +634,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4755.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -648,7 +654,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -660,7 +666,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "楽天グループ（4755）"
   },
   {
    "symbol": "485A.T",
@@ -692,14 +699,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 10244.369839,
+     "last_update_age_seconds": 13136.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "485A.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "EVENT": "WATCH"
@@ -712,7 +719,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -722,7 +729,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "パワーエックス（485A）"
   },
   {
    "symbol": "6324.T",
@@ -754,7 +762,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     },
     {
@@ -784,7 +792,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     },
     {
@@ -814,14 +822,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6324.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
@@ -836,7 +844,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -849,7 +857,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "ハーモニック・ドライブ・システムズ（6324）"
   },
   {
    "symbol": "6501.T",
@@ -881,7 +890,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     },
     {
@@ -911,7 +920,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     },
     {
@@ -941,14 +950,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6501.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
@@ -963,7 +972,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -976,7 +985,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "日立製作所（6501）"
   },
   {
    "symbol": "6594.T",
@@ -1008,7 +1018,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     },
     {
@@ -1038,7 +1048,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     },
     {
@@ -1068,14 +1078,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6594.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
@@ -1090,7 +1100,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -1103,7 +1113,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "ニデック（6594）"
   },
   {
    "symbol": "6902.T",
@@ -1135,14 +1146,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6902.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -1155,7 +1166,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -1167,7 +1178,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "デンソー（6902）"
   },
   {
    "symbol": "7013.T",
@@ -1199,7 +1211,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     },
     {
@@ -1229,14 +1241,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7013.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "LONG_WATCH",
@@ -1250,7 +1262,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -1262,7 +1274,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "IHI（7013）"
   },
   {
    "symbol": "7014.T",
@@ -1294,7 +1307,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     },
     {
@@ -1324,14 +1337,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7014.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "LONG_WATCH",
@@ -1345,7 +1358,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -1357,7 +1370,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "名村造船所（7014）"
   },
   {
    "symbol": "7453.T",
@@ -1389,14 +1403,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7453.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -1409,7 +1423,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -1421,7 +1435,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "良品計画（7453）"
   },
   {
    "symbol": "7564.T",
@@ -1453,14 +1468,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7564.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -1473,7 +1488,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -1485,7 +1500,8 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "ワークマン（7564）"
   },
   {
    "symbol": "9984.T",
@@ -1517,7 +1533,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 10244.369839,
+     "last_update_age_seconds": 13136.571095,
      "is_stale": true
     },
     {
@@ -1547,14 +1563,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "9984.T",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "conflict": false,
     "directions": {
      "EVENT": "WATCH",
@@ -1568,7 +1584,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-23T00:03:31.369839+09:00",
+    "as_of": "2026-09-23T00:51:43.571095+09:00",
     "reasons": [
      "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -1578,12 +1594,14 @@
     "feature_flag_enabled": false
    },
    "is_entry_trigger": false,
-   "real_submit_allowed": false
+   "real_submit_allowed": false,
+   "symbol_name": "ソフトバンクグループ（9984）"
   }
  ],
  "watchlist": [
   {
    "symbol": "2782.T",
+   "symbol_name": "セリア（2782）",
    "headline_supervisor": "VALUE_LONG_CATALYST",
    "headline_direction": "LONG_WATCH",
    "headline_direction_label": "LONG WATCH",
@@ -1617,7 +1635,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
@@ -1633,6 +1651,7 @@
   },
   {
    "symbol": "3778.T",
+   "symbol_name": "さくらインターネット（3778）",
    "headline_supervisor": "VALUE_LONG_CATALYST",
    "headline_direction": "LONG_WATCH",
    "headline_direction_label": "LONG WATCH",
@@ -1666,7 +1685,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
@@ -1682,6 +1701,7 @@
   },
   {
    "symbol": "4443.T",
+   "symbol_name": "Sansan（4443）",
    "headline_supervisor": "REALTIME_DAYTRADE",
    "headline_direction": "LONG_WATCH",
    "headline_direction_label": "LONG WATCH",
@@ -1715,7 +1735,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
@@ -1731,6 +1751,7 @@
   },
   {
    "symbol": "4667.T",
+   "symbol_name": "アイサンテクノロジー（4667）",
    "headline_supervisor": "VALUE_LONG_CATALYST",
    "headline_direction": "LONG_WATCH",
    "headline_direction_label": "LONG WATCH",
@@ -1764,7 +1785,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
@@ -1780,6 +1801,7 @@
   },
   {
    "symbol": "5243.T",
+   "symbol_name": "note（5243）",
    "headline_supervisor": "REALTIME_DAYTRADE",
    "headline_direction": "LONG_WATCH",
    "headline_direction_label": "LONG WATCH",
@@ -1813,7 +1835,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
@@ -1829,6 +1851,7 @@
   },
   {
    "symbol": "6920.T",
+   "symbol_name": "レーザーテック（6920）",
    "headline_supervisor": "REALTIME_DAYTRADE",
    "headline_direction": "LONG_WATCH",
    "headline_direction_label": "LONG WATCH",
@@ -1862,7 +1885,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     },
     {
@@ -1892,7 +1915,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
@@ -1908,6 +1931,7 @@
   },
   {
    "symbol": "6971.T",
+   "symbol_name": "京セラ（6971）",
    "headline_supervisor": "VALUE_LONG_CATALYST",
    "headline_direction": "LONG_WATCH",
    "headline_direction_label": "LONG WATCH",
@@ -1941,7 +1965,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
@@ -1957,6 +1981,7 @@
   },
   {
    "symbol": "9432.T",
+   "symbol_name": "NTT（9432）",
    "headline_supervisor": "VALUE_LONG_CATALYST",
    "headline_direction": "LONG_WATCH",
    "headline_direction_label": "LONG WATCH",
@@ -1990,7 +2015,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
@@ -2006,6 +2031,7 @@
   },
   {
    "symbol": "9433.T",
+   "symbol_name": "KDDI（9433）",
    "headline_supervisor": "VALUE_LONG_CATALYST",
    "headline_direction": "LONG_WATCH",
    "headline_direction_label": "LONG WATCH",
@@ -2039,7 +2065,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
@@ -2055,6 +2081,7 @@
   },
   {
    "symbol": "9434.T",
+   "symbol_name": "ソフトバンク（9434）",
    "headline_supervisor": "VALUE_LONG_CATALYST",
    "headline_direction": "LONG_WATCH",
    "headline_direction_label": "LONG WATCH",
@@ -2088,7 +2115,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
@@ -2104,6 +2131,7 @@
   },
   {
    "symbol": "9506.T",
+   "symbol_name": "東北電力（9506）",
    "headline_supervisor": "VALUE_LONG_CATALYST",
    "headline_direction": "LONG_WATCH",
    "headline_direction_label": "LONG WATCH",
@@ -2137,7 +2165,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 376411.369839,
+     "last_update_age_seconds": 379303.571095,
      "is_stale": true
     }
    ],
