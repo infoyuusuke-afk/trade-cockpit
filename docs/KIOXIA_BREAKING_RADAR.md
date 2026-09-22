@@ -16,8 +16,8 @@ The workflow uses a dedicated concurrency group so it is not queued behind bulk 
 
 1. Kioxia Holdings official IR page — direct polling.
 2. Kioxia Holdings official news page — direct polling.
-3. SEC EDGAR company-name Atom query — public filing discovery; source health is fail-closed if unavailable.
-4. Targeted Google News RSS queries — media discovery only.
+3. SEC EDGAR — Kioxia CIK `1773708` submissions JSON first, company Atom fallback second. Source health stays fail-closed if GitHub-hosted runners are rejected.
+4. Targeted Google News RSS queries — media discovery plus an explicit SEC-form/CIK fallback query. SEC-like hits from this fallback remain `SEC_DISCOVERY_UNVERIFIED` until primary-source confirmation.
 
 The free JPX/TDnet public disclosure viewer is **not scraped** because JPX asks users not to automate scraping of that viewer. A licensed TDnet API/feed can be added later as an authenticated adapter.
 
@@ -25,7 +25,8 @@ The free JPX/TDnet public disclosure viewer is **not scraped** because JPX asks 
 
 - `OFFICIAL_TERMS`: company-confirmed ADR/listing terms.
 - `CONFIRMED_PREPARATION`: company-confirmed preparation without final terms.
-- `SEC_FILING`: EDGAR filing evidence.
+- `SEC_FILING`: direct EDGAR filing evidence.
+- `SEC_DISCOVERY_UNVERIFIED`: filing-like discovery from the independent news-search fallback while direct EDGAR access is unavailable; this is an alert to verify, not primary-source confirmation.
 - `REPORTED_TERMS`: major-media report, not company-confirmed.
 - `UNCONFIRMED_RUMOR`: other ADR/listing media mention.
 - `OFFICIAL_NEWS`: other company news.
