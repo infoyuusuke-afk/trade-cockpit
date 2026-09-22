@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -130,6 +131,29 @@ class KioxiaBreakingRadarTests(unittest.TestCase):
             {"source": "SEC EDGAR", "status": "ERROR"},
             {"source": "Google News RSS targeted queries", "status": "ERROR"},
         ]))
+
+    def test_sec_failure_keeps_published_state_degraded(self):
+        now = datetime(2026, 9, 22, 18, 0, tzinfo=JST)
+        health = [
+            {"source": "Kioxia IR", "status": "OK"},
+            {"source": "SEC EDGAR", "status": "ERROR", "errors": ["HTTPError:403"]},
+            {"source": "Google News RSS targeted queries", "status": "OK"},
+        ]
+        self.assertTrue(bootstrap_health_ok(health))
+        state, alerts = build_state([], {"bootstrap_complete": True, "events": []}, health, now)
+        self.assertEqual(state["status"], "DEGRADED")
+        self.assertEqual(alerts, [])
+        self.assertFalse(state["trading_enabled"])
+        self.assertFalse(state["real_submit_allowed"])
+
+    def test_breaking_panel_is_generated_from_update_template(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "scripts" / "update.py").read_text(encoding="utf-8")
+        validator = (root / "scripts" / "validate_output.py").read_text(encoding="utf-8")
+        self.assertIn('id="kio-breaking-state"', source)
+        self.assertIn('fetch("kioxia_breaking_radar.json', source)
+        self.assertIn('"kio-breaking-state"', validator)
+        self.assertIn('"kioxia_breaking_radar.json"', validator)
 
 
 if __name__ == "__main__":

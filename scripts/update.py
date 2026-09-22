@@ -2600,7 +2600,9 @@ document.addEventListener("DOMContentLoaded",()=>{
  const jstClock=()=>{const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Tokyo",weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).filter(x=>x.type!=="literal").map(x=>[x.type,x.value]));return {weekday:p.weekday,minutes:Number(p.hour)*60+Number(p.minute)}};
  const isTseVoiceWindow=()=>{const t=jstClock(),weekday=!["Sat","Sun"].includes(t.weekday),morning=t.minutes>=9*60&&t.minutes<=11*60+30,afternoon=t.minutes>=12*60+30&&t.minutes<=15*60+30;return weekday&&(morning||afternoon)};
  window.cockpitLiveSpeechEnabled=true;
- const setVoiceLabel=()=>voiceButtons.forEach(button=>{button.textContent=!isTseVoiceWindow()?"🔇 ザラバ終了":voiceOn?"🔊 音声ON":"🔇 音声OFF";button.title="東証9:00～11:30・12:30～15:30のみ。PTSデータには対応していません";});setVoiceLabel();
+ const marketStatusEls=[...document.querySelectorAll("#unified-mode-market-status")];
+ const setMarketStatus=()=>{const open=isTseVoiceWindow();marketStatusEls.forEach(el=>{el.classList.toggle("open",open);const b=el.querySelector("b");if(b)b.textContent=open?"取引時間中":"取引時間外";});};
+ const setVoiceLabel=()=>{setMarketStatus();voiceButtons.forEach(button=>{const open=isTseVoiceWindow();button.textContent=open?(voiceOn?"🔊":"🔇"):"🔇";button.title=!open?"東証9:00～11:30・12:30～15:30のみ。PTSデータには対応していません":(voiceOn?"音声読み上げON（クリックでOFF）":"音声読み上げOFF（クリックでON）");});};setVoiceLabel();
  window.cockpitSpeak=msg=>{if(!voiceOn||!msg||!isTseVoiceWindow()||window.cockpitLiveSpeechEnabled===false||!("speechSynthesis" in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(msg);u.lang="ja-JP";u.rate=1.05;window.speechSynthesis.speak(u);};
  voiceButtons.forEach(button=>button.onclick=()=>{if(!isTseVoiceWindow()){voiceOn=false;localStorage.setItem("cockpitVoiceV1","off");setVoiceLabel();return}voiceOn=!voiceOn;localStorage.setItem("cockpitVoiceV1",voiceOn?"on":"off");setVoiceLabel();if(voiceOn)window.cockpitSpeak("AIコクピットの自動読み上げを開始します");});
  const loadLive=()=>fetch("live_focus.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(d=>{
@@ -2875,13 +2877,13 @@ document.addEventListener("DOMContentLoaded",()=>{
 .ifo-card .fp-price-row{{margin:10px 0}}.ifo-card .fp-price{{font-size:22px}}
 .fp-range{{display:flex;flex-direction:column;gap:3px}}.fp-range-track{{position:relative;height:4px;border-radius:2px;background:linear-gradient(90deg,#ef646b,#5a6472 50%,#3ed5ae)}}.fp-range-fill{{position:absolute;top:50%;width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid #0b1722;box-shadow:0 0 0 1px #0006;transform:translate(-50%,-50%)}}.fp-range-labels{{display:flex;justify-content:space-between;font-size:10px;color:#8398a7;font-variant-numeric:tabular-nums}}.fp-range-empty{{padding:2px 0}}.fp-range-empty small{{color:#5c6874}}.focus-chart-wrap,.focus-order{{background:#071019;border:1px solid #2a475d;border-radius:10px;overflow:hidden}}#focus-chart{{width:100%;height:430px;border:0;display:block}}.focus-order{{padding:12px;overflow:auto}}.focus-symbol{{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;border-bottom:1px solid #314354;padding-bottom:9px}}.focus-symbol h3{{margin:0;color:#fff;font-size:18px}}.focus-symbol>b{{font-size:21px;color:#63e990}}.focus-action{{margin:11px 0;padding:12px;border-radius:9px;background:#113421;border:1px solid #2b9c58}}.focus-action span,.focus-action small{{display:block}}.focus-action strong{{display:block;font-size:25px;color:#65ef91;margin:4px 0}}.focus-price-grid{{display:grid;grid-template-columns:1fr 1fr;gap:7px}}.focus-price-grid>div{{background:#101e2a;border-radius:7px;padding:9px}}.focus-price-grid span{{display:block;color:#9fb0bf}}.focus-price-grid b{{font-size:17px}}.focus-supply{{margin-top:9px;padding:9px;border-left:4px solid #ffcf4a;background:#191a14}}.focus-supply b,.focus-supply span{{display:block}}.focus-rule{{color:#ffd75e;border-top:1px solid #4a3d16;padding-top:9px}}.focus-empty{{padding:28px;text-align:center;font-size:17px}}@media(max-width:1100px){{.focus-layout{{grid-template-columns:240px 1fr}}.focus-order{{grid-column:1/-1}}}}@media(max-width:800px){{.focus-layout{{grid-template-columns:1fr}}.focus-order{{grid-column:auto}}#focus-chart{{height:360px}}.focus-title{{align-items:flex-start;flex-direction:column}}}}
 </style>
-<link rel="stylesheet" href="theme.css?v=20260919-unifiedwidth">
+<link rel="stylesheet" href="theme.css?v=20260923-deeperblack">
 <link rel="stylesheet" href="focus.css?v=20260915-power3">
 <link rel="stylesheet" href="next-theme-radar.css?v=c024-1">
 <script defer src="next-theme-radar.js?v=c024-1"></script>
-<style>.unified-mode{{margin:8px 6px 0;padding:10px 14px;border:1px solid #365267;border-radius:10px;background:#09141d;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}}.unified-mode .lamp{{width:12px;height:12px;border-radius:50%;background:#77838c;box-shadow:0 0 0 5px #77838c18}}.unified-mode.live{{border-color:#28c998;background:#082019}}.unified-mode.live .lamp{{background:#35e2ae;box-shadow:0 0 16px #35e2ae}}.unified-mode.stale{{border-color:#f0b74c}}.unified-mode strong{{font-size:16px}}.unified-mode span{{color:#a8bbc9}}.unified-mode b{{color:#fff}}.unified-mode small{{color:#a8bbc9;display:block;margin-top:2px}}@media(max-width:700px){{.unified-mode{{grid-template-columns:auto 1fr auto}}.unified-mode>b{{grid-column:3}}.unified-mode .voice-toggle{{grid-column:1/-1}}}}</style>
+<style>.unified-mode{{margin:8px 6px 0;padding:10px 14px;border:1px solid #272A30;border-radius:10px;background:#101114;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}}.unified-mode .lamp{{width:12px;height:12px;border-radius:50%;background:#63676e;box-shadow:0 0 0 5px #63676e18}}.unified-mode.live{{border-color:#1f4a37;background:#101114}}.unified-mode.live .lamp{{background:#35e2ae;box-shadow:0 0 10px #35e2ae66}}.unified-mode.stale{{border-color:#6b5426}}.unified-mode strong{{font-size:16px;color:#e7e9eb}}.unified-mode span{{color:#9aa0a6}}.unified-mode b{{color:#c7cacd;font-size:12px;font-weight:500}}.unified-mode small{{color:#63676e;display:block;margin-top:2px}}.unified-mode-controls{{display:flex;align-items:center;gap:8px}}.market-status-pill{{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#15171B;border:1px solid #272A30;color:#7a7f86;font-size:10.5px;white-space:nowrap}}.market-status-pill .dot{{width:6px;height:6px;border-radius:50%;background:#4a4e55;flex:none}}.market-status-pill.open{{color:#8fe3c0;border-color:#1f4a37}}.market-status-pill.open .dot{{background:#35e2ae;box-shadow:0 0 5px #35e2ae}}.voice-toggle{{width:30px;height:30px;padding:0;border-radius:50%;background:#15171B;border:1px solid #272A30;color:#c7cacd;font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center}}@media(max-width:700px){{.unified-mode{{grid-template-columns:auto 1fr auto}}.unified-mode>b{{grid-column:3}}.unified-mode .unified-mode-controls{{grid-column:1/-1}}}}</style>
 <header><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／統一取引日 {quality_gate['market_date'] or '取得不能'}</div></div></header>
-<div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><button class="voice-toggle" data-voice-toggle type="button" style="padding:5px 12px;border-radius:7px">🔇 音声OFF</button><b id="unified-mode-time">—</b></div></div><main>
+<div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><main>
 {quality_html}
 {investor_regime_html}
 {live_focus_html}
@@ -2927,7 +2929,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div class="step"><b>4　不一致は見送り</b>相関株が逆行、または条件3/5以下なら主役銘柄へ飛び乗らない。</div>
 </div>
 <p class="warning"><b>キオクシア―任天堂は固定ルールではありません。</b> 20日・60日・当日5分足の逆相関が安定した期間だけ有効。サンディスクは取引時間が重ならないため「米国前日→キオクシア翌日」で判定します。9:15までは方向を決めず、OR15・VWAP・EMA9/20・高安の4/5一致を優先します。</p></section>
-<section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）本日1分足予測・5分足類似日 <button class="voice-toggle" data-voice-toggle type="button" style="float:right;padding:5px 12px;border-radius:7px">🔇 音声OFF</button></h2>
+<section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）本日1分足予測・5分足類似日 <button class="voice-toggle" data-voice-toggle type="button" style="float:right">🔇</button></h2>
 <div id="kioxia-calendar-meta" class="sub">直近60日の5分足を照合中...</div>
 <div id="kio-decision-panel" class="rotation-grid" style="margin:10px 0">
  <div class="rotation-box"><b>利用判定</b><strong id="kio-decision-grade">計算中</strong></div>
@@ -2989,6 +2991,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  <section class="kio-subpanel"><h3>GU／GD幅別・過去5分足統計</h3><div id="kio-gap-current" class="warning">寄り値確定後に該当帯を強調</div><div id="kio-gap-study" class="kio-gap-study"><div class="focus-empty">集計中...</div></div><p>3日未満は傾向として使用しません。確率は過去記述であり当日の保証ではありません。</p></section>
  <section class="kio-subpanel"><h3>5分足 EMA・VWAP 実戦設計</h3><div id="kio-ma-playbook" class="kio-playbook"><div class="focus-empty">計算中...</div></div></section>
 </div>
+<section class="kio-subpanel kio-catalyst-panel"><div class="kio-section-head"><div><span>5分監視・PC不要</span><h3>ADR／IR／SEC 速報レーダー</h3></div><b id="kio-breaking-state">初期化中</b></div><p id="kio-breaking-policy" class="sub">一次情報・SEC・主要報道を監視中...</p><div id="kio-breaking-list" class="kio-catalyst-list"><div class="focus-empty">速報監視を初期化中...</div></div></section>
 <section class="kio-subpanel kio-catalyst-panel"><div class="kio-section-head"><div><span>一次情報だけで更新</span><h3>新製品・技術説明会・設備投資 材料レーダー</h3></div><b id="kio-catalyst-count">確認中</b></div><p id="kio-catalyst-policy" class="sub">公式情報を照合中...</p><div id="kio-catalyst-list" class="kio-catalyst-list"><div class="focus-empty">材料を確認中...</div></div></section>
 <div id="kioxia-supply" class="kio-supply-panel">
  <div class="kio-supply-head"><div><span>信用需給（週次）</span><b id="kio-supply-phase">需給確認中</b></div><small id="kio-supply-date">基準日を確認中</small></div>
@@ -3512,8 +3515,9 @@ Promise.all([
  fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()),
  fetch("credit_supply.json?t=" + Date.now()).then(r => r.json()).catch(() => ({{stocks:{{}}}})),
  fetch("kioxia_catalysts.json?t=" + Date.now()).then(r => r.json()).catch(() => ({{items:[]}})),
- fetch("kioxia_prediction_history.json?t=" + Date.now()).then(r => r.json()).catch(() => ({{summary:{{}}}}))
-]).then(([d,credit,catalysts,audit]) => {{
+ fetch("kioxia_prediction_history.json?t=" + Date.now()).then(r => r.json()).catch(() => ({{summary:{{}}}})),
+ fetch("kioxia_breaking_radar.json?t=" + Date.now()).then(r => r.json()).catch(() => ({{status:"UNAVAILABLE",events:[],source_health:[]}}))
+]).then(([d,credit,catalysts,audit,breaking]) => {{
   const p = d.prediction || {{}};
   const decision = d.decision || {{}};
   const grade = document.getElementById("kio-decision-grade");
@@ -3577,6 +3581,21 @@ Promise.all([
   document.getElementById("kio-gap-study").innerHTML=gaps.map(x=>"<div class='kio-gap-row "+(x.usable?"":"disabled")+"'><b>"+x.bucket+"</b><span>n="+x.sample+(x.usable?"":"・不足")+"</span>"+(x.usable?"<small>寄り→引け上 "+x.close_up_rate+"%／前日終値へ窓埋め "+x.gap_fill_rate+"%<br>中央値 "+signedPct(x.median_day_ret,2)+"／日中最大上振れ "+signedPct(x.median_max_up,2)+"／下振れ "+signedPct(x.median_max_down,2)+"</small>":"<small>サンプル3日未満。売買判断に使用しない</small>")+"</div>").join("")||"<div class='focus-empty'>統計不足</div>";
   const mp=d.ma_playbook||{{}};
   document.getElementById("kio-ma-playbook").innerHTML="<p class='warning'>"+(mp.note||"")+"</p><div><b>上昇・初押し</b><span>"+(mp.long_first_pullback||"—")+"</span></div><div><b>上昇・深押し</b><span>"+(mp.long_deep_pullback||"—")+"</span></div><div><b>下降・初戻り</b><span>"+(mp.short_first_return||"—")+"</span></div><div><b>下降・深戻り</b><span>"+(mp.short_deep_return||"—")+"</span></div><div class='danger'><b>往復ピンタ回避</b><span>"+(mp.whipsaw_guard||"—")+"</span></div>";
+  const breakingEvents=(breaking.events||[]).slice(0,8);
+  const breakingState=document.getElementById("kio-breaking-state");
+  breakingState.textContent=(breaking.status==="READY"?"監視中":breaking.status==="DEGRADED"?"一部取得停止":breaking.status==="BOOTSTRAP_PENDING"?"初期化待ち":"取得停止");
+  breakingState.className=breaking.status==="READY"?"up":"warning";
+  document.getElementById("kio-breaking-policy").textContent=(breaking.policy||"速報監視データを取得できません")+"／新規高重要度はGitHub Issue #179へ通知";
+  document.getElementById("kio-breaking-list").innerHTML=breakingEvents.map(x=>{{
+    const urgent=x.urgent?"⚡ ":"";
+    const published=(x.published_at||"").replace("T"," ").slice(0,16);
+    const source=esc(x.source||"不明");
+    const title=esc(x.title||"");
+    const stage=esc(x.stage||"UNCLASSIFIED");
+    const url=esc(x.url||"#");
+    const priority=Number(x.priority||0);
+    return "<article class='kio-catalyst "+(priority>=85?"":"disabled")+"'><div><span>"+urgent+published+"｜"+source+"</span><b>"+stage+" / P"+priority+"</b></div><h4>"+title+"</h4><p><strong>初回検知：</strong>"+esc(x.first_seen_at||"—")+"</p><small>速報は売買サインではありません。一次情報と報道を分離して確認します。</small><a href='"+url+"' target='_blank' rel='noopener'>情報源を確認</a></article>";
+  }}).join("")||"<div class='focus-empty'>新規速報なし／初回スキャン待ち</div>";
   document.getElementById("kio-catalyst-policy").textContent=catalysts.policy||"公式材料を取得できません";
   document.getElementById("kio-catalyst-count").textContent=(catalysts.verified_count||0)+"件確認";
   document.getElementById("kio-catalyst-list").innerHTML=(catalysts.items||[]).map(x=>"<article class='kio-catalyst "+(x.verified?"":"disabled")+"'><div><span>"+x.date+"｜"+x.kind+"</span><b>"+x.stage+"</b></div><h4>"+x.title+"</h4><p><strong>確認済み：</strong>"+x.fact+"</p><p><strong>先回り点：</strong>"+x.expectation+"</p><p class='warning'><strong>未確認・リスク：</strong>"+x.risk+"</p><small>次の確認："+x.next_checkpoint+"／"+x.impact+"</small><a href='"+x.source_url+"' target='_blank' rel='noopener'>公式一次情報</a></article>").join("")||"<div class='focus-empty'>材料取得待ち・売買利用禁止</div>";
