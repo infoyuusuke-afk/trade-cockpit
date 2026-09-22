@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-22 19:01:50 JST",
+  "updated_at": "2026-09-22 19:04:28 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -5701,37 +5701,37 @@
     },
     "VIX": {
       "ok": true,
-      "price": 14.85,
+      "price": 14.82,
       "open": 14.64,
       "high": 14.95,
       "low": 14.64,
       "prev_close": 14.87,
-      "change_pct": -0.13,
-      "ret5": -13.66,
+      "change_pct": -0.34,
+      "ret5": -13.84,
       "ret5_prev": 9.41,
-      "ret20": -3.88,
+      "ret20": -4.08,
       "rvol": 0,
       "turnover": 0,
       "atr14": 1.35,
-      "atr_pct": 9.07,
-      "ma5": 15.54,
+      "atr_pct": 9.09,
+      "ma5": 15.53,
       "ma20": 15.63,
       "ma60": 16.12,
-      "from_ma5": -4.42,
-      "from_ma20": -4.99,
+      "from_ma5": -4.57,
+      "from_ma20": -5.17,
       "touch_ma5": false,
-      "to_high20": -21.59,
-      "to_high52": -57.93,
+      "to_high20": -21.75,
+      "to_high52": -58.02,
       "bb_upper": 17.8,
       "bb_lower": 13.46,
-      "bb_width": 27.78,
-      "bb_width_change": 1.39,
+      "bb_width": 27.81,
+      "bb_width_change": 1.42,
       "bb_percentile": 41.7,
       "bb_expansion_score": 20.4,
-      "day_score": -3.91,
-      "swing_score": -6.77,
-      "stable_score": -1.7,
-      "momentum_score": -6.07,
+      "day_score": -4.07,
+      "swing_score": -6.82,
+      "stable_score": -1.73,
+      "momentum_score": -6.09,
       "high_score": 0.0,
       "chart": [
         {
@@ -6051,13 +6051,13 @@
           "o": 14.64,
           "h": 14.95,
           "l": 14.64,
-          "c": 14.85,
+          "c": 14.82,
           "v": 0
         }
       ],
       "data_date": "2026-09-22",
       "data_age_days": 0,
-      "chart_last_close": 14.85,
+      "chart_last_close": 14.82,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
@@ -6073,10 +6073,10 @@
     },
     "ドル円": {
       "ok": true,
-      "price": 156.88,
+      "price": 156.87,
       "open": 157.27,
       "high": 157.78,
-      "low": 156.84,
+      "low": 156.82,
       "prev_close": 157.05,
       "change_pct": -0.11,
       "ret5": 1.61,
@@ -6084,7 +6084,7 @@
       "ret20": -1.42,
       "rvol": 0,
       "turnover": 0,
-      "atr14": 1.94,
+      "atr14": 1.95,
       "atr_pct": 1.24,
       "ma5": 156.27,
       "ma20": 156.66,
@@ -6103,7 +6103,7 @@
       "day_score": 1.48,
       "swing_score": -0.79,
       "stable_score": 0.74,
-      "momentum_score": 4.35,
+      "momentum_score": 4.34,
       "high_score": 0.0,
       "chart": [
         {
@@ -6422,14 +6422,14 @@
           "t": "2026-09-22",
           "o": 157.27,
           "h": 157.78,
-          "l": 156.84,
-          "c": 156.88,
+          "l": 156.82,
+          "c": 156.87,
           "v": 0
         }
       ],
       "data_date": "2026-09-22",
       "data_age_days": 0,
-      "chart_last_close": 156.88,
+      "chart_last_close": 156.87,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
@@ -44166,8 +44166,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-09-22T19:00:54+09:00",
-    "decision_at": "2026-09-22T19:00:54+09:00",
+    "generated_at": "2026-09-22T19:03:26+09:00",
+    "decision_at": "2026-09-22T19:03:26+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -44481,13 +44481,13 @@
   },
   "precision_top5": [],
   "strong_yen_top5": {
-    "usd_jpy": 156.872,
-    "usd_jpy_change_pct": -0.29,
+    "usd_jpy": 156.856,
+    "usd_jpy_change_pct": -0.3,
     "usd_jpy_ret5": 1.61,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-09-22T19:01:00+09:00",
+    "fx_observed_at": "2026-09-22T19:04:00+09:00",
     "statement_study": {
-      "updated_at": "2026-09-22 19:01:44 JST",
+      "updated_at": "2026-09-22 19:04:20 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -44855,7 +44855,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-09-22 19:01:31 JST",
+    "credit_supply_updated_at": "2026-09-22 19:04:06 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -45079,14 +45079,14 @@
   "bb_expansion_candidates": [],
   "morning_snapshot": {
     "date": "2026-09-22",
-    "fixed_at": "2026-09-22 19:01:50 JST",
+    "fixed_at": "2026-09-22 19:04:28 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-09-22",
-    "fixed_at": "2026-09-22 19:02:40 JST",
+    "fixed_at": "2026-09-22 19:05:21 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
@@ -45115,7 +45115,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-22 19:02:40 JST",
+        "signal_time": "2026-09-22 19:05:21 JST",
         "source": "morning_snapshot"
       },
       {
@@ -45144,7 +45144,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-22 19:02:40 JST",
+        "signal_time": "2026-09-22 19:05:21 JST",
         "source": "morning_snapshot"
       }
     ]
