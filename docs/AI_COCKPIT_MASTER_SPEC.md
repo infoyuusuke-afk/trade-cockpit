@@ -429,6 +429,7 @@ The purpose is not to let an LLM bypass deterministic controls. The purpose is t
 | Chief AI Strategy Supervisor | 総合AI戦略統括 | Aggregate lane outputs, surface conflicts, produce the final advisory strategy view |
 | Data Quality Supervisor | データ品質統括 | Freshness, source integrity, missing/stale/conflicting evidence, point-in-time checks |
 | Market Regime Supervisor | 地合い・レジーム統括 | UP/DOWN/RANGE/HIGH_VOL/RATE_SHOCK/EVENT_LOCK/UNKNOWN state |
+| Global Macro Supervisor | グローバルマクロ統括 | Rates, yield curves, FX, commodities, volatility and global risk context as regime modifiers |
 | SCALP Supervisor | スキャル戦略統括 | Seconds-to-minutes OR5/VWAP/EMA/flow/tape scenarios |
 | Event Supervisor | イベント戦略統括 | Theme/material/TDnet/earnings/sudden-volume event lane |
 | Realtime Daytrade Supervisor | リアルタイム・デイトレ戦略統括 | Minutes-to-hours intraday candidate management |
@@ -503,6 +504,11 @@ MS2 / TradingView / public event feeds
         v
 Data Quality Supervisor
         |
+        +--> Global Macro Supervisor
+        |          |
+        |          +--> Yield Curve Engine
+        |          +--> FX / Commodities / Volatility context
+        |          |
         +--> Market Regime Supervisor
         |
         +--> SCALP Supervisor
@@ -635,6 +641,173 @@ AI Strategy LIVE emits sanitized high-level events such as:
 These can be consumed by the separate **Trading Journal System / AIトレード日記システム**.
 
 Raw private MS2/account/order payloads must not cross that boundary.
+
+---
+
+
+## 4.7.3 Global Macro Supervisor / グローバルマクロ統括
+
+The Strategy layer shall include a dedicated **Global Macro Supervisor / グローバルマクロ統括**.
+
+Its output is a **Regime Modifier / 地合い補正要因**, not a direct BUY/SHORT trigger.
+
+The purpose is to prevent Japanese-equity strategies from evaluating the same technical setup identically under materially different global macro conditions.
+
+### Core macro inputs / 主要マクロ入力
+
+At minimum, support point-in-time observations for:
+
+| English | 日本語 | Role |
+|---|---|---|
+| US 2Y Yield | 米2年金利 | Near-term Fed policy expectations |
+| US 10Y Yield | 米10年金利 | Growth/valuation pressure and long-rate regime |
+| US 30Y Yield | 米30年金利 | Long-duration inflation/fiscal pressure |
+| Japan 2Y JGB | 日本2年金利 | BOJ near-term policy expectations |
+| Japan 10Y JGB | 日本10年金利 | Domestic long-rate regime |
+| Japan 20Y / 30Y / 40Y JGB | 日本20年・30年・40年金利 | Super-long curve/fiscal pressure |
+| US-Japan 2Y Spread | 日米2年金利差 | FX/policy differential context |
+| US-Japan 10Y Spread | 日米10年金利差 | FX/cross-border capital-flow context |
+| Real Yield | 実質金利 | Growth equities / Gold sensitivity |
+| Breakeven Inflation | 期待インフレ率 | Inflation-expectation decomposition |
+| WTI Crude Oil | WTI原油 | Inflation, energy, transport and cost pressure |
+| Brent Crude Oil | ブレント原油 | Global energy / geopolitical shock context |
+| Gold | ゴールド | Real-yield / USD / risk-aversion context |
+| Copper | 銅 | Global/China growth-sensitive context |
+| USD/JPY | ドル円 | Japanese exporters / imported inflation |
+| VIX | VIX指数 | Global risk-off intensity |
+| Nikkei Futures | 日経先物 | Immediate Japanese-equity market context |
+| SOX / Nasdaq | SOX / NASDAQ | Semiconductor / growth risk context |
+
+Do not infer unavailable values. Missing/stale inputs must remain explicitly missing/stale.
+
+### Yield Curve Engine / イールドカーブ分析エンジン
+
+The Global Macro Supervisor shall contain a dedicated **Yield Curve Engine / イールドカーブ分析エンジン**.
+
+Minimum curve spreads:
+
+#### United States / 米国
+- 3m10y / 3か月-10年
+- 2s10s / 2年-10年
+- 5s30s / 5年-30年
+- 10s30s / 10年-30年
+
+#### Japan / 日本
+- 2s10s / 2年-10年
+- 5s10s / 5年-10年
+- 10s20s / 10年-20年
+- 10s30s / 10年-30年
+- 10s40s / 10年-40年 where source coverage is reliable
+
+Also track:
+
+- current level;
+- 1-session change;
+- 5-session change;
+- 20-session change;
+- rolling z-score where sample size is adequate;
+- inversion / normalization state;
+- source freshness;
+- observation timestamp;
+- curve-regime classification.
+
+### Curve regime classification / カーブ状態分類
+
+At minimum classify:
+
+- **Bull Steepener / ブル・スティープナー**
+- **Bull Flattener / ブル・フラットナー**
+- **Bear Steepener / ベア・スティープナー**
+- **Bear Flattener / ベア・フラットナー**
+- **INVERTED / 逆イールド**
+- **NORMALIZING / 正常化中**
+- **UNKNOWN / 判定不能**
+
+Classification must use explicit deterministic rules and versioned thresholds. Do not let an LLM assign the curve state from prose alone.
+
+### Macro interpretation / マクロ解釈
+
+The system must not apply simplistic one-factor rules such as:
+
+- "oil up => Nikkei short";
+- "10Y yield up => semiconductor short";
+- "inverted curve => sell today".
+
+Instead, distinguish at least:
+
+- growth-driven rate rise vs inflation-driven rate rise;
+- supply-shock oil rise vs demand-driven oil rise;
+- real-yield move vs inflation-expectation move;
+- US-rate move vs Japan-rate move;
+- widening vs narrowing US-Japan rate differentials;
+- broad risk-off vs sector-specific weakness.
+
+Where causal decomposition is not supported by evidence, state UNKNOWN rather than inventing a narrative.
+
+### Strategy Router integration / Strategy Router連携
+
+The Global Macro Supervisor output is consumed by:
+
+~~~text
+Global Macro Supervisor
+        |
+        +--> Market Regime Supervisor
+        |
+        +--> Sector Regime
+        |
+        +--> Strategy Router
+                 |
+                 +--> SCALP
+                 +--> REALTIME / DAYTRADE
+                 +--> OVERNIGHT
+                 +--> SWING
+                 +--> VALUE / LONG_CATALYST
+                 +--> EVENT / TOB_MA where relevant
+~~~
+
+Use macro state to modify:
+
+- strategy eligibility;
+- LONG/SHORT priority;
+- confidence band;
+- position-size multiplier proposal;
+- event lock / caution state;
+- sector preference;
+- overnight gap-risk treatment.
+
+Do **not** use Global Macro or Yield Curve state as a standalone entry trigger.
+
+Intraday technical triggers such as OR5/OR15/VWAP/EMA/Flow remain separately defined and versioned.
+
+### Point-in-time and safety requirements
+
+- every macro observation must carry observed_at, source, timezone, freshness and provenance;
+- no revised/future macro value may leak into historical/backtest decisions;
+- stale/missing macro data => UNKNOWN or strategy-specific fail-closed handling;
+- no forward-fill across materially stale windows for decision use;
+- historical research must use the value known at that historical timestamp;
+- source disagreements must be preserved or reconciled explicitly;
+- no macro component can bypass Risk Gate, Permission Gate, Conflict Resolver or Owner approval;
+- real_submit_allowed remains false.
+
+### Validation contract
+
+Before any macro factor is allowed to affect live strategy ranking or risk sizing, test its incremental contribution separately.
+
+At minimum report:
+
+- N;
+- EV;
+- PF;
+- max DD;
+- MFE;
+- MAE;
+- slippage-adjusted result where relevant;
+- confidence interval;
+- regime stability;
+- interaction with symbol class / sector / horizon.
+
+If evidence is insufficient, status remains INSUFFICIENT_SAMPLE / UNKNOWN.
 
 ---
 
