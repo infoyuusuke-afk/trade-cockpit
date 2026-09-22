@@ -39,6 +39,22 @@ DEFAULT_STALE_AFTER_SECONDS = 300
 FEATURE_FLAG_LIVE_INFLUENCE_ENABLED = False
 
 
+def _stale_threshold_for(supervisor, stale_after_seconds):
+    """Resolve the freshness window for one Supervisor's lane.
+
+    `stale_after_seconds` may be a single number (applied to every
+    Supervisor, the original Phase 1 behaviour) or a dict mapping
+    supervisor -> seconds with a required "default" key for any
+    Supervisor not explicitly listed. Different lanes legitimately have
+    different natural cadences (an intraday SCALP candidate goes stale
+    far sooner than a multi-week VALUE_LONG_CATALYST one); a single
+    global threshold cannot honestly represent both.
+    """
+    if isinstance(stale_after_seconds, dict):
+        return stale_after_seconds.get(supervisor, stale_after_seconds["default"])
+    return stale_after_seconds
+
+
 def route_symbol(symbol, snapshot_entry, *, now, data_quality_ok=None,
                   stale_after_seconds=DEFAULT_STALE_AFTER_SECONDS):
     """Route one symbol's AI Strategy LIVE snapshot entry to a RouterDecision.
@@ -48,10 +64,13 @@ def route_symbol(symbol, snapshot_entry, *, now, data_quality_ok=None,
     `data_quality_ok` is the DATA_QUALITY Supervisor's own read
     (True/False/None-for-not-yet-known), passed explicitly since Phase 1
     does not implicitly look anything up -- callers own that wiring.
+    `stale_after_seconds` is a single number or a per-supervisor dict;
+    see _stale_threshold_for().
     """
     reasons = []
     supervisor_directions = {}
     conflict = False
+    stale_supervisors = []
 
     if snapshot_entry is None:
         reasons.append("NO_SUPERVISOR_DATA")
@@ -61,12 +80,12 @@ def route_symbol(symbol, snapshot_entry, *, now, data_quality_ok=None,
             sup: st["direction"] for sup, st in snapshot_entry["supervisors"].items()
         }
         conflict = snapshot_entry["conflict"]
-        stale = [
+        stale_supervisors = sorted(
             sup for sup, st in snapshot_entry["supervisors"].items()
             if st["last_update_age_seconds"] < 0
-            or st["last_update_age_seconds"] > stale_after_seconds
-        ]
-        if stale:
+            or st["last_update_age_seconds"] > _stale_threshold_for(sup, stale_after_seconds)
+        )
+        if stale_supervisors:
             reasons.append("STALE_SUPERVISOR_DATA")
             state = "UNKNOWN"
         elif data_quality_ok is False:
@@ -98,6 +117,7 @@ def route_symbol(symbol, snapshot_entry, *, now, data_quality_ok=None,
         "state": state,
         "reasons": reasons,
         "supervisor_directions": supervisor_directions,
+        "stale_supervisors": stale_supervisors,
         "data_quality_ok": data_quality_ok,
         "conflict": conflict,
         "feature_flag_enabled": FEATURE_FLAG_LIVE_INFLUENCE_ENABLED,

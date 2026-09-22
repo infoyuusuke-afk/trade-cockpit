@@ -34,6 +34,18 @@ on:
       - "scripts/live_focus.py"
       - "scripts/investor_regime.py"
       - "tests/test_investor_regime.py"
+      - "scripts/build_ai_strategy_live.py"
+      - "scripts/ai_strategy_live.py"
+      - "scripts/ai_strategy_live_view.py"
+      - "scripts/strategy_router.py"
+      - "data/ai_strategy_live_board.schema.json"
+      - "data/supervisor_output.schema.json"
+      - "data/router_decision.schema.json"
+      - "data/conflict_state.schema.json"
+      - "tests/test_build_ai_strategy_live.py"
+      - "tests/test_ai_strategy_live.py"
+      - "tests/test_ai_strategy_live_view.py"
+      - "tests/test_strategy_router.py"
       - "investor_regime.json"
       - "ms2_live/**"
       - "watchlist.json"
@@ -95,6 +107,7 @@ jobs:
         run: |
           python scripts/investor_regime.py
           python scripts/signal_scan.py
+          python -m scripts.build_ai_strategy_live
           python scripts/correlation_scan.py
           python scripts/stockscope_credit.py
           python scripts/kioxia_catalysts.py
@@ -117,13 +130,14 @@ jobs:
 
       - name: Commit and push updated files
         run: |
-          if git diff --quiet -- index.html data.json signals.json correlations.json credit_supply.json kioxia_5m_calendar.json kioxia_catalysts.json kioxia_prediction_history.json event_calendar.json world_market.json fx_statement_study.json market_ranking_watch.json tradingview_screener_watch.json live_focus.json morning_snapshot.json paper_trade_history.json weekly_review.json investor_regime.json data/jpx_investor day_ifo_candidates_short.json reliability_report.json margin_caution.json vwap_entry_analysis.json; then
+          if git diff --quiet -- index.html data.json signals.json ai_strategy_live.json correlations.json credit_supply.json kioxia_5m_calendar.json kioxia_catalysts.json kioxia_prediction_history.json event_calendar.json world_market.json fx_statement_study.json market_ranking_watch.json tradingview_screener_watch.json live_focus.json morning_snapshot.json paper_trade_history.json weekly_review.json investor_regime.json data/jpx_investor day_ifo_candidates_short.json reliability_report.json margin_caution.json vwap_entry_analysis.json; then
             echo "No changes to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html data.json signals.json
+          test ! -f ai_strategy_live.json || git add ai_strategy_live.json
           test ! -f correlations.json || git add correlations.json
           test ! -f credit_supply.json || git add credit_supply.json
           test ! -f kioxia_5m_calendar.json || git add kioxia_5m_calendar.json

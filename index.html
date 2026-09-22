@@ -1,5 +1,7 @@
 <!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="900"><title>AIトレードコクピット</title><script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 <style>*{box-sizing:border-box}body{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}header{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}h1{margin:0;font-size:25px}h2{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}h3{color:#9fc8ff;margin:15px 0 7px}a{color:#70c7ff}.sub{color:#aebdcb;margin-top:4px}.tag{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}main{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}.card{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}.wide{grid-column:1/-1}table{width:100%;border-collapse:collapse}th{background:#1b2a39}th,td{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}th:nth-child(-n+2),td:nth-child(-n+2){text-align:left}tr:nth-child(even) td{background:#111923}.up{color:#52e46f;font-weight:900}.down{color:#ff6262;font-weight:900}small{color:#bac6d2}.warning{color:#ffe66d}.steps,.rotation-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.step,.rotation-box{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}.step b,.rotation-box b{display:block;color:#ffe66d;font-size:15px}.rotation-box strong{font-size:17px;color:#f4f7fa}.pill{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}.prep{background:#f2a900;color:#111}.in{background:#52e46f;color:#071009}.long{background:#2f80ed;color:white}.short{background:#e23b3b;color:white}.ifo-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:9px 0}.ifo-summary .rotation-box strong{font-size:19px}.ifo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ifo-card{background:linear-gradient(145deg,#101c2a,#081019);border:1px solid #3b6588;border-radius:10px;padding:11px;box-shadow:0 8px 22px #0007}.ifo-head{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;border-bottom:1px solid #35506a;padding-bottom:8px}.ifo-head h3{margin:0;color:#f4f7fa;font-size:16px}.ifo-rank{background:#ffe66d;color:#101820;font-weight:900;border-radius:6px;padding:5px 7px}.ifo-score{font-size:18px;color:#52e46f}.ifo-columns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.order-box{background:#07101a;border:1px solid #425a70;border-radius:8px;padding:9px}.order-box>b{display:block;color:#79c7ff;margin-bottom:7px}.exit-order>b{color:#58e3ae}.order-box dl{display:grid;grid-template-columns:minmax(88px,.9fr) 1.25fr;gap:4px 8px;margin:0}.order-box dt{color:#9eafbf}.order-box dd{margin:0;text-align:right}.ifo-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:8px 0}.ifo-metrics span{background:#182637;border-radius:5px;padding:6px;text-align:center}.ifo-card p{line-height:1.55;margin:6px 0}footer{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}@media(max-width:800px){header{align-items:flex-start;flex-direction:column}main{grid-template-columns:1fr}.wide{grid-column:1}table{min-width:700px}.steps,.rotation-grid,.ifo-summary,.ifo-grid,.ifo-columns{grid-template-columns:1fr}.ifo-metrics{grid-template-columns:1fr 1fr}}</style>
+
+
 <!-- COCKPIT_TABS_START -->
 <style>
 .cockpit-tabs{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:2px;padding:5px 7px;background:#131722f2;border-bottom:1px solid #2a2e39;backdrop-filter:blur(10px);overflow-x:auto}
@@ -31,8 +33,12 @@
 @media(max-width:1250px){.scalp-strip{grid-template-columns:repeat(3,minmax(205px,1fr))}.scalp-card{border-bottom:1px solid #2a2e39}}
 @media(max-width:850px){.scalp-strip{grid-template-columns:repeat(2,minmax(205px,1fr))}}
 @media(max-width:560px){.scalp-strip{grid-template-columns:1fr}}
-.live-flagbar{display:flex;align-items:center;gap:8px;background:#0d1f16;border:1px solid #1f4a30;border-radius:6px;padding:9px 12px;margin-bottom:12px;font-size:11px;color:#7fc9a0}
+.live-flagbar{display:flex;align-items:center;gap:8px;background:#0d1f16;border:1px solid #1f4a30;border-radius:6px;padding:9px 12px;margin-bottom:8px;font-size:11px;color:#7fc9a0}
 .live-flagbar b{color:#6fe3ac}.live-flagbar .dot{width:7px;height:7px;border-radius:50%;background:#6fe3ac;box-shadow:0 0 6px #6fe3ac;flex:none}
+.live-notice{font-size:11px;line-height:1.6;border-radius:6px;padding:8px 12px;margin-bottom:8px}
+.live-notice.info{background:#0d2338;border:1px solid #1f3f5c;color:#8fc4ea}
+.live-notice.warn{background:#332811;border:1px solid #6b5426;color:#f7a600}
+.live-notice b{font-weight:700}
 .live-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
 .live-card{background:#131722;border:1px solid #2a2e39;border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:9px}
 .live-card.conflict{border-color:#5a2a2f}
@@ -92,7 +98,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 
  const liveBoardPanel=document.createElement("section");
  liveBoardPanel.className="card wide";
- liveBoardPanel.innerHTML='<h2>AI Strategy LIVE</h2><div class="live-flagbar"><span class="dot"></span><b>Phase 2・表示専用</b><span>feature_flag_enabled = false（既存の正式シグナル・発注経路には一切影響しません）</span></div><div id="ai-strategy-live-board" class="live-board"><div class="focus-empty">読み込み中...</div></div>';
+ liveBoardPanel.innerHTML='<h2>AI Strategy LIVE</h2><div class="live-flagbar"><span class="dot"></span><b>Phase 2・表示専用</b><span>feature_flag_enabled = false（既存の正式シグナル・発注経路には一切影響しません）</span></div><div id="ai-strategy-live-notices"></div><div id="ai-strategy-live-board" class="live-board"><div class="focus-empty">読み込み中...</div></div>';
  panes["ai-strategy-live"].appendChild(liveBoardPanel);
 
  [...main.querySelectorAll(":scope > section")].forEach(s=>{
@@ -222,11 +228,43 @@ document.addEventListener("DOMContentLoaded",()=>{
    const r=card.router||{};
    return '<article class="live-card'+(card.conflict_state&&card.conflict_state.conflict?" conflict":"")+'"><div class="live-card-head"><div><span class="name">'+esc(code)+'</span><span class="code">TSE:'+esc(code)+'</span></div><span class="live-router-pill '+esc(r.css_class||"unknown")+'"><span class="dot"></span>'+esc(r.state_label||r.state||"—")+'</span></div>'+conflictFlag+'<div class="live-lanes">'+rows+'</div><div class="live-foot"><b>Router reasons</b> '+esc((r.reasons||[]).join(", ")||"—")+'</div></article>';
  };
+ const GENERATION_STALE_AFTER_MS=24*60*60*1000;
+ const renderLiveNotices=d=>{
+   const box=document.getElementById("ai-strategy-live-notices"); if(!box)return;
+   const notices=[];
+   const generatedAt=d.generated_at?new Date(d.generated_at):null;
+   const ageMs=generatedAt&&!isNaN(generatedAt)?Date.now()-generatedAt.getTime():null;
+   // Client-side check, independent of any is_stale computed at build
+   // time: if the page itself has not received a fresh artifact in a
+   // long time (the update pipeline may have stopped), say so directly
+   // rather than silently keep showing whatever was last generated.
+   if(ageMs==null){
+     notices.push('<div class="live-notice warn"><b>⚠ 生成時刻を確認できません。</b>表示中のデータの鮮度は保証されません。</div>');
+   }else if(ageMs>GENERATION_STALE_AFTER_MS){
+     const hours=Math.floor(ageMs/3600000);
+     notices.push('<div class="live-notice warn"><b>⚠ 更新停止の可能性。</b>最終生成から約'+hours+'時間経過しています（生成時刻 '+esc(d.generated_at||"不明")+'）。</div>');
+   }
+   const connected=Array.isArray(d.connected_supervisors)?d.connected_supervisors:[];
+   const unconnected=Array.isArray(d.unconnected_supervisors)?d.unconnected_supervisors:[];
+   const total=connected.length+unconnected.length;
+   notices.push('<div class="live-notice info"><b>接続済み統括者 '+connected.length+'/'+total+'：</b>'+esc(connected.join(", ")||"なし")+'<br><b>未接続（データソース未整備）：</b>'+esc(unconnected.join(", ")||"なし")+'</div>');
+   if(d.data_quality_connected!==true){
+     notices.push('<div class="live-notice warn"><b>⚠ DATA_QUALITY統括者は未接続です。</b>個別データの品質は確認できていません（品質OKとは推定しません）。</div>');
+   }
+   const issues=Array.isArray(d.data_issues)?d.data_issues:[];
+   if(issues.length){
+     notices.push('<div class="live-notice warn"><b>⚠ '+issues.length+'件、タイムスタンプ不明のため表示から除外</b>（'+issues.map(i=>esc(i.supervisor)+":"+esc(i.symbol)).join(", ")+'）。現在時刻で代用していません。</div>');
+   }
+   box.innerHTML=notices.join("");
+ };
  fetch("ai_strategy_live.json?t="+Date.now()).then(r=>r.json()).then(d=>{
+   renderLiveNotices(d);
    const box=document.getElementById("ai-strategy-live-board"); if(!box)return;
    const board=Array.isArray(d.board)?d.board:[];
    box.innerHTML=board.length?board.map(renderLiveCard).join(""):'<div class="focus-empty">対象銘柄なし（既存シグナルの統括者マッピングは段階的に拡大予定）</div>';
  }).catch(()=>{
+   const notices=document.getElementById("ai-strategy-live-notices");
+   if(notices)notices.innerHTML='<div class="live-notice warn"><b>⚠ データ未接続。</b>ai_strategy_live.jsonを取得できませんでした。</div>';
    const box=document.getElementById("ai-strategy-live-board"); if(box)box.innerHTML='<div class="focus-empty">AI Strategy LIVEデータ取得待ち</div>';
  });
 });
@@ -645,6 +683,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div><b>今日の行動ルール</b><br>判断がぶれやすい日。発注前の指差し確認を1回増やす。</div>
 </div>
 <p class="warning">公開ページには生年月日・出生地・出生時刻を保存しません。娯楽・心理管理用で、銘柄順位や売買期待値には加点しません。</p></section>
+
+
 
 
 <!-- WEEKLY_REVIEW_START -->

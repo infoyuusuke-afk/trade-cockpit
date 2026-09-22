@@ -107,6 +107,7 @@ def build_symbol_card_view(symbol, snapshot_entry, router_decision, stale_after_
             "css_class": ROUTER_STATE_LABELS.get(router_state, {"label": router_state, "css_class": "unknown"})["css_class"],
             "as_of": router_decision["as_of"],
             "reasons": router_decision["reasons"],
+            "stale_supervisors": router_decision["stale_supervisors"],
             "data_quality_ok": router_decision["data_quality_ok"],
             "feature_flag_enabled": router_decision["feature_flag_enabled"],
         },

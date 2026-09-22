@@ -4,13 +4,31 @@
   "description": "Output of scripts/build_ai_strategy_live.py, written to ai_strategy_live.json. Read-only: no field here may feed an existing formal BUY/SHORT signal, Risk Gate, Shadow order, broker, or parameter-update path. feature_flag_enabled/is_entry_trigger/real_submit_allowed are pinned false at every level.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "generated_at", "feature_flag_enabled", "is_entry_trigger", "real_submit_allowed", "board"],
+  "required": ["schema_version", "generated_at", "feature_flag_enabled", "is_entry_trigger", "real_submit_allowed", "connected_supervisors", "unconnected_supervisors", "data_quality_connected", "data_issues", "board"],
   "properties": {
     "schema_version": {"const": "ai-strategy-live-board-1.0"},
-    "generated_at": {"type": "string", "format": "date-time"},
+    "generated_at": {"type": "string", "format": "date-time", "description": "When this artifact was built (script run time), not necessarily when the underlying signal data was observed -- see each row's own as_of for that."},
     "feature_flag_enabled": {"const": false},
     "is_entry_trigger": {"const": false},
     "real_submit_allowed": {"const": false},
+    "connected_supervisors": {"type": "array", "items": {"type": "string"}, "description": "Supervisors with a verified data mapping in this build. Partial by design -- see unconnected_supervisors."},
+    "unconnected_supervisors": {"type": "array", "items": {"type": "string"}, "description": "The rest of the 17-Supervisor roster with no data source wired up yet. A viewer must not read board coverage as a full-committee review; these lanes simply have not reported at all."},
+    "data_quality_connected": {"const": false, "description": "DATA_QUALITY has no data source. Always false, never inferred true from the mere presence of other signal data."},
+    "data_issues": {
+      "type": "array",
+      "description": "Rows dropped because their timestamp could not be honestly determined (see build_ai_strategy_live.py's _emit()) -- never silently missing, never stamped with build time as a stand-in.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["supervisor", "symbol", "provenance", "reason"],
+        "properties": {
+          "supervisor": {"type": "string"},
+          "symbol": {"type": "string"},
+          "provenance": {"type": "string"},
+          "reason": {"enum": ["TIMESTAMP_UNAVAILABLE", "INVALID_ROW"]}
+        }
+      }
+    },
     "board": {
       "type": "array",
       "items": {
@@ -25,13 +43,14 @@
           "router": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["state", "state_label", "css_class", "as_of", "reasons", "data_quality_ok", "feature_flag_enabled"],
+            "required": ["state", "state_label", "css_class", "as_of", "reasons", "stale_supervisors", "data_quality_ok", "feature_flag_enabled"],
             "properties": {
               "state": {"enum": ["HOLD", "UNKNOWN", "NO_ACTION"]},
               "state_label": {"type": "string"},
               "css_class": {"type": "string"},
               "as_of": {"type": "string", "format": "date-time"},
               "reasons": {"type": "array", "items": {"type": "string"}},
+              "stale_supervisors": {"type": "array", "items": {"type": "string"}},
               "data_quality_ok": {"type": ["boolean", "null"]},
               "feature_flag_enabled": {"const": false}
             }

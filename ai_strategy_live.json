@@ -1,9 +1,32 @@
 {
  "schema_version": "ai-strategy-live-board-1.0",
- "generated_at": "2026-09-22T20:40:36.803786+09:00",
+ "generated_at": "2026-09-22T20:54:14.536071+09:00",
  "feature_flag_enabled": false,
  "is_entry_trigger": false,
  "real_submit_allowed": false,
+ "connected_supervisors": [
+  "EVENT",
+  "OVERNIGHT",
+  "SCALP",
+  "SWING",
+  "VALUE_LONG_CATALYST"
+ ],
+ "unconnected_supervisors": [
+  "CALIBRATION",
+  "CHIEF_AI_STRATEGY",
+  "DATA_QUALITY",
+  "GLOBAL_MACRO",
+  "JOURNAL_CONTENT_EXPORT",
+  "KIOXIA_DEDICATED",
+  "MARKET_REGIME",
+  "REALTIME_DAYTRADE",
+  "RECONCILIATION",
+  "RISK_SAFETY",
+  "SHADOW_EXECUTION",
+  "TOB_MA"
+ ],
+ "data_quality_connected": false,
+ "data_issues": [],
  "board": [
   {
    "symbol": "186A.T",
@@ -35,14 +58,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "186A.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "SWING": "LONG_WATCH"
@@ -55,11 +78,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
-     "STALE_SUPERVISOR_DATA",
+     "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },
@@ -96,7 +120,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -126,7 +150,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -156,14 +180,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "1969.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
@@ -178,10 +202,14 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "OVERNIGHT",
+     "SCALP"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -219,14 +247,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "2782.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "LONG_WATCH"
@@ -239,11 +267,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
-     "STALE_SUPERVISOR_DATA",
+     "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },
@@ -280,7 +309,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -288,7 +317,7 @@
      "direction": "WATCH",
      "direction_label": "WATCH",
      "css_class": "watch",
-     "as_of": "2026-09-22T20:36:13+09:00",
+     "as_of": "2026-09-22T20:43:25+09:00",
      "correlation_id": null,
      "trigger": null,
      "invalidation": null,
@@ -310,8 +339,8 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 263.803786,
-     "is_stale": false
+     "last_update_age_seconds": 649.536071,
+     "is_stale": true
     },
     {
      "supervisor": "VALUE_LONG_CATALYST",
@@ -340,14 +369,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "3132.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "EVENT": "WATCH",
@@ -362,10 +391,13 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "SCALP"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -403,14 +435,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "3778.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "LONG_WATCH"
@@ -423,11 +455,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
-     "STALE_SUPERVISOR_DATA",
+     "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },
@@ -464,7 +497,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -472,7 +505,7 @@
      "direction": "WATCH",
      "direction_label": "WATCH",
      "css_class": "watch",
-     "as_of": "2026-09-22T20:36:13+09:00",
+     "as_of": "2026-09-22T20:43:25+09:00",
      "correlation_id": null,
      "trigger": null,
      "invalidation": null,
@@ -494,14 +527,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 263.803786,
-     "is_stale": false
+     "last_update_age_seconds": 649.536071,
+     "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4259.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "EVENT": "WATCH",
@@ -515,71 +548,13 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
-    "data_quality_ok": null,
-    "feature_flag_enabled": false
-   },
-   "is_entry_trigger": false,
-   "real_submit_allowed": false
-  },
-  {
-   "symbol": "4385.T",
-   "rows": [
-    {
-     "supervisor": "OVERNIGHT",
-     "direction": "SHORT",
-     "direction_label": "SHORT",
-     "css_class": "short",
-     "as_of": "2026-09-18T15:30:00+09:00",
-     "correlation_id": null,
-     "trigger": null,
-     "invalidation": null,
-     "entry": 3680,
-     "stop": 3880,
-     "target": 3380,
-     "or5_low": null,
-     "or5_high": null,
-     "or15_low": null,
-     "or15_high": null,
-     "vwap": null,
-     "ema9": null,
-     "ema20": null,
-     "flow_bias": null,
-     "volume_burst": null,
-     "condition_score": 93,
-     "historical_ev": null,
-     "historical_pf": null,
-     "historical_dd": null,
-     "historical_n": null,
-     "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 364236.803786,
-     "is_stale": true
-    }
-   ],
-   "conflict_state": {
-    "schema_version": "conflict-state-1.0",
-    "symbol": "4385.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
-    "conflict": false,
-    "directions": {
-     "OVERNIGHT": "SHORT"
-    },
-    "has_long": false,
-    "has_short": true,
-    "has_block": false
-   },
-   "router": {
-    "state": "UNKNOWN",
-    "state_label": "UNKNOWN",
-    "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
-    "reasons": [
-     "STALE_SUPERVISOR_DATA",
-     "PHASE1_FEATURE_FLAG_OFF"
+    "stale_supervisors": [
+     "SCALP"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -617,14 +592,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4443.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "SCALP": "LONG_WATCH"
@@ -637,10 +612,13 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "SCALP"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -678,7 +656,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -708,14 +686,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4475.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
@@ -729,10 +707,14 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "OVERNIGHT",
+     "SCALP"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -770,14 +752,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4667.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "LONG_WATCH"
@@ -790,11 +772,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
-     "STALE_SUPERVISOR_DATA",
+     "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },
@@ -831,14 +814,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4755.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -851,10 +834,13 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "OVERNIGHT"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -870,7 +856,7 @@
      "direction": "WATCH",
      "direction_label": "WATCH",
      "css_class": "watch",
-     "as_of": "2026-09-22T20:36:13+09:00",
+     "as_of": "2026-09-22T20:43:25+09:00",
      "correlation_id": null,
      "trigger": null,
      "invalidation": null,
@@ -892,14 +878,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 263.803786,
-     "is_stale": false
+     "last_update_age_seconds": 649.536071,
+     "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "485A.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "EVENT": "WATCH"
@@ -912,11 +898,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },
@@ -953,14 +940,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "5243.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "SCALP": "LONG_WATCH"
@@ -973,10 +960,13 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "SCALP"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -1014,14 +1004,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:long_term_ma_rebounds_unverified",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6323.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "WATCH"
@@ -1034,11 +1024,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
-     "STALE_SUPERVISOR_DATA",
+     "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },
@@ -1075,7 +1066,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -1105,7 +1096,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -1135,14 +1126,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6324.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
@@ -1157,10 +1148,14 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "OVERNIGHT",
+     "SCALP"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -1198,14 +1193,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:long_term_ma_rebounds_unverified",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6481.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "WATCH"
@@ -1218,11 +1213,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
-     "STALE_SUPERVISOR_DATA",
+     "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },
@@ -1259,7 +1255,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -1289,7 +1285,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -1319,7 +1315,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -1349,14 +1345,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6501.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
@@ -1372,10 +1368,14 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "OVERNIGHT",
+     "SCALP"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -1413,14 +1413,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:long_term_ma_rebounds_unverified",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6504.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "WATCH"
@@ -1433,11 +1433,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
-     "STALE_SUPERVISOR_DATA",
+     "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },
@@ -1474,7 +1475,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -1504,7 +1505,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -1534,14 +1535,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6594.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
@@ -1556,10 +1557,14 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "OVERNIGHT",
+     "SCALP"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -1597,14 +1602,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:long_term_ma_rebounds_unverified",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6762.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "WATCH"
@@ -1617,11 +1622,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
-     "STALE_SUPERVISOR_DATA",
+     "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },
@@ -1658,14 +1664,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6902.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -1678,10 +1684,13 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "OVERNIGHT"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -1719,7 +1728,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -1749,14 +1758,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:long_term_ma_rebounds_unverified",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6920.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "SCALP": "LONG_WATCH",
@@ -1770,10 +1779,13 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "SCALP"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -1811,14 +1823,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6971.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "LONG_WATCH"
@@ -1831,11 +1843,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
-     "STALE_SUPERVISOR_DATA",
+     "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },
@@ -1872,7 +1885,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -1902,7 +1915,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -1932,14 +1945,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7013.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "SWING": "LONG_WATCH",
@@ -1954,10 +1967,13 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "SCALP"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -1995,7 +2011,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:prepared",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     },
     {
@@ -2025,14 +2041,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7014.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "SWING": "LONG_WATCH",
@@ -2046,10 +2062,13 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "SCALP"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -2087,14 +2106,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7453.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -2107,10 +2126,13 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "OVERNIGHT"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -2148,14 +2170,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7564.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -2168,10 +2190,77 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "OVERNIGHT"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "7581.T",
+   "rows": [
+    {
+     "supervisor": "OVERNIGHT",
+     "direction": "SHORT",
+     "direction_label": "SHORT",
+     "css_class": "short",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 6405,
+     "stop": 6640,
+     "target": 6050,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 83,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:overnight_short",
+     "last_update_age_seconds": 365054.536071,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "7581.T",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
+    "conflict": false,
+    "directions": {
+     "OVERNIGHT": "SHORT"
+    },
+    "has_long": false,
+    "has_short": true,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "stale_supervisors": [
+     "OVERNIGHT"
     ],
     "data_quality_ok": null,
     "feature_flag_enabled": false
@@ -2209,14 +2298,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "9432.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "LONG_WATCH"
@@ -2229,11 +2318,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
-     "STALE_SUPERVISOR_DATA",
+     "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },
@@ -2270,14 +2360,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "9433.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "LONG_WATCH"
@@ -2290,11 +2380,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
-     "STALE_SUPERVISOR_DATA",
+     "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },
@@ -2331,14 +2422,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "9434.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "LONG_WATCH"
@@ -2351,11 +2442,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
-     "STALE_SUPERVISOR_DATA",
+     "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },
@@ -2392,14 +2484,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "9506.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "VALUE_LONG_CATALYST": "LONG_WATCH"
@@ -2412,11 +2504,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
-     "STALE_SUPERVISOR_DATA",
+     "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },
@@ -2431,7 +2524,7 @@
      "direction": "WATCH",
      "direction_label": "WATCH",
      "css_class": "watch",
-     "as_of": "2026-09-22T20:36:13+09:00",
+     "as_of": "2026-09-22T20:43:25+09:00",
      "correlation_id": null,
      "trigger": null,
      "invalidation": null,
@@ -2453,8 +2546,8 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 263.803786,
-     "is_stale": false
+     "last_update_age_seconds": 649.536071,
+     "is_stale": true
     },
     {
      "supervisor": "VALUE_LONG_CATALYST",
@@ -2483,14 +2576,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:large_lot_accumulation",
-     "last_update_age_seconds": 364236.803786,
+     "last_update_age_seconds": 365054.536071,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "9984.T",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "conflict": false,
     "directions": {
      "EVENT": "WATCH",
@@ -2504,11 +2597,12 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "as_of": "2026-09-22T20:54:14.536071+09:00",
     "reasons": [
-     "STALE_SUPERVISOR_DATA",
+     "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
+    "stale_supervisors": [],
     "data_quality_ok": null,
     "feature_flag_enabled": false
    },

@@ -51,6 +51,35 @@ class RouteSymbolTests(unittest.TestCase):
         d = router.route_symbol("285A.T", snap["285A.T"], now=NOW, data_quality_ok=True, stale_after_seconds=60)
         self.assertEqual(d["state"], "UNKNOWN")
         self.assertIn("STALE_SUPERVISOR_DATA", d["reasons"])
+        self.assertEqual(d["stale_supervisors"], ["SCALP"])
+
+    def test_stale_supervisors_empty_when_fresh(self):
+        snap = live.strategy_live_snapshot(
+            [state("SCALP", "285A.T", "LONG", "2026-09-22T10:00:00+09:00")], NOW)
+        d = router.route_symbol("285A.T", snap["285A.T"], now=NOW, data_quality_ok=True)
+        self.assertEqual(d["stale_supervisors"], [])
+
+    def test_per_supervisor_stale_threshold_dict(self):
+        # Both lanes are 300s old (as_of 5 min before NOW). SCALP is stale
+        # under a 60s window; SWING at the same age is not stale under a
+        # much longer window -- a single global number could never express
+        # both correctly at once.
+        snap = live.strategy_live_snapshot(
+            [state("SCALP", "285A.T", "LONG", "2026-09-22T10:00:00+09:00"),
+             state("SWING", "285A.T", "LONG_WATCH", "2026-09-22T10:00:00+09:00")],
+            NOW)
+        thresholds = {"SCALP": 60, "SWING": 60 * 60 * 24, "default": 60}
+        d = router.route_symbol("285A.T", snap["285A.T"], now=NOW, data_quality_ok=True,
+                                 stale_after_seconds=thresholds)
+        self.assertEqual(d["stale_supervisors"], ["SCALP"])
+
+    def test_per_supervisor_threshold_falls_back_to_default(self):
+        snap = live.strategy_live_snapshot(
+            [state("EVENT", "285A.T", "WATCH", "2026-09-22T09:00:00+09:00")], NOW)
+        thresholds = {"SCALP": 60 * 60 * 24, "default": 60}
+        d = router.route_symbol("285A.T", snap["285A.T"], now=NOW, data_quality_ok=True,
+                                 stale_after_seconds=thresholds)
+        self.assertEqual(d["stale_supervisors"], ["EVENT"])
 
     def test_future_supervisor_timestamp_fails_closed_to_unknown(self):
         snap = live.strategy_live_snapshot(

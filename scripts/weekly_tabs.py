@@ -145,8 +145,12 @@ def tabs_block() -> str:
 @media(max-width:1250px){.scalp-strip{grid-template-columns:repeat(3,minmax(205px,1fr))}.scalp-card{border-bottom:1px solid #2a2e39}}
 @media(max-width:850px){.scalp-strip{grid-template-columns:repeat(2,minmax(205px,1fr))}}
 @media(max-width:560px){.scalp-strip{grid-template-columns:1fr}}
-.live-flagbar{display:flex;align-items:center;gap:8px;background:#0d1f16;border:1px solid #1f4a30;border-radius:6px;padding:9px 12px;margin-bottom:12px;font-size:11px;color:#7fc9a0}
+.live-flagbar{display:flex;align-items:center;gap:8px;background:#0d1f16;border:1px solid #1f4a30;border-radius:6px;padding:9px 12px;margin-bottom:8px;font-size:11px;color:#7fc9a0}
 .live-flagbar b{color:#6fe3ac}.live-flagbar .dot{width:7px;height:7px;border-radius:50%;background:#6fe3ac;box-shadow:0 0 6px #6fe3ac;flex:none}
+.live-notice{font-size:11px;line-height:1.6;border-radius:6px;padding:8px 12px;margin-bottom:8px}
+.live-notice.info{background:#0d2338;border:1px solid #1f3f5c;color:#8fc4ea}
+.live-notice.warn{background:#332811;border:1px solid #6b5426;color:#f7a600}
+.live-notice b{font-weight:700}
 .live-board{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
 .live-card{background:#131722;border:1px solid #2a2e39;border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:9px}
 .live-card.conflict{border-color:#5a2a2f}
@@ -206,7 +210,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 
  const liveBoardPanel=document.createElement("section");
  liveBoardPanel.className="card wide";
- liveBoardPanel.innerHTML='<h2>AI Strategy LIVE</h2><div class="live-flagbar"><span class="dot"></span><b>Phase 2・表示専用</b><span>feature_flag_enabled = false（既存の正式シグナル・発注経路には一切影響しません）</span></div><div id="ai-strategy-live-board" class="live-board"><div class="focus-empty">読み込み中...</div></div>';
+ liveBoardPanel.innerHTML='<h2>AI Strategy LIVE</h2><div class="live-flagbar"><span class="dot"></span><b>Phase 2・表示専用</b><span>feature_flag_enabled = false（既存の正式シグナル・発注経路には一切影響しません）</span></div><div id="ai-strategy-live-notices"></div><div id="ai-strategy-live-board" class="live-board"><div class="focus-empty">読み込み中...</div></div>';
  panes["ai-strategy-live"].appendChild(liveBoardPanel);
 
  [...main.querySelectorAll(":scope > section")].forEach(s=>{
@@ -336,11 +340,43 @@ document.addEventListener("DOMContentLoaded",()=>{
    const r=card.router||{};
    return '<article class="live-card'+(card.conflict_state&&card.conflict_state.conflict?" conflict":"")+'"><div class="live-card-head"><div><span class="name">'+esc(code)+'</span><span class="code">TSE:'+esc(code)+'</span></div><span class="live-router-pill '+esc(r.css_class||"unknown")+'"><span class="dot"></span>'+esc(r.state_label||r.state||"—")+'</span></div>'+conflictFlag+'<div class="live-lanes">'+rows+'</div><div class="live-foot"><b>Router reasons</b> '+esc((r.reasons||[]).join(", ")||"—")+'</div></article>';
  };
+ const GENERATION_STALE_AFTER_MS=24*60*60*1000;
+ const renderLiveNotices=d=>{
+   const box=document.getElementById("ai-strategy-live-notices"); if(!box)return;
+   const notices=[];
+   const generatedAt=d.generated_at?new Date(d.generated_at):null;
+   const ageMs=generatedAt&&!isNaN(generatedAt)?Date.now()-generatedAt.getTime():null;
+   // Client-side check, independent of any is_stale computed at build
+   // time: if the page itself has not received a fresh artifact in a
+   // long time (the update pipeline may have stopped), say so directly
+   // rather than silently keep showing whatever was last generated.
+   if(ageMs==null){
+     notices.push('<div class="live-notice warn"><b>⚠ 生成時刻を確認できません。</b>表示中のデータの鮮度は保証されません。</div>');
+   }else if(ageMs>GENERATION_STALE_AFTER_MS){
+     const hours=Math.floor(ageMs/3600000);
+     notices.push('<div class="live-notice warn"><b>⚠ 更新停止の可能性。</b>最終生成から約'+hours+'時間経過しています（生成時刻 '+esc(d.generated_at||"不明")+'）。</div>');
+   }
+   const connected=Array.isArray(d.connected_supervisors)?d.connected_supervisors:[];
+   const unconnected=Array.isArray(d.unconnected_supervisors)?d.unconnected_supervisors:[];
+   const total=connected.length+unconnected.length;
+   notices.push('<div class="live-notice info"><b>接続済み統括者 '+connected.length+'/'+total+'：</b>'+esc(connected.join(", ")||"なし")+'<br><b>未接続（データソース未整備）：</b>'+esc(unconnected.join(", ")||"なし")+'</div>');
+   if(d.data_quality_connected!==true){
+     notices.push('<div class="live-notice warn"><b>⚠ DATA_QUALITY統括者は未接続です。</b>個別データの品質は確認できていません（品質OKとは推定しません）。</div>');
+   }
+   const issues=Array.isArray(d.data_issues)?d.data_issues:[];
+   if(issues.length){
+     notices.push('<div class="live-notice warn"><b>⚠ '+issues.length+'件、タイムスタンプ不明のため表示から除外</b>（'+issues.map(i=>esc(i.supervisor)+":"+esc(i.symbol)).join(", ")+'）。現在時刻で代用していません。</div>');
+   }
+   box.innerHTML=notices.join("");
+ };
  fetch("ai_strategy_live.json?t="+Date.now()).then(r=>r.json()).then(d=>{
+   renderLiveNotices(d);
    const box=document.getElementById("ai-strategy-live-board"); if(!box)return;
    const board=Array.isArray(d.board)?d.board:[];
    box.innerHTML=board.length?board.map(renderLiveCard).join(""):'<div class="focus-empty">対象銘柄なし（既存シグナルの統括者マッピングは段階的に拡大予定）</div>';
  }).catch(()=>{
+   const notices=document.getElementById("ai-strategy-live-notices");
+   if(notices)notices.innerHTML='<div class="live-notice warn"><b>⚠ データ未接続。</b>ai_strategy_live.jsonを取得できませんでした。</div>';
    const box=document.getElementById("ai-strategy-live-board"); if(box)box.innerHTML='<div class="focus-empty">AI Strategy LIVEデータ取得待ち</div>';
  });
 });
