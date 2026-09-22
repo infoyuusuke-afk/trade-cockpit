@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-09-23T07:33:55.969853+09:00",
+  "updated_at": "2026-09-23T07:36:24.699369+09:00",
   "source": "世界の株価リアルタイムチャート",
   "source_url": "https://nikkei225jp.com/",
   "usage": "市場環境専用。個別株価・個別チャートには使用禁止。",
-  "verified_count": 9,
+  "verified_count": 8,
   "expected_count": 13,
   "feed_verified": true,
   "rows": {
@@ -47,11 +47,11 @@
       "code": "751",
       "name": "DEX日経225",
       "source_name": "DEX日本225 フルタイム",
-      "value": 67017.0,
+      "value": 67038.0,
       "change": null,
       "change_pct": null,
-      "source_stamp": "07:33",
-      "observed_at": "2026-09-23T07:33:00+09:00",
+      "source_stamp": "07:36",
+      "observed_at": "2026-09-23T07:36:00+09:00",
       "verified": true,
       "status": "表示可"
     },
@@ -59,11 +59,11 @@
       "code": "511",
       "name": "ドル円",
       "source_name": "ドル円",
-      "value": 157.452,
-      "change": 0.091,
-      "change_pct": 0.06,
-      "source_stamp": "07:33",
-      "observed_at": "2026-09-23T07:33:00+09:00",
+      "value": 157.438,
+      "change": 0.077,
+      "change_pct": 0.05,
+      "source_stamp": "07:36",
+      "observed_at": "2026-09-23T07:36:00+09:00",
       "verified": true,
       "status": "表示可"
     },
@@ -160,8 +160,8 @@
       "change_pct": -0.24,
       "source_stamp": "06:05",
       "observed_at": "2026-09-23T06:05:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "未取得または時刻不整合・売買利用禁止"
     }
   }
 }
