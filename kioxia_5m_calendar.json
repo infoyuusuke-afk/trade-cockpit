@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-09-23 02:38:18 JST",
+  "updated_at": "2026-09-23 02:40:49 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3641,13 +3641,13 @@
         43313300.0,
         43313400.0
       ],
-      "similarity": 92.6,
+      "similarity": 92.5,
       "after_ret": -0.55,
       "max_up_after": 5.22,
       "max_down_after": -1.43,
       "score_components": {
         "five_minute": null,
-        "us_market": 92.6,
+        "us_market": 92.5,
         "credit_supply": null
       },
       "us_context": {
@@ -3806,7 +3806,7 @@
       "max_down_after": -7.24,
       "score_components": {
         "five_minute": null,
-        "us_market": 93.9,
+        "us_market": 94.0,
         "credit_supply": 83.1
       },
       "us_context": {
@@ -4130,13 +4130,13 @@
         36471800.0,
         36786500.0
       ],
-      "similarity": 91.0,
+      "similarity": 90.9,
       "after_ret": 0.29,
       "max_up_after": 3.02,
       "max_down_after": -2.12,
       "score_components": {
         "five_minute": null,
-        "us_market": 91.0,
+        "us_market": 90.9,
         "credit_supply": null
       },
       "us_context": {
@@ -4295,7 +4295,7 @@
       "max_down_after": -0.83,
       "score_components": {
         "five_minute": null,
-        "us_market": 94.2,
+        "us_market": 94.3,
         "credit_supply": 76.3
       },
       "us_context": {
@@ -4461,13 +4461,13 @@
       43313300.0,
       43313400.0
     ],
-    "similarity": 92.6,
+    "similarity": 92.5,
     "after_ret": -0.55,
     "max_up_after": 5.22,
     "max_down_after": -1.43,
     "score_components": {
       "five_minute": null,
-      "us_market": 92.6,
+      "us_market": 92.5,
       "credit_supply": null
     },
     "us_context": {
@@ -4491,10 +4491,10 @@
   "market_context": {
     "date": "2026-09-22",
     "values": {
-      "sndk": 6.946,
-      "mu": 3.611,
-      "sox": 1.29,
-      "nasdaq": 0.283
+      "sndk": 6.98,
+      "mu": 3.592,
+      "sox": 1.274,
+      "nasdaq": 0.282
     },
     "labels": {
       "sndk": "SanDisk",
