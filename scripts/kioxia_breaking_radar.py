@@ -369,13 +369,40 @@ def scan(now: datetime, fetcher=fetch_bytes) -> tuple[list[dict], list[dict]]:
     return dedupe(events), health
 
 
+def bootstrap_health_ok(health: list[dict]) -> bool:
+    """Require one official Kioxia source and one independent discovery path."""
+    by_source = {row.get("source"): row.get("status") for row in health}
+    official_ok = any(by_source.get(name) == "OK" for name in ("Kioxia IR", "Kioxia News"))
+    discovery_ok = any(
+        by_source.get(name) == "OK"
+        for name in ("SEC EDGAR", "Google News RSS targeted queries")
+    )
+    return official_ok and discovery_ok
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--alert-file", type=Path)
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Fetch and parse live public sources without writing state, logs, alerts, or GitHub outputs.",
+    )
     args = parser.parse_args()
     now = datetime.now(JST)
-    previous = load_previous()
     events, health = scan(now)
+    if args.dry_run:
+        ready = bootstrap_health_ok(health)
+        print(json.dumps({
+            "mode": "dry-run",
+            "ready": ready,
+            "event_count": len(events),
+            "source_health": health,
+        }, ensure_ascii=False))
+        if not ready:
+            raise SystemExit(2)
+        return
+    previous = load_previous()
     state, new_urgent = build_state(events, previous, health, now)
     persist(state, new_urgent, now, args.alert_file)
     output_path = os.environ.get("GITHUB_OUTPUT")
