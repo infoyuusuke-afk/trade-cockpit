@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ssh-key: \${{ secrets.MAIN_DATA_WRITER_DEPLOY_KEY }}
+          ssh-key: ${{ secrets.MAIN_DATA_WRITER_DEPLOY_KEY }}
       - name: Sync latest protected main
         run: git pull --rebase origin main
       - uses: actions/setup-python@v5
@@ -43,7 +43,7 @@ jobs:
       - name: Notify dedicated alert issue
         if: steps.radar.outputs.urgent_count != '0'
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           python - <<'PY'
           import json, os, urllib.request
