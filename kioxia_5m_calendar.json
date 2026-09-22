@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-09-23 04:43:48 JST",
+  "updated_at": "2026-09-23 04:45:59 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3959,13 +3959,13 @@
         37238000.0,
         38091600.0
       ],
-      "similarity": 93.0,
+      "similarity": 93.2,
       "after_ret": -7.1,
       "max_up_after": 2.4,
       "max_down_after": -7.55,
       "score_components": {
         "five_minute": null,
-        "us_market": 93.0,
+        "us_market": 93.2,
         "credit_supply": null
       },
       "us_context": {
@@ -4124,7 +4124,7 @@
       "max_down_after": -7.24,
       "score_components": {
         "five_minute": null,
-        "us_market": 93.3,
+        "us_market": 93.2,
         "credit_supply": 83.1
       },
       "us_context": {
@@ -4289,13 +4289,13 @@
         38515800.0,
         38515900.0
       ],
-      "similarity": 88.9,
+      "similarity": 88.7,
       "after_ret": 0.79,
       "max_up_after": 3.54,
       "max_down_after": -1.97,
       "score_components": {
         "five_minute": null,
-        "us_market": 88.9,
+        "us_market": 88.7,
         "credit_supply": null
       },
       "us_context": {
@@ -4479,10 +4479,10 @@
   "market_context": {
     "date": "2026-09-22",
     "values": {
-      "sndk": 7.158,
-      "mu": 4.701,
-      "sox": 1.921,
-      "nasdaq": 0.53
+      "sndk": 7.242,
+      "mu": 4.759,
+      "sox": 1.965,
+      "nasdaq": 0.549
     },
     "labels": {
       "sndk": "SanDisk",
@@ -4507,7 +4507,7 @@
   "prediction": {
     "status": "寄り前・米国市場と信用需給から事前選定",
     "bias": "レンジ候補",
-    "up_probability": 39.5,
+    "up_probability": 39.4,
     "expected_after_ret": -2.6,
     "expected_max_up": 3.59,
     "expected_max_down": -4.06,
@@ -4520,7 +4520,7 @@
   "decision": {
     "grade": "見送り",
     "tradable": false,
-    "agreement": 60.5,
+    "agreement": 60.6,
     "dispersion": 3.44,
     "reason": "類似日間の方向または値幅が揃っていないため、予測だけで入らない",
     "invalidate": "OR15とVWAPが予測方向と逆へ同時確定したら無効"
