@@ -1,7 +1,7 @@
 {
-  "updated_at": "2026-09-22 14:06:28 JST",
-  "phase": "前場検証11:45版",
-  "session": "midday",
+  "updated_at": "2026-09-22 15:01:04 JST",
+  "phase": "引け前持ち越し15:00版",
+  "session": "close",
   "active_buybacks": [],
   "buybacks_updated_at": "未取得",
   "akita_dc_watch": [
@@ -45365,8 +45365,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-09-22T14:05:37+09:00",
-    "decision_at": "2026-09-22T14:05:37+09:00",
+    "generated_at": "2026-09-22T15:00:14+09:00",
+    "decision_at": "2026-09-22T15:00:14+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -45680,13 +45680,13 @@
   },
   "precision_top5": [],
   "strong_yen_top5": {
-    "usd_jpy": 157.484,
+    "usd_jpy": 157.485,
     "usd_jpy_change_pct": 0.1,
     "usd_jpy_ret5": 2.0,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-09-22T14:06:00+09:00",
+    "fx_observed_at": "2026-09-22T15:00:00+09:00",
     "statement_study": {
-      "updated_at": "2026-09-22 14:06:21 JST",
+      "updated_at": "2026-09-22 15:00:57 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -46054,7 +46054,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-09-22 14:06:08 JST",
+    "credit_supply_updated_at": "2026-09-22 15:00:43 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
