@@ -12,8 +12,10 @@ a signal generator. Missing/stale/conflicting input always resolves to
 UNKNOWN or HOLD rather than an inferred repair.
 
 FEATURE_FLAG_LIVE_INFLUENCE_ENABLED is a module-level constant, not a
-per-call parameter, and is always False in Phase 1. Nothing in this
-repository reads a RouterDecision to affect an existing formal signal,
+per-call parameter, and is always False in Phase 1. The router still
+preserves UNKNOWN/HOLD/NO_ACTION as its advisory observation state so
+the LIVE board can distinguish missing/stale/conflicting evidence from
+a healthy no-action state. Nothing in this repository reads a RouterDecision to affect an existing formal signal,
 Shadow order, or execution path -- Phase 2 wiring (read-only
 integration) and any later live-influence gate are separate, later
 work per Issue #171. test_feature_flag_is_off_in_phase1() below is a
@@ -61,7 +63,8 @@ def route_symbol(symbol, snapshot_entry, *, now, data_quality_ok=None,
         conflict = snapshot_entry["conflict"]
         stale = [
             sup for sup, st in snapshot_entry["supervisors"].items()
-            if st["last_update_age_seconds"] > stale_after_seconds
+            if st["last_update_age_seconds"] < 0
+            or st["last_update_age_seconds"] > stale_after_seconds
         ]
         if stale:
             reasons.append("STALE_SUPERVISOR_DATA")
@@ -79,8 +82,10 @@ def route_symbol(symbol, snapshot_entry, *, now, data_quality_ok=None,
             state = "NO_ACTION"
 
     if not FEATURE_FLAG_LIVE_INFLUENCE_ENABLED:
+        # Preserve the advisory observation state (UNKNOWN/HOLD/NO_ACTION)
+        # for the LIVE board. The feature flag gates downstream influence;
+        # it must not erase evidence-quality/conflict state.
         reasons.append("PHASE1_FEATURE_FLAG_OFF")
-        state = "NO_ACTION"
 
     if state not in STATES:
         raise AssertionError("router produced a state outside the Phase 1 vocabulary: " + str(state))
