@@ -1,12 +1,12 @@
 {
-  "updated_at": "2026-09-22 07:52:15 JST",
+  "updated_at": "2026-09-22 10:29:30 JST",
   "refresh_seconds": 60,
   "backend_interval_minutes": 5,
   "verified_count": 0,
   "expected_count": 1,
-  "status": "停止",
-  "market_phase": "ザラバ終了・PTS非対応",
-  "speech_enabled": false,
+  "status": "一部停止",
+  "market_phase": "ザラバ監視中",
+  "speech_enabled": true,
   "pts_supported": false,
   "rows": {
     "285A": {
@@ -15,7 +15,7 @@
       "price": 54570.0,
       "primary_price": 53870.0,
       "quote_time": "2026-09-18T15:20:00+09:00",
-      "age_minutes": 5312.3,
+      "age_minutes": 5469.5,
       "verified": false,
       "status": "更新停止・売買禁止",
       "chart": [],
@@ -153,7 +153,7 @@
       ],
       "forecast_bias": "レンジ候補",
       "forecast_tradable": false,
-      "monitor_status": "ザラバ終了",
+      "monitor_status": "開始待ち",
       "actual_time": null,
       "forecast_time": "09:00",
       "actual_return": null,
@@ -162,10 +162,10 @@
       "path_mae_pct": null,
       "path_fit": null,
       "expected_next": "判定待ち",
-      "trade_signal": "売買禁止",
+      "trade_signal": "見送り",
       "setup_type": "判定待ち",
       "whipsaw_guard": false,
-      "signal_reason": "ザラバ終了。PTSデータ非対応",
+      "signal_reason": "9:15以降にOR15と実績を確認",
       "entry_price": null,
       "stop_price": null,
       "entry_order": null,
@@ -176,13 +176,13 @@
       "one_minute_volume_ratio": null,
       "one_minute_vwap": null,
       "one_minute_bar_time": null,
-      "attention_state": "次の注意時間",
-      "attention_start": "09:00",
-      "attention_end": "09:15",
-      "attention_reason": "寄り直後・OR15形成",
+      "attention_state": "注意時間中",
+      "attention_start": "10:20",
+      "attention_end": "10:30",
+      "attention_reason": "予測ボトム",
       "signal_key": "",
       "voice_message": ""
     }
   },
-  "rule": "ザラバ終了後は全売買サインと音声を停止。表示値は東証終値でありPTS価格ではありません。"
+  "rule": "Yahoo 5分足・1分足と野村/QUICK現在値、コード、取引日、鮮度が一致した銘柄だけ更新。キオクシアは完成1分足VWAP、1分出来高1.5倍、5分EMA9/20、OR15、往復ピンタ防止が同時一致した時だけ価格付きサイン。"
 }
