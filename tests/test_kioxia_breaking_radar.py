@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from scripts.kioxia_breaking_radar import build_state, classify, parse_official_html
+from scripts.kioxia_breaking_radar import bootstrap_health_ok, build_state, classify, parse_official_html
 
 JST = ZoneInfo("Asia/Tokyo")
 
@@ -81,6 +81,23 @@ class KioxiaBreakingRadarTests(unittest.TestCase):
         })
         _, alerts = build_state([event], previous, [{"source": "SEC EDGAR", "status": "OK"}], now)
         self.assertEqual([x["event_id"] for x in alerts], ["b"])
+
+    def test_bootstrap_health_requires_official_and_independent_discovery(self):
+        self.assertTrue(bootstrap_health_ok([
+            {"source": "Kioxia IR", "status": "OK"},
+            {"source": "SEC EDGAR", "status": "ERROR"},
+            {"source": "Google News RSS targeted queries", "status": "OK"},
+        ]))
+        self.assertFalse(bootstrap_health_ok([
+            {"source": "Kioxia IR", "status": "ERROR"},
+            {"source": "Kioxia News", "status": "ERROR"},
+            {"source": "Google News RSS targeted queries", "status": "OK"},
+        ]))
+        self.assertFalse(bootstrap_health_ok([
+            {"source": "Kioxia IR", "status": "OK"},
+            {"source": "SEC EDGAR", "status": "ERROR"},
+            {"source": "Google News RSS targeted queries", "status": "ERROR"},
+        ]))
 
 
 if __name__ == "__main__":
