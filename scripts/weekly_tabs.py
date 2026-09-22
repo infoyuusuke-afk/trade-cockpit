@@ -172,6 +172,19 @@ def tabs_block() -> str:
 .live-lane .detail{grid-column:1/-1;font-size:10.5px;color:#5b636e}.live-lane .detail b{color:#787b86}
 .live-lane .stale{color:#f7a600;font-weight:600}
 .live-foot{border-top:1px solid #2a2e39;padding-top:7px;font-size:10px;color:#5b636e;line-height:1.5}.live-foot b{color:#787b86}
+.live-section-head{display:flex;align-items:baseline;gap:8px;margin:18px 0 8px}.live-section-head h3{margin:0;font-size:13px;color:#d1d4dc}.live-section-head span{font-size:10.5px;color:#5b636e}
+.live-watchlist{display:flex;flex-direction:column;gap:1px;background:#2a2e39;border-radius:6px;overflow:hidden}
+.live-watch-row{background:#131722}
+.live-watch-row summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1fr auto auto auto auto;gap:10px;align-items:center;padding:8px 10px}
+.live-watch-row summary::-webkit-details-marker{display:none}
+.live-watch-row summary::before{content:"▸";color:#5b636e;font-size:9px;margin-right:2px}
+.live-watch-row[open] summary::before{content:"▾"}
+.live-watch-symbol{color:#d1d4dc;font-size:12.5px;font-weight:700}
+.live-watch-reason{color:#787b86;font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.live-watch-fresh{font-size:10px;color:#5b636e;white-space:nowrap}
+.live-watch-fresh.stale{color:#f7a600;font-weight:600}
+.live-watch-detail{padding:0 10px 10px;display:flex;flex-direction:column;gap:8px}
+@media(max-width:640px){.live-watch-row summary{grid-template-columns:1fr auto;grid-template-rows:auto auto}.live-watch-reason{grid-column:1/-1}}
 </style>
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
  <span class="cockpit-brand">AIトレードコクピット<small id="cockpit-status">Ver.5.4</small></span>
@@ -210,7 +223,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 
  const liveBoardPanel=document.createElement("section");
  liveBoardPanel.className="card wide";
- liveBoardPanel.innerHTML='<h2>AI Strategy LIVE</h2><div class="live-flagbar"><span class="dot"></span><b>Phase 2・表示専用</b><span>feature_flag_enabled = false（既存の正式シグナル・発注経路には一切影響しません）</span></div><div id="ai-strategy-live-notices"></div><div id="ai-strategy-live-board" class="live-board"><div class="focus-empty">読み込み中...</div></div>';
+ liveBoardPanel.innerHTML='<h2>AI Strategy LIVE</h2><div class="live-flagbar"><span class="dot"></span><b>Phase 2・表示専用</b><span>feature_flag_enabled = false（既存の正式シグナル・発注経路には一切影響しません）</span></div><div id="ai-strategy-live-notices"></div><div id="ai-strategy-live-board" class="live-board"><div class="focus-empty">読み込み中...</div></div><div class="live-section-head"><h3>その他の監視銘柄</h3><span>既存TOP5・強力銘柄に該当しない候補プール。行を開くと各統括者の詳細を確認できます。</span></div><div id="ai-strategy-live-watchlist" class="live-watchlist"></div>';
  panes["ai-strategy-live"].appendChild(liveBoardPanel);
 
  [...main.querySelectorAll(":scope > section")].forEach(s=>{
@@ -340,6 +353,11 @@ document.addEventListener("DOMContentLoaded",()=>{
    const r=card.router||{};
    return '<article class="live-card'+(card.conflict_state&&card.conflict_state.conflict?" conflict":"")+'"><div class="live-card-head"><div><span class="name">'+esc(code)+'</span><span class="code">TSE:'+esc(code)+'</span></div><span class="live-router-pill '+esc(r.css_class||"unknown")+'"><span class="dot"></span>'+esc(r.state_label||r.state||"—")+'</span></div>'+conflictFlag+'<div class="live-lanes">'+rows+'</div><div class="live-foot"><b>Router reasons</b> '+esc((r.reasons||[]).join(", ")||"—")+'</div></article>';
  };
+ const renderLiveWatchRow=w=>{
+   const code=String(w.symbol||"").replace(".T","");
+   const rows=(w.rows||[]).map(row=>'<div class="live-lane"><span class="sup">'+esc(row.supervisor)+'</span><span class="badge '+esc(row.css_class)+'">'+esc(row.direction_label)+'</span><span class="detail'+(row.is_stale?" stale":"")+'">'+(row.is_stale?"⚠ 鮮度切れ・":"")+liveDetail(row)+'</span></div>').join("");
+   return '<details class="live-watch-row"><summary><span class="live-watch-symbol">TSE:'+esc(code)+'</span><span class="live-watch-reason">'+esc(w.headline_supervisor)+'</span><span class="badge '+esc(w.headline_css_class)+'">'+esc(w.headline_direction_label)+'</span><span class="live-watch-fresh'+(w.headline_is_stale?" stale":"")+'">'+(w.headline_is_stale?"⚠ 鮮度切れ":"鮮度OK")+'</span><span class="live-router-pill '+esc(w.router_css_class||"unknown")+'"><span class="dot"></span>'+esc(w.router_state_label||w.router_state||"—")+'</span></summary><div class="live-watch-detail"><div class="live-lanes">'+rows+'</div><div class="live-foot"><b>Router reasons</b> '+esc((w.router_reasons||[]).join(", ")||"—")+'</div></div></details>';
+ };
  const GENERATION_STALE_AFTER_MS=24*60*60*1000;
  const renderLiveNotices=d=>{
    const box=document.getElementById("ai-strategy-live-notices"); if(!box)return;
@@ -374,10 +392,14 @@ document.addEventListener("DOMContentLoaded",()=>{
    const box=document.getElementById("ai-strategy-live-board"); if(!box)return;
    const board=Array.isArray(d.board)?d.board:[];
    box.innerHTML=board.length?board.map(renderLiveCard).join(""):'<div class="focus-empty">対象銘柄なし（既存シグナルの統括者マッピングは段階的に拡大予定）</div>';
+   const wlBox=document.getElementById("ai-strategy-live-watchlist"); if(!wlBox)return;
+   const watchlist=Array.isArray(d.watchlist)?d.watchlist:[];
+   wlBox.innerHTML=watchlist.length?watchlist.map(renderLiveWatchRow).join(""):'<div class="focus-empty">対象銘柄なし</div>';
  }).catch(()=>{
    const notices=document.getElementById("ai-strategy-live-notices");
    if(notices)notices.innerHTML='<div class="live-notice warn"><b>⚠ データ未接続。</b>ai_strategy_live.jsonを取得できませんでした。</div>';
    const box=document.getElementById("ai-strategy-live-board"); if(box)box.innerHTML='<div class="focus-empty">AI Strategy LIVEデータ取得待ち</div>';
+   const wlBox=document.getElementById("ai-strategy-live-watchlist"); if(wlBox)wlBox.innerHTML='<div class="focus-empty">AI Strategy LIVEデータ取得待ち</div>';
  });
 });
 </script>
