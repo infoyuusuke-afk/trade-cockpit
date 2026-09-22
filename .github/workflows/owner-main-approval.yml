@@ -19,4 +19,8 @@ jobs:
       name: owner-main-approval
     steps:
       - name: Record explicit owner deployment approval
-        run: echo "Owner approval accepted for PR #${{ github.event.pull_request.number }} at ${{ github.event.pull_request.head.sha }}"
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          printf 'Owner approval accepted for PR #%s at %s\n' "$PR_NUMBER" "$PR_HEAD_SHA"
