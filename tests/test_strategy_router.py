@@ -18,7 +18,7 @@ class FeatureFlagTripwireTests(unittest.TestCase):
 class RouteSymbolTests(unittest.TestCase):
     def test_no_supervisor_data_is_unknown(self):
         d = router.route_symbol("285A.T", None, now=NOW)
-        self.assertEqual(d["state"], "NO_ACTION")
+        self.assertEqual(d["state"], "UNKNOWN")
         self.assertIn("PHASE1_FEATURE_FLAG_OFF", d["reasons"])
         self.assertIn("NO_SUPERVISOR_DATA", d["reasons"])
 
@@ -38,7 +38,7 @@ class RouteSymbolTests(unittest.TestCase):
         d = router.route_symbol("285A.T", snap["285A.T"], now=NOW, data_quality_ok=True)
         self.assertNotIn(d["state"], {"LONG", "SHORT", "BUY", "SELL", "CANDIDATE"})
 
-    def test_feature_flag_off_forces_no_action_even_when_everything_looks_fine(self):
+    def test_feature_flag_off_preserves_advisory_state_when_everything_looks_fine(self):
         snap = live.strategy_live_snapshot(
             [state("SCALP", "285A.T", "LONG", "2026-09-22T10:00:00+09:00")], NOW)
         d = router.route_symbol("285A.T", snap["285A.T"], now=NOW, data_quality_ok=True)
@@ -49,18 +49,28 @@ class RouteSymbolTests(unittest.TestCase):
         snap = live.strategy_live_snapshot(
             [state("SCALP", "285A.T", "LONG", "2026-09-22T09:00:00+09:00")], NOW)
         d = router.route_symbol("285A.T", snap["285A.T"], now=NOW, data_quality_ok=True, stale_after_seconds=60)
+        self.assertEqual(d["state"], "UNKNOWN")
+        self.assertIn("STALE_SUPERVISOR_DATA", d["reasons"])
+
+    def test_future_supervisor_timestamp_fails_closed_to_unknown(self):
+        snap = live.strategy_live_snapshot(
+            [state("SCALP", "285A.T", "LONG", "2026-09-22T10:10:00+09:00")], NOW)
+        d = router.route_symbol("285A.T", snap["285A.T"], now=NOW, data_quality_ok=True)
+        self.assertEqual(d["state"], "UNKNOWN")
         self.assertIn("STALE_SUPERVISOR_DATA", d["reasons"])
 
     def test_data_quality_not_ok_reason_present(self):
         snap = live.strategy_live_snapshot(
             [state("SCALP", "285A.T", "LONG", "2026-09-22T10:00:00+09:00")], NOW)
         d = router.route_symbol("285A.T", snap["285A.T"], now=NOW, data_quality_ok=False)
+        self.assertEqual(d["state"], "HOLD")
         self.assertIn("DATA_QUALITY_SUPERVISOR_NOT_OK", d["reasons"])
 
     def test_data_quality_unknown_reason_present(self):
         snap = live.strategy_live_snapshot(
             [state("SCALP", "285A.T", "LONG", "2026-09-22T10:00:00+09:00")], NOW)
         d = router.route_symbol("285A.T", snap["285A.T"], now=NOW)
+        self.assertEqual(d["state"], "UNKNOWN")
         self.assertIn("DATA_QUALITY_UNKNOWN", d["reasons"])
 
     def test_conflict_reason_present(self):
@@ -68,6 +78,7 @@ class RouteSymbolTests(unittest.TestCase):
             [state("SCALP", "285A.T", "LONG", "2026-09-22T10:00:00+09:00"),
              state("OVERNIGHT", "285A.T", "SHORT", "2026-09-22T10:00:00+09:00")], NOW)
         d = router.route_symbol("285A.T", snap["285A.T"], now=NOW, data_quality_ok=True)
+        self.assertEqual(d["state"], "HOLD")
         self.assertIn("CROSS_HORIZON_CONFLICT", d["reasons"])
         self.assertTrue(d["conflict"])
 
