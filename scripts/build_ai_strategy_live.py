@@ -17,7 +17,7 @@ so it must not pretend to. signals.json, by contrast, is regenerated
 and committed by the existing public pipeline (Yahoo Finance-sourced,
 not MS2), so it is a legitimate server-side data source.
 
-Mapped in this first pass (deliberately not all 17 Supervisors -- see
+Mapped so far (deliberately not all 17 Supervisors -- see
 scripts/ai_strategy_live.py's SUPERVISORS roster for the rest, which
 remain unmapped until a similarly-considered source is chosen for
 each):
@@ -31,11 +31,33 @@ each):
   must not contradict that existing, deliberate caution stance.
 - SWING <- signals.json's monthly_weekly_hammers. LONG_WATCH (a
   reversal pattern under confirmation, not a breakout trigger).
+- SCALP <- signals.json's prepared. LONG_WATCH, never a firm LONG:
+  "prepared" means a breakout trigger price is being watched for, not
+  that it has fired (the sibling "entered" list -- currently always
+  empty -- is where a fired breakout would appear, and is intentionally
+  left unmapped until it is ever observed non-empty, since a mapping
+  that has never run against real data is not verified). Confirmed by
+  inspecting every current row: trigger price > close price in all
+  cases, i.e. consistently a bullish breakout-above setup, not a mix.
+- VALUE_LONG_CATALYST <- signals.json's large_lot_accumulation
+  (LONG_WATCH: a multi-week institutional-accumulation footprint under
+  confirmation) and long_term_ma_rebounds_unverified (WATCH, not
+  LONG_WATCH: this source's own field name and its "確定・実績未確認"
+  status flag explicitly mark it as an unverified track record, and
+  this module must not upgrade that caution to a watch-for-long state
+  on its own authority).
 
 DATA_QUALITY is intentionally left unmapped in this pass -- every
 Router decision therefore resolves to UNKNOWN via DATA_QUALITY_UNKNOWN
 rather than a guessed "OK". Wiring a real Data Quality Supervisor is
 separate follow-up work, not something to fabricate here.
+
+Still unmapped, no verified source found/chosen yet: REALTIME_DAYTRADE,
+TOB_MA, KIOXIA_DEDICATED, GLOBAL_MACRO, MARKET_REGIME, RISK_SAFETY,
+SHADOW_EXECUTION, RECONCILIATION, CALIBRATION, JOURNAL_CONTENT_EXPORT,
+CHIEF_AI_STRATEGY. signals.json's daily_capitulation_reversals is
+currently always empty in this repository, so no mapping for it has
+been verified against real data; do not add one until it is.
 
 Every mapped row's provenance names its exact upstream field
 (e.g. "signals.json:overnight_long"); correlation_id is left None
@@ -163,6 +185,66 @@ def _swing_states(rows, fallback_as_of):
     return states
 
 
+def _scalp_states(rows, fallback_as_of):
+    states = []
+    for r in rows:
+        ticker = r.get("ticker")
+        if not ticker:
+            continue
+        try:
+            states.append(build_supervisor_state(
+                supervisor="SCALP", symbol=ticker, direction="LONG_WATCH",
+                as_of=_as_of(r.get("signal_date"), fallback_as_of),
+                provenance="signals.json:prepared",
+                entry=r.get("trigger"), stop=r.get("stop"), target=r.get("target1"),
+                condition_score=r.get("score"),
+            ))
+        except ValueError:
+            continue
+    return states
+
+
+def _value_long_catalyst_states(accumulation_rows, ma_rebound_rows, fallback_as_of):
+    """A symbol can legitimately appear in both source lists at once (seen
+    in real signals.json, e.g. one ticker with both an accumulation
+    footprint and an unverified long-term MA rebound). VALUE_LONG_CATALYST
+    is one Supervisor, so it can only report one direction per symbol --
+    silently keeping whichever candidate happened to be built last would
+    quietly drop the other's evidence. Resolve by taking the more
+    cautious of the two labels (WATCH over LONG_WATCH) rather than
+    picking one arbitrarily; the dropped candidate's fields are not lost
+    silently, they are explicitly not the ones used, by a stated rule.
+    """
+    candidates = {}  # ticker -> (direction, row, provenance)
+    for r in accumulation_rows:
+        ticker = r.get("ticker")
+        if ticker:
+            candidates.setdefault(ticker, []).append(("LONG_WATCH", r, "signals.json:large_lot_accumulation"))
+    for r in ma_rebound_rows:
+        ticker = r.get("ticker")
+        if ticker:
+            # WATCH, not LONG_WATCH: this source's own field name and
+            # "確定・実績未確認" status explicitly flag an unverified
+            # track record; do not upgrade that caution on our own
+            # authority (see module docstring).
+            candidates.setdefault(ticker, []).append(("WATCH", r, "signals.json:long_term_ma_rebounds_unverified"))
+
+    states = []
+    for ticker, options in candidates.items():
+        direction, r, provenance = min(options, key=lambda o: 0 if o[0] == "WATCH" else 1)
+        try:
+            states.append(build_supervisor_state(
+                supervisor="VALUE_LONG_CATALYST", symbol=ticker, direction=direction,
+                as_of=_as_of(r.get("signal_date"), fallback_as_of),
+                provenance=provenance,
+                entry=r.get("trigger"), stop=r.get("stop"), target=r.get("target1"),
+                condition_score=r.get("score"),
+            ))
+        except ValueError:
+            continue
+    return states
+
+
 def build_states(signals, now_iso):
     signals_as_of = _parse_signals_updated_at(signals.get("updated_at")) or now_iso
     states = []
@@ -170,6 +252,12 @@ def build_states(signals, now_iso):
     states += _overnight_states(signals.get("overnight_short") or [], "SHORT", signals_as_of)
     states += _event_states(signals.get("speculative_theme_watch") or [], signals_as_of, now_iso)
     states += _swing_states(signals.get("monthly_weekly_hammers") or [], signals_as_of)
+    states += _scalp_states(signals.get("prepared") or [], signals_as_of)
+    states += _value_long_catalyst_states(
+        signals.get("large_lot_accumulation") or [],
+        signals.get("long_term_ma_rebounds_unverified") or [],
+        signals_as_of,
+    )
     return states
 
 

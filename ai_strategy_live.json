@@ -1,6 +1,6 @@
 {
  "schema_version": "ai-strategy-live-board-1.0",
- "generated_at": "2026-09-22T20:33:43.533800+09:00",
+ "generated_at": "2026-09-22T20:40:36.803786+09:00",
  "feature_flag_enabled": false,
  "is_entry_trigger": false,
  "real_submit_allowed": false,
@@ -35,14 +35,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 363823.5338,
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "186A.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
      "SWING": "LONG_WATCH"
@@ -55,7 +55,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -69,6 +69,36 @@
   {
    "symbol": "1969.T",
    "rows": [
+    {
+     "supervisor": "SCALP",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 4760,
+     "stop": 4410,
+     "target": 5285,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 95,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:prepared",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
     {
      "supervisor": "OVERNIGHT",
      "direction": "LONG",
@@ -96,17 +126,49 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 363823.5338,
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 4760,
+     "stop": 4320,
+     "target": 5420,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 87,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "1969.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
-     "OVERNIGHT": "LONG"
+     "OVERNIGHT": "LONG",
+     "SCALP": "LONG_WATCH",
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -116,7 +178,68 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "2782.T",
+   "rows": [
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 4910,
+     "stop": 4510,
+     "target": 5510,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 60,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "2782.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -131,11 +254,41 @@
    "symbol": "3132.T",
    "rows": [
     {
+     "supervisor": "SCALP",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 4125,
+     "stop": 3885,
+     "target": 4485,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 100,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:prepared",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
+    {
      "supervisor": "EVENT",
      "direction": "WATCH",
      "direction_label": "WATCH",
      "css_class": "watch",
-     "as_of": "2026-09-22T20:23:54+09:00",
+     "as_of": "2026-09-22T20:36:13+09:00",
      "correlation_id": null,
      "trigger": null,
      "invalidation": null,
@@ -157,19 +310,51 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 589.5338,
+     "last_update_age_seconds": 263.803786,
+     "is_stale": false
+    },
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 4125,
+     "stop": 3425,
+     "target": 5175,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 78,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "3132.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
-     "EVENT": "WATCH"
+     "EVENT": "WATCH",
+     "SCALP": "LONG_WATCH",
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
     },
-    "has_long": false,
+    "has_long": true,
     "has_short": false,
     "has_block": false
    },
@@ -177,9 +362,70 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
-     "DATA_QUALITY_UNKNOWN",
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "3778.T",
+   "rows": [
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 4015,
+     "stop": 3495,
+     "target": 4795,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 68,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "3778.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
     "data_quality_ok": null,
@@ -192,11 +438,41 @@
    "symbol": "4259.T",
    "rows": [
     {
+     "supervisor": "SCALP",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 966,
+     "stop": 836,
+     "target": 1161,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 100,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:prepared",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
+    {
      "supervisor": "EVENT",
      "direction": "WATCH",
      "direction_label": "WATCH",
      "css_class": "watch",
-     "as_of": "2026-09-22T20:23:54+09:00",
+     "as_of": "2026-09-22T20:36:13+09:00",
      "correlation_id": null,
      "trigger": null,
      "invalidation": null,
@@ -218,19 +494,20 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 589.5338,
-     "is_stale": true
+     "last_update_age_seconds": 263.803786,
+     "is_stale": false
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4259.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
-     "EVENT": "WATCH"
+     "EVENT": "WATCH",
+     "SCALP": "LONG_WATCH"
     },
-    "has_long": false,
+    "has_long": true,
     "has_short": false,
     "has_block": false
    },
@@ -238,9 +515,9 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
-     "DATA_QUALITY_UNKNOWN",
+     "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
     "data_quality_ok": null,
@@ -279,14 +556,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 363823.5338,
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4385.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -299,7 +576,68 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "4443.T",
+   "rows": [
+    {
+     "supervisor": "SCALP",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 2143,
+     "stop": 2079,
+     "target": 2239,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 85,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:prepared",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "4443.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "SCALP": "LONG_WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -313,6 +651,36 @@
   {
    "symbol": "4475.T",
    "rows": [
+    {
+     "supervisor": "SCALP",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 1800,
+     "stop": 1722,
+     "target": 1917,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 100,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:prepared",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
     {
      "supervisor": "OVERNIGHT",
      "direction": "LONG",
@@ -340,17 +708,18 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 363823.5338,
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4475.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
-     "OVERNIGHT": "LONG"
+     "OVERNIGHT": "LONG",
+     "SCALP": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -360,7 +729,68 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "4667.T",
+   "rows": [
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 4105,
+     "stop": 2830,
+     "target": 6020,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 66,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "4667.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -401,14 +831,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 363823.5338,
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "4755.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -421,7 +851,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -440,7 +870,7 @@
      "direction": "WATCH",
      "direction_label": "WATCH",
      "css_class": "watch",
-     "as_of": "2026-09-22T20:23:54+09:00",
+     "as_of": "2026-09-22T20:36:13+09:00",
      "correlation_id": null,
      "trigger": null,
      "invalidation": null,
@@ -462,14 +892,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 589.5338,
-     "is_stale": true
+     "last_update_age_seconds": 263.803786,
+     "is_stale": false
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "485A.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
      "EVENT": "WATCH"
@@ -482,7 +912,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
      "DATA_QUALITY_UNKNOWN",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -494,8 +924,160 @@
    "real_submit_allowed": false
   },
   {
+   "symbol": "5243.T",
+   "rows": [
+    {
+     "supervisor": "SCALP",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 3180,
+     "stop": 2950,
+     "target": 3525,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 95,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:prepared",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "5243.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "SCALP": "LONG_WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "6323.T",
+   "rows": [
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "WATCH",
+     "direction_label": "WATCH",
+     "css_class": "watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 3570,
+     "stop": 3255,
+     "target": 4040,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 96,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:long_term_ma_rebounds_unverified",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "6323.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "VALUE_LONG_CATALYST": "WATCH"
+    },
+    "has_long": false,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
    "symbol": "6324.T",
    "rows": [
+    {
+     "supervisor": "SCALP",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 6265,
+     "stop": 5785,
+     "target": 6985,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 95,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:prepared",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
     {
      "supervisor": "OVERNIGHT",
      "direction": "LONG",
@@ -523,17 +1105,49 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 363823.5338,
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 6270,
+     "stop": 5530,
+     "target": 7380,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 69,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6324.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
-     "OVERNIGHT": "LONG"
+     "OVERNIGHT": "LONG",
+     "SCALP": "LONG_WATCH",
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -543,7 +1157,68 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "6481.T",
+   "rows": [
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "WATCH",
+     "direction_label": "WATCH",
+     "css_class": "watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 6280,
+     "stop": 5650,
+     "target": 7225,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 100,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:long_term_ma_rebounds_unverified",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "6481.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "VALUE_LONG_CATALYST": "WATCH"
+    },
+    "has_long": false,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -557,6 +1232,36 @@
   {
    "symbol": "6501.T",
    "rows": [
+    {
+     "supervisor": "SCALP",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 5535,
+     "stop": 5340,
+     "target": 5830,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 100,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:prepared",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
     {
      "supervisor": "OVERNIGHT",
      "direction": "LONG",
@@ -584,7 +1289,7 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 363823.5338,
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     },
     {
@@ -614,18 +1319,50 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 363823.5338,
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 5660,
+     "stop": 5030,
+     "target": 6600,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 60,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6501.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "LONG",
-     "SWING": "LONG_WATCH"
+     "SWING": "LONG_WATCH",
+     "SCALP": "LONG_WATCH",
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -635,7 +1372,68 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "6504.T",
+   "rows": [
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "WATCH",
+     "direction_label": "WATCH",
+     "css_class": "watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 13150,
+     "stop": 12255,
+     "target": 14490,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 92,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:long_term_ma_rebounds_unverified",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "6504.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "VALUE_LONG_CATALYST": "WATCH"
+    },
+    "has_long": false,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -649,6 +1447,36 @@
   {
    "symbol": "6594.T",
    "rows": [
+    {
+     "supervisor": "SCALP",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 2878,
+     "stop": 2639,
+     "target": 3236,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 95,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:prepared",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
     {
      "supervisor": "OVERNIGHT",
      "direction": "LONG",
@@ -676,17 +1504,49 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_long",
-     "last_update_age_seconds": 363823.5338,
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 2878,
+     "stop": 2590,
+     "target": 3310,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 64,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6594.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
-     "OVERNIGHT": "LONG"
+     "OVERNIGHT": "LONG",
+     "SCALP": "LONG_WATCH",
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -696,7 +1556,68 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "6762.T",
+   "rows": [
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "WATCH",
+     "direction_label": "WATCH",
+     "css_class": "watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 2926,
+     "stop": 2741,
+     "target": 3204,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 92,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:long_term_ma_rebounds_unverified",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "6762.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "VALUE_LONG_CATALYST": "WATCH"
+    },
+    "has_long": false,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -737,14 +1658,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 363823.5338,
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "6902.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -757,7 +1678,160 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "6920.T",
+   "rows": [
+    {
+     "supervisor": "SCALP",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 39795,
+     "stop": 34855,
+     "target": 47205,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 85,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:prepared",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "WATCH",
+     "direction_label": "WATCH",
+     "css_class": "watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 39795,
+     "stop": 33195,
+     "target": 49695,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 95,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:long_term_ma_rebounds_unverified",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "6920.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "SCALP": "LONG_WATCH",
+     "VALUE_LONG_CATALYST": "WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "6971.T",
+   "rows": [
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 3710,
+     "stop": 3345,
+     "target": 4260,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 74,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "6971.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -771,6 +1845,36 @@
   {
    "symbol": "7013.T",
    "rows": [
+    {
+     "supervisor": "SCALP",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 2879,
+     "stop": 2756,
+     "target": 3064,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 90,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:prepared",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
     {
      "supervisor": "SWING",
      "direction": "LONG_WATCH",
@@ -798,17 +1902,49 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 363823.5338,
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 2880,
+     "stop": 2574,
+     "target": 3339,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 67,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7013.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
-     "SWING": "LONG_WATCH"
+     "SWING": "LONG_WATCH",
+     "SCALP": "LONG_WATCH",
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -818,7 +1954,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -832,6 +1968,36 @@
   {
    "symbol": "7014.T",
    "rows": [
+    {
+     "supervisor": "SCALP",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 5115,
+     "stop": 4780,
+     "target": 5620,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 95,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:prepared",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    },
     {
      "supervisor": "SWING",
      "direction": "LONG_WATCH",
@@ -859,17 +2025,18 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:monthly_weekly_hammers",
-     "last_update_age_seconds": 363823.5338,
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7014.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
-     "SWING": "LONG_WATCH"
+     "SWING": "LONG_WATCH",
+     "SCALP": "LONG_WATCH"
     },
     "has_long": true,
     "has_short": false,
@@ -879,7 +2046,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -920,14 +2087,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 363823.5338,
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7453.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -940,7 +2107,7 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -981,14 +2148,14 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:overnight_short",
-     "last_update_age_seconds": 363823.5338,
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "7564.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
      "OVERNIGHT": "SHORT"
@@ -1001,7 +2168,251 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "9432.T",
+   "rows": [
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 180.3,
+     "stop": 167.2,
+     "target": 199.9,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 70,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "9432.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "9433.T",
+   "rows": [
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 3120,
+     "stop": 2930,
+     "target": 3405,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 69,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "9433.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "9434.T",
+   "rows": [
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 253.0,
+     "stop": 236.0,
+     "target": 278.5,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 60,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "9434.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "reasons": [
+     "STALE_SUPERVISOR_DATA",
+     "PHASE1_FEATURE_FLAG_OFF"
+    ],
+    "data_quality_ok": null,
+    "feature_flag_enabled": false
+   },
+   "is_entry_trigger": false,
+   "real_submit_allowed": false
+  },
+  {
+   "symbol": "9506.T",
+   "rows": [
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 1473,
+     "stop": 1352,
+     "target": 1654,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 63,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
+     "is_stale": true
+    }
+   ],
+   "conflict_state": {
+    "schema_version": "conflict-state-1.0",
+    "symbol": "9506.T",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
+    "conflict": false,
+    "directions": {
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
+    },
+    "has_long": true,
+    "has_short": false,
+    "has_block": false
+   },
+   "router": {
+    "state": "UNKNOWN",
+    "state_label": "UNKNOWN",
+    "css_class": "unknown",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
      "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
@@ -1020,7 +2431,7 @@
      "direction": "WATCH",
      "direction_label": "WATCH",
      "css_class": "watch",
-     "as_of": "2026-09-22T20:23:54+09:00",
+     "as_of": "2026-09-22T20:36:13+09:00",
      "correlation_id": null,
      "trigger": null,
      "invalidation": null,
@@ -1042,19 +2453,50 @@
      "historical_dd": null,
      "historical_n": null,
      "provenance": "signals.json:speculative_theme_watch",
-     "last_update_age_seconds": 589.5338,
+     "last_update_age_seconds": 263.803786,
+     "is_stale": false
+    },
+    {
+     "supervisor": "VALUE_LONG_CATALYST",
+     "direction": "LONG_WATCH",
+     "direction_label": "LONG WATCH",
+     "css_class": "long-watch",
+     "as_of": "2026-09-18T15:30:00+09:00",
+     "correlation_id": null,
+     "trigger": null,
+     "invalidation": null,
+     "entry": 6970,
+     "stop": 5660,
+     "target": 8940,
+     "or5_low": null,
+     "or5_high": null,
+     "or15_low": null,
+     "or15_high": null,
+     "vwap": null,
+     "ema9": null,
+     "ema20": null,
+     "flow_bias": null,
+     "volume_burst": null,
+     "condition_score": 84,
+     "historical_ev": null,
+     "historical_pf": null,
+     "historical_dd": null,
+     "historical_n": null,
+     "provenance": "signals.json:large_lot_accumulation",
+     "last_update_age_seconds": 364236.803786,
      "is_stale": true
     }
    ],
    "conflict_state": {
     "schema_version": "conflict-state-1.0",
     "symbol": "9984.T",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "conflict": false,
     "directions": {
-     "EVENT": "WATCH"
+     "EVENT": "WATCH",
+     "VALUE_LONG_CATALYST": "LONG_WATCH"
     },
-    "has_long": false,
+    "has_long": true,
     "has_short": false,
     "has_block": false
    },
@@ -1062,9 +2504,9 @@
     "state": "UNKNOWN",
     "state_label": "UNKNOWN",
     "css_class": "unknown",
-    "as_of": "2026-09-22T20:33:43.533800+09:00",
+    "as_of": "2026-09-22T20:40:36.803786+09:00",
     "reasons": [
-     "DATA_QUALITY_UNKNOWN",
+     "STALE_SUPERVISOR_DATA",
      "PHASE1_FEATURE_FLAG_OFF"
     ],
     "data_quality_ok": null,

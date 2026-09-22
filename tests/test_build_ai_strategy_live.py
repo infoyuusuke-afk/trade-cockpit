@@ -27,6 +27,18 @@ def fixture_signals():
             {"ticker": "6501.T", "trigger": 5580, "stop": 5035, "target1": 6400,
              "score": 87, "signal_date": "2026-09-22"},
         ],
+        "prepared": [
+            {"ticker": "3132.T", "trigger": 4125, "stop": 3990, "target1": 4250,
+             "score": 95, "signal_date": "2026-09-22"},
+        ],
+        "large_lot_accumulation": [
+            {"ticker": "6920.T", "trigger": 39850, "stop": 33150, "target1": 49900,
+             "score": 88, "signal_date": "2026-09-22"},
+        ],
+        "long_term_ma_rebounds_unverified": [
+            {"ticker": "6481.T", "trigger": 6280, "stop": 5650, "target1": 7225,
+             "score": 100, "signal_date": "2026-09-22"},
+        ],
     }
 
 
@@ -63,6 +75,36 @@ class BuildStatesTests(unittest.TestCase):
     def test_empty_signals_produces_no_states(self):
         self.assertEqual(b.build_states({}, NOW), [])
 
+    def test_scalp_is_long_watch_not_a_firm_long(self):
+        states = b.build_states(fixture_signals(), NOW)
+        scalp = [s for s in states if s["supervisor"] == "SCALP"]
+        self.assertEqual(scalp[0]["direction"], "LONG_WATCH")
+        self.assertEqual(scalp[0]["provenance"], "signals.json:prepared")
+
+    def test_value_long_catalyst_accumulation_is_long_watch(self):
+        states = b.build_states(fixture_signals(), NOW)
+        vlc = {s["symbol"]: s for s in states if s["supervisor"] == "VALUE_LONG_CATALYST"}
+        self.assertEqual(vlc["6920.T"]["direction"], "LONG_WATCH")
+        self.assertEqual(vlc["6920.T"]["provenance"], "signals.json:large_lot_accumulation")
+
+    def test_value_long_catalyst_unverified_rebound_is_watch_not_long_watch(self):
+        states = b.build_states(fixture_signals(), NOW)
+        vlc = {s["symbol"]: s for s in states if s["supervisor"] == "VALUE_LONG_CATALYST"}
+        self.assertEqual(vlc["6481.T"]["direction"], "WATCH")
+        self.assertEqual(vlc["6481.T"]["provenance"], "signals.json:long_term_ma_rebounds_unverified")
+
+    def test_value_long_catalyst_overlap_resolves_to_more_cautious_watch(self):
+        signals = fixture_signals()
+        # same ticker in both sources -- must not silently drop one
+        signals["long_term_ma_rebounds_unverified"].append(
+            {"ticker": "6920.T", "trigger": 40000, "stop": 35000, "target1": 45000,
+             "score": 90, "signal_date": "2026-09-22"}
+        )
+        states = b.build_states(signals, NOW)
+        vlc_6920 = [s for s in states if s["supervisor"] == "VALUE_LONG_CATALYST" and s["symbol"] == "6920.T"]
+        self.assertEqual(len(vlc_6920), 1)  # one Supervisor, one state per symbol -- not silently two
+        self.assertEqual(vlc_6920[0]["direction"], "WATCH")
+
     def test_event_as_of_uses_signals_updated_at_not_now(self):
         signals = fixture_signals()
         states = b.build_states(signals, "2026-09-25T09:00:00+09:00")  # a different "now"
@@ -89,7 +131,7 @@ class BuildArtifactTests(unittest.TestCase):
         self.assertFalse(artifact["feature_flag_enabled"])
         self.assertFalse(artifact["is_entry_trigger"])
         self.assertFalse(artifact["real_submit_allowed"])
-        self.assertEqual(len(artifact["board"]), 4)
+        self.assertEqual(len(artifact["board"]), 7)
 
     def test_json_serializable(self):
         artifact = b.build_artifact(fixture_signals(), NOW)
