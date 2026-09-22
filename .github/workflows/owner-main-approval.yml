@@ -1,0 +1,22 @@
+name: Owner Main Approval Gate
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: owner-main-approval-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  approve:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    environment:
+      name: owner-main-approval
+    steps:
+      - name: Record explicit owner deployment approval
+        run: echo "Owner approval accepted for PR #${{ github.event.pull_request.number }} at ${{ github.event.pull_request.head.sha }}"
