@@ -36,13 +36,13 @@ The workflow has two protection gates:
 1. job condition: `github.ref == 'refs/heads/main'` and `github.ref_protected == true`;
 2. runtime: `GET /branches/main` must report `protected: true` and the exact reviewed SHA, both before reservations and immediately before the Claude API call.
 
-Independent review on 2026-09-22 found current `main` unprotected and repository rulesets empty. Production firing is therefore blocked by design.
+Independent review on 2026-09-22 initially found `main` unprotected. C-118 was then merged and an active `main-protection` ruleset was created. Current `main` is now reported `protected: true`. The ruleset targets `main`, requires pull requests and successful deployment to `owner-main-approval`, blocks deletion and force pushes, and allows the dedicated Deploy Key class to bypass so generated-data writers can continue. A protected-main writer re-run successfully pushed through this path.
 
 Do not treat a cosmetic protection rule as sufficient. The activation design must prevent Claude or an unreviewed automated writer from replacing `.github/workflows/gpt-claude-routine.yml` or `scripts/routine_bridge.mjs` and then obtaining the Environment secrets. This repository also has existing Actions that commit generated public data directly to `main`, so branch/ruleset changes must be designed without silently breaking those required data writers or granting a broad bypass to untrusted workflows.
 
 ## Owner setup after approved merge
 
-1. Protect trusted `main` and the bridge code path. Keep `CLAUDE_ROUTINE_BRIDGE_ENABLED` unset or `false` while configuring. Confirm the resulting branch endpoint reports `protected: true`.
+1. Confirm trusted `main` remains protected by the active `main-protection` ruleset and the branch endpoint still reports `protected: true`. Keep `CLAUDE_ROUTINE_BRIDGE_ENABLED` unset or `false` while configuring the remaining Claude Routine pieces.
 2. Create GitHub Environment `claude-routine-bridge` and restrict it to the trusted `main` deployment path.
 3. In the existing Claude Routine settings, add an API trigger and obtain its per-routine values. Store only in that Environment's Actions Secrets:
    - `CLAUDE_ROUTINE_TOKEN`: per-routine bearer token;
