@@ -32,9 +32,11 @@ OFFICIAL_SOURCES = [
     ("Kioxia IR", "https://www.kioxia-holdings.com/ja-jp/ir/news.html", "official_ir"),
     ("Kioxia News", "https://www.kioxia-holdings.com/ja-jp/news.html", "official_news"),
 ]
-SEC_URL = (
+SEC_CIK = "0001773708"
+SEC_SUBMISSIONS_URL = f"https://data.sec.gov/submissions/CIK{SEC_CIK}.json"
+SEC_ATOM_URL = (
     "https://www.sec.gov/cgi-bin/browse-edgar?"
-    "action=getcompany&company=Kioxia&owner=exclude&count=40&output=atom"
+    "action=getcompany&CIK=1773708&owner=exclude&count=40&output=atom"
 )
 NEWS_QUERIES = [
     'Kioxia ADR OR "American Depositary Shares" OR "U.S. listing"',
@@ -197,6 +199,42 @@ def parse_google_news(payload: bytes) -> list[dict]:
     return rows
 
 
+def parse_sec_submissions(payload: bytes) -> list[dict]:
+    data = json.loads(payload.decode("utf-8"))
+    recent = data.get("filings", {}).get("recent", {})
+    accessions = recent.get("accessionNumber") or []
+    forms = recent.get("form") or []
+    filing_dates = recent.get("filingDate") or []
+    primary_docs = recent.get("primaryDocument") or []
+    rows = []
+    for i, accession in enumerate(accessions[:80]):
+        form = forms[i] if i < len(forms) else ""
+        filing_date = filing_dates[i] if i < len(filing_dates) else ""
+        primary = primary_docs[i] if i < len(primary_docs) else ""
+        if not accession or not form or not filing_date:
+            continue
+        accession_compact = accession.replace("-", "")
+        archive_cik = str(int(SEC_CIK))
+        if primary:
+            link = f"https://www.sec.gov/Archives/edgar/data/{archive_cik}/{accession_compact}/{primary}"
+        else:
+            link = f"https://www.sec.gov/Archives/edgar/data/{archive_cik}/{accession_compact}/"
+        title = f"Kioxia Holdings SEC {form} filing ({filing_date})"
+        row = {
+            "source": "SEC EDGAR",
+            "source_kind": "sec",
+            "title": title,
+            "url": link,
+            "published_at": f"{filing_date}T00:00:00+09:00",
+            "published_precision": "date",
+            "sec_form": form,
+            "sec_accession": accession,
+        }
+        row["event_id"] = event_id("sec", link, title)
+        rows.append(classify(row))
+    return rows
+
+
 def parse_sec_atom(payload: bytes) -> list[dict]:
     root = ET.fromstring(payload)
     ns = {"a": "http://www.w3.org/2005/Atom"}
@@ -345,12 +383,30 @@ def scan(now: datetime, fetcher=fetch_bytes) -> tuple[list[dict], list[dict]]:
             health.append({"source": source, "status": "OK", "count": len(rows)})
         except Exception as exc:
             health.append({"source": source, "status": "ERROR", "error": type(exc).__name__})
+    sec_errors = []
+    sec_rows = []
+    sec_endpoint = None
     try:
-        rows = parse_sec_atom(fetcher(SEC_URL))
-        events.extend(rows)
-        health.append({"source": "SEC EDGAR", "status": "OK", "count": len(rows)})
+        sec_rows = parse_sec_submissions(fetcher(SEC_SUBMISSIONS_URL))
+        sec_endpoint = "submissions-json"
     except Exception as exc:
-        health.append({"source": "SEC EDGAR", "status": "ERROR", "error": type(exc).__name__})
+        sec_errors.append(type(exc).__name__ + (f":{getattr(exc, 'code', '')}" if getattr(exc, "code", None) else ""))
+        try:
+            sec_rows = parse_sec_atom(fetcher(SEC_ATOM_URL))
+            sec_endpoint = "company-atom"
+        except Exception as fallback_exc:
+            sec_errors.append(type(fallback_exc).__name__ + (f":{getattr(fallback_exc, 'code', '')}" if getattr(fallback_exc, "code", None) else ""))
+    if sec_endpoint:
+        events.extend(sec_rows)
+        health.append({
+            "source": "SEC EDGAR",
+            "status": "OK",
+            "count": len(sec_rows),
+            "endpoint": sec_endpoint,
+            "fallback_errors": sec_errors,
+        })
+    else:
+        health.append({"source": "SEC EDGAR", "status": "ERROR", "errors": sec_errors})
     media_count = 0
     media_errors = 0
     for query in NEWS_QUERIES:
