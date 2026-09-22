@@ -408,6 +408,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  <section class="kio-subpanel"><h3>GU／GD幅別・過去5分足統計</h3><div id="kio-gap-current" class="warning">寄り値確定後に該当帯を強調</div><div id="kio-gap-study" class="kio-gap-study"><div class="focus-empty">集計中...</div></div><p>3日未満は傾向として使用しません。確率は過去記述であり当日の保証ではありません。</p></section>
  <section class="kio-subpanel"><h3>5分足 EMA・VWAP 実戦設計</h3><div id="kio-ma-playbook" class="kio-playbook"><div class="focus-empty">計算中...</div></div></section>
 </div>
+<section class="kio-subpanel kio-catalyst-panel"><div class="kio-section-head"><div><span>5分監視・PC不要</span><h3>ADR／IR／SEC 速報レーダー</h3></div><b id="kio-breaking-state">初期化中</b></div><p id="kio-breaking-policy" class="sub">一次情報・SEC・主要報道を監視中...</p><div id="kio-breaking-list" class="kio-catalyst-list"><div class="focus-empty">速報監視を初期化中...</div></div></section>
 <section class="kio-subpanel kio-catalyst-panel"><div class="kio-section-head"><div><span>一次情報だけで更新</span><h3>新製品・技術説明会・設備投資 材料レーダー</h3></div><b id="kio-catalyst-count">確認中</b></div><p id="kio-catalyst-policy" class="sub">公式情報を照合中...</p><div id="kio-catalyst-list" class="kio-catalyst-list"><div class="focus-empty">材料を確認中...</div></div></section>
 <div id="kioxia-supply" class="kio-supply-panel">
  <div class="kio-supply-head"><div><span>信用需給（週次）</span><b id="kio-supply-phase">需給確認中</b></div><small id="kio-supply-date">基準日を確認中</small></div>
@@ -977,8 +978,9 @@ Promise.all([
  fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()),
  fetch("credit_supply.json?t=" + Date.now()).then(r => r.json()).catch(() => ({stocks:{}})),
  fetch("kioxia_catalysts.json?t=" + Date.now()).then(r => r.json()).catch(() => ({items:[]})),
- fetch("kioxia_prediction_history.json?t=" + Date.now()).then(r => r.json()).catch(() => ({summary:{}}))
-]).then(([d,credit,catalysts,audit]) => {
+ fetch("kioxia_prediction_history.json?t=" + Date.now()).then(r => r.json()).catch(() => ({summary:{}})),
+ fetch("kioxia_breaking_radar.json?t=" + Date.now()).then(r => r.json()).catch(() => ({status:"UNAVAILABLE",events:[],source_health:[]}))
+]).then(([d,credit,catalysts,audit,breaking]) => {
   const p = d.prediction || {};
   const decision = d.decision || {};
   const grade = document.getElementById("kio-decision-grade");
@@ -1042,6 +1044,21 @@ Promise.all([
   document.getElementById("kio-gap-study").innerHTML=gaps.map(x=>"<div class='kio-gap-row "+(x.usable?"":"disabled")+"'><b>"+x.bucket+"</b><span>n="+x.sample+(x.usable?"":"・不足")+"</span>"+(x.usable?"<small>寄り→引け上 "+x.close_up_rate+"%／前日終値へ窓埋め "+x.gap_fill_rate+"%<br>中央値 "+signedPct(x.median_day_ret,2)+"／日中最大上振れ "+signedPct(x.median_max_up,2)+"／下振れ "+signedPct(x.median_max_down,2)+"</small>":"<small>サンプル3日未満。売買判断に使用しない</small>")+"</div>").join("")||"<div class='focus-empty'>統計不足</div>";
   const mp=d.ma_playbook||{};
   document.getElementById("kio-ma-playbook").innerHTML="<p class='warning'>"+(mp.note||"")+"</p><div><b>上昇・初押し</b><span>"+(mp.long_first_pullback||"—")+"</span></div><div><b>上昇・深押し</b><span>"+(mp.long_deep_pullback||"—")+"</span></div><div><b>下降・初戻り</b><span>"+(mp.short_first_return||"—")+"</span></div><div><b>下降・深戻り</b><span>"+(mp.short_deep_return||"—")+"</span></div><div class='danger'><b>往復ピンタ回避</b><span>"+(mp.whipsaw_guard||"—")+"</span></div>";
+  const breakingEvents=(breaking.events||[]).slice(0,8);
+  const breakingState=document.getElementById("kio-breaking-state");
+  breakingState.textContent=(breaking.status==="READY"?"監視中":breaking.status==="DEGRADED"?"一部取得停止":breaking.status==="BOOTSTRAP_PENDING"?"初期化待ち":"取得停止");
+  breakingState.className=breaking.status==="READY"?"up":"warning";
+  document.getElementById("kio-breaking-policy").textContent=(breaking.policy||"速報監視データを取得できません")+"／新規高重要度はGitHub Issue #179へ通知";
+  document.getElementById("kio-breaking-list").innerHTML=breakingEvents.map(x=>{
+    const urgent=x.urgent?"⚡ ":"";
+    const published=(x.published_at||"").replace("T"," ").slice(0,16);
+    const source=esc(x.source||"不明");
+    const title=esc(x.title||"");
+    const stage=esc(x.stage||"UNCLASSIFIED");
+    const url=esc(x.url||"#");
+    const priority=Number(x.priority||0);
+    return "<article class='kio-catalyst "+(priority>=85?"":"disabled")+"'><div><span>"+urgent+published+"｜"+source+"</span><b>"+stage+" / P"+priority+"</b></div><h4>"+title+"</h4><p><strong>初回検知：</strong>"+esc(x.first_seen_at||"—")+"</p><small>速報は売買サインではありません。一次情報と報道を分離して確認します。</small><a href='"+url+"' target='_blank' rel='noopener'>情報源を確認</a></article>";
+  }).join("")||"<div class='focus-empty'>新規速報なし／初回スキャン待ち</div>";
   document.getElementById("kio-catalyst-policy").textContent=catalysts.policy||"公式材料を取得できません";
   document.getElementById("kio-catalyst-count").textContent=(catalysts.verified_count||0)+"件確認";
   document.getElementById("kio-catalyst-list").innerHTML=(catalysts.items||[]).map(x=>"<article class='kio-catalyst "+(x.verified?"":"disabled")+"'><div><span>"+x.date+"｜"+x.kind+"</span><b>"+x.stage+"</b></div><h4>"+x.title+"</h4><p><strong>確認済み：</strong>"+x.fact+"</p><p><strong>先回り点：</strong>"+x.expectation+"</p><p class='warning'><strong>未確認・リスク：</strong>"+x.risk+"</p><small>次の確認："+x.next_checkpoint+"／"+x.impact+"</small><a href='"+x.source_url+"' target='_blank' rel='noopener'>公式一次情報</a></article>").join("")||"<div class='focus-empty'>材料取得待ち・売買利用禁止</div>";
