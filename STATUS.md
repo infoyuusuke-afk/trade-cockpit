@@ -3334,3 +3334,101 @@ Owner/GPTがGitHub Actions UIで該当runを手動承認するか、PR #175マ�
 **安全境界**：発注・ブローカー・RssOrder・Windows Scheduled Task・real_submit・
 Fill Model挙動・カノニカルハッシュには一切触れていない。非公開MS2/Excel/口座/
 建玉データは読み書きしていない。
+
+## C-113実装：Global Macro Supervisor / Yield Curve Engine（2026-09-22）
+
+ユーザーから「なるべく早くすべて実装させたい」との指示を受け、Draft PR #170に
+含まれるC-112（AI Strategy Supervisor Layer）・C-113（Global Macro Supervisor）
+を確認した上で、C-113本文が明記する着手順序「まずはschema / pure
+classification / provenance / test contractから実装し、データ取得やLIVE反映は
+別段階で行う」に従い着手した。
+
+**実装内容**：ブランチ`feat/global-macro-supervisor-v1`からDraft PR
+[#181](https://github.com/infoyuusuke-afk/trade-cockpit/pull/181)。
+`data/global_macro_observation.schema.json`（23銘柄のpoint-in-time観測値
+スキーマ）、`scripts/global_macro_supervisor.py`（fail-closed検証、
+point-in-time鮮度判定、米国4本・日本5本のイールドカーブスプレッドを
+決定論的・バージョン管理された規則`curve-regime-v1`でBull/Bear
+Steepener/Flattener・INVERTED・NORMALIZING・UNKNOWNへ分類。出力は常に
+Regime Modifierでありトリガーではない）。テスト35件全通過。
+STATUS.md報告：Draft PR [#182](https://github.com/infoyuusuke-afk/trade-cockpit/pull/182)。
+
+データ取得・LIVE反映・Strategy Router配線は指示通り未着手。
+
+**副次的な重要発見**：作業中、本日16:30頃にGitHubリポジトリで
+`main-protection`Rulesetが新規有効化されていたことを確認した
+（`pull_request`必須・`owner-main-approval`Environment経由の`approve`
+status check必須・Claude側の認証はバイパス不可）。これにより、本セッション
+がこれまで使っていた「一時ブランチ経由でmainへ直接push」という回避策は
+今後使えなくなった。以後のmain反映にはOwner（ユーザー本人）のGitHub上の
+承認操作が必要になる見込み。この件はユーザーへ直接報告済み、GPTへの確認も
+ユーザーが送付予定。
+
+**安全境界**：発注・ブローカー・RssOrder・Windows Scheduled Task・
+real_submit・カノニカルハッシュには一切触れていない。非公開MS2/Excel/口座/
+建玉データは読み書きしていない。PRのマージ・クローズは行っていない。
+
+## C-112実装：AI Strategy LIVE クロスホライズン統括者ボード（2026-09-22）
+
+ユーザーから「各統括者→AI戦略LIVE→Shadow→日記/コンテンツまで自動配信する
+ことをいち早く構築したい」との明確な優先指示を受け、C-113に続けてC-112へ
+着手した。着手前に、C-112の要件（各統括者の独立判断を保持したまま
+Conflict/Risk Gate/Shadow状態と一緒に表示、サニタイズ済みイベントのみを
+日記システムへ）を満たす既存の土台がどこまで出来ているかを先に調査した。
+
+**既存基盤の調査結果**：`scripts/event_bus.py`（汎用イベント契約、
+STRATEGYドメイン含む）、`scripts/journal_projection.py`（STRATEGYドメイン
+イベントを既に内部日記へ投影）、`scripts/public_event_sanitizer.py`
+（payloadを`{"summary"}`のみへ厳格に制限するサニタイザ、機微語検出付き）、
+`scripts/council_cycle_projection.py`（イベント→Council/日記/実況/
+ストーリーへのファンアウト）が既に実装・テスト済みで稼働していることを
+確認した。一方、C-112が要求する「16人の統括者」「同一銘柄での複数ホライズン
+判断の非統合表示」「C-112指定のイベント語彙（SUPERVISOR_STATE_CHANGED等）」
+は存在しなかった。また`scripts/conflict_resolver.py`という既存ファイルが
+あるが、これはC-048設計の**実執行**ポジション統合（同方向シグナルの
+マージ）であり、C-112が言う**表示**レベルのクロスホライズン不一致検知とは
+別概念であることを確認し、混同しないよう実装・コメント双方で明示した。
+
+**実装内容**：ブランチ`feat/ai-strategy-live-v1`からDraft PR
+[#183](https://github.com/infoyuusuke-afk/trade-cockpit/pull/183)。
+`scripts/ai_strategy_live.py`：
+- C-112記載の16統括者定義（`HORIZON_SUPERVISORS`で銘柄別戦略ホライズンを
+  持つ8統括者と、システム全体監督役の残り8統括者を区別）
+- `build_supervisor_state()`：fail-closedな統括者別状態ビルダー
+  （direction/trigger/invalidation/entry/stop/target/OR5/OR15/VWAP/EMA/
+  Flow/Volume/条件スコア/過去EV-PF-DD-N）。常に`is_entry_trigger=False`・
+  `real_submit_allowed=False`
+- `strategy_live_snapshot()`：銘柄ごとに統括者の状態を統合せず並列保持。
+  クロスホライズンでLONG系/SHORT系/BLOCKが同時併存する場合のみ`conflict`
+  フラグ（表示用、実行をブロックしない）を立てる。最終更新経過秒数も算出
+- `supervisor_state_events()`／`external_journal_events()`：C-112指定の
+  イベント語彙（SUPERVISOR_STATE_CHANGED・STRATEGY_CANDIDATE_ACTIVATED・
+  STRATEGY_INVALIDATED・CONFLICT_DETECTED）を既存`event_bus`
+  （domain="STRATEGY"）へ発行。内部向け（rich）は既存
+  `journal_projection.py`が無改修でそのまま拾う。外部の別プロジェクト
+  Trading Journal System向け（external_*）はpayloadを`{"summary"}`のみで
+  構築し、既存`public_event_sanitizer.sanitize_event()`を無改修のまま通過
+  する（supervisor/direction/価格/口座情報は一切含めない）設計にした
+- `daily_strategy_summary_event()`／`external_daily_strategy_summary_event()`：
+  DAILY_STRATEGY_SUMMARYの内部版・サニタイズ版
+
+RISK_GATE_BLOCKED・SHADOW_POSITION_OPENED/CLOSEDは意図的に未発行（それぞれ
+既存の`execution_permission.py`・`shadow_position.py`/`shadow_execution.py`
+の責務であり、本PRはそれらを呼び出しも変更もしていない）。
+
+**テスト**：`tests/test_ai_strategy_live.py`28件全通過（統括者独立表示の
+非統合確認、7方向の競合/非競合判定、イベント遷移の差分検知、外部向け
+イベントが既存サニタイザを無改修で通過しpayloadが`{"summary"}`のみである
+ことの確認、日次サマリー集計を含む）。フルスイート1020件実行、新規
+リグレッションなし（既存・無関係の`lxml`未導入2件、未追跡ローカルファイル
+`market-regime.yml`起因2件のみ、いずれも本コミット以前から存在）。
+
+**未実装として明示的にスコープ外**：Strategy Routerへの実配線、LIVE UIの
+実描画、各統括者の実シグナル生成ロジック（本PRは、それらが将来つながる
+state/event契約のみ）。既存のcanonical契約（event_bus.py・
+journal_projection.py・public_event_sanitizer.py・conflict_resolver.py）は
+一切変更していない。
+
+**安全境界**：発注・ブローカー・RssOrder・Windows Scheduled Task・
+real_submit・カノニカルハッシュには一切触れていない。非公開MS2/Excel/口座/
+建玉データは読み書きしていない。PRのマージ・クローズは行っていない。
