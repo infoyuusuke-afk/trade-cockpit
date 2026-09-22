@@ -46,7 +46,9 @@ def build_supervisor_row(state_with_age, stale_after_seconds):
 
     `state_with_age` is one entry of
     strategy_live_snapshot(...)[symbol]["supervisors"] (already carries
-    last_update_age_seconds).
+    last_update_age_seconds). Carries both the exact `as_of` timestamp
+    and `correlation_id` for traceability/audit, even though a renderer
+    may choose to keep correlation_id hidden in the visual UI by default.
     """
     direction = state_with_age["direction"]
     age = state_with_age.get("last_update_age_seconds")
@@ -56,6 +58,8 @@ def build_supervisor_row(state_with_age, stale_after_seconds):
         "direction": direction,
         "direction_label": DIRECTION_LABELS.get(direction, {"label": direction, "css_class": "neutral"})["label"],
         "css_class": DIRECTION_LABELS.get(direction, {"label": direction, "css_class": "neutral"})["css_class"],
+        "as_of": state_with_age.get("as_of"),
+        "correlation_id": state_with_age.get("correlation_id"),
         "trigger": state_with_age.get("trigger"),
         "invalidation": state_with_age.get("invalidation"),
         "entry": state_with_age.get("entry"),
@@ -101,7 +105,9 @@ def build_symbol_card_view(symbol, snapshot_entry, router_decision, stale_after_
             "state": router_state,
             "state_label": ROUTER_STATE_LABELS.get(router_state, {"label": router_state, "css_class": "unknown"})["label"],
             "css_class": ROUTER_STATE_LABELS.get(router_state, {"label": router_state, "css_class": "unknown"})["css_class"],
+            "as_of": router_decision["as_of"],
             "reasons": router_decision["reasons"],
+            "data_quality_ok": router_decision["data_quality_ok"],
             "feature_flag_enabled": router_decision["feature_flag_enabled"],
         },
         "is_entry_trigger": False,

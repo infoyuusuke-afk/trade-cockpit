@@ -77,6 +77,23 @@ class BuildSymbolCardViewTests(unittest.TestCase):
         self.assertEqual(card["router"]["state"], "UNKNOWN")
         self.assertIn("DATA_QUALITY_UNKNOWN", card["router"]["reasons"])
 
+    def test_router_data_quality_ok_and_as_of_surfaced(self):
+        states = [state("SCALP", "285A.T", "LONG", "2026-09-22T10:00:00+09:00")]
+        snap = live.strategy_live_snapshot(states, NOW)
+        decisions = router.route_snapshot(snap, NOW, data_quality_ok_by_symbol={"285A.T": True})
+        card = view.build_symbol_card_view("285A.T", snap["285A.T"], decisions["285A.T"])
+        self.assertTrue(card["router"]["data_quality_ok"])
+        self.assertEqual(card["router"]["as_of"], NOW)
+
+    def test_row_carries_exact_as_of_and_correlation_id(self):
+        states = [state("SCALP", "285A.T", "LONG", "2026-09-22T10:00:00+09:00", correlation_id="corr-9")]
+        snap = live.strategy_live_snapshot(states, NOW)
+        decisions = router.route_snapshot(snap, NOW, data_quality_ok_by_symbol={"285A.T": True})
+        card = view.build_symbol_card_view("285A.T", snap["285A.T"], decisions["285A.T"])
+        row = card["rows"][0]
+        self.assertEqual(row["as_of"], "2026-09-22T10:00:00+09:00")
+        self.assertEqual(row["correlation_id"], "corr-9")
+
     def test_conflict_state_passthrough(self):
         states = [state("SCALP", "285A.T", "LONG", "2026-09-22T10:00:00+09:00"),
                   state("OVERNIGHT", "285A.T", "SHORT", "2026-09-22T10:00:00+09:00")]
