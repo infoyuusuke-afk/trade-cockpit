@@ -1057,3 +1057,97 @@ AI Strategy LIVEから外へ出すのはサニタイズ済みイベントのみ�
 これを別プロジェクトのTrading Journal System / AIトレード日記システムへ渡す。private MS2/account/order payloadは渡さない。
 
 **Claudeへの依頼**：Master Specの4.7.1/4.7.2を読み、今後Strategy Router / LIVE UI / Event Bus / Journal exportを設計する際の正式アーキテクチャとして扱う。実注文経路の有効化は含まれない。
+
+
+## C-113｜2026-09-22 Strategy部へGlobal Macro Supervisor / Yield Curve Engineを正式追加（GPT共有）
+
+**ユーザー指示**：日経の地合い判定に原油・ゴールド・日米金利だけでなく、イールドカーブも含め、Strategy部へ正式に組み込む。
+
+### 正式追加
+- Global Macro Supervisor / グローバルマクロ統括
+- Yield Curve Engine / イールドカーブ分析エンジン
+
+### 最低限の入力
+- US 2Y / 10Y / 30Y Yield
+- Japan 2Y / 10Y / 20Y / 30Y / 40Y JGB
+- US-Japan 2Y / 10Y spread
+- Real Yield
+- Breakeven Inflation
+- WTI / Brent
+- Gold
+- Copper
+- USDJPY
+- VIX
+- Nikkei Futures
+- SOX / Nasdaq
+
+### Yield Curve
+米国：
+- 3m10y
+- 2s10s
+- 5s30s
+- 10s30s
+
+日本：
+- 2s10s
+- 5s10s
+- 10s20s
+- 10s30s
+- 10s40s（信頼できるソースがある場合）
+
+状態分類：
+- Bull Steepener / ブル・スティープナー
+- Bull Flattener / ブル・フラットナー
+- Bear Steepener / ベア・スティープナー
+- Bear Flattener / ベア・フラットナー
+- INVERTED / 逆イールド
+- NORMALIZING / 正常化中
+- UNKNOWN / 判定不能
+
+### Strategy部での使い方
+Global Macro Supervisorの出力は **Regime Modifier / 地合い補正要因** とする。
+
+以下へ渡す：
+- Market Regime Supervisor
+- Sector Regime
+- Strategy Router
+- SCALP
+- REALTIME / DAYTRADE
+- OVERNIGHT
+- SWING
+- VALUE / LONG_CATALYST
+- EVENT / TOB_MA（必要な場合）
+
+利用用途：
+- strategy eligibility
+- LONG/SHORT priority
+- confidence band
+- position-size multiplier proposal
+- event lock / caution
+- sector preference
+- overnight gap-risk
+
+**禁止**：
+- 原油高だけでSHORT
+- 10年金利上昇だけで半導体SHORT
+- 逆イールドだけで当日売り
+- マクロ単独でエントリー確定
+
+OR5/OR15/VWAP/EMA/Flow等の実エントリートリガーとは分離する。
+
+### 検証
+マクロ要因をLIVEランキングやrisk sizingへ反映する前に、独立寄与を検証する。
+最低限 N / EV / PF / max DD / MFE / MAE / CI / regime stability / symbol class・sector・horizon interaction を確認。
+サンプル不足は INSUFFICIENT_SAMPLE / UNKNOWN。
+
+### 安全境界
+- point-in-time
+- no lookahead
+- stale/missing fail-closed
+- revised/future macro dataを過去判断へ混入させない
+- source disagreementを推測で解消しない
+- Risk Gate / Permission Gate / Conflict Resolver / Owner approvalを迂回しない
+- real_submit_allowed=false維持
+
+**Claudeへの実装指示**：
+Master Spec 4.7.3をStrategy部の正式仕様として扱う。まずはschema / pure classification / provenance / test contractから実装し、データ取得やLIVE反映は別段階で行う。既存Strategy Routerのcanonical contractを不用意に変更しない。Real submit / RssOrderは変更しない。
