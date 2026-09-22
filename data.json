@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-22 22:07:23 JST",
+  "updated_at": "2026-09-22 22:09:53 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -6079,7 +6079,7 @@
       "low": 156.82,
       "prev_close": 157.05,
       "change_pct": 0.12,
-      "ret5": 1.85,
+      "ret5": 1.84,
       "ret5_prev": 0.34,
       "ret20": -1.2,
       "rvol": 0,
@@ -6090,7 +6090,7 @@
       "ma20": 156.68,
       "ma60": 159.48,
       "from_ma5": 0.57,
-      "from_ma20": 0.36,
+      "from_ma20": 0.35,
       "touch_ma5": true,
       "to_high20": -1.96,
       "to_high52": -4.11,
@@ -6450,10 +6450,10 @@
       "high": 4.95,
       "low": 4.93,
       "prev_close": 4.96,
-      "change_pct": -0.28,
-      "ret5": -0.94,
+      "change_pct": -0.32,
+      "ret5": -0.98,
       "ret5_prev": 3.95,
-      "ret20": 5.21,
+      "ret20": 5.17,
       "rvol": 0,
       "turnover": 0,
       "atr14": 0.06,
@@ -6461,21 +6461,21 @@
       "ma5": 4.97,
       "ma20": 4.85,
       "ma60": 4.69,
-      "from_ma5": -0.47,
-      "from_ma20": 2.07,
+      "from_ma5": -0.51,
+      "from_ma20": 2.03,
       "touch_ma5": false,
-      "to_high20": -1.34,
-      "to_high52": -1.34,
+      "to_high20": -1.38,
+      "to_high52": -1.38,
       "bb_upper": 5.09,
       "bb_lower": 4.61,
-      "bb_width": 9.98,
+      "bb_width": 9.97,
       "bb_width_change": 0.23,
       "bb_percentile": 98.3,
       "bb_expansion_score": 37.6,
-      "day_score": -1.55,
-      "swing_score": 3.97,
-      "stable_score": 7.94,
-      "momentum_score": 0.32,
+      "day_score": -1.6,
+      "swing_score": 3.95,
+      "stable_score": 7.93,
+      "momentum_score": 0.31,
       "high_score": 5.0,
       "chart": [
         {
@@ -6808,9 +6808,9 @@
       "secondary_date": null,
       "secondary_verified": false,
       "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-09-22）",
-      "market_supply_score": 85,
+      "market_supply_score": 84,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給85点／上昇日出来高÷下落日2.00倍／安値切上げ○",
+      "market_supply_status": "市場需給84点／上昇日出来高÷下落日2.00倍／安値切上げ○",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
@@ -44166,8 +44166,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-09-22T22:06:29+09:00",
-    "decision_at": "2026-09-22T22:06:29+09:00",
+    "generated_at": "2026-09-22T22:09:08+09:00",
+    "decision_at": "2026-09-22T22:09:08+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -44481,13 +44481,13 @@
   },
   "precision_top5": [],
   "strong_yen_top5": {
-    "usd_jpy": 157.256,
+    "usd_jpy": 157.253,
     "usd_jpy_change_pct": -0.05,
-    "usd_jpy_ret5": 1.85,
+    "usd_jpy_ret5": 1.84,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-09-22T22:07:00+09:00",
+    "fx_observed_at": "2026-09-22T22:09:00+09:00",
     "statement_study": {
-      "updated_at": "2026-09-22 22:07:14 JST",
+      "updated_at": "2026-09-22 22:09:48 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -44855,7 +44855,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-09-22 22:07:02 JST",
+    "credit_supply_updated_at": "2026-09-22 22:09:36 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -44876,7 +44876,7 @@
     "regime": "グロース回帰",
     "regime_action": "AI・情報技術の押し目を優先。ただし過熱判定なら追わない",
     "rate_view": "金利横ばい：業績と需給を優先",
-    "rate5": -0.94,
+    "rate5": -0.98,
     "breadth": "1/11",
     "spread": -26.7,
     "us_sectors": [
@@ -45079,14 +45079,14 @@
   "bb_expansion_candidates": [],
   "morning_snapshot": {
     "date": "2026-09-22",
-    "fixed_at": "2026-09-22 22:07:23 JST",
+    "fixed_at": "2026-09-22 22:09:53 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-09-22",
-    "fixed_at": "2026-09-22 22:08:06 JST",
+    "fixed_at": "2026-09-22 22:10:30 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
@@ -45115,7 +45115,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-22 22:08:06 JST",
+        "signal_time": "2026-09-22 22:10:30 JST",
         "source": "morning_snapshot"
       },
       {
@@ -45144,7 +45144,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-22 22:08:06 JST",
+        "signal_time": "2026-09-22 22:10:30 JST",
         "source": "morning_snapshot"
       }
     ]
