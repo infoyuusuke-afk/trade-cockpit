@@ -11,6 +11,13 @@ from pathlib import Path
 import shadow_forward_private_path as path_policy
 
 
+def _platform_name() -> str:
+    """Indirection so tests can simulate a non-POSIX platform without
+    mutating the process-wide os.name (which pathlib.Path also reads, and
+    would otherwise break Path() construction on the real host OS)."""
+    return os.name
+
+
 @dataclass(frozen=True)
 class CommitResult:
     path: Path
@@ -49,7 +56,7 @@ def commit_new_private_artifact(repo_root: Path, relative_path: str, data: bytes
         # Do not publish a final name on platforms where directory durability
         # has not been independently validated. The durable Windows mechanism
         # requires a separate implementation + actual-machine approval.
-        if os.name != "posix":
+        if _platform_name() != "posix":
             raise OSError("directory durability unsupported; publication prohibited")
 
         # Publish without overwrite: hard-link creation fails if final exists.

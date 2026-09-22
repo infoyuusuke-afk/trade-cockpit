@@ -83,7 +83,7 @@ class PrivateCommitTests(unittest.TestCase):
     def test_unverified_windows_durability_never_publishes_final(self):
         with tempfile.TemporaryDirectory() as td:
             root = self.root(td)
-            with mock.patch("shadow_forward_private_commit.os.name", "nt"):
+            with mock.patch("shadow_forward_private_commit._platform_name", return_value="nt"):
                 with self.assertRaises(OSError):
                     commit.commit_new_private_artifact(
                         root, "data/private/shadow_forward/a.bin", b"ours")
