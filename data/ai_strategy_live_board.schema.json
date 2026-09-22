@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Strategy LIVE Board v1 (C-112 Phase 2 read-only artifact)",
+  "description": "Output of scripts/build_ai_strategy_live.py, written to ai_strategy_live.json. Read-only: no field here may feed an existing formal BUY/SHORT signal, Risk Gate, Shadow order, broker, or parameter-update path. feature_flag_enabled/is_entry_trigger/real_submit_allowed are pinned false at every level.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "feature_flag_enabled", "is_entry_trigger", "real_submit_allowed", "board"],
+  "properties": {
+    "schema_version": {"const": "ai-strategy-live-board-1.0"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "feature_flag_enabled": {"const": false},
+    "is_entry_trigger": {"const": false},
+    "real_submit_allowed": {"const": false},
+    "board": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["symbol", "rows", "conflict_state", "router", "is_entry_trigger", "real_submit_allowed"],
+        "properties": {
+          "symbol": {"type": "string", "minLength": 1},
+          "is_entry_trigger": {"const": false},
+          "real_submit_allowed": {"const": false},
+          "conflict_state": {"$ref": "conflict_state.schema.json"},
+          "router": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["state", "state_label", "css_class", "as_of", "reasons", "data_quality_ok", "feature_flag_enabled"],
+            "properties": {
+              "state": {"enum": ["HOLD", "UNKNOWN", "NO_ACTION"]},
+              "state_label": {"type": "string"},
+              "css_class": {"type": "string"},
+              "as_of": {"type": "string", "format": "date-time"},
+              "reasons": {"type": "array", "items": {"type": "string"}},
+              "data_quality_ok": {"type": ["boolean", "null"]},
+              "feature_flag_enabled": {"const": false}
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "One Supervisor's lane row -- see data/supervisor_output.schema.json for the source fields this is derived from, plus display-only additions (direction_label, css_class, is_stale, last_update_age_seconds).",
+              "additionalProperties": false,
+              "required": ["supervisor", "direction", "direction_label", "css_class", "as_of", "is_stale"],
+              "properties": {
+                "supervisor": {"type": "string"},
+                "direction": {"enum": ["LONG", "LONG_WATCH", "SHORT", "SHORT_WATCH", "WATCH", "BLOCK", "NEUTRAL"]},
+                "direction_label": {"type": "string"},
+                "css_class": {"type": "string"},
+                "as_of": {"type": "string", "format": "date-time"},
+                "correlation_id": {"type": ["string", "null"]},
+                "trigger": {"type": ["string", "null"]},
+                "invalidation": {"type": ["string", "null"]},
+                "entry": {"type": ["number", "null"]},
+                "stop": {"type": ["number", "null"]},
+                "target": {"type": ["number", "null"]},
+                "or5_low": {"type": ["number", "null"]},
+                "or5_high": {"type": ["number", "null"]},
+                "or15_low": {"type": ["number", "null"]},
+                "or15_high": {"type": ["number", "null"]},
+                "vwap": {"type": ["number", "null"]},
+                "ema9": {"type": ["number", "null"]},
+                "ema20": {"type": ["number", "null"]},
+                "flow_bias": {"type": ["number", "null"]},
+                "volume_burst": {"type": ["number", "null"]},
+                "condition_score": {"type": ["number", "null"]},
+                "historical_ev": {"type": ["number", "null"]},
+                "historical_pf": {"type": ["number", "null"]},
+                "historical_dd": {"type": ["number", "null"]},
+                "historical_n": {"type": ["integer", "null"]},
+                "provenance": {"type": ["string", "null"]},
+                "last_update_age_seconds": {"type": ["number", "null"]},
+                "is_stale": {"type": "boolean"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
