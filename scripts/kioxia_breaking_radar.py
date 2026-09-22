@@ -43,6 +43,8 @@ NEWS_QUERIES = [
     "キオクシア ADR OR 米国上場 OR 米国預託株式",
     "Kioxia Reuters",
     "Kioxia Bloomberg",
+    '"Kioxia Holdings" ("F-1" OR "F-6" OR "20-F" OR "6-K") SEC',
+    '"Kioxia Holdings" "1773708"',
 ]
 ADR_TERMS = (
     "adr", "american depositary", "depositary shares", "米国預託", "米国上場",
@@ -100,6 +102,10 @@ def classify(event: dict) -> dict:
     adr = any(term in text for term in ADR_TERMS)
     source_kind = event["source_kind"]
     source = event.get("source", "").casefold()
+    sec_discovery = source_kind == "media" and (
+        "sec.gov" in source
+        or ("sec" in text and any(form in text for form in ("f-1", "f-6", "20-f", "6-k")))
+    )
 
     if source_kind == "sec":
         stage, priority = "SEC_FILING", 100
@@ -116,6 +122,8 @@ def classify(event: dict) -> dict:
             stage, priority = "CONFIRMED_PREPARATION", 96
         else:
             stage, priority = "OFFICIAL_NEWS", 72
+    elif sec_discovery:
+        stage, priority = "SEC_DISCOVERY_UNVERIFIED", 88
     elif adr and any(media in source for media in MAJOR_MEDIA):
         stage, priority = "REPORTED_TERMS", 90
     elif adr:
