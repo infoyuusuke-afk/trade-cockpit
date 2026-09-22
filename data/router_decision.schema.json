@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Strategy Router Decision v1 (C-112 Phase 1)",
-  "description": "Advisory-only output of scripts/strategy_router.py. state is always one of HOLD/UNKNOWN/NO_ACTION in Phase 1; there is no BUY/SHORT/CANDIDATE state at the router level. This never influences an existing formal signal or execution path.",
+  "description": "Advisory-only output of scripts/strategy_router.py. state preserves HOLD/UNKNOWN/NO_ACTION evidence status even while the Phase 1 live-influence feature flag is OFF; there is no BUY/SHORT/CANDIDATE state at the router level. This never influences an existing formal signal or execution path.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema_version", "symbol", "as_of", "state", "reasons", "feature_flag_enabled", "is_entry_trigger", "real_submit_allowed"],
