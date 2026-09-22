@@ -48,6 +48,7 @@ SUPERVISORS = {
     "VALUE_LONG_CATALYST": "Value / Long Catalyst Supervisor",
     "TOB_MA": "TOB / M&A Supervisor",
     "KIOXIA_DEDICATED": "KIOXIA Dedicated Supervisor",
+    "GLOBAL_MACRO": "Global Macro Supervisor",
     "RISK_SAFETY": "Risk & Safety Supervisor",
     "SHADOW_EXECUTION": "Shadow Execution Supervisor",
     "RECONCILIATION": "Reconciliation Supervisor",
@@ -57,8 +58,12 @@ SUPERVISORS = {
 
 # Supervisors that report a per-symbol strategy-horizon candidate/state,
 # as distinct from system-wide oversight roles (DATA_QUALITY, MARKET_REGIME,
-# RISK_SAFETY, RECONCILIATION, CALIBRATION, JOURNAL_CONTENT_EXPORT and
-# CHIEF_AI_STRATEGY itself, which aggregates rather than originates state).
+# GLOBAL_MACRO, RISK_SAFETY, RECONCILIATION, CALIBRATION,
+# JOURNAL_CONTENT_EXPORT, SHADOW_EXECUTION and CHIEF_AI_STRATEGY itself,
+# which aggregate/contextualize rather than originate a trading candidate).
+# GLOBAL_MACRO is intentionally excluded here: per Master Spec 4.7.3 (C-113)
+# its output is a Regime Modifier and must never itself become an entry
+# trigger or count toward cross-horizon conflict detection below.
 HORIZON_SUPERVISORS = {
     "SCALP", "EVENT", "REALTIME_DAYTRADE", "OVERNIGHT", "SWING",
     "VALUE_LONG_CATALYST", "TOB_MA", "KIOXIA_DEDICATED",
@@ -72,12 +77,17 @@ SHORT_LIKE = {"SHORT", "SHORT_WATCH"}
 CANDIDATE_DIRECTIONS = {"LONG", "SHORT"}
 
 STATE_FIELDS = {
-    "supervisor", "symbol", "as_of", "direction", "trigger", "invalidation",
+    "supervisor", "symbol", "as_of", "direction", "provenance", "correlation_id",
+    "trigger", "invalidation",
     "entry", "stop", "target", "or5_low", "or5_high", "or15_low", "or15_high",
     "vwap", "ema9", "ema20", "flow_bias", "volume_burst", "condition_score",
     "historical_ev", "historical_pf", "historical_dd", "historical_n",
 }
 REQUIRED_STATE_FIELDS = {"supervisor", "symbol", "as_of", "direction"}
+
+
+def _text_or_none(v):
+    return v is None or isinstance(v, str)
 
 
 def _aware(ts):
@@ -109,6 +119,10 @@ def build_supervisor_state(**fields):
     direction = fields["direction"]
     if direction not in DIRECTIONS:
         raise ValueError("unknown direction: " + str(direction))
+    if not _text_or_none(fields.get("provenance")):
+        raise ValueError("provenance must be a string or None")
+    if not _text_or_none(fields.get("correlation_id")):
+        raise ValueError("correlation_id must be a string or None")
     _aware(fields["as_of"])
     state = {k: fields.get(k) for k in STATE_FIELDS}
     state["is_entry_trigger"] = False
@@ -120,15 +134,39 @@ def last_update_age_seconds(as_of, now):
     return (_aware(now) - _aware(as_of)).total_seconds()
 
 
+def conflict_state(symbol, horizon_directions, as_of):
+    """Structured Conflict State (data/conflict_state.schema.json, C-112 Phase 1).
+
+    `horizon_directions` is {supervisor: direction} restricted to
+    HORIZON_SUPERVISORS. Conflict means LONG-like and SHORT-like/BLOCK
+    directions coexist for this symbol across those lanes. This is a
+    display-only descriptive record -- see the module docstring's naming
+    note distinguishing this from scripts/conflict_resolver.py.
+    """
+    has_long = any(d in LONG_LIKE for d in horizon_directions.values())
+    has_short = any(d in SHORT_LIKE for d in horizon_directions.values())
+    has_block = any(d == "BLOCK" for d in horizon_directions.values())
+    conflict = (has_long and has_short) or (has_long and has_block) or (has_short and has_block)
+    return {
+        "schema_version": "conflict-state-1.0",
+        "symbol": symbol,
+        "as_of": as_of,
+        "conflict": conflict,
+        "directions": dict(horizon_directions),
+        "has_long": has_long,
+        "has_short": has_short,
+        "has_block": has_block,
+    }
+
+
 def strategy_live_snapshot(states, now):
     """Group validated states by symbol without collapsing them.
 
     `states` is a list of build_supervisor_state() outputs. Returns, per
-    symbol, every Supervisor's state as reported plus a descriptive
-    `conflict` flag (True when HORIZON_SUPERVISORS states for that symbol
-    mix LONG-like and SHORT-like/BLOCK directions). The flag is
-    informational for the LIVE board; it does not resolve or execute
-    anything.
+    symbol, every Supervisor's state as reported plus a structured
+    `conflict_state` record (data/conflict_state.schema.json) and its
+    boolean `conflict` shorthand. The flag is informational for the LIVE
+    board; it does not resolve or execute anything.
     """
     by_symbol = {}
     for s in states:
@@ -140,17 +178,15 @@ def strategy_live_snapshot(states, now):
             for s in symbol_states
             if s["supervisor"] in HORIZON_SUPERVISORS
         }
-        has_long = any(d in LONG_LIKE for d in horizon_directions.values())
-        has_short = any(d in SHORT_LIKE for d in horizon_directions.values())
-        has_block = any(d == "BLOCK" for d in horizon_directions.values())
-        conflict = (has_long and has_short) or (has_long and has_block) or (has_short and has_block)
+        c_state = conflict_state(symbol, horizon_directions, now)
         snapshot[symbol] = {
             "symbol": symbol,
             "supervisors": {
                 s["supervisor"]: {**s, "last_update_age_seconds": last_update_age_seconds(s["as_of"], now)}
                 for s in symbol_states
             },
-            "conflict": conflict,
+            "conflict": c_state["conflict"],
+            "conflict_state": c_state,
             "is_entry_trigger": False,
             "real_submit_allowed": False,
         }

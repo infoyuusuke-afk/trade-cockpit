@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Strategy LIVE Conflict State v1 (C-112 Phase 1)",
+  "description": "Display-only structured record of cross-horizon Supervisor disagreement for one symbol. Distinct from scripts/conflict_resolver.py's unrelated same-named concept (real-execution position merging); this never resolves or executes anything.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "symbol", "as_of", "conflict", "directions"],
+  "properties": {
+    "schema_version": {"const": "conflict-state-1.0"},
+    "symbol": {"type": "string", "minLength": 1},
+    "as_of": {"type": "string", "format": "date-time"},
+    "conflict": {"type": "boolean"},
+    "directions": {
+      "type": "object",
+      "description": "HORIZON_SUPERVISORS key -> direction, for the supervisors that contributed to this determination.",
+      "propertyNames": {"pattern": "^[A-Z_]+$"}
+    },
+    "has_long": {"type": "boolean"},
+    "has_short": {"type": "boolean"},
+    "has_block": {"type": "boolean"}
+  }
+}

@@ -42,9 +42,28 @@ class BuildSupervisorStateTests(unittest.TestCase):
         self.assertIsNone(s["entry"])
         self.assertIsNone(s["historical_ev"])
 
-    def test_all_sixteen_supervisors_accepted(self):
+    def test_all_seventeen_supervisors_accepted(self):
+        self.assertEqual(len(live.SUPERVISORS), 17)
         for key in live.SUPERVISORS:
             state(key, "285A.T", "NEUTRAL", "2026-09-22T10:00:00+09:00")
+
+    def test_global_macro_is_not_a_horizon_supervisor(self):
+        self.assertIn("GLOBAL_MACRO", live.SUPERVISORS)
+        self.assertNotIn("GLOBAL_MACRO", live.HORIZON_SUPERVISORS)
+
+    def test_provenance_and_correlation_id_accepted(self):
+        s = state("SCALP", "285A.T", "LONG", "2026-09-22T10:00:00+09:00",
+                   provenance="MS2_RSS_100_Collector", correlation_id="corr-1")
+        self.assertEqual(s["provenance"], "MS2_RSS_100_Collector")
+        self.assertEqual(s["correlation_id"], "corr-1")
+
+    def test_non_string_provenance_rejected(self):
+        with self.assertRaises(ValueError):
+            state("SCALP", "285A.T", "LONG", "2026-09-22T10:00:00+09:00", provenance=123)
+
+    def test_non_string_correlation_id_rejected(self):
+        with self.assertRaises(ValueError):
+            state("SCALP", "285A.T", "LONG", "2026-09-22T10:00:00+09:00", correlation_id=123)
 
 
 class StrategyLiveSnapshotTests(unittest.TestCase):
@@ -94,6 +113,23 @@ class StrategyLiveSnapshotTests(unittest.TestCase):
         snap = live.strategy_live_snapshot(states, self.NOW)
         self.assertFalse(snap["285A.T"]["real_submit_allowed"])
         self.assertFalse(snap["285A.T"]["is_entry_trigger"])
+
+    def test_conflict_state_matches_schema_shape(self):
+        states = [state("SCALP", "285A.T", "LONG", "2026-09-22T10:00:00+09:00"),
+                  state("OVERNIGHT", "285A.T", "SHORT", "2026-09-22T10:00:00+09:00")]
+        cs = live.strategy_live_snapshot(states, self.NOW)["285A.T"]["conflict_state"]
+        self.assertEqual(cs["schema_version"], "conflict-state-1.0")
+        self.assertTrue(cs["conflict"])
+        self.assertTrue(cs["has_long"])
+        self.assertTrue(cs["has_short"])
+        self.assertEqual(cs["directions"], {"SCALP": "LONG", "OVERNIGHT": "SHORT"})
+
+    def test_global_macro_direction_excluded_from_conflict_directions(self):
+        states = [state("SCALP", "285A.T", "LONG", "2026-09-22T10:00:00+09:00"),
+                  state("GLOBAL_MACRO", "285A.T", "BLOCK", "2026-09-22T10:00:00+09:00")]
+        snap = live.strategy_live_snapshot(states, self.NOW)["285A.T"]
+        self.assertFalse(snap["conflict"])
+        self.assertNotIn("GLOBAL_MACRO", snap["conflict_state"]["directions"])
 
 
 class SupervisorStateEventsTests(unittest.TestCase):
