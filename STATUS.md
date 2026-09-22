@@ -3294,3 +3294,43 @@ Draftのまま維持。
 範囲に留まる。発注・ブローカー・RssOrder・Windows Scheduled Task・real_submitには
 一切触れていない。非公開MS2/Excel/口座/建玉データは読み書きしていない。カノニカル
 ハッシュ（Execution Contract等）は変更していない。PRのマージ・クローズは行っていない。
+
+## Issue #171 (C-111) 続き：action_required原因特定とC-116修正PR #175（2026-09-22）
+
+main SHA `40f15ad7a71444fda5d43fa911ac4e1930849d7b` を基準に、Issue #171の
+2026-09-22T00:39 GPT検証コメントが指摘した「PR #168/#155/#166のMobile Control Tests
+がaction_requiredで止まっている」件を調査した。
+
+**根本原因（コード確認・実機ログ確認済み）**：`mobile-approval-feed.yml`は
+`permissions: contents: write`かつ自己コミット→pushするステップを持つが、
+`push:`トリガーに`branches:`指定がなかった。前回セッションが各Draft PRブランチへ
+mainをマージした際、mainの変更が同ワークフローの監視パス（`signals.json`等）に
+触れたため、**PRブランチ自身の上で**このワークフローが発火し、
+`github-actions[bot]`名義で`Update mobile approval feed`コミットをそのPRブランチへ
+push した。このbot起源のpushがPRの必須チェック（Mobile Control Tests）の
+再実行をGitHub側で承認待ち扱いにし、`conclusion=action_required`・ジョブ0件のまま
+凍結することを`actions_list`/`get_workflow_run`で確認した
+（PR #168: run `35671493607`＝直前の検証済みgreenコミット`034c0cd`＋
+`Update mobile approval feed`、PR #155: run `35671652081`＝`bf5f072`＋同上、
+PR #166: run `35671559018`＝`ce01f2c`＋同上。いずれもjob 0件）。
+`calibrate-ev.yml`・`ev-learning-loop.yml`も同型（書き込み権限＋自己push＋
+branches未指定）で同じ潜在バグを持つことも確認した。
+
+**対応**：3ワークフローすべてに`branches: [main]`を追加し、本リポジトリの
+他ワークフロー（`earnings-calendar.yml`等）と同じ規約に揃えた。回帰防止テスト
+`tests/test_autocommit_workflow_scope.py`を追加（修正前は3件とも検出して失敗、
+修正後は通過することを確認済み）。フルスイート970件実行、既存・無関係の
+インポートエラー3件（このサンドボックスに`pandas`/`lxml`が入っていないことによる
+もの）のみで新規リグレッションなし。ブランチ
+`fix/scope-autocommit-workflows-to-main`へpush、Draft PR #175としてOpen
+（mainへは直接pushしていない）。
+
+**未解決**：本PRはPR #168/#155/#166の既に凍結済みのヘッドを遡って直さない
+（bot起源のコミットを取り消すforce-pushは行っていない）。凍結解除には
+Owner/GPTがGitHub Actions UIで該当runを手動承認するか、PR #175マージ後に
+改めてmainを各ブランチへ安全にマージし直す（今後は同じ形では再発しない）
+必要がある。マージ・クローズは本セッションでも一切行っていない。
+
+**安全境界**：発注・ブローカー・RssOrder・Windows Scheduled Task・real_submit・
+Fill Model挙動・カノニカルハッシュには一切触れていない。非公開MS2/Excel/口座/
+建玉データは読み書きしていない。
