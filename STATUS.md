@@ -3334,3 +3334,62 @@ Owner/GPTがGitHub Actions UIで該当runを手動承認するか、PR #175マ�
 **安全境界**：発注・ブローカー・RssOrder・Windows Scheduled Task・real_submit・
 Fill Model挙動・カノニカルハッシュには一切触れていない。非公開MS2/Excel/口座/
 建玉データは読み書きしていない。
+
+## C-112 Phase 1実装完了：Strategy Routerスケルトン・schema整備・provenance（2026-09-22）
+
+GPTがIssue #171へ「C-112を安全ゲートを迂回せず前倒しする」方針を正式追記
+（PR #180/#181安定化・監査と並行してPhase 1着手可、追加のみ・advisory
+のみ・non-invasive限定）。Phase 1の指定範囲（Strategy Event/Supervisor
+Output/Router Decision/Conflict State/Journal Recordのversioned schema、
+pure deterministic Strategy Router、provenance/freshness/correlation ID
+付きEvent Bus envelope、append-only Journal export、AI Strategy LIVE
+data contract、レーン独立性維持、UNKNOWN/HOLD/NO_ACTIONのfail-closed
+処理）のうち、UI描画スケルトンを除く全項目を実装した。
+
+**実装内容**：ブランチ`feat/ai-strategy-live-v1`（PR
+[#183](https://github.com/infoyuusuke-afk/trade-cockpit/pull/183)、
+タイトル・説明も更新済み）。
+
+- 4件のversioned schema新規追加（`data/supervisor_output.schema.json`・
+  `data/router_decision.schema.json`・`data/conflict_state.schema.json`・
+  `data/journal_record.schema.json`）。いずれも対応する実装関数の実際の
+  出力キー集合と完全一致することを直接比較で検証済み（このサンドボックスに
+  `jsonschema`パッケージが無いため手動検証）。Strategy Event envelope
+  自体は既存の`data/cockpit_event.schema.json`（correlation_id既存）を
+  流用し重複作成していない
+- `scripts/ai_strategy_live.py`：17番目の統括者として`GLOBAL_MACRO`を
+  追加（C-113の設計通りHORIZON_SUPERVISORS・conflict判定からは明示的に
+  除外——Regime Modifierのまま、entry triggerにしない）。
+  `build_supervisor_state()`へprovenance（発生源系譜）・correlation_id
+  フィールドを追加。`conflict_state()`を新設し、既存のbool型`conflict`
+  フラグに加え構造化されたConflict Stateレコードも返すようにした（既存
+  呼び出し側への破壊的変更なし）
+- `scripts/strategy_router.py`（新規）：pure deterministicなStrategy
+  Router。**Phase 1の出力語彙はHOLD・UNKNOWN・NO_ACTIONの3つに閉じており、
+  BUY/SHORT/CANDIDATE相当の状態はこの層に一切存在しない**。統括者データ
+  欠如・鮮度超過→UNKNOWN、データ品質NG・クロスホライズン競合→HOLD、
+  それ以外→NO_ACTION。`FEATURE_FLAG_LIVE_INFLUENCE_ENABLED`はcall引数
+  ではなくモジュールレベル定数としてFalse固定にし、これにより他の判定
+  結果に関わらず常にNO_ACTIONへ強制する設計にした（GPTが要求した「明示的
+  デフォルトOFFのfeature flag」を、誰も見ないランタイムトグルではなく
+  構造的な保証として実装）。この定数がFalseであることを検証するtripwire
+  テストを追加した
+
+**テスト**：`tests/test_ai_strategy_live.py`に6件追加（計34件）、
+`tests/test_strategy_router.py`新規14件、計48件全通過。フルスイート
+1040件実行、新規リグレッションなし（既知の`lxml`未導入2件・未追跡
+`market-regime.yml`起因2件のみ）。PR上のCI（`test`）もgreen確認済み。
+
+**未実装として明示的に報告**：AI Strategy LIVEの実UI描画スケルトン
+（実際に画面へ表示されるカード/タブ）は今回未着手。次のPhase 1残タスク
+として明示する（構築する場合も同じデフォルトOFF姿勢を維持する）。
+
+**GPT指示への対応（STATUS専用PR乱立回避）**：本報告は新規の独立PRを
+作らず、実装PR #183のブランチへ直接統合した。
+
+**安全境界**：BUY/SHORTのcanonical再定義・発注/ブローカー/RssOrder/
+real_submit経路・自動パラメータ更新・Scheduled Task/autostart有効化・
+非公開MS2/口座/注文/約定/建玉データ・カノニカルハッシュ変更・既存の
+正式シグナルへのStrategy Router実影響、いずれにも一切触れていない。
+`scripts/event_bus.py`・`journal_projection.py`・
+`public_event_sanitizer.py`・`conflict_resolver.py`は変更していない。
