@@ -3334,3 +3334,74 @@ Owner/GPTがGitHub Actions UIで該当runを手動承認するか、PR #175マ�
 **安全境界**：発注・ブローカー・RssOrder・Windows Scheduled Task・real_submit・
 Fill Model挙動・カノニカルハッシュには一切触れていない。非公開MS2/Excel/口座/
 建玉データは読み書きしていない。
+
+## Issue #173 (C-114) Semiconductor GU Continuation LIVE MVP R1（2026-09-22）
+
+main SHA `b945f22212d0208230e8ab672d69be268e6db67d` を基準に、Issue #173（半導体GU
+継続監視LIVE MVP、固定ユニバース285A/6857/8035/6146/6920）のR1として、既存の
+OR5/OR15/VWAP/EMA/出来高/歩み値フィールドのみを消費する純粋関数の判定ロジックを
+新規実装した：`scripts/semiconductor_gu_continuation.py`。
+
+**実装範囲（意図的に最小化）**：
+- 銘柄別アドバイザリー状態機械（PREOPEN_GU_WATCH/OR5_FORMING/
+  GU_CONTINUATION_CANDIDATE/PULLBACK_RECLAIM_CANDIDATE/OR15_CONFIRMATION/
+  GU_EXHAUSTION_WARNING/LONG_INVALIDATED/WAIT_DATA/UNKNOWN）。OHLCVは一切
+  合成しない。既存収集器が計算済みのOR5/OR15/VWAP/EMA9/EMA20/出来高加速/
+  歩み値バイアスのみを読む契約とし、値が`None`（未取得）の場合は「未確定」と
+  明示し、ブレイクアウト等を推測しない。
+- 鮮度失敗はfail closed：`updated_at`欠落・未来タイムスタンプ（`time_utils.
+  assert_observed_by`で検出）・60秒超の陳腐化はいずれも`WAIT_DATA`または
+  `UNKNOWN`へ倒し、`fail_closed=True`と理由を明示する。
+- セクター横断幅（above_open/above_vwap/above_or5_high/invalidated/stale件数）
+  は文脈情報としてのみ提供し、多数決で発注判断へ変換しない旨を`note`で明記。
+- マクロ（Nikkei先物/SOX・Nasdaq/USDJPY/米金利/VIX）は渡された値のみ
+  `AVAILABLE`として通過させ、未提供フィールドは値を捏造せず`UNKNOWN`のまま。
+  Global Macro Supervisor（C-113, PR #181）が未マージのためデフォルトは
+  全項目UNKNOWN。
+- Issue #173への追加コメント（NO-PULLBACK→OVERNIGHT/SWING継続レーン）に対応し、
+  `evaluate_no_pullback_lane()`でDAYTRADE/OVERNIGHT/SWINGを独立した状態として
+  保持。ただしP5のEV/PF/DD・OOS検証データベースはまだ配線していないため、
+  R1では原則として常に`INSUFFICIENT_SAMPLE`を返し、日中で`LONG_INVALIDATED`/
+  `GU_EXHAUSTION_WARNING`に達した銘柄のみ`OVERNIGHT_BLOCK`/`SWING_BLOCK`とする。
+  単一スナップショットからEVランキングを捏造することは意図的に避けた
+  （`OVERNIGHT_CONTINUATION_CANDIDATE`/`SWING_CONTINUATION_CANDIDATE`は
+  スキーマ上定義のみで、R1のロジックからは一度も出力されないことをテストで
+  固定した）。
+- ユニバースは`load_universe()`で設定ファイル差し替え可能。ただし設定ファイルが
+  存在して壊れている場合は黙って直さずValueErrorで失敗する。
+
+**未実装・意図的にスコープ外（次段R2の課題）**：
+- 実際のMS2ライブJSON（`scripts/update.py`が生成するダッシュボード用フィールド、
+  例: `x.or5_high`/`x.or_high`(=OR15)等）への配線・Owner向けHTMLパネル表示は
+  未着手。本セッションのサンドボックスは実際のMS2ライブ収集器・本番JSON出力へ
+  アクセスできないため、フィールド名の完全一致を実機検証できていない。次段は
+  実機側で本契約とMS2ライブ出力の対応表を確認し、`build_panel()`の出力を
+  既存ダッシュボードJSON/HTMLへ接続する作業。
+- Issue追加コメントが要求するランキング入力（close location value、RVOL持続、
+  セクター内リーダー/フォロワー関係、ATR比、20D高値からの距離等）を使った
+  「provisional condition ranking」は未実装（EVデータベースが無い状態で
+  ヒューリスティックスコアだけを提示すると誤認を招くため、R1では明示的に
+  見送った）。
+
+**テスト**：`tests/test_semiconductor_gu_continuation.py`を新規追加、33件。
+Issue #173が要求する10種類の対抗テスト（新鮮な強いGU継続／VWAP・寄り付き
+喪失後の警告・無効化／OR5未完成でブレイクアウト主張なし／OR15未完成で確定
+主張なし／陳腐化データでWAIT_DATA／歩み値欠落を推測しない／混在幅で
+MIXED／大半陳腐化でWAIT_DATA／同一入力で同一出力／未来タイムスタンプで
+fail closed）をすべて含む。`python3 -m unittest tests.test_semiconductor_gu_
+continuation -v`で33件全通過を確認済み。フルスイート
+`python3 -m unittest discover -s tests -p "test_*.py"`は1006件中、既存・
+無関係のimportエラー3件（このサンドボックスに`pandas`/`lxml`が未導入のため。
+`test_investor_regime`/`test_market_ranking_watch`等、過去セッションから
+継続する既知の環境差異）のみで新規リグレッションなし。
+
+**ブランチ/PR**：`claude/admiring-noether-x1bhil`へ2ファイル追加をpush。
+Draft PRを作成しGPTレビュー待ちとする（本文にexact SHA・ファイル一覧・
+テスト結果を記載）。
+
+**安全境界**：本変更は純粋関数とテストのみ。発注・ブローカー・RssOrder・
+Windows Scheduled Task・real_submitには一切触れていない
+（`research_only=True`/`auto_execute=False`を出力契約に固定）。非公開MS2/
+Excel/口座/建玉/歩み値の実データは読み書きしていない（テストは全て合成
+フィクスチャ）。カノニカルハッシュ・既存の正式BUY/SHORTシグナル定義は
+変更していない。PRのマージ・クローズ・Issueへの新規コメントは行っていない。
