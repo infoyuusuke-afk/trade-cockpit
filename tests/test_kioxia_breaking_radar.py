@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from scripts.kioxia_breaking_radar import bootstrap_health_ok, build_state, classify, parse_official_html
+from scripts.kioxia_breaking_radar import bootstrap_health_ok, build_state, classify, parse_official_html, parse_sec_submissions
 
 JST = ZoneInfo("Asia/Tokyo")
 
@@ -81,6 +81,24 @@ class KioxiaBreakingRadarTests(unittest.TestCase):
         })
         _, alerts = build_state([event], previous, [{"source": "SEC EDGAR", "status": "OK"}], now)
         self.assertEqual([x["event_id"] for x in alerts], ["b"])
+
+    def test_sec_submissions_parser_uses_known_kioxia_cik(self):
+        payload = b'''{
+          "filings": {
+            "recent": {
+              "accessionNumber": ["0001773708-26-000001"],
+              "form": ["F-6"],
+              "filingDate": ["2026-09-22"],
+              "primaryDocument": ["kioxia-f6.htm"]
+            }
+          }
+        }'''
+        rows = parse_sec_submissions(payload)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["stage"], "SEC_FILING")
+        self.assertEqual(rows[0]["sec_form"], "F-6")
+        self.assertIn("/1773708/000177370826000001/kioxia-f6.htm", rows[0]["url"])
+        self.assertTrue(rows[0]["urgent"])
 
     def test_bootstrap_health_requires_official_and_independent_discovery(self):
         self.assertTrue(bootstrap_health_ok([
