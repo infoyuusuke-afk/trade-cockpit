@@ -3,6 +3,7 @@ name: Build Mobile Approval Feed
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
       - "signals.json"
       - "scripts/build_mobile_approvals.py"

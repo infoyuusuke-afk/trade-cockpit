@@ -3,6 +3,7 @@ name: Calibrate EV
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
       - "data/trade_results.csv"
       - "scripts/calibrate_ev.py"

@@ -2,6 +2,7 @@ name: EV Learning Loop
 on:
   workflow_dispatch:
   push:
+    branches: [main]
     paths:
       - "paper_trade_history.json"
       - "scripts/export_ev_trades.py"
