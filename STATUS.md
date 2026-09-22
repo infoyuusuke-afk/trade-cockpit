@@ -3212,3 +3212,85 @@ green化を確認済み。
 発注・執行系には一切触れていない。表示・検証スクリプトのみの修正。
 
 発注・執行系には一切触れていない。
+
+## Issue #171 (C-111) 自律実行キュー：P0-P4着手（2026-09-22）
+
+`docs/AI_COCKPIT_MASTER_SPEC.md`（Draft PR #170）とIssue #171の指示に従い、
+main SHA `1e856eeacdf71006fa095da27e1aa6e46862fb7b` を基準に自律実行を開始した。
+
+**P0（オープンDraft PR監査）**：20件のオープンDraft PRを全件監査した（サブエージェントに
+調査させた上で、結論に影響する主張はClaude本体が個別にgit/diffで裏取りした）。
+サブエージェントの一次報告には2件の誤り（PR #168が既にmainへ直接マージ済みと誤認、
+PR #155のCIが失敗中と誤認——実際は本リポジトリにこの2件を含めPR上でpytestを走らせる
+GitHub Actionsワークフローが存在せず、両PRとも`get_check_runs`はcheck run 0件だった）
+があり、`git merge-base --is-ancestor`と実ファイル比較で検出・訂正した。マージ・
+クローズは一切行っていない。
+
+| PR | タイトル | 現在mainへクリーンマージ可能か | 実質的にmain済みか | 推奨 |
+|---|---|---|---|---|
+| #170 | C-110 master spec | Yes（現行mainがbase） | No（新規docs） | keep-as-is（GPT/Owner確認待ち） |
+| #168 | C-108 TSE session gap audit | Yes（本セッションでreconcile済み、`034c0cd`） | No（寄り付き空白分類は本セッションで追加するまで未実装） | **keep-as-is**（サブエージェントの「既にmain」判定は誤り、検証済み） |
+| #166 | Fill Model calibration v2 | Yes（本セッションでreconcile済み、`ce01f2c`） | No | keep-as-is / GPT review待ち |
+| #165 | Fill Model calibration v1 | Yes | No | **#166に厳密に上位互換されている**（diff確認済み）→close-as-obsolete相当 |
+| #163/#161/#159/#157 | Shadow fill診断・数量保存テスト・fill-modelバージョン系譜・known-orderレジャー境界強化 | Yes（各々`git merge-tree`でコンフリクト0件を確認） | No | keep-as-is / rebase |
+| #155 | C-107 private Shadow Forward path policy | Yes（本セッションでreconcile済み、`bf5f072`。加えてWindowsシミュレーション用テストがpathlib内部の`os.name`参照を壊す不具合を発見・修正、`7194ee7`） | No（mainは`shadow_forward_acceptance.py`内のinlineチェックのみ） | keep-as-is |
+| #121/#119/#117/#116/#114/#113/#107 | Event/Entertainment時刻境界・コンテンツ境界・Owner承認 terminal/immutable 系の古いdraft群 | No（git merge-treeでコンフリクト確認済み） | **Yes、実質的に** — Owner承認系4件（#107→#113→#114→#117）はmainの`scripts/owner_approval_queue.py`（C-095, 実コミット`cfa825f`/#140統合）が同等以上の要件（terminal decision・重複ID拒否・aware timestamp・actor/time audit）を実装済みであることをdiff確認。Entertainment系2件（#116/#119）はmainの`scripts/public_event_sanitizer.py`+`entertainment_pipeline.py`（C-096, `7875017`/#144統合）が同等の機微データ境界を実装済み。#121もC-097（`cf9bc0d`/#145統合）で同種の時刻境界強化がmain済み | **close-as-obsolete相当**（Owner最終判断待ち、本セッションではクローズしない） |
+| #71 | Claude handoff contract drift guard | Yes | No | keep-as-is / rebase |
+| #25 | C-076グロース株OR15監視設計 | No（大幅に古いbase） | No | rebase推奨。**注意**：AI_SHARED_SHEET.mdの既存C-076（MS2ティック永続化）とC番号が衝突しており別件、Owner側で採番整理が必要 |
+| #24 | C-075 VWAP根拠訂正 | No | 内容はSTATUS.mdの訂正記述と一致する可能性が高い（未確定、一意な内容が失われないか要確認） | close候補（要最終確認） |
+| #20 | Phase 6状況表示・音声SBV2統一 | No（389コミット遅れ） | No | rebase必要（index.html等の自動更新で頻繁に競合） |
+| #19 | SBV2音声ブリッジ・MS2自動起動統合 | Yes（コンフリクトなし） | No | keep-as-is / rebase。MS2自動起動スクリプトに触れるが発注・Scheduled Task登録コードは含まれないことをdiff確認 |
+
+いずれのPRも本セッションではマージ・クローズしていない。「close-as-obsolete相当」と
+記載した行はOwner/GPTの最終確認を推奨する。
+
+**P1（Issue #169 TradingView証跡意味論）**：PR #168は`LUNCH_RECESS`/`CLOSING_AUCTION`の
+中断のみ分類しており、Issue #169が実例として挙げる「寄り付き09:00:00 JSTから最初の
+観測バーまでの空白」（2026-09-11 09:08:45初観測、09-17 09:02:30、09-18 09:03:00等）を
+一切検査していないことをコード確認した。`scripts/tradingview_stitcher.py`に
+opening-interval検査を追加し、`UNRESOLVED_NO_BAR_INTERVAL`（既定・データ消失とも
+無取引とも断定しない）／`VERIFIED_ACQUISITION_GAP`（独立取得ソースが当該区間に
+バーを持つ場合のみ）／`EXPECTED_SESSION_BREAK`の3分類をIssue #169の要求通り実装した。
+`or_promotion_blocked_dates`フィールドで、寄り付き空白のある日付（検証済み・未解決
+問わず）を下流のOR5/OR15昇格ロジックが機械的にブロックできるようにした。
+OHLCVの合成・補間は一切行っていない（`synthesized_bars: False`を監査出力に追加）。
+アドバーサリアルテスト11件追加、`tests/test_tradingview_stitcher.py`は19件全通過。
+PR #168のブランチ（`fix/tradingview-tse-session-gap-audit`）へ現在mainをマージ
+（クリーンマージ、コンフリクトなし）した上でpush済み（`034c0cd`）。Draftのまま維持。
+
+**P2（Issue #57 TradingView 15秒足ハンドオフ）**：本セッションの実行環境から
+`www.tradingview.com`（および他の一般外部サイト）への送信ネットワークがエージェント
+プロキシの組織ポリシーにより拒否されること（`CONNECT tunnel failed, response 403`）を
+実機確認した。したがって実際のTSE:285A 15秒足を取得する手段がこのセッションには
+存在しない。**BLOCKED**として報告する（理由：本セッションはネットワーク的に
+TradingViewへ到達できない）。代替タイムフレームへの差し替えやペイロードの捏造は
+行っていない。ローカルWindows環境でのTradingView Replay手動取得が引き続き唯一の
+経路である。
+
+**P3（Shadow Forward非公開永続化）**：PR #155（`feat/c107-shadow-forward-private-path-policy`）
+が既にappend-only・非公開ignoreルート限定・ランナー刻印時刻・バックフィルAPIなし・
+finalized terminal・不整合時BLOCKという要件をほぼ満たす実装
+（`shadow_forward_private_path.py`/`_private_commit.py`/`_persistence_pair.py`/
+`_resume.py`/`_trusted_ingest.py`）を含んでいることを確認した。テスト実行中に
+`test_shadow_forward_private_commit.py`の`test_unverified_windows_durability_never_publishes_final`
+が、このLinux実行環境で`NotImplementedError: cannot instantiate 'WindowsPath' on your
+system`により失敗することを発見した。原因は、テストが
+`shadow_forward_private_commit.os.name`を直接mockしていたため、`os`モジュール自体の
+属性がプロセス全体で書き換わり、pathlibの内部`os.name`参照まで巻き込んで
+`Path()`構築が壊れていたこと（本番コードの不具合ではなくテストの分離不足）。
+`_platform_name()`という間接関数を追加し、テスト側もそれをmockする方式に修正
+（本番の実際の`os.name`参照は変更なし）。修正後、対象5ファイル計43件全通過、
+mainマージ後のフルスイートも同じ（既存・無関係の）3件のimportエラーのみで
+新規リグレッションなし。ブランチへpush済み（`7194ee7`→マージ`bf5f072`）。Draftのまま維持。
+
+**P4（PR #166 Fill Model calibration）**：`feat/fill-model-calibration-contract-v2`は
+現行main（`1e856ee`）へクリーンマージ可能であることを確認（コンフリクトなし）。
+Fill Modelの挙動・パラメータ自動更新ロジックには一切触れていない
+（`parameter_update_allowed`/`real_submit_allowed`は引き続き常時False）。
+mainマージ後、テスト91件全通過。ブランチへpush済み（`ce01f2c`）。GPTレビュー待ちの
+Draftのまま維持。
+
+**安全境界**：本セッションの変更はすべてpure関数・テスト・非公開パス検証ロジックの
+範囲に留まる。発注・ブローカー・RssOrder・Windows Scheduled Task・real_submitには
+一切触れていない。非公開MS2/Excel/口座/建玉データは読み書きしていない。カノニカル
+ハッシュ（Execution Contract等）は変更していない。PRのマージ・クローズは行っていない。
