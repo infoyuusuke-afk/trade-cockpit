@@ -3334,3 +3334,67 @@ Owner/GPTがGitHub Actions UIで該当runを手動承認するか、PR #175マ�
 **安全境界**：発注・ブローカー・RssOrder・Windows Scheduled Task・real_submit・
 Fill Model挙動・カノニカルハッシュには一切触れていない。非公開MS2/Excel/口座/
 建玉データは読み書きしていない。
+
+## GPT優先順位確定に対する対応・Issue #171 P0監査再実施（2026-09-22）
+
+GPTから優先順位1〜5の指示を受けた。要点：main-protection Rulesetは
+GPT/Codex側の意図的な設計であり今後もこの運用を継続、Claudeはmainへ直接
+pushせず実装・テスト・PR作成までを担当、mainへの反映はOwner/GPT側の承認を
+経る。STATUS報告専用PRの乱立を避け関連実装PRへ統合する方向。C-112の広範な
+実装はP0〜P4安定後まで待機（本セッションは既にPR #183まで実装済みだが、
+以後の追加実装はここで一旦停止する）。
+
+**優先順位1：PR #180（Kioxia 5-minute ADR/IR/SEC breaking radar）のreconcile**
+`feat/kioxia-breaking-radar`ブランチ（main比38コミット遅れ・PR固有10コミット）
+へ最新main（`git merge-tree`でコンフリクト0件を確認済みのクリーンマージ）を
+取り込み、push（`ccaadc3`→`b520c9d`）。マージはしていない。
+`tests/test_kioxia_breaking_radar.py`8件全通過、フルスイート1000件で新規
+リグレッションなし（既知の`lxml`未導入・未追跡`market-regime.yml`起因の
+4件のみ）。PR上のCI（`bootstrap-check`・`test`）もgreenを確認。
+`approve`（Owner承認ゲート）はDraftのため正しくskip中。
+
+**優先順位2：PR #181（C-113）のreconcile**（PR #180安定後に実施との指示通り）
+`feat/global-macro-supervisor-v1`ブランチ（main比31コミット遅れ）へ最新main
+をクリーンマージ、push（`b12655a`→`fc83a40`）。マージはしていない。
+`tests/test_global_macro_supervisor.py`35件全通過、フルスイート1027件で
+新規リグレッションなし。PR上のCI（`test`）もgreenを確認。
+
+**優先順位4：Issue #171 P0監査の再実施**（現在Open PR 27件：
+#19,20,24,25,71,107,113,114,116,117,119,121,155,157,159,161,163,165,166,168,170,175,
+180,181,182,183,184）
+
+| PR | 内容 | head/base | behind main | ahead | merge-tree conflict | mainへ既反映か | 重複/上位互換関係 | canonical/safety risk | 推奨 |
+|---|---|---|---|---|---|---|---|---|---|
+| #184 | Claude STATUS: C-113/C-112報告 | docs/c112-ai-strategy-live-status-report→main | 0（本セッションで作成） | 1 | 0件 | No | なし（本監査で#182と統合検討） | なし（docs only） | keep（GPT指示によりSTATUS専用PR整理は今後配慮） |
+| #183 | C-112 AI Strategy LIVE実装 | feat/ai-strategy-live-v1→main | 0 | 1 | 0件 | No | C-112本体、他PRと重複なし | 低（pure function、canonical契約不変更） | keep-as-is、P0-P4安定後にレビュー再開 |
+| #182 | Claude STATUS: C-113報告 | docs/c113-global-macro-status-report→main | 0 | 1 | 0件 | No | #184と内容一部重複 | なし（docs only） | keep（勝手にcloseしない。次回以降は実装PRへ統合） |
+| #181 | C-113 Global Macro Supervisor実装 | feat/global-macro-supervisor-v1→main | 0（本日reconcile済み） | 2 | 0件 | No | C-113本体、他PRと重複なし | 低（pure function、canonical契約不変更） | keep-as-is、GPTレビュー待ち |
+| #180 | Kioxia breaking radar | feat/kioxia-breaking-radar→main | 0（本日reconcile済み） | 11 | 0件 | No | なし | 低（fail-closed設計、SEC403を正しくDEGRADED扱い） | **最優先keep-as-is**、最終レビュー可能な状態、mergeはOwner/GPT判断 |
+| #175 | C-116 auto-commit workflow scope修正 | fix/scope-autocommit-workflows-to-main→main | 101 | 1 | 0件 | No | なし（PR #168/#155/#166のaction_required凍結の根本修正） | 低 | keep-as-is、reconcile推奨（凍結解除に必要） |
+| #170 | C-110 マスタースペック（C-112/C-113含む） | docs/ai-cockpit-master-spec-v1→main | 104 | 7 | 0件 | No | C-112/C-113は#183/#181として個別実装着手済み | なし（docs only、コード変更なし） | keep-as-is、reconcile推奨。Owner/GPTの正式レビュー対象 |
+| #168 | C-108 TradingViewセッションギャップ監査 | fix/tradingview-tse-session-gap-audit→main | 104（前回reconcile`034c0cd`から再度遅延） | 5 | 0件 | No | No（寄り付き空白分類はmain未実装） | 低（研究・データ品質ロジックのみ） | keep-as-is、reconcile推奨 |
+| #166 | Fill Model calibration v2 | feat/fill-model-calibration-contract-v2→main | 104（前回reconcile`ce01f2c`から再度遅延） | 37 | 0件 | No | No | 低（`parameter_update_allowed`/`real_submit_allowed`常時False） | keep-as-is、reconcile推奨、GPTレビュー待ち |
+| #165 | Fill Model calibration v1 | feat/fill-model-calibration-contract-v1→main | 107 | 20 | 0件 | No | No | 低 | **close-as-obsolete相当**（#166が同一ファイル群の上位互換であることを本セッションで再確認：v1は69行、v2は152行で`submitted_at`/`predicted_at`のpoint-in-time規律とcontext freshnessを追加した上位互換） |
+| #163/#161/#159/#157 | Shadow fill診断・数量保存・fill-model系譜・known-orderレジャー境界 | 各種→main | 107 | 2〜3 | 各0件 | No | 不明（個別未再検証、前回監査ではkeep-as-is） | 低 | keep-as-is、reconcile推奨 |
+| #155 | C-107 private Shadow Forward path policy | feat/c107-shadow-forward-private-path-policy→main | 104（前回reconcile`bf5f072`から再度遅延） | 36 | 0件 | No | No（mainは簡易inlineチェックのみ） | 低（append-only・非公開ignore限定の設計） | keep-as-is、reconcile推奨 |
+| #121/#119/#117/#116/#114/#113/#107 | Event/Entertainment時刻境界・Owner承認 terminal/immutable系 | 各種→main | 119〜120 | 3〜6 | 各0件 | 実質Yes（前回監査で確認、本セッションでも`owner_approval_queue.py`・`public_event_sanitizer.py`・`entertainment_pipeline.py`が現存・稼働していることを再確認） | Yes、mainの同等・上位互換実装が既存（C-095/#140、C-096/#144、C-097/#145） | なし | **close-as-obsolete相当**（Owner最終判断待ち、本セッションではクローズしない） |
+| #71 | Claude handoffスキーマ/実行時契約ドリフトガード | test/claude-contract-drift-guard-v1→main | 147 | 1 | 0件 | No | 不明（未再検証） | 低 | keep-as-is、reconcile推奨 |
+| #25 | C-076 グロース株OR15監視設計 | gpt/c076-growth-or15→main | 423 | 1 | 0件 | No | 不明（大幅に古いbase、AI Shared SheetのC-076＝ティック永続化とC番号衝突の指摘は前回監査から継続） | 要確認 | rebase推奨、Owner側で採番整理必要（前回監査から変更なし） |
+| #24 | C-075 VWAP根拠訂正 | gpt/c075-vwap-evidence→main | 423 | 3 | 0件 | No | 不明 | 要確認 | close候補（要最終確認、前回監査から変更なし） |
+| #20 | Phase 6状況表示・音声SBV2統一 | gpt/phase6-status-voice→main | 493 | 4 | 0件 | No | 高確率でYes（V6起動体系・独自音声モジュールが本セッション内で既に稼働確認済み、C-088/C-089参照） | 低 | close-as-obsolete相当の可能性が高いが未確定、Owner最終判断待ち |
+| #19 | SBV2音声ブリッジ・MS2自動起動統合 | gpt/sbv2-voice-bridge→main | 493 | 17 | 0件 | No | 部分的Yes（「あゆみね」発音修正はV6側音声モジュールに既に独立実装済みとC-088で確認済み）。ただし本PR自体はmainへ未マージ | 低（発注・Scheduled Task登録コードは含まれないことを前回diff確認済み） | keep-as-is/rebase、Owner最終判断待ち |
+
+いずれのPRも本セッションではマージ・クローズしていない（GPT指示通り）。behind
+数値が大きいPR（#19/#20/#24/#25/#71等）は今回reconcileを実施していない
+（GPTから明示的に指示されたのは#180・#181のみのため）。次回reconcile対象の
+優先順位はOwner/GPT側の判断を仰ぐ。
+
+**優先順位3（STATUS報告PR統合）への対応**：本エントリ自体は独立PRになるが
+（監査作業自体にコード変更が伴わないため統合先の実装PRが存在しない）、
+C-113・C-112の完了報告は既に#182・#184としてPR化済みのものを流用し、
+新規のSTATUS専用PRをこれ以上増やさない方針を今後徹底する。
+
+**安全境界**：発注・ブローカー・RssOrder・Windows Scheduled Task・
+real_submit・Scheduled Task有効化・カノニカルハッシュには一切触れていない。
+非公開MS2/Excel/口座/注文/約定/建玉データは読み書きしていない。PRの
+マージ・クローズは一切行っていない。
