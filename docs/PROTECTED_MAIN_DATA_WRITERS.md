@@ -36,6 +36,7 @@ Do these steps while PR #176 remains disabled.
    - Add the Owner as required reviewer.
    - Leave **Prevent self-review** off, because AI-created PRs are attributed to the Owner account and the Owner must be able to perform the explicit UI approval.
    - Store no secrets in this environment.
+   - Under selected deployment branches/tags, allow the pull-request merge ref pattern `refs/pull/*/merge`. GitHub matches Environment deployment branch policies against the workflow run's `GITHUB_REF`; for `pull_request` runs that ref is `refs/pull/<number>/merge`. Keeping an additional `main` rule is harmless but not sufficient by itself for this gate.
 5. After C-118 code is reviewed, merge it while the old main is still writable. Immediately confirm at least one harmless writer run can commit using the deploy key.
 6. Create an **Active** branch ruleset targeting only `main`:
    - require changes through pull requests;
