@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "horizons": ["INTRADAY", "SWING", "POSITION"],
+  "families": ["OPENING_RANGE","VWAP","CANDLESTICK","DOW_STRUCTURE","ELLIOTT_HYPOTHESIS","MOVING_AVERAGE","VOLUME","BREAKOUT","MEAN_REVERSION","FUNDAMENTAL","MACRO","EXTERNAL_METHOD"],
+  "strategies": [
+    {"id":"OR15_BREAK","horizon":"INTRADAY","family":"OPENING_RANGE","state":"CANDIDATE","evidence_required":true},
+    {"id":"VWAP_RECLAIM","horizon":"INTRADAY","family":"VWAP","state":"CANDIDATE","evidence_required":true},
+    {"id":"FAST_ENTRY_45S","horizon":"INTRADAY","family":"BREAKOUT","state":"CANDIDATE","evidence_required":true},
+    {"id":"CANDLESTICK_CONTEXT","horizon":"SWING","family":"CANDLESTICK","state":"CANDIDATE","evidence_required":true},
+    {"id":"DOW_STRUCTURE","horizon":"SWING","family":"DOW_STRUCTURE","state":"CANDIDATE","evidence_required":true},
+    {"id":"ELLIOTT_RULESET_VARIANT","horizon":"SWING","family":"ELLIOTT_HYPOTHESIS","state":"CANDIDATE","evidence_required":true},
+    {"id":"MA_TREND_POSITION","horizon":"POSITION","family":"MOVING_AVERAGE","state":"CANDIDATE","evidence_required":true},
+    {"id":"FUNDAMENTAL_TREND","horizon":"POSITION","family":"FUNDAMENTAL","state":"CANDIDATE","evidence_required":true},
+    {"id":"MACRO_REGIME","horizon":"POSITION","family":"MACRO","state":"CANDIDATE","evidence_required":true},
+    {"id":"EXTERNAL_TRADER_RULE","horizon":"SWING","family":"EXTERNAL_METHOD","state":"CANDIDATE","evidence_required":true}
+  ]
+}
