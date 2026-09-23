@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "strategies": [
+    {
+      "id": "OR15_BREAK",
+      "family": "opening_range",
+      "state": "CANDIDATE",
+      "timeframe": "15m_context",
+      "evidence_required": true
+    },
+    {
+      "id": "VWAP_RECLAIM",
+      "family": "vwap",
+      "state": "CANDIDATE",
+      "timeframe": "intraday",
+      "evidence_required": true
+    },
+    {
+      "id": "FAST_ENTRY_45S",
+      "family": "execution_timing",
+      "state": "CANDIDATE",
+      "timeframe": "45s",
+      "evidence_required": true
+    },
+    {
+      "id": "OPENING_ENTRY",
+      "family": "opening_execution",
+      "state": "CANDIDATE",
+      "timeframe": "open",
+      "evidence_required": true
+    },
+    {
+      "id": "EXTERNAL_TRADER_RULE",
+      "family": "external_method",
+      "state": "CANDIDATE",
+      "timeframe": "variable",
+      "evidence_required": true
+    }
+  ]
+}
