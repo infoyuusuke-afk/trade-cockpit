@@ -91,6 +91,14 @@ class InteriorGapClassificationTests(unittest.TestCase):
   evidence=[r("2026-09-18T09:00:15+09:00")]
   x=stitch_segments([primary],independent_evidence=evidence)
   self.assertEqual(x["audit"]["intraday_gaps"][0]["status"],"VERIFIED_ACQUISITION_GAP")
+ def test_verified_interior_gap_still_blocks_promotion_semantically(self):
+  primary=[r("2026-09-18T09:00:00+09:00"),r("2026-09-18T09:00:45+09:00")]
+  evidence=[r("2026-09-18T09:00:15+09:00")]
+  x=stitch_segments([primary],independent_evidence=evidence)
+  gap=x["audit"]["intraday_gaps"][0]
+  self.assertEqual(gap["status"],"VERIFIED_ACQUISITION_GAP")
+  self.assertFalse(x["audit"]["synthesized_bars"])
+  self.assertEqual(len(x["rows"]),2)
  def test_expected_break_is_not_reclassified_by_evidence(self):
   # No legitimate execution occurs during the lunch recess; even if a
   # candidate "evidence" bar were supplied inside it, the interval is a
