@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-09-23 10:27:06 JST",
+  "updated_at": "2026-09-23 10:29:29 JST",
   "policy": "公式IR・公式製品ニュースで確認できた事実だけ掲載。技術発表と売上寄与を分離し、リンク不達は売買利用禁止。",
   "items": [
     {
@@ -46,8 +46,8 @@
       "impact": "先回り監視／受注・量産確認前は単独で買わない",
       "lead_score": 72,
       "source_url": "https://www.kioxia.com/en-jp/about/news/2026/20260812-1.html",
-      "verified": false,
-      "trade_use": "確認待ち・売買利用禁止"
+      "verified": true,
+      "trade_use": "参考可"
     },
     {
       "date": "2026-06-02",
@@ -80,5 +80,5 @@
       "trade_use": "参考可"
     }
   ],
-  "verified_count": 4
+  "verified_count": 5
 }
