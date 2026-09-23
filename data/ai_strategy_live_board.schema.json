@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Strategy LIVE Board v1 (C-112 Phase 2 read-only artifact)",
+  "description": "Output of scripts/build_ai_strategy_live.py, written to ai_strategy_live.json. Read-only: no field here may feed an existing formal BUY/SHORT signal, Risk Gate, Shadow order, broker, or parameter-update path. feature_flag_enabled/is_entry_trigger/real_submit_allowed are pinned false at every level.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "feature_flag_enabled", "is_entry_trigger", "real_submit_allowed", "connected_supervisors", "unconnected_supervisors", "data_quality_connected", "data_issues", "board", "watchlist"],
+  "properties": {
+    "schema_version": {"const": "ai-strategy-live-board-1.0"},
+    "generated_at": {"type": "string", "format": "date-time", "description": "When this artifact was built (script run time), not necessarily when the underlying signal data was observed -- see each row's own as_of for that."},
+    "feature_flag_enabled": {"const": false},
+    "is_entry_trigger": {"const": false},
+    "real_submit_allowed": {"const": false},
+    "connected_supervisors": {"type": "array", "items": {"type": "string"}, "description": "Supervisors with a verified data mapping in this build. Partial by design -- see unconnected_supervisors."},
+    "unconnected_supervisors": {"type": "array", "items": {"type": "string"}, "description": "The rest of the 17-Supervisor roster with no data source wired up yet. A viewer must not read board coverage as a full-committee review; these lanes simply have not reported at all."},
+    "data_quality_connected": {"const": false, "description": "DATA_QUALITY has no data source. Always false, never inferred true from the mere presence of other signal data."},
+    "data_issues": {
+      "type": "array",
+      "description": "Rows dropped because their timestamp could not be honestly determined (see build_ai_strategy_live.py's _emit()) -- never silently missing, never stamped with build time as a stand-in.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["supervisor", "symbol", "provenance", "reason"],
+        "properties": {
+          "supervisor": {"type": "string"},
+          "symbol": {"type": "string"},
+          "provenance": {"type": "string"},
+          "reason": {"enum": ["TIMESTAMP_UNAVAILABLE", "INVALID_ROW"]}
+        }
+      }
+    },
+    "board": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["symbol", "symbol_name", "rows", "conflict_state", "router", "is_entry_trigger", "real_submit_allowed"],
+        "properties": {
+          "symbol": {"type": "string", "minLength": 1},
+          "symbol_name": {"type": ["string", "null"], "description": "signals.json's own \"name\" field for this ticker (e.g. \"キオクシアHD（285A）\"), for display. null only when no mapped signals.json row for this symbol carried a name."},
+          "is_entry_trigger": {"const": false},
+          "real_submit_allowed": {"const": false},
+          "conflict_state": {"$ref": "conflict_state.schema.json"},
+          "router": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["state", "state_label", "css_class", "as_of", "reasons", "stale_supervisors", "data_quality_ok", "feature_flag_enabled"],
+            "properties": {
+              "state": {"enum": ["HOLD", "UNKNOWN", "NO_ACTION"]},
+              "state_label": {"type": "string"},
+              "css_class": {"type": "string"},
+              "as_of": {"type": "string", "format": "date-time"},
+              "reasons": {"type": "array", "items": {"type": "string"}},
+              "stale_supervisors": {"type": "array", "items": {"type": "string"}},
+              "data_quality_ok": {"type": ["boolean", "null"]},
+              "feature_flag_enabled": {"const": false}
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "One Supervisor's lane row -- see data/supervisor_output.schema.json for the source fields this is derived from, plus display-only additions (direction_label, css_class, is_stale, last_update_age_seconds).",
+              "additionalProperties": false,
+              "required": ["supervisor", "direction", "direction_label", "css_class", "as_of", "is_stale"],
+              "properties": {
+                "supervisor": {"type": "string"},
+                "direction": {"enum": ["LONG", "LONG_WATCH", "SHORT", "SHORT_WATCH", "WATCH", "BLOCK", "NEUTRAL"]},
+                "direction_label": {"type": "string"},
+                "css_class": {"type": "string"},
+                "as_of": {"type": "string", "format": "date-time"},
+                "correlation_id": {"type": ["string", "null"]},
+                "trigger": {"type": ["string", "null"]},
+                "invalidation": {"type": ["string", "null"]},
+                "entry": {"type": ["number", "null"]},
+                "stop": {"type": ["number", "null"]},
+                "target": {"type": ["number", "null"]},
+                "or5_low": {"type": ["number", "null"]},
+                "or5_high": {"type": ["number", "null"]},
+                "or15_low": {"type": ["number", "null"]},
+                "or15_high": {"type": ["number", "null"]},
+                "vwap": {"type": ["number", "null"]},
+                "ema9": {"type": ["number", "null"]},
+                "ema20": {"type": ["number", "null"]},
+                "flow_bias": {"type": ["number", "null"]},
+                "volume_burst": {"type": ["number", "null"]},
+                "condition_score": {"type": ["number", "null"]},
+                "historical_ev": {"type": ["number", "null"]},
+                "historical_pf": {"type": ["number", "null"]},
+                "historical_dd": {"type": ["number", "null"]},
+                "historical_n": {"type": ["integer", "null"]},
+                "provenance": {"type": ["string", "null"]},
+                "last_update_age_seconds": {"type": ["number", "null"]},
+                "is_stale": {"type": "boolean"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "watchlist": {
+      "type": "array",
+      "description": "Compact rows for every symbol with no card-qualifying existing-TOP5/strong-candidate provenance (see build_ai_strategy_live.py's CARD_QUALIFYING_PROVENANCE). A symbol appears here or in board, never both.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["symbol", "symbol_name", "headline_supervisor", "headline_direction", "headline_direction_label", "headline_css_class", "headline_is_stale", "rows", "router_state", "router_state_label", "router_css_class", "router_reasons", "is_entry_trigger", "real_submit_allowed"],
+        "properties": {
+          "symbol": {"type": "string", "minLength": 1},
+          "symbol_name": {"type": ["string", "null"], "description": "signals.json's own \"name\" field for this ticker (e.g. \"キオクシアHD（285A）\"), for display. null only when no mapped signals.json row for this symbol carried a name."},
+          "headline_supervisor": {"type": "string", "description": "The symbol's first-reporting Supervisor in canonical SUPERVISOR_ORDER, used as the compact row's one-line summary; expand rows for the rest."},
+          "headline_direction": {"enum": ["LONG", "LONG_WATCH", "SHORT", "SHORT_WATCH", "WATCH", "BLOCK", "NEUTRAL"]},
+          "headline_direction_label": {"type": "string"},
+          "headline_css_class": {"type": "string"},
+          "headline_is_stale": {"type": "boolean"},
+          "is_entry_trigger": {"const": false},
+          "real_submit_allowed": {"const": false},
+          "router_state": {"enum": ["HOLD", "UNKNOWN", "NO_ACTION"]},
+          "router_state_label": {"type": "string"},
+          "router_css_class": {"type": "string"},
+          "router_reasons": {"type": "array", "items": {"type": "string"}},
+          "rows": {
+            "type": "array",
+            "description": "Every reporting Supervisor's lane for this symbol, same shape as a board card's rows -- nothing is hidden, only presented compactly by default.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["supervisor", "direction", "direction_label", "css_class", "as_of", "is_stale"],
+              "properties": {
+                "supervisor": {"type": "string"},
+                "direction": {"enum": ["LONG", "LONG_WATCH", "SHORT", "SHORT_WATCH", "WATCH", "BLOCK", "NEUTRAL"]},
+                "direction_label": {"type": "string"},
+                "css_class": {"type": "string"},
+                "as_of": {"type": "string", "format": "date-time"},
+                "correlation_id": {"type": ["string", "null"]},
+                "trigger": {"type": ["string", "null"]},
+                "invalidation": {"type": ["string", "null"]},
+                "entry": {"type": ["number", "null"]},
+                "stop": {"type": ["number", "null"]},
+                "target": {"type": ["number", "null"]},
+                "or5_low": {"type": ["number", "null"]},
+                "or5_high": {"type": ["number", "null"]},
+                "or15_low": {"type": ["number", "null"]},
+                "or15_high": {"type": ["number", "null"]},
+                "vwap": {"type": ["number", "null"]},
+                "ema9": {"type": ["number", "null"]},
+                "ema20": {"type": ["number", "null"]},
+                "flow_bias": {"type": ["number", "null"]},
+                "volume_burst": {"type": ["number", "null"]},
+                "condition_score": {"type": ["number", "null"]},
+                "historical_ev": {"type": ["number", "null"]},
+                "historical_pf": {"type": ["number", "null"]},
+                "historical_dd": {"type": ["number", "null"]},
+                "historical_n": {"type": ["integer", "null"]},
+                "provenance": {"type": ["string", "null"]},
+                "last_update_age_seconds": {"type": ["number", "null"]},
+                "is_stale": {"type": "boolean"}
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
