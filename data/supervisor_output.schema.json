@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Strategy LIVE Supervisor Output v1 (Master Spec 4.7.1/4.7.2, C-112 Phase 1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["supervisor", "symbol", "as_of", "direction", "is_entry_trigger", "real_submit_allowed"],
+  "properties": {
+    "supervisor": {
+      "enum": [
+        "CHIEF_AI_STRATEGY", "DATA_QUALITY", "MARKET_REGIME", "SCALP", "EVENT",
+        "REALTIME_DAYTRADE", "OVERNIGHT", "SWING", "VALUE_LONG_CATALYST", "TOB_MA",
+        "KIOXIA_DEDICATED", "GLOBAL_MACRO", "RISK_SAFETY", "SHADOW_EXECUTION",
+        "RECONCILIATION", "CALIBRATION", "JOURNAL_CONTENT_EXPORT"
+      ]
+    },
+    "symbol": {"type": "string", "minLength": 1},
+    "as_of": {"type": "string", "format": "date-time"},
+    "direction": {"enum": ["LONG", "LONG_WATCH", "SHORT", "SHORT_WATCH", "WATCH", "BLOCK", "NEUTRAL"]},
+    "provenance": {"type": ["string", "null"], "description": "Which upstream model/collector/rule set produced this state (source lineage)."},
+    "correlation_id": {"type": ["string", "null"]},
+    "trigger": {"type": ["string", "null"]},
+    "invalidation": {"type": ["string", "null"]},
+    "entry": {"type": ["number", "null"]},
+    "stop": {"type": ["number", "null"]},
+    "target": {"type": ["number", "null"]},
+    "or5_low": {"type": ["number", "null"]},
+    "or5_high": {"type": ["number", "null"]},
+    "or15_low": {"type": ["number", "null"]},
+    "or15_high": {"type": ["number", "null"]},
+    "vwap": {"type": ["number", "null"]},
+    "ema9": {"type": ["number", "null"]},
+    "ema20": {"type": ["number", "null"]},
+    "flow_bias": {"type": ["number", "null"]},
+    "volume_burst": {"type": ["number", "null"]},
+    "condition_score": {"type": ["number", "null"]},
+    "historical_ev": {"type": ["number", "null"]},
+    "historical_pf": {"type": ["number", "null"]},
+    "historical_dd": {"type": ["number", "null"]},
+    "historical_n": {"type": ["integer", "null"]},
+    "is_entry_trigger": {"const": false},
+    "real_submit_allowed": {"const": false}
+  }
+}

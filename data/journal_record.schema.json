@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Cockpit Journal Record v1 (C-112 Phase 1)",
+  "description": "Append-only projection of a Cockpit Event (see cockpit_event.schema.json) into a journal row, as produced by scripts/journal_projection.py. Suitable for later research/replay. Never backfilled or edited in place -- a correction is a new record, not a mutation of this one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_id", "timestamp", "category", "event_type"],
+  "properties": {
+    "event_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "symbol": {"type": ["string", "null"]},
+    "category": {"enum": ["MARKET", "STRATEGY", "RISK", "EXECUTION", "JOURNAL", "SYSTEM"]},
+    "event_type": {"type": "string", "minLength": 1},
+    "summary": {"type": ["string", "null"]},
+    "decision": {"type": ["string", "null"]},
+    "result": {"type": ["string", "null"]},
+    "lesson": {"type": ["string", "null"]}
+  }
+}
