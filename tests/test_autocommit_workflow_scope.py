@@ -56,6 +56,22 @@ class AutoCommitWorkflowScopeTest(unittest.TestCase):
             f"auto-commit workflows missing 'push: branches: [main]': {offenders}",
         )
 
+    def test_self_committers_use_dedicated_data_writer_boundary(self):
+        offenders = []
+        for path in sorted(WORKFLOWS_DIR.glob("*.yml")):
+            text = path.read_text(encoding="utf-8")
+            if not _pushes_back(text):
+                continue
+            checks = {
+                "contents_read": bool(re.search(r"permissions:\\s*\\n\\s*contents:\\s*read", text)),
+                "environment": "environment: main-data-writer" in text,
+                "main_job_guard": "if: github.ref == 'refs/heads/main'" in text,
+                "deploy_key": "MAIN_DATA_WRITER_DEPLOY_KEY" in text,
+            }
+            if not all(checks.values()):
+                offenders.append((path.name, checks))
+        self.assertEqual(offenders, [], f"self-committing workflow boundary violations: {offenders}")
+
     def test_known_autocommit_workflows_present_and_scoped(self):
         # Explicit list so this test still fails loudly if a workflow is
         # renamed/removed in a way that silently drops coverage above.
