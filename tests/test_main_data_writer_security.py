@@ -77,7 +77,7 @@ class MainDataWriterSecurityTests(unittest.TestCase):
         self.assertIn("PR_NUMBER: ${{ github.event.pull_request.number }}", text)
         self.assertIn("PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}", text)
         self.assertIn("run: |", text)
-        self.assertIn("printf 'Owner approval accepted for PR #%s at %s\\n'", text)
+        self.assertIn("printf 'Owner gate check passed for PR #%s at %s\\n'", text)
         self.assertNotIn("secrets.", text)
         self.assertNotIn("contents: write", text)
 
