@@ -1,53 +1,7 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-22T16:36:09.959089+09:00",
+  "updated_at": "2026-09-23T22:52:06.320708+09:00",
   "calendar": [
-    {
-      "code": "2678",
-      "name": "アスクル",
-      "date": "2026-09-15",
-      "source_url": "https://www.jpx.co.jp/listing/event-schedules/financial-announcement/tvdivq0000001ofb-att/kessan08_0918.xlsx",
-      "source": "JPX公表予定",
-      "status": "予定（変更あり）",
-      "watched": false,
-      "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
-        "upward_revision_probability": null,
-        "checks": [
-          "通期計画と進捗率・前年同期の季節性",
-          "営業利益と一過性損益の区別",
-          "会社予想と市場予想の差",
-          "増配の実質額（株式分割調整後）",
-          "決算前の株価上昇・織り込み"
-        ],
-        "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
-      }
-    },
-    {
-      "code": "7050",
-      "name": "フロンティアインターナショナル",
-      "date": "2026-09-15",
-      "source_url": "https://www.jpx.co.jp/listing/event-schedules/financial-announcement/tvdivq0000001ofb-att/kessan07_0904.xlsx",
-      "source": "JPX公表予定",
-      "status": "予定（変更あり）",
-      "watched": false,
-      "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
-        "upward_revision_probability": null,
-        "checks": [
-          "通期計画と進捗率・前年同期の季節性",
-          "営業利益と一過性損益の区別",
-          "会社予想と市場予想の差",
-          "増配の実質額（株式分割調整後）",
-          "決算前の株価上昇・織り込み"
-        ],
-        "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
-      }
-    },
     {
       "code": "401A",
       "name": "霞ヶ関ホテルリート投資法人",
@@ -10394,14 +10348,19 @@
   "sources": [
     {
       "url": "https://www.jpx.co.jp/listing/event-schedules/financial-announcement/tvdivq0000001ofb-att/kessan07_0904.xlsx",
-      "events": 7
+      "events": 6
     },
     {
       "url": "https://www.jpx.co.jp/listing/event-schedules/financial-announcement/tvdivq0000001ofb-att/kessan08_0918.xlsx",
-      "events": 444
+      "events": 443
     }
   ],
   "disclosure_coverage": [
+    {
+      "date": "2026-09-23",
+      "pages": 1,
+      "truncated": false
+    },
     {
       "date": "2026-09-22",
       "pages": 1,
@@ -10414,11 +10373,6 @@
     },
     {
       "date": "2026-09-20",
-      "pages": 1,
-      "truncated": false
-    },
-    {
-      "date": "2026-09-19",
       "pages": 1,
       "truncated": false
     }
