@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-09-24 03:11:02 JST",
+  "updated_at": "2026-09-24 03:13:30 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3812,13 +3812,13 @@
         26407400.0,
         26766200.0
       ],
-      "similarity": 91.7,
+      "similarity": 91.8,
       "after_ret": -1.98,
       "max_up_after": 0.49,
       "max_down_after": -3.52,
       "score_components": {
         "five_minute": null,
-        "us_market": 89.6,
+        "us_market": 89.7,
         "credit_supply": 100.0
       },
       "us_context": {
@@ -3983,13 +3983,13 @@
         31739900.0,
         31740100.0
       ],
-      "similarity": 91.5,
+      "similarity": 91.7,
       "after_ret": -2.46,
       "max_up_after": 0.6,
       "max_down_after": -3.42,
       "score_components": {
         "five_minute": null,
-        "us_market": 91.5,
+        "us_market": 91.7,
         "credit_supply": null
       },
       "us_context": {
@@ -4142,13 +4142,13 @@
         26596400.0,
         27135400.0
       ],
-      "similarity": 91.0,
+      "similarity": 90.8,
       "after_ret": -1.27,
       "max_up_after": 0.14,
       "max_down_after": -8.2,
       "score_components": {
         "five_minute": null,
-        "us_market": 91.0,
+        "us_market": 90.8,
         "credit_supply": null
       },
       "us_context": {
@@ -4301,13 +4301,13 @@
         24519200.0,
         24904200.0
       ],
-      "similarity": 90.3,
+      "similarity": 90.1,
       "after_ret": 0.8,
       "max_up_after": 0.95,
       "max_down_after": -2.31,
       "score_components": {
         "five_minute": null,
-        "us_market": 87.9,
+        "us_market": 87.6,
         "credit_supply": 100.0
       },
       "us_context": {
@@ -4515,10 +4515,10 @@
   "market_context": {
     "date": "2026-09-23",
     "values": {
-      "sndk": -3.131,
-      "mu": -2.128,
-      "sox": -1.469,
-      "nasdaq": -1.085
+      "sndk": -3.253,
+      "mu": -2.123,
+      "sox": -1.526,
+      "nasdaq": -1.088
     },
     "labels": {
       "sndk": "SanDisk",
@@ -4544,7 +4544,7 @@
     "status": "寄り前・米国市場と信用需給から事前選定",
     "bias": "下方向候補",
     "up_probability": 19.8,
-    "expected_after_ret": -0.99,
+    "expected_after_ret": -1.0,
     "expected_max_up": 0.8,
     "expected_max_down": -3.84,
     "sample": 5
