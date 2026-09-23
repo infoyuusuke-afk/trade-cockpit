@@ -1,8 +1,9 @@
 # trade-cockpit STATUS
 
-最終更新: 2026-09-16（Claude・外部ランキング発掘＋寄り前気配ランキングが本番で稼働確認済み）
-役割分担確定：ChatGPT=戦略の壁打ちのみ（リポジトリは変更しない）／Claude=実コーディング担当
-運用体制: ChatGPT（戦略・相場観）＋ Claude/Claude Code（コーディング・診断）＋ Genspark（必要時のみ、現在未課金）
+最終更新: 2026-09-23（GitHub mainを開発・進捗共有の唯一の正本として同期）
+役割分担（現行）：GPT/Codex側＝主開発・実装・検証・GitHub連携／Cloud側＝レビュー・診断・補助実装。役割は固定せず、GitHub mainの最新状態を基準に引き継ぐ。
+運用体制: GitHub main＝コードと進捗共有の唯一の正本。新しいセッションは必ずmainのSTATUS.mdと関連Issue/PRを確認してから作業し、古いチャット内の役割分担や進捗を正本として扱わない。
+同期ルール: GPT/Codex側・Cloud側のどちらで作業しても、共有すべき完了事項・未解決事項・Owner判断待ちはSTATUS.mdまたは関連Issue/PRへ反映する。main未反映の作業は「共有済み」と扱わない。
 
 新しいスレッド・チャットを始めるときは、このファイルの内容をコピペするか
 URL（https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/STATUS.md）
