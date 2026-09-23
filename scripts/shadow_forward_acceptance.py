@@ -76,6 +76,15 @@ JST = timezone(timedelta(hours=9))
 
 MIN_ELIGIBLE_UNIQUE_INTENTS = 50
 
+FILL_MODEL_ASSUMPTIONS = {
+    "shadow-fill-model-0.1": {
+        "limit_trade_through_full_requested_qty": True,
+        "limit_queue_position_modeled": False,
+        "limit_visible_liquidity_modeled": False,
+        "calibration_status": "UNCALIBRATED_ASSUMPTION",
+    }
+}
+
 STATUSES = ("INSUFFICIENT_SAMPLE", "FAIL_INTEGRITY", "SHADOW_FORWARD_REVIEW_ELIGIBLE")
 
 REQUIRED_SOURCE = "SHADOW_FORWARD"
@@ -399,6 +408,7 @@ def evaluate_shadow_forward_acceptance(records, *, now: datetime) -> dict:
 
     return {
         "schema_version": SCHEMA_VERSION,
+        "fill_model_assumptions": {k: dict(v) for k, v in FILL_MODEL_ASSUMPTIONS.items()},
         "status": status,
         "eligible_unique_intents": eligible_unique_intents,
         "min_required": MIN_ELIGIBLE_UNIQUE_INTENTS,
