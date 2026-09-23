@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "InternationalPresentationEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event_key", "ts", "symbol", "facts"],
+  "properties": {
+    "event_key": {"type": "string", "minLength": 1},
+    "ts": {"type": "string", "format": "date-time"},
+    "symbol": {"type": "string", "minLength": 1},
+    "facts": {
+      "type": "object",
+      "description": "Language-neutral observed facts only. Missing facts remain missing.",
+      "additionalProperties": true
+    }
+  }
+}
