@@ -1,0 +1,20 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Local Market Data Gateway Snapshot",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["symbol","observed_at","generated_at","source"],
+  "properties":{
+    "symbol":{"type":"string","minLength":1},
+    "observed_at":{"type":"string","format":"date-time"},
+    "generated_at":{"type":"string","format":"date-time"},
+    "source":{"type":"string","minLength":1},
+    "stale":{"type":"boolean"},
+    "current":{"type":["number","null"]},"open":{"type":["number","null"]},"previous_close":{"type":["number","null"]},
+    "volume":{"type":["number","null"],"minimum":0},"turnover":{"type":["number","null"],"minimum":0},"vwap":{"type":["number","null"]},
+    "or5_high":{"type":["number","null"]},"or5_mid":{"type":["number","null"]},"or5_low":{"type":["number","null"]},"or5_complete":{"type":"boolean"},
+    "or15_high":{"type":["number","null"]},"or15_mid":{"type":["number","null"]},"or15_low":{"type":["number","null"]},"or15_complete":{"type":"boolean"},
+    "ema9":{"type":["number","null"]},"ema20":{"type":["number","null"]},
+    "flow_state":{"type":["string","number","null"]}
+  }
+}
