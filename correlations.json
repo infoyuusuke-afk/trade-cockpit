@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-23 18:47:47 JST",
+  "updated_at": "2026-09-23 18:49:58 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -2261,6 +2261,37 @@
         "or15": "レンジ内",
         "vwap": "下",
         "ema": "下向き"
+      },
+      "decision": "この関係を売買根拠にしない"
+    },
+    {
+      "anchor": "ティアフォー（593A）",
+      "anchor_ticker": "593A.T",
+      "peer": "アイサンテクノロジー（4667）",
+      "peer_ticker": "4667.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.5,
+      "corr60": 0.48,
+      "sample20": 20,
+      "sample60": 41,
+      "intraday_corr": 0.16,
+      "lead_bars": 0,
+      "bars": 300,
+      "state": "不安定",
+      "confidence": 69,
+      "anchor_today": {
+        "ret": 3.43,
+        "or15": "上抜け",
+        "vwap": "上",
+        "ema": "上向き"
+      },
+      "peer_today": {
+        "ret": 5.96,
+        "or15": "上抜け",
+        "vwap": "上",
+        "ema": "上向き"
       },
       "decision": "この関係を売買根拠にしない"
     },
