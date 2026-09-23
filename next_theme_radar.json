@@ -1,21 +1,21 @@
 {
   "schema_version": "next-theme-radar-0.2",
-  "updated_at": "2026-09-22T21:04:32.145236+09:00",
+  "updated_at": "2026-09-23T20:57:50.432826+09:00",
   "source_note": "ニュース集約RSSは一次資料ではない。価格・資金流入は取得済み証拠だけで採点。",
   "themes": [
     {
       "theme_id": "jpy-stablecoin",
       "theme": "円ステーブルコイン",
-      "status": "WATCH",
-      "score": 45,
+      "status": "NO_EVENT",
+      "score": 15,
       "score_breakdown": {
-        "novelty": 15,
-        "catalyst": 5,
+        "novelty": 0,
+        "catalyst": 0,
         "money_flow": 0,
         "japan_link": 15,
         "breadth": 0,
         "small_cap": 0,
-        "overseas_lead": 10,
+        "overseas_lead": 0,
         "price_confirmation": 0
       },
       "weights": {
@@ -28,16 +28,9 @@
         "overseas_lead": 10,
         "price_confirmation": 5
       },
-      "first_seen": "2026-09-21T23:17:01.838359+09:00",
-      "last_event_at": "2026-09-22T06:10:05+09:00",
-      "events": [
-        {
-          "title": "Korea Becomes Top Market for Japan's Yen Stablecoin at 54% of Trades - Seoul Economic Daily",
-          "url": "https://news.google.com/rss/articles/CBMinwFBVV95cUxOMEFPdjJGYXBNVURwVmdSVEIxbFVibWJaV2NkODYtX19Gc2FEYkstS2JVdTRPSkZoVmJPaFBPWVBQVWowNlBYNjBvQVEwOHBHeWN2TE5SR1ZJaW5MZ240VXg1Um1YOE12RWJTTXlRS1V2d2hOSHBST3RMMElJM19Gc28xZGVmVFJZVzdNVnk5d18tZHBWMGRyZXhESFZWZ2c?oc=5",
-          "published_at": "2026-09-22T06:10:05+09:00",
-          "source": "Seoul Economic Daily"
-        }
-      ],
+      "first_seen": null,
+      "last_event_at": null,
+      "events": [],
       "stocks": [
         {
           "code": "3853",
@@ -75,18 +68,14 @@
       ],
       "reacting_stock_count": 0,
       "evidence": {
-        "news_fresh": true,
+        "news_fresh": false,
         "money_flow_fresh": false,
         "money_flow_anomaly": false,
         "tv_fresh": true,
         "money_flow_source": null
       },
       "emergency_display": false,
-      "handoff_codes": [
-        "3853",
-        "4072",
-        "4382"
-      ],
+      "handoff_codes": [],
       "trading_enabled": false,
       "real_submit_allowed": false
     }
