@@ -1,0 +1,15 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Behavior Coach Event","type":"object",
+  "required":["ts","symbol","event_type","position_side","last_price","evidence","coach_mode","coach_message"],
+  "properties":{
+    "ts":{"type":"string"},"symbol":{"type":"string"},
+    "event_type":{"enum":["rapid_adverse_move","breakeven_recovery","relief_exit","post_exit_flip","revenge_risk","liquidity_sweep","failed_breakdown","reclaim"]},
+    "position_side":{"enum":["LONG","SHORT","FLAT"]},"entry_price":{"type":["number","null"]},"last_price":{"type":"number"},
+    "mae_pct":{"type":["number","null"]},"mfe_pct":{"type":["number","null"]},
+    "or5_state":{"type":["string","null"]},"or15_state":{"type":["string","null"]},"vwap_state":{"type":["string","null"]},
+    "volume_state":{"type":["string","null"]},"market_regime":{"type":["string","null"]},
+    "evidence":{"type":"array","items":{"type":"string"}},"coach_mode":{"enum":["observe","reset","reassess"]},
+    "coach_message":{"type":"string","minLength":1}
+  },"additionalProperties":false
+}
