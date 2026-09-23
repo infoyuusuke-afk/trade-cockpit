@@ -63,7 +63,7 @@ class AutoCommitWorkflowScopeTest(unittest.TestCase):
             if not _pushes_back(text):
                 continue
             checks = {
-                "contents_read": bool(re.search(r"permissions:\\s*\\n\\s*contents:\\s*read", text)),
+                "contents_read": bool(re.search(r"permissions:\s*\n\s*contents:\s*read", text)),
                 "environment": "environment: main-data-writer" in text,
                 "main_job_guard": "if: github.ref == 'refs/heads/main'" in text,
                 "deploy_key": "MAIN_DATA_WRITER_DEPLOY_KEY" in text,
