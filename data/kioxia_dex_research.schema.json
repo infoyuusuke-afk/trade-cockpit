@@ -1,0 +1,22 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"C-189 KIOXIA DEX research session row",
+  "type":"object",
+  "required":["session_day","prev_close","open","open_gap_pct","regime"],
+  "properties":{
+    "session_day":{"type":"string","format":"date"},
+    "regime":{"enum":["weekday_overnight","weekend_or_holiday","multi_day_gap"]},
+    "calendar_gap_days":{"type":"integer","minimum":1},
+    "prev_close":{"type":"number","exclusiveMinimum":0},
+    "open":{"type":"number","exclusiveMinimum":0},
+    "open_gap_pct":{"type":"number"},
+    "dex_0800":{"type":["number","null"]},"dex_0830":{"type":["number","null"]},
+    "dex_0845":{"type":["number","null"]},"dex_0855":{"type":["number","null"]},
+    "dex_0800_gap_pct":{"type":["number","null"]},"dex_0830_gap_pct":{"type":["number","null"]},
+    "dex_0845_gap_pct":{"type":["number","null"]},"dex_0855_gap_pct":{"type":["number","null"]},
+    "open_to_or5_pct":{"type":"number"},"or5_to_or15_pct":{"type":"number"},
+    "open_to_0930_pct":{"type":"number"},"open_to_1000_pct":{"type":"number"},
+    "open_to_close_pct":{"type":"number"}
+  },
+  "additionalProperties":true
+}
