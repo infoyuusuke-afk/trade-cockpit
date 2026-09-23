@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-23 09:54:22 JST",
+  "updated_at": "2026-09-23 09:56:31 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -959,6 +959,37 @@
         "or15": "レンジ内",
         "vwap": "下",
         "ema": "下向き"
+      },
+      "decision": "売買の確認材料に使用"
+    },
+    {
+      "anchor": "富士電機（6504）",
+      "anchor_ticker": "6504.T",
+      "peer": "THK（6481）",
+      "peer_ticker": "6481.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.81,
+      "corr60": 0.69,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": 0.55,
+      "lead_bars": 0,
+      "bars": 300,
+      "state": "確認",
+      "confidence": 84,
+      "anchor_today": {
+        "ret": 0.65,
+        "or15": "上抜け",
+        "vwap": "上",
+        "ema": "上向き"
+      },
+      "peer_today": {
+        "ret": 3.18,
+        "or15": "上抜け",
+        "vwap": "上",
+        "ema": "上向き"
       },
       "decision": "売買の確認材料に使用"
     },
@@ -2726,6 +2757,37 @@
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "下向き"
+      },
+      "decision": "この関係を売買根拠にしない"
+    },
+    {
+      "anchor": "富士電機（6504）",
+      "anchor_ticker": "6504.T",
+      "peer": "ニトリHD（9843）",
+      "peer_ticker": "9843.T",
+      "relation": "自動検出・逆相関",
+      "expected": "逆相関仮説",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": -0.42,
+      "corr60": -0.4,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": -0.08,
+      "lead_bars": 3,
+      "bars": 300,
+      "state": "不安定",
+      "confidence": 65,
+      "anchor_today": {
+        "ret": 0.65,
+        "or15": "上抜け",
+        "vwap": "上",
+        "ema": "上向き"
+      },
+      "peer_today": {
+        "ret": -1.34,
+        "or15": "下抜け",
+        "vwap": "上",
+        "ema": "上向き"
       },
       "decision": "この関係を売買根拠にしない"
     },
