@@ -1,0 +1,22 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Global Macro Observation v1",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["schema_version","instrument","value","observed_at","source"],
+  "properties":{
+    "schema_version":{"const":"global-macro-observation-1.0"},
+    "instrument":{"enum":[
+      "US_3M","US_2Y","US_5Y","US_10Y","US_30Y",
+      "JP_2Y","JP_5Y","JP_10Y","JP_20Y","JP_30Y","JP_40Y",
+      "US_JP_2Y_SPREAD","US_JP_10Y_SPREAD",
+      "REAL_YIELD","BREAKEVEN_INFLATION",
+      "WTI","BRENT","GOLD","COPPER",
+      "USDJPY","VIX","NIKKEI_FUTURES","SOX","NASDAQ"
+    ]},
+    "value":{"type":"number"},
+    "observed_at":{"type":"string","format":"date-time"},
+    "source":{"type":"string","minLength":1},
+    "correlation_id":{"type":["string","null"]}
+  }
+}
