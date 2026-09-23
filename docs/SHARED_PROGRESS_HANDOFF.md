@@ -46,9 +46,11 @@ open_items:
   - Wire automated validation/update behavior around this handoff.
   - Identify the exact Cloud/Claude workflow entry point and require it to read this handoff before progress reporting.
   - Add machine-readable companion state only if needed by automation.
+  - Treat generated-data-only movement on main as freshness drift, not a reason to repeatedly merge main into a code PR; code/workflow conflicts still require reconciliation.
 next_actions:
   - Review existing workflow files for the safest integration point.
   - Add tests/validation so stale or malformed handoff state fails visibly.
+  - Before owner approval, compare changed code/workflow paths against current main; generated market-data drift is reviewed separately.
 owner_approval_required:
   - Merge to main after review/CI.
 blocked_by: []
