@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "characters": [
+    {
+      "id": "MUGI",
+      "name": "ムギ",
+      "core_role": "emotion_and_momentum",
+      "immutable": [
+        "emotionally_direct",
+        "momentum_sensitive"
+      ],
+      "growth_axes": [
+        "patience",
+        "recovery",
+        "trust"
+      ],
+      "human_form": "EARNED_NOT_UNLOCKED"
+    },
+    {
+      "id": "MERU",
+      "name": "メル",
+      "core_role": "market_structure",
+      "immutable": [
+        "calm",
+        "structural"
+      ],
+      "growth_axes": [
+        "empathy",
+        "flexibility",
+        "humor"
+      ],
+      "human_form": "EARNED_NOT_UNLOCKED"
+    },
+    {
+      "id": "KUU",
+      "name": "くうちゃん",
+      "core_role": "risk_and_invalidation",
+      "immutable": [
+        "protective",
+        "boundary_focused"
+      ],
+      "growth_axes": [
+        "trust",
+        "courage",
+        "communication"
+      ],
+      "human_form": "EARNED_NOT_UNLOCKED"
+    },
+    {
+      "id": "HAMU",
+      "name": "ハム",
+      "core_role": "evidence_and_research",
+      "immutable": [
+        "evidence_first",
+        "precise"
+      ],
+      "growth_axes": [
+        "intuition",
+        "warmth",
+        "storytelling"
+      ],
+      "human_form": "EARNED_NOT_UNLOCKED"
+    }
+  ],
+  "rules": {
+    "external_publish_allowed": false,
+    "fiction_must_not_rewrite_evidence": true,
+    "final_human_design_locked": false
+  }
+}
