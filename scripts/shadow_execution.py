@@ -369,7 +369,9 @@ def submit_shadow_order(intent: dict, risk_decision: dict, ticket: dict, *, know
     if lineage_reasons:
         return _rejected(intent_hash, lineage_reasons)
 
-    if not isinstance(known_orders, list) or not all(isinstance(x, dict) for x in known_orders):
+    if (not isinstance(known_orders, list)
+            or not all(isinstance(x, dict) for x in known_orders)
+            or not all(isinstance(x.get("shadow_order_id"), str) and x.get("shadow_order_id") for x in known_orders)):
         return _rejected(intent_hash, ["REJECTED_KNOWN_ORDERS_INVALID"])
 
     shadow_fill_model_version = intent["shadow_fill_model_version"]
