@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  envelope, validate, run, REPO, ISSUE, GPT_ACTOR_ID, GPT_APP_ID, GPT_APP_OWNER_ID,
+  envelope, validate, run, REPO, ISSUE, GPT_ACTOR_ID, GPT_APP_ID, GPT_APP_OWNER_ID, HANDOFF_PATH,
 } from '../scripts/routine_bridge.mjs';
 
 const now = Date.parse('2026-09-22T03:00:00Z');
@@ -56,6 +56,10 @@ function mock(e, options = {}, refs = new Set()) {
       return reply(200, { ...base, ...options.comment });
     }
     if (url.endsWith(`issues/${ISSUE}`)) return reply(200, { state: options.closed ? 'closed' : 'open' });
+    if (url.includes(`contents/${HANDOFF_PATH}?ref=`)) {
+      const handoff = '# trade-cockpit STATUS\nGitHub main is the canonical progress source.\n';
+      return reply(200, { type: 'file', encoding: 'base64', content: Buffer.from(handoff).toString('base64') });
+    }
     if (url.endsWith('branches/main')) {
       return reply(200, {
         protected: options.unprotected ? false : true,
@@ -240,4 +244,14 @@ test('uncertain claim write stops before fire and is not retried', async () => {
   };
   await assert.rejects(run(e, env, fetcher, now));
   assert.equal(writes, 1); assert.equal(m.refs.size, 1); assert.equal(m.fires().length, 0);
+});
+
+test('Cloud fire reads canonical STATUS.md pinned to attested main', async () => {
+  const { e, env } = fixture(); const m = mock(e);
+  await run(e, env, m.fetcher, now);
+  const reads = m.calls.filter(c => c.url.includes(`contents/${HANDOFF_PATH}?ref=${env.GITHUB_SHA}`));
+  assert.equal(reads.length, 1);
+  const body = JSON.parse(m.fires()[0].init.body).text;
+  assert.match(body, /Canonical progress source: STATUS\.md/);
+  assert.match(body, /Read it before continuation work/);
 });
