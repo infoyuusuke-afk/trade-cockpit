@@ -257,6 +257,8 @@ def create_shadow_position(intent: dict, shadow_order: dict, *, now: datetime,
         reasons.append("REJECTED_LINEAGE_SIDE_MISMATCH")
     if intent.get("quantity") != shadow_order.get("requested_qty"):
         reasons.append("REJECTED_LINEAGE_REQUESTED_QTY_MISMATCH")
+    if intent.get("shadow_fill_model_version") != shadow_order.get("shadow_fill_model_version"):
+        reasons.append("REJECTED_LINEAGE_FILL_MODEL_VERSION_MISMATCH")
     expected_shadow_order_id = se.compute_shadow_order_id(
         intent.get("intent_hash"), intent.get("shadow_fill_model_version"))
     if shadow_order.get("shadow_order_id") != expected_shadow_order_id:
