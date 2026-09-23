@@ -3406,3 +3406,16 @@ Windows Scheduled Task・real_submitには一切触れていない
 Excel/口座/建玉/歩み値の実データは読み書きしていない（テストは全て合成
 フィクスチャ）。カノニカルハッシュ・既存の正式BUY/SHORTシグナル定義は
 変更していない。PRのマージ・クローズ・Issueへの新規コメントは行っていない。
+
+
+## 2026-09-24 GPT/Cloud backlog consolidation
+
+Canonical state is current `main`; older sections below/above are historical logs and may describe then-unmerged work.
+
+- Progress handoff is unified on `STATUS.md`; the owner approval workflow is a non-blocking check rather than an Environment wait gate.
+- Rescued and merged onto current main: C-195 international cockpit presentation contract, C-193 AI 100-share validation lane, C-191 behavior-coach primitives, C-189 KIOXIA DEX research collector, C-114 semiconductor GU continuation R1, C-112 AI Strategy LIVE Phase 2, C-113 Global Macro Supervisor, KIOXIA ADR/IR/SEC Breaking Radar, C-116 main-only auto-commit workflow scope, C-108 TSE-aware TradingView 15s gap audit, C-110 AI Cockpit master specification, Fill Model calibration evidence contract, Shadow safety fail-closed invariants, and C-107 private Shadow Forward persistence boundary.
+- C-071 TradingView handoff schema/runtime drift guard and C-076 growth/theme OR15 forward-validation spec were rescued through PR #209.
+- C-075 VWAP evidence wording was corrected on current main through PR #210: the historical classification is a proxy comparison and does not establish superiority/profitability of either entry mode.
+- SBV2 voice/emotion documentation, local voice assets, workbook-readiness check, and validation scripts were rescued through PR #211 without replacing newer collector/startup scripts or auto-activating voice/trading execution.
+- Stale/duplicate PRs were closed only after comparison with current main. Old generated approval data, stale `AI_SHARED_SHEET.md` / `STATUS.md` snapshots, old shared-script replacements, and the static 2026-09-17 Phase 6 status snapshot were not replayed.
+- Safety remains fail-closed: no broker submit, RssOrder, real-submit activation, Scheduled Task activation, or private-data publication was enabled by this consolidation.
