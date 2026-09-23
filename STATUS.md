@@ -3419,3 +3419,15 @@ Canonical state is current `main`; older sections below/above are historical log
 - SBV2 voice/emotion documentation, local voice assets, workbook-readiness check, and validation scripts were rescued through PR #211 without replacing newer collector/startup scripts or auto-activating voice/trading execution.
 - Stale/duplicate PRs were closed only after comparison with current main. Old generated approval data, stale `AI_SHARED_SHEET.md` / `STATUS.md` snapshots, old shared-script replacements, and the static 2026-09-17 Phase 6 status snapshot were not replayed.
 - Safety remains fail-closed: no broker submit, RssOrder, real-submit activation, Scheduled Task activation, or private-data publication was enabled by this consolidation.
+
+
+## 2026-09-24 GPT final-gate consolidation
+
+Current repository-only backlog has been reduced to external/actual-machine acceptance gates.
+
+- C-109 TradingView gap classification is merged through PR #213: expected TSE session breaks, unresolved no-bar intervals, and independently verified acquisition gaps remain distinct; no bars are synthesized.
+- C-115 Local Market Data Gateway repository contract is merged through PR #214. The gateway normalizes already-observed local inputs, fails closed on stale/future data, preserves source disagreement, does not infer missing flow, rejects private/order fields, and fixes `real_submit_allowed=false`. Issue #174 remains open only for Windows/MS2/TradingView-local wiring and actual-machine acceptance.
+- C-118 protected-main data-writer hardening is accepted. PR #215 added fail-closed regression coverage across self-committing workflows. Active ruleset `main-protection` targets `main`, requires PR/status gate, and grants bypass to DeployKey. A protected-main Build Mobile Approval Feed run completed successfully through the dedicated data-writer path. Issue #177 is closed.
+- Issue #57 remains open by design: Replay 15-second evidence exists, but the required separate real Claude/MCP `TSE:285A` / `15S` / `Asia/Tokyo` handoff payload and sanitized intake receipt have not been evidenced. Do not substitute another timeframe or synthesize bars.
+- Issue #17 remains open by design: code separates TSE `285A.T` from JNX reference handling and prevents JNX from driving TSE OR/VWAP/EMA signals, but the four-scenario Windows/MS2 acceptance matrix still requires actual-machine evidence.
+- No remaining repository-only step authorizes broker submission, RssOrder, Scheduled Task/autostart activation, private-data publication, or LIVE promotion.
