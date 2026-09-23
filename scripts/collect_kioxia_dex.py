@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""C-189: collect Hyperliquid xyz:KIOXIA candles for research only.
-
-No trading/signalling/order path is touched. Output is append-safe CSV input for
-Strategy Lab. Hyperliquid candleSnapshot currently exposes up to 5000 candles.
-"""
+"""C-189: collect Hyperliquid xyz:KIOXIA candles for research only."""
 from __future__ import annotations
 import argparse, csv, json, time, urllib.request
 from datetime import datetime, timezone
@@ -27,10 +23,10 @@ def main():
     p.add_argument("--coin",default="xyz:KIOXIA")
     p.add_argument("--interval",default="1m")
     p.add_argument("--start-ms",type=int,required=True)
-    p.add_argument("--end-ms",type=int,default=lambda: int(time.time()*1000))
+    p.add_argument("--end-ms",type=int,default=None)
     p.add_argument("--out",default="data/research/kioxia_dex_candles.csv")
     a=p.parse_args()
-    end_ms = int(time.time()*1000) if callable(a.end_ms) else a.end_ms
+    end_ms = int(time.time()*1000) if a.end_ms is None else a.end_ms
     rows=fetch(a.coin,a.interval,a.start_ms,end_ms)
     out=Path(a.out); out.parent.mkdir(parents=True,exist_ok=True)
     existing={}
@@ -38,9 +34,7 @@ def main():
         with out.open(newline="",encoding="utf-8") as f:
             for r in csv.DictReader(f): existing[(r["s"],r["i"],r["t"])]=r
     for r in rows:
-        existing[(str(r.get("s",a.coin)),str(r.get("i",a.interval)),str(r["t"]))] = {
-            k:r.get(k,"") for k in FIELDS
-        }
+        existing[(str(r.get("s",a.coin)),str(r.get("i",a.interval)),str(r["t"]))] = {k:r.get(k,"") for k in FIELDS}
     ordered=sorted(existing.values(),key=lambda r:(r["s"],r["i"],int(r["t"])))
     with out.open("w",newline="",encoding="utf-8") as f:
         w=csv.DictWriter(f,fieldnames=FIELDS); w.writeheader(); w.writerows(ordered)
