@@ -153,7 +153,7 @@ def main():
     # data-voice-toggle属性の構造へ変更したため、固定文字列"音声OFF"は本文中に存在しなくなった。
     # 音声機能自体（cockpitSpeak・実際の読み上げロジック）は既存マーカーで別途検査済みのため、
     # ここでは操作対象のコントロール自体が存在するかを"data-voice-toggle"で検査する形に更新。
-    for marker in ("cockpit-brand", "データ品質ゲート", "リアルタイムTOP5", "kio-decision-grade", "円高恩恵銘柄 TOP5", "要人発言イベントスタディ", "投資主体別レジーム", "FLOW IMPULSE", "市場全体集計から個別銘柄", "data-voice-toggle", "cockpitSpeak", "予測対実績・5分監視", "次の注意時間", "発動価格（成行禁止）", "kio-trade-signal", "timedPath", "GU／GD幅別", "材料レーダー", "kio-setup-type", "kio-audit-hit", "kio-ms2-orderflow", "kio-ms2-stat", "kio-preopen-plan", "kio-open-decision", "127.0.0.1:28580/live_ms2.json"):
+    for marker in ("cockpit-brand", "データ品質ゲート", "リアルタイムTOP5", "kio-decision-grade", "円高恩恵銘柄 TOP5", "要人発言イベントスタディ", "投資主体別レジーム", "FLOW IMPULSE", "市場全体集計から個別銘柄", "data-voice-toggle", "cockpitSpeak", "予測対実績・5分監視", "次の注意時間", "発動価格（成行禁止）", "kio-trade-signal", "timedPath", "GU／GD幅別", "材料レーダー", "kio-setup-type", "kio-audit-hit", "kio-ms2-orderflow", "kio-ms2-stat", "kio-preopen-plan", "kio-open-decision", "kio-breaking-state", "kioxia_breaking_radar.json", "127.0.0.1:28580/live_ms2.json"):
         if marker not in html:
             errors.append(f"index.html missing marker: {marker}")
     if not re.search(r"Ver\.\d+\.\d+", html):

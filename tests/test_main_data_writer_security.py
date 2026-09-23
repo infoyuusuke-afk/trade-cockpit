@@ -10,6 +10,7 @@ EXPECTED_WRITERS = {
     "earnings-calendar.yml",
     "ev-learning-loop.yml",
     "live-focus.yml",
+    "kioxia-breaking-radar.yml",
     "mention-tracker.yml",
     "mobile-approval-feed.yml",
     "next-theme-radar.yml",
