@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TokyoCloseWallStreetPackage",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["series", "session_day", "audience", "observed_facts", "market_events_en", "publish_ready"],
+  "properties": {
+    "series": {"const": "TOKYO CLOSE -> WALL STREET"},
+    "session_day": {"type": "string", "format": "date"},
+    "audience": {"const": "overseas_investors_interested_in_japanese_equities"},
+    "observed_facts": {"type": "array", "items": {"type": "object"}},
+    "market_events_en": {"type": "array", "items": {"type": "string"}},
+    "publish_ready": {"const": false}
+  }
+}
