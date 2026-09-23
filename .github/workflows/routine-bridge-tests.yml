@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - scripts/routine_bridge.mjs
+      - docs/SHARED_PROGRESS_HANDOFF.md
       - tests/routine_bridge.test.mjs
       - .github/workflows/gpt-claude-routine.yml
       - .github/workflows/routine-bridge-tests.yml
