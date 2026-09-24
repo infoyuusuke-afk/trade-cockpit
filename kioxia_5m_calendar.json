@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-09-24 13:46:50 JST",
+  "updated_at": "2026-09-24 13:49:21 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3222,7 +3222,7 @@
     },
     {
       "date": "2026-09-24",
-      "ret": -3.73,
+      "ret": -3.56,
       "high": 0.72,
       "low": -4.24,
       "type": "寄り天",
@@ -3270,7 +3270,7 @@
         -3.857,
         -3.698,
         -3.698,
-        -3.734
+        -3.558
       ],
       "volume_path": [
         1370900.0,
@@ -3315,13 +3315,13 @@
         19081900.0,
         19316900.0,
         19525300.0,
-        19552700.0
+        19696800.0
       ]
     }
   ],
   "current": {
     "date": "2026-09-24",
-    "ret": -3.73,
+    "ret": -3.56,
     "high": 0.72,
     "low": -4.24,
     "type": "寄り天",
@@ -3369,7 +3369,7 @@
       -3.857,
       -3.698,
       -3.698,
-      -3.734
+      -3.558
     ],
     "volume_path": [
       1370900.0,
@@ -3414,7 +3414,7 @@
       19081900.0,
       19316900.0,
       19525300.0,
-      19552700.0
+      19696800.0
     ]
   },
   "current_1m": [
@@ -5274,11 +5274,38 @@
     },
     {
       "t": "13:31",
-      "o": -3.7337,
-      "h": -3.7337,
-      "l": -3.7337,
+      "o": -3.8042,
+      "h": -3.7161,
+      "l": -3.8042,
       "c": -3.7337,
       "price": 54660.0,
+      "v": 20300
+    },
+    {
+      "t": "13:32",
+      "o": -3.7161,
+      "h": -3.6104,
+      "l": -3.7161,
+      "c": -3.6456,
+      "price": 54710.0,
+      "v": 35600
+    },
+    {
+      "t": "13:33",
+      "o": -3.6456,
+      "h": -3.4871,
+      "l": -3.6633,
+      "c": -3.5224,
+      "price": 54780.0,
+      "v": 88200
+    },
+    {
+      "t": "13:34",
+      "o": -3.5576,
+      "h": -3.5576,
+      "l": -3.5576,
+      "c": -3.5576,
+      "price": 54760.0,
       "v": 0
     }
   ],
@@ -5286,14 +5313,14 @@
   "one_minute_verified": true,
   "technical_levels": {
     "session_open": 56780.0,
-    "daily_ma5": 52144.0,
+    "daily_ma5": 52164.0,
     "pivot_p": 53006.7,
     "pivot_r1": 54963.3,
     "pivot_s1": 51913.3,
     "or15_high": 57190.0,
     "or15_low": 55680.0,
     "return_pct": {
-      "daily_ma5": -8.1648,
+      "daily_ma5": -8.1296,
       "pivot_p": -6.6455,
       "pivot_r1": -3.1995,
       "pivot_s1": -8.5712,
@@ -5445,7 +5472,7 @@
       "max_up_after": 1.79,
       "max_down_after": -0.19,
       "score_components": {
-        "five_minute": 80.1,
+        "five_minute": 80.2,
         "us_market": 89.3,
         "credit_supply": 100.0
       },
@@ -5611,12 +5638,12 @@
         29587000.0,
         29587100.0
       ],
-      "similarity": 83.4,
+      "similarity": 83.2,
       "after_ret": -3.08,
       "max_up_after": 0.3,
       "max_down_after": -3.1,
       "score_components": {
-        "five_minute": 87.5,
+        "five_minute": 87.2,
         "us_market": 75.7,
         "credit_supply": 76.3
       },
@@ -5787,7 +5814,7 @@
       "max_up_after": 0.18,
       "max_down_after": -1.28,
       "score_components": {
-        "five_minute": 79.4,
+        "five_minute": 79.5,
         "us_market": 85.8,
         "credit_supply": 100.0
       },
@@ -5953,12 +5980,12 @@
         27800800.0,
         28111000.0
       ],
-      "similarity": 79.7,
+      "similarity": 79.8,
       "after_ret": 0.14,
       "max_up_after": 0.93,
       "max_down_after": -0.79,
       "score_components": {
-        "five_minute": 77.6,
+        "five_minute": 77.8,
         "us_market": 85.1,
         "credit_supply": 79.7
       },
@@ -6129,7 +6156,7 @@
       "max_up_after": 0.6,
       "max_down_after": -3.19,
       "score_components": {
-        "five_minute": 81.0,
+        "five_minute": 80.9,
         "us_market": 63.1,
         "credit_supply": 83.1
       },
@@ -6301,7 +6328,7 @@
     "max_up_after": 1.79,
     "max_down_after": -0.19,
     "score_components": {
-      "five_minute": 80.1,
+      "five_minute": 80.2,
       "us_market": 89.3,
       "credit_supply": 100.0
     },
@@ -6367,7 +6394,7 @@
     "status": "類似日あり",
     "bias": "レンジ優位",
     "up_probability": 40.3,
-    "expected_after_ret": -1.07,
+    "expected_after_ret": -1.06,
     "expected_max_up": 0.76,
     "expected_max_down": -1.71,
     "sample": 5
