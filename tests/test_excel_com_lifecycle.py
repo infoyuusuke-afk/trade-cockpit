@@ -14,8 +14,8 @@ class ExcelComLifecycleContractTests(unittest.TestCase):
         self.assertIn("Collector workbook liveness", COLLECTOR)
         self.assertIn("Canonical workbook was closed", COLLECTOR)
         self.assertIn("FinalReleaseComObject", COLLECTOR)
-        self.assertIn("Release-ComObjectSafe $book", COLLECTOR)
-        self.assertIn("Release-ComObjectSafe $excel", COLLECTOR)
+        self.assertIn("foreach($com in @($irDynamicSheet,$jnxSheet,$rssLink,$sheet,$book,$excel))", COLLECTOR)
+        self.assertIn("Release-ComObjectSafe $com", COLLECTOR)
         self.assertNotIn("$excel.Quit()", COLLECTOR)
 
     def test_watcher_never_reopens_closed_workbook(self):
