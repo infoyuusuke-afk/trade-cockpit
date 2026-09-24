@@ -57,6 +57,38 @@ function Stop-Managed {
     }
 }
 
+function Release-ComObjectSafe($obj){
+    if($null -eq $obj){ return }
+    try{
+        if([Runtime.InteropServices.Marshal]::IsComObject($obj)){
+            [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($obj)
+        }
+    }catch{}
+}
+
+function Close-EmptyExcelApplication {
+    $app=$null
+    $books=$null
+    try{
+        $app=[Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
+        $books=$app.Workbooks
+        $count=[int]$books.Count
+        if($count -eq 0){
+            Write-Host "      Closing orphan Excel instance with zero workbooks..." -ForegroundColor Yellow
+            try{$app.DisplayAlerts=$false}catch{}
+            try{$app.Quit()}catch{}
+        }
+    }catch{
+    }finally{
+        Release-ComObjectSafe $books
+        Release-ComObjectSafe $app
+        $books=$null
+        $app=$null
+        [GC]::Collect()
+        [GC]::WaitForPendingFinalizers()
+    }
+}
+
 function Find-Workbook([string]$RootDir,[string]$RuntimeDir){
     $rootExcel=Join-Path $RootDir "Excel"
     $rootCanonical=Join-Path $rootExcel "Kioxia_MS2_RSS_Live_Signals.xlsx"
@@ -187,6 +219,7 @@ try{
     Show-Step 10 "Stopping old AI Cockpit processes..."
     Stop-Managed
     Start-Sleep -Seconds 1
+    Close-EmptyExcelApplication
 
     Show-Step 20 "Checking MarketSpeed II..."
     $ms2=@(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match "MarketSpeed|MARKETSPEED" })
@@ -306,6 +339,18 @@ try{
     }
     Write-Host ("      MarketSpeed II RSS: READY / 285A="+$n) -ForegroundColor Green
 
+    # Launcher no longer needs Excel COM after validation. Release it before
+    # long-running Watcher/Collector processes attach to the workbook.
+    Release-ComObjectSafe $rssSheet
+    Release-ComObjectSafe $book
+    Release-ComObjectSafe $excel
+    $rssSheet=$null
+    $book=$null
+    $excel=$null
+    $addin=$null
+    [GC]::Collect()
+    [GC]::WaitForPendingFinalizers()
+
     Show-Step 48 "Starting Excel Watcher..."
     Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Watcher+'" -WorkbookPath "'+$WorkbookPath+'"') | Out-Null
     $watcherDeadline=(Get-Date).AddSeconds(120)
@@ -400,6 +445,15 @@ try{
     Start-Sleep -Seconds 1
     [Environment]::Exit(0)
 }catch{
+    Release-ComObjectSafe $rssSheet
+    Release-ComObjectSafe $book
+    Release-ComObjectSafe $excel
+    $rssSheet=$null
+    $book=$null
+    $excel=$null
+    $addin=$null
+    [GC]::Collect()
+    [GC]::WaitForPendingFinalizers()
     Write-Progress -Activity "AI Cockpit startup" -Completed
     Write-Host ""
     Write-Host "==============================================" -ForegroundColor Red
