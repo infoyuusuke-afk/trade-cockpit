@@ -20,7 +20,17 @@ class ExcelStartupContractTests(unittest.TestCase):
 
     def test_launcher_verifies_exact_workbook_not_random_active_excel(self):
         self.assertIn("$book=Wait-Workbook $WorkbookPath", LAUNCHER)
-        self.assertNotIn('GetActiveObject("Excel.Application")', LAUNCHER)
+        self.assertEqual(LAUNCHER.count('GetActiveObject("Excel.Application")'), 1)
+        cleanup = LAUNCHER[
+            LAUNCHER.index("function Close-EmptyExcelApplication"):
+            LAUNCHER.index("function Find-Workbook")
+        ]
+        self.assertIn('GetActiveObject("Excel.Application")', cleanup)
+        workbook_binding = LAUNCHER[
+            LAUNCHER.index("function Wait-Workbook"):
+            LAUNCHER.index("function Invoke-ExcelCom")
+        ]
+        self.assertNotIn('GetActiveObject("Excel.Application")', workbook_binding)
         self.assertIn("$actualPath=Invoke-ExcelCom", LAUNCHER)
         self.assertIn("nameMatchCount == 1", LAUNCHER)
         self.assertNotIn('GetActiveObject("Excel.Application")', WATCHER)
