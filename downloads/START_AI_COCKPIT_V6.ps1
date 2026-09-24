@@ -57,8 +57,10 @@ function Stop-Managed {
 function Find-Workbook([string]$RootDir){
     $d=Join-Path $RootDir "Excel"
     if(-not(Test-Path -LiteralPath $d)){ return $null }
-    $f=Get-ChildItem -LiteralPath $d -File -Filter "*.xlsx" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if($f){ return $f.FullName }
+    $canonical=Join-Path $d "Kioxia_MS2_RSS_Live_Signals.xlsx"
+    if(Test-Path -LiteralPath $canonical){ return $canonical }
+    $fixed=Join-Path $d "Kioxia_MS2_RSS_Live_Signals_FIXED.xlsx"
+    if(Test-Path -LiteralPath $fixed){ return $fixed }
     return $null
 }
 
@@ -154,6 +156,18 @@ try{
     $WorkbookPath=Find-Workbook $Root
     if(-not $WorkbookPath){ throw "No xlsx file found under C:\AI_Cockpit_OneClick_Starter\Excel" }
     $WorkbookName=Split-Path $WorkbookPath -Leaf
+    if($WorkbookName -ieq "Kioxia_MS2_RSS_Live_Signals_FIXED.xlsx"){
+        $canonical=Join-Path (Split-Path $WorkbookPath -Parent) "Kioxia_MS2_RSS_Live_Signals.xlsx"
+        if(Test-Path -LiteralPath $canonical){
+            $backup=$canonical+".bak."+((Get-Date).ToString("yyyyMMdd_HHmmss"))
+            Copy-Item -LiteralPath $canonical -Destination $backup -Force
+        }
+        Copy-Item -LiteralPath $WorkbookPath -Destination $canonical -Force
+        $WorkbookPath=$canonical
+        $WorkbookName=Split-Path $WorkbookPath -Leaf
+        Write-Host "      Updated workbook promoted to canonical name; previous copy backed up." -ForegroundColor Green
+    }
+    if($WorkbookName -ine "Kioxia_MS2_RSS_Live_Signals.xlsx"){ throw "Unexpected workbook selected: $WorkbookName" }
     $open=$false
     $excel=$null
     try{
@@ -208,11 +222,14 @@ try{
     while((Get-Date) -lt $deadline){
         try{
             $j=Invoke-RestMethod ("http://127.0.0.1:28580/live_ms2.json?t="+[DateTimeOffset]::Now.ToUnixTimeMilliseconds()) -TimeoutSec 3
-            if($j.updated_at){ $liveOk=$true; break }
+            if($j.updated_at -and $j.schema_version -eq "ms2-common-1.1"){
+                $kx=@($j.all_targets | Where-Object { $_.ticker -eq "285A" -or $_.code -eq "285A" } | Select-Object -First 1)
+                if($kx.Count -gt 0 -and $kx[0].live_quote_valid -eq $true -and [double]$kx[0].live_price -gt 0){ $liveOk=$true; break }
+            }
         }catch{}
         Start-Sleep -Seconds 1
     }
-    if(-not $liveOk){ throw "LIVE JSON was not ready." }
+    if(-not $liveOk){ throw "LIVE DATA INVALID: Collector 1.1 / 285A live_price verification failed." }
 
     $jnxState = if($null -ne $j.jnx_status){ [string]$j.jnx_status } else { "UNKNOWN" }
     $statsState = if($null -ne $j.stats_status){ [string]$j.stats_status } else { "UNKNOWN" }
