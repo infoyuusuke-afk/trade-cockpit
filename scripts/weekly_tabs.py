@@ -149,7 +149,7 @@ def tabs_block() -> str:
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
  <span class="cockpit-brand">AIトレードコクピット<small id="cockpit-status">Ver.5.4</small></span>
  <button class="cockpit-tab active" data-tab="scalp">SCALP 5</button>
- <button class="cockpit-tab" data-tab="event-hot">EVENT 5</button>
+ <button class="cockpit-tab" data-tab="event-hot">急騰5 / MOMENTUM 5</button>
  <button class="cockpit-tab" data-tab="ms2-live">REALTIME 5</button>
  <button class="cockpit-tab" data-tab="overnight">OVERNIGHT 5</button>
  <button class="cockpit-tab" data-tab="swing">SWING 5</button>
@@ -177,7 +177,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 
  const eventIntro=document.createElement("section");
  eventIntro.className="card wide";
- eventIntro.innerHTML='<h2>EVENT 5</h2><p class="sub">小型グロース・テーマ株・材料急騰・場中決算の初動監視枠。現時点では全市場の仕手化兆候／短期急騰スキャンを集約し、リアルタイム材料スキャナはこの枠へ接続します。</p>';
+ eventIntro.innerHTML='<h2>急騰5 / MOMENTUM 5</h2><p class="sub">全市場の価格・出来高・売買代金の加速から急騰候補を先に検出する監視枠。材料・ニュースは後段で確認し、未確認でも急騰候補から除外せず「材料未確認」と表示します。</p>';
  panes["event-hot"].appendChild(eventIntro);
 
  [...main.querySelectorAll(":scope > section")].forEach(s=>{
@@ -235,8 +235,8 @@ document.addEventListener("DOMContentLoaded",()=>{
    const pts=vals.map((v,i)=>((i/(vals.length-1))*100).toFixed(2)+","+(50-((v-lo)/span)*44).toFixed(2)).join(" ");
    return '<svg viewBox="0 0 100 54" preserveAspectRatio="none"><line class="grid" x1="0" y1="27" x2="100" y2="27"/><polyline class="line" points="'+pts+'"/></svg>';
  };
- // 共有カード生成（ユーザー依頼2026-09-19：SCALP 5・OVERNIGHT 5・EVENT 5で同じ銘柄カードにする）。
- // OVERNIGHT 5・EVENT 5はSCALP 5と違いライブMS2データの一部項目（ENTRY/STOP/T1・OR5・出来高加速等）を
+ // 共有カード生成（ユーザー依頼2026-09-19：SCALP 5・OVERNIGHT 5・急騰5 / MOMENTUM 5で同じ銘柄カードにする）。
+ // OVERNIGHT 5・急騰5 / MOMENTUM 5はSCALP 5と違いライブMS2データの一部項目（ENTRY/STOP/T1・OR5・出来高加速等）を
  // 持たないため、無い項目は推測で埋めず「—」のまま表示する（既存のyen()/num()の未確認時「—」表示を踏襲）。
  window.renderScalpCard=(x,sv,tf)=>{
    const chg=x.change_pct==null?null:num(x.change_pct),chgCls=chg==null?"flat":(chg>0?"up":chg<0?"down":"flat");
