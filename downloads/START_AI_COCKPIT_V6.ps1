@@ -58,9 +58,11 @@ function Find-Workbook([string]$RootDir){
     $d=Join-Path $RootDir "Excel"
     if(-not(Test-Path -LiteralPath $d)){ return $null }
     $canonical=Join-Path $d "Kioxia_MS2_RSS_Live_Signals.xlsx"
-    if(Test-Path -LiteralPath $canonical){ return $canonical }
     $fixed=Join-Path $d "Kioxia_MS2_RSS_Live_Signals_FIXED.xlsx"
+    # FIXED is the validated newer workbook. Prefer it so an older canonical file
+    # cannot silently win just because both files exist.
     if(Test-Path -LiteralPath $fixed){ return $fixed }
+    if(Test-Path -LiteralPath $canonical){ return $canonical }
     return $null
 }
 
