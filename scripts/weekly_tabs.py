@@ -370,10 +370,10 @@ const edgePriority=x=>{
      const sv=signalView(x,!live.valid||ir.pending);
      if(d.tdnet_live!==true&&live.valid&&actionable(sv)){sv.label="NEWS CHECK";sv.cls="block";}
      else if(ir.pending){sv.label="NEWS PENDING";sv.cls="block";}
-     const lit=live.valid&&actionable(sv);
+     const state=edgeStateFor(x,sv,live);
      const reason=!live.valid?("現在値失効・売買シグナル無効 · "+live.status):d.tdnet_live!==true?"TDnet未確認・新規シグナル保留":ir.pending?("決算内容確認中・既存シグナル保留 · "+ir.title):(ir.title?(ir.label+" · "+ir.title+" · "+(x.strategy||x.signal||"監視")):((x.signal||"監視")+' · '+(x.strategy||"条件待ち")));
      const html=window.renderScalpCard({...x,__live:live,foot:reason},sv,"1m");
-     return lit?html.replace('scalp-card '+sv.cls,'scalp-card '+sv.cls+' edge-live'):html;
+     return state==="HOT"?html.replace('scalp-card '+sv.cls,'scalp-card '+sv.cls+' edge-live'):html;
    }).join(""):'<div class="focus-empty">SCALP 5のMS2 RSSデータ待ち</div>';
  });
 
