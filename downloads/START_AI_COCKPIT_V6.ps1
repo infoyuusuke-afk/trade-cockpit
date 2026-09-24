@@ -57,6 +57,24 @@ function Stop-Managed {
     }
 }
 
+function Stop-ExcelBoundManaged {
+    $patterns=@(
+        "MS2_RSS_100_Collector\.ps1",
+        "Kioxia_Safety_Heartbeat\.ps1",
+        "Kioxia_RSS_Live_Watcher\.ps1"
+    )
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | ForEach-Object {
+        $cmd=[string]$_.CommandLine
+        if([string]::IsNullOrWhiteSpace($cmd)){ return }
+        foreach($p in $patterns){
+            if($cmd -match $p){
+                try{ Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop }catch{}
+                break
+            }
+        }
+    }
+}
+
 function Release-ComObjectSafe($obj){
     if($null -eq $obj){ return }
     try{
@@ -445,6 +463,8 @@ try{
     Start-Sleep -Seconds 1
     [Environment]::Exit(0)
 }catch{
+    Stop-ExcelBoundManaged
+    Start-Sleep -Milliseconds 800
     Release-ComObjectSafe $rssSheet
     Release-ComObjectSafe $book
     Release-ComObjectSafe $excel
