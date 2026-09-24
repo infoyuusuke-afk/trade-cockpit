@@ -321,9 +321,12 @@ const edgePriority=x=>{
  document.addEventListener("ms2RssUpdate",e=>{
    const d=e.detail||{},all=Array.isArray(d.all_targets)?d.all_targets:[],stale=d.stale!==false||d.live_ready===false;
    const status=document.getElementById("cockpit-status");
-   if(status&&d.live_ready_status){
-     status.textContent="MS2 "+d.live_ready_status+" · "+String(d.live_quote_count??0)+"/100 LIVE";
-     status.classList.toggle("warn",d.live_ready!==true);
+   if(status){
+     const rd=d.readiness||{};
+     const overall=rd.status||d.live_ready_status||"NOT READY";
+     status.textContent=overall+" · MS2 "+String(d.live_quote_count??0)+"/100 · TDnet "+String(rd.tdnet||"CHECK")+" · SIGNAL "+String(rd.signal_gate||"HOLD")+" · SBV2";
+     status.classList.toggle("warn",d.trading_ready!==true);
+     status.title="Collector "+String(rd.collector||"CHECK")+" / "+String(rd.universe||"")+" / real submit OFF";
    }
    // Rank all actionable names first. History keeps every new event; voice is reserved
    // for the strongest candidate in this update to avoid a 100-name alert storm.
