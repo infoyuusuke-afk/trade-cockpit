@@ -326,7 +326,12 @@ document.addEventListener("DOMContentLoaded",()=>{
  };
  try{const savedHistory=JSON.parse(localStorage.getItem("edgeAlertHistoryV1")||"[]");if(Array.isArray(savedHistory)){edgeHistory.push(...savedHistory.slice(0,50));renderEdgeHistory();}}catch(_){}
  document.addEventListener("ms2RssUpdate",e=>{
-   const d=e.detail||{},all=Array.isArray(d.all_targets)?d.all_targets:[],stale=d.stale!==false;
+   const d=e.detail||{},all=Array.isArray(d.all_targets)?d.all_targets:[],stale=d.stale!==false||d.live_ready===false;
+   const status=document.getElementById("cockpit-status");
+   if(status&&d.live_ready_status){
+     status.textContent="MS2 "+d.live_ready_status+" · "+String(d.live_quote_count??0)+"/100 LIVE";
+     status.classList.toggle("warn",d.live_ready!==true);
+   }
    // Rank all actionable names first. History keeps every new event; voice is reserved
    // for the strongest candidate in this update to avoid a 100-name alert storm.
    const candidates=all.map(x=>{
