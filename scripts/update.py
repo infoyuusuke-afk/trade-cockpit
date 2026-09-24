@@ -2479,9 +2479,9 @@ def main():
             else:
                 action = "20日線上の押し目"
             cards += (
-                f"<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>{name}</strong>"
+                f"<article class='scalp-card wait live-overlay-card' data-live-ticker='{r.get('ticker') or r.get('code') or ''}' data-analysis-price='{r['price']}'><div class='scalp-head'><div class='scalp-symbol'><strong>{name}</strong>"
                 f"<small>SWING · #{i}</small></div><span class='scalp-signal'>WATCH</span></div>"
-                f"<div class='scalp-price-row'><div class='scalp-price'><small>分析基準値</small>{money(r['price'])}</div><div class='scalp-change'>{pct(r['ret5'])}</div></div>"
+                f"<div class='scalp-price-row'><div class='scalp-price'><small class='price-kind'>分析基準値</small><span class='display-price'>{money(r['price'])}</span></div><div class='scalp-change'>{pct(r['ret5'])}</div></div>"
                 f"<div class='scalp-order'><span>ENTRY<b>{money(p['entry'])}</b></span><span class='stop'>STOP<b>{money(p['stop'])}</b></span><span class='target'>T1<b>{money(p['target2'])}</b></span></div>"
                 f"<div class='scalp-metrics'><span>20日<b>{pct(r['ret20'])}</b></span><span>52週高値差<b>{pct(r['to_high52'])}</b></span>"
                 f"<span>出来高比<b>{r['rvol']:.2f}x</b></span><span>需給<b>{r.get('market_supply_status','未確認')}</b></span></div>"
@@ -3274,6 +3274,25 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     host.innerHTML = html || "<div class='focus-empty'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</div>";
   }};
   document.addEventListener("ms2RssUpdate", rerenderMomentumCards);
+  document.addEventListener("ms2RssUpdate", () => {{
+    document.querySelectorAll(".live-overlay-card").forEach(card => {{
+      const raw = String(card.dataset.liveTicker || "");
+      if(!raw)return;
+      const ticker = raw.endsWith(".T") ? raw : raw + ".T";
+      const live = window.cockpitLiveSnapshot ? window.cockpitLiveSnapshot(ticker) : null;
+      const price = card.querySelector(".display-price"), kind = card.querySelector(".price-kind");
+      if(live && price && kind) {{
+        price.textContent = yen(live.price);
+        kind.textContent = "MS2 LIVE現在値";
+        card.classList.add("live-verified");
+      }} else if(price && kind) {{
+        const analysis = Number(card.dataset.analysisPrice);
+        price.textContent = Number.isFinite(analysis) ? yen(analysis) : "—";
+        kind.textContent = "分析基準値";
+        card.classList.remove("live-verified");
+      }}
+    }});
+  }});
   const accumulation = (d.large_lot_accumulation || []).slice(0, 20).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td><b class='" +
     (x.phase.includes("上放れ") ? "up" : "warning") + "'>" + x.phase +
