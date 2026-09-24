@@ -250,6 +250,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const signalView=(x,stale)=>{
    const raw=String(x?.signal||"監視");
    if(stale)return {label:"STALE",cls:"block"};
+   if(x?.news_pending===true||raw.includes("NEWS PENDING"))return {label:"NEWS PENDING",cls:"block"};
    if(raw.includes("市場時間外"))return {label:"CLOSED",cls:"wait"};
    if(raw.includes("売買禁止")||raw.includes("特別気配"))return {label:"BLOCK",cls:"block"};
    if(raw.includes("買い")||String(x?.raw_direction)==="BUY")return {label:"BUY",cls:"long"};
