@@ -1,0 +1,19 @@
+name: Card System Tests
+on:
+  pull_request:
+    paths:
+      - card_system.js
+      - card_system.css
+      - tests/card_system.test.mjs
+      - .github/workflows/card-system-tests.yml
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - run: node --test tests/card_system.test.mjs
