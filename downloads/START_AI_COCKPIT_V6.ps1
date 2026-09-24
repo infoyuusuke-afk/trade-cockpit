@@ -314,7 +314,17 @@ try{
     Write-Host "      Excel Watcher: READY on port 28582" -ForegroundColor Green
 
     Show-Step 50 "Starting local gateway..."
-    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Gateway+'" -RuntimeDir "'+$RuntimeDir+'"') | Out-Null
+    $installChannel="main"
+    $channelMarker=Join-Path $Root "V6_INSTALL_CHANNEL.txt"
+    if(Test-Path -LiteralPath $channelMarker){
+        try{
+            $channelLine=Get-Content -LiteralPath $channelMarker -ErrorAction Stop | Where-Object { $_ -like "channel=*" } | Select-Object -First 1
+            if($channelLine){$installChannel=([string]$channelLine).Substring(8)}
+        }catch{}
+    }
+    $cockpitRemoteBase=if($installChannel -eq "fix/live-session-state-v1"){"https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/refs/heads/fix/live-session-state-v1"}else{"https://infoyuusuke-afk.github.io/trade-cockpit"}
+    Write-Host ("      UI source: "+$installChannel+" / "+$cockpitRemoteBase) -ForegroundColor DarkCyan
+    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Gateway+'" -RuntimeDir "'+$RuntimeDir+'" -RemoteBase "'+$cockpitRemoteBase+'"') | Out-Null
     $deadline=(Get-Date).AddSeconds(30)
     while((Get-Date) -lt $deadline -and -not(Test-Port 28581 500)){ Start-Sleep -Milliseconds 500 }
     if(-not(Test-Port 28581 500)){ throw "Gateway port 28581 did not open." }
