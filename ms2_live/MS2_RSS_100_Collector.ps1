@@ -740,6 +740,7 @@ $pmAboveSince = @{}
 $pmBelowSince = @{}
 $lastSignal = @{}
 $lastSpoken = @{}
+$voiceState = @{}
 $lastHoldSpoken = @{}
 $loggedSignals = @{}
 $kioFlowCandidate = ""
@@ -793,7 +794,7 @@ try {
         }
         if ($now.ToString("yyyy-MM-dd") -ne $activeDay) {
             $activeDay=$now.ToString("yyyy-MM-dd")
-            $previous=@{}; $history=@{}; $preopenHistory=@{}; $preopenState=@{}; $seenTicks=@{}; $creditSaved=@{}; $orHigh=@{}; $orLow=@{}; $or5High=@{}; $or5Low=@{}; $minuteBars=@{}; $currentMinuteBars=@{}; $dayHigh=@{}; $dayLow=@{}; $pmAboveSince=@{}; $pmBelowSince=@{}; $lastSignal=@{}; $lastHoldSpoken=@{}; $loggedSignals=@{}
+            $previous=@{}; $history=@{}; $preopenHistory=@{}; $preopenState=@{}; $seenTicks=@{}; $creditSaved=@{}; $orHigh=@{}; $orLow=@{}; $or5High=@{}; $or5Low=@{}; $minuteBars=@{}; $currentMinuteBars=@{}; $dayHigh=@{}; $dayLow=@{}; $pmAboveSince=@{}; $pmBelowSince=@{}; $lastSignal=@{}; $lastSpoken=@{}; $voiceState=@{}; $lastHoldSpoken=@{}; $loggedSignals=@{}
             $kioFlowCandidate=""; $lastKioFlowSpoken=""; $lastKioFlowSpokenAt=Get-Date "2000-01-01"
             $lastPreopenVoice=""; $lastOpenDecisionVoice=""
             $lastPtsBand=0; $lastPtsVoiceAt=Get-Date "2000-01-01"
@@ -1757,12 +1758,16 @@ try {
             $speakable=($x.signal -in @("買いサイン","空売りサイン") -or ($isKioxia -and $x.signal -eq "往復ピンタ回避"))
             $voiceEventId=[string]$x.ticker+"|"+[string]$x.signal+"|"+[string]$x.signal_bar_time+"|"+[string]$x.strategy+"|"+[string]$x.news_title
             $previousVoiceEvent=if($lastSpoken.ContainsKey($key)){[string]$lastSpoken[$key]}else{""}
-            if ($speakable -and $voiceEventId -ne $previousVoiceEvent) {
+            $previousVoiceState=if($voiceState.ContainsKey($key)){[string]$voiceState[$key]}else{"OFF"}
+            $nextVoiceState=if(-not $x.live_quote_valid){"STALE"}elseif($x.news_pending -eq $true -or $x.signal -in @("NEWS CHECK","NEWS PENDING","NEWS CONFLICT")){"HOLD"}elseif($speakable){"HOT"}else{"OFF"}
+            if($nextVoiceState -ne "HOT" -and $previousVoiceState -eq "HOT"){$lastSpoken.Remove($key)}
+            if ($nextVoiceState -eq "HOT" -and ($previousVoiceState -ne "HOT" -or $voiceEventId -ne $previousVoiceEvent)) {
                 $side=if($x.signal -eq "買いサイン"){"買いサイン点灯"}elseif($x.signal -eq "空売りサイン"){"空売りサイン点灯"}else{"往復ピンタ警戒"}
                 $orderVoice=if($null -eq $x.entry_price){"注文条件は未完成です"}else{"発動価格"+$x.entry_price+"円。損切り"+$x.stop_price+"円。第一目標"+$x.target1+"円"}
                 Invoke-SerializedSpeak $speaker ($x.name+"、"+$x.strategy+"、"+$side+"。"+$orderVoice+"。"+$x.market_state+"。確定ローソク足を確認し、注文は武蔵で手動です。")
                 $lastSpoken[$key]=$voiceEventId
             }
+            $voiceState[$key]=$nextVoiceState
             $lastSignal[$key]=$x.signal
         }
         if($now.TimeOfDay -ge [TimeSpan]::Parse("15:00:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("15:25:00")){
@@ -2395,12 +2400,16 @@ try {
             $speakable=($x.signal -in @("買いサイン","空売りサイン") -or ($isKioxia -and $x.signal -eq "往復ピンタ回避"))
             $voiceEventId=[string]$x.ticker+"|"+[string]$x.signal+"|"+[string]$x.signal_bar_time+"|"+[string]$x.strategy+"|"+[string]$x.news_title
             $previousVoiceEvent=if($lastSpoken.ContainsKey($key)){[string]$lastSpoken[$key]}else{""}
-            if ($speakable -and $voiceEventId -ne $previousVoiceEvent) {
+            $previousVoiceState=if($voiceState.ContainsKey($key)){[string]$voiceState[$key]}else{"OFF"}
+            $nextVoiceState=if(-not $x.live_quote_valid){"STALE"}elseif($x.news_pending -eq $true -or $x.signal -in @("NEWS CHECK","NEWS PENDING","NEWS CONFLICT")){"HOLD"}elseif($speakable){"HOT"}else{"OFF"}
+            if($nextVoiceState -ne "HOT" -and $previousVoiceState -eq "HOT"){$lastSpoken.Remove($key)}
+            if ($nextVoiceState -eq "HOT" -and ($previousVoiceState -ne "HOT" -or $voiceEventId -ne $previousVoiceEvent)) {
                 $side=if($x.signal -eq "買いサイン"){"買いサイン点灯"}elseif($x.signal -eq "空売りサイン"){"空売りサイン点灯"}else{"往復ピンタ警戒"}
                 $orderVoice=if($null -eq $x.entry_price){"注文条件は未完成です"}else{"発動価格"+$x.entry_price+"円。損切り"+$x.stop_price+"円。第一目標"+$x.target1+"円"}
                 Invoke-SerializedSpeak $speaker ($x.name+"、"+$x.strategy+"、"+$side+"。"+$orderVoice+"。"+$x.market_state+"。確定ローソク足を確認し、注文は武蔵で手動です。")
                 $lastSpoken[$key]=$voiceEventId
             }
+            $voiceState[$key]=$nextVoiceState
             $lastSignal[$key]=$x.signal
         }
         if($now.TimeOfDay -ge [TimeSpan]::Parse("15:00:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("15:25:00")){
