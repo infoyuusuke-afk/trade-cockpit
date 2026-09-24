@@ -33,3 +33,18 @@ def test_stale_payload_cannot_masquerade_as_current():
     )
     assert p["display_as_current"] is False
     assert p["current_value"] is None
+
+def test_quote_at_exact_ttl_is_still_live():
+    r = assess_freshness("ms2_quote", "2026-09-24T14:29:45+09:00", NOW)
+    assert r.status == "LIVE"
+    assert r.usable is True
+
+def test_future_quote_is_invalid():
+    r = assess_freshness("ms2_quote", "2026-09-24T14:30:06+09:00", NOW)
+    assert r.status == "INVALID"
+    assert r.usable is False
+
+def test_failed_source_is_never_current_even_with_fresh_timestamp():
+    r = assess_freshness("ms2_quote", "2026-09-24T14:29:59+09:00", NOW, source_ok=False)
+    assert r.status == "INVALID"
+    assert r.usable is False
