@@ -299,7 +299,8 @@ const edgePriority=x=>{
    let p=Math.abs(Number(x?.score)||0);
    const burst=Number(x?.volume_burst)||0,flow=Math.abs(Number(x?.flow_bias)||0);
    if(burst>=1.5)p+=15; else if(burst>=1.2)p+=8;
-   if(flow>=0.15)p+=12; else if(flow>=0.08)p+=6;
+   // Collector publishes flow_bias in percentage points (-100..100).
+   if(flow>=15)p+=12; else if(flow>=8)p+=6;
    if(x?.news_reaction_confirmed===true)p+=20;
    if(String(x?.strategy||"").includes("OR5"))p+=6;
    return p;
