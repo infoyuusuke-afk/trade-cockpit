@@ -2448,6 +2448,36 @@ def main():
             )
         return rows or "<tr><td colspan='11'>本日の条件合格銘柄なし。無理に選定しません。</td></tr>"
 
+    def swing_cards(rank, kind):
+        cards = ""
+        for i, (name, r) in enumerate(rank[:5], 1):
+            p = trade_plan(r, r.get("intraday"))
+            if r["from_ma20"] > 12:
+                action = "過熱・押し目待ち"
+            elif kind == "momentum" and r["touch_ma5"]:
+                action = "5日線反発＋高値更新待ち"
+            elif kind == "new_high" and r["to_high20"] >= 0:
+                action = "高値更新＋出来高待ち"
+            elif kind == "momentum":
+                action = "前日高値突破か5日線反発"
+            else:
+                action = "20日線上の押し目"
+            cards += (
+                f"<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>{name}</strong>"
+                f"<small>SWING · #{i}</small></div><span class='scalp-signal'>WATCH</span></div>"
+                f"<div class='scalp-price-row'><div class='scalp-price'>{money(r['price'])}</div><div class='scalp-change'>{pct(r['ret5'])}</div></div>"
+                f"<div class='scalp-order'><span>ENTRY<b>{money(p['entry'])}</b></span><span class='stop'>STOP<b>{money(p['stop'])}</b></span><span class='target'>T1<b>{money(p['target2'])}</b></span></div>"
+                f"<div class='scalp-metrics'><span>20日<b>{pct(r['ret20'])}</b></span><span>52週高値差<b>{pct(r['to_high52'])}</b></span>"
+                f"<span>出来高比<b>{r['rvol']:.2f}x</b></span><span>需給<b>{r.get('market_supply_status','未確認')}</b></span></div>"
+                f"<div class='scalp-foot'>{action}</div></article>"
+            )
+        return cards or "<div class='focus-empty'>条件合格銘柄なし。無理に選定しません。</div>"
+
+    stable_cards = swing_cards(stable_rank, "stable")
+    momentum_cards = swing_cards(momentum_rank, "momentum")
+    high_cards = swing_cards(high_rank, "new_high")
+    overheat_cards = swing_cards(overheated_rank, "overheated")
+
     stable_rows = swing_rows(stable_rank, "stable")
     momentum_rows = swing_rows(momentum_rank, "momentum")
     high_rows = swing_rows(high_rank, "new_high")
@@ -3091,10 +3121,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 <p class="warning"><b>使い方：</b>INは前日高値＋1ティック。寄り成りでは買いません。9:15以降にVWAP上・5分足終値・出来高増加が揃った場合だけ発動し、買い上限を超えたら追わず取消。OUT損切りを約定後すぐ設定し、価格を下げて損切りを広げません。GFSの3億ドルは米商務省とのLOI（予定支援）であり、日本企業への直接受注確定ではありません。<a href="https://gf.com/news-and-events/news/globalfoundries-signs-letter-of-intent-with-the-us-department-of-commerce-for-a-300-million-award-to-accelerate-us-silicon-photonics-leadership/" target="_blank" rel="noopener">GFS公式発表</a></p>
 </section>
 <section class="card wide"><h2>④ 朝8:00候補のザラバ答え合わせ</h2><table><tr><th>会社名＋コード</th><th>朝イン</th><th>朝損切り</th><th>朝利確1／2</th><th>結果</th><th>終値・VWAP検証</th></tr>{review_rows}</table></section>
-<section class="card wide"><h2>⑤-A 安定上昇候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{stable_rows}</table></section>
-<section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{momentum_rows}</table><p class="warning">上向き5日線へのタッチ反発を最優先。場中の一時割れではなく終値回復を確認。終値で5日線を明確に割った場合は候補から外します。</p></section>
-<section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>イン</th><th>損切り</th><th>利確</th><th>発動条件</th></tr>{high_rows}</table></section>
-<section class="card wide"><h2>⑤-D 急騰後の過熱監視・押し目待ち TOP5</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>5日</th><th>20日</th><th>52週高値差</th><th>出来高比</th><th>押し目目安</th><th>損切り</th><th>戻り目標</th><th>判定</th></tr>{overheat_rows}</table><p class="warning">ここは即飛び乗り禁止。5日線反発、前日高値更新、出来高再増加の3点を確認してから候補へ昇格。</p></section>
+<section class="card wide"><h2>⑤-A 安定上昇候補 TOP5</h2><div class="scalp-strip">{stable_cards}</div></section>
+<section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><div class="scalp-strip">{momentum_cards}</div><p class="warning">上向き5日線へのタッチ反発を最優先。終値回復を確認。</p></section>
+<section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><div class="scalp-strip">{high_cards}</div></section>
+<section class="card wide"><h2>⑤-D 急騰後の過熱監視・押し目待ち TOP5</h2><div class="scalp-strip">{overheat_cards}</div><p class="warning">即飛び乗り禁止。反発・高値更新・出来高再増加を確認。</p></section>
 <section class="card wide"><h2>⑤-E 月足・週足反転＋信用需給 TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>足</th><th>判定</th><th>総合点</th><th>終値</th><th>反発線</th><th>需給点・局面</th><th>下ヒゲ／実体</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
 <tbody id="hammer-signals"><tr><td colspan="13">全市場を走査中...</td></tr></tbody></table>
