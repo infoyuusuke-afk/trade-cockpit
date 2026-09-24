@@ -4,6 +4,7 @@ on:
     paths:
       - "scripts/**"
       - "tests/**"
+      - "downloads/V6_Runtime_Contract.ps1"
       - "downloads/START_AI_COCKPIT_V6.ps1"
       - "downloads/INSTALL_AI_COCKPIT_V6.ps1"
       - "downloads/AI_Cockpit_Local_Gateway.ps1"
@@ -33,6 +34,7 @@ jobs:
         shell: pwsh
         run: |
           $files = @(
+            "downloads/V6_Runtime_Contract.ps1",
             "downloads/START_AI_COCKPIT_V6.ps1",
             "downloads/INSTALL_AI_COCKPIT_V6.ps1",
             "downloads/DIAG_AI_COCKPIT_V6_EXCEL.ps1",
@@ -61,6 +63,7 @@ jobs:
         run: |
           Write-Host ("PSVersion=" + $PSVersionTable.PSVersion.ToString())
           $files = @(
+            "downloads/V6_Runtime_Contract.ps1",
             "downloads/START_AI_COCKPIT_V6.ps1",
             "downloads/INSTALL_AI_COCKPIT_V6.ps1",
             "downloads/DIAG_AI_COCKPIT_V6_EXCEL.ps1",
@@ -105,3 +108,7 @@ jobs:
           }
           if($errors.Count -gt 0){ exit 1 }
           Write-Host "PASS raw download + UTF8 BOM normalization + PS5.1 parse" -ForegroundColor Green
+
+      - name: Runtime identity and safe cleanup behavioral contracts
+        shell: powershell
+        run: ./tests/test_v6_runtime_contract.ps1

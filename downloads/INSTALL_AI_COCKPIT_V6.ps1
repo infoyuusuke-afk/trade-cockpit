@@ -1,7 +1,8 @@
-param(
+﻿param(
     [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
     [ValidateSet("main","fix/live-session-state-v1")]
-    [string]$Channel = "main"
+    [string]$Channel = "main",
+    [string]$RuntimeDir = ""
 )
 
 $ErrorActionPreference="Stop"
@@ -33,12 +34,26 @@ function Save-RemotePowerShellUtf8Bom([string]$Url,[string]$Destination) {
 
 if(-not(Test-Path -LiteralPath $Root)){ New-Item -ItemType Directory -Path $Root -Force | Out-Null }
 
+$contract=Join-Path $Root "V6_Runtime_Contract.ps1"
+Save-RemotePowerShellUtf8Bom ($base+"/downloads/V6_Runtime_Contract.ps1"+$cache) $contract
+. $contract
+if ($V6RuntimeBuild -ne 'MS2-RUNTIME-20260925-02') { throw 'Runtime contract build mismatch.' }
+$runtimeDir=Resolve-V6InstallRuntime $Root $RuntimeDir @([Environment]::GetFolderPath("Desktop"),(Join-Path $env:USERPROFILE "Desktop"),(Join-Path $env:USERPROFILE "OneDrive\Desktop"))
+Write-Host ("Install RuntimeDir: "+$runtimeDir) -ForegroundColor Yellow
+Stop-V6RuntimeProcesses
+Close-V6OrphanExcel
+$runtimeManifest=Join-Path $Root "V6_RUNTIME.json"
+if(Test-Path -LiteralPath $runtimeManifest){
+    Copy-Item -LiteralPath $runtimeManifest -Destination ($runtimeManifest+".bak") -Force
+    Remove-Item -LiteralPath $runtimeManifest -Force
+}
+
 Write-Host "[1/6] Downloading V6 launcher, gateway, and Excel diagnostic..." -ForegroundColor Cyan
 Save-RemotePowerShellUtf8Bom ($base+"/downloads/START_AI_COCKPIT_V6.ps1"+$cache) $launcher
 Save-RemotePowerShellUtf8Bom ($base+"/downloads/AI_Cockpit_Local_Gateway.ps1"+$cache) $gateway
 Save-RemotePowerShellUtf8Bom ($base+"/downloads/DIAG_AI_COCKPIT_V6_EXCEL.ps1"+$cache) $diag
 $launcherText=[IO.File]::ReadAllText($launcher,[Text.Encoding]::UTF8)
-if($Channel -eq "fix/live-session-state-v1" -and $launcherText -notmatch "V6-PS51-ASCII-20260925-01"){
+if($launcherText -notmatch "V6-PS51-ASCII-20260925-01" -or $launcherText -notmatch "MS2-RUNTIME-20260925-02"){
     throw "Downloaded launcher is not the expected PS5.1-safe build. Ref/cache mismatch."
 }
 
@@ -65,6 +80,45 @@ if($de.Count -gt 0){
     throw "Excel diagnostic syntax validation failed."
 }
 
+Write-Host "[3/6] Updating coherent MS2 runtime scripts..." -ForegroundColor Cyan
+$runtimeFiles=@(
+    "MS2_RSS_100_Collector.ps1",
+    "Kioxia_Safety_Heartbeat.ps1",
+    "Kioxia_RSS_Live_Watcher.ps1"
+)
+$stagedHashes=@{}
+foreach($name in $runtimeFiles){
+    $target=Join-Path $runtimeDir $name
+    $tmp=$target+".new"
+    Save-RemotePowerShellUtf8Bom ($base+"/ms2_live/"+$name+$cache) $tmp
+    Assert-V6Build $tmp
+    $rt=$null; $re=$null
+    [System.Management.Automation.Language.Parser]::ParseFile($tmp,[ref]$rt,[ref]$re) | Out-Null
+    if($re.Count -gt 0){ Remove-Item $tmp -Force -ErrorAction SilentlyContinue; throw ($name+" syntax validation failed.") }
+    $stagedHashes[$name]=(Get-FileHash -LiteralPath $tmp -Algorithm SHA256).Hash
+}
+# All downloads passed build and syntax checks before replacing any runtime file.
+foreach($name in $runtimeFiles){
+    $target=Join-Path $runtimeDir $name
+    $tmp=$target+".new"
+    if(Test-Path -LiteralPath $target){
+        $backup=$target+".bak."+(Get-Date -Format "yyyyMMddHHmmss")
+        Copy-Item -LiteralPath $target -Destination $backup -Force
+    }
+    Move-Item -LiteralPath $tmp -Destination $target -Force
+    Assert-V6Build $target
+    if((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -ne $stagedHashes[$name]){throw ("Installed file differs from download: "+$target)}
+    Write-Host ("      Updated: "+$target+" / build="+$V6RuntimeBuild) -ForegroundColor Green
+}
+
+$entries=@(foreach($name in $runtimeFiles){
+    $target=Join-Path $runtimeDir $name
+    Assert-V6Build $target
+    @{name=$name; path=$target; sha256=(Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash}
+})
+@{build=$V6RuntimeBuild; runtimeDir=$runtimeDir; files=$entries} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath ($runtimeManifest+".new") -Encoding UTF8
+Move-Item -LiteralPath ($runtimeManifest+".new") -Destination $runtimeManifest -Force
+[void](Assert-V6InstalledRuntime $Root)
 $marker=Join-Path $Root "V6_INSTALL_CHANNEL.txt"
 @(
     "channel="+$Channel
@@ -72,31 +126,6 @@ $marker=Join-Path $Root "V6_INSTALL_CHANNEL.txt"
     "installed_at="+(Get-Date -Format "yyyy-MM-ddTHH:mm:sszzz")
     "launcher="+$launcher
 ) | Set-Content -LiteralPath $marker -Encoding UTF8
-
-Write-Host "[3/6] Updating coherent MS2 runtime scripts..." -ForegroundColor Cyan
-$desktop=[Environment]::GetFolderPath("Desktop")
-$collectorCandidates=@(Get-ChildItem -Path $desktop -Filter "MS2_RSS_100_Collector.ps1" -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.FullName -like "*MarketSpeed II RSS*files*" })
-if($collectorCandidates.Count -ne 1){ throw ("MS2 runtime path must resolve uniquely. found="+$collectorCandidates.Count) }
-$runtimeDir=$collectorCandidates[0].Directory.FullName
-$runtimeFiles=@(
-    "MS2_RSS_100_Collector.ps1",
-    "Kioxia_Safety_Heartbeat.ps1",
-    "Kioxia_RSS_Live_Watcher.ps1"
-)
-foreach($name in $runtimeFiles){
-    $target=Join-Path $runtimeDir $name
-    $tmp=$target+".new"
-    Save-RemotePowerShellUtf8Bom ($base+"/ms2_live/"+$name+$cache) $tmp
-    $rt=$null; $re=$null
-    [System.Management.Automation.Language.Parser]::ParseFile($tmp,[ref]$rt,[ref]$re) | Out-Null
-    if($re.Count -gt 0){ Remove-Item $tmp -Force -ErrorAction SilentlyContinue; throw ($name+" syntax validation failed.") }
-    if(Test-Path -LiteralPath $target){
-        $backup=$target+".bak."+(Get-Date -Format "yyyyMMddHHmmss")
-        Copy-Item -LiteralPath $target -Destination $backup -Force
-    }
-    Move-Item -LiteralPath $tmp -Destination $target -Force
-    Write-Host ("      Updated: "+$name) -ForegroundColor Green
-}
 
 Write-Host "[4/6] Replacing startup shortcut..." -ForegroundColor Cyan
 $desktop=[Environment]::GetFolderPath("Desktop")
@@ -106,7 +135,7 @@ $lnk=Join-Path $desktop "AI Cockpit START V6.lnk"
 $ws=New-Object -ComObject WScript.Shell
 $s=$ws.CreateShortcut($lnk)
 $s.TargetPath="$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
-$s.Arguments='-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$launcher+'"'
+$s.Arguments='-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$launcher+'" -Root "'+$Root+'"'
 $s.WorkingDirectory=$Root
 $s.WindowStyle=1
 $s.Description="AI Cockpit V6 startup - auto closes on success"

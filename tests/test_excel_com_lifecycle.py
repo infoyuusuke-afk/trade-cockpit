@@ -45,7 +45,8 @@ class ExcelComLifecycleContractTests(unittest.TestCase):
     def test_launcher_only_quits_zero_workbook_orphan(self):
         self.assertIn("function Close-EmptyExcelApplication", LAUNCHER)
         self.assertIn("$count=[int]$books.Count", LAUNCHER)
-        self.assertIn("if($count -eq 0)", LAUNCHER)
+        self.assertIn("if($count -eq 0 -and -not $app.Visible -and $app.Ready -and $protected.Count -eq 0)", LAUNCHER)
+        self.assertIn("Release-ComObjectSafe $protected", LAUNCHER)
         self.assertIn("$app.Quit()", LAUNCHER)
         self.assertNotIn("Stop-Process -Name EXCEL", LAUNCHER)
         self.assertTrue(LAUNCHER.isascii())

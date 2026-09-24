@@ -1,4 +1,5 @@
-﻿param(
+﻿# V6_RUNTIME_BUILD: MS2-RUNTIME-20260925-02
+param(
     [string]$WorkbookName = "Kioxia_MS2_RSS_Live_Signals.xlsx",
     [string]$WorkbookPath = "",
     [string]$WatchlistPath = (Join-Path $PSScriptRoot "watchlist_100.json"),
@@ -7,6 +8,8 @@
     [switch]$StopAfterClose
 )
 
+$RuntimeBuild = "MS2-RUNTIME-20260925-02"
+Write-Host ("[COLLECTOR] " + $PSCommandPath + " / build=" + $RuntimeBuild) -ForegroundColor Cyan
 $ErrorActionPreference = "Stop"
 $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 . (Join-Path $PSScriptRoot "MS2_Common_Engine.ps1")

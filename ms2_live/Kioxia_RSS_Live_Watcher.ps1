@@ -1,4 +1,5 @@
-﻿param([string]$WorkbookPath = "")
+﻿# V6_RUNTIME_BUILD: MS2-RUNTIME-20260925-02
+param([string]$WorkbookPath = "")
 
 $ErrorActionPreference = "Stop"
 

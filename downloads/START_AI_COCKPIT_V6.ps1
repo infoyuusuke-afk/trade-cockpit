@@ -1,4 +1,4 @@
-param([string]$Root = "C:\AI_Cockpit_OneClick_Starter")
+﻿param([string]$Root = "C:\AI_Cockpit_OneClick_Starter")
 
 $LauncherBuild = "V6-PS51-ASCII-20260925-01"
 
@@ -23,19 +23,9 @@ function Test-Port([int]$Port,[int]$TimeoutMs=500){
 }
 
 function Resolve-RuntimeDir {
-    $roots=@(
-        [Environment]::GetFolderPath("Desktop"),
-        (Join-Path $env:USERPROFILE "Desktop"),
-        (Join-Path $env:USERPROFILE "OneDrive\Desktop")
-    ) | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -Unique
-    $hits=foreach($r in $roots){
-        Get-ChildItem -LiteralPath $r -Recurse -File -Filter "MS2_RSS_100_Collector.ps1" -ErrorAction SilentlyContinue
-    }
-    $preferred=@($hits | Where-Object { $_.FullName -like "*MarketSpeed II RSS\files*" } | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
-    if($preferred.Count -gt 0){ return $preferred[0].Directory.FullName }
-    $any=@($hits | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
-    if($any.Count -gt 0){ return $any[0].Directory.FullName }
-    throw "Runtime folder not found."
+    . (Join-Path $Root "V6_Runtime_Contract.ps1")
+    if ($V6RuntimeBuild -ne 'MS2-RUNTIME-20260925-02') { throw 'Runtime contract build mismatch. Reinstall V6.' }
+    return (Assert-V6InstalledRuntime $Root)
 }
 
 function Stop-Managed {
@@ -87,20 +77,23 @@ function Release-ComObjectSafe($obj){
 function Close-EmptyExcelApplication {
     $app=$null
     $books=$null
+    $protected=$null
     try{
         $app=[Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
         $books=$app.Workbooks
+        $protected=$app.ProtectedViewWindows
         $count=[int]$books.Count
-        if($count -eq 0){
+        if($count -eq 0 -and -not $app.Visible -and $app.Ready -and $protected.Count -eq 0){
             Write-Host "      Closing orphan Excel instance with zero workbooks..." -ForegroundColor Yellow
-            try{$app.DisplayAlerts=$false}catch{}
-            try{$app.Quit()}catch{}
+            try{if($books.Count -eq 0 -and $protected.Count -eq 0 -and -not $app.Visible -and $app.Ready){$app.Quit()}}catch{}
         }
     }catch{
     }finally{
+        Release-ComObjectSafe $protected
         Release-ComObjectSafe $books
         Release-ComObjectSafe $app
         $books=$null
+        $protected=$null
         $app=$null
         [GC]::Collect()
         [GC]::WaitForPendingFinalizers()
