@@ -188,6 +188,40 @@ try{
     if(-not $open -or -not(Wait-Workbook $WorkbookName 120)){ throw "Excel workbook was not ready in the active COM instance within 120 seconds." }
     Write-Host ("      Workbook: "+$WorkbookName+" / Excel COM instance verified") -ForegroundColor Green
 
+    Show-Step 45 "Verifying MarketSpeed II RSS add-in..."
+    # Opening the workbook is not enough: Excel may show cached RSS values while
+    # the MarketSpeed II COM/XLL add-in has not initialized in this Excel instance.
+    $rssReady=$false
+    $rssDeadline=(Get-Date).AddSeconds(45)
+    while((Get-Date) -lt $rssDeadline -and -not $rssReady){
+        try{
+            $rssSheet=$excel.Worksheets.Item("RSS接続")
+            $rssSheet.Range("B3").FormulaLocal='=RssMarket("285A.T","現在値")'
+            $rssSheet.Calculate()
+            Start-Sleep -Milliseconds 800
+            $v=$rssSheet.Range("B3").Value2
+            $n=0.0
+            $formula=[string]$rssSheet.Range("B3").FormulaLocal
+            if($formula -match "RssMarket" -and [double]::TryParse([string]$v,[ref]$n) -and $n -gt 0){
+                $rssReady=$true
+                break
+            }
+        }catch{}
+        try{
+            # Trigger registered Excel add-ins without guessing an install path.
+            foreach($addin in $excel.AddIns){
+                if(([string]$addin.Name -match "RSS|MarketSpeed|マーケットスピード") -and -not $addin.Installed){
+                    $addin.Installed=$true
+                }
+            }
+        }catch{}
+        Start-Sleep -Seconds 2
+    }
+    if(-not $rssReady){
+        throw "LIVE DATA INVALID: MarketSpeed II RSS add-in did not initialize in the active Excel instance."
+    }
+    Write-Host ("      MarketSpeed II RSS: READY / 285A="+$n) -ForegroundColor Green
+
     Show-Step 50 "Starting local gateway..."
     Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Gateway+'" -RuntimeDir "'+$RuntimeDir+'"') | Out-Null
     $deadline=(Get-Date).AddSeconds(30)
