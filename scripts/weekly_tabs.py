@@ -136,6 +136,10 @@ def tabs_block() -> str:
 .tab-pane:not([data-pane="kioxia-calendar"]) canvas,
 .tab-pane:not([data-pane="kioxia-calendar"]) .tv-lightweight-charts{display:none!important}
 .tab-pane:not([data-pane="kioxia-calendar"]) table{width:100%;font-size:11px}
+.tab-pane:not([data-pane="kioxia-calendar"]) section>table,
+.tab-pane:not([data-pane="kioxia-calendar"]) section>h3+table{display:none!important}
+.tab-pane:not([data-pane="kioxia-calendar"]) section:has(>table):not(:has(.scalp-strip)):not(:has(.ms2-live-grid))::after{content:"詳細データはカード化移行中";display:block;padding:12px;color:#9AA0AA;font-size:11px;border-top:1px solid #22252A}
+.tab-pane:not([data-pane="kioxia-calendar"]) details table{display:table!important}
 .tab-pane:not([data-pane="kioxia-calendar"]) .weekly-grid{grid-template-columns:1fr}
 @media(max-width:720px){.tab-pane:not([data-pane="kioxia-calendar"]){grid-template-columns:1fr}}
 .weekly-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
