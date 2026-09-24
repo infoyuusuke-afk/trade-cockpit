@@ -259,13 +259,6 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(raw.includes("空売り")||raw.includes("ショート")||String(x?.raw_direction)==="SELL")return {label:"SHORT",cls:"short"};
    return {label:"WAIT",cls:"wait"};
  };
- const sparkline=bars=>{
-   const vals=(Array.isArray(bars)?bars:[]).slice(-36).map(b=>num(b?.c??b?.Close)).filter(v=>v!=null);
-   if(vals.length<2)return '<svg viewBox="0 0 100 54" preserveAspectRatio="none"><line class="grid" x1="0" y1="27" x2="100" y2="27"/></svg>';
-   const lo=Math.min(...vals),hi=Math.max(...vals),span=Math.max(hi-lo,0.0001);
-   const pts=vals.map((v,i)=>((i/(vals.length-1))*100).toFixed(2)+","+(50-((v-lo)/span)*44).toFixed(2)).join(" ");
-   return '<svg viewBox="0 0 100 54" preserveAspectRatio="none"><line class="grid" x1="0" y1="27" x2="100" y2="27"/><polyline class="line" points="'+pts+'"/></svg>';
- };
  // 共有カード生成（ユーザー依頼2026-09-19：SCALP 5・OVERNIGHT 5・急騰5 / MOMENTUM 5で同じ銘柄カードにする）。
  // OVERNIGHT 5・急騰5 / MOMENTUM 5はSCALP 5と違いライブMS2データの一部項目（ENTRY/STOP/T1・OR5・出来高加速等）を
  // 持たないため、無い項目は推測で埋めず「—」のまま表示する（既存のyen()/num()の未確認時「—」表示を踏襲）。
