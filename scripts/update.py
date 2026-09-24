@@ -2346,6 +2346,22 @@ def main():
         f"<td>権利落ち日は配当相当の下落・つなぎ売り増加に注意</td></tr>"
         for i, (name, r) in enumerate(dividend_watch, 1)
     ) or "<tr><td colspan='9'>45日以内の推定権利日＋需給改善に合格した監視銘柄なし。</td></tr>"
+    dividend_cards = "".join(
+        f"<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>{name}</strong><small>VALUE · 配当 #{i}</small></div><span class='scalp-signal'>WATCH</span></div>"
+        f"<div class='scalp-price-row'><div class='scalp-price'>{money(r['price'])}</div><div class='scalp-change'>あと{r['dividend_days']}日</div></div>"
+        f"<div class='scalp-order'><span>発動<b>{money(max(r['high'], r['price']) + price_tick(r['price']))}</b></span><span class='stop'>撤退<b>{money(r['low'] - r['atr14'] * .2)}</b></span><span>配当<b>{money(r['last_dividend'])}</b></span></div>"
+        f"<div class='scalp-metrics'><span>需給<b>{r['market_supply_score']}/100</b></span><span>権利日<b>{r['estimated_ex_date']}</b></span></div>"
+        f"<div class='scalp-foot'>{'権利前上昇を監視' if r['price'] >= r['ma20'] else '戻り確認待ち'} · 権利日は過去実績からの推定</div></article>"
+        for i, (name, r) in enumerate(dividend_watch[:5], 1)
+    ) or "<div class='focus-empty'>45日以内の推定権利日＋需給改善に合格した監視銘柄なし。</div>"
+    buyback_cards = "".join(
+        f"<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>{x['name']}（{x['code']}）</strong><small>VALUE · 自社株買い #{i}</small></div><span class='scalp-signal'>WATCH</span></div>"
+        f"<div class='scalp-price-row'><div class='scalp-price'>期待値 {x['score']}/100</div><div class='scalp-change'>残り {x['remaining_pct']:.1f}%</div></div>"
+        f"<div class='scalp-metrics'><span>上限/発行済<b>{float(x['max_share_pct']):.2f}%</b></span><span>進捗<b>{float(x.get('progress_pct',0)):.1f}%</b></span><span>出来高影響<b>{float(x.get('daily_volume_impact_pct',0)):.1f}%</b></span></div>"
+        f"<div class='scalp-foot'>{x['start_date']}～{x['end_date']} · {'消却予定' if x.get('cancellation_planned') else '取得後保有等'} · {x.get('note','')}</div></article>"
+        for i, x in enumerate(active_buybacks[:5], 1)
+    ) or "<div class='focus-empty'>公式情報を確認できた実施期間中の自社株買い候補なし。</div>"
+
     akita_dc_rows = "".join(
         f"<tr><td>{i}</td><td>{x['name']}</td>"
         f"<td><b class='up'>{x['relation_score']}/100</b></td>"
@@ -3133,13 +3149,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>型</th><th>状態</th><th>総合点</th><th>需給点・局面</th><th>終値</th><th>支持線</th><th>線の傾斜</th><th>半年騰落</th><th>足型</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
 <tbody id="long-term-ma-signals"><tr><td colspan="15">全市場を走査中...</td></tr></tbody></table>
 <p class="warning"><b>必須条件：</b>信用需給を確認済みかつ30/55点以上。信用買い残1週・4週、信用倍率、機関空売り増減、買い戻し社数を確認します。50週線・200日線反発だけでは正式候補にしません。反転足高値＋1ティックを上抜いた場合だけ発動し、反転足安値割れで撤退。</p></section>
-<section id="dividend-rights-watch" class="card wide"><h2>配当権利前・上昇／権利落ち監視 TOP10</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>推定権利日</th><th>直近配当</th><th>需給改善</th><th>現在判定</th><th>上抜け発動</th><th>撤退</th><th>権利落ち注意</th></tr></thead><tbody>{dividend_rows}</tbody></table>
-<p class="warning">権利日は過去の配当実績間隔による推定です。会社IR・取引所の権利確定日を必ず確認。権利取り目的で無条件に買わず、需給改善＋発動価格上抜けだけを監視します。</p></section>
-<section id="buyback-watch" class="card wide"><h2>自社株買い実施中・需給インパクト TOP5</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>取得上限／発行済株式</th><th>進捗率</th><th>残り余力</th><th>1日出来高への影響</th><th>取得期間</th><th>消却・注意</th></tr></thead>
-<tbody>{buyback_rows}</tbody></table>
-<p class="warning">会社IR・適時開示で取得期間中と確認できる案件だけを表示。発表済みでも取得終了、上限到達、取得実績ゼロ、出来高への影響が小さい案件は減点します。自社株買いだけで買わず、信用買い残の整理・機関空売り買い戻し・週足／月足反転と重なる銘柄を優先します。更新：{buybacks_updated_at}</p></section>
+<section id="dividend-rights-watch" class="card wide"><h2>VALUE 5 · 配当権利前監視</h2><div class="scalp-strip">{dividend_cards}</div><p class="warning">権利日は過去実績からの推定。会社IR・取引所で確認し、需給改善＋発動価格上抜けだけを監視します。</p></section>
+<section id="buyback-watch" class="card wide"><h2>VALUE 5 · 自社株買い需給</h2><div class="scalp-strip">{buyback_cards}</div><p class="warning">会社IR・適時開示で取得期間中と確認できる案件のみ。自社株買い単独では発動せず、信用需給・週足／月足反転を重ねて確認します。更新：{buybacks_updated_at}</p></section>
 <section id="tv-watchlist-export" class="card wide"><h2>TradingView監視リスト出力</h2>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0">
 <button id="tv-day" type="button" style="padding:12px 18px;border:0;border-radius:9px;background:#00b894;color:#fff;font-weight:700;cursor:pointer">当日IN・準備を保存</button>
