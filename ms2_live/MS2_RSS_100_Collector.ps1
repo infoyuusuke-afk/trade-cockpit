@@ -420,6 +420,15 @@ public static class CollectorWorkbookRotFinder {
 }
 '@ -ErrorAction SilentlyContinue
 
+function Release-ComObjectSafe($obj) {
+    if ($null -eq $obj) { return }
+    try {
+        if ([Runtime.InteropServices.Marshal]::IsComObject($obj)) {
+            [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($obj)
+        }
+    } catch {}
+}
+
 function Invoke-ExcelCom {
     param(
         [Parameter(Mandatory=$true)][scriptblock]$Action,
@@ -850,6 +859,16 @@ Invoke-SerializedSpeak $speaker "キオクシアを含む、100銘柄の音声�
 
 try {
     while ($true) {
+        # If the user closes the canonical workbook, stop immediately. Holding a
+        # stale Workbook RCW keeps EXCEL.EXE alive and can make the next open use
+        # an add-in-less orphan Excel instance.
+        try {
+            $openBookName = Invoke-ExcelCom -Label "Collector workbook liveness" -Retries 1 -Action { [string]$book.Name }
+            if($openBookName -ine $WorkbookName){ throw "workbook identity changed" }
+        } catch {
+            Write-Host "[EXCEL] Canonical workbook was closed. Collector is releasing COM and stopping." -ForegroundColor Yellow
+            break
+        }
         # RssMarket関数はアドイン側から自動更新されるため、2秒ごとの強制再計算は行わない。
         # 強制再計算するとRSS更新と衝突し、Excel固有の0x800AC472が発生する。
         $now = Get-Date
@@ -1850,5 +1869,13 @@ try {
     }
 } finally {
     if ($null -ne $bridgeJob) { Stop-Job $bridgeJob -ErrorAction SilentlyContinue; Remove-Job $bridgeJob -Force -ErrorAction SilentlyContinue }
-    Write-Host "監視を停止しました。日別CSVは records フォルダーに残っています。" -ForegroundColor Yellow
+    # Release every long-lived Excel COM reference. Never call Excel.Quit here:
+    # the user owns the Excel window and may have other workbooks open.
+    foreach($com in @($irDynamicSheet,$jnxSheet,$rssLink,$sheet,$book,$excel)){ Release-ComObjectSafe $com }
+    $irDynamicSheet=$null; $jnxSheet=$null; $rssLink=$null; $sheet=$null; $book=$null; $excel=$null
+    [GC]::Collect()
+    [GC]::WaitForPendingFinalizers()
+    [GC]::Collect()
+    [GC]::WaitForPendingFinalizers()
+    Write-Host "監視を停止しました。Excel COM参照を解放しました。" -ForegroundColor Yellow
 }
