@@ -1736,14 +1736,16 @@ try {
         if ($null -ne $kioxia) {$voiceCandidates += $kioxia}
         $voiceCandidates += @($qualified|Where-Object{$_.ticker -ne "285A.T"}|Select-Object -First 3)
         foreach ($x in $voiceCandidates) {
-            $key=$x.ticker; $old=$lastSignal[$key]; $spokenAt=$lastSpoken[$key]
+            $key=$x.ticker; $old=$lastSignal[$key]
             $isKioxia=($key -eq "285A.T")
             $speakable=($x.signal -in @("買いサイン","空売りサイン") -or ($isKioxia -and $x.signal -eq "往復ピンタ回避"))
-            if ($speakable -and $old -ne $x.signal -and ($null -eq $spokenAt -or ($now-$spokenAt).TotalMinutes -ge 10)) {
+            $voiceEventId=[string]$x.ticker+"|"+[string]$x.signal+"|"+[string]$x.signal_bar_time+"|"+[string]$x.strategy+"|"+[string]$x.news_title
+            $previousVoiceEvent=if($lastSpoken.ContainsKey($key)){[string]$lastSpoken[$key]}else{""}
+            if ($speakable -and $voiceEventId -ne $previousVoiceEvent) {
                 $side=if($x.signal -eq "買いサイン"){"買いサイン点灯"}elseif($x.signal -eq "空売りサイン"){"空売りサイン点灯"}else{"往復ピンタ警戒"}
                 $orderVoice=if($null -eq $x.entry_price){"注文条件は未完成です"}else{"発動価格"+$x.entry_price+"円。損切り"+$x.stop_price+"円。第一目標"+$x.target1+"円"}
                 Invoke-SerializedSpeak $speaker ($x.name+"、"+$x.strategy+"、"+$side+"。"+$orderVoice+"。"+$x.market_state+"。確定ローソク足を確認し、注文は武蔵で手動です。")
-                $lastSpoken[$key]=$now
+                $lastSpoken[$key]=$voiceEventId
             }
             $lastSignal[$key]=$x.signal
         }
@@ -2372,14 +2374,16 @@ try {
         if ($null -ne $kioxia) {$voiceCandidates += $kioxia}
         $voiceCandidates += @($qualified|Where-Object{$_.ticker -ne "285A.T"}|Select-Object -First 3)
         foreach ($x in $voiceCandidates) {
-            $key=$x.ticker; $old=$lastSignal[$key]; $spokenAt=$lastSpoken[$key]
+            $key=$x.ticker; $old=$lastSignal[$key]
             $isKioxia=($key -eq "285A.T")
             $speakable=($x.signal -in @("買いサイン","空売りサイン") -or ($isKioxia -and $x.signal -eq "往復ピンタ回避"))
-            if ($speakable -and $old -ne $x.signal -and ($null -eq $spokenAt -or ($now-$spokenAt).TotalMinutes -ge 10)) {
+            $voiceEventId=[string]$x.ticker+"|"+[string]$x.signal+"|"+[string]$x.signal_bar_time+"|"+[string]$x.strategy+"|"+[string]$x.news_title
+            $previousVoiceEvent=if($lastSpoken.ContainsKey($key)){[string]$lastSpoken[$key]}else{""}
+            if ($speakable -and $voiceEventId -ne $previousVoiceEvent) {
                 $side=if($x.signal -eq "買いサイン"){"買いサイン点灯"}elseif($x.signal -eq "空売りサイン"){"空売りサイン点灯"}else{"往復ピンタ警戒"}
                 $orderVoice=if($null -eq $x.entry_price){"注文条件は未完成です"}else{"発動価格"+$x.entry_price+"円。損切り"+$x.stop_price+"円。第一目標"+$x.target1+"円"}
                 Invoke-SerializedSpeak $speaker ($x.name+"、"+$x.strategy+"、"+$side+"。"+$orderVoice+"。"+$x.market_state+"。確定ローソク足を確認し、注文は武蔵で手動です。")
-                $lastSpoken[$key]=$now
+                $lastSpoken[$key]=$voiceEventId
             }
             $lastSignal[$key]=$x.signal
         }
