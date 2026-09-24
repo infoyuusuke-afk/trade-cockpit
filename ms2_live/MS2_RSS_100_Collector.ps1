@@ -862,13 +862,14 @@ try {
         # If the user closes the canonical workbook, stop immediately. Holding a
         # stale Workbook RCW keeps EXCEL.EXE alive and can make the next open use
         # an add-in-less orphan Excel instance.
-        try {
-            $openBookName = Invoke-ExcelCom -Label "Collector workbook liveness" -Retries 1 -Action { [string]$book.Name }
-            if($openBookName -ine $WorkbookName){ throw "workbook identity changed" }
-        } catch {
-            Write-Host "[EXCEL] Canonical workbook was closed. Collector is releasing COM and stopping." -ForegroundColor Yellow
+        $liveBook=$null
+        try { $liveBook=[CollectorWorkbookRotFinder]::FindByIdentity($expectedPath,$WorkbookName) } catch {}
+        if($null -eq $liveBook){
+            Write-Host "[EXCEL] Canonical workbook disappeared from ROT. Collector is releasing COM and stopping." -ForegroundColor Yellow
             break
         }
+        Release-ComObjectSafe $liveBook
+        $liveBook=$null
         # RssMarket関数はアドイン側から自動更新されるため、2秒ごとの強制再計算は行わない。
         # 強制再計算するとRSS更新と衝突し、Excel固有の0x800AC472が発生する。
         $now = Get-Date
