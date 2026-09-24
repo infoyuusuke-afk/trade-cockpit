@@ -3142,8 +3142,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><div class="scalp-strip">{high_cards}</div></section>
 <section class="card wide"><h2>⑤-D 急騰後の過熱監視・押し目待ち TOP5</h2><div class="scalp-strip">{overheat_cards}</div><p class="warning">即飛び乗り禁止。反発・高値更新・出来高再増加を確認。</p></section>
 <section class="card wide"><h2>⑤-E 月足・週足反転＋信用需給 TOP5</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>足</th><th>判定</th><th>総合点</th><th>終値</th><th>反発線</th><th>需給点・局面</th><th>下ヒゲ／実体</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
-<tbody id="hammer-signals"><tr><td colspan="13">全市場を走査中...</td></tr></tbody></table>
+<div id="hammer-signals" class="scalp-strip"><div class="focus-empty">全市場を走査中...</div></div>
 <p class="warning">信用買い残1週・4週、信用倍率、機関空売り増減、買い戻し社数を55点で評価。未取得は需給未確認の暫定候補。高値＋1ティックを上抜いた場合だけ発動し、反転足安値割れで撤退します。</p></section>
 <section id="long-term-ma-rebound" class="card wide"><h2>⑤-F 長期右肩上がり・50週線／200日線反発＋信用需給 TOP5</h2>
 <div id="long-term-ma-signals" class="scalp-strip"><div class="focus-empty">全市場を走査中...</div></div>
@@ -3323,16 +3322,17 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     (d.large_lot_accumulation_note || "価格・出来高痕跡による推定") +
     "／信用需給更新 " + (d.credit_supply_updated_at || "未取得");
   const hammers = (d.monthly_weekly_hammers || []).slice(0, 5).map((x, i) =>
-    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.timeframe +
-    "</td><td>" + x.status + "</td><td><b class='up'>" + x.score +
-    "/100</b></td><td>" + yen(x.close) + "</td><td>" + x.ma_rebound +
-    "</td><td>" + (x.supply_verified ? x.supply_score + "/55 " + x.supply_phase : "未取得") +
-    "</td><td>" + x.lower_wick_ratio.toFixed(1) + "倍</td><td>" +
-    x.volume_ratio.toFixed(2) + "倍</td><td><b>" + yen(x.trigger) +
-    "</b></td><td class='down'>" + yen(x.stop) + "</td><td>" +
-    yen(x.target1) + "／" + yen(x.target2) + "</td></tr>").join("");
+    "<article class='scalp-card wait live-overlay-card' data-live-ticker='" + String(x.ticker||x.code||"") + "' data-analysis-price='" + String(x.close??"") + "'><div class='scalp-head'><div class='scalp-symbol'><strong>" + x.name +
+    "</strong><small>VALUE · 月週反転 #" + (i + 1) + " · " + x.timeframe + "</small></div><span class='scalp-signal'>" + x.status +
+    "</span></div><div class='scalp-price-row'><div class='scalp-price'><small class='price-kind'>分析基準値</small><span class='display-price'>" + yen(x.close) +
+    "</span></div><div class='scalp-change'>" + x.score + "/100</div></div><div class='scalp-order'><span>ENTRY<b>" + yen(x.trigger) +
+    "</b></span><span class='stop'>STOP<b>" + yen(x.stop) + "</b></span><span class='target'>T1<b>" + yen(x.target1) +
+    "</b></span></div><div class='scalp-metrics'><span>反発線<b>" + x.ma_rebound + "</b></span><span>需給<b>" +
+    (x.supply_verified ? x.supply_score + "/55 " + x.supply_phase : "未取得") + "</b></span><span>下ヒゲ<b>" +
+    x.lower_wick_ratio.toFixed(1) + "x</b></span><span>出来高<b>" + x.volume_ratio.toFixed(2) +
+    "x</b></span><span>T2<b>" + yen(x.target2) + "</b></span></div><div class='scalp-foot'>月足・週足反転候補 · LIVE有効時のみ現在値へ切替</div></article>").join("");
   document.getElementById("hammer-signals").innerHTML =
-    hammers || "<tr><td colspan='13'>厳格条件に合格した月足・週足反転銘柄なし。</td></tr>";
+    hammers || "<div class='focus-empty'>厳格条件に合格した月足・週足反転銘柄なし。</div>";
   const longTerm = (d.long_term_ma_rebounds || []).slice(0, 5).map((x, i) =>
     "<article class='scalp-card wait live-overlay-card' data-live-ticker='" + String(x.ticker||x.code||"") + "' data-analysis-price='" + String(x.close??"") + "'><div class='scalp-head'><div class='scalp-symbol'><strong>" + x.name +
     "</strong><small>VALUE · MA反発 #" + (i + 1) + "</small></div><span class='scalp-signal'>" + x.status +
@@ -3412,7 +3412,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
   document.getElementById("speculative-theme-watch").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
   document.getElementById("accumulation-signals").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
-  document.getElementById("hammer-signals").innerHTML = "<tr><td colspan='13'>データ取得待ち</td></tr>";
+  document.getElementById("hammer-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
   document.getElementById("long-term-ma-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
   document.getElementById("daily-reversal-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
   document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
