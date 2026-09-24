@@ -155,13 +155,24 @@ try{
     if(-not $WorkbookPath){ throw "No xlsx file found under C:\AI_Cockpit_OneClick_Starter\Excel" }
     $WorkbookName=Split-Path $WorkbookPath -Leaf
     $open=$false
+    $excel=$null
     try{
         $excel=[Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
         foreach($b in $excel.Workbooks){ if($b.Name -ieq $WorkbookName){ $open=$true; break } }
     }catch{}
-    if(-not $open){ Start-Process $WorkbookPath }
-    if(-not(Wait-Workbook $WorkbookName 120)){ throw "Excel workbook was not ready within 120 seconds." }
-    Write-Host ("      Workbook: "+$WorkbookName) -ForegroundColor Green
+    if($null -eq $excel){
+        $excel=New-Object -ComObject Excel.Application
+        $excel.Visible=$true
+    }
+    if(-not $open){
+        # Open through the exact COM instance the Collector will attach to.
+        # Start-Process can create/use another Excel instance, making
+        # GetActiveObject("Excel.Application") see zero relevant workbooks.
+        $opened=$excel.Workbooks.Open($WorkbookPath)
+        $open=($null -ne $opened)
+    }
+    if(-not $open -or -not(Wait-Workbook $WorkbookName 120)){ throw "Excel workbook was not ready in the active COM instance within 120 seconds." }
+    Write-Host ("      Workbook: "+$WorkbookName+" / Excel COM instance verified") -ForegroundColor Green
 
     Show-Step 50 "Starting local gateway..."
     Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Gateway+'" -RuntimeDir "'+$RuntimeDir+'"') | Out-Null
