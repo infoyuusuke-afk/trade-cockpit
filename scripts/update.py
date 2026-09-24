@@ -2764,13 +2764,13 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div id="ms2-live-meta" class="sub">MarketSpeed II RSSのローカル収集データを確認中...</div>
  <div id="ms2-common-status" class="ms2-live-card watch" style="margin-top:10px"><div class="top"><span class="signal">COMMON ENGINE</span><h3>全対象銘柄・共通判定基盤</h3><b class="score">確認中</b></div><div class="ms2-metrics"><span>判定<b>TREND LONG / TREND SHORT / REBOUND / RANGE / NO TRADE</b></span><span>自動発注<b>OFF（既定）</b></span><span>10本板<b>未確認</b></span><span>口座ゲート<b>未確認・売買禁止</b></span></div><small>未取得項目は推測せず未確認。口座数値は公開JSONへ出力しません。</small></div>
  <div id="ms2-live-cards" class="ms2-live-grid"><div class="focus-empty"><b>未接続</b><span>Windows用100銘柄コレクターを起動してください</span></div></div>
- <h3>夜間PTS期待TOP5</h3>
- <div id="ms2-pts-cards" class="ms2-live-grid"><div class="focus-empty"><span>JNXデータ待ち</span></div></div>
- <h3>IR急騰PTS TOP5</h3>
- <div id="ms2-ir-pts-meta" class="sub">TDnet公式開示とJNXを照合中...</div>
- <div id="ms2-ir-pts-cards" class="ms2-live-grid"><div class="focus-empty"><span>公式IR＋PTS反応待ち</span></div></div>
- <p><a class="ms2-download" href="https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/downloads/MS2_RSS_100_Stocks_Live_Kit.zip" target="_blank" rel="noopener" download="MS2_RSS_100_Stocks_Live_Kit.zip">Windows用・100銘柄LIVEキット（ZIP）を直接ダウンロード</a></p>
- <p class="sub">元の統合AIコクピットへMS2 RSSの歩み値・板・VWAP・OR15を反映します。キオクシア専用タブはVWAP・OR15・ピボット・EMA20に表示を限定します。</p>
+ <details class="ms2-secondary"><summary>PTS / IR 補助カード</summary>
+  <h3>夜間PTS期待TOP5</h3>
+  <div id="ms2-pts-cards" class="ms2-live-grid"><div class="focus-empty"><span>JNXデータ待ち</span></div></div>
+  <h3>IR急騰PTS TOP5</h3>
+  <div id="ms2-ir-pts-meta" class="sub">TDnet公式開示とJNXを照合中...</div>
+  <div id="ms2-ir-pts-cards" class="ms2-live-grid"><div class="focus-empty"><span>公式IR＋PTS反応待ち</span></div></div>
+ </details>
  <p class="warning"><b>Ver.1判定：</b>確定1分足 → OR5/OR15 → VWAP・EMA9/20 → 出来高 → 歩み値 → 地合い・業種 → UNDER/OVER補助。OR15追随は地合い不一致なら利確警戒。データが60秒以上古い場合は全サイン無効です。</p>
 </section>
 <section id="overnight-top5" class="card wide scalp-tv">
