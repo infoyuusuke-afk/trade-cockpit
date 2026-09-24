@@ -227,6 +227,20 @@ document.addEventListener("DOMContentLoaded",()=>{
    const ms=raw?Date.parse(raw):NaN;
    return Number.isFinite(ms)?ms:null;
  };
+ const tdnetFor=(d,x)=>{
+   if(d?.tdnet_live!==true)return null;
+   const code=String(x?.ticker||"").replace(".T","");
+   const rows=Array.isArray(d?.tdnet_disclosures)?d.tdnet_disclosures:[];
+   return rows.find(v=>String(v?.code||"")===code)||null;
+ };
+ const tdnetView=v=>{
+   if(!v)return {pending:false,label:"",title:""};
+   const title=String(v.title||"");
+   const earnings=/決算短信|決算補足|業績予想.*修正|業績.*修正/.test(title);
+   const negative=/下方修正|減配|無配|第三者割当|新株予約権|希薄化|継続企業の前提|監理銘柄|債務超過/.test(title);
+   const positive=/公開買付|ＴＯＢ|TOB|ＭＢＯ|MBO|上方修正|増配|記念配当|自己株式.*取得|自社株買い|承認|採択|大型受注|受注獲得|契約締結|販売許可|資本業務提携|業務提携|共同開発/.test(title);
+   return {pending:earnings&&!positive&&!negative,label:negative?"悪材料確認":positive?"公式材料":earnings?"決算内容確認中":"新着IR",title};
+ };
  const liveQuote=(x,feedStale)=>{
    const at=observedMs(x),age=at==null?null:Date.now()-at;
    const explicit=x?.live_quote_valid;
@@ -289,9 +303,12 @@ document.addEventListener("DOMContentLoaded",()=>{
    const rows=fixed.map(t=>all.find(x=>String(x.ticker)===t)).filter(Boolean);
    box.innerHTML=rows.length?rows.map(x=>{
      const live=liveQuote(x,stale);
-     const sv=signalView(x,!live.valid);
+     const ir=tdnetView(tdnetFor(d,x));
+     const sv=signalView(x,!live.valid||ir.pending);
+     if(ir.pending){sv.label="NEWS PENDING";sv.cls="block";}
      const lit=announceEdge(x,sv,live);
-     const html=window.renderScalpCard({...x,__live:live,foot:live.valid?((x.signal||"監視")+' · '+(x.strategy||"条件待ち")):"現在値失効・売買シグナル無効"},sv,"1m");
+     const reason=!live.valid?"現在値失効・売買シグナル無効":ir.pending?("決算内容確認中・既存シグナル保留 · "+ir.title):(ir.title?(ir.label+" · "+ir.title+" · "+(x.strategy||x.signal||"監視")):((x.signal||"監視")+' · '+(x.strategy||"条件待ち")));
+     const html=window.renderScalpCard({...x,__live:live,foot:reason},sv,"1m");
      return lit&&actionable(sv)?html.replace('scalp-card '+sv.cls,'scalp-card '+sv.cls+' edge-live'):html;
    }).join(""):'<div class="focus-empty">SCALP 5のMS2 RSSデータ待ち</div>';
  });
