@@ -143,6 +143,7 @@ def tabs_block() -> str:
 .scalp-metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:#22252A;border:1px solid #22252A;border-radius:6px;overflow:hidden}.scalp-metrics span{background:#0E1013;padding:7px 6px;font-size:9.5px;color:#9AA0AA}.scalp-metrics b{display:block;margin-top:3px;font-size:11px;color:#E8EAED;font-weight:600}
 .scalp-foot{margin-top:8px;color:#9AA0AA;font-size:9.5px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .scalp-card.edge-live{box-shadow:0 0 0 2px rgba(31,199,154,.7),0 0 22px rgba(31,199,154,.28);animation:edgePulse 1.2s ease-in-out infinite}.scalp-card.edge-live.short{box-shadow:0 0 0 2px rgba(240,97,108,.75),0 0 22px rgba(240,97,108,.28)}@keyframes edgePulse{50%{transform:translateY(-1px);filter:brightness(1.15)}}
+.card-only-pane{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;align-items:start}.card-only-pane>.pane-intro{grid-column:1/-1}.card-only-pane>.card{min-width:0}.card-only-pane>.wide{grid-column:auto}.card-only-pane table{width:100%;font-size:12px}.card-only-pane .table-wrap{overflow:auto;max-height:520px}
 @media(max-width:1250px){.scalp-strip{grid-template-columns:repeat(3,minmax(205px,1fr))}}
 @media(max-width:850px){.scalp-strip{grid-template-columns:repeat(2,minmax(205px,1fr))}}
 @media(max-width:560px){.scalp-strip{grid-template-columns:1fr}}
@@ -219,7 +220,16 @@ document.addEventListener("DOMContentLoaded",()=>{
  intros["us-smr"]=["対米投資・SMR","政策発表と個社受注を区別し、事業化・需給・価格の確認順に監視。"];
  intros["ms2-live"]=["REALTIME 5","100銘柄をMS2 RSSで監視。チャートは使わず、現在値・方向・理由・優先度・鮮度をカードで統一表示。"];
  intros.overnight=["OVERNIGHT 5","15時前後から採点し、翌朝GU/GDを狙う候補。15:25に銘柄と方向を固定。"];
- Object.entries(intros).forEach(([k,v])=>{if(!panes[k])return;const h=document.createElement("div");h.className="pane-intro";h.innerHTML='<span>AI COCKPIT</span><h2>'+v[0]+'</h2><p>'+v[1]+'</p>';panes[k].prepend(h);});
+ Object.entries(intros).forEach(([k,v])=>{if(!panes[k])return;const h=document.createElement("div");h.className="pane-intro card";h.innerHTML='<span>AI COCKPIT</span><h2>'+v[0]+'</h2><p>'+v[1]+'</p>';panes[k].prepend(h);});
+ // Card-first layout contract: legacy sections remain as data sources, but their
+ // presentation uses the same card surface. KIOXIA keeps its dedicated forecast chart.
+ Object.entries(panes).forEach(([k,p])=>{
+   p.querySelectorAll(":scope > section").forEach(s=>{
+     s.classList.add("card");
+     if(!s.classList.contains("wide"))s.classList.add("wide");
+   });
+   if(k!=="kioxia-calendar")p.classList.add("card-only-pane");
+ });
 
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  const num=v=>v==null||!Number.isFinite(Number(v))?null:Number(v);
