@@ -2499,12 +2499,11 @@ def main():
             f"<div class='scalp-foot'>{state} · LIVE有効時のみ現在値へ切替</div></article>"
         )
     bb_cards = bb_cards or "<div class='focus-empty'>条件合格銘柄なし</div>"
-    review_rows = "".join(
-        f"<tr><td>{x['name']}</td><td>{money(x['plan']['entry'])}</td><td>{money(x['plan']['stop'])}</td>"
-        f"<td>{money(x['plan']['target1'])}／{money(x['plan']['target2'])}</td>"
-        f"<td class='{'up' if '利確' in x['result'] else 'down' if '損切り' in x['result'] else ''}'>{x['result']}</td>"
-        f"<td>{x.get('detail','—')}</td></tr>" for x in reviews
-    ) or "<tr><td colspan='6'>朝版の同日スナップショットなし。次回8:00版から自動検証します。</td></tr>"
+    review_cards = "".join(
+        f"<article class='scalp-card {'long' if '利確' in x['result'] else 'short' if '損切り' in x['result'] else 'wait'}'><div class='scalp-head'><div class='scalp-symbol'><strong>{x['name']}</strong><small>朝8:00候補 · 答え合わせ</small></div><span class='scalp-signal'>{x['result']}</span></div><div class='scalp-order'><span>朝ENTRY<b>{money(x['plan']['entry'])}</b></span><span class='stop'>朝STOP<b>{money(x['plan']['stop'])}</b></span><span class='target'>朝T1<b>{money(x['plan']['target1'])}</b></span></div><div class='scalp-metrics'><span>朝T2<b>{money(x['plan']['target2'])}</b></span></div><div class='scalp-foot'>{x.get('detail','—')} · 事後検証カード</div></article>"
+        for x in reviews[:5]
+    ) or "<div class='focus-empty'>朝版の同日スナップショットなし。次回8:00版から自動検証します。</div>"
+
 
     # Public dashboard uses a date-only discipline score and stores no personal birth data.
     today_jst = datetime.now(JST).date()
@@ -3055,13 +3054,13 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div class="rotation-box"><b>新高値・新安値</b><strong id="breadth-highlow">走査待ち</strong><br>20日・52週の両方を確認</div>
 <div class="rotation-box"><b>全市場売買代金</b><strong id="breadth-turnover">走査待ち</strong><br><span id="breadth-coverage">取得率を確認</span></div>
 </div>
-<table><thead><tr><th>分類</th><th>網羅項目</th><th>選定での役割</th><th>現在の扱い</th></tr></thead><tbody>
-<tr><td>市場参加</td><td>騰落レシオ／新高値・新安値／売買代金／日本市況／テクニカル指標</td><td>上昇が一部銘柄だけか、市場全体へ広がっているか</td><td class="up">全市場走査で自動反映</td></tr>
-<tr><td>需給</td><td>空売り比率／信用評価／裁定買い残／投資主体別</td><td>踏み上げ余地、戻り売り圧力、主体別の買い越し</td><td class="warning">公表日時付きデータのみ採点。未取得は判定保留</td></tr>
-<tr><td>ポジション</td><td>先物手口／オプション手口／SQ値／NT倍率</td><td>指数の上値・下値バイアスとリバランス圧力</td><td class="warning">個別銘柄点ではなく地合いゲート</td></tr>
-<tr><td>外部環境</td><td>米国市況／世界株価／先物CFD／ADR／為替／商品／仮想通貨／債券／恐怖指数</td><td>翌朝ギャップ、業種ローテーション、リスク選好</td><td>指数・為替・金利・業種相対で反映</td></tr>
-<tr><td>評価・イベント</td><td>日経225 PER／米国株PER／ドル建て225／225寄与度／経済ニュース／スケジュール／5分足カレンダー</td><td>割高警戒、指数寄与の偏り、決算・指標回避</td><td>加点せず、過熱警戒と売買禁止条件に使用</td></tr>
-</tbody></table>
+<div class="scalp-strip">
+<article class="scalp-card wait"><div class="scalp-head"><div class="scalp-symbol"><strong>市場参加</strong><small>MARKET BREADTH</small></div><span class="scalp-signal">AUTO</span></div><div class="scalp-foot">騰落レシオ／新高値・新安値／売買代金／日本市況／テクニカル指標 · 全市場走査で自動反映</div></article>
+<article class="scalp-card wait"><div class="scalp-head"><div class="scalp-symbol"><strong>需給</strong><small>SUPPLY / DEMAND</small></div><span class="scalp-signal">DATED ONLY</span></div><div class="scalp-foot">空売り比率／信用評価／裁定買い残／投資主体別 · 公表日時付きのみ採点、未取得は判定保留</div></article>
+<article class="scalp-card wait"><div class="scalp-head"><div class="scalp-symbol"><strong>ポジション</strong><small>FUTURES / OPTIONS</small></div><span class="scalp-signal">GATE</span></div><div class="scalp-foot">先物手口／オプション手口／SQ値／NT倍率 · 個別銘柄点ではなく地合いゲート</div></article>
+<article class="scalp-card wait"><div class="scalp-head"><div class="scalp-symbol"><strong>外部環境</strong><small>GLOBAL CONTEXT</small></div><span class="scalp-signal">CONTEXT</span></div><div class="scalp-foot">米国市況／世界株価／先物CFD／ADR／為替／商品／仮想通貨／債券／恐怖指数 · 翌朝ギャップと業種ローテーションを確認</div></article>
+<article class="scalp-card wait"><div class="scalp-head"><div class="scalp-symbol"><strong>評価・イベント</strong><small>VALUATION / EVENTS</small></div><span class="scalp-signal">GUARD</span></div><div class="scalp-foot">PER／ドル建て225／225寄与度／ニュース／スケジュール／5分足カレンダー · 加点せず過熱警戒と売買禁止条件に使用</div></article>
+</div>
 <p class="warning"><b>重要：</b>空売り比率、信用残、先物・オプション手口など公表頻度が違う値を同日データとして混ぜません。未取得値を推定で埋めず、正式候補のデータ充足率に反映します。</p></section>
 <section class="card wide"><h2>① 地合いサマリー</h2><div class="scalp-strip">{idx_cards}</div></section>
 <section class="card wide"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><div class="scalp-strip">{theme_cards}</div></section>
@@ -3109,7 +3108,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div class="scalp-strip">{photonics_cards}</div>
 <p class="warning"><b>使い方：</b>INは前日高値＋1ティック。寄り成りでは買いません。9:15以降にVWAP上・5分足終値・出来高増加が揃った場合だけ発動し、買い上限を超えたら追わず取消。OUT損切りを約定後すぐ設定し、価格を下げて損切りを広げません。GFSの3億ドルは米商務省とのLOI（予定支援）であり、日本企業への直接受注確定ではありません。<a href="https://gf.com/news-and-events/news/globalfoundries-signs-letter-of-intent-with-the-us-department-of-commerce-for-a-300-million-award-to-accelerate-us-silicon-photonics-leadership/" target="_blank" rel="noopener">GFS公式発表</a></p>
 </section>
-<section class="card wide"><h2>④ 朝8:00候補のザラバ答え合わせ</h2><table><tr><th>会社名＋コード</th><th>朝イン</th><th>朝損切り</th><th>朝利確1／2</th><th>結果</th><th>終値・VWAP検証</th></tr>{review_rows}</table></section>
+<section class="card wide"><h2>④ 朝8:00候補のザラバ答え合わせ</h2><div class="scalp-strip">{review_cards}</div></section>
 <section class="card wide"><h2>⑤-A 安定上昇候補 TOP5</h2><div class="scalp-strip">{stable_cards}</div></section>
 <section class="card wide"><h2>⑤-B 短期急騰期待候補 TOP5</h2><div class="scalp-strip">{momentum_cards}</div><p class="warning">上向き5日線へのタッチ反発を最優先。終値回復を確認。</p></section>
 <section class="card wide"><h2>⑤-C 52週新高値・ブレイク候補 TOP5</h2><div class="scalp-strip">{high_cards}</div></section>
