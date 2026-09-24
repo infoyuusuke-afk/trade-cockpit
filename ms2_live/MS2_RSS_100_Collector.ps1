@@ -1241,7 +1241,7 @@ try {
                 volume_burst=[Math]::Round($barBurst,2);or5_high=if($or5High.ContainsKey($ticker)){$or5High[$ticker]}else{0};or5_low=if($or5Low.ContainsKey($ticker)){$or5Low[$ticker]}else{0}
                 or_high=$orHighValue;or_low=$orLowValue;ema9=if($null -eq $ema9){$null}else{[Math]::Round($ema9,2)};ema20=if($null -eq $ema20){$null}else{[Math]::Round($ema20,2)};ema_ready=$emaReady
                 chase_guard=$chaseGuard;whipsaw=$whipsaw;raw_direction=$rawDirection;strategy=$strategy;signal_bar_time=$signalBarTime
-                news_pending=$newsPending;news_title=$newsTitle;news_published_at=$(if($null -ne $newsPublishedAt){$newsPublishedAt.ToString("o")}else{$null});tdnet_live=($null -ne $lastTdnetSuccessAt -and ($now-$lastTdnetSuccessAt).TotalSeconds -le 45)
+                news_pending=$newsPending;news_title=$newsTitle;news_published_at=$(if($null -ne $newsPublishedAt){$newsPublishedAt.ToString("o")}else{$null});news_reaction_confirmed=$(if($null -ne $freshDisclosure){$reactionConfirmed}else{$false});news_reaction_direction=$(if($null -ne $freshDisclosure -and $reactionLong){"BUY"}elseif($null -ne $freshDisclosure -and $reactionShort){"SELL"}else{""});tdnet_live=($null -ne $lastTdnetSuccessAt -and ($now-$lastTdnetSuccessAt).TotalSeconds -le 45)
                 entry_price=if($null -eq $entryPrice){$null}else{[Math]::Round($entryPrice,2)};stop_price=if($null -eq $stopPrice){$null}else{[Math]::Round($stopPrice,2)}
                 target1=if($null -eq $target1){$null}else{[Math]::Round($target1,2)};target2=if($null -eq $target2){$null}else{[Math]::Round($target2,2)}
                 day_high=if($dayHigh.ContainsKey($ticker)){$dayHigh[$ticker]}else{$price};day_low=if($dayLow.ContainsKey($ticker)){$dayLow[$ticker]}else{$price}
@@ -1789,12 +1789,26 @@ try {
                 try {$newsPublishedAt=[DateTime]::ParseExact(($activeDay+" "+[string]$freshDisclosure.time),"yyyy-MM-dd HH:mm",$null)} catch {$newsPublishedAt=$null}
                 $isEarnings=($newsTitle -match '決算短信|決算補足|業績予想.*修正|業績.*修正')
                 $postDisclosureSeconds=if($null -ne $newsPublishedAt){($now-$newsPublishedAt).TotalSeconds}else{999999}
-                if($isEarnings -and $postDisclosureSeconds -ge 0 -and $postDisclosureSeconds -lt 180){
-                    $newsPending=$true
-                    $signal="NEWS PENDING"
-                    $strategy="場中決算・価格反応確認中"
-                    $rawDirection=""
-                    $entryPrice=$null; $stopPrice=$null; $target1=$null; $target2=$null
+                if($isEarnings -and $postDisclosureSeconds -ge 0){
+                    # Do not release merely because a timer elapsed. Require a completed
+                    # post-disclosure bar plus volume/flow/VWAP agreement.
+                    $barAfterDisclosure=($null -ne $lastBar -and $null -ne $newsPublishedAt -and [DateTime]::Parse([string]$lastBar.Key) -ge $newsPublishedAt)
+                    $reactionLong=($barAfterDisclosure -and $barBurst -ge 1.5 -and $flowBias -ge 0.08 -and $vwap -gt 0 -and $price -gt $vwap)
+                    $reactionShort=($barAfterDisclosure -and $barBurst -ge 1.5 -and $flowBias -le -0.08 -and $vwap -gt 0 -and $price -lt $vwap)
+                    $reactionConfirmed=($reactionLong -or $reactionShort)
+                    if(-not $reactionConfirmed){
+                        $newsPending=$true
+                        $signal="NEWS PENDING"
+                        $strategy="場中決算・価格/出来高反応待ち"
+                        $rawDirection=""
+                        $entryPrice=$null; $stopPrice=$null; $target1=$null; $target2=$null
+                    } elseif(($reactionLong -and $rawDirection -eq "SELL") -or ($reactionShort -and $rawDirection -eq "BUY")){
+                        $newsPending=$true
+                        $signal="NEWS CONFLICT"
+                        $strategy="場中決算・既存テクニカルと反応不一致"
+                        $rawDirection=""
+                        $entryPrice=$null; $stopPrice=$null; $target1=$null; $target2=$null
+                    }
                 }
             }
 
