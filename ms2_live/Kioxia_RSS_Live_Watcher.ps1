@@ -10,6 +10,50 @@ if (-not (Test-Path -LiteralPath $bookPath)) {
     exit 1
 }
 
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+
+public static class KioxiaWatcherRotFinder {
+    [DllImport("ole32.dll")]
+    private static extern int GetRunningObjectTable(int reserved, out IRunningObjectTable rot);
+    [DllImport("ole32.dll")]
+    private static extern int CreateBindCtx(int reserved, out IBindCtx bindCtx);
+
+    public static object FindByIdentity(string expectedFullPath, string bookFileName) {
+        IRunningObjectTable rot;
+        if (GetRunningObjectTable(0, out rot) != 0 || rot == null) return null;
+        IEnumMoniker en;
+        rot.EnumRunning(out en);
+        en.Reset();
+        var mk = new IMoniker[1];
+        object uniqueNameMatch = null;
+        int nameMatchCount = 0;
+        while (en.Next(1, mk, IntPtr.Zero) == 0) {
+            IBindCtx ctx;
+            CreateBindCtx(0, out ctx);
+            try {
+                string name;
+                mk[0].GetDisplayName(ctx, null, out name);
+                if (String.IsNullOrEmpty(name)) continue;
+                object obj;
+                if (name.EndsWith(expectedFullPath, StringComparison.OrdinalIgnoreCase)) {
+                    rot.GetObject(mk[0], out obj);
+                    return obj;
+                }
+                if (name.EndsWith(bookFileName, StringComparison.OrdinalIgnoreCase)) {
+                    rot.GetObject(mk[0], out obj);
+                    uniqueNameMatch = obj;
+                    nameMatchCount++;
+                }
+            } catch { }
+        }
+        return nameMatchCount == 1 ? uniqueNameMatch : null;
+    }
+}
+'@ -ErrorAction SilentlyContinue
+
 function Write-AtomicUtf8([string]$path, [string]$content) {
     $tmp = "$path.tmp"
     [IO.File]::WriteAllText($tmp, $content, [Text.UTF8Encoding]::new($false))
@@ -374,43 +418,26 @@ function Read-Chart($sheet, [string]$anchor) {
     } catch { return @() }
 }
 
-try {
-    $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
-    Write-Host "RSS接続済みのExcelへ接続しました。" -ForegroundColor Green
-} catch {
-    # 2026-09-14深夜の実機検証で判明: New-Object -ComObject Excel.Applicationで生成した
-    # Excelインスタンスは、MS2 RSSアドイン（COMアドイン）が読み込まれずRssMarket等が
-    # #NAME?エラーになり、RSSリボンタブ自体も存在しないことを確認した。ファイルを通常どおり
-    # 開く（シェル経由でExcel.exeを起動する）必要があるため、Start-Processでファイルを開き、
-    # Excelプロセスが起動するのを待ってからGetActiveObjectで接続し直す。
-    Write-Host "Excelが起動していません。ファイルを開いてアドインを正しく読み込みます。" -ForegroundColor Yellow
-    Start-Process $bookPath
-    $excel = $null
-    $connectDeadline = (Get-Date).AddSeconds(60)
-    while ($null -eq $excel -and (Get-Date) -lt $connectDeadline) {
+$bookFileName=[IO.Path]::GetFileName($bookPath)
+$book=[KioxiaWatcherRotFinder]::FindByIdentity($bookPath,$bookFileName)
+if($null -eq $book){
+    Write-Host "対象Excelブックが未起動です。通常のExcel起動経路で開きます。" -ForegroundColor Yellow
+    Start-Process -FilePath $bookPath | Out-Null
+    $connectDeadline=(Get-Date).AddSeconds(60)
+    while($null -eq $book -and (Get-Date) -lt $connectDeadline){
         Start-Sleep -Seconds 2
-        try { $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application") } catch {}
+        $book=[KioxiaWatcherRotFinder]::FindByIdentity($bookPath,$bookFileName)
     }
-    if ($null -eq $excel) {
-        Write-Host "Excelの起動を確認できませんでした。" -ForegroundColor Red
-        Read-Host "Enterで終了"
-        exit 1
-    }
-    Write-Host "Excelへ接続しました。RSSタブで『接続』を確認してください。" -ForegroundColor Yellow
 }
+if($null -eq $book){
+    Write-Host "対象ブックを一意に確認できません。同名ブックが複数開いていないか確認してください。" -ForegroundColor Red
+    Read-Host "Enterで終了"
+    exit 1
+}
+$excel=Invoke-ComRetry { $book.Application }
+Write-Host ("RSS対象Excelへ接続しました: " + $bookFileName) -ForegroundColor Green
 Invoke-ComRetry { $excel.Visible = $true } | Out-Null
 Invoke-ComRetry { $excel.DisplayAlerts = $false } | Out-Null
-$book = Invoke-ComRetry {
-    $found = $null
-    foreach ($candidate in $excel.Workbooks) {
-        if ($candidate.FullName -eq $bookPath -or $candidate.Name -eq "Kioxia_MS2_RSS_Live_Signals.xlsx") {
-            $found = $candidate
-            break
-        }
-    }
-    if ($null -eq $found) { $found = $excel.Workbooks.Open($bookPath) }
-    return $found
-}
 $rss = Invoke-ComRetry { $book.Worksheets.Item("RSS接続") }
 $calc = Invoke-ComRetry { $book.Worksheets.Item("計算") }
 $dash = Invoke-ComRetry { $book.Worksheets.Item("DASHBOARD") }
