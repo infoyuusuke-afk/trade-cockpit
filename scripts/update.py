@@ -2893,7 +2893,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   if(!stateEl)return;
   const put=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};
   try{
-   const w=await fetchJson("http://127.0.0.1:28581/kioxia_watcher_live.json?t="+Date.now(),1800);
+   const w=await fetchJson("http://127.0.0.1:28582/kioxia_watcher_live.json?t="+Date.now(),1800);
    const parsed=new Date(String(w.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,stale=age>60;
    if(stale){stateEl.textContent="データ停止（60秒超未更新）";put("kio-watcher-conditions","");return}
    const yen1=v=>v==null?"—":Number(v).toLocaleString("ja-JP")+"円";
@@ -2914,7 +2914,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    put("kio-watcher-pts",w.pts_price!=null?`${yen1(w.pts_price)}／前日比${esc(w.pts_change_pct_text||"—")}／気配${esc(w.pts_quote_text||"—")}（${esc(w.pts_time_text||"—")}）`:"未取得");
   }catch(e){
    stateEl.textContent="Excel Watcher未接続（自宅PC上でのみ表示されます）";
-   document.getElementById("kio-watcher-source").textContent="http://127.0.0.1:28581 へ接続できません";
+   document.getElementById("kio-watcher-source").textContent="http://127.0.0.1:28582 へ接続できません";
   }
  }
  loadMs2Live(); setInterval(loadMs2Live,5000);
