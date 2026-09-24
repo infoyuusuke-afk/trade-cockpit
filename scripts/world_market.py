@@ -127,6 +127,16 @@ def freshness(stamp: str, kind: str, now: datetime) -> tuple[bool, str]:
     return False, stamp or "時刻なし"
 
 
+def narration_availability(row: dict) -> str:
+    """Return a narration-safe availability state without conflating closure with failure."""
+    state = row.get("session_state")
+    if row.get("verified"):
+        return "AVAILABLE"
+    if state in {"NOT_OPEN_YET", "CLOSED_KNOWN", "BREAK"}:
+        return "EXPECTED_INACTIVE"
+    return "DATA_INVALID"
+
+
 def parse(html: str, now: datetime) -> dict:
     parser = IdTextParser()
     parser.feed(html)
@@ -154,6 +164,7 @@ def parse(html: str, now: datetime) -> dict:
                        ("市場未開場・異常ではありません" if session_state == "NOT_OPEN_YET" else
                         "未取得または時刻不整合・売買利用禁止")),
         }
+        rows[code]["narration_availability"] = narration_availability(rows[code])
     verified_count = sum(bool(x["verified"]) for x in rows.values())
     return {
         "updated_at": now.isoformat(),
