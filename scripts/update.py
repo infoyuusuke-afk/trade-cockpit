@@ -3281,12 +3281,20 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
       const ticker = raw.endsWith(".T") ? raw : raw + ".T";
       const live = window.cockpitLiveSnapshot ? window.cockpitLiveSnapshot(ticker) : null;
       const price = card.querySelector(".display-price"), kind = card.querySelector(".price-kind");
+      let ref = card.querySelector(".analysis-reference");
+      const analysis = Number(card.dataset.analysisPrice);
+      if(!ref) {{
+        ref = document.createElement("small");
+        ref.className = "analysis-reference";
+        const row = card.querySelector(".scalp-price-row");
+        if(row)row.appendChild(ref);
+      }}
+      if(ref)ref.textContent = Number.isFinite(analysis) ? "分析基準値 " + yen(analysis) : "分析基準値 —";
       if(live && price && kind) {{
         price.textContent = yen(live.price);
         kind.textContent = "MS2 LIVE現在値";
         card.classList.add("live-verified");
       }} else if(price && kind) {{
-        const analysis = Number(card.dataset.analysisPrice);
         price.textContent = Number.isFinite(analysis) ? yen(analysis) : "—";
         kind.textContent = "分析基準値";
         card.classList.remove("live-verified");
