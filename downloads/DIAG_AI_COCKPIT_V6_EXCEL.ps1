@@ -1,7 +1,8 @@
 param(
     [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
     [string]$RuntimeDir = "",
-    [switch]$NoLaunch
+    [switch]$NoLaunch,
+    [switch]$NoPause
 )
 
 $ErrorActionPreference = "Continue"
@@ -51,13 +52,14 @@ function Resolve-RuntimeDir {
 }
 
 function Resolve-Workbook([string]$RootDir,[string]$Ms2Dir) {
-    $candidates = @(
-        (Join-Path (Join-Path $RootDir "Excel") "Kioxia_MS2_RSS_Live_Signals.xlsx"),
-        (Join-Path $Ms2Dir "Kioxia_MS2_RSS_Live_Signals.xlsx"),
-        (Join-Path (Join-Path $RootDir "Excel") "Kioxia_MS2_RSS_Live_Signals_FIXED.xlsx"),
-        (Join-Path $Ms2Dir "Kioxia_MS2_RSS_Live_Signals_FIXED.xlsx")
-    )
-    foreach($candidate in $candidates) {
+    $rootExcel = Join-Path $RootDir "Excel"
+    $rootCanonical = Join-Path $rootExcel "Kioxia_MS2_RSS_Live_Signals.xlsx"
+    $rootFixed = Join-Path $rootExcel "Kioxia_MS2_RSS_Live_Signals_FIXED.xlsx"
+    $runtimeCanonical = Join-Path $Ms2Dir "Kioxia_MS2_RSS_Live_Signals.xlsx"
+    $runtimeFixed = Join-Path $Ms2Dir "Kioxia_MS2_RSS_Live_Signals_FIXED.xlsx"
+
+    # Mirror START_AI_COCKPIT_V6.ps1 selection order exactly.
+    foreach($candidate in @($rootCanonical,$rootFixed,$runtimeCanonical,$runtimeFixed)) {
         if($candidate -and (Test-Path -LiteralPath $candidate)) { return [IO.Path]::GetFullPath($candidate) }
     }
     return ""
@@ -316,10 +318,16 @@ $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $jsonLog -Encoding
 Write-Host ""
 Write-Host ("Diagnostic log: "+$textLog) -ForegroundColor Cyan
 Write-Host ("JSON log      : "+$jsonLog) -ForegroundColor Cyan
+$exitCode = 0
 if($criticalFails.Count -eq 0) {
     Write-Host "DIAGNOSTIC PASS" -ForegroundColor Green
-    exit 0
+} else {
+    $exitCode = 2
+    Write-Host ("DIAGNOSTIC FAIL - critical failures: "+$criticalFails.Count) -ForegroundColor Red
+    Write-Host "Send the newest excel_startup_diag_*.log if troubleshooting is needed." -ForegroundColor Yellow
 }
-Write-Host ("DIAGNOSTIC FAIL - critical failures: "+$criticalFails.Count) -ForegroundColor Red
-Write-Host "Send the newest excel_startup_diag_*.log if troubleshooting is needed." -ForegroundColor Yellow
-exit 2
+if(-not $NoPause) {
+    Write-Host ""
+    Read-Host "Press Enter to close this diagnostic window" | Out-Null
+}
+if($NoPause) { exit $exitCode }
