@@ -152,11 +152,16 @@ export function renderCockpitCard(model) {
 }
 
 /**
- * Compact horizontal row variant for "on-air" watch lists (実況銘柄カード) -
- * symbols currently being spoken about or actively monitored, so a missed
- * voice alert can still be confirmed on screen. Same model as
- * renderCockpitCard; only symbol/company/direction/price/changePct/
- * freshness/foot are used.
+ * Compact horizontal row variant for watch-list style listings: the
+ * "on-air" symbol log (実況銘柄カード, direction/badge meaningful) as well
+ * as plain scan lists like 監視銘柄/寄り前気配 (rank + metrics, no
+ * long/short judgement - pass showBadge:false there). Same base model as
+ * renderCockpitCard, plus:
+ *   rank (number, optional) - shown as a leading "#N" chip.
+ *   showBadge (bool, default true) - set false to omit the direction badge
+ *     entirely for lists that carry no directional judgement.
+ *   metrics ([{label, value}], optional) - short inline chips after the
+ *     price, same drop-missing-values rule as renderCockpitCard.
  */
 export function renderCockpitWatchRow(model) {
   if (!model || !model.symbol) {
@@ -166,12 +171,25 @@ export function renderCockpitWatchRow(model) {
   const fresh = resolveFreshness(model);
   const chg = isFiniteNumber(model.changePct) ? Number(model.changePct) : null;
   const chgCls = chg == null ? "cc-change--flat" : chg > 0 ? "cc-change--up" : chg < 0 ? "cc-change--down" : "cc-change--flat";
+  const showBadge = model.showBadge !== false;
+  const rankHtml = isFiniteNumber(model.rank) ? `<span class="cc-rank">#${Math.trunc(model.rank)}</span>` : "";
+
+  const metrics = Array.isArray(model.metrics)
+    ? model.metrics.filter((m) => m && m.label != null && m.value != null && m.value !== "")
+    : [];
+  const metricsHtml = metrics.length
+    ? `<div class="cc-watch-metrics">${metrics
+        .map((m) => `<span>${esc(m.label)}<b>${esc(m.value)}</b></span>`)
+        .join("")}</div>`
+    : "";
 
   return (
     `<div class="cc-watch-row cc-card--${direction}">` +
+    rankHtml +
     `<div class="cc-identity"><span class="cc-company">${fmtScalar(model.company ?? model.symbol)}</span><span class="cc-symbol">TSE:${esc(model.symbol)}</span></div>` +
-    `<span class="cc-badge">${esc(label)}</span>` +
+    (showBadge ? `<span class="cc-badge">${esc(label)}</span>` : "") +
     `<div class="cc-price-row"><div class="cc-price">${fmtYen(model.price)}</div><div class="cc-change ${chgCls}">${fmtPct(model.changePct)}</div></div>` +
+    metricsHtml +
     `<div class="cc-freshness cc-freshness--${fresh.state}"><i class="cc-freshness-dot"></i>${esc(fresh.label ?? freshnessAgeText(model))}</div>` +
     `</div>`
   );
