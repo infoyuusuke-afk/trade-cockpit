@@ -1,8 +1,11 @@
-﻿$ErrorActionPreference = "Stop"
+﻿param([string]$WorkbookPath = "")
 
-$bookPath = Join-Path $PSScriptRoot "Kioxia_MS2_RSS_Live_Signals.xlsx"
-if (-not (Test-Path $bookPath)) {
-    Write-Host "同じフォルダーに Kioxia_MS2_RSS_Live_Signals.xlsx を置いてください。" -ForegroundColor Red
+$ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($WorkbookPath)) { $WorkbookPath = Join-Path $PSScriptRoot "Kioxia_MS2_RSS_Live_Signals.xlsx" }
+$bookPath = [IO.Path]::GetFullPath($WorkbookPath)
+if (-not (Test-Path -LiteralPath $bookPath)) {
+    Write-Host ("Kioxia workbook が見つかりません: " + $bookPath) -ForegroundColor Red
     Read-Host "Enterで終了"
     exit 1
 }
@@ -550,11 +553,11 @@ $script:tickPollSeq = 0
 # キオクシアタブの一本化（ユーザー指示・2026-09-15）: これまでExcelのDASHBOARDシートと
 # 公開コクピットのキオクシアタブが別々の計算式で似た指標を出しており「どちらを見ればいいか
 # わからない」状態だった。WatcherのDASHBOARD計算結果をJSONとして書き出し、ローカルHTTP
-# （127.0.0.1:28581）で配信することで、ブラウザ側がこのJSONを直接読みに行けるようにする。
+# （127.0.0.1:28582）で配信することで、ブラウザ側がこのJSONを直接読みに行けるようにする。
 # Excelは裏で動かしたまま、PC上ではブラウザだけを見ればよい構成にするための土台。
 $watcherJsonPath = Join-Path $PSScriptRoot "kioxia_watcher_live.json"
-$watcherBridgeJob = Start-LocalJsonBridge $watcherJsonPath 28581
-Write-Host "キオクシアWatcher連携: http://127.0.0.1:28581/kioxia_watcher_live.json" -ForegroundColor Cyan
+$watcherBridgeJob = Start-LocalJsonBridge $watcherJsonPath 28582
+Write-Host "キオクシアWatcher連携: http://127.0.0.1:28582/kioxia_watcher_live.json" -ForegroundColor Cyan
 
 Write-Host "キオクシアLIVE監視を開始しました。終了はこの画面で Ctrl+C。" -ForegroundColor Cyan
 $dash.Activate()
