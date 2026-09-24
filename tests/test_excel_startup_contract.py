@@ -74,6 +74,10 @@ class ExcelStartupContractTests(unittest.TestCase):
         self.assertIn("Rss285AProbe", DIAG)
         self.assertIn("excel_startup_diag_", DIAG)
 
+    def test_launcher_and_installer_are_windows_powershell_51_encoding_safe(self):
+        self.assertTrue(LAUNCHER.isascii())
+        self.assertTrue(INSTALLER.isascii())
+
     def test_installer_is_windows_powershell_51_safe(self):
         self.assertTrue(INSTALLER.isascii())
         self.assertIn("Save-RemotePowerShellUtf8Bom", INSTALLER)
