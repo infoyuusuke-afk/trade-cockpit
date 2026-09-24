@@ -177,7 +177,52 @@ export function renderCockpitWatchRow(model) {
   );
 }
 
+/*
+ * On-air log (実況銘柄カード): a small rolling record of symbols that were
+ * (or would have been) voice-announced, so a missed/disabled voice alert is
+ * still visible on screen. This module only stores/renders what callers
+ * explicitly record via recordOnAir() - it never listens for speech events
+ * itself and never decides what counts as alert-worthy; that stays entirely
+ * with the caller's existing alert logic. Deliberately decoupled from
+ * window.cockpitSpeak's market-hours/voice-toggle gating, since the whole
+ * point is that the card must still update even when voice did not fire.
+ */
+const ON_AIR_LOG_LIMIT = 8;
+let onAirLog = [];
+
+/** Record (or re-surface) one symbol in the on-air log. Moves an existing
+ * entry for the same symbol to the front instead of duplicating it. */
+export function recordOnAir(model) {
+  if (!model || !model.symbol) {
+    throw new Error("recordOnAir: model.symbol is required");
+  }
+  const entry = { ...model, announcedAt: Date.now() };
+  onAirLog = [entry, ...onAirLog.filter((e) => e.symbol !== model.symbol)].slice(0, ON_AIR_LOG_LIMIT);
+  return onAirLog;
+}
+
+export function getOnAirLog() {
+  return onAirLog;
+}
+
+/** Test-only: reset the module-level log between test cases. */
+export function clearOnAirLog() {
+  onAirLog = [];
+}
+
+export function renderOnAirPanel() {
+  if (!onAirLog.length) {
+    return '<div class="cc-onair-empty">実況銘柄はまだありません（音声通知・注目銘柄はここに表示されます）</div>';
+  }
+  return onAirLog
+    .map((entry) => renderCockpitWatchRow({ ...entry, ageSeconds: (Date.now() - entry.announcedAt) / 1000 }))
+    .join("");
+}
+
 if (typeof window !== "undefined") {
   window.renderCockpitCard = renderCockpitCard;
   window.renderCockpitWatchRow = renderCockpitWatchRow;
+  window.recordOnAir = recordOnAir;
+  window.getOnAirLog = getOnAirLog;
+  window.renderOnAirPanel = renderOnAirPanel;
 }

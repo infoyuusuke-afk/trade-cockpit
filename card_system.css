@@ -95,6 +95,13 @@
 .cc-watch-row + .cc-watch-row{margin-top:6px}
 .cc-watch-row .cc-identity .cc-company{font-size:12.5px}
 
+/* 実況銘柄カード: on-air log panel (recordOnAir/renderOnAirPanel in
+   card_system.js). A persistent, always-visible list so a missed or
+   disabled voice alert can still be confirmed on screen. */
+.cc-onair-panel{margin:10px 0;padding:10px 12px;background:var(--cc-bg-panel);border:1px solid var(--cc-border);border-radius:8px}
+.cc-onair-panel h3{margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--cc-text-secondary);text-transform:uppercase}
+.cc-onair-empty{color:var(--cc-text-secondary);font-size:11px;padding:6px 0}
+
 @media(max-width:640px){
   .cc-grid{grid-template-columns:1fr}
   .cc-watch-row{grid-template-columns:1fr;justify-items:start;row-gap:6px}
