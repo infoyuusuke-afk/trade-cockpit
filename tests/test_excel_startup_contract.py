@@ -14,12 +14,15 @@ class ExcelStartupContractTests(unittest.TestCase):
         self.assertNotIn("New-Object -ComObject Excel.Application", LAUNCHER)
         self.assertIn("Start-Process -FilePath $WorkbookPath", LAUNCHER)
         self.assertIn("CockpitWorkbookRotFinder", LAUNCHER)
-        self.assertIn("FindByFullPath", LAUNCHER)
+        self.assertIn("FindByIdentity", LAUNCHER)
 
     def test_launcher_verifies_exact_workbook_not_random_active_excel(self):
         self.assertIn("$book=Wait-Workbook $WorkbookPath", LAUNCHER)
         self.assertNotIn('GetActiveObject("Excel.Application")', LAUNCHER)
         self.assertIn("$actualPath=Invoke-ExcelCom", LAUNCHER)
+        self.assertIn("nameMatchCount == 1", LAUNCHER)
+        self.assertNotIn('GetActiveObject("Excel.Application")', WATCHER)
+        self.assertIn("KioxiaWatcherRotFinder", WATCHER)
 
     def test_canonical_workbook_wins_over_fixed(self):
         canonical = LAUNCHER.index("if(Test-Path -LiteralPath $rootCanonical)")
