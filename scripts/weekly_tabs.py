@@ -287,6 +287,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    return '<article class="scalp-card '+sv.cls+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(x.name)+'</strong><small>TSE:'+esc(code)+' · '+esc(tf||"1m")+'</small></div><span class="scalp-signal">'+esc(sv.label)+'</span></div><div class="scalp-price-row"><div><div class="scalp-price">'+priceText+'</div><small>'+esc(freshness)+'</small></div><div class="scalp-change '+chgCls+'">'+pct(x.change_pct)+'</div></div><div class="scalp-spark">'+sparkline(x.bars_1m)+'</div><div class="scalp-order"><span class="entry">ENTRY<b>'+yen(x.entry_price)+'</b></span><span class="stop">STOP<b>'+yen(x.stop_price)+'</b></span><span class="target">T1<b>'+yen(x.target1)+'</b></span></div><div class="scalp-metrics"><span>VWAP<b>'+yen(x.vwap)+'</b></span><span>OR5<b>'+or5+'</b></span><span>OR15<b>'+or15+'</b></span><span>EMA 9 / 20<b>'+ema+'</b></span><span>FLOW<b>'+flow+'</b></span><span>VOLUME<b>'+vol+'</b></span></div><div class="scalp-foot">'+esc(x.foot||"")+'</div></article>';
  };
  const announcedSignals=new Map();
+ const edgeStates=new Map();
  const edgeHistory=[];
 const edgePriority=x=>{
    let p=Math.abs(Number(x?.score)||0);
@@ -302,13 +303,22 @@ const edgePriority=x=>{
    const box=document.getElementById("edge-alert-history");if(!box)return;
    box.innerHTML=edgeHistory.length?edgeHistory.slice(0,20).map(v=>'<article class="scalp-card '+(v.direction==="BUY"?"long":"short")+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(v.name)+'</strong><small>'+esc(v.detected_at)+' · '+esc(v.ticker)+'</small></div><span class="scalp-signal">'+esc(v.direction)+' · P'+esc(v.priority??"—")+'</span></div><div class="scalp-price-row"><div class="scalp-price">'+yen(v.price)+'</div><small>MS2 '+esc(v.quote_age)+'</small></div><div class="scalp-foot">'+esc(v.reason)+(v.news_title?' · TDnet: '+esc(v.news_title):'')+'</div></article>').join(""):'<div class="focus-empty">優位性シグナル待ち</div>';
  };
- const signalEventId=(x,sv)=>[x.ticker,sv.label,x.signal_bar_time||x.live_observed_at||"",x.strategy||"",x.news_title||""].join("|");
+ const signalEventId=(x,sv)=>[x.ticker,sv.label,x.signal_bar_time||"",x.strategy||x.signal||"",x.news_title||""].join("|");
+ const edgeStateFor=(x,sv,live)=>{
+   if(!live.valid)return "STALE";
+   if(sv.label==="NEWS CHECK"||sv.label==="NEWS PENDING"||sv.label==="NEWS CONFLICT"||sv.label==="BLOCK")return "HOLD";
+   return actionable(sv)?"HOT":"OFF";
+ };
  const announceEdge=(x,sv,live,voice=true)=>{
-   if(!live.valid||!actionable(sv))return false;
-   if(x?.news_pending===true||String(x?.signal||"").includes("NEWS PENDING")||String(x?.signal||"").includes("NEWS CONFLICT"))return false;
-   const id=signalEventId(x,sv),prev=announcedSignals.get(String(x.ticker));
-   if(prev===id)return true;
-   announcedSignals.set(String(x.ticker),id);
+   const key=String(x.ticker),next=edgeStateFor(x,sv,live),prevState=edgeStates.get(key)||"OFF";
+   edgeStates.set(key,next);
+   if(next!=="HOT"){
+     if(prevState==="HOT")announcedSignals.delete(key);
+     return false;
+   }
+   const id=signalEventId(x,sv),prev=announcedSignals.get(key);
+   if(prevState==="HOT"&&prev===id)return true;
+   announcedSignals.set(key,id);
    edgeHistory.unshift({event_id:id,priority:edgePriority(x),detected_at:new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date()),ticker:String(x.ticker||""),name:x.name||String(x.ticker||""),direction:sv.label,price:live.price,quote_age:Math.max(0,live.age/1000).toFixed(1)+"秒前",reason:x.strategy||x.signal||"優位性を検出",news_title:x.news_title||""});
    if(edgeHistory.length>50)edgeHistory.length=50;
    try{localStorage.setItem("edgeAlertHistoryV1",JSON.stringify(edgeHistory.slice(0,50)));}catch(_){}
@@ -331,12 +341,16 @@ const edgePriority=x=>{
    // Rank all actionable names first. History keeps every new event; voice is reserved
    // for the strongest candidate in this update to avoid a 100-name alert storm.
    const tdnetUnverified=d.tdnet_live!==true;
-   const candidates=all.map(x=>{
+   const evaluated=all.map(x=>{
      const live=liveQuote(x,stale),ir=tdnetView(tdnetFor(d,x)),sv=signalView(x,!live.valid||ir.pending);
      if(tdnetUnverified&&live.valid&&actionable(sv)){sv.label="NEWS CHECK";sv.cls="block";}
      else if(ir.pending){sv.label="NEWS PENDING";sv.cls="block";}
      return {x,live,sv,p:edgePriority(x)};
-   }).filter(v=>v.live.valid&&actionable(v.sv)).sort((a,b)=>b.p-a.p);
+   });
+   // Every symbol must pass through the state machine so HOT can be re-armed only
+   // after an explicit OFF/HOLD/STALE transition.
+   evaluated.filter(v=>!actionable(v.sv)).forEach(v=>announceEdge(v.x,v.sv,v.live,false));
+   const candidates=evaluated.filter(v=>v.live.valid&&actionable(v.sv)).sort((a,b)=>b.p-a.p);
    candidates.forEach((v,i)=>announceEdge(v.x,v.sv,v.live,i===0&&v.p>=35));
    const fixed=["285A.T","9984.T","8035.T","6920.T","6857.T"];
    const box=document.getElementById("scalp-fixed-5"); if(!box)return;
