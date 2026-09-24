@@ -97,28 +97,37 @@ public static class CockpitWorkbookRotFinder {
     [DllImport("ole32.dll")]
     private static extern int CreateBindCtx(int reserved, out IBindCtx bindCtx);
 
-    public static object FindByFullPath(string expectedFullPath) {
+    public static object FindByIdentity(string expectedFullPath, string bookFileName) {
         IRunningObjectTable rot;
         if (GetRunningObjectTable(0, out rot) != 0 || rot == null) return null;
         IEnumMoniker en;
         rot.EnumRunning(out en);
         en.Reset();
         var mk = new IMoniker[1];
+        object uniqueNameMatch = null;
+        int nameMatchCount = 0;
         while (en.Next(1, mk, IntPtr.Zero) == 0) {
             IBindCtx ctx;
             CreateBindCtx(0, out ctx);
             try {
                 string name;
                 mk[0].GetDisplayName(ctx, null, out name);
-                if (!String.IsNullOrEmpty(name) &&
-                    name.EndsWith(expectedFullPath, StringComparison.OrdinalIgnoreCase)) {
-                    object obj;
+                if (String.IsNullOrEmpty(name)) continue;
+                object obj;
+                if (name.EndsWith(expectedFullPath, StringComparison.OrdinalIgnoreCase)) {
                     rot.GetObject(mk[0], out obj);
                     return obj;
                 }
+                // OneDrive may register an Office cloud URL rather than the local
+                // path. Accept a file-name match only when it is unique.
+                if (name.EndsWith(bookFileName, StringComparison.OrdinalIgnoreCase)) {
+                    rot.GetObject(mk[0], out obj);
+                    uniqueNameMatch = obj;
+                    nameMatchCount++;
+                }
             } catch { }
         }
-        return null;
+        return nameMatchCount == 1 ? uniqueNameMatch : null;
     }
 }
 '@ -ErrorAction SilentlyContinue
@@ -128,7 +137,7 @@ function Wait-Workbook([string]$WorkbookPath,[int]$TimeoutSeconds=120){
     $deadline=(Get-Date).AddSeconds($TimeoutSeconds)
     while((Get-Date) -lt $deadline){
         try{
-            $book=[CockpitWorkbookRotFinder]::FindByFullPath($expected)
+            $book=[CockpitWorkbookRotFinder]::FindByIdentity($expected,[IO.Path]::GetFileName($expected))
             if($null -ne $book){ return $book }
         }catch{}
         Start-Sleep -Seconds 2
