@@ -288,9 +288,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  };
  const announcedSignals=new Map();
  const edgeHistory=[];
- let lastVoiceAt=0;
- const VOICE_COOLDOWN_MS=12000;
- const edgePriority=x=>{
+const edgePriority=x=>{
    let p=Math.abs(Number(x?.score)||0);
    const burst=Number(x?.volume_burst)||0,flow=Math.abs(Number(x?.flow_bias)||0);
    if(burst>=1.5)p+=15; else if(burst>=1.2)p+=8;
@@ -315,14 +313,8 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(edgeHistory.length>50)edgeHistory.length=50;
    try{localStorage.setItem("edgeAlertHistoryV1",JSON.stringify(edgeHistory.slice(0,50)));}catch(_){}
    renderEdgeHistory();
-   const msg=(x.name||String(x.ticker).replace(".T",""))+"、"+(sv.label==="BUY"?"買い":"ショート")+"候補。"+(x.strategy||x.signal||"優位性を検出");
-   if(voice&&Date.now()-lastVoiceAt>=VOICE_COOLDOWN_MS){
-     try{
-       if("speechSynthesis" in window){
-         const u=new SpeechSynthesisUtterance(msg);u.lang="ja-JP";u.rate=1.08;window.speechSynthesis.speak(u);lastVoiceAt=Date.now();
-       }
-     }catch(_){}
-   }
+   // Browser owns visual alert/history only. Voice is exclusively emitted by
+   // the Collector's serialized SBV2 path to prevent duplicate/different voices.
    return true;
  };
  try{const savedHistory=JSON.parse(localStorage.getItem("edgeAlertHistoryV1")||"[]");if(Array.isArray(savedHistory)){edgeHistory.push(...savedHistory.slice(0,50));renderEdgeHistory();}}catch(_){}
