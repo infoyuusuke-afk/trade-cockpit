@@ -65,15 +65,22 @@ function Find-Workbook([string]$RootDir,[string]$RuntimeDir){
     # The canonical name is the only runtime identity. Never overwrite an
     # existing canonical workbook with FIXED on every startup.
     if(Test-Path -LiteralPath $rootCanonical){ return $rootCanonical }
+
+    # FIXED is recovery-only. Promote the Root copy once when Root has no
+    # canonical workbook; never overwrite an existing canonical workbook.
+    if(Test-Path -LiteralPath $rootFixed){
+        if(-not(Test-Path -LiteralPath $rootExcel)){ New-Item -ItemType Directory -Path $rootExcel -Force | Out-Null }
+        Copy-Item -LiteralPath $rootFixed -Destination $rootCanonical -Force
+        return $rootCanonical
+    }
+
+    # Legacy runtime canonical is the next safe fallback.
     if(Test-Path -LiteralPath $runtimeCanonical){ return $runtimeCanonical }
 
-    # FIXED is recovery-only. Promote it once when no canonical workbook exists.
-    $fixedSource=$null
-    if(Test-Path -LiteralPath $rootFixed){ $fixedSource=$rootFixed }
-    elseif(Test-Path -LiteralPath $runtimeFixed){ $fixedSource=$runtimeFixed }
-    if($fixedSource){
+    # Legacy FIXED is the last recovery source and is promoted to Root canonical.
+    if(Test-Path -LiteralPath $runtimeFixed){
         if(-not(Test-Path -LiteralPath $rootExcel)){ New-Item -ItemType Directory -Path $rootExcel -Force | Out-Null }
-        Copy-Item -LiteralPath $fixedSource -Destination $rootCanonical -Force
+        Copy-Item -LiteralPath $runtimeFixed -Destination $rootCanonical -Force
         return $rootCanonical
     }
     return $null
