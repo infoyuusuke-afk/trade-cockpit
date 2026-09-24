@@ -2879,6 +2879,9 @@ document.addEventListener("DOMContentLoaded",()=>{
    const wp=Number(w.live_price??w.price),mp=Number(latestKioxiaMs2?.price),both=Number.isFinite(wp)&&wp>0&&Number.isFinite(mp)&&mp>0,diff=both?Math.abs(wp-mp):null,tol=both?Math.max(1,mp*0.0005):null,mismatch=both&&diff>tol;
    stateEl.textContent=mismatch?"DATA CONFLICT・売買利用禁止":`${esc(w.signal||"判定待ち")}／${esc(w.state||"")}`;
    document.getElementById("kio-watcher-source").textContent=mismatch?`Collector優先：MS2 ${yen1(mp)} / Watcher ${yen1(wp)} / 差 ${yen1(diff)}／自動代替禁止`:`${w.updated_at}／${w.source||"Excel Watcher"}／Collector(:28580)を価格の正本として優先`;
+   const health=document.getElementById("ms2-live-health");
+   if(mismatch){if(health){health.className="ms2-health stale";health.textContent="KIOXIA DATA CONFLICT";}document.querySelectorAll('[data-live-ticker="285A.T"],[data-live-ticker="285A"]').forEach(card=>{card.classList.add("live-invalid");let p=card.querySelector(".live-state-proof");if(!p){p=document.createElement("div");p.className="live-state-proof";card.appendChild(p);}p.innerHTML="<b>DATA CONFLICT</b><span>CollectorとExcel Watcherの価格不一致・売買利用禁止</span>";});const key=`${mp}|${wp}`;if(sessionStorage.getItem("kioDataConflictVoice")!==key){sessionStorage.setItem("kioDataConflictVoice",key);window.cockpitSpeak?.("キオクシア、データ競合。コレクターとエクセルウォッチャーの価格が一致しません。売買利用禁止です。");}}
+   else sessionStorage.removeItem("kioDataConflictVoice");
    put("kio-watcher-conditions",`価格${esc(w.conditions?.price)}・出来高${esc(w.conditions?.volume)}・EMA${esc(w.conditions?.ema)}・${esc(w.conditions?.or15)}`);
    put("kio-watcher-entry",w.entry_price!=null?`発動 ${yen1(w.entry_price)} ／ 損切 ${yen1(w.stop_price)}`:"条件未成立");
    put("kio-watcher-target",w.target1!=null?`1R ${yen1(w.target1)}／2R ${yen1(w.target2)}`:"1R／2R —");
