@@ -50,6 +50,25 @@ class ExcelComLifecycleContractTests(unittest.TestCase):
         self.assertNotIn("Stop-Process -Name EXCEL", LAUNCHER)
         self.assertTrue(LAUNCHER.isascii())
 
+    def test_startup_failure_stops_excel_bound_workers_but_keeps_gateway(self):
+        self.assertIn("function Stop-ExcelBoundManaged", LAUNCHER)
+        stop_block = LAUNCHER[
+            LAUNCHER.index("function Stop-ExcelBoundManaged"):
+            LAUNCHER.index("function Release-ComObjectSafe")
+        ]
+        self.assertIn("MS2_RSS_100_Collector", stop_block)
+        self.assertIn("Kioxia_Safety_Heartbeat", stop_block)
+        self.assertIn("Kioxia_RSS_Live_Watcher", stop_block)
+        self.assertNotIn("AI_Cockpit_Local_Gateway", stop_block)
+        catch_block = LAUNCHER[LAUNCHER.index("}catch{"):]
+        self.assertIn("Stop-ExcelBoundManaged", catch_block)
+        self.assertIn("Close-EmptyExcelApplication", catch_block)
+
+    def test_kioxia_live_validation_accepts_canonical_ticker(self):
+        self.assertIn('([string]$_.ticker -eq "285A.T")', LAUNCHER)
+        self.assertIn("live_quote_valid", LAUNCHER)
+        self.assertIn("live_price", LAUNCHER)
+
 
 if __name__ == "__main__":
     unittest.main()
