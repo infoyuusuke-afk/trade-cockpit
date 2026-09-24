@@ -429,7 +429,11 @@ try{
         try{
             $j=Invoke-RestMethod ("http://127.0.0.1:28580/live_ms2.json?t="+[DateTimeOffset]::Now.ToUnixTimeMilliseconds()) -TimeoutSec 3
             if($j.updated_at -and $j.schema_version -eq "ms2-common-1.1"){
-                $kx=@($j.all_targets | Where-Object { $_.ticker -eq "285A" -or $_.code -eq "285A" } | Select-Object -First 1)
+                $kx=@($j.all_targets | Where-Object {
+                    ([string]$_.ticker -eq "285A.T") -or
+                    ([string]$_.ticker -eq "285A") -or
+                    ([string]$_.code -eq "285A")
+                } | Select-Object -First 1)
                 if($kx.Count -gt 0 -and $kx[0].live_quote_valid -eq $true -and [double]$kx[0].live_price -gt 0){ $liveOk=$true; break }
             }
         }catch{}
@@ -474,6 +478,8 @@ try{
     $addin=$null
     [GC]::Collect()
     [GC]::WaitForPendingFinalizers()
+    Start-Sleep -Milliseconds 500
+    Close-EmptyExcelApplication
     Write-Progress -Activity "AI Cockpit startup" -Completed
     Write-Host ""
     Write-Host "==============================================" -ForegroundColor Red
