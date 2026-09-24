@@ -25,6 +25,14 @@ if($errors.Count -gt 0){
     throw "V6 launcher syntax validation failed."
 }
 
+$marker=Join-Path $Root "V6_INSTALL_CHANNEL.txt"
+@(
+    "channel="+$Channel
+    "ref="+$ref
+    "installed_at="+(Get-Date -Format "yyyy-MM-ddTHH:mm:sszzz")
+    "launcher="+$launcher
+) | Set-Content -LiteralPath $marker -Encoding UTF8
+
 Write-Host "[3/3] Replacing startup shortcut..." -ForegroundColor Cyan
 $desktop=[Environment]::GetFolderPath("Desktop")
 $old=Join-Path $desktop "AI Cockpit START V5.lnk"
