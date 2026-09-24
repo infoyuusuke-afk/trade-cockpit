@@ -142,6 +142,7 @@ def tabs_block() -> str:
 .scalp-order{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#22252A;border:1px solid #22252A;border-radius:6px;overflow:hidden;margin:8px 0}.scalp-order span{background:#0E1013;padding:7px 6px;font-size:9.5px;color:#9AA0AA}.scalp-order b{display:block;margin-top:3px;font-size:12px;color:#E8EAED;font-weight:600}.scalp-order .stop b{color:#f0616c}.scalp-order .target b{color:#1fc79a}
 .scalp-metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:#22252A;border:1px solid #22252A;border-radius:6px;overflow:hidden}.scalp-metrics span{background:#0E1013;padding:7px 6px;font-size:9.5px;color:#9AA0AA}.scalp-metrics b{display:block;margin-top:3px;font-size:11px;color:#E8EAED;font-weight:600}
 .scalp-foot{margin-top:8px;color:#9AA0AA;font-size:9.5px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scalp-card.edge-live{box-shadow:0 0 0 2px rgba(31,199,154,.7),0 0 22px rgba(31,199,154,.28);animation:edgePulse 1.2s ease-in-out infinite}.scalp-card.edge-live.short{box-shadow:0 0 0 2px rgba(240,97,108,.75),0 0 22px rgba(240,97,108,.28)}@keyframes edgePulse{50%{transform:translateY(-1px);filter:brightness(1.15)}}
 @media(max-width:1250px){.scalp-strip{grid-template-columns:repeat(3,minmax(205px,1fr))}}
 @media(max-width:850px){.scalp-strip{grid-template-columns:repeat(2,minmax(205px,1fr))}}
 @media(max-width:560px){.scalp-strip{grid-template-columns:1fr}}
@@ -264,6 +265,23 @@ document.addEventListener("DOMContentLoaded",()=>{
    const vol=x.volume_burst==null?"—":esc(x.volume_burst)+"x";
    return '<article class="scalp-card '+sv.cls+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(x.name)+'</strong><small>TSE:'+esc(code)+' · '+esc(tf||"1m")+'</small></div><span class="scalp-signal">'+esc(sv.label)+'</span></div><div class="scalp-price-row"><div><div class="scalp-price">'+priceText+'</div><small>'+esc(freshness)+'</small></div><div class="scalp-change '+chgCls+'">'+pct(x.change_pct)+'</div></div><div class="scalp-spark">'+sparkline(x.bars_1m)+'</div><div class="scalp-order"><span class="entry">ENTRY<b>'+yen(x.entry_price)+'</b></span><span class="stop">STOP<b>'+yen(x.stop_price)+'</b></span><span class="target">T1<b>'+yen(x.target1)+'</b></span></div><div class="scalp-metrics"><span>VWAP<b>'+yen(x.vwap)+'</b></span><span>OR5<b>'+or5+'</b></span><span>OR15<b>'+or15+'</b></span><span>EMA 9 / 20<b>'+ema+'</b></span><span>FLOW<b>'+flow+'</b></span><span>VOLUME<b>'+vol+'</b></span></div><div class="scalp-foot">'+esc(x.foot||"")+'</div></article>';
  };
+ const announcedSignals=new Map();
+ const actionable=sv=>sv.label==="BUY"||sv.label==="SHORT";
+ const signalEventId=(x,sv)=>[x.ticker,sv.label,x.signal_bar_time||x.live_observed_at||""].join("|");
+ const announceEdge=(x,sv,live)=>{
+   if(!live.valid||!actionable(sv))return false;
+   const id=signalEventId(x,sv),prev=announcedSignals.get(String(x.ticker));
+   if(prev===id)return true;
+   announcedSignals.set(String(x.ticker),id);
+   const msg=(x.name||String(x.ticker).replace(".T",""))+"、"+(sv.label==="BUY"?"買い":"ショート")+"候補。"+(x.strategy||x.signal||"優位性を検出");
+   try{
+     if("speechSynthesis" in window){
+       window.speechSynthesis.cancel();
+       const u=new SpeechSynthesisUtterance(msg);u.lang="ja-JP";u.rate=1.08;window.speechSynthesis.speak(u);
+     }
+   }catch(_){}
+   return true;
+ };
  document.addEventListener("ms2RssUpdate",e=>{
    const d=e.detail||{},all=Array.isArray(d.all_targets)?d.all_targets:[],stale=d.stale!==false;
    const fixed=["285A.T","9984.T","8035.T","6920.T","6857.T"];
@@ -272,7 +290,9 @@ document.addEventListener("DOMContentLoaded",()=>{
    box.innerHTML=rows.length?rows.map(x=>{
      const live=liveQuote(x,stale);
      const sv=signalView(x,!live.valid);
-     return window.renderScalpCard({...x,__live:live,foot:live.valid?((x.signal||"監視")+' · '+(x.strategy||"条件待ち")):"現在値失効・売買シグナル無効"},sv,"1m");
+     const lit=announceEdge(x,sv,live);
+     const html=window.renderScalpCard({...x,__live:live,foot:live.valid?((x.signal||"監視")+' · '+(x.strategy||"条件待ち")):"現在値失効・売買シグナル無効"},sv,"1m");
+     return lit&&actionable(sv)?html.replace('scalp-card '+sv.cls,'scalp-card '+sv.cls+' edge-live'):html;
    }).join(""):'<div class="focus-empty">SCALP 5のMS2 RSSデータ待ち</div>';
  });
 
