@@ -944,6 +944,13 @@ try {
         for ($i=0; $i -lt $stocks.Count; $i++) {
             $r=$i+1; $s=$stocks[$i]; $ticker=$s.Ticker
             $price=Get-SafeNumber (Get-TableValue $values $r 1 32) 0.01 10000000
+            $exchangeTimeText=Get-TimeText (Get-TableValue $values $r 2 32)
+            $exchangeObservedAt=$null
+            if(-not [string]::IsNullOrWhiteSpace($exchangeTimeText)){
+                try{$exchangeObservedAt=[DateTime]::ParseExact(($activeDay+" "+$exchangeTimeText),"yyyy-MM-dd HH:mm:ss",$null)}catch{$exchangeObservedAt=$null}
+            }
+            $exchangeAgeSeconds=if($null -ne $exchangeObservedAt){($now-$exchangeObservedAt).TotalSeconds}else{$null}
+            $sourceQuoteLive=($null -ne $price -and $price -gt 0 -and $null -ne $exchangeObservedAt -and $exchangeAgeSeconds -ge -5 -and $exchangeAgeSeconds -le 15)
             $volume=Get-SafeNumber (Get-TableValue $values $r 5) 0 1000000000000
             $vwap=Get-SafeNumber (Get-TableValue $values $r 6) 0 10000000
             $bid=Get-SafeNumber (Get-TableValue $values $r 7) 0 10000000
@@ -1230,7 +1237,7 @@ try {
             $orHighValue=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
             $orLowValue=if($orLow.ContainsKey($ticker)){$orLow[$ticker]}else{0}
             $results += [pscustomobject]@{
-                ticker=$ticker;name=$s.Name;sector=$s.Sector;price=$price;live_price=$price;live_observed_at=$now.ToString("o");live_source="MarketSpeed II RSS";live_quote_valid=($price -gt 0);volume=$volume;vwap=$vwap
+                ticker=$ticker;name=$s.Name;sector=$s.Sector;price=$price;live_price=$(if($sourceQuoteLive){$price}else{$null});live_observed_at=$(if($null -ne $exchangeObservedAt){$exchangeObservedAt.ToString("o")}else{$null});live_collector_observed_at=$now.ToString("o");live_exchange_time=$exchangeTimeText;live_source="MarketSpeed II RSS / 現在値詳細時刻";live_quote_valid=$sourceQuoteLive;volume=$volume;vwap=$vwap
                 change_pct=Get-SafeNumber (Get-TableValue $values $r 4 32) -1000 1000
                 bid=$bid;ask=$ask;bid_qty=$bidQty;ask_qty=$askQty;market_sell=$marketSell;market_buy=$marketBuy;over=$over;under=$under
                 under_ratio=[Math]::Round($underRatio*100,1);under_change=[Math]::Round($uoChange*100,1)
