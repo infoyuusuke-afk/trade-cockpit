@@ -2395,24 +2395,14 @@ def main():
         for i, row in enumerate(rotation["picks"][:5], 1)
     ) or "<div class='focus-empty'>流入初期・拡大かつ流動性条件を満たす候補なし。見送りです。</div>"
     kioxia_view = rotation["kioxia"]
-    photonics_rows = "".join(
-        f"<tr><td>{i}</td><td><b>{row['name']}</b><br><small>{row['role']}</small></td>"
-        f"<td><b class='up'>{row['score']}/100</b><br><small>技術関連度 {row['relevance']}／"
-        f"株価技術点 {row['technical']}</small></td>"
-        f"<td>{money(row['price'])}</td><td><b>{money(row['trigger'])}</b><br>"
-        f"<small>買い上限 {money(row['entry_limit'])}</small></td>"
-        f"<td class='down'><b>{money(row['stop'])}</b><br>"
-        f"<small>100株 −{row['max_loss_100']:,}円</small></td>"
-        f"<td class='up'><b>{money(row['target1'])}</b><br>"
-        f"<small>100株 +{row['profit1_100']:,}円</small></td>"
-        f"<td>{money(row['target2'])}</td>"
-        f"<td>{row['status']}<br><small>{row['condition']} {row['event_risk']}</small></td>"
-        f"<td><a href='{row['source']}' target='_blank' rel='noopener'>公式資料</a></td></tr>"
-        for i, row in enumerate(photonics_watch, 1)
-    ) or (
-        "<tr><td colspan='10'>株価データを取得できませんでした。"
-        "価格なしでの注文は行いません。</td></tr>"
-    )
+    photonics_cards = "".join(
+        f"<article class='scalp-card wait live-overlay-card' data-live-ticker='{row.get('ticker') or row.get('code') or ''}' data-analysis-price='{row['price']}'><div class='scalp-head'><div class='scalp-symbol'><strong>{row['name']}</strong><small>AI光通信 · #{i} · {row['role']}</small></div><span class='scalp-signal'>{row['status']}</span></div>"
+        f"<div class='scalp-price-row'><div class='scalp-price'><small class='price-kind'>分析基準値</small><span class='display-price'>{money(row['price'])}</span></div><div class='scalp-change'>{row['score']}/100</div></div>"
+        f"<div class='scalp-order'><span>ENTRY<b>{money(row['trigger'])}</b></span><span class='stop'>STOP<b>{money(row['stop'])}</b></span><span class='target'>T1<b>{money(row['target1'])}</b></span></div>"
+        f"<div class='scalp-metrics'><span>買い上限<b>{money(row['entry_limit'])}</b></span><span>T2<b>{money(row['target2'])}</b></span><span>技術関連度<b>{row['relevance']}</b></span><span>株価技術点<b>{row['technical']}</b></span><span>100株損失目安<b>−{row['max_loss_100']:,}円</b></span><span>T1利益目安<b>+{row['profit1_100']:,}円</b></span></div>"
+        f"<div class='scalp-foot'>{row['condition']} · {row['event_risk']} · <a href='{row['source']}' target='_blank' rel='noopener'>公式資料</a> · LIVE有効時のみ現在値へ切替</div></article>"
+        for i, row in enumerate(photonics_watch[:5], 1)
+    ) or "<div class='focus-empty'>株価データを取得できませんでした。価格なしでの注文は行いません。</div>"
     # 2026-09-17: ②-O(IFO注文票)・③(当日狙い目銘柄TOP5)は、ユーザー指摘により銘柄選定の
     # 並立を整理し廃止した（「①リアルタイムTOP5のみ、あとは監視銘柄」という方針）。
     # 選定ロジック自体(build_day_ifo_candidates・day_rank)とdata.json出力
@@ -3118,7 +3108,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <p class="warning">これは機関投資家の保有明細そのものではなく、{rotation['source_note']}です。流入初期でも発動価格を上抜かなければ見送り。参考：<a href="https://limo.media/articles/-/133222" target="_blank" rel="noopener">イズミダイズム「セクターローテーション」解説</a></p>
 </section>
 <section id="silicon-photonics-watch" class="card wide"><h2>②-P AI光通信・シリコンフォトニクス監視（朝刊IN／OUT価格）</h2>
-<table><tr><th>順位</th><th>会社名＋コード／役割</th><th>期待値</th><th>基準値</th><th>IN発動／買い上限</th><th>OUT損切り</th><th>OUT利確1</th><th>OUT利確2</th><th>発動条件・リスク</th><th>根拠</th></tr>{photonics_rows}</table>
+<div class="scalp-strip">{photonics_cards}</div>
 <p class="warning"><b>使い方：</b>INは前日高値＋1ティック。寄り成りでは買いません。9:15以降にVWAP上・5分足終値・出来高増加が揃った場合だけ発動し、買い上限を超えたら追わず取消。OUT損切りを約定後すぐ設定し、価格を下げて損切りを広げません。GFSの3億ドルは米商務省とのLOI（予定支援）であり、日本企業への直接受注確定ではありません。<a href="https://gf.com/news-and-events/news/globalfoundries-signs-letter-of-intent-with-the-us-department-of-commerce-for-a-300-million-award-to-accelerate-us-silicon-photonics-leadership/" target="_blank" rel="noopener">GFS公式発表</a></p>
 </section>
 <section class="card wide"><h2>④ 朝8:00候補のザラバ答え合わせ</h2><table><tr><th>会社名＋コード</th><th>朝イン</th><th>朝損切り</th><th>朝利確1／2</th><th>結果</th><th>終値・VWAP検証</th></tr>{review_rows}</table></section>
