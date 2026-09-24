@@ -40,6 +40,7 @@ function Stop-Managed {
     $patterns=@(
         "MS2_RSS_100_Collector\.ps1",
         "Kioxia_Safety_Heartbeat\.ps1",
+        "Kioxia_RSS_Live_Watcher\.ps1",
         "AI_Cockpit_Local_Gateway\.ps1"
     )
     Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | ForEach-Object {
@@ -54,30 +55,97 @@ function Stop-Managed {
     }
 }
 
-function Find-Workbook([string]$RootDir){
-    $d=Join-Path $RootDir "Excel"
-    if(-not(Test-Path -LiteralPath $d)){ return $null }
-    $canonical=Join-Path $d "Kioxia_MS2_RSS_Live_Signals.xlsx"
-    $fixed=Join-Path $d "Kioxia_MS2_RSS_Live_Signals_FIXED.xlsx"
-    # FIXED is the validated newer workbook. Prefer it so an older canonical file
-    # cannot silently win just because both files exist.
-    if(Test-Path -LiteralPath $fixed){ return $fixed }
-    if(Test-Path -LiteralPath $canonical){ return $canonical }
+function Find-Workbook([string]$RootDir,[string]$RuntimeDir){
+    $rootExcel=Join-Path $RootDir "Excel"
+    $rootCanonical=Join-Path $rootExcel "Kioxia_MS2_RSS_Live_Signals.xlsx"
+    $rootFixed=Join-Path $rootExcel "Kioxia_MS2_RSS_Live_Signals_FIXED.xlsx"
+    $runtimeCanonical=Join-Path $RuntimeDir "Kioxia_MS2_RSS_Live_Signals.xlsx"
+    $runtimeFixed=Join-Path $RuntimeDir "Kioxia_MS2_RSS_Live_Signals_FIXED.xlsx"
+
+    # The canonical name is the only runtime identity. Never overwrite an
+    # existing canonical workbook with FIXED on every startup.
+    if(Test-Path -LiteralPath $rootCanonical){ return $rootCanonical }
+    if(Test-Path -LiteralPath $runtimeCanonical){ return $runtimeCanonical }
+
+    # FIXED is recovery-only. Promote it once when no canonical workbook exists.
+    $fixedSource=$null
+    if(Test-Path -LiteralPath $rootFixed){ $fixedSource=$rootFixed }
+    elseif(Test-Path -LiteralPath $runtimeFixed){ $fixedSource=$runtimeFixed }
+    if($fixedSource){
+        if(-not(Test-Path -LiteralPath $rootExcel)){ New-Item -ItemType Directory -Path $rootExcel -Force | Out-Null }
+        Copy-Item -LiteralPath $fixedSource -Destination $rootCanonical -Force
+        return $rootCanonical
+    }
     return $null
 }
 
-function Wait-Workbook([string]$BookName,[int]$TimeoutSeconds=120){
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+
+public static class CockpitWorkbookRotFinder {
+    [DllImport("ole32.dll")]
+    private static extern int GetRunningObjectTable(int reserved, out IRunningObjectTable rot);
+    [DllImport("ole32.dll")]
+    private static extern int CreateBindCtx(int reserved, out IBindCtx bindCtx);
+
+    public static object FindByFullPath(string expectedFullPath) {
+        IRunningObjectTable rot;
+        if (GetRunningObjectTable(0, out rot) != 0 || rot == null) return null;
+        IEnumMoniker en;
+        rot.EnumRunning(out en);
+        en.Reset();
+        var mk = new IMoniker[1];
+        while (en.Next(1, mk, IntPtr.Zero) == 0) {
+            IBindCtx ctx;
+            CreateBindCtx(0, out ctx);
+            try {
+                string name;
+                mk[0].GetDisplayName(ctx, null, out name);
+                if (!String.IsNullOrEmpty(name) &&
+                    name.EndsWith(expectedFullPath, StringComparison.OrdinalIgnoreCase)) {
+                    object obj;
+                    rot.GetObject(mk[0], out obj);
+                    return obj;
+                }
+            } catch { }
+        }
+        return null;
+    }
+}
+'@ -ErrorAction SilentlyContinue
+
+function Wait-Workbook([string]$WorkbookPath,[int]$TimeoutSeconds=120){
+    $expected=[IO.Path]::GetFullPath($WorkbookPath)
     $deadline=(Get-Date).AddSeconds($TimeoutSeconds)
     while((Get-Date) -lt $deadline){
         try{
-            $excel=[Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
-            foreach($b in $excel.Workbooks){
-                if($b.Name -ieq $BookName -or $b.Name -like "Kioxia_MS2_RSS_Live_Signals*.xlsx"){ return $true }
-            }
+            $book=[CockpitWorkbookRotFinder]::FindByFullPath($expected)
+            if($null -ne $book){ return $book }
         }catch{}
         Start-Sleep -Seconds 2
     }
-    return $false
+    return $null
+}
+
+function Invoke-ExcelCom {
+    param(
+        [Parameter(Mandatory=$true)][scriptblock]$Action,
+        [string]$Label="Excel operation",
+        [int]$Retries=120,
+        [int]$DelayMilliseconds=250
+    )
+    for($attempt=1;$attempt -le $Retries;$attempt++){
+        try{ return (& $Action) }catch{
+            $code=$_.Exception.HResult
+            if($null -ne $_.Exception.InnerException){$code=$_.Exception.InnerException.HResult}
+            $busy=($code -eq -2147418111 -or $code -eq -2147417846 -or $code -eq -2146777998)
+            if($busy -and $attempt -lt $Retries){Start-Sleep -Milliseconds $DelayMilliseconds;continue}
+            throw
+        }
+    }
+    throw ($Label+": Excel did not become ready.")
 }
 
 try{
@@ -91,9 +159,10 @@ try{
     $RuntimeDir=Resolve-RuntimeDir
     $Collector=Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"
     $Heartbeat=Join-Path $RuntimeDir "Kioxia_Safety_Heartbeat.ps1"
+    $Watcher=Join-Path $RuntimeDir "Kioxia_RSS_Live_Watcher.ps1"
     $Gateway=Join-Path $Root "AI_Cockpit_Local_Gateway.ps1"
 
-    foreach($p in @($Collector,$Heartbeat,$Gateway)){
+    foreach($p in @($Collector,$Heartbeat,$Watcher,$Gateway)){
         if(-not(Test-Path -LiteralPath $p)){ throw "Required file not found: $p" }
     }
 
@@ -155,52 +224,31 @@ try{
     }
 
     Show-Step 40 "Opening RSS workbook..."
-    $WorkbookPath=Find-Workbook $Root
-    if(-not $WorkbookPath){ throw "No xlsx file found under C:\AI_Cockpit_OneClick_Starter\Excel" }
+    $WorkbookPath=Find-Workbook $Root $RuntimeDir
+    if(-not $WorkbookPath){ throw "Kioxia_MS2_RSS_Live_Signals.xlsx was not found in Root\\Excel or the MS2 runtime folder." }
+    $WorkbookPath=[IO.Path]::GetFullPath($WorkbookPath)
     $WorkbookName=Split-Path $WorkbookPath -Leaf
-    if($WorkbookName -ieq "Kioxia_MS2_RSS_Live_Signals_FIXED.xlsx"){
-        $canonical=Join-Path (Split-Path $WorkbookPath -Parent) "Kioxia_MS2_RSS_Live_Signals.xlsx"
-        $promote=$true
-        if(Test-Path -LiteralPath $canonical){
-            try{
-                $fixedHash=(Get-FileHash -LiteralPath $WorkbookPath -Algorithm SHA256).Hash
-                $canonicalHash=(Get-FileHash -LiteralPath $canonical -Algorithm SHA256).Hash
-                if($fixedHash -eq $canonicalHash){ $promote=$false }
-            }catch{}
-        }
-        if($promote){
-            if(Test-Path -LiteralPath $canonical){
-                $backup=$canonical+".bak."+((Get-Date).ToString("yyyyMMdd_HHmmss"))
-                Copy-Item -LiteralPath $canonical -Destination $backup -Force
-            }
-            Copy-Item -LiteralPath $WorkbookPath -Destination $canonical -Force
-            Write-Host "      Updated workbook promoted to canonical name; previous copy backed up." -ForegroundColor Green
-        } else {
-            Write-Host "      FIXED workbook already matches canonical; duplicate backup skipped." -ForegroundColor DarkGray
-        }
-        $WorkbookPath=$canonical
-        $WorkbookName=Split-Path $WorkbookPath -Leaf
-    }
     if($WorkbookName -ine "Kioxia_MS2_RSS_Live_Signals.xlsx"){ throw "Unexpected workbook selected: $WorkbookName" }
-    $open=$false
-    $excel=$null
-    try{
-        $excel=[Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
-        foreach($b in $excel.Workbooks){ if($b.Name -ieq $WorkbookName){ $open=$true; break } }
-    }catch{}
-    if($null -eq $excel){
-        $excel=New-Object -ComObject Excel.Application
-        $excel.Visible=$true
+
+    # Reuse only the exact workbook path. GetActiveObject can bind to the wrong
+    # Excel instance when multiple Excel processes exist.
+    $book=Wait-Workbook $WorkbookPath 3
+    if($null -eq $book){
+        # Do not create Excel through New-Object -ComObject here. Real-machine
+        # testing showed that a COM-created Excel instance can start without the
+        # MarketSpeed II RSS add-in. Shell-opening the workbook loads Excel normally.
+        Start-Process -FilePath $WorkbookPath | Out-Null
+        $book=Wait-Workbook $WorkbookPath 120
     }
-    if(-not $open){
-        # Open through the exact COM instance the Collector will attach to.
-        # Start-Process can create/use another Excel instance, making
-        # GetActiveObject("Excel.Application") see zero relevant workbooks.
-        $opened=$excel.Workbooks.Open($WorkbookPath)
-        $open=($null -ne $opened)
-    }
-    if(-not $open -or -not(Wait-Workbook $WorkbookName 120)){ throw "Excel workbook was not ready in the active COM instance within 120 seconds." }
-    Write-Host ("      Workbook: "+$WorkbookName+" / Excel COM instance verified") -ForegroundColor Green
+    if($null -eq $book){ throw "The exact RSS workbook did not register in Excel within 120 seconds: $WorkbookPath" }
+
+    $excel=Invoke-ExcelCom -Label "Excel application attach" -Action { $book.Application }
+    Invoke-ExcelCom -Label "Excel visible" -Action { $excel.Visible=$true } | Out-Null
+    Invoke-ExcelCom -Label "Excel alerts" -Action { $excel.DisplayAlerts=$false } | Out-Null
+    $actualPath=Invoke-ExcelCom -Label "Workbook identity" -Action { [string]$book.FullName }
+    Write-Host ("      Workbook: "+$WorkbookName) -ForegroundColor Green
+    Write-Host ("      Path    : "+$actualPath) -ForegroundColor DarkGray
+    try{ Write-Host ("      SHA256  : "+(Get-FileHash -LiteralPath $WorkbookPath -Algorithm SHA256).Hash) -ForegroundColor DarkGray }catch{}
 
     Show-Step 45 "Verifying MarketSpeed II RSS add-in..."
     # Opening the workbook is not enough: Excel may show cached RSS values while
@@ -209,11 +257,11 @@ try{
     $rssDeadline=(Get-Date).AddSeconds(45)
     while((Get-Date) -lt $rssDeadline -and -not $rssReady){
         try{
-            $rssSheet=$excel.Worksheets.Item("RSS接続")
-            $rssSheet.Range("B3").FormulaLocal='=RssMarket("285A.T","現在値")'
-            $rssSheet.Calculate()
+            $rssSheet=Invoke-ExcelCom -Label "RSS sheet" -Action { $book.Worksheets.Item("RSS接続") }
+            Invoke-ExcelCom -Label "RSS probe formula" -Action { $rssSheet.Range("B3").FormulaLocal='=RssMarket("285A.T","現在値")' } | Out-Null
+            Invoke-ExcelCom -Label "RSS probe calculate" -Action { $rssSheet.Calculate() } | Out-Null
             Start-Sleep -Milliseconds 800
-            $v=$rssSheet.Range("B3").Value2
+            $v=Invoke-ExcelCom -Label "RSS probe value" -Action { $rssSheet.Range("B3").Value2 }
             $n=0.0
             $formula=[string]$rssSheet.Range("B3").FormulaLocal
             if($formula -match "RssMarket" -and [double]::TryParse([string]$v,[ref]$n) -and $n -gt 0){
@@ -235,6 +283,13 @@ try{
         throw "LIVE DATA INVALID: MarketSpeed II RSS add-in did not initialize in the active Excel instance."
     }
     Write-Host ("      MarketSpeed II RSS: READY / 285A="+$n) -ForegroundColor Green
+
+    Show-Step 48 "Starting Excel Watcher..."
+    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Watcher+'" -WorkbookPath "'+$WorkbookPath+'"') | Out-Null
+    $watcherDeadline=(Get-Date).AddSeconds(120)
+    while((Get-Date) -lt $watcherDeadline -and -not(Test-Port 28582 500)){ Start-Sleep -Milliseconds 500 }
+    if(-not(Test-Port 28582 500)){ throw "Excel Watcher port 28582 did not open. The workbook path/add-in state is invalid." }
+    Write-Host "      Excel Watcher: READY on port 28582" -ForegroundColor Green
 
     Show-Step 50 "Starting local gateway..."
     Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Gateway+'" -RuntimeDir "'+$RuntimeDir+'"') | Out-Null
