@@ -2383,34 +2383,17 @@ def main():
         return cards or f"<div class='focus-empty'>{empty}</div>"
     akita_dc_cards = research_watch_cards(akita_dc_watch, "秋田AI DC", "株価データ取得待ち。受注確認前は売買候補に昇格しません。")
     gunma_rare_earth_cards = research_watch_cards(gunma_rare_earth_watch, "群馬レアアース", "株価データ取得待ち。研究段階のため売買候補には昇格しません。")
-    us_rotation_rows = "".join(
-        f"<tr><td>{i}</td><td>{row['sector']} <small>{row['ticker']}</small></td>"
-        f"<td>{phase_badge(row['phase'])}</td><td><b>{row['score']:.0f}/100</b></td>"
-        f"<td class='{css(row['rel5'])}'>{pct(row['rel5'])}</td>"
-        f"<td class='{css(row['rel20'])}'>{pct(row['rel20'])}</td>"
-        f"<td class='{css(row['acceleration'])}'>{row['acceleration']:+.2f}pt</td>"
-        f"<td>{row['action']}</td></tr>"
-        for i, row in enumerate(rotation["us_sectors"], 1)
-    ) or "<tr><td colspan='8'>米国セクターETFを取得できませんでした。</td></tr>"
-    jp_rotation_rows = "".join(
-        f"<tr><td>{i}</td><td>{row['sector']}</td><td>{phase_badge(row['phase'])}</td>"
-        f"<td><b>{row['score']:.0f}/100</b></td>"
-        f"<td class='{css(row['rel5'])}'>{pct(row['rel5'])}</td>"
-        f"<td class='{css(row['rel20'])}'>{pct(row['rel20'])}</td>"
-        f"<td class='{css(row['acceleration'])}'>{row['acceleration']:+.2f}pt</td>"
-        f"<td>{row['breadth']:.0f}%</td><td>{row['rvol']:.2f}倍</td>"
-        f"<td>{'<br>'.join(x['name'] for x in row['leaders'])}</td>"
-        f"<td>{row['action']}</td></tr>"
-        for i, row in enumerate(rotation["japan_sectors"], 1)
-    ) or "<tr><td colspan='11'>日本株の業種群を計算できませんでした。</td></tr>"
-    rotation_pick_rows = "".join(
-        f"<tr><td>{i}</td><td>{row['name']}</td><td>{row['sector']}</td>"
-        f"<td>{phase_badge(row['phase'])}</td><td><b class='up'>{row['score']}/100</b></td>"
-        f"<td>{money(row['plan']['entry'])}</td><td class='down'>{money(row['plan']['stop'])}</td>"
-        f"<td>{money(row['plan']['target1'])}／{money(row['plan']['target2'])}</td>"
-        f"<td><b>{row.get('material_stage', '事実確認待ち')}</b>｜{row.get('material_action', '')}<br><small>{row['reason']}</small></td></tr>"
-        for i, row in enumerate(rotation["picks"], 1)
-    ) or "<tr><td colspan='9'>流入初期・拡大かつ流動性条件を満たす候補なし。見送りです。</td></tr>"
+    def rotation_cards(items, market):
+        return "".join(
+            f"<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>{row['sector']}</strong><small>{market} · #{i}{(' · '+row['ticker']) if row.get('ticker') else ''}</small></div><span class='scalp-signal'>{row['phase']}</span></div><div class='scalp-price-row'><div class='scalp-price'><small>相対強弱スコア</small>{row['score']:.0f}/100</div><div class='scalp-change'>{row['acceleration']:+.2f}pt</div></div><div class='scalp-metrics'><span>5日相対<b>{pct(row['rel5'])}</b></span><span>20日相対<b>{pct(row['rel20'])}</b></span>{(f"<span>20日線上<b>{row['breadth']:.0f}%</b></span><span>出来高比<b>{row['rvol']:.2f}x</b></span>" if market == 'JP' else '')}</div><div class='scalp-foot'>{row['action']}{(' · 先行: '+', '.join(x['name'] for x in row.get('leaders',[])[:3])) if row.get('leaders') else ''}</div></article>"
+            for i, row in enumerate(items[:5], 1)
+        ) or "<div class='focus-empty'>セクターデータを計算できませんでした。</div>"
+    us_rotation_cards = rotation_cards(rotation["us_sectors"], "US")
+    jp_rotation_cards = rotation_cards(rotation["japan_sectors"], "JP")
+    rotation_pick_cards = "".join(
+        f"<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>{row['name']}</strong><small>{row['sector']} · #{i}</small></div><span class='scalp-signal'>{row['phase']}</span></div><div class='scalp-price-row'><div class='scalp-price'><small>期待値</small>{row['score']}/100</div></div><div class='scalp-order'><span>ENTRY<b>{money(row['plan']['entry'])}</b></span><span class='stop'>STOP<b>{money(row['plan']['stop'])}</b></span><span class='target'>T1<b>{money(row['plan']['target1'])}</b></span></div><div class='scalp-metrics'><span>T2<b>{money(row['plan']['target2'])}</b></span><span>材料段階<b>{row.get('material_stage','事実確認待ち')}</b></span></div><div class='scalp-foot'>{row.get('material_action','')} · {row['reason']}</div></article>"
+        for i, row in enumerate(rotation["picks"][:5], 1)
+    ) or "<div class='focus-empty'>流入初期・拡大かつ流動性条件を満たす候補なし。見送りです。</div>"
     kioxia_view = rotation["kioxia"]
     photonics_rows = "".join(
         f"<tr><td>{i}</td><td><b>{row['name']}</b><br><small>{row['role']}</small></td>"
@@ -3125,11 +3108,11 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div class="rotation-box"><b>判定順序</b><strong>資産 → 業種 → 個別株</strong><br>個別材料だけで逆風業種を買わない</div>
 </div>
 <h3>米国11業種：S&P500に対する相対強弱</h3>
-<table><tr><th>順位</th><th>業種ETF</th><th>資金段階</th><th>点数</th><th>5日相対</th><th>20日相対</th><th>勢い変化</th><th>行動</th></tr>{us_rotation_rows}</table>
+<div class="scalp-strip">{us_rotation_cards}</div>
 <h3>日本株：TOPIXに対する相対強弱</h3>
-<table><tr><th>順位</th><th>業種群</th><th>資金段階</th><th>点数</th><th>5日相対</th><th>20日相対</th><th>勢い変化</th><th>20日線上比率</th><th>出来高比</th><th>先行銘柄</th><th>行動</th></tr>{jp_rotation_rows}</table>
+<div class="scalp-strip">{jp_rotation_cards}</div>
 <h3>セクター追い風＋流動性合格の個別株</h3>
-<table><tr><th>順位</th><th>会社名＋コード</th><th>業種群</th><th>資金段階</th><th>期待値</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr>{rotation_pick_rows}</table>
+<div class="scalp-strip">{rotation_pick_cards}</div>
 <h3>キオクシアHD（285A）セクター判定</h3>
 <div class="rotation-box"><b>{phase_badge(kioxia_view['status'])}　{kioxia_view['action']}</b>{kioxia_view['detail']}</div>
 <p class="warning">これは機関投資家の保有明細そのものではなく、{rotation['source_note']}です。流入初期でも発動価格を上抜かなければ見送り。参考：<a href="https://limo.media/articles/-/133222" target="_blank" rel="noopener">イズミダイズム「セクターローテーション」解説</a></p>
