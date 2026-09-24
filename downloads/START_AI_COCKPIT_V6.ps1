@@ -1,5 +1,7 @@
 param([string]$Root = "C:\AI_Cockpit_OneClick_Starter")
 
+$LauncherBuild = "V6-PS51-ASCII-20260925-01"
+
 $ErrorActionPreference = "Stop"
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
