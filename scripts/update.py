@@ -3106,8 +3106,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <p class="warning"><b>監視専用・売買候補ではありません。</b> 出来高急増、5日／20日急騰、値幅拡大、加速率、上ヒゲで異常度を算出し、初動候補・資金流入・過熱・天井警戒に分類します。「仕手株」との断定はせず、会社IR・適時開示でテーマを確認し、信用買い残・信用倍率・機関空売り変化も確認。ここに入った銘柄は通常の持ち越しLONG／SHORT TOP5から隔離します。VWAP・OR5・OR15・EMA・ENTRY/STOP/T1はMS2ライブ対象100銘柄外だと未取得のため「—」表示です。</p></section>
 <section id="large-lot-accumulation" class="card wide"><h2>大口買い集め・吸収監視 TOP20</h2>
 <div id="accumulation-meta" class="sub">全市場の価格・出来高痕跡を走査中...</div>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>総合点</th><th>信用需給</th><th>終値</th><th>5日</th><th>20日</th><th>上昇日/下落日出来高</th><th>OBV</th><th>下落日出来高</th><th>安値切上げ</th><th>発動価格</th><th>損切り</th><th>根拠</th></tr></thead>
-<tbody id="accumulation-signals"><tr><td colspan="15">全市場を走査中...</td></tr></tbody></table>
+<div id="accumulation-signals" class="scalp-strip"><div class="focus-empty">全市場を走査中...</div></div>
 <div class="steps">
 <div class="step"><b>1　吸収</b>下落日ほど出来高が減り、売られても安値を更新しない。</div>
 <div class="step"><b>2　蓄積</b>株価横ばいでもOBV上昇、終値が日中レンジ上側へ偏る。</div>
@@ -3299,24 +3298,19 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
       }}
     }});
   }});
-  const accumulation = (d.large_lot_accumulation || []).slice(0, 20).map((x, i) =>
-    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td><b class='" +
-    (x.phase.includes("上放れ") ? "up" : "warning") + "'>" + x.phase +
-    "</b></td><td><b class='up'>" + x.score + "/100</b></td><td>" +
-    supplyText(x) + "</td><td>" + yen(x.close) + "</td><td class='" +
-    (x.ret5 >= 0 ? "up" : "down") + "'>" + signedPct(x.ret5, 1) +
-    "</td><td class='" + (x.ret20 >= 0 ? "up" : "down") + "'>" +
-    signedPct(x.ret20, 1) + "</td><td><b>" +
-    Number(x.up_down_volume_ratio).toFixed(2) + "倍</b></td><td class='" +
-    (x.obv_impulse > 0 ? "up" : "down") + "'>" +
-    Number(x.obv_impulse).toFixed(2) + "</td><td>" +
-    Number(x.down_volume_ratio).toFixed(2) + "倍</td><td class='" +
-    (x.higher_low_pct >= 0 ? "up" : "down") + "'>" +
-    signedPct(x.higher_low_pct, 1) + "</td><td><b>" + yen(x.trigger) +
-    "</b></td><td class='down'>" + yen(x.stop) + "</td><td>" +
-    x.reason + "</td></tr>").join("");
+  const accumulation = (d.large_lot_accumulation || []).slice(0, 5).map((x, i) =>
+    "<article class='scalp-card wait live-overlay-card' data-live-ticker='" + String(x.ticker||x.code||"") + "' data-analysis-price='" + String(x.close??"") + "'><div class='scalp-head'><div class='scalp-symbol'><strong>" + x.name +
+    "</strong><small>吸収監視 · #" + (i + 1) + "</small></div><span class='scalp-signal'>" + x.phase +
+    "</span></div><div class='scalp-price-row'><div class='scalp-price'><small class='price-kind'>分析基準値</small><span class='display-price'>" + yen(x.close) +
+    "</span></div><div class='scalp-change'>" + x.score + "/100</div></div><div class='scalp-order'><span>ENTRY<b>" + yen(x.trigger) +
+    "</b></span><span class='stop'>STOP<b>" + yen(x.stop) + "</b></span></div><div class='scalp-metrics'><span>信用需給<b>" +
+    supplyText(x) + "</b></span><span>5日<b>" + signedPct(x.ret5, 1) + "</b></span><span>20日<b>" + signedPct(x.ret20, 1) +
+    "</b></span><span>上/下出来高<b>" + Number(x.up_down_volume_ratio).toFixed(2) + "x</b></span><span>OBV<b>" +
+    Number(x.obv_impulse).toFixed(2) + "</b></span><span>下落出来高<b>" + Number(x.down_volume_ratio).toFixed(2) +
+    "x</b></span><span>安値切上げ<b>" + signedPct(x.higher_low_pct, 1) + "</b></span></div><div class='scalp-foot'>" +
+    x.reason + " · 大口断定ではなく価格・出来高痕跡</div></article>").join("");
   document.getElementById("accumulation-signals").innerHTML =
-    accumulation || "<tr><td colspan='15'>本日の大口買い集め痕跡の合格銘柄なし。</td></tr>";
+    accumulation || "<div class='focus-empty'>本日の大口買い集め痕跡の合格銘柄なし。</div>";
   document.getElementById("accumulation-meta").textContent =
     (d.large_lot_accumulation_note || "価格・出来高痕跡による推定") +
     "／信用需給更新 " + (d.credit_supply_updated_at || "未取得");
@@ -3412,7 +3406,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>データ取得待ち</td></tr>";
   document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
   document.getElementById("speculative-theme-watch").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
-  document.getElementById("accumulation-signals").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
+  document.getElementById("accumulation-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
   document.getElementById("hammer-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
   document.getElementById("long-term-ma-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
   document.getElementById("daily-reversal-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
