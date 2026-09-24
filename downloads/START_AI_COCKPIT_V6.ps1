@@ -319,6 +319,14 @@ try{
     while((Get-Date) -lt $deadline -and -not(Test-Port 28581 500)){ Start-Sleep -Milliseconds 500 }
     if(-not(Test-Port 28581 500)){ throw "Gateway port 28581 did not open." }
 
+    # UI availability is independent from LIVE-data readiness. Open the cockpit
+    # as soon as the gateway is reachable. Until Collector validates, the UI
+    # remains fail-closed and must show data unavailable / trading prohibited.
+    Show-Step 55 "Opening cockpit UI in fail-closed mode..."
+    $cockpitUrl="http://127.0.0.1:28581/?live=1"
+    Start-Process $cockpitUrl
+    Write-Host "      Cockpit UI: OPEN / waiting for LIVE validation" -ForegroundColor Yellow
+
     Show-Step 60 "Starting safety heartbeat..."
     Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Heartbeat+'"') | Out-Null
 
@@ -373,9 +381,8 @@ try{
     $h=Invoke-RestMethod ("http://127.0.0.1:28581/health?t="+[DateTimeOffset]::Now.ToUnixTimeMilliseconds()) -TimeoutSec 5
     if(-not $h.live_json_exists){ throw "Gateway cannot see live_ms2.json." }
 
-    Show-Step 100 "READY - opening one cockpit page."
+    Show-Step 100 "READY - cockpit LIVE validated."
     Write-Progress -Activity "AI Cockpit startup" -Completed
-    Start-Process "http://127.0.0.1:28581/?live=1"
     Write-Host ""
     Write-Host ("Startup completed in {0:N1}s." -f $sw.Elapsed.TotalSeconds) -ForegroundColor Green
     Write-Host "Visible: Collector + one browser page" -ForegroundColor Cyan
@@ -390,6 +397,10 @@ try{
     Write-Host "==============================================" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Yellow
     Write-Host ""
+    if(Test-Port 28581 500){
+        Write-Host "Cockpit UI remains available in FAIL-CLOSED mode at http://127.0.0.1:28581/?live=1" -ForegroundColor Yellow
+        Write-Host "Do not use LIVE trading data until the startup error is resolved." -ForegroundColor Red
+    }
     Write-Host "This window is intentionally left open." -ForegroundColor Cyan
     Write-Host ""
     Read-Host "Press Enter to close this startup window"
