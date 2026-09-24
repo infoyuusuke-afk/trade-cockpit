@@ -892,7 +892,7 @@ try {
                     Invoke-ExcelCom -Label "IR動的JNX式設定" -Action { $irDynamicSheet.Cells.Item($dynRowNum,$dynCol).FormulaLocal = $dynFormula } | Out-Null
                 }
                 $irDynamicSlots[$dynCode] = $dynRowNum
-                Write-Host ("IR動的追跡に追加: " + $dynCode + "（" + $disclosure.name + "） " + $disclosure.title) -ForegroundColor Cyan
+                # Keep the interactive console compact and ASCII-prefixed. Full disclosure title remains in the structured/log data.`n                Write-Host ("[IR] ADD " + $dynCode + " " + $disclosure.name) -ForegroundColor Cyan
             }
         }
 
