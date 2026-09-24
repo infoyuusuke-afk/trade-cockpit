@@ -7,6 +7,7 @@ LAUNCHER = (ROOT / "downloads" / "START_AI_COCKPIT_V6.ps1").read_text(encoding="
 INSTALLER = (ROOT / "downloads" / "INSTALL_AI_COCKPIT_V6.ps1").read_text(encoding="utf-8-sig")
 DIAG = (ROOT / "downloads" / "DIAG_AI_COCKPIT_V6_EXCEL.ps1").read_text(encoding="utf-8-sig")
 WATCHER = (ROOT / "ms2_live" / "Kioxia_RSS_Live_Watcher.ps1").read_text(encoding="utf-8-sig")
+COLLECTOR = (ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
 UPDATE = (ROOT / "scripts" / "update.py").read_text(encoding="utf-8")
 
 
@@ -38,6 +39,16 @@ class ExcelStartupContractTests(unittest.TestCase):
         self.assertIn('$bookPath = [IO.Path]::GetFullPath($WorkbookPath)', WATCHER)
         self.assertIn('-WorkbookPath "', LAUNCHER)
         self.assertIn("+$WorkbookPath+'", LAUNCHER)
+
+    def test_collector_receives_and_requires_canonical_workbook_path(self):
+        self.assertIn('[string]$WorkbookPath = ""', COLLECTOR)
+        self.assertIn("CollectorWorkbookRotFinder", COLLECTOR)
+        self.assertIn("FindByIdentity", COLLECTOR)
+        self.assertNotIn('GetActiveObject("Excel.Application")', COLLECTOR)
+        self.assertNotIn('Kioxia_MS2_RSS_Live_Signals*.xlsx', COLLECTOR)
+        self.assertIn("Collector refuses non-canonical workbook", COLLECTOR)
+        self.assertIn("canonical RSS workbook is not uniquely available to Collector", COLLECTOR)
+        self.assertIn('$Collector+\'" -WorkbookPath "\'+$WorkbookPath', LAUNCHER)
 
     def test_local_ports_are_unique(self):
         self.assertIn("Test-Port 28580", LAUNCHER)
