@@ -175,6 +175,10 @@ document.addEventListener("DOMContentLoaded",()=>{
  scalpPanel.className="card wide scalp-tv";
  scalpPanel.innerHTML='<div class="scalp-tv-toolbar"><div class="scalp-tv-title"><h2>SCALP 5</h2><span>1m / MS2 RSS</span></div><div class="scalp-tv-legend"><span>固定監視 <b>5銘柄</b></span><span>判定 <b>確定1分足</b></span></div></div><div id="scalp-fixed-5" class="scalp-strip"><div class="focus-empty">MS2 RSS接続待ち</div></div>';
  panes.scalp.appendChild(scalpPanel);
+ const alertHistoryPanel=document.createElement("section");
+ alertHistoryPanel.className="card wide";
+ alertHistoryPanel.innerHTML='<h2>実況銘柄カード</h2><p class="sub">点灯・音声が発生した優位性イベントを新しい順に記録。</p><div id="edge-alert-history"><div class="focus-empty">優位性シグナル待ち</div></div>';
+ panes.scalp.appendChild(alertHistoryPanel);
 
  const eventIntro=document.createElement("section");
  eventIntro.className="card wide";
@@ -282,13 +286,22 @@ document.addEventListener("DOMContentLoaded",()=>{
    return '<article class="scalp-card '+sv.cls+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(x.name)+'</strong><small>TSE:'+esc(code)+' · '+esc(tf||"1m")+'</small></div><span class="scalp-signal">'+esc(sv.label)+'</span></div><div class="scalp-price-row"><div><div class="scalp-price">'+priceText+'</div><small>'+esc(freshness)+'</small></div><div class="scalp-change '+chgCls+'">'+pct(x.change_pct)+'</div></div><div class="scalp-spark">'+sparkline(x.bars_1m)+'</div><div class="scalp-order"><span class="entry">ENTRY<b>'+yen(x.entry_price)+'</b></span><span class="stop">STOP<b>'+yen(x.stop_price)+'</b></span><span class="target">T1<b>'+yen(x.target1)+'</b></span></div><div class="scalp-metrics"><span>VWAP<b>'+yen(x.vwap)+'</b></span><span>OR5<b>'+or5+'</b></span><span>OR15<b>'+or15+'</b></span><span>EMA 9 / 20<b>'+ema+'</b></span><span>FLOW<b>'+flow+'</b></span><span>VOLUME<b>'+vol+'</b></span></div><div class="scalp-foot">'+esc(x.foot||"")+'</div></article>';
  };
  const announcedSignals=new Map();
+ const edgeHistory=[];
  const actionable=sv=>sv.label==="BUY"||sv.label==="SHORT";
+ const renderEdgeHistory=()=>{
+   const box=document.getElementById("edge-alert-history");if(!box)return;
+   box.innerHTML=edgeHistory.length?edgeHistory.slice(0,20).map(v=>'<article class="scalp-card '+(v.direction==="BUY"?"long":"short")+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(v.name)+'</strong><small>'+esc(v.detected_at)+' · '+esc(v.ticker)+'</small></div><span class="scalp-signal">'+esc(v.direction)+'</span></div><div class="scalp-price-row"><div class="scalp-price">'+yen(v.price)+'</div><small>MS2 '+esc(v.quote_age)+'</small></div><div class="scalp-foot">'+esc(v.reason)+(v.news_title?' · TDnet: '+esc(v.news_title):'')+'</div></article>').join(""):'<div class="focus-empty">優位性シグナル待ち</div>';
+ };
  const signalEventId=(x,sv)=>[x.ticker,sv.label,x.signal_bar_time||x.live_observed_at||""].join("|");
  const announceEdge=(x,sv,live)=>{
    if(!live.valid||!actionable(sv))return false;
    const id=signalEventId(x,sv),prev=announcedSignals.get(String(x.ticker));
    if(prev===id)return true;
    announcedSignals.set(String(x.ticker),id);
+   edgeHistory.unshift({event_id:id,detected_at:new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date()),ticker:String(x.ticker||""),name:x.name||String(x.ticker||""),direction:sv.label,price:live.price,quote_age:Math.max(0,live.age/1000).toFixed(1)+"秒前",reason:x.strategy||x.signal||"優位性を検出",news_title:x.news_title||""});
+   if(edgeHistory.length>50)edgeHistory.length=50;
+   try{localStorage.setItem("edgeAlertHistoryV1",JSON.stringify(edgeHistory.slice(0,50)));}catch(_){}
+   renderEdgeHistory();
    const msg=(x.name||String(x.ticker).replace(".T",""))+"、"+(sv.label==="BUY"?"買い":"ショート")+"候補。"+(x.strategy||x.signal||"優位性を検出");
    try{
      if("speechSynthesis" in window){
@@ -298,6 +311,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    }catch(_){}
    return true;
  };
+ try{const savedHistory=JSON.parse(localStorage.getItem("edgeAlertHistoryV1")||"[]");if(Array.isArray(savedHistory)){edgeHistory.push(...savedHistory.slice(0,50));renderEdgeHistory();}}catch(_){}
  document.addEventListener("ms2RssUpdate",e=>{
    const d=e.detail||{},all=Array.isArray(d.all_targets)?d.all_targets:[],stale=d.stale!==false;
    const fixed=["285A.T","9984.T","8035.T","6920.T","6857.T"];
