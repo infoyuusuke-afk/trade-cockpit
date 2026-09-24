@@ -220,6 +220,12 @@ document.addEventListener("DOMContentLoaded",()=>{
  const num=v=>v==null||!Number.isFinite(Number(v))?null:Number(v);
  const yen=v=>num(v)==null?"—":Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1});
  const pct=v=>num(v)==null?"—":((Number(v)>0?"+":"")+Number(v).toFixed(2)+"%");
+ const liveSnapshot=(d,ticker)=>{
+   if(!d||d.stale!==false)return null;
+   const x=(Array.isArray(d.all_targets)?d.all_targets:[]).find(v=>String(v?.ticker||"")===String(ticker||""));
+   if(!x||!Number.isFinite(Number(x.price)))return null;
+   return x;
+ };
  const signalView=(x,stale)=>{
    const raw=String(x?.signal||"監視");
    if(stale||raw.includes("市場時間外"))return {label:"CLOSED",cls:"wait"};
@@ -252,11 +258,12 @@ document.addEventListener("DOMContentLoaded",()=>{
    const d=e.detail||{},all=Array.isArray(d.all_targets)?d.all_targets:[],stale=d.stale!==false;
    const fixed=["285A.T","9984.T","8035.T","6920.T","6857.T"];
    const box=document.getElementById("scalp-fixed-5"); if(!box)return;
-   const rows=fixed.map(t=>all.find(x=>String(x.ticker)===t)).filter(Boolean);
-   box.innerHTML=rows.length?rows.map(x=>{
-     const sv=signalView(x,stale);
+   const rows=fixed.map(t=>({ticker:t,row:liveSnapshot(d,t)}));
+   box.innerHTML=rows.map(({ticker,row:x})=>{
+     if(!x)return window.renderScalpCard({ticker,name:ticker.replace(".T",""),price:null,foot:"LIVE DATA INVALID / 現在値は表示しません"},{label:"INVALID",cls:"block"},"1m");
+     const sv=signalView(x,false);
      return window.renderScalpCard({...x,foot:(x.signal||"監視")+' · '+(x.strategy||"条件待ち")},sv,"1m");
-   }).join(""):'<div class="focus-empty">SCALP 5のMS2 RSSデータ待ち</div>';
+   }).join("");
  });
 
  document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{
