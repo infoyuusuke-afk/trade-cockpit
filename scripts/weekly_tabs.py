@@ -247,7 +247,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    const price=(x.live_quote_valid===true&&Number.isFinite(canonical))?canonical:
      (x.live_quote_valid==null&&Number.isFinite(legacy)?legacy:NaN);
    if(!Number.isFinite(price))return null;
-   return {...x,price,live_price:price};
+   return {...x,price,live_price:price,live_quote_valid:true,live_observed_at:x.live_observed_at||d.live_observed_at||d.updated_at,live_source:x.live_source||d.source||"MarketSpeed II RSS",session_state:x.session_state||d.session_state||d.market_session_state||d.market_state};
  };
  window.cockpitLiveSnapshot=ticker=>liveSnapshot(latestLiveFeed,ticker);
  document.addEventListener("ms2RssUpdate",e=>{latestLiveFeed=e.detail||null;});
@@ -270,7 +270,12 @@ document.addEventListener("DOMContentLoaded",()=>{
    const ema=(num(x.ema9)!=null&&num(x.ema20)!=null)?yen(x.ema9)+" / "+yen(x.ema20):"—";
    const flow=x.flow_bias==null?"—":esc(x.flow_bias)+"%";
    const vol=x.volume_burst==null?"—":esc(x.volume_burst)+"x";
-   return '<article class="scalp-card '+sv.cls+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(x.name)+'</strong><small>TSE:'+esc(code)+' · '+esc(tf||"1m")+'</small></div><span class="scalp-signal">'+esc(sv.label)+'</span></div><div class="scalp-price-row"><div class="scalp-price">'+yen(x.price)+'</div><div class="scalp-change '+chgCls+'">'+pct(x.change_pct)+'</div></div><div class="scalp-order"><span class="entry">ENTRY<b>'+yen(x.entry_price)+'</b></span><span class="stop">STOP<b>'+yen(x.stop_price)+'</b></span><span class="target">T1<b>'+yen(x.target1)+'</b></span></div><div class="scalp-metrics"><span>VWAP<b>'+yen(x.vwap)+'</b></span><span>OR5<b>'+or5+'</b></span><span>OR15<b>'+or15+'</b></span><span>EMA 9 / 20<b>'+ema+'</b></span><span>FLOW<b>'+flow+'</b></span><span>VOLUME<b>'+vol+'</b></span></div><div class="scalp-foot">'+esc(x.foot||"")+'</div></article>';
+   const verified=num(x.price)>0&&x.live_quote_valid!==false;
+   const observed=x.live_observed_at||x.observed_at||x.updated_at||"時刻未確認";
+   const source=x.live_source||x.source||"MS2 RSS";
+   const session=x.session_state||x.market_session_state||x.market_state||"SESSION未確認";
+   const proof=verified?'<div class="live-state-proof"><b>MS2 LIVE</b><span>'+esc(session)+'</span><span>観測 '+esc(observed)+'</span><small>'+esc(source)+'</small></div>':'<div class="live-state-proof"><b>LIVE DATA INVALID</b><span>現在値は表示しません</span></div>';
+   return '<article class="scalp-card '+sv.cls+(verified?' live-verified':' live-invalid')+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(x.name)+'</strong><small>TSE:'+esc(code)+' · '+esc(tf||"1m")+'</small></div><span class="scalp-signal">'+esc(sv.label)+'</span></div><div class="scalp-price-row"><div class="scalp-price">'+yen(x.price)+'</div><div class="scalp-change '+chgCls+'">'+pct(x.change_pct)+'</div></div>'+proof+'<div class="scalp-order"><span class="entry">ENTRY<b>'+yen(x.entry_price)+'</b></span><span class="stop">STOP<b>'+yen(x.stop_price)+'</b></span><span class="target">T1<b>'+yen(x.target1)+'</b></span></div><div class="scalp-metrics"><span>VWAP<b>'+yen(x.vwap)+'</b></span><span>OR5<b>'+or5+'</b></span><span>OR15<b>'+or15+'</b></span><span>EMA 9 / 20<b>'+ema+'</b></span><span>FLOW<b>'+flow+'</b></span><span>VOLUME<b>'+vol+'</b></span></div><div class="scalp-foot">'+esc(x.foot||"")+'</div></article>';
  };
  document.addEventListener("ms2RssUpdate",e=>{
    const d=e.detail||{},all=Array.isArray(d.all_targets)?d.all_targets:[],stale=d.stale!==false;
