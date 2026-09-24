@@ -112,7 +112,7 @@ try {
                 continue
             }
 
-            $remotePath=if($path -eq '/'){'/'}else{$path}
+            $remotePath=if($path -eq '/'){'/index.html'}else{$path}
             $remoteUrl=$RemoteBase.TrimEnd('/')+$remotePath
             if(-not [string]::IsNullOrWhiteSpace($uri.Query)){$remoteUrl += $uri.Query}
             try {
@@ -122,8 +122,8 @@ try {
                     continue
                 }
                 $bytes=$resp.Content.ReadAsByteArrayAsync().Result
-                $ct=Get-ContentType $path
-                if($resp.Content.Headers.ContentType){$ct=[string]$resp.Content.Headers.ContentType}
+                $ct=Get-ContentType $remotePath
+                if($ct -eq 'application/octet-stream' -and $resp.Content.Headers.ContentType){$ct=[string]$resp.Content.Headers.ContentType}
                 Send-Response $stream '200 OK' $ct $bytes
             } catch {
                 Send-Response $stream '502 Bad Gateway' 'text/plain; charset=utf-8' ($utf8.GetBytes("Gateway error: "+$_.Exception.Message))
