@@ -314,6 +314,14 @@ document.addEventListener("DOMContentLoaded",()=>{
  try{const savedHistory=JSON.parse(localStorage.getItem("edgeAlertHistoryV1")||"[]");if(Array.isArray(savedHistory)){edgeHistory.push(...savedHistory.slice(0,50));renderEdgeHistory();}}catch(_){}
  document.addEventListener("ms2RssUpdate",e=>{
    const d=e.detail||{},all=Array.isArray(d.all_targets)?d.all_targets:[],stale=d.stale!==false;
+   // Universe-wide edge scan: alerting is not limited to the five pinned SCALP cards.
+   all.forEach(x=>{
+     const live=liveQuote(x,stale);
+     const ir=tdnetView(tdnetFor(d,x));
+     const sv=signalView(x,!live.valid||ir.pending);
+     if(ir.pending){sv.label="NEWS PENDING";sv.cls="block";}
+     announceEdge(x,sv,live);
+   });
    const fixed=["285A.T","9984.T","8035.T","6920.T","6857.T"];
    const box=document.getElementById("scalp-fixed-5"); if(!box)return;
    const rows=fixed.map(t=>all.find(x=>String(x.ticker)===t)).filter(Boolean);
@@ -322,10 +330,10 @@ document.addEventListener("DOMContentLoaded",()=>{
      const ir=tdnetView(tdnetFor(d,x));
      const sv=signalView(x,!live.valid||ir.pending);
      if(ir.pending){sv.label="NEWS PENDING";sv.cls="block";}
-     const lit=announceEdge(x,sv,live);
+     const lit=live.valid&&actionable(sv);
      const reason=!live.valid?"現在値失効・売買シグナル無効":ir.pending?("決算内容確認中・既存シグナル保留 · "+ir.title):(ir.title?(ir.label+" · "+ir.title+" · "+(x.strategy||x.signal||"監視")):((x.signal||"監視")+' · '+(x.strategy||"条件待ち")));
      const html=window.renderScalpCard({...x,__live:live,foot:reason},sv,"1m");
-     return lit&&actionable(sv)?html.replace('scalp-card '+sv.cls,'scalp-card '+sv.cls+' edge-live'):html;
+     return lit?html.replace('scalp-card '+sv.cls,'scalp-card '+sv.cls+' edge-live'):html;
    }).join(""):'<div class="focus-empty">SCALP 5のMS2 RSSデータ待ち</div>';
  });
 
