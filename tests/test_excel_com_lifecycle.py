@@ -14,8 +14,8 @@ class ExcelComLifecycleContractTests(unittest.TestCase):
         self.assertIn("CollectorWorkbookRotFinder]::FindByIdentity", COLLECTOR)
         self.assertIn("Canonical workbook disappeared from ROT", COLLECTOR)
         self.assertIn("FinalReleaseComObject", COLLECTOR)
-        self.assertIn("foreach($com in @($irDynamicSheet,$jnxSheet,$rssLink,$sheet,$book,$excel))", COLLECTOR)
-        self.assertIn("Release-ComObjectSafe $com", COLLECTOR)
+        self.assertIn("function Release-CollectorComState", COLLECTOR)
+        self.assertIn("Release-CollectorComState", COLLECTOR)
         self.assertNotIn("$excel.Quit()", COLLECTOR)
 
     def test_watcher_never_reopens_closed_workbook(self):
@@ -68,6 +68,18 @@ class ExcelComLifecycleContractTests(unittest.TestCase):
         self.assertIn('([string]$_.ticker -eq "285A.T")', LAUNCHER)
         self.assertIn("live_quote_valid", LAUNCHER)
         self.assertIn("live_price", LAUNCHER)
+
+    def test_collector_fatal_error_cannot_leave_debug_shell_holding_excel(self):
+        collector_launch = [line for line in LAUNCHER.splitlines() if "$Collector" in line and "Start-Process powershell.exe" in line]
+        self.assertEqual(len(collector_launch), 1)
+        self.assertNotIn("-NoExit", collector_launch[0])
+        self.assertIn("trap {", COLLECTOR)
+        self.assertIn("Release-CollectorComState", COLLECTOR)
+        self.assertIn("exit 1", COLLECTOR)
+
+    def test_screen_updating_is_best_effort_only(self):
+        self.assertIn("ScreenUpdating unavailable; continuing.", COLLECTOR)
+        self.assertIn('-Retries 1 -Action { $excel.ScreenUpdating = $false }', COLLECTOR)
 
 
 if __name__ == "__main__":
