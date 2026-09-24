@@ -220,9 +220,22 @@ document.addEventListener("DOMContentLoaded",()=>{
  const num=v=>v==null||!Number.isFinite(Number(v))?null:Number(v);
  const yen=v=>num(v)==null?"—":Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1});
  const pct=v=>num(v)==null?"—":((Number(v)>0?"+":"")+Number(v).toFixed(2)+"%");
+ const LIVE_TTL_MS=15000;
+ const observedMs=x=>{
+   const raw=x?.live_observed_at||x?.observed_at||x?.captured_at||x?.updated_at;
+   const ms=raw?Date.parse(raw):NaN;
+   return Number.isFinite(ms)?ms:null;
+ };
+ const liveQuote=(x,feedStale)=>{
+   const at=observedMs(x),age=at==null?null:Date.now()-at;
+   const explicit=x?.live_quote_valid;
+   const valid=!feedStale&&explicit===true&&at!=null&&age>=-5000&&age<=LIVE_TTL_MS&&num(x?.live_price)!=null;
+   return {valid,age,at,price:valid?num(x.live_price):null};
+ };
  const signalView=(x,stale)=>{
    const raw=String(x?.signal||"監視");
-   if(stale||raw.includes("市場時間外"))return {label:"CLOSED",cls:"wait"};
+   if(stale)return {label:"STALE",cls:"block"};
+   if(raw.includes("市場時間外"))return {label:"CLOSED",cls:"wait"};
    if(raw.includes("売買禁止")||raw.includes("特別気配"))return {label:"BLOCK",cls:"block"};
    if(raw.includes("買い")||String(x?.raw_direction)==="BUY")return {label:"BUY",cls:"long"};
    if(raw.includes("空売り")||raw.includes("ショート")||String(x?.raw_direction)==="SELL")return {label:"SHORT",cls:"short"};
@@ -240,13 +253,16 @@ document.addEventListener("DOMContentLoaded",()=>{
  // 持たないため、無い項目は推測で埋めず「—」のまま表示する（既存のyen()/num()の未確認時「—」表示を踏襲）。
  window.renderScalpCard=(x,sv,tf)=>{
    const chg=x.change_pct==null?null:num(x.change_pct),chgCls=chg==null?"flat":(chg>0?"up":chg<0?"down":"flat");
+   const live=x.__live||{valid:false,price:null,age:null};
+   const priceText=live.valid?yen(live.price):"—";
+   const freshness=live.valid?("MS2 RSS · "+Math.max(0,live.age/1000).toFixed(1)+"秒前"):"LIVE DATA INVALID";
    const code=String(x.code||x.ticker||"").replace(".T","");
    const or5=(num(x.or5_low)>0&&num(x.or5_high)>0)?yen(x.or5_low)+" – "+yen(x.or5_high):"—";
    const or15=(num(x.or_low)>0&&num(x.or_high)>0)?yen(x.or_low)+" – "+yen(x.or_high):"—";
    const ema=(num(x.ema9)!=null&&num(x.ema20)!=null)?yen(x.ema9)+" / "+yen(x.ema20):"—";
    const flow=x.flow_bias==null?"—":esc(x.flow_bias)+"%";
    const vol=x.volume_burst==null?"—":esc(x.volume_burst)+"x";
-   return '<article class="scalp-card '+sv.cls+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(x.name)+'</strong><small>TSE:'+esc(code)+' · '+esc(tf||"1m")+'</small></div><span class="scalp-signal">'+esc(sv.label)+'</span></div><div class="scalp-price-row"><div class="scalp-price">'+yen(x.price)+'</div><div class="scalp-change '+chgCls+'">'+pct(x.change_pct)+'</div></div><div class="scalp-spark">'+sparkline(x.bars_1m)+'</div><div class="scalp-order"><span class="entry">ENTRY<b>'+yen(x.entry_price)+'</b></span><span class="stop">STOP<b>'+yen(x.stop_price)+'</b></span><span class="target">T1<b>'+yen(x.target1)+'</b></span></div><div class="scalp-metrics"><span>VWAP<b>'+yen(x.vwap)+'</b></span><span>OR5<b>'+or5+'</b></span><span>OR15<b>'+or15+'</b></span><span>EMA 9 / 20<b>'+ema+'</b></span><span>FLOW<b>'+flow+'</b></span><span>VOLUME<b>'+vol+'</b></span></div><div class="scalp-foot">'+esc(x.foot||"")+'</div></article>';
+   return '<article class="scalp-card '+sv.cls+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(x.name)+'</strong><small>TSE:'+esc(code)+' · '+esc(tf||"1m")+'</small></div><span class="scalp-signal">'+esc(sv.label)+'</span></div><div class="scalp-price-row"><div><div class="scalp-price">'+priceText+'</div><small>'+esc(freshness)+'</small></div><div class="scalp-change '+chgCls+'">'+pct(x.change_pct)+'</div></div><div class="scalp-spark">'+sparkline(x.bars_1m)+'</div><div class="scalp-order"><span class="entry">ENTRY<b>'+yen(x.entry_price)+'</b></span><span class="stop">STOP<b>'+yen(x.stop_price)+'</b></span><span class="target">T1<b>'+yen(x.target1)+'</b></span></div><div class="scalp-metrics"><span>VWAP<b>'+yen(x.vwap)+'</b></span><span>OR5<b>'+or5+'</b></span><span>OR15<b>'+or15+'</b></span><span>EMA 9 / 20<b>'+ema+'</b></span><span>FLOW<b>'+flow+'</b></span><span>VOLUME<b>'+vol+'</b></span></div><div class="scalp-foot">'+esc(x.foot||"")+'</div></article>';
  };
  document.addEventListener("ms2RssUpdate",e=>{
    const d=e.detail||{},all=Array.isArray(d.all_targets)?d.all_targets:[],stale=d.stale!==false;
@@ -254,8 +270,9 @@ document.addEventListener("DOMContentLoaded",()=>{
    const box=document.getElementById("scalp-fixed-5"); if(!box)return;
    const rows=fixed.map(t=>all.find(x=>String(x.ticker)===t)).filter(Boolean);
    box.innerHTML=rows.length?rows.map(x=>{
-     const sv=signalView(x,stale);
-     return window.renderScalpCard({...x,foot:(x.signal||"監視")+' · '+(x.strategy||"条件待ち")},sv,"1m");
+     const live=liveQuote(x,stale);
+     const sv=signalView(x,!live.valid);
+     return window.renderScalpCard({...x,__live:live,foot:live.valid?((x.signal||"監視")+' · '+(x.strategy||"条件待ち")):"現在値失効・売買シグナル無効"},sv,"1m");
    }).join(""):'<div class="focus-empty">SCALP 5のMS2 RSSデータ待ち</div>';
  });
 
