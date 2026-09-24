@@ -74,6 +74,15 @@ class ExcelStartupContractTests(unittest.TestCase):
         self.assertIn("Rss285AProbe", DIAG)
         self.assertIn("excel_startup_diag_", DIAG)
 
+    def test_installer_is_windows_powershell_51_safe(self):
+        self.assertTrue(INSTALLER.isascii())
+        self.assertIn("Save-RemotePowerShellUtf8Bom", INSTALLER)
+        self.assertIn("System.Text.UTF8Encoding($true)", INSTALLER)
+        self.assertIn("System.Text.UTF8Encoding($false)", INSTALLER)
+        self.assertNotIn("Invoke-WebRequest ($base+\"/downloads/START_AI_COCKPIT_V6.ps1\"+$cache) -OutFile $launcher", INSTALLER)
+        self.assertIn("Save-RemotePowerShellUtf8Bom ($base+\"/downloads/START_AI_COCKPIT_V6.ps1\"+$cache) $launcher", INSTALLER)
+        self.assertIn("Save-RemotePowerShellUtf8Bom ($base+\"/ms2_live/\"+$name+$cache) $tmp", INSTALLER)
+
 
 if __name__ == "__main__":
     unittest.main()
