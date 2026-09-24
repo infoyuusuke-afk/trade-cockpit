@@ -1673,7 +1673,23 @@ try {
         $liveQuoteRatio=[Math]::Round(($liveQuoteCount/100.0)*100,1)
         $liveReady=if($inSession){$liveQuoteCount -ge 90}else{$validCount -ge 90}
         $liveReadyStatus=if($liveReady){"READY"}else{"NOT READY"}
-        $payload=[ordered]@{schema_version='ms2-common-1.2';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;live_quote_count=$liveQuoteCount;live_quote_ratio_pct=$liveQuoteRatio;live_ready=$liveReady;live_ready_status=$liveReadyStatus;live_ready_rule=$(if($inSession){"TSE session: >=90/100 quotes with MS2 現在値詳細時刻 <=15s"}else{"Outside TSE session: readiness is informational"});stale=(-not $liveReady);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;tdnet_observed_at=$(if($null -ne $lastTdnetSuccessAt){$lastTdnetSuccessAt.ToString("o")}else{$null});tdnet_pages_attempted=$tdnetPagesAttempted;tdnet_pages_succeeded=$tdnetPagesSucceeded;tdnet_live=($tdnetPagesSucceeded -gt 0 -and $null -ne $lastTdnetSuccessAt -and ($now-$lastTdnetSuccessAt).TotalSeconds -le 45);tdnet_disclosures=@($tdnetDisclosures | Select-Object -First 50);jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
+        $tdnetReady=($tdnetPagesSucceeded -gt 0 -and $null -ne $lastTdnetSuccessAt -and ($now-$lastTdnetSuccessAt).TotalSeconds -le 45)
+        $collectorReady=($validCount -ge 90)
+        # SBV2 is the sole voice path. Its runtime health is confirmed by successful
+        # speech requests; startup does not block market-data collection if voice is down.
+        $signalGateReady=($liveReady -and ((-not $inSession) -or $tdnetReady))
+        $tradingReady=($liveReady -and $collectorReady -and ((-not $inSession) -or $tdnetReady))
+        $readiness=[ordered]@{
+            status=$(if($tradingReady){"TRADING READY"}else{"NOT READY"})
+            ms2=$(if($liveReady){"READY"}else{"NOT READY"})
+            universe=("$liveQuoteCount/100 LIVE")
+            collector=$(if($collectorReady){"READY"}else{"NOT READY"})
+            tdnet=$(if($tdnetReady){"READY"}else{"NOT READY"})
+            voice="SBV2 ONLY"
+            signal_gate=$(if($signalGateReady){"READY"}else{"HOLD"})
+            real_submit_allowed=$false
+        }
+        $payload=[ordered]@{schema_version='ms2-common-1.3';readiness=$readiness;trading_ready=$tradingReady;updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;live_quote_count=$liveQuoteCount;live_quote_ratio_pct=$liveQuoteRatio;live_ready=$liveReady;live_ready_status=$liveReadyStatus;live_ready_rule=$(if($inSession){"TSE session: >=90/100 quotes with MS2 現在値詳細時刻 <=15s"}else{"Outside TSE session: readiness is informational"});stale=(-not $liveReady);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;tdnet_observed_at=$(if($null -ne $lastTdnetSuccessAt){$lastTdnetSuccessAt.ToString("o")}else{$null});tdnet_pages_attempted=$tdnetPagesAttempted;tdnet_pages_succeeded=$tdnetPagesSucceeded;tdnet_live=($tdnetPagesSucceeded -gt 0 -and $null -ne $lastTdnetSuccessAt -and ($now-$lastTdnetSuccessAt).TotalSeconds -le 45);tdnet_disclosures=@($tdnetDisclosures | Select-Object -First 50);jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
         $jsonText=$payload|ConvertTo-Json -Depth 6
         Write-AtomicUtf8 $jsonPath $jsonText
         if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $jsonText }
