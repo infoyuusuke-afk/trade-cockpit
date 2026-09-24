@@ -224,8 +224,13 @@ document.addEventListener("DOMContentLoaded",()=>{
  const liveSnapshot=(d,ticker)=>{
    if(!d||d.stale!==false)return null;
    const x=(Array.isArray(d.all_targets)?d.all_targets:[]).find(v=>String(v?.ticker||"")===String(ticker||""));
-   if(!x||!Number.isFinite(Number(x.price)))return null;
-   return x;
+   if(!x)return null;
+   const canonical=Number(x.live_price);
+   const legacy=Number(x.price);
+   const price=(x.live_quote_valid===true&&Number.isFinite(canonical))?canonical:
+     (x.live_quote_valid==null&&Number.isFinite(legacy)?legacy:NaN);
+   if(!Number.isFinite(price))return null;
+   return {...x,price,live_price:price};
  };
  window.cockpitLiveSnapshot=ticker=>liveSnapshot(latestLiveFeed,ticker);
  document.addEventListener("ms2RssUpdate",e=>{latestLiveFeed=e.detail||null;});
