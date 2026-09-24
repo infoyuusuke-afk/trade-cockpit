@@ -3260,6 +3260,20 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   }}).join("");
   document.getElementById("speculative-theme-watch").innerHTML =
     speculative || "<div class='focus-empty'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</div>";
+  const rerenderMomentumCards = () => {{
+    const host = document.getElementById("speculative-theme-watch");
+    if(!host || !window.renderScalpCard)return;
+    const html = speculativeRows.map(x => {{
+      const sv = x.phase === "初動候補" ? {{label:"初動候補",cls:"long"}} : x.phase === "資金流入" ? {{label:"資金流入",cls:"wait"}} : {{label:x.phase||"警戒",cls:"short"}};
+      const ticker = String(x.code||"") + ".T";
+      const live = window.cockpitLiveSnapshot ? window.cockpitLiveSnapshot(ticker) : null;
+      const catalyst = (x.theme||x.theme_status) ? ((x.theme||"")+"／"+(x.theme_status||"")) : "材料未確認";
+      const foot = catalyst + "／" + (x.action||"") + (live ? "" : "／LIVE DATA INVALID");
+      return window.renderScalpCard({{name:x.name,code:x.code,price:live?live.price:null,change_pct:live?live.change_pct:null,vwap:live?live.vwap:null,or5_low:live?live.or5_low:null,or5_high:live?live.or5_high:null,or_low:live?live.or_low:null,or_high:live?live.or_high:null,ema9:live?live.ema9:null,ema20:live?live.ema20:null,flow_bias:live?live.flow_bias:null,volume_burst:live?live.volume_burst:(Number.isFinite(Number(x.rvol))?Number(x.rvol).toFixed(2):null),foot}},live?sv:{{label:"INVALID",cls:"block"}},"1m");
+    }}).join("");
+    host.innerHTML = html || "<div class='focus-empty'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</div>";
+  }};
+  document.addEventListener("ms2RssUpdate", rerenderMomentumCards);
   const accumulation = (d.large_lot_accumulation || []).slice(0, 20).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td><b class='" +
     (x.phase.includes("上放れ") ? "up" : "warning") + "'>" + x.phase +
