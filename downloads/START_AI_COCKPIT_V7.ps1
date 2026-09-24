@@ -6,7 +6,7 @@ param(
 
 $ErrorActionPreference="Stop"
 $Build="V7-RUNTIME-SUPERVISOR-20260925-01"
-$RemoteBase="https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/refs/heads/fix/runtime-supervisor-v7"
+$RemoteBase="https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/refs/heads/feat/card-system-p0b1-watchlist"
 $sw=[Diagnostics.Stopwatch]::StartNew()
 
 function Show-Step([int]$Pct,[string]$Message,[ConsoleColor]$Color=[ConsoleColor]::Cyan){
