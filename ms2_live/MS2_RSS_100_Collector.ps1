@@ -479,6 +479,39 @@ for ($i=0; $i -lt $stocks.Count; $i++) {
 Invoke-ExcelCom -Label "RSSシート非表示" -Action { $sheet.Visible = 0 } | Out-Null
 Invoke-ExcelCom -Label "画面更新再開" -Action { $excel.ScreenUpdating = $true } | Out-Null
 
+# DASHBOARD/RSS接続の表示値もCollector起動時に必ずRssMarketへ戻す。
+# xlsxに残ったキャッシュ値をLIVE現在値として扱わない。
+try {
+    $rssLink = Invoke-ExcelCom -Label "RSS接続シート確認" -Action { $book.Worksheets.Item("RSS接続") }
+    $rssMap = @(
+        @("B3","現在値"), @("B4","出来高加重平均"), @("B5","出来高"),
+        @("B6","最良売気配値"), @("B7","最良買気配値"),
+        @("B8","OVER気配数量"), @("B9","UNDER気配数量"),
+        @("B10","売成行数量"), @("B11","買成行数量")
+    )
+    foreach($m in $rssMap){
+        $addr=[string]$m[0]; $item=[string]$m[1]
+        $formula='=RssMarket("285A.T","'+$item+'")'
+        Invoke-ExcelCom -Label ("RSS接続LIVE式 "+$addr) -Action { $rssLink.Range($addr).FormulaLocal=$formula } | Out-Null
+    }
+    Invoke-ExcelCom -Label "RSS接続再計算" -Action { $rssLink.Calculate() } | Out-Null
+    Start-Sleep -Milliseconds 700
+    $probe = Invoke-ExcelCom -Label "285A LIVE確認" -Action { $rssLink.Range("B3").Value2 }
+    $probeNum=0.0
+    if(-not [double]::TryParse([string]$probe,[ref]$probeNum) -or $probeNum -le 0){
+        throw "RssMarket 285A current price is unavailable."
+    }
+    Invoke-ExcelCom -Label "RSS接続状態更新" -Action { $rssLink.Range("B15").Value2="接続中" } | Out-Null
+    Write-Host ("[RSS] 285A LIVE formula verified: "+$probeNum) -ForegroundColor Green
+} catch {
+    try {
+        $rssLink = $book.Worksheets.Item("RSS接続")
+        $rssLink.Range("B15").Value2="LIVE DATA INVALID"
+        $rssLink.Range("B3:B11").ClearContents()
+    } catch {}
+    throw ("LIVE DATA INVALID: RSS add-in/formula verification failed. "+$_.Exception.Message)
+}
+
 # キオクシア夜間PTS（JNX）は東証データと混ぜず、専用シートで取得する。
 # JNXは補助データのため、Excel/RSSが起動直後で不安定でもCollector本体を停止させない。
 $jnxSheet = $null
