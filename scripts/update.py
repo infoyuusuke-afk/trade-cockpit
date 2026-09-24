@@ -2481,11 +2481,11 @@ def main():
             cards += (
                 f"<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>{name}</strong>"
                 f"<small>SWING · #{i}</small></div><span class='scalp-signal'>WATCH</span></div>"
-                f"<div class='scalp-price-row'><div class='scalp-price'>{money(r['price'])}</div><div class='scalp-change'>{pct(r['ret5'])}</div></div>"
+                f"<div class='scalp-price-row'><div class='scalp-price'><small>分析基準値</small>{money(r['price'])}</div><div class='scalp-change'>{pct(r['ret5'])}</div></div>"
                 f"<div class='scalp-order'><span>ENTRY<b>{money(p['entry'])}</b></span><span class='stop'>STOP<b>{money(p['stop'])}</b></span><span class='target'>T1<b>{money(p['target2'])}</b></span></div>"
                 f"<div class='scalp-metrics'><span>20日<b>{pct(r['ret20'])}</b></span><span>52週高値差<b>{pct(r['to_high52'])}</b></span>"
                 f"<span>出来高比<b>{r['rvol']:.2f}x</b></span><span>需給<b>{r.get('market_supply_status','未確認')}</b></span></div>"
-                f"<div class='scalp-foot'>{action}</div></article>"
+                f"<div class='scalp-foot'>{action} · LIVE現在値ではありません</div></article>"
             )
         return cards or "<div class='focus-empty'>条件合格銘柄なし。無理に選定しません。</div>"
 
