@@ -160,14 +160,26 @@ try{
     $WorkbookName=Split-Path $WorkbookPath -Leaf
     if($WorkbookName -ieq "Kioxia_MS2_RSS_Live_Signals_FIXED.xlsx"){
         $canonical=Join-Path (Split-Path $WorkbookPath -Parent) "Kioxia_MS2_RSS_Live_Signals.xlsx"
+        $promote=$true
         if(Test-Path -LiteralPath $canonical){
-            $backup=$canonical+".bak."+((Get-Date).ToString("yyyyMMdd_HHmmss"))
-            Copy-Item -LiteralPath $canonical -Destination $backup -Force
+            try{
+                $fixedHash=(Get-FileHash -LiteralPath $WorkbookPath -Algorithm SHA256).Hash
+                $canonicalHash=(Get-FileHash -LiteralPath $canonical -Algorithm SHA256).Hash
+                if($fixedHash -eq $canonicalHash){ $promote=$false }
+            }catch{}
         }
-        Copy-Item -LiteralPath $WorkbookPath -Destination $canonical -Force
+        if($promote){
+            if(Test-Path -LiteralPath $canonical){
+                $backup=$canonical+".bak."+((Get-Date).ToString("yyyyMMdd_HHmmss"))
+                Copy-Item -LiteralPath $canonical -Destination $backup -Force
+            }
+            Copy-Item -LiteralPath $WorkbookPath -Destination $canonical -Force
+            Write-Host "      Updated workbook promoted to canonical name; previous copy backed up." -ForegroundColor Green
+        } else {
+            Write-Host "      FIXED workbook already matches canonical; duplicate backup skipped." -ForegroundColor DarkGray
+        }
         $WorkbookPath=$canonical
         $WorkbookName=Split-Path $WorkbookPath -Leaf
-        Write-Host "      Updated workbook promoted to canonical name; previous copy backed up." -ForegroundColor Green
     }
     if($WorkbookName -ine "Kioxia_MS2_RSS_Live_Signals.xlsx"){ throw "Unexpected workbook selected: $WorkbookName" }
     $open=$false
