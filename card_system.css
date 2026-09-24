@@ -91,9 +91,20 @@
 
 /* Live watch / roster row: a compact horizontal variant for "on-air" symbol
    lists (実況銘柄カード) rather than the full grid card, per P0-B-1. */
-.cc-watch-row{display:grid;grid-template-columns:minmax(120px,1fr) auto auto auto;gap:10px;align-items:center;padding:9px 12px;background:var(--cc-bg-card);border:1px solid var(--cc-border);border-radius:8px}
+/* flex, not grid: rank/badge/metrics are each conditionally rendered by
+   card_system.js, and a fixed grid-template-columns count silently
+   misaligns whenever the number of children changes (the exact bug fixed
+   in the watchlist layout, 2026-09-19 - see AI_SHARED_SHEET_ARCHIVE). */
+.cc-watch-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:9px 12px;background:var(--cc-bg-card);border:1px solid var(--cc-border);border-radius:8px}
 .cc-watch-row + .cc-watch-row{margin-top:6px}
+.cc-watch-row .cc-identity{flex:1 1 140px;min-width:0}
 .cc-watch-row .cc-identity .cc-company{font-size:12.5px}
+.cc-rank{flex:none;background:var(--cc-bg-panel);border:1px solid var(--cc-border);color:var(--cc-text-secondary);font-size:10px;font-weight:700;border-radius:5px;padding:3px 6px}
+.cc-watch-row .cc-price-row{flex:none;gap:6px}
+.cc-watch-row .cc-price{font-size:15px}
+.cc-watch-metrics{display:flex;flex-wrap:wrap;gap:4px 10px;flex:1 1 100%;order:5}
+.cc-watch-metrics span{font-size:9.5px;color:var(--cc-text-secondary);white-space:nowrap}
+.cc-watch-metrics b{color:var(--cc-text-primary);font-weight:600;margin-left:3px;font-variant-numeric:tabular-nums}
 
 /* 実況銘柄カード: on-air log panel (recordOnAir/renderOnAirPanel in
    card_system.js). A persistent, always-visible list so a missed or
@@ -104,7 +115,8 @@
 
 @media(max-width:640px){
   .cc-grid{grid-template-columns:1fr}
-  .cc-watch-row{grid-template-columns:1fr;justify-items:start;row-gap:6px}
+  .cc-watch-row{flex-direction:column;align-items:flex-start;gap:6px}
+  .cc-watch-row .cc-price-row{width:100%;justify-content:space-between}
 }
 @media(min-width:375px) and (max-width:640px){
   .cc-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}

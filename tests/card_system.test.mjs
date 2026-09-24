@@ -120,6 +120,36 @@ test('renderCockpitWatchRow requires a symbol and renders a compact row', () => 
   assert.match(html, /12,345/);
 });
 
+test('renderCockpitWatchRow: showBadge:false omits the direction badge', () => {
+  const html = renderCockpitWatchRow({ symbol: '285A', company: 'キオクシアHD', direction: 'wait', showBadge: false });
+  assert.doesNotMatch(html, /cc-badge/);
+});
+
+test('renderCockpitWatchRow: rank renders as a leading chip, omitted when absent', () => {
+  const withRank = renderCockpitWatchRow({ symbol: '285A', direction: 'wait', rank: 3 });
+  assert.match(withRank, /class="cc-rank">#3</);
+  const withoutRank = renderCockpitWatchRow({ symbol: '285A', direction: 'wait' });
+  assert.doesNotMatch(withoutRank, /cc-rank/);
+});
+
+test('renderCockpitWatchRow: explicit freshness override with a custom label (watch-list "LIVE"/"データ停止" pattern)', () => {
+  const live = renderCockpitWatchRow({ symbol: '6920', direction: 'wait', showBadge: false, freshness: 'fresh', freshnessLabel: 'LIVE' });
+  assert.match(live, /cc-freshness--fresh/);
+  assert.match(live, />LIVE</);
+  const stopped = renderCockpitWatchRow({ symbol: '6920', direction: 'wait', showBadge: false, freshness: 'stale', freshnessLabel: 'データ停止' });
+  assert.match(stopped, /cc-freshness--stale/);
+  assert.match(stopped, /データ停止/);
+});
+
+test('renderCockpitWatchRow: metrics chips render, missing values dropped, never fabricated', () => {
+  const html = renderCockpitWatchRow({
+    symbol: '285A', direction: 'wait',
+    metrics: [{ label: 'UNDER', value: '34%' }, { label: '出来高加速', value: null }],
+  });
+  assert.match(html, /UNDER<b>34%/);
+  assert.doesNotMatch(html, />出来高加速</);
+});
+
 test('on-air log: recordOnAir requires a symbol', () => {
   clearOnAirLog();
   assert.throws(() => recordOnAir({}), /symbol is required/);
