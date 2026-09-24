@@ -3160,8 +3160,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <p id="tv-export-status" class="sub">ボタンを押すとTradingView取込用TXTをダウンロードします。</p>
 <p class="warning">TradingView右側の監視リスト名を押す →「リストをインポート」→ ダウンロードしたTXTを選択。日本株はTSE:銘柄コード形式で出力し、重複は自動削除します。</p></section>
 <section id="lower-wick-reversal" class="card wide"><h2>最優先・下ヒゲ吸収反転（次足確認）</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>段階</th><th>反転形</th><th>期待値</th><th>終値</th><th>10日下落</th><th>出来高急増</th><th>発動価格</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead>
-<tbody id="daily-reversal-signals"><tr><td colspan="12">全市場を走査中...</td></tr></tbody></table>
+<div id="daily-reversal-signals" class="scalp-strip"><div class="focus-empty">全市場を走査中...</div></div>
 <p class="warning">最も入りたい型。①長い下ヒゲで売りを吸収、②終値がレンジ上側へ回復、③次足が反転足の実体上端または高値＋1ティックを上抜く、の3条件で発動。候補足安値割れで撤退し、ナンピンしません。</p></section>
 <section class="card wide"><h2>⑥-A 決算勝負候補 TOP15（7日以内・決算期待値順）</h2><table><tr><th>会社名＋コード</th><th>調整後期待値</th><th>コンセンサス警戒</th><th>テクニカル点</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>採点根拠・注意</th></tr>{earning_rows}</table><p class="warning">高すぎるEPS・売上予想、予想幅の大きさ、下方修正、過去の上振れ不足、決算前の株価上昇を警戒度として減点。好決算でもコンセンサス未達や材料出尽くしになる危険を反映します。</p></section>
 <section class="card wide"><h2>⑥-B BB上方エクスパンション期待 TOP7</h2><table><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>現在値</th><th>BB幅</th><th>5日比</th><th>幅順位</th><th>出来高比</th><th>イン</th><th>損切り</th><th>判定</th></tr>{bb_rows}</table><p class="warning">BB幅順位は過去120日の細さ。数値が低いほどスクイーズ状態。上限突破＋BB幅拡大＋出来高増加を最優先します。</p></section>
@@ -3349,16 +3348,18 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     " · " + x.candle + " · LIVE現在値ではありません</div></article>").join("");
   document.getElementById("long-term-ma-signals").innerHTML =
     longTerm || "<div class='focus-empty'>信用需給必須条件に合格した50週線／200日線反発銘柄なし。</div>";
-  const dailyReversals = (d.daily_capitulation_reversals || []).slice(0, 20).map((x, i) =>
-    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.phase +
-    "</td><td>" + x.setup + "</td><td><b class='up'>" + x.score +
-    "/100</b></td><td>" + yen(x.close) + "</td><td class='down'>−" +
-    x.fall_from_10d.toFixed(1) + "%</td><td>" + x.volume_ratio.toFixed(2) +
-    "倍</td><td><b>" + yen(x.trigger) + "</b></td><td class='down'>" +
-    yen(x.stop) + "</td><td>" + yen(x.target1) + "／" + yen(x.target2) +
-    "</td><td>" + x.reason + "</td></tr>").join("");
+  const dailyReversals = (d.daily_capitulation_reversals || []).slice(0, 5).map((x, i) =>
+    "<article class='scalp-card wait live-overlay-card' data-live-ticker='" + String(x.ticker||x.code||"") + "' data-analysis-price='" + String(x.close??"") + "'><div class='scalp-head'><div class='scalp-symbol'><strong>" + x.name +
+    "</strong><small>反転 · #" + (i + 1) + "</small></div><span class='scalp-signal'>" + x.phase +
+    "</span></div><div class='scalp-price-row'><div class='scalp-price'><small class='price-kind'>分析基準値</small><span class='display-price'>" + yen(x.close) +
+    "</span></div><div class='scalp-change'>" + x.score + "/100</div></div><div class='scalp-order'><span>ENTRY<b>" + yen(x.trigger) +
+    "</b></span><span class='stop'>STOP<b>" + yen(x.stop) + "</b></span><span class='target'>T1<b>" + yen(x.target1) +
+    "</b></span></div><div class='scalp-metrics'><span>反転形<b>" + x.setup + "</b></span><span>10日下落<b>−" +
+    x.fall_from_10d.toFixed(1) + "%</b></span><span>出来高<b>" + x.volume_ratio.toFixed(2) +
+    "x</b></span><span>T2<b>" + yen(x.target2) + "</b></span></div><div class='scalp-foot'>" + x.reason +
+    " · LIVE有効時のみ現在値へ切替</div></article>").join("");
   document.getElementById("daily-reversal-signals").innerHTML =
-    dailyReversals || "<tr><td colspan='12'>本日のセリクラ反転合格銘柄なし。</td></tr>";
+    dailyReversals || "<div class='focus-empty'>本日のセリクラ反転合格銘柄なし。</div>";
   const carryRows = (items, side) => (items || []).slice(0, 5).map((x, i) => {{
     const risk100 = Math.abs(x.trigger - x.stop) * 100;
     const tick = x.trigger < 1000 && Math.abs(x.trigger - Math.round(x.trigger)) >= .05
@@ -3414,7 +3415,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("accumulation-signals").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
   document.getElementById("hammer-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
   document.getElementById("long-term-ma-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
-  document.getElementById("daily-reversal-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
+  document.getElementById("daily-reversal-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
   document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
   document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
 }});
