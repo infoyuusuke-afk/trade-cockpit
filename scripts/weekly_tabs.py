@@ -220,12 +220,15 @@ document.addEventListener("DOMContentLoaded",()=>{
  const num=v=>v==null||!Number.isFinite(Number(v))?null:Number(v);
  const yen=v=>num(v)==null?"—":Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1});
  const pct=v=>num(v)==null?"—":((Number(v)>0?"+":"")+Number(v).toFixed(2)+"%");
+ let latestLiveFeed=null;
  const liveSnapshot=(d,ticker)=>{
    if(!d||d.stale!==false)return null;
    const x=(Array.isArray(d.all_targets)?d.all_targets:[]).find(v=>String(v?.ticker||"")===String(ticker||""));
    if(!x||!Number.isFinite(Number(x.price)))return null;
    return x;
  };
+ window.cockpitLiveSnapshot=ticker=>liveSnapshot(latestLiveFeed,ticker);
+ document.addEventListener("ms2RssUpdate",e=>{latestLiveFeed=e.detail||null;});
  const signalView=(x,stale)=>{
    const raw=String(x?.signal||"監視");
    if(stale||raw.includes("市場時間外"))return {label:"CLOSED",cls:"wait"};
