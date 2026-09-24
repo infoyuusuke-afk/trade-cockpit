@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-24 15:38:26 JST",
+  "updated_at": "2026-09-24 15:40:28 JST",
   "side": "SHORT",
   "status": "試運転・検証中",
   "count": 1,
@@ -9,16 +9,16 @@
       "code": "7564",
       "ticker": "7564.T",
       "side": "SHORT",
-      "score": 61,
+      "score": 68,
       "trigger": 5165.0,
       "stop": 5465.0,
       "target1": 4715.0,
       "target2": 4415.0,
       "rvol": 1.28,
-      "atr_pct": 3.27,
+      "atr_pct": 3.26,
       "supply_phase": null,
       "margin_caution_flagged": false,
-      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-11.5%／出来高比1.28倍／信用需給不明",
+      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-11.3%／出来高比1.28倍／信用需給不明",
       "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
       "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
     }
