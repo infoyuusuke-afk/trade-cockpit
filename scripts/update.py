@@ -2347,8 +2347,8 @@ def main():
         for i, (name, r) in enumerate(dividend_watch, 1)
     ) or "<tr><td colspan='9'>45日以内の推定権利日＋需給改善に合格した監視銘柄なし。</td></tr>"
     dividend_cards = "".join(
-        f"<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>{name}</strong><small>VALUE · 配当 #{i}</small></div><span class='scalp-signal'>WATCH</span></div>"
-        f"<div class='scalp-price-row'><div class='scalp-price'><small>分析基準値</small>{money(r['price'])}</div><div class='scalp-change'>あと{r['dividend_days']}日</div></div>"
+        f"<article class='scalp-card wait live-overlay-card' data-live-ticker='{r.get('ticker') or r.get('code') or ''}' data-analysis-price='{r['price']}'><div class='scalp-head'><div class='scalp-symbol'><strong>{name}</strong><small>VALUE · 配当 #{i}</small></div><span class='scalp-signal'>WATCH</span></div>"
+        f"<div class='scalp-price-row'><div class='scalp-price'><small class='price-kind'>分析基準値</small><span class='display-price'>{money(r['price'])}</span></div><div class='scalp-change'>あと{r['dividend_days']}日</div></div>"
         f"<div class='scalp-order'><span>発動<b>{money(max(r['high'], r['price']) + price_tick(r['price']))}</b></span><span class='stop'>撤退<b>{money(r['low'] - r['atr14'] * .2)}</b></span><span>配当<b>{money(r['last_dividend'])}</b></span></div>"
         f"<div class='scalp-metrics'><span>需給<b>{r['market_supply_score']}/100</b></span><span>権利日<b>{r['estimated_ex_date']}</b></span></div>"
         f"<div class='scalp-foot'>{'権利前上昇を監視' if r['price'] >= r['ma20'] else '戻り確認待ち'} · 権利日は過去実績からの推定 · LIVE現在値ではありません</div></article>"
@@ -3326,9 +3326,9 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("hammer-signals").innerHTML =
     hammers || "<tr><td colspan='13'>厳格条件に合格した月足・週足反転銘柄なし。</td></tr>";
   const longTerm = (d.long_term_ma_rebounds || []).slice(0, 5).map((x, i) =>
-    "<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>" + x.name +
+    "<article class='scalp-card wait live-overlay-card' data-live-ticker='" + String(x.ticker||x.code||"") + "' data-analysis-price='" + String(x.close??"") + "'><div class='scalp-head'><div class='scalp-symbol'><strong>" + x.name +
     "</strong><small>VALUE · MA反発 #" + (i + 1) + "</small></div><span class='scalp-signal'>" + x.status +
-    "</span></div><div class='scalp-price-row'><div class='scalp-price'><small>分析基準値</small>" + yen(x.close) +
+    "</span></div><div class='scalp-price-row'><div class='scalp-price'><small class='price-kind'>分析基準値</small><span class='display-price'>" + yen(x.close) + "</span>" +
     "</div><div class='scalp-change'>" + x.score + "/100</div></div><div class='scalp-order'><span>ENTRY<b>" +
     yen(x.trigger) + "</b></span><span class='stop'>STOP<b>" + yen(x.stop) +
     "</b></span><span class='target'>T1<b>" + yen(x.target1) +
