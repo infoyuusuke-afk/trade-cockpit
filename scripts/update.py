@@ -2348,10 +2348,10 @@ def main():
     ) or "<tr><td colspan='9'>45日以内の推定権利日＋需給改善に合格した監視銘柄なし。</td></tr>"
     dividend_cards = "".join(
         f"<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>{name}</strong><small>VALUE · 配当 #{i}</small></div><span class='scalp-signal'>WATCH</span></div>"
-        f"<div class='scalp-price-row'><div class='scalp-price'>{money(r['price'])}</div><div class='scalp-change'>あと{r['dividend_days']}日</div></div>"
+        f"<div class='scalp-price-row'><div class='scalp-price'><small>分析基準値</small>{money(r['price'])}</div><div class='scalp-change'>あと{r['dividend_days']}日</div></div>"
         f"<div class='scalp-order'><span>発動<b>{money(max(r['high'], r['price']) + price_tick(r['price']))}</b></span><span class='stop'>撤退<b>{money(r['low'] - r['atr14'] * .2)}</b></span><span>配当<b>{money(r['last_dividend'])}</b></span></div>"
         f"<div class='scalp-metrics'><span>需給<b>{r['market_supply_score']}/100</b></span><span>権利日<b>{r['estimated_ex_date']}</b></span></div>"
-        f"<div class='scalp-foot'>{'権利前上昇を監視' if r['price'] >= r['ma20'] else '戻り確認待ち'} · 権利日は過去実績からの推定</div></article>"
+        f"<div class='scalp-foot'>{'権利前上昇を監視' if r['price'] >= r['ma20'] else '戻り確認待ち'} · 権利日は過去実績からの推定 · LIVE現在値ではありません</div></article>"
         for i, (name, r) in enumerate(dividend_watch[:5], 1)
     ) or "<div class='focus-empty'>45日以内の推定権利日＋需給改善に合格した監視銘柄なし。</div>"
     buyback_cards = "".join(
@@ -3309,7 +3309,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   const longTerm = (d.long_term_ma_rebounds || []).slice(0, 5).map((x, i) =>
     "<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>" + x.name +
     "</strong><small>VALUE · MA反発 #" + (i + 1) + "</small></div><span class='scalp-signal'>" + x.status +
-    "</span></div><div class='scalp-price-row'><div class='scalp-price'>" + yen(x.close) +
+    "</span></div><div class='scalp-price-row'><div class='scalp-price'><small>分析基準値</small>" + yen(x.close) +
     "</div><div class='scalp-change'>" + x.score + "/100</div></div><div class='scalp-order'><span>ENTRY<b>" +
     yen(x.trigger) + "</b></span><span class='stop'>STOP<b>" + yen(x.stop) +
     "</b></span><span class='target'>T1<b>" + yen(x.target1) +
@@ -3319,7 +3319,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     "%</b></span><span>半年<b>" + (x.trend_return >= 0 ? "+" : "") + x.trend_return.toFixed(2) +
     "%</b></span><span>出来高<b>" + x.volume_ratio.toFixed(2) +
     "x</b></span></div><div class='scalp-foot'>需給 " + x.supply_score + "/55 " + x.supply_phase +
-    " · " + x.candle + "</div></article>").join("");
+    " · " + x.candle + " · LIVE現在値ではありません</div></article>").join("");
   document.getElementById("long-term-ma-signals").innerHTML =
     longTerm || "<div class='focus-empty'>信用需給必須条件に合格した50週線／200日線反発銘柄なし。</div>";
   const dailyReversals = (d.daily_capitulation_reversals || []).slice(0, 20).map((x, i) =>
