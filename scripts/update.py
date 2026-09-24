@@ -2285,6 +2285,14 @@ def main():
         f"<td>{count}銘柄の実測平均</td></tr>"
         for i, (name, score, count, members) in enumerate(themes, 1)
     )
+    idx_cards = "".join(
+        f"<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>{n}</strong><small>MARKET</small></div><span class='scalp-signal'>{'UP' if r.get('change_pct',0)>.3 else 'DOWN' if r.get('change_pct',0)<-.3 else 'FLAT'}</span></div><div class='scalp-price-row'><div class='scalp-price'><small>取得値</small>{money(r.get('price'))}</div><div class='scalp-change'>{pct(r.get('change_pct'))}</div></div></article>"
+        for n, r in indices.items()
+    ) or "<div class='focus-empty'>地合い指標データなし</div>"
+    theme_cards = "".join(
+        f"<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>{name}</strong><small>資金流入テーマ #{i}</small></div><span class='scalp-signal'>WATCH</span></div><div class='scalp-price-row'><div class='scalp-price'><small>強度</small>{score:+.1f}</div><div class='scalp-change'>{count}銘柄</div></div><div class='scalp-metrics'>{''.join(f'<span>{m[0]}<b>{m[1]:+.1f} / {m[2]:+.2f}%</b></span>' for m in members)}</div><div class='scalp-foot'>実測平均によるテーマ強度</div></article>"
+        for i, (name, score, count, members) in enumerate(themes[:5], 1)
+    ) or "<div class='focus-empty'>資金流入テーマ候補なし</div>"
     policy_priority_rows = "".join(
         f"<tr><td><b>#{x['priority']}</b></td><td>{x['title']}</td><td>{x['formal_count']}/5</td><td>{x['best_score'] or '—'}</td><td>{'正式候補あり' if x['formal_count'] else '信用需給待ち・売買不可'}</td><td><a href='{x['source']}' target='_blank' rel='noopener'>政策根拠</a></td></tr>"
         for x in policy_theme_tabs
@@ -3089,8 +3097,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 <tr><td>評価・イベント</td><td>日経225 PER／米国株PER／ドル建て225／225寄与度／経済ニュース／スケジュール／5分足カレンダー</td><td>割高警戒、指数寄与の偏り、決算・指標回避</td><td>加点せず、過熱警戒と売買禁止条件に使用</td></tr>
 </tbody></table>
 <p class="warning"><b>重要：</b>空売り比率、信用残、先物・オプション手口など公表頻度が違う値を同日データとして混ぜません。未取得値を推定で埋めず、正式候補のデータ充足率に反映します。</p></section>
-<section class="card"><h2>① 地合いサマリー</h2><table><tr><th>指標</th><th>現在値</th><th>前日比</th><th>方向</th></tr>{idx_rows}</table></section>
-<section class="card"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><table><tr><th>順位</th><th>テーマ</th><th>強度</th><th>テーマ内有力銘柄 TOP3</th><th>根拠</th></tr>{theme_rows}</table></section>
+<section class="card wide"><h2>① 地合いサマリー</h2><div class="scalp-strip">{idx_cards}</div></section>
+<section class="card wide"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><div class="scalp-strip">{theme_cards}</div></section>
 <section id="policy-priority-overview" class="card wide"><h2>国策テーマ・実戦優先順位</h2><table><thead><tr><th>実戦優先</th><th>テーマ</th><th>正式候補数</th><th>最高総合点</th><th>現在判定</th><th>政策根拠</th></tr></thead><tbody>{policy_priority_rows}</tbody></table><p class="warning">順位は国の政策分野に勝手な序列を付けたものではありません。正式候補数→最高総合点で毎回入れ替えます。信用需給未取得時は全テーマを売買不可とします。</p></section>
 {policy_theme_sections}
 {smr_html}
