@@ -5,6 +5,7 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 LAUNCHER = (ROOT / "downloads" / "START_AI_COCKPIT_V6.ps1").read_text(encoding="utf-8-sig")
 INSTALLER = (ROOT / "downloads" / "INSTALL_AI_COCKPIT_V6.ps1").read_text(encoding="utf-8-sig")
+DIAG = (ROOT / "downloads" / "DIAG_AI_COCKPIT_V6_EXCEL.ps1").read_text(encoding="utf-8-sig")
 WATCHER = (ROOT / "ms2_live" / "Kioxia_RSS_Live_Watcher.ps1").read_text(encoding="utf-8-sig")
 UPDATE = (ROOT / "scripts" / "update.py").read_text(encoding="utf-8")
 
@@ -54,6 +55,24 @@ class ExcelStartupContractTests(unittest.TestCase):
         ):
             self.assertIn(name, INSTALLER)
         self.assertIn("AI_Cockpit_Local_Gateway.ps1", INSTALLER)
+
+    def test_excel_diagnostic_is_installed_and_safe(self):
+        self.assertIn("DIAG_AI_COCKPIT_V6_EXCEL.ps1", INSTALLER)
+        self.assertIn("AI Cockpit DIAG V6.lnk", INSTALLER)
+        self.assertNotIn("New-Object -ComObject Excel.Application", DIAG)
+        self.assertNotIn("RssOrder", DIAG)
+        self.assertIn("CockpitDiagRot", DIAG)
+        self.assertIn("FindByIdentity", DIAG)
+        self.assertIn("CountByFileName", DIAG)
+
+    def test_excel_diagnostic_checks_all_local_live_services(self):
+        for port in ("28580", "28581", "28582"):
+            self.assertIn("Test-Port "+port, DIAG)
+        self.assertIn("CollectorFreshness", DIAG)
+        self.assertIn("GatewayHealth", DIAG)
+        self.assertIn("WatcherFreshness", DIAG)
+        self.assertIn("Rss285AProbe", DIAG)
+        self.assertIn("excel_startup_diag_", DIAG)
 
 
 if __name__ == "__main__":
