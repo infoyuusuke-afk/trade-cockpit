@@ -2814,21 +2814,21 @@ document.addEventListener("DOMContentLoaded",()=>{
  const changeBadge=v=>v==null||!Number.isFinite(Number(v))?"":`<span class="fp-change ${Number(v)>=0?"up":"down"}">${Number(v)>=0?"+":""}${Number(v).toFixed(2)}%</span>`;
  const cardTop=(rank,tag,name,score)=>`<div class="top"><span class="rank">#${rank}</span><div class="name-block"><small class="tag-chip">${tag||""}</small><h3>${name}</h3></div><b class="score">${score==null||score===""?"—":esc(score)}</b></div>`;
  const fetchJson=async(url,timeout=1800)=>{const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),timeout);try{const r=await fetch(url,{cache:"no-store",signal:ctl.signal});if(!r.ok)throw new Error("not found");return await r.json()}finally{clearTimeout(timer)}};
- const fetchMs2=async()=>{try{const d=await fetchJson("http://127.0.0.1:28580/live_ms2.json?t="+Date.now());d.connection_source="自宅PC・MS2 RSS LIVE";return d}catch(e){const d=await fetchJson("live_ms2.json?t="+Date.now(),3000);d.connection_source="公開スナップショット";return d}};
+ const fetchMs2=async()=>{try{const d=await fetchJson("http://127.0.0.1:28580/live_ms2.json?t="+Date.now());d.connection_source="自宅PC・MS2 RSS LIVE";d.collector_connected=true;return d}catch(e){const d=await fetchJson("live_ms2.json?t="+Date.now(),3000);d.connection_source="公開スナップショット";d.collector_connected=false;return d}};
  async function loadMs2Live(){
   const health=document.getElementById("ms2-live-health"),meta=document.getElementById("ms2-live-meta"),cards=document.getElementById("ms2-live-cards"),holdCards=document.getElementById("ms2-hold-cards"),holdStatus=document.getElementById("ms2-hold-status"),holdStats=document.getElementById("ms2-hold-stats"),holdHistory=document.getElementById("ms2-hold-history"),ptsCards=document.getElementById("ms2-pts-cards"),irCards=document.getElementById("ms2-ir-pts-cards"),irMeta=document.getElementById("ms2-ir-pts-meta");
   if(!health||!cards)return;
   try{
    const d=await fetchMs2();
-   const parsed=new Date(String(d.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,stale=d.stale||age>60;
-   health.className="ms2-health "+(stale?"stale":"live"); health.textContent=stale?"データ停止・売買禁止":"LIVE 接続中";
+   const parsed=new Date(String(d.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,freshnessStale=d.stale||age>60,collectorDown=d.collector_connected===false,stale=freshnessStale||collectorDown;
+   health.className="ms2-health "+(stale?"stale":"live"); health.textContent=collectorDown?"COLLECTOR STOPPED・売買禁止":freshnessStale?"STALE DATA・売買禁止":"LIVE 接続中";
    const common=document.getElementById("ms2-common-status"),caps=d.capabilities||{},gate=d.account_gate||{};
    if(common){const coverage=caps.market?.status||"未確認",depth=caps.orderflow?.depth10||"未確認",blocks=(gate.blocks||[]).join("／")||"なし";common.querySelector(".score").textContent=coverage;common.querySelector(".ms2-metrics").innerHTML=`<span>対象<b>${esc(d.valid||0)}/${esc(d.universe||0)}銘柄</b></span><span>共通判定<b>5分類・取得確認値のみ</b></span><span>自動発注<b>${caps.auto_order?.enabled?"ON":"OFF（既定）"}</b></span><span>10本板<b>${esc(depth)}</b></span><span>口座ゲート<b>${esc(gate.status||"未確認")}</b></span><span>停止理由<b>${esc(blocks)}</b></span>`;}
    meta.textContent=`${d.updated_at||"更新時刻不明"} / 有効 ${d.valid||0}/${d.universe||100}銘柄 / 寄り前 ${d.preopen_recording_status||"確認待ち"} / ${d.market_state||"地合い確認待ち"} VWAP上${d.breadth_pct??"—"}% / ${d.connection_source||d.source||"MS2 RSS"}`;
    const canonicalLive=x=>{if(!x||!x.ticker)return null;const p=(x.live_quote_valid===true)?Number(x.live_price):(x.live_quote_valid==null?Number(x.price):NaN);return Number.isFinite(p)&&p>0?{...x,price:p,live_price:p}:null};
    const verifiedTargets=stale?[]:(Array.isArray(d.all_targets)?d.all_targets:[]).map(canonicalLive).filter(Boolean);
    const obs=d.live_observed_at||d.updated_at||"";const marketSession=String(d.session_state||d.market_session_state||d.market_state||"UNKNOWN");const inactive=["CLOSED_KNOWN","NOT_OPEN_YET","BREAK","EXPECTED_FEED_DELAY"].includes(marketSession);const liveState=stale?"LIVE DATA INVALID":inactive?marketSession:"OPEN / LIVE";document.documentElement.dataset.liveState=liveState;
-   document.dispatchEvent(new CustomEvent("cockpitLiveState",{detail:{valid:!stale,stale,session_state:marketSession,inactive,observed_at:obs,source:d.connection_source||d.source||"MS2 RSS",age_seconds:Math.max(0,Math.round(age))}}));
+   document.dispatchEvent(new CustomEvent("cockpitLiveState",{detail:{valid:!stale,stale,collector_down:collectorDown,freshness_stale:freshnessStale,session_state:marketSession,inactive,observed_at:obs,source:d.connection_source||d.source||"MS2 RSS",age_seconds:Math.max(0,Math.round(age))}}));
 
    const topTickers=(Array.isArray(d.top5)?d.top5:[]).map(x=>String(x.ticker||""));
    const liveByTicker=new Map(verifiedTargets.map(x=>[String(x.ticker),x]));
@@ -2853,8 +2853,8 @@ document.addEventListener("DOMContentLoaded",()=>{
    const ir=Array.isArray(d.ir_pts_top5)?d.ir_pts_top5:[];
    if(irMeta)irMeta.textContent=d.tdnet_status||"TDnet確認待ち";
    if(irCards)irCards.innerHTML=ir.length?ir.slice(0,5).map((x,i)=>{const official=String(x.official_url||"").startsWith("https://www.release.tdnet.info/")?`<a href="${esc(x.official_url)}" target="_blank" rel="noopener">TDnet原文</a>`:"TDnetリンク確認待ち";const pp=Number(x.pts_price),ok=!stale&&Number.isFinite(pp)&&pp>0,stamp=x.pts_observed_at||x.observed_at||d.pts_observed_at||"時刻未確認";return `<article class="ms2-live-card ${ok?"buy":"block"}">${cardTop(i+1,ok?esc(x.material_label):"無効",`${esc(x.name)}（${esc(x.code)}）`,x.total_score)}<div class="live-price">${ok?yen(pp):"—"}${ok?changeBadge(x.gap_pct):""}</div><div class="live-proof"><b>${ok?"IR反応・夜間PTS価格":"PTS DATA INVALID"}</b><span>観測 ${esc(stamp)}</span><small>MS2現物現在値ではありません</small></div><div class="ms2-metrics"><span>開示<b>${esc(x.disclosure_time)}</b></span><span>売買代金<b>${(Number(x.turnover||0)/1000000).toFixed(1)}百万円</b></span><span>判定<b>${esc(x.judgement)}</b></span></div><small>${esc(x.title)}／${official}</small></article>`}).join(""):`<div class="focus-empty"><span>公式IR・PTS反応・流動性の三条件を満たす候補なし</span></div>`;
-   document.dispatchEvent(new CustomEvent("ms2RssUpdate",{detail:{...d,stale}}));
-  }catch(e){health.className="ms2-health waiting";health.textContent="ローカル収集待ち";meta.textContent="Windowsの100銘柄コレクターを起動してください。";document.dispatchEvent(new CustomEvent("ms2RssUpdate",{detail:{stale:true}}));}
+   document.dispatchEvent(new CustomEvent("ms2RssUpdate",{detail:{...d,stale,collector_down:collectorDown,freshness_stale:freshnessStale}}));
+  }catch(e){health.className="ms2-health stale";health.textContent="COLLECTOR STOPPED・売買禁止";meta.textContent="Windowsの100銘柄コレクターへ接続できません。公開スナップショットへの売買代替は禁止です。";document.dispatchEvent(new CustomEvent("ms2RssUpdate",{detail:{stale:true,collector_down:true,freshness_stale:true}}));}
  }
  document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},live=d.stale===false,bar=document.getElementById("unified-mode");if(!bar)return;bar.className="unified-mode "+(live?"live":"stale");document.getElementById("unified-mode-title").textContent=live?"MS2 RSS LIVE接続中":"事前分析モード";document.getElementById("unified-mode-note").textContent=live?"歩み値・板・VWAP・OR15を同じ画面へ反映":"LIVE値は未接続。公開分析は閲覧できますが売買サインは無効";document.getElementById("unified-mode-time").textContent=live?(d.updated_at||"更新中"):"LIVE売買禁止";});
  document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},tbody=document.getElementById("watchlist-100-rows");if(!tbody)return;const session=String(d.session_state||d.market_session_state||d.market_state||"UNKNOWN"),inactive=["CLOSED_KNOWN","NOT_OPEN_YET","BREAK","EXPECTED_FEED_DELAY"].includes(session),all=d.stale===false?(Array.isArray(d.all_targets)?d.all_targets:[]).map(x=>{if(!x||!x.ticker)return null;const p=(x.live_quote_valid===true)?Number(x.live_price):(x.live_quote_valid==null?Number(x.price):NaN);return Number.isFinite(p)&&p>0?{...x,price:p}:null}).filter(Boolean):[],topTickers=new Set((Array.isArray(d.top5)?d.top5:[]).map(x=>x.ticker)),rest=all.filter(x=>!topTickers.has(x.ticker)).slice().sort((a,b)=>(Number(b.volume_burst)||0)-(Number(a.volume_burst)||0));tbody.innerHTML=rest.length?rest.slice(0,50).map((x,i)=>{const bidQty=x.bid_qty==null?"—":Number(x.bid_qty).toLocaleString("ja-JP"),askQty=x.ask_qty==null?"—":Number(x.ask_qty).toLocaleString("ja-JP"),mBuy=x.market_buy==null?"—":Number(x.market_buy).toLocaleString("ja-JP"),mSell=x.market_sell==null?"—":Number(x.market_sell).toLocaleString("ja-JP"),under=x.under_ratio==null?"—":Number(x.under_ratio).toFixed(1)+"%",obs=x.live_observed_at||d.live_observed_at||d.updated_at||"時刻未確認",kind=inactive?session:"MS2 LIVE";return `<tr><td>${i+1}</td><td><b>${esc(x.name)}</b><small style="display:block">${esc(kind)} · 観測 ${esc(obs)}</small></td><td>${yen(x.price)}${changeBadge(x.change_pct)}</td><td>${x.volume_burst==null?"—":Number(x.volume_burst).toFixed(2)+"倍"}</td><td>${bidQty} / ${askQty}</td><td>${mBuy} / ${mSell}</td><td>${under}</td></tr>`;}).join(""):(inactive?`<tr><td colspan='7'>${esc(session)}／市場セッション外。LIVE欠測扱いにはしません。</td></tr>`:"<tr><td colspan='7'>LIVE DATA INVALID／60秒以内のMS2現在値を確認できません</td></tr>");});
@@ -2865,8 +2865,29 @@ document.addEventListener("DOMContentLoaded",()=>{
  // キオクシアタブの一本化（2026-09-15）: Excel(Kioxia_RSS_Live_Watcher.ps1)がローカルの
  // 127.0.0.1:28581で配信するJSONを直接読み、Excelを開かなくても同じ内容を確認できるようにする。
  // 公開スナップショットは無い（自宅PC上でブラウザを開いた時だけ意味を持つデータのため）。
- let latestKioxiaMs2=null;
- document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},k=d.kioxia;if(d.stale===false&&k){const p=k.live_quote_valid===true?Number(k.live_price):(k.live_quote_valid==null?Number(k.price):NaN);latestKioxiaMs2=Number.isFinite(p)&&p>0?{price:p,observed_at:k.live_observed_at||d.live_observed_at||d.updated_at}:null;}else latestKioxiaMs2=null;});
+ let latestKioxiaMs2=null,kioFailClosedReason=null;
+ const kioLiveCards=()=>document.querySelectorAll('[data-live-ticker="285A.T"],[data-live-ticker="285A"]');
+ const clearKioFailClosed=reason=>{
+  if(reason&&kioFailClosedReason!==reason)return;
+  kioFailClosedReason=null;
+  kioLiveCards().forEach(card=>{card.classList.remove("live-invalid");card.querySelector(".live-state-proof")?.remove();});
+  sessionStorage.removeItem("kioFailClosedVoice");
+ };
+ const setKioFailClosed=(reason,label,detail,voiceKey,voiceText)=>{
+  const priority={DATA_CONFLICT:1,STALE_DATA:2,COLLECTOR_STOPPED:3},current=priority[kioFailClosedReason]||0,next=priority[reason]||0;
+  if(current>next)return;
+  kioFailClosedReason=reason;
+  const health=document.getElementById("ms2-live-health");if(health){health.className="ms2-health stale";health.textContent=label;}
+  kioLiveCards().forEach(card=>{card.classList.add("live-invalid");let p=card.querySelector(".live-state-proof");if(!p){p=document.createElement("div");p.className="live-state-proof";card.appendChild(p);}p.innerHTML=`<b>${esc(label)}</b><span>${esc(detail)}・売買利用禁止</span>`;});
+  if(sessionStorage.getItem("kioFailClosedVoice")!==voiceKey){sessionStorage.setItem("kioFailClosedVoice",voiceKey);window.cockpitSpeak?.(voiceText);}
+ };
+ document.addEventListener("ms2RssUpdate",e=>{
+  const d=e.detail||{},k=d.kioxia,collectorDown=d.collector_down===true,freshnessStale=d.freshness_stale===true;
+  if(collectorDown){latestKioxiaMs2=null;setKioFailClosed("COLLECTOR_STOPPED","KIOXIA COLLECTOR STOPPED","Collector(:28580)へ接続できません","COLLECTOR_STOPPED","キオクシア、コレクター停止。リアルタイム現在値を確認できません。売買利用禁止です。");return;}
+  if(freshnessStale||d.stale!==false){latestKioxiaMs2=null;setKioFailClosed("STALE_DATA","KIOXIA STALE DATA","MS2現在値が60秒以上更新されていません","STALE_DATA","キオクシア、データ鮮度切れ。現在値が60秒以上更新されていません。売買利用禁止です。");return;}
+  if(kioFailClosedReason==="COLLECTOR_STOPPED"||kioFailClosedReason==="STALE_DATA")clearKioFailClosed(kioFailClosedReason);
+  if(k){const p=k.live_quote_valid===true?Number(k.live_price):(k.live_quote_valid==null?Number(k.price):NaN);latestKioxiaMs2=Number.isFinite(p)&&p>0?{price:p,observed_at:k.live_observed_at||d.live_observed_at||d.updated_at}:null;}else latestKioxiaMs2=null;
+ });
  async function loadWatcherKioxia(){
   const stateEl=document.getElementById("kio-watcher-state");
   if(!stateEl)return;
@@ -2879,9 +2900,8 @@ document.addEventListener("DOMContentLoaded",()=>{
    const wp=Number(w.live_price??w.price),mp=Number(latestKioxiaMs2?.price),both=Number.isFinite(wp)&&wp>0&&Number.isFinite(mp)&&mp>0,diff=both?Math.abs(wp-mp):null,tol=both?Math.max(1,mp*0.0005):null,mismatch=both&&diff>tol;
    stateEl.textContent=mismatch?"DATA CONFLICT・売買利用禁止":`${esc(w.signal||"判定待ち")}／${esc(w.state||"")}`;
    document.getElementById("kio-watcher-source").textContent=mismatch?`Collector優先：MS2 ${yen1(mp)} / Watcher ${yen1(wp)} / 差 ${yen1(diff)}／自動代替禁止`:`${w.updated_at}／${w.source||"Excel Watcher"}／Collector(:28580)を価格の正本として優先`;
-   const health=document.getElementById("ms2-live-health");
-   if(mismatch){if(health){health.className="ms2-health stale";health.textContent="KIOXIA DATA CONFLICT";}document.querySelectorAll('[data-live-ticker="285A.T"],[data-live-ticker="285A"]').forEach(card=>{card.classList.add("live-invalid");let p=card.querySelector(".live-state-proof");if(!p){p=document.createElement("div");p.className="live-state-proof";card.appendChild(p);}p.innerHTML="<b>DATA CONFLICT</b><span>CollectorとExcel Watcherの価格不一致・売買利用禁止</span>";});const key=`${mp}|${wp}`;if(sessionStorage.getItem("kioDataConflictVoice")!==key){sessionStorage.setItem("kioDataConflictVoice",key);window.cockpitSpeak?.("キオクシア、データ競合。コレクターとエクセルウォッチャーの価格が一致しません。売買利用禁止です。");}}
-   else sessionStorage.removeItem("kioDataConflictVoice");
+   if(mismatch)setKioFailClosed("DATA_CONFLICT","KIOXIA DATA CONFLICT","CollectorとExcel Watcherの価格不一致",`DATA_CONFLICT|${mp}|${wp}`,"キオクシア、データ競合。コレクターとエクセルウォッチャーの価格が一致しません。売買利用禁止です。");
+   else if(kioFailClosedReason==="DATA_CONFLICT")clearKioFailClosed("DATA_CONFLICT");
    put("kio-watcher-conditions",`価格${esc(w.conditions?.price)}・出来高${esc(w.conditions?.volume)}・EMA${esc(w.conditions?.ema)}・${esc(w.conditions?.or15)}`);
    put("kio-watcher-entry",w.entry_price!=null?`発動 ${yen1(w.entry_price)} ／ 損切 ${yen1(w.stop_price)}`:"条件未成立");
    put("kio-watcher-target",w.target1!=null?`1R ${yen1(w.target1)}／2R ${yen1(w.target2)}`:"1R／2R —");
