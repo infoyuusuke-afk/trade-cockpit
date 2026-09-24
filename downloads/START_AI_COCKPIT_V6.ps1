@@ -404,7 +404,7 @@ try{
     Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Heartbeat+'"') | Out-Null
 
     Show-Step 65 "Starting Collector..."
-    Start-Process powershell.exe -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -NoExit -File "'+$Collector+'" -WorkbookPath "'+$WorkbookPath+'"') | Out-Null
+    Start-Process powershell.exe -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Collector+'" -WorkbookPath "'+$WorkbookPath+'"') | Out-Null
 
     $started=Get-Date
     $next=10
