@@ -367,6 +367,12 @@ const edgePriority=x=>{
    localStorage.setItem("cockpitTabV5",b.dataset.tab);
    if(b.dataset.tab==="kioxia-calendar"&&window.kioChart)requestAnimationFrame(()=>requestAnimationFrame(()=>window.kioChart.timeScale().fitContent()));
  });
+ // UI contract: every strategy tab is card-only. KIOXIA is the sole exception
+ // because its dedicated forecast chart is an explicit decision-support surface.
+ document.querySelectorAll(".tab-pane").forEach(p=>{
+   if(p.dataset.pane==="kioxia-calendar")return;
+   p.querySelectorAll("canvas,svg,.chart,.chart-container,.tv-chart,.tradingview-widget-container").forEach(el=>el.remove());
+ });
  const requested=new URLSearchParams(location.search).get("live")==="1"?"scalp":null;
  const saved=requested||localStorage.getItem("cockpitTabV5"); if(saved)document.querySelector('.cockpit-tab[data-tab="'+saved+'"]')?.click();
 
