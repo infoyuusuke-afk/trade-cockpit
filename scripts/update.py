@@ -2802,7 +2802,11 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div id="ms2-hold-history" class="ms2-live-grid"></div>
 </section>
 """
-    ms2_live_script = r"""
+    <style>
+.live-overlay-card .live-state-proof{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;font-size:11px;opacity:.82}
+.live-overlay-card .live-state-proof b{font-weight:700}.live-overlay-card.live-invalid .display-price{opacity:.55}
+</style>
+ms2_live_script = r"""
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -2823,6 +2827,9 @@ document.addEventListener("DOMContentLoaded",()=>{
    meta.textContent=`${d.updated_at||"更新時刻不明"} / 有効 ${d.valid||0}/${d.universe||100}銘柄 / 寄り前 ${d.preopen_recording_status||"確認待ち"} / ${d.market_state||"地合い確認待ち"} VWAP上${d.breadth_pct??"—"}% / ${d.connection_source||d.source||"MS2 RSS"}`;
    const canonicalLive=x=>{if(!x||!x.ticker)return null;const p=(x.live_quote_valid===true)?Number(x.live_price):(x.live_quote_valid==null?Number(x.price):NaN);return Number.isFinite(p)&&p>0?{...x,price:p,live_price:p}:null};
    const verifiedTargets=stale?[]:(Array.isArray(d.all_targets)?d.all_targets:[]).map(canonicalLive).filter(Boolean);
+   const obs=d.live_observed_at||d.updated_at||"";const marketSession=String(d.session_state||d.market_session_state||d.market_state||"UNKNOWN");const inactive=["CLOSED_KNOWN","NOT_OPEN_YET","BREAK","EXPECTED_FEED_DELAY"].includes(marketSession);const liveState=stale?"LIVE DATA INVALID":inactive?marketSession:"OPEN / LIVE";document.documentElement.dataset.liveState=liveState;
+   document.dispatchEvent(new CustomEvent("cockpitLiveState",{detail:{valid:!stale,stale,session_state:marketSession,inactive,observed_at:obs,source:d.connection_source||d.source||"MS2 RSS",age_seconds:Math.max(0,Math.round(age))}}));
+
    const topTickers=(Array.isArray(d.top5)?d.top5:[]).map(x=>String(x.ticker||""));
    const liveByTicker=new Map(verifiedTargets.map(x=>[String(x.ticker),x]));
    const xs=topTickers.map(t=>liveByTicker.get(t)).filter(Boolean);
@@ -3696,7 +3703,19 @@ document.addEventListener("liveFocusUpdate",e=>{{
     }}
   }}
 }});
-</script>{trade_drawer}{ms2_live_script}<script src="earnings-calendar.js" defer></script></body></html>"""
+</script>{trade_drawer}{ms2_live_script}<script src="earnings-calendar.js" defer></script>
+<script>
+document.addEventListener("cockpitLiveState",e=>{
+ const s=e.detail||{};document.querySelectorAll(".live-overlay-card").forEach(card=>{
+  let p=card.querySelector(".live-state-proof");if(!p){p=document.createElement("div");p.className="live-state-proof";card.appendChild(p);}
+  card.classList.toggle("live-invalid",s.valid!==true);
+  p.innerHTML=s.valid===true
+   ? "<b>"+String(s.session_state||"LIVE")+"</b><span>観測 "+String(s.observed_at||"時刻不明")+"</span><small>"+String(s.source||"MS2 RSS")+"</small>"
+   : "<b>LIVE DATA INVALID</b><span>"+(s.stale?"鮮度超過":"LIVE未確認")+"</span>";
+ });
+});
+</script>
+</body></html>"""
     (ROOT / "index.html").write_text(html, encoding="utf-8")
 
 
