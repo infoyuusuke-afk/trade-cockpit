@@ -335,9 +335,11 @@ document.addEventListener("DOMContentLoaded",()=>{
    }
    // Rank all actionable names first. History keeps every new event; voice is reserved
    // for the strongest candidate in this update to avoid a 100-name alert storm.
+   const tdnetUnverified=d.tdnet_live!==true;
    const candidates=all.map(x=>{
      const live=liveQuote(x,stale),ir=tdnetView(tdnetFor(d,x)),sv=signalView(x,!live.valid||ir.pending);
-     if(ir.pending){sv.label="NEWS PENDING";sv.cls="block";}
+     if(tdnetUnverified&&live.valid&&actionable(sv)){sv.label="NEWS CHECK";sv.cls="block";}
+     else if(ir.pending){sv.label="NEWS PENDING";sv.cls="block";}
      return {x,live,sv,p:edgePriority(x)};
    }).filter(v=>v.live.valid&&actionable(v.sv)).sort((a,b)=>b.p-a.p);
    candidates.forEach((v,i)=>announceEdge(v.x,v.sv,v.live,i===0&&v.p>=35));
@@ -348,9 +350,10 @@ document.addEventListener("DOMContentLoaded",()=>{
      const live=liveQuote(x,stale);
      const ir=tdnetView(tdnetFor(d,x));
      const sv=signalView(x,!live.valid||ir.pending);
-     if(ir.pending){sv.label="NEWS PENDING";sv.cls="block";}
+     if(d.tdnet_live!==true&&live.valid&&actionable(sv)){sv.label="NEWS CHECK";sv.cls="block";}
+     else if(ir.pending){sv.label="NEWS PENDING";sv.cls="block";}
      const lit=live.valid&&actionable(sv);
-     const reason=!live.valid?("現在値失効・売買シグナル無効 · "+live.status):ir.pending?("決算内容確認中・既存シグナル保留 · "+ir.title):(ir.title?(ir.label+" · "+ir.title+" · "+(x.strategy||x.signal||"監視")):((x.signal||"監視")+' · '+(x.strategy||"条件待ち")));
+     const reason=!live.valid?("現在値失効・売買シグナル無効 · "+live.status):d.tdnet_live!==true?"TDnet未確認・新規シグナル保留":ir.pending?("決算内容確認中・既存シグナル保留 · "+ir.title):(ir.title?(ir.label+" · "+ir.title+" · "+(x.strategy||x.signal||"監視")):((x.signal||"監視")+' · '+(x.strategy||"条件待ち")));
      const html=window.renderScalpCard({...x,__live:live,foot:reason},sv,"1m");
      return lit?html.replace('scalp-card '+sv.cls,'scalp-card '+sv.cls+' edge-live'):html;
    }).join(""):'<div class="focus-empty">SCALP 5のMS2 RSSデータ待ち</div>';
