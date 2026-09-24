@@ -756,6 +756,8 @@ $tdnetDisclosures = @()
 $lastTdnetFetchAt = Get-Date "2000-01-01"
 $lastTdnetSuccessAt = $null
 $tdnetStatus = "取得待ち"
+$tdnetPagesAttempted = 0
+$tdnetPagesSucceeded = 0
 $lastIrVoiceCodes = @{}
 $irDynamicSlots = @{}
 $lastSnapshotAt = Get-Date "2000-01-01"
@@ -795,7 +797,7 @@ try {
             $kioFlowCandidate=""; $lastKioFlowSpoken=""; $lastKioFlowSpokenAt=Get-Date "2000-01-01"
             $lastPreopenVoice=""; $lastOpenDecisionVoice=""
             $lastPtsBand=0; $lastPtsVoiceAt=Get-Date "2000-01-01"
-            $tdnetDisclosures=@(); $lastTdnetFetchAt=Get-Date "2000-01-01"; $lastTdnetSuccessAt=$null; $tdnetStatus="取得待ち"; $lastIrVoiceCodes=@{}; $irDynamicSlots=@{}
+            $tdnetDisclosures=@(); $lastTdnetFetchAt=Get-Date "2000-01-01"; $lastTdnetSuccessAt=$null; $tdnetStatus="取得待ち"; $tdnetPagesAttempted=0; $tdnetPagesSucceeded=0; $lastIrVoiceCodes=@{}; $irDynamicSlots=@{}
             $loadedHoldDay=""; $holdFinalized=$false; $holdFinalizedAt=$null; $holdEntryCaptured=$false; $finalHoldTop5=@()
         }
         # STATS DAILY REFRESH: once after the TSE session is complete.
@@ -868,12 +870,16 @@ try {
                 $tdnetFetch = Get-TdnetDisclosures $now
                 if($null -eq $tdnetFetch -or [int]$tdnetFetch.pages_succeeded -lt 1){throw "TDnet retrieval not verified"}
                 $freshTdnet = @($tdnetFetch.disclosures)
+                $tdnetPagesAttempted=[int]$tdnetFetch.pages_attempted
+                $tdnetPagesSucceeded=[int]$tdnetFetch.pages_succeeded
                 $tdnetDisclosures=$freshTdnet
                 $lastTdnetSuccessAt=$now
                 $tdnetStatus=("TDnet LIVE "+$freshTdnet.Count+"件 / pages "+$tdnetFetch.pages_succeeded+"/"+$tdnetFetch.pages_attempted+" / "+$now.ToString("HH:mm:ss"))
             } catch {
                 # Fail closed: a failed refresh must not leave the previous disclosure set looking current.
                 $tdnetDisclosures=@()
+                $tdnetPagesAttempted=0
+                $tdnetPagesSucceeded=0
                 $lastTdnetSuccessAt=$null
                 $tdnetStatus="TDnet取得失敗・旧情報破棄・推定禁止"
             }
@@ -1667,7 +1673,7 @@ try {
         $liveQuoteRatio=[Math]::Round(($liveQuoteCount/100.0)*100,1)
         $liveReady=if($inSession){$liveQuoteCount -ge 90}else{$validCount -ge 90}
         $liveReadyStatus=if($liveReady){"READY"}else{"NOT READY"}
-        $payload=[ordered]@{schema_version='ms2-common-1.2';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;live_quote_count=$liveQuoteCount;live_quote_ratio_pct=$liveQuoteRatio;live_ready=$liveReady;live_ready_status=$liveReadyStatus;live_ready_rule=$(if($inSession){"TSE session: >=90/100 quotes with MS2 現在値詳細時刻 <=15s"}else{"Outside TSE session: readiness is informational"});stale=(-not $liveReady);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;tdnet_observed_at=$(if($null -ne $lastTdnetSuccessAt){$lastTdnetSuccessAt.ToString("o")}else{$null});tdnet_live=($null -ne $lastTdnetSuccessAt -and ($now-$lastTdnetSuccessAt).TotalSeconds -le 45);tdnet_disclosures=@($tdnetDisclosures | Select-Object -First 50);jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
+        $payload=[ordered]@{schema_version='ms2-common-1.2';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;live_quote_count=$liveQuoteCount;live_quote_ratio_pct=$liveQuoteRatio;live_ready=$liveReady;live_ready_status=$liveReadyStatus;live_ready_rule=$(if($inSession){"TSE session: >=90/100 quotes with MS2 現在値詳細時刻 <=15s"}else{"Outside TSE session: readiness is informational"});stale=(-not $liveReady);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;tdnet_observed_at=$(if($null -ne $lastTdnetSuccessAt){$lastTdnetSuccessAt.ToString("o")}else{$null});tdnet_pages_attempted=$tdnetPagesAttempted;tdnet_pages_succeeded=$tdnetPagesSucceeded;tdnet_live=($tdnetPagesSucceeded -gt 0 -and $null -ne $lastTdnetSuccessAt -and ($now-$lastTdnetSuccessAt).TotalSeconds -le 45);tdnet_disclosures=@($tdnetDisclosures | Select-Object -First 50);jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
         $jsonText=$payload|ConvertTo-Json -Depth 6
         Write-AtomicUtf8 $jsonPath $jsonText
         if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $jsonText }
