@@ -301,7 +301,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const actionable=sv=>sv.label==="BUY"||sv.label==="SHORT";
  const renderEdgeHistory=()=>{
    const box=document.getElementById("edge-alert-history");if(!box)return;
-   box.innerHTML=edgeHistory.length?edgeHistory.slice(0,20).map(v=>'<article class="scalp-card '+(v.direction==="BUY"?"long":"short")+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(v.name)+'</strong><small>'+esc(v.detected_at)+' · '+esc(v.ticker)+'</small></div><span class="scalp-signal">'+esc(v.direction)+'</span></div><div class="scalp-price-row"><div class="scalp-price">'+yen(v.price)+'</div><small>MS2 '+esc(v.quote_age)+'</small></div><div class="scalp-foot">'+esc(v.reason)+(v.news_title?' · TDnet: '+esc(v.news_title):'')+'</div></article>').join(""):'<div class="focus-empty">優位性シグナル待ち</div>';
+   box.innerHTML=edgeHistory.length?edgeHistory.slice(0,20).map(v=>'<article class="scalp-card '+(v.direction==="BUY"?"long":"short")+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(v.name)+'</strong><small>'+esc(v.detected_at)+' · '+esc(v.ticker)+'</small></div><span class="scalp-signal">'+esc(v.direction)+' · P'+esc(v.priority??"—")+'</span></div><div class="scalp-price-row"><div class="scalp-price">'+yen(v.price)+'</div><small>MS2 '+esc(v.quote_age)+'</small></div><div class="scalp-foot">'+esc(v.reason)+(v.news_title?' · TDnet: '+esc(v.news_title):'')+'</div></article>').join(""):'<div class="focus-empty">優位性シグナル待ち</div>';
  };
  const signalEventId=(x,sv)=>[x.ticker,sv.label,x.signal_bar_time||x.live_observed_at||"",x.strategy||"",x.news_title||""].join("|");
  const announceEdge=(x,sv,live,voice=true)=>{
