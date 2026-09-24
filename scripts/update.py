@@ -2370,24 +2370,19 @@ def main():
         for i, x in enumerate(active_buybacks[:5], 1)
     ) or "<div class='focus-empty'>公式情報を確認できた実施期間中の自社株買い候補なし。</div>"
 
-    akita_dc_rows = "".join(
-        f"<tr><td>{i}</td><td>{x['name']}</td>"
-        f"<td><b class='up'>{x['relation_score']}/100</b></td>"
-        f"<td>{money(x.get('price'))}</td><td class='{css(x.get('change_pct'))}'>{pct(x.get('change_pct'))}</td>"
-        f"<td>{x.get('rvol', 0):.2f}倍</td><td>{x['role']}</td>"
-        f"<td>{x['evidence']}<br><small>{x['contract_status']}</small></td>"
-        f"<td><a href='{x['source']}' target='_blank' rel='noopener'>公式根拠</a></td></tr>"
-        for i, x in enumerate(akita_dc_watch, 1)
-    ) or "<tr><td colspan='9'>株価データ取得待ち。受注確認前は売買候補に昇格しません。</td></tr>"
-    gunma_rare_earth_rows = "".join(
-        f"<tr><td>{i}</td><td>{x['name']}</td>"
-        f"<td><b>{x['relation_score']}/100</b></td>"
-        f"<td>{money(x.get('price'))}</td><td class='{css(x.get('change_pct'))}'>{pct(x.get('change_pct'))}</td>"
-        f"<td>{x.get('rvol', 0):.2f}倍</td><td>{x['role']}</td>"
-        f"<td>{x['evidence']}<br><small>{x['contract_status']}</small></td>"
-        f"<td><a href='{x['source']}' target='_blank' rel='noopener'>公式根拠</a></td></tr>"
-        for i, x in enumerate(gunma_rare_earth_watch, 1)
-    ) or "<tr><td colspan='9'>株価データ取得待ち。研究段階のため売買候補には昇格しません。</td></tr>"
+    def research_watch_cards(items, label, empty):
+        cards = ""
+        for i, x in enumerate(items[:5], 1):
+            cards += (
+                f"<article class='scalp-card wait live-overlay-card' data-live-ticker='{x.get('ticker') or x.get('code') or ''}' data-analysis-price='{x.get('price') or ''}'>"
+                f"<div class='scalp-head'><div class='scalp-symbol'><strong>{x['name']}</strong><small>{label} · #{i}</small></div><span class='scalp-signal'>RESEARCH</span></div>"
+                f"<div class='scalp-price-row'><div class='scalp-price'><small class='price-kind'>分析基準値</small><span class='display-price'>{money(x.get('price'))}</span></div><div class='scalp-change'>{x['relation_score']}/100</div></div>"
+                f"<div class='scalp-metrics'><span>前日比<b>{pct(x.get('change_pct'))}</b></span><span>出来高比<b>{x.get('rvol',0):.2f}x</b></span><span>想定役割<b>{x['role']}</b></span></div>"
+                f"<div class='scalp-foot'>{x['evidence']} · {x['contract_status']} · <a href='{x['source']}' target='_blank' rel='noopener'>公式根拠</a> · 研究監視のみ</div></article>"
+            )
+        return cards or f"<div class='focus-empty'>{empty}</div>"
+    akita_dc_cards = research_watch_cards(akita_dc_watch, "秋田AI DC", "株価データ取得待ち。受注確認前は売買候補に昇格しません。")
+    gunma_rare_earth_cards = research_watch_cards(gunma_rare_earth_watch, "群馬レアアース", "株価データ取得待ち。研究段階のため売買候補には昇格しません。")
     us_rotation_rows = "".join(
         f"<tr><td>{i}</td><td>{row['sector']} <small>{row['ticker']}</small></td>"
         f"<td>{phase_badge(row['phase'])}</td><td><b>{row['score']:.0f}/100</b></td>"
@@ -3103,10 +3098,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 {policy_theme_sections}
 {smr_html}
 <section class="card wide"><h2>②-A 秋田AIデータセンター関連 監視TOP5</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・契約状況</th><th>資料</th></tr></thead><tbody>{akita_dc_rows}</tbody></table>
+<div class="scalp-strip">{akita_dc_cards}</div>
 <p class="warning">秋田市の計画はエスツーとBitgritが主導し、2030年代前半の稼働、最大500MWを想定。現時点で上場各社の受注は確認できていません。関連度は事業領域と地域性の評価であり、受注確定度ではありません。正式なスイング候補への昇格には、会社IR・適時開示、信用需給30/55点以上、発動価格突破を必須とします。</p></section>
 <section class="card wide"><h2>②-B 群馬・茂倉沢レアアース新鉱物 監視TOP5</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・参画状況</th><th>資料</th></tr></thead><tbody>{gunma_rare_earth_rows}</tbody></table>
+<div class="scalp-strip">{gunma_rare_earth_cards}</div>
 <p class="warning">群馬県桐生市の茂倉沢鉱山でランタン・セリウムを含む新鉱物4種が承認された研究成果を監視します。現時点では資源量・採算性・採掘計画・企業参画のいずれも未確認で、商業鉱山案件ではありません。資源量調査、採掘権、自治体・JOGMEC・企業との共同研究、分離精製試験の公式発表が出るまでテーマ監視限定。正式なスイング候補への昇格には信用需給30/55点以上と発動価格突破も必須です。</p></section>
 <section id="speculative-theme-monitor" class="card wide scalp-tv">
  <div class="scalp-tv-toolbar"><div class="scalp-tv-title"><h2>急騰5 / MOMENTUM 5</h2><span>全市場走査 / 価格・出来高・売買代金加速</span></div><div class="scalp-tv-legend"><span>売買候補ではない<b>監視専用</b></span></div></div>
