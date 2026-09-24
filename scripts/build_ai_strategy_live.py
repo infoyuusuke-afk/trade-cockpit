@@ -25,7 +25,7 @@ invents a new "strong" ranking:
 - signals.json:overnight_long / overnight_short -> update.py's "⑩ 信用
   需給優先・持ち越しLONG候補 TOP5" / "⑪ ...SHORT候補 TOP5" sections.
   Titled TOP5, sliced to 5 there (carryRows). CARD.
-- signals.json:speculative_theme_watch -> update.py's own "EVENT 5"
+- signals.json:speculative_theme_watch -> legacy internal EVENT lane, user-facing "急騰5 / MOMENTUM 5"
   card section (renderScalpCard, .slice(0,5)). CARD.
 - signals.json:monthly_weekly_hammers -> update.py's "⑤-E 月足・週足
   反転＋信用需給 TOP5" section. Titled TOP5, sliced to 5. CARD.
@@ -266,6 +266,12 @@ def _overnight_rows(states, unresolved, card_symbols, symbol_names, rows, direct
 
 
 def _event_rows(states, unresolved, card_symbols, symbol_names, rows, signals_as_of):
+    """Legacy EVENT key is retained for compatibility; semantics are MOMENTUM/急騰.
+
+    Catalyst/news confirmation is enrichment, not an admission requirement. Rows
+    without a verified catalyst remain eligible and should display 材料未確認 rather
+    than being rejected solely for lacking a news explanation.
+    """
     for r in rows:
         _emit(states, unresolved, card_symbols, symbol_names, supervisor="EVENT", ticker=r.get("ticker"), direction="WATCH",
               as_of_value=signals_as_of, provenance="signals.json:speculative_theme_watch", name=r.get("name"),
