@@ -1,5 +1,6 @@
 ﻿param(
     [string]$WorkbookName = "Kioxia_MS2_RSS_Live_Signals.xlsx",
+    [string]$WorkbookPath = "",
     [string]$WatchlistPath = (Join-Path $PSScriptRoot "watchlist_100.json"),
     [int]$IntervalSeconds = 2,
     [int]$SnapshotSeconds = 10,
@@ -374,6 +375,51 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580) {
     }
 }
 
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+
+public static class CollectorWorkbookRotFinder {
+    [DllImport("ole32.dll")]
+    private static extern int GetRunningObjectTable(int reserved, out IRunningObjectTable rot);
+    [DllImport("ole32.dll")]
+    private static extern int CreateBindCtx(int reserved, out IBindCtx bindCtx);
+
+    public static object FindByIdentity(string expectedFullPath, string bookFileName) {
+        IRunningObjectTable rot;
+        if (GetRunningObjectTable(0, out rot) != 0 || rot == null) return null;
+        IEnumMoniker en;
+        rot.EnumRunning(out en);
+        en.Reset();
+        var mk = new IMoniker[1];
+        object uniqueNameMatch = null;
+        int nameMatchCount = 0;
+        while (en.Next(1, mk, IntPtr.Zero) == 0) {
+            IBindCtx ctx;
+            CreateBindCtx(0, out ctx);
+            try {
+                string name;
+                mk[0].GetDisplayName(ctx, null, out name);
+                if (String.IsNullOrEmpty(name)) continue;
+                object obj;
+                if (!String.IsNullOrEmpty(expectedFullPath) &&
+                    name.EndsWith(expectedFullPath, StringComparison.OrdinalIgnoreCase)) {
+                    rot.GetObject(mk[0], out obj);
+                    return obj;
+                }
+                if (name.EndsWith(bookFileName, StringComparison.OrdinalIgnoreCase)) {
+                    rot.GetObject(mk[0], out obj);
+                    uniqueNameMatch = obj;
+                    nameMatchCount++;
+                }
+            } catch { }
+        }
+        return nameMatchCount == 1 ? uniqueNameMatch : null;
+    }
+}
+'@ -ErrorAction SilentlyContinue
+
 function Invoke-ExcelCom {
     param(
         [Parameter(Mandatory=$true)][scriptblock]$Action,
@@ -407,32 +453,30 @@ $stocks = @($watch.stocks.PSObject.Properties | ForEach-Object {
 } | Select-Object -First 100)
 if ($stocks.Count -ne 100) { throw "監視銘柄は100件必要です。現在: $($stocks.Count)件" }
 
-try { $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application") }
-catch { throw "RSS接続済みのExcelが見つかりません。MarketSpeed IIへログインし、ExcelのRSSタブで接続してから実行してください。" }
-
 $book = $null
-$openBookNames = @()
-foreach ($candidate in $excel.Workbooks) {
-    $openBookNames += [string]$candidate.Name
-    if ($candidate.Name -ieq $WorkbookName) { $book = $candidate; break }
+$excel = $null
+$expectedPath = ""
+if(-not [string]::IsNullOrWhiteSpace($WorkbookPath)) {
+    $expectedPath = [IO.Path]::GetFullPath($WorkbookPath)
+    $WorkbookName = [IO.Path]::GetFileName($expectedPath)
 }
-if ($null -eq $book) {
-    foreach ($candidate in $excel.Workbooks) {
-        if ($candidate.Name -like "Kioxia_MS2_RSS_Live_Signals*.xlsx") { $book = $candidate; break }
-    }
+if($WorkbookName -ine "Kioxia_MS2_RSS_Live_Signals.xlsx") {
+    throw ("LIVE DATA INVALID: Collector refuses non-canonical workbook: " + $WorkbookName)
 }
-if ($null -eq $book) {
-    foreach ($candidate in $excel.Workbooks) {
-        try {
-            if ($null -ne $candidate.Worksheets.Item("DASHBOARD")) { $book = $candidate; break }
-        } catch {}
-    }
+try {
+    $book = [CollectorWorkbookRotFinder]::FindByIdentity($expectedPath,$WorkbookName)
+} catch {}
+if($null -eq $book) {
+    throw ("LIVE DATA INVALID: canonical RSS workbook is not uniquely available to Collector: " + $WorkbookName)
 }
-if ($null -eq $book) {
-    $names = if ($openBookNames.Count -gt 0) { $openBookNames -join ", " } else { "認識なし" }
-    throw "$WorkbookName を認識できません。Excelで認識したブック: $names"
+$excel = Invoke-ExcelCom -Label "Collector Excel attach" -Action { $book.Application }
+$actualBookName = Invoke-ExcelCom -Label "Collector workbook name" -Action { [string]$book.Name }
+$actualBookPath = Invoke-ExcelCom -Label "Collector workbook path" -Action { [string]$book.FullName }
+if($actualBookName -ine $WorkbookName) {
+    throw ("LIVE DATA INVALID: Collector workbook identity mismatch. expected=" + $WorkbookName + " actual=" + $actualBookName)
 }
-Write-Host ("[BOOK] " + $book.Name) -ForegroundColor Green
+Write-Host ("[BOOK] " + $actualBookName) -ForegroundColor Green
+Write-Host ("[BOOK PATH] " + $actualBookPath) -ForegroundColor DarkGray
 Start-Sleep -Milliseconds 500
 
 $sheet = $null
