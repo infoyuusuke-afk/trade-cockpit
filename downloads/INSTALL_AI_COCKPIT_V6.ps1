@@ -11,14 +11,16 @@ $cache="?x="+(Get-Date -Format "yyyyMMddHHmmss")
 Write-Host ("Install channel: "+$Channel+" / ref: "+$ref) -ForegroundColor Yellow
 $launcher=Join-Path $Root "START_AI_COCKPIT_V6.ps1"
 $gateway=Join-Path $Root "AI_Cockpit_Local_Gateway.ps1"
+$diag=Join-Path $Root "DIAG_AI_COCKPIT_V6_EXCEL.ps1"
 
 if(-not(Test-Path -LiteralPath $Root)){ New-Item -ItemType Directory -Path $Root -Force | Out-Null }
 
-Write-Host "[1/5] Downloading V6 launcher and local gateway..." -ForegroundColor Cyan
+Write-Host "[1/6] Downloading V6 launcher, gateway, and Excel diagnostic..." -ForegroundColor Cyan
 Invoke-WebRequest ($base+"/downloads/START_AI_COCKPIT_V6.ps1"+$cache) -OutFile $launcher -UseBasicParsing
 Invoke-WebRequest ($base+"/downloads/AI_Cockpit_Local_Gateway.ps1"+$cache) -OutFile $gateway -UseBasicParsing
+Invoke-WebRequest ($base+"/downloads/DIAG_AI_COCKPIT_V6_EXCEL.ps1"+$cache) -OutFile $diag -UseBasicParsing
 
-Write-Host "[2/5] Validating launcher/gateway syntax..." -ForegroundColor Cyan
+Write-Host "[2/6] Validating launcher/gateway/diagnostic syntax..." -ForegroundColor Cyan
 $tokens=$null
 $errors=$null
 [System.Management.Automation.Language.Parser]::ParseFile($launcher,[ref]$tokens,[ref]$errors) | Out-Null
@@ -33,6 +35,13 @@ if($ge.Count -gt 0){
     $ge | ForEach-Object { Write-Host $_.Message -ForegroundColor Red }
     throw "Local gateway syntax validation failed."
 }
+$dt=$null
+$de=$null
+[System.Management.Automation.Language.Parser]::ParseFile($diag,[ref]$dt,[ref]$de) | Out-Null
+if($de.Count -gt 0){
+    $de | ForEach-Object { Write-Host $_.Message -ForegroundColor Red }
+    throw "Excel diagnostic syntax validation failed."
+}
 
 $marker=Join-Path $Root "V6_INSTALL_CHANNEL.txt"
 @(
@@ -42,7 +51,7 @@ $marker=Join-Path $Root "V6_INSTALL_CHANNEL.txt"
     "launcher="+$launcher
 ) | Set-Content -LiteralPath $marker -Encoding UTF8
 
-Write-Host "[3/5] Updating coherent MS2 runtime scripts..." -ForegroundColor Cyan
+Write-Host "[3/6] Updating coherent MS2 runtime scripts..." -ForegroundColor Cyan
 $desktop=[Environment]::GetFolderPath("Desktop")
 $collectorCandidates=@(Get-ChildItem -Path $desktop -Filter "MS2_RSS_100_Collector.ps1" -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.FullName -like "*MarketSpeed II RSS*files*" })
 if($collectorCandidates.Count -ne 1){ throw ("MS2 runtime path must resolve uniquely. found="+$collectorCandidates.Count) }
@@ -67,7 +76,7 @@ foreach($name in $runtimeFiles){
     Write-Host ("      Updated: "+$name) -ForegroundColor Green
 }
 
-Write-Host "[4/5] Replacing startup shortcut..." -ForegroundColor Cyan
+Write-Host "[4/6] Replacing startup shortcut..." -ForegroundColor Cyan
 $desktop=[Environment]::GetFolderPath("Desktop")
 $old=Join-Path $desktop "AI Cockpit START V5.lnk"
 if(Test-Path -LiteralPath $old){ Remove-Item -LiteralPath $old -Force }
@@ -81,7 +90,18 @@ $s.WindowStyle=1
 $s.Description="AI Cockpit V6 startup - auto closes on success"
 $s.Save()
 
-Write-Host "[5/5] Install metadata complete." -ForegroundColor Cyan
+Write-Host "[5/6] Creating Excel diagnostic shortcut..." -ForegroundColor Cyan
+$diagLnk=Join-Path $desktop "AI Cockpit DIAG V6.lnk"
+$d=$ws.CreateShortcut($diagLnk)
+$d.TargetPath="$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
+$d.Arguments='-NoLogo -NoProfile -ExecutionPolicy Bypass -NoExit -File "'+$diag+'"'
+$d.WorkingDirectory=$Root
+$d.WindowStyle=1
+$d.Description="AI Cockpit V6 Excel startup diagnostic"
+$d.Save()
+
+Write-Host "[6/6] Install metadata complete." -ForegroundColor Cyan
 Write-Host ""
 Write-Host ("V6 INSTALL COMPLETE / "+$Channel) -ForegroundColor Green
-Write-Host "Use only: AI Cockpit START V6" -ForegroundColor Yellow
+Write-Host "Startup: AI Cockpit START V6" -ForegroundColor Yellow
+Write-Host "Diagnostic: AI Cockpit DIAG V6" -ForegroundColor Yellow
