@@ -6,7 +6,8 @@ param(
 
 $ErrorActionPreference="Stop"
 $ref = if($Channel -eq "main"){"main"}else{"fix/live-session-state-v1"}
-$base="https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/"+$ref
+$rawRef = if($Channel -eq "main"){"refs/heads/main"}else{"refs/heads/fix/live-session-state-v1"}
+$base="https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/"+$rawRef
 $cache="?x="+(Get-Date -Format "yyyyMMddHHmmss")
 Write-Host ("Install channel: "+$Channel+" / ref: "+$ref) -ForegroundColor Yellow
 $launcher=Join-Path $Root "START_AI_COCKPIT_V6.ps1"
@@ -36,6 +37,10 @@ Write-Host "[1/6] Downloading V6 launcher, gateway, and Excel diagnostic..." -Fo
 Save-RemotePowerShellUtf8Bom ($base+"/downloads/START_AI_COCKPIT_V6.ps1"+$cache) $launcher
 Save-RemotePowerShellUtf8Bom ($base+"/downloads/AI_Cockpit_Local_Gateway.ps1"+$cache) $gateway
 Save-RemotePowerShellUtf8Bom ($base+"/downloads/DIAG_AI_COCKPIT_V6_EXCEL.ps1"+$cache) $diag
+$launcherText=[IO.File]::ReadAllText($launcher,[Text.Encoding]::UTF8)
+if($Channel -eq "fix/live-session-state-v1" -and $launcherText -notmatch "V6-PS51-ASCII-20260925-01"){
+    throw "Downloaded launcher is not the expected PS5.1-safe build. Ref/cache mismatch."
+}
 
 Write-Host "[2/6] Validating launcher/gateway/diagnostic syntax..." -ForegroundColor Cyan
 $tokens=$null
