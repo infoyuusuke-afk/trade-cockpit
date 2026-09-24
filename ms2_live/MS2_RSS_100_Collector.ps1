@@ -429,6 +429,25 @@ function Release-ComObjectSafe($obj) {
     } catch {}
 }
 
+function Release-CollectorComState {
+    foreach($name in @("irDynamicSheet","jnxSheet","rssLink","sheet","book","excel")) {
+        try {
+            $var = Get-Variable -Name $name -Scope Script -ErrorAction SilentlyContinue
+            if($null -ne $var){ Release-ComObjectSafe $var.Value; Set-Variable -Name $name -Scope Script -Value $null -ErrorAction SilentlyContinue }
+        } catch {}
+    }
+    try { [GC]::Collect() } catch {}
+    try { [GC]::WaitForPendingFinalizers() } catch {}
+    try { [GC]::Collect() } catch {}
+    try { [GC]::WaitForPendingFinalizers() } catch {}
+}
+
+trap {
+    Write-Host ("[COLLECTOR FATAL] " + $_.Exception.Message) -ForegroundColor Red
+    Release-CollectorComState
+    break
+}
+
 function Invoke-ExcelCom {
     param(
         [Parameter(Mandatory=$true)][scriptblock]$Action,
@@ -495,7 +514,7 @@ try {
     $sheet = Invoke-ExcelCom -Label "100銘柄RSSシート作成" -Action { $book.Worksheets.Add() }
     Invoke-ExcelCom -Label "100銘柄RSSシート命名" -Action { $sheet.Name = "100銘柄RSS" } | Out-Null
 }
-Invoke-ExcelCom -Label "画面更新停止" -Action { $excel.ScreenUpdating = $false } | Out-Null
+try { Invoke-ExcelCom -Label "画面更新停止" -Retries 1 -Action { $excel.ScreenUpdating = $false } | Out-Null } catch { Write-Host "[EXCEL] ScreenUpdating unavailable; continuing." -ForegroundColor DarkYellow }
 $headers = @("順位","コード","会社名","分類","現在値","時刻","前日終値","前日比率","出来高","VWAP","買気配","売気配","買気配数量","売気配数量","売成行","買成行","OVER","UNDER","歩み1","歩み1時刻","歩み2","歩み2時刻","歩み3","歩み3時刻","歩み4","歩み4時刻","信用売残","信用売残前週比","信用買残","信用買残前週比","信用倍率","当日基準値","特別売気配","特別買気配","始値","売建可能数量")
 for ($c=0; $c -lt $headers.Count; $c++) {
     $headerColumn = $c + 1
@@ -530,7 +549,7 @@ for ($i=0; $i -lt $stocks.Count; $i++) {
     Invoke-ExcelCom -Label ("売建可能数量設定 AJ" + $row) -Action { $sheet.Cells.Item($row,36).FormulaLocal = [string]$marginFormula } | Out-Null
 }
 Invoke-ExcelCom -Label "RSSシート非表示" -Action { $sheet.Visible = 0 } | Out-Null
-Invoke-ExcelCom -Label "画面更新再開" -Action { $excel.ScreenUpdating = $true } | Out-Null
+try { Invoke-ExcelCom -Label "画面更新再開" -Retries 1 -Action { $excel.ScreenUpdating = $true } | Out-Null } catch {}
 
 # DASHBOARD/RSS接続の表示値もCollector起動時に必ずRssMarketへ戻す。
 # xlsxに残ったキャッシュ値をLIVE現在値として扱わない。
@@ -1872,11 +1891,6 @@ try {
     if ($null -ne $bridgeJob) { Stop-Job $bridgeJob -ErrorAction SilentlyContinue; Remove-Job $bridgeJob -Force -ErrorAction SilentlyContinue }
     # Release every long-lived Excel COM reference. Never call Excel.Quit here:
     # the user owns the Excel window and may have other workbooks open.
-    foreach($com in @($irDynamicSheet,$jnxSheet,$rssLink,$sheet,$book,$excel)){ Release-ComObjectSafe $com }
-    $irDynamicSheet=$null; $jnxSheet=$null; $rssLink=$null; $sheet=$null; $book=$null; $excel=$null
-    [GC]::Collect()
-    [GC]::WaitForPendingFinalizers()
-    [GC]::Collect()
-    [GC]::WaitForPendingFinalizers()
+    Release-CollectorComState
     Write-Host "監視を停止しました。Excel COM参照を解放しました。" -ForegroundColor Yellow
 }
