@@ -1,8 +1,14 @@
-param([string]$Root = "C:\AI_Cockpit_OneClick_Starter")
+param(
+    [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
+    [ValidateSet("main","fix/live-session-state-v1")]
+    [string]$Channel = "main"
+)
 
 $ErrorActionPreference="Stop"
-$base="https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main"
+$ref = if($Channel -eq "main"){"main"}else{"fix/live-session-state-v1"}
+$base="https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/"+$ref
 $cache="?x="+(Get-Date -Format "yyyyMMddHHmmss")
+Write-Host ("Install channel: "+$Channel+" / ref: "+$ref) -ForegroundColor Yellow
 $launcher=Join-Path $Root "START_AI_COCKPIT_V6.ps1"
 
 if(-not(Test-Path -LiteralPath $Root)){ New-Item -ItemType Directory -Path $Root -Force | Out-Null }
@@ -34,5 +40,5 @@ $s.Description="AI Cockpit V6 startup - auto closes on success"
 $s.Save()
 
 Write-Host ""
-Write-Host "V6 INSTALL COMPLETE" -ForegroundColor Green
+Write-Host ("V6 INSTALL COMPLETE / "+$Channel) -ForegroundColor Green
 Write-Host "Use only: AI Cockpit START V6" -ForegroundColor Yellow
