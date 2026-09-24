@@ -287,42 +287,54 @@ document.addEventListener("DOMContentLoaded",()=>{
  };
  const announcedSignals=new Map();
  const edgeHistory=[];
+ let lastVoiceAt=0;
+ const VOICE_COOLDOWN_MS=12000;
+ const edgePriority=x=>{
+   let p=Math.abs(Number(x?.score)||0);
+   const burst=Number(x?.volume_burst)||0,flow=Math.abs(Number(x?.flow_bias)||0);
+   if(burst>=1.5)p+=15; else if(burst>=1.2)p+=8;
+   if(flow>=0.15)p+=12; else if(flow>=0.08)p+=6;
+   if(x?.news_reaction_confirmed===true)p+=20;
+   if(String(x?.strategy||"").includes("OR5"))p+=6;
+   return p;
+ };
  const actionable=sv=>sv.label==="BUY"||sv.label==="SHORT";
  const renderEdgeHistory=()=>{
    const box=document.getElementById("edge-alert-history");if(!box)return;
    box.innerHTML=edgeHistory.length?edgeHistory.slice(0,20).map(v=>'<article class="scalp-card '+(v.direction==="BUY"?"long":"short")+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(v.name)+'</strong><small>'+esc(v.detected_at)+' · '+esc(v.ticker)+'</small></div><span class="scalp-signal">'+esc(v.direction)+'</span></div><div class="scalp-price-row"><div class="scalp-price">'+yen(v.price)+'</div><small>MS2 '+esc(v.quote_age)+'</small></div><div class="scalp-foot">'+esc(v.reason)+(v.news_title?' · TDnet: '+esc(v.news_title):'')+'</div></article>').join(""):'<div class="focus-empty">優位性シグナル待ち</div>';
  };
  const signalEventId=(x,sv)=>[x.ticker,sv.label,x.signal_bar_time||x.live_observed_at||"",x.strategy||"",x.news_title||""].join("|");
- const announceEdge=(x,sv,live)=>{
+ const announceEdge=(x,sv,live,voice=true)=>{
    if(!live.valid||!actionable(sv))return false;
    if(x?.news_pending===true||String(x?.signal||"").includes("NEWS PENDING")||String(x?.signal||"").includes("NEWS CONFLICT"))return false;
    const id=signalEventId(x,sv),prev=announcedSignals.get(String(x.ticker));
    if(prev===id)return true;
    announcedSignals.set(String(x.ticker),id);
-   edgeHistory.unshift({event_id:id,detected_at:new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date()),ticker:String(x.ticker||""),name:x.name||String(x.ticker||""),direction:sv.label,price:live.price,quote_age:Math.max(0,live.age/1000).toFixed(1)+"秒前",reason:x.strategy||x.signal||"優位性を検出",news_title:x.news_title||""});
+   edgeHistory.unshift({event_id:id,priority:edgePriority(x),detected_at:new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",hour:"2-digit",minute:"2-digit",second:"2-digit"}).format(new Date()),ticker:String(x.ticker||""),name:x.name||String(x.ticker||""),direction:sv.label,price:live.price,quote_age:Math.max(0,live.age/1000).toFixed(1)+"秒前",reason:x.strategy||x.signal||"優位性を検出",news_title:x.news_title||""});
    if(edgeHistory.length>50)edgeHistory.length=50;
    try{localStorage.setItem("edgeAlertHistoryV1",JSON.stringify(edgeHistory.slice(0,50)));}catch(_){}
    renderEdgeHistory();
    const msg=(x.name||String(x.ticker).replace(".T",""))+"、"+(sv.label==="BUY"?"買い":"ショート")+"候補。"+(x.strategy||x.signal||"優位性を検出");
-   try{
-     if("speechSynthesis" in window){
-       window.speechSynthesis.cancel();
-       const u=new SpeechSynthesisUtterance(msg);u.lang="ja-JP";u.rate=1.08;window.speechSynthesis.speak(u);
-     }
-   }catch(_){}
+   if(voice&&Date.now()-lastVoiceAt>=VOICE_COOLDOWN_MS){
+     try{
+       if("speechSynthesis" in window){
+         const u=new SpeechSynthesisUtterance(msg);u.lang="ja-JP";u.rate=1.08;window.speechSynthesis.speak(u);lastVoiceAt=Date.now();
+       }
+     }catch(_){}
+   }
    return true;
  };
  try{const savedHistory=JSON.parse(localStorage.getItem("edgeAlertHistoryV1")||"[]");if(Array.isArray(savedHistory)){edgeHistory.push(...savedHistory.slice(0,50));renderEdgeHistory();}}catch(_){}
  document.addEventListener("ms2RssUpdate",e=>{
    const d=e.detail||{},all=Array.isArray(d.all_targets)?d.all_targets:[],stale=d.stale!==false;
-   // Universe-wide edge scan: alerting is not limited to the five pinned SCALP cards.
-   all.forEach(x=>{
-     const live=liveQuote(x,stale);
-     const ir=tdnetView(tdnetFor(d,x));
-     const sv=signalView(x,!live.valid||ir.pending);
+   // Rank all actionable names first. History keeps every new event; voice is reserved
+   // for the strongest candidate in this update to avoid a 100-name alert storm.
+   const candidates=all.map(x=>{
+     const live=liveQuote(x,stale),ir=tdnetView(tdnetFor(d,x)),sv=signalView(x,!live.valid||ir.pending);
      if(ir.pending){sv.label="NEWS PENDING";sv.cls="block";}
-     announceEdge(x,sv,live);
-   });
+     return {x,live,sv,p:edgePriority(x)};
+   }).filter(v=>v.live.valid&&actionable(v.sv)).sort((a,b)=>b.p-a.p);
+   candidates.forEach((v,i)=>announceEdge(v.x,v.sv,v.live,i===0&&v.p>=35));
    const fixed=["285A.T","9984.T","8035.T","6920.T","6857.T"];
    const box=document.getElementById("scalp-fixed-5"); if(!box)return;
    const rows=fixed.map(t=>all.find(x=>String(x.ticker)===t)).filter(Boolean);
