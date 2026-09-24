@@ -189,8 +189,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 <link rel="stylesheet" href="focus.css?v=20260915-power3">
 <link rel="stylesheet" href="next-theme-radar.css?v=c024-1">
 <script defer src="next-theme-radar.js?v=c024-1"></script>
+<link rel="stylesheet" href="card_system.css?v=p0b0-1">
+<script type="module" src="card_system.js?v=p0b0-1"></script>
 <style>.unified-mode{margin:8px 6px 0;padding:10px 14px;border:1px solid #272A30;border-radius:10px;background:#101114;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}.unified-mode .lamp{width:12px;height:12px;border-radius:50%;background:#63676e;box-shadow:0 0 0 5px #63676e18}.unified-mode.live{border-color:#1f4a37;background:#101114}.unified-mode.live .lamp{background:#35e2ae;box-shadow:0 0 10px #35e2ae66}.unified-mode.stale{border-color:#6b5426}.unified-mode strong{font-size:16px;color:#e7e9eb}.unified-mode span{color:#9aa0a6}.unified-mode b{color:#c7cacd;font-size:12px;font-weight:500}.unified-mode small{color:#63676e;display:block;margin-top:2px}.unified-mode-controls{display:flex;align-items:center;gap:8px}.market-status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#15171B;border:1px solid #272A30;color:#7a7f86;font-size:10.5px;white-space:nowrap}.market-status-pill .dot{width:6px;height:6px;border-radius:50%;background:#4a4e55;flex:none}.market-status-pill.open{color:#8fe3c0;border-color:#1f4a37}.market-status-pill.open .dot{background:#35e2ae;box-shadow:0 0 5px #35e2ae}.voice-toggle{width:30px;height:30px;padding:0;border-radius:50%;background:#15171B;border:1px solid #272A30;color:#c7cacd;font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center}@media(max-width:700px){.unified-mode{grid-template-columns:auto 1fr auto}.unified-mode>b{grid-column:3}.unified-mode .unified-mode-controls{grid-column:1/-1}}</style>
-<header><div><span class="tag">寄り付き前8:00版</span><div class="sub">2026-09-24 23:32:50 JST／統一取引日 2026-09-24</div></div></header>
+<header><div><span class="tag">寄り付き前8:00版</span><div class="sub">2026-09-25 07:36:12 JST／統一取引日 2026-09-24</div></div></header>
 <div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><main>
 
 <section id="data-quality-gate" class="card wide" style="border-color:#2fc6a5">
@@ -675,8 +677,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 
 <section class="card wide"><h2>🔮 本格占い・行動管理（売買AI点数とは完全分離）</h2>
 <div class="grid3">
-<div><b>本日の行動管理 35/100</b><br>日付数秘：7<br>個人情報は非表示</div>
-<div><b>バイオリズム</b><br>身体 +14／感情 -90／知性 -81</div>
+<div><b>本日の行動管理 31/100</b><br>日付数秘：8<br>個人情報は非表示</div>
+<div><b>バイオリズム</b><br>身体 -14／感情 -97／知性 -69</div>
 <div><b>今日の行動ルール</b><br>判断がぶれやすい日。発注前の指差し確認を1回増やす。</div>
 </div>
 <p class="warning">公開ページには生年月日・出生地・出生時刻を保存しません。娯楽・心理管理用で、銘柄順位や売買期待値には加点しません。</p></section>
@@ -701,7 +703,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   </div>
 </section>
 <!-- WEEKLY_REVIEW_END -->
-</main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>2026-09-24 23:32:50 JST</span></footer>
+</main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>2026-09-25 07:36:12 JST</span></footer>
 <script>
 const yen = v => Number(v).toLocaleString("ja-JP");
 const signedPct = (v, digits = 1) => Number.isFinite(Number(v))
