@@ -445,7 +445,7 @@ function Release-CollectorComState {
 trap {
     Write-Host ("[COLLECTOR FATAL] " + $_.Exception.Message) -ForegroundColor Red
     Release-CollectorComState
-    break
+    exit 1
 }
 
 function Invoke-ExcelCom {
