@@ -3050,7 +3050,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>関連度</th><th>現在値</th><th>前日比</th><th>出来高比</th><th>想定役割</th><th>根拠・参画状況</th><th>資料</th></tr></thead><tbody>{gunma_rare_earth_rows}</tbody></table>
 <p class="warning">群馬県桐生市の茂倉沢鉱山でランタン・セリウムを含む新鉱物4種が承認された研究成果を監視します。現時点では資源量・採算性・採掘計画・企業参画のいずれも未確認で、商業鉱山案件ではありません。資源量調査、採掘権、自治体・JOGMEC・企業との共同研究、分離精製試験の公式発表が出るまでテーマ監視限定。正式なスイング候補への昇格には信用需給30/55点以上と発動価格突破も必須です。</p></section>
 <section id="speculative-theme-monitor" class="card wide scalp-tv">
- <div class="scalp-tv-toolbar"><div class="scalp-tv-title"><h2>EVENT 5</h2><span>全市場走査 / 監視専用</span></div><div class="scalp-tv-legend"><span>売買候補ではない<b>監視専用</b></span></div></div>
+ <div class="scalp-tv-toolbar"><div class="scalp-tv-title"><h2>急騰5 / MOMENTUM 5</h2><span>全市場走査 / 価格・出来高・売買代金加速</span></div><div class="scalp-tv-legend"><span>売買候補ではない<b>監視専用</b></span></div></div>
  <div id="speculative-theme-watch" class="scalp-strip"><div class="focus-empty">全市場の仕手化兆候を走査中...</div></div>
 <p class="warning"><b>監視専用・売買候補ではありません。</b> 出来高急増、5日／20日急騰、値幅拡大、加速率、上ヒゲで異常度を算出し、初動候補・資金流入・過熱・天井警戒に分類します。「仕手株」との断定はせず、会社IR・適時開示でテーマを確認し、信用買い残・信用倍率・機関空売り変化も確認。ここに入った銘柄は通常の持ち越しLONG／SHORT TOP5から隔離します。VWAP・OR5・OR15・EMA・ENTRY/STOP/T1はMS2ライブ対象100銘柄外だと未取得のため「—」表示です。</p></section>
 <section id="large-lot-accumulation" class="card wide"><h2>大口買い集め・吸収監視 TOP20</h2>
@@ -3200,7 +3200,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     x.ret20.toFixed(2) + "%</td></tr>").join("");
   document.getElementById("prepared-signals").innerHTML =
     prepared || "<tr><td colspan='10'>本日の準備点灯銘柄なし。</td></tr>";
-  // ユーザー依頼2026-09-19：SCALP 5と同じ銘柄カード見た目に統一。ただしEVENT 5は全市場走査
+  // ユーザー依頼2026-09-19：SCALP 5と同じ銘柄カード見た目に統一。ただし急騰5 / MOMENTUM 5は全市場走査
   // （MS2ライブ100銘柄の外側も含む）が元データのため、VWAP・OR5・OR15・EMA・ENTRY/STOP/T1・
   // FLOWはこのデータソースに存在せず「—」のまま（推測で埋めない）。出来高比(rvol)だけは
   // VOLUME欄へ転用できる実データなのでそこに載せる。
