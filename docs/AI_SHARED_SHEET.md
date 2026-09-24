@@ -135,11 +135,13 @@ GitHubの共有ページは双方が参照できる受け渡し場所であり�
 - PR #186・#183（AI Strategy LIVE Phase 1/2）はDraftのまま終了せず、2026-09-23にCLOSEDへ変更されていた。内容はPR #200「C-112: rescue AI Strategy LIVE Phase 2 onto current main」（2026-09-23 13:25 JSTマージ、#186のクローズと同時刻）へ引き継がれてmain反映済み（**確認済み**）。ただし実際のUI（index.html）には`ai_strategy_live.json`への参照が一切なく、**データ層は存在するがカード表示は未実装**であることをコード調査（サブエージェント）で確認した。
 - `real_submit_allowed`は現在もmain全体で`false`固定（`config/ai_organization_v1.json`、各スキーマの`const: false`）。実発注・RssOrder・ブローカー接続関連の有効化コードは見当たらない（**確認済み**）。
 
-### 重大な発見：Owner承認ゲートの一時的な無効化
+### 重大な発見：Owner承認ゲートの無効化（意図的・テスト付きの変更だったことを確認）
 
 2026-09-23 21:56 JST、PR #198（「Fix GPT / Cloud progress handoff source of truth」）で`.github/workflows/owner-main-approval.yml`の`approve`ジョブから`environment: name: owner-main-approval`の参照が削除されていた。GitHub側のEnvironment保護設定（必須レビュアー=infoyuusuke-afk）自体は存続していたが、ワークフローがそれを参照しなくなったため、実質的にレビュー必須の効力が失われていた。直後の2026-09-23 19:07〜19:36の約30分間にPR #239〜#250等13件以上が連続マージされている（author・mergedByとも同一アカウント）。
 
-**対応済み**：[PR #255](https://github.com/infoyuusuke-afk/trade-cockpit/pull/255)で`environment:`参照を復元し、再発防止の回帰テスト（`tests/test_owner_approval_gate_present.py`）を追加。**マージはせずOwner確認待ちのまま**。
+git履歴を精査した結果、これは**単純な事故ではなく、テストで裏付けられた意図的な変更**だったことを確認した：8分後のコミット`2dd6588c`（PR #199、コミットメッセージ「Align owner gate security test with non-blocking workflow」）で、`tests/test_main_data_writer_security.py`の該当アサーションが`assertIn("name: owner-main-approval", ...)`から`assertNotIn("environment:", ...)`へ書き換えられ、ゲートを「non-blocking」にすることが明示的にテストへ固定されていた。ただし、この変更の是非についてOwnerへ個別に確認を仰いだ形跡（PR説明・コメント等）は見当たらず、「Cloud progress handoff」という無関係な修正と同じPRへ同梱されていた。標準的な制約（main-protectionやOwner承認ゲートを変更・迂回しない）に抵触する可能性がある変更である。
+
+**対応済み**：[PR #255](https://github.com/infoyuusuke-afk/trade-cockpit/pull/255)で`environment:`参照を復元し、上記テストのアサーションも整合するよう戻し（printf化などその後の正当な改善部分は維持）、再発防止の回帰テスト（`tests/test_owner_approval_gate_present.py`）を追加。ローカルではフルスイート1509件中、無関係な既知2件（Windowsファイルシステムのdurabilityチェック、origin/mainでも再現・未修正）を除き全通過。CI結果は確認中。**マージはせずOwner確認待ちのまま**。
 
 ### 今回追加した対応
 
