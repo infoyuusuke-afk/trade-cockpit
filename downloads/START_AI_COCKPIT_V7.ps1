@@ -88,7 +88,21 @@ $state=[ordered]@{
 }
 
 function Save-State {
-    $tmp=$StateFile+".tmp"
+    try{
+        if(Test-Path -LiteralPath $StateFile){
+            $disk=Get-Content -LiteralPath $StateFile -Raw | ConvertFrom-Json
+            if($null -ne $disk){
+                if([int]$disk.collector_pid -gt 0 -and [int]$state.collector_pid -eq 0){
+                    $state.collector_pid=[int]$disk.collector_pid
+                }
+                $diskStatus=[string]$disk.collector_status
+                if(-not [string]::IsNullOrWhiteSpace($diskStatus) -and $diskStatus -notin @("NOT_STARTED","WAIT_DATA","STARTING")){
+                    $state.collector_status=$diskStatus
+                }
+            }
+        }
+    }catch{}
+    $tmp=$StateFile+"."+$PID+".tmp"
     [IO.File]::WriteAllText($tmp,($state|ConvertTo-Json -Depth 6),[Text.UTF8Encoding]::new($false))
     Move-Item -LiteralPath $tmp -Destination $StateFile -Force
 }
