@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-09-24 11:55:31 JST",
+  "updated_at": "2026-09-24 11:57:57 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -4128,22 +4128,6 @@
       "already_watched": false
     },
     {
-      "code": "9509",
-      "name": "Hokkaido Electric Power Company,Incorporated",
-      "exchange": "TSE",
-      "price": 1109,
-      "change_pct": -1.4222222222222223,
-      "volume": 1689300,
-      "relative_volume": 0.8861622716137459,
-      "atr_pct": 2.76,
-      "vwap": 1113.3333333333333,
-      "high": 1127.5,
-      "low": 1103.5,
-      "market_cap": 230981145859,
-      "sector": "Utilities",
-      "already_watched": false
-    },
-    {
       "code": "3402",
       "name": "Toray Industries, Inc.",
       "exchange": "TSE",
@@ -4157,6 +4141,22 @@
       "low": 1246,
       "market_cap": 1839131683594,
       "sector": "Process Industries",
+      "already_watched": false
+    },
+    {
+      "code": "9509",
+      "name": "Hokkaido Electric Power Company,Incorporated",
+      "exchange": "TSE",
+      "price": 1109,
+      "change_pct": -1.4222222222222223,
+      "volume": 1689300,
+      "relative_volume": 0.8861622716137459,
+      "atr_pct": 2.76,
+      "vwap": 1113.3333333333333,
+      "high": 1127.5,
+      "low": 1103.5,
+      "market_cap": 230981145859,
+      "sector": "Utilities",
       "already_watched": false
     },
     {
