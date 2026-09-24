@@ -2293,17 +2293,17 @@ def main():
         f"<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>{name}</strong><small>資金流入テーマ #{i}</small></div><span class='scalp-signal'>WATCH</span></div><div class='scalp-price-row'><div class='scalp-price'><small>強度</small>{score:+.1f}</div><div class='scalp-change'>{count}銘柄</div></div><div class='scalp-metrics'>{''.join(f'<span>{m[0]}<b>{m[1]:+.1f} / {m[2]:+.2f}%</b></span>' for m in members)}</div><div class='scalp-foot'>実測平均によるテーマ強度</div></article>"
         for i, (name, score, count, members) in enumerate(themes[:5], 1)
     ) or "<div class='focus-empty'>資金流入テーマ候補なし</div>"
-    policy_priority_rows = "".join(
-        f"<tr><td><b>#{x['priority']}</b></td><td>{x['title']}</td><td>{x['formal_count']}/5</td><td>{x['best_score'] or '—'}</td><td>{'正式候補あり' if x['formal_count'] else '信用需給待ち・売買不可'}</td><td><a href='{x['source']}' target='_blank' rel='noopener'>政策根拠</a></td></tr>"
+    policy_priority_cards = "".join(
+        f"<article class='scalp-card {'long' if x['formal_count'] else 'wait'}'><div class='scalp-head'><div class='scalp-symbol'><strong>{x['title']}</strong><small>政策テーマ · #{x['priority']}</small></div><span class='scalp-signal'>{'候補あり' if x['formal_count'] else '需給待ち'}</span></div><div class='scalp-price-row'><div class='scalp-price'><small>正式候補</small>{x['formal_count']}/5</div><div class='scalp-change'>{x['best_score'] or '—'}</div></div><div class='scalp-foot'>政策分野の優劣ではなく、正式候補数と総合点による研究順序 · <a href='{x['source']}' target='_blank' rel='noopener'>政府公式根拠</a></div></article>"
         for x in policy_theme_tabs
-    )
+    ) or "<div class='focus-empty'>政策テーマ候補なし</div>"
     policy_theme_sections = ""
     for theme in policy_theme_tabs:
-        rows = "".join(
-            f"<tr><td>{i}</td><td>{x['name']}<br><small>{x['role']}</small></td><td><span class='pill {'in' if x['formal'] else 'prep'}'>{x['status']}</span></td><td><b>{x['directness']}</b></td><td>{x['business_impact']}</td><td><b class='{'up' if x['formal'] else ''}'>{x['score']}/100</b></td><td>{x['supply_text']}</td><td>{money(x['price'])}<br><small>出来高比{x.get('rvol', 0):.2f}倍</small></td><td>{money(x['plan']['entry'])}</td><td class='down'>{money(x['plan']['stop'])}</td><td>{money(x['plan']['target1'])}／{money(x['plan']['target2'])}</td><td><a href='{x['evidence']}' target='_blank' rel='noopener'>会社公式根拠</a></td></tr>"
-            for i, x in enumerate(theme['candidates'], 1)
-        ) or "<tr><td colspan='12'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</td></tr>"
-        policy_theme_sections += f'''<section id="policy-{theme['slug']}" class="card wide policy-theme-card" data-policy-tab="{theme['slug']}"><h2>実戦優先 #{theme['priority']}｜{theme['title']}・厳格選定</h2><p class="sub">正式候補 {theme['formal_count']}銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><table><thead><tr><th>研究順位</th><th>会社名＋コード／直接関与</th><th>判定</th><th>政策直接度</th><th>業績寄与度</th><th>総合点</th><th>信用需給</th><th>株価・出来高</th><th>発動</th><th>損切り</th><th>利確1／2</th><th>根拠</th></tr></thead><tbody>{rows}</tbody></table><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="{theme['source']}" target="_blank" rel="noopener">政府公式資料</a>、企業関与は各行の会社公式資料で確認します。</p></section>'''
+        cards = "".join(
+            f"<article class='scalp-card {'long' if x['formal'] else 'wait'} live-overlay-card' data-live-ticker='{x.get('ticker') or x.get('code') or ''}' data-analysis-price='{x['price']}'><div class='scalp-head'><div class='scalp-symbol'><strong>{x['name']}</strong><small>{x['role']}</small></div><span class='scalp-signal'>{x['status']}</span></div><div class='scalp-price-row'><div class='scalp-price'><small class='price-kind'>分析基準値</small><span class='display-price'>{money(x['price'])}</span></div><div class='scalp-change'>{x['score']}/100</div></div><div class='scalp-order'><span>ENTRY<b>{money(x['plan']['entry'])}</b></span><span class='stop'>STOP<b>{money(x['plan']['stop'])}</b></span><span class='target'>T1<b>{money(x['plan']['target1'])}</b></span></div><div class='scalp-metrics'><span>政策直接度<b>{x['directness']}</b></span><span>業績寄与<b>{x['business_impact']}</b></span><span>出来高比<b>{x.get('rvol',0):.2f}x</b></span><span>信用需給<b>{x['supply_text']}</b></span></div><div class='scalp-foot'>T2 {money(x['plan']['target2'])} · <a href='{x['evidence']}' target='_blank' rel='noopener'>会社公式根拠</a> · LIVE有効時のみ現在値へ切替</div></article>"
+            for x in theme['candidates'][:5]
+        ) or "<div class='focus-empty'>直接関与を会社公式で確認できる上場候補なし。無理に5銘柄へ埋めません。</div>"
+        policy_theme_sections += f'''<section id="policy-{theme['slug']}" class="card wide policy-theme-card" data-policy-tab="{theme['slug']}"><h2>実戦優先 #{theme['priority']}｜{theme['title']}・厳格選定</h2><p class="sub">正式候補 {theme['formal_count']}銘柄　／　総合70点以上＋信用需給45/70以上＋悪化除外が必須</p><div class="scalp-strip">{cards}</div><p class="warning">TOP5を埋めるための周辺銘柄は採用しません。信用需給未取得は研究順位に表示しても売買不可。政策根拠は<a href="{theme['source']}" target="_blank" rel="noopener">政府公式資料</a>、企業関与はカード内の会社公式資料で確認します。</p></section>'''
     # US/Japan SMR is a separate event watch: a project ceiling is not a
     # purchase order or booked revenue for any Japanese listed company.
     smr_hitachi = valid_map.get("日立製作所（6501）")
@@ -3099,7 +3099,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <p class="warning"><b>重要：</b>空売り比率、信用残、先物・オプション手口など公表頻度が違う値を同日データとして混ぜません。未取得値を推定で埋めず、正式候補のデータ充足率に反映します。</p></section>
 <section class="card wide"><h2>① 地合いサマリー</h2><div class="scalp-strip">{idx_cards}</div></section>
 <section class="card wide"><h2>② 当日資金流入テーマ TOP5＋有力銘柄</h2><div class="scalp-strip">{theme_cards}</div></section>
-<section id="policy-priority-overview" class="card wide"><h2>国策テーマ・実戦優先順位</h2><table><thead><tr><th>実戦優先</th><th>テーマ</th><th>正式候補数</th><th>最高総合点</th><th>現在判定</th><th>政策根拠</th></tr></thead><tbody>{policy_priority_rows}</tbody></table><p class="warning">順位は国の政策分野に勝手な序列を付けたものではありません。正式候補数→最高総合点で毎回入れ替えます。信用需給未取得時は全テーマを売買不可とします。</p></section>
+<section id="policy-priority-overview" class="card wide"><h2>国策テーマ・研究優先</h2><div class="scalp-strip">{policy_priority_cards}</div><p class="warning">順位は国の政策分野に勝手な序列を付けたものではありません。正式候補数→最高総合点で毎回入れ替えます。信用需給未取得時は全テーマを売買不可とします。</p></section>
 {policy_theme_sections}
 {smr_html}
 <section class="card wide"><h2>②-A 秋田AIデータセンター関連 監視TOP5</h2>
