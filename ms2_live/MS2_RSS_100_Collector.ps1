@@ -301,8 +301,11 @@ function Get-TdnetDisclosures([DateTime]$date) {
         $urls += ($base + ('I_list_{0:D3}_{1}.html' -f $page,$dateText))
     }
     $found = @{}
+    $pagesAttempted = 0
+    $pagesSucceeded = 0
     foreach($url in @($urls|Select-Object -Unique)) {
-        try { $html = Get-Utf8WebContent $url } catch { continue }
+        $pagesAttempted++
+        try { $html = Get-Utf8WebContent $url; $pagesSucceeded++ } catch { continue }
         foreach($rowMatch in [regex]::Matches($html,'(?is)<tr\b[^>]*>(.*?)</tr>')) {
             $rowHtml = $rowMatch.Groups[1].Value
             $cells = @([regex]::Matches($rowHtml,'(?is)<td\b[^>]*>(.*?)</td>')|ForEach-Object{
@@ -332,7 +335,8 @@ function Get-TdnetDisclosures([DateTime]$date) {
             $found[$key]=[pscustomobject]@{code=$codeMatch.Groups[1].Value;time=$timeMatch.Groups[1].Value;title=$title;url=$link;name=$nameGuess}
         }
     }
-    return @($found.Values|Sort-Object time -Descending)
+    if($pagesSucceeded -lt 1){ throw "TDnet page retrieval failed: 0/$pagesAttempted pages succeeded." }
+    return [pscustomobject]@{disclosures=@($found.Values|Sort-Object time -Descending);pages_attempted=$pagesAttempted;pages_succeeded=$pagesSucceeded}
 }
 
 function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580) {
@@ -861,10 +865,12 @@ try {
 
         if(($now-$lastTdnetFetchAt).TotalSeconds -ge 30) {
             try {
-                $freshTdnet = @(Get-TdnetDisclosures $now)
+                $tdnetFetch = Get-TdnetDisclosures $now
+                if($null -eq $tdnetFetch -or [int]$tdnetFetch.pages_succeeded -lt 1){throw "TDnet retrieval not verified"}
+                $freshTdnet = @($tdnetFetch.disclosures)
                 $tdnetDisclosures=$freshTdnet
                 $lastTdnetSuccessAt=$now
-                $tdnetStatus=("TDnet LIVE "+$freshTdnet.Count+"件 / "+$now.ToString("HH:mm:ss"))
+                $tdnetStatus=("TDnet LIVE "+$freshTdnet.Count+"件 / pages "+$tdnetFetch.pages_succeeded+"/"+$tdnetFetch.pages_attempted+" / "+$now.ToString("HH:mm:ss"))
             } catch {
                 # Fail closed: a failed refresh must not leave the previous disclosure set looking current.
                 $tdnetDisclosures=@()
