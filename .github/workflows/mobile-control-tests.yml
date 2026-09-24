@@ -20,6 +20,26 @@ on:
       - ".github/workflows/mobile-control-tests.yml"
   workflow_dispatch:
 jobs:
+      - name: Simulate installer raw download and BOM normalization on Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $url = "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/downloads/START_AI_COCKPIT_V6.ps1"
+          $raw = Join-Path $env:TEMP "launcher.raw"
+          $norm = Join-Path $env:TEMP "launcher.norm.ps1"
+          Invoke-WebRequest $url -OutFile $raw -UseBasicParsing
+          $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+          $utf8Bom = New-Object System.Text.UTF8Encoding($true)
+          $text = [IO.File]::ReadAllText($raw,$utf8NoBom)
+          if($text -notmatch "V6-PS51-ASCII-20260925-01"){ throw "launcher build marker missing after raw download" }
+          [IO.File]::WriteAllText($norm,$text,$utf8Bom)
+          $tokens=$null
+          $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile($norm,[ref]$tokens,[ref]$errors) | Out-Null
+          foreach($err in $errors){
+            Write-Host ("ERROR line="+$err.Extent.StartLineNumber+" col="+$err.Extent.StartColumnNumber+" text=["+$err.Extent.Text+"] message="+$err.Message) -ForegroundColor Red
+          }
+          if($errors.Count -gt 0){ exit 1 }
+          Write-Host "PASS raw download + UTF8 BOM normalization + PS5.1 parse" -ForegroundColor Green
   test:
     runs-on: ubuntu-latest
     steps:
