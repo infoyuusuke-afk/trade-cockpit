@@ -3146,8 +3146,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <tbody id="hammer-signals"><tr><td colspan="13">全市場を走査中...</td></tr></tbody></table>
 <p class="warning">信用買い残1週・4週、信用倍率、機関空売り増減、買い戻し社数を55点で評価。未取得は需給未確認の暫定候補。高値＋1ティックを上抜いた場合だけ発動し、反転足安値割れで撤退します。</p></section>
 <section id="long-term-ma-rebound" class="card wide"><h2>⑤-F 長期右肩上がり・50週線／200日線反発＋信用需給 TOP5</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>型</th><th>状態</th><th>総合点</th><th>需給点・局面</th><th>終値</th><th>支持線</th><th>線の傾斜</th><th>半年騰落</th><th>足型</th><th>出来高比</th><th>発動価格</th><th>損切り</th><th>利確1／2</th></tr></thead>
-<tbody id="long-term-ma-signals"><tr><td colspan="15">全市場を走査中...</td></tr></tbody></table>
+<div id="long-term-ma-signals" class="scalp-strip"><div class="focus-empty">全市場を走査中...</div></div>
 <p class="warning"><b>必須条件：</b>信用需給を確認済みかつ30/55点以上。信用買い残1週・4週、信用倍率、機関空売り増減、買い戻し社数を確認します。50週線・200日線反発だけでは正式候補にしません。反転足高値＋1ティックを上抜いた場合だけ発動し、反転足安値割れで撤退。</p></section>
 <section id="dividend-rights-watch" class="card wide"><h2>VALUE 5 · 配当権利前監視</h2><div class="scalp-strip">{dividend_cards}</div><p class="warning">権利日は過去実績からの推定。会社IR・取引所で確認し、需給改善＋発動価格上抜けだけを監視します。</p></section>
 <section id="buyback-watch" class="card wide"><h2>VALUE 5 · 自社株買い需給</h2><div class="scalp-strip">{buyback_cards}</div><p class="warning">会社IR・適時開示で取得期間中と確認できる案件のみ。自社株買い単独では発動せず、信用需給・週足／月足反転を重ねて確認します。更新：{buybacks_updated_at}</p></section>
@@ -3294,20 +3293,21 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("hammer-signals").innerHTML =
     hammers || "<tr><td colspan='13'>厳格条件に合格した月足・週足反転銘柄なし。</td></tr>";
   const longTerm = (d.long_term_ma_rebounds || []).slice(0, 5).map((x, i) =>
-    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.setup +
-    "</td><td>" + x.status + "</td><td><b class='up'>" + x.score +
-    "/100</b></td><td>" + x.supply_score + "/55 " + x.supply_phase +
-    "</td><td>" + yen(x.close) + "</td><td>" + x.ma_label + " " +
-    yen(x.ma_value) + "</td><td class='" + (x.ma_slope >= 0 ? "up" : "down") +
-    "'>" + (x.ma_slope >= 0 ? "+" : "") + x.ma_slope.toFixed(2) +
-    "%</td><td class='" + (x.trend_return >= 0 ? "up" : "down") + "'>" +
-    (x.trend_return >= 0 ? "+" : "") + x.trend_return.toFixed(2) +
-    "%</td><td>" + x.candle + "</td><td>" + x.volume_ratio.toFixed(2) +
-    "倍</td><td><b>" + yen(x.trigger) + "</b></td><td class='down'>" +
-    yen(x.stop) + "</td><td>" + yen(x.target1) + "／" + yen(x.target2) +
-    "</td></tr>").join("");
+    "<article class='scalp-card wait'><div class='scalp-head'><div class='scalp-symbol'><strong>" + x.name +
+    "</strong><small>VALUE · MA反発 #" + (i + 1) + "</small></div><span class='scalp-signal'>" + x.status +
+    "</span></div><div class='scalp-price-row'><div class='scalp-price'>" + yen(x.close) +
+    "</div><div class='scalp-change'>" + x.score + "/100</div></div><div class='scalp-order'><span>ENTRY<b>" +
+    yen(x.trigger) + "</b></span><span class='stop'>STOP<b>" + yen(x.stop) +
+    "</b></span><span class='target'>T1<b>" + yen(x.target1) +
+    "</b></span></div><div class='scalp-metrics'><span>型<b>" + x.setup +
+    "</b></span><span>支持<b>" + x.ma_label + " " + yen(x.ma_value) +
+    "</b></span><span>傾斜<b>" + (x.ma_slope >= 0 ? "+" : "") + x.ma_slope.toFixed(2) +
+    "%</b></span><span>半年<b>" + (x.trend_return >= 0 ? "+" : "") + x.trend_return.toFixed(2) +
+    "%</b></span><span>出来高<b>" + x.volume_ratio.toFixed(2) +
+    "x</b></span></div><div class='scalp-foot'>需給 " + x.supply_score + "/55 " + x.supply_phase +
+    " · " + x.candle + "</div></article>").join("");
   document.getElementById("long-term-ma-signals").innerHTML =
-    longTerm || "<tr><td colspan='15'>信用需給必須条件に合格した50週線／200日線反発銘柄なし。</td></tr>";
+    longTerm || "<div class='focus-empty'>信用需給必須条件に合格した50週線／200日線反発銘柄なし。</div>";
   const dailyReversals = (d.daily_capitulation_reversals || []).slice(0, 20).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.phase +
     "</td><td>" + x.setup + "</td><td><b class='up'>" + x.score +
@@ -3372,7 +3372,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("speculative-theme-watch").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
   document.getElementById("accumulation-signals").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
   document.getElementById("hammer-signals").innerHTML = "<tr><td colspan='13'>データ取得待ち</td></tr>";
-  document.getElementById("long-term-ma-signals").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
+  document.getElementById("long-term-ma-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
   document.getElementById("daily-reversal-signals").innerHTML = "<tr><td colspan='12'>データ取得待ち</td></tr>";
   document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
   document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
