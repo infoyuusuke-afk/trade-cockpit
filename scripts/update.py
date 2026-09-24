@@ -3705,15 +3705,23 @@ document.addEventListener("liveFocusUpdate",e=>{{
 }});
 </script>{trade_drawer}{ms2_live_script}<script src="earnings-calendar.js" defer></script>
 <script>
-document.addEventListener("cockpitLiveState",e=>{
- const s=e.detail||{};document.querySelectorAll(".live-overlay-card").forEach(card=>{
+let cockpitLastLiveState=null;
+function applyCockpitLiveProof(s){
+ cockpitLastLiveState=s||{};
+ document.querySelectorAll(".live-overlay-card").forEach(card=>{
   let p=card.querySelector(".live-state-proof");if(!p){p=document.createElement("div");p.className="live-state-proof";card.appendChild(p);}
-  card.classList.toggle("live-invalid",s.valid!==true);
-  p.innerHTML=s.valid===true
-   ? "<b>"+String(s.session_state||"LIVE")+"</b><span>観測 "+String(s.observed_at||"時刻不明")+"</span><small>"+String(s.source||"MS2 RSS")+"</small>"
+  const inactive=["CLOSED_KNOWN","NOT_OPEN_YET","BREAK","EXPECTED_FEED_DELAY"].includes(String(s.session_state||""));
+  card.classList.toggle("live-invalid",s.valid!==true&&!inactive);
+  card.classList.toggle("live-inactive",inactive);
+  p.innerHTML=inactive
+   ? "<b>"+String(s.session_state)+"</b><span>市場セッション外・LIVE欠測扱いにしません</span><span>観測 "+String(s.observed_at||"時刻不明")+"</span>"
+   : s.valid===true
+   ? "<b>MS2 LIVE</b><span>"+String(s.session_state||"OPEN")+"</span><span>観測 "+String(s.observed_at||"時刻不明")+"</span><small>"+String(s.source||"MS2 RSS")+"</small>"
    : "<b>LIVE DATA INVALID</b><span>"+(s.stale?"鮮度超過":"LIVE未確認")+"</span>";
  });
-});
+}
+document.addEventListener("cockpitLiveState",e=>applyCockpitLiveProof(e.detail||{}));
+document.addEventListener("ms2RssUpdate",()=>{if(cockpitLastLiveState)queueMicrotask(()=>applyCockpitLiveProof(cockpitLastLiveState));});
 </script>
 </body></html>"""
     (ROOT / "index.html").write_text(html, encoding="utf-8")
