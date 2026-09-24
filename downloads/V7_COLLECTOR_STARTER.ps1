@@ -26,7 +26,7 @@ function Update-State([string]$Status,[int]$CollectorPid=0){
         $s=Get-Content -LiteralPath $StateFile -Raw | ConvertFrom-Json
         $s.collector_status=$Status
         if($CollectorPid -gt 0){$s.collector_pid=$CollectorPid}
-        $tmp=$StateFile+".tmp"
+        $tmp=$StateFile+".starter."+$PID+".tmp"
         [IO.File]::WriteAllText($tmp,($s|ConvertTo-Json -Depth 6),[Text.UTF8Encoding]::new($false))
         Move-Item -LiteralPath $tmp -Destination $StateFile -Force
     }catch{}
