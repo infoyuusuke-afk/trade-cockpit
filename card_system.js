@@ -63,8 +63,12 @@ function resolveFreshness(model) {
 }
 
 function freshnessAgeText(model) {
-  const age = isFiniteNumber(model.ageSeconds) ? Number(model.ageSeconds) : null;
-  if (age == null) return "鮮度不明";
+  const raw = isFiniteNumber(model.ageSeconds) ? Number(model.ageSeconds) : null;
+  if (raw == null) return "鮮度不明";
+  // Clock skew between the data source and the viewer can make a
+  // just-published data point look momentarily "in the future" (negative
+  // age). Never show a negative number - that reads as a bug, not freshness.
+  const age = Math.max(0, raw);
   if (age < 60) return `${Math.round(age)}秒前`;
   if (age < 3600) return `${Math.round(age / 60)}分前`;
   return `${Math.round(age / 3600)}時間前`;

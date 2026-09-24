@@ -67,6 +67,12 @@ test('freshness is derived from ageSeconds vs staleThresholdSeconds', () => {
   assert.match(stale, /cc-freshness--stale/);
 });
 
+test('negative ageSeconds (clock skew) never renders as a negative number', () => {
+  const html = renderCockpitCard({ symbol: '285A', direction: 'long', ageSeconds: -5663, staleThresholdSeconds: 60 });
+  assert.doesNotMatch(html, /-\d+秒前/);
+  assert.match(html, /0秒前/);
+});
+
 test('conflict banner only renders when conflict is set, and carries a message', () => {
   const noConflict = renderCockpitCard({ symbol: '285A', direction: 'wait' });
   assert.doesNotMatch(noConflict, /cc-conflict/);
