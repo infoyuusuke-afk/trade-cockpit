@@ -1239,7 +1239,7 @@ try {
             $orHighValue=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
             $orLowValue=if($orLow.ContainsKey($ticker)){$orLow[$ticker]}else{0}
             $results += [pscustomobject]@{
-                ticker=$ticker;name=$s.Name;sector=$s.Sector;price=$price;live_price=$(if($sourceQuoteLive){$price}else{$null});live_observed_at=$(if($null -ne $exchangeObservedAt){$exchangeObservedAt.ToString("o")}else{$null});live_collector_observed_at=$now.ToString("o");live_exchange_time=$exchangeTimeText;live_source="MarketSpeed II RSS / 現在値詳細時刻";live_quote_valid=$sourceQuoteLive;volume=$volume;vwap=$vwap
+                ticker=$ticker;name=$s.Name;sector=$s.Sector;price=$price;live_price=$(if($sourceQuoteLive){$price}else{$null});live_observed_at=$(if($null -ne $exchangeObservedAt){$exchangeObservedAt.ToString("o")}else{$null});live_collector_observed_at=$now.ToString("o");live_exchange_time=$exchangeTimeText;live_source="MarketSpeed II RSS / 現在値詳細時刻";live_quote_valid=$sourceQuoteLive;live_quote_status=$(if($sourceQuoteLive){"LIVE"}elseif([string]::IsNullOrWhiteSpace($exchangeTimeText)){"INVALID / SOURCE TIME MISSING"}else{"STALE / SOURCE TIME"});live_quote_age_seconds=$(if($null -ne $exchangeAgeSeconds){[Math]::Round($exchangeAgeSeconds,1)}else{$null});isolated=(-not $sourceQuoteLive);volume=$volume;vwap=$vwap
                 change_pct=Get-SafeNumber (Get-TableValue $values $r 4 32) -1000 1000
                 bid=$bid;ask=$ask;bid_qty=$bidQty;ask_qty=$askQty;market_sell=$marketSell;market_buy=$marketBuy;over=$over;under=$under
                 under_ratio=[Math]::Round($underRatio*100,1);under_change=[Math]::Round($uoChange*100,1)
