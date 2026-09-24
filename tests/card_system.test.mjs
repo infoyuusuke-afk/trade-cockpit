@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { renderCockpitCard, renderCockpitWatchRow } from '../card_system.js';
+import {
+  renderCockpitCard, renderCockpitWatchRow,
+  recordOnAir, getOnAirLog, clearOnAirLog, renderOnAirPanel,
+} from '../card_system.js';
 
 test('renderCockpitCard requires a symbol', () => {
   assert.throws(() => renderCockpitCard({}), /symbol is required/);
@@ -115,4 +118,57 @@ test('renderCockpitWatchRow requires a symbol and renders a compact row', () => 
   assert.match(html, /class="cc-watch-row cc-card--short"/);
   assert.match(html, /アドバンテスト/);
   assert.match(html, /12,345/);
+});
+
+test('on-air log: recordOnAir requires a symbol', () => {
+  clearOnAirLog();
+  assert.throws(() => recordOnAir({}), /symbol is required/);
+});
+
+test('on-air log: renderOnAirPanel shows an empty state with no fabricated rows', () => {
+  clearOnAirLog();
+  const html = renderOnAirPanel();
+  assert.match(html, /cc-onair-empty/);
+  assert.doesNotMatch(html, /cc-watch-row/);
+});
+
+test('on-air log: recordOnAir adds to the front, most recent first', () => {
+  clearOnAirLog();
+  recordOnAir({ symbol: '285A', company: 'キオクシアHD', direction: 'long' });
+  recordOnAir({ symbol: '6920', company: 'レーザーテック', direction: 'short' });
+  const log = getOnAirLog();
+  assert.equal(log.length, 2);
+  assert.equal(log[0].symbol, '6920');
+  assert.equal(log[1].symbol, '285A');
+});
+
+test('on-air log: re-announcing the same symbol moves it to front, never duplicates', () => {
+  clearOnAirLog();
+  recordOnAir({ symbol: '285A', company: 'キオクシアHD', direction: 'long' });
+  recordOnAir({ symbol: '6920', company: 'レーザーテック', direction: 'short' });
+  recordOnAir({ symbol: '285A', company: 'キオクシアHD', direction: 'long', price: 50000 });
+  const log = getOnAirLog();
+  assert.equal(log.length, 2);
+  assert.equal(log[0].symbol, '285A');
+  assert.equal(log[0].price, 50000);
+});
+
+test('on-air log: caps at 8 entries, dropping the oldest', () => {
+  clearOnAirLog();
+  for (let i = 0; i < 10; i++) {
+    recordOnAir({ symbol: `S${i}`, company: `Stock ${i}`, direction: 'wait' });
+  }
+  const log = getOnAirLog();
+  assert.equal(log.length, 8);
+  assert.equal(log[0].symbol, 'S9');
+  assert.equal(log[log.length - 1].symbol, 'S2');
+});
+
+test('on-air log: renderOnAirPanel renders a watch row per entry, most recent first', () => {
+  clearOnAirLog();
+  recordOnAir({ symbol: '285A', company: 'キオクシアHD', direction: 'long' });
+  recordOnAir({ symbol: '6920', company: 'レーザーテック', direction: 'short' });
+  const html = renderOnAirPanel();
+  assert.equal((html.match(/cc-watch-row/g) || []).length, 2);
+  assert.ok(html.indexOf('レーザーテック') < html.indexOf('キオクシアHD'));
 });
