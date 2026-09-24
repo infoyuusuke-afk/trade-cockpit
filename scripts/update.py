@@ -2863,7 +2863,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  document.addEventListener("ms2RssUpdate",e=>{const k=e.detail?.kioxia,el=document.getElementById("kio-preopen-stat");if(!el||!k)return;const h=k.preopen_historical;el.textContent=h?(h.ready?`${h.prediction}（n=${h.sample_days}日）`:`蓄積中 ${h.sample_days}/10日`):"統計蓄積中";});
 
  // キオクシアタブの一本化（2026-09-15）: Excel(Kioxia_RSS_Live_Watcher.ps1)がローカルの
- // 127.0.0.1:28581で配信するJSONを直接読み、Excelを開かなくても同じ内容を確認できるようにする。
+ // 127.0.0.1:28582で配信するJSONを直接読み、Excelを開かなくても同じ内容を確認できるようにする。
  // 公開スナップショットは無い（自宅PC上でブラウザを開いた時だけ意味を持つデータのため）。
  let latestKioxiaMs2=null,kioFailClosedReason=null;
  const kioLiveCards=()=>document.querySelectorAll('[data-live-ticker="285A.T"],[data-live-ticker="285A"]');
