@@ -271,6 +271,15 @@ function Set-CellFormula($range, $formula, [int]$maxAttempts = 20, [int]$delayMs
     }
 }
 
+function Release-ComObjectSafe($obj) {
+    if ($null -eq $obj) { return }
+    try {
+        if ([Runtime.InteropServices.Marshal]::IsComObject($obj)) {
+            [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($obj)
+        }
+    } catch {}
+}
+
 function Invoke-ComRetry([scriptblock]$Action, [int]$maxAttempts = 8, [int]$delayMs = 500) {
     # 2026-09-15実機で判明: 起動直後（RSS接続・再計算がまだ進行中の間）はExcel自体がCOM呼び出しを
     # 拒否することがあり（HRESULT 0x80010001 RPC_E_CALL_REJECTED、いわゆる「サーバーがビジー」）、
@@ -419,19 +428,14 @@ function Read-Chart($sheet, [string]$anchor) {
 }
 
 $bookFileName=[IO.Path]::GetFileName($bookPath)
-$book=[KioxiaWatcherRotFinder]::FindByIdentity($bookPath,$bookFileName)
-if($null -eq $book){
-    Write-Host "対象Excelブックが未起動です。通常のExcel起動経路で開きます。" -ForegroundColor Yellow
-    Start-Process -FilePath $bookPath | Out-Null
-    $connectDeadline=(Get-Date).AddSeconds(60)
-    while($null -eq $book -and (Get-Date) -lt $connectDeadline){
-        Start-Sleep -Seconds 2
-        $book=[KioxiaWatcherRotFinder]::FindByIdentity($bookPath,$bookFileName)
-    }
+$book=$null
+$connectDeadline=(Get-Date).AddSeconds(60)
+while($null -eq $book -and (Get-Date) -lt $connectDeadline){
+    try { $book=[KioxiaWatcherRotFinder]::FindByIdentity($bookPath,$bookFileName) } catch {}
+    if($null -eq $book){ Start-Sleep -Seconds 2 }
 }
 if($null -eq $book){
-    Write-Host "対象ブックを一意に確認できません。同名ブックが複数開いていないか確認してください。" -ForegroundColor Red
-    Read-Host "Enterで終了"
+    Write-Host "対象ブックが開いていません。Watcherはブックを自動再起動せず終了します。" -ForegroundColor Red
     exit 1
 }
 $excel=Invoke-ComRetry { $book.Application }
@@ -924,12 +928,28 @@ try {
         }
         $pendingEvaluations = @($pendingEvaluations | Where-Object { -not $_.Done15 })
       } catch {
+          $closed=$false
+          $probeBook=$null
+          try { $probeBook=[KioxiaWatcherRotFinder]::FindByIdentity($bookPath,$bookFileName) } catch {}
+          if($null -eq $probeBook){ $closed=$true }
+          if($null -ne $probeBook){ Release-ComObjectSafe $probeBook; $probeBook=$null }
+          if($closed){
+              Write-Host "対象ブックが閉じられました。WatcherはCOM参照を解放して終了します。" -ForegroundColor Yellow
+              break
+          }
           Write-Host ("監視ループ内でエラー（継続します）: " + $_.Exception.Message + " | 行: " + $_.InvocationInfo.ScriptLineNumber + " | " + $_.InvocationInfo.Line.Trim()) -ForegroundColor DarkYellow
       }
       Start-Sleep -Seconds 2
     }
 } finally {
-    $rss.Range("B16").Value2 = "停止"
-    $book.Save()
-    Write-Host "監視を停止しました。Excelは開いたままです。" -ForegroundColor Yellow
+    if($null -ne $watcherBridgeJob){ Stop-Job $watcherBridgeJob -ErrorAction SilentlyContinue; Remove-Job $watcherBridgeJob -Force -ErrorAction SilentlyContinue }
+    # Do not save or reopen a workbook the user has closed. Release all Excel RCWs
+    # so EXCEL.EXE can terminate normally when this was its last workbook.
+    foreach($com in @($log,$dash,$calc,$rss,$book,$excel,$speaker)){ Release-ComObjectSafe $com }
+    $log=$null; $dash=$null; $calc=$null; $rss=$null; $book=$null; $excel=$null; $speaker=$null
+    [GC]::Collect()
+    [GC]::WaitForPendingFinalizers()
+    [GC]::Collect()
+    [GC]::WaitForPendingFinalizers()
+    Write-Host "監視を停止しました。Excel COM参照を解放しました。" -ForegroundColor Yellow
 }
