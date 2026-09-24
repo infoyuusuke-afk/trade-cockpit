@@ -23,11 +23,11 @@ class ExcelStartupContractTests(unittest.TestCase):
 
     def test_canonical_workbook_wins_over_fixed(self):
         canonical = LAUNCHER.index("if(Test-Path -LiteralPath $rootCanonical)")
+        root_fixed = LAUNCHER.index("if(Test-Path -LiteralPath $rootFixed)")
         runtime_canonical = LAUNCHER.index("if(Test-Path -LiteralPath $runtimeCanonical)")
-        fixed = LAUNCHER.index("if(Test-Path -LiteralPath $rootFixed)")
-        self.assertLess(canonical, fixed)
-        self.assertLess(runtime_canonical, fixed)
-        self.assertIn("FIXED is recovery-only", LAUNCHER)
+        self.assertLess(canonical, root_fixed)
+        self.assertLess(root_fixed, runtime_canonical)
+        self.assertIn("never overwrite an existing canonical workbook", LAUNCHER)
 
     def test_watcher_receives_exact_workbook_path(self):
         self.assertIn('param([string]$WorkbookPath = "")', WATCHER)
