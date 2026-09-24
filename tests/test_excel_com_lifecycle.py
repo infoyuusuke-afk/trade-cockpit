@@ -11,8 +11,8 @@ HEARTBEAT = (ROOT / "ms2_live" / "Kioxia_Safety_Heartbeat.ps1").read_text(encodi
 
 class ExcelComLifecycleContractTests(unittest.TestCase):
     def test_collector_stops_when_workbook_is_closed(self):
-        self.assertIn("Collector workbook liveness", COLLECTOR)
-        self.assertIn("Canonical workbook was closed", COLLECTOR)
+        self.assertIn("CollectorWorkbookRotFinder]::FindByIdentity", COLLECTOR)
+        self.assertIn("Canonical workbook disappeared from ROT", COLLECTOR)
         self.assertIn("FinalReleaseComObject", COLLECTOR)
         self.assertIn("foreach($com in @($irDynamicSheet,$jnxSheet,$rssLink,$sheet,$book,$excel))", COLLECTOR)
         self.assertIn("Release-ComObjectSafe $com", COLLECTOR)
