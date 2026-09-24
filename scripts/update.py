@@ -3174,11 +3174,9 @@ document.addEventListener("DOMContentLoaded",()=>{
 </section>
 <section class="card wide"><h2>⑧ 本日<span class="pill in">IN</span>点灯銘柄</h2>
 <div id="signal-meta" class="sub">全銘柄データを読み込み中...</div>
-<table><thead><tr><th>会社名＋コード</th><th>種類</th><th>期待値</th><th>IN価格</th><th>損切り</th><th>利確1／2</th><th>判定</th></tr></thead>
-<tbody id="entered-signals"><tr><td colspan="7">読み込み中...</td></tr></tbody></table></section>
-<section class="card wide"><h2>⑨ 本日<span class="pill prep">準備</span>点灯銘柄 上位30</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>種類</th><th>期待値</th><th>終値</th><th>IN価格</th><th>損切り</th><th>利確1／2</th><th>出来高比</th><th>20日騰落</th></tr></thead>
-<tbody id="prepared-signals"><tr><td colspan="10">読み込み中...</td></tr></tbody></table>
+<div id="entered-signals" class="scalp-strip"><div class="focus-empty">読み込み中...</div></div></section>
+<section class="card wide"><h2>⑨ 本日<span class="pill prep">準備</span>点灯銘柄 TOP5</h2>
+<div id="prepared-signals" class="scalp-strip"><div class="focus-empty">読み込み中...</div></div>
 <p class="warning">全市場の日足を自動走査し、60点以上を抽出。画面は期待値上位30銘柄、データには上位100銘柄を保存します。</p></section>
 <section class="card wide"><h2>⑩ 信用需給優先・持ち越し<span class="pill long">LONG</span>候補 TOP5</h2>
 <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>翌日LONG発動</th><th>損切り</th><th>利確1／2</th><th>予約IFO入力例</th><th>選定理由</th><th>決算・イベントリスク</th></tr></thead>
@@ -3226,22 +3224,23 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("signal-meta").textContent =
     d.source + "／走査 " + d.scanned_count.toLocaleString() + "銘柄／準備 " +
     d.signal_count + "銘柄／更新 " + d.updated_at;
-  const entered = (d.entered || []).map(x =>
-    "<tr><td>" + x.name + "</td><td>" + x.setup + "</td><td><b class='up'>" +
-    x.score + "/100</b></td><td>" + yen(x.trigger) + "</td><td class='down'>" +
-    yen(x.stop) + "</td><td>" + yen(x.target1) + "／" + yen(x.target2) +
-    "</td><td><span class='pill in'>IN</span></td></tr>").join("");
+  const entered = (d.entered || []).slice(0, 5).map((x, i) =>
+    "<article class='scalp-card long'><div class='scalp-head'><div class='scalp-symbol'><strong>" + x.name +
+    "</strong><small>IN · #" + (i + 1) + " · " + x.setup + "</small></div><span class='scalp-signal'>IN</span></div><div class='scalp-price-row'><div class='scalp-price'><small>発動価格</small>" + yen(x.trigger) +
+    "</div><div class='scalp-change'>" + x.score + "/100</div></div><div class='scalp-order'><span>ENTRY<b>" + yen(x.trigger) +
+    "</b></span><span class='stop'>STOP<b>" + yen(x.stop) + "</b></span><span class='target'>T1<b>" + yen(x.target1) +
+    "</b></span></div><div class='scalp-metrics'><span>T2<b>" + yen(x.target2) + "</b></span></div><div class='scalp-foot'>日足条件の発動記録 · LIVE現在値ではありません</div></article>").join("");
   document.getElementById("entered-signals").innerHTML =
-    entered || "<tr><td colspan='7'>本日のIN点灯銘柄なし。無理に選定しません。</td></tr>";
-  const prepared = (d.prepared || []).slice(0, 30).map((x, i) =>
-    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.setup +
-    "</td><td><b class='up'>" + x.score + "/100</b></td><td>" + yen(x.close) +
-    "</td><td><b>" + yen(x.trigger) + "</b></td><td class='down'>" + yen(x.stop) +
-    "</td><td>" + yen(x.target1) + "／" + yen(x.target2) + "</td><td>" +
-    x.rvol.toFixed(2) + "倍</td><td class='" + (x.ret20 >= 0 ? "up" : "down") + "'>" + (x.ret20 >= 0 ? "+" : "") +
-    x.ret20.toFixed(2) + "%</td></tr>").join("");
+    entered || "<div class='focus-empty'>本日のIN点灯銘柄なし。無理に選定しません。</div>";
+  const prepared = (d.prepared || []).slice(0, 5).map((x, i) =>
+    "<article class='scalp-card wait live-overlay-card' data-live-ticker='" + String(x.ticker||x.code||"") + "' data-analysis-price='" + String(x.close??"") + "'><div class='scalp-head'><div class='scalp-symbol'><strong>" + x.name +
+    "</strong><small>準備 · #" + (i + 1) + " · " + x.setup + "</small></div><span class='scalp-signal'>PREP</span></div><div class='scalp-price-row'><div class='scalp-price'><small class='price-kind'>分析基準値</small><span class='display-price'>" + yen(x.close) +
+    "</span></div><div class='scalp-change'>" + x.score + "/100</div></div><div class='scalp-order'><span>ENTRY<b>" + yen(x.trigger) +
+    "</b></span><span class='stop'>STOP<b>" + yen(x.stop) + "</b></span><span class='target'>T1<b>" + yen(x.target1) +
+    "</b></span></div><div class='scalp-metrics'><span>T2<b>" + yen(x.target2) + "</b></span><span>出来高<b>" + x.rvol.toFixed(2) +
+    "x</b></span><span>20日<b>" + (x.ret20 >= 0 ? "+" : "") + x.ret20.toFixed(2) + "%</b></span></div><div class='scalp-foot'>発動待ち · LIVE有効時のみ現在値へ切替</div></article>").join("");
   document.getElementById("prepared-signals").innerHTML =
-    prepared || "<tr><td colspan='10'>本日の準備点灯銘柄なし。</td></tr>";
+    prepared || "<div class='focus-empty'>本日の準備点灯銘柄なし。</div>";
   // ユーザー依頼2026-09-19：SCALP 5と同じ銘柄カード見た目に統一。ただし急騰5 / MOMENTUM 5は全市場走査
   // （MS2ライブ100銘柄の外側も含む）が元データのため、VWAP・OR5・OR15・EMA・ENTRY/STOP/T1・
   // FLOWはこのデータソースに存在せず「—」のまま（推測で埋めない）。出来高比(rvol)だけは
@@ -3403,8 +3402,8 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("tv-all").onclick = () => saveTvList(allSymbols, "AIコクピット_全候補_" + dateTag + ".txt");
 }}).catch(() => {{
   document.getElementById("signal-meta").textContent = "全銘柄シグナルデータを取得できませんでした。次回自動更新で再試行します。";
-  document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>データ取得待ち</td></tr>";
-  document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
+  document.getElementById("entered-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
+  document.getElementById("prepared-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
   document.getElementById("speculative-theme-watch").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
   document.getElementById("accumulation-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
   document.getElementById("hammer-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
