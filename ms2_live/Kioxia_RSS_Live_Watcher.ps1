@@ -595,6 +595,14 @@ $dash.Activate()
 
 try {
     while ($true) {
+      $liveBook=$null
+      try { $liveBook=[KioxiaWatcherRotFinder]::FindByIdentity($bookPath,$bookFileName) } catch {}
+      if($null -eq $liveBook){
+          Write-Host "対象ブックがROTから消えました。WatcherはCOM参照を解放して終了します。" -ForegroundColor Yellow
+          break
+      }
+      Release-ComObjectSafe $liveBook
+      $liveBook=$null
       # 100銘柄収集器等との同時COMアクセスで、書き込みが一時的にキャスト例外を起こすことがあるため、
       # 監視ループ本体を丸ごとtry/catchで守る（1回失敗しても次のループで復帰する。売買サインの状態が
       # 更新されないまま古い値で残るのを避けるため、失敗時は短く待って次のループへ）。
