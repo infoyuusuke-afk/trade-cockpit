@@ -78,6 +78,12 @@ class ExcelStartupContractTests(unittest.TestCase):
         self.assertTrue(LAUNCHER.isascii())
         self.assertTrue(INSTALLER.isascii())
 
+    def test_fix_channel_uses_explicit_raw_ref_and_build_marker(self):
+        self.assertIn("refs/heads/fix/live-session-state-v1", INSTALLER)
+        self.assertIn("V6-PS51-ASCII-20260925-01", LAUNCHER)
+        self.assertIn("V6-PS51-ASCII-20260925-01", INSTALLER)
+        self.assertIn("Downloaded launcher is not the expected PS5.1-safe build", INSTALLER)
+
     def test_installer_is_windows_powershell_51_safe(self):
         self.assertTrue(INSTALLER.isascii())
         self.assertIn("Save-RemotePowerShellUtf8Bom", INSTALLER)
