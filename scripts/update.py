@@ -2865,6 +2865,8 @@ document.addEventListener("DOMContentLoaded",()=>{
  // キオクシアタブの一本化（2026-09-15）: Excel(Kioxia_RSS_Live_Watcher.ps1)がローカルの
  // 127.0.0.1:28581で配信するJSONを直接読み、Excelを開かなくても同じ内容を確認できるようにする。
  // 公開スナップショットは無い（自宅PC上でブラウザを開いた時だけ意味を持つデータのため）。
+ let latestKioxiaMs2=null;
+ document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},k=d.kioxia;if(d.stale===false&&k){const p=k.live_quote_valid===true?Number(k.live_price):(k.live_quote_valid==null?Number(k.price):NaN);latestKioxiaMs2=Number.isFinite(p)&&p>0?{price:p,observed_at:k.live_observed_at||d.live_observed_at||d.updated_at}:null;}else latestKioxiaMs2=null;});
  async function loadWatcherKioxia(){
   const stateEl=document.getElementById("kio-watcher-state");
   if(!stateEl)return;
@@ -2874,8 +2876,9 @@ document.addEventListener("DOMContentLoaded",()=>{
    const parsed=new Date(String(w.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,stale=age>60;
    if(stale){stateEl.textContent="データ停止（60秒超未更新）";put("kio-watcher-conditions","");return}
    const yen1=v=>v==null?"—":Number(v).toLocaleString("ja-JP")+"円";
-   stateEl.textContent=`${esc(w.signal||"判定待ち")}／${esc(w.state||"")}`;
-   document.getElementById("kio-watcher-source").textContent=`${w.updated_at}／${w.source||"Excel Watcher"}`;
+   const wp=Number(w.live_price??w.price),mp=Number(latestKioxiaMs2?.price),both=Number.isFinite(wp)&&wp>0&&Number.isFinite(mp)&&mp>0,diff=both?Math.abs(wp-mp):null,tol=both?Math.max(1,mp*0.0005):null,mismatch=both&&diff>tol;
+   stateEl.textContent=mismatch?"DATA CONFLICT・売買利用禁止":`${esc(w.signal||"判定待ち")}／${esc(w.state||"")}`;
+   document.getElementById("kio-watcher-source").textContent=mismatch?`Collector優先：MS2 ${yen1(mp)} / Watcher ${yen1(wp)} / 差 ${yen1(diff)}／自動代替禁止`:`${w.updated_at}／${w.source||"Excel Watcher"}／Collector(:28580)を価格の正本として優先`;
    put("kio-watcher-conditions",`価格${esc(w.conditions?.price)}・出来高${esc(w.conditions?.volume)}・EMA${esc(w.conditions?.ema)}・${esc(w.conditions?.or15)}`);
    put("kio-watcher-entry",w.entry_price!=null?`発動 ${yen1(w.entry_price)} ／ 損切 ${yen1(w.stop_price)}`:"条件未成立");
    put("kio-watcher-target",w.target1!=null?`1R ${yen1(w.target1)}／2R ${yen1(w.target2)}`:"1R／2R —");
