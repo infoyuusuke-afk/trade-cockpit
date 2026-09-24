@@ -248,8 +248,9 @@ document.addEventListener("DOMContentLoaded",()=>{
  const liveQuote=(x,feedStale)=>{
    const at=observedMs(x),age=at==null?null:Date.now()-at;
    const explicit=x?.live_quote_valid;
-   const valid=!feedStale&&explicit===true&&at!=null&&age>=-5000&&age<=LIVE_TTL_MS&&num(x?.live_price)!=null;
-   return {valid,age,at,price:valid?num(x.live_price):null};
+   const isolated=x?.isolated===true;
+   const valid=!feedStale&&!isolated&&explicit===true&&at!=null&&age>=-5000&&age<=LIVE_TTL_MS&&num(x?.live_price)!=null;
+   return {valid,age,at,price:valid?num(x.live_price):null,status:String(x?.live_quote_status||(valid?"LIVE":"INVALID")),isolated};
  };
  const signalView=(x,stale)=>{
    const raw=String(x?.signal||"監視");
@@ -349,7 +350,7 @@ document.addEventListener("DOMContentLoaded",()=>{
      const sv=signalView(x,!live.valid||ir.pending);
      if(ir.pending){sv.label="NEWS PENDING";sv.cls="block";}
      const lit=live.valid&&actionable(sv);
-     const reason=!live.valid?"現在値失効・売買シグナル無効":ir.pending?("決算内容確認中・既存シグナル保留 · "+ir.title):(ir.title?(ir.label+" · "+ir.title+" · "+(x.strategy||x.signal||"監視")):((x.signal||"監視")+' · '+(x.strategy||"条件待ち")));
+     const reason=!live.valid?("現在値失効・売買シグナル無効 · "+live.status):ir.pending?("決算内容確認中・既存シグナル保留 · "+ir.title):(ir.title?(ir.label+" · "+ir.title+" · "+(x.strategy||x.signal||"監視")):((x.signal||"監視")+' · '+(x.strategy||"条件待ち")));
      const html=window.renderScalpCard({...x,__live:live,foot:reason},sv,"1m");
      return lit?html.replace('scalp-card '+sv.cls,'scalp-card '+sv.cls+' edge-live'):html;
    }).join(""):'<div class="focus-empty">SCALP 5のMS2 RSSデータ待ち</div>';
