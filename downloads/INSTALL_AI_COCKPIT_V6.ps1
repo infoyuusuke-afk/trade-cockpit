@@ -13,12 +13,29 @@ $launcher=Join-Path $Root "START_AI_COCKPIT_V6.ps1"
 $gateway=Join-Path $Root "AI_Cockpit_Local_Gateway.ps1"
 $diag=Join-Path $Root "DIAG_AI_COCKPIT_V6_EXCEL.ps1"
 
+# Windows PowerShell 5.1 treats UTF-8 without BOM as the active ANSI code page.
+# GitHub raw files are UTF-8 without BOM, so Japanese string literals can be
+# misparsed and produce fake syntax errors. Always normalize downloaded .ps1
+# files to UTF-8 with BOM before parsing or executing them.
+function Save-RemotePowerShellUtf8Bom([string]$Url,[string]$Destination) {
+    $raw = $Destination + ".download"
+    Invoke-WebRequest $Url -OutFile $raw -UseBasicParsing
+    try {
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $utf8Bom = New-Object System.Text.UTF8Encoding($true)
+        $text = [IO.File]::ReadAllText($raw,$utf8NoBom)
+        [IO.File]::WriteAllText($Destination,$text,$utf8Bom)
+    } finally {
+        Remove-Item -LiteralPath $raw -Force -ErrorAction SilentlyContinue
+    }
+}
+
 if(-not(Test-Path -LiteralPath $Root)){ New-Item -ItemType Directory -Path $Root -Force | Out-Null }
 
 Write-Host "[1/6] Downloading V6 launcher, gateway, and Excel diagnostic..." -ForegroundColor Cyan
-Invoke-WebRequest ($base+"/downloads/START_AI_COCKPIT_V6.ps1"+$cache) -OutFile $launcher -UseBasicParsing
-Invoke-WebRequest ($base+"/downloads/AI_Cockpit_Local_Gateway.ps1"+$cache) -OutFile $gateway -UseBasicParsing
-Invoke-WebRequest ($base+"/downloads/DIAG_AI_COCKPIT_V6_EXCEL.ps1"+$cache) -OutFile $diag -UseBasicParsing
+Save-RemotePowerShellUtf8Bom ($base+"/downloads/START_AI_COCKPIT_V6.ps1"+$cache) $launcher
+Save-RemotePowerShellUtf8Bom ($base+"/downloads/AI_Cockpit_Local_Gateway.ps1"+$cache) $gateway
+Save-RemotePowerShellUtf8Bom ($base+"/downloads/DIAG_AI_COCKPIT_V6_EXCEL.ps1"+$cache) $diag
 
 Write-Host "[2/6] Validating launcher/gateway/diagnostic syntax..." -ForegroundColor Cyan
 $tokens=$null
@@ -64,7 +81,7 @@ $runtimeFiles=@(
 foreach($name in $runtimeFiles){
     $target=Join-Path $runtimeDir $name
     $tmp=$target+".new"
-    Invoke-WebRequest ($base+"/ms2_live/"+$name+$cache) -OutFile $tmp -UseBasicParsing
+    Save-RemotePowerShellUtf8Bom ($base+"/ms2_live/"+$name+$cache) $tmp
     $rt=$null; $re=$null
     [System.Management.Automation.Language.Parser]::ParseFile($tmp,[ref]$rt,[ref]$re) | Out-Null
     if($re.Count -gt 0){ Remove-Item $tmp -Force -ErrorAction SilentlyContinue; throw ($name+" syntax validation failed.") }
