@@ -270,11 +270,15 @@ try{
     # Opening the workbook is not enough: Excel may show cached RSS values while
     # the MarketSpeed II COM/XLL add-in has not initialized in this Excel instance.
     $rssReady=$false
+    $rssSheetName = "RSS" + [char]0x63A5 + [char]0x7D9A
+    $rssCurrentPriceItem = [string]([char]0x73FE)+[char]0x5728+[char]0x5024
+    $marketSpeedJp = [string]([char]0x30DE)+[char]0x30FC+[char]0x30B1+[char]0x30C3+[char]0x30C8+[char]0x30B9+[char]0x30D4+[char]0x30FC+[char]0x30C9
     $rssDeadline=(Get-Date).AddSeconds(45)
     while((Get-Date) -lt $rssDeadline -and -not $rssReady){
         try{
-            $rssSheet=Invoke-ExcelCom -Label "RSS sheet" -Action { $book.Worksheets.Item("RSS接続") }
-            Invoke-ExcelCom -Label "RSS probe formula" -Action { $rssSheet.Range("B3").FormulaLocal='=RssMarket("285A.T","現在値")' } | Out-Null
+            $rssSheet=Invoke-ExcelCom -Label "RSS sheet" -Action { $book.Worksheets.Item($rssSheetName) }
+            $rssFormula='=RssMarket("285A.T","'+$rssCurrentPriceItem+'")'
+            Invoke-ExcelCom -Label "RSS probe formula" -Action { $rssSheet.Range("B3").FormulaLocal=$rssFormula } | Out-Null
             Invoke-ExcelCom -Label "RSS probe calculate" -Action { $rssSheet.Calculate() } | Out-Null
             Start-Sleep -Milliseconds 800
             $v=Invoke-ExcelCom -Label "RSS probe value" -Action { $rssSheet.Range("B3").Value2 }
@@ -288,7 +292,7 @@ try{
         try{
             # Trigger registered Excel add-ins without guessing an install path.
             foreach($addin in $excel.AddIns){
-                if(([string]$addin.Name -match "RSS|MarketSpeed|マーケットスピード") -and -not $addin.Installed){
+                if((([string]$addin.Name -match "RSS|MarketSpeed") -or ([string]$addin.Name -like ("*"+$marketSpeedJp+"*"))) -and -not $addin.Installed){
                     $addin.Installed=$true
                 }
             }
