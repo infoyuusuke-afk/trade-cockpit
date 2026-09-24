@@ -1808,6 +1808,14 @@ try {
                 $freshDisclosure=$tdnetDisclosures | Where-Object {[string]$_.code -eq $tickerCode} | Select-Object -First 1
             }
             $newsPending=$false; $newsTitle=""; $newsPublishedAt=$null
+            $tdnetVerifiedLive=($tdnetPagesSucceeded -gt 0 -and $null -ne $lastTdnetSuccessAt -and ($now-$lastTdnetSuccessAt).TotalSeconds -le 45)
+            if($inSession -and -not $tdnetVerifiedLive -and $rawDirection -in @("BUY","SELL")){
+                $newsPending=$true
+                $signal="NEWS CHECK"
+                $strategy="TDnet未確認・新規シグナル保留"
+                $rawDirection=""
+                $entryPrice=$null; $stopPrice=$null; $target1=$null; $target2=$null
+            }
             if($null -ne $freshDisclosure){
                 $newsTitle=[string]$freshDisclosure.title
                 try {$newsPublishedAt=[DateTime]::ParseExact(($activeDay+" "+[string]$freshDisclosure.time),"yyyy-MM-dd HH:mm",$null)} catch {$newsPublishedAt=$null}
