@@ -50,6 +50,14 @@ class ExcelStartupContractTests(unittest.TestCase):
         self.assertIn("canonical RSS workbook is not uniquely available to Collector", COLLECTOR)
         self.assertIn('$Collector+\'" -WorkbookPath "\'+$WorkbookPath', LAUNCHER)
 
+    def test_cockpit_ui_opens_before_collector_validation(self):
+        open_pos = LAUNCHER.index('Show-Step 55 "Opening cockpit UI in fail-closed mode..."')
+        collector_pos = LAUNCHER.index('Show-Step 65 "Starting Collector..."')
+        self.assertLess(open_pos, collector_pos)
+        self.assertIn('Start-Process $cockpitUrl', LAUNCHER)
+        self.assertIn("Cockpit UI remains available in FAIL-CLOSED mode", LAUNCHER)
+        self.assertNotIn('Show-Step 100 "READY - opening one cockpit page."', LAUNCHER)
+
     def test_local_ports_are_unique(self):
         self.assertIn("Test-Port 28580", LAUNCHER)
         self.assertIn("Test-Port 28581", LAUNCHER)
