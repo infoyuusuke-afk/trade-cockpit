@@ -2934,7 +2934,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div><span>日付未確定</span><b id="event-blocked-count">—</b></div>
 </div>
 <h3>今後30日・売買判断表</h3>
-<div class="event-table-wrap"><table><thead><tr><th>実需・発表日</th><th>時刻</th><th>次の通知</th><th>イベント</th><th>分類</th><th>警戒</th><th>想定需給</th><th>当日の行動</th><th>発表日</th><th>基準日</th><th>需給日</th><th>反映日</th><th>確認状態</th><th>公式資料</th></tr></thead><tbody id="event-upcoming"><tr><td colspan="14">取得中...</td></tr></tbody></table></div>
+<details class="ms2-secondary"><summary>今後30日の詳細イベント一覧</summary><div class="event-table-wrap"><table><thead><tr><th>実需・発表日</th><th>時刻</th><th>次の通知</th><th>イベント</th><th>分類</th><th>警戒</th><th>想定需給</th><th>当日の行動</th><th>発表日</th><th>基準日</th><th>需給日</th><th>反映日</th><th>確認状態</th><th>公式資料</th></tr></thead><tbody id="event-upcoming"><tr><td colspan="14">取得中...</td></tr></tbody></table></div></details>
 <h3>月間カレンダー</h3><div id="event-months" class="event-months"><div class="focus-empty">作成中...</div></div>
 <h3>未確定・売買利用禁止</h3><div id="event-unverified" class="event-unverified">確認中...</div>
 <div class="steps">
@@ -2947,8 +2947,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div id="correlation-meta" class="sub">日足20・60営業日と5分足の関係を更新中...</div>
 <label style="display:inline-flex;gap:8px;align-items:center;margin:10px 0;color:#9db0bc">主役銘柄
 <select id="correlation-anchor" style="min-width:240px;padding:8px;border:1px solid #2c5067;border-radius:7px;background:#0b1720;color:#eaf4fa"><option value="285A.T">キオクシアHD（285A）</option></select></label>
-<table><thead><tr><th>主役銘柄</th><th>確認銘柄</th><th>関係</th><th>成立判定</th><th>信頼度</th><th>20日</th><th>60日</th><th>5分足</th><th>先行</th><th>主役の当日</th><th>確認銘柄の当日</th><th>売買判断</th></tr></thead>
-<tbody id="correlation-rows"><tr><td colspan="12">相関データを取得中...</td></tr></tbody></table>
+<details class="ms2-secondary"><summary>相関・逆相関の比較データ</summary><table><thead><tr><th>主役銘柄</th><th>確認銘柄</th><th>関係</th><th>成立判定</th><th>信頼度</th><th>20日</th><th>60日</th><th>5分足</th><th>先行</th><th>主役の当日</th><th>確認銘柄の当日</th><th>売買判断</th></tr></thead><tbody id="correlation-rows"><tr><td colspan="12">相関データを取得中...</td></tr></tbody></table></details>
 <div class="steps">
 <div class="step"><b>1　米国先行</b>サンディスク・Micronの前日終値から、翌日のキオクシア反応を確認。</div>
 <div class="step"><b>2　同方向確認</b>正相関銘柄がOR15・VWAP・EMA9/20で同方向なら信頼度を加点。</div>
@@ -3047,8 +3046,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <section id="world-market-live" class="card wide"><h2>世界市況リアルタイム・地合い確認</h2>
 <div id="world-market-meta" class="sub">世界の株価リアルタイムチャートを検証中...</div>
 <div class="rotation-grid" id="world-market-cards"><div class="focus-empty">市場データ取得待ち</div></div>
-<table><thead><tr><th>市場</th><th>現在値</th><th>変化</th><th>更新時刻</th><th>検証</th></tr></thead>
-<tbody id="world-market-rows"><tr><td colspan="5">取得中...</td></tr></tbody></table>
+<details class="ms2-secondary"><summary>世界市況の比較データ</summary><table><thead><tr><th>市場</th><th>現在値</th><th>変化</th><th>更新時刻</th><th>検証</th></tr></thead><tbody id="world-market-rows"><tr><td colspan="5">取得中...</td></tr></tbody></table></details>
 <p class="warning"><b>用途を分離：</b>世界市況・先物・為替・金利・リスク選好の確認専用です。日本の個別株価・ローソク足・発注価格には使用しません。</p></section>
 <section class="card wide"><h2>市場環境・需給・ポジション 網羅判定</h2>
 <div class="rotation-grid">
