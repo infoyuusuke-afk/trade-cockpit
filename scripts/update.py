@@ -3179,12 +3179,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div id="prepared-signals" class="scalp-strip"><div class="focus-empty">読み込み中...</div></div>
 <p class="warning">全市場の日足を自動走査し、60点以上を抽出。画面は期待値上位30銘柄、データには上位100銘柄を保存します。</p></section>
 <section class="card wide"><h2>⑩ 信用需給優先・持ち越し<span class="pill long">LONG</span>候補 TOP5</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>翌日LONG発動</th><th>損切り</th><th>利確1／2</th><th>予約IFO入力例</th><th>選定理由</th><th>決算・イベントリスク</th></tr></thead>
-<tbody id="overnight-long"><tr><td colspan="9">読み込み中...</td></tr></tbody></table>
+<div id="overnight-long" class="scalp-strip"><div class="focus-empty">読み込み中...</div></div>
 <p class="warning">15:00版で候補を確認します。引け成りで無条件に買わず、発動条件を満たした銘柄だけ予約IFOを設定します。新規買いが発動した場合だけ利確・損切りを自動管理。大幅GUは約定させない価格条件にし、朝一はキオクシア等の値嵩株スキャルへ集中します。すでに保有済みならIFOではなく決済OCOを使用。</p></section>
 <section class="card wide"><h2>⑪ 信用需給優先・持ち越し<span class="pill short">SHORT</span>候補 TOP5</h2>
-<table><thead><tr><th>順位</th><th>会社名＋コード</th><th>期待値</th><th>翌日SHORT発動</th><th>損切り</th><th>利確1／2</th><th>選定理由</th><th>決算・イベント／空売り注意</th></tr></thead>
-<tbody id="overnight-short"><tr><td colspan="8">読み込み中...</td></tr></tbody></table>
+<div id="overnight-short" class="scalp-strip"><div class="focus-empty">読み込み中...</div></div>
 <p class="warning">翌日寄りで無条件に売りません。準備足安値を割った場合だけSHORT。楽天MS2で貸借区分・在庫・逆日歩・空売り規制を必ず確認。大幅GDは追いかけません。</p></section>
 <section class="card"><h2>⑫ 運用ルール</h2><p>最大損失を先に固定／同テーマ集中を避ける／持ち越しは通常の半分の株数／損切りを広げない。</p></section>
 <section class="card"><h2>⑬ 選定ロジック</h2><p>信用需給を最優先。信用買い残の1週・4週減少、低い信用倍率、機関空売りの買い戻し、複数社買い戻しを評価し、週足・月足反転と重なる銘柄を上位表示。需給未取得は暫定候補です。</p></section>
@@ -3353,36 +3351,22 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
     " · LIVE有効時のみ現在値へ切替</div></article>").join("");
   document.getElementById("daily-reversal-signals").innerHTML =
     dailyReversals || "<div class='focus-empty'>本日のセリクラ反転合格銘柄なし。</div>";
-  const carryRows = (items, side) => (items || []).slice(0, 5).map((x, i) => {{
+  const carryCards = (items, side) => (items || []).slice(0, 5).map((x, i) => {{
     const risk100 = Math.abs(x.trigger - x.stop) * 100;
-    const tick = x.trigger < 1000 && Math.abs(x.trigger - Math.round(x.trigger)) >= .05
-      ? .1 : x.trigger < 3000 ? 1 : x.trigger < 5000 ? 5
-      : x.trigger < 30000 ? 10 : x.trigger < 50000 ? 50 : 100;
-    const entryLimit = side === "LONG" ? x.trigger + tick * 2 : x.trigger - tick * 2;
-    const ifo = side === "LONG"
-      ? "<b>IFO（利益確定＋損切り）</b><br>" +
-        "① 買建・100株・特定<br>" +
-        "② 市場価格 " + yen(x.trigger) + "円以上<br>" +
-        "③ 買い指値 " + yen(entryLimit) + "円<br>" +
-        "④ 利益確定：売埋指値 " + yen(x.target1) + "円<br>" +
-        "⑤ 損切り：市場価格 " + yen(x.stop) + "円以下<br>" +
-        "⑥ 執行期限：当日中<br>" +
-        "<small>最大損失目安 " + yen(risk100) + "円。利確2 " +
-        yen(x.target2) + "円は100株注文では未入力の参考値。</small>"
-      : "新規売り逆指値 " + yen(x.trigger) + "<br>利確 " +
-        yen(x.target1) + "／損切 " + yen(x.stop);
-    return (
-    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td><b class='" +
-    (side === "LONG" ? "up" : "down") + "'>" + x.score + "/100</b></td><td><b>" +
-    yen(x.trigger) + "</b></td><td class='down'>" + yen(x.stop) + "</td><td>" +
-    yen(x.target1) + "／" + yen(x.target2) + "</td><td>" + ifo +
-    "</td><td>" + x.reason + "<br><small>" + (x.regime_reason || "主体レジーム未接続") + "</small></td><td>" + x.event_risk +
-    "<br><small>" + x.caution + "</small></td></tr>");
+    const sideClass = side === "LONG" ? "long" : "short";
+    return "<article class='scalp-card " + sideClass + "'><div class='scalp-head'><div class='scalp-symbol'><strong>" + x.name +
+      "</strong><small>OVERNIGHT · " + side + " #" + (i + 1) + "</small></div><span class='scalp-signal'>" + side +
+      "</span></div><div class='scalp-price-row'><div class='scalp-price'><small>翌日発動価格</small>" + yen(x.trigger) +
+      "</div><div class='scalp-change'>" + x.score + "/100</div></div><div class='scalp-order'><span>TRIGGER<b>" + yen(x.trigger) +
+      "</b></span><span class='stop'>STOP<b>" + yen(x.stop) + "</b></span><span class='target'>T1<b>" + yen(x.target1) +
+      "</b></span></div><div class='scalp-metrics'><span>T2<b>" + yen(x.target2) + "</b></span><span>100株リスク目安<b>" + yen(risk100) +
+      "</b></span></div><div class='scalp-foot'>" + x.reason + " · " + (x.regime_reason || "主体レジーム未接続") +
+      " · " + x.event_risk + " · " + x.caution + " · 仮想候補のみ／実注文送信なし</div></article>";
   }}).join("");
   document.getElementById("overnight-long").innerHTML =
-    carryRows(d.overnight_long, "LONG") || "<tr><td colspan='9'>本日の持ち越しLONG合格銘柄なし。</td></tr>";
+    carryCards(d.overnight_long, "LONG") || "<div class='focus-empty'>本日の持ち越しLONG合格銘柄なし。</div>";
   document.getElementById("overnight-short").innerHTML =
-    carryRows(d.overnight_short, "SHORT") || "<tr><td colspan='8'>本日の持ち越しSHORT合格銘柄なし。</td></tr>";
+    carryCards(d.overnight_short, "SHORT") || "<div class='focus-empty'>本日の持ち越しSHORT合格銘柄なし。</div>";
 
   const daySymbols = uniqueTv([
     ...tvRows(d.entered), ...tvRows((d.prepared || []).slice(0, 30))
@@ -3409,8 +3393,8 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {{
   document.getElementById("hammer-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
   document.getElementById("long-term-ma-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
   document.getElementById("daily-reversal-signals").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
-  document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
-  document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
+  document.getElementById("overnight-long").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
+  document.getElementById("overnight-short").innerHTML = "<div class='focus-empty'>データ取得待ち</div>";
 }});
 const worldEsc = v => String(v ?? "—").replace(/[&<>"']/g,c=>({{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}}[c]));
 fetch("world_market.json?t=" + Date.now()).then(r => r.json()).then(d => {{
