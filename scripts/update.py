@@ -2498,16 +2498,14 @@ def main():
     momentum_rows = swing_rows(momentum_rank, "momentum")
     high_rows = swing_rows(high_rank, "new_high")
     overheat_rows = swing_rows(overheated_rank, "overheated")
-    earning_rows = "".join(
-        f"<tr><td>{x['name']}</td><td><b class='{'up' if x['expectation_score']>=80 else ''}'>{x['expectation_score']}/100</b>"
-        f"<br><small>減点前 {x['raw_expectation_score']}／充足 {x['score_coverage']}%</small></td>"
-        f"<td class='{'down' if x['hurdle_risk']>=50 else ''}'>{x['hurdle_risk']}/100</td>"
-        f"<td>{x['technical_score']}/100</td>"
-        f"<td>{x['date']}</td><td>{money(x['price'])}</td>"
-        f"<td>{money(x['plan']['entry'])}</td><td>{money(x['plan']['stop'])}</td>"
-        f"<td>{money(x['plan']['target1'])}</td><td>{x['score_detail']}<br><small>{x['source']}／発表時刻は会社IR確認</small></td></tr>"
-        for x in earnings
-    ) or "<tr><td colspan='10'>今後7日以内で取得確認できた決算候補なし</td></tr>"
+    earning_cards = "".join(
+        f"<article class='scalp-card wait live-overlay-card' data-live-ticker='{x.get('ticker') or x.get('code') or ''}' data-analysis-price='{x['price']}'><div class='scalp-head'><div class='scalp-symbol'><strong>{x['name']}</strong><small>EARNINGS · #{i} · {x['date']}</small></div><span class='scalp-signal'>WATCH</span></div>"
+        f"<div class='scalp-price-row'><div class='scalp-price'><small class='price-kind'>分析基準値</small><span class='display-price'>{money(x['price'])}</span></div><div class='scalp-change'>{x['expectation_score']}/100</div></div>"
+        f"<div class='scalp-order'><span>ENTRY<b>{money(x['plan']['entry'])}</b></span><span class='stop'>STOP<b>{money(x['plan']['stop'])}</b></span><span class='target'>T1<b>{money(x['plan']['target1'])}</b></span></div>"
+        f"<div class='scalp-metrics'><span>減点前<b>{x['raw_expectation_score']}</b></span><span>充足率<b>{x['score_coverage']}%</b></span><span>コンセンサス警戒<b>{x['hurdle_risk']}/100</b></span><span>テクニカル<b>{x['technical_score']}/100</b></span></div>"
+        f"<div class='scalp-foot'>{x['score_detail']} · {x['source']} · 発表時刻は会社IR確認 · LIVE有効時のみ現在値へ切替</div></article>"
+        for i, x in enumerate(earnings[:5], 1)
+    ) or "<div class='focus-empty'>今後7日以内で取得確認できた決算候補なし</div>"
     bb_cards = ""
     for i, (name, r) in enumerate(bb_rank[:5], 1):
         p = trade_plan(r, r.get("intraday"))
@@ -3163,7 +3161,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <section id="lower-wick-reversal" class="card wide"><h2>最優先・下ヒゲ吸収反転（次足確認）</h2>
 <div id="daily-reversal-signals" class="scalp-strip"><div class="focus-empty">全市場を走査中...</div></div>
 <p class="warning">最も入りたい型。①長い下ヒゲで売りを吸収、②終値がレンジ上側へ回復、③次足が反転足の実体上端または高値＋1ティックを上抜く、の3条件で発動。候補足安値割れで撤退し、ナンピンしません。</p></section>
-<section class="card wide"><h2>⑥-A 決算勝負候補 TOP15（7日以内・決算期待値順）</h2><table><tr><th>会社名＋コード</th><th>調整後期待値</th><th>コンセンサス警戒</th><th>テクニカル点</th><th>決算予定日</th><th>現在値</th><th>イン</th><th>損切り</th><th>利確1</th><th>採点根拠・注意</th></tr>{earning_rows}</table><p class="warning">高すぎるEPS・売上予想、予想幅の大きさ、下方修正、過去の上振れ不足、決算前の株価上昇を警戒度として減点。好決算でもコンセンサス未達や材料出尽くしになる危険を反映します。</p></section>
+<section class="card wide"><h2>⑥-A 決算候補 TOP5（7日以内・決算期待値順）</h2><div class="scalp-strip">{earning_cards}</div><p class="warning">高すぎるEPS・売上予想、予想幅の大きさ、下方修正、過去の上振れ不足、決算前の株価上昇を警戒度として減点。好決算でもコンセンサス未達や材料出尽くしになる危険を反映します。</p></section>
 <section class="card wide"><h2>⑥-B BB上方エクスパンション期待 TOP5</h2><div class="scalp-strip">{bb_cards}</div><p class="warning">BB幅順位は過去120日の細さ。数値が低いほどスクイーズ状態。上限突破＋BB幅拡大＋出来高増加を最優先します。</p></section>
 <section class="card wide"><h2>⑦ AIスイングサインの使い方</h2>
 <div class="steps">
