@@ -1,14 +1,26 @@
 {
-  "updated_at": "2026-09-24 09:14:17 JST",
+  "updated_at": "2026-09-24 09:19:10 JST",
   "refresh_seconds": 60,
   "backend_interval_minutes": 5,
   "verified_count": 0,
-  "expected_count": 1,
+  "expected_count": 2,
   "status": "一部停止",
   "market_phase": "ザラバ監視中",
   "speech_enabled": true,
   "pts_supported": false,
   "rows": {
+    "7014": {
+      "name": "名村造船所（7014）",
+      "ticker": "7014.T",
+      "price": 5100.0,
+      "primary_price": 5100.0,
+      "quote_time": "2026-09-24T09:00:00+09:00",
+      "age_minutes": 19.2,
+      "verified": false,
+      "status": "更新停止・売買禁止",
+      "chart": [],
+      "signal": "更新停止・売買禁止"
+    },
     "285A": {
       "name": "キオクシアHD（285A）",
       "ticker": "285A.T",
@@ -177,9 +189,9 @@
       "one_minute_vwap": null,
       "one_minute_bar_time": null,
       "attention_state": "注意時間中",
-      "attention_start": "09:00",
-      "attention_end": "09:15",
-      "attention_reason": "寄り直後・OR15形成",
+      "attention_start": "09:15",
+      "attention_end": "09:25",
+      "attention_reason": "予測ボトム",
       "signal_key": "",
       "voice_message": ""
     }
