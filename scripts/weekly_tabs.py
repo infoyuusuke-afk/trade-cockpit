@@ -126,6 +126,18 @@ def tabs_block() -> str:
 .cockpit-tab.event-alert{color:#fff;background:#f23645;box-shadow:none}
 .secondary-tabs{margin-left:auto;white-space:nowrap}.secondary-tabs summary{cursor:pointer;color:#9ba3af;padding:9px 10px;border-radius:4px}.secondary-tabs summary:hover{background:#1e222d;color:#d1d4dc}.secondary-tabs[open]{display:flex;gap:2px}
 .tab-pane{display:none}.tab-pane.active{display:block}
+/* Card-first contract: every pane except KIOXIA is a card surface. */
+.tab-pane:not([data-pane="kioxia-calendar"]){display:none;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;align-items:start}
+.tab-pane:not([data-pane="kioxia-calendar"]).active{display:grid}
+.tab-pane:not([data-pane="kioxia-calendar"])>.pane-intro{grid-column:1/-1}
+.tab-pane:not([data-pane="kioxia-calendar"])>section{margin:0!important;min-width:0;border-radius:8px!important;overflow:hidden}
+.tab-pane:not([data-pane="kioxia-calendar"])>section.wide{grid-column:auto!important;width:auto!important}
+.tab-pane:not([data-pane="kioxia-calendar"]) iframe,
+.tab-pane:not([data-pane="kioxia-calendar"]) canvas,
+.tab-pane:not([data-pane="kioxia-calendar"]) .tv-lightweight-charts{display:none!important}
+.tab-pane:not([data-pane="kioxia-calendar"]) table{width:100%;font-size:11px}
+.tab-pane:not([data-pane="kioxia-calendar"]) .weekly-grid{grid-template-columns:1fr}
+@media(max-width:720px){.tab-pane:not([data-pane="kioxia-calendar"]){grid-template-columns:1fr}}
 .weekly-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
 .weekly-grid>div{background:#131722;border:1px solid #2a2e39;border-radius:6px;padding:14px}
 .scalp-tv{background:#050506!important;border:1px solid #22252A!important;border-radius:8px!important;padding:0!important;overflow:hidden!important;color:#E8EAED}
