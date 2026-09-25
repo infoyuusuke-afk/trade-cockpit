@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-09-26T07:28:10.963417+09:00",
+  "updated_at": "2026-09-26T07:30:33.796152+09:00",
   "source": "世界の株価リアルタイムチャート",
   "source_url": "https://nikkei225jp.com/",
   "usage": "市場環境専用。個別株価・個別チャートには使用禁止。",
-  "verified_count": 12,
+  "verified_count": 10,
   "expected_count": 13,
   "feed_verified": true,
   "rows": {
@@ -50,8 +50,8 @@
       "value": 66750.0,
       "change": null,
       "change_pct": null,
-      "source_stamp": "07:28",
-      "observed_at": "2026-09-26T07:28:00+09:00",
+      "source_stamp": "07:30",
+      "observed_at": "2026-09-26T07:30:00+09:00",
       "verified": true,
       "status": "表示可"
     },
@@ -64,8 +64,8 @@
       "change_pct": -0.97,
       "source_stamp": "05:59",
       "observed_at": "2026-09-26T05:59:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "未取得または時刻不整合・売買利用禁止"
     },
     "151": {
       "code": "151",
@@ -160,8 +160,8 @@
       "change_pct": 0.08,
       "source_stamp": "05:59",
       "observed_at": "2026-09-26T05:59:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "verified": false,
+      "status": "未取得または時刻不整合・売買利用禁止"
     }
   }
 }
