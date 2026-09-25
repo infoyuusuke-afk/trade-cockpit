@@ -13,6 +13,7 @@ on:
       - "downloads/AI_COCKPIT_*_V9.ps1"
       - "downloads/RUN_AI_COCKPIT_V9.ps1"
       - "downloads/STOP_AI_COCKPIT_V9.ps1"
+      - "downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1"
       - "ms2_live/Kioxia_RSS_Live_Watcher.ps1"
       - "ms2_live/Kioxia_Safety_Heartbeat.ps1"
       - "ms2_live/MS2_RSS_100_Collector.ps1"
@@ -60,6 +61,7 @@ jobs:
             "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
             "downloads/RUN_AI_COCKPIT_V9.ps1",
             "downloads/STOP_AI_COCKPIT_V9.ps1",
+            "downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1",
             "ms2_live/Kioxia_RSS_Live_Watcher.ps1",
             "ms2_live/Kioxia_Safety_Heartbeat.ps1",
             "ms2_live/MS2_RSS_100_Collector.ps1",
