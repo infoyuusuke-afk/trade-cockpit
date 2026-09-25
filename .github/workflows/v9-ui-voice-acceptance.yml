@@ -2,6 +2,9 @@ name: V9 UI Voice Acceptance
 # acceptance-retrigger: powershell args regression fix
 
 on:
+  push:
+    branches:
+      - "fix/v9-ui-voice-convergence"
   pull_request:
     paths:
       - "index.html"
