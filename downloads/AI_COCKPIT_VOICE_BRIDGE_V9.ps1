@@ -4,7 +4,8 @@ param(
     [string]$SbV2BaseUrl = "http://127.0.0.1:5000",
     [string]$ModelName = "amitaro",
     [string]$SpeakerName = "",
-    [string]$Style = "Neutral"
+    [string]$Style = "Neutral",
+    [string]$StatePath = "C:\AI_Cockpit_OneClick_Starter\V9_VOICE_STATE.json"
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,6 +21,29 @@ function U([int[]]$CodePoints){
 if([string]::IsNullOrWhiteSpace($SpeakerName)){
     $SpeakerName = U @(12354,12415,12383,12429)
 }
+
+$script:VoiceEnabled = $true
+
+function Load-VoiceState {
+    try {
+        if(Test-Path -LiteralPath $StatePath){
+            $j=[IO.File]::ReadAllText($StatePath,[Text.Encoding]::UTF8)|ConvertFrom-Json
+            if($null -ne $j.enabled){ $script:VoiceEnabled=[bool]$j.enabled }
+        }
+    } catch {}
+}
+
+function Save-VoiceState {
+    try {
+        $dir=Split-Path -Parent $StatePath
+        if($dir -and -not(Test-Path -LiteralPath $dir)){ New-Item -ItemType Directory -Path $dir -Force|Out-Null }
+        $tmp=$StatePath+"."+[Guid]::NewGuid().ToString("N")+".tmp"
+        $obj=[ordered]@{enabled=[bool]$script:VoiceEnabled;updated_at=(Get-Date).ToString("o")}
+        [IO.File]::WriteAllText($tmp,($obj|ConvertTo-Json -Compress),[Text.UTF8Encoding]::new($false))
+        Move-Item -LiteralPath $tmp -Destination $StatePath -Force
+    } catch {}
+}
+Load-VoiceState
 
 function Test-TcpPort([int]$p,[int]$timeoutMs=350){
     $c = New-Object Net.Sockets.TcpClient
@@ -164,7 +188,18 @@ try{
             $path=$uri.AbsolutePath
             if($path -eq "/health"){
                 $ready=Test-Sbv2Ready
-                Send-Json $stream "200 OK" @{ok=$true;backend="Style-Bert-VITS2";model=$ModelName;speaker=$SpeakerName;sbv2_ready=$ready;port=$Port}
+                Send-Json $stream "200 OK" @{ok=$true;backend="Style-Bert-VITS2";model=$ModelName;speaker=$SpeakerName;sbv2_ready=$ready;enabled=[bool]$script:VoiceEnabled;port=$Port}
+                continue
+            }
+            if($path -eq "/control"){
+                $q=Parse-Query $uri.Query
+                $raw=[string]$q["enabled"]
+                if($raw -notin @("1","0","true","false","on","off")){
+                    Send-Json $stream "400 Bad Request" @{ok=$false;error="INVALID_ENABLED"}; continue
+                }
+                $script:VoiceEnabled=($raw -in @("1","true","on"))
+                Save-VoiceState
+                Send-Json $stream "200 OK" @{ok=$true;enabled=[bool]$script:VoiceEnabled;backend="Style-Bert-VITS2"}
                 continue
             }
             if($path -notin @("/speak","/announce")){
@@ -176,6 +211,15 @@ try{
             if([string]::IsNullOrWhiteSpace($level)){ $level="CALM" }
             if([string]::IsNullOrWhiteSpace($text)){
                 Send-Json $stream "400 Bad Request" @{ok=$false;error="EMPTY_TEXT"}; continue
+            }
+
+            if(-not $script:VoiceEnabled){
+                if($path -eq "/announce"){
+                    Send-Json $stream "200 OK" @{ok=$true;skipped=$true;reason="VOICE_OFF";enabled=$false;backend="Style-Bert-VITS2"}
+                } else {
+                    Send-Response $stream "204 No Content" "text/plain" ([byte[]]@())
+                }
+                continue
             }
 
             $mutex=$null; $acquired=$false
