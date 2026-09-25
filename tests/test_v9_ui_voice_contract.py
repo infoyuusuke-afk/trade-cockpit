@@ -120,11 +120,26 @@ class V9UiVoiceContract(unittest.TestCase):
             '28581 { "AI_COCKPIT_GATEWAY_V8.ps1" }',
             '28582 { "Kioxia_RSS_Live_Watcher.ps1" }',
             'Stop-RecognizedV8PortOwner',
+            'RUN_AI_COCKPIT_V8.ps1',
+            'Stop-OwnedJobBridge',
+            'ParentProcessId',
             'unrecognized PID',
         ):
             self.assertIn(needle, text)
         self.assertNotIn("Stop-Process -Name powershell", text.lower())
         self.assertNotIn("taskkill", text.lower())
+
+    def test_v9_lifecycle_cleans_start_job_bridge_children(self):
+        controller = read("downloads/AI_COCKPIT_CONTROLLER_V9.ps1")
+        stop = read("downloads/STOP_AI_COCKPIT_V9.ps1")
+        watcher = read("ms2_live/Kioxia_RSS_Live_Watcher.ps1")
+        for text in (controller, stop):
+            self.assertIn("Stop-OwnedJobBridge", text)
+            self.assertIn("ParentProcessId", text)
+            self.assertIn("28580", text)
+            self.assertIn("28582", text)
+        self.assertIn("Stop-Job $watcherBridgeJob", watcher)
+        self.assertIn("Remove-Job $watcherBridgeJob", watcher)
 
     def test_v8_to_v9_switch_is_narrow_and_one_click(self):
         text = read("downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1")
