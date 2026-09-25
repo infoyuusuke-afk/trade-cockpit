@@ -132,34 +132,68 @@ function Deploy-RuntimeFiles([string]$RepoRoot, [string]$RuntimeDir) {
         throw
     }
 
-    # Phase 2: every file validated - back up what's currently there, then
-    # atomically replace (staged temp files already live in RuntimeDir, so
-    # Move-Item is a same-volume rename, not a cross-volume copy).
+    # Phase 2: every file validated. Back up ALL originals first, then
+    # replace them. If any move or post-deploy verification fails, restore
+    # every already-replaced file from the backup so RuntimeDir never stays
+    # half-upgraded.
     $backupRoot = Join-Path (Split-Path -Parent $RuntimeDir) "_v9_runtime_backups"
     if (-not (Test-Path -LiteralPath $backupRoot)) { New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null }
     $backupDir = Join-Path $backupRoot ("runtime_" + (Get-Date -Format "yyyyMMdd_HHmmss"))
     New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
-    $deployedHashes = [ordered]@{}
+
+    $hadOriginal = @{}
     foreach ($name in $RUNTIME_DEPLOY_FILES) {
         $entry = $staged[$name]
-        if (Test-Path -LiteralPath $entry.dest_path) {
+        $had = Test-Path -LiteralPath $entry.dest_path
+        $hadOriginal[$name] = $had
+        if ($had) {
             Copy-Item -LiteralPath $entry.dest_path -Destination (Join-Path $backupDir $name) -Force
         }
-        Move-Item -LiteralPath $entry.staged_path -Destination $entry.dest_path -Force
-        $deployedHashes[$name] = $entry.sha256
     }
 
-    # Verify from the ACTUAL deployed files, not the source - confirms the
-    # move landed the bytes we validated, not something else. Read as
-    # explicit UTF-8 (not Get-Content -Raw) for the same BOM-less-UTF-8
-    # reason as the JSON reads elsewhere in this file.
-    $watcherText = [IO.File]::ReadAllText((Join-Path $RuntimeDir "Kioxia_RSS_Live_Watcher.ps1"), [Text.Encoding]::UTF8)
-    if ($watcherText -notmatch [regex]::Escape('Start-LocalJsonBridge $watcherJsonPath 28582')) {
-        throw "Runtime deploy verification failed: deployed Watcher does not reference port 28582."
-    }
-    $collectorText = [IO.File]::ReadAllText((Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"), [Text.Encoding]::UTF8)
-    if ($collectorText -notmatch "28580") {
-        throw "Runtime deploy verification failed: deployed Collector does not reference port 28580."
+    $deployedHashes = [ordered]@{}
+    $replaced = New-Object System.Collections.Generic.List[string]
+    try {
+        foreach ($name in $RUNTIME_DEPLOY_FILES) {
+            $entry = $staged[$name]
+            Move-Item -LiteralPath $entry.staged_path -Destination $entry.dest_path -Force -ErrorAction Stop
+            $replaced.Add($name)
+            $deployedHashes[$name] = $entry.sha256
+        }
+
+        # Verify from the ACTUAL deployed files, not the source.
+        $watcherText = [IO.File]::ReadAllText((Join-Path $RuntimeDir "Kioxia_RSS_Live_Watcher.ps1"), [Text.Encoding]::UTF8)
+        if ($watcherText -notmatch [regex]::Escape('Start-LocalJsonBridge $watcherJsonPath 28582')) {
+            throw "Runtime deploy verification failed: deployed Watcher does not reference port 28582."
+        }
+        $collectorText = [IO.File]::ReadAllText((Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"), [Text.Encoding]::UTF8)
+        if ($collectorText -notmatch "28580") {
+            throw "Runtime deploy verification failed: deployed Collector does not reference port 28580."
+        }
+        foreach ($name in $RUNTIME_DEPLOY_FILES) {
+            $actual = Get-Sha256Hex (Join-Path $RuntimeDir $name)
+            if ($actual -ne $staged[$name].sha256) {
+                throw "Runtime deploy verification failed: deployed SHA256 mismatch for $name."
+            }
+        }
+    } catch {
+        $deployError = $_
+        for ($i = $replaced.Count - 1; $i -ge 0; $i--) {
+            $name = $replaced[$i]
+            $dest = $staged[$name].dest_path
+            try {
+                if ($hadOriginal[$name]) {
+                    Copy-Item -LiteralPath (Join-Path $backupDir $name) -Destination $dest -Force -ErrorAction Stop
+                } else {
+                    Remove-Item -LiteralPath $dest -Force -ErrorAction SilentlyContinue
+                }
+            } catch {}
+        }
+        foreach ($name in $RUNTIME_DEPLOY_FILES) {
+            $sp = $staged[$name].staged_path
+            if ($sp) { Remove-Item -LiteralPath $sp -Force -ErrorAction SilentlyContinue }
+        }
+        throw $deployError
     }
 
     return @{ hashes = $deployedHashes; backup_dir = $backupDir }
