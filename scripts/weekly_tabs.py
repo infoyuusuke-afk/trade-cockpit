@@ -239,14 +239,25 @@ document.addEventListener("DOMContentLoaded",()=>{
  // OVERNIGHT 5・EVENT 5はSCALP 5と違いライブMS2データの一部項目（ENTRY/STOP/T1・OR5・出来高加速等）を
  // 持たないため、無い項目は推測で埋めず「—」のまま表示する（既存のyen()/num()の未確認時「—」表示を踏襲）。
  window.renderScalpCard=(x,sv,tf)=>{
-   const chg=x.change_pct==null?null:num(x.change_pct),chgCls=chg==null?"flat":(chg>0?"up":chg<0?"down":"flat");
    const code=String(x.code||x.ticker||"").replace(".T","");
-   const or5=(num(x.or5_low)>0&&num(x.or5_high)>0)?yen(x.or5_low)+" – "+yen(x.or5_high):"—";
-   const or15=(num(x.or_low)>0&&num(x.or_high)>0)?yen(x.or_low)+" – "+yen(x.or_high):"—";
-   const ema=(num(x.ema9)!=null&&num(x.ema20)!=null)?yen(x.ema9)+" / "+yen(x.ema20):"—";
-   const flow=x.flow_bias==null?"—":esc(x.flow_bias)+"%";
-   const vol=x.volume_burst==null?"—":esc(x.volume_burst)+"x";
-   return '<article class="scalp-card '+sv.cls+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(x.name)+'</strong><small>TSE:'+esc(code)+' · '+esc(tf||"1m")+'</small></div><span class="scalp-signal">'+esc(sv.label)+'</span></div><div class="scalp-price-row"><div class="scalp-price">'+yen(x.price)+'</div><div class="scalp-change '+chgCls+'">'+pct(x.change_pct)+'</div></div><div class="scalp-spark">'+sparkline(x.bars_1m)+'</div><div class="scalp-order"><span class="entry">ENTRY<b>'+yen(x.entry_price)+'</b></span><span class="stop">STOP<b>'+yen(x.stop_price)+'</b></span><span class="target">T1<b>'+yen(x.target1)+'</b></span></div><div class="scalp-metrics"><span>VWAP<b>'+yen(x.vwap)+'</b></span><span>OR5<b>'+or5+'</b></span><span>OR15<b>'+or15+'</b></span><span>EMA 9 / 20<b>'+ema+'</b></span><span>FLOW<b>'+flow+'</b></span><span>VOLUME<b>'+vol+'</b></span></div><div class="scalp-foot">'+esc(x.foot||"")+'</div></article>';
+   const dir=sv.cls==="long"?"long":sv.cls==="short"?"short":sv.cls==="block"?"block":"wait";
+   const fmt=v=>v==null||!Number.isFinite(Number(v))?null:Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1});
+   const range=(lo,hi)=>num(lo)>0&&num(hi)>0?fmt(lo)+" – "+fmt(hi):null;
+   return window.renderCockpitCard({
+     symbol:code,company:x.name,direction:dir,directionLabel:sv.label,
+     price:x.price,changePct:x.change_pct,
+     entry:x.entry_price,stop:x.stop_price,target:x.target1,
+     metrics:[
+       {label:"時間軸",value:tf||"1m"},
+       {label:"VWAP",value:fmt(x.vwap)},
+       {label:"OR5",value:range(x.or5_low,x.or5_high)},
+       {label:"OR15",value:range(x.or_low,x.or_high)},
+       {label:"EMA 9/20",value:(num(x.ema9)!=null&&num(x.ema20)!=null)?fmt(x.ema9)+" / "+fmt(x.ema20):null},
+       {label:"FLOW",value:x.flow_bias==null?null:esc(x.flow_bias)+"%"},
+       {label:"VOLUME",value:x.volume_burst==null?null:esc(x.volume_burst)+"x"}
+     ],
+     foot:x.foot||""
+   });
  };
  document.addEventListener("ms2RssUpdate",e=>{
    const d=e.detail||{},all=Array.isArray(d.all_targets)?d.all_targets:[],stale=d.stale!==false;
