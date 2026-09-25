@@ -1,44 +1,7 @@
 {
-  "updated_at": "2026-09-26 03:32:03 JST",
+  "updated_at": "2026-09-26 03:34:16 JST",
   "side": "SHORT",
   "status": "試運転・検証中",
-  "count": 2,
-  "candidates": [
-    {
-      "name": "ワークマン（7564）",
-      "code": "7564",
-      "ticker": "7564.T",
-      "side": "SHORT",
-      "score": 68,
-      "trigger": 5165.0,
-      "stop": 5465.0,
-      "target1": 4715.0,
-      "target2": 4415.0,
-      "rvol": 1.47,
-      "atr_pct": 3.26,
-      "supply_phase": null,
-      "margin_caution_flagged": false,
-      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-11.1%／出来高比1.47倍／信用需給不明",
-      "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
-      "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
-    },
-    {
-      "name": "メルカリ（4385）",
-      "code": "4385",
-      "ticker": "4385.T",
-      "side": "SHORT",
-      "score": 68,
-      "trigger": 3545.0,
-      "stop": 3775.0,
-      "target1": 3200.0,
-      "target2": 2970.0,
-      "rvol": 1.31,
-      "atr_pct": 4.85,
-      "supply_phase": null,
-      "margin_caution_flagged": false,
-      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-14.3%／出来高比1.31倍／信用需給不明",
-      "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
-      "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
-    }
-  ]
+  "count": 0,
+  "candidates": []
 }
