@@ -206,6 +206,26 @@ function Save-State($state) {
     Move-Item -LiteralPath $tmp -Destination $StateFile -Force
 }
 
+function Test-OwnedPidIdentity([string]$Field,[int]$Pid) {
+    $expected = switch ($Field) {
+        "watcher_pid"      { "Kioxia_RSS_Live_Watcher.ps1" }
+        "heartbeat_pid"    { "Kioxia_Safety_Heartbeat.ps1" }
+        "collector_pid"    { "MS2_RSS_100_Collector.ps1" }
+        "gateway_pid"      { "AI_COCKPIT_GATEWAY_V9.ps1" }
+        "voice_bridge_pid" { "AI_COCKPIT_VOICE_BRIDGE_V9.ps1" }
+        "sbv2_pid"         { "server_fastapi.py" }
+        "controller_pid"   { "AI_COCKPIT_CONTROLLER_V9.ps1" }
+        default            { "" }
+    }
+    if ([string]::IsNullOrWhiteSpace($expected)) { return $false }
+    try {
+        $wmi = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $Pid) -ErrorAction SilentlyContinue
+        if ($null -eq $wmi) { return $false }
+        $cmd = [string]$wmi.CommandLine
+        return (-not [string]::IsNullOrWhiteSpace($cmd) -and $cmd -match [regex]::Escape($expected))
+    } catch { return $false }
+}
+
 # Stop only PIDs recorded in OUR OWN previous state file - never a broad
 # process-table scan. A PID that no longer exists, or that now belongs to
 # a different process (recycled by Windows), is silently skipped.
@@ -217,9 +237,11 @@ function Stop-OwnedFromPreviousState {
         if ($null -eq $val -or [int]$val.Value -le 0) { continue }
         $procId = [int]$val.Value
         $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
-        if ($null -ne $proc) {
+        if ($null -ne $proc -and (Test-OwnedPidIdentity $field $procId)) {
             try { Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue } catch {}
             Write-Status ("  stopped previous {0} (PID {1})" -f $field, $procId) DarkGray
+        } elseif ($null -ne $proc) {
+            Write-Status ("  previous PID " + $procId + " no longer matches " + $field + "; leaving it untouched") Yellow
         }
     }
     # Excel is only ever stopped by exact PID + the same window-title match
