@@ -18,30 +18,30 @@ function Invoke-GitFatal([string]$RepoPath,[string[]]$GitArgs,[string]$Message) 
     return @($out)
 }
 
-function Get-CommandLine([int]$Pid) {
+function Get-CommandLine([int]$ProcessId) {
     try {
-        $p = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $Pid) -ErrorAction SilentlyContinue
+        $p = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction SilentlyContinue
         if ($null -eq $p) { return "" }
         return [string]$p.CommandLine
     } catch { return "" }
 }
 
-function Test-PidIdentity([int]$Pid,[string]$ExpectedScript) {
-    if ($Pid -le 0 -or [string]::IsNullOrWhiteSpace($ExpectedScript)) { return $false }
-    $cmd = Get-CommandLine $Pid
+function Test-PidIdentity([int]$ProcessId,[string]$ExpectedScript) {
+    if ($ProcessId -le 0 -or [string]::IsNullOrWhiteSpace($ExpectedScript)) { return $false }
+    $cmd = Get-CommandLine $ProcessId
     return (-not [string]::IsNullOrWhiteSpace($cmd) -and $cmd -match [regex]::Escape($ExpectedScript))
 }
 
-function Stop-ExactProcess([int]$Pid,[string]$ExpectedScript,[string]$Label) {
-    if ($Pid -le 0) { return }
-    $p = Get-Process -Id $Pid -ErrorAction SilentlyContinue
+function Stop-ExactProcess([int]$ProcessId,[string]$ExpectedScript,[string]$Label) {
+    if ($ProcessId -le 0) { return }
+    $p = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
     if ($null -eq $p) { return }
-    if (-not (Test-PidIdentity $Pid $ExpectedScript)) {
-        Write-Host ("  NOT stopping PID {0}: it no longer matches {1}" -f $Pid,$ExpectedScript) -ForegroundColor Yellow
+    if (-not (Test-PidIdentity $ProcessId $ExpectedScript)) {
+        Write-Host ("  NOT stopping PID {0}: it no longer matches {1}" -f $ProcessId,$ExpectedScript) -ForegroundColor Yellow
         return
     }
-    Stop-Process -Id $Pid -Force -ErrorAction Stop
-    Write-Host ("  stopped {0} PID {1}" -f $Label,$Pid) -ForegroundColor Green
+    Stop-Process -Id $ProcessId -Force -ErrorAction Stop
+    Write-Host ("  stopped {0} PID {1}" -f $Label,$ProcessId) -ForegroundColor Green
 }
 
 function Get-PortOwner([int]$Port) {
