@@ -10,10 +10,10 @@ $ErrorActionPreference = "Stop"
 $V8State = Join-Path $Root "V8_CONTROLLER_STATE.json"
 $V8ControllerName = "AI_COCKPIT_CONTROLLER_V8.ps1"
 
-function Invoke-GitFatal([string]$RepoPath,[string[]]$Args,[string]$Message) {
-    $out = & git -C $RepoPath @Args 2>&1
+function Invoke-GitFatal([string]$RepoPath,[string[]]$GitArgs,[string]$Message) {
+    $out = & git -C $RepoPath @GitArgs 2>&1
     if ($LASTEXITCODE -ne 0) {
-        throw ($Message + ": " + ($out -join " | "))
+        throw ($Message + " (git " + ($GitArgs -join " ") + "): " + ($out -join " | "))
     }
     return @($out)
 }
