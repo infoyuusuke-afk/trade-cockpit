@@ -131,16 +131,35 @@ try {
                 $liveExists = if ($liveJson) { Test-Path -LiteralPath $liveJson } else { $false }
                 $liveMtime = if ($liveExists) { (Get-Item -LiteralPath $liveJson).LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss') } else { $null }
                 $runtime = [ordered]@{
-                    collector_status = $null
-                    watcher_pid      = $null
-                    collector_pid    = $null
+                    collector_status           = $null
+                    watcher_status             = $null
+                    heartbeat_status           = $null
+                    watcher_pid                = $null
+                    heartbeat_pid              = $null
+                    collector_pid              = $null
+                    excel_pid                  = $null
+                    workbook_identity_verified = $null
+                    fail_closed                = $true
                 }
                 try {
                     if (Test-Path -LiteralPath $controllerStateFile) {
                         $st = Get-Content -LiteralPath $controllerStateFile -Raw | ConvertFrom-Json
                         $runtime.collector_status = $st.collector_status
+                        $runtime.watcher_status = $st.watcher_status
+                        $runtime.heartbeat_status = $st.heartbeat_status
                         $runtime.watcher_pid = $st.watcher_pid
+                        $runtime.heartbeat_pid = $st.heartbeat_pid
                         $runtime.collector_pid = $st.collector_pid
+                        $runtime.excel_pid = $st.excel_pid
+                        $runtime.workbook_identity_verified = $st.workbook_identity_verified
+                        # Fail-closed unless every safety-relevant worker is
+                        # confirmed alive AND the collector has live data.
+                        # Any unknown/missing state defaults to fail-closed.
+                        $runtime.fail_closed = -not (
+                            $st.watcher_status -eq "LIVE" -and
+                            $st.heartbeat_status -eq "RUNNING" -and
+                            $st.collector_status -eq "LIVE"
+                        )
                     }
                 } catch {}
                 $payload = [ordered]@{

@@ -1,14 +1,27 @@
 param(
     [string]$RepoRoot = "",
-    [string]$Branch = "",
+    [string]$Branch = "integration/v7-runtime-and-cards",
+    [string]$ExpectedSha = "",
     [switch]$SkipGitUpdate
 )
 
-# One-shot entry point: update (git fetch/checkout this branch) + backup
-# (previous V8 logs/state, timestamped) + start (Controller V8), so the
-# person running this never has to type several separate diagnostic
-# commands by hand. Safe to re-run any time - it only ever touches this
-# repo checkout's working tree and this controller's own state/log files.
+# One-shot entry point: update (git fetch/checkout a PINNED branch, or an
+# exact SHA if given) + backup (previous V8 logs/state, timestamped) +
+# start (Controller V8), so the person running this never has to type
+# several separate diagnostic commands by hand.
+#
+# 2026-09-25 P0 fix: $Branch used to default to "" and silently fall back
+# to "whatever branch this checkout happens to be on right now" - an
+# implicit, unverified target. It now defaults to the one reviewed
+# integration branch, and every git step that can fail (fetch/checkout/
+# reset) is fatal: on failure this script stops before ever starting the
+# Controller ("fail-closed"), it does not fall back to running whatever
+# happened to already be on disk. After updating, the actual branch/SHA is
+# re-read from git and compared against what was requested; a mismatch is
+# also fatal. Pass -SkipGitUpdate only when you deliberately want to run
+# the exact commit already checked out (e.g. re-running after a crash) -
+# even then, the branch/SHA actually on disk is printed so it's never
+# ambiguous what is about to start.
 
 $ErrorActionPreference = "Stop"
 
@@ -19,30 +32,53 @@ function Resolve-RepoRoot {
     throw "Could not resolve the trade-cockpit repo root from this script's location. Pass -RepoRoot explicitly."
 }
 
+function Invoke-GitFatal([string]$RepoPath, [string[]]$GitArgs, [string]$FailMessage) {
+    $output = & git -C $RepoPath @GitArgs 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw ($FailMessage + " (git " + ($GitArgs -join ' ') + "): " + ($output -join " | "))
+    }
+    return $output
+}
+
 $repo = Resolve-RepoRoot
 Write-Host "==================================================" -ForegroundColor DarkCyan
 Write-Host " AI COCKPIT V8 - update + backup + start" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor DarkCyan
-Write-Host ("Repo: " + $repo) -ForegroundColor Cyan
+Write-Host ("Repo:   " + $repo) -ForegroundColor Cyan
+Write-Host ("Branch: " + $Branch) -ForegroundColor Cyan
+if (-not [string]::IsNullOrWhiteSpace($ExpectedSha)) {
+    Write-Host ("Pinned SHA: " + $ExpectedSha) -ForegroundColor Cyan
+}
 
-if (-not $SkipGitUpdate) {
-    Push-Location -LiteralPath $repo
-    try {
-        $currentBranch = (& git rev-parse --abbrev-ref HEAD 2>$null).Trim()
-        $targetBranch = if ([string]::IsNullOrWhiteSpace($Branch)) { $currentBranch } else { $Branch }
-        Write-Host ("Updating checkout: fetching origin, checking out " + $targetBranch + "...") -ForegroundColor Yellow
-        & git fetch origin $targetBranch --quiet 2>&1 | Out-Null
-        & git checkout $targetBranch --quiet 2>&1 | Out-Null
-        & git reset --hard ("origin/" + $targetBranch) --quiet 2>&1 | Out-Null
-        $sha = (& git rev-parse --short HEAD 2>$null).Trim()
-        Write-Host ("Now on " + $targetBranch + " @ " + $sha) -ForegroundColor Green
-    } catch {
-        Write-Host ("Git update failed, continuing with the checkout as-is: " + $_.Exception.Message) -ForegroundColor Yellow
-    } finally {
-        Pop-Location
+try {
+    if (-not $SkipGitUpdate) {
+        Write-Host ("Updating checkout: fetching origin/" + $Branch + "...") -ForegroundColor Yellow
+        Invoke-GitFatal $repo @("fetch", "origin", $Branch, "--quiet") "git fetch failed - refusing to start with a possibly-stale or partial checkout" | Out-Null
+        Invoke-GitFatal $repo @("checkout", $Branch, "--quiet") "git checkout failed" | Out-Null
+        Invoke-GitFatal $repo @("reset", "--hard", ("origin/" + $Branch), "--quiet") "git reset --hard failed" | Out-Null
+    } else {
+        Write-Host "Skipping git update (-SkipGitUpdate) - using whatever is already checked out." -ForegroundColor DarkGray
     }
-} else {
-    Write-Host "Skipping git update (-SkipGitUpdate)." -ForegroundColor DarkGray
+
+    $actualBranch = (Invoke-GitFatal $repo @("rev-parse", "--abbrev-ref", "HEAD") "could not read the current branch after update").Trim()
+    $actualSha = (Invoke-GitFatal $repo @("rev-parse", "HEAD") "could not read the current commit after update").Trim()
+    Write-Host ("Now on " + $actualBranch + " @ " + $actualSha.Substring(0, 8)) -ForegroundColor Green
+
+    if (-not $SkipGitUpdate -and $actualBranch -ne $Branch) {
+        throw "Branch mismatch after checkout: expected '$Branch', got '$actualBranch'. Refusing to start Controller against an unexpected branch."
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedSha) -and -not $actualSha.StartsWith($ExpectedSha)) {
+        throw "SHA mismatch after checkout: expected '$ExpectedSha', got '$actualSha'. Refusing to start Controller against an unverified commit."
+    }
+} catch {
+    Write-Host ""
+    Write-Host "==================================================" -ForegroundColor Red
+    Write-Host " UPDATE FAILED - CONTROLLER NOT STARTED (fail-closed)" -ForegroundColor Red
+    Write-Host "==================================================" -ForegroundColor Red
+    Write-Host $_.Exception.Message -ForegroundColor Yellow
+    Write-Host ""
+    Read-Host "Press Enter to close"
+    [Environment]::Exit(1)
 }
 
 $root = "C:\AI_Cockpit_OneClick_Starter"
@@ -60,4 +96,4 @@ if (Test-Path -LiteralPath $stateFile) {
 
 Write-Host "Starting Controller V8..." -ForegroundColor Cyan
 Write-Host ""
-& (Join-Path $repo "downloads\AI_COCKPIT_CONTROLLER_V8.ps1") -RepoRoot $repo
+& (Join-Path $repo "downloads\AI_COCKPIT_CONTROLLER_V8.ps1") -RepoRoot $repo -ExpectedBranch $Branch
