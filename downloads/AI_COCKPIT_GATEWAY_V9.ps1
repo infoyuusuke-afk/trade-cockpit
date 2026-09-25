@@ -182,6 +182,19 @@ try {
                         )
                     }
                 } catch {}
+                $execution = [ordered]@{
+                    real_submit_allowed        = $false
+                    real_order_route            = 'DISABLED'
+                    auto_trading_real           = 'OFF_LOCKED'
+                    broker_positions_connected  = $false
+                    broker_position_count       = $null
+                    broker_position_status      = 'NOT_CONNECTED_UNKNOWN_NOT_ZERO'
+                    shadow_positions_connected  = $false
+                    shadow_open_position_count  = $null
+                    shadow_position_status      = 'NOT_PUBLISHED'
+                    owner_control               = 'REAL_ORDER_UNLOCK_NOT_AVAILABLE'
+                }
+
                 $payload = [ordered]@{
                     status           = 'ok'
                     port             = $Port
@@ -192,6 +205,7 @@ try {
                     live_json_exists = $liveExists
                     live_json_mtime  = $liveMtime
                     runtime          = $runtime
+                    execution        = $execution
                     now              = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
                 } | ConvertTo-Json -Depth 5
                 Send-Response $stream '200 OK' 'application/json; charset=utf-8' ($utf8.GetBytes($payload))
