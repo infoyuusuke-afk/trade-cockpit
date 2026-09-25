@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-09-25 16:40:08 JST",
+  "updated_at": "2026-09-25 16:42:37 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -6538,14 +6538,14 @@
         24519200.0,
         24904200.0
       ],
-      "similarity": 86.1,
+      "similarity": 85.8,
       "after_ret": 0.0,
       "max_up_after": 0.16,
       "max_down_after": -0.1,
       "score_components": {
         "five_minute": 81.5,
         "us_market": 92.4,
-        "credit_supply": 100.0
+        "credit_supply": 97.4
       },
       "us_context": {
         "date": "2026-09-15",
@@ -6709,14 +6709,14 @@
         26107600.0,
         26107800.0
       ],
-      "similarity": 85.8,
+      "similarity": 85.6,
       "after_ret": 0.0,
       "max_up_after": 0.0,
       "max_down_after": 0.0,
       "score_components": {
         "five_minute": 82.7,
         "us_market": 88.4,
-        "credit_supply": 100.0
+        "credit_supply": 97.4
       },
       "us_context": {
         "date": "2026-09-11",
@@ -6880,14 +6880,14 @@
         23445400.0,
         23854600.0
       ],
-      "similarity": 84.9,
+      "similarity": 84.7,
       "after_ret": 0.0,
       "max_up_after": 0.0,
       "max_down_after": -0.55,
       "score_components": {
         "five_minute": 86.2,
         "us_market": 85.0,
-        "credit_supply": 76.3
+        "credit_supply": 73.7
       },
       "us_context": {
         "date": "2026-09-01",
@@ -7051,14 +7051,14 @@
         26347400.0,
         26649600.0
       ],
-      "similarity": 83.0,
+      "similarity": 83.3,
       "after_ret": 0.0,
       "max_up_after": 0.0,
       "max_down_after": -0.17,
       "score_components": {
         "five_minute": 82.2,
         "us_market": 86.4,
-        "credit_supply": 79.7
+        "credit_supply": 82.3
       },
       "us_context": {
         "date": "2026-09-09",
@@ -7382,14 +7382,14 @@
       24519200.0,
       24904200.0
     ],
-    "similarity": 86.1,
+    "similarity": 85.8,
     "after_ret": 0.0,
     "max_up_after": 0.16,
     "max_down_after": -0.1,
     "score_components": {
       "five_minute": 81.5,
       "us_market": 92.4,
-      "credit_supply": 100.0
+      "credit_supply": 97.4
     },
     "us_context": {
       "date": "2026-09-15",
@@ -7437,16 +7437,16 @@
     }
   },
   "credit_context": {
-    "date": "2026-09-11",
-    "buy_balance": 13943000,
-    "sell_balance": 698100,
-    "ratio": 19.97,
-    "standardized_buy": 9372000,
-    "negotiable_buy": 4571000,
-    "standardized_sell": 577400,
-    "negotiable_sell": 120700,
-    "buy_change": 436300,
-    "sell_change": -316300,
+    "date": "2026-09-18",
+    "buy_balance": 13486500,
+    "sell_balance": 767800,
+    "ratio": 17.57,
+    "standardized_buy": 9026600,
+    "negotiable_buy": 4459900,
+    "standardized_sell": 627200,
+    "negotiable_sell": 140600,
+    "buy_change": -456500,
+    "sell_change": 69700,
     "phase": "中立"
   },
   "prediction": {
