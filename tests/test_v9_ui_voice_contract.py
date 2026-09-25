@@ -28,6 +28,11 @@ class V9UiVoiceContract(unittest.TestCase):
             self.assertNotIn("SAPI.SpVoice", text, rel)
             self.assertIn("28583", text, rel)
 
+    def test_voice_bridge_uses_runtime_safe_tcplistener_constructor(self):
+        text = read("downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1")
+        self.assertIn("[System.Net.Sockets.TcpListener]::new", text)
+        self.assertNotIn("New-Object System.Net.Sockets.TcpListener(", text)
+
     def test_voice_bridge_is_single_sbv2_backend(self):
         text = read("downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1")
         self.assertIn("Style-Bert-VITS2", text)
