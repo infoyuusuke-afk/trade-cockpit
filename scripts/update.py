@@ -2550,24 +2550,19 @@ def main():
     live_focus_html = """
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
- let voiceOn=localStorage.getItem("cockpitVoiceV1")==="on";
- const voiceButtons=[...document.querySelectorAll("[data-voice-toggle]")];
- const jstClock=()=>{const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Tokyo",weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).filter(x=>x.type!=="literal").map(x=>[x.type,x.value]));return {weekday:p.weekday,minutes:Number(p.hour)*60+Number(p.minute)}};
- const isTseVoiceWindow=()=>{const t=jstClock(),weekday=!["Sat","Sun"].includes(t.weekday),morning=t.minutes>=9*60&&t.minutes<=11*60+30,afternoon=t.minutes>=12*60+30&&t.minutes<=15*60+30;return weekday&&(morning||afternoon)};
  window.cockpitLiveSpeechEnabled=true;
- const marketStatusEls=[...document.querySelectorAll("#unified-mode-market-status")];
- const setMarketStatus=()=>{const open=isTseVoiceWindow();marketStatusEls.forEach(el=>{el.classList.toggle("open",open);const b=el.querySelector("b");if(b)b.textContent=open?"取引時間中":"取引時間外";});};
- const setVoiceLabel=()=>{setMarketStatus();voiceButtons.forEach(button=>{const open=isTseVoiceWindow();button.textContent=open?(voiceOn?"🔊":"🔇"):"🔇";button.title=!open?"東証9:00～11:30・12:30～15:30のみ。PTSデータには対応していません":(voiceOn?"音声読み上げON（クリックでOFF）":"音声読み上げOFF（クリックでON）");});};setVoiceLabel();
- window.cockpitSpeak=msg=>{if(!voiceOn||!msg||!isTseVoiceWindow()||window.cockpitLiveSpeechEnabled===false||!("speechSynthesis" in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(msg);u.lang="ja-JP";u.rate=1.05;window.speechSynthesis.speak(u);};
- window.cockpitAnnounce=model=>{if(!model||!model.symbol||!window.recordOnAir)return;window.recordOnAir(model);const box=document.getElementById("cockpit-onair-cards");if(box&&window.renderOnAirPanel)box.innerHTML=window.renderOnAirPanel();};
- voiceButtons.forEach(button=>button.onclick=()=>{if(!isTseVoiceWindow()){voiceOn=false;localStorage.setItem("cockpitVoiceV1","off");setVoiceLabel();return}voiceOn=!voiceOn;localStorage.setItem("cockpitVoiceV1",voiceOn?"on":"off");setVoiceLabel();if(voiceOn)window.cockpitSpeak("AIコクピットの自動読み上げを開始します");});
  const loadLive=()=>fetch("live_focus.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(d=>{
    window.cockpitLiveSpeechEnabled=d.speech_enabled===true;
-   setVoiceLabel();
+   window.cockpitVoiceSetLiveEnabled?.(d.speech_enabled===true);
    const verifiedEl=document.getElementById("unified-mode-verified");
    if(verifiedEl)verifiedEl.textContent="完全照合 "+(d.verified_count||0)+" / "+(d.expected_count||0)+"銘柄（"+(d.updated_at||"更新時刻不明")+"）";
    document.dispatchEvent(new CustomEvent("liveFocusUpdate",{detail:d}));
- }).catch(()=>{const verifiedEl=document.getElementById("unified-mode-verified");if(verifiedEl)verifiedEl.textContent="通信停止・売買禁止";});
+ }).catch(()=>{
+   window.cockpitLiveSpeechEnabled=false;
+   window.cockpitVoiceSetLiveEnabled?.(false);
+   const verifiedEl=document.getElementById("unified-mode-verified");
+   if(verifiedEl)verifiedEl.textContent="通信停止・売買禁止";
+ });
  loadLive();setInterval(loadLive,60000);
 });
 </script>"""
@@ -2883,7 +2878,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 <link rel="stylesheet" href="next-theme-radar.css?v=c024-1">
 <script defer src="next-theme-radar.js?v=c024-1"></script>
 <link rel="stylesheet" href="card_system.css?v=p0b1-1">
+<link rel="stylesheet" href="card_table_adapter.css?v=v9-1">
 <script type="module" src="card_system.js?v=p0b1-1"></script>
+<script src="voice_client.js?v=v9-1" defer></script>
+<script src="card_table_adapter.js?v=v9-1" defer></script>
 <style>.unified-mode{{margin:8px 6px 0;padding:10px 14px;border:1px solid #272A30;border-radius:10px;background:#101114;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}}.unified-mode .lamp{{width:12px;height:12px;border-radius:50%;background:#63676e;box-shadow:0 0 0 5px #63676e18}}.unified-mode.live{{border-color:#1f4a37;background:#101114}}.unified-mode.live .lamp{{background:#35e2ae;box-shadow:0 0 10px #35e2ae66}}.unified-mode.stale{{border-color:#6b5426}}.unified-mode strong{{font-size:16px;color:#e7e9eb}}.unified-mode span{{color:#9aa0a6}}.unified-mode b{{color:#c7cacd;font-size:12px;font-weight:500}}.unified-mode small{{color:#63676e;display:block;margin-top:2px}}.unified-mode-controls{{display:flex;align-items:center;gap:8px}}.market-status-pill{{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#15171B;border:1px solid #272A30;color:#7a7f86;font-size:10.5px;white-space:nowrap}}.market-status-pill .dot{{width:6px;height:6px;border-radius:50%;background:#4a4e55;flex:none}}.market-status-pill.open{{color:#8fe3c0;border-color:#1f4a37}}.market-status-pill.open .dot{{background:#35e2ae;box-shadow:0 0 5px #35e2ae}}.voice-toggle{{width:30px;height:30px;padding:0;border-radius:50%;background:#15171B;border:1px solid #272A30;color:#c7cacd;font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center}}@media(max-width:700px){{.unified-mode{{grid-template-columns:auto 1fr auto}}.unified-mode>b{{grid-column:3}}.unified-mode .unified-mode-controls{{grid-column:1/-1}}}}</style>
 <header><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／統一取引日 {quality_gate['market_date'] or '取得不能'}</div></div></header>
 <div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><main>
