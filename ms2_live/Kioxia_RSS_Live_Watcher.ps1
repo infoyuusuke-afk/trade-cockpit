@@ -896,6 +896,10 @@ try {
       Start-Sleep -Seconds 2
     }
 } finally {
+    if ($null -ne $watcherBridgeJob) {
+        Stop-Job $watcherBridgeJob -ErrorAction SilentlyContinue
+        Remove-Job $watcherBridgeJob -Force -ErrorAction SilentlyContinue
+    }
     $rss.Range("B16").Value2 = "停止"
     $book.Save()
     Write-Host "監視を停止しました。Excelは開いたままです。" -ForegroundColor Yellow
