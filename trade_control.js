@@ -192,6 +192,54 @@
     return '<div class="cc-performance-board"><div class="cc-performance-rank">'+rank+'</div><div class="cc-performance-cards">'+cards+'</div><div class="cc-performance-note">'+note+'。REAL/SHADOW/BACKTESTは混合しません。</div></div>';
   }
 
+  function buildClientPerformance(rows){
+    const lanes=new Map();
+    let unclassified=0,unknownMode=0;
+    rows.forEach(x=>{
+      const tab=classifyRecord(x);
+      if(!tab){unclassified++;return;}
+      const mode=classifyMode(x);
+      if(mode==="unknown")unknownMode++;
+      const key=tab+"|"+mode;
+      if(!lanes.has(key))lanes.set(key,{tab,mode,rows:[]});
+      lanes.get(key).rows.push(x);
+    });
+    const strategies=[...lanes.values()].map(lane=>{
+      const stats=computeStats(lane.rows);
+      const realized=lane.rows.filter(isRealized).slice().sort((a,b)=>String(a?.date||"").localeCompare(String(b?.date||""))||String(a?.signal_time||"").localeCompare(String(b?.signal_time||"")));
+      let cum=0;
+      const byDate=new Map();
+      realized.forEach(x=>{
+        const date=String(x?.date||x?.evaluation_date||"");
+        if(!date)return;
+        const value=Number(x?.pnl_yen);
+        if(!Number.isFinite(value))return;
+        const cur=byDate.get(date)||{date,pnl_yen:0,trades:0};
+        cur.pnl_yen+=value;cur.trades++;byDate.set(date,cur);
+      });
+      const daily=[...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date)).map(x=>{cum+=x.pnl_yen;return {...x,cum_pnl_yen:cum};});
+      return {
+        tab:lane.tab,label:TAB_LABELS[lane.tab]||lane.tab,mode:lane.mode,source_status:"client_fallback",
+        sample_count:stats?.count??0,wins:stats?.wins??0,losses:(stats?.count??0)-(stats?.wins??0),
+        win_rate:stats?.winRate??null,pnl_yen:stats?.pnl??null,pf:stats?.pf??null,pf_status:stats?.pfStatus||"NO_REALIZED_TRADES",
+        avg_r:stats?.avgR??null,max_drawdown_yen:stats?.maxDD??null,
+        unresolved_count:lane.rows.filter(x=>resultExitReason(x)==="OPEN_MARK").length,
+        daily_series:daily,cumulative_series:daily.map(x=>({date:x.date,pnl_yen:x.pnl_yen,cum_pnl_yen:x.cum_pnl_yen}))
+      };
+    });
+    const represented=new Set(strategies.map(x=>x.tab));
+    return {
+      schema_version:"client-fallback-1.0",
+      source_status:"performance_by_strategy.json unavailable; computed client-side",
+      record_count:rows.length,
+      classified_record_count:rows.length-unclassified,
+      unclassified_record_count:unclassified,
+      unknown_mode_record_count:unknownMode,
+      strategies,
+      missing_strategy_tabs:[...TRADE_TABS].filter(tab=>!represented.has(tab)).map(tab=>({tab,label:TAB_LABELS[tab],source_status:"unknown"}))
+    };
+  }
+
   async function loadHealth(){
     try{
       const r=await fetch("health?t="+Date.now(),{cache:"no-store"});
@@ -220,7 +268,7 @@
       if(box)box.innerHTML=performanceHtml(tab,computeStats(grouped.get(tab)||[]),unclassified);
     });
 
-    const performance=await loadPerformance();
+    const performance=(await loadPerformance())||buildClientPerformance(rows);
     const control=document.querySelector('.tab-pane[data-pane="control"]');
     if(control){
       let perfSection=control.querySelector(":scope > #strategy-performance-dashboard");
