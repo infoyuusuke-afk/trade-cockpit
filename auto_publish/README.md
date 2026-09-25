@@ -93,6 +93,38 @@ py -3.12 -m auto_publish.cli ingest --input D:\content_drop\2026-09-25
   back to the original bytes. English names come from `config/instrument_names_en.json` (else `TSE <code>`).
 - Real data still stops at R1: dry-run payloads only, `data_class: "real"` recorded in each payload.
 
+## Opportunity Radar: `condition_log.csv` (read-only, any local path)
+
+```powershell
+py -3.12 -m auto_publish.cli export --date 2026-09-25 `
+  --data-json C:\path\to\trade-cockpit\data.json `
+  --paper-history C:\path\to\trade-cockpit\paper_trade_history.json `
+  --condition-log D:\ms2_live\records\2026-09-25\condition_log.csv `
+  --out D:\content_drop
+py -3.12 -m auto_publish.cli explain <story_id>     # why this ticker was chosen + full evidence chain (local only)
+```
+
+- The file is never committed to GitHub; pass its local path. It is read once (one byte snapshot, SHA256 recorded);
+  the collector may keep appending — only a rewrite/truncation of the bytes we read is fail-closed.
+- Strict format: exact 25-column header of the MS2 collector, `YYYY-MM-DD HH:MM:SS` JST, `NNNN.T` tickers, `True`/`False`
+  flags, finite numbers, all rows on the session date, non-decreasing time, one physical line per record.
+- Events = first row where a flag holds for (ticker, event) — repeated snapshots and duplicate rows are one event.
+  `event_id = sha256(session|ticker|event|captured_at)`; `source_ref` = file SHA256 + row number + row SHA256.
+
+| flag | public event | direction | public basis codes |
+|---|---|---|---|
+| or5_long / or5_short | or5_breakout / or5_breakdown | up / down | close above OR5 high / below OR5 low, price vs VWAP |
+| or15_long / or15_short | or15_breakout / or15_breakdown | up / down | close above OR15 high / below OR15 low, price vs VWAP |
+| pullback_long / pullback_short | or15_retest_hold / or15_retest_reject | up / down | retest of OR15 high held / low rejected, price vs VWAP |
+
+- **Public** (`daily_summary.radar_events`): event_id, ticker, name, JST time, event, direction, price at detection,
+  above/below VWAP, basis codes, source, source_ref. No score/confidence exists in the source, so none is published.
+- **Internal** (`internal/radar_internal.json`, local evidence only): ema9/ema20, VWAP value, OR levels, bar_burst,
+  flow_bias, trend/whipsaw/chase guards, collector signal/strategy labels. Used only by `explain`; tests assert none of it
+  reaches posts, captions, video text or payloads.
+- Contradictions are fail-closed (e.g. a long flag while price is below VWAP, a flag outside 09:00–15:30).
+- Synthetic inputs must be exported with `--fixture` (tickers `TST*`); mixing synthetic and real inputs is refused.
+
 ## Output (per story)
 
 ```
@@ -176,5 +208,5 @@ explicitly). CI: `.github/workflows/auto-publish-r1.yml` installs FFmpeg + DejaV
 ## Not in R1
 
 Real platform adapters / OAuth, PUBLISH/VERIFY/METRICS/LEARN stages, TimingOptimizer, TTS narration (video carries a silent
-AAC track), Japanese subtitle line in the video, `condition_log.csv` parser (so real-data stories have no radar bullet yet), TSE holiday calendar (weekends only),
+AAC track), Japanese subtitle line in the video, real `condition_log.csv` not yet run (importer done, tested on a synthetic file in the exact collector format), TSE holiday calendar (weekends only),
 APScheduler daemon, approval UI.

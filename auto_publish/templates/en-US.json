@@ -2,22 +2,44 @@
   "lang": "en-US",
   "title": "Tokyo close: {name_en} ({code}) {change_pct:+.1f}%",
   "hook": "{name_en} ({code}) {move} {abs_change:.1f}% in Tokyo on {date_long}. Here is what the data showed.",
-  "move_words": {"up": "rose", "down": "fell", "flat": "was flat at"},
+  "move_words": {
+    "up": "rose",
+    "down": "fell",
+    "flat": "was flat at"
+  },
   "close": "It closed at ¥{close:,.0f}, {change_pct:+.2f}% on the day.",
   "volume": "Trading volume was {volume_ratio:.1f}x its recent average.",
   "radar": "At {time_jst} JST, the radar flagged {event_text}.",
   "radar_events": {
     "volume_spike": "a volume spike",
     "vwap_reclaim": "price reclaiming VWAP",
-    "or15_breakout": "a break of the 15-minute opening range",
+    "or15_breakout": "a break above the 15-minute opening range",
     "gap_fill": "a gap fill",
-    "block_trade_print": "a large block print"
+    "block_trade_print": "a large block print",
+    "or5_breakout": "a break above the 5-minute opening range",
+    "or5_breakdown": "a break below the 5-minute opening range",
+    "or15_breakdown": "a break below the 15-minute opening range",
+    "or15_retest_hold": "a retest that held above the 15-minute opening-range high",
+    "or15_retest_reject": "a retest that was rejected at the 15-minute opening-range low"
   },
   "paper_closed": "Paper trade (simulated, not real money): {side} from ¥{entry:,.0f}, closed at {r:+.2f}R.",
   "paper_open": "Paper trade (simulated, not real money): {side} from ¥{entry:,.0f}, still open at the close.",
-  "sides": {"LONG": "long", "SHORT": "short"},
+  "sides": {
+    "LONG": "long",
+    "SHORT": "short"
+  },
   "disclaimer": "Observations from market data only. Not investment advice.",
   "disclaimer_paper": " Paper results are simulated.",
   "disclaimer_fixture": " TEST FIXTURE: sample data, not real market data.",
-  "hashtags": ["#JapanStocks", "#TokyoStockExchange", "#StockMarket", "#{code}"]
+  "hashtags": [
+    "#JapanStocks",
+    "#TokyoStockExchange",
+    "#StockMarket",
+    "#{code}"
+  ],
+  "radar_with_vwap": "At {time_jst} JST, the radar flagged {event_text}, with price {vwap} VWAP.",
+  "vwap_relation": {
+    "above": "above",
+    "below": "below"
+  }
 }

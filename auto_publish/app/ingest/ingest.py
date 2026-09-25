@@ -34,7 +34,9 @@ SUMMARY_FILE = "daily_summary.json"
 PAPER_FILE = "paper_trade_history.json"
 SUMMARY_SCHEMA = "auto_publish.daily_summary.v1"
 ALLOWED_SOURCES = {"ai_cockpit_export", "manual", "TEST_FIXTURE"}
-RADAR_EVENTS = {"volume_spike", "vwap_reclaim", "or15_breakout", "gap_fill", "block_trade_print"}
+RADAR_EVENTS = {"volume_spike", "vwap_reclaim", "or15_breakout", "gap_fill", "block_trade_print",
+                "or5_breakout", "or5_breakdown", "or15_breakdown", "or15_retest_hold", "or15_retest_reject"}
+EVENT_ID_RE = re.compile(r"^rv_[0-9a-f]{16}$")
 
 
 def _kind(rel: str) -> str:
@@ -42,6 +44,8 @@ def _kind(rel: str) -> str:
         return "daily_summary"
     if rel == PAPER_FILE:
         return "paper_trade_history"
+    if rel.startswith("internal/"):
+        return "internal"  # hashed as evidence, never turned into facts or published
     return "attachment"
 
 
@@ -250,6 +254,14 @@ def _validate_and_extract(ctx: Ctx, session_date: str) -> tuple[list[dict], bool
             raise ValidationError(f"{where}.event {e.get('event')!r} unsupported", code="SCHEMA_INVALID")
         if not re.match(r"^\d{2}:\d{2}$", str(e.get("time_jst", ""))):
             raise ValidationError(f"{where}.time_jst must be HH:MM", code="SCHEMA_INVALID")
+        if "direction" in e and e["direction"] not in ("up", "down"):
+            raise ValidationError(f"{where}.direction invalid", code="SCHEMA_INVALID")
+        if "vwap_relation" in e and e["vwap_relation"] not in ("above", "below", "at"):
+            raise ValidationError(f"{where}.vwap_relation invalid", code="SCHEMA_INVALID")
+        if "event_id" in e and not EVENT_ID_RE.match(str(e["event_id"])):
+            raise ValidationError(f"{where}.event_id invalid", code="SCHEMA_INVALID")
+        if "detected_at_jst" in e and not str(e["detected_at_jst"]).startswith(session_date):
+            raise ValidationError(f"{where}.detected_at_jst not in session {session_date}", code="DATE_MISMATCH")
         ptr = f"/radar_events/{j}"
         facts.append({"fact_id": _fact_id(session_date, SUMMARY_FILE, ptr), "evidence_id": summary_row["evidence_id"],
                       "pointer": ptr, "kind": "radar_event", "topic": e["ticker"], "basis": "observed", "value": e})

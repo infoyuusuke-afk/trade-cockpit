@@ -1,6 +1,8 @@
 """Auto Publish System -- R1 DRY-RUN command line.
 
-    python -m auto_publish.cli export --date D --data-json <data.json> --paper-history <paper_trade_history.json> --out <content_drop>
+    python -m auto_publish.cli export --date D --data-json <data.json> --paper-history <paper_trade_history.json> \
+        [--condition-log <condition_log.csv>] --out <content_drop>
+    python -m auto_publish.cli explain <story_id>        # why selected + evidence chain (internal, local)
     python -m auto_publish.cli ingest --input <content_drop/YYYY-MM-DD>
     python -m auto_publish.cli build-drafts --date YYYY-MM-DD
     python -m auto_publish.cli queue
@@ -31,6 +33,7 @@ from .app.config import load_config, resolve_home
 from .app.context import Ctx
 from .app.db import connect
 from .app.errors import AutoPublishError
+from .app.explain import explain
 from .app.export.cockpit_export import export_session
 from .app.ingest.ingest import ingest, validate
 
@@ -59,7 +62,12 @@ def cmd_ingest(ctx, a):
 def cmd_export(ctx, a):
     return export_session(a.date, a.data_json, a.paper_history, a.out,
                           market_close_jst=ctx.cfg["market_close_jst"],
-                          max_age_hours=float(ctx.cfg["max_evidence_age_hours"]), max_movers=a.max_movers)
+                          max_age_hours=float(ctx.cfg["max_evidence_age_hours"]), max_movers=a.max_movers,
+                          condition_log=a.condition_log, data_class="fixture" if a.fixture else "real")
+
+
+def cmd_explain(ctx, a):
+    return explain(ctx, a.story_id)
 
 
 def cmd_build(ctx, a):
@@ -155,7 +163,11 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("export", help="read-only: AI Cockpit exports -> content_drop/<date>/daily_summary.json")
     s.add_argument("--date", required=True); s.add_argument("--data-json", required=True)
     s.add_argument("--paper-history", required=True); s.add_argument("--out", required=True)
+    s.add_argument("--condition-log", help="Opportunity Radar condition_log.csv (any path; read-only)")
+    s.add_argument("--fixture", action="store_true", help="inputs are synthetic TST* test data (labels output TEST_FIXTURE)")
     s.add_argument("--max-movers", type=int, default=10); s.set_defaults(fn=cmd_export)
+    s = sub.add_parser("explain", help="why a story was selected + full evidence chain (local, internal)")
+    s.add_argument("story_id"); s.set_defaults(fn=cmd_explain)
     s = sub.add_parser("ingest"); s.add_argument("--input", required=True); s.add_argument("--date"); s.set_defaults(fn=cmd_ingest)
     s = sub.add_parser("build-drafts"); s.add_argument("--date", required=True); s.set_defaults(fn=cmd_build)
     s = sub.add_parser("queue"); s.set_defaults(fn=cmd_queue)

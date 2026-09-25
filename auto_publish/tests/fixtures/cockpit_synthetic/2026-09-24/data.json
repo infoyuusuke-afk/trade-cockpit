@@ -1,0 +1,83 @@
+{
+ "note": "SYNTHETIC TEST FIXTURE. Tickers TST1-TST4 are fictional; numbers are not market data.",
+ "updated_at": "2026-09-24 21:00:00 JST",
+ "phase": "synthetic",
+ "stocks": {
+  "テスト半導体（TST1）": {
+   "ok": true,
+   "ticker": "TST1.T",
+   "price": 2345.0,
+   "prev_close": 2204.0,
+   "change_pct": 6.4,
+   "data_date": "2026-09-24",
+   "quote_verified": true,
+   "identity_verified": true,
+   "turnover": 123456789,
+   "day_score": 9.9,
+   "swing_score": 1.1,
+   "chart": [
+    {
+     "o": 1,
+     "h": 2,
+     "l": 1,
+     "c": 2
+    }
+   ],
+   "quote_status": "synthetic",
+   "secondary_source": "synthetic",
+   "rvol": 3.2
+  },
+  "テスト素材（TST2）": {
+   "ok": true,
+   "ticker": "TST2.T",
+   "price": 880.0,
+   "prev_close": 908.0,
+   "change_pct": -3.08,
+   "data_date": "2026-09-24",
+   "quote_verified": true,
+   "identity_verified": true,
+   "turnover": 123456789,
+   "day_score": 9.9,
+   "swing_score": 1.1,
+   "chart": [
+    {
+     "o": 1,
+     "h": 2,
+     "l": 1,
+     "c": 2
+    }
+   ],
+   "quote_status": "synthetic",
+   "secondary_source": "synthetic",
+   "rvol": 1.9
+  },
+  "テスト機械（TST3）": {
+   "ok": true,
+   "ticker": "TST3.T",
+   "price": 1200.0,
+   "prev_close": 1093.0,
+   "change_pct": 9.79,
+   "data_date": "2026-09-24",
+   "quote_verified": false,
+   "identity_verified": true,
+   "turnover": 123456789,
+   "day_score": 9.9,
+   "swing_score": 1.1,
+   "chart": [
+    {
+     "o": 1,
+     "h": 2,
+     "l": 1,
+     "c": 2
+    }
+   ],
+   "quote_status": "synthetic",
+   "secondary_source": "synthetic"
+  },
+  "テスト電機（TST4）": {
+   "ok": false,
+   "ticker": "TST4.T",
+   "data_date": null
+  }
+ }
+}

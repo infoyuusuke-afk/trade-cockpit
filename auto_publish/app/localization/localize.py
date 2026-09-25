@@ -46,7 +46,11 @@ def render_segment(seg: dict, script: dict, t: dict, lang: str) -> str:
     if typ == "volume":
         return t["volume"].format(**d)
     if typ == "radar":
-        return t["radar"].format(time_jst=d["time_jst"], event_text=t["radar_events"][d["event"]])
+        text = t["radar"].format(time_jst=d["time_jst"], event_text=t["radar_events"][d["event"]])
+        if d.get("vwap_relation"):
+            text = t["radar_with_vwap"].format(time_jst=d["time_jst"], event_text=t["radar_events"][d["event"]],
+                                               vwap=t["vwap_relation"][d["vwap_relation"]])
+        return text
     if typ == "paper":
         side = t["sides"].get(d["side"], d["side"])
         if d["result_closed"]:

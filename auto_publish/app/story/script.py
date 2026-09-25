@@ -26,7 +26,10 @@ def build_script(story: dict, refs: list[dict]) -> dict:
         if btype == "volume":
             return {"volume_ratio": v["volume_ratio"]}
         if btype == "radar":
-            return {"time_jst": v["time_jst"], "event": v["event"]}
+            d = {"time_jst": v["time_jst"], "event": v["event"]}
+            if v.get("vwap_relation") in ("above", "below"):
+                d["vwap_relation"] = v["vwap_relation"]
+            return d
         if btype == "paper":
             closed = bool(v.get("closed", v.get("r") is not None)) and v.get("r") is not None
             return {"side": v.get("side", "LONG"), "entry": v["entry"], "r": v.get("r") if closed else None,

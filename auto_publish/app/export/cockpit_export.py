@@ -28,6 +28,7 @@ from pathlib import Path
 from ..clock import JST
 from ..errors import EvidenceError, ValidationError
 from ..hashing import sha256_bytes, sha256_file, write_atomic
+from . import radar_import
 
 EXPORTER = "auto_publish.cockpit_export"
 EXPORTER_VERSION = "1"
@@ -43,7 +44,15 @@ ALLOWLIST = {
     "paper_trade_history.json": {
         "trade": ["date", "ticker", "side", "entry", "triggered", "result", "r", "source"],
     },
+    "condition_log.csv": {
+        "public": ["captured_at -> time_jst/detected_at_jst", "ticker", "name -> name_ja", "price",
+                   "price vs vwap -> vwap_relation (vwap itself stays internal)",
+                   "or5_long/or5_short/or15_long/or15_short/pullback_long/pullback_short -> event + direction"],
+        "internal_only": radar_import.INTERNAL_FIELDS,
+    },
 }
+DATA_CLASSES = ("real", "fixture")
+FIXTURE_TICKER_RE = re.compile(r"^TST[0-9A-Z]\.T$")
 # Output fields that exist (after mapping) -- anything else in the output is a bug.
 OUTPUT_MOVER_KEYS = {"ticker", "name_en", "name_ja", "name_en_source", "close", "change_pct", "volume_ratio",
                      "source_ref"}
@@ -136,8 +145,12 @@ def build_export(
     max_age_hours: float = 18.0,
     max_movers: int = 10,
     names_file: Path | None = None,
+    condition_log: Path | None = None,
+    data_class: str = "real",
 ) -> dict:
     """Pure transform (reads inputs, returns the files to write). No writes here."""
+    if data_class not in DATA_CLASSES:
+        raise ValidationError(f"data_class must be one of {DATA_CLASSES}", code="SCHEMA_INVALID")
     if not DATE_RE.match(session_date or ""):
         raise ValidationError(f"bad session date {session_date!r}")
     sess = date.fromisoformat(session_date)
@@ -178,6 +191,9 @@ def build_export(
         m = NAME_KEY_RE.match(key)
         if not isinstance(ticker, str) or not TICKER_RE.match(ticker) or not m or m["code"] != ticker[:-2]:
             raise ValidationError(f"stock {key!r}: ticker/name inconsistent ({ticker!r})", code="SCHEMA_INVALID")
+        if bool(FIXTURE_TICKER_RE.match(ticker)) != (data_class == "fixture"):
+            raise ValidationError(f"{ticker}: fixture tickers (TST*) and real tickers must never mix "
+                                  f"(export data_class={data_class})", code="DATA_CLASS_MIXED")
         if s.get("quote_verified") is not True or s.get("identity_verified") is not True:
             excluded_records.append({"kind": "stock", "pointer": ptr, "ticker": ticker,
                                      "reason": "quote or identity not verified"})
@@ -251,8 +267,32 @@ def build_export(
                            "fields": {"r": "r" if closed else None, "entry": "entry", "outcome": "result"}},
         })
 
-    # ---------------- mover selection: every ticker with a paper trade + the largest moves
-    trade_tickers = {t["ticker"] for t in trades_out}
+    # ---------------- Opportunity Radar (optional): public events + internal records, split
+    radar_public: list[dict] = []
+    radar_internal: list[dict] = []
+    radar_meta = None
+    radar_snapshot = None
+    if condition_log is not None:
+        condition_log = Path(condition_log).resolve()
+        radar_snapshot = radar_import.read_snapshot(condition_log)
+        parsed = radar_import.parse_condition_log(radar_snapshot, session_date)
+        radar_meta = {"role": "condition_log.csv", "file": radar_import.FILE_NAME, "sha256": parsed["file_sha256"],
+                      "bytes": parsed["bytes"], "rows": parsed["rows"], "duplicate_rows": parsed["duplicate_rows"],
+                      "_path": condition_log}
+        internal_by_id = {i["event_id"]: i for i in parsed["internal"]}
+        for ev in parsed["public"]:
+            if bool(FIXTURE_TICKER_RE.match(ev["ticker"])) != (data_class == "fixture"):
+                raise ValidationError(f"radar ticker {ev['ticker']} does not match data_class {data_class}",
+                                      code="DATA_CLASS_MIXED")
+            if ev["ticker"] not in eligible:
+                excluded_records.append({"kind": "radar_event", "event_id": ev["event_id"], "ticker": ev["ticker"],
+                                         "row": ev["source_ref"]["row"], "reason": "no verified quote for this ticker"})
+                continue
+            radar_public.append(ev)
+            radar_internal.append(internal_by_id[ev["event_id"]])
+
+    # ---------------- mover selection: tickers with a paper trade or radar event + the largest moves
+    trade_tickers = {t["ticker"] for t in trades_out} | {e["ticker"] for e in radar_public}
     by_move = sorted(eligible.values(), key=lambda m: (-abs(m["change_pct"]), m["ticker"]))
     chosen = {m["ticker"] for m in by_move[:max_movers]} | trade_tickers
     movers = [eligible[t] for t in sorted(chosen)]
@@ -261,13 +301,13 @@ def build_export(
         "schema": "auto_publish.daily_summary.v1",
         "session_date": session_date,
         "generated_at": updated.isoformat(),
-        "source": "ai_cockpit_export",
-        "data_class": "real",
+        "source": "ai_cockpit_export" if data_class == "real" else "TEST_FIXTURE",
+        "data_class": data_class,
         "movers": movers,
-        "radar_events": [],
+        "radar_events": radar_public,
         "export": {"exporter": EXPORTER, "version": EXPORTER_VERSION,
                    "inputs": [{k: v for k, v in meta.items() if not k.startswith("_")}
-                              for meta in (snap_meta, paper_meta)]},
+                              for meta in (snap_meta, paper_meta, radar_meta) if meta]},
     }
     for m in movers:
         assert set(m) <= OUTPUT_MOVER_KEYS, set(m) - OUTPUT_MOVER_KEYS
@@ -281,22 +321,32 @@ def build_export(
     manifest = {
         "schema": "auto_publish.export_manifest.v1",
         "exporter": EXPORTER, "version": EXPORTER_VERSION,
-        "session_date": session_date, "data_class": "real",
+        "session_date": session_date, "data_class": data_class,
         "inputs": summary["export"]["inputs"],
         "allowlist": ALLOWLIST,
         "dropped_fields": {"data.json/stocks/*": dropped_stock_fields,
                            "paper_trade_history.json/*": dropped_trade_fields,
-                           "data.json (top-level)": sorted(set(snap) - set(ALLOWLIST["data.json"]["top"]))},
+                           "data.json (top-level)": sorted(set(snap) - set(ALLOWLIST["data.json"]["top"])),
+                           "condition_log.csv (internal only, never public)": radar_import.INTERNAL_FIELDS
+                           if condition_log is not None else []},
         "excluded_records": excluded_records,
-        "counts": {"movers": len(movers), "paper_trades": len(trades_out), "excluded": len(excluded_records)},
+        "counts": {"movers": len(movers), "paper_trades": len(trades_out), "radar_events": len(radar_public),
+                   "excluded": len(excluded_records)},
         "boundary": "read-only export; R1 DRY-RUN; never publishes",
     }
     for name, obj in (("daily_summary.json", summary), ("paper_trade_history.json", trades_out)):
         hits = _deny_scan(obj)
         if hits:
             raise ValidationError(f"{name} would contain denied fields: {hits}", code="DENIED_FIELD_LEAK")
-    return {"summary": summary, "trades": trades_out, "manifest": manifest,
-            "_inputs": [(snap_meta["_path"], snap_meta["sha256"]), (paper_meta["_path"], paper_meta["sha256"])]}
+    internal_doc = None
+    if condition_log is not None:
+        internal_doc = {"schema": "auto_publish.radar_internal.v1", "visibility": "internal",
+                        "note": "Local explanation data. Never rendered, posted or placed in payloads.",
+                        "session_date": session_date, "source_sha256": radar_meta["sha256"],
+                        "events": radar_internal}
+    return {"summary": summary, "trades": trades_out, "manifest": manifest, "internal": internal_doc,
+            "_inputs": [(snap_meta["_path"], snap_meta["sha256"]), (paper_meta["_path"], paper_meta["sha256"])],
+            "_appendable": [(radar_meta["_path"], radar_snapshot)] if radar_meta else []}
 
 
 def _dump(obj) -> bytes:
@@ -307,6 +357,8 @@ def export_session(session_date: str, data_json: Path, paper_history: Path, out_
     """Build and write ``out_root/<session_date>/``. Idempotent; refuses to overwrite a different export."""
     out_dir = Path(out_root).resolve() / session_date
     inputs = [Path(data_json).resolve(), Path(paper_history).resolve()]
+    if kw.get("condition_log") is not None:
+        inputs.append(Path(kw["condition_log"]).resolve())
     for p in inputs:
         if p.parent == out_dir or out_dir in p.parents:
             raise ValidationError("output directory must not contain the input files (inputs are read-only)",
@@ -316,6 +368,8 @@ def export_session(session_date: str, data_json: Path, paper_history: Path, out_
         "daily_summary.json": _dump(built["summary"]),
         "paper_trade_history.json": _dump(built["trades"]),
     }
+    if built["internal"] is not None:
+        files["internal/radar_internal.json"] = _dump(built["internal"])
     manifest = dict(built["manifest"])
     manifest["outputs"] = {n: sha256_bytes(b) for n, b in sorted(files.items())}
     files["export_manifest.json"] = _dump(manifest)
@@ -324,6 +378,8 @@ def export_session(session_date: str, data_json: Path, paper_history: Path, out_
     for path, sha in built["_inputs"]:
         if sha256_file(path) != sha:
             raise EvidenceError(f"{path.name} changed during export", code="EVIDENCE_CHANGED_DURING_INGEST")
+    for path, snapshot in built["_appendable"]:
+        radar_import.verify_prefix_unchanged(path, snapshot)
 
     if out_dir.exists():
         existing = {n: (out_dir / n).read_bytes() for n in files if (out_dir / n).is_file()}
