@@ -1,5 +1,6 @@
 """Auto Publish System -- R1 DRY-RUN command line.
 
+    python -m auto_publish.cli export --date D --data-json <data.json> --paper-history <paper_trade_history.json> --out <content_drop>
     python -m auto_publish.cli ingest --input <content_drop/YYYY-MM-DD>
     python -m auto_publish.cli build-drafts --date YYYY-MM-DD
     python -m auto_publish.cli queue
@@ -30,6 +31,7 @@ from .app.config import load_config, resolve_home
 from .app.context import Ctx
 from .app.db import connect
 from .app.errors import AutoPublishError
+from .app.export.cockpit_export import export_session
 from .app.ingest.ingest import ingest, validate
 
 
@@ -52,6 +54,12 @@ def cmd_ingest(ctx, a):
     res = ingest(ctx, a.input, session_date=a.date)
     res["validation"] = validate(ctx, res["session_date"])
     return res
+
+
+def cmd_export(ctx, a):
+    return export_session(a.date, a.data_json, a.paper_history, a.out,
+                          market_close_jst=ctx.cfg["market_close_jst"],
+                          max_age_hours=float(ctx.cfg["max_evidence_age_hours"]), max_movers=a.max_movers)
 
 
 def cmd_build(ctx, a):
@@ -144,6 +152,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--actor", help="actor name recorded in the audit trail")
     sub = p.add_subparsers(dest="cmd", required=True)
 
+    s = sub.add_parser("export", help="read-only: AI Cockpit exports -> content_drop/<date>/daily_summary.json")
+    s.add_argument("--date", required=True); s.add_argument("--data-json", required=True)
+    s.add_argument("--paper-history", required=True); s.add_argument("--out", required=True)
+    s.add_argument("--max-movers", type=int, default=10); s.set_defaults(fn=cmd_export)
     s = sub.add_parser("ingest"); s.add_argument("--input", required=True); s.add_argument("--date"); s.set_defaults(fn=cmd_ingest)
     s = sub.add_parser("build-drafts"); s.add_argument("--date", required=True); s.set_defaults(fn=cmd_build)
     s = sub.add_parser("queue"); s.set_defaults(fn=cmd_queue)

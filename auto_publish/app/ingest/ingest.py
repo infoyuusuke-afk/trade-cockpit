@@ -214,6 +214,9 @@ def _validate_and_extract(ctx: Ctx, session_date: str) -> tuple[list[dict], bool
     if source not in ALLOWED_SOURCES:
         raise ValidationError(f"unknown source {source!r}", code="SCHEMA_INVALID")
     fixture = source == "TEST_FIXTURE"
+    data_class = doc.get("data_class", "fixture" if fixture else None)
+    if (fixture and data_class != "fixture") or (not fixture and data_class != "real"):
+        raise ValidationError(f"data_class {data_class!r} inconsistent with source {source!r}", code="SCHEMA_INVALID")
 
     facts: list[dict] = []
     movers = doc.get("movers")
@@ -262,6 +265,12 @@ def _validate_and_extract(ctx: Ctx, session_date: str) -> tuple[list[dict], bool
             if t.get("ticker") not in tickers or not t.get("triggered"):
                 continue
             _finite_number(t.get("entry"), f"paper[{k}].entry")
+            if t.get("basis", "paper") != "paper":
+                raise ValidationError(f"paper[{k}] basis must be 'paper'", code="SCHEMA_INVALID")
+            if "closed" in t and not isinstance(t["closed"], bool):
+                raise ValidationError(f"paper[{k}].closed must be boolean", code="SCHEMA_INVALID")
+            if t.get("closed") is True and t.get("r") is None:
+                raise ValidationError(f"paper[{k}] closed trade without r", code="SCHEMA_INVALID")
             if t.get("r") is not None:
                 _finite_number(t["r"], f"paper[{k}].r")
             ptr = f"/{k}"

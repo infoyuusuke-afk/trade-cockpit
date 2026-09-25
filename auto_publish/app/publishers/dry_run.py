@@ -94,6 +94,7 @@ class DryRunPublisher(PublisherAdapter):
             "evidence_manifest_sha256": post.evidence_manifest_sha256,
             "approved_by": post.approved_by,
             "fixture": post.fixture,
+            "data_class": "fixture" if post.fixture else "real",
             "request": request,
             "localized": {"ja-JP": {"title": post.post_ja["title"], "caption": post.post_ja["caption"]}},
         }

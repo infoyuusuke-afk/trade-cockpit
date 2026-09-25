@@ -28,8 +28,9 @@ def build_script(story: dict, refs: list[dict]) -> dict:
         if btype == "radar":
             return {"time_jst": v["time_jst"], "event": v["event"]}
         if btype == "paper":
-            return {"side": v.get("side", "LONG"), "entry": v["entry"], "r": v.get("r"),
-                    "result_closed": v.get("r") is not None}
+            closed = bool(v.get("closed", v.get("r") is not None)) and v.get("r") is not None
+            return {"side": v.get("side", "LONG"), "entry": v["entry"], "r": v.get("r") if closed else None,
+                    "result_closed": closed}
         raise ValueError(btype)
 
     segments = [{"id": "hook", "type": "hook", "fact_ids": plan["hook"]["fact_ids"],

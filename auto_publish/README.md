@@ -69,6 +69,30 @@ close + `max_evidence_age_hours`, a `source` (`ai_cockpit_export` | `manual` | `
 (`ticker`, `name_en`, `name_ja`, `close`, `change_pct`, optional `volume_ratio`) and optional `radar_events[]`
 (`ticker`, `time_jst`, `event`). See `tests/fixtures/content_drop/2026-09-24/` (fictional tickers, labelled TEST FIXTURE).
 
+## Real data: read-only exporter (AI Cockpit → daily_summary.v1)
+
+```powershell
+py -3.12 -m auto_publish.cli export --date 2026-09-25 `
+  --data-json C:\path\to\trade-cockpit\data.json `
+  --paper-history C:\path\to\trade-cockpit\paper_trade_history.json `
+  --out D:\content_drop
+py -3.12 -m auto_publish.cli ingest --input D:\content_drop\2026-09-25
+```
+
+- Inputs are only read (opened read-only, SHA256 before parsing and re-checked after). Output never overlaps the inputs.
+- **Allowlist only.** `data.json` stocks: `ticker, price→close, prev_close (consistency check only), change_pct, rvol→volume_ratio,
+  data_date, ok, quote_verified, identity_verified`, name from the stock key. `paper_trade_history.json`: `date, ticker, side,
+  entry, triggered, result→outcome/closed, r (closed trades only), source`. Everything else is dropped and listed in
+  `export_manifest.json` (e.g. `shares, pnl_yen, fees, slippage, simulated_fill, stop, target1/2, strategy_*, MFE/MAE,
+  turnover, quote_status, secondary_source, chart`); the output is also scanned against a denylist.
+- Fail-closed: snapshot `data_date` ≠ session, snapshot outside close…close+18h, no verified quotes, non-finite or inconsistent
+  numbers (change_pct vs price/prev_close), unknown trade `result`/`side`/`source`, closed trade without `r`, weekend.
+- Unverified quotes and unpublishable trades (not triggered, "順序不明") are excluded with a reason in the manifest.
+- Open (mark-to-market) paper trades are exported with `closed:false, r:null` and rendered as "still open at the close".
+- Output is labelled `source: ai_cockpit_export`, `data_class: real`; every record has `source_ref` {file, sha256, pointer}
+  back to the original bytes. English names come from `config/instrument_names_en.json` (else `TSE <code>`).
+- Real data still stops at R1: dry-run payloads only, `data_class: "real"` recorded in each payload.
+
 ## Output (per story)
 
 ```
@@ -152,5 +176,5 @@ explicitly). CI: `.github/workflows/auto-publish-r1.yml` installs FFmpeg + DejaV
 ## Not in R1
 
 Real platform adapters / OAuth, PUBLISH/VERIFY/METRICS/LEARN stages, TimingOptimizer, TTS narration (video carries a silent
-AAC track), Japanese subtitle line in the video, `condition_log.csv` parser, TSE holiday calendar (weekends only),
+AAC track), Japanese subtitle line in the video, `condition_log.csv` parser (so real-data stories have no radar bullet yet), TSE holiday calendar (weekends only),
 APScheduler daemon, approval UI.
