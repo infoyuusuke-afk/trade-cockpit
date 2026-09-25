@@ -1,0 +1,102 @@
+name: V9 UI Voice Acceptance
+
+on:
+  pull_request:
+    paths:
+      - "index.html"
+      - "scripts/update.py"
+      - "card_system.css"
+      - "card_system.js"
+      - "card_table_adapter.css"
+      - "card_table_adapter.js"
+      - "voice_client.js"
+      - "downloads/AI_COCKPIT_*_V9.ps1"
+      - "downloads/RUN_AI_COCKPIT_V9.ps1"
+      - "downloads/STOP_AI_COCKPIT_V9.ps1"
+      - "ms2_live/Kioxia_RSS_Live_Watcher.ps1"
+      - "ms2_live/Kioxia_Safety_Heartbeat.ps1"
+      - "ms2_live/MS2_RSS_100_Collector.ps1"
+      - "ms2_live/SPEAK_TODAY_STRATEGY.ps1"
+      - "ms2_live/SPEAK_LIVE_EMOTION.ps1"
+      - "tests/test_v9_ui_voice_contract.py"
+      - "tests/v9_visual_smoke.mjs"
+      - ".github/workflows/v9-ui-voice-acceptance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  structural:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5e1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -s tests -p "test_v9_ui_voice_contract.py"
+      - run: node --check voice_client.js
+      - run: node --check card_table_adapter.js
+
+  powershell-ast:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5e1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - shell: pwsh
+        run: |
+          $files = @(
+            "downloads/AI_COCKPIT_CONTROLLER_V9.ps1",
+            "downloads/AI_COCKPIT_GATEWAY_V9.ps1",
+            "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
+            "downloads/RUN_AI_COCKPIT_V9.ps1",
+            "downloads/STOP_AI_COCKPIT_V9.ps1",
+            "ms2_live/Kioxia_RSS_Live_Watcher.ps1",
+            "ms2_live/Kioxia_Safety_Heartbeat.ps1",
+            "ms2_live/MS2_RSS_100_Collector.ps1",
+            "ms2_live/SPEAK_TODAY_STRATEGY.ps1",
+            "ms2_live/SPEAK_LIVE_EMOTION.ps1"
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error ($file + ": " + $_.Message) }
+              throw "PowerShell AST validation failed: $file"
+            }
+          }
+
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5e1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: |
+          python -m http.server 8765 > /tmp/v9-http.log 2>&1 &
+          echo $! > /tmp/v9-http.pid
+          sleep 2
+          node tests/v9_visual_smoke.mjs
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v9-visual-screenshots
+          path: |
+            v9-desktop.png
+            v9-mobile.png
+          if-no-files-found: ignore
