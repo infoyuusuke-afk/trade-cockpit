@@ -151,6 +151,38 @@ class V9UiVoiceContract(unittest.TestCase):
         self.assertNotIn('id="trade-drawer"', read("index.html"))
         self.assertIn('id="kio-best-path"', read("index.html"))
 
+    def test_opportunity_radar_uses_live_ms2_features_and_deduped_voice(self):
+        radar = read("opportunity_radar.js")
+        card = read("card_system.js")
+        css = read("card_system.css")
+        for needle in (
+            "all_targets",
+            "volume_burst",
+            "flow_bias",
+            "or5_high",
+            "or_high",
+            "bars_1m",
+            'level:"HOT"',
+            'level:"WATCH"',
+            "lastSpokenAt",
+            "60000",
+            "cockpitSpeak",
+            "cockpitOpportunityEventsV1",
+        ):
+            self.assertIn(needle, radar)
+        self.assertIn('if(!valid)', radar)
+        self.assertIn('level:"BLOCK"', radar)
+        self.assertIn("sparklineHtml", card)
+        self.assertIn("直近15分・1分足終値", card)
+        self.assertIn("cc-opportunity--hot", css)
+        self.assertIn("ccOpportunityPulse", css)
+
+    def test_scalp_cards_receive_real_one_minute_bars(self):
+        for rel in ("index.html", "scripts/weekly_tabs.py", "scripts/update.py"):
+            text = read(rel)
+            self.assertIn("opportunity_radar.js", text)
+            self.assertIn("sparkline:x.bars_1m", text)
+
     def test_card_layout_has_responsive_wrap_guards(self):
         css = read("card_table_adapter.css")
         for needle in (
