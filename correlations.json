@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-25 09:16:35 JST",
+  "updated_at": "2026-09-25 09:18:44 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -1001,13 +1001,13 @@
       "relation": "自動検出・正相関",
       "expected": "正相関",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.77,
+      "corr20": 0.78,
       "corr60": 0.77,
       "sample20": 20,
       "sample60": 60,
-      "intraday_corr": 0.53,
+      "intraday_corr": 0.52,
       "lead_bars": 0,
-      "bars": 257,
+      "bars": 258,
       "state": "確認",
       "confidence": 84,
       "anchor_today": {
@@ -1017,9 +1017,9 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": -1.32,
-        "or15": "下抜け",
-        "vwap": "下",
+        "ret": 0.0,
+        "or15": "形成中",
+        "vwap": "未取得",
         "ema": "下向き"
       },
       "decision": "売買の確認材料に使用"
@@ -1032,19 +1032,19 @@
       "relation": "自動検出・正相関",
       "expected": "正相関",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.77,
+      "corr20": 0.78,
       "corr60": 0.77,
       "sample20": 20,
       "sample60": 60,
-      "intraday_corr": 0.53,
+      "intraday_corr": 0.52,
       "lead_bars": 0,
-      "bars": 257,
+      "bars": 258,
       "state": "確認",
       "confidence": 84,
       "anchor_today": {
-        "ret": -1.32,
-        "or15": "下抜け",
-        "vwap": "下",
+        "ret": 0.0,
+        "or15": "形成中",
+        "vwap": "未取得",
         "ema": "下向き"
       },
       "peer_today": {
@@ -1126,18 +1126,18 @@
       "expected": "正相関",
       "reason": "直近20日・60日から同時方向を自動検出",
       "corr20": 0.57,
-      "corr60": 0.6,
+      "corr60": 0.59,
       "sample20": 20,
       "sample60": 60,
       "intraday_corr": 0.76,
       "lead_bars": 0,
-      "bars": 259,
+      "bars": 260,
       "state": "確認",
       "confidence": 82,
       "anchor_today": {
-        "ret": -3.32,
-        "or15": "下抜け",
-        "vwap": "下",
+        "ret": 0.0,
+        "or15": "形成中",
+        "vwap": "未取得",
         "ema": "下向き"
       },
       "peer_today": {
@@ -1459,37 +1459,6 @@
       "decision": "売買の確認材料に使用"
     },
     {
-      "anchor": "プレイド（4165）",
-      "anchor_ticker": "4165.T",
-      "peer": "Sansan（4443）",
-      "peer_ticker": "4443.T",
-      "relation": "自動検出・正相関",
-      "expected": "正相関",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.73,
-      "corr60": 0.65,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": 0.15,
-      "lead_bars": 0,
-      "bars": 238,
-      "state": "不安定",
-      "confidence": 76,
-      "anchor_today": {
-        "ret": -0.29,
-        "or15": "レンジ内",
-        "vwap": "下",
-        "ema": "下向き"
-      },
-      "peer_today": {
-        "ret": 0.0,
-        "or15": "形成中",
-        "vwap": "未取得",
-        "ema": "下向き"
-      },
-      "decision": "この関係を売買根拠にしない"
-    },
-    {
       "anchor": "アストロスケールHD（186A）",
       "anchor_ticker": "186A.T",
       "peer": "東京エレクトロン（8035）",
@@ -1612,6 +1581,37 @@
         "ema": "下向き"
       },
       "decision": "売買の確認材料に使用"
+    },
+    {
+      "anchor": "プレイド（4165）",
+      "anchor_ticker": "4165.T",
+      "peer": "Sansan（4443）",
+      "peer_ticker": "4443.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.71,
+      "corr60": 0.65,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": 0.15,
+      "lead_bars": 0,
+      "bars": 239,
+      "state": "不安定",
+      "confidence": 75,
+      "anchor_today": {
+        "ret": 0.0,
+        "or15": "形成中",
+        "vwap": "未取得",
+        "ema": "下向き"
+      },
+      "peer_today": {
+        "ret": 0.0,
+        "or15": "形成中",
+        "vwap": "未取得",
+        "ema": "下向き"
+      },
+      "decision": "この関係を売買根拠にしない"
     },
     {
       "anchor": "神戸物産（3038）",
@@ -2358,6 +2358,37 @@
       "decision": "この関係を売買根拠にしない"
     },
     {
+      "anchor": "Terra Drone（278A）",
+      "anchor_ticker": "278A.T",
+      "peer": "note（5243）",
+      "peer_ticker": "5243.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.48,
+      "corr60": 0.24,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": 0.45,
+      "lead_bars": 0,
+      "bars": 256,
+      "state": "不安定",
+      "confidence": 70,
+      "anchor_today": {
+        "ret": 0.0,
+        "or15": "形成中",
+        "vwap": "未取得",
+        "ema": "下向き"
+      },
+      "peer_today": {
+        "ret": 0.0,
+        "or15": "形成中",
+        "vwap": "未取得",
+        "ema": "下向き"
+      },
+      "decision": "この関係を売買根拠にしない"
+    },
+    {
       "anchor": "エクサウィザーズ（4259）",
       "anchor_ticker": "4259.T",
       "peer": "note（5243）",
@@ -2544,37 +2575,6 @@
       "decision": "この関係を売買根拠にしない"
     },
     {
-      "anchor": "Terra Drone（278A）",
-      "anchor_ticker": "278A.T",
-      "peer": "note（5243）",
-      "peer_ticker": "5243.T",
-      "relation": "自動検出・正相関",
-      "expected": "正相関",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.47,
-      "corr60": 0.24,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": 0.45,
-      "lead_bars": 0,
-      "bars": 255,
-      "state": "不安定",
-      "confidence": 69,
-      "anchor_today": {
-        "ret": -0.5,
-        "or15": "レンジ内",
-        "vwap": "下",
-        "ema": "下向き"
-      },
-      "peer_today": {
-        "ret": 0.0,
-        "or15": "形成中",
-        "vwap": "未取得",
-        "ema": "下向き"
-      },
-      "decision": "この関係を売買根拠にしない"
-    },
-    {
       "anchor": "フューチャー（4722）",
       "anchor_ticker": "4722.T",
       "peer": "古河電気工業（5801）",
@@ -2676,18 +2676,18 @@
       "expected": "逆相関仮説",
       "reason": "直近20日・60日から同時方向を自動検出",
       "corr20": -0.47,
-      "corr60": -0.3,
+      "corr60": -0.32,
       "sample20": 20,
       "sample60": 60,
-      "intraday_corr": -0.28,
+      "intraday_corr": -0.26,
       "lead_bars": 0,
-      "bars": 259,
+      "bars": 260,
       "state": "確認",
       "confidence": 68,
       "anchor_today": {
-        "ret": -3.32,
-        "or15": "下抜け",
-        "vwap": "下",
+        "ret": 0.0,
+        "or15": "形成中",
+        "vwap": "未取得",
         "ema": "下向き"
       },
       "peer_today": {
@@ -2707,12 +2707,12 @@
       "expected": "逆相関仮説",
       "reason": "直近20日・60日から同時方向を自動検出",
       "corr20": -0.47,
-      "corr60": -0.3,
+      "corr60": -0.32,
       "sample20": 20,
       "sample60": 60,
-      "intraday_corr": -0.28,
+      "intraday_corr": -0.26,
       "lead_bars": 0,
-      "bars": 259,
+      "bars": 260,
       "state": "確認",
       "confidence": 68,
       "anchor_today": {
@@ -2722,9 +2722,9 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": -3.32,
-        "or15": "下抜け",
-        "vwap": "下",
+        "ret": 0.0,
+        "or15": "形成中",
+        "vwap": "未取得",
         "ema": "下向き"
       },
       "decision": "売買の確認材料に使用"
