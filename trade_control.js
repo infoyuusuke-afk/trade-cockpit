@@ -144,14 +144,14 @@
     panes.forEach(p=>{
       const tab=p.dataset.pane;
       const box=p.querySelector(":scope > .cc-tab-owner-summary [data-tab-performance]");
-      if(box)box.outerHTML=performanceHtml(tab,computeStats(grouped.get(tab)||[]),unclassified);
+      if(box)box.innerHTML=performanceHtml(tab,computeStats(grouped.get(tab)||[]),unclassified);
     });
 
     const health=await loadHealth();
     const exec=health?.execution||null,runtime=health?.runtime||null;
     panes.forEach(p=>{
       const box=p.querySelector(":scope > .cc-tab-owner-summary [data-execution-control]");
-      if(box)box.outerHTML=executionHtml(exec,runtime);
+      if(box)box.innerHTML=executionHtml(exec,runtime);
     });
 
     const overview=document.getElementById("owner-control-overview");
