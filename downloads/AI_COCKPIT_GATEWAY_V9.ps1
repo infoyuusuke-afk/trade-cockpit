@@ -140,6 +140,7 @@ try {
                 $liveExists = if ($liveJson) { Test-Path -LiteralPath $liveJson } else { $false }
                 $liveMtime = if ($liveExists) { (Get-Item -LiteralPath $liveJson).LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss') } else { $null }
                 $runtime = [ordered]@{
+                    controller_pid             = $null
                     collector_status           = $null
                     watcher_status             = $null
                     heartbeat_status           = $null
@@ -158,6 +159,7 @@ try {
                 try {
                     if (Test-Path -LiteralPath $controllerStateFile) {
                         $st = Read-JsonUtf8 $controllerStateFile
+                        $runtime.controller_pid = $st.controller_pid
                         $runtime.collector_status = $st.collector_status
                         $runtime.watcher_status = $st.watcher_status
                         $runtime.heartbeat_status = $st.heartbeat_status
