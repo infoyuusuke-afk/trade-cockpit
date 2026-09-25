@@ -306,10 +306,14 @@ document.addEventListener("DOMContentLoaded",()=>{
  window.renderScalpCard=(x,sv,tf)=>{
    const code=String(x.code||x.ticker||"").replace(".T","");
    const dir=sv.cls==="long"?"long":sv.cls==="short"?"short":sv.cls==="block"?"block":"wait";
+   const isStaleCard=x?._stale===true;
    const fmt=v=>v==null||!Number.isFinite(Number(v))?null:Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1});
    const range=(lo,hi)=>num(lo)>0&&num(hi)>0?fmt(lo)+" – "+fmt(hi):null;
    return window.renderCockpitCard({
      symbol:code,company:x.name,direction:dir,directionLabel:sv.label,
+     freshness:isStaleCard?"stale":undefined,
+     freshnessLabel:isStaleCard?"データ停止":undefined,
+     failClosed:isStaleCard?"鮮度確認不可":false,
      price:x.price,changePct:x.change_pct,
      sparkline:x.bars_1m,sparklineLabel:"直近15分・1分足終値",
      entry:x.entry_price,stop:x.stop_price,target:x.target1,
@@ -332,7 +336,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    const rows=fixed.map(t=>all.find(x=>String(x.ticker)===t)).filter(Boolean);
    box.innerHTML=rows.length?rows.map(x=>{
      const sv=signalView(x,stale);
-     return window.renderScalpCard({...x,foot:(x.signal||"監視")+' · '+(x.strategy||"条件待ち")},sv,"1m");
+     return window.renderScalpCard({...x,_stale:stale,foot:(x.signal||"監視")+' · '+(x.strategy||"条件待ち")},sv,"1m");
    }).join(""):'<div class="focus-empty">SCALP 5のMS2 RSSデータ待ち</div>';
  });
 
