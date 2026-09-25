@@ -63,6 +63,26 @@ function Wait-PortsClear([int[]]$Ports,[int]$Seconds=15) {
     return $false
 }
 
+function Stop-RecognizedV8PortOwner([int]$Port) {
+    $owner = Get-PortOwner $Port
+    if ($owner -le 0) { return $true }
+    $cmd = Get-CommandLine $owner
+    $expected = switch ($Port) {
+        28580 { "MS2_RSS_100_Collector.ps1" }
+        28581 { "AI_COCKPIT_GATEWAY_V8.ps1" }
+        28582 { "Kioxia_RSS_Live_Watcher.ps1" }
+        default { "" }
+    }
+    if ([string]::IsNullOrWhiteSpace($expected)) { return $false }
+    if (-not [string]::IsNullOrWhiteSpace($cmd) -and $cmd -match [regex]::Escape($expected)) {
+        Stop-Process -Id $owner -Force -ErrorAction Stop
+        Write-Host ("  stopped recognized stale V8 port owner: port {0}, PID {1}, {2}" -f $Port,$owner,$expected) -ForegroundColor Green
+        return $true
+    }
+    Write-Host ("  port {0} is still owned by unrecognized PID {1}; leaving it untouched." -f $Port,$owner) -ForegroundColor Yellow
+    return $false
+}
+
 function Read-JsonUtf8([string]$Path) {
     return ([IO.File]::ReadAllText($Path,[Text.Encoding]::UTF8) | ConvertFrom-Json)
 }
@@ -138,10 +158,16 @@ if ($null -ne $state) {
 
 # Excel and MarketSpeed II are deliberately NOT killed. V9 reuses the
 # canonical workbook if it is already open and validates Workbook.FullName.
+Write-Host "Clearing any recognized stale V8 port owners..." -ForegroundColor Cyan
+foreach($port in @(28580,28581,28582)) {
+    [void](Stop-RecognizedV8PortOwner $port)
+}
+Start-Sleep -Milliseconds 700
+
 Write-Host "Waiting for V8 ports 28580/28581/28582 to clear..." -ForegroundColor Cyan
 if (-not (Wait-PortsClear @(28580,28581,28582) 15)) {
     Write-Host ""
-    Write-Host "FOREIGN/STALE SESSION STILL PRESENT - V9 NOT STARTED" -ForegroundColor Red
+    Write-Host "FOREIGN/UNRECOGNIZED SESSION STILL PRESENT - V9 NOT STARTED" -ForegroundColor Red
     foreach($port in @(28580,28581,28582)) {
         $owner=Get-PortOwner $port
         if($owner -gt 0) {
@@ -149,7 +175,7 @@ if (-not (Wait-PortsClear @(28580,28581,28582) 15)) {
             Write-Host ("  port {0}: PID {1}  {2}" -f $port,$owner,$cmd) -ForegroundColor Yellow
         }
     }
-    throw "Required V8 ports did not clear. No broad process kill was attempted."
+    throw "Required V8 ports did not clear after exact-script stale cleanup. No broad process kill was attempted."
 }
 Write-Host "  V8 runtime ports are clear." -ForegroundColor Green
 
