@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-09-25 10:48:55 JST",
+  "updated_at": "2026-09-25 10:50:54 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3222,11 +3222,11 @@
     },
     {
       "date": "2026-09-25",
-      "ret": 0.4,
+      "ret": 0.49,
       "high": 1.45,
       "low": -0.49,
       "type": "レンジ",
-      "bars": 18,
+      "bars": 19,
       "path": [
         0.036,
         0.199,
@@ -3245,7 +3245,8 @@
         0.453,
         0.145,
         0.308,
-        0.399
+        0.381,
+        0.489
       ],
       "volume_path": [
         454800.0,
@@ -3265,17 +3266,18 @@
         7278800.0,
         7581400.0,
         7884100.0,
-        8023000.0
+        8157700.0,
+        8157700.0
       ]
     }
   ],
   "current": {
     "date": "2026-09-25",
-    "ret": 0.4,
+    "ret": 0.49,
     "high": 1.45,
     "low": -0.49,
     "type": "レンジ",
-    "bars": 18,
+    "bars": 19,
     "path": [
       0.036,
       0.199,
@@ -3294,7 +3296,8 @@
       0.453,
       0.145,
       0.308,
-      0.399
+      0.381,
+      0.489
     ],
     "volume_path": [
       454800.0,
@@ -3314,7 +3317,8 @@
       7278800.0,
       7581400.0,
       7884100.0,
-      8023000.0
+      8157700.0,
+      8157700.0
     ]
   },
   "current_1m": [
@@ -4113,10 +4117,28 @@
     {
       "t": "10:33",
       "o": 0.3988,
-      "h": 0.3988,
-      "l": 0.3988,
+      "h": 0.5982,
+      "l": 0.3625,
       "c": 0.3988,
       "price": 55390.0,
+      "v": 86600
+    },
+    {
+      "t": "10:34",
+      "o": 0.4169,
+      "h": 0.4531,
+      "l": 0.3263,
+      "c": 0.3806,
+      "price": 55380.0,
+      "v": 48100
+    },
+    {
+      "t": "10:35",
+      "o": 0.5438,
+      "h": 0.5438,
+      "l": 0.5438,
+      "c": 0.5438,
+      "price": 55470.0,
       "v": 0
     }
   ],
@@ -4124,14 +4146,14 @@
   "one_minute_verified": true,
   "technical_levels": {
     "session_open": 55170.0,
-    "daily_ma5": 52878.0,
+    "daily_ma5": 52888.0,
     "pivot_p": 55416.7,
     "pivot_r1": 56533.3,
     "pivot_s1": 53643.3,
     "or15_high": 55560.0,
     "or15_low": 54900.0,
     "return_pct": {
-      "daily_ma5": -4.1544,
+      "daily_ma5": -4.1363,
       "pivot_p": 0.4472,
       "pivot_r1": 2.4711,
       "pivot_s1": -2.7673,
@@ -4143,7 +4165,7 @@
   "current_is_today": true,
   "current_gap_pct": 0.75,
   "analysis_date": "2026-09-25",
-  "observed_bars": 18,
+  "observed_bars": 19,
   "matches": [
     {
       "date": "2026-09-14",
@@ -4279,11 +4301,11 @@
         26107800.0
       ],
       "similarity": 89.1,
-      "after_ret": 0.64,
-      "max_up_after": 1.81,
-      "max_down_after": -0.7,
+      "after_ret": 1.3,
+      "max_up_after": 2.48,
+      "max_down_after": -0.04,
       "score_components": {
-        "five_minute": 87.6,
+        "five_minute": 87.7,
         "us_market": 88.4,
         "credit_supply": 100.0
       },
@@ -4449,12 +4471,12 @@
         29683700.0,
         30163000.0
       ],
-      "similarity": 86.6,
-      "after_ret": 2.5,
-      "max_up_after": 3.52,
-      "max_down_after": -0.44,
+      "similarity": 87.2,
+      "after_ret": 2.52,
+      "max_up_after": 3.54,
+      "max_down_after": -0.32,
       "score_components": {
-        "five_minute": 90.9,
+        "five_minute": 91.9,
         "us_market": 76.0,
         "credit_supply": 85.0
       },
@@ -4620,10 +4642,10 @@
         28965500.0,
         29463400.0
       ],
-      "similarity": 86.5,
-      "after_ret": 4.36,
-      "max_up_after": 4.8,
-      "max_down_after": -0.17,
+      "similarity": 86.4,
+      "after_ret": 4.38,
+      "max_up_after": 4.82,
+      "max_down_after": -0.16,
       "score_components": {
         "five_minute": 91.4,
         "us_market": 68.1,
@@ -4791,12 +4813,12 @@
         23445400.0,
         23854600.0
       ],
-      "similarity": 86.1,
-      "after_ret": -0.65,
-      "max_up_after": 0.8,
-      "max_down_after": -1.2,
+      "similarity": 86.2,
+      "after_ret": 0.04,
+      "max_up_after": 1.5,
+      "max_down_after": -0.51,
       "score_components": {
-        "five_minute": 87.9,
+        "five_minute": 88.2,
         "us_market": 85.0,
         "credit_supply": 76.3
       },
@@ -4962,12 +4984,12 @@
         24519200.0,
         24904200.0
       ],
-      "similarity": 85.8,
-      "after_ret": 1.6,
-      "max_up_after": 1.76,
-      "max_down_after": -1.52,
+      "similarity": 85.5,
+      "after_ret": 2.24,
+      "max_up_after": 2.4,
+      "max_down_after": -0.91,
       "score_components": {
-        "five_minute": 81.1,
+        "five_minute": 80.6,
         "us_market": 92.4,
         "credit_supply": 100.0
       },
@@ -5135,11 +5157,11 @@
       26107800.0
     ],
     "similarity": 89.1,
-    "after_ret": 0.64,
-    "max_up_after": 1.81,
-    "max_down_after": -0.7,
+    "after_ret": 1.3,
+    "max_up_after": 2.48,
+    "max_down_after": -0.04,
     "score_components": {
-      "five_minute": 87.6,
+      "five_minute": 87.7,
       "us_market": 88.4,
       "credit_supply": 100.0
     },
@@ -5204,10 +5226,10 @@
   "prediction": {
     "status": "類似日あり",
     "bias": "上方向優位",
-    "up_probability": 80.2,
-    "expected_after_ret": 1.69,
-    "expected_max_up": 2.54,
-    "expected_max_down": -0.81,
+    "up_probability": 100.0,
+    "expected_after_ret": 2.09,
+    "expected_max_up": 2.95,
+    "expected_max_down": -0.39,
     "sample": 5
   },
   "risk_overlay": {
@@ -5217,8 +5239,8 @@
   "decision": {
     "grade": "条件付き",
     "tradable": true,
-    "agreement": 80.2,
-    "dispersion": 1.7,
+    "agreement": 100.0,
+    "dispersion": 1.43,
     "reason": "類似日が同方向へ収束。OR15・VWAP・出来高一致後だけ利用",
     "invalidate": "OR15とVWAPが予測方向と逆へ同時確定したら無効"
   },
