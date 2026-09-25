@@ -137,20 +137,14 @@ function Get-StopClusterZones([double]$price, [double]$orHigh, [double]$orLow, [
 # システム全体で共有する名前付きMutex（Global\KioxiaVoiceMutex）を使い、他プロセスの発話が
 # 終わるまで待ってから同期的に(Speak flag=0)話すことで、重なりを防ぐ。
 function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 20000) {
-    if ($null -eq $speaker -or [string]::IsNullOrEmpty($text)) { return }
-    $mutex = $null
-    $acquired = $false
+    if ([string]::IsNullOrWhiteSpace($text)) { return }
     try {
-        $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
-        $acquired = $mutex.WaitOne($timeoutMs)
-        # flag=0は同期発話（話し終わるまで戻らない）。これによりMutex保持中に他プロセスの
-        # 音声と時間的に重ならないことが保証される。取得できなくても発話自体は試みる
-        # （音声通知が完全に鳴らないより、多少重なっても鳴る方を優先）。
-        $speaker.Speak($text, 0) | Out-Null
+        $encoded = [Uri]::EscapeDataString($text)
+        $uri = "http://127.0.0.1:28583/announce?level=WATCH&text=" + $encoded
+        $r = Invoke-WebRequest -UseBasicParsing -Uri $uri -TimeoutSec ([Math]::Max(3,[int]($timeoutMs/1000)))
+        if ($r.StatusCode -ne 200) { throw "Voice bridge HTTP " + $r.StatusCode }
     } catch {
-    } finally {
-        if ($acquired -and $null -ne $mutex) { try { $mutex.ReleaseMutex() } catch {} }
-        if ($null -ne $mutex) { $mutex.Dispose() }
+        Write-Host ("[WATCHER VOICE] SBV2 bridge unavailable; no legacy SAPI fallback: " + $_.Exception.Message) -ForegroundColor DarkYellow
     }
 }
 
@@ -506,9 +500,7 @@ $dash.Range("G25").NumberFormat = "hh:mm:ss"
 # 過去のA5/B5と同じ理由（非アンカーセルへの書き込みは無音で無視される）で表示されないため、
 # ラベルと値を1つの文字列に結合してA26へ毎ループ書き込む。
 
-$speaker = New-Object -ComObject SAPI.SpVoice
-$speaker.Volume = 100
-$speaker.Rate = -2   # ユーザー指摘（聞き取りづらい）への対応。標準(0)よりやや遅くして聞き取りやすくする
+$speaker = $true # V9 voice goes only through the SBV2 bridge on 28583; no Windows SAPI
 $lastSpokenSignal = ""
 $lastSpokenAt = Get-Date "2000-01-01"
 $lastLoggedBar = ""
