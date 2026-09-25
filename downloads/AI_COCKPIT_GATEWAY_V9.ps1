@@ -213,12 +213,59 @@ try {
             }
 
             if ($path -eq '/live_ms2.json') {
-                if ($liveJson -and (Test-Path -LiteralPath $liveJson)) {
-                    $bytes = [IO.File]::ReadAllBytes($liveJson)
-                    Send-Response $stream '200 OK' 'application/json; charset=utf-8' $bytes
-                } else {
-                    Send-Response $stream '503 Service Unavailable' 'application/json; charset=utf-8' ($utf8.GetBytes('{"status":"waiting","reason":"live_ms2.json not found"}'))
+                if (-not $liveJson -or -not (Test-Path -LiteralPath $liveJson)) {
+                    Send-Response $stream '503 Service Unavailable' 'application/json; charset=utf-8' ($utf8.GetBytes('{"status":"waiting","reason":"live_ms2.json not found","real_submit_allowed":false,"live_values_available":false}'))
+                    continue
                 }
+
+                # Freshness is enforced at the transport boundary. A stale
+                # file must never be served with HTTP 200 and later mistaken
+                # for a current price by any client.
+                $LIVE_JSON_MAX_AGE_SECONDS = 60
+                $liveItem = Get-Item -LiteralPath $liveJson
+                $fileAgeSeconds = ((Get-Date) - $liveItem.LastWriteTime).TotalSeconds
+
+                $payloadAgeSeconds = [double]::PositiveInfinity
+                $updatedAtRaw = $null
+
+                try {
+                    $liveObj = Read-JsonUtf8 $liveJson
+                    $updatedAtRaw = [string]$liveObj.updated_at
+
+                    if (-not [string]::IsNullOrWhiteSpace($updatedAtRaw)) {
+                        $cleanUpdatedAt = $updatedAtRaw -replace '\s+JST\s*$',''
+                        $parsedUpdatedAt = Get-Date $cleanUpdatedAt -ErrorAction Stop
+                        $payloadAgeSeconds = ((Get-Date) - $parsedUpdatedAt).TotalSeconds
+                    }
+                } catch {
+                    $payloadAgeSeconds = [double]::PositiveInfinity
+                }
+
+                $liveFresh = (
+                    $fileAgeSeconds -ge 0 -and
+                    $fileAgeSeconds -le $LIVE_JSON_MAX_AGE_SECONDS -and
+                    $payloadAgeSeconds -ge 0 -and
+                    $payloadAgeSeconds -le $LIVE_JSON_MAX_AGE_SECONDS
+                )
+
+                if (-not $liveFresh) {
+                    $stalePayload = [ordered]@{
+                        status = 'stale'
+                        reason = 'live_ms2.json freshness threshold exceeded'
+                        max_age_seconds = $LIVE_JSON_MAX_AGE_SECONDS
+                        file_age_seconds = [Math]::Round($fileAgeSeconds, 1)
+                        payload_age_seconds = if ([double]::IsInfinity($payloadAgeSeconds)) { $null } else { [Math]::Round($payloadAgeSeconds, 1) }
+                        updated_at = $updatedAtRaw
+                        real_submit_allowed = $false
+                        live_values_available = $false
+                    } | ConvertTo-Json -Depth 4
+
+                    Send-Response $stream '503 Service Unavailable' 'application/json; charset=utf-8' ($utf8.GetBytes($stalePayload))
+                    continue
+                }
+
+                $bytes = [IO.File]::ReadAllBytes($liveJson)
+                Send-Response $stream '200 OK' 'application/json; charset=utf-8' $bytes
                 continue
             }
 
