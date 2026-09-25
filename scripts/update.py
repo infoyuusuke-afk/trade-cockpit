@@ -1628,7 +1628,8 @@ def render_day_ifo_cards(candidates):
 
 
 def render_focus_dashboard(candidates):
-    """A compact, self-contained trading surface with a native price chart."""
+    """リアルタイムTOP5: Card Systemのカード一覧（2026-09-25・旧LightweightCharts
+    メインチャートを廃止しカード化。キオクシア専用チャートのみ例外として維持）。"""
     if not candidates:
         return """<section id="action-dashboard" class="card wide focus-dashboard"><div class="focus-empty"><b>本日は見送り</b><span>条件を満たす候補がありません</span></div></section>"""
     rows = []
@@ -1666,88 +1667,42 @@ def render_focus_dashboard(candidates):
 <section id="action-dashboard" class="card wide focus-dashboard">
  <div class="focus-topbar">
   <div><span class="focus-eyebrow">VERIFIED FORECAST TOP 5</span><h2>リアルタイムTOP5</h2><small>今、この5銘柄に期待値がある。信用需給合格のみ売買候補、未確認は監視止まり</small></div>
-  <div class="focus-legend"><span><i class="dot green"></i>発動</span><span><i class="dot amber"></i>押し目</span><span><i class="dot red"></i>撤退</span></div>
  </div>
- <div class="focus-layout">
-  <aside><div class="focus-aside-head"><b>優先順位</b><small>最大5銘柄</small></div><div class="focus-picks" id="focus-picks"></div></aside>
-  <div class="focus-chart-wrap">
-   <div class="focus-chart-head"><div><b id="focus-chart-name"></b><small id="focus-chart-code"></small></div><div class="focus-chart-meta"><div class="focus-tf-group" role="group" aria-label="足の切替"><button class="focus-tf" data-tf="5m">5分</button><button class="focus-tf" data-tf="15m">15分</button><button class="focus-tf" data-tf="1d">日足</button></div><span id="focus-chart-asof">検証中</span></div></div>
-   <div class="focus-chart-canvas-wrap">
-    <div id="focus-chart" role="img" aria-label="ローソク足チャート"></div>
-    <div id="focus-chart-empty" class="chart-empty" style="display:none">チャートデータ更新待ち</div>
-    <div id="focus-chart-line-labels" class="lwc-line-labels"></div>
-    <div id="focus-chart-badges-top" class="lwc-badges-top"></div>
-    <div id="focus-chart-badges-bottom" class="lwc-badges-bottom"></div>
-   </div>
-  </div>
-  <div class="focus-order">
-   <div class="focus-symbol"><span id="focus-rank"></span><div><small>SELECTED</small><h3 id="focus-name"></h3></div><b id="focus-score"></b></div>
-   <div id="focus-decision" class="decision-badge"></div>
-   <div class="focus-action"><span>買い発動ライン</span><strong id="focus-trigger"></strong><small>ローソク足確定・VWAP上・出来高増加</small></div>
-   <div class="focus-price-grid">
-    <div><span>買い上限</span><b id="focus-entry"></b></div><div><span>押し目ゾーン</span><b id="focus-pullback"></b></div>
-    <div><span>撤退ライン</span><b class="down" id="focus-stop"></b></div><div><span>利確 1 / 2</span><b class="up" id="focus-targets"></b></div>
-   </div>
-   <div class="focus-supply"><span>CREDIT FLOW</span><p id="focus-supply"></p></div>
-   <div class="focus-supply"><span>地合い（参考・未検証）</span><p id="focus-regime"></p></div>
-   <details><summary>選定根拠を見る</summary><p id="focus-reason"></p></details>
-  </div>
- </div>
+ <div class="cc-grid" id="focus-cards"></div>
  <div class="focus-rule"><b>飛び乗り禁止</b><span>発動ラインを勢いよく通過したら追わない。押し目ゾーンで反発足が確定するまで待つ。</span></div>
 </section>
 <script>
 document.addEventListener("DOMContentLoaded",()=>{{
- let rows={payload}, activeIndex=0, tf=["5m","15m","1d"].includes(localStorage.getItem("focusChartTf"))?localStorage.getItem("focusChartTf"):"5m", yen=n=>Number(n).toLocaleString("ja-JP",{{maximumFractionDigits:1}})+"円";
- const list=document.getElementById("focus-picks");
- function pickHtml(x,i){{
-  const bars=x.chart||[],last=bars[bars.length-1];
-  const price=Number(x.chart_last_close),prevClose=Number(x.prev_close);
-  const chg=(Number.isFinite(price)&&Number.isFinite(prevClose)&&prevClose)?((price-prevClose)/prevClose*100):(Number.isFinite(x.change_pct)?x.change_pct:null);
-  const dayLow=last?Number(last.l):null,dayHigh=last?Number(last.h):null;
-  const rangePct=(Number.isFinite(price)&&Number.isFinite(dayLow)&&Number.isFinite(dayHigh)&&dayHigh>dayLow)?Math.max(0,Math.min(100,(price-dayLow)/(dayHigh-dayLow)*100)):null;
-  const chgClass=chg==null?"":(chg>=0?"up":"down");
-  const chgText=chg==null?"—":(chg>=0?"+":"")+chg.toFixed(2)+"%";
-  const rangeHtml=(rangePct!=null)?
-   `<div class="fp-range"><div class="fp-range-track"><div class="fp-range-fill" style="left:${{rangePct}}%"></div></div><div class="fp-range-labels"><span>${{yen(dayLow)}}</span><span>${{yen(dayHigh)}}</span></div></div>`
-   :`<div class="fp-range fp-range-empty"><small>レンジ未確認</small></div>`;
-  return `<div class="fp-top"><span class="focus-rank">${{String(i+1).padStart(2,"0")}}</span><span class="fp-name"><b>${{x.name}}</b><small>${{x.code}}・${{x.decision}}</small></span><strong class="fp-score">${{x.score}}</strong></div><div class="fp-price-row"><b class="fp-price">${{Number.isFinite(price)?yen(price):"—"}}</b><span class="fp-change ${{chgClass}}">${{chgText}}</span></div>${{rangeHtml}}`;
+ let rows={payload}, yen=n=>Number.isFinite(Number(n))?Number(n).toLocaleString("ja-JP",{{maximumFractionDigits:1}}):"—";
+ const grid=document.getElementById("focus-cards");
+ function regimeText(ir){{return ir&&ir.confirmed_regime?(ir.confirmed_regime+"（リスク倍率"+ir.risk_multiplier+"）"):(ir?ir.note:null);}}
+ function rowToModel(x){{
+  const price=Number(x.live_price??x.chart_last_close),prevClose=Number(x.prev_close);
+  const changePct=(Number.isFinite(price)&&Number.isFinite(prevClose)&&prevClose)?((price-prevClose)/prevClose*100):(Number.isFinite(x.change_pct)?x.change_pct:null);
+  const direction=x.decision_class==="go"?"long":"wait";
+  return {{
+   symbol:String(x.code||"").replace(".T",""),company:x.name,
+   direction,directionLabel:x.decision,
+   price:Number.isFinite(price)?price:null,changePct,
+   freshness:"fresh",freshnessLabel:(x.data_date||"日付未確認")+"時点",
+   entry:x.trigger,stop:x.stop,target:x.target1,
+   metrics:[
+    {{label:"優先順位",value:"#"+x.rank}},
+    {{label:"スコア",value:x.score==null?null:x.score+" / 100"}},
+    {{label:"買い上限",value:x.entry==null?null:yen(x.entry)+"円"}},
+    {{label:"押し目ゾーン",value:(x.pullback_low==null&&x.pullback_high==null)?null:(yen(x.pullback_low)+" – "+yen(x.pullback_high)+"円")}},
+    {{label:"利確2参考",value:x.target2==null?null:yen(x.target2)+"円"}},
+    {{label:"CREDIT FLOW",value:x.supply}},
+    {{label:"株価検証",value:x.quote_status}},
+    {{label:"地合い（参考・未検証）",value:regimeText(x.intraday_regime)}},
+   ],
+   catalyst:x.reason,
+   foot:"飛び乗り禁止：発動ラインを勢いよく通過したら追わない。押し目ゾーンで反発足が確定するまで待つ。",
+  }};
  }}
- rows.forEach((x,i)=>{{const b=document.createElement("button");b.className="focus-pick";b.innerHTML=pickHtml(x,i);b.onclick=()=>select(i);list.appendChild(b);}});
- function aggregateBars(bars,n){{if(n<=1)return bars;const out=[];for(let i=0;i<bars.length;i+=n){{const g=bars.slice(i,i+n);if(!g.length)continue;out.push({{t:g[0].t,o:g[0].o,c:g[g.length-1].c,h:Math.max(...g.map(v=>v.h)),l:Math.min(...g.map(v=>v.l)),v:g.reduce((s,v)=>s+(v.v||0),0)}});}}return out;}}
- function barTime(t,rowDate){{if(/^\\d{{4}}-\\d{{2}}-\\d{{2}}$/.test(t))return t;const dt=/^(\\d{{4}})-(\\d{{2}})-(\\d{{2}}) (\\d{{2}}):(\\d{{2}})$/.exec(t);if(dt)return Math.floor(Date.UTC(+dt[1],+dt[2]-1,+dt[3],+dt[4],+dt[5])/1000);const m=/^(\\d{{2}}):(\\d{{2}})$/.exec(t);if(m){{const dm=/^(\\d{{4}})-(\\d{{2}})-(\\d{{2}})/.exec(rowDate||"");if(!dm)return null;return Math.floor(Date.UTC(+dm[1],+dm[2]-1,+dm[3],+m[1],+m[2])/1000);}}return null;}}
- function barsForTf(x,tfKey){{if(tfKey==="1d")return x.chart||[];const m5=x.chart_5m||[];if(tfKey==="15m")return aggregateBars(m5,3);return m5;}}
- function toSeriesData(bars,rowDate){{const today=new Date(),out=[];bars.forEach((b,i)=>{{let time=b.t?barTime(b.t,rowDate):null;if(time==null){{if(b.t)return;const d=new Date(today);d.setDate(d.getDate()-(bars.length-1-i));time=d.toISOString().slice(0,10);}}out.push({{time,open:b.o,high:b.h,low:b.l,close:b.c}});}});return out;}}
- let lwcChart=null,lwcSeries=null,lwcLines=[];
- function ensureLwc(){{if(lwcChart||typeof LightweightCharts==="undefined")return lwcChart;lwcChart=LightweightCharts.createChart(document.getElementById("focus-chart"),{{layout:{{background:{{color:"transparent"}},textColor:"#8ea2b3",fontSize:11}},grid:{{vertLines:{{color:"#152230"}},horzLines:{{color:"#152230"}}}},rightPriceScale:{{borderColor:"#1c2c37"}},timeScale:{{borderColor:"#1c2c37",timeVisible:true,secondsVisible:false,rightOffset:8}},crosshair:{{mode:LightweightCharts.CrosshairMode.Normal}},autoSize:true}});lwcSeries=lwcChart.addSeries(LightweightCharts.CandlestickSeries,{{upColor:"#3ed5ae",downColor:"#ef646b",borderUpColor:"#3ed5ae",borderDownColor:"#ef646b",wickUpColor:"#3ed5ae",wickDownColor:"#ef646b"}});return lwcChart;}}
- function chart(x,isRefresh){{
-  const box=document.getElementById("focus-chart"),empty=document.getElementById("focus-chart-empty"),topBadges=document.getElementById("focus-chart-badges-top"),botBadges=document.getElementById("focus-chart-badges-bottom"),lineLabels=document.getElementById("focus-chart-line-labels");
-  topBadges.innerHTML="";botBadges.innerHTML="";lineLabels.innerHTML="";
-  const a=barsForTf(x,tf);
-  const data=a.length?toSeriesData(a,x.data_date):[];
-  if(!data.length){{box.style.display="none";empty.style.display="grid";return;}}
-  box.style.display="block";empty.style.display="none";
-  if(!ensureLwc())return;
-  lwcSeries.setData(data);
-  if(isRefresh)lwcChart.timeScale().scrollToRealTime();else lwcChart.timeScale().fitContent();
-  const rawLo=Math.min(...a.map(v=>v.l),x.stop),rawHi=Math.max(...a.map(v=>v.h),x.trigger);
-  const pad=Math.max((rawHi-rawLo)*.06,1),lo=rawLo-pad,hi=rawHi+pad;
-  lwcSeries.applyOptions({{autoscaleInfoProvider:()=>({{priceRange:{{minValue:lo,maxValue:hi}}}})}});
-  lwcLines.forEach(l=>lwcSeries.removePriceLine(l));lwcLines=[];
-  [[x.trigger,"発動","#50e8c0"],[x.pullback_high,"押し目","#f2c45a"],[x.stop,"撤退","#ff787e"],[x.target1,"利確1","#f0c85e"],[x.target2,"利確2","#f0c85e"]].forEach(z=>{{
-   const v=z[0];if(v==null||!Number.isFinite(v))return;
-   if(v>=lo&&v<=hi){{
-    lwcLines.push(lwcSeries.createPriceLine({{price:v,color:z[2],lineWidth:1,lineStyle:2,axisLabelVisible:true}}));
-    const y=lwcSeries.priceToCoordinate(v);
-    if(y!=null){{const el=document.createElement("span");el.className="lwc-line-label";el.style.top=y+"px";el.style.color=z[2];el.textContent=z[1]+" "+yen(v);lineLabels.appendChild(el);}}
-   }}
-   else{{const b=document.createElement("span");b.className="lwc-badge";b.style.color=z[2];if(v>hi){{b.textContent="▲ "+z[1]+" "+yen(v);topBadges.appendChild(b);}}else{{b.textContent="▼ "+z[1]+" "+yen(v);botBadges.appendChild(b);}}}}
-  }});
- }}
- function select(i,isRefresh){{activeIndex=i;const x=rows[i];[...list.children].forEach((b,j)=>b.classList.toggle("active",i===j));document.getElementById("focus-chart-name").textContent=x.name;document.getElementById("focus-chart-code").textContent=x.code;document.getElementById("focus-chart-asof").textContent=(x.data_date||"日付未確認")+" 終値 "+yen(x.chart_last_close);chart(x,isRefresh);document.getElementById("focus-rank").textContent="#"+x.rank;document.getElementById("focus-name").textContent=x.name;document.getElementById("focus-score").textContent=x.score+" / 100";const d=document.getElementById("focus-decision");d.className="decision-badge "+x.decision_class;d.textContent=x.decision;document.getElementById("focus-trigger").textContent=yen(x.trigger)+" 以上";document.getElementById("focus-entry").textContent=yen(x.entry);document.getElementById("focus-pullback").textContent=yen(x.pullback_low)+" – "+yen(x.pullback_high);document.getElementById("focus-stop").textContent=yen(x.stop);document.getElementById("focus-targets").textContent=yen(x.target1)+" / "+yen(x.target2);document.getElementById("focus-supply").textContent=x.supply+"／"+x.quote_status;const ir=x.intraday_regime;document.getElementById("focus-regime").textContent=ir&&ir.confirmed_regime?(ir.confirmed_regime+"（リスク倍率"+ir.risk_multiplier+"）／"+(ir.updated_at||"")+"／"+ir.note):(ir?ir.note:"未接続");document.getElementById("focus-reason").textContent=x.reason;}}
- document.addEventListener("liveFocusUpdate",e=>{{const live=e.detail?.rows||{{}},alerts=[];const speechEnabled=e.detail?.speech_enabled===true;rows=rows.map(x=>{{const q=live[x.code];if(!q?.verified)return x;const before=Number(x.live_price??x.chart_last_close),now=Number(q.price);if(Number.isFinite(before)&&Number.isFinite(now)){{if(before<Number(x.trigger)&&now>=Number(x.trigger))alerts.push(x.name+"、買い発動ライン到達。現在値"+yen(now)+"、発動"+yen(x.trigger));if(before>Number(x.stop)&&now<=Number(x.stop))alerts.push(x.name+"、撤退ライン到達。現在値"+yen(now)+"、撤退"+yen(x.stop));}}return {{...x,chart:q.chart,chart_last_close:q.price,live_price:q.price,data_date:q.quote_time,quote_status:q.status}};}});[...list.children].forEach((b,i)=>{{if(rows[i])b.innerHTML=pickHtml(rows[i],i);}});select(Math.min(activeIndex,rows.length-1),true);if(speechEnabled&&alerts.length)setTimeout(()=>window.cockpitSpeak?.(alerts.join("。")),300);}});
- const tfBtns=[...document.querySelectorAll(".focus-tf")];
- tfBtns.forEach(b=>{{b.classList.toggle("active",b.dataset.tf===tf);b.onclick=()=>{{tf=b.dataset.tf;localStorage.setItem("focusChartTf",tf);tfBtns.forEach(x=>x.classList.toggle("active",x===b));select(activeIndex);}};}});
- select(0);
+ function renderCards(){{grid.innerHTML=rows.length?rows.map(x=>window.renderCockpitCard(rowToModel(x))).join(""):'<div class="focus-empty"><b>本日は見送り</b><span>条件を満たす候補がありません</span></div>';}}
+ renderCards();
+ document.addEventListener("liveFocusUpdate",e=>{{const live=e.detail?.rows||{{}},alerts=[];const speechEnabled=e.detail?.speech_enabled===true;rows=rows.map(x=>{{const q=live[x.code];if(!q?.verified)return x;const before=Number(x.live_price??x.chart_last_close),now=Number(q.price);if(Number.isFinite(before)&&Number.isFinite(now)){{if(before<Number(x.trigger)&&now>=Number(x.trigger)){{alerts.push(x.name+"、買い発動ライン到達。現在値"+yen(now)+"円、発動"+yen(x.trigger)+"円");window.cockpitAnnounce?.({{symbol:String(x.code||"").replace(".T",""),company:x.name,direction:"long",directionLabel:"発動",price:now,entry:x.trigger,foot:"買い発動ライン到達"}});}}if(before>Number(x.stop)&&now<=Number(x.stop)){{alerts.push(x.name+"、撤退ライン到達。現在値"+yen(now)+"円、撤退"+yen(x.stop)+"円");window.cockpitAnnounce?.({{symbol:String(x.code||"").replace(".T",""),company:x.name,direction:"block",directionLabel:"撤退",price:now,stop:x.stop,foot:"撤退ライン到達"}});}}}}return {{...x,chart:q.chart,chart_last_close:q.price,live_price:q.price,data_date:q.quote_time,quote_status:q.status}};}});renderCards();if(speechEnabled&&alerts.length)setTimeout(()=>window.cockpitSpeak?.(alerts.join("。")),300);}});
 }});
 </script>"""
 
@@ -2604,6 +2559,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const setMarketStatus=()=>{const open=isTseVoiceWindow();marketStatusEls.forEach(el=>{el.classList.toggle("open",open);const b=el.querySelector("b");if(b)b.textContent=open?"取引時間中":"取引時間外";});};
  const setVoiceLabel=()=>{setMarketStatus();voiceButtons.forEach(button=>{const open=isTseVoiceWindow();button.textContent=open?(voiceOn?"🔊":"🔇"):"🔇";button.title=!open?"東証9:00～11:30・12:30～15:30のみ。PTSデータには対応していません":(voiceOn?"音声読み上げON（クリックでOFF）":"音声読み上げOFF（クリックでON）");});};setVoiceLabel();
  window.cockpitSpeak=msg=>{if(!voiceOn||!msg||!isTseVoiceWindow()||window.cockpitLiveSpeechEnabled===false||!("speechSynthesis" in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(msg);u.lang="ja-JP";u.rate=1.05;window.speechSynthesis.speak(u);};
+ window.cockpitAnnounce=model=>{if(!model||!model.symbol||!window.recordOnAir)return;window.recordOnAir(model);const box=document.getElementById("cockpit-onair-cards");if(box&&window.renderOnAirPanel)box.innerHTML=window.renderOnAirPanel();};
  voiceButtons.forEach(button=>button.onclick=()=>{if(!isTseVoiceWindow()){voiceOn=false;localStorage.setItem("cockpitVoiceV1","off");setVoiceLabel();return}voiceOn=!voiceOn;localStorage.setItem("cockpitVoiceV1",voiceOn?"on":"off");setVoiceLabel();if(voiceOn)window.cockpitSpeak("AIコクピットの自動読み上げを開始します");});
  const loadLive=()=>fetch("live_focus.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(d=>{
    window.cockpitLiveSpeechEnabled=d.speech_enabled===true;
@@ -2633,12 +2589,12 @@ document.addEventListener("DOMContentLoaded",()=>{
 <section id="watchlist-100" class="card wide">
  <h2>監視銘柄（リアルタイムTOP5以外・気配値/出来高/板ランキング）</h2>
  <p class="sub">リアルタイムTOP5・当日狙い目に入らなかった残りの監視対象を、出来高加速の大きい順に並べたものです。売買候補ではなく、当日の活況度を把握するための一覧です。</p>
- <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>現在値</th><th>出来高加速</th><th>気配（買数量/売数量）</th><th>成行（買/売）</th><th>UNDER</th></tr></thead><tbody id="watchlist-100-rows"><tr><td colspan="7">Windowsコレクター接続待ち</td></tr></tbody></table>
+ <div id="watchlist-100-rows" class="cc-watch-list"><div class="cc-onair-empty">Windowsコレクター接続待ち</div></div>
 </section>
 <section id="premarket-gap-ranking" class="card wide">
  <h2>寄り前気配ランキング（100銘柄・リアルタイムLIVE）</h2>
  <p class="sub">8:00〜9:00の気配値変化率（前日終値比）が大きい順。MS2 RSSが100銘柄分リアルタイムで取得した気配データで、Yahoo!ファイナンス等の遅延データではありません。ただし対象は固定100銘柄ウォッチリスト内のみ（このリスト外の銘柄は「外部ランキング発掘」セクションで別途確認してください）。</p>
- <table><thead><tr><th>順位</th><th>会社名＋コード</th><th>気配値</th><th>前日比（気配）</th><th>成行偏り</th><th>寄り前判定</th></tr></thead><tbody id="premarket-gap-rows"><tr><td colspan="6">Windowsコレクター接続待ち</td></tr></tbody></table>
+ <div id="premarket-gap-rows" class="cc-watch-list"><div class="cc-onair-empty">Windowsコレクター接続待ち</div></div>
 </section>
 """
 
@@ -2762,6 +2718,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <section id="ms2-live-top5" class="card wide ms2-live-panel">
  <div class="ms2-live-head"><div><span>LOCAL MARKET DATA・試運転 Ver.1</span><h2>デイトレ100銘柄・MS2 LIVE TOP5</h2></div><div id="ms2-live-health" class="ms2-health waiting">ローカル収集待ち</div></div>
  <div id="ms2-live-meta" class="sub">MarketSpeed II RSSのローカル収集データを確認中...</div>
+ <div class="cc-onair-panel"><h3>実況銘柄（音声通知した／注目中の銘柄）</h3><div id="cockpit-onair-cards"><div class="cc-onair-empty">実況銘柄はまだありません（音声通知・注目銘柄はここに表示されます）</div></div></div>
  <div id="ms2-common-status" class="ms2-live-card watch" style="margin-top:10px"><div class="top"><span class="signal">COMMON ENGINE</span><h3>全対象銘柄・共通判定基盤</h3><b class="score">確認中</b></div><div class="ms2-metrics"><span>判定<b>TREND LONG / TREND SHORT / REBOUND / RANGE / NO TRADE</b></span><span>自動発注<b>OFF（既定）</b></span><span>10本板<b>未確認</b></span><span>口座ゲート<b>未確認・売買禁止</b></span></div><small>未取得項目は推測せず未確認。口座数値は公開JSONへ出力しません。</small></div>
  <div id="ms2-live-cards" class="ms2-live-grid"><div class="focus-empty"><b>未接続</b><span>Windows用100銘柄コレクターを起動してください</span></div></div>
  <h3>夜間PTS期待TOP5</h3>
@@ -2790,18 +2747,62 @@ document.addEventListener("DOMContentLoaded",()=>{
  const cardTop=(rank,tag,name,score)=>`<div class="top"><span class="rank">#${rank}</span><div class="name-block"><small class="tag-chip">${tag||""}</small><h3>${name}</h3></div><b class="score">${score==null||score===""?"—":esc(score)}</b></div>`;
  const fetchJson=async(url,timeout=1800)=>{const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),timeout);try{const r=await fetch(url,{cache:"no-store",signal:ctl.signal});if(!r.ok)throw new Error("not found");return await r.json()}finally{clearTimeout(timer)}};
  const fetchMs2=async()=>{try{const d=await fetchJson("http://127.0.0.1:28580/live_ms2.json?t="+Date.now());d.connection_source="自宅PC・MS2 RSS LIVE";return d}catch(e){const d=await fetchJson("live_ms2.json?t="+Date.now(),3000);d.connection_source="公開スナップショット";return d}};
+ // V8 Controller's local Gateway (127.0.0.1:28581) exposes /health with the
+ // live watcher/heartbeat/collector status. When it's reachable and reports
+ // fail_closed, that forces stale=true here regardless of live_ms2.json's
+ // own age - a dead Watcher must not let a briefly-fresh cached JSON keep
+ // showing as LIVE. Only same-origin (this page being served by that same
+ // Gateway); on the public site this fetch simply fails and is ignored.
+ const fetchControllerHealth=async()=>{try{return await fetchJson("health?t="+Date.now(),1200)}catch(e){return null}};
  async function loadMs2Live(){
   const health=document.getElementById("ms2-live-health"),meta=document.getElementById("ms2-live-meta"),cards=document.getElementById("ms2-live-cards"),holdCards=document.getElementById("ms2-hold-cards"),holdStatus=document.getElementById("ms2-hold-status"),holdStats=document.getElementById("ms2-hold-stats"),holdHistory=document.getElementById("ms2-hold-history"),ptsCards=document.getElementById("ms2-pts-cards"),irCards=document.getElementById("ms2-ir-pts-cards"),irMeta=document.getElementById("ms2-ir-pts-meta");
   if(!health||!cards)return;
   try{
    const d=await fetchMs2();
-   const parsed=new Date(String(d.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,stale=d.stale||age>60;
+   const controllerHealth=await fetchControllerHealth();
+   const controllerForcesFailClosed=!!(controllerHealth&&controllerHealth.runtime&&controllerHealth.runtime.fail_closed===true);
+   const parsed=new Date(String(d.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,staleFromAge=d.stale||age>60,stale=staleFromAge||controllerForcesFailClosed;
    health.className="ms2-health "+(stale?"stale":"live"); health.textContent=stale?"データ停止・売買禁止":"LIVE 接続中";
    const common=document.getElementById("ms2-common-status"),caps=d.capabilities||{},gate=d.account_gate||{};
    if(common){const coverage=caps.market?.status||"未確認",depth=caps.orderflow?.depth10||"未確認",blocks=(gate.blocks||[]).join("／")||"なし";common.querySelector(".score").textContent=coverage;common.querySelector(".ms2-metrics").innerHTML=`<span>対象<b>${esc(d.valid||0)}/${esc(d.universe||0)}銘柄</b></span><span>共通判定<b>5分類・取得確認値のみ</b></span><span>自動発注<b>${caps.auto_order?.enabled?"ON":"OFF（既定）"}</b></span><span>10本板<b>${esc(depth)}</b></span><span>口座ゲート<b>${esc(gate.status||"未確認")}</b></span><span>停止理由<b>${esc(blocks)}</b></span>`;}
    meta.textContent=`${d.updated_at||"更新時刻不明"} / 有効 ${d.valid||0}/${d.universe||100}銘柄 / 寄り前 ${d.preopen_recording_status||"確認待ち"} / ${d.market_state||"地合い確認待ち"} VWAP上${d.breadth_pct??"—"}% / ${d.connection_source||d.source||"MS2 RSS"}`;
    const xs=Array.isArray(d.top5)?d.top5:[];
-   cards.innerHTML=xs.length?xs.slice(0,5).map((x,i)=>{const cls=x.common_decision==="TREND LONG"?"buy":x.common_decision==="TREND SHORT"?"sell":x.signal?.includes("回避")?"block":"watch",cr=x.credit_ratio==null?"未確認":`${esc(x.credit_ratio)}倍`,shortable=x.shortable_quantity==null?"未確認":Number(x.shortable_quantity).toLocaleString("ja-JP"),order=x.entry_price==null?"条件未完成":`発動 ${yen(x.entry_price)} / 損切 ${yen(x.stop_price)} / 1R ${yen(x.target1)}`;return `<article class="ms2-live-card ${cls}">${cardTop(i+1,stale?"NO TRADE":esc(x.common_decision||"NO TRADE"),esc(x.name),x.common_score==null?"未確認":x.common_score)}<div class="live-price">${yen(x.price)}${changeBadge(x.change_pct)}</div><div class="ms2-metrics"><span>既存戦略<b>${esc(x.strategy)}</b></span><span>注文目安<b>${order}</b></span><span>地合い<b>${esc(x.market_state)}</b></span><span>VWAP<b>${yen(x.vwap)}</b></span><span>EMA9/20<b>${yen(x.ema9)} / ${yen(x.ema20)}</b></span><span>出来高加速<b>${esc(x.volume_burst)}倍</b></span><span>歩み値<b>${esc(x.flow_bias)}%</b></span><span>UNDER<b>${esc(x.under_ratio)}%</b></span><span>信用倍率<b>${cr}</b></span><span>売建可能数量<b>${shortable}</b></span><span>OR5<b>${yen(x.or5_low)}–${yen(x.or5_high)}</b></span><span>OR15<b>${yen(x.or_low)}–${yen(x.or_high)}</b></span></div><small>1分足・5分足を全対象へ共通生成／未取得は未確認／${esc(x.sector)}</small></article>`}).join(""):`<div class="focus-empty"><b>発動なし</b><span>条件一致銘柄を待っています</span></div>`;
+   const ms2Direction=x=>x.common_decision==="TREND LONG"?"long":x.common_decision==="TREND SHORT"?"short":x.signal?.includes("回避")?"block":"wait";
+   const ms2Metrics=x=>{
+    const cr=x.credit_ratio==null?null:`${x.credit_ratio}倍`;
+    const shortable=x.shortable_quantity==null?null:Number(x.shortable_quantity).toLocaleString("ja-JP");
+    const or5=(x.or5_low==null&&x.or5_high==null)?null:`${yen(x.or5_low)}–${yen(x.or5_high)}`;
+    const or15=(x.or_low==null&&x.or_high==null)?null:`${yen(x.or_low)}–${yen(x.or_high)}`;
+    const ema=(x.ema9==null&&x.ema20==null)?null:`${yen(x.ema9)} / ${yen(x.ema20)}`;
+    return [
+     {label:"統合スコア",value:x.common_score==null?null:x.common_score},
+     {label:"既存戦略",value:x.strategy},
+     {label:"地合い",value:x.market_state},
+     {label:"VWAP",value:x.vwap==null?null:yen(x.vwap)},
+     {label:"EMA9/20",value:ema},
+     {label:"出来高加速",value:x.volume_burst==null?null:`${x.volume_burst}倍`},
+     {label:"歩み値",value:x.flow_bias==null?null:`${x.flow_bias}%`},
+     {label:"UNDER",value:x.under_ratio==null?null:`${x.under_ratio}%`},
+     {label:"信用倍率",value:cr},
+     {label:"売建可能数量",value:shortable},
+     {label:"OR5",value:or5},
+     {label:"OR15",value:or15},
+    ];
+   };
+   cards.innerHTML=xs.length?xs.slice(0,5).map(x=>window.renderCockpitCard({
+    symbol:String(x.ticker||x.code||"").replace(".T",""),
+    company:x.name,
+    direction:ms2Direction(x),
+    directionLabel:esc(x.common_decision||"NO TRADE"),
+    price:x.price,
+    changePct:x.change_pct,
+    ageSeconds:age,
+    staleThresholdSeconds:60,
+    failClosed:stale?"60秒以上前のデータ・売買禁止":false,
+    entry:x.entry_price,stop:x.stop_price,target:x.target1,
+    metrics:ms2Metrics(x),
+    foot:`1分足・5分足を全対象へ共通生成／未取得は未確認／${x.sector||""}`,
+   })).join(""):`<div class="focus-empty"><b>発動なし</b><span>条件一致銘柄を待っています</span></div>`;
    const holds=Array.isArray(d.hold_top5)?d.hold_top5:[];
    if(holdStatus)holdStatus.textContent=d.hold_finalized?`確定済み ${d.hold_finalized_at||"15:25"}／この候補と方向は翌日検証まで固定`:`15:00から暫定採点中。15:25までは候補が入れ替わります。`;
    if(holdCards)holdCards.innerHTML=holds.length?holds.slice(0,5).map(x=>{
@@ -2824,20 +2825,20 @@ document.addEventListener("DOMContentLoaded",()=>{
   }catch(e){health.className="ms2-health waiting";health.textContent="ローカル収集待ち";meta.textContent="Windowsの100銘柄コレクターを起動してください。";document.dispatchEvent(new CustomEvent("ms2RssUpdate",{detail:{stale:true}}));}
  }
  document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},live=d.stale===false,bar=document.getElementById("unified-mode");if(!bar)return;bar.className="unified-mode "+(live?"live":"stale");document.getElementById("unified-mode-title").textContent=live?"MS2 RSS LIVE接続中":"事前分析モード";document.getElementById("unified-mode-note").textContent=live?"歩み値・板・VWAP・OR15を同じ画面へ反映":"LIVE値は未接続。公開分析は閲覧できますが売買サインは無効";document.getElementById("unified-mode-time").textContent=live?(d.updated_at||"更新中"):"LIVE売買禁止";});
- document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},tbody=document.getElementById("watchlist-100-rows");if(!tbody)return;const all=Array.isArray(d.all_targets)?d.all_targets:[],topTickers=new Set((Array.isArray(d.top5)?d.top5:[]).map(x=>x.ticker)),rest=all.filter(x=>!topTickers.has(x.ticker)).slice().sort((a,b)=>(Number(b.volume_burst)||0)-(Number(a.volume_burst)||0));tbody.innerHTML=rest.length?rest.slice(0,50).map((x,i)=>{const bidQty=x.bid_qty==null?"—":Number(x.bid_qty).toLocaleString("ja-JP"),askQty=x.ask_qty==null?"—":Number(x.ask_qty).toLocaleString("ja-JP"),mBuy=x.market_buy==null?"—":Number(x.market_buy).toLocaleString("ja-JP"),mSell=x.market_sell==null?"—":Number(x.market_sell).toLocaleString("ja-JP"),under=x.under_ratio==null?"—":Number(x.under_ratio).toFixed(1)+"%";return `<tr><td>${i+1}</td><td><b>${esc(x.name)}</b></td><td>${yen(x.price)}${changeBadge(x.change_pct)}</td><td>${x.volume_burst==null?"—":Number(x.volume_burst).toFixed(2)+"倍"}</td><td>${bidQty} / ${askQty}</td><td>${mBuy} / ${mSell}</td><td>${under}</td></tr>`;}).join(""):"<tr><td colspan='7'>データ取得待ち</td></tr>";});
- document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},tbody=document.getElementById("premarket-gap-rows");if(!tbody)return;const all=Array.isArray(d.all_targets)?d.all_targets:[],withGap=all.filter(x=>x.preopen_gap_pct!=null).slice().sort((a,b)=>Math.abs(Number(b.preopen_gap_pct)||0)-Math.abs(Number(a.preopen_gap_pct)||0));tbody.innerHTML=withGap.length?withGap.slice(0,30).map((x,i)=>{const imbalance=x.preopen_market_imbalance==null?"—":(Number(x.preopen_market_imbalance)>=0?"+":"")+Number(x.preopen_market_imbalance).toFixed(1)+"%";return `<tr><td>${i+1}</td><td><b>${esc(x.name)}</b></td><td>${x.preopen_quote==null?"—":yen(x.preopen_quote)}</td><td>${changeBadge(x.preopen_gap_pct)}</td><td>${imbalance}</td><td>${esc(x.preopen_plan||"判定待ち")}</td></tr>`;}).join(""):"<tr><td colspan='6'>寄り前気配データ待ち（8:00〜9:00のみ取得）</td></tr>";});
+ document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},box=document.getElementById("watchlist-100-rows");if(!box)return;const all=Array.isArray(d.all_targets)?d.all_targets:[],topTickers=new Set((Array.isArray(d.top5)?d.top5:[]).map(x=>x.ticker)),rest=all.filter(x=>!topTickers.has(x.ticker)).slice().sort((a,b)=>(Number(b.volume_burst)||0)-(Number(a.volume_burst)||0));box.innerHTML=rest.length?rest.slice(0,50).map((x,i)=>{const bidQty=x.bid_qty==null?null:Number(x.bid_qty).toLocaleString("ja-JP"),askQty=x.ask_qty==null?null:Number(x.ask_qty).toLocaleString("ja-JP"),mBuy=x.market_buy==null?null:Number(x.market_buy).toLocaleString("ja-JP"),mSell=x.market_sell==null?null:Number(x.market_sell).toLocaleString("ja-JP");return window.renderCockpitWatchRow({symbol:String(x.ticker||"").replace(".T",""),company:x.name,direction:"wait",showBadge:false,rank:i+1,price:x.price,changePct:x.change_pct,freshness:d.stale?"stale":"fresh",freshnessLabel:d.stale?"データ停止":"LIVE",metrics:[{label:"出来高加速",value:x.volume_burst==null?null:Number(x.volume_burst).toFixed(2)+"倍"},{label:"気配 買/売",value:(bidQty==null&&askQty==null)?null:`${bidQty??"—"} / ${askQty??"—"}`},{label:"成行 買/売",value:(mBuy==null&&mSell==null)?null:`${mBuy??"—"} / ${mSell??"—"}`},{label:"UNDER",value:x.under_ratio==null?null:Number(x.under_ratio).toFixed(1)+"%"}]});}).join(""):"<div class=\"cc-onair-empty\">データ取得待ち</div>";});
+ document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},box=document.getElementById("premarket-gap-rows");if(!box)return;const all=Array.isArray(d.all_targets)?d.all_targets:[],withGap=all.filter(x=>x.preopen_gap_pct!=null).slice().sort((a,b)=>Math.abs(Number(b.preopen_gap_pct)||0)-Math.abs(Number(a.preopen_gap_pct)||0));box.innerHTML=withGap.length?withGap.slice(0,30).map((x,i)=>{const imbalance=x.preopen_market_imbalance==null?null:(Number(x.preopen_market_imbalance)>=0?"+":"")+Number(x.preopen_market_imbalance).toFixed(1)+"%";return window.renderCockpitWatchRow({symbol:String(x.ticker||"").replace(".T",""),company:x.name,direction:"wait",showBadge:false,rank:i+1,price:x.preopen_quote,changePct:x.preopen_gap_pct,freshness:d.stale?"stale":"fresh",freshnessLabel:d.stale?"データ停止":"LIVE",metrics:[{label:"成行偏り",value:imbalance},{label:"寄り前判定",value:x.preopen_plan||"判定待ち"}]});}).join(""):"<div class=\"cc-onair-empty\">寄り前気配データ待ち（8:00〜9:00のみ取得）</div>";});
  document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},k=d.kioxia,stale=d.stale!==false;if(!document.getElementById("kio-ms2-state"))return;const put=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};if(!k||stale){put("kio-ms2-state","未接続・売買利用禁止");put("kio-ms2-source","Windowsコレクター待ち");return}const signed=v=>v==null?"—":`${Number(v)>=0?"+":""}${Number(v).toFixed(1)}pt`,pct=v=>v==null?"—":`${Number(v)>=0?"+":""}${Number(v).toFixed(2)}%`,h=k.historical_prediction;put("kio-ms2-state",k.orderflow_state||"判定待ち");put("kio-ms2-source",`${d.updated_at}／${d.connection_source||"MS2 RSS LIVE"}`);put("kio-preopen-plan",k.preopen_plan||"判定待ち");put("kio-preopen-score",`スコア ${k.preopen_score??"—"}`);put("kio-preopen-quote",k.preopen_quote?`${Number(k.preopen_quote).toLocaleString("ja-JP")}円`:"—");put("kio-preopen-gap",`基準比 ${pct(k.preopen_gap_pct)}`);put("kio-preopen-imbalance",pct(k.preopen_market_imbalance));put("kio-preopen-change",`気配5分 ${pct(k.preopen_quote_change_5m)}`);put("kio-open-decision",k.open_decision||"寄り待ち");put("kio-special-quote",`特別気配 ${k.special_quote||"—"}／始値 ${k.open_price?Number(k.open_price).toLocaleString("ja-JP")+"円":"—"}`);put("kio-ms2-band",k.time_band||"—");put("kio-ms2-under",`${Number(k.under_ratio).toFixed(1)}%`);put("kio-ms2-under-change",`1分 ${signed(k.under_change_1m)}／5分 ${signed(k.under_change_5m)}`);put("kio-ms2-flow",`${Number(k.flow_bias).toFixed(1)}%`);put("kio-ms2-flow-detail",`買い ${Number(k.buy_flow||0).toLocaleString("ja-JP")}／売り ${Number(k.sell_flow||0).toLocaleString("ja-JP")}`);put("kio-ms2-ticks",k.tick_watch||"常時監視中");put("kio-ms2-stat",h?.prediction||`蓄積中 ${k.completed_stat_days||0}/10日`);put("kio-ms2-stat-detail",h?`5分後 上${h.up_rate_5m}%／下${h.down_rate_5m}%・平均 ${Number(h.average_return_5m)>=0?"+":""}${h.average_return_5m}%・${h.sample_days}日`:`10営業日まで方向を出しません`);const panel=document.getElementById("kio-ms2-orderflow");panel.classList.toggle("buy",k.orderflow_state==="買い優勢");panel.classList.toggle("sell",k.orderflow_state==="売り優勢");panel.classList.toggle("conflict",String(k.orderflow_state).includes("不一致"));});
  document.addEventListener("ms2RssUpdate",e=>{const k=e.detail?.kioxia,el=document.getElementById("kio-preopen-stat");if(!el||!k)return;const h=k.preopen_historical;el.textContent=h?(h.ready?`${h.prediction}（n=${h.sample_days}日）`:`蓄積中 ${h.sample_days}/10日`):"統計蓄積中";});
 
  // キオクシアタブの一本化（2026-09-15）: Excel(Kioxia_RSS_Live_Watcher.ps1)がローカルの
- // 127.0.0.1:28581で配信するJSONを直接読み、Excelを開かなくても同じ内容を確認できるようにする。
+ // 127.0.0.1:28582で配信するJSONを直接読み、Excelを開かなくても同じ内容を確認できるようにする。
  // 公開スナップショットは無い（自宅PC上でブラウザを開いた時だけ意味を持つデータのため）。
  async function loadWatcherKioxia(){
   const stateEl=document.getElementById("kio-watcher-state");
   if(!stateEl)return;
   const put=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};
   try{
-   const w=await fetchJson("http://127.0.0.1:28581/kioxia_watcher_live.json?t="+Date.now(),1800);
+   const w=await fetchJson("http://127.0.0.1:28582/kioxia_watcher_live.json?t="+Date.now(),1800);
    const parsed=new Date(String(w.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,stale=age>60;
    if(stale){stateEl.textContent="データ停止（60秒超未更新）";put("kio-watcher-conditions","");return}
    const yen1=v=>v==null?"—":Number(v).toLocaleString("ja-JP")+"円";
@@ -2855,7 +2856,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    put("kio-watcher-pts",w.pts_price!=null?`${yen1(w.pts_price)}／前日比${esc(w.pts_change_pct_text||"—")}／気配${esc(w.pts_quote_text||"—")}（${esc(w.pts_time_text||"—")}）`:"未取得");
   }catch(e){
    stateEl.textContent="Excel Watcher未接続（自宅PC上でのみ表示されます）";
-   document.getElementById("kio-watcher-source").textContent="http://127.0.0.1:28581 へ接続できません";
+   document.getElementById("kio-watcher-source").textContent="http://127.0.0.1:28582 へ接続できません";
   }
  }
  loadMs2Live(); setInterval(loadMs2Live,5000);
@@ -2881,6 +2882,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 <link rel="stylesheet" href="focus.css?v=20260915-power3">
 <link rel="stylesheet" href="next-theme-radar.css?v=c024-1">
 <script defer src="next-theme-radar.js?v=c024-1"></script>
+<link rel="stylesheet" href="card_system.css?v=p0b1-1">
+<script type="module" src="card_system.js?v=p0b1-1"></script>
 <style>.unified-mode{{margin:8px 6px 0;padding:10px 14px;border:1px solid #272A30;border-radius:10px;background:#101114;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}}.unified-mode .lamp{{width:12px;height:12px;border-radius:50%;background:#63676e;box-shadow:0 0 0 5px #63676e18}}.unified-mode.live{{border-color:#1f4a37;background:#101114}}.unified-mode.live .lamp{{background:#35e2ae;box-shadow:0 0 10px #35e2ae66}}.unified-mode.stale{{border-color:#6b5426}}.unified-mode strong{{font-size:16px;color:#e7e9eb}}.unified-mode span{{color:#9aa0a6}}.unified-mode b{{color:#c7cacd;font-size:12px;font-weight:500}}.unified-mode small{{color:#63676e;display:block;margin-top:2px}}.unified-mode-controls{{display:flex;align-items:center;gap:8px}}.market-status-pill{{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#15171B;border:1px solid #272A30;color:#7a7f86;font-size:10.5px;white-space:nowrap}}.market-status-pill .dot{{width:6px;height:6px;border-radius:50%;background:#4a4e55;flex:none}}.market-status-pill.open{{color:#8fe3c0;border-color:#1f4a37}}.market-status-pill.open .dot{{background:#35e2ae;box-shadow:0 0 5px #35e2ae}}.voice-toggle{{width:30px;height:30px;padding:0;border-radius:50%;background:#15171B;border:1px solid #272A30;color:#c7cacd;font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center}}@media(max-width:700px){{.unified-mode{{grid-template-columns:auto 1fr auto}}.unified-mode>b{{grid-column:3}}.unified-mode .unified-mode-controls{{grid-column:1/-1}}}}</style>
 <header><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／統一取引日 {quality_gate['market_date'] or '取得不能'}</div></div></header>
 <div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><main>

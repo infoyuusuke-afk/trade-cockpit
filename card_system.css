@@ -1,0 +1,123 @@
+/* Card System (P0-B-0): shared card visual language for AI Trade Cockpit.
+   TradingView + Apple-dark tokens, matching the SCALP-family palette from
+   PR #187 (#050506 / #090A0C / #0E1013 / #22252A / #E8EAED / #9AA0AA).
+   Consumed via window.renderCockpitCard() in card_system.js. Existing
+   .scalp-card / .ms2-live-card styles are untouched by this file; migrating
+   them onto these classes is P0-B-1+, not this foundation pass. */
+
+:root{
+  --cc-bg-page:#050506;
+  --cc-bg-card:#090A0C;
+  --cc-bg-panel:#0E1013;
+  --cc-border:#22252A;
+  --cc-text-primary:#E8EAED;
+  --cc-text-secondary:#9AA0AA;
+  --cc-long:#1fc79a;
+  --cc-long-bg:#0d2b23;
+  --cc-long-border:#164536;
+  --cc-short:#f0616c;
+  --cc-short-bg:#341418;
+  --cc-short-border:#4a1f24;
+  --cc-block:#d9a13f;
+  --cc-block-bg:#2c2110;
+  --cc-block-border:#4a3a1c;
+  --cc-wait:#9AA0AA;
+  --cc-wait-bg:#0E1013;
+  --cc-fresh:#1fc79a;
+  --cc-stale:#f7a600;
+  --cc-stale-bg:#2a2110;
+  --cc-stale-border:#5a431c;
+  --cc-conflict:#f0616c;
+  --cc-conflict-bg:#341418;
+  --cc-conflict-border:#4a1f24;
+  --cc-fail-closed-bg:#1a1414;
+  --cc-fail-closed-border:#4a2c2c;
+}
+
+.cc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.cc-grid--dense{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+
+.cc-card{position:relative;background:var(--cc-bg-card);border:1px solid var(--cc-border);border-radius:8px;padding:14px;overflow:hidden;color:var(--cc-text-primary);display:flex;flex-direction:column;gap:10px}
+.cc-card--long{box-shadow:inset 0 2px 0 var(--cc-long)}
+.cc-card--short{box-shadow:inset 0 2px 0 var(--cc-short)}
+.cc-card--wait{box-shadow:inset 0 2px 0 #33363c}
+.cc-card--block{box-shadow:inset 0 2px 0 var(--cc-block)}
+.cc-card--fail-closed{background:var(--cc-fail-closed-bg);border-color:var(--cc-fail-closed-border)}
+
+.cc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.cc-identity{min-width:0}
+.cc-identity .cc-company{display:block;color:var(--cc-text-primary);font-size:13px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cc-identity .cc-symbol{display:block;color:var(--cc-text-secondary);font-size:10.5px;margin-top:3px}
+
+.cc-badge{flex:none;font-size:10.5px;font-weight:800;padding:4px 8px;border-radius:999px;background:var(--cc-wait-bg);color:var(--cc-wait);border:1px solid var(--cc-border)}
+.cc-card--long .cc-badge{background:var(--cc-long-bg);color:var(--cc-long);border-color:var(--cc-long-border)}
+.cc-card--short .cc-badge{background:var(--cc-short-bg);color:var(--cc-short);border-color:var(--cc-short-border)}
+.cc-card--block .cc-badge{background:var(--cc-block-bg);color:var(--cc-block);border-color:var(--cc-block-border)}
+.cc-card--fail-closed .cc-badge{background:var(--cc-fail-closed-bg);color:var(--cc-stale);border-color:var(--cc-stale-border)}
+
+.cc-price-row{display:flex;align-items:flex-end;justify-content:space-between;gap:8px}
+.cc-price{font-size:24px;font-weight:700;letter-spacing:-.02em;color:var(--cc-text-primary);font-variant-numeric:tabular-nums}
+.cc-change{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.cc-change--up{color:var(--cc-long)}
+.cc-change--down{color:var(--cc-short)}
+.cc-change--flat{color:var(--cc-text-secondary)}
+
+.cc-freshness{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--cc-text-secondary)}
+.cc-freshness .cc-freshness-dot{width:6px;height:6px;border-radius:50%;background:var(--cc-text-secondary);flex:none}
+.cc-freshness--fresh .cc-freshness-dot{background:var(--cc-fresh);box-shadow:0 0 5px var(--cc-fresh)}
+.cc-freshness--stale{color:var(--cc-stale)}
+.cc-freshness--stale .cc-freshness-dot{background:var(--cc-stale)}
+.cc-freshness--unknown .cc-freshness-dot{background:#4a4e55}
+
+.cc-conflict,.cc-fail-closed-banner{font-size:10.5px;font-weight:600;padding:6px 8px;border-radius:6px;line-height:1.4}
+.cc-conflict{background:var(--cc-conflict-bg);color:var(--cc-conflict);border:1px solid var(--cc-conflict-border)}
+.cc-fail-closed-banner{background:var(--cc-stale-bg);color:var(--cc-stale);border:1px solid var(--cc-stale-border)}
+
+.cc-order-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--cc-border);border:1px solid var(--cc-border);border-radius:6px;overflow:hidden}
+.cc-order-grid span{background:var(--cc-bg-panel);padding:7px 6px;font-size:9.5px;color:var(--cc-text-secondary)}
+.cc-order-grid b{display:block;margin-top:3px;font-size:12px;color:var(--cc-text-primary);font-weight:600;font-variant-numeric:tabular-nums}
+.cc-order-grid .cc-stop b{color:var(--cc-short)}
+.cc-order-grid .cc-target b{color:var(--cc-long)}
+.cc-card--fail-closed .cc-order-grid b{color:var(--cc-text-secondary)}
+
+.cc-metrics-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--cc-border);border:1px solid var(--cc-border);border-radius:6px;overflow:hidden}
+.cc-metrics-grid span{background:var(--cc-bg-panel);padding:7px 6px;font-size:9.5px;color:var(--cc-text-secondary)}
+.cc-metrics-grid b{display:block;margin-top:3px;font-size:11px;color:var(--cc-text-primary);font-weight:600;font-variant-numeric:tabular-nums}
+
+.cc-catalyst{font-size:10.5px;color:var(--cc-text-secondary);line-height:1.4;border-top:1px solid var(--cc-border);padding-top:8px}
+.cc-catalyst b{color:var(--cc-text-primary);font-weight:600}
+
+.cc-foot{color:var(--cc-text-secondary);font-size:9.5px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Live watch / roster row: a compact horizontal variant for "on-air" symbol
+   lists (実況銘柄カード) rather than the full grid card, per P0-B-1. */
+/* flex, not grid: rank/badge/metrics are each conditionally rendered by
+   card_system.js, and a fixed grid-template-columns count silently
+   misaligns whenever the number of children changes (the exact bug fixed
+   in the watchlist layout, 2026-09-19 - see AI_SHARED_SHEET_ARCHIVE). */
+.cc-watch-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:9px 12px;background:var(--cc-bg-card);border:1px solid var(--cc-border);border-radius:8px}
+.cc-watch-row + .cc-watch-row{margin-top:6px}
+.cc-watch-row .cc-identity{flex:1 1 140px;min-width:0}
+.cc-watch-row .cc-identity .cc-company{font-size:12.5px}
+.cc-rank{flex:none;background:var(--cc-bg-panel);border:1px solid var(--cc-border);color:var(--cc-text-secondary);font-size:10px;font-weight:700;border-radius:5px;padding:3px 6px}
+.cc-watch-row .cc-price-row{flex:none;gap:6px}
+.cc-watch-row .cc-price{font-size:15px}
+.cc-watch-metrics{display:flex;flex-wrap:wrap;gap:4px 10px;flex:1 1 100%;order:5}
+.cc-watch-metrics span{font-size:9.5px;color:var(--cc-text-secondary);white-space:nowrap}
+.cc-watch-metrics b{color:var(--cc-text-primary);font-weight:600;margin-left:3px;font-variant-numeric:tabular-nums}
+
+/* 実況銘柄カード: on-air log panel (recordOnAir/renderOnAirPanel in
+   card_system.js). A persistent, always-visible list so a missed or
+   disabled voice alert can still be confirmed on screen. */
+.cc-onair-panel{margin:10px 0;padding:10px 12px;background:var(--cc-bg-panel);border:1px solid var(--cc-border);border-radius:8px}
+.cc-onair-panel h3{margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--cc-text-secondary);text-transform:uppercase}
+.cc-onair-empty{color:var(--cc-text-secondary);font-size:11px;padding:6px 0}
+
+@media(max-width:640px){
+  .cc-grid{grid-template-columns:1fr}
+  .cc-watch-row{flex-direction:column;align-items:flex-start;gap:6px}
+  .cc-watch-row .cc-price-row{width:100%;justify-content:space-between}
+}
+@media(min-width:375px) and (max-width:640px){
+  .cc-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
+}
