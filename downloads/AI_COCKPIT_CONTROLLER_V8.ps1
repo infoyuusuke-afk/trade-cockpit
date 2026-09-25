@@ -282,6 +282,37 @@ try {
         Write-Status ("  branch:  " + $actualBranch + " (matches expected)") Green
     }
 
+    # 2026-09-25 P0 fix: repo-updated must never be assumed to mean
+    # runtime-updated. RUN_AI_COCKPIT_V8.ps1 deploys Watcher/Heartbeat/
+    # Collector into RuntimeDir and records their SHA256 in V8_RUNTIME.json;
+    # this recomputes the hash of what's ACTUALLY sitting in RuntimeDir
+    # right now and refuses to start if it doesn't match what was deployed
+    # (missing manifest, stale runtime, or a file changed since deploy all
+    # fail closed here rather than silently running mismatched code).
+    $runtimeManifestPath = Join-Path $Root "V8_RUNTIME.json"
+    if (-not (Test-Path -LiteralPath $runtimeManifestPath)) {
+        throw "No V8_RUNTIME.json found - runtime scripts were never deployed to RuntimeDir. Run RUN_AI_COCKPIT_V8.ps1 (not this controller directly) so it deploys Watcher/Heartbeat/Collector before starting."
+    }
+    $runtimeManifest = Get-Content -LiteralPath $runtimeManifestPath -Raw | ConvertFrom-Json
+    if ($runtimeManifest.runtime_dir -ne $RuntimeDir) {
+        throw "V8_RUNTIME.json was deployed for a different RuntimeDir (" + $runtimeManifest.runtime_dir + ") than the one resolved now (" + $RuntimeDir + "). Re-run RUN_AI_COCKPIT_V8.ps1."
+    }
+    foreach ($name in @("Kioxia_RSS_Live_Watcher.ps1", "Kioxia_Safety_Heartbeat.ps1", "MS2_RSS_100_Collector.ps1")) {
+        $expectedHash = $runtimeManifest.files.$name
+        if ([string]::IsNullOrWhiteSpace($expectedHash)) {
+            throw "V8_RUNTIME.json has no recorded hash for $name. Re-run RUN_AI_COCKPIT_V8.ps1."
+        }
+        $actualPath = Join-Path $RuntimeDir $name
+        if (-not (Test-Path -LiteralPath $actualPath)) {
+            throw "Runtime file missing: $actualPath. Re-run RUN_AI_COCKPIT_V8.ps1."
+        }
+        $actualHash = (Get-FileHash -LiteralPath $actualPath -Algorithm SHA256).Hash
+        if ($actualHash -ne $expectedHash) {
+            throw "Runtime file $name does not match the deployed manifest (RuntimeDir file was changed or reverted since deploy). Re-run RUN_AI_COCKPIT_V8.ps1 to redeploy - refusing to start against unverified runtime code."
+        }
+    }
+    Write-Status ("  runtime files: verified against V8_RUNTIME.json (deployed " + $runtimeManifest.deployed_at + ")") Green
+
     $Watcher = Join-Path $RuntimeDir "Kioxia_RSS_Live_Watcher.ps1"
     $Heartbeat = Join-Path $RuntimeDir "Kioxia_Safety_Heartbeat.ps1"
     $Collector = Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"

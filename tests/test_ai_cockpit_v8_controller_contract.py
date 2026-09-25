@@ -24,6 +24,20 @@ def read(name: str) -> str:
     return (DOWNLOADS / name).read_text(encoding="utf-8")
 
 
+def extract_function(text: str, func_name: str) -> str:
+    """Extract a top-level `function <func_name> { ... }` block by finding
+    the line the function starts on and the line the *next* top-level
+    `function `/`$repo = ` starts on - robust against nested braces that
+    trip up a naive `.*?\\n}` regex."""
+    lines = text.splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith(f"function {func_name}"))
+    end = next(
+        i for i in range(start + 1, len(lines))
+        if lines[i].startswith("function ") or lines[i].startswith("$repo = ")
+    )
+    return "\n".join(lines[start:end])
+
+
 class ControllerSafetyContract(unittest.TestCase):
     def setUp(self):
         self.controller = read("AI_COCKPIT_CONTROLLER_V8.ps1")
@@ -161,6 +175,26 @@ class ControllerSafetyContract(unittest.TestCase):
         block = self.controller[verify_idx:gateway_start_idx]
         self.assertIn("throw", block)
 
+    def test_never_assumes_repo_update_means_runtime_update(self):
+        # 2026-09-25 blocker fix: the controller must independently verify
+        # RuntimeDir's actual files against V8_RUNTIME.json before
+        # starting Watcher/Heartbeat/Collector from there - never assume a
+        # successful repo checkout implies RuntimeDir was also updated.
+        self.assertIn("V8_RUNTIME.json", self.controller)
+        manifest_idx = self.controller.index('Join-Path $Root "V8_RUNTIME.json"')
+        watcher_start_idx = self.controller.index('Start-Worker -Name "watcher"')
+        self.assertLess(manifest_idx, watcher_start_idx)
+        block = self.controller[manifest_idx:watcher_start_idx]
+        self.assertIn("No V8_RUNTIME.json found", block)
+        self.assertIn("Get-FileHash", block)
+        self.assertIn("does not match the deployed manifest", block)
+        for name in (
+            "Kioxia_RSS_Live_Watcher.ps1",
+            "Kioxia_Safety_Heartbeat.ps1",
+            "MS2_RSS_100_Collector.ps1",
+        ):
+            self.assertIn(name, block)
+
 
 class WatcherPortContract(unittest.TestCase):
     """Watcher and the Gateway both used to hardcode port 28581 -
@@ -282,6 +316,62 @@ class RunnerContract(unittest.TestCase):
     def test_branch_and_sha_are_verified_after_checkout(self):
         self.assertIn("Branch mismatch after checkout", self.runner)
         self.assertIn("SHA mismatch after checkout", self.runner)
+
+    def test_deploys_runtime_files_not_just_repo_checkout(self):
+        # 2026-09-25 blocker: repo checkout != RuntimeDir. All three
+        # scripts the Controller actually launches from RuntimeDir must be
+        # deployed there before Controller starts.
+        for name in (
+            "Kioxia_RSS_Live_Watcher.ps1",
+            "Kioxia_Safety_Heartbeat.ps1",
+            "MS2_RSS_100_Collector.ps1",
+        ):
+            self.assertIn(name, self.runner)
+        deploy_idx = self.runner.find("Deploy-RuntimeFiles -RepoRoot")
+        controller_start_idx = self.runner.find("Starting Controller V8")
+        self.assertGreater(deploy_idx, -1)
+        self.assertGreater(controller_start_idx, -1)
+        self.assertLess(deploy_idx, controller_start_idx)
+
+    def test_deploy_validates_before_touching_anything_real(self):
+        body = extract_function(self.runner, "Deploy-RuntimeFiles")
+        self.assertIn("Test-PowerShellSyntaxOk", body)
+        self.assertIn("Get-Sha256Hex", body)
+        # Validation (phase 1) must happen inside a try whose catch cleans
+        # up every staged file, including the one that failed - not just
+        # the ones that made it into $staged.
+        self.assertIn("$allStagedPaths", body)
+        self.assertIn("foreach ($stagedPath in $allStagedPaths)", body)
+
+    def test_deploy_is_all_or_nothing_with_backup(self):
+        body = extract_function(self.runner, "Deploy-RuntimeFiles")
+        # Backup happens only in phase 2, after every file already passed
+        # validation in phase 1 - a single bad file must never produce a
+        # partial deploy or an unnecessary backup.
+        backup_idx = body.find("_v8_runtime_backup_")
+        move_idx = body.find("Move-Item -LiteralPath $entry.staged_path")
+        catch_idx = body.find("} catch {")
+        self.assertGreater(catch_idx, -1)
+        self.assertGreater(backup_idx, catch_idx)
+        self.assertGreater(move_idx, backup_idx)
+
+    def test_deploy_verifies_deployed_ports_not_just_source(self):
+        body = extract_function(self.runner, "Deploy-RuntimeFiles")
+        self.assertIn("28582", body)
+        self.assertIn("28580", body)
+        # Must read back the file that was just written to RuntimeDir, not
+        # re-check the source in the repo.
+        self.assertIn("Get-Content -LiteralPath (Join-Path $RuntimeDir", body)
+
+    def test_writes_runtime_manifest_with_required_fields(self):
+        self.assertIn("V8_RUNTIME.json", self.runner)
+        manifest_match = re.search(
+            r"\$runtimeManifest = \[ordered\]@\{(.*?)\n\}", self.runner, re.S
+        )
+        self.assertIsNotNone(manifest_match)
+        body = manifest_match.group(1)
+        for field in ("repo_sha", "runtime_dir", "files", "deployed_at"):
+            self.assertIn(field, body)
 
     def test_controller_receives_the_verified_branch(self):
         self.assertIn("-ExpectedBranch $Branch", self.runner)
