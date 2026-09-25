@@ -46,14 +46,17 @@ STRATEGY_REGISTRY = {
     "day_ifo_long": {
         "version": "1.0", "horizon": "day", "side_hint": "LONG",
         "description": "build_day_ifo_candidates()のテーマ配分IFO選定（scripts/update.py）",
+        "cockpit_tab": "ms2-live",
     },
     "day_rank_long": {
         "version": "1.0", "horizon": "day", "side_hint": "LONG",
         "description": "day_rank（material_lifecycle由来のday_score順位）フォールバック選定（scripts/update.py）",
+        "cockpit_tab": "ms2-live",
     },
     "day_short_mvp": {
         "version": "1.0", "horizon": "day", "side_hint": "SHORT",
         "description": "scripts/short_candidates.pyのSHORT MVP選定",
+        "cockpit_tab": "ms2-live",
     },
 }
 
@@ -125,6 +128,7 @@ def tag_record(record: dict, *, strategy_id: str, signal_time: str,
         "strategy_id": strategy_id,
         "strategy_version": meta.get("version", "unknown"),
         "horizon": meta.get("horizon", "unknown"),
+        "cockpit_tab": meta.get("cockpit_tab"),
         "liquidity_bucket": classify_liquidity_bucket(turnover),
         "symbol_class": classify_symbol_class(turnover=turnover, atr_pct=atr_pct),
         "regime": regime_snapshot.get("regime"),
