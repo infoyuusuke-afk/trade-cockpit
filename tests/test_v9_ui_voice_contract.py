@@ -102,6 +102,8 @@ class V9UiVoiceContract(unittest.TestCase):
         self.assertIn("RUN_AI_COCKPIT_V9.ps1", text)
         self.assertIn("ExpectedSha", text)
         self.assertIn("28580,28581,28582", text.replace(" ", ""))
+        self.assertIn("[string[]]$GitArgs", text)
+        self.assertNotIn("[string[]]$Args", text)
         self.assertNotIn("Stop-Process -Name EXCEL", text)
         self.assertNotIn("Get-Process EXCEL", text)
         self.assertNotIn("taskkill", text.lower())
