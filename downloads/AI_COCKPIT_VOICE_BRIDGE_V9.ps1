@@ -9,7 +9,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $utf8 = New-Object System.Text.UTF8Encoding($false)
-$listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback,$Port)
+$listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback,[int]$Port)
 
 function Test-TcpPort([int]$p,[int]$timeoutMs=350){
     $c = New-Object Net.Sockets.TcpClient
