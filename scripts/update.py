@@ -2658,7 +2658,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div class="cc-onair-panel"><h3>実況銘柄（音声通知した／注目中の銘柄）</h3><div id="cockpit-onair-cards"><div class="cc-onair-empty">実況銘柄はまだありません（音声通知・注目銘柄はここに表示されます）</div></div></div>
  <div id="ms2-common-status" class="ms2-live-card watch" style="margin-top:10px"><div class="top"><span class="signal">COMMON ENGINE</span><h3>全対象銘柄・共通判定基盤</h3><b class="score">確認中</b></div><div class="ms2-metrics"><span>判定<b>TREND LONG / TREND SHORT / REBOUND / RANGE / NO TRADE</b></span><span>自動発注<b>OFF（既定）</b></span><span>10本板<b>未確認</b></span><span>口座ゲート<b>未確認・売買禁止</b></span></div><small>未取得項目は推測せず未確認。口座数値は公開JSONへ出力しません。</small></div>
  <div id="ms2-live-cards" class="ms2-live-grid"><div class="focus-empty"><b>未接続</b><span>Windows用100銘柄コレクターを起動してください</span></div></div>
- <h3>夜間PTS期待TOP5</h3>
+ <div class="pts-section-head"><h3>夜間PTS期待TOP5</h3><button class="voice-toggle" data-voice-toggle type="button">音声 OFF</button></div>
  <div id="ms2-pts-cards" class="ms2-live-grid"><div class="focus-empty"><span>JNXデータ待ち</span></div></div>
  <h3>IR急騰PTS TOP5</h3>
  <div id="ms2-ir-pts-meta" class="sub">TDnet公式開示とJNXを照合中...</div>
@@ -2750,14 +2750,55 @@ document.addEventListener("DOMContentLoaded",()=>{
     return window.renderScalpCard({name:x.name,ticker:x.ticker,price:x.reference_price_1525??x.price,vwap:x.vwap,or_low:x.or_low,or_high:x.or_high,ema9:fs.ema9,ema20:fs.ema20,flow_bias:x.flow_bias,foot},sv,"日足");
    }).join(""):`<div class="focus-empty"><span>${d.hold_finalized?"15:25確定候補なし・持ち越し禁止":"15:25確定待ち、または条件未達"}</span></div>`;
    const hs=d.hold_stats||{},stat=v=>v==null?"—":`${Number(v).toFixed(1)}%`;
-   if(holdStats)holdStats.innerHTML=`<article class="ms2-live-card watch"><div class="top"><span class="signal">翌日終値基準</span><h3>持ち越し成績</h3><b class="score">${hs.samples||0}件</b></div><div class="ms2-metrics"><span>累積勝率<b>${stat(hs.win_rate)}</b></span><span>平均損益<b>${stat(hs.avg_return_pct)}</b></span><span>LONG勝率<b>${stat(hs.long_win_rate)}（${hs.long_samples||0}件）</b></span><span>SHORT勝率<b>${stat(hs.short_win_rate)}（${hs.short_samples||0}件）</b></span></div><small>勝敗＝15:30終値から翌取引日15:30終値まで。場中はMFE・MAEも別記録。</small></article>`;
+   if(holdStats)holdStats.innerHTML=window.renderCockpitCard({symbol:"STATS",company:"持ち越し成績",direction:"wait",directionLabel:"STATS",freshness:"fresh",freshnessLabel:"翌日終値基準",metrics:[{label:"サンプル",value:(hs.samples||0)+"件"},{label:"累積勝率",value:stat(hs.win_rate)},{label:"平均損益",value:stat(hs.avg_return_pct)},{label:"LONG勝率",value:stat(hs.long_win_rate)+"（"+(hs.long_samples||0)+"件）"},{label:"SHORT勝率",value:stat(hs.short_win_rate)+"（"+(hs.short_samples||0)+"件）"}],foot:"勝敗＝15:30終値から翌取引日15:30終値まで。場中はMFE・MAEも別記録。"});
    const recent=Array.isArray(hs.recent)?hs.recent:[];
-   if(holdHistory)holdHistory.innerHTML=recent.length?recent.slice(0,5).map(x=>`<article class="ms2-live-card ${x.result==="勝ち"?"buy":x.result==="負け"?"sell":"watch"}"><div class="top"><span class="signal">${esc(x.result)}</span><h3>${esc(x.name)}（${esc(x.ticker)}）</h3><b class="score ${Number(x.return_close_pct)>=0?"up":"down"}">${Number(x.return_close_pct)>=0?"+":""}${esc(x.return_close_pct)}%</b></div><small>${esc(x.decision_date)} ${esc(x.side)}／翌日 ${esc(x.evaluation_date)}／MFE ${esc(x.mfe_pct)}%・MAE ${esc(x.mae_pct)}%</small></article>`).join(""):"";
+   if(holdHistory)holdHistory.innerHTML=recent.length?recent.slice(0,5).map(x=>window.renderCockpitCard({
+    symbol:String(x.ticker||"").replace(".T",""),
+    company:x.name,
+    direction:x.result==="勝ち"?"long":x.result==="負け"?"short":"wait",
+    directionLabel:x.result||"検証",
+    changePct:x.return_close_pct,
+    freshness:"fresh",
+    freshnessLabel:String(x.evaluation_date||"検証済み"),
+    metrics:[{label:"SIDE",value:x.side},{label:"MFE",value:x.mfe_pct==null?null:x.mfe_pct+"%"},{label:"MAE",value:x.mae_pct==null?null:x.mae_pct+"%"}],
+    foot:String(x.decision_date||"")+" → "+String(x.evaluation_date||"")
+   })).join(""):"";
    const pts=Array.isArray(d.pts_top5)?d.pts_top5:[];
-   if(ptsCards)ptsCards.innerHTML=pts.length?pts.slice(0,5).map((x,i)=>`<article class="ms2-live-card ${Number(x.bias_score)>=0?"buy":"sell"}">${cardTop(i+1,stale?"無効":esc(x.stance),esc(x.name),x.expectation_score)}<div class="live-price">${yen(x.price)}${changeBadge(x.gap_pct)}</div><div class="ms2-metrics"><span>売買代金<b>${(Number(x.turnover||0)/1000000).toFixed(1)}百万円</b></span><span>スプレッド<b>${esc(x.spread_pct)}%</b></span><span>UNDER<b>${esc(x.under_ratio)}%</b></span></div></article>`).join(""):`<div class="focus-empty"><span>流動性条件を満たすPTS候補なし</span></div>`;
+   if(ptsCards)ptsCards.innerHTML=pts.length?pts.slice(0,5).map((x,i)=>window.renderCockpitCard({
+    symbol:String(x.tse_ticker||x.ticker||"").replace(".T","").replace(".JNX",""),
+    company:x.name,
+    direction:Number(x.bias_score)>=0?"long":"short",
+    directionLabel:stale?"無効":String(x.stance||"PTS"),
+    price:x.price,changePct:x.gap_pct,
+    freshness:stale?"stale":"fresh",freshnessLabel:stale?"データ停止":"PTS LIVE",
+    failClosed:stale?"鮮度確認不可":false,
+    metrics:[
+      {label:"期待値",value:x.expectation_score},
+      {label:"売買代金",value:(Number(x.turnover||0)/1000000).toFixed(1)+"百万円"},
+      {label:"スプレッド",value:x.spread_pct==null?null:x.spread_pct+"%"},
+      {label:"UNDER",value:x.under_ratio==null?null:x.under_ratio+"%"}
+    ],
+    foot:"夜間PTS / JNX"
+   })).join(""):`<div class="focus-empty"><span>流動性条件を満たすPTS候補なし</span></div>`;
    const ir=Array.isArray(d.ir_pts_top5)?d.ir_pts_top5:[];
    if(irMeta)irMeta.textContent=d.tdnet_status||"TDnet確認待ち";
-   if(irCards)irCards.innerHTML=ir.length?ir.slice(0,5).map((x,i)=>{const official=String(x.official_url||"").startsWith("https://www.release.tdnet.info/")?`<a href="${esc(x.official_url)}" target="_blank" rel="noopener">TDnet原文</a>`:"TDnetリンク確認待ち";return `<article class="ms2-live-card buy">${cardTop(i+1,stale?"無効":esc(x.material_label),`${esc(x.name)}（${esc(x.code)}）`,x.total_score)}<div class="live-price">${yen(x.pts_price)}${changeBadge(x.gap_pct)}</div><div class="ms2-metrics"><span>開示<b>${esc(x.disclosure_time)}</b></span><span>売買代金<b>${(Number(x.turnover||0)/1000000).toFixed(1)}百万円</b></span><span>判定<b>${esc(x.judgement)}</b></span></div><small>${esc(x.title)}／${official}</small></article>`}).join(""):`<div class="focus-empty"><span>公式IR・PTS反応・流動性の三条件を満たす候補なし</span></div>`;
+   if(irCards)irCards.innerHTML=ir.length?ir.slice(0,5).map((x,i)=>window.renderCockpitCard({
+    symbol:String(x.code||x.ticker||"").replace(".T","").replace(".JNX",""),
+    company:x.name,
+    direction:"long",
+    directionLabel:stale?"無効":String(x.material_label||"IR+PTS"),
+    price:x.pts_price,changePct:x.gap_pct,
+    freshness:stale?"stale":"fresh",freshnessLabel:stale?"データ停止":"IR + PTS",
+    failClosed:stale?"鮮度確認不可":false,
+    metrics:[
+      {label:"総合点",value:x.total_score},
+      {label:"開示",value:x.disclosure_time},
+      {label:"売買代金",value:(Number(x.turnover||0)/1000000).toFixed(1)+"百万円"},
+      {label:"判定",value:x.judgement}
+    ],
+    catalyst:x.title,
+    foot:String(x.official_url||"").startsWith("https://www.release.tdnet.info/")?"TDnet公式IR確認済み":"TDnetリンク確認待ち"
+   })).join(""):`<div class="focus-empty"><span>公式IR・PTS反応・流動性の三条件を満たす候補なし</span></div>`;
    document.dispatchEvent(new CustomEvent("ms2RssUpdate",{detail:{...d,stale}}));
   }catch(e){health.className="ms2-health waiting";health.textContent="ローカル収集待ち";meta.textContent="Windowsの100銘柄コレクターを起動してください。";document.dispatchEvent(new CustomEvent("ms2RssUpdate",{detail:{stale:true}}));}
  }
