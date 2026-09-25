@@ -44,6 +44,29 @@ function fmtScalar(value) {
   return esc(value);
 }
 
+function sparklineHtml(source, label = "直近15分・1分足終値") {
+  const raw = Array.isArray(source) ? source.slice(-15) : [];
+  const vals = raw.map((x) => {
+    if (isFiniteNumber(x)) return Number(x);
+    if (x && isFiniteNumber(x.c)) return Number(x.c);
+    if (x && isFiniteNumber(x.Close)) return Number(x.Close);
+    return null;
+  }).filter((x) => x != null);
+  if (vals.length < 3) {
+    return '<div class="cc-sparkline cc-sparkline--empty"><span>'+esc(label)+'</span><b>値動き履歴不足</b></div>';
+  }
+  const lo = Math.min(...vals), hi = Math.max(...vals), span = Math.max(hi - lo, 0.000001);
+  const pts = vals.map((v, i) => {
+    const x = vals.length === 1 ? 50 : (i / (vals.length - 1)) * 100;
+    const y = 44 - ((v - lo) / span) * 36;
+    return x.toFixed(2)+","+y.toFixed(2);
+  }).join(" ");
+  const up = vals[vals.length - 1] >= vals[0];
+  return '<div class="cc-sparkline"><div class="cc-sparkline-head"><span>'+esc(label)+'</span><b>'+fmtYen(vals[vals.length-1])+'</b></div>'+
+    '<svg viewBox="0 0 100 48" preserveAspectRatio="none" aria-label="'+esc(label)+'">'+
+    '<polyline class="'+(up?'cc-sparkline-line--up':'cc-sparkline-line--down')+'" points="'+pts+'"/></svg></div>';
+}
+
 /**
  * Resolve age/staleness from either an explicit `freshness` override or
  * ageSeconds vs. staleThresholdSeconds. Returns {state, label}, state one
@@ -105,6 +128,9 @@ export function renderCockpitCard(model) {
 
   const cardClasses = ["cc-card", `cc-card--${direction}`];
   if (failClosed) cardClasses.push("cc-card--fail-closed");
+  if (!failClosed && model.opportunityState === "WATCH") cardClasses.push("cc-opportunity--watch");
+  if (!failClosed && model.opportunityState === "HOT") cardClasses.push("cc-opportunity--hot");
+  if (!failClosed && model.attentionPulse) cardClasses.push("cc-opportunity--pulse");
 
   const badgeLabel = failClosed ? "FAIL-CLOSED" : label;
 
@@ -116,6 +142,8 @@ export function renderCockpitCard(model) {
         .map((m) => `<span>${esc(m.label)}<b>${esc(m.value)}</b></span>`)
         .join("")}</div>`
     : "";
+
+  const sparklineBlock = model.sparkline ? sparklineHtml(model.sparkline, model.sparklineLabel) : "";
 
   const hasOrder = isFiniteNumber(model.entry) || isFiniteNumber(model.stop) || isFiniteNumber(model.target);
   const orderHtml = hasOrder
@@ -137,10 +165,11 @@ export function renderCockpitCard(model) {
   const footHtml = model.foot ? `<div class="cc-foot">${esc(model.foot)}</div>` : "";
 
   return (
-    `<article class="${cardClasses.join(" ")}">` +
+    `<article class="${cardClasses.join(" ")}" data-symbol="${esc(model.symbol)}">` +
     `<div class="cc-head"><div class="cc-identity"><span class="cc-company">${fmtScalar(model.company ?? model.symbol)}</span><span class="cc-symbol">TSE:${esc(model.symbol)}</span></div><span class="cc-badge">${esc(badgeLabel)}</span></div>` +
     `<div class="cc-price-row"><div class="cc-price">${fmtYen(model.price)}</div><div class="cc-change ${chgCls}">${fmtPct(model.changePct)}</div></div>` +
     `<div class="cc-freshness cc-freshness--${fresh.state}"><i class="cc-freshness-dot"></i>${esc(fresh.label ?? freshnessAgeText(model))}</div>` +
+    sparklineBlock +
     conflictHtml +
     failClosedHtml +
     orderHtml +
