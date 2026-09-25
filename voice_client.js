@@ -84,18 +84,14 @@
         if(!voiceOnline&&!(await refreshHealth())){queue=[];break;}
         const item=queue.shift();
         try{
-          const u=BRIDGE+"/speak?level="+encodeURIComponent(item.level)+"&text="+encodeURIComponent(item.text)+"&t="+Date.now();
+          // Playback is owned by the local Voice Bridge, not the browser.
+          // That keeps UI/Watcher/Collector/Heartbeat on one mutex/queue,
+          // avoids browser autoplay policy, and prevents overlapping voices.
+          const u=BRIDGE+"/announce?level="+encodeURIComponent(item.level)+"&text="+encodeURIComponent(item.text)+"&t="+Date.now();
           const r=await fetch(u,{cache:"no-store"});
           if(!r.ok)throw new Error("voice bridge "+r.status);
-          const blob=await r.blob();
-          const url=URL.createObjectURL(blob);
-          try{
-            const audio=new Audio(url);
-            await new Promise((resolve,reject)=>{
-              audio.onended=resolve;audio.onerror=reject;
-              const p=audio.play();if(p&&p.catch)p.catch(reject);
-            });
-          }finally{URL.revokeObjectURL(url);}
+          const j=await r.json();
+          if(!j||j.ok!==true)throw new Error("voice bridge rejected request");
         }catch(_e){
           voiceOnline=false;updateUi();queue=[];break;
         }
