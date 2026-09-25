@@ -45,6 +45,8 @@ jobs:
       - run: python3 -m unittest discover -s tests -p "test_v9_ui_voice_contract.py"
       - run: node --check voice_client.js
       - run: node --check card_table_adapter.js
+      - run: node --check opportunity_radar.js
+      - run: node --check trade_control.js
 
   powershell-ast:
     runs-on: windows-latest
