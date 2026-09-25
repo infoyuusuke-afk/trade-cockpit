@@ -71,25 +71,56 @@
     return card;
   }
 
-  function convertTable(table){
-    if(table.dataset.cardConverted==="1"||table.matches("[data-keep-table]"))return;
+  const grids=new WeakMap(),observers=new WeakMap(),timers=new WeakMap();
+
+  function renderTable(table){
     const headers=headerCells(table),rows=dataRows(table).filter(r=>[...r.cells].some(c=>clean(c.textContent)||c.children.length));
-    if(!rows.length)return;
-    const grid=document.createElement("div");
-    grid.className="cc-table-grid";
-    grid.dataset.sourceTable="1";
-    rows.forEach((row,i)=>{const c=makeCard(row,headers,i);if(c)grid.appendChild(c);});
-    if(!grid.children.length)return;
-    table.dataset.cardConverted="1";
-    table.hidden=true;
-    table.insertAdjacentElement("beforebegin",grid);
+    let grid=grids.get(table);
+    if(!grid){
+      grid=document.createElement("div");
+      grid.className="cc-table-grid";
+      grid.dataset.sourceTable="1";
+      grids.set(table,grid);
+      table.insertAdjacentElement("beforebegin",grid);
+    }
+    grid.replaceChildren();
+    rows.forEach((row,i)=>{const card=makeCard(row,headers,i);if(card)grid.appendChild(card);});
+    grid.hidden=!grid.children.length;
+    table.hidden=!!grid.children.length;
+    table.dataset.cardConverted=grid.children.length?"1":"0";
+  }
+
+  function scheduleRender(table){
+    clearTimeout(timers.get(table));
+    const id=setTimeout(()=>renderTable(table),40);
+    timers.set(table,id);
+  }
+
+  function convertTable(table){
+    if(table.matches("[data-keep-table]"))return;
+    if(!observers.has(table)){
+      const mo=new MutationObserver(()=>scheduleRender(table));
+      mo.observe(table,{subtree:true,childList:true,characterData:true});
+      observers.set(table,mo);
+    }
+    renderTable(table);
   }
 
   function convertAll(){
     document.querySelectorAll("main table, .tab-pane table, section table").forEach(convertTable);
     document.documentElement.classList.add("cc-all-cards-ready");
   }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(convertAll,0));
-  else setTimeout(convertAll,0);
+  function boot(){
+    convertAll();
+    const root=document.querySelector("main")||document.body;
+    if(root){
+      const pageObserver=new MutationObserver(mutations=>{
+        if(mutations.some(m=>[...m.addedNodes].some(n=>n.nodeType===1&&(n.matches?.("table")||n.querySelector?.("table")))))convertAll();
+      });
+      pageObserver.observe(root,{subtree:true,childList:true});
+    }
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(boot,0));
+  else setTimeout(boot,0);
   window.cockpitConvertTablesToCards=convertAll;
 })();
