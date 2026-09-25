@@ -124,14 +124,25 @@ document.addEventListener("DOMContentLoaded",()=>{
  // OVERNIGHT 5・EVENT 5はSCALP 5と違いライブMS2データの一部項目（ENTRY/STOP/T1・OR5・出来高加速等）を
  // 持たないため、無い項目は推測で埋めず「—」のまま表示する（既存のyen()/num()の未確認時「—」表示を踏襲）。
  window.renderScalpCard=(x,sv,tf)=>{
-   const chg=x.change_pct==null?null:num(x.change_pct),chgCls=chg==null?"flat":(chg>0?"up":chg<0?"down":"flat");
    const code=String(x.code||x.ticker||"").replace(".T","");
-   const or5=(num(x.or5_low)>0&&num(x.or5_high)>0)?yen(x.or5_low)+" – "+yen(x.or5_high):"—";
-   const or15=(num(x.or_low)>0&&num(x.or_high)>0)?yen(x.or_low)+" – "+yen(x.or_high):"—";
-   const ema=(num(x.ema9)!=null&&num(x.ema20)!=null)?yen(x.ema9)+" / "+yen(x.ema20):"—";
-   const flow=x.flow_bias==null?"—":esc(x.flow_bias)+"%";
-   const vol=x.volume_burst==null?"—":esc(x.volume_burst)+"x";
-   return '<article class="scalp-card '+sv.cls+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(x.name)+'</strong><small>TSE:'+esc(code)+' · '+esc(tf||"1m")+'</small></div><span class="scalp-signal">'+esc(sv.label)+'</span></div><div class="scalp-price-row"><div class="scalp-price">'+yen(x.price)+'</div><div class="scalp-change '+chgCls+'">'+pct(x.change_pct)+'</div></div><div class="scalp-spark">'+sparkline(x.bars_1m)+'</div><div class="scalp-order"><span class="entry">ENTRY<b>'+yen(x.entry_price)+'</b></span><span class="stop">STOP<b>'+yen(x.stop_price)+'</b></span><span class="target">T1<b>'+yen(x.target1)+'</b></span></div><div class="scalp-metrics"><span>VWAP<b>'+yen(x.vwap)+'</b></span><span>OR5<b>'+or5+'</b></span><span>OR15<b>'+or15+'</b></span><span>EMA 9 / 20<b>'+ema+'</b></span><span>FLOW<b>'+flow+'</b></span><span>VOLUME<b>'+vol+'</b></span></div><div class="scalp-foot">'+esc(x.foot||"")+'</div></article>';
+   const dir=sv.cls==="long"?"long":sv.cls==="short"?"short":sv.cls==="block"?"block":"wait";
+   const fmt=v=>v==null||!Number.isFinite(Number(v))?null:Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1});
+   const range=(lo,hi)=>num(lo)>0&&num(hi)>0?fmt(lo)+" – "+fmt(hi):null;
+   return window.renderCockpitCard({
+     symbol:code,company:x.name,direction:dir,directionLabel:sv.label,
+     price:x.price,changePct:x.change_pct,
+     entry:x.entry_price,stop:x.stop_price,target:x.target1,
+     metrics:[
+       {label:"時間軸",value:tf||"1m"},
+       {label:"VWAP",value:fmt(x.vwap)},
+       {label:"OR5",value:range(x.or5_low,x.or5_high)},
+       {label:"OR15",value:range(x.or_low,x.or_high)},
+       {label:"EMA 9/20",value:(num(x.ema9)!=null&&num(x.ema20)!=null)?fmt(x.ema9)+" / "+fmt(x.ema20):null},
+       {label:"FLOW",value:x.flow_bias==null?null:esc(x.flow_bias)+"%"},
+       {label:"VOLUME",value:x.volume_burst==null?null:esc(x.volume_burst)+"x"}
+     ],
+     foot:x.foot||""
+   });
  };
  document.addEventListener("ms2RssUpdate",e=>{
    const d=e.detail||{},all=Array.isArray(d.all_targets)?d.all_targets:[],stale=d.stale!==false;
@@ -194,7 +205,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <script type="module" src="card_system.js?v=p0b1-1"></script>
 <script src="voice_client.js?v=v9-1" defer></script>
 <script src="card_table_adapter.js?v=v9-1" defer></script>
-<style>.unified-mode{margin:8px 6px 0;padding:10px 14px;border:1px solid #272A30;border-radius:10px;background:#101114;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}.unified-mode .lamp{width:12px;height:12px;border-radius:50%;background:#63676e;box-shadow:0 0 0 5px #63676e18}.unified-mode.live{border-color:#1f4a37;background:#101114}.unified-mode.live .lamp{background:#35e2ae;box-shadow:0 0 10px #35e2ae66}.unified-mode.stale{border-color:#6b5426}.unified-mode strong{font-size:16px;color:#e7e9eb}.unified-mode span{color:#9aa0a6}.unified-mode b{color:#c7cacd;font-size:12px;font-weight:500}.unified-mode small{color:#63676e;display:block;margin-top:2px}.unified-mode-controls{display:flex;align-items:center;gap:8px}.market-status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#15171B;border:1px solid #272A30;color:#7a7f86;font-size:10.5px;white-space:nowrap}.market-status-pill .dot{width:6px;height:6px;border-radius:50%;background:#4a4e55;flex:none}.market-status-pill.open{color:#8fe3c0;border-color:#1f4a37}.market-status-pill.open .dot{background:#35e2ae;box-shadow:0 0 5px #35e2ae}.voice-toggle{width:30px;height:30px;padding:0;border-radius:50%;background:#15171B;border:1px solid #272A30;color:#c7cacd;font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center}@media(max-width:700px){.unified-mode{grid-template-columns:auto 1fr auto}.unified-mode>b{grid-column:3}.unified-mode .unified-mode-controls{grid-column:1/-1}}</style>
+<style>.unified-mode{margin:8px 6px 0;padding:10px 14px;border:1px solid #272A30;border-radius:10px;background:#101114;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}.unified-mode .lamp{width:12px;height:12px;border-radius:50%;background:#63676e;box-shadow:0 0 0 5px #63676e18}.unified-mode.live{border-color:#1f4a37;background:#101114}.unified-mode.live .lamp{background:#35e2ae;box-shadow:0 0 10px #35e2ae66}.unified-mode.stale{border-color:#6b5426}.unified-mode strong{font-size:16px;color:#e7e9eb}.unified-mode span{color:#9aa0a6}.unified-mode b{color:#c7cacd;font-size:12px;font-weight:500}.unified-mode small{color:#63676e;display:block;margin-top:2px}.unified-mode-controls{display:flex;align-items:center;gap:8px}.market-status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#15171B;border:1px solid #272A30;color:#7a7f86;font-size:10.5px;white-space:nowrap}.market-status-pill .dot{width:6px;height:6px;border-radius:50%;background:#4a4e55;flex:none}.market-status-pill.open{color:#8fe3c0;border-color:#1f4a37}.market-status-pill.open .dot{background:#35e2ae;box-shadow:0 0 5px #35e2ae}.voice-toggle{min-width:74px;height:30px;padding:0 10px;border-radius:999px;background:#15171B;border:1px solid #272A30;color:#c7cacd;font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center}@media(max-width:700px){.unified-mode{grid-template-columns:auto 1fr auto}.unified-mode>b{grid-column:3}.unified-mode .unified-mode-controls{grid-column:1/-1}}.voice-toggle.voice-on{color:#1fc79a;border-color:#164536;background:#0d2b23}.voice-toggle:disabled{opacity:.55;cursor:not-allowed}.pts-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}.pts-section-head h3{margin:0}</style>
 <header><div><span class="tag">寄り付き前8:00版</span><div class="sub">2026-09-25 10:41:50 JST／統一取引日 2026-09-25</div></div></header>
 <div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><main>
 
@@ -327,7 +338,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div class="cc-onair-panel"><h3>実況銘柄（音声通知した／注目中の銘柄）</h3><div id="cockpit-onair-cards"><div class="cc-onair-empty">実況銘柄はまだありません（音声通知・注目銘柄はここに表示されます）</div></div></div>
  <div id="ms2-common-status" class="ms2-live-card watch" style="margin-top:10px"><div class="top"><span class="signal">COMMON ENGINE</span><h3>全対象銘柄・共通判定基盤</h3><b class="score">確認中</b></div><div class="ms2-metrics"><span>判定<b>TREND LONG / TREND SHORT / REBOUND / RANGE / NO TRADE</b></span><span>自動発注<b>OFF（既定）</b></span><span>10本板<b>未確認</b></span><span>口座ゲート<b>未確認・売買禁止</b></span></div><small>未取得項目は推測せず未確認。口座数値は公開JSONへ出力しません。</small></div>
  <div id="ms2-live-cards" class="ms2-live-grid"><div class="focus-empty"><b>未接続</b><span>Windows用100銘柄コレクターを起動してください</span></div></div>
- <h3>夜間PTS期待TOP5</h3>
+ <div class="pts-section-head"><h3>夜間PTS期待TOP5</h3><button class="voice-toggle" data-voice-toggle type="button">音声 OFF</button></div>
  <div id="ms2-pts-cards" class="ms2-live-grid"><div class="focus-empty"><span>JNXデータ待ち</span></div></div>
  <h3>IR急騰PTS TOP5</h3>
  <div id="ms2-ir-pts-meta" class="sub">TDnet公式開示とJNXを照合中...</div>
