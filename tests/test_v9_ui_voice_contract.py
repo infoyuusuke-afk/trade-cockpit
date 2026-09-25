@@ -41,6 +41,25 @@ class V9UiVoiceContract(unittest.TestCase):
         self.assertNotIn("New-Object IO.StreamReader(", text)
         self.assertNotIn("New-Object System.Threading.Mutex(", text)
 
+    def test_voice_control_is_global_and_covers_pts(self):
+        bridge = read("downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1")
+        client = read("voice_client.js")
+        index = read("index.html")
+        generator = read("scripts/update.py")
+        weekly = read("scripts/weekly_tabs.py")
+        for needle in ('"/control"', "V9_VOICE_STATE.json", "VoiceEnabled", "VOICE_OFF"):
+            self.assertIn(needle, bridge)
+        self.assertIn("/control?enabled=", client)
+        self.assertIn('return "PTS"', client)
+        self.assertNotIn("isTseVoiceWindow", client)
+        for text in (index, generator):
+            self.assertIn("pts-section-head", text)
+            self.assertIn("夜間PTS期待TOP5", text)
+            self.assertIn("data-voice-toggle", text)
+            self.assertIn("window.renderCockpitCard({", text)
+        self.assertIn("window.renderCockpitCard({", weekly)
+        self.assertNotIn('<article class="scalp-card ', weekly)
+
     def test_voice_bridge_is_single_sbv2_backend(self):
         text = read("downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1")
         self.assertIn("Style-Bert-VITS2", text)
