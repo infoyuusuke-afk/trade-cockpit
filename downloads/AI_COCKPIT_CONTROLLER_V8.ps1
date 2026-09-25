@@ -134,11 +134,21 @@ function Resolve-RuntimeDir {
     $hits = foreach ($r in $roots) {
         Get-ChildItem -LiteralPath $r -Recurse -File -Filter "MS2_RSS_100_Collector.ps1" -ErrorAction SilentlyContinue
     }
-    $preferred = @($hits | Where-Object { $_.FullName -like "*MarketSpeed II RSS\files*" } | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
-    if ($preferred.Count -gt 0) { return $preferred[0].Directory.FullName }
-    $any = @($hits | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
-    if ($any.Count -gt 0) { return $any[0].Directory.FullName }
-    throw "MS2 runtime folder not found under Desktop (looked for MS2_RSS_100_Collector.ps1)."
+    # Do not use "latest matching file": runtime backups also contain the
+    # Collector and can otherwise win by timestamp. Accept only a Collector
+    # whose immediate parent is exactly "files" and whose parent folder is
+    # exactly "MarketSpeed II RSS".
+    $canonical = @($hits | Where-Object {
+        $_.Directory.Name -eq "files" -and
+        $null -ne $_.Directory.Parent -and
+        $_.Directory.Parent.Name -eq "MarketSpeed II RSS"
+    } | Sort-Object FullName -Unique)
+    if ($canonical.Count -eq 1) { return $canonical[0].Directory.FullName }
+    if ($canonical.Count -gt 1) {
+        $paths = ($canonical | ForEach-Object { $_.Directory.FullName } | Select-Object -Unique) -join " | "
+        throw "Multiple canonical MS2 runtime folders found. Refusing to guess: $paths"
+    }
+    throw "Canonical MS2 runtime folder not found under Desktop (expected ...\MarketSpeed II RSS\files)."
 }
 
 function Resolve-RepoRoot([string]$Explicit) {
