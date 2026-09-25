@@ -117,6 +117,7 @@ function Send-Response($stream,[string]$status,[string]$contentType,[byte[]]$bod
       "Access-Control-Allow-Origin: *"+$nl+
       "Access-Control-Allow-Methods: GET, OPTIONS"+$nl+
       "Access-Control-Allow-Headers: *"+$nl+
+      "Access-Control-Allow-Private-Network: true"+$nl+
       "Connection: close"+$nl+$nl
     $hb=[Text.Encoding]::ASCII.GetBytes($headers)
     $stream.Write($hb,0,$hb.Length)
