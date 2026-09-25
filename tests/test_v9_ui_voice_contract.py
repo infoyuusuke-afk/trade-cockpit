@@ -113,6 +113,19 @@ class V9UiVoiceContract(unittest.TestCase):
                 bad = [name for name in names if name.upper() in reserved]
                 self.assertEqual([], bad, f"{rel} shadows PowerShell automatic variable(s): {bad}")
 
+    def test_switch_only_kills_known_v8_port_owners(self):
+        text = read("downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1")
+        for needle in (
+            '28580 { "MS2_RSS_100_Collector.ps1" }',
+            '28581 { "AI_COCKPIT_GATEWAY_V8.ps1" }',
+            '28582 { "Kioxia_RSS_Live_Watcher.ps1" }',
+            'Stop-RecognizedV8PortOwner',
+            'unrecognized PID',
+        ):
+            self.assertIn(needle, text)
+        self.assertNotIn("Stop-Process -Name powershell", text.lower())
+        self.assertNotIn("taskkill", text.lower())
+
     def test_v8_to_v9_switch_is_narrow_and_one_click(self):
         text = read("downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1")
         self.assertIn("AI_COCKPIT_CONTROLLER_V8.ps1", text)
