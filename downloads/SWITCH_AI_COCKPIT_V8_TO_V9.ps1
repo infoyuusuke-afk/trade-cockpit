@@ -3,7 +3,8 @@ param(
     [string]$RepoRoot = "C:\Users\yusuk\code\trade-cockpit",
     [string]$Branch = "fix/v9-ui-voice-convergence",
     [Parameter(Mandatory=$true)][string]$ExpectedSha,
-    [string]$Root = "C:\AI_Cockpit_OneClick_Starter"
+    [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
+    [switch]$SelfTest
 )
 
 $ErrorActionPreference = "Stop"
@@ -64,6 +65,19 @@ function Wait-PortsClear([int[]]$Ports,[int]$Seconds=15) {
 
 function Read-JsonUtf8([string]$Path) {
     return ([IO.File]::ReadAllText($Path,[Text.Encoding]::UTF8) | ConvertFrom-Json)
+}
+
+if ($SelfTest) {
+    # Runtime-binding smoke test. This intentionally calls the helpers that
+    # previously failed only at execution time because PowerShell automatic
+    # variables are case-insensitive ($args/$PID).
+    $null = Invoke-GitFatal $RepoRoot @("status","--porcelain") "self-test git status failed"
+    $null = Get-CommandLine 999999
+    $null = Test-PidIdentity 999999 "definitely-not-a-real-script.ps1"
+    Stop-ExactProcess 0 "definitely-not-a-real-script.ps1" "self-test"
+    $null = Get-PortOwner 65530
+    Write-Host "SWITCH SELFTEST PASS" -ForegroundColor Green
+    [Environment]::Exit(0)
 }
 
 Write-Host "==================================================" -ForegroundColor DarkCyan
