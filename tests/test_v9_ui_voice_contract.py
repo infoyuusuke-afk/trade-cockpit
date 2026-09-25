@@ -45,7 +45,8 @@ class V9UiVoiceContract(unittest.TestCase):
         text = read("downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1")
         self.assertIn("Style-Bert-VITS2", text)
         self.assertIn('ModelName = "amitaro"', text)
-        self.assertIn('SpeakerName = "あみたろ"', text)
+        self.assertIn('SpeakerName = ""', text)
+        self.assertIn("12354,12415,12383,12429", text)
         self.assertIn("/voice?", text)
         self.assertNotIn("SAPI.SpVoice", text)
 
