@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$RepoRoot = "",
     [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
     [string]$ExpectedBranch = ""
@@ -46,9 +46,13 @@ $sw = [Diagnostics.Stopwatch]::StartNew()
 # Watcher=28582. Watcher's own local JSON bridge (Kioxia_RSS_Live_Watcher.ps1)
 # used to also hardcode 28581, silently colliding with the Gateway - moved
 # to 28582 in the same change that added this preflight check.
+# VoiceBridge=28583 added 2026-09-25 (P0 Voice統合) - its own process/port
+# so voice synthesis against SBV2 never blocks the Gateway's live updates.
 $PORT_COLLECTOR = 28580
 $PORT_GATEWAY = 28581
 $PORT_WATCHER = 28582
+$PORT_VOICE_BRIDGE = 28583
+$SBV2_STATUS_URL = "http://127.0.0.1:5000/status"
 
 # ---------------------------------------------------------------- utility
 
@@ -98,6 +102,18 @@ function Wait-PortBounded([int]$Port, [int]$MaxSeconds, [string]$Label) {
     return $false
 }
 
+# Never blocks longer than ~2s - startup and the supervision loop must
+# never stall waiting on SBV2. A down/slow SBV2 shows as sbv2_status=DOWN
+# via /health; it never causes a fallback to browser speechSynthesis.
+function Test-Sbv2Ready {
+    try {
+        $r = Invoke-WebRequest -UseBasicParsing -Uri $SBV2_STATUS_URL -TimeoutSec 2
+        return ($r.StatusCode -eq 200)
+    } catch {
+        return $false
+    }
+}
+
 function Get-ListeningOwnerPid([int]$Port) {
     try {
         $conn = Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -117,7 +133,8 @@ function Test-ForeignSession([hashtable]$OwnPids) {
     foreach ($entry in @(
         @{ port = $PORT_COLLECTOR; label = "Collector" },
         @{ port = $PORT_GATEWAY; label = "Gateway" },
-        @{ port = $PORT_WATCHER; label = "Watcher" }
+        @{ port = $PORT_WATCHER; label = "Watcher" },
+        @{ port = $PORT_VOICE_BRIDGE; label = "VoiceBridge" }
     )) {
         if (-not (Test-Port $entry.port 300)) { continue }
         $owner = Get-ListeningOwnerPid $entry.port
@@ -210,7 +227,7 @@ function Save-State($state) {
 function Stop-OwnedFromPreviousState {
     $prev = Read-State
     if ($null -eq $prev) { return }
-    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid")) {
+    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid")) {
         $val = $prev.PSObject.Properties[$field]
         if ($null -eq $val -or [int]$val.Value -le 0) { continue }
         $procId = [int]$val.Value
@@ -271,6 +288,9 @@ $state = [ordered]@{
     collector_pid              = 0
     collector_status           = "NOT_STARTED"
     gateway_pid                = 0
+    sbv2_status                = "UNKNOWN"
+    voice_bridge_pid           = 0
+    voice_bridge_status        = "NOT_STARTED"
 }
 
 try {
@@ -339,12 +359,14 @@ try {
     $Heartbeat = Join-Path $RuntimeDir "Kioxia_Safety_Heartbeat.ps1"
     $Collector = Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"
     $Gateway = Join-Path $PSScriptRoot "AI_COCKPIT_GATEWAY_V8.ps1"
+    $VoiceBridge = Join-Path $PSScriptRoot "AI_COCKPIT_VOICE_BRIDGE_V8.ps1"
+    $StartSbv2Script = Join-Path $PSScriptRoot "START_SBV2_API.ps1"
     $WorkbookPath = Join-Path $RuntimeDir "Kioxia_MS2_RSS_Live_Signals.xlsx"
     $WorkbookName = [IO.Path]::GetFileName($WorkbookPath)
     $state.workbook_name = $WorkbookName
     $state.workbook_path = $WorkbookPath
 
-    foreach ($p in @($Watcher, $Heartbeat, $Collector, $Gateway, $WorkbookPath)) {
+    foreach ($p in @($Watcher, $Heartbeat, $Collector, $Gateway, $VoiceBridge, $WorkbookPath)) {
         if (-not (Test-Path -LiteralPath $p)) { throw "Required file not found: $p" }
     }
 
@@ -354,10 +376,11 @@ try {
 
     Write-Status "Checking for foreign sessions on 28580/28581/28582..."
     $ownedNow = @{
-        watcher   = 0
-        heartbeat = 0
-        collector = 0
-        gateway   = 0
+        watcher      = 0
+        heartbeat    = 0
+        collector    = 0
+        gateway      = 0
+        voice_bridge = 0
     }
     $foreignHits = Test-ForeignSession $ownedNow
     if ($foreignHits.Count -gt 0) {
@@ -482,6 +505,51 @@ try {
     }
     Save-State $state
 
+    # 2026-09-25 P0 Voice統合: SBV2 check is non-blocking (2s timeout) and
+    # never delays Controller/UI startup. If SBV2 isn't ready, its own
+    # START_SBV2_API.ps1 is launched as a detached background process -
+    # that script can take up to ~120s to finish loading the model, but the
+    # Controller does not wait on it; sbv2_status stays STARTING/DOWN via
+    # /health until a later supervision-loop poll finds it READY.
+    Write-Status "Checking SBV2 voice engine status (non-blocking)..."
+    if (Test-Sbv2Ready) {
+        $state.sbv2_status = "READY"
+        Write-Status "  SBV2: READY" Green
+    } else {
+        $state.sbv2_status = "STARTING"
+        if (Test-Path -LiteralPath $StartSbv2Script) {
+            Write-Status "  SBV2: not ready - launching START_SBV2_API.ps1 in background (not waiting on it)..." Yellow
+            Start-Process -FilePath "powershell.exe" -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $StartSbv2Script + '"') `
+                -WorkingDirectory $PSScriptRoot -WindowStyle Hidden `
+                -RedirectStandardOutput (Join-Path $LogDir "sbv2_launch_stdout.log") `
+                -RedirectStandardError (Join-Path $LogDir "sbv2_launch_stderr.log") | Out-Null
+        } else {
+            $state.sbv2_status = "DOWN"
+            Write-Status ("  SBV2: not ready and START_SBV2_API.ps1 not found at " + $StartSbv2Script + " - start it manually.") Yellow
+        }
+    }
+    Save-State $state
+
+    # Voice Bridge starts regardless of SBV2 readiness - it is only a thin
+    # HTTP front for /status and /speak; it checks SBV2 itself on each
+    # request and returns 503 (never a browser-speechSynthesis fallback)
+    # when SBV2 is unreachable. Runs as its own process/port so a slow
+    # voice synthesis call can never stall Gateway's 28581 live updates.
+    Write-Status "Starting Voice Bridge (own process/port 28583; never blocks Gateway)..."
+    $voiceBridgeProc = Start-Worker -Name "voicebridge" -Script $VoiceBridge -WorkDir $PSScriptRoot
+    $state.voice_bridge_pid = [int]$voiceBridgeProc.Id
+    $ownedNow.voice_bridge = $state.voice_bridge_pid
+    Save-State $state
+    if (Wait-PortBounded $PORT_VOICE_BRIDGE 15 "VoiceBridge") {
+        $state.voice_bridge_status = "LIVE"
+        Write-Status ("  Voice Bridge: LIVE / " + $PORT_VOICE_BRIDGE) Green
+    } else {
+        $state.voice_bridge_status = if ($voiceBridgeProc.HasExited) { "CRASHED" } else { "SLOW_NOT_YET_READY" }
+        $err = Tail-Log (Join-Path $LogDir "voicebridge_stderr.log")
+        Write-Status ("  Voice Bridge: " + $state.voice_bridge_status + ". " + $err) Yellow
+    }
+    Save-State $state
+
     Write-Status "Startup complete. Entering supervision loop (Ctrl+C to stop everything)." Green
     Write-Host ""
     Write-Host "This window supervises the running session. Closing the MS2 workbook" -ForegroundColor Cyan
@@ -497,6 +565,9 @@ try {
     $lastWatcherRestartAt = Get-Date "2000-01-01"
     $heartbeatRestartAttempts = 0
     $lastHeartbeatRestartAt = Get-Date "2000-01-01"
+    $voiceBridgeRestartAttempts = 0
+    $lastVoiceBridgeRestartAt = Get-Date "2000-01-01"
+    $lastSbv2Poll = Get-Date "2000-01-01"
     while ($true) {
         Start-Sleep -Seconds 2
 
@@ -516,7 +587,7 @@ try {
             }
             if (-not $stillOpen -and $excelMisses -ge 4) {
                 Write-Status "Workbook close detected - stopping managed processes..." Yellow
-                foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid")) {
+                foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid")) {
                     $val = [int]$state.$field
                     if ($val -gt 0) {
                         $p = Get-Process -Id $val -ErrorAction SilentlyContinue
@@ -624,6 +695,53 @@ try {
                 $gatewayProc = Start-Worker -Name "gateway_retry" -Script $Gateway -WorkDir $RepoRootResolved -ExtraArgs $gatewayArgs
                 $state.gateway_pid = [int]$gatewayProc.Id
                 Save-State $state
+            }
+        }
+
+        # 6) Is Voice Bridge still alive? Bounded restart, same pattern as
+        #    Watcher/Heartbeat/Collector. Its death does not affect
+        #    Collector/Watcher/Gateway - voice just goes silent (UI shows
+        #    VOICE OFFLINE via voice_bridge_status in /health), never a
+        #    fallback to the old browser speechSynthesis.
+        $vbp = if ($state.voice_bridge_pid -gt 0) { Get-Process -Id $state.voice_bridge_pid -ErrorAction SilentlyContinue } else { $null }
+        if ($null -eq $vbp) {
+            if ($state.voice_bridge_status -ne "DOWN") {
+                Write-Status "Voice Bridge is down - voice UI will show VOICE OFFLINE until it recovers." Yellow
+            }
+            $state.voice_bridge_status = "DOWN"
+            $secsSinceRestart = ((Get-Date) - $lastVoiceBridgeRestartAt).TotalSeconds
+            if ($voiceBridgeRestartAttempts -lt 5 -and $secsSinceRestart -gt 20) {
+                $voiceBridgeRestartAttempts++
+                $lastVoiceBridgeRestartAt = Get-Date
+                Write-Status ("Voice Bridge is down (attempt " + $voiceBridgeRestartAttempts + "/5) - restarting.") Yellow
+                $voiceBridgeProc = Start-Worker -Name ("voicebridge_retry" + $voiceBridgeRestartAttempts) -Script $VoiceBridge -WorkDir $PSScriptRoot
+                $state.voice_bridge_pid = [int]$voiceBridgeProc.Id
+                $state.voice_bridge_status = "STARTING"
+            }
+            Save-State $state
+        } elseif ($state.voice_bridge_status -ne "LIVE" -and (Test-Port $PORT_VOICE_BRIDGE 300)) {
+            $state.voice_bridge_status = "LIVE"
+            $voiceBridgeRestartAttempts = 0
+            Save-State $state
+            Write-Status "Voice Bridge recovered - LIVE" Green
+        }
+
+        # 7) Poll SBV2 /status periodically (every ~30s, not every loop tick
+        #    - a 2s-timeout HTTP call every 2s would be wasteful and could
+        #    itself add load). Reflects READY/DOWN into /health so the UI's
+        #    VOICE OFFLINE indicator tracks the real engine state.
+        if (((Get-Date) - $lastSbv2Poll).TotalSeconds -ge 30) {
+            $lastSbv2Poll = Get-Date
+            $sbv2Ready = Test-Sbv2Ready
+            $newSbv2Status = if ($sbv2Ready) { "READY" } else { "DOWN" }
+            if ($newSbv2Status -ne $state.sbv2_status) {
+                $state.sbv2_status = $newSbv2Status
+                Save-State $state
+                if ($sbv2Ready) {
+                    Write-Status "SBV2 is now READY." Green
+                } else {
+                    Write-Status "SBV2 is not reachable - voice UI will show VOICE OFFLINE." Yellow
+                }
             }
         }
     }

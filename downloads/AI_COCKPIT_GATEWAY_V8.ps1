@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)][string]$RepoRoot,
     [string]$RuntimeDir = "",
     [string]$Build = "unknown",
@@ -150,6 +150,16 @@ try {
                     workbook_identity_verified = $null
                     fail_closed                = $true
                 }
+                # 2026-09-25 P0 Voice統合: voice_backend is fixed (only SBV2
+                # is ever used - no browser speechSynthesis fallback exists
+                # in this path). sbv2_status/voice_bridge_status come from
+                # the Controller's own state file, same source as the rest
+                # of `runtime` above; both default to UNKNOWN if the state
+                # file is missing or doesn't have them yet (fail closed, the
+                # UI treats UNKNOWN the same as DOWN for the voice toggle).
+                $voiceBackend = 'sbv2'
+                $sbv2Status = 'UNKNOWN'
+                $voiceBridgeStatus = 'UNKNOWN'
                 try {
                     if (Test-Path -LiteralPath $controllerStateFile) {
                         $st = Read-JsonUtf8 $controllerStateFile
@@ -169,19 +179,24 @@ try {
                             $st.heartbeat_status -eq "RUNNING" -and
                             $st.collector_status -eq "LIVE"
                         )
+                        if ($null -ne $st.sbv2_status) { $sbv2Status = $st.sbv2_status }
+                        if ($null -ne $st.voice_bridge_status) { $voiceBridgeStatus = $st.voice_bridge_status }
                     }
                 } catch {}
                 $payload = [ordered]@{
-                    status           = 'ok'
-                    port             = $Port
-                    ui_branch        = $git.branch
-                    ui_sha           = $git.sha
-                    ui_build         = $Build
-                    repo_root        = $RepoRoot
-                    live_json_exists = $liveExists
-                    live_json_mtime  = $liveMtime
-                    runtime          = $runtime
-                    now              = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
+                    status              = 'ok'
+                    port                = $Port
+                    ui_branch           = $git.branch
+                    ui_sha              = $git.sha
+                    ui_build            = $Build
+                    repo_root           = $RepoRoot
+                    live_json_exists    = $liveExists
+                    live_json_mtime     = $liveMtime
+                    runtime             = $runtime
+                    voice_backend       = $voiceBackend
+                    sbv2_status         = $sbv2Status
+                    voice_bridge_status = $voiceBridgeStatus
+                    now                 = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
                 } | ConvertTo-Json -Depth 5
                 Send-Response $stream '200 OK' 'application/json; charset=utf-8' ($utf8.GetBytes($payload))
                 continue

@@ -1702,7 +1702,7 @@ document.addEventListener("DOMContentLoaded",()=>{{
  }}
  function renderCards(){{grid.innerHTML=rows.length?rows.map(x=>window.renderCockpitCard(rowToModel(x))).join(""):'<div class="focus-empty"><b>本日は見送り</b><span>条件を満たす候補がありません</span></div>';}}
  renderCards();
- document.addEventListener("liveFocusUpdate",e=>{{const live=e.detail?.rows||{{}},alerts=[];const speechEnabled=e.detail?.speech_enabled===true;rows=rows.map(x=>{{const q=live[x.code];if(!q?.verified)return x;const before=Number(x.live_price??x.chart_last_close),now=Number(q.price);if(Number.isFinite(before)&&Number.isFinite(now)){{if(before<Number(x.trigger)&&now>=Number(x.trigger)){{alerts.push(x.name+"、買い発動ライン到達。現在値"+yen(now)+"円、発動"+yen(x.trigger)+"円");window.cockpitAnnounce?.({{symbol:String(x.code||"").replace(".T",""),company:x.name,direction:"long",directionLabel:"発動",price:now,entry:x.trigger,foot:"買い発動ライン到達"}});}}if(before>Number(x.stop)&&now<=Number(x.stop)){{alerts.push(x.name+"、撤退ライン到達。現在値"+yen(now)+"円、撤退"+yen(x.stop)+"円");window.cockpitAnnounce?.({{symbol:String(x.code||"").replace(".T",""),company:x.name,direction:"block",directionLabel:"撤退",price:now,stop:x.stop,foot:"撤退ライン到達"}});}}}}return {{...x,chart:q.chart,chart_last_close:q.price,live_price:q.price,data_date:q.quote_time,quote_status:q.status}};}});renderCards();if(speechEnabled&&alerts.length)setTimeout(()=>window.cockpitSpeak?.(alerts.join("。")),300);}});
+ document.addEventListener("liveFocusUpdate",e=>{{const live=e.detail?.rows||{{}},alerts=[];const speechEnabled=e.detail?.speech_enabled===true;rows=rows.map(x=>{{const q=live[x.code];if(!q?.verified)return x;const before=Number(x.live_price??x.chart_last_close),now=Number(q.price);if(Number.isFinite(before)&&Number.isFinite(now)){{if(before<Number(x.trigger)&&now>=Number(x.trigger)){{alerts.push({{text:x.name+"、買い発動ライン到達。現在値"+yen(now)+"円、発動"+yen(x.trigger)+"円",level:"HOT"}});window.cockpitAnnounce?.({{symbol:String(x.code||"").replace(".T",""),company:x.name,direction:"long",directionLabel:"発動",price:now,entry:x.trigger,foot:"買い発動ライン到達"}});}}if(before>Number(x.stop)&&now<=Number(x.stop)){{alerts.push({{text:x.name+"、撤退ライン到達。現在値"+yen(now)+"円、撤退"+yen(x.stop)+"円",level:"DANGER"}});window.cockpitAnnounce?.({{symbol:String(x.code||"").replace(".T",""),company:x.name,direction:"block",directionLabel:"撤退",price:now,stop:x.stop,foot:"撤退ライン到達"}});}}}}return {{...x,chart:q.chart,chart_last_close:q.price,live_price:q.price,data_date:q.quote_time,quote_status:q.status}};}});renderCards();if(speechEnabled&&alerts.length)setTimeout(()=>alerts.forEach(a=>window.cockpitSpeak?.(a.text,a.level)),300);}});
 }});
 </script>"""
 
@@ -2557,10 +2557,24 @@ document.addEventListener("DOMContentLoaded",()=>{
  window.cockpitLiveSpeechEnabled=true;
  const marketStatusEls=[...document.querySelectorAll("#unified-mode-market-status")];
  const setMarketStatus=()=>{const open=isTseVoiceWindow();marketStatusEls.forEach(el=>{el.classList.toggle("open",open);const b=el.querySelector("b");if(b)b.textContent=open?"取引時間中":"取引時間外";});};
- const setVoiceLabel=()=>{setMarketStatus();voiceButtons.forEach(button=>{const open=isTseVoiceWindow();button.textContent=open?(voiceOn?"🔊":"🔇"):"🔇";button.title=!open?"東証9:00～11:30・12:30～15:30のみ。PTSデータには対応していません":(voiceOn?"音声読み上げON（クリックでOFF）":"音声読み上げOFF（クリックでON）");});};setVoiceLabel();
- window.cockpitSpeak=msg=>{if(!voiceOn||!msg||!isTseVoiceWindow()||window.cockpitLiveSpeechEnabled===false||!("speechSynthesis" in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(msg);u.lang="ja-JP";u.rate=1.05;window.speechSynthesis.speak(u);};
+ const setVoiceLabel=()=>{setMarketStatus();voiceButtons.forEach(button=>{const open=isTseVoiceWindow();if(open&&voiceOn&&window.cockpitVoiceOffline){button.textContent="OFFLINE";button.title="音声エンジン(SBV2)に接続できません。VOICE OFFLINE・無音のままです（旧音声への切替はしません）";return}button.textContent=open?(voiceOn?"🔊":"🔇"):"🔇";button.title=!open?"東証9:00～11:30・12:30～15:30のみ。PTSデータには対応していません":(voiceOn?"音声読み上げON（クリックでOFF）":"音声読み上げOFF（クリックでON）");});};setVoiceLabel();
+ // 2026-09-25 P0 Voice統合: SBV2 (Style-Bert-VITS2) 経由のみ。Voice Bridge
+ // (127.0.0.1:28583、Gateway/Collector/Watcherとは別プロセス・別ポートなの
+ // で音声生成が28580/28581/28582の更新を止めることはない)へPOSTしてWAVを
+ // 受け取りAudioで再生する。SBV2/Voice Bridgeが落ちている場合は無音のまま
+ // VOICE OFFLINE表示にするだけで、旧window.speechSynthesisへは絶対に戻さ
+ // ない（要件9）。
+ const VOICE_BRIDGE_URL="http://127.0.0.1:28583";
+ const setVoiceOffline=off=>{if(window.cockpitVoiceOffline===off)return;window.cockpitVoiceOffline=off;setVoiceLabel();};
+ window.cockpitSpeak=(msg,level)=>{
+  if(!voiceOn||!msg||!isTseVoiceWindow()||window.cockpitLiveSpeechEnabled===false)return;
+  fetch(VOICE_BRIDGE_URL+"/speak",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:msg,level:level||"CALM"}),cache:"no-store"})
+   .then(r=>{if(!r.ok)throw new Error("voice_bridge_"+r.status);setVoiceOffline(false);return r.blob();})
+   .then(blob=>{const url=URL.createObjectURL(blob);const audio=new Audio(url);audio.addEventListener("ended",()=>URL.revokeObjectURL(url));audio.play().catch(()=>{});})
+   .catch(()=>{setVoiceOffline(true);});
+ };
  window.cockpitAnnounce=model=>{if(!model||!model.symbol||!window.recordOnAir)return;window.recordOnAir(model);const box=document.getElementById("cockpit-onair-cards");if(box&&window.renderOnAirPanel)box.innerHTML=window.renderOnAirPanel();};
- voiceButtons.forEach(button=>button.onclick=()=>{if(!isTseVoiceWindow()){voiceOn=false;localStorage.setItem("cockpitVoiceV1","off");setVoiceLabel();return}voiceOn=!voiceOn;localStorage.setItem("cockpitVoiceV1",voiceOn?"on":"off");setVoiceLabel();if(voiceOn)window.cockpitSpeak("AIコクピットの自動読み上げを開始します");});
+ voiceButtons.forEach(button=>button.onclick=()=>{if(!isTseVoiceWindow()){voiceOn=false;localStorage.setItem("cockpitVoiceV1","off");setVoiceLabel();return}voiceOn=!voiceOn;localStorage.setItem("cockpitVoiceV1",voiceOn?"on":"off");setVoiceLabel();if(voiceOn)window.cockpitSpeak("AIコクピットの自動読み上げを開始します","CALM");});
  const loadLive=()=>fetch("live_focus.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(d=>{
    window.cockpitLiveSpeechEnabled=d.speech_enabled===true;
    setVoiceLabel();
@@ -3652,7 +3666,7 @@ document.addEventListener("liveFocusUpdate",e=>{{
     try{{voiceState=JSON.parse(localStorage.getItem("kioVoiceSignalState")||"{{}}")}}catch(_e){{voiceState={{}}}}
     const nowMs=Date.now(),sameDirection=voiceState.type===k.signal_type,insideCooldown=sameDirection&&nowMs-Number(voiceState.at||0)<600000;
     if(k.signal_key!==voiceState.key&&!insideCooldown&&e.detail?.speech_enabled===true){{
-      window.cockpitSpeak?.(k.voice_message);
+      window.cockpitSpeak?.(k.voice_message,k.signal_type==="SHORT"?"DANGER":"HOT");
       localStorage.setItem("kioVoiceSignalState",JSON.stringify({{key:k.signal_key,type:k.signal_type,at:nowMs}}));
     }}
   }}

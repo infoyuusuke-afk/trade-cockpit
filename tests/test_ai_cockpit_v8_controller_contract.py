@@ -456,5 +456,161 @@ class JsonEncodingContract(unittest.TestCase):
         )
 
 
+class VoiceIntegrationContract(unittest.TestCase):
+    """2026-09-25 P0 Voice統合: replaces window.speechSynthesis with
+    Style-Bert-VITS2 (SBV2) via a dedicated Voice Bridge process (28583),
+    supervised the same way as Watcher/Heartbeat/Collector. Checks the
+    explicit requirements: non-blocking SBV2 check, no browser-speech
+    fallback anywhere in the new path, voice OFF generates nothing, and
+    voice generation runs on its own port so it can never stall
+    28580/28581/28582."""
+
+    def setUp(self):
+        self.controller = read("AI_COCKPIT_CONTROLLER_V8.ps1")
+        self.gateway = read("AI_COCKPIT_GATEWAY_V8.ps1")
+        self.stop = read("STOP_AI_COCKPIT_V8.ps1")
+        self.voice_bridge = read("AI_COCKPIT_VOICE_BRIDGE_V8.ps1")
+        self.update_py = (ROOT / "scripts" / "update.py").read_text(encoding="utf-8")
+
+    def test_voice_bridge_port_is_distinct_from_the_other_three(self):
+        self.assertIn("$PORT_VOICE_BRIDGE = 28583", self.controller)
+        for other in ("28580", "28581", "28582"):
+            self.assertNotEqual("28583", other)
+
+    def test_sbv2_check_is_bounded_and_never_blocks_startup(self):
+        func = extract_function(self.controller, "Test-Sbv2Ready")
+        self.assertIn("-TimeoutSec 2", func)
+        # SBV2 check/launch happens AFTER Collector's own bounded wait
+        # completes and AFTER Gateway is already serving the UI - it must
+        # never be positioned before Gateway starts, which would make the
+        # whole UI wait on it.
+        gateway_start_idx = self.controller.index('Start-Worker -Name "gateway"')
+        sbv2_check_idx = self.controller.index("Checking SBV2 voice engine status")
+        self.assertGreater(sbv2_check_idx, gateway_start_idx)
+
+    def test_sbv2_autostart_is_a_detached_background_process_not_awaited(self):
+        # START_SBV2_API.ps1 itself can block for up to ~120s loading the
+        # model - the Controller must launch it with Start-Process (fire
+        # and forget) and keep going, never Wait-Process / block on it.
+        start_idx = self.controller.index("Checking SBV2 voice engine status")
+        voice_bridge_start_idx = self.controller.index('Start-Worker -Name "voicebridge"')
+        block = self.controller[start_idx:voice_bridge_start_idx]
+        self.assertIn("Start-Process", block)
+        self.assertIn("START_SBV2_API", block)
+        self.assertNotIn("Wait-Process", block)
+
+    def test_voice_bridge_is_supervised_with_bounded_restart(self):
+        loop_match = re.search(r"while \(\$true\) \{(.*?)\n\} catch \{", self.controller, re.S)
+        self.assertIsNotNone(loop_match)
+        loop_body = loop_match.group(1)
+        self.assertIn("state.voice_bridge_pid", loop_body)
+        vb_section = loop_body.split("# 6)")[1].split("# 7)")[0]
+        self.assertNotIn("throw", vb_section)
+        self.assertIn("Start-Worker", vb_section)
+        self.assertIn("voiceBridgeRestartAttempts", vb_section)
+
+    def test_voice_bridge_death_does_not_affect_other_workers(self):
+        # The section that restarts Voice Bridge must not touch
+        # watcher/collector/gateway process handling.
+        loop_match = re.search(r"while \(\$true\) \{(.*?)\n\} catch \{", self.controller, re.S)
+        loop_body = loop_match.group(1)
+        vb_section = loop_body.split("# 6)")[1].split("# 7)")[0]
+        for other_pid_field in ("state.watcher_pid", "state.collector_pid", "state.gateway_pid"):
+            self.assertNotIn(other_pid_field, vb_section)
+
+    def test_sbv2_poll_in_loop_is_throttled_not_every_tick(self):
+        loop_match = re.search(r"while \(\$true\) \{(.*?)\n\} catch \{", self.controller, re.S)
+        loop_body = loop_match.group(1)
+        sbv2_section = loop_body.split("# 7)")[1]
+        self.assertIn("lastSbv2Poll", sbv2_section)
+        self.assertIn("30", sbv2_section)
+
+    def test_voice_bridge_port_is_in_foreign_session_preflight(self):
+        func = extract_function(self.controller, "Test-ForeignSession")
+        self.assertIn("PORT_VOICE_BRIDGE", func)
+
+    def test_voice_bridge_pid_is_stopped_on_previous_state_cleanup(self):
+        func_match = re.search(r"function Stop-OwnedFromPreviousState \{(.*?)\n\}", self.controller, re.S)
+        self.assertIsNotNone(func_match)
+        self.assertIn("voice_bridge_pid", func_match.group(1))
+
+    def test_state_has_voice_fields(self):
+        for field in ("sbv2_status", "voice_bridge_pid", "voice_bridge_status"):
+            self.assertIn(field, self.controller)
+
+    def test_gateway_health_reports_voice_fields(self):
+        health_match = re.search(r"health.*?ConvertTo-Json", self.gateway, re.S)
+        self.assertIsNotNone(health_match)
+        body = health_match.group(0)
+        self.assertIn("voice_backend", body)
+        self.assertIn("sbv2_status", body)
+        self.assertIn("voice_bridge_status", body)
+
+    def test_stop_script_stops_voice_bridge_too(self):
+        self.assertIn("voice_bridge_pid", self.stop)
+
+    def test_voice_bridge_never_falls_back_to_other_tts(self):
+        # No SAPI/System.Speech/browser-speech references in live (non-
+        # comment) code - SBV2 unreachable must mean silence (503), never
+        # a substitute voice. Comments are allowed to explain this in
+        # words (e.g. "does not fall back to ... speechSynthesis").
+        code_lines = [
+            line for line in self.voice_bridge.splitlines() if not line.strip().startswith("#")
+        ]
+        code_text = "\n".join(code_lines)
+        for banned in ("System.Speech", "SAPI", "SpeechSynthesizer", "speechSynthesis"):
+            self.assertNotIn(banned, code_text)
+        self.assertIn("503 Service Unavailable", self.voice_bridge)
+        self.assertIn("sbv2_unreachable", self.voice_bridge)
+
+    def test_voice_bridge_reuses_the_same_profile_table(self):
+        func = extract_function(self.voice_bridge, "Get-VoiceProfile")
+        for level, length in (("HOT", "1.03"), ("DANGER", "1.10"), ("WATCH", "1.13")):
+            self.assertIn(level, func)
+            self.assertIn(length, func)
+
+    def test_voice_bridge_normalization_order_preserves_vwap_up_down_before_bare_vwap(self):
+        func = extract_function(self.voice_bridge, "Convert-ToSpeechText")
+        vwap_up_idx = func.index('"VWAP上"')
+        vwap_down_idx = func.index('"VWAP下"')
+        vwap_bare_idx = func.index('"VWAP"')
+        self.assertLess(vwap_up_idx, vwap_bare_idx)
+        self.assertLess(vwap_down_idx, vwap_bare_idx)
+
+    def test_frontend_has_no_browser_speech_synthesis_in_live_code(self):
+        # SpeechSynthesisUtterance must be gone entirely; the only
+        # remaining mention of speechSynthesis, if any, must be inside a
+        # comment explaining that the old path was removed - never live code.
+        self.assertNotIn("SpeechSynthesisUtterance", self.update_py)
+        for line in self.update_py.splitlines():
+            stripped = line.strip()
+            if "speechSynthesis" in line:
+                self.assertTrue(
+                    stripped.startswith("//") or stripped.startswith("#"),
+                    f"non-comment line still references speechSynthesis: {line}",
+                )
+
+    def test_frontend_cockpit_speak_posts_to_voice_bridge(self):
+        self.assertIn("VOICE_BRIDGE_URL", self.update_py)
+        self.assertIn("127.0.0.1:28583", self.update_py)
+        self.assertIn('VOICE_BRIDGE_URL+"/speak"', self.update_py)
+        self.assertIn('method:"POST"', self.update_py)
+
+    def test_frontend_voice_off_generates_nothing(self):
+        speak_idx = self.update_py.index("window.cockpitSpeak=(msg,level)=>{")
+        first_return_idx = self.update_py.index("return;", speak_idx)
+        guard_block = self.update_py[speak_idx:first_return_idx]
+        self.assertIn("!voiceOn", guard_block)
+
+    def test_frontend_shows_voice_offline_without_reviving_old_voice(self):
+        self.assertIn("cockpitVoiceOffline", self.update_py)
+        self.assertIn("VOICE OFFLINE", self.update_py)
+
+    def test_frontend_kioxia_and_scalp_alerts_pass_a_level(self):
+        self.assertIn('window.cockpitSpeak?.(k.voice_message,k.signal_type', self.update_py)
+        self.assertIn('level:"HOT"', self.update_py)
+        self.assertIn('level:"DANGER"', self.update_py)
+
+
 if __name__ == "__main__":
     unittest.main()

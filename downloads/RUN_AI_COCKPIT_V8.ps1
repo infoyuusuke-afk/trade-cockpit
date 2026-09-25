@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$RepoRoot = "",
     [string]$Branch = "integration/v7-runtime-and-cards",
     [string]$ExpectedSha = "",
