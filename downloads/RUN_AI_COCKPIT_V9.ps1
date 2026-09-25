@@ -239,6 +239,6 @@ if (Test-Path -LiteralPath $stateFile) {
     Copy-Item -LiteralPath $stateFile -Destination $stateBackup -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host "Starting Controller V8..." -ForegroundColor Cyan
+Write-Host "Starting Controller V9..." -ForegroundColor Cyan
 Write-Host ""
 & (Join-Path $repo "downloads\AI_COCKPIT_CONTROLLER_V9.ps1") -RepoRoot $repo -ExpectedBranch $Branch
