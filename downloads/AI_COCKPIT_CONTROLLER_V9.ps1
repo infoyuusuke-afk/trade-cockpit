@@ -212,7 +212,7 @@ function Save-State($state) {
 function Stop-OwnedFromPreviousState {
     $prev = Read-State
     if ($null -eq $prev) { return }
-    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid", "sbv2_pid")) {
+    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid", "sbv2_pid", "controller_pid")) {
         $val = $prev.PSObject.Properties[$field]
         if ($null -eq $val -or [int]$val.Value -le 0) { continue }
         $procId = [int]$val.Value
