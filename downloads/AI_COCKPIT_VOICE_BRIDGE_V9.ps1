@@ -3,13 +3,23 @@ param(
     [int]$Port = 28583,
     [string]$SbV2BaseUrl = "http://127.0.0.1:5000",
     [string]$ModelName = "amitaro",
-    [string]$SpeakerName = "あみたろ",
+    [string]$SpeakerName = "",
     [string]$Style = "Neutral"
 )
 
 $ErrorActionPreference = "Stop"
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 $listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback,[int]$Port)
+
+function U([int[]]$CodePoints){
+    $sb = [Text.StringBuilder]::new()
+    foreach($cp in $CodePoints){ [void]$sb.Append([char]$cp) }
+    return $sb.ToString()
+}
+
+if([string]::IsNullOrWhiteSpace($SpeakerName)){
+    $SpeakerName = U @(12354,12415,12383,12429)
+}
 
 function Test-TcpPort([int]$p,[int]$timeoutMs=350){
     $c = New-Object Net.Sockets.TcpClient
@@ -46,23 +56,23 @@ function Parse-Query([string]$query){
 function Normalize-SpeechText([string]$text){
     if([string]::IsNullOrWhiteSpace($text)){ return "" }
     $s=$text
-    $repl=[ordered]@{
-        "AIコクピット"="えーあいコクピット"
-        "キオクシア"="きおくしあ"
-        "VWAP上"="ぶいわっぷ、うえ"
-        "VWAP下"="ぶいわっぷ、した"
-        "VWAP"="ぶいわっぷ"
-        "OR15"="おーあーる、じゅうご"
-        "OR5"="おーあーる、ご"
-        "EMA20"="いーえむえー、にじゅう"
-        "EMA9"="いーえむえー、きゅう"
-        "EMA"="いーえむえー"
-        "GU"="ぎゃっぷあっぷ"
-        "GD"="ぎゃっぷだうん"
-        "歩み値"="あゆみね"
-    }
-    foreach($e in $repl.GetEnumerator()){ $s=$s.Replace([string]$e.Key,[string]$e.Value) }
-    return $s.Replace("%","パーセント")
+    $pairs = @(
+        @("AI"+(U @(12467,12463,12500,12483,12488)),"AI"+(U @(12371,12367,12404,12387,12392))),
+        @((U @(12461,12458,12463,12471,12450)),(U @(12365,12362,12367,12375,12354))),
+        @("VWAP"+(U @(19978)),(U @(12406,12356,12431,12387,12407,12289,12358,12360))),
+        @("VWAP"+(U @(19979)),(U @(12406,12356,12431,12387,12407,12289,12375,12383))),
+        @("VWAP",(U @(12406,12356,12431,12387,12407))),
+        @("OR15",(U @(12362,12540,12354,12540,12427,12289,12376,12421,12358,12372))),
+        @("OR5",(U @(12362,12540,12354,12540,12427,12289,12372))),
+        @("EMA20",(U @(12356,12540,12360,12416,12360,12540,12289,12395,12376,12421,12358))),
+        @("EMA9",(U @(12356,12540,12360,12416,12360,12540,12289,12365,12421,12358))),
+        @("EMA",(U @(12356,12540,12360,12416,12360,12540))),
+        @("GU",(U @(12366,12419,12387,12407,12354,12387,12407))),
+        @("GD",(U @(12366,12419,12387,12407,12384,12358,12435))),
+        @((U @(27497,12415,20516)),(U @(12354,12422,12415,12397)))
+    )
+    foreach($pair in $pairs){ $s=$s.Replace([string]$pair[0],[string]$pair[1]) }
+    return $s.Replace("%",(U @(12497,12540,12475,12531,12488)))
 }
 
 function Get-Profile([string]$level){
