@@ -107,6 +107,24 @@ function Get-ListeningOwnerPid([int]$Port) {
     return 0
 }
 
+function Stop-OwnedJobBridge([int]$Port,[int]$ExpectedParentId,[string]$Label) {
+    if ($ExpectedParentId -le 0) { return $false }
+    $owner = Get-ListeningOwnerPid $Port
+    if ($owner -le 0) { return $true }
+    try {
+        $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $owner) -ErrorAction SilentlyContinue
+        if ($null -eq $info) { return $false }
+        $name = [string]$info.Name
+        $parent = [int]$info.ParentProcessId
+        if ($parent -eq $ExpectedParentId -and $name -match "^(powershell|pwsh)\.exe$") {
+            Stop-Process -Id $owner -Force -ErrorAction SilentlyContinue
+            Write-Status ("  stopped owned {0} bridge child: port {1}, PID {2}, parent {3}" -f $Label,$Port,$owner,$ExpectedParentId) DarkGray
+            return $true
+        }
+    } catch {}
+    return $false
+}
+
 # Preflight: a port already LISTENing is not, by itself, evidence that
 # THIS controller's own session is ready - it could be a leftover V6/V7
 # process, a stale previous V8 session, or something unrelated entirely.
@@ -232,6 +250,8 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
 function Stop-OwnedFromPreviousState {
     $prev = Read-State
     if ($null -eq $prev) { return }
+    Stop-OwnedJobBridge $PORT_COLLECTOR ([int]$prev.collector_pid) "Collector JSON" | Out-Null
+    Stop-OwnedJobBridge $PORT_WATCHER ([int]$prev.watcher_pid) "Watcher JSON" | Out-Null
     foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid", "sbv2_pid", "controller_pid")) {
         $val = $prev.PSObject.Properties[$field]
         if ($null -eq $val -or [int]$val.Value -le 0) { continue }
@@ -615,6 +635,8 @@ try {
             }
             if (-not $stillOpen -and $excelMisses -ge 4) {
                 Write-Status "Workbook close detected - stopping managed processes..." Yellow
+                Stop-OwnedJobBridge $PORT_COLLECTOR ([int]$state.collector_pid) "Collector JSON" | Out-Null
+                Stop-OwnedJobBridge $PORT_WATCHER ([int]$state.watcher_pid) "Watcher JSON" | Out-Null
                 foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid", "sbv2_pid")) {
                     $val = [int]$state.$field
                     if ($val -gt 0) {
@@ -694,6 +716,7 @@ try {
                 $watcherRestartAttempts++
                 $lastWatcherRestartAt = Get-Date
                 Write-Status ("Watcher is down (attempt " + $watcherRestartAttempts + "/5) - restarting.") Yellow
+                Stop-OwnedJobBridge $PORT_WATCHER ([int]$state.watcher_pid) "Watcher JSON" | Out-Null
                 $watcherProc = Start-Worker -Name ("watcher_retry" + $watcherRestartAttempts) -Script $Watcher -WorkDir $RuntimeDir
                 $state.watcher_pid = [int]$watcherProc.Id
                 $state.watcher_status = "STARTING"
@@ -743,6 +766,7 @@ try {
                 $collectorRestartAttempts++
                 $lastCollectorRestartAt = Get-Date
                 Write-Status ("Collector is down (attempt " + $collectorRestartAttempts + "/5) - restarting; UI stays fail-closed meanwhile.") Yellow
+                Stop-OwnedJobBridge $PORT_COLLECTOR ([int]$state.collector_pid) "Collector JSON" | Out-Null
                 $collectorProc = Start-Worker -Name ("collector_retry" + $collectorRestartAttempts) -Script $Collector -WorkDir $RuntimeDir
                 $state.collector_pid = [int]$collectorProc.Id
                 $state.collector_status = "STARTING"
