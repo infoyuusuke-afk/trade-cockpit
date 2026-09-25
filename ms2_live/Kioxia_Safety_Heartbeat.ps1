@@ -163,20 +163,12 @@ function Invoke-SbV2HeartbeatSpeak([string]$text) {
     } catch { return $false }
 }
 function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 20000) {
-    if ($null -eq $speaker -or [string]::IsNullOrEmpty($text)) { return }
-    $mutex = $null
-    $acquired = $false
-    try {
-        $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
-        $acquired = $mutex.WaitOne($timeoutMs)
-        $sbv2Ok = Invoke-SbV2HeartbeatSpeak $text
-        if (-not $sbv2Ok) {
-            Write-Host "[HEARTBEAT] SBV2 voice request failed" -ForegroundColor Red
-        }
-    } catch {
-    } finally {
-        if ($acquired -and $null -ne $mutex) { try { $mutex.ReleaseMutex() } catch {} }
-        if ($null -ne $mutex) { $mutex.Dispose() }
+    if ([string]::IsNullOrWhiteSpace($text)) { return }
+    # The V9 VoiceBridge is the single mutex owner. Holding the same named
+    # mutex in this process while waiting for /announce would deadlock.
+    $sbv2Ok = Invoke-SbV2HeartbeatSpeak $text
+    if (-not $sbv2Ok) {
+        Write-Host "[HEARTBEAT] V9 SBV2 bridge unavailable - no legacy fallback" -ForegroundColor Red
     }
 }
 
