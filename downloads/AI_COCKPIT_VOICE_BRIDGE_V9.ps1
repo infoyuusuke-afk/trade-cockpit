@@ -137,7 +137,7 @@ try{
         $client=$listener.AcceptTcpClient()
         try{
             $stream=$client.GetStream()
-            $reader=New-Object IO.StreamReader($stream,[Text.Encoding]::ASCII,$false,4096,$true)
+            $reader=[IO.StreamReader]::new($stream,[Text.Encoding]::ASCII,$false,4096,$true)
             $requestLine=$reader.ReadLine()
             while(($line=$reader.ReadLine()) -ne $null -and $line -ne ""){}
             if([string]::IsNullOrWhiteSpace($requestLine)){ continue }
@@ -170,7 +170,7 @@ try{
 
             $mutex=$null; $acquired=$false
             try{
-                $mutex=New-Object System.Threading.Mutex($false,"Global\KioxiaVoiceMutex")
+                $mutex=[System.Threading.Mutex]::new($false,"Global\KioxiaVoiceMutex")
                 $acquired=$mutex.WaitOne(20000)
                 if(-not $acquired){ throw "VOICE_BUSY" }
                 $wav=Invoke-Sbv2Wav $text $level
@@ -178,7 +178,7 @@ try{
                     $tmp=Join-Path $env:TEMP ("ai_cockpit_voice_play_"+[Guid]::NewGuid().ToString("N")+".wav")
                     try{
                         [IO.File]::WriteAllBytes($tmp,$wav)
-                        $player=New-Object System.Media.SoundPlayer $tmp
+                        $player=[System.Media.SoundPlayer]::new($tmp)
                         $player.Load(); $player.PlaySync(); $player.Dispose()
                     } finally { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
                     Send-Json $stream "200 OK" @{ok=$true;backend="Style-Bert-VITS2";level=$level}
