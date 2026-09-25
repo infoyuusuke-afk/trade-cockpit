@@ -1,0 +1,20 @@
+{
+  "schema": "auto_publish.daily_summary.v1",
+  "session_date": "2026-09-24",
+  "generated_at": "2026-09-24T15:45:00+09:00",
+  "source": "TEST_FIXTURE",
+  "note": "Synthetic test data. Tickers TEST1-TEST3 are fictional; numbers are not market data.",
+  "movers": [
+    {"ticker": "TEST1.T", "name_en": "Fixture Memory Holdings", "name_ja": "フィクスチャ・メモリーHD",
+     "close": 2345, "change_pct": 6.4, "volume_ratio": 3.2},
+    {"ticker": "TEST2.T", "name_en": "Fixture Robotics", "name_ja": "フィクスチャ・ロボティクス",
+     "close": 1200, "change_pct": 9.8},
+    {"ticker": "TEST3.T", "name_en": "Fixture Materials", "name_ja": "フィクスチャ・マテリアルズ",
+     "close": 880, "change_pct": -3.1, "volume_ratio": 1.9}
+  ],
+  "radar_events": [
+    {"ticker": "TEST1.T", "time_jst": "09:12", "event": "volume_spike"},
+    {"ticker": "TEST1.T", "time_jst": "09:16", "event": "or15_breakout"},
+    {"ticker": "TEST3.T", "time_jst": "13:40", "event": "vwap_reclaim"}
+  ]
+}

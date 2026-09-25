@@ -1,0 +1,23 @@
+{
+  "lang": "ja-JP",
+  "title": "東証大引け：{name_ja}（{code}）{change_pct:+.1f}%",
+  "hook": "{name_ja}（{code}）は{date_long}の東京市場で{abs_change:.1f}%{move}。データで振り返ります。",
+  "move_words": {"up": "上昇", "down": "下落", "flat": "の横ばい"},
+  "close": "終値は{close:,.0f}円、前日比{change_pct:+.2f}%。",
+  "volume": "出来高は直近平均の{volume_ratio:.1f}倍。",
+  "radar": "日本時間{time_jst}、レーダーが{event_text}を検知。",
+  "radar_events": {
+    "volume_spike": "出来高急増",
+    "vwap_reclaim": "VWAP回復",
+    "or15_breakout": "寄り付き15分レンジのブレイク",
+    "gap_fill": "窓埋め",
+    "block_trade_print": "大口約定"
+  },
+  "paper_closed": "ペーパートレード（シミュレーション・実資金ではありません）：{side} {entry:,.0f}円から、結果{r:+.2f}R。",
+  "paper_open": "ペーパートレード（シミュレーション・実資金ではありません）：{side} {entry:,.0f}円から、大引け時点で未決済。",
+  "sides": {"LONG": "買い", "SHORT": "売り"},
+  "disclaimer": "市場データの観察であり、投資助言ではありません。",
+  "disclaimer_paper": "ペーパートレードの結果はシミュレーションです。",
+  "disclaimer_fixture": "【テスト用サンプルデータ・実際の市場データではありません】",
+  "hashtags": ["#日本株", "#東証", "#{code}"]
+}

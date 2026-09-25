@@ -1,0 +1,3 @@
+# Fixture bytes are hashed (SHA256) and pinned in golden files: never normalise line endings.
+tests/fixtures/** -text
+tests/golden/** -text

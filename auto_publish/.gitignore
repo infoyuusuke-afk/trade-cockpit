@@ -1,0 +1,10 @@
+var/
+__pycache__/
+*.pyc
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+secrets/
+*.token
+*.secret.json
