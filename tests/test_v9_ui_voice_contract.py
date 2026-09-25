@@ -95,6 +95,17 @@ class V9UiVoiceContract(unittest.TestCase):
         ):
             self.assertIn(needle, css)
 
+    def test_v8_to_v9_switch_is_narrow_and_one_click(self):
+        text = read("downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1")
+        self.assertIn("AI_COCKPIT_CONTROLLER_V8.ps1", text)
+        self.assertIn("V8_CONTROLLER_STATE.json", text)
+        self.assertIn("RUN_AI_COCKPIT_V9.ps1", text)
+        self.assertIn("ExpectedSha", text)
+        self.assertIn("28580,28581,28582", text.replace(" ", ""))
+        self.assertNotIn("Stop-Process -Name EXCEL", text)
+        self.assertNotIn("Get-Process EXCEL", text)
+        self.assertNotIn("taskkill", text.lower())
+
 
 if __name__ == "__main__":
     unittest.main()
