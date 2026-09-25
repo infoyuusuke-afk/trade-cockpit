@@ -206,7 +206,7 @@ function Save-State($state) {
     Move-Item -LiteralPath $tmp -Destination $StateFile -Force
 }
 
-function Test-OwnedPidIdentity([string]$Field,[int]$Pid) {
+function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
     $expected = switch ($Field) {
         "watcher_pid"      { "Kioxia_RSS_Live_Watcher.ps1" }
         "heartbeat_pid"    { "Kioxia_Safety_Heartbeat.ps1" }
@@ -219,7 +219,7 @@ function Test-OwnedPidIdentity([string]$Field,[int]$Pid) {
     }
     if ([string]::IsNullOrWhiteSpace($expected)) { return $false }
     try {
-        $wmi = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $Pid) -ErrorAction SilentlyContinue
+        $wmi = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction SilentlyContinue
         if ($null -eq $wmi) { return $false }
         $cmd = [string]$wmi.CommandLine
         return (-not [string]::IsNullOrWhiteSpace($cmd) -and $cmd -match [regex]::Escape($expected))
