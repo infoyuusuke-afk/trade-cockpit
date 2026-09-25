@@ -4,6 +4,9 @@
   const lastLevel=new Map();
   const lastSpokenAt=new Map();
   const pulseUntil=new Map();
+  const EVENT_KEY="cockpitOpportunityEventsV1";
+  let eventLog=[];
+  try{eventLog=JSON.parse(localStorage.getItem(EVENT_KEY)||"[]");if(!Array.isArray(eventLog))eventLog=[];}catch(_e){eventLog=[];}
   const LEVEL_RANK={BLOCK:0,WAIT:1,WATCH:2,HOT:3};
 
   const n=v=>v==null||v===""||!Number.isFinite(Number(v))?null:Number(v);
@@ -80,6 +83,31 @@
       (why||"監視条件上昇")+"。現在値"+yen(x?.price)+"円、"+rel+"。";
   }
 
+  function renderEventLog(){
+    const box=document.getElementById("opportunity-event-log");
+    if(!box)return;
+    box.innerHTML=eventLog.length?eventLog.slice(0,8).map(ev=>
+      '<div class="cc-watch-row cc-card--'+(ev.direction||"wait")+'">'+
+      '<div class="cc-identity"><span class="cc-company">'+String(ev.name||ev.symbol||"").replace(/[&<>"]/g,"")+'</span>'+
+      '<span class="cc-symbol">TSE:'+String(ev.symbol||"").replace(/[&<>"]/g,"")+'</span></div>'+
+      '<span class="cc-badge">'+String(ev.level||"WATCH")+'</span>'+
+      '<div class="cc-watch-metrics"><span>時刻<b>'+String(ev.at||"—")+'</b></span>'+
+      '<span>理由<b>'+String(ev.reason||"—").replace(/[&<>"]/g,"")+'</b></span></div></div>'
+    ).join(""):'<div class="cc-onair-empty">まだWATCH/HOT遷移はありません</div>';
+  }
+
+  function persistEvent(x,o){
+    const symbol=String(x?.ticker||"").replace(".T","");
+    const ev={
+      symbol,name:x?.name||symbol,level:o.level,direction:o.direction,
+      at:new Intl.DateTimeFormat("ja-JP",{timeZone:"Asia/Tokyo",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).format(new Date()),
+      reason:o.reasons.slice(0,3).join(" / ")
+    };
+    eventLog=[ev,...eventLog.filter(e=>!(e.symbol===ev.symbol&&e.level===ev.level))].slice(0,20);
+    try{localStorage.setItem(EVENT_KEY,JSON.stringify(eventLog));}catch(_e){}
+    renderEventLog();
+  }
+
   function maybeAnnounce(x,o){
     const symbol=String(x?.ticker||"").replace(".T","");
     if(!symbol||!(o.level==="WATCH"||o.level==="HOT"))return;
@@ -89,6 +117,7 @@
     if(!promoted)return;
 
     pulseUntil.set(symbol,Date.now()+3200);
+    persistEvent(x,o);
     window.recordOnAir?.({
       symbol,company:x.name,direction:o.direction,directionLabel:o.level,price:x.price,
       metrics:[
@@ -144,9 +173,11 @@
       '<div class="cc-opportunity-radar-head"><div><h2>Opportunity Radar・実況TOP5</h2>'+
       '<p>100銘柄を5秒ごとに監視。出来高急増・歩み値・OR5/OR15・VWAP・直近3分を実データだけで評価。</p></div>'+
       '<div id="opportunity-radar-state" class="cc-opportunity-radar-state">データ待ち</div></div>'+
-      '<div id="opportunity-radar-cards" class="cc-grid"><div class="focus-empty">MS2 RSS接続待ち</div></div>';
+      '<div id="opportunity-radar-cards" class="cc-grid"><div class="focus-empty">MS2 RSS接続待ち</div></div>'+
+      '<div class="cc-onair-panel"><h3>直近実況・WATCH/HOT履歴</h3><div id="opportunity-event-log"></div></div>';
     const first=pane.firstElementChild;
     if(first)first.insertAdjacentElement("afterend",section); else pane.prepend(section);
+    renderEventLog();
     return section;
   }
 
