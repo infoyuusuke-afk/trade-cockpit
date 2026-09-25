@@ -226,6 +226,7 @@ def tabs_block() -> str:
   <button class="cockpit-tab" data-tab="policy">国策</button><button class="cockpit-tab" data-tab="weekly">週間</button>
  </details>
 </nav>
+<script src="opportunity_radar.js?v=v9-1" defer></script>
 <script src="trade_control.js?v=v9-1" defer></script>
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
@@ -310,6 +311,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    return window.renderCockpitCard({
      symbol:code,company:x.name,direction:dir,directionLabel:sv.label,
      price:x.price,changePct:x.change_pct,
+     sparkline:x.bars_1m,sparklineLabel:"直近15分・1分足終値",
      entry:x.entry_price,stop:x.stop_price,target:x.target1,
      metrics:[
        {label:"時間軸",value:tf||"1m"},
