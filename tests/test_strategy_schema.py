@@ -89,6 +89,7 @@ class TagRecordTests(unittest.TestCase):
         self.assertEqual(tagged["strategy_id"], "day_ifo_long")
         self.assertEqual(tagged["strategy_version"], "1.0")
         self.assertEqual(tagged["horizon"], "day")
+        self.assertEqual(tagged["cockpit_tab"], "ms2-live")
         self.assertEqual(tagged["liquidity_bucket"], "HIGH_LIQUID")
         self.assertEqual(tagged["symbol_class"], "HIGH_VOL_HIGH_TURNOVER")
         self.assertEqual(tagged["regime"], "UP")
@@ -103,6 +104,7 @@ class TagRecordTests(unittest.TestCase):
         tagged = ss.tag_record({}, strategy_id="not_registered", signal_time="t")
         self.assertEqual(tagged["strategy_version"], "unknown")
         self.assertEqual(tagged["horizon"], "unknown")
+        self.assertIsNone(tagged["cockpit_tab"])
 
 
 if __name__ == "__main__":
