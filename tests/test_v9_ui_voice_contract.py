@@ -94,6 +94,39 @@ class V9UiVoiceContract(unittest.TestCase):
         self.assertIn("V9_RUNTIME.json", text)
         self.assertIn("fix/v9-ui-voice-convergence", text)
 
+    def test_owner_control_and_per_tab_performance_are_visible_contracts(self):
+        index = read("index.html")
+        weekly = read("scripts/weekly_tabs.py")
+        control = read("trade_control.js")
+        gateway = read("downloads/AI_COCKPIT_GATEWAY_V9.ps1")
+        for text in (index, weekly):
+            self.assertIn('data-tab="control"', text)
+            self.assertIn("trade_control.js", text)
+        for needle in (
+            "cc-tab-owner-summary",
+            "paper_trade_history.json",
+            "取引・建玉コントロール",
+            "NOT_CONNECTED_UNKNOWN_NOT_ZERO",
+            "0件とは解釈しません",
+            "upgradeWeeklyReview",
+        ):
+            self.assertIn(needle, control + gateway)
+        for needle in (
+            "real_submit_allowed",
+            "OFF_LOCKED",
+            "broker_positions_connected",
+            "shadow_positions_connected",
+            "REAL_ORDER_UNLOCK_NOT_AVAILABLE",
+        ):
+            self.assertIn(needle, gateway)
+
+    def test_weekly_review_generator_uses_shared_cards(self):
+        text = read("scripts/weekly_tabs.py")
+        self.assertIn('id="weekly-review" class="card wide"', text)
+        self.assertIn('class="cc-grid"', text)
+        self.assertIn('class="cc-card cc-card--', text)
+        self.assertNotIn('class="weekly-grid"', text)
+
     def test_gateway_exposes_voice_health(self):
         text = read("downloads/AI_COCKPIT_GATEWAY_V9.ps1")
         for needle in ("voice_bridge_status", "sbv2_status", "voice_backend", "Style-Bert-VITS2"):
