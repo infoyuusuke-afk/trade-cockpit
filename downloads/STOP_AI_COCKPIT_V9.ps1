@@ -22,6 +22,28 @@ if (-not (Test-Path -LiteralPath $StateFile)) {
 # corrupting Japanese paths on read-back) - read explicitly as UTF-8.
 $state = [IO.File]::ReadAllText($StateFile, [Text.Encoding]::UTF8) | ConvertFrom-Json
 
+function Get-PortOwner([int]$Port) {
+    try {
+        $conn = Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($null -ne $conn) { return [int]$conn.OwningProcess }
+    } catch {}
+    return 0
+}
+
+function Stop-OwnedJobBridge([int]$Port,[int]$ExpectedParentId,[string]$Label) {
+    if ($ExpectedParentId -le 0) { return }
+    $owner = Get-PortOwner $Port
+    if ($owner -le 0) { return }
+    try {
+        $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $owner) -ErrorAction SilentlyContinue
+        if ($null -eq $info) { return }
+        if ([int]$info.ParentProcessId -eq $ExpectedParentId -and [string]$info.Name -match "^(powershell|pwsh)\.exe$") {
+            Stop-Process -Id $owner -Force -ErrorAction SilentlyContinue
+            Write-Host ("Stopped " + $Label + " bridge child (PID " + $owner + ")") -ForegroundColor Green
+        }
+    } catch {}
+}
+
 function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
     $expected = switch ($Field) {
         "watcher_pid"      { "Kioxia_RSS_Live_Watcher.ps1" }
@@ -40,6 +62,9 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
         return (-not [string]::IsNullOrWhiteSpace($cmd) -and $cmd -match [regex]::Escape($expected))
     } catch { return $false }
 }
+
+Stop-OwnedJobBridge 28580 ([int]$state.collector_pid) "Collector JSON"
+Stop-OwnedJobBridge 28582 ([int]$state.watcher_pid) "Watcher JSON"
 
 foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid", "sbv2_pid", "controller_pid")) {
     $val = $state.PSObject.Properties[$field]
