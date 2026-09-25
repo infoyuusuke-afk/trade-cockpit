@@ -61,11 +61,20 @@ function Resolve-RuntimeDirForDeploy {
     $hits = foreach ($r in $roots) {
         Get-ChildItem -LiteralPath $r -Recurse -File -Filter "MS2_RSS_100_Collector.ps1" -ErrorAction SilentlyContinue
     }
-    $preferred = @($hits | Where-Object { $_.FullName -like "*MarketSpeed II RSS\files*" } | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
-    if ($preferred.Count -gt 0) { return $preferred[0].Directory.FullName }
-    $any = @($hits | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
-    if ($any.Count -gt 0) { return $any[0].Directory.FullName }
-    throw "MS2 runtime folder not found under Desktop (looked for MS2_RSS_100_Collector.ps1)."
+    # Only the canonical ...\MarketSpeed II RSS\files directory is a
+    # valid runtime. Nested backup/staging folders under "files" must
+    # never be selected as RuntimeDir.
+    $canonical = @($hits | Where-Object {
+        $_.Directory.Name -eq "files" -and
+        $null -ne $_.Directory.Parent -and
+        $_.Directory.Parent.Name -eq "MarketSpeed II RSS"
+    } | Sort-Object FullName -Unique)
+    if ($canonical.Count -eq 1) { return $canonical[0].Directory.FullName }
+    if ($canonical.Count -gt 1) {
+        $paths = ($canonical | ForEach-Object { $_.Directory.FullName } | Select-Object -Unique) -join " | "
+        throw "Multiple canonical MS2 runtime folders found. Refusing to guess: $paths"
+    }
+    throw "Canonical MS2 runtime folder not found under Desktop (expected ...\MarketSpeed II RSS\files)."
 }
 
 function Get-Sha256Hex([string]$Path) {
@@ -124,7 +133,9 @@ function Deploy-RuntimeFiles([string]$RepoRoot, [string]$RuntimeDir) {
     # Phase 2: every file validated - back up what's currently there, then
     # atomically replace (staged temp files already live in RuntimeDir, so
     # Move-Item is a same-volume rename, not a cross-volume copy).
-    $backupDir = Join-Path $RuntimeDir ("_v8_runtime_backup_" + (Get-Date -Format "yyyyMMdd_HHmmss"))
+    $backupRoot = Join-Path (Split-Path -Parent $RuntimeDir) "_v8_runtime_backups"
+    if (-not (Test-Path -LiteralPath $backupRoot)) { New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null }
+    $backupDir = Join-Path $backupRoot ("runtime_" + (Get-Date -Format "yyyyMMdd_HHmmss"))
     New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
     $deployedHashes = [ordered]@{}
     foreach ($name in $RUNTIME_DEPLOY_FILES) {
