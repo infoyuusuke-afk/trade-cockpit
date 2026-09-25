@@ -22,14 +22,35 @@ if (-not (Test-Path -LiteralPath $StateFile)) {
 # corrupting Japanese paths on read-back) - read explicitly as UTF-8.
 $state = [IO.File]::ReadAllText($StateFile, [Text.Encoding]::UTF8) | ConvertFrom-Json
 
+function Test-OwnedPidIdentity([string]$Field,[int]$Pid) {
+    $expected = switch ($Field) {
+        "watcher_pid"      { "Kioxia_RSS_Live_Watcher.ps1" }
+        "heartbeat_pid"    { "Kioxia_Safety_Heartbeat.ps1" }
+        "collector_pid"    { "MS2_RSS_100_Collector.ps1" }
+        "gateway_pid"      { "AI_COCKPIT_GATEWAY_V9.ps1" }
+        "voice_bridge_pid" { "AI_COCKPIT_VOICE_BRIDGE_V9.ps1" }
+        "sbv2_pid"         { "server_fastapi.py" }
+        "controller_pid"   { "AI_COCKPIT_CONTROLLER_V9.ps1" }
+        default            { "" }
+    }
+    if ([string]::IsNullOrWhiteSpace($expected)) { return $false }
+    try {
+        $wmi = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $Pid) -ErrorAction SilentlyContinue
+        $cmd = if ($null -ne $wmi) { [string]$wmi.CommandLine } else { "" }
+        return (-not [string]::IsNullOrWhiteSpace($cmd) -and $cmd -match [regex]::Escape($expected))
+    } catch { return $false }
+}
+
 foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid", "sbv2_pid", "controller_pid")) {
     $val = $state.PSObject.Properties[$field]
     if ($null -eq $val -or [int]$val.Value -le 0) { continue }
     $procId = [int]$val.Value
     $p = Get-Process -Id $procId -ErrorAction SilentlyContinue
-    if ($null -ne $p) {
+    if ($null -ne $p -and (Test-OwnedPidIdentity $field $procId)) {
         try { Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue } catch {}
         Write-Host ("Stopped " + $field + " (PID " + $procId + ")") -ForegroundColor Green
+    } elseif ($null -ne $p) {
+        Write-Host ("PID " + $procId + " no longer matches " + $field + "; not stopping it.") -ForegroundColor Yellow
     }
 }
 
