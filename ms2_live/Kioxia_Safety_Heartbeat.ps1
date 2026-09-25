@@ -155,38 +155,20 @@ function Convert-ToHeartbeatSpeechText([string]$text) {
 function Invoke-SbV2HeartbeatSpeak([string]$text) {
     $speechText = Convert-ToHeartbeatSpeechText $text
     if ([string]::IsNullOrWhiteSpace($speechText)) { return $true }
-    $tmp = Join-Path $env:TEMP ("heartbeat_sbv2_" + [Guid]::NewGuid().ToString("N") + ".wav")
     try {
         $encoded = [Uri]::EscapeDataString($speechText)
-        $styleEncoded = [Uri]::EscapeDataString($SbV2Style)
-        $url = $SbV2ApiBase + "/voice?text=" + $encoded + "&model_id=" + $SbV2ModelId + "&speaker_id=" + $SbV2SpeakerId + "&length=" + $SbV2Length + "&language=JP&style=" + $styleEncoded
-        Invoke-WebRequest -Method Post -Uri $url -OutFile $tmp -UseBasicParsing -TimeoutSec 45
-        if (-not (Test-Path -LiteralPath $tmp) -or (Get-Item -LiteralPath $tmp).Length -lt 1000) { throw "SBV2 audio response is empty." }
-        $player = New-Object System.Media.SoundPlayer $tmp
-        $player.PlaySync()
-        $player.Dispose()
-        return $true
-    } catch {
-        return $false
-    } finally {
-        if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
-    }
+        $uri = "http://127.0.0.1:28583/announce?level=DANGER&text=" + $encoded
+        $r = Invoke-WebRequest -UseBasicParsing -Uri $uri -TimeoutSec 35
+        return ($r.StatusCode -eq 200)
+    } catch { return $false }
 }
 function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 20000) {
-    if ($null -eq $speaker -or [string]::IsNullOrEmpty($text)) { return }
-    $mutex = $null
-    $acquired = $false
-    try {
-        $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
-        $acquired = $mutex.WaitOne($timeoutMs)
-        $sbv2Ok = Invoke-SbV2HeartbeatSpeak $text
-        if (-not $sbv2Ok) {
-            Write-Host "[HEARTBEAT] SBV2 voice request failed" -ForegroundColor Red
-        }
-    } catch {
-    } finally {
-        if ($acquired -and $null -ne $mutex) { try { $mutex.ReleaseMutex() } catch {} }
-        if ($null -ne $mutex) { $mutex.Dispose() }
+    if ([string]::IsNullOrWhiteSpace($text)) { return }
+    # The V9 VoiceBridge is the single mutex owner. Holding the same named
+    # mutex in this process while waiting for /announce would deadlock.
+    $sbv2Ok = Invoke-SbV2HeartbeatSpeak $text
+    if (-not $sbv2Ok) {
+        Write-Host "[HEARTBEAT] V9 SBV2 bridge unavailable - no legacy fallback" -ForegroundColor Red
     }
 }
 

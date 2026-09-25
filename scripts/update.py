@@ -1708,68 +1708,10 @@ document.addEventListener("DOMContentLoaded",()=>{{
 
 
 def render_trade_drawer():
-    return r"""
-<div id="trade-drawer-backdrop" aria-hidden="true"></div>
-<aside id="trade-drawer" aria-label="銘柄チャートと売買判断" aria-hidden="true">
- <div class="drawer-head"><div><span>QUICK TRADE VIEW</span><h2 id="drawer-name">銘柄チャート</h2></div><button id="drawer-close" type="button" aria-label="閉じる">×</button></div>
- <div class="drawer-grid">
-  <div id="drawer-chart" class="drawer-chart">
-   <div id="drawer-chart-inner"></div>
-   <div id="drawer-chart-empty" class="drawer-empty" style="display:none">チャートデータ更新待ち</div>
-   <div id="drawer-chart-line-labels" class="lwc-line-labels"></div>
-  </div>
-  <div class="drawer-plan">
-   <div id="drawer-status" class="drawer-status">判定中</div>
-   <div class="drawer-main"><span>売買発動</span><strong id="drawer-trigger">—</strong><small id="drawer-confirm">ローソク足確定と出来高を確認</small></div>
-   <div class="drawer-levels"><div><span>押し目</span><b id="drawer-pullback">—</b></div><div><span>損切り</span><b id="drawer-stop" class="down">—</b></div><div><span>利確1</span><b id="drawer-target1" class="up">—</b></div><div><span>利確2</span><b id="drawer-target2">—</b></div></div>
-   <p id="drawer-note"></p>
-  </div>
- </div>
-</aside>
-<script>
-document.addEventListener("DOMContentLoaded",()=>{
- const drawer=document.getElementById("trade-drawer"),back=document.getElementById("trade-drawer-backdrop"),yen=n=>Number(n).toLocaleString("ja-JP",{maximumFractionDigits:1})+"円",records={};
- const close=()=>{drawer.classList.remove("open");back.classList.remove("open");drawer.setAttribute("aria-hidden","true")};document.getElementById("drawer-close").onclick=close;back.onclick=close;
- const codeOf=(v,key="")=>String(v?.code||v?.ticker||key).match(/(?:TSE:)?([0-9A-Z]{3,5})(?:\.T)?(?:）)?/)?.[1];
- function walk(v,key=""){if(Array.isArray(v)){v.forEach(x=>walk(x,key));return}if(!v||typeof v!=="object")return;const code=codeOf(v,key);if(code){const old=records[code]||{},incomingDate=String(v.data_date||""),oldDate=String(old.data_date||""),useIncoming=!oldDate||(incomingDate&&incomingDate>=oldDate),chart=useIncoming&&(v.chart||[]).length?v.chart:old.chart,merged=useIncoming?{...old,...v}:{...v,...old};records[code]={...merged,chart,name:(useIncoming?v.name:old.name)||v.name||old.name||(key.includes("（")?key:key+"（"+code+"）")}}Object.entries(v).forEach(([k,x])=>{if(typeof x==="object")walk(x,k)})}
- let drawerChart=null,drawerSeries=null,drawerLines=[];
- function ensureDrawerChart(){
-  if(drawerChart||typeof LightweightCharts==="undefined")return drawerChart;
-  drawerChart=LightweightCharts.createChart(document.getElementById("drawer-chart-inner"),{layout:{background:{color:"transparent"},textColor:"#8ea2b3",fontSize:11},grid:{vertLines:{color:"#182630"},horzLines:{color:"#182630"}},rightPriceScale:{borderColor:"#1c2c37"},timeScale:{borderColor:"#1c2c37",timeVisible:true,secondsVisible:false,rightOffset:8},crosshair:{mode:LightweightCharts.CrosshairMode.Normal},autoSize:true});
-  drawerSeries=drawerChart.addSeries(LightweightCharts.CandlestickSeries,{upColor:"#3ed5ae",downColor:"#ef646b",borderUpColor:"#3ed5ae",borderDownColor:"#ef646b",wickUpColor:"#3ed5ae",wickDownColor:"#ef646b"});
-  return drawerChart;
- }
- function toDrawerSeriesData(bars){
-  const today=new Date(),out=[];
-  bars.forEach((b,i)=>{let time=b.t;if(!time){const d=new Date(today);d.setDate(d.getDate()-(bars.length-1-i));time=d.toISOString().slice(0,10);}out.push({time,open:b.o,high:b.h,low:b.l,close:b.c});});
-  return out;
- }
- function chartSvg(x,levels){
-  const box=document.getElementById("drawer-chart-inner"),empty=document.getElementById("drawer-chart-empty"),lineLabels=document.getElementById("drawer-chart-line-labels");
-  const a=x.chart||[];
-  lineLabels.innerHTML="";
-  if(!a.length){box.style.display="none";empty.style.display="grid";return;}
-  box.style.display="block";empty.style.display="none";
-  if(!ensureDrawerChart())return;
-  drawerSeries.setData(toDrawerSeriesData(a));
-  drawerChart.timeScale().fitContent();
-  const rawLo=Math.min(...a.map(v=>v.l),levels.stop),rawHi=Math.max(...a.map(v=>v.h),levels.trigger);
-  const pad=Math.max((rawHi-rawLo)*.06,1),lo=rawLo-pad,hi=rawHi+pad;
-  drawerSeries.applyOptions({autoscaleInfoProvider:()=>({priceRange:{minValue:lo,maxValue:hi}})});
-  drawerLines.forEach(l=>drawerSeries.removePriceLine(l));drawerLines=[];
-  [[levels.trigger,"trigger","発動","#50e8c0"],[levels.pullback,"pullback","押し目","#f2c45a"],[levels.stop,"stop","撤退","#ff787e"]].forEach(z=>{
-   const v=z[0];if(v==null||!Number.isFinite(v))return;
-   drawerLines.push(drawerSeries.createPriceLine({price:v,color:z[3],lineWidth:1,lineStyle:2,axisLabelVisible:true}));
-   const y=drawerSeries.priceToCoordinate(v);
-   if(y!=null){const el=document.createElement("span");el.className="lwc-line-label";el.style.top=y+"px";el.style.color=z[3];el.textContent=z[2]+" "+yen(v);lineLabels.appendChild(el);}
-  });
-  return "";
- }
- function openChart(code){const x=records[code];if(!x)return;const a=x.chart||[],last=Number(x.close||x.price||a.at(-1)?.c||0),hi=Math.max(...a.slice(-20).map(v=>v.h)),lo=Math.min(...a.slice(-10).map(v=>v.l)),official=Number.isFinite(Number(x.trigger))&&Number.isFinite(Number(x.stop)),short=official&&Number(x.target1)<Number(x.trigger),tick=last<3000?1:last<5000?5:last<30000?10:last<50000?50:100,trigger=Number(x.trigger)||(short?lo-tick:hi+tick),stop=Number(x.stop)||(short?hi:lo),risk=Math.max(Math.abs(trigger-stop),tick),target1=Number(x.target1)||(short?trigger-risk*1.5:trigger+risk*1.5),target2=Number(x.target2)||(short?trigger-risk*2.2:trigger+risk*2.2),pullback=short?trigger+risk*.35:trigger-risk*.35;let status="発動待ち",cls="ready";if((!short&&last>=trigger)|| (short&&last<=trigger)){status=Math.abs(last-trigger)<=risk*.5?"発動確認・ローソク足待ち":"走り過ぎ・追わない";cls=status.startsWith("発動")?"go":"wait"}if((!short&&last<=stop)||(short&&last>=stop)){status="条件崩れ・見送り";cls="stop"}const levels={trigger,stop,target1,target2,pullback};document.getElementById("drawer-name").textContent=x.name||code;chartSvg(x,levels);const st=document.getElementById("drawer-status");st.className="drawer-status "+cls;st.textContent=status;document.getElementById("drawer-trigger").textContent=(short?"売り ":"買い ")+yen(trigger)+(short?" 以下":" 以上");document.getElementById("drawer-pullback").textContent=yen(pullback);document.getElementById("drawer-stop").textContent=yen(stop);document.getElementById("drawer-target1").textContent=yen(target1);document.getElementById("drawer-target2").textContent=yen(target2);document.getElementById("drawer-confirm").textContent=short?"反落足確定・VWAP下・出来高増加":"反発足確定・VWAP上・出来高増加";document.getElementById("drawer-note").textContent=official?"正式候補の注文ライン。発動条件を満たさなければ見送り。":"参考ライン。監視銘柄から自動計算したため、正式候補へ昇格するまで注文しない。";drawer.classList.add("open");back.classList.add("open");drawer.setAttribute("aria-hidden","false")}
- function enhance(){document.querySelectorAll(".tab-pane table tbody tr,.tab-pane table>tr").forEach(tr=>{if(tr.dataset.chartReady)return;const code=tr.textContent.match(/（([0-9A-Z]{3,5})）/)?.[1];if(!code||!records[code]?.chart?.length)return;tr.dataset.chartReady="1";tr.classList.add("chart-row");const cell=[...tr.cells].find(td=>td.textContent.includes("（"+code+"）"))||tr.cells[1]||tr.cells[0];const b=document.createElement("button");b.type="button";b.className="chart-open";b.textContent="▥ チャート";b.onclick=e=>{e.stopPropagation();openChart(code)};cell.appendChild(b)})}
- Promise.all([fetch("data.json?t="+Date.now()).then(r=>r.json()),fetch("signals.json?t="+Date.now()).then(r=>r.json())]).then(([a,b])=>{walk(a);walk(b);enhance();setTimeout(enhance,700);setTimeout(enhance,1800)}).catch(()=>{});
-});
-</script>"""
+    # V9 UI convergence: the only chart kept in the cockpit is the
+    # Kioxia prediction/actual chart. Generic per-row chart drawers were
+    # removed so every other view stays card-first and glanceable.
+    return ""
 
 
 def main():
@@ -2550,24 +2492,19 @@ def main():
     live_focus_html = """
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
- let voiceOn=localStorage.getItem("cockpitVoiceV1")==="on";
- const voiceButtons=[...document.querySelectorAll("[data-voice-toggle]")];
- const jstClock=()=>{const p=Object.fromEntries(new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Tokyo",weekday:"short",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).filter(x=>x.type!=="literal").map(x=>[x.type,x.value]));return {weekday:p.weekday,minutes:Number(p.hour)*60+Number(p.minute)}};
- const isTseVoiceWindow=()=>{const t=jstClock(),weekday=!["Sat","Sun"].includes(t.weekday),morning=t.minutes>=9*60&&t.minutes<=11*60+30,afternoon=t.minutes>=12*60+30&&t.minutes<=15*60+30;return weekday&&(morning||afternoon)};
  window.cockpitLiveSpeechEnabled=true;
- const marketStatusEls=[...document.querySelectorAll("#unified-mode-market-status")];
- const setMarketStatus=()=>{const open=isTseVoiceWindow();marketStatusEls.forEach(el=>{el.classList.toggle("open",open);const b=el.querySelector("b");if(b)b.textContent=open?"取引時間中":"取引時間外";});};
- const setVoiceLabel=()=>{setMarketStatus();voiceButtons.forEach(button=>{const open=isTseVoiceWindow();button.textContent=open?(voiceOn?"🔊":"🔇"):"🔇";button.title=!open?"東証9:00～11:30・12:30～15:30のみ。PTSデータには対応していません":(voiceOn?"音声読み上げON（クリックでOFF）":"音声読み上げOFF（クリックでON）");});};setVoiceLabel();
- window.cockpitSpeak=msg=>{if(!voiceOn||!msg||!isTseVoiceWindow()||window.cockpitLiveSpeechEnabled===false||!("speechSynthesis" in window))return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(msg);u.lang="ja-JP";u.rate=1.05;window.speechSynthesis.speak(u);};
- window.cockpitAnnounce=model=>{if(!model||!model.symbol||!window.recordOnAir)return;window.recordOnAir(model);const box=document.getElementById("cockpit-onair-cards");if(box&&window.renderOnAirPanel)box.innerHTML=window.renderOnAirPanel();};
- voiceButtons.forEach(button=>button.onclick=()=>{if(!isTseVoiceWindow()){voiceOn=false;localStorage.setItem("cockpitVoiceV1","off");setVoiceLabel();return}voiceOn=!voiceOn;localStorage.setItem("cockpitVoiceV1",voiceOn?"on":"off");setVoiceLabel();if(voiceOn)window.cockpitSpeak("AIコクピットの自動読み上げを開始します");});
  const loadLive=()=>fetch("live_focus.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).then(d=>{
    window.cockpitLiveSpeechEnabled=d.speech_enabled===true;
-   setVoiceLabel();
+   window.cockpitVoiceSetLiveEnabled?.(d.speech_enabled===true);
    const verifiedEl=document.getElementById("unified-mode-verified");
    if(verifiedEl)verifiedEl.textContent="完全照合 "+(d.verified_count||0)+" / "+(d.expected_count||0)+"銘柄（"+(d.updated_at||"更新時刻不明")+"）";
    document.dispatchEvent(new CustomEvent("liveFocusUpdate",{detail:d}));
- }).catch(()=>{const verifiedEl=document.getElementById("unified-mode-verified");if(verifiedEl)verifiedEl.textContent="通信停止・売買禁止";});
+ }).catch(()=>{
+   window.cockpitLiveSpeechEnabled=false;
+   window.cockpitVoiceSetLiveEnabled?.(false);
+   const verifiedEl=document.getElementById("unified-mode-verified");
+   if(verifiedEl)verifiedEl.textContent="通信停止・売買禁止";
+ });
  loadLive();setInterval(loadLive,60000);
 });
 </script>"""
@@ -2883,7 +2820,10 @@ document.addEventListener("DOMContentLoaded",()=>{
 <link rel="stylesheet" href="next-theme-radar.css?v=c024-1">
 <script defer src="next-theme-radar.js?v=c024-1"></script>
 <link rel="stylesheet" href="card_system.css?v=p0b1-1">
+<link rel="stylesheet" href="card_table_adapter.css?v=v9-1">
 <script type="module" src="card_system.js?v=p0b1-1"></script>
+<script src="voice_client.js?v=v9-1" defer></script>
+<script src="card_table_adapter.js?v=v9-1" defer></script>
 <style>.unified-mode{{margin:8px 6px 0;padding:10px 14px;border:1px solid #272A30;border-radius:10px;background:#101114;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}}.unified-mode .lamp{{width:12px;height:12px;border-radius:50%;background:#63676e;box-shadow:0 0 0 5px #63676e18}}.unified-mode.live{{border-color:#1f4a37;background:#101114}}.unified-mode.live .lamp{{background:#35e2ae;box-shadow:0 0 10px #35e2ae66}}.unified-mode.stale{{border-color:#6b5426}}.unified-mode strong{{font-size:16px;color:#e7e9eb}}.unified-mode span{{color:#9aa0a6}}.unified-mode b{{color:#c7cacd;font-size:12px;font-weight:500}}.unified-mode small{{color:#63676e;display:block;margin-top:2px}}.unified-mode-controls{{display:flex;align-items:center;gap:8px}}.market-status-pill{{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#15171B;border:1px solid #272A30;color:#7a7f86;font-size:10.5px;white-space:nowrap}}.market-status-pill .dot{{width:6px;height:6px;border-radius:50%;background:#4a4e55;flex:none}}.market-status-pill.open{{color:#8fe3c0;border-color:#1f4a37}}.market-status-pill.open .dot{{background:#35e2ae;box-shadow:0 0 5px #35e2ae}}.voice-toggle{{width:30px;height:30px;padding:0;border-radius:50%;background:#15171B;border:1px solid #272A30;color:#c7cacd;font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center}}@media(max-width:700px){{.unified-mode{{grid-template-columns:auto 1fr auto}}.unified-mode>b{{grid-column:3}}.unified-mode .unified-mode-controls{{grid-column:1/-1}}}}</style>
 <header><div><span class="tag">{phase}</span><div class="sub">{data['updated_at']}／統一取引日 {quality_gate['market_date'] or '取得不能'}</div></div></header>
 <div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><main>

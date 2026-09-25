@@ -19,9 +19,7 @@ $hasMutex = $false
 try { $hasMutex = $mutex.WaitOne(0, $false) } catch { $hasMutex = $false }
 if (-not $hasMutex) { exit 0 }
 
-$sapi = New-Object -ComObject SAPI.SpVoice
-$sapi.Rate = -1
-$sapi.Volume = 100
+$sapi = $null # V9 bridge only; no Windows SAPI fallback
 
 $lastKey = ""
 $lastSpokenAt = [datetime]::MinValue
@@ -102,55 +100,14 @@ function Invoke-Voice([string]$text, [string]$level) {
         Write-Host ("[" + $level + "] " + $normalized)
         return $true
     }
-
-    $voiceMutex = $null
-    $voiceAcquired = $false
     try {
-        $voiceMutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
-        $voiceAcquired = $voiceMutex.WaitOne(20000)
-        if (-not $voiceAcquired) { return $false }
-        if (Test-SbV2Ready) {
-            $profile = Get-VoiceProfile $level
-            $q = [ordered]@{
-                text = $normalized
-                model_name = $SbV2ModelName
-                speaker_name = $SbV2SpeakerName
-                language = 'JP'
-                length = (To-Invariant $profile.length)
-                auto_split = 'true'
-                split_interval = (To-Invariant $profile.split)
-                style = $SbV2Style
-                style_weight = (To-Invariant $profile.styleWeight)
-            }
-            $pairs = @()
-            foreach ($entry in $q.GetEnumerator()) {
-                $pairs += ([Uri]::EscapeDataString([string]$entry.Key) + '=' + [Uri]::EscapeDataString([string]$entry.Value))
-            }
-            $uri = $SbV2BaseUrl.TrimEnd('/') + '/voice?' + ($pairs -join '&')
-            $wav = Join-Path $env:TEMP ("ai_cockpit_emotion_" + [guid]::NewGuid().ToString('N') + '.wav')
-            try {
-                Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $wav -TimeoutSec 30 | Out-Null
-                $player = New-Object System.Media.SoundPlayer $wav
-                $player.Load()
-                $player.PlaySync()
-                $player.Dispose()
-                return $true
-            } catch {
-                # A healthy /status does not guarantee that synthesis succeeds.
-                $sapi.Speak($normalized, 0) | Out-Null
-                return $true
-            } finally {
-                if (Test-Path $wav) { Remove-Item -Force $wav -ErrorAction SilentlyContinue }
-            }
-        } else {
-            $sapi.Speak($normalized, 0) | Out-Null
-            return $true
-        }
+        $encoded=[Uri]::EscapeDataString($normalized)
+        $uri="http://127.0.0.1:28583/announce?level="+[Uri]::EscapeDataString($level)+"&text="+$encoded
+        $r=Invoke-WebRequest -UseBasicParsing -Uri $uri -TimeoutSec 35
+        return ($r.StatusCode -eq 200)
     } catch {
+        Write-Host ("[EMOTION VOICE] SBV2 bridge unavailable; no SAPI fallback: "+$_.Exception.Message) -ForegroundColor DarkYellow
         return $false
-    } finally {
-        if ($voiceAcquired -and $null -ne $voiceMutex) { try { $voiceMutex.ReleaseMutex() } catch {} }
-        if ($null -ne $voiceMutex) { $voiceMutex.Dispose() }
     }
 }
 

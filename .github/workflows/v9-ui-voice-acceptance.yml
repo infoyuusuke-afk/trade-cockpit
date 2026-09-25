@@ -1,0 +1,96 @@
+name: V9 UI Voice Acceptance
+
+on:
+  pull_request:
+    paths:
+      - "index.html"
+      - "scripts/update.py"
+      - "card_system.css"
+      - "card_system.js"
+      - "card_table_adapter.css"
+      - "card_table_adapter.js"
+      - "voice_client.js"
+      - "downloads/AI_COCKPIT_*_V9.ps1"
+      - "downloads/RUN_AI_COCKPIT_V9.ps1"
+      - "downloads/STOP_AI_COCKPIT_V9.ps1"
+      - "downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1"
+      - "ms2_live/Kioxia_RSS_Live_Watcher.ps1"
+      - "ms2_live/Kioxia_Safety_Heartbeat.ps1"
+      - "ms2_live/MS2_RSS_100_Collector.ps1"
+      - "ms2_live/SPEAK_TODAY_STRATEGY.ps1"
+      - "ms2_live/SPEAK_LIVE_EMOTION.ps1"
+      - "tests/test_v9_ui_voice_contract.py"
+      - "tests/v9_visual_smoke.mjs"
+      - ".github/workflows/v9-ui-voice-acceptance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  structural:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout event ref without marketplace actions
+        run: |
+          git init .
+          git remote add origin https://github.com/infoyuusuke-afk/trade-cockpit.git
+          git fetch --depth=1 origin "$GITHUB_REF"
+          git checkout --detach FETCH_HEAD
+      - run: python3 -m unittest discover -s tests -p "test_v9_ui_voice_contract.py"
+      - run: node --check voice_client.js
+      - run: node --check card_table_adapter.js
+
+  powershell-ast:
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout event ref without marketplace actions
+        shell: pwsh
+        run: |
+          git init .
+          git remote add origin https://github.com/infoyuusuke-afk/trade-cockpit.git
+          git fetch --depth=1 origin $env:GITHUB_REF
+          git checkout --detach FETCH_HEAD
+      - shell: pwsh
+        run: |
+          $files = @(
+            "downloads/AI_COCKPIT_CONTROLLER_V9.ps1",
+            "downloads/AI_COCKPIT_GATEWAY_V9.ps1",
+            "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
+            "downloads/RUN_AI_COCKPIT_V9.ps1",
+            "downloads/STOP_AI_COCKPIT_V9.ps1",
+            "downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1",
+            "ms2_live/Kioxia_RSS_Live_Watcher.ps1",
+            "ms2_live/Kioxia_Safety_Heartbeat.ps1",
+            "ms2_live/MS2_RSS_100_Collector.ps1",
+            "ms2_live/SPEAK_TODAY_STRATEGY.ps1",
+            "ms2_live/SPEAK_LIVE_EMOTION.ps1"
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error ($file + ": " + $_.Message) }
+              throw "PowerShell AST validation failed: $file"
+            }
+          }
+
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout event ref without marketplace actions
+        run: |
+          git init .
+          git remote add origin https://github.com/infoyuusuke-afk/trade-cockpit.git
+          git fetch --depth=1 origin "$GITHUB_REF"
+          git checkout --detach FETCH_HEAD
+      - run: npm install --no-save playwright@1.55.0
+      - run: npx playwright install --with-deps chromium
+      - run: |
+          python3 -m http.server 8765 > /tmp/v9-http.log 2>&1 &
+          sleep 2
+          node tests/v9_visual_smoke.mjs

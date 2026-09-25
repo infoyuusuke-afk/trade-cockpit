@@ -675,27 +675,13 @@ function Invoke-SbV2Speak([string]$text) {
     $speechText = Convert-ToCockpitSpeechText $text
     if ([string]::IsNullOrWhiteSpace($speechText)) { return $true }
     foreach($chunk in @(Split-CockpitSpeechText $speechText)) {
-        $tmp = Join-Path $env:TEMP ("ai_cockpit_sbv2_" + [Guid]::NewGuid().ToString("N") + ".wav")
         try {
             $encoded = [Uri]::EscapeDataString($chunk)
-            $styleEncoded = [Uri]::EscapeDataString($SbV2Style)
-            $url = $SbV2ApiBase + "/voice?text=" + $encoded +
-                   "&model_id=" + $SbV2ModelId +
-                   "&speaker_id=" + $SbV2SpeakerId +
-                   "&length=" + $SbV2Length +
-                   "&language=JP&style=" + $styleEncoded
-            Invoke-WebRequest -Method Post -Uri $url -OutFile $tmp -UseBasicParsing -TimeoutSec 45
-            if (-not (Test-Path -LiteralPath $tmp) -or (Get-Item -LiteralPath $tmp).Length -lt 1000) {
-                throw "SBV2 audio response is empty."
-            }
-            $player = New-Object System.Media.SoundPlayer $tmp
-            $player.PlaySync()
-            $player.Dispose()
+            $uri = "http://127.0.0.1:28583/announce?level=WATCH&text=" + $encoded
+            $r = Invoke-WebRequest -UseBasicParsing -Uri $uri -TimeoutSec 35
+            if ($r.StatusCode -ne 200) { return $false }
         } catch {
-            if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
             return $false
-        } finally {
-            if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
         }
     }
     return $true
@@ -703,21 +689,12 @@ function Invoke-SbV2Speak([string]$text) {
 
 # Watcher・Heartbeat・AUTO_START等と共有の名前付きMutexで音声を直列化する。
 function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 30000) {
-    if ([string]::IsNullOrEmpty($text)) { return }
-    $mutex = $null
-    $acquired = $false
-    try {
-        $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
-        $acquired = $mutex.WaitOne($timeoutMs)
-        $sbv2Ok = Invoke-SbV2Speak $text
-        if (-not $sbv2Ok) {
-            Write-Host "[VOICE] SBV2 request failed - no SAPI fallback" -ForegroundColor Red
-        }
-    } catch {
-        Write-Host "[VOICE] SBV2 request failed - no SAPI fallback" -ForegroundColor Red
-    } finally {
-        if ($acquired -and $null -ne $mutex) { try { $mutex.ReleaseMutex() } catch {} }
-        if ($null -ne $mutex) { $mutex.Dispose() }
+    if ([string]::IsNullOrWhiteSpace($text)) { return }
+    # V9 VoiceBridge owns Global\KioxiaVoiceMutex. Do not acquire that
+    # mutex here before making the HTTP call or caller/bridge would deadlock.
+    $ok = Invoke-SbV2Speak $text
+    if (-not $ok) {
+        Write-Host "[VOICE] V9 SBV2 bridge unavailable - no legacy fallback" -ForegroundColor Red
     }
 }
 $previous = @{}
