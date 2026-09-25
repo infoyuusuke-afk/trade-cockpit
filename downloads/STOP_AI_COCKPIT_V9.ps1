@@ -22,7 +22,7 @@ if (-not (Test-Path -LiteralPath $StateFile)) {
 # corrupting Japanese paths on read-back) - read explicitly as UTF-8.
 $state = [IO.File]::ReadAllText($StateFile, [Text.Encoding]::UTF8) | ConvertFrom-Json
 
-function Test-OwnedPidIdentity([string]$Field,[int]$Pid) {
+function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
     $expected = switch ($Field) {
         "watcher_pid"      { "Kioxia_RSS_Live_Watcher.ps1" }
         "heartbeat_pid"    { "Kioxia_Safety_Heartbeat.ps1" }
@@ -35,7 +35,7 @@ function Test-OwnedPidIdentity([string]$Field,[int]$Pid) {
     }
     if ([string]::IsNullOrWhiteSpace($expected)) { return $false }
     try {
-        $wmi = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $Pid) -ErrorAction SilentlyContinue
+        $wmi = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction SilentlyContinue
         $cmd = if ($null -ne $wmi) { [string]$wmi.CommandLine } else { "" }
         return (-not [string]::IsNullOrWhiteSpace($cmd) -and $cmd -match [regex]::Escape($expected))
     } catch { return $false }
