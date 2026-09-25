@@ -80,35 +80,96 @@ def build_weekly(now: datetime) -> dict:
 
 def weekly_html(w: dict) -> str:
     if not w:
-        return f"{WSTART}<section id=\"weekly-review\"><h2>週間振り返り・来週戦略</h2><p>土曜日の集計後に表示します。</p></section>{WEND}"
+        return (
+            f'{WSTART}<section id="weekly-review" class="card wide">'
+            '<div class="pane-intro"><span>AI COCKPIT</span><h2>週間振り返り・来週戦略</h2>'
+            '<p>土曜日の集計後に表示します。</p></div></section>'
+            f'{WEND}'
+        )
+
+    def metric(label: str, value: str) -> str:
+        return f'<span>{html.escape(label)}<b>{html.escape(value)}</b></span>'
+
+    def review_card(x: dict, badge: str, css: str) -> str:
+        ticker = str(x.get("ticker") or "").replace(".T", "")
+        pnl = x.get("pnl_yen")
+        r_value = x.get("r")
+        pnl_text = "—" if pnl is None else f"{float(pnl):+,.0f}円"
+        r_text = "—" if r_value is None else f"{float(r_value):+.2f}R"
+        return (
+            f'<article class="cc-card cc-card--{css}">'
+            '<div class="cc-head"><div class="cc-identity">'
+            f'<span class="cc-company">{html.escape(str(x.get("name") or ticker or "取引"))}</span>'
+            f'<span class="cc-symbol">TSE:{html.escape(ticker or "—")}</span>'
+            f'</div><span class="cc-badge">{html.escape(badge)}</span></div>'
+            '<div class="cc-metrics-grid">'
+            + metric("損益", pnl_text)
+            + metric("R", r_text)
+            + metric("ENTRY", str(x.get("entry") or x.get("simulated_fill") or "—"))
+            + metric("結果", str(x.get("result") or "—"))
+            + '</div>'
+            f'<div class="cc-foot">{html.escape(str(x.get("date") or ""))} / '
+            f'{html.escape(str(x.get("strategy_id") or "strategy未タグ"))}</div>'
+            '</article>'
+        )
+
     best = "".join(
-        f"<li>{html.escape(x.get('name',''))}：{x.get('pnl_yen',0):+,}円（{x.get('r',0):+.2f}R）</li>"
+        review_card(x, "BEST", "long" if float(x.get("pnl_yen") or 0) >= 0 else "short")
         for x in w.get("best", [])
-    ) or "<li>確定取引なし</li>"
+    ) or (
+        '<article class="cc-card cc-card--wait"><div class="cc-head">'
+        '<div class="cc-identity"><span class="cc-company">確定取引なし</span>'
+        '<span class="cc-symbol">AI COCKPIT</span></div><span class="cc-badge">—</span>'
+        '</div></article>'
+    )
     worst = "".join(
-        f"<li>{html.escape(x.get('name',''))}：{x.get('pnl_yen',0):+,}円（{x.get('r',0):+.2f}R）</li>"
+        review_card(x, "REVIEW", "short" if float(x.get("pnl_yen") or 0) < 0 else "wait")
         for x in w.get("worst", [])
-    ) or "<li>確定取引なし</li>"
-    rules = "".join(f"<li>{html.escape(x)}</li>" for x in w.get("next_rules", []))
-    themes = "・".join(html.escape(x) for x in w.get("themes", [])) or "更新待ち"
+    ) or best
+
+    theme_text = "・".join(str(x) for x in w.get("themes", [])) or "更新待ち"
+    rule_text = " / ".join(
+        f"{i + 1}. {x}" for i, x in enumerate(w.get("next_rules", []))
+    ) or "更新待ち"
+    pnl = float(w.get("pnl") or 0)
+    result_css = "long" if pnl > 0 else "short" if pnl < 0 else "wait"
+
+    summary = (
+        f'<article class="cc-card cc-card--{result_css}">'
+        '<div class="cc-head"><div class="cc-identity"><span class="cc-company">週間成績</span>'
+        '<span class="cc-symbol">AI COCKPIT</span></div>'
+        f'<span class="cc-badge">{html.escape(str(w.get("decision") or "REVIEW"))}</span></div>'
+        '<div class="cc-metrics-grid">'
+        + metric("仮想取引", f'{int(w.get("count") or 0)}件')
+        + metric("勝率", f'{float(w.get("win_rate") or 0):.1f}%')
+        + metric("PF", f'{float(w.get("pf") or 0):.2f}')
+        + metric("平均R", f'{float(w.get("avg_r") or 0):+.2f}R')
+        + metric("週間損益", f'{int(w.get("pnl") or 0):+,}円')
+        + '</div><div class="cc-foot">仮想検証/Shadowの集計で、実口座損益ではありません。</div>'
+        '</article>'
+    )
+    theme_card = (
+        '<article class="cc-card cc-card--wait"><div class="cc-head">'
+        '<div class="cc-identity"><span class="cc-company">来週の注目テーマ</span>'
+        '<span class="cc-symbol">THEME</span></div><span class="cc-badge">WATCH</span></div>'
+        f'<div class="cc-catalyst">{html.escape(theme_text)}</div>'
+        '<div class="cc-foot">テーマ候補であり、保有建玉ではありません。</div></article>'
+    )
+    rule_card = (
+        '<article class="cc-card cc-card--wait"><div class="cc-head">'
+        '<div class="cc-identity"><span class="cc-company">来週のルール</span>'
+        '<span class="cc-symbol">RULES</span></div><span class="cc-badge">PLAN</span></div>'
+        f'<div class="cc-catalyst">{html.escape(rule_text)}</div></article>'
+    )
+
     return f"""{WSTART}
-<section id="weekly-review" class="panel">
-  <h2>週間振り返り・来週戦略</h2>
-  <p>{html.escape(w['week'])}｜作成 {html.escape(w['created_at'])}</p>
-  <div class="cards">
-    <div class="card"><b>仮想取引</b><span>{w['count']}件</span></div>
-    <div class="card"><b>勝率</b><span>{w['win_rate']:.1f}%</span></div>
-    <div class="card"><b>PF</b><span>{w['pf']:.2f}</span></div>
-    <div class="card"><b>平均R</b><span>{w['avg_r']:+.2f}R</span></div>
-    <div class="card"><b>週間損益</b><span>{w['pnl']:+,}円</span></div>
-    <div class="card"><b>実戦判定</b><span>{html.escape(w['decision'])}</span></div>
+<section id="weekly-review" class="card wide">
+  <div class="pane-intro"><span>AI COCKPIT</span><h2>週間振り返り・来週戦略</h2>
+    <p>{html.escape(w['week'])}｜作成 {html.escape(w['created_at'])}</p>
   </div>
-  <div class="weekly-grid">
-    <div><h3>良かった取引</h3><ul>{best}</ul></div>
-    <div><h3>改善する取引</h3><ul>{worst}</ul></div>
-    <div><h3>来週の注目テーマ</h3><p>{themes}</p></div>
-    <div><h3>来週のルール</h3><ol>{rules}</ol></div>
-  </div>
+  <div class="cc-grid">{summary}{theme_card}{rule_card}</div>
+  <h3>良かった取引</h3><div class="cc-grid">{best}</div>
+  <h3>改善する取引</h3><div class="cc-grid">{worst}</div>
 </section>
 {WEND}"""
 
