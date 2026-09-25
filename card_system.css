@@ -121,3 +121,33 @@
 @media(min-width:375px) and (max-width:640px){
   .cc-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
 }
+
+
+/* Opportunity Radar / real-price mini chart */
+.cc-sparkline{border:1px solid var(--cc-border);border-radius:7px;background:#07090b;padding:7px 8px 5px}
+.cc-sparkline-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.cc-sparkline-head span,.cc-sparkline--empty span{font-size:9.5px;color:var(--cc-text-secondary)}
+.cc-sparkline-head b{font-size:10.5px;color:var(--cc-text-primary);font-variant-numeric:tabular-nums}
+.cc-sparkline svg{display:block;width:100%;height:48px}
+.cc-sparkline polyline{fill:none;stroke-width:2;vector-effect:non-scaling-stroke;stroke-linecap:round;stroke-linejoin:round}
+.cc-sparkline-line--up{stroke:var(--cc-long)}
+.cc-sparkline-line--down{stroke:var(--cc-short)}
+.cc-sparkline--empty{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:34px}
+.cc-sparkline--empty b{font-size:10px;color:#5d6570}
+
+.cc-opportunity--watch{border-color:#7b5b1d;box-shadow:0 0 0 1px #7b5b1d55,inset 0 2px 0 #d9a13f}
+.cc-opportunity--hot{border-color:#d8a128;box-shadow:0 0 0 1px #d8a12888,0 0 18px #d8a12822,inset 0 3px 0 #f2c14e}
+@keyframes ccOpportunityPulse{
+  0%,100%{box-shadow:0 0 0 1px #d8a12888,0 0 10px #d8a12818,inset 0 3px 0 #f2c14e}
+  50%{box-shadow:0 0 0 2px #ffd86a,0 0 26px #ffd86a55,inset 0 3px 0 #ffd86a}
+}
+.cc-opportunity--pulse{animation:ccOpportunityPulse .55s ease-in-out 5}
+@media(prefers-reduced-motion:reduce){.cc-opportunity--pulse{animation:none}}
+
+.cc-opportunity-radar{margin:0 0 12px}
+.cc-opportunity-radar-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:8px}
+.cc-opportunity-radar-head h2{margin:0;font-size:14px}
+.cc-opportunity-radar-head p{margin:3px 0 0;font-size:10.5px;color:var(--cc-text-secondary)}
+.cc-opportunity-radar-state{font-size:10px;color:var(--cc-text-secondary);white-space:nowrap}
+.cc-opportunity-radar-state.hot{color:#f2c14e;font-weight:800}
+.cc-opportunity-reasons{font-size:10px;color:#d8c48b}
