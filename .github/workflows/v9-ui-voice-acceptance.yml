@@ -85,6 +85,40 @@ jobs:
         shell: powershell
         run: |
           .\downloads\SWITCH_AI_COCKPIT_V8_TO_V9.ps1 -RepoRoot $PWD.Path -ExpectedSha "selftest" -SelfTest
+      - name: Start VoiceBridge and probe health on Windows PowerShell
+        shell: powershell
+        run: |
+          $stdout = Join-Path $env:RUNNER_TEMP "voicebridge-out.log"
+          $stderr = Join-Path $env:RUNNER_TEMP "voicebridge-err.log"
+          $p = Start-Process powershell.exe -ArgumentList @(
+            "-NoLogo","-NoProfile","-ExecutionPolicy","Bypass",
+            "-File",(Resolve-Path ".\downloads\AI_COCKPIT_VOICE_BRIDGE_V9.ps1"),
+            "-Port","28593"
+          ) -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru -WindowStyle Hidden
+          try {
+            $deadline = (Get-Date).AddSeconds(12)
+            $ok = $false
+            while((Get-Date) -lt $deadline) {
+              Start-Sleep -Milliseconds 250
+              if($p.HasExited) { break }
+              try {
+                $r = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:28593/health" -TimeoutSec 2
+                if($r.StatusCode -eq 200) {
+                  $j = $r.Content | ConvertFrom-Json
+                  if($j.backend -eq "Style-Bert-VITS2" -and $j.port -eq 28593) { $ok = $true; break }
+                }
+              } catch {}
+            }
+            if(-not $ok) {
+              Write-Host "STDOUT:"
+              Get-Content $stdout -ErrorAction SilentlyContinue
+              Write-Host "STDERR:"
+              Get-Content $stderr -ErrorAction SilentlyContinue
+              throw "VoiceBridge failed runtime health probe"
+            }
+          } finally {
+            if(-not $p.HasExited) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
+          }
 
 
   visual:
