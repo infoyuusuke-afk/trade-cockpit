@@ -148,12 +148,14 @@ function Deploy-RuntimeFiles([string]$RepoRoot, [string]$RuntimeDir) {
     }
 
     # Verify from the ACTUAL deployed files, not the source - confirms the
-    # move landed the bytes we validated, not something else.
-    $watcherText = Get-Content -LiteralPath (Join-Path $RuntimeDir "Kioxia_RSS_Live_Watcher.ps1") -Raw
+    # move landed the bytes we validated, not something else. Read as
+    # explicit UTF-8 (not Get-Content -Raw) for the same BOM-less-UTF-8
+    # reason as the JSON reads elsewhere in this file.
+    $watcherText = [IO.File]::ReadAllText((Join-Path $RuntimeDir "Kioxia_RSS_Live_Watcher.ps1"), [Text.Encoding]::UTF8)
     if ($watcherText -notmatch [regex]::Escape('Start-LocalJsonBridge $watcherJsonPath 28582')) {
         throw "Runtime deploy verification failed: deployed Watcher does not reference port 28582."
     }
-    $collectorText = Get-Content -LiteralPath (Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1") -Raw
+    $collectorText = [IO.File]::ReadAllText((Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"), [Text.Encoding]::UTF8)
     if ($collectorText -notmatch "28580") {
         throw "Runtime deploy verification failed: deployed Collector does not reference port 28580."
     }

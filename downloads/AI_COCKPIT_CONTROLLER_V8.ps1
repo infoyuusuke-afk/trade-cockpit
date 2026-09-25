@@ -57,6 +57,18 @@ function Write-Status([string]$Message, [ConsoleColor]$Color = [ConsoleColor]::C
     Write-Host ("[{0,7}s] {1}" -f $sec, $Message) -ForegroundColor $Color
 }
 
+# 2026-09-25 fix: Windows PowerShell 5.1's `Get-Content -Raw` does not
+# reliably treat a BOM-less UTF-8 file as UTF-8 - it can fall back to the
+# system ANSI codepage (Shift-JIS on this machine), corrupting the
+# Japanese RuntimeDir path in V8_RUNTIME.json/V8_CONTROLLER_STATE.json on
+# read-back even though they were written as UTF-8. This is what actually
+# stopped the Controller on the first real-machine run. Every JSON read in
+# this script goes through this helper instead of `Get-Content -Raw`.
+function Read-JsonUtf8([string]$Path) {
+    $text = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8)
+    return $text | ConvertFrom-Json
+}
+
 function Test-Port([int]$Port, [int]$TimeoutMs = 400) {
     $c = New-Object Net.Sockets.TcpClient
     try {
@@ -182,7 +194,7 @@ if (-not (Test-Path -LiteralPath $LogDir)) { New-Item -ItemType Directory -Path 
 function Read-State {
     try {
         if (-not (Test-Path -LiteralPath $StateFile)) { return $null }
-        return (Get-Content -LiteralPath $StateFile -Raw | ConvertFrom-Json)
+        return (Read-JsonUtf8 $StateFile)
     } catch { return $null }
 }
 
@@ -303,7 +315,7 @@ try {
     if (-not (Test-Path -LiteralPath $runtimeManifestPath)) {
         throw "No V8_RUNTIME.json found - runtime scripts were never deployed to RuntimeDir. Run RUN_AI_COCKPIT_V8.ps1 (not this controller directly) so it deploys Watcher/Heartbeat/Collector before starting."
     }
-    $runtimeManifest = Get-Content -LiteralPath $runtimeManifestPath -Raw | ConvertFrom-Json
+    $runtimeManifest = Read-JsonUtf8 $runtimeManifestPath
     if ($runtimeManifest.runtime_dir -ne $RuntimeDir) {
         throw "V8_RUNTIME.json was deployed for a different RuntimeDir (" + $runtimeManifest.runtime_dir + ") than the one resolved now (" + $RuntimeDir + "). Re-run RUN_AI_COCKPIT_V8.ps1."
     }

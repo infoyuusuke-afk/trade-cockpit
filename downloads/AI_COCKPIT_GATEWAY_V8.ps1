@@ -41,6 +41,15 @@ if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot "index.html"))) {
 $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $Port)
 $utf8 = [Text.UTF8Encoding]::new($false)
 
+# 2026-09-25 fix: Get-Content -Raw does not reliably treat a BOM-less
+# UTF-8 file as UTF-8 under Windows PowerShell 5.1 - it can fall back to
+# the system ANSI codepage, corrupting the Japanese RuntimeDir path on
+# read-back. Every JSON read in this script goes through this helper.
+function Read-JsonUtf8([string]$Path) {
+    $text = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8)
+    return $text | ConvertFrom-Json
+}
+
 function Get-ContentType([string]$path) {
     switch -Regex ($path.ToLowerInvariant()) {
         '\.html?$' { return 'text/html; charset=utf-8' }
@@ -143,7 +152,7 @@ try {
                 }
                 try {
                     if (Test-Path -LiteralPath $controllerStateFile) {
-                        $st = Get-Content -LiteralPath $controllerStateFile -Raw | ConvertFrom-Json
+                        $st = Read-JsonUtf8 $controllerStateFile
                         $runtime.collector_status = $st.collector_status
                         $runtime.watcher_status = $st.watcher_status
                         $runtime.heartbeat_status = $st.heartbeat_status

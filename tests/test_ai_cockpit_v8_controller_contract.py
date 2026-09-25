@@ -348,7 +348,7 @@ class RunnerContract(unittest.TestCase):
         # Backup happens only in phase 2, after every file already passed
         # validation in phase 1 - a single bad file must never produce a
         # partial deploy or an unnecessary backup.
-        backup_idx = body.find("_v8_runtime_backup_")
+        backup_idx = body.find("_v8_runtime_backups")
         move_idx = body.find("Move-Item -LiteralPath $entry.staged_path")
         catch_idx = body.find("} catch {")
         self.assertGreater(catch_idx, -1)
@@ -360,8 +360,10 @@ class RunnerContract(unittest.TestCase):
         self.assertIn("28582", body)
         self.assertIn("28580", body)
         # Must read back the file that was just written to RuntimeDir, not
-        # re-check the source in the repo.
-        self.assertIn("Get-Content -LiteralPath (Join-Path $RuntimeDir", body)
+        # re-check the source in the repo (as explicit UTF-8, not
+        # Get-Content -Raw - see JsonEncodingContract).
+        self.assertIn('[IO.File]::ReadAllText((Join-Path $RuntimeDir "Kioxia_RSS_Live_Watcher.ps1")', body)
+        self.assertIn('[IO.File]::ReadAllText((Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1")', body)
 
     def test_writes_runtime_manifest_with_required_fields(self):
         self.assertIn("V8_RUNTIME.json", self.runner)
@@ -375,6 +377,83 @@ class RunnerContract(unittest.TestCase):
 
     def test_controller_receives_the_verified_branch(self):
         self.assertIn("-ExpectedBranch $Branch", self.runner)
+
+
+class JsonEncodingContract(unittest.TestCase):
+    """2026-09-25: the first real-machine run of RUN_AI_COCKPIT_V8.ps1
+    deployed successfully (V8_RUNTIME.json was written) but the Controller
+    then failed to start, because `Get-Content -Raw | ConvertFrom-Json`
+    does not reliably treat a BOM-less UTF-8 file as UTF-8 under Windows
+    PowerShell 5.1 - it can silently fall back to the system ANSI codepage
+    (Shift-JIS on this machine), corrupting the Japanese RuntimeDir path
+    (デイトレ -> 繝・う繝医Ξ) on read-back, which then failed the
+    runtime_dir equality check and stopped the Controller. Reproduced and
+    confirmed fixed interactively (not part of this suite, since it needs
+    real Windows PowerShell 5.1 behavior): `[IO.File]::ReadAllText(path,
+    [Text.Encoding]::UTF8)` round-trips the same Japanese path correctly
+    where `Get-Content -Raw | ConvertFrom-Json` corrupted it.
+
+    These tests only confirm every JSON (and the two runtime-deploy text)
+    reads in the shipped scripts go through the fixed path - not the
+    Windows-specific encoding behavior itself.
+    """
+
+    def test_no_script_reads_json_via_bare_get_content_raw(self):
+        for script_name in (
+            "AI_COCKPIT_CONTROLLER_V8.ps1",
+            "AI_COCKPIT_GATEWAY_V8.ps1",
+            "STOP_AI_COCKPIT_V8.ps1",
+        ):
+            text = read(script_name)
+            self.assertNotRegex(
+                text,
+                r"Get-Content[^\n]*-Raw[^\n]*\|\s*ConvertFrom-Json",
+                f"{script_name} still reads JSON via the unfixed pattern",
+            )
+
+    def test_controller_and_gateway_define_read_json_utf8_helper(self):
+        for script_name in ("AI_COCKPIT_CONTROLLER_V8.ps1", "AI_COCKPIT_GATEWAY_V8.ps1"):
+            text = read(script_name)
+            self.assertIn("function Read-JsonUtf8", text)
+            helper = extract_function(text, "Read-JsonUtf8")
+            self.assertIn("[IO.File]::ReadAllText", helper)
+            self.assertIn("[Text.Encoding]::UTF8", helper)
+
+    def test_controller_state_and_manifest_reads_use_the_helper(self):
+        controller = read("AI_COCKPIT_CONTROLLER_V8.ps1")
+        read_state = extract_function(controller, "Read-State")
+        self.assertIn("Read-JsonUtf8", read_state)
+        self.assertNotIn("Get-Content", read_state)
+        manifest_read_idx = controller.index("$runtimeManifest = ")
+        manifest_read_line = controller[manifest_read_idx:controller.index("\n", manifest_read_idx)]
+        self.assertIn("Read-JsonUtf8", manifest_read_line)
+
+    def test_gateway_state_read_uses_the_helper(self):
+        gateway = read("AI_COCKPIT_GATEWAY_V8.ps1")
+        self.assertIn("$st = Read-JsonUtf8 $controllerStateFile", gateway)
+
+    def test_stop_script_state_read_is_explicit_utf8(self):
+        stop = read("STOP_AI_COCKPIT_V8.ps1")
+        self.assertIn(
+            "[IO.File]::ReadAllText($StateFile, [Text.Encoding]::UTF8) | ConvertFrom-Json",
+            stop,
+        )
+
+    def test_runner_deploy_verification_reads_are_explicit_utf8(self):
+        runner = read("RUN_AI_COCKPIT_V8.ps1")
+        body = extract_function(runner, "Deploy-RuntimeFiles")
+        code_lines = [
+            line for line in body.splitlines() if not line.strip().startswith("#")
+        ]
+        self.assertFalse(any("Get-Content" in line for line in code_lines))
+        self.assertIn(
+            '[IO.File]::ReadAllText((Join-Path $RuntimeDir "Kioxia_RSS_Live_Watcher.ps1"), [Text.Encoding]::UTF8)',
+            body,
+        )
+        self.assertIn(
+            '[IO.File]::ReadAllText((Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"), [Text.Encoding]::UTF8)',
+            body,
+        )
 
 
 if __name__ == "__main__":

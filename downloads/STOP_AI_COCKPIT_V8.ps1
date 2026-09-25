@@ -17,7 +17,10 @@ if (-not (Test-Path -LiteralPath $StateFile)) {
     exit 0
 }
 
-$state = Get-Content -LiteralPath $StateFile -Raw | ConvertFrom-Json
+# Get-Content -Raw does not reliably treat a BOM-less UTF-8 file as UTF-8
+# under Windows PowerShell 5.1 (can fall back to the system ANSI codepage,
+# corrupting Japanese paths on read-back) - read explicitly as UTF-8.
+$state = [IO.File]::ReadAllText($StateFile, [Text.Encoding]::UTF8) | ConvertFrom-Json
 
 foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid")) {
     $val = $state.PSObject.Properties[$field]
