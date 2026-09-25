@@ -10,6 +10,7 @@ param(
 $ErrorActionPreference = "Stop"
 $V8State = Join-Path $Root "V8_CONTROLLER_STATE.json"
 $V8ControllerName = "AI_COCKPIT_CONTROLLER_V8.ps1"
+$V8RunnerName = "RUN_AI_COCKPIT_V8.ps1"
 
 function Invoke-GitFatal([string]$RepoPath,[string[]]$GitArgs,[string]$Message) {
     $out = & git -C $RepoPath @GitArgs 2>&1
@@ -83,6 +84,28 @@ function Stop-RecognizedV8PortOwner([int]$Port) {
     return $false
 }
 
+function Get-ProcessInfo([int]$ProcessId) {
+    try {
+        return Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction SilentlyContinue
+    } catch { return $null }
+}
+
+function Stop-OwnedJobBridge([int]$Port,[int]$ExpectedParentId,[string]$Label) {
+    if ($ExpectedParentId -le 0) { return $false }
+    $owner = Get-PortOwner $Port
+    if ($owner -le 0) { return $true }
+    $info = Get-ProcessInfo $owner
+    if ($null -eq $info) { return $false }
+    $name = [string]$info.Name
+    $parent = [int]$info.ParentProcessId
+    if ($parent -eq $ExpectedParentId -and $name -match "^(powershell|pwsh)\.exe$") {
+        Stop-Process -Id $owner -Force -ErrorAction Stop
+        Write-Host ("  stopped owned {0} bridge child: port {1}, PID {2}, parent {3}" -f $Label,$Port,$owner,$ExpectedParentId) -ForegroundColor Green
+        return $true
+    }
+    return $false
+}
+
 function Read-JsonUtf8([string]$Path) {
     return ([IO.File]::ReadAllText($Path,[Text.Encoding]::UTF8) | ConvertFrom-Json)
 }
@@ -96,6 +119,8 @@ if ($SelfTest) {
     $null = Test-PidIdentity 999999 "definitely-not-a-real-script.ps1"
     Stop-ExactProcess 0 "definitely-not-a-real-script.ps1" "self-test"
     $null = Get-PortOwner 65530
+    $null = Get-ProcessInfo 999999
+    $null = Stop-OwnedJobBridge 65530 999999 "self-test"
     Write-Host "SWITCH SELFTEST PASS" -ForegroundColor Green
     [Environment]::Exit(0)
 }
@@ -130,14 +155,38 @@ if (Test-Path -LiteralPath $V8State) {
 
 # Stop V8 controller first so it cannot restart workers during teardown.
 # Exact script identity only; no generic PowerShell or Excel process scan.
-Write-Host "Stopping V8 controller..." -ForegroundColor Cyan
-$controllers=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
-    ([string]$_.CommandLine) -match [regex]::Escape($V8ControllerName)
+Write-Host "Stopping V8 supervisor/controller..." -ForegroundColor Cyan
+$supervisors=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+    $cmd=[string]$_.CommandLine
+    (-not [string]::IsNullOrWhiteSpace($cmd)) -and (
+        $cmd -match [regex]::Escape($V8RunnerName) -or
+        $cmd -match [regex]::Escape($V8ControllerName)
+    )
 })
-foreach($ctl in $controllers) {
-    Stop-ExactProcess ([int]$ctl.ProcessId) $V8ControllerName "V8 controller"
+foreach($ctl in $supervisors) {
+    $cmd=[string]$ctl.CommandLine
+    if($cmd -match [regex]::Escape($V8RunnerName)){
+        Stop-ExactProcess ([int]$ctl.ProcessId) $V8RunnerName "V8 runner/supervisor"
+    } else {
+        Stop-ExactProcess ([int]$ctl.ProcessId) $V8ControllerName "V8 controller"
+    }
 }
-Start-Sleep -Milliseconds 700
+Start-Sleep -Milliseconds 900
+
+# The V8 runner invokes the controller in-process, so killing only a process
+# named AI_COCKPIT_CONTROLLER_V8.ps1 misses the real supervisor. Re-read
+# state after the runner is stopped so we own the last PIDs it recorded.
+if (Test-Path -LiteralPath $V8State) {
+    try { $state=Read-JsonUtf8 $V8State } catch {}
+}
+
+# V8 Watcher/Collector use Start-Job for ports 28582/28580. Those child
+# powershell processes can survive a forced parent stop. Kill them only when
+# their ParentProcessId matches the V8 worker PID recorded in state.
+if($null -ne $state){
+    Stop-OwnedJobBridge 28580 ([int]$state.collector_pid) "Collector JSON" | Out-Null
+    Stop-OwnedJobBridge 28582 ([int]$state.watcher_pid) "Watcher JSON" | Out-Null
+}
 
 # Stop only V8 state-owned worker PIDs whose CURRENT command line still
 # identifies the expected script. PID reuse cannot kill an unrelated app.
