@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-25 13:50:55 JST",
+  "updated_at": "2026-09-25 13:53:40 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -19,13 +19,13 @@
       "state": "確認",
       "confidence": 81,
       "anchor_today": {
-        "ret": 1.41,
+        "ret": 1.4,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.19,
+        "ret": 1.21,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -50,7 +50,7 @@
       "state": "確認",
       "confidence": 73,
       "anchor_today": {
-        "ret": 1.41,
+        "ret": 1.4,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -81,7 +81,7 @@
       "state": "確認",
       "confidence": 72,
       "anchor_today": {
-        "ret": 1.41,
+        "ret": 1.4,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -112,13 +112,13 @@
       "state": "確認",
       "confidence": 72,
       "anchor_today": {
-        "ret": 1.41,
+        "ret": 1.4,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -143,13 +143,13 @@
       "state": "不安定",
       "confidence": 67,
       "anchor_today": {
-        "ret": 1.41,
+        "ret": 1.4,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": -1.26,
+        "ret": -1.24,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -174,7 +174,7 @@
       "state": "不成立",
       "confidence": 50,
       "anchor_today": {
-        "ret": 1.41,
+        "ret": 1.4,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -205,7 +205,7 @@
       "state": "不成立",
       "confidence": 45,
       "anchor_today": {
-        "ret": 1.41,
+        "ret": 1.4,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -217,6 +217,37 @@
         "ema": "未取得"
       },
       "decision": "この関係を売買根拠にしない"
+    },
+    {
+      "anchor": "東京エレクトロン（8035）",
+      "anchor_ticker": "8035.T",
+      "peer": "SCREEN HD（7735）",
+      "peer_ticker": "7735.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.83,
+      "corr60": 0.87,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": 0.79,
+      "lead_bars": 0,
+      "bars": 300,
+      "state": "確認",
+      "confidence": 92,
+      "anchor_today": {
+        "ret": 2.09,
+        "or15": "上抜け",
+        "vwap": "上",
+        "ema": "下向き"
+      },
+      "peer_today": {
+        "ret": 2.53,
+        "or15": "上抜け",
+        "vwap": "上",
+        "ema": "上向き"
+      },
+      "decision": "売買の確認材料に使用"
     },
     {
       "anchor": "ディスコ（6146）",
@@ -236,13 +267,13 @@
       "state": "確認",
       "confidence": 92,
       "anchor_today": {
-        "ret": 1.02,
+        "ret": 1.01,
         "or15": "上抜け",
         "vwap": "下",
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 2.06,
+        "ret": 2.09,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -250,14 +281,14 @@
       "decision": "売買の確認材料に使用"
     },
     {
-      "anchor": "東京エレクトロン（8035）",
-      "anchor_ticker": "8035.T",
-      "peer": "SCREEN HD（7735）",
-      "peer_ticker": "7735.T",
+      "anchor": "SCREEN HD（7735）",
+      "anchor_ticker": "7735.T",
+      "peer": "東京エレクトロン（8035）",
+      "peer_ticker": "8035.T",
       "relation": "自動検出・正相関",
       "expected": "正相関",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.82,
+      "corr20": 0.83,
       "corr60": 0.87,
       "sample20": 20,
       "sample60": 60,
@@ -265,18 +296,18 @@
       "lead_bars": 0,
       "bars": 300,
       "state": "確認",
-      "confidence": 91,
+      "confidence": 92,
       "anchor_today": {
-        "ret": 2.06,
-        "or15": "上抜け",
-        "vwap": "上",
-        "ema": "下向き"
-      },
-      "peer_today": {
-        "ret": 2.46,
+        "ret": 2.53,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
+      },
+      "peer_today": {
+        "ret": 2.09,
+        "or15": "上抜け",
+        "vwap": "上",
+        "ema": "下向き"
       },
       "decision": "売買の確認材料に使用"
     },
@@ -298,13 +329,13 @@
       "state": "確認",
       "confidence": 91,
       "anchor_today": {
-        "ret": -1.18,
+        "ret": -1.06,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": -0.04,
+        "ret": 0.04,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
@@ -329,46 +360,15 @@
       "state": "確認",
       "confidence": 91,
       "anchor_today": {
-        "ret": -0.04,
+        "ret": 0.04,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": -1.18,
+        "ret": -1.06,
         "or15": "下抜け",
         "vwap": "下",
-        "ema": "下向き"
-      },
-      "decision": "売買の確認材料に使用"
-    },
-    {
-      "anchor": "SCREEN HD（7735）",
-      "anchor_ticker": "7735.T",
-      "peer": "東京エレクトロン（8035）",
-      "peer_ticker": "8035.T",
-      "relation": "自動検出・正相関",
-      "expected": "正相関",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.82,
-      "corr60": 0.87,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": 0.79,
-      "lead_bars": 0,
-      "bars": 300,
-      "state": "確認",
-      "confidence": 91,
-      "anchor_today": {
-        "ret": 2.46,
-        "or15": "上抜け",
-        "vwap": "上",
-        "ema": "上向き"
-      },
-      "peer_today": {
-        "ret": 2.06,
-        "or15": "上抜け",
-        "vwap": "上",
         "ema": "下向き"
       },
       "decision": "売買の確認材料に使用"
@@ -391,13 +391,13 @@
       "state": "確認",
       "confidence": 90,
       "anchor_today": {
-        "ret": 1.51,
+        "ret": 1.65,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": -1.37,
+        "ret": -1.21,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
@@ -422,13 +422,13 @@
       "state": "確認",
       "confidence": 90,
       "anchor_today": {
-        "ret": -1.37,
+        "ret": -1.21,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.51,
+        "ret": 1.65,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -453,13 +453,13 @@
       "state": "確認",
       "confidence": 90,
       "anchor_today": {
-        "ret": 0.35,
+        "ret": 0.46,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": -1.18,
+        "ret": -1.06,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -490,7 +490,7 @@
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.65,
+        "ret": 0.67,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -515,7 +515,7 @@
       "state": "確認",
       "confidence": 90,
       "anchor_today": {
-        "ret": 0.65,
+        "ret": 0.67,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -552,7 +552,7 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 1.02,
+        "ret": 1.01,
         "or15": "上抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -577,13 +577,13 @@
       "state": "確認",
       "confidence": 89,
       "anchor_today": {
-        "ret": 1.37,
+        "ret": 1.45,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 2.06,
+        "ret": 2.09,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -608,13 +608,13 @@
       "state": "確認",
       "confidence": 89,
       "anchor_today": {
-        "ret": 1.17,
+        "ret": 1.21,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 2.87,
+        "ret": 2.9,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -639,13 +639,13 @@
       "state": "確認",
       "confidence": 89,
       "anchor_today": {
-        "ret": 1.19,
+        "ret": 1.21,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.17,
+        "ret": 1.21,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -670,13 +670,13 @@
       "state": "確認",
       "confidence": 89,
       "anchor_today": {
-        "ret": 2.87,
+        "ret": 2.9,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.17,
+        "ret": 1.21,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -701,13 +701,13 @@
       "state": "確認",
       "confidence": 88,
       "anchor_today": {
-        "ret": 1.39,
+        "ret": 1.45,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.17,
+        "ret": 1.21,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -732,7 +732,7 @@
       "state": "確認",
       "confidence": 87,
       "anchor_today": {
-        "ret": -0.78,
+        "ret": -0.68,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -769,7 +769,7 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 1.17,
+        "ret": 1.21,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -794,13 +794,13 @@
       "state": "確認",
       "confidence": 87,
       "anchor_today": {
-        "ret": 1.12,
+        "ret": 0.97,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.51,
+        "ret": 1.65,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -831,7 +831,7 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 1.09,
+        "ret": 1.14,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -856,7 +856,7 @@
       "state": "確認",
       "confidence": 86,
       "anchor_today": {
-        "ret": 1.09,
+        "ret": 1.14,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -887,13 +887,13 @@
       "state": "確認",
       "confidence": 86,
       "anchor_today": {
-        "ret": 0.49,
+        "ret": 0.5,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": -0.78,
+        "ret": -0.68,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -918,13 +918,13 @@
       "state": "確認",
       "confidence": 85,
       "anchor_today": {
-        "ret": 0.6,
+        "ret": 0.71,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 1.02,
+        "ret": 1.01,
         "or15": "上抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -949,7 +949,7 @@
       "state": "確認",
       "confidence": 85,
       "anchor_today": {
-        "ret": 1.58,
+        "ret": 1.54,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -986,7 +986,7 @@
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.58,
+        "ret": 1.54,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1017,7 +1017,7 @@
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.35,
+        "ret": 0.46,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1032,7 +1032,7 @@
       "relation": "自動検出・正相関",
       "expected": "正相関",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.78,
+      "corr20": 0.79,
       "corr60": 0.73,
       "sample20": 20,
       "sample60": 60,
@@ -1042,13 +1042,13 @@
       "state": "確認",
       "confidence": 84,
       "anchor_today": {
-        "ret": 0.73,
+        "ret": 0.7,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.65,
+        "ret": 0.67,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1073,13 +1073,13 @@
       "state": "確認",
       "confidence": 82,
       "anchor_today": {
-        "ret": 2.96,
+        "ret": 3.01,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 2.87,
+        "ret": 2.9,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1104,13 +1104,13 @@
       "state": "確認",
       "confidence": 82,
       "anchor_today": {
-        "ret": 1.45,
+        "ret": 1.47,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.51,
+        "ret": 1.65,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1135,13 +1135,13 @@
       "state": "確認",
       "confidence": 81,
       "anchor_today": {
-        "ret": -0.23,
+        "ret": 0.03,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.41,
+        "ret": 1.4,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1172,7 +1172,7 @@
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": -0.78,
+        "ret": -0.68,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -1197,14 +1197,45 @@
       "state": "確認",
       "confidence": 80,
       "anchor_today": {
-        "ret": -1.26,
+        "ret": -1.24,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 0.73,
+        "ret": 0.7,
         "or15": "レンジ内",
+        "vwap": "上",
+        "ema": "上向き"
+      },
+      "decision": "売買の確認材料に使用"
+    },
+    {
+      "anchor": "キーエンス（6861）",
+      "anchor_ticker": "6861.T",
+      "peer": "マクニカHD（3132）",
+      "peer_ticker": "3132.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.69,
+      "corr60": 0.61,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": 0.47,
+      "lead_bars": 0,
+      "bars": 300,
+      "state": "確認",
+      "confidence": 80,
+      "anchor_today": {
+        "ret": 2.25,
+        "or15": "上抜け",
+        "vwap": "上",
+        "ema": "上向き"
+      },
+      "peer_today": {
+        "ret": 3.01,
+        "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
@@ -1228,13 +1259,13 @@
       "state": "確認",
       "confidence": 80,
       "anchor_today": {
-        "ret": 0.77,
+        "ret": 0.79,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 2.06,
+        "ret": 2.09,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -1259,13 +1290,13 @@
       "state": "確認",
       "confidence": 79,
       "anchor_today": {
-        "ret": -0.49,
+        "ret": -0.42,
         "or15": "レンジ内",
         "vwap": "下",
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 1.17,
+        "ret": 1.21,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1290,7 +1321,7 @@
       "state": "確認",
       "confidence": 79,
       "anchor_today": {
-        "ret": 0.53,
+        "ret": 0.67,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1304,37 +1335,6 @@
       "decision": "売買の確認材料に使用"
     },
     {
-      "anchor": "キーエンス（6861）",
-      "anchor_ticker": "6861.T",
-      "peer": "マクニカHD（3132）",
-      "peer_ticker": "3132.T",
-      "relation": "自動検出・正相関",
-      "expected": "正相関",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.68,
-      "corr60": 0.61,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": 0.47,
-      "lead_bars": 0,
-      "bars": 300,
-      "state": "確認",
-      "confidence": 79,
-      "anchor_today": {
-        "ret": 2.28,
-        "or15": "上抜け",
-        "vwap": "上",
-        "ema": "上向き"
-      },
-      "peer_today": {
-        "ret": 2.96,
-        "or15": "上抜け",
-        "vwap": "上",
-        "ema": "上向き"
-      },
-      "decision": "売買の確認材料に使用"
-    },
-    {
       "anchor": "ユアテック（1934）",
       "anchor_ticker": "1934.T",
       "peer": "IHI（7013）",
@@ -1342,23 +1342,23 @@
       "relation": "自動検出・正相関",
       "expected": "正相関",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.71,
+      "corr20": 0.72,
       "corr60": 0.39,
       "sample20": 20,
       "sample60": 60,
       "intraday_corr": 0.62,
       "lead_bars": 0,
-      "bars": 294,
+      "bars": 295,
       "state": "確認",
       "confidence": 79,
       "anchor_today": {
-        "ret": 0.15,
+        "ret": 0.11,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": -0.04,
+        "ret": 0.04,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
@@ -1383,13 +1383,13 @@
       "state": "確認",
       "confidence": 78,
       "anchor_today": {
-        "ret": 1.11,
+        "ret": 1.07,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.02,
+        "ret": 1.01,
         "or15": "上抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -1441,7 +1441,7 @@
       "sample60": 60,
       "intraday_corr": 0.25,
       "lead_bars": 0,
-      "bars": 280,
+      "bars": 281,
       "state": "確認",
       "confidence": 77,
       "anchor_today": {
@@ -1451,7 +1451,7 @@
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": -0.78,
+        "ret": -0.68,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -1476,13 +1476,13 @@
       "state": "確認",
       "confidence": 76,
       "anchor_today": {
-        "ret": 1.11,
+        "ret": 1.14,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.73,
+        "ret": 0.7,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
@@ -1503,7 +1503,7 @@
       "sample60": 60,
       "intraday_corr": 0.31,
       "lead_bars": 0,
-      "bars": 271,
+      "bars": 272,
       "state": "確認",
       "confidence": 76,
       "anchor_today": {
@@ -1513,7 +1513,7 @@
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.39,
+        "ret": 1.45,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1538,13 +1538,13 @@
       "state": "確認",
       "confidence": 75,
       "anchor_today": {
-        "ret": 1.37,
+        "ret": 1.45,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1559,7 +1559,7 @@
       "relation": "自動検出・正相関",
       "expected": "正相関",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.77,
+      "corr20": 0.78,
       "corr60": 0.5,
       "sample20": 20,
       "sample60": 46,
@@ -1575,7 +1575,7 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": -2.54,
+        "ret": -2.38,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -1600,7 +1600,7 @@
       "state": "不安定",
       "confidence": 75,
       "anchor_today": {
-        "ret": -4.42,
+        "ret": -4.23,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -1621,7 +1621,7 @@
       "relation": "自動検出・正相関",
       "expected": "正相関",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.77,
+      "corr20": 0.78,
       "corr60": 0.5,
       "sample20": 20,
       "sample60": 46,
@@ -1631,7 +1631,7 @@
       "state": "不安定",
       "confidence": 75,
       "anchor_today": {
-        "ret": -2.54,
+        "ret": -2.38,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -1668,7 +1668,7 @@
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1689,18 +1689,18 @@
       "sample60": 60,
       "intraday_corr": 0.2,
       "lead_bars": 0,
-      "bars": 298,
+      "bars": 299,
       "state": "不安定",
       "confidence": 75,
       "anchor_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.43,
-        "or15": "レンジ内",
+        "ret": 0.54,
+        "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
@@ -1720,17 +1720,17 @@
       "sample60": 60,
       "intraday_corr": 0.2,
       "lead_bars": 0,
-      "bars": 298,
+      "bars": 299,
       "state": "不安定",
       "confidence": 75,
       "anchor_today": {
-        "ret": 0.43,
-        "or15": "レンジ内",
+        "ret": 0.54,
+        "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1751,17 +1751,17 @@
       "sample60": 60,
       "intraday_corr": 0.38,
       "lead_bars": 0,
-      "bars": 295,
+      "bars": 296,
       "state": "確認",
       "confidence": 75,
       "anchor_today": {
-        "ret": 0.48,
+        "ret": 0.32,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1780,19 +1780,19 @@
       "corr60": 0.49,
       "sample20": 20,
       "sample60": 60,
-      "intraday_corr": 0.3,
+      "intraday_corr": 0.31,
       "lead_bars": 0,
       "bars": 300,
       "state": "確認",
       "confidence": 74,
       "anchor_today": {
-        "ret": 0.8,
+        "ret": 0.82,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 0.53,
+        "ret": 0.67,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1817,13 +1817,13 @@
       "state": "確認",
       "confidence": 74,
       "anchor_today": {
-        "ret": 1.45,
+        "ret": 1.47,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1848,13 +1848,13 @@
       "state": "不安定",
       "confidence": 74,
       "anchor_today": {
-        "ret": 5.72,
+        "ret": 5.97,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 2.06,
+        "ret": 2.09,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -1879,13 +1879,13 @@
       "state": "確認",
       "confidence": 74,
       "anchor_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.45,
+        "ret": 1.47,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1910,13 +1910,13 @@
       "state": "確認",
       "confidence": 73,
       "anchor_today": {
-        "ret": 0.31,
+        "ret": 0.33,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1937,17 +1937,17 @@
       "sample60": 60,
       "intraday_corr": 0.47,
       "lead_bars": 0,
-      "bars": 298,
+      "bars": 299,
       "state": "確認",
       "confidence": 73,
       "anchor_today": {
-        "ret": -1.83,
+        "ret": -1.7,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": -2.54,
+        "ret": -2.38,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -1972,13 +1972,13 @@
       "state": "確認",
       "confidence": 72,
       "anchor_today": {
-        "ret": 2.06,
+        "ret": 2.09,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -2003,13 +2003,13 @@
       "state": "不安定",
       "confidence": 72,
       "anchor_today": {
-        "ret": 1.97,
+        "ret": 1.95,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 2.28,
+        "ret": 2.25,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -2024,7 +2024,7 @@
       "relation": "自動検出・正相関",
       "expected": "正相関",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.6,
+      "corr20": 0.61,
       "corr60": 0.59,
       "sample20": 20,
       "sample60": 60,
@@ -2040,7 +2040,7 @@
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.37,
+        "ret": 1.45,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -2065,13 +2065,13 @@
       "state": "確認",
       "confidence": 72,
       "anchor_today": {
-        "ret": 2.87,
+        "ret": 2.9,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -2096,13 +2096,13 @@
       "state": "確認",
       "confidence": 72,
       "anchor_today": {
-        "ret": 0.57,
+        "ret": 0.55,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.65,
+        "ret": 0.67,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -2133,7 +2133,7 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": -1.26,
+        "ret": -1.24,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -2158,7 +2158,7 @@
       "state": "不安定",
       "confidence": 71,
       "anchor_today": {
-        "ret": -5.61,
+        "ret": -5.76,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -2185,17 +2185,17 @@
       "sample60": 60,
       "intraday_corr": -0.24,
       "lead_bars": 0,
-      "bars": 295,
+      "bars": 296,
       "state": "不安定",
       "confidence": 71,
       "anchor_today": {
-        "ret": 0.77,
+        "ret": 0.79,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.48,
+        "ret": 0.32,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
@@ -2216,17 +2216,17 @@
       "sample60": 60,
       "intraday_corr": -0.24,
       "lead_bars": 0,
-      "bars": 295,
+      "bars": 296,
       "state": "不安定",
       "confidence": 71,
       "anchor_today": {
-        "ret": 0.48,
+        "ret": 0.32,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.77,
+        "ret": 0.79,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -2241,23 +2241,23 @@
       "relation": "自動検出・逆相関",
       "expected": "逆相関仮説",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": -0.56,
+      "corr20": -0.55,
       "corr60": -0.5,
       "sample20": 20,
       "sample60": 60,
-      "intraday_corr": -0.13,
+      "intraday_corr": -0.14,
       "lead_bars": 0,
       "bars": 300,
       "state": "不安定",
       "confidence": 70,
       "anchor_today": {
-        "ret": 2.96,
+        "ret": 3.01,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -2272,7 +2272,7 @@
       "relation": "自動検出・逆相関",
       "expected": "逆相関仮説",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": -0.32,
+      "corr20": -0.31,
       "corr60": -0.46,
       "sample20": 20,
       "sample60": 60,
@@ -2282,13 +2282,13 @@
       "state": "確認",
       "confidence": 70,
       "anchor_today": {
-        "ret": 1.02,
+        "ret": 1.01,
         "or15": "上抜け",
         "vwap": "下",
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -2313,13 +2313,13 @@
       "state": "確認",
       "confidence": 70,
       "anchor_today": {
-        "ret": 2.46,
+        "ret": 2.53,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -2338,19 +2338,19 @@
       "corr60": 0.47,
       "sample20": 20,
       "sample60": 43,
-      "intraday_corr": 0.2,
+      "intraday_corr": 0.19,
       "lead_bars": 0,
       "bars": 300,
       "state": "不安定",
       "confidence": 70,
       "anchor_today": {
-        "ret": 0.0,
+        "ret": -0.2,
         "or15": "レンジ内",
         "vwap": "下",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": -0.46,
+        "ret": -0.91,
         "or15": "レンジ内",
         "vwap": "下",
         "ema": "上向き"
@@ -2371,7 +2371,7 @@
       "sample60": 60,
       "intraday_corr": 0.16,
       "lead_bars": 0,
-      "bars": 299,
+      "bars": 300,
       "state": "不安定",
       "confidence": 70,
       "anchor_today": {
@@ -2381,7 +2381,7 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": -2.54,
+        "ret": -2.38,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -2400,19 +2400,19 @@
       "corr60": 0.47,
       "sample20": 20,
       "sample60": 43,
-      "intraday_corr": 0.2,
+      "intraday_corr": 0.19,
       "lead_bars": 0,
       "bars": 300,
       "state": "不安定",
       "confidence": 70,
       "anchor_today": {
-        "ret": -0.46,
+        "ret": -0.91,
         "or15": "レンジ内",
         "vwap": "下",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.0,
+        "ret": -0.2,
         "or15": "レンジ内",
         "vwap": "下",
         "ema": "上向き"
@@ -2437,13 +2437,13 @@
       "state": "不安定",
       "confidence": 69,
       "anchor_today": {
-        "ret": 1.92,
+        "ret": 1.83,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": -0.04,
+        "ret": 0.04,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
@@ -2468,13 +2468,13 @@
       "state": "確認",
       "confidence": 69,
       "anchor_today": {
-        "ret": 1.19,
+        "ret": 1.21,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.61,
+        "ret": 0.66,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -2505,7 +2505,7 @@
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.45,
+        "ret": 1.47,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -2526,7 +2526,7 @@
       "sample60": 60,
       "intraday_corr": -0.13,
       "lead_bars": -2,
-      "bars": 271,
+      "bars": 272,
       "state": "不安定",
       "confidence": 68,
       "anchor_today": {
@@ -2536,7 +2536,7 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": -1.37,
+        "ret": -1.21,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
@@ -2557,11 +2557,11 @@
       "sample60": 60,
       "intraday_corr": -0.13,
       "lead_bars": 2,
-      "bars": 271,
+      "bars": 272,
       "state": "不安定",
       "confidence": 68,
       "anchor_today": {
-        "ret": -1.37,
+        "ret": -1.21,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
@@ -2582,7 +2582,7 @@
       "relation": "自動検出・逆相関",
       "expected": "逆相関仮説",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": -0.5,
+      "corr20": -0.49,
       "corr60": -0.32,
       "sample20": 20,
       "sample60": 60,
@@ -2592,13 +2592,13 @@
       "state": "確認",
       "confidence": 68,
       "anchor_today": {
-        "ret": -0.23,
+        "ret": 0.03,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.73,
+        "ret": 0.7,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
@@ -2613,7 +2613,7 @@
       "relation": "自動検出・逆相関",
       "expected": "逆相関仮説",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": -0.5,
+      "corr20": -0.49,
       "corr60": -0.32,
       "sample20": 20,
       "sample60": 60,
@@ -2623,13 +2623,13 @@
       "state": "確認",
       "confidence": 68,
       "anchor_today": {
-        "ret": 0.73,
+        "ret": 0.7,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": -0.23,
+        "ret": 0.03,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
@@ -2650,17 +2650,17 @@
       "sample60": 60,
       "intraday_corr": 0.13,
       "lead_bars": 1,
-      "bars": 260,
+      "bars": 261,
       "state": "不安定",
       "confidence": 68,
       "anchor_today": {
-        "ret": -0.69,
+        "ret": -0.46,
         "or15": "レンジ内",
         "vwap": "下",
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": -0.46,
+        "ret": -0.91,
         "or15": "レンジ内",
         "vwap": "下",
         "ema": "上向き"
@@ -2681,17 +2681,17 @@
       "sample60": 60,
       "intraday_corr": 0.39,
       "lead_bars": 0,
-      "bars": 298,
+      "bars": 299,
       "state": "不安定",
       "confidence": 68,
       "anchor_today": {
-        "ret": -4.29,
+        "ret": -4.1,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": -2.54,
+        "ret": -2.38,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
@@ -2716,13 +2716,13 @@
       "state": "不安定",
       "confidence": 67,
       "anchor_today": {
-        "ret": -1.26,
+        "ret": -1.24,
         "or15": "下抜け",
         "vwap": "下",
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 1.41,
+        "ret": 1.4,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -2737,7 +2737,7 @@
       "relation": "自動検出・正相関",
       "expected": "正相関",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.42,
+      "corr20": 0.41,
       "corr60": 0.33,
       "sample20": 20,
       "sample60": 60,
@@ -2778,13 +2778,13 @@
       "state": "不安定",
       "confidence": 67,
       "anchor_today": {
-        "ret": -0.19,
+        "ret": -0.38,
         "or15": "レンジ内",
         "vwap": "下",
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 0.38,
+        "ret": 0.41,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
@@ -2805,11 +2805,11 @@
       "sample60": 60,
       "intraday_corr": -0.12,
       "lead_bars": 2,
-      "bars": 271,
+      "bars": 272,
       "state": "不安定",
       "confidence": 66,
       "anchor_today": {
-        "ret": 1.51,
+        "ret": 1.65,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -2821,37 +2821,6 @@
         "ema": "下向き"
       },
       "decision": "この関係を売買根拠にしない"
-    },
-    {
-      "anchor": "富士電機（6504）",
-      "anchor_ticker": "6504.T",
-      "peer": "神戸物産（3038）",
-      "peer_ticker": "3038.T",
-      "relation": "自動検出・逆相関",
-      "expected": "逆相関仮説",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": -0.26,
-      "corr60": -0.46,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": -0.27,
-      "lead_bars": 0,
-      "bars": 300,
-      "state": "確認",
-      "confidence": 66,
-      "anchor_today": {
-        "ret": 0.63,
-        "or15": "上抜け",
-        "vwap": "下",
-        "ema": "下向き"
-      },
-      "peer_today": {
-        "ret": 0.61,
-        "or15": "上抜け",
-        "vwap": "上",
-        "ema": "上向き"
-      },
-      "decision": "売買の確認材料に使用"
     },
     {
       "anchor": "TDK（6762）",
@@ -2871,7 +2840,7 @@
       "state": "不安定",
       "confidence": 66,
       "anchor_today": {
-        "ret": 1.09,
+        "ret": 1.14,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -2902,14 +2871,45 @@
       "state": "不安定",
       "confidence": 66,
       "anchor_today": {
-        "ret": 0.38,
+        "ret": 0.41,
         "or15": "レンジ内",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.73,
+        "ret": 0.7,
         "or15": "レンジ内",
+        "vwap": "上",
+        "ema": "上向き"
+      },
+      "decision": "この関係を売買根拠にしない"
+    },
+    {
+      "anchor": "富士電機（6504）",
+      "anchor_ticker": "6504.T",
+      "peer": "ニトリHD（9843）",
+      "peer_ticker": "9843.T",
+      "relation": "自動検出・逆相関",
+      "expected": "逆相関仮説",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": -0.34,
+      "corr60": -0.37,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": -0.19,
+      "lead_bars": 0,
+      "bars": 300,
+      "state": "不安定",
+      "confidence": 65,
+      "anchor_today": {
+        "ret": 0.63,
+        "or15": "上抜け",
+        "vwap": "下",
+        "ema": "下向き"
+      },
+      "peer_today": {
+        "ret": 3.22,
+        "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
@@ -2929,17 +2929,17 @@
       "sample60": 60,
       "intraday_corr": -0.1,
       "lead_bars": 0,
-      "bars": 298,
+      "bars": 299,
       "state": "不安定",
       "confidence": 64,
       "anchor_today": {
-        "ret": 0.43,
-        "or15": "レンジ内",
+        "ret": 0.54,
+        "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 2.96,
+        "ret": 3.01,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -2970,7 +2970,7 @@
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": -0.46,
+        "ret": -0.91,
         "or15": "レンジ内",
         "vwap": "下",
         "ema": "上向き"
@@ -2991,7 +2991,7 @@
       "sample60": 60,
       "intraday_corr": -0.08,
       "lead_bars": -1,
-      "bars": 271,
+      "bars": 272,
       "state": "不安定",
       "confidence": 62,
       "anchor_today": {
@@ -3001,7 +3001,7 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 0.57,
+        "ret": 0.55,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -3016,7 +3016,7 @@
       "relation": "自動検出・逆相関",
       "expected": "逆相関仮説",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": -0.44,
+      "corr20": -0.45,
       "corr60": -0.33,
       "sample20": 20,
       "sample60": 60,
@@ -3032,7 +3032,7 @@
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.41,
+        "ret": 1.4,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -3053,11 +3053,11 @@
       "sample60": 60,
       "intraday_corr": 0.1,
       "lead_bars": -3,
-      "bars": 271,
+      "bars": 272,
       "state": "不安定",
       "confidence": 61,
       "anchor_today": {
-        "ret": 1.12,
+        "ret": 0.97,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -3088,13 +3088,13 @@
       "state": "不安定",
       "confidence": 60,
       "anchor_today": {
-        "ret": 0.65,
+        "ret": 0.67,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 1.41,
+        "ret": 1.4,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
