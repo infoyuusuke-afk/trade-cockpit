@@ -689,21 +689,12 @@ function Invoke-SbV2Speak([string]$text) {
 
 # Watcher・Heartbeat・AUTO_START等と共有の名前付きMutexで音声を直列化する。
 function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 30000) {
-    if ([string]::IsNullOrEmpty($text)) { return }
-    $mutex = $null
-    $acquired = $false
-    try {
-        $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
-        $acquired = $mutex.WaitOne($timeoutMs)
-        $sbv2Ok = Invoke-SbV2Speak $text
-        if (-not $sbv2Ok) {
-            Write-Host "[VOICE] SBV2 request failed - no SAPI fallback" -ForegroundColor Red
-        }
-    } catch {
-        Write-Host "[VOICE] SBV2 request failed - no SAPI fallback" -ForegroundColor Red
-    } finally {
-        if ($acquired -and $null -ne $mutex) { try { $mutex.ReleaseMutex() } catch {} }
-        if ($null -ne $mutex) { $mutex.Dispose() }
+    if ([string]::IsNullOrWhiteSpace($text)) { return }
+    # V9 VoiceBridge owns Global\KioxiaVoiceMutex. Do not acquire that
+    # mutex here before making the HTTP call or caller/bridge would deadlock.
+    $ok = Invoke-SbV2Speak $text
+    if (-not $ok) {
+        Write-Host "[VOICE] V9 SBV2 bridge unavailable - no legacy fallback" -ForegroundColor Red
     }
 }
 $previous = @{}
