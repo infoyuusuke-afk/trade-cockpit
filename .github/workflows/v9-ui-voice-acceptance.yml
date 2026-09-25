@@ -78,6 +78,11 @@ jobs:
               throw "PowerShell AST validation failed: $file"
             }
           }
+      - name: Runtime-bind V8 to V9 switch helpers
+        shell: powershell
+        run: |
+          .\downloads\SWITCH_AI_COCKPIT_V8_TO_V9.ps1 -RepoRoot $PWD.Path -ExpectedSha "selftest" -SelfTest
+
 
   visual:
     runs-on: ubuntu-latest
