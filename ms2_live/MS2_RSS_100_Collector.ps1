@@ -675,27 +675,13 @@ function Invoke-SbV2Speak([string]$text) {
     $speechText = Convert-ToCockpitSpeechText $text
     if ([string]::IsNullOrWhiteSpace($speechText)) { return $true }
     foreach($chunk in @(Split-CockpitSpeechText $speechText)) {
-        $tmp = Join-Path $env:TEMP ("ai_cockpit_sbv2_" + [Guid]::NewGuid().ToString("N") + ".wav")
         try {
             $encoded = [Uri]::EscapeDataString($chunk)
-            $styleEncoded = [Uri]::EscapeDataString($SbV2Style)
-            $url = $SbV2ApiBase + "/voice?text=" + $encoded +
-                   "&model_id=" + $SbV2ModelId +
-                   "&speaker_id=" + $SbV2SpeakerId +
-                   "&length=" + $SbV2Length +
-                   "&language=JP&style=" + $styleEncoded
-            Invoke-WebRequest -Method Post -Uri $url -OutFile $tmp -UseBasicParsing -TimeoutSec 45
-            if (-not (Test-Path -LiteralPath $tmp) -or (Get-Item -LiteralPath $tmp).Length -lt 1000) {
-                throw "SBV2 audio response is empty."
-            }
-            $player = New-Object System.Media.SoundPlayer $tmp
-            $player.PlaySync()
-            $player.Dispose()
+            $uri = "http://127.0.0.1:28583/announce?level=WATCH&text=" + $encoded
+            $r = Invoke-WebRequest -UseBasicParsing -Uri $uri -TimeoutSec 35
+            if ($r.StatusCode -ne 200) { return $false }
         } catch {
-            if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
             return $false
-        } finally {
-            if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
         }
     }
     return $true
