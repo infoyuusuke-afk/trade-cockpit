@@ -16,7 +16,8 @@ try {
       const panes=document.querySelectorAll(".tab-pane").length;
       return panes>0 &&
         document.querySelectorAll(".cc-tab-owner-summary").length===panes &&
-        !!document.querySelector("#weekly-review .cc-grid .cc-card");
+        !!document.querySelector("#weekly-review .cc-grid .cc-card") &&
+        !!document.querySelector("#opportunity-radar");
     }, null, {timeout:10000});
     await page.waitForTimeout(200);
 
@@ -43,6 +44,9 @@ try {
         hasPtsVoiceSwitch:!!document.querySelector(".pts-section-head [data-voice-toggle]"),
         legacyScalpCards:document.querySelectorAll("article.scalp-card").length,
         weeklyUsesSharedCards:!!document.querySelector("#weekly-review .cc-grid .cc-card"),
+        hasOpportunityRadar:!!document.querySelector("#opportunity-radar"),
+        radarCards:document.querySelectorAll("#opportunity-radar-cards .cc-card").length,
+        hasOpportunityLog:!!document.querySelector("#opportunity-event-log"),
       };
     });
 
@@ -58,6 +62,8 @@ try {
     if (!state.hasPtsVoiceSwitch) throw new Error(c.name+": PTS voice switch missing");
     if (state.legacyScalpCards !== 0) throw new Error(c.name+": legacy scalp cards remain="+state.legacyScalpCards);
     if (!state.weeklyUsesSharedCards) throw new Error(c.name+": weekly review is not Card System");
+    if (!state.hasOpportunityRadar) throw new Error(c.name+": Opportunity Radar missing");
+    if (!state.hasOpportunityLog) throw new Error(c.name+": Opportunity commentary log missing");
 
     await page.screenshot({path:"v9-"+c.name+".png",fullPage:true});
     await page.close();
