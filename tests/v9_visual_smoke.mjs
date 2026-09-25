@@ -12,7 +12,13 @@ try {
     const page = await browser.newPage({viewport:{width:c.width,height:c.height}});
     await page.goto("http://127.0.0.1:8765/index.html?live=1", {waitUntil:"domcontentloaded", timeout:30000});
     await page.waitForFunction(() => document.documentElement.classList.contains("cc-all-cards-ready"), null, {timeout:10000});
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => {
+      const panes=document.querySelectorAll(".tab-pane").length;
+      return panes>0 &&
+        document.querySelectorAll(".cc-tab-owner-summary").length===panes &&
+        !!document.querySelector("#weekly-review .cc-grid .cc-card");
+    }, null, {timeout:10000});
+    await page.waitForTimeout(200);
 
     const state = await page.evaluate(() => {
       const visible = el => {
