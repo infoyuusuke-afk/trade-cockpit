@@ -95,6 +95,24 @@ class V9UiVoiceContract(unittest.TestCase):
         ):
             self.assertIn(needle, css)
 
+    def test_v9_powershell_functions_do_not_shadow_readonly_automatic_variables(self):
+        import re
+        files = (
+            "downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1",
+            "downloads/AI_COCKPIT_CONTROLLER_V9.ps1",
+            "downloads/STOP_AI_COCKPIT_V9.ps1",
+            "downloads/RUN_AI_COCKPIT_V9.ps1",
+            "downloads/AI_COCKPIT_GATEWAY_V9.ps1",
+            "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
+        )
+        reserved = {"PID", "ARGS"}
+        for rel in files:
+            text = read(rel)
+            for signature in re.findall(r"function\s+[A-Za-z0-9_-]+\s*\(([^)]*)\)", text, flags=re.I | re.S):
+                names = re.findall(r"\$([A-Za-z_][A-Za-z0-9_]*)", signature)
+                bad = [name for name in names if name.upper() in reserved]
+                self.assertEqual([], bad, f"{rel} shadows PowerShell automatic variable(s): {bad}")
+
     def test_v8_to_v9_switch_is_narrow_and_one_click(self):
         text = read("downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1")
         self.assertIn("AI_COCKPIT_CONTROLLER_V8.ps1", text)
@@ -104,6 +122,8 @@ class V9UiVoiceContract(unittest.TestCase):
         self.assertIn("28580,28581,28582", text.replace(" ", ""))
         self.assertIn("[string[]]$GitArgs", text)
         self.assertNotIn("[string[]]$Args", text)
+        self.assertNotIn("[int]$Pid", text)
+        self.assertIn("SWITCH SELFTEST PASS", text)
         self.assertNotIn("Stop-Process -Name EXCEL", text)
         self.assertNotIn("Get-Process EXCEL", text)
         self.assertNotIn("taskkill", text.lower())
