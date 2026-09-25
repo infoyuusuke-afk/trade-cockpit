@@ -19,6 +19,27 @@ OUT = ROOT / "world_market.json"
 URL = "https://nikkei225jp.com/"
 JST = timezone(timedelta(hours=9))
 
+
+def market_session_state(kind: str, now: datetime) -> str:
+    """Describe session availability separately from feed quality."""
+    if now.weekday() >= 5:
+        return "CLOSED_KNOWN"
+    minute = now.hour * 60 + now.minute
+    if kind == "japan":
+        if 9 * 60 <= minute <= 11 * 60 + 30 or 12 * 60 + 30 <= minute <= 15 * 60 + 30:
+            return "OPEN"
+        if 11 * 60 + 30 < minute < 12 * 60 + 30:
+            return "BREAK"
+        return "NOT_OPEN_YET" if minute < 9 * 60 else "CLOSED_KNOWN"
+    if kind == "us_close":
+        # This row represents the previous completed US cash session, not a live
+        # quote for the upcoming US session.  Do not call it missing merely
+        # because the next US cash session has not opened yet.
+        return "CLOSED_KNOWN"
+    if kind == "realtime":
+        return "OPEN"
+    return "INVALID"
+
 INSTRUMENTS = {
     "111": ("日経225", "japan"),
     "112": ("TOPIX", "japan"),
@@ -106,6 +127,16 @@ def freshness(stamp: str, kind: str, now: datetime) -> tuple[bool, str]:
     return False, stamp or "時刻なし"
 
 
+def narration_availability(row: dict) -> str:
+    """Return a narration-safe availability state without conflating closure with failure."""
+    state = row.get("session_state")
+    if row.get("verified"):
+        return "AVAILABLE"
+    if state in {"NOT_OPEN_YET", "CLOSED_KNOWN", "BREAK"}:
+        return "EXPECTED_INACTIVE"
+    return "DATA_INVALID"
+
+
 def parse(html: str, now: datetime) -> dict:
     parser = IdTextParser()
     parser.feed(html)
@@ -116,6 +147,7 @@ def parse(html: str, now: datetime) -> dict:
         value = number(parser.text(f"V{code}"))
         fresh, observed_at = freshness(stamp, kind, now)
         verified = bool(source_name and value is not None and value > 0 and fresh)
+        session_state = market_session_state(kind, now)
         rows[code] = {
             "code": code,
             "name": label,
@@ -126,8 +158,13 @@ def parse(html: str, now: datetime) -> dict:
             "source_stamp": stamp or None,
             "observed_at": observed_at,
             "verified": verified,
-            "status": "表示可" if verified else "未取得または時刻不整合・売買利用禁止",
+            "session_state": session_state,
+            "data_quality": "VALID" if verified else "INVALID",
+            "status": ("表示可" if verified else
+                       ("市場未開場・異常ではありません" if session_state == "NOT_OPEN_YET" else
+                        "未取得または時刻不整合・売買利用禁止")),
         }
+        rows[code]["narration_availability"] = narration_availability(rows[code])
     verified_count = sum(bool(x["verified"]) for x in rows.values())
     return {
         "updated_at": now.isoformat(),

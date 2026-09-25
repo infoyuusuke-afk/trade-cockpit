@@ -1,11 +1,15 @@
-﻿param(
+﻿# V6_RUNTIME_BUILD: MS2-RUNTIME-20260925-02
+param(
     [string]$WorkbookName = "Kioxia_MS2_RSS_Live_Signals.xlsx",
+    [string]$WorkbookPath = "",
     [string]$WatchlistPath = (Join-Path $PSScriptRoot "watchlist_100.json"),
     [int]$IntervalSeconds = 2,
     [int]$SnapshotSeconds = 10,
     [switch]$StopAfterClose
 )
 
+$RuntimeBuild = "MS2-RUNTIME-20260925-02"
+Write-Host ("[COLLECTOR] " + $PSCommandPath + " / build=" + $RuntimeBuild) -ForegroundColor Cyan
 $ErrorActionPreference = "Stop"
 $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 . (Join-Path $PSScriptRoot "MS2_Common_Engine.ps1")
@@ -374,6 +378,79 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580) {
     }
 }
 
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+
+public static class CollectorWorkbookRotFinder {
+    [DllImport("ole32.dll")]
+    private static extern int GetRunningObjectTable(int reserved, out IRunningObjectTable rot);
+    [DllImport("ole32.dll")]
+    private static extern int CreateBindCtx(int reserved, out IBindCtx bindCtx);
+
+    public static object FindByIdentity(string expectedFullPath, string bookFileName) {
+        IRunningObjectTable rot;
+        if (GetRunningObjectTable(0, out rot) != 0 || rot == null) return null;
+        IEnumMoniker en;
+        rot.EnumRunning(out en);
+        en.Reset();
+        var mk = new IMoniker[1];
+        object uniqueNameMatch = null;
+        int nameMatchCount = 0;
+        while (en.Next(1, mk, IntPtr.Zero) == 0) {
+            IBindCtx ctx;
+            CreateBindCtx(0, out ctx);
+            try {
+                string name;
+                mk[0].GetDisplayName(ctx, null, out name);
+                if (String.IsNullOrEmpty(name)) continue;
+                object obj;
+                if (!String.IsNullOrEmpty(expectedFullPath) &&
+                    name.EndsWith(expectedFullPath, StringComparison.OrdinalIgnoreCase)) {
+                    rot.GetObject(mk[0], out obj);
+                    return obj;
+                }
+                if (name.EndsWith(bookFileName, StringComparison.OrdinalIgnoreCase)) {
+                    rot.GetObject(mk[0], out obj);
+                    uniqueNameMatch = obj;
+                    nameMatchCount++;
+                }
+            } catch { }
+        }
+        return nameMatchCount == 1 ? uniqueNameMatch : null;
+    }
+}
+'@ -ErrorAction SilentlyContinue
+
+function Release-ComObjectSafe($obj) {
+    if ($null -eq $obj) { return }
+    try {
+        if ([Runtime.InteropServices.Marshal]::IsComObject($obj)) {
+            [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($obj)
+        }
+    } catch {}
+}
+
+function Release-CollectorComState {
+    foreach($name in @("irDynamicSheet","jnxSheet","rssLink","sheet","book","excel")) {
+        try {
+            $var = Get-Variable -Name $name -Scope Script -ErrorAction SilentlyContinue
+            if($null -ne $var){ Release-ComObjectSafe $var.Value; Set-Variable -Name $name -Scope Script -Value $null -ErrorAction SilentlyContinue }
+        } catch {}
+    }
+    try { [GC]::Collect() } catch {}
+    try { [GC]::WaitForPendingFinalizers() } catch {}
+    try { [GC]::Collect() } catch {}
+    try { [GC]::WaitForPendingFinalizers() } catch {}
+}
+
+trap {
+    Write-Host ("[COLLECTOR FATAL] " + $_.Exception.Message) -ForegroundColor Red
+    Release-CollectorComState
+    exit 1
+}
+
 function Invoke-ExcelCom {
     param(
         [Parameter(Mandatory=$true)][scriptblock]$Action,
@@ -407,32 +484,30 @@ $stocks = @($watch.stocks.PSObject.Properties | ForEach-Object {
 } | Select-Object -First 100)
 if ($stocks.Count -ne 100) { throw "監視銘柄は100件必要です。現在: $($stocks.Count)件" }
 
-try { $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application") }
-catch { throw "RSS接続済みのExcelが見つかりません。MarketSpeed IIへログインし、ExcelのRSSタブで接続してから実行してください。" }
-
 $book = $null
-$openBookNames = @()
-foreach ($candidate in $excel.Workbooks) {
-    $openBookNames += [string]$candidate.Name
-    if ($candidate.Name -ieq $WorkbookName) { $book = $candidate; break }
+$excel = $null
+$expectedPath = ""
+if(-not [string]::IsNullOrWhiteSpace($WorkbookPath)) {
+    $expectedPath = [IO.Path]::GetFullPath($WorkbookPath)
+    $WorkbookName = [IO.Path]::GetFileName($expectedPath)
 }
-if ($null -eq $book) {
-    foreach ($candidate in $excel.Workbooks) {
-        if ($candidate.Name -like "Kioxia_MS2_RSS_Live_Signals*.xlsx") { $book = $candidate; break }
-    }
+if($WorkbookName -ine "Kioxia_MS2_RSS_Live_Signals.xlsx") {
+    throw ("LIVE DATA INVALID: Collector refuses non-canonical workbook: " + $WorkbookName)
 }
-if ($null -eq $book) {
-    foreach ($candidate in $excel.Workbooks) {
-        try {
-            if ($null -ne $candidate.Worksheets.Item("DASHBOARD")) { $book = $candidate; break }
-        } catch {}
-    }
+try {
+    $book = [CollectorWorkbookRotFinder]::FindByIdentity($expectedPath,$WorkbookName)
+} catch {}
+if($null -eq $book) {
+    throw ("LIVE DATA INVALID: canonical RSS workbook is not uniquely available to Collector: " + $WorkbookName)
 }
-if ($null -eq $book) {
-    $names = if ($openBookNames.Count -gt 0) { $openBookNames -join ", " } else { "認識なし" }
-    throw "$WorkbookName を認識できません。Excelで認識したブック: $names"
+$excel = Invoke-ExcelCom -Label "Collector Excel attach" -Action { $book.Application }
+$actualBookName = Invoke-ExcelCom -Label "Collector workbook name" -Action { [string]$book.Name }
+$actualBookPath = Invoke-ExcelCom -Label "Collector workbook path" -Action { [string]$book.FullName }
+if($actualBookName -ine $WorkbookName) {
+    throw ("LIVE DATA INVALID: Collector workbook identity mismatch. expected=" + $WorkbookName + " actual=" + $actualBookName)
 }
-Write-Host ("[BOOK] " + $book.Name) -ForegroundColor Green
+Write-Host ("[BOOK] " + $actualBookName) -ForegroundColor Green
+Write-Host ("[BOOK PATH] " + $actualBookPath) -ForegroundColor DarkGray
 Start-Sleep -Milliseconds 500
 
 $sheet = $null
@@ -442,7 +517,7 @@ try {
     $sheet = Invoke-ExcelCom -Label "100銘柄RSSシート作成" -Action { $book.Worksheets.Add() }
     Invoke-ExcelCom -Label "100銘柄RSSシート命名" -Action { $sheet.Name = "100銘柄RSS" } | Out-Null
 }
-Invoke-ExcelCom -Label "画面更新停止" -Action { $excel.ScreenUpdating = $false } | Out-Null
+try { Invoke-ExcelCom -Label "画面更新停止" -Retries 1 -Action { $excel.ScreenUpdating = $false } | Out-Null } catch { Write-Host "[EXCEL] ScreenUpdating unavailable; continuing." -ForegroundColor DarkYellow }
 $headers = @("順位","コード","会社名","分類","現在値","時刻","前日終値","前日比率","出来高","VWAP","買気配","売気配","買気配数量","売気配数量","売成行","買成行","OVER","UNDER","歩み1","歩み1時刻","歩み2","歩み2時刻","歩み3","歩み3時刻","歩み4","歩み4時刻","信用売残","信用売残前週比","信用買残","信用買残前週比","信用倍率","当日基準値","特別売気配","特別買気配","始値","売建可能数量")
 for ($c=0; $c -lt $headers.Count; $c++) {
     $headerColumn = $c + 1
@@ -477,7 +552,40 @@ for ($i=0; $i -lt $stocks.Count; $i++) {
     Invoke-ExcelCom -Label ("売建可能数量設定 AJ" + $row) -Action { $sheet.Cells.Item($row,36).FormulaLocal = [string]$marginFormula } | Out-Null
 }
 Invoke-ExcelCom -Label "RSSシート非表示" -Action { $sheet.Visible = 0 } | Out-Null
-Invoke-ExcelCom -Label "画面更新再開" -Action { $excel.ScreenUpdating = $true } | Out-Null
+try { Invoke-ExcelCom -Label "画面更新再開" -Retries 1 -Action { $excel.ScreenUpdating = $true } | Out-Null } catch {}
+
+# DASHBOARD/RSS接続の表示値もCollector起動時に必ずRssMarketへ戻す。
+# xlsxに残ったキャッシュ値をLIVE現在値として扱わない。
+try {
+    $rssLink = Invoke-ExcelCom -Label "RSS接続シート確認" -Action { $book.Worksheets.Item("RSS接続") }
+    $rssMap = @(
+        @("B3","現在値"), @("B4","出来高加重平均"), @("B5","出来高"),
+        @("B6","最良売気配値"), @("B7","最良買気配値"),
+        @("B8","OVER気配数量"), @("B9","UNDER気配数量"),
+        @("B10","売成行数量"), @("B11","買成行数量")
+    )
+    foreach($m in $rssMap){
+        $addr=[string]$m[0]; $item=[string]$m[1]
+        $formula='=RssMarket("285A.T","'+$item+'")'
+        Invoke-ExcelCom -Label ("RSS接続LIVE式 "+$addr) -Action { $rssLink.Range($addr).FormulaLocal=$formula } | Out-Null
+    }
+    Invoke-ExcelCom -Label "RSS接続再計算" -Action { $rssLink.Calculate() } | Out-Null
+    Start-Sleep -Milliseconds 700
+    $probe = Invoke-ExcelCom -Label "285A LIVE確認" -Action { $rssLink.Range("B3").Value2 }
+    $probeNum=0.0
+    if(-not [double]::TryParse([string]$probe,[ref]$probeNum) -or $probeNum -le 0){
+        throw "RssMarket 285A current price is unavailable."
+    }
+    Invoke-ExcelCom -Label "RSS接続状態更新" -Action { $rssLink.Range("B15").Value2="接続中" } | Out-Null
+    Write-Host ("[RSS] 285A LIVE formula verified: "+$probeNum) -ForegroundColor Green
+} catch {
+    try {
+        $rssLink = $book.Worksheets.Item("RSS接続")
+        $rssLink.Range("B15").Value2="LIVE DATA INVALID"
+        $rssLink.Range("B3:B11").ClearContents()
+    } catch {}
+    throw ("LIVE DATA INVALID: RSS add-in/formula verification failed. "+$_.Exception.Message)
+}
 
 # キオクシア夜間PTS（JNX）は東証データと混ぜず、専用シートで取得する。
 # JNXは補助データのため、Excel/RSSが起動直後で不安定でもCollector本体を停止させない。
@@ -773,6 +881,17 @@ Invoke-SerializedSpeak $speaker "キオクシアを含む、100銘柄の音声�
 
 try {
     while ($true) {
+        # If the user closes the canonical workbook, stop immediately. Holding a
+        # stale Workbook RCW keeps EXCEL.EXE alive and can make the next open use
+        # an add-in-less orphan Excel instance.
+        $liveBook=$null
+        try { $liveBook=[CollectorWorkbookRotFinder]::FindByIdentity($expectedPath,$WorkbookName) } catch {}
+        if($null -eq $liveBook){
+            Write-Host "[EXCEL] Canonical workbook disappeared from ROT. Collector is releasing COM and stopping." -ForegroundColor Yellow
+            break
+        }
+        Release-ComObjectSafe $liveBook
+        $liveBook=$null
         # RssMarket関数はアドイン側から自動更新されるため、2秒ごとの強制再計算は行わない。
         # 強制再計算するとRSS更新と衝突し、Excel固有の0x800AC472が発生する。
         $now = Get-Date
@@ -892,7 +1011,7 @@ try {
                     Invoke-ExcelCom -Label "IR動的JNX式設定" -Action { $irDynamicSheet.Cells.Item($dynRowNum,$dynCol).FormulaLocal = $dynFormula } | Out-Null
                 }
                 $irDynamicSlots[$dynCode] = $dynRowNum
-                Write-Host ("IR動的追跡に追加: " + $dynCode + "（" + $disclosure.name + "） " + $disclosure.title) -ForegroundColor Cyan
+                # Keep the interactive console compact and ASCII-prefixed. Full disclosure title remains in the structured/log data.`n                Write-Host ("[IR] ADD " + $dynCode + " " + $disclosure.name) -ForegroundColor Cyan
             }
         }
 
@@ -1223,7 +1342,12 @@ try {
             $orHighValue=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
             $orLowValue=if($orLow.ContainsKey($ticker)){$orLow[$ticker]}else{0}
             $results += [pscustomobject]@{
-                ticker=$ticker;name=$s.Name;sector=$s.Sector;price=$price;volume=$volume;vwap=$vwap
+                ticker=$ticker;name=$s.Name;sector=$s.Sector
+                # Canonical per-symbol LIVE quote metadata.  Consumers must use
+                # live_price only when live_quote_valid=true; analytical close,
+                # reference and 15:25 prices must never masquerade as current.
+                live_price=$price;live_observed_at=$now.ToString("yyyy-MM-ddTHH:mm:ss.fffzzz");live_source="MarketSpeed II RSS";live_quote_valid=($null -ne $price -and [double]$price -gt 0)
+                price=$price;volume=$volume;vwap=$vwap
                 change_pct=Get-SafeNumber (Get-TableValue $values $r 4 32) -1000 1000
                 bid=$bid;ask=$ask;bid_qty=$bidQty;ask_qty=$askQty;market_sell=$marketSell;market_buy=$marketBuy;over=$over;under=$under
                 under_ratio=[Math]::Round($underRatio*100,1);under_change=[Math]::Round($uoChange*100,1)
@@ -1641,7 +1765,7 @@ try {
         } else {
             [ordered]@{status=$statsStatus;scanned_days=0;completed_days=0;incomplete_day_count=0;last_completed_day=$null;minimum_days=10}
         }
-        $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;stale=($validCount -lt 90);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
+        $payload=[ordered]@{schema_version='ms2-common-1.1';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");live_observed_at=$now.ToString("yyyy-MM-ddTHH:mm:ss.fffzzz");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;stale=($validCount -lt 90);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
         $jsonText=$payload|ConvertTo-Json -Depth 6
         Write-AtomicUtf8 $jsonPath $jsonText
         if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $jsonText }
@@ -1768,5 +1892,8 @@ try {
     }
 } finally {
     if ($null -ne $bridgeJob) { Stop-Job $bridgeJob -ErrorAction SilentlyContinue; Remove-Job $bridgeJob -Force -ErrorAction SilentlyContinue }
-    Write-Host "監視を停止しました。日別CSVは records フォルダーに残っています。" -ForegroundColor Yellow
+    # Release every long-lived Excel COM reference. Never call Excel.Quit here:
+    # the user owns the Excel window and may have other workbooks open.
+    Release-CollectorComState
+    Write-Host "監視を停止しました。Excel COM参照を解放しました。" -ForegroundColor Yellow
 }

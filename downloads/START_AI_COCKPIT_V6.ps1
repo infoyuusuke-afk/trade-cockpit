@@ -1,4 +1,6 @@
-param([string]$Root = "C:\AI_Cockpit_OneClick_Starter")
+﻿param([string]$Root = "C:\AI_Cockpit_OneClick_Starter")
+
+$LauncherBuild = "V6-PS51-ASCII-20260925-01"
 
 $ErrorActionPreference = "Stop"
 $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -21,25 +23,16 @@ function Test-Port([int]$Port,[int]$TimeoutMs=500){
 }
 
 function Resolve-RuntimeDir {
-    $roots=@(
-        [Environment]::GetFolderPath("Desktop"),
-        (Join-Path $env:USERPROFILE "Desktop"),
-        (Join-Path $env:USERPROFILE "OneDrive\Desktop")
-    ) | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -Unique
-    $hits=foreach($r in $roots){
-        Get-ChildItem -LiteralPath $r -Recurse -File -Filter "MS2_RSS_100_Collector.ps1" -ErrorAction SilentlyContinue
-    }
-    $preferred=@($hits | Where-Object { $_.FullName -like "*MarketSpeed II RSS\files*" } | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
-    if($preferred.Count -gt 0){ return $preferred[0].Directory.FullName }
-    $any=@($hits | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
-    if($any.Count -gt 0){ return $any[0].Directory.FullName }
-    throw "Runtime folder not found."
+    . (Join-Path $Root "V6_Runtime_Contract.ps1")
+    if ($V6RuntimeBuild -ne 'MS2-RUNTIME-20260925-02') { throw 'Runtime contract build mismatch. Reinstall V6.' }
+    return (Assert-V6InstalledRuntime $Root)
 }
 
 function Stop-Managed {
     $patterns=@(
         "MS2_RSS_100_Collector\.ps1",
         "Kioxia_Safety_Heartbeat\.ps1",
+        "Kioxia_RSS_Live_Watcher\.ps1",
         "AI_Cockpit_Local_Gateway\.ps1"
     )
     Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | ForEach-Object {
@@ -54,26 +47,166 @@ function Stop-Managed {
     }
 }
 
-function Find-Workbook([string]$RootDir){
-    $d=Join-Path $RootDir "Excel"
-    if(-not(Test-Path -LiteralPath $d)){ return $null }
-    $f=Get-ChildItem -LiteralPath $d -File -Filter "*.xlsx" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if($f){ return $f.FullName }
+function Stop-ExcelBoundManaged {
+    $patterns=@(
+        "MS2_RSS_100_Collector\.ps1",
+        "Kioxia_Safety_Heartbeat\.ps1",
+        "Kioxia_RSS_Live_Watcher\.ps1"
+    )
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | ForEach-Object {
+        $cmd=[string]$_.CommandLine
+        if([string]::IsNullOrWhiteSpace($cmd)){ return }
+        foreach($p in $patterns){
+            if($cmd -match $p){
+                try{ Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop }catch{}
+                break
+            }
+        }
+    }
+}
+
+function Release-ComObjectSafe($obj){
+    if($null -eq $obj){ return }
+    try{
+        if([Runtime.InteropServices.Marshal]::IsComObject($obj)){
+            [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($obj)
+        }
+    }catch{}
+}
+
+function Close-EmptyExcelApplication {
+    $app=$null
+    $books=$null
+    $protected=$null
+    try{
+        $app=[Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
+        $books=$app.Workbooks
+        $protected=$app.ProtectedViewWindows
+        $count=[int]$books.Count
+        if($count -eq 0 -and -not $app.Visible -and $app.Ready -and $protected.Count -eq 0){
+            Write-Host "      Closing orphan Excel instance with zero workbooks..." -ForegroundColor Yellow
+            try{if($books.Count -eq 0 -and $protected.Count -eq 0 -and -not $app.Visible -and $app.Ready){$app.Quit()}}catch{}
+        }
+    }catch{
+    }finally{
+        Release-ComObjectSafe $protected
+        Release-ComObjectSafe $books
+        Release-ComObjectSafe $app
+        $books=$null
+        $protected=$null
+        $app=$null
+        [GC]::Collect()
+        [GC]::WaitForPendingFinalizers()
+    }
+}
+
+function Find-Workbook([string]$RootDir,[string]$RuntimeDir){
+    $rootExcel=Join-Path $RootDir "Excel"
+    $rootCanonical=Join-Path $rootExcel "Kioxia_MS2_RSS_Live_Signals.xlsx"
+    $rootFixed=Join-Path $rootExcel "Kioxia_MS2_RSS_Live_Signals_FIXED.xlsx"
+    $runtimeCanonical=Join-Path $RuntimeDir "Kioxia_MS2_RSS_Live_Signals.xlsx"
+    $runtimeFixed=Join-Path $RuntimeDir "Kioxia_MS2_RSS_Live_Signals_FIXED.xlsx"
+
+    # The canonical name is the only runtime identity. Never overwrite an
+    # existing canonical workbook with FIXED on every startup.
+    if(Test-Path -LiteralPath $rootCanonical){ return $rootCanonical }
+
+    # FIXED is recovery-only. Promote the Root copy once when Root has no
+    # canonical workbook; never overwrite an existing canonical workbook.
+    if(Test-Path -LiteralPath $rootFixed){
+        if(-not(Test-Path -LiteralPath $rootExcel)){ New-Item -ItemType Directory -Path $rootExcel -Force | Out-Null }
+        Copy-Item -LiteralPath $rootFixed -Destination $rootCanonical -Force
+        return $rootCanonical
+    }
+
+    # Legacy runtime canonical is the next safe fallback.
+    if(Test-Path -LiteralPath $runtimeCanonical){ return $runtimeCanonical }
+
+    # Legacy FIXED is the last recovery source and is promoted to Root canonical.
+    if(Test-Path -LiteralPath $runtimeFixed){
+        if(-not(Test-Path -LiteralPath $rootExcel)){ New-Item -ItemType Directory -Path $rootExcel -Force | Out-Null }
+        Copy-Item -LiteralPath $runtimeFixed -Destination $rootCanonical -Force
+        return $rootCanonical
+    }
     return $null
 }
 
-function Wait-Workbook([string]$BookName,[int]$TimeoutSeconds=120){
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+
+public static class CockpitWorkbookRotFinder {
+    [DllImport("ole32.dll")]
+    private static extern int GetRunningObjectTable(int reserved, out IRunningObjectTable rot);
+    [DllImport("ole32.dll")]
+    private static extern int CreateBindCtx(int reserved, out IBindCtx bindCtx);
+
+    public static object FindByIdentity(string expectedFullPath, string bookFileName) {
+        IRunningObjectTable rot;
+        if (GetRunningObjectTable(0, out rot) != 0 || rot == null) return null;
+        IEnumMoniker en;
+        rot.EnumRunning(out en);
+        en.Reset();
+        var mk = new IMoniker[1];
+        object uniqueNameMatch = null;
+        int nameMatchCount = 0;
+        while (en.Next(1, mk, IntPtr.Zero) == 0) {
+            IBindCtx ctx;
+            CreateBindCtx(0, out ctx);
+            try {
+                string name;
+                mk[0].GetDisplayName(ctx, null, out name);
+                if (String.IsNullOrEmpty(name)) continue;
+                object obj;
+                if (name.EndsWith(expectedFullPath, StringComparison.OrdinalIgnoreCase)) {
+                    rot.GetObject(mk[0], out obj);
+                    return obj;
+                }
+                // OneDrive may register an Office cloud URL rather than the local
+                // path. Accept a file-name match only when it is unique.
+                if (name.EndsWith(bookFileName, StringComparison.OrdinalIgnoreCase)) {
+                    rot.GetObject(mk[0], out obj);
+                    uniqueNameMatch = obj;
+                    nameMatchCount++;
+                }
+            } catch { }
+        }
+        return nameMatchCount == 1 ? uniqueNameMatch : null;
+    }
+}
+'@ -ErrorAction SilentlyContinue
+
+function Wait-Workbook([string]$WorkbookPath,[int]$TimeoutSeconds=120){
+    $expected=[IO.Path]::GetFullPath($WorkbookPath)
     $deadline=(Get-Date).AddSeconds($TimeoutSeconds)
     while((Get-Date) -lt $deadline){
         try{
-            $excel=[Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
-            foreach($b in $excel.Workbooks){
-                if($b.Name -ieq $BookName -or $b.Name -like "Kioxia_MS2_RSS_Live_Signals*.xlsx"){ return $true }
-            }
+            $book=[CockpitWorkbookRotFinder]::FindByIdentity($expected,[IO.Path]::GetFileName($expected))
+            if($null -ne $book){ return $book }
         }catch{}
         Start-Sleep -Seconds 2
     }
-    return $false
+    return $null
+}
+
+function Invoke-ExcelCom {
+    param(
+        [Parameter(Mandatory=$true)][scriptblock]$Action,
+        [string]$Label="Excel operation",
+        [int]$Retries=120,
+        [int]$DelayMilliseconds=250
+    )
+    for($attempt=1;$attempt -le $Retries;$attempt++){
+        try{ return (& $Action) }catch{
+            $code=$_.Exception.HResult
+            if($null -ne $_.Exception.InnerException){$code=$_.Exception.InnerException.HResult}
+            $busy=($code -eq -2147418111 -or $code -eq -2147417846 -or $code -eq -2146777998)
+            if($busy -and $attempt -lt $Retries){Start-Sleep -Milliseconds $DelayMilliseconds;continue}
+            throw
+        }
+    }
+    throw ($Label+": Excel did not become ready.")
 }
 
 try{
@@ -87,15 +220,17 @@ try{
     $RuntimeDir=Resolve-RuntimeDir
     $Collector=Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"
     $Heartbeat=Join-Path $RuntimeDir "Kioxia_Safety_Heartbeat.ps1"
+    $Watcher=Join-Path $RuntimeDir "Kioxia_RSS_Live_Watcher.ps1"
     $Gateway=Join-Path $Root "AI_Cockpit_Local_Gateway.ps1"
 
-    foreach($p in @($Collector,$Heartbeat,$Gateway)){
+    foreach($p in @($Collector,$Heartbeat,$Watcher,$Gateway)){
         if(-not(Test-Path -LiteralPath $p)){ throw "Required file not found: $p" }
     }
 
     Show-Step 10 "Stopping old AI Cockpit processes..."
     Stop-Managed
     Start-Sleep -Seconds 1
+    Close-EmptyExcelApplication
 
     Show-Step 20 "Checking MarketSpeed II..."
     $ms2=@(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match "MarketSpeed|MARKETSPEED" })
@@ -151,29 +286,118 @@ try{
     }
 
     Show-Step 40 "Opening RSS workbook..."
-    $WorkbookPath=Find-Workbook $Root
-    if(-not $WorkbookPath){ throw "No xlsx file found under C:\AI_Cockpit_OneClick_Starter\Excel" }
+    $WorkbookPath=Find-Workbook $Root $RuntimeDir
+    if(-not $WorkbookPath){ throw "Kioxia_MS2_RSS_Live_Signals.xlsx was not found in Root\\Excel or the MS2 runtime folder." }
+    $WorkbookPath=[IO.Path]::GetFullPath($WorkbookPath)
     $WorkbookName=Split-Path $WorkbookPath -Leaf
-    $open=$false
-    try{
-        $excel=[Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
-        foreach($b in $excel.Workbooks){ if($b.Name -ieq $WorkbookName){ $open=$true; break } }
-    }catch{}
-    if(-not $open){ Start-Process $WorkbookPath }
-    if(-not(Wait-Workbook $WorkbookName 120)){ throw "Excel workbook was not ready within 120 seconds." }
+    if($WorkbookName -ine "Kioxia_MS2_RSS_Live_Signals.xlsx"){ throw "Unexpected workbook selected: $WorkbookName" }
+
+    # Reuse only the exact workbook path. GetActiveObject can bind to the wrong
+    # Excel instance when multiple Excel processes exist.
+    $book=Wait-Workbook $WorkbookPath 3
+    if($null -eq $book){
+        # Do not create Excel through New-Object -ComObject here. Real-machine
+        # testing showed that a COM-created Excel instance can start without the
+        # MarketSpeed II RSS add-in. Shell-opening the workbook loads Excel normally.
+        Start-Process -FilePath $WorkbookPath | Out-Null
+        $book=Wait-Workbook $WorkbookPath 120
+    }
+    if($null -eq $book){ throw "The exact RSS workbook did not register in Excel within 120 seconds: $WorkbookPath" }
+
+    $excel=Invoke-ExcelCom -Label "Excel application attach" -Action { $book.Application }
+    Invoke-ExcelCom -Label "Excel visible" -Action { $excel.Visible=$true } | Out-Null
+    Invoke-ExcelCom -Label "Excel alerts" -Action { $excel.DisplayAlerts=$false } | Out-Null
+    $actualPath=Invoke-ExcelCom -Label "Workbook identity" -Action { [string]$book.FullName }
     Write-Host ("      Workbook: "+$WorkbookName) -ForegroundColor Green
+    Write-Host ("      Path    : "+$actualPath) -ForegroundColor DarkGray
+    try{ Write-Host ("      SHA256  : "+(Get-FileHash -LiteralPath $WorkbookPath -Algorithm SHA256).Hash) -ForegroundColor DarkGray }catch{}
+
+    Show-Step 45 "Verifying MarketSpeed II RSS add-in..."
+    # Opening the workbook is not enough: Excel may show cached RSS values while
+    # the MarketSpeed II COM/XLL add-in has not initialized in this Excel instance.
+    $rssReady=$false
+    $rssSheetName = "RSS" + [char]0x63A5 + [char]0x7D9A
+    $rssCurrentPriceItem = [string]([char]0x73FE)+[char]0x5728+[char]0x5024
+    $marketSpeedJp = [string]([char]0x30DE)+[char]0x30FC+[char]0x30B1+[char]0x30C3+[char]0x30C8+[char]0x30B9+[char]0x30D4+[char]0x30FC+[char]0x30C9
+    $rssDeadline=(Get-Date).AddSeconds(45)
+    while((Get-Date) -lt $rssDeadline -and -not $rssReady){
+        try{
+            $rssSheet=Invoke-ExcelCom -Label "RSS sheet" -Action { $book.Worksheets.Item($rssSheetName) }
+            $rssFormula='=RssMarket("285A.T","'+$rssCurrentPriceItem+'")'
+            Invoke-ExcelCom -Label "RSS probe formula" -Action { $rssSheet.Range("B3").FormulaLocal=$rssFormula } | Out-Null
+            Invoke-ExcelCom -Label "RSS probe calculate" -Action { $rssSheet.Calculate() } | Out-Null
+            Start-Sleep -Milliseconds 800
+            $v=Invoke-ExcelCom -Label "RSS probe value" -Action { $rssSheet.Range("B3").Value2 }
+            $n=0.0
+            $formula=[string]$rssSheet.Range("B3").FormulaLocal
+            if($formula -match "RssMarket" -and [double]::TryParse([string]$v,[ref]$n) -and $n -gt 0){
+                $rssReady=$true
+                break
+            }
+        }catch{}
+        try{
+            # Trigger registered Excel add-ins without guessing an install path.
+            foreach($addin in $excel.AddIns){
+                if((([string]$addin.Name -match "RSS|MarketSpeed") -or ([string]$addin.Name -like ("*"+$marketSpeedJp+"*"))) -and -not $addin.Installed){
+                    $addin.Installed=$true
+                }
+            }
+        }catch{}
+        Start-Sleep -Seconds 2
+    }
+    if(-not $rssReady){
+        throw "LIVE DATA INVALID: MarketSpeed II RSS add-in did not initialize in the active Excel instance."
+    }
+    Write-Host ("      MarketSpeed II RSS: READY / 285A="+$n) -ForegroundColor Green
+
+    # Launcher no longer needs Excel COM after validation. Release it before
+    # long-running Watcher/Collector processes attach to the workbook.
+    Release-ComObjectSafe $rssSheet
+    Release-ComObjectSafe $book
+    Release-ComObjectSafe $excel
+    $rssSheet=$null
+    $book=$null
+    $excel=$null
+    $addin=$null
+    [GC]::Collect()
+    [GC]::WaitForPendingFinalizers()
+
+    Show-Step 48 "Starting Excel Watcher..."
+    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Watcher+'" -WorkbookPath "'+$WorkbookPath+'"') | Out-Null
+    $watcherDeadline=(Get-Date).AddSeconds(120)
+    while((Get-Date) -lt $watcherDeadline -and -not(Test-Port 28582 500)){ Start-Sleep -Milliseconds 500 }
+    if(-not(Test-Port 28582 500)){ throw "Excel Watcher port 28582 did not open. The workbook path/add-in state is invalid." }
+    Write-Host "      Excel Watcher: READY on port 28582" -ForegroundColor Green
 
     Show-Step 50 "Starting local gateway..."
-    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Gateway+'" -RuntimeDir "'+$RuntimeDir+'"') | Out-Null
+    $installChannel="main"
+    $channelMarker=Join-Path $Root "V6_INSTALL_CHANNEL.txt"
+    if(Test-Path -LiteralPath $channelMarker){
+        try{
+            $channelLine=Get-Content -LiteralPath $channelMarker -ErrorAction Stop | Where-Object { $_ -like "channel=*" } | Select-Object -First 1
+            if($channelLine){$installChannel=([string]$channelLine).Substring(8)}
+        }catch{}
+    }
+    $cockpitRemoteBase=if($installChannel -eq "fix/live-session-state-v1"){"https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/refs/heads/fix/live-session-state-v1"}else{"https://infoyuusuke-afk.github.io/trade-cockpit"}
+    Write-Host ("      UI source: "+$installChannel+" / "+$cockpitRemoteBase) -ForegroundColor DarkCyan
+    Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Gateway+'" -RuntimeDir "'+$RuntimeDir+'" -RemoteBase "'+$cockpitRemoteBase+'"') | Out-Null
     $deadline=(Get-Date).AddSeconds(30)
     while((Get-Date) -lt $deadline -and -not(Test-Port 28581 500)){ Start-Sleep -Milliseconds 500 }
     if(-not(Test-Port 28581 500)){ throw "Gateway port 28581 did not open." }
+
+    # UI availability is independent from LIVE-data readiness. Open the cockpit
+    # as soon as the gateway is reachable. Until Collector validates, the UI
+    # remains fail-closed and must show data unavailable / trading prohibited.
+    Show-Step 55 "Opening cockpit UI in fail-closed mode..."
+    $cockpitUrl="http://127.0.0.1:28581/?live=1"
+    Start-Process $cockpitUrl
+    Write-Host "      Cockpit UI: OPEN / waiting for LIVE validation" -ForegroundColor Yellow
 
     Show-Step 60 "Starting safety heartbeat..."
     Start-Process powershell.exe -WindowStyle Hidden -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Heartbeat+'"') | Out-Null
 
     Show-Step 65 "Starting Collector..."
-    Start-Process powershell.exe -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -NoExit -File "'+$Collector+'"') | Out-Null
+    Start-Process powershell.exe -ArgumentList ('-NoLogo -NoProfile -ExecutionPolicy Bypass -File "'+$Collector+'" -WorkbookPath "'+$WorkbookPath+'"') | Out-Null
 
     $started=Get-Date
     $next=10
@@ -197,11 +421,18 @@ try{
     while((Get-Date) -lt $deadline){
         try{
             $j=Invoke-RestMethod ("http://127.0.0.1:28580/live_ms2.json?t="+[DateTimeOffset]::Now.ToUnixTimeMilliseconds()) -TimeoutSec 3
-            if($j.updated_at){ $liveOk=$true; break }
+            if($j.updated_at -and $j.schema_version -eq "ms2-common-1.1"){
+                $kx=@($j.all_targets | Where-Object {
+                    ([string]$_.ticker -eq "285A.T") -or
+                    ([string]$_.ticker -eq "285A") -or
+                    ([string]$_.code -eq "285A")
+                } | Select-Object -First 1)
+                if($kx.Count -gt 0 -and $kx[0].live_quote_valid -eq $true -and [double]$kx[0].live_price -gt 0){ $liveOk=$true; break }
+            }
         }catch{}
         Start-Sleep -Seconds 1
     }
-    if(-not $liveOk){ throw "LIVE JSON was not ready." }
+    if(-not $liveOk){ throw "LIVE DATA INVALID: Collector 1.1 / 285A live_price verification failed." }
 
     $jnxState = if($null -ne $j.jnx_status){ [string]$j.jnx_status } else { "UNKNOWN" }
     $statsState = if($null -ne $j.stats_status){ [string]$j.stats_status } else { "UNKNOWN" }
@@ -220,9 +451,8 @@ try{
     $h=Invoke-RestMethod ("http://127.0.0.1:28581/health?t="+[DateTimeOffset]::Now.ToUnixTimeMilliseconds()) -TimeoutSec 5
     if(-not $h.live_json_exists){ throw "Gateway cannot see live_ms2.json." }
 
-    Show-Step 100 "READY - opening one cockpit page."
+    Show-Step 100 "READY - cockpit LIVE validated."
     Write-Progress -Activity "AI Cockpit startup" -Completed
-    Start-Process "http://127.0.0.1:28581/?live=1"
     Write-Host ""
     Write-Host ("Startup completed in {0:N1}s." -f $sw.Elapsed.TotalSeconds) -ForegroundColor Green
     Write-Host "Visible: Collector + one browser page" -ForegroundColor Cyan
@@ -230,6 +460,19 @@ try{
     Start-Sleep -Seconds 1
     [Environment]::Exit(0)
 }catch{
+    Stop-ExcelBoundManaged
+    Start-Sleep -Milliseconds 800
+    Release-ComObjectSafe $rssSheet
+    Release-ComObjectSafe $book
+    Release-ComObjectSafe $excel
+    $rssSheet=$null
+    $book=$null
+    $excel=$null
+    $addin=$null
+    [GC]::Collect()
+    [GC]::WaitForPendingFinalizers()
+    Start-Sleep -Milliseconds 500
+    Close-EmptyExcelApplication
     Write-Progress -Activity "AI Cockpit startup" -Completed
     Write-Host ""
     Write-Host "==============================================" -ForegroundColor Red
@@ -237,6 +480,10 @@ try{
     Write-Host "==============================================" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Yellow
     Write-Host ""
+    if(Test-Port 28581 500){
+        Write-Host "Cockpit UI remains available in FAIL-CLOSED mode at http://127.0.0.1:28581/?live=1" -ForegroundColor Yellow
+        Write-Host "Do not use LIVE trading data until the startup error is resolved." -ForegroundColor Red
+    }
     Write-Host "This window is intentionally left open." -ForegroundColor Cyan
     Write-Host ""
     Read-Host "Press Enter to close this startup window"
