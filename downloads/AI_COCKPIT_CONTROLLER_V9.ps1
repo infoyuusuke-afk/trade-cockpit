@@ -291,6 +291,7 @@ function Get-ExcelProcessForWorkbook([string]$WorkbookName) {
 
 $state = [ordered]@{
     build                      = $Build
+    controller_pid             = $PID
     started_at                 = (Get-Date).ToString("o")
     repo_root                  = ""
     runtime_dir                = ""
