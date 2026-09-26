@@ -128,10 +128,14 @@ document.addEventListener("DOMContentLoaded",()=>{
  window.renderScalpCard=(x,sv,tf)=>{
    const code=String(x.code||x.ticker||"").replace(".T","");
    const dir=sv.cls==="long"?"long":sv.cls==="short"?"short":sv.cls==="block"?"block":"wait";
+   const isStaleCard=x?._stale===true;
    const fmt=v=>v==null||!Number.isFinite(Number(v))?null:Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1});
    const range=(lo,hi)=>num(lo)>0&&num(hi)>0?fmt(lo)+" – "+fmt(hi):null;
    return window.renderCockpitCard({
      symbol:code,company:x.name,direction:dir,directionLabel:sv.label,
+     freshness:isStaleCard?"stale":undefined,
+     freshnessLabel:isStaleCard?"データ停止":undefined,
+     failClosed:isStaleCard?"鮮度確認不可":false,
      price:x.price,changePct:x.change_pct,
      sparkline:x.bars_1m,sparklineLabel:"直近15分・1分足終値",
      entry:x.entry_price,stop:x.stop_price,target:x.target1,
@@ -154,7 +158,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    const rows=fixed.map(t=>all.find(x=>String(x.ticker)===t)).filter(Boolean);
    box.innerHTML=rows.length?rows.map(x=>{
      const sv=signalView(x,stale);
-     return window.renderScalpCard({...x,foot:(x.signal||"監視")+' · '+(x.strategy||"条件待ち")},sv,"1m");
+     return window.renderScalpCard({...x,_stale:stale,foot:(x.signal||"監視")+' · '+(x.strategy||"条件待ち")},sv,"1m");
    }).join(""):'<div class="focus-empty">SCALP 5のMS2 RSSデータ待ち</div>';
  });
 
@@ -1250,7 +1254,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     const sv=stale?{label:"CLOSED",cls:"wait"}:label.includes("ロング")?{label:"BUY",cls:"long"}:label.includes("ショート")?{label:"SHORT",cls:"short"}:{label:"WAIT",cls:"wait"};
     const fs=x.feature_snapshot||{};
     const foot=(d.hold_finalized?"15:25候補固定・翌取引日引けで採点":"暫定候補・15:25まで注文しない")+"／後場OR上"+esc(x.pm_above_minutes??"—")+"分・下"+esc(x.pm_below_minutes??"—")+"分・引け位置"+esc(x.close_location_pct??"—")+"%・"+esc(x.market_state??"地合い未確認");
-    return window.renderScalpCard({name:x.name,ticker:x.ticker,price:x.reference_price_1525??x.price,vwap:x.vwap,or_low:x.or_low,or_high:x.or_high,ema9:fs.ema9,ema20:fs.ema20,flow_bias:x.flow_bias,foot},sv,"日足");
+    return window.renderScalpCard({name:x.name,ticker:x.ticker,_stale:stale,price:x.reference_price_1525??x.price,vwap:x.vwap,or_low:x.or_low,or_high:x.or_high,ema9:fs.ema9,ema20:fs.ema20,flow_bias:x.flow_bias,foot},sv,"日足");
    }).join(""):`<div class="focus-empty"><span>${d.hold_finalized?"15:25確定候補なし・持ち越し禁止":"15:25確定待ち、または条件未達"}</span></div>`;
    const hs=d.hold_stats||{},stat=v=>v==null?"—":`${Number(v).toFixed(1)}%`;
    if(holdStats)holdStats.innerHTML=window.renderCockpitCard({symbol:"STATS",company:"持ち越し成績",direction:"wait",directionLabel:"STATS",freshness:"fresh",freshnessLabel:"翌日終値基準",metrics:[{label:"サンプル",value:(hs.samples||0)+"件"},{label:"累積勝率",value:stat(hs.win_rate)},{label:"平均損益",value:stat(hs.avg_return_pct)},{label:"LONG勝率",value:stat(hs.long_win_rate)+"（"+(hs.long_samples||0)+"件）"},{label:"SHORT勝率",value:stat(hs.short_win_rate)+"（"+(hs.short_samples||0)+"件）"}],foot:"勝敗＝15:30終値から翌取引日15:30終値まで。場中はMFE・MAEも別記録。"});

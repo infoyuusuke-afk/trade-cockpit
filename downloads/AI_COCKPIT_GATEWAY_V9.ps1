@@ -50,6 +50,15 @@ function Read-JsonUtf8([string]$Path) {
     return $text | ConvertFrom-Json
 }
 
+function Test-HealthProcess([int]$ProcessId, [string]$ScriptName, [datetime]$StateWrittenAt) {
+    if ($ProcessId -le 0) { return $false }
+    try {
+        $process = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction Stop
+        if ($null -eq $process -or [string]::IsNullOrWhiteSpace([string]$process.CommandLine)) { return $false }
+        if ([datetime]$process.CreationDate -gt $StateWrittenAt) { return $false }
+        return ([string]$process.CommandLine -match [regex]::Escape($ScriptName))
+    } catch { return $false }
+}
 function Get-ContentType([string]$path) {
     switch -Regex ($path.ToLowerInvariant()) {
         '\.html?$' { return 'text/html; charset=utf-8' }
@@ -172,13 +181,32 @@ try {
                         $runtime.sbv2_pid = $st.sbv2_pid
                         $runtime.excel_pid = $st.excel_pid
                         $runtime.workbook_identity_verified = $st.workbook_identity_verified
+                        $stateWrittenAt = (Get-Item -LiteralPath $controllerStateFile).LastWriteTime
+                        $stateAge = ((Get-Date) - $stateWrittenAt).TotalSeconds
+                        $liveAge = if ($liveExists) { ((Get-Date) - (Get-Item -LiteralPath $liveJson).LastWriteTime).TotalSeconds } else { [double]::PositiveInfinity }
+                        $controllerAlive = Test-HealthProcess ([int]$st.controller_pid) 'AI_COCKPIT_CONTROLLER_V9.ps1' $stateWrittenAt
+                        $sessionFresh = $controllerAlive -and $stateAge -ge 0 -and $stateAge -le 30
+                        foreach ($check in @(
+                            @{field='watcher'; script='Kioxia_RSS_Live_Watcher.ps1'},
+                            @{field='heartbeat'; script='Kioxia_Safety_Heartbeat.ps1'},
+                            @{field='collector'; script='MS2_RSS_100_Collector.ps1'},
+                            @{field='voice_bridge'; script='AI_COCKPIT_VOICE_BRIDGE_V9.ps1'},
+                            @{field='sbv2'; script='server_fastapi.py'}
+                        )) {
+                            $pidField = $check.field + '_pid'
+                            $statusField = $check.field + '_status'
+                            if (-not $sessionFresh -or -not (Test-HealthProcess ([int]$st.$pidField) $check.script $stateWrittenAt)) {
+                                $runtime[$statusField] = 'UNVERIFIED_OR_OFFLINE'
+                            }
+                        }
                         # Fail-closed unless every safety-relevant worker is
                         # confirmed alive AND the collector has live data.
                         # Any unknown/missing state defaults to fail-closed.
                         $runtime.fail_closed = -not (
-                            $st.watcher_status -eq "LIVE" -and
-                            $st.heartbeat_status -eq "RUNNING" -and
-                            $st.collector_status -eq "LIVE"
+                            $sessionFresh -and $liveAge -ge 0 -and $liveAge -le 60 -and
+                            $runtime.watcher_status -eq "LIVE" -and
+                            $runtime.heartbeat_status -eq "RUNNING" -and
+                            $runtime.collector_status -eq "LIVE"
                         )
                     }
                 } catch {}
@@ -213,15 +241,59 @@ try {
             }
 
             if ($path -eq '/live_ms2.json') {
-                if ($liveJson -and (Test-Path -LiteralPath $liveJson)) {
-                    $bytes = [IO.File]::ReadAllBytes($liveJson)
-                    Send-Response $stream '200 OK' 'application/json; charset=utf-8' $bytes
-                } else {
-                    Send-Response $stream '503 Service Unavailable' 'application/json; charset=utf-8' ($utf8.GetBytes('{"status":"waiting","reason":"live_ms2.json not found"}'))
+                if (-not $liveJson -or -not (Test-Path -LiteralPath $liveJson)) {
+                    Send-Response $stream '503 Service Unavailable' 'application/json; charset=utf-8' ($utf8.GetBytes('{"status":"waiting","reason":"live_ms2.json not found","real_submit_allowed":false}'))
+                    continue
                 }
+
+                $LIVE_JSON_MAX_AGE_SECONDS = 60
+
+                $liveItem = Get-Item -LiteralPath $liveJson
+                $fileAgeSeconds = ((Get-Date) - $liveItem.LastWriteTime).TotalSeconds
+
+                $payloadAgeSeconds = [double]::PositiveInfinity
+                $updatedAtRaw = $null
+
+                try {
+                    $liveObj = Read-JsonUtf8 $liveJson
+                    $updatedAtRaw = [string]$liveObj.updated_at
+
+                    if (-not [string]::IsNullOrWhiteSpace($updatedAtRaw)) {
+                        $cleanUpdatedAt = $updatedAtRaw -replace '\s+JST\s*$',''
+                        $parsedUpdatedAt = Get-Date $cleanUpdatedAt -ErrorAction Stop
+                        $payloadAgeSeconds = ((Get-Date) - $parsedUpdatedAt).TotalSeconds
+                    }
+                } catch {
+                    $payloadAgeSeconds = [double]::PositiveInfinity
+                }
+
+                $liveFresh = (
+                    $fileAgeSeconds -ge 0 -and
+                    $fileAgeSeconds -le $LIVE_JSON_MAX_AGE_SECONDS -and
+                    $payloadAgeSeconds -ge 0 -and
+                    $payloadAgeSeconds -le $LIVE_JSON_MAX_AGE_SECONDS
+                )
+
+                if (-not $liveFresh) {
+                    $stalePayload = [ordered]@{
+                        status                  = 'stale'
+                        reason                  = 'live_ms2.json freshness threshold exceeded'
+                        max_age_seconds         = $LIVE_JSON_MAX_AGE_SECONDS
+                        file_age_seconds        = [Math]::Round($fileAgeSeconds, 1)
+                        payload_age_seconds     = if ([double]::IsInfinity($payloadAgeSeconds)) { $null } else { [Math]::Round($payloadAgeSeconds, 1) }
+                        updated_at              = $updatedAtRaw
+                        real_submit_allowed     = $false
+                        live_values_available   = $false
+                    } | ConvertTo-Json -Depth 4
+
+                    Send-Response $stream '503 Service Unavailable' 'application/json; charset=utf-8' ($utf8.GetBytes($stalePayload))
+                    continue
+                }
+
+                $bytes = [IO.File]::ReadAllBytes($liveJson)
+                Send-Response $stream '200 OK' 'application/json; charset=utf-8' $bytes
                 continue
             }
-
             # Static file, served directly from the local repo checkout.
             $relative = if ($path -eq '/') { 'index.html' } else { $path.TrimStart('/') }
             $relative = [Uri]::UnescapeDataString($relative)

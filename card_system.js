@@ -123,7 +123,8 @@ export function renderCockpitCard(model) {
   const failClosed = Boolean(model.failClosed);
   const { direction, label } = directionInfo(model);
   const fresh = resolveFreshness(model);
-  const chg = isFiniteNumber(model.changePct) ? Number(model.changePct) : null;
+  const liveValuesAvailable = !failClosed && fresh.state !== "stale";
+  const chg = liveValuesAvailable && isFiniteNumber(model.changePct) ? Number(model.changePct) : null;
   const chgCls = chg == null ? "cc-change--flat" : chg > 0 ? "cc-change--up" : chg < 0 ? "cc-change--down" : "cc-change--flat";
 
   const cardClasses = ["cc-card", `cc-card--${direction}`];
@@ -134,7 +135,7 @@ export function renderCockpitCard(model) {
 
   const badgeLabel = failClosed ? "FAIL-CLOSED" : label;
 
-  const metrics = Array.isArray(model.metrics)
+  const metrics = liveValuesAvailable && Array.isArray(model.metrics)
     ? model.metrics.filter((m) => m && m.label != null && m.value != null && m.value !== "")
     : [];
   const metricsHtml = metrics.length
@@ -143,9 +144,9 @@ export function renderCockpitCard(model) {
         .join("")}</div>`
     : "";
 
-  const sparklineBlock = model.sparkline ? sparklineHtml(model.sparkline, model.sparklineLabel) : "";
+  const sparklineBlock = liveValuesAvailable && model.sparkline ? sparklineHtml(model.sparkline, model.sparklineLabel) : "";
 
-  const hasOrder = isFiniteNumber(model.entry) || isFiniteNumber(model.stop) || isFiniteNumber(model.target);
+  const hasOrder = liveValuesAvailable && (isFiniteNumber(model.entry) || isFiniteNumber(model.stop) || isFiniteNumber(model.target));
   const orderHtml = hasOrder
     ? `<div class="cc-order-grid"><span class="cc-entry">ENTRY<b>${fmtYen(model.entry)}</b></span><span class="cc-stop">STOP<b>${fmtYen(model.stop)}</b></span><span class="cc-target">TARGET<b>${fmtYen(model.target)}</b></span></div>`
     : "";
@@ -167,7 +168,7 @@ export function renderCockpitCard(model) {
   return (
     `<article class="${cardClasses.join(" ")}" data-symbol="${esc(model.symbol)}">` +
     `<div class="cc-head"><div class="cc-identity"><span class="cc-company">${fmtScalar(model.company ?? model.symbol)}</span><span class="cc-symbol">TSE:${esc(model.symbol)}</span></div><span class="cc-badge">${esc(badgeLabel)}</span></div>` +
-    `<div class="cc-price-row"><div class="cc-price">${fmtYen(model.price)}</div><div class="cc-change ${chgCls}">${fmtPct(model.changePct)}</div></div>` +
+    `<div class="cc-price-row"><div class="cc-price">${fmtYen(liveValuesAvailable ? model.price : null)}</div><div class="cc-change ${chgCls}">${fmtPct(liveValuesAvailable ? model.changePct : null)}</div></div>` +
     `<div class="cc-freshness cc-freshness--${fresh.state}"><i class="cc-freshness-dot"></i>${esc(fresh.label ?? freshnessAgeText(model))}</div>` +
     sparklineBlock +
     conflictHtml +
@@ -198,12 +199,13 @@ export function renderCockpitWatchRow(model) {
   }
   const { direction, label } = directionInfo(model);
   const fresh = resolveFreshness(model);
-  const chg = isFiniteNumber(model.changePct) ? Number(model.changePct) : null;
+  const priceAvailable = fresh.state === "fresh";
+  const chg = priceAvailable && isFiniteNumber(model.changePct) ? Number(model.changePct) : null;
   const chgCls = chg == null ? "cc-change--flat" : chg > 0 ? "cc-change--up" : chg < 0 ? "cc-change--down" : "cc-change--flat";
   const showBadge = model.showBadge !== false;
   const rankHtml = isFiniteNumber(model.rank) ? `<span class="cc-rank">#${Math.trunc(model.rank)}</span>` : "";
 
-  const metrics = Array.isArray(model.metrics)
+  const metrics = priceAvailable && Array.isArray(model.metrics)
     ? model.metrics.filter((m) => m && m.label != null && m.value != null && m.value !== "")
     : [];
   const metricsHtml = metrics.length
@@ -217,7 +219,7 @@ export function renderCockpitWatchRow(model) {
     rankHtml +
     `<div class="cc-identity"><span class="cc-company">${fmtScalar(model.company ?? model.symbol)}</span><span class="cc-symbol">TSE:${esc(model.symbol)}</span></div>` +
     (showBadge ? `<span class="cc-badge">${esc(label)}</span>` : "") +
-    `<div class="cc-price-row"><div class="cc-price">${fmtYen(model.price)}</div><div class="cc-change ${chgCls}">${fmtPct(model.changePct)}</div></div>` +
+    `<div class="cc-price-row"><div class="cc-price">${fmtYen(priceAvailable ? model.price : null)}</div><div class="cc-change ${chgCls}">${fmtPct(chg)}</div></div>` +
     metricsHtml +
     `<div class="cc-freshness cc-freshness--${fresh.state}"><i class="cc-freshness-dot"></i>${esc(fresh.label ?? freshnessAgeText(model))}</div>` +
     `</div>`

@@ -270,6 +270,19 @@ function Stop-OwnedFromPreviousState {
     # something the user is actively looking at.
 }
 
+# A workbook title change does not establish ownership of the Excel process.
+# Release the workers' COM references; never force-kill Excel, which may also
+# host a user's other workbooks. A surviving Excel is reported for acceptance.
+function Stop-ManagedWorkersOnWorkbookClose($SessionState) {
+    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid", "sbv2_pid")) {
+        $workerPid = [int]$SessionState.$field
+        if ($workerPid -le 0 -or $workerPid -eq [int]$SessionState.excel_pid) { continue }
+        $worker = Get-Process -Id $workerPid -ErrorAction SilentlyContinue
+        if ($null -ne $worker -and (Test-OwnedPidIdentity $field $workerPid)) {
+            Stop-Process -Id $workerPid -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
 function Start-Worker([string]$Name, [string]$Script, [string]$WorkDir, [string]$ExtraArgs = "") {
     $stdout = Join-Path $LogDir ($Name + "_stdout.log")
     $stderr = Join-Path $LogDir ($Name + "_stderr.log")
@@ -637,21 +650,131 @@ try {
                 Write-Status "Workbook close detected - stopping managed processes..." Yellow
                 Stop-OwnedJobBridge $PORT_COLLECTOR ([int]$state.collector_pid) "Collector JSON" | Out-Null
                 Stop-OwnedJobBridge $PORT_WATCHER ([int]$state.watcher_pid) "Watcher JSON" | Out-Null
-                foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid", "sbv2_pid")) {
-                    $val = [int]$state.$field
-                    if ($val -gt 0) {
-                        $p = Get-Process -Id $val -ErrorAction SilentlyContinue
-                        if ($null -ne $p) { try { Stop-Process -Id $val -Force -ErrorAction SilentlyContinue } catch {} }
+                Stop-ManagedWorkersOnWorkbookClose $state
+                Start-Sleep -Seconds 2
+
+                # The workbook window is already closed at this point.
+                # Do NOT preserve the tracked Excel blindly: that is what
+                # left the hidden 300MB+ EXCEL.EXE orphan behind.
+                #
+                # Force-stop is permitted ONLY when all ownership checks
+                # identify this exact process as the AI Cockpit workbook
+                # launched by this Controller.
+                $xp2 = Get-Process -Id ([int]$state.excel_pid) -ErrorAction SilentlyContinue
+
+                if ($null -ne $xp2) {
+                    $excelInfo = Get-CimInstance Win32_Process `
+                        -Filter ("ProcessId = " + [int]$state.excel_pid) `
+                        -ErrorAction SilentlyContinue
+
+                    $excelCmd = if ($null -ne $excelInfo) {
+                        [string]$excelInfo.CommandLine
+                    } else {
+                        ""
+                    }
+
+                    $isHidden = ($xp2.MainWindowHandle -eq 0)
+
+                    $isCanonicalWorkbook = (
+                        -not [string]::IsNullOrWhiteSpace($excelCmd) -and
+                        $excelCmd.IndexOf(
+                            $WorkbookPath,
+                            [StringComparison]::OrdinalIgnoreCase
+                        ) -ge 0
+                    )
+
+                    $isControllerChild = (
+                        $null -ne $excelInfo -and
+                        [int]$excelInfo.ParentProcessId -eq $PID
+                    )
+
+                    if (
+                        $isHidden -and
+                        $isCanonicalWorkbook -and
+                        $isControllerChild
+                    ) {
+                        Write-Status (
+                            "  terminating verified hidden AI Cockpit Excel PID " +
+                            $state.excel_pid
+                        ) Yellow
+
+                        Stop-Process `
+                            -Id ([int]$state.excel_pid) `
+                            -Force `
+                            -ErrorAction Stop
+
+                        # Bound the wait; never report clean shutdown until
+                        # the tracked process is actually gone.
+                        $excelGone = $false
+
+                        foreach ($attempt in 1..10) {
+                            Start-Sleep -Milliseconds 500
+
+                            if (
+                                $null -eq (
+                                    Get-Process `
+                                        -Id ([int]$state.excel_pid) `
+                                        -ErrorAction SilentlyContinue
+                                )
+                            ) {
+                                $excelGone = $true
+                                break
+                            }
+                        }
+
+                        if (-not $excelGone) {
+                            Write-Status (
+                                "ERROR: verified AI Cockpit Excel PID " +
+                                $state.excel_pid +
+                                " did not terminate."
+                            ) Red
+
+                            Save-State $state
+                            [Environment]::Exit(2)
+                        }
+
+                        Write-Status (
+                            "  verified AI Cockpit Excel PID " +
+                            $state.excel_pid +
+                            " terminated."
+                        ) Green
+                    }
+                    else {
+                        Write-Status (
+                            "ERROR: remaining Excel PID " +
+                            $state.excel_pid +
+                            " failed ownership verification. " +
+                            "hidden=" + $isHidden +
+                            ", canonicalWorkbook=" + $isCanonicalWorkbook +
+                            ", controllerChild=" + $isControllerChild +
+                            ". It will NOT be force-stopped."
+                        ) Red
+
+                        # Keep state for diagnosis instead of deleting our
+                        # only ownership evidence.
+                        Save-State $state
+                        [Environment]::Exit(2)
                     }
                 }
-                Start-Sleep -Seconds 2
-                $xp2 = Get-Process -Id $state.excel_pid -ErrorAction SilentlyContinue
-                if ($null -ne $xp2 -and ($xp2.MainWindowHandle -eq 0 -or $xp2.MainWindowTitle -notlike ("*" + $WorkbookName + "*"))) {
-                    try { Stop-Process -Id $state.excel_pid -Force -ErrorAction SilentlyContinue } catch {}
-                    Write-Status ("  Cleared orphaned Excel PID " + $state.excel_pid) Green
+
+                # Final tracked-PID verification before deleting state.
+                $xp3 = Get-Process `
+                    -Id ([int]$state.excel_pid) `
+                    -ErrorAction SilentlyContinue
+
+                if ($null -ne $xp3) {
+                    Write-Status (
+                        "ERROR: tracked Excel still exists; state retained."
+                    ) Red
+
+                    Save-State $state
+                    [Environment]::Exit(2)
                 }
+
+                Write-Status "  Excel cleanup verified: tracked AI Cockpit Excel is gone." Green
+
                 Remove-Item -LiteralPath $StateFile -Force -ErrorAction SilentlyContinue
-                Write-Status "Clean shutdown complete. Next start will begin from zero leftover state." Green
+                Write-Status "Managed-worker shutdown requested. Review the process checks for any remaining processes." Green
                 Start-Sleep -Seconds 2
                 [Environment]::Exit(0)
             }
