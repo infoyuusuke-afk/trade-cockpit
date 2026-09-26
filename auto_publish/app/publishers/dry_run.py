@@ -13,6 +13,7 @@ from ..errors import PublishBlockedError, RenderError
 from ..hashing import sha256_file, sha256_json, write_json_atomic
 from ..render.ffmpeg_render import COVER, MASTER
 from .base import PostBundle, PublisherAdapter
+from .contract import validate_payload
 
 X_MAX_CHARS = 280
 DURATION_RANGE = (20.0, 45.0)
@@ -99,10 +100,16 @@ class DryRunPublisher(PublisherAdapter):
             "localized": {"ja-JP": {"title": post.post_ja["title"], "caption": post.post_ja["caption"]}},
         }
 
-    def schedule(self, post: PostBundle, publish_at: datetime) -> dict:
+    def build_payload(self, post: PostBundle, publish_at: datetime) -> dict:
+        """Deterministic: the same approved bundle + slot always yields the same payload."""
         payload = self.create_draft(post)
         payload["would_publish_at_utc"] = iso_utc(publish_at)
         payload["schedule"] = post.extra.get("slot", {})
+        validate_payload(payload, self.platform)
+        return payload
+
+    def schedule(self, post: PostBundle, publish_at: datetime) -> dict:
+        payload = self.build_payload(post, publish_at)
         path = Path(post.story_dir) / "dry_run" / f"{self.platform}.json"
         sha = write_json_atomic(path, payload)
         return {"payload_path": str(path), "payload_sha256": sha, "payload_body_sha256": sha256_json(payload)}

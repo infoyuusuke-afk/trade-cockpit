@@ -45,8 +45,13 @@ def write_atomic(path: Path, data: bytes) -> None:
     os.replace(tmp, path)
 
 
+def json_file_bytes(obj: Any) -> bytes:
+    """Exact bytes ``write_json_atomic`` writes (pretty, key-sorted, trailing newline)."""
+    return (json.dumps(obj, sort_keys=True, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
+
+
 def write_json_atomic(path: Path, obj: Any) -> str:
     """Write pretty, key-sorted JSON atomically; return sha256 of the bytes written."""
-    data = (json.dumps(obj, sort_keys=True, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
+    data = json_file_bytes(obj)
     write_atomic(path, data)
     return sha256_bytes(data)

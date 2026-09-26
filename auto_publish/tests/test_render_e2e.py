@@ -222,11 +222,11 @@ class TestCliEndToEnd(unittest.TestCase):
             overlay.write_text(json.dumps({"render": {"x264_preset": "ultrafast"}}), encoding="utf-8")
             env = {**os.environ, "AUTO_PUBLISH_HOME": str(root / "home"), "PYTHONPATH": str(REPO)}
 
-            def cli(*args, expect=0, extra_env=None):
+            def cli(*args, expect=0, extra_env=None, now=NOW):
                 # The CLI always emits UTF-8; decode it as UTF-8 explicitly (Windows' default
                 # locale decoding would be cp932).
                 out = subprocess.run([sys.executable, "-m", "auto_publish.cli", "--config", str(overlay),
-                                      "--now", NOW, "--actor", "ci", *args],
+                                      "--now", now, "--actor", "ci", *args],
                                      capture_output=True, text=True, encoding="utf-8",
                                      env={**env, **(extra_env or {})}, cwd=REPO, timeout=600)
                 self.assertEqual(out.returncode, expect, out.stdout + out.stderr)
@@ -253,6 +253,19 @@ class TestCliEndToEnd(unittest.TestCase):
             self.assertTrue(cli("audit-verify")["result"]["ok"])
             q = cli("queue")["result"]
             self.assertEqual({s["state"] for s in q["stories"]}, {"SCHEDULED", "AWAITING_APPROVAL"})
+
+            # dry-run E2E: nothing is due yet; at the europe slot tiktok + x become would_publish events
+            self.assertEqual(cli("would-publish")["result"]["results"], [])
+            wp = cli("would-publish", now="2026-09-24T22:00:00+09:00")["result"]
+            self.assertEqual(sorted((r["platform"], r["status"]) for r in wp["results"]),
+                             [("tiktok", "WOULD_PUBLISH"), ("x", "WOULD_PUBLISH")])
+            self.assertEqual((wp["sent"], wp["network"]), (0, "none"))
+            self.assertEqual(cli("would-publish", now="2026-09-24T22:00:00+09:00")["result"]["results"], [])
+            ds = cli("dispatches", "--story", sid)["result"]["dispatches"]
+            self.assertEqual({d["trace"]["sent"] for d in ds}, {False})
+            self.assertTrue(cli("audit-verify")["result"]["ok"])
+            drill = cli("kill-switch-drill", "--input", str(drop))["result"]
+            self.assertTrue(drill["ok"], drill["checks"])
 
             sdir = root / "home" / "artifacts" / SESSION / sid
             for name in (*ARTIFACT_FILES, "schedule.json", "dry_run/youtube_shorts.json", "dry_run/tiktok.json",

@@ -12,6 +12,9 @@
     python -m auto_publish.cli schedule <story_id>
     python -m auto_publish.cli cancel <story_id> --reason ...
     python -m auto_publish.cli retry <story_id> --reason ...
+    python -m auto_publish.cli would-publish            # DRY-RUN: evaluate due schedules; never sends
+    python -m auto_publish.cli dispatches [--story <id>]
+    python -m auto_publish.cli kill-switch-drill --input <fixture content_drop/YYYY-MM-DD>
     python -m auto_publish.cli pause-all | resume-all
     python -m auto_publish.cli disable-platform <p> | enable-platform <p>
     python -m auto_publish.cli audit-verify
@@ -33,6 +36,7 @@ from .app.config import load_config, resolve_home
 from .app.context import Ctx
 from .app.db import connect
 from .app.errors import AutoPublishError
+from .app.dispatch import simulator
 from .app.explain import explain
 from .app.marketcal.tse import load_calendar
 from .app.export.cockpit_export import export_session
@@ -142,6 +146,19 @@ def cmd_retry(ctx, a):
     return pipeline.retry(ctx, a.story_id, a.reason)
 
 
+def cmd_would_publish(ctx, a):
+    return simulator.run_due(ctx)
+
+
+def cmd_dispatches(ctx, a):
+    return {"dispatches": simulator.list_dispatches(ctx, a.story)}
+
+
+def cmd_drill(ctx, a):
+    from .app.dispatch.drill import run_drill
+    return run_drill(ctx.cfg, a.input, keep_home=a.keep_home)
+
+
 def cmd_pause(ctx, a):
     controls.pause_all(ctx.conn, ctx.clock, ctx.actor, a.reason)
     return {"paused": True}
@@ -192,6 +209,11 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("schedule"); s.add_argument("story_id"); s.set_defaults(fn=cmd_schedule)
     s = sub.add_parser("cancel"); s.add_argument("story_id"); s.add_argument("--reason", required=True); s.set_defaults(fn=cmd_cancel)
     s = sub.add_parser("retry"); s.add_argument("story_id"); s.add_argument("--reason", required=True); s.set_defaults(fn=cmd_retry)
+    s = sub.add_parser("would-publish", help="DRY-RUN: evaluate due schedules and record would_publish events;"
+                       " nothing is sent"); s.set_defaults(fn=cmd_would_publish)
+    s = sub.add_parser("dispatches"); s.add_argument("--story"); s.set_defaults(fn=cmd_dispatches)
+    s = sub.add_parser("kill-switch-drill", help="isolated temp home, fixture data only")
+    s.add_argument("--input", required=True); s.add_argument("--keep-home"); s.set_defaults(fn=cmd_drill)
     s = sub.add_parser("pause-all"); s.add_argument("--reason", default=""); s.set_defaults(fn=cmd_pause)
     s = sub.add_parser("resume-all"); s.add_argument("--reason", default=""); s.set_defaults(fn=cmd_resume)
     s = sub.add_parser("disable-platform"); s.add_argument("platform"); s.add_argument("--reason", default=""); s.set_defaults(fn=cmd_platform(False))

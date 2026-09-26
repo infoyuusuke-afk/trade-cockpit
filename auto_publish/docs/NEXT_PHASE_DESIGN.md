@@ -168,4 +168,10 @@ providers:
 - silent では従来の固定6秒レイアウトのまま（英語の master / cover / captions は R1 とバイト一致）
 - `ja_primary` は opt-in（`render.variants`）。既定は `en_primary` のみ
 4. 配信時間最適化 … post_metrics 表と CSV 取り込み → optimizer（データが溜まるまでは baseline のまま）
-5. dry-run E2E … payload契約テスト、would_publish シミュレータ、キルスイッチ訓練
+5. dry-run E2E … payload契約テスト、would_publish シミュレータ、キルスイッチ訓練 … **完了**（配信時間最適化より先に実施）
+
+dry-run E2E 実装メモ:
+- would_publish はストーリー状態ではなく、予約（platform）単位の監査イベント。ストーリーは SCHEDULED のまま
+- 予約の状態: SCHEDULED → DISPATCHING → WOULD_PUBLISH / BLOCKED / UNKNOWN、遅延超過は MISSED
+- クラッシュ等で IN_FLIGHT のまま lease を過ぎた試行は UNKNOWN。自動再試行・自動再送はしない
+- 1予約につき試行は1回、同じ idempotency key の WOULD_PUBLISH は1件まで（DBの一意制約）。結果の行は変更・削除不可

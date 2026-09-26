@@ -158,6 +158,40 @@ is rejected at config load (`TTS_PROVIDER_NOT_ALLOWED`).
   `master_ja_1080x1920.mp4` / `cover_ja.jpg` with Japanese text and narration. Fonts per language in `render.fonts`
   (ja-JP: Noto Sans CJK on Linux, Yu Gothic / Meiryo on Windows); no usable font → `FONT_MISSING` before encoding.
 
+## Dry-run E2E: WOULD_PUBLISH simulator (network-free)
+
+`would-publish` evaluates every schedule whose time has come. `would_publish` is an **audit event**, not a
+publication: it records that, at the scheduled time, every precondition for sending held in DRY-RUN. Nothing is sent,
+no network is used, and the story stays `SCHEDULED` (R1 has no PUBLISH state). Run it by hand; no daemon or Task
+Scheduler entry is installed.
+
+```
+per schedule:  SCHEDULED -> DISPATCHING -> WOULD_PUBLISH                  (all checks pass)
+                                       -> BLOCKED                         (any check fails; terminal)
+                                       -> SCHEDULED / CANCELLED           (kill switch / cancel mid-flight; attempt ABORTED)
+                                       -> UNKNOWN                         (crash: in-flight past its lease; terminal, never resent)
+               SCHEDULED -> MISSED                                        (> dispatch.max_lateness_minutes late; never sent late)
+```
+
+Checks at the scheduled time: story still SCHEDULED and approved; adapter is dry_run; audit hash chain intact;
+approval and schedule rows equal the audited ones; evidence store hashes; every artifact (video, cover, captions,
+narration, manifests) equals the approved content hash; compliance; narration text == approved text; payload file
+unchanged, valid against the frozen contract (`auto_publish.payload_contract.v1`: YouTube private / TikTok SELF_ONLY /
+X ≤ 280 weighted chars with disclaimer) and byte-identical to what the approved content produces now.
+The result (`dispatches` table + `would_publish` audit row) carries a trace binding story → approval → evidence →
+artifacts → payload → slot. One attempt per schedule and one WOULD_PUBLISH per idempotency key are enforced by the DB;
+outcomes are immutable.
+
+Kill switches: PAUSE ALL stops the whole run; a disabled platform is skipped; both (and CANCEL) are re-checked inside the
+recording transaction, so a switch thrown mid-flight aborts the attempt. `kill-switch-drill --input <fixture drop>`
+rehearses PAUSE ALL, mid-flight pause, DISABLE PLATFORM and CANCEL in an isolated temporary home (fixture data only).
+
+```powershell
+py -3.11 -m auto_publish.cli would-publish                 # evaluate due schedules (use --now to rehearse a time)
+py -3.11 -m auto_publish.cli dispatches --story <story_id> # outcomes + traces
+py -3.11 -m auto_publish.cli kill-switch-drill --input auto_publish\tests\fixtures\content_drop\2026-09-24
+```
+
 ## Output (per story)
 
 ```

@@ -334,6 +334,21 @@ def approve(ctx: Ctx, story_id: str, approver: str) -> dict:
     return {"story_id": story_id, "state": S.APPROVED.value, "approved_content_sha256": content, "noop": False}
 
 
+def idempotency_key(story_id: str, platform: str, approved_content_sha256: str) -> str:
+    return sha256_text(f"{story_id}|{platform}|{approved_content_sha256}")[:32]
+
+
+def post_bundle(story: dict, platform: str, sdir: Path, post_en: dict, post_ja: dict, manifest: dict, content: str,
+                evidence_manifest_sha256: str, idem: str, slot_info: dict) -> PostBundle:
+    """The single place a PostBundle is assembled (SCHEDULE and WOULD_PUBLISH must agree byte-for-byte)."""
+    return PostBundle(
+        story_id=story["story_id"], session_date=story["session_date"], platform=platform, story_dir=sdir,
+        post_en=post_en, post_ja=post_ja, render_manifest=manifest, content_sha256=content,
+        approved_by=story["approved_by"], evidence_manifest_sha256=evidence_manifest_sha256,
+        fixture=bool(story["fixture"]), idempotency_key=idem, extra={"slot": slot_info},
+    )
+
+
 def schedule(ctx: Ctx, story_id: str) -> dict:
     controls.require_not_paused(ctx.conn, "schedule")
     story = _story(ctx, story_id)
@@ -370,7 +385,7 @@ def schedule(ctx: Ctx, story_id: str) -> dict:
         taken_by_platform: dict[str, set[str]] = {}
         for platform in enabled:
             adapter = get_adapter(platform, ctx.cfg)
-            idem = sha256_text(f"{story_id}|{platform}|{story['approved_content_sha256']}")[:32]
+            idem = idempotency_key(story_id, platform, story["approved_content_sha256"])
             taken = {r["publish_at_utc"] for r in ctx.conn.execute(
                 "SELECT publish_at_utc FROM schedules WHERE platform = ? AND status = 'SCHEDULED'", (platform,))}
             taken |= taken_by_platform.setdefault(platform, set())
@@ -381,12 +396,8 @@ def schedule(ctx: Ctx, story_id: str) -> dict:
             taken_by_platform[platform].add(slot.publish_at_utc)
             slot_info = {"wave": slot.wave, "publish_at_utc": slot.publish_at_utc, "publish_at_jst": slot.publish_at_jst,
                          "audience_tz": slot.audience_tz, "audience_local": slot.audience_local}
-            bundle = PostBundle(
-                story_id=story_id, session_date=story["session_date"], platform=platform, story_dir=sdir,
-                post_en=post_en, post_ja=post_ja, render_manifest=manifest, content_sha256=content,
-                approved_by=story["approved_by"], evidence_manifest_sha256=session["manifest_sha256"],
-                fixture=bool(story["fixture"]), idempotency_key=idem, extra={"slot": slot_info},
-            )
+            bundle = post_bundle(story, platform, sdir, post_en, post_ja, manifest, content,
+                                 session["manifest_sha256"], idem, slot_info)
             adapter.validate_credentials()
             adapter.validate_asset(bundle)
             written = adapter.schedule(bundle, slot.publish_at)

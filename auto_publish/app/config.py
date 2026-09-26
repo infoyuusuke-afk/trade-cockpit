@@ -93,6 +93,10 @@ def validate_config(cfg: dict) -> None:
         raise ValidationError(f"render.variants must start with en_primary and use {ALLOWED_RENDER_VARIANTS}",
                               code="RENDER_VARIANT_INVALID")
     _validate_tts(cfg["tts"])
+    d = cfg["dispatch"]
+    if int(d["lease_seconds"]) < 30 or not 0 <= int(d["max_lateness_minutes"]) <= 180:
+        raise ValidationError("dispatch.lease_seconds >= 30 and 0 <= dispatch.max_lateness_minutes <= 180",
+                              code="DISPATCH_CONFIG_INVALID")
 
 
 def _validate_tts(t: dict) -> None:

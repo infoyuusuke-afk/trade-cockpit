@@ -43,6 +43,10 @@
     "slot_interval_minutes": 30,
     "min_lead_minutes": 10
   },
+  "dispatch": {
+    "lease_seconds": 300,
+    "max_lateness_minutes": 30
+  },
   "waves": {
     "europe": {"start_jst": "22:00", "end_jst": "24:00", "day_offset": 0, "audience_tz": "Europe/London"},
     "na_tiktok": {"start_jst": "05:00", "end_jst": "07:00", "day_offset": 1, "audience_tz": "America/New_York"},
