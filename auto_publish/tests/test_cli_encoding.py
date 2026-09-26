@@ -10,8 +10,8 @@ from auto_publish import cli
 class TestCliUtf8Output(unittest.TestCase):
     def test_cp932_stdout_is_reconfigured_to_utf8(self):
         out_buf, err_buf = io.BytesIO(), io.BytesIO()
-        fake_out = io.TextIOWrapper(out_buf, encoding="cp932")
-        fake_err = io.TextIOWrapper(err_buf, encoding="cp932")
+        fake_out = io.TextIOWrapper(out_buf, encoding="cp932", newline="\n")
+        fake_err = io.TextIOWrapper(err_buf, encoding="cp932", newline="\n")
         with mock.patch.object(sys, "stdout", fake_out), mock.patch.object(sys, "stderr", fake_err):
             with self.assertRaises(UnicodeEncodeError):
                 print("¥")  # what used to happen on Windows
@@ -25,7 +25,7 @@ class TestCliUtf8Output(unittest.TestCase):
 
     def test_json_content_unchanged(self):
         out_buf = io.BytesIO()
-        fake_out = io.TextIOWrapper(out_buf, encoding="cp932")
+        fake_out = io.TextIOWrapper(out_buf, encoding="cp932", newline="\n")
         with mock.patch.object(sys, "stdout", fake_out):
             cli._utf8_stdio()
             cli._out({"ok": True, "result": {"text": "¥100"}})
