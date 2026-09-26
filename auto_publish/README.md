@@ -220,5 +220,6 @@ explicitly). CI: `.github/workflows/auto-publish-r1.yml` installs FFmpeg + DejaV
 ## Not in R1
 
 Real platform adapters / OAuth, PUBLISH/VERIFY/METRICS/LEARN stages, TimingOptimizer, TTS narration (video carries a silent
-AAC track), Japanese subtitle line in the video, real `condition_log.csv` not yet run (importer done, tested on a synthetic file in the exact collector format), TSE holiday calendar (weekends only),
-APScheduler daemon, approval UI.
+AAC track), Japanese subtitle line in the video, APScheduler daemon, approval UI.
+Design for the next phase (TTS, Japanese subtitles, timing optimisation, dry-run E2E): [`docs/NEXT_PHASE_DESIGN.md`](docs/NEXT_PHASE_DESIGN.md).
+R1 real-data acceptance: PASS on 0597b81 (owner PC, 2026-09-24 session); Windows fixes 07193fc / 379f16c.
