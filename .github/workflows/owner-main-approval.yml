@@ -15,10 +15,12 @@ jobs:
   approve:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    environment:
+      name: owner-main-approval
     steps:
-      - name: Record owner gate check
+      - name: Record explicit owner deployment approval
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          printf 'Owner gate check passed for PR #%s at %s\n' "$PR_NUMBER" "$PR_HEAD_SHA"
+          printf 'Owner approval accepted for PR #%s at %s\n' "$PR_NUMBER" "$PR_HEAD_SHA"
