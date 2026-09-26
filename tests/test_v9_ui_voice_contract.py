@@ -225,71 +225,7 @@ class V9UiVoiceContract(unittest.TestCase):
             "real_submit_allowed = $false",
         ):
             self.assertIn(needle, gateway)
-        self.assertIn("$updatedAtRaw -replace '\\s+JST\\s*
-        import re
-        files = (
-            "downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1",
-            "downloads/AI_COCKPIT_CONTROLLER_V9.ps1",
-            "downloads/STOP_AI_COCKPIT_V9.ps1",
-            "downloads/RUN_AI_COCKPIT_V9.ps1",
-            "downloads/AI_COCKPIT_GATEWAY_V9.ps1",
-            "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
-        )
-        reserved = {"PID", "ARGS"}
-        for rel in files:
-            text = read(rel)
-            for signature in re.findall(r"function\s+[A-Za-z0-9_-]+\s*\(([^)]*)\)", text, flags=re.I | re.S):
-                names = re.findall(r"\$([A-Za-z_][A-Za-z0-9_]*)", signature)
-                bad = [name for name in names if name.upper() in reserved]
-                self.assertEqual([], bad, f"{rel} shadows PowerShell automatic variable(s): {bad}")
-
-    def test_switch_only_kills_known_v8_port_owners(self):
-        text = read("downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1")
-        for needle in (
-            '28580 { "MS2_RSS_100_Collector.ps1" }',
-            '28581 { "AI_COCKPIT_GATEWAY_V8.ps1" }',
-            '28582 { "Kioxia_RSS_Live_Watcher.ps1" }',
-            'Stop-RecognizedV8PortOwner',
-            'RUN_AI_COCKPIT_V8.ps1',
-            'Stop-OwnedJobBridge',
-            'ParentProcessId',
-            'unrecognized PID',
-        ):
-            self.assertIn(needle, text)
-        self.assertNotIn("Stop-Process -Name powershell", text.lower())
-        self.assertNotIn("taskkill", text.lower())
-
-    def test_v9_lifecycle_cleans_start_job_bridge_children(self):
-        controller = read("downloads/AI_COCKPIT_CONTROLLER_V9.ps1")
-        stop = read("downloads/STOP_AI_COCKPIT_V9.ps1")
-        watcher = read("ms2_live/Kioxia_RSS_Live_Watcher.ps1")
-        for text in (controller, stop):
-            self.assertIn("Stop-OwnedJobBridge", text)
-            self.assertIn("ParentProcessId", text)
-            self.assertIn("28580", text)
-            self.assertIn("28582", text)
-        self.assertIn("Stop-Job $watcherBridgeJob", watcher)
-        self.assertIn("Remove-Job $watcherBridgeJob", watcher)
-
-    def test_v8_to_v9_switch_is_narrow_and_one_click(self):
-        text = read("downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1")
-        self.assertIn("AI_COCKPIT_CONTROLLER_V8.ps1", text)
-        self.assertIn("V8_CONTROLLER_STATE.json", text)
-        self.assertIn("RUN_AI_COCKPIT_V9.ps1", text)
-        self.assertIn("ExpectedSha", text)
-        self.assertIn("28580,28581,28582", text.replace(" ", ""))
-        self.assertIn("[string[]]$GitArgs", text)
-        self.assertNotIn("[string[]]$Args", text)
-        self.assertNotIn("[int]$Pid", text)
-        self.assertIn("SWITCH SELFTEST PASS", text)
-        self.assertNotIn("Stop-Process -Name EXCEL", text)
-        self.assertNotIn("Get-Process EXCEL", text)
-        self.assertNotIn("taskkill", text.lower())
-
-
-if __name__ == "__main__":
-    unittest.main()
-,''", gateway)
+        self.assertIn("$updatedAtRaw -replace '\\s+JST\\s*$',''", gateway)
 
     def test_v9_powershell_functions_do_not_shadow_readonly_automatic_variables(self):
         import re
