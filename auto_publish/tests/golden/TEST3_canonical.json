@@ -1,0 +1,103 @@
+{
+  "bases": [
+    "observed"
+  ],
+  "fixture": true,
+  "instrument": {
+    "code": "TEST3",
+    "name_en": "Fixture Materials",
+    "name_ja": "フィクスチャ・マテリアルズ",
+    "ticker": "TEST3.T"
+  },
+  "schema": "auto_publish.story.v1",
+  "segments": [
+    {
+      "data": {
+        "change_pct": -3.1,
+        "close": 880
+      },
+      "fact_ids": [
+        "f_bfb660fe58916da2"
+      ],
+      "id": "hook",
+      "type": "hook"
+    },
+    {
+      "data": {
+        "change_pct": -3.1,
+        "close": 880
+      },
+      "fact_ids": [
+        "f_bfb660fe58916da2"
+      ],
+      "id": "b1",
+      "type": "close"
+    },
+    {
+      "data": {
+        "event": "vwap_reclaim",
+        "time_jst": "13:40"
+      },
+      "fact_ids": [
+        "f_5fb19b3dbebc10fa"
+      ],
+      "id": "b2",
+      "type": "radar"
+    },
+    {
+      "data": {
+        "volume_ratio": 1.9
+      },
+      "fact_ids": [
+        "f_bfb660fe58916da2"
+      ],
+      "id": "b3",
+      "type": "volume"
+    },
+    {
+      "data": {
+        "fixture": true,
+        "has_paper": false
+      },
+      "fact_ids": [],
+      "id": "disclaimer",
+      "type": "disclaimer"
+    }
+  ],
+  "session_date": "2026-09-24",
+  "source_refs": [
+    {
+      "basis": "observed",
+      "fact_id": "f_5fb19b3dbebc10fa",
+      "kind": "radar_event",
+      "pointer": "/radar_events/2",
+      "rel_path": "daily_summary.json",
+      "session_date": "2026-09-24",
+      "sha256": "4d340d90dc49a999f4a3026744d8b56dd24ef5fe13be964a087b2ed5b3cef6dc",
+      "value": {
+        "event": "vwap_reclaim",
+        "ticker": "TEST3.T",
+        "time_jst": "13:40"
+      }
+    },
+    {
+      "basis": "observed",
+      "fact_id": "f_bfb660fe58916da2",
+      "kind": "mover",
+      "pointer": "/movers/2",
+      "rel_path": "daily_summary.json",
+      "session_date": "2026-09-24",
+      "sha256": "4d340d90dc49a999f4a3026744d8b56dd24ef5fe13be964a087b2ed5b3cef6dc",
+      "value": {
+        "change_pct": -3.1,
+        "close": 880,
+        "name_en": "Fixture Materials",
+        "name_ja": "フィクスチャ・マテリアルズ",
+        "ticker": "TEST3.T",
+        "volume_ratio": 1.9
+      }
+    }
+  ],
+  "story_id": "st_734b41359af0ced4",
+  "topic": "TEST3.T"
+}

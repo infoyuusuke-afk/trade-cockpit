@@ -1,0 +1,74 @@
+{
+  "caption": "フィクスチャ・マテリアルズ（TEST3）は2026年9月24日の東京市場で3.1%下落。データで振り返ります。\n終値は880円、前日比-3.10%。\n日本時間13:40、レーダーがVWAP回復を検知。\n出来高は直近平均の1.9倍。\n市場データの観察であり、投資助言ではありません。【テスト用サンプルデータ・実際の市場データではありません】\n\n#日本株 #東証 #TEST3",
+  "fixture": true,
+  "hashtags": [
+    "#日本株",
+    "#東証",
+    "#TEST3"
+  ],
+  "lang": "ja-JP",
+  "schema": "auto_publish.post.v1",
+  "segments": [
+    {
+      "fact_ids": [
+        "f_bfb660fe58916da2"
+      ],
+      "id": "hook",
+      "text": "フィクスチャ・マテリアルズ（TEST3）は2026年9月24日の東京市場で3.1%下落。データで振り返ります。",
+      "type": "hook"
+    },
+    {
+      "fact_ids": [
+        "f_bfb660fe58916da2"
+      ],
+      "id": "b1",
+      "text": "終値は880円、前日比-3.10%。",
+      "type": "close"
+    },
+    {
+      "fact_ids": [
+        "f_5fb19b3dbebc10fa"
+      ],
+      "id": "b2",
+      "text": "日本時間13:40、レーダーがVWAP回復を検知。",
+      "type": "radar"
+    },
+    {
+      "fact_ids": [
+        "f_bfb660fe58916da2"
+      ],
+      "id": "b3",
+      "text": "出来高は直近平均の1.9倍。",
+      "type": "volume"
+    },
+    {
+      "fact_ids": [],
+      "id": "disclaimer",
+      "text": "市場データの観察であり、投資助言ではありません。【テスト用サンプルデータ・実際の市場データではありません】",
+      "type": "disclaimer"
+    }
+  ],
+  "session_date": "2026-09-24",
+  "source_refs": [
+    {
+      "basis": "observed",
+      "fact_id": "f_5fb19b3dbebc10fa",
+      "kind": "radar_event",
+      "pointer": "/radar_events/2",
+      "rel_path": "daily_summary.json",
+      "session_date": "2026-09-24",
+      "sha256": "4d340d90dc49a999f4a3026744d8b56dd24ef5fe13be964a087b2ed5b3cef6dc"
+    },
+    {
+      "basis": "observed",
+      "fact_id": "f_bfb660fe58916da2",
+      "kind": "mover",
+      "pointer": "/movers/2",
+      "rel_path": "daily_summary.json",
+      "session_date": "2026-09-24",
+      "sha256": "4d340d90dc49a999f4a3026744d8b56dd24ef5fe13be964a087b2ed5b3cef6dc"
+    }
+  ],
+  "story_id": "st_734b41359af0ced4",
+  "title": "東証大引け：フィクスチャ・マテリアルズ（TEST3）-3.1%"
+}

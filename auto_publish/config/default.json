@@ -1,0 +1,60 @@
+{
+  "release_gate": "R1",
+  "market_timezone": "Asia/Tokyo",
+  "max_evidence_age_hours": 18,
+  "max_attempts": 3,
+  "max_stories_per_session": 2,
+  "min_facts_per_story": 3,
+  "repeat_topic_lookback_sessions": 3,
+  "render": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "x264_preset": "medium",
+    "segment_seconds": 6,
+    "font_candidates": [
+      "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+      "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+      "C:/Windows/Fonts/arial.ttf"
+    ],
+    "fonts": {
+      "ja-JP": [
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+        "C:/Windows/Fonts/YuGothM.ttc",
+        "C:/Windows/Fonts/meiryo.ttc"
+      ]
+    },
+    "variants": ["en_primary"],
+    "timeout_seconds": 300
+  },
+  "tts": {
+    "voices": {
+      "en-US": {"provider": "silent", "voice": null},
+      "ja-JP": {"provider": "silent", "voice": null}
+    },
+    "sample_rate": 24000,
+    "min_segment_seconds": 4.0,
+    "segment_padding_seconds": 0.4,
+    "min_total_seconds": 20,
+    "max_total_seconds": 45
+  },
+  "schedule": {
+    "slot_interval_minutes": 30,
+    "min_lead_minutes": 10
+  },
+  "dispatch": {
+    "lease_seconds": 300,
+    "max_lateness_minutes": 30
+  },
+  "waves": {
+    "europe": {"start_jst": "22:00", "end_jst": "24:00", "day_offset": 0, "audience_tz": "Europe/London"},
+    "na_tiktok": {"start_jst": "05:00", "end_jst": "07:00", "day_offset": 1, "audience_tz": "America/New_York"},
+    "na_shorts": {"start_jst": "08:00", "end_jst": "10:00", "day_offset": 1, "audience_tz": "America/New_York"}
+  },
+  "platforms": {
+    "youtube_shorts": {"adapter": "dry_run", "enabled": true, "waves": ["na_shorts"]},
+    "tiktok": {"adapter": "dry_run", "enabled": true, "waves": ["europe", "na_tiktok"]},
+    "x": {"adapter": "dry_run", "enabled": true, "waves": ["europe"]}
+  }
+}

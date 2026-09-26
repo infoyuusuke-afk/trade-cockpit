@@ -1,0 +1,84 @@
+{
+  "caption": "Fixture Memory Holdings (TEST1) rose 6.4% in Tokyo on September 24, 2026. Here is what the data showed.\nIt closed at ¥2,345, +6.40% on the day.\nAt 09:12 JST, the radar flagged a volume spike.\nPaper trade (simulated, not real money): long from ¥2,250, closed at +1.19R.\nObservations from market data only. Not investment advice. Paper results are simulated. TEST FIXTURE: sample data, not real market data.\n\n#JapanStocks #TokyoStockExchange #StockMarket #TEST1",
+  "fixture": true,
+  "hashtags": [
+    "#JapanStocks",
+    "#TokyoStockExchange",
+    "#StockMarket",
+    "#TEST1"
+  ],
+  "lang": "en-US",
+  "schema": "auto_publish.post.v1",
+  "segments": [
+    {
+      "fact_ids": [
+        "f_ffbb0635dfb6d8a4"
+      ],
+      "id": "hook",
+      "text": "Fixture Memory Holdings (TEST1) rose 6.4% in Tokyo on September 24, 2026. Here is what the data showed.",
+      "type": "hook"
+    },
+    {
+      "fact_ids": [
+        "f_ffbb0635dfb6d8a4"
+      ],
+      "id": "b1",
+      "text": "It closed at ¥2,345, +6.40% on the day.",
+      "type": "close"
+    },
+    {
+      "fact_ids": [
+        "f_ebad512d2cb4d0ee"
+      ],
+      "id": "b2",
+      "text": "At 09:12 JST, the radar flagged a volume spike.",
+      "type": "radar"
+    },
+    {
+      "fact_ids": [
+        "f_457e72fb62fb57bb"
+      ],
+      "id": "b3",
+      "text": "Paper trade (simulated, not real money): long from ¥2,250, closed at +1.19R.",
+      "type": "paper"
+    },
+    {
+      "fact_ids": [],
+      "id": "disclaimer",
+      "text": "Observations from market data only. Not investment advice. Paper results are simulated. TEST FIXTURE: sample data, not real market data.",
+      "type": "disclaimer"
+    }
+  ],
+  "session_date": "2026-09-24",
+  "source_refs": [
+    {
+      "basis": "paper",
+      "fact_id": "f_457e72fb62fb57bb",
+      "kind": "paper_trade",
+      "pointer": "/1",
+      "rel_path": "paper_trade_history.json",
+      "session_date": "2026-09-24",
+      "sha256": "0dab031a491e66aae4e4e4141b251b6e0b6e304e8676fc9476e4c26ff13d344a"
+    },
+    {
+      "basis": "observed",
+      "fact_id": "f_ebad512d2cb4d0ee",
+      "kind": "radar_event",
+      "pointer": "/radar_events/0",
+      "rel_path": "daily_summary.json",
+      "session_date": "2026-09-24",
+      "sha256": "4d340d90dc49a999f4a3026744d8b56dd24ef5fe13be964a087b2ed5b3cef6dc"
+    },
+    {
+      "basis": "observed",
+      "fact_id": "f_ffbb0635dfb6d8a4",
+      "kind": "mover",
+      "pointer": "/movers/0",
+      "rel_path": "daily_summary.json",
+      "session_date": "2026-09-24",
+      "sha256": "4d340d90dc49a999f4a3026744d8b56dd24ef5fe13be964a087b2ed5b3cef6dc"
+    }
+  ],
+  "story_id": "st_002306bc5ae43f85",
+  "title": "Tokyo close: Fixture Memory Holdings (TEST1) +6.4%"
+}

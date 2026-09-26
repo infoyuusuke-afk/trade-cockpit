@@ -1,0 +1,37 @@
+name: Auto Publish R1 (dry-run) tests
+on:
+  pull_request:
+    paths:
+      - "auto_publish/**"
+      - ".github/workflows/auto-publish-r1.yml"
+  push:
+    branches: [design/auto-publisher-v1]
+    paths:
+      - "auto_publish/**"
+      - ".github/workflows/auto-publish-r1.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install FFmpeg + fonts (required; render tests fail without them)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core fonts-noto-cjk
+          ffmpeg -version | head -1
+      - name: Unit / golden / render / DST / idempotency / compliance / secret-scan tests
+        run: python -m unittest discover -s auto_publish/tests -t . -v
+      - name: No AI Cockpit runtime coupling (README may state the prohibition only)
+        run: |
+          if grep -rnE "RssOrder|28580|28581|28582|28583" auto_publish --exclude=README.md --exclude-dir=__pycache__; then
+            echo "runtime coupling found"; exit 1
+          fi
