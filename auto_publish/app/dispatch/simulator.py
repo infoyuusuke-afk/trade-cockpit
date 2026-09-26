@@ -88,9 +88,7 @@ def verify_for_dispatch(ctx: Ctx, row) -> dict:
     chain = audit.verify_chain(ctx.conn)
     if not chain["ok"]:
         raise EvidenceError("audit chain broken", code="AUDIT_CHAIN_BROKEN", details=chain)
-    appr = _audit_row(ctx, row["story_id"], S.APPROVED.value)
-    if appr is None or json.loads(appr["detail_json"]).get("approved_content_sha256") != approved:
-        raise EvidenceError("story approval differs from the audited approval", code="APPROVAL_AUDIT_MISMATCH")
+    appr = pipeline.approval_evidence(ctx, story)          # human approval (+ retries that inherit it)
     sched = _audit_row(ctx, row["story_id"], S.SCHEDULED.value)
     entries = {e["platform"]: e for e in json.loads(sched["detail_json"]).get("entries", [])} if sched else {}
     e = entries.get(row["platform"])
@@ -141,7 +139,7 @@ def verify_for_dispatch(ctx: Ctx, row) -> dict:
         "adapter": adapter.name, "schedule_id": row["schedule_id"], "idempotency_key": row["idempotency_key"],
         "scheduled_publish_at_utc": row["publish_at_utc"], "wave": row["wave"],
         "approved_by": story["approved_by"], "approved_content_sha256": approved,
-        "approval_audit_hash": appr["hash"], "schedule_audit_hash": sched["hash"],
+        "approval_audit_hash": appr["approval_audit_hash"], "schedule_audit_hash": sched["hash"],
         "evidence_manifest_sha256": session["manifest_sha256"], "artifacts": artifacts, "narration": narration,
         "payload": {"path": row["payload_path"], "sha256": row["payload_sha256"], "contract": CONTRACT_VERSION},
         "fixture": bool(story["fixture"]),

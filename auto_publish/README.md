@@ -187,7 +187,7 @@ recording transaction, so a switch thrown mid-flight aborts the attempt. `kill-s
 rehearses PAUSE ALL, mid-flight pause, DISABLE PLATFORM and CANCEL in an isolated temporary home (fixture data only).
 
 ```powershell
-py -3.11 -m auto_publish.cli would-publish                 # evaluate due schedules (use --now to rehearse a time)
+py -3.11 -m auto_publish.cli would-publish                 # evaluate due schedules (real clock; --now only in a sandbox home)
 py -3.11 -m auto_publish.cli dispatches --story <story_id> # outcomes + traces
 py -3.11 -m auto_publish.cli kill-switch-drill --input auto_publish\tests\fixtures\content_drop\2026-09-24
 ```
@@ -206,7 +206,9 @@ platform must equal `--platform`. The whole file is rejected on any error. The r
 read-only store (`metrics_store/`); re-importing the same file is a no-op; a later snapshot of a post is appended, the same
 (post, observed_at) with different numbers is refused (`METRICS_CONFLICT`). All metrics tables are append-only.
 
-* **Point-in-time**: a dataset "as of T" uses rows imported by T and observed by T; each post is scored at a fixed age
+* **Point-in-time**: `as_of` must be strictly before the current second (future/current → `AS_OF_NOT_IN_PAST`;
+  default = the previous second); at most one proposal per platform + as_of (a different re-evaluation is refused,
+  `PROPOSAL_AS_OF_CONFLICT`). A dataset "as of T" uses rows imported by T and observed by T; each post is scored at a fixed age
   (first snapshot 24–48 h after publication). Later imports never change an earlier result.
 * **Allowed slots** = the approved waves × 30 min (no new times); the fixed slot is the scheduler's first slot. Posts
   outside them are excluded. Platforms are never mixed and metrics are never summed into one score.
@@ -276,7 +278,8 @@ py -3.12 -m auto_publish.cli schedule <story_id>         # writes dry_run payloa
 ```
 
 Controls: `pause-all`, `resume-all`, `disable-platform <p>`, `enable-platform <p>`, `cancel <id> --reason`,
-`retry <id> --reason`, `audit-verify`. Global flags: `--home`, `--config <overlay.json>`, `--now <ISO>` (reproducible runs),
+`retry <id> --reason`, `audit-verify`. Global flags: `--home`, `--config <overlay.json>`, `--now <ISO>` / `AUTO_PUBLISH_NOW` (sandbox homes only: `sandbox-init` on an EMPTY home; a production home
+refuses any clock override with `CLOCK_OVERRIDE_REFUSED`),
 `--actor`. Exit codes: 0 ok, 2 refused/fail-closed, 1 unexpected.
 
 Windows Task Scheduler (ingest + drafts only; approval is a human step):

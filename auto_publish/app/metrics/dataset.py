@@ -21,6 +21,7 @@ from zoneinfo import ZoneInfo
 
 from ..clock import JST, iso_utc, parse_aware
 from ..context import Ctx
+from ..errors import ValidationError
 from ..hashing import sha256_json
 from .csv_import import METRIC_COLS
 
@@ -67,9 +68,20 @@ def _derived(r: dict) -> dict:
     return {"engagement_rate": eng, "follow_rate": fol}
 
 
+def require_past(ctx: Ctx, as_of: datetime) -> str:
+    """as_of must be strictly before the current (trusted) second. Imports record known_at at second
+    precision, so nothing imported at or after the evaluation second can ever join an as_of dataset."""
+    as_of_s, now_s = iso_utc(as_of), iso_utc(ctx.clock.now())
+    if as_of_s >= now_s:
+        raise ValidationError(f"as_of {as_of_s} is not in the past (now {now_s}); point-in-time evaluation"
+                              " requires as_of < current second", code="AS_OF_NOT_IN_PAST",
+                              details={"as_of_utc": as_of_s, "now_utc": now_s})
+    return as_of_s
+
+
 def build_dataset(ctx: Ctx, platform: str, as_of: datetime) -> dict:
     ocfg = ctx.cfg["optimizer"]
-    as_of_s = iso_utc(as_of)
+    as_of_s = require_past(ctx, as_of)
     h = timedelta(hours=float(ocfg["horizon_hours"]))
     w = timedelta(hours=float(ocfg["horizon_window_hours"]))
     slots = allowed_slots(ctx.cfg, platform)
@@ -158,5 +170,6 @@ def report(ctx: Ctx, platform: str, as_of: datetime) -> dict:
 
 
 def parse_as_of(value: str | None, ctx: Ctx) -> datetime:
-    return parse_aware(value) if value else ctx.clock.now()
+    """Default: the last whole second before now (see require_past)."""
+    return parse_aware(value) if value else ctx.clock.now().replace(microsecond=0) - timedelta(seconds=1)
 

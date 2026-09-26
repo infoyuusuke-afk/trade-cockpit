@@ -334,6 +334,35 @@ def approve(ctx: Ctx, story_id: str, approver: str) -> dict:
     return {"story_id": story_id, "state": S.APPROVED.value, "approved_content_sha256": content, "noop": False}
 
 
+def approval_evidence(ctx: Ctx, story: dict) -> dict:
+    """The approval as recorded in the hash-chained audit log.
+
+    The evidence is the latest HUMAN approval row (AWAITING_APPROVAL -> APPROVED); its content hash and
+    approver must equal the story's approval columns. Every later APPROVED row (a retry re-entering
+    APPROVED) must carry the same hash and point back to that row. Anything else is fail-closed.
+    """
+    rows = ctx.conn.execute(
+        "SELECT seq, hash, actor, from_state, detail_json FROM audit_log WHERE entity_type='story'"
+        " AND entity_id=? AND to_state=? ORDER BY seq", (story["story_id"], S.APPROVED.value)).fetchall()
+    human = [r for r in rows if r["from_state"] == S.AWAITING_APPROVAL.value]
+    if not human:
+        raise EvidenceError("no human approval in the audit log", code="APPROVAL_EVIDENCE_MISSING")
+    h = human[-1]
+    d = json.loads(h["detail_json"])
+    if d.get("approved_content_sha256") != story["approved_content_sha256"] or h["actor"] != story["approved_by"]:
+        raise EvidenceError("story approval differs from the audited approval", code="APPROVAL_AUDIT_MISMATCH")
+    for r in rows:
+        if r["seq"] <= h["seq"]:
+            continue
+        rd = json.loads(r["detail_json"])
+        if r["from_state"] != S.FAILED.value or rd.get("approved_content_sha256") != d["approved_content_sha256"] \
+                or rd.get("inherited_from_audit_hash") != h["hash"]:
+            raise EvidenceError("a later APPROVED record does not carry the audited approval",
+                                code="APPROVAL_AUDIT_MISMATCH", details={"seq": r["seq"]})
+    return {"approved_content_sha256": d["approved_content_sha256"], "approved_by": h["actor"],
+            "approval_audit_hash": h["hash"]}
+
+
 def idempotency_key(story_id: str, platform: str, approved_content_sha256: str) -> str:
     return sha256_text(f"{story_id}|{platform}|{approved_content_sha256}")[:32]
 
@@ -467,10 +496,17 @@ def retry(ctx: Ctx, story_id: str, reason: str, renderer=None) -> dict:
         raise ValidationError(f"{story_id} has used {story['attempts']} attempts (max {ctx.cfg['max_attempts']})",
                               code="MAX_ATTEMPTS_EXCEEDED")
     target = S(story["failed_from_state"])
+    detail = {"previous_error": err}
+    if target == S.APPROVED:
+        # re-entering APPROVED: carry the genuine human approval forward (never reconstructed by guess);
+        # missing or inconsistent approval evidence keeps the story FAILED
+        ev = approval_evidence(ctx, story)
+        detail.update(approved_content_sha256=ev["approved_content_sha256"], approved_by=ev["approved_by"],
+                      inherited_from_audit_hash=ev["approval_audit_hash"])
     with transaction(ctx.conn):
         ctx.conn.execute("UPDATE stories SET attempts = attempts + 1 WHERE story_id = ?", (story_id,))
         transition_story(ctx.conn, ctx.clock, story_id, S.FAILED, target, actor=ctx.actor,
-                         reason=f"retry: {reason}", detail={"previous_error": err})
+                         reason=f"retry: {reason}", detail=detail)
     if target == S.APPROVED:
         return schedule(ctx, story_id)
     return advance(ctx, story_id, renderer or FfmpegRenderer(ctx.cfg))

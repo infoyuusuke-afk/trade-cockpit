@@ -14,12 +14,13 @@ from datetime import timedelta
 from pathlib import Path
 
 from .. import audit, controls, logs, pipeline
-from ..clock import FixedClock, parse_aware
+from ..clock import Clock, FixedClock, parse_aware
 from ..config import Paths
 from ..context import Ctx
 from ..db import connect
 from ..errors import ValidationError
 from ..ingest.ingest import ingest, validate
+from ..sandbox import init_sandbox
 from .simulator import run_due
 
 DRILL_APPROVER = "kill-switch-drill"
@@ -38,6 +39,7 @@ def run_drill(cfg: dict, input_dir: str | os.PathLike, renderer=None, keep_home:
     cfg = {**cfg, "max_stories_per_session": 1}
     paths = Paths(root / "home")
     conn = connect(paths.db)
+    init_sandbox(conn, Clock(), "drill")          # the drill's own temp home is a sandbox (fixed clock)
     logs.configure(paths.logs, clock)
     ctx = Ctx(conn=conn, clock=clock, cfg=cfg, paths=paths, actor="drill")
     checks: list[dict] = []

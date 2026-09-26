@@ -63,7 +63,9 @@ def write_csv(path: Path, rows, header=HEADER) -> Path:
 
 
 START = date(2026, 7, 1)
-AS_OF = "2026-08-15T12:00:00+09:00"
+AS_OF = "2026-08-15T12:00:00+09:00"      # evaluation point
+IMPORT_AT = "2026-08-15T11:00:00+09:00"  # data is imported before it
+EVAL_AT = "2026-08-15T13:00:00+09:00"    # evaluations run after it (as_of must be in the past)
 
 
 class Case(unittest.TestCase):
@@ -72,7 +74,7 @@ class Case(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory(prefix="ap_opt_")
         self.root = Path(self._tmp.name)
-        self.ctx = make_ctx(self.root, AS_OF, self.overrides)
+        self.ctx = make_ctx(self.root, IMPORT_AT, self.overrides)
         self.n = 0
 
     def tearDown(self):
@@ -98,7 +100,14 @@ class Case(unittest.TestCase):
         return cm.exception
 
     def as_of(self, s=AS_OF):
-        return parse_aware(s)
+        return self.pit(s)
+
+    def pit(self, s):
+        """An as_of in the past: the evaluation runs an hour after it (M2: as_of < current second)."""
+        t = parse_aware(s)
+        if self.ctx.clock.now() <= t:
+            self.ctx.clock.set(t + timedelta(hours=1))
+        return t
 
 
 # ------------------------------------------------------------------ CSV contract / importer
@@ -257,7 +266,7 @@ class TestDataset(Case):
                 row("tiktok", "d4", at_jst(date(2026, 11, 2), "05:00")),
                 row("tiktok", "d5", parse_aware("2026-10-27T14:00:00+01:00"))]  # = 22:00 JST, given in London time
         self.imp(rows, at="2026-11-10T00:00:00+09:00")
-        ds = {p["post_ref"]: p for p in build_dataset(self.ctx, "tiktok", parse_aware("2026-11-10T00:00:00+09:00"))["posts"]}
+        ds = {p["post_ref"]: p for p in build_dataset(self.ctx, "tiktok", self.pit("2026-11-10T00:00:00+09:00"))["posts"]}
         self.assertEqual({k: v["slot"] for k, v in ds.items()},
                          {"d1": "europe@22:00", "d2": "europe@22:00", "d3": "na_tiktok@05:00",
                           "d4": "na_tiktok@05:00", "d5": "europe@22:00"})
@@ -311,7 +320,7 @@ class TestSampleGate(Case):
 
     def test_stale_data_is_unknown(self):
         self.imp(series("tiktok", START, 30, "22:00", 1000, "a"))
-        g = gate(self.ctx, build_dataset(self.ctx, "tiktok", parse_aware("2026-09-30T00:00:00+09:00")))
+        g = gate(self.ctx, build_dataset(self.ctx, "tiktok", self.pit("2026-09-30T00:00:00+09:00")))
         self.assertEqual(g["status"], "UNKNOWN")
         self.assertIn("stale", " ".join(g["reasons"]))
 
@@ -407,10 +416,11 @@ class TestProposals(Case):
                                                                           "23:00", 3000, "b")
         shas = []
         for name in ("one", "two"):
-            ctx = make_ctx(self.root / name, AS_OF)
+            ctx = make_ctx(self.root / name, IMPORT_AT)
             try:
                 import_csv(ctx, "tiktok", write_csv(self.root / f"{name}.csv", rows))
-                shas.append(propose(ctx, "tiktok", self.as_of())["proposal_sha256"])
+                ctx.clock.set(parse_aware(EVAL_AT))
+                shas.append(propose(ctx, "tiktok", parse_aware(AS_OF))["proposal_sha256"])
             finally:
                 ctx.conn.close()
         self.assertEqual(shas[0], shas[1])
@@ -423,7 +433,7 @@ class TestProposals(Case):
                  at="2026-09-01T12:00:00+09:00")
         again = propose(self.ctx, "tiktok", self.as_of())                   # re-run for the same as_of
         self.assertEqual((again["proposal_sha256"], again["noop"]), (first["proposal_sha256"], True))
-        now = evaluate(self.ctx, "tiktok", parse_aware("2026-09-01T12:00:00+09:00"))
+        now = evaluate(self.ctx, "tiktok", self.pit("2026-09-01T12:00:00+09:00"))
         self.assertNotEqual(now["input_sha256"], first["input_sha256"])      # the new knowledge is used only later
 
     def test_proposals_are_immutable(self):
@@ -433,6 +443,75 @@ class TestProposals(Case):
             self.ctx.conn.execute("UPDATE slot_proposals SET status='PROPOSED'")
         with self.assertRaises(sqlite3.IntegrityError):
             self.ctx.conn.execute("DELETE FROM slot_proposals")
+
+
+class TestPointInTimeM2(Case):
+    """M2: as_of must be strictly in the past; one proposal per (platform, as_of, algorithm), never rewritten."""
+
+    def strong(self):
+        self.imp(series("tiktok", START, 20, "22:00", 1000, "a") + series("tiktok", START + timedelta(days=5), 20,
+                                                                          "23:00", 3000, "b"))
+
+    def test_future_or_current_as_of_is_refused_everywhere(self):
+        self.strong()
+        self.ctx.clock.set(parse_aware(EVAL_AT))
+        future = parse_aware("2026-08-16T00:00:00+09:00")
+        now = self.ctx.clock.now()
+        for fn in (lambda t: report(self.ctx, "tiktok", t), lambda t: evaluate(self.ctx, "tiktok", t),
+                   lambda t: propose(self.ctx, "tiktok", t), lambda t: build_dataset(self.ctx, "tiktok", t)):
+            for t in (future, now, now + timedelta(milliseconds=400)):
+                with self.assertRaises(ValidationError) as cm:
+                    fn(t)
+                self.assertEqual(cm.exception.code, "AS_OF_NOT_IN_PAST")
+        self.assertEqual(self.ctx.conn.execute("SELECT COUNT(*) FROM slot_proposals").fetchone()[0], 0)
+        p = propose(self.ctx, "tiktok", parse_aware(AS_OF))
+        with self.assertRaises(ValidationError) as cm:
+            shadow(self.ctx, p["proposal_id"], future)
+        self.assertEqual(cm.exception.code, "AS_OF_NOT_IN_PAST")
+
+    def test_default_as_of_is_the_previous_second(self):
+        from auto_publish.app.metrics.dataset import parse_as_of
+        self.ctx.clock.set(parse_aware("2026-08-15T13:00:00.700000+09:00"))
+        self.assertEqual(parse_as_of(None, self.ctx), parse_aware("2026-08-15T12:59:59+09:00"))
+
+    def test_import_after_proposal_cannot_change_it(self):
+        self.strong()
+        self.ctx.clock.set(parse_aware(EVAL_AT))
+        first = propose(self.ctx, "tiktok", parse_aware(AS_OF))
+        # new data arrives in the very same second as the evaluation, incl. posts published before as_of
+        self.imp(series("tiktok", START + timedelta(days=2), 20, "22:30", 9000, "late"))
+        known = self.ctx.conn.execute("SELECT MAX(known_at_utc) FROM post_metrics").fetchone()[0]
+        self.assertGreater(known, first["as_of_utc"])
+        again = propose(self.ctx, "tiktok", parse_aware(AS_OF))
+        self.assertEqual((again["noop"], again["proposal_id"], again["proposal_sha256"], again["input_sha256"]),
+                         (True, first["proposal_id"], first["proposal_sha256"], first["input_sha256"]))
+        self.assertEqual(load_proposal(self.ctx, first["proposal_id"])["proposal_sha256"], first["proposal_sha256"])
+
+    def test_conflicting_reevaluation_for_same_as_of_is_refused_not_stored(self):
+        self.strong()
+        self.ctx.clock.set(parse_aware(EVAL_AT))
+        first = propose(self.ctx, "tiktok", parse_aware(AS_OF))
+        # knowledge time forged into the past (possible only with an injected clock) -> different input
+        self.imp(series("tiktok", START + timedelta(days=2), 10, "22:30", 9000, "forged"), at=IMPORT_AT)
+        self.ctx.clock.set(parse_aware(EVAL_AT))
+        with self.assertRaises(ValidationError) as cm:
+            propose(self.ctx, "tiktok", parse_aware(AS_OF))
+        self.assertEqual(cm.exception.code, "PROPOSAL_AS_OF_CONFLICT")
+        self.ctx.cfg["optimizer"]["min_arm_samples"] = 6            # a changed config is a different input too
+        with self.assertRaises(ValidationError):
+            propose(self.ctx, "tiktok", parse_aware(AS_OF))
+        rows = self.ctx.conn.execute("SELECT proposal_id, proposal_sha256 FROM slot_proposals").fetchall()
+        self.assertEqual([tuple(r) for r in rows], [(first["proposal_id"], first["proposal_sha256"])])
+
+    def test_db_allows_one_proposal_per_platform_as_of(self):
+        self.strong()
+        self.ctx.clock.set(parse_aware(EVAL_AT))
+        p = propose(self.ctx, "tiktok", parse_aware(AS_OF))
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.ctx.conn.execute(
+                "INSERT INTO slot_proposals(platform, as_of_utc, status, algorithm_version, input_sha256, proposal_json,"
+                " proposal_sha256, created_at_utc) VALUES ('tiktok', ?, 'INCONCLUSIVE', 'slot_ts_normal.v1', 'x', '{}',"
+                " 'y', 'z')", (p["as_of_utc"],))
 
 
 class TestShadow(Case):
@@ -445,18 +524,18 @@ class TestShadow(Case):
         later = START + timedelta(days=46)                                    # after the proposal's as_of
         self.imp(series("tiktok", later, 6, "22:00", 1100, "fa") + series("tiktok", later, 2, "23:00", 2500, "fb"),
                  at="2026-08-25T00:00:00+09:00")
-        s1 = shadow(self.ctx, p["proposal_id"], parse_aware("2026-08-25T00:00:00+09:00"))
+        s1 = shadow(self.ctx, p["proposal_id"], self.pit("2026-08-25T00:00:00+09:00"))
         self.assertEqual(s1["fixed"]["posts"], 6)
         self.assertEqual(s1["comparisons"][0]["proposed"]["posts"], 2)
         self.assertEqual(s1["comparisons"][0]["by_metric"]["views"]["status"], "UNKNOWN")   # 2 < 5 samples
         self.imp(series("tiktok", later + timedelta(days=6), 4, "23:00", 2500, "fc"), at="2026-09-02T00:00:00+09:00")
-        s2 = shadow(self.ctx, p["proposal_id"], parse_aware("2026-09-02T00:00:00+09:00"))
+        s2 = shadow(self.ctx, p["proposal_id"], self.pit("2026-09-02T00:00:00+09:00"))
         v = s2["comparisons"][0]["by_metric"]["views"]
         self.assertEqual(v["status"], "OK")
         self.assertGreater(v["proposed_minus_fixed_mean"], 0)
         self.assertIn("completion_rate", s2["comparisons"][0]["by_metric"])
         self.assertFalse(s2["causal_claim"])
-        again = shadow(self.ctx, p["proposal_id"], parse_aware("2026-09-02T00:00:00+09:00"))
+        again = shadow(self.ctx, p["proposal_id"], self.pit("2026-09-02T00:00:00+09:00"))
         self.assertEqual((again["noop"], again["result_sha256"]), (True, s2["result_sha256"]))
         self.assertEqual(s1["window"]["posts"], 8)                           # the earlier evaluation is kept
         self.assertEqual(self.ctx.conn.execute("SELECT COUNT(*) FROM shadow_evaluations").fetchone()[0], 2)
@@ -477,11 +556,12 @@ class TestNeverChangesSchedules(unittest.TestCase):
         from auto_publish.tests.helpers import SESSION, FakeRenderer, copy_fixture
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            ctx = make_ctx(root, "2026-08-15T12:00:00+09:00")
+            ctx = make_ctx(root, IMPORT_AT)
             try:
                 import_csv(ctx, "tiktok", write_csv(root / "m.csv", series("tiktok", START, 20, "22:00", 1000, "a")
                                                      + series("tiktok", START + timedelta(days=5), 20, "23:00", 3000, "b")))
-                self.assertEqual(propose(ctx, "tiktok", parse_aware("2026-08-15T12:00:00+09:00"))["recommended_slot"],
+                ctx.clock.set(parse_aware(EVAL_AT))
+                self.assertEqual(propose(ctx, "tiktok", parse_aware(AS_OF))["recommended_slot"],
                                  "europe@23:00")
                 ctx.clock.set(parse_aware("2026-09-24T17:00:00+09:00"))
                 ingest(ctx, copy_fixture(root))
@@ -504,12 +584,15 @@ class TestCli(unittest.TestCase):
             p = write_csv(root / "tiktok_export.csv", series("tiktok", START, 30, "22:00", 1000, "a"))
             env = {**os.environ, "AUTO_PUBLISH_HOME": str(root / "home"), "PYTHONPATH": str(REPO)}
 
-            def cli(*args, expect=0):
-                out = subprocess.run([sys.executable, "-m", "auto_publish.cli", "--now", AS_OF, *args],
+            def cli(*args, expect=0, now=AS_OF):
+                out = subprocess.run([sys.executable, "-m", "auto_publish.cli", *(["--now", now] if now else []),
+                                      *args],
                                      capture_output=True, text=True, encoding="utf-8", env=env, cwd=REPO, timeout=300)
                 self.assertEqual(out.returncode, expect, out.stdout + out.stderr)
                 return json.loads(out.stdout)
-            self.assertEqual(cli("metrics-import", "--platform", "tiktok", "--csv", str(p))["result"]["rows_new"], 30)
+            cli("sandbox-init", now=None)
+            self.assertEqual(cli("metrics-import", "--platform", "tiktok", "--csv", str(p), now=IMPORT_AT)
+                             ["result"]["rows_new"], 30)
             self.assertEqual(cli("metrics-report", "--platform", "tiktok")["result"]["gate"]["status"], "READY")
             self.assertEqual(cli("propose-slots", "--platform", "tiktok")["result"]["status"], "BASELINE_CONFIRMED")
             self.assertEqual(len(cli("proposals")["result"]["proposals"]), 1)

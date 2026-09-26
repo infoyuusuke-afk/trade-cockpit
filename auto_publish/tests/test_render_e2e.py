@@ -226,12 +226,15 @@ class TestCliEndToEnd(unittest.TestCase):
                 # The CLI always emits UTF-8; decode it as UTF-8 explicitly (Windows' default
                 # locale decoding would be cp932).
                 out = subprocess.run([sys.executable, "-m", "auto_publish.cli", "--config", str(overlay),
-                                      "--now", now, "--actor", "ci", *args],
+                                      *(["--now", now] if now else []), "--actor", "ci", *args],
                                      capture_output=True, text=True, encoding="utf-8",
                                      env={**env, **(extra_env or {})}, cwd=REPO, timeout=600)
                 self.assertEqual(out.returncode, expect, out.stdout + out.stderr)
                 return json.loads(out.stdout)
 
+            # --now is refused on a production home; this temp home is made a sandbox first
+            self.assertEqual(cli("ingest", "--input", str(drop), expect=2)["error"]["code"], "CLOCK_OVERRIDE_REFUSED")
+            self.assertTrue(cli("sandbox-init", now=None)["result"]["sandbox"])
             cli("ingest", "--input", str(drop))
             stories = cli("build-drafts", "--date", SESSION)["result"]["stories"]
             self.assertEqual([s["state"] for s in stories], ["AWAITING_APPROVAL"] * 2)

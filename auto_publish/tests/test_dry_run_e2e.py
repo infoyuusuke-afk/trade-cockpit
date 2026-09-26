@@ -600,6 +600,76 @@ class TestKillSwitch(E2E):
         self.assertIn(cm.exception.code, {"DRILL_REQUIRES_FIXTURE", "DATA_CLASS_MIXED"})
 
 
+class TestRetryKeepsApprovalEvidence(E2E):
+    """M3: FAILED -> APPROVED (retry after a SCHEDULE failure) inherits the genuine human approval."""
+
+    def failed_schedule(self):
+        self.ingest_validate()
+        (r,) = build_drafts(self.ctx, SESSION, FakeRenderer())
+        self.sid = r["story_id"]
+        approve(self.ctx, self.sid, "yusuke")
+        self.at("2026-09-25T02:00:00Z")                      # both waves already over -> SCHEDULE fails
+        with self.assertRaises(Exception) as cm:
+            schedule(self.ctx, self.sid)
+        self.assertEqual(cm.exception.code, "SCHEDULE_WINDOW_MISSED")
+        self.assertEqual(self.story_state(self.sid), "FAILED")
+        self.ctx.clock.set(parse_aware("2026-09-24T17:00:00+09:00"))
+        return self.sid
+
+    def human_approval(self):
+        return self.ctx.conn.execute(
+            "SELECT hash, detail_json FROM audit_log WHERE entity_id=? AND from_state='AWAITING_APPROVAL'"
+            " AND to_state='APPROVED'", (self.sid,)).fetchone()
+
+    def test_retry_reaches_would_publish_with_inherited_approval(self):
+        sid = self.failed_schedule()
+        self.assertEqual(retry(self.ctx, sid, "window fixed")["state"], "SCHEDULED")
+        human = self.human_approval()
+        row = self.ctx.conn.execute(
+            "SELECT detail_json FROM audit_log WHERE entity_id=? AND from_state='FAILED' AND to_state='APPROVED'",
+            (sid,)).fetchone()
+        d = json.loads(row[0])
+        self.assertEqual(d["approved_content_sha256"], json.loads(human["detail_json"])["approved_content_sha256"])
+        self.assertEqual((d["inherited_from_audit_hash"], d["approved_by"]), (human["hash"], "yusuke"))
+        self.at(EU)
+        r = run_due(self.ctx)
+        self.assertEqual([(x["platform"], x["status"]) for x in r["results"]],
+                         [("tiktok", "WOULD_PUBLISH"), ("x", "WOULD_PUBLISH")])
+        self.assertEqual({d["trace"]["approval_audit_hash"] for d in self.dispatches()}, {human["hash"]})
+        states = [tuple(x) for x in self.ctx.conn.execute(
+            "SELECT from_state, to_state FROM audit_log WHERE entity_id=? AND action='transition' ORDER BY seq", (sid,))]
+        self.assertEqual(states[-4:], [("AWAITING_APPROVAL", "APPROVED"), ("APPROVED", "FAILED"),
+                                       ("FAILED", "APPROVED"), ("APPROVED", "SCHEDULED")])
+
+    def test_retry_refused_when_approval_columns_disagree_with_audit(self):
+        for col, val in (("approved_content_sha256", "0" * 64), ("approved_by", "someone-else")):
+            with self.subTest(col=col):
+                self.tearDown()
+                self.setUp()
+                sid = self.failed_schedule()
+                self.ctx.conn.execute(f"UPDATE stories SET {col}=? WHERE story_id=?", (val, sid))
+                n = self.ctx.conn.execute("SELECT COUNT(*) FROM audit_log").fetchone()[0]
+                with self.assertRaises(Exception) as cm:
+                    retry(self.ctx, sid, "again")
+                self.assertEqual(cm.exception.code, "APPROVAL_AUDIT_MISMATCH")
+                self.assertEqual(self.story_state(sid), "FAILED")                         # nothing guessed
+                self.assertEqual(self.ctx.conn.execute("SELECT COUNT(*) FROM audit_log").fetchone()[0], n)
+
+    def test_retry_record_without_inherited_approval_stays_blocked(self):
+        """An APPROVED record lacking the approval (as written by 3673a9e's retry) is never trusted."""
+        from auto_publish.app.db import transaction
+        from auto_publish.app.state_machine import StoryState as S, transition_story
+        sid = self.failed_schedule()
+        with transaction(self.ctx.conn):
+            transition_story(self.ctx.conn, self.ctx.clock, sid, S.FAILED, S.APPROVED, actor="t",
+                             reason="retry: legacy", detail={"previous_error": {}})
+        schedule(self.ctx, sid)
+        self.at(EU)
+        r = run_due(self.ctx)
+        self.assertEqual({(x["status"], x["error"]["code"]) for x in r["results"]},
+                         {("BLOCKED", "APPROVAL_AUDIT_MISMATCH")})
+
+
 class TestMigrationFromR1(unittest.TestCase):
     def test_r1_database_gains_dispatch_tables(self):
         import tempfile
@@ -617,7 +687,7 @@ class TestMigrationFromR1(unittest.TestCase):
             conn = connect(db)
             try:
                 versions = [r[0] for r in conn.execute("SELECT version FROM schema_migrations ORDER BY version")]
-                self.assertEqual(versions, ["001_init", "002_dispatch", "003_metrics"])
+                self.assertEqual(versions, ["001_init", "002_dispatch", "003_metrics", "004_proposal_as_of_unique"])
                 self.assertEqual(conn.execute("SELECT COUNT(*) FROM dispatches").fetchone()[0], 0)
                 self.assertEqual(conn.execute("SELECT COUNT(*) FROM post_metrics").fetchone()[0], 0)
             finally:

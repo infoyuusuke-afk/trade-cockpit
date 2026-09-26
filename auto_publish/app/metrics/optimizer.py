@@ -189,10 +189,16 @@ def propose(ctx: Ctx, platform: str, as_of: datetime) -> dict:
                                  "reason": res["reason"]})
             return {**res, "proposal_id": None, "proposal_sha256": None}
         prev = ctx.conn.execute(
-            "SELECT proposal_id, proposal_sha256 FROM slot_proposals WHERE platform=? AND as_of_utc=?"
-            " AND input_sha256=? AND algorithm_version=?",
-            (platform, res["as_of_utc"], res["input_sha256"], ALGORITHM)).fetchone()
+            "SELECT proposal_id, input_sha256, proposal_sha256 FROM slot_proposals WHERE platform=? AND as_of_utc=?"
+            " AND algorithm_version=?", (platform, res["as_of_utc"], ALGORITHM)).fetchone()
         if prev:
+            # one proposal per (platform, as_of, algorithm): a re-evaluation must reproduce it exactly;
+            # anything else is refused, never stored beside it and never written over it
+            if prev["input_sha256"] != res["input_sha256"]:
+                raise ValidationError("a proposal for this platform and as_of already exists with different input",
+                                      code="PROPOSAL_AS_OF_CONFLICT",
+                                      details={"proposal_id": prev["proposal_id"], "stored_input": prev["input_sha256"],
+                                               "new_input": res["input_sha256"]})
             if prev["proposal_sha256"] != sha:
                 raise ValidationError("re-evaluation differs from the stored proposal", code="PROPOSAL_NONDETERMINISTIC")
             return {**res, "proposal_id": prev["proposal_id"], "proposal_sha256": sha, "noop": True}

@@ -20,6 +20,7 @@
     python -m auto_publish.cli propose-slots --platform <p> [--as-of ISO]         # proposal only
     python -m auto_publish.cli proposals [--platform <p>]
     python -m auto_publish.cli shadow-eval --proposal <id> [--as-of ISO]
+    python -m auto_publish.cli sandbox-init              # empty home only; enables --now there
     python -m auto_publish.cli pause-all | resume-all
     python -m auto_publish.cli disable-platform <p> | enable-platform <p>
     python -m auto_publish.cli audit-verify
@@ -36,13 +37,14 @@ import os
 import sys
 
 from .app import audit, controls, logs, pipeline
-from .app.clock import Clock, FixedClock, parse_aware
+from .app.clock import Clock
 from .app.config import load_config, resolve_home
 from .app.context import Ctx
 from .app.db import connect
 from .app.errors import AutoPublishError
 from .app.dispatch import simulator
 from .app.explain import explain
+from .app.sandbox import init_sandbox, resolve_clock
 from .app.marketcal.tse import load_calendar
 from .app.export.cockpit_export import export_session
 from .app.ingest.ingest import ingest, validate
@@ -51,9 +53,13 @@ from .app.ingest.ingest import ingest, validate
 def _ctx(args) -> Ctx:
     cfg = load_config(args.config)
     paths = resolve_home(args.home)
-    now = args.now or os.environ.get("AUTO_PUBLISH_NOW")
-    clock: Clock = FixedClock(parse_aware(now)) if now else Clock()
+    override = args.now or os.environ.get("AUTO_PUBLISH_NOW")
     conn = connect(paths.db)
+    try:
+        clock: Clock = resolve_clock(conn, override)     # production home: real clock only (fail-closed)
+    except AutoPublishError:
+        conn.close()
+        raise
     logs.configure(paths.logs, clock)
     actor = args.actor or os.environ.get("AUTO_PUBLISH_ACTOR") or f"cli:{getpass.getuser()}"
     return Ctx(conn=conn, clock=clock, cfg=cfg, paths=paths, actor=actor)
@@ -192,6 +198,10 @@ def cmd_shadow(ctx, a):
     return shadow(ctx, a.proposal, parse_as_of(a.as_of, ctx))
 
 
+def cmd_sandbox_init(ctx, a):
+    return init_sandbox(ctx.conn, ctx.clock, ctx.actor)
+
+
 def cmd_pause(ctx, a):
     controls.pause_all(ctx.conn, ctx.clock, ctx.actor, a.reason)
     return {"paused": True}
@@ -219,7 +229,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="auto_publish", description="Auto Publish System (release gate R1: DRY-RUN)")
     p.add_argument("--home", help="state directory (default: auto_publish/var or $AUTO_PUBLISH_HOME)")
     p.add_argument("--config", help="JSON config overlay")
-    p.add_argument("--now", help="override clock (ISO-8601 with timezone) for reproducible runs")
+    p.add_argument("--now", help="override clock (ISO-8601 with timezone); sandbox homes only (see sandbox-init)")
     p.add_argument("--actor", help="actor name recorded in the audit trail")
     sub = p.add_subparsers(dest="cmd", required=True)
 
@@ -257,6 +267,8 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("proposals"); s.add_argument("--platform"); s.set_defaults(fn=cmd_proposals)
     s = sub.add_parser("shadow-eval"); s.add_argument("--proposal", type=int, required=True); s.add_argument("--as-of")
     s.set_defaults(fn=cmd_shadow)
+    s = sub.add_parser("sandbox-init", help="mark an EMPTY home as a sandbox (only sandboxes accept --now)")
+    s.set_defaults(fn=cmd_sandbox_init)
     s = sub.add_parser("pause-all"); s.add_argument("--reason", default=""); s.set_defaults(fn=cmd_pause)
     s = sub.add_parser("resume-all"); s.add_argument("--reason", default=""); s.set_defaults(fn=cmd_resume)
     s = sub.add_parser("disable-platform"); s.add_argument("platform"); s.add_argument("--reason", default=""); s.set_defaults(fn=cmd_platform(False))
