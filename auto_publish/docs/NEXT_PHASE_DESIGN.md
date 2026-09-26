@@ -4,7 +4,7 @@ Date: 2026-09-26 JST ・ Base: `design/auto-publisher-v1`（R1_COMPLETE、Accept
 
 共通の境界（全工程で維持）:
 - 実SNS送信なし（生成 → approval → dry-run → SCHEDULED まで）
-- broker / RssOrder / real-submit、Scheduled Tasks / autostart は使わない
+- 証券会社への発注経路（broker / real-submit）、Scheduled Tasks / autostart は使わない
 - AI Cockpit本体（V9/V10 runtime、Excel、MS2、VoiceBridge）とは結合しない。停止処理にも触れない
 - private MS2 / account / order / fill / holding 情報は外に出さない
 - canonical contract、hash semantics、evidence integrity、data classification の意味は変えない
