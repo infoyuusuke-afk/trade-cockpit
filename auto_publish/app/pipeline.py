@@ -390,6 +390,10 @@ def schedule(ctx: Ctx, story_id: str) -> dict:
                             code="APPROVAL_REQUIRED")
     if not story["approved_by"] or not story["approved_content_sha256"]:
         raise ApprovalError("approval record incomplete", code="APPROVAL_REQUIRED")
+    # M4: the SCHEDULE boundary only admits content with valid human approval evidence (audit log).
+    # Checked before any payload file, schedule row, audit row or state change; on failure the story
+    # simply stays APPROVED (nothing is written, nothing is guessed).
+    approval_evidence(ctx, story)
 
     enabled = [p for p, pc in sorted(ctx.cfg["platforms"].items())
                if controls.platform_enabled(ctx.conn, p, pc.get("enabled", False))]

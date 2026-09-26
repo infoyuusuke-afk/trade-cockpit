@@ -17,7 +17,7 @@ from unittest import mock
 
 from auto_publish.app import audit, controls
 from auto_publish.app.clock import parse_aware
-from auto_publish.app.db import connect
+from auto_publish.app.db import connect, transaction
 from auto_publish.app.dispatch import simulator
 from auto_publish.app.dispatch.drill import run_drill
 from auto_publish.app.dispatch.simulator import SimulatedCrash, run_due
@@ -655,19 +655,133 @@ class TestRetryKeepsApprovalEvidence(E2E):
                 self.assertEqual(self.story_state(sid), "FAILED")                         # nothing guessed
                 self.assertEqual(self.ctx.conn.execute("SELECT COUNT(*) FROM audit_log").fetchone()[0], n)
 
-    def test_retry_record_without_inherited_approval_stays_blocked(self):
-        """An APPROVED record lacking the approval (as written by 3673a9e's retry) is never trusted."""
+    def test_retry_record_without_inherited_approval_is_refused_at_schedule(self):
+        """An APPROVED record lacking the approval (as written by 3673a9e's retry) is never trusted (M4: at SCHEDULE)."""
         from auto_publish.app.db import transaction
         from auto_publish.app.state_machine import StoryState as S, transition_story
         sid = self.failed_schedule()
         with transaction(self.ctx.conn):
             transition_story(self.ctx.conn, self.ctx.clock, sid, S.FAILED, S.APPROVED, actor="t",
                              reason="retry: legacy", detail={"previous_error": {}})
-        schedule(self.ctx, sid)
+        with self.assertRaises(Exception) as cm:
+            schedule(self.ctx, sid)
+        self.assertEqual(cm.exception.code, "APPROVAL_AUDIT_MISMATCH")
+        self.assertEqual(self.story_state(sid), "APPROVED")
+        self.at(EU)
+        self.assertEqual(run_due(self.ctx)["results"], [])                 # never reaches would-publish
+
+    def test_dispatch_still_rejects_an_uninherited_approval_row(self):
+        """Defence in depth: a bad APPROVED record appearing after SCHEDULE is still caught at dispatch."""
+        sid = self.failed_schedule()
+        retry(self.ctx, sid, "window fixed")
+        with transaction(self.ctx.conn):
+            audit.append(self.ctx.conn, self.ctx.clock, actor="t", entity_type="story", entity_id=sid,
+                         action="transition", from_state="FAILED", to_state="APPROVED", detail={})
         self.at(EU)
         r = run_due(self.ctx)
         self.assertEqual({(x["status"], x["error"]["code"]) for x in r["results"]},
                          {("BLOCKED", "APPROVAL_AUDIT_MISMATCH")})
+
+
+class TestScheduleBoundaryApprovalEvidence(E2E):
+    """M4: SCHEDULE admits only content with valid human approval evidence; refusal writes nothing."""
+
+    failed_schedule = TestRetryKeepsApprovalEvidence.failed_schedule
+    _legacy_retry_case = TestRetryKeepsApprovalEvidence.test_retry_record_without_inherited_approval_is_refused_at_schedule
+
+    def approved(self):
+        self.ingest_validate()
+        (r,) = build_drafts(self.ctx, SESSION, FakeRenderer())
+        self.sid = r["story_id"]
+        approve(self.ctx, self.sid, "yusuke")
+        self.sdir = story_dir(self.ctx, {"story_id": self.sid, "session_date": SESSION})
+        return self.sid
+
+    def snapshot(self):
+        c = self.ctx.conn
+        return {"state": self.story_state(self.sid),
+                "schedules": c.execute("SELECT COUNT(*) FROM schedules").fetchone()[0],
+                "scheduled_audit": c.execute("SELECT COUNT(*) FROM audit_log WHERE to_state='SCHEDULED'").fetchone()[0],
+                "audit_rows": c.execute("SELECT COUNT(*) FROM audit_log").fetchone()[0],
+                "dry_run_dir": (self.sdir / "dry_run").exists(), "schedule_json": (self.sdir / "schedule.json").exists(),
+                "version": c.execute("SELECT version FROM stories WHERE story_id=?", (self.sid,)).fetchone()[0]}
+
+    def assert_refused(self, code, state="APPROVED"):
+        before = self.snapshot()
+        for _ in range(2):                                            # re-running leaves nothing half-done
+            with self.assertRaises(Exception) as cm:
+                schedule(self.ctx, self.sid)
+            self.assertEqual(cm.exception.code, code)
+            self.assertEqual(self.snapshot(), before)
+        self.assertEqual(before["state"], state)
+        self.assertEqual((before["schedules"], before["scheduled_audit"], before["dry_run_dir"],
+                          before["schedule_json"]), (0, 0, False, False))
+        self.at(EU)
+        self.assertEqual(run_due(self.ctx)["results"], [])
+
+    def test_1_valid_human_approval_schedules(self):
+        self.approved()
+        self.assertEqual(schedule(self.ctx, self.sid)["state"], "SCHEDULED")
+
+    def test_2_valid_inherited_retry_schedules(self):
+        sid = self.failed_schedule()
+        self.assertEqual(retry(self.ctx, sid, "window fixed")["state"], "SCHEDULED")
+        states = [tuple(x) for x in self.ctx.conn.execute(
+            "SELECT from_state, to_state FROM audit_log WHERE entity_id=? AND action='transition' ORDER BY seq", (sid,))]
+        self.assertEqual(states[-5:], [("RENDERED", "AWAITING_APPROVAL"), ("AWAITING_APPROVAL", "APPROVED"),
+                                       ("APPROVED", "FAILED"), ("FAILED", "APPROVED"), ("APPROVED", "SCHEDULED")])
+
+    def test_3_approved_content_hash_mismatch(self):
+        self.approved()
+        self.ctx.conn.execute("UPDATE stories SET approved_content_sha256=? WHERE story_id=?", ("0" * 64, self.sid))
+        self.assert_refused("APPROVAL_AUDIT_MISMATCH")
+
+    def test_4_approved_by_mismatch(self):
+        self.approved()
+        self.ctx.conn.execute("UPDATE stories SET approved_by='someone-else' WHERE story_id=?", (self.sid,))
+        self.assert_refused("APPROVAL_AUDIT_MISMATCH")
+
+    def test_5_inherited_hash_wrong_or_missing(self):
+        from auto_publish.app.db import transaction
+        from auto_publish.app.state_machine import StoryState as S, transition_story
+        for inherited in ("f" * 64, None):
+            with self.subTest(inherited=inherited):
+                self.tearDown()
+                self.setUp()
+                sid = self.failed_schedule()
+                self.sdir = story_dir(self.ctx, {"story_id": sid, "session_date": SESSION})
+                approved = self.ctx.conn.execute("SELECT approved_content_sha256 FROM stories WHERE story_id=?",
+                                                 (sid,)).fetchone()[0]
+                detail = {"approved_content_sha256": approved, "approved_by": "yusuke"}
+                if inherited:
+                    detail["inherited_from_audit_hash"] = inherited
+                with transaction(self.ctx.conn):
+                    transition_story(self.ctx.conn, self.ctx.clock, sid, S.FAILED, S.APPROVED, actor="t",
+                                     reason="retry: forged", detail=detail)
+                self.assert_refused("APPROVAL_AUDIT_MISMATCH")
+
+    def test_6_human_approval_row_missing(self):
+        self.approved()
+        c = self.ctx.conn
+        c.execute("DROP TRIGGER audit_log_no_delete")
+        c.execute("DELETE FROM audit_log WHERE entity_id=? AND from_state='AWAITING_APPROVAL' AND to_state='APPROVED'",
+                  (self.sid,))
+        self.assert_refused("APPROVAL_EVIDENCE_MISSING")
+
+    def test_7_legacy_uninherited_retry_refused_at_schedule(self):
+        self._legacy_retry_case()
+        self.sdir = story_dir(self.ctx, {"story_id": self.sid, "session_date": SESSION})
+        self.assertEqual(self.ctx.conn.execute("SELECT COUNT(*) FROM schedules").fetchone()[0], 0)
+        self.assertFalse((self.sdir / "dry_run").exists())
+
+    def test_8_refusal_leaves_no_partial_state_even_with_platforms_enabled(self):
+        self.approved()
+        self.ctx.conn.execute("UPDATE stories SET approved_by='x' WHERE story_id=?", (self.sid,))
+        self.assert_refused("APPROVAL_AUDIT_MISMATCH")
+        self.ctx.conn.execute("UPDATE stories SET approved_by='yusuke' WHERE story_id=?", (self.sid,))
+        self.ctx.clock.set(parse_aware("2026-09-24T17:00:00+09:00"))
+        self.assertEqual(schedule(self.ctx, self.sid)["state"], "SCHEDULED")   # consistent again -> clean schedule
+        self.assertEqual(self.ctx.conn.execute("SELECT COUNT(*) FROM schedules").fetchone()[0], 3)
 
 
 class TestMigrationFromR1(unittest.TestCase):
