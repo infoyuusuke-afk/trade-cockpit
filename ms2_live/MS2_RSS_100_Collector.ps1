@@ -301,8 +301,11 @@ function Get-TdnetDisclosures([DateTime]$date) {
         $urls += ($base + ('I_list_{0:D3}_{1}.html' -f $page,$dateText))
     }
     $found = @{}
+    $pagesAttempted = 0
+    $pagesSucceeded = 0
     foreach($url in @($urls|Select-Object -Unique)) {
-        try { $html = Get-Utf8WebContent $url } catch { continue }
+        $pagesAttempted++
+        try { $html = Get-Utf8WebContent $url; $pagesSucceeded++ } catch { continue }
         foreach($rowMatch in [regex]::Matches($html,'(?is)<tr\b[^>]*>(.*?)</tr>')) {
             $rowHtml = $rowMatch.Groups[1].Value
             $cells = @([regex]::Matches($rowHtml,'(?is)<td\b[^>]*>(.*?)</td>')|ForEach-Object{
@@ -332,7 +335,8 @@ function Get-TdnetDisclosures([DateTime]$date) {
             $found[$key]=[pscustomobject]@{code=$codeMatch.Groups[1].Value;time=$timeMatch.Groups[1].Value;title=$title;url=$link;name=$nameGuess}
         }
     }
-    return @($found.Values|Sort-Object time -Descending)
+    if($pagesSucceeded -lt 1){ throw "TDnet page retrieval failed: 0/$pagesAttempted pages succeeded." }
+    return [pscustomobject]@{disclosures=@($found.Values|Sort-Object time -Descending);pages_attempted=$pagesAttempted;pages_succeeded=$pagesSucceeded}
 }
 
 function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580) {
@@ -736,6 +740,7 @@ $pmAboveSince = @{}
 $pmBelowSince = @{}
 $lastSignal = @{}
 $lastSpoken = @{}
+$voiceState = @{}
 $lastHoldSpoken = @{}
 $loggedSignals = @{}
 $kioFlowCandidate = ""
@@ -750,7 +755,10 @@ $lastPtsBand = 0
 $lastPtsVoiceAt = Get-Date "2000-01-01"
 $tdnetDisclosures = @()
 $lastTdnetFetchAt = Get-Date "2000-01-01"
+$lastTdnetSuccessAt = $null
 $tdnetStatus = "取得待ち"
+$tdnetPagesAttempted = 0
+$tdnetPagesSucceeded = 0
 $lastIrVoiceCodes = @{}
 $irDynamicSlots = @{}
 $lastSnapshotAt = Get-Date "2000-01-01"
@@ -786,11 +794,11 @@ try {
         }
         if ($now.ToString("yyyy-MM-dd") -ne $activeDay) {
             $activeDay=$now.ToString("yyyy-MM-dd")
-            $previous=@{}; $history=@{}; $preopenHistory=@{}; $preopenState=@{}; $seenTicks=@{}; $creditSaved=@{}; $orHigh=@{}; $orLow=@{}; $or5High=@{}; $or5Low=@{}; $minuteBars=@{}; $currentMinuteBars=@{}; $dayHigh=@{}; $dayLow=@{}; $pmAboveSince=@{}; $pmBelowSince=@{}; $lastSignal=@{}; $lastHoldSpoken=@{}; $loggedSignals=@{}
+            $previous=@{}; $history=@{}; $preopenHistory=@{}; $preopenState=@{}; $seenTicks=@{}; $creditSaved=@{}; $orHigh=@{}; $orLow=@{}; $or5High=@{}; $or5Low=@{}; $minuteBars=@{}; $currentMinuteBars=@{}; $dayHigh=@{}; $dayLow=@{}; $pmAboveSince=@{}; $pmBelowSince=@{}; $lastSignal=@{}; $lastSpoken=@{}; $voiceState=@{}; $lastHoldSpoken=@{}; $loggedSignals=@{}
             $kioFlowCandidate=""; $lastKioFlowSpoken=""; $lastKioFlowSpokenAt=Get-Date "2000-01-01"
             $lastPreopenVoice=""; $lastOpenDecisionVoice=""
             $lastPtsBand=0; $lastPtsVoiceAt=Get-Date "2000-01-01"
-            $tdnetDisclosures=@(); $lastTdnetFetchAt=Get-Date "2000-01-01"; $tdnetStatus="取得待ち"; $lastIrVoiceCodes=@{}; $irDynamicSlots=@{}
+            $tdnetDisclosures=@(); $lastTdnetFetchAt=Get-Date "2000-01-01"; $lastTdnetSuccessAt=$null; $tdnetStatus="取得待ち"; $tdnetPagesAttempted=0; $tdnetPagesSucceeded=0; $lastIrVoiceCodes=@{}; $irDynamicSlots=@{}
             $loadedHoldDay=""; $holdFinalized=$false; $holdFinalizedAt=$null; $holdEntryCaptured=$false; $finalHoldTop5=@()
         }
         # STATS DAILY REFRESH: once after the TSE session is complete.
@@ -858,13 +866,23 @@ try {
             $holdStats=Get-OvernightHoldStats $holdHistory
         }
 
-        if(($now-$lastTdnetFetchAt).TotalSeconds -ge 120) {
+        if(($now-$lastTdnetFetchAt).TotalSeconds -ge 30) {
             try {
-                $freshTdnet = @(Get-TdnetDisclosures $now)
-                if($freshTdnet.Count -gt 0){$tdnetDisclosures=$freshTdnet; $tdnetStatus=("TDnet確認済み "+$freshTdnet.Count+"件")}
-                else{$tdnetStatus="TDnet取得0件・確認待ち"}
+                $tdnetFetch = Get-TdnetDisclosures $now
+                if($null -eq $tdnetFetch -or [int]$tdnetFetch.pages_succeeded -lt 1){throw "TDnet retrieval not verified"}
+                $freshTdnet = @($tdnetFetch.disclosures)
+                $tdnetPagesAttempted=[int]$tdnetFetch.pages_attempted
+                $tdnetPagesSucceeded=[int]$tdnetFetch.pages_succeeded
+                $tdnetDisclosures=$freshTdnet
+                $lastTdnetSuccessAt=$now
+                $tdnetStatus=("TDnet LIVE "+$freshTdnet.Count+"件 / pages "+$tdnetFetch.pages_succeeded+"/"+$tdnetFetch.pages_attempted+" / "+$now.ToString("HH:mm:ss"))
             } catch {
-                $tdnetStatus="TDnet取得失敗・推定禁止"
+                # Fail closed: a failed refresh must not leave the previous disclosure set looking current.
+                $tdnetDisclosures=@()
+                $tdnetPagesAttempted=0
+                $tdnetPagesSucceeded=0
+                $lastTdnetSuccessAt=$null
+                $tdnetStatus="TDnet取得失敗・旧情報破棄・推定禁止"
             }
             $lastTdnetFetchAt=$now
 
@@ -933,12 +951,20 @@ try {
         }
         $results = @()
         $validCount = 0
+        $liveQuoteCount = 0
         $preopenQuoteCount = 0
         $snapshotDue = (($now - $lastSnapshotAt).TotalSeconds -ge $SnapshotSeconds)
 
         for ($i=0; $i -lt $stocks.Count; $i++) {
             $r=$i+1; $s=$stocks[$i]; $ticker=$s.Ticker
             $price=Get-SafeNumber (Get-TableValue $values $r 1 32) 0.01 10000000
+            $exchangeTimeText=Get-TimeText (Get-TableValue $values $r 2 32)
+            $exchangeObservedAt=$null
+            if(-not [string]::IsNullOrWhiteSpace($exchangeTimeText)){
+                try{$exchangeObservedAt=[DateTime]::ParseExact(($activeDay+" "+$exchangeTimeText),"yyyy-MM-dd HH:mm:ss",$null)}catch{$exchangeObservedAt=$null}
+            }
+            $exchangeAgeSeconds=if($null -ne $exchangeObservedAt){($now-$exchangeObservedAt).TotalSeconds}else{$null}
+            $sourceQuoteLive=($null -ne $price -and $price -gt 0 -and $null -ne $exchangeObservedAt -and $exchangeAgeSeconds -ge -5 -and $exchangeAgeSeconds -le 15)
             $volume=Get-SafeNumber (Get-TableValue $values $r 5) 0 1000000000000
             $vwap=Get-SafeNumber (Get-TableValue $values $r 6) 0 10000000
             $bid=Get-SafeNumber (Get-TableValue $values $r 7) 0 10000000
@@ -981,6 +1007,7 @@ try {
                 else{continue}
             }
             $validCount++
+            if($sourceQuoteLive){$liveQuoteCount++}
             if ($null -eq $volume) {$volume=0}; if ($null -eq $vwap) {$vwap=0}; if ($null -eq $bid) {$bid=0}; if ($null -eq $ask) {$ask=0}
             if ($null -eq $bidQty) {$bidQty=0}; if ($null -eq $askQty) {$askQty=0}; if ($null -eq $marketSell) {$marketSell=0}; if ($null -eq $marketBuy) {$marketBuy=0}
             if ($null -eq $over) {$over=0}; if ($null -eq $under) {$under=0}
@@ -1176,6 +1203,670 @@ try {
             }
             elseif (-not $inSession) {$signal="市場時間外"}
 
+            # A newly published earnings/revision disclosure invalidates any pre-disclosure
+            # directional signal until the post-disclosure market reaction can be observed.
+            $tickerCode=($ticker -replace '\.T -and $orHigh.ContainsKey($ticker) -and $price -gt $orHigh[$ticker]){
+                if(-not $pmAboveSince.ContainsKey($ticker)){$pmAboveSince[$ticker]=$now}
+            }else{$pmAboveSince.Remove($ticker)}
+            if($clock -ge [TimeSpan]::Parse("12:30:00") -and $orLow.ContainsKey($ticker) -and $price -lt $orLow[$ticker]){
+                if(-not $pmBelowSince.ContainsKey($ticker)){$pmBelowSince[$ticker]=$now}
+            }else{$pmBelowSince.Remove($ticker)}
+
+            if ($inSession) {
+                for ($w=0; $w -lt 4; $w++) {
+                    $tickPrice=Get-SafeNumber (Get-TableValue $values $r (15+$w*2)) 0.01 10000000
+                    $tickTime=Get-TimeText (Get-TableValue $values $r (16+$w*2))
+                    if ($null -eq $tickPrice -or [string]::IsNullOrWhiteSpace($tickTime)) {continue}
+                    $tickKey="$ticker|$tickTime|$tickPrice"
+                    if (-not $seenTicks.ContainsKey($tickKey)) {
+                        $tickDir=if ($ask -gt 0 -and $tickPrice -ge $ask) {"BUY_EST"} elseif ($bid -gt 0 -and $tickPrice -le $bid) {"SELL_EST"} else {"UNKNOWN"}
+                        $line=@($now.ToString("yyyy-MM-dd HH:mm:ss.fff"),$ticker,$s.Name,$tickTime,$tickPrice,$tickDir,$bid,$ask,"方向は気配との比較による推定") | ForEach-Object {Escape-Csv $_}
+                        Add-Content -Encoding UTF8 -Path $tickCsv -Value ($line -join ',')
+                        $seenTicks[$tickKey]=$now
+                    }
+                }
+            }
+
+            if ($snapshotDue -and $inSession) {
+                $or5HighValue=if($or5High.ContainsKey($ticker)){$or5High[$ticker]}else{0}
+                $or5LowValue=if($or5Low.ContainsKey($ticker)){$or5Low[$ticker]}else{0}
+                $orHighForLog=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
+                $orLowForLog=if($orLow.ContainsKey($ticker)){$orLow[$ticker]}else{0}
+                $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$vwap,$ema9,$ema20,$trendLong,$trendShort,$or5HighValue,$or5LowValue,$orHighForLog,$orLowForLog,[Math]::Round($barBurst,3),[Math]::Round($flowBias,4),$whipsaw,$chaseGuard,$or5Long,$or5Short,$or15Long,$or15Short,$pullbackLong,$pullbackShort,$signal,$strategy)|ForEach-Object{Escape-Csv $_}
+                Add-Content -Encoding UTF8 -Path $conditionCsv -Value ($line -join ',')
+                $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$over,$under,[Math]::Round($underRatio,5),[Math]::Round($uoChange,5),$vwap)|ForEach-Object{Escape-Csv $_}
+                Add-Content -Encoding UTF8 -Path $supplyCsv -Value ($line -join ',')
+                $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$volume,$vwap,$bid,$ask,$bidQty,$askQty,$marketSell,$marketBuy,$over,$under)|ForEach-Object{Escape-Csv $_}
+                Add-Content -Encoding UTF8 -Path $snapshotCsv -Value ($line -join ',')
+                if (-not $creditSaved.ContainsKey($ticker)) {
+                    $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$creditSell,$creditSellChange,$creditBuy,$creditBuyChange,$creditRatio)|ForEach-Object{Escape-Csv $_}
+                    Add-Content -Encoding UTF8 -Path $creditCsv -Value ($line -join ',')
+                    $creditSaved[$ticker]=$true
+                }
+            }
+            if($snapshotDue -and $inPreopen){
+                $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$reference,$quoteCenter,$gapPct,$bid,$ask,$bidQty,$askQty,$marketSell,$marketBuy,[Math]::Round($marketImbalance*100,2),$over,$under,[Math]::Round($underRatio*100,2),$quoteChange1m,$quoteChange5m,$specialSell,$specialBuy,[Math]::Round($preopenScore,1),$preopenPlan)|ForEach-Object{Escape-Csv $_}
+                Add-Content -Encoding UTF8 -Path $preopenCsv -Value ($line -join ',')
+            }
+
+            $orHighValue=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
+            $orLowValue=if($orLow.ContainsKey($ticker)){$orLow[$ticker]}else{0}
+            $results += [pscustomobject]@{
+                ticker=$ticker;name=$s.Name;sector=$s.Sector;price=$price;live_price=$(if($sourceQuoteLive){$price}else{$null});live_observed_at=$(if($null -ne $exchangeObservedAt){$exchangeObservedAt.ToString("o")}else{$null});live_collector_observed_at=$now.ToString("o");live_exchange_time=$exchangeTimeText;live_source="MarketSpeed II RSS / 現在値詳細時刻";live_quote_valid=$sourceQuoteLive;live_quote_status=$(if($sourceQuoteLive){"LIVE"}elseif([string]::IsNullOrWhiteSpace($exchangeTimeText)){"INVALID / SOURCE TIME MISSING"}else{"STALE / SOURCE TIME"});live_quote_age_seconds=$(if($null -ne $exchangeAgeSeconds){[Math]::Round($exchangeAgeSeconds,1)}else{$null});isolated=(-not $sourceQuoteLive);volume=$volume;vwap=$vwap
+                change_pct=Get-SafeNumber (Get-TableValue $values $r 4 32) -1000 1000
+                bid=$bid;ask=$ask;bid_qty=$bidQty;ask_qty=$askQty;market_sell=$marketSell;market_buy=$marketBuy;over=$over;under=$under
+                under_ratio=[Math]::Round($underRatio*100,1);under_change=[Math]::Round($uoChange*100,1)
+                under_change_1m=if($null -eq $underChange1m){$null}else{[Math]::Round($underChange1m*100,1)}
+                under_change_5m=if($null -eq $underChange5m){$null}else{[Math]::Round($underChange5m*100,1)}
+                flow_bias=[Math]::Round($flowBias*100,1);buy_flow=[Math]::Round($buyFlow);sell_flow=[Math]::Round($sellFlow)
+                history_seconds=[Math]::Round($historySeconds);time_band=$timeBand;orderflow_state=$orderflowState;tick_watch="常時監視中"
+                volume_burst=[Math]::Round($barBurst,2);or5_high=if($or5High.ContainsKey($ticker)){$or5High[$ticker]}else{0};or5_low=if($or5Low.ContainsKey($ticker)){$or5Low[$ticker]}else{0}
+                or_high=$orHighValue;or_low=$orLowValue;ema9=if($null -eq $ema9){$null}else{[Math]::Round($ema9,2)};ema20=if($null -eq $ema20){$null}else{[Math]::Round($ema20,2)};ema_ready=$emaReady
+                chase_guard=$chaseGuard;whipsaw=$whipsaw;raw_direction=$rawDirection;strategy=$strategy;signal_bar_time=$signalBarTime
+                news_pending=$newsPending;news_title=$newsTitle;news_published_at=$(if($null -ne $newsPublishedAt){$newsPublishedAt.ToString("o")}else{$null});news_reaction_confirmed=$(if($null -ne $freshDisclosure){$reactionConfirmed}else{$false});news_reaction_direction=$(if($null -ne $freshDisclosure -and $reactionLong){"BUY"}elseif($null -ne $freshDisclosure -and $reactionShort){"SELL"}else{""});tdnet_live=($null -ne $lastTdnetSuccessAt -and ($now-$lastTdnetSuccessAt).TotalSeconds -le 45)
+                entry_price=if($null -eq $entryPrice){$null}else{[Math]::Round($entryPrice,2)};stop_price=if($null -eq $stopPrice){$null}else{[Math]::Round($stopPrice,2)}
+                target1=if($null -eq $target1){$null}else{[Math]::Round($target1,2)};target2=if($null -eq $target2){$null}else{[Math]::Round($target2,2)}
+                day_high=if($dayHigh.ContainsKey($ticker)){$dayHigh[$ticker]}else{$price};day_low=if($dayLow.ContainsKey($ticker)){$dayLow[$ticker]}else{$price}
+                pm_above_minutes=if($pmAboveSince.ContainsKey($ticker)){[Math]::Round(($now-$pmAboveSince[$ticker]).TotalMinutes,1)}else{0}
+                pm_below_minutes=if($pmBelowSince.ContainsKey($ticker)){[Math]::Round(($now-$pmBelowSince[$ticker]).TotalMinutes,1)}else{0}
+                credit_sell=$creditSell;credit_sell_change=$creditSellChange;credit_buy=$creditBuy;credit_buy_change=$creditBuyChange;credit_ratio=$creditRatio
+                shortable_quantity=$shortableQuantity
+                reference_price=$reference;preopen_quote=[Math]::Round($quoteCenter,1);preopen_gap_pct=if($null -eq $gapPct){$null}else{[Math]::Round($gapPct,2)}
+                preopen_market_imbalance=[Math]::Round($marketImbalance*100,1);preopen_quote_change_5m=if($null -eq $quoteChange5m){$null}else{[Math]::Round($quoteChange5m,2)}
+                preopen_score=[Math]::Round($preopenScore);preopen_plan=$preopenPlan;special_quote=if($hasSpecialSell){"特売り"}elseif($hasSpecialBuy){"特買い"}else{"なし"}
+                open_price=$openPrice;open_decision=$openDecision;score=[Math]::Round($score);signal=$signal;hold_signal="持ち越し判定前";hold_score=0;data="LIVE"
+            }
+            $previous[$ticker]=[pscustomobject]@{Price=$price;Volume=$volume;UnderRatio=$underRatio}
+        }
+        $preopenRecordingStatus=if($now.TimeOfDay -ge [TimeSpan]::Parse("08:00:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:00:00")){
+            if($preopenQuoteCount -gt 0){"記録中 $preopenQuoteCount/100"}else{"RSS気配未取得"}
+        }else{"時間外"}
+        if($snapshotDue -and $preopenRecordingStatus -eq "RSS気配未取得"){
+            Write-Host "警告: 寄り前の売買気配をまだ取得できません。MS2ログイン、ExcelのRSS接続、買気配・売気配セルを確認してください。" -ForegroundColor Red
+        }
+        if ($snapshotDue) {$lastSnapshotAt=$now}
+        foreach ($key in @($seenTicks.Keys)) {if (($now-$seenTicks[$key]).TotalMinutes -gt 30) {$seenTicks.Remove($key)}}
+
+        $kioxia=$results|Where-Object{$_.ticker -eq "285A.T"}|Select-Object -First 1
+        if ($null -ne $kioxia) {
+            $kioxiaBars = @()
+            if ($minuteBars.ContainsKey("285A.T")) { $kioxiaBars += @($minuteBars["285A.T"]) }
+            if ($currentMinuteBars.ContainsKey("285A.T") -and $null -ne $currentMinuteBars["285A.T"]) { $kioxiaBars += $currentMinuteBars["285A.T"] }
+            $kioxia | Add-Member -NotePropertyName bars_1m -NotePropertyValue @(Convert-LiveBars $kioxiaBars 1 ([double]$kioxia.vwap)) -Force
+            $kioxia | Add-Member -NotePropertyName bars_3m -NotePropertyValue @(Convert-LiveBars $kioxiaBars 3 ([double]$kioxia.vwap)) -Force
+            $kioxia | Add-Member -NotePropertyName bars_5m -NotePropertyValue @(Convert-LiveBars $kioxiaBars 5 ([double]$kioxia.vwap)) -Force
+            $kioxia | Add-Member -NotePropertyName bars_15m -NotePropertyValue @(Convert-LiveBars $kioxiaBars 15 ([double]$kioxia.vwap)) -Force
+        }
+        $inPts = Test-JnxSession $now
+        $tseIndex=@{}
+        foreach($item in $results){$tseIndex[[string]$item.ticker]=$item}
+        $ptsResults=@()
+        for($i=0;$i -lt $stocks.Count;$i++){
+            $row=$i+1; $stock=$stocks[$i]; $tseTicker=[string]$stock.Ticker
+            $ptsTicker=($tseTicker -replace '\.T$','')+'.JNX'
+            $ptsPrice=Get-SafeNumber (Get-TableValue $jnxValues $row 1 15) 0.01 10000000
+            $ptsTime=Get-TimeText (Get-TableValue $jnxValues $row 2 15)
+            $ptsVolume=Get-SafeNumber (Get-TableValue $jnxValues $row 5 15) 0 1000000000000
+            $ptsVwap=Get-SafeNumber (Get-TableValue $jnxValues $row 6 15) 0 10000000
+            $ptsBid=Get-SafeNumber (Get-TableValue $jnxValues $row 7 15) 0 10000000
+            $ptsAsk=Get-SafeNumber (Get-TableValue $jnxValues $row 8 15) 0 10000000
+            $ptsBidQty=Get-SafeNumber (Get-TableValue $jnxValues $row 9 15) 0 1000000000000
+            $ptsAskQty=Get-SafeNumber (Get-TableValue $jnxValues $row 10 15) 0 1000000000000
+            $ptsOver=Get-SafeNumber (Get-TableValue $jnxValues $row 11 15) 0 1000000000000
+            $ptsUnder=Get-SafeNumber (Get-TableValue $jnxValues $row 12 15) 0 1000000000000
+            $ptsTick=Get-SafeNumber (Get-TableValue $jnxValues $row 13 15) 0.01 10000000
+            $ptsDate=Get-DateText (Get-TableValue $jnxValues $row 15 15)
+            if($null -eq $ptsPrice -or $null -eq $ptsVolume -or $ptsVolume -le 0 -or [string]::IsNullOrWhiteSpace($ptsDate)){continue}
+            $dateAge=999
+            try{$dateAge=[Math]::Abs((([DateTime]::Parse($now.ToString("yyyy-MM-dd")))-([DateTime]::Parse($ptsDate))).TotalDays)}catch{}
+            $usable=($inPts -and $ptsDate -eq $now.ToString("yyyy-MM-dd")) -or ((-not $inPts) -and $dateAge -le 4)
+            if(-not $usable){continue}
+            $tse=$tseIndex[$tseTicker]
+            if($null -eq $tse -or [double]$tse.price -le 0){continue}
+            $tseClose=[double]$tse.price; $tseVolume=[double]$tse.volume
+            $ptsGap=(($ptsPrice/$tseClose)-1)*100
+            $ptsUnderRatio=if($null -ne $ptsOver -and $null -ne $ptsUnder -and ($ptsOver+$ptsUnder)-gt 0){$ptsUnder/($ptsOver+$ptsUnder)*100}else{50.0}
+            $ptsVolumeRatio=if($tseVolume -gt 0){$ptsVolume/$tseVolume*100}else{0}
+            $turnover=$ptsPrice*$ptsVolume
+            $mid=if($ptsBid -gt 0 -and $ptsAsk -gt 0){($ptsBid+$ptsAsk)/2}else{$ptsPrice}
+            $spreadPct=if($mid -gt 0 -and $ptsBid -gt 0 -and $ptsAsk -gt 0){($ptsAsk-$ptsBid)/$mid*100}else{99}
+            $vwapBias=if($ptsVwap -gt 0){(($ptsPrice/$ptsVwap)-1)*100}else{0}
+            $directionScore=(Limit ($ptsGap*10) -35 35)+(Limit ($vwapBias*15) -15 15)+(Limit (($ptsUnderRatio-50)*1.2) -15 15)
+            $activityScore=(Limit ([Math]::Log10(1+[Math]::Max(0,$turnover/1000000))*12) 0 30)+(Limit ([Math]::Log10(1+[Math]::Max(0,$ptsVolumeRatio))*10) 0 20)
+            $spreadPenalty=Limit ($spreadPct*18) 0 30
+            $signedActivity=if($directionScore -gt 0){$activityScore*0.55}elseif($directionScore -lt 0){-$activityScore*0.55}else{0}
+            $biasScore=Limit ($directionScore+$signedActivity-($(if($directionScore -ge 0){$spreadPenalty}else{-$spreadPenalty}))) -100 100
+            $expectation=[Math]::Abs($biasScore)
+            $stance=if($turnover -lt 10000000){"薄商い・対象外"}elseif($spreadPct -gt 1){"スプレッド過大"}elseif($biasScore -ge 25){"翌日上方向注目"}elseif($biasScore -le -25){"翌日下方向警戒"}else{"方向確認待ち"}
+            $ptsRow=[pscustomobject]@{ticker=$ptsTicker;tse_ticker=$tseTicker;name=$stock.Name;sector=$stock.Sector;pts_date=$ptsDate;exchange_time=$ptsTime;price=$ptsPrice;tse_close=$tseClose;gap_pct=[Math]::Round($ptsGap,2);volume=$ptsVolume;tse_volume=$tseVolume;pts_volume_ratio=[Math]::Round($ptsVolumeRatio,2);turnover=[Math]::Round($turnover);vwap=$ptsVwap;bid=$ptsBid;ask=$ptsAsk;spread_pct=[Math]::Round($spreadPct,3);over=$ptsOver;under=$ptsUnder;under_ratio=[Math]::Round($ptsUnderRatio,1);last_tick=$ptsTick;bias_score=[Math]::Round($biasScore);expectation_score=[Math]::Round($expectation);stance=$stance;state=if($inPts){"LIVE"}else{"前夜PTS"}}
+            $ptsResults += $ptsRow
+            if($snapshotDue -and $inPts){
+                $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ptsTicker,$stock.Name,$ptsDate,$ptsTime,$ptsPrice,$tseClose,$ptsGap,$ptsVolume,$tseVolume,$ptsVolumeRatio,$turnover,$ptsVwap,$ptsBid,$ptsAsk,$spreadPct,$ptsBidQty,$ptsAskQty,$ptsOver,$ptsUnder,$ptsUnderRatio,$ptsTick,$biasScore,$expectation,$stance)|ForEach-Object{Escape-Csv $_}
+                Add-Content -Encoding UTF8 -Path $ptsCsv -Value ($line -join ',')
+            }
+        }
+
+        if ($inPts) {
+            if (-not $jnxReady) {
+                $jnxStatus = "WARN / UNAVAILABLE"
+            } elseif ($ptsResults.Count -eq 0) {
+                $jnxStatus = "WARN / NO LIVE DATA"
+            } else {
+                $jnxStatus = "READY"
+            }
+        } else {
+            $jnxStatus = "OFF / MARKET CLOSED"
+        }
+
+        # IR動的追跡枠（固定100銘柄リスト外の開示銘柄）の実データを読み取り、
+        # 固定100銘柄と同じ計算式でPTSスコアを算出する。枠が未使用(0件)なら読み取り自体を省略する。
+        $dynamicPtsResults=@()
+        if ($irDynamicSlots.Count -gt 0) {
+            $irDynamicPacket = Invoke-ExcelCom -Label "IR動的値取得" -Action {
+                [pscustomobject]@{ Data = $irDynamicSheet.Range("A2:N31").Value2 }
+            }
+            $irDynamicValues = $irDynamicPacket.Data
+            foreach ($dynCode in @($irDynamicSlots.Keys)) {
+                $dynRowIdx = $irDynamicSlots[$dynCode] - 1
+                $dynRowCode = Get-TableValue $irDynamicValues $dynRowIdx 1 14
+                if ([string]::IsNullOrWhiteSpace([string]$dynRowCode)) { continue }
+                $dynTseClose = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 2 14) 0.01 10000000
+                $dynPtsPrice = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 3 14) 0.01 10000000
+                $dynPtsTime = Get-TimeText (Get-TableValue $irDynamicValues $dynRowIdx 4 14)
+                $dynPtsVolume = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 5 14) 0 1000000000000
+                $dynPtsVwap = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 6 14) 0 10000000
+                $dynPtsBid = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 7 14) 0 10000000
+                $dynPtsAsk = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 8 14) 0 10000000
+                $dynPtsOver = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 9 14) 0 1000000000000
+                $dynPtsUnder = Get-SafeNumber (Get-TableValue $irDynamicValues $dynRowIdx 10 14) 0 1000000000000
+                $dynPtsDate = Get-DateText (Get-TableValue $irDynamicValues $dynRowIdx 14 14)
+                if ($null -eq $dynPtsPrice -or $null -eq $dynPtsVolume -or $dynPtsVolume -le 0) { continue }
+                if ($null -eq $dynTseClose -or $dynTseClose -le 0) { continue }
+                if ($dynPtsDate -ne $now.ToString("yyyy-MM-dd")) { continue }
+                $dynGap = (($dynPtsPrice/$dynTseClose)-1)*100
+                $dynUnderRatio = if ($null -ne $dynPtsOver -and $null -ne $dynPtsUnder -and ($dynPtsOver+$dynPtsUnder) -gt 0) { $dynPtsUnder/($dynPtsOver+$dynPtsUnder)*100 } else { 50.0 }
+                $dynTurnover = $dynPtsPrice*$dynPtsVolume
+                $dynMid = if ($dynPtsBid -gt 0 -and $dynPtsAsk -gt 0) { ($dynPtsBid+$dynPtsAsk)/2 } else { $dynPtsPrice }
+                $dynSpreadPct = if ($dynMid -gt 0 -and $dynPtsBid -gt 0 -and $dynPtsAsk -gt 0) { ($dynPtsAsk-$dynPtsBid)/$dynMid*100 } else { 99 }
+                $dynVwapBias = if ($dynPtsVwap -gt 0) { (($dynPtsPrice/$dynPtsVwap)-1)*100 } else { 0 }
+                $dynDirectionScore = (Limit ($dynGap*10) -35 35)+(Limit ($dynVwapBias*15) -15 15)+(Limit (($dynUnderRatio-50)*1.2) -15 15)
+                $dynActivityScore = (Limit ([Math]::Log10(1+[Math]::Max(0,$dynTurnover/1000000))*12) 0 30)
+                $dynSpreadPenalty = Limit ($dynSpreadPct*18) 0 30
+                $dynSignedActivity = if ($dynDirectionScore -gt 0) { $dynActivityScore*0.55 } elseif ($dynDirectionScore -lt 0) { -$dynActivityScore*0.55 } else { 0 }
+                $dynBiasScore = Limit ($dynDirectionScore+$dynSignedActivity-($(if($dynDirectionScore -ge 0){$dynSpreadPenalty}else{-$dynSpreadPenalty}))) -100 100
+                $dynExpectation = [Math]::Abs($dynBiasScore)
+                $dynStance = if ($dynTurnover -lt 10000000) { "薄商い・対象外" } elseif ($dynSpreadPct -gt 1) { "スプレッド過大" } elseif ($dynBiasScore -ge 25) { "翌日上方向注目" } elseif ($dynBiasScore -le -25) { "翌日下方向警戒" } else { "方向確認待ち" }
+                $dynDisclosureMatch = $tdnetDisclosures | Where-Object { [string]$_.code -eq $dynCode } | Select-Object -First 1
+                $dynDisplayName = if ($dynDisclosureMatch -and -not [string]::IsNullOrWhiteSpace([string]$dynDisclosureMatch.name)) { "$($dynDisclosureMatch.name)（$dynCode）" } else { $dynCode }
+                $dynamicPtsResults += [pscustomobject]@{ticker="$dynCode.JNX";tse_ticker="$dynCode.T";name=$dynDisplayName;sector="開示銘柄(動的追跡)";pts_date=$dynPtsDate;exchange_time=$dynPtsTime;price=$dynPtsPrice;tse_close=$dynTseClose;gap_pct=[Math]::Round($dynGap,2);volume=$dynPtsVolume;tse_volume=0;pts_volume_ratio=0;turnover=[Math]::Round($dynTurnover);vwap=$dynPtsVwap;bid=$dynPtsBid;ask=$dynPtsAsk;spread_pct=[Math]::Round($dynSpreadPct,3);over=$dynPtsOver;under=$dynPtsUnder;under_ratio=[Math]::Round($dynUnderRatio,1);last_tick=$null;bias_score=[Math]::Round($dynBiasScore);expectation_score=[Math]::Round($dynExpectation);stance=$dynStance;state="IR動的追跡"}
+            }
+        }
+        $combinedPtsResults = @($ptsResults + $dynamicPtsResults)
+
+        $ptsTop5=@($combinedPtsResults|Where-Object{$_.turnover -ge 10000000 -and $_.spread_pct -le 1 -and $_.stance -ne "方向確認待ち"}|Sort-Object expectation_score -Descending|Select-Object -First 5)
+        $irPtsCandidates=@()
+        foreach($disclosure in @($tdnetDisclosures)) {
+            if([string]$disclosure.time -lt "15:30"){continue}
+            $assessment=Get-IrMaterialAssessment ([string]$disclosure.title)
+            if($assessment.blocked -or [double]$assessment.score -le 0){continue}
+            $ptsMatch=$combinedPtsResults|Where-Object{($_.tse_ticker -replace '\.T$','') -eq [string]$disclosure.code}|Select-Object -First 1
+            if($null -eq $ptsMatch){continue}
+            if([double]$ptsMatch.turnover -lt 10000000 -or [double]$ptsMatch.spread_pct -gt 1.5 -or [double]$ptsMatch.gap_pct -lt 1 -or [double]$ptsMatch.bias_score -le 0){continue}
+            $total=Limit (([double]$assessment.score*1.4)+[double]$ptsMatch.expectation_score) 0 100
+            $judgement=if([double]$ptsMatch.gap_pct -ge 15){"急騰過熱・翌朝飛び乗り禁止"}elseif([double]$ptsMatch.gap_pct -ge 7){"高寄り警戒・押し目確認"}else{"公式材料＋PTS反応"}
+            $irPtsCandidates += [pscustomobject]@{code=$disclosure.code;ticker=$ptsMatch.ticker;name=$ptsMatch.name;disclosure_time=$disclosure.time;material_label=$assessment.label;material_score=$assessment.score;title=$disclosure.title;official_url=$disclosure.url;pts_price=$ptsMatch.price;tse_close=$ptsMatch.tse_close;gap_pct=$ptsMatch.gap_pct;turnover=$ptsMatch.turnover;spread_pct=$ptsMatch.spread_pct;under_ratio=$ptsMatch.under_ratio;pts_score=$ptsMatch.expectation_score;total_score=[Math]::Round($total);judgement=$judgement}
+        }
+        $irPtsTop5=@($irPtsCandidates|Sort-Object total_score -Descending|Select-Object -First 5)
+        if($snapshotDue -and $inPts){
+            foreach($ir in $irPtsTop5){
+                $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ir.code,$ir.ticker,$ir.name,$ir.disclosure_time,$ir.material_label,$ir.material_score,$ir.title,$ir.official_url,$ir.pts_price,$ir.tse_close,$ir.gap_pct,$ir.turnover,$ir.spread_pct,$ir.under_ratio,$ir.pts_score,$ir.total_score,$ir.judgement)|ForEach-Object{Escape-Csv $_}
+                Add-Content -Encoding UTF8 -Path $irPtsCsv -Value ($line -join ',')
+            }
+        }
+        $kioxiaPts=$ptsResults|Where-Object{$_.tse_ticker -eq "285A.T"}|Select-Object -First 1
+        if($null -eq $kioxiaPts){
+            $defaultPtsState = if ($inPts) { "取得待ち" } else { "市場時間外" }
+            $kioxiaPts=[pscustomobject]@{ticker="285A.JNX";price=$null;gap_pct=$null;volume=$null;under_ratio=$null;stance=$defaultPtsState;state=$jnxStatus}
+        }
+        $ptsPrice=$kioxiaPts.price; $ptsGap=$kioxiaPts.gap_pct; $ptsVolume=$kioxiaPts.volume; $ptsUnderRatio=$kioxiaPts.under_ratio; $ptsState=$kioxiaPts.stance
+        if ($null -ne $kioxia) {
+            $historical=$null
+            if ($null -ne $kioxiaStats) {
+                $condition=if($kioxia.orderflow_state -eq "買い優勢"){"買い傾斜"}elseif($kioxia.orderflow_state -eq "売り優勢"){"売り傾斜"}else{"均衡"}
+                $historical=$kioxiaStats.rows|Where-Object{$_.time_band -eq $kioxia.time_band -and $_.condition -eq $condition}|Select-Object -First 1
+                if ($null -eq $historical) {$historical=$kioxiaStats.rows|Where-Object{$_.time_band -eq $kioxia.time_band -and $_.condition -eq "全体"}|Select-Object -First 1}
+            }
+            $kioxia|Add-Member -NotePropertyName historical_prediction -NotePropertyValue $historical -Force
+            $preopenHistorical=$null
+            if($null -ne $kioxiaStats -and $null -ne $kioxia.preopen_gap_pct){
+                $g=[double]$kioxia.preopen_gap_pct
+                $gapBucket=if($g -le -5){"GD5%以上"}elseif($g -le -2){"GD2–5%"}elseif($g -lt 0){"小幅GD"}elseif($g -lt 2){"小幅GU"}elseif($g -lt 5){"GU2–5%"}else{"GU5%以上"}
+                $preopenHistorical=$kioxiaStats.preopen_rows|Where-Object{$_.gap_bucket -eq $gapBucket -and $_.plan -eq $kioxia.preopen_plan}|Select-Object -First 1
+            }
+            $kioxia|Add-Member -NotePropertyName preopen_historical -NotePropertyValue $preopenHistorical -Force
+            $kioxia|Add-Member -NotePropertyName completed_stat_days -NotePropertyValue $(if($null -ne $kioxiaStats){$kioxiaStats.completed_days}else{0}) -Force
+        }
+        foreach($result in $results){
+            $matchedPts=$ptsResults|Where-Object{$_.tse_ticker -eq $result.ticker}|Select-Object -First 1
+            $ptsBoost=0
+            if($null -ne $matchedPts -and (-not $inPts) -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:15:00")){
+                $ptsBoost=Limit ([double]$matchedPts.bias_score*0.15) -15 15
+                $result.score=[Math]::Round(([double]$result.score)+$ptsBoost)
+            }
+            $result|Add-Member -NotePropertyName prior_pts_gap_pct -NotePropertyValue $(if($null -ne $matchedPts){$matchedPts.gap_pct}else{$null}) -Force
+            $result|Add-Member -NotePropertyName prior_pts_bias -NotePropertyValue $(if($null -ne $matchedPts){$matchedPts.bias_score}else{$null}) -Force
+            $result|Add-Member -NotePropertyName prior_pts_boost -NotePropertyValue ([Math]::Round($ptsBoost)) -Force
+        }
+
+        # 地合いと業種の確認を、OR5/OR15の最終点灯条件に使う。
+        # UNDER/OVERは補助情報に留め、板の見せ玉だけでサインを出さない。
+        $breadthBase=@($results|Where-Object{$_.vwap -gt 0})
+        $breadthPct=if($breadthBase.Count -ge 20){[Math]::Round((@($breadthBase|Where-Object{$_.price -gt $_.vwap}).Count/$breadthBase.Count)*100,1)}else{$null}
+        $marketState=if($null -eq $breadthPct){"地合い確認待ち"}elseif($breadthPct -ge 60){"地合い強い"}elseif($breadthPct -le 40){"地合い弱い"}else{"地合い中立"}
+        $sectorBreadth=@{}
+        foreach($sectorGroup in @($results|Where-Object{$_.vwap -gt 0}|Group-Object sector)){
+            $sectorItems=@($sectorGroup.Group)
+            $sectorBreadth[[string]$sectorGroup.Name]=if($sectorItems.Count -ge 2){[Math]::Round((@($sectorItems|Where-Object{$_.price -gt $_.vwap}).Count/$sectorItems.Count)*100,1)}else{$null}
+        }
+        foreach($result in $results){
+            $sectorPct=$sectorBreadth[[string]$result.sector]
+            $longSupport=($marketState -eq "地合い強い" -or ($null -ne $sectorPct -and [double]$sectorPct -ge 60))
+            $shortSupport=($marketState -eq "地合い弱い" -or ($null -ne $sectorPct -and [double]$sectorPct -le 40))
+            if([string]$result.raw_direction -eq "BUY"){
+                if([string]$result.strategy -eq "OR5初動"){
+                    $result.signal=if($longSupport){"買いサイン"}else{"OR5上抜け・地合待ち"}
+                }elseif([string]$result.strategy -eq "OR15追随"){
+                    $result.signal=if($longSupport){"買いサイン"}else{"OR15利確警戒"}
+                }elseif([string]$result.strategy -eq "OR15押し目"){
+                    $result.signal=if($marketState -eq "地合い弱い"){"押し目・地合待ち"}else{"買いサイン"}
+                }
+            }elseif([string]$result.raw_direction -eq "SELL"){
+                if([string]$result.strategy -eq "OR5初動"){
+                    $result.signal=if($shortSupport){"空売りサイン"}else{"OR5下抜け・地合待ち"}
+                }elseif([string]$result.strategy -eq "OR15追随"){
+                    $result.signal=if($shortSupport){"空売りサイン"}else{"OR15戻り警戒"}
+                }elseif([string]$result.strategy -eq "OR15戻り"){
+                    $result.signal=if($marketState -eq "地合い強い"){"戻り・地合待ち"}else{"空売りサイン"}
+                }
+            }
+            if($validCount -lt 90){$result.signal="データ不足・売買禁止"}
+            elseif([string]$result.special_quote -ne "なし"){$result.signal="特別気配・売買禁止"}
+
+            $range=[double]$result.day_high-[double]$result.day_low
+            $closeLocation=if($range -gt 0){Limit (([double]$result.price-[double]$result.day_low)/$range) 0 1}else{0.5}
+            $longHold=0.0; $shortHold=0.0
+            if([double]$result.vwap -gt 0 -and [double]$result.price -gt [double]$result.vwap){$longHold+=20}else{$shortHold+=20}
+            if($result.ema_ready -and [double]$result.ema9 -gt [double]$result.ema20){$longHold+=15}
+            elseif($result.ema_ready -and [double]$result.ema9 -lt [double]$result.ema20){$shortHold+=15}
+            if([double]$result.pm_above_minutes -ge 30){$longHold+=15}
+            if([double]$result.pm_below_minutes -ge 30){$shortHold+=15}
+            if($closeLocation -ge 0.8){$longHold+=15}; if($closeLocation -le 0.2){$shortHold+=15}
+            if([double]$result.flow_bias -ge 5){$longHold+=10}; if([double]$result.flow_bias -le -5){$shortHold+=10}
+            if([double]$result.under_ratio -ge 52){$longHold+=10}; if([double]$result.under_ratio -le 48){$shortHold+=10}
+            if($longSupport){$longHold+=10}; if($shortSupport){$shortHold+=10}
+            if($result.whipsaw){$longHold-=20;$shortHold-=20}
+            if($result.chase_guard){$longHold-=10;$shortHold-=10}
+            $longHold=Limit $longHold 0 100; $shortHold=Limit $shortHold 0 100
+            $regimeName=if($null -ne $investorRegime){[string]$investorRegime.regime.name}else{"判定不能"}
+            $regimePeriod=if($null -ne $investorRegime){[string]$investorRegime.asof.period_end}else{""}
+            $regimeRetrieved=if($null -ne $investorRegime){[string]$investorRegime.asof.retrieved_at}else{""}
+            $regimeObservedAt=$null
+            try{$regimeObservedAt=[DateTimeOffset]::Parse($regimeRetrieved)}catch{}
+            $regimeUsable=($null -ne $investorRegime -and [string]$investorRegime.type_filter.status -eq "利用可" -and $null -ne $regimeObservedAt -and $regimeObservedAt -le [DateTimeOffset]$now)
+            $turnover=[double]$result.price*[double]$result.volume
+            $longRegimeFit=if($regimeUsable){Get-RegimeFit $regimeName "LONG" ([string]$result.sector) $turnover}else{$null}
+            $shortRegimeFit=if($regimeUsable){Get-RegimeFit $regimeName "SHORT" ([string]$result.sector) $turnover}else{$null}
+            if($null -ne $longRegimeFit){$longHold=Limit (($longHold*.70)+[double]$longRegimeFit) 0 100}
+            if($null -ne $shortRegimeFit){$shortHold=Limit (($shortHold*.70)+[double]$shortRegimeFit) 0 100}
+            $holdSignal="15時判定待ち"; $holdScore=[Math]::Max($longHold,$shortHold)
+            if($now.TimeOfDay -ge [TimeSpan]::Parse("15:00:00")){
+                if($longHold -ge 70 -and $longHold -ge $shortHold+15){$holdSignal="持ち越しロング候補";$holdScore=$longHold}
+                elseif($shortHold -ge 70 -and $shortHold -ge $longHold+15){$holdSignal="持ち越しショート候補";$holdScore=$shortHold}
+                else{$holdSignal="日中限定・持ち越し禁止"}
+            }
+            $result.hold_signal=$holdSignal; $result.hold_score=[Math]::Round($holdScore)
+            $result|Add-Member -NotePropertyName market_state -NotePropertyValue $marketState -Force
+            $result|Add-Member -NotePropertyName breadth_pct -NotePropertyValue $breadthPct -Force
+            $result|Add-Member -NotePropertyName sector_breadth_pct -NotePropertyValue $sectorPct -Force
+            $result|Add-Member -NotePropertyName close_location_pct -NotePropertyValue ([Math]::Round($closeLocation*100,1)) -Force
+            $result|Add-Member -NotePropertyName event_check_required -NotePropertyValue $true -Force
+            $result|Add-Member -NotePropertyName regime_name -NotePropertyValue $regimeName -Force
+            $result|Add-Member -NotePropertyName regime_period_end -NotePropertyValue $regimePeriod -Force
+            $result|Add-Member -NotePropertyName regime_retrieved_at -NotePropertyValue $regimeRetrieved -Force
+            $result|Add-Member -NotePropertyName regime_fit_long_20 -NotePropertyValue $longRegimeFit -Force
+            $result|Add-Member -NotePropertyName regime_fit_short_20 -NotePropertyValue $shortRegimeFit -Force
+            $result|Add-Member -NotePropertyName subject_sensitivity_10 -NotePropertyValue $null -Force
+
+            $alignment=if($longSupport){'LONG'}elseif($shortSupport){'SHORT'}else{'NEUTRAL'}
+            $or15Break=if($result.or_high -gt 0 -and $result.price -gt $result.or_high){'UP'}elseif($result.or_low -gt 0 -and $result.price -lt $result.or_low){'DOWN'}else{'NONE'}
+            $commonDecision=Get-MS2CommonDecision @{
+                price=$result.price;vwap=if($result.vwap -gt 0){$result.vwap}else{$null};ema9=$result.ema9;ema20=$result.ema20
+                volume_burst=$result.volume_burst;flow_bias=$result.flow_bias;under_ratio=$result.under_ratio
+                market_alignment=$alignment;or15_break=$or15Break;rebound=([string]$result.strategy -in @('OR15押し目','OR15戻り'))
+            }
+            $safetyGate=Get-MS2SafetyGate -DataFresh ($validCount -ge 90) -OpenOrders $null -MarginBuyingPower $null -MarginRate $null -ShortableQuantity $result.shortable_quantity -AutoOrderEnabled $AutoOrderEnabled
+            $result|Add-Member -NotePropertyName common_decision -NotePropertyValue $commonDecision.decision -Force
+            $result|Add-Member -NotePropertyName common_score -NotePropertyValue $commonDecision.score -Force
+            $result|Add-Member -NotePropertyName common_long_score -NotePropertyValue $commonDecision.long_score -Force
+            $result|Add-Member -NotePropertyName common_short_score -NotePropertyValue $commonDecision.short_score -Force
+            $result|Add-Member -NotePropertyName common_coverage -NotePropertyValue $commonDecision.coverage -Force
+            $result|Add-Member -NotePropertyName common_missing -NotePropertyValue @($commonDecision.missing) -Force
+            $result|Add-Member -NotePropertyName safety_gate -NotePropertyValue $safetyGate -Force
+            $result|Add-Member -NotePropertyName bars_1m -NotePropertyValue @(Convert-LiveBars @($minuteBars[[string]$result.ticker]) 1 ([double]$result.vwap)) -Force
+            $result|Add-Member -NotePropertyName bars_5m -NotePropertyValue @(Convert-LiveBars @($minuteBars[[string]$result.ticker]) 5 ([double]$result.vwap)) -Force
+
+            if($result.signal -in @("買いサイン","空売りサイン") -and -not [string]::IsNullOrWhiteSpace([string]$result.signal_bar_time)){
+                $logKey=([string]$result.ticker+'|'+[string]$result.strategy+'|'+[string]$result.signal_bar_time)
+                if(-not $loggedSignals.ContainsKey($logKey)){
+                    $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$result.ticker,$result.name,$result.signal,$result.strategy,$result.signal_bar_time,$result.entry_price,$result.stop_price,$result.target1,$result.target2,$marketState,$breadthPct,$sectorPct,$holdSignal,$result.hold_score)|ForEach-Object{Escape-Csv $_}
+                    Add-Content -Encoding UTF8 -Path $signalCsv -Value ($line -join ',')
+                    $loggedSignals[$logKey]=$true
+                }
+            }
+        }
+        $kioxia=$results|Where-Object{$_.ticker -eq "285A.T"}|Select-Object -First 1
+        $provisionalHoldTop5=@($results|Where-Object{$validCount -ge 90 -and $_.special_quote -eq "なし" -and $_.hold_signal -in @("持ち越しロング候補","持ち越しショート候補")}|Sort-Object hold_score -Descending|Select-Object -First 5)
+        if(-not $holdFinalized -and $now.TimeOfDay -ge [TimeSpan]::Parse("15:25:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("15:26:00")){
+            $rank=0
+            $finalHoldTop5=@($provisionalHoldTop5|ForEach-Object{
+                $rank++
+                [pscustomobject]@{
+                    finalized_at=$now.ToString("yyyy-MM-dd HH:mm:ss");rank=$rank;ticker=$_.ticker;name=$_.name
+                    hold_signal=if($_.hold_signal -match "ロング"){"持ち越しロング確定"}else{"持ち越しショート確定"}
+                    hold_score=$_.hold_score;price=$_.price;reference_price_1525=$_.price;vwap=$_.vwap
+                    or_high=$_.or_high;or_low=$_.or_low;pm_above_minutes=$_.pm_above_minutes;pm_below_minutes=$_.pm_below_minutes
+                    close_location_pct=$_.close_location_pct;market_state=$_.market_state;breadth_pct=$_.breadth_pct
+                    sector_breadth_pct=$_.sector_breadth_pct;flow_bias=$_.flow_bias;under_ratio=$_.under_ratio
+                    model_version="ms2-hold-2.0+investor-regime-1.1.0";regime_name=$_.regime_name
+                    regime_period_end=$_.regime_period_end;regime_retrieved_at=$_.regime_retrieved_at
+                    regime_fit_20=if($_.hold_signal -match "ロング"){$_.regime_fit_long_20}else{$_.regime_fit_short_20}
+                    subject_sensitivity_10=$null;score_coverage=if($null -ne $_.regime_fit_long_20){90}else{70}
+                    feature_snapshot=[ordered]@{sector=$_.sector;price=$_.price;volume=$_.volume;vwap=$_.vwap;ema9=$_.ema9;ema20=$_.ema20;or15_high=$_.or_high;or15_low=$_.or_low;day_high=$_.day_high;day_low=$_.day_low;flow_bias=$_.flow_bias;under_ratio=$_.under_ratio;pm_above_minutes=$_.pm_above_minutes;pm_below_minutes=$_.pm_below_minutes;close_location_pct=$_.close_location_pct;market_state=$_.market_state;sector_breadth_pct=$_.sector_breadth_pct}
+                }
+            })
+            if($finalHoldTop5.Count -gt 0){
+                $snapshotRows=@($finalHoldTop5|Select-Object finalized_at,rank,ticker,name,hold_signal,hold_score,reference_price_1525,vwap,@{Name='or15_high';Expression={$_.or_high}},@{Name='or15_low';Expression={$_.or_low}},pm_above_minutes,pm_below_minutes,close_location_pct,market_state,breadth_pct,sector_breadth_pct,flow_bias,under_ratio)
+                Write-CsvObjects $holdFinalCsv $snapshotRows
+                foreach($item in $finalHoldTop5){
+                    $exists=@($holdHistory|Where-Object{$_.decision_date -eq $activeDay -and $_.ticker -eq $item.ticker}).Count -gt 0
+                    if(-not $exists){
+                        $holdHistory += [pscustomobject]@{decision_date=$activeDay;finalized_at=$item.finalized_at;rank=$item.rank;ticker=$item.ticker;name=$item.name;side=if($item.hold_signal -match "ロング"){"LONG"}else{"SHORT"};hold_score=$item.hold_score;reference_price_1525=$item.reference_price_1525;entry_close_price="";entry_date="";evaluation_date="";next_open="";next_close="";next_high="";next_low="";return_open_pct="";return_close_pct="";mfe_pct="";mae_pct="";result="";status="大引け値待ち"}
+                    }
+                }
+                Write-CsvObjects $holdHistoryPath $holdHistory
+            }
+            $holdFinalized=$true
+            $holdFinalizedAt=$now.ToString("yyyy-MM-dd HH:mm:ss")
+            $immutable=[ordered]@{decision_at=$now.ToString("yyyy-MM-ddTHH:mm:sszzz");decision_price_type="15:25参照価格（実約定ではない）";model_version="ms2-hold-2.0+investor-regime-1.1.0";regime=[ordered]@{name=$regimeName;period_end=$regimePeriod;retrieved_at=$regimeRetrieved;future_boundary="retrieved_atがdecision_at以前の版のみ"};cost_assumption=[ordered]@{fee_bps=0;slippage_bps_per_side=5;round_trip_cost_bps=10};benchmark="TOPIX（未接続時は超過収益を未取得表示）";candidates=$finalHoldTop5}
+            $created=Write-ImmutableJson $holdImmutableJson $immutable
+            $snapshotHash=if(Test-Path $holdImmutableJson){(Get-FileHash -Algorithm SHA256 $holdImmutableJson).Hash.ToLower()}else{""}
+            Write-AtomicUtf8 $holdFinalMarker (([ordered]@{finalized_at=$holdFinalizedAt;candidate_count=$finalHoldTop5.Count;immutable_created=$created;snapshot_sha256=$snapshotHash;model_version=$immutable.model_version}|ConvertTo-Json))
+            Invoke-SerializedSpeak $speaker ("15時25分、翌日持ち越しTOP5を確定しました。候補数"+$finalHoldTop5.Count+"。銘柄と方向を保存しました。注文前に決算とイベントを確認してください。")
+        }
+        $holdTop5=if($holdFinalized){@($finalHoldTop5)}else{@($provisionalHoldTop5)}
+
+        # 15:25の候補リストは固定し、15:30以降の東証終値だけを実際の持ち越し基準値として追記する。
+        if($holdFinalized -and -not $holdEntryCaptured -and $now.TimeOfDay -ge [TimeSpan]::Parse("15:30:00")){
+            $changed=$false
+            foreach($record in $holdHistory|Where-Object{$_.decision_date -eq $activeDay -and $_.status -eq "大引け値待ち"}){
+                $live=$results|Where-Object{$_.ticker -eq $record.ticker}|Select-Object -First 1
+                if($null -ne $live -and [double]$live.price -gt 0){$record.entry_close_price=[Math]::Round([double]$live.price,2);$record.entry_date=$activeDay;$record.status="翌日検証待ち";$changed=$true}
+            }
+            if($changed){Write-CsvObjects $holdHistoryPath $holdHistory}
+            $holdEntryCaptured=$true
+        }
+
+        # 次にコレクターが稼働した取引日の大引け後、方向別の終値損益とMFE/MAEを採点する。
+        if($now.TimeOfDay -ge [TimeSpan]::Parse("15:30:00")){
+            $auditChanged=$false
+            try{$actualFills=@(Import-Csv -Encoding UTF8 $actualFillsPath)}catch{$actualFills=@()}
+            try{$auditV2=@(Import-Csv -Encoding UTF8 $auditV2Path)}catch{$auditV2=@()}
+            foreach($record in $holdHistory|Where-Object{$_.status -eq "翌日検証待ち" -and $_.decision_date -lt $activeDay}){
+                $live=$results|Where-Object{$_.ticker -eq $record.ticker}|Select-Object -First 1
+                $entry=Get-SafeNumber $record.entry_close_price 0.01 10000000
+                if($null -eq $entry -or $null -eq $live){continue}
+                $open=Get-SafeNumber $live.open_price 0.01 10000000; $close=Get-SafeNumber $live.price 0.01 10000000
+                $high=Get-SafeNumber $live.day_high 0.01 10000000; $low=Get-SafeNumber $live.day_low 0.01 10000000
+                if($null -eq $open -or $null -eq $close -or $null -eq $high -or $null -eq $low){continue}
+                if($record.side -eq "LONG"){$retOpen=($open/$entry-1)*100;$retClose=($close/$entry-1)*100;$mfe=($high/$entry-1)*100;$mae=($low/$entry-1)*100}
+                else{$retOpen=($entry/$open-1)*100;$retClose=($entry/$close-1)*100;$mfe=($entry/$low-1)*100;$mae=($entry/$high-1)*100}
+                $record.evaluation_date=$activeDay;$record.next_open=[Math]::Round($open,2);$record.next_close=[Math]::Round($close,2);$record.next_high=[Math]::Round($high,2);$record.next_low=[Math]::Round($low,2)
+                $record.return_open_pct=[Math]::Round($retOpen,2);$record.return_close_pct=[Math]::Round($retClose,2);$record.mfe_pct=[Math]::Round($mfe,2);$record.mae_pct=[Math]::Round($mae,2)
+                $record.result=if($retClose -gt 0){"勝ち"}elseif($retClose -lt 0){"負け"}else{"引分"};$record.status="検証済み";$auditChanged=$true
+                $already=@($auditV2|Where-Object{$_.decision_date -eq $record.decision_date -and $_.ticker -eq $record.ticker}).Count -gt 0
+                if(-not $already){
+                    $fill=$actualFills|Where-Object{$_.decision_date -eq $record.decision_date -and $_.ticker -eq $record.ticker -and $_.side -eq $record.side}|Select-Object -First 1
+                    $actual=if($null -ne $fill){Get-SafeNumber $fill.actual_fill_price 0.01 10000000}else{$null}
+                    $auditEntry=if($null -ne $actual){$actual}else{$entry}
+                    $fillSource=if($null -ne $actual){"実約定入力"}else{"15:30終値代理（実約定未入力）"}
+                    if($record.side -eq "LONG"){$v2Open=($open/$auditEntry-1)*100-.10;$v2Close=($close/$auditEntry-1)*100-.10;$v2Mfe=($high/$auditEntry-1)*100-.10;$v2Mae=($low/$auditEntry-1)*100-.10}
+                    else{$v2Open=($auditEntry/$open-1)*100-.10;$v2Close=($auditEntry/$close-1)*100-.10;$v2Mfe=($auditEntry/$low-1)*100-.10;$v2Mae=($auditEntry/$high-1)*100-.10}
+                    $daySnapshot=Join-Path (Join-Path $dataRoot $record.decision_date) "overnight_hold_finalized.json"
+                    $markerV2=$null;try{if(Test-Path $daySnapshot){$markerV2=Get-Content -Raw -Encoding UTF8 $daySnapshot|ConvertFrom-Json}}catch{}
+                    $auditV2 += [pscustomobject]@{decision_date=$record.decision_date;rank=$record.rank;ticker=$record.ticker;name=$record.name;side=$record.side;model_version=if($null -ne $markerV2){$markerV2.model_version}else{"legacy"};snapshot_sha256=if($null -ne $markerV2){$markerV2.snapshot_sha256}else{""};reference_price_1525=$record.reference_price_1525;actual_fill_price=if($null -ne $actual){$actual}else{""};fill_source=$fillSource;cost_bps=10;benchmark="TOPIX未接続";next_trade_date=$activeDay;next_open=$open;next_high=$high;next_low=$low;next_close=$close;return_open_pct=[Math]::Round($v2Open,2);return_close_pct=[Math]::Round($v2Close,2);excess_open_pct="";excess_close_pct="";mfe_pct=[Math]::Round($v2Mfe,2);mae_pct=[Math]::Round($v2Mae,2);result=if($v2Close -gt 0){"勝ち"}elseif($v2Close -lt 0){"負け"}else{"引分"};missing_reason=if($null -eq $actual){"実約定未入力・ベンチマーク未接続"}else{"ベンチマーク未接続"}}
+                }
+            }
+            if($auditChanged){Write-CsvObjects $holdHistoryPath $holdHistory;Write-CsvObjects $auditV2Path $auditV2}
+        }
+        $holdStats=Get-OvernightHoldStats $holdHistory
+        Write-AtomicUtf8 $holdStatsPath (($holdStats|ConvertTo-Json -Depth 6))
+        $qualified=@($results|Where-Object{$_.signal -in @("買いサイン","空売りサイン","OR5上抜け・地合待ち","OR5下抜け・地合待ち","OR15利確警戒","OR15戻り警戒","押し目待ち","戻り待ち","初動買い候補","初動ショート候補","買い準備","ショート準備","監視")}|Sort-Object @{Expression={if($_.signal -in @("買いサイン","空売りサイン")){0}elseif($_.signal -in @("OR5上抜け・地合待ち","OR5下抜け・地合待ち","OR15利確警戒","OR15戻り警戒","押し目待ち","戻り待ち")){1}elseif($_.signal -in @("初動買い候補","初動ショート候補")){2}elseif($_.signal -in @("買い準備","ショート準備")){3}else{4}}},@{Expression={[Math]::Abs($_.score)};Descending=$true}|Select-Object -First 5)
+        $accountGate=Get-MS2SafetyGate -DataFresh ($validCount -ge 90) -OpenOrders $null -MarginBuyingPower $null -MarginRate $null -ShortableQuantity $null -AutoOrderEnabled $AutoOrderEnabled
+        $capabilities=[ordered]@{
+            market=@{status=if($validCount -ge 90){'確認済み'}else{'未確認'};fields=@('現在値','前日比','1分足','5分足','OR5','OR15','VWAP','EMA9/20','出来高加速')}
+            orderflow=@{status=if($validCount -ge 90){'一部確認済み'}else{'未確認'};fields=@('最良気配','成行買数量/成行売数量','OVER/UNDER','歩み値');depth10='未実装・RSS負荷上限を実機確認後に有効化'}
+            credit=@{status='一部確認済み';fields=@('信用買残','信用売残','信用倍率','売建可能数量')}
+            account=@{status='未確認';fields=@('注文','約定','建玉','含み損益','信用余力','保証金率');privacy='公開JSONへ口座数値を出力しない'}
+            auto_order=@{enabled=$false;status='既定で無効';implementation='発注関数なし'}
+        }
+        $statsMeta = if ($null -ne $kioxiaStats) {
+            [ordered]@{
+                status=$statsStatus
+                scanned_days=$kioxiaStats.scanned_days
+                completed_days=$kioxiaStats.completed_days
+                incomplete_day_count=$kioxiaStats.incomplete_day_count
+                last_completed_day=$kioxiaStats.last_completed_day
+                minimum_days=$kioxiaStats.minimum_days
+            }
+        } else {
+            [ordered]@{status=$statsStatus;scanned_days=0;completed_days=0;incomplete_day_count=0;last_completed_day=$null;minimum_days=10}
+        }
+        $liveQuoteRatio=[Math]::Round(($liveQuoteCount/100.0)*100,1)
+        $liveReady=if($inSession){$liveQuoteCount -ge 90}else{$validCount -ge 90}
+        $liveReadyStatus=if($liveReady){"READY"}else{"NOT READY"}
+        $tdnetReady=($tdnetPagesSucceeded -gt 0 -and $null -ne $lastTdnetSuccessAt -and ($now-$lastTdnetSuccessAt).TotalSeconds -le 45)
+        $collectorReady=($validCount -ge 90)
+        # SBV2 is the sole voice path. Its runtime health is confirmed by successful
+        # speech requests; startup does not block market-data collection if voice is down.
+        $signalGateReady=($liveReady -and ((-not $inSession) -or $tdnetReady))
+        $tradingReady=($liveReady -and $collectorReady -and ((-not $inSession) -or $tdnetReady))
+        $readiness=[ordered]@{
+            status=$(if($tradingReady){"TRADING READY"}else{"NOT READY"})
+            ms2=$(if($liveReady){"READY"}else{"NOT READY"})
+            universe=("$liveQuoteCount/100 LIVE")
+            collector=$(if($collectorReady){"READY"}else{"NOT READY"})
+            tdnet=$(if($tdnetReady){"READY"}else{"NOT READY"})
+            voice="SBV2 ONLY"
+            signal_gate=$(if($signalGateReady){"READY"}else{"HOLD"})
+            real_submit_allowed=$false
+        }
+        $payload=[ordered]@{schema_version='ms2-common-1.3';readiness=$readiness;trading_ready=$tradingReady;updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;live_quote_count=$liveQuoteCount;live_quote_ratio_pct=$liveQuoteRatio;live_ready=$liveReady;live_ready_status=$liveReadyStatus;live_ready_rule=$(if($inSession){"TSE session: >=90/100 quotes with MS2 現在値詳細時刻 <=15s"}else{"Outside TSE session: readiness is informational"});stale=(-not $liveReady);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;tdnet_observed_at=$(if($null -ne $lastTdnetSuccessAt){$lastTdnetSuccessAt.ToString("o")}else{$null});tdnet_pages_attempted=$tdnetPagesAttempted;tdnet_pages_succeeded=$tdnetPagesSucceeded;tdnet_live=($tdnetPagesSucceeded -gt 0 -and $null -ne $lastTdnetSuccessAt -and ($now-$lastTdnetSuccessAt).TotalSeconds -le 45);tdnet_disclosures=@($tdnetDisclosures | Select-Object -First 50);jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
+        $jsonText=$payload|ConvertTo-Json -Depth 6
+        Write-AtomicUtf8 $jsonPath $jsonText
+        if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $jsonText }
+
+        $cards = if ($qualified.Count -eq 0) {'<div class="empty">発動条件を満たす候補なし</div>'} else {($qualified|ForEach-Object{
+            $cls=if($_.signal -in @("買いサイン","初動買い候補","買い準備")){"buy"}elseif($_.signal -in @("空売りサイン","初動ショート候補","ショート準備")){"sell"}elseif($_.signal -eq "往復ピンタ回避"){"block"}else{"watch"}
+            $priorPtsText=if($null -eq $_.prior_pts_gap_pct){"なし"}else{("{0:+0.00;-0.00;0.00}% / 加点 {1:+0;-0;0}" -f $_.prior_pts_gap_pct,$_.prior_pts_boost)}
+            $orderText=if($null -eq $_.entry_price){"条件未完成"}else{("発動 {0} / 損切 {1} / 1R {2}" -f $_.entry_price,$_.stop_price,$_.target1)}
+            '<article class="pick '+$cls+'"><div class="head"><span>'+ (Escape-Html $_.signal) +'</span><b>'+ (Escape-Html $_.name) +'</b><strong>'+([string]$_.score)+'</strong></div><div class="price">'+("{0:N1}" -f $_.price)+'円</div><div class="metrics"><span>戦略<br><b>'+ (Escape-Html $_.strategy) +'</b></span><span>注文目安<br><b>'+ (Escape-Html $orderText) +'</b></span><span>VWAP<br><b>'+([string]$_.vwap)+'</b></span><span>EMA9/20<br><b>'+([string]$_.ema9)+' / '+([string]$_.ema20)+'</b></span><span>地合い<br><b>'+ (Escape-Html $_.market_state) +'</b></span><span>業種強度<br><b>'+([string]$_.sector_breadth_pct)+'%</b></span><span>UNDER<br><b>'+([string]$_.under_ratio)+'%</b></span><span>約定偏り<br><b>'+([string]$_.flow_bias)+'%</b></span><span>出来高加速<br><b>'+([string]$_.volume_burst)+'倍</b></span><span>前夜PTS<br><b>'+ (Escape-Html $priorPtsText) +'</b></span></div><small>OR5 '+([string]$_.or5_low)+'–'+([string]$_.or5_high)+' / OR15 '+([string]$_.or_low)+'–'+([string]$_.or_high)+' / 確定1分足だけで判定</small></article>'
+        }) -join "`n"}
+        $holdCards=if($holdTop5.Count -eq 0){'<div class="empty">'+$(if($holdFinalized){'15:25確定候補なし・持ち越し禁止'}else{'15:25確定待ち、または条件未達'})+'</div>'}else{($holdTop5|ForEach-Object{
+            $holdCls=if([string]$_.hold_signal -match "ロング"){"buy"}else{"sell"}
+            '<article class="pick '+$holdCls+'"><div class="head"><span>'+ (Escape-Html $_.hold_signal) +'</span><b>'+ (Escape-Html $_.name) +' ('+ (Escape-Html $_.ticker) +')</b><strong>'+([string]$_.hold_score)+'</strong></div><div class="price">'+([string]$(if($null -ne $_.reference_price_1525){$_.reference_price_1525}else{$_.price}))+'円</div><div class="metrics"><span>現在値/VWAP<br><b>'+([string]$_.price)+' / '+([string]$_.vwap)+'</b></span><span>後場OR上維持<br><b>'+([string]$_.pm_above_minutes)+'分</b></span><span>後場OR下維持<br><b>'+([string]$_.pm_below_minutes)+'分</b></span><span>日中位置<br><b>'+([string]$_.close_location_pct)+'%</b></span><span>地合い<br><b>'+ (Escape-Html $_.market_state) +'</b></span></div><small>'+$(if($holdFinalized){'15:25候補固定。15:30終値取得後、翌取引日引けで採点します。'}else{'暫定候補。15:25までは注文しません。'})+'</small></article>'
+        }) -join "`n"}
+        $statPct={param($v) if($null -eq $v){'—'}else{([string]$v)+'%'}}
+        $holdStatsCard='<article class="pick watch"><div class="head"><span>翌日終値基準</span><b>持ち越し成績</b><strong>'+([string]$holdStats.samples)+'件</strong></div><div class="metrics"><span>累積勝率<br><b>'+(& $statPct $holdStats.win_rate)+'</b></span><span>平均損益<br><b>'+(& $statPct $holdStats.avg_return_pct)+'</b></span><span>LONG勝率<br><b>'+(& $statPct $holdStats.long_win_rate)+' ('+([string]$holdStats.long_samples)+'件)</b></span><span>SHORT勝率<br><b>'+(& $statPct $holdStats.short_win_rate)+' ('+([string]$holdStats.short_samples)+'件)</b></span></div><small>当日15:30終値から翌取引日15:30終値まで。MFE・MAEもCSVへ保存。</small></article>'
+        $holdRecentCards=@($holdStats.recent|Select-Object -First 5|ForEach-Object{
+            $resultCls=if($_.result -eq '勝ち'){'buy'}elseif($_.result -eq '負け'){'sell'}else{'watch'}
+            '<article class="pick '+$resultCls+'"><div class="head"><span>'+ (Escape-Html $_.result) +'</span><b>'+ (Escape-Html $_.name) +' ('+ (Escape-Html $_.ticker) +')</b><strong>'+([string]$_.return_close_pct)+'%</strong></div><small>'+ (Escape-Html $_.decision_date) +' '+ (Escape-Html $_.side) +' → '+ (Escape-Html $_.evaluation_date) +' / MFE '+([string]$_.mfe_pct)+'%・MAE '+([string]$_.mae_pct)+'%</small></article>'
+        }) -join "`n"
+        $holdStatusText=if($holdFinalized){'確定済み '+[string]$holdFinalizedAt+'。この候補と方向は翌日検証まで固定。'}else{'15:00から暫定採点、15:25に銘柄と方向を固定。'}
+        $holdSection='<h2>15:25確定・翌日持ち越しTOP5</h2><p class="sub">'+(Escape-Html $holdStatusText)+' 後場OR15、VWAP、EMA、引け位置、歩み値、板、地合いを採点。</p><section class="grid">'+$holdCards+'</section><section class="grid">'+$holdStatsCard+'</section><section class="grid">'+$holdRecentCards+'</section>'
+        $ptsCards=if($ptsTop5.Count -eq 0){'<div class="empty">売買代金・スプレッド条件を満たすPTS候補なし</div>'}else{($ptsTop5|ForEach-Object{
+            $ptsCls=if($_.bias_score -gt 0){"buy"}elseif($_.bias_score -lt 0){"sell"}else{"watch"}
+            '<article class="pick '+$ptsCls+'"><div class="head"><span>'+ (Escape-Html $_.stance) +'</span><b>'+ (Escape-Html $_.name) +'</b><strong>'+([string]$_.expectation_score)+'</strong></div><div class="price">'+("{0:N1}" -f $_.price)+'円</div><div class="metrics"><span>東証終値比<br><b>'+(("{0:+0.00;-0.00;0.00}%" -f $_.gap_pct))+'</b></span><span>PTS売買代金<br><b>'+([Math]::Round($_.turnover/1000000,1))+'百万円</b></span><span>東証出来高比<br><b>'+([string]$_.pts_volume_ratio)+'%</b></span><span>スプレッド<br><b>'+([string]$_.spread_pct)+'%</b></span><span>UNDER<br><b>'+([string]$_.under_ratio)+'%</b></span><span>状態<br><b>'+ (Escape-Html $_.state) +'</b></span></div><small>値上がり率だけで選ばず、流動性と板・VWAPの一致を採点</small></article>'
+        }) -join "`n"}
+        $ptsSection='<h2>夜間PTS期待TOP5</h2><p class="sub">翌日上方向注目と下方向警戒を同じ基準で表示。PTSは翌朝8:55気配で再判定します。</p><section class="grid">'+$ptsCards+'</section>'
+        $irPtsCards=if($irPtsTop5.Count -eq 0){'<div class="empty">公式IR＋PTS急騰＋流動性の三条件を満たす候補なし<br><small>'+ (Escape-Html $tdnetStatus) +' / 推定銘柄は表示しません</small></div>'}else{($irPtsTop5|ForEach-Object{
+            '<article class="pick buy"><div class="head"><span>'+ (Escape-Html $_.material_label) +'</span><b>'+ (Escape-Html $_.name) +' ('+ (Escape-Html $_.code) +')</b><strong>'+([string]$_.total_score)+'</strong></div><div class="price">'+("{0:N1}" -f $_.pts_price)+'円</div><div class="metrics"><span>開示時刻<br><b>'+ (Escape-Html $_.disclosure_time) +'</b></span><span>東証終値比<br><b>'+("{0:+0.00;-0.00;0.00}%" -f $_.gap_pct)+'</b></span><span>PTS売買代金<br><b>'+([Math]::Round($_.turnover/1000000,1))+'百万円</b></span><span>スプレッド<br><b>'+([string]$_.spread_pct)+'%</b></span><span>UNDER<br><b>'+([string]$_.under_ratio)+'%</b></span><span>判定<br><b>'+ (Escape-Html $_.judgement) +'</b></span></div><small>'+ (Escape-Html $_.title) +' <a href="'+ (Escape-Html $_.official_url) +'" target="_blank" rel="noopener">TDnet原文</a></small></article>'
+        }) -join "`n"}
+        $irPtsSection='<h2>IR急騰PTS TOP5</h2><p class="sub">15:30以降のTDnet公式開示と、JNXの上昇・売買代金・スプレッドを照合。IRタイトルだけでは採用しません。</p><section class="grid">'+$irPtsCards+'</section>'
+        if ($null -eq $kioxia) {
+            $kioxiaCard='<section class="focus missing"><b>キオクシア（285A）常時監視</b><strong>データ確認待ち</strong></section>'
+        } else {
+            $kioxiaClass=if($kioxia.signal -in @("買いサイン","初動買い候補")){"buy"}elseif($kioxia.signal -in @("空売りサイン","初動ショート候補")){"sell"}elseif($kioxia.signal -eq "往復ピンタ回避"){"block"}else{"watch"}
+            $orText=if($kioxia.or_high -gt 0){'OR5 '+([string]$kioxia.or5_low)+'–'+([string]$kioxia.or5_high)+' / OR15 '+([string]$kioxia.or_low)+'–'+([string]$kioxia.or_high)}else{'OR15未取得・正式サイン待機'}
+            $historyText='蓄積中 '+([string]$kioxia.completed_stat_days)+'/10日'
+            if ($null -ne $kioxia.historical_prediction) {$historyText=([string]$kioxia.historical_prediction.prediction)+' 上'+([string]$kioxia.historical_prediction.up_rate_5m)+'%／下'+([string]$kioxia.historical_prediction.down_rate_5m)+'%'}
+            $ptsPriceText=if($null -eq $ptsPrice){"取得待ち"}else{("{0:N1}円" -f $ptsPrice)}
+            $ptsGapText=if($null -eq $ptsGap){"算出待ち"}else{("{0:+0.00;-0.00;0.00}%" -f $ptsGap)}
+            $ptsUnderText=if($null -eq $ptsUnderRatio){"取得待ち"}else{("{0:0.0}%" -f $ptsUnderRatio)}
+            $entryText=if($null -eq $kioxia.entry_price){"条件未完成"}else{("発動 {0} / 損切 {1} / 1R {2} / 2R {3}" -f $kioxia.entry_price,$kioxia.stop_price,$kioxia.target1,$kioxia.target2)}
+            $kioxiaCard='<section class="focus '+$kioxiaClass+'"><div class="focus-title"><span>キオクシア専用・常時監視</span><b>'+ (Escape-Html $kioxia.signal) +' / '+ (Escape-Html $kioxia.strategy) +'</b><strong>'+([string]$kioxia.score)+'</strong></div><div class="focus-body"><div class="price">'+("{0:N1}" -f $kioxia.price)+'円</div><div class="metrics"><span>注文目安<br><b>'+ (Escape-Html $entryText) +'</b></span><span>地合い<br><b>'+ (Escape-Html $kioxia.market_state) +' '+([string]$kioxia.breadth_pct)+'%</b></span><span>持ち越し<br><b>'+ (Escape-Html $kioxia.hold_signal) +' '+([string]$kioxia.hold_score)+'</b></span><span>8:55作戦<br><b>'+ (Escape-Html $kioxia.preopen_plan) +'</b></span><span>寄り前気配<br><b>'+([string]$kioxia.preopen_quote)+'円</b></span><span>GU/GD<br><b>'+([string]$kioxia.preopen_gap_pct)+'%</b></span><span>特別気配<br><b>'+ (Escape-Html $kioxia.special_quote) +'</b></span><span>VWAP<br><b>'+([string]$kioxia.vwap)+'</b></span><span>EMA9/20<br><b>'+([string]$kioxia.ema9)+' / '+([string]$kioxia.ema20)+'</b></span><span>UNDER<br><b>'+([string]$kioxia.under_ratio)+'%</b></span><span>歩み値偏り<br><b>'+([string]$kioxia.flow_bias)+'%</b></span><span>時間帯統計<br><b>'+ (Escape-Html $historyText) +'</b></span><span>JNX夜間PTS<br><b>'+ (Escape-Html $ptsPriceText) +'</b></span><span>東証終値比<br><b>'+ (Escape-Html $ptsGapText) +'</b></span><span>PTS判定<br><b>'+ (Escape-Html $ptsState) +'</b></span></div></div><small>'+ (Escape-Html $orText) +' / 確定1分足で判定 / PTSは参考 / 注文は武蔵で手動 / 成行禁止</small></section>'
+        }
+        $html='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta http-equiv="refresh" content="3"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MS2 LIVE TOP5 Ver.1</title><style>body{margin:0;background:#05090d;color:#edf5fa;font-family:Segoe UI,Yu Gothic,sans-serif}main{max-width:1300px;margin:auto;padding:22px}header{display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid #253541;padding-bottom:16px}h1{margin:0;font-size:29px}h2{margin:28px 0 2px;font-size:22px}.sub{margin:0;color:#8296a5;font-size:12px}header span,.note{color:#8296a5}.status{color:#4be0b6}.focus{margin-top:16px;padding:18px;background:linear-gradient(135deg,#102433,#0b151d);border:1px solid #39708e;border-left:6px solid #42b8f5;border-radius:14px}.focus.buy{border-left-color:#36dfa9}.focus.sell{border-left-color:#ff6370}.focus.block{border-left-color:#f5c451}.focus-title{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center}.focus-title span{font-size:20px;font-weight:800}.focus-title b{padding:7px 12px;border-radius:99px;background:#172630}.focus-title strong{font-size:26px}.focus-body{display:grid;grid-template-columns:210px 1fr;gap:14px;align-items:center}.focus small{display:block;color:#8eb3c8;margin-top:10px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:16px}.pick{background:#0d161e;border:1px solid #253744;border-left:4px solid #789;border-radius:12px;padding:15px}.pick.buy{border-left-color:#36dfa9}.pick.sell{border-left-color:#ff6370}.pick.block{border-left-color:#f5c451}.head{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}.head span{font-size:11px;border-radius:99px;background:#172630;padding:5px 8px}.head b{font-size:16px}.head strong{font-size:22px}.price{font-size:29px;font-weight:800;margin:12px 0}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:5px}.metrics span{background:#111f29;border-radius:7px;padding:8px;color:#8296a5;font-size:10px}.metrics b{color:#e9f3f8;font-size:14px}.pick small{display:block;color:#758895;margin-top:12px}.pick a{color:#55c8ff}.note{margin-top:18px;padding:12px;background:#10171d;border-radius:8px}.empty{padding:50px;text-align:center;color:#8ca0ae}@media(max-width:650px){header{align-items:start;flex-direction:column}.focus-body{grid-template-columns:1fr}.focus-title{grid-template-columns:1fr auto}.metrics{grid-template-columns:1fr 1fr}}</style></head><body><main><header><div><span>MARKETSPEED II RSS・試運転 Ver.1</span><h1>デイトレ100銘柄 LIVE TOP5</h1></div><div><b class="status">'+ (Escape-Html $marketState) +' / VWAP上 '+([string]$breadthPct)+'%</b><br>有効 '+$validCount+'/100<br>'+ (Escape-Html $now.ToString("yyyy-MM-dd HH:mm:ss")) +'</div></header>'+$kioxiaCard+'<section class="grid">'+$cards+'</section>'+$holdSection+$ptsSection+$irPtsSection+'<p class="note">確定1分足だけを使用。OR5は初動、OR15は地合いが弱ければ利確警戒、押し戻りは反転足を確認します。UNDER/OVER単独では売買しません。注文は武蔵で手動、特別気配・往復ピンタ・データ不足時は売買禁止です。</p></main></body></html>'
+        Write-AtomicUtf8 $htmlPath $html
+        # Browser launch intentionally disabled here; one-click launcher opens localhost:28581 only.
+
+        if($inPts){
+            foreach($ir in @($irPtsTop5|Select-Object -First 3)){
+                $irVoiceKey=[string]$ir.code+'|'+[string]$ir.disclosure_time+'|'+[string]$ir.title
+                if(-not $lastIrVoiceCodes.ContainsKey($irVoiceKey)){
+                    Invoke-SerializedSpeak $speaker ("IR急騰PTS候補。"+$ir.name+"、"+$ir.material_label+"。PTSは東証終値比プラス"+[Math]::Round([double]$ir.gap_pct,2)+"パーセント。"+$ir.judgement+"。TDnet原文と翌朝の気配を確認してください。")
+                    $lastIrVoiceCodes[$irVoiceKey]=$now
+                }
+            }
+        }
+
+        $voiceCandidates=@()
+        if ($null -ne $kioxia) {$voiceCandidates += $kioxia}
+        $voiceCandidates += @($qualified|Where-Object{$_.ticker -ne "285A.T"}|Select-Object -First 3)
+        foreach ($x in $voiceCandidates) {
+            $key=$x.ticker; $old=$lastSignal[$key]
+            $isKioxia=($key -eq "285A.T")
+            $speakable=($x.signal -in @("買いサイン","空売りサイン") -or ($isKioxia -and $x.signal -eq "往復ピンタ回避"))
+            $voiceEventId=[string]$x.ticker+"|"+[string]$x.signal+"|"+[string]$x.signal_bar_time+"|"+[string]$x.strategy+"|"+[string]$x.news_title
+            $previousVoiceEvent=if($lastSpoken.ContainsKey($key)){[string]$lastSpoken[$key]}else{""}
+            $previousVoiceState=if($voiceState.ContainsKey($key)){[string]$voiceState[$key]}else{"OFF"}
+            $nextVoiceState=if(-not $x.live_quote_valid){"STALE"}elseif($x.news_pending -eq $true -or $x.signal -in @("NEWS CHECK","NEWS PENDING","NEWS CONFLICT")){"HOLD"}elseif($speakable){"HOT"}else{"OFF"}
+            if($nextVoiceState -ne "HOT" -and $previousVoiceState -eq "HOT"){$lastSpoken.Remove($key)}
+            if ($nextVoiceState -eq "HOT" -and ($previousVoiceState -ne "HOT" -or $voiceEventId -ne $previousVoiceEvent)) {
+                $side=if($x.signal -eq "買いサイン"){"買いサイン点灯"}elseif($x.signal -eq "空売りサイン"){"空売りサイン点灯"}else{"往復ピンタ警戒"}
+                $orderVoice=if($null -eq $x.entry_price){"注文条件は未完成です"}else{"発動価格"+$x.entry_price+"円。損切り"+$x.stop_price+"円。第一目標"+$x.target1+"円"}
+                Invoke-SerializedSpeak $speaker ($x.name+"、"+$x.strategy+"、"+$side+"。"+$orderVoice+"。"+$x.market_state+"。確定ローソク足を確認し、注文は武蔵で手動です。")
+                $lastSpoken[$key]=$voiceEventId
+            }
+            $voiceState[$key]=$nextVoiceState
+            $lastSignal[$key]=$x.signal
+        }
+        if($now.TimeOfDay -ge [TimeSpan]::Parse("15:00:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("15:25:00")){
+            foreach($x in @($holdTop5|Select-Object -First 3)){
+                $holdKey=[string]$x.ticker+'|'+[string]$x.hold_signal
+                $holdAt=$lastHoldSpoken[$holdKey]
+                if($null -eq $holdAt -or ($now-$holdAt).TotalMinutes -ge 20){
+                    Invoke-SerializedSpeak $speaker ($x.name+"、"+$x.hold_signal+"、評価"+$x.hold_score+"点。後場のOR15維持と引け位置を確認しました。決算、IR、PTS、米国市場が未確認なら持ち越し禁止です。")
+                    $lastHoldSpoken[$holdKey]=$now
+                }
+            }
+        }
+        if ($null -ne $kioxia) {
+            if($inPts -and $null -ne $ptsGap -and $null -ne $ptsUnderRatio -and $ptsVolume -ge 1000){
+                $ptsBand=if($ptsGap -ge 2){2}elseif($ptsGap -ge 1){1}elseif($ptsGap -le -2){-2}elseif($ptsGap -le -1){-1}else{0}
+                if($ptsBand -ne 0 -and ($ptsBand -ne $lastPtsBand -or ($now-$lastPtsVoiceAt).TotalMinutes -ge 30)){
+                    $ptsDirection=if($ptsBand -gt 0){"上昇"}else{"下落"}
+                    Invoke-SerializedSpeak $speaker ("キオクシア夜間PTS。東証終値から"+$ptsDirection+"、"+[Math]::Abs([Math]::Round($ptsGap,2))+"パーセント。現在値"+$ptsPrice+"円。出来高"+$ptsVolume+"株。アンダー比率"+[Math]::Round($ptsUnderRatio,1)+"パーセント。PTSは参考値です。翌朝の気配で再確認してください。")
+                    $lastPtsBand=$ptsBand
+                    $lastPtsVoiceAt=$now
+                }
+            }
+            if($now.TimeOfDay -ge [TimeSpan]::Parse("08:55:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:00:00") -and $lastPreopenVoice -ne [string]$kioxia.preopen_plan){
+                $gapVoice=if($null -eq $kioxia.preopen_gap_pct){"GU、GDは算出不能"}else{"GU、GD、"+$kioxia.preopen_gap_pct+"パーセント"}
+                Invoke-SerializedSpeak $speaker ("キオクシア、8時55分判定。"+$kioxia.preopen_plan+"。"+$gapVoice+"。成行偏り"+$kioxia.preopen_market_imbalance+"パーセント。これは準備判定です。寄った直後は注文せず、実価格と歩み値を確認してください。")
+                $lastPreopenVoice=[string]$kioxia.preopen_plan
+            }
+            if($now.TimeOfDay -ge [TimeSpan]::Parse("09:01:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:15:00") -and $kioxia.open_decision -in @("初動買い候補","初動ショート候補") -and $lastOpenDecisionVoice -ne [string]$kioxia.open_decision){
+                Invoke-SerializedSpeak $speaker ("キオクシア、"+$kioxia.open_decision+"。現在値"+$kioxia.price+"円。始値"+$kioxia.open_price+"円。歩み値とローソク足を確認し、逆指値で発動してください。")
+                $lastOpenDecisionVoice=[string]$kioxia.open_decision
+            }
+            $flowState=[string]$kioxia.orderflow_state
+            if ($flowState -in @("買い優勢","売り優勢")) {
+                if ($kioFlowCandidate -ne $flowState) {
+                    $kioFlowCandidate=$flowState
+                    $kioFlowCandidateSince=$now
+                } elseif (($now-$kioFlowCandidateSince).TotalSeconds -ge 30 -and ($lastKioFlowSpoken -ne $flowState -or ($now-$lastKioFlowSpokenAt).TotalMinutes -ge 5)) {
+                    $directionText=if($flowState -eq "買い優勢"){"買い優勢です"}else{"売り優勢です"}
+                    $oneMinuteText=if($null -eq $kioxia.under_change_1m){"変化未算出"}else{"1分変化"+$kioxia.under_change_1m+"ポイント"}
+                    $statText="過去統計は蓄積中です"
+                    if ($null -ne $kioxia.historical_prediction -and $kioxia.historical_prediction.ready) {
+                        $statText="同時間帯の過去統計は"+$kioxia.historical_prediction.prediction+"。5分後の上昇率"+$kioxia.historical_prediction.up_rate_5m+"パーセント、下落率"+$kioxia.historical_prediction.down_rate_5m+"パーセントです"
+                    }
+                    Invoke-SerializedSpeak $speaker ("キオクシア。"+$kioxia.time_band+"。"+$directionText+"。アンダー比率"+$kioxia.under_ratio+"パーセント。"+$oneMinuteText+"。歩み値偏り"+$kioxia.flow_bias+"パーセント。"+$statText+"。")
+                    $lastKioFlowSpoken=$flowState
+                    $lastKioFlowSpokenAt=$now
+                }
+            } else {
+                $kioFlowCandidate=""
+            }
+        }
+        Start-Sleep -Seconds $IntervalSeconds
+    }
+} finally {
+    if ($null -ne $bridgeJob) { Stop-Job $bridgeJob -ErrorAction SilentlyContinue; Remove-Job $bridgeJob -Force -ErrorAction SilentlyContinue }
+    Write-Host "監視を停止しました。日別CSVは records フォルダーに残っています。" -ForegroundColor Yellow
+}
+,'')
+            $freshDisclosure=$null
+            if($null -ne $lastTdnetSuccessAt -and ($now-$lastTdnetSuccessAt).TotalSeconds -le 45){
+                $freshDisclosure=$tdnetDisclosures | Where-Object {[string]$_.code -eq $tickerCode} | Select-Object -First 1
+            }
+            $newsPending=$false; $newsTitle=""; $newsPublishedAt=$null
+            $tdnetVerifiedLive=($tdnetPagesSucceeded -gt 0 -and $null -ne $lastTdnetSuccessAt -and ($now-$lastTdnetSuccessAt).TotalSeconds -le 45)
+            if($inSession -and -not $tdnetVerifiedLive -and $rawDirection -in @("BUY","SELL")){
+                $newsPending=$true
+                $signal="NEWS CHECK"
+                $strategy="TDnet未確認・新規シグナル保留"
+                $rawDirection=""
+                $entryPrice=$null; $stopPrice=$null; $target1=$null; $target2=$null
+            }
+            if($null -ne $freshDisclosure){
+                $newsTitle=[string]$freshDisclosure.title
+                try {$newsPublishedAt=[DateTime]::ParseExact(($activeDay+" "+[string]$freshDisclosure.time),"yyyy-MM-dd HH:mm",$null)} catch {$newsPublishedAt=$null}
+                $isEarnings=($newsTitle -match '決算短信|決算補足|業績予想.*修正|業績.*修正')
+                $postDisclosureSeconds=if($null -ne $newsPublishedAt){($now-$newsPublishedAt).TotalSeconds}else{999999}
+                if($isEarnings -and $postDisclosureSeconds -ge 0){
+                    # Do not release merely because a timer elapsed. Require a completed
+                    # post-disclosure bar plus volume/flow/VWAP agreement.
+                    $barAfterDisclosure=($null -ne $lastBar -and $null -ne $newsPublishedAt -and [DateTime]::Parse([string]$lastBar.Key) -ge $newsPublishedAt)
+                    $reactionLong=($barAfterDisclosure -and $barBurst -ge 1.5 -and $flowBias -ge 0.08 -and $vwap -gt 0 -and $price -gt $vwap)
+                    $reactionShort=($barAfterDisclosure -and $barBurst -ge 1.5 -and $flowBias -le -0.08 -and $vwap -gt 0 -and $price -lt $vwap)
+                    $reactionConfirmed=($reactionLong -or $reactionShort)
+                    if(-not $reactionConfirmed){
+                        $newsPending=$true
+                        $signal="NEWS PENDING"
+                        $strategy="場中決算・価格/出来高反応待ち"
+                        $rawDirection=""
+                        $entryPrice=$null; $stopPrice=$null; $target1=$null; $target2=$null
+                    } elseif(($reactionLong -and $rawDirection -eq "SELL") -or ($reactionShort -and $rawDirection -eq "BUY")){
+                        $newsPending=$true
+                        $signal="NEWS CONFLICT"
+                        $strategy="場中決算・既存テクニカルと反応不一致"
+                        $rawDirection=""
+                        $entryPrice=$null; $stopPrice=$null; $target1=$null; $target2=$null
+                    }
+                }
+            }
+
             if($clock -ge [TimeSpan]::Parse("12:30:00") -and $orHigh.ContainsKey($ticker) -and $price -gt $orHigh[$ticker]){
                 if(-not $pmAboveSince.ContainsKey($ticker)){$pmAboveSince[$ticker]=$now}
             }else{$pmAboveSince.Remove($ticker)}
@@ -1223,7 +1914,7 @@ try {
             $orHighValue=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
             $orLowValue=if($orLow.ContainsKey($ticker)){$orLow[$ticker]}else{0}
             $results += [pscustomobject]@{
-                ticker=$ticker;name=$s.Name;sector=$s.Sector;price=$price;volume=$volume;vwap=$vwap
+                ticker=$ticker;name=$s.Name;sector=$s.Sector;price=$price;live_price=$price;live_observed_at=$now.ToString("o");live_source="MarketSpeed II RSS";live_quote_valid=($price -gt 0);volume=$volume;vwap=$vwap
                 change_pct=Get-SafeNumber (Get-TableValue $values $r 4 32) -1000 1000
                 bid=$bid;ask=$ask;bid_qty=$bidQty;ask_qty=$askQty;market_sell=$marketSell;market_buy=$marketBuy;over=$over;under=$under
                 under_ratio=[Math]::Round($underRatio*100,1);under_change=[Math]::Round($uoChange*100,1)
@@ -1641,7 +2332,7 @@ try {
         } else {
             [ordered]@{status=$statsStatus;scanned_days=0;completed_days=0;incomplete_day_count=0;last_completed_day=$null;minimum_days=10}
         }
-        $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;stale=($validCount -lt 90);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
+        $payload=[ordered]@{schema_version='ms2-common-1.1';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;stale=($validCount -lt 90);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;tdnet_observed_at=$(if($null -ne $lastTdnetSuccessAt){$lastTdnetSuccessAt.ToString("o")}else{$null});tdnet_live=($null -ne $lastTdnetSuccessAt -and ($now-$lastTdnetSuccessAt).TotalSeconds -le 45);tdnet_disclosures=@($tdnetDisclosures | Select-Object -First 50);jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
         $jsonText=$payload|ConvertTo-Json -Depth 6
         Write-AtomicUtf8 $jsonPath $jsonText
         if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $jsonText }
@@ -1704,15 +2395,21 @@ try {
         if ($null -ne $kioxia) {$voiceCandidates += $kioxia}
         $voiceCandidates += @($qualified|Where-Object{$_.ticker -ne "285A.T"}|Select-Object -First 3)
         foreach ($x in $voiceCandidates) {
-            $key=$x.ticker; $old=$lastSignal[$key]; $spokenAt=$lastSpoken[$key]
+            $key=$x.ticker; $old=$lastSignal[$key]
             $isKioxia=($key -eq "285A.T")
             $speakable=($x.signal -in @("買いサイン","空売りサイン") -or ($isKioxia -and $x.signal -eq "往復ピンタ回避"))
-            if ($speakable -and $old -ne $x.signal -and ($null -eq $spokenAt -or ($now-$spokenAt).TotalMinutes -ge 10)) {
+            $voiceEventId=[string]$x.ticker+"|"+[string]$x.signal+"|"+[string]$x.signal_bar_time+"|"+[string]$x.strategy+"|"+[string]$x.news_title
+            $previousVoiceEvent=if($lastSpoken.ContainsKey($key)){[string]$lastSpoken[$key]}else{""}
+            $previousVoiceState=if($voiceState.ContainsKey($key)){[string]$voiceState[$key]}else{"OFF"}
+            $nextVoiceState=if(-not $x.live_quote_valid){"STALE"}elseif($x.news_pending -eq $true -or $x.signal -in @("NEWS CHECK","NEWS PENDING","NEWS CONFLICT")){"HOLD"}elseif($speakable){"HOT"}else{"OFF"}
+            if($nextVoiceState -ne "HOT" -and $previousVoiceState -eq "HOT"){$lastSpoken.Remove($key)}
+            if ($nextVoiceState -eq "HOT" -and ($previousVoiceState -ne "HOT" -or $voiceEventId -ne $previousVoiceEvent)) {
                 $side=if($x.signal -eq "買いサイン"){"買いサイン点灯"}elseif($x.signal -eq "空売りサイン"){"空売りサイン点灯"}else{"往復ピンタ警戒"}
                 $orderVoice=if($null -eq $x.entry_price){"注文条件は未完成です"}else{"発動価格"+$x.entry_price+"円。損切り"+$x.stop_price+"円。第一目標"+$x.target1+"円"}
                 Invoke-SerializedSpeak $speaker ($x.name+"、"+$x.strategy+"、"+$side+"。"+$orderVoice+"。"+$x.market_state+"。確定ローソク足を確認し、注文は武蔵で手動です。")
-                $lastSpoken[$key]=$now
+                $lastSpoken[$key]=$voiceEventId
             }
+            $voiceState[$key]=$nextVoiceState
             $lastSignal[$key]=$x.signal
         }
         if($now.TimeOfDay -ge [TimeSpan]::Parse("15:00:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("15:25:00")){
