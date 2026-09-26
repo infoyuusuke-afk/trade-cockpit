@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-26 08:57:38 JST",
+  "updated_at": "2026-09-26 08:59:51 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -44355,8 +44355,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-09-26T08:56:52+09:00",
-    "decision_at": "2026-09-26T08:56:52+09:00",
+    "generated_at": "2026-09-26T08:59:04+09:00",
+    "decision_at": "2026-09-26T08:59:04+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -51707,7 +51707,7 @@
     "fx_source": "Yahoo Finance",
     "fx_observed_at": "2026-09-25",
     "statement_study": {
-      "updated_at": "2026-09-26 08:57:31 JST",
+      "updated_at": "2026-09-26 08:59:43 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -55757,7 +55757,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-09-26 08:57:20 JST",
+    "credit_supply_updated_at": "2026-09-26 08:59:35 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -62054,128 +62054,128 @@
     "regime_action": "AI・情報技術の押し目を優先。ただし過熱判定なら追わない",
     "rate_view": "金利上昇：高PERグロースに逆風",
     "rate5": 3.72,
-    "breadth": "3/11",
-    "spread": -22.0,
+    "breadth": "2/11",
+    "spread": -23.0,
     "us_sectors": [
       {
         "sector": "情報技術・AI",
         "ticker": "XLK",
         "phase": "拡大",
-        "score": 70.6,
-        "rel5": 2.31,
-        "rel20": 3.9,
-        "acceleration": 1.2,
-        "from_ma20": 4.17,
+        "score": 71.8,
+        "rel5": 2.33,
+        "rel20": 6.33,
+        "acceleration": 0.72,
+        "from_ma20": 3.55,
         "action": "順張り・押し目"
       },
       {
         "sector": "コミュニケーション",
         "ticker": "XLC",
-        "phase": "流入初期",
-        "score": 63.6,
-        "rel5": 0.73,
-        "rel20": 1.23,
-        "acceleration": 2.24,
-        "from_ma20": 0.29,
-        "action": "最優先監視・初押し"
+        "phase": "拡大",
+        "score": 57.6,
+        "rel5": 0.25,
+        "rel20": 1.07,
+        "acceleration": -0.59,
+        "from_ma20": 1.27,
+        "action": "順張り・押し目"
       },
       {
         "sector": "ヘルスケア",
         "ticker": "XLV",
-        "phase": "中立",
-        "score": 52.5,
-        "rel5": 0.16,
-        "rel20": -0.67,
-        "acceleration": -1.75,
-        "from_ma20": 0.87,
-        "action": "方向確認待ち"
+        "phase": "流出",
+        "score": 48.1,
+        "rel5": -0.58,
+        "rel20": -2.27,
+        "acceleration": -2.56,
+        "from_ma20": 0.36,
+        "action": "新規ロング停止"
       },
       {
         "sector": "資本財・工業",
         "ticker": "XLI",
-        "phase": "低迷",
-        "score": 37.7,
-        "rel5": -0.81,
-        "rel20": -4.84,
-        "acceleration": 0.63,
-        "from_ma20": -0.7,
-        "action": "見送り"
+        "phase": "流出",
+        "score": 32.5,
+        "rel5": -1.32,
+        "rel20": -6.54,
+        "acceleration": -0.5,
+        "from_ma20": -1.87,
+        "action": "新規ロング停止"
       },
       {
         "sector": "一般消費財",
         "ticker": "XLY",
-        "phase": "低迷",
-        "score": 33.5,
-        "rel5": -1.63,
-        "rel20": -4.75,
-        "acceleration": 0.0,
-        "from_ma20": -2.09,
-        "action": "見送り"
-      },
-      {
-        "sector": "素材",
-        "ticker": "XLB",
-        "phase": "低迷",
-        "score": 31.8,
-        "rel5": -1.59,
-        "rel20": -6.6,
-        "acceleration": 0.21,
-        "from_ma20": -2.66,
-        "action": "見送り"
-      },
-      {
-        "sector": "生活必需品",
-        "ticker": "XLP",
         "phase": "流出",
-        "score": 30.0,
-        "rel5": -2.1,
-        "rel20": -3.71,
-        "acceleration": -1.48,
-        "from_ma20": -1.91,
-        "action": "新規ロング停止"
-      },
-      {
-        "sector": "金融",
-        "ticker": "XLF",
-        "phase": "流出",
-        "score": 26.3,
-        "rel5": -3.04,
-        "rel20": -5.41,
-        "acceleration": -0.69,
-        "from_ma20": -3.11,
-        "action": "新規ロング停止"
-      },
-      {
-        "sector": "不動産",
-        "ticker": "XLRE",
-        "phase": "流出",
-        "score": 22.2,
-        "rel5": -3.49,
-        "rel20": -7.1,
-        "acceleration": -1.52,
-        "from_ma20": -3.68,
+        "score": 26.8,
+        "rel5": -2.17,
+        "rel20": -6.0,
+        "acceleration": -1.74,
+        "from_ma20": -2.53,
         "action": "新規ロング停止"
       },
       {
         "sector": "エネルギー",
         "ticker": "XLE",
         "phase": "流出",
-        "score": 21.0,
-        "rel5": -4.74,
-        "rel20": -0.56,
-        "acceleration": -3.55,
-        "from_ma20": -3.05,
+        "score": 24.0,
+        "rel5": -4.13,
+        "rel20": 0.11,
+        "acceleration": -3.52,
+        "from_ma20": -2.2,
+        "action": "新規ロング停止"
+      },
+      {
+        "sector": "金融",
+        "ticker": "XLF",
+        "phase": "流出",
+        "score": 20.7,
+        "rel5": -3.63,
+        "rel20": -6.56,
+        "acceleration": -1.97,
+        "from_ma20": -3.91,
+        "action": "新規ロング停止"
+      },
+      {
+        "sector": "生活必需品",
+        "ticker": "XLP",
+        "phase": "流出",
+        "score": 20.4,
+        "rel5": -3.35,
+        "rel20": -5.46,
+        "acceleration": -3.91,
+        "from_ma20": -2.52,
+        "action": "新規ロング停止"
+      },
+      {
+        "sector": "素材",
+        "ticker": "XLB",
+        "phase": "流出",
+        "score": 20.0,
+        "rel5": -3.24,
+        "rel20": -7.59,
+        "acceleration": -3.22,
+        "from_ma20": -3.22,
+        "action": "新規ロング停止"
+      },
+      {
+        "sector": "不動産",
+        "ticker": "XLRE",
+        "phase": "流出",
+        "score": 14.7,
+        "rel5": -4.21,
+        "rel20": -7.79,
+        "acceleration": -4.03,
+        "from_ma20": -3.81,
         "action": "新規ロング停止"
       },
       {
         "sector": "公益",
         "ticker": "XLU",
         "phase": "流出",
-        "score": 14.6,
-        "rel5": -5.08,
-        "rel20": -8.66,
-        "acceleration": -2.12,
-        "from_ma20": -5.33,
+        "score": 2.3,
+        "rel5": -6.8,
+        "rel20": -9.7,
+        "acceleration": -4.93,
+        "from_ma20": -6.1,
         "action": "新規ロング停止"
       }
     ],
@@ -74873,14 +74873,14 @@
   ],
   "morning_snapshot": {
     "date": "2026-09-26",
-    "fixed_at": "2026-09-26 08:57:38 JST",
+    "fixed_at": "2026-09-26 08:59:51 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-09-26",
-    "fixed_at": "2026-09-26 08:58:24 JST",
+    "fixed_at": "2026-09-26 09:00:38 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
@@ -74909,7 +74909,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-26 08:58:24 JST",
+        "signal_time": "2026-09-26 09:00:38 JST",
         "source": "morning_snapshot"
       },
       {
@@ -74938,7 +74938,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-26 08:58:24 JST",
+        "signal_time": "2026-09-26 09:00:38 JST",
         "source": "morning_snapshot"
       },
       {
@@ -74967,7 +74967,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-26 08:58:24 JST",
+        "signal_time": "2026-09-26 09:00:38 JST",
         "source": "morning_snapshot"
       },
       {
@@ -74996,7 +74996,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-26 08:58:24 JST",
+        "signal_time": "2026-09-26 09:00:38 JST",
         "source": "morning_snapshot"
       },
       {
@@ -75025,7 +75025,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-26 08:58:24 JST",
+        "signal_time": "2026-09-26 09:00:38 JST",
         "source": "morning_snapshot"
       }
     ]
