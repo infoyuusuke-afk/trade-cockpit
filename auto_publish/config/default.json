@@ -17,7 +17,27 @@
       "/usr/share/fonts/dejavu/DejaVuSans.ttf",
       "C:/Windows/Fonts/arial.ttf"
     ],
+    "fonts": {
+      "ja-JP": [
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
+        "C:/Windows/Fonts/YuGothM.ttc",
+        "C:/Windows/Fonts/meiryo.ttc"
+      ]
+    },
+    "variants": ["en_primary"],
     "timeout_seconds": 300
+  },
+  "tts": {
+    "voices": {
+      "en-US": {"provider": "silent", "voice": null},
+      "ja-JP": {"provider": "silent", "voice": null}
+    },
+    "sample_rate": 24000,
+    "min_segment_seconds": 4.0,
+    "segment_padding_seconds": 0.4,
+    "min_total_seconds": 20,
+    "max_total_seconds": 45
   },
   "schedule": {
     "slot_interval_minutes": 30,

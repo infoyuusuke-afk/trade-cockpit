@@ -100,14 +100,14 @@ def check_post(post: dict, session_date: str) -> list[dict]:
     return v
 
 
-def check_captions_srt(srt_text: str) -> list[dict]:
+def check_captions_srt(srt_text: str, lang: str = "en-US") -> list[dict]:
     cues = [b for b in srt_text.strip().split("\n\n") if b.strip()]
     bad = [c for c in cues if len(c.strip().splitlines()) < 3]
     out = []
     if not cues:
-        out.append({"rule": "EMPTY_TEXT", "segment": "captions", "lang": "en-US", "message": "captions are empty"})
+        out.append({"rule": "EMPTY_TEXT", "segment": "captions", "lang": lang, "message": "captions are empty"})
     if bad:
-        out.append({"rule": "EMPTY_TEXT", "segment": "captions", "lang": "en-US", "message": f"{len(bad)} empty cues"})
+        out.append({"rule": "EMPTY_TEXT", "segment": "captions", "lang": lang, "message": f"{len(bad)} empty cues"})
     return out
 
 

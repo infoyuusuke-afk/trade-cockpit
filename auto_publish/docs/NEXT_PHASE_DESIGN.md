@@ -157,8 +157,15 @@ providers:
 ## 実装順（合意済みの優先順位）
 
 1. TSE営業日カレンダー … **完了**
-2. TTS … provider インタフェース、fake_tone / silent、タイムラインの可変化、音声の証跡（Cloudで実施）
-   → Windows SAPI provider（PC確認）
-3. 日本語字幕 … 字幕トラックの多言語化、表示幅での折り返し、禁則処理、フォントの fail-closed（Cloud）→ PCで目視確認
+2. TTS … provider インタフェース、fake_tone / silent、タイムラインの可変化、音声の証跡（Cloud）… **完了**
+   → Windows SAPI provider（PC確認）… 未
+3. 日本語字幕 … 字幕トラックの多言語化、表示幅での折り返し、禁則処理、フォントの fail-closed（Cloud）… **完了**
+   → PCで目視確認（Yu Gothic / Meiryo）… 未
+
+実装メモ（設計からの差分）:
+- ナレーション音声は `narration_{lang}.wav`（mono 16bit 24kHz、Pythonで決定的に生成）。m4a化はせず、動画側でAACに変換
+- loudnorm と読み辞書（lexicon）は実音声エンジン導入時に追加（manifest の `lexicon` は現在 null）
+- silent では従来の固定6秒レイアウトのまま（英語の master / cover / captions は R1 とバイト一致）
+- `ja_primary` は opt-in（`render.variants`）。既定は `en_primary` のみ
 4. 配信時間最適化 … post_metrics 表と CSV 取り込み → optimizer（データが溜まるまでは baseline のまま）
 5. dry-run E2E … payload契約テスト、would_publish シミュレータ、キルスイッチ訓練

@@ -215,10 +215,10 @@ class TestRetryAndErrors(Base):
 
     def test_one_failing_story_does_not_block_the_other(self):
         class FailFirst(FakeRenderer):
-            def render(self, story_dir, post_en):
+            def render(self, story_dir, post_en, plan=None):
                 if "TEST1" in post_en["title"]:
                     raise RenderError("bad", code="FFMPEG_FAILED")
-                return super().render(story_dir, post_en)
+                return super().render(story_dir, post_en, plan)
         results = self.drafts(FailFirst())
         self.assertEqual(sorted(r["state"] for r in results), ["AWAITING_APPROVAL", "FAILED"])
 

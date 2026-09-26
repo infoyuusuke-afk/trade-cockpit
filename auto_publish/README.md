@@ -137,13 +137,38 @@ The calendar SHA256 is recorded in the VALIDATE audit row. Currently covered: 20
 py -3.11 -m auto_publish.cli calendar --date 2026-09-18 --days 7
 ```
 
+## Narration (TTS) and multilingual subtitles
+
+Config `tts.voices.<lang>` selects an **offline** provider per language: `silent` (default, R1 behaviour),
+`fake_tone` (test-only, deterministic tone; refused for non-fixture data). `windows_sapi` / `espeak_ng` are designed
+but not yet implemented (owner-PC phase) and fail closed (`TTS_PROVIDER_UNAVAILABLE`); any other provider (cloud/paid)
+is rejected at config load (`TTS_PROVIDER_NOT_ALLOWED`).
+
+* Narration reads exactly the approved segment text. With a narrating provider each segment lasts
+  max(4.0 s, audio + 0.4 s); the total must be 20–45 s or the story fails closed (`NARRATION_TOO_LONG` /
+  `NARRATION_TOO_SHORT`, non-retryable; text is never shortened automatically). `silent` keeps the fixed 6 s layout,
+  and the English master/cover/captions are byte-identical to R1.
+* `narration_<lang>.wav` (mono 16-bit, 24 kHz) and `tts_manifest.json` (provider, voice, engine, per-segment text/audio
+  SHA256, boundaries) are artifacts inside the approval content hash: changing audio after approval blocks scheduling
+  (`ARTIFACT_TAMPERED`); approve/schedule also re-check that the narration was made for the approved text.
+* Subtitles: `captions_<lang>.srt` for en-US and ja-JP from the same boundaries as that language's narration
+  (`captions.srt` = English, kept for compatibility). Japanese lines are wrapped by display width (full-width = 2,
+  32 cells ≈ 16 characters), with kinsoku and number+unit runs (`2,345円`, `+6.40%`, `09:12`) never split.
+* `render.variants`: `["en_primary"]` (default) or `["en_primary", "ja_primary"]`; `ja_primary` renders
+  `master_ja_1080x1920.mp4` / `cover_ja.jpg` with Japanese text and narration. Fonts per language in `render.fonts`
+  (ja-JP: Noto Sans CJK on Linux, Yu Gothic / Meiryo on Windows); no usable font → `FONT_MISSING` before encoding.
+
 ## Output (per story)
 
 ```
 var/artifacts/2026-09-24/<story_id>/
-  master_1080x1920.mp4   30 s, H.264/AAC, burned-in English captions, end disclaimer
+  master_1080x1920.mp4   20–45 s (30 s when silent), H.264/AAC, burned-in English captions, end disclaimer
   cover.jpg
-  captions.srt           built from the final approved script
+  captions.srt           built from the final approved script (English; same bytes as captions_en-US.srt)
+  captions_en-US.srt / captions_ja-JP.srt
+  tts_manifest.json      narration provider/voice + per-segment text/audio SHA256 and boundaries
+  narration_<lang>.wav   only with a narrating provider
+  master_ja_1080x1920.mp4 / cover_ja.jpg   only with the ja_primary variant
   story.json             canonical language-neutral story (facts + source_refs)
   post_en.json / post_ja.json
   evidence.json          source refs with SHA256, pointer and value
@@ -215,11 +240,11 @@ AUTO_PUBLISH_UPDATE_GOLDEN=1 python3.12 -m unittest auto_publish.tests.test_stor
 ```
 
 FFmpeg-dependent tests **fail** when FFmpeg is missing (set `AUTO_PUBLISH_ALLOW_NO_FFMPEG=1` to mark them skipped
-explicitly). CI: `.github/workflows/auto-publish-r1.yml` installs FFmpeg + DejaVu fonts on Python 3.12.
+explicitly). CI: `.github/workflows/auto-publish-r1.yml` installs FFmpeg + DejaVu + Noto CJK fonts on Python 3.12.
 
 ## Not in R1
 
-Real platform adapters / OAuth, PUBLISH/VERIFY/METRICS/LEARN stages, TimingOptimizer, TTS narration (video carries a silent
-AAC track), Japanese subtitle line in the video, APScheduler daemon, approval UI.
+Real platform adapters / OAuth, PUBLISH/VERIFY/METRICS/LEARN stages, TimingOptimizer, a real speech engine
+(Windows SAPI provider: owner-PC phase), pronunciation lexicon, loudness normalisation, APScheduler daemon, approval UI.
 Design for the next phase (TTS, Japanese subtitles, timing optimisation, dry-run E2E): [`docs/NEXT_PHASE_DESIGN.md`](docs/NEXT_PHASE_DESIGN.md).
 R1 real-data acceptance: PASS on 0597b81 (owner PC, 2026-09-24 session); Windows fixes 07193fc / 379f16c.

@@ -14,6 +14,9 @@ PACKAGE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = PACKAGE_DIR / "config" / "default.json"
 DEFAULT_HOME = PACKAGE_DIR / "var"
 ALLOWED_ADAPTERS_R1 = frozenset({"dry_run"})
+# Offline TTS only. Cloud / paid TTS is not selectable without an owner decision (and a code change).
+ALLOWED_TTS_PROVIDERS = frozenset({"silent", "fake_tone", "windows_sapi", "espeak_ng"})
+ALLOWED_RENDER_VARIANTS = ("en_primary", "ja_primary")
 
 
 @dataclass(frozen=True)
@@ -84,6 +87,25 @@ def validate_config(cfg: dict) -> None:
                 raise ValidationError(f"platform {name}: unknown wave {w}")
     if int(cfg["max_attempts"]) < 1:
         raise ValidationError("max_attempts must be >= 1")
+    variants = cfg["render"].get("variants", ["en_primary"])
+    if not variants or variants[0] != "en_primary" or len(set(variants)) != len(variants) \
+            or any(v not in ALLOWED_RENDER_VARIANTS for v in variants):
+        raise ValidationError(f"render.variants must start with en_primary and use {ALLOWED_RENDER_VARIANTS}",
+                              code="RENDER_VARIANT_INVALID")
+    _validate_tts(cfg["tts"])
+
+
+def _validate_tts(t: dict) -> None:
+    for lang, v in t.get("voices", {}).items():
+        if v.get("provider") not in ALLOWED_TTS_PROVIDERS:
+            raise ValidationError(f"tts.voices.{lang}: provider {v.get('provider')!r} is not allowed"
+                                  f" (offline only: {sorted(ALLOWED_TTS_PROVIDERS)})", code="TTS_PROVIDER_NOT_ALLOWED")
+    rate = int(t["sample_rate"])
+    if rate % 1000 or not 8000 <= rate <= 48000:
+        raise ValidationError("tts.sample_rate must be a multiple of 1000 in 8000..48000", code="TTS_CONFIG_INVALID")
+    lo, hi = float(t["min_total_seconds"]), float(t["max_total_seconds"])
+    if not (0 < float(t["min_segment_seconds"]) and 0 <= float(t["segment_padding_seconds"]) and 0 < lo < hi <= 60):
+        raise ValidationError("tts timing limits are inconsistent", code="TTS_CONFIG_INVALID")
 
 
 def resolve_home(home: str | os.PathLike | None) -> Paths:

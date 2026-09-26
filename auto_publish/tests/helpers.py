@@ -14,7 +14,7 @@ from auto_publish.app.context import Ctx
 from auto_publish.app.db import connect
 from auto_publish.app.hashing import sha256_file, write_atomic
 from auto_publish.app.ingest.ingest import ingest, validate
-from auto_publish.app.render.ffmpeg_render import COVER, MASTER, build_srt, timeline
+from auto_publish.app.render.ffmpeg_render import VARIANTS, legacy_plan
 
 TESTS_DIR = Path(__file__).resolve().parent
 FIXTURE_DROP = TESTS_DIR / "fixtures" / "content_drop"
@@ -46,20 +46,34 @@ class FakeRenderer:
         self.exc = exc
         self.calls: dict[str, int] = {}
 
-    def render(self, story_dir: Path, post_en: dict) -> dict:
+    def render(self, story_dir: Path, post_en: dict, plan: dict | None = None) -> dict:
         n = self.calls[post_en["story_id"]] = self.calls.get(post_en["story_id"], 0) + 1
         if n <= self.fail_times:
             raise self.exc
-        tl = timeline(post_en, 6)
-        write_atomic(story_dir / "captions.srt", build_srt(tl).encode())
-        write_atomic(story_dir / MASTER, b"FAKE-MP4:" + post_en["story_id"].encode())
-        write_atomic(story_dir / COVER, b"FAKE-JPG:" + post_en["story_id"].encode())
+        plan = plan or legacy_plan(post_en, 6)
+        outputs, variants = {}, {}
+        for v in plan["variants"]:
+            spec = VARIANTS[v]
+            tl = plan["timelines"][spec["lang"]]
+            audio = plan["narration"].get(spec["lang"])
+            # the fake "video" embeds what it would contain, so audio/timeline changes change its hash
+            body = f"{post_en['story_id']}|{v}|{tl[-1]['end']}|{audio}".encode()
+            if audio:
+                body += b"|" + sha256_file(story_dir / audio).encode()
+            write_atomic(story_dir / spec["master"], b"FAKE-MP4:" + body)
+            write_atomic(story_dir / spec["cover"], b"FAKE-JPG:" + body)
+            outs = {n: {"sha256": sha256_file(story_dir / n), "bytes": (story_dir / n).stat().st_size}
+                    for n in (spec["master"], spec["cover"])}
+            outputs.update(outs)
+            variants[v] = {"lang": spec["lang"], "timeline": [{k: s[k] for k in ("id", "type", "start", "end")} for s in tl],
+                           "audio": {"source": audio or "anullsrc"}, "outputs": outs}
+        tl = plan["timelines"]["en-US"]
         return {
             "schema": "auto_publish.render_manifest.v1", "story_id": post_en["story_id"], "fake": True,
-            "timeline": [{k: s[k] for k in ("id", "type", "start", "end")} for s in tl],
-            "probe": {"video_codec": "h264", "width": 1080, "height": 1920, "audio_codec": "aac", "duration": 30.0},
-            "outputs": {n: {"sha256": sha256_file(story_dir / n), "bytes": (story_dir / n).stat().st_size}
-                        for n in (MASTER, COVER)},
+            "timeline": variants["en_primary"]["timeline"],
+            "probe": {"video_codec": "h264", "width": 1080, "height": 1920, "audio_codec": "aac",
+                      "duration": float(tl[-1]["end"])},
+            "outputs": outputs, "variants": variants,
         }
 
 

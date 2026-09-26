@@ -144,6 +144,72 @@ class TestRealRender(PipelineCase):
         self.assertEqual(payload["content_sha256"], story[0])
 
 
+NARRATED = {"render": {"x264_preset": "ultrafast", "variants": ["en_primary", "ja_primary"]},
+            "max_stories_per_session": 1,
+            "tts": {"voices": {"en-US": {"provider": "fake_tone"}, "ja-JP": {"provider": "fake_tone"}}}}
+
+
+@require_ffmpeg
+class TestNarratedJapaneseRender(PipelineCase):
+    """fake_tone narration + ja_primary variant through real FFmpeg (CI needs fonts-noto-cjk)."""
+
+    overrides = NARRATED
+
+    def _build(self, ctx):
+        (res,) = build_drafts(ctx, SESSION, FfmpegRenderer(ctx.cfg))
+        self.assertEqual(res["state"], "AWAITING_APPROVAL", res)
+        return res["story_id"], ctx.paths.artifacts / SESSION / res["story_id"]
+
+    def test_narrated_variants_probe_and_bind_to_timeline(self):
+        self.ingest_validate()
+        sid, sdir = self._build(self.ctx)
+        tts_m = json.loads((sdir / "tts_manifest.json").read_text(encoding="utf-8"))
+        rm = json.loads((sdir / "render_manifest.json").read_text(encoding="utf-8"))
+        for variant, master, lang in (("en_primary", "master_1080x1920.mp4", "en-US"),
+                                      ("ja_primary", "master_ja_1080x1920.mp4", "ja-JP")):
+            pr = probe(sdir / master)
+            self.assertEqual((pr["width"], pr["height"], pr["video_codec"], pr["audio_codec"]),
+                             (1080, 1920, "h264", "aac"))
+            self.assertAlmostEqual(pr["duration"], tts_m["langs"][lang]["total_seconds"], delta=0.5)
+            v = rm["variants"][variant]
+            self.assertEqual(v["audio"]["source"], f"narration_{lang}.wav")
+            self.assertEqual(v["audio"]["sha256"], tts_m["langs"][lang]["narration_sha256"])
+            self.assertEqual([(s["start"], s["end"]) for s in v["timeline"]],
+                             [(s["start"], s["end"]) for s in tts_m["langs"][lang]["segments"]])
+            self.assertFalse((sdir / v["cwd"] / "font.ttf").exists())
+        self.assertIn("master_ja_1080x1920.mp4", rm["artifact_set"])
+        self.assertIn("東京市場", (sdir / "render_inputs_ja-JP" / "t_header.txt").read_text(encoding="utf-8"))
+        approve(self.ctx, sid, "yusuke")
+        self.assertEqual(schedule(self.ctx, sid)["state"], "SCHEDULED")
+
+    def test_narrated_render_is_byte_deterministic(self):
+        self.ingest_validate()
+        sid, first = self._build(self.ctx)
+        from auto_publish.tests.helpers import make_ctx
+        from auto_publish.app.ingest.ingest import ingest, validate
+        root = self.root / "second"
+        ctx2 = make_ctx(root, overrides=NARRATED)
+        try:
+            ingest(ctx2, copy_fixture(root))
+            validate(ctx2, SESSION)
+            sid2, second = self._build(ctx2)
+            names = json.loads((first / "render_manifest.json").read_text(encoding="utf-8"))["artifact_set"]
+            for name in (*names, "render_manifest.json"):
+                self.assertEqual(hashlib.sha256((first / name).read_bytes()).hexdigest(),
+                                 hashlib.sha256((second / name).read_bytes()).hexdigest(), name)
+        finally:
+            ctx2.conn.close()
+
+    def test_missing_japanese_font_fails_closed_before_encoding(self):
+        self.ctx.cfg["render"]["fonts"] = {"ja-JP": ["/nonexistent/NoSuchFont.ttc"]}
+        self.ingest_validate()
+        (res,) = build_drafts(self.ctx, SESSION, FfmpegRenderer(self.ctx.cfg))
+        self.assertEqual((res["state"], res["error"]["code"]), ("FAILED", "FONT_MISSING"))
+        sdir = self.ctx.paths.artifacts / SESSION / res["story_id"]
+        self.assertFalse((sdir / "master_1080x1920.mp4").exists())
+        self.assertFalse((sdir / "master_ja_1080x1920.mp4").exists())
+
+
 @require_ffmpeg
 class TestCliEndToEnd(unittest.TestCase):
     """Acceptance: one fixture -> complete artifact directory with drafts + schedule + render manifest."""

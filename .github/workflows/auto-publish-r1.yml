@@ -26,7 +26,7 @@ jobs:
       - name: Install FFmpeg + fonts (required; render tests fail without them)
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core fonts-noto-cjk
           ffmpeg -version | head -1
       - name: Unit / golden / render / DST / idempotency / compliance / secret-scan tests
         run: python -m unittest discover -s auto_publish/tests -t . -v

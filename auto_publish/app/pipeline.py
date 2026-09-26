@@ -25,22 +25,27 @@ from .errors import (
     FailClosedError, SchedulingError, StateConflictError, TransientError, ValidationError,
 )
 from .evidence import store as ev
-from .hashing import canonical_json, sha256_file, sha256_json, sha256_text, write_json_atomic
+from .hashing import canonical_json, sha256_file, sha256_json, sha256_text, write_atomic, write_json_atomic
 from .localization.localize import LANGS, localize
 from .logs import log
 from .publishers.base import PostBundle
 from .publishers.registry import get_adapter
-from .render.ffmpeg_render import CAPTIONS, COVER, MASTER, FfmpegRenderer
+from .render.ffmpeg_render import CAPTIONS, COVER, MASTER, FfmpegRenderer, build_srt, captions_file, variant_outputs
 from .scheduler.slots import compute_slot
 from .state_machine import StoryState as S, transition_story
 from .story import factcheck
 from .story.script import build_script
 from .story.select import select_stories
+from .tts import narration as tts
 
 NON_RETRYABLE = (ComplianceError, EvidenceError, FactCheckError, ValidationError, ApprovalError)
 AUTO_STATES = (S.SELECTED, S.FACT_CHECKED, S.SCRIPTED, S.LOCALIZED, S.RENDERED)
-ARTIFACT_FILES = ("story.json", "post_en.json", "post_ja.json", "evidence.json", CAPTIONS, MASTER, COVER,
-                  "render_manifest.json")
+# Stories rendered before TTS/multilingual captions (R1 acceptance) carry exactly this set.
+LEGACY_ARTIFACT_FILES = ("story.json", "post_en.json", "post_ja.json", "evidence.json", CAPTIONS, MASTER, COVER,
+                         "render_manifest.json")
+# Every story rendered now carries at least this set. Narration audio and extra render
+# variants are added per story and declared in render_manifest.json["artifact_set"].
+ARTIFACT_FILES = LEGACY_ARTIFACT_FILES + (tts.TTS_MANIFEST,) + tuple(captions_file(lang) for lang in LANGS)
 
 
 def _story(ctx: Ctx, story_id: str) -> dict:
@@ -108,6 +113,7 @@ def _stage_render(ctx: Ctx, story: dict, renderer) -> tuple[S, dict, dict]:
     script = _draft(ctx, story["story_id"], "canonical")
     post_en = _draft(ctx, story["story_id"], "en-US")
     post_ja = _draft(ctx, story["story_id"], "ja-JP")
+    posts = {"en-US": post_en, "ja-JP": post_ja}
     compliance.enforce([post_en, post_ja], story["session_date"])
     session = ctx.conn.execute("SELECT manifest_sha256 FROM sessions WHERE session_date = ?",
                                (story["session_date"],)).fetchone()
@@ -121,15 +127,40 @@ def _stage_render(ctx: Ctx, story: dict, renderer) -> tuple[S, dict, dict]:
         "evidence_manifest_sha256": session["manifest_sha256"],
         "source_refs": script["source_refs"],
     })
-    manifest = renderer.render(sdir, post_en)
-    violations = compliance.check_captions_srt((sdir / CAPTIONS).read_text(encoding="utf-8"))
-    if violations:
-        raise ComplianceError("caption check failed", violations)
+
+    # narration (TTS) -> audio-driven timeline per language; fail-closed on length/provider
+    seg_s = int(ctx.cfg["render"]["segment_seconds"])
+    narrations = [tts.narrate(posts[lang], ctx.cfg["tts"], seg_s) for lang in LANGS]
+    extra: list[str] = []
+    for n in narrations:
+        if n.wav is not None:
+            write_atomic(sdir / n.file, n.wav)
+            extra.append(n.file)
+    tts_manifest = tts.build_manifest(story["story_id"], narrations)
+    write_json_atomic(sdir / tts.TTS_MANIFEST, tts_manifest)
+
+    # subtitles per language, from the same boundaries as the narration
+    for n in narrations:
+        srt = build_srt(n.timeline, n.lang)
+        violations = compliance.check_captions_srt(srt, n.lang)
+        if violations:
+            raise ComplianceError("caption check failed", violations)
+        write_atomic(sdir / captions_file(n.lang), srt.encode("utf-8"))
+        if n.lang == "en-US":
+            write_atomic(sdir / CAPTIONS, srt.encode("utf-8"))   # R1 name, kept for compatibility
+
+    variants = list(ctx.cfg["render"].get("variants", ["en_primary"]))
+    plan = {"variants": variants, "posts": posts,
+            "timelines": {n.lang: n.timeline for n in narrations},
+            "narration": {n.lang: n.file for n in narrations}}
+    manifest = renderer.render(sdir, post_en, plan)
+    extra += [f for f in variant_outputs(variants) if f not in ARTIFACT_FILES]
+    manifest["artifact_set"] = sorted(set(ARTIFACT_FILES + tuple(extra)) - {"render_manifest.json"})
     write_json_atomic(sdir / "render_manifest.json", manifest)
 
     hashes = {}
     with transaction(ctx.conn):
-        for name in ARTIFACT_FILES:
+        for name in (*ARTIFACT_FILES, *extra):
             p = sdir / name
             if not p.is_file():
                 raise FailClosedError(f"artifact {name} missing after render", code="ARTIFACT_MISSING")
@@ -141,14 +172,21 @@ def _stage_render(ctx: Ctx, story: dict, renderer) -> tuple[S, dict, dict]:
                 " size_bytes=excluded.size_bytes",
                 (story["story_id"], name, str(p.relative_to(ctx.paths.artifacts)), sha, p.stat().st_size),
             )
+        stale = [r["name"] for r in ctx.conn.execute("SELECT name FROM artifacts WHERE story_id = ?",
+                                                     (story["story_id"],)) if r["name"] not in hashes]
+        for name in stale:   # e.g. a variant dropped between a failed attempt and this one
+            ctx.conn.execute("DELETE FROM artifacts WHERE story_id = ? AND name = ?", (story["story_id"], name))
     content_sha = sha256_json(hashes)
-    return S.RENDERED, {"content_sha256": content_sha}, {"content_sha256": content_sha, "artifacts": hashes}
+    tts_summary = {lang: {k: m[k] for k in ("provider", "voice", "timing", "total_seconds", "narration_sha256")}
+                   for lang, m in tts_manifest["langs"].items()}
+    return S.RENDERED, {"content_sha256": content_sha}, {"content_sha256": content_sha, "artifacts": hashes,
+                                                          "tts": tts_summary}
 
 
 def verify_artifacts(ctx: Ctx, story: dict) -> str:
     """Re-hash every artifact on disk; return the content hash. Raises on any drift."""
     rows = {r["name"]: r for r in ctx.conn.execute("SELECT * FROM artifacts WHERE story_id = ?", (story["story_id"],))}
-    if set(rows) != set(ARTIFACT_FILES):
+    if "render_manifest.json" not in rows:
         raise EvidenceError(f"{story['story_id']}: artifact set incomplete", code="ARTIFACT_MISSING")
     hashes = {}
     for name, r in rows.items():
@@ -160,6 +198,15 @@ def verify_artifacts(ctx: Ctx, story: dict) -> str:
             raise EvidenceError(f"{name} changed after render", code="ARTIFACT_TAMPERED",
                                 details={"name": name, "expected": r["sha256"], "actual": actual})
         hashes[name] = actual
+    # the declared set lives in the (hash-verified) render manifest; rows must match it exactly
+    manifest = json.loads((ctx.paths.artifacts / rows["render_manifest.json"]["rel_path"]).read_text(encoding="utf-8"))
+    declared = manifest.get("artifact_set")
+    expected = set(LEGACY_ARTIFACT_FILES) if declared is None else set(declared) | {"render_manifest.json"}
+    if declared is not None and not set(ARTIFACT_FILES) <= expected:
+        raise EvidenceError(f"{story['story_id']}: declared artifact set lacks required files", code="ARTIFACT_MISSING")
+    if set(rows) != expected:
+        raise EvidenceError(f"{story['story_id']}: artifact set incomplete", code="ARTIFACT_MISSING",
+                            details={"missing": sorted(expected - set(rows)), "unexpected": sorted(set(rows) - expected)})
     content = sha256_json(hashes)
     if story.get("content_sha256") and content != story["content_sha256"]:
         raise EvidenceError("content hash drift", code="ARTIFACT_TAMPERED")
@@ -274,6 +321,7 @@ def approve(ctx: Ctx, story_id: str, approver: str) -> dict:
         sdir = story_dir(ctx, story)
         posts = [json.loads((sdir / f).read_text(encoding="utf-8")) for f in ("post_en.json", "post_ja.json")]
         compliance.enforce(posts, story["session_date"])
+        tts.verify(sdir, posts)
     except FailClosedError as exc:
         _fail(ctx, story, exc, "APPROVAL")
         raise
@@ -313,6 +361,7 @@ def schedule(ctx: Ctx, story_id: str) -> dict:
         post_en = json.loads((sdir / "post_en.json").read_text(encoding="utf-8"))
         post_ja = json.loads((sdir / "post_ja.json").read_text(encoding="utf-8"))
         compliance.enforce([post_en, post_ja], story["session_date"])
+        tts.verify(sdir, [post_en, post_ja])
         manifest = json.loads((sdir / "render_manifest.json").read_text(encoding="utf-8"))
         session = ctx.conn.execute("SELECT manifest_sha256 FROM sessions WHERE session_date = ?",
                                    (story["session_date"],)).fetchone()
@@ -382,13 +431,24 @@ def cancel(ctx: Ctx, story_id: str, reason: str) -> dict:
     return {"story_id": story_id, "state": S.CANCELLED.value, "cancelled_schedules": n, "noop": False}
 
 
+def _non_retryable_names() -> set[str]:
+    """NON_RETRYABLE classes and all their subclasses (e.g. NarrationLengthError)."""
+    names, todo = set(), list(NON_RETRYABLE)
+    while todo:
+        c = todo.pop()
+        if c.__name__ not in names:
+            names.add(c.__name__)
+            todo.extend(c.__subclasses__())
+    return names
+
+
 def retry(ctx: Ctx, story_id: str, reason: str, renderer=None) -> dict:
     controls.require_not_paused(ctx.conn, "retry")
     story = _story(ctx, story_id)
     if story["state"] != S.FAILED.value:
         raise ValidationError(f"{story_id} is {story['state']}; only FAILED stories can be retried", code="NOT_FAILED")
     err = json.loads(story["last_error"] or "{}")
-    if err.get("type") in {c.__name__ for c in NON_RETRYABLE}:
+    if err.get("type") in _non_retryable_names():
         raise ValidationError(
             f"{story_id} failed with {err.get('code')} ({err.get('type')}); this class of failure is fail-closed"
             " and cannot be retried -- fix the input and ingest a new session, or cancel", code="NOT_RETRYABLE")
