@@ -93,10 +93,34 @@ def validate_config(cfg: dict) -> None:
         raise ValidationError(f"render.variants must start with en_primary and use {ALLOWED_RENDER_VARIANTS}",
                               code="RENDER_VARIANT_INVALID")
     _validate_tts(cfg["tts"])
+    _validate_optimizer(cfg)
     d = cfg["dispatch"]
     if int(d["lease_seconds"]) < 30 or not 0 <= int(d["max_lateness_minutes"]) <= 180:
         raise ValidationError("dispatch.lease_seconds >= 30 and 0 <= dispatch.max_lateness_minutes <= 180",
                               code="DISPATCH_CONFIG_INVALID")
+
+
+def _validate_optimizer(cfg: dict) -> None:
+    """Floors agreed with the owner cannot be loosened by a config overlay."""
+    o = cfg["optimizer"]
+    problems = []
+    if int(o["min_days"]) < 14 or int(o["min_posts"]) < 30:
+        problems.append("min_days >= 14 and min_posts >= 30")
+    if not 0 <= float(o["max_exploration"]) <= 0.2:
+        problems.append("0 <= max_exploration <= 0.2")
+    if not 0.5 <= float(o["decision_threshold"]) < 1:
+        problems.append("0.5 <= decision_threshold < 1")
+    if int(o["min_arm_samples"]) < 3 or int(o["draws"]) < 1000 or float(o["prior_strength"]) <= 0:
+        problems.append("min_arm_samples >= 3, draws >= 1000, prior_strength > 0")
+    if float(o["horizon_hours"]) <= 0 or float(o["horizon_window_hours"]) <= 0 or int(o["slot_tolerance_minutes"]) < 0:
+        problems.append("positive horizon and non-negative slot tolerance")
+    for platform in cfg["platforms"]:
+        if o["objective"].get(platform) not in ("views", "impressions", "watch_time_seconds"):
+            problems.append(f"objective for {platform}")
+        if any(m not in ("completion_rate", "engagement_rate", "follow_rate") for m in o["guardrails"].get(platform, [])):
+            problems.append(f"guardrails for {platform}")
+    if problems:
+        raise ValidationError("optimizer config invalid: " + "; ".join(problems), code="OPTIMIZER_CONFIG_INVALID")
 
 
 def _validate_tts(t: dict) -> None:

@@ -192,6 +192,40 @@ py -3.11 -m auto_publish.cli dispatches --story <story_id> # outcomes + traces
 py -3.11 -m auto_publish.cli kill-switch-drill --input auto_publish\tests\fixtures\content_drop\2026-09-24
 ```
 
+## Timing optimisation (proposal-only; never changes a schedule)
+
+Owner-exported post metrics are imported **read-only** from a normalised CSV (`auto_publish.post_metrics_csv.v1`):
+
+```
+platform,post_ref,story_id,published_at,observed_at,impressions,views,watch_time_seconds,completion_rate,likes,comments,shares,saves,follows_gained,video_duration_seconds
+```
+
+UTF-8 (Excel BOM ok); timestamps must carry an offset; counts are non-negative integers; blank = "not available" (never 0);
+`completion_rate` 0..1; `views <= impressions`; `observed_at >= published_at`; nothing in the future; every row's
+platform must equal `--platform`. The whole file is rejected on any error. The raw bytes are hashed and copied to a
+read-only store (`metrics_store/`); re-importing the same file is a no-op; a later snapshot of a post is appended, the same
+(post, observed_at) with different numbers is refused (`METRICS_CONFLICT`). All metrics tables are append-only.
+
+* **Point-in-time**: a dataset "as of T" uses rows imported by T and observed by T; each post is scored at a fixed age
+  (first snapshot 24–48 h after publication). Later imports never change an earlier result.
+* **Allowed slots** = the approved waves × 30 min (no new times); the fixed slot is the scheduler's first slot. Posts
+  outside them are excluded. Platforms are never mixed and metrics are never summed into one score.
+* **Sample gate**: ≥ 14 distinct days and ≥ 30 posts per platform, data not stale (≤ 30 days) — else `UNKNOWN`,
+  nothing is proposed and the fixed slots stay. These floors cannot be lowered by config.
+* **Algorithm `slot_ts_normal.v1`**: Thompson sampling on log1p(objective at 24 h) per allowed slot, seeded by the input
+  hash. `PROPOSED` only if a tested slot has P(best) ≥ 0.9 and P(> fixed) ≥ 0.9 and guardrails (completion /
+  engagement) are not worse by > 10 %; otherwise `BASELINE_CONFIRMED` or `INCONCLUSIVE`. Exploration ≤ 20 %.
+  Evidence is observational (`causal_claim: false`).
+* **Shadow**: `shadow-eval` compares posts in the fixed slot vs the proposed slot(s) published after the proposal,
+  per metric; `UNKNOWN` when either side has < 5 posts.
+
+```powershell
+py -3.11 -m auto_publish.cli metrics-import --platform tiktok --csv D:\exports\tiktok_metrics.csv
+py -3.11 -m auto_publish.cli metrics-report --platform tiktok
+py -3.11 -m auto_publish.cli propose-slots --platform tiktok       # stored as a proposal; schedules unchanged
+py -3.11 -m auto_publish.cli shadow-eval --proposal 1
+```
+
 ## Output (per story)
 
 ```
@@ -278,7 +312,7 @@ explicitly). CI: `.github/workflows/auto-publish-r1.yml` installs FFmpeg + DejaV
 
 ## Not in R1
 
-Real platform adapters / OAuth, PUBLISH/VERIFY/METRICS/LEARN stages, TimingOptimizer, a real speech engine
+Real platform adapters / OAuth, PUBLISH/VERIFY/LEARN stages, automatic use of slot proposals, a real speech engine
 (Windows SAPI provider: owner-PC phase), pronunciation lexicon, loudness normalisation, APScheduler daemon, approval UI.
 Design for the next phase (TTS, Japanese subtitles, timing optimisation, dry-run E2E): [`docs/NEXT_PHASE_DESIGN.md`](docs/NEXT_PHASE_DESIGN.md).
 R1 real-data acceptance: PASS on 0597b81 (owner PC, 2026-09-24 session); Windows fixes 07193fc / 379f16c.

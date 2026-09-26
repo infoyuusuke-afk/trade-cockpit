@@ -15,6 +15,11 @@
     python -m auto_publish.cli would-publish            # DRY-RUN: evaluate due schedules; never sends
     python -m auto_publish.cli dispatches [--story <id>]
     python -m auto_publish.cli kill-switch-drill --input <fixture content_drop/YYYY-MM-DD>
+    python -m auto_publish.cli metrics-import --platform <p> --csv <owner export>   # read-only
+    python -m auto_publish.cli metrics-report --platform <p> [--as-of ISO]
+    python -m auto_publish.cli propose-slots --platform <p> [--as-of ISO]         # proposal only
+    python -m auto_publish.cli proposals [--platform <p>]
+    python -m auto_publish.cli shadow-eval --proposal <id> [--as-of ISO]
     python -m auto_publish.cli pause-all | resume-all
     python -m auto_publish.cli disable-platform <p> | enable-platform <p>
     python -m auto_publish.cli audit-verify
@@ -159,6 +164,34 @@ def cmd_drill(ctx, a):
     return run_drill(ctx.cfg, a.input, keep_home=a.keep_home)
 
 
+def cmd_metrics_import(ctx, a):
+    from .app.metrics.csv_import import import_csv
+    return import_csv(ctx, a.platform, a.csv)
+
+
+def cmd_metrics_report(ctx, a):
+    from .app.metrics.dataset import parse_as_of, report
+    return report(ctx, a.platform, parse_as_of(a.as_of, ctx))
+
+
+def cmd_propose(ctx, a):
+    from .app.metrics.dataset import parse_as_of
+    from .app.metrics.optimizer import propose
+    return propose(ctx, a.platform, parse_as_of(a.as_of, ctx))
+
+
+def cmd_proposals(ctx, a):
+    from .app.metrics.optimizer import load_proposal
+    q = "SELECT proposal_id FROM slot_proposals" + (" WHERE platform = ?" if a.platform else "") + " ORDER BY proposal_id"
+    return {"proposals": [load_proposal(ctx, r[0]) for r in ctx.conn.execute(q, (a.platform,) if a.platform else ())]}
+
+
+def cmd_shadow(ctx, a):
+    from .app.metrics.dataset import parse_as_of
+    from .app.metrics.optimizer import shadow
+    return shadow(ctx, a.proposal, parse_as_of(a.as_of, ctx))
+
+
 def cmd_pause(ctx, a):
     controls.pause_all(ctx.conn, ctx.clock, ctx.actor, a.reason)
     return {"paused": True}
@@ -214,6 +247,16 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("dispatches"); s.add_argument("--story"); s.set_defaults(fn=cmd_dispatches)
     s = sub.add_parser("kill-switch-drill", help="isolated temp home, fixture data only")
     s.add_argument("--input", required=True); s.add_argument("--keep-home"); s.set_defaults(fn=cmd_drill)
+    s = sub.add_parser("metrics-import", help="read-only import of an owner-exported metrics CSV (contract v1)")
+    s.add_argument("--platform", required=True); s.add_argument("--csv", required=True)
+    s.set_defaults(fn=cmd_metrics_import)
+    s = sub.add_parser("metrics-report"); s.add_argument("--platform", required=True); s.add_argument("--as-of")
+    s.set_defaults(fn=cmd_metrics_report)
+    s = sub.add_parser("propose-slots", help="proposal only; never changes a schedule")
+    s.add_argument("--platform", required=True); s.add_argument("--as-of"); s.set_defaults(fn=cmd_propose)
+    s = sub.add_parser("proposals"); s.add_argument("--platform"); s.set_defaults(fn=cmd_proposals)
+    s = sub.add_parser("shadow-eval"); s.add_argument("--proposal", type=int, required=True); s.add_argument("--as-of")
+    s.set_defaults(fn=cmd_shadow)
     s = sub.add_parser("pause-all"); s.add_argument("--reason", default=""); s.set_defaults(fn=cmd_pause)
     s = sub.add_parser("resume-all"); s.add_argument("--reason", default=""); s.set_defaults(fn=cmd_resume)
     s = sub.add_parser("disable-platform"); s.add_argument("platform"); s.add_argument("--reason", default=""); s.set_defaults(fn=cmd_platform(False))

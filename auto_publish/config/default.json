@@ -47,6 +47,26 @@
     "lease_seconds": 300,
     "max_lateness_minutes": 30
   },
+  "optimizer": {
+    "horizon_hours": 24,
+    "horizon_window_hours": 24,
+    "slot_tolerance_minutes": 5,
+    "min_days": 14,
+    "min_posts": 30,
+    "min_arm_samples": 5,
+    "max_data_age_days": 30,
+    "prior_strength": 2,
+    "draws": 10000,
+    "decision_threshold": 0.9,
+    "max_exploration": 0.2,
+    "guardrail_tolerance": 0.1,
+    "objective": {"youtube_shorts": "views", "tiktok": "views", "x": "impressions"},
+    "guardrails": {
+      "youtube_shorts": ["completion_rate", "engagement_rate"],
+      "tiktok": ["completion_rate", "engagement_rate"],
+      "x": ["engagement_rate"]
+    }
+  },
   "waves": {
     "europe": {"start_jst": "22:00", "end_jst": "24:00", "day_offset": 0, "audience_tz": "Europe/London"},
     "na_tiktok": {"start_jst": "05:00", "end_jst": "07:00", "day_offset": 1, "audience_tz": "America/New_York"},

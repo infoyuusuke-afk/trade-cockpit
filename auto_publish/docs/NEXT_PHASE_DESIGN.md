@@ -167,7 +167,10 @@ providers:
 - loudnorm と読み辞書（lexicon）は実音声エンジン導入時に追加（manifest の `lexicon` は現在 null）
 - silent では従来の固定6秒レイアウトのまま（英語の master / cover / captions は R1 とバイト一致）
 - `ja_primary` は opt-in（`render.variants`）。既定は `en_primary` のみ
-4. 配信時間最適化 … post_metrics 表と CSV 取り込み → optimizer（データが溜まるまでは baseline のまま）
+4. 配信時間最適化 … post_metrics 表と CSV 取り込み → optimizer（データが溜まるまでは baseline のまま）… **提案まで完了**
+   - proposal-only：予約は自動では変えない（scheduler は提案を読まない）
+   - 取り込みは Owner が書き出して正規化した CSV（contract v1）。各プラットフォーム独自形式からの変換は未実装
+   - 最適化の判断は「評価用の最低データ量を満たしたスロット同士」のみで行い、データのないスロットは探索枠（最大20%）の配分にだけ使う
 5. dry-run E2E … payload契約テスト、would_publish シミュレータ、キルスイッチ訓練 … **完了**（配信時間最適化より先に実施）
 
 dry-run E2E 実装メモ:
