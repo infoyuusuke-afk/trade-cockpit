@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-09-26 22:42:31 JST",
+  "updated_at": "2026-09-26 22:44:34 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -5424,22 +5424,6 @@
       "already_watched": false
     },
     {
-      "code": "7735",
-      "name": "SCREEN Holdings Co., Ltd",
-      "exchange": "TSE",
-      "price": 13740,
-      "change_pct": 3.308270676691729,
-      "volume": 1966100,
-      "relative_volume": 1.1041845680364373,
-      "atr_pct": 4.69,
-      "vwap": 13656.666666666666,
-      "high": 13930,
-      "low": 13300,
-      "market_cap": 2563106889954,
-      "sector": "Producer Manufacturing",
-      "already_watched": true
-    },
-    {
       "code": "4307",
       "name": "Nomura Research Institute,Ltd.",
       "exchange": "TSE",
@@ -5454,6 +5438,22 @@
       "market_cap": 2788448035950,
       "sector": "Technology Services",
       "already_watched": false
+    },
+    {
+      "code": "7735",
+      "name": "SCREEN Holdings Co., Ltd",
+      "exchange": "TSE",
+      "price": 13740,
+      "change_pct": 3.308270676691729,
+      "volume": 1966100,
+      "relative_volume": 1.1041845680364373,
+      "atr_pct": 4.69,
+      "vwap": 13656.666666666666,
+      "high": 13930,
+      "low": 13300,
+      "market_cap": 2563106889954,
+      "sector": "Producer Manufacturing",
+      "already_watched": true
     },
     {
       "code": "1570",
