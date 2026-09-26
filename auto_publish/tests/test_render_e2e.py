@@ -156,10 +156,13 @@ class TestCliEndToEnd(unittest.TestCase):
             overlay.write_text(json.dumps({"render": {"x264_preset": "ultrafast"}}), encoding="utf-8")
             env = {**os.environ, "AUTO_PUBLISH_HOME": str(root / "home"), "PYTHONPATH": str(REPO)}
 
-            def cli(*args, expect=0):
+            def cli(*args, expect=0, extra_env=None):
+                # The CLI always emits UTF-8; decode it as UTF-8 explicitly (Windows' default
+                # locale decoding would be cp932).
                 out = subprocess.run([sys.executable, "-m", "auto_publish.cli", "--config", str(overlay),
                                       "--now", NOW, "--actor", "ci", *args],
-                                     capture_output=True, text=True, env=env, cwd=REPO, timeout=600)
+                                     capture_output=True, text=True, encoding="utf-8",
+                                     env={**env, **(extra_env or {})}, cwd=REPO, timeout=600)
                 self.assertEqual(out.returncode, expect, out.stdout + out.stderr)
                 return json.loads(out.stdout)
 
@@ -177,6 +180,10 @@ class TestCliEndToEnd(unittest.TestCase):
             self.assertTrue(cli("schedule", sid)["result"]["noop"])
             shown = cli("show", sid)["result"]
             self.assertIn("Not investment advice", shown["drafts"]["en-US"]["script"][-1])
+            # Windows regression: a cp932 (Japanese ANSI code page) stdout must not break '¥' output.
+            shown_cp932 = cli("show", sid, extra_env={"PYTHONIOENCODING": "cp932"})["result"]
+            self.assertEqual(shown_cp932, shown)
+            self.assertIn("¥", " ".join(shown_cp932["drafts"]["en-US"]["script"]))
             self.assertTrue(cli("audit-verify")["result"]["ok"])
             q = cli("queue")["result"]
             self.assertEqual({s["state"] for s in q["stories"]}, {"SCHEDULED", "AWAITING_APPROVAL"})

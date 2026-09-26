@@ -185,7 +185,21 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _utf8_stdio() -> None:
+    """Emit UTF-8 regardless of the platform locale.
+
+    On Windows a piped/redirected stdout defaults to the ANSI code page (cp932 on
+    Japanese systems), which cannot encode e.g. '¥' and made `show` crash. The JSON
+    content is unchanged; only the byte encoding of the CLI's own output is fixed.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="strict" if stream is sys.stdout else "backslashreplace")
+
+
 def main(argv: list[str] | None = None) -> int:
+    _utf8_stdio()
     args = build_parser().parse_args(argv)
     try:
         ctx = _ctx(args)

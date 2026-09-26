@@ -4,6 +4,7 @@ import os
 import stat
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from auto_publish.app.errors import EvidenceError, ValidationError
 from auto_publish.app.ingest.ingest import ingest, validate
@@ -53,9 +54,20 @@ class TestIngest(PipelineCase):
         self.assertIsNone(self.ctx.conn.execute("SELECT * FROM sessions").fetchone())
 
     def test_symlink_is_rejected(self):
-        os.symlink(self.drop / "session_notes.txt", self.drop / "link.txt")
-        with self.assertRaises(EvidenceError) as cm:
-            ingest(self.ctx, self.drop)
+        link = self.drop / "link.txt"
+        try:
+            os.symlink(self.drop / "session_notes.txt", link)
+            with self.assertRaises(EvidenceError) as cm:
+                ingest(self.ctx, self.drop)
+        except OSError:
+            # Windows without SeCreateSymbolicLinkPrivilege (WinError 1314) cannot create
+            # a symlink. Exercise the same rejection path by making the ingest-time
+            # is_symlink() check see this file as a link; the product check is unchanged.
+            link.write_text("stand-in for a symlink", encoding="utf-8")
+            real = Path.is_symlink
+            with mock.patch.object(Path, "is_symlink", lambda p: p.name == "link.txt" or real(p)):
+                with self.assertRaises(EvidenceError) as cm:
+                    ingest(self.ctx, self.drop)
         self.assertEqual(cm.exception.code, "EVIDENCE_SYMLINK")
 
     def test_directory_name_must_match_date(self):
