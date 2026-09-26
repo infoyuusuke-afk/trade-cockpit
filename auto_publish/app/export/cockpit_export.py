@@ -29,6 +29,7 @@ from ..clock import JST
 from ..errors import EvidenceError, ValidationError
 from ..hashing import sha256_bytes, sha256_file, write_atomic
 from . import radar_import
+from ..marketcal.tse import load_calendar
 
 EXPORTER = "auto_publish.cockpit_export"
 EXPORTER_VERSION = "1"
@@ -141,12 +142,13 @@ def build_export(
     data_json: Path,
     paper_history: Path,
     *,
-    market_close_jst: str = "15:30",
+    market_close_jst: str | None = None,
     max_age_hours: float = 18.0,
     max_movers: int = 10,
     names_file: Path | None = None,
     condition_log: Path | None = None,
     data_class: str = "real",
+    calendar_path: Path | None = None,
 ) -> dict:
     """Pure transform (reads inputs, returns the files to write). No writes here."""
     if data_class not in DATA_CLASSES:
@@ -154,8 +156,8 @@ def build_export(
     if not DATE_RE.match(session_date or ""):
         raise ValidationError(f"bad session date {session_date!r}")
     sess = date.fromisoformat(session_date)
-    if sess.weekday() >= 5:
-        raise ValidationError(f"{session_date} is a weekend", code="NOT_TRADING_DAY")
+    cal = load_calendar(calendar_path)
+    cal.require_trading_day(sess)  # weekends, JPX holidays, year-end; uncovered year -> CALENDAR_UNAVAILABLE
     data_json, paper_history = Path(data_json).resolve(), Path(paper_history).resolve()
     snap, snap_meta = _read_input(data_json, "data.json")
     trades_doc, paper_meta = _read_input(paper_history, "paper_trade_history.json")
@@ -165,8 +167,12 @@ def build_export(
     if not isinstance(snap, dict) or not isinstance(snap.get("stocks"), dict):
         raise ValidationError("data.json must be an object with a 'stocks' object", code="SCHEMA_INVALID")
     updated = _parse_updated_at(snap.get("updated_at"))
-    hh, mm = map(int, market_close_jst.split(":"))
-    close_at = datetime.combine(sess, time(hh, mm), tzinfo=JST)
+    if market_close_jst:
+        hh, mm = map(int, market_close_jst.split(":"))
+        close_t = time(hh, mm)
+    else:
+        close_t = cal.close_time(sess)  # calendar is authoritative (session overrides included)
+    close_at = datetime.combine(sess, close_t, tzinfo=JST)
     if updated < close_at:
         raise ValidationError(f"snapshot {updated.isoformat()} is before the {session_date} close",
                               code="EVIDENCE_PREMATURE")

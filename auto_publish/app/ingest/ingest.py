@@ -26,6 +26,7 @@ from ..errors import EvidenceError, FailClosedError, ValidationError
 from ..evidence import store as ev
 from ..hashing import canonical_json, sha256_file, sha256_text
 from ..logs import log
+from ..marketcal.tse import load_calendar
 from ..state_machine import SessionState, transition_session
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -171,7 +172,9 @@ def validate(ctx: Ctx, session_date: str) -> dict:
             )
         transition_session(ctx.conn, ctx.clock, session_date, SessionState.INGESTED, SessionState.VALIDATED,
                            actor=ctx.actor, reason="validated",
-                           extra_updates={"fixture": int(fixture)}, detail={"facts": len(facts)})
+                           extra_updates={"fixture": int(fixture)},
+                           detail={"facts": len(facts),
+                                   "tse_calendar_sha256": load_calendar(ctx.cfg.get("tse_calendar_path")).sha256})
     log("validate.ok", session_date=session_date, facts=len(facts), fixture=fixture)
     return {"session_date": session_date, "state": SessionState.VALIDATED.value, "facts": len(facts),
             "fixture": fixture, "noop": False}
@@ -181,8 +184,8 @@ def _validate_and_extract(ctx: Ctx, session_date: str) -> tuple[list[dict], bool
     ev.verify_session(ctx.conn, session_date)
     tz = ZoneInfo(ctx.cfg["market_timezone"])
     sess = date.fromisoformat(session_date)
-    if sess.weekday() >= 5:
-        raise ValidationError(f"{session_date} is a weekend; not a trading session", code="NOT_TRADING_DAY")
+    cal = load_calendar(ctx.cfg.get("tse_calendar_path"))
+    cal.require_trading_day(sess)  # weekends, JPX holidays, year-end; uncovered year -> CALENDAR_UNAVAILABLE
 
     rows = {r["rel_path"]: r for r in ctx.conn.execute(
         "SELECT * FROM evidence WHERE session_date = ?", (session_date,))}
@@ -201,8 +204,7 @@ def _validate_and_extract(ctx: Ctx, session_date: str) -> tuple[list[dict], bool
         generated = parse_aware(str(doc.get("generated_at", "")))
     except ValueError as exc:
         raise ValidationError(f"generated_at invalid: {exc}", code="SCHEMA_INVALID") from exc
-    hh, mm = map(int, ctx.cfg["market_close_jst"].split(":"))
-    close_at = datetime.combine(sess, time(hh, mm), tzinfo=tz)
+    close_at = datetime.combine(sess, cal.close_time(sess), tzinfo=tz)
     stale_after = close_at + timedelta(hours=float(ctx.cfg["max_evidence_age_hours"]))
     if generated < close_at:
         raise ValidationError(f"summary generated {generated.isoformat()} before market close {close_at.isoformat()}",

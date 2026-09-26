@@ -34,6 +34,7 @@ from .app.context import Ctx
 from .app.db import connect
 from .app.errors import AutoPublishError
 from .app.explain import explain
+from .app.marketcal.tse import load_calendar
 from .app.export.cockpit_export import export_session
 from .app.ingest.ingest import ingest, validate
 
@@ -61,9 +62,21 @@ def cmd_ingest(ctx, a):
 
 def cmd_export(ctx, a):
     return export_session(a.date, a.data_json, a.paper_history, a.out,
-                          market_close_jst=ctx.cfg["market_close_jst"],
+                          calendar_path=ctx.cfg.get("tse_calendar_path"),
                           max_age_hours=float(ctx.cfg["max_evidence_age_hours"]), max_movers=a.max_movers,
                           condition_log=a.condition_log, data_class="fixture" if a.fixture else "real")
+
+
+def cmd_calendar(ctx, a):
+    from datetime import date as _date, timedelta as _td
+    cal = load_calendar(ctx.cfg.get("tse_calendar_path"))
+    start = _date.fromisoformat(a.date)
+    days = []
+    for i in range(a.days):
+        st = cal.status(start + _td(days=i))
+        days.append({"date": st.date, "trading": st.trading, "reason": st.reason, "close_jst": st.close_jst})
+    return {"calendar_sha256": cal.sha256, "covered_years": sorted(cal.covered_years), "sources": list(cal.sources),
+            "days": days}
 
 
 def cmd_explain(ctx, a):
@@ -166,6 +179,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--condition-log", help="Opportunity Radar condition_log.csv (any path; read-only)")
     s.add_argument("--fixture", action="store_true", help="inputs are synthetic TST* test data (labels output TEST_FIXTURE)")
     s.add_argument("--max-movers", type=int, default=10); s.set_defaults(fn=cmd_export)
+    s = sub.add_parser("calendar", help="TSE trading-day status (fail-closed outside covered years)")
+    s.add_argument("--date", required=True); s.add_argument("--days", type=int, default=7); s.set_defaults(fn=cmd_calendar)
     s = sub.add_parser("explain", help="why a story was selected + full evidence chain (local, internal)")
     s.add_argument("story_id"); s.set_defaults(fn=cmd_explain)
     s = sub.add_parser("ingest"); s.add_argument("--input", required=True); s.add_argument("--date"); s.set_defaults(fn=cmd_ingest)

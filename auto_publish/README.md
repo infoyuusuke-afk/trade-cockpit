@@ -125,6 +125,18 @@ py -3.12 -m auto_publish.cli explain <story_id>     # why this ticker was chosen
 - Contradictions are fail-closed (e.g. a long flag while price is below VWAP, a flag outside 09:00–15:30).
 - Synthetic inputs must be exported with `--fixture` (tickers `TST*`); mixing synthetic and real inputs is refused.
 
+## TSE trading-day calendar
+
+`config/tse_calendar.json` (JPX 休業日一覧, cross-checked with 内閣府 国民の祝日; sources + retrieval date inside the file).
+VALIDATE and `export` accept a session only if it is a covered year, Mon–Fri, not a JPX closure (holidays, 12/31, 1/1–1/3)
+and not an owner-added `extra_closures` entry. Anything else is `NOT_TRADING_DAY`; a year that is not covered is
+`CALENDAR_UNAVAILABLE` (fail-closed, never guessed). `session_overrides` can set a different close time for one session.
+The calendar SHA256 is recorded in the VALIDATE audit row. Currently covered: 2026–2027 (add a year only after JPX publishes it).
+
+```powershell
+py -3.11 -m auto_publish.cli calendar --date 2026-09-18 --days 7
+```
+
 ## Output (per story)
 
 ```
