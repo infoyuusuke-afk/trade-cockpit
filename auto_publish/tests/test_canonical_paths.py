@@ -76,7 +76,12 @@ class TestCanonicalEvidencePaths(Flow):
     def test_golden_shadow_hashes(self):
         """Same logical input -> same canonical bytes -> same SHA256 on every OS."""
         d1, d2 = self.two_days()
-        got = {}
+        c = self.ctx.conn
+        cal = [json.loads(r[0])["tse_calendar_sha256"] for r in c.execute(
+            "SELECT detail_json FROM audit_log WHERE entity_type='session' AND to_state='VALIDATED' ORDER BY seq")]
+        got = {"inputs": {"tse_calendar_sha256": sorted(set(cal)),
+                          "metrics_import_sha256": [r[0] for r in c.execute(
+                              "SELECT sha256 FROM metrics_imports ORDER BY import_id")]}}
         for name, d in (("day1", d1), ("day2", d2)):
             rep = d["report"]
             got[name] = {"observation_as_of_utc": rep["observation_as_of_utc"], "report_sha256": d["report_sha256"],
@@ -106,6 +111,15 @@ class TestCanonicalEvidencePaths(Flow):
                                    (self.sid,)).fetchone()[0], legacy)
         self.assertEqual(c.execute("SELECT rel_path FROM artifacts WHERE name='cover.jpg' AND story_id=?",
                                    (self.sid,)).fetchone()[0], "2026-09-24\\st_legacy\\cover.jpg")
+
+    def test_canonical_input_bytes_have_no_cr(self):
+        """Hashed inputs are fixed at the byte level (no silent CRLF->LF at hash time)."""
+        from auto_publish.app.marketcal.tse import DEFAULT_PATH
+        from auto_publish.tests.test_slot_optimizer import series, write_csv
+        from datetime import date
+        self.assertNotIn(b"\r", DEFAULT_PATH.read_bytes(), "tse_calendar.json was checked out with CRLF")
+        p = write_csv(self.root / "lf.csv", series("tiktok", date(2026, 8, 10), 3, "22:00", 1000, "a"))
+        self.assertNotIn(b"\r", p.read_bytes())
 
     def test_offline(self):
         def boom(*a, **k):

@@ -58,7 +58,7 @@ def write_csv(path: Path, rows, header=HEADER) -> Path:
     w.writerow(header)
     for r in rows:
         w.writerow([r.get(h, "") if not isinstance(r, list) else "" for h in header] if isinstance(r, dict) else r)
-    path.write_text(buf.getvalue(), encoding="utf-8")
+    path.write_bytes(buf.getvalue().encode("utf-8"))    # LF bytes on every OS (no text-mode newline translation)
     return path
 
 
