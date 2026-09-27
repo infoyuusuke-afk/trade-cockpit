@@ -1,16 +1,16 @@
 {
   "schema_version": "next-theme-radar-0.2",
-  "updated_at": "2026-09-27T14:48:18.521799+09:00",
+  "updated_at": "2026-09-27T20:31:35.414759+09:00",
   "source_note": "ニュース集約RSSは一次資料ではない。価格・資金流入は取得済み証拠だけで採点。",
   "themes": [
     {
       "theme_id": "jpy-stablecoin",
       "theme": "円ステーブルコイン",
       "status": "WATCH",
-      "score": 45,
+      "score": 50,
       "score_breakdown": {
         "novelty": 15,
-        "catalyst": 5,
+        "catalyst": 10,
         "money_flow": 0,
         "japan_link": 15,
         "breadth": 0,
@@ -29,8 +29,20 @@
         "price_confirmation": 5
       },
       "first_seen": "2026-09-27T14:48:18.521799+09:00",
-      "last_event_at": "2026-09-27T13:52:30+09:00",
+      "last_event_at": "2026-09-27T17:56:00+09:00",
       "events": [
+        {
+          "title": "Yen stablecoin surge on Korea’s Upbit inflicts heavy losses on investors - CHOSUNBIZ - Chosunbiz",
+          "url": "https://news.google.com/rss/articles/CBMigAFBVV95cUxPc2hTQ1BSMEc4RlFxWm8xTGVKZFJlMExzbC1IZGFtWUllR1lpekdjcTZaQ1o0TXFvNkMyQk1JTGtSZnVJQmhHeUJaWmZwSHhmRVFDRWc4c2dWWG5UX2w4dWRtRkpjeFgtOERlVDNkOVcxQzd3cDZMbHQ5R0RsbnNKUtIBlAFBVV95cUxPQTN5cC1tQ0NlQWpxUWYtN3BPZzJrLXowVC05YXpzTmhzNmQ2em8xYkVxSUxCZmowRWJIVWhfRGtxdFBkc1lGV3k2TU5xUTFVWHlqd0tKMm1Gamw3ZWhVRnN5X3ZFWmY5NWhRemtsUWtUaU9PYWNTNUZ5QnFjNkR1UldDNW9GcDc3THdrdDEtUzlSMXVs?oc=5",
+          "published_at": "2026-09-27T17:56:00+09:00",
+          "source": "Chosunbiz"
+        },
+        {
+          "title": "Yen-Pegged Stablecoin JPYC Surges 4-Fold on Upbit Debut, Leaving Investors With approximately $3.7 Million in Losses - finance.biggo.com",
+          "url": "https://news.google.com/rss/articles/CBMidkFVX3lxTFBXNEFmY0dYR01wYXRwdWFOeFhGMGd2c3NiZktvMlBQUzZuMW1ab2h2V3k3SWFubVFRa0RPUlQzVU0xMFNpM0gyZmdibTNHYUdBd1NFejJ1cFlya3hva0o4Zmw3UlVwc3VFMW16aGFrbTY0SWdvamc?oc=5",
+          "published_at": "2026-09-27T12:35:00+09:00",
+          "source": "finance.biggo.com"
+        },
         {
           "title": "20,000 Investors Bought Yen Stablecoin Above Market Rate in Korea - Seoul Economic Daily",
           "url": "https://news.google.com/rss/articles/CBMiogFBVV95cUxQemZIdGt6WjcxbFRTd1VfV09EQVdsQThnNkwtdGc4cjRlX1NxWEI0bnVueHQxV2hXT1BUQkg4QWl1QUJ3aTBCTDVVWU9rdVN1QlJMcmpnOGllTHVKOHplUllIZC16X1RPODdnbVc2cHdPV3Y4ZmJCNTRZOThOUW5wSFVoM3pBeVpUWGxlV3hhaUltYVBkVGVqVTlBXzJlSGVJX3c?oc=5",
