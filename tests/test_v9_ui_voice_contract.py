@@ -1,3 +1,4 @@
+# CI retrigger: validate repaired V9 UI/voice contract on PR head.
 from pathlib import Path
 import unittest
 
