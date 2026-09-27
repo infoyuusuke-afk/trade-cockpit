@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-09-28 08:49:51 JST",
+  "updated_at": "2026-09-28 08:52:11 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -4672,22 +4672,6 @@
       "already_watched": false
     },
     {
-      "code": "5202",
-      "name": "Nippon Sheet Glass Company, Limited",
-      "exchange": "TSE",
-      "price": 496,
-      "change_pct": 0,
-      "volume": 2558500,
-      "relative_volume": 1.1570326420230999,
-      "atr_pct": 0.31,
-      "vwap": 496.3333333333333,
-      "high": 497,
-      "low": 496,
-      "market_cap": 252569654297,
-      "sector": "Consumer Durables",
-      "already_watched": false
-    },
-    {
       "code": "9104",
       "name": "Mitsui O.S.K.Lines,Ltd.",
       "exchange": "TSE",
@@ -5409,7 +5393,7 @@
     },
     {
       "code": "9508",
-      "name": "Kyushu Electric Power Company,Incorporated",
+      "name": "KYUSHU ELECTRIC POWER CO INC",
       "exchange": "TSE",
       "price": 2061.5,
       "change_pct": -0.1453136352627755,
@@ -6429,6 +6413,22 @@
       "low": 1321,
       "market_cap": 505416942596,
       "sector": "Finance",
+      "already_watched": false
+    },
+    {
+      "code": "6613",
+      "name": "QD Laser, Inc.",
+      "exchange": "TSE",
+      "price": 2244,
+      "change_pct": 3.1724137931034484,
+      "volume": 1556800,
+      "relative_volume": 0.9035508247338913,
+      "atr_pct": 7.03,
+      "vwap": 2207,
+      "high": 2246,
+      "low": 2131,
+      "market_cap": 94531547424,
+      "sector": "Electronic Technology",
       "already_watched": false
     }
   ],
