@@ -250,6 +250,12 @@ aggregates stored records only (it never re-evaluates the pipeline).
   `YYYY-MM-DDTHH:MM:SSZ` timestamps, no floats, explicit nulls, fixed list order.
 * The Japanese subtitle "suspected mid-word break" count is a heuristic observation (`used_for_safety: false`).
 
+Known constraint — portability (accepted, not fixed): the evidence store and the metrics store are referenced from
+the DB by ABSOLUTE path. If a home is moved, copied to another path, migrated to another PC or restored from a backup
+at a different location, those references no longer resolve and verification fails closed (e.g. proposal
+re-verification → `METRICS_STORE_TAMPERED` → shadow verdict `UNKNOWN`; evidence verification → `EVIDENCE_*`).
+Nothing unsafe happens, but keep a home at its original path until a dedicated migration/relocation phase exists.
+
 Known Low items (tracked, not fixed): optimizer config upper bounds; shadow-eval noop may return a recomputed result;
 metrics-import consistency checks and schedule() free-slot read outside the write transaction; `vwap_relation="at"`
 unsupported by templates; sub-second truncation; no external anchor for the audit chain; Japanese line-break quality.
