@@ -13,7 +13,7 @@ Failure policy
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from pathlib import Path, PurePath
 
 from . import audit, controls
 from .clock import iso_utc
@@ -46,6 +46,20 @@ LEGACY_ARTIFACT_FILES = ("story.json", "post_en.json", "post_ja.json", "evidence
 # Every story rendered now carries at least this set. Narration audio and extra render
 # variants are added per story and declared in render_manifest.json["artifact_set"].
 ARTIFACT_FILES = LEGACY_ARTIFACT_FILES + (tts.TTS_MANIFEST,) + tuple(captions_file(lang) for lang in LANGS)
+
+
+def rel_posix(path, base) -> str:
+    """Canonical relative path stored in evidence (artifacts.rel_path, schedules.payload_path, the SCHEDULE
+    audit detail and therefore WOULD_PUBLISH traces): always "/"-separated, never OS-specific, never absolute.
+
+    Version boundary: records written from this change on use this form on every OS. Records written
+    earlier on Windows may hold "\\" separators; they are immutable evidence and are read as they are
+    (never rewritten or migrated)."""
+    rel = path.relative_to(base) if isinstance(path, PurePath) else Path(path).relative_to(base)
+    out = rel.as_posix()
+    if out.startswith("/") or ":" in out or "\\" in out or ".." in out.split("/"):
+        raise ValidationError(f"not a canonical relative path: {out!r}", code="PATH_NOT_CANONICAL")
+    return out
 
 
 def _story(ctx: Ctx, story_id: str) -> dict:
@@ -170,7 +184,7 @@ def _stage_render(ctx: Ctx, story: dict, renderer) -> tuple[S, dict, dict]:
                 "INSERT INTO artifacts(story_id, name, rel_path, sha256, size_bytes) VALUES (?,?,?,?,?)"
                 " ON CONFLICT(story_id, name) DO UPDATE SET rel_path=excluded.rel_path, sha256=excluded.sha256,"
                 " size_bytes=excluded.size_bytes",
-                (story["story_id"], name, str(p.relative_to(ctx.paths.artifacts)), sha, p.stat().st_size),
+                (story["story_id"], name, rel_posix(p, ctx.paths.artifacts), sha, p.stat().st_size),
             )
         stale = [r["name"] for r in ctx.conn.execute("SELECT name FROM artifacts WHERE story_id = ?",
                                                      (story["story_id"],)) if r["name"] not in hashes]
@@ -435,7 +449,7 @@ def schedule(ctx: Ctx, story_id: str) -> dict:
             adapter.validate_asset(bundle)
             written = adapter.schedule(bundle, slot.publish_at)
             planned.append({"platform": platform, "adapter": adapter.name, "idempotency_key": idem, **slot_info,
-                            "payload_path": str(Path(written["payload_path"]).relative_to(ctx.paths.artifacts)),
+                            "payload_path": rel_posix(written["payload_path"], ctx.paths.artifacts),
                             "payload_sha256": written["payload_sha256"]})
         write_json_atomic(sdir / "schedule.json", {"schema": "auto_publish.schedule.v1", "story_id": story_id,
                                                    "release_gate": "R1", "dry_run": True, "entries": planned})

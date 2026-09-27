@@ -250,6 +250,12 @@ aggregates stored records only (it never re-evaluates the pipeline).
   `YYYY-MM-DDTHH:MM:SSZ` timestamps, no floats, explicit nulls, fixed list order.
 * The Japanese subtitle "suspected mid-word break" count is a heuristic observation (`used_for_safety: false`).
 
+Canonical relative paths: `artifacts.rel_path`, `schedules.payload_path`, the SCHEDULE audit detail and
+WOULD_PUBLISH `trace.payload.path` are stored "/"-separated on every OS (`pipeline.rel_posix`), so the same logical
+input gives the same bytes and hashes on Windows and Linux (fixture shadow hashes are locked in
+`tests/golden/shadow_fixture.json`). Version boundary: records written before this change on Windows may contain
+"\\"; they are immutable evidence and are read as they are, never rewritten or migrated.
+
 Known constraint — portability (accepted, not fixed): the evidence store and the metrics store are referenced from
 the DB by ABSOLUTE path. If a home is moved, copied to another path, migrated to another PC or restored from a backup
 at a different location, those references no longer resolve and verification fails closed (e.g. proposal
