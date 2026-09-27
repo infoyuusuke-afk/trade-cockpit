@@ -20,6 +20,8 @@
     python -m auto_publish.cli propose-slots --platform <p> [--as-of ISO]         # proposal only
     python -m auto_publish.cli proposals [--platform <p>]
     python -m auto_publish.cli shadow-eval --proposal <id> [--as-of ISO]
+    python -m auto_publish.cli shadow-day --date YYYY-MM-DD [--as-of ISO]  # point-in-time shadow evidence (read-only checks)
+    python -m auto_publish.cli shadow-summary --from D --to D
     python -m auto_publish.cli sandbox-init              # empty home only; enables --now there
     python -m auto_publish.cli pause-all | resume-all
     python -m auto_publish.cli disable-platform <p> | enable-platform <p>
@@ -198,6 +200,17 @@ def cmd_shadow(ctx, a):
     return shadow(ctx, a.proposal, parse_as_of(a.as_of, ctx))
 
 
+def cmd_shadow_day(ctx, a):
+    from .app.clock import parse_aware
+    from .app.shadow.day import default_as_of, record
+    return record(ctx, a.date, parse_aware(a.as_of) if a.as_of else default_as_of(ctx))
+
+
+def cmd_shadow_summary(ctx, a):
+    from .app.shadow.day import summary
+    return summary(ctx, a.date_from, a.date_to)
+
+
 def cmd_sandbox_init(ctx, a):
     return init_sandbox(ctx.conn, ctx.clock, ctx.actor)
 
@@ -267,6 +280,12 @@ def build_parser() -> argparse.ArgumentParser:
     s = sub.add_parser("proposals"); s.add_argument("--platform"); s.set_defaults(fn=cmd_proposals)
     s = sub.add_parser("shadow-eval"); s.add_argument("--proposal", type=int, required=True); s.add_argument("--as-of")
     s.set_defaults(fn=cmd_shadow)
+    s = sub.add_parser("shadow-day", help="record one session's shadow evidence (read-only checks, append-only)")
+    s.add_argument("--date", required=True)
+    s.add_argument("--as-of", help="observation_as_of (ISO, must be in the past; default: previous second)")
+    s.set_defaults(fn=cmd_shadow_day)
+    s = sub.add_parser("shadow-summary"); s.add_argument("--from", dest="date_from", required=True)
+    s.add_argument("--to", dest="date_to", required=True); s.set_defaults(fn=cmd_shadow_summary)
     s = sub.add_parser("sandbox-init", help="mark an EMPTY home as a sandbox (only sandboxes accept --now)")
     s.set_defaults(fn=cmd_sandbox_init)
     s = sub.add_parser("pause-all"); s.add_argument("--reason", default=""); s.set_defaults(fn=cmd_pause)

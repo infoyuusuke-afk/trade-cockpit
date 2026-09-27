@@ -228,6 +228,32 @@ py -3.11 -m auto_publish.cli propose-slots --platform tiktok       # stored as a
 py -3.11 -m auto_publish.cli shadow-eval --proposal 1
 ```
 
+## Shadow operation (contract `auto_publish.shadow_day.v1`)
+
+`shadow-day --date D [--as-of T]` stores one append-only, point-in-time evidence record for a trading session; it
+changes no story / schedule / dispatch / proposal and never sends anything. `shadow-summary --from D1 --to D2`
+aggregates stored records only (it never re-evaluates the pipeline).
+
+* **Times**: `observation_as_of_utc` (T, must be before the current second) is part of the identity and the hash;
+  `generated_at_utc` (wall clock) is stored beside the record, never hashed. Same data + same T = same hash.
+* **Point-in-time**: state is reconstructed from audit rows stamped ≤ T (stories, schedules, dispatches, proposals,
+  kill switches). Backdated or future-stamped evidence → `UNKNOWN` (`AUDIT_TIME_NON_MONOTONIC`, `FUTURE_EVIDENCE`).
+* **Verdicts** per check: `VERIFIED` / `VIOLATION` / `UNKNOWN` / `NOT_APPLICABLE`; `day_status` OK / UNKNOWN /
+  VIOLATION. Recorded outcomes (WOULD_PUBLISH, BLOCKED, …) are copied, never re-classified. Checks: audit chain,
+  audit time order, WOULD_PUBLISH trace vs files, duplicates (idempotency key / story×platform / dispatch id / payload
+  hash), proposal reproducibility (compared only when the stored input hash is reproduced, else
+  `CONDITIONS_NOT_REPRODUCIBLE`), human approval evidence, compliance. Fail-closed codes are counted by code and by
+  category (stale / missing / unknown / future / integrity / other).
+* **Identity** (session, T, contract): identical re-run = no-op; different content = `SHADOW_DAY_CONFLICT`
+  (nothing is updated; DB triggers forbid UPDATE/DELETE).
+* **Canonical hash**: `sha256(b"auto_publish.shadow_day.v1\n" + canonical_json(report))`; keys sorted, UTC
+  `YYYY-MM-DDTHH:MM:SSZ` timestamps, no floats, explicit nulls, fixed list order.
+* The Japanese subtitle "suspected mid-word break" count is a heuristic observation (`used_for_safety: false`).
+
+Known Low items (tracked, not fixed): optimizer config upper bounds; shadow-eval noop may return a recomputed result;
+metrics-import consistency checks and schedule() free-slot read outside the write transaction; `vwap_relation="at"`
+unsupported by templates; sub-second truncation; no external anchor for the audit chain; Japanese line-break quality.
+
 ## Output (per story)
 
 ```
