@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-09-28 12:26:45 JST",
+  "updated_at": "2026-09-28 12:28:55 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -4768,22 +4768,6 @@
       "already_watched": false
     },
     {
-      "code": "5108",
-      "name": "Bridgestone Corporation",
-      "exchange": "TSE",
-      "price": 3880,
-      "change_pct": 1.067986454805939,
-      "volume": 1257300,
-      "relative_volume": 0.27977925632524087,
-      "atr_pct": 1.97,
-      "vwap": 3874.3333333333335,
-      "high": 3897,
-      "low": 3846,
-      "market_cap": 4681578021484,
-      "sector": "Consumer Durables",
-      "already_watched": false
-    },
-    {
       "code": "3402",
       "name": "Toray Industries, Inc.",
       "exchange": "TSE",
@@ -4797,6 +4781,22 @@
       "low": 1259,
       "market_cap": 1846499999634,
       "sector": "Process Industries",
+      "already_watched": false
+    },
+    {
+      "code": "5108",
+      "name": "Bridgestone Corporation",
+      "exchange": "TSE",
+      "price": 3880,
+      "change_pct": 1.067986454805939,
+      "volume": 1257300,
+      "relative_volume": 0.27977925632524087,
+      "atr_pct": 1.97,
+      "vwap": 3874.3333333333335,
+      "high": 3897,
+      "low": 3846,
+      "market_cap": 4681578021484,
+      "sector": "Consumer Durables",
       "already_watched": false
     },
     {
@@ -5264,22 +5264,6 @@
       "already_watched": false
     },
     {
-      "code": "3092",
-      "name": "ZOZO, Inc.",
-      "exchange": "TSE",
-      "price": 1136,
-      "change_pct": -1.17442366246194,
-      "volume": 1043900,
-      "relative_volume": 0.3816302730526403,
-      "atr_pct": 2.07,
-      "vwap": 1142,
-      "high": 1157,
-      "low": 1133,
-      "market_cap": 1021341273987,
-      "sector": "Retail Trade",
-      "already_watched": false
-    },
-    {
       "code": "4967",
       "name": "Kobayashi Pharmaceutical Co., Ltd.",
       "exchange": "TSE",
@@ -5293,6 +5277,22 @@
       "low": 6864,
       "market_cap": 510612373924,
       "sector": "Consumer Non-Durables",
+      "already_watched": false
+    },
+    {
+      "code": "3092",
+      "name": "ZOZO, Inc.",
+      "exchange": "TSE",
+      "price": 1136,
+      "change_pct": -1.17442366246194,
+      "volume": 1043900,
+      "relative_volume": 0.3816302730526403,
+      "atr_pct": 2.07,
+      "vwap": 1142,
+      "high": 1157,
+      "low": 1133,
+      "market_cap": 1021341273987,
+      "sector": "Retail Trade",
       "already_watched": false
     },
     {
