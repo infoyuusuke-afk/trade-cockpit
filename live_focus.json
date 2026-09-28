@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-29 03:24:38 JST",
+  "updated_at": "2026-09-29 03:26:54 JST",
   "refresh_seconds": 60,
   "backend_interval_minutes": 5,
   "verified_count": 0,
@@ -15,7 +15,7 @@
       "price": 53340.0,
       "primary_price": 53450.0,
       "quote_time": "2026-09-28T15:20:00+09:00",
-      "age_minutes": 724.6,
+      "age_minutes": 726.9,
       "verified": false,
       "status": "更新停止・売買禁止",
       "chart": [],
@@ -151,8 +151,8 @@
         "14:55",
         "15:00"
       ],
-      "forecast_bias": "レンジ候補",
-      "forecast_tradable": false,
+      "forecast_bias": "下方向候補",
+      "forecast_tradable": true,
       "monitor_status": "ザラバ終了",
       "actual_time": null,
       "forecast_time": "09:00",
