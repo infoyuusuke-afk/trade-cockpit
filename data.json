@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-28 12:31:02 JST",
+  "updated_at": "2026-09-28 12:33:42 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -6073,37 +6073,37 @@
     },
     "ドル円": {
       "ok": true,
-      "price": 157.75,
+      "price": 157.79,
       "open": 157.18,
       "high": 157.86,
       "low": 157.13,
       "prev_close": 158.81,
-      "change_pct": -0.67,
-      "ret5": 0.45,
+      "change_pct": -0.64,
+      "ret5": 0.48,
       "ret5_prev": 2.36,
-      "ret20": -1.48,
+      "ret20": -1.45,
       "rvol": 0,
       "turnover": 0,
       "atr14": 1.38,
       "atr_pct": 0.88,
-      "ma5": 157.93,
+      "ma5": 157.94,
       "ma20": 156.4,
       "ma60": 159.22,
-      "from_ma5": -0.11,
-      "from_ma20": 0.86,
+      "from_ma5": -0.09,
+      "from_ma20": 0.89,
       "touch_ma5": false,
-      "to_high20": -1.64,
-      "to_high52": -3.8,
+      "to_high20": -1.61,
+      "to_high52": -3.77,
       "bb_upper": 160.58,
       "bb_lower": 152.22,
-      "bb_width": 5.34,
-      "bb_width_change": -0.57,
+      "bb_width": 5.35,
+      "bb_width_change": -0.56,
       "bb_percentile": 80.8,
       "bb_expansion_score": 33.7,
-      "day_score": -1.38,
-      "swing_score": 2.79,
-      "stable_score": 0.73,
-      "momentum_score": -0.03,
+      "day_score": -1.34,
+      "swing_score": 2.8,
+      "stable_score": 0.74,
+      "momentum_score": -0.02,
       "high_score": 0.0,
       "chart": [
         {
@@ -6423,13 +6423,13 @@
           "o": 157.18,
           "h": 157.86,
           "l": 157.13,
-          "c": 157.75,
+          "c": 157.79,
           "v": 0
         }
       ],
       "data_date": "2026-09-28",
       "data_age_days": 0,
-      "chart_last_close": 157.75,
+      "chart_last_close": 157.79,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
@@ -44340,8 +44340,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-09-28T12:30:20+09:00",
-    "decision_at": "2026-09-28T12:30:20+09:00",
+    "generated_at": "2026-09-28T12:32:54+09:00",
+    "decision_at": "2026-09-28T12:32:54+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -50294,13 +50294,13 @@
     }
   ],
   "strong_yen_top5": {
-    "usd_jpy": 157.757,
-    "usd_jpy_change_pct": 0.29,
-    "usd_jpy_ret5": 0.45,
+    "usd_jpy": 157.782,
+    "usd_jpy_change_pct": 0.31,
+    "usd_jpy_ret5": 0.48,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-09-28T12:30:00+09:00",
+    "fx_observed_at": "2026-09-28T12:33:00+09:00",
     "statement_study": {
-      "updated_at": "2026-09-28 12:30:55 JST",
+      "updated_at": "2026-09-28 12:33:37 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -51256,7 +51256,7 @@
         "ticker": "9843.T",
         "price": 2984.0,
         "change_pct": -2.96,
-        "score": 47,
+        "score": 46,
         "sensitivity": 96,
         "reason": "海外調達比率が高い家具・生活用品。円高は仕入原価の低下要因",
         "source": "https://www.nitorihd.co.jp/ir/",
@@ -54350,7 +54350,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-09-28 12:30:44 JST",
+    "credit_supply_updated_at": "2026-09-28 12:33:23 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -73460,14 +73460,14 @@
   ],
   "morning_snapshot": {
     "date": "2026-09-28",
-    "fixed_at": "2026-09-28 12:31:02 JST",
+    "fixed_at": "2026-09-28 12:33:42 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-09-28",
-    "fixed_at": "2026-09-28 12:31:59 JST",
+    "fixed_at": "2026-09-28 12:34:24 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
@@ -73496,7 +73496,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-28 12:31:59 JST",
+        "signal_time": "2026-09-28 12:34:24 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73525,7 +73525,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-28 12:31:59 JST",
+        "signal_time": "2026-09-28 12:34:24 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73554,7 +73554,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-28 12:31:59 JST",
+        "signal_time": "2026-09-28 12:34:24 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73583,7 +73583,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-28 12:31:59 JST",
+        "signal_time": "2026-09-28 12:34:24 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73612,7 +73612,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-28 12:31:59 JST",
+        "signal_time": "2026-09-28 12:34:24 JST",
         "source": "morning_snapshot"
       }
     ]
