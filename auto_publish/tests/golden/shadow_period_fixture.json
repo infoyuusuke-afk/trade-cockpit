@@ -1,0 +1,21 @@
+{
+  "days": {
+    "2026-09-17": "cd2c8fe2fcff5492d0ada3d3a9a413e842864826ee98dcb41215a06589a4e94e",
+    "2026-09-18": "4a0d3e2a38190ba76172f6d45beda81459a8bda136e8567b69e402435e24ae93",
+    "2026-09-24": "86dacadf1a56832bf506b67b1c6d2a49e108bbd5df95408994314c3ea391cf8a",
+    "2026-09-25": "f0d5901f61b1b45e8da8dbcf28e2ff91ee067b6a94ea19433bcb8ed746a27de3",
+    "2026-09-28": "0ec8e71b9ee82a7fcae2644345669eb3a75238b412d9ef09f8cc23c3ae4ebde5"
+  },
+  "period": {
+    "acceptance": {
+      "full_chain_days": 5,
+      "met": true,
+      "target_trading_days": 5
+    },
+    "audit_head_at_as_of": "ffcccdd5297f35e4f728a760c7392002a4d497cd6c2ec11f6fab8a67bcfba5e3",
+    "observation_as_of_utc": "2026-09-29T03:00:00Z",
+    "period_status": "OK",
+    "report_sha256": "7e95e19cb763bd70889aa63ba7bdea9ee569a74b304df76f32f024bf3c349ac5"
+  },
+  "tse_calendar_sha256": "23e2e8f375adfeb9d84d34ae7f410bfc0eee7183b35d6b21c69e329295770844"
+}

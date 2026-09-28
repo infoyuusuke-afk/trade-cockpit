@@ -32,7 +32,7 @@ class TestSchemaAndStateMachine(unittest.TestCase):
     def test_migrations_are_idempotent(self):
         self.assertEqual(migrate(self.conn), [])
         versions = [r[0] for r in self.conn.execute("SELECT version FROM schema_migrations")]
-        self.assertEqual(versions, ["001_init", "002_dispatch", "003_metrics", "004_proposal_as_of_unique", "005_shadow_days"])
+        self.assertEqual(versions, ["001_init", "002_dispatch", "003_metrics", "004_proposal_as_of_unique", "005_shadow_days", "006_shadow_periods"])
 
     def test_no_publish_state_exists_in_r1(self):
         names = {s.value for s in S}

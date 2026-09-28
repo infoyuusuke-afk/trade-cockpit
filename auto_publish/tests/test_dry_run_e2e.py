@@ -801,7 +801,7 @@ class TestMigrationFromR1(unittest.TestCase):
             conn = connect(db)
             try:
                 versions = [r[0] for r in conn.execute("SELECT version FROM schema_migrations ORDER BY version")]
-                self.assertEqual(versions, ["001_init", "002_dispatch", "003_metrics", "004_proposal_as_of_unique", "005_shadow_days"])
+                self.assertEqual(versions, ["001_init", "002_dispatch", "003_metrics", "004_proposal_as_of_unique", "005_shadow_days", "006_shadow_periods"])
                 self.assertEqual(conn.execute("SELECT COUNT(*) FROM dispatches").fetchone()[0], 0)
                 self.assertEqual(conn.execute("SELECT COUNT(*) FROM post_metrics").fetchone()[0], 0)
             finally:

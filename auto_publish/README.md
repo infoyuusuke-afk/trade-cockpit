@@ -262,6 +262,29 @@ at a different location, those references no longer resolve and verification fai
 re-verification → `METRICS_STORE_TAMPERED` → shadow verdict `UNKNOWN`; evidence verification → `EVIDENCE_*`).
 Nothing unsafe happens, but keep a home at its original path until a dedicated migration/relocation phase exists.
 
+### Multi-business-day observation (contract `auto_publish.shadow_period.v1`)
+
+`shadow-period --from D1 --to D2 [--as-of T]` stores one append-only, point-in-time record for a range of dates
+(1–62 days). It reads only the TSE calendar, STORED `shadow_day.v1` records knowable at T
+(`observation_as_of_utc ≤ T` and `generated_at_utc ≤ T`) and audit rows stamped ≤ T; it never re-evaluates or
+rewrites a past day and changes no pipeline state (the only write is the record + its audit row).
+
+* **Per date**: `CLOSED` (weekend / holiday, from the calendar) · `PENDING` (not yet due, no final record) ·
+  otherwise the verdict of the latest visible day record plus period-level evidence checks. A trading date is *due*
+  at the end of its last configured wave + `max_lateness_minutes` + `lease_seconds` (recorded as `due_rule`).
+* **Fail-closed (UNKNOWN)** for a due date: `SESSION_MISSING`, `SHADOW_DAY_MISSING`, `SHADOW_DAY_PREMATURE` (only
+  a record made before the day resolved), `SCHEDULE_UNRESOLVED_AFTER_DUE` (not held by a kill switch),
+  `SHADOW_RECORD_TAMPERED`, `SHADOW_RECORD_UNANCHORED` (no matching audit row), `SESSION_ON_CLOSED_DAY`.
+  **VIOLATION**: `AUDIT_HEAD_MISSING` (audit the day was based on is gone), `DRY_RUN_BOUNDARY`, cross-day duplicates
+  (same payload / trace / story under two session dates), broken audit chain.
+* Kill switch / disabled platform: schedules held by them are *resolved* (reported as `held_by_kill_switch`), not
+  UNKNOWN; such days are not full-chain days.
+* **Acceptance gate**: `met` iff `period_status` is OK and at least `shadow.acceptance_trading_days` (default 5)
+  trading days are *full-chain* (final, OK, ≥1 WOULD_PUBLISH, every scheduled story has verified human approval).
+* Identity (from, to, T, contract): identical re-run = no-op; different content = `SHADOW_PERIOD_CONFLICT`.
+  Canonical hash as for the day contract with domain `auto_publish.shadow_period.v1\n`; the 5-trading-day fixture
+  across the 2026-09 holidays is locked in `tests/golden/shadow_period_fixture.json`.
+
 Known Low items (tracked, not fixed): optimizer config upper bounds; shadow-eval noop may return a recomputed result;
 metrics-import consistency checks and schedule() free-slot read outside the write transaction; `vwap_relation="at"`
 unsupported by templates; sub-second truncation; no external anchor for the audit chain; Japanese line-break quality.
