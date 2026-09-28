@@ -90,7 +90,10 @@
     "logged_at": "2026-09-17 09:53:00 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.08,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -0.24,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "6905",
@@ -99,7 +102,10 @@
     "logged_at": "2026-09-17 09:53:00 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 2.47,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 6.71,
+    "actual_direction": "上昇",
+    "hit": true
   },
   {
     "code": "3160",
@@ -108,7 +114,10 @@
     "logged_at": "2026-09-18 09:46:59 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.0,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -3.52,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "4716",
@@ -117,6 +126,99 @@
     "logged_at": "2026-09-18 22:10:02 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 3.46,
+    "status": "resolved",
+    "actual_return_pct": 8.15,
+    "actual_direction": "上昇",
+    "hit": true
+  },
+  {
+    "code": "192A",
+    "name": "インテグループ",
+    "target_date": "2026-09-30",
+    "logged_at": "2026-09-29 02:04:12 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 3.57,
+    "status": "pending"
+  },
+  {
+    "code": "2354",
+    "name": "ＹＥ　ＤＩＧＩＴＡＬ",
+    "target_date": "2026-09-30",
+    "logged_at": "2026-09-29 02:04:12 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.91,
+    "status": "pending"
+  },
+  {
+    "code": "2685",
+    "name": "アンドエスティＨＤ",
+    "target_date": "2026-09-30",
+    "logged_at": "2026-09-29 02:04:12 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.16,
+    "status": "pending"
+  },
+  {
+    "code": "2935",
+    "name": "ピックルスホールディングス",
+    "target_date": "2026-09-30",
+    "logged_at": "2026-09-29 02:04:13 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.08,
+    "status": "pending"
+  },
+  {
+    "code": "2975",
+    "name": "スター・マイカ・ホールディングス",
+    "target_date": "2026-09-30",
+    "logged_at": "2026-09-29 02:04:13 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.97,
+    "status": "pending"
+  },
+  {
+    "code": "3089",
+    "name": "テクノアルファ",
+    "target_date": "2026-09-30",
+    "logged_at": "2026-09-29 02:04:13 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.51,
+    "status": "pending"
+  },
+  {
+    "code": "6083",
+    "name": "ＥＲＩホールディングス",
+    "target_date": "2026-09-30",
+    "logged_at": "2026-09-29 02:04:13 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 4.91,
+    "status": "pending"
+  },
+  {
+    "code": "9265",
+    "name": "ヤマシタヘルスケアホールディングス",
+    "target_date": "2026-09-30",
+    "logged_at": "2026-09-29 02:04:14 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 4.7,
+    "status": "pending"
+  },
+  {
+    "code": "9369",
+    "name": "キユーソー流通システム",
+    "target_date": "2026-09-30",
+    "logged_at": "2026-09-29 02:04:14 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.29,
+    "status": "pending"
+  },
+  {
+    "code": "9651",
+    "name": "日本プロセス",
+    "target_date": "2026-09-30",
+    "logged_at": "2026-09-29 02:04:14 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.87,
     "status": "pending"
   }
 ]
