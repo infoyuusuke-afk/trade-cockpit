@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-09-29 00:50:31 JST",
+  "updated_at": "2026-09-29 00:53:02 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3641,13 +3641,13 @@
         26407400.0,
         26766200.0
       ],
-      "similarity": 95.8,
+      "similarity": 96.0,
       "after_ret": -1.98,
       "max_up_after": 0.49,
       "max_down_after": -3.52,
       "score_components": {
         "five_minute": null,
-        "us_market": 95.3,
+        "us_market": 95.7,
         "credit_supply": 97.4
       },
       "us_context": {
@@ -3812,13 +3812,13 @@
         25418900.0,
         25419300.0
       ],
-      "similarity": 93.6,
+      "similarity": 93.5,
       "after_ret": -3.56,
       "max_up_after": 0.72,
       "max_down_after": -4.37,
       "score_components": {
         "five_minute": null,
-        "us_market": 92.0,
+        "us_market": 91.9,
         "credit_supply": 100.0
       },
       "us_context": {
@@ -4313,13 +4313,13 @@
         23445400.0,
         23854600.0
       ],
-      "similarity": 88.3,
+      "similarity": 88.5,
       "after_ret": -0.04,
       "max_up_after": 1.81,
       "max_down_after": -1.74,
       "score_components": {
         "five_minute": null,
-        "us_market": 91.9,
+        "us_market": 92.2,
         "credit_supply": 73.7
       },
       "us_context": {
@@ -4485,13 +4485,13 @@
       26407400.0,
       26766200.0
     ],
-    "similarity": 95.8,
+    "similarity": 96.0,
     "after_ret": -1.98,
     "max_up_after": 0.49,
     "max_down_after": -3.52,
     "score_components": {
       "five_minute": null,
-      "us_market": 95.3,
+      "us_market": 95.7,
       "credit_supply": 97.4
     },
     "us_context": {
@@ -4527,9 +4527,9 @@
   "market_context": {
     "date": "2026-09-28",
     "values": {
-      "sndk": -5.08,
-      "mu": -3.768,
-      "sox": -2.491,
+      "sndk": -4.909,
+      "mu": -3.822,
+      "sox": -2.532,
       "nasdaq": -0.997
     },
     "labels": {
