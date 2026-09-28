@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-09-28 15:48:01 JST",
+  "updated_at": "2026-09-28 15:50:22 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -5168,22 +5168,6 @@
       "already_watched": true
     },
     {
-      "code": "1699",
-      "name": "NEXT FUNDS Nomura Crude Oil Long Index Linked ETF",
-      "exchange": "TSE",
-      "price": 700,
-      "change_pct": 0.2434483746240936,
-      "volume": 1868800,
-      "relative_volume": 1.6322480793484981,
-      "atr_pct": 2.12,
-      "vwap": 699.4666666666667,
-      "high": 704.6,
-      "low": 693.8,
-      "market_cap": null,
-      "sector": "Miscellaneous",
-      "already_watched": false
-    },
-    {
       "code": "6472",
       "name": "NTN Corporation",
       "exchange": "TSE",
@@ -5197,6 +5181,22 @@
       "low": 386.6,
       "market_cap": 232630350464,
       "sector": "Producer Manufacturing",
+      "already_watched": false
+    },
+    {
+      "code": "1699",
+      "name": "NEXT FUNDS Nomura Crude Oil Long Index Linked ETF",
+      "exchange": "TSE",
+      "price": 700,
+      "change_pct": 0.2434483746240936,
+      "volume": 1868800,
+      "relative_volume": 1.6322480793484981,
+      "atr_pct": 2.12,
+      "vwap": 699.4666666666667,
+      "high": 704.6,
+      "low": 693.8,
+      "market_cap": null,
+      "sector": "Miscellaneous",
       "already_watched": false
     },
     {
