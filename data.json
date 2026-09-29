@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-29 18:59:55 JST",
+  "updated_at": "2026-09-29 19:02:22 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -5701,37 +5701,37 @@
     },
     "VIX": {
       "ok": true,
-      "price": 16.08,
+      "price": 16.09,
       "open": 16.17,
       "high": 16.19,
       "low": 15.98,
       "prev_close": 16.07,
-      "change_pct": 0.06,
-      "ret5": 13.16,
+      "change_pct": 0.12,
+      "ret5": 13.23,
       "ret5_prev": -17.38,
-      "ret20": -1.59,
+      "ret20": -1.53,
       "rvol": 0,
       "turnover": 0,
       "atr14": 1.47,
       "atr_pct": 9.16,
-      "ma5": 15.57,
+      "ma5": 15.58,
       "ma20": 15.72,
       "ma60": 16.06,
-      "from_ma5": 3.25,
-      "from_ma20": 2.28,
+      "from_ma5": 3.3,
+      "from_ma20": 2.34,
       "touch_ma5": false,
-      "to_high20": -15.1,
-      "to_high52": -54.45,
+      "to_high20": -15.05,
+      "to_high52": -54.42,
       "bb_upper": 17.82,
       "bb_lower": 13.62,
-      "bb_width": 26.75,
-      "bb_width_change": -1.11,
+      "bb_width": 26.76,
+      "bb_width_change": -1.1,
       "bb_percentile": 35.0,
       "bb_expansion_score": 44.8,
-      "day_score": 3.85,
-      "swing_score": 1.4,
-      "stable_score": 1.71,
-      "momentum_score": 1.02,
+      "day_score": 3.9,
+      "swing_score": 1.42,
+      "stable_score": 1.72,
+      "momentum_score": 1.05,
       "high_score": 2.0,
       "chart": [
         {
@@ -6051,13 +6051,13 @@
           "o": 16.17,
           "h": 16.19,
           "l": 15.98,
-          "c": 16.08,
+          "c": 16.09,
           "v": 0
         }
       ],
       "data_date": "2026-09-29",
       "data_age_days": 0,
-      "chart_last_close": 16.08,
+      "chart_last_close": 16.09,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
@@ -6075,7 +6075,7 @@
       "ok": true,
       "price": 157.69,
       "open": 157.38,
-      "high": 157.7,
+      "high": 157.71,
       "low": 157.2,
       "prev_close": 157.46,
       "change_pct": 0.14,
@@ -6100,7 +6100,7 @@
       "bb_width_change": -0.72,
       "bb_percentile": 79.2,
       "bb_expansion_score": 34.3,
-      "day_score": -0.81,
+      "day_score": -0.82,
       "swing_score": 2.75,
       "stable_score": 0.77,
       "momentum_score": -0.09,
@@ -6421,7 +6421,7 @@
         {
           "t": "2026-09-29",
           "o": 157.38,
-          "h": 157.7,
+          "h": 157.71,
           "l": 157.2,
           "c": 157.69,
           "v": 0
@@ -44322,8 +44322,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-09-29T18:59:10+09:00",
-    "decision_at": "2026-09-29T18:59:10+09:00",
+    "generated_at": "2026-09-29T19:01:35+09:00",
+    "decision_at": "2026-09-29T19:01:35+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -51436,13 +51436,13 @@
     }
   ],
   "strong_yen_top5": {
-    "usd_jpy": 157.672,
-    "usd_jpy_change_pct": 0.19,
+    "usd_jpy": 157.693,
+    "usd_jpy_change_pct": 0.2,
     "usd_jpy_ret5": 0.2,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-09-29T18:59:00+09:00",
+    "fx_observed_at": "2026-09-29T19:02:00+09:00",
     "statement_study": {
-      "updated_at": "2026-09-29 18:59:48 JST",
+      "updated_at": "2026-09-29 19:02:17 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -55492,7 +55492,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-09-29 18:59:37 JST",
+    "credit_supply_updated_at": "2026-09-29 19:02:04 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -70340,14 +70340,14 @@
   ],
   "morning_snapshot": {
     "date": "2026-09-29",
-    "fixed_at": "2026-09-29 18:59:55 JST",
+    "fixed_at": "2026-09-29 19:02:22 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-09-29",
-    "fixed_at": "2026-09-29 19:00:45 JST",
+    "fixed_at": "2026-09-29 19:03:04 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
@@ -70376,7 +70376,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-29 19:00:45 JST",
+        "signal_time": "2026-09-29 19:03:04 JST",
         "source": "morning_snapshot"
       },
       {
@@ -70405,7 +70405,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-29 19:00:45 JST",
+        "signal_time": "2026-09-29 19:03:04 JST",
         "source": "morning_snapshot"
       },
       {
@@ -70434,7 +70434,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-29 19:00:45 JST",
+        "signal_time": "2026-09-29 19:03:04 JST",
         "source": "morning_snapshot"
       },
       {
@@ -70463,7 +70463,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-29 19:00:45 JST",
+        "signal_time": "2026-09-29 19:03:04 JST",
         "source": "morning_snapshot"
       },
       {
@@ -70492,7 +70492,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-29 19:00:45 JST",
+        "signal_time": "2026-09-29 19:03:04 JST",
         "source": "morning_snapshot"
       },
       {
@@ -70521,7 +70521,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-29 19:00:45 JST",
+        "signal_time": "2026-09-29 19:03:04 JST",
         "source": "morning_snapshot"
       }
     ]
