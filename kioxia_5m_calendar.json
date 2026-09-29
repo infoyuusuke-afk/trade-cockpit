@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-09-29 09:58:15 JST",
+  "updated_at": "2026-09-29 10:00:32 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3222,11 +3222,11 @@
     },
     {
       "date": "2026-09-29",
-      "ret": 0.11,
+      "ret": -0.34,
       "high": 0.88,
       "low": -1.56,
       "type": "レンジ",
-      "bars": 8,
+      "bars": 9,
       "path": [
         -0.737,
         -0.879,
@@ -3235,7 +3235,8 @@
         0.482,
         -0.255,
         -0.227,
-        0.113
+        -0.113,
+        -0.34
       ],
       "volume_path": [
         1418800.0,
@@ -3245,17 +3246,18 @@
         5992800.0,
         7165900.0,
         7980100.0,
-        8276600.0
+        8427700.0,
+        8427700.0
       ]
     }
   ],
   "current": {
     "date": "2026-09-29",
-    "ret": 0.11,
+    "ret": -0.34,
     "high": 0.88,
     "low": -1.56,
     "type": "レンジ",
-    "bars": 8,
+    "bars": 9,
     "path": [
       -0.737,
       -0.879,
@@ -3264,7 +3266,8 @@
       0.482,
       -0.255,
       -0.227,
-      0.113
+      -0.113,
+      -0.34
     ],
     "volume_path": [
       1418800.0,
@@ -3274,7 +3277,8 @@
       5992800.0,
       7165900.0,
       7980100.0,
-      8276600.0
+      8427700.0,
+      8427700.0
     ]
   },
   "current_1m": [
@@ -3622,11 +3626,29 @@
     },
     {
       "t": "09:43",
-      "o": 0.085,
-      "h": 0.085,
-      "l": 0.085,
+      "o": 0.1417,
+      "h": 0.1984,
+      "l": 0.0283,
       "c": 0.085,
       "price": 17655.0,
+      "v": 62700
+    },
+    {
+      "t": "09:44",
+      "o": 0.085,
+      "h": 0.1417,
+      "l": -0.1134,
+      "c": -0.1134,
+      "price": 17620.0,
+      "v": 88400
+    },
+    {
+      "t": "09:45",
+      "o": -0.3968,
+      "h": -0.3968,
+      "l": -0.3968,
+      "c": -0.3968,
+      "price": 17570.0,
       "v": 0
     }
   ],
@@ -3634,14 +3656,14 @@
   "one_minute_verified": true,
   "technical_levels": {
     "session_open": 17640.0,
-    "daily_ma5": 18054.0,
+    "daily_ma5": 18038.0,
     "pivot_p": 18102.2,
     "pivot_r1": 18404.4,
     "pivot_s1": 17514.4,
     "or15_high": 17780.0,
     "or15_low": 17365.0,
     "return_pct": {
-      "daily_ma5": 2.3469,
+      "daily_ma5": 2.2562,
       "pivot_p": 2.6202,
       "pivot_r1": 4.3333,
       "pivot_s1": -0.712,
@@ -3653,7 +3675,7 @@
   "current_is_today": true,
   "current_gap_pct": -0.99,
   "analysis_date": "2026-09-29",
-  "observed_bars": 8,
+  "observed_bars": 9,
   "matches": [
     {
       "date": "2026-09-24",
@@ -3788,12 +3810,12 @@
         25418900.0,
         25419300.0
       ],
-      "similarity": 91.7,
-      "after_ret": -3.47,
-      "max_up_after": 0.71,
-      "max_down_after": -4.28,
+      "similarity": 92.4,
+      "after_ret": -3.56,
+      "max_up_after": 0.62,
+      "max_down_after": -4.37,
       "score_components": {
-        "five_minute": 88.4,
+        "five_minute": 89.5,
         "us_market": 97.5,
         "credit_supply": 98.9
       },
@@ -3959,12 +3981,12 @@
         24519200.0,
         24904200.0
       ],
-      "similarity": 91.6,
-      "after_ret": 1.12,
-      "max_up_after": 1.28,
-      "max_down_after": -2.0,
+      "similarity": 91.9,
+      "after_ret": 1.24,
+      "max_up_after": 1.4,
+      "max_down_after": -1.88,
       "score_components": {
-        "five_minute": 92.9,
+        "five_minute": 93.5,
         "us_market": 86.2,
         "credit_supply": 96.3
       },
@@ -4130,12 +4152,12 @@
         23445400.0,
         23854600.0
       ],
-      "similarity": 90.3,
-      "after_ret": -0.69,
-      "max_up_after": 1.16,
-      "max_down_after": -1.23,
+      "similarity": 88.5,
+      "after_ret": -1.19,
+      "max_up_after": 0.64,
+      "max_down_after": -1.73,
       "score_components": {
-        "five_minute": 91.1,
+        "five_minute": 88.4,
         "us_market": 95.4,
         "credit_supply": 72.6
       },
@@ -4301,12 +4323,12 @@
         29683700.0,
         30163000.0
       ],
-      "similarity": 86.9,
-      "after_ret": 2.24,
-      "max_up_after": 3.26,
-      "max_down_after": -0.9,
+      "similarity": 86.4,
+      "after_ret": 2.36,
+      "max_up_after": 3.38,
+      "max_down_after": -0.78,
       "score_components": {
-        "five_minute": 86.7,
+        "five_minute": 85.9,
         "us_market": 87.4,
         "credit_supply": null
       },
@@ -4460,12 +4482,12 @@
         16789100.0,
         17213800.0
       ],
-      "similarity": 86.2,
-      "after_ret": -3.24,
-      "max_up_after": 0.13,
-      "max_down_after": -3.33,
+      "similarity": 86.1,
+      "after_ret": -3.1,
+      "max_up_after": 0.27,
+      "max_down_after": -3.19,
       "score_components": {
-        "five_minute": 87.0,
+        "five_minute": 86.8,
         "us_market": 78.7,
         "credit_supply": 100.0
       },
@@ -4632,12 +4654,12 @@
       25418900.0,
       25419300.0
     ],
-    "similarity": 91.7,
-    "after_ret": -3.47,
-    "max_up_after": 0.71,
-    "max_down_after": -4.28,
+    "similarity": 92.4,
+    "after_ret": -3.56,
+    "max_up_after": 0.62,
+    "max_down_after": -4.37,
     "score_components": {
-      "five_minute": 88.4,
+      "five_minute": 89.5,
       "us_market": 97.5,
       "credit_supply": 98.9
     },
@@ -4703,9 +4725,9 @@
     "status": "類似日あり",
     "bias": "レンジ優位",
     "up_probability": 40.0,
-    "expected_after_ret": -0.81,
-    "expected_max_up": 1.31,
-    "expected_max_down": -2.35,
+    "expected_after_ret": -0.86,
+    "expected_max_up": 1.26,
+    "expected_max_down": -2.39,
     "sample": 5
   },
   "risk_overlay": {
@@ -4716,7 +4738,7 @@
     "grade": "見送り",
     "tradable": false,
     "agreement": 60.0,
-    "dispersion": 2.28,
+    "dispersion": 2.33,
     "reason": "類似日間の方向または値幅が揃っていないため、予測だけで入らない",
     "invalidate": "OR15とVWAPが予測方向と逆へ同時確定したら無効"
   },
@@ -4762,7 +4784,7 @@
       "sample": 11,
       "usable": true,
       "or15_up_rate": 72.7,
-      "close_up_rate": 72.7,
+      "close_up_rate": 63.6,
       "gap_fill_rate": 72.7,
       "median_day_ret": 2.55,
       "median_max_up": 3.21,
