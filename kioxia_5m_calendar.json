@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-09-30 00:36:13 JST",
+  "updated_at": "2026-09-30 00:39:19 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3641,13 +3641,13 @@
         16789100.0,
         17213800.0
       ],
-      "similarity": 95.5,
+      "similarity": 95.4,
       "after_ret": -4.54,
       "max_up_after": 0.14,
       "max_down_after": -4.63,
       "score_components": {
         "five_minute": null,
-        "us_market": 94.4,
+        "us_market": 94.2,
         "credit_supply": 100.0
       },
       "us_context": {
@@ -3812,13 +3812,13 @@
         21823500.0,
         22073900.0
       ],
-      "similarity": 93.6,
+      "similarity": 93.9,
       "after_ret": -1.17,
       "max_up_after": 1.23,
       "max_down_after": -1.64,
       "score_components": {
         "five_minute": null,
-        "us_market": 93.6,
+        "us_market": 93.9,
         "credit_supply": null
       },
       "us_context": {
@@ -3971,13 +3971,13 @@
         44443900.0,
         44905600.0
       ],
-      "similarity": 92.8,
+      "similarity": 93.0,
       "after_ret": -6.87,
       "max_up_after": 1.88,
       "max_down_after": -8.82,
       "score_components": {
         "five_minute": null,
-        "us_market": 92.8,
+        "us_market": 93.0,
         "credit_supply": null
       },
       "us_context": {
@@ -4301,13 +4301,13 @@
         34372100.0,
         34372200.0
       ],
-      "similarity": 92.1,
+      "similarity": 91.9,
       "after_ret": 0.04,
       "max_up_after": 2.0,
       "max_down_after": -3.47,
       "score_components": {
         "five_minute": null,
-        "us_market": 92.1,
+        "us_market": 91.9,
         "credit_supply": null
       },
       "us_context": {
@@ -4461,13 +4461,13 @@
       16789100.0,
       17213800.0
     ],
-    "similarity": 95.5,
+    "similarity": 95.4,
     "after_ret": -4.54,
     "max_up_after": 0.14,
     "max_down_after": -4.63,
     "score_components": {
       "five_minute": null,
-      "us_market": 94.4,
+      "us_market": 94.2,
       "credit_supply": 100.0
     },
     "us_context": {
@@ -4503,10 +4503,10 @@
   "market_context": {
     "date": "2026-09-29",
     "values": {
-      "sndk": -0.085,
-      "mu": 1.089,
-      "sox": 1.792,
-      "nasdaq": -0.049
+      "sndk": -0.267,
+      "mu": 1.119,
+      "sox": 1.797,
+      "nasdaq": -0.012
     },
     "labels": {
       "sndk": "SanDisk",
@@ -4531,7 +4531,7 @@
   "prediction": {
     "status": "寄り前・米国市場と信用需給から事前選定",
     "bias": "下方向候補",
-    "up_probability": 19.8,
+    "up_probability": 19.7,
     "expected_after_ret": -3.22,
     "expected_max_up": 1.09,
     "expected_max_down": -4.53,
@@ -4544,7 +4544,7 @@
   "decision": {
     "grade": "条件付き",
     "tradable": true,
-    "agreement": 80.2,
+    "agreement": 80.3,
     "dispersion": 2.45,
     "reason": "類似日が同方向へ収束。OR15・VWAP・出来高一致後だけ利用",
     "invalidate": "OR15とVWAPが予測方向と逆へ同時確定したら無効"
