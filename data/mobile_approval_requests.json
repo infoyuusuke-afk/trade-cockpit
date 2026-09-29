@@ -1,12 +1,41 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-29T05:06:28.005650+00:00",
+  "generated_at": "2026-09-29T05:09:15.989018+00:00",
   "mode": "paper",
   "source": "signals + empirical EV calibration",
   "score_is_probability": false,
   "requests": [
     {
-      "request_id": "SIG-2026-09-29-5243-01",
+      "request_id": "SIG-2026-09-29-7735-01",
+      "request_type": "trade",
+      "symbol": "7735",
+      "name": "SCREEN HD（7735）",
+      "action": "WAIT",
+      "proposed_action": "WAIT",
+      "strategy_key": null,
+      "ev_score": null,
+      "technical_score": 95,
+      "sample_size": null,
+      "win_rate": null,
+      "profit_factor": null,
+      "avg_pl_pct": null,
+      "max_dd_pct": null,
+      "trigger_summary": "BB上方拡大／終値が主要移動平均線上／出来高比0.91倍",
+      "source_signal_date": "2026-09-29",
+      "source_updated_at": "2026-09-29 14:06:57 JST",
+      "data_freshness_sec": null,
+      "risk_gate": "BLOCK",
+      "risk_reason": "STRATEGY_KEY_MISSING",
+      "status": "pending",
+      "expires_in_sec": 0,
+      "paper_only": true,
+      "trigger_price": 14435,
+      "stop_price": 13115,
+      "target1": 16415,
+      "target2": 17735
+    },
+    {
+      "request_id": "SIG-2026-09-29-5243-02",
       "request_type": "trade",
       "symbol": "5243",
       "name": "note（5243）",
@@ -22,7 +51,7 @@
       "max_dd_pct": null,
       "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.41倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 14:04:49 JST",
+      "source_updated_at": "2026-09-29 14:06:57 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -35,7 +64,7 @@
       "target2": 3570
     },
     {
-      "request_id": "SIG-2026-09-29-6920-02",
+      "request_id": "SIG-2026-09-29-6920-03",
       "request_type": "trade",
       "symbol": "6920",
       "name": "レーザーテック（6920）",
@@ -51,7 +80,7 @@
       "max_dd_pct": null,
       "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比1.12倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 14:04:49 JST",
+      "source_updated_at": "2026-09-29 14:06:57 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -59,12 +88,12 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 41585,
-      "stop_price": 39555,
-      "target1": 44630,
-      "target2": 46660
+      "stop_price": 39550,
+      "target1": 44640,
+      "target2": 46670
     },
     {
-      "request_id": "SIG-2026-09-29-6324-03",
+      "request_id": "SIG-2026-09-29-6324-04",
       "request_type": "trade",
       "symbol": "6324",
       "name": "ハーモニック・ドライブ・システムズ（6324）",
@@ -78,9 +107,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.50倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.51倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 14:04:49 JST",
+      "source_updated_at": "2026-09-29 14:06:57 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -88,9 +117,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 6575,
-      "stop_price": 6240,
-      "target1": 7080,
-      "target2": 7410
+      "stop_price": 6235,
+      "target1": 7085,
+      "target2": 7425
     }
   ]
 }
