@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-29 15:15:32 JST",
+  "updated_at": "2026-09-29 15:18:03 JST",
   "source": "固定監視リスト（JPX取得失敗）",
   "universe_count": 100,
   "scanned_count": 100,
@@ -12,14 +12,14 @@
       "name": "SCREEN HD（7735）",
       "setup": "BB上方拡大",
       "score": 95,
-      "close": 14380.0,
+      "close": 14395.0,
       "trigger": 14435,
       "stop": 13120,
       "target1": 16410,
       "target2": 17720,
-      "ma5": 13637.0,
+      "ma5": 13640.0,
       "rvol": 1.07,
-      "ret20": 6.24,
+      "ret20": 6.35,
       "atr_pct": 4.31,
       "signal_date": "2026-09-29",
       "reason": "BB上方拡大／終値が主要移動平均線上／出来高比1.07倍",
@@ -384,7 +384,7 @@
           "o": 14105.0,
           "h": 14430.0,
           "l": 13960.0,
-          "c": 14380.0
+          "c": 14395.0
         }
       ],
       "supply_verified": false,
@@ -410,15 +410,15 @@
       "name": "note（5243）",
       "setup": "5日線反発",
       "score": 85,
-      "close": 3180.0,
+      "close": 3185.0,
       "trigger": 3240,
-      "stop": 3085,
-      "target1": 3470,
-      "target2": 3630,
-      "ma5": 3137.0,
+      "stop": 3090,
+      "target1": 3465,
+      "target2": 3615,
+      "ma5": 3138.0,
       "rvol": 0.54,
-      "ret20": 13.9,
-      "atr_pct": 5.0,
+      "ret20": 14.08,
+      "atr_pct": 4.99,
       "signal_date": "2026-09-29",
       "reason": "5日線反発／終値が主要移動平均線上／出来高比0.54倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
@@ -782,7 +782,7 @@
           "o": 3175.0,
           "h": 3235.0,
           "l": 3090.0,
-          "c": 3180.0
+          "c": 3185.0
         }
       ],
       "supply_verified": false,
@@ -808,17 +808,17 @@
       "name": "レーザーテック（6920）",
       "setup": "5日線反発",
       "score": 80,
-      "close": 40800.0,
+      "close": 40980.0,
       "trigger": 41585,
-      "stop": 39490,
-      "target1": 44730,
-      "target2": 46820,
-      "ma5": 40116.0,
-      "rvol": 1.25,
-      "ret20": 17.89,
-      "atr_pct": 5.11,
+      "stop": 39525,
+      "target1": 44675,
+      "target2": 46735,
+      "ma5": 40152.0,
+      "rvol": 1.26,
+      "ret20": 18.41,
+      "atr_pct": 5.09,
       "signal_date": "2026-09-29",
-      "reason": "5日線反発／終値が主要移動平均線上／出来高比1.25倍",
+      "reason": "5日線反発／終値が主要移動平均線上／出来高比1.26倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
       "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
       "chart": [
@@ -1180,7 +1180,7 @@
           "o": 40480.0,
           "h": 41580.0,
           "l": 39810.0,
-          "c": 40800.0
+          "c": 40980.0
         }
       ],
       "supply_verified": false,
@@ -1206,17 +1206,17 @@
       "name": "マクニカHD（3132）",
       "setup": "5日線反発",
       "score": 80,
-      "close": 4228.0,
+      "close": 4231.0,
       "trigger": 4270,
       "stop": 4160,
       "target1": 4435,
       "target2": 4545,
-      "ma5": 4208.2,
-      "rvol": 0.48,
-      "ret20": 17.48,
+      "ma5": 4208.8,
+      "rvol": 0.49,
+      "ret20": 17.56,
       "atr_pct": 3.65,
       "signal_date": "2026-09-29",
-      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.48倍",
+      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.49倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
       "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
       "chart": [
@@ -1578,7 +1578,7 @@
           "o": 4224.0,
           "h": 4261.0,
           "l": 4176.0,
-          "c": 4228.0
+          "c": 4231.0
         }
       ],
       "supply_verified": false,
@@ -1610,11 +1610,11 @@
       "target1": 7085,
       "target2": 7425,
       "ma5": 6326.0,
-      "rvol": 0.56,
+      "rvol": 0.57,
       "ret20": 10.38,
       "atr_pct": 4.56,
       "signal_date": "2026-09-29",
-      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.56倍",
+      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.57倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
       "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
       "chart": [
@@ -2002,17 +2002,17 @@
       "name": "ナブテスコ（6268）",
       "setup": "5日線反発",
       "score": 75,
-      "close": 4763.0,
+      "close": 4766.0,
       "trigger": 4805,
       "stop": 4695,
       "target1": 4970,
       "target2": 5080,
-      "ma5": 4743.0,
-      "rvol": 0.52,
-      "ret20": 3.97,
+      "ma5": 4743.6,
+      "rvol": 0.53,
+      "ret20": 4.04,
       "atr_pct": 3.29,
       "signal_date": "2026-09-29",
-      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.52倍",
+      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.53倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
       "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
       "chart": [
@@ -2374,7 +2374,7 @@
           "o": 4760.0,
           "h": 4797.0,
           "l": 4720.0,
-          "c": 4763.0
+          "c": 4766.0
         }
       ],
       "supply_verified": false,
@@ -2403,14 +2403,14 @@
       "name": "SCREEN HD（7735）",
       "setup": "BB上方拡大",
       "score": 95,
-      "close": 14380.0,
+      "close": 14395.0,
       "trigger": 14435,
       "stop": 13120,
       "target1": 16410,
       "target2": 17720,
-      "ma5": 13637.0,
+      "ma5": 13640.0,
       "rvol": 1.07,
-      "ret20": 6.24,
+      "ret20": 6.35,
       "atr_pct": 4.31,
       "signal_date": "2026-09-29",
       "reason": "BB上方拡大／終値が主要移動平均線上／出来高比1.07倍",
@@ -2775,7 +2775,7 @@
           "o": 14105.0,
           "h": 14430.0,
           "l": 13960.0,
-          "c": 14380.0
+          "c": 14395.0
         }
       ],
       "supply_verified": false,
@@ -2801,17 +2801,17 @@
       "name": "レーザーテック（6920）",
       "setup": "5日線反発",
       "score": 80,
-      "close": 40800.0,
+      "close": 40980.0,
       "trigger": 41585,
-      "stop": 39490,
-      "target1": 44730,
-      "target2": 46820,
-      "ma5": 40116.0,
-      "rvol": 1.25,
-      "ret20": 17.89,
-      "atr_pct": 5.11,
+      "stop": 39525,
+      "target1": 44675,
+      "target2": 46735,
+      "ma5": 40152.0,
+      "rvol": 1.26,
+      "ret20": 18.41,
+      "atr_pct": 5.09,
       "signal_date": "2026-09-29",
-      "reason": "5日線反発／終値が主要移動平均線上／出来高比1.25倍",
+      "reason": "5日線反発／終値が主要移動平均線上／出来高比1.26倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
       "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
       "chart": [
@@ -3173,7 +3173,7 @@
           "o": 40480.0,
           "h": 41580.0,
           "l": 39810.0,
-          "c": 40800.0
+          "c": 40980.0
         }
       ],
       "supply_verified": false,
@@ -3201,17 +3201,17 @@
       "name": "中外製薬（4519）",
       "setup": "安値割れ",
       "score": 95,
-      "close": 6133.0,
+      "close": 6118.0,
       "trigger": 6080,
       "stop": 6550,
       "target1": 5375,
       "target2": 4905,
-      "ma5": 6501.4,
-      "rvol": 1.06,
-      "ret20": -11.72,
-      "atr_pct": 2.57,
+      "ma5": 6498.4,
+      "rvol": 1.07,
+      "ret20": -11.93,
+      "atr_pct": 2.58,
       "signal_date": "2026-09-29",
-      "reason": "安値割れ／終値＜5日線＜20日線／出来高比1.06倍",
+      "reason": "安値割れ／終値＜5日線＜20日線／出来高比1.07倍",
       "event_risk": "決算・上方修正・自社株買い・海外指数反発を確認。決算7日以内は原則見送り。",
       "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で確認。大幅GDは追いかけない。",
       "chart": [
@@ -3573,7 +3573,7 @@
           "o": 6300.0,
           "h": 6340.0,
           "l": 6086.0,
-          "c": 6133.0
+          "c": 6118.0
         }
       ],
       "supply_verified": false,
@@ -3596,8 +3596,8 @@
   ],
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-09-29T15:15:28+09:00",
-    "decision_at": "2026-09-29T15:15:28+09:00",
+    "generated_at": "2026-09-29T15:17:57+09:00",
+    "decision_at": "2026-09-29T15:17:57+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -3917,13 +3917,13 @@
       "name": "レーザーテック（6920）",
       "score": 76,
       "phase": "上放れ待ち",
-      "close": 40800.0,
-      "ret5": 13.46,
-      "ret20": 17.89,
-      "rvol": 1.25,
+      "close": 40980.0,
+      "ret5": 13.96,
+      "ret20": 18.41,
+      "rvol": 1.26,
       "up_down_volume_ratio": 2.11,
       "obv_impulse": 0.49,
-      "clv20": 0.18,
+      "clv20": 0.19,
       "down_volume_ratio": 0.8,
       "higher_low_pct": 4.27,
       "trigger": 41650,
@@ -4291,7 +4291,7 @@
           "o": 40480.0,
           "h": 41580.0,
           "l": 39810.0,
-          "c": 40800.0
+          "c": 40980.0
         }
       ],
       "supply_verified": false,
@@ -4310,9 +4310,9 @@
       "name": "パワーエックス（485A）",
       "score": 70,
       "phase": "上放れ待ち",
-      "close": 2009.0,
-      "ret5": -5.1,
-      "ret20": 7.32,
+      "close": 2010.0,
+      "ret5": -5.05,
+      "ret20": 7.37,
       "rvol": 0.37,
       "up_down_volume_ratio": 1.68,
       "obv_impulse": 0.41,
@@ -4684,7 +4684,7 @@
           "o": 2031.0,
           "h": 2052.0,
           "l": 1974.0,
-          "c": 2009.0
+          "c": 2010.0
         }
       ],
       "supply_verified": false,
@@ -4703,10 +4703,10 @@
       "name": "マクニカHD（3132）",
       "score": 67,
       "phase": "上放れ待ち",
-      "close": 4228.0,
-      "ret5": 7.45,
-      "ret20": 17.48,
-      "rvol": 0.48,
+      "close": 4231.0,
+      "ret5": 7.52,
+      "ret20": 17.56,
+      "rvol": 0.49,
       "up_down_volume_ratio": 2.28,
       "obv_impulse": 0.65,
       "clv20": 0.3,
@@ -5077,7 +5077,7 @@
           "o": 4224.0,
           "h": 4261.0,
           "l": 4176.0,
-          "c": 4228.0
+          "c": 4231.0
         }
       ],
       "supply_verified": false,
@@ -5096,11 +5096,11 @@
       "name": "ソフトバンクグループ（9984）",
       "score": 62,
       "phase": "上放れ待ち",
-      "close": 5961.0,
-      "ret5": -4.58,
-      "ret20": 14.63,
+      "close": 5964.0,
+      "ret5": -4.53,
+      "ret20": 14.69,
       "rvol": 0.83,
-      "up_down_volume_ratio": 2.22,
+      "up_down_volume_ratio": 2.21,
       "obv_impulse": 0.09,
       "clv20": 0.11,
       "down_volume_ratio": 0.83,
@@ -5110,7 +5110,7 @@
       "target1": 8940,
       "target2": 10240,
       "signal_date": "2026-09-29",
-      "reason": "上昇日/下落日出来高 2.22倍／OBV +0.09／下落日出来高 0.83倍／安値切上げ +16.3%",
+      "reason": "上昇日/下落日出来高 2.21倍／OBV +0.09／下落日出来高 0.83倍／安値切上げ +16.3%",
       "chart": [
         {
           "o": 6089.0,
@@ -5470,7 +5470,7 @@
           "o": 6139.0,
           "h": 6362.0,
           "l": 5931.0,
-          "c": 5961.0
+          "c": 5964.0
         }
       ],
       "supply_verified": false,
@@ -5489,9 +5489,9 @@
       "name": "アイサンテクノロジー（4667）",
       "score": 61,
       "phase": "上放れ待ち",
-      "close": 1043.0,
-      "ret5": -2.07,
-      "ret20": 42.23,
+      "close": 1044.0,
+      "ret5": -1.97,
+      "ret20": 42.36,
       "rvol": 0.09,
       "up_down_volume_ratio": 2.81,
       "obv_impulse": 0.17,
@@ -5863,7 +5863,7 @@
           "o": 1082.0,
           "h": 1095.0,
           "l": 1005.0,
-          "c": 1043.0
+          "c": 1044.0
         }
       ],
       "supply_verified": false,
@@ -5882,13 +5882,13 @@
       "name": "京セラ（6971）",
       "score": 60,
       "phase": "上放れ待ち",
-      "close": 3656.0,
-      "ret5": 2.73,
-      "ret20": 0.19,
+      "close": 3657.0,
+      "ret5": 2.75,
+      "ret20": 0.22,
       "rvol": 0.35,
       "up_down_volume_ratio": 1.28,
       "obv_impulse": 0.39,
-      "clv20": 0.01,
+      "clv20": 0.02,
       "down_volume_ratio": 0.88,
       "higher_low_pct": 0.57,
       "trigger": 3835,
@@ -6256,7 +6256,7 @@
           "o": 3637.0,
           "h": 3701.0,
           "l": 3635.0,
-          "c": 3656.0
+          "c": 3657.0
         }
       ],
       "supply_verified": false,
@@ -6279,18 +6279,18 @@
       "name": "ナブテスコ（6268）",
       "timeframe": "月足",
       "status": "暫定・準ハンマー・需給未確認",
-      "score": 76,
-      "close": 4763.0,
+      "score": 81,
+      "close": 4766.0,
       "trigger": 4840,
       "stop": 4255,
       "target1": 5720,
       "target2": 6300,
       "ma_rebound": "12月線",
-      "lower_wick_ratio": 1.6,
-      "upper_wick_ratio": 0.4,
+      "lower_wick_ratio": 1.5,
+      "upper_wick_ratio": 0.3,
       "volume_ratio": 0.71,
       "signal_date": "2026-09-29",
-      "reason": "月足陽線ハンマー／下ヒゲ1.6倍／12月線反発／出来高比0.71倍",
+      "reason": "月足陽線ハンマー／下ヒゲ1.5倍／12月線反発／出来高比0.71倍",
       "caution": "高値＋1ティックを上抜くまで準備。月足・週足確定前に形が崩れた場合は除外。",
       "chart": [
         {
@@ -6651,7 +6651,7 @@
           "o": 4760.0,
           "h": 4797.0,
           "l": 4720.0,
-          "c": 4763.0
+          "c": 4766.0
         }
       ],
       "supply_verified": false,
@@ -6663,7 +6663,7 @@
       "institutional_short_change_pct": null,
       "institutional_buyback_firms": null,
       "supply_note": "信用残・機関空売りの最新値を取得後に昇格判定",
-      "technical_score": 76
+      "technical_score": 81
     },
     {
       "code": "2158",
@@ -6672,17 +6672,17 @@
       "timeframe": "月足",
       "status": "暫定・需給未確認",
       "score": 72,
-      "close": 659.0,
+      "close": 660.0,
       "trigger": 667,
       "stop": 601,
       "target1": 766,
       "target2": 832,
       "ma_rebound": "6月線",
-      "lower_wick_ratio": 2.8,
-      "upper_wick_ratio": 0.5,
+      "lower_wick_ratio": 2.6,
+      "upper_wick_ratio": 0.4,
       "volume_ratio": 0.5,
       "signal_date": "2026-09-29",
-      "reason": "月足陽線ハンマー／下ヒゲ2.8倍／6月線反発／出来高比0.50倍",
+      "reason": "月足陽線ハンマー／下ヒゲ2.6倍／6月線反発／出来高比0.50倍",
       "caution": "高値＋1ティックを上抜くまで準備。月足・週足確定前に形が崩れた場合は除外。",
       "chart": [
         {
@@ -7043,7 +7043,7 @@
           "o": 666.0,
           "h": 666.0,
           "l": 651.0,
-          "c": 659.0
+          "c": 660.0
         }
       ],
       "supply_verified": false,
@@ -7058,7 +7058,7 @@
       "technical_score": 72
     }
   ],
-  "credit_supply_updated_at": "2026-09-29 15:13:45 JST",
+  "credit_supply_updated_at": "2026-09-29 15:16:01 JST",
   "long_term_ma_rebounds": [],
   "long_term_ma_rebounds_unverified": [],
   "daily_capitulation_reversals": [],
