@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-29 09:15:56 JST",
+  "updated_at": "2026-09-29 09:18:06 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -266,6 +266,37 @@
       "bars": 257,
       "state": "確認",
       "confidence": 99,
+      "anchor_today": {
+        "ret": 0.0,
+        "or15": "形成中",
+        "vwap": "未取得",
+        "ema": "下向き"
+      },
+      "peer_today": {
+        "ret": 0.0,
+        "or15": "形成中",
+        "vwap": "未取得",
+        "ema": "下向き"
+      },
+      "decision": "売買の確認材料に使用"
+    },
+    {
+      "anchor": "Terra Drone（278A）",
+      "anchor_ticker": "278A.T",
+      "peer": "東京エレクトロン（8035）",
+      "peer_ticker": "8035.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.94,
+      "corr60": 0.82,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": 0.99,
+      "lead_bars": 0,
+      "bars": 262,
+      "state": "確認",
+      "confidence": 96,
       "anchor_today": {
         "ret": 0.0,
         "or15": "形成中",
@@ -2241,8 +2272,8 @@
       "relation": "自動検出・正相関",
       "expected": "正相関",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.67,
-      "corr60": 0.27,
+      "corr20": 0.66,
+      "corr60": 0.26,
       "sample20": 20,
       "sample60": 60,
       "intraday_corr": 0.21,
