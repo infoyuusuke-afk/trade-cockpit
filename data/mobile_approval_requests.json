@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-29T03:49:23.672960+00:00",
+  "generated_at": "2026-09-29T03:51:29.058925+00:00",
   "mode": "paper",
   "source": "signals + empirical EV calibration",
   "score_is_probability": false,
@@ -20,9 +20,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.30倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.31倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 12:47:40 JST",
+      "source_updated_at": "2026-09-29 12:49:51 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -49,9 +49,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.95倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.96倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 12:47:40 JST",
+      "source_updated_at": "2026-09-29 12:49:51 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -59,9 +59,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 41585,
-      "stop_price": 39495,
-      "target1": 44720,
-      "target2": 46810
+      "stop_price": 39520,
+      "target1": 44680,
+      "target2": 46750
     },
     {
       "request_id": "SIG-2026-09-29-3132-03",
@@ -78,9 +78,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.32倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.33倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 12:47:40 JST",
+      "source_updated_at": "2026-09-29 12:49:51 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -88,9 +88,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 4260,
-      "stop_price": 4160,
-      "target1": 4410,
-      "target2": 4510
+      "stop_price": 4165,
+      "target1": 4400,
+      "target2": 4500
     },
     {
       "request_id": "SIG-2026-09-29-186A-04",
@@ -107,9 +107,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.52倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.53倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 12:47:40 JST",
+      "source_updated_at": "2026-09-29 12:49:51 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -138,7 +138,7 @@
       "max_dd_pct": null,
       "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.44倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 12:47:40 JST",
+      "source_updated_at": "2026-09-29 12:49:51 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -146,9 +146,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 6575,
-      "stop_price": 6245,
-      "target1": 7070,
-      "target2": 7400
+      "stop_price": 6250,
+      "target1": 7060,
+      "target2": 7390
     },
     {
       "request_id": "SIG-2026-09-29-6268-06",
@@ -165,9 +165,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.31倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.32倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 12:47:40 JST",
+      "source_updated_at": "2026-09-29 12:49:51 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -175,9 +175,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 4805,
-      "stop_price": 4695,
-      "target1": 4970,
-      "target2": 5080
+      "stop_price": 4700,
+      "target1": 4960,
+      "target2": 5070
     }
   ]
 }
