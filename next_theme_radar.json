@@ -1,21 +1,21 @@
 {
   "schema_version": "next-theme-radar-0.2",
-  "updated_at": "2026-09-29T22:47:08.197216+09:00",
+  "updated_at": "2026-09-30T04:08:17.960351+09:00",
   "source_note": "ニュース集約RSSは一次資料ではない。価格・資金流入は取得済み証拠だけで採点。",
   "themes": [
     {
       "theme_id": "jpy-stablecoin",
       "theme": "円ステーブルコイン",
-      "status": "WATCH",
-      "score": 45,
+      "status": "NO_EVENT",
+      "score": 15,
       "score_breakdown": {
-        "novelty": 15,
-        "catalyst": 5,
+        "novelty": 0,
+        "catalyst": 0,
         "money_flow": 0,
         "japan_link": 15,
         "breadth": 0,
         "small_cap": 0,
-        "overseas_lead": 10,
+        "overseas_lead": 0,
         "price_confirmation": 0
       },
       "weights": {
@@ -28,22 +28,9 @@
         "overseas_lead": 10,
         "price_confirmation": 5
       },
-      "first_seen": "2026-09-27T14:48:18.521799+09:00",
-      "last_event_at": "2026-09-29T02:52:29+09:00",
-      "events": [
-        {
-          "title": "South Korea’s FSC Reviews Crypto Market-Making Rules After JPYC Spike - CryptoRank",
-          "url": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxQalc5TlQ5V0t5al9HSXI1X3A5Ujc4NEczem01QmlDVnRURHIzMUdzZUJQZDByT0tYNVhUZzVSUEkwLURQM29xeW1RY2hVbEFKTEpvS0VwanlCYzFNVmVnVEdQRGlfM0lUTEdwRDJsWmdDTlF0TkItdFFvSExwc1pFWmlJeXpjTmZlVlN6OWJBRjNCb2MySlZ4eUQ5S0JJOXVJa1otU1pocm9aZw?oc=5",
-          "published_at": "2026-09-29T02:52:29+09:00",
-          "source": "CryptoRank"
-        },
-        {
-          "title": "South Korea reviews crypto market-making rules after stablecoin JPYC price spike on Upbit. - Pluang",
-          "url": "https://news.google.com/rss/articles/CBMioAFBVV95cUxON1BjaU4yWF9mVGMtRHJyazdRckhLX08xLVF4cDRjVTNDeW1YcndvQ0oxcGlzWWpNNmEwYllLZ244RXVBeTBiMUNxbS00TkZUc25zMGp6M0xZNWtlRW1jZmZ4R0dpSUdGTHB4NnI4YS1jWnJ1bFFVcUQxbG41UWhWODh6U3k1aGZKb2NoOXdQODhkaTVvVklORzBsb2VQMC0x?oc=5",
-          "published_at": "2026-09-29T02:44:06+09:00",
-          "source": "Pluang"
-        }
-      ],
+      "first_seen": null,
+      "last_event_at": null,
+      "events": [],
       "stocks": [
         {
           "code": "3853",
@@ -81,18 +68,14 @@
       ],
       "reacting_stock_count": 0,
       "evidence": {
-        "news_fresh": true,
+        "news_fresh": false,
         "money_flow_fresh": false,
         "money_flow_anomaly": false,
         "tv_fresh": true,
         "money_flow_source": null
       },
       "emergency_display": false,
-      "handoff_codes": [
-        "3853",
-        "4072",
-        "4382"
-      ],
+      "handoff_codes": [],
       "trading_enabled": false,
       "real_submit_allowed": false
     }
