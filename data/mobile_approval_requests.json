@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-29T01:26:27.877090+00:00",
+  "generated_at": "2026-09-29T01:29:06.117694+00:00",
   "mode": "paper",
   "source": "signals + empirical EV calibration",
   "score_is_probability": false,
@@ -20,9 +20,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.32倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.33倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 10:24:21 JST",
+      "source_updated_at": "2026-09-29 10:26:58 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -30,9 +30,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 6575,
-      "stop_price": 6250,
-      "target1": 7060,
-      "target2": 7390
+      "stop_price": 6240,
+      "target1": 7080,
+      "target2": 7410
     },
     {
       "request_id": "SIG-2026-09-29-6920-02",
@@ -49,9 +49,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.64倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.65倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 10:24:21 JST",
+      "source_updated_at": "2026-09-29 10:26:58 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -59,9 +59,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 41585,
-      "stop_price": 39600,
-      "target1": 44560,
-      "target2": 46550
+      "stop_price": 39560,
+      "target1": 44620,
+      "target2": 46650
     }
   ]
 }
