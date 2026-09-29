@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-29T01:54:43.714925+00:00",
+  "generated_at": "2026-09-29T01:57:14.074344+00:00",
   "mode": "paper",
   "source": "signals + empirical EV calibration",
   "score_is_probability": false,
@@ -22,7 +22,7 @@
       "max_dd_pct": null,
       "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.20倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 10:52:59 JST",
+      "source_updated_at": "2026-09-29 10:55:11 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -51,7 +51,7 @@
       "max_dd_pct": null,
       "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.37倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 10:52:59 JST",
+      "source_updated_at": "2026-09-29 10:55:11 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -80,7 +80,7 @@
       "max_dd_pct": null,
       "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.76倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 10:52:59 JST",
+      "source_updated_at": "2026-09-29 10:55:11 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -88,9 +88,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 41585,
-      "stop_price": 39585,
-      "target1": 44585,
-      "target2": 46585
+      "stop_price": 39590,
+      "target1": 44580,
+      "target2": 46570
     }
   ]
 }
