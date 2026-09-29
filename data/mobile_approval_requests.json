@@ -1,12 +1,41 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-29T01:38:13.468785+00:00",
+  "generated_at": "2026-09-29T01:40:24.359737+00:00",
   "mode": "paper",
   "source": "signals + empirical EV calibration",
   "score_is_probability": false,
   "requests": [
     {
-      "request_id": "SIG-2026-09-29-6324-01",
+      "request_id": "SIG-2026-09-29-5243-01",
+      "request_type": "trade",
+      "symbol": "5243",
+      "name": "note（5243）",
+      "action": "WAIT",
+      "proposed_action": "WAIT",
+      "strategy_key": null,
+      "ev_score": null,
+      "technical_score": 85,
+      "sample_size": null,
+      "win_rate": null,
+      "profit_factor": null,
+      "avg_pl_pct": null,
+      "max_dd_pct": null,
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.19倍",
+      "source_signal_date": "2026-09-29",
+      "source_updated_at": "2026-09-29 10:38:40 JST",
+      "data_freshness_sec": null,
+      "risk_gate": "BLOCK",
+      "risk_reason": "STRATEGY_KEY_MISSING",
+      "status": "pending",
+      "expires_in_sec": 0,
+      "paper_only": true,
+      "trigger_price": 3205,
+      "stop_price": 3090,
+      "target1": 3380,
+      "target2": 3490
+    },
+    {
+      "request_id": "SIG-2026-09-29-6324-02",
       "request_type": "trade",
       "symbol": "6324",
       "name": "ハーモニック・ドライブ・システムズ（6324）",
@@ -22,7 +51,7 @@
       "max_dd_pct": null,
       "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.35倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 10:36:26 JST",
+      "source_updated_at": "2026-09-29 10:38:40 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -35,7 +64,7 @@
       "target2": 7410
     },
     {
-      "request_id": "SIG-2026-09-29-6920-02",
+      "request_id": "SIG-2026-09-29-6920-03",
       "request_type": "trade",
       "symbol": "6920",
       "name": "レーザーテック（6920）",
@@ -49,9 +78,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.69倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.71倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 10:36:26 JST",
+      "source_updated_at": "2026-09-29 10:38:40 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -59,9 +88,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 41585,
-      "stop_price": 39565,
-      "target1": 44615,
-      "target2": 46635
+      "stop_price": 39585,
+      "target1": 44585,
+      "target2": 46585
     }
   ]
 }
