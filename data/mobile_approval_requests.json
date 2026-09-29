@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-29T00:45:35.661006+00:00",
+  "generated_at": "2026-09-29T00:47:47.903542+00:00",
   "mode": "paper",
   "source": "signals + empirical EV calibration",
   "score_is_probability": false,
@@ -20,9 +20,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.24倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.26倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 09:43:55 JST",
+      "source_updated_at": "2026-09-29 09:45:58 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -30,9 +30,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 6575,
-      "stop_price": 6260,
-      "target1": 7050,
-      "target2": 7360
+      "stop_price": 6250,
+      "target1": 7060,
+      "target2": 7390
     },
     {
       "request_id": "SIG-2026-09-29-186A-02",
@@ -43,25 +43,25 @@
       "proposed_action": "WAIT",
       "strategy_key": null,
       "ev_score": null,
-      "technical_score": 75,
+      "technical_score": 70,
       "sample_size": null,
       "win_rate": null,
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.22倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.24倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 09:43:55 JST",
+      "source_updated_at": "2026-09-29 09:45:58 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
       "status": "pending",
       "expires_in_sec": 0,
       "paper_only": true,
-      "trigger_price": 1207,
-      "stop_price": 1177,
-      "target1": 1252,
-      "target2": 1282
+      "trigger_price": 1211,
+      "stop_price": 1178,
+      "target1": 1260,
+      "target2": 1294
     },
     {
       "request_id": "SIG-2026-09-29-6920-03",
@@ -78,9 +78,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.35倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.37倍",
       "source_signal_date": "2026-09-29",
-      "source_updated_at": "2026-09-29 09:43:55 JST",
+      "source_updated_at": "2026-09-29 09:45:58 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -88,9 +88,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 41335,
-      "stop_price": 39600,
-      "target1": 43940,
-      "target2": 45670
+      "stop_price": 39575,
+      "target1": 43975,
+      "target2": 45735
     }
   ]
 }
