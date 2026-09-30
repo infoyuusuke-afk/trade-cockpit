@@ -46,6 +46,9 @@ function validateNext5Record(record, options = {}) {
   if (!record || typeof record !== 'object' || Array.isArray(record)) {
     throw new Next5BlockError('RECORD_INVALID', 'NEXT5 source record must be an object');
   }
+  if (record.data_role === 'DISCOVERY_ONLY' || record.status === 'DISCOVERY_ONLY') {
+    throw new Next5BlockError('MS2_VERIFICATION_REQUIRED', 'discovery records are not MS2 quotes');
+  }
 
   const ticker = typeof record.ticker === 'string' ? record.ticker.trim() : '';
   const sourceTicker = typeof record.source_ticker === 'string' ? record.source_ticker.trim() : '';
