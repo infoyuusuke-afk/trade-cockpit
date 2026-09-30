@@ -1,6 +1,6 @@
 {
   "date": "2026-09-30",
-  "fixed_at": "2026-09-30 09:41:39 JST",
+  "fixed_at": "2026-09-30 09:43:57 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
@@ -13,12 +13,12 @@
       "stop": 2125,
       "target1": 2274,
       "target2": 2316,
-      "morning_price": 2256.5,
-      "rvol": 0.21,
-      "ret20": 3.51,
-      "atr_pct": 4.07,
-      "day_score": 9.18,
-      "swing_score": 6.89,
+      "morning_price": 2250.0,
+      "rvol": 0.23,
+      "ret20": 3.21,
+      "atr_pct": 4.08,
+      "day_score": 8.96,
+      "swing_score": 6.83,
       "material_stage": "事実確認待ち",
       "schema_version": "signal-schema-1.0",
       "strategy_id": "day_rank_long",
@@ -29,7 +29,7 @@
       "regime": null,
       "regime_updated_at": null,
       "high_vol": null,
-      "signal_time": "2026-09-30 09:41:39 JST",
+      "signal_time": "2026-09-30 09:43:57 JST",
       "source": "morning_snapshot"
     },
     {
@@ -58,7 +58,7 @@
       "regime": null,
       "regime_updated_at": null,
       "high_vol": null,
-      "signal_time": "2026-09-30 09:41:39 JST",
+      "signal_time": "2026-09-30 09:43:57 JST",
       "source": "morning_snapshot"
     }
   ]
