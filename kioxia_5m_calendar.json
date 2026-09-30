@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-10-01 01:40:41 JST",
+  "updated_at": "2026-10-01 01:43:02 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3641,13 +3641,13 @@
         27969600.0,
         28284600.0
       ],
-      "similarity": 96.4,
+      "similarity": 96.6,
       "after_ret": 5.32,
       "max_up_after": 6.32,
       "max_down_after": -0.1,
       "score_components": {
         "five_minute": null,
-        "us_market": 96.4,
+        "us_market": 96.6,
         "credit_supply": null
       },
       "us_context": {
@@ -3800,13 +3800,13 @@
         30787800.0,
         31103100.0
       ],
-      "similarity": 94.4,
+      "similarity": 94.3,
       "after_ret": -7.76,
       "max_up_after": 0.05,
       "max_down_after": -8.54,
       "score_components": {
         "five_minute": null,
-        "us_market": 94.4,
+        "us_market": 94.3,
         "credit_supply": null
       },
       "us_context": {
@@ -3959,13 +3959,13 @@
         34372100.0,
         34372200.0
       ],
-      "similarity": 93.1,
+      "similarity": 93.0,
       "after_ret": 0.04,
       "max_up_after": 2.0,
       "max_down_after": -3.47,
       "score_components": {
         "five_minute": null,
-        "us_market": 93.1,
+        "us_market": 93.0,
         "credit_supply": null
       },
       "us_context": {
@@ -4118,13 +4118,13 @@
         20702400.0,
         20702700.0
       ],
-      "similarity": 92.8,
+      "similarity": 92.9,
       "after_ret": -0.4,
       "max_up_after": 0.1,
       "max_down_after": -3.59,
       "score_components": {
         "five_minute": null,
-        "us_market": 92.8,
+        "us_market": 92.9,
         "credit_supply": null
       },
       "us_context": {
@@ -4437,13 +4437,13 @@
       27969600.0,
       28284600.0
     ],
-    "similarity": 96.4,
+    "similarity": 96.6,
     "after_ret": 5.32,
     "max_up_after": 6.32,
     "max_down_after": -0.1,
     "score_components": {
       "five_minute": null,
-      "us_market": 96.4,
+      "us_market": 96.6,
       "credit_supply": null
     },
     "us_context": {
@@ -4467,10 +4467,10 @@
   "market_context": {
     "date": "2026-09-30",
     "values": {
-      "sndk": 0.413,
-      "mu": 0.649,
-      "sox": -0.32,
-      "nasdaq": 0.95
+      "sndk": 0.438,
+      "mu": 0.668,
+      "sox": -0.277,
+      "nasdaq": 0.977
     },
     "labels": {
       "sndk": "SanDisk",
