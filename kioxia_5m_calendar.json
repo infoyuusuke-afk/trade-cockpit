@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-10-01 01:12:46 JST",
+  "updated_at": "2026-10-01 01:15:08 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3800,13 +3800,13 @@
         20702400.0,
         20702700.0
       ],
-      "similarity": 93.4,
+      "similarity": 93.3,
       "after_ret": -0.4,
       "max_up_after": 0.1,
       "max_down_after": -3.59,
       "score_components": {
         "five_minute": null,
-        "us_market": 93.4,
+        "us_market": 93.3,
         "credit_supply": null
       },
       "us_context": {
@@ -3959,13 +3959,13 @@
         30787800.0,
         31103100.0
       ],
-      "similarity": 93.1,
+      "similarity": 93.2,
       "after_ret": -7.76,
       "max_up_after": 0.05,
       "max_down_after": -8.54,
       "score_components": {
         "five_minute": null,
-        "us_market": 93.1,
+        "us_market": 93.2,
         "credit_supply": null
       },
       "us_context": {
@@ -4118,13 +4118,13 @@
         34372100.0,
         34372200.0
       ],
-      "similarity": 92.7,
+      "similarity": 92.6,
       "after_ret": 0.04,
       "max_up_after": 2.0,
       "max_down_after": -3.47,
       "score_components": {
         "five_minute": null,
-        "us_market": 92.7,
+        "us_market": 92.6,
         "credit_supply": null
       },
       "us_context": {
@@ -4277,13 +4277,13 @@
         48021500.0,
         48703700.0
       ],
-      "similarity": 90.7,
+      "similarity": 90.5,
       "after_ret": 14.35,
       "max_up_after": 16.59,
       "max_down_after": -3.28,
       "score_components": {
         "five_minute": null,
-        "us_market": 90.7,
+        "us_market": 90.5,
         "credit_supply": null
       },
       "us_context": {
@@ -4467,10 +4467,10 @@
   "market_context": {
     "date": "2026-09-30",
     "values": {
-      "sndk": 0.721,
-      "mu": 0.862,
-      "sox": -0.14,
-      "nasdaq": 1.083
+      "sndk": 0.592,
+      "mu": 0.868,
+      "sox": -0.171,
+      "nasdaq": 1.088
     },
     "labels": {
       "sndk": "SanDisk",
