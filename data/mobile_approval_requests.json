@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-30T02:24:16.546691+00:00",
+  "generated_at": "2026-09-30T02:26:28.034444+00:00",
   "mode": "paper",
   "source": "signals + empirical EV calibration",
   "score_is_probability": false,
@@ -20,19 +20,19 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "新高値更新／終値が主要移動平均線上／出来高比1.13倍",
+      "trigger_summary": "新高値更新／終値が主要移動平均線上／出来高比1.16倍",
       "source_signal_date": "2026-09-30",
-      "source_updated_at": "2026-09-30 11:22:18 JST",
+      "source_updated_at": "2026-09-30 11:24:51 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
       "status": "pending",
       "expires_in_sec": 0,
       "paper_only": true,
-      "trigger_price": 3450,
+      "trigger_price": 3460,
       "stop_price": 3160,
-      "target1": 3885,
-      "target2": 4175
+      "target1": 3910,
+      "target2": 4210
     },
     {
       "request_id": "SIG-2026-09-30-2158-02",
@@ -49,9 +49,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.96倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.99倍",
       "source_signal_date": "2026-09-30",
-      "source_updated_at": "2026-09-30 11:22:18 JST",
+      "source_updated_at": "2026-09-30 11:24:51 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -59,9 +59,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 693,
-      "stop_price": 658,
-      "target1": 746,
-      "target2": 780
+      "stop_price": 657,
+      "target1": 747,
+      "target2": 783
     },
     {
       "request_id": "SIG-2026-09-30-186A-03",
@@ -78,9 +78,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "BB上方拡大／終値が主要移動平均線上／出来高比0.90倍",
+      "trigger_summary": "BB上方拡大／終値が主要移動平均線上／出来高比0.91倍",
       "source_signal_date": "2026-09-30",
-      "source_updated_at": "2026-09-30 11:22:18 JST",
+      "source_updated_at": "2026-09-30 11:24:51 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -107,9 +107,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.50倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.51倍",
       "source_signal_date": "2026-09-30",
-      "source_updated_at": "2026-09-30 11:22:18 JST",
+      "source_updated_at": "2026-09-30 11:24:51 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -117,9 +117,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 6435,
-      "stop_price": 6110,
-      "target1": 6920,
-      "target2": 7250
+      "stop_price": 6105,
+      "target1": 6930,
+      "target2": 7260
     },
     {
       "request_id": "SIG-2026-09-30-5802-05",
@@ -136,9 +136,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.45倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.46倍",
       "source_signal_date": "2026-09-30",
-      "source_updated_at": "2026-09-30 11:22:18 JST",
+      "source_updated_at": "2026-09-30 11:24:51 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -167,7 +167,7 @@
       "max_dd_pct": null,
       "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.26倍",
       "source_signal_date": "2026-09-30",
-      "source_updated_at": "2026-09-30 11:22:18 JST",
+      "source_updated_at": "2026-09-30 11:24:51 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -175,9 +175,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 18465,
-      "stop_price": 17840,
-      "target1": 19400,
-      "target2": 20030
+      "stop_price": 17825,
+      "target1": 19425,
+      "target2": 20065
     }
   ]
 }
