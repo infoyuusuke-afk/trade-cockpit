@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-01 08:55:08 JST",
+  "updated_at": "2026-10-01 08:57:30 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -802,22 +802,6 @@
           "already_watched": false
         },
         {
-          "code": "4316",
-          "name": "BeMap, Inc.",
-          "exchange": "TSE",
-          "price": 42,
-          "change_pct": 5,
-          "volume": 2046900,
-          "relative_volume": 3.2895667266649524,
-          "atr_pct": 40.66,
-          "vwap": 46.666666666666664,
-          "high": 60,
-          "low": 38,
-          "market_cap": 142435474,
-          "sector": "Technology Services",
-          "already_watched": false
-        },
-        {
           "code": "4519",
           "name": "Chugai Pharmaceutical Co., Ltd.",
           "exchange": "TSE",
@@ -976,28 +960,28 @@
           "market_cap": 3304601402710,
           "sector": "Non-Energy Minerals",
           "already_watched": false
+        },
+        {
+          "code": "7201",
+          "name": "Nissan Motor Co., Ltd.",
+          "exchange": "TSE",
+          "price": 297,
+          "change_pct": 0.03368137420007502,
+          "volume": 67134400,
+          "relative_volume": 2.1034103217320714,
+          "atr_pct": 2.77,
+          "vwap": 295.73333333333335,
+          "high": 300,
+          "low": 290.2,
+          "market_cap": 1038075963206,
+          "sector": "Consumer Durables",
+          "already_watched": false
         }
       ]
     },
     "high_atr": {
       "label": "ATR比率上位（値動きの荒さ）",
       "items": [
-        {
-          "code": "4316",
-          "name": "BeMap, Inc.",
-          "exchange": "TSE",
-          "price": 42,
-          "change_pct": 5,
-          "volume": 2046900,
-          "relative_volume": 3.2895667266649524,
-          "atr_pct": 40.66,
-          "vwap": 46.666666666666664,
-          "high": 60,
-          "low": 38,
-          "market_cap": 142435474,
-          "sector": "Technology Services",
-          "already_watched": false
-        },
         {
           "code": "6085",
           "name": "Architects Studio Japan, Inc.",
@@ -1300,6 +1284,22 @@
           "low": 10790,
           "market_cap": 6237437706299,
           "sector": "Electronic Technology",
+          "already_watched": false
+        },
+        {
+          "code": "7035",
+          "name": "and factory, inc.",
+          "exchange": "TSE",
+          "price": 229,
+          "change_pct": -4.184100418410042,
+          "volume": 2734600,
+          "relative_volume": 16.709030917756323,
+          "atr_pct": 6.61,
+          "vwap": 246.33333333333334,
+          "high": 284,
+          "low": 226,
+          "market_cap": 2691836147,
+          "sector": "Technology Services",
           "already_watched": false
         }
       ]
@@ -5776,22 +5776,6 @@
       "already_watched": true
     },
     {
-      "code": "4316",
-      "name": "BeMap, Inc.",
-      "exchange": "TSE",
-      "price": 42,
-      "change_pct": 5,
-      "volume": 2046900,
-      "relative_volume": 3.2895667266649524,
-      "atr_pct": 40.66,
-      "vwap": 46.666666666666664,
-      "high": 60,
-      "low": 38,
-      "market_cap": 142435474,
-      "sector": "Technology Services",
-      "already_watched": false
-    },
-    {
       "code": "7777",
       "name": "3-D Matrix, Ltd.",
       "exchange": "TSE",
@@ -6429,6 +6413,22 @@
       "low": 2300,
       "market_cap": 576637637329,
       "sector": "Electronic Technology",
+      "already_watched": false
+    },
+    {
+      "code": "6523",
+      "name": "PHC Holdings Corp.",
+      "exchange": "TSE",
+      "price": 1430,
+      "change_pct": -0.9695290858725761,
+      "volume": 1656500,
+      "relative_volume": 2.037365016111972,
+      "atr_pct": 3.7,
+      "vwap": 1436.3333333333333,
+      "high": 1467,
+      "low": 1412,
+      "market_cap": 183861019287,
+      "sector": "Health Technology",
       "already_watched": false
     }
   ],
