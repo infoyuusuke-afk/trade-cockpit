@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-30 21:14:47 JST",
+  "updated_at": "2026-09-30 21:17:37 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -5701,37 +5701,37 @@
     },
     "VIX": {
       "ok": true,
-      "price": 16.09,
+      "price": 16.11,
       "open": 15.93,
       "high": 16.32,
       "low": 15.81,
       "prev_close": 16.04,
-      "change_pct": 0.31,
-      "ret5": 5.99,
+      "change_pct": 0.44,
+      "ret5": 6.13,
       "ret5_prev": -14.29,
-      "ret20": 5.86,
+      "ret20": 5.99,
       "rvol": 0,
       "turnover": 0,
       "atr14": 1.41,
-      "atr_pct": 8.77,
+      "atr_pct": 8.76,
       "ma5": 15.75,
       "ma20": 15.76,
       "ma60": 16.04,
-      "from_ma5": 2.17,
-      "from_ma20": 2.07,
+      "from_ma5": 2.27,
+      "from_ma20": 2.19,
       "touch_ma5": true,
-      "to_high20": -15.05,
-      "to_high52": -54.42,
+      "to_high20": -14.94,
+      "to_high52": -54.36,
       "bb_upper": 17.86,
       "bb_lower": 13.67,
-      "bb_width": 26.56,
-      "bb_width_change": -0.92,
+      "bb_width": 26.57,
+      "bb_width_change": -0.91,
       "bb_percentile": 34.2,
       "bb_expansion_score": 45.0,
-      "day_score": 3.35,
-      "swing_score": 2.56,
-      "stable_score": 3.05,
-      "momentum_score": 6.62,
+      "day_score": 3.49,
+      "swing_score": 2.64,
+      "stable_score": 3.08,
+      "momentum_score": 6.68,
       "high_score": 2.0,
       "chart": [
         {
@@ -6051,37 +6051,37 @@
           "o": 15.93,
           "h": 16.32,
           "l": 15.81,
-          "c": 16.09,
+          "c": 16.11,
           "v": 0
         }
       ],
       "data_date": "2026-09-30",
       "data_age_days": 0,
-      "chart_last_close": 16.09,
+      "chart_last_close": 16.11,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
       "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-09-30）",
-      "market_supply_score": 81,
+      "market_supply_score": 82,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給81点／上昇日出来高÷下落日2.00倍／安値切上げ○",
+      "market_supply_status": "市場需給82点／上昇日出来高÷下落日2.00倍／安値切上げ○",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
     },
     "ドル円": {
       "ok": true,
-      "price": 157.03,
+      "price": 157.04,
       "open": 157.25,
       "high": 157.46,
       "low": 156.37,
       "prev_close": 157.36,
       "change_pct": -0.21,
-      "ret5": -0.28,
+      "ret5": -0.27,
       "ret5_prev": 1.42,
-      "ret20": -1.98,
+      "ret20": -1.97,
       "rvol": 0,
       "turnover": 0,
       "atr14": 1.4,
@@ -6093,17 +6093,17 @@
       "from_ma20": 0.59,
       "touch_ma5": false,
       "to_high20": -2.09,
-      "to_high52": -4.24,
+      "to_high52": -4.23,
       "bb_upper": 159.59,
       "bb_lower": 152.63,
       "bb_width": 4.46,
       "bb_width_change": -1.07,
       "bb_percentile": 75.8,
       "bb_expansion_score": 35.5,
-      "day_score": -1.27,
+      "day_score": -1.26,
       "swing_score": 2.41,
       "stable_score": 0.64,
-      "momentum_score": -0.33,
+      "momentum_score": -0.32,
       "high_score": 0.0,
       "chart": [
         {
@@ -6423,13 +6423,13 @@
           "o": 157.25,
           "h": 157.46,
           "l": 156.37,
-          "c": 157.03,
+          "c": 157.04,
           "v": 0
         }
       ],
       "data_date": "2026-09-30",
       "data_age_days": 0,
-      "chart_last_close": 157.03,
+      "chart_last_close": 157.04,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
@@ -44349,8 +44349,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-09-30T21:13:56+09:00",
-    "decision_at": "2026-09-30T21:13:56+09:00",
+    "generated_at": "2026-09-30T21:16:49+09:00",
+    "decision_at": "2026-09-30T21:16:49+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -51663,13 +51663,13 @@
     }
   ],
   "strong_yen_top5": {
-    "usd_jpy": 157.022,
-    "usd_jpy_change_pct": -0.16,
-    "usd_jpy_ret5": -0.28,
+    "usd_jpy": 157.047,
+    "usd_jpy_change_pct": -0.14,
+    "usd_jpy_ret5": -0.27,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-09-30T21:14:00+09:00",
+    "fx_observed_at": "2026-09-30T21:17:00+09:00",
     "statement_study": {
-      "updated_at": "2026-09-30 21:14:39 JST",
+      "updated_at": "2026-09-30 21:17:30 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -51925,8 +51925,8 @@
         }
       ]
     },
-    "yen_active": true,
-    "regime": "円高進行",
+    "yen_active": false,
+    "regime": "円高確認待ち",
     "rule": "USD/JPY下落＋信用買残減少・倍率5倍以下＋発動価格上抜けを必須化",
     "candidates": [
       {
@@ -51939,7 +51939,7 @@
         "sensitivity": 90,
         "reason": "業務スーパーの輸入商品・PB調達。円高は輸入原価の低下要因",
         "source": "https://www.gyomusuper.jp/ir/",
-        "status": "信用需給確認待ち",
+        "status": "為替確認待ち",
         "executable": false,
         "supply_verified": false,
         "supply_improved": false,
@@ -52284,7 +52284,7 @@
         "sensitivity": 94,
         "reason": "輸入雑貨の原価負担が大きく、円高による仕入採算改善を確認する銘柄",
         "source": "https://www.seria-group.com/corporate/ir/",
-        "status": "信用需給確認待ち",
+        "status": "為替確認待ち",
         "executable": false,
         "supply_verified": false,
         "supply_improved": false,
@@ -52629,7 +52629,7 @@
         "sensitivity": 86,
         "reason": "海外ブランド靴の仕入コスト低下余地を確認する小売銘柄",
         "source": "https://www.abc-mart.co.jp/ir/",
-        "status": "信用需給確認待ち",
+        "status": "為替確認待ち",
         "executable": false,
         "supply_verified": false,
         "supply_improved": false,
@@ -52974,7 +52974,7 @@
         "sensitivity": 78,
         "reason": "海外調達コスト低下は追い風だが、海外利益の円換算減少もあるため相殺を考慮",
         "source": "https://www.ryohin-keikaku.jp/ir",
-        "status": "信用需給確認待ち",
+        "status": "為替確認待ち",
         "executable": false,
         "supply_verified": false,
         "supply_improved": false,
@@ -53319,7 +53319,7 @@
         "sensitivity": 96,
         "reason": "海外調達比率が高い家具・生活用品。円高は仕入原価の低下要因",
         "source": "https://www.nitorihd.co.jp/ir/",
-        "status": "信用需給確認待ち",
+        "status": "為替確認待ち",
         "executable": false,
         "supply_verified": false,
         "supply_improved": false,
@@ -55719,7 +55719,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-09-30 21:14:26 JST",
+    "credit_supply_updated_at": "2026-09-30 21:17:19 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -73594,14 +73594,14 @@
   ],
   "morning_snapshot": {
     "date": "2026-09-30",
-    "fixed_at": "2026-09-30 21:14:47 JST",
+    "fixed_at": "2026-09-30 21:17:37 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-09-30",
-    "fixed_at": "2026-09-30 21:15:33 JST",
+    "fixed_at": "2026-09-30 21:18:27 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
@@ -73630,7 +73630,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-30 21:15:33 JST",
+        "signal_time": "2026-09-30 21:18:27 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73659,7 +73659,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-30 21:15:33 JST",
+        "signal_time": "2026-09-30 21:18:27 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73688,7 +73688,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-30 21:15:33 JST",
+        "signal_time": "2026-09-30 21:18:27 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73717,7 +73717,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-30 21:15:33 JST",
+        "signal_time": "2026-09-30 21:18:27 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73746,7 +73746,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-09-30 21:15:33 JST",
+        "signal_time": "2026-09-30 21:18:27 JST",
         "source": "morning_snapshot"
       }
     ]
