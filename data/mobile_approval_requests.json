@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-30T00:44:14.945052+00:00",
+  "generated_at": "2026-09-30T00:46:35.097192+00:00",
   "mode": "paper",
   "source": "signals + empirical EV calibration",
   "score_is_probability": false,
@@ -22,7 +22,7 @@
       "max_dd_pct": null,
       "trigger_summary": "安定押し目／終値が主要移動平均線上／出来高比0.14倍",
       "source_signal_date": "2026-09-30",
-      "source_updated_at": "2026-09-30 09:42:28 JST",
+      "source_updated_at": "2026-09-30 09:44:45 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -51,7 +51,7 @@
       "max_dd_pct": null,
       "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.75倍",
       "source_signal_date": "2026-09-30",
-      "source_updated_at": "2026-09-30 09:42:28 JST",
+      "source_updated_at": "2026-09-30 09:44:45 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -78,9 +78,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.22倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.23倍",
       "source_signal_date": "2026-09-30",
-      "source_updated_at": "2026-09-30 09:42:28 JST",
+      "source_updated_at": "2026-09-30 09:44:45 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -88,9 +88,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 2265,
-      "stop_price": 2179,
-      "target1": 2394,
-      "target2": 2480
+      "stop_price": 2180,
+      "target1": 2392,
+      "target2": 2478
     },
     {
       "request_id": "SIG-2026-09-30-186A-04",
@@ -107,9 +107,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.33倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.34倍",
       "source_signal_date": "2026-09-30",
-      "source_updated_at": "2026-09-30 09:42:28 JST",
+      "source_updated_at": "2026-09-30 09:44:45 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -117,9 +117,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 1264,
-      "stop_price": 1192,
-      "target1": 1372,
-      "target2": 1444
+      "stop_price": 1193,
+      "target1": 1370,
+      "target2": 1442
     },
     {
       "request_id": "SIG-2026-09-30-6920-05",
@@ -136,9 +136,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.26倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.27倍",
       "source_signal_date": "2026-09-30",
-      "source_updated_at": "2026-09-30 09:42:28 JST",
+      "source_updated_at": "2026-09-30 09:44:45 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -146,9 +146,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 42865,
-      "stop_price": 40235,
-      "target1": 46810,
-      "target2": 49440
+      "stop_price": 40230,
+      "target1": 46820,
+      "target2": 49450
     },
     {
       "request_id": "SIG-2026-09-30-285A-06",
@@ -165,9 +165,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.11倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.12倍",
       "source_signal_date": "2026-09-30",
-      "source_updated_at": "2026-09-30 09:42:28 JST",
+      "source_updated_at": "2026-09-30 09:44:45 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -175,9 +175,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 18375,
-      "stop_price": 17825,
-      "target1": 19200,
-      "target2": 19750
+      "stop_price": 17835,
+      "target1": 19185,
+      "target2": 19725
     }
   ]
 }
