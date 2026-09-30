@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-09-30T10:34:51.870387+09:00",
+  "updated_at": "2026-10-01T00:20:29.562488+09:00",
   "calendar": [
     {
       "code": "3160",
@@ -259,12 +259,14 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "関連開示を確認",
+        "label": "警戒材料あり",
         "recent_tags": [
+          "訂正・取消確認",
           "決算発表",
           "配当変更・内容要確認"
         ],
         "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260930543127.pdf",
           "https://www.release.tdnet.info/inbs/140120260928541251.pdf",
           "https://www.release.tdnet.info/inbs/140120260928541321.pdf"
         ],
@@ -425,9 +427,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260929542483.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -448,9 +454,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260929541700.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -471,9 +481,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260929542307.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -494,9 +508,15 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "発表済み好材料あり",
+        "recent_tags": [
+          "決算発表",
+          "増配"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260930542803.pdf",
+          "https://www.release.tdnet.info/inbs/140120260930543020.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -517,9 +537,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260928541539.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -540,9 +564,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260929542396.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -563,9 +591,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260928540983.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -586,9 +618,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260929542301.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -609,9 +645,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260929542371.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -632,9 +672,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260929542224.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -667,13 +711,6 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
-      },
-      "momentum": {
-        "available": true,
-        "last_close": 955.0,
-        "return_5d_pct": -0.1,
-        "return_20d_pct": 0.95,
-        "momentum_direction": "中立"
       }
     },
     {
@@ -697,13 +734,6 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
-      },
-      "momentum": {
-        "available": true,
-        "last_close": 3672.0,
-        "return_5d_pct": -8.2,
-        "return_20d_pct": -12.49,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -727,13 +757,6 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
-      },
-      "momentum": {
-        "available": true,
-        "last_close": 693.0,
-        "return_5d_pct": 8.11,
-        "return_20d_pct": 7.44,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -757,13 +780,6 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
-      },
-      "momentum": {
-        "available": true,
-        "last_close": 1621.0,
-        "return_5d_pct": -1.4,
-        "return_20d_pct": -5.32,
-        "momentum_direction": "中立"
       }
     },
     {
@@ -787,13 +803,6 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
-      },
-      "momentum": {
-        "available": true,
-        "last_close": 1935.0,
-        "return_5d_pct": -1.33,
-        "return_20d_pct": -4.02,
-        "momentum_direction": "中立"
       }
     },
     {
@@ -817,13 +826,6 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
-      },
-      "momentum": {
-        "available": true,
-        "last_close": 2568.0,
-        "return_5d_pct": -4.61,
-        "return_20d_pct": -4.43,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -847,6 +849,13 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
+      },
+      "momentum": {
+        "available": true,
+        "last_close": 782.0,
+        "return_5d_pct": 2.76,
+        "return_20d_pct": 0.39,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -870,6 +879,13 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
+      },
+      "momentum": {
+        "available": true,
+        "last_close": 1889.0,
+        "return_5d_pct": 4.36,
+        "return_20d_pct": 12.31,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -893,6 +909,13 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
+      },
+      "momentum": {
+        "available": true,
+        "last_close": 718.0,
+        "return_5d_pct": 8.46,
+        "return_20d_pct": 28.44,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -916,6 +939,13 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
+      },
+      "momentum": {
+        "available": true,
+        "last_close": 940.0,
+        "return_5d_pct": 0.64,
+        "return_20d_pct": 1.51,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -939,6 +969,13 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
+      },
+      "momentum": {
+        "available": true,
+        "last_close": 260.0,
+        "return_5d_pct": 0.39,
+        "return_20d_pct": 1.96,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -962,6 +999,13 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
+      },
+      "momentum": {
+        "available": true,
+        "last_close": 2887.0,
+        "return_5d_pct": -1.74,
+        "return_20d_pct": -3.54,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -985,6 +1029,13 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
+      },
+      "momentum": {
+        "available": true,
+        "last_close": 1446.0,
+        "return_5d_pct": -2.03,
+        "return_20d_pct": -3.28,
+        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -1008,6 +1059,13 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
+      },
+      "momentum": {
+        "available": true,
+        "last_close": 1318.0,
+        "return_5d_pct": 0.23,
+        "return_20d_pct": -7.31,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -1031,6 +1089,13 @@
           "決算前の株価上昇・織り込み"
         ],
         "note": "直近開示の整理。次回上方修正や株価上昇の予測ではありません。"
+      },
+      "momentum": {
+        "available": true,
+        "last_close": 963.0,
+        "return_5d_pct": 1.26,
+        "return_20d_pct": -0.1,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -1134,9 +1199,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260903531401.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -1686,9 +1755,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260917537637.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -2744,9 +2817,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "配当変更・内容要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260929541602.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -3158,9 +3235,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260928541261.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -5788,9 +5869,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "一過性利益"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260925540129.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -6639,9 +6724,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260929542085.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -8249,9 +8338,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "警戒材料あり",
+        "recent_tags": [
+          "訂正・取消確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120260930542556.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -10221,6 +10314,1079 @@
   ],
   "catalysts": [
     {
+      "code": "4175",
+      "name": "Ｇ－ｃｏｌｙ",
+      "title": "（訂正）「2027年1月期　第2四半期決算説明会　書き起こし」の一部訂正について",
+      "published_at": "2026-09-30T18:15:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543661.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4069",
+      "name": "Ｇ－ＢｌｕｅＭｅｍｅ",
+      "title": "（数値データ訂正）「2025年３月期第１四半期決算短信〔日本基準〕（連結）」",
+      "published_at": "2026-09-30T18:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543569.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4069",
+      "name": "Ｇ－ＢｌｕｅＭｅｍｅ",
+      "title": "（数値データ訂正）「2025年３月期第３四半期決算短信〔日本基準〕（連結）」",
+      "published_at": "2026-09-30T18:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543576.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4069",
+      "name": "Ｇ－ＢｌｕｅＭｅｍｅ",
+      "title": "（数値データ訂正）「2026年３月期第１四半期決算短信〔日本基準〕（連結）」",
+      "published_at": "2026-09-30T18:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543580.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4069",
+      "name": "Ｇ－ＢｌｕｅＭｅｍｅ",
+      "title": "（数値データ訂正）「2026年３月期第３四半期決算短信〔日本基準〕（連結）」",
+      "published_at": "2026-09-30T18:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543501.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4069",
+      "name": "Ｇ－ＢｌｕｅＭｅｍｅ",
+      "title": "過年度の有価証券報告書等の訂正報告書の提出及び過年度の決算短信等の訂正に関するお知らせ",
+      "published_at": "2026-09-30T18:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543571.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4069",
+      "name": "Ｇ－ＢｌｕｅＭｅｍｅ",
+      "title": "内部統制報告書の訂正報告書の提出に関するお知らせ",
+      "published_at": "2026-09-30T18:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543579.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4069",
+      "name": "Ｇ－ＢｌｕｅＭｅｍｅ",
+      "title": "2026年３月期 決算短信〔日本基準〕（連結）",
+      "published_at": "2026-09-30T18:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543649.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4069",
+      "name": "Ｇ－ＢｌｕｅＭｅｍｅ",
+      "title": "2026年3月期 特別損失（投資有価証券評価損）の計上に関するお知らせ",
+      "published_at": "2026-09-30T18:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543603.pdf",
+      "tags": [
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4069",
+      "name": "Ｇ－ＢｌｕｅＭｅｍｅ",
+      "title": "2026年3月期決算短信の開示が期末後50日を超えたことに関するお知らせ",
+      "published_at": "2026-09-30T18:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543646.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4069",
+      "name": "Ｇ－ＢｌｕｅＭｅｍｅ",
+      "title": "2027年3月期中間期における特別損失（調査関連費用）の計上に関するお知らせ",
+      "published_at": "2026-09-30T18:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543650.pdf",
+      "tags": [
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6268",
+      "name": "ナブテスコ",
+      "title": "過年度の有価証券報告書等に係る訂正報告書の提出及び過年度の決算短信等にかかる訂正に関するお知らせ",
+      "published_at": "2026-09-30T17:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543372.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": true
+    },
+    {
+      "code": "6268",
+      "name": "ナブテスコ",
+      "title": "過年度の内部統制報告書の訂正報告書の提出及び財務報告に係る内部統制の開示すべき重要な不備に関するお知らせ",
+      "published_at": "2026-09-30T17:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543406.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": true
+    },
+    {
+      "code": "6268",
+      "name": "ナブテスコ",
+      "title": "（訂正・数値データ訂正）2026年12月期 第２四半期（中間期）決算短信〔ＩＦＲＳ〕（連結）",
+      "published_at": "2026-09-30T17:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543480.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": true
+    },
+    {
+      "code": "6268",
+      "name": "ナブテスコ",
+      "title": "（訂正・数値データ訂正）2026年12月期 第１四半期決算短信〔ＩＦＲＳ〕（連結）",
+      "published_at": "2026-09-30T17:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543508.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": true
+    },
+    {
+      "code": "6268",
+      "name": "ナブテスコ",
+      "title": "（訂正・数値データ訂正）2025年12月期 決算短信〔ＩＦＲＳ〕(連結)",
+      "published_at": "2026-09-30T17:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543424.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": true
+    },
+    {
+      "code": "6268",
+      "name": "ナブテスコ",
+      "title": "（数値データ訂正）2025年12月期 第１四半期決算短信〔ＩＦＲＳ〕（連結）",
+      "published_at": "2026-09-30T17:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543431.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": true
+    },
+    {
+      "code": "6268",
+      "name": "ナブテスコ",
+      "title": "（数値データ訂正）2025年12月期 第３四半期決算短信〔ＩＦＲＳ〕（連結）",
+      "published_at": "2026-09-30T17:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543438.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": true
+    },
+    {
+      "code": "6268",
+      "name": "ナブテスコ",
+      "title": "（数値データ訂正）2024年12月期 第３四半期決算短信〔ＩＦＲＳ〕（連結）",
+      "published_at": "2026-09-30T17:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543461.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": true
+    },
+    {
+      "code": "6366",
+      "name": "千代化建",
+      "title": "連結子会社からの剰余金の配当受領に関するお知らせ",
+      "published_at": "2026-09-30T17:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543509.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "9369",
+      "name": "キユソ流通",
+      "title": "2026年11月期 第３四半期決算短信〔日本基準〕（連結）",
+      "published_at": "2026-09-30T17:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929542371.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6908",
+      "name": "イリソ電子工業",
+      "title": "財務報告に係る内部統制の開示すべき重要な不備及び内部統制報告書の訂正報告書の提出に関するお知らせ",
+      "published_at": "2026-09-30T16:33:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543311.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6908",
+      "name": "イリソ電子工業",
+      "title": "過年度の有価証券報告書等の訂正報告書の提出及び過年度の決算短信等の訂正に関するお知らせ",
+      "published_at": "2026-09-30T16:32:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543217.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6908",
+      "name": "イリソ電子工業",
+      "title": "（訂正・数値データ修正）2026年３月期第３四半期決算短信〔日本基準〕（連結）の一部訂正に関するお知らせ",
+      "published_at": "2026-09-30T16:31:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929542466.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6908",
+      "name": "イリソ電子工業",
+      "title": "（再訂正・数値データ修正）2026年３月期第１四半期決算短信〔日本基準〕（連結）の一部訂正に関するお知らせ",
+      "published_at": "2026-09-30T16:31:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543013.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6594",
+      "name": "ニデック",
+      "title": "個別決算における特別損失及び特別利益の計上に関するお知らせ",
+      "published_at": "2026-09-30T16:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543443.pdf",
+      "tags": [
+        "一過性利益",
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": true
+    },
+    {
+      "code": "6594",
+      "name": "ニデック",
+      "title": "2026年３月期決算短信の開示が期末後50日を超えたことに関するお知らせ",
+      "published_at": "2026-09-30T16:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543360.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": true
+    },
+    {
+      "code": "6594",
+      "name": "ニデック",
+      "title": "2026年３月期 第３四半期決算短信〔ＩＦＲＳ〕（連結）",
+      "published_at": "2026-09-30T16:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929542486.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": true
+    },
+    {
+      "code": "6594",
+      "name": "ニデック",
+      "title": "2026年３月期決算短信〔IFRS〕(連結)",
+      "published_at": "2026-09-30T16:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543478.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": true
+    },
+    {
+      "code": "6908",
+      "name": "イリソ電子工業",
+      "title": "（訂正・数値データ修正）2025年３月期第３四半期決算短信〔日本基準〕（連結）の一部訂正に関するお知らせ",
+      "published_at": "2026-09-30T16:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543015.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6908",
+      "name": "イリソ電子工業",
+      "title": "（訂正・数値データ修正）2025年３月期第１四半期決算短信〔日本基準〕（連結）の一部訂正に関するお知らせ",
+      "published_at": "2026-09-30T16:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543017.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2130",
+      "name": "メンバーズ",
+      "title": "業績予想の修正に関するお知らせ",
+      "published_at": "2026-09-30T16:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260925540542.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2354",
+      "name": "ＹＥ　ＤＩＧＩＴＡＬ",
+      "title": "2027年２月期第２四半期(中間期)決算短信〔日本基準〕(連結)",
+      "published_at": "2026-09-30T16:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929541700.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4196",
+      "name": "ネオマーケ",
+      "title": "特別損益の計上及び通期連結業績予想の修正に関するお知らせ",
+      "published_at": "2026-09-30T16:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930542522.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4263",
+      "name": "Ｇ－サスメド",
+      "title": "（訂正）適時開示資料「譲渡制限付株式報酬としての新株式発行に関するお知らせ」の一部訂正について",
+      "published_at": "2026-09-30T16:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543453.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6034",
+      "name": "Ｇ－ＭＲＴ",
+      "title": "配当方針の変更及び2026年12月期配当予想の修正に関するお知らせ",
+      "published_at": "2026-09-30T16:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543314.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6908",
+      "name": "イリソ電子工業",
+      "title": "2026年3月期決算短信の開示が期末後50日を超えたことに関するお知らせ",
+      "published_at": "2026-09-30T16:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543303.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6908",
+      "name": "イリソ電子工業",
+      "title": "特別利益及び特別損失の計上に関するお知らせ",
+      "published_at": "2026-09-30T16:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929542435.pdf",
+      "tags": [
+        "一過性利益",
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6908",
+      "name": "イリソ電子工業",
+      "title": "2026年３月期決算短信〔日本基準〕(連結)",
+      "published_at": "2026-09-30T16:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929542433.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7918",
+      "name": "ヴィアＨＤ",
+      "title": "特別利益の計上に関するお知らせ",
+      "published_at": "2026-09-30T16:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930542693.pdf",
+      "tags": [
+        "一過性利益"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "9265",
+      "name": "ヤマシタヘルスケア",
+      "title": "2027年５月期第１四半期決算短信〔日本基準〕（連結）",
+      "published_at": "2026-09-30T16:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929542301.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2935",
+      "name": "ピックルスＨＤ",
+      "title": "2027年２月期　第２四半期（中間期）決算短信〔日本基準〕（連結）",
+      "published_at": "2026-09-30T15:50:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930542803.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2935",
+      "name": "ピックルスＨＤ",
+      "title": "剰余金の配当（中間配当）及び期末配当予想の修正（記念配当及び普通配当の増配）に関するお知らせ",
+      "published_at": "2026-09-30T15:50:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543020.pdf",
+      "tags": [
+        "増配"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4960",
+      "name": "ケミプロ化成",
+      "title": "（訂正）「主要株主、主要株主である筆頭株主ならびにその他の関係会社の異動に関するお知らせ」の一部訂正に関するお知らせ",
+      "published_at": "2026-09-30T15:40:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543186.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "166A",
+      "name": "タスキＨＤ",
+      "title": "連結子会社からの剰余金の配当に関するお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930542455.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "192A",
+      "name": "Ｇ－インテグループ",
+      "title": "2027年５月期 第１四半期決算短信〔日本基準〕（非連結）",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929542483.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2685",
+      "name": "アンドエスティＨＤ",
+      "title": "2027年２月期　第２四半期（中間期）決算短信〔日本基準〕(連結)",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929542307.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2975",
+      "name": "スター・マイカＨＤ",
+      "title": "2026年11月期　第３四半期決算短信〔日本基準〕（連結）",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260928541539.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3089",
+      "name": "テクノアルファ",
+      "title": "2026年11月期　第３四半期決算短信[日本基準]（連結）",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929542396.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3353",
+      "name": "メディ一光Ｇ",
+      "title": "剰余金の配当（中間配当）に関するお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929541602.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3377",
+      "name": "バイク王",
+      "title": "業績予想の修正に関するお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260903531401.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3678",
+      "name": "メディアドゥ",
+      "title": "連結子会社の異動（株式譲渡及び持分譲渡）及び特別利益の計上見込みに関するお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260925540129.pdf",
+      "tags": [
+        "一過性利益"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "377A",
+      "name": "エージェントＩＧＨＤ",
+      "title": "2026年12月期通期連結業績予想の修正に関するお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260925540038.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4071",
+      "name": "プラスアルファ",
+      "title": "（訂正）「代表取締役の異動に関するお知らせ」の一部訂正について",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929542210.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "5126",
+      "name": "Ｇ－ポーターズ",
+      "title": "通期業績予想の修正および特別損失の発生見込みに関するお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930542900.pdf",
+      "tags": [
+        "業績修正・方向要確認",
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "5126",
+      "name": "Ｇ－ポーターズ",
+      "title": "【補足資料】通期業績予想の修正および特別損失の発生見込みに関するお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543101.pdf",
+      "tags": [
+        "業績修正・方向要確認",
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "5715",
+      "name": "古河機金",
+      "title": "特別利益（投資有価証券売却益）の計上に関するお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929542064.pdf",
+      "tags": [
+        "一過性利益"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "5900",
+      "name": "ダイケン",
+      "title": "業績予想の修正に関するお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260928541261.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6083",
+      "name": "ＥＲＩ　ＨＤ",
+      "title": "2027年５月期第１四半期決算短信〔日本基準〕(連結)",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260928540983.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6255",
+      "name": "Ｇ－ＮＰＣ",
+      "title": "通期業績予想の修正に関するお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260917537637.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6740",
+      "name": "ＪＤＩ",
+      "title": "（開示事項の経過）茂原工場の譲渡及び特別利益の計上のお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260928540817.pdf",
+      "tags": [
+        "一過性利益"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7915",
+      "name": "ＮＩＳＳＨＡ",
+      "title": "2026年12月期第2四半期（中間期）決算短信〔ＩＦＲＳ〕(連結)",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929541752.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7915",
+      "name": "ＮＩＳＳＨＡ",
+      "title": "第2四半期（中間期）連結業績予想との差異および通期連結業績予想の修正に関するお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929541848.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "8358",
+      "name": "スルガ銀",
+      "title": "業績予想の修正及び配当予想の修正（増配）に関するお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543278.pdf",
+      "tags": [
+        "増配",
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "8518",
+      "name": "アジア投資",
+      "title": "連結子会社のファンドにおける固定資産の譲渡及び特別損失の計上に関するお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929542454.pdf",
+      "tags": [
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "9166",
+      "name": "Ｇ－ＧＥＮＤＡ",
+      "title": "剰余金の配当（中間配当・初配）に関するお知らせ",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543078.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "9651",
+      "name": "日プロ",
+      "title": "2027年５月期 第１四半期決算短信 〔日本基準〕（連結）",
+      "published_at": "2026-09-30T15:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929542224.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3607",
+      "name": "クラウディアＨＤ",
+      "title": "（訂正）「法人税等調整額（益）の計上に関するお知らせ」の一部訂正について",
+      "published_at": "2026-09-30T15:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543127.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3624",
+      "name": "Ｇ－アクセルＭ",
+      "title": "棚卸資産の廃棄処分に伴う特別損失の計上及び追加的な損失の発生可能性に関するお知らせ",
+      "published_at": "2026-09-30T14:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930543053.pdf",
+      "tags": [
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7601",
+      "name": "ポプラ",
+      "title": "2027年２月期第２四半期（中間期）連結業績予想の修正に関するお知らせ",
+      "published_at": "2026-09-30T14:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929542085.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4388",
+      "name": "エーアイ",
+      "title": "（開示事項の経過）連結子会社の異動（株式譲渡）の完了および特別利益の計上に関するお知らせ",
+      "published_at": "2026-09-30T13:00:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260929541735.pdf",
+      "tags": [
+        "一過性利益"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "5992",
+      "name": "中央発条",
+      "title": "有価証券報告書の訂正報告書の提出に関するお知らせ",
+      "published_at": "2026-09-30T11:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930542635.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7485",
+      "name": "岡谷鋼機",
+      "title": "令和9年2月期 第2四半期（中間期）決算短信〔日本基準〕(連結)",
+      "published_at": "2026-09-30T11:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260925540585.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7485",
+      "name": "岡谷鋼機",
+      "title": "通期業績予想の修正並びに剰余金の配当（中間配当）及び期末配当予想の修正に関するお知らせ",
+      "published_at": "2026-09-30T11:30:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930542621.pdf",
+      "tags": [
+        "業績修正・方向要確認",
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "402A",
+      "name": "Ｇ－アクセルスペース",
+      "title": "（訂正）「AxelGlobe事業の小型衛星「GRUS-3」の不具合に関するお知らせ」の一部訂正に関するお知らせ",
+      "published_at": "2026-09-30T10:45:00+09:00",
+      "date": "2026-09-30",
+      "source_url": "https://www.release.tdnet.info/inbs/140120260930542556.pdf",
+      "tags": [
+        "訂正・取消確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
       "code": "5986",
       "name": "モリテック",
       "title": "（開示事項の経過）特別利益（投資有価証券売却益）の計上に関するお知らせ",
@@ -11111,8 +12277,13 @@
   ],
   "disclosure_coverage": [
     {
-      "date": "2026-09-30",
+      "date": "2026-10-01",
       "pages": 1,
+      "truncated": false
+    },
+    {
+      "date": "2026-09-30",
+      "pages": 5,
       "truncated": false
     },
     {
@@ -11124,11 +12295,6 @@
       "date": "2026-09-28",
       "pages": 3,
       "truncated": false
-    },
-    {
-      "date": "2026-09-27",
-      "pages": 1,
-      "truncated": false
     }
   ],
   "errors": [],
@@ -11136,7 +12302,7 @@
   "coverage_note": "JPX掲載月次表の前7日〜先60日（掲載対象のみ、全銘柄網羅ではない）。TDnetは直近4暦日・各日最大8ページ。",
   "kabutan_calendar_url": "https://s.kabutan.jp/warnings/news_schedule/",
   "analysis_note": "上方修正等は表題で明示されたものだけ分類。方向不明の修正は要確認。確率や決算前の上昇予測は未算出。",
-  "momentum_target_date": "2026-10-01",
+  "momentum_target_date": "2026-10-02",
   "momentum_validation": {
     "resolved_n": 11,
     "hit_rate_pct": 45.5,
