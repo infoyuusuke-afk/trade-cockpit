@@ -1,41 +1,28 @@
 {
-  "updated_at": "2026-09-30 16:08:05 JST",
+  "updated_at": "2026-09-30 18:01:52 JST",
   "source": "StockScope（株ビジョン）公開需給ページ",
   "source_url": "https://stockscope.app/en/issues/285A",
   "stocks": {
     "285A": {
       "name": "キオクシアホールディングス",
-      "margin_date": "2026-09-28",
+      "margin_date": "2026-09-29",
       "retrieved_date": "2026-09-30",
-      "previous_margin_date": "2026-09-25",
-      "margin_buy_balance": 14820000,
-      "margin_buy_change_1w": 890100,
-      "margin_buy_change_1w_pct": 6.39,
-      "margin_sell_balance": 750000,
-      "margin_sell_change_1w": -86400,
-      "margin_sell_change_1w_pct": -10.33,
-      "credit_ratio": 19.76,
-      "margin_buy_change_4w_pct": 9.72,
+      "previous_margin_date": "2026-09-28",
+      "margin_buy_balance": 44642100,
+      "margin_buy_change_1w": 29822100,
+      "margin_buy_change_1w_pct": 201.23,
+      "margin_sell_balance": 1886700,
+      "margin_sell_change_1w": 1136700,
+      "margin_sell_change_1w_pct": 151.56,
+      "credit_ratio": 23.66,
+      "margin_buy_change_4w_pct": 220.18,
       "institutional_short_change_pct": null,
       "institutional_buyback_firms": null,
-      "supply_phase": "悪化",
-      "trade_bias": "戻り売り優先・踏み上げ決め打ち禁止",
+      "supply_phase": "中立",
+      "trade_bias": "価格確認を優先",
       "verified": true,
       "source_url": "https://stockscope.app/en/issues/285A",
       "history": [
-        {
-          "date": "2026-09-04",
-          "buy_balance": 13506700,
-          "sell_balance": 1014400,
-          "ratio": 13.31,
-          "standardized_buy": 8661200,
-          "negotiable_buy": 4845500,
-          "standardized_sell": 877600,
-          "negotiable_sell": 136800,
-          "buy_change": null,
-          "sell_change": null,
-          "phase": "履歴起点"
-        },
         {
           "date": "2026-09-11",
           "buy_balance": 13943000,
@@ -45,9 +32,9 @@
           "negotiable_buy": 4571000,
           "standardized_sell": 577400,
           "negotiable_sell": 120700,
-          "buy_change": 436300,
-          "sell_change": -316300,
-          "phase": "中立"
+          "buy_change": null,
+          "sell_change": null,
+          "phase": "履歴起点"
         },
         {
           "date": "2026-09-18",
@@ -87,9 +74,22 @@
           "buy_change": 890100,
           "sell_change": -86400,
           "phase": "悪化"
+        },
+        {
+          "date": "2026-09-29",
+          "buy_balance": 44642100,
+          "sell_balance": 1886700,
+          "ratio": 23.66,
+          "standardized_buy": 29460000,
+          "negotiable_buy": 15182100,
+          "standardized_sell": 1542600,
+          "negotiable_sell": 344100,
+          "buy_change": 29822100,
+          "sell_change": 1136700,
+          "phase": "中立"
         }
       ],
-      "note": "買い残増加・売り残減少。StockScopeの合計値と制度／一般内訳を照合済み。機関空売りは公表遅延があるため別判定。"
+      "note": "信用残の方向が混在。StockScopeの合計値と制度／一般内訳を照合済み。機関空売りは公表遅延があるため別判定。"
     }
   },
   "schema": {
