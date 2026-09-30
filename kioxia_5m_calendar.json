@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-10-01 01:03:38 JST",
+  "updated_at": "2026-10-01 01:05:51 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3641,13 +3641,13 @@
         27969600.0,
         28284600.0
       ],
-      "similarity": 96.9,
+      "similarity": 97.0,
       "after_ret": 5.32,
       "max_up_after": 6.32,
       "max_down_after": -0.1,
       "score_components": {
         "five_minute": null,
-        "us_market": 96.9,
+        "us_market": 97.0,
         "credit_supply": null
       },
       "us_context": {
@@ -3959,13 +3959,13 @@
         20702400.0,
         20702700.0
       ],
-      "similarity": 93.1,
+      "similarity": 93.0,
       "after_ret": -0.4,
       "max_up_after": 0.1,
       "max_down_after": -3.59,
       "score_components": {
         "five_minute": null,
-        "us_market": 93.1,
+        "us_market": 93.0,
         "credit_supply": null
       },
       "us_context": {
@@ -4437,13 +4437,13 @@
       27969600.0,
       28284600.0
     ],
-    "similarity": 96.9,
+    "similarity": 97.0,
     "after_ret": 5.32,
     "max_up_after": 6.32,
     "max_down_after": -0.1,
     "score_components": {
       "five_minute": null,
-      "us_market": 96.9,
+      "us_market": 97.0,
       "credit_supply": null
     },
     "us_context": {
@@ -4467,10 +4467,10 @@
   "market_context": {
     "date": "2026-09-30",
     "values": {
-      "sndk": 0.609,
-      "mu": 0.786,
-      "sox": -0.186,
-      "nasdaq": 1.074
+      "sndk": 0.59,
+      "mu": 0.752,
+      "sox": -0.187,
+      "nasdaq": 1.078
     },
     "labels": {
       "sndk": "SanDisk",
@@ -4495,7 +4495,7 @@
   "prediction": {
     "status": "寄り前・米国市場と信用需給から事前選定",
     "bias": "レンジ候補",
-    "up_probability": 40.6,
+    "up_probability": 40.7,
     "expected_after_ret": -2.74,
     "expected_max_up": 2.13,
     "expected_max_down": -5.63,
@@ -4508,7 +4508,7 @@
   "decision": {
     "grade": "見送り",
     "tradable": false,
-    "agreement": 59.4,
+    "agreement": 59.3,
     "dispersion": 5.99,
     "reason": "類似日間の方向または値幅が揃っていないため、予測だけで入らない",
     "invalidate": "OR15とVWAPが予測方向と逆へ同時確定したら無効"
