@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-09-30 12:06:52 JST",
+  "updated_at": "2026-09-30 12:09:37 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -4496,22 +4496,6 @@
       "already_watched": false
     },
     {
-      "code": "8002",
-      "name": "Marubeni Corporation",
-      "exchange": "TSE",
-      "price": 4752,
-      "change_pct": 0.6993006993006993,
-      "volume": 1090200,
-      "relative_volume": 0.1784013588744121,
-      "atr_pct": 2.66,
-      "vwap": 4748.666666666667,
-      "high": 4768,
-      "low": 4726,
-      "market_cap": 8030734579468,
-      "sector": "Process Industries",
-      "already_watched": false
-    },
-    {
       "code": "8113",
       "name": "Unicharm Corporation",
       "exchange": "TSE",
@@ -4525,6 +4509,22 @@
       "low": 931.5,
       "market_cap": 1742491976417,
       "sector": "Consumer Non-Durables",
+      "already_watched": false
+    },
+    {
+      "code": "8002",
+      "name": "Marubeni Corporation",
+      "exchange": "TSE",
+      "price": 4752,
+      "change_pct": 0.6993006993006993,
+      "volume": 1090200,
+      "relative_volume": 0.1784013588744121,
+      "atr_pct": 2.66,
+      "vwap": 4748.666666666667,
+      "high": 4768,
+      "low": 4726,
+      "market_cap": 8030734579468,
+      "sector": "Process Industries",
       "already_watched": false
     },
     {
