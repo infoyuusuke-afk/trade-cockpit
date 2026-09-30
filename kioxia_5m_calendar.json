@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-09-30 10:30:56 JST",
+  "updated_at": "2026-09-30 10:33:18 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3222,7 +3222,7 @@
     },
     {
       "date": "2026-09-30",
-      "ret": 2.14,
+      "ret": 2.03,
       "high": 2.33,
       "low": -0.44,
       "type": "上昇トレンド",
@@ -3242,7 +3242,7 @@
         2.0,
         1.667,
         2.028,
-        2.139
+        2.028
       ],
       "volume_path": [
         1427200.0,
@@ -3259,13 +3259,13 @@
         11799400.0,
         12516800.0,
         12983100.0,
-        12983100.0
+        13303300.0
       ]
     }
   ],
   "current": {
     "date": "2026-09-30",
-    "ret": 2.14,
+    "ret": 2.03,
     "high": 2.33,
     "low": -0.44,
     "type": "上昇トレンド",
@@ -3285,7 +3285,7 @@
       2.0,
       1.667,
       2.028,
-      2.139
+      2.028
     ],
     "volume_path": [
       1427200.0,
@@ -3302,7 +3302,7 @@
       11799400.0,
       12516800.0,
       12983100.0,
-      12983100.0
+      13303300.0
     ]
   },
   "current_1m": [
@@ -3938,11 +3938,38 @@
     },
     {
       "t": "10:15",
-      "o": 2.1111,
+      "o": 2.0278,
+      "h": 2.1944,
+      "l": 2.0278,
+      "c": 2.1667,
+      "price": 18390.0,
+      "v": 163200
+    },
+    {
+      "t": "10:16",
+      "o": 2.1667,
+      "h": 2.1944,
+      "l": 2.0278,
+      "c": 2.0278,
+      "price": 18365.0,
+      "v": 92700
+    },
+    {
+      "t": "10:17",
+      "o": 2.0556,
       "h": 2.1111,
-      "l": 2.1111,
-      "c": 2.1111,
-      "price": 18380.0,
+      "l": 1.8889,
+      "c": 1.9167,
+      "price": 18345.0,
+      "v": 64300
+    },
+    {
+      "t": "10:18",
+      "o": 2.0278,
+      "h": 2.0278,
+      "l": 2.0278,
+      "c": 2.0278,
+      "price": 18365.0,
       "v": 0
     }
   ],
@@ -3950,14 +3977,14 @@
   "one_minute_verified": true,
   "technical_levels": {
     "session_open": 18000.0,
-    "daily_ma5": 18167.7,
+    "daily_ma5": 18163.7,
     "pivot_p": 17631.7,
     "pivot_r1": 18078.3,
     "pivot_s1": 17353.3,
     "or15_high": 18245.0,
     "or15_low": 17920.0,
     "return_pct": {
-      "daily_ma5": 0.9317,
+      "daily_ma5": 0.9094,
       "pivot_p": -2.0461,
       "pivot_r1": 0.435,
       "pivot_s1": -3.5928,
@@ -4104,12 +4131,12 @@
         37318400.0,
         37727500.0
       ],
-      "similarity": 89.2,
+      "similarity": 89.1,
       "after_ret": -0.02,
       "max_up_after": 2.32,
       "max_down_after": -0.89,
       "score_components": {
-        "five_minute": 89.3,
+        "five_minute": 89.2,
         "us_market": 88.8,
         "credit_supply": null
       },
@@ -4268,7 +4295,7 @@
       "max_up_after": 3.0,
       "max_down_after": -1.85,
       "score_components": {
-        "five_minute": 89.4,
+        "five_minute": 89.3,
         "us_market": 88.1,
         "credit_supply": null
       },
@@ -4422,7 +4449,7 @@
         46807600.0,
         46807900.0
       ],
-      "similarity": 86.1,
+      "similarity": 86.2,
       "after_ret": 9.85,
       "max_up_after": 10.34,
       "max_down_after": -0.44,
@@ -4586,7 +4613,7 @@
       "max_up_after": 6.96,
       "max_down_after": -0.86,
       "score_components": {
-        "five_minute": 82.5,
+        "five_minute": 82.6,
         "us_market": 94.7,
         "credit_supply": null
       },
@@ -4745,7 +4772,7 @@
       "max_up_after": 0.31,
       "max_down_after": -4.99,
       "score_components": {
-        "five_minute": 85.0,
+        "five_minute": 84.9,
         "us_market": 86.2,
         "credit_supply": null
       },
@@ -4900,12 +4927,12 @@
       37318400.0,
       37727500.0
     ],
-    "similarity": 89.2,
+    "similarity": 89.1,
     "after_ret": -0.02,
     "max_up_after": 2.32,
     "max_down_after": -0.89,
     "score_components": {
-      "five_minute": 89.3,
+      "five_minute": 89.2,
       "us_market": 88.8,
       "credit_supply": null
     },
@@ -4958,7 +4985,7 @@
   "prediction": {
     "status": "類似日あり",
     "bias": "レンジ優位",
-    "up_probability": 59.9,
+    "up_probability": 60.0,
     "expected_after_ret": 2.22,
     "expected_max_up": 4.59,
     "expected_max_down": -1.81,
@@ -4971,7 +4998,7 @@
   "decision": {
     "grade": "見送り",
     "tradable": false,
-    "agreement": 59.9,
+    "agreement": 60.0,
     "dispersion": 4.11,
     "reason": "類似日間の方向または値幅が揃っていないため、予測だけで入らない",
     "invalidate": "OR15とVWAPが予測方向と逆へ同時確定したら無効"
