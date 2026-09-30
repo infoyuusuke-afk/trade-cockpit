@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-09-30 08:58:36 JST",
+  "updated_at": "2026-09-30 09:01:07 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -4491,16 +4491,16 @@
   "market_context": {
     "date": "2026-09-29",
     "values": {
-      "sndk": 0.985,
-      "mu": 1.053,
       "sox": 1.315,
-      "nasdaq": -0.085
+      "nasdaq": -0.085,
+      "sndk": 0.985,
+      "mu": 1.053
     },
     "labels": {
-      "sndk": "SanDisk",
-      "mu": "Micron",
       "sox": "SOX",
-      "nasdaq": "NASDAQ"
+      "nasdaq": "NASDAQ",
+      "sndk": "SanDisk",
+      "mu": "Micron"
     }
   },
   "credit_context": {
@@ -4540,15 +4540,15 @@
   "gap_studies": [
     {
       "bucket": "GD 5%以上",
-      "sample": 9,
+      "sample": 8,
       "usable": true,
-      "or15_up_rate": 11.1,
-      "close_up_rate": 22.2,
-      "gap_fill_rate": 11.1,
-      "median_day_ret": -2.46,
-      "median_max_up": 2.07,
-      "median_max_down": -3.52,
-      "median_or15_range": 4.16
+      "or15_up_rate": 12.5,
+      "close_up_rate": 25.0,
+      "gap_fill_rate": 12.5,
+      "median_day_ret": -2.22,
+      "median_max_up": 1.8,
+      "median_max_down": -3.47,
+      "median_or15_range": 3.89
     },
     {
       "bucket": "GD 3–5%",
