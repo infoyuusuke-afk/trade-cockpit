@@ -1,26 +1,7 @@
 {
-  "updated_at": "2026-10-02 00:00:28 JST",
+  "updated_at": "2026-10-02 00:02:51 JST",
   "side": "SHORT",
   "status": "試運転・検証中",
-  "count": 1,
-  "candidates": [
-    {
-      "name": "ニデック（6594）",
-      "code": "6594",
-      "ticker": "6594.T",
-      "side": "SHORT",
-      "score": 68,
-      "trigger": 1887.0,
-      "stop": 2428.0,
-      "target1": 1076.0,
-      "target2": 534.0,
-      "rvol": 5.13,
-      "atr_pct": 7.99,
-      "supply_phase": null,
-      "margin_caution_flagged": false,
-      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-19.1%／出来高比5.13倍／信用需給不明",
-      "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
-      "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
-    }
-  ]
+  "count": 0,
+  "candidates": []
 }
