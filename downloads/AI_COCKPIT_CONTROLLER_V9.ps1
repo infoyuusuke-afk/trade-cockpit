@@ -1,7 +1,8 @@
 param(
     [string]$RepoRoot = "",
     [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
-    [string]$ExpectedBranch = ""
+    [string]$ExpectedBranch = "",
+    [string]$RuntimeDirOverride = ""
 )
 
 # AI Cockpit Controller V8
@@ -39,7 +40,7 @@ param(
 #     Heartbeat/Gateway processes and the Excel process that hosts them.
 
 $ErrorActionPreference = "Stop"
-$Build = "V9-CONTROLLER-20261002-EXCEL-GUARD-01"
+$Build = "V9-CONTROLLER-20261002-SESSION-GUARD-02"
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
 # Port map (fixed 2026-09-25): Collector=28580, Gateway=28581,
@@ -157,7 +158,19 @@ function Test-ForeignSession([hashtable]$OwnPids) {
     return $foreign
 }
 
-function Resolve-RuntimeDir {
+function Resolve-RuntimeDir([string]$Explicit) {
+    if (-not [string]::IsNullOrWhiteSpace($Explicit)) {
+        $resolved = [IO.Path]::GetFullPath($Explicit)
+        if (-not (Test-Path -LiteralPath $resolved -PathType Container)) {
+            throw "RuntimeDirOverride does not exist: $resolved"
+        }
+        $book = Join-Path $resolved "Kioxia_MS2_RSS_Live_Signals.xlsx"
+        if (-not (Test-Path -LiteralPath $book -PathType Leaf)) {
+            throw "RuntimeDirOverride is missing Kioxia_MS2_RSS_Live_Signals.xlsx: $resolved"
+        }
+        return $resolved
+    }
+
     $roots = @(
         [Environment]::GetFolderPath("Desktop"),
         (Join-Path $env:USERPROFILE "Desktop"),
@@ -339,11 +352,18 @@ function Get-ExcelProcessForWorkbook([string]$WorkbookName) {
         $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -like ("*" + $WorkbookName + "*")
     } | Select-Object -First 1)
 }
-function Get-ForeignExcelProcesses([int[]]$AllowedPids = @()) {
+function Get-CurrentSessionId {
+    $self = Get-Process -Id $PID -ErrorAction Stop
+    return [int]$self.SessionId
+}
+
+function Get-ForeignExcelProcesses([int[]]$AllowedPids = @(), [int]$SessionId = -1) {
+    if ($SessionId -lt 0) { $SessionId = Get-CurrentSessionId }
     return @(
         Get-Process EXCEL -ErrorAction SilentlyContinue |
         Where-Object {
             $pidValue = [int]$_.Id
+            [int]$_.SessionId -eq $SessionId -and
             -not ($AllowedPids -contains $pidValue)
         }
     )
@@ -364,8 +384,9 @@ function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$Cont
         $cmd.IndexOf($WorkbookPath,[StringComparison]::OrdinalIgnoreCase) -ge 0
     )
     $isControllerChild = ([int]$info.ParentProcessId -eq $ControllerPid)
+    $isSameSession = ([int]$proc.SessionId -eq (Get-CurrentSessionId))
 
-    if (-not ($isCanonicalWorkbook -and $isControllerChild)) { return $false }
+    if (-not ($isCanonicalWorkbook -and $isControllerChild -and $isSameSession)) { return $false }
 
     Stop-Process -Id $ExcelPid -Force -ErrorAction SilentlyContinue
     foreach ($attempt in 1..10) {
@@ -382,6 +403,7 @@ function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$Cont
 $state = [ordered]@{
     build                      = $Build
     controller_pid             = $PID
+    session_id                 = (Get-CurrentSessionId)
     started_at                 = (Get-Date).ToString("o")
     repo_root                  = ""
     runtime_dir                = ""
@@ -413,11 +435,12 @@ try {
 
     Write-Status "Resolving repo checkout and MS2 runtime folder..."
     $RepoRootResolved = Resolve-RepoRoot $RepoRoot
-    $RuntimeDir = Resolve-RuntimeDir
+    $RuntimeDir = Resolve-RuntimeDir $RuntimeDirOverride
     $state.repo_root = $RepoRootResolved
     $state.runtime_dir = $RuntimeDir
     Write-Status ("  repo:    " + $RepoRootResolved) Green
     Write-Status ("  runtime: " + $RuntimeDir) Green
+    Write-Status ("  session: " + $state.session_id + " / user: " + [Environment]::UserName) Green
 
     if (-not [string]::IsNullOrWhiteSpace($ExpectedBranch)) {
         $actualBranch = ""
@@ -510,16 +533,20 @@ try {
     }
     Write-Status "  No foreign session on 28580/28581/28582/28583." Green
 
-    Write-Status "Checking MarketSpeed II..."
-    $ms2 = @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -match "MarketSpeed|MARKETSPEED" })
+    Write-Status "Checking MarketSpeed II in this Windows session..."
+    $currentSessionId = Get-CurrentSessionId
+    $ms2 = @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
+        $_.ProcessName -match "MarketSpeed|MARKETSPEED" -and
+        [int]$_.SessionId -eq $currentSessionId
+    })
     if ($ms2.Count -eq 0) {
-        throw "MarketSpeed II is not running. Start it and log in, then run this controller again."
+        throw "MarketSpeed II is not running in this Windows session. Start/login MarketSpeed II inside the dedicated AI Cockpit session, then run again."
     }
-    Write-Status "  MarketSpeed II: READY" Green
+    Write-Status ("  MarketSpeed II: READY / session " + $currentSessionId) Green
 
-    # P0 safety interlock: until Excel/RSS isolation is proven safe across
-    # independent Windows sessions, never start AI Cockpit while any user
-    # Excel process already exists.
+    # P0 safety interlock: Excel isolation is enforced at the Windows
+    # session boundary. Block any unrelated Excel in THIS session, while
+    # deliberately ignoring work Excel running in another session.
     $foreignExcelAtStartup = @(Get-ForeignExcelProcesses)
     if ($foreignExcelAtStartup.Count -gt 0) {
         Write-Host ""
@@ -530,8 +557,8 @@ try {
             Write-Host ("  PID " + $foreignExcel.Id + " / " + $foreignExcel.MainWindowTitle) -ForegroundColor Yellow
         }
         Write-Host ""
-        Write-Host "Another Excel session is already running." -ForegroundColor Cyan
-        Write-Host "AI Cockpit will NOT start MS2/RSS Excel in the same Windows session." -ForegroundColor Cyan
+        Write-Host "Another Excel process is already running in this Windows session." -ForegroundColor Cyan
+        Write-Host "AI Cockpit will NOT start MS2/RSS Excel beside it." -ForegroundColor Cyan
         Write-Host "Close unrelated Excel workbooks first, or use the future isolated-session mode." -ForegroundColor Cyan
         throw "Excel safety interlock: foreign Excel process detected."
     }
