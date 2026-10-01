@@ -36,7 +36,7 @@ if ($null -eq $existing) {
     New-LocalUser `
         -Name $UserName `
         -Password $password `
-        -Description "Dedicated Windows session for AI Cockpit / MarketSpeed II RSS isolation" `
+        -Description "AI Cockpit dedicated session" `
         -AccountNeverExpires | Out-Null
 
     $existing = Get-LocalUser -Name $UserName -ErrorAction Stop
