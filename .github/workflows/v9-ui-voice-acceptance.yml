@@ -19,6 +19,7 @@ on:
       - "downloads/STOP_AI_COCKPIT_V9.ps1"
       - "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
       - "downloads/PREPARE_AI_COCKPIT_DEDICATED_RUNTIME_V1.ps1"
+      - "downloads/CREATE_AI_COCKPIT_DEDICATED_ACCOUNT_V1.ps1"
       - "downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1"
       - "ms2_live/Kioxia_RSS_Live_Watcher.ps1"
       - "ms2_live/Kioxia_Safety_Heartbeat.ps1"
@@ -71,6 +72,7 @@ jobs:
             "downloads/STOP_AI_COCKPIT_V9.ps1",
             "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1",
             "downloads/PREPARE_AI_COCKPIT_DEDICATED_RUNTIME_V1.ps1",
+            "downloads/CREATE_AI_COCKPIT_DEDICATED_ACCOUNT_V1.ps1",
             "downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1",
             "ms2_live/Kioxia_RSS_Live_Watcher.ps1",
             "ms2_live/Kioxia_Safety_Heartbeat.ps1",
@@ -165,6 +167,17 @@ jobs:
           )) {
             if ($prepare.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
               throw ("Missing dedicated preparation marker: " + $required)
+            }
+          }
+
+          $accountSetup = Get-Content -Raw -Encoding UTF8 "downloads/CREATE_AI_COCKPIT_DEDICATED_ACCOUNT_V1.ps1"
+          foreach ($required in @(
+            "New-LocalUser",
+            "standard Users group only",
+            "S-1-5-32-544"
+          )) {
+            if ($accountSetup.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+              throw ("Missing dedicated account safety marker: " + $required)
             }
           }
 
