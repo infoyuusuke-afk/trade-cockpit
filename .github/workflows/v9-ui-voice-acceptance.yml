@@ -83,6 +83,44 @@ jobs:
               throw "PowerShell AST validation failed: $file"
             }
           }
+      - name: Excel isolation safety contract
+        shell: pwsh
+        run: |
+          $controller = Get-Content -Raw -Encoding UTF8 "downloads/AI_COCKPIT_CONTROLLER_V9.ps1"
+          $watcher = Get-Content -Raw -Encoding UTF8 "ms2_live/Kioxia_RSS_Live_Watcher.ps1"
+          $collector = Get-Content -Raw -Encoding UTF8 "ms2_live/MS2_RSS_100_Collector.ps1"
+
+          $forbidden = @(
+            @{ Name = "Watcher DisplayAlerts=false"; Text = $watcher; Pattern = '\$excel\.DisplayAlerts\s*=\s*\$false' },
+            @{ Name = "Collector ScreenUpdating=false"; Text = $collector; Pattern = '\$excel\.ScreenUpdating\s*=\s*\$false' },
+            @{ Name = "Watcher GetActiveObject Excel.Application"; Text = $watcher; Pattern = 'GetActiveObject\("Excel\.Application"\)' },
+            @{ Name = "Collector GetActiveObject Excel.Application"; Text = $collector; Pattern = 'GetActiveObject\("Excel\.Application"\)' }
+          )
+
+          foreach ($rule in $forbidden) {
+            if ($rule.Text -match $rule.Pattern) {
+              throw ("Excel isolation safety regression: " + $rule.Name)
+            }
+          }
+
+          foreach ($required in @(
+            "EXCEL SAFETY INTERLOCK",
+            "Get-ForeignExcelProcesses",
+            "BLOCKED_FOREIGN_EXCEL",
+            "isolated Excel /x"
+          )) {
+            if ($controller.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+              throw ("Missing Excel isolation safety marker: " + $required)
+            }
+          }
+
+          if ($watcher.IndexOf("BindToMoniker", [StringComparison]::Ordinal) -lt 0) {
+            throw "Watcher must bind directly to the canonical RSS workbook."
+          }
+          if ($collector.IndexOf("BindToMoniker", [StringComparison]::Ordinal) -lt 0) {
+            throw "Collector must bind directly to the canonical RSS workbook."
+          }
+
       - name: Runtime-bind V8 to V9 switch helpers
         shell: powershell
         run: |
