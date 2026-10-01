@@ -17,6 +17,8 @@ on:
       - "downloads/AI_COCKPIT_*_V9.ps1"
       - "downloads/RUN_AI_COCKPIT_V9.ps1"
       - "downloads/STOP_AI_COCKPIT_V9.ps1"
+      - "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
+      - "downloads/PREPARE_AI_COCKPIT_DEDICATED_RUNTIME_V1.ps1"
       - "downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1"
       - "ms2_live/Kioxia_RSS_Live_Watcher.ps1"
       - "ms2_live/Kioxia_Safety_Heartbeat.ps1"
@@ -67,6 +69,8 @@ jobs:
             "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
             "downloads/RUN_AI_COCKPIT_V9.ps1",
             "downloads/STOP_AI_COCKPIT_V9.ps1",
+            "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1",
+            "downloads/PREPARE_AI_COCKPIT_DEDICATED_RUNTIME_V1.ps1",
             "downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1",
             "ms2_live/Kioxia_RSS_Live_Watcher.ps1",
             "ms2_live/Kioxia_Safety_Heartbeat.ps1",
@@ -119,6 +123,49 @@ jobs:
           }
           if ($collector.IndexOf("BindToMoniker", [StringComparison]::Ordinal) -lt 0) {
             throw "Collector must bind directly to the canonical RSS workbook."
+          }
+
+          foreach ($required in @(
+            "RuntimeDirOverride",
+            "Get-CurrentSessionId",
+            "SessionId -eq",
+            "MarketSpeed II in this Windows session"
+          )) {
+            if ($controller.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+              throw ("Missing session-isolation controller marker: " + $required)
+            }
+          }
+
+          $runScript = Get-Content -Raw -Encoding UTF8 "downloads/RUN_AI_COCKPIT_V9.ps1"
+          foreach ($required in @("RuntimeDirOverride", 'Root = "C:\AI_Cockpit_OneClick_Starter"')) {
+            if ($runScript.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+              throw ("Missing dedicated runtime RUN marker: " + $required)
+            }
+          }
+
+          $host = Get-Content -Raw -Encoding UTF8 "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
+          foreach ($required in @(
+            "DEDICATED_SESSION_APPROVED.json",
+            "explorer.exe",
+            "SessionId",
+            "RuntimeDirOverride",
+            "MarketSpeed II is not running in dedicated session"
+          )) {
+            if ($host.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+              throw ("Missing dedicated host marker: " + $required)
+            }
+          }
+
+          $prepare = Get-Content -Raw -Encoding UTF8 "downloads/PREPARE_AI_COCKPIT_DEDICATED_RUNTIME_V1.ps1"
+          foreach ($required in @(
+            "DedicatedUser",
+            "DEDICATED_SESSION_APPROVED.json",
+            "workbook_sha256",
+            "icacls.exe"
+          )) {
+            if ($prepare.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+              throw ("Missing dedicated preparation marker: " + $required)
+            }
           }
 
       - name: Runtime-bind V8 to V9 switch helpers
