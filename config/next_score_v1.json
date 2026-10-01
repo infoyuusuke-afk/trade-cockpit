@@ -25,7 +25,17 @@
     "next20_score_weight": 0.62,
     "next20_velocity_weight": 0.38,
     "next5_score_weight": 0.45,
-    "next5_velocity_weight": 0.55
+    "next5_velocity_weight": 0.55,
+    "next20_min_score": 58,
+    "next5_min_score": 58,
+    "promotion_min_coverage": 1.0,
+    "require_precursor": true
+  },
+  "freshness": {
+    "ttl_seconds": 180,
+    "future_skew_seconds": 30,
+    "session_timezone": "Asia/Tokyo",
+    "require_same_session_date": true
   },
   "sessions": {
     "timezone": "Asia/Tokyo",

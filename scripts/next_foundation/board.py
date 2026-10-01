@@ -174,14 +174,82 @@ def _trim(members: list[dict], limit: int, protected: set[str]) -> list[dict]:
     return [row for row in members if row["symbol"] not in drop_ids]
 
 
+def _promotion_min_coverage(config: dict) -> float:
+    return float(config["funnel"]["promotion_min_coverage"])
+
+
+def _coverage_ok(row: dict, minimum: float) -> bool:
+    coverage = row.get("coverage")
+    return isinstance(coverage, (int, float)) and not isinstance(coverage, bool) and float(coverage) >= minimum
+
+
+def _has_observed_velocity(row: dict) -> bool:
+    return row.get("rank_velocity") is not None and row.get("rank_velocity_component") is not None
+
+
+def _precursor_ok(row: dict, config: dict) -> bool:
+    if not config["funnel"].get("require_precursor", True):
+        return True
+    needed = set((config.get("states") or {}).get("precursor_reasons") or [])
+    return bool(needed.intersection(row.get("reason_codes") or []))
+
+
+def _promotable(row: dict, min_score: float, config: dict) -> bool:
+    """NEXT slots require a complete, fully covered score and a real precursor.
+
+    List length is a cap. A short list stays short. WATCH-level rows are not
+    used to fill empty seats.
+    """
+
+    if row.get("fail_closed") or row.get("score_status") != "COMPLETE" or row.get("score") is None:
+        return False
+    if not _has_observed_velocity(row):
+        return False
+    if not _coverage_ok(row, _promotion_min_coverage(config)):
+        return False
+    if float(row["score"]) < min_score:
+        return False
+    return _precursor_ok(row, config)
+
+
+def _empty_funnel_reason(active: list[dict], config: dict) -> tuple[bool, str]:
+    if not active:
+        return True, "ACTIVE100_EMPTY"
+    minimum = _promotion_min_coverage(config)
+    scored = [row for row in active if not row.get("fail_closed") and row.get("market_score") is not None]
+    if not scored:
+        return True, "ACTIVE100_EMPTY"
+    covered = [row for row in scored if _coverage_ok(row, minimum)]
+    if not covered:
+        return True, "COMPLETE_SCORE_UNAVAILABLE"
+    observed = [
+        row for row in covered
+        if _has_observed_velocity(row) and row.get("score_status") == "COMPLETE" and row.get("score") is not None
+    ]
+    if not observed:
+        return True, "RANK_VELOCITY_UNAVAILABLE"
+    return False, "NEXT_ELIGIBILITY_UNMET"
+
+
+def _leave_in_active(active: list[dict], promoted: list[dict]) -> None:
+    chosen = {row["symbol"] for row in promoted}
+    for row in active:
+        if row["symbol"] in chosen:
+            continue
+        row["funnel"] = "ACTIVE100"
+        row["next_rank"] = None
+        row["next20_rank"] = None
+
+
 def build_funnel(active: list[dict], config: dict) -> dict:
     funnel = config["funnel"]
-    ready = [
-        row for row in active
-        if row.get("score_status") == "COMPLETE" and row.get("rank_velocity_component") is not None and row.get("score") is not None
-    ]
-    if not ready:
-        return {"next20": [], "next5": [], "funnel_fail_closed": True, "funnel_reason": "RANK_VELOCITY_UNAVAILABLE"}
+    next20_floor = float(funnel["next20_min_score"])
+    next5_floor = float(funnel["next5_min_score"])
+    next20_ready = [row for row in active if _promotable(row, next20_floor, config)]
+    if not next20_ready:
+        closed, reason = _empty_funnel_reason(active, config)
+        _leave_in_active(active, [])
+        return {"next20": [], "next5": [], "funnel_fail_closed": closed, "funnel_reason": reason}
 
     def keyed(row: dict, score_weight: float, velocity_weight: float):
         value = selection_value(row["score"], row["rank_velocity_component"], score_weight, velocity_weight)
@@ -189,7 +257,7 @@ def build_funnel(active: list[dict], config: dict) -> dict:
         return row_key, value
 
     next20_scored = []
-    for row in ready:
+    for row in next20_ready:
         key, value = keyed(row, float(funnel["next20_score_weight"]), float(funnel["next20_velocity_weight"]))
         row["next20_selection"] = round(value, 6)
         next20_scored.append((key, row))
@@ -201,6 +269,8 @@ def build_funnel(active: list[dict], config: dict) -> dict:
 
     next5_scored = []
     for row in next20:
+        if float(row["score"]) < next5_floor:
+            continue
         key, value = keyed(row, float(funnel["next5_score_weight"]), float(funnel["next5_velocity_weight"]))
         row["next5_selection"] = round(value, 6)
         next5_scored.append((key, row))
@@ -213,11 +283,7 @@ def build_funnel(active: list[dict], config: dict) -> dict:
     for row in next20:
         if row["symbol"] not in next5_ids:
             row["next_rank"] = row["next20_rank"]
-    for row in active:
-        if row["symbol"] not in {item["symbol"] for item in next20}:
-            row["funnel"] = "ACTIVE100"
-            row["next_rank"] = None
-            row["next20_rank"] = None
+    _leave_in_active(active, next20)
     return {
         "next20": next20,
         "next5": next5,

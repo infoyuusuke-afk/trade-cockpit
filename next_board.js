@@ -43,17 +43,22 @@
     return card.previous_rank + "→" + card.rank + " (" + sign + delta + ")";
   }
 
-  function render(board) {
+  function render(board, now) {
     var meta = document.getElementById("next-discovery-meta");
     var box = document.getElementById("next-discovery-cards");
     if (!box) return;
-    if (!board || typeof board !== "object" || !board.generated_at) {
-      fail(box, "判定時刻のないデータは表示しません");
+    if (!board || typeof board !== "object" || typeof window.evaluateNextBoardFreshness !== "function") {
+      fail(box, "STALE：鮮度を確認できないため NEXT は出しません");
+      return;
+    }
+    var verdict = window.evaluateNextBoardFreshness(board, now || new Date());
+    if (!verdict.ok) {
+      if (meta) meta.textContent = "FAIL-CLOSED。発注なし。";
+      fail(box, verdict.message || "STALE：この判定は表示しません");
       return;
     }
     if (meta) {
-      var mode = board.source_mode === "sample" ? "サンプル入力。実売買の根拠にはしません。" : "探索スナップショット。";
-      meta.textContent = mode + " 更新 " + board.generated_at + " ／ Active100 " + (finite(board.active100_count) ? board.active100_count : "—") + " ／ 発注なし";
+      meta.textContent = "探索スナップショット。 更新 " + board.generated_at + " ／ Active100 " + (finite(board.active100_count) ? board.active100_count : "—") + " ／ 発注なし";
     }
     if (board.fail_closed) {
       fail(box, board.fail_closed_reason || "ユニバースを確定できないため NEXT を出しません");
@@ -64,8 +69,12 @@
       fail(box, board.funnel_reason || "NEXT5を確定できないため順位は出しません");
       return;
     }
+    if (!cards.length) {
+      fail(box, board.funnel_reason || "表示できるNEXT5がありません");
+      return;
+    }
     var html = cards.map(function (card) {
-      if (!card || !card.symbol || !finite(card.score) || !card.state || !finite(card.next_rank)) return "";
+      if (!card || !card.symbol || !finite(card.score) || !card.state || card.state === "WATCH" || !finite(card.next_rank)) return "";
       var reasons = Array.isArray(card.primary_reasons) ? card.primary_reasons.slice(0, 3) : [];
       var reasonHtml = reasons.map(function (code) {
         return "<span>" + esc(REASONS[code] || code) + "</span>";

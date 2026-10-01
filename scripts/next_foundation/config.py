@@ -69,4 +69,22 @@ def validate_config(data: dict) -> dict:
             raise ValueError(f"funnel.{key} must be a positive integer")
     if not funnel["next5_size"] <= funnel["next20_size"] <= funnel["active_size"]:
         raise ValueError("funnel sizes must satisfy next5 <= next20 <= active")
+    for key in ("next20_min_score", "next5_min_score"):
+        value = funnel.get(key)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"funnel.{key} must be a number")
+    if float(funnel["next5_min_score"]) < float(funnel["next20_min_score"]):
+        raise ValueError("funnel.next5_min_score cannot be below funnel.next20_min_score")
+    pre_next = (data.get("states") or {}).get("pre_next_min_score")
+    if isinstance(pre_next, bool) or not isinstance(pre_next, (int, float)):
+        raise ValueError("states.pre_next_min_score must be a number")
+    if float(funnel["next20_min_score"]) < float(pre_next):
+        raise ValueError("funnel.next20_min_score must be at least states.pre_next_min_score")
+    promotion_coverage = funnel.get("promotion_min_coverage")
+    if isinstance(promotion_coverage, bool) or not isinstance(promotion_coverage, (int, float)):
+        raise ValueError("funnel.promotion_min_coverage must be a number")
+    if not 0 < float(promotion_coverage) <= 1:
+        raise ValueError("funnel.promotion_min_coverage must be in (0, 1]")
+    if not isinstance(funnel.get("require_precursor"), bool):
+        raise ValueError("funnel.require_precursor must be a boolean")
     return data
