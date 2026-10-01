@@ -399,7 +399,7 @@ Start-Process -FilePath $excelExe -ArgumentList "/x","`"$bookPath`""
     Write-Host "Excelへ接続しました。RSSタブで『接続』を確認してください。" -ForegroundColor Yellow
 }
 Invoke-ComRetry { $excel.Visible = $true } | Out-Null
-Invoke-ComRetry { $excel.DisplayAlerts = $false } | Out-Null
+# Do not mutate Excel.Application.DisplayAlerts here. It is application-scoped and can leak into unrelated Excel UI after abnormal termination.
 $book = Invoke-ComRetry {
     $found = $null
     foreach ($candidate in $excel.Workbooks) {
