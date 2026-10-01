@@ -138,7 +138,10 @@
     "logged_at": "2026-09-29 02:04:12 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 3.57,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "2354",
@@ -147,7 +150,10 @@
     "logged_at": "2026-09-29 02:04:12 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -4.91,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "2685",
@@ -156,7 +162,10 @@
     "logged_at": "2026-09-29 02:04:12 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -0.16,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "2935",
@@ -165,7 +174,10 @@
     "logged_at": "2026-09-29 02:04:13 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.08,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "2975",
@@ -174,7 +186,10 @@
     "logged_at": "2026-09-29 02:04:13 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 1.97,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "3089",
@@ -183,7 +198,10 @@
     "logged_at": "2026-09-29 02:04:13 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 1.51,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "6083",
@@ -192,7 +210,10 @@
     "logged_at": "2026-09-29 02:04:13 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 4.91,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "9265",
@@ -201,7 +222,10 @@
     "logged_at": "2026-09-29 02:04:14 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 4.7,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "9369",
@@ -210,7 +234,10 @@
     "logged_at": "2026-09-29 02:04:14 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 1.29,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "9651",
@@ -219,7 +246,10 @@
     "logged_at": "2026-09-29 02:04:14 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 1.87,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "2493",
@@ -354,6 +384,123 @@
     "logged_at": "2026-10-01 00:20:33 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 1.26,
+    "status": "pending"
+  },
+  {
+    "code": "1376",
+    "name": "カネコ種苗",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-02 00:41:48 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.87,
+    "status": "pending"
+  },
+  {
+    "code": "2789",
+    "name": "カルラ",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-02 00:41:49 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 2.52,
+    "status": "pending"
+  },
+  {
+    "code": "3148",
+    "name": "クリエイトＳＤホールディングス",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-02 00:41:49 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.36,
+    "status": "pending"
+  },
+  {
+    "code": "3186",
+    "name": "ネクステージ",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-02 00:41:49 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.54,
+    "status": "pending"
+  },
+  {
+    "code": "3377",
+    "name": "バイク王＆カンパニー",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-02 00:41:49 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 2.84,
+    "status": "pending"
+  },
+  {
+    "code": "3498",
+    "name": "霞ヶ関キャピタル",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-02 00:41:50 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 4.58,
+    "status": "pending"
+  },
+  {
+    "code": "3612",
+    "name": "ワールド",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-02 00:41:50 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.38,
+    "status": "pending"
+  },
+  {
+    "code": "6474",
+    "name": "不二越",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-02 00:41:50 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 2.58,
+    "status": "pending"
+  },
+  {
+    "code": "7630",
+    "name": "壱番屋",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-02 00:41:50 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 2.76,
+    "status": "pending"
+  },
+  {
+    "code": "7679",
+    "name": "薬王堂ホールディングス",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-02 00:41:51 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.83,
+    "status": "pending"
+  },
+  {
+    "code": "8923",
+    "name": "トーセイ",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-02 00:41:51 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.51,
+    "status": "pending"
+  },
+  {
+    "code": "9558",
+    "name": "ジャパニアス",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-02 00:41:51 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.73,
+    "status": "pending"
+  },
+  {
+    "code": "9793",
+    "name": "ダイセキ",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-02 00:41:51 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.85,
     "status": "pending"
   }
 ]
