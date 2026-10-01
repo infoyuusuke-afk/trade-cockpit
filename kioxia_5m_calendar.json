@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-10-01 09:16:06 JST",
+  "updated_at": "2026-10-01 09:18:23 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3489,9 +3489,19 @@
       33810400.0
     ]
   },
-  "current_1m": [],
+  "current_1m": [
+    {
+      "t": "09:03",
+      "o": 0.0,
+      "h": 0.0,
+      "l": 0.0,
+      "c": 0.0,
+      "price": 18095.0,
+      "v": 0
+    }
+  ],
   "one_minute_source": "Yahoo Finance 285A.T 1分足",
-  "one_minute_verified": false,
+  "one_minute_verified": true,
   "technical_levels": {
     "session_open": null,
     "daily_ma5": 18113.7,
