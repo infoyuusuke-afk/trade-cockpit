@@ -106,6 +106,9 @@ $RUNTIME_DEPLOY_FILES = @(
     "Kioxia_RSS_Live_Watcher.ps1",
     "Kioxia_Safety_Heartbeat.ps1",
     "MS2_RSS_100_Collector.ps1",
+    "MS2_Common_Engine.ps1",
+    "BUILD_KIOXIA_TIME_STATS.ps1",
+    "watchlist_100.json",
     "SPEAK_TODAY_STRATEGY.ps1",
     "SPEAK_LIVE_EMOTION.ps1"
 )
@@ -129,7 +132,7 @@ function Deploy-RuntimeFiles([string]$RepoRoot, [string]$RuntimeDir) {
             # catch block below can always clean it up - including when
             # THIS file is the one that fails validation.
             $allStagedPaths += $stagedPath
-            if (-not (Test-PowerShellSyntaxOk $stagedPath)) {
+            if ($name -like "*.ps1" -and -not (Test-PowerShellSyntaxOk $stagedPath)) {
                 throw "Runtime deploy: AST parse failed for staged copy of $name - not deploying anything."
             }
             $sourceHash = Get-Sha256Hex $source
