@@ -1,0 +1,876 @@
+{
+  "schema_version": "next-universe-snapshot-1.0",
+  "source_mode": "sample",
+  "as_of": "2026-10-01T10:15:00+09:00",
+  "selection_mode": "scheduled_morning",
+  "note": "Synthetic discovery snapshot for the NEXT phase-1 funnel. Not live quotes and not an order.",
+  "monitor_symbols": [
+    "A200"
+  ],
+  "sources": [
+    {
+      "source_id": "sample_discovery",
+      "layer": "discovery",
+      "candidates": [
+        {
+          "symbol": "A100",
+          "name": "サンプル・定位置",
+          "price": 25000,
+          "rank_history": [
+            {
+              "rank": 1,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 1,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 1,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.34,
+            "price_accel_45s": 0.42,
+            "volume_surge_ratio": 3.2,
+            "turnover_accel": 3.0,
+            "high_update_frequency": 4.0,
+            "vwap_position": 0.2,
+            "or5_state": "ABOVE",
+            "or15_state": "ABOVE",
+            "pullback_shallowness": 0.95,
+            "relative_strength": 1.0,
+            "liquidity": 1200000000
+          }
+        },
+        {
+          "symbol": "A200",
+          "name": "サンプル・順位急上昇",
+          "price": 4820,
+          "rank_history": [
+            {
+              "rank": 42,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 18,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 7,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.28,
+            "price_accel_45s": 0.36,
+            "volume_surge_ratio": 2.8,
+            "turnover_accel": 2.4,
+            "high_update_frequency": 3,
+            "vwap_position": 0.22,
+            "or5_state": "ABOVE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.84,
+            "relative_strength": 0.55,
+            "liquidity": 180000000
+          }
+        },
+        {
+          "symbol": "A300",
+          "name": "サンプル・急騰後",
+          "price": 760,
+          "rank_history": [
+            {
+              "rank": 12,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 16,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 21,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 3.2,
+            "price_accel_45s": -0.08,
+            "volume_surge_ratio": 1.05,
+            "turnover_accel": 0.9,
+            "high_update_frequency": 0.0,
+            "vwap_position": 2.4,
+            "or5_state": "ABOVE",
+            "or15_state": "ABOVE",
+            "pullback_shallowness": 0.2,
+            "relative_strength": 0.05,
+            "liquidity": 400000000
+          }
+        },
+        {
+          "symbol": "A000",
+          "name": "サンプル・変化ゼロ",
+          "price": 1000,
+          "rank_history": [
+            {
+              "rank": 30,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 28,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 26,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.0,
+            "price_accel_45s": 0.0,
+            "volume_surge_ratio": 1.2,
+            "turnover_accel": 1.1,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.08,
+            "liquidity": 80000000
+          }
+        },
+        {
+          "symbol": "A910",
+          "name": "サンプル・OR未形成",
+          "price": 1500,
+          "rank_history": [
+            {
+              "rank": 29,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 27,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 25,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.04,
+            "price_accel_45s": 0.05,
+            "volume_surge_ratio": 1.2,
+            "turnover_accel": 1.1,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "UNKNOWN",
+            "or15_state": "UNFORMED",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.08,
+            "liquidity": 80000000
+          }
+        },
+        {
+          "symbol": "A999",
+          "name": "サンプル・流動性欠損",
+          "price": 500,
+          "rank_history": [
+            {
+              "rank": 40,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 40,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 40,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.04,
+            "price_accel_45s": 0.05,
+            "volume_surge_ratio": 1.2,
+            "turnover_accel": 1.1,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.08,
+            "liquidity": null
+          }
+        },
+        {
+          "symbol": "B001",
+          "name": "サンプル候補1",
+          "price": 1001,
+          "rank_history": [
+            {
+              "rank": 28,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 26,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 24,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.052000000000000005,
+            "price_accel_45s": 0.062,
+            "volume_surge_ratio": 1.16,
+            "turnover_accel": 1.06,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.045,
+            "liquidity": 71000000
+          }
+        },
+        {
+          "symbol": "B002",
+          "name": "サンプル候補2",
+          "price": 1002,
+          "rank_history": [
+            {
+              "rank": 27,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 25,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 23,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.054000000000000006,
+            "price_accel_45s": 0.064,
+            "volume_surge_ratio": 1.17,
+            "turnover_accel": 1.07,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.05,
+            "liquidity": 72000000
+          }
+        },
+        {
+          "symbol": "B003",
+          "name": "サンプル候補3",
+          "price": 1003,
+          "rank_history": [
+            {
+              "rank": 26,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 24,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 22,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.056,
+            "price_accel_45s": 0.066,
+            "volume_surge_ratio": 1.18,
+            "turnover_accel": 1.08,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.055,
+            "liquidity": 73000000
+          }
+        },
+        {
+          "symbol": "B004",
+          "name": "サンプル候補4",
+          "price": 1004,
+          "rank_history": [
+            {
+              "rank": 25,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 23,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 21,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.058,
+            "price_accel_45s": 0.068,
+            "volume_surge_ratio": 1.19,
+            "turnover_accel": 1.09,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.06,
+            "liquidity": 74000000
+          }
+        },
+        {
+          "symbol": "B005",
+          "name": "サンプル候補5",
+          "price": 1005,
+          "rank_history": [
+            {
+              "rank": 24,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 22,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 20,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.060000000000000005,
+            "price_accel_45s": 0.06999999999999999,
+            "volume_surge_ratio": 1.2,
+            "turnover_accel": 1.1,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.065,
+            "liquidity": 75000000
+          }
+        },
+        {
+          "symbol": "B006",
+          "name": "サンプル候補6",
+          "price": 1006,
+          "rank_history": [
+            {
+              "rank": 23,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 21,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 19,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.062,
+            "price_accel_45s": 0.072,
+            "volume_surge_ratio": 1.21,
+            "turnover_accel": 1.11,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.07,
+            "liquidity": 76000000
+          }
+        },
+        {
+          "symbol": "B007",
+          "name": "サンプル候補7",
+          "price": 1007,
+          "rank_history": [
+            {
+              "rank": 22,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 20,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 18,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.064,
+            "price_accel_45s": 0.074,
+            "volume_surge_ratio": 1.22,
+            "turnover_accel": 1.12,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.07500000000000001,
+            "liquidity": 77000000
+          }
+        },
+        {
+          "symbol": "B008",
+          "name": "サンプル候補8",
+          "price": 1008,
+          "rank_history": [
+            {
+              "rank": 21,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 19,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 17,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.066,
+            "price_accel_45s": 0.076,
+            "volume_surge_ratio": 1.23,
+            "turnover_accel": 1.1300000000000001,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.08,
+            "liquidity": 78000000
+          }
+        },
+        {
+          "symbol": "B009",
+          "name": "サンプル候補9",
+          "price": 1009,
+          "rank_history": [
+            {
+              "rank": 20,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 18,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 16,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.068,
+            "price_accel_45s": 0.078,
+            "volume_surge_ratio": 1.24,
+            "turnover_accel": 1.1400000000000001,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.08499999999999999,
+            "liquidity": 79000000
+          }
+        },
+        {
+          "symbol": "B010",
+          "name": "サンプル候補10",
+          "price": 1010,
+          "rank_history": [
+            {
+              "rank": 19,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 17,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 15,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.07,
+            "price_accel_45s": 0.08,
+            "volume_surge_ratio": 1.25,
+            "turnover_accel": 1.1500000000000001,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.09,
+            "liquidity": 80000000
+          }
+        },
+        {
+          "symbol": "B011",
+          "name": "サンプル候補11",
+          "price": 1011,
+          "rank_history": [
+            {
+              "rank": 18,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 16,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 14,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.07200000000000001,
+            "price_accel_45s": 0.08199999999999999,
+            "volume_surge_ratio": 1.26,
+            "turnover_accel": 1.1600000000000001,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.095,
+            "liquidity": 81000000
+          }
+        },
+        {
+          "symbol": "B012",
+          "name": "サンプル候補12",
+          "price": 1012,
+          "rank_history": [
+            {
+              "rank": 17,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 15,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 13,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.07400000000000001,
+            "price_accel_45s": 0.08399999999999999,
+            "volume_surge_ratio": 1.27,
+            "turnover_accel": 1.17,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.1,
+            "liquidity": 82000000
+          }
+        },
+        {
+          "symbol": "B013",
+          "name": "サンプル候補13",
+          "price": 1013,
+          "rank_history": [
+            {
+              "rank": 16,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 14,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 12,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.07600000000000001,
+            "price_accel_45s": 0.086,
+            "volume_surge_ratio": 1.2799999999999998,
+            "turnover_accel": 1.1800000000000002,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.10500000000000001,
+            "liquidity": 83000000
+          }
+        },
+        {
+          "symbol": "B014",
+          "name": "サンプル候補14",
+          "price": 1014,
+          "rank_history": [
+            {
+              "rank": 15,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 13,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 11,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.078,
+            "price_accel_45s": 0.088,
+            "volume_surge_ratio": 1.29,
+            "turnover_accel": 1.19,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.11000000000000001,
+            "liquidity": 84000000
+          }
+        },
+        {
+          "symbol": "B015",
+          "name": "サンプル候補15",
+          "price": 1015,
+          "rank_history": [
+            {
+              "rank": 14,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 12,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 10,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.08,
+            "price_accel_45s": 0.09,
+            "volume_surge_ratio": 1.2999999999999998,
+            "turnover_accel": 1.2,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.11499999999999999,
+            "liquidity": 85000000
+          }
+        },
+        {
+          "symbol": "B016",
+          "name": "サンプル候補16",
+          "price": 1016,
+          "rank_history": [
+            {
+              "rank": 13,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 11,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 9,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.082,
+            "price_accel_45s": 0.092,
+            "volume_surge_ratio": 1.3099999999999998,
+            "turnover_accel": 1.21,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.12,
+            "liquidity": 86000000
+          }
+        },
+        {
+          "symbol": "B017",
+          "name": "サンプル候補17",
+          "price": 1017,
+          "rank_history": [
+            {
+              "rank": 12,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 10,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 8,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.084,
+            "price_accel_45s": 0.094,
+            "volume_surge_ratio": 1.3199999999999998,
+            "turnover_accel": 1.22,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.125,
+            "liquidity": 87000000
+          }
+        },
+        {
+          "symbol": "B018",
+          "name": "サンプル候補18",
+          "price": 1018,
+          "rank_history": [
+            {
+              "rank": 11,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 9,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 7,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.08600000000000001,
+            "price_accel_45s": 0.096,
+            "volume_surge_ratio": 1.3299999999999998,
+            "turnover_accel": 1.23,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.13,
+            "liquidity": 88000000
+          }
+        },
+        {
+          "symbol": "B019",
+          "name": "サンプル候補19",
+          "price": 1019,
+          "rank_history": [
+            {
+              "rank": 10,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 8,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 6,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.088,
+            "price_accel_45s": 0.098,
+            "volume_surge_ratio": 1.3399999999999999,
+            "turnover_accel": 1.24,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.135,
+            "liquidity": 89000000
+          }
+        },
+        {
+          "symbol": "B020",
+          "name": "サンプル候補20",
+          "price": 1020,
+          "rank_history": [
+            {
+              "rank": 9,
+              "timestamp": "2026-10-01T10:12:00+09:00"
+            },
+            {
+              "rank": 7,
+              "timestamp": "2026-10-01T10:13:00+09:00"
+            },
+            {
+              "rank": 5,
+              "timestamp": "2026-10-01T10:14:00+09:00"
+            }
+          ],
+          "features": {
+            "price_change_15s": 0.09,
+            "price_accel_45s": 0.1,
+            "volume_surge_ratio": 1.3499999999999999,
+            "turnover_accel": 1.25,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.14,
+            "liquidity": 90000000
+          }
+        }
+      ]
+    },
+    {
+      "source_id": "ms2_rss_monitor",
+      "layer": "monitor",
+      "symbols": [
+        "Z999"
+      ],
+      "candidates": [
+        {
+          "symbol": "Z999",
+          "name": "monitor-only",
+          "features": {
+            "price_change_15s": 0.04,
+            "price_accel_45s": 0.05,
+            "volume_surge_ratio": 1.2,
+            "turnover_accel": 1.1,
+            "high_update_frequency": 0.3,
+            "vwap_position": 0.08,
+            "or5_state": "INSIDE",
+            "or15_state": "INSIDE",
+            "pullback_shallowness": 0.5,
+            "relative_strength": 0.08,
+            "liquidity": 80000000
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # trade-cockpit STATUS
 
-最終更新: 2026-09-23（GitHub mainを開発・進捗共有の唯一の正本として同期）
+最終更新: 2026-10-01（NEXT基盤 phase 1 を作業ブランチに実装。main未マージのため、この節以外の本文は 2026-09-23 時点の共有状態）
 役割分担（現行）：GPT/Codex側＝主開発・実装・検証・GitHub連携／Cloud側＝レビュー・診断・補助実装。役割は固定せず、GitHub mainの最新状態を基準に引き継ぐ。
 運用体制: GitHub main＝コードと進捗共有の唯一の正本。新しいセッションは必ずmainのSTATUS.mdと関連Issue/PRを確認してから作業し、古いチャット内の役割分担や進捗を正本として扱わない。
 同期ルール: GPT/Codex側・Cloud側のどちらで作業しても、共有すべき完了事項・未解決事項・Owner判断待ちはSTATUS.mdまたは関連Issue/PRへ反映する。main未反映の作業は「共有済み」と扱わない。
@@ -10,6 +10,17 @@ URL（https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/STATU
 を貼るだけで、これまでの経緯を再説明せずに済みます。
 
 ---
+
+## NEXT基盤 phase 1（2026-10-01、main未マージ）
+
+日本市場の探索順位を `Dynamic Active100 → NEXT20 → NEXT5` に絞る第1段階を、既存の固定100銘柄MS2監視・NEXT THEME RADAR・カード契約とは別モジュールとして追加した。実TradingView接続、外部有料API、自動発注、MS2実機接続は未実装。Cloud側から MarketSpeed II / RSS / Excel へ新しい接続は作っていない。
+
+- 実装: `scripts/next_foundation/`、重み `config/next_score_v1.json`、サンプル `tests/fixtures/next_market_sample.json`、公開スナップショット `next_board.json`。
+- 欠損特徴量は0や正常値にせず fail-closed。順位速度が未観測のときは NEXT20/NEXT5 を作らない。
+- サンプルでは探索順位2位・NEXTスコア79.7の `A200`（経路 42→18→7→2、状態 IGNITION）が NEXT1位になり、スコア88.5で探索1位の `A100` は NEXT2位。急騰後の `A300` は NEXT5 に入らない。
+- ダッシュボードは REALTIME 5 タブ先頭に NEXT カードを追加。既存タブは維持。
+- 検証: `python -m unittest discover -s tests -p "test_*.py"` は 1594 件成功。ブラウザで REALTIME 5 の NEXT カード表示を確認。
+- 作業ブランチ: `cursor/next-foundation-phase1-b547`。mainへはマージしていない。
 
 ## システム概要
 
