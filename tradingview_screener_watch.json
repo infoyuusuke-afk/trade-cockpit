@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-01 12:17:19 JST",
+  "updated_at": "2026-10-01 12:19:39 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -3776,22 +3776,6 @@
       "already_watched": false
     },
     {
-      "code": "9519",
-      "name": "RENOVA, Inc.",
-      "exchange": "TSE",
-      "price": 834,
-      "change_pct": 0.6031363088057901,
-      "volume": 1599100,
-      "relative_volume": 1.9766133916762463,
-      "atr_pct": 4.54,
-      "vwap": 856.6666666666665,
-      "high": 909,
-      "low": 827,
-      "market_cap": 72886241180,
-      "sector": "Utilities",
-      "already_watched": false
-    },
-    {
       "code": "7272",
       "name": "Yamaha Motor Co., Ltd.",
       "exchange": "TSE",
@@ -3805,6 +3789,22 @@
       "low": 1774,
       "market_cap": 1700657273193,
       "sector": "Consumer Durables",
+      "already_watched": false
+    },
+    {
+      "code": "9519",
+      "name": "RENOVA, Inc.",
+      "exchange": "TSE",
+      "price": 834,
+      "change_pct": 0.6031363088057901,
+      "volume": 1599100,
+      "relative_volume": 1.9766133916762463,
+      "atr_pct": 4.54,
+      "vwap": 856.6666666666665,
+      "high": 909,
+      "low": 827,
+      "market_cap": 72886241180,
+      "sector": "Utilities",
       "already_watched": false
     },
     {
