@@ -2,7 +2,9 @@ param(
     [string]$RepoRoot = "",
     [string]$Branch = "fix/v9-ui-voice-convergence",
     [string]$ExpectedSha = "",
-    [switch]$SkipGitUpdate
+    [switch]$SkipGitUpdate,
+    [string]$RuntimeDirOverride = "",
+    [string]$Root = "C:\AI_Cockpit_OneClick_Starter"
 )
 
 # One-shot entry point: update (git fetch/checkout a PINNED branch, or an
@@ -52,7 +54,19 @@ function Invoke-GitFatal([string]$RepoPath, [string[]]$GitArgs, [string]$FailMes
 # one (staged copy -> AST parse -> SHA256 confirm) before touching
 # anything real, and refuses to deploy at all - not partially - if even
 # one fails.
-function Resolve-RuntimeDirForDeploy {
+function Resolve-RuntimeDirForDeploy([string]$Explicit) {
+    if (-not [string]::IsNullOrWhiteSpace($Explicit)) {
+        $resolved = [IO.Path]::GetFullPath($Explicit)
+        if (-not (Test-Path -LiteralPath $resolved -PathType Container)) {
+            throw "RuntimeDirOverride does not exist: $resolved"
+        }
+        $book = Join-Path $resolved "Kioxia_MS2_RSS_Live_Signals.xlsx"
+        if (-not (Test-Path -LiteralPath $book -PathType Leaf)) {
+            throw "RuntimeDirOverride is missing Kioxia_MS2_RSS_Live_Signals.xlsx: $resolved"
+        }
+        return $resolved
+    }
+
     $roots = @(
         [Environment]::GetFolderPath("Desktop"),
         (Join-Path $env:USERPROFILE "Desktop"),
@@ -205,6 +219,10 @@ Write-Host " AI COCKPIT V9 - update + backup + start" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor DarkCyan
 Write-Host ("Repo:   " + $repo) -ForegroundColor Cyan
 Write-Host ("Branch: " + $Branch) -ForegroundColor Cyan
+Write-Host ("State:  " + $Root) -ForegroundColor Cyan
+if (-not [string]::IsNullOrWhiteSpace($RuntimeDirOverride)) {
+    Write-Host ("Runtime override: " + $RuntimeDirOverride) -ForegroundColor Cyan
+}
 if (-not [string]::IsNullOrWhiteSpace($ExpectedSha)) {
     Write-Host ("Pinned SHA: " + $ExpectedSha) -ForegroundColor Cyan
 }
@@ -232,12 +250,12 @@ try {
 
     Write-Host ""
     Write-Host "Deploying runtime scripts (Watcher/Heartbeat/Collector) to RuntimeDir..." -ForegroundColor Yellow
-    $runtimeDirForDeploy = Resolve-RuntimeDirForDeploy
+    $runtimeDirForDeploy = Resolve-RuntimeDirForDeploy $RuntimeDirOverride
     Write-Host ("  RuntimeDir: " + $runtimeDirForDeploy) -ForegroundColor Cyan
     $deployResult = Deploy-RuntimeFiles -RepoRoot $repo -RuntimeDir $runtimeDirForDeploy
     Write-Host ("  Deployed " + $RUNTIME_DEPLOY_FILES.Count + " files, backup: " + $deployResult.backup_dir) -ForegroundColor Green
 
-    $runtimeManifestRoot = "C:\AI_Cockpit_OneClick_Starter"
+    $runtimeManifestRoot = $Root
     if (-not (Test-Path -LiteralPath $runtimeManifestRoot)) { New-Item -ItemType Directory -Path $runtimeManifestRoot -Force | Out-Null }
     $runtimeManifest = [ordered]@{
         repo_sha    = $actualSha
@@ -260,7 +278,7 @@ try {
     [Environment]::Exit(1)
 }
 
-$root = "C:\AI_Cockpit_OneClick_Starter"
+$root = $Root
 $logDir = Join-Path $root "Logs\V9"
 if (Test-Path -LiteralPath $logDir) {
     $backupDir = Join-Path $root ("Logs\V9_backup_" + (Get-Date -Format "yyyyMMdd_HHmmss"))
@@ -275,4 +293,4 @@ if (Test-Path -LiteralPath $stateFile) {
 
 Write-Host "Starting Controller V9..." -ForegroundColor Cyan
 Write-Host ""
-& (Join-Path $repo "downloads\AI_COCKPIT_CONTROLLER_V9.ps1") -RepoRoot $repo -ExpectedBranch $Branch
+& (Join-Path $repo "downloads\AI_COCKPIT_CONTROLLER_V9.ps1") -RepoRoot $repo -ExpectedBranch $Branch -RuntimeDirOverride $runtimeDirForDeploy -Root $Root
