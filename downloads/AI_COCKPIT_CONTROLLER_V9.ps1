@@ -39,7 +39,7 @@ param(
 #     Heartbeat/Gateway processes and the Excel process that hosts them.
 
 $ErrorActionPreference = "Stop"
-$Build = "V9-CONTROLLER-20260925-01"
+$Build = "V9-CONTROLLER-20261002-EXCEL-GUARD-01"
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
 # Port map (fixed 2026-09-25): Collector=28580, Gateway=28581,
@@ -339,6 +339,41 @@ function Get-ExcelProcessForWorkbook([string]$WorkbookName) {
         $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -like ("*" + $WorkbookName + "*")
     } | Select-Object -First 1)
 }
+function Get-ForeignExcelProcesses([int[]]$AllowedPids = @()) {
+    return @(
+        Get-Process EXCEL -ErrorAction SilentlyContinue |
+        Where-Object {
+            $pidValue = [int]$_.Id
+            -not ($AllowedPids -contains $pidValue)
+        }
+    )
+}
+
+function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$ControllerPid) {
+    if ($ExcelPid -le 0) { return $true }
+
+    $proc = Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue
+    if ($null -eq $proc) { return $true }
+
+    $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ExcelPid) -ErrorAction SilentlyContinue
+    if ($null -eq $info) { return $false }
+
+    $cmd = [string]$info.CommandLine
+    $isCanonicalWorkbook = (
+        -not [string]::IsNullOrWhiteSpace($cmd) -and
+        $cmd.IndexOf($WorkbookPath,[StringComparison]::OrdinalIgnoreCase) -ge 0
+    )
+    $isControllerChild = ([int]$info.ParentProcessId -eq $ControllerPid)
+
+    if (-not ($isCanonicalWorkbook -and $isControllerChild)) { return $false }
+
+    Stop-Process -Id $ExcelPid -Force -ErrorAction SilentlyContinue
+    foreach ($attempt in 1..10) {
+        Start-Sleep -Milliseconds 300
+        if ($null -eq (Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue)) { return $true }
+    }
+    return $false
+}
 
 # ======================================================================
 # MAIN
@@ -481,6 +516,26 @@ try {
         throw "MarketSpeed II is not running. Start it and log in, then run this controller again."
     }
     Write-Status "  MarketSpeed II: READY" Green
+
+    # P0 safety interlock: until Excel/RSS isolation is proven safe across
+    # independent Windows sessions, never start AI Cockpit while any user
+    # Excel process already exists.
+    $foreignExcelAtStartup = @(Get-ForeignExcelProcesses)
+    if ($foreignExcelAtStartup.Count -gt 0) {
+        Write-Host ""
+        Write-Host "==================================================" -ForegroundColor Red
+        Write-Host " EXCEL SAFETY INTERLOCK" -ForegroundColor Red
+        Write-Host "==================================================" -ForegroundColor Red
+        foreach ($foreignExcel in $foreignExcelAtStartup) {
+            Write-Host ("  PID " + $foreignExcel.Id + " / " + $foreignExcel.MainWindowTitle) -ForegroundColor Yellow
+        }
+        Write-Host ""
+        Write-Host "Another Excel session is already running." -ForegroundColor Cyan
+        Write-Host "AI Cockpit will NOT start MS2/RSS Excel in the same Windows session." -ForegroundColor Cyan
+        Write-Host "Close unrelated Excel workbooks first, or use the future isolated-session mode." -ForegroundColor Cyan
+        throw "Excel safety interlock: foreign Excel process detected."
+    }
+    Write-Status "  Excel safety interlock: no pre-existing Excel process." Green
 
     Write-Status "Starting unified voice backend (Style-Bert-VITS2 only)..."
     if (Test-Port 5000 350) {
@@ -733,6 +788,38 @@ try {
     $lastSbv2RestartAt = Get-Date "2000-01-01"
     while ($true) {
         Start-Sleep -Seconds 2
+
+        # P0 runtime interlock: if another Excel process appears while the
+        # AI Cockpit session is active, fail closed. Never touch the foreign
+        # process; stop only controller-owned workers and verified owned Excel.
+        $allowedExcelPids = @()
+        if ([int]$state.excel_pid -gt 0) { $allowedExcelPids += [int]$state.excel_pid }
+        $foreignExcelNow = @(Get-ForeignExcelProcesses $allowedExcelPids)
+        if ($foreignExcelNow.Count -gt 0) {
+            Write-Status "FOREIGN EXCEL DETECTED - FAIL-CLOSED SAFETY STOP." Red
+            foreach ($foreignExcel in $foreignExcelNow) {
+                Write-Status ("  leaving foreign Excel untouched: PID " + $foreignExcel.Id + " / " + $foreignExcel.MainWindowTitle) Yellow
+            }
+
+            $state.collector_status = "BLOCKED_FOREIGN_EXCEL"
+            $state.watcher_status = "BLOCKED_FOREIGN_EXCEL"
+            $state.heartbeat_status = "BLOCKED_FOREIGN_EXCEL"
+            Save-State $state
+
+            Stop-OwnedJobBridge $PORT_COLLECTOR ([int]$state.collector_pid) "Collector JSON" | Out-Null
+            Stop-OwnedJobBridge $PORT_WATCHER ([int]$state.watcher_pid) "Watcher JSON" | Out-Null
+            Stop-ManagedWorkersOnWorkbookClose $state
+
+            $ownedExcelStopped = Stop-VerifiedOwnedExcel ([int]$state.excel_pid) $WorkbookPath $PID
+            if (-not $ownedExcelStopped) {
+                Write-Status "ERROR: owned Excel could not be verified/stopped. Foreign Excel remains untouched." Red
+            } else {
+                Write-Status "  AI Cockpit Excel stopped; foreign Excel was not touched." Green
+            }
+
+            Save-State $state
+            [Environment]::Exit(3)
+        }
 
         # 1) Has the user closed the workbook?
         if ($state.excel_pid -gt 0) {
