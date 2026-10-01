@@ -186,7 +186,7 @@ function Resolve-RuntimeDir {
 function Resolve-RepoRoot([string]$Explicit) {
     if (-not [string]::IsNullOrWhiteSpace($Explicit)) { return $Explicit }
     # Prefer the folder this controller script itself lives two levels
-    # above (…\trade-cockpit\downloads\AI_COCKPIT_CONTROLLER_V8.ps1), if
+    # above (窶ｦ\trade-cockpit\downloads\AI_COCKPIT_CONTROLLER_V8.ps1), if
     # that looks like a real checkout; otherwise fall back to a Desktop
     # search, same pattern as Resolve-RuntimeDir.
     $candidate = Split-Path -Parent $PSScriptRoot
@@ -523,52 +523,154 @@ try {
     Write-Status ("  Gateway: READY / http://127.0.0.1:" + $PORT_GATEWAY + "/?live=1") Green
     Start-Process ("http://127.0.0.1:" + $PORT_GATEWAY + "/?live=1")
 
-    Write-Status "Opening MS2 RSS workbook (canonical path only, no Root\Excel copy)..."
+    Write-Status "Opening MS2 RSS workbook (isolated Excel /x; canonical path only)..."
     Write-Status ("  canonical: " + $WorkbookPath) DarkGray
-    $excelProc = Get-ExcelProcessForWorkbook $WorkbookName
-    if ($excelProc.Count -eq 0) {
-        Start-Process -FilePath $WorkbookPath | Out-Null
-        $deadline = (Get-Date).AddSeconds(40)
-        while ((Get-Date) -lt $deadline) {
-            $excelProc = Get-ExcelProcessForWorkbook $WorkbookName
-            if ($excelProc.Count -eq 1) { break }
-            Start-Sleep -Milliseconds 400
-        }
-    }
-    if ($excelProc.Count -eq 0) {
-        # Non-fatal: log it, keep going. The Watcher itself will fail
-        # closed with no live workbook to read from, and the UI already
-        # shows fail-closed via the Gateway - the user can open the
-        # workbook by hand and nothing else needs restarting.
-        Write-Status "  Excel workbook did not open within 40s - continuing without it. Open it by hand; Watcher will pick it up on its own retry." Yellow
-    } else {
-        # Identity check: window-title match alone only confirms a file
-        # with the right NAME is open, not that it's the canonical file at
-        # $WorkbookPath (a same-named copy elsewhere would also match).
-        # Verify the actual open Workbook.FullName via COM when possible.
-        $identityOk = $true
-        try {
-            $app = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
-            $matched = $null
-            foreach ($b in @($app.Workbooks)) {
-                if ($b.Name -ieq $WorkbookName) { $matched = $b; break }
-            }
-            if ($null -ne $matched) {
-                if ($matched.FullName -ine $WorkbookPath) {
-                    $identityOk = $false
-                    Write-Status ("  WARNING: open workbook FullName (" + $matched.FullName + ") does not match the canonical path (" + $WorkbookPath + ").") Red
-                }
-                [void][Runtime.InteropServices.Marshal]::ReleaseComObject($matched)
-            }
-            [void][Runtime.InteropServices.Marshal]::ReleaseComObject($app)
-        } catch {
-            # COM not reachable yet (Excel still initializing) - not fatal,
-            # the window-title match above is still a reasonable signal.
-        }
-        $state.excel_pid = [int]$excelProc[0].Id
-        $state.workbook_identity_verified = $identityOk
+
+    $existingExcel = @(Get-ExcelProcessForWorkbook $WorkbookName)
+
+    if ($existingExcel.Count -gt 0) {
+        $state.excel_pid = 0
+        $state.workbook_identity_verified = $false
         Save-State $state
-        Write-Status ("  Excel PID: " + $state.excel_pid + " / identity verified: " + $identityOk) Green
+
+        throw (
+            "RSS workbook is already open in Excel PID " +
+            $existingExcel[0].Id +
+            ". Refusing to take ownership."
+        )
+    }
+
+    $excelExe = @(
+        "C:\Program Files\Microsoft Office\Root\Office16\EXCEL.EXE",
+        "C:\Program Files (x86)\Microsoft Office\Root\Office16\EXCEL.EXE"
+    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    if (-not $excelExe) {
+        throw "EXCEL.EXE was not found."
+    }
+
+    $launchedExcelProc = Start-Process `
+        -FilePath $excelExe `
+        -ArgumentList "/x","`"$WorkbookPath`"" `
+        -PassThru
+
+    Write-Status (
+        "  isolated Excel launched / PID " +
+        $launchedExcelProc.Id
+    ) DarkGray
+
+    $identityOk = $false
+    $boundBook  = $null
+    $boundApp   = $null
+
+    $deadline = (Get-Date).AddSeconds(40)
+
+    while ((Get-Date) -lt $deadline) {
+
+        try {
+            $boundBook = [Runtime.InteropServices.Marshal]::BindToMoniker(
+                $WorkbookPath
+            )
+
+            if ($null -eq $boundBook) {
+                throw "Workbook moniker not ready."
+            }
+
+            if ($boundBook.FullName -ine $WorkbookPath) {
+                throw (
+                    "Canonical workbook mismatch: " +
+                    $boundBook.FullName
+                )
+            }
+
+            $boundApp = $boundBook.Application
+            $appHwnd  = [Int64]$boundApp.Hwnd
+
+            $ownerProc = @(
+                Get-Process EXCEL -ErrorAction SilentlyContinue |
+                Where-Object {
+                    [Int64]$_.MainWindowHandle -eq $appHwnd
+                } |
+                Select-Object -First 1
+            )
+
+            if (
+                $ownerProc.Count -gt 0 -and
+                [int]$ownerProc[0].Id -eq [int]$launchedExcelProc.Id
+            ) {
+                $identityOk = $true
+                break
+            }
+        }
+        catch {}
+
+        if (-not $identityOk) {
+
+            if ($null -ne $boundBook) {
+                try {
+                    [void][Runtime.InteropServices.Marshal]::ReleaseComObject(
+                        $boundBook
+                    )
+                } catch {}
+                $boundBook = $null
+            }
+
+            if ($null -ne $boundApp) {
+                try {
+                    [void][Runtime.InteropServices.Marshal]::ReleaseComObject(
+                        $boundApp
+                    )
+                } catch {}
+                $boundApp = $null
+            }
+        }
+
+        Start-Sleep -Milliseconds 400
+    }
+
+    if (-not $identityOk) {
+
+        $state.excel_pid = 0
+        $state.workbook_identity_verified = $false
+        Save-State $state
+
+        if (
+            $null -ne $launchedExcelProc -and
+            -not $launchedExcelProc.HasExited
+        ) {
+            Stop-Process `
+                -Id $launchedExcelProc.Id `
+                -Force `
+                -ErrorAction SilentlyContinue
+        }
+
+        throw "Isolated Excel identity verification failed."
+    }
+
+    $state.excel_pid = [int]$launchedExcelProc.Id
+    $state.workbook_identity_verified = $true
+    Save-State $state
+
+    Write-Status (
+        "  Excel PID: " +
+        $state.excel_pid +
+        " / identity verified: True / isolated: True"
+    ) Green
+
+    if ($null -ne $boundBook) {
+        try {
+            [void][Runtime.InteropServices.Marshal]::ReleaseComObject(
+                $boundBook
+            )
+        } catch {}
+    }
+
+    if ($null -ne $boundApp) {
+        try {
+            [void][Runtime.InteropServices.Marshal]::ReleaseComObject(
+                $boundApp
+            )
+        } catch {}
     }
 
     Write-Status "Starting Watcher..."

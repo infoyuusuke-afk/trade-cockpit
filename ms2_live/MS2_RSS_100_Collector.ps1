@@ -407,7 +407,7 @@ $stocks = @($watch.stocks.PSObject.Properties | ForEach-Object {
 } | Select-Object -First 100)
 if ($stocks.Count -ne 100) { throw "監視銘柄は100件必要です。現在: $($stocks.Count)件" }
 
-try { $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application") }
+try { $excel = ([Runtime.InteropServices.Marshal]::BindToMoniker((Join-Path $PSScriptRoot $WorkbookName))).Application }
 catch { throw "RSS接続済みのExcelが見つかりません。MarketSpeed IIへログインし、ExcelのRSSタブで接続してから実行してください。" }
 
 $book = $null

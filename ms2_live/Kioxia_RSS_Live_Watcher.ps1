@@ -366,7 +366,7 @@ function Read-Chart($sheet, [string]$anchor) {
 }
 
 try {
-    $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
+    $excel = ([Runtime.InteropServices.Marshal]::BindToMoniker($bookPath)).Application
     Write-Host "RSS接続済みのExcelへ接続しました。" -ForegroundColor Green
 } catch {
     # 2026-09-14深夜の実機検証で判明: New-Object -ComObject Excel.Applicationで生成した
@@ -375,12 +375,21 @@ try {
     # 開く（シェル経由でExcel.exeを起動する）必要があるため、Start-Processでファイルを開き、
     # Excelプロセスが起動するのを待ってからGetActiveObjectで接続し直す。
     Write-Host "Excelが起動していません。ファイルを開いてアドインを正しく読み込みます。" -ForegroundColor Yellow
-    Start-Process $bookPath
+    $excelExe = @(
+    "C:\Program Files\Microsoft Office\Root\Office16\EXCEL.EXE",
+    "C:\Program Files (x86)\Microsoft Office\Root\Office16\EXCEL.EXE"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if (-not $excelExe) {
+    throw "EXCEL.EXE が見つかりません。"
+}
+
+Start-Process -FilePath $excelExe -ArgumentList "/x","`"$bookPath`""
     $excel = $null
     $connectDeadline = (Get-Date).AddSeconds(60)
     while ($null -eq $excel -and (Get-Date) -lt $connectDeadline) {
         Start-Sleep -Seconds 2
-        try { $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application") } catch {}
+        try { $excel = ([Runtime.InteropServices.Marshal]::BindToMoniker($bookPath)).Application } catch {}
     }
     if ($null -eq $excel) {
         Write-Host "Excelの起動を確認できませんでした。" -ForegroundColor Red
