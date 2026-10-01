@@ -150,7 +150,18 @@ foreach ($optionalName in @(
 
 $hostSource = Join-Path $repo "downloads\AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
 if (-not (Test-Path -LiteralPath $hostSource -PathType Leaf)) {
-    throw "Dedicated session host script is missing from repo: $hostSource"
+    # git fetch updates origin/<branch> without updating the local working tree.
+    # Materialize the reviewed host script from the fetched branch instead.
+    $hostText = & git -C $repo show "origin/fix/v9-ui-voice-convergence:downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1" 2>&1
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($hostText -join [Environment]::NewLine))) {
+        throw "Dedicated session host script is missing locally and could not be read from origin/fix/v9-ui-voice-convergence."
+    }
+    $hostSource = Join-Path $env:TEMP "AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
+    [IO.File]::WriteAllText(
+        $hostSource,
+        ($hostText -join [Environment]::NewLine),
+        [Text.UTF8Encoding]::new($false)
+    )
 }
 Copy-Item -LiteralPath $hostSource -Destination (Join-Path $DestinationRoot "START_DEDICATED_SESSION.ps1") -Force
 
