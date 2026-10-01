@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-02 02:07:01 JST",
+  "updated_at": "2026-10-02 02:09:14 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -553,37 +553,6 @@
       },
       "peer_today": {
         "ret": 2.13,
-        "or15": "上抜け",
-        "vwap": "上",
-        "ema": "上向き"
-      },
-      "decision": "売買の確認材料に使用"
-    },
-    {
-      "anchor": "レーザーテック（6920）",
-      "anchor_ticker": "6920.T",
-      "peer": "ローツェ（6323）",
-      "peer_ticker": "6323.T",
-      "relation": "自動検出・正相関",
-      "expected": "正相関",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.7,
-      "corr60": 0.84,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": 0.64,
-      "lead_bars": 0,
-      "bars": 300,
-      "state": "確認",
-      "confidence": 86,
-      "anchor_today": {
-        "ret": 7.15,
-        "or15": "上抜け",
-        "vwap": "上",
-        "ema": "上向き"
-      },
-      "peer_today": {
-        "ret": 4.23,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
@@ -1986,68 +1955,6 @@
       "decision": "この関係を売買根拠にしない"
     },
     {
-      "anchor": "レーザーテック（6920）",
-      "anchor_ticker": "6920.T",
-      "peer": "任天堂（7974）",
-      "peer_ticker": "7974.T",
-      "relation": "自動検出・逆相関",
-      "expected": "逆相関仮説",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": -0.3,
-      "corr60": -0.51,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": -0.31,
-      "lead_bars": 0,
-      "bars": 300,
-      "state": "確認",
-      "confidence": 69,
-      "anchor_today": {
-        "ret": 7.15,
-        "or15": "上抜け",
-        "vwap": "上",
-        "ema": "上向き"
-      },
-      "peer_today": {
-        "ret": 1.05,
-        "or15": "レンジ内",
-        "vwap": "上",
-        "ema": "下向き"
-      },
-      "decision": "売買の確認材料に使用"
-    },
-    {
-      "anchor": "任天堂（7974）",
-      "anchor_ticker": "7974.T",
-      "peer": "レーザーテック（6920）",
-      "peer_ticker": "6920.T",
-      "relation": "自動検出・逆相関",
-      "expected": "逆相関仮説",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": -0.3,
-      "corr60": -0.51,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": -0.31,
-      "lead_bars": 0,
-      "bars": 300,
-      "state": "確認",
-      "confidence": 69,
-      "anchor_today": {
-        "ret": 1.05,
-        "or15": "レンジ内",
-        "vwap": "上",
-        "ema": "下向き"
-      },
-      "peer_today": {
-        "ret": 7.15,
-        "or15": "上抜け",
-        "vwap": "上",
-        "ema": "上向き"
-      },
-      "decision": "売買の確認材料に使用"
-    },
-    {
       "anchor": "ペプチドリーム（4587）",
       "anchor_ticker": "4587.T",
       "peer": "FRONTEO（2158）",
@@ -3127,6 +3034,37 @@
       "peer_today": {
         "ret": -2.77,
         "or15": "下抜け",
+        "vwap": "上",
+        "ema": "上向き"
+      },
+      "decision": "この関係を売買根拠にしない"
+    },
+    {
+      "anchor": "任天堂（7974）",
+      "anchor_ticker": "7974.T",
+      "peer": "ローツェ（6323）",
+      "peer_ticker": "6323.T",
+      "relation": "自動検出・逆相関",
+      "expected": "逆相関仮説",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": -0.37,
+      "corr60": -0.38,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": 0.22,
+      "lead_bars": 2,
+      "bars": 300,
+      "state": "不安定",
+      "confidence": 59,
+      "anchor_today": {
+        "ret": 1.05,
+        "or15": "レンジ内",
+        "vwap": "上",
+        "ema": "下向き"
+      },
+      "peer_today": {
+        "ret": 4.23,
+        "or15": "上抜け",
         "vwap": "上",
         "ema": "上向き"
       },
