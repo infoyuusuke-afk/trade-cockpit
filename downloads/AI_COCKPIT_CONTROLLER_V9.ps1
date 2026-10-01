@@ -471,7 +471,16 @@ try {
     if ($runtimeManifest.runtime_dir -ne $RuntimeDir) {
         throw "V9_RUNTIME.json was deployed for a different RuntimeDir (" + $runtimeManifest.runtime_dir + ") than the one resolved now (" + $RuntimeDir + "). Re-run RUN_AI_COCKPIT_V9.ps1."
     }
-    foreach ($name in @("Kioxia_RSS_Live_Watcher.ps1", "Kioxia_Safety_Heartbeat.ps1", "MS2_RSS_100_Collector.ps1", "SPEAK_TODAY_STRATEGY.ps1", "SPEAK_LIVE_EMOTION.ps1")) {
+    foreach ($name in @(
+        "Kioxia_RSS_Live_Watcher.ps1",
+        "Kioxia_Safety_Heartbeat.ps1",
+        "MS2_RSS_100_Collector.ps1",
+        "MS2_Common_Engine.ps1",
+        "BUILD_KIOXIA_TIME_STATS.ps1",
+        "watchlist_100.json",
+        "SPEAK_TODAY_STRATEGY.ps1",
+        "SPEAK_LIVE_EMOTION.ps1"
+    )) {
         $expectedHash = $runtimeManifest.files.$name
         if ([string]::IsNullOrWhiteSpace($expectedHash)) {
             throw "V9_RUNTIME.json has no recorded hash for $name. Re-run RUN_AI_COCKPIT_V9.ps1."
