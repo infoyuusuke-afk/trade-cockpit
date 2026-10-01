@@ -1,7 +1,7 @@
 {
   "model_version": "investor-regime-1.2.0",
-  "generated_at": "2026-10-01T15:29:41+09:00",
-  "decision_at": "2026-10-01T15:29:41+09:00",
+  "generated_at": "2026-10-01T15:31:48+09:00",
+  "decision_at": "2026-10-01T15:31:48+09:00",
   "source": {
     "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
     "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -252,10 +252,10 @@
   "foreign_futures_alignment": {
     "available": true,
     "status": "接続済み",
-    "source": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/t13vrt00000262os-att/Tousi_DV_W_20260914_20260918.csv",
-    "period_end": "2026-09-18",
-    "retrieved_at": "2026-09-29T15:32:17+09:00",
-    "foreign_nikkei225_futures_net": 96363199150.0,
+    "source": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/t13vrt0000026a9m-att/Tousi_DV_W_20260924_20260925.csv",
+    "period_end": "2026-09-25",
+    "retrieved_at": "2026-10-01T15:31:48+09:00",
+    "foreign_nikkei225_futures_net": 186407123040.0,
     "aligned": false
   },
   "learning": {
