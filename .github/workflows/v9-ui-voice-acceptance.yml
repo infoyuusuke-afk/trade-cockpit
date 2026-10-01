@@ -143,7 +143,7 @@ jobs:
             }
           }
 
-          $host = Get-Content -Raw -Encoding UTF8 "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
+          $dedicatedHostText = Get-Content -Raw -Encoding UTF8 "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
           foreach ($required in @(
             "DEDICATED_SESSION_APPROVED.json",
             "explorer.exe",
@@ -151,7 +151,7 @@ jobs:
             "RuntimeDirOverride",
             "MarketSpeed II is not running in dedicated session"
           )) {
-            if ($host.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+            if ($dedicatedHostText.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
               throw ("Missing dedicated host marker: " + $required)
             }
           }
