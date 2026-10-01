@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from scripts.next_foundation.config import MARKET_FEATURES
+from scripts.next_foundation.config import MARKET_FEATURES, OR_OBSERVED_STATES, OR_UNOBSERVED_STATES
 
 
 class DiscoveryNotConfigured(RuntimeError):
@@ -85,11 +85,11 @@ def _as_feature_value(name: str, value):
         if not isinstance(value, str):
             return ("invalid", value)
         state = value.strip().upper()
-        if state in ("", "UNKNOWN", "UNFORMED", "NONE", "NULL"):
+        if state in ("", "NONE", "NULL"):
             return None
-        if state not in ("ABOVE", "INSIDE", "BELOW"):
-            return ("invalid", value)
-        return state
+        if state in OR_OBSERVED_STATES or state in OR_UNOBSERVED_STATES:
+            return state
+        return ("invalid", value)
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return ("invalid", value)
     number = float(value)

@@ -70,6 +70,26 @@ test("a missing timestamp is rejected", () => {
   assert.equal(verdict.code, "MISSING_TIMESTAMP");
 });
 
+test("an unconfigured stub reports the live-source reason", () => {
+  const verdict = evaluateNextBoardFreshness({
+    source_mode: "unconfigured",
+    fail_closed: true,
+    fail_closed_reason: "LIVE_SOURCE_NOT_CONFIGURED",
+    generated_at: null,
+    next5: [{symbol: "A200", score: 79.7, state: "IGNITION", next_rank: 1}]
+  }, NOW);
+  assert.equal(verdict.ok, false);
+  assert.equal(verdict.code, "LIVE_SOURCE_NOT_CONFIGURED");
+  assert.match(verdict.message, /LIVE_SOURCE_NOT_CONFIGURED/);
+});
+
+test("a configured board with no timestamp is still stale", () => {
+  const verdict = evaluateNextBoardFreshness(board({generated_at: null, source_mode: "discovery"}), NOW);
+  assert.equal(verdict.ok, false);
+  assert.equal(verdict.code, "MISSING_TIMESTAMP");
+  assert.match(verdict.message, /STALE/);
+});
+
 test("sample output cannot pass as a production board", () => {
   const verdict = evaluateNextBoardFreshness(board({source_mode: "sample"}), NOW);
   assert.equal(verdict.ok, false);

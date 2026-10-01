@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from scripts.next_foundation.config import MARKET_FEATURES, OR_FEATURES, OR_OBSERVED_STATES
 from scripts.next_foundation.score import selection_value
 
 
@@ -178,9 +179,89 @@ def _promotion_min_coverage(config: dict) -> float:
     return float(config["funnel"]["promotion_min_coverage"])
 
 
-def _coverage_ok(row: dict, minimum: float) -> bool:
-    coverage = row.get("coverage")
-    return isinstance(coverage, (int, float)) and not isinstance(coverage, bool) and float(coverage) >= minimum
+def opening_range_expectation(as_of: str, config: dict) -> dict:
+    """Which opening-range features the clock can actually require.
+
+    Before the cash open both ranges are not yet applicable. Until each
+    range's minutes have elapsed it is not yet formed. A later missing
+    value is a real gap. None of these states is a price location.
+    """
+
+    rules = config["opening_ranges"]
+    observed = datetime.fromisoformat(as_of)
+    if observed.tzinfo is None:
+        raise ValueError("as_of must include a timezone offset")
+    clock = observed.astimezone(ZoneInfo(config["sessions"]["timezone"]))
+    hour, minute = (int(part) for part in str(rules["session_open"]).split(":"))
+    opened = clock.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    elapsed_minutes = (clock - opened).total_seconds() / 60.0
+    if elapsed_minutes < 0:
+        or5 = or15 = "NOT_YET_APPLICABLE"
+    elif elapsed_minutes < float(rules["or5_minutes"]):
+        or5 = or15 = "NOT_YET_FORMED"
+    elif elapsed_minutes < float(rules["or15_minutes"]):
+        or5, or15 = "EXPECTED", "NOT_YET_FORMED"
+    else:
+        or5 = or15 = "EXPECTED"
+    return {"or5_state": or5, "or15_state": or15}
+
+
+def annotate_opening_ranges(row: dict, as_of: str, config: dict) -> None:
+    """Record phase readiness and a promotion coverage that ignores unformed ranges.
+
+    Raw UNKNOWN stays UNKNOWN. An absent range is labeled with the phase
+    instead of being stored as a normal missing number. Components are not
+    rewritten, so an unformed range never becomes INSIDE or zero.
+    """
+
+    expectation = opening_range_expectation(as_of, config)
+    features = row.setdefault("features", {})
+    observations = {}
+    blocked = []
+    weights = config["weights"]
+    expected_weight = 0.0
+    observed_weight = 0.0
+    components = row.get("components") or {}
+    for name in MARKET_FEATURES:
+        weight = float(weights[name])
+        if name in OR_FEATURES:
+            raw = features.get(name)
+            observations[name] = raw
+            phase = expectation[name]
+            if phase != "EXPECTED" and raw is None:
+                features[name] = phase
+            if phase != "EXPECTED":
+                continue
+            expected_weight += weight
+            if raw not in OR_OBSERVED_STATES:
+                blocked.append(name)
+                continue
+            observed_weight += weight
+            continue
+        expected_weight += weight
+        if components.get(name) is None:
+            blocked.append(name)
+            continue
+        observed_weight += weight
+    coverage = round(observed_weight / expected_weight, 6) if expected_weight else 0.0
+    row["opening_range_expectation"] = expectation
+    row["feature_observations"] = observations
+    row["promotion_blocked_features"] = blocked
+    row["promotion_coverage"] = coverage
+    if any(expectation.get(name) == "EXPECTED" and name in blocked for name in OR_FEATURES):
+        _add_reason(row, "EXPECTED_FEATURE_MISSING")
+
+
+def _promotion_ready(row: dict, config: dict) -> bool:
+    if row.get("fail_closed"):
+        return False
+    blocked = row.get("promotion_blocked_features") or []
+    if blocked:
+        return False
+    coverage = row.get("promotion_coverage")
+    if isinstance(coverage, bool) or not isinstance(coverage, (int, float)):
+        return False
+    return float(coverage) >= _promotion_min_coverage(config)
 
 
 def _has_observed_velocity(row: dict) -> bool:
@@ -205,7 +286,7 @@ def _promotable(row: dict, min_score: float, config: dict) -> bool:
         return False
     if not _has_observed_velocity(row):
         return False
-    if not _coverage_ok(row, _promotion_min_coverage(config)):
+    if not _promotion_ready(row, config):
         return False
     if float(row["score"]) < min_score:
         return False
@@ -215,12 +296,21 @@ def _promotable(row: dict, min_score: float, config: dict) -> bool:
 def _empty_funnel_reason(active: list[dict], config: dict) -> tuple[bool, str]:
     if not active:
         return True, "ACTIVE100_EMPTY"
-    minimum = _promotion_min_coverage(config)
     scored = [row for row in active if not row.get("fail_closed") and row.get("market_score") is not None]
     if not scored:
         return True, "ACTIVE100_EMPTY"
-    covered = [row for row in scored if _coverage_ok(row, minimum)]
+    covered = [row for row in scored if _promotion_ready(row, config)]
     if not covered:
+        expected_gap = False
+        other_gap = False
+        for row in scored:
+            blocked = set(row.get("promotion_blocked_features") or [])
+            if blocked.intersection(OR_FEATURES):
+                expected_gap = True
+            if blocked - set(OR_FEATURES) or row.get("promotion_coverage") is None:
+                other_gap = True
+        if expected_gap and not other_gap:
+            return True, "EXPECTED_FEATURE_MISSING"
         return True, "COMPLETE_SCORE_UNAVAILABLE"
     observed = [
         row for row in covered

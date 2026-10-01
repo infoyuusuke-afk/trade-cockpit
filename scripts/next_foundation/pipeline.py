@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 
 from scripts.next_foundation.board import (
+    annotate_opening_ranges,
     attach_rank_velocity,
     build_funnel,
     classify_selection,
@@ -51,6 +52,8 @@ def run(payload: dict, config: dict | None = None, previous: dict | None = None,
         else:
             row["rank_path"] = list(row.get("rank_path_prior") or [])
         apply_velocity(row, row.get("rank_velocity"), config)
+        if not row.get("fail_closed"):
+            annotate_opening_ranges(row, as_of, config)
 
     previous = previous or {}
     previous_members = previous.get("members")
@@ -177,6 +180,10 @@ def _public_row(row: dict) -> dict:
         "market_score": row.get("market_score"),
         "score_status": row.get("score_status"),
         "coverage": row.get("coverage"),
+        "promotion_coverage": row.get("promotion_coverage"),
+        "promotion_blocked_features": list(row.get("promotion_blocked_features") or []),
+        "opening_range_expectation": row.get("opening_range_expectation"),
+        "feature_observations": row.get("feature_observations"),
         "peak_score": row.get("peak_score"),
         "state": row.get("state"),
         "lifecycle_state": row.get("lifecycle_state"),

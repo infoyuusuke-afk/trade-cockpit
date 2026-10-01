@@ -37,6 +37,11 @@
     "session_timezone": "Asia/Tokyo",
     "require_same_session_date": true
   },
+  "opening_ranges": {
+    "session_open": "09:00",
+    "or5_minutes": 5,
+    "or15_minutes": 15
+  },
   "sessions": {
     "timezone": "Asia/Tokyo",
     "morning": {"start": "09:00", "end": "11:30", "reselect_at": ["09:00"]},

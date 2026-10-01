@@ -16,12 +16,12 @@ URL（https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/STATU
 日本市場の探索順位を `Dynamic Active100 → NEXT20 → NEXT5` に絞る第1段階を、既存の固定100銘柄MS2監視・NEXT THEME RADAR・カード契約とは別モジュールとして追加した。実TradingView接続、外部有料API、自動発注、MS2実機接続は未実装。Cloud側から MarketSpeed II / RSS / Excel へ新しい接続は作っていない。
 
 - 実装: `scripts/next_foundation/`、重み `config/next_score_v1.json`、サンプル入力 `tests/fixtures/next_market_sample.json`。公開 `next_board.json` は `LIVE_SOURCE_NOT_CONFIGURED` の fail-closed スタブで、サンプル順位は置かない。
-- NEXT20/NEXT5 は席を埋めない。スコア下限、前兆理由、観測済み順位速度、coverage 1.0 を満たす銘柄だけが入る。WATCH の穴埋めはしない。
+- NEXT20/NEXT5 は席を埋めない。スコア下限、前兆理由、観測済み順位速度、その時刻に要求できる特徴量の coverage 1.0 を満たす銘柄だけが入る。09:05 前の OR5/OR15 と 09:15 前の OR15 は未形成として分母から外し、0 や INSIDE にはしない。形成後に欠ける OR は昇格しない。WATCH の穴埋めはしない。
 - 未知の順位速度は確認条件を満たさない。`peak_score` は同一シーケンス中の最大値を保持する。
 - 判定時刻はタイムゾーン付きで、TTL・同一取引日・未来時刻を超えると STALE / FAIL-CLOSED。サンプル `source_mode` は本番カードにしない。
 - サンプル入力では `A200`（79.7、IGNITION、42→18→7→2）が NEXT1位、`A100`（88.5）が NEXT2位。B020 などの WATCH は NEXT5 に入らない。
 - ダッシュボードは REALTIME 5 タブ先頭に NEXT カードを追加。既存タブは維持。
-- 検証: `python -m unittest discover -s tests -p "test_*.py"` は 1601 件成功。公開ボードはサンプルカードを出さない。
+- 検証: `python -m unittest discover -s tests -p "test_*.py"` は 1605 件成功。公開ボードはサンプルカードを出さない。
 - 作業ブランチ: `cursor/next-foundation-phase1-b547`。mainへはマージしていない。PR は draft のまま。
 
 ## システム概要

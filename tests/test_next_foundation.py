@@ -145,6 +145,8 @@ class NextFunnelTests(unittest.TestCase):
             self.assertNotEqual(row["state"], "WATCH")
             self.assertIn(row["state"], ("PRE_NEXT", "IGNITION", "CONFIRMED"))
             self.assertEqual(row["coverage"], 1.0)
+            self.assertEqual(row["promotion_coverage"], 1.0)
+            self.assertEqual(row["promotion_blocked_features"], [])
         self.assertLess(chaser["score"], climber["score"])
         self.assertTrue(climber["on_monitor_layer"])
         self.assertNotIn("Z999", {row["symbol"] for row in self.board["active100"]})
@@ -158,9 +160,15 @@ class NextFunnelTests(unittest.TestCase):
         self.assertEqual(flat["features"]["price_change_15s"], 0.0)
         self.assertIsNotNone(flat["score"])
         unknown = next(row for row in self.board["active100"] if row["symbol"] == "A910")
-        self.assertIsNone(unknown["features"]["or5_state"])
-        self.assertIsNone(unknown["features"]["or15_state"])
+        self.assertEqual(unknown["features"]["or5_state"], "UNKNOWN")
+        self.assertEqual(unknown["features"]["or15_state"], "UNFORMED")
+        self.assertEqual(unknown["feature_observations"]["or5_state"], "UNKNOWN")
+        self.assertEqual(unknown["feature_observations"]["or15_state"], "UNFORMED")
+        self.assertEqual(unknown["opening_range_expectation"]["or5_state"], "EXPECTED")
+        self.assertEqual(unknown["opening_range_expectation"]["or15_state"], "EXPECTED")
         self.assertNotIn("OR5_INSIDE", unknown["reason_codes"])
+        self.assertNotIn("OR15_INSIDE", unknown["reason_codes"])
+        self.assertNotIn("A910", {row["symbol"] for row in self.board["next5"]})
         self.assertFalse(self.board["orders_enabled"])
 
     def test_every_active_member_has_a_reason(self):
@@ -186,6 +194,10 @@ class NextFunnelTests(unittest.TestCase):
             missing = next(json.loads(line) for line in lines if json.loads(line)["symbol"] == "A999")
             self.assertIsNone(missing["score"])
             self.assertTrue(missing["fail_closed"])
+            unformed = next(json.loads(line) for line in lines if json.loads(line)["symbol"] == "A910")
+            self.assertEqual(unformed["features"]["or5_state"], "UNKNOWN")
+            self.assertEqual(unformed["features"]["or15_state"], "UNFORMED")
+            self.assertNotEqual(unformed["features"]["or5_state"], unformed["features"]["or15_state"])
 
     def test_active100_caps_at_one_hundred_without_inventing_next(self):
         candidates = []
@@ -398,6 +410,91 @@ class NextStateTests(unittest.TestCase):
         state = assign_state(self._row(fail_closed=True, score=None), None, self.config)
         self.assertIsNone(state["state"])
         self.assertIsNone(state["lifecycle_state"])
+
+
+class NextOpeningRangeTests(unittest.TestCase):
+    def _strong(self, symbol, **features):
+        payload = _full_features(
+            price_change_15s=0.28,
+            price_accel_45s=0.36,
+            volume_surge_ratio=2.8,
+            turnover_accel=2.4,
+            high_update_frequency=3,
+            vwap_position=0.22,
+            or5_state="ABOVE",
+            or15_state="ABOVE",
+            pullback_shallowness=0.84,
+            relative_strength=0.55,
+            liquidity=180_000_000,
+        )
+        payload.update(features)
+        return _candidate(
+            symbol,
+            payload,
+            rank_history=[{"rank": 20, "timestamp": "2026-10-01T08:50:00+09:00"}],
+            price=4820,
+        )
+
+    def _run_at(self, stamp, candidate):
+        return run(_payload([candidate], as_of=stamp, selection_mode="scheduled_morning"))
+
+    def test_before_or5_forms_a_complete_candidate_can_qualify(self):
+        board = self._run_at("2026-10-01T09:01:00+09:00", self._strong("N901", or5_state=None, or15_state=None))
+        chosen = board["next5"]
+        self.assertEqual([row["symbol"] for row in chosen], ["N901"])
+        row = chosen[0]
+        self.assertEqual(row["opening_range_expectation"]["or5_state"], "NOT_YET_FORMED")
+        self.assertEqual(row["opening_range_expectation"]["or15_state"], "NOT_YET_FORMED")
+        self.assertEqual(row["features"]["or5_state"], "NOT_YET_FORMED")
+        self.assertEqual(row["features"]["or15_state"], "NOT_YET_FORMED")
+        self.assertIsNone(row["feature_observations"]["or5_state"])
+        self.assertIsNone(row["feature_observations"]["or15_state"])
+        self.assertEqual(row["promotion_coverage"], 1.0)
+        self.assertNotIn("OR5_INSIDE", row["reason_codes"])
+        self.assertNotIn("OR15_INSIDE", row["reason_codes"])
+
+    def test_premarket_marks_opening_ranges_not_yet_applicable(self):
+        early = self._strong("N830", or5_state=None, or15_state=None)
+        early["rank_history"] = [{"rank": 20, "timestamp": "2026-10-01T08:20:00+09:00"}]
+        board = self._run_at("2026-10-01T08:30:00+09:00", early)
+        row = board["next5"][0]
+        self.assertEqual(row["symbol"], "N830")
+        self.assertEqual(row["opening_range_expectation"]["or5_state"], "NOT_YET_APPLICABLE")
+        self.assertEqual(row["features"]["or15_state"], "NOT_YET_APPLICABLE")
+        self.assertIsNone(row["feature_observations"]["or5_state"])
+
+    def test_after_or5_forms_or15_is_still_optional(self):
+        ready = self._run_at("2026-10-01T09:07:00+09:00", self._strong("N907", or15_state=None))
+        self.assertEqual([row["symbol"] for row in ready["next5"]], ["N907"])
+        self.assertEqual(ready["next5"][0]["opening_range_expectation"]["or5_state"], "EXPECTED")
+        self.assertEqual(ready["next5"][0]["opening_range_expectation"]["or15_state"], "NOT_YET_FORMED")
+        self.assertEqual(ready["next5"][0]["features"]["or5_state"], "ABOVE")
+        self.assertEqual(ready["next5"][0]["features"]["or15_state"], "NOT_YET_FORMED")
+        missing = self._run_at("2026-10-01T09:07:00+09:00", self._strong("M907", or5_state=None, or15_state=None))
+        self.assertEqual(missing["next5"], [])
+        self.assertEqual(missing["funnel_reason"], "EXPECTED_FEATURE_MISSING")
+        held = missing["active100"][0]
+        self.assertEqual(held["promotion_blocked_features"], ["or5_state"])
+        self.assertIsNone(held["features"]["or5_state"])
+        self.assertIsNone(held["feature_observations"]["or5_state"])
+        self.assertEqual(held["features"]["or15_state"], "NOT_YET_FORMED")
+
+    def test_after_or15_forms_both_ranges_are_required(self):
+        ready = self._run_at("2026-10-01T09:16:00+09:00", self._strong("N916"))
+        self.assertEqual([row["symbol"] for row in ready["next5"]], ["N916"])
+        self.assertEqual(ready["next5"][0]["opening_range_expectation"], {"or5_state": "EXPECTED", "or15_state": "EXPECTED"})
+        missing = self._run_at("2026-10-01T09:16:00+09:00", self._strong("M916", or5_state="UNKNOWN", or15_state="ABOVE"))
+        self.assertEqual(missing["next5"], [])
+        self.assertEqual(missing["next20"], [])
+        self.assertTrue(missing["funnel_fail_closed"])
+        self.assertEqual(missing["funnel_reason"], "EXPECTED_FEATURE_MISSING")
+        held = missing["active100"][0]
+        self.assertEqual(held["features"]["or5_state"], "UNKNOWN")
+        self.assertEqual(held["features"]["or15_state"], "ABOVE")
+        self.assertEqual(held["feature_observations"]["or5_state"], "UNKNOWN")
+        self.assertIn("or5_state", held["promotion_blocked_features"])
+        self.assertNotIn("OR5_INSIDE", held["reason_codes"])
+        self.assertNotIn("OR5_ABOVE", held["reason_codes"])
 
 
 class NextUniverseTests(unittest.TestCase):

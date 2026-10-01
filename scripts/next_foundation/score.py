@@ -7,7 +7,7 @@ unavailable. They are not zeroes and they are not "normal" baselines.
 
 from __future__ import annotations
 
-from scripts.next_foundation.config import MARKET_FEATURES
+from scripts.next_foundation.config import MARKET_FEATURES, OR_FEATURES, OR_UNOBSERVED_STATES
 
 OR_COMPONENT = {"ABOVE": 0.88, "INSIDE": 0.48, "BELOW": 0.12}
 
@@ -171,6 +171,9 @@ def market_components(features: dict, config: dict) -> dict:
             components[name] = value
             continue
         raw = features.get(name)
+        if name in OR_FEATURES and raw in OR_UNOBSERVED_STATES:
+            components[name] = None
+            continue
         value = _COMPONENT[name](raw)
         if raw is not None and value is None:
             invalid.append(name)

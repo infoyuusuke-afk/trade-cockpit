@@ -45,6 +45,13 @@
     if (board.source_mode === "sample" && !options.allowSample) {
       return {ok: false, code: "SAMPLE_NOT_PRODUCTION", message: "サンプル順位は本番のNEXTとして表示しません"};
     }
+    if (board.source_mode === "unconfigured" || board.fail_closed_reason === "LIVE_SOURCE_NOT_CONFIGURED") {
+      return {
+        ok: false,
+        code: "LIVE_SOURCE_NOT_CONFIGURED",
+        message: board.fail_closed_reason || "LIVE_SOURCE_NOT_CONFIGURED"
+      };
+    }
     var parsed = parseTimestamp(board.generated_at);
     if (!parsed.ok) {
       var missing = parsed.code === "MISSING_TIMESTAMP"

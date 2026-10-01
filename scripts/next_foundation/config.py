@@ -27,6 +27,9 @@ MARKET_FEATURES = (
 )
 
 MEMBERSHIP_REASONS = ("SCHEDULED_RESELECT", "EMERGENCY_PROMOTION", "TOP_UNIVERSE_SCORE")
+OR_FEATURES = ("or5_state", "or15_state")
+OR_OBSERVED_STATES = ("ABOVE", "INSIDE", "BELOW")
+OR_UNOBSERVED_STATES = ("UNKNOWN", "UNFORMED", "NOT_YET_FORMED", "NOT_YET_APPLICABLE")
 
 
 def load_config(path: Path | str | None = None) -> dict:
@@ -87,4 +90,14 @@ def validate_config(data: dict) -> dict:
         raise ValueError("funnel.promotion_min_coverage must be in (0, 1]")
     if not isinstance(funnel.get("require_precursor"), bool):
         raise ValueError("funnel.require_precursor must be a boolean")
+    ranges = data.get("opening_ranges") or {}
+    session_open = ranges.get("session_open")
+    if not isinstance(session_open, str) or len(session_open) != 5 or session_open[2] != ":":
+        raise ValueError("opening_ranges.session_open must be HH:MM")
+    for key in ("or5_minutes", "or15_minutes"):
+        minutes = ranges.get(key)
+        if isinstance(minutes, bool) or not isinstance(minutes, int) or minutes <= 0:
+            raise ValueError(f"opening_ranges.{key} must be a positive integer")
+    if ranges["or5_minutes"] >= ranges["or15_minutes"]:
+        raise ValueError("opening_ranges.or5_minutes must be shorter than or15_minutes")
     return data
