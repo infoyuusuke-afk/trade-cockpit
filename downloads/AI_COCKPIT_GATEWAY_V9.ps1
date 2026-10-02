@@ -50,6 +50,58 @@ function Read-JsonUtf8([string]$Path) {
     return $text | ConvertFrom-Json
 }
 
+function Get-ShadowEnginePublication([string]$RuntimeDirectory) {
+    $result = [ordered]@{
+        shadow_engine_state = "STOPPED"
+        shadow_engine_reason = "STATUS_NOT_PUBLISHED"
+        shadow_engine_updated_at = $null
+        shadow_open_observation_count = $null
+        shadow_ops = $null
+        shadow_latest_incident = $null
+        shadow_ui_independent = $true
+    }
+    if ([string]::IsNullOrWhiteSpace($RuntimeDirectory)) { return $result }
+    $path = Join-Path $RuntimeDirectory "ai_shadow_status.json"
+    if (-not (Test-Path -LiteralPath $path)) { return $result }
+    try {
+        $status = Read-JsonUtf8 $path
+        $written = (Get-Item -LiteralPath $path).LastWriteTime
+        $age = ((Get-Date) - $written).TotalSeconds
+        $publishedState = [string]$status.state
+        if ($status.real_submit_allowed -ne $false -or [string]::IsNullOrWhiteSpace($publishedState)) {
+            $result.shadow_engine_state = "PAUSED_FAIL_CLOSED"
+            $result.shadow_engine_reason = "STATUS_UNTRUSTED"
+            return $result
+        }
+        if ($age -lt 0 -or $age -gt 30) {
+            if ($publishedState -eq "STOPPED") {
+                $result.shadow_engine_state = "STOPPED"
+                $result.shadow_engine_reason = "STATUS_STALE"
+            } else {
+                $result.shadow_engine_state = "PAUSED_FAIL_CLOSED"
+                $result.shadow_engine_reason = "STATUS_STALE"
+            }
+            return $result
+        }
+        if (@("RUNNING", "PAUSED_FAIL_CLOSED", "RECOVERING", "STOPPED") -notcontains $publishedState) {
+            $result.shadow_engine_state = "PAUSED_FAIL_CLOSED"
+            $result.shadow_engine_reason = "UNKNOWN_STATE"
+            return $result
+        }
+        $result.shadow_engine_state = $publishedState
+        $result.shadow_engine_reason = [string]$status.reason
+        $result.shadow_engine_updated_at = [string]$status.updated_at
+        $result.shadow_open_observation_count = $status.open_observation_count
+        $result.shadow_ops = $status.ops
+        $result.shadow_latest_incident = $status.latest_incident
+        return $result
+    } catch {
+        $result.shadow_engine_state = "PAUSED_FAIL_CLOSED"
+        $result.shadow_engine_reason = "STATUS_UNREADABLE"
+        return $result
+    }
+}
+
 function Test-HealthProcess([int]$ProcessId, [string]$ScriptName, [datetime]$StateWrittenAt) {
     if ($ProcessId -le 0) { return $false }
     try {
@@ -355,6 +407,14 @@ try {
                     shadow_position_status      = 'NOT_PUBLISHED'
                     owner_control               = 'REAL_ORDER_UNLOCK_NOT_AVAILABLE'
                 }
+                $shadowPub = Get-ShadowEnginePublication $RuntimeDir
+                foreach ($shadowKey in @(
+                    "shadow_engine_state", "shadow_engine_reason", "shadow_engine_updated_at",
+                    "shadow_open_observation_count", "shadow_ops", "shadow_latest_incident",
+                    "shadow_ui_independent"
+                )) {
+                    $execution[$shadowKey] = $shadowPub[$shadowKey]
+                }
 
                 $payload = [ordered]@{
                     status           = 'ok'
@@ -368,7 +428,7 @@ try {
                     runtime          = $runtime
                     execution        = $execution
                     now              = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
-                } | ConvertTo-Json -Depth 5
+                } | ConvertTo-Json -Depth 8
                 Send-Response $stream '200 OK' 'application/json; charset=utf-8' ($utf8.GetBytes($payload))
                 continue
             }

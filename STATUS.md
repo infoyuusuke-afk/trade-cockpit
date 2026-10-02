@@ -21,6 +21,10 @@ Ubuntu structural の `test_hung_helper_returns_within_the_hard_timeout_when_pow
 
 Issue #268 / PR #280 の fail-closed を、現行 `fix/v9-ui-voice-convergence` 上へ再実装した。ポートと発注ロジックは変えていない。`/live_ms2.json`（Gateway 28581 と Collector bridge 28580）は、ファイル欠落・mtime または `updated_at` が 60 秒超・診断不足・銘柄コード不一致・非canonical workbook・Collector/Watcher 重複・公開スナップショットを HTTP 503 とし、`real_submit_allowed=false` かつ `live_values_available=false` にする。新鮮でも出所が証明できない値は `PRICE_SOURCE_MISMATCH` でカードから消す。機械可読診断は `live_price_diagnostics` と `/health`（source_timestamp、file mtime、updated_at、symbol、current_price、source_mode、collector/watcher、data_conflict、stale_reason）。実機の RSS 突合は Owner PC。この節は作業ブランチの記録で、main にはまだ入っていない。
 
+## AI SHADOW 常時稼働と障害日誌 P0（2026-10-02、main未マージ）
+
+AI SHADOW はブラウザや index.html の開閉では止まらない。V9 Controller が `scripts/ai_shadow_supervisor.py` を1プロセスだけ起動し、単一ロックが二重起動を拒む。ライブ判定は Collector が既に出したシグナルと価格だけを記録し、`shadow_execution.submit_shadow_order` は呼ばない。Intent やチケットを作らない。Fail-closed 中は仮想エントリーも仮想EXITも増やさない。復旧は同じ板の再処理をせず、価格が安全条件を満たしたあと自動で再開する。状態は RUNNING / PAUSED_FAIL_CLOSED / RECOVERING / STOPPED で、Gateway `/health` の `shadow_engine_state` を UI が表示する。状態ファイルが無い・古い・読めない場合は RUNNING にしない。`real_submit_allowed` は false のまま。`shadow_positions_connected` は false、`shadow_position_status` は NOT_PUBLISHED のまま。障害は `incidents.jsonl`（戦略損益とは別）、仮想観察は `ledger.jsonl`。日次・週次・月次の稼働率、MTTR、再発、障害が混ざった損益は status の `ops` に分ける。実機の RSS 起動確認は Owner PC。この節は作業ブランチの記録で、main にはまだ入っていない。
+
 ## システム概要
 
 - リポジトリ: infoyuusuke-afk/trade-cockpit（GitHub Pages: https://infoyuusuke-afk.github.io/trade-cockpit/）

@@ -37,11 +37,14 @@ param(
 #     exit" like V6) so it can react to Collector dying or Excel closing
 #     without the user re-running anything.
 #   - Never touches real_submit_allowed, RssOrder, or any order/broker
-#     path. Only supervises the existing read-only Watcher/Collector/
-#     Heartbeat/Gateway processes and the Excel process that hosts them.
+#     path. Supervises the existing read-only Watcher/Collector/
+#     Heartbeat/Gateway processes, one AI SHADOW supervisor, and the
+#     Excel process that hosts the workbook. The shadow supervisor does
+#     not attach to Excel and does not keep running trades after this
+#     controller stops the data path.
 
 $ErrorActionPreference = "Stop"
-$Build = "V9-CONTROLLER-20261002-IDENTITY-PROBE-01"
+$Build = "V9-CONTROLLER-20261002-SHADOW-SUPERVISOR-01"
 $ExcelIdentityProbeTimeoutSeconds = 35
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
@@ -245,6 +248,7 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
         "gateway_pid"      { "AI_COCKPIT_GATEWAY_V9.ps1" }
         "voice_bridge_pid" { "AI_COCKPIT_VOICE_BRIDGE_V9.ps1" }
         "sbv2_pid"         { "server_fastapi.py" }
+        "shadow_supervisor_pid" { "ai_shadow_supervisor.py" }
         "controller_pid"   { "AI_COCKPIT_CONTROLLER_V9.ps1" }
         default            { "" }
     }
@@ -265,7 +269,7 @@ function Stop-OwnedFromPreviousState {
     if ($null -eq $prev) { return }
     Stop-OwnedJobBridge $PORT_COLLECTOR ([int]$prev.collector_pid) "Collector JSON" | Out-Null
     Stop-OwnedJobBridge $PORT_WATCHER ([int]$prev.watcher_pid) "Watcher JSON" | Out-Null
-    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid", "sbv2_pid", "controller_pid")) {
+    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid", "controller_pid")) {
         $val = $prev.PSObject.Properties[$field]
         if ($null -eq $val -or [int]$val.Value -le 0) { continue }
         $procId = [int]$val.Value
@@ -287,7 +291,7 @@ function Stop-OwnedFromPreviousState {
 # Release the workers' COM references; never force-kill Excel, which may also
 # host a user's other workbooks. A surviving Excel is reported for acceptance.
 function Stop-ManagedWorkersOnWorkbookClose($SessionState) {
-    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid", "sbv2_pid")) {
+    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid")) {
         $workerPid = [int]$SessionState.$field
         if ($workerPid -le 0 -or $workerPid -eq [int]$SessionState.excel_pid) { continue }
         $worker = Get-Process -Id $workerPid -ErrorAction SilentlyContinue
@@ -303,6 +307,72 @@ function Start-Worker([string]$Name, [string]$Script, [string]$WorkDir, [string]
     $args = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $Script + '"'
     if (-not [string]::IsNullOrWhiteSpace($ExtraArgs)) { $args += " " + $ExtraArgs }
     return Start-Process -FilePath "powershell.exe" -ArgumentList $args -WorkingDirectory $WorkDir `
+        -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+}
+
+function Write-ShadowStoppedStatus([string]$StatusPath, [string]$Reason) {
+    $payload = [ordered]@{
+        schema_version = "ai-shadow-supervisor-1"
+        state = "STOPPED"
+        reason = $Reason
+        updated_at = (Get-Date).ToString("o")
+        real_submit_allowed = $false
+        ui_independent = $true
+        open_observation_count = $null
+        resume_blocked = $true
+    }
+    $parent = Split-Path -Parent $StatusPath
+    if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+    $tmp = $StatusPath + ".tmp"
+    [IO.File]::WriteAllText($tmp, ($payload | ConvertTo-Json -Depth 4), [Text.UTF8Encoding]::new($false))
+    Move-Item -LiteralPath $tmp -Destination $StatusPath -Force
+}
+
+function Start-ShadowSupervisor([string]$RepoRootResolved, [string]$RuntimeDir) {
+    $scriptPath = Join-Path $RepoRootResolved "scripts\ai_shadow_supervisor.py"
+    $statusPath = Join-Path $RuntimeDir "ai_shadow_status.json"
+    if (-not (Test-Path -LiteralPath $scriptPath)) {
+        Write-ShadowStoppedStatus $statusPath "SUPERVISOR_SCRIPT_MISSING"
+        Write-Status "  AI SHADOW supervisor script missing - STOPPED fail-closed. Excel/RSS were not touched." Yellow
+        return $null
+    }
+    $python = $null
+    foreach ($cand in @(
+        (Join-Path $RepoRootResolved ".venv\Scripts\python.exe"),
+        (Join-Path $RepoRootResolved "venv\Scripts\python.exe")
+    )) {
+        if (Test-Path -LiteralPath $cand) { $python = $cand; break }
+    }
+    if (-not $python) {
+        $cmd = Get-Command python.exe -ErrorAction SilentlyContinue
+        if ($null -ne $cmd) { $python = $cmd.Source }
+    }
+    $prefix = @()
+    if (-not $python) {
+        $py = Get-Command py.exe -ErrorAction SilentlyContinue
+        if ($null -ne $py) {
+            $python = $py.Source
+            $prefix = @("-3")
+        }
+    }
+    $dataDir = Join-Path $LogDir "ai_shadow"
+    if (-not (Test-Path -LiteralPath $dataDir)) { New-Item -ItemType Directory -Path $dataDir -Force | Out-Null }
+    if (-not $python) {
+        Write-ShadowStoppedStatus $statusPath "PYTHON_NOT_FOUND"
+        Write-Status "  AI SHADOW python not found - STOPPED fail-closed. Excel/RSS were not touched." Yellow
+        return $null
+    }
+    $stdout = Join-Path $LogDir "shadow_supervisor_stdout.log"
+    $stderr = Join-Path $LogDir "shadow_supervisor_stderr.log"
+    Remove-Item -LiteralPath $stdout, $stderr -Force -ErrorAction SilentlyContinue
+    $argList = $prefix + @(
+        "-u", $scriptPath,
+        "--live", (Join-Path $RuntimeDir "live_ms2.json"),
+        "--data-dir", $dataDir,
+        "--status", $statusPath,
+        "--interval", "5"
+    )
+    return Start-Process -FilePath $python -ArgumentList $argList -WorkingDirectory $RepoRootResolved `
         -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
 }
 
@@ -591,6 +661,8 @@ $state = [ordered]@{
     voice_bridge_status        = "NOT_STARTED"
     sbv2_pid                   = 0
     sbv2_status                = "NOT_STARTED"
+    shadow_supervisor_pid      = 0
+    shadow_supervisor_status   = "NOT_STARTED"
 }
 
 try {
@@ -890,6 +962,17 @@ try {
     }
     Save-State $state
 
+    Write-Status "Starting AI SHADOW supervisor (UI-independent; it fail-closes until live data passes)..."
+    $shadowProc = Start-ShadowSupervisor $RepoRootResolved $RuntimeDir
+    if ($null -ne $shadowProc) {
+        $state.shadow_supervisor_pid = [int]$shadowProc.Id
+        $state.shadow_supervisor_status = if ($shadowProc.HasExited) { "CRASHED" } else { "STARTING" }
+        Write-Status ("  AI SHADOW supervisor PID " + $state.shadow_supervisor_pid) Green
+    } else {
+        $state.shadow_supervisor_status = "STOPPED"
+    }
+    Save-State $state
+
     Write-Status "Startup complete. Entering supervision loop (Ctrl+C to stop everything)." Green
     Write-Host ""
     Write-Host "This window supervises the running session. Closing the MS2 workbook" -ForegroundColor Cyan
@@ -909,6 +992,8 @@ try {
     $lastVoiceRestartAt = Get-Date "2000-01-01"
     $sbv2RestartAttempts = 0
     $lastSbv2RestartAt = Get-Date "2000-01-01"
+    $shadowRestartAttempts = 0
+    $lastShadowRestartAt = Get-Date "2000-01-01"
     while ($true) {
         Start-Sleep -Seconds 2
 
@@ -1212,6 +1297,36 @@ try {
             $collectorRestartAttempts = 0
             Save-State $state
             Write-Status ("Collector recovered - LIVE / " + $PORT_COLLECTOR) Green
+        }
+
+        # 4b) AI SHADOW is a background observer. Restart the process if it
+        # dies, but never start a second copy while the recorded PID is alive,
+        # and never let its failure stop Collector, Excel, or the Gateway.
+        $sp = if ($state.shadow_supervisor_pid -gt 0) { Get-Process -Id $state.shadow_supervisor_pid -ErrorAction SilentlyContinue } else { $null }
+        if ($null -eq $sp) {
+            if ($state.shadow_supervisor_status -ne "STOPPED" -and $state.shadow_supervisor_status -ne "DOWN") {
+                Write-Status "AI SHADOW supervisor is down - observations stay fail-closed until it restarts." Yellow
+            }
+            $state.shadow_supervisor_status = "DOWN"
+            $secsSinceShadow = ((Get-Date) - $lastShadowRestartAt).TotalSeconds
+            if ($shadowRestartAttempts -lt 5 -and $secsSinceShadow -gt 20) {
+                $shadowRestartAttempts++
+                $lastShadowRestartAt = Get-Date
+                Write-Status ("AI SHADOW supervisor restart attempt " + $shadowRestartAttempts + "/5") Yellow
+                $shadowProc = Start-ShadowSupervisor $RepoRootResolved $RuntimeDir
+                if ($null -ne $shadowProc) {
+                    $state.shadow_supervisor_pid = [int]$shadowProc.Id
+                    $state.shadow_supervisor_status = "STARTING"
+                } else {
+                    $state.shadow_supervisor_status = "STOPPED"
+                }
+            }
+            Save-State $state
+        } elseif ($state.shadow_supervisor_status -ne "RUNNING") {
+            $state.shadow_supervisor_status = "RUNNING"
+            $shadowRestartAttempts = 0
+            Save-State $state
+            Write-Status "AI SHADOW supervisor process is alive. Engine state is published in ai_shadow_status.json." Green
         }
 
         # 5) Is Gateway still alive? This one we do treat as worth a clear
