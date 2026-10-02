@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-03 06:32:46 JST",
+  "updated_at": "2026-10-03 06:35:05 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -4213,47 +4213,39 @@
     },
     "TOPIX": {
       "ok": true,
-      "price": 434.4,
-      "open": 430.8,
-      "high": 435.3,
-      "low": 428.3,
-      "prev_close": 431.5,
-      "change_pct": 0.67,
-      "ret5": 2.26,
-      "ret5_prev": 0.35,
-      "ret20": 0.21,
-      "rvol": 1.1,
-      "turnover": 6956086198,
-      "atr14": 5.72,
-      "atr_pct": 1.32,
-      "ma5": 429.96,
-      "ma20": 426.39,
-      "ma60": 424.66,
-      "from_ma5": 1.03,
-      "from_ma20": 1.88,
+      "price": 430.2,
+      "open": 430.6,
+      "high": 433.0,
+      "low": 429.8,
+      "prev_close": 434.4,
+      "change_pct": -0.97,
+      "ret5": -0.02,
+      "ret5_prev": 2.14,
+      "ret20": -1.26,
+      "rvol": 1.23,
+      "turnover": 7876209373,
+      "atr14": 5.71,
+      "atr_pct": 1.33,
+      "ma5": 429.94,
+      "ma20": 426.11,
+      "ma60": 424.63,
+      "from_ma5": 0.06,
+      "from_ma20": 0.96,
       "touch_ma5": true,
-      "to_high20": -0.71,
-      "to_high52": -1.25,
-      "bb_upper": 434.9,
-      "bb_lower": 417.88,
-      "bb_width": 3.99,
-      "bb_width_change": 0.04,
-      "bb_percentile": 6.7,
-      "bb_expansion_score": 67.0,
-      "day_score": 5.98,
-      "swing_score": 4.94,
-      "stable_score": 7.14,
-      "momentum_score": 11.95,
-      "high_score": 6.65,
+      "to_high20": -1.67,
+      "to_high52": -2.21,
+      "bb_upper": 433.71,
+      "bb_lower": 418.52,
+      "bb_width": 3.56,
+      "bb_width_change": -0.4,
+      "bb_percentile": 0.8,
+      "bb_expansion_score": 69.9,
+      "day_score": 4.07,
+      "swing_score": 3.91,
+      "stable_score": 7.01,
+      "momentum_score": 8.31,
+      "high_score": 6.85,
       "chart": [
-        {
-          "t": "2026-08-03",
-          "o": 412.9,
-          "h": 413.3,
-          "l": 404.1,
-          "c": 411.8,
-          "v": 23173840
-        },
         {
           "t": "2026-08-04",
           "o": 411.4,
@@ -4565,20 +4557,28 @@
           "l": 428.3,
           "c": 434.4,
           "v": 16013090
+        },
+        {
+          "t": "2026-10-02",
+          "o": 430.6,
+          "h": 433.0,
+          "l": 429.8,
+          "c": 430.2,
+          "v": 18308250
         }
       ],
-      "data_date": "2026-10-01",
-      "data_age_days": 2,
-      "chart_last_close": 434.4,
+      "data_date": "2026-10-02",
+      "data_age_days": 1,
+      "chart_last_close": 430.2,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
-      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-01）",
-      "market_supply_score": 70,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-02）",
+      "market_supply_score": 68,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給70点／上昇日出来高÷下落日1.02倍／安値切上げ○",
+      "market_supply_status": "市場需給68点／上昇日出来高÷下落日1.14倍／安値切上げ○",
       "last_dividend": 7.9,
       "estimated_ex_date": "2027-01-08",
       "dividend_days": 97
@@ -44366,8 +44366,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-10-03T06:32:03+09:00",
-    "decision_at": "2026-10-03T06:32:03+09:00",
+    "generated_at": "2026-10-03T06:34:18+09:00",
+    "decision_at": "2026-10-03T06:34:18+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -44684,7 +44684,7 @@
       "name": "古河電気工業（5801）",
       "code": "5801",
       "ticker": "5801.T",
-      "score": 67,
+      "score": 71,
       "executable": false,
       "supply_verified": false,
       "supply_status": "信用買残・倍率の照合未完了（監視のみ・注文禁止）",
@@ -44695,7 +44695,7 @@
       "stop": 4000.0,
       "target1": 5225,
       "target2": 5570,
-      "reason": "期待形成中／資本財・インフラ 流出 50点／前日比 +7.68%／出来高比 1.91倍／売買代金 1833億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DISTRIBUTION：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
+      "reason": "期待形成中／資本財・インフラ 拡大 66点／前日比 +7.68%／出来高比 1.91倍／売買代金 1833億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DISTRIBUTION：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-08-04",
@@ -46090,7 +46090,7 @@
       "name": "アドバンテスト（6857）",
       "code": "6857",
       "ticker": "6857.T",
-      "score": 66,
+      "score": 70,
       "executable": false,
       "supply_verified": false,
       "supply_status": "信用買残・倍率の照合未完了（監視のみ・注文禁止）",
@@ -46101,7 +46101,7 @@
       "stop": 36700.0,
       "target1": 44300,
       "target2": 46450,
-      "reason": "期待形成中／AI・テクノロジー 中立 55点／前日比 +2.71%／出来高比 1.63倍／売買代金 6512億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DISTRIBUTION：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
+      "reason": "期待形成中／AI・テクノロジー 拡大 71点／前日比 +2.71%／出来高比 1.63倍／売買代金 6512億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DISTRIBUTION：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-08-04",
@@ -47496,7 +47496,7 @@
       "name": "住友電気工業（5802）",
       "code": "5802",
       "ticker": "5802.T",
-      "score": 58,
+      "score": 62,
       "executable": false,
       "supply_verified": false,
       "supply_status": "信用買残・倍率の照合未完了（監視のみ・注文禁止）",
@@ -47507,7 +47507,7 @@
       "stop": 2320.0,
       "target1": 2760,
       "target2": 2883,
-      "reason": "期待形成中／資本財・インフラ 流出 50点／前日比 +3.50%／出来高比 1.49倍／売買代金 680億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DISTRIBUTION：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
+      "reason": "期待形成中／資本財・インフラ 拡大 66点／前日比 +3.50%／出来高比 1.49倍／売買代金 680億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DISTRIBUTION：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-08-04",
@@ -48910,7 +48910,7 @@
       "name": "フジクラ（5803）",
       "code": "5803",
       "ticker": "5803.T",
-      "score": 57,
+      "score": 61,
       "executable": false,
       "supply_verified": false,
       "supply_status": "信用買残・倍率の照合未完了（監視のみ・注文禁止）",
@@ -48921,7 +48921,7 @@
       "stop": 5250.0,
       "target1": 6480,
       "target2": 6820,
-      "reason": "期待形成中／資本財・インフラ 流出 50点／前日比 +4.28%／出来高比 1.55倍／売買代金 3059億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DISTRIBUTION：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
+      "reason": "期待形成中／資本財・インフラ 拡大 66点／前日比 +4.28%／出来高比 1.55倍／売買代金 3059億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DISTRIBUTION：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-08-04",
@@ -50316,7 +50316,7 @@
       "name": "SCREEN HD（7735）",
       "code": "7735",
       "ticker": "7735.T",
-      "score": 52,
+      "score": 56,
       "executable": false,
       "supply_verified": false,
       "supply_status": "信用買残・倍率の照合未完了（監視のみ・注文禁止）",
@@ -50327,7 +50327,7 @@
       "stop": 15120.0,
       "target1": 16620,
       "target2": 17040,
-      "reason": "期待形成中／AI・テクノロジー 中立 55点／前日比 -0.80%／出来高比 0.92倍／売買代金 274億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DISTRIBUTION：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
+      "reason": "期待形成中／AI・テクノロジー 拡大 71点／前日比 -0.80%／出来高比 0.92倍／売買代金 274億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DISTRIBUTION：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-08-04",
@@ -51718,7 +51718,7 @@
     "fx_source": "世界の株価リアルタイムチャート",
     "fx_observed_at": "2026-10-03T05:59:00+09:00",
     "statement_study": {
-      "updated_at": "2026-10-03 06:32:38 JST",
+      "updated_at": "2026-10-03 06:34:57 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -55768,7 +55768,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-10-03 06:32:30 JST",
+    "credit_supply_updated_at": "2026-10-03 06:34:48 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -60387,11 +60387,11 @@
     "japan_sectors": [
       {
         "sector": "AI・テクノロジー",
-        "phase": "中立",
-        "score": 54.6,
-        "rel5": 0.86,
-        "rel20": 5.0,
-        "acceleration": -4.34,
+        "phase": "拡大",
+        "score": 70.6,
+        "rel5": 3.14,
+        "rel20": 6.47,
+        "acceleration": -0.27,
         "breadth": 73.0,
         "rvol": 0.96,
         "members": 37,
@@ -60412,15 +60412,15 @@
             "rvol": 1.63
           }
         ],
-        "action": "方向確認待ち"
+        "action": "順張り・押し目"
       },
       {
         "sector": "資本財・インフラ",
-        "phase": "流出",
-        "score": 49.8,
-        "rel5": -0.09,
-        "rel20": 1.97,
-        "acceleration": -3.6,
+        "phase": "拡大",
+        "score": 65.7,
+        "rel5": 2.19,
+        "rel20": 3.44,
+        "acceleration": 0.47,
         "breadth": 76.2,
         "rvol": 0.98,
         "members": 21,
@@ -60441,15 +60441,15 @@
             "rvol": 1.49
           }
         ],
-        "action": "新規ロング停止"
+        "action": "順張り・押し目"
       },
       {
         "sector": "その他",
-        "phase": "流出",
-        "score": 26.7,
-        "rel5": -3.5,
-        "rel20": -3.19,
-        "acceleration": -3.53,
+        "phase": "低迷",
+        "score": 42.7,
+        "rel5": -1.22,
+        "rel20": -1.72,
+        "acceleration": 0.54,
         "breadth": 36.8,
         "rvol": 0.85,
         "members": 19,
@@ -60470,15 +60470,15 @@
             "rvol": 0.58
           }
         ],
-        "action": "新規ロング停止"
+        "action": "見送り"
       },
       {
         "sector": "内需・ディフェンシブ",
-        "phase": "流出",
-        "score": 19.1,
-        "rel5": -4.03,
-        "rel20": -10.59,
-        "acceleration": -1.8,
+        "phase": "低迷",
+        "score": 35.0,
+        "rel5": -1.75,
+        "rel20": -9.12,
+        "acceleration": 2.27,
         "breadth": 20.0,
         "rvol": 0.96,
         "members": 5,
@@ -60499,15 +60499,15 @@
             "rvol": 0.86
           }
         ],
-        "action": "新規ロング停止"
+        "action": "見送り"
       },
       {
         "sector": "資源・素材・商社",
         "phase": "流出",
-        "score": 7.7,
-        "rel5": -5.45,
-        "rel20": -9.2,
-        "acceleration": -4.62,
+        "score": 23.7,
+        "rel5": -3.17,
+        "rel20": -7.73,
+        "acceleration": -0.55,
         "breadth": 0.0,
         "rvol": 0.83,
         "members": 6,
@@ -60533,10 +60533,10 @@
       {
         "sector": "金融",
         "phase": "流出",
-        "score": 3.2,
-        "rel5": -6.8,
-        "rel20": -6.0,
-        "acceleration": -6.42,
+        "score": 19.2,
+        "rel5": -4.52,
+        "rel20": -4.53,
+        "acceleration": -2.35,
         "breadth": 0.0,
         "rvol": 0.94,
         "members": 3,
@@ -60563,9 +60563,9 @@
         "sector": "自動車・モビリティ",
         "phase": "流出",
         "score": 0,
-        "rel5": -12.27,
-        "rel20": -10.78,
-        "acceleration": -14.61,
+        "rel5": -9.99,
+        "rel20": -9.3,
+        "acceleration": -10.54,
         "breadth": 0.0,
         "rvol": 1.46,
         "members": 4,
@@ -60589,14 +60589,134 @@
         "action": "新規ロング停止"
       }
     ],
-    "picks": [],
+    "picks": [
+      {
+        "name": "東京エレクトロン（8035）",
+        "sector": "AI・テクノロジー",
+        "phase": "拡大",
+        "score": 85,
+        "material_stage": "織り込み進行",
+        "material_action": "押し目反転だけ監視",
+        "plan": {
+          "entry": 12160,
+          "stop": 11850,
+          "target1": 12610,
+          "target2": 12820,
+          "risk": 300,
+          "tick": 10
+        },
+        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +3.14%／出来高比 1.20倍"
+      },
+      {
+        "name": "ローム（6963）",
+        "sector": "AI・テクノロジー",
+        "phase": "拡大",
+        "score": 84,
+        "material_stage": "事実確認待ち",
+        "material_action": "出来高・需給確認待ち",
+        "plan": {
+          "entry": 5130,
+          "stop": 5000,
+          "target1": 5330,
+          "target2": 5420,
+          "risk": 130,
+          "tick": 10
+        },
+        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +3.14%／出来高比 1.09倍"
+      },
+      {
+        "name": "TDK（6762）",
+        "sector": "AI・テクノロジー",
+        "phase": "拡大",
+        "score": 83,
+        "material_stage": "事実確認待ち",
+        "material_action": "出来高・需給確認待ち",
+        "plan": {
+          "entry": 3210,
+          "stop": 3140,
+          "target1": 3320,
+          "target2": 3370,
+          "risk": 75,
+          "tick": 5
+        },
+        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +3.14%／出来高比 1.12倍"
+      },
+      {
+        "name": "アドバンテスト（6857）",
+        "sector": "AI・テクノロジー",
+        "phase": "拡大",
+        "score": 82,
+        "material_stage": "期待形成中",
+        "material_action": "高値追い禁止・発動足待ち",
+        "plan": {
+          "entry": 37800,
+          "stop": 36700,
+          "target1": 39500,
+          "target2": 40300,
+          "risk": 1150,
+          "tick": 50
+        },
+        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +3.14%／出来高比 1.63倍"
+      },
+      {
+        "name": "ディスコ（6146）",
+        "sector": "AI・テクノロジー",
+        "phase": "拡大",
+        "score": 80,
+        "material_stage": "期待形成中",
+        "material_action": "高値追い禁止・発動足待ち",
+        "plan": {
+          "entry": 60500,
+          "stop": 59200,
+          "target1": 62500,
+          "target2": 63500,
+          "risk": 1300,
+          "tick": 100
+        },
+        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +3.14%／出来高比 1.08倍"
+      },
+      {
+        "name": "ローツェ（6323）",
+        "sector": "AI・テクノロジー",
+        "phase": "拡大",
+        "score": 80,
+        "material_stage": "期待形成中",
+        "material_action": "高値追い禁止・発動足待ち",
+        "plan": {
+          "entry": 4240,
+          "stop": 4125,
+          "target1": 4410,
+          "target2": 4490,
+          "risk": 115,
+          "tick": 5
+        },
+        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +3.14%／出来高比 1.07倍"
+      },
+      {
+        "name": "SUMCO（3436）",
+        "sector": "AI・テクノロジー",
+        "phase": "拡大",
+        "score": 80,
+        "material_stage": "期待形成中",
+        "material_action": "高値追い禁止・発動足待ち",
+        "plan": {
+          "entry": 3495,
+          "stop": 3375,
+          "target1": 3675,
+          "target2": 3755,
+          "risk": 120,
+          "tick": 5
+        },
+        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +3.14%／出来高比 1.06倍"
+      }
+    ],
     "kioxia": {
       "name": "キオクシアHD（285A）",
-      "status": "中立",
-      "action": "新規追加は見送り",
-      "detail": "方向未確定。業績期待だけで平均取得単価を下げず、セクターと個別の両方の反転を待つ。",
-      "sector_score": 54.6,
-      "sector_rel5": 0.86
+      "status": "拡大",
+      "action": "反転条件だけ再評価",
+      "detail": "セクターの追い風は確認。ただし前日高値突破＋VWAP上維持を満たすまで買い増し判定にはしない。",
+      "sector_score": 70.6,
+      "sector_rel5": 3.14
     },
     "source_note": "米国11業種ETFのS&P500相対強弱と、日本株監視群のTOPIX相対強弱による公開データ代理指標"
   },
@@ -72970,14 +73090,14 @@
   ],
   "morning_snapshot": {
     "date": "2026-10-03",
-    "fixed_at": "2026-10-03 06:32:46 JST",
+    "fixed_at": "2026-10-03 06:35:05 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-10-03",
-    "fixed_at": "2026-10-03 06:33:34 JST",
+    "fixed_at": "2026-10-03 06:35:54 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
@@ -73006,7 +73126,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-03 06:33:34 JST",
+        "signal_time": "2026-10-03 06:35:54 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73035,7 +73155,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-03 06:33:34 JST",
+        "signal_time": "2026-10-03 06:35:54 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73064,7 +73184,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-03 06:33:34 JST",
+        "signal_time": "2026-10-03 06:35:54 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73093,7 +73213,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-03 06:33:34 JST",
+        "signal_time": "2026-10-03 06:35:54 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73122,7 +73242,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-03 06:33:34 JST",
+        "signal_time": "2026-10-03 06:35:54 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73151,7 +73271,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-03 06:33:34 JST",
+        "signal_time": "2026-10-03 06:35:54 JST",
         "source": "morning_snapshot"
       }
     ]
