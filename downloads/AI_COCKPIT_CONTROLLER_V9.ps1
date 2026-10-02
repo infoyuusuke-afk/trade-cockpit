@@ -2,7 +2,8 @@ param(
     [string]$RepoRoot = "",
     [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
     [string]$ExpectedBranch = "",
-    [string]$RuntimeDirOverride = ""
+    [string]$RuntimeDirOverride = "",
+    [switch]$IdentityProbeSelfTest
 )
 
 # AI Cockpit Controller V8
@@ -40,7 +41,8 @@ param(
 #     Heartbeat/Gateway processes and the Excel process that hosts them.
 
 $ErrorActionPreference = "Stop"
-$Build = "V9-CONTROLLER-20261002-SESSION-GUARD-02"
+$Build = "V9-CONTROLLER-20261002-IDENTITY-PROBE-01"
+$ExcelIdentityProbeTimeoutSeconds = 35
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
 # Port map (fixed 2026-09-25): Collector=28580, Gateway=28581,
@@ -218,11 +220,9 @@ function Resolve-RepoRoot([string]$Explicit) {
 }
 
 # ------------------------------------------------------------- state file
-
-$StateFile = Join-Path $Root "V9_CONTROLLER_STATE.json"
-$LogDir = Join-Path $Root "Logs\V9"
-if (-not (Test-Path -LiteralPath $Root)) { New-Item -ItemType Directory -Path $Root -Force | Out-Null }
-if (-not (Test-Path -LiteralPath $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
+# Paths under $Root are created only after the identity-probe self-test
+# returns. That self-test must run without touching the production C: root,
+# including on a host where that drive does not exist.
 
 function Read-State {
     try {
@@ -369,15 +369,12 @@ function Get-ForeignExcelProcesses([int[]]$AllowedPids = @(), [int]$SessionId = 
     )
 }
 
-function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$ControllerPid) {
-    if ($ExcelPid -le 0) { return $true }
-
+function Test-LaunchedExcelOwnership([int]$ExcelPid,[string]$WorkbookPath,[int]$ControllerPid) {
+    if ($ExcelPid -le 0) { return $false }
     $proc = Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue
-    if ($null -eq $proc) { return $true }
-
+    if ($null -eq $proc) { return $false }
     $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ExcelPid) -ErrorAction SilentlyContinue
     if ($null -eq $info) { return $false }
-
     $cmd = [string]$info.CommandLine
     $isCanonicalWorkbook = (
         -not [string]::IsNullOrWhiteSpace($cmd) -and
@@ -385,8 +382,15 @@ function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$Cont
     )
     $isControllerChild = ([int]$info.ParentProcessId -eq $ControllerPid)
     $isSameSession = ([int]$proc.SessionId -eq (Get-CurrentSessionId))
+    return ($isCanonicalWorkbook -and $isControllerChild -and $isSameSession)
+}
 
-    if (-not ($isCanonicalWorkbook -and $isControllerChild -and $isSameSession)) { return $false }
+function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$ControllerPid) {
+    if ($ExcelPid -le 0) { return $true }
+
+    $proc = Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue
+    if ($null -eq $proc) { return $true }
+    if (-not (Test-LaunchedExcelOwnership $ExcelPid $WorkbookPath $ControllerPid)) { return $false }
 
     Stop-Process -Id $ExcelPid -Force -ErrorAction SilentlyContinue
     foreach ($attempt in 1..10) {
@@ -396,9 +400,166 @@ function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$Cont
     return $false
 }
 
+function Wait-OwnedHelperProcess {
+    param(
+        [System.Diagnostics.Process]$Process,
+        [int]$TimeoutSeconds,
+        [string]$ProgressPath
+    )
+    $started = Get-Date
+    $seen = 0
+    $lastBeat = -1
+    while (-not $Process.HasExited) {
+        $elapsed = [int]((Get-Date) - $started).TotalSeconds
+        if ($elapsed -ge $TimeoutSeconds) {
+            try { Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue } catch {}
+            $killDeadline = (Get-Date).AddSeconds(5)
+            while (-not $Process.HasExited -and (Get-Date) -lt $killDeadline) {
+                try { $Process.Refresh() } catch {}
+                Start-Sleep -Milliseconds 200
+            }
+            return @{ timed_out = $true; elapsed = $elapsed; exit_code = $null; helper_pid = [int]$Process.Id }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($ProgressPath) -and (Test-Path -LiteralPath $ProgressPath)) {
+            try {
+                $lines = @(Get-Content -LiteralPath $ProgressPath -ErrorAction SilentlyContinue)
+                while ($seen -lt $lines.Count) {
+                    Write-Status ("  " + $lines[$seen]) DarkGray
+                    $seen++
+                }
+            } catch {}
+        }
+        if ($elapsed -ne $lastBeat -and (($elapsed % 2) -eq 0)) {
+            Write-Status ("Excel identity probe attempt {0} / elapsed {1}s" -f ([Math]::Max(1, [int]($elapsed / 2)), $elapsed)) DarkGray
+            $lastBeat = $elapsed
+        }
+        Start-Sleep -Milliseconds 400
+        try { $Process.Refresh() } catch {}
+    }
+    try { $Process.Refresh() } catch {}
+    $exitCode = $null
+    try { $exitCode = $Process.ExitCode } catch {}
+    return @{
+        timed_out = $false
+        elapsed = [int]((Get-Date) - $started).TotalSeconds
+        exit_code = $exitCode
+        helper_pid = [int]$Process.Id
+    }
+}
+
+function Invoke-ExcelIdentityProbe {
+    param(
+        [string]$WorkbookPath,
+        [int]$ExpectedExcelPid,
+        [int]$TimeoutSeconds,
+        [string]$LogDirectory
+    )
+    if ($TimeoutSeconds -lt 30 -or $TimeoutSeconds -gt 40) {
+        throw "Excel identity probe timeout must stay within 30-40 seconds."
+    }
+    $probeDir = Join-Path $LogDirectory "identity_probe"
+    New-Item -ItemType Directory -Force -Path $probeDir | Out-Null
+    $resultPath = Join-Path $probeDir "result.json"
+    $progressPath = Join-Path $probeDir "progress.log"
+    $stdoutPath = Join-Path $probeDir "stdout.log"
+    $stderrPath = Join-Path $probeDir "stderr.log"
+    foreach ($path in @($resultPath, $progressPath, $stdoutPath, $stderrPath)) {
+        if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue }
+    }
+    $helper = Join-Path $PSScriptRoot "EXCEL_IDENTITY_PROBE_V9.ps1"
+    if (-not (Test-Path -LiteralPath $helper)) {
+        return @{ ok = $false; code = "EXCEL_IDENTITY_PROBE_FAILED"; elapsed = 0; helper_pid = 0; detail = "identity probe helper missing" }
+    }
+    $shell = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+    if (-not (Test-Path -LiteralPath $shell)) { $shell = "powershell.exe" }
+    Write-Status "Excel identity probe started"
+    # Windows PowerShell 5.1 does not quote an ArgumentList array. One
+    # string keeps workbook paths that contain spaces intact.
+    $helperArgs = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $helper + '"' +
+        ' -WorkbookPath "' + $WorkbookPath + '"' +
+        ' -ExpectedExcelPid ' + $ExpectedExcelPid +
+        ' -ResultPath "' + $resultPath + '"' +
+        ' -ProgressPath "' + $progressPath + '"' +
+        ' -AttemptBudgetSeconds ' + $TimeoutSeconds
+    $helperProc = Start-Process -FilePath $shell -ArgumentList $helperArgs -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -PassThru -WindowStyle Hidden
+    Write-Status ("  helper PID " + $helperProc.Id + " / timeout " + $TimeoutSeconds + "s / started " + (Get-Date).ToString("HH:mm:ss")) DarkGray
+    $wait = Wait-OwnedHelperProcess -Process $helperProc -TimeoutSeconds $TimeoutSeconds -ProgressPath $progressPath
+    if ($wait.timed_out) {
+        Write-Status ("EXCEL_IDENTITY_PROBE_TIMEOUT after " + $wait.elapsed + "s") Red
+        return @{ ok = $false; code = "EXCEL_IDENTITY_PROBE_TIMEOUT"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "helper PID $($wait.helper_pid) exceeded ${TimeoutSeconds}s" }
+    }
+    if (-not (Test-Path -LiteralPath $resultPath)) {
+        $err = Tail-Log $stderrPath
+        return @{ ok = $false; code = "EXCEL_IDENTITY_PROBE_FAILED"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; exit_code = $wait.exit_code; detail = $err }
+    }
+    $result = [IO.File]::ReadAllText($resultPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+    $code = [string]$result.code
+    if ($code -eq "EXCEL_IDENTITY_MISMATCH" -or -not [bool]$result.ok) {
+        if ([string]::IsNullOrWhiteSpace($code)) { $code = "EXCEL_IDENTITY_PROBE_FAILED" }
+        return @{ ok = $false; code = $code; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; exit_code = $wait.exit_code; detail = [string]$result.message }
+    }
+    $fullName = [string]$result.full_name
+    $hwnd = 0L
+    try { $hwnd = [Int64]$result.hwnd } catch { $hwnd = 0L }
+    $reportedPid = 0
+    try { $reportedPid = [int]$result.excel_pid } catch { $reportedPid = 0 }
+    if ($fullName -ine $WorkbookPath -or $hwnd -eq 0 -or $reportedPid -ne $ExpectedExcelPid) {
+        return @{ ok = $false; code = "EXCEL_IDENTITY_MISMATCH"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "reported identity did not match the launched workbook" }
+    }
+    if (-not (Test-LaunchedExcelOwnership $ExpectedExcelPid $WorkbookPath $PID)) {
+        return @{ ok = $false; code = "EXCEL_IDENTITY_MISMATCH"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "canonical command line, parent PID, or session did not match" }
+    }
+    Write-Status "Excel identity verified" Green
+    return @{
+        ok = $true
+        code = "VERIFIED"
+        elapsed = $wait.elapsed
+        helper_pid = $wait.helper_pid
+        full_name = $fullName
+        hwnd = $hwnd
+        excel_pid = $reportedPid
+    }
+}
+
+function Invoke-ExcelIdentityProbeSelfTest {
+    $helper = Join-Path $PSScriptRoot "EXCEL_IDENTITY_PROBE_V9.ps1"
+    $progress = Join-Path ([IO.Path]::GetTempPath()) ("excel_identity_selftest_" + $PID + ".log")
+    if (Test-Path -LiteralPath $progress) { Remove-Item -LiteralPath $progress -Force }
+    $exe = (Get-Process -Id $PID).Path
+    $helperArgs = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $helper + '" -SelfTestHang -ProgressPath "' + $progress + '"'
+    $startParams = @{
+        FilePath = $exe
+        ArgumentList = $helperArgs
+        PassThru = $true
+    }
+    if ($env:OS -eq "Windows_NT") { $startParams.WindowStyle = "Hidden" }
+    $hung = Start-Process @startParams
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    $wait = Wait-OwnedHelperProcess -Process $hung -TimeoutSeconds 3 -ProgressPath $progress
+    $clock.Stop()
+    if (-not $wait.timed_out) { throw "Identity probe selftest: hung helper exited before the hard timeout." }
+    if ($clock.Elapsed.TotalSeconds -gt 10) { throw ("Identity probe selftest exceeded 10s: " + $clock.Elapsed.TotalSeconds) }
+    $still = Get-Process -Id $hung.Id -ErrorAction SilentlyContinue
+    if ($null -ne $still -and -not $still.HasExited) { throw "Identity probe selftest: helper PID $($hung.Id) was still running." }
+    Write-Output ("EXCEL_IDENTITY_PROBE_TIMEOUT after " + $wait.elapsed + "s")
+    Write-Output "AI Cockpit startup failed closed"
+    Write-Output "Unrelated Excel processes were not touched"
+    Write-Output "IDENTITY PROBE SELFTEST PASS"
+}
+
 # ======================================================================
 # MAIN
 # ======================================================================
+
+if ($IdentityProbeSelfTest) {
+    Invoke-ExcelIdentityProbeSelfTest
+    exit 0
+}
+
+$StateFile = Join-Path $Root "V9_CONTROLLER_STATE.json"
+$LogDir = Join-Path $Root "Logs\V9"
+if (-not (Test-Path -LiteralPath $Root)) { New-Item -ItemType Directory -Path $Root -Force | Out-Null }
+if (-not (Test-Path -LiteralPath $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
 
 $state = [ordered]@{
     build                      = $Build
@@ -410,6 +571,7 @@ $state = [ordered]@{
     workbook_name              = ""
     workbook_path              = ""
     workbook_identity_verified = $null
+    excel_identity_error       = ""
     excel_pid                  = 0
     watcher_pid                = 0
     watcher_status             = "NOT_STARTED"
@@ -650,96 +812,30 @@ try {
         $launchedExcelProc.Id
     ) DarkGray
 
-    $identityOk = $false
-    $boundBook  = $null
-    $boundApp   = $null
+    $probe = Invoke-ExcelIdentityProbe `
+        -WorkbookPath $WorkbookPath `
+        -ExpectedExcelPid ([int]$launchedExcelProc.Id) `
+        -TimeoutSeconds $ExcelIdentityProbeTimeoutSeconds `
+        -LogDirectory $LogDir
 
-    $deadline = (Get-Date).AddSeconds(40)
-
-    while ((Get-Date) -lt $deadline) {
-
-        try {
-            $boundBook = [Runtime.InteropServices.Marshal]::BindToMoniker(
-                $WorkbookPath
-            )
-
-            if ($null -eq $boundBook) {
-                throw "Workbook moniker not ready."
-            }
-
-            if ($boundBook.FullName -ine $WorkbookPath) {
-                throw (
-                    "Canonical workbook mismatch: " +
-                    $boundBook.FullName
-                )
-            }
-
-            $boundApp = $boundBook.Application
-            $appHwnd  = [Int64]$boundApp.Hwnd
-
-            $ownerProc = @(
-                Get-Process EXCEL -ErrorAction SilentlyContinue |
-                Where-Object {
-                    [Int64]$_.MainWindowHandle -eq $appHwnd
-                } |
-                Select-Object -First 1
-            )
-
-            if (
-                $ownerProc.Count -gt 0 -and
-                [int]$ownerProc[0].Id -eq [int]$launchedExcelProc.Id
-            ) {
-                $identityOk = $true
-                break
-            }
-        }
-        catch {}
-
-        if (-not $identityOk) {
-
-            if ($null -ne $boundBook) {
-                try {
-                    [void][Runtime.InteropServices.Marshal]::ReleaseComObject(
-                        $boundBook
-                    )
-                } catch {}
-                $boundBook = $null
-            }
-
-            if ($null -ne $boundApp) {
-                try {
-                    [void][Runtime.InteropServices.Marshal]::ReleaseComObject(
-                        $boundApp
-                    )
-                } catch {}
-                $boundApp = $null
-            }
-        }
-
-        Start-Sleep -Milliseconds 400
-    }
-
-    if (-not $identityOk) {
-
+    if (-not $probe.ok) {
         $state.excel_pid = 0
         $state.workbook_identity_verified = $false
+        $state.excel_identity_error = [string]$probe.code
         Save-State $state
 
-        if (
-            $null -ne $launchedExcelProc -and
-            -not $launchedExcelProc.HasExited
-        ) {
-            Stop-Process `
-                -Id $launchedExcelProc.Id `
-                -Force `
-                -ErrorAction SilentlyContinue
+        $ownedStopped = Stop-VerifiedOwnedExcel ([int]$launchedExcelProc.Id) $WorkbookPath $PID
+        if ($ownedStopped) {
+            Write-Status "  verified owned Excel stopped after identity failure." Yellow
         }
-
-        throw "Isolated Excel identity verification failed."
+        Write-Status "AI Cockpit startup failed closed" Red
+        Write-Status "Unrelated Excel processes were not touched" Yellow
+        throw ("Excel identity probe failed closed: " + $probe.code)
     }
 
     $state.excel_pid = [int]$launchedExcelProc.Id
     $state.workbook_identity_verified = $true
+    $state.excel_identity_error = ""
     Save-State $state
 
     Write-Status (
@@ -747,22 +843,6 @@ try {
         $state.excel_pid +
         " / identity verified: True / isolated: True"
     ) Green
-
-    if ($null -ne $boundBook) {
-        try {
-            [void][Runtime.InteropServices.Marshal]::ReleaseComObject(
-                $boundBook
-            )
-        } catch {}
-    }
-
-    if ($null -ne $boundApp) {
-        try {
-            [void][Runtime.InteropServices.Marshal]::ReleaseComObject(
-                $boundApp
-            )
-        } catch {}
-    }
 
     Write-Status "Starting Watcher..."
     $watcherProc = Start-Worker -Name "watcher" -Script $Watcher -WorkDir $RuntimeDir
