@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-02 11:29:17 JST",
+  "updated_at": "2026-10-02 11:31:35 JST",
   "side": "SHORT",
   "status": "試運転・検証中",
   "count": 2,
@@ -29,14 +29,14 @@
       "side": "SHORT",
       "score": 61,
       "trigger": 2034.0,
-      "stop": 2269.0,
-      "target1": 1682.0,
-      "target2": 1446.0,
-      "rvol": 1.3,
-      "atr_pct": 8.23,
+      "stop": 2268.0,
+      "target1": 1683.0,
+      "target2": 1449.0,
+      "rvol": 1.32,
+      "atr_pct": 8.24,
       "supply_phase": null,
       "margin_caution_flagged": false,
-      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-20.5%／出来高比1.30倍／信用需給不明",
+      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-20.6%／出来高比1.32倍／信用需給不明",
       "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
       "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
     }
