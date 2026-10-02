@@ -1,6 +1,6 @@
 # trade-cockpit STATUS
 
-最終更新: 2026-10-01（NEXT基盤 phase 1 を作業ブランチに実装。main未マージのため、この節以外の本文は 2026-09-23 時点の共有状態）
+最終更新: 2026-10-02（V9起動ハング修正を取り込み、NEXT基盤 phase 1 は draft のまま。main未マージ）
 役割分担（現行）：GPT/Codex側＝主開発・実装・検証・GitHub連携／Cloud側＝レビュー・診断・補助実装。役割は固定せず、GitHub mainの最新状態を基準に引き継ぐ。
 運用体制: GitHub main＝コードと進捗共有の唯一の正本。新しいセッションは必ずmainのSTATUS.mdと関連Issue/PRを確認してから作業し、古いチャット内の役割分担や進捗を正本として扱わない。
 同期ルール: GPT/Codex側・Cloud側のどちらで作業しても、共有すべき完了事項・未解決事項・Owner判断待ちはSTATUS.mdまたは関連Issue/PRへ反映する。main未反映の作業は「共有済み」と扱わない。
@@ -10,6 +10,10 @@ URL（https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/STATU
 を貼るだけで、これまでの経緯を再説明せずに済みます。
 
 ---
+
+## V9起動ハング P0（2026-10-02、`fix/v9-ui-voice-convergence` に取り込み済み、main未マージ）
+
+Issue #288。Controller 本体の同期 `BindToMoniker` をやめ、workbook identity probe を別 PowerShell プロセスへ分離した。本体は helper PID を 35 秒で打ち切り、失敗時は `EXCEL_IDENTITY_PROBE_TIMEOUT` / `EXCEL_IDENTITY_MISMATCH` / `EXCEL_IDENTITY_PROBE_FAILED` で fail-closed にする。停止できる Excel は、canonical workbook の command line、parent PID、同一 session が揃ったものだけ。PR #289 を `fix/v9-ui-voice-convergence` にマージ済み。実機の MS2/RSS 起動確認は Owner PC 側。main にはまだ入っていない。
 
 ## NEXT基盤 phase 1（2026-10-01、main未マージ）
 
@@ -21,8 +25,8 @@ URL（https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/STATU
 - 判定時刻はタイムゾーン付きで、TTL・同一取引日・未来時刻を超えると STALE / FAIL-CLOSED。サンプル `source_mode` は本番カードにしない。
 - サンプル入力では `A200`（79.7、IGNITION、42→18→7→2）が NEXT1位、`A100`（88.5）が NEXT2位。B020 などの WATCH は NEXT5 に入らない。
 - ダッシュボードは REALTIME 5 タブ先頭に NEXT カードを追加。既存タブは維持。
-- 検証: `python -m unittest discover -s tests -p "test_*.py"` は 1605 件成功。公開ボードはサンプルカードを出さない。
-- 作業ブランチ: `cursor/next-foundation-phase1-b547`。mainへはマージしていない。PR は draft のまま。
+- 検証: `python -m unittest discover -s tests -p "test_*.py"` は、起動ハング修正の取り込み後 1612 件成功。公開ボードはサンプルカードを出さない。
+- 作業ブランチ: `cursor/next-foundation-phase1-b547`。mainへはマージしていない。PR は draft のまま。起動ハング修正（PR #289）をこのブランチへ取り込んだ。
 
 ## システム概要
 
