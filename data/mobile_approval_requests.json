@@ -1,12 +1,41 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-02T01:42:26.461250+00:00",
+  "generated_at": "2026-10-02T01:44:57.383708+00:00",
   "mode": "paper",
   "source": "signals + empirical EV calibration",
   "score_is_probability": false,
   "requests": [
     {
-      "request_id": "SIG-2026-10-02-4259-01",
+      "request_id": "SIG-2026-10-02-5801-01",
+      "request_type": "trade",
+      "symbol": "5801",
+      "name": "古河電気工業（5801）",
+      "action": "WAIT",
+      "proposed_action": "WAIT",
+      "strategy_key": null,
+      "ev_score": null,
+      "technical_score": 100,
+      "sample_size": null,
+      "win_rate": null,
+      "profit_factor": null,
+      "avg_pl_pct": null,
+      "max_dd_pct": null,
+      "trigger_summary": "BB上方拡大／終値が主要移動平均線上／出来高比0.92倍",
+      "source_signal_date": "2026-10-02",
+      "source_updated_at": "2026-10-02 10:43:01 JST",
+      "data_freshness_sec": null,
+      "risk_gate": "BLOCK",
+      "risk_reason": "STRATEGY_KEY_MISSING",
+      "status": "pending",
+      "expires_in_sec": 0,
+      "paper_only": true,
+      "trigger_price": 4470,
+      "stop_price": 3870,
+      "target1": 5370,
+      "target2": 5970
+    },
+    {
+      "request_id": "SIG-2026-10-02-4259-02",
       "request_type": "trade",
       "symbol": "4259",
       "name": "エクサウィザーズ（4259）",
@@ -22,7 +51,7 @@
       "max_dd_pct": null,
       "trigger_summary": "安定押し目／終値が主要移動平均線上／出来高比0.28倍",
       "source_signal_date": "2026-10-02",
-      "source_updated_at": "2026-10-02 10:40:35 JST",
+      "source_updated_at": "2026-10-02 10:43:01 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -35,7 +64,7 @@
       "target2": 1002
     },
     {
-      "request_id": "SIG-2026-10-02-2158-02",
+      "request_id": "SIG-2026-10-02-2158-03",
       "request_type": "trade",
       "symbol": "2158",
       "name": "FRONTEO（2158）",
@@ -51,7 +80,7 @@
       "max_dd_pct": null,
       "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.27倍",
       "source_signal_date": "2026-10-02",
-      "source_updated_at": "2026-10-02 10:40:35 JST",
+      "source_updated_at": "2026-10-02 10:43:01 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -64,7 +93,7 @@
       "target2": 736
     },
     {
-      "request_id": "SIG-2026-10-02-7014-03",
+      "request_id": "SIG-2026-10-02-7014-04",
       "request_type": "trade",
       "symbol": "7014",
       "name": "名村造船所（7014）",
@@ -80,7 +109,7 @@
       "max_dd_pct": null,
       "trigger_summary": "安定押し目／終値が主要移動平均線上／出来高比0.24倍",
       "source_signal_date": "2026-10-02",
-      "source_updated_at": "2026-10-02 10:40:35 JST",
+      "source_updated_at": "2026-10-02 10:43:01 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -93,7 +122,7 @@
       "target2": 5270
     },
     {
-      "request_id": "SIG-2026-10-02-6268-04",
+      "request_id": "SIG-2026-10-02-6268-05",
       "request_type": "trade",
       "symbol": "6268",
       "name": "ナブテスコ（6268）",
@@ -109,7 +138,7 @@
       "max_dd_pct": null,
       "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.27倍",
       "source_signal_date": "2026-10-02",
-      "source_updated_at": "2026-10-02 10:40:35 JST",
+      "source_updated_at": "2026-10-02 10:43:01 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -117,12 +146,12 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 5055,
-      "stop_price": 4845,
-      "target1": 5370,
-      "target2": 5580
+      "stop_price": 4840,
+      "target1": 5380,
+      "target2": 5590
     },
     {
-      "request_id": "SIG-2026-10-02-6963-05",
+      "request_id": "SIG-2026-10-02-6963-06",
       "request_type": "trade",
       "symbol": "6963",
       "name": "ローム（6963）",
@@ -138,7 +167,7 @@
       "max_dd_pct": null,
       "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.23倍",
       "source_signal_date": "2026-10-02",
-      "source_updated_at": "2026-10-02 10:40:35 JST",
+      "source_updated_at": "2026-10-02 10:43:01 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -146,9 +175,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 5075,
-      "stop_price": 4905,
-      "target1": 5330,
-      "target2": 5500
+      "stop_price": 4900,
+      "target1": 5340,
+      "target2": 5510
     }
   ]
 }
