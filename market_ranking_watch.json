@@ -1,6 +1,6 @@
 {
   "schema_version": "market-ranking-watch-1.0",
-  "updated_at": "2026-10-02 13:15:30 JST",
+  "updated_at": "2026-10-02 13:17:47 JST",
   "source": "Yahoo!ファイナンス 日本株ランキング（値上がり率/値下がり率/出来高急増率/売買代金上位）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではなくYahoo!ファイナンスの遅延/日次データ。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。",
   "rankings": {
@@ -10,35 +10,35 @@
       "items": [
         {
           "rank": 1,
-          "name": "(株)セレス",
-          "code": "3696",
-          "market": "東証PRM",
-          "price": "2,284",
-          "change_yen": "+174",
-          "change_pct": "+8.25",
-          "volume": "385,800",
-          "already_watched": false
-        },
-        {
-          "rank": 2,
           "name": "古河電気工業(株)",
           "code": "5801",
           "market": "東証PRM",
-          "price": "4,449",
-          "change_yen": "+336",
-          "change_pct": "+8.17",
-          "volume": "29,578,100",
+          "price": "4,450",
+          "change_yen": "+337",
+          "change_pct": "+8.19",
+          "volume": "30,083,800",
           "already_watched": true
         },
         {
-          "rank": 3,
+          "rank": 2,
           "name": "(株)Ｏｒｃｈｅｓｔｒａ　Ｈｏｌｄｉｎｇｓ",
           "code": "6533",
           "market": "東証PRM",
-          "price": "2,071",
-          "change_yen": "+154",
-          "change_pct": "+8.03",
-          "volume": "377,900",
+          "price": "2,070",
+          "change_yen": "+153",
+          "change_pct": "+7.98",
+          "volume": "379,800",
+          "already_watched": false
+        },
+        {
+          "rank": 3,
+          "name": "(株)セレス",
+          "code": "3696",
+          "market": "東証PRM",
+          "price": "2,276",
+          "change_yen": "+166",
+          "change_pct": "+7.87",
+          "volume": "388,700",
           "already_watched": false
         },
         {
@@ -46,10 +46,10 @@
           "name": "(株)レゾナック・ホールディングス",
           "code": "4004",
           "market": "東証PRM",
-          "price": "17,030",
-          "change_yen": "+1,135",
-          "change_pct": "+7.14",
-          "volume": "2,233,900",
+          "price": "17,080",
+          "change_yen": "+1,185",
+          "change_pct": "+7.46",
+          "volume": "2,265,300",
           "already_watched": false
         },
         {
@@ -60,7 +60,7 @@
           "price": "5,770",
           "change_yen": "+370",
           "change_pct": "+6.85",
-          "volume": "365,100",
+          "volume": "365,900",
           "already_watched": false
         },
         {
@@ -71,7 +71,7 @@
           "price": "8,083",
           "change_yen": "+456",
           "change_pct": "+5.98",
-          "volume": "1,200,700",
+          "volume": "1,213,400",
           "already_watched": false
         },
         {
@@ -79,10 +79,10 @@
           "name": "(株)フジクラ",
           "code": "5803",
           "market": "東証PRM",
-          "price": "5,662",
-          "change_yen": "+294",
-          "change_pct": "+5.48",
-          "volume": "41,082,700",
+          "price": "5,665",
+          "change_yen": "+297",
+          "change_pct": "+5.53",
+          "volume": "41,423,400",
           "already_watched": true
         },
         {
@@ -90,32 +90,32 @@
           "name": "(株)図研",
           "code": "6947",
           "market": "東証PRM",
-          "price": "5,460",
-          "change_yen": "+260",
-          "change_pct": "+5.00",
+          "price": "5,450",
+          "change_yen": "+250",
+          "change_pct": "+4.81",
           "volume": "86,300",
           "already_watched": false
         },
         {
           "rank": 9,
-          "name": "武蔵精密工業(株)",
-          "code": "7220",
+          "name": "(株)ＭｏｎｏｔａＲＯ",
+          "code": "3064",
           "market": "東証PRM",
-          "price": "3,195",
-          "change_yen": "+130",
+          "price": "2,041.5",
+          "change_yen": "+83",
           "change_pct": "+4.24",
-          "volume": "266,300",
+          "volume": "2,026,900",
           "already_watched": false
         },
         {
           "rank": 10,
-          "name": "(株)ＭｏｎｏｔａＲＯ",
-          "code": "3064",
+          "name": "芝浦機械(株)",
+          "code": "6104",
           "market": "東証PRM",
-          "price": "2,040",
-          "change_yen": "+81.5",
-          "change_pct": "+4.16",
-          "volume": "2,019,900",
+          "price": "5,040",
+          "change_yen": "+195",
+          "change_pct": "+4.02",
+          "volume": "145,700",
           "already_watched": false
         },
         {
@@ -123,109 +123,109 @@
           "name": "住友電気工業(株)",
           "code": "5802",
           "market": "東証PRM",
-          "price": "2,465",
-          "change_yen": "+96",
-          "change_pct": "+4.05",
-          "volume": "18,239,300",
+          "price": "2,463",
+          "change_yen": "+94",
+          "change_pct": "+3.97",
+          "volume": "18,346,500",
           "already_watched": true
         },
         {
           "rank": 12,
-          "name": "(株)アドバンテスト",
-          "code": "6857",
+          "name": "武蔵精密工業(株)",
+          "code": "7220",
           "market": "東証PRM",
-          "price": "39,050",
-          "change_yen": "+1,440",
-          "change_pct": "+3.83",
-          "volume": "11,992,900",
-          "already_watched": true
+          "price": "3,185",
+          "change_yen": "+120",
+          "change_pct": "+3.92",
+          "volume": "270,400",
+          "already_watched": false
         },
         {
           "rank": 13,
-          "name": "芝浦機械(株)",
-          "code": "6104",
+          "name": "(株)アドバンテスト",
+          "code": "6857",
           "market": "東証PRM",
-          "price": "5,030",
-          "change_yen": "+185",
-          "change_pct": "+3.82",
-          "volume": "139,700",
-          "already_watched": false
+          "price": "39,060",
+          "change_yen": "+1,450",
+          "change_pct": "+3.86",
+          "volume": "12,138,000",
+          "already_watched": true
         },
         {
           "rank": 14,
           "name": "シンプレクス・ホールディングス(株)",
           "code": "4373",
           "market": "東証PRM",
-          "price": "1,158",
-          "change_yen": "+41",
-          "change_pct": "+3.67",
-          "volume": "1,132,500",
+          "price": "1,159",
+          "change_yen": "+42",
+          "change_pct": "+3.76",
+          "volume": "1,141,000",
           "already_watched": false
         },
         {
           "rank": 15,
+          "name": "(株)ヨコオ",
+          "code": "6800",
+          "market": "東証PRM",
+          "price": "4,715",
+          "change_yen": "+165",
+          "change_pct": "+3.63",
+          "volume": "103,400",
+          "already_watched": false
+        },
+        {
+          "rank": 16,
+          "name": "(株)ＰＩＬＬＡＲ",
+          "code": "6490",
+          "market": "東証PRM",
+          "price": "11,490",
+          "change_yen": "+390",
+          "change_pct": "+3.51",
+          "volume": "132,100",
+          "already_watched": false
+        },
+        {
+          "rank": 17,
+          "name": "(株)ベクトル",
+          "code": "6058",
+          "market": "東証PRM",
+          "price": "2,043",
+          "change_yen": "+68",
+          "change_pct": "+3.44",
+          "volume": "295,600",
+          "already_watched": false
+        },
+        {
+          "rank": 18,
           "name": "ナガイレーベン(株)",
           "code": "7447",
           "market": "東証PRM",
           "price": "1,691",
           "change_yen": "+56",
           "change_pct": "+3.43",
-          "volume": "328,400",
-          "already_watched": false
-        },
-        {
-          "rank": 16,
-          "name": "(株)ベクトル",
-          "code": "6058",
-          "market": "東証PRM",
-          "price": "2,042",
-          "change_yen": "+67",
-          "change_pct": "+3.39",
-          "volume": "294,300",
-          "already_watched": false
-        },
-        {
-          "rank": 17,
-          "name": "(株)ＰＩＬＬＡＲ",
-          "code": "6490",
-          "market": "東証PRM",
-          "price": "11,470",
-          "change_yen": "+370",
-          "change_pct": "+3.33",
-          "volume": "131,700",
-          "already_watched": false
-        },
-        {
-          "rank": 18,
-          "name": "小林製薬(株)",
-          "code": "4967",
-          "market": "東証PRM",
-          "price": "7,220",
-          "change_yen": "+231",
-          "change_pct": "+3.31",
-          "volume": "295,900",
+          "volume": "329,100",
           "already_watched": false
         },
         {
           "rank": 19,
-          "name": "(株)ヨコオ",
-          "code": "6800",
+          "name": "三井金属(株)",
+          "code": "5706",
           "market": "東証PRM",
-          "price": "4,700",
-          "change_yen": "+150",
-          "change_pct": "+3.30",
-          "volume": "101,200",
+          "price": "2,543",
+          "change_yen": "+78.5",
+          "change_pct": "+3.19",
+          "volume": "12,798,500",
           "already_watched": false
         },
         {
           "rank": 20,
-          "name": "三井金属(株)",
-          "code": "5706",
+          "name": "小林製薬(株)",
+          "code": "4967",
           "market": "東証PRM",
-          "price": "2,542",
-          "change_yen": "+77.5",
-          "change_pct": "+3.14",
-          "volume": "12,756,000",
+          "price": "7,206",
+          "change_yen": "+217",
+          "change_pct": "+3.10",
+          "volume": "298,700",
           "already_watched": false
         }
       ]
@@ -242,7 +242,7 @@
           "price": "698",
           "change_yen": "-72",
           "change_pct": "-9.35",
-          "volume": "616,100",
+          "volume": "624,600",
           "already_watched": false
         },
         {
@@ -253,7 +253,7 @@
           "price": "37,100",
           "change_yen": "-3,800",
           "change_pct": "-9.29",
-          "volume": "194,200",
+          "volume": "194,700",
           "already_watched": false
         },
         {
@@ -261,10 +261,10 @@
           "name": "ＮＯＫ　Ｇｒｏｕｐ(株)",
           "code": "641A",
           "market": "東証PRM",
-          "price": "2,857",
-          "change_yen": "-243",
-          "change_pct": "-7.84",
-          "volume": "527,400",
+          "price": "2,856.5",
+          "change_yen": "-243.5",
+          "change_pct": "-7.85",
+          "volume": "531,400",
           "already_watched": false
         },
         {
@@ -272,10 +272,10 @@
           "name": "東洋エンジニアリング(株)",
           "code": "6330",
           "market": "東証PRM",
-          "price": "2,568",
-          "change_yen": "-182",
-          "change_pct": "-6.62",
-          "volume": "5,168,200",
+          "price": "2,571",
+          "change_yen": "-179",
+          "change_pct": "-6.51",
+          "volume": "5,202,200",
           "already_watched": false
         },
         {
@@ -294,65 +294,65 @@
           "name": "ソフトバンクグループ(株)",
           "code": "9984",
           "market": "東証PRM",
-          "price": "6,336",
-          "change_yen": "-365",
-          "change_pct": "-5.45",
-          "volume": "38,201,400",
+          "price": "6,338",
+          "change_yen": "-363",
+          "change_pct": "-5.42",
+          "volume": "38,479,200",
           "already_watched": true
         },
         {
           "rank": 7,
-          "name": "ＰＨＣホールディングス(株)",
-          "code": "6523",
-          "market": "東証PRM",
-          "price": "1,596",
-          "change_yen": "-88",
-          "change_pct": "-5.23",
-          "volume": "1,837,800",
-          "already_watched": false
-        },
-        {
-          "rank": 8,
           "name": "スター・マイカ・ホールディングス(株)",
           "code": "2975",
           "market": "東証PRM",
           "price": "1,264",
           "change_yen": "-68",
           "change_pct": "-5.11",
-          "volume": "438,700",
+          "volume": "439,300",
           "already_watched": false
         },
         {
-          "rank": 9,
+          "rank": 8,
           "name": "(株)ミツバ",
           "code": "7280",
           "market": "東証PRM",
           "price": "1,283",
           "change_yen": "-69",
           "change_pct": "-5.10",
-          "volume": "153,200",
+          "volume": "153,700",
+          "already_watched": false
+        },
+        {
+          "rank": 9,
+          "name": "日産自動車(株)",
+          "code": "7201",
+          "market": "東証PRM",
+          "price": "280.9",
+          "change_yen": "-14.8",
+          "change_pct": "-5.01",
+          "volume": "59,587,600",
           "already_watched": false
         },
         {
           "rank": 10,
-          "name": "日産自動車(株)",
-          "code": "7201",
+          "name": "(株)グローバル・リンク・マネジメント",
+          "code": "3486",
           "market": "東証PRM",
-          "price": "280.8",
-          "change_yen": "-14.9",
-          "change_pct": "-5.04",
-          "volume": "59,327,000",
+          "price": "1,906",
+          "change_yen": "-99",
+          "change_pct": "-4.94",
+          "volume": "185,300",
           "already_watched": false
         },
         {
           "rank": 11,
-          "name": "(株)グローバル・リンク・マネジメント",
-          "code": "3486",
+          "name": "ＰＨＣホールディングス(株)",
+          "code": "6523",
           "market": "東証PRM",
-          "price": "1,905",
-          "change_yen": "-100",
-          "change_pct": "-4.99",
-          "volume": "182,000",
+          "price": "1,601",
+          "change_yen": "-83",
+          "change_pct": "-4.93",
+          "volume": "1,842,800",
           "already_watched": false
         },
         {
@@ -360,10 +360,10 @@
           "name": "大平洋金属(株)",
           "code": "5541",
           "market": "東証PRM",
-          "price": "2,528",
-          "change_yen": "-126",
-          "change_pct": "-4.75",
-          "volume": "247,900",
+          "price": "2,529",
+          "change_yen": "-125",
+          "change_pct": "-4.71",
+          "volume": "250,300",
           "already_watched": false
         },
         {
@@ -371,69 +371,58 @@
           "name": "ペプチドリーム(株)",
           "code": "4587",
           "market": "東証PRM",
-          "price": "1,079.5",
-          "change_yen": "-53.5",
-          "change_pct": "-4.72",
-          "volume": "326,500",
+          "price": "1,080",
+          "change_yen": "-53",
+          "change_pct": "-4.68",
+          "volume": "335,700",
           "already_watched": true
         },
         {
           "rank": 14,
-          "name": "(株)リンクアンドモチベーション",
-          "code": "2170",
-          "market": "東証PRM",
-          "price": "626",
-          "change_yen": "-29",
-          "change_pct": "-4.43",
-          "volume": "635,500",
-          "already_watched": false
-        },
-        {
-          "rank": 15,
           "name": "イリソ電子工業(株)",
           "code": "6908",
           "market": "東証PRM",
           "price": "2,707",
           "change_yen": "-125",
           "change_pct": "-4.41",
-          "volume": "192,300",
+          "volume": "194,200",
+          "already_watched": false
+        },
+        {
+          "rank": 15,
+          "name": "東邦ホールディングス(株)",
+          "code": "8129",
+          "market": "東証PRM",
+          "price": "3,583",
+          "change_yen": "-162",
+          "change_pct": "-4.33",
+          "volume": "178,700",
           "already_watched": false
         },
         {
           "rank": 16,
-          "name": "東邦ホールディングス(株)",
-          "code": "8129",
+          "name": "(株)リンクアンドモチベーション",
+          "code": "2170",
           "market": "東証PRM",
-          "price": "3,581",
-          "change_yen": "-164",
-          "change_pct": "-4.38",
-          "volume": "169,600",
+          "price": "627",
+          "change_yen": "-28",
+          "change_pct": "-4.27",
+          "volume": "637,900",
           "already_watched": false
         },
         {
           "rank": 17,
-          "name": "(株)タスキホールディングス",
-          "code": "166A",
+          "name": "(株)Ａｎｄ　Ｄｏホールディングス",
+          "code": "3457",
           "market": "東証PRM",
-          "price": "964",
-          "change_yen": "-44",
-          "change_pct": "-4.37",
-          "volume": "370,600",
+          "price": "835",
+          "change_yen": "-36",
+          "change_pct": "-4.13",
+          "volume": "321,900",
           "already_watched": false
         },
         {
           "rank": 18,
-          "name": "(株)Ａｎｄ　Ｄｏホールディングス",
-          "code": "3457",
-          "market": "東証PRM",
-          "price": "834",
-          "change_yen": "-37",
-          "change_pct": "-4.25",
-          "volume": "316,600",
-          "already_watched": false
-        },
-        {
-          "rank": 19,
           "name": "コンドーテック(株)",
           "code": "7438",
           "market": "東証PRM",
@@ -444,15 +433,26 @@
           "already_watched": false
         },
         {
-          "rank": 20,
+          "rank": 19,
           "name": "東京エレクトロン(株)",
           "code": "8035",
           "market": "東証PRM",
           "price": "12,065",
           "change_yen": "-515",
           "change_pct": "-4.09",
-          "volume": "11,558,300",
+          "volume": "11,624,900",
           "already_watched": true
+        },
+        {
+          "rank": 20,
+          "name": "(株)ジャパンディスプレイ",
+          "code": "6740",
+          "market": "東証PRM",
+          "price": "47",
+          "change_yen": "-2",
+          "change_pct": "-4.08",
+          "volume": "16,159,000",
+          "already_watched": false
         }
       ]
     },
@@ -543,7 +543,7 @@
           "code": "2512",
           "market": "東証ETF",
           "price": "705.8",
-          "change_yen": "372,300",
+          "change_yen": "372,340",
           "change_pct": null,
           "volume": "6,110",
           "already_watched": false
@@ -561,6 +561,17 @@
         },
         {
           "rank": 10,
+          "name": "GX S&P先進国キャッシュフロー・トップ100",
+          "code": "564A",
+          "market": "東証ETF",
+          "price": "1,095",
+          "change_yen": "10,009",
+          "change_pct": null,
+          "volume": "264",
+          "already_watched": false
+        },
+        {
+          "rank": 11,
           "name": "(NEXT FUNDS)JPX日経400ダブルインバース",
           "code": "1472",
           "market": "東証ETF",
@@ -571,7 +582,7 @@
           "already_watched": false
         },
         {
-          "rank": 11,
+          "rank": 12,
           "name": "iFreeETF S&P500(H無)",
           "code": "2247",
           "market": "東証ETF",
@@ -582,7 +593,7 @@
           "already_watched": false
         },
         {
-          "rank": 12,
+          "rank": 13,
           "name": "iFreeETF JPX日経400",
           "code": "1599",
           "market": "東証ETF",
@@ -593,7 +604,7 @@
           "already_watched": false
         },
         {
-          "rank": 13,
+          "rank": 14,
           "name": "(NEXT FUNDS)外国株式･MSCI-KOKUSAI(H有)",
           "code": "2514",
           "market": "東証ETF",
@@ -604,7 +615,7 @@
           "already_watched": false
         },
         {
-          "rank": 14,
+          "rank": 15,
           "name": "ステート・ストリート・スパイダー S&P500 ETF(H有)",
           "code": "450A",
           "market": "東証ETF",
@@ -615,7 +626,7 @@
           "already_watched": false
         },
         {
-          "rank": 15,
+          "rank": 16,
           "name": "グローム・ホールディングス(株)",
           "code": "8938",
           "market": "東証GRT",
@@ -626,7 +637,7 @@
           "already_watched": false
         },
         {
-          "rank": 16,
+          "rank": 17,
           "name": "WisdomTree ブロード上場投信",
           "code": "1684",
           "market": "東証ETF",
@@ -637,7 +648,7 @@
           "already_watched": false
         },
         {
-          "rank": 17,
+          "rank": 18,
           "name": "iシェアーズ ドイツ国債 ETF(H有)",
           "code": "2857",
           "market": "東証ETF",
@@ -648,7 +659,7 @@
           "already_watched": false
         },
         {
-          "rank": 18,
+          "rank": 19,
           "name": "(株)セイファート",
           "code": "9213",
           "market": "東証STD",
@@ -659,7 +670,7 @@
           "already_watched": false
         },
         {
-          "rank": 19,
+          "rank": 20,
           "name": "中国H株ブル2倍上場投信",
           "code": "1572",
           "market": "東証ETF",
@@ -667,17 +678,6 @@
           "change_yen": "3,790",
           "change_pct": null,
           "volume": "250",
-          "already_watched": false
-        },
-        {
-          "rank": 20,
-          "name": "上場インデックスファンド海外債券毎月分配",
-          "code": "1677",
-          "market": "東証ETF",
-          "price": "57,650",
-          "change_yen": "1,650",
-          "change_pct": null,
-          "volume": "110",
           "already_watched": false
         }
       ]
@@ -691,10 +691,10 @@
           "name": "キオクシアホールディングス(株)",
           "code": "285A",
           "market": "東証PRM",
-          "price": "19,085",
-          "change_yen": "-15",
-          "change_pct": "-0.08",
-          "volume": "509,340,878,500",
+          "price": "19,110",
+          "change_yen": "+10",
+          "change_pct": "+0.05",
+          "volume": "512,755,947,500",
           "already_watched": true
         },
         {
@@ -702,10 +702,10 @@
           "name": "(株)アドバンテスト",
           "code": "6857",
           "market": "東証PRM",
-          "price": "39,050",
-          "change_yen": "+1,440",
-          "change_pct": "+3.83",
-          "volume": "465,885,812,000",
+          "price": "39,060",
+          "change_yen": "+1,450",
+          "change_pct": "+3.86",
+          "volume": "471,503,289,000",
           "already_watched": true
         },
         {
@@ -713,10 +713,10 @@
           "name": "レーザーテック(株)",
           "code": "6920",
           "market": "東証PRM",
-          "price": "46,100",
-          "change_yen": "+390",
-          "change_pct": "+0.85",
-          "volume": "255,635,496,000",
+          "price": "46,050",
+          "change_yen": "+340",
+          "change_pct": "+0.74",
+          "volume": "257,136,360,000",
           "already_watched": true
         },
         {
@@ -724,10 +724,10 @@
           "name": "ソフトバンクグループ(株)",
           "code": "9984",
           "market": "東証PRM",
-          "price": "6,336",
-          "change_yen": "-365",
-          "change_pct": "-5.45",
-          "volume": "244,797,788,200",
+          "price": "6,338",
+          "change_yen": "-363",
+          "change_pct": "-5.42",
+          "volume": "246,567,855,000",
           "already_watched": true
         },
         {
@@ -735,10 +735,10 @@
           "name": "(株)フジクラ",
           "code": "5803",
           "market": "東証PRM",
-          "price": "5,662",
-          "change_yen": "+294",
-          "change_pct": "+5.48",
-          "volume": "229,228,960,400",
+          "price": "5,665",
+          "change_yen": "+297",
+          "change_pct": "+5.53",
+          "volume": "231,155,272,800",
           "already_watched": true
         },
         {
@@ -746,10 +746,10 @@
           "name": "太陽誘電(株)",
           "code": "6976",
           "market": "東証PRM",
-          "price": "9,755",
-          "change_yen": "-345",
-          "change_pct": "-3.42",
-          "volume": "222,725,777,100",
+          "price": "9,763",
+          "change_yen": "-337",
+          "change_pct": "-3.34",
+          "volume": "223,874,191,600",
           "already_watched": false
         },
         {
@@ -757,10 +757,10 @@
           "name": "(NEXT FUNDS)日経平均レバレッジ上場投信",
           "code": "1570",
           "market": "東証ETF",
-          "price": "74,350",
-          "change_yen": "-1,430",
-          "change_pct": "-1.89",
-          "volume": "140,957,795,730",
+          "price": "74,390",
+          "change_yen": "-1,390",
+          "change_pct": "-1.83",
+          "volume": "142,132,560,560",
           "already_watched": false
         },
         {
@@ -771,7 +771,7 @@
           "price": "12,065",
           "change_yen": "-515",
           "change_pct": "-4.09",
-          "volume": "140,822,145,500",
+          "volume": "141,626,115,500",
           "already_watched": true
         },
         {
@@ -779,10 +779,10 @@
           "name": "古河電気工業(株)",
           "code": "5801",
           "market": "東証PRM",
-          "price": "4,449",
-          "change_yen": "+336",
-          "change_pct": "+8.17",
-          "volume": "128,422,312,100",
+          "price": "4,450",
+          "change_yen": "+337",
+          "change_pct": "+8.19",
+          "volume": "130,668,579,100",
           "already_watched": true
         },
         {
@@ -790,10 +790,10 @@
           "name": "(株)村田製作所",
           "code": "6981",
           "market": "東証PRM",
-          "price": "8,424",
-          "change_yen": "-89",
-          "change_pct": "-1.05",
-          "volume": "105,648,803,000",
+          "price": "8,431",
+          "change_yen": "-82",
+          "change_pct": "-0.96",
+          "volume": "106,302,524,300",
           "already_watched": false
         },
         {
@@ -804,7 +804,7 @@
           "price": "12,110",
           "change_yen": "+115",
           "change_pct": "+0.96",
-          "volume": "98,794,836,000",
+          "volume": "99,272,520,000",
           "already_watched": false
         },
         {
@@ -812,10 +812,10 @@
           "name": "(株)三菱ＵＦＪフィナンシャル・グループ",
           "code": "8306",
           "market": "東証PRM",
-          "price": "3,549",
-          "change_yen": "-37",
-          "change_pct": "-1.03",
-          "volume": "73,881,866,400",
+          "price": "3,548",
+          "change_yen": "-38",
+          "change_pct": "-1.06",
+          "volume": "74,080,917,500",
           "already_watched": true
         },
         {
@@ -823,10 +823,10 @@
           "name": "(株)ディスコ",
           "code": "6146",
           "market": "東証PRM",
-          "price": "60,200",
-          "change_yen": "-240",
-          "change_pct": "-0.40",
-          "volume": "65,369,196,000",
+          "price": "60,210",
+          "change_yen": "-230",
+          "change_pct": "-0.38",
+          "volume": "65,962,490,000",
           "already_watched": true
         },
         {
@@ -834,10 +834,10 @@
           "name": "ＪＸ金属(株)",
           "code": "5016",
           "market": "東証PRM",
-          "price": "3,620",
-          "change_yen": "+15",
-          "change_pct": "+0.42",
-          "volume": "50,337,786,800",
+          "price": "3,622",
+          "change_yen": "+17",
+          "change_pct": "+0.47",
+          "volume": "50,733,361,600",
           "already_watched": false
         },
         {
@@ -845,10 +845,10 @@
           "name": "トヨタ自動車(株)",
           "code": "7203",
           "market": "東証PRM",
-          "price": "2,865.5",
-          "change_yen": "-59.5",
-          "change_pct": "-2.03",
-          "volume": "46,251,010,750",
+          "price": "2,866.5",
+          "change_yen": "-58.5",
+          "change_pct": "-2.00",
+          "volume": "46,628,208,050",
           "already_watched": true
         },
         {
@@ -856,10 +856,10 @@
           "name": "住友電気工業(株)",
           "code": "5802",
           "market": "東証PRM",
-          "price": "2,465",
-          "change_yen": "+96",
-          "change_pct": "+4.05",
-          "volume": "44,548,101,000",
+          "price": "2,463",
+          "change_yen": "+94",
+          "change_pct": "+3.97",
+          "volume": "44,811,965,850",
           "already_watched": true
         },
         {
@@ -867,10 +867,10 @@
           "name": "(株)三井住友フィナンシャルグループ",
           "code": "8316",
           "market": "東証PRM",
-          "price": "3,331",
-          "change_yen": "-52",
-          "change_pct": "-1.54",
-          "volume": "43,830,659,500",
+          "price": "3,329",
+          "change_yen": "-54",
+          "change_pct": "-1.60",
+          "volume": "43,919,062,300",
           "already_watched": true
         },
         {
@@ -881,7 +881,7 @@
           "price": "71,100",
           "change_yen": "-1,650",
           "change_pct": "-2.27",
-          "volume": "42,486,005,000",
+          "volume": "42,657,047,000",
           "already_watched": false
         },
         {
@@ -892,7 +892,7 @@
           "price": "10,155",
           "change_yen": "+35",
           "change_pct": "+0.35",
-          "volume": "40,665,743,600",
+          "volume": "40,878,384,600",
           "already_watched": false
         },
         {
@@ -900,10 +900,10 @@
           "name": "東京海上ホールディングス(株)",
           "code": "8766",
           "market": "東証PRM",
-          "price": "507.9",
-          "change_yen": "-13.1",
-          "change_pct": "-2.51",
-          "volume": "39,852,297,330",
+          "price": "508.1",
+          "change_yen": "-12.9",
+          "change_pct": "-2.48",
+          "volume": "40,148,471,670",
           "already_watched": false
         }
       ]
