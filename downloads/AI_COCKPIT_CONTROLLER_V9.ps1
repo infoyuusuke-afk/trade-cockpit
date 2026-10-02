@@ -44,7 +44,7 @@ param(
 #     controller stops the data path.
 
 $ErrorActionPreference = "Stop"
-$Build = "V9-CONTROLLER-20261002-PS51-INDEXOF-01"
+$Build = "V9-CONTROLLER-20261002-EXCEL-COEXIST-01"
 $ExcelIdentityProbeTimeoutSeconds = 35
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
@@ -437,6 +437,35 @@ function Get-ForeignExcelProcesses([int[]]$AllowedPids = @(), [int]$SessionId = 
             -not ($AllowedPids -contains $pidValue)
         }
     )
+}
+
+function Get-CanonicalWorkbookConflicts([string]$WorkbookPath, [string]$WorkbookName, [int[]]$AllowedPids = @()) {
+    $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
+    $hits = New-Object System.Collections.Generic.List[object]
+    $seen = @{}
+    foreach ($proc in @(Get-ExcelProcessForWorkbook $WorkbookName)) {
+        if ($null -eq $proc) { continue }
+        $pidValue = [int]$proc.Id
+        if ($AllowedPids -contains $pidValue) { continue }
+        if ($seen.ContainsKey($pidValue)) { continue }
+        $seen[$pidValue] = $true
+        [void]$hits.Add($proc)
+    }
+    foreach ($proc in @(Get-ForeignExcelProcesses $AllowedPids)) {
+        if ($null -eq $proc) { continue }
+        $pidValue = [int]$proc.Id
+        if ($seen.ContainsKey($pidValue)) { continue }
+        if ([string]::IsNullOrWhiteSpace($WorkbookPath)) { continue }
+        $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $pidValue) -ErrorAction SilentlyContinue
+        if ($null -eq $info) { continue }
+        $cmd = [string]$info.CommandLine
+        if ([string]::IsNullOrWhiteSpace($cmd)) { continue }
+        if ($cmd.IndexOf($WorkbookPath, $ordinalIgnoreCase) -ge 0) {
+            $seen[$pidValue] = $true
+            [void]$hits.Add($proc)
+        }
+    }
+    return @($hits.ToArray())
 }
 
 function Test-LaunchedExcelOwnership([int]$ExcelPid,[string]$WorkbookPath,[int]$ControllerPid) {
@@ -1106,25 +1135,24 @@ try {
     }
     Write-Status ("  MarketSpeed II: READY / session " + $currentSessionId) Green
 
-    # P0 safety interlock: Excel isolation is enforced at the Windows
-    # session boundary. Block any unrelated Excel in THIS session, while
-    # deliberately ignoring work Excel running in another session.
+    # Foreign Excel may stay open. Isolation is the new /x process plus
+    # canonical identity checks. Presence alone does not stop startup,
+    # and this interlock never closes, kills, or clicks another Excel.
     $foreignExcelAtStartup = @(Get-ForeignExcelProcesses)
     if ($foreignExcelAtStartup.Count -gt 0) {
         Write-Host ""
-        Write-Host "==================================================" -ForegroundColor Red
-        Write-Host " EXCEL SAFETY INTERLOCK" -ForegroundColor Red
-        Write-Host "==================================================" -ForegroundColor Red
+        Write-Host "==================================================" -ForegroundColor Yellow
+        Write-Host " EXCEL SAFETY INTERLOCK" -ForegroundColor Yellow
+        Write-Host "==================================================" -ForegroundColor Yellow
         foreach ($foreignExcel in $foreignExcelAtStartup) {
-            Write-Host ("  PID " + $foreignExcel.Id + " / " + $foreignExcel.MainWindowTitle) -ForegroundColor Yellow
+            Write-Host ("  leaving foreign Excel untouched: PID " + $foreignExcel.Id + " / " + $foreignExcel.MainWindowTitle) -ForegroundColor Yellow
         }
         Write-Host ""
-        Write-Host "Another Excel process is already running in this Windows session." -ForegroundColor Cyan
-        Write-Host "AI Cockpit will NOT start MS2/RSS Excel beside it." -ForegroundColor Cyan
-        Write-Host "Close unrelated Excel workbooks first, or use the future isolated-session mode." -ForegroundColor Cyan
-        throw "Excel safety interlock: foreign Excel process detected."
+        Write-Host "Foreign Excel is present. It will not be closed, killed, or operated." -ForegroundColor Cyan
+        Write-Host "AI Cockpit will launch a separate isolated Excel /x for the canonical workbook only." -ForegroundColor Cyan
+    } else {
+        Write-Status "  Excel safety interlock: no pre-existing Excel process." Green
     }
-    Write-Status "  Excel safety interlock: no pre-existing Excel process." Green
 
     Write-Status "Starting unified voice backend (Style-Bert-VITS2 only)..."
     if (Test-Port 5000 350) {
@@ -1170,7 +1198,7 @@ try {
     Write-Status "Opening MS2 RSS workbook (isolated Excel /x; canonical path only)..."
     Write-Status ("  canonical: " + $WorkbookPath) DarkGray
 
-    $existingExcel = @(Get-ExcelProcessForWorkbook $WorkbookName)
+    $existingExcel = @(Get-CanonicalWorkbookConflicts $WorkbookPath $WorkbookName @())
 
     if ($existingExcel.Count -gt 0) {
         $state.excel_pid = 0
@@ -1180,7 +1208,7 @@ try {
         throw (
             "RSS workbook is already open in Excel PID " +
             $existingExcel[0].Id +
-            ". Refusing to take ownership."
+            ". Refusing to take ownership. Foreign Excel was not touched."
         )
     }
 
@@ -1326,14 +1354,14 @@ try {
     while ($true) {
         Start-Sleep -Seconds 2
 
-        # P0 runtime interlock: if another Excel process appears while the
-        # AI Cockpit session is active, fail closed. Never touch the foreign
-        # process; stop only controller-owned workers and verified owned Excel.
+        # A foreign Excel with some other workbook may keep running.
+        # Fail closed only when another process already has the canonical
+        # workbook. Never close, kill, or click that foreign process.
         $allowedExcelPids = @()
         if ([int]$state.excel_pid -gt 0) { $allowedExcelPids += [int]$state.excel_pid }
-        $foreignExcelNow = @(Get-ForeignExcelProcesses $allowedExcelPids)
+        $foreignExcelNow = @(Get-CanonicalWorkbookConflicts $WorkbookPath $WorkbookName $allowedExcelPids)
         if ($foreignExcelNow.Count -gt 0) {
-            Write-Status "FOREIGN EXCEL DETECTED - FAIL-CLOSED SAFETY STOP." Red
+            Write-Status "CANONICAL WORKBOOK CONFLICT - FAIL-CLOSED SAFETY STOP." Red
             foreach ($foreignExcel in $foreignExcelNow) {
                 Write-Status ("  leaving foreign Excel untouched: PID " + $foreignExcel.Id + " / " + $foreignExcel.MainWindowTitle) Yellow
             }
