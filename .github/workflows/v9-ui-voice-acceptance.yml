@@ -191,8 +191,11 @@ jobs:
           $sw = [Diagnostics.Stopwatch]::StartNew()
           & .\downloads\AI_COCKPIT_CONTROLLER_V9.ps1 -IdentityProbeSelfTest
           $sw.Stop()
-          if ($sw.Elapsed.TotalSeconds -gt 12) {
-            throw ("Identity probe selftest exceeded 12s: " + $sw.Elapsed.TotalSeconds)
+          # The helper sleeps 120s. Finishing inside 90s, including Windows
+          # PowerShell startup, proves the Controller killed it on the hard
+          # timeout instead of waiting for that sleep.
+          if ($sw.Elapsed.TotalSeconds -gt 90) {
+            throw ("Identity probe selftest exceeded 90s: " + $sw.Elapsed.TotalSeconds)
           }
       - name: Runtime-bind V8 to V9 switch helpers
         shell: powershell

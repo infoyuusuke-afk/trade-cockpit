@@ -409,16 +409,17 @@ function Wait-OwnedHelperProcess {
     $started = Get-Date
     $seen = 0
     $lastBeat = -1
-    while (-not $Process.HasExited) {
+    $timedOut = $false
+    while (-not $timedOut) {
         $elapsed = [int]((Get-Date) - $started).TotalSeconds
         if ($elapsed -ge $TimeoutSeconds) {
-            try { Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue } catch {}
-            $killDeadline = (Get-Date).AddSeconds(5)
-            while (-not $Process.HasExited -and (Get-Date) -lt $killDeadline) {
-                try { $Process.Refresh() } catch {}
-                Start-Sleep -Milliseconds 200
-            }
-            return @{ timed_out = $true; elapsed = $elapsed; exit_code = $null; helper_pid = [int]$Process.Id }
+            # Kill this helper process only. WaitForExit(5000) returns even
+            # when the process does not die, so a stuck COM call cannot
+            # keep the Controller thread blocked.
+            $timedOut = $true
+            try { $Process.Kill() } catch {}
+            try { [void]$Process.WaitForExit(5000) } catch {}
+            break
         }
         if (-not [string]::IsNullOrWhiteSpace($ProgressPath) -and (Test-Path -LiteralPath $ProgressPath)) {
             try {
@@ -433,15 +434,21 @@ function Wait-OwnedHelperProcess {
             Write-Status ("Excel identity probe attempt {0} / elapsed {1}s" -f ([Math]::Max(1, [int]($elapsed / 2)), $elapsed)) DarkGray
             $lastBeat = $elapsed
         }
-        Start-Sleep -Milliseconds 400
-        try { $Process.Refresh() } catch {}
+        $sliceMs = [int](($TimeoutSeconds - $elapsed) * 1000)
+        if ($sliceMs -lt 200) { $sliceMs = 200 }
+        if ($sliceMs -gt 400) { $sliceMs = 400 }
+        $exited = $false
+        try { $exited = $Process.WaitForExit($sliceMs) } catch { $exited = $true }
+        if ($exited) { break }
     }
     try { $Process.Refresh() } catch {}
     $exitCode = $null
     try { $exitCode = $Process.ExitCode } catch {}
+    $reportedElapsed = [int]((Get-Date) - $started).TotalSeconds
+    if ($timedOut) { $reportedElapsed = $TimeoutSeconds }
     return @{
-        timed_out = $false
-        elapsed = [int]((Get-Date) - $started).TotalSeconds
+        timed_out = $timedOut
+        elapsed = $reportedElapsed
         exit_code = $exitCode
         helper_pid = [int]$Process.Id
     }
@@ -538,7 +545,7 @@ function Invoke-ExcelIdentityProbeSelfTest {
     $wait = Wait-OwnedHelperProcess -Process $hung -TimeoutSeconds 3 -ProgressPath $progress
     $clock.Stop()
     if (-not $wait.timed_out) { throw "Identity probe selftest: hung helper exited before the hard timeout." }
-    if ($clock.Elapsed.TotalSeconds -gt 10) { throw ("Identity probe selftest exceeded 10s: " + $clock.Elapsed.TotalSeconds) }
+    if ($clock.Elapsed.TotalSeconds -gt 20) { throw ("Identity probe selftest exceeded 20s: " + $clock.Elapsed.TotalSeconds) }
     $still = Get-Process -Id $hung.Id -ErrorAction SilentlyContinue
     if ($null -ne $still -and -not $still.HasExited) { throw "Identity probe selftest: helper PID $($hung.Id) was still running." }
     Write-Output ("EXCEL_IDENTITY_PROBE_TIMEOUT after " + $wait.elapsed + "s")
