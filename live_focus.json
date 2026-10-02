@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-02 09:17:21 JST",
+  "updated_at": "2026-10-02 09:19:46 JST",
   "refresh_seconds": 60,
   "backend_interval_minutes": 5,
   "verified_count": 0,
@@ -9,13 +9,13 @@
   "speech_enabled": true,
   "pts_supported": false,
   "rows": {
-    "7013": {
-      "name": "IHI（7013）",
-      "ticker": "7013.T",
-      "price": 2697.0,
-      "primary_price": 2711.5,
-      "quote_time": "2026-10-02T09:02:21+09:00",
-      "age_minutes": 15.0,
+    "3778": {
+      "name": "さくらインターネット（3778）",
+      "ticker": "3778.T",
+      "price": 4000.0,
+      "primary_price": 4000.0,
+      "quote_time": "2026-10-02T09:04:41+09:00",
+      "age_minutes": 15.1,
       "verified": false,
       "status": "更新停止・売買禁止",
       "chart": [],
@@ -24,9 +24,9 @@
     "285A": {
       "name": "キオクシアHD（285A）",
       "ticker": "285A.T",
-      "price": 18955.0,
+      "price": 18860.0,
       "primary_price": 19100.0,
-      "quote_time": "2026-10-02T09:02:21+09:00",
+      "quote_time": "2026-10-02T09:04:45+09:00",
       "age_minutes": 15.0,
       "verified": false,
       "status": "更新停止・売買禁止",
@@ -166,7 +166,7 @@
       "forecast_bias": "上方向候補",
       "forecast_tradable": false,
       "monitor_status": "予測崩れ",
-      "actual_time": "09:02",
+      "actual_time": "09:04",
       "forecast_time": "09:00",
       "actual_return": 0.0,
       "forecast_return": 1.6,

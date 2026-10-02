@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-02 09:16:23 JST",
+  "updated_at": "2026-10-02 09:18:39 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -1590,19 +1590,19 @@
       "relation": "自動検出・正相関",
       "expected": "正相関",
       "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.6,
+      "corr20": 0.62,
       "corr60": 0.51,
       "sample20": 20,
       "sample60": 60,
       "intraday_corr": 0.27,
       "lead_bars": 0,
-      "bars": 260,
+      "bars": 261,
       "state": "確認",
       "confidence": 73,
       "anchor_today": {
-        "ret": -0.29,
-        "or15": "レンジ内",
-        "vwap": "上",
+        "ret": 0.0,
+        "or15": "形成中",
+        "vwap": "未取得",
         "ema": "下向き"
       },
       "peer_today": {
@@ -1860,37 +1860,6 @@
         "ema": "下向き"
       },
       "decision": "この関係を売買根拠にしない"
-    },
-    {
-      "anchor": "FIXER（5129）",
-      "anchor_ticker": "5129.T",
-      "peer": "note（5243）",
-      "peer_ticker": "5243.T",
-      "relation": "自動検出・正相関",
-      "expected": "正相関",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.58,
-      "corr60": 0.34,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": 0.25,
-      "lead_bars": 0,
-      "bars": 115,
-      "state": "確認",
-      "confidence": 70,
-      "anchor_today": {
-        "ret": 0.0,
-        "or15": "形成中",
-        "vwap": "未取得",
-        "ema": "下向き"
-      },
-      "peer_today": {
-        "ret": 0.0,
-        "or15": "形成中",
-        "vwap": "未取得",
-        "ema": "下向き"
-      },
-      "decision": "売買の確認材料に使用"
     },
     {
       "anchor": "モビルス（4370）",
@@ -2899,6 +2868,37 @@
       "intraday_corr": 0.11,
       "lead_bars": 0,
       "bars": 257,
+      "state": "不安定",
+      "confidence": 62,
+      "anchor_today": {
+        "ret": 0.0,
+        "or15": "形成中",
+        "vwap": "未取得",
+        "ema": "下向き"
+      },
+      "peer_today": {
+        "ret": 0.0,
+        "or15": "形成中",
+        "vwap": "未取得",
+        "ema": "下向き"
+      },
+      "decision": "この関係を売買根拠にしない"
+    },
+    {
+      "anchor": "FIXER（5129）",
+      "anchor_ticker": "5129.T",
+      "peer": "キーエンス（6861）",
+      "peer_ticker": "6861.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.65,
+      "corr60": 0.24,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": -0.14,
+      "lead_bars": -1,
+      "bars": 116,
       "state": "不安定",
       "confidence": 62,
       "anchor_today": {
