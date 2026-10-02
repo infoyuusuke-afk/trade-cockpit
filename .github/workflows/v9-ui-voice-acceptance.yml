@@ -186,6 +186,10 @@ jobs:
           }
 
       - name: Excel identity probe hard-timeout selftest
+        # Windows PowerShell 5.1 is the acceptance shell. The Ubuntu
+        # structural job covers the same -IdentityProbeSelfTest entry
+        # through tests/test_v9_excel_identity_probe.py, whose harness
+        # cap stays below the helper's 120s sleep.
         shell: powershell
         run: |
           $sw = [Diagnostics.Stopwatch]::StartNew()
