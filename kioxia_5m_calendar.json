@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-10-02 15:02:21 JST",
+  "updated_at": "2026-10-02 15:04:47 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3222,7 +3222,7 @@
     },
     {
       "date": "2026-10-02",
-      "ret": 0.74,
+      "ret": 0.95,
       "high": 2.01,
       "low": -1.48,
       "type": "寄り底",
@@ -3285,7 +3285,7 @@
         0.662,
         0.503,
         0.901,
-        0.742
+        0.954
       ],
       "volume_path": [
         1666100.0,
@@ -3345,13 +3345,13 @@
         28653600.0,
         28985300.0,
         29372300.0,
-        29510400.0
+        29651300.0
       ]
     }
   ],
   "current": {
     "date": "2026-10-02",
-    "ret": 0.74,
+    "ret": 0.95,
     "high": 2.01,
     "low": -1.48,
     "type": "寄り底",
@@ -3414,7 +3414,7 @@
       0.662,
       0.503,
       0.901,
-      0.742
+      0.954
     ],
     "volume_path": [
       1666100.0,
@@ -3474,7 +3474,7 @@
       28653600.0,
       28985300.0,
       29372300.0,
-      29510400.0
+      29651300.0
     ]
   },
   "current_1m": [
@@ -6027,11 +6027,29 @@
     },
     {
       "t": "14:47",
-      "o": 0.7684,
-      "h": 0.7684,
-      "l": 0.7684,
+      "o": 0.8214,
+      "h": 0.8479,
+      "l": 0.6889,
+      "c": 0.6889,
+      "price": 19000.0,
+      "v": 71800
+    },
+    {
+      "t": "14:48",
+      "o": 0.6889,
+      "h": 0.7949,
+      "l": 0.6624,
       "c": 0.7684,
       "price": 19015.0,
+      "v": 69100
+    },
+    {
+      "t": "14:49",
+      "o": 0.9539,
+      "h": 0.9539,
+      "l": 0.9539,
+      "c": 0.9539,
+      "price": 19050.0,
       "v": 0
     }
   ],
@@ -6039,14 +6057,14 @@
   "one_minute_verified": true,
   "technical_levels": {
     "session_open": 18870.0,
-    "daily_ma5": 18364.3,
+    "daily_ma5": 18372.3,
     "pivot_p": 18958.3,
     "pivot_r1": 19386.7,
     "pivot_s1": 18651.7,
     "or15_high": 18870.0,
     "or15_low": 18590.0,
     "return_pct": {
-      "daily_ma5": -2.6799,
+      "daily_ma5": -2.6375,
       "pivot_p": 0.4679,
       "pivot_r1": 2.7382,
       "pivot_s1": -1.1569,
@@ -6193,12 +6211,12 @@
         19468600.0,
         19996000.0
       ],
-      "similarity": 87.2,
+      "similarity": 87.3,
       "after_ret": 0.11,
       "max_up_after": 0.34,
       "max_down_after": -0.23,
       "score_components": {
-        "five_minute": 88.5,
+        "five_minute": 88.6,
         "us_market": 82.3,
         "credit_supply": 91.5
       },
@@ -6369,7 +6387,7 @@
       "max_up_after": 0.05,
       "max_down_after": -1.04,
       "score_components": {
-        "five_minute": 81.0,
+        "five_minute": 81.2,
         "us_market": 92.7,
         "credit_supply": 100.0
       },
@@ -6540,7 +6558,7 @@
       "max_up_after": 0.25,
       "max_down_after": -1.41,
       "score_components": {
-        "five_minute": 90.3,
+        "five_minute": 90.2,
         "us_market": 73.2,
         "credit_supply": null
       },
@@ -6694,12 +6712,12 @@
         45998300.0,
         46419800.0
       ],
-      "similarity": 84.6,
+      "similarity": 84.8,
       "after_ret": 0.24,
       "max_up_after": 0.34,
       "max_down_after": -0.26,
       "score_components": {
-        "five_minute": 81.2,
+        "five_minute": 81.4,
         "us_market": 87.4,
         "credit_supply": 100.0
       },
@@ -6865,12 +6883,12 @@
         24519200.0,
         24904200.0
       ],
-      "similarity": 83.4,
+      "similarity": 83.2,
       "after_ret": 0.66,
       "max_up_after": 0.81,
       "max_down_after": -0.18,
       "score_components": {
-        "five_minute": 82.4,
+        "five_minute": 82.2,
         "us_market": 85.8,
         "credit_supply": null
       },
@@ -7025,12 +7043,12 @@
       19468600.0,
       19996000.0
     ],
-    "similarity": 87.2,
+    "similarity": 87.3,
     "after_ret": 0.11,
     "max_up_after": 0.34,
     "max_down_after": -0.23,
     "score_components": {
-      "five_minute": 88.5,
+      "five_minute": 88.6,
       "us_market": 82.3,
       "credit_supply": 91.5
     },
