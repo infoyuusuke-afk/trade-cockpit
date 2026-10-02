@@ -1,0 +1,87 @@
+{
+  "schema_version": "next-score-v1",
+  "weights": {
+    "price_change_15s": 0.08,
+    "price_accel_45s": 0.16,
+    "volume_surge_ratio": 0.12,
+    "turnover_accel": 0.12,
+    "high_update_frequency": 0.08,
+    "vwap_position": 0.08,
+    "or5_state": 0.06,
+    "or15_state": 0.06,
+    "pullback_shallowness": 0.08,
+    "relative_strength": 0.10,
+    "liquidity": 0.06
+  },
+  "velocity_weight": 0.08,
+  "min_coverage": 0.70,
+  "required_features": ["liquidity"],
+  "reason_component_min": 0.62,
+  "liquidity_curve_yen": [30000000, 100000000, 500000000],
+  "funnel": {
+    "active_size": 100,
+    "next20_size": 20,
+    "next5_size": 5,
+    "next20_score_weight": 0.62,
+    "next20_velocity_weight": 0.38,
+    "next5_score_weight": 0.45,
+    "next5_velocity_weight": 0.55,
+    "next20_min_score": 58,
+    "next5_min_score": 58,
+    "promotion_min_coverage": 1.0,
+    "require_precursor": true
+  },
+  "freshness": {
+    "ttl_seconds": 180,
+    "future_skew_seconds": 30,
+    "session_timezone": "Asia/Tokyo",
+    "require_same_session_date": true
+  },
+  "opening_ranges": {
+    "session_open": "09:00",
+    "or5_minutes": 5,
+    "or15_minutes": 15
+  },
+  "sessions": {
+    "timezone": "Asia/Tokyo",
+    "morning": {"start": "09:00", "end": "11:30", "reselect_at": ["09:00"]},
+    "afternoon": {"start": "12:30", "end": "15:30", "reselect_at": ["12:30"]}
+  },
+  "emergency": {
+    "min_score": 76,
+    "required_any": ["PRICE_ACCEL_45S", "VOLUME_SURGE", "TURNOVER_ACCEL"],
+    "min_reason_count": 2
+  },
+  "states": {
+    "pre_next_min_score": 58,
+    "ignition_min_score": 72,
+    "ignition_min_trigger_reasons": 2,
+    "ignition_reasons": [
+      "PRICE_ACCEL_45S",
+      "VOLUME_SURGE",
+      "TURNOVER_ACCEL",
+      "HIGH_UPDATE",
+      "OR5_ABOVE",
+      "OR15_ABOVE"
+    ],
+    "precursor_reasons": [
+      "PRICE_ACCEL_45S",
+      "VOLUME_SURGE",
+      "TURNOVER_ACCEL",
+      "HIGH_UPDATE",
+      "SHALLOW_PULLBACK",
+      "RELATIVE_STRENGTH",
+      "VWAP_SUPPORTIVE",
+      "OR5_INSIDE",
+      "OR15_INSIDE",
+      "OR5_ABOVE",
+      "OR15_ABOVE",
+      "RANK_VELOCITY_UP"
+    ],
+    "confirm_min_consecutive": 2,
+    "confirm_min_score": 74,
+    "confirm_min_rank_velocity": 1.0,
+    "cooling_score_drop": 12,
+    "cooling_max_rank_velocity": -1.0
+  }
+}

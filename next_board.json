@@ -1,0 +1,28 @@
+{
+  "schema_version": "next-board-1.0",
+  "generated_at": null,
+  "run_id": null,
+  "source_mode": "unconfigured",
+  "selection_kind": null,
+  "session_open": false,
+  "fail_closed": true,
+  "fail_closed_reason": "LIVE_SOURCE_NOT_CONFIGURED",
+  "funnel_fail_closed": true,
+  "funnel_reason": "LIVE_SOURCE_NOT_CONFIGURED",
+  "orders_enabled": false,
+  "freshness": {
+    "ttl_seconds": 180,
+    "future_skew_seconds": 30,
+    "session_timezone": "Asia/Tokyo",
+    "require_same_session_date": true
+  },
+  "universe_count": 0,
+  "active100_count": 0,
+  "discovery_sources": [],
+  "monitor_symbols": [],
+  "warnings": [],
+  "active100": [],
+  "next20": [],
+  "next5": [],
+  "excluded": []
+}
