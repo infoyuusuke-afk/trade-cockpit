@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-02 11:59:14 JST",
+  "updated_at": "2026-10-02 12:01:34 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -3436,12 +3436,12 @@
       "data_date": "2026-10-02",
       "data_age_days": 0,
       "chart_last_close": 5546.0,
-      "quote_verified": true,
+      "quote_verified": false,
       "secondary_source": "Nomura/QUICK",
-      "secondary_price": 5546.0,
-      "secondary_date": "2026-10-02",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-10-02終値 5,546.00円",
+      "secondary_price": null,
+      "secondary_date": null,
+      "secondary_verified": false,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-02）",
       "market_supply_score": 34,
       "market_supply_improved": false,
       "market_supply_status": "市場需給34点／上昇日出来高÷下落日0.66倍／安値切上げ×",
@@ -3819,12 +3819,12 @@
       "data_date": "2026-10-02",
       "data_age_days": 0,
       "chart_last_close": 8726.0,
-      "quote_verified": true,
+      "quote_verified": false,
       "secondary_source": "Nomura/QUICK",
-      "secondary_price": 8726.0,
-      "secondary_date": "2026-10-02",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-10-02終値 8,726.00円",
+      "secondary_price": null,
+      "secondary_date": null,
+      "secondary_verified": false,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-02）",
       "market_supply_score": 46,
       "market_supply_improved": false,
       "market_supply_status": "市場需給46点／上昇日出来高÷下落日0.88倍／安値切上げ×",
@@ -6073,37 +6073,37 @@
     },
     "ドル円": {
       "ok": true,
-      "price": 157.99,
+      "price": 157.96,
       "open": 158.05,
       "high": 158.22,
       "low": 157.78,
       "prev_close": 157.56,
-      "change_pct": 0.28,
-      "ret5": -0.51,
+      "change_pct": 0.26,
+      "ret5": -0.53,
       "ret5_prev": 1.72,
-      "ret20": 1.5,
+      "ret20": 1.48,
       "rvol": 0,
       "turnover": 0,
       "atr14": 1.31,
       "atr_pct": 0.83,
-      "ma5": 157.56,
+      "ma5": 157.55,
       "ma20": 156.18,
       "ma60": 158.9,
-      "from_ma5": 0.28,
-      "from_ma20": 1.16,
+      "from_ma5": 0.26,
+      "from_ma20": 1.14,
       "touch_ma5": true,
-      "to_high20": -0.63,
-      "to_high52": -3.65,
-      "bb_upper": 159.61,
+      "to_high20": -0.65,
+      "to_high52": -3.67,
+      "bb_upper": 159.6,
       "bb_lower": 152.75,
       "bb_width": 4.39,
       "bb_width_change": -0.56,
       "bb_percentile": 75.0,
       "bb_expansion_score": 35.8,
-      "day_score": 1.04,
-      "swing_score": 3.2,
+      "day_score": 1.02,
+      "swing_score": 3.18,
       "stable_score": 1.27,
-      "momentum_score": 7.02,
+      "momentum_score": 7.01,
       "high_score": 0.0,
       "chart": [
         {
@@ -6423,22 +6423,22 @@
           "o": 158.05,
           "h": 158.22,
           "l": 157.78,
-          "c": 157.99,
+          "c": 157.96,
           "v": 0
         }
       ],
       "data_date": "2026-10-02",
       "data_age_days": 0,
-      "chart_last_close": 157.99,
+      "chart_last_close": 157.96,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
       "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-02）",
-      "market_supply_score": 69,
+      "market_supply_score": 68,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給69点／上昇日出来高÷下落日2.00倍／安値切上げ×",
+      "market_supply_status": "市場需給68点／上昇日出来高÷下落日2.00倍／安値切上げ×",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
@@ -31065,12 +31065,12 @@
       "data_date": "2026-10-02",
       "data_age_days": 0,
       "chart_last_close": 5546.0,
-      "quote_verified": true,
+      "quote_verified": false,
       "secondary_source": "Nomura/QUICK",
-      "secondary_price": 5546.0,
-      "secondary_date": "2026-10-02",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-10-02終値 5,546.00円",
+      "secondary_price": null,
+      "secondary_date": null,
+      "secondary_verified": false,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-02）",
       "market_supply_score": 34,
       "market_supply_improved": false,
       "market_supply_status": "市場需給34点／上昇日出来高÷下落日0.66倍／安値切上げ×",
@@ -31081,8 +31081,7 @@
       "sector": "資源商社・レアアース",
       "style": "swing",
       "day_bucket": null,
-      "identity_verified": true,
-      "rotation_group": "資源・素材・商社"
+      "identity_verified": true
     },
     "DOWA HD（5714）": {
       "ok": true,
@@ -31443,12 +31442,12 @@
       "data_date": "2026-10-02",
       "data_age_days": 0,
       "chart_last_close": 8726.0,
-      "quote_verified": true,
+      "quote_verified": false,
       "secondary_source": "Nomura/QUICK",
-      "secondary_price": 8726.0,
-      "secondary_date": "2026-10-02",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-10-02終値 8,726.00円",
+      "secondary_price": null,
+      "secondary_date": null,
+      "secondary_verified": false,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-02）",
       "market_supply_score": 46,
       "market_supply_improved": false,
       "market_supply_status": "市場需給46点／上昇日出来高÷下落日0.88倍／安値切上げ×",
@@ -31459,8 +31458,7 @@
       "sector": "非鉄・資源循環",
       "style": "swing",
       "day_bucket": null,
-      "identity_verified": true,
-      "rotation_group": "資源・素材・商社"
+      "identity_verified": true
     },
     "FIXER（5129）": {
       "ok": true,
@@ -38256,12 +38254,12 @@
       "data_date": "2026-10-02",
       "data_age_days": 0,
       "chart_last_close": 5987.0,
-      "quote_verified": true,
+      "quote_verified": false,
       "secondary_source": "Nomura/QUICK",
-      "secondary_price": 5987.0,
-      "secondary_date": "2026-10-02",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-10-02終値 5,987.00円",
+      "secondary_price": null,
+      "secondary_date": null,
+      "secondary_verified": false,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-02）",
       "market_supply_score": 30,
       "market_supply_improved": false,
       "market_supply_status": "市場需給30点／上昇日出来高÷下落日0.56倍／安値切上げ×",
@@ -38272,8 +38270,7 @@
       "sector": "AI創薬・医薬品",
       "style": "swing",
       "day_bucket": null,
-      "identity_verified": true,
-      "rotation_group": "AI・テクノロジー"
+      "identity_verified": true
     },
     "THK（6481）": {
       "ok": true,
@@ -41672,12 +41669,12 @@
       "data_date": "2026-10-02",
       "data_age_days": 0,
       "chart_last_close": 2688.0,
-      "quote_verified": true,
+      "quote_verified": false,
       "secondary_source": "Nomura/QUICK",
-      "secondary_price": 2688.0,
-      "secondary_date": "2026-10-02",
-      "secondary_verified": true,
-      "quote_status": "二経路検証済み：2026-10-02終値 2,688.00円",
+      "secondary_price": null,
+      "secondary_date": null,
+      "secondary_verified": false,
+      "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-02）",
       "market_supply_score": 66,
       "market_supply_improved": true,
       "market_supply_status": "市場需給66点／上昇日出来高÷下落日0.96倍／安値切上げ○",
@@ -41688,8 +41685,7 @@
       "sector": "小売・円高恩恵",
       "style": "both",
       "day_bucket": null,
-      "identity_verified": true,
-      "rotation_group": "その他"
+      "identity_verified": true
     },
     "ワークマン（7564）": {
       "ok": true,
@@ -44351,8 +44347,8 @@
     "status": "合格",
     "market_date": "2026-10-02",
     "universe": 100,
-    "verified": 99,
-    "excluded": 1,
+    "verified": 95,
+    "excluded": 5,
     "requirements": [
       "会社名コード＝ティッカー",
       "一次OHLC＝QUICK",
@@ -44364,8 +44360,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-10-02T11:58:26+09:00",
-    "decision_at": "2026-10-02T11:58:26+09:00",
+    "generated_at": "2026-10-02T12:00:51+09:00",
+    "decision_at": "2026-10-02T12:00:51+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -48052,7 +48048,7 @@
       "name": "SCREEN HD（7735）",
       "code": "7735",
       "ticker": "7735.T",
-      "score": 52,
+      "score": 53,
       "executable": false,
       "supply_verified": false,
       "supply_status": "信用買残・倍率の照合未完了（監視のみ・注文禁止）",
@@ -48063,7 +48059,7 @@
       "stop": 15120.0,
       "target1": 16620,
       "target2": 17040,
-      "reason": "期待形成中／AI・テクノロジー 拡大 67点／前日比 -0.77%／出来高比 0.52倍／売買代金 150億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DISTRIBUTION：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
+      "reason": "期待形成中／AI・テクノロジー 拡大 69点／前日比 -0.77%／出来高比 0.52倍／売買代金 150億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DISTRIBUTION：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-08-04",
@@ -49181,7 +49177,7 @@
       "stop": 59000.0,
       "target1": 65000,
       "target2": 66700,
-      "reason": "期待形成中／AI・テクノロジー 拡大 67点／前日比 -0.66%／出来高比 0.67倍／売買代金 581億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DISTRIBUTION：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
+      "reason": "期待形成中／AI・テクノロジー 拡大 69点／前日比 -0.66%／出来高比 0.67倍／売買代金 581億円／信用買残・倍率の照合未完了（監視のみ・注文禁止）／主体レジーム DISTRIBUTION：JPX履歴未取得のため上位フィルター未適用／個別感応度は学習不足",
       "chart": [
         {
           "t": "2026-08-04",
@@ -50286,13 +50282,13 @@
     }
   ],
   "strong_yen_top5": {
-    "usd_jpy": 157.986,
-    "usd_jpy_change_pct": -0.05,
-    "usd_jpy_ret5": -0.51,
+    "usd_jpy": 157.967,
+    "usd_jpy_change_pct": -0.07,
+    "usd_jpy_ret5": -0.53,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-10-02T11:58:00+09:00",
+    "fx_observed_at": "2026-10-02T12:00:00+09:00",
     "statement_study": {
-      "updated_at": "2026-10-02 11:59:06 JST",
+      "updated_at": "2026-10-02 12:01:28 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -50896,351 +50892,6 @@
         "data_date": "2026-10-02",
         "chart_last_close": 2978.5,
         "quote_status": "二経路検証済み：2026-10-02終値 2,978.50円"
-      },
-      {
-        "name": "エービーシー・マート（2670）",
-        "code": "2670",
-        "ticker": "2670.T",
-        "price": 2688.0,
-        "change_pct": -1.16,
-        "score": 51,
-        "sensitivity": 86,
-        "reason": "海外ブランド靴の仕入コスト低下余地を確認する小売銘柄",
-        "source": "https://www.abc-mart.co.jp/ir/",
-        "status": "為替確認待ち",
-        "executable": false,
-        "supply_verified": false,
-        "supply_improved": false,
-        "supply_status": "信用買残・倍率未照合（監視のみ）",
-        "trigger": 2694,
-        "stop": 2663,
-        "target1": 2739,
-        "target2": 2760,
-        "chart": [
-          {
-            "t": "2026-08-04",
-            "o": 2747.5,
-            "h": 2747.5,
-            "l": 2687.0,
-            "c": 2726.0,
-            "v": 471100
-          },
-          {
-            "t": "2026-08-05",
-            "o": 2710.5,
-            "h": 2744.5,
-            "l": 2693.0,
-            "c": 2744.5,
-            "v": 416800
-          },
-          {
-            "t": "2026-08-06",
-            "o": 2776.0,
-            "h": 2790.0,
-            "l": 2750.5,
-            "c": 2781.0,
-            "v": 572300
-          },
-          {
-            "t": "2026-08-07",
-            "o": 2768.0,
-            "h": 2825.0,
-            "l": 2766.0,
-            "c": 2792.0,
-            "v": 541300
-          },
-          {
-            "t": "2026-08-10",
-            "o": 2800.0,
-            "h": 2830.5,
-            "l": 2764.0,
-            "c": 2823.0,
-            "v": 443200
-          },
-          {
-            "t": "2026-08-12",
-            "o": 2826.0,
-            "h": 2843.5,
-            "l": 2796.5,
-            "c": 2823.5,
-            "v": 539100
-          },
-          {
-            "t": "2026-08-13",
-            "o": 2800.5,
-            "h": 2835.0,
-            "l": 2799.0,
-            "c": 2822.5,
-            "v": 450300
-          },
-          {
-            "t": "2026-08-14",
-            "o": 2791.5,
-            "h": 2847.0,
-            "l": 2782.0,
-            "c": 2847.0,
-            "v": 369100
-          },
-          {
-            "t": "2026-08-17",
-            "o": 2837.0,
-            "h": 2847.0,
-            "l": 2785.0,
-            "c": 2785.0,
-            "v": 327600
-          },
-          {
-            "t": "2026-08-18",
-            "o": 2761.5,
-            "h": 2787.5,
-            "l": 2755.0,
-            "c": 2778.5,
-            "v": 343600
-          },
-          {
-            "t": "2026-08-19",
-            "o": 2796.0,
-            "h": 2796.0,
-            "l": 2752.0,
-            "c": 2774.0,
-            "v": 412500
-          },
-          {
-            "t": "2026-08-20",
-            "o": 2810.5,
-            "h": 2825.0,
-            "l": 2773.0,
-            "c": 2807.5,
-            "v": 394600
-          },
-          {
-            "t": "2026-08-21",
-            "o": 2807.5,
-            "h": 2823.0,
-            "l": 2782.5,
-            "c": 2793.5,
-            "v": 363000
-          },
-          {
-            "t": "2026-08-24",
-            "o": 2803.5,
-            "h": 2825.5,
-            "l": 2785.0,
-            "c": 2806.5,
-            "v": 369100
-          },
-          {
-            "t": "2026-08-25",
-            "o": 2819.5,
-            "h": 2824.0,
-            "l": 2796.0,
-            "c": 2805.0,
-            "v": 532000
-          },
-          {
-            "t": "2026-08-26",
-            "o": 2783.0,
-            "h": 2812.0,
-            "l": 2777.0,
-            "c": 2788.5,
-            "v": 583500
-          },
-          {
-            "t": "2026-08-27",
-            "o": 2767.0,
-            "h": 2799.0,
-            "l": 2763.0,
-            "c": 2776.5,
-            "v": 836500
-          },
-          {
-            "t": "2026-08-28",
-            "o": 2709.0,
-            "h": 2741.0,
-            "l": 2699.5,
-            "c": 2730.0,
-            "v": 761600
-          },
-          {
-            "t": "2026-08-31",
-            "o": 2752.5,
-            "h": 2757.5,
-            "l": 2705.5,
-            "c": 2717.5,
-            "v": 569400
-          },
-          {
-            "t": "2026-09-01",
-            "o": 2730.0,
-            "h": 2751.5,
-            "l": 2700.0,
-            "c": 2700.0,
-            "v": 561600
-          },
-          {
-            "t": "2026-09-02",
-            "o": 2680.5,
-            "h": 2693.0,
-            "l": 2640.0,
-            "c": 2664.0,
-            "v": 633000
-          },
-          {
-            "t": "2026-09-03",
-            "o": 2674.5,
-            "h": 2699.5,
-            "l": 2643.0,
-            "c": 2690.0,
-            "v": 647800
-          },
-          {
-            "t": "2026-09-04",
-            "o": 2687.5,
-            "h": 2737.5,
-            "l": 2677.0,
-            "c": 2729.0,
-            "v": 816100
-          },
-          {
-            "t": "2026-09-07",
-            "o": 2701.5,
-            "h": 2725.0,
-            "l": 2685.0,
-            "c": 2697.5,
-            "v": 474500
-          },
-          {
-            "t": "2026-09-08",
-            "o": 2718.0,
-            "h": 2744.5,
-            "l": 2700.0,
-            "c": 2710.5,
-            "v": 662200
-          },
-          {
-            "t": "2026-09-09",
-            "o": 2680.5,
-            "h": 2711.0,
-            "l": 2646.0,
-            "c": 2670.0,
-            "v": 450700
-          },
-          {
-            "t": "2026-09-10",
-            "o": 2650.5,
-            "h": 2675.0,
-            "l": 2636.0,
-            "c": 2657.0,
-            "v": 446000
-          },
-          {
-            "t": "2026-09-11",
-            "o": 2618.0,
-            "h": 2645.5,
-            "l": 2596.5,
-            "c": 2641.0,
-            "v": 538700
-          },
-          {
-            "t": "2026-09-14",
-            "o": 2677.5,
-            "h": 2708.0,
-            "l": 2650.0,
-            "c": 2694.5,
-            "v": 484600
-          },
-          {
-            "t": "2026-09-15",
-            "o": 2717.0,
-            "h": 2725.0,
-            "l": 2668.5,
-            "c": 2675.0,
-            "v": 450800
-          },
-          {
-            "t": "2026-09-16",
-            "o": 2660.5,
-            "h": 2684.0,
-            "l": 2650.0,
-            "c": 2666.5,
-            "v": 320700
-          },
-          {
-            "t": "2026-09-17",
-            "o": 2676.5,
-            "h": 2716.0,
-            "l": 2673.0,
-            "c": 2708.5,
-            "v": 448600
-          },
-          {
-            "t": "2026-09-18",
-            "o": 2712.0,
-            "h": 2715.0,
-            "l": 2675.5,
-            "c": 2684.0,
-            "v": 480900
-          },
-          {
-            "t": "2026-09-24",
-            "o": 2684.0,
-            "h": 2725.0,
-            "l": 2666.0,
-            "c": 2706.0,
-            "v": 572100
-          },
-          {
-            "t": "2026-09-25",
-            "o": 2719.0,
-            "h": 2743.5,
-            "l": 2716.0,
-            "c": 2735.0,
-            "v": 621300
-          },
-          {
-            "t": "2026-09-28",
-            "o": 2748.5,
-            "h": 2755.0,
-            "l": 2720.0,
-            "c": 2721.5,
-            "v": 659300
-          },
-          {
-            "t": "2026-09-29",
-            "o": 2711.0,
-            "h": 2725.0,
-            "l": 2703.0,
-            "c": 2720.0,
-            "v": 530600
-          },
-          {
-            "t": "2026-09-30",
-            "o": 2700.0,
-            "h": 2732.5,
-            "l": 2681.0,
-            "c": 2725.5,
-            "v": 732000
-          },
-          {
-            "t": "2026-10-01",
-            "o": 2708.0,
-            "h": 2725.5,
-            "l": 2688.5,
-            "c": 2719.5,
-            "v": 660600
-          },
-          {
-            "t": "2026-10-02",
-            "o": 2686.5,
-            "h": 2702.0,
-            "l": 2655.5,
-            "c": 2688.0,
-            "v": 187800
-          }
-        ],
-        "data_date": "2026-10-02",
-        "chart_last_close": 2688.0,
-        "quote_status": "二経路検証済み：2026-10-02終値 2,688.00円"
       },
       {
         "name": "神戸物産（3038）",
@@ -52276,6 +51927,351 @@
         "data_date": "2026-10-02",
         "chart_last_close": 4206.0,
         "quote_status": "二経路検証済み：2026-10-02終値 4,206.00円"
+      },
+      {
+        "name": "ワークマン（7564）",
+        "code": "7564",
+        "ticker": "7564.T",
+        "price": 5100.0,
+        "change_pct": -6.93,
+        "score": 44,
+        "sensitivity": 76,
+        "reason": "PB商品の海外生産・調達コスト低下余地を監視",
+        "source": "https://www.workman.co.jp/ir",
+        "status": "為替確認待ち",
+        "executable": false,
+        "supply_verified": false,
+        "supply_improved": false,
+        "supply_status": "信用買残・倍率未照合（監視のみ）",
+        "trigger": 5120,
+        "stop": 5010,
+        "target1": 5280,
+        "target2": 5350,
+        "chart": [
+          {
+            "t": "2026-08-04",
+            "o": 6060.0,
+            "h": 6280.0,
+            "l": 6000.0,
+            "c": 6050.0,
+            "v": 1060400
+          },
+          {
+            "t": "2026-08-05",
+            "o": 6020.0,
+            "h": 6190.0,
+            "l": 5970.0,
+            "c": 6120.0,
+            "v": 625400
+          },
+          {
+            "t": "2026-08-06",
+            "o": 6100.0,
+            "h": 6270.0,
+            "l": 6080.0,
+            "c": 6250.0,
+            "v": 488100
+          },
+          {
+            "t": "2026-08-07",
+            "o": 6250.0,
+            "h": 6260.0,
+            "l": 6060.0,
+            "c": 6160.0,
+            "v": 512000
+          },
+          {
+            "t": "2026-08-10",
+            "o": 6200.0,
+            "h": 6410.0,
+            "l": 6160.0,
+            "c": 6350.0,
+            "v": 433800
+          },
+          {
+            "t": "2026-08-12",
+            "o": 6350.0,
+            "h": 6400.0,
+            "l": 6280.0,
+            "c": 6330.0,
+            "v": 303200
+          },
+          {
+            "t": "2026-08-13",
+            "o": 6300.0,
+            "h": 6350.0,
+            "l": 6230.0,
+            "c": 6230.0,
+            "v": 254900
+          },
+          {
+            "t": "2026-08-14",
+            "o": 6240.0,
+            "h": 6330.0,
+            "l": 6100.0,
+            "c": 6150.0,
+            "v": 411500
+          },
+          {
+            "t": "2026-08-17",
+            "o": 6190.0,
+            "h": 6240.0,
+            "l": 6120.0,
+            "c": 6200.0,
+            "v": 262500
+          },
+          {
+            "t": "2026-08-18",
+            "o": 6210.0,
+            "h": 6350.0,
+            "l": 6160.0,
+            "c": 6290.0,
+            "v": 368100
+          },
+          {
+            "t": "2026-08-19",
+            "o": 6300.0,
+            "h": 6330.0,
+            "l": 6200.0,
+            "c": 6280.0,
+            "v": 298200
+          },
+          {
+            "t": "2026-08-20",
+            "o": 6330.0,
+            "h": 6350.0,
+            "l": 6180.0,
+            "c": 6300.0,
+            "v": 314100
+          },
+          {
+            "t": "2026-08-21",
+            "o": 6260.0,
+            "h": 6300.0,
+            "l": 6010.0,
+            "c": 6030.0,
+            "v": 555900
+          },
+          {
+            "t": "2026-08-24",
+            "o": 6070.0,
+            "h": 6260.0,
+            "l": 6060.0,
+            "c": 6210.0,
+            "v": 427100
+          },
+          {
+            "t": "2026-08-25",
+            "o": 6270.0,
+            "h": 6390.0,
+            "l": 6250.0,
+            "c": 6290.0,
+            "v": 466600
+          },
+          {
+            "t": "2026-08-26",
+            "o": 6310.0,
+            "h": 6440.0,
+            "l": 6300.0,
+            "c": 6300.0,
+            "v": 421900
+          },
+          {
+            "t": "2026-08-27",
+            "o": 6290.0,
+            "h": 6370.0,
+            "l": 6160.0,
+            "c": 6360.0,
+            "v": 412000
+          },
+          {
+            "t": "2026-08-28",
+            "o": 6300.0,
+            "h": 6310.0,
+            "l": 6210.0,
+            "c": 6270.0,
+            "v": 344800
+          },
+          {
+            "t": "2026-08-31",
+            "o": 6250.0,
+            "h": 6260.0,
+            "l": 6180.0,
+            "c": 6230.0,
+            "v": 236500
+          },
+          {
+            "t": "2026-09-01",
+            "o": 6260.0,
+            "h": 6360.0,
+            "l": 6240.0,
+            "c": 6240.0,
+            "v": 322300
+          },
+          {
+            "t": "2026-09-02",
+            "o": 6290.0,
+            "h": 6320.0,
+            "l": 5910.0,
+            "c": 5980.0,
+            "v": 749200
+          },
+          {
+            "t": "2026-09-03",
+            "o": 5960.0,
+            "h": 5960.0,
+            "l": 5830.0,
+            "c": 5930.0,
+            "v": 593500
+          },
+          {
+            "t": "2026-09-04",
+            "o": 5990.0,
+            "h": 6120.0,
+            "l": 5980.0,
+            "c": 6070.0,
+            "v": 537000
+          },
+          {
+            "t": "2026-09-07",
+            "o": 5970.0,
+            "h": 6060.0,
+            "l": 5880.0,
+            "c": 5950.0,
+            "v": 541100
+          },
+          {
+            "t": "2026-09-08",
+            "o": 5970.0,
+            "h": 6060.0,
+            "l": 5930.0,
+            "c": 5990.0,
+            "v": 424800
+          },
+          {
+            "t": "2026-09-09",
+            "o": 5980.0,
+            "h": 6000.0,
+            "l": 5880.0,
+            "c": 5880.0,
+            "v": 331700
+          },
+          {
+            "t": "2026-09-10",
+            "o": 5820.0,
+            "h": 5820.0,
+            "l": 5680.0,
+            "c": 5730.0,
+            "v": 382300
+          },
+          {
+            "t": "2026-09-11",
+            "o": 5630.0,
+            "h": 5700.0,
+            "l": 5600.0,
+            "c": 5670.0,
+            "v": 306400
+          },
+          {
+            "t": "2026-09-14",
+            "o": 5670.0,
+            "h": 5730.0,
+            "l": 5630.0,
+            "c": 5630.0,
+            "v": 282100
+          },
+          {
+            "t": "2026-09-15",
+            "o": 5630.0,
+            "h": 5650.0,
+            "l": 5500.0,
+            "c": 5570.0,
+            "v": 505000
+          },
+          {
+            "t": "2026-09-16",
+            "o": 5510.0,
+            "h": 5520.0,
+            "l": 5440.0,
+            "c": 5480.0,
+            "v": 542000
+          },
+          {
+            "t": "2026-09-17",
+            "o": 5470.0,
+            "h": 5500.0,
+            "l": 5360.0,
+            "c": 5360.0,
+            "v": 613800
+          },
+          {
+            "t": "2026-09-18",
+            "o": 5400.0,
+            "h": 5410.0,
+            "l": 5310.0,
+            "c": 5340.0,
+            "v": 441300
+          },
+          {
+            "t": "2026-09-24",
+            "o": 5340.0,
+            "h": 5410.0,
+            "l": 5170.0,
+            "c": 5220.0,
+            "v": 671100
+          },
+          {
+            "t": "2026-09-25",
+            "o": 5200.0,
+            "h": 5290.0,
+            "l": 5190.0,
+            "c": 5290.0,
+            "v": 329800
+          },
+          {
+            "t": "2026-09-28",
+            "o": 5280.0,
+            "h": 5300.0,
+            "l": 5220.0,
+            "c": 5220.0,
+            "v": 287100
+          },
+          {
+            "t": "2026-09-29",
+            "o": 5280.0,
+            "h": 5310.0,
+            "l": 5170.0,
+            "c": 5260.0,
+            "v": 376700
+          },
+          {
+            "t": "2026-09-30",
+            "o": 5260.0,
+            "h": 5450.0,
+            "l": 5240.0,
+            "c": 5420.0,
+            "v": 402100
+          },
+          {
+            "t": "2026-10-01",
+            "o": 5420.0,
+            "h": 5510.0,
+            "l": 5350.0,
+            "c": 5480.0,
+            "v": 490400
+          },
+          {
+            "t": "2026-10-02",
+            "o": 5420.0,
+            "h": 5430.0,
+            "l": 5090.0,
+            "c": 5100.0,
+            "v": 921000
+          }
+        ],
+        "data_date": "2026-10-02",
+        "chart_last_close": 5100.0,
+        "quote_status": "二経路検証済み：2026-10-02終値 5,100.00円"
       }
     ]
   },
@@ -54342,7 +54338,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-10-02 11:58:56 JST",
+    "credit_supply_updated_at": "2026-10-02 12:01:17 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -58702,26 +58698,6 @@
       "technical_score": 19
     },
     {
-      "name": "エービーシー・マート（2670）",
-      "date": "2026-10-07",
-      "price": 2688.0,
-      "plan": {
-        "entry": 2694,
-        "stop": 2663,
-        "target1": 2739,
-        "target2": 2760,
-        "risk": 30,
-        "tick": 1
-      },
-      "source": "JPX",
-      "expectation_score": 36,
-      "raw_expectation_score": 48,
-      "hurdle_risk": 42,
-      "score_coverage": 100,
-      "score_detail": "予想EPS成長 -5.8%／EPS予想幅 4.1%／予想売上成長 +50.3%／過去4回サプライズ平均 +2.0%／予想修正 上0／下4／決算前テクニカル 30/100／コンセンサス警戒 42/100（−11.8点）",
-      "technical_score": 30
-    },
-    {
       "name": "安川電機（6506）",
       "date": "2026-10-09",
       "price": 4745.0,
@@ -58949,13 +58925,13 @@
       {
         "sector": "AI・テクノロジー",
         "phase": "拡大",
-        "score": 66.6,
-        "rel5": 2.81,
-        "rel20": 5.82,
-        "acceleration": -0.4,
-        "breadth": 69.2,
-        "rvol": 0.48,
-        "members": 39,
+        "score": 68.8,
+        "rel5": 3.14,
+        "rel20": 6.3,
+        "acceleration": -0.17,
+        "breadth": 71.1,
+        "rvol": 0.47,
+        "members": 38,
         "leaders": [
           {
             "name": "note（5243）",
@@ -59007,13 +58983,13 @@
       {
         "sector": "その他",
         "phase": "低迷",
-        "score": 40.8,
-        "rel5": -1.16,
-        "rel20": -2.37,
-        "acceleration": 0.55,
-        "breadth": 35.0,
+        "score": 41.1,
+        "rel5": -1.13,
+        "rel20": -2.54,
+        "acceleration": 0.67,
+        "breadth": 36.8,
         "rvol": 0.42,
-        "members": 20,
+        "members": 19,
         "leaders": [
           {
             "name": "プレイド（4165）",
@@ -59064,14 +59040,14 @@
       },
       {
         "sector": "資源・素材・商社",
-        "phase": "流出",
-        "score": 23.1,
-        "rel5": -3.04,
-        "rel20": -7.59,
-        "acceleration": -0.41,
+        "phase": "低迷",
+        "score": 24.4,
+        "rel5": -2.99,
+        "rel20": -7.29,
+        "acceleration": 0.13,
         "breadth": 0.0,
-        "rvol": 0.35,
-        "members": 6,
+        "rvol": 0.34,
+        "members": 4,
         "leaders": [
           {
             "name": "日鉄鉱業（1515）",
@@ -59079,17 +59055,17 @@
             "rvol": 0.2
           },
           {
-            "name": "DOWA HD（5714）",
-            "ret5": -2.74,
-            "rvol": 0.44
-          },
-          {
             "name": "日本郵船（9101）",
             "ret5": -2.73,
             "rvol": 0.34
+          },
+          {
+            "name": "三菱商事（8058）",
+            "ret5": -3.62,
+            "rvol": 0.34
           }
         ],
-        "action": "新規ロング停止"
+        "action": "見送り"
       },
       {
         "sector": "金融",
@@ -59155,7 +59131,7 @@
         "name": "東京エレクトロン（8035）",
         "sector": "AI・テクノロジー",
         "phase": "拡大",
-        "score": 81,
+        "score": 82,
         "material_stage": "織り込み進行",
         "material_action": "押し目反転だけ監視",
         "plan": {
@@ -59166,13 +59142,13 @@
           "risk": 300,
           "tick": 10
         },
-        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +2.81%／出来高比 0.64倍"
+        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +3.14%／出来高比 0.64倍"
       },
       {
         "name": "ディスコ（6146）",
         "sector": "AI・テクノロジー",
         "phase": "拡大",
-        "score": 77,
+        "score": 78,
         "material_stage": "期待形成中",
         "material_action": "高値追い禁止・発動足待ち",
         "plan": {
@@ -59183,13 +59159,13 @@
           "risk": 1300,
           "tick": 100
         },
-        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +2.81%／出来高比 0.67倍"
+        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +3.14%／出来高比 0.67倍"
       },
       {
         "name": "ローツェ（6323）",
         "sector": "AI・テクノロジー",
         "phase": "拡大",
-        "score": 77,
+        "score": 78,
         "material_stage": "期待形成中",
         "material_action": "高値追い禁止・発動足待ち",
         "plan": {
@@ -59200,13 +59176,13 @@
           "risk": 115,
           "tick": 5
         },
-        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +2.81%／出来高比 0.54倍"
+        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +3.14%／出来高比 0.54倍"
       },
       {
         "name": "SUMCO（3436）",
         "sector": "AI・テクノロジー",
         "phase": "拡大",
-        "score": 77,
+        "score": 78,
         "material_stage": "期待形成中",
         "material_action": "高値追い禁止・発動足待ち",
         "plan": {
@@ -59217,47 +59193,13 @@
           "risk": 120,
           "tick": 5
         },
-        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +2.81%／出来高比 0.56倍"
-      },
-      {
-        "name": "フジクラ（5803）",
-        "sector": "資本財・インフラ",
-        "phase": "拡大",
-        "score": 77,
-        "material_stage": "期待形成中",
-        "material_action": "高値追い禁止・発動足待ち",
-        "plan": {
-          "entry": 5400,
-          "stop": 5250,
-          "target1": 5620,
-          "target2": 5730,
-          "risk": 150,
-          "tick": 10
-        },
-        "reason": "資本財・インフラが拡大／TOPIX比5日 +2.10%／出来高比 1.05倍"
-      },
-      {
-        "name": "古河電気工業（5801）",
-        "sector": "資本財・インフラ",
-        "phase": "拡大",
-        "score": 77,
-        "material_stage": "期待形成中",
-        "material_action": "高値追い禁止・発動足待ち",
-        "plan": {
-          "entry": 4140,
-          "stop": 4000,
-          "target1": 4350,
-          "target2": 4450,
-          "risk": 140,
-          "tick": 5
-        },
-        "reason": "資本財・インフラが拡大／TOPIX比5日 +2.10%／出来高比 1.25倍"
+        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +3.14%／出来高比 0.56倍"
       },
       {
         "name": "ローム（6963）",
         "sector": "AI・テクノロジー",
         "phase": "拡大",
-        "score": 77,
+        "score": 78,
         "material_stage": "事実確認待ち",
         "material_action": "出来高・需給確認待ち",
         "plan": {
@@ -59268,7 +59210,41 @@
           "risk": 130,
           "tick": 10
         },
-        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +2.81%／出来高比 0.41倍"
+        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +3.14%／出来高比 0.41倍"
+      },
+      {
+        "name": "SCREEN HD（7735）",
+        "sector": "AI・テクノロジー",
+        "phase": "拡大",
+        "score": 78,
+        "material_stage": "期待形成中",
+        "material_action": "高値追い禁止・発動足待ち",
+        "plan": {
+          "entry": 15550,
+          "stop": 15120,
+          "target1": 16180,
+          "target2": 16480,
+          "risk": 420,
+          "tick": 10
+        },
+        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +3.14%／出来高比 0.52倍"
+      },
+      {
+        "name": "さくらインターネット（3778）",
+        "sector": "AI・テクノロジー",
+        "phase": "拡大",
+        "score": 78,
+        "material_stage": "事実確認待ち",
+        "material_action": "出来高・需給確認待ち",
+        "plan": {
+          "entry": 3990,
+          "stop": 3880,
+          "target1": 4150,
+          "target2": 4230,
+          "risk": 110,
+          "tick": 5
+        },
+        "reason": "AI・テクノロジーが拡大／TOPIX比5日 +3.14%／出来高比 0.76倍"
       }
     ],
     "kioxia": {
@@ -59276,8 +59252,8 @@
       "status": "拡大",
       "action": "反転条件だけ再評価",
       "detail": "セクターの追い風は確認。ただし前日高値突破＋VWAP上維持を満たすまで買い増し判定にはしない。",
-      "sector_score": 66.6,
-      "sector_rel5": 2.81
+      "sector_score": 68.8,
+      "sector_rel5": 3.14
     },
     "source_note": "米国11業種ETFのS&P500相対強弱と、日本株監視群のTOPIX相対強弱による公開データ代理指標"
   },
@@ -71654,14 +71630,14 @@
   ],
   "morning_snapshot": {
     "date": "2026-10-02",
-    "fixed_at": "2026-10-02 11:59:14 JST",
+    "fixed_at": "2026-10-02 12:01:34 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-10-02",
-    "fixed_at": "2026-10-02 12:00:03 JST",
+    "fixed_at": "2026-10-02 12:02:21 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
@@ -71690,7 +71666,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-02 12:00:03 JST",
+        "signal_time": "2026-10-02 12:02:21 JST",
         "source": "morning_snapshot"
       },
       {
@@ -71719,7 +71695,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-02 12:00:03 JST",
+        "signal_time": "2026-10-02 12:02:21 JST",
         "source": "morning_snapshot"
       },
       {
@@ -71748,7 +71724,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-02 12:00:03 JST",
+        "signal_time": "2026-10-02 12:02:21 JST",
         "source": "morning_snapshot"
       },
       {
@@ -71777,7 +71753,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-02 12:00:03 JST",
+        "signal_time": "2026-10-02 12:02:21 JST",
         "source": "morning_snapshot"
       },
       {
@@ -71806,7 +71782,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-02 12:00:03 JST",
+        "signal_time": "2026-10-02 12:02:21 JST",
         "source": "morning_snapshot"
       },
       {
@@ -71835,7 +71811,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-02 12:00:03 JST",
+        "signal_time": "2026-10-02 12:02:21 JST",
         "source": "morning_snapshot"
       },
       {
@@ -71864,7 +71840,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-02 12:00:03 JST",
+        "signal_time": "2026-10-02 12:02:21 JST",
         "source": "morning_snapshot"
       }
     ]
