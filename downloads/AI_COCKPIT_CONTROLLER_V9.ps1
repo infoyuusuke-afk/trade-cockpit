@@ -44,7 +44,7 @@ param(
 #     controller stops the data path.
 
 $ErrorActionPreference = "Stop"
-$Build = "V9-CONTROLLER-20261002-EXCEL-OWNERSHIP-01"
+$Build = "V9-CONTROLLER-20261002-EXCEL-FOREIGN-SURVIVE-01"
 $ExcelIdentityProbeTimeoutSeconds = 35
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
@@ -281,9 +281,9 @@ function Stop-OwnedFromPreviousState {
             Write-Status ("  previous PID " + $procId + " no longer matches " + $field + "; leaving it untouched") Yellow
         }
     }
-    # Excel is not stopped here. A PID in the previous state file is not
-    # ownership, and this cleanup does not yet know the canonical path.
-    # Leftover AI Cockpit /x Excel is classified at launch and is never adopted.
+    # Excel is not stopped here and is not stopped before launch. A
+    # previous PID is not ownership. TerminateProcess on one Excel can
+    # close other Excel processes in the same session.
 }
 
 # A workbook title change does not establish ownership of the Excel process.
@@ -426,6 +426,14 @@ function Get-CurrentSessionId {
     return [int]$self.SessionId
 }
 
+function Test-OtherExcelInSession([int]$ExceptPid) {
+    $sessionId = Get-CurrentSessionId
+    $others = @(Get-Process EXCEL -ErrorAction SilentlyContinue | Where-Object {
+        [int]$_.SessionId -eq $sessionId -and [int]$_.Id -ne $ExceptPid
+    })
+    return ($others.Count -gt 0)
+}
+
 function Get-ForeignExcelProcesses([int[]]$AllowedPids = @(), [int]$SessionId = -1) {
     if ($SessionId -lt 0) { $SessionId = Get-CurrentSessionId }
     return @(
@@ -471,41 +479,6 @@ function Get-IsolatedExcelArguments([string]$WorkbookPath) {
     return '/x "' + $WorkbookPath + '"'
 }
 
-function Test-LeftoverCockpitExcel([int]$ExcelPid,[string]$WorkbookPath) {
-    if ($ExcelPid -le 0) { return $false }
-    $proc = Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue
-    if ($null -eq $proc) { return $false }
-    if ($proc.ProcessName -ne "EXCEL") { return $false }
-    if ([int]$proc.SessionId -ne (Get-CurrentSessionId)) { return $false }
-    $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ExcelPid) -ErrorAction SilentlyContinue
-    if ($null -eq $info) { return $false }
-    $cmd = [string]$info.CommandLine
-    if ([string]::IsNullOrWhiteSpace($cmd)) { return $false }
-    $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
-    $launchArg = Get-IsolatedExcelArguments $WorkbookPath
-    if ($cmd.IndexOf($launchArg, $ordinalIgnoreCase) -lt 0) { return $false }
-    $parentPid = 0
-    try { $parentPid = [int]$info.ParentProcessId } catch { $parentPid = 0 }
-    if ($parentPid -gt 0) {
-        $parent = Get-Process -Id $parentPid -ErrorAction SilentlyContinue
-        if ($null -ne $parent) { return $false }
-    }
-    return $true
-}
-
-function Stop-VerifiedLeftoverCockpitExcel([int]$ExcelPid,[string]$WorkbookPath) {
-    if ($ExcelPid -le 0) { return $false }
-    $proc = Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue
-    if ($null -eq $proc) { return $true }
-    if (-not (Test-LeftoverCockpitExcel $ExcelPid $WorkbookPath)) { return $false }
-    Stop-Process -Id $ExcelPid -Force -ErrorAction SilentlyContinue
-    foreach ($attempt in 1..10) {
-        Start-Sleep -Milliseconds 300
-        if ($null -eq (Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue)) { return $true }
-    }
-    return $false
-}
-
 function Test-LaunchedExcelOwnership([int]$ExcelPid,[string]$WorkbookPath,[int]$ControllerPid) {
     if ($ExcelPid -le 0) { return $false }
     $proc = Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue
@@ -524,11 +497,14 @@ function Test-LaunchedExcelOwnership([int]$ExcelPid,[string]$WorkbookPath,[int]$
 }
 
 function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$ControllerPid) {
-    if ($ExcelPid -le 0) { return $true }
+    if ($ExcelPid -le 0) { return $false }
 
     $proc = Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue
-    if ($null -eq $proc) { return $true }
+    if ($null -eq $proc) { return $false }
     if (-not (Test-LaunchedExcelOwnership $ExcelPid $WorkbookPath $ControllerPid)) { return $false }
+    # TerminateProcess on one Excel can take down other Excel processes in
+    # the same session. A pre-existing workbook must keep this from running.
+    if (Test-OtherExcelInSession $ExcelPid) { return $false }
 
     Stop-Process -Id $ExcelPid -Force -ErrorAction SilentlyContinue
     foreach ($attempt in 1..10) {
@@ -769,7 +745,7 @@ function Add-ExcelIdentityIncident($Probe) {
     $code = [string]$Probe.code
     if ([string]::IsNullOrWhiteSpace($code)) { $code = "EXCEL_IDENTITY_PROBE_FAILED" }
     $component = "excel_identity"
-    if ($code -eq "EXCEL_SERIOUS_ERROR_PROMPT" -or [string]$Probe.last_error -eq "PREVIOUS_SERIOUS_ERROR_DIALOG" -or -not [string]::IsNullOrWhiteSpace([string]$Probe.dialog_text)) {
+    if ($code -eq "EXCEL_SERIOUS_ERROR_PROMPT" -or $code -eq "EXCEL_WORKBOOK_OPEN_BLOCKED" -or [string]$Probe.last_error -eq "PREVIOUS_SERIOUS_ERROR_DIALOG" -or [string]$Probe.last_error -eq "HWND_PROCESS_NOT_READY" -or [string]$Probe.last_error -eq "EXCEL_BUSY" -or -not [string]::IsNullOrWhiteSpace([string]$Probe.dialog_text)) {
         $component = "workbook_open"
     } elseif ($code -eq "EXCEL_PROCESS_EXITED") {
         $component = "excel_process_exit"
@@ -1239,56 +1215,20 @@ try {
     $existingExcel = @(Get-CanonicalWorkbookConflicts $WorkbookPath $WorkbookName @())
 
     if ($existingExcel.Count -gt 0) {
-        # A previous AI Cockpit /x process is not foreign work Excel, and it
-        # is not an ownership candidate. Stop only an orphan whose command
-        # line is exactly this controller's isolated launch. Any other
-        # canonical holder stays untouched and startup fail-closes.
-        $unknownCanonical = New-Object System.Collections.Generic.List[object]
-        $leftoverPids = New-Object System.Collections.Generic.List[int]
+        # A pre-existing canonical Excel is not adopted and is not stopped.
+        # TerminateProcess on one Excel PID can close other Excel processes
+        # in the same session, including unrelated workbooks.
+        $state.excel_pid = 0
+        $state.workbook_identity_verified = $false
+        Save-State $state
         foreach ($proc in $existingExcel) {
-            $pidValue = [int]$proc.Id
-            if (Test-LeftoverCockpitExcel $pidValue $WorkbookPath) {
-                if (-not $leftoverPids.Contains($pidValue)) { [void]$leftoverPids.Add($pidValue) }
-            } else {
-                [void]$unknownCanonical.Add($proc)
-            }
+            Write-Status ("  pre-existing canonical Excel PID " + $proc.Id + " was not stopped and was not adopted.") Yellow
         }
-        if ($unknownCanonical.Count -gt 0) {
-            $state.excel_pid = 0
-            $state.workbook_identity_verified = $false
-            Save-State $state
-            throw (
-                "RSS workbook is already open in Excel PID " +
-                $unknownCanonical[0].Id +
-                ". Refusing to take ownership. Foreign Excel was not touched."
-            )
-        }
-        foreach ($pidValue in @($leftoverPids)) {
-            Write-Status ("  leftover AI Cockpit /x Excel PID " + $pidValue + " is not adopted.") Yellow
-            $leftoverStopped = Stop-VerifiedLeftoverCockpitExcel $pidValue $WorkbookPath
-            if (-not $leftoverStopped) {
-                $state.excel_pid = 0
-                $state.workbook_identity_verified = $false
-                Save-State $state
-                throw (
-                    "Leftover AI Cockpit Excel PID " +
-                    $pidValue +
-                    " could not be verified/stopped. Refusing to take ownership. Foreign Excel was not touched."
-                )
-            }
-            Write-Status ("  stopped leftover AI Cockpit /x Excel PID " + $pidValue + ". It was not adopted.") Yellow
-        }
-        $stillOpen = @(Get-CanonicalWorkbookConflicts $WorkbookPath $WorkbookName @())
-        if ($stillOpen.Count -gt 0) {
-            $state.excel_pid = 0
-            $state.workbook_identity_verified = $false
-            Save-State $state
-            throw (
-                "RSS workbook is already open in Excel PID " +
-                $stillOpen[0].Id +
-                ". Refusing to take ownership. Foreign Excel was not touched."
-            )
-        }
+        throw (
+            "RSS workbook is already open in Excel PID " +
+            $existingExcel[0].Id +
+            ". Refusing to take ownership. Foreign Excel was not touched."
+        )
     }
 
     $excelExe = @(
@@ -1321,13 +1261,10 @@ try {
 
     $conflictAfterLaunch = @(Get-CanonicalWorkbookConflicts $WorkbookPath $WorkbookName @([int]$launchedExcelProc.Id))
     if ($conflictAfterLaunch.Count -gt 0) {
-        $ownedStopped = Stop-VerifiedOwnedExcel ([int]$launchedExcelProc.Id) $WorkbookPath $PID
-        if ($ownedStopped) {
-            Write-Status "  verified owned Excel stopped after a canonical conflict. The other Excel was not touched." Yellow
-        }
         $state.excel_pid = 0
         $state.workbook_identity_verified = $false
         Save-State $state
+        Write-Status ("  launched Excel PID " + $launchedExcelProc.Id + " was not stopped. Pre-existing Excel was not touched.") Yellow
         throw (
             "RSS workbook is already open in Excel PID " +
             $conflictAfterLaunch[0].Id +
@@ -1347,16 +1284,9 @@ try {
         $state.excel_identity_error = [string]$probe.code
         Save-State $state
 
-        $openCrash = $probe.code -in @("EXCEL_PROCESS_EXITED", "EXCEL_SERIOUS_ERROR_PROMPT") -or [bool]$probe.process_exited
-        if ($openCrash) {
-            Write-Status ("  launched Excel PID " + $probe.launched_excel_pid + " / process_exited " + [bool]$probe.process_exited + " / exit_code " + $probe.excel_exit_code + " / exit_at " + $probe.excel_exit_at) Yellow
-            Write-Status "  launched Excel was not force-killed after workbook open failure. Work Excel was not touched. Startup does not reopen Excel." Yellow
-        } else {
-            $ownedStopped = Stop-VerifiedOwnedExcel ([int]$launchedExcelProc.Id) $WorkbookPath $PID
-            if ($ownedStopped) {
-                Write-Status "  verified owned Excel stopped after identity failure." Yellow
-            }
-        }
+        $openCrash = $probe.code -in @("EXCEL_PROCESS_EXITED", "EXCEL_SERIOUS_ERROR_PROMPT", "EXCEL_WORKBOOK_OPEN_BLOCKED") -or [bool]$probe.process_exited -or [string]$probe.last_error -in @("HWND_PROCESS_NOT_READY", "EXCEL_BUSY", "PREVIOUS_SERIOUS_ERROR_DIALOG")
+        Write-Status ("  launched Excel PID " + $probe.launched_excel_pid + " / process_exited " + [bool]$probe.process_exited + " / exit_code " + $probe.excel_exit_code + " / exit_at " + $probe.excel_exit_at) Yellow
+        Write-Status "  launched Excel was not stopped after identity or workbook-open failure. Work Excel was not touched. Startup does not reopen Excel." Yellow
         Add-ExcelIdentityIncident $probe
         Write-Status "AI Cockpit startup failed closed" Red
         Write-Status "Unrelated Excel processes were not touched" Yellow
@@ -1538,10 +1468,12 @@ try {
                         [int]$excelInfo.ParentProcessId -eq $PID
                     )
 
+                    $otherExcelPresent = Test-OtherExcelInSession ([int]$state.excel_pid)
                     if (
                         $isHidden -and
                         $isCanonicalWorkbook -and
-                        $isControllerChild
+                        $isControllerChild -and
+                        -not $otherExcelPresent
                     ) {
                         Write-Status (
                             "  terminating verified hidden AI Cockpit Excel PID " +
@@ -1597,6 +1529,7 @@ try {
                             "hidden=" + $isHidden +
                             ", canonicalWorkbook=" + $isCanonicalWorkbook +
                             ", controllerChild=" + $isControllerChild +
+                            ", otherExcelPresent=" + $otherExcelPresent +
                             ". It will NOT be force-stopped."
                         ) Red
 

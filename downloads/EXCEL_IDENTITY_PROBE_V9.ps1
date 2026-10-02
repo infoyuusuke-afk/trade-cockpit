@@ -206,14 +206,24 @@ function Test-LaunchedPidAlive {
 }
 
 function Get-SeriousErrorPrompt {
-    $texts = @()
-    try { $texts = @([ExcelProcessWindows]::VisibleTexts($ExpectedExcelPid)) } catch { return "" }
-    foreach ($text in $texts) {
-        $value = [string]$text
-        if ($value.IndexOf($SeriousErrorJa, $OrdinalComparison) -ge 0) { return $value }
-        if ($value.IndexOf($ReopenDocumentJa, $OrdinalComparison) -ge 0) { return $value }
-        if ($value.IndexOf("serious problem", $OrdinalIgnoreCaseComparison) -ge 0) { return $value }
-        if ($value.IndexOf("serious error", $OrdinalIgnoreCaseComparison) -ge 0) { return $value }
+    $sessionId = [int](Get-Process -Id $PID).SessionId
+    $procIds = New-Object System.Collections.Generic.List[int]
+    if ($ExpectedExcelPid -gt 0) { [void]$procIds.Add($ExpectedExcelPid) }
+    foreach ($proc in @(Get-Process EXCEL -ErrorAction SilentlyContinue)) {
+        if ([int]$proc.SessionId -ne $sessionId) { continue }
+        $procId = [int]$proc.Id
+        if (-not $procIds.Contains($procId)) { [void]$procIds.Add($procId) }
+    }
+    foreach ($procId in @($procIds)) {
+        $texts = @()
+        try { $texts = @([ExcelProcessWindows]::VisibleTexts($procId)) } catch { continue }
+        foreach ($text in $texts) {
+            $value = [string]$text
+            if ($value.IndexOf($SeriousErrorJa, $OrdinalComparison) -ge 0) { return $value }
+            if ($value.IndexOf($ReopenDocumentJa, $OrdinalComparison) -ge 0) { return $value }
+            if ($value.IndexOf("serious problem", $OrdinalIgnoreCaseComparison) -ge 0) { return $value }
+            if ($value.IndexOf("serious error", $OrdinalIgnoreCaseComparison) -ge 0) { return $value }
+        }
     }
     return ""
 }
@@ -355,11 +365,19 @@ while ((Get-Date) -lt $deadline) {
                     $owner = @(Get-Process EXCEL -ErrorAction SilentlyContinue | Where-Object { [Int64]$_.MainWindowHandle -eq $hwnd } | Select-Object -First 1)
                     if ($owner.Count -lt 1) {
                         $last.last_error = "HWND_PROCESS_NOT_READY"
+                        $last.code = "EXCEL_WORKBOOK_OPEN_BLOCKED"
+                        $last.ok = $false
+                        $last.message = "Workbook moniker was found but its HWND was not the launched Excel. Identity retries stopped. No Excel process was stopped."
+                        $disposition = "fail"
                     } else {
                         $ownerPid = [int]$owner[0].Id
                         $last.excel_pid = $ownerPid
                         if ($ownerPid -ne $ExpectedExcelPid) {
                             $last.last_error = "PID_MISMATCH"
+                            $last.code = "EXCEL_IDENTITY_MISMATCH"
+                            $last.ok = $false
+                            $last.message = "Workbook moniker belongs to a different Excel PID. It was not adopted. Identity retries stopped. No Excel process was stopped."
+                            $disposition = "fail"
                         } else {
                             $last.session_match = ([int]$owner[0].SessionId -eq $selfSession)
                             if (-not $last.session_match) {
@@ -426,12 +444,25 @@ while ((Get-Date) -lt $deadline) {
         } catch {
             $hresult = [uint32]0
             try { $hresult = [uint32]$_.Exception.HResult } catch {}
-            # 0x80010001 RPC_E_CALL_REJECTED, 0x8001010A RPC_E_SERVERCALL_RETRYLATER,
-            # 0x800AC472 Excel is in a dialog or edit. All three are startup races.
-            if ($hresult -eq 0x80010001 -or $hresult -eq 0x8001010A -or $hresult -eq 0x800AC472) { $last.last_error = "EXCEL_BUSY" }
-            else { $last.last_error = "COM_READ_FAILED" }
-            $last.message = $_.Exception.Message
-            $disposition = "next"
+            # 0x80010001 RPC_E_CALL_REJECTED and 0x8001010A RPC_E_SERVERCALL_RETRYLATER
+            # can be a short startup race. 0x800AC472 means Excel is in a dialog.
+            # A dialog is a workbook-open failure, not a pending ROT registration.
+            if ($hresult -eq 0x800AC472) {
+                $last.last_error = "EXCEL_BUSY"
+                Test-WorkbookOpenBlocker
+                $last.code = "EXCEL_WORKBOOK_OPEN_BLOCKED"
+                $last.ok = $false
+                $last.message = "Excel was busy in a dialog. Identity retries stopped. The dialog was not clicked. No Excel process was stopped."
+                $disposition = "fail"
+            } elseif ($hresult -eq 0x80010001 -or $hresult -eq 0x8001010A) {
+                $last.last_error = "EXCEL_BUSY"
+                $last.message = $_.Exception.Message
+                $disposition = "next"
+            } else {
+                $last.last_error = "COM_READ_FAILED"
+                $last.message = $_.Exception.Message
+                $disposition = "next"
+            }
         } finally {
             Release-ProbeCom $app
             Release-ProbeCom $book

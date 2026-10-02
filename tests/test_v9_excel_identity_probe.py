@@ -171,7 +171,7 @@ class ExcelIdentityProbeContract(unittest.TestCase):
         self.assertIn('Write-Status "Starting Watcher..."', self.controller[self.controller.index("if (-not $probe.ok)"):])
 
     def test_foreign_excel_presence_keeps_isolated_canonical_launch(self):
-        self.assertIn('$Build = "V9-CONTROLLER-20261002-EXCEL-OWNERSHIP-01"', self.controller)
+        self.assertIn('$Build = "V9-CONTROLLER-20261002-EXCEL-FOREIGN-SURVIVE-01"', self.controller)
         self.assertNotIn('throw "Excel safety interlock: foreign Excel process detected."', self.controller)
         self.assertNotIn("Close unrelated Excel workbooks first", self.controller)
         self.assertNotIn("FOREIGN EXCEL DETECTED - FAIL-CLOSED SAFETY STOP.", self.controller)
@@ -204,42 +204,44 @@ class ExcelIdentityProbeContract(unittest.TestCase):
         self.assertNotIn("??", conflict)
         self.assertNotIn("?.", conflict)
 
-    def test_leftover_cockpit_excel_is_retired_without_adoption(self):
+    def test_foreign_work_excel_survives_orphan_launch_and_identity_cleanup(self):
         launch = self.startup
-        self.assertIn("function Test-LeftoverCockpitExcel", self.controller)
-        self.assertIn("function Stop-VerifiedLeftoverCockpitExcel", self.controller)
-        leftover = self.controller.split("function Test-LeftoverCockpitExcel", 1)[1].split("function Stop-VerifiedLeftoverCockpitExcel", 1)[0]
-        self.assertIn("Get-IsolatedExcelArguments $WorkbookPath", leftover)
-        self.assertIn("$cmd.IndexOf($launchArg, $ordinalIgnoreCase)", leftover)
-        self.assertIn('if ($proc.ProcessName -ne "EXCEL") { return $false }', leftover)
-        self.assertIn("if ([int]$proc.SessionId -ne (Get-CurrentSessionId)) { return $false }", leftover)
-        self.assertIn("if ($null -ne $parent) { return $false }", leftover)
-        self.assertNotIn("[StringComparison]::", leftover.split("$ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase", 1)[1])
-        stop = self.controller.split("function Stop-VerifiedLeftoverCockpitExcel", 1)[1].split("function Test-LaunchedExcelOwnership", 1)[0]
-        self.assertLess(stop.index("Test-LeftoverCockpitExcel"), stop.index("Stop-Process -Id $ExcelPid"))
-        self.assertNotIn("Stop-Process -Name", stop)
-        self.assertNotIn("$state.excel_pid = $pidValue", launch)
-        self.assertNotIn("$state.excel_pid = [int]$existingExcel", launch)
-        self.assertNotIn("$state.excel_pid = [int]$stillOpen", launch)
-        self.assertLess(
-            launch.index("if ($unknownCanonical.Count -gt 0)"),
-            launch.index("Stop-VerifiedLeftoverCockpitExcel"),
-        )
+        self.assertNotIn("Stop-VerifiedLeftoverCockpitExcel", self.controller)
+        self.assertNotIn("Test-LeftoverCockpitExcel", self.controller)
+        self.assertNotIn("Stop-VerifiedOwnedExcel", launch)
+        self.assertNotIn("Stop-Process", launch)
+        self.assertIn("pre-existing canonical Excel PID ", launch)
+        self.assertIn("was not stopped and was not adopted.", launch)
         self.assertIn("Refusing to take ownership. Foreign Excel was not touched.", launch)
-        self.assertIn("$state.excel_pid = [int]$launchedExcelProc.Id", launch)
-        self.assertLess(
-            launch.index("$state.excel_pid = [int]$launchedExcelProc.Id"),
-            launch.index("Invoke-ExcelIdentityProbe"),
-        )
-        self.assertIn(
-            "Get-CanonicalWorkbookConflicts $WorkbookPath $WorkbookName @([int]$launchedExcelProc.Id)",
-            launch,
-        )
-        self.assertIn("ExpectedExcelPid ([int]$launchedExcelProc.Id)", launch)
+        self.assertIn("launched Excel was not stopped after identity or workbook-open failure.", launch)
+        self.assertNotIn("verified owned Excel stopped after identity failure.", launch)
+        self.assertIn("EXCEL_WORKBOOK_OPEN_BLOCKED", self.controller)
+        self.assertIn("HWND_PROCESS_NOT_READY", self.controller)
+        owned = self.controller.split("function Stop-VerifiedOwnedExcel", 1)[1].split("function Wait-OwnedHelperProcess", 1)[0]
+        self.assertLess(owned.index("Test-LaunchedExcelOwnership"), owned.index("Test-OtherExcelInSession"))
+        self.assertLess(owned.index("Test-OtherExcelInSession"), owned.index("Stop-Process -Id $ExcelPid"))
+        hidden = self.controller.split("terminating verified hidden AI Cockpit Excel PID", 1)[0]
+        self.assertLess(hidden.rindex("Test-OtherExcelInSession"), hidden.rindex("-not $otherExcelPresent"))
+        self.assertIn("Get-Process EXCEL -ErrorAction SilentlyContinue", self.controller.split("function Test-OtherExcelInSession", 1)[1].split("function Get-ForeignExcelProcesses", 1)[0])
+        prompt = self.helper.split("function Get-SeriousErrorPrompt", 1)[1].split("function Stop-ProbeForProcessExit", 1)[0]
+        self.assertIn("Get-Process EXCEL -ErrorAction SilentlyContinue", prompt)
+        self.assertIn("[ExcelProcessWindows]::VisibleTexts($procId)", prompt)
+        blocked = self.helper.split('$last.last_error = "HWND_PROCESS_NOT_READY"', 1)[1].split("else {", 1)[0]
+        self.assertIn("EXCEL_WORKBOOK_OPEN_BLOCKED", blocked)
+        self.assertIn('$disposition = "fail"', blocked)
+        busy = self.helper.split("if ($hresult -eq 0x800AC472)", 1)[1].split("elseif ($hresult -eq 0x80010001", 1)[0]
+        self.assertIn("Test-WorkbookOpenBlocker", busy)
+        self.assertIn("EXCEL_WORKBOOK_OPEN_BLOCKED", busy)
+        self.assertIn('$disposition = "fail"', busy)
+        mismatch = self.helper.split('$last.last_error = "PID_MISMATCH"', 1)[1].split("else {", 1)[0]
+        self.assertIn('$disposition = "fail"', mismatch)
+        self.assertIn("It was not adopted.", mismatch)
+        self.assertNotIn("Stop-Process", self.helper)
+        self.assertNotIn("SendKeys", launch + self.helper)
+        self.assertNotIn("BM_CLICK", launch + self.helper)
         self.assertIn("real_submit_allowed = $false", self.controller)
-        self.assertNotIn("SendKeys", launch)
-        self.assertNotIn("BM_CLICK", launch)
         self.assertTrue(self.controller.isascii())
+        self.assertTrue(self.helper.isascii())
 
     def test_unrelated_excel_is_never_killed(self):
         for text in (self.controller, self.helper):
@@ -250,7 +252,7 @@ class ExcelIdentityProbeContract(unittest.TestCase):
             self.assertNotRegex(text, r"Get-Process\s+EXCEL[^\n;]*Stop-Process")
         self.assertNotIn("Stop-Process", self.helper)
         self.assertNotIn("Stop-Process", self.startup)
-        self.assertIn("Stop-VerifiedOwnedExcel", self.startup)
+        self.assertNotIn("Stop-VerifiedOwnedExcel", self.startup)
 
     def test_canonical_workbook_pid_parent_and_session_contract_remains(self):
         ownership = self.controller.split("function Test-LaunchedExcelOwnership", 1)[1].split("function Stop-VerifiedOwnedExcel", 1)[0]
@@ -263,7 +265,8 @@ class ExcelIdentityProbeContract(unittest.TestCase):
         ):
             self.assertIn(needle, ownership)
         stop = self.controller.split("function Stop-VerifiedOwnedExcel", 1)[1].split("function Wait-OwnedHelperProcess", 1)[0]
-        self.assertLess(stop.index("Test-LaunchedExcelOwnership"), stop.index("Stop-Process -Id $ExcelPid"))
+        self.assertLess(stop.index("Test-LaunchedExcelOwnership"), stop.index("Test-OtherExcelInSession"))
+        self.assertLess(stop.index("Test-OtherExcelInSession"), stop.index("Stop-Process -Id $ExcelPid"))
         for needle in (
             "FullName",
             "hwnd",
