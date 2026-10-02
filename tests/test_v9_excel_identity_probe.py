@@ -3,14 +3,47 @@
 Cloud tests check structure, the hard-timeout contract, and Excel safety.
 They do not launch MarketSpeed II or a real workbook.
 """
+import os
 import pathlib
 import shutil
+import signal
 import subprocess
+import time
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 CONTROLLER = ROOT / "downloads" / "AI_COCKPIT_CONTROLLER_V9.ps1"
 HELPER = ROOT / "downloads" / "EXCEL_IDENTITY_PROBE_V9.ps1"
+# The helper sleeps 120s. Ubuntu pwsh 7.6 startup varied from 5.3s
+# (Actions run 36958072645) to still-running at 12s (run 36958771535)
+# on the same controller. This cap covers that spread plus the script's
+# own 20s kill-path bound, and still fails if the 120s hang is not killed.
+# It does not change the production 35s probe timeout. Windows PowerShell
+# 5.1 acceptance stays in v9-ui-voice-acceptance.yml.
+_LINUX_SELFTEST_HARNESS_SECONDS = 45
+
+
+def _as_text(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
+def _stop_process_group(proc: subprocess.Popen) -> None:
+    if proc.poll() is not None:
+        return
+    if os.name != "nt":
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+            return
+        except (ProcessLookupError, PermissionError, OSError):
+            pass
+    try:
+        proc.kill()
+    except OSError:
+        pass
 
 
 def _startup_section(text: str) -> str:
@@ -110,22 +143,53 @@ class ExcelIdentityProbeContract(unittest.TestCase):
             self.assertIn(needle, combined)
 
     def test_hung_helper_returns_within_the_hard_timeout_when_powershell_exists(self):
+        self.assertGreater(_LINUX_SELFTEST_HARNESS_SECONDS, 20)
+        self.assertLess(_LINUX_SELFTEST_HARNESS_SECONDS, 120)
         shell = shutil.which("pwsh") or shutil.which("powershell")
         if not shell:
             self.skipTest("PowerShell is not installed in this environment; Windows CI runs -IdentityProbeSelfTest")
-        completed = subprocess.run(
-            [shell, "-NoLogo", "-NoProfile", "-File", str(CONTROLLER), "-IdentityProbeSelfTest"],
-            capture_output=True,
+        env = os.environ.copy()
+        env["POWERSHELL_TELEMETRY_OPTOUT"] = "1"
+        env["POWERSHELL_UPDATECHECK"] = "Off"
+        started = time.monotonic()
+        proc = subprocess.Popen(
+            [shell, "-NoLogo", "-NoProfile", "-NonInteractive", "-File", str(CONTROLLER), "-IdentityProbeSelfTest"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=12,
-            check=False,
+            start_new_session=(os.name != "nt"),
+            env=env,
         )
-        output = completed.stdout + completed.stderr
-        self.assertEqual(completed.returncode, 0, output)
+        try:
+            try:
+                stdout, stderr = proc.communicate(timeout=_LINUX_SELFTEST_HARNESS_SECONDS)
+            except subprocess.TimeoutExpired as exc:
+                _stop_process_group(proc)
+                stdout = _as_text(exc.stdout)
+                stderr = _as_text(exc.stderr)
+                try:
+                    extra_out, extra_err = proc.communicate(timeout=5)
+                except subprocess.TimeoutExpired as leftover:
+                    extra_out = leftover.stdout
+                    extra_err = leftover.stderr
+                stdout += _as_text(extra_out)
+                stderr += _as_text(extra_err)
+                elapsed = time.monotonic() - started
+                self.fail(
+                    "identity probe self-test still running after "
+                    f"{elapsed:.2f}s (cap {_LINUX_SELFTEST_HARNESS_SECONDS}s). "
+                    "The 120s hang was not interrupted.\n"
+                    f"STDOUT:\n{stdout}\nSTDERR:\n{stderr}"
+                )
+        finally:
+            _stop_process_group(proc)
+        elapsed = time.monotonic() - started
+        output = (stdout or "") + (stderr or "")
+        self.assertEqual(proc.returncode, 0, output)
         self.assertIn("IDENTITY PROBE SELFTEST PASS", output)
         self.assertIn("EXCEL_IDENTITY_PROBE_TIMEOUT after ", output)
         self.assertIn("Unrelated Excel processes were not touched", output)
-        self.assertLessEqual(completed.returncode, 0)
+        self.assertLess(elapsed, _LINUX_SELFTEST_HARNESS_SECONDS, output)
 
 
 if __name__ == "__main__":

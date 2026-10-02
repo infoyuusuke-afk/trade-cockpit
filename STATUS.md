@@ -15,6 +15,8 @@ URL（https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/STATU
 
 Issue #288。Controller 本体の同期 `BindToMoniker` をやめ、workbook identity probe を別 PowerShell プロセスへ分離した。本体は helper PID を 35 秒で打ち切り、失敗時は `EXCEL_IDENTITY_PROBE_TIMEOUT` / `EXCEL_IDENTITY_MISMATCH` / `EXCEL_IDENTITY_PROBE_FAILED` で fail-closed にする。停止できる Excel は、canonical workbook の command line、parent PID、同一 session が揃ったものだけ。実機の MS2/RSS 起動確認は Owner PC 側。この節は作業ブランチの記録で、main にはまだ入っていない。
 
+Ubuntu structural の `test_hung_helper_returns_within_the_hard_timeout_when_powershell_exists` は、同一 Controller（`69107b859`）で 5.3 秒成功（Actions `36958072645`）のあと、merge push（`65dea8d4f`、Actions `36958771535`）では Python `timeout=12` に殺された。pwsh 7.6 の起動ばらつきに対して 12 秒は、スクリプト自身の kill 経路 20 秒より短い。Linux ハーネス上限は 45 秒（120 秒スリープより短く、本番 35 秒は不変）。タイムアウト時はプロセスグループを殺し、Windows PowerShell 5.1 の `-IdentityProbeSelfTest`（上限 90 秒）は必須のまま。
+
 ## システム概要
 
 - リポジトリ: infoyuusuke-afk/trade-cockpit（GitHub Pages: https://infoyuusuke-afk.github.io/trade-cockpit/）
