@@ -15,6 +15,8 @@ on:
       - "card_table_adapter.js"
       - "voice_client.js"
       - "downloads/AI_COCKPIT_*_V9.ps1"
+      - "tests/test_v9_excel_identity_probe_contract.py"
+      - "tests/test_v9_excel_identity_probe.ps1"
       - "downloads/RUN_AI_COCKPIT_V9.ps1"
       - "downloads/STOP_AI_COCKPIT_V9.ps1"
       - "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
@@ -45,7 +47,7 @@ jobs:
           git remote add origin https://github.com/infoyuusuke-afk/trade-cockpit.git
           git fetch --depth=1 origin "$GITHUB_REF"
           git checkout --detach FETCH_HEAD
-      - run: python3 -m unittest discover -s tests -p "test_v9_ui_voice_contract.py"
+      - run: python3 -m unittest discover -s tests -p "test_v9_*contract.py"
       - run: node --check voice_client.js
       - run: node --check card_table_adapter.js
       - run: node --check opportunity_radar.js
@@ -66,6 +68,8 @@ jobs:
         run: |
           $files = @(
             "downloads/AI_COCKPIT_CONTROLLER_V9.ps1",
+            "downloads/AI_COCKPIT_EXCEL_IDENTITY_PROBE_V9.ps1",
+            "tests/test_v9_excel_identity_probe.ps1",
             "downloads/AI_COCKPIT_GATEWAY_V9.ps1",
             "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
             "downloads/RUN_AI_COCKPIT_V9.ps1",
@@ -126,6 +130,29 @@ jobs:
           if ($collector.IndexOf("BindToMoniker", [StringComparison]::Ordinal) -lt 0) {
             throw "Collector must bind directly to the canonical RSS workbook."
           }
+          if ($controller -match 'BindToMoniker\s*\(') {
+            throw "Controller main path must not call BindToMoniker synchronously."
+          }
+          if ($controller -match '\.WaitForExit\(\s*\)') {
+            throw "Controller has an unbounded WaitForExit()."
+          }
+          $identityProbe = Get-Content -Raw -Encoding UTF8 "downloads/AI_COCKPIT_EXCEL_IDENTITY_PROBE_V9.ps1"
+          if ($identityProbe -notmatch 'BindToMoniker\s*\(') {
+            throw "Identity probe helper must perform the moniker probe."
+          }
+          if ($identityProbe -match 'Stop-Process|taskkill') {
+            throw "Identity probe helper must not stop processes."
+          }
+          foreach ($required in @(
+            "EXCEL_IDENTITY_PROBE_TIMEOUT",
+            "Wait-BoundedHelperProcess",
+            "Stop-VerifiedOwnedExcel",
+            "identity probe attempt "
+          )) {
+            if ($controller.IndexOf($required, [StringComparison]::Ordinal) -lt 0) {
+              throw ("Missing identity probe marker: " + $required)
+            }
+          }
 
           foreach ($required in @(
             "RuntimeDirOverride",
@@ -181,6 +208,9 @@ jobs:
             }
           }
 
+      - name: Excel identity probe timeout contract
+        shell: pwsh
+        run: pwsh -NoProfile -ExecutionPolicy Bypass -File tests/test_v9_excel_identity_probe.ps1
       - name: Runtime-bind V8 to V9 switch helpers
         shell: powershell
         run: |

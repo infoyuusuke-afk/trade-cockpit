@@ -11,6 +11,13 @@ URL（https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/STATU
 
 ---
 
+## Issue #288 P0: V9 Excel identity probe hard timeout (2026-10-02)
+
+- Root cause confirmed in source: after `isolated Excel launched`, `downloads/AI_COCKPIT_CONTROLLER_V9.ps1` called `[Runtime.InteropServices.Marshal]::BindToMoniker` on the controller thread inside a 40-second loop. A blocked COM/ROT call never returns to that loop, so startup could sit there indefinitely and never reach Watcher/Heartbeat/Collector.
+- Fix: `downloads/AI_COCKPIT_EXCEL_IDENTITY_PROBE_V9.ps1` performs the one moniker read. The controller waits with `WaitForExit` (8 seconds per attempt, 40 seconds overall) and terminates the helper with a Windows job object plus `Process.Kill`. Hang/budget expiry throws `EXCEL_IDENTITY_PROBE_TIMEOUT`. A contradictory path, HWND owner, or session throws `EXCEL_IDENTITY_PROBE_FAILED`.
+- On that failure the controller calls `Stop-VerifiedOwnedExcel` only. Stop requires the canonical workbook path on the command line, the controller as parent, and the same Windows session. Any miss leaves that process running. No other Excel PID is passed to stop.
+- Ports remain 28580 / 28581 / 28582 / 28583. No order-path change. Not yet re-run on the owner's machine.
+
 ## システム概要
 
 - リポジトリ: infoyuusuke-afk/trade-cockpit（GitHub Pages: https://infoyuusuke-afk.github.io/trade-cockpit/）

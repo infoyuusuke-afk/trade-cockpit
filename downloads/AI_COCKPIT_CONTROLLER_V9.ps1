@@ -30,8 +30,11 @@ param(
 #   - Collector is supervised independently: if it dies or never becomes
 #     ready, the Controller and the Gateway/UI stay up and the UI stays
 #     fail-closed. The Controller does not exit because Collector failed.
-#   - No single wait is longer than 45s. The Controller reports status
-#     every few seconds instead of going silent.
+#   - No single in-process wait is longer than 45s. Workbook COM/ROT
+#     identity probing runs in a helper process. A stuck moniker call is
+#     killed from outside: 8s per attempt, 40s overall, plus at most 1s
+#     terminate grace per attempt. The Controller reports status every
+#     few seconds instead of going silent.
 #   - Runs as a persistent supervision loop after startup (not "start and
 #     exit" like V6) so it can react to Collector dying or Excel closing
 #     without the user re-running anything.
@@ -40,7 +43,7 @@ param(
 #     Heartbeat/Gateway processes and the Excel process that hosts them.
 
 $ErrorActionPreference = "Stop"
-$Build = "V9-CONTROLLER-20261002-SESSION-GUARD-02"
+$Build = "V9-CONTROLLER-20261002-IDENTITY-PROBE-01"
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
 # Port map (fixed 2026-09-25): Collector=28580, Gateway=28581,
@@ -51,6 +54,14 @@ $PORT_COLLECTOR = 28580
 $PORT_GATEWAY = 28581
 $PORT_WATCHER = 28582
 $PORT_VOICE = 28583
+
+# External cap for workbook identity verification. BindToMoniker runs only
+# in the helper process. Each WaitForExit is at most ATTEMPT seconds, the
+# sum of those waits is at most BUDGET seconds, and terminate grace is 1s
+# per attempt. Cleanup of a verified owned Excel adds at most ~3s.
+$EXCEL_IDENTITY_PROBE_BUDGET_SEC = 40
+$EXCEL_IDENTITY_PROBE_ATTEMPT_SEC = 8
+$EXCEL_IDENTITY_PROBE_KILL_GRACE_MS = 1000
 
 # ---------------------------------------------------------------- utility
 
@@ -396,6 +407,213 @@ function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$Cont
     return $false
 }
 
+function Resolve-ExcelIdentityFailureCode([bool]$DefinitiveMismatch) {
+    if ($DefinitiveMismatch) { return "EXCEL_IDENTITY_PROBE_FAILED" }
+    return "EXCEL_IDENTITY_PROBE_TIMEOUT"
+}
+
+function Get-ExcelIdentityProbeVerdict($Result, [string]$WorkbookPath, [int]$ExpectedExcelPid, [int]$ExpectedSessionId) {
+    $verdict = @{
+        ok = $false
+        moniker = $false
+        hwnd = $false
+        pid = $false
+        session = $false
+        definitive_mismatch = $false
+        error = ""
+    }
+    if ($null -eq $Result) {
+        $verdict.error = "NO_RESULT"
+        return [pscustomobject]$verdict
+    }
+
+    $full = [string]$Result.full_name
+    $verdict.moniker = (
+        -not [string]::IsNullOrWhiteSpace($full) -and
+        ($full -ieq $WorkbookPath)
+    )
+    $appHwnd = 0L
+    try { $appHwnd = [int64]$Result.app_hwnd } catch { $appHwnd = 0L }
+    $ownerPid = 0
+    try { $ownerPid = [int]$Result.owner_pid } catch { $ownerPid = 0 }
+    $sessionId = -1
+    try { $sessionId = [int]$Result.session_id } catch { $sessionId = -1 }
+    if (-not [string]::IsNullOrWhiteSpace([string]$Result.error)) {
+        $verdict.error = ([string]$Result.error) -replace "[\r\n]+", " "
+    }
+
+    $windowMatched = ($appHwnd -ne 0 -and $ownerPid -gt 0)
+    $verdict.hwnd = $windowMatched
+    $verdict.pid = ($windowMatched -and $ownerPid -eq $ExpectedExcelPid -and $ExpectedExcelPid -gt 0)
+    $verdict.session = ($verdict.pid -and $sessionId -eq $ExpectedSessionId)
+    $verdict.ok = ($verdict.moniker -and $verdict.hwnd -and $verdict.pid -and $verdict.session)
+
+    $nameMismatch = (-not [string]::IsNullOrWhiteSpace($full) -and -not $verdict.moniker)
+    $pidMismatch = ($verdict.moniker -and $verdict.hwnd -and -not $verdict.pid)
+    $sessionMismatch = ($verdict.moniker -and $verdict.hwnd -and $verdict.pid -and -not $verdict.session)
+    $verdict.definitive_mismatch = ($nameMismatch -or $pidMismatch -or $sessionMismatch)
+    return [pscustomobject]$verdict
+}
+
+$script:ExcelProbeJobReady = $false
+function Initialize-ExcelIdentityProbeJobType {
+    if ($script:ExcelProbeJobReady) { return $true }
+    if ("CockpitExcelProbeJob" -as [type]) {
+        $script:ExcelProbeJobReady = $true
+        return $true
+    }
+    try {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class CockpitExcelProbeJob {
+    [StructLayout(LayoutKind.Sequential)]
+    public struct JOBOBJECT_BASIC_LIMIT_INFORMATION {
+        public long PerProcessUserTimeLimit;
+        public long PerJobUserTimeLimit;
+        public uint LimitFlags;
+        public UIntPtr MinimumWorkingSetSize;
+        public UIntPtr MaximumWorkingSetSize;
+        public uint ActiveProcessLimit;
+        public IntPtr Affinity;
+        public uint PriorityClass;
+        public uint SchedulingClass;
+    }
+    [StructLayout(LayoutKind.Sequential)]
+    public struct IO_COUNTERS {
+        public ulong ReadOperationCount;
+        public ulong WriteOperationCount;
+        public ulong OtherOperationCount;
+        public ulong ReadTransferCount;
+        public ulong WriteTransferCount;
+        public ulong OtherTransferCount;
+    }
+    [StructLayout(LayoutKind.Sequential)]
+    public struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION {
+        public JOBOBJECT_BASIC_LIMIT_INFORMATION BasicLimitInformation;
+        public IO_COUNTERS IoInfo;
+        public UIntPtr ProcessMemoryLimit;
+        public UIntPtr JobMemoryLimit;
+        public UIntPtr PeakProcessMemoryUsed;
+        public UIntPtr PeakJobMemoryUsed;
+    }
+    const int JobObjectExtendedLimitInformation = 9;
+    const uint JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000;
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern IntPtr CreateJobObject(IntPtr lpJobAttributes, string lpName);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool SetInformationJobObject(IntPtr hJob, int infoClass, ref JOBOBJECT_EXTENDED_LIMIT_INFORMATION info, uint cb);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool AssignProcessToJobObject(IntPtr hJob, IntPtr hProcess);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool TerminateJobObject(IntPtr hJob, uint uExitCode);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    public static extern bool CloseHandle(IntPtr hObject);
+    public static IntPtr CreateKillOnCloseJob() {
+        IntPtr handle = CreateJobObject(IntPtr.Zero, null);
+        if (handle == IntPtr.Zero) return IntPtr.Zero;
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION info = new JOBOBJECT_EXTENDED_LIMIT_INFORMATION();
+        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        uint size = (uint)Marshal.SizeOf(typeof(JOBOBJECT_EXTENDED_LIMIT_INFORMATION));
+        if (!SetInformationJobObject(handle, JobObjectExtendedLimitInformation, ref info, size)) {
+            CloseHandle(handle);
+            return IntPtr.Zero;
+        }
+        return handle;
+    }
+}
+'@ -ErrorAction Stop
+        $script:ExcelProbeJobReady = $true
+        return $true
+    } catch {
+        Write-Status ("  identity probe job object unavailable; process kill fallback remains bounded. " + $_.Exception.Message) Yellow
+        return $false
+    }
+}
+
+function Invoke-TerminateIdentityProbeProcess($Process, [IntPtr]$JobHandle) {
+    # Kills the probe helper only. Callers must not pass an Excel process.
+    # The launched Excel process is never assigned to this job.
+    if ($JobHandle -ne [IntPtr]::Zero) {
+        try { [void][CockpitExcelProbeJob]::TerminateJobObject($JobHandle, 1) } catch {}
+    }
+    try {
+        if ($null -ne $Process -and -not $Process.HasExited) { $Process.Kill() }
+    } catch {}
+}
+
+function Wait-BoundedHelperProcess($Process, [IntPtr]$JobHandle, [int]$TimeoutMs, [int]$KillGraceMs) {
+    if ($TimeoutMs -lt 1) { $TimeoutMs = 1 }
+    if ($KillGraceMs -lt 1) { $KillGraceMs = 1 }
+    $exited = $Process.WaitForExit($TimeoutMs)
+    if ($exited) { return $true }
+    Invoke-TerminateIdentityProbeProcess $Process $JobHandle
+    try { [void]$Process.WaitForExit($KillGraceMs) } catch {}
+    return $false
+}
+
+function Invoke-ExcelIdentityProbeAttempt {
+    param(
+        [string]$WorkbookPath,
+        [int]$ExpectedExcelPid,
+        [int]$ExpectedSessionId,
+        [int]$TimeoutMs,
+        [string]$ProbeScript,
+        [int]$Attempt
+    )
+    $requestPath = Join-Path $LogDir ("excel_identity_request_attempt" + $Attempt + ".json")
+    $resultPath = Join-Path $LogDir ("excel_identity_result_attempt" + $Attempt + ".json")
+    $stdoutPath = Join-Path $LogDir ("excel_identity_probe_attempt" + $Attempt + "_stdout.log")
+    $stderrPath = Join-Path $LogDir ("excel_identity_probe_attempt" + $Attempt + "_stderr.log")
+    Remove-Item -LiteralPath $resultPath, $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+
+    $request = [ordered]@{ workbook_path = $WorkbookPath }
+    [IO.File]::WriteAllText($requestPath, ($request | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding $false))
+
+    $job = [IntPtr]::Zero
+    $proc = $null
+    $helperPid = 0
+    $timedOut = $false
+    $stuck = $false
+    $verdict = Get-ExcelIdentityProbeVerdict $null $WorkbookPath $ExpectedExcelPid $ExpectedSessionId
+    try {
+        if (Initialize-ExcelIdentityProbeJobType) {
+            try { $job = [CockpitExcelProbeJob]::CreateKillOnCloseJob() } catch { $job = [IntPtr]::Zero }
+        }
+        $argString = '-STA -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $ProbeScript + '" -RequestPath "' + $requestPath + '" -ResultPath "' + $resultPath + '"'
+        $proc = Start-Process -FilePath "powershell.exe" -ArgumentList $argString -WindowStyle Hidden -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -PassThru
+        if ($null -eq $proc) { throw "Identity probe helper did not start." }
+        $helperPid = [int]$proc.Id
+        if ($job -ne [IntPtr]::Zero) {
+            try { [void][CockpitExcelProbeJob]::AssignProcessToJobObject($job, $proc.Handle) } catch {}
+        }
+        $exitedInTime = Wait-BoundedHelperProcess $proc $job $TimeoutMs $EXCEL_IDENTITY_PROBE_KILL_GRACE_MS
+        if (-not $exitedInTime) {
+            $timedOut = $true
+            try { $stuck = -not $proc.HasExited } catch { $stuck = $true }
+        } else {
+            $parsed = $null
+            if (Test-Path -LiteralPath $resultPath) {
+                try { $parsed = Read-JsonUtf8 $resultPath } catch { $parsed = $null }
+            }
+            $verdict = Get-ExcelIdentityProbeVerdict $parsed $WorkbookPath $ExpectedExcelPid $ExpectedSessionId
+        }
+    } finally {
+        if ($job -ne [IntPtr]::Zero) {
+            try { [void][CockpitExcelProbeJob]::CloseHandle($job) } catch {}
+        }
+        if ($null -ne $proc) {
+            try { $proc.Dispose() } catch {}
+        }
+    }
+    return [pscustomobject]@{
+        timed_out = $timedOut
+        helper_stuck = $stuck
+        helper_pid = $helperPid
+        verdict = $verdict
+    }
+}
+
 # ======================================================================
 # MAIN
 # ======================================================================
@@ -501,12 +719,13 @@ try {
     $Collector = Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"
     $Gateway = Join-Path $PSScriptRoot "AI_COCKPIT_GATEWAY_V9.ps1"
     $VoiceBridge = Join-Path $PSScriptRoot "AI_COCKPIT_VOICE_BRIDGE_V9.ps1"
+    $IdentityProbe = Join-Path $PSScriptRoot "AI_COCKPIT_EXCEL_IDENTITY_PROBE_V9.ps1"
     $WorkbookPath = Join-Path $RuntimeDir "Kioxia_MS2_RSS_Live_Signals.xlsx"
     $WorkbookName = [IO.Path]::GetFileName($WorkbookPath)
     $state.workbook_name = $WorkbookName
     $state.workbook_path = $WorkbookPath
 
-    foreach ($p in @($Watcher, $Heartbeat, $Collector, $Gateway, $VoiceBridge, $WorkbookPath)) {
+    foreach ($p in @($Watcher, $Heartbeat, $Collector, $Gateway, $VoiceBridge, $IdentityProbe, $WorkbookPath)) {
         if (-not (Test-Path -LiteralPath $p)) { throw "Required file not found: $p" }
     }
 
@@ -651,91 +870,98 @@ try {
     ) DarkGray
 
     $identityOk = $false
-    $boundBook  = $null
-    $boundApp   = $null
-
-    $deadline = (Get-Date).AddSeconds(40)
-
-    while ((Get-Date) -lt $deadline) {
-
-        try {
-            $boundBook = [Runtime.InteropServices.Marshal]::BindToMoniker(
-                $WorkbookPath
-            )
-
-            if ($null -eq $boundBook) {
-                throw "Workbook moniker not ready."
+    $definitiveMismatch = $false
+    $probeError = ""
+    $probeAttempt = 0
+    $probeClock = [Diagnostics.Stopwatch]::StartNew()
+    $probeBudgetMs = [int]$EXCEL_IDENTITY_PROBE_BUDGET_SEC * 1000
+    $probeAttemptMs = [int]$EXCEL_IDENTITY_PROBE_ATTEMPT_SEC * 1000
+    try {
+        while (
+            $probeClock.ElapsedMilliseconds -lt $probeBudgetMs -and
+            -not $identityOk -and
+            -not $definitiveMismatch
+        ) {
+            $probeAttempt++
+            $remainingMs = [int]($probeBudgetMs - $probeClock.ElapsedMilliseconds)
+            if ($remainingMs -le 0) { break }
+            $timeoutMs = [Math]::Min($probeAttemptMs, $remainingMs)
+            $probe = Invoke-ExcelIdentityProbeAttempt `
+                -WorkbookPath $WorkbookPath `
+                -ExpectedExcelPid ([int]$launchedExcelProc.Id) `
+                -ExpectedSessionId ([int]$state.session_id) `
+                -TimeoutMs $timeoutMs `
+                -ProbeScript $IdentityProbe `
+                -Attempt $probeAttempt
+            $elapsed = [Math]::Round($probeClock.Elapsed.TotalSeconds, 1)
+            if ($probe.timed_out) {
+                Write-Status (
+                    "  identity probe attempt " + $probeAttempt +
+                    " / elapsed " + $elapsed + "s" +
+                    " / moniker=False hwnd=False pid=False session=False" +
+                    " / helper-timeout"
+                ) Yellow
+                if ($probe.helper_stuck) {
+                    Write-Status (
+                        "  identity probe helper PID " + $probe.helper_pid +
+                        " still alive after terminate; not starting another probe."
+                    ) Red
+                    break
+                }
+                continue
             }
-
-            if ($boundBook.FullName -ine $WorkbookPath) {
-                throw (
-                    "Canonical workbook mismatch: " +
-                    $boundBook.FullName
-                )
+            $verdict = $probe.verdict
+            $detail = ""
+            if (-not $verdict.ok -and -not [string]::IsNullOrWhiteSpace([string]$verdict.error) -and $verdict.error -ne "NO_RESULT") {
+                $detail = " / error=" + [string]$verdict.error
+                if ($detail.Length -gt 180) { $detail = $detail.Substring(0, 180) }
             }
-
-            $boundApp = $boundBook.Application
-            $appHwnd  = [Int64]$boundApp.Hwnd
-
-            $ownerProc = @(
-                Get-Process EXCEL -ErrorAction SilentlyContinue |
-                Where-Object {
-                    [Int64]$_.MainWindowHandle -eq $appHwnd
-                } |
-                Select-Object -First 1
-            )
-
-            if (
-                $ownerProc.Count -gt 0 -and
-                [int]$ownerProc[0].Id -eq [int]$launchedExcelProc.Id
-            ) {
+            $probeColor = [ConsoleColor]::DarkGray
+            if ($verdict.ok) { $probeColor = [ConsoleColor]::Green }
+            Write-Status (
+                "  identity probe attempt " + $probeAttempt +
+                " / elapsed " + $elapsed + "s" +
+                " / moniker=" + $verdict.moniker +
+                " hwnd=" + $verdict.hwnd +
+                " pid=" + $verdict.pid +
+                " session=" + $verdict.session +
+                $detail
+            ) $probeColor
+            if ($verdict.ok) {
                 $identityOk = $true
                 break
             }
-        }
-        catch {}
-
-        if (-not $identityOk) {
-
-            if ($null -ne $boundBook) {
-                try {
-                    [void][Runtime.InteropServices.Marshal]::ReleaseComObject(
-                        $boundBook
-                    )
-                } catch {}
-                $boundBook = $null
+            if ($verdict.definitive_mismatch) {
+                $definitiveMismatch = $true
+                break
             }
-
-            if ($null -ne $boundApp) {
-                try {
-                    [void][Runtime.InteropServices.Marshal]::ReleaseComObject(
-                        $boundApp
-                    )
-                } catch {}
-                $boundApp = $null
+            if (($probeBudgetMs - $probeClock.ElapsedMilliseconds) -gt 400) {
+                Start-Sleep -Milliseconds 400
             }
         }
-
-        Start-Sleep -Milliseconds 400
+    } catch {
+        $probeError = [string]$_.Exception.Message
+        Write-Status ("  identity probe error: " + $probeError) Red
     }
 
     if (-not $identityOk) {
-
+        $ownedExcelStopped = Stop-VerifiedOwnedExcel ([int]$launchedExcelProc.Id) $WorkbookPath $PID
+        if ($ownedExcelStopped) {
+            Write-Status "  identity probe cleanup: launched Excel is not running. Unrelated Excel was not touched." Green
+        } else {
+            Write-Status (
+                "  identity probe cleanup: launched Excel PID " + $launchedExcelProc.Id +
+                " was left running because canonical workbook command line, controller parent, and same session were not all proven. Unrelated Excel was not touched."
+            ) Yellow
+        }
         $state.excel_pid = 0
         $state.workbook_identity_verified = $false
         Save-State $state
-
-        if (
-            $null -ne $launchedExcelProc -and
-            -not $launchedExcelProc.HasExited
-        ) {
-            Stop-Process `
-                -Id $launchedExcelProc.Id `
-                -Force `
-                -ErrorAction SilentlyContinue
+        $failureCode = Resolve-ExcelIdentityFailureCode ([bool]$definitiveMismatch)
+        if (-not [string]::IsNullOrWhiteSpace($probeError)) {
+            Write-Status ("  " + $failureCode + " / " + $probeError) Red
         }
-
-        throw "Isolated Excel identity verification failed."
+        throw $failureCode
     }
 
     $state.excel_pid = [int]$launchedExcelProc.Id
@@ -747,22 +973,6 @@ try {
         $state.excel_pid +
         " / identity verified: True / isolated: True"
     ) Green
-
-    if ($null -ne $boundBook) {
-        try {
-            [void][Runtime.InteropServices.Marshal]::ReleaseComObject(
-                $boundBook
-            )
-        } catch {}
-    }
-
-    if ($null -ne $boundApp) {
-        try {
-            [void][Runtime.InteropServices.Marshal]::ReleaseComObject(
-                $boundApp
-            )
-        } catch {}
-    }
 
     Write-Status "Starting Watcher..."
     $watcherProc = Start-Worker -Name "watcher" -Script $Watcher -WorkDir $RuntimeDir

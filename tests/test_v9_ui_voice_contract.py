@@ -200,6 +200,7 @@ class V9UiVoiceContract(unittest.TestCase):
         files = (
             "downloads/SWITCH_AI_COCKPIT_V8_TO_V9.ps1",
             "downloads/AI_COCKPIT_CONTROLLER_V9.ps1",
+            "downloads/AI_COCKPIT_EXCEL_IDENTITY_PROBE_V9.ps1",
             "downloads/STOP_AI_COCKPIT_V9.ps1",
             "downloads/RUN_AI_COCKPIT_V9.ps1",
             "downloads/AI_COCKPIT_GATEWAY_V9.ps1",
