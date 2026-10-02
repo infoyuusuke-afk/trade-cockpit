@@ -44,7 +44,7 @@ param(
 #     controller stops the data path.
 
 $ErrorActionPreference = "Stop"
-$Build = "V9-CONTROLLER-20261002-EXCEL-OPEN-CRASH-01"
+$Build = "V9-CONTROLLER-20261002-PS51-PARSE-01"
 $ExcelIdentityProbeTimeoutSeconds = 35
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
@@ -602,7 +602,8 @@ function Get-CanonicalWorkbookOpenDiagnostics([string]$WorkbookPath, [string]$La
                 if ($null -eq $props) { continue }
                 foreach ($prop in $props.PSObject.Properties) {
                     if ($prop.Name -like "PS*") { continue }
-                    $text = $prop.Value as [string]
+                    $text = $null
+                    if ($prop.Value -is [string]) { $text = [string]$prop.Value }
                     if (-not [string]::IsNullOrWhiteSpace($text) -and $text.IndexOf($name, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
                         $matches++
                         break

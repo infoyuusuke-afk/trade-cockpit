@@ -185,11 +185,32 @@ jobs:
             }
           }
 
+      - name: Windows PowerShell 5.1 parse
+        # pwsh on this runner accepts PowerShell 7 syntax such as "as [type]".
+        # Owner PC starts the Controller with Windows PowerShell 5.1, so this
+        # step is the parse gate. The Ubuntu unittest is not that gate.
+        shell: powershell
+        run: |
+          $files = @(
+            "downloads/AI_COCKPIT_CONTROLLER_V9.ps1",
+            "downloads/EXCEL_IDENTITY_PROBE_V9.ps1"
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error ($file + ":" + $_.Extent.StartLineNumber + ": " + $_.Message) }
+              throw "Windows PowerShell 5.1 parse failed: $file"
+            }
+          }
+          Write-Output "WINDOWS POWERSHELL 5.1 PARSE PASS"
       - name: Excel identity probe hard-timeout selftest
         # Windows PowerShell 5.1 is the acceptance shell. The Ubuntu
         # structural job covers the same -IdentityProbeSelfTest entry
         # through tests/test_v9_excel_identity_probe.py, whose harness
-        # cap stays below the helper's 120s sleep.
+        # cap stays below the helper's 120s sleep. A green Ubuntu run
+        # does not replace this step.
         shell: powershell
         run: |
           $sw = [Diagnostics.Stopwatch]::StartNew()

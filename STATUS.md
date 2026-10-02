@@ -23,6 +23,8 @@ Owner PC では MarketSpeed II、VoiceBridge、Gateway、隔離 Excel の起動�
 
 ## Excel workbook open crash P0（2026-10-02、main未マージ）
 
+`9946104b4` は Owner PC で `as [string]` が Windows PowerShell 5.1 の ParserError になり、Controller 本体は起動していない。build は `V9-CONTROLLER-20261002-PS51-PARSE-01`。5.1 の parse と `-IdentityProbeSelfTest` は Windows の acceptance で確認する。Ubuntu の unittest はその代替にしない。
+
 Owner PC の identity 修正版再起動では、PID 19860 の隔離 Excel が「前回開いた時に重大なエラー」ダイアログを出した直後にクラッシュし、Controller は identity 失敗として停止した。AI SHADOW には未到達。起動 PID が identity 確認前に死んだ場合は `EXCEL_PROCESS_EXITED`（component `excel_process_exit`）、そのダイアログを検知した場合は `EXCEL_SERIOUS_ERROR_PROMPT`（component `workbook_open`）とし、identity mismatch には丸めない。ダイアログ検知後は COM で Excel を触らず、ボタンも押さず、強制終了も再起動もしない。exit code と exit 時刻は Controller が保持する Process から incident に残す。canonical ブックの zip 表面（vbaProject、externalLinks）と Excel 16.0 の DocumentRecovery / DisabledItems / StartupItems / アドイン名は読み取り専用で `open_diagnostics.json` に残す。レジストリは削除しない。`real_submit_allowed` は false のまま。実機の再確認は Owner PC。
 
 ## 現在値の誤表示 P0（2026-10-02、main未マージ）
