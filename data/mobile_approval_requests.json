@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-02T01:54:20.915188+00:00",
+  "generated_at": "2026-10-02T01:56:58.297926+00:00",
   "mode": "paper",
   "source": "signals + empirical EV calibration",
   "score_is_probability": false,
@@ -20,9 +20,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "BB上方拡大／終値が主要移動平均線上／出来高比1.01倍",
+      "trigger_summary": "BB上方拡大／終値が主要移動平均線上／出来高比1.03倍",
       "source_signal_date": "2026-10-02",
-      "source_updated_at": "2026-10-02 10:52:38 JST",
+      "source_updated_at": "2026-10-02 10:54:56 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -35,10 +35,10 @@
       "target2": 6000
     },
     {
-      "request_id": "SIG-2026-10-02-2158-02",
+      "request_id": "SIG-2026-10-02-4259-02",
       "request_type": "trade",
-      "symbol": "2158",
-      "name": "FRONTEO（2158）",
+      "symbol": "4259",
+      "name": "エクサウィザーズ（4259）",
       "action": "WAIT",
       "proposed_action": "WAIT",
       "strategy_key": null,
@@ -49,19 +49,19 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.30倍",
+      "trigger_summary": "安定押し目／終値が主要移動平均線上／出来高比0.33倍",
       "source_signal_date": "2026-10-02",
-      "source_updated_at": "2026-10-02 10:52:38 JST",
+      "source_updated_at": "2026-10-02 10:54:56 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
       "status": "pending",
       "expires_in_sec": 0,
       "paper_only": true,
-      "trigger_price": 691,
-      "stop_price": 673,
-      "target1": 718,
-      "target2": 736
+      "trigger_price": 887,
+      "stop_price": 841,
+      "target1": 956,
+      "target2": 1002
     },
     {
       "request_id": "SIG-2026-10-02-6963-03",
@@ -78,9 +78,9 @@
       "profit_factor": null,
       "avg_pl_pct": null,
       "max_dd_pct": null,
-      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.25倍",
+      "trigger_summary": "5日線反発／終値が主要移動平均線上／出来高比0.26倍",
       "source_signal_date": "2026-10-02",
-      "source_updated_at": "2026-10-02 10:52:38 JST",
+      "source_updated_at": "2026-10-02 10:54:56 JST",
       "data_freshness_sec": null,
       "risk_gate": "BLOCK",
       "risk_reason": "STRATEGY_KEY_MISSING",
@@ -88,9 +88,9 @@
       "expires_in_sec": 0,
       "paper_only": true,
       "trigger_price": 5090,
-      "stop_price": 4900,
-      "target1": 5375,
-      "target2": 5565
+      "stop_price": 4905,
+      "target1": 5370,
+      "target2": 5550
     }
   ]
 }
