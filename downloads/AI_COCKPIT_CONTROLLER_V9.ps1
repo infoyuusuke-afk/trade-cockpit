@@ -44,7 +44,7 @@ param(
 #     controller stops the data path.
 
 $ErrorActionPreference = "Stop"
-$Build = "V9-CONTROLLER-20261002-EXCEL-COEXIST-01"
+$Build = "V9-CONTROLLER-20261002-GATEWAY-PS51-01"
 $ExcelIdentityProbeTimeoutSeconds = 35
 $sw = [Diagnostics.Stopwatch]::StartNew()
 

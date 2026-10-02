@@ -171,7 +171,7 @@ class ExcelIdentityProbeContract(unittest.TestCase):
         self.assertIn('Write-Status "Starting Watcher..."', self.controller[self.controller.index("if (-not $probe.ok)"):])
 
     def test_foreign_excel_presence_keeps_isolated_canonical_launch(self):
-        self.assertIn('$Build = "V9-CONTROLLER-20261002-EXCEL-COEXIST-01"', self.controller)
+        self.assertIn('$Build = "V9-CONTROLLER-20261002-GATEWAY-PS51-01"', self.controller)
         self.assertNotIn('throw "Excel safety interlock: foreign Excel process detected."', self.controller)
         self.assertNotIn("Close unrelated Excel workbooks first", self.controller)
         self.assertNotIn("FOREIGN EXCEL DETECTED - FAIL-CLOSED SAFETY STOP.", self.controller)

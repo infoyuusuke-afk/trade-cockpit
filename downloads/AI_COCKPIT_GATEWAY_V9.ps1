@@ -22,10 +22,15 @@ param(
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($RuntimeDir)) {
+    # Keep this file ASCII. Windows PowerShell 5.1 reads a BOM-less
+    # script with the ANSI code page, and a UTF-8 character can swallow
+    # the following quote. The parser then reports UnexpectedToken at a
+    # later line, including Get-LivePriceRejection and Send-Response.
+    $daytrade = -join @([char]0x30C7, [char]0x30A4, [char]0x30C8, [char]0x30EC)
     $candidates = @(
-        (Join-Path $env:USERPROFILE "Desktop\デイトレ\MarketSpeed II RSS\files"),
-        (Join-Path ([Environment]::GetFolderPath("Desktop")) "デイトレ\MarketSpeed II RSS\files"),
-        (Join-Path $env:USERPROFILE "OneDrive\Desktop\デイトレ\MarketSpeed II RSS\files")
+        (Join-Path $env:USERPROFILE ("Desktop\" + $daytrade + "\MarketSpeed II RSS\files")),
+        (Join-Path ([Environment]::GetFolderPath("Desktop")) ($daytrade + "\MarketSpeed II RSS\files")),
+        (Join-Path $env:USERPROFILE ("OneDrive\Desktop\" + $daytrade + "\MarketSpeed II RSS\files"))
     ) | Select-Object -Unique
     foreach ($c in $candidates) {
         if (Test-Path -LiteralPath (Join-Path $c "live_ms2.json")) { $RuntimeDir = $c; break }
@@ -184,7 +189,14 @@ function Get-LivePriceRejection {
     )
     if (-not $fresh) { [void]$reasons.Add("STALE_OR_MISSING_TIMESTAMP") }
     $source = if ($null -ne $LiveObj) { [string]$LiveObj.source } else { "" }
-    if ($source -ne $canonicalSource -or $source -match '(?i)sample|snapshot|cache|static|fixture|公開') {
+    $publicMarker = -join @([char]0x516C, [char]0x958B)
+    $ordinal = [StringComparison]::Ordinal
+    $cachedSource = (
+        $source -ne $canonicalSource -or
+        $source -match '(?i)sample|snapshot|cache|static|fixture' -or
+        $source.IndexOf($publicMarker, $ordinal) -ge 0
+    )
+    if ($cachedSource) {
         [void]$reasons.Add("CACHED_OR_SAMPLE_PAYLOAD")
     }
     $diag = if ($null -ne $LiveObj) { $LiveObj.live_price_diagnostics } else { $null }
@@ -481,7 +493,8 @@ try {
             $fullPath = Join-Path $RepoRoot $relative
             $resolvedFull = [IO.Path]::GetFullPath($fullPath)
             $resolvedRoot = [IO.Path]::GetFullPath($RepoRoot)
-            if (-not $resolvedFull.StartsWith($resolvedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
+            if (-not $resolvedFull.StartsWith($resolvedRoot, $ordinalIgnoreCase)) {
                 Send-Response $stream '400 Bad Request' 'text/plain; charset=utf-8' ($utf8.GetBytes('Bad path'))
                 continue
             }

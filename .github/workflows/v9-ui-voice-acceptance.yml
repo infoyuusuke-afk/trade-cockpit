@@ -193,7 +193,8 @@ jobs:
         run: |
           $files = @(
             "downloads/AI_COCKPIT_CONTROLLER_V9.ps1",
-            "downloads/EXCEL_IDENTITY_PROBE_V9.ps1"
+            "downloads/EXCEL_IDENTITY_PROBE_V9.ps1",
+            "downloads/AI_COCKPIT_GATEWAY_V9.ps1"
           )
           $messages = New-Object System.Collections.Generic.List[string]
           foreach ($file in $files) {
