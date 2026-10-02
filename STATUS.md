@@ -17,6 +17,10 @@ Issue #288。Controller 本体の同期 `BindToMoniker` をやめ、workbook ide
 
 Ubuntu structural の `test_hung_helper_returns_within_the_hard_timeout_when_powershell_exists` は、同一 Controller（`69107b859`）で 5.3 秒成功（Actions `36958072645`）のあと、merge push（`65dea8d4f`、Actions `36958771535`）では Python `timeout=12` に殺された。pwsh 7.6 の起動ばらつきに対して 12 秒は、スクリプト自身の kill 経路 20 秒より短い。Linux ハーネス上限は 45 秒（120 秒スリープより短く、本番 35 秒は不変）。タイムアウト時はプロセスグループを殺し、Windows PowerShell 5.1 の `-IdentityProbeSelfTest`（上限 90 秒）は必須のまま。
 
+## 現在値の誤表示 P0（2026-10-02、main未マージ）
+
+Issue #268 / PR #280 の fail-closed を、現行 `fix/v9-ui-voice-convergence` 上へ再実装した。ポートと発注ロジックは変えていない。`/live_ms2.json`（Gateway 28581 と Collector bridge 28580）は、ファイル欠落・mtime または `updated_at` が 60 秒超・診断不足・銘柄コード不一致・非canonical workbook・Collector/Watcher 重複・公開スナップショットを HTTP 503 とし、`real_submit_allowed=false` かつ `live_values_available=false` にする。新鮮でも出所が証明できない値は `PRICE_SOURCE_MISMATCH` でカードから消す。機械可読診断は `live_price_diagnostics` と `/health`（source_timestamp、file mtime、updated_at、symbol、current_price、source_mode、collector/watcher、data_conflict、stale_reason）。実機の RSS 突合は Owner PC。この節は作業ブランチの記録で、main にはまだ入っていない。
+
 ## システム概要
 
 - リポジトリ: infoyuusuke-afk/trade-cockpit（GitHub Pages: https://infoyuusuke-afk.github.io/trade-cockpit/）

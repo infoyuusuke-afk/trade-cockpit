@@ -56,6 +56,34 @@ function Get-TableValue([object]$table, [int]$row, [int]$column, [int]$columnCou
     return $null
 }
 
+function Get-SheetSymbolCode($table, [int]$row) {
+    $raw = Get-TableValue $table $row 1 1
+    if ($null -eq $raw) { return "" }
+    return ([string]$raw).Trim().ToUpperInvariant()
+}
+
+function Get-ScriptProcessCount([string]$ScriptName) {
+    try {
+        $procs = @(Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" -ErrorAction Stop | Where-Object {
+            [string]$_.CommandLine -like ("*" + $ScriptName + "*")
+        })
+        return $procs.Count
+    } catch {
+        return $null
+    }
+}
+
+function Hide-UntrustedLivePrices($rows) {
+    foreach ($row in @($rows)) {
+        if ($null -eq $row) { continue }
+        foreach ($name in @("price","change_pct","entry_price","stop_price","target1","target2","vwap","preopen_quote","open_price","pts_price","reference_price","bars_1m")) {
+            if ($row.PSObject.Properties.Name -contains $name) { $row.$name = $null }
+        }
+        if ($row.PSObject.Properties.Name -contains "signal") { $row.signal = "売買禁止" }
+        if ($row.PSObject.Properties.Name -contains "data") { $row.data = "PRICE_SOURCE_MISMATCH" }
+    }
+}
+
 function Write-AtomicUtf8([string]$path, [string]$content) {
     $tmp = "$path.tmp"
     [IO.File]::WriteAllText($tmp, $content, [Text.UTF8Encoding]::new($false))
@@ -336,10 +364,109 @@ function Get-TdnetDisclosures([DateTime]$date) {
 }
 
 function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580) {
-    return Start-Job -Name ("MS2_JSON_BRIDGE_" + $PID) -ArgumentList $jsonFile,$port -ScriptBlock {
-        param($JsonFile,$Port)
+    $controllerState = "C:\AI_Cockpit_OneClick_Starter\V9_CONTROLLER_STATE.json"
+    return Start-Job -Name ("MS2_JSON_BRIDGE_" + $PID) -ArgumentList $jsonFile,$port,$controllerState -ScriptBlock {
+        param($JsonFile,$Port,$ControllerState)
         $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,[int]$Port)
         $utf8 = [Text.UTF8Encoding]::new($false)
+        $canonicalSource = "MarketSpeed II RSS / local PC"
+        function Get-BridgeProcessCount([string]$ScriptName) {
+            try {
+                $procs = @(Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" -ErrorAction Stop | Where-Object {
+                    [string]$_.CommandLine -like ("*" + $ScriptName + "*")
+                })
+                return $procs.Count
+            } catch { return $null }
+        }
+        function Get-BridgeRejection([string]$RawText, $FileItem) {
+            $reasons = New-Object System.Collections.Generic.List[string]
+            $obj = $null
+            $updatedAtRaw = $null
+            $payloadAge = [double]::PositiveInfinity
+            try {
+                $obj = $RawText | ConvertFrom-Json
+                $updatedAtRaw = [string]$obj.updated_at
+                if (-not [string]::IsNullOrWhiteSpace($updatedAtRaw)) {
+                    $clean = $updatedAtRaw -replace '\s+JST\s*$',''
+                    $parsed = Get-Date $clean -ErrorAction Stop
+                    $payloadAge = ((Get-Date) - $parsed).TotalSeconds
+                }
+            } catch {
+                $obj = $null
+                $payloadAge = [double]::PositiveInfinity
+            }
+            $fileAge = ((Get-Date) - $FileItem.LastWriteTime).TotalSeconds
+            if ($fileAge -lt 0 -or $fileAge -gt 60 -or $payloadAge -lt 0 -or $payloadAge -gt 60) {
+                [void]$reasons.Add("STALE_OR_MISSING_TIMESTAMP")
+            }
+            $source = if ($null -ne $obj) { [string]$obj.source } else { "" }
+            if ($source -ne $canonicalSource -or $source -match '(?i)sample|snapshot|cache|static|fixture|公開') {
+                [void]$reasons.Add("CACHED_OR_SAMPLE_PAYLOAD")
+            }
+            $diag = if ($null -ne $obj) { $obj.live_price_diagnostics } else { $null }
+            $sourceMode = ""
+            $sourceTimestamp = $null
+            $symbol = $null
+            $currentPrice = $null
+            $dataConflict = $false
+            if ($null -eq $diag) {
+                [void]$reasons.Add("MISSING_PRICE_DIAGNOSTICS")
+            } else {
+                $sourceMode = [string]$diag.source_mode
+                $sourceTimestamp = $diag.source_timestamp
+                $symbol = $diag.symbol
+                $currentPrice = $diag.current_price
+                $dataConflict = ($diag.data_conflict -eq $true)
+                if ([string]$diag.price_source_status -ne "OK") { [void]$reasons.Add("PRICE_SOURCE_MISMATCH") }
+                if ($sourceMode -ne "MS2_RSS_WORKBOOK") { [void]$reasons.Add("WRONG_SOURCE_WORKBOOK") }
+                if ($dataConflict) { [void]$reasons.Add("DATA_CONFLICT") }
+                if ($diag.live_values_available -ne $true) { [void]$reasons.Add("LIVE_VALUES_UNAVAILABLE") }
+                if ($diag.duplicate_collector -eq $true) { [void]$reasons.Add("DUPLICATE_COLLECTOR") }
+                if ($diag.duplicate_watcher -eq $true) { [void]$reasons.Add("DUPLICATE_WATCHER") }
+                if ([string]$diag.stale_reason -match 'WRONG_SYMBOL_MAPPING') { [void]$reasons.Add("WRONG_SYMBOL_MAPPING") }
+            }
+            if ($null -ne $obj -and ($obj.data_conflict -eq $true)) { [void]$reasons.Add("DATA_CONFLICT") }
+            if ($null -ne $obj -and [string]$obj.price_source_status -eq "PRICE_SOURCE_MISMATCH") { [void]$reasons.Add("PRICE_SOURCE_MISMATCH") }
+            $collectorCount = Get-BridgeProcessCount "MS2_RSS_100_Collector.ps1"
+            $watcherCount = Get-BridgeProcessCount "Kioxia_RSS_Live_Watcher.ps1"
+            if ($null -eq $collectorCount) { [void]$reasons.Add("DUPLICATE_PROCESS_CHECK_UNAVAILABLE") }
+            elseif ($collectorCount -gt 1) { [void]$reasons.Add("DUPLICATE_COLLECTOR") }
+            elseif ($collectorCount -lt 1) { [void]$reasons.Add("COLLECTOR_PROCESS_UNVERIFIED") }
+            if ($null -eq $watcherCount) { [void]$reasons.Add("DUPLICATE_PROCESS_CHECK_UNAVAILABLE") }
+            elseif ($watcherCount -gt 1) { [void]$reasons.Add("DUPLICATE_WATCHER") }
+            $workbookVerified = $false
+            try {
+                if (Test-Path -LiteralPath $ControllerState) {
+                    $st = [IO.File]::ReadAllText($ControllerState, [Text.Encoding]::UTF8) | ConvertFrom-Json
+                    $workbookVerified = ($st.workbook_identity_verified -eq $true)
+                }
+            } catch { $workbookVerified = $false }
+            if (-not $workbookVerified) { [void]$reasons.Add("WRONG_SOURCE_WORKBOOK") }
+            $unique = @($reasons | Select-Object -Unique)
+            if ($unique.Count -eq 0) { return $null }
+            $identity = @($unique | Where-Object { $_ -notin @("STALE_OR_MISSING_TIMESTAMP","LIVE_VALUES_UNAVAILABLE","INSUFFICIENT_COVERAGE") })
+            $statusName = if ($identity.Count -gt 0) { "PRICE_SOURCE_MISMATCH" } else { "stale" }
+            return [ordered]@{
+                status = $statusName
+                reason = ($unique -join ",")
+                stale_reason = ($unique -join ",")
+                price_source_status = $(if ($identity.Count -gt 0) { "PRICE_SOURCE_MISMATCH" } else { "STALE" })
+                source_mode = $sourceMode
+                source_timestamp = $sourceTimestamp
+                file_mtime = $FileItem.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
+                updated_at = $updatedAtRaw
+                file_age_seconds = [Math]::Round($fileAge, 1)
+                payload_age_seconds = $(if ([double]::IsInfinity($payloadAge)) { $null } else { [Math]::Round($payloadAge, 1) })
+                symbol = $symbol
+                current_price = $currentPrice
+                collector_count = $collectorCount
+                watcher_count = $watcherCount
+                data_conflict = [bool]($dataConflict -or $identity.Count -gt 0)
+                real_submit_allowed = $false
+                live_values_available = $false
+                max_age_seconds = 60
+            }
+        }
         try {
             $listener.Start()
             while ($true) {
@@ -354,12 +481,19 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580) {
                         $bodyBytes = [byte[]]@()
                         $status = "204 No Content"
                         $contentType = "text/plain"
-                    } elseif (Test-Path $JsonFile) {
-                        $bodyBytes = $utf8.GetBytes([IO.File]::ReadAllText($JsonFile,[Text.Encoding]::UTF8))
-                        $status = "200 OK"
+                    } elseif (Test-Path -LiteralPath $JsonFile) {
+                        $raw = [IO.File]::ReadAllText($JsonFile,[Text.Encoding]::UTF8)
+                        $rejection = Get-BridgeRejection $raw (Get-Item -LiteralPath $JsonFile)
+                        if ($null -ne $rejection) {
+                            $bodyBytes = $utf8.GetBytes(($rejection | ConvertTo-Json -Depth 6 -Compress))
+                            $status = "503 Service Unavailable"
+                        } else {
+                            $bodyBytes = $utf8.GetBytes($raw)
+                            $status = "200 OK"
+                        }
                         $contentType = "application/json; charset=utf-8"
                     } else {
-                        $bodyBytes = $utf8.GetBytes('{"status":"waiting"}')
+                        $bodyBytes = $utf8.GetBytes('{"status":"waiting","reason":"live_ms2.json not found","stale_reason":"MISSING_PAYLOAD","real_submit_allowed":false,"live_values_available":false,"data_conflict":true}')
                         $status = "503 Service Unavailable"
                         $contentType = "application/json; charset=utf-8"
                     }
@@ -689,6 +823,7 @@ function Invoke-SbV2Speak([string]$text) {
 
 # Watcher・Heartbeat・AUTO_START等と共有の名前付きMutexで音声を直列化する。
 function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 30000) {
+    if ($script:priceSourceMismatch) { return }
     if ([string]::IsNullOrWhiteSpace($text)) { return }
     # V9 VoiceBridge owns Global\KioxiaVoiceMutex. Do not acquire that
     # mutex here before making the HTTP call or caller/bridge would deadlock.
@@ -741,6 +876,7 @@ $holdHistory = @()
 try { $holdHistory = @(Import-Csv -Encoding UTF8 $holdHistoryPath) } catch { $holdHistory = @() }
 $holdStats = Get-OvernightHoldStats $holdHistory
 $browserOpened = $true # Collector must never open browser tabs
+$script:priceSourceMismatch = $false
 $bridgeJob = Start-LocalJsonBridge $jsonPath 28580
 
 Write-Host "[RSS] 100 STOCKS : RUNNING / CTRL+C TO STOP" -ForegroundColor Green
@@ -877,6 +1013,18 @@ try {
             [pscustomobject]@{ Data = $sheet.Range("E2:AJ101").Value2 }
         }
         $values = $valuePacket.Data
+        $codeColumn = $null
+        try {
+            $codePacket = Invoke-ExcelCom -Label "銘柄コード照合" -Action {
+                [pscustomobject]@{ Data = $sheet.Range("B2:B101").Value2 }
+            }
+            if ($null -ne $codePacket) { $codeColumn = $codePacket.Data }
+        } catch {
+            $codeColumn = $null
+        }
+        $symbolMismatchCount = 0
+        $symbolMismatchSamples = @()
+        $diagnosticSamples = @()
         $jnxExpectedOpen = Test-JnxSession $now
         if (-not $jnxExpectedOpen) {
             $jnxStatus = "OFF / MARKET CLOSED"
@@ -1199,8 +1347,21 @@ try {
 
             $orHighValue=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
             $orLowValue=if($orLow.ContainsKey($ticker)){$orLow[$ticker]}else{0}
+            $sheetCode = Get-SheetSymbolCode $codeColumn $r
+            $expectedCode = ([string]$ticker).Trim().ToUpperInvariant()
+            $quoteTime = Get-TimeText (Get-TableValue $values $r 2)
+            if ($diagnosticSamples.Count -lt 5) {
+                $diagnosticSamples += [ordered]@{symbol=$expectedCode; current_price=$price; source_timestamp=$quoteTime; sheet_code=$sheetCode}
+            }
+            if ([string]::IsNullOrWhiteSpace($sheetCode) -or $sheetCode -ne $expectedCode) {
+                $symbolMismatchCount++
+                if ($symbolMismatchSamples.Count -lt 8) {
+                    $symbolMismatchSamples += [ordered]@{symbol=$expectedCode; sheet_code=$sheetCode; current_price=$price; source_timestamp=$quoteTime; reason="WRONG_SYMBOL_MAPPING"}
+                }
+            }
             $results += [pscustomobject]@{
                 ticker=$ticker;name=$s.Name;sector=$s.Sector;price=$price;volume=$volume;vwap=$vwap
+                source_timestamp=$quoteTime;sheet_code=$sheetCode
                 change_pct=Get-SafeNumber (Get-TableValue $values $r 4 32) -1000 1000
                 bid=$bid;ask=$ask;bid_qty=$bidQty;ask_qty=$askQty;market_sell=$marketSell;market_buy=$marketBuy;over=$over;under=$under
                 under_ratio=[Math]::Round($underRatio*100,1);under_change=[Math]::Round($uoChange*100,1)
@@ -1233,6 +1394,50 @@ try {
         }
         if ($snapshotDue) {$lastSnapshotAt=$now}
         foreach ($key in @($seenTicks.Keys)) {if (($now-$seenTicks[$key]).TotalMinutes -gt 30) {$seenTicks.Remove($key)}}
+
+        $sourceReasons = New-Object System.Collections.Generic.List[string]
+        $workbookCanonical = ([string]$book.Name).Trim() -ieq ([string]$WorkbookName).Trim()
+        if (-not $workbookCanonical) { [void]$sourceReasons.Add("WRONG_SOURCE_WORKBOOK") }
+        if ($symbolMismatchCount -gt 0) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
+        $collectorProcessCount = Get-ScriptProcessCount "MS2_RSS_100_Collector.ps1"
+        $watcherProcessCount = Get-ScriptProcessCount "Kioxia_RSS_Live_Watcher.ps1"
+        if ($null -eq $collectorProcessCount) { [void]$sourceReasons.Add("DUPLICATE_PROCESS_CHECK_UNAVAILABLE") }
+        elseif ($collectorProcessCount -gt 1) { [void]$sourceReasons.Add("DUPLICATE_COLLECTOR") }
+        elseif ($collectorProcessCount -lt 1) { [void]$sourceReasons.Add("COLLECTOR_PROCESS_UNVERIFIED") }
+        if ($null -eq $watcherProcessCount) { [void]$sourceReasons.Add("DUPLICATE_PROCESS_CHECK_UNAVAILABLE") }
+        elseif ($watcherProcessCount -gt 1) { [void]$sourceReasons.Add("DUPLICATE_WATCHER") }
+        $script:priceSourceMismatch = ($sourceReasons.Count -gt 0)
+        $priceSourceReason = ($sourceReasons -join ",")
+        if ($script:priceSourceMismatch) {
+            Hide-UntrustedLivePrices $results
+            Write-Host ("[PRICE] FAIL-CLOSED " + $priceSourceReason) -ForegroundColor Red
+        }
+        $coverageStale = ($validCount -lt 90)
+        $publishLiveValues = (-not $script:priceSourceMismatch) -and (-not $coverageStale)
+        $staleReason = if ($script:priceSourceMismatch) { $priceSourceReason } elseif ($coverageStale) { "INSUFFICIENT_COVERAGE" } else { "" }
+        $sampleDiag = if ($symbolMismatchSamples.Count -gt 0) { $symbolMismatchSamples[0] } elseif ($diagnosticSamples.Count -gt 0) { $diagnosticSamples[0] } else { $null }
+        $livePriceDiagnostics = [ordered]@{
+            source_timestamp = $(if ($null -ne $sampleDiag) { $sampleDiag.source_timestamp } else { $null })
+            updated_at = $now.ToString("yyyy-MM-dd HH:mm:ss")
+            symbol = $(if ($null -ne $sampleDiag) { $sampleDiag.symbol } else { $null })
+            current_price = $(if ($null -ne $sampleDiag) { $sampleDiag.current_price } else { $null })
+            sheet_code = $(if ($null -ne $sampleDiag) { $sampleDiag.sheet_code } else { $null })
+            source_mode = $(if ($workbookCanonical) { "MS2_RSS_WORKBOOK" } else { "NONCANONICAL_WORKBOOK" })
+            workbook_name = [string]$book.Name
+            collector_pid = $PID
+            collector_count = $collectorProcessCount
+            watcher_count = $watcherProcessCount
+            duplicate_collector = ($collectorProcessCount -gt 1)
+            duplicate_watcher = ($watcherProcessCount -gt 1)
+            data_conflict = [bool]$script:priceSourceMismatch
+            stale_reason = $staleReason
+            price_source_status = $(if ($script:priceSourceMismatch) { "PRICE_SOURCE_MISMATCH" } else { "OK" })
+            live_values_available = [bool]$publishLiveValues
+            real_submit_allowed = $false
+            symbol_mismatch_count = $symbolMismatchCount
+            mismatches = @($symbolMismatchSamples)
+            samples = @($diagnosticSamples)
+        }
 
         $kioxia=$results|Where-Object{$_.ticker -eq "285A.T"}|Select-Object -First 1
         if ($null -ne $kioxia) {
@@ -1618,7 +1823,12 @@ try {
         } else {
             [ordered]@{status=$statsStatus;scanned_days=0;completed_days=0;incomplete_day_count=0;last_completed_day=$null;minimum_days=10}
         }
-        $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;stale=($validCount -lt 90);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
+        if ($script:priceSourceMismatch) {
+            Hide-UntrustedLivePrices $ptsTop5
+            Hide-UntrustedLivePrices $irPtsTop5
+            Hide-UntrustedLivePrices @($kioxiaPts)
+        }
+        $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";source_mode=$livePriceDiagnostics.source_mode;universe=100;valid=$validCount;stale=(-not $publishLiveValues);stale_reason=$staleReason;data_conflict=[bool]$script:priceSourceMismatch;price_source_status=$livePriceDiagnostics.price_source_status;live_values_available=[bool]$publishLiveValues;real_submit_allowed=$false;live_price_diagnostics=$livePriceDiagnostics;preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
         $jsonText=$payload|ConvertTo-Json -Depth 6
         Write-AtomicUtf8 $jsonPath $jsonText
         if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $jsonText }

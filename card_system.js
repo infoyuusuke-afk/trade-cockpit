@@ -97,6 +97,27 @@ function freshnessAgeText(model) {
   return `${Math.round(age / 3600)}時間前`;
 }
 
+export const CANONICAL_MS2_SOURCE = "MarketSpeed II RSS / local PC";
+
+/** Return a fail-closed reason when a live_ms2 payload must not be painted as a current price. Empty string means the payload is allowed. */
+export function livePriceBlocked(data) {
+  const d = data || {};
+  const diag = d.live_price_diagnostics || {};
+  const status = String(d.price_source_status || diag.price_source_status || "");
+  const mode = String(d.source_mode || diag.source_mode || "");
+  const source = String(d.source || "");
+  if (d.connection_source === "公開スナップショット") return "CACHED_OR_SAMPLE_PAYLOAD";
+  if (d._transport_fail_closed === true) return "TRANSPORT_FAIL_CLOSED";
+  if (d.live_values_available === false || diag.live_values_available === false) return "LIVE_VALUES_UNAVAILABLE";
+  if (d.data_conflict === true || diag.data_conflict === true) return "DATA_CONFLICT";
+  if (status === "PRICE_SOURCE_MISMATCH") return "PRICE_SOURCE_MISMATCH";
+  if (status && status !== "OK") return status;
+  if (mode && mode !== "MS2_RSS_WORKBOOK") return "WRONG_SOURCE_WORKBOOK";
+  if (source !== CANONICAL_MS2_SOURCE) return "CACHED_OR_SAMPLE_PAYLOAD";
+  if (!diag.price_source_status) return "MISSING_PRICE_DIAGNOSTICS";
+  return "";
+}
+
 function directionInfo(model) {
   const direction = DIRECTIONS.has(model.direction) ? model.direction : "wait";
   const label = model.directionLabel ?? DEFAULT_LABELS[direction];
@@ -199,13 +220,13 @@ export function renderCockpitWatchRow(model) {
   }
   const { direction, label } = directionInfo(model);
   const fresh = resolveFreshness(model);
-  const priceAvailable = fresh.state === "fresh";
-  const chg = priceAvailable && isFiniteNumber(model.changePct) ? Number(model.changePct) : null;
+  const liveValuesAvailable = !model.failClosed && fresh.state === "fresh";
+  const chg = liveValuesAvailable && isFiniteNumber(model.changePct) ? Number(model.changePct) : null;
   const chgCls = chg == null ? "cc-change--flat" : chg > 0 ? "cc-change--up" : chg < 0 ? "cc-change--down" : "cc-change--flat";
   const showBadge = model.showBadge !== false;
   const rankHtml = isFiniteNumber(model.rank) ? `<span class="cc-rank">#${Math.trunc(model.rank)}</span>` : "";
 
-  const metrics = priceAvailable && Array.isArray(model.metrics)
+  const metrics = liveValuesAvailable && Array.isArray(model.metrics)
     ? model.metrics.filter((m) => m && m.label != null && m.value != null && m.value !== "")
     : [];
   const metricsHtml = metrics.length
@@ -219,7 +240,7 @@ export function renderCockpitWatchRow(model) {
     rankHtml +
     `<div class="cc-identity"><span class="cc-company">${fmtScalar(model.company ?? model.symbol)}</span><span class="cc-symbol">TSE:${esc(model.symbol)}</span></div>` +
     (showBadge ? `<span class="cc-badge">${esc(label)}</span>` : "") +
-    `<div class="cc-price-row"><div class="cc-price">${fmtYen(priceAvailable ? model.price : null)}</div><div class="cc-change ${chgCls}">${fmtPct(chg)}</div></div>` +
+    `<div class="cc-price-row"><div class="cc-price">${fmtYen(liveValuesAvailable ? model.price : null)}</div><div class="cc-change ${chgCls}">${fmtPct(chg)}</div></div>` +
     metricsHtml +
     `<div class="cc-freshness cc-freshness--${fresh.state}"><i class="cc-freshness-dot"></i>${esc(fresh.label ?? freshnessAgeText(model))}</div>` +
     `</div>`
@@ -264,13 +285,15 @@ export function renderOnAirPanel() {
     return '<div class="cc-onair-empty">実況銘柄はまだありません（音声通知・注目銘柄はここに表示されます）</div>';
   }
   return onAirLog
-    .map((entry) => renderCockpitWatchRow({ ...entry, ageSeconds: (Date.now() - entry.announcedAt) / 1000 }))
+    .map((entry) => renderCockpitWatchRow({ ...entry, ageSeconds: (Date.now() - entry.announcedAt) / 1000, staleThresholdSeconds: 60 }))
     .join("");
 }
 
 if (typeof window !== "undefined") {
   window.renderCockpitCard = renderCockpitCard;
   window.renderCockpitWatchRow = renderCockpitWatchRow;
+  window.livePriceBlocked = livePriceBlocked;
+  window.CANONICAL_MS2_SOURCE = CANONICAL_MS2_SOURCE;
   window.recordOnAir = recordOnAir;
   window.getOnAirLog = getOnAirLog;
   window.renderOnAirPanel = renderOnAirPanel;

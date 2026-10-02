@@ -195,6 +195,76 @@ class V9UiVoiceContract(unittest.TestCase):
         ):
             self.assertIn(needle, css)
 
+    def test_stale_cards_suppress_price_metrics_and_orders(self):
+        card = read("card_system.js")
+        weekly = read("scripts/weekly_tabs.py")
+        generator = read("scripts/update.py")
+        index = read("index.html")
+        for needle in (
+            "liveValuesAvailable",
+            "fresh.state !== \"stale\"",
+            "fmtYen(liveValuesAvailable ? model.price : null)",
+            "fmtPct(liveValuesAvailable ? model.changePct : null)",
+            "livePriceBlocked",
+            "PRICE_SOURCE_MISMATCH",
+            "CACHED_OR_SAMPLE_PAYLOAD",
+            "MISSING_PRICE_DIAGNOSTICS",
+        ):
+            self.assertIn(needle, card)
+        for text in (weekly, index):
+            self.assertIn("isStaleCard=x?._stale===true", text)
+            self.assertIn('failClosed:isStaleCard?"鮮度確認不可":false', text)
+            self.assertIn("_stale:stale", text)
+            self.assertIn("_staticCurrent", text)
+        self.assertIn("_stale:stale", generator)
+        self.assertIn("_staticCurrent:true", generator)
+        self.assertIn("公開スナップショット", generator)
+        self.assertIn("window.livePriceBlocked", index)
+
+    def test_gateway_rejects_stale_live_json_at_transport_boundary(self):
+        gateway = read("downloads/AI_COCKPIT_GATEWAY_V9.ps1")
+        collector = read("ms2_live/MS2_RSS_100_Collector.ps1")
+        for needle in (
+            "LIVE_JSON_MAX_AGE_SECONDS = 60",
+            "fileAgeSeconds",
+            "payloadAgeSeconds",
+            "live_ms2.json freshness threshold exceeded",
+            "503 Service Unavailable",
+            "live_values_available = $false",
+            "real_submit_allowed = $false",
+            "PRICE_SOURCE_MISMATCH",
+            "MISSING_PRICE_DIAGNOSTICS",
+            "WRONG_SYMBOL_MAPPING",
+            "WRONG_SOURCE_WORKBOOK",
+            "DUPLICATE_COLLECTOR",
+            "DUPLICATE_WATCHER",
+            "CACHED_OR_SAMPLE_PAYLOAD",
+            "data_conflict",
+            "source_mode",
+            "source_timestamp",
+            "collector_pid",
+            "stale_reason",
+        ):
+            self.assertIn(needle, gateway)
+        self.assertIn("$updatedAtRaw -replace '\\s+JST\\s*$',''", gateway)
+        self.assertIn('live_values_available":false', gateway)
+        for needle in (
+            "PRICE_SOURCE_MISMATCH",
+            "WRONG_SYMBOL_MAPPING",
+            "Get-SheetSymbolCode",
+            "live_price_diagnostics",
+            "source_mode",
+            "collector_pid",
+            "duplicate_collector",
+            "duplicate_watcher",
+            "data_conflict",
+            "stale_reason",
+            "real_submit_allowed=$false",
+            "503 Service Unavailable",
+            "CACHED_OR_SAMPLE_PAYLOAD",
+        ):
+            self.assertIn(needle, collector)
+
     def test_v9_powershell_functions_do_not_shadow_readonly_automatic_variables(self):
         import re
         files = (
