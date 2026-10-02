@@ -1,6 +1,6 @@
 {
   "date": "2026-10-02",
-  "fixed_at": "2026-10-02 10:42:09 JST",
+  "fixed_at": "2026-10-02 10:44:39 JST",
   "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
   "candidates": [
     {
@@ -8,17 +8,17 @@
       "ticker": "8035.T",
       "side": "LONG",
       "score": 80.0,
-      "entry": 12180,
-      "entry_limit": 12180,
-      "stop": 11880,
-      "target1": 12630,
-      "target2": 12840,
-      "morning_price": 12125.0,
+      "entry": 12170,
+      "entry_limit": 12170,
+      "stop": 11870,
+      "target1": 12620,
+      "target2": 12830,
+      "morning_price": 12115.0,
       "rvol": 0.51,
-      "ret20": 10.27,
+      "ret20": 10.18,
       "atr_pct": 3.79,
-      "day_score": 3.41,
-      "swing_score": 8.61,
+      "day_score": 3.32,
+      "swing_score": 8.56,
       "material_stage": "織り込み進行",
       "schema_version": "signal-schema-1.0",
       "strategy_id": "day_rank_long",
@@ -29,7 +29,7 @@
       "regime": null,
       "regime_updated_at": null,
       "high_vol": null,
-      "signal_time": "2026-10-02 10:42:09 JST",
+      "signal_time": "2026-10-02 10:44:39 JST",
       "source": "morning_snapshot"
     },
     {
@@ -58,7 +58,7 @@
       "regime": null,
       "regime_updated_at": null,
       "high_vol": null,
-      "signal_time": "2026-10-02 10:42:09 JST",
+      "signal_time": "2026-10-02 10:44:39 JST",
       "source": "morning_snapshot"
     }
   ]
