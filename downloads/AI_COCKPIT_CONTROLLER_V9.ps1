@@ -44,7 +44,7 @@ param(
 #     controller stops the data path.
 
 $ErrorActionPreference = "Stop"
-$Build = "V9-CONTROLLER-20261002-EXCEL-IDENTITY-ROT-01"
+$Build = "V9-CONTROLLER-20261002-EXCEL-OPEN-CRASH-01"
 $ExcelIdentityProbeTimeoutSeconds = 35
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
@@ -555,6 +555,137 @@ function Write-OperationsIncidentFile([string]$Path, $Rows) {
     Move-Item -LiteralPath $tmp -Destination $Path -Force
 }
 
+function Get-CanonicalWorkbookOpenDiagnostics([string]$WorkbookPath, [string]$LaunchArguments) {
+    $name = [IO.Path]::GetFileName($WorkbookPath)
+    $diag = [ordered]@{
+        workbook_name = $name
+        workbook_readable = $false
+        has_vba_project = $false
+        external_link_count = 0
+        zip_error = ""
+        document_recovery_match_count = 0
+        disabled_item_count = 0
+        startup_item_count = 0
+        addin_leaf_names = @()
+        marketspeed_addin_present = $false
+        safe_mode_switch = ($LaunchArguments -match '(?i)(^|\s)/(safemode|s)(\s|$)')
+        launch_switches = "/x"
+        registry_error = ""
+    }
+    try {
+        Add-Type -AssemblyName System.IO.Compression -ErrorAction SilentlyContinue
+        Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+        $stream = [IO.File]::Open($WorkbookPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+        try {
+            $zip = New-Object IO.Compression.ZipArchive($stream, [IO.Compression.ZipArchiveMode]::Read)
+            try {
+                $diag.workbook_readable = $true
+                $links = 0
+                foreach ($entry in $zip.Entries) {
+                    $full = [string]$entry.FullName
+                    if ($full -eq "xl/vbaProject.bin") { $diag.has_vba_project = $true }
+                    if ($full.StartsWith("xl/externalLinks/")) { $links++ }
+                }
+                $diag.external_link_count = $links
+            } finally { $zip.Dispose() }
+        } finally { $stream.Dispose() }
+    } catch {
+        $diag.zip_error = $_.Exception.Message
+    }
+    $excelKey = "HKCU:\Software\Microsoft\Office\16.0\Excel"
+    try {
+        $recovery = Join-Path $excelKey "Resiliency\DocumentRecovery"
+        if (Test-Path -LiteralPath $recovery) {
+            $matches = 0
+            foreach ($child in @(Get-ChildItem -LiteralPath $recovery -ErrorAction SilentlyContinue)) {
+                $props = Get-ItemProperty -LiteralPath $child.PSPath -ErrorAction SilentlyContinue
+                if ($null -eq $props) { continue }
+                foreach ($prop in $props.PSObject.Properties) {
+                    if ($prop.Name -like "PS*") { continue }
+                    $text = $prop.Value as [string]
+                    if (-not [string]::IsNullOrWhiteSpace($text) -and $text.IndexOf($name, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                        $matches++
+                        break
+                    }
+                }
+            }
+            $diag.document_recovery_match_count = $matches
+        }
+        foreach ($pair in @(
+            @{ Path = (Join-Path $excelKey "Resiliency\DisabledItems"); Field = "disabled_item_count" },
+            @{ Path = (Join-Path $excelKey "Resiliency\StartupItems"); Field = "startup_item_count" }
+        )) {
+            if (-not (Test-Path -LiteralPath $pair.Path)) { continue }
+            $count = @(Get-ChildItem -LiteralPath $pair.Path -ErrorAction SilentlyContinue).Count
+            $props = Get-ItemProperty -LiteralPath $pair.Path -ErrorAction SilentlyContinue
+            if ($null -ne $props) {
+                foreach ($prop in $props.PSObject.Properties) {
+                    if ($prop.Name -like "PS*") { continue }
+                    $count++
+                }
+            }
+            $diag[$pair.Field] = $count
+        }
+        $leaves = New-Object System.Collections.Generic.List[string]
+        foreach ($keyPath in @(
+            (Join-Path $excelKey "Add-in Manager"),
+            (Join-Path $excelKey "Options")
+        )) {
+            if (-not (Test-Path -LiteralPath $keyPath)) { continue }
+            $props = Get-ItemProperty -LiteralPath $keyPath -ErrorAction SilentlyContinue
+            if ($null -eq $props) { continue }
+            foreach ($prop in $props.PSObject.Properties) {
+                if ($prop.Name -like "PS*") { continue }
+                $raw = [string]$prop.Value
+                if ([string]::IsNullOrWhiteSpace($raw)) { continue }
+                if ($raw -match 'MarketSpeed|RSS|楽天') { $diag.marketspeed_addin_present = $true }
+                $leaf = [IO.Path]::GetFileName($raw.Trim('"'))
+                if ([string]::IsNullOrWhiteSpace($leaf) -or $leaf -notmatch '\.(xll|xlam|dll|exe)$') { continue }
+                if (-not $leaves.Contains($leaf) -and $leaves.Count -lt 30) { [void]$leaves.Add($leaf) }
+            }
+        }
+        $diag.addin_leaf_names = @($leaves)
+    } catch {
+        $diag.registry_error = $_.Exception.Message
+    }
+    return $diag
+}
+
+function Complete-ExcelProbeResult($Probe, $Process) {
+    if ($null -eq $Probe.dialog_text) { $Probe.dialog_text = "" }
+    $Probe.launched_excel_pid = 0
+    $Probe.process_exited = $false
+    $Probe.excel_exit_code = $null
+    $Probe.excel_exit_at = ""
+    if ($null -eq $Process) { return $Probe }
+    $Probe.launched_excel_pid = [int]$Process.Id
+    try { $Process.Refresh() } catch {}
+    $exited = $false
+    try { $exited = [bool]$Process.HasExited } catch { $exited = $true }
+    $Probe.process_exited = $exited
+    if (-not $exited) { return $Probe }
+    try { $Probe.excel_exit_code = [int]$Process.ExitCode } catch {}
+    try { $Probe.excel_exit_at = $Process.ExitTime.ToString("o") } catch {}
+    if ($Probe.code -eq "EXCEL_IDENTITY_MISMATCH") { return $Probe }
+    if ([bool]$Probe.ok) {
+        $Probe.ok = $false
+        $Probe.code = "EXCEL_PROCESS_EXITED"
+        $Probe.last_error = "LAUNCHED_PID_EXITED"
+        $Probe.detail = "Excel exited after the probe reported verification"
+        return $Probe
+    }
+    if ($Probe.code -eq "EXCEL_SERIOUS_ERROR_PROMPT" -or -not [string]::IsNullOrWhiteSpace([string]$Probe.dialog_text)) {
+        $Probe.code = "EXCEL_PROCESS_EXITED"
+        $Probe.last_error = "PREVIOUS_SERIOUS_ERROR_DIALOG"
+        return $Probe
+    }
+    $Probe.code = "EXCEL_PROCESS_EXITED"
+    if ([string]::IsNullOrWhiteSpace([string]$Probe.last_error) -or [string]$Probe.last_error -in @("PROBE_TIMEOUT", "ROT_MONIKER_NOT_REGISTERED", "NOT_STARTED", "RESULT_MISSING")) {
+        $Probe.last_error = "LAUNCHED_PID_EXITED"
+    }
+    return $Probe
+}
+
 function Add-ExcelIdentityIncident($Probe) {
     $path = Get-OperationsIncidentPath
     try {
@@ -566,18 +697,34 @@ function Add-ExcelIdentityIncident($Probe) {
     try {
     $code = [string]$Probe.code
     if ([string]::IsNullOrWhiteSpace($code)) { $code = "EXCEL_IDENTITY_PROBE_FAILED" }
-    $key = "excel_identity|" + $code
+    $component = "excel_identity"
+    if ($code -eq "EXCEL_SERIOUS_ERROR_PROMPT" -or [string]$Probe.last_error -eq "PREVIOUS_SERIOUS_ERROR_DIALOG" -or -not [string]::IsNullOrWhiteSpace([string]$Probe.dialog_text)) {
+        $component = "workbook_open"
+    } elseif ($code -eq "EXCEL_PROCESS_EXITED") {
+        $component = "excel_process_exit"
+    }
+    $key = $component + "|" + $code
     $prior = @($existing | Where-Object { [string]$_.recurrence_key -eq $key }).Count
     $seed = (Get-Date).ToString("o") + "|" + $key
     $sha = [Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($seed))
     $id = "inc-" + (([BitConverter]::ToString($sha) -replace "-","").ToLowerInvariant().Substring(0, 16))
+    $diagnostics = $null
+    try { $diagnostics = Get-CanonicalWorkbookOpenDiagnostics $WorkbookPath ('/x "' + $WorkbookPath + '"') } catch { $diagnostics = $null }
+    try {
+        $diagPath = Join-Path $LogDir "identity_probe\open_diagnostics.json"
+        $diagDir = Split-Path -Parent $diagPath
+        if (-not (Test-Path -LiteralPath $diagDir)) { New-Item -ItemType Directory -Path $diagDir -Force | Out-Null }
+        if ($null -ne $diagnostics) {
+            [IO.File]::WriteAllText($diagPath, ($diagnostics | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
+        }
+    } catch {}
     $incident = [ordered]@{
         record_class = "operations_incident"
         incident_id = $id
         occurrence_at = (Get-Date).ToString("o")
         recovery_at = $null
         duration_seconds = $null
-        component = "excel_identity"
+        component = $component
         error_code = $code
         symptom = [string]$Probe.detail
         suspected_cause = [string]$Probe.last_error
@@ -588,14 +735,19 @@ function Add-ExcelIdentityIncident($Probe) {
         fail_closed = $true
         invalidated_signal_count = $null
         recovery_mode = $null
-        actions = @("startup aborted before AI SHADOW", "unrelated Excel was not stopped")
+        actions = @("startup aborted before AI SHADOW", "unrelated Excel was not stopped", "canonical workbook was not replaced", "the serious-error dialog was not clicked", "Excel was not relaunched")
         recurrence_key = $key
         recurrence_count = ($prior + 1)
-        log_refs = @("Logs/V9/identity_probe/progress.log", "Logs/V9/identity_probe/result.json")
+        log_refs = @("Logs/V9/identity_probe/progress.log", "Logs/V9/identity_probe/result.json", "Logs/V9/identity_probe/open_diagnostics.json")
         identity_checks = [ordered]@{
             full_name = [string]$Probe.full_name
             hwnd = $Probe.hwnd
             excel_pid = $Probe.excel_pid
+            launched_excel_pid = $Probe.launched_excel_pid
+            process_exited = [bool]$Probe.process_exited
+            excel_exit_code = $Probe.excel_exit_code
+            excel_exit_at = [string]$Probe.excel_exit_at
+            dialog_text = [string]$Probe.dialog_text
             parent_pid = $Probe.parent_pid
             command_line_match = [bool]$Probe.command_line_match
             parent_match = [bool]$Probe.parent_match
@@ -604,10 +756,11 @@ function Add-ExcelIdentityIncident($Probe) {
             attempts = $Probe.attempts
             last_error = [string]$Probe.last_error
         }
+        open_diagnostics = $diagnostics
         real_submit_allowed = $false
     }
         Write-OperationsIncidentFile $path (@($existing) + @([pscustomobject]$incident))
-        Write-Status ("  operations incident " + $id + " / " + $code) Yellow
+        Write-Status ("  operations incident " + $id + " / " + $component + " / " + $code) Yellow
     } catch {
         Write-Status ("  operations incident was not recorded. " + $_.Exception.Message) Red
     }
@@ -625,7 +778,7 @@ function Close-OpenExcelIdentityIncidents {
     $changed = $false
     $now = Get-Date
     foreach ($row in $existing) {
-        if ([string]$row.component -eq "excel_identity" -and [string]::IsNullOrWhiteSpace([string]$row.recovery_at)) {
+        if ([string]$row.component -in @("excel_identity", "workbook_open", "excel_process_exit") -and [string]::IsNullOrWhiteSpace([string]$row.recovery_at)) {
             $row.recovery_at = $now.ToString("o")
             try {
                 $started = [datetime]$row.occurrence_at
@@ -694,7 +847,7 @@ function Invoke-ExcelIdentityProbe {
             hwnd = $partial.hwnd; excel_pid = $partial.excel_pid; parent_pid = $partial.parent_pid
             command_line_match = [bool]$partial.command_line_match; parent_match = [bool]$partial.parent_match
             session_match = [bool]$partial.session_match; rot_candidate_count = $partial.rot_candidate_count
-            attempts = $partial.attempts
+            attempts = $partial.attempts; dialog_text = [string]$partial.dialog_text
         }
     }
     if (-not (Test-Path -LiteralPath $resultPath)) {
@@ -705,7 +858,7 @@ function Invoke-ExcelIdentityProbe {
             exit_code = $wait.exit_code; detail = ($progress + " " + $err).Trim(); last_error = "RESULT_MISSING"
             full_name = ""; hwnd = 0; excel_pid = 0; parent_pid = 0
             command_line_match = $false; parent_match = $false; session_match = $false
-            rot_candidate_count = 0; attempts = 0
+            rot_candidate_count = 0; attempts = 0; dialog_text = ""
         }
     }
     $result = [IO.File]::ReadAllText($resultPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
@@ -720,6 +873,7 @@ function Invoke-ExcelIdentityProbe {
             parent_pid = $result.parent_pid; command_line_match = [bool]$result.command_line_match
             parent_match = [bool]$result.parent_match; session_match = [bool]$result.session_match
             rot_candidate_count = $result.rot_candidate_count; attempts = $result.attempts
+            dialog_text = [string]$result.dialog_text
         }
     }
     $fullName = [string]$result.full_name
@@ -1051,11 +1205,11 @@ try {
         $launchedExcelProc.Id
     ) DarkGray
 
-    $probe = Invoke-ExcelIdentityProbe `
+    $probe = Complete-ExcelProbeResult (Invoke-ExcelIdentityProbe `
         -WorkbookPath $WorkbookPath `
         -ExpectedExcelPid ([int]$launchedExcelProc.Id) `
         -TimeoutSeconds $ExcelIdentityProbeTimeoutSeconds `
-        -LogDirectory $LogDir
+        -LogDirectory $LogDir) $launchedExcelProc
 
     if (-not $probe.ok) {
         $state.excel_pid = 0
@@ -1063,13 +1217,22 @@ try {
         $state.excel_identity_error = [string]$probe.code
         Save-State $state
 
-        $ownedStopped = Stop-VerifiedOwnedExcel ([int]$launchedExcelProc.Id) $WorkbookPath $PID
-        if ($ownedStopped) {
-            Write-Status "  verified owned Excel stopped after identity failure." Yellow
+        $openCrash = $probe.code -in @("EXCEL_PROCESS_EXITED", "EXCEL_SERIOUS_ERROR_PROMPT") -or [bool]$probe.process_exited
+        if ($openCrash) {
+            Write-Status ("  launched Excel PID " + $probe.launched_excel_pid + " / process_exited " + [bool]$probe.process_exited + " / exit_code " + $probe.excel_exit_code + " / exit_at " + $probe.excel_exit_at) Yellow
+            Write-Status "  launched Excel was not force-killed after workbook open failure. Work Excel was not touched. Startup does not reopen Excel." Yellow
+        } else {
+            $ownedStopped = Stop-VerifiedOwnedExcel ([int]$launchedExcelProc.Id) $WorkbookPath $PID
+            if ($ownedStopped) {
+                Write-Status "  verified owned Excel stopped after identity failure." Yellow
+            }
         }
         Add-ExcelIdentityIncident $probe
         Write-Status "AI Cockpit startup failed closed" Red
         Write-Status "Unrelated Excel processes were not touched" Yellow
+        if ($openCrash) {
+            throw ("Excel workbook open failed closed: " + $probe.code + " / PID " + $probe.launched_excel_pid + " / exit_code " + $probe.excel_exit_code + " / " + [string]$probe.detail)
+        }
         throw ("Excel identity probe failed closed: " + $probe.code + " / " + [string]$probe.detail)
     }
 

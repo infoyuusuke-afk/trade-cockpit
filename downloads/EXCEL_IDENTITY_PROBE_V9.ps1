@@ -37,6 +37,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
+using System.Text;
 
 public class ExcelIdentityRotHit {
     public string DisplayName;
@@ -113,6 +114,51 @@ public class ExcelFileIdentity {
         }
     }
 }
+
+public class ExcelProcessWindows {
+    delegate bool EnumProc(IntPtr hWnd, IntPtr lParam);
+    [DllImport("user32.dll")]
+    static extern bool EnumWindows(EnumProc lpEnumFunc, IntPtr lParam);
+    [DllImport("user32.dll")]
+    static extern bool EnumChildWindows(IntPtr hWnd, EnumProc lpEnumFunc, IntPtr lParam);
+    [DllImport("user32.dll")]
+    static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, IntPtr wParam, StringBuilder lParam, uint flags, uint timeoutMs, out IntPtr result);
+
+    const uint WM_GETTEXT = 0x000D;
+    const uint SMTO_ABORTIFHUNG = 0x0002;
+    static EnumProc topCallback;
+    static EnumProc childCallback;
+
+    public static List<string> VisibleTexts(int processId) {
+        var texts = new List<string>();
+        topCallback = (hWnd, lParam) => {
+            uint pid;
+            GetWindowThreadProcessId(hWnd, out pid);
+            if ((int)pid != processId) { return true; }
+            AddText(hWnd, texts);
+            if (texts.Count >= 40) { return false; }
+            childCallback = (child, childParam) => {
+                AddText(child, texts);
+                return texts.Count < 40;
+            };
+            EnumChildWindows(hWnd, childCallback, IntPtr.Zero);
+            return texts.Count < 40;
+        };
+        EnumWindows(topCallback, IntPtr.Zero);
+        return texts;
+    }
+
+    static void AddText(IntPtr hWnd, List<string> texts) {
+        if (texts.Count >= 40) { return; }
+        var sb = new StringBuilder(512);
+        IntPtr unused;
+        SendMessageTimeout(hWnd, WM_GETTEXT, (IntPtr)sb.Capacity, sb, SMTO_ABORTIFHUNG, 200, out unused);
+        var text = sb.ToString().Trim();
+        if (text.Length > 0) { texts.Add(text); }
+    }
+}
 '@
 
 function Save-ProbeResultFile([hashtable]$Result) {
@@ -134,6 +180,58 @@ function Release-ProbeCom($Object) {
 function Test-LocalPath([string]$Value) {
     if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
     return ($Value -match '^[A-Za-z]:\\')
+}
+
+function Test-LaunchedPidAlive {
+    try {
+        $proc = Get-Process -Id $ExpectedExcelPid -ErrorAction Stop
+        return -not $proc.HasExited
+    } catch {
+        return $false
+    }
+}
+
+function Get-SeriousErrorPrompt {
+    $texts = @()
+    try { $texts = @([ExcelProcessWindows]::VisibleTexts($ExpectedExcelPid)) } catch { return "" }
+    foreach ($text in $texts) {
+        $value = [string]$text
+        if ($value.IndexOf("重大なエラー", [StringComparison]::Ordinal) -ge 0) { return $value }
+        if ($value.IndexOf("このドキュメントを開きますか", [StringComparison]::Ordinal) -ge 0) { return $value }
+        if ($value.IndexOf("serious problem", [StringComparison]::OrdinalIgnoreCase) -ge 0) { return $value }
+        if ($value.IndexOf("serious error", [StringComparison]::OrdinalIgnoreCase) -ge 0) { return $value }
+    }
+    return ""
+}
+
+function Stop-ProbeForProcessExit {
+    $last.code = "EXCEL_PROCESS_EXITED"
+    $last.ok = $false
+    $last.last_error = "LAUNCHED_PID_EXITED"
+    $last.excel_pid = $ExpectedExcelPid
+    $last.message = "launched Excel PID " + $ExpectedExcelPid + " exited before identity verification"
+    Write-ProbeProgress $last.message
+    Write-ProbeResult $last
+    exit 4
+}
+
+function Stop-ProbeForSeriousErrorPrompt([string]$DialogText) {
+    $last.code = "EXCEL_SERIOUS_ERROR_PROMPT"
+    $last.ok = $false
+    $last.last_error = "PREVIOUS_SERIOUS_ERROR_DIALOG"
+    $last.excel_pid = $ExpectedExcelPid
+    if ($DialogText.Length -gt 300) { $DialogText = $DialogText.Substring(0, 300) }
+    $last.dialog_text = $DialogText
+    $last.message = "Excel showed the previous-serious-error prompt before identity verification. The dialog was not answered. COM identity was not called."
+    Write-ProbeProgress ($last.message + " / dialog=" + $DialogText)
+    Write-ProbeResult $last
+    exit 5
+}
+
+function Test-WorkbookOpenBlocker {
+    if (-not (Test-LaunchedPidAlive)) { Stop-ProbeForProcessExit }
+    $prompt = Get-SeriousErrorPrompt
+    if (-not [string]::IsNullOrWhiteSpace($prompt)) { Stop-ProbeForSeriousErrorPrompt $prompt }
 }
 
 Write-ProbeProgress "Excel identity probe started"
@@ -179,6 +277,7 @@ $last = @{
     rot_candidate_count = 0
     last_error = "NOT_STARTED"
     attempts = 0
+    dialog_text = ""
     real_submit_allowed = $false
 }
 
@@ -187,6 +286,15 @@ while ((Get-Date) -lt $deadline) {
     $last.attempts = $attempt
     $elapsed = [int]((Get-Date) - $started).TotalSeconds
     Write-ProbeProgress ("Excel identity probe attempt " + $attempt + " / elapsed " + $elapsed + "s")
+    Test-WorkbookOpenBlocker
+    if ($attempt -eq 1) {
+        Write-ProbeProgress "Watching launched Excel before COM identity"
+        $warmupDeadline = (Get-Date).AddSeconds(3)
+        while ((Get-Date) -lt $warmupDeadline -and (Get-Date) -lt $deadline) {
+            Start-Sleep -Milliseconds 200
+            Test-WorkbookOpenBlocker
+        }
+    }
     Write-ProbeProgress "Waiting for workbook ROT registration..."
     $hits = @()
     try {
@@ -201,9 +309,8 @@ while ((Get-Date) -lt $deadline) {
     }
     $last.rot_candidate_count = @($hits).Count
     if ($last.rot_candidate_count -lt 1) {
-        $launched = Get-Process -Id $ExpectedExcelPid -ErrorAction SilentlyContinue
-        if ($null -eq $launched) { $last.last_error = "LAUNCHED_PID_EXITED" }
-        else { $last.last_error = "ROT_MONIKER_NOT_REGISTERED" }
+        Test-WorkbookOpenBlocker
+        $last.last_error = "ROT_MONIKER_NOT_REGISTERED"
         $last.message = "unmatched: rot_moniker,hwnd,pid,session,command_line,parent / last_error=" + $last.last_error + " / hwnd=" + $last.hwnd + " / excel_pid=" + $last.excel_pid
         Write-ProbeProgress ("probe attempt failed: " + $last.message)
         try { Save-ProbeResultFile $last } catch {}
@@ -340,7 +447,11 @@ while ((Get-Date) -lt $deadline) {
 }
 
 $last.code = "EXCEL_IDENTITY_PROBE_FAILED"
-if ([string]$last.last_error -in @("FULL_NAME_DIFFERENT_FILE", "SESSION_MISMATCH", "PID_MISMATCH")) {
+if ([string]$last.last_error -eq "LAUNCHED_PID_EXITED") {
+    $last.code = "EXCEL_PROCESS_EXITED"
+} elseif ([string]$last.last_error -eq "PREVIOUS_SERIOUS_ERROR_DIALOG") {
+    $last.code = "EXCEL_SERIOUS_ERROR_PROMPT"
+} elseif ([string]$last.last_error -in @("FULL_NAME_DIFFERENT_FILE", "SESSION_MISMATCH", "PID_MISMATCH")) {
     $last.code = "EXCEL_IDENTITY_MISMATCH"
 }
 Write-ProbeResult $last

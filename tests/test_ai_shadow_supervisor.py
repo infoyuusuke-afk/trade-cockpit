@@ -258,6 +258,35 @@ class CycleTests(unittest.TestCase):
         self.assertTrue(blocked["state"]["resume_blocked"])
         self.assertEqual(blocked["state"]["reason"], "STATE_MISSING")
 
+    def test_workbook_open_crash_incident_does_not_open_a_trade(self):
+        incident = {
+            "record_class": "operations_incident",
+            "incident_id": "inc-open-crash",
+            "occurrence_at": NOW.isoformat(),
+            "recovery_at": None,
+            "component": "workbook_open",
+            "error_code": "EXCEL_PROCESS_EXITED",
+            "symptom": "launched Excel PID 19860 exited before identity verification",
+            "suspected_cause": "PREVIOUS_SERIOUS_ERROR_DIALOG",
+            "confirmed_cause": None,
+            "fail_closed": True,
+            "real_submit_allowed": False,
+            "real_trade_impact": "NONE_REAL_SUBMIT_REMAINS_FALSE",
+            "shadow_impact": "STOPPED",
+            "invalidated_signal_count": None,
+            "recovery_mode": None,
+            "recurrence_key": "workbook_open|EXCEL_PROCESS_EXITED",
+            "recurrence_count": 1,
+            "identity_checks": {"launched_excel_pid": 19860, "excel_exit_code": -1073741819, "process_exited": True},
+        }
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        engine = sup.load_engine(self.data, now=NOW)
+        self.assertIsNot(engine["state"].get("resume_blocked"), True)
+        self.assertEqual(engine["ledger"], [])
+        self.assertEqual(engine["open_positions"], {})
+        self.assertEqual(engine["state"]["real_submit_allowed"], False)
+        self.assertEqual(engine["incidents"][0]["component"], "workbook_open")
+
     def test_manual_acknowledgement_marks_recovery_manual(self):
         engine = self._engine()
         stale = _live([_row()], updated_at="2026-10-02 08:00:00")
