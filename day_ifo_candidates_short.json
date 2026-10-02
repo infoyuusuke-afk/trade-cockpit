@@ -1,8 +1,8 @@
 {
-  "updated_at": "2026-10-02 12:53:16 JST",
+  "updated_at": "2026-10-02 12:55:19 JST",
   "side": "SHORT",
   "status": "試運転・検証中",
-  "count": 1,
+  "count": 2,
   "candidates": [
     {
       "name": "ワークマン（7564）",
@@ -15,10 +15,28 @@
       "target1": 4470.0,
       "target2": 4060.0,
       "rvol": 2.02,
-      "atr_pct": 3.2,
+      "atr_pct": 3.21,
       "supply_phase": null,
       "margin_caution_flagged": false,
-      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-8.8%／出来高比2.02倍／信用需給不明",
+      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-8.9%／出来高比2.02倍／信用需給不明",
+      "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
+      "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
+    },
+    {
+      "name": "ニデック（6594）",
+      "code": "6594",
+      "ticker": "6594.T",
+      "side": "SHORT",
+      "score": 61,
+      "trigger": 2034.0,
+      "stop": 2273.0,
+      "target1": 1676.0,
+      "target2": 1436.0,
+      "rvol": 1.48,
+      "atr_pct": 8.14,
+      "supply_phase": null,
+      "margin_caution_flagged": false,
+      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-19.6%／出来高比1.48倍／信用需給不明",
       "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
       "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
     }
