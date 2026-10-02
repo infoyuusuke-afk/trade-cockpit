@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-02 15:46:53 JST",
+  "updated_at": "2026-10-02 15:49:02 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -5760,22 +5760,6 @@
       "already_watched": false
     },
     {
-      "code": "6141",
-      "name": "DMG MORI CO., LTD.",
-      "exchange": "TSE",
-      "price": 2851,
-      "change_pct": -2.42984257357974,
-      "volume": 1378200,
-      "relative_volume": 1.110108739428111,
-      "atr_pct": 2.83,
-      "vwap": 2866.5,
-      "high": 2904.5,
-      "low": 2844,
-      "market_cap": 456109548981,
-      "sector": "Producer Manufacturing",
-      "already_watched": false
-    },
-    {
       "code": "9020",
       "name": "East Japan Railway Company",
       "exchange": "TSE",
@@ -5790,6 +5774,22 @@
       "market_cap": 3755281769287,
       "sector": "Transportation",
       "already_watched": true
+    },
+    {
+      "code": "6141",
+      "name": "DMG MORI CO., LTD.",
+      "exchange": "TSE",
+      "price": 2851,
+      "change_pct": -2.42984257357974,
+      "volume": 1378200,
+      "relative_volume": 1.110108739428111,
+      "atr_pct": 2.83,
+      "vwap": 2866.5,
+      "high": 2904.5,
+      "low": 2844,
+      "market_cap": 456109548981,
+      "sector": "Producer Manufacturing",
+      "already_watched": false
     },
     {
       "code": "3549",
