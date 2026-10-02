@@ -258,7 +258,10 @@
     "logged_at": "2026-09-30 10:34:55 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -0.1,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "3549",
@@ -267,7 +270,10 @@
     "logged_at": "2026-09-30 10:34:55 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -8.2,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "5942",
@@ -276,7 +282,10 @@
     "logged_at": "2026-09-30 10:34:55 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 8.11,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "7447",
@@ -285,7 +294,10 @@
     "logged_at": "2026-09-30 10:34:56 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -1.4,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "7545",
@@ -294,7 +306,10 @@
     "logged_at": "2026-09-30 10:34:56 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -1.33,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "8276",
@@ -303,7 +318,10 @@
     "logged_at": "2026-09-30 10:34:56 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -4.61,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": NaN,
+    "actual_direction": "中立",
+    "hit": false
   },
   {
     "code": "3035",
@@ -501,6 +519,24 @@
     "logged_at": "2026-10-02 00:41:51 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -4.85,
+    "status": "pending"
+  },
+  {
+    "code": "2300",
+    "name": "きょくとう",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-03 00:01:35 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.2,
+    "status": "pending"
+  },
+  {
+    "code": "2753",
+    "name": "あみやき亭",
+    "target_date": "2026-10-05",
+    "logged_at": "2026-10-03 00:01:35 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.51,
     "status": "pending"
   }
 ]
