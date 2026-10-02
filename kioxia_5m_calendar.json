@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-10-02 10:55:33 JST",
+  "updated_at": "2026-10-02 10:57:57 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3222,7 +3222,7 @@
     },
     {
       "date": "2026-10-02",
-      "ret": 0.58,
+      "ret": 0.66,
       "high": 1.17,
       "low": -1.48,
       "type": "寄り底",
@@ -3247,7 +3247,7 @@
         0.689,
         0.636,
         0.556,
-        0.583
+        0.662
       ],
       "volume_path": [
         1666100.0,
@@ -3269,13 +3269,13 @@
         13188800.0,
         13608000.0,
         13944400.0,
-        13944400.0
+        14050200.0
       ]
     }
   ],
   "current": {
     "date": "2026-10-02",
-    "ret": 0.58,
+    "ret": 0.66,
     "high": 1.17,
     "low": -1.48,
     "type": "寄り底",
@@ -3300,7 +3300,7 @@
       0.689,
       0.636,
       0.556,
-      0.583
+      0.662
     ],
     "volume_path": [
       1666100.0,
@@ -3322,7 +3322,7 @@
       13188800.0,
       13608000.0,
       13944400.0,
-      13944400.0
+      14050200.0
     ]
   },
   "current_1m": [
@@ -4184,10 +4184,28 @@
     {
       "t": "10:40",
       "o": 0.5564,
-      "h": 0.5564,
-      "l": 0.5564,
-      "c": 0.5564,
-      "price": 18975.0,
+      "h": 0.5829,
+      "l": 0.424,
+      "c": 0.5299,
+      "price": 18970.0,
+      "v": 51300
+    },
+    {
+      "t": "10:41",
+      "o": 0.5299,
+      "h": 0.5829,
+      "l": 0.4505,
+      "c": 0.5829,
+      "price": 18980.0,
+      "v": 54500
+    },
+    {
+      "t": "10:42",
+      "o": 0.6359,
+      "h": 0.6359,
+      "l": 0.6359,
+      "c": 0.6359,
+      "price": 18990.0,
       "v": 0
     }
   ],
@@ -4195,14 +4213,14 @@
   "one_minute_verified": true,
   "technical_levels": {
     "session_open": 18870.0,
-    "daily_ma5": 18358.3,
+    "daily_ma5": 18361.3,
     "pivot_p": 18958.3,
     "pivot_r1": 19386.7,
     "pivot_s1": 18651.7,
     "or15_high": 18870.0,
     "or15_low": 18590.0,
     "return_pct": {
-      "daily_ma5": -2.7117,
+      "daily_ma5": -2.6958,
       "pivot_p": 0.4679,
       "pivot_r1": 2.7382,
       "pivot_s1": -1.1569,
@@ -4349,12 +4367,12 @@
         45998300.0,
         46419800.0
       ],
-      "similarity": 87.5,
+      "similarity": 87.6,
       "after_ret": 1.17,
       "max_up_after": 2.15,
       "max_down_after": -0.53,
       "score_components": {
-        "five_minute": 85.6,
+        "five_minute": 85.7,
         "us_market": 87.4,
         "credit_supply": 100.0
       },
@@ -4525,7 +4543,7 @@
       "max_up_after": 0.6,
       "max_down_after": -8.57,
       "score_components": {
-        "five_minute": 87.1,
+        "five_minute": 87.2,
         "us_market": 84.5,
         "credit_supply": null
       },
@@ -4679,12 +4697,12 @@
         26107600.0,
         26107800.0
       ],
-      "similarity": 86.2,
+      "similarity": 86.3,
       "after_ret": 1.04,
       "max_up_after": 2.22,
       "max_down_after": -0.28,
       "score_components": {
-        "five_minute": 87.8,
+        "five_minute": 87.9,
         "us_market": 82.0,
         "credit_supply": null
       },
@@ -4838,12 +4856,12 @@
         23445400.0,
         23854600.0
       ],
-      "similarity": 85.8,
+      "similarity": 85.7,
       "after_ret": -0.08,
       "max_up_after": 1.38,
       "max_down_after": -0.63,
       "score_components": {
-        "five_minute": 90.6,
+        "five_minute": 90.5,
         "us_market": 73.2,
         "credit_supply": null
       },
@@ -5002,7 +5020,7 @@
       "max_up_after": 1.01,
       "max_down_after": -0.54,
       "score_components": {
-        "five_minute": 85.3,
+        "five_minute": 85.4,
         "us_market": 82.3,
         "credit_supply": 91.5
       },
@@ -5169,12 +5187,12 @@
       45998300.0,
       46419800.0
     ],
-    "similarity": 87.5,
+    "similarity": 87.6,
     "after_ret": 1.17,
     "max_up_after": 2.15,
     "max_down_after": -0.53,
     "score_components": {
-      "five_minute": 85.6,
+      "five_minute": 85.7,
       "us_market": 87.4,
       "credit_supply": 100.0
     },
