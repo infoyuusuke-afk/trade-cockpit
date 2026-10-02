@@ -5,6 +5,7 @@ They do not launch MarketSpeed II or a real workbook.
 """
 import os
 import pathlib
+import re
 import shutil
 import signal
 import subprocess
@@ -70,14 +71,14 @@ class ExcelIdentityProbeContract(unittest.TestCase):
         self.assertIn("unmatched:", self.helper)
         self.assertLess(self.helper.index("PID_MISMATCH"), self.helper.index("FULL_NAME_DIFFERENT_FILE"))
         self.assertLess(
-            self.helper.index("[string]::Equals($fullName, $WorkbookPath, [StringComparison]::OrdinalIgnoreCase)"),
+            self.helper.index("[string]::Equals($fullName, $WorkbookPath, $OrdinalIgnoreCaseComparison)"),
             self.helper.index("[ExcelFileIdentity]::Key($WorkbookPath)"),
         )
         self.assertIn("command_line_match", self.helper)
         self.assertIn("parent_match", self.helper)
         self.assertIn("EXCEL_PROCESS_EXITED", self.helper)
         self.assertIn("EXCEL_SERIOUS_ERROR_PROMPT", self.helper)
-        self.assertIn("重大なエラー", self.helper)
+        self.assertIn('$value.IndexOf($SeriousErrorJa, $OrdinalComparison)', self.helper)
         self.assertIn("Watching launched Excel before COM identity", self.helper)
         self.assertIn("exit 4", self.helper)
         self.assertIn("exit 5", self.helper)
@@ -109,6 +110,37 @@ class ExcelIdentityProbeContract(unittest.TestCase):
         self.assertIn("Invoke-ExcelIdentityProbe", self.startup)
         self.assertIn("Start-Process -FilePath $shell", self.controller)
         self.assertIn("Wait-OwnedHelperProcess", self.controller)
+
+    def test_ps51_ordinal_comparisons_do_not_depend_on_ansi_decoding(self):
+        serious = (0x91CD, 0x5927, 0x306A, 0x30A8, 0x30E9, 0x30FC)
+        reopen = (
+            0x3053, 0x306E, 0x30C9, 0x30AD, 0x30E5, 0x30E1, 0x30F3, 0x30C8,
+            0x3092, 0x958B, 0x304D, 0x307E, 0x3059, 0x304B,
+        )
+        self.assertEqual("".join(chr(c) for c in serious), "重大なエラー")
+        self.assertEqual("".join(chr(c) for c in reopen), "このドキュメントを開きますか")
+        self.assertIn(", ".join(f"[char]0x{c:04X}" for c in serious), self.helper)
+        self.assertIn(", ".join(f"[char]0x{c:04X}" for c in reopen), self.helper)
+        self.assertNotIn("重大なエラー", self.helper)
+        self.assertNotIn("このドキュメントを開きますか", self.helper)
+        self.assertIn("$OrdinalComparison = [StringComparison]::Ordinal", self.helper)
+        self.assertIn("$OrdinalIgnoreCaseComparison = [StringComparison]::OrdinalIgnoreCase", self.helper)
+        self.assertIn('$value.IndexOf("serious problem", $OrdinalIgnoreCaseComparison)', self.helper)
+        self.assertIn('$value.IndexOf("serious error", $OrdinalIgnoreCaseComparison)', self.helper)
+        self.assertIn("$last.command_line.IndexOf($WorkbookPath, $OrdinalIgnoreCaseComparison)", self.helper)
+        self.assertIn("[char]0x697D, [char]0x5929", self.controller)
+        self.assertNotIn("楽天", self.controller)
+        self.assertTrue(self.helper.isascii())
+        self.assertTrue(self.controller.isascii())
+        for label, text in (("controller", self.controller), ("helper", self.helper)):
+            for match in re.finditer(r"\[StringComparison\]::\w+", text):
+                line_start = text.rfind("\n", 0, match.start()) + 1
+                line_end = text.find("\n", match.end())
+                line = text[line_start:line_end if line_end >= 0 else None]
+                self.assertIn("=", line, f"{label} still passes StringComparison into a call: {line}")
+            self.assertNotRegex(text, r"\?\?")
+            self.assertNotRegex(text, r"\?\.")
+            self.assertNotRegex(text, r"\sas\s+\[")
 
     def test_helper_timeout_is_hard_and_bounded(self):
         self.assertIn("$ExcelIdentityProbeTimeoutSeconds = 35", self.controller)

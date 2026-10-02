@@ -161,6 +161,20 @@ public class ExcelProcessWindows {
 }
 '@
 
+# Windows PowerShell 5.1 reports "Missing ')' in method call" when a method
+# argument list puts a StringComparison enum member beside a non-ASCII literal
+# in a BOM-less script. The variables below are those same enum values. The
+# Japanese needles are code points so the ANSI code page cannot change the
+# text that Ordinal comparison sees.
+$OrdinalComparison = [StringComparison]::Ordinal
+$OrdinalIgnoreCaseComparison = [StringComparison]::OrdinalIgnoreCase
+$SeriousErrorJa = -join @(
+    [char]0x91CD, [char]0x5927, [char]0x306A, [char]0x30A8, [char]0x30E9, [char]0x30FC
+)
+$ReopenDocumentJa = -join @(
+    [char]0x3053, [char]0x306E, [char]0x30C9, [char]0x30AD, [char]0x30E5, [char]0x30E1, [char]0x30F3, [char]0x30C8, [char]0x3092, [char]0x958B, [char]0x304D, [char]0x307E, [char]0x3059, [char]0x304B
+)
+
 function Save-ProbeResultFile([hashtable]$Result) {
     if ([string]::IsNullOrWhiteSpace($ResultPath)) { return }
     $json = $Result | ConvertTo-Json -Compress -Depth 4
@@ -196,10 +210,10 @@ function Get-SeriousErrorPrompt {
     try { $texts = @([ExcelProcessWindows]::VisibleTexts($ExpectedExcelPid)) } catch { return "" }
     foreach ($text in $texts) {
         $value = [string]$text
-        if ($value.IndexOf("重大なエラー", [StringComparison]::Ordinal) -ge 0) { return $value }
-        if ($value.IndexOf("このドキュメントを開きますか", [StringComparison]::Ordinal) -ge 0) { return $value }
-        if ($value.IndexOf("serious problem", [StringComparison]::OrdinalIgnoreCase) -ge 0) { return $value }
-        if ($value.IndexOf("serious error", [StringComparison]::OrdinalIgnoreCase) -ge 0) { return $value }
+        if ($value.IndexOf($SeriousErrorJa, $OrdinalComparison) -ge 0) { return $value }
+        if ($value.IndexOf($ReopenDocumentJa, $OrdinalComparison) -ge 0) { return $value }
+        if ($value.IndexOf("serious problem", $OrdinalIgnoreCaseComparison) -ge 0) { return $value }
+        if ($value.IndexOf("serious error", $OrdinalIgnoreCaseComparison) -ge 0) { return $value }
     }
     return ""
 }
@@ -360,13 +374,13 @@ while ((Get-Date) -lt $deadline) {
                                     $last.command_line_match = $false
                                 } else {
                                     $last.command_line = [string]$info.CommandLine
-                                    $last.command_line_match = ($last.command_line.IndexOf($WorkbookPath, [StringComparison]::OrdinalIgnoreCase) -ge 0)
+                                    $last.command_line_match = ($last.command_line.IndexOf($WorkbookPath, $OrdinalIgnoreCaseComparison) -ge 0)
                                     $last.parent_pid = [int]$info.ParentProcessId
                                     $last.parent_match = ($last.parent_pid -eq $ControllerPid)
                                     $sameFile = $false
                                     $identityReady = $true
                                     if (Test-LocalPath $fullName) {
-                                        if ([string]::Equals($fullName, $WorkbookPath, [StringComparison]::OrdinalIgnoreCase)) {
+                                        if ([string]::Equals($fullName, $WorkbookPath, $OrdinalIgnoreCaseComparison)) {
                                             $sameFile = $true
                                         } else {
                                             try {

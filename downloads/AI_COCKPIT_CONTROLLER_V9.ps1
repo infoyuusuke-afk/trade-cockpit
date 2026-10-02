@@ -44,7 +44,7 @@ param(
 #     controller stops the data path.
 
 $ErrorActionPreference = "Stop"
-$Build = "V9-CONTROLLER-20261002-PS51-PARSE-01"
+$Build = "V9-CONTROLLER-20261002-PS51-INDEXOF-01"
 $ExcelIdentityProbeTimeoutSeconds = 35
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
@@ -204,7 +204,7 @@ function Resolve-RuntimeDir([string]$Explicit) {
 function Resolve-RepoRoot([string]$Explicit) {
     if (-not [string]::IsNullOrWhiteSpace($Explicit)) { return $Explicit }
     # Prefer the folder this controller script itself lives two levels
-    # above (窶ｦ\trade-cockpit\downloads\AI_COCKPIT_CONTROLLER_V8.ps1), if
+    # above (...\trade-cockpit\downloads\AI_COCKPIT_CONTROLLER_V8.ps1), if
     # that looks like a real checkout; otherwise fall back to a Desktop
     # search, same pattern as Resolve-RuntimeDir.
     $candidate = Split-Path -Parent $PSScriptRoot
@@ -446,9 +446,10 @@ function Test-LaunchedExcelOwnership([int]$ExcelPid,[string]$WorkbookPath,[int]$
     $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ExcelPid) -ErrorAction SilentlyContinue
     if ($null -eq $info) { return $false }
     $cmd = [string]$info.CommandLine
+    $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
     $isCanonicalWorkbook = (
         -not [string]::IsNullOrWhiteSpace($cmd) -and
-        $cmd.IndexOf($WorkbookPath,[StringComparison]::OrdinalIgnoreCase) -ge 0
+        $cmd.IndexOf($WorkbookPath, $ordinalIgnoreCase) -ge 0
     )
     $isControllerChild = ([int]$info.ParentProcessId -eq $ControllerPid)
     $isSameSession = ([int]$proc.SessionId -eq (Get-CurrentSessionId))
@@ -597,6 +598,7 @@ function Get-CanonicalWorkbookOpenDiagnostics([string]$WorkbookPath, [string]$La
         $recovery = Join-Path $excelKey "Resiliency\DocumentRecovery"
         if (Test-Path -LiteralPath $recovery) {
             $matches = 0
+            $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
             foreach ($child in @(Get-ChildItem -LiteralPath $recovery -ErrorAction SilentlyContinue)) {
                 $props = Get-ItemProperty -LiteralPath $child.PSPath -ErrorAction SilentlyContinue
                 if ($null -eq $props) { continue }
@@ -604,7 +606,7 @@ function Get-CanonicalWorkbookOpenDiagnostics([string]$WorkbookPath, [string]$La
                     if ($prop.Name -like "PS*") { continue }
                     $text = $null
                     if ($prop.Value -is [string]) { $text = [string]$prop.Value }
-                    if (-not [string]::IsNullOrWhiteSpace($text) -and $text.IndexOf($name, [StringComparison]::OrdinalIgnoreCase) -ge 0) {
+                    if (-not [string]::IsNullOrWhiteSpace($text) -and $text.IndexOf($name, $ordinalIgnoreCase) -ge 0) {
                         $matches++
                         break
                     }
@@ -639,7 +641,8 @@ function Get-CanonicalWorkbookOpenDiagnostics([string]$WorkbookPath, [string]$La
                 if ($prop.Name -like "PS*") { continue }
                 $raw = [string]$prop.Value
                 if ([string]::IsNullOrWhiteSpace($raw)) { continue }
-                if ($raw -match 'MarketSpeed|RSS|楽天') { $diag.marketspeed_addin_present = $true }
+                $rakuten = -join @([char]0x697D, [char]0x5929)
+                if ($raw -match ('MarketSpeed|RSS|' + $rakuten)) { $diag.marketspeed_addin_present = $true }
                 $leaf = [IO.Path]::GetFileName($raw.Trim('"'))
                 if ([string]::IsNullOrWhiteSpace($leaf) -or $leaf -notmatch '\.(xll|xlam|dll|exe)$') { continue }
                 if (-not $leaves.Contains($leaf) -and $leaves.Count -lt 30) { [void]$leaves.Add($leaf) }
@@ -1398,12 +1401,10 @@ try {
 
                     $isHidden = ($xp2.MainWindowHandle -eq 0)
 
+                    $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
                     $isCanonicalWorkbook = (
                         -not [string]::IsNullOrWhiteSpace($excelCmd) -and
-                        $excelCmd.IndexOf(
-                            $WorkbookPath,
-                            [StringComparison]::OrdinalIgnoreCase
-                        ) -ge 0
+                        $excelCmd.IndexOf($WorkbookPath, $ordinalIgnoreCase) -ge 0
                     )
 
                     $isControllerChild = (

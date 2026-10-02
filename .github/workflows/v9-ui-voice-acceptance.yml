@@ -195,14 +195,20 @@ jobs:
             "downloads/AI_COCKPIT_CONTROLLER_V9.ps1",
             "downloads/EXCEL_IDENTITY_PROBE_V9.ps1"
           )
+          $messages = New-Object System.Collections.Generic.List[string]
           foreach ($file in $files) {
             $tokens = $null
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
             if ($errors.Count -gt 0) {
-              $errors | ForEach-Object { Write-Error ($file + ":" + $_.Extent.StartLineNumber + ": " + $_.Message) }
-              throw "Windows PowerShell 5.1 parse failed: $file"
+              foreach ($err in $errors) {
+                [void]$messages.Add($file + ":" + $err.Extent.StartLineNumber + ":" + $err.Extent.StartColumnNumber + ": " + $err.Message)
+              }
             }
+          }
+          if ($messages.Count -gt 0) {
+            $messages | ForEach-Object { Write-Output $_ }
+            throw "Windows PowerShell 5.1 parse failed"
           }
           Write-Output "WINDOWS POWERSHELL 5.1 PARSE PASS"
       - name: Excel identity probe hard-timeout selftest
