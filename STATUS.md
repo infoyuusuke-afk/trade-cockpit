@@ -11,6 +11,10 @@ URL（https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/STATU
 
 ---
 
+## V9起動ハング P0（2026-10-02、main未マージ）
+
+Issue #288。Controller 本体の同期 `BindToMoniker` をやめ、workbook identity probe を別 PowerShell プロセスへ分離した。本体は helper PID を 35 秒で打ち切り、失敗時は `EXCEL_IDENTITY_PROBE_TIMEOUT` / `EXCEL_IDENTITY_MISMATCH` / `EXCEL_IDENTITY_PROBE_FAILED` で fail-closed にする。停止できる Excel は、canonical workbook の command line、parent PID、同一 session が揃ったものだけ。実機の MS2/RSS 起動確認は Owner PC 側。この節は作業ブランチの記録で、main にはまだ入っていない。
+
 ## システム概要
 
 - リポジトリ: infoyuusuke-afk/trade-cockpit（GitHub Pages: https://infoyuusuke-afk.github.io/trade-cockpit/）
