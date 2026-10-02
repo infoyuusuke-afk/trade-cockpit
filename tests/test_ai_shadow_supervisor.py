@@ -225,6 +225,39 @@ class CycleTests(unittest.TestCase):
         self.assertTrue(snapshot["ui_independent"])
         self.assertEqual(snapshot["latest_incident"]["recovery_mode"], "AUTO")
 
+    def test_excel_identity_incident_is_kept_without_opening_a_trade(self):
+        incident = {
+            "record_class": "operations_incident",
+            "incident_id": "inc-excel",
+            "occurrence_at": NOW.isoformat(),
+            "recovery_at": None,
+            "component": "excel_identity",
+            "error_code": "EXCEL_IDENTITY_PROBE_FAILED",
+            "symptom": "unmatched: rot_moniker,hwnd,pid,command_line,parent / last_error=ROT_MONIKER_NOT_REGISTERED",
+            "suspected_cause": "ROT_MONIKER_NOT_REGISTERED",
+            "confirmed_cause": None,
+            "fail_closed": True,
+            "real_submit_allowed": False,
+            "real_trade_impact": "NONE_REAL_SUBMIT_REMAINS_FALSE",
+            "shadow_impact": "STOPPED",
+            "invalidated_signal_count": None,
+            "recovery_mode": None,
+            "recurrence_key": "excel_identity|EXCEL_IDENTITY_PROBE_FAILED",
+            "recurrence_count": 1,
+        }
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        engine = sup.load_engine(self.data, now=NOW)
+        self.assertIsNot(engine["state"].get("resume_blocked"), True)
+        self.assertEqual(engine["ledger"], [])
+        self.assertEqual(engine["open_positions"], {})
+        self.assertEqual(engine["incidents"][0]["error_code"], "EXCEL_IDENTITY_PROBE_FAILED")
+        unlocked = dict(incident)
+        unlocked["real_submit_allowed"] = True
+        (self.data / "incidents.jsonl").write_text(json.dumps(unlocked) + "\n", encoding="utf-8")
+        blocked = sup.load_engine(self.data, now=NOW)
+        self.assertTrue(blocked["state"]["resume_blocked"])
+        self.assertEqual(blocked["state"]["reason"], "STATE_MISSING")
+
     def test_manual_acknowledgement_marks_recovery_manual(self):
         engine = self._engine()
         stale = _live([_row()], updated_at="2026-10-02 08:00:00")

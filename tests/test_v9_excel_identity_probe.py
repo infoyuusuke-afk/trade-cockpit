@@ -59,9 +59,25 @@ class ExcelIdentityProbeContract(unittest.TestCase):
         self.startup = _startup_section(self.controller)
 
     def test_controller_startup_has_no_synchronous_bind_to_moniker(self):
-        self.assertNotIn("[Runtime.InteropServices.Marshal]::BindToMoniker", self.controller)
-        self.assertNotIn("BindToMoniker", self.startup)
-        self.assertIn("[Runtime.InteropServices.Marshal]::BindToMoniker", self.helper)
+        self.assertNotIn("BindToMoniker", self.controller)
+        self.assertNotIn("BindToMoniker", self.helper)
+        self.assertIn("IRunningObjectTable", self.helper)
+        self.assertIn("GetObject", self.helper)
+        self.assertIn("ROT_MONIKER_NOT_REGISTERED", self.helper)
+        self.assertIn("EXCEL_BUSY", self.helper)
+        self.assertIn("0x800AC472", self.helper)
+        self.assertIn("FULL_NAME_IDENTITY_UNREADABLE", self.helper)
+        self.assertIn("unmatched:", self.helper)
+        self.assertLess(self.helper.index("PID_MISMATCH"), self.helper.index("FULL_NAME_DIFFERENT_FILE"))
+        self.assertLess(
+            self.helper.index("[string]::Equals($fullName, $WorkbookPath, [StringComparison]::OrdinalIgnoreCase)"),
+            self.helper.index("[ExcelFileIdentity]::Key($WorkbookPath)"),
+        )
+        self.assertIn("command_line_match", self.helper)
+        self.assertIn("parent_match", self.helper)
+        self.assertIn("ProcessStartInfo", self.startup)
+        self.assertIn("UseShellExecute = $false", self.startup)
+        self.assertIn("Add-ExcelIdentityIncident", self.startup)
         self.assertIn("EXCEL_IDENTITY_PROBE_V9.ps1", self.controller)
         self.assertIn("Invoke-ExcelIdentityProbe", self.startup)
         self.assertIn("Start-Process -FilePath $shell", self.controller)
@@ -70,7 +86,7 @@ class ExcelIdentityProbeContract(unittest.TestCase):
     def test_helper_timeout_is_hard_and_bounded(self):
         self.assertIn("$ExcelIdentityProbeTimeoutSeconds = 35", self.controller)
         self.assertIn("if ($TimeoutSeconds -lt 30 -or $TimeoutSeconds -gt 40)", self.controller)
-        waiter = self.controller.split("function Wait-OwnedHelperProcess", 1)[1].split("function Invoke-ExcelIdentityProbe {", 1)[0]
+        waiter = self.controller.split("function Wait-OwnedHelperProcess", 1)[1].split("function Get-OperationsIncidentPath", 1)[0]
         self.assertIn("WaitForExit", waiter)
         self.assertIn("$Process.Kill()", waiter)
         self.assertIn("WaitForExit(5000)", waiter)

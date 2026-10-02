@@ -1,15 +1,19 @@
 param(
     [string]$WorkbookPath = "",
     [int]$ExpectedExcelPid = 0,
+    [int]$ControllerPid = 0,
     [string]$ResultPath = "",
     [string]$ProgressPath = "",
     [int]$AttemptBudgetSeconds = 35,
     [switch]$SelfTestHang
 )
 
-# Workbook identity probe. This process is the only place that calls
-# BindToMoniker. The Controller watches this PID and kills it on a hard
-# timeout. This process must never stop Excel.
+# Workbook identity probe. This process enumerates the Running Object Table
+# and calls IRunningObjectTable.GetObject on the moniker Excel already
+# registered. It does not re-parse that display name. Re-parsing cannot open
+# the OneDrive item moniker Excel registers for a Desktop workbook. A hung
+# COM call stays inside this process. The Controller kills this PID at its
+# hard timeout. This process must never stop Excel.
 
 $ErrorActionPreference = "Stop"
 
@@ -17,20 +21,7 @@ function Write-ProbeProgress([string]$Message) {
     $line = (Get-Date).ToString("HH:mm:ss") + " " + $Message
     Write-Output $line
     if ([string]::IsNullOrWhiteSpace($ProgressPath)) { return }
-    try { [IO.File]::AppendAllText($ProgressPath, $line + [Environment]::NewLine, [System.Text.UTF8Encoding]::new($false)) } catch {}
-}
-
-function Write-ProbeResult([hashtable]$Result) {
-    $json = $Result | ConvertTo-Json -Compress
-    if (-not [string]::IsNullOrWhiteSpace($ResultPath)) {
-        [IO.File]::WriteAllText($ResultPath, $json, [System.Text.UTF8Encoding]::new($false))
-    }
-    Write-Output $json
-}
-
-function Release-ProbeCom($Object) {
-    if ($null -eq $Object) { return }
-    try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($Object) } catch {}
+    try { [IO.File]::AppendAllText($ProgressPath, $line + [Environment]::NewLine, [Text.UTF8Encoding]::new($false)) } catch {}
 }
 
 if ($SelfTestHang) {
@@ -40,82 +31,317 @@ if ($SelfTestHang) {
     exit 0
 }
 
+Add-Type -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+
+public class ExcelIdentityRotHit {
+    public string DisplayName;
+    public object Target;
+}
+
+public class ExcelIdentityRot {
+    [DllImport("ole32.dll")]
+    public static extern int GetRunningObjectTable(int reserved, out IRunningObjectTable prot);
+    [DllImport("ole32.dll")]
+    public static extern int CreateBindCtx(int reserved, out IBindCtx ppbc);
+
+    public static List<ExcelIdentityRotHit> Find(string fullPath, string fileName) {
+        var hits = new List<ExcelIdentityRotHit>();
+        IRunningObjectTable rot;
+        GetRunningObjectTable(0, out rot);
+        IEnumMoniker enumMoniker;
+        rot.EnumRunning(out enumMoniker);
+        enumMoniker.Reset();
+        IMoniker[] moniker = new IMoniker[1];
+        IntPtr fetched = IntPtr.Zero;
+        while (enumMoniker.Next(1, moniker, fetched) == 0) {
+            IBindCtx bindCtx;
+            CreateBindCtx(0, out bindCtx);
+            string displayName = null;
+            try { moniker[0].GetDisplayName(bindCtx, null, out displayName); }
+            catch { continue; }
+            if (!DisplayNameMatches(displayName, fullPath, fileName)) { continue; }
+            object target = null;
+            try { rot.GetObject(moniker[0], out target); }
+            catch { continue; }
+            if (target == null) { continue; }
+            hits.Add(new ExcelIdentityRotHit { DisplayName = displayName, Target = target });
+        }
+        return hits;
+    }
+
+    static bool DisplayNameMatches(string displayName, string fullPath, string fileName) {
+        if (string.IsNullOrEmpty(displayName) || string.IsNullOrEmpty(fileName)) { return false; }
+        if (string.Equals(displayName, fullPath, StringComparison.OrdinalIgnoreCase)) { return true; }
+        if (displayName.EndsWith("\\" + fileName, StringComparison.OrdinalIgnoreCase)) { return true; }
+        if (displayName.EndsWith("/" + fileName, StringComparison.OrdinalIgnoreCase)) { return true; }
+        return false;
+    }
+}
+
+public class ExcelFileIdentity {
+    [StructLayout(LayoutKind.Sequential)]
+    struct ByHandle {
+        public uint FileAttributes;
+        public uint CreationLow;
+        public uint CreationHigh;
+        public uint AccessLow;
+        public uint AccessHigh;
+        public uint WriteLow;
+        public uint WriteHigh;
+        public uint VolumeSerialNumber;
+        public uint FileSizeHigh;
+        public uint FileSizeLow;
+        public uint NumberOfLinks;
+        public uint FileIndexHigh;
+        public uint FileIndexLow;
+    }
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool GetFileInformationByHandle(IntPtr handle, out ByHandle info);
+
+    public static string Key(string path) {
+        using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)) {
+            ByHandle info;
+            if (!GetFileInformationByHandle(stream.SafeFileHandle.DangerousGetHandle(), out info)) {
+                throw new IOException("file identity unreadable");
+            }
+            return info.VolumeSerialNumber.ToString("X8") + ":" + info.FileIndexHigh.ToString("X8") + ":" + info.FileIndexLow.ToString("X8");
+        }
+    }
+}
+'@
+
+function Save-ProbeResultFile([hashtable]$Result) {
+    if ([string]::IsNullOrWhiteSpace($ResultPath)) { return }
+    $json = $Result | ConvertTo-Json -Compress -Depth 4
+    [IO.File]::WriteAllText($ResultPath, $json, [Text.UTF8Encoding]::new($false))
+}
+
+function Write-ProbeResult([hashtable]$Result) {
+    Save-ProbeResultFile $Result
+    Write-Output ($Result | ConvertTo-Json -Compress -Depth 4)
+}
+
+function Release-ProbeCom($Object) {
+    if ($null -eq $Object) { return }
+    try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($Object) } catch {}
+}
+
+function Test-LocalPath([string]$Value) {
+    if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+    return ($Value -match '^[A-Za-z]:\\')
+}
+
 Write-ProbeProgress "Excel identity probe started"
-if ([string]::IsNullOrWhiteSpace($WorkbookPath) -or $ExpectedExcelPid -le 0) {
-    Write-ProbeResult @{ ok = $false; code = "EXCEL_IDENTITY_PROBE_FAILED"; message = "workbook path or expected Excel PID missing" }
+if ([string]::IsNullOrWhiteSpace($WorkbookPath) -or $ExpectedExcelPid -le 0 -or $ControllerPid -le 0) {
+    Write-ProbeResult @{
+        ok = $false
+        code = "EXCEL_IDENTITY_PROBE_FAILED"
+        message = "workbook path, launched Excel PID, or controller PID missing"
+        last_error = "PROBE_ARGUMENTS_MISSING"
+        expected_excel_pid = $ExpectedExcelPid
+        parent_match = $false
+        command_line_match = $false
+        session_match = $false
+        full_name_same_file = $false
+        hwnd = 0
+        excel_pid = 0
+        rot_candidate_count = 0
+        attempts = 0
+    }
     exit 2
 }
 
+$bookFileName = [IO.Path]::GetFileName($WorkbookPath)
 $started = Get-Date
 $loopSeconds = [Math]::Max(1, $AttemptBudgetSeconds - 2)
 $deadline = $started.AddSeconds($loopSeconds)
 $attempt = 0
 $selfSession = [int](Get-Process -Id $PID).SessionId
-
-while ((Get-Date) -lt $deadline) {
-    $attempt++
-    $elapsed = [int]((Get-Date) - $started).TotalSeconds
-    Write-ProbeProgress ("Excel identity probe attempt " + $attempt + " / elapsed " + $elapsed + "s")
-    Write-ProbeProgress "Waiting for workbook ROT registration..."
-    $boundBook = $null
-    $boundApp = $null
-    try {
-        $boundBook = [Runtime.InteropServices.Marshal]::BindToMoniker($WorkbookPath)
-        if ($null -eq $boundBook) { throw "Workbook moniker not ready." }
-        Write-ProbeProgress "Workbook moniker found"
-        $fullName = [string]$boundBook.FullName
-        if ($fullName -ine $WorkbookPath) {
-            Write-ProbeResult @{
-                ok = $false
-                code = "EXCEL_IDENTITY_MISMATCH"
-                full_name = $fullName
-                message = "Canonical workbook mismatch"
-            }
-            exit 3
-        }
-        $boundApp = $boundBook.Application
-        $hwnd = [Int64]$boundApp.Hwnd
-        if ($hwnd -eq 0) { throw "Excel HWND not ready." }
-        Write-ProbeProgress "Excel HWND verified"
-        $owner = @(Get-Process EXCEL -ErrorAction SilentlyContinue | Where-Object { [Int64]$_.MainWindowHandle -eq $hwnd } | Select-Object -First 1)
-        if ($owner.Count -lt 1 -or [int]$owner[0].Id -ne $ExpectedExcelPid) {
-            throw "Excel PID does not match the Controller-launched process."
-        }
-        if ([int]$owner[0].SessionId -ne $selfSession) {
-            Write-ProbeResult @{
-                ok = $false
-                code = "EXCEL_IDENTITY_MISMATCH"
-                full_name = $fullName
-                hwnd = $hwnd
-                excel_pid = [int]$owner[0].Id
-                message = "Excel session does not match the probe process"
-            }
-            exit 3
-        }
-        Write-ProbeProgress "Excel PID verified"
-        Write-ProbeProgress "Excel identity verified"
-        Write-ProbeResult @{
-            ok = $true
-            code = "VERIFIED"
-            full_name = $fullName
-            hwnd = $hwnd
-            excel_pid = $ExpectedExcelPid
-            session_id = $selfSession
-            message = "Excel identity verified"
-        }
-        exit 0
-    } catch {
-        Write-ProbeProgress ("probe attempt failed: " + $_.Exception.Message)
-    } finally {
-        Release-ProbeCom $boundApp
-        Release-ProbeCom $boundBook
-    }
-    Start-Sleep -Milliseconds 400
-}
-
-Write-ProbeResult @{
+$last = @{
     ok = $false
     code = "EXCEL_IDENTITY_PROBE_FAILED"
     message = "Workbook identity was not verified before the helper budget elapsed"
+    full_name = ""
+    full_name_same_file = $false
+    hwnd = 0
+    excel_pid = 0
+    expected_excel_pid = $ExpectedExcelPid
+    session_match = $false
+    command_line_match = $false
+    command_line = ""
+    parent_pid = 0
+    parent_match = $false
+    rot_candidate_count = 0
+    last_error = "NOT_STARTED"
+    attempts = 0
+    real_submit_allowed = $false
 }
+
+while ((Get-Date) -lt $deadline) {
+    $attempt++
+    $last.attempts = $attempt
+    $elapsed = [int]((Get-Date) - $started).TotalSeconds
+    Write-ProbeProgress ("Excel identity probe attempt " + $attempt + " / elapsed " + $elapsed + "s")
+    Write-ProbeProgress "Waiting for workbook ROT registration..."
+    $hits = @()
+    try {
+        $hits = @([ExcelIdentityRot]::Find($WorkbookPath, $bookFileName))
+    } catch {
+        $last.last_error = "ROT_ENUMERATION_FAILED"
+        $last.message = "unmatched: rot_moniker / last_error=ROT_ENUMERATION_FAILED / " + $_.Exception.Message
+        Write-ProbeProgress ("probe attempt failed: " + $last.message)
+        try { Save-ProbeResultFile $last } catch {}
+        Start-Sleep -Milliseconds 400
+        continue
+    }
+    $last.rot_candidate_count = @($hits).Count
+    if ($last.rot_candidate_count -lt 1) {
+        $launched = Get-Process -Id $ExpectedExcelPid -ErrorAction SilentlyContinue
+        if ($null -eq $launched) { $last.last_error = "LAUNCHED_PID_EXITED" }
+        else { $last.last_error = "ROT_MONIKER_NOT_REGISTERED" }
+        $last.message = "unmatched: rot_moniker,hwnd,pid,session,command_line,parent / last_error=" + $last.last_error + " / hwnd=" + $last.hwnd + " / excel_pid=" + $last.excel_pid
+        Write-ProbeProgress ("probe attempt failed: " + $last.message)
+        try { Save-ProbeResultFile $last } catch {}
+        Start-Sleep -Milliseconds 400
+        continue
+    }
+    Write-ProbeProgress "Workbook moniker found"
+    $terminal = ""
+    foreach ($hit in @($hits)) {
+        $book = $null
+        $app = $null
+        $disposition = "next"
+        try {
+            $book = $hit.Target
+            $name = [string]$book.Name
+            if ($name -ine $bookFileName) {
+                $last.last_error = "WORKBOOK_NAME_MISMATCH"
+            } else {
+                $fullName = [string]$book.FullName
+                $last.full_name = $fullName
+                $app = $book.Application
+                $hwnd = [Int64]$app.Hwnd
+                $last.hwnd = $hwnd
+                if ($hwnd -eq 0) {
+                    $last.last_error = "HWND_NOT_READY"
+                } else {
+                    Write-ProbeProgress "Excel HWND verified"
+                    $owner = @(Get-Process EXCEL -ErrorAction SilentlyContinue | Where-Object { [Int64]$_.MainWindowHandle -eq $hwnd } | Select-Object -First 1)
+                    if ($owner.Count -lt 1) {
+                        $last.last_error = "HWND_PROCESS_NOT_READY"
+                    } else {
+                        $ownerPid = [int]$owner[0].Id
+                        $last.excel_pid = $ownerPid
+                        if ($ownerPid -ne $ExpectedExcelPid) {
+                            $last.last_error = "PID_MISMATCH"
+                        } else {
+                            $last.session_match = ([int]$owner[0].SessionId -eq $selfSession)
+                            if (-not $last.session_match) {
+                                $last.last_error = "SESSION_MISMATCH"
+                                $last.code = "EXCEL_IDENTITY_MISMATCH"
+                                $last.message = "Excel session does not match the probe process"
+                                $disposition = "fail"
+                            } else {
+                                $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ownerPid) -ErrorAction SilentlyContinue
+                                if ($null -eq $info -or [string]::IsNullOrWhiteSpace([string]$info.CommandLine)) {
+                                    $last.last_error = "COMMAND_LINE_NOT_VISIBLE"
+                                    $last.command_line_match = $false
+                                } else {
+                                    $last.command_line = [string]$info.CommandLine
+                                    $last.command_line_match = ($last.command_line.IndexOf($WorkbookPath, [StringComparison]::OrdinalIgnoreCase) -ge 0)
+                                    $last.parent_pid = [int]$info.ParentProcessId
+                                    $last.parent_match = ($last.parent_pid -eq $ControllerPid)
+                                    $sameFile = $false
+                                    $identityReady = $true
+                                    if (Test-LocalPath $fullName) {
+                                        if ([string]::Equals($fullName, $WorkbookPath, [StringComparison]::OrdinalIgnoreCase)) {
+                                            $sameFile = $true
+                                        } else {
+                                            try {
+                                                $sameFile = ([ExcelFileIdentity]::Key($WorkbookPath) -eq [ExcelFileIdentity]::Key($fullName))
+                                            } catch {
+                                                $last.last_error = "FULL_NAME_IDENTITY_UNREADABLE"
+                                                $last.message = $_.Exception.Message
+                                                $identityReady = $false
+                                            }
+                                            if ($identityReady -and -not $sameFile) {
+                                                $last.full_name_same_file = $false
+                                                $last.last_error = "FULL_NAME_DIFFERENT_FILE"
+                                                $last.code = "EXCEL_IDENTITY_MISMATCH"
+                                                $last.message = "Opened workbook is not the canonical file"
+                                                $disposition = "fail"
+                                            }
+                                        }
+                                    }
+                                    if ($disposition -ne "fail" -and $identityReady) {
+                                        $last.full_name_same_file = $sameFile
+                                        if (-not $last.command_line_match) {
+                                            $last.last_error = "COMMAND_LINE_MISMATCH"
+                                        } elseif (-not $last.parent_match) {
+                                            $last.last_error = "PARENT_MISMATCH"
+                                        } elseif ((Test-LocalPath $fullName) -and -not $sameFile) {
+                                            $last.last_error = "FULL_NAME_DIFFERENT_FILE"
+                                        } else {
+                                            Write-ProbeProgress "Excel PID verified"
+                                            Write-ProbeProgress "Excel identity verified"
+                                            $last.ok = $true
+                                            $last.code = "VERIFIED"
+                                            $last.last_error = ""
+                                            $last.message = "Excel identity verified"
+                                            $disposition = "ok"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch {
+            $hresult = [uint32]0
+            try { $hresult = [uint32]$_.Exception.HResult } catch {}
+            # 0x80010001 RPC_E_CALL_REJECTED, 0x8001010A RPC_E_SERVERCALL_RETRYLATER,
+            # 0x800AC472 Excel is in a dialog or edit. All three are startup races.
+            if ($hresult -eq 0x80010001 -or $hresult -eq 0x8001010A -or $hresult -eq 0x800AC472) { $last.last_error = "EXCEL_BUSY" }
+            else { $last.last_error = "COM_READ_FAILED" }
+            $last.message = $_.Exception.Message
+            $disposition = "next"
+        } finally {
+            Release-ProbeCom $app
+            Release-ProbeCom $book
+        }
+        if ($disposition -eq "ok" -or $disposition -eq "fail") { $terminal = $disposition; break }
+    }
+    if ($terminal -eq "ok") {
+        Write-ProbeResult $last
+        exit 0
+    }
+    if ($terminal -eq "fail") {
+        Write-ProbeResult $last
+        exit 3
+    }
+    $unmatched = @()
+    if ($last.rot_candidate_count -lt 1) { $unmatched += "rot_moniker" }
+    if ([int64]$last.hwnd -eq 0) { $unmatched += "hwnd" }
+    if ([int]$last.excel_pid -ne $ExpectedExcelPid) { $unmatched += "pid" }
+    if (-not $last.session_match) { $unmatched += "session" }
+    if (-not $last.command_line_match) { $unmatched += "command_line" }
+    if (-not $last.parent_match) { $unmatched += "parent" }
+    if ((Test-LocalPath ([string]$last.full_name)) -and -not $last.full_name_same_file) { $unmatched += "full_name" }
+    $last.message = "unmatched: " + ($unmatched -join ",") + " / last_error=" + $last.last_error + " / full_name=" + $last.full_name + " / hwnd=" + $last.hwnd + " / excel_pid=" + $last.excel_pid + " / parent_pid=" + $last.parent_pid
+    Write-ProbeProgress ("probe attempt failed: " + $last.message)
+    try { Save-ProbeResultFile $last } catch {}
+    Start-Sleep -Milliseconds 400
+}
+
+$last.code = "EXCEL_IDENTITY_PROBE_FAILED"
+if ([string]$last.last_error -in @("FULL_NAME_DIFFERENT_FILE", "SESSION_MISMATCH", "PID_MISMATCH")) {
+    $last.code = "EXCEL_IDENTITY_MISMATCH"
+}
+Write-ProbeResult $last
 exit 2

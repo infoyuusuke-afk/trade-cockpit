@@ -333,6 +333,23 @@ def replay_ledger(events: list[dict]) -> tuple[dict, str]:
     return open_positions, ""
 
 
+def _operations_incidents_only(incidents: list[dict] | None) -> bool:
+    """A diary of operations incidents is not a shadow trade ledger.
+
+    Missing trade state still blocks when any observation ledger exists.
+    Incident rows alone must be readable operations records, or the engine
+    stays fail-closed.
+    """
+    if not incidents:
+        return False
+    for item in incidents:
+        if not isinstance(item, dict) or item.get("record_class") != "operations_incident":
+            return False
+        if item.get("real_submit_allowed") is not False or item.get("fail_closed") is not True:
+            return False
+    return True
+
+
 def load_engine(data_dir: Path, *, now: datetime) -> dict:
     data_dir.mkdir(parents=True, exist_ok=True)
     state_path = data_dir / "state.json"
@@ -354,14 +371,23 @@ def load_engine(data_dir: Path, *, now: datetime) -> dict:
         "incidents": incidents or [],
         "open_positions": {},
         "clean_boot": state is None and not ledger_path.exists() and not incident_path.exists(),
+        "incident_history_only": False,
     }
     engine["state"]["real_submit_allowed"] = False
     if ledger_error or incident_error:
         _block(engine, ledger_error or incident_error)
         return engine
-    if state is None and (ledger_path.exists() or incident_path.exists()):
+    if state is None and ledger_path.exists():
         _block(engine, "STATE_MISSING")
         return engine
+    if state is None and incident_path.exists():
+        if not _operations_incidents_only(incidents):
+            _block(engine, "STATE_MISSING")
+            return engine
+        engine["incident_history_only"] = True
+        engine["state"] = fresh_state(now=now)
+        engine["state"]["real_submit_allowed"] = False
+        engine["incidents"] = incidents or []
     if state is not None and not ledger_path.exists() and int(state.get("last_seq") or 0) > 0:
         _block(engine, "LEDGER_MISSING")
         return engine

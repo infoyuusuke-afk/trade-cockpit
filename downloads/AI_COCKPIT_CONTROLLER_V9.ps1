@@ -44,7 +44,7 @@ param(
 #     controller stops the data path.
 
 $ErrorActionPreference = "Stop"
-$Build = "V9-CONTROLLER-20261002-SHADOW-SUPERVISOR-01"
+$Build = "V9-CONTROLLER-20261002-EXCEL-IDENTITY-ROT-01"
 $ExcelIdentityProbeTimeoutSeconds = 35
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
@@ -524,6 +524,121 @@ function Wait-OwnedHelperProcess {
     }
 }
 
+function Get-OperationsIncidentPath {
+    return (Join-Path $LogDir "ai_shadow\incidents.jsonl")
+}
+
+function Read-OperationsIncidents([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path)) { return @() }
+    $text = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false))
+    $rows = @()
+    foreach ($line in ($text -split '\r?\n')) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        $parsed = $line | ConvertFrom-Json
+        if ($parsed.record_class -ne "operations_incident" -or $parsed.real_submit_allowed -ne $false) {
+            throw "operations incident log is not a readable operations diary"
+        }
+        $rows += $parsed
+    }
+    return @($rows)
+}
+
+function Write-OperationsIncidentFile([string]$Path, $Rows) {
+    $parent = Split-Path -Parent $Path
+    if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+    $body = ""
+    foreach ($row in @($Rows)) {
+        $body += (($row | ConvertTo-Json -Compress -Depth 6) + "`n")
+    }
+    $tmp = $Path + ".tmp"
+    [IO.File]::WriteAllText($tmp, $body, [Text.UTF8Encoding]::new($false))
+    Move-Item -LiteralPath $tmp -Destination $Path -Force
+}
+
+function Add-ExcelIdentityIncident($Probe) {
+    $path = Get-OperationsIncidentPath
+    try {
+        $existing = @(Read-OperationsIncidents $path)
+    } catch {
+        Write-Status ("  operations incident log unreadable; identity failure stays fail-closed. " + $_.Exception.Message) Red
+        return
+    }
+    try {
+    $code = [string]$Probe.code
+    if ([string]::IsNullOrWhiteSpace($code)) { $code = "EXCEL_IDENTITY_PROBE_FAILED" }
+    $key = "excel_identity|" + $code
+    $prior = @($existing | Where-Object { [string]$_.recurrence_key -eq $key }).Count
+    $seed = (Get-Date).ToString("o") + "|" + $key
+    $sha = [Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($seed))
+    $id = "inc-" + (([BitConverter]::ToString($sha) -replace "-","").ToLowerInvariant().Substring(0, 16))
+    $incident = [ordered]@{
+        record_class = "operations_incident"
+        incident_id = $id
+        occurrence_at = (Get-Date).ToString("o")
+        recovery_at = $null
+        duration_seconds = $null
+        component = "excel_identity"
+        error_code = $code
+        symptom = [string]$Probe.detail
+        suspected_cause = [string]$Probe.last_error
+        confirmed_cause = $null
+        impact_scope = "startup"
+        real_trade_impact = "NONE_REAL_SUBMIT_REMAINS_FALSE"
+        shadow_impact = "STOPPED"
+        fail_closed = $true
+        invalidated_signal_count = $null
+        recovery_mode = $null
+        actions = @("startup aborted before AI SHADOW", "unrelated Excel was not stopped")
+        recurrence_key = $key
+        recurrence_count = ($prior + 1)
+        log_refs = @("Logs/V9/identity_probe/progress.log", "Logs/V9/identity_probe/result.json")
+        identity_checks = [ordered]@{
+            full_name = [string]$Probe.full_name
+            hwnd = $Probe.hwnd
+            excel_pid = $Probe.excel_pid
+            parent_pid = $Probe.parent_pid
+            command_line_match = [bool]$Probe.command_line_match
+            parent_match = [bool]$Probe.parent_match
+            session_match = [bool]$Probe.session_match
+            rot_candidate_count = $Probe.rot_candidate_count
+            attempts = $Probe.attempts
+            last_error = [string]$Probe.last_error
+        }
+        real_submit_allowed = $false
+    }
+        Write-OperationsIncidentFile $path (@($existing) + @([pscustomobject]$incident))
+        Write-Status ("  operations incident " + $id + " / " + $code) Yellow
+    } catch {
+        Write-Status ("  operations incident was not recorded. " + $_.Exception.Message) Red
+    }
+}
+
+function Close-OpenExcelIdentityIncidents {
+    $path = Get-OperationsIncidentPath
+    if (-not (Test-Path -LiteralPath $path)) { return }
+    try {
+        $existing = @(Read-OperationsIncidents $path)
+    } catch {
+        Write-Status ("  operations incident log unreadable after identity verification. " + $_.Exception.Message) Yellow
+        return
+    }
+    $changed = $false
+    $now = Get-Date
+    foreach ($row in $existing) {
+        if ([string]$row.component -eq "excel_identity" -and [string]::IsNullOrWhiteSpace([string]$row.recovery_at)) {
+            $row.recovery_at = $now.ToString("o")
+            try {
+                $started = [datetime]$row.occurrence_at
+                $row.duration_seconds = [int][Math]::Max(0, ($now - $started).TotalSeconds)
+            } catch { $row.duration_seconds = $null }
+            $row.recovery_mode = "MANUAL"
+            $row.shadow_impact = "IDENTITY_VERIFIED_SHADOW_NOT_YET_STARTED"
+            $changed = $true
+        }
+    }
+    if ($changed) { Write-OperationsIncidentFile $path $existing }
+}
+
 function Invoke-ExcelIdentityProbe {
     param(
         [string]$WorkbookPath,
@@ -555,6 +670,7 @@ function Invoke-ExcelIdentityProbe {
     $helperArgs = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $helper + '"' +
         ' -WorkbookPath "' + $WorkbookPath + '"' +
         ' -ExpectedExcelPid ' + $ExpectedExcelPid +
+        ' -ControllerPid ' + $PID +
         ' -ResultPath "' + $resultPath + '"' +
         ' -ProgressPath "' + $progressPath + '"' +
         ' -AttemptBudgetSeconds ' + $TimeoutSeconds
@@ -563,28 +679,66 @@ function Invoke-ExcelIdentityProbe {
     $wait = Wait-OwnedHelperProcess -Process $helperProc -TimeoutSeconds $TimeoutSeconds -ProgressPath $progressPath
     if ($wait.timed_out) {
         Write-Status ("EXCEL_IDENTITY_PROBE_TIMEOUT after " + $wait.elapsed + "s") Red
-        return @{ ok = $false; code = "EXCEL_IDENTITY_PROBE_TIMEOUT"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "helper PID $($wait.helper_pid) exceeded ${TimeoutSeconds}s" }
+        $partial = $null
+        if (Test-Path -LiteralPath $resultPath) {
+            try { $partial = [IO.File]::ReadAllText($resultPath, [Text.Encoding]::UTF8) | ConvertFrom-Json } catch { $partial = $null }
+        }
+        $tail = Tail-Log $progressPath
+        $detail = "helper PID $($wait.helper_pid) exceeded ${TimeoutSeconds}s"
+        if ($null -ne $partial -and -not [string]::IsNullOrWhiteSpace([string]$partial.message)) { $detail = [string]$partial.message }
+        elseif (-not [string]::IsNullOrWhiteSpace($tail)) { $detail = $tail }
+        Write-Status ("  identity timeout detail: " + $detail) Red
+        return @{
+            ok = $false; code = "EXCEL_IDENTITY_PROBE_TIMEOUT"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid
+            detail = $detail; last_error = "PROBE_TIMEOUT"; full_name = [string]$partial.full_name
+            hwnd = $partial.hwnd; excel_pid = $partial.excel_pid; parent_pid = $partial.parent_pid
+            command_line_match = [bool]$partial.command_line_match; parent_match = [bool]$partial.parent_match
+            session_match = [bool]$partial.session_match; rot_candidate_count = $partial.rot_candidate_count
+            attempts = $partial.attempts
+        }
     }
     if (-not (Test-Path -LiteralPath $resultPath)) {
         $err = Tail-Log $stderrPath
-        return @{ ok = $false; code = "EXCEL_IDENTITY_PROBE_FAILED"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; exit_code = $wait.exit_code; detail = $err }
+        $progress = Tail-Log $progressPath
+        return @{
+            ok = $false; code = "EXCEL_IDENTITY_PROBE_FAILED"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid
+            exit_code = $wait.exit_code; detail = ($progress + " " + $err).Trim(); last_error = "RESULT_MISSING"
+            full_name = ""; hwnd = 0; excel_pid = 0; parent_pid = 0
+            command_line_match = $false; parent_match = $false; session_match = $false
+            rot_candidate_count = 0; attempts = 0
+        }
     }
     $result = [IO.File]::ReadAllText($resultPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
     $code = [string]$result.code
     if ($code -eq "EXCEL_IDENTITY_MISMATCH" -or -not [bool]$result.ok) {
         if ([string]::IsNullOrWhiteSpace($code)) { $code = "EXCEL_IDENTITY_PROBE_FAILED" }
-        return @{ ok = $false; code = $code; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; exit_code = $wait.exit_code; detail = [string]$result.message }
+        Write-Status ("  identity " + $code + " / " + [string]$result.message) Red
+        return @{
+            ok = $false; code = $code; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; exit_code = $wait.exit_code
+            detail = [string]$result.message; last_error = [string]$result.last_error
+            full_name = [string]$result.full_name; hwnd = $result.hwnd; excel_pid = $result.excel_pid
+            parent_pid = $result.parent_pid; command_line_match = [bool]$result.command_line_match
+            parent_match = [bool]$result.parent_match; session_match = [bool]$result.session_match
+            rot_candidate_count = $result.rot_candidate_count; attempts = $result.attempts
+        }
     }
     $fullName = [string]$result.full_name
     $hwnd = 0L
     try { $hwnd = [Int64]$result.hwnd } catch { $hwnd = 0L }
     $reportedPid = 0
     try { $reportedPid = [int]$result.excel_pid } catch { $reportedPid = 0 }
-    if ($fullName -ine $WorkbookPath -or $hwnd -eq 0 -or $reportedPid -ne $ExpectedExcelPid) {
-        return @{ ok = $false; code = "EXCEL_IDENTITY_MISMATCH"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "reported identity did not match the launched workbook" }
+    $fullNameIsLocal = $fullName -match '^[A-Za-z]:\\'
+    if ($hwnd -eq 0 -or $reportedPid -ne $ExpectedExcelPid) {
+        return @{ ok = $false; code = "EXCEL_IDENTITY_MISMATCH"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "reported HWND or PID did not match the launched workbook"; last_error = "PID_OR_HWND_MISMATCH"; full_name = $fullName; hwnd = $hwnd; excel_pid = $reportedPid; parent_pid = $result.parent_pid; command_line_match = [bool]$result.command_line_match; parent_match = [bool]$result.parent_match; session_match = [bool]$result.session_match; rot_candidate_count = $result.rot_candidate_count; attempts = $result.attempts }
+    }
+    if ($fullNameIsLocal -and ($fullName -ine $WorkbookPath) -and -not [bool]$result.full_name_same_file) {
+        return @{ ok = $false; code = "EXCEL_IDENTITY_MISMATCH"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "reported local workbook is not the canonical file"; last_error = "FULL_NAME_DIFFERENT_FILE"; full_name = $fullName; hwnd = $hwnd; excel_pid = $reportedPid; parent_pid = $result.parent_pid; command_line_match = [bool]$result.command_line_match; parent_match = [bool]$result.parent_match; session_match = [bool]$result.session_match; rot_candidate_count = $result.rot_candidate_count; attempts = $result.attempts }
+    }
+    if (-not $fullNameIsLocal -and (-not [bool]$result.command_line_match -or -not [bool]$result.parent_match -or -not [bool]$result.session_match)) {
+        return @{ ok = $false; code = "EXCEL_IDENTITY_MISMATCH"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "cloud workbook moniker was not bound to the launched Excel"; last_error = "CLOUD_MONIKER_UNBOUND"; full_name = $fullName; hwnd = $hwnd; excel_pid = $reportedPid; parent_pid = $result.parent_pid; command_line_match = [bool]$result.command_line_match; parent_match = [bool]$result.parent_match; session_match = [bool]$result.session_match; rot_candidate_count = $result.rot_candidate_count; attempts = $result.attempts }
     }
     if (-not (Test-LaunchedExcelOwnership $ExpectedExcelPid $WorkbookPath $PID)) {
-        return @{ ok = $false; code = "EXCEL_IDENTITY_MISMATCH"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "canonical command line, parent PID, or session did not match" }
+        return @{ ok = $false; code = "EXCEL_IDENTITY_MISMATCH"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "canonical command line, parent PID, or session did not match"; last_error = "OWNERSHIP_MISMATCH"; full_name = $fullName; hwnd = $hwnd; excel_pid = $reportedPid; parent_pid = $result.parent_pid; command_line_match = [bool]$result.command_line_match; parent_match = [bool]$result.parent_match; session_match = [bool]$result.session_match; rot_candidate_count = $result.rot_candidate_count; attempts = $result.attempts }
     }
     Write-Status "Excel identity verified" Green
     return @{
@@ -881,10 +1035,16 @@ try {
         throw "EXCEL.EXE was not found."
     }
 
-    $launchedExcelProc = Start-Process `
-        -FilePath $excelExe `
-        -ArgumentList "/x","`"$WorkbookPath`"" `
-        -PassThru
+    # Windows PowerShell 5.1 re-quotes an ArgumentList array. A path that
+    # already contains spaces (MarketSpeed II RSS) was being passed to
+    # Excel with broken quotes, so the canonical workbook never reached
+    # the ROT. ProcessStartInfo keeps one /x argument and the full path.
+    if ($WorkbookPath.Contains('"')) { throw "Canonical workbook path contains a quote. Refusing to launch." }
+    $excelStart = New-Object System.Diagnostics.ProcessStartInfo
+    $excelStart.FileName = $excelExe
+    $excelStart.UseShellExecute = $false
+    $excelStart.Arguments = '/x "' + $WorkbookPath + '"'
+    $launchedExcelProc = [Diagnostics.Process]::Start($excelStart)
 
     Write-Status (
         "  isolated Excel launched / PID " +
@@ -907,15 +1067,17 @@ try {
         if ($ownedStopped) {
             Write-Status "  verified owned Excel stopped after identity failure." Yellow
         }
+        Add-ExcelIdentityIncident $probe
         Write-Status "AI Cockpit startup failed closed" Red
         Write-Status "Unrelated Excel processes were not touched" Yellow
-        throw ("Excel identity probe failed closed: " + $probe.code)
+        throw ("Excel identity probe failed closed: " + $probe.code + " / " + [string]$probe.detail)
     }
 
     $state.excel_pid = [int]$launchedExcelProc.Id
     $state.workbook_identity_verified = $true
     $state.excel_identity_error = ""
     Save-State $state
+    Close-OpenExcelIdentityIncidents
 
     Write-Status (
         "  Excel PID: " +
