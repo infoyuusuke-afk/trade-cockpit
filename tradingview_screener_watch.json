@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-02 23:34:41 JST",
+  "updated_at": "2026-10-02 23:37:17 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -6384,22 +6384,6 @@
       "already_watched": false
     },
     {
-      "code": "4528",
-      "name": "ONO Pharmaceutical Co., Ltd.",
-      "exchange": "TSE",
-      "price": 2290,
-      "change_pct": -1.8431204457779682,
-      "volume": 1499300,
-      "relative_volume": 0.9334163424124514,
-      "atr_pct": 2.15,
-      "vwap": 2300.3333333333335,
-      "high": 2321,
-      "low": 2290,
-      "market_cap": 1095687526367.0001,
-      "sector": "Health Technology",
-      "already_watched": false
-    },
-    {
       "code": "8304",
       "name": "Aozora Bank, Ltd.",
       "exchange": "TSE",
@@ -6413,6 +6397,22 @@
       "low": 3389,
       "market_cap": 482883189102,
       "sector": "Finance",
+      "already_watched": false
+    },
+    {
+      "code": "4528",
+      "name": "ONO Pharmaceutical Co., Ltd.",
+      "exchange": "TSE",
+      "price": 2290,
+      "change_pct": -1.8431204457779682,
+      "volume": 1499300,
+      "relative_volume": 0.9334163424124514,
+      "atr_pct": 2.15,
+      "vwap": 2300.3333333333335,
+      "high": 2321,
+      "low": 2290,
+      "market_cap": 1095687526367.0001,
+      "sector": "Health Technology",
       "already_watched": false
     },
     {
