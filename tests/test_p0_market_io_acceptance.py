@@ -8,6 +8,8 @@ from scripts.p0_market_io_acceptance import (
     evaluate_market_io,
     evaluate_resume,
     main,
+    quote_clock,
+    run_acceptance,
     synthetic_bundle,
 )
 
@@ -19,7 +21,8 @@ class MarketIoHarnessTests(unittest.TestCase):
     def test_matching_fixture_is_not_a_live_pass(self):
         report = evaluate_market_io(synthetic_bundle(), now=NOW)
         self.assertEqual(report["live_acceptance"], "NOT_LIVE")
-        self.assertEqual(report["comparator"], "MATCH")
+        self.assertEqual(report["freshness"], "UNVERIFIED")
+        self.assertIn("TIMESTAMP_UNVERIFIED", report["reasons"])
         self.assertEqual(report["gates"]["G0"], "OWNER_ACTION_PENDING")
         self.assertEqual(report["gates"]["G1"], "OWNER_ACTION_PENDING")
         self.assertEqual(report["gates"]["G4"], "NOT_LIVE")
@@ -60,6 +63,13 @@ class MarketIoHarnessTests(unittest.TestCase):
             bundle[key]["all_targets"][0]["ticker"] = "285A.T"
         bundle["strategy_input"]["quotes"][0]["symbol"] = "285A.T"
         bundle["ms2_display"][0]["symbol"] = "285A.T"
+        for row in bundle["rss"] + bundle["ms2_display"] + bundle["strategy_input"]["quotes"]:
+            row["quote_date"] = "2026-10-05"
+            row["quote_date_source"] = "rss_cell"
+        for key in ("collector", "gateway"):
+            item = bundle[key]["all_targets"][0]
+            item["quote_date"] = "2026-10-05"
+            item["quote_date_source"] = "rss_cell"
         report = evaluate_market_io(bundle, now=NOW)
         self.assertEqual(report["comparator"], "MATCH")
         self.assertEqual(report["live_acceptance"], "DATA_PLANE_PASS")
@@ -106,6 +116,66 @@ class MarketIoHarnessTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             missing = str(Path(folder) / "absent.json")
             self.assertEqual(main(["--evidence", missing]), 2)
+
+    def test_collector_clock_date_does_not_verify_a_time_only_stamp(self):
+        quote = {"source_timestamp": "09:16:00", "quote_date": "2026-10-05", "quote_date_source": "collector_clock"}
+        instant, state = quote_clock(quote)
+        self.assertIsNone(instant)
+        self.assertEqual(state, "UNVERIFIED")
+
+    def test_rss_cell_date_is_the_only_completion_that_verifies(self):
+        instant, state = quote_clock({
+            "source_timestamp": "09:16:00",
+            "quote_date": "2026-10-05",
+            "quote_date_source": "rss_cell",
+        })
+        self.assertEqual(state, "VERIFIED")
+        self.assertEqual(instant.tzinfo, JST)
+        self.assertEqual(instant.date().isoformat(), "2026-10-05")
+
+    def test_one_run_without_files_stays_not_run_and_stores_evidence(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            evidence = run_acceptance(root / "in", root / "out", now=NOW)
+            self.assertEqual(evidence["report"]["live_acceptance"], "NOT_RUN")
+            self.assertEqual(evidence["report"]["gates"]["G0"], "OWNER_ACTION_PENDING")
+            self.assertEqual(evidence["report"]["gates"]["G2"], "NOT_RUN")
+            self.assertEqual(evidence["report"]["gates"]["G6"], "NOT_RUN")
+            saved = json.loads((root / "out" / "latest_evidence.json").read_text(encoding="utf-8"))
+            self.assertEqual(saved["run_id"], evidence["run_id"])
+            self.assertNotIn("\"price\"", json.dumps(saved))
+            self.assertFalse(saved["real_submit_allowed"])
+
+    def test_one_run_compares_collector_and_gateway_without_passing_g0(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            incoming = root / "in"
+            incoming.mkdir()
+            bundle = synthetic_bundle()
+            row = bundle["collector"]["all_targets"][0]
+            row["quote_date"] = "2026-10-05"
+            row["quote_date_source"] = "rss_cell"
+            (incoming / "live_ms2.json").write_text(json.dumps(bundle["collector"]), encoding="utf-8")
+            (incoming / "gateway_live.json").write_text(json.dumps(bundle["gateway"]), encoding="utf-8")
+            (incoming / "rss_rows.json").write_text(json.dumps([{
+                "symbol": "TEST",
+                "price": 100.0,
+                "source_timestamp": "09:16:00",
+                "source": "MarketSpeed II RSS / local PC",
+                "quote_date": "2026-10-05",
+                "quote_date_source": "rss_cell",
+            }]), encoding="utf-8")
+            evidence = run_acceptance(incoming, root / "out", now=NOW)
+            report = evidence["report"]
+            self.assertEqual(report["gates"]["G0"], "OWNER_ACTION_PENDING")
+            self.assertEqual(report["gates"]["G1"], "OWNER_ACTION_PENDING")
+            self.assertEqual(report["gates"]["G4"], "FAIL")
+            self.assertIn("MS2_DISPLAY_ABSENT", report["reasons"])
+            self.assertNotEqual(report["live_acceptance"], "DATA_PLANE_PASS")
+            self.assertNotIn("\"price\"", json.dumps(evidence))
+            again = run_acceptance(incoming, root / "out", now=NOW)
+            self.assertEqual(again["run_id"], evidence["run_id"])
+            self.assertEqual(again["report"]["gates"]["G5"], "FAIL")
 
     def test_cli_prints_not_live_for_a_fixture_file(self):
         with tempfile.TemporaryDirectory() as folder:

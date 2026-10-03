@@ -48,16 +48,37 @@ def _parse_captured(value, tz) -> datetime | None:
     return parsed.astimezone(tz)
 
 
-def _quote_instant(source_timestamp: str, captured: datetime) -> datetime | None:
-    text = source_timestamp.strip()
-    absolute = _parse_captured(text, captured.tzinfo)
-    if absolute is not None and len(text) > 8:
-        return absolute
+def _has_explicit_offset(text: str) -> bool:
+    body = text.strip()
+    if body.endswith("Z") or body.endswith("z"):
+        return True
+    return "+" in body[10:] or "-" in body[10:]
+
+
+def quote_clock(quote: dict) -> tuple[datetime | None, str]:
+    """Absolute quote time only from the quote itself.
+
+    HH:mm:ss is what Get-TimeText publishes. The collector clock date and the
+    evidence captured_at date are not an RSS date, so they are not attached.
+    A date is usable only when quote_date_source is rss_cell.
+    """
+    text = str(quote.get("source_timestamp") or "").strip()
+    if _has_explicit_offset(text):
+        parsed = _parse_captured(text, JST)
+        if parsed is not None:
+            return parsed, "VERIFIED"
+        return None, "UNVERIFIED"
+    if quote.get("quote_date_source") != "rss_cell":
+        return None, "UNVERIFIED"
+    day_text = quote.get("quote_date")
+    if not isinstance(day_text, str):
+        return None, "UNVERIFIED"
     try:
         clock = datetime.strptime(text, "%H:%M:%S")
+        day = datetime.strptime(day_text, "%Y-%m-%d")
     except ValueError:
-        return None
-    return captured.replace(hour=clock.hour, minute=clock.minute, second=clock.second, microsecond=0)
+        return None, "UNVERIFIED"
+    return day.replace(hour=clock.hour, minute=clock.minute, second=clock.second, tzinfo=JST), "VERIFIED"
 
 
 def fingerprint(quotes: list[dict]) -> str:
@@ -73,13 +94,18 @@ def fingerprint(quotes: list[dict]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def _quote(symbol, price, source_timestamp, source) -> dict:
-    return {
+def _quote(symbol, price, source_timestamp, source, *, quote_date=None, quote_date_source=None) -> dict:
+    quote = {
         "symbol": symbol if isinstance(symbol, str) else "",
         "price": price,
         "source_timestamp": source_timestamp if isinstance(source_timestamp, str) else "",
         "source": source if isinstance(source, str) else "",
     }
+    if isinstance(quote_date, str):
+        quote["quote_date"] = quote_date
+    if isinstance(quote_date_source, str):
+        quote["quote_date_source"] = quote_date_source
+    return quote
 
 
 def quotes_from_rows(rows, *, source: str) -> list[dict]:
@@ -89,7 +115,14 @@ def quotes_from_rows(rows, *, source: str) -> list[dict]:
     for row in rows:
         if not isinstance(row, dict):
             continue
-        found.append(_quote(row.get("symbol") or row.get("ticker"), row.get("price"), row.get("source_timestamp"), row.get("source") or source))
+        found.append(_quote(
+            row.get("symbol") or row.get("ticker"),
+            row.get("price"),
+            row.get("source_timestamp"),
+            row.get("source") or source,
+            quote_date=row.get("quote_date"),
+            quote_date_source=row.get("quote_date_source"),
+        ))
     return found
 
 
@@ -168,21 +201,30 @@ def _compare_maps(left: dict, right: dict, *, label: str) -> list[str]:
     return reasons
 
 
-def _fresh_reasons(quotes: list[dict], captured: datetime, now: datetime) -> list[str]:
+def _fresh_reasons(quotes: list[dict], captured: datetime | None, now: datetime) -> tuple[list[str], str]:
     reasons = []
-    if captured.tzinfo is None or now.tzinfo is None:
-        return ["TIMESTAMP_NOT_ABSOLUTE"]
-    if abs((now - captured).total_seconds()) > MAX_AGE_SECONDS:
+    freshness = "VERIFIED"
+    if now.tzinfo is None:
+        return ["TIMESTAMP_NOT_ABSOLUTE"], "UNVERIFIED"
+    if captured is None or not _has_explicit_offset(str(captured.isoformat())):
+        reasons.append("CAPTURED_AT_UNVERIFIED")
+        freshness = "UNVERIFIED"
+    elif abs((now - captured).total_seconds()) > MAX_AGE_SECONDS:
         reasons.append("EVIDENCE_STALE")
+        freshness = "STALE"
     for quote in quotes:
-        instant = _quote_instant(str(quote.get("source_timestamp") or ""), captured)
-        if instant is None:
+        instant, state = quote_clock(quote)
+        if state != "VERIFIED" or instant is None:
             reasons.append("TIMESTAMP_UNVERIFIED")
+            freshness = "UNVERIFIED"
             continue
-        age = (captured - instant).total_seconds()
-        if age < 0 or age > MAX_AGE_SECONDS:
-            reasons.append("QUOTE_STALE")
-    return reasons
+        if captured is not None and _has_explicit_offset(str(captured.isoformat())):
+            age = (captured - instant).total_seconds()
+            if age < 0 or age > MAX_AGE_SECONDS:
+                reasons.append("QUOTE_STALE")
+                if freshness != "UNVERIFIED":
+                    freshness = "STALE"
+    return reasons, freshness
 
 
 def evaluate_market_io(bundle, *, now: datetime) -> dict:
@@ -207,11 +249,9 @@ def evaluate_market_io(bundle, *, now: datetime) -> dict:
         report["reasons"].append("EVIDENCE_ABSENT")
         return report
 
-    captured = _parse_captured(bundle.get("captured_at"), JST)
+    captured_text = bundle.get("captured_at") if isinstance(bundle.get("captured_at"), str) else ""
+    captured = _parse_captured(captured_text, JST) if _has_explicit_offset(captured_text) else None
     reasons: list[str] = []
-    if captured is None:
-        reasons.append("CAPTURED_AT_UNVERIFIED")
-        captured = now if now.tzinfo is not None else now.replace(tzinfo=JST)
 
     rss = quotes_from_rows(bundle.get("rss"), source=CANONICAL_SOURCE)
     collector_payload = bundle.get("collector")
@@ -247,10 +287,14 @@ def evaluate_market_io(bundle, *, now: datetime) -> dict:
         reasons.extend(name.upper() + "_" + item if item in {"SYMBOL_MISSING", "DUPLICATE_SYMBOL", "PRICE_INVALID"} else item for item in index_reasons)
         report["fingerprints"][name] = fingerprint(quotes)
 
+    moment = now.astimezone(JST) if now.tzinfo else now.replace(tzinfo=JST)
     if rss:
-        reasons.extend(_fresh_reasons(rss, captured, now.astimezone(JST) if now.tzinfo else now.replace(tzinfo=JST)))
+        fresh_reasons, freshness = _fresh_reasons(rss, captured, moment)
+        reasons.extend(fresh_reasons)
     else:
+        fresh_reasons, freshness = [], "UNVERIFIED"
         reasons.append("RSS_ABSENT")
+    report["freshness"] = freshness
     for label in ("collector", "gateway", "strategy_input"):
         reasons.extend(_compare_maps(maps["rss"], maps[label], label=label.upper()))
     if isinstance(ms2, list):
@@ -332,11 +376,156 @@ def synthetic_bundle(*, price: float = 100.0, other_price: float | None = None, 
     }
 
 
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _read_json(path: Path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _observation_gate(payload, gate: str) -> tuple[str, str]:
+    if not isinstance(payload, dict):
+        return "OWNER_ACTION_PENDING", ""
+    if payload.get("generated_by") == "p0_market_io_acceptance.synthetic_bundle" or payload.get("evidence_origin") != "owner_pc_observed":
+        return "NOT_LIVE", "SYNTHETIC_OBSERVATION"
+    if payload.get("real_submit_allowed") is not False:
+        return "FAIL", "REAL_SUBMIT_NOT_FALSE"
+    if gate == "G0":
+        if payload.get("workbook_open") is True and payload.get("dialog_visible") is False:
+            return "PASS", ""
+        return "FAIL", "WORKBOOK_NOT_OPEN"
+    if payload.get("rss_updated") is True:
+        return "PASS", ""
+    return "FAIL", "RSS_NOT_UPDATING"
+
+
+def run_acceptance(run_dir: Path, out_dir: Path, *, now: datetime) -> dict:
+    """Judge files that already exist. Missing files stay NOT_RUN, never PASS.
+
+    This does not start Excel, read a dialog, or copy a price by hand.
+    """
+    run_dir = Path(run_dir)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    names = {
+        "rss_rows": run_dir / "rss_rows.json",
+        "collector": run_dir / "live_ms2.json",
+        "gateway": run_dir / "gateway_live.json",
+        "ms2_display": run_dir / "ms2_display.json",
+        "g0": run_dir / "g0_observation.json",
+        "g1": run_dir / "g1_observation.json",
+    }
+    inputs = []
+    for name, path in names.items():
+        if path.exists() and path.is_file():
+            inputs.append({"name": name, "sha256": _sha256(path), "bytes": path.stat().st_size})
+    present = {item["name"] for item in inputs}
+    g0_payload = _read_json(names["g0"]) if "g0" in present else None
+    g1_payload = _read_json(names["g1"]) if "g1" in present else None
+    g0, g0_reason = _observation_gate(g0_payload, "G0")
+    g1, g1_reason = _observation_gate(g1_payload, "G1")
+    market_present = present & {"rss_rows", "collector", "gateway", "ms2_display"}
+    if not market_present:
+        report = {
+            "schema_version": "p0-market-io-1",
+            "evidence_origin": None,
+            "live_acceptance": "NOT_RUN",
+            "real_submit_allowed": False,
+            "freshness": "UNVERIFIED",
+            "comparator": "NOT_RUN",
+            "gates": {gate: "NOT_RUN" for gate in GATES},
+            "reasons": ["MARKET_FILES_ABSENT"],
+            "fingerprints": {},
+        }
+    else:
+        collector = _read_json(names["collector"]) if "collector" in present else None
+        gateway = _read_json(names["gateway"]) if "gateway" in present else None
+        rss_rows = _read_json(names["rss_rows"]) if "rss_rows" in present else None
+        ms2_rows = _read_json(names["ms2_display"]) if "ms2_display" in present else None
+        captured = ""
+        if isinstance(collector, dict) and _has_explicit_offset(str(collector.get("updated_at") or "")):
+            captured = str(collector.get("updated_at"))
+        bundle = {
+            "evidence_origin": "owner_pc_observed",
+            "captured_at": captured,
+            "rss": rss_rows if isinstance(rss_rows, list) else [],
+            "collector": collector,
+            "gateway": gateway,
+            "strategy_input": project_strategy_input(collector) if isinstance(collector, dict) else None,
+            "ms2_display": ms2_rows if isinstance(ms2_rows, list) else None,
+        }
+        if isinstance(collector, dict) and collector.get("generated_by") == "p0_market_io_acceptance.synthetic_bundle":
+            bundle["generated_by"] = collector["generated_by"]
+        report = evaluate_market_io(bundle, now=now)
+        if "rss_rows" not in present:
+            report["gates"]["G2"] = "NOT_RUN"
+            report["reasons"] = sorted(set(report["reasons"]) | {"RSS_INDEPENDENT_OBSERVATION_ABSENT"})
+            if report["live_acceptance"] == "DATA_PLANE_PASS":
+                report["live_acceptance"] = "DATA_PLANE_FAIL"
+        if "gateway" not in present:
+            report["gates"]["G3"] = "NOT_RUN"
+        if "ms2_display" not in present:
+            report["gates"]["G4"] = "NOT_RUN" if "collector" not in present else "FAIL"
+    report["gates"]["G0"] = g0
+    report["gates"]["G1"] = g1
+    if g0_reason:
+        report["reasons"] = sorted(set(report.get("reasons") or []) | {g0_reason})
+    if g1_reason:
+        report["reasons"] = sorted(set(report.get("reasons") or []) | {g1_reason})
+    previous_path = out_dir / "latest_evidence.json"
+    if previous_path.exists():
+        previous = _read_json(previous_path)
+        resume = evaluate_resume(previous.get("report") or previous, {"evidence_origin": report.get("evidence_origin"), "agreement_checked": False})
+        if resume["status"] != "NOT_RUN":
+            report["gates"]["G5"] = resume["status"]
+            if resume["reason"]:
+                report["reasons"] = sorted(set(report["reasons"]) | {resume["reason"]})
+    digest = hashlib.sha256("".join(item["sha256"] for item in inputs).encode("utf-8")).hexdigest()
+    evidence = {
+        "schema_version": "p0-evidence-1",
+        "run_id": digest,
+        "real_submit_allowed": False,
+        "inputs": inputs,
+        "report": report,
+    }
+    body = json.dumps(evidence, ensure_ascii=False, sort_keys=True, indent=2)
+    target = out_dir / ("evidence-" + digest + ".json")
+    temporary = target.with_suffix(".json.tmp")
+    temporary.write_text(body, encoding="utf-8")
+    temporary.replace(target)
+    latest = out_dir / "latest_evidence.json"
+    latest_tmp = latest.with_suffix(".json.tmp")
+    latest_tmp.write_text(body, encoding="utf-8")
+    latest_tmp.replace(latest)
+    return evidence
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Compare an already observed P0 market-I/O bundle")
-    parser.add_argument("--evidence", required=True)
+    parser.add_argument("--evidence", default="")
     parser.add_argument("--resume-from", default="")
+    parser.add_argument("--run-dir", default="")
+    parser.add_argument("--out", default="")
     args = parser.parse_args(argv)
+    if args.run_dir:
+        if not args.out:
+            print("OUT_REQUIRED")
+            return 2
+        evidence = run_acceptance(Path(args.run_dir), Path(args.out), now=datetime.now(JST))
+        report = evidence["report"]
+        print("RUN_ID=" + evidence["run_id"])
+        print("LIVE_ACCEPTANCE=" + str(report["live_acceptance"]))
+        for gate in GATES:
+            print(gate + "=" + str(report["gates"][gate]))
+        print("REASONS=" + ",".join(report.get("reasons") or []))
+        print("REAL_SUBMIT_ALLOWED=false")
+        if report["live_acceptance"] == "NOT_RUN":
+            return 2
+        return 0 if report["live_acceptance"] in {"NOT_LIVE", "DATA_PLANE_PASS"} else 1
+    if not args.evidence:
+        print("EVIDENCE_OR_RUN_DIR_REQUIRED")
+        return 2
     path = Path(args.evidence)
     if not path.exists():
         print("LIVE_ACCEPTANCE=NOT_RUN")
