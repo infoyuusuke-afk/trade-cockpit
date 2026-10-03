@@ -28,6 +28,7 @@ on:
       - "downloads/DIAGNOSE_CANONICAL_ALERT_LOG_V9.ps1"
       - "downloads/DIAGNOSE_CANONICAL_LAUNCH_RECORD_V9.ps1"
       - "downloads/DIAGNOSE_CANONICAL_ALERT_SIBLING_V9.ps1"
+      - "downloads/DIAGNOSE_CANONICAL_ALERT_PAYLOAD_V9.ps1"
       - "tests/test_v9_excel_identity_probe.py"
       - "tests/test_v9_workbook_recovery_registry.py"
       - "tests/test_v9_serious_error_diagnostic.py"
@@ -40,6 +41,7 @@ on:
       - "tests/test_v9_alert_log.py"
       - "tests/test_v9_launch_record.py"
       - "tests/test_v9_alert_sibling.py"
+      - "tests/test_v9_alert_payload.py"
       - "downloads/RUN_AI_COCKPIT_V9.ps1"
       - "downloads/STOP_AI_COCKPIT_V9.ps1"
       - "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
@@ -83,6 +85,7 @@ jobs:
       - run: python3 -m unittest discover -s tests -p "test_v9_alert_log.py"
       - run: python3 -m unittest discover -s tests -p "test_v9_launch_record.py"
       - run: python3 -m unittest discover -s tests -p "test_v9_alert_sibling.py"
+      - run: python3 -m unittest discover -s tests -p "test_v9_alert_payload.py"
       - run: node --check voice_client.js
       - run: node --check card_table_adapter.js
       - run: node --check opportunity_radar.js
@@ -117,6 +120,7 @@ jobs:
             "downloads/DIAGNOSE_CANONICAL_ALERT_LOG_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_LAUNCH_RECORD_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_ALERT_SIBLING_V9.ps1",
+            "downloads/DIAGNOSE_CANONICAL_ALERT_PAYLOAD_V9.ps1",
             "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
             "downloads/RUN_AI_COCKPIT_V9.ps1",
             "downloads/STOP_AI_COCKPIT_V9.ps1",
@@ -252,7 +256,8 @@ jobs:
             "downloads/DIAGNOSE_CANONICAL_CACHE_TAIL_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_ALERT_LOG_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_LAUNCH_RECORD_V9.ps1",
-            "downloads/DIAGNOSE_CANONICAL_ALERT_SIBLING_V9.ps1"
+            "downloads/DIAGNOSE_CANONICAL_ALERT_SIBLING_V9.ps1",
+            "downloads/DIAGNOSE_CANONICAL_ALERT_PAYLOAD_V9.ps1"
           )
           $messages = New-Object System.Collections.Generic.List[string]
           foreach ($file in $files) {
@@ -508,6 +513,30 @@ jobs:
           }
           if (($sibling -join "`n").IndexOf("PROOF error=access_denied", $ordinal) -lt 0) {
             throw "alert sibling did not prove access_denied"
+          }
+      - name: Canonical alert payload selftest
+        shell: powershell
+        run: |
+          $ordinal = [StringComparison]::Ordinal
+          $payload = @(& .\downloads\DIAGNOSE_CANONICAL_ALERT_PAYLOAD_V9.ps1 -SelfTest)
+          $payload | ForEach-Object { Write-Output $_ }
+          if (($payload -join "`n").IndexOf("SELFTEST PASS", $ordinal) -lt 0) {
+            throw "alert payload selftest failed"
+          }
+          if (($payload -join "`n").IndexOf("PROOF judgment=fields_read", $ordinal) -lt 0) {
+            throw "alert payload did not prove fields_read"
+          }
+          if (($payload -join "`n").IndexOf("PROOF judgment=message_only", $ordinal) -lt 0) {
+            throw "alert payload did not prove message_only"
+          }
+          if (($payload -join "`n").IndexOf("PROOF judgment=payload_absent", $ordinal) -lt 0) {
+            throw "alert payload did not prove payload_absent"
+          }
+          if (($payload -join "`n").IndexOf("PROOF field=excel_app", $ordinal) -lt 0) {
+            throw "alert payload did not prove excel_app"
+          }
+          if (($payload -join "`n").IndexOf("PROOF value=200054", $ordinal) -lt 0) {
+            throw "alert payload did not prove a numeric field"
           }
       - name: Excel identity probe hard-timeout selftest
         # Windows PowerShell 5.1 is the acceptance shell. The Ubuntu
