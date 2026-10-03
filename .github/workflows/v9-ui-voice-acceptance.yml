@@ -18,8 +18,10 @@ on:
       - "downloads/EXCEL_IDENTITY_PROBE_V9.ps1"
       - "downloads/CLEAR_CANONICAL_WORKBOOK_RECOVERY_V9.ps1"
       - "downloads/RESTORE_CANONICAL_WORKBOOK_RECOVERY_V9.ps1"
+      - "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_V9.ps1"
       - "tests/test_v9_excel_identity_probe.py"
       - "tests/test_v9_workbook_recovery_registry.py"
+      - "tests/test_v9_serious_error_diagnostic.py"
       - "downloads/RUN_AI_COCKPIT_V9.ps1"
       - "downloads/STOP_AI_COCKPIT_V9.ps1"
       - "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
@@ -53,6 +55,7 @@ jobs:
       - run: python3 -m unittest discover -s tests -p "test_v9_ui_voice_contract.py"
       - run: python3 -m unittest discover -s tests -p "test_v9_excel_identity_probe.py"
       - run: python3 -m unittest discover -s tests -p "test_v9_workbook_recovery_registry.py"
+      - run: python3 -m unittest discover -s tests -p "test_v9_serious_error_diagnostic.py"
       - run: node --check voice_client.js
       - run: node --check card_table_adapter.js
       - run: node --check opportunity_radar.js
@@ -77,6 +80,7 @@ jobs:
             "downloads/AI_COCKPIT_GATEWAY_V9.ps1",
             "downloads/CLEAR_CANONICAL_WORKBOOK_RECOVERY_V9.ps1",
             "downloads/RESTORE_CANONICAL_WORKBOOK_RECOVERY_V9.ps1",
+            "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_V9.ps1",
             "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
             "downloads/RUN_AI_COCKPIT_V9.ps1",
             "downloads/STOP_AI_COCKPIT_V9.ps1",
@@ -202,7 +206,8 @@ jobs:
             "downloads/EXCEL_IDENTITY_PROBE_V9.ps1",
             "downloads/AI_COCKPIT_GATEWAY_V9.ps1",
             "downloads/CLEAR_CANONICAL_WORKBOOK_RECOVERY_V9.ps1",
-            "downloads/RESTORE_CANONICAL_WORKBOOK_RECOVERY_V9.ps1"
+            "downloads/RESTORE_CANONICAL_WORKBOOK_RECOVERY_V9.ps1",
+            "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_V9.ps1"
           )
           $messages = New-Object System.Collections.Generic.List[string]
           foreach ($file in $files) {
@@ -233,6 +238,18 @@ jobs:
           $restore | ForEach-Object { Write-Output $_ }
           if (($restore -join "`n").IndexOf("SELFTEST PASS", $ordinal) -lt 0) {
             throw "restore selftest failed"
+          }
+      - name: Canonical serious-error read-only diagnostic selftest
+        shell: powershell
+        run: |
+          $ordinal = [StringComparison]::Ordinal
+          $diag = @(& .\downloads\DIAGNOSE_CANONICAL_SERIOUS_ERROR_V9.ps1 -SelfTest)
+          $diag | ForEach-Object { Write-Output $_ }
+          if (($diag -join "`n").IndexOf("SELFTEST PASS", $ordinal) -lt 0) {
+            throw "serious-error diagnostic selftest failed"
+          }
+          if (($diag -join "`n").IndexOf("PROOF primary=resiliency_recreated", $ordinal) -lt 0) {
+            throw "serious-error diagnostic did not prove resiliency_recreated"
           }
       - name: Excel identity probe hard-timeout selftest
         # Windows PowerShell 5.1 is the acceptance shell. The Ubuntu
