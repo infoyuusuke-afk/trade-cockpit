@@ -480,10 +480,12 @@ function Get-DistinctionReason {
     if ($Primary -eq 'multiple_signals') { return 'multiple_signals' }
     if ($Primary -ne 'inconclusive') { return 'single_signal' }
     $unread = ($Recreated -eq 'unreadable') -or ($Other -eq 'unreadable') -or ($Rewritten -eq 'unreadable') -or ($Crash -eq 'unreadable') -or ($Xll -eq 'unreadable')
+    $onlyCrash = ($Crash -eq 'unreadable') -and ($Recreated -ne 'unreadable') -and ($Other -ne 'unreadable') -and ($Rewritten -ne 'unreadable') -and ($Xll -ne 'unreadable')
     if (($Dialog -eq '1') -and $unread) { return 'dialog_visible_with_unreadable_evidence' }
     if ($BackupState -eq 'backup_unreadable') { return 'backup_unreadable' }
     if (($Dialog -eq '1') -and ($Xll -eq '1')) { return 'dialog_visible_xll_loaded_without_resiliency_crash_or_rewrite' }
     if ($Dialog -eq '1') { return 'dialog_visible_without_resiliency_crash_or_rewrite' }
+    if ($onlyCrash) { return 'crash_query_unreadable' }
     if ($unread) { return 'evidence_unreadable' }
     return 'no_distinguishing_signal'
 }
@@ -566,8 +568,117 @@ function Get-AggregateFlag {
 function Combine-CrashFlag {
     param([string]$EventFlag, [int]$WerCount)
     if ($EventFlag -eq '1' -or $WerCount -gt 0) { return '1' }
-    if ($EventFlag -eq 'unreadable' -or $WerCount -lt 0) { return 'unreadable' }
-    return '0'
+    if ($EventFlag -eq '0') { return '0' }
+    return 'unreadable'
+}
+
+function Test-NoMatchingEventQuery {
+    param([string]$ErrorId, [string]$Message)
+    if ($ErrorId.IndexOf('NoMatchingEventsFound', $script:OrdinalIgnore) -ge 0) { return $true }
+    if ($Message.IndexOf('No events', $script:OrdinalIgnore) -ge 0) { return $true }
+    $missing = -join @(
+        [char]0x898B, [char]0x3064, [char]0x304B, [char]0x308A, [char]0x307E, [char]0x305B, [char]0x3093
+    )
+    if ($Message.IndexOf($missing, $script:Ordinal) -ge 0) { return $true }
+    return $false
+}
+
+function Select-DialogHit {
+    param([int]$FocusPid, $Rows)
+    $bestPid = 0
+    $bestOwner = 0
+    $bestParent = 0
+    $bestClass = ''
+    $bestHwnd = [int64]0
+    $bestOwnerHwnd = [int64]0
+    $bestParentHwnd = [int64]0
+    $bestSource = ''
+    $bestLeaf = '0'
+    $bestSerious = '0'
+    $bestReopen = '0'
+    $bestSame = '0'
+    $bestOwnerLinked = '0'
+    $bestScore = -1
+    $found = $false
+    foreach ($row in @(Get-FlatRows -Rows $Rows)) {
+        $title = [string]$row.Title
+        $child = [string]$row.ChildText
+        $source = ''
+        $text = ''
+        if (Test-SeriousErrorText -Text $child) {
+            $source = 'child'
+            $text = $child
+        } elseif (Test-SeriousErrorText -Text $title) {
+            $source = 'title'
+            $text = $title
+        } else {
+            continue
+        }
+        $score = 1
+        $same = '0'
+        $linked = '0'
+        if (($FocusPid -gt 0) -and ([int]$row.Pid -eq $FocusPid)) {
+            $score = $score + 4
+            $same = '1'
+        }
+        if (($FocusPid -gt 0) -and ([int]$row.OwnerPid -eq $FocusPid)) {
+            $score = $score + 2
+            $linked = '1'
+        }
+        $leaf = '0'
+        $serious = '0'
+        $reopen = '0'
+        if ($text.IndexOf($script:Leaf, $script:OrdinalIgnore) -ge 0) {
+            $score = $score + 2
+            $leaf = '1'
+        }
+        if ($text.IndexOf($script:SeriousErrorJa, $script:Ordinal) -ge 0) {
+            $score = $score + 1
+            $serious = '1'
+        }
+        if ($text.IndexOf($script:ReopenDocumentJa, $script:Ordinal) -ge 0) { $reopen = '1' }
+        if ($score -gt $bestScore) {
+            $found = $true
+            $bestScore = $score
+            $bestPid = [int]$row.Pid
+            $bestOwner = [int]$row.OwnerPid
+            $bestParent = [int]$row.ParentPid
+            $bestClass = [string]$row.Class
+            $bestHwnd = [int64]$row.Hwnd
+            $bestOwnerHwnd = [int64]$row.OwnerHwnd
+            $bestParentHwnd = [int64]$row.ParentHwnd
+            $bestSource = $source
+            $bestLeaf = $leaf
+            $bestSerious = $serious
+            $bestReopen = $reopen
+            $bestSame = $same
+            $bestOwnerLinked = $linked
+        }
+    }
+    $match = 'none'
+    $visible = '0'
+    if ($found) {
+        $visible = '1'
+        $match = 'serious_error_needle'
+        if (($bestLeaf -eq '1') -and ($bestSerious -eq '1')) { $match = 'canonical_serious_error' }
+    }
+    return (New-Object psobject -Property @{
+        Visible = $visible
+        Pid = $bestPid
+        OwnerPid = $bestOwner
+        ParentPid = $bestParent
+        Class = $bestClass
+        Hwnd = $bestHwnd
+        OwnerHwnd = $bestOwnerHwnd
+        ParentHwnd = $bestParentHwnd
+        HasLeaf = $bestLeaf
+        HasSerious = $bestSerious
+        HasReopen = $bestReopen
+        Match = $match
+        Source = $bestSource
+        SameProcess = $bestSame
+        OwnerLinked = $bestOwnerLinked
+    })
 }
 
 function Get-RelLabel {
@@ -698,6 +809,7 @@ function Invoke-DiagnoseSelfTest {
     Assert-Case 'reason_single' ((Get-DistinctionReason -Primary 'resiliency_recreated' -Recreated '1' -Other '0' -Rewritten '0' -Crash '0' -Xll '0' -Dialog '1' -BackupState 'returned') -eq 'single_signal')
     Assert-Case 'reason_multi' ((Get-DistinctionReason -Primary 'multiple_signals' -Recreated '1' -Other '0' -Rewritten '0' -Crash '1' -Xll '0' -Dialog '1' -BackupState 'returned') -eq 'multiple_signals')
     Assert-Case 'reason_backup' ((Get-DistinctionReason -Primary 'inconclusive' -Recreated 'unreadable' -Other '0' -Rewritten '0' -Crash '0' -Xll '0' -Dialog '0' -BackupState 'backup_unreadable') -eq 'backup_unreadable')
+    Assert-Case 'reason_crash_only' ((Get-DistinctionReason -Primary 'inconclusive' -Recreated '0' -Other '0' -Rewritten '0' -Crash 'unreadable' -Xll '1' -Dialog '0' -BackupState 'stayed_clear') -eq 'crash_query_unreadable')
     $eventText = 'EXCEL.EXE|Microsoft.Office.Excel|ucrtbase.dll|c0000005'
     Assert-Case 'module_ucrt' (Test-TokenPresent -Text $eventText -Token 'ucrtbase.dll')
     Assert-Case 'module_excel' (Test-TokenPresent -Text $eventText -Token 'excel.exe')
@@ -716,6 +828,44 @@ function Invoke-DiagnoseSelfTest {
     Assert-Case 'crash_wer' ((Combine-CrashFlag -EventFlag '0' -WerCount 2) -eq '1')
     Assert-Case 'crash_none' ((Combine-CrashFlag -EventFlag '0' -WerCount 0) -eq '0')
     Assert-Case 'crash_unread' ((Combine-CrashFlag -EventFlag 'unreadable' -WerCount 0) -eq 'unreadable')
+    Assert-Case 'crash_wer_ignored' ((Combine-CrashFlag -EventFlag '0' -WerCount -1) -eq '0')
+    Assert-Case 'no_event_en' (Test-NoMatchingEventQuery -ErrorId '' -Message 'No events were found')
+    Assert-Case 'no_event_id' (Test-NoMatchingEventQuery -ErrorId 'NoMatchingEventsFound,Microsoft.PowerShell.Commands.GetWinEventCommand' -Message 'x')
+    $missingEvents = -join @([char]0x898B, [char]0x3064, [char]0x304B, [char]0x308A, [char]0x307E, [char]0x305B, [char]0x3093)
+    Assert-Case 'no_event_ja' (Test-NoMatchingEventQuery -ErrorId 'Other' -Message ('prefix ' + $missingEvents))
+    Assert-Case 'event_real' (-not (Test-NoMatchingEventQuery -ErrorId 'AccessDenied' -Message 'Access is denied'))
+    $mainOnly = New-Object psobject -Property @{
+        Pid = 43904
+        OwnerPid = 0
+        ParentPid = 0
+        Class = 'XLMAIN'
+        Title = 'Microsoft Excel'
+        ChildText = 'Ribbon'
+        Hwnd = [int64]11
+        OwnerHwnd = [int64]0
+        ParentHwnd = [int64]0
+    }
+    $ownedDialog = New-Object psobject -Property @{
+        Pid = 5000
+        OwnerPid = 43904
+        ParentPid = 0
+        Class = '#32770'
+        Title = 'Microsoft Excel'
+        ChildText = ($script:Leaf + ' ' + $script:SeriousErrorJa + ' ' + $script:ReopenDocumentJa)
+        Hwnd = [int64]22
+        OwnerHwnd = [int64]11
+        ParentHwnd = [int64]0
+    }
+    $ownedHit = Select-DialogHit -FocusPid 43904 -Rows @($mainOnly, $ownedDialog)
+    Assert-Case 'dialog_owner_visible' ($ownedHit.Visible -eq '1')
+    Assert-Case 'dialog_owner_pid' ($ownedHit.Pid -eq 5000)
+    Assert-Case 'dialog_owner_link' ($ownedHit.OwnerLinked -eq '1')
+    Assert-Case 'dialog_owner_same' ($ownedHit.SameProcess -eq '0')
+    Assert-Case 'dialog_owner_source' ($ownedHit.Source -eq 'child')
+    Assert-Case 'dialog_owner_class' ($ownedHit.Class -eq '#32770')
+    Assert-Case 'dialog_owner_match' ($ownedHit.Match -eq 'canonical_serious_error')
+    $miss = Select-DialogHit -FocusPid 43904 -Rows @($mainOnly)
+    Assert-Case 'dialog_main_miss' ($miss.Visible -eq '0')
     Assert-Case 'label_hex' ((Get-SafeLabel -Name '1664DDA6') -eq '1664DDA6')
     Assert-Case 'label_path' ((Get-SafeLabel -Name 'C:\Secret.xlsx') -eq 'len_14')
     $root = Get-BackupRoot
@@ -735,6 +885,8 @@ function Invoke-DiagnoseSelfTest {
     Write-Output 'PROOF primary=inconclusive'
     Write-Output 'PROOF module=ucrtbase.dll'
     Write-Output 'PROOF dialog_needle=1'
+    Write-Output 'PROOF dialog_owner=1'
+    Write-Output 'PROOF reason=crash_query_unreadable'
     Write-Output 'PROOF backup=returned'
     Write-Output 'PROOF backup=stayed_clear'
     Write-Output 'PROOF backup=new_record'
@@ -1308,6 +1460,7 @@ function Get-CrashEvidence {
         EventCount = 0
         Tokens = ''
         WerCount = -1
+        QueryId = ''
     }
     if (-not $StartKnown -or $StartTicks -le 0) { return $info }
     $startUtc = [DateTime]::new($StartTicks, [DateTimeKind]::Utc)
@@ -1322,9 +1475,15 @@ function Get-CrashEvidence {
         } -ErrorAction Stop)
         $queryOk = $true
     } catch {
+        $errorId = ''
         $msg = ''
+        try { $errorId = [string]$_.FullyQualifiedErrorId } catch { $errorId = '' }
         try { $msg = [string]$_.Exception.Message } catch { $msg = '' }
-        if ($msg.IndexOf('No events', $script:OrdinalIgnore) -ge 0) {
+        $idLeaf = $errorId
+        $cut = $errorId.IndexOf(',', $script:Ordinal)
+        if ($cut -gt 0) { $idLeaf = $errorId.Substring(0, $cut) }
+        $info.QueryId = Get-SafeLabel -Name $idLeaf
+        if (Test-NoMatchingEventQuery -ErrorId $errorId -Message $msg) {
             $events = @()
             $queryOk = $true
         }
@@ -1375,7 +1534,7 @@ function Get-CrashEvidence {
 
 function Add-CanonicalWindowType {
     try {
-        [void][CanonicalSeriousErrorWindows]
+        [void][CanonicalWindowSurvey]
         return
     } catch {}
     Add-Type -TypeDefinition @'
@@ -1384,7 +1543,31 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
-public class CanonicalSeriousErrorWindows {
+public class CanonicalWindowHit {
+    public long Hwnd;
+    public long OwnerHwnd;
+    public long ParentHwnd;
+    public int Pid;
+    public int OwnerPid;
+    public int ParentPid;
+    public string ClassName;
+    public string Title;
+    public string ChildText;
+    public int TitleLen;
+    public int ChildLen;
+    public int Visible;
+    public int Needle;
+}
+
+public class CanonicalWindowSurveyResult {
+    public int TopLevelSeen;
+    public int FocusTopLevel;
+    public int DialogClassCount;
+    public int CandidateCount;
+    public List<CanonicalWindowHit> Hits;
+}
+
+public class CanonicalWindowSurvey {
     delegate bool EnumProc(IntPtr hWnd, IntPtr lParam);
     [DllImport("user32.dll")]
     static extern bool EnumWindows(EnumProc lpEnumFunc, IntPtr lParam);
@@ -1392,84 +1575,247 @@ public class CanonicalSeriousErrorWindows {
     static extern bool EnumChildWindows(IntPtr hWnd, EnumProc lpEnumFunc, IntPtr lParam);
     [DllImport("user32.dll")]
     static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+    [DllImport("user32.dll")]
+    static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
+    [DllImport("user32.dll")]
+    static extern IntPtr GetParent(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, IntPtr wParam, StringBuilder lParam, uint flags, uint timeoutMs, out IntPtr result);
 
     const uint WM_GETTEXT = 0x000D;
     const uint SMTO_ABORTIFHUNG = 0x0002;
+    const uint GW_OWNER = 4;
     static EnumProc topCallback;
     static EnumProc childCallback;
+    static List<CanonicalWindowHit> hits;
+    static int topLevelSeen;
+    static int focusTopLevel;
+    static int dialogClassCount;
+    static int focusPidArg;
+    static int childTexts;
+    static string childMatch;
 
-    public static List<string> VisibleTexts(int processId) {
-        var texts = new List<string>();
-        topCallback = (hWnd, lParam) => {
-            uint pid;
-            GetWindowThreadProcessId(hWnd, out pid);
-            if ((int)pid != processId) { return true; }
-            AddText(hWnd, texts);
-            if (texts.Count >= 40) { return false; }
-            childCallback = (child, childParam) => {
-                AddText(child, texts);
-                return texts.Count < 40;
-            };
-            EnumChildWindows(hWnd, childCallback, IntPtr.Zero);
-            return texts.Count < 40;
-        };
+    public static CanonicalWindowSurveyResult Collect(int focusPid) {
+        hits = new List<CanonicalWindowHit>();
+        topLevelSeen = 0;
+        focusTopLevel = 0;
+        dialogClassCount = 0;
+        focusPidArg = focusPid;
+        topCallback = OnTop;
         EnumWindows(topCallback, IntPtr.Zero);
-        return texts;
+        return new CanonicalWindowSurveyResult {
+            TopLevelSeen = topLevelSeen,
+            FocusTopLevel = focusTopLevel,
+            DialogClassCount = dialogClassCount,
+            CandidateCount = hits.Count,
+            Hits = hits
+        };
     }
 
-    static void AddText(IntPtr hWnd, List<string> texts) {
-        if (texts.Count >= 40) { return; }
+    static bool OnTop(IntPtr hWnd, IntPtr lParam) {
+        topLevelSeen++;
+        if (hits.Count >= 60) { return true; }
+        uint pidRaw;
+        GetWindowThreadProcessId(hWnd, out pidRaw);
+        int pid = (int)pidRaw;
+        if (pid == focusPidArg && focusPidArg > 0) { focusTopLevel++; }
+        IntPtr owner = GetWindow(hWnd, GW_OWNER);
+        IntPtr parent = GetParent(hWnd);
+        int ownerPid = PidOf(owner);
+        int parentPid = PidOf(parent);
+        string className = ReadClass(hWnd);
+        if (className == "#32770") { dialogClassCount++; }
+        bool visible = IsWindowVisible(hWnd);
+        if (!visible) { return true; }
+        string title = ReadText(hWnd);
+        bool dialogClass = className == "#32770" || className == "NUIDialog" || className == "bosa_sdm_XL9";
+        bool linked = (focusPidArg > 0) && (pid == focusPidArg || ownerPid == focusPidArg || parentPid == focusPidArg);
+        bool mainClass = className == "XLMAIN";
+        if (!dialogClass && !linked && !mainClass && !HasNeedle(title)) { return true; }
+        string child = "";
+        int childLen = 0;
+        if (dialogClass || ownerPid == focusPidArg || parentPid == focusPidArg) {
+            childTexts = 0;
+            childMatch = "";
+            childCallback = OnChild;
+            EnumChildWindows(hWnd, childCallback, IntPtr.Zero);
+            child = childMatch;
+            childLen = childTexts;
+        }
+        bool needle = HasNeedle(title) || HasNeedle(child);
+        if (!dialogClass && !linked && !needle) { return true; }
+        string keptTitle = needle && HasNeedle(title) ? title : "";
+        string keptChild = needle && HasNeedle(child) ? child : "";
+        hits.Add(new CanonicalWindowHit {
+            Hwnd = hWnd.ToInt64(),
+            OwnerHwnd = owner.ToInt64(),
+            ParentHwnd = parent.ToInt64(),
+            Pid = pid,
+            OwnerPid = ownerPid,
+            ParentPid = parentPid,
+            ClassName = className,
+            Title = keptTitle,
+            ChildText = keptChild,
+            TitleLen = title.Length,
+            ChildLen = childLen,
+            Visible = 1,
+            Needle = needle ? 1 : 0
+        });
+        return true;
+    }
+
+    static bool OnChild(IntPtr hWnd, IntPtr lParam) {
+        childTexts++;
+        if (childTexts > 40) { return false; }
+        string text = ReadText(hWnd);
+        if (HasNeedle(text) && childMatch.Length == 0) { childMatch = text; }
+        return childTexts < 40;
+    }
+
+    static int PidOf(IntPtr hWnd) {
+        if (hWnd == IntPtr.Zero) { return 0; }
+        uint pid;
+        GetWindowThreadProcessId(hWnd, out pid);
+        return (int)pid;
+    }
+
+    static string ReadClass(IntPtr hWnd) {
+        var sb = new StringBuilder(128);
+        GetClassName(hWnd, sb, sb.Capacity);
+        return sb.ToString();
+    }
+
+    static string ReadText(IntPtr hWnd) {
+        var direct = new StringBuilder(512);
+        GetWindowText(hWnd, direct, direct.Capacity);
+        string title = direct.ToString().Trim();
+        if (HasNeedle(title)) { return title; }
         var sb = new StringBuilder(512);
         IntPtr unused;
         SendMessageTimeout(hWnd, WM_GETTEXT, (IntPtr)sb.Capacity, sb, SMTO_ABORTIFHUNG, 200, out unused);
-        var text = sb.ToString().Trim();
-        if (text.Length > 0) { texts.Add(text); }
+        string sent = sb.ToString().Trim();
+        if (HasNeedle(sent)) { return sent; }
+        if (sent.Length > title.Length) { return sent; }
+        return title;
+    }
+
+    static bool HasNeedle(string text) {
+        if (string.IsNullOrEmpty(text)) { return false; }
+        if (text.IndexOf("\u91cd\u5927\u306a\u30a8\u30e9\u30fc", StringComparison.Ordinal) >= 0) { return true; }
+        if (text.IndexOf("\u3053\u306e\u30c9\u30ad\u30e5\u30e1\u30f3\u30c8\u3092\u958b\u304d\u307e\u3059\u304b", StringComparison.Ordinal) >= 0) { return true; }
+        if (text.IndexOf("serious problem", StringComparison.OrdinalIgnoreCase) >= 0) { return true; }
+        if (text.IndexOf("serious error", StringComparison.OrdinalIgnoreCase) >= 0) { return true; }
+        return false;
     }
 }
 '@
 }
 
-function Get-DialogEvidence {
-    param([int]$FocusPid, $ProcessIds)
-    $info = New-Object psobject -Property @{
-        Visible = '0'
+function New-EmptyDialog {
+    param([string]$Visible)
+    return (New-Object psobject -Property @{
+        Visible = $Visible
         Pid = 0
+        OwnerPid = 0
+        ParentPid = 0
+        Class = ''
+        Hwnd = [int64]0
+        OwnerHwnd = [int64]0
+        ParentHwnd = [int64]0
         HasLeaf = '0'
         HasSerious = '0'
         HasReopen = '0'
         Match = 'none'
-    }
+        Source = ''
+        SameProcess = '0'
+        OwnerLinked = '0'
+        TopLevelSeen = 0
+        FocusTopLevel = 0
+        DialogClassCount = 0
+        CandidateCount = 0
+        Rows = @()
+    })
+}
+
+function Get-DialogEvidence {
+    param([int]$FocusPid, [int]$SessionId)
+    $info = New-EmptyDialog -Visible '0'
     try {
         Add-CanonicalWindowType
     } catch {
         $info.Visible = 'unreadable'
         return $info
     }
-    $ids = New-Object System.Collections.Generic.List[int]
-    if ($FocusPid -gt 0) { [void]$ids.Add($FocusPid) }
-    foreach ($procId in @(Get-FlatRows -Rows $ProcessIds)) {
-        $n = 0
-        try { $n = [int]$procId } catch { continue }
-        if (($n -gt 0) -and (-not $ids.Contains($n))) { [void]$ids.Add($n) }
+    $survey = $null
+    try {
+        $survey = [CanonicalWindowSurvey]::Collect([int]$FocusPid)
+    } catch {
+        $info.Visible = 'unreadable'
+        return $info
     }
-    foreach ($procId in $ids) {
-        $texts = @()
-        try { $texts = @([CanonicalSeriousErrorWindows]::VisibleTexts([int]$procId)) } catch { continue }
-        foreach ($text in $texts) {
-            $value = [string]$text
-            if (-not (Test-SeriousErrorText -Text $value)) { continue }
-            $info.Visible = '1'
-            $info.Pid = [int]$procId
-            if ($value.IndexOf($script:SeriousErrorJa, $script:Ordinal) -ge 0) { $info.HasSerious = '1' }
-            if ($value.IndexOf($script:ReopenDocumentJa, $script:Ordinal) -ge 0) { $info.HasReopen = '1' }
-            if ($value.IndexOf($script:Leaf, $script:OrdinalIgnore) -ge 0) { $info.HasLeaf = '1' }
-            if (($info.HasLeaf -eq '1') -and ($info.HasSerious -eq '1')) { $info.Match = 'canonical_serious_error' }
-            else { $info.Match = 'serious_error_needle' }
-            return $info
+    if ($null -eq $survey) {
+        $info.Visible = 'unreadable'
+        return $info
+    }
+    $info.TopLevelSeen = [int]$survey.TopLevelSeen
+    $info.FocusTopLevel = [int]$survey.FocusTopLevel
+    $info.DialogClassCount = [int]$survey.DialogClassCount
+    $info.CandidateCount = [int]$survey.CandidateCount
+    $rows = New-Object System.Collections.Generic.List[object]
+    $hits = $survey.Hits
+    if ($null -ne $hits) {
+    foreach ($hit in $hits) {
+        if ($null -eq $hit) { continue }
+        $pidValue = [int]$hit.Pid
+        $ownerValue = [int]$hit.OwnerPid
+        $linked = (($FocusPid -gt 0) -and (($pidValue -eq $FocusPid) -or ($ownerValue -eq $FocusPid) -or ([int]$hit.ParentPid -eq $FocusPid)))
+        $needle = ([int]$hit.Needle -eq 1)
+        $sessionOk = $true
+        if ((-not $linked) -and (-not $needle) -and ($SessionId -ge 0) -and ($pidValue -gt 0)) {
+            $sid = -1
+            try { $sid = [int](Get-Process -Id $pidValue -ErrorAction Stop).SessionId } catch { $sid = -1 }
+            if (($sid -ge 0) -and ($sid -ne $SessionId)) { $sessionOk = $false }
         }
+        if (-not $sessionOk) { continue }
+        [void]$rows.Add((New-Object psobject -Property @{
+            Pid = $pidValue
+            OwnerPid = $ownerValue
+            ParentPid = [int]$hit.ParentPid
+            Class = [string]$hit.ClassName
+            Title = [string]$hit.Title
+            ChildText = [string]$hit.ChildText
+            Hwnd = [int64]$hit.Hwnd
+            OwnerHwnd = [int64]$hit.OwnerHwnd
+            ParentHwnd = [int64]$hit.ParentHwnd
+            TitleLen = [int]$hit.TitleLen
+            ChildLen = [int]$hit.ChildLen
+            Needle = [int]$hit.Needle
+        }))
     }
+    }
+    $picked = Select-DialogHit -FocusPid $FocusPid -Rows $rows.ToArray()
+    $info.Visible = [string]$picked.Visible
+    $info.Pid = [int]$picked.Pid
+    $info.OwnerPid = [int]$picked.OwnerPid
+    $info.ParentPid = [int]$picked.ParentPid
+    $info.Class = [string]$picked.Class
+    $info.Hwnd = [int64]$picked.Hwnd
+    $info.OwnerHwnd = [int64]$picked.OwnerHwnd
+    $info.ParentHwnd = [int64]$picked.ParentHwnd
+    $info.HasLeaf = [string]$picked.HasLeaf
+    $info.HasSerious = [string]$picked.HasSerious
+    $info.HasReopen = [string]$picked.HasReopen
+    $info.Match = [string]$picked.Match
+    $info.Source = [string]$picked.Source
+    $info.SameProcess = [string]$picked.SameProcess
+    $info.OwnerLinked = [string]$picked.OwnerLinked
+    $info.Rows = $rows.ToArray()
     return $info
 }
 
@@ -1720,22 +2066,44 @@ function Invoke-LiveDiagnose {
     Write-Output ('TRUST_OTHER_COUNT=' + ([int]$trust.OtherCount).ToString())
 
     $dialog = $null
-    try { $dialog = Get-DialogEvidence -FocusPid $FocusPid -ProcessIds $dialogIds.ToArray() } catch {
+    try { $dialog = Get-DialogEvidence -FocusPid $FocusPid -SessionId $mySession } catch {
         Write-Output 'SECTION_ERROR=dialog'
         Write-Output ('SECTION_ERROR_TYPE=' + $_.Exception.GetType().Name)
     }
-    if ($null -eq $dialog) {
-        $dialog = New-Object psobject -Property @{
-            Visible = 'unreadable'
-            Pid = 0
-            HasLeaf = '0'
-            HasSerious = '0'
-            HasReopen = '0'
-            Match = 'none'
+    if ($null -eq $dialog) { $dialog = New-EmptyDialog -Visible 'unreadable' }
+    Write-Output ('WINDOW_TOPLEVEL_SEEN=' + ([int]$dialog.TopLevelSeen).ToString())
+    Write-Output ('WINDOW_FOCUS_TOPLEVEL=' + ([int]$dialog.FocusTopLevel).ToString())
+    Write-Output ('WINDOW_DIALOG_CLASS=' + ([int]$dialog.DialogClassCount).ToString())
+    Write-Output ('WINDOW_CANDIDATE_COUNT=' + ([int]$dialog.CandidateCount).ToString())
+    $windowPrinted = 0
+    foreach ($pass in @(1, 0)) {
+        foreach ($row in @($dialog.Rows)) {
+            if ($null -eq $row) { continue }
+            if ($windowPrinted -ge 25) { break }
+            $isNeedle = ([int]$row.Needle -eq 1)
+            $isFocus = (($FocusPid -gt 0) -and (([int]$row.Pid -eq $FocusPid) -or ([int]$row.OwnerPid -eq $FocusPid)))
+            $isDialogClass = ([string]$row.Class -eq '#32770')
+            $wanted = $isNeedle -or $isFocus -or $isDialogClass
+            if ($pass -eq 1 -and -not $isNeedle) { continue }
+            if ($pass -eq 0 -and ($isNeedle -or -not $wanted)) { continue }
+            $procName = 'unreadable'
+            try { $procName = Get-SafeLabel -Name ([string](Get-Process -Id ([int]$row.Pid) -ErrorAction Stop).ProcessName) } catch { $procName = 'unreadable' }
+            Write-Output ('WINDOW hwnd=' + ([int64]$row.Hwnd).ToString() + ' pid=' + ([int]$row.Pid).ToString() + ' process=' + $procName + ' owner_hwnd=' + ([int64]$row.OwnerHwnd).ToString() + ' owner_pid=' + ([int]$row.OwnerPid).ToString() + ' parent_hwnd=' + ([int64]$row.ParentHwnd).ToString() + ' parent_pid=' + ([int]$row.ParentPid).ToString() + ' class=' + (Get-SafeLabel -Name ([string]$row.Class)) + ' title_len=' + ([int]$row.TitleLen).ToString() + ' child_count=' + ([int]$row.ChildLen).ToString() + ' needle=' + ([int]$row.Needle).ToString())
+            $windowPrinted = $windowPrinted + 1
         }
     }
+    if ($windowPrinted -ge 25) { Write-Output 'WINDOW_CANDIDATE_TRUNCATED=1' }
     Write-Output ('DIALOG_VISIBLE=' + [string]$dialog.Visible)
     Write-Output ('DIALOG_PID=' + ([int]$dialog.Pid).ToString())
+    Write-Output ('DIALOG_PROCESS_HWND=' + ([int64]$dialog.Hwnd).ToString())
+    Write-Output ('DIALOG_OWNER_HWND=' + ([int64]$dialog.OwnerHwnd).ToString())
+    Write-Output ('DIALOG_OWNER_PID=' + ([int]$dialog.OwnerPid).ToString())
+    Write-Output ('DIALOG_PARENT_HWND=' + ([int64]$dialog.ParentHwnd).ToString())
+    Write-Output ('DIALOG_PARENT_PID=' + ([int]$dialog.ParentPid).ToString())
+    Write-Output ('DIALOG_CLASS=' + (Get-SafeLabel -Name ([string]$dialog.Class)))
+    Write-Output ('DIALOG_TEXT_SOURCE=' + [string]$dialog.Source)
+    Write-Output ('DIALOG_SAME_PROCESS=' + [string]$dialog.SameProcess)
+    Write-Output ('DIALOG_OWNER_LINKED=' + [string]$dialog.OwnerLinked)
     Write-Output ('DIALOG_SERIOUS=' + [string]$dialog.HasSerious)
     Write-Output ('DIALOG_REOPEN=' + [string]$dialog.HasReopen)
     Write-Output ('DIALOG_LEAF=' + [string]$dialog.HasLeaf)
@@ -1752,10 +2120,12 @@ function Invoke-LiveDiagnose {
             EventCount = 0
             Tokens = ''
             WerCount = -1
+            QueryId = ''
         }
     }
     $crashFlag = Combine-CrashFlag -EventFlag ([string]$crash.EventFlag) -WerCount ([int]$crash.WerCount)
     Write-Output ('CRASH_EVENT_FLAG=' + [string]$crash.EventFlag)
+    Write-Output ('CRASH_QUERY_ID=' + [string]$crash.QueryId)
     Write-Output ('CRASH_EXCEL_EVENTS=' + ([int]$crash.EventCount).ToString())
     Write-Output ('CRASH_MODULES=' + [string]$crash.Tokens)
     Write-Output ('WER_EXCEL_AFTER_START=' + ([int]$crash.WerCount).ToString())
@@ -1777,6 +2147,19 @@ function Invoke-LiveDiagnose {
     Write-Output ('FLAG xll_loaded=' + [string]$xll.Loaded)
     Write-Output ('FLAG crash_after_launch=' + $crashFlag)
     Write-Output ('FLAG dialog_visible=' + [string]$dialog.Visible)
+    $unreadNames = New-Object System.Collections.Generic.List[string]
+    if ($recreated -eq 'unreadable') { [void]$unreadNames.Add('resiliency_recreated') }
+    if ($other -eq 'unreadable') { [void]$unreadNames.Add('resiliency_other_match') }
+    if ($replaced -eq 'unreadable') { [void]$unreadNames.Add('resiliency_value_replaced') }
+    if ($keyWrite -eq 'unreadable') { [void]$unreadNames.Add('resiliency_key_write_after_start') }
+    if ($keyCause -eq 'unreadable') { [void]$unreadNames.Add('resiliency_key_touched') }
+    if ([string]$book.Rewritten -eq 'unreadable') { [void]$unreadNames.Add('workbook_rewritten') }
+    if ([string]$xll.Loaded -eq 'unreadable') { [void]$unreadNames.Add('xll_loaded') }
+    if ($crashFlag -eq 'unreadable') { [void]$unreadNames.Add('crash_after_launch') }
+    if ([string]$dialog.Visible -eq 'unreadable') { [void]$unreadNames.Add('dialog_visible') }
+    $unreadText = 'none'
+    if ($unreadNames.Count -gt 0) { $unreadText = [string]::Join(',', $unreadNames.ToArray()) }
+    Write-Output ('UNREADABLE=' + $unreadText)
     Write-Output ('BACKUP_STATE=' + [string]$backup.State)
     Write-Output ('PRIMARY=' + $primary)
     Write-Output ('REASON=' + $reason)
