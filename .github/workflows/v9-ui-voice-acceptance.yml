@@ -16,7 +16,10 @@ on:
       - "voice_client.js"
       - "downloads/AI_COCKPIT_*_V9.ps1"
       - "downloads/EXCEL_IDENTITY_PROBE_V9.ps1"
+      - "downloads/CLEAR_CANONICAL_WORKBOOK_RECOVERY_V9.ps1"
+      - "downloads/RESTORE_CANONICAL_WORKBOOK_RECOVERY_V9.ps1"
       - "tests/test_v9_excel_identity_probe.py"
+      - "tests/test_v9_workbook_recovery_registry.py"
       - "downloads/RUN_AI_COCKPIT_V9.ps1"
       - "downloads/STOP_AI_COCKPIT_V9.ps1"
       - "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
@@ -49,6 +52,7 @@ jobs:
           git checkout --detach FETCH_HEAD
       - run: python3 -m unittest discover -s tests -p "test_v9_ui_voice_contract.py"
       - run: python3 -m unittest discover -s tests -p "test_v9_excel_identity_probe.py"
+      - run: python3 -m unittest discover -s tests -p "test_v9_workbook_recovery_registry.py"
       - run: node --check voice_client.js
       - run: node --check card_table_adapter.js
       - run: node --check opportunity_radar.js
@@ -71,6 +75,8 @@ jobs:
             "downloads/AI_COCKPIT_CONTROLLER_V9.ps1",
             "downloads/EXCEL_IDENTITY_PROBE_V9.ps1",
             "downloads/AI_COCKPIT_GATEWAY_V9.ps1",
+            "downloads/CLEAR_CANONICAL_WORKBOOK_RECOVERY_V9.ps1",
+            "downloads/RESTORE_CANONICAL_WORKBOOK_RECOVERY_V9.ps1",
             "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
             "downloads/RUN_AI_COCKPIT_V9.ps1",
             "downloads/STOP_AI_COCKPIT_V9.ps1",
@@ -194,7 +200,9 @@ jobs:
           $files = @(
             "downloads/AI_COCKPIT_CONTROLLER_V9.ps1",
             "downloads/EXCEL_IDENTITY_PROBE_V9.ps1",
-            "downloads/AI_COCKPIT_GATEWAY_V9.ps1"
+            "downloads/AI_COCKPIT_GATEWAY_V9.ps1",
+            "downloads/CLEAR_CANONICAL_WORKBOOK_RECOVERY_V9.ps1",
+            "downloads/RESTORE_CANONICAL_WORKBOOK_RECOVERY_V9.ps1"
           )
           $messages = New-Object System.Collections.Generic.List[string]
           foreach ($file in $files) {
@@ -212,6 +220,20 @@ jobs:
             throw "Windows PowerShell 5.1 parse failed"
           }
           Write-Output "WINDOWS POWERSHELL 5.1 PARSE PASS"
+      - name: Canonical workbook recovery selftest
+        shell: powershell
+        run: |
+          $ordinal = [StringComparison]::Ordinal
+          $clear = @(& .\downloads\CLEAR_CANONICAL_WORKBOOK_RECOVERY_V9.ps1 -SelfTest)
+          $clear | ForEach-Object { Write-Output $_ }
+          if (($clear -join "`n").IndexOf("SELFTEST PASS", $ordinal) -lt 0) {
+            throw "clear selftest failed"
+          }
+          $restore = @(& .\downloads\RESTORE_CANONICAL_WORKBOOK_RECOVERY_V9.ps1 -SelfTest)
+          $restore | ForEach-Object { Write-Output $_ }
+          if (($restore -join "`n").IndexOf("SELFTEST PASS", $ordinal) -lt 0) {
+            throw "restore selftest failed"
+          }
       - name: Excel identity probe hard-timeout selftest
         # Windows PowerShell 5.1 is the acceptance shell. The Ubuntu
         # structural job covers the same -IdentityProbeSelfTest entry
