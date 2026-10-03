@@ -45,6 +45,10 @@ Issue #268 / PR #280 の fail-closed を、現行 `fix/v9-ui-voice-convergence` 
 
 AI SHADOW はブラウザや index.html の開閉では止まらない。V9 Controller が `scripts/ai_shadow_supervisor.py` を1プロセスだけ起動し、単一ロックが二重起動を拒む。ライブ判定は Collector が既に出したシグナルと価格だけを記録し、`shadow_execution.submit_shadow_order` は呼ばない。Intent やチケットを作らない。Fail-closed 中は仮想エントリーも仮想EXITも増やさない。復旧は同じ板の再処理をせず、価格が安全条件を満たしたあと自動で再開する。状態は RUNNING / PAUSED_FAIL_CLOSED / RECOVERING / STOPPED で、Gateway `/health` の `shadow_engine_state` を UI が表示する。状態ファイルが無い・古い・読めない場合は RUNNING にしない。`real_submit_allowed` は false のまま。`shadow_positions_connected` は false、`shadow_position_status` は NOT_PUBLISHED のまま。障害は `incidents.jsonl`（戦略損益とは別）、仮想観察は `ledger.jsonl`。日次・週次・月次の稼働率、MTTR、再発、障害が混ざった損益は status の `ops` に分ける。実機の RSS 起動確認は Owner PC。この節は作業ブランチの記録で、main にはまだ入っていない。
 
+## AI SHADOW fail-closed の追加確認（2026-10-03、main未マージ）
+
+`scripts/ai_shadow_supervisor.py` は、安全でない incident（`INCIDENT_LOG_UNSAFE`）、読めない `manual_recovery.json`（`RECOVERY_FILE_UNREADABLE`）、数量が入った ledger（`LEDGER_CORRUPT`）、同一銘柄の両建てまたは同一キーの二重エントリー行（`DATA_CONFLICT`）では仮想エントリーも仮想EXITも増やさない。数量は常に null。損益は1株あたりで、LONG は出口−入口、SHORT は入口−出口。日次・週次・月次は status の `ops` に分け、重なった停止時間でも稼働率は 0 から 1 に収まる。文字列の duration や recurrence は集計を落とさない。ブラウザはプロセスを持たない。`run_once` は `live_ms2.json` とデータディレクトリだけを読む。`real_submit_allowed` は false のまま。Card System Tests の `renderCockpitWatchRow` 15 / 19 はこの変更に含めていない。Owner PC の Controller は起動していない。この確認はリポジトリ上のもので、稼働中の Owner PC プロセスには入っていない。
+
 ## システム概要
 
 - リポジトリ: infoyuusuke-afk/trade-cockpit（GitHub Pages: https://infoyuusuke-afk.github.io/trade-cockpit/）
