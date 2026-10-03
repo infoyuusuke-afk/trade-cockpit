@@ -5,9 +5,11 @@ param(
 
 # Removes one HKCU resiliency value only when its bytes are uniquely the
 # canonical RSS workbook. The value may be under DocumentRecovery or
-# DisabledItems. Backup bytes are read back and compared before any registry
-# write. Any other resiliency value, the workbook, and the RSS xll stay
-# untouched. This file does not click dialogs or stop processes.
+# DisabledItems. Each registry value keeps the opened key's own path. A joined
+# path, a deeper key, StartupItems, and CrashingAddinList stay fail-closed.
+# Backup bytes are read back and compared before any registry write. Any other
+# resiliency value, the workbook, and the RSS xll stay untouched. This file
+# does not click dialogs or stop processes.
 
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
@@ -106,28 +108,69 @@ function Test-SameBytes {
     return $true
 }
 
+function ConvertTo-CanonicalRegistryPath {
+    param([string]$Key)
+    if ([string]::IsNullOrWhiteSpace($Key)) { return '' }
+    $text = $Key.Trim()
+    $marker = 'Registry::'
+    $markerAt = $text.IndexOf($marker, $script:OrdinalIgnore)
+    if ($markerAt -ge 0) { $text = $text.Substring($markerAt + $marker.Length) }
+    $hives = @('HKEY_CURRENT_USER\', 'HKCU:\', 'HKCU\')
+    foreach ($hive in $hives) {
+        if ($text.StartsWith($hive, $script:OrdinalIgnore)) {
+            $text = $text.Substring($hive.Length)
+            break
+        }
+    }
+    while ($text.IndexOf('\\', $script:Ordinal) -ge 0) { $text = $text.Replace('\\', '\') }
+    $text = $text.Trim('\')
+    if ($text.IndexOf('..', $script:Ordinal) -ge 0) { return '' }
+    if ($text.IndexOf('/', $script:Ordinal) -ge 0) { return '' }
+    if ($text.StartsWith('HKCU', $script:OrdinalIgnore)) { return '' }
+    if ($text.StartsWith('HKEY_', $script:OrdinalIgnore)) { return '' }
+    return $text
+}
+
+function Get-RecoveryArea {
+    param([string]$Key)
+    $canon = ConvertTo-CanonicalRegistryPath -Key $Key
+    if ([string]::IsNullOrWhiteSpace($canon)) { return 'other' }
+    $prefix = $script:ResiliencyRoot + '\'
+    if (-not $canon.StartsWith($prefix, $script:OrdinalIgnore)) { return 'other' }
+    $rel = $canon.Substring($prefix.Length)
+    if ($rel.Length -eq 0) { return 'other' }
+    $parts = @($rel.Split('\'))
+    if ($parts.Count -lt 1 -or $parts.Count -gt 2) { return 'other' }
+    foreach ($part in $parts) {
+        if ([string]::IsNullOrWhiteSpace([string]$part)) { return 'other' }
+        if ([string]$part -eq '.' -or [string]$part -eq '..') { return 'other' }
+    }
+    $head = [string]$parts[0]
+    if ([string]::Equals($head, 'DocumentRecovery', $script:OrdinalIgnore)) { return 'document_recovery' }
+    if ([string]::Equals($head, 'DisabledItems', $script:OrdinalIgnore)) { return 'disabled_items' }
+    return 'other'
+}
+
+function Get-ResiliencyHead {
+    param([string]$Key)
+    $canon = ConvertTo-CanonicalRegistryPath -Key $Key
+    $prefix = $script:ResiliencyRoot + '\'
+    if ([string]::IsNullOrWhiteSpace($canon) -or -not $canon.StartsWith($prefix, $script:OrdinalIgnore)) { return 'none' }
+    $rel = $canon.Substring($prefix.Length)
+    $cut = $rel.IndexOf('\', $script:Ordinal)
+    if ($cut -lt 0) { return $rel }
+    if ($cut -eq 0) { return 'none' }
+    return $rel.Substring(0, $cut)
+}
+
 function Test-AllowedRecoveryKey {
     param([string]$Key)
-    if ([string]::IsNullOrWhiteSpace($Key)) { return $false }
-    if ($Key.IndexOf('..', $script:Ordinal) -ge 0) { return $false }
-    if ($Key.IndexOf('/', $script:Ordinal) -ge 0) { return $false }
-    if ($Key.StartsWith('HKCU', $script:OrdinalIgnore)) { return $false }
-    if ([string]::Equals($Key, $script:RecoveryPrefix, $script:OrdinalIgnore)) { return $true }
-    $child = $script:RecoveryPrefix + '\'
-    if ($Key.StartsWith($child, $script:OrdinalIgnore) -and $Key.Length -gt $child.Length) { return $true }
-    return $false
+    return ((Get-RecoveryArea -Key $Key) -eq 'document_recovery')
 }
 
 function Test-AllowedDisabledItemsKey {
     param([string]$Key)
-    if ([string]::IsNullOrWhiteSpace($Key)) { return $false }
-    if ($Key.IndexOf('..', $script:Ordinal) -ge 0) { return $false }
-    if ($Key.IndexOf('/', $script:Ordinal) -ge 0) { return $false }
-    if ($Key.StartsWith('HKCU', $script:OrdinalIgnore)) { return $false }
-    if ([string]::Equals($Key, $script:DisabledPrefix, $script:OrdinalIgnore)) { return $true }
-    $child = $script:DisabledPrefix + '\'
-    if ($Key.StartsWith($child, $script:OrdinalIgnore) -and $Key.Length -gt $child.Length) { return $true }
-    return $false
+    return ((Get-RecoveryArea -Key $Key) -eq 'disabled_items')
 }
 
 function Test-AllowedMutationKey {
@@ -288,6 +331,63 @@ function Get-SpreadsheetLeaves {
     return ,$leaves.ToArray()
 }
 
+function New-OfficeDisabledItemBytes {
+    param([string]$Path, [string]$Description)
+    $pathBytes = [Text.Encoding]::Unicode.GetBytes($Path + [char]0)
+    $descBytes = New-Object byte[] 0
+    if (-not [string]::IsNullOrEmpty($Description)) {
+        $descBytes = [Text.Encoding]::Unicode.GetBytes($Description + [char]0)
+    }
+    $blob = New-Object byte[] (12 + $pathBytes.Length + $descBytes.Length)
+    $blob[0] = 1
+    $pathLen = [BitConverter]::GetBytes([int]$pathBytes.Length)
+    $descLen = [BitConverter]::GetBytes([int]$descBytes.Length)
+    [Buffer]::BlockCopy($pathLen, 0, $blob, 4, 4)
+    [Buffer]::BlockCopy($descLen, 0, $blob, 8, 4)
+    [Buffer]::BlockCopy($pathBytes, 0, $blob, 12, $pathBytes.Length)
+    if ($descBytes.Length -gt 0) {
+        [Buffer]::BlockCopy($descBytes, 0, $blob, (12 + $pathBytes.Length), $descBytes.Length)
+    }
+    return ,$blob
+}
+
+function New-MemoryValue {
+    param([string]$Name, $Kind, [byte[]]$Bytes)
+    $copy = New-Object byte[] $Bytes.Length
+    [Buffer]::BlockCopy($Bytes, 0, $copy, 0, $Bytes.Length)
+    return (New-Object psobject -Property @{
+        Name = $Name
+        Kind = $Kind
+        Bytes = $copy
+    })
+}
+
+function New-MemoryKey {
+    param([string]$FullName, $Values, $Children)
+    if ($null -eq $Values) { $Values = @() }
+    $pairs = @()
+    if ($null -ne $Children) {
+        foreach ($name in @($Children.Keys)) {
+            $pairs += (New-Object psobject -Property @{
+                Name = [string]$name
+                Node = $Children[[string]$name]
+            })
+        }
+    }
+    return (New-Object psobject -Property @{
+        Name = $FullName
+        MemoryValues = @($Values)
+        MemoryChildren = $pairs
+    })
+}
+
+function Get-TreeEntries {
+    param($Root)
+    $list = New-Object System.Collections.Generic.List[object]
+    Add-ResiliencyTree -Opened $Root -KeyPath 'ignored-label' -List $list -Depth 0
+    return $list.ToArray()
+}
+
 function New-PrefixedUtf16 {
     param([string]$Text)
     $utf = [Text.Encoding]::Unicode.GetBytes($Text)
@@ -351,14 +451,29 @@ function New-RecoveryEntry {
     })
 }
 
+function Get-FlatEntries {
+    param($Entries)
+    $items = New-Object System.Collections.Generic.List[object]
+    if ($null -eq $Entries) { return $items }
+    $current = $Entries
+    if (($current -is [System.Array]) -and ($current.Length -eq 1) -and ($null -ne $current[0]) -and ($current[0] -is [System.Array])) {
+        $current = $current[0]
+    }
+    foreach ($entry in @($current)) {
+        if ($null -eq $entry) { continue }
+        if ($entry -is [System.Array]) { throw 'recovery entries were nested' }
+        [void]$items.Add($entry)
+    }
+    return $items
+}
+
 function Select-UniqueCanonicalTarget {
     param($Entries)
     $pure = New-Object System.Collections.Generic.List[object]
     $impure = 0
     $outside = 0
     $unsupported = 0
-    $items = @()
-    if ($null -ne $Entries) { $items = @($Entries) }
+    $items = Get-FlatEntries -Entries $Entries
     foreach ($entry in $items) {
         if ($null -eq $entry) { throw 'recovery entry was null' }
         $verdict = Get-BlobVerdict -Bytes $entry.Bytes
@@ -467,15 +582,83 @@ function Read-KindBytes {
     return $null
 }
 
+function Close-OpenedKey {
+    param($Opened)
+    if ($null -eq $Opened) { return }
+    if ($Opened -is [Microsoft.Win32.RegistryKey]) { $Opened.Close() }
+}
+
+function Get-OpenedValueNames {
+    param($Opened)
+    if ($Opened -is [Microsoft.Win32.RegistryKey]) { return ,@($Opened.GetValueNames()) }
+    $names = New-Object System.Collections.Generic.List[string]
+    foreach ($item in @($Opened.MemoryValues)) {
+        if ($null -ne $item) { [void]$names.Add([string]$item.Name) }
+    }
+    return ,$names.ToArray()
+}
+
+function Get-OpenedKindName {
+    param($Opened, [string]$Name)
+    if ($Opened -is [Microsoft.Win32.RegistryKey]) {
+        return (Get-KindName -Kind ($Opened.GetValueKind($Name)))
+    }
+    foreach ($item in @($Opened.MemoryValues)) {
+        if ($null -eq $item) { continue }
+        if ([string]::Equals([string]$item.Name, $Name, $script:Ordinal)) {
+            return (Get-KindName -Kind $item.Kind)
+        }
+    }
+    throw 'registry value kind is missing'
+}
+
+function Get-OpenedPackedBytes {
+    param($Opened, [string]$Name, [string]$KindName)
+    if ($Opened -is [Microsoft.Win32.RegistryKey]) {
+        return (Read-KindBytes -Opened $Opened -Name $Name -KindName $KindName)
+    }
+    foreach ($item in @($Opened.MemoryValues)) {
+        if ($null -eq $item) { continue }
+        if (-not [string]::Equals([string]$item.Name, $Name, $script:Ordinal)) { continue }
+        if ($null -eq $item.Bytes) { return $null }
+        $copy = New-Object byte[] $item.Bytes.Length
+        [Buffer]::BlockCopy($item.Bytes, 0, $copy, 0, $item.Bytes.Length)
+        return (New-Object psobject -Property @{ Bytes = $copy; Text = '' })
+    }
+    return $null
+}
+
+function Get-OpenedSubNames {
+    param($Opened)
+    if ($Opened -is [Microsoft.Win32.RegistryKey]) { return ,@($Opened.GetSubKeyNames()) }
+    $names = New-Object System.Collections.Generic.List[string]
+    foreach ($pair in @($Opened.MemoryChildren)) {
+        if ($null -ne $pair) { [void]$names.Add([string]$pair.Name) }
+    }
+    return ,$names.ToArray()
+}
+
+function Open-ChildKey {
+    param($Opened, [string]$Name)
+    if ($Opened -is [Microsoft.Win32.RegistryKey]) { return $Opened.OpenSubKey($Name) }
+    foreach ($pair in @($Opened.MemoryChildren)) {
+        if ($null -eq $pair) { continue }
+        if ([string]::Equals([string]$pair.Name, $Name, $script:OrdinalIgnore)) {
+            return $pair.Node
+        }
+    }
+    return $null
+}
+
 function Add-KeyValues {
     param($Opened, [string]$KeyPath, $List)
-    foreach ($name in @($Opened.GetValueNames())) {
+    $names = Get-OpenedValueNames -Opened $Opened
+    foreach ($name in @($names)) {
         if ($null -eq $name) { throw 'registry value name was null' }
-        $kindEnum = $Opened.GetValueKind([string]$name)
-        $kindName = Get-KindName -Kind $kindEnum
+        $kindName = Get-OpenedKindName -Opened $Opened -Name ([string]$name)
         if ($kindName -eq 'Skip') { continue }
         if ($kindName -eq '') { throw 'registry value kind is outside the restorable set' }
-        $packed = Read-KindBytes -Opened $Opened -Name ([string]$name) -KindName $kindName
+        $packed = Get-OpenedPackedBytes -Opened $Opened -Name ([string]$name) -KindName $kindName
         if ($null -eq $packed) { throw 'registry value bytes were unreadable' }
         $entry = New-Object psobject -Property @{
             Key = $KeyPath
@@ -492,18 +675,23 @@ function Add-KeyValues {
 function Add-ResiliencyTree {
     param($Opened, [string]$KeyPath, $List, [int]$Depth)
     if ($Depth -gt 8) { throw 'resiliency key depth exceeded the fail-closed cap' }
-    Add-KeyValues -Opened $Opened -KeyPath $KeyPath -List $List
-    foreach ($sub in @($Opened.GetSubKeyNames())) {
+    $live = ConvertTo-CanonicalRegistryPath -Key ([string]$Opened.Name)
+    if ([string]::IsNullOrWhiteSpace($live)) { throw 'registry key path was not canonical' }
+    if (-not $live.StartsWith($script:ResiliencyRoot, $script:OrdinalIgnore)) { throw 'registry key escaped the resiliency root' }
+    Add-KeyValues -Opened $Opened -KeyPath $live -List $List
+    $subs = Get-OpenedSubNames -Opened $Opened
+    foreach ($sub in @($subs)) {
         if ([string]::IsNullOrWhiteSpace([string]$sub)) { throw 'registry subkey name was empty' }
         $subName = [string]$sub
         if ($subName.IndexOf('\', $script:Ordinal) -ge 0) { throw 'registry subkey name was unsafe' }
-        $childPath = $KeyPath + '\' + $subName
-        $child = $Opened.OpenSubKey($subName)
+        if ($subName.IndexOf('/', $script:Ordinal) -ge 0) { throw 'registry subkey name was unsafe' }
+        if ($subName.IndexOf('..', $script:Ordinal) -ge 0) { throw 'registry subkey name was unsafe' }
+        $child = Open-ChildKey -Opened $Opened -Name $subName
         if ($null -eq $child) { throw 'registry subkey was unreadable' }
         try {
-            Add-ResiliencyTree -Opened $child -KeyPath $childPath -List $List -Depth ($Depth + 1)
+            Add-ResiliencyTree -Opened $child -KeyPath ($live + '\' + $subName) -List $List -Depth ($Depth + 1)
         } finally {
-            $child.Close()
+            Close-OpenedKey -Opened $child
         }
     }
 }
@@ -517,7 +705,7 @@ function Get-ResiliencyEntries {
     } finally {
         $root.Close()
     }
-    return ,$list.ToArray()
+    return $list.ToArray()
 }
 
 function Read-LiveValue {
@@ -689,16 +877,15 @@ function Remove-BackupDirIfPresent {
 
 function Invoke-Clear {
     Write-Output 'ACTION=clear_one_canonical_resiliency_value'
-    $entries = @(Get-ResiliencyEntries)
+    $entries = Get-FlatEntries -Entries @(Get-ResiliencyEntries)
     foreach ($entry in $entries) {
         if ($null -eq $entry) { continue }
         $verdict = Get-BlobVerdict -Bytes $entry.Bytes
         if ($verdict -eq 'none') { continue }
-        $area = 'other'
-        if (Test-AllowedRecoveryKey -Key ([string]$entry.Key)) { $area = 'document_recovery' }
-        elseif (Test-AllowedDisabledItemsKey -Key ([string]$entry.Key)) { $area = 'disabled_items' }
+        $area = Get-RecoveryArea -Key ([string]$entry.Key)
+        $head = Get-ResiliencyHead -Key ([string]$entry.Key)
         $shown = Get-ValueDisplay -Name ([string]$entry.ValueName)
-        Write-Output ('SCAN area=' + $area + ' key=' + [string]$entry.Key + ' value=' + $shown + ' kind=' + [string]$entry.Kind + ' len=' + [string]$entry.Bytes.Length + ' verdict=' + $verdict)
+        Write-Output ('SCAN area=' + $area + ' rel=' + $head + ' key=' + [string]$entry.Key + ' value=' + $shown + ' kind=' + [string]$entry.Kind + ' len=' + [string]$entry.Bytes.Length + ' verdict=' + $verdict)
     }
     $choice = Select-UniqueCanonicalTarget -Entries $entries
     Write-Output ('MATCH_PURE=' + [string]$choice.Pure)
@@ -935,6 +1122,94 @@ function Invoke-RecoverySelfTest {
     $emptyJson = New-ManifestJson -Created '2026-10-03T01:02:03Z' -KeyPath $script:RecoveryPrefix -ValueName '' -Kind 'Binary' -Sha $sampleSha -Length $blob.Length -Base64 $sampleB64
     $emptyParsed = $emptyJson | ConvertFrom-Json
     Assert-Case 'json_default' ([string]$emptyParsed.value_name -eq '')
+    $hiveDisabled = 'HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\16.0\Excel\Resiliency\DisabledItems'
+    Assert-Case 'hive_disabled' ((Get-RecoveryArea -Key $hiveDisabled) -eq 'disabled_items')
+    Assert-Case 'hkcu_disabled' ((Get-RecoveryArea -Key ('HKCU:\' + $script:DisabledPrefix)) -eq 'disabled_items')
+    $joined = 'SOFTWARE\Microsoft\Office\16.0\Excel\Resiliency\DocumentRecovery\1664DDA6\DisabledItems'
+    Assert-Case 'joined_other' ((Get-RecoveryArea -Key $joined) -eq 'other')
+    Assert-Case 'deep_other' ((Get-RecoveryArea -Key ($script:RecoveryPrefix + '\1664DDA6\Extra')) -eq 'other')
+    Assert-Case 'startup_other' ((Get-RecoveryArea -Key ($script:ResiliencyRoot + '\StartupItems')) -eq 'other')
+    Assert-Case 'crash_other' ((Get-RecoveryArea -Key ($script:ResiliencyRoot + '\CrashingAddinList')) -eq 'other')
+    $officeBlob = New-OfficeDisabledItemBytes -Path (Get-CanonicalFullPath) -Description ''
+    Assert-Case 'office_pure' ((Get-BlobVerdict -Bytes $officeBlob) -eq 'pure')
+    $officeDll = New-OfficeDisabledItemBytes -Path (Get-CanonicalFullPath) -Description 'C:\Addin.dll'
+    Assert-Case 'office_dll' ((Get-BlobVerdict -Bytes $officeDll) -eq 'impure')
+    $officeXll = New-OfficeDisabledItemBytes -Path ('C:\Addins\' + $script:XllStem + '_64bit.xll') -Description ''
+    Assert-Case 'office_xll' ((Get-BlobVerdict -Bytes $officeXll) -eq 'none')
+    $binaryKind = [Microsoft.Win32.RegistryValueKind]::Binary
+    $rootName = 'HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\16.0\Excel\Resiliency'
+    $disabledKey = New-MemoryKey -FullName ($rootName + '\DisabledItems') -Values @(
+        (New-MemoryValue -Name '1664DDA6' -Kind $binaryKind -Bytes $officeBlob),
+        (New-MemoryValue -Name 'AAAAAAAA' -Kind $binaryKind -Bytes $officeXll)
+    ) -Children @{}
+    $docChild = New-MemoryKey -FullName ($rootName + '\DocumentRecovery\1664DDA6') -Values @(
+        (New-MemoryValue -Name 'File' -Kind $binaryKind -Bytes $other)
+    ) -Children @{}
+    $docKey = New-MemoryKey -FullName ($rootName + '\DocumentRecovery') -Values @() -Children @{ '1664DDA6' = $docChild }
+    $happy = New-MemoryKey -FullName $rootName -Values @() -Children @{
+        'DisabledItems' = $disabledKey
+        'DocumentRecovery' = $docKey
+    }
+    $walked = @(Get-TreeEntries -Root $happy)
+    $choice = Select-UniqueCanonicalTarget -Entries $walked
+    Assert-Case 'walk_count' (@($walked).Count -eq 3)
+    Assert-Case 'walk_reason' ([string]$choice.Reason -eq 'ok')
+    $forced = New-Object object[] 1
+    $forced[0] = @($walked)
+    $nestedChoice = Select-UniqueCanonicalTarget -Entries $forced
+    Assert-Case 'nested_ok' ([string]$nestedChoice.Reason -eq 'ok')
+    Assert-Case 'nested_pure' ([int]$nestedChoice.Pure -eq 1)
+    Assert-Case 'walk_pure' ([int]$choice.Pure -eq 1)
+    Assert-Case 'walk_outside' ([int]$choice.Outside -eq 0)
+    Assert-Case 'walk_impure' ([int]$choice.Impure -eq 0)
+    $selectedKey = ConvertTo-CanonicalRegistryPath -Key ([string]$choice.Target.Key)
+    Assert-Case 'walk_key' ([string]::Equals($selectedKey, 'SOFTWARE\Microsoft\Office\16.0\Excel\Resiliency\DisabledItems', $script:OrdinalIgnore))
+    Assert-Case 'walk_value' ([string]$choice.Target.ValueName -eq '1664DDA6')
+    $sawDisabled = $false
+    $sawJoined = $false
+    foreach ($entry in $walked) {
+        $scanArea = Get-RecoveryArea -Key ([string]$entry.Key)
+        $scanVerdict = Get-BlobVerdict -Bytes $entry.Bytes
+        if ($scanVerdict -eq 'none') { continue }
+        $scan = 'SCAN area=' + $scanArea + ' rel=' + (Get-ResiliencyHead -Key ([string]$entry.Key)) + ' key=' + [string]$entry.Key + ' value=' + [string]$entry.ValueName + ' verdict=' + $scanVerdict
+        if ($scan.IndexOf('area=disabled_items', $script:Ordinal) -ge 0 -and $scan.IndexOf('value=1664DDA6', $script:Ordinal) -ge 0 -and $scan.IndexOf('verdict=pure', $script:Ordinal) -ge 0) {
+            $sawDisabled = $true
+        }
+        if (([string]$entry.Key).IndexOf('DocumentRecovery', $script:OrdinalIgnore) -ge 0 -and ([string]$entry.Key).IndexOf('DisabledItems', $script:OrdinalIgnore) -ge 0) {
+            $sawJoined = $true
+        }
+    }
+    Assert-Case 'scan_disabled' $sawDisabled
+    Assert-Case 'scan_not_joined' (-not $sawJoined)
+    $subDisabled = New-MemoryKey -FullName ($rootName + '\DisabledItems\1664DDA6') -Values @(
+        (New-MemoryValue -Name '' -Kind $binaryKind -Bytes $officeBlob)
+    ) -Children @{}
+    $subParent = New-MemoryKey -FullName ($rootName + '\DisabledItems') -Values @() -Children @{ '1664DDA6' = $subDisabled }
+    $subRoot = New-MemoryKey -FullName $rootName -Values @() -Children @{ 'DisabledItems' = $subParent }
+    $subChoice = Select-UniqueCanonicalTarget -Entries @(Get-TreeEntries -Root $subRoot)
+    Assert-Case 'subkey_ok' ([string]$subChoice.Reason -eq 'ok')
+    Assert-Case 'subkey_pure' ([int]$subChoice.Pure -eq 1)
+    Assert-Case 'subkey_area' ((Get-RecoveryArea -Key ([string]$subChoice.Target.Key)) -eq 'disabled_items')
+    $crash = New-MemoryKey -FullName ($rootName + '\CrashingAddinList') -Values @(
+        (New-MemoryValue -Name '1664DDA6' -Kind $binaryKind -Bytes $officeBlob)
+    ) -Children @{}
+    $crashRoot = New-MemoryKey -FullName $rootName -Values @() -Children @{ 'CrashingAddinList' = $crash }
+    $crashChoice = Select-UniqueCanonicalTarget -Entries @(Get-TreeEntries -Root $crashRoot)
+    Assert-Case 'crash_outside' ([string]$crashChoice.Reason -eq 'outside_resiliency_match')
+    Assert-Case 'crash_pure0' ([int]$crashChoice.Pure -eq 0)
+    Assert-Case 'crash_out1' ([int]$crashChoice.Outside -eq 1)
+    $bothDoc = New-MemoryKey -FullName ($rootName + '\DocumentRecovery\1664DDA6') -Values @(
+        (New-MemoryValue -Name '' -Kind $binaryKind -Bytes $officeBlob)
+    ) -Children @{}
+    $bothDocParent = New-MemoryKey -FullName ($rootName + '\DocumentRecovery') -Values @() -Children @{ '1664DDA6' = $bothDoc }
+    $both = New-MemoryKey -FullName $rootName -Values @() -Children @{
+        'DisabledItems' = $disabledKey
+        'DocumentRecovery' = $bothDocParent
+    }
+    $bothChoice = Select-UniqueCanonicalTarget -Entries @(Get-TreeEntries -Root $both)
+    Assert-Case 'both_unique' ([string]$bothChoice.Reason -eq 'not_unique')
+    Assert-Case 'both_pure' ([int]$bothChoice.Pure -eq 2)
+    Write-Output 'PROOF area=disabled_items verdict=pure MATCH_PURE=1'
     Write-Output ('CASE_COUNT=' + [string]$script:CaseCount)
     Write-Output 'SELFTEST PASS'
     Write-Output 'NOTHING_CHANGED=1'

@@ -65,6 +65,10 @@ class CanonicalWorkbookRecoveryTests(unittest.TestCase):
         self.assertIn("Test-AllowedMutationKey", clear)
         self.assertIn("Test-AllowedMutationKey", restore)
         self.assertIn("StartupItems", clear)
+        self.assertIn("ConvertTo-CanonicalRegistryPath", clear)
+        self.assertIn("ConvertTo-CanonicalRegistryPath", restore)
+        self.assertIn("Get-RecoveryArea", clear)
+        self.assertIn("Get-RecoveryArea", restore)
         self.assertIn("'.dll'", clear)
         self.assertIn("'.ocx'", clear)
         self.assertIn("MarketSpeed2_RSS", clear)
@@ -107,6 +111,8 @@ class CanonicalWorkbookRecoveryTests(unittest.TestCase):
             count = re.search(r"CASE_COUNT=(\d+)", proc.stdout)
             self.assertIsNotNone(count, proc.stdout)
             self.assertGreaterEqual(int(count.group(1)), minimum)
+            if script == CLEAR:
+                self.assertIn("PROOF area=disabled_items verdict=pure MATCH_PURE=1", proc.stdout)
 
     def test_missing_confirm_token_changes_nothing(self):
         pwsh = _pwsh()

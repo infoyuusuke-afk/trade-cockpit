@@ -51,28 +51,58 @@ function Test-SameBytes {
     return $true
 }
 
+function ConvertTo-CanonicalRegistryPath {
+    param([string]$Key)
+    if ([string]::IsNullOrWhiteSpace($Key)) { return '' }
+    $text = $Key.Trim()
+    $marker = 'Registry::'
+    $markerAt = $text.IndexOf($marker, $script:OrdinalIgnore)
+    if ($markerAt -ge 0) { $text = $text.Substring($markerAt + $marker.Length) }
+    $hives = @('HKEY_CURRENT_USER\', 'HKCU:\', 'HKCU\')
+    foreach ($hive in $hives) {
+        if ($text.StartsWith($hive, $script:OrdinalIgnore)) {
+            $text = $text.Substring($hive.Length)
+            break
+        }
+    }
+    while ($text.IndexOf('\\', $script:Ordinal) -ge 0) { $text = $text.Replace('\\', '\') }
+    $text = $text.Trim('\')
+    if ($text.IndexOf('..', $script:Ordinal) -ge 0) { return '' }
+    if ($text.IndexOf('/', $script:Ordinal) -ge 0) { return '' }
+    if ($text.StartsWith('HKCU', $script:OrdinalIgnore)) { return '' }
+    if ($text.StartsWith('HKEY_', $script:OrdinalIgnore)) { return '' }
+    return $text
+}
+
+function Get-RecoveryArea {
+    param([string]$Key)
+    $canon = ConvertTo-CanonicalRegistryPath -Key $Key
+    $root = 'Software\Microsoft\Office\16.0\Excel\Resiliency'
+    if ([string]::IsNullOrWhiteSpace($canon)) { return 'other' }
+    $prefix = $root + '\'
+    if (-not $canon.StartsWith($prefix, $script:OrdinalIgnore)) { return 'other' }
+    $rel = $canon.Substring($prefix.Length)
+    if ($rel.Length -eq 0) { return 'other' }
+    $parts = @($rel.Split('\'))
+    if ($parts.Count -lt 1 -or $parts.Count -gt 2) { return 'other' }
+    foreach ($part in $parts) {
+        if ([string]::IsNullOrWhiteSpace([string]$part)) { return 'other' }
+        if ([string]$part -eq '.' -or [string]$part -eq '..') { return 'other' }
+    }
+    $head = [string]$parts[0]
+    if ([string]::Equals($head, 'DocumentRecovery', $script:OrdinalIgnore)) { return 'document_recovery' }
+    if ([string]::Equals($head, 'DisabledItems', $script:OrdinalIgnore)) { return 'disabled_items' }
+    return 'other'
+}
+
 function Test-AllowedRecoveryKey {
     param([string]$Key)
-    if ([string]::IsNullOrWhiteSpace($Key)) { return $false }
-    if ($Key.IndexOf('..', $script:Ordinal) -ge 0) { return $false }
-    if ($Key.IndexOf('/', $script:Ordinal) -ge 0) { return $false }
-    if ($Key.StartsWith('HKCU', $script:OrdinalIgnore)) { return $false }
-    if ([string]::Equals($Key, $script:RecoveryPrefix, $script:OrdinalIgnore)) { return $true }
-    $child = $script:RecoveryPrefix + '\'
-    if ($Key.StartsWith($child, $script:OrdinalIgnore) -and $Key.Length -gt $child.Length) { return $true }
-    return $false
+    return ((Get-RecoveryArea -Key $Key) -eq 'document_recovery')
 }
 
 function Test-AllowedDisabledItemsKey {
     param([string]$Key)
-    if ([string]::IsNullOrWhiteSpace($Key)) { return $false }
-    if ($Key.IndexOf('..', $script:Ordinal) -ge 0) { return $false }
-    if ($Key.IndexOf('/', $script:Ordinal) -ge 0) { return $false }
-    if ($Key.StartsWith('HKCU', $script:OrdinalIgnore)) { return $false }
-    if ([string]::Equals($Key, $script:DisabledPrefix, $script:OrdinalIgnore)) { return $true }
-    $child = $script:DisabledPrefix + '\'
-    if ($Key.StartsWith($child, $script:OrdinalIgnore) -and $Key.Length -gt $child.Length) { return $true }
-    return $false
+    return ((Get-RecoveryArea -Key $Key) -eq 'disabled_items')
 }
 
 function Test-AllowedMutationKey {
@@ -372,6 +402,11 @@ function Invoke-RestoreSelfTest {
     Assert-Case 'mutation_startup' (-not (Test-AllowedMutationKey -Key $startup))
     Assert-Case 'mutation_extra' (-not (Test-AllowedDisabledItemsKey -Key ($disabled + 'Extra')))
     Assert-Case 'mutation_dotdot' (-not (Test-AllowedDisabledItemsKey -Key ($script:DisabledPrefix + '\..\DocumentRecovery')))
+    $hiveDisabled = 'HKEY_CURRENT_USER\SOFTWARE\Microsoft\Office\16.0\Excel\Resiliency\DisabledItems'
+    Assert-Case 'hive_disabled' ((Get-RecoveryArea -Key $hiveDisabled) -eq 'disabled_items')
+    Assert-Case 'hive_restore' (Test-AllowedMutationKey -Key $hiveDisabled)
+    Assert-Case 'joined_other' ((Get-RecoveryArea -Key ($script:RecoveryPrefix + '\1664DDA6\DisabledItems')) -eq 'other')
+    Assert-Case 'deep_other' (-not (Test-AllowedRecoveryKey -Key ($script:RecoveryPrefix + '\1\Extra')))
     Assert-Case 'value_default' (Test-AllowedValueName -Name '')
     Assert-Case 'value_slash' (-not (Test-AllowedValueName -Name 'A\B'))
     $root = Get-BackupRoot
