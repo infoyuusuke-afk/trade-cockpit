@@ -22,10 +22,15 @@ param(
 $ErrorActionPreference = "Stop"
 
 if ([string]::IsNullOrWhiteSpace($RuntimeDir)) {
+    # Keep this file ASCII. Windows PowerShell 5.1 reads a BOM-less
+    # script with the ANSI code page, and a UTF-8 character can swallow
+    # the following quote. The parser then reports UnexpectedToken at a
+    # later line, including Get-LivePriceRejection and Send-Response.
+    $daytrade = -join @([char]0x30C7, [char]0x30A4, [char]0x30C8, [char]0x30EC)
     $candidates = @(
-        (Join-Path $env:USERPROFILE "Desktop\デイトレ\MarketSpeed II RSS\files"),
-        (Join-Path ([Environment]::GetFolderPath("Desktop")) "デイトレ\MarketSpeed II RSS\files"),
-        (Join-Path $env:USERPROFILE "OneDrive\Desktop\デイトレ\MarketSpeed II RSS\files")
+        (Join-Path $env:USERPROFILE ("Desktop\" + $daytrade + "\MarketSpeed II RSS\files")),
+        (Join-Path ([Environment]::GetFolderPath("Desktop")) ($daytrade + "\MarketSpeed II RSS\files")),
+        (Join-Path $env:USERPROFILE ("OneDrive\Desktop\" + $daytrade + "\MarketSpeed II RSS\files"))
     ) | Select-Object -Unique
     foreach ($c in $candidates) {
         if (Test-Path -LiteralPath (Join-Path $c "live_ms2.json")) { $RuntimeDir = $c; break }
@@ -48,6 +53,58 @@ $utf8 = [Text.UTF8Encoding]::new($false)
 function Read-JsonUtf8([string]$Path) {
     $text = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8)
     return $text | ConvertFrom-Json
+}
+
+function Get-ShadowEnginePublication([string]$RuntimeDirectory) {
+    $result = [ordered]@{
+        shadow_engine_state = "STOPPED"
+        shadow_engine_reason = "STATUS_NOT_PUBLISHED"
+        shadow_engine_updated_at = $null
+        shadow_open_observation_count = $null
+        shadow_ops = $null
+        shadow_latest_incident = $null
+        shadow_ui_independent = $true
+    }
+    if ([string]::IsNullOrWhiteSpace($RuntimeDirectory)) { return $result }
+    $path = Join-Path $RuntimeDirectory "ai_shadow_status.json"
+    if (-not (Test-Path -LiteralPath $path)) { return $result }
+    try {
+        $status = Read-JsonUtf8 $path
+        $written = (Get-Item -LiteralPath $path).LastWriteTime
+        $age = ((Get-Date) - $written).TotalSeconds
+        $publishedState = [string]$status.state
+        if ($status.real_submit_allowed -ne $false -or [string]::IsNullOrWhiteSpace($publishedState)) {
+            $result.shadow_engine_state = "PAUSED_FAIL_CLOSED"
+            $result.shadow_engine_reason = "STATUS_UNTRUSTED"
+            return $result
+        }
+        if ($age -lt 0 -or $age -gt 30) {
+            if ($publishedState -eq "STOPPED") {
+                $result.shadow_engine_state = "STOPPED"
+                $result.shadow_engine_reason = "STATUS_STALE"
+            } else {
+                $result.shadow_engine_state = "PAUSED_FAIL_CLOSED"
+                $result.shadow_engine_reason = "STATUS_STALE"
+            }
+            return $result
+        }
+        if (@("RUNNING", "PAUSED_FAIL_CLOSED", "RECOVERING", "STOPPED") -notcontains $publishedState) {
+            $result.shadow_engine_state = "PAUSED_FAIL_CLOSED"
+            $result.shadow_engine_reason = "UNKNOWN_STATE"
+            return $result
+        }
+        $result.shadow_engine_state = $publishedState
+        $result.shadow_engine_reason = [string]$status.reason
+        $result.shadow_engine_updated_at = [string]$status.updated_at
+        $result.shadow_open_observation_count = $status.open_observation_count
+        $result.shadow_ops = $status.ops
+        $result.shadow_latest_incident = $status.latest_incident
+        return $result
+    } catch {
+        $result.shadow_engine_state = "PAUSED_FAIL_CLOSED"
+        $result.shadow_engine_reason = "STATUS_UNREADABLE"
+        return $result
+    }
 }
 
 function Test-HealthProcess([int]$ProcessId, [string]$ScriptName, [datetime]$StateWrittenAt) {
@@ -104,6 +161,119 @@ function Get-GitInfo([string]$repoRoot) {
 # this LOCAL gateway is serving. Only affects what this local gateway
 # returns - the public GitHub Pages site (served separately by GitHub) is
 # never touched by this script.
+function Get-ProcessCommandCount([string]$ScriptName) {
+    try {
+        $procs = @(Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" -ErrorAction Stop | Where-Object {
+            [string]$_.CommandLine -like ("*" + $ScriptName + "*")
+        })
+        return $procs.Count
+    } catch {
+        return $null
+    }
+}
+
+function Get-LivePriceRejection {
+    param(
+        $LiveObj,
+        [double]$FileAgeSeconds,
+        [double]$PayloadAgeSeconds,
+        $UpdatedAtRaw,
+        $FileMtime,
+        [int]$MaxAgeSeconds = 60
+    )
+    $reasons = New-Object System.Collections.Generic.List[string]
+    $canonicalSource = "MarketSpeed II RSS / local PC"
+    $fresh = (
+        $FileAgeSeconds -ge 0 -and $FileAgeSeconds -le $MaxAgeSeconds -and
+        $PayloadAgeSeconds -ge 0 -and $PayloadAgeSeconds -le $MaxAgeSeconds
+    )
+    if (-not $fresh) { [void]$reasons.Add("STALE_OR_MISSING_TIMESTAMP") }
+    $source = if ($null -ne $LiveObj) { [string]$LiveObj.source } else { "" }
+    $publicMarker = -join @([char]0x516C, [char]0x958B)
+    $ordinal = [StringComparison]::Ordinal
+    $cachedSource = (
+        $source -ne $canonicalSource -or
+        $source -match '(?i)sample|snapshot|cache|static|fixture' -or
+        $source.IndexOf($publicMarker, $ordinal) -ge 0
+    )
+    if ($cachedSource) {
+        [void]$reasons.Add("CACHED_OR_SAMPLE_PAYLOAD")
+    }
+    $diag = if ($null -ne $LiveObj) { $LiveObj.live_price_diagnostics } else { $null }
+    $sourceMode = ""
+    $sourceTimestamp = $null
+    $symbol = $null
+    $currentPrice = $null
+    $dataConflict = $false
+    $collectorPid = $null
+    $watcherCount = $null
+    $collectorCount = $null
+    if ($null -eq $diag) {
+        [void]$reasons.Add("MISSING_PRICE_DIAGNOSTICS")
+    } else {
+        $sourceMode = [string]$diag.source_mode
+        $sourceTimestamp = $diag.source_timestamp
+        $symbol = $diag.symbol
+        $currentPrice = $diag.current_price
+        $collectorPid = $diag.collector_pid
+        $dataConflict = ($diag.data_conflict -eq $true)
+        if ([string]$diag.price_source_status -ne "OK") { [void]$reasons.Add("PRICE_SOURCE_MISMATCH") }
+        if ($sourceMode -ne "MS2_RSS_WORKBOOK") { [void]$reasons.Add("WRONG_SOURCE_WORKBOOK") }
+        if ($dataConflict) { [void]$reasons.Add("DATA_CONFLICT") }
+        if ($diag.live_values_available -ne $true) { [void]$reasons.Add("LIVE_VALUES_UNAVAILABLE") }
+        if ($diag.duplicate_collector -eq $true) { [void]$reasons.Add("DUPLICATE_COLLECTOR") }
+        if ($diag.duplicate_watcher -eq $true) { [void]$reasons.Add("DUPLICATE_WATCHER") }
+        if ([string]$diag.stale_reason -match 'WRONG_SYMBOL_MAPPING') { [void]$reasons.Add("WRONG_SYMBOL_MAPPING") }
+    }
+    if ($null -ne $LiveObj -and ($LiveObj.data_conflict -eq $true)) { [void]$reasons.Add("DATA_CONFLICT") }
+    if ($null -ne $LiveObj -and [string]$LiveObj.price_source_status -eq "PRICE_SOURCE_MISMATCH") { [void]$reasons.Add("PRICE_SOURCE_MISMATCH") }
+    $collectorCount = Get-ProcessCommandCount "MS2_RSS_100_Collector.ps1"
+    $watcherCount = Get-ProcessCommandCount "Kioxia_RSS_Live_Watcher.ps1"
+    if ($null -eq $collectorCount) { [void]$reasons.Add("DUPLICATE_PROCESS_CHECK_UNAVAILABLE") }
+    elseif ($collectorCount -gt 1) { [void]$reasons.Add("DUPLICATE_COLLECTOR") }
+    elseif ($collectorCount -lt 1) { [void]$reasons.Add("COLLECTOR_PROCESS_UNVERIFIED") }
+    if ($null -eq $watcherCount) { [void]$reasons.Add("DUPLICATE_PROCESS_CHECK_UNAVAILABLE") }
+    elseif ($watcherCount -gt 1) { [void]$reasons.Add("DUPLICATE_WATCHER") }
+    $workbookVerified = $false
+    try {
+        if (Test-Path -LiteralPath $controllerStateFile) {
+            $st = Read-JsonUtf8 $controllerStateFile
+            $workbookVerified = ($st.workbook_identity_verified -eq $true)
+        }
+    } catch { $workbookVerified = $false }
+    if (-not $workbookVerified) { [void]$reasons.Add("WRONG_SOURCE_WORKBOOK") }
+    $unique = @($reasons | Select-Object -Unique)
+    if ($unique.Count -eq 0) { return $null }
+    $identity = @($unique | Where-Object { $_ -notin @("STALE_OR_MISSING_TIMESTAMP","LIVE_VALUES_UNAVAILABLE","INSUFFICIENT_COVERAGE") })
+    $statusName = if ($identity.Count -gt 0) { "PRICE_SOURCE_MISMATCH" } else { "stale" }
+    $reasonText = if ($unique -contains "STALE_OR_MISSING_TIMESTAMP" -and $identity.Count -eq 0) {
+        "live_ms2.json freshness threshold exceeded"
+    } else {
+        ($unique -join ",")
+    }
+    return [ordered]@{
+        status = $statusName
+        reason = $reasonText
+        stale_reason = ($unique -join ",")
+        price_source_status = $(if ($identity.Count -gt 0) { "PRICE_SOURCE_MISMATCH" } else { "STALE" })
+        source_mode = $sourceMode
+        source_timestamp = $sourceTimestamp
+        file_mtime = $FileMtime
+        updated_at = $UpdatedAtRaw
+        file_age_seconds = [Math]::Round($FileAgeSeconds, 1)
+        payload_age_seconds = $(if ([double]::IsInfinity($PayloadAgeSeconds)) { $null } else { [Math]::Round($PayloadAgeSeconds, 1) })
+        symbol = $symbol
+        current_price = $currentPrice
+        collector_pid = $collectorPid
+        collector_count = $collectorCount
+        watcher_count = $watcherCount
+        data_conflict = [bool]($dataConflict -or ($identity.Count -gt 0))
+        real_submit_allowed = $false
+        live_values_available = $false
+        max_age_seconds = $MaxAgeSeconds
+    }
+}
+
 function Add-BuildBadge([string]$html, [string]$branch, [string]$sha, [string]$build) {
     $shortSha = if ($sha.Length -ge 8) { $sha.Substring(0, 8) } else { $sha }
     $safeBranch = [System.Net.WebUtility]::HtmlEncode($branch)
@@ -164,6 +334,14 @@ try {
                     workbook_identity_verified = $null
                     voice_backend              = "Style-Bert-VITS2"
                     fail_closed                = $true
+                    price_source_status        = $null
+                    source_mode                = $null
+                    data_conflict              = $null
+                    stale_reason               = $null
+                    live_updated_at            = $null
+                    source_timestamp           = $null
+                    live_symbol                = $null
+                    live_current_price         = $null
                 }
                 try {
                     if (Test-Path -LiteralPath $controllerStateFile) {
@@ -210,6 +388,25 @@ try {
                         )
                     }
                 } catch {}
+                if ($liveExists) {
+                    try {
+                        $healthLive = Read-JsonUtf8 $liveJson
+                        $healthDiag = $healthLive.live_price_diagnostics
+                        $runtime.live_updated_at = [string]$healthLive.updated_at
+                        $runtime.price_source_status = [string]$healthLive.price_source_status
+                        $runtime.data_conflict = ($healthLive.data_conflict -eq $true)
+                        $runtime.stale_reason = [string]$healthLive.stale_reason
+                        if ($null -ne $healthDiag) {
+                            if ([string]::IsNullOrWhiteSpace([string]$runtime.price_source_status)) { $runtime.price_source_status = [string]$healthDiag.price_source_status }
+                            $runtime.source_mode = [string]$healthDiag.source_mode
+                            $runtime.source_timestamp = $healthDiag.source_timestamp
+                            $runtime.live_symbol = $healthDiag.symbol
+                            $runtime.live_current_price = $healthDiag.current_price
+                            if ($healthDiag.data_conflict -eq $true) { $runtime.data_conflict = $true }
+                            if (-not [string]::IsNullOrWhiteSpace([string]$healthDiag.stale_reason)) { $runtime.stale_reason = [string]$healthDiag.stale_reason }
+                        }
+                    } catch {}
+                }
                 $execution = [ordered]@{
                     real_submit_allowed        = $false
                     real_order_route            = 'DISABLED'
@@ -221,6 +418,14 @@ try {
                     shadow_open_position_count  = $null
                     shadow_position_status      = 'NOT_PUBLISHED'
                     owner_control               = 'REAL_ORDER_UNLOCK_NOT_AVAILABLE'
+                }
+                $shadowPub = Get-ShadowEnginePublication $RuntimeDir
+                foreach ($shadowKey in @(
+                    "shadow_engine_state", "shadow_engine_reason", "shadow_engine_updated_at",
+                    "shadow_open_observation_count", "shadow_ops", "shadow_latest_incident",
+                    "shadow_ui_independent"
+                )) {
+                    $execution[$shadowKey] = $shadowPub[$shadowKey]
                 }
 
                 $payload = [ordered]@{
@@ -235,29 +440,26 @@ try {
                     runtime          = $runtime
                     execution        = $execution
                     now              = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')
-                } | ConvertTo-Json -Depth 5
+                } | ConvertTo-Json -Depth 8
                 Send-Response $stream '200 OK' 'application/json; charset=utf-8' ($utf8.GetBytes($payload))
                 continue
             }
 
             if ($path -eq '/live_ms2.json') {
                 if (-not $liveJson -or -not (Test-Path -LiteralPath $liveJson)) {
-                    Send-Response $stream '503 Service Unavailable' 'application/json; charset=utf-8' ($utf8.GetBytes('{"status":"waiting","reason":"live_ms2.json not found","real_submit_allowed":false}'))
+                    Send-Response $stream '503 Service Unavailable' 'application/json; charset=utf-8' ($utf8.GetBytes('{"status":"waiting","reason":"live_ms2.json not found","stale_reason":"MISSING_PAYLOAD","real_submit_allowed":false,"live_values_available":false,"data_conflict":true}'))
                     continue
                 }
 
                 $LIVE_JSON_MAX_AGE_SECONDS = 60
-
                 $liveItem = Get-Item -LiteralPath $liveJson
                 $fileAgeSeconds = ((Get-Date) - $liveItem.LastWriteTime).TotalSeconds
-
                 $payloadAgeSeconds = [double]::PositiveInfinity
                 $updatedAtRaw = $null
-
+                $liveObj = $null
                 try {
                     $liveObj = Read-JsonUtf8 $liveJson
                     $updatedAtRaw = [string]$liveObj.updated_at
-
                     if (-not [string]::IsNullOrWhiteSpace($updatedAtRaw)) {
                         $cleanUpdatedAt = $updatedAtRaw -replace '\s+JST\s*$',''
                         $parsedUpdatedAt = Get-Date $cleanUpdatedAt -ErrorAction Stop
@@ -265,27 +467,12 @@ try {
                     }
                 } catch {
                     $payloadAgeSeconds = [double]::PositiveInfinity
+                    $liveObj = $null
                 }
 
-                $liveFresh = (
-                    $fileAgeSeconds -ge 0 -and
-                    $fileAgeSeconds -le $LIVE_JSON_MAX_AGE_SECONDS -and
-                    $payloadAgeSeconds -ge 0 -and
-                    $payloadAgeSeconds -le $LIVE_JSON_MAX_AGE_SECONDS
-                )
-
-                if (-not $liveFresh) {
-                    $stalePayload = [ordered]@{
-                        status                  = 'stale'
-                        reason                  = 'live_ms2.json freshness threshold exceeded'
-                        max_age_seconds         = $LIVE_JSON_MAX_AGE_SECONDS
-                        file_age_seconds        = [Math]::Round($fileAgeSeconds, 1)
-                        payload_age_seconds     = if ([double]::IsInfinity($payloadAgeSeconds)) { $null } else { [Math]::Round($payloadAgeSeconds, 1) }
-                        updated_at              = $updatedAtRaw
-                        real_submit_allowed     = $false
-                        live_values_available   = $false
-                    } | ConvertTo-Json -Depth 4
-
+                $rejection = Get-LivePriceRejection -LiveObj $liveObj -FileAgeSeconds $fileAgeSeconds -PayloadAgeSeconds $payloadAgeSeconds -UpdatedAtRaw $updatedAtRaw -FileMtime $liveItem.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss') -MaxAgeSeconds $LIVE_JSON_MAX_AGE_SECONDS
+                if ($null -ne $rejection) {
+                    $stalePayload = $rejection | ConvertTo-Json -Depth 6
                     Send-Response $stream '503 Service Unavailable' 'application/json; charset=utf-8' ($utf8.GetBytes($stalePayload))
                     continue
                 }
@@ -306,7 +493,8 @@ try {
             $fullPath = Join-Path $RepoRoot $relative
             $resolvedFull = [IO.Path]::GetFullPath($fullPath)
             $resolvedRoot = [IO.Path]::GetFullPath($RepoRoot)
-            if (-not $resolvedFull.StartsWith($resolvedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
+            if (-not $resolvedFull.StartsWith($resolvedRoot, $ordinalIgnoreCase)) {
                 Send-Response $stream '400 Bad Request' 'text/plain; charset=utf-8' ($utf8.GetBytes('Bad path'))
                 continue
             }

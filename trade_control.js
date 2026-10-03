@@ -98,6 +98,31 @@
       :"ブローカー建玉は未接続です。『0件』ではありません。現在のAI Cockpitは実発注を許可していません。",cls);
   }
 
+  function shadowEngineHtml(exec){
+    const allowed=["RUNNING","PAUSED_FAIL_CLOSED","RECOVERING","STOPPED"];
+    const raw=String(exec?.shadow_engine_state||"STOPPED");
+    const shown=allowed.includes(raw)?raw:"PAUSED_FAIL_CLOSED";
+    const ops=exec?.shadow_ops?.daily||null;
+    const incident=exec?.shadow_latest_incident||null;
+    const num=(value)=>Number.isFinite(Number(value))?String(value):"—";
+    const uptime=ops&&Number.isFinite(Number(ops.shadow_uptime_ratio))?(Math.round(Number(ops.shadow_uptime_ratio)*1000)/10)+"%":"—";
+    const foot=incident
+      ? String(incident.occurrence_at||"—")+" "+String(incident.error_code||"障害")+" → "+String(incident.shadow_impact||"—")+" / 無効化 "+num(incident.invalidated_signal_count)+" / 復旧 "+String(incident.recovery_mode||"未復旧")
+      : "画面を閉じていてもコントローラ配下のAI SHADOWは継続します。状態ファイルが無い、古い、読めないときはRUNNINGにしません。";
+    return metricCard("AI SHADOW",shown,[
+      ["エンジン",shown],
+      ["理由",exec?.shadow_engine_reason||(exec?"":"状態取得不能")],
+      ["仮想建玉",Number.isFinite(Number(exec?.shadow_open_observation_count))?String(exec.shadow_open_observation_count)+"件":"—"],
+      ["日次エラー",num(ops?.error_count)],
+      ["停止時間",ops&&Number.isFinite(Number(ops.total_downtime_seconds))?String(ops.total_downtime_seconds)+"秒":"—"],
+      ["稼働率",uptime],
+      ["鮮度異常",num(ops?.freshness_anomaly_count)],
+      ["価格不一致",num(ops?.price_mismatch_count)],
+      ["自動復旧",num(ops?.auto_recovery_count)],
+      ["手動対応",num(ops?.manual_response_count)]
+    ],foot,shown==="RUNNING"?"long":"block");
+  }
+
   function ensureSummarySection(pane,tab){
     let section=pane.querySelector(":scope > .cc-tab-owner-summary");
     if(section)return section;
@@ -151,13 +176,14 @@
     const exec=health?.execution||null,runtime=health?.runtime||null;
     panes.forEach(p=>{
       const box=p.querySelector(":scope > .cc-tab-owner-summary [data-execution-control]");
-      if(box)box.innerHTML=executionHtml(exec,runtime);
+      if(box)box.innerHTML=executionHtml(exec,runtime)+shadowEngineHtml(exec);
     });
 
     const overview=document.getElementById("owner-control-overview");
     if(overview){
       overview.innerHTML=
         executionHtml(exec,runtime)+
+        shadowEngineHtml(exec)+
         metricCard("実績データの分類","TRACE",[
           ["総履歴",rows.length+"件"],["未分類",unclassified+"件"],["分類済み",Math.max(0,rows.length-unclassified)+"件"]
         ],"今後の仮想/Shadow取引は cockpit_tab を必須化して、どのタブの取引か追跡します。",unclassified?"block":"wait");
