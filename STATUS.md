@@ -63,6 +63,10 @@ AI SHADOW はブラウザや index.html の開閉では止まらない。V9 Cont
 
 OWNER ACTION PENDING / HOLD。追加の Owner コマンドは出していない。PID 43904、表示中のダイアログ、Workbook、XLL、Registry は維持する。Event ID 300 は表示の記録であり原因ではない。この HEAD の Controller は Owner PC で未起動で、02:22:51 の起動は identity 失敗のまま AI SHADOW に未到達。ライブの MS2 / RSS 受け入れは実機のまま残る。
 
+## 100億PROJECT 再基準化の草案（2026-10-03、main未マージ）
+
+2026-10-03 の監査を入力に、旧 `docs/AI_COCKPIT_MASTER_SPEC.md` は残したまま `docs/AI_COCKPIT_MASTER_SPEC_VNEXT.md` を追加した。P0 は MarketSpeed II から Strategy Input までの実市場データ。一般 Excel との共存と、OfficeFileCache / Rules / Recovery / OAlerts / Event ID 300 / DisabledItems の追加調査は止めた。G0–G6 は `docs/P0_ACCEPTANCE_MATRIX.md`。照合は `scripts/p0_market_io_acceptance.py`。合成 fixture は `NOT_LIVE` であり、ライブ PASS ではない。G0 と G1 は OWNER ACTION PENDING。`real_submit_allowed=false`。Owner 介入時間は、この草案ではゼロ。
+
 ## システム概要
 
 - リポジトリ: infoyuusuke-afk/trade-cockpit（GitHub Pages: https://infoyuusuke-afk.github.io/trade-cockpit/）
