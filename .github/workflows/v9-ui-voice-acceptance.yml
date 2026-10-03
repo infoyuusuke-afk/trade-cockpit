@@ -20,10 +20,12 @@ on:
       - "downloads/RESTORE_CANONICAL_WORKBOOK_RECOVERY_V9.ps1"
       - "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_V9.ps1"
       - "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_STORE_V9.ps1"
+      - "downloads/DIAGNOSE_CANONICAL_DISABLED_SCOPE_V9.ps1"
       - "tests/test_v9_excel_identity_probe.py"
       - "tests/test_v9_workbook_recovery_registry.py"
       - "tests/test_v9_serious_error_diagnostic.py"
       - "tests/test_v9_serious_error_store.py"
+      - "tests/test_v9_disabled_scope.py"
       - "downloads/RUN_AI_COCKPIT_V9.ps1"
       - "downloads/STOP_AI_COCKPIT_V9.ps1"
       - "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
@@ -59,6 +61,7 @@ jobs:
       - run: python3 -m unittest discover -s tests -p "test_v9_workbook_recovery_registry.py"
       - run: python3 -m unittest discover -s tests -p "test_v9_serious_error_diagnostic.py"
       - run: python3 -m unittest discover -s tests -p "test_v9_serious_error_store.py"
+      - run: python3 -m unittest discover -s tests -p "test_v9_disabled_scope.py"
       - run: node --check voice_client.js
       - run: node --check card_table_adapter.js
       - run: node --check opportunity_radar.js
@@ -85,6 +88,7 @@ jobs:
             "downloads/RESTORE_CANONICAL_WORKBOOK_RECOVERY_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_STORE_V9.ps1",
+            "downloads/DIAGNOSE_CANONICAL_DISABLED_SCOPE_V9.ps1",
             "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
             "downloads/RUN_AI_COCKPIT_V9.ps1",
             "downloads/STOP_AI_COCKPIT_V9.ps1",
@@ -212,7 +216,8 @@ jobs:
             "downloads/CLEAR_CANONICAL_WORKBOOK_RECOVERY_V9.ps1",
             "downloads/RESTORE_CANONICAL_WORKBOOK_RECOVERY_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_V9.ps1",
-            "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_STORE_V9.ps1"
+            "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_STORE_V9.ps1",
+            "downloads/DIAGNOSE_CANONICAL_DISABLED_SCOPE_V9.ps1"
           )
           $messages = New-Object System.Collections.Generic.List[string]
           foreach ($file in $files) {
@@ -297,6 +302,27 @@ jobs:
           }
           if (($store -join "`n").IndexOf("PROOF judgment=session_list", $ordinal) -lt 0) {
             throw "serious-error store did not prove session_list"
+          }
+      - name: Canonical disabled-list scope selftest
+        shell: powershell
+        run: |
+          $ordinal = [StringComparison]::Ordinal
+          $scope = @(& .\downloads\DIAGNOSE_CANONICAL_DISABLED_SCOPE_V9.ps1 -SelfTest)
+          $scope | ForEach-Object { Write-Output $_ }
+          if (($scope -join "`n").IndexOf("SELFTEST PASS", $ordinal) -lt 0) {
+            throw "disabled-list scope selftest failed"
+          }
+          if (($scope -join "`n").IndexOf("PROOF judgment=not_in_disabled_lists", $ordinal) -lt 0) {
+            throw "disabled-list scope did not prove not_in_disabled_lists"
+          }
+          if (($scope -join "`n").IndexOf("PROOF judgment=located_disabled_list", $ordinal) -lt 0) {
+            throw "disabled-list scope did not prove located_disabled_list"
+          }
+          if (($scope -join "`n").IndexOf("PROOF mru=flags_clear", $ordinal) -lt 0) {
+            throw "disabled-list scope did not prove mru flags_clear"
+          }
+          if (($scope -join "`n").IndexOf("PROOF mru=flags_set", $ordinal) -lt 0) {
+            throw "disabled-list scope did not prove mru flags_set"
           }
       - name: Excel identity probe hard-timeout selftest
         # Windows PowerShell 5.1 is the acceptance shell. The Ubuntu
