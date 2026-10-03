@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-04 07:01:11 JST",
+  "updated_at": "2026-10-04 07:03:30 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -44366,8 +44366,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-10-04T07:00:25+09:00",
-    "decision_at": "2026-10-04T07:00:25+09:00",
+    "generated_at": "2026-10-04T07:02:41+09:00",
+    "decision_at": "2026-10-04T07:02:41+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -51718,7 +51718,7 @@
     "fx_source": "世界の株価リアルタイムチャート",
     "fx_observed_at": "2026-10-04T05:59:00+09:00",
     "statement_study": {
-      "updated_at": "2026-10-04 07:01:03 JST",
+      "updated_at": "2026-10-04 07:03:22 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -55768,7 +55768,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-10-04 07:00:54 JST",
+    "credit_supply_updated_at": "2026-10-04 07:03:06 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -60131,26 +60131,6 @@
       "technical_score": 30
     },
     {
-      "name": "安川電機（6506）",
-      "date": "2026-10-09",
-      "price": 4806.0,
-      "plan": {
-        "entry": 4795,
-        "stop": 4710,
-        "target1": 4925,
-        "target2": 4985,
-        "risk": 85,
-        "tick": 5
-      },
-      "source": "JPX",
-      "expectation_score": 64,
-      "raw_expectation_score": 64,
-      "hurdle_risk": 0,
-      "score_coverage": 10,
-      "score_detail": "決算前テクニカル 64/100／コンセンサス警戒 0/100（−0.0点）",
-      "technical_score": 64
-    },
-    {
       "name": "エービーシー・マート（2670）",
       "date": "2026-10-07",
       "price": 2666.5,
@@ -60169,6 +60149,26 @@
       "score_coverage": 100,
       "score_detail": "予想EPS成長 -5.8%／EPS予想幅 4.1%／予想売上成長 +50.3%／過去4回サプライズ平均 +2.0%／予想修正 上0／下4／決算前テクニカル 30/100／コンセンサス警戒 42/100（−11.8点）",
       "technical_score": 30
+    },
+    {
+      "name": "安川電機（6506）",
+      "date": "2026-10-09",
+      "price": 4806.0,
+      "plan": {
+        "entry": 4795,
+        "stop": 4710,
+        "target1": 4925,
+        "target2": 4985,
+        "risk": 85,
+        "tick": 5
+      },
+      "source": "JPX",
+      "expectation_score": 28,
+      "raw_expectation_score": 37,
+      "hurdle_risk": 32,
+      "score_coverage": 100,
+      "score_detail": "予想EPS成長 -17.0%／EPS予想幅 6.2%／予想売上成長 +7.3%／過去4回サプライズ平均 -8.1%／予想修正 上0／下3／決算前テクニカル 64/100／コンセンサス警戒 32/100（−9.0点）",
+      "technical_score": 64
     }
   ],
   "themes": [
@@ -73090,14 +73090,14 @@
   ],
   "morning_snapshot": {
     "date": "2026-10-04",
-    "fixed_at": "2026-10-04 07:01:11 JST",
+    "fixed_at": "2026-10-04 07:03:30 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-10-04",
-    "fixed_at": "2026-10-04 07:01:58 JST",
+    "fixed_at": "2026-10-04 07:04:11 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
@@ -73126,7 +73126,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-04 07:01:58 JST",
+        "signal_time": "2026-10-04 07:04:11 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73155,7 +73155,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-04 07:01:58 JST",
+        "signal_time": "2026-10-04 07:04:11 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73184,7 +73184,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-04 07:01:58 JST",
+        "signal_time": "2026-10-04 07:04:11 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73213,7 +73213,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-04 07:01:58 JST",
+        "signal_time": "2026-10-04 07:04:11 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73242,7 +73242,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-04 07:01:58 JST",
+        "signal_time": "2026-10-04 07:04:11 JST",
         "source": "morning_snapshot"
       },
       {
@@ -73271,7 +73271,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-04 07:01:58 JST",
+        "signal_time": "2026-10-04 07:04:11 JST",
         "source": "morning_snapshot"
       }
     ]
