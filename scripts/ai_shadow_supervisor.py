@@ -10,6 +10,8 @@ only prices and signals the collector already published. They are not broker
 fills and not Fill Model v0.1 fills.
 
 real_submit_allowed is always false on every record this module writes.
+An unresolved excel_identity, workbook_open, or excel_process_exit incident
+blocks new virtual entries and exits. A fresh price file does not clear it.
 """
 from __future__ import annotations
 
@@ -570,12 +572,40 @@ def _contaminated(engine: dict, opened_at: str, now: datetime) -> bool:
     return False
 
 
+_EXCEL_OPEN_COMPONENTS = frozenset({"excel_identity", "workbook_open", "excel_process_exit"})
+
+
+def unresolved_excel_open_incident(engine: dict) -> dict | None:
+    """The workbook open is unverified while one of these incidents is unresolved.
+
+    The controller writes them into the same incidents log. A later payload
+    that looks fresh must not open or close a virtual observation, and must
+    not set recovery_at. real_submit_allowed stays false.
+    """
+    found = None
+    for incident in engine.get("incidents") or []:
+        if not isinstance(incident, dict):
+            continue
+        if incident.get("recovery_at"):
+            continue
+        if incident.get("component") not in _EXCEL_OPEN_COMPONENTS:
+            continue
+        found = incident
+    return found
+
+
 def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir: Path, recovery_mode: str = "AUTO") -> dict:
     """One supervisor cycle. Fail-closed input never creates or closes a virtual trade."""
     engine["state"]["real_submit_allowed"] = False
     if engine["state"].get("resume_blocked") is True:
         engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
         engine["state"]["reason"] = engine["state"].get("block_reason") or "UNKNOWN_STATE"
+        _persist(engine, data_dir)
+        return engine
+    if unresolved_excel_open_incident(engine) is not None:
+        engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
+        engine["state"]["reason"] = "EXCEL_OPEN_UNVERIFIED"
+        engine["state"]["real_submit_allowed"] = False
         _persist(engine, data_dir)
         return engine
 

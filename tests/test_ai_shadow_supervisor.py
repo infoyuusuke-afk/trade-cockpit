@@ -258,6 +258,55 @@ class CycleTests(unittest.TestCase):
         self.assertTrue(blocked["state"]["resume_blocked"])
         self.assertEqual(blocked["state"]["reason"], "STATE_MISSING")
 
+    def test_unresolved_excel_open_blocks_virtual_entry_on_fresh_prices(self):
+        incident = {
+            "record_class": "operations_incident",
+            "incident_id": "inc-excel",
+            "occurrence_at": NOW.isoformat(),
+            "recovery_at": None,
+            "component": "excel_identity",
+            "error_code": "EXCEL_IDENTITY_PROBE_FAILED",
+            "symptom": "unmatched: rot_moniker,hwnd,pid,command_line,parent / last_error=ROT_MONIKER_NOT_REGISTERED",
+            "suspected_cause": "ROT_MONIKER_NOT_REGISTERED",
+            "confirmed_cause": None,
+            "fail_closed": True,
+            "real_submit_allowed": False,
+            "real_trade_impact": "NONE_REAL_SUBMIT_REMAINS_FALSE",
+            "shadow_impact": "STOPPED",
+            "invalidated_signal_count": None,
+            "recovery_mode": None,
+            "recurrence_key": "excel_identity|EXCEL_IDENTITY_PROBE_FAILED",
+            "recurrence_count": 1,
+        }
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        engine = sup.load_engine(self.data, now=NOW)
+        fresh = _live([_row()])
+        sup.apply_cycle(engine, fresh, sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+        self.assertEqual(engine["state"]["state"], "PAUSED_FAIL_CLOSED")
+        self.assertEqual(engine["state"]["reason"], "EXCEL_OPEN_UNVERIFIED")
+        self.assertFalse(engine["state"]["real_submit_allowed"])
+        self.assertEqual(engine["ledger"], [])
+        self.assertEqual(engine["open_positions"], {})
+        self.assertIsNone(engine["incidents"][0]["recovery_at"])
+
+        incident["component"] = "workbook_open"
+        incident["recovery_at"] = None
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        (self.data / "state.json").unlink()
+        blocked = sup.load_engine(self.data, now=NOW)
+        sup.apply_cycle(blocked, fresh, sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+        self.assertEqual(blocked["state"]["reason"], "EXCEL_OPEN_UNVERIFIED")
+        self.assertEqual(blocked["ledger"], [])
+
+        incident["recovery_at"] = NOW.isoformat()
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        (self.data / "state.json").unlink()
+        resumed = sup.load_engine(self.data, now=NOW)
+        sup.apply_cycle(resumed, fresh, sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+        self.assertEqual(resumed["state"]["state"], "RUNNING")
+        self.assertEqual(len(resumed["open_positions"]), 1)
+        self.assertFalse(resumed["state"]["real_submit_allowed"])
+
     def test_workbook_open_crash_incident_does_not_open_a_trade(self):
         incident = {
             "record_class": "operations_incident",
