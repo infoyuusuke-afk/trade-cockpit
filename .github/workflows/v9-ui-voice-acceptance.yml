@@ -22,12 +22,14 @@ on:
       - "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_STORE_V9.ps1"
       - "downloads/DIAGNOSE_CANONICAL_DISABLED_SCOPE_V9.ps1"
       - "downloads/DIAGNOSE_CANONICAL_LOCAL_CACHE_V9.ps1"
+      - "downloads/DIAGNOSE_CANONICAL_CACHE_ROLE_V9.ps1"
       - "tests/test_v9_excel_identity_probe.py"
       - "tests/test_v9_workbook_recovery_registry.py"
       - "tests/test_v9_serious_error_diagnostic.py"
       - "tests/test_v9_serious_error_store.py"
       - "tests/test_v9_disabled_scope.py"
       - "tests/test_v9_local_cache.py"
+      - "tests/test_v9_cache_role.py"
       - "downloads/RUN_AI_COCKPIT_V9.ps1"
       - "downloads/STOP_AI_COCKPIT_V9.ps1"
       - "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
@@ -65,6 +67,7 @@ jobs:
       - run: python3 -m unittest discover -s tests -p "test_v9_serious_error_store.py"
       - run: python3 -m unittest discover -s tests -p "test_v9_disabled_scope.py"
       - run: python3 -m unittest discover -s tests -p "test_v9_local_cache.py"
+      - run: python3 -m unittest discover -s tests -p "test_v9_cache_role.py"
       - run: node --check voice_client.js
       - run: node --check card_table_adapter.js
       - run: node --check opportunity_radar.js
@@ -93,6 +96,7 @@ jobs:
             "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_STORE_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_DISABLED_SCOPE_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_LOCAL_CACHE_V9.ps1",
+            "downloads/DIAGNOSE_CANONICAL_CACHE_ROLE_V9.ps1",
             "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
             "downloads/RUN_AI_COCKPIT_V9.ps1",
             "downloads/STOP_AI_COCKPIT_V9.ps1",
@@ -222,7 +226,8 @@ jobs:
             "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_STORE_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_DISABLED_SCOPE_V9.ps1",
-            "downloads/DIAGNOSE_CANONICAL_LOCAL_CACHE_V9.ps1"
+            "downloads/DIAGNOSE_CANONICAL_LOCAL_CACHE_V9.ps1",
+            "downloads/DIAGNOSE_CANONICAL_CACHE_ROLE_V9.ps1"
           )
           $messages = New-Object System.Collections.Generic.List[string]
           foreach ($file in $files) {
@@ -349,6 +354,27 @@ jobs:
           }
           if (($cache -join "`n").IndexOf("PROOF order=recovery_before_cache", $ordinal) -lt 0) {
             throw "local Office cache did not prove recovery_before_cache"
+          }
+      - name: Canonical cache role selftest
+        shell: powershell
+        run: |
+          $ordinal = [StringComparison]::Ordinal
+          $role = @(& .\downloads\DIAGNOSE_CANONICAL_CACHE_ROLE_V9.ps1 -SelfTest)
+          $role | ForEach-Object { Write-Output $_ }
+          if (($role -join "`n").IndexOf("SELFTEST PASS", $ordinal) -lt 0) {
+            throw "cache role selftest failed"
+          }
+          if (($role -join "`n").IndexOf("PROOF judgment=name_only_not_crash_marker", $ordinal) -lt 0) {
+            throw "cache role did not prove name_only_not_crash_marker"
+          }
+          if (($role -join "`n").IndexOf("PROOF judgment=located_crash_needle", $ordinal) -lt 0) {
+            throw "cache role did not prove located_crash_needle"
+          }
+          if (($role -join "`n").IndexOf("PROOF judgment=name_only_cache_incomplete", $ordinal) -lt 0) {
+            throw "cache role did not prove name_only_cache_incomplete"
+          }
+          if (($role -join "`n").IndexOf("PROOF role=recent_name", $ordinal) -lt 0) {
+            throw "cache role did not prove recent_name"
           }
       - name: Excel identity probe hard-timeout selftest
         # Windows PowerShell 5.1 is the acceptance shell. The Ubuntu
