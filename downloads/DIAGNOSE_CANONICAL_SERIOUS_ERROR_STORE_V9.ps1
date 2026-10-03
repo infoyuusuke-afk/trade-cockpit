@@ -200,7 +200,7 @@ function Get-JudgmentAlso {
 }
 
 function Get-JudgmentLimit {
-    param([string]$Primary, [string]$AdsState, [string]$RegistryTruncated, [string]$ValuePartial)
+    param([string]$Primary, [string]$AdsState, [string]$RegistryTruncated, [string]$ValuePartial, [string]$FileTruncated)
     $flags = New-Object System.Collections.Generic.List[string]
     if (($Primary -eq 'recent_list_not_crash_marker') -or ($Primary -eq 'not_located')) {
         if ($AdsState -eq 'unavailable') { [void]$flags.Add('ads_unreadable') }
@@ -208,8 +208,46 @@ function Get-JudgmentLimit {
     if ($Primary -eq 'recent_list_not_crash_marker') { [void]$flags.Add('recent_list_is_not_crash_marker') }
     if ($RegistryTruncated -eq '1') { [void]$flags.Add('registry_truncated') }
     if ($ValuePartial -eq '1') { [void]$flags.Add('registry_value_partial') }
+    if ($FileTruncated -eq '1') { [void]$flags.Add('file_scan_truncated') }
     if ($flags.Count -eq 0) { return 'none' }
     return [string]::Join(',', $flags.ToArray())
+}
+
+function Test-PriorityRegistryName {
+    param([string]$Name)
+    if ([string]::IsNullOrEmpty($Name)) { return $false }
+    if ($Name.Equals('Options', $script:OrdinalIgnore)) { return $true }
+    if ($Name.Equals('File MRU', $script:OrdinalIgnore)) { return $true }
+    if ($Name.Equals('User MRU', $script:OrdinalIgnore)) { return $true }
+    if ($Name.Equals('Place MRU', $script:OrdinalIgnore)) { return $true }
+    if ($Name.IndexOf('MRU', $script:OrdinalIgnore) -ge 0) { return $true }
+    return $false
+}
+
+function Get-RegistryChildOrder {
+    param([string[]]$Names)
+    $first = New-Object System.Collections.Generic.List[string]
+    $rest = New-Object System.Collections.Generic.List[string]
+    foreach ($name in $Names) {
+        $text = [string]$name
+        if (Test-PriorityRegistryName -Name $text) { [void]$first.Add($text) }
+        else { [void]$rest.Add($text) }
+    }
+    foreach ($name in $rest) { [void]$first.Add($name) }
+    return $first.ToArray()
+}
+
+function Get-RegistryHeadLabel {
+    param([string]$Relative)
+    if ([string]::IsNullOrEmpty($Relative)) { return 'root' }
+    $head = $Relative
+    $cut = $Relative.IndexOf('\', $script:Ordinal)
+    if ($cut -gt 0) { $head = $Relative.Substring(0, $cut) }
+    if ($head.Equals('User MRU', $script:OrdinalIgnore)) { return 'User_MRU' }
+    if ($head.Equals('File MRU', $script:OrdinalIgnore)) { return 'File_MRU' }
+    if ($head.Equals('Place MRU', $script:OrdinalIgnore)) { return 'Place_MRU' }
+    if ($head.Equals('Options', $script:OrdinalIgnore)) { return 'Options' }
+    return (Get-StoreLabel -Name $head)
 }
 
 function Get-WriteRelation {
@@ -270,9 +308,16 @@ function Invoke-StoreSelfTest {
     Assert-Case 'judge_also' ((Get-JudgmentAlso -Roles $mixed -Primary 'session_list') -eq 'recent_list_not_crash_marker')
     $needleRoles = @('recent_list', 'crash_needle')
     Assert-Case 'judge_needle' ((Get-JudgmentPrimary -Roles $needleRoles) -eq 'located_crash_needle')
-    Assert-Case 'limit_mru' ((Get-JudgmentLimit -Primary 'recent_list_not_crash_marker' -AdsState 'none' -RegistryTruncated '0' -ValuePartial '0') -eq 'recent_list_is_not_crash_marker')
-    Assert-Case 'limit_ads' ((Get-JudgmentLimit -Primary 'not_located' -AdsState 'unavailable' -RegistryTruncated '0' -ValuePartial '0') -eq 'ads_unreadable')
-    Assert-Case 'limit_clear' ((Get-JudgmentLimit -Primary 'session_list' -AdsState 'ok' -RegistryTruncated '0' -ValuePartial '0') -eq 'none')
+    Assert-Case 'limit_mru' ((Get-JudgmentLimit -Primary 'recent_list_not_crash_marker' -AdsState 'none' -RegistryTruncated '0' -ValuePartial '0' -FileTruncated '0') -eq 'recent_list_is_not_crash_marker')
+    Assert-Case 'limit_ads' ((Get-JudgmentLimit -Primary 'not_located' -AdsState 'unavailable' -RegistryTruncated '0' -ValuePartial '0' -FileTruncated '0') -eq 'ads_unreadable')
+    Assert-Case 'limit_trunc' ((Get-JudgmentLimit -Primary 'not_located' -AdsState 'none' -RegistryTruncated '1' -ValuePartial '0' -FileTruncated '0') -eq 'registry_truncated')
+    Assert-Case 'limit_file' ((Get-JudgmentLimit -Primary 'not_located' -AdsState 'none' -RegistryTruncated '0' -ValuePartial '0' -FileTruncated '1') -eq 'file_scan_truncated')
+    Assert-Case 'limit_clear' ((Get-JudgmentLimit -Primary 'session_list' -AdsState 'ok' -RegistryTruncated '0' -ValuePartial '0' -FileTruncated '0') -eq 'none')
+    $childOrder = @(Get-RegistryChildOrder -Names @('Security', 'User MRU', 'Options', 'AddInLoadTimes'))
+    Assert-Case 'order_mru' ([string]$childOrder[0] -eq 'User MRU')
+    Assert-Case 'order_options' ([string]$childOrder[1] -eq 'Options')
+    Assert-Case 'order_rest' ([string]$childOrder[2] -eq 'Security')
+    Assert-Case 'head_mru' ((Get-RegistryHeadLabel -Relative 'User MRU\Live\File MRU') -eq 'User_MRU')
     Assert-Case 'stream_main' ((Get-StreamSuffix -Name '::$DATA') -eq ':')
     Assert-Case 'stream_zone' ((Get-StreamSuffix -Name ':Zone.Identifier:$DATA') -eq ':Zone.Identifier')
     $before = Get-WriteRelation -WriteTicks 10 -WriteKnown $true -StartTicks 20 -StartKnown $true
@@ -490,7 +535,7 @@ function Add-DirectoryHits {
     $seen = 0
     try {
         foreach ($file in [IO.Directory]::EnumerateFiles($Directory)) {
-            if ($seen -ge $Budget) { return $seen }
+            if ($seen -ge $Budget) { return (0 - $seen) }
             $seen = $seen + 1
             $useArea = $Area
             if ([string]$file.EndsWith('.xlb', $script:OrdinalIgnore)) { $useArea = 'xlb' }
@@ -515,14 +560,26 @@ function Get-AutoRecoverClass {
 function Add-ExcelRegistryStores {
     param($Opened, [string]$Relative, $Hits, $State, [string]$FullPath, [int]$Depth)
     if ($null -eq $Opened) { return }
-    if ($Depth -gt 5) { return }
-    if ([int]$State.Values -ge 400 -or [int]$State.Keys -ge 80) { $State.Truncated = '1'; return }
+    if ($Depth -gt 8) {
+        $State.Truncated = '1'
+        if ([string]::IsNullOrEmpty([string]$State.StoppedAt)) { $State.StoppedAt = Get-RegistryHeadLabel -Relative $Relative }
+        return
+    }
+    if ([int]$State.Values -ge 2000 -or [int]$State.Keys -ge 400) {
+        $State.Truncated = '1'
+        if ([string]::IsNullOrEmpty([string]$State.StoppedAt)) { $State.StoppedAt = Get-RegistryHeadLabel -Relative $Relative }
+        return
+    }
     if (Test-SkippedRegistry -Relative $Relative) { return }
     $State.Keys = [int]$State.Keys + 1
     $names = @()
     try { $names = @($Opened.GetValueNames()) } catch { return }
     foreach ($name in $names) {
-        if ([int]$State.Values -ge 400) { $State.Truncated = '1'; return }
+        if ([int]$State.Values -ge 2000) {
+            $State.Truncated = '1'
+            if ([string]::IsNullOrEmpty([string]$State.StoppedAt)) { $State.StoppedAt = Get-RegistryHeadLabel -Relative $Relative }
+            return
+        }
         $State.Values = [int]$State.Values + 1
         $valueName = [string]$name
         if ($valueName.IndexOf('Password', $script:OrdinalIgnore) -ge 0) { continue }
@@ -565,7 +622,7 @@ function Add-ExcelRegistryStores {
         [void]$Hits.Add((New-StoreHit -Area $area -Name $label -Leaf ([int]$hit.Leaf) -Path ([int]$hit.Path) -Needle ([int]$hit.Needle) -Relation 'registry' -Role $role))
     }
     $children = @()
-    try { $children = @($Opened.GetSubKeyNames()) } catch { return }
+    try { $children = @(Get-RegistryChildOrder -Names @($Opened.GetSubKeyNames())) } catch { return }
     foreach ($child in $children) {
         $childName = [string]$child
         $next = $childName
@@ -646,16 +703,19 @@ function Invoke-LiveStore {
     try { $local = [string][Environment]::GetFolderPath('LocalApplicationData') } catch { $local = '' }
     $excelDir = ''
     if ($roaming.Length -gt 0) { $excelDir = $roaming + '\Microsoft\Excel' }
+    $scanDirs = New-Object System.Collections.Generic.List[object]
     if ($excelDir.Length -gt 0) {
-        [void](Add-DirectoryHits -Hits $hits -Area 'excel_appdata' -Directory $excelDir -FullPath $fullPath -StartTicks $startTicks -StartKnown $startKnown -Budget 80)
-        [void](Add-DirectoryHits -Hits $hits -Area 'xlstart' -Directory ($excelDir + '\XLSTART') -FullPath $fullPath -StartTicks $startTicks -StartKnown $startKnown -Budget 40)
-        [void](Add-DirectoryHits -Hits $hits -Area 'autorecover' -Directory ($excelDir + '\AutoRecover') -FullPath $fullPath -StartTicks $startTicks -StartKnown $startKnown -Budget 40)
+        [void]$scanDirs.Add((New-Object psobject -Property @{ Area = 'excel_appdata'; Directory = $excelDir; Budget = 80 }))
+        [void]$scanDirs.Add((New-Object psobject -Property @{ Area = 'xlstart'; Directory = ($excelDir + '\XLSTART'); Budget = 40 }))
+        [void]$scanDirs.Add((New-Object psobject -Property @{ Area = 'autorecover'; Directory = ($excelDir + '\AutoRecover'); Budget = 40 }))
     }
     if ($local.Length -gt 0) {
-        [void](Add-DirectoryHits -Hits $hits -Area 'unsaved' -Directory ($local + '\Microsoft\Office\UnsavedFiles') -FullPath $fullPath -StartTicks $startTicks -StartKnown $startKnown -Budget 40)
+        [void]$scanDirs.Add((New-Object psobject -Property @{ Area = 'unsaved'; Directory = ($local + '\Microsoft\Office\UnsavedFiles'); Budget = 40 }))
     }
     $autoClass = 'unreadable'
-    $registryState = New-Object psobject -Property @{ Values = 0; Keys = 0; Truncated = '0'; Partial = '0' }
+    $registryState = New-Object psobject -Property @{ Values = 0; Keys = 0; Truncated = '0'; Partial = '0'; StoppedAt = '' }
+    $fileSeen = 0
+    $fileTruncated = '0'
     $excelKey = $null
     try {
         $excelKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Software\Microsoft\Office\16.0\Excel', $false)
@@ -677,7 +737,7 @@ function Invoke-LiveStore {
             if ($autoClass -eq 'custom') {
                 $customDir = $autoRaw
                 try { $customDir = [Environment]::ExpandEnvironmentVariables($autoRaw) } catch { $customDir = $autoRaw }
-                [void](Add-DirectoryHits -Hits $hits -Area 'autorecover' -Directory $customDir -FullPath $fullPath -StartTicks $startTicks -StartKnown $startKnown -Budget 40)
+                [void]$scanDirs.Add((New-Object psobject -Property @{ Area = 'autorecover'; Directory = $customDir; Budget = 40 }))
             }
             Add-ExcelRegistryStores -Opened $excelKey -Relative '' -Hits $hits -State $registryState -FullPath $fullPath -Depth 0
         }
@@ -686,6 +746,15 @@ function Invoke-LiveStore {
         $registryState.Truncated = '1'
     } finally {
         if ($null -ne $excelKey) { $excelKey.Dispose() }
+    }
+    foreach ($scan in $scanDirs) {
+        $seen = [int](Add-DirectoryHits -Hits $hits -Area ([string]$scan.Area) -Directory ([string]$scan.Directory) -FullPath $fullPath -StartTicks $startTicks -StartKnown $startKnown -Budget ([int]$scan.Budget))
+        if ($seen -lt 0) {
+            $fileTruncated = '1'
+            $fileSeen = $fileSeen + (0 - $seen)
+        } else {
+            $fileSeen = $fileSeen + $seen
+        }
     }
     $roles = New-Object System.Collections.Generic.List[string]
     $printed = 0
@@ -699,11 +768,15 @@ function Invoke-LiveStore {
     }
     $primary = Get-JudgmentPrimary -Roles $roles
     $also = Get-JudgmentAlso -Roles $roles -Primary $primary
-    $limit = Get-JudgmentLimit -Primary $primary -AdsState $adsState -RegistryTruncated ([string]$registryState.Truncated) -ValuePartial ([string]$registryState.Partial)
+    $limit = Get-JudgmentLimit -Primary $primary -AdsState $adsState -RegistryTruncated ([string]$registryState.Truncated) -ValuePartial ([string]$registryState.Partial) -FileTruncated $fileTruncated
     Write-Output ('ADS_STATUS=' + $adsState)
     Write-Output ('AUTORECOVER_PATH=' + $autoClass)
+    Write-Output ('FILE_SEEN=' + $fileSeen.ToString())
+    Write-Output ('FILE_TRUNCATED=' + $fileTruncated)
     Write-Output ('REGISTRY_VALUES=' + ([int]$registryState.Values).ToString())
+    Write-Output ('REGISTRY_KEYS=' + ([int]$registryState.Keys).ToString())
     Write-Output ('REGISTRY_TRUNCATED=' + [string]$registryState.Truncated)
+    Write-Output ('REGISTRY_STOPPED_AT=' + [string]$registryState.StoppedAt)
     Write-Output ('STORE_HIT_COUNT=' + $hits.Count.ToString())
     Write-Output ('STORE_PRINTED=' + $printed.ToString())
     Write-Output ('JUDGMENT_STORE=' + $primary)
