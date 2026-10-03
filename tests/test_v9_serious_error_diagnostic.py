@@ -80,6 +80,11 @@ class SeriousErrorDiagnosticTests(unittest.TestCase):
         self.assertNotIn("KEY_SET_VALUE", text)
         self.assertNotIn("SetForegroundWindow", text)
         self.assertIn("Test-SurveyRowWanted", text)
+        self.assertIn("Get-TouchScope", text)
+        self.assertIn("parent_touch_without_surviving_value", text)
+        self.assertIn("AutomationElement", text)
+        self.assertIn("WRITER_PID=unavailable", text)
+        self.assertNotIn("InvokePattern", text)
         self.assertIn("Select-DialogHit", text)
         self.assertIn("crash_query_unreadable", text)
         self.assertIn("NoMatchingEventsFound", text)
@@ -132,6 +137,8 @@ class SeriousErrorDiagnosticTests(unittest.TestCase):
             "PROOF dialog_needle=1",
             "PROOF dialog_child=1",
             "PROOF survey_owner=1",
+            "PROOF touch=parent_touch_without_surviving_value",
+            "PROOF touch_delay=3",
             "PROOF backup=returned",
             "PROOF backup=stayed_clear",
             "PROOF backup=new_record",

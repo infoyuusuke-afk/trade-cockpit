@@ -254,6 +254,9 @@ jobs:
           if (($diag -join "`n").IndexOf("PROOF dialog_child=1", $ordinal) -lt 0) {
             throw "serious-error diagnostic did not prove dialog_child"
           }
+          if (($diag -join "`n").IndexOf("PROOF touch=parent_touch_without_surviving_value", $ordinal) -lt 0) {
+            throw "serious-error diagnostic did not prove the resiliency touch scope"
+          }
       - name: Excel identity probe hard-timeout selftest
         # Windows PowerShell 5.1 is the acceptance shell. The Ubuntu
         # structural job covers the same -IdentityProbeSelfTest entry

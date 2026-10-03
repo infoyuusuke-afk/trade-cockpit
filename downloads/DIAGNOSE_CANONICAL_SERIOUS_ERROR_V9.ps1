@@ -9,6 +9,8 @@ param(
 # match, a workbook rewrite, the RSS xll load, and a crash after launch.
 # The window survey also reads the foreground window, GUI-thread active
 # window, owner chain, dialog-class children, and desktop match.
+# A Resiliency last-write after Excel start is classified by which key
+# moved and which values still exist. UI Automation names are read only.
 # This file does not delete registry values, stop Excel, click a dialog,
 # or modify the workbook or the RSS xll. -SelfTest does not read HKCU,
 # processes, or the workbook.
@@ -996,6 +998,26 @@ function Invoke-DiagnoseSelfTest {
     Assert-Case 'survey_root' (Test-SurveyRowWanted -Row $rootRow -FocusPid 43904)
     Assert-Case 'survey_office' (Test-SurveyRowWanted -Row $officeRow -FocusPid 43904)
     Assert-Case 'survey_needle' (Test-SurveyRowWanted -Row $needleRow -FocusPid 43904)
+    $ownerPattern = Get-TouchScope -RootFlag '1' -ChildFlags @('0', '0') -RootValueCount 0
+    Assert-Case 'touch_parent_only' ($ownerPattern -eq 'parent_touch_without_surviving_value')
+    $rootValues = Get-TouchScope -RootFlag '1' -ChildFlags @('0', '0') -RootValueCount 2
+    Assert-Case 'touch_root_values' ($rootValues -eq 'root_values_present')
+    $childTouch = Get-TouchScope -RootFlag '1' -ChildFlags @('1', '0') -RootValueCount 2
+    Assert-Case 'touch_child_key' ($childTouch -eq 'child_key_write')
+    $noTouch = Get-TouchScope -RootFlag '0' -ChildFlags @('0') -RootValueCount 4
+    Assert-Case 'touch_none' ($noTouch -eq 'no_touch')
+    $unreadTouch = Get-TouchScope -RootFlag '1' -ChildFlags @('unreadable') -RootValueCount 0
+    Assert-Case 'touch_unread' ($unreadTouch -eq 'unreadable')
+    $rootOnlyRow = New-Object psobject -Property @{ Key = $script:ResiliencyRoot; ValueName = 'StartupCheck'; Kind = 'Binary'; Length = 4; Sha = 'abc'; Verdict = 'none'; HasXll = '0' }
+    $childOnlyRow = New-Object psobject -Property @{ Key = ($script:ResiliencyRoot + '\DisabledItems'); ValueName = '1664DDA6'; Kind = 'Binary'; Length = 8; Sha = 'def'; Verdict = 'none'; HasXll = '0' }
+    $rootHits = @(Get-RootValueRows -Rows @($rootOnlyRow, $childOnlyRow))
+    Assert-Case 'root_value_count' ($rootHits.Count -eq 1)
+    Assert-Case 'subkey_value_count' ((Get-SubkeyValueCount -SubName 'DisabledItems' -Rows @($rootOnlyRow, $childOnlyRow)) -eq 1)
+    $delay = Get-TouchDelaySeconds -StartUtc '2026-10-03T02:22:51Z' -WriteUtc '2026-10-03T02:22:54Z'
+    Assert-Case 'touch_delay' ([int]$delay.Seconds -eq 3)
+    Assert-Case 'touch_after' ([string]$delay.Correlation -eq 'after_excel_start')
+    $before = Get-TouchDelaySeconds -StartUtc '2026-10-03T02:22:51Z' -WriteUtc '2026-10-02T14:09:01Z'
+    Assert-Case 'touch_before' ([string]$before.Correlation -eq 'before_excel_start')
     Assert-Case 'label_hex' ((Get-SafeLabel -Name '1664DDA6') -eq '1664DDA6')
     Assert-Case 'label_path' ((Get-SafeLabel -Name 'C:\Secret.xlsx') -eq 'len_14')
     $root = Get-BackupRoot
@@ -1018,6 +1040,9 @@ function Invoke-DiagnoseSelfTest {
     Write-Output 'PROOF dialog_owner=1'
     Write-Output 'PROOF dialog_child=1'
     Write-Output 'PROOF survey_owner=1'
+    Write-Output 'PROOF touch=parent_touch_without_surviving_value'
+    Write-Output 'PROOF touch=root_values_present'
+    Write-Output 'PROOF touch_delay=3'
     Write-Output 'PROOF reason=crash_query_unreadable'
     Write-Output 'PROOF backup=returned'
     Write-Output 'PROOF backup=stayed_clear'
@@ -1211,6 +1236,80 @@ function Get-KeyWriteFlag {
         Flag = $flag
         WriteUtc = $writeUtc
     })
+}
+
+function Get-TouchScope {
+    param([string]$RootFlag, $ChildFlags, [int]$RootValueCount)
+    if ($RootFlag -eq 'unreadable') { return 'unreadable' }
+    $childUnread = $false
+    $childWrite = $false
+    foreach ($flag in @(Get-FlatRows -Rows $ChildFlags)) {
+        $value = [string]$flag
+        if ($value -eq '1') { $childWrite = $true }
+        elseif ($value -eq 'unreadable') { $childUnread = $true }
+    }
+    if ($childUnread -and -not $childWrite) { return 'unreadable' }
+    if ($childWrite) { return 'child_key_write' }
+    if ($RootFlag -eq '1' -and $RootValueCount -gt 0) { return 'root_values_present' }
+    if ($RootFlag -eq '1') { return 'parent_touch_without_surviving_value' }
+    return 'no_touch'
+}
+
+function Get-RootValueRows {
+    param($Rows)
+    $list = New-Object System.Collections.Generic.List[object]
+    foreach ($row in @(Get-FlatRows -Rows $Rows)) {
+        if ($null -eq $row) { continue }
+        if ([string]::Equals([string]$row.Key, $script:ResiliencyRoot, $script:OrdinalIgnore)) {
+            [void]$list.Add($row)
+        }
+    }
+    return $list.ToArray()
+}
+
+function Get-SubkeyValueCount {
+    param([string]$SubName, $Rows)
+    $prefix = $script:ResiliencyRoot + '\' + $SubName
+    $count = 0
+    foreach ($row in @(Get-FlatRows -Rows $Rows)) {
+        if ($null -eq $row) { continue }
+        $key = [string]$row.Key
+        if ([string]::Equals($key, $prefix, $script:OrdinalIgnore)) { $count = $count + 1; continue }
+        $childPrefix = $prefix + '\'
+        if ($key.StartsWith($childPrefix, $script:OrdinalIgnore)) { $count = $count + 1 }
+    }
+    return $count
+}
+
+function Convert-UtcStamp {
+    param([string]$Text)
+    if ([string]::IsNullOrEmpty($Text)) { return $null }
+    $core = $Text
+    if ($core.EndsWith('Z', $script:Ordinal) -and $core.Length -gt 1) {
+        $core = $core.Substring(0, $core.Length - 1)
+    }
+    $styles = [Globalization.DateTimeStyles]::AssumeUniversal
+    $culture = [Globalization.CultureInfo]::InvariantCulture
+    return [DateTime]::ParseExact($core, 'yyyy-MM-ddTHH:mm:ss', $culture, $styles)
+}
+
+function Get-TouchDelaySeconds {
+    param([string]$StartUtc, [string]$WriteUtc)
+    $info = New-Object psobject -Property @{ Seconds = -1; Correlation = 'unreadable' }
+    if ([string]::IsNullOrEmpty($StartUtc) -or [string]::IsNullOrEmpty($WriteUtc)) { return $info }
+    try {
+        $start = Convert-UtcStamp -Text $StartUtc
+        $write = Convert-UtcStamp -Text $WriteUtc
+        if ($null -eq $start -or $null -eq $write) { return $info }
+        $delta = [int][Math]::Floor(($write - $start).TotalSeconds)
+        $info.Seconds = $delta
+        if ($delta -ge 0) { $info.Correlation = 'after_excel_start' }
+        else { $info.Correlation = 'before_excel_start' }
+    } catch {
+        $info.Seconds = -1
+        $info.Correlation = 'unreadable'
+    }
+    return $info
 }
 
 function Find-WorkbookPath {
@@ -2411,6 +2510,148 @@ function Get-DialogEvidence {
     return $info
 }
 
+function Read-UiTree {
+    param($Element, $List, $Best, [int]$Depth, $State, [int64]$Hwnd, [int]$PidValue)
+    if ($null -eq $Element) { return }
+    if ($Depth -gt 8) { return }
+    if ([int]$State.Examined -ge 250) { return }
+    $State.Examined = [int]$State.Examined + 1
+    $name = ''
+    $className = ''
+    $control = ''
+    try { $name = [string]$Element.Current.Name } catch { $name = '' }
+    try { $className = [string]$Element.Current.ClassName } catch { $className = '' }
+    try { $control = [string]$Element.Current.ControlType.ProgrammaticName } catch { $control = '' }
+    $hasLeaf = '0'
+    $hasSerious = '0'
+    $hasReopen = '0'
+    $needle = 0
+    if (Test-SeriousErrorText -Text $name) { $needle = 1 }
+    if ($name.IndexOf($script:Leaf, $script:OrdinalIgnore) -ge 0) { $hasLeaf = '1' }
+    if ($name.IndexOf($script:SeriousErrorJa, $script:Ordinal) -ge 0) { $hasSerious = '1' }
+    if ($name.IndexOf($script:ReopenDocumentJa, $script:Ordinal) -ge 0) { $hasReopen = '1' }
+    $store = ($needle -eq 1) -or (($name.Length -gt 0) -and ($List.Count -lt 40))
+    if ($store) {
+        [void]$List.Add((New-Object psobject -Property @{
+            Hwnd = $Hwnd
+            Pid = $PidValue
+            ClassName = $className
+            Control = $control
+            NameLen = $name.Length
+            Needle = $needle
+        }))
+    }
+    if ($needle -eq 1) {
+        $score = 1
+        if (($hasLeaf -eq '1') -and ($hasSerious -eq '1')) { $score = 3 }
+        if ($score -gt [int]$Best.Score) {
+            $Best.Score = $score
+            $Best.Needle = '1'
+            $Best.Hwnd = $Hwnd
+            $Best.Pid = $PidValue
+            $Best.Class = $className
+            $Best.HasLeaf = $hasLeaf
+            $Best.HasSerious = $hasSerious
+            $Best.HasReopen = $hasReopen
+            if ($score -ge 3) { $Best.Match = 'canonical_serious_error' }
+            else { $Best.Match = 'serious_error_needle' }
+        }
+    }
+    if ([int]$State.Examined -ge 250) { return }
+    try {
+        $walker = [System.Windows.Automation.TreeWalker]::ControlViewWalker
+        $child = $walker.GetFirstChild($Element)
+        $seen = 0
+        while (($null -ne $child) -and ($seen -lt 50) -and ([int]$State.Examined -lt 250)) {
+            Read-UiTree -Element $child -List $List -Best $Best -Depth ($Depth + 1) -State $State -Hwnd $Hwnd -PidValue $PidValue
+            $child = $walker.GetNextSibling($child)
+            $seen = $seen + 1
+        }
+    } catch {}
+}
+
+function Get-UiSurvey {
+    param($Dialog, [int]$FocusPid, [int64]$FallbackHwnd)
+    $result = New-Object psobject -Property @{
+        Status = 'unreadable'
+        Apartment = 'unreadable'
+        Examined = 0
+        Named = 0
+        Needle = '0'
+        Hwnd = [int64]0
+        Pid = 0
+        Class = ''
+        HasLeaf = '0'
+        HasSerious = '0'
+        HasReopen = '0'
+        Match = 'none'
+        Nodes = @()
+    }
+    try { $result.Apartment = [string][Threading.Thread]::CurrentThread.GetApartmentState() } catch { $result.Apartment = 'unreadable' }
+    if (-not [string]::Equals([string]$result.Apartment, 'STA', $script:Ordinal)) {
+        $result.Status = 'not_sta'
+        return $result
+    }
+    $targets = New-Object System.Collections.Generic.List[object]
+    $seenHwnd = New-Object System.Collections.Generic.List[string]
+    if ($FallbackHwnd -gt 0) {
+        [void]$targets.Add((New-Object psobject -Property @{ Hwnd = $FallbackHwnd; Pid = $FocusPid }))
+        [void]$seenHwnd.Add($FallbackHwnd.ToString())
+    }
+    foreach ($row in @($Dialog.Rows)) {
+        if ($null -eq $row) { continue }
+        if ($targets.Count -ge 4) { break }
+        $className = [string]$row.Class
+        $wanted = (Test-DialogClassName -ClassName $className) -or ($className -eq 'XLMAIN')
+        if (-not $wanted) { continue }
+        $hwndText = ([int64]$row.Hwnd).ToString()
+        if ($seenHwnd.Contains($hwndText)) { continue }
+        [void]$seenHwnd.Add($hwndText)
+        [void]$targets.Add((New-Object psobject -Property @{ Hwnd = [int64]$row.Hwnd; Pid = [int]$row.Pid }))
+    }
+    try {
+        Add-Type -AssemblyName UIAutomationClient -ErrorAction Stop
+    } catch {
+        $result.Status = 'assembly_missing'
+        return $result
+    }
+    $nodes = New-Object System.Collections.Generic.List[object]
+    $best = New-Object psobject -Property @{
+        Score = 0
+        Needle = '0'
+        Hwnd = [int64]0
+        Pid = 0
+        Class = ''
+        HasLeaf = '0'
+        HasSerious = '0'
+        HasReopen = '0'
+        Match = 'none'
+    }
+    $state = New-Object psobject -Property @{ Examined = 0 }
+    foreach ($target in $targets) {
+        if ([int]$state.Examined -ge 250) { break }
+        $hwnd = [int64]$target.Hwnd
+        if ($hwnd -le 0) { continue }
+        try {
+            $root = [System.Windows.Automation.AutomationElement]::FromHandle(([IntPtr]$hwnd))
+            Read-UiTree -Element $root -List $nodes -Best $best -Depth 0 -State $state -Hwnd $hwnd -PidValue ([int]$target.Pid)
+        } catch {}
+    }
+    $result.Status = 'ok'
+    $result.Examined = [int]$state.Examined
+    $result.Named = $nodes.Count
+    $result.Needle = [string]$best.Needle
+    $result.Hwnd = [int64]$best.Hwnd
+    $result.Pid = [int]$best.Pid
+    $result.Class = [string]$best.Class
+    $result.HasLeaf = [string]$best.HasLeaf
+    $result.HasSerious = [string]$best.HasSerious
+    $result.HasReopen = [string]$best.HasReopen
+    $result.Match = [string]$best.Match
+    $result.Nodes = $nodes.ToArray()
+    return $result
+}
+
 function Invoke-LiveDiagnose {
     param([int]$FocusPid)
     Write-Output 'ACTION=diagnose_canonical_serious_error_readonly'
@@ -2541,6 +2782,8 @@ function Invoke-LiveDiagnose {
     }
 
     $keyFlags = New-Object System.Collections.Generic.List[string]
+    $childWriteFlags = New-Object System.Collections.Generic.List[string]
+    $rootFlag = $null
     if ($registryOk -and $null -ne $snap -and [string]$snap.Absent -eq '0') {
         $rootFlag = Get-KeyWriteFlag -Relative $script:ResiliencyRoot -StartTicks ([int64]$xll.StartTicks) -StartKnown $startKnown
         Write-Output ('KEY_WRITE name=' + $rootFlag.Name + ' after_start=' + $rootFlag.Flag + ' write_utc=' + $rootFlag.WriteUtc)
@@ -2548,9 +2791,28 @@ function Invoke-LiveDiagnose {
         foreach ($sub in @($snap.Subkeys)) {
             $rel = $script:ResiliencyRoot + '\' + [string]$sub
             $flag = Get-KeyWriteFlag -Relative $rel -StartTicks ([int64]$xll.StartTicks) -StartKnown $startKnown
+            $subCount = Get-SubkeyValueCount -SubName ([string]$sub) -Rows $rows
             Write-Output ('KEY_WRITE name=' + $flag.Name + ' after_start=' + $flag.Flag + ' write_utc=' + $flag.WriteUtc)
+            Write-Output ('SUBKEY_AUDIT name=' + $flag.Name + ' values=' + $subCount.ToString() + ' after_start=' + $flag.Flag)
             [void]$keyFlags.Add([string]$flag.Flag)
+            [void]$childWriteFlags.Add([string]$flag.Flag)
         }
+        $rootRows = @(Get-RootValueRows -Rows $rows)
+        Write-Output ('ROOT_VALUE_COUNT=' + $rootRows.Count.ToString())
+        $rootShown = 0
+        foreach ($rootValue in $rootRows) {
+            if ($null -eq $rootValue) { continue }
+            if ($rootShown -ge 20) { break }
+            Write-Output ('ROOT_VALUE name=' + (Get-SafeLabel -Name ([string]$rootValue.ValueName)) + ' kind=' + [string]$rootValue.Kind + ' len=' + ([int]$rootValue.Length).ToString() + ' verdict=' + [string]$rootValue.Verdict + ' xll=' + [string]$rootValue.HasXll + ' sha=' + [string]$rootValue.Sha)
+            $rootShown = $rootShown + 1
+        }
+        if ($rootRows.Count -gt 20) { Write-Output 'ROOT_VALUE_TRUNCATED=1' }
+        $touchScope = Get-TouchScope -RootFlag ([string]$rootFlag.Flag) -ChildFlags $childWriteFlags.ToArray() -RootValueCount $rootRows.Count
+        $touchDelay = Get-TouchDelaySeconds -StartUtc ([string]$xll.StartUtc) -WriteUtc ([string]$rootFlag.WriteUtc)
+        Write-Output ('TOUCH_SCOPE=' + $touchScope)
+        Write-Output ('TOUCH_DELAY_SEC=' + ([int]$touchDelay.Seconds).ToString())
+        Write-Output ('TOUCH_CORRELATION=' + [string]$touchDelay.Correlation)
+        Write-Output 'WRITER_PID=unavailable'
     }
     $keyWrite = 'unreadable'
     if ($keyFlags.Count -gt 0) { $keyWrite = Get-AggregateFlag -Parts $keyFlags.ToArray() }
@@ -2706,6 +2968,67 @@ function Invoke-LiveDiagnose {
         }
     }
     if ($windowPrinted -ge 40) { Write-Output 'WINDOW_CANDIDATE_TRUNCATED=1' }
+    $dialogPrinted = 0
+    foreach ($row in @($dialog.Rows)) {
+        if ($null -eq $row) { continue }
+        if ($dialogPrinted -ge 12) { break }
+        if (-not (Test-DialogClassName -ClassName ([string]$row.Class))) { continue }
+        $procName = Get-SafeLabel -Name ([string]$row.Process)
+        if ($procName -eq 'empty' -or $procName -eq 'unreadable') {
+            try { $procName = Get-SafeLabel -Name ([string](Get-Process -Id ([int]$row.Pid) -ErrorAction Stop).ProcessName) } catch { $procName = 'unreadable' }
+        }
+        Write-Output ('DIALOG_CANDIDATE hwnd=' + ([int64]$row.Hwnd).ToString() + ' pid=' + ([int]$row.Pid).ToString() + ' tid=' + ([int]$row.Tid).ToString() + ' process=' + $procName + ' owner_pid=' + ([int]$row.OwnerPid).ToString() + ' root_pid=' + ([int]$row.RootPid).ToString() + ' class=' + (Get-SafeLabel -Name ([string]$row.Class)) + ' direct_len=' + ([int]$row.DirectLen).ToString() + ' wm_len=' + ([int]$row.SentLen).ToString() + ' needle=' + ([int]$row.Needle).ToString())
+        $dialogPrinted = $dialogPrinted + 1
+    }
+    Write-Output ('DIALOG_CANDIDATE_COUNT=' + $dialogPrinted.ToString())
+    $win32Visible = [string]$dialog.Visible
+    $ui = $null
+    try { $ui = Get-UiSurvey -Dialog $dialog -FocusPid $FocusPid -FallbackHwnd ([int64]$xll.Hwnd) } catch { $ui = $null }
+    if ($null -eq $ui) {
+        $ui = New-Object psobject -Property @{
+            Status = 'unreadable'
+            Apartment = 'unreadable'
+            Examined = 0
+            Named = 0
+            Needle = '0'
+            Hwnd = [int64]0
+            Pid = 0
+            Class = ''
+            HasLeaf = '0'
+            HasSerious = '0'
+            HasReopen = '0'
+            Match = 'none'
+            Nodes = @()
+        }
+    }
+    Write-Output ('UIA_STATUS=' + (Get-SafeLabel -Name ([string]$ui.Status)))
+    Write-Output ('UIA_APARTMENT=' + (Get-SafeLabel -Name ([string]$ui.Apartment)))
+    Write-Output ('UIA_EXAMINED=' + ([int]$ui.Examined).ToString())
+    Write-Output ('UIA_NAMED=' + ([int]$ui.Named).ToString())
+    Write-Output ('UIA_NEEDLE=' + [string]$ui.Needle)
+    $uiaShown = 0
+    foreach ($node in @($ui.Nodes)) {
+        if ($null -eq $node) { continue }
+        if ($uiaShown -ge 8 -and [int]$node.Needle -ne 1) { continue }
+        if ($uiaShown -ge 12) { break }
+        Write-Output ('UIA_NODE hwnd=' + ([int64]$node.Hwnd).ToString() + ' pid=' + ([int]$node.Pid).ToString() + ' class=' + (Get-SafeLabel -Name ([string]$node.ClassName)) + ' control=' + (Get-SafeLabel -Name ([string]$node.Control)) + ' name_len=' + ([int]$node.NameLen).ToString() + ' needle=' + ([int]$node.Needle).ToString())
+        $uiaShown = $uiaShown + 1
+    }
+    Write-Output ('WIN32_DIALOG_VISIBLE=' + $win32Visible)
+    if (([string]$ui.Needle -eq '1') -and ([string]$dialog.Visible -ne '1')) {
+        $dialog.Visible = '1'
+        $dialog.Source = 'uia'
+        $dialog.Match = [string]$ui.Match
+        $dialog.Pid = [int]$ui.Pid
+        $dialog.Hwnd = [int64]$ui.Hwnd
+        $dialog.Class = [string]$ui.Class
+        $dialog.HasLeaf = [string]$ui.HasLeaf
+        $dialog.HasSerious = [string]$ui.HasSerious
+        $dialog.HasReopen = [string]$ui.HasReopen
+        $dialog.OwnerLinked = '0'
+        $dialog.SameProcess = '0'
+        if (($FocusPid -gt 0) -and ([int]$ui.Pid -eq $FocusPid)) { $dialog.SameProcess = '1' }
+    }
     Write-Output ('DIALOG_VISIBLE=' + [string]$dialog.Visible)
     Write-Output ('DIALOG_PID=' + ([int]$dialog.Pid).ToString())
     Write-Output ('DIALOG_PROCESS_HWND=' + ([int64]$dialog.Hwnd).ToString())
