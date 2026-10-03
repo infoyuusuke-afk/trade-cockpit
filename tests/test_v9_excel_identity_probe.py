@@ -89,6 +89,8 @@ class ExcelIdentityProbeContract(unittest.TestCase):
         diagnostics = self.controller.split("function Get-CanonicalWorkbookOpenDiagnostics", 1)[1].split("function Complete-ExcelProbeResult", 1)[0]
         self.assertIn("DocumentRecovery", diagnostics)
         self.assertIn("DisabledItems", diagnostics)
+        self.assertIn("disabled_item_name_match = $false", diagnostics)
+        self.assertIn('disabled_count_meaning = "count_only"', diagnostics)
         self.assertIn("has_vba_project", diagnostics)
         self.assertIn("external_link_count", diagnostics)
         self.assertIn("marketspeed_addin_present", diagnostics)

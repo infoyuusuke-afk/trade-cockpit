@@ -609,6 +609,8 @@ function Get-CanonicalWorkbookOpenDiagnostics([string]$WorkbookPath, [string]$La
         zip_error = ""
         document_recovery_match_count = 0
         disabled_item_count = 0
+        disabled_item_name_match = $false
+        disabled_count_meaning = "count_only"
         startup_item_count = 0
         addin_leaf_names = @()
         marketspeed_addin_present = $false
