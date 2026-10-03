@@ -12,6 +12,9 @@ fills and not Fill Model v0.1 fills.
 real_submit_allowed is always false on every record this module writes.
 An unresolved excel_identity, workbook_open, or excel_process_exit incident
 blocks new virtual entries and exits. A fresh price file does not clear it.
+An unreadable manual_recovery.json does the same. Two entry rows for one
+ticker, or both sides of one ticker, are a data conflict and open nothing.
+A ledger row that carries a quantity is not replayed.
 """
 from __future__ import annotations
 
@@ -226,6 +229,32 @@ def position_key(ticker: str, side: str) -> str:
     return ticker + "|" + side
 
 
+def _entry_board_conflict(payload) -> bool:
+    """Two entry rows for one key, or both sides of one ticker, are not one observation.
+
+    The payload-level data_conflict flag can still be false. Either shape is
+    unverified, so the cycle must not open or close a virtual observation.
+    """
+    rows = payload.get("all_targets") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        return False
+    seen_keys: set[str] = set()
+    sides: dict[str, set[str]] = {}
+    for row in rows:
+        candidate = entry_candidate(row) if isinstance(row, dict) else None
+        if candidate is None:
+            continue
+        key = position_key(candidate["ticker"], candidate["side"])
+        if key in seen_keys:
+            return True
+        seen_keys.add(key)
+        held = sides.setdefault(candidate["ticker"], set())
+        held.add(candidate["side"])
+        if len(held) > 1:
+            return True
+    return False
+
+
 def _rationale(row_like: dict) -> str:
     parts = [str(row_like.get("signal") or ""), str(row_like.get("strategy") or "")]
     parts.append("entry " + str(row_like.get("entry_price")))
@@ -311,7 +340,7 @@ def _read_jsonl(path: Path) -> tuple[list[dict] | None, str]:
 def replay_ledger(events: list[dict]) -> tuple[dict, str]:
     open_positions: dict[str, dict] = {}
     for index, event in enumerate(events, start=1):
-        if event.get("seq") != index or event.get("real_submit_allowed") is not False:
+        if event.get("seq") != index or event.get("real_submit_allowed") is not False or event.get("quantity") is not None:
             return {}, "LEDGER_CORRUPT"
         kind = event.get("record_class")
         if kind != "shadow_observation":
@@ -378,6 +407,9 @@ def load_engine(data_dir: Path, *, now: datetime) -> dict:
     engine["state"]["real_submit_allowed"] = False
     if ledger_error or incident_error:
         _block(engine, ledger_error or incident_error)
+        return engine
+    if incidents and not _operations_incidents_only(incidents):
+        _block(engine, "INCIDENT_LOG_UNSAFE")
         return engine
     if state is None and ledger_path.exists():
         _block(engine, "STATE_MISSING")
@@ -553,6 +585,8 @@ def _next_event(engine: dict, *, now: datetime, event_type: str, payload: dict) 
         "pricing": "collector_published_price_not_fill_model",
     }
     record.update(payload)
+    record["real_submit_allowed"] = False
+    record["quantity"] = None
     return record
 
 
@@ -608,6 +642,16 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
         engine["state"]["real_submit_allowed"] = False
         _persist(engine, data_dir)
         return engine
+    if recovery_mode == "UNREADABLE":
+        engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
+        engine["state"]["reason"] = "RECOVERY_FILE_UNREADABLE"
+        engine["state"]["real_submit_allowed"] = False
+        if not engine["state"].get("open_incident_id"):
+            _open_incident(engine, data_dir, now=now, reasons=["RECOVERY_FILE_UNREADABLE"], invalidated=0)
+        _persist(engine, data_dir)
+        return engine
+    if verdict.get("ok") and _entry_board_conflict(payload):
+        verdict = {"ok": False, "reasons": ["DATA_CONFLICT"], "real_submit_allowed": False}
 
     fingerprint = board_fingerprint(payload) if isinstance(payload, dict) else "missing-payload"
     seen = set(engine["state"].get("seen_board_fingerprints") or [])
@@ -745,6 +789,12 @@ def _persist(engine: dict, data_dir: Path) -> None:
     _write_json(data_dir / "state.json", engine["state"])
 
 
+def _plain_int(value) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
+
+
 def _clip_duration(incident: dict, start: datetime, end: datetime) -> int:
     opened = parse_timestamp(incident.get("occurrence_at"), start.tzinfo)
     if opened is None:
@@ -771,7 +821,11 @@ def summarize_operations(engine: dict, *, now: datetime) -> dict:
         incidents = [item for item in engine["incidents"] if parse_timestamp(item.get("occurrence_at"), now.tzinfo) and parse_timestamp(item.get("occurrence_at"), now.tzinfo) >= begin]
         downtime = sum(_clip_duration(item, begin, now) for item in engine["incidents"])
         recovered = [item for item in incidents if item.get("recovery_at")]
-        durations = [item.get("duration_seconds") for item in recovered if isinstance(item.get("duration_seconds"), int)]
+        durations = []
+        for item in recovered:
+            parsed = _plain_int(item.get("duration_seconds"))
+            if parsed is not None:
+                durations.append(parsed)
         freshness = sum(1 for item in incidents if item.get("error_code") in {"STALE_OR_MISSING_TIMESTAMP", "INSUFFICIENT_COVERAGE", "MISSING_PAYLOAD"})
         mismatches = sum(1 for item in incidents if item.get("error_code") in {"PRICE_SOURCE_MISMATCH", "WRONG_SOURCE_WORKBOOK", "WRONG_SYMBOL_MAPPING", "DATA_CONFLICT", "CACHED_OR_SAMPLE_PAYLOAD"})
         auto_count = sum(1 for item in recovered if item.get("recovery_mode") == "AUTO")
@@ -788,7 +842,8 @@ def summarize_operations(engine: dict, *, now: datetime) -> dict:
         recurrence = {}
         for item in incidents:
             key = item.get("recurrence_key") or ""
-            recurrence[key] = max(int(item.get("recurrence_count") or 0), recurrence.get(key, 0))
+            count = _plain_int(item.get("recurrence_count"))
+            recurrence[key] = max(0 if count is None else count, recurrence.get(key, 0))
         return {
             "label": label,
             "error_count": len(incidents),
@@ -962,10 +1017,15 @@ def read_manual_recovery(data_dir: Path) -> str:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return "AUTO"
-    if isinstance(payload, dict) and payload.get("action") == "acknowledge":
+        return "UNREADABLE"
+    if not isinstance(payload, dict):
+        return "UNREADABLE"
+    action = payload.get("action")
+    if action == "acknowledge":
         return "MANUAL"
-    return "AUTO"
+    if action in (None, "auto"):
+        return "AUTO"
+    return "UNREADABLE"
 
 
 def run_once(data_dir: Path, live_path: Path, status_path: Path, *, now: datetime | None = None) -> dict:

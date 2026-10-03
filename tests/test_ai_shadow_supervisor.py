@@ -256,7 +256,7 @@ class CycleTests(unittest.TestCase):
         (self.data / "incidents.jsonl").write_text(json.dumps(unlocked) + "\n", encoding="utf-8")
         blocked = sup.load_engine(self.data, now=NOW)
         self.assertTrue(blocked["state"]["resume_blocked"])
-        self.assertEqual(blocked["state"]["reason"], "STATE_MISSING")
+        self.assertEqual(blocked["state"]["reason"], "INCIDENT_LOG_UNSAFE")
 
     def test_unresolved_excel_open_blocks_virtual_entry_on_fresh_prices(self):
         incident = {
@@ -345,6 +345,269 @@ class CycleTests(unittest.TestCase):
         resume_at = NOW + timedelta(seconds=12)
         sup.apply_cycle(engine, fresh, sup.assess_live_payload(fresh, file_mtime=resume_at, now=resume_at), now=resume_at, data_dir=self.data, recovery_mode=sup.read_manual_recovery(self.data))
         self.assertEqual(engine["incidents"][-1]["recovery_mode"], "MANUAL")
+
+    def test_unsafe_incident_beside_state_does_not_open_a_trade(self):
+        state = sup.fresh_state(now=NOW)
+        state["state"] = "RUNNING"
+        state["last_seq"] = 0
+        (self.data / "state.json").write_text(json.dumps(state), encoding="utf-8")
+        (self.data / "ledger.jsonl").write_text("", encoding="utf-8")
+        incident = {
+            "record_class": "operations_incident",
+            "incident_id": "inc-unlocked",
+            "occurrence_at": NOW.isoformat(),
+            "recovery_at": None,
+            "component": "ai_shadow",
+            "error_code": "STALE_OR_MISSING_TIMESTAMP",
+            "fail_closed": True,
+            "real_submit_allowed": True,
+            "recurrence_key": "ai_shadow|STALE_OR_MISSING_TIMESTAMP",
+            "recurrence_count": 1,
+        }
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        engine = sup.load_engine(self.data, now=NOW)
+        fresh = _live([_row()])
+        sup.apply_cycle(engine, fresh, sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+        self.assertEqual(engine["state"]["reason"], "INCIDENT_LOG_UNSAFE")
+        self.assertEqual(engine["ledger"], [])
+        self.assertEqual(engine["open_positions"], {})
+        self.assertFalse(engine["state"]["real_submit_allowed"])
+
+    def test_changed_board_does_not_open_a_second_virtual_entry(self):
+        engine = self._engine()
+        fresh = _live([_row()])
+        sup.apply_cycle(engine, fresh, sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+        later = NOW + timedelta(seconds=20)
+        changed = _live([_row(price=1510.0)], updated_at="2026-10-02 09:16:25")
+        sup.apply_cycle(engine, changed, sup.assess_live_payload(changed, file_mtime=later, now=later), now=later, data_dir=self.data)
+        entries = [event for event in engine["ledger"] if event["event_type"] == "virtual_entry"]
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(len(engine["open_positions"]), 1)
+        self.assertIsNone(entries[0]["quantity"])
+        self.assertFalse(entries[0]["real_submit_allowed"])
+
+    def test_short_exit_pnl_is_entry_minus_exit_and_stays_per_share(self):
+        engine = self._engine()
+        fresh = _live([_row(signal="空売りサイン", price=1500.0, entry_price=1500.0, stop_price=1550.0)])
+        sup.apply_cycle(engine, fresh, sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+        flat_at = NOW + timedelta(seconds=30)
+        flat = _live([_row(signal="監視", price=1400.0)], updated_at="2026-10-02 09:16:35")
+        sup.apply_cycle(engine, flat, sup.assess_live_payload(flat, file_mtime=flat_at, now=flat_at), now=flat_at, data_dir=self.data)
+        exits = [event for event in engine["ledger"] if event["event_type"] == "virtual_exit"]
+        self.assertEqual(len(exits), 1)
+        self.assertEqual(exits[0]["side"], "SHORT")
+        self.assertEqual(exits[0]["pnl_per_share_yen"], 100.0)
+        self.assertEqual(exits[0]["r_multiple"], 2.0)
+        self.assertIsNone(exits[0]["quantity"])
+        self.assertFalse(exits[0]["real_submit_allowed"])
+        self.assertEqual(exits[0]["performance_bucket"], "clean_strategy")
+        ops = sup.summarize_operations(engine, now=flat_at)
+        self.assertEqual(ops["daily"]["clean_strategy_pnl_per_share_yen"], 100.0)
+        self.assertEqual(ops["weekly"]["clean_strategy_pnl_per_share_yen"], 100.0)
+        self.assertEqual(ops["monthly"]["clean_strategy_pnl_per_share_yen"], 100.0)
+        self.assertIsNone(ops["daily"]["contaminated_pnl_per_share_yen"])
+
+    def test_weekly_window_keeps_an_exit_that_daily_drops(self):
+        engine = {"state": sup.fresh_state(now=NOW), "ledger": [], "incidents": [], "open_positions": {}}
+        engine["state"]["engine_started_at"] = (NOW - timedelta(days=10)).isoformat()
+        engine["state"]["state"] = "RUNNING"
+        old_at = NOW - timedelta(days=3)
+        engine["ledger"] = [
+            {
+                "record_class": "shadow_observation",
+                "event_type": "virtual_exit",
+                "seq": 1,
+                "at": old_at.isoformat(),
+                "real_submit_allowed": False,
+                "pnl_per_share_yen": 10.0,
+                "performance_bucket": "clean_strategy",
+                "quantity": None,
+            },
+            {
+                "record_class": "shadow_observation",
+                "event_type": "virtual_exit",
+                "seq": 2,
+                "at": NOW.isoformat(),
+                "real_submit_allowed": False,
+                "pnl_per_share_yen": -4.0,
+                "performance_bucket": "clean_strategy",
+                "quantity": None,
+            },
+        ]
+        engine["incidents"] = [{
+            "record_class": "operations_incident",
+            "occurrence_at": old_at.isoformat(),
+            "recovery_at": (old_at + timedelta(seconds=12)).isoformat(),
+            "duration_seconds": "12",
+            "recovery_mode": "AUTO",
+            "error_code": "STALE_OR_MISSING_TIMESTAMP",
+            "recurrence_key": "live_ms2|STALE_OR_MISSING_TIMESTAMP",
+            "recurrence_count": "2",
+            "fail_closed": True,
+            "real_submit_allowed": False,
+        }]
+        ops = sup.summarize_operations(engine, now=NOW)
+        self.assertEqual(ops["daily"]["clean_strategy_pnl_per_share_yen"], -4.0)
+        self.assertEqual(ops["daily"]["clean_strategy_exit_count"], 1)
+        self.assertEqual(ops["daily"]["error_count"], 0)
+        self.assertEqual(ops["weekly"]["clean_strategy_pnl_per_share_yen"], 6.0)
+        self.assertEqual(ops["weekly"]["clean_strategy_exit_count"], 2)
+        self.assertEqual(ops["weekly"]["error_count"], 1)
+        self.assertEqual(ops["weekly"]["recurrence"]["live_ms2|STALE_OR_MISSING_TIMESTAMP"], 0)
+        self.assertEqual(ops["monthly"]["clean_strategy_exit_count"], 2)
+        self.assertIsNone(ops["weekly"]["mttr_seconds"])
+
+    def test_unreadable_recovery_file_does_not_resume_an_open_incident(self):
+        engine = self._engine()
+        fresh = _live([_row()])
+        sup.apply_cycle(engine, fresh, sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+        stale = _live([_row()], updated_at="2026-10-02 08:00:00")
+        paused_at = NOW + timedelta(seconds=90)
+        sup.apply_cycle(engine, stale, sup.assess_live_payload(stale, file_mtime=paused_at, now=paused_at), now=paused_at, data_dir=self.data)
+        (self.data / "manual_recovery.json").write_text("{", encoding="utf-8")
+        self.assertEqual(sup.read_manual_recovery(self.data), "UNREADABLE")
+        recovered = _live([_row(signal="監視", price=1520.0)], updated_at="2026-10-02 09:17:48")
+        resume_at = NOW + timedelta(minutes=2)
+        sup.apply_cycle(
+            engine,
+            recovered,
+            sup.assess_live_payload(recovered, file_mtime=resume_at, now=resume_at),
+            now=resume_at,
+            data_dir=self.data,
+            recovery_mode="UNREADABLE",
+        )
+        self.assertEqual(engine["state"]["state"], "PAUSED_FAIL_CLOSED")
+        self.assertEqual(engine["state"]["reason"], "RECOVERY_FILE_UNREADABLE")
+        self.assertIsNone(engine["incidents"][-1]["recovery_at"])
+        self.assertEqual([event for event in engine["ledger"] if event["event_type"] == "virtual_exit"], [])
+        self.assertFalse(engine["state"]["real_submit_allowed"])
+
+    def test_run_once_publishes_status_without_a_browser(self):
+        live = self.data / "live_ms2.json"
+        status = self.data / "ai_shadow_status.json"
+        live.write_text(json.dumps(_live([_row()])), encoding="utf-8")
+        os_utime = __import__("os").utime
+        os_utime(live, (NOW.timestamp(), NOW.timestamp()))
+        text = (ROOT / "scripts" / "ai_shadow_supervisor.py").read_text(encoding="utf-8")
+        self.assertNotIn("card_system", text)
+        self.assertNotIn("voice_client", text)
+        self.assertNotIn("submit_shadow_order", text)
+        engine = sup.run_once(self.data, live, status, now=NOW)
+        published = json.loads(status.read_text(encoding="utf-8"))
+        self.assertTrue(published["ui_independent"])
+        self.assertFalse(published["real_submit_allowed"])
+        self.assertEqual(published["state"], "RUNNING")
+        self.assertEqual(len(engine["open_positions"]), 1)
+        sample = _live([_row()], source="sample")
+        live.write_text(json.dumps(sample), encoding="utf-8")
+        os_utime(live, (NOW.timestamp(), NOW.timestamp()))
+        blocked = sup.run_once(self.data, live, status, now=NOW + timedelta(seconds=5))
+        self.assertEqual(blocked["state"]["state"], "PAUSED_FAIL_CLOSED")
+        self.assertEqual(len(blocked["open_positions"]), 1)
+        self.assertFalse(json.loads(status.read_text(encoding="utf-8"))["real_submit_allowed"])
+        self.assertNotIn("webbrowser", text)
+
+    def test_unreadable_recovery_file_blocks_a_clean_entry(self):
+        engine = self._engine()
+        (self.data / "manual_recovery.json").write_text("{", encoding="utf-8")
+        fresh = _live([_row()])
+        sup.apply_cycle(
+            engine,
+            fresh,
+            sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW),
+            now=NOW,
+            data_dir=self.data,
+            recovery_mode="UNREADABLE",
+        )
+        self.assertEqual(engine["state"]["state"], "PAUSED_FAIL_CLOSED")
+        self.assertEqual(engine["state"]["reason"], "RECOVERY_FILE_UNREADABLE")
+        self.assertEqual([event for event in engine["ledger"] if event["event_type"] == "virtual_entry"], [])
+        self.assertEqual(engine["incidents"][-1]["error_code"], "RECOVERY_FILE_UNREADABLE")
+        self.assertTrue(engine["incidents"][-1]["fail_closed"])
+        self.assertFalse(engine["incidents"][-1]["real_submit_allowed"])
+        again = NOW + timedelta(seconds=10)
+        sup.apply_cycle(
+            engine,
+            fresh,
+            sup.assess_live_payload(fresh, file_mtime=again, now=again),
+            now=again,
+            data_dir=self.data,
+            recovery_mode="UNREADABLE",
+        )
+        self.assertEqual(len(engine["incidents"]), 1)
+        self.assertIsNone(engine["incidents"][0]["recovery_at"])
+
+    def test_opposite_sides_on_one_ticker_do_not_open(self):
+        engine = self._engine()
+        board = _live([
+            _row(signal="買いサイン"),
+            _row(signal="空売りサイン", stop_price=1550.0),
+        ])
+        sup.apply_cycle(engine, board, sup.assess_live_payload(board, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+        self.assertEqual(engine["state"]["state"], "PAUSED_FAIL_CLOSED")
+        self.assertEqual(engine["state"]["reason"], "DATA_CONFLICT")
+        self.assertEqual([event for event in engine["ledger"] if event["event_type"] == "virtual_entry"], [])
+        self.assertEqual(engine["open_positions"], {})
+        self.assertFalse(engine["state"]["real_submit_allowed"])
+        self.assertEqual(engine["incidents"][-1]["error_code"], "DATA_CONFLICT")
+
+    def test_duplicate_entry_rows_do_not_open(self):
+        engine = self._engine()
+        board = _live([_row(price=1500.0), _row(price=1510.0)])
+        sup.apply_cycle(engine, board, sup.assess_live_payload(board, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+        self.assertEqual(engine["state"]["reason"], "DATA_CONFLICT")
+        self.assertEqual(engine["open_positions"], {})
+        self.assertFalse(engine["state"]["real_submit_allowed"])
+
+    def test_ledger_quantity_is_not_replayed_as_a_position(self):
+        state = sup.fresh_state(now=NOW)
+        state["state"] = "RUNNING"
+        state["last_seq"] = 1
+        (self.data / "state.json").write_text(json.dumps(state), encoding="utf-8")
+        poisoned = {
+            "record_class": "shadow_observation",
+            "seq": 1,
+            "event_type": "virtual_entry",
+            "position_key": "285A.T|LONG",
+            "real_submit_allowed": False,
+            "quantity": 100,
+        }
+        (self.data / "ledger.jsonl").write_text(json.dumps(poisoned) + "\n", encoding="utf-8")
+        (self.data / "incidents.jsonl").write_text("", encoding="utf-8")
+        engine = sup.load_engine(self.data, now=NOW)
+        fresh = _live([_row()])
+        sup.apply_cycle(engine, fresh, sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+        self.assertEqual(engine["state"]["reason"], "LEDGER_CORRUPT")
+        self.assertEqual(engine["open_positions"], {})
+        self.assertFalse(engine["state"]["real_submit_allowed"])
+
+    def test_overlapping_downtime_stays_inside_zero_and_one(self):
+        started = NOW - timedelta(hours=1)
+        engine = {"state": sup.fresh_state(now=started), "ledger": [], "incidents": [], "open_positions": {}}
+        engine["state"]["engine_started_at"] = started.isoformat()
+        engine["incidents"] = [
+            {
+                "occurrence_at": started.isoformat(),
+                "recovery_at": NOW.isoformat(),
+                "duration_seconds": 3600,
+                "error_code": "STALE_OR_MISSING_TIMESTAMP",
+                "recurrence_key": "live_ms2|STALE_OR_MISSING_TIMESTAMP",
+                "recurrence_count": 1,
+            },
+            {
+                "occurrence_at": started.isoformat(),
+                "recovery_at": NOW.isoformat(),
+                "duration_seconds": 3600,
+                "error_code": "DATA_CONFLICT",
+                "recurrence_key": "price_source|DATA_CONFLICT",
+                "recurrence_count": 1,
+            },
+        ]
+        ops = sup.summarize_operations(engine, now=NOW)
+        self.assertEqual(ops["daily"]["shadow_uptime_ratio"], 0.0)
+        self.assertGreater(ops["daily"]["total_downtime_seconds"], 3600)
+        self.assertEqual(ops["weekly"]["shadow_uptime_ratio"], 0.0)
+        self.assertEqual(ops["monthly"]["shadow_uptime_ratio"], 0.0)
 
 
 class ContractSourceTests(unittest.TestCase):
