@@ -49,6 +49,20 @@ AI SHADOW はブラウザや index.html の開閉では止まらない。V9 Cont
 
 `scripts/ai_shadow_supervisor.py` は、安全でない incident（`INCIDENT_LOG_UNSAFE`）、読めない `manual_recovery.json`（`RECOVERY_FILE_UNREADABLE`）、数量が入った ledger（`LEDGER_CORRUPT`）、同一銘柄の両建てまたは同一キーの二重エントリー行（`DATA_CONFLICT`）では仮想エントリーも仮想EXITも増やさない。数量は常に null。損益は1株あたりで、LONG は出口−入口、SHORT は入口−出口。日次・週次・月次は status の `ops` に分け、重なった停止時間でも稼働率は 0 から 1 に収まる。文字列の duration や recurrence は集計を落とさない。ブラウザはプロセスを持たない。`run_once` は `live_ms2.json` とデータディレクトリだけを読む。`real_submit_allowed` は false のまま。Card System Tests の `renderCockpitWatchRow` 15 / 19 はこの変更に含めていない。Owner PC の Controller は起動していない。この確認はリポジトリ上のもので、稼働中の Owner PC プロセスには入っていない。
 
+## PR #292 AI SHADOW Acceptance（2026-10-03、リポジトリ確認、main未マージ）
+
+`tests/test_ai_shadow_supervisor.py` で確認した範囲。`real_submit_allowed` は false のまま。Card の `renderCockpitWatchRow` 15 / 19 は未変更。
+
+- 状態は STOPPED から始まる。安全な板で RUNNING、stale で PAUSED_FAIL_CLOSED、プロセス再読込で RECOVERING、その次の安全な板で RUNNING に戻る。
+- stale、`PRICE_SOURCE_MISMATCH`、`DATA_CONFLICT`、sample、`collector_count` なしでは、新規 virtual entry も fail-closed 中の virtual EXIT も作らない。
+- state 欠落、state が読めない、ledger の `last_seq` 不一致（短い側も長い側も）、incident 欠落、未知の状態名は自動 resume しない。短い ledger に last_seq を合わせる処理はしない。
+- 同一 board fingerprint は台帳行を増やさない。同一銘柄が2行の板は `DATA_CONFLICT` で、開いている仮想ポジションを EXIT せず、再エントリーもしない。
+- 仮想エントリーの区分は `open_unrealized_not_marked`。LONG の確定損益は出口−入口、SHORT は入口−出口。障害をまたいだ EXIT は `contaminated_by_data_outage`。日次・週次・月次は status の `ops`。
+- `ledger.jsonl` は `shadow_observation`、`incidents.jsonl` は `operations_incident`。数量は null。
+- Supervisor は `index.html`、`RssOrder`、`submit_shadow_order` を参照しない。Controller は UI を開かず、Hidden の Python に `live_ms2.json` だけを渡す。
+
+OWNER ACTION PENDING / HOLD。追加の Owner コマンドは出していない。PID 43904、表示中のダイアログ、Workbook、XLL、Registry は維持する。Event ID 300 は表示の記録であり原因ではない。この HEAD の Controller は Owner PC で未起動で、02:22:51 の起動は identity 失敗のまま AI SHADOW に未到達。ライブの MS2 / RSS 受け入れは実機のまま残る。
+
 ## システム概要
 
 - リポジトリ: infoyuusuke-afk/trade-cockpit（GitHub Pages: https://infoyuusuke-afk.github.io/trade-cockpit/）
