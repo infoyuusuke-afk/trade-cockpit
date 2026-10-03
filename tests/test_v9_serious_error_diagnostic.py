@@ -86,6 +86,10 @@ class SeriousErrorDiagnosticTests(unittest.TestCase):
         self.assertIn("fileRecoveryPr", text)
         self.assertIn("workbook_crash_save", text)
         self.assertIn("dialog_without_package_or_resiliency_marker", text)
+        self.assertIn("parsed_without_file_recovery_pr", text)
+        self.assertIn("no_direct_link", text)
+        self.assertIn("not_established", text)
+        self.assertIn("correlation_only", text)
         self.assertIn("AutomationElement", text)
         self.assertIn("WRITER_PID=unavailable", text)
         self.assertNotIn("InvokePattern", text)
@@ -146,6 +150,8 @@ class SeriousErrorDiagnosticTests(unittest.TestCase):
             "PROOF cause=workbook_crash_save",
             "PROOF cause=prior_crash_with_xll",
             "PROOF cause=dialog_without_package_or_resiliency_marker",
+            "PROOF crash_link=no_direct_link",
+            "PROOF crash_causation=not_established",
             "PROOF backup=returned",
             "PROOF backup=stayed_clear",
             "PROOF backup=new_record",
