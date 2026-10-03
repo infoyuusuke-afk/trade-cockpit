@@ -82,6 +82,10 @@ class SeriousErrorDiagnosticTests(unittest.TestCase):
         self.assertIn("Test-SurveyRowWanted", text)
         self.assertIn("Get-TouchScope", text)
         self.assertIn("parent_touch_without_surviving_value", text)
+        self.assertIn("Get-CauseClass", text)
+        self.assertIn("fileRecoveryPr", text)
+        self.assertIn("workbook_crash_save", text)
+        self.assertIn("dialog_without_package_or_resiliency_marker", text)
         self.assertIn("AutomationElement", text)
         self.assertIn("WRITER_PID=unavailable", text)
         self.assertNotIn("InvokePattern", text)
@@ -139,6 +143,9 @@ class SeriousErrorDiagnosticTests(unittest.TestCase):
             "PROOF survey_owner=1",
             "PROOF touch=parent_touch_without_surviving_value",
             "PROOF touch_delay=3",
+            "PROOF cause=workbook_crash_save",
+            "PROOF cause=prior_crash_with_xll",
+            "PROOF cause=dialog_without_package_or_resiliency_marker",
             "PROOF backup=returned",
             "PROOF backup=stayed_clear",
             "PROOF backup=new_record",

@@ -5,14 +5,11 @@ param(
 )
 
 # Read-only diagnosis for the canonical workbook serious-error prompt.
-# Distinguishes a resiliency value that returned, a different resiliency
-# match, a workbook rewrite, the RSS xll load, and a crash after launch.
-# The window survey also reads the foreground window, GUI-thread active
-# window, owner chain, dialog-class children, and desktop match.
-# A Resiliency last-write after Excel start is classified by which key
-# moved and which values still exist. UI Automation names are read only.
-# This file does not delete registry values, stop Excel, click a dialog,
-# or modify the workbook or the RSS xll. -SelfTest does not read HKCU,
+# Dialog text is already confirmed on the launched Excel process. This
+# revision reads the workbook package marker, crashes before this launch,
+# the owner lock file, trust-record metadata, and the RSS xll registration.
+# It does not delete registry values, stop Excel, click a dialog, or
+# modify the workbook or the RSS xll. -SelfTest does not read HKCU,
 # processes, or the workbook.
 
 Set-StrictMode -Version 2.0
@@ -773,6 +770,20 @@ function Get-RelLabel {
     return $Name
 }
 
+function Get-PartLabel {
+    param([string]$Name)
+    if ([string]::IsNullOrEmpty($Name)) { return 'empty' }
+    if ($Name.Length -gt 80) { return ('len_' + $Name.Length.ToString()) }
+    foreach ($ch in $Name.ToCharArray()) {
+        $code = [int]$ch
+        if (($code -lt 33) -or ($code -gt 126)) { return ('len_' + $Name.Length.ToString()) }
+        if (($ch -eq '=') -or ($ch -eq ' ') -or ($ch -eq ':') -or ($ch -eq '\')) {
+            return ('len_' + $Name.Length.ToString())
+        }
+    }
+    return $Name
+}
+
 function Get-SafeLabel {
     param([string]$Name)
     if ([string]::IsNullOrEmpty($Name)) { return 'empty' }
@@ -785,6 +796,186 @@ function Get-SafeLabel {
         }
     }
     return $Name
+}
+
+function Get-LeafStem {
+    param([string]$Leaf)
+    if ([string]::IsNullOrEmpty($Leaf)) { return '' }
+    $dot = $Leaf.LastIndexOf('.')
+    if ($dot -gt 0) { return $Leaf.Substring(0, $dot) }
+    return $Leaf
+}
+
+function Get-OwnerLockPath {
+    param([string]$WorkbookPath)
+    if ([string]::IsNullOrEmpty($WorkbookPath)) { return '' }
+    $cut = $WorkbookPath.LastIndexOf('\')
+    if ($cut -lt 0 -or $cut -ge ($WorkbookPath.Length - 1)) { return '' }
+    return ($WorkbookPath.Substring(0, $cut) + '\~$' + $WorkbookPath.Substring($cut + 1))
+}
+
+function Get-XlkPath {
+    param([string]$WorkbookPath)
+    if ([string]::IsNullOrEmpty($WorkbookPath)) { return '' }
+    $cut = $WorkbookPath.LastIndexOf('\')
+    if ($cut -lt 0 -or $cut -ge ($WorkbookPath.Length - 1)) { return '' }
+    $leaf = $WorkbookPath.Substring($cut + 1)
+    return ($WorkbookPath.Substring(0, $cut) + '\' + (Get-LeafStem -Leaf $leaf) + '.xlk')
+}
+
+function Get-RecoveryElement {
+    param([string]$Xml)
+    if ([string]::IsNullOrEmpty($Xml)) { return '' }
+    $marker = 'fileRecoveryPr'
+    $at = $Xml.IndexOf($marker, $script:Ordinal)
+    if ($at -lt 0) { return '' }
+    $start = $at
+    $back = $at - 1
+    while (($back -ge 0) -and (($at - $back) -le 8)) {
+        if ($Xml[$back] -eq '<') { $start = $back; break }
+        $back = $back - 1
+    }
+    $end = $Xml.IndexOf('>', $at, $script:Ordinal)
+    if ($end -lt 0) { return '' }
+    return $Xml.Substring($start, ($end - $start) + 1)
+}
+
+function Get-XmlFlag {
+    param([string]$Element, [string]$Name)
+    if ([string]::IsNullOrEmpty($Element) -or [string]::IsNullOrEmpty($Name)) { return 'absent' }
+    $token = $Name + '='
+    $at = $Element.IndexOf($token, $script:Ordinal)
+    if ($at -lt 0) { return 'absent' }
+    $pos = $at + $token.Length
+    if ($pos -ge $Element.Length) { return 'unreadable' }
+    $quote = $Element[$pos]
+    $raw = ''
+    if (($quote -eq '"') -or ($quote -eq "'")) {
+        $end = $Element.IndexOf([string]$quote, $pos + 1, $script:Ordinal)
+        if ($end -lt 0) { return 'unreadable' }
+        $raw = $Element.Substring($pos + 1, $end - ($pos + 1))
+    } else {
+        $i = $pos
+        while ($i -lt $Element.Length) {
+            $ch = $Element[$i]
+            if (($ch -eq ' ') -or ($ch -eq '/') -or ($ch -eq '>')) { break }
+            $i = $i + 1
+        }
+        $raw = $Element.Substring($pos, $i - $pos)
+    }
+    $lower = $raw.ToLowerInvariant()
+    if (($lower -eq '1') -or ($lower -eq 'true')) { return '1' }
+    if (($lower -eq '0') -or ($lower -eq 'false')) { return '0' }
+    return 'unreadable'
+}
+
+function Get-PackageRecovery {
+    param([string]$Xml)
+    $element = Get-RecoveryElement -Xml $Xml
+    $present = '0'
+    if ($element.Length -gt 0) { $present = '1' }
+    return (New-Object psobject -Property @{
+        Present = $present
+        CrashSave = (Get-XmlFlag -Element $element -Name 'crashSave')
+        RepairLoad = (Get-XmlFlag -Element $element -Name 'repairLoad')
+        AutoRecover = (Get-XmlFlag -Element $element -Name 'autoRecover')
+        DataExtract = (Get-XmlFlag -Element $element -Name 'dataExtractLoad')
+    })
+}
+
+function Test-PackagePartName {
+    param([string]$Name)
+    if ([string]::IsNullOrEmpty($Name)) { return $false }
+    $lower = $Name.ToLowerInvariant()
+    if ($lower.IndexOf('filerecovery', $script:Ordinal) -ge 0) { return $true }
+    if ($lower.StartsWith('xl/revisions/', $script:Ordinal)) { return $true }
+    if ($lower.IndexOf('/repair', $script:Ordinal) -ge 0) { return $true }
+    return $false
+}
+
+function Get-FileRelation {
+    param([bool]$Exists, [long]$WriteTicks, [bool]$WriteKnown, [long]$StartTicks, [bool]$StartKnown)
+    if (-not $Exists) {
+        return (New-Object psobject -Property @{ Exists = '0'; Relation = 'absent' })
+    }
+    if ((-not $WriteKnown) -or (-not $StartKnown) -or ($WriteTicks -le 0) -or ($StartTicks -le 0)) {
+        return (New-Object psobject -Property @{ Exists = '1'; Relation = 'unreadable' })
+    }
+    if ($WriteTicks -lt $StartTicks) {
+        return (New-Object psobject -Property @{ Exists = '1'; Relation = 'before_excel_start' })
+    }
+    if ($WriteTicks -gt $StartTicks) {
+        return (New-Object psobject -Property @{ Exists = '1'; Relation = 'after_excel_start' })
+    }
+    return (New-Object psobject -Property @{ Exists = '1'; Relation = 'same_second' })
+}
+
+function Get-OpenXllClass {
+    param([string]$Name, [string]$Text)
+    if ([string]::IsNullOrEmpty($Name)) { return 'skip' }
+    $open = $false
+    if ([string]::Equals($Name, 'OPEN', $script:OrdinalIgnore)) { $open = $true }
+    elseif ($Name.StartsWith('OPEN', $script:OrdinalIgnore)) {
+        $rest = $Name.Substring(4)
+        $digits = ($rest.Length -gt 0)
+        foreach ($ch in $rest.ToCharArray()) {
+            if (($ch -lt '0') -or ($ch -gt '9')) { $digits = $false }
+        }
+        if ($digits) { $open = $true }
+    }
+    if (-not $open) { return 'skip' }
+    if ([string]::IsNullOrEmpty($Text)) { return 'plain' }
+    if ($Text.IndexOf($script:XllLeaf, $script:OrdinalIgnore) -ge 0) { return 'rss' }
+    if ($Text.IndexOf($script:XllStem, $script:OrdinalIgnore) -ge 0) { return 'rss' }
+    if ($Text.IndexOf('.xll', $script:OrdinalIgnore) -ge 0) { return 'other' }
+    return 'plain'
+}
+
+function Test-TokenHasXll {
+    param([string]$Tokens)
+    if ([string]::IsNullOrEmpty($Tokens)) { return $false }
+    $lower = $Tokens.ToLowerInvariant()
+    $stem = $script:XllStem.ToLowerInvariant()
+    if ($lower.IndexOf($stem, $script:Ordinal) -ge 0) { return $true }
+    if ($lower.IndexOf('.xll', $script:Ordinal) -ge 0) { return $true }
+    return $false
+}
+
+function Get-CauseClass {
+    param(
+        [string]$CrashSave,
+        [string]$RepairLoad,
+        [string]$DataExtract,
+        [string]$FileRecovery,
+        [string]$PackageOpen,
+        [string]$PriorState,
+        [int]$PriorCount,
+        [string]$PriorXll,
+        [string]$LockBefore,
+        [string]$XlkExists,
+        [string]$DialogVisible
+    )
+    $flags = New-Object System.Collections.Generic.List[string]
+    if ($CrashSave -eq '1') { [void]$flags.Add('workbook_crash_save') }
+    if ($RepairLoad -eq '1') { [void]$flags.Add('workbook_repair_load') }
+    if ($DataExtract -eq '1') { [void]$flags.Add('workbook_data_extract') }
+    if (($FileRecovery -eq '1') -and ($CrashSave -ne '1') -and ($RepairLoad -ne '1') -and ($DataExtract -ne '1')) {
+        [void]$flags.Add('workbook_file_recovery_pr')
+    }
+    if (($PriorState -eq 'ok') -and ($PriorCount -gt 0) -and ($PriorXll -eq '1')) { [void]$flags.Add('prior_crash_with_xll') }
+    elseif (($PriorState -eq 'ok') -and ($PriorCount -gt 0)) { [void]$flags.Add('prior_excel_crash') }
+    if ($LockBefore -eq '1') { [void]$flags.Add('stale_owner_lockfile') }
+    if ($XlkExists -eq '1') { [void]$flags.Add('excel_backup_xlk') }
+    $blocked = ($PackageOpen -eq 'locked') -or ($PackageOpen -eq 'unreadable') -or ($PackageOpen -eq 'truncated') -or ($FileRecovery -eq 'unreadable') -or ($PriorState -eq 'unreadable') -or ($LockBefore -eq 'unreadable') -or ($XlkExists -eq 'unreadable')
+    $cause = 'still_inconclusive'
+    if ($flags.Count -gt 0) { $cause = [string]$flags[0] }
+    elseif ($blocked) { $cause = 'evidence_incomplete' }
+    elseif (($DialogVisible -eq '1') -and ($FileRecovery -eq '0') -and ($PriorState -eq 'ok') -and ($PriorCount -eq 0) -and ($LockBefore -eq '0') -and ($XlkExists -eq '0')) {
+        $cause = 'dialog_without_package_or_resiliency_marker'
+    }
+    $text = 'none'
+    if ($flags.Count -gt 0) { $text = [string]::Join(',', $flags.ToArray()) }
+    return (New-Object psobject -Property @{ Cause = $cause; Flags = $text })
 }
 
 function Assert-Case {
@@ -1024,6 +1215,55 @@ function Invoke-DiagnoseSelfTest {
     $stamp = $root + '\20261003T012345Z'
     Assert-Case 'backup_jail' (Test-BackupDirAllowed -Root $root -Candidate $stamp)
     Assert-Case 'backup_jail_dot' (-not (Test-BackupDirAllowed -Root $root -Candidate ($root + '\..\x')))
+    $crashXml = '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fileRecoveryPr autoRecover="1" crashSave="1"/></workbook>'
+    $crashPkg = Get-PackageRecovery -Xml $crashXml
+    Assert-Case 'pkg_crash_present' ([string]$crashPkg.Present -eq '1')
+    Assert-Case 'pkg_crash_save' ([string]$crashPkg.CrashSave -eq '1')
+    Assert-Case 'pkg_crash_repair_absent' ([string]$crashPkg.RepairLoad -eq 'absent')
+    $prefixedXml = '<workbook><x:fileRecoveryPr repairLoad="true" dataExtractLoad="false"/></workbook>'
+    $repairPkg = Get-PackageRecovery -Xml $prefixedXml
+    Assert-Case 'pkg_prefix_repair' ([string]$repairPkg.RepairLoad -eq '1')
+    Assert-Case 'pkg_prefix_extract' ([string]$repairPkg.DataExtract -eq '0')
+    $bareXml = '<fileRecoveryPr crashSave=0 repairLoad=1 autoRecover="0"/>'
+    $barePkg = Get-PackageRecovery -Xml $bareXml
+    Assert-Case 'pkg_bare_crash' ([string]$barePkg.CrashSave -eq '0')
+    Assert-Case 'pkg_bare_repair' ([string]$barePkg.RepairLoad -eq '1')
+    Assert-Case 'pkg_bare_auto' ([string]$barePkg.AutoRecover -eq '0')
+    $cleanPkg = Get-PackageRecovery -Xml '<workbook><workbookPr/></workbook>'
+    Assert-Case 'pkg_clean' ([string]$cleanPkg.Present -eq '0')
+    Assert-Case 'pkg_clean_crash' ([string]$cleanPkg.CrashSave -eq 'absent')
+    Assert-Case 'part_revision' (Test-PackagePartName -Name 'xl/revisions/revisionHeaders.xml')
+    Assert-Case 'part_sheet' (-not (Test-PackagePartName -Name 'xl/worksheets/sheet1.xml'))
+    $bookSample = 'C:\Desk\files\' + $script:Leaf
+    $lockPath = Get-OwnerLockPath -WorkbookPath $bookSample
+    Assert-Case 'lock_path' ($lockPath.EndsWith('\~$' + $script:Leaf, $script:Ordinal))
+    $xlkPath = Get-XlkPath -WorkbookPath $bookSample
+    Assert-Case 'xlk_path' ($xlkPath.EndsWith('\Kioxia_MS2_RSS_Live_Signals.xlk', $script:Ordinal))
+    $beforeFile = Get-FileRelation -Exists $true -WriteTicks 10 -WriteKnown $true -StartTicks 20 -StartKnown $true
+    Assert-Case 'file_before' ([string]$beforeFile.Relation -eq 'before_excel_start')
+    $afterFile = Get-FileRelation -Exists $true -WriteTicks 30 -WriteKnown $true -StartTicks 20 -StartKnown $true
+    Assert-Case 'file_after' ([string]$afterFile.Relation -eq 'after_excel_start')
+    $missingFile = Get-FileRelation -Exists $false -WriteTicks 0 -WriteKnown $false -StartTicks 20 -StartKnown $true
+    Assert-Case 'file_absent' ([string]$missingFile.Relation -eq 'absent')
+    Assert-Case 'open_rss' ((Get-OpenXllClass -Name 'OPEN1' -Text ('C:\rss\' + $script:XllLeaf)) -eq 'rss')
+    Assert-Case 'open_other' ((Get-OpenXllClass -Name 'OPEN' -Text 'C:\Other.xll') -eq 'other')
+    Assert-Case 'open_plain' ((Get-OpenXllClass -Name 'OPEN2' -Text 'C:\Book.xlsx') -eq 'plain')
+    Assert-Case 'open_skip' ((Get-OpenXllClass -Name 'AlertIfNotExcel' -Text $script:XllLeaf) -eq 'skip')
+    Assert-Case 'token_xll' (Test-TokenHasXll -Tokens 'ucrtbase.dll,marketspeed2_rss_64bit.xll')
+    Assert-Case 'token_no_xll' (-not (Test-TokenHasXll -Tokens 'ucrtbase.dll,excel.exe'))
+    $causeCrash = Get-CauseClass -CrashSave '1' -RepairLoad '0' -DataExtract '0' -FileRecovery '1' -PackageOpen 'readable' -PriorState 'ok' -PriorCount 2 -PriorXll '1' -LockBefore '1' -XlkExists '0' -DialogVisible '1'
+    Assert-Case 'cause_crash_save' ([string]$causeCrash.Cause -eq 'workbook_crash_save')
+    Assert-Case 'cause_crash_flags' (([string]$causeCrash.Flags).IndexOf('prior_crash_with_xll', $script:Ordinal) -ge 0)
+    $causePrior = Get-CauseClass -CrashSave 'absent' -RepairLoad 'absent' -DataExtract 'absent' -FileRecovery '0' -PackageOpen 'readable' -PriorState 'ok' -PriorCount 3 -PriorXll '1' -LockBefore '0' -XlkExists '0' -DialogVisible '1'
+    Assert-Case 'cause_prior_xll' ([string]$causePrior.Cause -eq 'prior_crash_with_xll')
+    $causeLock = Get-CauseClass -CrashSave 'absent' -RepairLoad 'absent' -DataExtract 'absent' -FileRecovery '0' -PackageOpen 'readable' -PriorState 'ok' -PriorCount 0 -PriorXll '0' -LockBefore '1' -XlkExists '0' -DialogVisible '1'
+    Assert-Case 'cause_lock' ([string]$causeLock.Cause -eq 'stale_owner_lockfile')
+    $causeClear = Get-CauseClass -CrashSave 'absent' -RepairLoad 'absent' -DataExtract 'absent' -FileRecovery '0' -PackageOpen 'readable' -PriorState 'ok' -PriorCount 0 -PriorXll '0' -LockBefore '0' -XlkExists '0' -DialogVisible '1'
+    Assert-Case 'cause_clear' ([string]$causeClear.Cause -eq 'dialog_without_package_or_resiliency_marker')
+    $causeUnread = Get-CauseClass -CrashSave 'unreadable' -RepairLoad 'unreadable' -DataExtract 'unreadable' -FileRecovery 'unreadable' -PackageOpen 'locked' -PriorState 'ok' -PriorCount 0 -PriorXll '0' -LockBefore '0' -XlkExists '0' -DialogVisible '1'
+    Assert-Case 'cause_unread' ([string]$causeUnread.Cause -eq 'evidence_incomplete')
+    $partLabel = Get-PartLabel -Name 'xl/revisions/revisionHeaders.xml'
+    Assert-Case 'part_label' ($partLabel -eq 'xl/revisions/revisionHeaders.xml')
     Write-Output 'ACTION=diagnose_canonical_serious_error_readonly'
     Write-Output 'READ_ONLY=1'
     Write-Output 'ROT_QUERIED=0'
@@ -1043,6 +1283,9 @@ function Invoke-DiagnoseSelfTest {
     Write-Output 'PROOF touch=parent_touch_without_surviving_value'
     Write-Output 'PROOF touch=root_values_present'
     Write-Output 'PROOF touch_delay=3'
+    Write-Output 'PROOF cause=workbook_crash_save'
+    Write-Output 'PROOF cause=prior_crash_with_xll'
+    Write-Output 'PROOF cause=dialog_without_package_or_resiliency_marker'
     Write-Output 'PROOF reason=crash_query_unreadable'
     Write-Output 'PROOF backup=returned'
     Write-Output 'PROOF backup=stayed_clear'
@@ -1359,6 +1602,25 @@ function Read-ZoneMarker {
     }
 }
 
+function Read-ZipEntryText {
+    param($Entry, [int]$Cap)
+    $entryStream = $null
+    try {
+        $entryStream = $Entry.Open()
+        $buf = New-Object byte[] $Cap
+        $read = 0
+        while ($read -lt $Cap) {
+            $n = $entryStream.Read($buf, $read, ($Cap - $read))
+            if ($n -le 0) { break }
+            $read = $read + $n
+        }
+        if ($read -le 0) { return '' }
+        return [Text.Encoding]::UTF8.GetString($buf, 0, $read)
+    } finally {
+        if ($null -ne $entryStream) { $entryStream.Dispose() }
+    }
+}
+
 function Get-WorkbookEvidence {
     param([string]$Path, [long]$StartTicks, [bool]$StartKnown)
     $info = New-Object psobject -Property @{
@@ -1370,6 +1632,16 @@ function Get-WorkbookEvidence {
         Zone = 'absent'
         Vba = '0'
         ExternalLinks = 0
+        PackageXml = 'absent'
+        FileRecovery = '0'
+        CrashSave = 'absent'
+        RepairLoad = 'absent'
+        AutoRecover = 'absent'
+        DataExtract = 'absent'
+        AppRecovery = '0'
+        CustomRecovery = '0'
+        PartCount = 0
+        PartNames = ''
     }
     if (-not [IO.File]::Exists($Path)) { return $info }
     $info.Exists = '1'
@@ -1394,17 +1666,68 @@ function Get-WorkbookEvidence {
         try {
             $info.Open = 'readable'
             $links = 0
+            $parts = New-Object System.Collections.Generic.List[string]
+            $workbookXml = ''
+            $workbookSeen = $false
+            $workbookCut = $false
             foreach ($entry in $zip.Entries) {
                 $full = [string]$entry.FullName
                 if ([string]::Equals($full, 'xl/vbaProject.bin', $script:Ordinal)) { $info.Vba = '1' }
                 if ($full.StartsWith('xl/externalLinks/', $script:Ordinal)) { $links = $links + 1 }
+                if (Test-PackagePartName -Name $full) {
+                    $info.PartCount = [int]$info.PartCount + 1
+                    if ($parts.Count -lt 8) { [void]$parts.Add((Get-PartLabel -Name $full)) }
+                }
+                $wantWorkbook = [string]::Equals($full, 'xl/workbook.xml', $script:Ordinal)
+                $wantApp = [string]::Equals($full, 'docProps/app.xml', $script:Ordinal)
+                $wantCustom = [string]::Equals($full, 'docProps/custom.xml', $script:Ordinal)
+                if ($wantWorkbook -or $wantApp -or $wantCustom) {
+                    $cap = 65536
+                    if ($wantWorkbook) { $cap = 262144 }
+                    $text = ''
+                    try { $text = Read-ZipEntryText -Entry $entry -Cap $cap } catch { $text = '' }
+                    $markerAt = $text.IndexOf('fileRecoveryPr', $script:Ordinal)
+                    if ($wantWorkbook) {
+                        $workbookSeen = $true
+                        $workbookXml = $text
+                        $entryLen = [int64]$entry.Length
+                        if (($markerAt -lt 0) -and (($entryLen -lt 0) -or ($entryLen -gt $text.Length))) { $workbookCut = $true }
+                    } elseif ($markerAt -ge 0) {
+                        if ($wantApp) { $info.AppRecovery = '1' }
+                        if ($wantCustom) { $info.CustomRecovery = '1' }
+                    }
+                }
             }
             $info.ExternalLinks = $links
+            $info.PartNames = [string]::Join(',', $parts.ToArray())
+            if (-not $workbookSeen) {
+                $info.PackageXml = 'absent'
+                $info.FileRecovery = 'unreadable'
+            } elseif ($workbookCut) {
+                $info.PackageXml = 'truncated'
+                $info.FileRecovery = 'unreadable'
+            } else {
+                $info.PackageXml = 'readable'
+                $parsed = Get-PackageRecovery -Xml $workbookXml
+                $info.FileRecovery = [string]$parsed.Present
+                $info.CrashSave = [string]$parsed.CrashSave
+                $info.RepairLoad = [string]$parsed.RepairLoad
+                $info.AutoRecover = [string]$parsed.AutoRecover
+                $info.DataExtract = [string]$parsed.DataExtract
+            }
         } finally {
             $zip.Dispose()
         }
     } catch {
         $info.Open = 'locked'
+        $info.PackageXml = 'locked'
+        $info.FileRecovery = 'unreadable'
+        $info.CrashSave = 'unreadable'
+        $info.RepairLoad = 'unreadable'
+        $info.AutoRecover = 'unreadable'
+        $info.DataExtract = 'unreadable'
+        $info.AppRecovery = 'unreadable'
+        $info.CustomRecovery = 'unreadable'
     } finally {
         if ($null -ne $stream) { $stream.Dispose() }
     }
@@ -1476,30 +1799,228 @@ function Get-StartupEvidence {
 }
 
 function Get-TrustEvidence {
-    $info = New-Object psobject -Property @{ Canonical = 'unreadable'; OtherCount = -1 }
+    $info = New-Object psobject -Property @{
+        Canonical = 'unreadable'
+        OtherCount = -1
+        CanonicalCount = -1
+        ValueKind = 'unreadable'
+        ValueLen = -1
+        ValueSha = ''
+    }
     $opened = $null
     try {
         $opened = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Software\Microsoft\Office\16.0\Excel\Security\Trusted Documents\TrustRecords', $false)
         if ($null -eq $opened) {
             $info.Canonical = '0'
             $info.OtherCount = 0
+            $info.CanonicalCount = 0
+            $info.ValueKind = 'absent'
+            $info.ValueLen = 0
             return $info
         }
         $names = $opened.GetValueNames()
         if ($null -eq $names) { $names = @() }
         $canon = '0'
         $other = 0
+        $canonCount = 0
         foreach ($name in $names) {
             $value = [string]$name
-            if ($value.IndexOf($script:Leaf, $script:OrdinalIgnore) -ge 0) { $canon = '1' }
-            else { $other = $other + 1 }
+            if ($value.IndexOf($script:Leaf, $script:OrdinalIgnore) -ge 0) {
+                $canon = '1'
+                $canonCount = $canonCount + 1
+                if ($canonCount -eq 1) {
+                    $kindName = Get-KindName -Kind ($opened.GetValueKind($value))
+                    $info.ValueKind = $kindName
+                    if ([string]::IsNullOrEmpty($kindName)) { $info.ValueKind = 'other' }
+                    $packed = Read-KindBytes -Opened $opened -Name $value -KindName $kindName
+                    if ($null -ne $packed) {
+                        $info.ValueLen = [int]$packed.Bytes.Length
+                        $info.ValueSha = Get-Sha256Hex -Bytes $packed.Bytes
+                    }
+                }
+            } else {
+                $other = $other + 1
+            }
         }
         $info.Canonical = $canon
         $info.OtherCount = $other
+        $info.CanonicalCount = $canonCount
+        if ($canonCount -eq 0) {
+            $info.ValueKind = 'absent'
+            $info.ValueLen = 0
+        }
     } catch {
         $info.Canonical = 'unreadable'
+        $info.ValueKind = 'unreadable'
     } finally {
         if ($null -ne $opened) { $opened.Close() }
+    }
+    return $info
+}
+
+function Read-RegistryNumber {
+    param($Opened, [string]$Name)
+    if ($null -eq $Opened) { return 'absent' }
+    try {
+        $kind = $Opened.GetValueKind($Name)
+    } catch {
+        return 'absent'
+    }
+    $dwordKind = [Microsoft.Win32.RegistryValueKind]::DWord
+    $qwordKind = [Microsoft.Win32.RegistryValueKind]::QWord
+    if (($kind -eq $dwordKind) -or ($kind -eq $qwordKind)) {
+        $raw = $Opened.GetValue($Name)
+        return ([int64]$raw).ToString()
+    }
+    return 'other'
+}
+
+function Read-OfficeNumber {
+    param([string]$SubPath, [string]$Name)
+    $opened = $null
+    try {
+        $opened = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($SubPath, $false)
+        if ($null -eq $opened) { return 'absent' }
+        return (Read-RegistryNumber -Opened $opened -Name $Name)
+    } catch {
+        return 'unreadable'
+    } finally {
+        if ($null -ne $opened) { $opened.Close() }
+    }
+}
+
+function Get-AddinOpenCounts {
+    $info = New-Object psobject -Property @{ Rss = 'unreadable'; Other = -1; Manager = 'unreadable'; Key = 'unreadable' }
+    $opened = $null
+    try {
+        $opened = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Software\Microsoft\Office\16.0\Excel\Options', $false)
+        if ($null -eq $opened) {
+            $info.Rss = '0'
+            $info.Other = 0
+        } else {
+            $rss = 0
+            $other = 0
+            $names = $opened.GetValueNames()
+            if ($null -eq $names) { $names = @() }
+            foreach ($name in $names) {
+                $packed = $null
+                try {
+                    $kindName = Get-KindName -Kind ($opened.GetValueKind([string]$name))
+                    $packed = Read-KindBytes -Opened $opened -Name ([string]$name) -KindName $kindName
+                } catch {
+                    $packed = $null
+                }
+                $text = ''
+                if ($null -ne $packed) { $text = [string]$packed.Text }
+                $class = Get-OpenXllClass -Name ([string]$name) -Text $text
+                if ($class -eq 'rss') { $rss = $rss + 1 }
+                elseif ($class -eq 'other') { $other = $other + 1 }
+            }
+            $info.Rss = $rss.ToString()
+            $info.Other = $other
+        }
+    } catch {
+        $info.Rss = 'unreadable'
+    } finally {
+        if ($null -ne $opened) { $opened.Close() }
+    }
+    $manager = $null
+    try {
+        $manager = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Software\Microsoft\Office\16.0\Excel\Add-in Manager', $false)
+        if ($null -eq $manager) {
+            $info.Manager = '0'
+        } else {
+            $hit = '0'
+            $names = $manager.GetValueNames()
+            if ($null -eq $names) { $names = @() }
+            foreach ($name in $names) {
+                $valueName = [string]$name
+                if ($valueName.IndexOf($script:XllStem, $script:OrdinalIgnore) -ge 0) { $hit = '1' }
+                $packed = $null
+                try {
+                    $kindName = Get-KindName -Kind ($manager.GetValueKind($valueName))
+                    $packed = Read-KindBytes -Opened $manager -Name $valueName -KindName $kindName
+                } catch {
+                    $packed = $null
+                }
+                if (($null -ne $packed) -and ([string]$packed.Text).IndexOf($script:XllStem, $script:OrdinalIgnore) -ge 0) { $hit = '1' }
+            }
+            $info.Manager = $hit
+        }
+    } catch {
+        $info.Manager = 'unreadable'
+    } finally {
+        if ($null -ne $manager) { $manager.Close() }
+    }
+    $addins = $null
+    try {
+        $addins = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Software\Microsoft\Office\Excel\Addins', $false)
+        if ($null -eq $addins) {
+            $info.Key = '0'
+        } else {
+            $hit = '0'
+            $subs = $addins.GetSubKeyNames()
+            if ($null -eq $subs) { $subs = @() }
+            foreach ($sub in $subs) {
+                if (([string]$sub).IndexOf($script:XllStem, $script:OrdinalIgnore) -ge 0) { $hit = '1' }
+            }
+            $info.Key = $hit
+        }
+    } catch {
+        $info.Key = 'unreadable'
+    } finally {
+        if ($null -ne $addins) { $addins.Close() }
+    }
+    return $info
+}
+
+function Get-SiblingEvidence {
+    param([string]$WorkbookPath, [long]$StartTicks, [bool]$StartKnown)
+    $info = New-Object psobject -Property @{
+        LockExists = '0'
+        LockWriteUtc = ''
+        LockRelation = 'absent'
+        XlkExists = '0'
+        XlkWriteUtc = ''
+        XlkRelation = 'absent'
+    }
+    $lockPath = Get-OwnerLockPath -WorkbookPath $WorkbookPath
+    $xlkPath = Get-XlkPath -WorkbookPath $WorkbookPath
+    foreach ($pair in @(
+        (New-Object psobject -Property @{ Kind = 'lock'; Path = $lockPath }),
+        (New-Object psobject -Property @{ Kind = 'xlk'; Path = $xlkPath })
+    )) {
+        $target = [string]$pair.Path
+        $exists = $false
+        $ticks = [int64]0
+        $known = $false
+        $stamp = ''
+        if ($target.Length -gt 0) {
+            try {
+                $file = New-Object IO.FileInfo $target
+                $exists = $file.Exists
+                if ($exists) {
+                    $ticks = [int64]$file.LastWriteTimeUtc.Ticks
+                    $known = $true
+                    $stamp = $file.LastWriteTimeUtc.ToString('yyyy-MM-ddTHH:mm:ss') + 'Z'
+                }
+            } catch {
+                $known = $false
+                $exists = $true
+            }
+        }
+        $relation = Get-FileRelation -Exists $exists -WriteTicks $ticks -WriteKnown $known -StartTicks $StartTicks -StartKnown $StartKnown
+        if ([string]$pair.Kind -eq 'lock') {
+            $info.LockExists = [string]$relation.Exists
+            $info.LockRelation = [string]$relation.Relation
+            $info.LockWriteUtc = $stamp
+            if ($exists -and (-not $known)) { $info.LockRelation = 'unreadable' }
+        } else {
+            $info.XlkExists = [string]$relation.Exists
+            $info.XlkRelation = [string]$relation.Relation
+            $info.XlkWriteUtc = $stamp
+            if ($exists -and (-not $known)) { $info.XlkRelation = 'unreadable' }
+        }
     }
     return $info
 }
@@ -1755,6 +2276,108 @@ function Get-CrashEvidence {
                 try {
                     $dirInfo = New-Object IO.DirectoryInfo $name
                     if ([int64]$dirInfo.LastWriteTimeUtc.Ticks -gt $StartTicks) { $werCount = $werCount + 1 }
+                } catch {}
+            }
+        } catch {
+            $werFailed = $true
+        }
+    }
+    if ($werFailed) { $info.WerCount = -1 } else { $info.WerCount = $werCount }
+    return $info
+}
+
+function Get-PriorCrashEvidence {
+    param([long]$StartTicks, [bool]$StartKnown)
+    $info = New-Object psobject -Property @{
+        State = 'unreadable'
+        EventCount = 0
+        LatestUtc = ''
+        Tokens = ''
+        Xll = '0'
+        WerCount = -1
+        QueryId = ''
+        Truncated = '0'
+    }
+    if (-not $StartKnown -or $StartTicks -le 0) { return $info }
+    $startUtc = [DateTime]::new($StartTicks, [DateTimeKind]::Utc)
+    $startLocal = $startUtc.ToLocalTime()
+    $fromLocal = $startLocal.AddDays(-14)
+    $toLocal = $startLocal.AddSeconds(-1)
+    $events = @()
+    $queryOk = $false
+    try {
+        $events = @(Get-WinEvent -FilterHashtable @{
+            LogName = 'Application'
+            StartTime = $fromLocal
+            EndTime = $toLocal
+            Id = @(1000, 1001)
+        } -ErrorAction Stop)
+        $queryOk = $true
+    } catch {
+        $errorId = ''
+        $msg = ''
+        try { $errorId = [string]$_.FullyQualifiedErrorId } catch { $errorId = '' }
+        try { $msg = [string]$_.Exception.Message } catch { $msg = '' }
+        $idLeaf = $errorId
+        $cut = $errorId.IndexOf(',', $script:Ordinal)
+        if ($cut -gt 0) { $idLeaf = $errorId.Substring(0, $cut) }
+        $info.QueryId = Get-SafeLabel -Name $idLeaf
+        if (Test-NoMatchingEventQuery -ErrorId $errorId -Message $msg) {
+            $events = @()
+            $queryOk = $true
+        }
+    }
+    if ($queryOk) {
+        $info.State = 'ok'
+        $tokens = New-Object System.Collections.Generic.List[string]
+        $count = 0
+        $latest = [int64]0
+        foreach ($ev in $events) {
+            if ($null -eq $ev) { continue }
+            $message = ''
+            try { $message = [string]$ev.Message } catch { continue }
+            if ($message.IndexOf('EXCEL.EXE', $script:OrdinalIgnore) -lt 0) { continue }
+            $count = $count + 1
+            try {
+                $created = $ev.TimeCreated.ToUniversalTime()
+                $ticks = [int64]$created.Ticks
+                if ($ticks -gt $latest) {
+                    $latest = $ticks
+                    $info.LatestUtc = $created.ToString('yyyy-MM-ddTHH:mm:ss') + 'Z'
+                }
+            } catch {}
+            if ($count -le 40) {
+                foreach ($token in @(Get-ModuleTokens -Text $message)) {
+                    $value = [string]$token
+                    if ($value.Length -eq 0) { continue }
+                    if ((-not $tokens.Contains($value)) -and ($tokens.Count -lt 15)) { [void]$tokens.Add($value) }
+                }
+            }
+            if ($count -ge 400) {
+                $info.Truncated = '1'
+                break
+            }
+        }
+        $info.EventCount = $count
+        $info.Tokens = [string]::Join(',', $tokens.ToArray())
+        if (Test-TokenHasXll -Tokens ([string]$info.Tokens)) { $info.Xll = '1' }
+    }
+    $werCount = 0
+    $werFailed = $false
+    $floor = $StartTicks - ([int64]14 * [int64]86400 * [int64]10000000)
+    foreach ($folder in @(
+        'C:\ProgramData\Microsoft\Windows\WER\ReportArchive',
+        'C:\ProgramData\Microsoft\Windows\WER\ReportQueue'
+    )) {
+        if (-not [IO.Directory]::Exists($folder)) { continue }
+        try {
+            foreach ($dir in [IO.Directory]::EnumerateDirectories($folder)) {
+                $name = [string]$dir
+                if ($name.IndexOf('EXCEL', $script:OrdinalIgnore) -lt 0) { continue }
+                try {
+                    $dirInfo = New-Object IO.DirectoryInfo $name
+                    $ticks = [int64]$dirInfo.LastWriteTimeUtc.Ticks
+                    if (($ticks -lt $StartTicks) -and ($ticks -ge $floor)) { $werCount = $werCount + 1 }
                 } catch {}
             }
         } catch {
@@ -2877,6 +3500,16 @@ function Invoke-LiveDiagnose {
             Zone = 'absent'
             Vba = '0'
             ExternalLinks = 0
+            PackageXml = 'unreadable'
+            FileRecovery = 'unreadable'
+            CrashSave = 'unreadable'
+            RepairLoad = 'unreadable'
+            AutoRecover = 'unreadable'
+            DataExtract = 'unreadable'
+            AppRecovery = 'unreadable'
+            CustomRecovery = 'unreadable'
+            PartCount = 0
+            PartNames = ''
         }
     }
     Write-Output ('WORKBOOK_EXISTS=' + [string]$book.Exists)
@@ -2887,6 +3520,41 @@ function Invoke-LiveDiagnose {
     Write-Output ('WORKBOOK_EXTERNAL_LINKS=' + ([int]$book.ExternalLinks).ToString())
     Write-Output ('WORKBOOK_ZONE=' + [string]$book.Zone)
     Write-Output ('WORKBOOK_REWRITTEN=' + [string]$book.Rewritten)
+    Write-Output ('PACKAGE_WORKBOOK_XML=' + [string]$book.PackageXml)
+    Write-Output ('PACKAGE_FILE_RECOVERY=' + [string]$book.FileRecovery)
+    Write-Output ('PACKAGE_CRASH_SAVE=' + [string]$book.CrashSave)
+    Write-Output ('PACKAGE_REPAIR_LOAD=' + [string]$book.RepairLoad)
+    Write-Output ('PACKAGE_AUTO_RECOVER=' + [string]$book.AutoRecover)
+    Write-Output ('PACKAGE_DATA_EXTRACT=' + [string]$book.DataExtract)
+    Write-Output ('PACKAGE_APP_RECOVERY=' + [string]$book.AppRecovery)
+    Write-Output ('PACKAGE_CUSTOM_RECOVERY=' + [string]$book.CustomRecovery)
+    Write-Output ('PACKAGE_RECOVERY_PARTS=' + ([int]$book.PartCount).ToString())
+    Write-Output ('PACKAGE_PARTS=' + [string]$book.PartNames)
+
+    $sibling = $null
+    try { $sibling = Get-SiblingEvidence -WorkbookPath $bookPath -StartTicks ([int64]$xll.StartTicks) -StartKnown $startKnown } catch {
+        Write-Output 'SECTION_ERROR=sibling'
+        Write-Output ('SECTION_ERROR_TYPE=' + $_.Exception.GetType().Name)
+    }
+    if ($null -eq $sibling) {
+        $sibling = New-Object psobject -Property @{
+            LockExists = 'unreadable'
+            LockWriteUtc = ''
+            LockRelation = 'unreadable'
+            XlkExists = 'unreadable'
+            XlkWriteUtc = ''
+            XlkRelation = 'unreadable'
+        }
+    }
+    Write-Output ('LOCKFILE_EXISTS=' + [string]$sibling.LockExists)
+    Write-Output ('LOCKFILE_WRITE_UTC=' + [string]$sibling.LockWriteUtc)
+    Write-Output ('LOCKFILE_RELATION=' + [string]$sibling.LockRelation)
+    Write-Output ('XLK_EXISTS=' + [string]$sibling.XlkExists)
+    Write-Output ('XLK_WRITE_UTC=' + [string]$sibling.XlkWriteUtc)
+    Write-Output ('XLK_RELATION=' + [string]$sibling.XlkRelation)
+    $xllFile = Get-TouchDelaySeconds -StartUtc ([string]$xll.StartUtc) -WriteUtc ([string]$xll.WriteUtc)
+    Write-Output ('XLL_FILE_DELTA_SEC=' + ([int]$xllFile.Seconds).ToString())
+    Write-Output ('XLL_FILE_CORRELATION=' + [string]$xllFile.Correlation)
 
     $startup = $null
     try { $startup = Get-StartupEvidence } catch {
@@ -2914,10 +3582,41 @@ function Invoke-LiveDiagnose {
         Write-Output ('SECTION_ERROR_TYPE=' + $_.Exception.GetType().Name)
     }
     if ($null -eq $trust) {
-        $trust = New-Object psobject -Property @{ Canonical = 'unreadable'; OtherCount = -1 }
+        $trust = New-Object psobject -Property @{
+            Canonical = 'unreadable'
+            OtherCount = -1
+            CanonicalCount = -1
+            ValueKind = 'unreadable'
+            ValueLen = -1
+            ValueSha = ''
+        }
     }
     Write-Output ('TRUST_CANONICAL=' + [string]$trust.Canonical)
+    Write-Output ('TRUST_CANONICAL_COUNT=' + ([int]$trust.CanonicalCount).ToString())
     Write-Output ('TRUST_OTHER_COUNT=' + ([int]$trust.OtherCount).ToString())
+    Write-Output ('TRUST_VALUE_KIND=' + [string]$trust.ValueKind)
+    Write-Output ('TRUST_VALUE_LEN=' + ([int]$trust.ValueLen).ToString())
+    Write-Output ('TRUST_VALUE_SHA=' + [string]$trust.ValueSha)
+    $pvPath = 'Software\Microsoft\Office\16.0\Excel\Security\ProtectedView'
+    $validationPath = 'Software\Microsoft\Office\16.0\Excel\Security\FileValidation'
+    $blockPath = 'Software\Microsoft\Office\16.0\Excel\Security\FileBlock'
+    Write-Output ('OFFICE_PV_ATTACHMENTS=' + (Read-OfficeNumber -SubPath $pvPath -Name 'DisableAttachmentsInPV'))
+    Write-Output ('OFFICE_PV_INTERNET=' + (Read-OfficeNumber -SubPath $pvPath -Name 'DisableInternetFilesInPV'))
+    Write-Output ('OFFICE_PV_UNSAFE=' + (Read-OfficeNumber -SubPath $pvPath -Name 'DisableUnsafeLocationsInPV'))
+    Write-Output ('OFFICE_VALIDATION_ONLOAD=' + (Read-OfficeNumber -SubPath $validationPath -Name 'EnableOnLoad'))
+    Write-Output ('OFFICE_FILEBLOCK_PV=' + (Read-OfficeNumber -SubPath $blockPath -Name 'OpenInProtectedView'))
+    $addin = $null
+    try { $addin = Get-AddinOpenCounts } catch {
+        Write-Output 'SECTION_ERROR=addin'
+        Write-Output ('SECTION_ERROR_TYPE=' + $_.Exception.GetType().Name)
+    }
+    if ($null -eq $addin) {
+        $addin = New-Object psobject -Property @{ Rss = 'unreadable'; Other = -1; Manager = 'unreadable'; Key = 'unreadable' }
+    }
+    Write-Output ('ADDIN_OPEN_RSS=' + [string]$addin.Rss)
+    Write-Output ('ADDIN_OPEN_OTHER_XLL=' + ([int]$addin.Other).ToString())
+    Write-Output ('ADDIN_MANAGER_RSS=' + [string]$addin.Manager)
+    Write-Output ('ADDIN_KEY_RSS=' + [string]$addin.Key)
 
     $dialog = $null
     try { $dialog = Get-DialogEvidence -FocusPid $FocusPid -SessionId $mySession } catch {
@@ -3065,6 +3764,31 @@ function Invoke-LiveDiagnose {
     Write-Output ('CRASH_EXCEL_EVENTS=' + ([int]$crash.EventCount).ToString())
     Write-Output ('CRASH_MODULES=' + [string]$crash.Tokens)
     Write-Output ('WER_EXCEL_AFTER_START=' + ([int]$crash.WerCount).ToString())
+    $prior = $null
+    try { $prior = Get-PriorCrashEvidence -StartTicks ([int64]$xll.StartTicks) -StartKnown $startKnown } catch {
+        Write-Output 'SECTION_ERROR=prior_crash'
+        Write-Output ('SECTION_ERROR_TYPE=' + $_.Exception.GetType().Name)
+    }
+    if ($null -eq $prior) {
+        $prior = New-Object psobject -Property @{
+            State = 'unreadable'
+            EventCount = 0
+            LatestUtc = ''
+            Tokens = ''
+            Xll = '0'
+            WerCount = -1
+            QueryId = ''
+            Truncated = '0'
+        }
+    }
+    Write-Output ('CRASH_BEFORE_STATE=' + [string]$prior.State)
+    Write-Output ('CRASH_BEFORE_QUERY=' + [string]$prior.QueryId)
+    Write-Output ('CRASH_BEFORE_COUNT=' + ([int]$prior.EventCount).ToString())
+    Write-Output ('CRASH_BEFORE_LATEST_UTC=' + [string]$prior.LatestUtc)
+    Write-Output ('CRASH_BEFORE_MODULES=' + [string]$prior.Tokens)
+    Write-Output ('CRASH_BEFORE_XLL=' + [string]$prior.Xll)
+    Write-Output ('CRASH_BEFORE_TRUNCATED=' + [string]$prior.Truncated)
+    Write-Output ('WER_BEFORE_START=' + ([int]$prior.WerCount).ToString())
 
     $keyCause = 'unreadable'
     if ($keyWrite -ne 'unreadable' -and $recreated -ne 'unreadable' -and $other -ne 'unreadable' -and $replaced -ne 'unreadable') {
@@ -3093,12 +3817,24 @@ function Invoke-LiveDiagnose {
     if ([string]$xll.Loaded -eq 'unreadable') { [void]$unreadNames.Add('xll_loaded') }
     if ($crashFlag -eq 'unreadable') { [void]$unreadNames.Add('crash_after_launch') }
     if ([string]$dialog.Visible -eq 'unreadable') { [void]$unreadNames.Add('dialog_visible') }
+    if (([string]$book.PackageXml -eq 'locked') -or ([string]$book.PackageXml -eq 'unreadable') -or ([string]$book.PackageXml -eq 'truncated')) { [void]$unreadNames.Add('package_workbook_xml') }
+    if ([string]$prior.State -eq 'unreadable') { [void]$unreadNames.Add('crash_before') }
+    if ([string]$sibling.LockRelation -eq 'unreadable') { [void]$unreadNames.Add('lockfile') }
+    $lockBefore = '0'
+    if ([string]$sibling.LockRelation -eq 'before_excel_start') { $lockBefore = '1' }
+    elseif ([string]$sibling.LockRelation -eq 'unreadable') { $lockBefore = 'unreadable' }
+    $xlkFlag = '0'
+    if ([string]$sibling.XlkRelation -eq 'unreadable') { $xlkFlag = 'unreadable' }
+    elseif ([string]$sibling.XlkExists -eq '1') { $xlkFlag = '1' }
+    $cause = Get-CauseClass -CrashSave ([string]$book.CrashSave) -RepairLoad ([string]$book.RepairLoad) -DataExtract ([string]$book.DataExtract) -FileRecovery ([string]$book.FileRecovery) -PackageOpen ([string]$book.PackageXml) -PriorState ([string]$prior.State) -PriorCount ([int]$prior.EventCount) -PriorXll ([string]$prior.Xll) -LockBefore $lockBefore -XlkExists $xlkFlag -DialogVisible ([string]$dialog.Visible)
     $unreadText = 'none'
     if ($unreadNames.Count -gt 0) { $unreadText = [string]::Join(',', $unreadNames.ToArray()) }
     Write-Output ('UNREADABLE=' + $unreadText)
     Write-Output ('BACKUP_STATE=' + [string]$backup.State)
     Write-Output ('PRIMARY=' + $primary)
     Write-Output ('REASON=' + $reason)
+    Write-Output ('CAUSE=' + [string]$cause.Cause)
+    Write-Output ('CAUSE_FLAGS=' + [string]$cause.Flags)
     Write-Output 'NOTHING_TOUCHED=1'
     Write-Output 'REGISTRY_CHANGED=0'
 }
