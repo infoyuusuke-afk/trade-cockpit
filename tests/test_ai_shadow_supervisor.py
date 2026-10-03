@@ -609,6 +609,182 @@ class CycleTests(unittest.TestCase):
         self.assertEqual(ops["weekly"]["shadow_uptime_ratio"], 0.0)
         self.assertEqual(ops["monthly"]["shadow_uptime_ratio"], 0.0)
 
+    def test_state_machine_stops_pauses_recovers_and_runs(self):
+        self.assertEqual(sup.STATES, ("RUNNING", "PAUSED_FAIL_CLOSED", "RECOVERING", "STOPPED"))
+        engine = self._engine()
+        self.assertEqual(engine["state"]["state"], "STOPPED")
+        fresh = _live([_row()])
+        sup.apply_cycle(engine, fresh, sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+        self.assertEqual(engine["state"]["state"], "RUNNING")
+        stale = _live([_row()], updated_at="2026-10-02 08:00:00")
+        paused_at = NOW + timedelta(seconds=90)
+        sup.apply_cycle(engine, stale, sup.assess_live_payload(stale, file_mtime=paused_at, now=paused_at), now=paused_at, data_dir=self.data)
+        self.assertEqual(engine["state"]["state"], "PAUSED_FAIL_CLOSED")
+        restarted = sup.load_engine(self.data, now=paused_at + timedelta(seconds=5))
+        self.assertEqual(restarted["state"]["state"], "RECOVERING")
+        self.assertEqual(len(restarted["open_positions"]), 1)
+        resume_at = NOW + timedelta(minutes=2)
+        recovered = _live([_row()], updated_at="2026-10-02 09:18:05")
+        sup.apply_cycle(restarted, recovered, sup.assess_live_payload(recovered, file_mtime=resume_at, now=resume_at), now=resume_at, data_dir=self.data)
+        self.assertEqual(restarted["state"]["state"], "RUNNING")
+        self.assertEqual(len([event for event in restarted["ledger"] if event["event_type"] == "virtual_entry"]), 1)
+
+    def test_unsafe_payloads_do_not_enter_or_exit(self):
+        cases = [
+            ("stale", _live([_row(price=1.0, signal="監視")], updated_at="2026-10-02 08:00:00"), "STALE_OR_MISSING_TIMESTAMP"),
+            ("mismatch", _live([_row(price=1.0, signal="監視")], price_source_status="PRICE_SOURCE_MISMATCH"), "PRICE_SOURCE_MISMATCH"),
+            ("conflict", _live([_row(price=1.0, signal="監視")], data_conflict=True), "DATA_CONFLICT"),
+            ("sample", _live([_row(price=1.0, signal="監視")], source="sample"), "CACHED_OR_SAMPLE_PAYLOAD"),
+            ("collector", _live([_row(price=1.0, signal="監視")], live_price_diagnostics=_diag(collector_count=None)), "COLLECTOR_PROCESS_UNVERIFIED"),
+        ]
+        for name, bad, reason in cases:
+            with self.subTest(name=name, phase="entry"):
+                engine = sup.load_engine(self.data, now=NOW)
+                moment = NOW
+                sup.apply_cycle(engine, bad, sup.assess_live_payload(bad, file_mtime=moment, now=moment), now=moment, data_dir=self.data)
+                self.assertEqual(engine["state"]["state"], "PAUSED_FAIL_CLOSED")
+                self.assertEqual(engine["state"]["reason"], reason)
+                self.assertEqual(engine["open_positions"], {})
+                self.assertEqual([event for event in engine["ledger"] if event["event_type"] in {"virtual_entry", "virtual_exit"}], [])
+                self.assertFalse(engine["state"]["real_submit_allowed"])
+                for child in self.data.iterdir():
+                    child.unlink()
+        for name, bad, reason in cases:
+            with self.subTest(name=name, phase="exit"):
+                engine = sup.load_engine(self.data, now=NOW)
+                fresh = _live([_row()])
+                sup.apply_cycle(engine, fresh, sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+                self.assertEqual(len(engine["open_positions"]), 1)
+                moment = NOW + timedelta(seconds=30)
+                sup.apply_cycle(engine, bad, sup.assess_live_payload(bad, file_mtime=moment, now=moment), now=moment, data_dir=self.data)
+                self.assertEqual(engine["state"]["state"], "PAUSED_FAIL_CLOSED")
+                self.assertEqual(engine["state"]["reason"], reason)
+                self.assertEqual(len(engine["open_positions"]), 1)
+                self.assertEqual([event for event in engine["ledger"] if event["event_type"] == "virtual_exit"], [])
+                self.assertEqual(len([event for event in engine["ledger"] if event["event_type"] == "virtual_entry"]), 1)
+                self.assertFalse(engine["state"]["real_submit_allowed"])
+                for child in self.data.iterdir():
+                    child.unlink()
+
+    def test_mismatched_or_missing_files_do_not_resume(self):
+        fresh = _live([_row()])
+
+        def refuse(reason: str):
+            engine = sup.load_engine(self.data, now=NOW)
+            self.assertTrue(engine["state"]["resume_blocked"])
+            self.assertEqual(engine["state"]["reason"], reason)
+            sup.apply_cycle(engine, fresh, sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+            self.assertEqual(engine["state"]["state"], "PAUSED_FAIL_CLOSED")
+            self.assertEqual(engine["open_positions"], {})
+            self.assertEqual([event for event in engine["ledger"] if event["event_type"] == "virtual_entry"], [])
+            self.assertFalse(engine["state"]["real_submit_allowed"])
+            for child in self.data.iterdir():
+                child.unlink()
+
+        (self.data / "ledger.jsonl").write_text("", encoding="utf-8")
+        refuse("STATE_MISSING")
+
+        (self.data / "state.json").write_text("{", encoding="utf-8")
+        refuse("STATE_UNREADABLE")
+
+        state = sup.fresh_state(now=NOW)
+        state["state"] = "RUNNING"
+        state["last_seq"] = 2
+        (self.data / "state.json").write_text(json.dumps(state), encoding="utf-8")
+        (self.data / "ledger.jsonl").write_text("", encoding="utf-8")
+        refuse("LEDGER_STATE_MISMATCH")
+
+        state["last_seq"] = 0
+        state["open_incident_id"] = "inc-missing"
+        (self.data / "state.json").write_text(json.dumps(state), encoding="utf-8")
+        (self.data / "ledger.jsonl").write_text("", encoding="utf-8")
+        refuse("INCIDENT_LOG_MISSING")
+
+        state = sup.fresh_state(now=NOW)
+        state["state"] = "TRADING"
+        state["last_seq"] = 0
+        (self.data / "state.json").write_text(json.dumps(state), encoding="utf-8")
+        (self.data / "ledger.jsonl").write_text("", encoding="utf-8")
+        (self.data / "incidents.jsonl").write_text("", encoding="utf-8")
+        refuse("UNKNOWN_STATE")
+
+        observation = {
+            "record_class": "shadow_observation",
+            "seq": 1,
+            "event_type": "board_judgment",
+            "real_submit_allowed": False,
+            "quantity": None,
+        }
+        state = sup.fresh_state(now=NOW)
+        state["state"] = "RUNNING"
+        state["last_seq"] = 0
+        (self.data / "state.json").write_text(json.dumps(state), encoding="utf-8")
+        (self.data / "ledger.jsonl").write_text(json.dumps(observation) + "\n", encoding="utf-8")
+        (self.data / "incidents.jsonl").write_text("", encoding="utf-8")
+        refuse("LEDGER_STATE_MISMATCH")
+
+    def test_same_fingerprint_appends_nothing(self):
+        engine = self._engine()
+        fresh = _live([_row()])
+        verdict = sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW)
+        sup.apply_cycle(engine, fresh, verdict, now=NOW, data_dir=self.data)
+        before = len(engine["ledger"])
+        fingerprint = engine["state"]["seen_board_fingerprints"]
+        sup.apply_cycle(engine, fresh, verdict, now=NOW + timedelta(seconds=5), data_dir=self.data)
+        self.assertEqual(len(engine["ledger"]), before)
+        self.assertEqual(engine["state"]["seen_board_fingerprints"], fingerprint)
+        self.assertEqual(engine["state"]["state"], "RUNNING")
+        self.assertEqual(len([event for event in engine["ledger"] if event["event_type"] == "virtual_entry"]), 1)
+
+    def test_split_ticker_rows_do_not_exit_or_reenter(self):
+        engine = self._engine()
+        fresh = _live([_row()])
+        sup.apply_cycle(engine, fresh, sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+        later = NOW + timedelta(seconds=20)
+        split = _live([
+            _row(signal="監視", price=1550.0),
+            _row(signal="買いサイン", price=1500.0),
+        ], updated_at="2026-10-02 09:16:25")
+        sup.apply_cycle(engine, split, sup.assess_live_payload(split, file_mtime=later, now=later), now=later, data_dir=self.data)
+        self.assertEqual(engine["state"]["state"], "PAUSED_FAIL_CLOSED")
+        self.assertEqual(engine["state"]["reason"], "DATA_CONFLICT")
+        self.assertEqual(len(engine["open_positions"]), 1)
+        self.assertEqual([event for event in engine["ledger"] if event["event_type"] == "virtual_exit"], [])
+        self.assertEqual(len([event for event in engine["ledger"] if event["event_type"] == "virtual_entry"]), 1)
+        self.assertFalse(engine["state"]["real_submit_allowed"])
+
+    def test_observation_and_incident_logs_stay_in_their_classes(self):
+        engine = self._engine()
+        fresh = _live([_row()])
+        sup.apply_cycle(engine, fresh, sup.assess_live_payload(fresh, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+        entries = [event for event in engine["ledger"] if event["event_type"] == "virtual_entry"]
+        self.assertEqual(entries[0]["record_class"], "shadow_observation")
+        self.assertEqual(entries[0]["performance_bucket"], "open_unrealized_not_marked")
+        self.assertIsNone(entries[0]["quantity"])
+        self.assertFalse(entries[0]["real_submit_allowed"])
+        for line in (self.data / "ledger.jsonl").read_text(encoding="utf-8").splitlines():
+            row = json.loads(line)
+            self.assertEqual(row["record_class"], "shadow_observation")
+            self.assertFalse(row["real_submit_allowed"])
+            self.assertIsNone(row["quantity"])
+        stale = _live([_row()], updated_at="2026-10-02 08:00:00")
+        paused_at = NOW + timedelta(seconds=90)
+        sup.apply_cycle(engine, stale, sup.assess_live_payload(stale, file_mtime=paused_at, now=paused_at), now=paused_at, data_dir=self.data)
+        incident_lines = (self.data / "incidents.jsonl").read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(incident_lines), 1)
+        incident = json.loads(incident_lines[0])
+        self.assertEqual(incident["record_class"], "operations_incident")
+        self.assertTrue(incident["fail_closed"])
+        self.assertFalse(incident["real_submit_allowed"])
+        self.assertIsNone(incident["recovery_at"])
+        ops = sup.summarize_operations(engine, now=paused_at)
+        for label in ("daily", "weekly", "monthly"):
+            self.assertEqual(ops[label]["label"], label)
+            self.assertEqual(ops[label]["error_count"], 1)
+            self.assertIsNone(ops[label]["clean_strategy_pnl_per_share_yen"])
+            self.assertEqual(ops[label]["clean_strategy_exit_count"], 0)
+        self.assertTrue(sup.status_snapshot(engine, now=paused_at)["ui_independent"])
+
 
 class ContractSourceTests(unittest.TestCase):
     def test_controller_and_gateway_keep_real_submit_locked(self):
@@ -623,7 +799,15 @@ class ContractSourceTests(unittest.TestCase):
         self.assertIn("Get-ShadowEnginePublication", gateway)
         self.assertIn("PAUSED_FAIL_CLOSED", ui)
         self.assertIn("shadow_engine_state", ui)
-        self.assertNotIn("submit_shadow_order", (ROOT / "scripts" / "ai_shadow_supervisor.py").read_text(encoding="utf-8"))
+        supervisor = (ROOT / "scripts" / "ai_shadow_supervisor.py").read_text(encoding="utf-8")
+        self.assertNotIn("submit_shadow_order", supervisor)
+        self.assertNotIn("RssOrder", supervisor)
+        self.assertNotIn("index.html", supervisor)
+        self.assertNotIn('real_submit_allowed"] = True', supervisor)
+        self.assertNotIn("real_submit_allowed = True", supervisor)
+        self.assertIn('"-u", $scriptPath', controller)
+        self.assertIn('"--live", (Join-Path $RuntimeDir "live_ms2.json")', controller)
+        self.assertIn("-WindowStyle Hidden", controller)
 
 
 if __name__ == "__main__":

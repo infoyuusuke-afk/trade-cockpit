@@ -12,9 +12,10 @@ fills and not Fill Model v0.1 fills.
 real_submit_allowed is always false on every record this module writes.
 An unresolved excel_identity, workbook_open, or excel_process_exit incident
 blocks new virtual entries and exits. A fresh price file does not clear it.
-An unreadable manual_recovery.json does the same. Two entry rows for one
-ticker, or both sides of one ticker, are a data conflict and open nothing.
-A ledger row that carries a quantity is not replayed.
+An unreadable manual_recovery.json does the same. Two rows for one ticker
+are a data conflict and open or close nothing. A ledger row that carries a
+quantity is not replayed. state.json last_seq must equal the ledger length;
+a short or long ledger is not healed into a resume.
 """
 from __future__ import annotations
 
@@ -230,18 +231,27 @@ def position_key(ticker: str, side: str) -> str:
 
 
 def _entry_board_conflict(payload) -> bool:
-    """Two entry rows for one key, or both sides of one ticker, are not one observation.
+    """Two rows for one ticker are not one observation.
 
-    The payload-level data_conflict flag can still be false. Either shape is
-    unverified, so the cycle must not open or close a virtual observation.
+    That includes two entry rows, both sides, or an entry row beside a
+    non-entry row. The payload-level data_conflict flag can still be false.
+    Any of these shapes is unverified, so the cycle must not open or close.
     """
     rows = payload.get("all_targets") if isinstance(payload, dict) else None
     if not isinstance(rows, list):
         return False
+    seen_tickers: set[str] = set()
     seen_keys: set[str] = set()
     sides: dict[str, set[str]] = {}
     for row in rows:
-        candidate = entry_candidate(row) if isinstance(row, dict) else None
+        if not isinstance(row, dict):
+            continue
+        ticker = row.get("ticker")
+        if isinstance(ticker, str) and ticker:
+            if ticker in seen_tickers:
+                return True
+            seen_tickers.add(ticker)
+        candidate = entry_candidate(row)
         if candidate is None:
             continue
         key = position_key(candidate["ticker"], candidate["side"])
@@ -422,7 +432,8 @@ def load_engine(data_dir: Path, *, now: datetime) -> dict:
         engine["state"] = fresh_state(now=now)
         engine["state"]["real_submit_allowed"] = False
         engine["incidents"] = incidents or []
-    if state is not None and not ledger_path.exists() and int(state.get("last_seq") or 0) > 0:
+    recorded_seq = _plain_int(state.get("last_seq")) if isinstance(state, dict) else None
+    if state is not None and not ledger_path.exists() and recorded_seq is not None and recorded_seq > 0:
         _block(engine, "LEDGER_MISSING")
         return engine
     if state is not None and not incident_path.exists() and state.get("open_incident_id"):
@@ -435,16 +446,17 @@ def load_engine(data_dir: Path, *, now: datetime) -> dict:
     if replay_error:
         _block(engine, replay_error)
         return engine
-    last_seq = int(engine["state"].get("last_seq") or 0)
-    if last_seq > len(ledger):
-        _block(engine, "LEDGER_STATE_MISMATCH")
-        return engine
-    if last_seq < len(ledger):
-        engine["state"]["last_seq"] = len(ledger)
-    engine["open_positions"] = open_positions
     if engine["state"].get("resume_blocked") is True:
         engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
+        engine["state"]["reason"] = engine["state"].get("block_reason") or engine["state"].get("reason") or "UNKNOWN_STATE"
+        engine["state"]["real_submit_allowed"] = False
+        engine["open_positions"] = {}
         return engine
+    last_seq = _plain_int(engine["state"].get("last_seq"))
+    if last_seq is None or last_seq != len(ledger):
+        _block(engine, "LEDGER_STATE_MISMATCH")
+        return engine
+    engine["open_positions"] = open_positions
     previous = engine["state"].get("state")
     if previous not in STATES:
         _block(engine, "UNKNOWN_STATE")
