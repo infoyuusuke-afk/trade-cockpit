@@ -19,9 +19,11 @@ on:
       - "downloads/CLEAR_CANONICAL_WORKBOOK_RECOVERY_V9.ps1"
       - "downloads/RESTORE_CANONICAL_WORKBOOK_RECOVERY_V9.ps1"
       - "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_V9.ps1"
+      - "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_STORE_V9.ps1"
       - "tests/test_v9_excel_identity_probe.py"
       - "tests/test_v9_workbook_recovery_registry.py"
       - "tests/test_v9_serious_error_diagnostic.py"
+      - "tests/test_v9_serious_error_store.py"
       - "downloads/RUN_AI_COCKPIT_V9.ps1"
       - "downloads/STOP_AI_COCKPIT_V9.ps1"
       - "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
@@ -56,6 +58,7 @@ jobs:
       - run: python3 -m unittest discover -s tests -p "test_v9_excel_identity_probe.py"
       - run: python3 -m unittest discover -s tests -p "test_v9_workbook_recovery_registry.py"
       - run: python3 -m unittest discover -s tests -p "test_v9_serious_error_diagnostic.py"
+      - run: python3 -m unittest discover -s tests -p "test_v9_serious_error_store.py"
       - run: node --check voice_client.js
       - run: node --check card_table_adapter.js
       - run: node --check opportunity_radar.js
@@ -81,6 +84,7 @@ jobs:
             "downloads/CLEAR_CANONICAL_WORKBOOK_RECOVERY_V9.ps1",
             "downloads/RESTORE_CANONICAL_WORKBOOK_RECOVERY_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_V9.ps1",
+            "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_STORE_V9.ps1",
             "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
             "downloads/RUN_AI_COCKPIT_V9.ps1",
             "downloads/STOP_AI_COCKPIT_V9.ps1",
@@ -207,7 +211,8 @@ jobs:
             "downloads/AI_COCKPIT_GATEWAY_V9.ps1",
             "downloads/CLEAR_CANONICAL_WORKBOOK_RECOVERY_V9.ps1",
             "downloads/RESTORE_CANONICAL_WORKBOOK_RECOVERY_V9.ps1",
-            "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_V9.ps1"
+            "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_V9.ps1",
+            "downloads/DIAGNOSE_CANONICAL_SERIOUS_ERROR_STORE_V9.ps1"
           )
           $messages = New-Object System.Collections.Generic.List[string]
           foreach ($file in $files) {
@@ -271,6 +276,27 @@ jobs:
           }
           if (($diag -join "`n").IndexOf("PROOF wer_sig=ucrtbase.dll", $ordinal) -lt 0) {
             throw "serious-error diagnostic did not prove the WER signature parser"
+          }
+      - name: Canonical serious-error store selftest
+        shell: powershell
+        run: |
+          $ordinal = [StringComparison]::Ordinal
+          $store = @(& .\downloads\DIAGNOSE_CANONICAL_SERIOUS_ERROR_STORE_V9.ps1 -SelfTest)
+          $store | ForEach-Object { Write-Output $_ }
+          if (($store -join "`n").IndexOf("SELFTEST PASS", $ordinal) -lt 0) {
+            throw "serious-error store selftest failed"
+          }
+          if (($store -join "`n").IndexOf("PROOF judgment=not_located", $ordinal) -lt 0) {
+            throw "serious-error store did not prove not_located"
+          }
+          if (($store -join "`n").IndexOf("PROOF judgment=located_crash_needle", $ordinal) -lt 0) {
+            throw "serious-error store did not prove located_crash_needle"
+          }
+          if (($store -join "`n").IndexOf("PROOF judgment=recent_list_not_crash_marker", $ordinal) -lt 0) {
+            throw "serious-error store did not prove recent_list is not a crash marker"
+          }
+          if (($store -join "`n").IndexOf("PROOF judgment=session_list", $ordinal) -lt 0) {
+            throw "serious-error store did not prove session_list"
           }
       - name: Excel identity probe hard-timeout selftest
         # Windows PowerShell 5.1 is the acceptance shell. The Ubuntu
