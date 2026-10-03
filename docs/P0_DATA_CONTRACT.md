@@ -10,7 +10,7 @@
 |---|---|
 | symbol | 文字列。東証は `285A.T` の形。JNX は別 symbol で、東証の価格へ混ぜない |
 | price | 有限の正の数。bool は不可。境界間は完全一致。丸めて合わせない |
-| source_timestamp | RSS 現状は `HH:mm:ss`。絶対時刻ではない。harness は証拠の `captured_at` の日付にだけ結合する。別の日の時刻を今日へ修復しない。解析できない時刻は未検証 |
+| source_timestamp | Collector は `Get-TimeText` で `HH:mm:ss` だけを残す。セルに日付があっても公開 JSON では落ちている。`updated_at` は Collector の時計であり、RSS の日付ではない。JNX の日付列は東証の quote に使わない。`HH:mm:ss` へ日付を足すのは、同じ観測の `quote_date_source=rss_cell` があるときだけ。それ以外は `UNVERIFIED`。`collector_clock` や `captured_at` の日付では verified にしない |
 | source | `MarketSpeed II RSS / local PC` |
 | freshness | `captured_at` と評価時刻の差、および quote 時刻と `captured_at` の差が、どちらも 60 秒以内。評価器の「今日」で古いファイルを fresh にしない |
 | verified | `live_values_available=true`、`price_source_status=OK`、`stale=false`、`data_conflict=false`、`source_mode=MS2_RSS_WORKBOOK`、行の `data=LIVE` |
