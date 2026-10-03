@@ -25,6 +25,7 @@ on:
       - "downloads/DIAGNOSE_CANONICAL_CACHE_ROLE_V9.ps1"
       - "downloads/DIAGNOSE_CANONICAL_CACHE_REST_V9.ps1"
       - "downloads/DIAGNOSE_CANONICAL_CACHE_TAIL_V9.ps1"
+      - "downloads/DIAGNOSE_CANONICAL_ALERT_LOG_V9.ps1"
       - "tests/test_v9_excel_identity_probe.py"
       - "tests/test_v9_workbook_recovery_registry.py"
       - "tests/test_v9_serious_error_diagnostic.py"
@@ -34,6 +35,7 @@ on:
       - "tests/test_v9_cache_role.py"
       - "tests/test_v9_cache_rest.py"
       - "tests/test_v9_cache_tail.py"
+      - "tests/test_v9_alert_log.py"
       - "downloads/RUN_AI_COCKPIT_V9.ps1"
       - "downloads/STOP_AI_COCKPIT_V9.ps1"
       - "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
@@ -74,6 +76,7 @@ jobs:
       - run: python3 -m unittest discover -s tests -p "test_v9_cache_role.py"
       - run: python3 -m unittest discover -s tests -p "test_v9_cache_rest.py"
       - run: python3 -m unittest discover -s tests -p "test_v9_cache_tail.py"
+      - run: python3 -m unittest discover -s tests -p "test_v9_alert_log.py"
       - run: node --check voice_client.js
       - run: node --check card_table_adapter.js
       - run: node --check opportunity_radar.js
@@ -105,6 +108,7 @@ jobs:
             "downloads/DIAGNOSE_CANONICAL_CACHE_ROLE_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_CACHE_REST_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_CACHE_TAIL_V9.ps1",
+            "downloads/DIAGNOSE_CANONICAL_ALERT_LOG_V9.ps1",
             "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
             "downloads/RUN_AI_COCKPIT_V9.ps1",
             "downloads/STOP_AI_COCKPIT_V9.ps1",
@@ -237,7 +241,8 @@ jobs:
             "downloads/DIAGNOSE_CANONICAL_LOCAL_CACHE_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_CACHE_ROLE_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_CACHE_REST_V9.ps1",
-            "downloads/DIAGNOSE_CANONICAL_CACHE_TAIL_V9.ps1"
+            "downloads/DIAGNOSE_CANONICAL_CACHE_TAIL_V9.ps1",
+            "downloads/DIAGNOSE_CANONICAL_ALERT_LOG_V9.ps1"
           )
           $messages = New-Object System.Collections.Generic.List[string]
           foreach ($file in $files) {
@@ -430,6 +435,27 @@ jobs:
           }
           if (($tail -join "`n").IndexOf("PROOF short=65536", $ordinal) -lt 0) {
             throw "cache tail did not prove the 64KB short-file skip"
+          }
+      - name: Canonical alert log selftest
+        shell: powershell
+        run: |
+          $ordinal = [StringComparison]::Ordinal
+          $alert = @(& .\downloads\DIAGNOSE_CANONICAL_ALERT_LOG_V9.ps1 -SelfTest)
+          $alert | ForEach-Object { Write-Output $_ }
+          if (($alert -join "`n").IndexOf("SELFTEST PASS", $ordinal) -lt 0) {
+            throw "alert log selftest failed"
+          }
+          if (($alert -join "`n").IndexOf("PROOF judgment=no_launch_alert", $ordinal) -lt 0) {
+            throw "alert log did not prove no_launch_alert"
+          }
+          if (($alert -join "`n").IndexOf("PROOF judgment=launch_dialog_logged", $ordinal) -lt 0) {
+            throw "alert log did not prove launch_dialog_logged"
+          }
+          if (($alert -join "`n").IndexOf("PROOF judgment=oalerts_absent", $ordinal) -lt 0) {
+            throw "alert log did not prove oalerts_absent"
+          }
+          if (($alert -join "`n").IndexOf("PROOF phrase=serious", $ordinal) -lt 0) {
+            throw "alert log did not prove the serious-error phrase"
           }
       - name: Excel identity probe hard-timeout selftest
         # Windows PowerShell 5.1 is the acceptance shell. The Ubuntu
