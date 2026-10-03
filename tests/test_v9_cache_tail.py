@@ -72,6 +72,8 @@ class CacheTailTests(unittest.TestCase):
         self.assertIn("DIAGNOSE_CANONICAL_CACHE_TAIL_READONLY", text)
         self.assertIn("SHORT_REREAD=0", text)
         self.assertIn("RULES_REREAD=0", text)
+        self.assertIn("WALK_BEGIN=OfficeFileCache", text)
+        self.assertIn("PROGRESS short=", text)
         self.assertIn("REGISTRY_REREAD=0", text)
         self.assertIn("PACKAGE_REREAD=0", text)
         self.assertIn("DIALOG_QUERIED=0", text)

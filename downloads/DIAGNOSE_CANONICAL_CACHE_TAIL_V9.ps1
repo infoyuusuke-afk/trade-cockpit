@@ -6,8 +6,10 @@ param(
 
 # Read-only tail of OfficeFileCache files larger than 64KB. The finished
 # cache walk already read every shorter file, and every file that named the
-# workbook in that prefix. This script does not open those short files, the
-# rules folders, the registry, the workbook zip, or the dialog.
+# workbook in that prefix. Byte search uses Latin-1 IndexOf and prints
+# PROGRESS before each large file, so the console moves during the walk.
+# This script does not open those short files, the rules folders, the
+# registry, the workbook zip, or the dialog.
 # -SelfTest does not read processes or files.
 
 Set-StrictMode -Version 2.0
@@ -32,22 +34,17 @@ $script:RecoveryAscii = [Text.Encoding]::ASCII.GetBytes('fileRecoveryPr')
 $script:RecoveryUtf16 = [Text.Encoding]::Unicode.GetBytes('fileRecoveryPr')
 $script:CrashAscii = [Text.Encoding]::ASCII.GetBytes('crashSave')
 $script:CrashUtf16 = [Text.Encoding]::Unicode.GetBytes('crashSave')
+$script:Latin1 = [Text.Encoding]::GetEncoding(28591)
+$script:LeafUtf16Text = $script:Latin1.GetString($script:LeafUtf16, 0, $script:LeafUtf16.Length)
+$script:TailUtf16Text = $script:Latin1.GetString($script:TailUtf16, 0, $script:TailUtf16.Length)
+$script:XllUtf16Text = $script:Latin1.GetString($script:XllUtf16, 0, $script:XllUtf16.Length)
+$script:RecoveryUtf16Text = $script:Latin1.GetString($script:RecoveryUtf16, 0, $script:RecoveryUtf16.Length)
+$script:CrashUtf16Text = $script:Latin1.GetString($script:CrashUtf16, 0, $script:CrashUtf16.Length)
 
-function Find-Bytes {
-    param([byte[]]$Hay, [byte[]]$Needle)
-    if ($null -eq $Hay -or $null -eq $Needle) { return -1 }
-    $hayLen = $Hay.Length
-    $needleLen = $Needle.Length
-    if ($needleLen -eq 0 -or $hayLen -lt $needleLen) { return -1 }
-    $last = $hayLen - $needleLen
-    for ($i = 0; $i -le $last; $i++) {
-        $ok = $true
-        for ($j = 0; $j -lt $needleLen; $j++) {
-            if ($Hay[$i + $j] -ne $Needle[$j]) { $ok = $false; break }
-        }
-        if ($ok) { return $i }
-    }
-    return -1
+function Find-Text {
+    param([string]$Hay, [string]$Needle)
+    if ([string]::IsNullOrEmpty($Hay) -or [string]::IsNullOrEmpty($Needle)) { return -1 }
+    return $Hay.IndexOf($Needle, $script:Ordinal)
 }
 
 function Get-ContentFlags {
@@ -61,15 +58,16 @@ function Get-ContentFlags {
         if ($Text.IndexOf('crashSave', $script:OrdinalIgnore) -ge 0) { $flags.Needle = 1 }
     }
     if ($null -ne $Binary -and $Binary.Length -gt 0) {
-        if ((Find-Bytes -Hay $Binary -Needle $script:LeafAscii) -ge 0) { $flags.Leaf = 1 }
-        if ((Find-Bytes -Hay $Binary -Needle $script:LeafUtf16) -ge 0) { $flags.Leaf = 1 }
-        if ((Find-Bytes -Hay $Binary -Needle $script:TailUtf16) -ge 0) { $flags.Path = 1; $flags.Leaf = 1 }
-        if ((Find-Bytes -Hay $Binary -Needle $script:XllAscii) -ge 0) { $flags.Xll = 1 }
-        if ((Find-Bytes -Hay $Binary -Needle $script:XllUtf16) -ge 0) { $flags.Xll = 1 }
-        if ((Find-Bytes -Hay $Binary -Needle $script:RecoveryAscii) -ge 0) { $flags.Needle = 1 }
-        if ((Find-Bytes -Hay $Binary -Needle $script:RecoveryUtf16) -ge 0) { $flags.Needle = 1 }
-        if ((Find-Bytes -Hay $Binary -Needle $script:CrashAscii) -ge 0) { $flags.Needle = 1 }
-        if ((Find-Bytes -Hay $Binary -Needle $script:CrashUtf16) -ge 0) { $flags.Needle = 1 }
+        $hay = $script:Latin1.GetString($Binary, 0, $Binary.Length)
+        if ((Find-Text -Hay $hay -Needle $script:Leaf) -ge 0) { $flags.Leaf = 1 }
+        if ((Find-Text -Hay $hay -Needle $script:LeafUtf16Text) -ge 0) { $flags.Leaf = 1 }
+        if ((Find-Text -Hay $hay -Needle $script:TailUtf16Text) -ge 0) { $flags.Path = 1; $flags.Leaf = 1 }
+        if ((Find-Text -Hay $hay -Needle $script:XllStem) -ge 0) { $flags.Xll = 1 }
+        if ((Find-Text -Hay $hay -Needle $script:XllUtf16Text) -ge 0) { $flags.Xll = 1 }
+        if ((Find-Text -Hay $hay -Needle 'fileRecoveryPr') -ge 0) { $flags.Needle = 1 }
+        if ((Find-Text -Hay $hay -Needle $script:RecoveryUtf16Text) -ge 0) { $flags.Needle = 1 }
+        if ((Find-Text -Hay $hay -Needle 'crashSave') -ge 0) { $flags.Needle = 1 }
+        if ((Find-Text -Hay $hay -Needle $script:CrashUtf16Text) -ge 0) { $flags.Needle = 1 }
     }
     return $flags
 }
@@ -185,6 +183,12 @@ function Invoke-CacheTailSelfTest {
     [Buffer]::BlockCopy($needle, 0, $span, 40, $needle.Length)
     $spanHit = Get-ContentFlags -Text '' -Binary $span
     Assert-Case 'overlap_needle' ([int]$spanHit.Needle -eq 1)
+    $far = New-Object byte[] 300000
+    $farLeaf = [Text.Encoding]::ASCII.GetBytes($script:Leaf)
+    [Buffer]::BlockCopy($farLeaf, 0, $far, 250000, $farLeaf.Length)
+    $farHit = Get-ContentFlags -Text '' -Binary $far
+    Assert-Case 'far_leaf' ([int]$farHit.Leaf -eq 1)
+    Assert-Case 'far_needle_off' ([int]$farHit.Needle -eq 0)
     Assert-Case 'budget' ($script:LargeBudget -eq 4000)
     Assert-Case 'skip_dll' ((Test-SkipExtension -Name 'cache.dll') -eq $true)
     Assert-Case 'keep_c4' ((Test-SkipExtension -Name '1388790193167766279.C4') -eq $false)
@@ -334,12 +338,19 @@ function Add-TailFiles {
             $leafName = Get-PathLeaf -Path $fileText
             $length = Get-FileLength -Path $fileText
             if ($length -lt 0) { $State.Unreadable = '1'; continue }
-            if (Test-ShortFile -Length $length) { $State.Short = [int]$State.Short + 1; continue }
+            if (Test-ShortFile -Length $length) {
+                $State.Short = [int]$State.Short + 1
+                if ((([int]$State.Short) % 500) -eq 0) {
+                    Write-Output ('PROGRESS short=' + ([int]$State.Short).ToString() + ' large=' + ([int]$State.Large).ToString())
+                }
+                continue
+            }
             $nameFlags = Get-ContentFlags -Text $leafName -Binary $null
             $nameHit = $false
             if (([int]$nameFlags.Leaf -eq 1) -or ([int]$nameFlags.Path -eq 1)) { $nameHit = $true }
             if ((Test-SkipExtension -Name $leafName) -and (-not $nameHit)) { $State.SkipExt = [int]$State.SkipExt + 1; continue }
             $State.Large = [int]$State.Large + 1
+            Write-Output ('PROGRESS short=' + ([int]$State.Short).ToString() + ' large=' + ([int]$State.Large).ToString())
             $offset = [int64](Get-TailStart)
             $remain = $length - $offset
             $cap = $script:TailCap
@@ -409,6 +420,7 @@ function Invoke-LiveTail {
     $cachePath = ''
     if ($localRoot.Length -gt 0) { $cachePath = $localRoot + '\Microsoft\Office\16.0\OfficeFileCache' }
     if (($cachePath.Length -gt 0) -and [IO.Directory]::Exists($cachePath)) {
+        Write-Output 'WALK_BEGIN=OfficeFileCache'
         Add-TailFiles -Directory $cachePath -DirLabel 'OfficeFileCache' -State $state -Depth 0
     }
     foreach ($hit in $state.Hits) {
