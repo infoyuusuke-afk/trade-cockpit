@@ -4,9 +4,10 @@ param(
     [string]$BackupDir
 )
 
-# Restores one backed-up HKCU DocumentRecovery value. Refuses to write when
-# the backup is outside the backup jail, the manifest does not match the
-# payload, the live value differs, or the canonical Excel process is running.
+# Restores one backed-up HKCU resiliency value. The key must be DocumentRecovery
+# or DisabledItems. Refuses to write when the backup is outside the backup
+# jail, the manifest does not match the payload, the live value differs, or
+# the canonical Excel process is running.
 
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
@@ -15,6 +16,7 @@ $script:OrdinalIgnore = [StringComparison]::OrdinalIgnoreCase
 $script:Leaf = 'Kioxia_MS2_RSS_Live_Signals.xlsx'
 $script:PathTail = 'MarketSpeed II RSS\files\Kioxia_MS2_RSS_Live_Signals.xlsx'
 $script:RecoveryPrefix = 'Software\Microsoft\Office\16.0\Excel\Resiliency\DocumentRecovery'
+$script:DisabledPrefix = 'Software\Microsoft\Office\16.0\Excel\Resiliency\DisabledItems'
 $script:CaseCount = 0
 $script:NoChangePrinted = $false
 $script:WriteAttempted = $false
@@ -58,6 +60,25 @@ function Test-AllowedRecoveryKey {
     if ([string]::Equals($Key, $script:RecoveryPrefix, $script:OrdinalIgnore)) { return $true }
     $child = $script:RecoveryPrefix + '\'
     if ($Key.StartsWith($child, $script:OrdinalIgnore) -and $Key.Length -gt $child.Length) { return $true }
+    return $false
+}
+
+function Test-AllowedDisabledItemsKey {
+    param([string]$Key)
+    if ([string]::IsNullOrWhiteSpace($Key)) { return $false }
+    if ($Key.IndexOf('..', $script:Ordinal) -ge 0) { return $false }
+    if ($Key.IndexOf('/', $script:Ordinal) -ge 0) { return $false }
+    if ($Key.StartsWith('HKCU', $script:OrdinalIgnore)) { return $false }
+    if ([string]::Equals($Key, $script:DisabledPrefix, $script:OrdinalIgnore)) { return $true }
+    $child = $script:DisabledPrefix + '\'
+    if ($Key.StartsWith($child, $script:OrdinalIgnore) -and $Key.Length -gt $child.Length) { return $true }
+    return $false
+}
+
+function Test-AllowedMutationKey {
+    param([string]$Key)
+    if (Test-AllowedRecoveryKey -Key $Key) { return $true }
+    if (Test-AllowedDisabledItemsKey -Key $Key) { return $true }
     return $false
 }
 
@@ -110,7 +131,7 @@ function Test-ManifestFields {
     if ([int]$Manifest.schema -ne 1) { return 'schema' }
     $purpose = 'canonical_workbook_document_recovery_value'
     if (-not [string]::Equals([string]$Manifest.purpose, $purpose, $script:Ordinal)) { return 'purpose' }
-    if (-not (Test-AllowedRecoveryKey -Key ([string]$Manifest.key))) { return 'key' }
+    if (-not (Test-AllowedMutationKey -Key ([string]$Manifest.key))) { return 'key' }
     if (-not (Test-AllowedValueName -Name ([string]$Manifest.value_name))) { return 'value_name' }
     $kind = [string]$Manifest.kind
     if (($kind -ne 'Binary') -and ($kind -ne 'String') -and ($kind -ne 'ExpandString')) { return 'kind' }
@@ -210,7 +231,7 @@ function Read-KindBytes {
 
 function Read-LiveValue {
     param([string]$KeyPath, [string]$ValueName)
-    if (-not (Test-AllowedRecoveryKey -Key $KeyPath)) { throw 'read path jail rejected the key' }
+    if (-not (Test-AllowedMutationKey -Key $KeyPath)) { throw 'read path jail rejected the key' }
     if (-not (Test-AllowedValueName -Name $ValueName)) { throw 'read path jail rejected the value' }
     $opened = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($KeyPath)
     if ($null -eq $opened) { return $null }
@@ -235,7 +256,7 @@ function Read-LiveValue {
 
 function Write-RestoredValue {
     param([string]$KeyPath, [string]$ValueName, [string]$Kind, [byte[]]$Bytes, [string]$Text)
-    if (-not (Test-AllowedRecoveryKey -Key $KeyPath)) { throw 'restore path jail rejected the key' }
+    if (-not (Test-AllowedMutationKey -Key $KeyPath)) { throw 'restore path jail rejected the key' }
     if (-not (Test-AllowedValueName -Name $ValueName)) { throw 'restore path jail rejected the value' }
     $opened = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($KeyPath, $true)
     if ($null -eq $opened) { $opened = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($KeyPath) }
@@ -254,7 +275,7 @@ function Write-RestoredValue {
 }
 
 function Invoke-Restore {
-    Write-Output 'ACTION=restore_one_document_recovery_value'
+    Write-Output 'ACTION=restore_one_canonical_resiliency_value'
     $dir = Resolve-RequestedBackupDir -Requested $BackupDir
     if ([string]::IsNullOrWhiteSpace($dir)) {
         Write-NoChange 'backup_dir_not_allowed'
@@ -343,9 +364,14 @@ function Assert-Case {
 function Invoke-RestoreSelfTest {
     $doc = 'Software\Microsoft\Office\16.0\Excel\Resiliency\DocumentRecovery\1'
     $disabled = 'Software\Microsoft\Office\16.0\Excel\Resiliency\DisabledItems'
+    $startup = 'Software\Microsoft\Office\16.0\Excel\Resiliency\StartupItems'
     Assert-Case 'jail_child' (Test-AllowedRecoveryKey -Key $doc)
     Assert-Case 'jail_disabled' (-not (Test-AllowedRecoveryKey -Key $disabled))
     Assert-Case 'jail_dotdot' (-not (Test-AllowedRecoveryKey -Key ($script:RecoveryPrefix + '\..\DisabledItems')))
+    Assert-Case 'mutation_disabled' (Test-AllowedMutationKey -Key $disabled)
+    Assert-Case 'mutation_startup' (-not (Test-AllowedMutationKey -Key $startup))
+    Assert-Case 'mutation_extra' (-not (Test-AllowedDisabledItemsKey -Key ($disabled + 'Extra')))
+    Assert-Case 'mutation_dotdot' (-not (Test-AllowedDisabledItemsKey -Key ($script:DisabledPrefix + '\..\DocumentRecovery')))
     Assert-Case 'value_default' (Test-AllowedValueName -Name '')
     Assert-Case 'value_slash' (-not (Test-AllowedValueName -Name 'A\B'))
     $root = Get-BackupRoot
@@ -371,6 +397,13 @@ function Invoke-RestoreSelfTest {
         '"base64":"' + $b64 + '"}'
     $manifest = $json | ConvertFrom-Json
     Assert-Case 'manifest_ok' ((Test-ManifestFields -Manifest $manifest -Payload $payload) -eq '')
+    $disabledJson = $json.Replace('DocumentRecovery\\1', 'DisabledItems').Replace('"value_name":"A"', '"value_name":"1664DDA6"')
+    $disabledManifest = $disabledJson | ConvertFrom-Json
+    Assert-Case 'manifest_disabled' ((Test-ManifestFields -Manifest $disabledManifest -Payload $payload) -eq '')
+    Assert-Case 'manifest_disabled_key' ([string]$disabledManifest.key -eq $disabled)
+    $startupJson = $json.Replace('DocumentRecovery\\1', 'StartupItems')
+    $startupManifest = $startupJson | ConvertFrom-Json
+    Assert-Case 'manifest_startup' ((Test-ManifestFields -Manifest $startupManifest -Payload $payload) -eq 'key')
     $manifest.length = 1
     Assert-Case 'manifest_len' ((Test-ManifestFields -Manifest $manifest -Payload $payload) -eq 'length')
     $temp = Join-Path ([IO.Path]::GetTempPath()) ('wb-restore-' + [Guid]::NewGuid().ToString('n'))

@@ -3,10 +3,11 @@ param(
     [string]$Confirm
 )
 
-# Removes one HKCU DocumentRecovery value only when its bytes are uniquely the
-# canonical RSS workbook. Backup bytes are read back and compared before any
-# registry write. Any other resiliency value, the workbook, and the RSS xll
-# stay untouched. This file does not click dialogs or stop processes.
+# Removes one HKCU resiliency value only when its bytes are uniquely the
+# canonical RSS workbook. The value may be under DocumentRecovery or
+# DisabledItems. Backup bytes are read back and compared before any registry
+# write. Any other resiliency value, the workbook, and the RSS xll stay
+# untouched. This file does not click dialogs or stop processes.
 
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
@@ -16,6 +17,7 @@ $script:Leaf = 'Kioxia_MS2_RSS_Live_Signals.xlsx'
 $script:PathTail = 'MarketSpeed II RSS\files\Kioxia_MS2_RSS_Live_Signals.xlsx'
 $script:XllStem = 'MarketSpeed2_RSS'
 $script:RecoveryPrefix = 'Software\Microsoft\Office\16.0\Excel\Resiliency\DocumentRecovery'
+$script:DisabledPrefix = 'Software\Microsoft\Office\16.0\Excel\Resiliency\DisabledItems'
 $script:ResiliencyRoot = 'Software\Microsoft\Office\16.0\Excel\Resiliency'
 $script:CaseCount = 0
 $script:NoChangePrinted = $false
@@ -113,6 +115,25 @@ function Test-AllowedRecoveryKey {
     if ([string]::Equals($Key, $script:RecoveryPrefix, $script:OrdinalIgnore)) { return $true }
     $child = $script:RecoveryPrefix + '\'
     if ($Key.StartsWith($child, $script:OrdinalIgnore) -and $Key.Length -gt $child.Length) { return $true }
+    return $false
+}
+
+function Test-AllowedDisabledItemsKey {
+    param([string]$Key)
+    if ([string]::IsNullOrWhiteSpace($Key)) { return $false }
+    if ($Key.IndexOf('..', $script:Ordinal) -ge 0) { return $false }
+    if ($Key.IndexOf('/', $script:Ordinal) -ge 0) { return $false }
+    if ($Key.StartsWith('HKCU', $script:OrdinalIgnore)) { return $false }
+    if ([string]::Equals($Key, $script:DisabledPrefix, $script:OrdinalIgnore)) { return $true }
+    $child = $script:DisabledPrefix + '\'
+    if ($Key.StartsWith($child, $script:OrdinalIgnore) -and $Key.Length -gt $child.Length) { return $true }
+    return $false
+}
+
+function Test-AllowedMutationKey {
+    param([string]$Key)
+    if (Test-AllowedRecoveryKey -Key $Key) { return $true }
+    if (Test-AllowedDisabledItemsKey -Key $Key) { return $true }
     return $false
 }
 
@@ -307,7 +328,15 @@ function Get-BlobVerdict {
     foreach ($leaf in @(Get-SpreadsheetLeaves -Hay $Bytes)) {
         if (-not [string]::Equals([string]$leaf, $script:Leaf, $script:OrdinalIgnore)) { $foreign = $true }
     }
-    if ($hasXll -or $foreign -or $odd) { return 'impure' }
+    $hasModule = $false
+    foreach ($suffix in @('.xll', '.dll', '.ocx')) {
+        $suffixAscii = [Text.Encoding]::ASCII.GetBytes($suffix)
+        $suffixUtf16 = [Text.Encoding]::Unicode.GetBytes($suffix)
+        $asciiAt = Find-PatternOffset -Hay $Bytes -Needle $suffixAscii -Start 0
+        $utf16At = Find-PatternOffset -Hay $Bytes -Needle $suffixUtf16 -Start 0
+        if (($asciiAt -ge 0) -or ($utf16At -ge 0)) { $hasModule = $true }
+    }
+    if ($hasXll -or $foreign -or $odd -or $hasModule) { return 'impure' }
     return 'pure'
 }
 
@@ -334,7 +363,7 @@ function Select-UniqueCanonicalTarget {
         if ($null -eq $entry) { throw 'recovery entry was null' }
         $verdict = Get-BlobVerdict -Bytes $entry.Bytes
         if ($verdict -eq 'none') { continue }
-        if (-not (Test-AllowedRecoveryKey -Key ([string]$entry.Key))) {
+        if (-not (Test-AllowedMutationKey -Key ([string]$entry.Key))) {
             $outside = $outside + 1
             continue
         }
@@ -493,7 +522,7 @@ function Get-ResiliencyEntries {
 
 function Read-LiveValue {
     param([string]$KeyPath, [string]$ValueName)
-    if (-not (Test-AllowedRecoveryKey -Key $KeyPath)) { throw 'read path jail rejected the key' }
+    if (-not (Test-AllowedMutationKey -Key $KeyPath)) { throw 'read path jail rejected the key' }
     if (-not (Test-AllowedValueName -Name $ValueName)) { throw 'read path jail rejected the value' }
     $opened = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($KeyPath)
     if ($null -eq $opened) { return $null }
@@ -592,7 +621,7 @@ function Write-VerifiedBackup {
 
 function Restore-TargetBytes {
     param($Target)
-    if (-not (Test-AllowedRecoveryKey -Key ([string]$Target.Key))) { throw 'restore path jail rejected the key' }
+    if (-not (Test-AllowedMutationKey -Key ([string]$Target.Key))) { throw 'restore path jail rejected the key' }
     if (-not (Test-AllowedValueName -Name ([string]$Target.ValueName))) { throw 'restore path jail rejected the value' }
     $opened = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey([string]$Target.Key, $true)
     if ($null -eq $opened) {
@@ -659,14 +688,17 @@ function Remove-BackupDirIfPresent {
 }
 
 function Invoke-Clear {
-    Write-Output 'ACTION=clear_one_document_recovery_value'
+    Write-Output 'ACTION=clear_one_canonical_resiliency_value'
     $entries = @(Get-ResiliencyEntries)
     foreach ($entry in $entries) {
         if ($null -eq $entry) { continue }
         $verdict = Get-BlobVerdict -Bytes $entry.Bytes
         if ($verdict -eq 'none') { continue }
+        $area = 'other'
+        if (Test-AllowedRecoveryKey -Key ([string]$entry.Key)) { $area = 'document_recovery' }
+        elseif (Test-AllowedDisabledItemsKey -Key ([string]$entry.Key)) { $area = 'disabled_items' }
         $shown = Get-ValueDisplay -Name ([string]$entry.ValueName)
-        Write-Output ('SCAN key=' + [string]$entry.Key + ' value=' + $shown + ' kind=' + [string]$entry.Kind + ' len=' + [string]$entry.Bytes.Length + ' verdict=' + $verdict)
+        Write-Output ('SCAN area=' + $area + ' key=' + [string]$entry.Key + ' value=' + $shown + ' kind=' + [string]$entry.Kind + ' len=' + [string]$entry.Bytes.Length + ' verdict=' + $verdict)
     }
     $choice = Select-UniqueCanonicalTarget -Entries $entries
     Write-Output ('MATCH_PURE=' + [string]$choice.Pure)
@@ -685,7 +717,7 @@ function Invoke-Clear {
         Write-NoChange 'target_lost_pure_verdict'
         throw 'target verdict changed before backup'
     }
-    if (-not (Test-AllowedRecoveryKey -Key ([string]$target.Key))) {
+    if (-not (Test-AllowedMutationKey -Key ([string]$target.Key))) {
         Write-NoChange 'target_key_not_allowed'
         throw 'target key failed the path jail'
     }
@@ -820,6 +852,10 @@ function Invoke-RecoverySelfTest {
     Assert-Case 'mixed_impure' ((Get-BlobVerdict -Bytes $mixed) -eq 'impure')
     $withXll = New-PrefixedUtf16 -Text ($script:Leaf + ' ' + $script:XllStem + '_64bit.xll')
     Assert-Case 'xll_impure' ((Get-BlobVerdict -Bytes $withXll) -eq 'impure')
+    $withDll = New-PrefixedUtf16 -Text ($script:Leaf + ' C:\Addin.dll')
+    Assert-Case 'dll_impure' ((Get-BlobVerdict -Bytes $withDll) -eq 'impure')
+    $withOcx = New-PrefixedUtf16 -Text ($script:Leaf + ' C:\Addin.ocx')
+    Assert-Case 'ocx_impure' ((Get-BlobVerdict -Bytes $withOcx) -eq 'impure')
     $onlyXll = New-PrefixedUtf16 -Text ($script:XllStem + '_64bit.xll')
     Assert-Case 'xll_only' ((Get-BlobVerdict -Bytes $onlyXll) -eq 'none')
     $tail = New-PrefixedUtf16 -Text $script:PathTail
@@ -828,9 +864,13 @@ function Invoke-RecoverySelfTest {
     Assert-Case 'full_has_day' ($fullText.IndexOf([char]0x30C7, $script:Ordinal) -ge 0)
     $full = New-PrefixedUtf16 -Text $fullText
     Assert-Case 'full_pure' ((Get-BlobVerdict -Bytes $full) -eq 'pure')
+    $startup = 'Software\Microsoft\Office\16.0\Excel\Resiliency\StartupItems'
     $one = New-RecoveryEntry -Key $doc -ValueName 'A' -Kind 'Binary' -Bytes $blob
     $two = New-RecoveryEntry -Key $doc2 -ValueName 'B' -Kind 'Binary' -Bytes $blob
-    $outsideEntry = New-RecoveryEntry -Key $disabled -ValueName 'D' -Kind 'Binary' -Bytes $blob
+    $outsideEntry = New-RecoveryEntry -Key $startup -ValueName 'D' -Kind 'Binary' -Bytes $blob
+    $disabledEntry = New-RecoveryEntry -Key $disabled -ValueName '1664DDA6' -Kind 'Binary' -Bytes $blob
+    $disabledOther = New-RecoveryEntry -Key $disabled -ValueName 'EEEEEEEE' -Kind 'Binary' -Bytes $blob
+    $disabledDll = New-RecoveryEntry -Key $disabled -ValueName '1664DDA6' -Kind 'Binary' -Bytes $withDll
     $otherEntry = New-RecoveryEntry -Key $doc -ValueName 'O' -Kind 'Binary' -Bytes $other
     $mixedEntry = New-RecoveryEntry -Key $doc -ValueName 'M' -Kind 'Binary' -Bytes $mixed
     $multi = New-RecoveryEntry -Key $doc -ValueName 'S' -Kind 'MultiString' -Bytes $blob
@@ -839,6 +879,11 @@ function Invoke-RecoverySelfTest {
     Assert-Case 'two_pure' ((Select-UniqueCanonicalTarget -Entries @($one, $two)).Reason -eq 'not_unique')
     Assert-Case 'none_match' ((Select-UniqueCanonicalTarget -Entries @($otherEntry)).Reason -eq 'no_match')
     Assert-Case 'outside' ((Select-UniqueCanonicalTarget -Entries @($one, $outsideEntry)).Reason -eq 'outside_resiliency_match')
+    Assert-Case 'disabled_ok' ((Select-UniqueCanonicalTarget -Entries @($disabledEntry, $otherEntry)).Reason -eq 'ok')
+    Assert-Case 'two_areas' ((Select-UniqueCanonicalTarget -Entries @($one, $disabledEntry)).Reason -eq 'not_unique')
+    Assert-Case 'two_disabled' ((Select-UniqueCanonicalTarget -Entries @($disabledEntry, $disabledOther)).Reason -eq 'not_unique')
+    Assert-Case 'disabled_dll' ((Select-UniqueCanonicalTarget -Entries @($disabledDll)).Reason -eq 'impure_match')
+    Assert-Case 'startup_blocks' ((Select-UniqueCanonicalTarget -Entries @($disabledEntry, $outsideEntry)).Reason -eq 'outside_resiliency_match')
     Assert-Case 'impure_blocks' ((Select-UniqueCanonicalTarget -Entries @($mixedEntry)).Reason -eq 'impure_match')
     Assert-Case 'multi_blocks' ((Select-UniqueCanonicalTarget -Entries @($multi)).Reason -eq 'unsupported_value')
     Assert-Case 'bad_name' ((Select-UniqueCanonicalTarget -Entries @($badName)).Reason -eq 'unsupported_value')
@@ -849,6 +894,11 @@ function Invoke-RecoverySelfTest {
     Assert-Case 'jail_dotdot' (-not (Test-AllowedRecoveryKey -Key ($script:RecoveryPrefix + '\..\DisabledItems')))
     Assert-Case 'jail_15' (-not (Test-AllowedRecoveryKey -Key 'Software\Microsoft\Office\15.0\Excel\Resiliency\DocumentRecovery'))
     Assert-Case 'jail_extra' (-not (Test-AllowedRecoveryKey -Key 'Software\Microsoft\Office\16.0\Excel\Resiliency\DocumentRecoveryExtra'))
+    Assert-Case 'mutation_disabled' (Test-AllowedMutationKey -Key $disabled)
+    Assert-Case 'mutation_child' (Test-AllowedDisabledItemsKey -Key ($disabled + '\1'))
+    Assert-Case 'mutation_startup' (-not (Test-AllowedMutationKey -Key $startup))
+    Assert-Case 'mutation_extra' (-not (Test-AllowedDisabledItemsKey -Key ($disabled + 'Extra')))
+    Assert-Case 'mutation_dotdot' (-not (Test-AllowedDisabledItemsKey -Key ($script:DisabledPrefix + '\..\DocumentRecovery')))
     Assert-Case 'value_ok' (Test-AllowedValueName -Name 'Item')
     Assert-Case 'value_default' (Test-AllowedValueName -Name '')
     Assert-Case 'value_slash' (-not (Test-AllowedValueName -Name 'A\B'))
