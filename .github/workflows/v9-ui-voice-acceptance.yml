@@ -266,6 +266,12 @@ jobs:
           if (($diag -join "`n").IndexOf("PROOF crash_causation=not_established", $ordinal) -lt 0) {
             throw "serious-error diagnostic did not prove crash causation stays unestablished"
           }
+          if (($diag -join "`n").IndexOf("PROOF serious_error_link=not_established", $ordinal) -lt 0) {
+            throw "serious-error diagnostic did not prove the latest crash is unlinked"
+          }
+          if (($diag -join "`n").IndexOf("PROOF wer_sig=ucrtbase.dll", $ordinal) -lt 0) {
+            throw "serious-error diagnostic did not prove the WER signature parser"
+          }
       - name: Excel identity probe hard-timeout selftest
         # Windows PowerShell 5.1 is the acceptance shell. The Ubuntu
         # structural job covers the same -IdentityProbeSelfTest entry

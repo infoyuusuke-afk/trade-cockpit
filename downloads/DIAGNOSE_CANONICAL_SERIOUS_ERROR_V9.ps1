@@ -6,8 +6,9 @@ param(
 
 # Read-only diagnosis for the canonical workbook serious-error prompt.
 # Dialog text is already confirmed. crashSave is reported only after the
-# whole workbook part is scanned. Prior Excel crashes stay correlation
-# until an event names the canonical workbook or the RSS xll.
+# whole workbook part is scanned in ASCII and UTF-16LE. An older WER
+# mention of the RSS xll is not the cause of this dialog. The latest
+# crash must name the workbook, or the package must carry crashSave.
 # It does not delete registry values, stop Excel, click a dialog, or
 # modify the workbook or the RSS xll. -SelfTest does not read HKCU,
 # processes, or the workbook.
@@ -23,6 +24,8 @@ $script:XllLeaf = 'MarketSpeed2_RSS_64bit.xll'
 $script:ResiliencyRoot = 'Software\Microsoft\Office\16.0\Excel\Resiliency'
 $script:ConfirmToken = 'DIAGNOSE_CANONICAL_SERIOUS_ERROR_READONLY'
 $script:CaseCount = 0
+$script:RecoveryAscii = [Text.Encoding]::ASCII.GetBytes('fileRecoveryPr')
+$script:RecoveryUtf16 = [Text.Encoding]::Unicode.GetBytes('fileRecoveryPr')
 $script:SeriousErrorJa = -join @(
     [char]0x91CD, [char]0x5927, [char]0x306A, [char]0x30A8, [char]0x30E9, [char]0x30FC
 )
@@ -1136,8 +1139,88 @@ function Get-CauseLimit {
     $flags = New-Object System.Collections.Generic.List[string]
     if ($FileRecovery -eq 'unreadable') { [void]$flags.Add('package_not_ruled_out') }
     if ($Verdict -eq 'no_direct_link') { [void]$flags.Add('correlation_only') }
+    if ($Verdict -eq 'xll_named' -or $Verdict -eq 'workbook_named' -or $Verdict -eq 'workbook_and_xll_named') {
+        [void]$flags.Add('older_text_is_not_latest_crash')
+    }
     if ($flags.Count -eq 0) { return 'none' }
     return [string]::Join(',', $flags.ToArray())
+}
+
+function Get-SeriousErrorLink {
+    param(
+        [string]$CrashSave,
+        [string]$LatestWorkbook,
+        [string]$LatestXll,
+        [string]$LatestWerWorkbook,
+        [string]$LatestWerXll
+    )
+    if ($CrashSave -eq '1') { return 'package_crash_save' }
+    if ($CrashSave -eq 'unreadable') { return 'package_not_ruled_out' }
+    if (($LatestWorkbook -eq '1') -or ($LatestWerWorkbook -eq '1')) { return 'latest_names_workbook' }
+    if (($LatestXll -eq '1') -or ($LatestWerXll -eq '1')) { return 'latest_names_xll_not_workbook' }
+    return 'not_established'
+}
+
+function Get-XllMatch {
+    param([string]$Text)
+    if ([string]::IsNullOrEmpty($Text)) { return 'none' }
+    if ($Text.IndexOf($script:XllLeaf, $script:OrdinalIgnore) -ge 0) { return 'leaf' }
+    if ($Text.IndexOf($script:XllStem, $script:OrdinalIgnore) -ge 0) { return 'stem' }
+    return 'none'
+}
+
+function Get-WerNamedValue {
+    param([string]$Text, [string]$Name)
+    if ([string]::IsNullOrEmpty($Text) -or [string]::IsNullOrEmpty($Name)) { return '' }
+    $lines = $Text.Split([char[]]@(10, 13), [StringSplitOptions]::RemoveEmptyEntries)
+    $index = ''
+    foreach ($line in $lines) {
+        $nameAt = $line.IndexOf('.Name=', $script:Ordinal)
+        if ($nameAt -lt 0) { continue }
+        $label = $line.Substring($nameAt + 6).Trim()
+        if (-not [string]::Equals($label, $Name, $script:OrdinalIgnore)) { continue }
+        $sigAt = $line.IndexOf('Sig[', $script:Ordinal)
+        if ($sigAt -lt 0) { continue }
+        $end = $line.IndexOf(']', $sigAt, $script:Ordinal)
+        if ($end -lt 0) { continue }
+        $index = $line.Substring($sigAt, ($end - $sigAt) + 1)
+        break
+    }
+    if ($index.Length -eq 0) { return '' }
+    $token = $index + '.Value='
+    foreach ($line in $lines) {
+        $at = $line.IndexOf($token, $script:Ordinal)
+        if ($at -lt 0) { continue }
+        return $line.Substring($at + $token.Length).Trim()
+    }
+    return ''
+}
+
+function Get-WerEventType {
+    param([string]$Text)
+    if ([string]::IsNullOrEmpty($Text)) { return '' }
+    $lines = $Text.Split([char[]]@(10, 13), [StringSplitOptions]::RemoveEmptyEntries)
+    $prefix = 'EventType='
+    foreach ($line in $lines) {
+        if (-not $line.StartsWith($prefix, $script:OrdinalIgnore)) { continue }
+        return $line.Substring($prefix.Length).Trim().ToLowerInvariant()
+    }
+    return ''
+}
+
+function Get-XmlEncodingLabel {
+    param([byte[]]$Bytes)
+    if ($null -eq $Bytes -or $Bytes.Length -lt 2) { return 'short' }
+    if (($Bytes[0] -eq 255) -and ($Bytes[1] -eq 254)) { return 'utf16le' }
+    if (($Bytes[0] -eq 254) -and ($Bytes[1] -eq 255)) { return 'utf16be' }
+    if (($Bytes.Length -ge 3) -and ($Bytes[0] -eq 239) -and ($Bytes[1] -eq 187) -and ($Bytes[2] -eq 191)) { return 'utf8_bom' }
+    $headLen = $Bytes.Length
+    if ($headLen -gt 180) { $headLen = 180 }
+    $head = [Text.Encoding]::ASCII.GetString($Bytes, 0, $headLen).ToLowerInvariant()
+    $utf16Decl = 'encoding="utf-16"'
+    $utf16Decl2 = "encoding='utf-16'"
+    if (($head.IndexOf($utf16Decl, $script:Ordinal) -ge 0) -or ($head.IndexOf($utf16Decl2, $script:Ordinal) -ge 0)) { return 'declared_utf16' }
+    return 'utf8'
 }
 
 function Get-PackageFlagState {
@@ -1192,6 +1275,11 @@ function Get-PackageFlagState {
         $state.Reason = 'cut_element'
         return $state
     }
+    if ($Status -eq 'utf16be') {
+        $state.PackageXml = 'unreadable'
+        $state.Reason = 'utf16be_not_scanned'
+        return $state
+    }
     return $state
 }
 
@@ -1232,10 +1320,16 @@ function Add-MarkerBytes {
         $carry = [Convert]::FromBase64String([string]$Scan.CarryText)
     }
     $combined = Join-BytePrefix -Left $carry -Right $Chunk
-    $needle = [Text.Encoding]::ASCII.GetBytes('fileRecoveryPr')
-    $at = Find-PatternOffset -Hay $combined -Needle $needle -Start 0
+    $asciiNeedle = $script:RecoveryAscii
+    $utfNeedle = $script:RecoveryUtf16
+    $at = Find-PatternOffset -Hay $combined -Needle $asciiNeedle -Start 0
+    $wide = $false
     if ($at -lt 0) {
-        $keep = $needle.Length - 1
+        $at = Find-PatternOffset -Hay $combined -Needle $utfNeedle -Start 0
+        if ($at -ge 0) { $wide = $true }
+    }
+    if ($at -lt 0) {
+        $keep = $utfNeedle.Length - 1
         if ($combined.Length -le 0) { return }
         if ($combined.Length -gt $keep) {
             $tail = New-Object byte[] $keep
@@ -1244,6 +1338,32 @@ function Add-MarkerBytes {
         } else {
             $Scan.CarryText = [Convert]::ToBase64String($combined)
         }
+        return
+    }
+    if ($wide) {
+        $start = $at
+        if (($at -ge 2) -and ($combined[$at - 2] -eq 60) -and ($combined[$at - 1] -eq 0)) { $start = $at - 2 }
+        $end = -1
+        $last = $combined.Length - 1
+        for ($i = $at; $i -lt $last; $i++) {
+            if (($combined[$i] -eq 62) -and ($combined[$i + 1] -eq 0)) { $end = $i + 1; break }
+        }
+        if ($end -lt 0) {
+            $pendingLen = $combined.Length - $start
+            if ($pendingLen -gt 1000) { $pendingLen = 1000 }
+            $pending = New-Object byte[] $pendingLen
+            [Buffer]::BlockCopy($combined, $start, $pending, 0, $pendingLen)
+            $Scan.CarryText = [Convert]::ToBase64String($pending)
+            $Scan.Element = 'pending'
+            return
+        }
+        $wideLen = ($end - $start) + 1
+        if ($wideLen -gt 1000) { $wideLen = 1000 }
+        $wideSlice = New-Object byte[] $wideLen
+        [Buffer]::BlockCopy($combined, $start, $wideSlice, 0, $wideLen)
+        $Scan.Element = [Text.Encoding]::Unicode.GetString($wideSlice)
+        $Scan.Done = $true
+        $Scan.CarryText = ''
         return
     }
     $start = $at
@@ -1624,6 +1744,40 @@ function Invoke-DiagnoseSelfTest {
     $ownerLimit = Get-CauseLimit -FileRecovery 'unreadable' -Verdict 'no_direct_link'
     Assert-Case 'limit_owner' ($ownerLimit -eq 'package_not_ruled_out,correlation_only')
     Assert-Case 'limit_corr' ((Get-CauseLimit -FileRecovery '0' -Verdict 'no_direct_link') -eq 'correlation_only')
+    Assert-Case 'limit_older' ((Get-CauseLimit -FileRecovery '0' -Verdict 'xll_named') -eq 'older_text_is_not_latest_crash')
+    $utf16Scan = New-MarkerScan
+    $utf16Xml = [Text.Encoding]::Unicode.GetBytes('<fileRecoveryPr crashSave="1"/>')
+    Add-MarkerBytes -Scan $utf16Scan -Chunk $utf16Xml
+    Assert-Case 'utf16_found' ((Complete-MarkerScan -Scan $utf16Scan -Eof $true) -eq 'found')
+    $utf16Pkg = Get-PackageRecovery -Xml ([string]$utf16Scan.Element)
+    Assert-Case 'utf16_save' ([string]$utf16Pkg.CrashSave -eq '1')
+    $utf16Bom = New-Object byte[] 4
+    $utf16Bom[0] = 255
+    $utf16Bom[1] = 254
+    $utf16Bom[2] = 60
+    $utf16Bom[3] = 0
+    Assert-Case 'encoding_utf16le' ((Get-XmlEncodingLabel -Bytes $utf16Bom) -eq 'utf16le')
+    $utf8Head = [Text.Encoding]::ASCII.GetBytes('<?xml version="1.0" encoding="UTF-8"?><workbook>')
+    Assert-Case 'encoding_utf8' ((Get-XmlEncodingLabel -Bytes $utf8Head) -eq 'utf8')
+    $beHead = New-Object byte[] 2
+    $beHead[0] = 254
+    $beHead[1] = 255
+    Assert-Case 'encoding_utf16be' ((Get-XmlEncodingLabel -Bytes $beHead) -eq 'utf16be')
+    $beState = Get-PackageFlagState -Status 'utf16be' -Element ''
+    Assert-Case 'utf16be_reason' ([string]$beState.Reason -eq 'utf16be_not_scanned')
+    Assert-Case 'utf16be_save' ([string]$beState.CrashSave -eq 'unreadable')
+    $werText = 'EventType=APPCRASH' + "`n" + 'Sig[3].Name=Fault Module Name' + "`n" + 'Sig[3].Value=ucrtbase.dll' + "`n" + 'Sig[6].Name=Exception Code' + "`n" + 'Sig[6].Value=c0000005' + "`n" + $script:XllLeaf
+    Assert-Case 'wer_module' ((Get-WerNamedValue -Text $werText -Name 'Fault Module Name') -eq 'ucrtbase.dll')
+    Assert-Case 'wer_exception' ((Get-HexCode -Text (Get-WerNamedValue -Text $werText -Name 'Exception Code')) -eq 'c0000005')
+    Assert-Case 'wer_type' ((Get-WerEventType -Text $werText) -eq 'appcrash')
+    Assert-Case 'wer_match_leaf' ((Get-XllMatch -Text $werText) -eq 'leaf')
+    Assert-Case 'wer_match_stem' ((Get-XllMatch -Text $script:XllStem) -eq 'stem')
+    Assert-Case 'wer_match_none' ((Get-XllMatch -Text 'kernelbase.dll') -eq 'none')
+    Assert-Case 'link_dialog_none' ((Get-SeriousErrorLink -CrashSave 'absent' -LatestWorkbook '0' -LatestXll '0' -LatestWerWorkbook '0' -LatestWerXll '0') -eq 'not_established')
+    Assert-Case 'link_dialog_save' ((Get-SeriousErrorLink -CrashSave '1' -LatestWorkbook '0' -LatestXll '0' -LatestWerWorkbook '0' -LatestWerXll '0') -eq 'package_crash_save')
+    Assert-Case 'link_dialog_book' ((Get-SeriousErrorLink -CrashSave 'absent' -LatestWorkbook '1' -LatestXll '0' -LatestWerWorkbook '0' -LatestWerXll '0') -eq 'latest_names_workbook')
+    Assert-Case 'link_dialog_xll' ((Get-SeriousErrorLink -CrashSave 'absent' -LatestWorkbook '0' -LatestXll '0' -LatestWerWorkbook '0' -LatestWerXll '1') -eq 'latest_names_xll_not_workbook')
+    Assert-Case 'link_dialog_unread' ((Get-SeriousErrorLink -CrashSave 'unreadable' -LatestWorkbook '0' -LatestXll '0' -LatestWerWorkbook '0' -LatestWerXll '0') -eq 'package_not_ruled_out')
     $utf = New-Object byte[] 2
     $utf[0] = 255
     $utf[1] = 254
@@ -1657,6 +1811,8 @@ function Invoke-DiagnoseSelfTest {
     Write-Output 'PROOF cause=dialog_without_package_or_resiliency_marker'
     Write-Output 'PROOF crash_link=no_direct_link'
     Write-Output 'PROOF crash_causation=not_established'
+    Write-Output 'PROOF serious_error_link=not_established'
+    Write-Output 'PROOF wer_sig=ucrtbase.dll'
     Write-Output 'PROOF reason=crash_query_unreadable'
     Write-Output 'PROOF backup=returned'
     Write-Output 'PROOF backup=stayed_clear'
@@ -1994,7 +2150,7 @@ function Read-ZipEntryText {
 
 function Read-ZipMarker {
     param($Entry)
-    $result = New-Object psobject -Property @{ Element = ''; Status = 'error'; Bytes = 0 }
+    $result = New-Object psobject -Property @{ Element = ''; Status = 'error'; Bytes = 0; Encoding = 'unread' }
     $entryStream = $null
     $scan = New-MarkerScan
     try {
@@ -2012,10 +2168,18 @@ function Read-ZipMarker {
                     $result.Status = 'cut_element'
                 }
                 $result.Bytes = $total
+                if (($result.Status -eq 'absent') -and ($result.Encoding -eq 'utf16be')) { $result.Status = 'utf16be' }
                 return $result
             }
             $piece = New-Object byte[] $n
             [Buffer]::BlockCopy($buf, 0, $piece, 0, $n)
+            if ($total -eq 0) {
+                $headLen = $n
+                if ($headLen -gt 180) { $headLen = 180 }
+                $head = New-Object byte[] $headLen
+                [Buffer]::BlockCopy($piece, 0, $head, 0, $headLen)
+                $result.Encoding = Get-XmlEncodingLabel -Bytes $head
+            }
             Add-MarkerBytes -Scan $scan -Chunk $piece
             $total = $total + $n
             if ($scan.Done) {
@@ -2060,6 +2224,9 @@ function Get-WorkbookEvidence {
         XmlReason = 'workbook_missing'
         XmlBytes = 0
         EntryName = ''
+        XmlEncoding = 'unread'
+        OtherRecovery = ''
+        OtherSkipped = '0'
     }
     if (-not [IO.File]::Exists($Path)) { return $info }
     $info.Exists = '1'
@@ -2088,6 +2255,8 @@ function Get-WorkbookEvidence {
             $workbookEntry = $null
             $workbookExact = $false
             $workbookLabel = ''
+            $otherHits = New-Object System.Collections.Generic.List[string]
+            $otherSkipped = '0'
             foreach ($entry in $zip.Entries) {
                 $full = [string]$entry.FullName
                 $norm = $full.Replace('\', '/')
@@ -2115,15 +2284,33 @@ function Get-WorkbookEvidence {
                         if ($wantCustom) { $info.CustomRecovery = '1' }
                     }
                 }
+                $isWorkbook = Test-WorkbookPart -Name $norm
+                if ((-not $isWorkbook) -and (-not $wantApp) -and (-not $wantCustom)) {
+                    $uncompressed = 0
+                    try { $uncompressed = [int64]$entry.Length } catch { $uncompressed = -1 }
+                    if (($uncompressed -lt 0) -or ($uncompressed -gt 2000000)) {
+                        $otherSkipped = '1'
+                    } elseif ($otherHits.Count -lt 8) {
+                        $side = $null
+                        try { $side = Read-ZipMarker -Entry $entry } catch { $side = $null }
+                        if (($null -ne $side) -and ([string]$side.Status -eq 'found')) {
+                            [void]$otherHits.Add((Get-PartLabel -Name $norm))
+                        }
+                    }
+                }
             }
             $info.ExternalLinks = $links
             $info.PartNames = [string]::Join(',', $parts.ToArray())
             $info.EntryName = $workbookLabel
+            $info.OtherSkipped = $otherSkipped
+            if ($otherHits.Count -eq 0) { $info.OtherRecovery = '0' }
+            else { $info.OtherRecovery = [string]::Join(',', $otherHits.ToArray()) }
             if ($null -eq $workbookEntry) {
                 $flags = Get-PackageFlagState -Status 'missing' -Element ''
             } else {
                 $marker = Read-ZipMarker -Entry $workbookEntry
                 $info.XmlBytes = [int]$marker.Bytes
+                $info.XmlEncoding = [string]$marker.Encoding
                 $flags = Get-PackageFlagState -Status ([string]$marker.Status) -Element ([string]$marker.Element)
             }
             $info.PackageXml = [string]$flags.PackageXml
@@ -2891,14 +3078,27 @@ function Get-PriorCrashEvidence {
                                 $raw = Read-CappedBytes -Path $reportPath -Cap 262144
                                 $text = Convert-ReportText -Bytes $raw
                                 $class = Get-CrashEventClass -EventId 1001 -Text $text -ModuleHint '' -ExceptionHint ''
+                                $sigModule = Get-WerNamedValue -Text $text -Name 'Fault Module Name'
+                                $sigException = Get-WerNamedValue -Text $text -Name 'Exception Code'
+                                $eventType = Get-WerEventType -Text $text
+                                $module = [string]$class.Module
+                                if (Test-ModuleToken -Token $sigModule) { $module = $sigModule.ToLowerInvariant() }
+                                $exception = [string]$class.Exception
+                                $sigHex = Get-HexCode -Text $sigException
+                                if ($sigHex.Length -eq 8) { $exception = $sigHex }
+                                $kind = [string]$class.Kind
+                                if ($eventType.IndexOf('apphang', $script:Ordinal) -ge 0) { $kind = 'apphang' }
+                                elseif ($eventType.IndexOf('appcrash', $script:Ordinal) -ge 0) { $kind = 'appcrash' }
                                 $stamp = $dirInfo.LastWriteTimeUtc.ToString('yyyy-MM-ddTHH:mm:ss') + 'Z'
                                 [void]$werRows.Add((New-Object psobject -Property @{
                                     Utc = $stamp
-                                    Kind = [string]$class.Kind
-                                    Module = [string]$class.Module
-                                    Exception = [string]$class.Exception
+                                    Ticks = $ticks
+                                    Kind = $kind
+                                    Module = $module
+                                    Exception = $exception
                                     Workbook = [string]$class.Workbook
                                     Xll = [string]$class.Xll
+                                    Match = (Get-XllMatch -Text $text)
                                 }))
                             }
                         }
@@ -4039,6 +4239,9 @@ function Invoke-LiveDiagnose {
             XmlReason = 'unreadable'
             XmlBytes = 0
             EntryName = ''
+            XmlEncoding = 'unread'
+            OtherRecovery = ''
+            OtherSkipped = '0'
         }
     }
     Write-Output ('WORKBOOK_EXISTS=' + [string]$book.Exists)
@@ -4061,6 +4264,9 @@ function Invoke-LiveDiagnose {
     Write-Output ('PACKAGE_PARTS=' + [string]$book.PartNames)
     Write-Output ('PACKAGE_XML_REASON=' + [string]$book.XmlReason)
     Write-Output ('PACKAGE_XML_BYTES=' + ([int]$book.XmlBytes).ToString())
+    Write-Output ('PACKAGE_XML_ENCODING=' + [string]$book.XmlEncoding)
+    Write-Output ('PACKAGE_OTHER_RECOVERY=' + [string]$book.OtherRecovery)
+    Write-Output ('PACKAGE_OTHER_SKIPPED=' + [string]$book.OtherSkipped)
     Write-Output ('PACKAGE_ENTRY=' + [string]$book.EntryName)
 
     $sibling = $null
@@ -4336,7 +4542,55 @@ function Invoke-LiveDiagnose {
     }
     foreach ($row in @($prior.WerRows)) {
         if ($null -eq $row) { continue }
-        Write-Output ('WER_LINK utc=' + [string]$row.Utc + ' kind=' + (Get-SafeLabel -Name ([string]$row.Kind)) + ' module=' + (Get-SafeLabel -Name ([string]$row.Module)) + ' exception=' + (Get-SafeLabel -Name ([string]$row.Exception)) + ' workbook=' + [string]$row.Workbook + ' xll=' + [string]$row.Xll)
+        $match = 'none'
+        try { $match = [string]$row.Match } catch { $match = 'none' }
+        if ([string]::IsNullOrEmpty($match)) { $match = 'none' }
+        Write-Output ('WER_LINK utc=' + [string]$row.Utc + ' kind=' + (Get-SafeLabel -Name ([string]$row.Kind)) + ' module=' + (Get-SafeLabel -Name ([string]$row.Module)) + ' exception=' + (Get-SafeLabel -Name ([string]$row.Exception)) + ' workbook=' + [string]$row.Workbook + ' xll=' + [string]$row.Xll + ' match=' + (Get-SafeLabel -Name $match))
+    }
+    $latestWer = $null
+    $latestWerTicks = [int64]0
+    foreach ($row in @($prior.WerRows)) {
+        if ($null -eq $row) { continue }
+        $rowTicks = [int64]0
+        try { $rowTicks = [int64]$row.Ticks } catch { $rowTicks = 0 }
+        if ($rowTicks -ge $latestWerTicks) {
+            $latestWerTicks = $rowTicks
+            $latestWer = $row
+        }
+    }
+    $latestWerUtc = ''
+    $latestWerKind = ''
+    $latestWerModule = ''
+    $latestWerException = ''
+    $latestWerWorkbook = '0'
+    $latestWerXll = '0'
+    $latestWerMatch = 'none'
+    if ($null -ne $latestWer) {
+        $latestWerUtc = [string]$latestWer.Utc
+        $latestWerKind = [string]$latestWer.Kind
+        $latestWerModule = [string]$latestWer.Module
+        $latestWerException = [string]$latestWer.Exception
+        $latestWerWorkbook = [string]$latestWer.Workbook
+        $latestWerXll = [string]$latestWer.Xll
+        $latestWerMatch = [string]$latestWer.Match
+    }
+    $olderEventXll = 0
+    $olderEventBook = 0
+    foreach ($row in @($prior.Rows)) {
+        if ($null -eq $row) { continue }
+        $sameLatest = [string]::Equals([string]$row.Utc, [string]$prior.LatestUtc, $script:Ordinal)
+        if ($sameLatest) { continue }
+        if ([string]$row.Xll -eq '1') { $olderEventXll = $olderEventXll + 1 }
+        if ([string]$row.Workbook -eq '1') { $olderEventBook = $olderEventBook + 1 }
+    }
+    $olderWerXll = 0
+    $olderWerBook = 0
+    foreach ($row in @($prior.WerRows)) {
+        if ($null -eq $row) { continue }
+        $sameLatest = [string]::Equals([string]$row.Utc, $latestWerUtc, $script:Ordinal)
+        if ($sameLatest) { continue }
+        if ([string]$row.Xll -eq '1') { $olderWerXll = $olderWerXll + 1 }
+        if ([string]$row.Workbook -eq '1') { $olderWerBook = $olderWerBook + 1 }
     }
     $werBook = 0
     $werXll = 0
@@ -4359,6 +4613,19 @@ function Invoke-LiveDiagnose {
     Write-Output ('CRASH_LINK_XLL=' + (([int]$prior.XllHits) + $werXll).ToString())
     Write-Output ('CRASH_LINK_VERDICT=' + $linkVerdict)
     Write-Output ('CRASH_CAUSATION=' + $linkCause)
+    Write-Output ('LATEST_WER_UTC=' + $latestWerUtc)
+    Write-Output ('LATEST_WER_KIND=' + (Get-SafeLabel -Name $latestWerKind))
+    Write-Output ('LATEST_WER_MODULE=' + (Get-SafeLabel -Name $latestWerModule))
+    Write-Output ('LATEST_WER_EXCEPTION=' + (Get-SafeLabel -Name $latestWerException))
+    Write-Output ('LATEST_WER_WORKBOOK=' + $latestWerWorkbook)
+    Write-Output ('LATEST_WER_XLL=' + $latestWerXll)
+    Write-Output ('LATEST_WER_MATCH=' + (Get-SafeLabel -Name $latestWerMatch))
+    Write-Output ('OLDER_EVENT_XLL=' + $olderEventXll.ToString())
+    Write-Output ('OLDER_EVENT_WORKBOOK=' + $olderEventBook.ToString())
+    Write-Output ('OLDER_WER_XLL=' + $olderWerXll.ToString())
+    Write-Output ('OLDER_WER_WORKBOOK=' + $olderWerBook.ToString())
+    $seriousLink = Get-SeriousErrorLink -CrashSave ([string]$book.CrashSave) -LatestWorkbook ([string]$prior.LatestWorkbook) -LatestXll ([string]$prior.LatestXll) -LatestWerWorkbook $latestWerWorkbook -LatestWerXll $latestWerXll
+    Write-Output ('SERIOUS_ERROR_LINK=' + $seriousLink)
 
     $keyCause = 'unreadable'
     if ($keyWrite -ne 'unreadable' -and $recreated -ne 'unreadable' -and $other -ne 'unreadable' -and $replaced -ne 'unreadable') {

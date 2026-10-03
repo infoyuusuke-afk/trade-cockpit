@@ -89,6 +89,11 @@ class SeriousErrorDiagnosticTests(unittest.TestCase):
         self.assertIn("parsed_without_file_recovery_pr", text)
         self.assertIn("no_direct_link", text)
         self.assertIn("not_established", text)
+        self.assertIn("SERIOUS_ERROR_LINK=", text)
+        self.assertIn("Get-SeriousErrorLink", text)
+        self.assertIn("Get-WerNamedValue", text)
+        self.assertIn("utf16be_not_scanned", text)
+        self.assertIn("older_text_is_not_latest_crash", text)
         self.assertIn("correlation_only", text)
         self.assertIn("AutomationElement", text)
         self.assertIn("WRITER_PID=unavailable", text)
@@ -152,6 +157,8 @@ class SeriousErrorDiagnosticTests(unittest.TestCase):
             "PROOF cause=dialog_without_package_or_resiliency_marker",
             "PROOF crash_link=no_direct_link",
             "PROOF crash_causation=not_established",
+            "PROOF serious_error_link=not_established",
+            "PROOF wer_sig=ucrtbase.dll",
             "PROOF backup=returned",
             "PROOF backup=stayed_clear",
             "PROOF backup=new_record",
