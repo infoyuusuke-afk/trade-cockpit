@@ -251,6 +251,9 @@ jobs:
           if (($diag -join "`n").IndexOf("PROOF primary=resiliency_recreated", $ordinal) -lt 0) {
             throw "serious-error diagnostic did not prove resiliency_recreated"
           }
+          if (($diag -join "`n").IndexOf("PROOF dialog_child=1", $ordinal) -lt 0) {
+            throw "serious-error diagnostic did not prove dialog_child"
+          }
       - name: Excel identity probe hard-timeout selftest
         # Windows PowerShell 5.1 is the acceptance shell. The Ubuntu
         # structural job covers the same -IdentityProbeSelfTest entry

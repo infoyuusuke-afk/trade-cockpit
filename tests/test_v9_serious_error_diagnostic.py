@@ -72,6 +72,14 @@ class SeriousErrorDiagnosticTests(unittest.TestCase):
         self.assertIn("GetClassName", text)
         self.assertIn("GetWindowText", text)
         self.assertIn("GW_OWNER", text)
+        self.assertIn("GetForegroundWindow", text)
+        self.assertIn("GetGUIThreadInfo", text)
+        self.assertIn("RegQueryInfoKey", text)
+        self.assertIn("KeyQueryValue", text)
+        self.assertNotIn("RegSetValue", text)
+        self.assertNotIn("KEY_SET_VALUE", text)
+        self.assertNotIn("SetForegroundWindow", text)
+        self.assertIn("Test-SurveyRowWanted", text)
         self.assertIn("Select-DialogHit", text)
         self.assertIn("crash_query_unreadable", text)
         self.assertIn("NoMatchingEventsFound", text)
@@ -122,6 +130,8 @@ class SeriousErrorDiagnosticTests(unittest.TestCase):
             "PROOF primary=inconclusive",
             "PROOF module=ucrtbase.dll",
             "PROOF dialog_needle=1",
+            "PROOF dialog_child=1",
+            "PROOF survey_owner=1",
             "PROOF backup=returned",
             "PROOF backup=stayed_clear",
             "PROOF backup=new_record",

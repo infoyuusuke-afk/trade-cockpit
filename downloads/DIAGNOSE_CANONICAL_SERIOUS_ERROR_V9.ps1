@@ -7,6 +7,8 @@ param(
 # Read-only diagnosis for the canonical workbook serious-error prompt.
 # Distinguishes a resiliency value that returned, a different resiliency
 # match, a workbook rewrite, the RSS xll load, and a crash after launch.
+# The window survey also reads the foreground window, GUI-thread active
+# window, owner chain, dialog-class children, and desktop match.
 # This file does not delete registry values, stop Excel, click a dialog,
 # or modify the workbook or the RSS xll. -SelfTest does not read HKCU,
 # processes, or the workbook.
@@ -625,6 +627,7 @@ function Select-DialogHit {
             $score = $score + 2
             $linked = '1'
         }
+        if (Test-DialogClassName -ClassName ([string]$row.Class)) { $score = $score + 3 }
         $leaf = '0'
         $serious = '0'
         $reopen = '0'
@@ -678,6 +681,79 @@ function Select-DialogHit {
         Source = $bestSource
         SameProcess = $bestSame
         OwnerLinked = $bestOwnerLinked
+    })
+}
+
+function Test-DialogClassName {
+    param([string]$ClassName)
+    if ([string]::IsNullOrEmpty($ClassName)) { return $false }
+    if ([string]::Equals($ClassName, '#32770', $script:Ordinal)) { return $true }
+    if ([string]::Equals($ClassName, 'NUIDialog', $script:Ordinal)) { return $true }
+    if ([string]::Equals($ClassName, 'bosa_sdm_XL9', $script:Ordinal)) { return $true }
+    if ([string]::Equals($ClassName, 'NetUIHWND', $script:Ordinal)) { return $true }
+    if ($ClassName.IndexOf('bosa_sdm', $script:Ordinal) -ge 0) { return $true }
+    if ($ClassName.IndexOf('Dialog', $script:Ordinal) -ge 0) { return $true }
+    return $false
+}
+
+function Test-OfficeProcessName {
+    param([string]$Name)
+    if ([string]::IsNullOrEmpty($Name)) { return $false }
+    foreach ($token in @(
+        'EXCEL',
+        'OfficeClickToRun',
+        'OfficeC2RClient',
+        'sdxhelper',
+        'AppVShNotify',
+        'MsoSync',
+        'integrator',
+        'OfficeBackgroundTaskHandler'
+    )) {
+        if ([string]::Equals($Name, $token, $script:OrdinalIgnore)) { return $true }
+    }
+    return $false
+}
+
+function Test-SurveyRowWanted {
+    param($Row, [int]$FocusPid)
+    if ($null -eq $Row) { return $false }
+    $role = [string]$Row.Role
+    if ($role -eq 'foreground' -or $role -eq 'guithread' -or $role -eq 'owner') { return $true }
+    if ([int]$Row.Needle -eq 1) { return $true }
+    if ([int]$Row.Foreground -eq 1 -or [int]$Row.GuiActive -eq 1) { return $true }
+    if (Test-DialogClassName -ClassName ([string]$Row.Class)) { return $true }
+    if (Test-OfficeProcessName -Name ([string]$Row.Process)) { return $true }
+    if ($FocusPid -gt 0) {
+        if ([int]$Row.Pid -eq $FocusPid) { return $true }
+        if ([int]$Row.OwnerPid -eq $FocusPid) { return $true }
+        if ([int]$Row.ParentPid -eq $FocusPid) { return $true }
+        if ([int]$Row.RootPid -eq $FocusPid) { return $true }
+    }
+    return $false
+}
+
+function New-SurveyProbeRow {
+    param(
+        [int]$PidValue,
+        [int]$OwnerPid,
+        [int]$ParentPid,
+        [int]$RootPid,
+        [string]$Class,
+        [string]$Role,
+        [string]$Process,
+        [int]$Needle
+    )
+    return (New-Object psobject -Property @{
+        Pid = $PidValue
+        OwnerPid = $OwnerPid
+        ParentPid = $ParentPid
+        RootPid = $RootPid
+        Class = $Class
+        Role = $Role
+        Process = $Process
+        Needle = $Needle
+        Foreground = 0
+        GuiActive = 0
     })
 }
 
@@ -866,6 +942,60 @@ function Invoke-DiagnoseSelfTest {
     Assert-Case 'dialog_owner_match' ($ownedHit.Match -eq 'canonical_serious_error')
     $miss = Select-DialogHit -FocusPid 43904 -Rows @($mainOnly)
     Assert-Case 'dialog_main_miss' ($miss.Visible -eq '0')
+    $mainNeedle = New-Object psobject -Property @{
+        Pid = 43904
+        OwnerPid = 0
+        ParentPid = 0
+        Class = 'XLMAIN'
+        Title = 'Microsoft Excel'
+        ChildText = ($script:Leaf + ' ' + $script:SeriousErrorJa)
+        Hwnd = [int64]11
+        OwnerHwnd = [int64]0
+        ParentHwnd = [int64]0
+    }
+    $childDialog = New-Object psobject -Property @{
+        Pid = 43904
+        OwnerPid = 43904
+        ParentPid = 43904
+        Class = 'bosa_sdm_XL9'
+        Title = ''
+        ChildText = ($script:Leaf + ' ' + $script:SeriousErrorJa + ' ' + $script:ReopenDocumentJa)
+        Hwnd = [int64]33
+        OwnerHwnd = [int64]11
+        ParentHwnd = [int64]11
+    }
+    $childHit = Select-DialogHit -FocusPid 43904 -Rows @($mainNeedle, $childDialog)
+    Assert-Case 'dialog_child_visible' ($childHit.Visible -eq '1')
+    Assert-Case 'dialog_child_class' ($childHit.Class -eq 'bosa_sdm_XL9')
+    Assert-Case 'dialog_child_pid' ($childHit.Pid -eq 43904)
+    Assert-Case 'dialog_child_source' ($childHit.Source -eq 'child')
+    Assert-Case 'dialog_child_match' ($childHit.Match -eq 'canonical_serious_error')
+    $xlmainRow = New-SurveyProbeRow -PidValue 43904 -OwnerPid 0 -ParentPid 0 -RootPid 43904 -Class 'XLMAIN' -Role 'toplevel' -Process 'EXCEL' -Needle 0
+    $foreignDialog = New-SurveyProbeRow -PidValue 7000 -OwnerPid 0 -ParentPid 0 -RootPid 7000 -Class 'NUIDialog' -Role 'toplevel' -Process 'sdxhelper' -Needle 0
+    $bosaRow = New-SurveyProbeRow -PidValue 8000 -OwnerPid 0 -ParentPid 0 -RootPid 8000 -Class 'bosa_sdm_XL9' -Role 'child' -Process 'EXCEL' -Needle 0
+    $standardRow = New-SurveyProbeRow -PidValue 8001 -OwnerPid 0 -ParentPid 0 -RootPid 8001 -Class '#32770' -Role 'toplevel' -Process 'EXCEL' -Needle 0
+    $netUiRow = New-SurveyProbeRow -PidValue 8002 -OwnerPid 0 -ParentPid 0 -RootPid 8002 -Class 'NetUIHWND' -Role 'child' -Process 'EXCEL' -Needle 0
+    $frontRow = New-SurveyProbeRow -PidValue 9 -OwnerPid 0 -ParentPid 0 -RootPid 9 -Class 'Button' -Role 'foreground' -Process 'notepad' -Needle 0
+    $guiRow = New-SurveyProbeRow -PidValue 9 -OwnerPid 0 -ParentPid 0 -RootPid 9 -Class 'Static' -Role 'guithread' -Process 'notepad' -Needle 0
+    $noiseRow = New-SurveyProbeRow -PidValue 9 -OwnerPid 0 -ParentPid 0 -RootPid 9 -Class 'Static' -Role 'child' -Process 'notepad' -Needle 0
+    $plainOwner = New-SurveyProbeRow -PidValue 9 -OwnerPid 0 -ParentPid 0 -RootPid 9 -Class 'Static' -Role 'owner' -Process 'notepad' -Needle 0
+    $ownerRow = New-SurveyProbeRow -PidValue 9 -OwnerPid 43904 -ParentPid 0 -RootPid 9 -Class 'Button' -Role 'owner' -Process 'notepad' -Needle 0
+    $rootRow = New-SurveyProbeRow -PidValue 9 -OwnerPid 0 -ParentPid 0 -RootPid 43904 -Class 'Button' -Role 'owner' -Process 'notepad' -Needle 0
+    $officeRow = New-SurveyProbeRow -PidValue 12 -OwnerPid 0 -ParentPid 0 -RootPid 12 -Class 'Chrome_WidgetWin_1' -Role 'toplevel' -Process 'OfficeClickToRun' -Needle 0
+    $needleRow = New-SurveyProbeRow -PidValue 9 -OwnerPid 0 -ParentPid 0 -RootPid 9 -Class 'Static' -Role 'child' -Process 'notepad' -Needle 1
+    Assert-Case 'survey_xlmain' (Test-SurveyRowWanted -Row $xlmainRow -FocusPid 43904)
+    Assert-Case 'survey_nuidialog' (Test-SurveyRowWanted -Row $foreignDialog -FocusPid 43904)
+    Assert-Case 'survey_bosa' (Test-SurveyRowWanted -Row $bosaRow -FocusPid 43904)
+    Assert-Case 'survey_32770' (Test-SurveyRowWanted -Row $standardRow -FocusPid 43904)
+    Assert-Case 'survey_netui' (Test-SurveyRowWanted -Row $netUiRow -FocusPid 43904)
+    Assert-Case 'survey_foreground' (Test-SurveyRowWanted -Row $frontRow -FocusPid 43904)
+    Assert-Case 'survey_guithread' (Test-SurveyRowWanted -Row $guiRow -FocusPid 43904)
+    Assert-Case 'survey_noise' (-not (Test-SurveyRowWanted -Row $noiseRow -FocusPid 43904))
+    Assert-Case 'survey_owner_role' (Test-SurveyRowWanted -Row $plainOwner -FocusPid 43904)
+    Assert-Case 'survey_owner' (Test-SurveyRowWanted -Row $ownerRow -FocusPid 43904)
+    Assert-Case 'survey_root' (Test-SurveyRowWanted -Row $rootRow -FocusPid 43904)
+    Assert-Case 'survey_office' (Test-SurveyRowWanted -Row $officeRow -FocusPid 43904)
+    Assert-Case 'survey_needle' (Test-SurveyRowWanted -Row $needleRow -FocusPid 43904)
     Assert-Case 'label_hex' ((Get-SafeLabel -Name '1664DDA6') -eq '1664DDA6')
     Assert-Case 'label_path' ((Get-SafeLabel -Name 'C:\Secret.xlsx') -eq 'len_14')
     $root = Get-BackupRoot
@@ -886,6 +1016,8 @@ function Invoke-DiagnoseSelfTest {
     Write-Output 'PROOF module=ucrtbase.dll'
     Write-Output 'PROOF dialog_needle=1'
     Write-Output 'PROOF dialog_owner=1'
+    Write-Output 'PROOF dialog_child=1'
+    Write-Output 'PROOF survey_owner=1'
     Write-Output 'PROOF reason=crash_query_unreadable'
     Write-Output 'PROOF backup=returned'
     Write-Output 'PROOF backup=stayed_clear'
@@ -1063,12 +1195,14 @@ function Get-KeyWriteFlag {
     $flag = 'unreadable'
     $writeUtc = ''
     try {
-        $item = Get-Item -LiteralPath ('HKCU:\' + $Relative) -ErrorAction Stop
-        $ticks = [int64]$item.LastWriteTimeUtc.Ticks
-        $writeUtc = $item.LastWriteTimeUtc.ToString('yyyy-MM-ddTHH:mm:ss') + 'Z'
-        if (-not $StartKnown) { $flag = '0' }
-        elseif (Test-WriteAfterStart -WriteTicks $ticks -StartTicks $StartTicks -WriteKnown $true -StartKnown $true) { $flag = '1' }
-        else { $flag = '0' }
+        Add-CanonicalWindowType
+        $ticks = [int64][CanonicalRegistryStamp]::LastWriteUtcTicks($Relative)
+        if ($ticks -gt 0) {
+            $writeUtc = [DateTime]::new($ticks, [DateTimeKind]::Utc).ToString('yyyy-MM-ddTHH:mm:ss') + 'Z'
+            if (-not $StartKnown) { $flag = '0' }
+            elseif (Test-WriteAfterStart -WriteTicks $ticks -StartTicks $StartTicks -WriteKnown $true -StartKnown $true) { $flag = '1' }
+            else { $flag = '0' }
+        }
     } catch {
         $flag = 'unreadable'
     }
@@ -1550,10 +1684,19 @@ public class CanonicalWindowHit {
     public int Pid;
     public int OwnerPid;
     public int ParentPid;
+    public int Tid;
+    public int RootPid;
+    public int Depth;
+    public int Foreground;
+    public int GuiActive;
     public string ClassName;
     public string Title;
     public string ChildText;
+    public string ProcessName;
+    public string Role;
     public int TitleLen;
+    public int DirectLen;
+    public int SentLen;
     public int ChildLen;
     public int Visible;
     public int Needle;
@@ -1563,12 +1706,99 @@ public class CanonicalWindowSurveyResult {
     public int TopLevelSeen;
     public int FocusTopLevel;
     public int DialogClassCount;
+    public int StandardDialogCount;
+    public int ChildSeen;
+    public int ChildTruncated;
     public int CandidateCount;
+    public long ForegroundHwnd;
+    public int ForegroundPid;
+    public int ForegroundTid;
+    public string ForegroundClass;
+    public string ScriptDesktop;
+    public string FocusDesktop;
+    public string ForegroundDesktop;
+    public int DesktopFocusMatch;
+    public int DesktopForegroundMatch;
     public List<CanonicalWindowHit> Hits;
+}
+
+public class CanonicalRegistryStamp {
+    [DllImport("advapi32.dll", CharSet = CharSet.Unicode)]
+    static extern int RegOpenKeyEx(IntPtr hKey, string subKey, uint options, int sam, out IntPtr phkResult);
+    [DllImport("advapi32.dll")]
+    static extern int RegCloseKey(IntPtr hKey);
+    [DllImport("advapi32.dll")]
+    static extern int RegQueryInfoKey(
+        IntPtr hKey,
+        IntPtr lpClass,
+        IntPtr lpcbClass,
+        IntPtr lpReserved,
+        IntPtr lpcSubKeys,
+        IntPtr lpcbMaxSubKeyLen,
+        IntPtr lpcbMaxClassLen,
+        IntPtr lpcValues,
+        IntPtr lpcbMaxValueNameLen,
+        IntPtr lpcbMaxValueLen,
+        IntPtr lpcbSecurityDescriptor,
+        out long lpftLastWriteTime);
+
+    static readonly IntPtr HkeyCurrentUser = new IntPtr(unchecked((int)0x80000001));
+    const int KeyQueryValue = 0x0001;
+
+    public static long LastWriteUtcTicks(string relative) {
+        if (string.IsNullOrEmpty(relative)) { return 0; }
+        IntPtr hkey;
+        int opened = RegOpenKeyEx(HkeyCurrentUser, relative, 0, KeyQueryValue, out hkey);
+        if (opened != 0 || hkey == IntPtr.Zero) { return 0; }
+        try {
+            long filetime;
+            int query = RegQueryInfoKey(
+                hkey,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                out filetime);
+            if (query != 0 || filetime <= 0) { return 0; }
+            return DateTime.FromFileTimeUtc(filetime).Ticks;
+        } catch {
+            return 0;
+        } finally {
+            RegCloseKey(hkey);
+        }
+    }
 }
 
 public class CanonicalWindowSurvey {
     delegate bool EnumProc(IntPtr hWnd, IntPtr lParam);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct GUITHREADINFO {
+        public int cbSize;
+        public int flags;
+        public IntPtr hwndActive;
+        public IntPtr hwndFocus;
+        public IntPtr hwndCapture;
+        public IntPtr hwndMenuOwner;
+        public IntPtr hwndMoveSize;
+        public IntPtr hwndCaret;
+        public RECT rcCaret;
+    }
+
     [DllImport("user32.dll")]
     static extern bool EnumWindows(EnumProc lpEnumFunc, IntPtr lParam);
     [DllImport("user32.dll")]
@@ -1580,102 +1810,319 @@ public class CanonicalWindowSurvey {
     [DllImport("user32.dll")]
     static extern IntPtr GetParent(IntPtr hWnd);
     [DllImport("user32.dll")]
+    static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")]
+    static extern IntPtr GetAncestor(IntPtr hWnd, uint gaFlags);
+    [DllImport("user32.dll")]
     static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpsi);
+    [DllImport("user32.dll")]
+    static extern IntPtr GetThreadDesktop(uint threadId);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern bool GetUserObjectInformation(IntPtr hObj, int nIndex, IntPtr pvInfo, int nLength, out int needed);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint msg, IntPtr wParam, StringBuilder lParam, uint flags, uint timeoutMs, out IntPtr result);
+    [DllImport("kernel32.dll")]
+    static extern uint GetCurrentThreadId();
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern IntPtr OpenProcess(uint access, bool inherit, uint pid);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    static extern bool QueryFullProcessImageName(IntPtr hProcess, int flags, StringBuilder exeName, ref int size);
+    [DllImport("kernel32.dll")]
+    static extern bool CloseHandle(IntPtr hObject);
 
     const uint WM_GETTEXT = 0x000D;
     const uint SMTO_ABORTIFHUNG = 0x0002;
     const uint GW_OWNER = 4;
+    const uint GA_ROOT = 2;
+    const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+    const int UOI_NAME = 2;
+
     static EnumProc topCallback;
     static EnumProc childCallback;
     static List<CanonicalWindowHit> hits;
+    static Dictionary<int, string> processNames;
+    static HashSet<long> walkedRoots;
     static int topLevelSeen;
     static int focusTopLevel;
     static int dialogClassCount;
+    static int standardDialogCount;
+    static int childSeen;
+    static int childTruncated;
+    static int childExamined;
+    static int childRecorded;
     static int focusPidArg;
-    static int childTexts;
-    static string childMatch;
+    static IntPtr foregroundHwnd;
+    static string rootChildMatch;
 
     public static CanonicalWindowSurveyResult Collect(int focusPid) {
         hits = new List<CanonicalWindowHit>();
+        processNames = new Dictionary<int, string>();
+        walkedRoots = new HashSet<long>();
         topLevelSeen = 0;
         focusTopLevel = 0;
         dialogClassCount = 0;
+        standardDialogCount = 0;
+        childSeen = 0;
+        childTruncated = 0;
         focusPidArg = focusPid;
+        foregroundHwnd = GetForegroundWindow();
+        string scriptDesktop = DesktopName(GetCurrentThreadId());
+        string foregroundDesktop = "";
+        int foregroundPid = 0;
+        int foregroundTid = 0;
+        string foregroundClass = "";
+        if (foregroundHwnd != IntPtr.Zero) {
+            Capture(foregroundHwnd, 0, "foreground", true);
+            WalkChildren(foregroundHwnd);
+            WalkChain(foregroundHwnd);
+            CanonicalWindowHit fgHit = FindHit(foregroundHwnd.ToInt64());
+            if (fgHit != null) {
+                foregroundPid = fgHit.Pid;
+                foregroundTid = fgHit.Tid;
+                foregroundClass = fgHit.ClassName;
+                foregroundDesktop = DesktopName((uint)fgHit.Tid);
+            }
+        }
         topCallback = OnTop;
         EnumWindows(topCallback, IntPtr.Zero);
+        WalkInterestingChildren();
+        CaptureGuiThreads();
+        string focusDesktop = "";
+        for (int i = 0; i < hits.Count; i++) {
+            if (focusPidArg > 0 && hits[i].Pid == focusPidArg && hits[i].Depth == 0 && hits[i].Tid > 0) {
+                focusDesktop = DesktopName((uint)hits[i].Tid);
+                break;
+            }
+        }
         return new CanonicalWindowSurveyResult {
             TopLevelSeen = topLevelSeen,
             FocusTopLevel = focusTopLevel,
             DialogClassCount = dialogClassCount,
+            StandardDialogCount = standardDialogCount,
+            ChildSeen = childSeen,
+            ChildTruncated = childTruncated,
             CandidateCount = hits.Count,
+            ForegroundHwnd = foregroundHwnd.ToInt64(),
+            ForegroundPid = foregroundPid,
+            ForegroundTid = foregroundTid,
+            ForegroundClass = foregroundClass,
+            ScriptDesktop = scriptDesktop,
+            FocusDesktop = focusDesktop,
+            ForegroundDesktop = foregroundDesktop,
+            DesktopFocusMatch = DesktopMatch(scriptDesktop, focusDesktop),
+            DesktopForegroundMatch = DesktopMatch(scriptDesktop, foregroundDesktop),
             Hits = hits
         };
     }
 
     static bool OnTop(IntPtr hWnd, IntPtr lParam) {
         topLevelSeen++;
-        if (hits.Count >= 60) { return true; }
         uint pidRaw;
         GetWindowThreadProcessId(hWnd, out pidRaw);
         int pid = (int)pidRaw;
         if (pid == focusPidArg && focusPidArg > 0) { focusTopLevel++; }
+        string className = ReadClass(hWnd);
+        if (IsDialogClass(className)) { dialogClassCount++; }
+        if (className == "#32770") { standardDialogCount++; }
+        bool visible = IsWindowVisible(hWnd);
+        IntPtr owner = GetWindow(hWnd, GW_OWNER);
+        IntPtr parent = GetParent(hWnd);
+        int ownerPid = PidOf(owner);
+        int parentPid = PidOf(parent);
+        int rootPid = RootPidOf(hWnd, pid);
+        bool focus = focusPidArg > 0 && (pid == focusPidArg || ownerPid == focusPidArg || parentPid == focusPidArg || rootPid == focusPidArg);
+        bool dialog = IsDialogClass(className);
+        bool main = className == "XLMAIN";
+        string leaf = ProcessLeaf(pid);
+        bool office = IsOfficeProcess(leaf);
+        if (!visible && !focus && !dialog) { return true; }
+        string quick = visible ? QuickText(hWnd) : "";
+        if (dialog || focus || main || office || HasNeedle(quick)) {
+            Capture(hWnd, 0, "toplevel", HasNeedle(quick) || dialog);
+        }
+        return true;
+    }
+
+    static void WalkInterestingChildren() {
+        var roots = new List<long>();
+        for (int i = 0; i < hits.Count; i++) {
+            if (hits[i].Depth != 0) { continue; }
+            bool walk = (focusPidArg > 0 && hits[i].Pid == focusPidArg)
+                || hits[i].ClassName == "XLMAIN"
+                || IsDialogClass(hits[i].ClassName)
+                || hits[i].Foreground == 1
+                || IsOfficeProcess(hits[i].ProcessName);
+            if (!walk) { continue; }
+            if (roots.Contains(hits[i].Hwnd)) { continue; }
+            roots.Add(hits[i].Hwnd);
+            if (roots.Count >= 30) { break; }
+        }
+        for (int i = 0; i < roots.Count; i++) {
+            WalkChildren(new IntPtr(roots[i]));
+        }
+    }
+
+    static void CaptureGuiThreads() {
+        var tids = new List<int>();
+        for (int i = 0; i < hits.Count; i++) {
+            if (focusPidArg <= 0 || hits[i].Pid != focusPidArg || hits[i].Depth != 0) { continue; }
+            if (hits[i].Tid <= 0 || tids.Contains(hits[i].Tid)) { continue; }
+            tids.Add(hits[i].Tid);
+            if (tids.Count >= 8) { break; }
+        }
+        for (int i = 0; i < tids.Count; i++) {
+            GUITHREADINFO info = new GUITHREADINFO();
+            info.cbSize = Marshal.SizeOf(typeof(GUITHREADINFO));
+            if (!GetGUIThreadInfo((uint)tids[i], ref info)) { continue; }
+            NoteGui(info.hwndActive);
+            if (info.hwndFocus != info.hwndActive) { NoteGui(info.hwndFocus); }
+        }
+    }
+
+    static void NoteGui(IntPtr hWnd) {
+        if (hWnd == IntPtr.Zero) { return; }
+        Capture(hWnd, 0, "guithread", true);
+        for (int i = 0; i < hits.Count; i++) {
+            if (hits[i].Hwnd == hWnd.ToInt64()) { hits[i].GuiActive = 1; }
+        }
+        WalkChildren(hWnd);
+        WalkChain(hWnd);
+    }
+
+    static void WalkChildren(IntPtr root) {
+        if (root == IntPtr.Zero) { return; }
+        long key = root.ToInt64();
+        if (walkedRoots.Contains(key)) { return; }
+        walkedRoots.Add(key);
+        childExamined = 0;
+        childRecorded = 0;
+        rootChildMatch = "";
+        childCallback = OnChild;
+        EnumChildWindows(root, childCallback, root);
+        childSeen = childSeen + childExamined;
+        if (rootChildMatch.Length > 0) {
+            for (int i = 0; i < hits.Count; i++) {
+                if (hits[i].Hwnd != key) { continue; }
+                if (hits[i].ChildText == null || hits[i].ChildText.Length == 0) { hits[i].ChildText = rootChildMatch; }
+                hits[i].Needle = 1;
+                hits[i].ChildLen = childExamined;
+                break;
+            }
+        }
+    }
+
+    static bool OnChild(IntPtr hWnd, IntPtr lParam) {
+        childExamined++;
+        if (childExamined > 800) {
+            childTruncated = 1;
+            return false;
+        }
+        string className = ReadClass(hWnd);
+        bool dialog = IsDialogClass(className);
+        string quick = QuickText(hWnd);
+        bool needle = HasNeedle(quick);
+        bool officeUi = className.IndexOf("NUI", StringComparison.Ordinal) >= 0
+            || className.IndexOf("bosa", StringComparison.Ordinal) >= 0
+            || className.IndexOf("NetUI", StringComparison.Ordinal) >= 0
+            || className.IndexOf("Mso", StringComparison.Ordinal) >= 0;
+        if (!dialog && !needle && !officeUi) { return true; }
+        if (!dialog && !needle && childRecorded >= 40) { return true; }
+        Capture(hWnd, 1, "child", dialog || needle);
+        childRecorded++;
+        if (needle && rootChildMatch.Length == 0) { rootChildMatch = quick; }
+        if (rootChildMatch.Length == 0) {
+            CanonicalWindowHit hit = FindHit(hWnd.ToInt64());
+            if (hit != null && hit.Needle == 1 && hit.Title != null && hit.Title.Length > 0) {
+                rootChildMatch = hit.Title;
+            }
+        }
+        return true;
+    }
+
+    static void WalkChain(IntPtr start) {
+        IntPtr cur = start;
+        for (int i = 0; i < 8 && cur != IntPtr.Zero; i++) {
+            IntPtr owner = GetWindow(cur, GW_OWNER);
+            IntPtr parent = GetParent(cur);
+            IntPtr next = owner != IntPtr.Zero ? owner : parent;
+            if (next == IntPtr.Zero || next == cur) { break; }
+            Capture(next, 0, "owner", true);
+            cur = next;
+        }
+    }
+
+    static void Capture(IntPtr hWnd, int depth, string role, bool force) {
+        if (hWnd == IntPtr.Zero) { return; }
+        uint pidRaw;
+        uint tid = GetWindowThreadProcessId(hWnd, out pidRaw);
+        int pid = (int)pidRaw;
         IntPtr owner = GetWindow(hWnd, GW_OWNER);
         IntPtr parent = GetParent(hWnd);
         int ownerPid = PidOf(owner);
         int parentPid = PidOf(parent);
         string className = ReadClass(hWnd);
-        if (className == "#32770") { dialogClassCount++; }
-        bool visible = IsWindowVisible(hWnd);
-        if (!visible) { return true; }
-        string title = ReadText(hWnd);
-        bool dialogClass = className == "#32770" || className == "NUIDialog" || className == "bosa_sdm_XL9";
-        bool linked = (focusPidArg > 0) && (pid == focusPidArg || ownerPid == focusPidArg || parentPid == focusPidArg);
-        bool mainClass = className == "XLMAIN";
-        if (!dialogClass && !linked && !mainClass && !HasNeedle(title)) { return true; }
-        string child = "";
-        int childLen = 0;
-        if (dialogClass || ownerPid == focusPidArg || parentPid == focusPidArg) {
-            childTexts = 0;
-            childMatch = "";
-            childCallback = OnChild;
-            EnumChildWindows(hWnd, childCallback, IntPtr.Zero);
-            child = childMatch;
-            childLen = childTexts;
-        }
-        bool needle = HasNeedle(title) || HasNeedle(child);
-        if (!dialogClass && !linked && !needle) { return true; }
-        string keptTitle = needle && HasNeedle(title) ? title : "";
-        string keptChild = needle && HasNeedle(child) ? child : "";
-        hits.Add(new CanonicalWindowHit {
-            Hwnd = hWnd.ToInt64(),
-            OwnerHwnd = owner.ToInt64(),
-            ParentHwnd = parent.ToInt64(),
-            Pid = pid,
-            OwnerPid = ownerPid,
-            ParentPid = parentPid,
-            ClassName = className,
-            Title = keptTitle,
-            ChildText = keptChild,
-            TitleLen = title.Length,
-            ChildLen = childLen,
-            Visible = 1,
-            Needle = needle ? 1 : 0
-        });
-        return true;
+        int directLen;
+        int sentLen;
+        bool foreground = hWnd == foregroundHwnd;
+        string text = ReadTextParts(hWnd, className, foreground || role == "foreground" || role == "guithread", out directLen, out sentLen);
+        bool needle = HasNeedle(text);
+        var hit = new CanonicalWindowHit();
+        hit.Hwnd = hWnd.ToInt64();
+        hit.OwnerHwnd = owner.ToInt64();
+        hit.ParentHwnd = parent.ToInt64();
+        hit.Pid = pid;
+        hit.OwnerPid = ownerPid;
+        hit.ParentPid = parentPid;
+        hit.Tid = (int)tid;
+        hit.RootPid = RootPidOf(hWnd, pid);
+        hit.Depth = depth;
+        hit.Foreground = foreground ? 1 : 0;
+        hit.GuiActive = 0;
+        hit.ClassName = className;
+        hit.Title = needle ? text : "";
+        hit.ChildText = "";
+        hit.ProcessName = ProcessLeaf(pid);
+        hit.Role = role;
+        hit.TitleLen = directLen;
+        hit.DirectLen = directLen;
+        hit.SentLen = sentLen;
+        hit.ChildLen = 0;
+        hit.Visible = IsWindowVisible(hWnd) ? 1 : 0;
+        hit.Needle = needle ? 1 : 0;
+        AddHit(hit, force || needle || IsDialogClass(className));
     }
 
-    static bool OnChild(IntPtr hWnd, IntPtr lParam) {
-        childTexts++;
-        if (childTexts > 40) { return false; }
-        string text = ReadText(hWnd);
-        if (HasNeedle(text) && childMatch.Length == 0) { childMatch = text; }
-        return childTexts < 40;
+    static void AddHit(CanonicalWindowHit hit, bool force) {
+        CanonicalWindowHit existing = FindHit(hit.Hwnd);
+        if (existing != null) {
+            if (hit.Foreground == 1) { existing.Foreground = 1; }
+            if (hit.Needle == 1 && existing.Needle == 0) {
+                existing.Needle = 1;
+                existing.Title = hit.Title;
+            }
+            if (existing.Role == "toplevel" && (hit.Role == "foreground" || hit.Role == "guithread")) {
+                existing.Role = hit.Role;
+            }
+            if (existing.SentLen < hit.SentLen) { existing.SentLen = hit.SentLen; }
+            if (existing.DirectLen < hit.DirectLen) { existing.DirectLen = hit.DirectLen; }
+            return;
+        }
+        if (!force && hits.Count >= 120) { return; }
+        if (hits.Count >= 160) { return; }
+        hits.Add(hit);
+    }
+
+    static CanonicalWindowHit FindHit(long hwnd) {
+        for (int i = 0; i < hits.Count; i++) {
+            if (hits[i].Hwnd == hwnd) { return hits[i]; }
+        }
+        return null;
     }
 
     static int PidOf(IntPtr hWnd) {
@@ -1685,24 +2132,132 @@ public class CanonicalWindowSurvey {
         return (int)pid;
     }
 
+    static int RootPidOf(IntPtr hWnd, int ownPid) {
+        IntPtr cur = hWnd;
+        int root = ownPid;
+        for (int i = 0; i < 8; i++) {
+            IntPtr owner = GetWindow(cur, GW_OWNER);
+            IntPtr parent = GetParent(cur);
+            IntPtr ancestor = GetAncestor(cur, GA_ROOT);
+            IntPtr next = owner != IntPtr.Zero ? owner : parent;
+            if (ancestor != IntPtr.Zero && ancestor != cur && next == IntPtr.Zero) { next = ancestor; }
+            if (next == IntPtr.Zero || next == cur) { break; }
+            int pid = PidOf(next);
+            if (pid > 0) { root = pid; }
+            if (focusPidArg > 0 && pid == focusPidArg) { return pid; }
+            cur = next;
+        }
+        return root;
+    }
+
     static string ReadClass(IntPtr hWnd) {
         var sb = new StringBuilder(128);
         GetClassName(hWnd, sb, sb.Capacity);
         return sb.ToString();
     }
 
-    static string ReadText(IntPtr hWnd) {
+    static string QuickText(IntPtr hWnd) {
         var direct = new StringBuilder(512);
         GetWindowText(hWnd, direct, direct.Capacity);
-        string title = direct.ToString().Trim();
-        if (HasNeedle(title)) { return title; }
+        return direct.ToString().Trim();
+    }
+
+    static string ReadTextParts(IntPtr hWnd, string className, bool deep, out int directLen, out int sentLen) {
+        string direct = QuickText(hWnd);
+        directLen = direct.Length;
+        sentLen = 0;
+        bool send = deep || IsDialogClass(className) || directLen > 0;
+        if (!send) { return direct; }
         var sb = new StringBuilder(512);
         IntPtr unused;
-        SendMessageTimeout(hWnd, WM_GETTEXT, (IntPtr)sb.Capacity, sb, SMTO_ABORTIFHUNG, 200, out unused);
+        uint timeout = deep ? (uint)200 : (uint)50;
+        SendMessageTimeout(hWnd, WM_GETTEXT, (IntPtr)sb.Capacity, sb, SMTO_ABORTIFHUNG, timeout, out unused);
         string sent = sb.ToString().Trim();
+        sentLen = sent.Length;
         if (HasNeedle(sent)) { return sent; }
-        if (sent.Length > title.Length) { return sent; }
-        return title;
+        if (HasNeedle(direct)) { return direct; }
+        if (sentLen > directLen) { return sent; }
+        return direct;
+    }
+
+    static bool IsDialogClass(string className) {
+        if (string.IsNullOrEmpty(className)) { return false; }
+        if (className == "#32770") { return true; }
+        if (className == "NUIDialog") { return true; }
+        if (className == "bosa_sdm_XL9") { return true; }
+        if (className == "NetUIHWND") { return true; }
+        if (className.IndexOf("bosa_sdm", StringComparison.Ordinal) >= 0) { return true; }
+        if (className.IndexOf("Dialog", StringComparison.Ordinal) >= 0) { return true; }
+        return false;
+    }
+
+    static bool IsOfficeProcess(string leaf) {
+        if (string.IsNullOrEmpty(leaf)) { return false; }
+        string[] names = new string[] {
+            "EXCEL",
+            "OfficeClickToRun",
+            "OfficeC2RClient",
+            "sdxhelper",
+            "AppVShNotify",
+            "MsoSync",
+            "integrator",
+            "OfficeBackgroundTaskHandler"
+        };
+        for (int i = 0; i < names.Length; i++) {
+            if (string.Equals(leaf, names[i], StringComparison.OrdinalIgnoreCase)) { return true; }
+        }
+        return false;
+    }
+
+    static string ProcessLeaf(int pid) {
+        if (pid <= 0) { return ""; }
+        string cached;
+        if (processNames.TryGetValue(pid, out cached)) { return cached; }
+        string leaf = "";
+        IntPtr handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, (uint)pid);
+        if (handle != IntPtr.Zero) {
+            try {
+                int size = 260;
+                var sb = new StringBuilder(size);
+                if (QueryFullProcessImageName(handle, 0, sb, ref size)) {
+                    string full = sb.ToString();
+                    int slash = full.LastIndexOf('\\');
+                    leaf = slash >= 0 ? full.Substring(slash + 1) : full;
+                    if (leaf.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && leaf.Length > 4) {
+                        leaf = leaf.Substring(0, leaf.Length - 4);
+                    }
+                }
+            } finally {
+                CloseHandle(handle);
+            }
+        }
+        processNames[pid] = leaf;
+        return leaf;
+    }
+
+    static string DesktopName(uint tid) {
+        if (tid == 0) { return ""; }
+        IntPtr desk = GetThreadDesktop(tid);
+        if (desk == IntPtr.Zero) { return ""; }
+        int needed;
+        GetUserObjectInformation(desk, UOI_NAME, IntPtr.Zero, 0, out needed);
+        if (needed <= 0 || needed > 512) { return ""; }
+        IntPtr buf = Marshal.AllocHGlobal(needed);
+        try {
+            int ignored;
+            if (!GetUserObjectInformation(desk, UOI_NAME, buf, needed, out ignored)) { return ""; }
+            string name = Marshal.PtrToStringUni(buf);
+            if (name == null) { return ""; }
+            return name;
+        } finally {
+            Marshal.FreeHGlobal(buf);
+        }
+    }
+
+    static int DesktopMatch(string left, string right) {
+        if (string.IsNullOrEmpty(left) || string.IsNullOrEmpty(right)) { return -1; }
+        if (string.Equals(left, right, StringComparison.OrdinalIgnoreCase)) { return 1; }
+        return 0;
     }
 
     static bool HasNeedle(string text) {
@@ -1738,7 +2293,19 @@ function New-EmptyDialog {
         TopLevelSeen = 0
         FocusTopLevel = 0
         DialogClassCount = 0
+        StandardDialogCount = 0
+        ChildSeen = 0
+        ChildTruncated = 0
         CandidateCount = 0
+        ForegroundHwnd = [int64]0
+        ForegroundPid = 0
+        ForegroundTid = 0
+        ForegroundClass = ''
+        ScriptDesktop = ''
+        FocusDesktop = ''
+        ForegroundDesktop = ''
+        DesktopFocusMatch = -1
+        DesktopForegroundMatch = -1
         Rows = @()
     })
 }
@@ -1766,7 +2333,19 @@ function Get-DialogEvidence {
     $info.TopLevelSeen = [int]$survey.TopLevelSeen
     $info.FocusTopLevel = [int]$survey.FocusTopLevel
     $info.DialogClassCount = [int]$survey.DialogClassCount
+    $info.StandardDialogCount = [int]$survey.StandardDialogCount
+    $info.ChildSeen = [int]$survey.ChildSeen
+    $info.ChildTruncated = [int]$survey.ChildTruncated
     $info.CandidateCount = [int]$survey.CandidateCount
+    $info.ForegroundHwnd = [int64]$survey.ForegroundHwnd
+    $info.ForegroundPid = [int]$survey.ForegroundPid
+    $info.ForegroundTid = [int]$survey.ForegroundTid
+    $info.ForegroundClass = [string]$survey.ForegroundClass
+    $info.ScriptDesktop = [string]$survey.ScriptDesktop
+    $info.FocusDesktop = [string]$survey.FocusDesktop
+    $info.ForegroundDesktop = [string]$survey.ForegroundDesktop
+    $info.DesktopFocusMatch = [int]$survey.DesktopFocusMatch
+    $info.DesktopForegroundMatch = [int]$survey.DesktopForegroundMatch
     $rows = New-Object System.Collections.Generic.List[object]
     $hits = $survey.Hits
     if ($null -ne $hits) {
@@ -1774,10 +2353,13 @@ function Get-DialogEvidence {
         if ($null -eq $hit) { continue }
         $pidValue = [int]$hit.Pid
         $ownerValue = [int]$hit.OwnerPid
-        $linked = (($FocusPid -gt 0) -and (($pidValue -eq $FocusPid) -or ($ownerValue -eq $FocusPid) -or ([int]$hit.ParentPid -eq $FocusPid)))
+        $rootValue = [int]$hit.RootPid
+        $roleValue = [string]$hit.Role
+        $linked = (($FocusPid -gt 0) -and (($pidValue -eq $FocusPid) -or ($ownerValue -eq $FocusPid) -or ([int]$hit.ParentPid -eq $FocusPid) -or ($rootValue -eq $FocusPid)))
         $needle = ([int]$hit.Needle -eq 1)
+        $roleKeep = ($roleValue -eq 'foreground') -or ($roleValue -eq 'guithread') -or ([int]$hit.Foreground -eq 1) -or ([int]$hit.GuiActive -eq 1)
         $sessionOk = $true
-        if ((-not $linked) -and (-not $needle) -and ($SessionId -ge 0) -and ($pidValue -gt 0)) {
+        if ((-not $linked) -and (-not $needle) -and (-not $roleKeep) -and ($SessionId -ge 0) -and ($pidValue -gt 0)) {
             $sid = -1
             try { $sid = [int](Get-Process -Id $pidValue -ErrorAction Stop).SessionId } catch { $sid = -1 }
             if (($sid -ge 0) -and ($sid -ne $SessionId)) { $sessionOk = $false }
@@ -1796,6 +2378,16 @@ function Get-DialogEvidence {
             TitleLen = [int]$hit.TitleLen
             ChildLen = [int]$hit.ChildLen
             Needle = [int]$hit.Needle
+            Tid = [int]$hit.Tid
+            RootPid = $rootValue
+            Depth = [int]$hit.Depth
+            Foreground = [int]$hit.Foreground
+            GuiActive = [int]$hit.GuiActive
+            Role = $roleValue
+            Process = [string]$hit.ProcessName
+            DirectLen = [int]$hit.DirectLen
+            SentLen = [int]$hit.SentLen
+            VisibleFlag = [int]$hit.Visible
         }))
     }
     }
@@ -2071,28 +2663,49 @@ function Invoke-LiveDiagnose {
         Write-Output ('SECTION_ERROR_TYPE=' + $_.Exception.GetType().Name)
     }
     if ($null -eq $dialog) { $dialog = New-EmptyDialog -Visible 'unreadable' }
+    $focusDesk = 'unreadable'
+    if ([int]$dialog.DesktopFocusMatch -eq 1) { $focusDesk = '1' }
+    elseif ([int]$dialog.DesktopFocusMatch -eq 0) { $focusDesk = '0' }
+    $fgDesk = 'unreadable'
+    if ([int]$dialog.DesktopForegroundMatch -eq 1) { $fgDesk = '1' }
+    elseif ([int]$dialog.DesktopForegroundMatch -eq 0) { $fgDesk = '0' }
     Write-Output ('WINDOW_TOPLEVEL_SEEN=' + ([int]$dialog.TopLevelSeen).ToString())
     Write-Output ('WINDOW_FOCUS_TOPLEVEL=' + ([int]$dialog.FocusTopLevel).ToString())
     Write-Output ('WINDOW_DIALOG_CLASS=' + ([int]$dialog.DialogClassCount).ToString())
+    Write-Output ('WINDOW_CLASS_32770=' + ([int]$dialog.StandardDialogCount).ToString())
+    Write-Output ('WINDOW_CHILD_SEEN=' + ([int]$dialog.ChildSeen).ToString())
+    Write-Output ('WINDOW_CHILD_TRUNCATED=' + ([int]$dialog.ChildTruncated).ToString())
     Write-Output ('WINDOW_CANDIDATE_COUNT=' + ([int]$dialog.CandidateCount).ToString())
+    Write-Output ('FOREGROUND_HWND=' + ([int64]$dialog.ForegroundHwnd).ToString())
+    Write-Output ('FOREGROUND_PID=' + ([int]$dialog.ForegroundPid).ToString())
+    Write-Output ('FOREGROUND_TID=' + ([int]$dialog.ForegroundTid).ToString())
+    Write-Output ('FOREGROUND_CLASS=' + (Get-SafeLabel -Name ([string]$dialog.ForegroundClass)))
+    Write-Output ('DESKTOP_SCRIPT=' + (Get-SafeLabel -Name ([string]$dialog.ScriptDesktop)))
+    Write-Output ('DESKTOP_FOCUS=' + (Get-SafeLabel -Name ([string]$dialog.FocusDesktop)))
+    Write-Output ('DESKTOP_FOREGROUND=' + (Get-SafeLabel -Name ([string]$dialog.ForegroundDesktop)))
+    Write-Output ('DESKTOP_FOCUS_MATCH=' + $focusDesk)
+    Write-Output ('DESKTOP_FOREGROUND_MATCH=' + $fgDesk)
     $windowPrinted = 0
-    foreach ($pass in @(1, 0)) {
+    foreach ($pass in @(2, 1, 0)) {
         foreach ($row in @($dialog.Rows)) {
             if ($null -eq $row) { continue }
-            if ($windowPrinted -ge 25) { break }
+            if ($windowPrinted -ge 40) { break }
+            if (-not (Test-SurveyRowWanted -Row $row -FocusPid $FocusPid)) { continue }
             $isNeedle = ([int]$row.Needle -eq 1)
-            $isFocus = (($FocusPid -gt 0) -and (([int]$row.Pid -eq $FocusPid) -or ([int]$row.OwnerPid -eq $FocusPid)))
-            $isDialogClass = ([string]$row.Class -eq '#32770')
-            $wanted = $isNeedle -or $isFocus -or $isDialogClass
-            if ($pass -eq 1 -and -not $isNeedle) { continue }
-            if ($pass -eq 0 -and ($isNeedle -or -not $wanted)) { continue }
-            $procName = 'unreadable'
-            try { $procName = Get-SafeLabel -Name ([string](Get-Process -Id ([int]$row.Pid) -ErrorAction Stop).ProcessName) } catch { $procName = 'unreadable' }
-            Write-Output ('WINDOW hwnd=' + ([int64]$row.Hwnd).ToString() + ' pid=' + ([int]$row.Pid).ToString() + ' process=' + $procName + ' owner_hwnd=' + ([int64]$row.OwnerHwnd).ToString() + ' owner_pid=' + ([int]$row.OwnerPid).ToString() + ' parent_hwnd=' + ([int64]$row.ParentHwnd).ToString() + ' parent_pid=' + ([int]$row.ParentPid).ToString() + ' class=' + (Get-SafeLabel -Name ([string]$row.Class)) + ' title_len=' + ([int]$row.TitleLen).ToString() + ' child_count=' + ([int]$row.ChildLen).ToString() + ' needle=' + ([int]$row.Needle).ToString())
+            $isFront = (([int]$row.Foreground -eq 1) -or ([int]$row.GuiActive -eq 1) -or ([string]$row.Role -eq 'foreground') -or ([string]$row.Role -eq 'guithread'))
+            $rank = 0
+            if ($isNeedle) { $rank = 2 }
+            elseif ($isFront) { $rank = 1 }
+            if ($pass -ne $rank) { continue }
+            $procName = Get-SafeLabel -Name ([string]$row.Process)
+            if ($procName -eq 'empty' -or $procName -eq 'unreadable') {
+                try { $procName = Get-SafeLabel -Name ([string](Get-Process -Id ([int]$row.Pid) -ErrorAction Stop).ProcessName) } catch { $procName = 'unreadable' }
+            }
+            Write-Output ('WINDOW role=' + (Get-SafeLabel -Name ([string]$row.Role)) + ' hwnd=' + ([int64]$row.Hwnd).ToString() + ' pid=' + ([int]$row.Pid).ToString() + ' tid=' + ([int]$row.Tid).ToString() + ' process=' + $procName + ' owner_hwnd=' + ([int64]$row.OwnerHwnd).ToString() + ' owner_pid=' + ([int]$row.OwnerPid).ToString() + ' parent_hwnd=' + ([int64]$row.ParentHwnd).ToString() + ' parent_pid=' + ([int]$row.ParentPid).ToString() + ' root_pid=' + ([int]$row.RootPid).ToString() + ' class=' + (Get-SafeLabel -Name ([string]$row.Class)) + ' visible=' + ([int]$row.VisibleFlag).ToString() + ' direct_len=' + ([int]$row.DirectLen).ToString() + ' wm_len=' + ([int]$row.SentLen).ToString() + ' child_count=' + ([int]$row.ChildLen).ToString() + ' foreground=' + ([int]$row.Foreground).ToString() + ' gui_active=' + ([int]$row.GuiActive).ToString() + ' needle=' + ([int]$row.Needle).ToString())
             $windowPrinted = $windowPrinted + 1
         }
     }
-    if ($windowPrinted -ge 25) { Write-Output 'WINDOW_CANDIDATE_TRUNCATED=1' }
+    if ($windowPrinted -ge 40) { Write-Output 'WINDOW_CANDIDATE_TRUNCATED=1' }
     Write-Output ('DIALOG_VISIBLE=' + [string]$dialog.Visible)
     Write-Output ('DIALOG_PID=' + ([int]$dialog.Pid).ToString())
     Write-Output ('DIALOG_PROCESS_HWND=' + ([int64]$dialog.Hwnd).ToString())
