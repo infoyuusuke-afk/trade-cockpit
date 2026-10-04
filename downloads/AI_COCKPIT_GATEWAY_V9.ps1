@@ -172,6 +172,123 @@ function Get-ProcessCommandCount([string]$ScriptName) {
     }
 }
 
+function Get-NormalizedLocalWorkbookPath([string]$Value) {
+    if ([string]::IsNullOrWhiteSpace($Value)) { return "" }
+    $trim = $Value.Trim()
+    if ($trim -notmatch '^[A-Za-z]:\\' -and $trim -notmatch '^[A-Za-z]:/') { return "" }
+    $slash = ($trim -replace '/', '\')
+    while ($slash.Length -gt 3 -and $slash.EndsWith('\')) {
+        $slash = $slash.Substring(0, $slash.Length - 1)
+    }
+    $parts = New-Object System.Collections.Generic.List[string]
+    foreach ($part in ($slash -split '\\')) {
+        if ($part -eq "" -or $part -eq ".") { continue }
+        if ($part -eq "..") {
+            if ($parts.Count -gt 1) { $parts.RemoveAt($parts.Count - 1) }
+            continue
+        }
+        [void]$parts.Add($part)
+    }
+    if ($parts.Count -lt 2) { return "" }
+    $root = [string]$parts[0]
+    if ($root -notmatch '^[A-Za-z]:$') { return "" }
+    $rest = @()
+    for ($i = 1; $i -lt $parts.Count; $i++) { $rest += [string]$parts[$i] }
+    return $root + '\' + ($rest -join '\')
+}
+
+function Get-CollectorFileIdentityType {
+    foreach ($asm in [AppDomain]::CurrentDomain.GetAssemblies()) {
+        $found = $asm.GetType("CollectorWorkbookFileIdentity")
+        if ($null -ne $found) { return $found }
+    }
+    $code = @"
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+public class CollectorWorkbookFileIdentity {
+    [StructLayout(LayoutKind.Sequential)]
+    struct ByHandle {
+        public uint FileAttributes;
+        public uint CreationLow;
+        public uint CreationHigh;
+        public uint AccessLow;
+        public uint AccessHigh;
+        public uint WriteLow;
+        public uint WriteHigh;
+        public uint VolumeSerialNumber;
+        public uint FileSizeHigh;
+        public uint FileSizeLow;
+        public uint NumberOfLinks;
+        public uint FileIndexHigh;
+        public uint FileIndexLow;
+    }
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool GetFileInformationByHandle(IntPtr handle, out ByHandle info);
+    public static string Key(string path) {
+        using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)) {
+            ByHandle info;
+            if (!GetFileInformationByHandle(stream.SafeFileHandle.DangerousGetHandle(), out info)) {
+                throw new IOException("file identity unreadable");
+            }
+            return info.VolumeSerialNumber.ToString("X8") + ":" + info.FileIndexHigh.ToString("X8") + ":" + info.FileIndexLow.ToString("X8");
+        }
+    }
+}
+"@
+    Add-Type -TypeDefinition $code
+    foreach ($asm in [AppDomain]::CurrentDomain.GetAssemblies()) {
+        $found = $asm.GetType("CollectorWorkbookFileIdentity")
+        if ($null -ne $found) { return $found }
+    }
+    return $null
+}
+
+function Test-SameCanonicalWorkbookFile([string]$ActualFullName, [string]$ExpectedPath) {
+    $left = Get-NormalizedLocalWorkbookPath $ActualFullName
+    $right = Get-NormalizedLocalWorkbookPath $ExpectedPath
+    if ($left -eq "" -or $right -eq "") { return $false }
+    $cmp = [StringComparison]::OrdinalIgnoreCase
+    if ([string]::Equals($left, $right, $cmp)) { return $true }
+    if (-not (Test-Path -LiteralPath $left)) { return $false }
+    if (-not (Test-Path -LiteralPath $right)) { return $false }
+    try {
+        $identityType = Get-CollectorFileIdentityType
+        if ($null -eq $identityType) { return $false }
+        $key = $identityType.GetMethod("Key")
+        if ($null -eq $key) { return $false }
+        $leftKey = [string]$key.Invoke($null, @($left))
+        $rightKey = [string]$key.Invoke($null, @($right))
+        return ($leftKey -eq $rightKey -and -not [string]::IsNullOrWhiteSpace($leftKey))
+    } catch {
+        return $false
+    }
+}
+
+function Get-PublishedWorkbookGate {
+    param(
+        [bool]$HasIdentityField,
+        [bool]$IdentityVerified,
+        [string]$FullName,
+        [string]$ExpectedPath,
+        [string]$Symbol,
+        [bool]$ControllerVerified
+    )
+    $reasons = New-Object System.Collections.Generic.List[string]
+    $ordinal = [StringComparison]::Ordinal
+    $identity = "285A.T"
+    if (-not [string]::Equals([string]$Symbol, $identity, $ordinal)) {
+        [void]$reasons.Add("WRONG_SYMBOL_MAPPING")
+    }
+    $proved = $IdentityVerified -and (Test-SameCanonicalWorkbookFile $FullName $ExpectedPath)
+    if ($HasIdentityField) {
+        if (-not $proved) { [void]$reasons.Add("WRONG_SOURCE_WORKBOOK") }
+    } elseif (-not $ControllerVerified) {
+        [void]$reasons.Add("WRONG_SOURCE_WORKBOOK")
+    }
+    return ($reasons -join ",")
+}
+
 function Get-LivePriceRejection {
     param(
         $LiveObj,
@@ -241,7 +358,30 @@ function Get-LivePriceRejection {
             $workbookVerified = ($st.workbook_identity_verified -eq $true)
         }
     } catch { $workbookVerified = $false }
-    if (-not $workbookVerified) { [void]$reasons.Add("WRONG_SOURCE_WORKBOOK") }
+    $hasIdentityField = $false
+    $identityVerified = $false
+    $workbookFullName = ""
+    $identitySymbol = [string]$symbol
+    if ($null -ne $diag) {
+        foreach ($prop in $diag.PSObject.Properties) {
+            if ($prop.Name -eq "workbook_identity_verified") {
+                $hasIdentityField = $true
+                $identityVerified = ($prop.Value -eq $true)
+            } elseif ($prop.Name -eq "workbook_full_name") {
+                $workbookFullName = [string]$prop.Value
+            }
+        }
+    }
+    $canonicalWorkbookPath = ""
+    if (-not [string]::IsNullOrWhiteSpace($RuntimeDir)) {
+        $canonicalWorkbookPath = Join-Path $RuntimeDir "Kioxia_MS2_RSS_Live_Signals.xlsx"
+    }
+    $gateText = Get-PublishedWorkbookGate $hasIdentityField $identityVerified $workbookFullName $canonicalWorkbookPath $identitySymbol $workbookVerified
+    if (-not [string]::IsNullOrWhiteSpace($gateText)) {
+        foreach ($gateReason in ($gateText -split ",")) {
+            if (-not [string]::IsNullOrWhiteSpace($gateReason)) { [void]$reasons.Add($gateReason) }
+        }
+    }
     $unique = @($reasons | Select-Object -Unique)
     if ($unique.Count -eq 0) { return $null }
     $identity = @($unique | Where-Object { $_ -notin @("STALE_OR_MISSING_TIMESTAMP","LIVE_VALUES_UNAVAILABLE","INSUFFICIENT_COVERAGE") })

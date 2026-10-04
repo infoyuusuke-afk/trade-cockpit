@@ -3,7 +3,8 @@
     [string]$WatchlistPath = (Join-Path $PSScriptRoot "watchlist_100.json"),
     [int]$IntervalSeconds = 2,
     [int]$SnapshotSeconds = 10,
-    [switch]$StopAfterClose
+    [switch]$StopAfterClose,
+    [switch]$WorkbookIdentitySelfTest
 )
 
 $ErrorActionPreference = "Stop"
@@ -57,9 +58,262 @@ function Get-TableValue([object]$table, [int]$row, [int]$column, [int]$columnCou
 }
 
 function Get-SheetSymbolCode($table, [int]$row) {
+    # B2:B101 is already the code column. Index 1 is that column, not sheet column B of a wider grid.
     $raw = Get-TableValue $table $row 1 1
     if ($null -eq $raw) { return "" }
     return ([string]$raw).Trim().ToUpperInvariant()
+}
+
+$script:IdentityTicker = "285A.T"
+
+function Get-NormalizedLocalWorkbookPath([string]$Value) {
+    if ([string]::IsNullOrWhiteSpace($Value)) { return "" }
+    $trim = $Value.Trim()
+    if ($trim -notmatch '^[A-Za-z]:\\' -and $trim -notmatch '^[A-Za-z]:/') { return "" }
+    $slash = ($trim -replace '/', '\')
+    while ($slash.Length -gt 3 -and $slash.EndsWith('\')) {
+        $slash = $slash.Substring(0, $slash.Length - 1)
+    }
+    $parts = New-Object System.Collections.Generic.List[string]
+    foreach ($part in ($slash -split '\\')) {
+        if ($part -eq "" -or $part -eq ".") { continue }
+        if ($part -eq "..") {
+            if ($parts.Count -gt 1) { $parts.RemoveAt($parts.Count - 1) }
+            continue
+        }
+        [void]$parts.Add($part)
+    }
+    if ($parts.Count -lt 2) { return "" }
+    $root = [string]$parts[0]
+    if ($root -notmatch '^[A-Za-z]:$') { return "" }
+    $rest = @()
+    for ($i = 1; $i -lt $parts.Count; $i++) { $rest += [string]$parts[$i] }
+    return $root + '\' + ($rest -join '\')
+}
+
+function Get-CollectorFileIdentityType {
+    foreach ($asm in [AppDomain]::CurrentDomain.GetAssemblies()) {
+        $found = $asm.GetType("CollectorWorkbookFileIdentity")
+        if ($null -ne $found) { return $found }
+    }
+    $code = @"
+using System;
+using System.IO;
+using System.Runtime.InteropServices;
+public class CollectorWorkbookFileIdentity {
+    [StructLayout(LayoutKind.Sequential)]
+    struct ByHandle {
+        public uint FileAttributes;
+        public uint CreationLow;
+        public uint CreationHigh;
+        public uint AccessLow;
+        public uint AccessHigh;
+        public uint WriteLow;
+        public uint WriteHigh;
+        public uint VolumeSerialNumber;
+        public uint FileSizeHigh;
+        public uint FileSizeLow;
+        public uint NumberOfLinks;
+        public uint FileIndexHigh;
+        public uint FileIndexLow;
+    }
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool GetFileInformationByHandle(IntPtr handle, out ByHandle info);
+    public static string Key(string path) {
+        using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)) {
+            ByHandle info;
+            if (!GetFileInformationByHandle(stream.SafeFileHandle.DangerousGetHandle(), out info)) {
+                throw new IOException("file identity unreadable");
+            }
+            return info.VolumeSerialNumber.ToString("X8") + ":" + info.FileIndexHigh.ToString("X8") + ":" + info.FileIndexLow.ToString("X8");
+        }
+    }
+}
+"@
+    Add-Type -TypeDefinition $code
+    foreach ($asm in [AppDomain]::CurrentDomain.GetAssemblies()) {
+        $found = $asm.GetType("CollectorWorkbookFileIdentity")
+        if ($null -ne $found) { return $found }
+    }
+    return $null
+}
+
+function Test-SameCanonicalWorkbookFile([string]$ActualFullName, [string]$ExpectedPath) {
+    $left = Get-NormalizedLocalWorkbookPath $ActualFullName
+    $right = Get-NormalizedLocalWorkbookPath $ExpectedPath
+    if ($left -eq "" -or $right -eq "") { return $false }
+    $cmp = [StringComparison]::OrdinalIgnoreCase
+    if ([string]::Equals($left, $right, $cmp)) { return $true }
+    if (-not (Test-Path -LiteralPath $left)) { return $false }
+    if (-not (Test-Path -LiteralPath $right)) { return $false }
+    try {
+        $identityType = Get-CollectorFileIdentityType
+        if ($null -eq $identityType) { return $false }
+        $key = $identityType.GetMethod("Key")
+        if ($null -eq $key) { return $false }
+        $leftKey = [string]$key.Invoke($null, @($left))
+        $rightKey = [string]$key.Invoke($null, @($right))
+        return ($leftKey -eq $rightKey -and -not [string]::IsNullOrWhiteSpace($leftKey))
+    } catch {
+        return $false
+    }
+}
+
+function Test-CollectorWorkbookIdentity([string]$WorkbookNameActual, [string]$FullName, [string]$ExpectedPath, [string]$ExpectedName) {
+    if ([string]::IsNullOrWhiteSpace($WorkbookNameActual) -or [string]::IsNullOrWhiteSpace($ExpectedName)) { return $false }
+    $cmp = [StringComparison]::OrdinalIgnoreCase
+    if (-not [string]::Equals($WorkbookNameActual.Trim(), $ExpectedName.Trim(), $cmp)) { return $false }
+    return (Test-SameCanonicalWorkbookFile $FullName $ExpectedPath)
+}
+
+function Test-BoundWorkbookIdentity([string]$WorkbookNameActual, [string]$FullName, [string]$ExpectedPath, [string]$ExpectedName) {
+    if (Test-CollectorWorkbookIdentity $WorkbookNameActual $FullName $ExpectedPath $ExpectedName) { return $true }
+    if ([string]::IsNullOrWhiteSpace($WorkbookNameActual) -or [string]::IsNullOrWhiteSpace($ExpectedName) -or [string]::IsNullOrWhiteSpace($FullName)) { return $false }
+    $cmp = [StringComparison]::OrdinalIgnoreCase
+    if (-not [string]::Equals($WorkbookNameActual.Trim(), $ExpectedName.Trim(), $cmp)) { return $false }
+    if ((Get-NormalizedLocalWorkbookPath $FullName) -ne "") { return $false }
+    if ((Get-NormalizedLocalWorkbookPath $ExpectedPath) -eq "") { return $false }
+    if ($FullName -notmatch '^https?://') { return $false }
+    $trimmed = $FullName.Trim().TrimEnd('/')
+    $splitAt = $trimmed.LastIndexOf('/')
+    if ($splitAt -lt 0) { return $false }
+    $leaf = $trimmed.Substring($splitAt + 1)
+    return [string]::Equals($leaf, $ExpectedName.Trim(), $cmp)
+}
+
+function Get-IdentityQuote($Rows) {
+    $identity = [string]$script:IdentityTicker
+    $match = $null
+    foreach ($row in @($Rows)) {
+        if ($null -eq $row) { continue }
+        if ([string]$row.ticker -eq $identity) { $match = $row; break }
+    }
+    $sheet = ""
+    $price = $null
+    $stamp = $null
+    $ok = $false
+    if ($null -ne $match) {
+        $sheet = ([string]$match.sheet_code).Trim().ToUpperInvariant()
+        $stamp = $match.source_timestamp
+        if ($sheet -eq $identity -and $null -ne $match.price) {
+            $price = $match.price
+            $ok = $true
+        }
+    }
+    return [pscustomobject]@{
+        ok = $ok
+        symbol = $(if ($ok) { $identity } else { $null })
+        current_price = $price
+        sheet_code = $sheet
+        source_timestamp = $stamp
+    }
+}
+
+function Get-PublishedWorkbookGate {
+    param(
+        [bool]$HasIdentityField,
+        [bool]$IdentityVerified,
+        [string]$FullName,
+        [string]$ExpectedPath,
+        [string]$Symbol,
+        [bool]$ControllerVerified
+    )
+    $reasons = New-Object System.Collections.Generic.List[string]
+    $ordinal = [StringComparison]::Ordinal
+    $identity = "285A.T"
+    if (-not [string]::Equals([string]$Symbol, $identity, $ordinal)) {
+        [void]$reasons.Add("WRONG_SYMBOL_MAPPING")
+    }
+    $proved = $IdentityVerified -and (Test-SameCanonicalWorkbookFile $FullName $ExpectedPath)
+    if ($HasIdentityField) {
+        if (-not $proved) { [void]$reasons.Add("WRONG_SOURCE_WORKBOOK") }
+    } elseif (-not $ControllerVerified) {
+        [void]$reasons.Add("WRONG_SOURCE_WORKBOOK")
+    }
+    return ($reasons -join ",")
+}
+
+function Get-WorkbookIdentityInitialization {
+    $names = @(
+        "Get-NormalizedLocalWorkbookPath",
+        "Get-CollectorFileIdentityType",
+        "Test-SameCanonicalWorkbookFile",
+        "Get-PublishedWorkbookGate"
+    )
+    $text = ""
+    foreach ($fn in $names) {
+        $body = (Get-Item ("function:" + $fn)).ScriptBlock.ToString()
+        $text += "function " + $fn + " {`r`n" + $body + "`r`n}`r`n"
+    }
+    return [scriptblock]::Create($text)
+}
+
+function Invoke-WorkbookIdentitySelfTest {
+    $expected = "C:\MarketSpeed II RSS\files\Kioxia_MS2_RSS_Live_Signals.xlsx"
+    $name = "Kioxia_MS2_RSS_Live_Signals.xlsx"
+    if (-not (Test-CollectorWorkbookIdentity $name $expected $expected $name)) { throw "same path must match" }
+    if (-not (Test-CollectorWorkbookIdentity $name "c:/marketspeed ii rss/files/kioxia_ms2_rss_live_signals.xlsx" $expected $name)) { throw "case and slash must match" }
+    if (-not (Test-CollectorWorkbookIdentity $name ($expected + "\") $expected $name)) { throw "trailing slash must match" }
+    if (-not (Test-CollectorWorkbookIdentity $name "C:\MarketSpeed II RSS\files\.\Kioxia_MS2_RSS_Live_Signals.xlsx" $expected $name)) { throw "dot segment must match" }
+    if (Test-CollectorWorkbookIdentity $name "C:\other\Kioxia_MS2_RSS_Live_Signals.xlsx" $expected $name) { throw "other directory must not match" }
+    if (Test-CollectorWorkbookIdentity "Kioxia_MS2_RSS_Live_Signals_backup.xlsx" "C:\MarketSpeed II RSS\files\Kioxia_MS2_RSS_Live_Signals_backup.xlsx" $expected $name) { throw "backup name must not match" }
+    if (Test-CollectorWorkbookIdentity $name "https://example.invalid/Kioxia_MS2_RSS_Live_Signals.xlsx" $expected $name) { throw "url must not match local file identity" }
+    if (-not (Test-BoundWorkbookIdentity $name "https://example.invalid/Kioxia_MS2_RSS_Live_Signals.xlsx" $expected $name)) { throw "moniker cloud full name of the canonical leaf must match" }
+    if (Test-BoundWorkbookIdentity $name "https://example.invalid/Other.xlsx" $expected $name) { throw "cloud full name of another leaf must not match" }
+    if (Test-BoundWorkbookIdentity $name $name $expected $name) { throw "filename only must not match" }
+    if (Test-CollectorWorkbookIdentity $name $name $expected $name) { throw "filename only must not match local file identity" }
+    if (Test-CollectorWorkbookIdentity $name "" $expected $name) { throw "empty full name must not match" }
+    $rows = @(
+        [pscustomobject]@{ticker="8035.T"; sheet_code="8035.T"; price=12100; source_timestamp="09:00:01"},
+        [pscustomobject]@{ticker="285A.T"; sheet_code="285A.T"; price=100; source_timestamp="09:00:02"}
+    )
+    $quote = Get-IdentityQuote $rows
+    if (-not $quote.ok) { throw "285A quote must be ok" }
+    if ($quote.symbol -ne "285A.T") { throw "symbol must be 285A.T" }
+    if ($quote.current_price -ne 100) { throw "price must be the 285A row" }
+    if ($quote.source_timestamp -ne "09:00:02") { throw "timestamp must be the 285A row" }
+    $only = Get-IdentityQuote @([pscustomobject]@{ticker="8035.T"; sheet_code="8035.T"; price=12100; source_timestamp="09:00:01"})
+    if ($only.ok -or $null -ne $only.symbol -or $null -ne $only.current_price) { throw "non-285A must fail closed" }
+    $badSheet = Get-IdentityQuote @([pscustomobject]@{ticker="285A.T"; sheet_code="8035.T"; price=12100; source_timestamp="09:00:01"})
+    if ($badSheet.ok -or $null -ne $badSheet.symbol -or $null -ne $badSheet.current_price) { throw "sheet code mismatch must fail closed" }
+    $missingPrice = Get-IdentityQuote @([pscustomobject]@{ticker="285A.T"; sheet_code="285A.T"; price=$null; source_timestamp="09:00:01"})
+    if ($missingPrice.ok -or $null -ne $missingPrice.symbol) { throw "missing 285A price must fail closed" }
+    $proved = Get-PublishedWorkbookGate $true $true $expected $expected "285A.T" $false
+    if (-not [string]::IsNullOrWhiteSpace($proved)) { throw ("proved 285A must pass without controller flag: " + $proved) }
+    $legacy = Get-PublishedWorkbookGate $false $false "" $expected "8035.T" $false
+    if ($legacy -notmatch "WRONG_SOURCE_WORKBOOK") { throw "missing identity must keep controller fail-closed" }
+    if ($legacy -notmatch "WRONG_SYMBOL_MAPPING") { throw "8035 must fail closed" }
+    $legacyVerified = Get-PublishedWorkbookGate $false $false "" $expected "285A.T" $false
+    if ($legacyVerified -notmatch "WRONG_SOURCE_WORKBOOK") { throw "legacy payload without identity proof must stay fail-closed" }
+    $otherBook = Get-PublishedWorkbookGate $true $true "C:\other\Kioxia_MS2_RSS_Live_Signals.xlsx" $expected "285A.T" $true
+    if ($otherBook -notmatch "WRONG_SOURCE_WORKBOOK") { throw "other workbook must fail closed even when controller is true" }
+    $wrongSymbol = Get-PublishedWorkbookGate $true $true $expected $expected "8035.T" $true
+    if ($wrongSymbol -notmatch "WRONG_SYMBOL_MAPPING") { throw "proved workbook with 8035 must fail closed" }
+    $init = Get-WorkbookIdentityInitialization
+    $probe = Start-Job -InitializationScript $init -ScriptBlock {
+        Get-PublishedWorkbookGate $true $true "C:\MarketSpeed II RSS\files\Kioxia_MS2_RSS_Live_Signals.xlsx" "C:\MarketSpeed II RSS\files\Kioxia_MS2_RSS_Live_Signals.xlsx" "285A.T" $false
+    }
+    $done = Wait-Job $probe -Timeout 30
+    if ($null -eq $done) {
+        Stop-Job $probe
+        Remove-Job $probe -Force
+        throw "bridge copy timed out"
+    }
+    if ($probe.State -ne "Completed") {
+        $jobErr = ""
+        try { $jobErr = ($probe.ChildJobs[0].Error | Out-String) } catch { $jobErr = [string]$_ }
+        Remove-Job $probe -Force
+        throw ("bridge copy failed: " + $jobErr)
+    }
+    $probeResult = Receive-Job $probe
+    Remove-Job $probe -Force
+    if (-not [string]::IsNullOrWhiteSpace([string]$probeResult)) { throw ("bridge copy rejected a proved 285A workbook: " + [string]$probeResult) }
+    Write-Output "WORKBOOK_IDENTITY_SELFTEST PASS"
+}
+
+if ($WorkbookIdentitySelfTest) {
+    Invoke-WorkbookIdentitySelfTest
+    exit 0
 }
 
 function Get-ScriptProcessCount([string]$ScriptName) {
@@ -363,10 +617,11 @@ function Get-TdnetDisclosures([DateTime]$date) {
     return @($found.Values|Sort-Object time -Descending)
 }
 
-function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580) {
+function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$CanonicalWorkbookPath = "") {
     $controllerState = "C:\AI_Cockpit_OneClick_Starter\V9_CONTROLLER_STATE.json"
-    return Start-Job -Name ("MS2_JSON_BRIDGE_" + $PID) -ArgumentList $jsonFile,$port,$controllerState -ScriptBlock {
-        param($JsonFile,$Port,$ControllerState)
+    $identityInit = Get-WorkbookIdentityInitialization
+    return Start-Job -Name ("MS2_JSON_BRIDGE_" + $PID) -InitializationScript $identityInit -ArgumentList $jsonFile,$port,$controllerState,$CanonicalWorkbookPath -ScriptBlock {
+        param($JsonFile,$Port,$ControllerState,$CanonicalWorkbookPath)
         $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,[int]$Port)
         $utf8 = [Text.UTF8Encoding]::new($false)
         $canonicalSource = "MarketSpeed II RSS / local PC"
@@ -441,7 +696,26 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580) {
                     $workbookVerified = ($st.workbook_identity_verified -eq $true)
                 }
             } catch { $workbookVerified = $false }
-            if (-not $workbookVerified) { [void]$reasons.Add("WRONG_SOURCE_WORKBOOK") }
+            $hasIdentityField = $false
+            $identityVerified = $false
+            $workbookFullName = ""
+            $identitySymbol = [string]$symbol
+            if ($null -ne $diag) {
+                foreach ($prop in $diag.PSObject.Properties) {
+                    if ($prop.Name -eq "workbook_identity_verified") {
+                        $hasIdentityField = $true
+                        $identityVerified = ($prop.Value -eq $true)
+                    } elseif ($prop.Name -eq "workbook_full_name") {
+                        $workbookFullName = [string]$prop.Value
+                    }
+                }
+            }
+            $gateText = Get-PublishedWorkbookGate $hasIdentityField $identityVerified $workbookFullName $CanonicalWorkbookPath $identitySymbol $workbookVerified
+            if (-not [string]::IsNullOrWhiteSpace($gateText)) {
+                foreach ($gateReason in ($gateText -split ",")) {
+                    if (-not [string]::IsNullOrWhiteSpace($gateReason)) { [void]$reasons.Add($gateReason) }
+                }
+            }
             $unique = @($reasons | Select-Object -Unique)
             if ($unique.Count -eq 0) { return $null }
             $identity = @($unique | Where-Object { $_ -notin @("STALE_OR_MISSING_TIMESTAMP","LIVE_VALUES_UNAVAILABLE","INSUFFICIENT_COVERAGE") })
@@ -541,32 +815,22 @@ $stocks = @($watch.stocks.PSObject.Properties | ForEach-Object {
 } | Select-Object -First 100)
 if ($stocks.Count -ne 100) { throw "監視銘柄は100件必要です。現在: $($stocks.Count)件" }
 
-try { $excel = ([Runtime.InteropServices.Marshal]::BindToMoniker((Join-Path $PSScriptRoot $WorkbookName))).Application }
-catch { throw "RSS接続済みのExcelが見つかりません。MarketSpeed IIへログインし、ExcelのRSSタブで接続してから実行してください。" }
-
+$script:canonicalWorkbookPath = Join-Path $PSScriptRoot $WorkbookName
+try { $script:canonicalWorkbookPath = [IO.Path]::GetFullPath($script:canonicalWorkbookPath) } catch {}
+if (-not (Test-Path -LiteralPath $script:canonicalWorkbookPath)) {
+    throw "WRONG_SOURCE_WORKBOOK"
+}
 $book = $null
-$openBookNames = @()
-foreach ($candidate in $excel.Workbooks) {
-    $openBookNames += [string]$candidate.Name
-    if ($candidate.Name -ieq $WorkbookName) { $book = $candidate; break }
+try { $book = [Runtime.InteropServices.Marshal]::BindToMoniker($script:canonicalWorkbookPath) }
+catch { throw "RSS接続済みのExcelが見つかりません。MarketSpeed IIへログインし、ExcelのRSSタブで接続してから実行してください。" }
+$boundName = ""
+$boundFullName = ""
+try { $boundName = [string]$book.Name } catch { $boundName = "" }
+try { $boundFullName = [string]$book.FullName } catch { $boundFullName = "" }
+if (-not (Test-BoundWorkbookIdentity $boundName $boundFullName $script:canonicalWorkbookPath $WorkbookName)) {
+    throw "WRONG_SOURCE_WORKBOOK"
 }
-if ($null -eq $book) {
-    foreach ($candidate in $excel.Workbooks) {
-        if ($candidate.Name -like "Kioxia_MS2_RSS_Live_Signals*.xlsx") { $book = $candidate; break }
-    }
-}
-if ($null -eq $book) {
-    foreach ($candidate in $excel.Workbooks) {
-        try {
-            if ($null -ne $candidate.Worksheets.Item("DASHBOARD")) { $book = $candidate; break }
-        } catch {}
-    }
-}
-if ($null -eq $book) {
-    $names = if ($openBookNames.Count -gt 0) { $openBookNames -join ", " } else { "認識なし" }
-    throw "$WorkbookName を認識できません。Excelで認識したブック: $names"
-}
-Write-Host ("[BOOK] " + $book.Name) -ForegroundColor Green
+Write-Host ("[BOOK] " + $boundName) -ForegroundColor Green
 Start-Sleep -Milliseconds 500
 
 $sheet = $null
@@ -877,7 +1141,7 @@ try { $holdHistory = @(Import-Csv -Encoding UTF8 $holdHistoryPath) } catch { $ho
 $holdStats = Get-OvernightHoldStats $holdHistory
 $browserOpened = $true # Collector must never open browser tabs
 $script:priceSourceMismatch = $false
-$bridgeJob = Start-LocalJsonBridge $jsonPath 28580
+$bridgeJob = Start-LocalJsonBridge $jsonPath 28580 $script:canonicalWorkbookPath
 
 Write-Host "[RSS] 100 STOCKS : RUNNING / CTRL+C TO STOP" -ForegroundColor Green
 Write-Host "[LIVE] 127.0.0.1:28580 : READY" -ForegroundColor Cyan
@@ -1396,8 +1660,19 @@ try {
         foreach ($key in @($seenTicks.Keys)) {if (($now-$seenTicks[$key]).TotalMinutes -gt 30) {$seenTicks.Remove($key)}}
 
         $sourceReasons = New-Object System.Collections.Generic.List[string]
-        $workbookCanonical = ([string]$book.Name).Trim() -ieq ([string]$WorkbookName).Trim()
+        $loopName = ""
+        $loopFull = ""
+        try {
+            $loopName = [string]$book.Name
+            $loopFull = [string]$book.FullName
+        } catch {
+            $loopName = ""
+            $loopFull = ""
+        }
+        $workbookCanonical = Test-BoundWorkbookIdentity $loopName $loopFull $script:canonicalWorkbookPath $WorkbookName
         if (-not $workbookCanonical) { [void]$sourceReasons.Add("WRONG_SOURCE_WORKBOOK") }
+        $identityQuote = Get-IdentityQuote $results
+        if (-not $identityQuote.ok) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
         if ($symbolMismatchCount -gt 0) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
         $collectorProcessCount = Get-ScriptProcessCount "MS2_RSS_100_Collector.ps1"
         $watcherProcessCount = Get-ScriptProcessCount "Kioxia_RSS_Live_Watcher.ps1"
@@ -1415,15 +1690,20 @@ try {
         $coverageStale = ($validCount -lt 90)
         $publishLiveValues = (-not $script:priceSourceMismatch) -and (-not $coverageStale)
         $staleReason = if ($script:priceSourceMismatch) { $priceSourceReason } elseif ($coverageStale) { "INSUFFICIENT_COVERAGE" } else { "" }
-        $sampleDiag = if ($symbolMismatchSamples.Count -gt 0) { $symbolMismatchSamples[0] } elseif ($diagnosticSamples.Count -gt 0) { $diagnosticSamples[0] } else { $null }
+        $publishedFullName = Get-NormalizedLocalWorkbookPath $loopFull
+        if ($workbookCanonical -and $publishedFullName -eq "") {
+            $publishedFullName = Get-NormalizedLocalWorkbookPath $script:canonicalWorkbookPath
+        }
         $livePriceDiagnostics = [ordered]@{
-            source_timestamp = $(if ($null -ne $sampleDiag) { $sampleDiag.source_timestamp } else { $null })
+            source_timestamp = $identityQuote.source_timestamp
             updated_at = $now.ToString("yyyy-MM-dd HH:mm:ss")
-            symbol = $(if ($null -ne $sampleDiag) { $sampleDiag.symbol } else { $null })
-            current_price = $(if ($null -ne $sampleDiag) { $sampleDiag.current_price } else { $null })
-            sheet_code = $(if ($null -ne $sampleDiag) { $sampleDiag.sheet_code } else { $null })
+            symbol = $identityQuote.symbol
+            current_price = $identityQuote.current_price
+            sheet_code = $identityQuote.sheet_code
             source_mode = $(if ($workbookCanonical) { "MS2_RSS_WORKBOOK" } else { "NONCANONICAL_WORKBOOK" })
-            workbook_name = [string]$book.Name
+            workbook_name = [string]$loopName
+            workbook_full_name = $publishedFullName
+            workbook_identity_verified = [bool]$workbookCanonical
             collector_pid = $PID
             collector_count = $collectorProcessCount
             watcher_count = $watcherProcessCount
