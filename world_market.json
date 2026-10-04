@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-10-04T23:57:42.080892+09:00",
+  "updated_at": "2026-10-05T00:00:08.874901+09:00",
   "source": "世界の株価リアルタイムチャート",
   "source_url": "https://nikkei225jp.com/",
   "usage": "市場環境専用。個別株価・個別チャートには使用禁止。 休場・取引時間外の値は当日方向判定に使用禁止。",
-  "verified_count": 7,
+  "verified_count": 6,
   "expected_count": 13,
   "feed_verified": false,
   "rows": {
@@ -47,11 +47,11 @@
       "code": "751",
       "name": "DEX日経225",
       "source_name": "DEX日本225 フルタイム",
-      "value": 69700.0,
+      "value": 69685.0,
       "change": null,
       "change_pct": null,
-      "source_stamp": "23:57",
-      "observed_at": "2026-10-04T23:57:00+09:00",
+      "source_stamp": "23:59",
+      "observed_at": "2026-10-05T23:59:00+09:00",
       "verified": false,
       "status": "取引時間外・売買利用禁止"
     },
@@ -63,7 +63,7 @@
       "change": -0.211,
       "change_pct": -0.13,
       "source_stamp": "05:59",
-      "observed_at": "2026-10-04T05:59:00+09:00",
+      "observed_at": "2026-10-05T05:59:00+09:00",
       "verified": false,
       "status": "取引時間外・売買利用禁止"
     },
@@ -75,7 +75,7 @@
       "change": -0.014,
       "change_pct": -0.45,
       "source_stamp": "02:25",
-      "observed_at": "2026-10-04T02:25:00+09:00",
+      "observed_at": "2026-10-05T02:25:00+09:00",
       "verified": false,
       "status": "取引時間外・売買利用禁止"
     },
@@ -159,7 +159,7 @@
       "change": 0.038,
       "change_pct": 0.73,
       "source_stamp": "05:59",
-      "observed_at": "2026-10-04T05:59:00+09:00",
+      "observed_at": "2026-10-05T05:59:00+09:00",
       "verified": false,
       "status": "取引時間外・売買利用禁止"
     }
