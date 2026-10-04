@@ -1,0 +1,51 @@
+{
+  "adapter": "dry_run",
+  "approved_by": "yusuke",
+  "content_sha256": "3bdaa08e2178414ff23dc09c05a876820e6c1b157a6096e828256ae608476630",
+  "data_class": "fixture",
+  "dry_run": true,
+  "evidence_manifest_sha256": "61f9c76292a6e5c19dfcb6549bc0a5d544507c29516ce5265e45dc9baab12472",
+  "fixture": true,
+  "idempotency_key": "614f5f7b3f2972b1498f0152102b81f8",
+  "localized": {
+    "ja-JP": {
+      "caption": "フィクスチャ・メモリーHD（TEST1）は2026年9月24日の東京市場で6.4%上昇。データで振り返ります。\n終値は2,345円、前日比+6.40%。\n日本時間09:12、レーダーが出来高急増を検知。\nペーパートレード（シミュレーション・実資金ではありません）：買い 2,250円から、結果+1.19R。\n市場データの観察であり、投資助言ではありません。ペーパートレードの結果はシミュレーションです。【テスト用サンプルデータ・実際の市場データではありません】\n\n#日本株 #東証 #TEST1",
+      "title": "東証大引け：フィクスチャ・メモリーHD（TEST1）+6.4%"
+    }
+  },
+  "network": "none",
+  "platform": "tiktok",
+  "release_gate": "R1",
+  "request": {
+    "api": "tiktok.content_posting.video.init",
+    "media": {
+      "bytes": 47,
+      "captions": "captions.srt",
+      "cover": "cover.jpg",
+      "file": "master_1080x1920.mp4",
+      "sha256": "a4c145a80b1b68aa93c3b869f7d39cfbc33baff021b1c8582e25f29ecb524c6d"
+    },
+    "post_info": {
+      "disable_comment": false,
+      "disable_duet": false,
+      "disable_stitch": false,
+      "privacy_level": "SELF_ONLY",
+      "title": "Fixture Memory Holdings (TEST1) rose 6.4% in Tokyo on September 24, 2026. Here is what the data showed.\nIt closed at ¥2,345, +6.40% on the day.\nAt 09:12 JST, the radar flagged a volume spike.\nPaper trade (simulated, not real money): long from ¥2,250, closed at +1.19R.\nObservations from market data only. Not investment advice. Paper results are simulated. TEST FIXTURE: sample data, not real market data.\n\n#JapanStocks #TokyoStockExchange #StockMarket #TEST1"
+    },
+    "source_info": {
+      "source": "FILE_UPLOAD",
+      "video_size": 47
+    }
+  },
+  "schedule": {
+    "audience_local": "2026-09-24T14:00:00+01:00 (BST)",
+    "audience_tz": "Europe/London",
+    "publish_at_jst": "2026-09-24T22:00:00+09:00",
+    "publish_at_utc": "2026-09-24T13:00:00Z",
+    "wave": "europe"
+  },
+  "schema": "auto_publish.dry_run_payload.v1",
+  "session_date": "2026-09-24",
+  "story_id": "st_002306bc5ae43f85",
+  "would_publish_at_utc": "2026-09-24T13:00:00Z"
+}

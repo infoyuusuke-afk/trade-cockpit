@@ -1,0 +1,125 @@
+{
+  "bases": [
+    "observed",
+    "paper"
+  ],
+  "fixture": true,
+  "instrument": {
+    "code": "TEST1",
+    "name_en": "Fixture Memory Holdings",
+    "name_ja": "フィクスチャ・メモリーHD",
+    "ticker": "TEST1.T"
+  },
+  "schema": "auto_publish.story.v1",
+  "segments": [
+    {
+      "data": {
+        "change_pct": 6.4,
+        "close": 2345
+      },
+      "fact_ids": [
+        "f_ffbb0635dfb6d8a4"
+      ],
+      "id": "hook",
+      "type": "hook"
+    },
+    {
+      "data": {
+        "change_pct": 6.4,
+        "close": 2345
+      },
+      "fact_ids": [
+        "f_ffbb0635dfb6d8a4"
+      ],
+      "id": "b1",
+      "type": "close"
+    },
+    {
+      "data": {
+        "event": "volume_spike",
+        "time_jst": "09:12"
+      },
+      "fact_ids": [
+        "f_ebad512d2cb4d0ee"
+      ],
+      "id": "b2",
+      "type": "radar"
+    },
+    {
+      "data": {
+        "entry": 2250,
+        "r": 1.19,
+        "result_closed": true,
+        "side": "LONG"
+      },
+      "fact_ids": [
+        "f_457e72fb62fb57bb"
+      ],
+      "id": "b3",
+      "type": "paper"
+    },
+    {
+      "data": {
+        "fixture": true,
+        "has_paper": true
+      },
+      "fact_ids": [],
+      "id": "disclaimer",
+      "type": "disclaimer"
+    }
+  ],
+  "session_date": "2026-09-24",
+  "source_refs": [
+    {
+      "basis": "paper",
+      "fact_id": "f_457e72fb62fb57bb",
+      "kind": "paper_trade",
+      "pointer": "/1",
+      "rel_path": "paper_trade_history.json",
+      "session_date": "2026-09-24",
+      "sha256": "0dab031a491e66aae4e4e4141b251b6e0b6e304e8676fc9476e4c26ff13d344a",
+      "value": {
+        "date": "2026-09-24",
+        "entry": 2250,
+        "r": 1.19,
+        "shares": 100,
+        "side": "LONG",
+        "ticker": "TEST1.T",
+        "triggered": true
+      }
+    },
+    {
+      "basis": "observed",
+      "fact_id": "f_ebad512d2cb4d0ee",
+      "kind": "radar_event",
+      "pointer": "/radar_events/0",
+      "rel_path": "daily_summary.json",
+      "session_date": "2026-09-24",
+      "sha256": "4d340d90dc49a999f4a3026744d8b56dd24ef5fe13be964a087b2ed5b3cef6dc",
+      "value": {
+        "event": "volume_spike",
+        "ticker": "TEST1.T",
+        "time_jst": "09:12"
+      }
+    },
+    {
+      "basis": "observed",
+      "fact_id": "f_ffbb0635dfb6d8a4",
+      "kind": "mover",
+      "pointer": "/movers/0",
+      "rel_path": "daily_summary.json",
+      "session_date": "2026-09-24",
+      "sha256": "4d340d90dc49a999f4a3026744d8b56dd24ef5fe13be964a087b2ed5b3cef6dc",
+      "value": {
+        "change_pct": 6.4,
+        "close": 2345,
+        "name_en": "Fixture Memory Holdings",
+        "name_ja": "フィクスチャ・メモリーHD",
+        "ticker": "TEST1.T",
+        "volume_ratio": 3.2
+      }
+    }
+  ],
+  "story_id": "st_002306bc5ae43f85",
+  "topic": "TEST1.T"
+}

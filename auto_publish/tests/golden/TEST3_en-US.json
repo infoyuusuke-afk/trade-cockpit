@@ -1,0 +1,75 @@
+{
+  "caption": "Fixture Materials (TEST3) fell 3.1% in Tokyo on September 24, 2026. Here is what the data showed.\nIt closed at ¥880, -3.10% on the day.\nAt 13:40 JST, the radar flagged price reclaiming VWAP.\nTrading volume was 1.9x its recent average.\nObservations from market data only. Not investment advice. TEST FIXTURE: sample data, not real market data.\n\n#JapanStocks #TokyoStockExchange #StockMarket #TEST3",
+  "fixture": true,
+  "hashtags": [
+    "#JapanStocks",
+    "#TokyoStockExchange",
+    "#StockMarket",
+    "#TEST3"
+  ],
+  "lang": "en-US",
+  "schema": "auto_publish.post.v1",
+  "segments": [
+    {
+      "fact_ids": [
+        "f_bfb660fe58916da2"
+      ],
+      "id": "hook",
+      "text": "Fixture Materials (TEST3) fell 3.1% in Tokyo on September 24, 2026. Here is what the data showed.",
+      "type": "hook"
+    },
+    {
+      "fact_ids": [
+        "f_bfb660fe58916da2"
+      ],
+      "id": "b1",
+      "text": "It closed at ¥880, -3.10% on the day.",
+      "type": "close"
+    },
+    {
+      "fact_ids": [
+        "f_5fb19b3dbebc10fa"
+      ],
+      "id": "b2",
+      "text": "At 13:40 JST, the radar flagged price reclaiming VWAP.",
+      "type": "radar"
+    },
+    {
+      "fact_ids": [
+        "f_bfb660fe58916da2"
+      ],
+      "id": "b3",
+      "text": "Trading volume was 1.9x its recent average.",
+      "type": "volume"
+    },
+    {
+      "fact_ids": [],
+      "id": "disclaimer",
+      "text": "Observations from market data only. Not investment advice. TEST FIXTURE: sample data, not real market data.",
+      "type": "disclaimer"
+    }
+  ],
+  "session_date": "2026-09-24",
+  "source_refs": [
+    {
+      "basis": "observed",
+      "fact_id": "f_5fb19b3dbebc10fa",
+      "kind": "radar_event",
+      "pointer": "/radar_events/2",
+      "rel_path": "daily_summary.json",
+      "session_date": "2026-09-24",
+      "sha256": "4d340d90dc49a999f4a3026744d8b56dd24ef5fe13be964a087b2ed5b3cef6dc"
+    },
+    {
+      "basis": "observed",
+      "fact_id": "f_bfb660fe58916da2",
+      "kind": "mover",
+      "pointer": "/movers/2",
+      "rel_path": "daily_summary.json",
+      "session_date": "2026-09-24",
+      "sha256": "4d340d90dc49a999f4a3026744d8b56dd24ef5fe13be964a087b2ed5b3cef6dc"
+    }
+  ],
+  "story_id": "st_734b41359af0ced4",
+  "title": "Tokyo close: Fixture Materials (TEST3) -3.1%"
+}
