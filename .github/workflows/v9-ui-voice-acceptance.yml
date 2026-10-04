@@ -43,6 +43,7 @@ on:
       - "tests/test_v9_alert_sibling.py"
       - "tests/test_v9_alert_payload.py"
       - "downloads/RUN_AI_COCKPIT_V9.ps1"
+      - "downloads/ACCEPT_OWNER_RUNTIME.ps1"
       - "downloads/STOP_AI_COCKPIT_V9.ps1"
       - "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1"
       - "downloads/PREPARE_AI_COCKPIT_DEDICATED_RUNTIME_V1.ps1"
@@ -123,6 +124,7 @@ jobs:
             "downloads/DIAGNOSE_CANONICAL_ALERT_PAYLOAD_V9.ps1",
             "downloads/AI_COCKPIT_VOICE_BRIDGE_V9.ps1",
             "downloads/RUN_AI_COCKPIT_V9.ps1",
+            "downloads/ACCEPT_OWNER_RUNTIME.ps1",
             "downloads/STOP_AI_COCKPIT_V9.ps1",
             "downloads/AI_COCKPIT_DEDICATED_SESSION_HOST_V1.ps1",
             "downloads/PREPARE_AI_COCKPIT_DEDICATED_RUNTIME_V1.ps1",
@@ -259,6 +261,7 @@ jobs:
             "downloads/DIAGNOSE_CANONICAL_ALERT_SIBLING_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_ALERT_PAYLOAD_V9.ps1",
             "downloads/RUN_AI_COCKPIT_V9.ps1",
+            "downloads/ACCEPT_OWNER_RUNTIME.ps1",
             "ms2_live/MS2_RSS_100_Collector.ps1"
           )
           $messages = New-Object System.Collections.Generic.List[string]
@@ -277,6 +280,15 @@ jobs:
             throw "Windows PowerShell 5.1 parse failed"
           }
           Write-Output "WINDOWS POWERSHELL 5.1 PARSE PASS"
+      - name: Windows PowerShell 5.1 owner encoded command parse
+        shell: powershell
+        run: |
+          $ordinal = [StringComparison]::Ordinal
+          $owner = @(& .\downloads\ACCEPT_OWNER_RUNTIME.ps1 -OwnerCommandSelfTest)
+          $owner | ForEach-Object { Write-Output $_ }
+          if (($owner -join "`n").IndexOf("OWNER_ENCODED_COMMAND_PARSE PASS", $ordinal) -lt 0) {
+            throw "owner encoded command parse failed"
+          }
       - name: Windows PowerShell 5.1 collector and runtime accept selftest
         shell: powershell
         run: |

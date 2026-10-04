@@ -3,6 +3,7 @@
 The fixture price is synthetic. This file does not claim a live market PASS.
 """
 
+import base64
 import hashlib
 import re
 import shutil
@@ -146,6 +147,23 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
         self.assertIn("function Get-CollectorHandoffMode", runner)
         self.assertIn("CONTROLLER_RESTARTS", runner)
         self.assertNotIn("refusing to restart Collector while Controller is running", runner)
+
+    def test_owner_command_is_encoded_and_has_no_dollar_sign(self):
+        script = ROOT / "downloads" / "ACCEPT_OWNER_RUNTIME.ps1"
+        text = script.read_text(encoding="utf-8")
+        encoded = base64.b64encode(text.encode("utf-16-le")).decode("ascii")
+        command = (
+            "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -EncodedCommand "
+            + encoded
+        )
+        self.assertNotIn("$", command)
+        runtime = text.rsplit("exit 0", 1)[1]
+        self.assertNotIn("Stop-Process", runtime)
+        self.assertIn("-AcceptRuntimeCollector", text)
+        self.assertIn("82c49a6d614a6a09f9f239cc7de6b3f25d39310a", text)
+        self.assertLess(len(command), 8000)
+        digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest().upper()
+        self.assertEqual(len(digest), 64)
 
     def test_runtime_accept_selftest_passes(self):
         shell = shutil.which("powershell") or shutil.which("pwsh")
