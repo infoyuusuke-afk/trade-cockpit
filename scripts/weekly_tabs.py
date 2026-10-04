@@ -126,6 +126,22 @@ def tabs_block() -> str:
 .cockpit-tab.event-alert{color:#fff;background:#f23645;box-shadow:none}
 .secondary-tabs{margin-left:auto;white-space:nowrap}.secondary-tabs summary{cursor:pointer;color:#9ba3af;padding:9px 10px;border-radius:4px}.secondary-tabs summary:hover{background:#1e222d;color:#d1d4dc}.secondary-tabs[open]{display:flex;gap:2px}
 .tab-pane{display:none}.tab-pane.active{display:block}
+/* Card-first contract: every pane except KIOXIA is a card surface. */
+.tab-pane:not([data-pane="kioxia-calendar"]){display:none;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;align-items:start}
+.tab-pane:not([data-pane="kioxia-calendar"]).active{display:grid}
+.tab-pane:not([data-pane="kioxia-calendar"])>.pane-intro{grid-column:1/-1}
+.tab-pane:not([data-pane="kioxia-calendar"])>section{margin:0!important;min-width:0;border-radius:8px!important;overflow:hidden}
+.tab-pane:not([data-pane="kioxia-calendar"])>section.wide{grid-column:auto!important;width:auto!important}
+.tab-pane:not([data-pane="kioxia-calendar"]) iframe,
+.tab-pane:not([data-pane="kioxia-calendar"]) canvas,
+.tab-pane:not([data-pane="kioxia-calendar"]) .tv-lightweight-charts{display:none!important}
+.tab-pane:not([data-pane="kioxia-calendar"]) table{width:100%;font-size:11px}
+.tab-pane:not([data-pane="kioxia-calendar"]) section>table,
+.tab-pane:not([data-pane="kioxia-calendar"]) section>h3+table{display:none!important}
+.tab-pane:not([data-pane="kioxia-calendar"]) section:has(>table):not(:has(.scalp-strip)):not(:has(.ms2-live-grid))::after{content:"詳細データはカード化移行中";display:block;padding:12px;color:#9AA0AA;font-size:11px;border-top:1px solid #22252A}
+.tab-pane:not([data-pane="kioxia-calendar"]) details table{display:table!important}
+.tab-pane:not([data-pane="kioxia-calendar"]) .weekly-grid{grid-template-columns:1fr}
+@media(max-width:720px){.tab-pane:not([data-pane="kioxia-calendar"]){grid-template-columns:1fr}}
 .weekly-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
 .weekly-grid>div{background:#131722;border:1px solid #2a2e39;border-radius:6px;padding:14px}
 .scalp-tv{background:#050506!important;border:1px solid #22252A!important;border-radius:8px!important;padding:0!important;overflow:hidden!important;color:#E8EAED}
@@ -149,7 +165,7 @@ def tabs_block() -> str:
 <nav class="cockpit-tabs" aria-label="コクピット表示切替">
  <span class="cockpit-brand">AIトレードコクピット<small id="cockpit-status">Ver.5.4</small></span>
  <button class="cockpit-tab active" data-tab="scalp">SCALP 5</button>
- <button class="cockpit-tab" data-tab="event-hot">EVENT 5</button>
+ <button class="cockpit-tab" data-tab="event-hot">急騰5 / MOMENTUM 5</button>
  <button class="cockpit-tab" data-tab="ms2-live">REALTIME 5</button>
  <button class="cockpit-tab" data-tab="overnight">OVERNIGHT 5</button>
  <button class="cockpit-tab" data-tab="swing">SWING 5</button>
@@ -177,7 +193,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 
  const eventIntro=document.createElement("section");
  eventIntro.className="card wide";
- eventIntro.innerHTML='<h2>EVENT 5</h2><p class="sub">小型グロース・テーマ株・材料急騰・場中決算の初動監視枠。現時点では全市場の仕手化兆候／短期急騰スキャンを集約し、リアルタイム材料スキャナはこの枠へ接続します。</p>';
+ eventIntro.innerHTML='<h2>急騰5 / MOMENTUM 5</h2><p class="sub">全市場の価格・出来高・売買代金の加速から急騰候補を先に検出する監視枠。材料・ニュースは後段で確認し、未確認でも急騰候補から除外せず「材料未確認」と表示します。</p>';
  panes["event-hot"].appendChild(eventIntro);
 
  [...main.querySelectorAll(":scope > section")].forEach(s=>{
@@ -194,7 +210,8 @@ document.addEventListener("DOMContentLoaded",()=>{
    else if(s.id==="us-smr-watch")k="us-smr";
    else if(s.id==="investor-regime")k="investor-regime";
    else if(s.id==="speculative-theme-monitor"||t.includes("短期急騰期待"))k="event-hot";
-   else if(s.id==="data-quality-gate"||s.id==="next-theme-radar"||s.id==="action-dashboard"||s.id==="watchlist-100"||s.id==="market-ranking-watch"||s.id==="tradingview-screener-watch"||s.id==="premarket-gap-ranking"||t.includes("IN点灯")||t.includes("準備点灯"))k="ms2-live";
+   else if(s.id==="data-quality-gate"||s.id==="next-theme-radar"||s.id==="watchlist-100"||s.id==="market-ranking-watch"||s.id==="tradingview-screener-watch"||s.id==="premarket-gap-ranking"||t.includes("IN点灯")||t.includes("準備点灯"))k="ms2-live";
+   else if(s.id==="action-dashboard"){ s.remove(); return; }
    else if(s.id==="lower-wick-reversal"||t.includes("下ヒゲ吸収反転"))k="wick";
    else if(t.includes("BB上方エクスパンション"))k="expansion";
    else if(s.id==="weekly-review"||t.includes("週間振り返り"))k="weekly";
@@ -220,6 +237,20 @@ document.addEventListener("DOMContentLoaded",()=>{
  const num=v=>v==null||!Number.isFinite(Number(v))?null:Number(v);
  const yen=v=>num(v)==null?"—":Number(v).toLocaleString("ja-JP",{maximumFractionDigits:1});
  const pct=v=>num(v)==null?"—":((Number(v)>0?"+":"")+Number(v).toFixed(2)+"%");
+ let latestLiveFeed=null;
+ const liveSnapshot=(d,ticker)=>{
+   if(!d||d.stale!==false)return null;
+   const x=(Array.isArray(d.all_targets)?d.all_targets:[]).find(v=>String(v?.ticker||"")===String(ticker||""));
+   if(!x)return null;
+   const canonical=Number(x.live_price);
+   const legacy=Number(x.price);
+   const price=(x.live_quote_valid===true&&Number.isFinite(canonical))?canonical:
+     (x.live_quote_valid==null&&Number.isFinite(legacy)?legacy:NaN);
+   if(!Number.isFinite(price))return null;
+   return {...x,price,live_price:price,live_quote_valid:true,live_observed_at:x.live_observed_at||d.live_observed_at||d.updated_at,live_source:x.live_source||d.source||"MarketSpeed II RSS",session_state:x.session_state||d.session_state||d.market_session_state||d.market_state};
+ };
+ window.cockpitLiveSnapshot=ticker=>liveSnapshot(latestLiveFeed,ticker);
+ document.addEventListener("ms2RssUpdate",e=>{latestLiveFeed=e.detail||null;});
  const signalView=(x,stale)=>{
    const raw=String(x?.signal||"監視");
    if(stale||raw.includes("市場時間外"))return {label:"CLOSED",cls:"wait"};
@@ -228,15 +259,8 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(raw.includes("空売り")||raw.includes("ショート")||String(x?.raw_direction)==="SELL")return {label:"SHORT",cls:"short"};
    return {label:"WAIT",cls:"wait"};
  };
- const sparkline=bars=>{
-   const vals=(Array.isArray(bars)?bars:[]).slice(-36).map(b=>num(b?.c??b?.Close)).filter(v=>v!=null);
-   if(vals.length<2)return '<svg viewBox="0 0 100 54" preserveAspectRatio="none"><line class="grid" x1="0" y1="27" x2="100" y2="27"/></svg>';
-   const lo=Math.min(...vals),hi=Math.max(...vals),span=Math.max(hi-lo,0.0001);
-   const pts=vals.map((v,i)=>((i/(vals.length-1))*100).toFixed(2)+","+(50-((v-lo)/span)*44).toFixed(2)).join(" ");
-   return '<svg viewBox="0 0 100 54" preserveAspectRatio="none"><line class="grid" x1="0" y1="27" x2="100" y2="27"/><polyline class="line" points="'+pts+'"/></svg>';
- };
- // 共有カード生成（ユーザー依頼2026-09-19：SCALP 5・OVERNIGHT 5・EVENT 5で同じ銘柄カードにする）。
- // OVERNIGHT 5・EVENT 5はSCALP 5と違いライブMS2データの一部項目（ENTRY/STOP/T1・OR5・出来高加速等）を
+ // 共有カード生成（ユーザー依頼2026-09-19：SCALP 5・OVERNIGHT 5・急騰5 / MOMENTUM 5で同じ銘柄カードにする）。
+ // OVERNIGHT 5・急騰5 / MOMENTUM 5はSCALP 5と違いライブMS2データの一部項目（ENTRY/STOP/T1・OR5・出来高加速等）を
  // 持たないため、無い項目は推測で埋めず「—」のまま表示する（既存のyen()/num()の未確認時「—」表示を踏襲）。
  window.renderScalpCard=(x,sv,tf)=>{
    const chg=x.change_pct==null?null:num(x.change_pct),chgCls=chg==null?"flat":(chg>0?"up":chg<0?"down":"flat");
@@ -246,17 +270,23 @@ document.addEventListener("DOMContentLoaded",()=>{
    const ema=(num(x.ema9)!=null&&num(x.ema20)!=null)?yen(x.ema9)+" / "+yen(x.ema20):"—";
    const flow=x.flow_bias==null?"—":esc(x.flow_bias)+"%";
    const vol=x.volume_burst==null?"—":esc(x.volume_burst)+"x";
-   return '<article class="scalp-card '+sv.cls+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(x.name)+'</strong><small>TSE:'+esc(code)+' · '+esc(tf||"1m")+'</small></div><span class="scalp-signal">'+esc(sv.label)+'</span></div><div class="scalp-price-row"><div class="scalp-price">'+yen(x.price)+'</div><div class="scalp-change '+chgCls+'">'+pct(x.change_pct)+'</div></div><div class="scalp-spark">'+sparkline(x.bars_1m)+'</div><div class="scalp-order"><span class="entry">ENTRY<b>'+yen(x.entry_price)+'</b></span><span class="stop">STOP<b>'+yen(x.stop_price)+'</b></span><span class="target">T1<b>'+yen(x.target1)+'</b></span></div><div class="scalp-metrics"><span>VWAP<b>'+yen(x.vwap)+'</b></span><span>OR5<b>'+or5+'</b></span><span>OR15<b>'+or15+'</b></span><span>EMA 9 / 20<b>'+ema+'</b></span><span>FLOW<b>'+flow+'</b></span><span>VOLUME<b>'+vol+'</b></span></div><div class="scalp-foot">'+esc(x.foot||"")+'</div></article>';
+   const verified=num(x.price)>0&&x.live_quote_valid!==false;
+   const observed=x.live_observed_at||x.observed_at||x.updated_at||"時刻未確認";
+   const source=x.live_source||x.source||"MS2 RSS";
+   const session=x.session_state||x.market_session_state||x.market_state||"SESSION未確認";
+   const proof=verified?'<div class="live-state-proof"><b>MS2 LIVE</b><span>'+esc(session)+'</span><span>観測 '+esc(observed)+'</span><small>'+esc(source)+'</small></div>':'<div class="live-state-proof"><b>LIVE DATA INVALID</b><span>現在値は表示しません</span></div>';
+   return '<article class="scalp-card '+sv.cls+(verified?' live-verified':' live-invalid')+'"><div class="scalp-head"><div class="scalp-symbol"><strong>'+esc(x.name)+'</strong><small>TSE:'+esc(code)+' · '+esc(tf||"1m")+'</small></div><span class="scalp-signal">'+esc(sv.label)+'</span></div><div class="scalp-price-row"><div class="scalp-price">'+yen(x.price)+'</div><div class="scalp-change '+chgCls+'">'+pct(x.change_pct)+'</div></div>'+proof+'<div class="scalp-order"><span class="entry">ENTRY<b>'+yen(x.entry_price)+'</b></span><span class="stop">STOP<b>'+yen(x.stop_price)+'</b></span><span class="target">T1<b>'+yen(x.target1)+'</b></span></div><div class="scalp-metrics"><span>VWAP<b>'+yen(x.vwap)+'</b></span><span>OR5<b>'+or5+'</b></span><span>OR15<b>'+or15+'</b></span><span>EMA 9 / 20<b>'+ema+'</b></span><span>FLOW<b>'+flow+'</b></span><span>VOLUME<b>'+vol+'</b></span></div><div class="scalp-foot">'+esc(x.foot||"")+'</div></article>';
  };
  document.addEventListener("ms2RssUpdate",e=>{
    const d=e.detail||{},all=Array.isArray(d.all_targets)?d.all_targets:[],stale=d.stale!==false;
    const fixed=["285A.T","9984.T","8035.T","6920.T","6857.T"];
    const box=document.getElementById("scalp-fixed-5"); if(!box)return;
-   const rows=fixed.map(t=>all.find(x=>String(x.ticker)===t)).filter(Boolean);
-   box.innerHTML=rows.length?rows.map(x=>{
-     const sv=signalView(x,stale);
+   const rows=fixed.map(t=>({ticker:t,row:liveSnapshot(d,t)}));
+   box.innerHTML=rows.map(({ticker,row:x})=>{
+     if(!x)return window.renderScalpCard({ticker,name:ticker.replace(".T",""),price:null,foot:"LIVE DATA INVALID / 現在値は表示しません"},{label:"INVALID",cls:"block"},"1m");
+     const sv=signalView(x,false);
      return window.renderScalpCard({...x,foot:(x.signal||"監視")+' · '+(x.strategy||"条件待ち")},sv,"1m");
-   }).join(""):'<div class="focus-empty">SCALP 5のMS2 RSSデータ待ち</div>';
+   }).join("");
  });
 
  document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{
