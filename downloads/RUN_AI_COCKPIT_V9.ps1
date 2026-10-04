@@ -5,7 +5,9 @@ param(
     [switch]$SkipGitUpdate,
     [string]$RuntimeDirOverride = "",
     [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
-    [switch]$DeployRuntimeOnly
+    [switch]$DeployRuntimeOnly,
+    [switch]$AcceptRuntimeCollector,
+    [switch]$RuntimeAcceptSelfTest
 )
 
 # One-shot entry point: update (git fetch/checkout a PINNED branch, or an
@@ -231,6 +233,371 @@ function Deploy-RuntimeFiles([string]$RepoRoot, [string]$RuntimeDir) {
     return @{ hashes = $deployedHashes; backup_dir = $backupDir }
 }
 
+function Test-CollectorIdentityContract([string]$Text) {
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    $ordinal = [StringComparison]::Ordinal
+    if ($Text.IndexOf("function Get-IdentityQuote", $ordinal) -lt 0) { return $false }
+    if ($Text.IndexOf("workbook_identity_verified", $ordinal) -lt 0) { return $false }
+    if ($Text.IndexOf('$script:IdentityTicker = "285A.T"', $ordinal) -lt 0) { return $false }
+    return $true
+}
+
+function Get-IdentityRollbackBlock([string]$SourceText, [string]$DestinationText) {
+    if ((Test-CollectorIdentityContract $DestinationText) -and -not (Test-CollectorIdentityContract $SourceText)) {
+        return "RUNTIME_ROLLBACK_BLOCKED"
+    }
+    return ""
+}
+
+function Get-ComparablePath([string]$Value) {
+    if ([string]::IsNullOrWhiteSpace($Value)) { return "" }
+    $text = $Value.Trim().Replace("/", "\")
+    while ($text.EndsWith("\")) { $text = $text.Substring(0, $text.Length - 1) }
+    return $text.ToUpperInvariant()
+}
+
+function Test-CollectorCommandLine([string]$CommandLine) {
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) { return $false }
+    $cmp = [StringComparison]::OrdinalIgnoreCase
+    if ($CommandLine.IndexOf("MS2_RSS_100_Collector.ps1", $cmp) -lt 0) { return $false }
+    foreach ($name in @(
+        "AI_COCKPIT_CONTROLLER_V9.ps1",
+        "RUN_AI_COCKPIT_V9.ps1",
+        "Kioxia_RSS_Live_Watcher.ps1",
+        "Kioxia_Safety_Heartbeat.ps1",
+        "AI_COCKPIT_GATEWAY_V9.ps1",
+        "EXCEL.EXE"
+    )) {
+        if ($CommandLine.IndexOf($name, $cmp) -ge 0) { return $false }
+    }
+    return $true
+}
+
+function Test-LocalPreopen {
+    $clock = (Get-Date).TimeOfDay
+    return ($clock -ge [TimeSpan]::Parse("08:00:00") -and $clock -lt [TimeSpan]::Parse("09:00:00"))
+}
+
+function Get-RuntimeAcceptanceFailure($Payload, [bool]$Preopen, [string]$ExpectedWorkbookPath) {
+    $reasons = New-Object System.Collections.Generic.List[string]
+    if ($null -eq $Payload) { return "NO_PAYLOAD" }
+    $diag = $null
+    try { $diag = $Payload.live_price_diagnostics } catch { $diag = $null }
+    $symbol = [string]$Payload.symbol
+    if ([string]::IsNullOrWhiteSpace($symbol) -and $null -ne $diag) { $symbol = [string]$diag.symbol }
+    if ($symbol -ne "285A.T") { [void]$reasons.Add("SYMBOL") }
+    $count = $Payload.collector_count
+    if ($null -eq $count -and $null -ne $diag) { $count = $diag.collector_count }
+    $countNumber = 0
+    try { $countNumber = [int]$count } catch { $countNumber = 0 }
+    if ($countNumber -ne 1) { [void]$reasons.Add("COLLECTOR_COUNT") }
+    $verified = $false
+    $fullName = ""
+    if ($null -ne $diag) {
+        $verified = ($diag.workbook_identity_verified -eq $true)
+        $fullName = [string]$diag.workbook_full_name
+    }
+    try {
+        if ($null -ne $Payload.PSObject.Properties["workbook_identity_verified"]) {
+            $verified = ($Payload.workbook_identity_verified -eq $true)
+        }
+        if ($null -ne $Payload.PSObject.Properties["workbook_full_name"] -and -not [string]::IsNullOrWhiteSpace([string]$Payload.workbook_full_name)) {
+            $fullName = [string]$Payload.workbook_full_name
+        }
+    } catch {}
+    if (-not $verified) { [void]$reasons.Add("WORKBOOK_IDENTITY") }
+    if ((Get-ComparablePath $fullName) -ne (Get-ComparablePath $ExpectedWorkbookPath)) { [void]$reasons.Add("WORKBOOK_PATH") }
+    $realSubmit = $Payload.real_submit_allowed
+    if ($null -eq $realSubmit -and $null -ne $diag) { $realSubmit = $diag.real_submit_allowed }
+    if ($realSubmit -ne $false) { [void]$reasons.Add("REAL_SUBMIT") }
+    $price = $Payload.current_price
+    if ($null -eq $price -and $null -ne $diag) { $price = $diag.current_price }
+    $stamp = [string]$Payload.source_timestamp
+    if ([string]::IsNullOrWhiteSpace($stamp) -and $null -ne $diag) { $stamp = [string]$diag.source_timestamp }
+    $priceZero = $false
+    if ($null -eq $price -or [string]$price -eq "") {
+        $priceZero = $true
+    } else {
+        try { $priceZero = ([double]$price -eq 0) } catch { $priceZero = $true }
+    }
+    if ($priceZero) {
+        if (-not $Preopen) { [void]$reasons.Add("PRICE") }
+        elseif ($stamp -notmatch '^\d{2}:\d{2}:\d{2}$') { [void]$reasons.Add("QUOTE_CLOCK") }
+    }
+    $status = [string]$Payload.status
+    $reasonText = [string]$Payload.reason
+    if ([string]::IsNullOrWhiteSpace($reasonText)) { $reasonText = [string]$Payload.stale_reason }
+    foreach ($item in @(
+        "WRONG_SOURCE_WORKBOOK",
+        "WRONG_SYMBOL_MAPPING",
+        "DUPLICATE_COLLECTOR",
+        "DATA_CONFLICT",
+        "CACHED_OR_SAMPLE_PAYLOAD",
+        "MISSING_PRICE_DIAGNOSTICS",
+        "STALE_OR_MISSING_TIMESTAMP"
+    )) {
+        if ($reasonText.IndexOf($item, [StringComparison]::Ordinal) -ge 0) { [void]$reasons.Add($item) }
+    }
+    if ($status -eq "PRICE_SOURCE_MISMATCH") { [void]$reasons.Add("PRICE_SOURCE_MISMATCH") }
+    if ($Payload.data_conflict -eq $true) { [void]$reasons.Add("DATA_CONFLICT") }
+    if (-not $Preopen -and $status -eq "stale") { [void]$reasons.Add("STALE") }
+    return ($reasons -join ",")
+}
+
+function Get-CollectorProcessIds {
+    $ids = New-Object System.Collections.Generic.List[int]
+    $procs = @(Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" -ErrorAction Stop)
+    foreach ($proc in $procs) {
+        if (Test-CollectorCommandLine ([string]$proc.CommandLine)) {
+            [void]$ids.Add([int]$proc.ProcessId)
+        }
+    }
+    return @($ids)
+}
+
+function Get-ControllerProcessCount {
+    $count = 0
+    $procs = @(Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" -ErrorAction Stop)
+    foreach ($proc in $procs) {
+        $cmd = [string]$proc.CommandLine
+        if ($cmd.IndexOf("AI_COCKPIT_CONTROLLER_V9.ps1", [StringComparison]::OrdinalIgnoreCase) -ge 0) { $count++ }
+    }
+    return $count
+}
+
+function Stop-OneCollectorProcess([int]$ProcessId) {
+    $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction Stop
+    if ($null -eq $info) { return }
+    if (-not (Test-CollectorCommandLine ([string]$info.CommandLine))) {
+        throw ("REFUSING_TO_STOP_NON_COLLECTOR pid=" + $ProcessId)
+    }
+    $children = @(Get-CimInstance Win32_Process -Filter ("ParentProcessId = " + $ProcessId) -ErrorAction SilentlyContinue)
+    foreach ($child in $children) {
+        $childName = [string]$child.Name
+        if ($childName -eq "powershell.exe" -or $childName -eq "pwsh.exe") {
+            Stop-Process -Id ([int]$child.ProcessId) -Force -ErrorAction SilentlyContinue
+        }
+    }
+    Stop-Process -Id $ProcessId -Force -ErrorAction Stop
+}
+
+function Start-OneRuntimeCollector([string]$RuntimeDir) {
+    $script = Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"
+    $exe = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+    if (-not (Test-Path -LiteralPath $exe)) {
+        throw "Windows PowerShell 5.1 executable was not found. Collector was not started."
+    }
+    return Start-Process -FilePath $exe -ArgumentList @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $script) -WorkingDirectory $RuntimeDir -WindowStyle Hidden -PassThru
+}
+
+function Receive-CollectorBridge {
+    $client = $null
+    try {
+        $client = New-Object System.Net.Sockets.TcpClient
+        $client.ReceiveTimeout = 5000
+        $client.SendTimeout = 5000
+        $client.Connect("127.0.0.1", 28580)
+        $stream = $client.GetStream()
+        $writer = New-Object System.IO.StreamWriter($stream)
+        $writer.NewLine = "`r`n"
+        $writer.AutoFlush = $true
+        $writer.WriteLine("GET / HTTP/1.1")
+        $writer.WriteLine("Host: 127.0.0.1")
+        $writer.WriteLine("Connection: close")
+        $writer.WriteLine("")
+        $buffer = New-Object System.IO.MemoryStream
+        $tmp = New-Object byte[] 8192
+        while ($true) {
+            $read = $stream.Read($tmp, 0, $tmp.Length)
+            if ($read -le 0) { break }
+            $buffer.Write($tmp, 0, $read)
+        }
+        $raw = [Text.Encoding]::UTF8.GetString($buffer.ToArray())
+        $headerEnd = $raw.IndexOf("`r`n`r`n")
+        if ($headerEnd -lt 0) { return $null }
+        $header = $raw.Substring(0, $headerEnd)
+        $body = $raw.Substring($headerEnd + 4)
+        $statusCode = 0
+        $first = ($header -split "`r`n")[0]
+        $parts = $first -split " "
+        if ($parts.Length -ge 2) { $statusCode = [int]$parts[1] }
+        $obj = $body | ConvertFrom-Json
+        return [pscustomobject]@{ status_code = $statusCode; payload = $obj }
+    } catch {
+        return $null
+    } finally {
+        if ($null -ne $client) { $client.Close() }
+    }
+}
+
+function Restore-RuntimeBackupFiles([string]$BackupDir, [string]$RuntimeDir) {
+    foreach ($name in $RUNTIME_DEPLOY_FILES) {
+        $from = Join-Path $BackupDir $name
+        $to = Join-Path $RuntimeDir $name
+        if (Test-Path -LiteralPath $from) {
+            Copy-Item -LiteralPath $from -Destination $to -Force
+        }
+    }
+}
+
+function Invoke-AcceptRuntimeCollector([string]$RuntimeDir, [string]$BackupDir, [int]$OldProcessId, [string]$BeforeHash) {
+    $started = $null
+    $stopped = $false
+    try {
+        Stop-OneCollectorProcess $OldProcessId
+        $stopped = $true
+        $started = Start-OneRuntimeCollector $RuntimeDir
+        $deadline = (Get-Date).AddSeconds(90)
+        $lastFail = "TIMEOUT"
+        $lastPayload = $null
+        $expectedBook = Join-Path $RuntimeDir "Kioxia_MS2_RSS_Live_Signals.xlsx"
+        while ((Get-Date) -lt $deadline) {
+            Start-Sleep -Seconds 2
+            $live = Receive-CollectorBridge
+            if ($null -eq $live) { $lastFail = "PORT_CLOSED"; continue }
+            $lastPayload = $live.payload
+            $lastFail = Get-RuntimeAcceptanceFailure $live.payload (Test-LocalPreopen) $expectedBook
+            if ([string]::IsNullOrWhiteSpace($lastFail)) { break }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($lastFail)) {
+            throw ("RUNTIME_ACCEPTANCE_FAILED " + $lastFail)
+        }
+        $ids = @(Get-CollectorProcessIds)
+        if ($ids.Count -ne 1 -or [int]$ids[0] -ne [int]$started.Id) {
+            throw ("COLLECTOR_PROCESS_AFTER=" + ($ids -join ","))
+        }
+        return $lastPayload
+    } catch {
+        $acceptError = $_.Exception.Message
+        if ($null -ne $started) {
+            try { Stop-OneCollectorProcess ([int]$started.Id) } catch {}
+        }
+        Restore-RuntimeBackupFiles $BackupDir $RuntimeDir
+        $restored = ""
+        $restoredPath = Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"
+        if (Test-Path -LiteralPath $restoredPath) { $restored = Get-Sha256Hex $restoredPath }
+        if ($restored -ne $BeforeHash) {
+            throw ("ROLLBACK_HASH_MISMATCH expected=" + $BeforeHash + " got=" + $restored + " after " + $acceptError)
+        }
+        if ($stopped) {
+            try { Start-OneRuntimeCollector $RuntimeDir | Out-Null } catch {
+                throw ("ROLLBACK_RESTART_FAILED " + $_.Exception.Message + " after " + $acceptError)
+            }
+        }
+        throw ("ROLLBACK=1 backup=" + $BackupDir + " restored_sha256=" + $restored + " " + $acceptError)
+    }
+}
+
+function Invoke-RuntimeAcceptSelfTest {
+    $root = Join-Path ([IO.Path]::GetTempPath()) ("v9-runtime-accept-" + [Guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $root -Force | Out-Null
+    try {
+        $source = Join-Path $root "source.ps1"
+        $dest = Join-Path $root "dest.ps1"
+        $good = "function Get-IdentityQuote { }`r`nworkbook_identity_verified`r`n`$script:IdentityTicker = `"285A.T`"`r`n"
+        [IO.File]::WriteAllText($source, $good, [Text.UTF8Encoding]::new($false))
+        Copy-Item -LiteralPath $source -Destination $dest -Force
+        if ((Get-Sha256Hex $source) -ne (Get-Sha256Hex $dest)) { throw "copied hash must match" }
+        if ((Get-IdentityRollbackBlock "old collector" $good) -ne "RUNTIME_ROLLBACK_BLOCKED") { throw "old source must not replace identity runtime" }
+        if ((Get-IdentityRollbackBlock $good $good) -ne "") { throw "same identity contract must deploy" }
+        if ((Get-IdentityRollbackBlock $good "") -ne "") { throw "empty destination must deploy" }
+        if (-not (Test-CollectorCommandLine "powershell.exe -File C:\files\MS2_RSS_100_Collector.ps1")) { throw "collector command must match" }
+        if (Test-CollectorCommandLine "powershell.exe -File C:\files\AI_COCKPIT_CONTROLLER_V9.ps1") { throw "controller must not match" }
+        if (Test-CollectorCommandLine "C:\Windows\EXCEL.EXE") { throw "excel must not match" }
+        if (Test-CollectorCommandLine "powershell.exe -File C:\files\Kioxia_RSS_Live_Watcher.ps1") { throw "watcher must not match" }
+        if (Test-CollectorCommandLine "powershell.exe -File C:\files\RUN_AI_COCKPIT_V9.ps1") { throw "runner must not match" }
+        $expected = "C:\MarketSpeed II RSS\files\Kioxia_MS2_RSS_Live_Signals.xlsx"
+        $preopen = [pscustomobject]@{
+            status = "stale"
+            reason = "LIVE_VALUES_UNAVAILABLE"
+            symbol = "285A.T"
+            current_price = 0
+            collector_count = 1
+            workbook_identity_verified = $true
+            workbook_full_name = $expected
+            real_submit_allowed = $false
+            data_conflict = $false
+            source_timestamp = "08:05:53"
+        }
+        $preopenFail = Get-RuntimeAcceptanceFailure $preopen $true $expected
+        if (-not [string]::IsNullOrWhiteSpace($preopenFail)) { throw ("preopen zero price must pass: " + $preopenFail) }
+        if ((Get-RuntimeAcceptanceFailure $preopen $false $expected).IndexOf("PRICE") -lt 0) { throw "session zero price must fail" }
+        $wrong = [pscustomobject]@{
+            status = "PRICE_SOURCE_MISMATCH"
+            reason = "WRONG_SOURCE_WORKBOOK"
+            symbol = "8035.T"
+            current_price = 12100
+            collector_count = 1
+            workbook_identity_verified = $false
+            workbook_full_name = $expected
+            real_submit_allowed = $false
+            data_conflict = $true
+            source_timestamp = "08:05:53"
+        }
+        $wrongFail = Get-RuntimeAcceptanceFailure $wrong $true $expected
+        if ($wrongFail.IndexOf("SYMBOL") -lt 0 -or $wrongFail.IndexOf("WRONG_SOURCE_WORKBOOK") -lt 0) { throw "8035 must fail during preopen" }
+        $stale = [pscustomobject]@{
+            status = "stale"
+            reason = "STALE_OR_MISSING_TIMESTAMP,LIVE_VALUES_UNAVAILABLE"
+            symbol = "285A.T"
+            current_price = 0
+            collector_count = 1
+            workbook_identity_verified = $true
+            workbook_full_name = $expected
+            real_submit_allowed = $false
+            data_conflict = $false
+            source_timestamp = "08:05:53"
+        }
+        if ((Get-RuntimeAcceptanceFailure $stale $true $expected).IndexOf("STALE_OR_MISSING_TIMESTAMP") -lt 0) { throw "stale file must fail during preopen" }
+        $duplicate = [pscustomobject]@{
+            symbol = "285A.T"
+            current_price = 100
+            collector_count = 2
+            workbook_identity_verified = $true
+            workbook_full_name = $expected
+            real_submit_allowed = $false
+            data_conflict = $false
+            source_timestamp = "09:01:00"
+        }
+        if ((Get-RuntimeAcceptanceFailure $duplicate $false $expected).IndexOf("COLLECTOR_COUNT") -lt 0) { throw "two collectors must fail" }
+        $submit = [pscustomobject]@{
+            symbol = "285A.T"
+            current_price = 100
+            collector_count = 1
+            workbook_identity_verified = $true
+            workbook_full_name = $expected
+            real_submit_allowed = $true
+            data_conflict = $false
+            source_timestamp = "09:01:00"
+        }
+        if ((Get-RuntimeAcceptanceFailure $submit $false $expected).IndexOf("REAL_SUBMIT") -lt 0) { throw "real submit must fail" }
+        $nested = [pscustomobject]@{
+            live_price_diagnostics = [pscustomobject]@{
+                symbol = "285A.T"
+                current_price = 100
+                collector_count = 1
+                workbook_identity_verified = $true
+                workbook_full_name = $expected
+                real_submit_allowed = $false
+                source_timestamp = "09:01:00"
+            }
+            data_conflict = $false
+            real_submit_allowed = $false
+        }
+        $nestedFail = Get-RuntimeAcceptanceFailure $nested $false $expected
+        if (-not [string]::IsNullOrWhiteSpace($nestedFail)) { throw ("nested diagnostics must pass: " + $nestedFail) }
+        Write-Output "RUNTIME_ACCEPT_SELFTEST PASS"
+        Write-Output "PINNED_B81B887_COLLECTOR_SHA256=510ACF2E8F962A9B9D7AA2777955E60DC2247C34C232EFBE9F50CCFFAB7C424F"
+    } finally {
+        Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+if ($RuntimeAcceptSelfTest) {
+    Invoke-RuntimeAcceptSelfTest
+    exit 0
+}
+
 $repo = Resolve-RepoRoot
 Write-Host "==================================================" -ForegroundColor DarkCyan
 Write-Host " AI COCKPIT V9 - update + backup + start" -ForegroundColor Cyan
@@ -249,11 +616,29 @@ try {
     if ($DeployRuntimeOnly -and [string]::IsNullOrWhiteSpace($ExpectedSha)) {
         throw "DeployRuntimeOnly requires -ExpectedSha. Refusing to copy an unpinned checkout into RuntimeDir."
     }
+    if ($AcceptRuntimeCollector -and [string]::IsNullOrWhiteSpace($ExpectedSha)) {
+        throw "AcceptRuntimeCollector requires -ExpectedSha. Refusing to copy an unpinned checkout into RuntimeDir."
+    }
     if (-not $SkipGitUpdate) {
         Write-Host ("Updating checkout: fetching origin/" + $Branch + "...") -ForegroundColor Yellow
         Invoke-GitFatal $repo @("fetch", "origin", $Branch, "--quiet") "git fetch failed - refusing to start with a possibly-stale or partial checkout" | Out-Null
+        $targetRev = if (-not [string]::IsNullOrWhiteSpace($ExpectedSha)) { $ExpectedSha } else { "origin/" + $Branch }
+        $targetCollector = Invoke-GitFatal $repo @("show", ($targetRev + ":ms2_live/MS2_RSS_100_Collector.ps1")) "could not read the target collector before checkout"
+        $runtimeDirForGuard = Resolve-RuntimeDirForDeploy $RuntimeDirOverride
+        $runtimeCollectorPath = Join-Path $runtimeDirForGuard "MS2_RSS_100_Collector.ps1"
+        $runtimeText = ""
+        if (Test-Path -LiteralPath $runtimeCollectorPath) {
+            $runtimeText = [IO.File]::ReadAllText($runtimeCollectorPath, [Text.Encoding]::UTF8)
+        }
+        $earlyBlock = Get-IdentityRollbackBlock ($targetCollector -join "`n") $runtimeText
+        if (-not [string]::IsNullOrWhiteSpace($earlyBlock)) {
+            throw "RUNTIME_ROLLBACK_BLOCKED: origin/$Branch would replace the 285A workbook-identity Collector already in RuntimeDir. Checkout was not changed. Runtime files were not replaced. Excel, MS2, Collector, and Controller were not touched."
+        }
         Invoke-GitFatal $repo @("checkout", "-B", $Branch, ("origin/" + $Branch), "--quiet") "git checkout failed" | Out-Null
         Invoke-GitFatal $repo @("reset", "--hard", ("origin/" + $Branch), "--quiet") "git reset --hard failed" | Out-Null
+        if (-not [string]::IsNullOrWhiteSpace($ExpectedSha)) {
+            Invoke-GitFatal $repo @("reset", "--hard", $ExpectedSha, "--quiet") "git reset to ExpectedSha failed" | Out-Null
+        }
     } else {
         Write-Host "Skipping git update (-SkipGitUpdate) - using whatever is already checked out." -ForegroundColor DarkGray
     }
@@ -278,13 +663,32 @@ try {
     $collectorBeforeHash = ""
     if (Test-Path -LiteralPath $collectorBefore) { $collectorBeforeHash = Get-Sha256Hex $collectorBefore }
     Write-Host ("  COLLECTOR_BEFORE_SHA256=" + $collectorBeforeHash) -ForegroundColor Cyan
-    if ($DeployRuntimeOnly) {
-        $ordinal = [StringComparison]::Ordinal
-        $collectorSource = Join-Path $repo "ms2_live\MS2_RSS_100_Collector.ps1"
-        $collectorText = [IO.File]::ReadAllText($collectorSource, [Text.Encoding]::UTF8)
-        if ($collectorText.IndexOf("function Get-IdentityQuote", $ordinal) -lt 0 -or $collectorText.IndexOf("workbook_identity_verified", $ordinal) -lt 0) {
-            throw "DeployRuntimeOnly refused: source collector does not publish the 285A workbook identity quote."
+    $collectorSource = Join-Path $repo "ms2_live\MS2_RSS_100_Collector.ps1"
+    $collectorText = [IO.File]::ReadAllText($collectorSource, [Text.Encoding]::UTF8)
+    $destinationText = ""
+    if (Test-Path -LiteralPath $collectorBefore) {
+        $destinationText = [IO.File]::ReadAllText($collectorBefore, [Text.Encoding]::UTF8)
+    }
+    $rollbackBlock = Get-IdentityRollbackBlock $collectorText $destinationText
+    if (-not [string]::IsNullOrWhiteSpace($rollbackBlock)) {
+        throw "RUNTIME_ROLLBACK_BLOCKED: the runtime Collector already publishes 285A workbook identity and this checkout does not. Runtime files were not replaced. Excel, MS2, Collector, and Controller were not touched."
+    }
+    if (($DeployRuntimeOnly -or $AcceptRuntimeCollector) -and -not (Test-CollectorIdentityContract $collectorText)) {
+        throw "Refusing to deploy a collector that does not publish the 285A workbook identity quote."
+    }
+    $oldCollectorId = 0
+    if ($AcceptRuntimeCollector) {
+        $collectorIds = @(Get-CollectorProcessIds)
+        $controllerCount = Get-ControllerProcessCount
+        Write-Host ("  COLLECTOR_PROCESS_BEFORE=" + $collectorIds.Count) -ForegroundColor Cyan
+        Write-Host ("  CONTROLLER_PROCESS_BEFORE=" + $controllerCount) -ForegroundColor Cyan
+        if ($controllerCount -ne 0) {
+            throw "CONTROLLER_PROCESS_PRESENT: refusing to restart Collector while Controller is running. No files were copied. Excel and MS2 were not touched."
         }
+        if ($collectorIds.Count -ne 1) {
+            throw ("COLLECTOR_PROCESS_BEFORE=" + $collectorIds.Count + ". Expected exactly one Collector. No files were copied. Excel, MS2, and Controller were not touched.")
+        }
+        $oldCollectorId = [int]$collectorIds[0]
     }
     $deployResult = Deploy-RuntimeFiles -RepoRoot $repo -RuntimeDir $runtimeDirForDeploy
     Write-Host ("  Deployed " + $RUNTIME_DEPLOY_FILES.Count + " files, backup: " + $deployResult.backup_dir) -ForegroundColor Green
@@ -302,8 +706,43 @@ try {
     [IO.File]::WriteAllText($runtimeManifestPath, ($runtimeManifest | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
     Write-Host ("  Runtime manifest written: " + $runtimeManifestPath) -ForegroundColor Green
     $collectorAfterHash = Get-Sha256Hex (Join-Path $runtimeDirForDeploy "MS2_RSS_100_Collector.ps1")
+    $sourceHash = Get-Sha256Hex $collectorSource
+    if ($collectorAfterHash -ne $sourceHash) {
+        Restore-RuntimeBackupFiles ([string]$deployResult.backup_dir) $runtimeDirForDeploy
+        throw ("RUNTIME_SHA256_MISMATCH repo=" + $sourceHash + " runtime=" + $collectorAfterHash)
+    }
     Write-Host ("  COLLECTOR_AFTER_SHA256=" + $collectorAfterHash) -ForegroundColor Green
+    Write-Host "  RUNTIME_SHA256_MATCH=1" -ForegroundColor Green
     Write-Host ("  REPO_SHA=" + $actualSha) -ForegroundColor Green
+    if ($AcceptRuntimeCollector) {
+        $accepted = Invoke-AcceptRuntimeCollector $runtimeDirForDeploy ([string]$deployResult.backup_dir) $oldCollectorId $collectorBeforeHash
+        $diag = $null
+        try { $diag = $accepted.live_price_diagnostics } catch { $diag = $null }
+        $symbol = [string]$accepted.symbol
+        if ([string]::IsNullOrWhiteSpace($symbol) -and $null -ne $diag) { $symbol = [string]$diag.symbol }
+        $price = $accepted.current_price
+        if ($null -eq $price -and $null -ne $diag) { $price = $diag.current_price }
+        $count = $accepted.collector_count
+        if ($null -eq $count -and $null -ne $diag) { $count = $diag.collector_count }
+        Write-Host "RUNTIME_ACCEPTANCE=PASS" -ForegroundColor Green
+        Write-Host ("SYMBOL=" + $symbol) -ForegroundColor Green
+        Write-Host ("CURRENT_PRICE=" + $price) -ForegroundColor Green
+        Write-Host ("COLLECTOR_COUNT=" + $count) -ForegroundColor Green
+        Write-Host "WORKBOOK_IDENTITY_VERIFIED=1" -ForegroundColor Green
+        Write-Host ("PREOPEN=" + [int](Test-LocalPreopen)) -ForegroundColor Green
+        Write-Host "REAL_SUBMIT_ALLOWED=0" -ForegroundColor Green
+        Write-Host "EXCEL_TOUCHED=0" -ForegroundColor Green
+        Write-Host "MS2_TOUCHED=0" -ForegroundColor Green
+        Write-Host "CONTROLLER_STOPPED=0" -ForegroundColor Green
+        Write-Host "CONTROLLER_STARTED=0" -ForegroundColor Green
+        Write-Host "ROLLBACK=0" -ForegroundColor Green
+        Write-Host ("BACKUP=" + $deployResult.backup_dir) -ForegroundColor Green
+        Write-Host ("COLLECTOR_RUNTIME_SHA256=" + $collectorAfterHash) -ForegroundColor Green
+        Write-Host ("REPO_SHA=" + $actualSha) -ForegroundColor Green
+        Write-Host ""
+        Read-Host "Press Enter to close"
+        exit 0
+    }
 } catch {
     Write-Host ""
     Write-Host "==================================================" -ForegroundColor Red

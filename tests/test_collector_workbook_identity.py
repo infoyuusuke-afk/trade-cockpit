@@ -3,6 +3,7 @@
 The fixture price is synthetic. This file does not claim a live market PASS.
 """
 
+import hashlib
 import re
 import shutil
 import subprocess
@@ -80,6 +81,10 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
         self.assertIn("[switch]$DeployRuntimeOnly", runner)
         self.assertIn("DeployRuntimeOnly requires -ExpectedSha", runner)
         self.assertIn("function Get-IdentityQuote", runner)
+        self.assertIn("RUNTIME_ROLLBACK_BLOCKED", runner)
+        self.assertIn("[switch]$AcceptRuntimeCollector", runner)
+        self.assertIn("AcceptRuntimeCollector requires -ExpectedSha", runner)
+        self.assertIn("RUNTIME_SHA256_MATCH=1", runner)
         self.assertIn("EXCEL_TOUCHED=0", runner)
         self.assertIn("COLLECTOR_PROCESS_STOPPED=0", runner)
         self.assertIn("COLLECTOR_BEFORE_SHA256=", runner)
@@ -106,6 +111,44 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stdout + "\n" + proc.stderr)
         self.assertIn("WORKBOOK_IDENTITY_SELFTEST PASS", proc.stdout)
         self.assertNotIn("LIVE PASS", proc.stdout)
+
+    def test_preopen_zero_price_keeps_285a_and_session_zero_does_not(self):
+        self.assertIn("function Test-PreopenZeroPriceIdentity", self.collector)
+        self.assertIn("$script:preopenIdentitySpare", self.collector)
+        self.assertIn("workbook_identity_verified = [bool]$identityVerified", self.collector)
+
+    def test_pinned_b81b887_collector_hash_is_the_deploy_anchor(self):
+        blob = subprocess.check_output(
+            [
+                "git",
+                "show",
+                "b81b8877b12a33368e91e5e156a2fc7ac4529349:ms2_live/MS2_RSS_100_Collector.ps1",
+            ],
+            cwd=str(ROOT),
+        )
+        digest = hashlib.sha256(blob).hexdigest().upper()
+        self.assertEqual(digest, "510ACF2E8F962A9B9D7AA2777955E60DC2247C34C232EFBE9F50CCFFAB7C424F")
+        runner = (ROOT / "downloads" / "RUN_AI_COCKPIT_V9.ps1").read_text(encoding="utf-8")
+        self.assertIn(digest, runner)
+        accept = runner.split("if ($AcceptRuntimeCollector) {", 1)[1].split("Starting Controller V9", 1)[0]
+        self.assertIn("exit 0", accept)
+        self.assertIn("CONTROLLER_STARTED=0", accept)
+        self.assertIn("ROLLBACK=0", accept)
+        self.assertNotIn("AI_COCKPIT_CONTROLLER_V9.ps1", accept)
+
+    def test_runtime_accept_selftest_passes(self):
+        shell = shutil.which("powershell") or shutil.which("pwsh")
+        if shell is None:
+            self.skipTest("PowerShell is not installed in this environment")
+        proc = subprocess.run(
+            [shell, "-NoProfile", "-File", str(ROOT / "downloads" / "RUN_AI_COCKPIT_V9.ps1"), "-RuntimeAcceptSelfTest"],
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=60,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stdout + "\n" + proc.stderr)
+        self.assertIn("RUNTIME_ACCEPT_SELFTEST PASS", proc.stdout)
 
 
 if __name__ == "__main__":

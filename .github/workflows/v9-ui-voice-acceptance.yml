@@ -257,7 +257,9 @@ jobs:
             "downloads/DIAGNOSE_CANONICAL_ALERT_LOG_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_LAUNCH_RECORD_V9.ps1",
             "downloads/DIAGNOSE_CANONICAL_ALERT_SIBLING_V9.ps1",
-            "downloads/DIAGNOSE_CANONICAL_ALERT_PAYLOAD_V9.ps1"
+            "downloads/DIAGNOSE_CANONICAL_ALERT_PAYLOAD_V9.ps1",
+            "downloads/RUN_AI_COCKPIT_V9.ps1",
+            "ms2_live/MS2_RSS_100_Collector.ps1"
           )
           $messages = New-Object System.Collections.Generic.List[string]
           foreach ($file in $files) {
@@ -275,6 +277,20 @@ jobs:
             throw "Windows PowerShell 5.1 parse failed"
           }
           Write-Output "WINDOWS POWERSHELL 5.1 PARSE PASS"
+      - name: Windows PowerShell 5.1 collector and runtime accept selftest
+        shell: powershell
+        run: |
+          $ordinal = [StringComparison]::Ordinal
+          $runtime = @(& .\downloads\RUN_AI_COCKPIT_V9.ps1 -RuntimeAcceptSelfTest)
+          $runtime | ForEach-Object { Write-Output $_ }
+          if (($runtime -join "`n").IndexOf("RUNTIME_ACCEPT_SELFTEST PASS", $ordinal) -lt 0) {
+            throw "runtime accept selftest failed"
+          }
+          $collector = @(& .\ms2_live\MS2_RSS_100_Collector.ps1 -WorkbookIdentitySelfTest)
+          $collector | ForEach-Object { Write-Output $_ }
+          if (($collector -join "`n").IndexOf("WORKBOOK_IDENTITY_SELFTEST PASS", $ordinal) -lt 0) {
+            throw "collector workbook identity selftest failed"
+          }
       - name: Canonical workbook recovery selftest
         shell: powershell
         run: |

@@ -18,7 +18,7 @@
 | sequence / fingerprint | 単調な配信番号は未実装。当面は symbol / price / source_timestamp / source の SHA-256。境界の fingerprint が違うときは不一致 |
 | real_submit_allowed | すべての境界で false |
 
-Collector と Gateway の envelope は、既存の `live_ms2.json`（`schema_version=ms2-common-1.0`）を正とする。診断の `workbook_name` は `Kioxia_MS2_RSS_Live_Signals.xlsx`。診断の `symbol` と `current_price` は監視リストの先頭行ではなく、`285A.T` の RSS 行である。`workbook_identity_verified` は、そのブックの FullName が正規パスと同一ファイルであるときだけ true になる。別ディレクトリ、ファイル名だけ、別ブックの DASHBOARD では true にしない。
+Collector と Gateway の envelope は、既存の `live_ms2.json`（`schema_version=ms2-common-1.0`）を正とする。診断の `workbook_name` は `Kioxia_MS2_RSS_Live_Signals.xlsx`。診断の `symbol` と `current_price` は監視リストの先頭行ではなく、`285A.T` の RSS 行である。`workbook_identity_verified` は、そのブックの FullName が正規パスと同一ファイルであるときだけ true になる。別ディレクトリ、ファイル名だけ、別ブックの DASHBOARD では true にしない。08:00–09:00 の寄り前で、285A.T のシートコードと `HH:mm:ss` の気配時刻があり現在値だけが 0 または空のときは、診断 symbol を `285A.T`、現在値を 0 として残す。寄り前以外の現在値 0、別銘柄、シートコード不一致は fail-closed のままである。
 
 ## 境界
 

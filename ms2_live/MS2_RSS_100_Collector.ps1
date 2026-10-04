@@ -65,6 +65,7 @@ function Get-SheetSymbolCode($table, [int]$row) {
 }
 
 $script:IdentityTicker = "285A.T"
+$script:preopenIdentitySpare = $null
 
 function Get-NormalizedLocalWorkbookPath([string]$Value) {
     if ([string]::IsNullOrWhiteSpace($Value)) { return "" }
@@ -181,6 +182,16 @@ function Test-BoundWorkbookIdentity([string]$WorkbookNameActual, [string]$FullNa
     return [string]::Equals($leaf, $ExpectedName.Trim(), $cmp)
 }
 
+function Test-PreopenZeroPriceIdentity([bool]$InPreopen, [string]$Ticker, [string]$SheetCode, [string]$QuoteTime, $Price) {
+    if (-not $InPreopen) { return $false }
+    $identity = [string]$script:IdentityTicker
+    if ([string]$Ticker -ne $identity) { return $false }
+    if (([string]$SheetCode).Trim().ToUpperInvariant() -ne $identity) { return $false }
+    if ([string]$QuoteTime -notmatch '^\d{2}:\d{2}:\d{2}$') { return $false }
+    if ($null -ne $Price) { return $false }
+    return $true
+}
+
 function Get-IdentityQuote($Rows) {
     $identity = [string]$script:IdentityTicker
     $match = $null
@@ -198,6 +209,20 @@ function Get-IdentityQuote($Rows) {
         if ($sheet -eq $identity -and $null -ne $match.price) {
             $price = $match.price
             $ok = $true
+        }
+    }
+    if (-not $ok -and $null -ne $script:preopenIdentitySpare) {
+        $spare = $script:preopenIdentitySpare
+        $spareTime = [string]$spare.source_timestamp
+        $spareSheet = [string]$spare.sheet_code
+        if (Test-PreopenZeroPriceIdentity $true $identity $spareSheet $spareTime $null) {
+            return [pscustomobject]@{
+                ok = $true
+                symbol = $identity
+                current_price = 0
+                sheet_code = $identity
+                source_timestamp = $spareTime
+            }
         }
     }
     return [pscustomobject]@{
@@ -249,6 +274,7 @@ function Get-WorkbookIdentityInitialization {
 }
 
 function Invoke-WorkbookIdentitySelfTest {
+    $script:preopenIdentitySpare = $null
     $expected = "C:\MarketSpeed II RSS\files\Kioxia_MS2_RSS_Live_Signals.xlsx"
     $name = "Kioxia_MS2_RSS_Live_Signals.xlsx"
     if (-not (Test-CollectorWorkbookIdentity $name $expected $expected $name)) { throw "same path must match" }
@@ -277,7 +303,17 @@ function Invoke-WorkbookIdentitySelfTest {
     $badSheet = Get-IdentityQuote @([pscustomobject]@{ticker="285A.T"; sheet_code="8035.T"; price=12100; source_timestamp="09:00:01"})
     if ($badSheet.ok -or $null -ne $badSheet.symbol -or $null -ne $badSheet.current_price) { throw "sheet code mismatch must fail closed" }
     $missingPrice = Get-IdentityQuote @([pscustomobject]@{ticker="285A.T"; sheet_code="285A.T"; price=$null; source_timestamp="09:00:01"})
-    if ($missingPrice.ok -or $null -ne $missingPrice.symbol) { throw "missing 285A price must fail closed" }
+    if ($missingPrice.ok -or $null -ne $missingPrice.symbol) { throw "missing 285A price without a preopen spare must fail closed" }
+    if (-not (Test-PreopenZeroPriceIdentity $true "285A.T" "285A.T" "08:05:53" $null)) { throw "preopen zero price with a quote clock must stay" }
+    if (Test-PreopenZeroPriceIdentity $false "285A.T" "285A.T" "08:05:53" $null) { throw "session zero price must not use the preopen spare" }
+    if (Test-PreopenZeroPriceIdentity $true "8035.T" "8035.T" "08:05:53" $null) { throw "another symbol must not use the preopen spare" }
+    if (Test-PreopenZeroPriceIdentity $true "285A.T" "8035.T" "08:05:53" $null) { throw "sheet mismatch must not use the preopen spare" }
+    if (Test-PreopenZeroPriceIdentity $true "285A.T" "285A.T" "" $null) { throw "blank quote clock must not use the preopen spare" }
+    if (Test-PreopenZeroPriceIdentity $true "285A.T" "285A.T" "08:05:53" 100) { throw "a positive price is not the zero-only path" }
+    $script:preopenIdentitySpare = [pscustomobject]@{ ok = $true; symbol = "285A.T"; current_price = 0; sheet_code = "285A.T"; source_timestamp = "08:05:53" }
+    $kept = Get-IdentityQuote @([pscustomobject]@{ticker="285A.T"; sheet_code="285A.T"; price=$null; source_timestamp="08:05:53"})
+    if (-not $kept.ok -or $kept.symbol -ne "285A.T" -or $kept.current_price -ne 0 -or $kept.source_timestamp -ne "08:05:53") { throw "preopen zero price must publish 285A.T" }
+    $script:preopenIdentitySpare = $null
     $proved = Get-PublishedWorkbookGate $true $true $expected $expected "285A.T" $false
     if (-not [string]::IsNullOrWhiteSpace($proved)) { throw ("proved 285A must pass without controller flag: " + $proved) }
     $legacy = Get-PublishedWorkbookGate $false $false "" $expected "8035.T" $false
@@ -736,6 +772,8 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$C
                 collector_count = $collectorCount
                 watcher_count = $watcherCount
                 data_conflict = [bool]($dataConflict -or $identity.Count -gt 0)
+                workbook_identity_verified = [bool]$identityVerified
+                workbook_full_name = $workbookFullName
                 real_submit_allowed = $false
                 live_values_available = $false
                 max_age_seconds = 60
@@ -1320,6 +1358,7 @@ try {
                 }
             }
         }
+        $script:preopenIdentitySpare = $null
         $results = @()
         $validCount = 0
         $preopenQuoteCount = 0
@@ -1367,7 +1406,22 @@ try {
             if ($null -eq $price) {
                 if($inPreopen -and $quoteCenter -gt 0){$price=$quoteCenter}
                 elseif($inPreopen -and $null -ne $reference -and $reference -gt 0){$price=$reference}
-                else{continue}
+                else {
+                    if ($ticker -eq $script:IdentityTicker) {
+                        $sheetEarly = Get-SheetSymbolCode $codeColumn $r
+                        $quoteEarly = Get-TimeText (Get-TableValue $values $r 2)
+                        if (Test-PreopenZeroPriceIdentity $inPreopen $ticker $sheetEarly $quoteEarly $null) {
+                            $script:preopenIdentitySpare = [pscustomobject]@{
+                                ok = $true
+                                symbol = $script:IdentityTicker
+                                current_price = 0
+                                sheet_code = $sheetEarly
+                                source_timestamp = $quoteEarly
+                            }
+                        }
+                    }
+                    continue
+                }
             }
             $validCount++
             if ($null -eq $volume) {$volume=0}; if ($null -eq $vwap) {$vwap=0}; if ($null -eq $bid) {$bid=0}; if ($null -eq $ask) {$ask=0}
