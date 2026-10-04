@@ -69,6 +69,10 @@ OWNER ACTION PENDING / HOLD。追加の Owner コマンドは出していない�
 
 続きの `run_acceptance` は、置かれた `rss_rows.json`、`live_ms2.json`、`gateway_live.json`、`ms2_display.json` だけを照合し、入力の SHA-256 と Gate 判定を evidence に残す。ファイルが無い Gate は NOT_RUN。価格本文は evidence に写さない。`source_timestamp` の `HH:mm:ss` は、RSS セル由来の `quote_date_source=rss_cell` が同じ観測にあるとき以外、絶対時刻にしない。Collector の `updated_at` と JNX の日付では補完しない。公開 JSON にはその RSS 日付がまだ無いので、ライブの freshness は `UNVERIFIED` のままである。G0 は FAIL、G1–G5 のライブは NOT_RUN、G6 はリポジトリ契約の PASS のまま。合成データは `NOT_LIVE`。
 
+## Owner runtime の Collector は repo 修正未反映（2026-10-05、main未マージ）
+
+2026-10-05 朝の 28580 は `symbol=8035.T` のまま。`0a3b3c3fc` の Collector は診断 symbol に `285A.T` 以外を出さないので、動いているプロセスはそれより前の runtime ファイルを読んだままである。正規の配置は `downloads/RUN_AI_COCKPIT_V9.ps1` が repo の `ms2_live` を `MarketSpeed II RSS\files` へコピーし、`C:\AI_Cockpit_OneClick_Starter\V9_RUNTIME.json` に SHA256 を書く。既定の RUN はその後 Controller を起動し、Excel も起動する。`-DeployRuntimeOnly -ExpectedSha <sha> -Branch cursor/p0-stale-price-failclosed-d483` はファイルのコピーと hash 表示だけで、Excel、起動中の Collector、Controller は止めない。コピー後も、すでに起動しているプロセスは読み込み済みの旧コードのまま 28580 を出す。この環境からは Owner PC の runtime ファイルを読めない。`real_submit_allowed` は false のまま。
+
 ## WRONG_SOURCE_WORKBOOK の診断シンボル（2026-10-04、main未マージ）
 
 28580 の `symbol=8035.T` は、別ブックから東京エレクトロンを読んだ結果ではない。`watchlist_100.json` の先頭が `8035.T` で、診断は価格の付いた先頭行を出していた。`reason=WRONG_SOURCE_WORKBOOK` だけだったのは、`source_mode` がファイル名一致で `MS2_RSS_WORKBOOK` のまま、`V9_CONTROLLER_STATE.json` の `workbook_identity_verified` が true でないためである。Collector は正規パスの `BindToMoniker` だけを使い、ファイル名のワイルドカードと DASHBOARD シートでの別ブック選択は外した。FullName が別のローカルファイルなら fail-closed。診断の symbol は `285A.T`、current_price はその行の RSS 値で、285A の行が無いかシートコードが違うときは価格を出さず fail-closed する。identity フィールドが無い古い payload は、コントローラ未検証の `WRONG_SOURCE_WORKBOOK` を維持する。`real_submit_allowed` は false のまま。この確認はリポジトリ上のもので、稼働中の Owner PC プロセスには入っていない。G0–G5 のライブ判定は変えていない。
