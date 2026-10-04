@@ -143,6 +143,9 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
         self.assertIn("CONTROLLER_STARTED=0", accept)
         self.assertIn("ROLLBACK=0", accept)
         self.assertNotIn("AI_COCKPIT_CONTROLLER_V9.ps1", accept)
+        self.assertIn("function Get-CollectorHandoffMode", runner)
+        self.assertIn("CONTROLLER_RESTARTS", runner)
+        self.assertNotIn("refusing to restart Collector while Controller is running", runner)
 
     def test_runtime_accept_selftest_passes(self):
         shell = shutil.which("powershell") or shutil.which("pwsh")

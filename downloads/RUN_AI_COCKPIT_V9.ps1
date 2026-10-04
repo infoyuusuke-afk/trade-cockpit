@@ -365,17 +365,65 @@ function Get-ControllerProcessCount {
     return $count
 }
 
+function Get-CollectorHandoffMode([int]$ControllerCount, [int]$CollectorCount) {
+    if ($ControllerCount -gt 1 -or $ControllerCount -lt 0) { return "REFUSE_CONTROLLER" }
+    if ($CollectorCount -ne 1) { return "REFUSE_COLLECTOR" }
+    if ($ControllerCount -eq 1) { return "CONTROLLER_RESTARTS" }
+    return "DIRECT_RESTART"
+}
+
+function Test-AncestorProcess([int]$ProcessId, [int]$AncestorId) {
+    $current = $ProcessId
+    for ($depth = 0; $depth -lt 6; $depth++) {
+        if ($current -le 0) { return $false }
+        if ($current -eq $AncestorId) { return $true }
+        $info = $null
+        try { $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $current) -ErrorAction SilentlyContinue } catch { return $false }
+        if ($null -eq $info) { return $false }
+        $current = [int]$info.ParentProcessId
+    }
+    return $false
+}
+
+function Get-LoopbackListenerProcessId([int]$Port) {
+    try {
+        $conn = @(Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort $Port -State Listen -ErrorAction SilentlyContinue)
+        if ($conn.Count -ge 1) { return [int]$conn[0].OwningProcess }
+    } catch {}
+    return 0
+}
+
 function Stop-OneCollectorProcess([int]$ProcessId) {
     $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction Stop
     if ($null -eq $info) { return }
     if (-not (Test-CollectorCommandLine ([string]$info.CommandLine))) {
         throw ("REFUSING_TO_STOP_NON_COLLECTOR pid=" + $ProcessId)
     }
+    $releasedListener = $false
+    $listenerPid = Get-LoopbackListenerProcessId 28580
+    if ($listenerPid -gt 0 -and $listenerPid -ne $ProcessId) {
+        $listener = $null
+        try { $listener = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $listenerPid) -ErrorAction SilentlyContinue } catch { $listener = $null }
+        $listenerName = ""
+        if ($null -ne $listener) { $listenerName = [string]$listener.Name }
+        $listenerIsShell = ($listenerName -eq "powershell.exe" -or $listenerName -eq "pwsh.exe")
+        if ($listenerIsShell -and (Test-AncestorProcess $listenerPid $ProcessId)) {
+            Stop-Process -Id $listenerPid -Force -ErrorAction SilentlyContinue
+            $releasedListener = $true
+        }
+    }
     $children = @(Get-CimInstance Win32_Process -Filter ("ParentProcessId = " + $ProcessId) -ErrorAction SilentlyContinue)
     foreach ($child in $children) {
         $childName = [string]$child.Name
         if ($childName -eq "powershell.exe" -or $childName -eq "pwsh.exe") {
             Stop-Process -Id ([int]$child.ProcessId) -Force -ErrorAction SilentlyContinue
+        }
+    }
+    if ($releasedListener) {
+        $quietDeadline = (Get-Date).AddSeconds(5)
+        while ((Get-Date) -lt $quietDeadline) {
+            if ((Get-LoopbackListenerProcessId 28580) -le 0) { break }
+            Start-Sleep -Milliseconds 200
         }
     }
     Stop-Process -Id $ProcessId -Force -ErrorAction Stop
@@ -440,19 +488,29 @@ function Restore-RuntimeBackupFiles([string]$BackupDir, [string]$RuntimeDir) {
     }
 }
 
-function Invoke-AcceptRuntimeCollector([string]$RuntimeDir, [string]$BackupDir, [int]$OldProcessId, [string]$BeforeHash) {
+function Invoke-AcceptRuntimeCollector([string]$RuntimeDir, [string]$BackupDir, [int]$OldProcessId, [string]$BeforeHash, [string]$HandoffMode) {
     $started = $null
     $stopped = $false
+    $replacementId = 0
     try {
         Stop-OneCollectorProcess $OldProcessId
         $stopped = $true
-        $started = Start-OneRuntimeCollector $RuntimeDir
+        if ($HandoffMode -eq "DIRECT_RESTART") {
+            $started = Start-OneRuntimeCollector $RuntimeDir
+            $replacementId = [int]$started.Id
+        }
         $deadline = (Get-Date).AddSeconds(90)
         $lastFail = "TIMEOUT"
         $lastPayload = $null
         $expectedBook = Join-Path $RuntimeDir "Kioxia_MS2_RSS_Live_Signals.xlsx"
         while ((Get-Date) -lt $deadline) {
             Start-Sleep -Seconds 2
+            if ($HandoffMode -eq "CONTROLLER_RESTARTS") {
+                $fresh = @(Get-CollectorProcessIds | Where-Object { [int]$_ -ne $OldProcessId })
+                if ($fresh.Count -gt 1) { throw ("COLLECTOR_PROCESS_AFTER=" + ($fresh -join ",")) }
+                if ($fresh.Count -eq 1) { $replacementId = [int]$fresh[0] }
+                if ($replacementId -eq 0) { $lastFail = "WAITING_FOR_CONTROLLER_RESTART"; continue }
+            }
             $live = Receive-CollectorBridge
             if ($null -eq $live) { $lastFail = "PORT_CLOSED"; continue }
             $lastPayload = $live.payload
@@ -463,15 +521,12 @@ function Invoke-AcceptRuntimeCollector([string]$RuntimeDir, [string]$BackupDir, 
             throw ("RUNTIME_ACCEPTANCE_FAILED " + $lastFail)
         }
         $ids = @(Get-CollectorProcessIds)
-        if ($ids.Count -ne 1 -or [int]$ids[0] -ne [int]$started.Id) {
+        if ($ids.Count -ne 1 -or $replacementId -eq 0 -or [int]$ids[0] -ne $replacementId -or $replacementId -eq $OldProcessId) {
             throw ("COLLECTOR_PROCESS_AFTER=" + ($ids -join ","))
         }
         return $lastPayload
     } catch {
         $acceptError = $_.Exception.Message
-        if ($null -ne $started) {
-            try { Stop-OneCollectorProcess ([int]$started.Id) } catch {}
-        }
         Restore-RuntimeBackupFiles $BackupDir $RuntimeDir
         $restored = ""
         $restoredPath = Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"
@@ -479,9 +534,30 @@ function Invoke-AcceptRuntimeCollector([string]$RuntimeDir, [string]$BackupDir, 
         if ($restored -ne $BeforeHash) {
             throw ("ROLLBACK_HASH_MISMATCH expected=" + $BeforeHash + " got=" + $restored + " after " + $acceptError)
         }
-        if ($stopped) {
+        if ($null -ne $started) {
+            try { Stop-OneCollectorProcess ([int]$started.Id) } catch {}
+        } elseif ($replacementId -gt 0 -and $replacementId -ne $OldProcessId) {
+            try { Stop-OneCollectorProcess $replacementId } catch {}
+        }
+        if ($stopped -and $HandoffMode -eq "DIRECT_RESTART") {
             try { Start-OneRuntimeCollector $RuntimeDir | Out-Null } catch {
                 throw ("ROLLBACK_RESTART_FAILED " + $_.Exception.Message + " after " + $acceptError)
+            }
+        } elseif ($stopped -and $HandoffMode -eq "CONTROLLER_RESTARTS") {
+            $seenReplacement = $false
+            $restartDeadline = (Get-Date).AddSeconds(35)
+            while ((Get-Date) -lt $restartDeadline) {
+                Start-Sleep -Seconds 2
+                $backIds = @(Get-CollectorProcessIds)
+                if ($backIds.Count -gt 1) {
+                    throw ("ROLLBACK_DUPLICATE collector_count=" + $backIds.Count + " after " + $acceptError)
+                }
+                if ($backIds.Count -eq 1) { $seenReplacement = $true; break }
+            }
+            if (-not $seenReplacement) {
+                try { Start-OneRuntimeCollector $RuntimeDir | Out-Null } catch {
+                    throw ("ROLLBACK_RESTART_FAILED " + $_.Exception.Message + " after " + $acceptError)
+                }
             }
         }
         throw ("ROLLBACK=1 backup=" + $BackupDir + " restored_sha256=" + $restored + " " + $acceptError)
@@ -501,6 +577,11 @@ function Invoke-RuntimeAcceptSelfTest {
         if ((Get-IdentityRollbackBlock "old collector" $good) -ne "RUNTIME_ROLLBACK_BLOCKED") { throw "old source must not replace identity runtime" }
         if ((Get-IdentityRollbackBlock $good $good) -ne "") { throw "same identity contract must deploy" }
         if ((Get-IdentityRollbackBlock $good "") -ne "") { throw "empty destination must deploy" }
+        if ((Get-CollectorHandoffMode 0 1) -ne "DIRECT_RESTART") { throw "no controller must restart the collector directly" }
+        if ((Get-CollectorHandoffMode 1 1) -ne "CONTROLLER_RESTARTS") { throw "one controller must restart the collector itself" }
+        if ((Get-CollectorHandoffMode 2 1) -ne "REFUSE_CONTROLLER") { throw "two controllers must refuse before copy" }
+        if ((Get-CollectorHandoffMode 0 0) -ne "REFUSE_COLLECTOR") { throw "zero collectors must refuse before copy" }
+        if ((Get-CollectorHandoffMode 1 2) -ne "REFUSE_COLLECTOR") { throw "two collectors must refuse before copy" }
         if (-not (Test-CollectorCommandLine "powershell.exe -File C:\files\MS2_RSS_100_Collector.ps1")) { throw "collector command must match" }
         if (Test-CollectorCommandLine "powershell.exe -File C:\files\AI_COCKPIT_CONTROLLER_V9.ps1") { throw "controller must not match" }
         if (Test-CollectorCommandLine "C:\Windows\EXCEL.EXE") { throw "excel must not match" }
@@ -677,15 +758,18 @@ try {
         throw "Refusing to deploy a collector that does not publish the 285A workbook identity quote."
     }
     $oldCollectorId = 0
+    $handoff = "DIRECT_RESTART"
     if ($AcceptRuntimeCollector) {
         $collectorIds = @(Get-CollectorProcessIds)
         $controllerCount = Get-ControllerProcessCount
         Write-Host ("  COLLECTOR_PROCESS_BEFORE=" + $collectorIds.Count) -ForegroundColor Cyan
         Write-Host ("  CONTROLLER_PROCESS_BEFORE=" + $controllerCount) -ForegroundColor Cyan
-        if ($controllerCount -ne 0) {
-            throw "CONTROLLER_PROCESS_PRESENT: refusing to restart Collector while Controller is running. No files were copied. Excel and MS2 were not touched."
+        $handoff = Get-CollectorHandoffMode $controllerCount $collectorIds.Count
+        Write-Host ("  HANDOFF=" + $handoff) -ForegroundColor Cyan
+        if ($handoff -eq "REFUSE_CONTROLLER") {
+            throw ("CONTROLLER_PROCESS_BEFORE=" + $controllerCount + ". Expected 0 or 1. No files were copied. Excel, MS2, and Collector were not touched.")
         }
-        if ($collectorIds.Count -ne 1) {
+        if ($handoff -eq "REFUSE_COLLECTOR") {
             throw ("COLLECTOR_PROCESS_BEFORE=" + $collectorIds.Count + ". Expected exactly one Collector. No files were copied. Excel, MS2, and Controller were not touched.")
         }
         $oldCollectorId = [int]$collectorIds[0]
@@ -715,7 +799,7 @@ try {
     Write-Host "  RUNTIME_SHA256_MATCH=1" -ForegroundColor Green
     Write-Host ("  REPO_SHA=" + $actualSha) -ForegroundColor Green
     if ($AcceptRuntimeCollector) {
-        $accepted = Invoke-AcceptRuntimeCollector $runtimeDirForDeploy ([string]$deployResult.backup_dir) $oldCollectorId $collectorBeforeHash
+        $accepted = Invoke-AcceptRuntimeCollector $runtimeDirForDeploy ([string]$deployResult.backup_dir) $oldCollectorId $collectorBeforeHash $handoff
         $diag = $null
         try { $diag = $accepted.live_price_diagnostics } catch { $diag = $null }
         $symbol = [string]$accepted.symbol
