@@ -18,7 +18,7 @@
 | sequence / fingerprint | 単調な配信番号は未実装。当面は symbol / price / source_timestamp / source の SHA-256。境界の fingerprint が違うときは不一致 |
 | real_submit_allowed | すべての境界で false |
 
-Collector と Gateway の envelope は、既存の `live_ms2.json`（`schema_version=ms2-common-1.0`）を正とする。診断の `workbook_name` は `Kioxia_MS2_RSS_Live_Signals.xlsx`。
+Collector と Gateway の envelope は、既存の `live_ms2.json`（`schema_version=ms2-common-1.0`）を正とする。診断の `workbook_name` は `Kioxia_MS2_RSS_Live_Signals.xlsx`。診断の `symbol` と `current_price` は監視リストの先頭行ではなく、`285A.T` の RSS 行である。`workbook_identity_verified` は、そのブックの FullName が正規パスと同一ファイルであるときだけ true になる。別ディレクトリ、ファイル名だけ、別ブックの DASHBOARD では true にしない。
 
 ## 境界
 
