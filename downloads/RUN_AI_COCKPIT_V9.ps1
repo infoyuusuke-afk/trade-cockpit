@@ -4,7 +4,8 @@ param(
     [string]$ExpectedSha = "",
     [switch]$SkipGitUpdate,
     [string]$RuntimeDirOverride = "",
-    [string]$Root = "C:\AI_Cockpit_OneClick_Starter"
+    [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
+    [switch]$DeployRuntimeOnly
 )
 
 # One-shot entry point: update (git fetch/checkout a PINNED branch, or an
@@ -93,6 +94,20 @@ function Resolve-RuntimeDirForDeploy([string]$Explicit) {
 
 function Get-Sha256Hex([string]$Path) {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
+}
+
+function Format-PathCodePoints([string]$Value) {
+    if ([string]::IsNullOrEmpty($Value)) { return "" }
+    $parts = New-Object System.Collections.Generic.List[string]
+    foreach ($ch in $Value.ToCharArray()) {
+        $code = [int]$ch
+        if ($code -ge 32 -and $code -lt 127) {
+            [void]$parts.Add([string]$ch)
+        } else {
+            [void]$parts.Add("u+" + $code.ToString("X4"))
+        }
+    }
+    return ($parts -join "")
 }
 
 function Test-PowerShellSyntaxOk([string]$Path) {
@@ -231,10 +246,13 @@ if (-not [string]::IsNullOrWhiteSpace($ExpectedSha)) {
 }
 
 try {
+    if ($DeployRuntimeOnly -and [string]::IsNullOrWhiteSpace($ExpectedSha)) {
+        throw "DeployRuntimeOnly requires -ExpectedSha. Refusing to copy an unpinned checkout into RuntimeDir."
+    }
     if (-not $SkipGitUpdate) {
         Write-Host ("Updating checkout: fetching origin/" + $Branch + "...") -ForegroundColor Yellow
         Invoke-GitFatal $repo @("fetch", "origin", $Branch, "--quiet") "git fetch failed - refusing to start with a possibly-stale or partial checkout" | Out-Null
-        Invoke-GitFatal $repo @("checkout", $Branch, "--quiet") "git checkout failed" | Out-Null
+        Invoke-GitFatal $repo @("checkout", "-B", $Branch, ("origin/" + $Branch), "--quiet") "git checkout failed" | Out-Null
         Invoke-GitFatal $repo @("reset", "--hard", ("origin/" + $Branch), "--quiet") "git reset --hard failed" | Out-Null
     } else {
         Write-Host "Skipping git update (-SkipGitUpdate) - using whatever is already checked out." -ForegroundColor DarkGray
@@ -255,6 +273,19 @@ try {
     Write-Host "Deploying runtime scripts (Watcher/Heartbeat/Collector) to RuntimeDir..." -ForegroundColor Yellow
     $runtimeDirForDeploy = Resolve-RuntimeDirForDeploy $RuntimeDirOverride
     Write-Host ("  RuntimeDir: " + $runtimeDirForDeploy) -ForegroundColor Cyan
+    Write-Host ("  RUNTIME_DIR_CODEPOINTS=" + (Format-PathCodePoints $runtimeDirForDeploy)) -ForegroundColor Cyan
+    $collectorBefore = Join-Path $runtimeDirForDeploy "MS2_RSS_100_Collector.ps1"
+    $collectorBeforeHash = ""
+    if (Test-Path -LiteralPath $collectorBefore) { $collectorBeforeHash = Get-Sha256Hex $collectorBefore }
+    Write-Host ("  COLLECTOR_BEFORE_SHA256=" + $collectorBeforeHash) -ForegroundColor Cyan
+    if ($DeployRuntimeOnly) {
+        $ordinal = [StringComparison]::Ordinal
+        $collectorSource = Join-Path $repo "ms2_live\MS2_RSS_100_Collector.ps1"
+        $collectorText = [IO.File]::ReadAllText($collectorSource, [Text.Encoding]::UTF8)
+        if ($collectorText.IndexOf("function Get-IdentityQuote", $ordinal) -lt 0 -or $collectorText.IndexOf("workbook_identity_verified", $ordinal) -lt 0) {
+            throw "DeployRuntimeOnly refused: source collector does not publish the 285A workbook identity quote."
+        }
+    }
     $deployResult = Deploy-RuntimeFiles -RepoRoot $repo -RuntimeDir $runtimeDirForDeploy
     Write-Host ("  Deployed " + $RUNTIME_DEPLOY_FILES.Count + " files, backup: " + $deployResult.backup_dir) -ForegroundColor Green
 
@@ -270,6 +301,9 @@ try {
     $runtimeManifestPath = Join-Path $runtimeManifestRoot "V9_RUNTIME.json"
     [IO.File]::WriteAllText($runtimeManifestPath, ($runtimeManifest | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
     Write-Host ("  Runtime manifest written: " + $runtimeManifestPath) -ForegroundColor Green
+    $collectorAfterHash = Get-Sha256Hex (Join-Path $runtimeDirForDeploy "MS2_RSS_100_Collector.ps1")
+    Write-Host ("  COLLECTOR_AFTER_SHA256=" + $collectorAfterHash) -ForegroundColor Green
+    Write-Host ("  REPO_SHA=" + $actualSha) -ForegroundColor Green
 } catch {
     Write-Host ""
     Write-Host "==================================================" -ForegroundColor Red
@@ -279,6 +313,16 @@ try {
     Write-Host ""
     Read-Host "Press Enter to close"
     [Environment]::Exit(1)
+}
+
+if ($DeployRuntimeOnly) {
+    Write-Host "DEPLOY_RUNTIME_ONLY=1" -ForegroundColor Green
+    Write-Host "EXCEL_TOUCHED=0" -ForegroundColor Green
+    Write-Host "COLLECTOR_PROCESS_STOPPED=0" -ForegroundColor Green
+    Write-Host "CONTROLLER_STARTED=0" -ForegroundColor Green
+    Write-Host "REAL_SUBMIT_ALLOWED=0" -ForegroundColor Green
+    Write-Host "The running Collector process keeps the code it already loaded. This copy does not restart it." -ForegroundColor Yellow
+    exit 0
 }
 
 $root = $Root

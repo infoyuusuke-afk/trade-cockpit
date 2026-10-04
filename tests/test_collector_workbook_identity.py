@@ -75,6 +75,23 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
         self.assertIn("$sheet.Cells.Item($row,2).Value2 = $tickerText", self.collector)
         self.assertIn("Get-TableValue $table $row 1 1", self.collector)
 
+    def test_deploy_runtime_only_does_not_start_excel_or_stop_the_collector(self):
+        runner = (ROOT / "downloads" / "RUN_AI_COCKPIT_V9.ps1").read_text(encoding="utf-8")
+        self.assertIn("[switch]$DeployRuntimeOnly", runner)
+        self.assertIn("DeployRuntimeOnly requires -ExpectedSha", runner)
+        self.assertIn("function Get-IdentityQuote", runner)
+        self.assertIn("EXCEL_TOUCHED=0", runner)
+        self.assertIn("COLLECTOR_PROCESS_STOPPED=0", runner)
+        self.assertIn("COLLECTOR_BEFORE_SHA256=", runner)
+        self.assertIn("COLLECTOR_AFTER_SHA256=", runner)
+        self.assertIn("RUNTIME_DIR_CODEPOINTS=", runner)
+        only = runner.split("if ($DeployRuntimeOnly) {", 1)[1]
+        only = only.split("Starting Controller V9", 1)[0]
+        self.assertIn("exit 0", only)
+        self.assertNotIn("Stop-Process", only)
+        self.assertNotIn("AI_COCKPIT_CONTROLLER_V9.ps1", only)
+        self.assertLess(runner.find("exit 0"), runner.find("Starting Controller V9"))
+
     def test_windows_powershell_selftest_accepts_285a_and_rejects_8035(self):
         shell = shutil.which("powershell") or shutil.which("pwsh")
         if shell is None:
