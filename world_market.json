@@ -1,9 +1,9 @@
 {
-  "updated_at": "2026-10-05T05:59:47.686665+09:00",
+  "updated_at": "2026-10-05T06:02:05.173964+09:00",
   "source": "世界の株価リアルタイムチャート",
   "source_url": "https://nikkei225jp.com/",
   "usage": "市場環境専用。個別株価・個別チャートには使用禁止。",
-  "verified_count": 9,
+  "verified_count": 8,
   "expected_count": 13,
   "feed_verified": true,
   "rows": {
@@ -50,8 +50,8 @@
       "value": 69708.0,
       "change": null,
       "change_pct": null,
-      "source_stamp": "05:59",
-      "observed_at": "2026-10-05T05:59:00+09:00",
+      "source_stamp": "06:01",
+      "observed_at": "2026-10-05T06:01:00+09:00",
       "verified": true,
       "status": "表示可"
     },
@@ -59,11 +59,11 @@
       "code": "511",
       "name": "ドル円",
       "source_name": "ドル円",
-      "value": 157.859,
-      "change": -0.211,
-      "change_pct": -0.13,
-      "source_stamp": "05:59",
-      "observed_at": "2026-10-05T05:59:00+09:00",
+      "value": 157.673,
+      "change": -0.172,
+      "change_pct": -0.11,
+      "source_stamp": "06:01",
+      "observed_at": "2026-10-05T06:01:00+09:00",
       "verified": true,
       "status": "表示可"
     },
@@ -155,13 +155,13 @@
       "code": "811",
       "name": "米国10年金利",
       "source_name": "米国債10年利回り",
-      "value": 5.276,
-      "change": 0.038,
-      "change_pct": 0.73,
-      "source_stamp": "05:59",
-      "observed_at": "2026-10-05T05:59:00+09:00",
-      "verified": true,
-      "status": "表示可"
+      "value": 5.277,
+      "change": 0.043,
+      "change_pct": 0.82,
+      "source_stamp": "10/03",
+      "observed_at": "2026-10-03",
+      "verified": false,
+      "status": "未取得または時刻不整合・売買利用禁止"
     }
   }
 }
