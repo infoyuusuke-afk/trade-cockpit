@@ -25,4 +25,6 @@
 
 | C-026 | 2026-10-06 | 一部のみ（正式原本への同期は未実行） | repo の `docs/100oku/` を AI 作業コピーとし、Owner PC の `downloads/SYNC_100OKU_MASTER_SPEC.ps1` が `D:\100億PROJECT\MASTER_SPEC` へコピーする。上書き前は `archive\YYYY-MM-DD_HHMM`。sha256 不一致、欠落、空ファイルは FAIL CLOSED。`LAST_SYNC.json` の `cloud_agent_wrote_destination` は false。Cloud の dry-run は D: へ書いていない。16:45 の登録スクリプトは `-Register` 無しでは登録しない。FETCHED は 2/17 のまま。trading_adoption=false。LIVE signal と real_submit は変えていない | [downloads/SYNC_100OKU_MASTER_SPEC.ps1](../downloads/SYNC_100OKU_MASTER_SPEC.ps1)、[docs/100oku/SYNC_MANIFEST.json](100oku/SYNC_MANIFEST.json) | 初回反映は Owner PC で同期スクリプトを1回。C-026 の統合表示は未着手 | 研究参照のみ。正式原本は未反映 |
 
+| C-026 | 2026-10-06 | 一部のみ（初回同期は PASS。本文の再同期は未実施） | Owner PC の初回同期は `MASTER_SPEC_SYNC=PASS`、`DESTINATION_WRITTEN=1`、`CLOUD_AGENT_WROTE_D_DRIVE=0`、`ARCHIVE=NONE_FIRST_SYNC`、commit `116ed28014af7b627b69882b2920ca09aa34924a`。当時の MASTER は 4,644 bytes。その後、repo の MASTER を章立てした本文と同一内容の Word に広げた。この版は D: へ未コピー。16:45 は未登録。FETCHED は 2/17。trading_adoption=false。LIVE signal と real_submit は変えていない | [docs/100oku/100億PROJECT_MASTER_SPEC.md](100oku/100億PROJECT_MASTER_SPEC.md) | C-026 の統合表示は未着手。次の D: コピーと 16:45 登録は未実施 | 研究参照のみ。この版の正式原本は未反映 |
+
 ChatGPT側は当該ID・根拠を読み、必要な再検証だけを共有シートに新しいIDで追記する。双方とも返信を実装済みや売買可能の証拠として扱わない。

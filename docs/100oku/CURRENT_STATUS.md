@@ -2,9 +2,9 @@
 
 記録日: 2026-10-06 JST
 
-`D:\100億PROJECT\MASTER_SPEC` は未反映。この環境にそのパスは無く、書き込んでいない。repo の `docs/100oku/` が AI 作業コピーである。Owner PC の `downloads/SYNC_100OKU_MASTER_SPEC.ps1` が、Owner が実行したときだけ正式原本へコピーする。Cloud Agent はこの同期を実行していない。
+Owner PC の初回同期は PASS した。`MASTER_SPEC_SYNC=PASS`、`DESTINATION_WRITTEN=1`、`CLOUD_AGENT_WROTE_D_DRIVE=0`、`ARCHIVE=NONE_FIRST_SYNC`、`REPO_COMMIT=116ed28014af7b627b69882b2920ca09aa34924a`。同期された MASTER は当時の 4,644 bytes である。
 
-対象は `100億PROJECT_MASTER_SPEC.md`、`CURRENT_STATUS.md`、`CHANGELOG.md`、`HANDOVER.md`。`docs/100oku` に Word 版があれば `.docx` も対象。いま `.docx` は無い。毎日 16:45 の登録スクリプトは用意したが、登録はしていない。
+この作業コピーは、その後に MASTER 本文と `100億PROJECT_MASTER_SPEC.docx` を広げた版である。Cloud Agent はこの版を D: へ書いていない。対象は `100億PROJECT_MASTER_SPEC.md`、`CURRENT_STATUS.md`、`CHANGELOG.md`、`HANDOVER.md`、および `docs/100oku` の `.docx`。16:45 のタスクは未登録である。
 
 ## Research Data Lane
 

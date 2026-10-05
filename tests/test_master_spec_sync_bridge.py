@@ -89,6 +89,7 @@ class MasterSpecSyncBridgeTests(unittest.TestCase):
         self.assertIn("CLOUD_AGENT_WROTE_D_DRIVE=0", dry.stdout)
         self.assertIn("DESTINATION_WRITTEN=0", dry.stdout)
         self.assertIn("DESTINATION=D:\\100億PROJECT\\MASTER_SPEC", dry.stdout)
+        self.assertIn("100億PROJECT_MASTER_SPEC.docx", dry.stdout)
         self.assertNotIn("MASTER_SPEC_SYNC=PASS", dry.stdout)
         self.assertFalse((ROOT / "LAST_SYNC.json").exists())
         syntax = subprocess.run(

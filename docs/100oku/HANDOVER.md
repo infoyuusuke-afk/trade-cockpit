@@ -20,4 +20,4 @@
 
 ## 同期
 
-毎日 16:45 JST のタスク登録スクリプトは `downloads/REGISTER_100OKU_MASTER_SPEC_TASK.ps1`。`-Register` を付けない限り登録しない。この引き渡し時点では未登録。最初の反映は Owner PC で同期スクリプトを1回実行する。Cloud 上の dry-run と self-test は D: を作っていない。
+毎日 16:45 JST のタスク登録スクリプトは `downloads/REGISTER_100OKU_MASTER_SPEC_TASK.ps1`。`-Register` を付けない限り登録しない。初回の同期は Owner PC で PASS した。`ARCHIVE=NONE_FIRST_SYNC`。そのコピーは 4,644 bytes の前版で、Word は含まれていない。いまの作業コピーは MASTER 本文と `.docx` を広げた版であり、D: へはまだコピーしていない。16:45 は未登録である。
