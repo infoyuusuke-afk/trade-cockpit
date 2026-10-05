@@ -10,15 +10,15 @@ only prices and signals the collector already published. They are not broker
 fills and not Fill Model v0.1 fills.
 
 real_submit_allowed is always false on every record this module writes.
-An unresolved workbook_open or excel_process_exit incident blocks new
-virtual entries and exits. An unresolved excel_identity incident stays
-blocked until this cycle proves the canonical workbook: the runtime manifest
-directory, the collector workbook_identity_verified flag, and the same local
-path gate the gateway uses. A fresh price without that proof does not set
-recovery_at. An unreadable manual_recovery.json does the same. Two rows for
-one ticker are a data conflict and open or close nothing. A ledger row that
-carries a quantity is not replayed. state.json last_seq must equal the
-ledger length; a short or long ledger is not healed into a resume.
+An unresolved excel_identity, workbook_open, or excel_process_exit incident
+stays blocked until this cycle proves the canonical workbook: the runtime
+manifest directory, the collector workbook_identity_verified flag, and the
+same local path gate the gateway uses. A fresh price without that proof does
+not set recovery_at. The status publishes each proof check and the normalized
+paths. An unreadable manual_recovery.json does the same. Two rows for one
+ticker are a data conflict and open or close nothing. A ledger row that
+carries a quantity is not replayed. state.json last_seq must equal the ledger
+length; a short or long ledger is not healed into a resume.
 """
 from __future__ import annotations
 
@@ -210,64 +210,128 @@ def _parent_dir(path) -> str:
     return text.rsplit("\\", 1)[0]
 
 
-def canonical_workbook_proof(payload, manifest, *, live_path=None) -> list[str]:
-    """Prove the canonical workbook from the runtime manifest, collector, and gateway path gate.
+def explain_canonical_workbook(payload, manifest, *, live_path=None) -> dict:
+    """Each collector, manifest, and gateway path check, without prices.
 
     The gateway accepts a collector payload when workbook_identity_verified is
-    true and the published full name is the runtime workbook. This proof uses
+    true and the published full name is the runtime workbook. This report uses
     that same pair. It does not read the controller COM probe, and it does not
     treat a missing identity field as verified. real_submit_allowed stays false.
     """
+    checks = {
+        "manifest_present": False,
+        "manifest_runtime_dir": False,
+        "live_parent_matches_runtime_dir": False,
+        "payload_present": False,
+        "real_submit_false": False,
+        "canonical_source": False,
+        "payload_source_mode": False,
+        "no_data_conflict": False,
+        "live_values_available": False,
+        "diagnostics_present": False,
+        "workbook_identity_verified": False,
+        "workbook_name": False,
+        "diagnostic_source_mode": False,
+        "workbook_path_matches_gateway_expected": False,
+        "symbol_285a": False,
+        "price_source_ok": False,
+        "diagnostic_real_submit_false": False,
+        "collector_count_one": False,
+    }
     reasons: list[str] = []
-    if not isinstance(manifest, dict):
-        reasons.append("RUNTIME_MANIFEST_MISSING")
-        runtime_dir = ""
-    else:
+    runtime_dir = ""
+    full_name = ""
+    symbol = ""
+    source_mode = ""
+    verified = None
+    if isinstance(manifest, dict):
+        checks["manifest_present"] = True
         if manifest.get("real_submit_allowed") is True:
             reasons.append("REAL_SUBMIT_NOT_FALSE")
         runtime_dir = normalize_local_workbook_path(manifest.get("runtime_dir"))
+        checks["manifest_runtime_dir"] = bool(runtime_dir)
         if not runtime_dir:
             reasons.append("RUNTIME_MANIFEST_MISSING")
-    if not _same_local_path(_parent_dir(live_path), runtime_dir):
+    else:
+        reasons.append("RUNTIME_MANIFEST_MISSING")
+    checks["live_parent_matches_runtime_dir"] = _same_local_path(_parent_dir(live_path), runtime_dir)
+    if not checks["live_parent_matches_runtime_dir"]:
         reasons.append("RUNTIME_MANIFEST_MISMATCH")
-    if not isinstance(payload, dict):
-        reasons.append("MISSING_PAYLOAD")
-        return sorted(set(reasons))
-    if payload.get("real_submit_allowed") is not False:
-        reasons.append("REAL_SUBMIT_NOT_FALSE")
-    if payload.get("source") != CANONICAL_SOURCE:
-        reasons.append("CACHED_OR_SAMPLE_PAYLOAD")
-    if payload.get("source_mode") != "MS2_RSS_WORKBOOK":
-        reasons.append("WRONG_SOURCE_WORKBOOK")
-    if payload.get("data_conflict") is True:
-        reasons.append("DATA_CONFLICT")
-    if payload.get("live_values_available") is not True:
-        reasons.append("LIVE_VALUES_UNAVAILABLE")
-    diag = payload.get("live_price_diagnostics")
-    if not isinstance(diag, dict):
-        reasons.append("MISSING_PRICE_DIAGNOSTICS")
-        return sorted(set(reasons))
-    if diag.get("workbook_identity_verified") is not True:
-        reasons.append("WRONG_SOURCE_WORKBOOK")
-    if diag.get("workbook_name") != CANONICAL_WORKBOOK:
-        reasons.append("WRONG_SOURCE_WORKBOOK")
-    if diag.get("source_mode") != "MS2_RSS_WORKBOOK":
-        reasons.append("WRONG_SOURCE_WORKBOOK")
     expected = normalize_local_workbook_path(runtime_dir + "\\" + CANONICAL_WORKBOOK) if runtime_dir else ""
-    if not expected or not _same_local_path(diag.get("workbook_full_name"), expected):
-        reasons.append("WRONG_SOURCE_WORKBOOK")
-    if diag.get("symbol") != IDENTITY_SYMBOL:
-        reasons.append("WRONG_SYMBOL_MAPPING")
-    if diag.get("price_source_status") != "OK":
-        reasons.append("PRICE_SOURCE_MISMATCH")
-    if diag.get("real_submit_allowed") is not False:
-        reasons.append("REAL_SUBMIT_NOT_FALSE")
-    if diag.get("data_conflict") is True:
-        reasons.append("DATA_CONFLICT")
-    collector_count = diag.get("collector_count")
-    if not isinstance(collector_count, int) or isinstance(collector_count, bool) or collector_count != 1 or diag.get("duplicate_collector") is True:
-        reasons.append("DUPLICATE_COLLECTOR")
-    return sorted(set(reasons))
+    if isinstance(payload, dict):
+        checks["payload_present"] = True
+        checks["real_submit_false"] = payload.get("real_submit_allowed") is False
+        checks["canonical_source"] = payload.get("source") == CANONICAL_SOURCE
+        checks["payload_source_mode"] = payload.get("source_mode") == "MS2_RSS_WORKBOOK"
+        checks["no_data_conflict"] = payload.get("data_conflict") is not True
+        checks["live_values_available"] = payload.get("live_values_available") is True
+        if not checks["real_submit_false"]:
+            reasons.append("REAL_SUBMIT_NOT_FALSE")
+        if not checks["canonical_source"]:
+            reasons.append("CACHED_OR_SAMPLE_PAYLOAD")
+        if not checks["payload_source_mode"]:
+            reasons.append("WRONG_SOURCE_WORKBOOK")
+        if not checks["no_data_conflict"]:
+            reasons.append("DATA_CONFLICT")
+        if not checks["live_values_available"]:
+            reasons.append("LIVE_VALUES_UNAVAILABLE")
+        diag = payload.get("live_price_diagnostics")
+        if isinstance(diag, dict):
+            checks["diagnostics_present"] = True
+            verified = diag.get("workbook_identity_verified")
+            full_name = diag.get("workbook_full_name") if isinstance(diag.get("workbook_full_name"), str) else ""
+            symbol = diag.get("symbol") if isinstance(diag.get("symbol"), str) else ""
+            source_mode = diag.get("source_mode") if isinstance(diag.get("source_mode"), str) else ""
+            checks["workbook_identity_verified"] = verified is True
+            checks["workbook_name"] = diag.get("workbook_name") == CANONICAL_WORKBOOK
+            checks["diagnostic_source_mode"] = source_mode == "MS2_RSS_WORKBOOK"
+            checks["workbook_path_matches_gateway_expected"] = bool(expected) and _same_local_path(full_name, expected)
+            checks["symbol_285a"] = symbol == IDENTITY_SYMBOL
+            checks["price_source_ok"] = diag.get("price_source_status") == "OK"
+            checks["diagnostic_real_submit_false"] = diag.get("real_submit_allowed") is False
+            checks["no_data_conflict"] = checks["no_data_conflict"] and diag.get("data_conflict") is not True
+            collector_count = diag.get("collector_count")
+            checks["collector_count_one"] = (
+                isinstance(collector_count, int)
+                and not isinstance(collector_count, bool)
+                and collector_count == 1
+                and diag.get("duplicate_collector") is not True
+            )
+            if not checks["workbook_identity_verified"] or not checks["workbook_name"] or not checks["diagnostic_source_mode"] or not checks["workbook_path_matches_gateway_expected"]:
+                reasons.append("WRONG_SOURCE_WORKBOOK")
+            if not checks["symbol_285a"]:
+                reasons.append("WRONG_SYMBOL_MAPPING")
+            if not checks["price_source_ok"]:
+                reasons.append("PRICE_SOURCE_MISMATCH")
+            if not checks["diagnostic_real_submit_false"]:
+                reasons.append("REAL_SUBMIT_NOT_FALSE")
+            if diag.get("data_conflict") is True:
+                reasons.append("DATA_CONFLICT")
+            if not checks["collector_count_one"]:
+                reasons.append("DUPLICATE_COLLECTOR")
+        else:
+            reasons.append("MISSING_PRICE_DIAGNOSTICS")
+    else:
+        reasons.append("MISSING_PAYLOAD")
+    unique = sorted(set(reasons))
+    failed = sorted(name for name, ok in checks.items() if ok is not True)
+    return {
+        "real_submit_allowed": False,
+        "reasons": unique,
+        "failed_checks": failed,
+        "runtime_dir": runtime_dir,
+        "live_parent": normalize_local_workbook_path(_parent_dir(live_path)),
+        "collector_workbook_identity_verified": verified is True,
+        "collector_workbook_full_name": full_name,
+        "collector_workbook_normalized": normalize_local_workbook_path(full_name),
+        "gateway_expected_workbook": expected,
+        "symbol": symbol,
+        "source_mode": source_mode,
+    }
+
+
+def canonical_workbook_proof(payload, manifest, *, live_path=None) -> list[str]:
+    return list(explain_canonical_workbook(payload, manifest, live_path=live_path)["reasons"])
 
 
 def board_fingerprint(payload: dict) -> str:
@@ -855,10 +919,9 @@ def _unresolved_excel_rows(engine: dict) -> list[dict]:
 
 
 def _recover_excel_identity(engine: dict, data_dir: Path, *, now: datetime, payload, manifest) -> None:
-    """Close only excel_identity rows after the runtime workbook proof.
+    """Close unresolved Excel-open rows after the runtime workbook proof.
 
-    workbook_open and excel_process_exit are not closed here. The original
-    error_code stays on the row. real_submit_allowed stays false.
+    The original error_code stays on the row. real_submit_allowed stays false.
     """
     diag = payload.get("live_price_diagnostics") if isinstance(payload, dict) else {}
     if not isinstance(diag, dict):
@@ -875,7 +938,7 @@ def _recover_excel_identity(engine: dict, data_dir: Path, *, now: datetime, payl
     for incident in engine.get("incidents") or []:
         if not isinstance(incident, dict) or incident.get("recovery_at"):
             continue
-        if incident.get("component") != "excel_identity":
+        if incident.get("component") not in _EXCEL_OPEN_COMPONENTS:
             continue
         started = parse_timestamp(incident.get("occurrence_at"), now.tzinfo)
         incident["recovery_at"] = now.isoformat()
@@ -901,22 +964,37 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
         _persist(engine, data_dir)
         return engine
     unresolved = _unresolved_excel_rows(engine)
+    report = explain_canonical_workbook(payload, runtime_manifest, live_path=live_path)
+    report["unresolved"] = [
+        str(row.get("component") or "") + "|" + str(row.get("error_code") or "")
+        for row in unresolved
+    ]
+    proof_reasons = list(report.get("reasons") or [])
+    if unresolved and (proof_reasons or not verdict.get("ok")):
+        engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
+        if proof_reasons:
+            engine["state"]["reason"] = "EXCEL_OPEN_UNVERIFIED"
+            engine["state"]["identity_proof_reasons"] = proof_reasons
+            report["block"] = "PROOF_FAILED"
+        else:
+            engine["state"]["reason"] = _primary_reason(list(verdict.get("reasons") or ["UNKNOWN"]))
+            engine["state"]["identity_proof_reasons"] = list(verdict.get("reasons") or [])
+            report["block"] = "VERDICT_NOT_OK"
+        engine["state"]["identity_diagnostic"] = report
+        engine["state"]["real_submit_allowed"] = False
+        _persist(engine, data_dir)
+        return engine
     if unresolved:
-        proof_reasons = canonical_workbook_proof(payload, runtime_manifest, live_path=live_path)
-        hard = [row for row in unresolved if row.get("component") != "excel_identity"]
-        if hard or proof_reasons or not verdict.get("ok"):
-            engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
-            if hard or proof_reasons:
-                engine["state"]["reason"] = "EXCEL_OPEN_UNVERIFIED"
-                engine["state"]["identity_proof_reasons"] = proof_reasons
-            else:
-                engine["state"]["reason"] = _primary_reason(list(verdict.get("reasons") or ["UNKNOWN"]))
-                engine["state"]["identity_proof_reasons"] = list(verdict.get("reasons") or [])
-            engine["state"]["real_submit_allowed"] = False
-            _persist(engine, data_dir)
-            return engine
         _recover_excel_identity(engine, data_dir, now=now, payload=payload, manifest=runtime_manifest)
-    engine["state"]["identity_proof_reasons"] = []
+        report["block"] = "VERIFIED"
+    if not proof_reasons and verdict.get("ok"):
+        if report.get("block") != "VERIFIED":
+            report["block"] = "PROVED"
+        engine["state"]["identity_proof_reasons"] = ["RUNTIME_IDENTITY_VERIFIED"]
+    else:
+        report["block"] = "NONE"
+        engine["state"]["identity_proof_reasons"] = []
+    engine["state"]["identity_diagnostic"] = report
     if recovery_mode == "UNREADABLE":
         engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
         engine["state"]["reason"] = "RECOVERY_FILE_UNREADABLE"
@@ -1235,6 +1313,7 @@ def status_snapshot(engine: dict, *, now: datetime) -> dict:
         "real_submit_allowed": False,
         "ui_independent": True,
         "identity_proof_reasons": list(engine["state"].get("identity_proof_reasons") or []),
+        "identity_diagnostic": engine["state"].get("identity_diagnostic") if isinstance(engine["state"].get("identity_diagnostic"), dict) else {},
         "open_observation_count": len(engine["open_positions"]),
         "resume_blocked": engine["state"].get("resume_blocked") is True,
         "engine_pid": os.getpid(),

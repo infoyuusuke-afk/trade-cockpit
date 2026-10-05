@@ -418,6 +418,12 @@ class CycleTests(unittest.TestCase):
         self.assertIsNone(blocked["incidents"][0]["recovery_at"])
         self.assertEqual(blocked["ledger"], [])
         self.assertIn("WRONG_SOURCE_WORKBOOK", blocked["state"]["identity_proof_reasons"])
+        diagnostic = blocked["state"]["identity_diagnostic"]
+        self.assertEqual(diagnostic["block"], "PROOF_FAILED")
+        self.assertIn("workbook_path_matches_gateway_expected", diagnostic["failed_checks"])
+        self.assertNotEqual(diagnostic["collector_workbook_normalized"], diagnostic["gateway_expected_workbook"])
+        self.assertEqual(diagnostic["runtime_dir"], runtime_dir)
+        self.assertFalse(diagnostic["real_submit_allowed"])
 
         stale = json.loads(json.dumps(proved))
         stale["updated_at"] = "2026-10-02 08:00:00"
@@ -434,28 +440,43 @@ class CycleTests(unittest.TestCase):
         self.assertEqual(held["ledger"], [])
 
         incident["component"] = "workbook_open"
+        incident["error_code"] = "EXCEL_SERIOUS_ERROR_PROMPT"
+        second = dict(incident)
+        second["incident_id"] = "inc-exit"
+        second["component"] = "excel_process_exit"
+        second["error_code"] = "EXCEL_PROCESS_EXITED"
         for name in ("state.json", "ledger.jsonl"):
             path = self.data / name
             if path.exists():
                 path.unlink()
-        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n" + json.dumps(second) + "\n", encoding="utf-8")
         opened = sup.load_engine(self.data, now=NOW)
         sup.apply_cycle(opened, proved, verdict, now=NOW, data_dir=self.data, runtime_manifest=manifest, live_path=live_path)
-        self.assertEqual(opened["state"]["reason"], "EXCEL_OPEN_UNVERIFIED")
-        self.assertIsNone(opened["incidents"][0]["recovery_at"])
-        self.assertEqual(opened["ledger"], [])
+        self.assertEqual(opened["state"]["state"], "RUNNING")
+        self.assertEqual(opened["state"]["identity_proof_reasons"], ["RUNTIME_IDENTITY_VERIFIED"])
+        self.assertEqual(opened["state"]["identity_diagnostic"]["block"], "VERIFIED")
+        self.assertEqual(opened["state"]["identity_diagnostic"]["collector_workbook_normalized"], opened["state"]["identity_diagnostic"]["gateway_expected_workbook"])
+        self.assertEqual(opened["incidents"][0]["recovery_mode"], "RUNTIME_IDENTITY_VERIFIED")
+        self.assertEqual(opened["incidents"][1]["recovery_mode"], "RUNTIME_IDENTITY_VERIFIED")
+        self.assertEqual(opened["incidents"][0]["error_code"], "EXCEL_SERIOUS_ERROR_PROMPT")
+        self.assertEqual(len(opened["open_positions"]), 1)
+        self.assertFalse(opened["state"]["real_submit_allowed"])
 
         incident["component"] = "excel_process_exit"
+        incident["error_code"] = "EXCEL_PROCESS_EXITED"
+        unverified = json.loads(json.dumps(proved))
+        unverified["live_price_diagnostics"]["workbook_identity_verified"] = False
         for name in ("state.json", "ledger.jsonl"):
             path = self.data / name
             if path.exists():
                 path.unlink()
         (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
         exited = sup.load_engine(self.data, now=NOW)
-        sup.apply_cycle(exited, proved, verdict, now=NOW, data_dir=self.data, runtime_manifest=manifest, live_path=live_path)
+        sup.apply_cycle(exited, unverified, verdict, now=NOW, data_dir=self.data, runtime_manifest=manifest, live_path=live_path)
         self.assertEqual(exited["state"]["reason"], "EXCEL_OPEN_UNVERIFIED")
         self.assertIsNone(exited["incidents"][0]["recovery_at"])
         self.assertEqual(exited["ledger"], [])
+        self.assertIn("workbook_identity_verified", exited["state"]["identity_diagnostic"]["failed_checks"])
 
     def test_workbook_open_crash_incident_does_not_open_a_trade(self):
         incident = {
