@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-10-06 01:24:42 JST",
+  "updated_at": "2026-10-06 01:26:51 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3641,13 +3641,13 @@
         30787800.0,
         31103100.0
       ],
-      "similarity": 97.3,
+      "similarity": 97.1,
       "after_ret": -7.76,
       "max_up_after": 0.05,
       "max_down_after": -8.54,
       "score_components": {
         "five_minute": null,
-        "us_market": 97.3,
+        "us_market": 97.1,
         "credit_supply": null
       },
       "us_context": {
@@ -3800,13 +3800,13 @@
         27969600.0,
         28284600.0
       ],
-      "similarity": 94.4,
+      "similarity": 94.5,
       "after_ret": 5.32,
       "max_up_after": 6.32,
       "max_down_after": -0.1,
       "score_components": {
         "five_minute": null,
-        "us_market": 94.4,
+        "us_market": 94.5,
         "credit_supply": null
       },
       "us_context": {
@@ -4289,13 +4289,13 @@
         34372100.0,
         34372200.0
       ],
-      "similarity": 91.7,
+      "similarity": 91.8,
       "after_ret": 0.04,
       "max_up_after": 2.0,
       "max_down_after": -3.47,
       "score_components": {
         "five_minute": null,
-        "us_market": 91.7,
+        "us_market": 91.8,
         "credit_supply": null
       },
       "us_context": {
@@ -4449,13 +4449,13 @@
       30787800.0,
       31103100.0
     ],
-    "similarity": 97.3,
+    "similarity": 97.1,
     "after_ret": -7.76,
     "max_up_after": 0.05,
     "max_down_after": -8.54,
     "score_components": {
       "five_minute": null,
-      "us_market": 97.3,
+      "us_market": 97.1,
       "credit_supply": null
     },
     "us_context": {
@@ -4479,10 +4479,10 @@
   "market_context": {
     "date": "2026-10-05",
     "values": {
-      "sndk": -0.698,
-      "mu": -0.964,
-      "sox": -0.145,
-      "nasdaq": 0.757
+      "sndk": -0.618,
+      "mu": -0.976,
+      "sox": -0.096,
+      "nasdaq": 0.778
     },
     "labels": {
       "sndk": "SanDisk",
