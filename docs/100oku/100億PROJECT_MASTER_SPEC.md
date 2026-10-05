@@ -29,7 +29,7 @@ Owner の時間は有限であり、開発コストである。Owner がいな�
 | `D:\100億PROJECT\MASTER_SPEC` | Owner PC の正式原本 | 初回同期 PASS は前版。この版は未コピー |
 | `C:\AI_Cockpit_OneClick_Starter` | 稼働ランタイム。`V9_RUNTIME.json` がある | 開発正本ではない |
 | `C:\Users\yusuk\code\trade-cockpit` | Owner の repo。`C:\work\trade-cockpit` は使わない | 作業ツリー |
-| `docs/AI_COCKPIT_MASTER_SPEC.md` | 2026-09-22 の Cockpit Baseline | この MASTER は置き換えない |
+| `docs/AI_COCKPIT_MASTER_SPEC.md` | HISTORICAL BASELINE。2026-09-22 の Cockpit Baseline。G0 から G5 の表はここに無い | この MASTER は置き換えない |
 | `docs/AI_COCKPIT_MASTER_SPEC_VNEXT.md` | 2026-10-03 の草案 | Baseline を置き換えない |
 
 コード、テスト、実機の観測が文章と食い違うときは、検証済みの実装と証拠を採る。新しい承認済みの Issue コメントが文章と食い違うときは、そのコメントを採る。チャットの「できた」は証拠にしない。
@@ -67,14 +67,20 @@ MarketSpeed II
 
 ライブの PASS は Owner PC の観測だけが満たす。合成 fixture は照合器のテストであり、G0 から G5 の PASS ではない。
 
+G0 から G5 の行は、2026-10-03 に観測した Current Acceptance である。出典は `docs/P0_ACCEPTANCE_MATRIX.md`。これは HISTORICAL BASELINE ではない。G1 から G5 を一括の NOT_RUN とは書かない。G3 は PARTIAL である。
+
+HISTORICAL BASELINE は `docs/AI_COCKPIT_MASTER_SPEC.md`（2026-09-22、checkpoint `1e856eeacdf71006fa095da27e1aa6e46862fb7b`）だけを指す。その文書は、この G0 から G5 の表を持たない。
+
+その後に Owner PC で確認した Collector の銘柄対応 PASS と、Supervisor の台帳再読込 PASS は、下の別行である。G0 から G5 の状態を置き換えない。MS2、RSS、Collector、Gateway、Strategy、AI SHADOW の経路確認を、この G0 の FAIL と同じ項目として読まない。
+
 | 項目 | 状態 | 根拠 |
 |---|---|---|
-| G0 専用 Excel の単独起動 | FAIL | 2026-10-03 の起動は確認画面で停止。`docs/P0_ACCEPTANCE_MATRIX.md`。OWNER ACTION PENDING |
-| G1 RSS セルの更新 | NOT_RUN | 同じ表。OWNER ACTION PENDING |
-| G2 Collector の fresh 一致 | NOT_RUN | 器は KEEP。ライブ系列は未実施 |
-| G3 Gateway の拒否 | PARTIAL | 拒否契約は KEEP。ライブの正例は NOT_RUN |
-| G4 五境界の一致 | NOT_RUN | MS2 表示の取り込みは MISSING |
-| G5 一致印までの再開停止 | NOT_RUN | コード準備済み。ライブは未実施 |
+| G0 専用 Excel の単独起動 | FAIL | Current Acceptance（2026-10-03）。HISTORICAL BASELINE ではない。起動は確認画面で停止。`docs/P0_ACCEPTANCE_MATRIX.md`。OWNER ACTION PENDING |
+| G1 RSS セルの更新 | NOT_RUN | Current Acceptance（2026-10-03）。HISTORICAL BASELINE ではない。OWNER ACTION PENDING |
+| G2 Collector の fresh 一致 | NOT_RUN | Current Acceptance（2026-10-03）。HISTORICAL BASELINE ではない。器は KEEP。ライブ系列は未実施 |
+| G3 Gateway の拒否 | PARTIAL | Current Acceptance（2026-10-03）。HISTORICAL BASELINE ではない。拒否契約は KEEP。ライブの正例は NOT_RUN |
+| G4 五境界の一致 | NOT_RUN | Current Acceptance（2026-10-03）。HISTORICAL BASELINE ではない。MS2 表示の取り込みは MISSING |
+| G5 一致印までの再開停止 | NOT_RUN | Current Acceptance（2026-10-03）。HISTORICAL BASELINE ではない。コード準備済み。ライブは未実施 |
 | G6 `real_submit_allowed=false` | PASS | リポジトリ契約。ライブ再確認は NOT_RUN |
 | Collector の銘柄対応 | PASS | Owner PC。`RUNTIME_ACCEPTANCE=PASS`。`SYMBOL=285A.T`。その実行の `CURRENT_PRICE=19120`。この 19,120 円は当時の観測であり、常時の現在値ではない |
 | Supervisor の台帳再読込 | PASS | Owner PC。`SUPERVISOR_RELOAD_ACCEPTANCE=PASS`。worktree `4abf0a1a`。`REAL_SUBMIT 0`。`LIVE_SIGNAL_RULE_CHANGE=0`。Collector、Gateway、Excel、MS2 は対象外 |
@@ -241,7 +247,7 @@ freshness は 4 暦日固定ではない。JPX の休業日表（https://www.jpx
 
 | 源 | 役割 | 現在 |
 |---|---|---|
-| MarketSpeed II RSS | LIVE 価格の正 | 専用ブック経由。G0 は FAIL、G1 は NOT_RUN |
+| MarketSpeed II RSS | LIVE 価格の正 | 専用ブック経由。Current Acceptance（2026-10-03）では G0 は FAIL、G1 は NOT_RUN。HISTORICAL BASELINE（2026-09-22）の状態ではない |
 | Collector / Gateway | RSS の配布と拒否 | 不一致、stale、別ブック、別銘柄、読めないコード列、重複は fail-closed |
 | TradingView | 広域の探索候補 | 非公式 API の取得はしていない。NOT_FETCHED |
 | JPX 公開統計 | Research Data Lane | 3/17 だけ FETCHED。売買には未接続 |

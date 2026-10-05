@@ -14,3 +14,4 @@
 - `arbitrage_balance` を3本目の `FETCHED` にした。2026-10-01 の市場合計は売り 64,563 千株、買い 8,980 千株、買いポジション 849,191 千株。`published_at=2026-10-05T16:00:31+09:00`。営業日差 3 で研究値は null。参加者名と原票は保存していない。Research Data Lane は FETCHED 3/17。
 - 本番 Research Candidate の保存先を追加した。銘柄行が無いので candidate は 0。`UNIVERSE_SCOPE=LIMITED / PRECISION_WATCH_ONLY`。fixture は本番統計に入れない。Shadow の Entry 条件は変えていない。linked は 0。Shadow Entry は 0。
 - Correlation / Lead-Lag は設計のまま。測定ペアは 0。係数は保存していない。
+- G0 から G5 を Current Acceptance（2026-10-03）と明記した。HISTORICAL BASELINE は 2026-09-22 の `docs/AI_COCKPIT_MASTER_SPEC.md` だけである。その後の Collector 銘柄対応 PASS と Supervisor 再読込 PASS は、G0 から G5 とは別行のままである。

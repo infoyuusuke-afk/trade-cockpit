@@ -11,6 +11,12 @@
 - 同期前のファイルは `D:\100億PROJECT\MASTER_SPEC\archive\YYYY-MM-DD_HHMM\` に退避する。
 - 結果は `LAST_SYNC.json`。`cloud_agent_wrote_destination` は false のまま。
 
+## Acceptance の層
+
+- HISTORICAL BASELINE は 2026-09-22 の `docs/AI_COCKPIT_MASTER_SPEC.md`。
+- G0 から G5 は 2026-10-03 の Current Acceptance。G0 は FAIL。G3 は PARTIAL。残りは NOT_RUN。
+- Collector 銘柄対応 PASS と Supervisor 再読込 PASS は、G0 から G5 を置き換えない。
+
 ## いまの Research Data Lane
 
 - FETCHED 3/17。`short_sale_ratio`、`investor_futures_flow`、`arbitrage_balance`。裁定残の原票と参加者名は保存していない。
