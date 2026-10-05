@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import http from 'node:http';
 import {
   renderCockpitCard, renderCockpitWatchRow,
   recordOnAir, getOnAirLog, clearOnAirLog, renderOnAirPanel,
+  resolveIdentityLivePrice, identityPriceText,
 } from '../card_system.js';
 
 test('renderCockpitCard requires a symbol', () => {
@@ -201,4 +204,150 @@ test('on-air log: renderOnAirPanel renders a watch row per entry, most recent fi
   const html = renderOnAirPanel();
   assert.equal((html.match(/cc-watch-row/g) || []).length, 2);
   assert.ok(html.indexOf('レーザーテック') < html.indexOf('キオクシアHD'));
+});
+
+function localStamp(ms) {
+  const d = new Date(ms);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+function livePayload(price, at, patch = {}) {
+  const body = {
+    source: 'MarketSpeed II RSS / local PC',
+    source_mode: 'MS2_RSS_WORKBOOK',
+    price_source_status: 'OK',
+    live_values_available: true,
+    real_submit_allowed: false,
+    data_conflict: false,
+    stale: false,
+    updated_at: at,
+    live_price_diagnostics: {
+      symbol: '285A.T',
+      current_price: price,
+      source_mode: 'MS2_RSS_WORKBOOK',
+      price_source_status: 'OK',
+      live_values_available: true,
+      source_timestamp: '09:10:01',
+    },
+    kioxia: { ticker: '285A.T', price },
+  };
+  return { ...body, ...patch, live_price_diagnostics: { ...body.live_price_diagnostics, ...(patch.live_price_diagnostics || {}) } };
+}
+
+test('285A current price is shown only when collector and gateway agree', () => {
+  const now = Date.parse('2026-10-05T09:10:02');
+  const at = '2026-10-05 09:10:02';
+  const collector = livePayload(19120, at);
+  const gateway = livePayload(19120, at);
+  const chain = resolveIdentityLivePrice(collector, gateway, now);
+  assert.equal(chain.ok, true);
+  assert.equal(chain.collector_value, 19120);
+  assert.equal(chain.gateway_value, 19120);
+  assert.equal(chain.ui_value, 19120);
+  assert.equal(identityPriceText(chain), '19,120円');
+  assert.equal(collector.real_submit_allowed, false);
+
+  const next = resolveIdentityLivePrice(livePayload(19150, at), livePayload(19150, at), now);
+  assert.equal(next.ui_value, 19150);
+  assert.equal(identityPriceText(next), '19,150円');
+  assert.notEqual(identityPriceText(chain), identityPriceText(next));
+});
+
+test('snapshot, stale cache, old symbol, and a one-sided price stay blank', () => {
+  const now = Date.parse('2026-10-05T09:10:02');
+  const at = '2026-10-05 09:10:02';
+  const collector = livePayload(19120, at);
+  const cases = [
+    [null, livePayload(19120, at)],
+    [collector, null],
+    [collector, livePayload(8035, at)],
+    [livePayload(19120, at, { connection_source: '公開スナップショット' }), livePayload(19120, at)],
+    [livePayload(19120, at, { source: 'sample snapshot' }), livePayload(19120, at)],
+    [livePayload(19120, '2026-10-05 08:00:00'), livePayload(19120, '2026-10-05 08:00:00')],
+    [livePayload(19120, at, { live_price_diagnostics: { symbol: '8035.T' } }), livePayload(19120, at, { live_price_diagnostics: { symbol: '8035.T' } })],
+    [livePayload(0, at), livePayload(0, at)],
+    [livePayload(19120, at, { real_submit_allowed: true }), livePayload(19120, at)],
+    [livePayload(19120, at, { kioxia: { ticker: '285A.T', price: 100 } }), livePayload(19120, at)],
+    [livePayload(19120, at, { live_values_available: false }), livePayload(19120, at)],
+  ];
+  for (const [left, right] of cases) {
+    const chain = resolveIdentityLivePrice(left, right, now);
+    assert.equal(chain.ok, false);
+    assert.equal(chain.ui_value, null);
+    assert.equal(identityPriceText(chain), '—');
+    assert.equal(identityPriceText(chain).includes('19120'), false);
+  }
+});
+
+test('page wires the visible 285A price to the collector-gateway chain', () => {
+  const index = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(index, /http:\/\/127\.0\.0\.1:28580\/live_ms2\.json/);
+  assert.match(index, /http:\/\/127\.0\.0\.1:28581\/live_ms2\.json/);
+  assert.match(index, /id="kio-live-current-price">—</);
+  assert.match(index, /identityPriceText/);
+  assert.doesNotMatch(index, /kio-live-current-price">19,/);
+  assert.doesNotMatch(index, /fetchJson\("live_ms2\.json/);
+});
+
+function serveJson(getPayload) {
+  return new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      const body = JSON.stringify(getPayload());
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Private-Network': 'true',
+      });
+      res.end(body);
+    });
+    server.listen(0, '127.0.0.1', () => resolve(server));
+  });
+}
+
+test('COLLECTOR_VALUE equals GATEWAY_VALUE equals UI_VALUE across a price change', async () => {
+  let price = 19120;
+  const serverA = await serveJson(() => livePayload(price, localStamp(Date.now())));
+  const serverB = await serveJson(() => livePayload(price, localStamp(Date.now())));
+  try {
+    const read = async (server) => {
+      const { port } = server.address();
+      const response = await fetch(`http://127.0.0.1:${port}/live_ms2.json?t=${Date.now()}`, { cache: 'no-store' });
+      assert.equal(response.status, 200);
+      return response.json();
+    };
+    const firstCollector = await read(serverA);
+    const firstGateway = await read(serverB);
+    const first = resolveIdentityLivePrice(firstCollector, firstGateway, Date.now());
+    assert.equal(first.collector_value, 19120);
+    assert.equal(first.gateway_value, 19120);
+    assert.equal(first.ui_value, 19120);
+    price = 19240;
+    const secondCollector = await read(serverA);
+    const secondGateway = await read(serverB);
+    const second = resolveIdentityLivePrice(secondCollector, secondGateway, Date.now());
+    assert.equal(second.collector_value, 19240);
+    assert.equal(second.gateway_value, 19240);
+    assert.equal(second.ui_value, 19240);
+    assert.equal(identityPriceText(second), '19,240円');
+    const evidence = {
+      symbol: '285A.T',
+      real_submit_allowed: false,
+      COLLECTOR_VALUE: second.collector_value,
+      GATEWAY_VALUE: second.gateway_value,
+      UI_VALUE: second.ui_value,
+      previous_ui_value: first.ui_value,
+      snapshot_ui_value: null,
+    };
+    const artifactDir = '/opt/cursor/artifacts';
+    if (fs.existsSync(artifactDir)) {
+      fs.writeFileSync(`${artifactDir}/identity_price_chain.json`, JSON.stringify(evidence, null, 2));
+    }
+  } finally {
+    serverA.closeAllConnections();
+    serverB.closeAllConnections();
+    serverA.close();
+    serverB.close();
+  }
 });

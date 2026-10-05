@@ -209,7 +209,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <script defer src="next-theme-radar.js?v=c024-1"></script>
 <link rel="stylesheet" href="card_system.css?v=p0b1-1">
 <link rel="stylesheet" href="card_table_adapter.css?v=v9-1">
-<script type="module" src="card_system.js?v=p0-price-failclosed-1"></script>
+<script type="module" src="card_system.js?v=p0-ui-live-price-1"></script>
 <script src="voice_client.js?v=v9-1" defer></script>
 <script src="opportunity_radar.js?v=v9-1" defer></script>
 <script src="card_table_adapter.js?v=v9-1" defer></script>
@@ -438,6 +438,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div class="kio-ms2-title"><div><span>MARKETSPEED II RSS・2秒監視</span><b>キオクシア 板変化＋歩み値LIVE</b></div><strong id="kio-ms2-state">Windowsコレクター待ち</strong></div>
  <div id="kio-ms2-source" class="sub">自宅PCのリアルタイムデータへ接続中...</div>
  <div class="kio-ms2-grid">
+  <div><span>285A 現在値</span><b id="kio-live-current-price">—</b><small id="kio-live-current-source">28580→28581待ち</small></div>
   <div><span>8:55 寄り前作戦</span><b id="kio-preopen-plan">判定待ち</b><small id="kio-preopen-score">スコア —</small></div>
   <div><span>気配値／GU・GD</span><b id="kio-preopen-quote">—</b><small id="kio-preopen-gap">基準値照合待ち</small></div>
   <div><span>成行買売偏り</span><b id="kio-preopen-imbalance">—</b><small id="kio-preopen-change">気配5分変化 —</small></div>
@@ -1190,22 +1191,35 @@ document.addEventListener("DOMContentLoaded",()=>{
  const changeBadge=v=>v==null||!Number.isFinite(Number(v))?"":`<span class="fp-change ${Number(v)>=0?"up":"down"}">${Number(v)>=0?"+":""}${Number(v).toFixed(2)}%</span>`;
  const cardTop=(rank,tag,name,score)=>`<div class="top"><span class="rank">#${rank}</span><div class="name-block"><small class="tag-chip">${tag||""}</small><h3>${name}</h3></div><b class="score">${score==null||score===""?"—":esc(score)}</b></div>`;
  const fetchJson=async(url,timeout=1800)=>{const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),timeout);try{const r=await fetch(url,{cache:"no-store",signal:ctl.signal});if(!r.ok)throw new Error("not found");return await r.json()}finally{clearTimeout(timer)}};
- const fetchMs2=async()=>{
-   const mark=(d,reason)=>{d._transport_fail_closed=true;d.stale=true;d.live_values_available=false;d.real_submit_allowed=false;if(!d.price_source_status||d.price_source_status==="OK")d.price_source_status="PRICE_SOURCE_MISMATCH";d.stale_reason=d.stale_reason||reason;return d;};
+ const readLivePort=async(url)=>{
+   const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),1800);
    try{
-     const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),1800);
-     let r;try{r=await fetch("http://127.0.0.1:28580/live_ms2.json?t="+Date.now(),{cache:"no-store",signal:ctl.signal});}finally{clearTimeout(timer);}
+     const r=await fetch(url,{cache:"no-store",signal:ctl.signal});
      const d=await r.json();
-     d.connection_source="自宅PC・MS2 RSS LIVE";
-     if(!r.ok)return mark(d,d.stale_reason||d.reason||"TRANSPORT_REJECTED");
-     const why=window.livePriceBlocked?window.livePriceBlocked(d):"MISSING_PRICE_DIAGNOSTICS";
-     if(why)return mark(d,why);
+     d._http_ok=r.ok;
      return d;
-   }catch(e){
-     const d=await fetchJson("live_ms2.json?t="+Date.now(),3000);
-     d.connection_source="公開スナップショット";
-     return mark(d,"CACHED_OR_SAMPLE_PAYLOAD");
+   }finally{clearTimeout(timer);}
+ };
+ const fetchMs2=async()=>{
+   // 公開スナップショットは現在値にしない。28580と28581の285Aが一致したときだけ描く。
+   const mark=(d,reason)=>{const chain=d._identity_chain||{ok:false,ui_value:null,collector_value:null,gateway_value:null,symbol:"285A.T",reason:reason};d._transport_fail_closed=true;d.stale=true;d.live_values_available=false;d.real_submit_allowed=false;if(!d.price_source_status||d.price_source_status==="OK")d.price_source_status="PRICE_SOURCE_MISMATCH";d.stale_reason=d.stale_reason||reason;d._identity_chain=chain;return d;};
+   let collector=null,gateway=null;
+   try{collector=await readLivePort("http://127.0.0.1:28580/live_ms2.json?t="+Date.now());}catch(e){collector=null;}
+   try{gateway=await readLivePort("http://127.0.0.1:28581/live_ms2.json?t="+Date.now());}catch(e){gateway=null;}
+   const liveCollector=collector&&collector._http_ok?collector:null;
+   const liveGateway=gateway&&gateway._http_ok?gateway:null;
+   if(liveCollector)liveCollector.connection_source="自宅PC・MS2 RSS LIVE";
+   if(liveGateway)liveGateway.connection_source="自宅PC・MS2 RSS LIVE";
+   const chain=window.resolveIdentityLivePrice?window.resolveIdentityLivePrice(liveCollector,liveGateway,Date.now()):{ok:false,ui_value:null,collector_value:null,gateway_value:null,symbol:"285A.T",reason:"MISSING_PRICE_DIAGNOSTICS"};
+   const base=liveCollector||collector||{live_price_diagnostics:{},real_submit_allowed:false};
+   base._identity_chain=chain;
+   base.real_submit_allowed=false;
+   if(!chain.ok){
+     const why=!collector?"COLLECTOR_UNREACHABLE":!collector._http_ok?"COLLECTOR_REJECTED":!gateway?"GATEWAY_UNREACHABLE":!gateway._http_ok?"GATEWAY_REJECTED":(chain.reason||"PRICE_CHAIN_BLOCKED");
+     if(!chain.reason||chain.reason==="GATEWAY_OR_COLLECTOR_MISSING")chain.reason=why;
+     return mark(base,chain.reason);
    }
+   return base;
  };
  // V8 Controller's local Gateway (127.0.0.1:28581) exposes /health with the
  // live watcher/heartbeat/collector status. When it's reachable and reports
@@ -1214,11 +1228,24 @@ document.addEventListener("DOMContentLoaded",()=>{
  // showing as LIVE. Only same-origin (this page being served by that same
  // Gateway); on the public site this fetch simply fails and is ignored.
  const fetchControllerHealth=async()=>{try{return await fetchJson("health?t="+Date.now(),1200)}catch(e){return null}};
+ const paintIdentity=d=>{
+   const chain=(d&&d._identity_chain)||{ok:false,reason:"GATEWAY_OR_COLLECTOR_MISSING"};
+   const priceEl=document.getElementById("kio-live-current-price");
+   const srcEl=document.getElementById("kio-live-current-source");
+   if(priceEl){
+     priceEl.textContent=window.identityPriceText?window.identityPriceText(chain):"—";
+     priceEl.dataset.uiValue=chain.ok?String(chain.ui_value):"";
+     priceEl.dataset.collectorValue=chain.collector_value==null?"":String(chain.collector_value);
+     priceEl.dataset.gatewayValue=chain.gateway_value==null?"":String(chain.gateway_value);
+   }
+   if(srcEl)srcEl.textContent=chain.ok?("285A.T / COLLECTOR_VALUE="+chain.collector_value+" / GATEWAY_VALUE="+chain.gateway_value+" / UI_VALUE="+chain.ui_value):("未表示 / "+(chain.reason||"GATEWAY_OR_COLLECTOR_MISSING"));
+ };
  async function loadMs2Live(){
   const health=document.getElementById("ms2-live-health"),meta=document.getElementById("ms2-live-meta"),cards=document.getElementById("ms2-live-cards"),holdCards=document.getElementById("ms2-hold-cards"),holdStatus=document.getElementById("ms2-hold-status"),holdStats=document.getElementById("ms2-hold-stats"),holdHistory=document.getElementById("ms2-hold-history"),ptsCards=document.getElementById("ms2-pts-cards"),irCards=document.getElementById("ms2-ir-pts-cards"),irMeta=document.getElementById("ms2-ir-pts-meta");
   if(!health||!cards)return;
   try{
    const d=await fetchMs2();
+   paintIdentity(d);
    const controllerHealth=await fetchControllerHealth();
    const controllerForcesFailClosed=!!(controllerHealth&&controllerHealth.runtime&&controllerHealth.runtime.fail_closed===true);
    const parsed=new Date(String(d.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,staleFromAge=d.stale||age>60,blocked=window.livePriceBlocked?window.livePriceBlocked(d):"MISSING_PRICE_DIAGNOSTICS",stale=staleFromAge||controllerForcesFailClosed||!!blocked;
@@ -1324,7 +1351,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     foot:String(x.official_url||"").startsWith("https://www.release.tdnet.info/")?"TDnet公式IR確認済み":"TDnetリンク確認待ち"
    })).join(""):`<div class="focus-empty"><span>公式IR・PTS反応・流動性の三条件を満たす候補なし</span></div>`;
    document.dispatchEvent(new CustomEvent("ms2RssUpdate",{detail:{...d,stale}}));
-  }catch(e){health.className="ms2-health waiting";health.textContent="ローカル収集待ち";meta.textContent="Windowsの100銘柄コレクターを起動してください。";document.dispatchEvent(new CustomEvent("ms2RssUpdate",{detail:{stale:true}}));}
+  }catch(e){paintIdentity(null);health.className="ms2-health waiting";health.textContent="ローカル収集待ち";meta.textContent="Windowsの100銘柄コレクターを起動してください。";document.dispatchEvent(new CustomEvent("ms2RssUpdate",{detail:{stale:true}}));}
  }
  document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},live=d.stale===false,bar=document.getElementById("unified-mode");if(!bar)return;bar.className="unified-mode "+(live?"live":"stale");document.getElementById("unified-mode-title").textContent=live?"MS2 RSS LIVE接続中":"事前分析モード";document.getElementById("unified-mode-note").textContent=live?"歩み値・板・VWAP・OR15を同じ画面へ反映":"LIVE値は未接続。公開分析は閲覧できますが売買サインは無効";document.getElementById("unified-mode-time").textContent=live?(d.updated_at||"更新中"):"LIVE売買禁止";});
  document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},box=document.getElementById("watchlist-100-rows");if(!box)return;const all=Array.isArray(d.all_targets)?d.all_targets:[],topTickers=new Set((Array.isArray(d.top5)?d.top5:[]).map(x=>x.ticker)),rest=all.filter(x=>!topTickers.has(x.ticker)).slice().sort((a,b)=>(Number(b.volume_burst)||0)-(Number(a.volume_burst)||0));box.innerHTML=rest.length?rest.slice(0,50).map((x,i)=>{const bidQty=x.bid_qty==null?null:Number(x.bid_qty).toLocaleString("ja-JP"),askQty=x.ask_qty==null?null:Number(x.ask_qty).toLocaleString("ja-JP"),mBuy=x.market_buy==null?null:Number(x.market_buy).toLocaleString("ja-JP"),mSell=x.market_sell==null?null:Number(x.market_sell).toLocaleString("ja-JP");return window.renderCockpitWatchRow({symbol:String(x.ticker||"").replace(".T",""),company:x.name,direction:"wait",showBadge:false,rank:i+1,price:x.price,changePct:x.change_pct,freshness:d.stale?"stale":"fresh",freshnessLabel:d.stale?"データ停止":"LIVE",metrics:[{label:"出来高加速",value:x.volume_burst==null?null:Number(x.volume_burst).toFixed(2)+"倍"},{label:"気配 買/売",value:(bidQty==null&&askQty==null)?null:`${bidQty??"—"} / ${askQty??"—"}`},{label:"成行 買/売",value:(mBuy==null&&mSell==null)?null:`${mBuy??"—"} / ${mSell??"—"}`},{label:"UNDER",value:x.under_ratio==null?null:Number(x.under_ratio).toFixed(1)+"%"}]});}).join(""):"<div class=\"cc-onair-empty\">データ取得待ち</div>";});

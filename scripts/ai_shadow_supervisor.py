@@ -11,11 +11,14 @@ fills and not Fill Model v0.1 fills.
 
 real_submit_allowed is always false on every record this module writes.
 An unresolved excel_identity, workbook_open, or excel_process_exit incident
-blocks new virtual entries and exits. A fresh price file does not clear it.
-An unreadable manual_recovery.json does the same. Two rows for one ticker
-are a data conflict and open or close nothing. A ledger row that carries a
-quantity is not replayed. state.json last_seq must equal the ledger length;
-a short or long ledger is not healed into a resume.
+stays blocked until this cycle proves the canonical workbook: the runtime
+manifest directory, the collector workbook_identity_verified flag, and the
+same local path gate the gateway uses. A fresh price without that proof does
+not set recovery_at. The status publishes each proof check and the normalized
+paths. An unreadable manual_recovery.json does the same. Two rows for one
+ticker are a data conflict and open or close nothing. A ledger row that
+carries a quantity is not replayed. state.json last_seq must equal the ledger
+length; a short or long ledger is not healed into a resume.
 """
 from __future__ import annotations
 
@@ -30,6 +33,8 @@ from pathlib import Path
 SCHEMA_VERSION = "ai-shadow-supervisor-1"
 CANONICAL_SOURCE = "MarketSpeed II RSS / local PC"
 CANONICAL_WORKBOOK = "Kioxia_MS2_RSS_Live_Signals.xlsx"
+IDENTITY_SYMBOL = "285A.T"
+RUNTIME_MANIFEST_PATH = "C:\\AI_Cockpit_OneClick_Starter\\V9_RUNTIME.json"
 MAX_AGE_SECONDS = 60
 STATUS_STALE_SECONDS = 30
 
@@ -69,7 +74,7 @@ def parse_timestamp(value, tz) -> datetime | None:
     return parsed.astimezone(tz)
 
 
-def assess_live_payload(payload, *, file_mtime: datetime | None, now: datetime, max_age_seconds: int = MAX_AGE_SECONDS) -> dict:
+def assess_live_payload(payload, *, file_mtime: datetime | None, now: datetime, max_age_seconds: int = MAX_AGE_SECONDS, runtime_manifest=None, live_path=None, require_runtime_identity: bool = False) -> dict:
     """Same fail-closed idea as the gateway/collector price gate.
 
     Unknown, stale, sample, conflicting, or non-canonical input is not tradable.
@@ -147,12 +152,186 @@ def assess_live_payload(payload, *, file_mtime: datetime | None, now: datetime, 
         mage = (now - file_mtime.astimezone(tz)).total_seconds()
         if mage < 0 or mage > max_age_seconds:
             reasons.append("STALE_OR_MISSING_TIMESTAMP")
+    if require_runtime_identity:
+        reasons.extend(canonical_workbook_proof(payload, runtime_manifest, live_path=live_path))
     return _verdict(reasons)
 
 
 def _verdict(reasons: list[str]) -> dict:
     unique = sorted(set(reasons))
     return {"ok": not unique, "reasons": unique, "real_submit_allowed": False}
+
+
+def normalize_local_workbook_path(value) -> str:
+    """Same local-path shape as the collector and gateway workbook gate."""
+    if not isinstance(value, str):
+        return ""
+    trim = value.strip()
+    if len(trim) < 3 or not trim[0].isalpha() or trim[1] != ":" or trim[2] not in "\\/":
+        return ""
+    slash = trim.replace("/", "\\")
+    while len(slash) > 3 and slash.endswith("\\"):
+        slash = slash[:-1]
+    parts: list[str] = []
+    for part in slash.split("\\"):
+        if part in ("", "."):
+            continue
+        if part == "..":
+            if len(parts) > 1:
+                parts.pop()
+            continue
+        parts.append(part)
+    if len(parts) < 2:
+        return ""
+    root = parts[0]
+    if len(root) != 2 or not root[0].isalpha() or root[1] != ":":
+        return ""
+    return root + "\\" + "\\".join(parts[1:])
+
+
+def _same_local_path(left, right) -> bool:
+    actual = normalize_local_workbook_path(left)
+    expected = normalize_local_workbook_path(right)
+    if not actual or not expected:
+        return False
+    return actual.casefold() == expected.casefold()
+
+
+def _parent_dir(path) -> str:
+    if isinstance(path, Path):
+        path = str(path)
+    if not isinstance(path, str) or not path.strip():
+        return ""
+    text = path.strip().replace("/", "\\")
+    while len(text) > 3 and text.endswith("\\"):
+        text = text[:-1]
+    if "\\" not in text:
+        return ""
+    return text.rsplit("\\", 1)[0]
+
+
+def explain_canonical_workbook(payload, manifest, *, live_path=None) -> dict:
+    """Each collector, manifest, and gateway path check, without prices.
+
+    The gateway accepts a collector payload when workbook_identity_verified is
+    true and the published full name is the runtime workbook. This report uses
+    that same pair. It does not read the controller COM probe, and it does not
+    treat a missing identity field as verified. real_submit_allowed stays false.
+    """
+    checks = {
+        "manifest_present": False,
+        "manifest_runtime_dir": False,
+        "live_parent_matches_runtime_dir": False,
+        "payload_present": False,
+        "real_submit_false": False,
+        "canonical_source": False,
+        "payload_source_mode": False,
+        "no_data_conflict": False,
+        "live_values_available": False,
+        "diagnostics_present": False,
+        "workbook_identity_verified": False,
+        "workbook_name": False,
+        "diagnostic_source_mode": False,
+        "workbook_path_matches_gateway_expected": False,
+        "symbol_285a": False,
+        "price_source_ok": False,
+        "diagnostic_real_submit_false": False,
+        "collector_count_one": False,
+    }
+    reasons: list[str] = []
+    runtime_dir = ""
+    full_name = ""
+    symbol = ""
+    source_mode = ""
+    verified = None
+    if isinstance(manifest, dict):
+        checks["manifest_present"] = True
+        if manifest.get("real_submit_allowed") is True:
+            reasons.append("REAL_SUBMIT_NOT_FALSE")
+        runtime_dir = normalize_local_workbook_path(manifest.get("runtime_dir"))
+        checks["manifest_runtime_dir"] = bool(runtime_dir)
+        if not runtime_dir:
+            reasons.append("RUNTIME_MANIFEST_MISSING")
+    else:
+        reasons.append("RUNTIME_MANIFEST_MISSING")
+    checks["live_parent_matches_runtime_dir"] = _same_local_path(_parent_dir(live_path), runtime_dir)
+    if not checks["live_parent_matches_runtime_dir"]:
+        reasons.append("RUNTIME_MANIFEST_MISMATCH")
+    expected = normalize_local_workbook_path(runtime_dir + "\\" + CANONICAL_WORKBOOK) if runtime_dir else ""
+    if isinstance(payload, dict):
+        checks["payload_present"] = True
+        checks["real_submit_false"] = payload.get("real_submit_allowed") is False
+        checks["canonical_source"] = payload.get("source") == CANONICAL_SOURCE
+        checks["payload_source_mode"] = payload.get("source_mode") == "MS2_RSS_WORKBOOK"
+        checks["no_data_conflict"] = payload.get("data_conflict") is not True
+        checks["live_values_available"] = payload.get("live_values_available") is True
+        if not checks["real_submit_false"]:
+            reasons.append("REAL_SUBMIT_NOT_FALSE")
+        if not checks["canonical_source"]:
+            reasons.append("CACHED_OR_SAMPLE_PAYLOAD")
+        if not checks["payload_source_mode"]:
+            reasons.append("WRONG_SOURCE_WORKBOOK")
+        if not checks["no_data_conflict"]:
+            reasons.append("DATA_CONFLICT")
+        if not checks["live_values_available"]:
+            reasons.append("LIVE_VALUES_UNAVAILABLE")
+        diag = payload.get("live_price_diagnostics")
+        if isinstance(diag, dict):
+            checks["diagnostics_present"] = True
+            verified = diag.get("workbook_identity_verified")
+            full_name = diag.get("workbook_full_name") if isinstance(diag.get("workbook_full_name"), str) else ""
+            symbol = diag.get("symbol") if isinstance(diag.get("symbol"), str) else ""
+            source_mode = diag.get("source_mode") if isinstance(diag.get("source_mode"), str) else ""
+            checks["workbook_identity_verified"] = verified is True
+            checks["workbook_name"] = diag.get("workbook_name") == CANONICAL_WORKBOOK
+            checks["diagnostic_source_mode"] = source_mode == "MS2_RSS_WORKBOOK"
+            checks["workbook_path_matches_gateway_expected"] = bool(expected) and _same_local_path(full_name, expected)
+            checks["symbol_285a"] = symbol == IDENTITY_SYMBOL
+            checks["price_source_ok"] = diag.get("price_source_status") == "OK"
+            checks["diagnostic_real_submit_false"] = diag.get("real_submit_allowed") is False
+            checks["no_data_conflict"] = checks["no_data_conflict"] and diag.get("data_conflict") is not True
+            collector_count = diag.get("collector_count")
+            checks["collector_count_one"] = (
+                isinstance(collector_count, int)
+                and not isinstance(collector_count, bool)
+                and collector_count == 1
+                and diag.get("duplicate_collector") is not True
+            )
+            if not checks["workbook_identity_verified"] or not checks["workbook_name"] or not checks["diagnostic_source_mode"] or not checks["workbook_path_matches_gateway_expected"]:
+                reasons.append("WRONG_SOURCE_WORKBOOK")
+            if not checks["symbol_285a"]:
+                reasons.append("WRONG_SYMBOL_MAPPING")
+            if not checks["price_source_ok"]:
+                reasons.append("PRICE_SOURCE_MISMATCH")
+            if not checks["diagnostic_real_submit_false"]:
+                reasons.append("REAL_SUBMIT_NOT_FALSE")
+            if diag.get("data_conflict") is True:
+                reasons.append("DATA_CONFLICT")
+            if not checks["collector_count_one"]:
+                reasons.append("DUPLICATE_COLLECTOR")
+        else:
+            reasons.append("MISSING_PRICE_DIAGNOSTICS")
+    else:
+        reasons.append("MISSING_PAYLOAD")
+    unique = sorted(set(reasons))
+    failed = sorted(name for name, ok in checks.items() if ok is not True)
+    return {
+        "real_submit_allowed": False,
+        "reasons": unique,
+        "failed_checks": failed,
+        "runtime_dir": runtime_dir,
+        "live_parent": normalize_local_workbook_path(_parent_dir(live_path)),
+        "collector_workbook_identity_verified": verified is True,
+        "collector_workbook_full_name": full_name,
+        "collector_workbook_normalized": normalize_local_workbook_path(full_name),
+        "gateway_expected_workbook": expected,
+        "symbol": symbol,
+        "source_mode": source_mode,
+    }
+
+
+def canonical_workbook_proof(payload, manifest, *, live_path=None) -> list[str]:
+    return list(explain_canonical_workbook(payload, manifest, live_path=live_path)["reasons"])
 
 
 def board_fingerprint(payload: dict) -> str:
@@ -200,6 +379,29 @@ def _geometry_ok(side: str, entry, stop) -> bool:
 
 def _row_price_ok(row: dict) -> bool:
     return _finite(row.get("price")) and row.get("price") > 0 and row.get("data") == "LIVE"
+
+
+def no_trade_reason(row: dict) -> str:
+    """Why this row is not an entry. Empty when it is an entry candidate.
+
+    The entry rule is unchanged. This label is only a record of that rule.
+    """
+    if not isinstance(row, dict):
+        return "ROW_UNREADABLE"
+    signal = row.get("signal")
+    side = _side_of(signal) if isinstance(signal, str) else None
+    if side is None:
+        return "SIGNAL_NOT_ENTRY"
+    if not _row_price_ok(row):
+        return "PRICE_NOT_LIVE"
+    if not _geometry_ok(side, row.get("entry_price"), row.get("stop_price")):
+        return "GEOMETRY_REJECTED"
+    ticker = row.get("ticker")
+    if not isinstance(ticker, str) or not ticker:
+        return "TICKER_MISSING"
+    if entry_candidate(row) is None:
+        return "NOT_CANDIDATE"
+    return ""
 
 
 def entry_candidate(row: dict) -> dict | None:
@@ -295,6 +497,95 @@ def _r_multiple(side: str, entry, stop, exit_price):
     if risk == 0:
         return None
     return pnl / risk
+
+
+def _positive(value) -> bool:
+    return _finite(value) and value > 0
+
+
+def simulate_quote_fill(side: str, role: str, published, bid, ask) -> dict:
+    """Simulate a fill from the collector quote. This is not a broker fill.
+
+    A buy uses the ask when it is present. A sell uses the bid when it is present.
+    Missing quotes fill at the published price and record zero slippage.
+    Positive slippage is a worse price than the published print.
+    """
+    decision = published if _positive(published) else None
+    buy = (side == "LONG" and role == "entry") or (side == "SHORT" and role == "exit")
+    sell = (side == "LONG" and role == "exit") or (side == "SHORT" and role == "entry")
+    if buy:
+        fill = ask if _positive(ask) else decision
+    elif sell:
+        fill = bid if _positive(bid) else decision
+    else:
+        fill = None
+    slippage = None
+    if _finite(fill) and _finite(decision):
+        slippage = (fill - decision) if buy else (decision - fill)
+    return {
+        "decision_price": decision,
+        "fill_price": fill,
+        "slippage_yen": slippage,
+        "fill_model": "collector_quote_simulation",
+        "real_submit_allowed": False,
+    }
+
+
+def mark_excursion(prior, side: str, entry_fill, price) -> dict:
+    mae = prior.get("mae_yen") if isinstance(prior, dict) else None
+    mfe = prior.get("mfe_yen") if isinstance(prior, dict) else None
+    if not _finite(entry_fill) or not _finite(price):
+        return {"mae_yen": mae if _finite(mae) else None, "mfe_yen": mfe if _finite(mfe) else None}
+    if side == "LONG":
+        adverse = entry_fill - price
+        favorable = price - entry_fill
+    elif side == "SHORT":
+        adverse = price - entry_fill
+        favorable = entry_fill - price
+    else:
+        return {"mae_yen": mae, "mfe_yen": mfe}
+    if not _finite(mae):
+        mae = 0.0
+    if not _finite(mfe):
+        mfe = 0.0
+    if adverse > mae:
+        mae = adverse
+    if favorable > mfe:
+        mfe = favorable
+    return {"mae_yen": mae, "mfe_yen": mfe}
+
+
+def summarize_trade_performance(ledger) -> dict:
+    """Expectancy and profit factor use clean simulated fills only."""
+    exits = []
+    if isinstance(ledger, list):
+        exits = [
+            event for event in ledger
+            if isinstance(event, dict)
+            and event.get("event_type") == "virtual_exit"
+            and event.get("performance_bucket") == "clean_strategy"
+        ]
+    pnls = [event.get("fill_pnl_per_share_yen") for event in exits if _finite(event.get("fill_pnl_per_share_yen"))]
+    wins = [value for value in pnls if value > 0]
+    losses = [value for value in pnls if value < 0]
+    maes = [event.get("mae_yen") for event in exits if _finite(event.get("mae_yen"))]
+    mfes = [event.get("mfe_yen") for event in exits if _finite(event.get("mfe_yen"))]
+    slips = [event.get("slippage_yen") for event in exits if _finite(event.get("slippage_yen"))]
+    profit_factor = None
+    if losses and wins:
+        profit_factor = sum(wins) / abs(sum(losses))
+    elif losses and not wins:
+        profit_factor = 0.0
+    return {
+        "real_submit_allowed": False,
+        "pricing": "collector_quote_simulation",
+        "closed_trade_count": len(exits),
+        "expectancy_yen_per_share": (sum(pnls) / len(pnls)) if pnls else None,
+        "profit_factor": profit_factor,
+        "avg_mae_yen": (sum(maes) / len(maes)) if maes else None,
+        "avg_mfe_yen": (sum(mfes) / len(mfes)) if mfes else None,
+        "avg_slippage_yen": (sum(slips) / len(slips)) if slips else None,
+    }
 
 
 def count_invalidated_entries(payload) -> int:
@@ -599,6 +890,8 @@ def _next_event(engine: dict, *, now: datetime, event_type: str, payload: dict) 
     record.update(payload)
     record["real_submit_allowed"] = False
     record["quantity"] = None
+    if engine.get("_acceptance_class") == "synthetic":
+        record["acceptance_class"] = "synthetic"
     return record
 
 
@@ -640,20 +933,96 @@ def unresolved_excel_open_incident(engine: dict) -> dict | None:
     return found
 
 
-def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir: Path, recovery_mode: str = "AUTO") -> dict:
+def _unresolved_excel_rows(engine: dict) -> list[dict]:
+    rows = []
+    for incident in engine.get("incidents") or []:
+        if not isinstance(incident, dict) or incident.get("recovery_at"):
+            continue
+        if incident.get("component") in _EXCEL_OPEN_COMPONENTS:
+            rows.append(incident)
+    return rows
+
+
+def _recover_excel_identity(engine: dict, data_dir: Path, *, now: datetime, payload, manifest) -> None:
+    """Close unresolved Excel-open rows after the runtime workbook proof.
+
+    The original error_code stays on the row. real_submit_allowed stays false.
+    """
+    diag = payload.get("live_price_diagnostics") if isinstance(payload, dict) else {}
+    if not isinstance(diag, dict):
+        diag = {}
+    note = {
+        "runtime_dir": manifest.get("runtime_dir") if isinstance(manifest, dict) else None,
+        "workbook_full_name": diag.get("workbook_full_name"),
+        "workbook_identity_verified": True,
+        "symbol": diag.get("symbol"),
+        "source_mode": "MS2_RSS_WORKBOOK",
+        "real_submit_allowed": False,
+    }
+    closed_ids = set()
+    for incident in engine.get("incidents") or []:
+        if not isinstance(incident, dict) or incident.get("recovery_at"):
+            continue
+        if incident.get("component") not in _EXCEL_OPEN_COMPONENTS:
+            continue
+        started = parse_timestamp(incident.get("occurrence_at"), now.tzinfo)
+        incident["recovery_at"] = now.isoformat()
+        incident["duration_seconds"] = None if started is None else max(0, int((now - started).total_seconds()))
+        incident["recovery_mode"] = "RUNTIME_IDENTITY_VERIFIED"
+        incident["shadow_impact"] = "CANONICAL_WORKBOOK_VERIFIED"
+        incident["confirmed_cause"] = "runtime manifest, collector workbook identity, and gateway path gate agree"
+        incident["identity_verification"] = note
+        incident["real_submit_allowed"] = False
+        closed_ids.add(incident.get("incident_id"))
+    if engine["state"].get("open_incident_id") in closed_ids:
+        engine["state"]["open_incident_id"] = None
+    if closed_ids:
+        _rewrite_incidents(data_dir, engine["incidents"])
+
+
+def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir: Path, recovery_mode: str = "AUTO", runtime_manifest=None, live_path=None, acceptance_class: str | None = None) -> dict:
     """One supervisor cycle. Fail-closed input never creates or closes a virtual trade."""
+    engine.pop("_acceptance_class", None)
+    if acceptance_class == "synthetic":
+        engine["_acceptance_class"] = "synthetic"
     engine["state"]["real_submit_allowed"] = False
     if engine["state"].get("resume_blocked") is True:
         engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
         engine["state"]["reason"] = engine["state"].get("block_reason") or "UNKNOWN_STATE"
         _persist(engine, data_dir)
         return engine
-    if unresolved_excel_open_incident(engine) is not None:
+    unresolved = _unresolved_excel_rows(engine)
+    report = explain_canonical_workbook(payload, runtime_manifest, live_path=live_path)
+    report["unresolved"] = [
+        str(row.get("component") or "") + "|" + str(row.get("error_code") or "")
+        for row in unresolved
+    ]
+    proof_reasons = list(report.get("reasons") or [])
+    if unresolved and (proof_reasons or not verdict.get("ok")):
         engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
-        engine["state"]["reason"] = "EXCEL_OPEN_UNVERIFIED"
+        if proof_reasons:
+            engine["state"]["reason"] = "EXCEL_OPEN_UNVERIFIED"
+            engine["state"]["identity_proof_reasons"] = proof_reasons
+            report["block"] = "PROOF_FAILED"
+        else:
+            engine["state"]["reason"] = _primary_reason(list(verdict.get("reasons") or ["UNKNOWN"]))
+            engine["state"]["identity_proof_reasons"] = list(verdict.get("reasons") or [])
+            report["block"] = "VERDICT_NOT_OK"
+        engine["state"]["identity_diagnostic"] = report
         engine["state"]["real_submit_allowed"] = False
         _persist(engine, data_dir)
         return engine
+    if unresolved:
+        _recover_excel_identity(engine, data_dir, now=now, payload=payload, manifest=runtime_manifest)
+        report["block"] = "VERIFIED"
+    if not proof_reasons and verdict.get("ok"):
+        if report.get("block") != "VERIFIED":
+            report["block"] = "PROVED"
+        engine["state"]["identity_proof_reasons"] = ["RUNTIME_IDENTITY_VERIFIED"]
+    else:
+        report["block"] = "NONE"
+        engine["state"]["identity_proof_reasons"] = []
+    engine["state"]["identity_diagnostic"] = report
     if recovery_mode == "UNREADABLE":
         engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
         engine["state"]["reason"] = "RECOVERY_FILE_UNREADABLE"
@@ -707,6 +1076,7 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
             "signal": row.get("signal"),
             "strategy": row.get("strategy") if isinstance(row.get("strategy"), str) else "",
             "entry_candidate": candidate is not None,
+            "no_trade_reason": "" if candidate is not None else no_trade_reason(row),
         })
 
     exits = []
@@ -720,9 +1090,19 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
         if current is None or not _row_price_ok(current):
             continue
         still_same_side = _side_of(current.get("signal")) == side if isinstance(current.get("signal"), str) else False
+        excursions = engine["state"].setdefault("excursions", {})
+        entry_fill = position.get("fill_price")
+        if not _finite(entry_fill):
+            entry_fill = position.get("entry_price")
         if still_same_side:
+            excursions[key] = mark_excursion(excursions.get(key), side, entry_fill, current.get("price"))
             continue
         exit_price = current.get("price")
+        marked = mark_excursion(excursions.get(key), side, entry_fill, exit_price)
+        exit_fill = simulate_quote_fill(side, "exit", exit_price, current.get("bid"), current.get("ask"))
+        entry_slip = position.get("slippage_yen")
+        exit_slip = exit_fill.get("slippage_yen")
+        slippage = entry_slip + exit_slip if _finite(entry_slip) and _finite(exit_slip) else None
         opened_at = position.get("at")
         bucket = "contaminated_by_data_outage" if _contaminated(engine, opened_at, now) else "clean_strategy"
         event = _next_event(engine, now=now, event_type="virtual_exit", payload={
@@ -735,6 +1115,15 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
             "exit_price": exit_price,
             "pnl_per_share_yen": _pnl_per_share(side, position.get("entry_price"), exit_price),
             "r_multiple": _r_multiple(side, position.get("entry_price"), position.get("stop_price"), exit_price),
+            "fill_entry_price": entry_fill,
+            "fill_exit_price": exit_fill.get("fill_price"),
+            "fill_pnl_per_share_yen": _pnl_per_share(side, entry_fill, exit_fill.get("fill_price")),
+            "entry_slippage_yen": entry_slip,
+            "exit_slippage_yen": exit_slip,
+            "slippage_yen": slippage,
+            "mae_yen": marked.get("mae_yen"),
+            "mfe_yen": marked.get("mfe_yen"),
+            "fill_model": "collector_quote_simulation",
             "quantity": None,
             "performance_bucket": bucket,
             "exit_reason": "collector_signal_left_entry_set",
@@ -748,6 +1137,7 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
             }),
             "related_entry_seq": position.get("seq"),
         })
+        excursions.pop(key, None)
         engine["ledger"].append(event)
         _append_jsonl(data_dir / "ledger.jsonl", event)
         del engine["open_positions"][key]
@@ -757,6 +1147,12 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
     for key, candidate in by_key.items():
         if key in engine["open_positions"]:
             continue
+        source_row = {}
+        for row in rows:
+            if isinstance(row, dict) and row.get("ticker") == candidate["ticker"]:
+                source_row = row
+                break
+        entry_fill = simulate_quote_fill(candidate["side"], "entry", candidate["price"], source_row.get("bid"), source_row.get("ask"))
         event = _next_event(engine, now=now, event_type="virtual_entry", payload={
             "position_key": key,
             "ticker": candidate["ticker"],
@@ -768,6 +1164,10 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
             "target1": candidate["target1"],
             "target2": candidate["target2"],
             "published_price": candidate["price"],
+            "decision_price": entry_fill.get("decision_price"),
+            "fill_price": entry_fill.get("fill_price"),
+            "slippage_yen": entry_fill.get("slippage_yen"),
+            "fill_model": "collector_quote_simulation",
             "source_timestamp": candidate["source_timestamp"],
             "quantity": None,
             "performance_bucket": "open_unrealized_not_marked",
@@ -776,6 +1176,7 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
         engine["ledger"].append(event)
         _append_jsonl(data_dir / "ledger.jsonl", event)
         engine["open_positions"][key] = event
+        engine["state"].setdefault("excursions", {})[key] = mark_excursion(None, candidate["side"], entry_fill.get("fill_price"), candidate["price"])
         entries.append(event["seq"])
 
     judgment = _next_event(engine, now=now, event_type="board_judgment", payload={
@@ -799,6 +1200,7 @@ def _persist(engine: dict, data_dir: Path) -> None:
     engine["state"]["real_submit_allowed"] = False
     engine["state"]["pid"] = os.getpid()
     _write_json(data_dir / "state.json", engine["state"])
+    _write_json(data_dir / "shadow_performance.json", summarize_trade_performance(engine.get("ledger")))
 
 
 def _plain_int(value) -> int | None:
@@ -939,11 +1341,14 @@ def status_snapshot(engine: dict, *, now: datetime) -> dict:
         "updated_at": now.isoformat(),
         "real_submit_allowed": False,
         "ui_independent": True,
+        "identity_proof_reasons": list(engine["state"].get("identity_proof_reasons") or []),
+        "identity_diagnostic": engine["state"].get("identity_diagnostic") if isinstance(engine["state"].get("identity_diagnostic"), dict) else {},
         "open_observation_count": len(engine["open_positions"]),
         "resume_blocked": engine["state"].get("resume_blocked") is True,
         "engine_pid": os.getpid(),
         "latest_incident": latest,
         "ops": ops,
+        "trade_performance": summarize_trade_performance(engine.get("ledger")),
     }
 
 
@@ -1040,7 +1445,15 @@ def read_manual_recovery(data_dir: Path) -> str:
     return "UNREADABLE"
 
 
-def run_once(data_dir: Path, live_path: Path, status_path: Path, *, now: datetime | None = None) -> dict:
+def load_runtime_manifest(path: Path) -> dict | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def run_once(data_dir: Path, live_path: Path, status_path: Path, *, now: datetime | None = None, runtime_manifest=None, require_runtime_identity: bool = False) -> dict:
     moment = now or datetime.now().astimezone()
     engine = load_engine(data_dir, now=moment)
     payload = None
@@ -1052,8 +1465,24 @@ def run_once(data_dir: Path, live_path: Path, status_path: Path, *, now: datetim
         except (OSError, json.JSONDecodeError, ValueError):
             payload = None
             file_mtime = None
-    verdict = assess_live_payload(payload, file_mtime=file_mtime, now=moment)
-    apply_cycle(engine, payload, verdict, now=moment, data_dir=data_dir, recovery_mode=read_manual_recovery(data_dir))
+    verdict = assess_live_payload(
+        payload,
+        file_mtime=file_mtime,
+        now=moment,
+        runtime_manifest=runtime_manifest,
+        live_path=live_path,
+        require_runtime_identity=require_runtime_identity,
+    )
+    apply_cycle(
+        engine,
+        payload,
+        verdict,
+        now=moment,
+        data_dir=data_dir,
+        recovery_mode=read_manual_recovery(data_dir),
+        runtime_manifest=runtime_manifest,
+        live_path=live_path,
+    )
     publish_status(engine, status_path, now=moment)
     return engine
 
@@ -1065,10 +1494,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--status", required=True)
     parser.add_argument("--interval", type=float, default=5.0)
     parser.add_argument("--once", action="store_true")
+    parser.add_argument("--runtime-manifest", default=RUNTIME_MANIFEST_PATH)
     args = parser.parse_args(argv)
     data_dir = Path(args.data_dir)
     live_path = Path(args.live)
     status_path = Path(args.status)
+    manifest_path = Path(args.runtime_manifest)
     lock_path = data_dir / "supervisor.lock.json"
     now = datetime.now().astimezone()
     lock = acquire_singleton(lock_path, pid=os.getpid(), now=now)
@@ -1080,12 +1511,26 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         if args.once:
-            run_once(data_dir, live_path, status_path, now=now)
+            run_once(
+                data_dir,
+                live_path,
+                status_path,
+                now=now,
+                runtime_manifest=load_runtime_manifest(manifest_path),
+                require_runtime_identity=True,
+            )
             return 0
         while True:
             moment = datetime.now().astimezone()
             touch_lock(lock_path, pid=os.getpid(), now=moment)
-            run_once(data_dir, live_path, status_path, now=moment)
+            run_once(
+                data_dir,
+                live_path,
+                status_path,
+                now=moment,
+                runtime_manifest=load_runtime_manifest(manifest_path),
+                require_runtime_identity=True,
+            )
             time.sleep(max(1.0, args.interval))
     finally:
         if lock_path.exists():

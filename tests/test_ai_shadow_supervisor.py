@@ -71,6 +71,13 @@ def _row(**overrides):
 
 
 class SafetyTests(unittest.TestCase):
+    def test_no_trade_reason_labels_the_existing_entry_rule(self):
+        self.assertEqual(sup.no_trade_reason(_row(signal="監視")), "SIGNAL_NOT_ENTRY")
+        self.assertEqual(sup.no_trade_reason(_row(signal="買いサイン", stop_price=1600.0)), "GEOMETRY_REJECTED")
+        self.assertEqual(sup.no_trade_reason(_row(signal="買いサイン", data="STALE")), "PRICE_NOT_LIVE")
+        self.assertEqual(sup.no_trade_reason(_row()), "")
+        self.assertIsNotNone(sup.entry_candidate(_row()))
+
     def test_fresh_canonical_payload_passes_and_keeps_real_submit_false(self):
         verdict = sup.assess_live_payload(_live([_row()]), file_mtime=NOW - timedelta(seconds=2), now=NOW)
         self.assertTrue(verdict["ok"])
@@ -137,6 +144,58 @@ class CycleTests(unittest.TestCase):
         self.assertEqual(exits[0]["performance_bucket"], "clean_strategy")
         self.assertEqual(exits[0]["pricing"], "collector_published_price_not_fill_model")
         self.assertEqual(engine["open_positions"], {})
+
+    def test_quote_fill_round_trip_saves_pnl_expectancy_and_excursions(self):
+        engine = self._engine()
+        entry = _live([_row(price=19120.0, entry_price=19120.0, stop_price=19000.0, bid=19110.0, ask=19130.0)])
+        sup.apply_cycle(engine, entry, sup.assess_live_payload(entry, file_mtime=NOW, now=NOW), now=NOW, data_dir=self.data)
+        opened = [event for event in engine["ledger"] if event["event_type"] == "virtual_entry"][0]
+        self.assertEqual(opened["fill_price"], 19130.0)
+        self.assertEqual(opened["slippage_yen"], 10.0)
+        self.assertIn("買いサイン", opened["decision_rationale"])
+        self.assertIsNone(opened["quantity"])
+        self.assertFalse(opened["real_submit_allowed"])
+
+        down_at = NOW + timedelta(seconds=10)
+        down = _live([_row(price=19050.0, entry_price=19120.0, stop_price=19000.0)], updated_at="2026-10-02 09:16:15")
+        sup.apply_cycle(engine, down, sup.assess_live_payload(down, file_mtime=down_at, now=down_at), now=down_at, data_dir=self.data)
+        up_at = NOW + timedelta(seconds=20)
+        up = _live([_row(price=19300.0, entry_price=19120.0, stop_price=19000.0)], updated_at="2026-10-02 09:16:25")
+        sup.apply_cycle(engine, up, sup.assess_live_payload(up, file_mtime=up_at, now=up_at), now=up_at, data_dir=self.data)
+
+        flat_at = NOW + timedelta(seconds=30)
+        flat = _live([_row(signal="監視", price=19180.0, bid=19170.0, ask=19190.0)], updated_at="2026-10-02 09:16:35")
+        sup.apply_cycle(engine, flat, sup.assess_live_payload(flat, file_mtime=flat_at, now=flat_at), now=flat_at, data_dir=self.data)
+        closed = [event for event in engine["ledger"] if event["event_type"] == "virtual_exit"][0]
+        self.assertEqual(closed["fill_entry_price"], 19130.0)
+        self.assertEqual(closed["fill_exit_price"], 19170.0)
+        self.assertEqual(closed["fill_pnl_per_share_yen"], 40.0)
+        self.assertEqual(closed["pnl_per_share_yen"], 60.0)
+        self.assertEqual(closed["slippage_yen"], 20.0)
+        self.assertEqual(closed["mae_yen"], 80.0)
+        self.assertEqual(closed["mfe_yen"], 170.0)
+        self.assertIn("監視", closed["decision_rationale"])
+        self.assertEqual(closed["fill_model"], "collector_quote_simulation")
+        self.assertFalse(closed["real_submit_allowed"])
+
+        loss_at = NOW + timedelta(seconds=40)
+        loss_entry = _live([_row(price=100.0, entry_price=100.0, stop_price=90.0, bid=100.0, ask=100.0)], updated_at="2026-10-02 09:16:45")
+        sup.apply_cycle(engine, loss_entry, sup.assess_live_payload(loss_entry, file_mtime=loss_at, now=loss_at), now=loss_at, data_dir=self.data)
+        loss_exit_at = NOW + timedelta(seconds=50)
+        loss_exit = _live([_row(signal="監視", price=90.0, bid=90.0, ask=90.0)], updated_at="2026-10-02 09:16:55")
+        sup.apply_cycle(engine, loss_exit, sup.assess_live_payload(loss_exit, file_mtime=loss_exit_at, now=loss_exit_at), now=loss_exit_at, data_dir=self.data)
+        saved = json.loads((self.data / "shadow_performance.json").read_text(encoding="utf-8"))
+        self.assertFalse(saved["real_submit_allowed"])
+        self.assertEqual(saved["closed_trade_count"], 2)
+        self.assertEqual(saved["expectancy_yen_per_share"], 15.0)
+        self.assertEqual(saved["profit_factor"], 4.0)
+        self.assertEqual(saved["avg_mae_yen"], 45.0)
+        self.assertEqual(saved["avg_mfe_yen"], 85.0)
+        self.assertEqual(saved["avg_slippage_yen"], 10.0)
+        self.assertEqual(sup.status_snapshot(engine, now=loss_exit_at)["trade_performance"]["expectancy_yen_per_share"], 15.0)
+        source = (ROOT / "scripts" / "ai_shadow_supervisor.py").read_text(encoding="utf-8")
+        self.assertNotIn("import shadow_execution", source)
+        self.assertNotIn("submit_shadow_order", source)
 
     def test_fail_closed_does_not_open_or_close_from_stale_prices(self):
         engine = self._engine()
@@ -306,6 +365,125 @@ class CycleTests(unittest.TestCase):
         self.assertEqual(resumed["state"]["state"], "RUNNING")
         self.assertEqual(len(resumed["open_positions"]), 1)
         self.assertFalse(resumed["state"]["real_submit_allowed"])
+
+    def test_runtime_workbook_proof_resumes_excel_identity_without_weakening_other_blocks(self):
+        runtime_dir = r"C:\MarketSpeed II RSS\files"
+        workbook = runtime_dir + "\\" + "Kioxia_MS2_RSS_Live_Signals.xlsx"
+        live_path = runtime_dir + "\\live_ms2.json"
+        manifest = {"runtime_dir": runtime_dir}
+        incident = {
+            "record_class": "operations_incident",
+            "incident_id": "inc-excel",
+            "occurrence_at": NOW.isoformat(),
+            "recovery_at": None,
+            "component": "excel_identity",
+            "error_code": "EXCEL_IDENTITY_PROBE_FAILED",
+            "symptom": "unmatched: rot_moniker",
+            "suspected_cause": "ROT_MONIKER_NOT_REGISTERED",
+            "confirmed_cause": None,
+            "fail_closed": True,
+            "real_submit_allowed": False,
+            "real_trade_impact": "NONE_REAL_SUBMIT_REMAINS_FALSE",
+            "shadow_impact": "STOPPED",
+            "invalidated_signal_count": None,
+            "recovery_mode": None,
+            "recurrence_key": "excel_identity|EXCEL_IDENTITY_PROBE_FAILED",
+            "recurrence_count": 1,
+        }
+        proved = _live([_row()])
+        proved["live_price_diagnostics"] = _diag(
+            workbook_identity_verified=True,
+            workbook_full_name=workbook,
+            symbol="285A.T",
+        )
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        engine = sup.load_engine(self.data, now=NOW)
+        verdict = sup.assess_live_payload(proved, file_mtime=NOW, now=NOW, runtime_manifest=manifest, live_path=live_path, require_runtime_identity=True)
+        self.assertTrue(verdict["ok"])
+        self.assertFalse(verdict["real_submit_allowed"])
+        sup.apply_cycle(engine, proved, verdict, now=NOW, data_dir=self.data, runtime_manifest=manifest, live_path=live_path)
+        self.assertEqual(engine["state"]["state"], "RUNNING")
+        self.assertEqual(len(engine["open_positions"]), 1)
+        self.assertEqual(engine["incidents"][0]["error_code"], "EXCEL_IDENTITY_PROBE_FAILED")
+        self.assertEqual(engine["incidents"][0]["recovery_mode"], "RUNTIME_IDENTITY_VERIFIED")
+        self.assertFalse(engine["incidents"][0]["real_submit_allowed"])
+        self.assertFalse(engine["state"]["real_submit_allowed"])
+
+        wrong = json.loads(json.dumps(proved))
+        wrong["live_price_diagnostics"]["workbook_full_name"] = r"C:\other\Kioxia_MS2_RSS_Live_Signals.xlsx"
+        incident["recovery_at"] = None
+        incident["recovery_mode"] = None
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        for name in ("state.json", "ledger.jsonl"):
+            path = self.data / name
+            if path.exists():
+                path.unlink()
+        blocked = sup.load_engine(self.data, now=NOW)
+        blocked_verdict = sup.assess_live_payload(wrong, file_mtime=NOW, now=NOW)
+        sup.apply_cycle(blocked, wrong, blocked_verdict, now=NOW, data_dir=self.data, runtime_manifest=manifest, live_path=live_path)
+        self.assertEqual(blocked["state"]["reason"], "EXCEL_OPEN_UNVERIFIED")
+        self.assertIsNone(blocked["incidents"][0]["recovery_at"])
+        self.assertEqual(blocked["ledger"], [])
+        self.assertIn("WRONG_SOURCE_WORKBOOK", blocked["state"]["identity_proof_reasons"])
+        diagnostic = blocked["state"]["identity_diagnostic"]
+        self.assertEqual(diagnostic["block"], "PROOF_FAILED")
+        self.assertIn("workbook_path_matches_gateway_expected", diagnostic["failed_checks"])
+        self.assertNotEqual(diagnostic["collector_workbook_normalized"], diagnostic["gateway_expected_workbook"])
+        self.assertEqual(diagnostic["runtime_dir"], runtime_dir)
+        self.assertFalse(diagnostic["real_submit_allowed"])
+
+        stale = json.loads(json.dumps(proved))
+        stale["updated_at"] = "2026-10-02 08:00:00"
+        for name in ("state.json", "ledger.jsonl"):
+            path = self.data / name
+            if path.exists():
+                path.unlink()
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        held = sup.load_engine(self.data, now=NOW)
+        stale_verdict = sup.assess_live_payload(stale, file_mtime=NOW, now=NOW)
+        sup.apply_cycle(held, stale, stale_verdict, now=NOW, data_dir=self.data, runtime_manifest=manifest, live_path=live_path)
+        self.assertEqual(held["state"]["reason"], "STALE_OR_MISSING_TIMESTAMP")
+        self.assertIsNone(held["incidents"][0]["recovery_at"])
+        self.assertEqual(held["ledger"], [])
+
+        incident["component"] = "workbook_open"
+        incident["error_code"] = "EXCEL_SERIOUS_ERROR_PROMPT"
+        second = dict(incident)
+        second["incident_id"] = "inc-exit"
+        second["component"] = "excel_process_exit"
+        second["error_code"] = "EXCEL_PROCESS_EXITED"
+        for name in ("state.json", "ledger.jsonl"):
+            path = self.data / name
+            if path.exists():
+                path.unlink()
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n" + json.dumps(second) + "\n", encoding="utf-8")
+        opened = sup.load_engine(self.data, now=NOW)
+        sup.apply_cycle(opened, proved, verdict, now=NOW, data_dir=self.data, runtime_manifest=manifest, live_path=live_path)
+        self.assertEqual(opened["state"]["state"], "RUNNING")
+        self.assertEqual(opened["state"]["identity_proof_reasons"], ["RUNTIME_IDENTITY_VERIFIED"])
+        self.assertEqual(opened["state"]["identity_diagnostic"]["block"], "VERIFIED")
+        self.assertEqual(opened["state"]["identity_diagnostic"]["collector_workbook_normalized"], opened["state"]["identity_diagnostic"]["gateway_expected_workbook"])
+        self.assertEqual(opened["incidents"][0]["recovery_mode"], "RUNTIME_IDENTITY_VERIFIED")
+        self.assertEqual(opened["incidents"][1]["recovery_mode"], "RUNTIME_IDENTITY_VERIFIED")
+        self.assertEqual(opened["incidents"][0]["error_code"], "EXCEL_SERIOUS_ERROR_PROMPT")
+        self.assertEqual(len(opened["open_positions"]), 1)
+        self.assertFalse(opened["state"]["real_submit_allowed"])
+
+        incident["component"] = "excel_process_exit"
+        incident["error_code"] = "EXCEL_PROCESS_EXITED"
+        unverified = json.loads(json.dumps(proved))
+        unverified["live_price_diagnostics"]["workbook_identity_verified"] = False
+        for name in ("state.json", "ledger.jsonl"):
+            path = self.data / name
+            if path.exists():
+                path.unlink()
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        exited = sup.load_engine(self.data, now=NOW)
+        sup.apply_cycle(exited, unverified, verdict, now=NOW, data_dir=self.data, runtime_manifest=manifest, live_path=live_path)
+        self.assertEqual(exited["state"]["reason"], "EXCEL_OPEN_UNVERIFIED")
+        self.assertIsNone(exited["incidents"][0]["recovery_at"])
+        self.assertEqual(exited["ledger"], [])
+        self.assertIn("workbook_identity_verified", exited["state"]["identity_diagnostic"]["failed_checks"])
 
     def test_workbook_open_crash_incident_does_not_open_a_trade(self):
         incident = {
