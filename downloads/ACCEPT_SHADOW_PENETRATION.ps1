@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$RepoRoot,
-    [switch]$SelfTest
+    [switch]$SelfTest,
+    [switch]$StartSupervisor
 )
 
 # Read Collector 28580, then Gateway 28581, then Strategy Input and one AI SHADOW cycle.
@@ -152,6 +153,44 @@ if ($SelfTest) {
     if (Test-StaleOnly "WRONG_SYMBOL_MAPPING") { throw "wrong symbol must not retry" }
     if (Test-StaleOnly "STALE_OR_MISSING_TIMESTAMP,WRONG_SOURCE_WORKBOOK") { throw "mixed hard reason must not retry" }
     Write-Output "SHADOW_PENETRATION_SELFTEST PASS"
+    exit 0
+}
+
+if ($StartSupervisor) {
+    $runtimeDir = Resolve-RuntimeDir
+    $live = Join-Path $runtimeDir "live_ms2.json"
+    if (-not (Test-Path -LiteralPath $live)) { throw "RUNTIME_DIR_UNRESOLVED" }
+    $dataDir = "C:\AI_Cockpit_OneClick_Starter\Logs\V9\ai_shadow"
+    if (-not (Test-Path -LiteralPath $dataDir)) { New-Item -ItemType Directory -Path $dataDir -Force | Out-Null }
+    $status = Join-Path $runtimeDir "ai_shadow_status.json"
+    $python = $null
+    foreach ($cand in @(
+        (Join-Path $RepoRoot ".venv\Scripts\python.exe"),
+        (Join-Path $RepoRoot "venv\Scripts\python.exe")
+    )) {
+        if (Test-Path -LiteralPath $cand) { $python = $cand; break }
+    }
+    $prefix = @()
+    if (-not $python) {
+        $cmd = Get-Command python.exe -ErrorAction SilentlyContinue
+        if ($null -ne $cmd) { $python = $cmd.Source }
+    }
+    if (-not $python) {
+        $py = Get-Command py.exe -ErrorAction SilentlyContinue
+        if ($null -ne $py) { $python = $py.Source; $prefix = @("-3") }
+    }
+    if (-not $python) { throw "PYTHON_NOT_FOUND" }
+    $script = Join-Path $RepoRoot "scripts\ai_shadow_supervisor.py"
+    $argList = $prefix + @(
+        "-u", (Get-QuotedArg $script),
+        "--live", (Get-QuotedArg $live),
+        "--data-dir", (Get-QuotedArg $dataDir),
+        "--status", (Get-QuotedArg $status),
+        "--interval", "5"
+    )
+    Start-Process -FilePath $python -ArgumentList $argList -WindowStyle Hidden | Out-Null
+    Write-Output "SHADOW_SUPERVISOR_STARTED=1"
+    Write-Output "REAL_SUBMIT_ALLOWED=0"
     exit 0
 }
 

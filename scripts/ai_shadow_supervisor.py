@@ -297,6 +297,95 @@ def _r_multiple(side: str, entry, stop, exit_price):
     return pnl / risk
 
 
+def _positive(value) -> bool:
+    return _finite(value) and value > 0
+
+
+def simulate_quote_fill(side: str, role: str, published, bid, ask) -> dict:
+    """Simulate a fill from the collector quote. This is not a broker fill.
+
+    A buy uses the ask when it is present. A sell uses the bid when it is present.
+    Missing quotes fill at the published price and record zero slippage.
+    Positive slippage is a worse price than the published print.
+    """
+    decision = published if _positive(published) else None
+    buy = (side == "LONG" and role == "entry") or (side == "SHORT" and role == "exit")
+    sell = (side == "LONG" and role == "exit") or (side == "SHORT" and role == "entry")
+    if buy:
+        fill = ask if _positive(ask) else decision
+    elif sell:
+        fill = bid if _positive(bid) else decision
+    else:
+        fill = None
+    slippage = None
+    if _finite(fill) and _finite(decision):
+        slippage = (fill - decision) if buy else (decision - fill)
+    return {
+        "decision_price": decision,
+        "fill_price": fill,
+        "slippage_yen": slippage,
+        "fill_model": "collector_quote_simulation",
+        "real_submit_allowed": False,
+    }
+
+
+def mark_excursion(prior, side: str, entry_fill, price) -> dict:
+    mae = prior.get("mae_yen") if isinstance(prior, dict) else None
+    mfe = prior.get("mfe_yen") if isinstance(prior, dict) else None
+    if not _finite(entry_fill) or not _finite(price):
+        return {"mae_yen": mae if _finite(mae) else None, "mfe_yen": mfe if _finite(mfe) else None}
+    if side == "LONG":
+        adverse = entry_fill - price
+        favorable = price - entry_fill
+    elif side == "SHORT":
+        adverse = price - entry_fill
+        favorable = entry_fill - price
+    else:
+        return {"mae_yen": mae, "mfe_yen": mfe}
+    if not _finite(mae):
+        mae = 0.0
+    if not _finite(mfe):
+        mfe = 0.0
+    if adverse > mae:
+        mae = adverse
+    if favorable > mfe:
+        mfe = favorable
+    return {"mae_yen": mae, "mfe_yen": mfe}
+
+
+def summarize_trade_performance(ledger) -> dict:
+    """Expectancy and profit factor use clean simulated fills only."""
+    exits = []
+    if isinstance(ledger, list):
+        exits = [
+            event for event in ledger
+            if isinstance(event, dict)
+            and event.get("event_type") == "virtual_exit"
+            and event.get("performance_bucket") == "clean_strategy"
+        ]
+    pnls = [event.get("fill_pnl_per_share_yen") for event in exits if _finite(event.get("fill_pnl_per_share_yen"))]
+    wins = [value for value in pnls if value > 0]
+    losses = [value for value in pnls if value < 0]
+    maes = [event.get("mae_yen") for event in exits if _finite(event.get("mae_yen"))]
+    mfes = [event.get("mfe_yen") for event in exits if _finite(event.get("mfe_yen"))]
+    slips = [event.get("slippage_yen") for event in exits if _finite(event.get("slippage_yen"))]
+    profit_factor = None
+    if losses and wins:
+        profit_factor = sum(wins) / abs(sum(losses))
+    elif losses and not wins:
+        profit_factor = 0.0
+    return {
+        "real_submit_allowed": False,
+        "pricing": "collector_quote_simulation",
+        "closed_trade_count": len(exits),
+        "expectancy_yen_per_share": (sum(pnls) / len(pnls)) if pnls else None,
+        "profit_factor": profit_factor,
+        "avg_mae_yen": (sum(maes) / len(maes)) if maes else None,
+        "avg_mfe_yen": (sum(mfes) / len(mfes)) if mfes else None,
+        "avg_slippage_yen": (sum(slips) / len(slips)) if slips else None,
+    }
+
+
 def count_invalidated_entries(payload) -> int:
     rows = payload.get("all_targets") if isinstance(payload, dict) else None
     if not isinstance(rows, list):
@@ -720,9 +809,19 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
         if current is None or not _row_price_ok(current):
             continue
         still_same_side = _side_of(current.get("signal")) == side if isinstance(current.get("signal"), str) else False
+        excursions = engine["state"].setdefault("excursions", {})
+        entry_fill = position.get("fill_price")
+        if not _finite(entry_fill):
+            entry_fill = position.get("entry_price")
         if still_same_side:
+            excursions[key] = mark_excursion(excursions.get(key), side, entry_fill, current.get("price"))
             continue
         exit_price = current.get("price")
+        marked = mark_excursion(excursions.get(key), side, entry_fill, exit_price)
+        exit_fill = simulate_quote_fill(side, "exit", exit_price, current.get("bid"), current.get("ask"))
+        entry_slip = position.get("slippage_yen")
+        exit_slip = exit_fill.get("slippage_yen")
+        slippage = entry_slip + exit_slip if _finite(entry_slip) and _finite(exit_slip) else None
         opened_at = position.get("at")
         bucket = "contaminated_by_data_outage" if _contaminated(engine, opened_at, now) else "clean_strategy"
         event = _next_event(engine, now=now, event_type="virtual_exit", payload={
@@ -735,6 +834,15 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
             "exit_price": exit_price,
             "pnl_per_share_yen": _pnl_per_share(side, position.get("entry_price"), exit_price),
             "r_multiple": _r_multiple(side, position.get("entry_price"), position.get("stop_price"), exit_price),
+            "fill_entry_price": entry_fill,
+            "fill_exit_price": exit_fill.get("fill_price"),
+            "fill_pnl_per_share_yen": _pnl_per_share(side, entry_fill, exit_fill.get("fill_price")),
+            "entry_slippage_yen": entry_slip,
+            "exit_slippage_yen": exit_slip,
+            "slippage_yen": slippage,
+            "mae_yen": marked.get("mae_yen"),
+            "mfe_yen": marked.get("mfe_yen"),
+            "fill_model": "collector_quote_simulation",
             "quantity": None,
             "performance_bucket": bucket,
             "exit_reason": "collector_signal_left_entry_set",
@@ -748,6 +856,7 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
             }),
             "related_entry_seq": position.get("seq"),
         })
+        excursions.pop(key, None)
         engine["ledger"].append(event)
         _append_jsonl(data_dir / "ledger.jsonl", event)
         del engine["open_positions"][key]
@@ -757,6 +866,12 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
     for key, candidate in by_key.items():
         if key in engine["open_positions"]:
             continue
+        source_row = {}
+        for row in rows:
+            if isinstance(row, dict) and row.get("ticker") == candidate["ticker"]:
+                source_row = row
+                break
+        entry_fill = simulate_quote_fill(candidate["side"], "entry", candidate["price"], source_row.get("bid"), source_row.get("ask"))
         event = _next_event(engine, now=now, event_type="virtual_entry", payload={
             "position_key": key,
             "ticker": candidate["ticker"],
@@ -768,6 +883,10 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
             "target1": candidate["target1"],
             "target2": candidate["target2"],
             "published_price": candidate["price"],
+            "decision_price": entry_fill.get("decision_price"),
+            "fill_price": entry_fill.get("fill_price"),
+            "slippage_yen": entry_fill.get("slippage_yen"),
+            "fill_model": "collector_quote_simulation",
             "source_timestamp": candidate["source_timestamp"],
             "quantity": None,
             "performance_bucket": "open_unrealized_not_marked",
@@ -776,6 +895,7 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
         engine["ledger"].append(event)
         _append_jsonl(data_dir / "ledger.jsonl", event)
         engine["open_positions"][key] = event
+        engine["state"].setdefault("excursions", {})[key] = mark_excursion(None, candidate["side"], entry_fill.get("fill_price"), candidate["price"])
         entries.append(event["seq"])
 
     judgment = _next_event(engine, now=now, event_type="board_judgment", payload={
@@ -799,6 +919,7 @@ def _persist(engine: dict, data_dir: Path) -> None:
     engine["state"]["real_submit_allowed"] = False
     engine["state"]["pid"] = os.getpid()
     _write_json(data_dir / "state.json", engine["state"])
+    _write_json(data_dir / "shadow_performance.json", summarize_trade_performance(engine.get("ledger")))
 
 
 def _plain_int(value) -> int | None:
@@ -944,6 +1065,7 @@ def status_snapshot(engine: dict, *, now: datetime) -> dict:
         "engine_pid": os.getpid(),
         "latest_incident": latest,
         "ops": ops,
+        "trade_performance": summarize_trade_performance(engine.get("ledger")),
     }
 
 
