@@ -21,4 +21,6 @@
 
 | C-026 | 2026-10-06 | 一部のみ（空売り比率の市場合計。統合は未了） | 共有シートの今後項目 C-026 のうち、空売り比率だけを JPX 公開の市場合計 PDF から取得した。2026-10-05 の合計 8,721,605 百万円、空売り比率 0.388924。available_at は初回観測 `2026-10-06T01:13:15.683407+09:00` で、セッション日の 0 時にはしていない。2026-10-01 は観測時点で 4 日超のため研究用比率は null。先物外資ネット、SQ、裁定残、信用残は未取得。裁定残 PDF は参加者名を含むため保存していない。trading_adoption=false。LIVE signal と real_submit は変えていない | [scripts/research_lane_short_sale.py](../scripts/research_lane_short_sale.py)、[data/research_lane/short_sale_ratio/latest.json](../data/research_lane/short_sale_ratio/latest.json) | 次は investor_futures_flow。C-026 の統合表示は未着手 | 研究参照のみ。売買条件には未接続 |
 
+| C-026 | 2026-10-06 | 一部のみ（空売り比率と先物投資部門。統合は未了） | 空売り比率に続き、JPX先物の投資部門別週次CSVを Research Data Lane の `investor_futures_flow` として保存した。2026-09-24〜09-25 の海外投資家・日経225先物売買代金差引は 186,407,123,040 円。`published_at` は HTTP Last-Modified の `2026-10-01T15:30:29+09:00`。検証できない 2026-04-17 週は null。freshness は JPX 営業日。FETCHED は 2/17。先物外資以外の SQ、裁定残、信用残は未取得。trading_adoption=false。LIVE signal と real_submit は変えていない。`D:\100億PROJECT\MASTER_SPEC` は未反映 | [scripts/research_lane_investor_flow.py](../scripts/research_lane_investor_flow.py)、[docs/100oku/CURRENT_STATUS.md](100oku/CURRENT_STATUS.md) | C-026 の統合表示は未着手 | 研究参照のみ。売買条件には未接続 |
+
 ChatGPT側は当該ID・根拠を読み、必要な再検証だけを共有シートに新しいIDで追記する。双方とも返信を実装済みや売買可能の証拠として扱わない。

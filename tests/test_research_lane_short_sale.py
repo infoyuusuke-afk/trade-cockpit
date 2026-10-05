@@ -41,12 +41,16 @@ class ShortSaleLaneTests(unittest.TestCase):
         impossible = "2026年2月31日 1 50.0% 1 50.0% 0 0.0% 2"
         self.assertRaises(ValueError, lane.parse_short_sale_text, impossible)
 
-    def test_freshness_closes_future_and_old_sessions(self):
+    def test_freshness_uses_jpx_business_days(self):
         session = "2026-10-05"
         self.assertEqual(lane.freshness(session, datetime(2026, 10, 5, tzinfo=lane.JST)), "FRESH")
-        self.assertEqual(lane.freshness(session, datetime(2026, 10, 9, tzinfo=lane.JST)), "FRESH")
-        self.assertEqual(lane.freshness(session, datetime(2026, 10, 10, tzinfo=lane.JST)), "STALE")
+        self.assertEqual(lane.freshness(session, datetime(2026, 10, 6, tzinfo=lane.JST)), "FRESH")
+        self.assertEqual(lane.freshness(session, datetime(2026, 10, 7, tzinfo=lane.JST)), "STALE")
         self.assertEqual(lane.freshness(session, datetime(2026, 10, 4, tzinfo=lane.JST)), "STALE")
+        # Golden Week: 6 calendar days, 1 business day.
+        self.assertEqual(lane.freshness("2026-05-01", datetime(2026, 5, 7, tzinfo=lane.JST)), "FRESH")
+        self.assertEqual(lane.freshness("2026-05-01", datetime(2026, 5, 8, tzinfo=lane.JST)), "STALE")
+        self.assertEqual(lane.freshness("2030-01-07", datetime(2030, 1, 8, tzinfo=lane.JST)), "CALENDAR_MISSING")
 
     def test_discovery_keeps_market_pdfs_only(self):
         html = (
@@ -72,7 +76,7 @@ class ShortSaleLaneTests(unittest.TestCase):
         )
         self.assertEqual(
             [row["id"] for row in lane.LANE_PRIORITY if row["fetch_this_turn"]],
-            ["short_sale_ratio"],
+            ["short_sale_ratio", "investor_futures_flow"],
         )
         for key in ("nt_ratio", "futures_options_positioning", "jpx_nikkei_mid_small", "dex", "tradingview_wide"):
             self.assertTrue(lane.NOT_FETCHED_BECAUSE[key])
@@ -80,8 +84,11 @@ class ShortSaleLaneTests(unittest.TestCase):
     def test_stored_observation_is_fetched_and_not_a_live_sample(self):
         record = json.loads(lane.LATEST.read_text(encoding="utf-8"))
         observed = datetime.fromisoformat(record["fetched_at"])
-        self.assertEqual(record["available_at"], record["fetched_at"])
-        self.assertNotIn("T00:00:00", record["available_at"])
+        self.assertEqual(record["available_at"], record["first_seen_at"])
+        self.assertEqual(record["first_seen_at"], "2026-10-06T01:13:15.683407+09:00")
+        self.assertEqual(record["published_at"], "2026-10-05T16:30:28+09:00")
+        self.assertEqual(record["published_at_basis"], "http_last_modified")
+        self.assertNotIn("T00:00:00", record["published_at"])
         self.assertEqual(record["session_date"], "2026-10-05")
         self.assertEqual(record["short_ratio"], 0.388924)
         self.assertEqual(record["total_million_yen"], 8721605)
@@ -109,12 +116,17 @@ class ShortSaleLaneTests(unittest.TestCase):
         self.assertEqual(old["freshness"], "STALE")
         self.assertIsNone(old["short_ratio_for_research"])
         self.assertEqual(old["short_ratio"], 0.388682)
+        october_second = sessions[1]
+        self.assertEqual(october_second["calendar_age_days"], 4)
+        self.assertEqual(october_second["business_day_gap"], 2)
+        self.assertEqual(october_second["freshness"], "STALE")
+        self.assertIsNone(october_second["short_ratio_for_research"])
 
     def test_research_layer_can_read_it_without_adopting_it(self):
         lane_rows = brain.research_data_lane()
         self.assertEqual(
             {item["id"] for item in lane_rows if item["fetch_status"] == "FETCHED"},
-            {"short_sale_ratio"},
+            {"short_sale_ratio", "investor_futures_flow"},
         )
         item = next(row for row in lane_rows if row["id"] == "short_sale_ratio")
         self.assertFalse(item["trading_adoption"])
@@ -131,6 +143,10 @@ class ShortSaleLaneTests(unittest.TestCase):
             self.assertIsNone(item["short_ratio_for_research"])
         self.assertTrue(all(row["trading_adoption"] is False for row in lane_rows))
         self.assertTrue(all(row["real_submit_allowed"] is False for row in lane_rows))
+        summary = brain.research_lane_fetch_summary(lane_rows)
+        self.assertEqual(summary["fetched"], 2)
+        self.assertEqual(summary["registry"], 17)
+        self.assertEqual(summary["ids"], ["investor_futures_flow", "short_sale_ratio"])
 
     def test_malformed_store_does_not_invent_a_ratio(self):
         record = json.loads(lane.LATEST.read_text(encoding="utf-8"))
@@ -188,6 +204,18 @@ class ShortSaleLaneTests(unittest.TestCase):
             self.assertEqual(stored["available_at"], built["available_at"])
             self.assertEqual(stored["fetched_at"], built["fetched_at"])
             self.assertNotEqual(again["fetched_at"], built["fetched_at"])
+
+    def test_unverified_clock_stays_empty(self):
+        record = json.loads(lane.LATEST.read_text(encoding="utf-8"))
+        blob = (lane.RAW / f"{record['sha256']}.pdf").read_bytes()
+        seen = datetime(2026, 10, 6, 1, 13, tzinfo=lane.JST)
+        missing = lane.build_record(blob, record["source"], seen, None)
+        self.assertIsNone(missing["published_at"])
+        self.assertIsNone(missing["published_at_basis"])
+        early = lane.build_record(blob, record["source"], seen, "Thu, 01 Oct 2026 07:30:29 GMT")
+        self.assertIsNone(early["published_at"])
+        verified = lane.build_record(blob, record["source"], seen, "Mon, 05 Oct 2026 07:30:28 GMT")
+        self.assertEqual(verified["published_at"], "2026-10-05T16:30:28+09:00")
 
     def test_module_does_not_submit(self):
         text = (ROOT / "scripts" / "research_lane_short_sale.py").read_text(encoding="utf-8")
