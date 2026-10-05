@@ -45,4 +45,6 @@ class WeeklyThemeLabelTests(unittest.TestCase):
         self.assertIn("+109,200円", page)
         script = (ROOT / "trade_control.js").read_text(encoding="utf-8")
         self.assertIn("function themeLabel", script)
+        self.assertIn('.map(themeLabel).filter(Boolean).join("・")', script)
+        self.assertNotIn("esc(themeLabel", script)
         self.assertIn("保存スナップショットです。", script)

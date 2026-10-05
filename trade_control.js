@@ -216,9 +216,9 @@
       const w=await r.json();
       const best=(Array.isArray(w.best)?w.best:[]).map(x=>tradeCard(x,"BEST",Number(x?.pnl_yen)>=0?"long":"short")).join("");
       const worst=(Array.isArray(w.worst)?w.worst:[]).map(x=>tradeCard(x,"REVIEW",Number(x?.pnl_yen)<0?"short":"wait")).join("");
-      const themes=(Array.isArray(w.themes)?w.themes:[]).map(x=>'<span>'+esc(themeLabel(x))+'</span>').join("");
+      const themes=(Array.isArray(w.themes)?w.themes:[]).map(themeLabel).filter(Boolean).join("・");
       const snapshotNote=esc((w.created_at||"保存日不明")+" の保存スナップショットです。Shadow Trade Ledger の clean 件数ではなく、AIトレード日記の行でもありません。各行の fees 0 は料金表が無いときの仮置きで、確認済みの手数料ではありません。実発注はロックされたままです。");
-      const rules=(Array.isArray(w.next_rules)?w.next_rules:[]).map((x,i)=>'<span>'+(i+1)+'. '+esc(x)+'</span>').join("");
+      const rules=(Array.isArray(w.next_rules)?w.next_rules:[]).map((x,i)=>(i+1)+". "+String(x??"")).join(" / ");
       root.className="card wide";
       root.innerHTML=
         '<div class="pane-intro"><span>AI COCKPIT</span><h2>週間振り返り・来週戦略</h2><p>'+esc(w.week||"—")+' / '+esc(w.created_at||"—")+'</p><p class="warning">'+snapshotNote+'</p></div>'+
