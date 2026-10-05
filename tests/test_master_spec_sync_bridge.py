@@ -89,9 +89,9 @@ class MasterSpecSyncBridgeTests(unittest.TestCase):
         self.assertLess(register.index("Invoke-RegisterGuard $root"), register.index("schtasks.exe"))
         guard = register.split("function Invoke-RegisterGuard(", 1)[1].split("function Invoke-RegisterCommit", 1)[0]
         self.assertNotIn("reset --hard", guard)
-        self.assertLess(guard.index("REGISTER_ABORT=WORKTREE_DIRTY"), guard.index('checkout", "--detach"'))
-        self.assertLess(guard.index("REGISTER_ABORT=LOCAL_COMMITS_NOT_ON_REMOTE"), guard.index('checkout", "--detach"'))
-        self.assertLess(guard.index("REGISTER_ABORT=HISTORY_DIVERGED"), guard.index('checkout", "--detach"'))
+        self.assertLess(guard.index("REGISTER_ABORT=WORKTREE_DIRTY"), guard.index('checkout", "--quiet", "--detach"'))
+        self.assertLess(guard.index("REGISTER_ABORT=LOCAL_COMMITS_NOT_ON_REMOTE"), guard.index('checkout", "--quiet", "--detach"'))
+        self.assertLess(guard.index("REGISTER_ABORT=HISTORY_DIVERGED"), guard.index('checkout", "--quiet", "--detach"'))
         self.assertLess(guard.index('"--porcelain"'), guard.index('"merge-base"'))
         for token in (
             'Write-Fail "FETCH_FAILED"',
@@ -240,7 +240,11 @@ class MasterSpecSyncBridgeTests(unittest.TestCase):
         self.assertLess(text.index("REGISTER_ABORT=LOCAL_COMMITS_NOT_ON_REMOTE"), text.index("checkout"))
         self.assertLess(text.index("REGISTER_ABORT=HISTORY_DIVERGED"), text.index("checkout"))
         check = text.split("function Invoke-SafeRegisterCheck(", 1)[1].split("function Invoke-RegisterScript", 1)[0]
+        helper = text.split("function Invoke-SafeGit(", 1)[1].split("function Invoke-SafeRegisterCheck", 1)[0]
         self.assertNotIn("reset --hard", check)
+        self.assertIn('"--quiet"', check)
+        self.assertIn("PSNativeCommandUseErrorActionPreference = $false", helper)
+        self.assertIn("Stderr", helper)
         self.assertIn(
             "$check = Invoke-SafeRegisterCheck $root $RemoteBranch\n"
             "if ($check -ne 0) { exit $check }\n"
@@ -288,6 +292,8 @@ class MasterSpecSyncBridgeTests(unittest.TestCase):
             "CASE=LOCAL_ONLY",
             "CASE=DIVERGED",
             "CASE=FETCH_FAILED",
+            "CASE=STDERR_OK",
+            "GIT_STDERR_CAPTURED=1",
             "CASE=FAST_FORWARD",
             "CASE=UNCHANGED",
             "REGISTER_CALLED=0",

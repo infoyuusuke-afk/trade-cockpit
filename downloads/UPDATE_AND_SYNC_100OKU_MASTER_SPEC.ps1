@@ -62,14 +62,34 @@ function Test-BranchName([string]$Name) {
 }
 
 function Invoke-Git([string]$Root, [string[]]$GitArgs) {
-    $output = & git -C $Root @GitArgs 2>&1
-    $text = ""
-    if ($null -ne $output) {
-        $text = (($output | ForEach-Object { "$_" }) -join "`n").Trim()
+    # Exit code decides success. Git may write a normal note to stderr.
+    $previousErrorAction = $ErrorActionPreference
+    $previousNative = $PSNativeCommandUseErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $PSNativeCommandUseErrorActionPreference = $false
+    $stdoutLines = New-Object System.Collections.Generic.List[string]
+    $stderrLines = New-Object System.Collections.Generic.List[string]
+    $code = 1
+    try {
+        $merged = & git -C $Root @GitArgs 2>&1
+        $code = $LASTEXITCODE
+        if ($null -ne $merged) {
+            foreach ($item in @($merged)) {
+                if ($item -is [System.Management.Automation.ErrorRecord]) {
+                    [void]$stderrLines.Add([string]$item)
+                } else {
+                    [void]$stdoutLines.Add([string]$item)
+                }
+            }
+        }
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
+        $PSNativeCommandUseErrorActionPreference = $previousNative
     }
     return [pscustomobject]@{
-        Code = $LASTEXITCODE
-        Text = $text
+        Code = $code
+        Text = (($stdoutLines -join [Environment]::NewLine).Trim())
+        Stderr = (($stderrLines -join [Environment]::NewLine).Trim())
     }
 }
 
@@ -252,7 +272,7 @@ function Invoke-UpdateAndSync([string]$Root, [string]$Branch, [string]$Destinati
         return 0
     }
     if ($move -eq "FAST_FORWARD") {
-        $checkout = Invoke-Git $Root @("-c", "advice.detachedHead=false", "checkout", "--detach", $remoteSha)
+        $checkout = Invoke-Git $Root @("-c", "advice.detachedHead=false", "checkout", "--quiet", "--detach", $remoteSha)
         if ($checkout.Code -ne 0) {
             Write-Fail "CHECKOUT_FAILED"
             return 1

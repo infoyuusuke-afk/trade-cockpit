@@ -21,13 +21,36 @@ function Get-SafeRepoRoot {
 }
 
 function Invoke-SafeGit([string]$Root, [string[]]$GitArgs) {
-    $output = & git -C $Root @GitArgs 2>&1
-    $text = ""
-    if ($null -ne $output) {
-        $lines = @($output | ForEach-Object { "$_" })
-        $text = ($lines -join [Environment]::NewLine).Trim()
+    # Windows PowerShell 5.1 turns git's normal stderr into NativeCommandError when
+    # ErrorActionPreference is Stop. Exit code decides success. Stderr is evidence only.
+    $previousErrorAction = $ErrorActionPreference
+    $previousNative = $PSNativeCommandUseErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $PSNativeCommandUseErrorActionPreference = $false
+    $stdoutLines = New-Object System.Collections.Generic.List[string]
+    $stderrLines = New-Object System.Collections.Generic.List[string]
+    $code = 1
+    try {
+        $merged = & git -C $Root @GitArgs 2>&1
+        $code = $LASTEXITCODE
+        if ($null -ne $merged) {
+            foreach ($item in @($merged)) {
+                if ($item -is [System.Management.Automation.ErrorRecord]) {
+                    [void]$stderrLines.Add([string]$item)
+                } else {
+                    [void]$stdoutLines.Add([string]$item)
+                }
+            }
+        }
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
+        $PSNativeCommandUseErrorActionPreference = $previousNative
     }
-    return [pscustomobject]@{ Code = $LASTEXITCODE; Text = $text }
+    return [pscustomobject]@{
+        Code = $code
+        Text = (($stdoutLines -join [Environment]::NewLine).Trim())
+        Stderr = (($stderrLines -join [Environment]::NewLine).Trim())
+    }
 }
 
 function Invoke-SafeRegisterCheck([string]$Root, [string]$Branch) {
@@ -78,7 +101,7 @@ function Invoke-SafeRegisterCheck([string]$Root, [string]$Branch) {
         }
         return 1
     }
-    $checkout = Invoke-SafeGit $Root @("-c", "advice.detachedHead=false", "checkout", "--detach", $remoteSha)
+    $checkout = Invoke-SafeGit $Root @("-c", "advice.detachedHead=false", "checkout", "--quiet", "--detach", $remoteSha)
     if ($checkout.Code -ne 0) {
         $script:LastSafeAbort = "CHECKOUT_FAILED"
         Write-Host "REGISTER_ABORT=CHECKOUT_FAILED"
@@ -122,9 +145,22 @@ function Invoke-RegisterScript([string]$Root, [string]$Branch) {
         Write-Host "REGISTER_ABORT=SHELL_MISSING"
         return 1
     }
-    $child = & $shell -NoProfile -ExecutionPolicy Bypass -File $register -Register -RepoRoot $Root -RemoteBranch $Branch 2>&1
-    $childCode = $LASTEXITCODE
-    if ($null -ne $child) { Write-Host (($child | ForEach-Object { "$_" }) -join [Environment]::NewLine) }
+    $previousErrorAction = $ErrorActionPreference
+    $previousNative = $PSNativeCommandUseErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $PSNativeCommandUseErrorActionPreference = $false
+    try {
+        $child = & $shell -NoProfile -ExecutionPolicy Bypass -File $register -Register -RepoRoot $Root -RemoteBranch $Branch 2>&1
+        $childCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
+        $PSNativeCommandUseErrorActionPreference = $previousNative
+    }
+    if ($null -ne $child) {
+        $childLines = New-Object System.Collections.Generic.List[string]
+        foreach ($item in @($child)) { [void]$childLines.Add([string]$item) }
+        Write-Host (($childLines -join [Environment]::NewLine))
+    }
     return $childCode
 }
 
@@ -258,6 +294,20 @@ function Invoke-SafeRegisterSelfTest {
         $tip = Get-SelfTestHead $pair.Work
         & git -C $pair.Work reset --hard $base
         if ($LASTEXITCODE -ne 0) { throw "reset failed" }
+        & git -C $pair.Work checkout -q --detach $base
+        if ($LASTEXITCODE -ne 0) { throw "detach base failed" }
+        $previousNative = $PSNativeCommandUseErrorActionPreference
+        $PSNativeCommandUseErrorActionPreference = $true
+        $noisy = Invoke-SafeGit $pair.Work @("-c", "advice.detachedHead=false", "checkout", "--detach", $tip)
+        $PSNativeCommandUseErrorActionPreference = $previousNative
+        if ($noisy.Code -ne 0) { throw "stderr was treated as failure" }
+        if ($noisy.Text.Length -ne 0) { throw "stdout mixed with stderr" }
+        if ($noisy.Stderr.IndexOf("Previous HEAD position was") -lt 0) { throw "stderr was not captured" }
+        if ((Get-SelfTestHead $pair.Work) -ne $tip) { throw "noisy checkout did not move HEAD" }
+        Write-Host "CASE=STDERR_OK"
+        Write-Host "GIT_STDERR_CAPTURED=1"
+        & git -C $pair.Work reset --hard $base
+        if ($LASTEXITCODE -ne 0) { throw "reset after stderr case failed" }
         $code = Invoke-SafeRegisterCheck $pair.Work $branch
         if ($code -ne 0) { throw "fast-forward check failed" }
         $reg = Invoke-RegisterScript $pair.Work $branch
