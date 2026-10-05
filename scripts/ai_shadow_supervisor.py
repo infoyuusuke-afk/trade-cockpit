@@ -26,9 +26,15 @@ import argparse
 import hashlib
 import json
 import os
+import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+_SCRIPTS = Path(__file__).resolve().parent
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
+import shadow_trade_ledger as trade_ledger
 
 SCHEMA_VERSION = "ai-shadow-supervisor-1"
 CANONICAL_SOURCE = "MarketSpeed II RSS / local PC"
@@ -1137,9 +1143,23 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
             }),
             "related_entry_seq": position.get("seq"),
         })
+        source_stage = "SYNTHETIC/REPLAY" if engine.get("_acceptance_class") == "synthetic" else "LIVE_SHADOW"
+        exit_signal_at = current.get("source_timestamp") if isinstance(current.get("source_timestamp"), str) else None
+        trade = trade_ledger.build_shadow_trade(
+            position,
+            event,
+            exit_signal_at=exit_signal_at,
+            source_stage=source_stage,
+            data_quality="CONTAMINATED" if bucket != "clean_strategy" else "OK",
+        )
+        event["trade_id"] = trade["trade_id"]
+        event["source_stage"] = source_stage
+        event["commission"] = trade_ledger.FEE_UNKNOWN
         excursions.pop(key, None)
         engine["ledger"].append(event)
         _append_jsonl(data_dir / "ledger.jsonl", event)
+        trade_ledger.append_shadow_trade(data_dir, trade)
+        trade_ledger.publish_shadow_research(data_dir)
         del engine["open_positions"][key]
         exits.append(event["seq"])
 

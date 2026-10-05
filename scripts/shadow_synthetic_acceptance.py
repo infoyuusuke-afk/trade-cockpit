@@ -17,6 +17,7 @@ if str(_SCRIPTS) not in sys.path:
 
 import ai_shadow_supervisor as shadow
 import shadow_live_observation as observation
+import shadow_trade_ledger as trade_ledger
 
 JST = timezone(timedelta(hours=9))
 NOW = datetime(2026, 10, 2, 9, 16, 5, tzinfo=JST)
@@ -156,10 +157,35 @@ def run_synthetic_acceptance(data_dir: Path, *, now: datetime = NOW) -> dict:
         restarted["ledger"],
         now=now,
     )
+    trades, trade_error = trade_ledger.read_shadow_trades(data_dir / "shadow_trades.jsonl")
+    ledger_ok = (
+        not trade_error
+        and len(trades) == 2
+        and all(set(trade_ledger.LEDGER_FIELDS).issubset(trade) for trade in trades)
+        and all(trade.get("source_stage") == "SYNTHETIC/REPLAY" for trade in trades)
+        and all(trade.get("commission") == trade_ledger.FEE_UNKNOWN for trade in trades)
+        and all(trade.get("other_cost") == trade_ledger.FEE_UNKNOWN for trade in trades)
+        and all(trade.get("net_pnl") == trade_ledger.FEE_UNKNOWN for trade in trades)
+        and all(trade.get("quantity") is None and trade.get("real_submit_allowed") is False for trade in trades)
+        and all(trade.get("entry_order_at") is None for trade in trades)
+    )
+    status_path = data_dir / "shadow_research_status.json"
+    status = json.loads(status_path.read_text(encoding="utf-8")) if status_path.exists() else {}
+    research_ok = (
+        status.get("CLEAN_SHADOW_TRADE_N") == 0
+        and status.get("BASELINE_N") == 0
+        and status.get("FEATURE_DELTA_EV") == "NOT_AVAILABLE"
+        and status.get("PROMOTION_CANDIDATE") == "NONE"
+        and status.get("pipe_n") == 0
+        and status.get("pipe_counts_as_live_sample") is False
+        and status.get("real_submit_allowed") is False
+    )
     return {
-        "ok": bool(metrics and judged["live_roundtrip"] == "NOT_RUN/SYNTHETIC_LEDGER"),
+        "ok": bool(metrics and judged["live_roundtrip"] == "NOT_RUN/SYNTHETIC_LEDGER" and ledger_ok and research_ok),
         "live_roundtrip": judged["live_roundtrip"],
         "real_submit_allowed": False,
+        "ledger_recorded": ledger_ok,
+        "live_sample_n": status.get("CLEAN_SHADOW_TRADE_N"),
     }
 
 
@@ -168,6 +194,9 @@ def format_report(result: dict) -> str:
     return "\n".join([
         "SYNTHETIC_ACCEPTANCE=" + status,
         "LIVE_ROUNDTRIP=" + str(result["live_roundtrip"]),
+        "SHADOW_TRADE_LEDGER=" + ("RECORDED" if result.get("ledger_recorded") else "MISSING"),
+        "FEE=FEE_UNKNOWN",
+        "LIVE_SAMPLE_N=" + str(result.get("live_sample_n")),
         "REAL_SUBMIT_ALLOWED=0",
     ])
 
