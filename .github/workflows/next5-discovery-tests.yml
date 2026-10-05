@@ -1,0 +1,20 @@
+name: NEXT5 discovery prep tests
+on:
+  pull_request:
+    paths:
+      - 'next5/discovery.cjs'
+      - 'next5/selective-reader.cjs'
+      - 'tests/next5-discovery.test.cjs'
+      - 'tests/next5-selective-reader.test.cjs'
+      - '.github/workflows/next5-discovery-tests.yml'
+permissions:
+  contents: read
+jobs:
+  discovery-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/next5-selective-reader.test.cjs tests/next5-discovery.test.cjs
