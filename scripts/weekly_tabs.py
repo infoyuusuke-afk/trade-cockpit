@@ -18,6 +18,25 @@ START = "<!-- COCKPIT_TABS_START -->"
 END = "<!-- COCKPIT_TABS_END -->"
 WSTART = "<!-- WEEKLY_REVIEW_START -->"
 WEND = "<!-- WEEKLY_REVIEW_END -->"
+_REPR_NAME = re.compile(r"""^\s*[\[(]\s*['"]([^'"]+)['"]""")
+SNAPSHOT_NOTE = (
+    "保存スナップショットです。Shadow Trade Ledger の clean 件数ではなく、"
+    "AIトレード日記の行でもありません。各行の fees 0 は料金表が無いときの仮置きで、"
+    "確認済みの手数料ではありません。実発注はロックされたままです。"
+)
+
+
+def theme_label(value) -> str:
+    """Show a theme name. A stored Python list string is not the label."""
+    if isinstance(value, (list, tuple)):
+        return theme_label(value[0]) if value else ""
+    if isinstance(value, dict):
+        return theme_label(value.get("theme") or value.get("name") or "")
+    if not isinstance(value, str):
+        return ""
+    text = value.strip()
+    matched = _REPR_NAME.match(text)
+    return matched.group(1).strip() if matched else text
 
 
 def load(path: Path, default):
@@ -48,10 +67,11 @@ def build_weekly(now: datetime) -> dict:
     nikkei = indices.get("日経平均", {})
     nasdaq = indices.get("NASDAQ", {})
     themes = data.get("themes", [])[:3]
-    theme_names = [
-        str(x.get("theme") or x.get("name") or x) if isinstance(x, dict) else str(x)
-        for x in themes
-    ]
+    theme_names = []
+    for item in themes:
+        label = theme_label(item)
+        if label and label not in theme_names:
+            theme_names.append(label)
     next_rules = [
         "8:00版の発動価格を抜くまで注文しない",
         "前場はVWAPとOR15が同方向の銘柄だけ",
@@ -127,7 +147,8 @@ def weekly_html(w: dict) -> str:
         for x in w.get("worst", [])
     ) or best
 
-    theme_text = "・".join(str(x) for x in w.get("themes", [])) or "更新待ち"
+    theme_text = "・".join(label for label in (theme_label(x) for x in w.get("themes", [])) if label) or "更新待ち"
+    snapshot_note = html.escape(str(w.get("created_at") or "保存日不明") + " の" + SNAPSHOT_NOTE)
     rule_text = " / ".join(
         f"{i + 1}. {x}" for i, x in enumerate(w.get("next_rules", []))
     ) or "更新待ち"
@@ -166,6 +187,7 @@ def weekly_html(w: dict) -> str:
 <section id="weekly-review" class="card wide">
   <div class="pane-intro"><span>AI COCKPIT</span><h2>週間振り返り・来週戦略</h2>
     <p>{html.escape(w['week'])}｜作成 {html.escape(w['created_at'])}</p>
+    <p class="warning">{snapshot_note}</p>
   </div>
   <div class="cc-grid">{summary}{theme_card}{rule_card}</div>
   <h3>良かった取引</h3><div class="cc-grid">{best}</div>
@@ -227,7 +249,7 @@ def tabs_block() -> str:
  </details>
 </nav>
 <script src="opportunity_radar.js?v=v9-1" defer></script>
-<script src="trade_control.js?v=p0-shadow-supervisor-1" defer></script>
+<script src="trade_control.js?v=weekly-snapshot-1" defer></script>
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
  const main=document.querySelector("main"); if(!main)return;

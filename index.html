@@ -213,7 +213,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <script src="voice_client.js?v=v9-1" defer></script>
 <script src="opportunity_radar.js?v=v9-1" defer></script>
 <script src="card_table_adapter.js?v=v9-1" defer></script>
-<script src="trade_control.js?v=p0-shadow-supervisor-1" defer></script>
+<script src="trade_control.js?v=weekly-snapshot-1" defer></script>
 <style>.unified-mode{margin:8px 6px 0;padding:10px 14px;border:1px solid #272A30;border-radius:10px;background:#101114;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}.unified-mode .lamp{width:12px;height:12px;border-radius:50%;background:#63676e;box-shadow:0 0 0 5px #63676e18}.unified-mode.live{border-color:#1f4a37;background:#101114}.unified-mode.live .lamp{background:#35e2ae;box-shadow:0 0 10px #35e2ae66}.unified-mode.stale{border-color:#6b5426}.unified-mode strong{font-size:16px;color:#e7e9eb}.unified-mode span{color:#9aa0a6}.unified-mode b{color:#c7cacd;font-size:12px;font-weight:500}.unified-mode small{color:#63676e;display:block;margin-top:2px}.unified-mode-controls{display:flex;align-items:center;gap:8px}.market-status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#15171B;border:1px solid #272A30;color:#7a7f86;font-size:10.5px;white-space:nowrap}.market-status-pill .dot{width:6px;height:6px;border-radius:50%;background:#4a4e55;flex:none}.market-status-pill.open{color:#8fe3c0;border-color:#1f4a37}.market-status-pill.open .dot{background:#35e2ae;box-shadow:0 0 5px #35e2ae}.voice-toggle{min-width:74px;height:30px;padding:0 10px;border-radius:999px;background:#15171B;border:1px solid #272A30;color:#c7cacd;font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center}@media(max-width:700px){.unified-mode{grid-template-columns:auto 1fr auto}.unified-mode>b{grid-column:3}.unified-mode .unified-mode-controls{grid-column:1/-1}}.voice-toggle.voice-on{color:#1fc79a;border-color:#164536;background:#0d2b23}.voice-toggle:disabled{opacity:.55;cursor:not-allowed}.pts-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}.pts-section-head h3{margin:0}</style>
 <header><div><span class="tag">寄り付き前8:00版</span><div class="sub">2026-09-25 10:41:50 JST／統一取引日 2026-09-25</div></div></header>
 <div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><main>
@@ -662,6 +662,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <section id="weekly-review" class="panel">
   <h2>週間振り返り・来週戦略</h2>
   <p>2026-09-14～2026-09-20｜作成 2026-09-19 20:17 JST</p>
+  <p class="warning">2026-09-19 20:17 JST の保存スナップショットです。Shadow Trade Ledger の clean 件数ではなく、AIトレード日記の行でもありません。各行の fees 0 は料金表が無いときの仮置きで、確認済みの手数料ではありません。実発注はロックされたままです。</p>
   <div class="cards">
     <div class="card"><b>仮想取引</b><span>15件</span></div>
     <div class="card"><b>勝率</b><span>93.3%</span></div>
@@ -673,7 +674,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   <div class="weekly-grid">
     <div><h3>良かった取引</h3><ul><li>Terra Drone（278A）：+41,000円（+0.30R）</li><li>マクニカHD（3132）：+15,000円（+1.50R）</li><li>マクニカHD（3132）：+15,000円（+1.50R）</li></ul></div>
     <div><h3>改善する取引</h3><ul><li>IHI（7013）：-8,200円（-1.00R）</li><li>神戸物産（3038）：+100円（+0.01R）</li><li>IHI（7013）：+250円（+0.03R）</li></ul></div>
-    <div><h3>来週の注目テーマ</h3><p>[&#x27;フィジカルAI・ロボット&#x27;, 12.14, 1, [[&#x27;THK（6481）&#x27;, 12.14, 4.55]]]・[&#x27;蓄電池・電力&#x27;, 11.6, 1, [[&#x27;パワーエックス（485A）&#x27;, 11.6, 13.56]]]・[&#x27;電子部品・EV&#x27;, 11.01, 1, [[&#x27;ニデック（6594）&#x27;, 11.01, 4.85]]]</p></div>
+    <div><h3>来週の注目テーマ</h3><p>フィジカルAI・ロボット・蓄電池・電力・電子部品・EV</p></div>
     <div><h3>来週のルール</h3><ol><li>日経平均が20日線下ではロング数量を半分</li><li>8:00版の発動価格を抜くまで注文しない</li><li>前場はVWAPとOR15が同方向の銘柄だけ</li><li>1銘柄の最大損失を資金の0.5%以内に固定</li></ol></div>
   </div>
 </section>
