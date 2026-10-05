@@ -23,6 +23,7 @@ import decision_input_value as audit
 
 JST = timezone(timedelta(hours=9))
 MIN_SAMPLE = 8
+STATISTICAL_MIN_SAMPLE = 30
 STAGES = ("backtest", "oos", "replay", "shadow")
 SIDES = ("LONG", "SHORT", "NO_TRADE")
 LLM_ROLE = "STRUCTURE_UNSTRUCTURED_TEXT_ONLY"
@@ -371,7 +372,49 @@ def _same_direction(left, right) -> bool:
     return (left > 0 and right > 0) or (left < 0 and right < 0)
 
 
-def summarize_model(trials, *, model_id: str, side: str) -> dict:
+def _family_z(family_size: int) -> float:
+    """Wider interval when several features are searched together.
+
+    Eight samples remain the pipeline floor. They do not survive this bar.
+    """
+    if family_size <= 1:
+        return 1.96
+    if family_size <= 5:
+        return 2.58
+    if family_size <= 12:
+        return 2.88
+    return 3.10
+
+
+def _variance(values: list) -> float | None:
+    if len(values) < 2:
+        return None
+    mean = sum(values) / len(values)
+    return sum((value - mean) ** 2 for value in values) / (len(values) - 1)
+
+
+def _effect_size(model_nets: list, base_nets: list):
+    left = _variance(model_nets)
+    right = _variance(base_nets)
+    if left is None or right is None:
+        return None
+    pooled = ((len(model_nets) - 1) * left + (len(base_nets) - 1) * right) / (len(model_nets) + len(base_nets) - 2)
+    if pooled <= 0:
+        return None
+    return (sum(model_nets) / len(model_nets) - sum(base_nets) / len(base_nets)) / (pooled ** 0.5)
+
+
+def _delta_ci_low(model_nets: list, base_nets: list, z_value: float):
+    left = _variance(model_nets)
+    right = _variance(base_nets)
+    if left is None or right is None or left <= 0 or right <= 0:
+        return None
+    se = ((left / len(model_nets)) + (right / len(base_nets))) ** 0.5
+    delta = (sum(model_nets) / len(model_nets)) - (sum(base_nets) / len(base_nets))
+    return delta - z_value * se
+
+
+def summarize_model(trials, *, model_id: str, side: str, family_size: int | None = None) -> dict:
     """Compare one candidate with the baseline on the same side.
 
     The baseline model is the reference. Its own promotion flag stays false.
@@ -396,16 +439,30 @@ def summarize_model(trials, *, model_id: str, side: str) -> dict:
             continue
         regimes.setdefault(row["regime"], []).append(row)
     regime_stats = {name: _metrics(rows) for name, rows in regimes.items()}
+    searched = len(registry_ids("acquired")) + len(registry_ids("connected"))
+    if family_size is None:
+        family_size = searched
+    model_oos = [row["net"] for row in model_rows if row["stage"] == "oos"]
+    base_oos = [row["net"] for row in base_rows if row["stage"] == "oos"]
+    effect = _effect_size(model_oos, base_oos)
+    adjusted_low = _delta_ci_low(model_oos, base_oos, _family_z(family_size))
     status = "INSUFFICIENT_SAMPLE"
     promotion = False
+    edge_claim = False
+    edge_block_reasons = []
     if model_id == BASELINE_MODEL:
         status = "BASELINE"
     else:
-        enough = all(
+        pipeline = all(
             stages[stage]["model"]["n"] >= MIN_SAMPLE and stages[stage]["baseline"]["n"] >= MIN_SAMPLE
             for stage in STAGES
         )
-        if not enough:
+        statistical_n = all(
+            stages[stage]["model"]["n"] >= STATISTICAL_MIN_SAMPLE and stages[stage]["baseline"]["n"] >= STATISTICAL_MIN_SAMPLE
+            for stage in STAGES
+        )
+        regime_ok = bool(regime_stats) and all(item["n"] >= STATISTICAL_MIN_SAMPLE for item in regime_stats.values())
+        if not pipeline:
             status = "INSUFFICIENT_SAMPLE"
         elif not all(_same_direction(deltas["backtest"], deltas[stage]) for stage in STAGES):
             status = "OOS_FAILED"
@@ -414,8 +471,20 @@ def summarize_model(trials, *, model_id: str, side: str) -> dict:
         elif oos["ci_low"] is None or oos["ci_low"] <= 0:
             status = "OOS_FAILED"
         else:
-            status = "OOS_REPRODUCED"
-            promotion = True
+            if not statistical_n:
+                edge_block_reasons.append("STATISTICAL_SAMPLE")
+            if effect is None:
+                edge_block_reasons.append("EFFECT_SIZE_UNMEASURED")
+            if not regime_ok:
+                edge_block_reasons.append("REGIME_SAMPLE")
+            if adjusted_low is None or adjusted_low <= 0:
+                edge_block_reasons.append("MULTIPLE_TESTING")
+            if edge_block_reasons:
+                status = "PIPELINE_ONLY"
+            else:
+                status = "OOS_REPRODUCED"
+                promotion = True
+                edge_claim = True
     return {
         "model_id": model_id,
         "side": side,
@@ -433,8 +502,15 @@ def summarize_model(trials, *, model_id: str, side: str) -> dict:
         "ci_high": oos["ci_high"],
         "regimes": regime_stats,
         "stages": stages,
+        "effect_size": effect,
+        "adjusted_delta_ci_low": adjusted_low,
+        "family_size": family_size,
+        "pipeline_min_sample": MIN_SAMPLE,
+        "statistical_min_sample": STATISTICAL_MIN_SAMPLE,
         "measurement_status": status,
         "promotion_candidate": promotion,
+        "edge_claim": edge_claim,
+        "edge_block_reasons": edge_block_reasons,
         "oos_net_ev": oos["net_ev"],
         "oos_n": oos["n"],
         "live_roundtrip": "NOT_RUN/RESEARCH_LAYER",
@@ -452,12 +528,12 @@ def select_research_candidate(summaries, *, current_regime: str, llm_side: str |
     del llm_side
     eligible = []
     for summary in summaries or []:
-        if not isinstance(summary, dict) or summary.get("promotion_candidate") is not True:
+        if not isinstance(summary, dict) or summary.get("promotion_candidate") is not True or summary.get("edge_claim") is not True:
             continue
         if summary.get("real_submit_allowed") is not False:
             continue
         regime = summary.get("regimes", {}).get(current_regime)
-        if not isinstance(regime, dict) or regime.get("n", 0) < MIN_SAMPLE:
+        if not isinstance(regime, dict) or regime.get("n", 0) < STATISTICAL_MIN_SAMPLE:
             continue
         if regime.get("net_ev") is None or regime.get("net_ev") <= 0:
             continue
@@ -485,3 +561,264 @@ def select_research_candidate(summaries, *, current_regime: str, llm_side: str |
         "real_submit_allowed": False,
         "live_roundtrip": "NOT_RUN/RESEARCH_LAYER",
     }
+
+
+def _entry_by_seq(ledger) -> dict:
+    found = {}
+    if not isinstance(ledger, list):
+        return found
+    for event in ledger:
+        if isinstance(event, dict) and event.get("event_type") == "virtual_entry" and event.get("seq") is not None:
+            found[event.get("seq")] = event
+    return found
+
+
+def _stale_exit(event: dict) -> bool:
+    if event.get("stale") is True:
+        return True
+    reason = event.get("stale_reason")
+    if isinstance(reason, str) and reason:
+        return True
+    if event.get("data") == "STALE":
+        return True
+    status = event.get("price_source_status")
+    return isinstance(status, str) and status not in {"", "OK"}
+
+
+def _fee(event: dict):
+    for key in ("fee_yen_per_share", "cost_yen_per_share"):
+        value = _number(event.get(key))
+        if value is not None and value >= 0:
+            return value
+    return None
+
+
+def _exclude(event, reason: str) -> dict:
+    return {
+        "seq": None if not isinstance(event, dict) else event.get("seq"),
+        "reason": reason,
+        "source": "synthetic" if isinstance(event, dict) and event.get("acceptance_class") == "synthetic" else "live_shadow",
+    }
+
+
+def ingest_shadow_exits(ledger) -> dict:
+    """Keep confirmed live shadow exits. Synthetic rows stay out of this stage.
+
+    A trade needs an entry time, exit time, both fill prices, slippage, and a
+    known fee. The same entry is counted once. Nothing here opens a new trade.
+    """
+    entries = _entry_by_seq(ledger)
+    accepted = []
+    excluded = []
+    seen = set()
+    events = ledger if isinstance(ledger, list) else []
+    exited = set()
+    for event in events:
+        if not isinstance(event, dict) or event.get("event_type") != "virtual_exit":
+            continue
+        if event.get("acceptance_class") == "synthetic":
+            excluded.append(_exclude(event, "SYNTHETIC_NOT_LIVE_SHADOW"))
+            continue
+        if event.get("real_submit_allowed") is not False:
+            excluded.append(_exclude(event, "REAL_SUBMIT_NOT_FALSE"))
+            continue
+        ticker = event.get("ticker")
+        side = event.get("side")
+        if not isinstance(ticker, str) or not ticker or side not in {"LONG", "SHORT"}:
+            excluded.append(_exclude(event, "IDENTITY_UNKNOWN"))
+            continue
+        if _stale_exit(event):
+            excluded.append(_exclude(event, "STALE_PRICE"))
+            continue
+        if event.get("performance_bucket") != "clean_strategy":
+            excluded.append(_exclude(event, "INCOMPLETE"))
+            continue
+        entry = entries.get(event.get("related_entry_seq"))
+        entry_at = _parse_time(None if not isinstance(entry, dict) else entry.get("at"), datetime.now(JST))
+        exit_at = _parse_time(event.get("at"), datetime.now(JST))
+        if entry_at is None or exit_at is None:
+            excluded.append(_exclude(event, "INCOMPLETE"))
+            continue
+        if exit_at < entry_at:
+            excluded.append(_exclude(event, "TIMESTAMP_INCONSISTENT"))
+            continue
+        prices = (_number(event.get("fill_entry_price")), _number(event.get("fill_exit_price")))
+        if any(price is None or price <= 0 for price in prices):
+            excluded.append(_exclude(event, "INCOMPLETE"))
+            continue
+        if _number(event.get("slippage_yen")) is None or _number(event.get("mae_yen")) is None or _number(event.get("mfe_yen")) is None:
+            excluded.append(_exclude(event, "INCOMPLETE"))
+            continue
+        if _number(event.get("fill_pnl_per_share_yen")) is None:
+            excluded.append(_exclude(event, "INCOMPLETE"))
+            continue
+        fee = _fee(event)
+        if fee is None:
+            excluded.append(_exclude(event, "FEE_UNKNOWN"))
+            continue
+        trade_id = ticker + "|" + side + "|" + str(event.get("related_entry_seq"))
+        if trade_id in seen:
+            excluded.append(_exclude(event, "DUPLICATE"))
+            continue
+        seen.add(trade_id)
+        exited.add(event.get("related_entry_seq"))
+        features = event.get("features") if isinstance(event.get("features"), dict) else {}
+        accepted.append({
+            "model_id": BASELINE_MODEL,
+            "side": side,
+            "stage": "shadow",
+            "source": "live_shadow",
+            "trade_id": trade_id,
+            "decided_at": entry_at,
+            "exit_at": exit_at.isoformat(),
+            "regime": event.get("regime") if isinstance(event.get("regime"), str) and event.get("regime") else "UNKNOWN",
+            "pnl_per_share_yen": _number(event.get("fill_pnl_per_share_yen")),
+            "cost_yen_per_share": fee,
+            "mae_yen": _number(event.get("mae_yen")),
+            "mfe_yen": _number(event.get("mfe_yen")),
+            "slippage_yen": _number(event.get("slippage_yen")),
+            "features": features,
+            "real_submit_allowed": False,
+        })
+    for event in events:
+        if not isinstance(event, dict) or event.get("event_type") != "virtual_entry":
+            continue
+        if event.get("acceptance_class") == "synthetic":
+            continue
+        if event.get("seq") in exited:
+            continue
+        excluded.append(_exclude(event, "INCOMPLETE"))
+    return {
+        "trials": accepted,
+        "excluded": excluded,
+        "clean_n": len(accepted),
+        "source": "live_shadow",
+        "stage": "shadow",
+        "real_submit_allowed": False,
+    }
+
+
+def _prepared_shadow(trials) -> list:
+    prepared = []
+    for trial in trials or []:
+        row = _prepare(trial)
+        if row.get("ok") and row.get("stage") == "shadow" and trial.get("source") == "live_shadow":
+            row["trade_id"] = trial.get("trade_id")
+            prepared.append(row)
+    return prepared
+
+
+def baseline_shadow_metrics(trials) -> dict:
+    """LONG and SHORT metrics for one live-shadow population."""
+    rows = _prepared_shadow(trials)
+    by_side = {}
+    for side in ("LONG", "SHORT"):
+        metrics = _metrics([row for row in rows if row["side"] == side])
+        by_side[side] = {
+            "n": metrics["n"],
+            "net_ev": metrics["net_ev"],
+            "win_rate": metrics["win_rate"],
+            "profit_factor": metrics["profit_factor"],
+            "avg_mae_yen": metrics["avg_mae_yen"],
+            "avg_mfe_yen": metrics["avg_mfe_yen"],
+            "max_dd_yen_per_share": metrics["max_dd_yen_per_share"],
+            "avg_slippage_yen": metrics["avg_slippage_yen"],
+        }
+    return {"by_side": by_side, "clean_n": len(rows), "real_submit_allowed": False, "promotion_candidate": False}
+
+
+def paired_feature_comparison(trials, feature_id: str) -> dict:
+    """Compare a feature on exactly the same live-shadow trades.
+
+    Missing a feature on one trade blocks that comparison. A recorded value
+    without a counterfactual result does not create a delta.
+    """
+    if feature_id not in REGISTRY:
+        raise KeyError(feature_id)
+    rows = _prepared_shadow(trials)
+    by_id = {trial.get("trade_id"): trial for trial in trials or [] if isinstance(trial, dict)}
+    present = []
+    alternate = []
+    for row in rows:
+        trial = by_id.get(row["trade_id"]) or {}
+        feature = trial.get("features", {}).get(feature_id) if isinstance(trial.get("features"), dict) else None
+        availability = "ABSENT"
+        if isinstance(feature, dict):
+            availability = _availability(feature.get("available_at"), row["decided_at"])
+        if availability == "PRESENT":
+            present.append(row["trade_id"])
+        item = trial.get("counterfactuals", {}).get(feature_id) if isinstance(trial.get("counterfactuals"), dict) else None
+        pnl = _number(item.get("pnl_per_share_yen")) if isinstance(item, dict) else None
+        cost = _number(item.get("cost_yen_per_share")) if isinstance(item, dict) else None
+        if pnl is not None and cost is not None:
+            alternate.append({
+                "decided_at": row["decided_at"],
+                "net": pnl - cost,
+                "mae": row["mae"],
+                "mfe": row["mfe"],
+                "slippage": row["slippage"],
+            })
+    trade_ids = [row["trade_id"] for row in rows]
+    same_population = len(present) == len(trade_ids) and set(present) == set(trade_ids)
+    baseline = _metrics(rows) if rows else _empty_metrics()
+    feature_ev = None
+    delta = None
+    if not rows:
+        status = "NO_CLEAN_TRADES"
+    elif same_population and len(alternate) == len(trade_ids):
+        feature_metrics = _metrics(alternate)
+        feature_ev = feature_metrics["net_ev"]
+        delta = None if feature_ev is None or baseline["net_ev"] is None else feature_ev - baseline["net_ev"]
+        status = "PAIRED"
+    elif same_population:
+        status = "FEATURE_RECORDED_MODEL_NOT_APPLIED"
+    else:
+        status = "POPULATION_MISMATCH"
+    if status == "NO_CLEAN_TRADES":
+        measurement = "NO_CLEAN_TRADES"
+    elif status == "PAIRED":
+        measurement = "INSUFFICIENT_SAMPLE" if len(rows) < MIN_SAMPLE else "PIPELINE_ONLY"
+    elif status == "FEATURE_RECORDED_MODEL_NOT_APPLIED":
+        measurement = "NO_COUNTERFACTUAL"
+    else:
+        measurement = status
+    return {
+        "feature_id": feature_id,
+        "baseline_n": len(trade_ids),
+        "feature_n": len(present),
+        "baseline_ev": baseline["net_ev"],
+        "feature_ev": feature_ev,
+        "delta_ev": delta,
+        "population_status": status,
+        "measurement_status": measurement,
+        "promotion_candidate": False,
+        "edge_claim": False,
+        "live_roundtrip": "NOT_RUN/RESEARCH_LAYER",
+        "real_submit_allowed": False,
+    }
+
+
+DATA_LANE = (
+    {"id": "nt_ratio", "priority": 1, "availability": "日経225とTOPIXから計算できる。このリポジトリにはリアルタイム系列が無い。", "published_clock": "両指数の遅い方の公表時刻。寄り前の値は前営業日終値。", "update_frequency": "ザラ場中の指数更新。比率自体の公式系列は未接続。", "history_storable": False, "license": "日経平均は日本経済新聞社、TOPIXはJPXの利用条件。再配布しない。", "fetch_status": "NOT_FETCHED"},
+    {"id": "investor_futures_flow", "priority": 1, "availability": "JPXの投資部門別、先物は derivatives/sector。scripts/investor_regime.py は週次ファイルを読むが、LIVE signal には入れない。", "published_clock": "JPXがファイルを出した時刻。週の途中では未公表。", "update_frequency": "週次。公表遅れあり。", "history_storable": True, "license": "JPX公開統計。出典を残し、売買フィードとしては使わない。", "fetch_status": "NOT_FETCHED"},
+    {"id": "futures_options_positioning", "priority": 1, "availability": "建玉と出来高はJPX派生商品統計。IVとPCRの公式リアルタイム系列はこのリポジトリに無い。", "published_clock": "取引所統計は日次締め後。場中のIVはベンダー計算が多い。", "update_frequency": "日次。IVは未接続。", "history_storable": False, "license": "建玉はJPX。IVはベンダー契約が別。未契約の値は取らない。", "fetch_status": "NOT_FETCHED"},
+    {"id": "short_sale_ratio", "priority": 2, "availability": "JPX空売り集計。LIVE行には無い。", "published_clock": "当日セッション後の公表。場中判断には使えない。", "update_frequency": "日次。", "history_storable": True, "license": "JPX公開統計。", "fetch_status": "NOT_FETCHED"},
+    {"id": "credit_evaluation_loss", "priority": 2, "availability": "取引所の単一系列としては未確認。証券会社の計算である可能性が高く、このリポジトリに取得元が無い。", "published_clock": "未確認。推定で埋めない。", "update_frequency": "未確認。", "history_storable": False, "license": "未確認。ソースが特定できるまで取得しない。", "fetch_status": "NOT_FETCHED"},
+    {"id": "arbitrage_balance", "priority": 2, "availability": "JPXの裁定取引残高統計。LIVE signal には無い。", "published_clock": "公表ファイルの時刻。日中の速報とは限らない。", "update_frequency": "日次または週次。取得前にJPXの欄を確認する。", "history_storable": True, "license": "JPX公開統計。", "fetch_status": "NOT_FETCHED"},
+    {"id": "crude", "priority": 3, "availability": "WTI/Brentは取引所先物。global_macro は名前だけを持ち、取得はしない。", "published_clock": "各取引所の約定時刻。東京の判断より後の足は使えない。", "update_frequency": "場中。", "history_storable": False, "license": "取引所またはベンダー契約。未契約。", "fetch_status": "NOT_FETCHED"},
+    {"id": "gold", "priority": 3, "availability": "COMEX金先物など。系列は未保存。", "published_clock": "取引所の約定時刻。", "update_frequency": "場中。", "history_storable": False, "license": "取引所またはベンダー契約。未契約。", "fetch_status": "NOT_FETCHED"},
+    {"id": "silver", "priority": 3, "availability": "銀先物の取得コードは無い。", "published_clock": "未接続。", "update_frequency": "未接続。", "history_storable": False, "license": "未契約。", "fetch_status": "NOT_FETCHED"},
+    {"id": "copper", "priority": 3, "availability": "COMEX銅など。global_macro の許可リストにあるだけで値は無い。", "published_clock": "取引所の約定時刻。", "update_frequency": "場中。", "history_storable": False, "license": "取引所またはベンダー契約。未契約。", "fetch_status": "NOT_FETCHED"},
+    {"id": "korea_equity", "priority": 3, "availability": "KRXのKOSPI、KOSDAQ、個別株。このリポジトリに系列が無い。", "published_clock": "韓国市場の約定時刻。東京の同時刻より後は使えない。", "update_frequency": "韓国ザラ場。", "history_storable": False, "license": "KRXまたはベンダー契約。未契約。", "fetch_status": "NOT_FETCHED"},
+    {"id": "macro_release", "priority": 4, "availability": "event_calendar.py が日銀、FOMC、CPI、雇用統計の予定時刻を持つ。結果の数値系列は未接続。", "published_clock": "カレンダーの exact 時刻だけ。window は時刻を作らない。", "update_frequency": "公表日ごと。", "history_storable": True, "license": "公式予定表。数値の再配布条件は各当局。", "fetch_status": "NOT_FETCHED"},
+    {"id": "official_speech", "priority": 4, "availability": "構造化された要人発言フィードは無い。", "published_clock": "未確認。発言後にしか使えない。", "update_frequency": "不定期。", "history_storable": False, "license": "未確認。", "fetch_status": "NOT_FETCHED"},
+    {"id": "earnings_schedule", "priority": 5, "availability": "update.py はJPXの決算日程を別バッチで読む。LIVE signal には入っていない。", "published_clock": "日程表の公表時刻。結果はその後。", "update_frequency": "月次の日程と、開示のたび。", "history_storable": True, "license": "JPX公表資料。", "fetch_status": "NOT_FETCHED"},
+    {"id": "catalyst", "priority": 5, "availability": "TDnet見出しの点数は引け後PTS側にある。一般カタリスト系列はLIVE判断に入っていない。", "published_clock": "開示時刻。", "update_frequency": "開示のたび。", "history_storable": True, "license": "TDnet公表資料。", "fetch_status": "NOT_FETCHED"},
+    {"id": "midterm_plan", "priority": 5, "availability": "各社IRのPDF。構造化系列は無い。", "published_clock": "IR公表時刻。", "update_frequency": "不定期。", "history_storable": False, "license": "各社の資料。本文はコピーしない。", "fetch_status": "NOT_FETCHED"},
+    {"id": "shikiho_fundamentals", "priority": 5, "availability": "四季報は東洋経済新報社の著作物。このリポジトリに本文も指標系列も無い。", "published_clock": "誌面の発行日。発売前の値は使えない。", "update_frequency": "季刊。", "history_storable": False, "license": "転載しない。契約が無いので取得しない。", "fetch_status": "NOT_FETCHED"},
+)
+
+
+def research_data_lane() -> tuple:
+    """Survey only. Fetching a source does not admit it to a trade."""
+    return tuple({**item, "trading_adoption": False, "lane": "research_data_lane"} for item in DATA_LANE)

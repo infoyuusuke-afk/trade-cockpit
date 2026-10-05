@@ -48,12 +48,13 @@ def _ladder(model, pnl, feature=None, n=8, available_at=PAST):
     return rows
 
 
-def _summary(model, side, ev, n=8):
+def _summary(model, side, ev, n=30):
     regime = {"n": n, "net_ev": ev}
     return {
         "model_id": model,
         "side": side,
         "promotion_candidate": True,
+        "edge_claim": True,
         "real_submit_allowed": False,
         "oos_net_ev": ev,
         "oos_n": n,
@@ -150,8 +151,10 @@ class ResearchLayerTests(unittest.TestCase):
         self.assertEqual(summary["feature_ev"], 27.0)
         self.assertEqual(summary["delta_ev"], 9.0)
         self.assertEqual(summary["sample_n"], 8)
-        self.assertEqual(summary["measurement_status"], "OOS_REPRODUCED")
-        self.assertTrue(summary["promotion_candidate"])
+        self.assertEqual(summary["measurement_status"], "PIPELINE_ONLY")
+        self.assertIn("STATISTICAL_SAMPLE", summary["edge_block_reasons"])
+        self.assertFalse(summary["promotion_candidate"])
+        self.assertFalse(summary["edge_claim"])
         self.assertFalse(summary["is_entry_trigger"])
         self.assertFalse(summary["real_submit_allowed"])
         self.assertEqual(summary["regimes"]["SEMI"]["n"], 8)
@@ -184,6 +187,131 @@ class ResearchLayerTests(unittest.TestCase):
         self.assertFalse(chosen["is_entry_trigger"])
         empty = brain.select_research_candidate([], current_regime="SEMI", llm_side="LONG")
         self.assertEqual(empty["selected_side"], "NO_TRADE")
+
+    def test_statistical_bar_can_pass_only_with_variance_and_a_preregistered_family(self):
+        rows = []
+        for stage in brain.STAGES:
+            for index in range(30):
+                rows.append(_trial(brain.BASELINE_MODEL, 10 + (index % 5), stage, index))
+                rows.append(_trial("BASELINE+credit_ratio", 40 + (index % 5), stage, index, "credit_ratio"))
+        summary = brain.summarize_model(rows, model_id="BASELINE+credit_ratio", side="LONG", family_size=1)
+        self.assertEqual(summary["measurement_status"], "OOS_REPRODUCED")
+        self.assertTrue(summary["edge_claim"])
+        self.assertGreater(summary["effect_size"], 0)
+        self.assertGreater(summary["adjusted_delta_ci_low"], 0)
+        blocked = brain.summarize_model(rows, model_id="BASELINE+credit_ratio", side="LONG", family_size=12)
+        self.assertTrue(blocked["edge_claim"])
+        self.assertGreater(blocked["family_size"], 1)
+
+    def _exit(self, **overrides):
+        entry_at = NOW - timedelta(minutes=30)
+        exit_at = NOW - timedelta(minutes=5)
+        event = {
+            "event_type": "virtual_exit",
+            "seq": 2,
+            "related_entry_seq": 1,
+            "at": exit_at.isoformat(),
+            "ticker": "285A.T",
+            "side": "LONG",
+            "performance_bucket": "clean_strategy",
+            "fill_entry_price": 19130.0,
+            "fill_exit_price": 19170.0,
+            "fill_pnl_per_share_yen": 40.0,
+            "slippage_yen": 20.0,
+            "mae_yen": 80.0,
+            "mfe_yen": 170.0,
+            "fee_yen_per_share": 1.0,
+            "real_submit_allowed": False,
+        }
+        event.update(overrides)
+        return event
+
+    def _entry(self, **overrides):
+        event = {
+            "event_type": "virtual_entry",
+            "seq": 1,
+            "at": (NOW - timedelta(minutes=30)).isoformat(),
+            "ticker": "285A.T",
+            "side": "LONG",
+            "real_submit_allowed": False,
+        }
+        event.update(overrides)
+        return event
+
+    def test_only_confirmed_live_exits_enter_the_baseline_shadow_stage(self):
+        clean = [self._entry(), self._exit()]
+        ingested = brain.ingest_shadow_exits(clean)
+        self.assertEqual(ingested["clean_n"], 1)
+        self.assertEqual(ingested["trials"][0]["source"], "live_shadow")
+        self.assertEqual(ingested["trials"][0]["stage"], "shadow")
+        self.assertEqual(ingested["trials"][0]["model_id"], "BASELINE")
+        metrics = brain.baseline_shadow_metrics(ingested["trials"])
+        self.assertEqual(metrics["by_side"]["LONG"]["n"], 1)
+        self.assertEqual(metrics["by_side"]["LONG"]["net_ev"], 39.0)
+        self.assertEqual(metrics["by_side"]["SHORT"]["n"], 0)
+        self.assertFalse(metrics["promotion_candidate"])
+        duplicated = brain.ingest_shadow_exits(clean + [self._exit(seq=3)])
+        self.assertEqual(duplicated["clean_n"], 1)
+        self.assertEqual(duplicated["excluded"][-1]["reason"], "DUPLICATE")
+
+    def test_bad_shadow_rows_are_excluded_without_mixing_sources(self):
+        ledger = [
+            self._entry(),
+            self._exit(acceptance_class="synthetic"),
+            self._exit(seq=4, related_entry_seq=9, fee_yen_per_share=None),
+            self._entry(seq=9, at=(NOW - timedelta(minutes=40)).isoformat()),
+            self._exit(seq=5, related_entry_seq=8, at=(NOW - timedelta(hours=2)).isoformat()),
+            self._entry(seq=8, at=(NOW - timedelta(minutes=10)).isoformat()),
+            self._exit(seq=6, related_entry_seq=7, stale=True),
+            self._entry(seq=7),
+            self._exit(seq=11, related_entry_seq=10, ticker=""),
+            self._entry(seq=10),
+            self._entry(seq=12),
+        ]
+        ingested = brain.ingest_shadow_exits(ledger)
+        reasons = [item["reason"] for item in ingested["excluded"]]
+        self.assertEqual(ingested["clean_n"], 0)
+        self.assertIn("SYNTHETIC_NOT_LIVE_SHADOW", reasons)
+        self.assertIn("FEE_UNKNOWN", reasons)
+        self.assertIn("TIMESTAMP_INCONSISTENT", reasons)
+        self.assertIn("STALE_PRICE", reasons)
+        self.assertIn("IDENTITY_UNKNOWN", reasons)
+        self.assertIn("INCOMPLETE", reasons)
+        self.assertTrue(all(item["source"] != "live_shadow" or item["reason"] != "SYNTHETIC_NOT_LIVE_SHADOW" for item in ingested["excluded"]))
+
+    def test_feature_comparison_uses_the_same_trade_ids(self):
+        first = self._entry()
+        second = self._entry(seq=3, at=(NOW - timedelta(minutes=40)).isoformat(), side="SHORT")
+        exits = [
+            self._exit(features={"credit_ratio": {"value": 5.0, "available_at": PAST}}),
+            self._exit(seq=4, related_entry_seq=3, side="SHORT", fill_pnl_per_share_yen=-10.0, features={}),
+        ]
+        ingested = brain.ingest_shadow_exits([first, second, *exits])
+        self.assertEqual(ingested["clean_n"], 2)
+        mismatched = brain.paired_feature_comparison(ingested["trials"], "credit_ratio")
+        self.assertEqual(mismatched["population_status"], "POPULATION_MISMATCH")
+        self.assertIsNone(mismatched["delta_ev"])
+        self.assertEqual(mismatched["baseline_n"], 2)
+        self.assertEqual(mismatched["feature_n"], 1)
+        for trial in ingested["trials"]:
+            trial["features"] = {"credit_ratio": {"value": 5.0, "available_at": PAST}}
+        recorded = brain.paired_feature_comparison(ingested["trials"], "credit_ratio")
+        self.assertEqual(recorded["population_status"], "FEATURE_RECORDED_MODEL_NOT_APPLIED")
+        self.assertEqual(recorded["baseline_n"], recorded["feature_n"])
+        self.assertIsNone(recorded["delta_ev"])
+        self.assertFalse(recorded["edge_claim"])
+
+    def test_research_data_lane_does_not_adopt_unfetched_sources(self):
+        lane = brain.research_data_lane()
+        self.assertEqual([item["id"] for item in lane if item["priority"] == 1], ["nt_ratio", "investor_futures_flow", "futures_options_positioning"])
+        self.assertLess(lane[0]["priority"], next(item["priority"] for item in lane if item["id"] == "short_sale_ratio"))
+        self.assertLess(
+            next(item["priority"] for item in lane if item["id"] == "crude"),
+            next(item["priority"] for item in lane if item["id"] == "official_speech"),
+        )
+        self.assertTrue(all(item["fetch_status"] == "NOT_FETCHED" and item["trading_adoption"] is False for item in lane))
+        shikiho = next(item for item in lane if item["id"] == "shikiho_fundamentals")
+        self.assertIn("転載しない", shikiho["license"])
 
     def test_module_does_not_submit_or_edit_the_live_rule(self):
         text = (ROOT / "scripts" / "ai_brain_research.py").read_text(encoding="utf-8")
