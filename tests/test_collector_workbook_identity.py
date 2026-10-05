@@ -156,6 +156,7 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
         self.assertNotIn("AI_COCKPIT_CONTROLLER_V9.ps1", accept)
         self.assertIn("function Get-CollectorHandoffMode", runner)
         self.assertIn("CONTROLLER_RESTARTS", runner)
+        self.assertIn("DIRECT_START", runner)
         self.assertNotIn("refusing to restart Collector while Controller is running", runner)
         self.assertIn("MS2_RSS_100_Collector.acceptance.stderr.log", runner)
         self.assertIn("COLLECTOR_EXITED", runner)

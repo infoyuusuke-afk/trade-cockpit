@@ -367,7 +367,9 @@ function Get-ControllerProcessCount {
 
 function Get-CollectorHandoffMode([int]$ControllerCount, [int]$CollectorCount) {
     if ($ControllerCount -gt 1 -or $ControllerCount -lt 0) { return "REFUSE_CONTROLLER" }
-    if ($CollectorCount -ne 1) { return "REFUSE_COLLECTOR" }
+    if ($CollectorCount -lt 0 -or $CollectorCount -gt 1) { return "REFUSE_COLLECTOR" }
+    if ($ControllerCount -eq 1 -and $CollectorCount -eq 0) { return "REFUSE_COLLECTOR" }
+    if ($ControllerCount -eq 0 -and $CollectorCount -eq 0) { return "DIRECT_START" }
     if ($ControllerCount -eq 1) { return "CONTROLLER_RESTARTS" }
     return "DIRECT_RESTART"
 }
@@ -496,11 +498,16 @@ function Invoke-AcceptRuntimeCollector([string]$RuntimeDir, [string]$BackupDir, 
     $stopped = $false
     $replacementId = 0
     try {
-        Stop-OneCollectorProcess $OldProcessId
-        $stopped = $true
-        if ($HandoffMode -eq "DIRECT_RESTART") {
+        if ($HandoffMode -eq "DIRECT_START") {
             $started = Start-OneRuntimeCollector $RuntimeDir
             $replacementId = [int]$started.Id
+        } else {
+            Stop-OneCollectorProcess $OldProcessId
+            $stopped = $true
+            if ($HandoffMode -eq "DIRECT_RESTART") {
+                $started = Start-OneRuntimeCollector $RuntimeDir
+                $replacementId = [int]$started.Id
+            }
         }
         $deadline = (Get-Date).AddSeconds(90)
         $lastFail = "TIMEOUT"
@@ -514,7 +521,7 @@ function Invoke-AcceptRuntimeCollector([string]$RuntimeDir, [string]$BackupDir, 
                 if ($fresh.Count -eq 1) { $replacementId = [int]$fresh[0] }
                 if ($replacementId -eq 0) { $lastFail = "WAITING_FOR_CONTROLLER_RESTART"; continue }
             }
-            if ($HandoffMode -eq "DIRECT_RESTART" -and $null -ne $started -and $started.HasExited) {
+            if (($HandoffMode -eq "DIRECT_RESTART" -or $HandoffMode -eq "DIRECT_START") -and $null -ne $started -and $started.HasExited) {
                 $errPath = Join-Path $RuntimeDir "MS2_RSS_100_Collector.acceptance.stderr.log"
                 $tail = ""
                 if (Test-Path -LiteralPath $errPath) {
@@ -592,7 +599,8 @@ function Invoke-RuntimeAcceptSelfTest {
         if ((Get-CollectorHandoffMode 0 1) -ne "DIRECT_RESTART") { throw "no controller must restart the collector directly" }
         if ((Get-CollectorHandoffMode 1 1) -ne "CONTROLLER_RESTARTS") { throw "one controller must restart the collector itself" }
         if ((Get-CollectorHandoffMode 2 1) -ne "REFUSE_CONTROLLER") { throw "two controllers must refuse before copy" }
-        if ((Get-CollectorHandoffMode 0 0) -ne "REFUSE_COLLECTOR") { throw "zero collectors must refuse before copy" }
+        if ((Get-CollectorHandoffMode 0 0) -ne "DIRECT_START") { throw "zero collectors with no controller must start one" }
+        if ((Get-CollectorHandoffMode 1 0) -ne "REFUSE_COLLECTOR") { throw "a controller with no collector must refuse before copy" }
         if ((Get-CollectorHandoffMode 1 2) -ne "REFUSE_COLLECTOR") { throw "two collectors must refuse before copy" }
         if (-not (Test-CollectorCommandLine "powershell.exe -File C:\files\MS2_RSS_100_Collector.ps1")) { throw "collector command must match" }
         if (Test-CollectorCommandLine "powershell.exe -File C:\files\AI_COCKPIT_CONTROLLER_V9.ps1") { throw "controller must not match" }
@@ -784,7 +792,8 @@ try {
         if ($handoff -eq "REFUSE_COLLECTOR") {
             throw ("COLLECTOR_PROCESS_BEFORE=" + $collectorIds.Count + ". Expected exactly one Collector. No files were copied. Excel, MS2, and Controller were not touched.")
         }
-        $oldCollectorId = [int]$collectorIds[0]
+        $oldCollectorId = 0
+        if ($handoff -ne "DIRECT_START") { $oldCollectorId = [int]$collectorIds[0] }
     }
     $deployResult = Deploy-RuntimeFiles -RepoRoot $repo -RuntimeDir $runtimeDirForDeploy
     Write-Host ("  Deployed " + $RUNTIME_DEPLOY_FILES.Count + " files, backup: " + $deployResult.backup_dir) -ForegroundColor Green
