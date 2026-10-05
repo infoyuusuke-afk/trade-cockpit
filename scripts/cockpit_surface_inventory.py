@@ -48,7 +48,7 @@ SURFACES = (
         "id": "weekly_review",
         "label": "週間振返り",
         "status": "PARTIAL",
-        "evidence": "index.html weekly-review is a 2026-09-19 snapshot. It is not the shadow trade ledger and it does not update BASELINE_N.",
+        "evidence": "index.html weekly-review keeps the 2026-09-19 counts. The pane labels that snapshot, shows theme names instead of a Python list, and does not copy those rows into the shadow ledger.",
     },
     {
         "id": "positions",
@@ -90,13 +90,13 @@ SURFACES = (
         "id": "mojibake",
         "label": "文字化け",
         "status": "PARTIAL",
-        "evidence": "TDnet titles are decoded as UTF-8 in the collector. PowerShell 5.1 can still misread a Japanese comment in a script that is not saved as ASCII.",
+        "evidence": "TDnet titles are decoded as UTF-8 in the collector. The weekly theme line no longer shows a Python list. PowerShell 5.1 can still misread a Japanese comment in a script that is not saved as ASCII.",
     },
     {
         "id": "trade_diary",
         "label": "AIトレード日記",
         "status": "PARTIAL",
-        "evidence": "scripts/journal_projection.py maps an event into a row and projects a shadow trade without turning FEE_UNKNOWN into yen. It does not publish a diary, does not read private holdings, and does not submit.",
+        "evidence": "scripts/journal_projection.py maps an event into a row and projects a shadow trade without turning FEE_UNKNOWN into yen. The weekly pane says those rows are separate from the 2026-09-19 snapshot. It does not publish a diary, does not read private holdings, and does not submit.",
     },
 )
 
