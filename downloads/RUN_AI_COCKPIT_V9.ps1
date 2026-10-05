@@ -435,7 +435,10 @@ function Start-OneRuntimeCollector([string]$RuntimeDir) {
     if (-not (Test-Path -LiteralPath $exe)) {
         throw "Windows PowerShell 5.1 executable was not found. Collector was not started."
     }
-    return Start-Process -FilePath $exe -ArgumentList @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $script) -WorkingDirectory $RuntimeDir -WindowStyle Hidden -PassThru
+    $stdout = Join-Path $RuntimeDir "MS2_RSS_100_Collector.acceptance.stdout.log"
+    $stderr = Join-Path $RuntimeDir "MS2_RSS_100_Collector.acceptance.stderr.log"
+    Remove-Item -LiteralPath $stdout, $stderr -Force -ErrorAction SilentlyContinue
+    return Start-Process -FilePath $exe -ArgumentList @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $script) -WorkingDirectory $RuntimeDir -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
 }
 
 function Receive-CollectorBridge {
@@ -510,6 +513,15 @@ function Invoke-AcceptRuntimeCollector([string]$RuntimeDir, [string]$BackupDir, 
                 if ($fresh.Count -gt 1) { throw ("COLLECTOR_PROCESS_AFTER=" + ($fresh -join ",")) }
                 if ($fresh.Count -eq 1) { $replacementId = [int]$fresh[0] }
                 if ($replacementId -eq 0) { $lastFail = "WAITING_FOR_CONTROLLER_RESTART"; continue }
+            }
+            if ($HandoffMode -eq "DIRECT_RESTART" -and $null -ne $started -and $started.HasExited) {
+                $errPath = Join-Path $RuntimeDir "MS2_RSS_100_Collector.acceptance.stderr.log"
+                $tail = ""
+                if (Test-Path -LiteralPath $errPath) {
+                    $tail = [IO.File]::ReadAllText($errPath)
+                    if ($tail.Length -gt 400) { $tail = $tail.Substring($tail.Length - 400) }
+                }
+                throw ("COLLECTOR_EXITED code=" + $started.ExitCode + " " + ($tail -replace "[\r\n]+", " "))
             }
             $live = Receive-CollectorBridge
             if ($null -eq $live) { $lastFail = "PORT_CLOSED"; continue }

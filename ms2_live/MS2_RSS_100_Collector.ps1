@@ -872,14 +872,26 @@ Write-Host ("[BOOK] " + $boundName) -ForegroundColor Green
 Start-Sleep -Milliseconds 500
 
 $sheet = $null
+$liveSheetReady = $false
 try {
     $sheet = Invoke-ExcelCom -Label "100銘柄RSSシート確認" -Action { $book.Worksheets.Item("100銘柄RSS") }
+    if ($null -ne $sheet) { $liveSheetReady = $true }
 } catch {
+    $sheet = $null
+}
+# LIVE_SHEET_KEEP: an already-live workbook is read in place.
+# Rewriting every RssMarket formula here touches Excel and keeps 28580 closed
+# until that rewrite finishes, so acceptance sees PORT_CLOSED and rolls back.
+if ($liveSheetReady) {
+    Write-Host "[BOOK] existing 100銘柄RSS sheet; Excel formulas were not rewritten" -ForegroundColor Green
+} else {
     $sheet = Invoke-ExcelCom -Label "100銘柄RSSシート作成" -Action { $book.Worksheets.Add() }
     Invoke-ExcelCom -Label "100銘柄RSSシート命名" -Action { $sheet.Name = "100銘柄RSS" } | Out-Null
 }
+# LIVE_SHEET_KEEP_END
 # Do not mutate Excel.Application.ScreenUpdating here. This collector must only perform workbook-scoped writes.
 $headers = @("順位","コード","会社名","分類","現在値","時刻","前日終値","前日比率","出来高","VWAP","買気配","売気配","買気配数量","売気配数量","売成行","買成行","OVER","UNDER","歩み1","歩み1時刻","歩み2","歩み2時刻","歩み3","歩み3時刻","歩み4","歩み4時刻","信用売残","信用売残前週比","信用買残","信用買残前週比","信用倍率","当日基準値","特別売気配","特別買気配","始値","売建可能数量")
+if (-not $liveSheetReady) {
 for ($c=0; $c -lt $headers.Count; $c++) {
     $headerColumn = $c + 1
     $headerText = [string]$headers[$c]
@@ -913,6 +925,7 @@ for ($i=0; $i -lt $stocks.Count; $i++) {
     Invoke-ExcelCom -Label ("売建可能数量設定 AJ" + $row) -Action { $sheet.Cells.Item($row,36).FormulaLocal = [string]$marginFormula } | Out-Null
 }
 Invoke-ExcelCom -Label "RSSシート非表示" -Action { $sheet.Visible = 0 } | Out-Null
+}
 
 
 # キオクシア夜間PTS（JNX）は東証データと混ぜず、専用シートで取得する。
@@ -925,16 +938,23 @@ try {
     try {
         $jnxSheet = Invoke-ExcelCom -Label "JNXシート確認" -Action { $book.Worksheets.Item("KIOXIA_JNX") }
     } catch {
-        $jnxSheet = Invoke-ExcelCom -Label "JNXシート作成" -Action { $book.Worksheets.Add() }
-        if ($null -ne $jnxSheet) {
-            Invoke-ExcelCom -Label "JNXシート命名" -Action { $jnxSheet.Name = "KIOXIA_JNX" } | Out-Null
+        if ($liveSheetReady) {
+            $jnxSheet = $null
+        } else {
+            $jnxSheet = Invoke-ExcelCom -Label "JNXシート作成" -Action { $book.Worksheets.Add() }
+            if ($null -ne $jnxSheet) {
+                Invoke-ExcelCom -Label "JNXシート命名" -Action { $jnxSheet.Name = "KIOXIA_JNX" } | Out-Null
+            }
         }
     }
 
-    if ($null -eq $jnxSheet) {
+    if ($liveSheetReady) {
+        if ($null -ne $jnxSheet) { $jnxReady = $true }
+    } elseif ($null -eq $jnxSheet) {
         throw "KIOXIA_JNX worksheet is unavailable."
     }
 
+    if (-not $liveSheetReady) {
     $jnxHeaders = @("コード","現在値","時刻","前日終値","前日比率","出来高","VWAP","買気配","売気配","買数量","売数量","OVER","UNDER","歩み1","歩み1時刻","現在日付")
     $jnxItems = @("現在値","現在値詳細時刻","前日終値","前日比率","出来高","出来高加重平均","最良買気配値","最良売気配値","最良買気配数量1","最良売気配数量1","OVER気配数量","UNDER気配数量","歩み1","歩み1詳細時刻","現在日付")
 
@@ -972,10 +992,11 @@ try {
     Invoke-ExcelCom -Label "JNX列幅設定" -Action { $jnxSheet.Range("A:P").ColumnWidth = 14 } | Out-Null
     Invoke-ExcelCom -Label "JNXシート非表示" -Action { $jnxSheet.Visible = 0 } | Out-Null
     $jnxReady = $true
-    if ($jnxExpectedOpen) {
+    }
+    if ($jnxReady -and $jnxExpectedOpen) {
         $jnxStatus = "READY"
         Write-Host "[JNX] READY" -ForegroundColor Green
-    } else {
+    } elseif ($jnxReady) {
         $jnxStatus = "OFF / MARKET CLOSED"
         Write-Host "[JNX] OFF / MARKET CLOSED" -ForegroundColor DarkGray
     }
@@ -1001,9 +1022,12 @@ $irDynamicSheet = $null
 try {
     $irDynamicSheet = Invoke-ExcelCom -Label "IR動的追跡シート確認" -Action { $book.Worksheets.Item("IR_DYNAMIC_PTS") }
 } catch {
-    $irDynamicSheet = Invoke-ExcelCom -Label "IR動的追跡シート作成" -Action { $book.Worksheets.Add() }
-    Invoke-ExcelCom -Label "IR動的追跡シート命名" -Action { $irDynamicSheet.Name = "IR_DYNAMIC_PTS" } | Out-Null
+    if (-not $liveSheetReady) {
+        $irDynamicSheet = Invoke-ExcelCom -Label "IR動的追跡シート作成" -Action { $book.Worksheets.Add() }
+        Invoke-ExcelCom -Label "IR動的追跡シート命名" -Action { $irDynamicSheet.Name = "IR_DYNAMIC_PTS" } | Out-Null
+    }
 }
+if (-not $liveSheetReady -and $null -ne $irDynamicSheet) {
 $irDynamicHeaders = @("コード","TSE現在値","JNX現在値","JNX時刻","出来高","VWAP","買気配","売気配","買数量","売数量","OVER","UNDER","歩み1","現在日付")
 for ($c=0; $c -lt $irDynamicHeaders.Count; $c++) {
     $irHeaderCol = $c + 1
@@ -1013,6 +1037,7 @@ for ($c=0; $c -lt $irDynamicHeaders.Count; $c++) {
 Invoke-ExcelCom -Label "IR動的見出し強調" -Action { $irDynamicSheet.Rows.Item(1).Font.Bold = $true } | Out-Null
 Invoke-ExcelCom -Label "IR動的列幅設定" -Action { $irDynamicSheet.Range("A:N").ColumnWidth = 14 } | Out-Null
 Invoke-ExcelCom -Label "IR動的シート非表示" -Action { $irDynamicSheet.Visible = 0 } | Out-Null
+}
 
 $dataRoot = Join-Path $PSScriptRoot "records"
 New-Item -ItemType Directory -Force -Path $dataRoot | Out-Null
@@ -1032,7 +1057,7 @@ $investorRegime = $null
 try { if(Test-Path $regimePath){$investorRegime=Get-Content -Raw -Encoding UTF8 $regimePath|ConvertFrom-Json} } catch {}
 $statsScript = Join-Path $PSScriptRoot "BUILD_KIOXIA_TIME_STATS.ps1"
 $statsJsonPath = Join-Path $PSScriptRoot "kioxia_time_stats.json"
-if (Test-Path $statsScript) {
+if ((-not $liveSheetReady) -and (Test-Path $statsScript)) {
     try { & $statsScript -RecordsRoot $dataRoot -OutputJson $statsJsonPath -OutputCsv (Join-Path $PSScriptRoot "kioxia_time_stats.csv") }
     catch { Write-Host "[STATS] 時間帯統計: 保留" -ForegroundColor DarkYellow }
 }
@@ -1179,6 +1204,7 @@ try { $holdHistory = @(Import-Csv -Encoding UTF8 $holdHistoryPath) } catch { $ho
 $holdStats = Get-OvernightHoldStats $holdHistory
 $browserOpened = $true # Collector must never open browser tabs
 $script:priceSourceMismatch = $false
+$script:deferFirstTdnet = $liveSheetReady
 $bridgeJob = Start-LocalJsonBridge $jsonPath 28580 $script:canonicalWorkbookPath
 
 Write-Host "[RSS] 100 STOCKS : RUNNING / CTRL+C TO STOP" -ForegroundColor Green
@@ -1273,7 +1299,10 @@ try {
             $holdStats=Get-OvernightHoldStats $holdHistory
         }
 
-        if(($now-$lastTdnetFetchAt).TotalSeconds -ge 120) {
+        if ($script:deferFirstTdnet) {
+            $script:deferFirstTdnet = $false
+            $lastTdnetFetchAt = $now
+        } elseif (($now-$lastTdnetFetchAt).TotalSeconds -ge 120) {
             try {
                 $freshTdnet = @(Get-TdnetDisclosures $now)
                 if($freshTdnet.Count -gt 0){$tdnetDisclosures=$freshTdnet; $tdnetStatus=("TDnet確認済み "+$freshTdnet.Count+"件")}
@@ -1294,6 +1323,7 @@ try {
                 if ($fixedTickerCodes -contains $dynCode) { continue }
                 if ($irDynamicSlots.ContainsKey($dynCode)) { continue }
                 if ($irDynamicSlots.Count -ge $irDynamicCapacity) { continue }
+                if ($null -eq $irDynamicSheet) { continue }
                 $dynAssessment = Get-IrMaterialAssessment ([string]$disclosure.title)
                 if ($dynAssessment.blocked -or [double]$dynAssessment.score -le 0) { continue }
                 $dynRowNum = $irDynamicSlots.Count + 2

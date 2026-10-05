@@ -149,6 +149,17 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
         self.assertIn("function Get-CollectorHandoffMode", runner)
         self.assertIn("CONTROLLER_RESTARTS", runner)
         self.assertNotIn("refusing to restart Collector while Controller is running", runner)
+        self.assertIn("MS2_RSS_100_Collector.acceptance.stderr.log", runner)
+        self.assertIn("COLLECTOR_EXITED", runner)
+        collector = COLLECTOR.read_text(encoding="utf-8")
+        keep, _, after_keep = collector.partition("LIVE_SHEET_KEEP")
+        self.assertIn("LIVE_SHEET_KEEP_END", after_keep)
+        kept, _, rest = after_keep.partition("LIVE_SHEET_KEEP_END")
+        self.assertNotIn("FormulaLocal", kept)
+        self.assertIn("existing 100", kept)
+        self.assertIn("if (-not $liveSheetReady)", rest)
+        self.assertLess(rest.find("JNX RSS式設定"), rest.find("Start-LocalJsonBridge $jsonPath 28580"))
+        self.assertIn("deferFirstTdnet", collector)
 
     def test_owner_command_is_encoded_and_has_no_dollar_sign(self):
         script = ROOT / "downloads" / "ACCEPT_OWNER_RUNTIME.ps1"
