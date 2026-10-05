@@ -57,15 +57,128 @@ function Get-TableValue([object]$table, [int]$row, [int]$column, [int]$columnCou
     return $null
 }
 
+function Get-CodeColumnValue([object]$table, [int]$row) {
+    # B2:B101 is one column. Excel may return it 1-based or 0-based, and as one dimension or two.
+    # Indexing a 1-based vector as if it started at 0 reads the previous row and flags every symbol.
+    if ($null -eq $table -or $row -lt 1) { return $null }
+    if ($table -isnot [System.Array]) {
+        if ($row -eq 1) { return $table }
+        return $null
+    }
+    if ($table.Rank -ge 2) {
+        $r = $table.GetLowerBound(0) + ($row - 1)
+        $c = $table.GetLowerBound(1)
+        if ($r -gt $table.GetUpperBound(0) -or $c -gt $table.GetUpperBound(1)) { return $null }
+        return $table[$r, $c]
+    }
+    $index = $table.GetLowerBound(0) + ($row - 1)
+    if ($index -gt $table.GetUpperBound(0)) { return $null }
+    return $table[$index]
+}
+
+function ConvertTo-CanonicalTicker([string]$Raw) {
+    if ([string]::IsNullOrWhiteSpace($Raw)) { return "" }
+    $text = ([string]$Raw).Trim().ToUpperInvariant() -replace '\s', ''
+    if ($text -match '^(?<code>[0-9]{3,4}[A-Z]?)\.T$') { return ($Matches['code'] + '.T') }
+    if ($text -match '^(?<code>[0-9]{3,4}[A-Z]?)$') { return ($Matches['code'] + '.T') }
+    return ""
+}
+
+function Get-SymbolRowVerdict([object]$Raw, [string]$ExpectedTicker, [int]$ExcelRow) {
+    $expected = ConvertTo-CanonicalTicker $ExpectedTicker
+    if ([string]::IsNullOrWhiteSpace($expected)) {
+        return [pscustomobject]@{ Kind = "MISMATCH"; Row = $ExcelRow; Expected = ([string]$ExpectedTicker).Trim().ToUpperInvariant(); Sheet = ([string]$Raw).Trim().ToUpperInvariant(); Canonical = "" }
+    }
+    $blank = ($null -eq $Raw)
+    $text = ""
+    if (-not $blank) {
+        if ($Raw -is [ValueType] -and $Raw -isnot [char]) { $blank = $true; $text = [string]$Raw }
+        else {
+            $text = ([string]$Raw).Trim()
+            if ($text -eq "" -or $text.StartsWith("#")) { $blank = $true }
+        }
+    }
+    if ($blank) {
+        return [pscustomobject]@{ Kind = "UNREAD"; Row = $ExcelRow; Expected = $expected; Sheet = $text.ToUpperInvariant(); Canonical = "" }
+    }
+    $canonical = ConvertTo-CanonicalTicker $text
+    if ($canonical -eq $expected) {
+        return [pscustomobject]@{ Kind = "MATCH"; Row = $ExcelRow; Expected = $expected; Sheet = $canonical; Canonical = $canonical }
+    }
+    return [pscustomobject]@{ Kind = "MISMATCH"; Row = $ExcelRow; Expected = $expected; Sheet = $text.ToUpperInvariant(); Canonical = $canonical }
+}
+
+function Get-SymbolMappingReport([object]$CodeTable, [string[]]$ExpectedTickers) {
+    $mismatches = New-Object System.Collections.Generic.List[object]
+    $unreads = New-Object System.Collections.Generic.List[object]
+    $resolved = New-Object System.Collections.Generic.List[string]
+    $display = New-Object System.Collections.Generic.List[string]
+    for ($i = 0; $i -lt $ExpectedTickers.Count; $i++) {
+        $excelRow = $i + 2
+        $raw = Get-CodeColumnValue $CodeTable ($i + 1)
+        $verdict = Get-SymbolRowVerdict $raw ([string]$ExpectedTickers[$i]) $excelRow
+        [void]$resolved.Add([string]$verdict.Canonical)
+        if ($verdict.Kind -eq "MATCH") { [void]$display.Add([string]$verdict.Canonical) }
+        elseif ($verdict.Kind -eq "MISMATCH") { [void]$display.Add([string]$verdict.Sheet); [void]$mismatches.Add($verdict) }
+        else { [void]$display.Add(""); [void]$unreads.Add($verdict) }
+    }
+    return [pscustomobject]@{
+        Mismatches = $mismatches.ToArray()
+        Unreads = $unreads.ToArray()
+        Resolved = $resolved.ToArray()
+        Display = $display.ToArray()
+        ColumnMissing = [bool]($null -eq $CodeTable)
+    }
+}
+
+function Resolve-SymbolMapping([object]$CodeTable, [string[]]$ExpectedTickers) {
+    $report = Get-SymbolMappingReport $CodeTable $ExpectedTickers
+    $resolved = @($report.Resolved)
+    $display = @($report.Display)
+    $reason = ""
+    $rows = @()
+    if (@($report.Mismatches).Count -gt 0) {
+        $script:verifiedCanonicalCodes = $null
+        $reason = "WRONG_SYMBOL_MAPPING"
+        $rows = @($report.Mismatches)
+    } elseif ($report.ColumnMissing -or @($report.Unreads).Count -gt 0) {
+        $verified = @($script:verifiedCanonicalCodes)
+        $reusable = ($verified.Count -eq $ExpectedTickers.Count -and $verified.Count -gt 0)
+        $orderHolds = $reusable
+        if ($reusable -and -not $report.ColumnMissing) {
+            for ($i = 0; $i -lt $resolved.Count; $i++) {
+                if (-not [string]::IsNullOrWhiteSpace([string]$resolved[$i]) -and [string]$resolved[$i] -ne [string]$verified[$i]) { $orderHolds = $false }
+            }
+        }
+        if ($reusable -and $orderHolds) {
+            for ($i = 0; $i -lt $resolved.Count; $i++) {
+                if ([string]::IsNullOrWhiteSpace([string]$resolved[$i])) {
+                    $resolved[$i] = [string]$verified[$i]
+                    $display[$i] = [string]$verified[$i]
+                }
+            }
+        } else {
+            $script:verifiedCanonicalCodes = $null
+            $reason = "CODE_COLUMN_UNREADABLE"
+            $rows = @($report.Unreads)
+        }
+    } else {
+        $script:verifiedCanonicalCodes = @($resolved)
+    }
+    return [pscustomobject]@{ Reason = $reason; Rows = @($rows); Resolved = @($resolved); Display = @($display); ColumnMissing = [bool]$report.ColumnMissing }
+}
+
 function Get-SheetSymbolCode($table, [int]$row) {
-    # B2:B101 is already the code column. Index 1 is that column, not sheet column B of a wider grid.
-    $raw = Get-TableValue $table $row 1 1
+    $raw = Get-CodeColumnValue $table $row
+    $canonical = ConvertTo-CanonicalTicker ([string]$raw)
+    if (-not [string]::IsNullOrWhiteSpace($canonical)) { return $canonical }
     if ($null -eq $raw) { return "" }
     return ([string]$raw).Trim().ToUpperInvariant()
 }
 
 $script:IdentityTicker = "285A.T"
 $script:preopenIdentitySpare = $null
+$script:verifiedCanonicalCodes = $null
 
 function Get-NormalizedLocalWorkbookPath([string]$Value) {
     if ([string]::IsNullOrWhiteSpace($Value)) { return "" }
@@ -344,6 +457,45 @@ function Invoke-WorkbookIdentitySelfTest {
     $probeResult = Receive-Job $probe
     Remove-Job $probe -Force
     if (-not [string]::IsNullOrWhiteSpace([string]$probeResult)) { throw ("bridge copy rejected a proved 285A workbook: " + [string]$probeResult) }
+    $script:verifiedCanonicalCodes = $null
+    $oneBased = [Array]::CreateInstance([object], @(3), @(1))
+    $oneBased.SetValue("8035", 1)
+    $oneBased.SetValue("6857.T", 2)
+    $oneBased.SetValue("285A", 3)
+    $expectedThree = @("8035.T", "6857.T", "285A.T")
+    $aligned = Resolve-SymbolMapping $oneBased $expectedThree
+    if ($aligned.Reason -ne "") { throw ("1-based code column must match 285A and the other rows: " + $aligned.Reason) }
+    $held = Resolve-SymbolMapping $null $expectedThree
+    if ($held.Reason -ne "") { throw "a proved code column must survive one unreadable reread" }
+    $swapped = [Array]::CreateInstance([object], @(3), @(1))
+    $swapped.SetValue("8035.T", 1)
+    $swapped.SetValue("9999.T", 2)
+    $swapped.SetValue("285A.T", 3)
+    $broken = Resolve-SymbolMapping $swapped $expectedThree
+    if ($broken.Reason -ne "WRONG_SYMBOL_MAPPING") { throw "a different sheet code must fail closed" }
+    $brokenRow = @($broken.Rows)[0]
+    if ([int]$brokenRow.Row -ne 3 -or [string]$brokenRow.Expected -ne "6857.T" -or [string]$brokenRow.Sheet -ne "9999.T") { throw "mismatch must name excel row 3" }
+    $unreadError = Get-SymbolRowVerdict "#N/A" "285A.T" 8
+    if ($unreadError.Kind -ne "UNREAD") { throw "an excel error is unread, not a wrong symbol" }
+    $script:verifiedCanonicalCodes = $null
+    $count = 100
+    $hundred = New-Object string[] $count
+    $column = [Array]::CreateInstance([object], @($count), @(1))
+    for ($i = 0; $i -lt $count; $i++) {
+        if ($i -eq 6) { $hundred[$i] = "285A.T" } else { $hundred[$i] = ("{0}.T" -f (1300 + $i)) }
+        $column.SetValue($(if ($i -eq 6) { "285A" } else { $hundred[$i] }), $i + 1)
+    }
+    foreach ($pass in 1..3) {
+        $continuous = Resolve-SymbolMapping $column $hundred
+        if ($continuous.Reason -ne "") { throw ("continuous 100-row mapping failed on pass " + $pass + ": " + $continuous.Reason) }
+        if ([string]$continuous.Resolved[6] -ne "285A.T") { throw "row 8 must stay 285A.T" }
+    }
+    $column.SetValue("8035.T", 7)
+    $moved = Resolve-SymbolMapping $column $hundred
+    if ($moved.Reason -ne "WRONG_SYMBOL_MAPPING") { throw "changed 285A row must fail closed" }
+    $movedRow = @($moved.Rows)[0]
+    if ([int]$movedRow.Row -ne 8 -or [string]$movedRow.Expected -ne "285A.T" -or [string]$movedRow.Sheet -ne "8035.T") { throw "285A mismatch must name excel row 8" }
+    $script:verifiedCanonicalCodes = $null
     Write-Output "WORKBOOK_IDENTITY_SELFTEST PASS"
 }
 
@@ -715,6 +867,7 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$C
                 if ($diag.duplicate_collector -eq $true) { [void]$reasons.Add("DUPLICATE_COLLECTOR") }
                 if ($diag.duplicate_watcher -eq $true) { [void]$reasons.Add("DUPLICATE_WATCHER") }
                 if ([string]$diag.stale_reason -match 'WRONG_SYMBOL_MAPPING') { [void]$reasons.Add("WRONG_SYMBOL_MAPPING") }
+                if ([string]$diag.stale_reason -match 'CODE_COLUMN_UNREADABLE') { [void]$reasons.Add("CODE_COLUMN_UNREADABLE") }
             }
             if ($null -ne $obj -and ($obj.data_conflict -eq $true)) { [void]$reasons.Add("DATA_CONFLICT") }
             if ($null -ne $obj -and [string]$obj.price_source_status -eq "PRICE_SOURCE_MISMATCH") { [void]$reasons.Add("PRICE_SOURCE_MISMATCH") }
@@ -1357,6 +1510,18 @@ try {
         $symbolMismatchCount = 0
         $symbolMismatchSamples = @()
         $diagnosticSamples = @()
+        $expectedTickers = @($stocks | ForEach-Object { [string]$_.Ticker })
+        $mappingResult = Resolve-SymbolMapping $codeColumn $expectedTickers
+        if ($mappingResult.Reason -eq "WRONG_SYMBOL_MAPPING") {
+            $symbolMismatchCount = @($mappingResult.Rows).Count
+            $symbolMismatchSamples = @($mappingResult.Rows | ForEach-Object {
+                [ordered]@{ row = $_.Row; symbol = $_.Expected; sheet_code = $_.Sheet; reason = "WRONG_SYMBOL_MAPPING" }
+            })
+        } elseif ($mappingResult.Reason -eq "CODE_COLUMN_UNREADABLE") {
+            $symbolMismatchSamples = @($mappingResult.Rows | ForEach-Object {
+                [ordered]@{ row = $_.Row; symbol = $_.Expected; sheet_code = $_.Sheet; reason = "CODE_COLUMN_UNREADABLE" }
+            })
+        }
         $jnxExpectedOpen = Test-JnxSession $now
         if (-not $jnxExpectedOpen) {
             $jnxStatus = "OFF / MARKET CLOSED"
@@ -1695,17 +1860,12 @@ try {
 
             $orHighValue=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
             $orLowValue=if($orLow.ContainsKey($ticker)){$orLow[$ticker]}else{0}
-            $sheetCode = Get-SheetSymbolCode $codeColumn $r
-            $expectedCode = ([string]$ticker).Trim().ToUpperInvariant()
+            $sheetCode = ""
+            if ($mappingResult.Display.Count -gt $i) { $sheetCode = [string]$mappingResult.Display[$i] }
+            $expectedCode = ConvertTo-CanonicalTicker ([string]$ticker)
             $quoteTime = Get-TimeText (Get-TableValue $values $r 2)
             if ($diagnosticSamples.Count -lt 5) {
                 $diagnosticSamples += [ordered]@{symbol=$expectedCode; current_price=$price; source_timestamp=$quoteTime; sheet_code=$sheetCode}
-            }
-            if ([string]::IsNullOrWhiteSpace($sheetCode) -or $sheetCode -ne $expectedCode) {
-                $symbolMismatchCount++
-                if ($symbolMismatchSamples.Count -lt 8) {
-                    $symbolMismatchSamples += [ordered]@{symbol=$expectedCode; sheet_code=$sheetCode; current_price=$price; source_timestamp=$quoteTime; reason="WRONG_SYMBOL_MAPPING"}
-                }
             }
             $results += [pscustomobject]@{
                 ticker=$ticker;name=$s.Name;sector=$s.Sector;price=$price;volume=$volume;vwap=$vwap
@@ -1756,8 +1916,9 @@ try {
         $workbookCanonical = Test-BoundWorkbookIdentity $loopName $loopFull $script:canonicalWorkbookPath $WorkbookName
         if (-not $workbookCanonical) { [void]$sourceReasons.Add("WRONG_SOURCE_WORKBOOK") }
         $identityQuote = Get-IdentityQuote $results
-        if (-not $identityQuote.ok) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
-        if ($symbolMismatchCount -gt 0) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
+        if ($mappingResult.Reason -eq "WRONG_SYMBOL_MAPPING" -or $symbolMismatchCount -gt 0) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
+        elseif ($mappingResult.Reason -eq "CODE_COLUMN_UNREADABLE") { [void]$sourceReasons.Add("CODE_COLUMN_UNREADABLE") }
+        elseif (-not $identityQuote.ok) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
         $collectorProcessCount = Get-ScriptProcessCount "MS2_RSS_100_Collector.ps1"
         $watcherProcessCount = Get-ScriptProcessCount "Kioxia_RSS_Live_Watcher.ps1"
         if ($null -eq $collectorProcessCount) { [void]$sourceReasons.Add("DUPLICATE_PROCESS_CHECK_UNAVAILABLE") }
@@ -1769,6 +1930,14 @@ try {
         $priceSourceReason = ($sourceReasons -join ",")
         if ($script:priceSourceMismatch) {
             Hide-UntrustedLivePrices $results
+            if ($mappingResult.ColumnMissing -and $mappingResult.Reason -eq "CODE_COLUMN_UNREADABLE") {
+                Write-Host "[PRICE] FAIL-CLOSED CODE_COLUMN_UNREADABLE COLUMN_READ_FAILED" -ForegroundColor Red
+            }
+            foreach ($item in @($mappingResult.Rows)) {
+                if ([int]$item.Row -gt 0) {
+                    Write-Host ("[PRICE] FAIL-CLOSED " + $mappingResult.Reason + " ROW=" + $item.Row + " EXPECTED=" + $item.Expected + " SHEET=" + $item.Sheet) -ForegroundColor Red
+                }
+            }
             Write-Host ("[PRICE] FAIL-CLOSED " + $priceSourceReason) -ForegroundColor Red
         }
         $coverageStale = ($validCount -lt 90)

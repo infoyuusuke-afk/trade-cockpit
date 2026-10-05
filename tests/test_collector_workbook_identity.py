@@ -85,7 +85,11 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
     def test_code_column_read_stays_on_the_single_column_b_range(self):
         self.assertIn('Data = $sheet.Range("B2:B101").Value2', self.collector)
         self.assertIn("$sheet.Cells.Item($row,2).Value2 = $tickerText", self.collector)
-        self.assertIn("Get-TableValue $table $row 1 1", self.collector)
+        self.assertIn("function Get-CodeColumnValue", self.collector)
+        self.assertIn("GetLowerBound(0)", self.collector)
+        self.assertIn("function ConvertTo-CanonicalTicker", self.collector)
+        self.assertIn("CODE_COLUMN_UNREADABLE", self.collector)
+        self.assertIn("ROW=", self.collector)
 
     def test_deploy_runtime_only_does_not_start_excel_or_stop_the_collector(self):
         runner = (ROOT / "downloads" / "RUN_AI_COCKPIT_V9.ps1").read_text(encoding="utf-8")

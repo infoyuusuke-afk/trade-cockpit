@@ -79,6 +79,8 @@ OWNER ACTION PENDING / HOLD。追加の Owner コマンドは出していない�
 
 MS2/RSS Excel → Collector 28580 は Owner PC で PASS（285A.T / 19120）。Collector → Gateway 28581 → AIコクピット画面は、その PASS の対象外。画面は `live_price_diagnostics.current_price` を描かず、28580 だけを読み、公開スナップショットへ落ちていた。表示する現在値は、28580 と 28581 が同じ `285A.T` の正の現在値で、両方とも 60 秒以内、`real_submit_allowed=false` のときだけ `#kio-live-current-price` に書く。不一致、古い 28581、スナップショット、0 円、別銘柄は「—」のまま。売買カードの fail-closed は維持する。稼働中の Collector、Excel、MarketSpeed II は止めていない。この節の一致確認はリポジトリ上のもので、Owner PC の画面 Acceptance はまだない。
 
+Owner PC の Collector は、RSS 更新中に `[PRICE] FAIL-CLOSED WRONG_SYMBOL_MAPPING` を出した。B2:B101 は1列で、Excel の戻りが 1 始まりの1次元配列になると、旧読取は1行ずれて全銘柄を不一致にする。`285A` と `285A.T` も不一致にしていた。読取は配列の下限から行い、末尾 `.T` の有無は同じ銘柄とする。違うコードだけを `WRONG_SYMBOL_MAPPING` とし、Excel の行番号を出す。空欄と `#N/A` は未読で、一度一致した対応があるときの再読失敗では価格を止めない。違うコード、未読のまま、重複は fail-closed のまま。`real_submit_allowed` は false。自己テストは 100 行を 3 回一致させ、285A の行を `8035.T` に変えると Excel 行 8 で止まる。この修正は稼働中の Collector プロセスにはまだ入っていない。
+
 ## WRONG_SOURCE_WORKBOOK の診断シンボル（2026-10-04、main未マージ）
 
 28580 の `symbol=8035.T` は、別ブックから東京エレクトロンを読んだ結果ではない。`watchlist_100.json` の先頭が `8035.T` で、診断は価格の付いた先頭行を出していた。`reason=WRONG_SOURCE_WORKBOOK` だけだったのは、`source_mode` がファイル名一致で `MS2_RSS_WORKBOOK` のまま、`V9_CONTROLLER_STATE.json` の `workbook_identity_verified` が true でないためである。Collector は正規パスの `BindToMoniker` だけを使い、ファイル名のワイルドカードと DASHBOARD シートでの別ブック選択は外した。FullName が別のローカルファイルなら fail-closed。診断の symbol は `285A.T`、current_price はその行の RSS 値で、285A の行が無いかシートコードが違うときは価格を出さず fail-closed する。identity フィールドが無い古い payload は、コントローラ未検証の `WRONG_SOURCE_WORKBOOK` を維持する。`real_submit_allowed` は false のまま。この確認はリポジトリ上のもので、稼働中の Owner PC プロセスには入っていない。G0–G5 のライブ判定は変えていない。
