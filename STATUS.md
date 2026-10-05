@@ -11,6 +11,10 @@ URL（https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/STATU
 
 ---
 
+## 100億PROJECT 本文の D: 同期（2026-10-06、Owner PC）
+
+Owner PC は commit `768d1f47553b70e85c0d04f6e4962820a2aef1ab` を `D:\100億PROJECT\MASTER_SPEC` へコピーした。`MASTER_SPEC_SYNC=PASS`、`DESTINATION_WRITTEN=1`、`CLOUD_AGENT_WROTE_D_DRIVE=0`、`ARCHIVE=2026-10-06_0227`。同期スクリプトはコピー前後の sha256 が一致しないと FAIL で終わる。PASS なので D: の Markdown は 32,123 bytes、`b0d21ae173611a9a792335bca2ba5f1e3673dc97f52d78f5517c5393ebc551da`。Word は 51,104 bytes、`72e9ba6fbb9278ab30d6b2f0f797a529a6fca5ef0b38074bc1ab5ac6adcc6d29`。この commit の CURRENT_STATUS にある「この版を D: へ書いていない」は、コピー前の文面である。HISTORICAL BASELINE は 2026-09-22 の `docs/AI_COCKPIT_MASTER_SPEC.md`。G0=FAIL と G1–G5 は 2026-10-03 の Current Acceptance のまま。16:45 は未登録。`real_submit_allowed=false`。Excel、MarketSpeed II、Collector、Gateway、AI SHADOW は止めていない。
+
 ## V9起動ハング P0（2026-10-02、main未マージ）
 
 Issue #288。Controller 本体の同期 `BindToMoniker` をやめ、workbook identity probe を別 PowerShell プロセスへ分離した。本体は helper PID を 35 秒で打ち切り、失敗時は `EXCEL_IDENTITY_PROBE_TIMEOUT` / `EXCEL_IDENTITY_MISMATCH` / `EXCEL_IDENTITY_PROBE_FAILED` で fail-closed にする。停止できる Excel は、canonical workbook の command line、parent PID、同一 session が揃ったものだけ。実機の MS2/RSS 起動確認は Owner PC 側。この節は作業ブランチの記録で、main にはまだ入っていない。
