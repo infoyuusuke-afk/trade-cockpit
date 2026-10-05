@@ -101,6 +101,29 @@ class ObservationTests(unittest.TestCase):
         self.assertNotIn("6758.T", text)
         self.assertNotIn("PASS", text)
 
+    def test_complete_live_record_can_pass_and_a_synthetic_record_cannot(self):
+        exit_row = {
+            "event_type": "virtual_exit",
+            "performance_bucket": "clean_strategy",
+            "fill_model": "collector_quote_simulation",
+            "quantity": None,
+            "real_submit_allowed": False,
+            "decision_rationale": "監視 / price 19180",
+            "fill_entry_price": 19130.0,
+            "fill_exit_price": 19170.0,
+            "fill_pnl_per_share_yen": 40.0,
+            "slippage_yen": 20.0,
+            "mae_yen": 80.0,
+            "mfe_yen": 170.0,
+        }
+        live = obs.classify_observation(_status(), _lock(), _live("監視"), [exit_row], now=NOW)
+        self.assertEqual(live["live_roundtrip"], "PASS")
+        tagged = dict(exit_row)
+        tagged["acceptance_class"] = "synthetic"
+        synthetic = obs.classify_observation(_status(), _lock(), _live("監視"), [tagged], now=NOW)
+        self.assertEqual(synthetic["live_roundtrip"], "NOT_RUN/SYNTHETIC_LEDGER")
+        self.assertNotEqual(synthetic["live_roundtrip"], "PASS")
+
     def test_reader_source_does_not_submit_or_loosen_entries(self):
         text = (ROOT / "scripts" / "shadow_live_observation.py").read_text(encoding="utf-8")
         self.assertNotIn("submit_shadow_order", text)

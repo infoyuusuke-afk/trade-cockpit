@@ -145,6 +145,53 @@ def summarize_no_trade(ledger) -> dict:
     }
 
 
+def _synthetic_ledger(ledger) -> bool:
+    if not isinstance(ledger, list):
+        return False
+    for event in ledger:
+        if isinstance(event, dict) and event.get("acceptance_class") == "synthetic":
+            return True
+    return False
+
+
+def _live_roundtrip_complete(ledger) -> bool:
+    """A live PASS needs one clean collector-quote round trip.
+
+    Synthetic rows are not complete for this check. real_submit_allowed stays false.
+    """
+    if not isinstance(ledger, list) or _synthetic_ledger(ledger):
+        return False
+    exits = [
+        event for event in ledger
+        if isinstance(event, dict) and event.get("event_type") == "virtual_exit"
+    ]
+    complete = False
+    for event in exits:
+        if event.get("performance_bucket") != "clean_strategy":
+            continue
+        if event.get("fill_model") != "collector_quote_simulation":
+            continue
+        if event.get("quantity") is not None or event.get("real_submit_allowed") is not False:
+            continue
+        rationale = event.get("decision_rationale")
+        if not isinstance(rationale, str) or not rationale:
+            continue
+        numbers = (
+            "fill_entry_price",
+            "fill_exit_price",
+            "fill_pnl_per_share_yen",
+            "slippage_yen",
+            "mae_yen",
+            "mfe_yen",
+        )
+        if all(shadow._finite(event.get(key)) for key in numbers):
+            complete = True
+    if not complete:
+        return False
+    stats = shadow.summarize_trade_performance(ledger)
+    return stats.get("real_submit_allowed") is False and shadow._finite(stats.get("expectancy_yen_per_share")) and int(stats.get("closed_trade_count") or 0) >= 1
+
+
 def classify_observation(status, lock, live, ledger, *, now: datetime) -> dict:
     """Classify supervisor observation. This does not create a trade."""
     heartbeat_age = _age_seconds(lock.get("heartbeat_at") if isinstance(lock, dict) else None, now)
@@ -188,9 +235,15 @@ def classify_observation(status, lock, live, ledger, *, now: datetime) -> dict:
     elif not fresh:
         observation = "STALE"
         roundtrip = "NOT_RUN/HEARTBEAT_STALE"
+    elif exits > 0 and _synthetic_ledger(ledger):
+        observation = "FRESH"
+        roundtrip = "NOT_RUN/SYNTHETIC_LEDGER"
+    elif exits > 0 and _live_roundtrip_complete(ledger):
+        observation = "FRESH"
+        roundtrip = "PASS"
     elif exits > 0:
         observation = "FRESH"
-        roundtrip = "LEDGER_HAS_EXIT"
+        roundtrip = "LEDGER_INCOMPLETE"
     elif entries > 0:
         observation = "FRESH"
         roundtrip = "IN_PROGRESS"

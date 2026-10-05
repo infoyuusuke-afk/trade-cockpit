@@ -890,6 +890,8 @@ def _next_event(engine: dict, *, now: datetime, event_type: str, payload: dict) 
     record.update(payload)
     record["real_submit_allowed"] = False
     record["quantity"] = None
+    if engine.get("_acceptance_class") == "synthetic":
+        record["acceptance_class"] = "synthetic"
     return record
 
 
@@ -978,8 +980,11 @@ def _recover_excel_identity(engine: dict, data_dir: Path, *, now: datetime, payl
         _rewrite_incidents(data_dir, engine["incidents"])
 
 
-def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir: Path, recovery_mode: str = "AUTO", runtime_manifest=None, live_path=None) -> dict:
+def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir: Path, recovery_mode: str = "AUTO", runtime_manifest=None, live_path=None, acceptance_class: str | None = None) -> dict:
     """One supervisor cycle. Fail-closed input never creates or closes a virtual trade."""
+    engine.pop("_acceptance_class", None)
+    if acceptance_class == "synthetic":
+        engine["_acceptance_class"] = "synthetic"
     engine["state"]["real_submit_allowed"] = False
     if engine["state"].get("resume_blocked") is True:
         engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
