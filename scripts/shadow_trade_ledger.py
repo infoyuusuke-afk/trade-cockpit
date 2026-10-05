@@ -12,8 +12,15 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
+
+_SCRIPTS = Path(__file__).resolve().parent
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
+
+import research_cost_model as cost_model
 
 FEE_UNKNOWN = "FEE_UNKNOWN"
 SOURCE_LIVE = "LIVE_SHADOW"
@@ -89,12 +96,20 @@ def _text(value) -> str | None:
     return None
 
 
-def build_shadow_trade(entry: dict, exit_event: dict, *, exit_signal_at, source_stage: str, data_quality: str) -> dict:
+def build_shadow_trade(entry: dict, exit_event: dict, *, exit_signal_at, source_stage: str, data_quality: str, entry_bid=None, entry_ask=None, exit_bid=None, exit_ask=None) -> dict:
     """Copy clocks and fills that already exist. Commission stays unknown."""
     symbol = exit_event.get("ticker") if isinstance(exit_event.get("ticker"), str) else ""
     side = exit_event.get("side") if exit_event.get("side") in {"LONG", "SHORT"} else ""
     entry_seq = entry.get("seq")
     signal_at = _text(entry.get("source_timestamp"))
+    costs = cost_model.cost_components(
+        entry_bid=entry.get("bid") if entry_bid is None else entry_bid,
+        entry_ask=entry.get("ask") if entry_ask is None else entry_ask,
+        exit_bid=exit_bid,
+        exit_ask=exit_ask,
+        entry_slippage=exit_event.get("entry_slippage_yen"),
+        exit_slippage=exit_event.get("exit_slippage_yen"),
+    )
     record = {
         "record_class": "shadow_trade",
         "trade_id": symbol + "|" + side + "|" + str(entry_seq),
@@ -131,6 +146,14 @@ def build_shadow_trade(entry: dict, exit_event: dict, *, exit_signal_at, source_
         "broker": FEE_AUDIT["broker"],
         "order_method": FEE_AUDIT["order_method"],
         "unit": "yen_per_share",
+        "entry_spread": costs["entry_spread"],
+        "exit_spread": costs["exit_spread"],
+        "spread_status": costs["spread_status"],
+        "cost_evidence_url": costs["evidence_url"],
+        "cost_tariff_version": costs["tariff_version"],
+        "cost_effective_from": costs["effective_from"],
+        "cost_fetched_at": costs["fetched_at"],
+        "cost_applied_to_shadow_net": False,
         "real_submit_allowed": False,
     }
     record["quantity"] = None
@@ -138,6 +161,7 @@ def build_shadow_trade(entry: dict, exit_event: dict, *, exit_signal_at, source_
     record["other_cost"] = FEE_UNKNOWN
     record["net_pnl"] = FEE_UNKNOWN
     record["real_submit_allowed"] = False
+    record["cost_applied_to_shadow_net"] = False
     return record
 
 

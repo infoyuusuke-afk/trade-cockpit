@@ -1151,6 +1151,10 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
             exit_signal_at=exit_signal_at,
             source_stage=source_stage,
             data_quality="CONTAMINATED" if bucket != "clean_strategy" else "OK",
+            entry_bid=position.get("bid"),
+            entry_ask=position.get("ask"),
+            exit_bid=current.get("bid"),
+            exit_ask=current.get("ask"),
         )
         event["trade_id"] = trade["trade_id"]
         event["source_stage"] = source_stage
@@ -1189,6 +1193,8 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
             "slippage_yen": entry_fill.get("slippage_yen"),
             "fill_model": "collector_quote_simulation",
             "source_timestamp": candidate["source_timestamp"],
+            "bid": source_row.get("bid"),
+            "ask": source_row.get("ask"),
             "quantity": None,
             "performance_bucket": "open_unrealized_not_marked",
             "decision_rationale": _rationale(candidate),
