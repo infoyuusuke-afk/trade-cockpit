@@ -181,7 +181,7 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
         self.assertIn("checkout -f --detach", runtime)
         self.assertIn("V9_CONTROLLER_STATE.json", text)
         self.assertIn("-AcceptRuntimeCollector", text)
-        self.assertIn("82c49a6d614a6a09f9f239cc7de6b3f25d39310a", text)
+        self.assertIn("467a801f7389337ee77de283aee75d84f66bea28", text)
         self.assertLess(len(command), 32000)
         digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest().upper()
         self.assertEqual(len(digest), 64)

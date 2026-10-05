@@ -131,7 +131,7 @@ if ($OwnerCommandSelfTest) {
     if (-not $runtime.Contains('merge-base --is-ancestor')) { throw 'pin ancestry must be verified' }
     if (-not $runtime.Contains('checkout -f --detach')) { throw 'pin detach missing' }
     if (-not $text.Contains('-AcceptRuntimeCollector')) { throw 'launcher must call accept' }
-    if (-not $text.Contains('82c49a6d614a6a09f9f239cc7de6b3f25d39310a')) { throw 'pin missing' }
+    if (-not $text.Contains('467a801f7389337ee77de283aee75d84f66bea28')) { throw 'pin missing' }
     if ((Select-SingleRepoPath @('C:\repo', 'c:\repo\')) -ne 'C:\repo') { throw 'same repo must collapse' }
     $two = $false
     try { Select-SingleRepoPath @('C:\a', 'C:\b') | Out-Null } catch { if ($_.Exception.Message -like 'REPO_MATCH_COUNT=2*') { $two = $true } }
@@ -176,7 +176,7 @@ foreach ($candidate in @(Get-RecordedRepoCandidates)) {
 }
 $repo = Select-SingleRepoPath @($valid.ToArray())
 Write-Output ('REPO=' + $repo)
-$pin = '82c49a6d614a6a09f9f239cc7de6b3f25d39310a'
+$pin = '467a801f7389337ee77de283aee75d84f66bea28'
 & git -C $repo fetch origin cursor/p0-stale-price-failclosed-d483
 if ($LASTEXITCODE -ne 0) { throw 'GIT_FETCH_FAILED' }
 $fetchHead = (& git -C $repo rev-parse --verify FETCH_HEAD 2>$null | Out-String).Trim()
