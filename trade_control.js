@@ -269,10 +269,16 @@
     return {
       brain:{
         title:"AI BRAIN LIVE",badge:"RESEARCH / CANDIDATE",authority:LIVE_AUTHORITY,
-        symbol:LIVE_NA,side:LIVE_NA,discovered_at:LIVE_NA,entry_candidate_at:LIVE_NA,
-        entry_trigger:LIVE_NA,price:LIVE_NA,reason:LIVE_NA,candidate_generator:LIVE_NA,
-        correlation:LIVE_NA,lead_lag:LIVE_NA,market_regime:LIVE_NA,research_status:LIVE_NA,
-        ev_pf_n:LIVE_NA,candidate_id:LIVE_NA,execution_authority:false,real_submit_allowed:false
+        symbol:LIVE_NA,side:LIVE_NA,discovered_at:LIVE_NA,candidate_created_at:LIVE_NA,
+        entry_candidate_at:LIVE_NA,entry_trigger:LIVE_NA,trigger:LIVE_NA,price:LIVE_NA,
+        reason:LIVE_NA,main_reasons:LIVE_NA,candidate_generator:LIVE_NA,source_generator:LIVE_NA,
+        correlation:LIVE_NA,lead_lag:LIVE_NA,correlation_engine:LIVE_NA,
+        lead_lag_engine:"DESIGN_ONLY / NOT MEASURED",market_regime:LIVE_NA,
+        available_at:LIVE_NA,data_quality:LIVE_NA,
+        universe_scope:"LIMITED / PRECISION_WATCH_ONLY",research_status:LIVE_NA,
+        ev_pf_n:LIVE_NA,candidate_id:LIVE_NA,production_candidate_count:0,
+        linked_candidate_count:0,shadow_entry_count:0,
+        execution_authority:false,real_submit_allowed:false
       },
       shadow:{
         state:"WAITING",symbol:LIVE_NA,side:LIVE_NA,entry_at:LIVE_NA,fill:LIVE_NA,
@@ -301,21 +307,27 @@
     const phases=Array.isArray(payload.timeline)?payload.timeline:[];
     const brainCard=liveCard("AI BRAIN LIVE",brain.badge||"RESEARCH / CANDIDATE",[
       ["権限",brain.authority||LIVE_AUTHORITY],
+      ["universe_scope",brain.universe_scope||"LIMITED / PRECISION_WATCH_ONLY"],
+      ["本番候補",brain.production_candidate_count],
+      ["linked",brain.linked_candidate_count],
+      ["Shadow Entry",brain.shadow_entry_count],
       ["選出銘柄",brain.symbol],
       ["方向",brain.side],
-      ["発見時刻",brain.discovered_at],
-      ["Entry候補時刻",brain.entry_candidate_at],
-      ["Entry trigger",brain.entry_trigger],
+      ["candidate_id",brain.candidate_id],
+      ["candidate_created_at",brain.candidate_created_at],
+      ["entry_candidate_at",brain.entry_candidate_at],
+      ["source_generator",brain.source_generator],
+      ["trigger",brain.trigger],
+      ["main_reasons",brain.main_reasons],
+      ["market_regime",brain.market_regime],
+      ["available_at",brain.available_at],
+      ["data_quality",brain.data_quality],
       ["現在値",brain.price],
-      ["主要理由",brain.reason],
-      ["Candidate Generator",brain.candidate_generator],
-      ["相関",brain.correlation],
-      ["Lead-Lag",brain.lead_lag],
-      ["Market Regime",brain.market_regime],
       ["Research status",brain.research_status],
       ["EV / PF / N",brain.ev_pf_n],
-      ["candidate_id",brain.candidate_id]
-    ],"Brainは研究候補です。固定StrategyのShadow Entryとは別です。"+liveText(brain.authority||LIVE_AUTHORITY),"wait");
+      ["相関",brain.correlation_engine||brain.correlation],
+      ["Lead-Lag",brain.lead_lag_engine||"DESIGN_ONLY / NOT MEASURED"]
+    ],"探索範囲は LIMITED / PRECISION_WATCH_ONLY です。市場全体からの選出ではありません。Brainは研究候補です。"+liveText(brain.authority||LIVE_AUTHORITY),"wait");
     const shadowCard=liveCard("AI SHADOW LIVE",shadow.state||"WAITING",[
       ["状態",shadow.state||"WAITING"],
       ["仮想Entry銘柄",shadow.symbol],

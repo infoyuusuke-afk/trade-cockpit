@@ -316,7 +316,7 @@ def load_latest(now: datetime | None = None) -> dict:
 LANE_PRIORITY = (
     {"id": "short_sale_ratio", "rank": 1, "contribution": 5, "license": 5, "history": 5, "speed": 5, "available_at": 3, "score": 23, "fetch_this_turn": True, "why": "JPXの日次合計。出典付きの公開統計。履歴PDFがある。PDFに時刻は無いのでavailable_atは初回観測時刻。"},
     {"id": "investor_futures_flow", "rank": 2, "contribution": 4, "license": 5, "history": 5, "speed": 4, "available_at": 4, "score": 22, "fetch_this_turn": True, "why": "JPX先物の投資部門別。週次CSVを取得する。公表時刻はLast-Modifiedが検証できたときだけ入れる。"},
-    {"id": "arbitrage_balance", "rank": 3, "contribution": 5, "license": 4, "history": 3, "speed": 2, "available_at": 3, "score": 17, "fetch_this_turn": False, "why": "プログラム売買ページは確認した。PDFは参加者別で、合計だけを切る処理が未完了。参加者名は保存しない。"},
+    {"id": "arbitrage_balance", "rank": 3, "contribution": 5, "license": 4, "history": 3, "speed": 2, "available_at": 3, "score": 17, "fetch_this_turn": True, "why": "JPXの日次xlsから市場合計だけを保存した。参加者名と原票は残さない。published_atは検証できたLast-Modifiedだけ。"},
     {"id": "earnings_schedule", "rank": 4, "contribution": 3, "license": 4, "history": 4, "speed": 3, "available_at": 3, "score": 17, "fetch_this_turn": False, "why": "裁定残と同点。日程であり需給の数値ではない。既存の日程読取とは別に、今回の取得対象にはしない。"},
     {"id": "macro_release", "rank": 5, "contribution": 3, "license": 3, "history": 3, "speed": 2, "available_at": 4, "score": 15, "fetch_this_turn": False, "why": "予定時刻だけがある。結果の数値系列は未接続。"},
     {"id": "catalyst", "rank": 6, "contribution": 3, "license": 3, "history": 2, "speed": 1, "available_at": 4, "score": 13, "fetch_this_turn": False, "why": "TDnet見出しは開示時刻がある。この環境からの取得は403で、本文はコピーしない。"},

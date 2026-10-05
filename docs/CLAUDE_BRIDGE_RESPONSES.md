@@ -27,4 +27,6 @@
 
 | C-026 | 2026-10-06 | 一部のみ（初回同期は PASS。本文の再同期は未実施） | Owner PC の初回同期は `MASTER_SPEC_SYNC=PASS`、`DESTINATION_WRITTEN=1`、`CLOUD_AGENT_WROTE_D_DRIVE=0`、`ARCHIVE=NONE_FIRST_SYNC`、commit `116ed28014af7b627b69882b2920ca09aa34924a`。当時の MASTER は 4,644 bytes。その後、repo の MASTER を章立てした本文と同一内容の Word に広げた。この版は D: へ未コピー。16:45 は未登録。FETCHED は 2/17。trading_adoption=false。LIVE signal と real_submit は変えていない | [docs/100oku/100億PROJECT_MASTER_SPEC.md](100oku/100億PROJECT_MASTER_SPEC.md) | C-026 の統合表示は未着手。次の D: コピーと 16:45 登録は未実施 | 研究参照のみ。この版の正式原本は未反映 |
 
+| C-026 | 2026-10-06 | 一部のみ（裁定残の市場合計。統合表示は未了） | JPX裁定取引の日次xlsから市場合計だけを `arbitrage_balance` として保存した。2026-10-01 の買いポジション合計は 849,191 千株。`published_at=2026-10-05T16:00:31+09:00`。営業日差 3 で研究値は null。参加者名と原票は保存していない。FETCHED は 3/17。本番 Brain candidate は 0、linked は 0、Shadow Entry は 0。探索範囲は `LIMITED / PRECISION_WATCH_ONLY`。trading_adoption=false。LIVE signal と real_submit は変えていない。この版の D: コピーは未実施 | [scripts/research_lane_arbitrage.py](../scripts/research_lane_arbitrage.py)、[data/research_lane/arbitrage_balance/latest.json](../data/research_lane/arbitrage_balance/latest.json) | C-026 の統合表示は未着手。Owner 操作は不要 | 研究参照のみ。売買条件には未接続 |
+
 ChatGPT側は当該ID・根拠を読み、必要な再検証だけを共有シートに新しいIDで追記する。双方とも返信を実装済みや売買可能の証拠として扱わない。

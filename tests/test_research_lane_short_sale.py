@@ -76,7 +76,7 @@ class ShortSaleLaneTests(unittest.TestCase):
         )
         self.assertEqual(
             [row["id"] for row in lane.LANE_PRIORITY if row["fetch_this_turn"]],
-            ["short_sale_ratio", "investor_futures_flow"],
+            ["short_sale_ratio", "investor_futures_flow", "arbitrage_balance"],
         )
         for key in ("nt_ratio", "futures_options_positioning", "jpx_nikkei_mid_small", "dex", "tradingview_wide"):
             self.assertTrue(lane.NOT_FETCHED_BECAUSE[key])
@@ -126,7 +126,7 @@ class ShortSaleLaneTests(unittest.TestCase):
         lane_rows = brain.research_data_lane()
         self.assertEqual(
             {item["id"] for item in lane_rows if item["fetch_status"] == "FETCHED"},
-            {"short_sale_ratio", "investor_futures_flow"},
+            {"short_sale_ratio", "investor_futures_flow", "arbitrage_balance"},
         )
         item = next(row for row in lane_rows if row["id"] == "short_sale_ratio")
         self.assertFalse(item["trading_adoption"])
@@ -144,9 +144,9 @@ class ShortSaleLaneTests(unittest.TestCase):
         self.assertTrue(all(row["trading_adoption"] is False for row in lane_rows))
         self.assertTrue(all(row["real_submit_allowed"] is False for row in lane_rows))
         summary = brain.research_lane_fetch_summary(lane_rows)
-        self.assertEqual(summary["fetched"], 2)
+        self.assertEqual(summary["fetched"], 3)
         self.assertEqual(summary["registry"], 17)
-        self.assertEqual(summary["ids"], ["investor_futures_flow", "short_sale_ratio"])
+        self.assertEqual(summary["ids"], ["investor_futures_flow", "short_sale_ratio", "arbitrage_balance"])
 
     def test_malformed_store_does_not_invent_a_ratio(self):
         record = json.loads(lane.LATEST.read_text(encoding="utf-8"))

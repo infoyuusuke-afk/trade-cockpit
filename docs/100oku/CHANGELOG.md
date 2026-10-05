@@ -11,3 +11,6 @@
 - Owner PC 同期ブリッジを追加した。`downloads/SYNC_100OKU_MASTER_SPEC.ps1` が `docs/100oku/` を `D:\100億PROJECT\MASTER_SPEC` へコピーし、上書き前を `archive\YYYY-MM-DD_HHMM\` に退避する。sha256 の不一致、欠落、空ファイルは FAIL CLOSED。`LAST_SYNC.json` の `cloud_agent_wrote_destination` は false。`downloads/REGISTER_100OKU_MASTER_SPEC_TASK.ps1` は毎日 16:45 を表示し、`-Register` が無いときは登録しない。Cloud 上の dry-run は D: へ書いていない。
 - Owner PC の初回同期は PASS。`MASTER_SPEC_SYNC=PASS`、`DESTINATION_WRITTEN=1`、`CLOUD_AGENT_WROTE_D_DRIVE=0`、`ARCHIVE=NONE_FIRST_SYNC`。対象 commit は `116ed28014af7b627b69882b2920ca09aa34924a`。当時の MASTER は 4,644 bytes で、Word は無かった。
 - MASTER 本文を、目的、正本、アーキテクチャ、Acceptance、ユニバース、候補、相関、Brain、Baseline / Research / Meta Brain / Shadow、データ台帳、freshness、データ源の役割、日記、収益、進化、停滞防止、省略監査、役割、16:30 棚卸し、変更管理、引継ぎ、安全まで広げた。同じ意味の `100億PROJECT_MASTER_SPEC.docx` を追加した。未検証の EV は入れていない。週間 15 件は SNAPSHOT のままである。16:45 は未登録。この版の D: コピーは未実施。
+- `arbitrage_balance` を3本目の `FETCHED` にした。2026-10-01 の市場合計は売り 64,563 千株、買い 8,980 千株、買いポジション 849,191 千株。`published_at=2026-10-05T16:00:31+09:00`。営業日差 3 で研究値は null。参加者名と原票は保存していない。Research Data Lane は FETCHED 3/17。
+- 本番 Research Candidate の保存先を追加した。銘柄行が無いので candidate は 0。`UNIVERSE_SCOPE=LIMITED / PRECISION_WATCH_ONLY`。fixture は本番統計に入れない。Shadow の Entry 条件は変えていない。linked は 0。Shadow Entry は 0。
+- Correlation / Lead-Lag は設計のまま。測定ペアは 0。係数は保存していない。

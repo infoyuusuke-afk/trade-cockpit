@@ -15,6 +15,8 @@ if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
 import ai_brain_research as brain
+import lead_lag_research as lead_lag
+import research_candidates
 import shadow_trade_ledger as trade_ledger
 
 NOT_AVAILABLE = "NOT AVAILABLE"
@@ -23,8 +25,10 @@ AUTHORITY = "RESEARCH ONLY / NOT EXECUTION AUTHORITY"
 BRAIN_BADGE = "RESEARCH / CANDIDATE"
 SHADOW_BANNER = "SHADOW / NO REAL ORDER"
 FORBIDDEN_LABEL = "BRAIN ENTRY"
+UNIVERSE_SCOPE = research_candidates.UNIVERSE_SCOPE
+LEAD_LAG_ENGINE = "DESIGN_ONLY / NOT MEASURED"
 
-_SIDES = {"LONG", "SHORT", "NO-TRADE"}
+_SIDES = {"LONG", "SHORT", "WATCH", "NO-TRADE"}
 _PHASES = ("brain_discovered", "entry_candidate", "shadow_entry", "shadow_exit", "result")
 
 
@@ -64,6 +68,8 @@ def _brain_side(side) -> str:
         return "LONG CANDIDATE"
     if side == "SHORT":
         return "SHORT CANDIDATE"
+    if side == "WATCH":
+        return "WATCH"
     if side == "NO-TRADE":
         return "NO-TRADE"
     return NOT_AVAILABLE
@@ -103,10 +109,31 @@ def _accuracy(status: dict) -> str:
     return NOT_AVAILABLE
 
 
+def _scope_rejected(raw) -> bool:
+    scope = raw.get("universe_scope")
+    if scope != UNIVERSE_SCOPE:
+        return True
+    if not isinstance(scope, str):
+        return True
+    compact = scope.replace(" ", "").upper()
+    if "全市場" in scope or "市場全体" in scope or compact == "FULL" or "FULL_MARKET" in compact:
+        return True
+    symbol = raw.get("symbol")
+    if isinstance(symbol, str) and ("全市場" in symbol or "市場全体" in symbol):
+        return True
+    return False
+
+
 def _accept_candidate(raw) -> dict | None:
     if not isinstance(raw, dict) or raw.get("execution_authority") is True:
         return None
-    if raw.get("real_submit_allowed") is True:
+    if raw.get("real_submit_allowed") is True or raw.get("trading_adoption") is True:
+        return None
+    if raw.get("fixture") is True or raw.get("acceptance_class") == "synthetic":
+        return None
+    if raw.get("source_stage") in {"SYNTHETIC/REPLAY", "SYNTHETIC"}:
+        return None
+    if _scope_rejected(raw):
         return None
     side = raw.get("side")
     symbol = raw.get("symbol")
@@ -115,20 +142,31 @@ def _accept_candidate(raw) -> dict | None:
         return None
     if not isinstance(candidate_id, str) or not candidate_id or FORBIDDEN_LABEL in candidate_id:
         return None
+    created = _clock(raw.get("candidate_created_at") or raw.get("discovered_at"))
+    trigger = _text(raw.get("trigger") if raw.get("trigger") is not None else raw.get("entry_trigger"))
+    reasons = raw.get("main_reasons") if raw.get("main_reasons") is not None else raw.get("reason")
     price = _yen(raw.get("price")) if raw.get("price_fresh") is True else NOT_AVAILABLE
+    quality = raw.get("data_quality")
     return {
         "candidate_id": candidate_id,
         "symbol": symbol,
         "side": _brain_side(side),
-        "discovered_at": _clock(raw.get("discovered_at")),
+        "discovered_at": created,
+        "candidate_created_at": created,
         "entry_candidate_at": _clock(raw.get("entry_candidate_at")),
-        "entry_trigger": _text(raw.get("entry_trigger")),
+        "entry_trigger": trigger,
+        "trigger": trigger,
         "price": price,
-        "reason": _text(raw.get("reason")),
-        "candidate_generator": _text(raw.get("candidate_generator")),
+        "reason": _text(reasons if isinstance(reasons, str) else None),
+        "main_reasons": _text(reasons if isinstance(reasons, str) else None),
+        "candidate_generator": _text(raw.get("source_generator") or raw.get("candidate_generator")),
+        "source_generator": _text(raw.get("source_generator") or raw.get("candidate_generator")),
         "correlation": _text(raw.get("correlation")),
         "lead_lag": _text(raw.get("lead_lag")),
         "market_regime": _text(raw.get("market_regime")),
+        "available_at": _clock(raw.get("available_at")),
+        "data_quality": quality if quality == "OK" else NOT_AVAILABLE,
+        "universe_scope": UNIVERSE_SCOPE,
     }
 
 
@@ -279,7 +317,39 @@ def _timeline(candidate, shadow, linked: bool) -> list:
     return _phases(candidate, shadow)
 
 
-def live_view(candidates=None, shadow_trades=None, open_positions=None, research_status=None) -> dict:
+def _production_stats(candidates, shadow_trades, open_positions) -> dict:
+    """Count only rows marked as production. A display fixture stays at zero."""
+    produced = []
+    for raw in candidates or []:
+        if isinstance(raw, dict) and raw.get("counts_as_production") is True and raw.get("fixture") is not True:
+            accepted = _accept_candidate(raw)
+            if accepted:
+                produced.append(accepted)
+    ids = {row["candidate_id"] for row in produced}
+    linked = set()
+    entries = 0
+    for record in list(shadow_trades or []) + list(open_positions or []):
+        if not isinstance(record, dict):
+            continue
+        if record.get("acceptance_class") == "synthetic" or record.get("source_stage") == trade_ledger.SOURCE_SYNTHETIC:
+            continue
+        if record.get("fixture") is True:
+            continue
+        if record.get("counts_as_production") is not True:
+            continue
+        entries += 1
+        cid = record.get("candidate_id")
+        if isinstance(cid, str) and cid in ids:
+            linked.add(cid)
+    return {
+        "brain_candidate_count": len(produced),
+        "linked_candidate_count": len(linked),
+        "shadow_entry_count": entries,
+        "universe_scope": UNIVERSE_SCOPE,
+    }
+
+
+def live_view(candidates=None, shadow_trades=None, open_positions=None, research_status=None, production=None) -> dict:
     """One Brain card, one Shadow card, and the ids that can join them later."""
     status = research_status if isinstance(research_status, dict) else brain.evaluate_shadow_trade_ledger(shadow_trades or [])
     status["real_submit_allowed"] = False
@@ -289,6 +359,8 @@ def live_view(candidates=None, shadow_trades=None, open_positions=None, research
     shadow["real_submit_allowed"] = False
     linked = _same_link(candidate, shadow)
     accuracy = _accuracy(status)
+    stats = production if isinstance(production, dict) else _production_stats(candidates, shadow_trades, open_positions)
+    engine = lead_lag.design_status()
     brain_card = {
         "title": "AI BRAIN LIVE",
         "badge": BRAIN_BADGE,
@@ -297,17 +369,29 @@ def live_view(candidates=None, shadow_trades=None, open_positions=None, research
         "symbol": candidate["symbol"] if candidate else NOT_AVAILABLE,
         "side": candidate["side"] if candidate else NOT_AVAILABLE,
         "discovered_at": candidate["discovered_at"] if candidate else NOT_AVAILABLE,
+        "candidate_created_at": candidate["candidate_created_at"] if candidate else NOT_AVAILABLE,
         "entry_candidate_at": candidate["entry_candidate_at"] if candidate else NOT_AVAILABLE,
         "entry_trigger": candidate["entry_trigger"] if candidate else NOT_AVAILABLE,
+        "trigger": candidate["trigger"] if candidate else NOT_AVAILABLE,
         "price": candidate["price"] if candidate else NOT_AVAILABLE,
         "reason": candidate["reason"] if candidate else NOT_AVAILABLE,
+        "main_reasons": candidate["main_reasons"] if candidate else NOT_AVAILABLE,
         "candidate_generator": candidate["candidate_generator"] if candidate else NOT_AVAILABLE,
+        "source_generator": candidate["source_generator"] if candidate else NOT_AVAILABLE,
         "correlation": candidate["correlation"] if candidate else NOT_AVAILABLE,
         "lead_lag": candidate["lead_lag"] if candidate else NOT_AVAILABLE,
+        "correlation_engine": engine["correlation"],
+        "lead_lag_engine": LEAD_LAG_ENGINE,
         "market_regime": candidate["market_regime"] if candidate else NOT_AVAILABLE,
+        "available_at": candidate["available_at"] if candidate else NOT_AVAILABLE,
+        "data_quality": candidate["data_quality"] if candidate else NOT_AVAILABLE,
+        "universe_scope": UNIVERSE_SCOPE,
         "research_status": _research_line(),
         "ev_pf_n": _sample_line(status),
         "candidate_id": candidate["candidate_id"] if candidate else NOT_AVAILABLE,
+        "production_candidate_count": stats.get("brain_candidate_count", 0),
+        "linked_candidate_count": stats.get("linked_candidate_count", 0),
+        "shadow_entry_count": stats.get("shadow_entry_count", 0),
         "real_submit_allowed": False,
     }
     return {
@@ -330,8 +414,35 @@ def live_view(candidates=None, shadow_trades=None, open_positions=None, research
     }
 
 
+def _production_shadow(root: Path) -> tuple[list, list]:
+    trades, error = trade_ledger.read_shadow_trades(root / "data" / "shadow_trades.jsonl")
+    if error:
+        return [], []
+    produced = []
+    for record in trades:
+        if not isinstance(record, dict):
+            continue
+        if record.get("fixture") is True or record.get("acceptance_class") == "synthetic":
+            continue
+        if record.get("source_stage") == trade_ledger.SOURCE_SYNTHETIC:
+            continue
+        row = dict(record)
+        row["counts_as_production"] = True
+        produced.append(row)
+    return produced, []
+
+
 def publish_live_view(root: Path, candidates=None, shadow_trades=None, open_positions=None) -> dict:
-    payload = live_view(candidates, shadow_trades, open_positions)
+    """Write the production card. Omitted inputs are the saved production files."""
+    if candidates is None:
+        research_candidates.publish_production()
+        candidates = research_candidates.load_production()
+    if shadow_trades is None and open_positions is None:
+        shadow_trades, open_positions = _production_shadow(root)
+    elif shadow_trades is None:
+        shadow_trades = []
+    stats = _production_stats(candidates, shadow_trades, open_positions)
+    payload = live_view(candidates, shadow_trades, open_positions, production=stats)
     path = root / "brain_shadow_live.json"
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return payload

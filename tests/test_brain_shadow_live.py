@@ -31,6 +31,7 @@ def _candidate(**overrides):
         "correlation": "半導体指数",
         "lead_lag": "先導銘柄",
         "market_regime": "RANGE",
+        "universe_scope": "LIMITED / PRECISION_WATCH_ONLY",
         "execution_authority": False,
         "real_submit_allowed": False,
     }
@@ -86,6 +87,13 @@ class BrainShadowLiveTests(unittest.TestCase):
     def test_execution_claim_and_stale_price_are_not_a_candidate(self):
         claimed = live_view([_candidate(execution_authority=True)])
         self.assertEqual(claimed["brain"]["symbol"], NOT_AVAILABLE)
+        wide = live_view([_candidate(universe_scope="FULL")])
+        market = live_view([_candidate(universe_scope="市場全体から選出")])
+        self.assertEqual(wide["brain"]["symbol"], NOT_AVAILABLE)
+        self.assertEqual(market["brain"]["symbol"], NOT_AVAILABLE)
+        self.assertEqual(wide["brain"]["universe_scope"], "LIMITED / PRECISION_WATCH_ONLY")
+        watched = live_view([_candidate(side="WATCH")])
+        self.assertEqual(watched["brain"]["side"], "WATCH")
         stale = live_view([_candidate(price_fresh=False)])
         self.assertEqual(stale["brain"]["symbol"], "285A.T")
         self.assertEqual(stale["brain"]["side"], "LONG CANDIDATE")
@@ -200,7 +208,7 @@ class BrainShadowLiveTests(unittest.TestCase):
     def test_control_page_splits_the_two_cards(self):
         page = (ROOT / "index.html").read_text(encoding="utf-8")
         script = (ROOT / "trade_control.js").read_text(encoding="utf-8")
-        self.assertIn("trade_control.js?v=brain-shadow-live-1", page)
+        self.assertIn("trade_control.js?v=research-candidate-1", page)
         self.assertIn("AI BRAIN LIVE", script)
         self.assertIn("AI SHADOW LIVE", script)
         self.assertIn(AUTHORITY, script)
@@ -213,4 +221,16 @@ class BrainShadowLiveTests(unittest.TestCase):
         self.assertEqual(saved["shadow"]["state"], "WAITING")
         self.assertEqual(saved["brain"]["ev_pf_n"], INSUFFICIENT_SAMPLE)
         self.assertEqual(saved["brain"]["authority"], AUTHORITY)
+        self.assertEqual(saved["brain"]["universe_scope"], "LIMITED / PRECISION_WATCH_ONLY")
+        self.assertEqual(saved["brain"]["symbol"], NOT_AVAILABLE)
+        self.assertEqual(saved["brain"]["production_candidate_count"], 0)
+        self.assertEqual(saved["brain"]["linked_candidate_count"], 0)
+        self.assertEqual(saved["brain"]["shadow_entry_count"], 0)
+        self.assertEqual(saved["brain"]["lead_lag_engine"], "DESIGN_ONLY / NOT MEASURED")
+        self.assertIn("FETCHED 3/17", saved["brain"]["research_status"])
+        self.assertNotIn("cand-1", json.dumps(saved))
+        stored = ROOT / "data" / "research_candidates" / "candidates.jsonl"
+        self.assertTrue(stored.exists())
+        self.assertNotIn("cand-1", stored.read_text(encoding="utf-8"))
+        self.assertNotIn("285A", stored.read_text(encoding="utf-8"))
         self.assertFalse(saved["real_submit_allowed"])
