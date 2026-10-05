@@ -156,6 +156,9 @@ def build_shadow_trade(entry: dict, exit_event: dict, *, exit_signal_at, source_
         "cost_applied_to_shadow_net": False,
         "real_submit_allowed": False,
     }
+    candidate_id = entry.get("candidate_id")
+    if isinstance(candidate_id, str) and candidate_id:
+        record["candidate_id"] = candidate_id
     record["quantity"] = None
     record["commission"] = FEE_UNKNOWN
     record["other_cost"] = FEE_UNKNOWN
