@@ -381,6 +381,29 @@ def _row_price_ok(row: dict) -> bool:
     return _finite(row.get("price")) and row.get("price") > 0 and row.get("data") == "LIVE"
 
 
+def no_trade_reason(row: dict) -> str:
+    """Why this row is not an entry. Empty when it is an entry candidate.
+
+    The entry rule is unchanged. This label is only a record of that rule.
+    """
+    if not isinstance(row, dict):
+        return "ROW_UNREADABLE"
+    signal = row.get("signal")
+    side = _side_of(signal) if isinstance(signal, str) else None
+    if side is None:
+        return "SIGNAL_NOT_ENTRY"
+    if not _row_price_ok(row):
+        return "PRICE_NOT_LIVE"
+    if not _geometry_ok(side, row.get("entry_price"), row.get("stop_price")):
+        return "GEOMETRY_REJECTED"
+    ticker = row.get("ticker")
+    if not isinstance(ticker, str) or not ticker:
+        return "TICKER_MISSING"
+    if entry_candidate(row) is None:
+        return "NOT_CANDIDATE"
+    return ""
+
+
 def entry_candidate(row: dict) -> dict | None:
     if not isinstance(row, dict):
         return None
@@ -1048,6 +1071,7 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
             "signal": row.get("signal"),
             "strategy": row.get("strategy") if isinstance(row.get("strategy"), str) else "",
             "entry_candidate": candidate is not None,
+            "no_trade_reason": "" if candidate is not None else no_trade_reason(row),
         })
 
     exits = []

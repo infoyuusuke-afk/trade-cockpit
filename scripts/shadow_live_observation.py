@@ -82,6 +82,69 @@ def _entry_counts(live: dict) -> tuple[int, int]:
     return identity, other
 
 
+def _reason_key(row: dict) -> str:
+    stored = row.get("no_trade_reason")
+    if isinstance(stored, str) and stored:
+        if stored == "SIGNAL_NOT_ENTRY":
+            signal = row.get("signal") if isinstance(row.get("signal"), str) and row.get("signal") else "MISSING_SIGNAL"
+            return "SIGNAL_NOT_ENTRY/" + signal
+        return stored
+    if row.get("entry_candidate") is True:
+        return "ENTRY_CANDIDATE"
+    signal = row.get("signal")
+    if not isinstance(signal, str) or signal not in shadow.ENTRY_SIGNALS:
+        label = signal if isinstance(signal, str) and signal else "MISSING_SIGNAL"
+        return "SIGNAL_NOT_ENTRY/" + label
+    return "ENTRY_SIGNAL_NOT_CANDIDATE"
+
+
+def _format_counts(counts: dict) -> str:
+    parts = []
+    for key in sorted(counts):
+        parts.append(key + ":" + str(counts[key]))
+    return "|".join(parts)
+
+
+def summarize_no_trade(ledger) -> dict:
+    """Count why recorded board cycles did not open a virtual trade.
+
+    Tickers are not included. Older rows have only the collector signal.
+    """
+    cycles = 0
+    entry_cycles = 0
+    missing_rows = 0
+    totals: dict[str, int] = {}
+    latest: dict[str, int] = {}
+    if isinstance(ledger, list):
+        for event in ledger:
+            if not isinstance(event, dict) or event.get("event_type") != "board_judgment":
+                continue
+            cycles += 1
+            opened = event.get("entry_seqs")
+            if isinstance(opened, list) and opened:
+                entry_cycles += 1
+            rows = event.get("judgments")
+            latest = {}
+            if not isinstance(rows, list) or not rows:
+                missing_rows += 1
+                continue
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                if row.get("entry_candidate") is True:
+                    continue
+                key = _reason_key(row)
+                totals[key] = totals.get(key, 0) + 1
+                latest[key] = latest.get(key, 0) + 1
+    return {
+        "no_trade_cycles": cycles - entry_cycles,
+        "entry_cycles": entry_cycles,
+        "judgment_rows_absent": missing_rows,
+        "no_trade_reasons": _format_counts(totals),
+        "latest_no_trade_reasons": _format_counts(latest),
+    }
+
+
 def classify_observation(status, lock, live, ledger, *, now: datetime) -> dict:
     """Classify supervisor observation. This does not create a trade."""
     heartbeat_age = _age_seconds(lock.get("heartbeat_at") if isinstance(lock, dict) else None, now)
@@ -153,6 +216,7 @@ def classify_observation(status, lock, live, ledger, *, now: datetime) -> dict:
         "virtual_entry": entries,
         "virtual_exit": exits,
         "real_submit_allowed": False,
+        **summarize_no_trade(ledger),
     }
 
 
@@ -172,6 +236,11 @@ def format_report(report: dict) -> str:
         "VIRTUAL_ENTRY=" + str(report["virtual_entry"]),
         "VIRTUAL_EXIT=" + str(report["virtual_exit"]),
         "LIVE_ROUNDTRIP=" + str(report["live_roundtrip"]),
+        "NO_TRADE_CYCLES=" + str(report["no_trade_cycles"]),
+        "ENTRY_CYCLES=" + str(report["entry_cycles"]),
+        "JUDGMENT_ROWS_ABSENT=" + str(report["judgment_rows_absent"]),
+        "NO_TRADE_REASONS=" + str(report["no_trade_reasons"]),
+        "LATEST_NO_TRADE_REASONS=" + str(report["latest_no_trade_reasons"]),
         "REAL_SUBMIT_ALLOWED=0",
     ]
     return "\n".join(lines)

@@ -79,6 +79,28 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(report["observation"], "REAL_SUBMIT_NOT_FALSE")
         self.assertFalse(report["real_submit_allowed"])
 
+    def test_no_trade_reasons_count_signals_without_tickers(self):
+        ledger = [{
+            "event_type": "board_judgment",
+            "at": NOW.isoformat(),
+            "entry_seqs": [],
+            "judgments": [
+                {"ticker": "285A.T", "signal": "監視", "entry_candidate": False},
+                {"ticker": "7203.T", "signal": "監視", "entry_candidate": False},
+                {"ticker": "6758.T", "signal": "買いサイン", "entry_candidate": False},
+            ],
+        }]
+        report = obs.classify_observation(_status(), _lock(), _live("監視"), ledger, now=NOW)
+        self.assertEqual(report["no_trade_cycles"], 1)
+        self.assertEqual(report["entry_cycles"], 0)
+        self.assertEqual(report["live_roundtrip"], "NOT_RUN/LIVE_CONDITION_NOT_MET")
+        self.assertIn("SIGNAL_NOT_ENTRY/監視:2", report["no_trade_reasons"])
+        self.assertIn("ENTRY_SIGNAL_NOT_CANDIDATE:1", report["no_trade_reasons"])
+        text = obs.format_report(report)
+        self.assertNotIn("7203.T", text)
+        self.assertNotIn("6758.T", text)
+        self.assertNotIn("PASS", text)
+
     def test_reader_source_does_not_submit_or_loosen_entries(self):
         text = (ROOT / "scripts" / "shadow_live_observation.py").read_text(encoding="utf-8")
         self.assertNotIn("submit_shadow_order", text)

@@ -71,6 +71,13 @@ def _row(**overrides):
 
 
 class SafetyTests(unittest.TestCase):
+    def test_no_trade_reason_labels_the_existing_entry_rule(self):
+        self.assertEqual(sup.no_trade_reason(_row(signal="監視")), "SIGNAL_NOT_ENTRY")
+        self.assertEqual(sup.no_trade_reason(_row(signal="買いサイン", stop_price=1600.0)), "GEOMETRY_REJECTED")
+        self.assertEqual(sup.no_trade_reason(_row(signal="買いサイン", data="STALE")), "PRICE_NOT_LIVE")
+        self.assertEqual(sup.no_trade_reason(_row()), "")
+        self.assertIsNotNone(sup.entry_candidate(_row()))
+
     def test_fresh_canonical_payload_passes_and_keeps_real_submit_false(self):
         verdict = sup.assess_live_payload(_live([_row()]), file_mtime=NOW - timedelta(seconds=2), now=NOW)
         self.assertTrue(verdict["ok"])
