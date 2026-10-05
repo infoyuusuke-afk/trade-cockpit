@@ -2,7 +2,8 @@ param(
     [Parameter(Mandatory = $true)][string]$RepoRoot,
     [switch]$SelfTest,
     [switch]$StartSupervisor,
-    [switch]$ReplaceSupervisor
+    [switch]$ReplaceSupervisor,
+    [switch]$Observe
 )
 
 # Read Collector 28580, then Gateway 28581, then Strategy Input and one AI SHADOW cycle.
@@ -159,6 +160,13 @@ if ($SelfTest) {
     $replaceReport = "SHADOW_" + "SUPERVISOR_REPLACED="
     if ($text.IndexOf($replaceCall) -lt 0 -or $text.IndexOf($replaceReport) -lt 0) { throw "replace must stop only the supervisor and report the count" }
     if ($text.IndexOf('ai_shadow_supervisor.py') -lt 0) { throw "supervisor command missing" }
+    $observeMarker = "OBSERVE_" + "DOES_NOT_STOP"
+    $observeAt = $text.IndexOf($observeMarker)
+    $replaceAt = $text.IndexOf("if (" + '$ReplaceSupervisor)')
+    if ($observeAt -lt 0 -or $replaceAt -lt 0 -or $observeAt -gt $replaceAt) { throw "observe must run without replacing the supervisor" }
+    $observeBody = $text.Substring($observeAt, $replaceAt - $observeAt)
+    if ($observeBody.IndexOf('Stop-Process') -ge 0) { throw "observe must not stop a process" }
+    if ($observeBody.IndexOf('shadow_live_observation.py') -lt 0) { throw "observe must read the shadow ledger" }
     Write-Output "SHADOW_PENETRATION_SELFTEST PASS"
     exit 0
 }
@@ -211,6 +219,39 @@ function Start-ShadowSupervisor([string]$Root) {
     Start-Process -FilePath $python -ArgumentList $argList -WindowStyle Hidden | Out-Null
     Write-Output "SHADOW_SUPERVISOR_STARTED=1"
     Write-Output "REAL_SUBMIT_ALLOWED=0"
+}
+
+function Invoke-ShadowObservation([string]$Root) {
+    # OBSERVE_DOES_NOT_STOP
+    $runtimeDir = Resolve-RuntimeDir
+    $live = Join-Path $runtimeDir "live_ms2.json"
+    $status = Join-Path $runtimeDir "ai_shadow_status.json"
+    $dataDir = "C:\AI_Cockpit_OneClick_Starter\Logs\V9\ai_shadow"
+    $lock = Join-Path $dataDir "supervisor.lock.json"
+    $ledger = Join-Path $dataDir "ledger.jsonl"
+    $python = $null
+    foreach ($cand in @(
+        (Join-Path $Root ".venv\Scripts\python.exe"),
+        (Join-Path $Root "venv\Scripts\python.exe")
+    )) {
+        if (Test-Path -LiteralPath $cand) { $python = $cand; break }
+    }
+    if (-not $python) {
+        $cmd = Get-Command python.exe -ErrorAction SilentlyContinue
+        if ($null -ne $cmd) { $python = $cmd.Source }
+    }
+    if (-not $python) {
+        $py = Get-Command py.exe -ErrorAction SilentlyContinue
+        if ($null -ne $py) { $python = $py.Source }
+    }
+    if (-not $python) { throw "PYTHON_NOT_FOUND" }
+    $script = Join-Path $Root "scripts\shadow_live_observation.py"
+    & $python -u $script --status $status --lock $lock --live $live --ledger $ledger
+    exit $LASTEXITCODE
+}
+
+if ($Observe) {
+    Invoke-ShadowObservation $RepoRoot
 }
 
 if ($ReplaceSupervisor) {
