@@ -1,6 +1,6 @@
 {
   "schema_version": "market-ranking-watch-1.0",
-  "updated_at": "2026-10-05 11:44:41 JST",
+  "updated_at": "2026-10-05 11:46:44 JST",
   "source": "Yahoo!ファイナンス 日本株ランキング（値上がり率/値下がり率/出来高急増率/売買代金上位）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではなくYahoo!ファイナンスの遅延/日次データ。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。",
   "rankings": {
@@ -16,7 +16,7 @@
           "price": "3,455",
           "change_yen": "+257",
           "change_pct": "+8.04",
-          "volume": "11,845,900",
+          "volume": "11,985,600",
           "already_watched": true
         },
         {
@@ -27,7 +27,7 @@
           "price": "11,730",
           "change_yen": "+850",
           "change_pct": "+7.81",
-          "volume": "34,500",
+          "volume": "34,700",
           "already_watched": false
         },
         {
@@ -38,7 +38,7 @@
           "price": "3,854",
           "change_yen": "+279",
           "change_pct": "+7.80",
-          "volume": "9,028,400",
+          "volume": "9,202,400",
           "already_watched": false
         },
         {
@@ -49,7 +49,7 @@
           "price": "15,990",
           "change_yen": "+1,140",
           "change_pct": "+7.68",
-          "volume": "84,100",
+          "volume": "85,000",
           "already_watched": false
         },
         {
@@ -60,7 +60,7 @@
           "price": "4,534",
           "change_yen": "+316",
           "change_pct": "+7.49",
-          "volume": "1,243,600",
+          "volume": "1,263,600",
           "already_watched": true
         },
         {
@@ -71,7 +71,7 @@
           "price": "2,480",
           "change_yen": "+160",
           "change_pct": "+6.90",
-          "volume": "109,000",
+          "volume": "112,100",
           "already_watched": false
         },
         {
@@ -82,7 +82,7 @@
           "price": "6,980",
           "change_yen": "+450",
           "change_pct": "+6.89",
-          "volume": "158,200",
+          "volume": "160,300",
           "already_watched": false
         },
         {
@@ -93,7 +93,7 @@
           "price": "11,170",
           "change_yen": "+710",
           "change_pct": "+6.79",
-          "volume": "171,000",
+          "volume": "173,000",
           "already_watched": false
         },
         {
@@ -104,7 +104,7 @@
           "price": "9,820",
           "change_yen": "+620",
           "change_pct": "+6.74",
-          "volume": "84,100",
+          "volume": "84,500",
           "already_watched": false
         },
         {
@@ -115,7 +115,7 @@
           "price": "2,255",
           "change_yen": "+139",
           "change_pct": "+6.57",
-          "volume": "445,600",
+          "volume": "448,100",
           "already_watched": false
         },
         {
@@ -126,7 +126,7 @@
           "price": "4,070",
           "change_yen": "+250",
           "change_pct": "+6.54",
-          "volume": "260,900",
+          "volume": "266,100",
           "already_watched": false
         },
         {
@@ -137,7 +137,7 @@
           "price": "3,670",
           "change_yen": "+209",
           "change_pct": "+6.04",
-          "volume": "543,400",
+          "volume": "546,300",
           "already_watched": false
         },
         {
@@ -148,7 +148,7 @@
           "price": "2,706.5",
           "change_yen": "+153",
           "change_pct": "+5.99",
-          "volume": "11,318,800",
+          "volume": "11,397,500",
           "already_watched": false
         },
         {
@@ -159,7 +159,7 @@
           "price": "11,370",
           "change_yen": "+630",
           "change_pct": "+5.87",
-          "volume": "80,900",
+          "volume": "83,700",
           "already_watched": false
         },
         {
@@ -170,7 +170,7 @@
           "price": "10,685",
           "change_yen": "+590",
           "change_pct": "+5.84",
-          "volume": "12,589,300",
+          "volume": "12,647,900",
           "already_watched": false
         },
         {
@@ -181,7 +181,7 @@
           "price": "2,530",
           "change_yen": "+139",
           "change_pct": "+5.81",
-          "volume": "272,100",
+          "volume": "278,900",
           "already_watched": false
         },
         {
@@ -192,7 +192,7 @@
           "price": "512",
           "change_yen": "+28",
           "change_pct": "+5.79",
-          "volume": "2,577,900",
+          "volume": "2,589,700",
           "already_watched": false
         },
         {
@@ -203,7 +203,7 @@
           "price": "5,050",
           "change_yen": "+275",
           "change_pct": "+5.76",
-          "volume": "94,800",
+          "volume": "96,400",
           "already_watched": false
         },
         {
@@ -214,7 +214,7 @@
           "price": "6,060",
           "change_yen": "+330",
           "change_pct": "+5.76",
-          "volume": "303,600",
+          "volume": "309,100",
           "already_watched": false
         },
         {
@@ -225,7 +225,7 @@
           "price": "3,877",
           "change_yen": "+209",
           "change_pct": "+5.70",
-          "volume": "2,158,700",
+          "volume": "2,175,000",
           "already_watched": true
         }
       ]
@@ -242,7 +242,7 @@
           "price": "68",
           "change_yen": "-20",
           "change_pct": "-22.73",
-          "volume": "1,180,200",
+          "volume": "1,192,500",
           "already_watched": false
         },
         {
@@ -253,7 +253,7 @@
           "price": "2,348.5",
           "change_yen": "-347",
           "change_pct": "-12.87",
-          "volume": "5,974,400",
+          "volume": "6,051,200",
           "already_watched": false
         },
         {
@@ -264,7 +264,7 @@
           "price": "311",
           "change_yen": "-17",
           "change_pct": "-5.18",
-          "volume": "193,900",
+          "volume": "200,500",
           "already_watched": false
         },
         {
@@ -275,7 +275,7 @@
           "price": "1,982",
           "change_yen": "-83",
           "change_pct": "-4.02",
-          "volume": "388,300",
+          "volume": "389,200",
           "already_watched": false
         },
         {
@@ -286,7 +286,7 @@
           "price": "1,954",
           "change_yen": "-79",
           "change_pct": "-3.89",
-          "volume": "798,400",
+          "volume": "800,400",
           "already_watched": false
         },
         {
@@ -297,7 +297,7 @@
           "price": "1,236",
           "change_yen": "-45",
           "change_pct": "-3.51",
-          "volume": "86,500",
+          "volume": "87,400",
           "already_watched": false
         },
         {
@@ -308,7 +308,7 @@
           "price": "1,865",
           "change_yen": "-60",
           "change_pct": "-3.12",
-          "volume": "27,800",
+          "volume": "29,700",
           "already_watched": false
         },
         {
@@ -319,7 +319,7 @@
           "price": "2,438",
           "change_yen": "-77",
           "change_pct": "-3.06",
-          "volume": "178,700",
+          "volume": "179,900",
           "already_watched": false
         },
         {
@@ -330,7 +330,7 @@
           "price": "2,382",
           "change_yen": "-75",
           "change_pct": "-3.05",
-          "volume": "81,200",
+          "volume": "81,900",
           "already_watched": false
         },
         {
@@ -341,7 +341,7 @@
           "price": "1,265",
           "change_yen": "-39",
           "change_pct": "-2.99",
-          "volume": "74,400",
+          "volume": "74,700",
           "already_watched": false
         },
         {
@@ -352,7 +352,7 @@
           "price": "1,334",
           "change_yen": "-41",
           "change_pct": "-2.98",
-          "volume": "119,700",
+          "volume": "120,300",
           "already_watched": false
         },
         {
@@ -363,7 +363,7 @@
           "price": "626",
           "change_yen": "-19",
           "change_pct": "-2.95",
-          "volume": "136,300",
+          "volume": "137,000",
           "already_watched": false
         },
         {
@@ -374,7 +374,7 @@
           "price": "340",
           "change_yen": "-10",
           "change_pct": "-2.86",
-          "volume": "380,800",
+          "volume": "391,800",
           "already_watched": false
         },
         {
@@ -385,7 +385,7 @@
           "price": "3,545",
           "change_yen": "-100",
           "change_pct": "-2.74",
-          "volume": "10,100",
+          "volume": "10,300",
           "already_watched": false
         },
         {
@@ -396,7 +396,7 @@
           "price": "2,773",
           "change_yen": "-76",
           "change_pct": "-2.67",
-          "volume": "29,000",
+          "volume": "29,200",
           "already_watched": false
         },
         {
@@ -407,7 +407,7 @@
           "price": "2,900",
           "change_yen": "-77",
           "change_pct": "-2.59",
-          "volume": "74,500",
+          "volume": "74,700",
           "already_watched": false
         },
         {
@@ -418,7 +418,7 @@
           "price": "2,716",
           "change_yen": "-72",
           "change_pct": "-2.58",
-          "volume": "674,500",
+          "volume": "685,900",
           "already_watched": false
         },
         {
@@ -429,7 +429,7 @@
           "price": "485.4",
           "change_yen": "-12.5",
           "change_pct": "-2.51",
-          "volume": "4,941,700",
+          "volume": "4,998,300",
           "already_watched": false
         },
         {
@@ -440,7 +440,7 @@
           "price": "2,850",
           "change_yen": "-70",
           "change_pct": "-2.40",
-          "volume": "35,500",
+          "volume": "35,700",
           "already_watched": false
         },
         {
@@ -451,7 +451,7 @@
           "price": "2,136",
           "change_yen": "-51",
           "change_pct": "-2.33",
-          "volume": "22,700",
+          "volume": "23,700",
           "already_watched": false
         }
       ]
@@ -510,7 +510,7 @@
           "code": "1321",
           "market": "東証ETF",
           "price": "728.7",
-          "change_yen": "21,878,280",
+          "change_yen": "21,977,350",
           "change_pct": null,
           "volume": "229,793",
           "already_watched": false
@@ -521,7 +521,7 @@
           "code": "1325",
           "market": "東証ETF",
           "price": "328.1",
-          "change_yen": "246,920",
+          "change_yen": "247,920",
           "change_pct": null,
           "volume": "3,640",
           "already_watched": false
@@ -576,7 +576,7 @@
           "code": "3967",
           "market": "東証GRT",
           "price": "815",
-          "change_yen": "2,149,000",
+          "change_yen": "2,156,000",
           "change_pct": null,
           "volume": "42,700",
           "already_watched": false
@@ -587,13 +587,24 @@
           "code": "1495",
           "market": "東証ETF",
           "price": "10,980",
-          "change_yen": "700",
+          "change_yen": "705",
           "change_pct": null,
           "volume": "19",
           "already_watched": false
         },
         {
           "rank": 13,
+          "name": "GX S&P500 (ダイナミック・プロテクション)",
+          "code": "379A",
+          "market": "東証ETF",
+          "price": "1,354",
+          "change_yen": "61",
+          "change_pct": null,
+          "volume": "2",
+          "already_watched": false
+        },
+        {
+          "rank": 14,
           "name": "上場インデックスファンドフランス国債(H有)",
           "code": "2862",
           "market": "東証ETF",
@@ -604,7 +615,7 @@
           "already_watched": false
         },
         {
-          "rank": 14,
+          "rank": 15,
           "name": "業界改革厳選ETF REITイベント・ドリブン",
           "code": "396A",
           "market": "東証ETF",
@@ -612,17 +623,6 @@
           "change_yen": "2,050",
           "change_pct": null,
           "volume": "70",
-          "already_watched": false
-        },
-        {
-          "rank": 15,
-          "name": "GX S&P500 (ダイナミック・プロテクション)",
-          "code": "379A",
-          "market": "東証ETF",
-          "price": "1,354",
-          "change_yen": "56",
-          "change_pct": null,
-          "volume": "2",
           "already_watched": false
         },
         {
@@ -653,31 +653,31 @@
           "code": "6664",
           "market": "東証STD",
           "price": "272",
-          "change_yen": "645,800",
+          "change_yen": "651,200",
           "change_pct": null,
           "volume": "26,200",
           "already_watched": false
         },
         {
           "rank": 19,
-          "name": "(株)秋川牧園",
-          "code": "1380",
+          "name": "東洋テック(株)",
+          "code": "9686",
           "market": "東証STD",
-          "price": "1,002",
-          "change_yen": "2,200",
+          "price": "1,612",
+          "change_yen": "11,800",
           "change_pct": null,
-          "volume": "100",
+          "volume": "500",
           "already_watched": false
         },
         {
           "rank": 20,
-          "name": "WisdomTree 大豆上場投信",
-          "code": "1697",
+          "name": "(NEXT FUNDS) JPX日経インデックス400",
+          "code": "1591",
           "market": "東証ETF",
-          "price": "4,780",
-          "change_yen": "1,080",
+          "price": "37,500",
+          "change_yen": "2,657",
           "change_pct": null,
-          "volume": "50",
+          "volume": "113",
           "already_watched": false
         }
       ]
@@ -694,7 +694,7 @@
           "price": "19,395",
           "change_yen": "+95",
           "change_pct": "+0.49",
-          "volume": "451,339,739,000",
+          "volume": "454,425,534,500",
           "already_watched": true
         },
         {
@@ -705,7 +705,7 @@
           "price": "40,370",
           "change_yen": "+1,740",
           "change_pct": "+4.50",
-          "volume": "356,618,025,000",
+          "volume": "359,630,410,000",
           "already_watched": true
         },
         {
@@ -716,7 +716,7 @@
           "price": "6,542",
           "change_yen": "+232",
           "change_pct": "+3.68",
-          "volume": "196,461,752,700",
+          "volume": "197,889,769,200",
           "already_watched": true
         },
         {
@@ -727,7 +727,7 @@
           "price": "77,960",
           "change_yen": "+3,830",
           "change_pct": "+5.17",
-          "volume": "174,289,185,980",
+          "volume": "174,810,922,640",
           "already_watched": false
         },
         {
@@ -738,7 +738,7 @@
           "price": "47,040",
           "change_yen": "+910",
           "change_pct": "+1.97",
-          "volume": "158,021,535,000",
+          "volume": "158,736,277,000",
           "already_watched": true
         },
         {
@@ -749,7 +749,7 @@
           "price": "10,685",
           "change_yen": "+590",
           "change_pct": "+5.84",
-          "volume": "133,487,452,500",
+          "volume": "133,793,116,000",
           "already_watched": false
         },
         {
@@ -760,7 +760,7 @@
           "price": "5,589",
           "change_yen": "-9",
           "change_pct": "-0.16",
-          "volume": "129,549,808,500",
+          "volume": "130,068,498,700",
           "already_watched": true
         },
         {
@@ -771,7 +771,7 @@
           "price": "12,790",
           "change_yen": "+690",
           "change_pct": "+5.70",
-          "volume": "115,457,151,000",
+          "volume": "116,508,245,500",
           "already_watched": true
         },
         {
@@ -782,7 +782,7 @@
           "price": "12,540",
           "change_yen": "+440",
           "change_pct": "+3.64",
-          "volume": "115,352,687,000",
+          "volume": "115,698,965,500",
           "already_watched": false
         },
         {
@@ -793,7 +793,7 @@
           "price": "8,755",
           "change_yen": "+288",
           "change_pct": "+3.40",
-          "volume": "104,340,332,000",
+          "volume": "104,600,340,300",
           "already_watched": false
         },
         {
@@ -804,7 +804,7 @@
           "price": "4,437",
           "change_yen": "+8",
           "change_pct": "+0.18",
-          "volume": "70,416,152,400",
+          "volume": "70,832,908,300",
           "already_watched": true
         },
         {
@@ -815,7 +815,7 @@
           "price": "63,530",
           "change_yen": "+3,240",
           "change_pct": "+5.37",
-          "volume": "66,308,801,000",
+          "volume": "66,645,419,000",
           "already_watched": true
         },
         {
@@ -826,7 +826,7 @@
           "price": "2,253",
           "change_yen": "+352",
           "change_pct": "+18.52",
-          "volume": "56,257,286,100",
+          "volume": "56,574,048,500",
           "already_watched": true
         },
         {
@@ -837,7 +837,7 @@
           "price": "3,579",
           "change_yen": "+35",
           "change_pct": "+0.99",
-          "volume": "54,057,115,100",
+          "volume": "54,273,651,100",
           "already_watched": true
         },
         {
@@ -848,7 +848,7 @@
           "price": "3,455",
           "change_yen": "+257",
           "change_pct": "+8.04",
-          "volume": "40,633,460,500",
+          "volume": "40,942,514,900",
           "already_watched": true
         },
         {
@@ -859,7 +859,7 @@
           "price": "3,336",
           "change_yen": "+15",
           "change_pct": "+0.45",
-          "volume": "37,667,710,900",
+          "volume": "38,427,997,100",
           "already_watched": true
         },
         {
@@ -870,7 +870,7 @@
           "price": "3,716",
           "change_yen": "+104",
           "change_pct": "+2.88",
-          "volume": "35,324,888,400",
+          "volume": "35,509,315,100",
           "already_watched": false
         },
         {
@@ -881,7 +881,7 @@
           "price": "3,854",
           "change_yen": "+279",
           "change_pct": "+7.80",
-          "volume": "34,511,412,600",
+          "volume": "34,771,362,700",
           "already_watched": false
         },
         {
@@ -892,7 +892,7 @@
           "price": "74,090",
           "change_yen": "+2,320",
           "change_pct": "+3.23",
-          "volume": "33,202,006,000",
+          "volume": "34,150,340,000",
           "already_watched": false
         },
         {
@@ -903,7 +903,7 @@
           "price": "3,877",
           "change_yen": "+64",
           "change_pct": "+1.68",
-          "volume": "31,485,073,400",
+          "volume": "31,563,005,600",
           "already_watched": true
         }
       ]
