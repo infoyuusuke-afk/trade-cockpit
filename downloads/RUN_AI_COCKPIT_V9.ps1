@@ -440,7 +440,12 @@ function Start-OneRuntimeCollector([string]$RuntimeDir) {
     $stdout = Join-Path $RuntimeDir "MS2_RSS_100_Collector.acceptance.stdout.log"
     $stderr = Join-Path $RuntimeDir "MS2_RSS_100_Collector.acceptance.stderr.log"
     Remove-Item -LiteralPath $stdout, $stderr -Force -ErrorAction SilentlyContinue
-    return Start-Process -FilePath $exe -ArgumentList @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $script) -WorkingDirectory $RuntimeDir -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+    if ($script.Contains('"')) { throw "Collector script path contains a quote. Collector was not started." }
+    # Windows PowerShell 5.1 does not quote an ArgumentList array. The
+    # runtime path contains spaces (MarketSpeed II RSS), so -File must be
+    # one quoted string or the process exits before the script starts.
+    $collectorArgs = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $script + '"'
+    return Start-Process -FilePath $exe -ArgumentList $collectorArgs -WorkingDirectory $RuntimeDir -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
 }
 
 function Receive-CollectorBridge {
@@ -525,7 +530,7 @@ function Invoke-AcceptRuntimeCollector([string]$RuntimeDir, [string]$BackupDir, 
                 $errPath = Join-Path $RuntimeDir "MS2_RSS_100_Collector.acceptance.stderr.log"
                 $tail = ""
                 if (Test-Path -LiteralPath $errPath) {
-                    $tail = [IO.File]::ReadAllText($errPath)
+                    $tail = [IO.File]::ReadAllText($errPath, [Text.Encoding]::Unicode)
                     if ($tail.Length -gt 400) { $tail = $tail.Substring($tail.Length - 400) }
                 }
                 throw ("COLLECTOR_EXITED code=" + $started.ExitCode + " " + ($tail -replace "[\r\n]+", " "))
@@ -601,6 +606,14 @@ function Invoke-RuntimeAcceptSelfTest {
         if ((Get-CollectorHandoffMode 2 1) -ne "REFUSE_CONTROLLER") { throw "two controllers must refuse before copy" }
         if ((Get-CollectorHandoffMode 0 0) -ne "DIRECT_START") { throw "zero collectors with no controller must start one" }
         if ((Get-CollectorHandoffMode 1 0) -ne "REFUSE_COLLECTOR") { throw "a controller with no collector must refuse before copy" }
+        $spaced = 'C:\MarketSpeed II RSS\files\MS2_RSS_100_Collector.ps1'
+        $quoted = '-File "' + $spaced + '"'
+        if ($quoted -ne '-File "C:\MarketSpeed II RSS\files\MS2_RSS_100_Collector.ps1"') { throw "spaced collector path must stay one argument" }
+        $starter = [IO.File]::ReadAllText($PSCommandPath)
+        $marker = @'
+-File "' + $script + '"'
+'@
+        if ($starter.IndexOf($marker.Trim(), [StringComparison]::Ordinal) -lt 0) { throw "collector start must quote the script path" }
         if ((Get-CollectorHandoffMode 1 2) -ne "REFUSE_COLLECTOR") { throw "two collectors must refuse before copy" }
         if (-not (Test-CollectorCommandLine "powershell.exe -File C:\files\MS2_RSS_100_Collector.ps1")) { throw "collector command must match" }
         if (Test-CollectorCommandLine "powershell.exe -File C:\files\AI_COCKPIT_CONTROLLER_V9.ps1") { throw "controller must not match" }

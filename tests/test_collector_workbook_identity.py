@@ -157,6 +157,7 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
         self.assertIn("function Get-CollectorHandoffMode", runner)
         self.assertIn("CONTROLLER_RESTARTS", runner)
         self.assertIn("DIRECT_START", runner)
+        self.assertIn("-File \"' + $script + '\"'", runner)
         self.assertNotIn("refusing to restart Collector while Controller is running", runner)
         self.assertIn("MS2_RSS_100_Collector.acceptance.stderr.log", runner)
         self.assertIn("COLLECTOR_EXITED", runner)
