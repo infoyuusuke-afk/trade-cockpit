@@ -60,6 +60,13 @@ class MasterSpecSyncBridgeTests(unittest.TestCase):
         self.assertIn('-File " + $wrapper + " -RepoRoot " + $root', register)
         self.assertNotIn('-File "\'', register)
         self.assertLess(register.index("TASK_REGISTER=NOT_RUN"), register.index("schtasks.exe"))
+        self.assertLess(register.index("Invoke-RegisterGuard $root"), register.index("schtasks.exe"))
+        guard = register.split("function Invoke-RegisterGuard(", 1)[1].split("function Invoke-RegisterCommit", 1)[0]
+        self.assertNotIn("reset --hard", guard)
+        self.assertLess(guard.index("REGISTER_ABORT=WORKTREE_DIRTY"), guard.index('checkout", "--detach"'))
+        self.assertLess(guard.index("REGISTER_ABORT=LOCAL_COMMITS_NOT_ON_REMOTE"), guard.index('checkout", "--detach"'))
+        self.assertLess(guard.index("REGISTER_ABORT=HISTORY_DIVERGED"), guard.index('checkout", "--detach"'))
+        self.assertLess(guard.index('"--porcelain"'), guard.index('"merge-base"'))
         for token in (
             'Write-Fail "FETCH_FAILED"',
             'return "DIRTY"',
@@ -174,3 +181,135 @@ class MasterSpecSyncBridgeTests(unittest.TestCase):
             "SOURCE_COMMIT=",
         ):
             self.assertIn(token, wrapped.stdout, token)
+        guard = subprocess.run(
+            [str(pwsh), "-NoProfile", "-File", str(REGISTER), "-GuardSelfTest"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(guard.returncode, 0, guard.stdout + guard.stderr)
+        for token in (
+            "REGISTER_ABORT=LOCAL_COMMITS_NOT_ON_REMOTE",
+            "REGISTER_ABORT=WORKTREE_DIRTY",
+            "REGISTER_ABORT=FETCH_FAILED",
+            "REGISTER_ABORT=HISTORY_DIVERGED",
+            "CASE=FAST_FORWARD",
+            "CASE=UNCHANGED",
+            "REGISTER_GUARD_SELFTEST=PASS",
+            "SELFTEST_WROTE_D_DRIVE=0",
+        ):
+            self.assertIn(token, guard.stdout, token)
+        self.assertNotIn("TASK_REGISTER=PASS", guard.stdout)
+
+    def test_owner_register_line_checks_before_checkout(self):
+        pwsh = pwsh_path()
+        if pwsh is None:
+            self.skipTest("pwsh is not installed")
+        text = REGISTER.read_text(encoding="ascii")
+        begin = text.index("# OWNER_REGISTER_INNER_BEGIN\n")
+        end = text.index("# OWNER_REGISTER_INNER_END\n")
+        body = text[begin:end].splitlines()[1:]
+        self.assertEqual(len(body), 1)
+        self.assertTrue(body[0].startswith("# "))
+        inner = body[0][2:]
+        self.assertNotIn("'", inner)
+        prefix, suffix = inner.split("& powershell.exe", 1)
+        self.assertIn("-Register -RepoRoot $r", suffix)
+        self.assertIn("REGISTER_100OKU_MASTER_SPEC_TASK.ps1", suffix)
+        self.assertLess(prefix.index("REGISTER_ABORT=WORKTREE_DIRTY"), prefix.index("checkout --detach"))
+        self.assertLess(prefix.index("REGISTER_ABORT=LOCAL_COMMITS_NOT_ON_REMOTE"), prefix.index("checkout --detach"))
+        self.assertLess(prefix.index("REGISTER_ABORT=HISTORY_DIVERGED"), prefix.index("checkout --detach"))
+        self.assertLess(prefix.index("--porcelain"), prefix.index("merge-base"))
+        self.assertLess(prefix.index("merge-base"), prefix.index("checkout --detach"))
+        root_token = r"C:\Users\yusuk\code\trade-cockpit-100oku-master-sync"
+        branch = "cursor/master-spec-fetch-sync-d483"
+
+        def git(*args, cwd=None):
+            subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True)
+
+        def build():
+            import tempfile
+            from pathlib import Path as FsPath
+            temp = FsPath(tempfile.mkdtemp(prefix="owner-register-"))
+            bare = temp / "remote.git"
+            seed = temp / "seed"
+            clone = temp / "clone"
+            dedicated = temp / "dedicated"
+            git("init", "-q", "--bare", str(bare))
+            git("init", "-q", str(seed))
+            (seed / "note.txt").write_text("base\n", encoding="ascii")
+            git("-C", str(seed), "add", "--", ".")
+            git("-C", str(seed), "-c", "user.email=sync-selftest@example.com", "-c", "user.name=sync-selftest", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "base")
+            base = subprocess.check_output(["git", "-C", str(seed), "rev-parse", "HEAD"], text=True).strip()
+            git("-C", str(seed), "branch", "-M", branch)
+            git("-C", str(seed), "remote", "add", "origin", str(bare))
+            git("-C", str(seed), "push", "-q", "origin", "HEAD:refs/heads/" + branch)
+            git("--git-dir", str(bare), "symbolic-ref", "HEAD", "refs/heads/" + branch)
+            git("clone", "-q", "-b", branch, str(bare), str(clone))
+            git("-C", str(clone), "worktree", "add", "--detach", str(dedicated), base)
+            return temp, seed, dedicated, base
+
+        def invoke(dedicated, script):
+            proc = subprocess.run([str(pwsh), "-NoProfile", "-Command", script], check=False, capture_output=True, text=True)
+            head = subprocess.check_output(["git", "-C", str(dedicated), "rev-parse", "HEAD"], text=True).strip()
+            return proc, head
+
+        import shutil
+        temp, seed, dedicated, base = build()
+        try:
+            (dedicated / "extra.txt").write_text("dirty\n", encoding="ascii")
+            (seed / "note.txt").write_text("base\nforward\n", encoding="ascii")
+            git("-C", str(seed), "add", "--", ".")
+            git("-C", str(seed), "-c", "user.email=sync-selftest@example.com", "-c", "user.name=sync-selftest", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "forward")
+            git("-C", str(seed), "push", "-q", "origin", "HEAD:refs/heads/" + branch)
+            script = prefix.replace(root_token, str(dedicated)) + 'Write-Output "REGISTER_READY=1"'
+            proc, head = invoke(dedicated, script)
+            self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            self.assertIn("REGISTER_ABORT=WORKTREE_DIRTY", proc.stdout)
+            self.assertNotIn("REGISTER_READY=1", proc.stdout)
+            self.assertEqual(head, base)
+        finally:
+            shutil.rmtree(temp)
+
+        temp, seed, dedicated, base = build()
+        try:
+            (dedicated / "note.txt").write_text("base\nlocal\n", encoding="ascii")
+            git("-C", str(dedicated), "add", "--", ".")
+            git("-C", str(dedicated), "-c", "user.email=sync-selftest@example.com", "-c", "user.name=sync-selftest", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "local")
+            local = subprocess.check_output(["git", "-C", str(dedicated), "rev-parse", "HEAD"], text=True).strip()
+            script = prefix.replace(root_token, str(dedicated)) + 'Write-Output "REGISTER_READY=1"'
+            proc, head = invoke(dedicated, script)
+            self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            self.assertIn("REGISTER_ABORT=LOCAL_COMMITS_NOT_ON_REMOTE", proc.stdout)
+            self.assertNotIn("REGISTER_READY=1", proc.stdout)
+            self.assertEqual(head, local)
+        finally:
+            shutil.rmtree(temp)
+
+        temp, seed, dedicated, base = build()
+        try:
+            (seed / "note.txt").write_text("base\nforward\n", encoding="ascii")
+            git("-C", str(seed), "add", "--", ".")
+            git("-C", str(seed), "-c", "user.email=sync-selftest@example.com", "-c", "user.name=sync-selftest", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "forward")
+            git("-C", str(seed), "push", "-q", "origin", "HEAD:refs/heads/" + branch)
+            tip = subprocess.check_output(["git", "-C", str(seed), "rev-parse", "HEAD"], text=True).strip()
+            script = prefix.replace(root_token, str(dedicated)) + 'Write-Output "REGISTER_READY=1"'
+            proc, head = invoke(dedicated, script)
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            self.assertIn("REGISTER_READY=1", proc.stdout)
+            self.assertNotIn("REGISTER_ABORT=", proc.stdout)
+            self.assertEqual(head, tip)
+            (dedicated / "extra.txt").write_text("after\n", encoding="ascii")
+            registered = subprocess.run(
+                [str(pwsh), "-NoProfile", "-File", str(REGISTER), "-Register", "-RepoRoot", str(dedicated), "-RemoteBranch", branch],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(registered.returncode, 0, registered.stdout + registered.stderr)
+            self.assertIn("REGISTER_ABORT=WORKTREE_DIRTY", registered.stdout)
+            self.assertNotIn("TASK_REGISTER=PASS", registered.stdout)
+            self.assertNotIn("SCHTASKS_MISSING", registered.stdout)
+            self.assertEqual(subprocess.check_output(["git", "-C", str(dedicated), "rev-parse", "HEAD"], text=True).strip(), tip)
+        finally:
+            shutil.rmtree(temp)
