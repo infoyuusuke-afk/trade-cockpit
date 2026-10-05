@@ -359,6 +359,104 @@ class CycleTests(unittest.TestCase):
         self.assertEqual(len(resumed["open_positions"]), 1)
         self.assertFalse(resumed["state"]["real_submit_allowed"])
 
+    def test_runtime_workbook_proof_resumes_excel_identity_without_weakening_other_blocks(self):
+        runtime_dir = r"C:\MarketSpeed II RSS\files"
+        workbook = runtime_dir + "\\" + "Kioxia_MS2_RSS_Live_Signals.xlsx"
+        live_path = runtime_dir + "\\live_ms2.json"
+        manifest = {"runtime_dir": runtime_dir}
+        incident = {
+            "record_class": "operations_incident",
+            "incident_id": "inc-excel",
+            "occurrence_at": NOW.isoformat(),
+            "recovery_at": None,
+            "component": "excel_identity",
+            "error_code": "EXCEL_IDENTITY_PROBE_FAILED",
+            "symptom": "unmatched: rot_moniker",
+            "suspected_cause": "ROT_MONIKER_NOT_REGISTERED",
+            "confirmed_cause": None,
+            "fail_closed": True,
+            "real_submit_allowed": False,
+            "real_trade_impact": "NONE_REAL_SUBMIT_REMAINS_FALSE",
+            "shadow_impact": "STOPPED",
+            "invalidated_signal_count": None,
+            "recovery_mode": None,
+            "recurrence_key": "excel_identity|EXCEL_IDENTITY_PROBE_FAILED",
+            "recurrence_count": 1,
+        }
+        proved = _live([_row()])
+        proved["live_price_diagnostics"] = _diag(
+            workbook_identity_verified=True,
+            workbook_full_name=workbook,
+            symbol="285A.T",
+        )
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        engine = sup.load_engine(self.data, now=NOW)
+        verdict = sup.assess_live_payload(proved, file_mtime=NOW, now=NOW, runtime_manifest=manifest, live_path=live_path, require_runtime_identity=True)
+        self.assertTrue(verdict["ok"])
+        self.assertFalse(verdict["real_submit_allowed"])
+        sup.apply_cycle(engine, proved, verdict, now=NOW, data_dir=self.data, runtime_manifest=manifest, live_path=live_path)
+        self.assertEqual(engine["state"]["state"], "RUNNING")
+        self.assertEqual(len(engine["open_positions"]), 1)
+        self.assertEqual(engine["incidents"][0]["error_code"], "EXCEL_IDENTITY_PROBE_FAILED")
+        self.assertEqual(engine["incidents"][0]["recovery_mode"], "RUNTIME_IDENTITY_VERIFIED")
+        self.assertFalse(engine["incidents"][0]["real_submit_allowed"])
+        self.assertFalse(engine["state"]["real_submit_allowed"])
+
+        wrong = json.loads(json.dumps(proved))
+        wrong["live_price_diagnostics"]["workbook_full_name"] = r"C:\other\Kioxia_MS2_RSS_Live_Signals.xlsx"
+        incident["recovery_at"] = None
+        incident["recovery_mode"] = None
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        for name in ("state.json", "ledger.jsonl"):
+            path = self.data / name
+            if path.exists():
+                path.unlink()
+        blocked = sup.load_engine(self.data, now=NOW)
+        blocked_verdict = sup.assess_live_payload(wrong, file_mtime=NOW, now=NOW)
+        sup.apply_cycle(blocked, wrong, blocked_verdict, now=NOW, data_dir=self.data, runtime_manifest=manifest, live_path=live_path)
+        self.assertEqual(blocked["state"]["reason"], "EXCEL_OPEN_UNVERIFIED")
+        self.assertIsNone(blocked["incidents"][0]["recovery_at"])
+        self.assertEqual(blocked["ledger"], [])
+        self.assertIn("WRONG_SOURCE_WORKBOOK", blocked["state"]["identity_proof_reasons"])
+
+        stale = json.loads(json.dumps(proved))
+        stale["updated_at"] = "2026-10-02 08:00:00"
+        for name in ("state.json", "ledger.jsonl"):
+            path = self.data / name
+            if path.exists():
+                path.unlink()
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        held = sup.load_engine(self.data, now=NOW)
+        stale_verdict = sup.assess_live_payload(stale, file_mtime=NOW, now=NOW)
+        sup.apply_cycle(held, stale, stale_verdict, now=NOW, data_dir=self.data, runtime_manifest=manifest, live_path=live_path)
+        self.assertEqual(held["state"]["reason"], "STALE_OR_MISSING_TIMESTAMP")
+        self.assertIsNone(held["incidents"][0]["recovery_at"])
+        self.assertEqual(held["ledger"], [])
+
+        incident["component"] = "workbook_open"
+        for name in ("state.json", "ledger.jsonl"):
+            path = self.data / name
+            if path.exists():
+                path.unlink()
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        opened = sup.load_engine(self.data, now=NOW)
+        sup.apply_cycle(opened, proved, verdict, now=NOW, data_dir=self.data, runtime_manifest=manifest, live_path=live_path)
+        self.assertEqual(opened["state"]["reason"], "EXCEL_OPEN_UNVERIFIED")
+        self.assertIsNone(opened["incidents"][0]["recovery_at"])
+        self.assertEqual(opened["ledger"], [])
+
+        incident["component"] = "excel_process_exit"
+        for name in ("state.json", "ledger.jsonl"):
+            path = self.data / name
+            if path.exists():
+                path.unlink()
+        (self.data / "incidents.jsonl").write_text(json.dumps(incident) + "\n", encoding="utf-8")
+        exited = sup.load_engine(self.data, now=NOW)
+        sup.apply_cycle(exited, proved, verdict, now=NOW, data_dir=self.data, runtime_manifest=manifest, live_path=live_path)
+        self.assertEqual(exited["state"]["reason"], "EXCEL_OPEN_UNVERIFIED")
+        self.assertIsNone(exited["incidents"][0]["recovery_at"])
+        self.assertEqual(exited["ledger"], [])
+
     def test_workbook_open_crash_incident_does_not_open_a_trade(self):
         incident = {
             "record_class": "operations_incident",

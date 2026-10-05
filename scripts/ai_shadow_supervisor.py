@@ -10,12 +10,15 @@ only prices and signals the collector already published. They are not broker
 fills and not Fill Model v0.1 fills.
 
 real_submit_allowed is always false on every record this module writes.
-An unresolved excel_identity, workbook_open, or excel_process_exit incident
-blocks new virtual entries and exits. A fresh price file does not clear it.
-An unreadable manual_recovery.json does the same. Two rows for one ticker
-are a data conflict and open or close nothing. A ledger row that carries a
-quantity is not replayed. state.json last_seq must equal the ledger length;
-a short or long ledger is not healed into a resume.
+An unresolved workbook_open or excel_process_exit incident blocks new
+virtual entries and exits. An unresolved excel_identity incident stays
+blocked until this cycle proves the canonical workbook: the runtime manifest
+directory, the collector workbook_identity_verified flag, and the same local
+path gate the gateway uses. A fresh price without that proof does not set
+recovery_at. An unreadable manual_recovery.json does the same. Two rows for
+one ticker are a data conflict and open or close nothing. A ledger row that
+carries a quantity is not replayed. state.json last_seq must equal the
+ledger length; a short or long ledger is not healed into a resume.
 """
 from __future__ import annotations
 
@@ -30,6 +33,8 @@ from pathlib import Path
 SCHEMA_VERSION = "ai-shadow-supervisor-1"
 CANONICAL_SOURCE = "MarketSpeed II RSS / local PC"
 CANONICAL_WORKBOOK = "Kioxia_MS2_RSS_Live_Signals.xlsx"
+IDENTITY_SYMBOL = "285A.T"
+RUNTIME_MANIFEST_PATH = "C:\\AI_Cockpit_OneClick_Starter\\V9_RUNTIME.json"
 MAX_AGE_SECONDS = 60
 STATUS_STALE_SECONDS = 30
 
@@ -69,7 +74,7 @@ def parse_timestamp(value, tz) -> datetime | None:
     return parsed.astimezone(tz)
 
 
-def assess_live_payload(payload, *, file_mtime: datetime | None, now: datetime, max_age_seconds: int = MAX_AGE_SECONDS) -> dict:
+def assess_live_payload(payload, *, file_mtime: datetime | None, now: datetime, max_age_seconds: int = MAX_AGE_SECONDS, runtime_manifest=None, live_path=None, require_runtime_identity: bool = False) -> dict:
     """Same fail-closed idea as the gateway/collector price gate.
 
     Unknown, stale, sample, conflicting, or non-canonical input is not tradable.
@@ -147,12 +152,122 @@ def assess_live_payload(payload, *, file_mtime: datetime | None, now: datetime, 
         mage = (now - file_mtime.astimezone(tz)).total_seconds()
         if mage < 0 or mage > max_age_seconds:
             reasons.append("STALE_OR_MISSING_TIMESTAMP")
+    if require_runtime_identity:
+        reasons.extend(canonical_workbook_proof(payload, runtime_manifest, live_path=live_path))
     return _verdict(reasons)
 
 
 def _verdict(reasons: list[str]) -> dict:
     unique = sorted(set(reasons))
     return {"ok": not unique, "reasons": unique, "real_submit_allowed": False}
+
+
+def normalize_local_workbook_path(value) -> str:
+    """Same local-path shape as the collector and gateway workbook gate."""
+    if not isinstance(value, str):
+        return ""
+    trim = value.strip()
+    if len(trim) < 3 or not trim[0].isalpha() or trim[1] != ":" or trim[2] not in "\\/":
+        return ""
+    slash = trim.replace("/", "\\")
+    while len(slash) > 3 and slash.endswith("\\"):
+        slash = slash[:-1]
+    parts: list[str] = []
+    for part in slash.split("\\"):
+        if part in ("", "."):
+            continue
+        if part == "..":
+            if len(parts) > 1:
+                parts.pop()
+            continue
+        parts.append(part)
+    if len(parts) < 2:
+        return ""
+    root = parts[0]
+    if len(root) != 2 or not root[0].isalpha() or root[1] != ":":
+        return ""
+    return root + "\\" + "\\".join(parts[1:])
+
+
+def _same_local_path(left, right) -> bool:
+    actual = normalize_local_workbook_path(left)
+    expected = normalize_local_workbook_path(right)
+    if not actual or not expected:
+        return False
+    return actual.casefold() == expected.casefold()
+
+
+def _parent_dir(path) -> str:
+    if isinstance(path, Path):
+        path = str(path)
+    if not isinstance(path, str) or not path.strip():
+        return ""
+    text = path.strip().replace("/", "\\")
+    while len(text) > 3 and text.endswith("\\"):
+        text = text[:-1]
+    if "\\" not in text:
+        return ""
+    return text.rsplit("\\", 1)[0]
+
+
+def canonical_workbook_proof(payload, manifest, *, live_path=None) -> list[str]:
+    """Prove the canonical workbook from the runtime manifest, collector, and gateway path gate.
+
+    The gateway accepts a collector payload when workbook_identity_verified is
+    true and the published full name is the runtime workbook. This proof uses
+    that same pair. It does not read the controller COM probe, and it does not
+    treat a missing identity field as verified. real_submit_allowed stays false.
+    """
+    reasons: list[str] = []
+    if not isinstance(manifest, dict):
+        reasons.append("RUNTIME_MANIFEST_MISSING")
+        runtime_dir = ""
+    else:
+        if manifest.get("real_submit_allowed") is True:
+            reasons.append("REAL_SUBMIT_NOT_FALSE")
+        runtime_dir = normalize_local_workbook_path(manifest.get("runtime_dir"))
+        if not runtime_dir:
+            reasons.append("RUNTIME_MANIFEST_MISSING")
+    if not _same_local_path(_parent_dir(live_path), runtime_dir):
+        reasons.append("RUNTIME_MANIFEST_MISMATCH")
+    if not isinstance(payload, dict):
+        reasons.append("MISSING_PAYLOAD")
+        return sorted(set(reasons))
+    if payload.get("real_submit_allowed") is not False:
+        reasons.append("REAL_SUBMIT_NOT_FALSE")
+    if payload.get("source") != CANONICAL_SOURCE:
+        reasons.append("CACHED_OR_SAMPLE_PAYLOAD")
+    if payload.get("source_mode") != "MS2_RSS_WORKBOOK":
+        reasons.append("WRONG_SOURCE_WORKBOOK")
+    if payload.get("data_conflict") is True:
+        reasons.append("DATA_CONFLICT")
+    if payload.get("live_values_available") is not True:
+        reasons.append("LIVE_VALUES_UNAVAILABLE")
+    diag = payload.get("live_price_diagnostics")
+    if not isinstance(diag, dict):
+        reasons.append("MISSING_PRICE_DIAGNOSTICS")
+        return sorted(set(reasons))
+    if diag.get("workbook_identity_verified") is not True:
+        reasons.append("WRONG_SOURCE_WORKBOOK")
+    if diag.get("workbook_name") != CANONICAL_WORKBOOK:
+        reasons.append("WRONG_SOURCE_WORKBOOK")
+    if diag.get("source_mode") != "MS2_RSS_WORKBOOK":
+        reasons.append("WRONG_SOURCE_WORKBOOK")
+    expected = normalize_local_workbook_path(runtime_dir + "\\" + CANONICAL_WORKBOOK) if runtime_dir else ""
+    if not expected or not _same_local_path(diag.get("workbook_full_name"), expected):
+        reasons.append("WRONG_SOURCE_WORKBOOK")
+    if diag.get("symbol") != IDENTITY_SYMBOL:
+        reasons.append("WRONG_SYMBOL_MAPPING")
+    if diag.get("price_source_status") != "OK":
+        reasons.append("PRICE_SOURCE_MISMATCH")
+    if diag.get("real_submit_allowed") is not False:
+        reasons.append("REAL_SUBMIT_NOT_FALSE")
+    if diag.get("data_conflict") is True:
+        reasons.append("DATA_CONFLICT")
+    collector_count = diag.get("collector_count")
+    if not isinstance(collector_count, int) or isinstance(collector_count, bool) or collector_count != 1 or diag.get("duplicate_collector") is True:
+        reasons.append("DUPLICATE_COLLECTOR")
+    return sorted(set(reasons))
 
 
 def board_fingerprint(payload: dict) -> str:
@@ -729,7 +844,55 @@ def unresolved_excel_open_incident(engine: dict) -> dict | None:
     return found
 
 
-def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir: Path, recovery_mode: str = "AUTO") -> dict:
+def _unresolved_excel_rows(engine: dict) -> list[dict]:
+    rows = []
+    for incident in engine.get("incidents") or []:
+        if not isinstance(incident, dict) or incident.get("recovery_at"):
+            continue
+        if incident.get("component") in _EXCEL_OPEN_COMPONENTS:
+            rows.append(incident)
+    return rows
+
+
+def _recover_excel_identity(engine: dict, data_dir: Path, *, now: datetime, payload, manifest) -> None:
+    """Close only excel_identity rows after the runtime workbook proof.
+
+    workbook_open and excel_process_exit are not closed here. The original
+    error_code stays on the row. real_submit_allowed stays false.
+    """
+    diag = payload.get("live_price_diagnostics") if isinstance(payload, dict) else {}
+    if not isinstance(diag, dict):
+        diag = {}
+    note = {
+        "runtime_dir": manifest.get("runtime_dir") if isinstance(manifest, dict) else None,
+        "workbook_full_name": diag.get("workbook_full_name"),
+        "workbook_identity_verified": True,
+        "symbol": diag.get("symbol"),
+        "source_mode": "MS2_RSS_WORKBOOK",
+        "real_submit_allowed": False,
+    }
+    closed_ids = set()
+    for incident in engine.get("incidents") or []:
+        if not isinstance(incident, dict) or incident.get("recovery_at"):
+            continue
+        if incident.get("component") != "excel_identity":
+            continue
+        started = parse_timestamp(incident.get("occurrence_at"), now.tzinfo)
+        incident["recovery_at"] = now.isoformat()
+        incident["duration_seconds"] = None if started is None else max(0, int((now - started).total_seconds()))
+        incident["recovery_mode"] = "RUNTIME_IDENTITY_VERIFIED"
+        incident["shadow_impact"] = "CANONICAL_WORKBOOK_VERIFIED"
+        incident["confirmed_cause"] = "runtime manifest, collector workbook identity, and gateway path gate agree"
+        incident["identity_verification"] = note
+        incident["real_submit_allowed"] = False
+        closed_ids.add(incident.get("incident_id"))
+    if engine["state"].get("open_incident_id") in closed_ids:
+        engine["state"]["open_incident_id"] = None
+    if closed_ids:
+        _rewrite_incidents(data_dir, engine["incidents"])
+
+
+def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir: Path, recovery_mode: str = "AUTO", runtime_manifest=None, live_path=None) -> dict:
     """One supervisor cycle. Fail-closed input never creates or closes a virtual trade."""
     engine["state"]["real_submit_allowed"] = False
     if engine["state"].get("resume_blocked") is True:
@@ -737,12 +900,23 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
         engine["state"]["reason"] = engine["state"].get("block_reason") or "UNKNOWN_STATE"
         _persist(engine, data_dir)
         return engine
-    if unresolved_excel_open_incident(engine) is not None:
-        engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
-        engine["state"]["reason"] = "EXCEL_OPEN_UNVERIFIED"
-        engine["state"]["real_submit_allowed"] = False
-        _persist(engine, data_dir)
-        return engine
+    unresolved = _unresolved_excel_rows(engine)
+    if unresolved:
+        proof_reasons = canonical_workbook_proof(payload, runtime_manifest, live_path=live_path)
+        hard = [row for row in unresolved if row.get("component") != "excel_identity"]
+        if hard or proof_reasons or not verdict.get("ok"):
+            engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
+            if hard or proof_reasons:
+                engine["state"]["reason"] = "EXCEL_OPEN_UNVERIFIED"
+                engine["state"]["identity_proof_reasons"] = proof_reasons
+            else:
+                engine["state"]["reason"] = _primary_reason(list(verdict.get("reasons") or ["UNKNOWN"]))
+                engine["state"]["identity_proof_reasons"] = list(verdict.get("reasons") or [])
+            engine["state"]["real_submit_allowed"] = False
+            _persist(engine, data_dir)
+            return engine
+        _recover_excel_identity(engine, data_dir, now=now, payload=payload, manifest=runtime_manifest)
+    engine["state"]["identity_proof_reasons"] = []
     if recovery_mode == "UNREADABLE":
         engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
         engine["state"]["reason"] = "RECOVERY_FILE_UNREADABLE"
@@ -1060,6 +1234,7 @@ def status_snapshot(engine: dict, *, now: datetime) -> dict:
         "updated_at": now.isoformat(),
         "real_submit_allowed": False,
         "ui_independent": True,
+        "identity_proof_reasons": list(engine["state"].get("identity_proof_reasons") or []),
         "open_observation_count": len(engine["open_positions"]),
         "resume_blocked": engine["state"].get("resume_blocked") is True,
         "engine_pid": os.getpid(),
@@ -1162,7 +1337,15 @@ def read_manual_recovery(data_dir: Path) -> str:
     return "UNREADABLE"
 
 
-def run_once(data_dir: Path, live_path: Path, status_path: Path, *, now: datetime | None = None) -> dict:
+def load_runtime_manifest(path: Path) -> dict | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def run_once(data_dir: Path, live_path: Path, status_path: Path, *, now: datetime | None = None, runtime_manifest=None, require_runtime_identity: bool = False) -> dict:
     moment = now or datetime.now().astimezone()
     engine = load_engine(data_dir, now=moment)
     payload = None
@@ -1174,8 +1357,24 @@ def run_once(data_dir: Path, live_path: Path, status_path: Path, *, now: datetim
         except (OSError, json.JSONDecodeError, ValueError):
             payload = None
             file_mtime = None
-    verdict = assess_live_payload(payload, file_mtime=file_mtime, now=moment)
-    apply_cycle(engine, payload, verdict, now=moment, data_dir=data_dir, recovery_mode=read_manual_recovery(data_dir))
+    verdict = assess_live_payload(
+        payload,
+        file_mtime=file_mtime,
+        now=moment,
+        runtime_manifest=runtime_manifest,
+        live_path=live_path,
+        require_runtime_identity=require_runtime_identity,
+    )
+    apply_cycle(
+        engine,
+        payload,
+        verdict,
+        now=moment,
+        data_dir=data_dir,
+        recovery_mode=read_manual_recovery(data_dir),
+        runtime_manifest=runtime_manifest,
+        live_path=live_path,
+    )
     publish_status(engine, status_path, now=moment)
     return engine
 
@@ -1187,10 +1386,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--status", required=True)
     parser.add_argument("--interval", type=float, default=5.0)
     parser.add_argument("--once", action="store_true")
+    parser.add_argument("--runtime-manifest", default=RUNTIME_MANIFEST_PATH)
     args = parser.parse_args(argv)
     data_dir = Path(args.data_dir)
     live_path = Path(args.live)
     status_path = Path(args.status)
+    manifest_path = Path(args.runtime_manifest)
     lock_path = data_dir / "supervisor.lock.json"
     now = datetime.now().astimezone()
     lock = acquire_singleton(lock_path, pid=os.getpid(), now=now)
@@ -1202,12 +1403,26 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         if args.once:
-            run_once(data_dir, live_path, status_path, now=now)
+            run_once(
+                data_dir,
+                live_path,
+                status_path,
+                now=now,
+                runtime_manifest=load_runtime_manifest(manifest_path),
+                require_runtime_identity=True,
+            )
             return 0
         while True:
             moment = datetime.now().astimezone()
             touch_lock(lock_path, pid=os.getpid(), now=moment)
-            run_once(data_dir, live_path, status_path, now=moment)
+            run_once(
+                data_dir,
+                live_path,
+                status_path,
+                now=moment,
+                runtime_manifest=load_runtime_manifest(manifest_path),
+                require_runtime_identity=True,
+            )
             time.sleep(max(1.0, args.interval))
     finally:
         if lock_path.exists():

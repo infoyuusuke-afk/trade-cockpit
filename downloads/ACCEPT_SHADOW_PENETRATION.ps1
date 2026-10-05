@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$RepoRoot,
     [switch]$SelfTest,
-    [switch]$StartSupervisor
+    [switch]$StartSupervisor,
+    [switch]$ReplaceSupervisor
 )
 
 # Read Collector 28580, then Gateway 28581, then Strategy Input and one AI SHADOW cycle.
@@ -152,21 +153,39 @@ if ($SelfTest) {
     if (-not (Test-StaleOnly "STALE_OR_MISSING_TIMESTAMP")) { throw "stale reason must retry" }
     if (Test-StaleOnly "WRONG_SYMBOL_MAPPING") { throw "wrong symbol must not retry" }
     if (Test-StaleOnly "STALE_OR_MISSING_TIMESTAMP,WRONG_SOURCE_WORKBOOK") { throw "mixed hard reason must not retry" }
+    if ($text.IndexOf('--runtime-manifest') -lt 0) { throw "supervisor must receive the runtime manifest" }
+    if ($text.IndexOf('Stop-Process -Id ([int]$proc.ProcessId)') -lt 0) { throw "supervisor stop must target the supervisor process id" }
+    $replaceCall = "Stop-" + "ShadowSupervisorOnly"
+    $replaceReport = "SHADOW_" + "SUPERVISOR_REPLACED="
+    if ($text.IndexOf($replaceCall) -lt 0 -or $text.IndexOf($replaceReport) -lt 0) { throw "replace must stop only the supervisor and report the count" }
+    if ($text.IndexOf('ai_shadow_supervisor.py') -lt 0) { throw "supervisor command missing" }
     Write-Output "SHADOW_PENETRATION_SELFTEST PASS"
     exit 0
 }
 
-if ($StartSupervisor) {
+function Stop-ShadowSupervisorOnly {
+    $procs = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+        $cmd = [string]$_.CommandLine
+        ($cmd -like "*ai_shadow_supervisor.py*") -and ($cmd -notlike "*MS2_RSS_100_Collector.ps1*") -and ($cmd -notlike "*AI_COCKPIT_GATEWAY_V9.ps1*")
+    })
+    foreach ($proc in $procs) {
+        Stop-Process -Id ([int]$proc.ProcessId) -Force
+    }
+    return $procs.Count
+}
+
+function Start-ShadowSupervisor([string]$Root) {
     $runtimeDir = Resolve-RuntimeDir
     $live = Join-Path $runtimeDir "live_ms2.json"
     if (-not (Test-Path -LiteralPath $live)) { throw "RUNTIME_DIR_UNRESOLVED" }
     $dataDir = "C:\AI_Cockpit_OneClick_Starter\Logs\V9\ai_shadow"
     if (-not (Test-Path -LiteralPath $dataDir)) { New-Item -ItemType Directory -Path $dataDir -Force | Out-Null }
     $status = Join-Path $runtimeDir "ai_shadow_status.json"
+    $manifest = "C:\AI_Cockpit_OneClick_Starter\V9_RUNTIME.json"
     $python = $null
     foreach ($cand in @(
-        (Join-Path $RepoRoot ".venv\Scripts\python.exe"),
-        (Join-Path $RepoRoot "venv\Scripts\python.exe")
+        (Join-Path $Root ".venv\Scripts\python.exe"),
+        (Join-Path $Root "venv\Scripts\python.exe")
     )) {
         if (Test-Path -LiteralPath $cand) { $python = $cand; break }
     }
@@ -180,17 +199,30 @@ if ($StartSupervisor) {
         if ($null -ne $py) { $python = $py.Source; $prefix = @("-3") }
     }
     if (-not $python) { throw "PYTHON_NOT_FOUND" }
-    $script = Join-Path $RepoRoot "scripts\ai_shadow_supervisor.py"
+    $script = Join-Path $Root "scripts\ai_shadow_supervisor.py"
     $argList = $prefix + @(
         "-u", (Get-QuotedArg $script),
         "--live", (Get-QuotedArg $live),
         "--data-dir", (Get-QuotedArg $dataDir),
         "--status", (Get-QuotedArg $status),
+        "--runtime-manifest", (Get-QuotedArg $manifest),
         "--interval", "5"
     )
     Start-Process -FilePath $python -ArgumentList $argList -WindowStyle Hidden | Out-Null
     Write-Output "SHADOW_SUPERVISOR_STARTED=1"
     Write-Output "REAL_SUBMIT_ALLOWED=0"
+}
+
+if ($ReplaceSupervisor) {
+    $replaced = Stop-ShadowSupervisorOnly
+    Write-Output ("SHADOW_SUPERVISOR_REPLACED=" + $replaced)
+    Start-Sleep -Seconds 1
+    Start-ShadowSupervisor $RepoRoot
+    exit 0
+}
+
+if ($StartSupervisor) {
+    Start-ShadowSupervisor $RepoRoot
     exit 0
 }
 
