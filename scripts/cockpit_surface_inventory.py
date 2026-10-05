@@ -12,7 +12,7 @@ SURFACES = (
         "id": "control",
         "label": "Control",
         "status": "PARTIAL",
-        "evidence": "trade_control.js draws the CONTROL tab and execution state. Broker positions stay disconnected unless a feed says connected. RssOrder is unimplemented.",
+        "evidence": "trade_control.js draws CONTROL and labels SNAPSHOT, SYNTHETIC/REPLAY, LIVE, and NOT AVAILABLE separately. Broker positions stay disconnected. RssOrder is unimplemented.",
     },
     {
         "id": "scalp5",
@@ -24,25 +24,25 @@ SURFACES = (
         "id": "event5",
         "label": "EVENT 5",
         "status": "PARTIAL",
-        "evidence": "The EVENT 5 tab exists. A full-market realtime scanner is not in the collector signal. Theme and earnings tables are still separate batches.",
+        "evidence": "The EVENT 5 tab separates night PTS, previous limit up/down, and same-day pickup. Each stays NOT AVAILABLE without a fresh LIVE row. A full-market scanner is not in the collector signal.",
     },
     {
         "id": "realtime5",
         "label": "REALTIME 5",
         "status": "PARTIAL",
-        "evidence": "The ms2-live tab reads the collector board. Fail-closed price agreement is a separate gate. Screenless expectancy ranking is not the live signal.",
+        "evidence": "The ms2-live tab reads the collector board and shows 出来高急増 NOT AVAILABLE until a fresh volume arrives. Fail-closed price agreement is a separate gate. Screenless expectancy ranking is not the live signal.",
     },
     {
         "id": "kioxia",
         "label": "キオクシア",
         "status": "PARTIAL",
-        "evidence": "The KIOXIA tab and 285A.T collector path exist. Time-of-day statistics and the forecast chart are not the intraday entry rule.",
+        "evidence": "The KIOXIA tab keeps past similar-day agreement separate from SHADOW expectancy and forecast confidence, which stay NOT AVAILABLE at clean N=0. The chart is not the intraday entry rule.",
     },
     {
         "id": "earnings",
         "label": "決算",
         "status": "PARTIAL",
-        "evidence": "scripts/earnings_calendar.py, earnings-calendar.js, and the earnings workflow exist. The calendar does not set the live entry signal.",
+        "evidence": "scripts/earnings_calendar.py reads the JPX schedule. The forecast probability and the one-month swing plan stay NOT AVAILABLE and do not set the live entry signal.",
     },
     {
         "id": "weekly_review",
@@ -54,7 +54,7 @@ SURFACES = (
         "id": "positions",
         "label": "保有ポジション",
         "status": "BLOCKED",
-        "evidence": "The control pane shows broker positions as disconnected. Position RSS and RssOrder are unimplemented. Private holdings are not written to this repo.",
+        "evidence": "Blocked because broker position RSS and RssOrder are unimplemented (BROKER_POSITION_RSS_UNIMPLEMENTED). Private holdings are not written here. A live order does not clear the block.",
     },
     {
         "id": "commentary",

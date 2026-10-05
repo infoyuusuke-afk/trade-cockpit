@@ -249,7 +249,7 @@ def tabs_block() -> str:
  </details>
 </nav>
 <script src="opportunity_radar.js?v=v9-1" defer></script>
-<script src="trade_control.js?v=weekly-snapshot-1" defer></script>
+<script src="trade_control.js?v=parallel-lanes-1" defer></script>
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
  const main=document.querySelector("main"); if(!main)return;
@@ -263,7 +263,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 
  const eventIntro=document.createElement("section");
  eventIntro.className="card wide";
- eventIntro.innerHTML='<h2>EVENT 5</h2><p class="sub">小型グロース・テーマ株・材料急騰・場中決算の初動監視枠。現時点では全市場の仕手化兆候／短期急騰スキャンを集約し、リアルタイム材料スキャナはこの枠へ接続します。</p>';
+ eventIntro.innerHTML='<h2>EVENT 5</h2><p class="sub">小型グロース・テーマ株・材料急騰・場中決算の初動監視枠。現時点では全市場の仕手化兆候／短期急騰スキャンを集約し、リアルタイム材料スキャナはこの枠へ接続します。</p><div class="cc-grid"><article class="cc-card cc-card--wait"><div class="cc-head"><div class="cc-identity"><span class="cc-company">夜間PTS急騰</span><span class="cc-symbol">PTS</span></div><span class="cc-badge">NOT AVAILABLE</span></div><div class="cc-foot">freshなPTSが無いときは点灯しません。SNAPSHOTとSYNTHETIC/REPLAYは混ぜません。</div></article><article class="cc-card cc-card--wait"><div class="cc-head"><div class="cc-identity"><span class="cc-company">前日S高/S安</span><span class="cc-symbol">LIMIT</span></div><span class="cc-badge">NOT AVAILABLE</span></div><div class="cc-foot">前日のストップ高・ストップ安のfresh一覧が無いときは—です。</div></article><article class="cc-card cc-card--wait"><div class="cc-head"><div class="cc-identity"><span class="cc-company">当日ピックアップ</span><span class="cc-symbol">TODAY</span></div><span class="cc-badge">NOT AVAILABLE</span></div><div class="cc-foot">当日のLIVE行が無いときは作りません。</div></article></div>';
  panes["event-hot"].appendChild(eventIntro);
 
  [...main.querySelectorAll(":scope > section")].forEach(s=>{
