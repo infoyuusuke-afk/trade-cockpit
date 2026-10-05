@@ -95,7 +95,7 @@
       ["Runtime",runtime?.fail_closed===false?"監視稼働":"FAIL-CLOSED"]
     ],brokerConnected
       ?"実建玉はブローカー照合済みです。"
-      :"ブローカー建玉は未接続です。『0件』ではありません。現在のAI Cockpitは実発注を許可していません。",cls);
+      :"ブローカー建玉は未接続です。理由は BROKER_POSITION_RSS_UNIMPLEMENTED。RssOrder は未実装で、LIVE注文では解除しません。『0件』ではありません。",cls);
   }
 
   function shadowEngineHtml(exec){
@@ -186,7 +186,10 @@
         shadowEngineHtml(exec)+
         metricCard("実績データの分類","TRACE",[
           ["総履歴",rows.length+"件"],["未分類",unclassified+"件"],["分類済み",Math.max(0,rows.length-unclassified)+"件"]
-        ],"今後の仮想/Shadow取引は cockpit_tab を必須化して、どのタブの取引か追跡します。",unclassified?"block":"wait");
+        ],"今後の仮想/Shadow取引は cockpit_tab を必須化して、どのタブの取引か追跡します。",unclassified?"block":"wait")+
+        metricCard("成績の出どころ","SOURCE",[
+          ["SNAPSHOT","週間保存"],["SYNTHETIC/REPLAY","配管試験"],["LIVE","freshなshadow"],["NOT AVAILABLE","実データなし"]
+        ],"15件・93.3%・PF 14.32・+109,200円は SNAPSHOT です。Research N、BASELINE N、promotion には入れません。", "wait");
     }
   }
 

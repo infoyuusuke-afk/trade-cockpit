@@ -822,9 +822,129 @@ DATA_LANE = (
 )
 
 
+LANE_SURVEY = {
+    "nt_ratio": {
+        "source_candidate": "日経平均は日本経済新聞社の指数、TOPIXはJPX。比率の保存系列はこのリポジトリに無い。",
+        "source_url": "https://www.jpx.co.jp/markets/indices/topix/",
+        "history_fetchable": False,
+        "available_at": "両指数の遅い方の公表時刻。寄り前の値は前営業日終値。",
+    },
+    "investor_futures_flow": {
+        "source_candidate": "JPX投資部門別売買状況。株式の週間ファイルは第4営業日15:30掲載。",
+        "source_url": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/",
+        "history_fetchable": True,
+        "available_at": "JPXがファイルを出した時刻。週の途中では未公表。",
+    },
+    "futures_options_positioning": {
+        "source_candidate": "JPX派生商品の建玉・出来高。IVとPCRの公式リアルタイム系列は未確認。",
+        "source_url": "https://www.jpx.co.jp/markets/derivatives/",
+        "history_fetchable": False,
+        "available_at": "取引所統計は日次締め後。場中のIVは使わない。",
+    },
+    "short_sale_ratio": {
+        "source_candidate": "JPX空売り集計。日次と月間の売買代金比率。",
+        "source_url": "https://www.jpx.co.jp/markets/statistics-equities/short-selling/",
+        "history_fetchable": True,
+        "available_at": "当日セッション後の公表。場中判断には使えない。",
+    },
+    "credit_evaluation_loss": {
+        "source_candidate": "取引所の単一系列は未確認。証券会社計算の可能性がある。",
+        "source_url": None,
+        "history_fetchable": None,
+        "available_at": "未確認。推定で埋めない。",
+    },
+    "arbitrage_balance": {
+        "source_candidate": "JPXの裁定取引残高統計。掲載URLは未確認なので空欄。",
+        "source_url": None,
+        "history_fetchable": None,
+        "available_at": "公表ファイルの時刻。日中の速報とは限らない。",
+    },
+    "crude": {
+        "source_candidate": "WTIはCMEのLight Sweet Crude。未契約のため値は取らない。",
+        "source_url": "https://www.cmegroup.com/markets/energy/crude-oil/light-sweet-crude.html",
+        "history_fetchable": False,
+        "available_at": "取引所の約定時刻。東京の判断より後の足は使えない。",
+    },
+    "gold": {
+        "source_candidate": "COMEX金先物。未契約のため値は取らない。",
+        "source_url": "https://www.cmegroup.com/markets/metals/precious/gold.html",
+        "history_fetchable": False,
+        "available_at": "取引所の約定時刻。東京の判断より後の足は使えない。",
+    },
+    "silver": {
+        "source_candidate": "銀先物の取得コードは無い。",
+        "source_url": None,
+        "history_fetchable": False,
+        "available_at": "未接続。",
+    },
+    "copper": {
+        "source_candidate": "銅先物の公式系列はこのリポジトリに無い。",
+        "source_url": None,
+        "history_fetchable": False,
+        "available_at": "未接続。",
+    },
+    "korea_equity": {
+        "source_candidate": "KRXのKOSPI、KOSDAQ。未契約のため値は取らない。",
+        "source_url": "https://global.krx.co.kr/",
+        "history_fetchable": False,
+        "available_at": "韓国市場の約定時刻。東京の同時刻より後は使えない。",
+    },
+    "macro_release": {
+        "source_candidate": "event_calendar.py の日銀、FOMC、CPI、雇用統計の予定時刻。結果の数値は未接続。",
+        "source_url": None,
+        "history_fetchable": True,
+        "available_at": "カレンダーの exact 時刻だけ。window は時刻を作らない。",
+    },
+    "official_speech": {
+        "source_candidate": "構造化された要人発言フィードは未確認。",
+        "source_url": None,
+        "history_fetchable": False,
+        "available_at": "未確認。発言後にしか使えない。",
+    },
+    "earnings_schedule": {
+        "source_candidate": "JPX決算発表予定。scripts/earnings_calendar.py が日程だけを読む。",
+        "source_url": "https://www.jpx.co.jp/listing/event-schedules/financial-announcement/index.html",
+        "history_fetchable": True,
+        "available_at": "日程表の公表時刻。結果はその後。",
+    },
+    "catalyst": {
+        "source_candidate": "TDnet開示見出し。本文はコピーしない。",
+        "source_url": "https://www.release.tdnet.info/inbs/",
+        "history_fetchable": True,
+        "available_at": "開示時刻。",
+    },
+    "midterm_plan": {
+        "source_candidate": "各社IRのPDF。構造化系列は無い。本文はコピーしない。",
+        "source_url": None,
+        "history_fetchable": False,
+        "available_at": "IR公表時刻。",
+    },
+    "shikiho_fundamentals": {
+        "source_candidate": "四季報は東洋経済新報社の著作物。本文も指標系列も置かない。",
+        "source_url": None,
+        "history_fetchable": False,
+        "available_at": "誌面の発行日。発売前の値は使えない。",
+    },
+}
+
+
 def research_data_lane() -> tuple:
-    """Survey only. Fetching a source does not admit it to a trade."""
-    return tuple({**item, "trading_adoption": False, "lane": "research_data_lane"} for item in DATA_LANE)
+    """Survey only. A recorded source URL does not fetch a value or admit a trade."""
+    if set(LANE_SURVEY) != {item["id"] for item in DATA_LANE}:
+        raise RuntimeError("research data lane survey does not match the registry")
+    rows = []
+    for item in DATA_LANE:
+        survey = LANE_SURVEY[item["id"]]
+        rows.append({
+            **item,
+            **survey,
+            "surveyed_on": "2026-10-05",
+            "fetch_status": "NOT_FETCHED",
+            "trading_adoption": False,
+            "lane": "research_data_lane",
+            "real_submit_allowed": False,
+        })
+    return tuple(rows)
 
 
 def _trial_from_shadow_trade(record: dict, source: str) -> dict:
