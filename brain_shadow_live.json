@@ -1,0 +1,72 @@
+{
+  "brain": {
+    "title": "AI BRAIN LIVE",
+    "badge": "RESEARCH / CANDIDATE",
+    "authority": "RESEARCH ONLY / NOT EXECUTION AUTHORITY",
+    "execution_authority": false,
+    "symbol": "NOT AVAILABLE",
+    "side": "NOT AVAILABLE",
+    "discovered_at": "NOT AVAILABLE",
+    "entry_candidate_at": "NOT AVAILABLE",
+    "entry_trigger": "NOT AVAILABLE",
+    "price": "NOT AVAILABLE",
+    "reason": "NOT AVAILABLE",
+    "candidate_generator": "NOT AVAILABLE",
+    "correlation": "NOT AVAILABLE",
+    "lead_lag": "NOT AVAILABLE",
+    "market_regime": "NOT AVAILABLE",
+    "research_status": "FETCHED 2/17 / trading_adoption=false",
+    "ev_pf_n": "INSUFFICIENT SAMPLE",
+    "candidate_id": "NOT AVAILABLE",
+    "real_submit_allowed": false
+  },
+  "shadow": {
+    "state": "WAITING",
+    "symbol": "NOT AVAILABLE",
+    "side": "NOT AVAILABLE",
+    "entry_at": "NOT AVAILABLE",
+    "fill": "NOT AVAILABLE",
+    "strategy": "NOT AVAILABLE",
+    "exit_at": "NOT AVAILABLE",
+    "pnl": "NOT AVAILABLE",
+    "trade_id": "NOT AVAILABLE",
+    "candidate_id": "NOT AVAILABLE",
+    "banner": "SHADOW / NO REAL ORDER",
+    "real_submit_allowed": false
+  },
+  "timeline": [
+    {
+      "phase": "brain_discovered",
+      "at": "NOT AVAILABLE"
+    },
+    {
+      "phase": "entry_candidate",
+      "at": "NOT AVAILABLE"
+    },
+    {
+      "phase": "shadow_entry",
+      "at": "NOT AVAILABLE"
+    },
+    {
+      "phase": "shadow_exit",
+      "at": "NOT AVAILABLE"
+    },
+    {
+      "phase": "result",
+      "at": "NOT AVAILABLE"
+    }
+  ],
+  "link": {
+    "candidate_id": "NOT AVAILABLE",
+    "shadow_candidate_id": "NOT AVAILABLE",
+    "trade_id": "NOT AVAILABLE",
+    "linked": false
+  },
+  "accuracy": {
+    "selection": "INSUFFICIENT SAMPLE",
+    "entry_timing": "INSUFFICIENT SAMPLE",
+    "exit": "INSUFFICIENT SAMPLE"
+  },
+  "real_submit_allowed": false,
+  "live_signal_changed": false
+}

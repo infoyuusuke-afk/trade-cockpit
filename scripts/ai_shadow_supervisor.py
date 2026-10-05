@@ -420,7 +420,7 @@ def entry_candidate(row: dict) -> dict | None:
     ticker = row.get("ticker")
     if not isinstance(ticker, str) or not ticker:
         return None
-    return {
+    record = {
         "ticker": ticker,
         "side": side,
         "signal": signal,
@@ -432,6 +432,10 @@ def entry_candidate(row: dict) -> dict | None:
         "target2": row.get("target2") if _finite(row.get("target2")) else None,
         "source_timestamp": row.get("source_timestamp"),
     }
+    candidate_id = row.get("candidate_id")
+    if isinstance(candidate_id, str) and candidate_id:
+        record["candidate_id"] = candidate_id
+    return record
 
 
 def position_key(ticker: str, side: str) -> str:
@@ -1177,7 +1181,7 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
                 source_row = row
                 break
         entry_fill = simulate_quote_fill(candidate["side"], "entry", candidate["price"], source_row.get("bid"), source_row.get("ask"))
-        event = _next_event(engine, now=now, event_type="virtual_entry", payload={
+        payload = {
             "position_key": key,
             "ticker": candidate["ticker"],
             "side": candidate["side"],
@@ -1198,7 +1202,10 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
             "quantity": None,
             "performance_bucket": "open_unrealized_not_marked",
             "decision_rationale": _rationale(candidate),
-        })
+        }
+        if isinstance(candidate.get("candidate_id"), str) and candidate.get("candidate_id"):
+            payload["candidate_id"] = candidate["candidate_id"]
+        event = _next_event(engine, now=now, event_type="virtual_entry", payload=payload)
         engine["ledger"].append(event)
         _append_jsonl(data_dir / "ledger.jsonl", event)
         engine["open_positions"][key] = event

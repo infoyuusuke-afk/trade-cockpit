@@ -179,6 +179,7 @@
       if(box)box.innerHTML=executionHtml(exec,runtime)+shadowEngineHtml(exec);
     });
 
+    await renderBrainShadowLive(health);
     const overview=document.getElementById("owner-control-overview");
     if(overview){
       overview.innerHTML=
@@ -238,6 +239,127 @@
     }catch(_e){
       root.classList.add("card","wide");
     }
+  }
+
+  const LIVE_NA="NOT AVAILABLE";
+  const LIVE_AUTHORITY="RESEARCH ONLY / NOT EXECUTION AUTHORITY";
+  const LIVE_BANNER="SHADOW / NO REAL ORDER";
+  const PHASE_LABELS={
+    brain_discovered:"Brain発見",
+    entry_candidate:"Entry候補",
+    shadow_entry:"Shadow Entry",
+    shadow_exit:"Shadow Exit",
+    result:"結果"
+  };
+
+  function liveText(value){
+    const text=value==null||value===""?LIVE_NA:String(value);
+    return text.includes("BRAIN ENTRY")?LIVE_AUTHORITY:text;
+  }
+
+  function liveCard(title,badge,metrics,foot,cls){
+    return '<article class="cc-card cc-card--'+cls+'">'+
+      '<div class="cc-head"><div class="cc-identity"><span class="cc-company">'+esc(title)+'</span>'+
+      '<span class="cc-symbol">AI COCKPIT</span></div><span class="cc-badge">'+esc(badge)+'</span></div>'+
+      '<div class="cc-metrics-grid">'+metrics.map(x=>'<span>'+esc(x[0])+'<b>'+esc(liveText(x[1]))+'</b></span>').join("")+'</div>'+
+      '<div class="cc-foot cc-foot--wrap">'+esc(foot)+'</div></article>';
+  }
+
+  function unavailableLive(){
+    return {
+      brain:{
+        title:"AI BRAIN LIVE",badge:"RESEARCH / CANDIDATE",authority:LIVE_AUTHORITY,
+        symbol:LIVE_NA,side:LIVE_NA,discovered_at:LIVE_NA,entry_candidate_at:LIVE_NA,
+        entry_trigger:LIVE_NA,price:LIVE_NA,reason:LIVE_NA,candidate_generator:LIVE_NA,
+        correlation:LIVE_NA,lead_lag:LIVE_NA,market_regime:LIVE_NA,research_status:LIVE_NA,
+        ev_pf_n:LIVE_NA,candidate_id:LIVE_NA,execution_authority:false,real_submit_allowed:false
+      },
+      shadow:{
+        state:"WAITING",symbol:LIVE_NA,side:LIVE_NA,entry_at:LIVE_NA,fill:LIVE_NA,
+        strategy:LIVE_NA,exit_at:LIVE_NA,pnl:LIVE_NA,trade_id:LIVE_NA,candidate_id:LIVE_NA,
+        banner:LIVE_BANNER,real_submit_allowed:false
+      },
+      timeline:["brain_discovered","entry_candidate","shadow_entry","shadow_exit","result"].map(phase=>({phase,at:LIVE_NA})),
+      link:{candidate_id:LIVE_NA,shadow_candidate_id:LIVE_NA,trade_id:LIVE_NA,linked:false},
+      accuracy:{selection:LIVE_NA,entry_timing:LIVE_NA,exit:LIVE_NA},
+      real_submit_allowed:false
+    };
+  }
+
+  function applyOpenCount(payload,health){
+    const count=Number(health?.execution?.shadow_open_observation_count);
+    if(!Number.isFinite(count)||payload.shadow.state!=="WAITING")return payload;
+    if(count>0)payload.shadow.state="IN POSITION";
+    return payload;
+  }
+
+  function brainShadowHtml(payload){
+    const brain=payload.brain||{};
+    const shadow=payload.shadow||{};
+    const link=payload.link||{};
+    const accuracy=payload.accuracy||{};
+    const phases=Array.isArray(payload.timeline)?payload.timeline:[];
+    const brainCard=liveCard("AI BRAIN LIVE",brain.badge||"RESEARCH / CANDIDATE",[
+      ["権限",brain.authority||LIVE_AUTHORITY],
+      ["選出銘柄",brain.symbol],
+      ["方向",brain.side],
+      ["発見時刻",brain.discovered_at],
+      ["Entry候補時刻",brain.entry_candidate_at],
+      ["Entry trigger",brain.entry_trigger],
+      ["現在値",brain.price],
+      ["主要理由",brain.reason],
+      ["Candidate Generator",brain.candidate_generator],
+      ["相関",brain.correlation],
+      ["Lead-Lag",brain.lead_lag],
+      ["Market Regime",brain.market_regime],
+      ["Research status",brain.research_status],
+      ["EV / PF / N",brain.ev_pf_n],
+      ["candidate_id",brain.candidate_id]
+    ],"Brainは研究候補です。固定StrategyのShadow Entryとは別です。"+liveText(brain.authority||LIVE_AUTHORITY),"wait");
+    const shadowCard=liveCard("AI SHADOW LIVE",shadow.state||"WAITING",[
+      ["状態",shadow.state||"WAITING"],
+      ["仮想Entry銘柄",shadow.symbol],
+      ["Entry時刻",shadow.entry_at],
+      ["仮想約定価格",shadow.fill],
+      ["LONG / SHORT",shadow.side],
+      ["Strategy",shadow.strategy],
+      ["Exit時刻",shadow.exit_at],
+      ["仮想P&L",shadow.pnl],
+      ["trade_id",shadow.trade_id],
+      ["candidate_id",shadow.candidate_id],
+      ["注文",shadow.banner||LIVE_BANNER]
+    ],"固定Strategyの仮想売買です。"+LIVE_BANNER,"block");
+    const timeline=liveCard("TIMELINE",link.linked?"LINKED":"UNLINKED",[
+      ...phases.map(item=>[PHASE_LABELS[item.phase]||item.phase,item.at]),
+      ["candidate_id",link.candidate_id],
+      ["shadow candidate_id",link.shadow_candidate_id],
+      ["trade_id",link.trade_id],
+      ["銘柄選出",accuracy.selection],
+      ["Entry timing",accuracy.entry_timing],
+      ["Exit",accuracy.exit]
+    ],link.linked?"同じ candidate_id の候補と仮想売買です。":"candidate_id が一致するまで、Brainの時刻とShadowの約定は1本にしません。","wait");
+    return '<div class="pane-intro"><span>AI COCKPIT</span><h2>AI BRAIN LIVE / AI SHADOW LIVE</h2><p>Brainの候補時刻と、Shadowの仮想Entry時刻を分けて表示します。</p></div><div class="cc-live-stack">'+brainCard+shadowCard+timeline+'</div>';
+  }
+
+  async function renderBrainShadowLive(health){
+    const control=document.querySelector('.tab-pane[data-pane="control"]');
+    if(!control)return;
+    let section=document.getElementById("brain-shadow-live");
+    if(!section){
+      section=document.createElement("section");
+      section.id="brain-shadow-live";
+      section.className="card wide";
+      control.prepend(section);
+    }
+    let payload=unavailableLive();
+    try{
+      const response=await fetch("brain_shadow_live.json?t="+Date.now(),{cache:"no-store"});
+      if(response.ok){
+        const body=await response.json();
+        if(body&&body.brain&&body.shadow&&body.real_submit_allowed===false&&body.brain.execution_authority===false)payload=body;
+      }
+    }catch(_e){/* the empty cards stay */}
+    section.innerHTML=brainShadowHtml(applyOpenCount(payload,health));
   }
 
   document.addEventListener("DOMContentLoaded",()=>{

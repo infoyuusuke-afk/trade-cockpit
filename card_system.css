@@ -88,6 +88,8 @@
 .cc-catalyst b{color:var(--cc-text-primary);font-weight:600}
 
 .cc-foot{color:var(--cc-text-secondary);font-size:9.5px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cc-foot--wrap{white-space:normal;overflow:visible;text-overflow:clip}
+.cc-live-stack{display:flex;flex-direction:column;gap:12px}
 
 /* Live watch / roster row: a compact horizontal variant for "on-air" symbol
    lists (実況銘柄カード) rather than the full grid card, per P0-B-1. */
