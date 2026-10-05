@@ -4,6 +4,7 @@ The fixture price is synthetic. This file does not claim a live market PASS.
 """
 
 import base64
+import gzip
 import hashlib
 import os
 import re
@@ -16,6 +17,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 COLLECTOR = ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1"
 GATEWAY = ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V9.ps1"
+
+
+def _ps_here(text, name):
+    token = "$%s = @'\n" % name
+    start = text.index(token) + len(token)
+    end = text.index("\n'@", start)
+    return text[start:end]
 
 
 def _function_body(text, name):
@@ -162,27 +170,45 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
         self.assertIn("deferFirstTdnet", collector)
 
     def test_owner_command_is_encoded_and_has_no_dollar_sign(self):
-        script = ROOT / "downloads" / "ACCEPT_OWNER_RUNTIME.ps1"
-        text = script.read_text(encoding="utf-8")
-        encoded = base64.b64encode(text.encode("utf-16-le")).decode("ascii")
+        """Interactive PowerShell rejected a 28770-char EncodedCommand.
+
+        The console input buffer truncates a line of that size, so the
+        pasted value is no longer valid Base64 and acceptance never starts.
+        The pasted line has to stay under 8000 characters, inside the
+        8191-character console limit that already accepted a shorter command.
+        """
+        text = (ROOT / "downloads" / "ACCEPT_OWNER_RUNTIME.ps1").read_text(encoding="utf-8")
+        inner = _ps_here(text, "inner").strip()
+        stub = _ps_here(text, "stub").strip()
+        self.assertNotIn("\n", stub)
+        self.assertNotIn("\r", stub)
+        blob = re.search(r"\$b='([A-Za-z0-9+/=]+)'", stub).group(1)
+        expanded = gzip.decompress(base64.b64decode(blob)).decode("utf-8").strip()
+        self.assertEqual(expanded, inner)
+        encoded = base64.b64encode(stub.encode("utf-16-le")).decode("ascii")
         command = (
             "powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -EncodedCommand "
             + encoded
         )
         self.assertNotIn("$", command)
-        runtime = text.rsplit("exit 0", 1)[1]
-        self.assertNotIn("Stop-Process", runtime)
-        self.assertNotIn("card_system.js", runtime)
-        self.assertNotIn("-Depth", runtime)
-        self.assertNotIn("origin/cursor/", runtime)
-        self.assertNotIn("checkout -B", runtime)
-        self.assertIn("rev-parse --verify FETCH_HEAD", runtime)
-        self.assertIn("merge-base --is-ancestor", runtime)
-        self.assertIn("checkout -f --detach", runtime)
-        self.assertIn("V9_CONTROLLER_STATE.json", text)
-        self.assertIn("-AcceptRuntimeCollector", text)
-        self.assertIn("467a801f7389337ee77de283aee75d84f66bea28", text)
-        self.assertLess(len(command), 32000)
+        self.assertNotIn("\n", command)
+        self.assertLess(len(command), 8000)
+        self.assertRegex(encoded, r"^[A-Za-z0-9+/=]+$")
+        self.assertEqual(len(encoded) % 4, 0)
+        base64.b64decode(encoded, validate=True)
+        for banned in ("Stop-Process", "card_system.js", "-Depth", "origin/cursor/", "checkout -B"):
+            self.assertNotIn(banned, inner)
+        for required in (
+            "rev-parse --verify FETCH_HEAD",
+            "merge-base --is-ancestor",
+            "checkout -f --detach",
+            "467a801f7389337ee77de283aee75d84f66bea28",
+            "-AcceptRuntimeCollector",
+            "V9_CONTROLLER_STATE.json",
+            "Win32_Process",
+            "REPO_MATCH_COUNT=",
+        ):
+            self.assertIn(required, inner)
         digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest().upper()
         self.assertEqual(len(digest), 64)
 
