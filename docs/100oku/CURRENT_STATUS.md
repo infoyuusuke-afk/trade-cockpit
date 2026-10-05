@@ -8,10 +8,13 @@ Owner PC の初回同期は PASS した。`MASTER_SPEC_SYNC=PASS`、`DESTINATION
 
 ## Research Data Lane
 
-- FETCHED **2/17**
+- FETCHED **3/17**
 - `short_sale_ratio`: `9180eb9ec` で初の FETCHED。JPX空売り売買代金の市場合計。日次。`source_stage=OFFICIAL_PUBLIC`。`trading_adoption=false`。LIVE signal には接続していない。
 - `investor_futures_flow`: 2本目の FETCHED。JPX投資部門別の先物週次CSV。海外投資家の日経225先物・mini・マイクロ売買代金差引。`trading_adoption=false`。LIVE signal には接続していない。
-- 残り15件は `NOT_FETCHED`。
+- `arbitrage_balance`: 3本目の FETCHED。JPX裁定取引の日次市場合計。2026-10-01 の買いポジション合計は 849,191 千株。営業日差 3 で `STALE` のため研究値は null。参加者名と原票は保存していない。`trading_adoption=false`。LIVE signal には接続していない。銘柄候補にはしていない。
+- 残り14件は `NOT_FETCHED`。
+- 本番 Brain candidate は 0。linked は 0。Shadow Entry は 0。`UNIVERSE_SCOPE=LIMITED / PRECISION_WATCH_ONLY`。
+- Correlation / Lead-Lag は `DESIGN_ONLY`。測定ペアは 0。係数は保存していない。
 - `BASELINE_N=0`。`FEATURE_DELTA_EV=NOT_AVAILABLE`。`PROMOTION_CANDIDATE=NONE`。
 - `real_submit_allowed=false`。
 

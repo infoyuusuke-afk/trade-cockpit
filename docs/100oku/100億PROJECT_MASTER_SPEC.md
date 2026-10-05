@@ -79,8 +79,8 @@ MarketSpeed II
 | Collector の銘柄対応 | PASS | Owner PC。`RUNTIME_ACCEPTANCE=PASS`。`SYMBOL=285A.T`。その実行の `CURRENT_PRICE=19120`。この 19,120 円は当時の観測であり、常時の現在値ではない |
 | Supervisor の台帳再読込 | PASS | Owner PC。`SUPERVISOR_RELOAD_ACCEPTANCE=PASS`。worktree `4abf0a1a`。`REAL_SUBMIT 0`。`LIVE_SIGNAL_RULE_CHANGE=0`。Collector、Gateway、Excel、MS2 は対象外 |
 | MASTER 初回同期 | PASS | 上記のトークン。対象は当時の 4,644 bytes。この版ではない |
-| Research Data Lane | PARTIAL | FETCHED 2/17。`trading_adoption=false` |
-| Control の Brain / Shadow 表示 | PARTIAL | 二段表示はある。保存中の live ファイルに候補も仮想約定も無い |
+| Research Data Lane | PARTIAL | FETCHED 3/17。`trading_adoption=false` |
+| Control の Brain / Shadow 表示 | PASS | 二段表示の配線。本番候補は 0。選出・Entry・Exit の精度は NOT_RUN |
 | LIVE の往復 | NOT_RUN | 市場時間外や条件未達を、注入で PASS にしない |
 | クリーンな Shadow 標本 | NOT_RUN | `BASELINE_N=0`。`FEATURE_DELTA_EV=NOT_AVAILABLE`。`PROMOTION_CANDIDATE=NONE` |
 | ブローカー建玉 | BLOCKED | `BROKER_POSITION_RSS_UNIMPLEMENTED`。LIVE 注文では解除しない |
@@ -98,22 +98,26 @@ fresh な行が無い枠は `NOT AVAILABLE` または「—」とする。SNAPSH
 
 動的ユニバースの採用判定は NOT_RUN である。銘柄集合を広げる実装は、この MASTER の文章だけでは始まらない。
 
+現在の Brain 探索範囲は全市場ではない。Control は `UNIVERSE_SCOPE=LIMITED / PRECISION_WATCH_ONLY` と出す。市場合計の統計から、市場全体で選んだ銘柄とは書かない。
+
 ## Candidate Generators
 
 候補は二つを混ぜない。
 
 1. 固定 Strategy の `entry_candidate`。上の LONG / SHORT 信号と、価格と、損切りの形が揃った行だけを仮想 Entry の候補にする。これは Brain の選出ではない。
-2. AI Brain の研究候補。`candidate_id`、銘柄、方向、発見時刻、Entry 候補時刻、trigger、理由、generator、相関、lead-lag、regime を持つ。`execution_authority=true` の行は表示しない。価格は `price_fresh=true` のときだけ現在値にする。
+2. AI Brain の研究候補。実データの銘柄行ができたときだけ `candidate_id` を作る。保存する項目は `candidate_id`、銘柄、`LONG` / `SHORT` / `WATCH` / `NO-TRADE`、`candidate_created_at`、`entry_candidate_at`、`source_generator`、`trigger`、`main_reasons`、`market_regime`、`available_at`、`data_quality`、`universe_scope`、`research_status` である。`execution_authority=true` の行は表示しない。価格は `price_fresh=true` のときだけ現在値にする。
 
-保存中の `brain_shadow_live.json` には研究候補が無い。選出銘柄、方向、時刻、trigger、現在値は `NOT AVAILABLE` である。方向を `NO-TRADE` と補完しない。`NO-TRADE` は、記録された候補がそう言ったときだけ使う。
+本番ファイル `data/research_candidates/candidates.jsonl` の候補は 0 件である。理由は `NO_SYMBOL_LEVEL_OBSERVATION`。空売り比率、先物投資部門、裁定残の市場合計は銘柄候補にしない。fixture は本番統計に入れない。選出銘柄、方向、時刻、trigger、現在値は `NOT AVAILABLE` のままである。方向を `NO-TRADE` と補完しない。`NO-TRADE` は、記録された候補がそう言ったときだけ使う。
 
-`candidate_id` が行に既にあるときだけ、仮想 Entry の記録へ写す。無いときに ID を作らない。
+`candidate_id` が行に既にあるときだけ、仮想 Entry の記録へ写す。Shadow の Entry 条件は固定 Strategy のままである。Brain 候補に合わせて緩めない。無いときに ID を作らない。
 
 ## Correlation / Lead-Lag Research Engine
 
-相関と lead-lag は、Brain 候補の項目である。候補が無いときの Control は `NOT AVAILABLE` である。
+相関と lead-lag の設計は `scripts/lead_lag_research.py` にある。状態は `DESIGN_ONLY`。測定ペアは 0。相関係数は保存していない。Control の相関と lead-lag の値は `NOT AVAILABLE`、engine 表示は `DESIGN_ONLY / NOT MEASURED` である。
 
-Research Data Lane の 17 系列は、相関エンジンの出力ではない。取得済みの 2 系列も `trading_adoption=false` であり、先導銘柄の判定には使っていない。
+測定できるのは、両方の系列が同じ `session_date` を持ち、各点に `available_at` があり、きれいな観測が 30 以上重なるときだけである。その条件が揃っても、この版は係数を計算しない。市場合計は銘柄の先導にしない。fixture は入れない。
+
+Research Data Lane の 17 系列は、相関エンジンの出力ではない。取得済みの 3 系列も `trading_adoption=false` であり、先導銘柄の判定には使っていない。
 
 lead-lag の採用、しきい値、的中率は未検証なので書かない。将来の評価は、同じ `candidate_id` で結ばれた「銘柄選出」「Entry の時刻」「Exit」を分ける。標本が 0 のあいだ、三つの精度は `INSUFFICIENT SAMPLE` である。
 
@@ -127,9 +131,11 @@ AI BRAIN PICKS は、LIVE の約定リストではない。Control 上部の `AI
 - バッジ: `RESEARCH / CANDIDATE`
 - 検証済みの EV / PF / N が無いとき: `INSUFFICIENT SAMPLE`
 - データが無い項目: `NOT AVAILABLE`
-- Research status: `FETCHED 2/17 / trading_adoption=false`
+- Research status: `FETCHED 3/17 / trading_adoption=false`
+- Universe scope: `LIMITED / PRECISION_WATCH_ONLY`
+- 本番候補 0、linked 0、Shadow Entry 0
 
-ピックの本数、推奨銘柄、確信度は、候補ファイルが無いので出さない。N=0 のとき、確率、EV、確信度を生成しない。
+ピックの本数、推奨銘柄、確信度は、本番候補が 0 なので出さない。N=0 のとき、確率、EV、確信度を生成しない。
 
 ## BASELINE / Research Layer / Meta Brain / AI SHADOW
 
@@ -145,7 +151,7 @@ Meta Brain は、独立して LIVE Entry を決める段階ではない。Brain 
 
 ## Research Data Registry
 
-Registry は 17 件である。FETCHED は 2 件。残り 15 件は NOT_FETCHED。取得済みでも売買条件には入れない。
+Registry は 17 件である。FETCHED は 3 件。残り 14 件は NOT_FETCHED。取得済みでも売買条件には入れない。
 
 | id | 状態 | 更新 | 出どころ |
 |---|---|---|---|
@@ -153,7 +159,7 @@ Registry は 17 件である。FETCHED は 2 件。残り 15 件は NOT_FETCHED�
 | investor_futures_flow | FETCHED | 週次。第4営業日の掲載規則 | JPX 先物の投資部門別 |
 | nt_ratio | NOT_FETCHED | 未接続 | 日経平均の再配布条件が未確認。TOPIX だけでは NT にしない |
 | futures_options_positioning | NOT_FETCHED | 未接続 | IV / PCR は未契約 |
-| arbitrage_balance | NOT_FETCHED | 未切り出し | 参加者別 PDF は保存しない |
+| arbitrage_balance | FETCHED | 日次。セッション後 | JPX 裁定取引の市場合計。参加者名と原票は保存しない |
 | credit_evaluation_loss | NOT_FETCHED | 未確認 | 単一系列が未確認 |
 | crude | NOT_FETCHED | 未契約 | |
 | gold | NOT_FETCHED | 未契約 | |
@@ -194,6 +200,20 @@ Registry は 17 件である。FETCHED は 2 件。残り 15 件は NOT_FETCHED�
 - `next_publication_due_on=2026-10-08`。これは予定であり、公表時刻ではない
 - `trading_adoption=false`
 
+### arbitrage_balance
+
+- 3本目の FETCHED。JPX の日次 xls から市場合計だけを保存した。履歴は 10 セッション。最新は `session_date=2026-10-01`
+- 売買は売り 64,563 千株、買い 8,980 千株。売りポジション合計 7,985 千株。買いポジション合計 849,191 千株。単位は千株
+- 全社合計は売買の合計と一致した。参加者名の行は保存していない
+- sha256: `004234bbfe70c28477815aece51a98db0e74923f84c2855a7aa27a5846d0c519`
+- 取得元: https://www.jpx.co.jp/markets/statistics-equities/program/ の `261001.xls`。原票は repo に置かない。`raw_retained=false`
+- `first_seen_at=2026-10-06T02:01:58.033482+09:00`。`available_at` と `fetched_at` は同じ
+- `published_at=2026-10-05T16:00:31+09:00`。根拠は HTTP Last-Modified
+- シートの `2026年10月5日` は日付であり、`published_at` ではない。`sheet_label_date=2026-10-05`
+- 当限の注記は 2026-12 限まで。これは限月のラベルであり、時刻ではない
+- 観測日 2026-10-06 の営業日差は 3。freshness は `STALE`。研究用の買い残は null
+- `trading_adoption=false`。銘柄候補にはしない
+
 `scripts/investor_regime.py` の既存アーカイブは、この lane の保存先ではない。`build_output` は呼ばない。
 
 ## Data freshness / available_at / no-lookahead
@@ -224,7 +244,7 @@ freshness は 4 暦日固定ではない。JPX の休業日表（https://www.jpx
 | MarketSpeed II RSS | LIVE 価格の正 | 専用ブック経由。G0 は FAIL、G1 は NOT_RUN |
 | Collector / Gateway | RSS の配布と拒否 | 不一致、stale、別ブック、別銘柄、読めないコード列、重複は fail-closed |
 | TradingView | 広域の探索候補 | 非公式 API の取得はしていない。NOT_FETCHED |
-| JPX 公開統計 | Research Data Lane | 2/17 だけ FETCHED。売買には未接続 |
+| JPX 公開統計 | Research Data Lane | 3/17 だけ FETCHED。売買には未接続 |
 | DEX | 別ゲートの研究 | `docs/C189_DEX_ADOPTION_GATE.md`。正式シグナルと注文経路は変えない。`world_market.py` の表示名はライセンスではない |
 | 四季報、日経平均の再配布 | 置かない | 契約が確認できるまで取得しない |
 
@@ -271,7 +291,7 @@ P0 専用 Excel と市場 I/O
 
 画面の文言だけを増やすことを、データが進んだことと数えない。Registry が NOT_FETCHED のままなら、主成果は未取得の系列を FETCHED の条件まで進めることである。条件は、実取得、raw 保存、出典と `fetched_at` と `available_at` と freshness と license、保存できる履歴、欠測と破損の fail-closed、Research Layer からの参照、`trading_adoption=false`、LIVE signal を変えない、`real_submit_allowed=false`、合成を LIVE に混ぜない、である。
 
-FETCHED は 2/17 である。残り 15 件は停滞として残っている。次の系列を、ライセンスと取得可能性の確認より前に保存しない。空売り比率と投資部門先物の次点として調べた裁定残高は、参加者別 PDF を保存しない。NT、IV/PCR、日経の共有ブランド、DEX、TradingView の非公式 API は、確認が終わるまで NOT_FETCHED のままである。
+FETCHED は 3/17 である。残り 14 件は停滞として残っている。次の系列を、ライセンスと取得可能性の確認より前に保存しない。裁定残高は市場合計だけを保存し、参加者別の原票は保存しない。NT、IV/PCR、日経の共有ブランド、DEX、TradingView の非公式 API は、確認が終わるまで NOT_FETCHED のままである。
 
 Brain の性能は、`BASELINE_N=0` のあいだ上がったとは書かない。
 

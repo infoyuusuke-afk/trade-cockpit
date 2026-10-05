@@ -249,7 +249,7 @@ def tabs_block() -> str:
  </details>
 </nav>
 <script src="opportunity_radar.js?v=v9-1" defer></script>
-<script src="trade_control.js?v=brain-shadow-live-1" defer></script>
+<script src="trade_control.js?v=research-candidate-1" defer></script>
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
  const main=document.querySelector("main"); if(!main)return;

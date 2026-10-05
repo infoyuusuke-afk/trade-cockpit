@@ -13,7 +13,9 @@
 
 ## いまの Research Data Lane
 
-- FETCHED 2/17。`short_sale_ratio` と `investor_futures_flow`。
+- FETCHED 3/17。`short_sale_ratio`、`investor_futures_flow`、`arbitrage_balance`。裁定残の原票と参加者名は保存していない。
+- 本番 Brain candidate は 0。linked は 0。Shadow Entry は 0。探索範囲は `LIMITED / PRECISION_WATCH_ONLY`。
+- Lead-Lag は `DESIGN_ONLY`。測定ペアは 0。
 - `trading_adoption=false`。LIVE signal は変えていない。`real_submit_allowed=false`。
 - `BASELINE_N=0`。`FEATURE_DELTA_EV=NOT_AVAILABLE`。`PROMOTION_CANDIDATE=NONE`。
 - 詳細は `CURRENT_STATUS.md` と `100億PROJECT_MASTER_SPEC.md`。

@@ -807,7 +807,7 @@ DATA_LANE = (
     {"id": "futures_options_positioning", "priority": 1, "availability": "建玉と出来高はJPX派生商品統計。IVとPCRの公式リアルタイム系列はこのリポジトリに無い。", "published_clock": "取引所統計は日次締め後。場中のIVはベンダー計算が多い。", "update_frequency": "日次。IVは未接続。", "history_storable": False, "license": "建玉はJPX。IVはベンダー契約が別。未契約の値は取らない。", "fetch_status": "NOT_FETCHED"},
     {"id": "short_sale_ratio", "priority": 2, "availability": "JPX空売り集計。LIVE行には無い。", "published_clock": "当日セッション後の公表。場中判断には使えない。", "update_frequency": "日次。", "history_storable": True, "license": "JPX公開統計。", "fetch_status": "NOT_FETCHED"},
     {"id": "credit_evaluation_loss", "priority": 2, "availability": "取引所の単一系列としては未確認。証券会社の計算である可能性が高く、このリポジトリに取得元が無い。", "published_clock": "未確認。推定で埋めない。", "update_frequency": "未確認。", "history_storable": False, "license": "未確認。ソースが特定できるまで取得しない。", "fetch_status": "NOT_FETCHED"},
-    {"id": "arbitrage_balance", "priority": 2, "availability": "JPXの裁定取引残高統計。LIVE signal には無い。", "published_clock": "公表ファイルの時刻。日中の速報とは限らない。", "update_frequency": "日次または週次。取得前にJPXの欄を確認する。", "history_storable": True, "license": "JPX公開統計。", "fetch_status": "NOT_FETCHED"},
+    {"id": "arbitrage_balance", "priority": 2, "availability": "JPX裁定取引の日次市場合計。参加者名と原票は保存しない。LIVE signal には無い。", "published_clock": "xlsのHTTP Last-Modifiedが検証できたときだけ。シートの日付は時刻にしない。", "update_frequency": "日次。", "history_storable": True, "license": "JPX公開統計。合計だけを保存する。", "fetch_status": "NOT_FETCHED"},
     {"id": "crude", "priority": 3, "availability": "WTI/Brentは取引所先物。global_macro は名前だけを持ち、取得はしない。", "published_clock": "各取引所の約定時刻。東京の判断より後の足は使えない。", "update_frequency": "場中。", "history_storable": False, "license": "取引所またはベンダー契約。未契約。", "fetch_status": "NOT_FETCHED"},
     {"id": "gold", "priority": 3, "availability": "COMEX金先物など。系列は未保存。", "published_clock": "取引所の約定時刻。", "update_frequency": "場中。", "history_storable": False, "license": "取引所またはベンダー契約。未契約。", "fetch_status": "NOT_FETCHED"},
     {"id": "silver", "priority": 3, "availability": "銀先物の取得コードは無い。", "published_clock": "未接続。", "update_frequency": "未接続。", "history_storable": False, "license": "未契約。", "fetch_status": "NOT_FETCHED"},
@@ -854,10 +854,10 @@ LANE_SURVEY = {
         "available_at": "未確認。推定で埋めない。",
     },
     "arbitrage_balance": {
-        "source_candidate": "JPXプログラム売買・裁定取引の日次合計。参加者別PDFの合計ポジションは未切り出し。",
+        "source_candidate": "JPXプログラム売買・裁定取引の日次市場合計。参加者別の原票は保存しない。",
         "source_url": "https://www.jpx.co.jp/markets/statistics-equities/program/",
         "history_fetchable": True,
-        "available_at": "公表ファイルの時刻。日中の速報とは限らない。",
+        "available_at": "xlsのHTTP Last-Modifiedが検証できたときだけ。シートの日付は時刻にしない。",
     },
     "crude": {
         "source_candidate": "WTIはCMEのLight Sweet Crude。未契約のため値は取らない。",
@@ -932,16 +932,19 @@ def research_data_lane() -> tuple:
     """Recorded sources stay unadopted. A fetched row is still not a trade input."""
     if set(LANE_SURVEY) != {item["id"] for item in DATA_LANE}:
         raise RuntimeError("research data lane survey does not match the registry")
+    import research_lane_arbitrage as arbitrage
     import research_lane_investor_flow as investor_flow
     import research_lane_short_sale as short_sale
 
     loaded_by_id = {
         "short_sale_ratio": short_sale.load_latest(),
         "investor_futures_flow": investor_flow.load_latest(),
+        "arbitrage_balance": arbitrage.load_latest(),
     }
     value_field = {
         "short_sale_ratio": "short_ratio_for_research",
         "investor_futures_flow": "foreign_nikkei225_futures_net_yen_for_research",
+        "arbitrage_balance": "long_position_total_for_research",
     }
     rows = []
     for item in DATA_LANE:
