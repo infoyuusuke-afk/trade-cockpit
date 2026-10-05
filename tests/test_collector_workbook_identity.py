@@ -5,9 +5,11 @@ The fixture price is synthetic. This file does not claim a live market PASS.
 
 import base64
 import hashlib
+import os
 import re
 import shutil
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -161,6 +163,11 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
         self.assertNotIn("Stop-Process", runtime)
         self.assertNotIn("card_system.js", runtime)
         self.assertNotIn("-Depth", runtime)
+        self.assertNotIn("origin/cursor/", runtime)
+        self.assertNotIn("checkout -B", runtime)
+        self.assertIn("rev-parse --verify FETCH_HEAD", runtime)
+        self.assertIn("merge-base --is-ancestor", runtime)
+        self.assertIn("checkout -f --detach", runtime)
         self.assertIn("V9_CONTROLLER_STATE.json", text)
         self.assertIn("-AcceptRuntimeCollector", text)
         self.assertIn("82c49a6d614a6a09f9f239cc7de6b3f25d39310a", text)
@@ -181,6 +188,77 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 0, proc.stdout + "\n" + proc.stderr)
         self.assertIn("RUNTIME_ACCEPT_SELFTEST PASS", proc.stdout)
+
+    def test_fetch_head_pin_when_remote_tracking_ref_is_absent(self):
+        """Owner failure: fetch stores the branch only in FETCH_HEAD.
+
+        A single-branch clone does not create origin/cursor/... after
+        `git fetch origin <branch>`. Checking that ref out fails with
+        "is not a commit". The pin is detached from FETCH_HEAD instead.
+        """
+        if shutil.which("git") is None:
+            self.skipTest("git is not installed")
+        env = os.environ.copy()
+        env.update(
+            {
+                "GIT_AUTHOR_NAME": "owner-pin-test",
+                "GIT_AUTHOR_EMAIL": "owner-pin-test@example.com",
+                "GIT_COMMITTER_NAME": "owner-pin-test",
+                "GIT_COMMITTER_EMAIL": "owner-pin-test@example.com",
+            }
+        )
+
+        def git(cwd, *args, check=True):
+            return subprocess.run(
+                ["git", "-C", str(cwd), *args],
+                check=check,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            remote = root / "remote"
+            remote.mkdir()
+            self.assertEqual(git(remote, "init", "-b", "main").returncode, 0)
+            (remote / "README").write_text("main\n", encoding="utf-8")
+            self.assertEqual(git(remote, "add", "README").returncode, 0)
+            self.assertEqual(git(remote, "commit", "-m", "main").returncode, 0)
+            branch = "cursor/p0-stale-price-failclosed-d483"
+            self.assertEqual(git(remote, "checkout", "-b", branch).returncode, 0)
+            (remote / "pin.txt").write_text("pin\n", encoding="utf-8")
+            self.assertEqual(git(remote, "add", "pin.txt").returncode, 0)
+            self.assertEqual(git(remote, "commit", "-m", "pin").returncode, 0)
+            pin = git(remote, "rev-parse", "HEAD").stdout.strip()
+            (remote / "tip.txt").write_text("tip\n", encoding="utf-8")
+            self.assertEqual(git(remote, "add", "tip.txt").returncode, 0)
+            self.assertEqual(git(remote, "commit", "-m", "tip").returncode, 0)
+            tip = git(remote, "rev-parse", "HEAD").stdout.strip()
+            owner = root / "owner"
+            cloned = git(root, "clone", "--single-branch", "--branch", "main", str(remote), str(owner))
+            self.assertEqual(cloned.returncode, 0, cloned.stderr)
+            missing = "origin/" + branch
+            absent = git(owner, "rev-parse", "--verify", missing, check=False)
+            self.assertNotEqual(absent.returncode, 0)
+            fetched = git(owner, "fetch", "origin", branch, check=False)
+            self.assertEqual(fetched.returncode, 0, fetched.stderr)
+            self.assertIn("FETCH_HEAD", fetched.stderr)
+            fetch_head = git(owner, "rev-parse", "--verify", "FETCH_HEAD").stdout.strip()
+            self.assertEqual(fetch_head, tip)
+            still_absent = git(owner, "rev-parse", "--verify", missing, check=False)
+            self.assertNotEqual(still_absent.returncode, 0)
+            old = git(owner, "checkout", "-B", branch, missing, check=False)
+            self.assertNotEqual(old.returncode, 0)
+            self.assertIn("is not a commit", old.stderr)
+            self.assertEqual(git(owner, "cat-file", "-e", pin + "^{commit}").returncode, 0)
+            ancestor = git(owner, "merge-base", "--is-ancestor", pin, "FETCH_HEAD", check=False)
+            self.assertEqual(ancestor.returncode, 0, ancestor.stderr)
+            detached = git(owner, "checkout", "-f", "--detach", pin, check=False)
+            self.assertEqual(detached.returncode, 0, detached.stderr)
+            head = git(owner, "rev-parse", "--verify", "HEAD").stdout.strip()
+            self.assertEqual(head, pin)
+            self.assertNotEqual(git(owner, "rev-parse", "--verify", missing, check=False).returncode, 0)
 
 
 if __name__ == "__main__":

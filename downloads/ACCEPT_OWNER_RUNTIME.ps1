@@ -125,6 +125,11 @@ if ($OwnerCommandSelfTest) {
     if ($runtime.Contains('Stop-Process')) { throw 'launcher must not stop a process' }
     if ($runtime.Contains('card_system.js')) { throw 'card search must be gone' }
     if ($runtime.Contains('-Depth')) { throw 'desktop depth search must be gone' }
+    if ($runtime.Contains('origin/cursor/')) { throw 'remote-tracking checkout must be gone' }
+    if ($runtime.Contains('checkout -B')) { throw 'branch checkout must be gone' }
+    if (-not $runtime.Contains('rev-parse --verify FETCH_HEAD')) { throw 'FETCH_HEAD must be verified' }
+    if (-not $runtime.Contains('merge-base --is-ancestor')) { throw 'pin ancestry must be verified' }
+    if (-not $runtime.Contains('checkout -f --detach')) { throw 'pin detach missing' }
     if (-not $text.Contains('-AcceptRuntimeCollector')) { throw 'launcher must call accept' }
     if (-not $text.Contains('82c49a6d614a6a09f9f239cc7de6b3f25d39310a')) { throw 'pin missing' }
     if ((Select-SingleRepoPath @('C:\repo', 'c:\repo\')) -ne 'C:\repo') { throw 'same repo must collapse' }
@@ -171,12 +176,26 @@ foreach ($candidate in @(Get-RecordedRepoCandidates)) {
 }
 $repo = Select-SingleRepoPath @($valid.ToArray())
 Write-Output ('REPO=' + $repo)
+$pin = '82c49a6d614a6a09f9f239cc7de6b3f25d39310a'
 & git -C $repo fetch origin cursor/p0-stale-price-failclosed-d483
 if ($LASTEXITCODE -ne 0) { throw 'GIT_FETCH_FAILED' }
-& git -C $repo checkout -B cursor/p0-stale-price-failclosed-d483 origin/cursor/p0-stale-price-failclosed-d483
-if ($LASTEXITCODE -ne 0) { throw 'GIT_CHECKOUT_FAILED' }
-& git -C $repo reset --hard 82c49a6d614a6a09f9f239cc7de6b3f25d39310a
-if ($LASTEXITCODE -ne 0) { throw 'GIT_RESET_FAILED' }
+$fetchHead = (& git -C $repo rev-parse --verify FETCH_HEAD 2>$null | Out-String).Trim()
+if (($LASTEXITCODE -ne 0) -or ($fetchHead -notmatch '^[0-9a-fA-F]{40}$')) { throw 'GIT_FETCH_HEAD_INVALID' }
+& git -C $repo cat-file -e ($pin + '^{commit}') 2>$null
+if ($LASTEXITCODE -ne 0) {
+    & git -C $repo fetch origin $pin
+    if ($LASTEXITCODE -ne 0) { throw 'GIT_PIN_FETCH_FAILED' }
+    $fetchHead = (& git -C $repo rev-parse --verify FETCH_HEAD 2>$null | Out-String).Trim()
+    if (($LASTEXITCODE -ne 0) -or ($fetchHead -ne $pin)) { throw 'GIT_PIN_FETCH_FAILED' }
+}
+if ($fetchHead -ne $pin) {
+    & git -C $repo merge-base --is-ancestor $pin $fetchHead
+    if ($LASTEXITCODE -ne 0) { throw 'GIT_PIN_NOT_IN_FETCH' }
+}
+& git -C $repo checkout -f --detach $pin
+if ($LASTEXITCODE -ne 0) { throw 'GIT_PIN_CHECKOUT_FAILED' }
+$head = (& git -C $repo rev-parse --verify HEAD 2>$null | Out-String).Trim()
+if (($LASTEXITCODE -ne 0) -or (-not $head.StartsWith($pin))) { throw 'GIT_PIN_CHECKOUT_FAILED' }
 $runner = Join-Path $repo 'downloads\RUN_AI_COCKPIT_V9.ps1'
-& $runner -RepoRoot $repo -SkipGitUpdate -Branch cursor/p0-stale-price-failclosed-d483 -ExpectedSha 82c49a6d614a6a09f9f239cc7de6b3f25d39310a -AcceptRuntimeCollector
+& $runner -RepoRoot $repo -SkipGitUpdate -Branch cursor/p0-stale-price-failclosed-d483 -ExpectedSha $pin -AcceptRuntimeCollector
 if ($LASTEXITCODE -ne 0) { throw ('ACCEPT_EXIT=' + $LASTEXITCODE) }
