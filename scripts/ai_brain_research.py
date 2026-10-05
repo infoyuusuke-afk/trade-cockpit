@@ -7,7 +7,9 @@ does not call the supervisor, and does not submit.
 A feature becomes a promotion candidate only after backtest, walk-forward,
 replay, and shadow each show the same post-cost direction with enough
 samples. Small samples stay INSUFFICIENT_SAMPLE. A value is usable only when
-its available_at is at or before the decision.
+its available_at is at or before the decision. Shadow trade rows with an
+unknown commission stay out of the live sample. Synthetic rows stay in the
+replay pipe.
 """
 from __future__ import annotations
 
@@ -20,6 +22,7 @@ if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
 import decision_input_value as audit
+import shadow_trade_ledger as trade_ledger
 
 JST = timezone(timedelta(hours=9))
 MIN_SAMPLE = 8
@@ -822,3 +825,75 @@ DATA_LANE = (
 def research_data_lane() -> tuple:
     """Survey only. Fetching a source does not admit it to a trade."""
     return tuple({**item, "trading_adoption": False, "lane": "research_data_lane"} for item in DATA_LANE)
+
+
+def _trial_from_shadow_trade(record: dict, source: str) -> dict:
+    commission = _number(record.get("commission"))
+    other = _number(record.get("other_cost"))
+    entry_slip = _number(record.get("entry_slippage"))
+    exit_slip = _number(record.get("exit_slippage"))
+    return {
+        "model_id": BASELINE_MODEL,
+        "side": record.get("side"),
+        "stage": "shadow",
+        "source": source,
+        "trade_id": record.get("trade_id"),
+        "decided_at": record.get("decision_at"),
+        "regime": record.get("regime") if isinstance(record.get("regime"), str) and record.get("regime") else "UNKNOWN",
+        "pnl_per_share_yen": _number(record.get("gross_pnl")),
+        "cost_yen_per_share": None if commission is None or other is None else commission + other,
+        "mae_yen": _number(record.get("mae")),
+        "mfe_yen": _number(record.get("mfe")),
+        "slippage_yen": None if entry_slip is None or exit_slip is None else entry_slip + exit_slip,
+        "features": {},
+        "source_stage": record.get("source_stage"),
+        "real_submit_allowed": False,
+    }
+
+
+def evaluate_shadow_trade_ledger(records) -> dict:
+    """Turn saved shadow trades into a baseline sample.
+
+    N=0 stays NOT_AVAILABLE. A synthetic fixture can prove the pipe and still
+    adds nothing to the live sample or to promotion.
+    """
+    split = trade_ledger.split_shadow_trades(records)
+    trials = [_trial_from_shadow_trade(record, "live_shadow") for record in split["live"]]
+    pipe = [_trial_from_shadow_trade(record, "synthetic_replay") for record in split["pipe"]]
+    clean_n = len(trials)
+    feature_delta = "NOT_AVAILABLE"
+    if clean_n:
+        for feature_id in registry_ids("acquired") + registry_ids("connected"):
+            compared = paired_feature_comparison(trials, feature_id)
+            if compared.get("delta_ev") is not None:
+                feature_delta = compared["delta_ev"]
+                break
+    pipe_rows = []
+    for trial in pipe:
+        net = _net(trial)
+        pipe_rows.append({
+            "trade_id": trial["trade_id"],
+            "gross_pnl": trial["pnl_per_share_yen"],
+            "net_pnl": net,
+            "mae": trial["mae_yen"],
+            "mfe": trial["mfe_yen"],
+            "source_stage": trade_ledger.SOURCE_SYNTHETIC,
+            "counts_as_live_sample": False,
+            "promotion_candidate": False,
+        })
+    status = {
+        "CLEAN_SHADOW_TRADE_N": clean_n,
+        "BASELINE_N": clean_n,
+        "FEATURE_DELTA_EV": feature_delta,
+        "PROMOTION_CANDIDATE": "NONE",
+        "excluded": split["excluded"],
+        "pipe_n": len(pipe_rows),
+        "pipe_trades": pipe_rows,
+        "pipe_counts_as_live_sample": False,
+        "pipe_promotion_candidate": False,
+        "real_submit_allowed": False,
+        "live_roundtrip": "NOT_RUN/RESEARCH_LAYER",
+    }
+    if clean_n:
+        status["baseline_by_side"] = baseline_shadow_metrics(trials)["by_side"]
+    return status
