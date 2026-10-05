@@ -204,7 +204,7 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
             "rev-parse --verify FETCH_HEAD",
             "merge-base --is-ancestor",
             "checkout -f --detach",
-            "811f97aba5a5c3057636c152eddada53e97b3685",
+            "7c67b3da874610a3121c1f0d1b48ad5fae445fbb",
             "-AcceptRuntimeCollector",
             "V9_CONTROLLER_STATE.json",
             "Win32_Process",
