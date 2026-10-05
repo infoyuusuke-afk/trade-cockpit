@@ -96,7 +96,7 @@ SURFACES = (
         "id": "trade_diary",
         "label": "AIトレード日記",
         "status": "PARTIAL",
-        "evidence": "scripts/journal_projection.py maps an event into a row. It does not publish a diary, does not read private holdings, and does not submit.",
+        "evidence": "scripts/journal_projection.py maps an event into a row and projects a shadow trade without turning FEE_UNKNOWN into yen. It does not publish a diary, does not read private holdings, and does not submit.",
     },
 )
 
