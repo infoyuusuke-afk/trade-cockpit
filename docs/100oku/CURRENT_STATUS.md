@@ -2,7 +2,9 @@
 
 記録日: 2026-10-06 JST
 
-`D:\100億PROJECT\MASTER_SPEC` は未反映。この環境にそのパスは無く、書き込んでいない。ここにある3ファイルが、正式管理ファイルへ未適用の差分である。
+`D:\100億PROJECT\MASTER_SPEC` は未反映。この環境にそのパスは無く、書き込んでいない。repo の `docs/100oku/` が AI 作業コピーである。Owner PC の `downloads/SYNC_100OKU_MASTER_SPEC.ps1` が、Owner が実行したときだけ正式原本へコピーする。Cloud Agent はこの同期を実行していない。
+
+対象は `100億PROJECT_MASTER_SPEC.md`、`CURRENT_STATUS.md`、`CHANGELOG.md`、`HANDOVER.md`。`docs/100oku` に Word 版があれば `.docx` も対象。いま `.docx` は無い。毎日 16:45 の登録スクリプトは用意したが、登録はしていない。
 
 ## Research Data Lane
 

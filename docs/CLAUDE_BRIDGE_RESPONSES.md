@@ -23,4 +23,6 @@
 
 | C-026 | 2026-10-06 | 一部のみ（空売り比率と先物投資部門。統合は未了） | 空売り比率に続き、JPX先物の投資部門別週次CSVを Research Data Lane の `investor_futures_flow` として保存した。2026-09-24〜09-25 の海外投資家・日経225先物売買代金差引は 186,407,123,040 円。`published_at` は HTTP Last-Modified の `2026-10-01T15:30:29+09:00`。検証できない 2026-04-17 週は null。freshness は JPX 営業日。FETCHED は 2/17。先物外資以外の SQ、裁定残、信用残は未取得。trading_adoption=false。LIVE signal と real_submit は変えていない。`D:\100億PROJECT\MASTER_SPEC` は未反映 | [scripts/research_lane_investor_flow.py](../scripts/research_lane_investor_flow.py)、[docs/100oku/CURRENT_STATUS.md](100oku/CURRENT_STATUS.md) | C-026 の統合表示は未着手 | 研究参照のみ。売買条件には未接続 |
 
+| C-026 | 2026-10-06 | 一部のみ（正式原本への同期は未実行） | repo の `docs/100oku/` を AI 作業コピーとし、Owner PC の `downloads/SYNC_100OKU_MASTER_SPEC.ps1` が `D:\100億PROJECT\MASTER_SPEC` へコピーする。上書き前は `archive\YYYY-MM-DD_HHMM`。sha256 不一致、欠落、空ファイルは FAIL CLOSED。`LAST_SYNC.json` の `cloud_agent_wrote_destination` は false。Cloud の dry-run は D: へ書いていない。16:45 の登録スクリプトは `-Register` 無しでは登録しない。FETCHED は 2/17 のまま。trading_adoption=false。LIVE signal と real_submit は変えていない | [downloads/SYNC_100OKU_MASTER_SPEC.ps1](../downloads/SYNC_100OKU_MASTER_SPEC.ps1)、[docs/100oku/SYNC_MANIFEST.json](100oku/SYNC_MANIFEST.json) | 初回反映は Owner PC で同期スクリプトを1回。C-026 の統合表示は未着手 | 研究参照のみ。正式原本は未反映 |
+
 ChatGPT側は当該ID・根拠を読み、必要な再検証だけを共有シートに新しいIDで追記する。双方とも返信を実装済みや売買可能の証拠として扱わない。

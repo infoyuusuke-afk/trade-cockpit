@@ -1,0 +1,23 @@
+# HANDOVER
+
+記録日: 2026-10-06 JST
+
+## 正本の置き場所
+
+- AI作業コピーは repo の `docs/100oku/`。
+- 正式原本フォルダは `D:\100億PROJECT\MASTER_SPEC`。
+- Cloud Agent から D: へは書けない。repo を更新しただけでは正式原本は変わらない。
+- Owner PC の `downloads/SYNC_100OKU_MASTER_SPEC.ps1` だけが D: へコピーする。
+- 同期前のファイルは `D:\100億PROJECT\MASTER_SPEC\archive\YYYY-MM-DD_HHMM\` に退避する。
+- 結果は `LAST_SYNC.json`。`cloud_agent_wrote_destination` は false のまま。
+
+## いまの Research Data Lane
+
+- FETCHED 2/17。`short_sale_ratio` と `investor_futures_flow`。
+- `trading_adoption=false`。LIVE signal は変えていない。`real_submit_allowed=false`。
+- `BASELINE_N=0`。`FEATURE_DELTA_EV=NOT_AVAILABLE`。`PROMOTION_CANDIDATE=NONE`。
+- 詳細は `CURRENT_STATUS.md` と `100億PROJECT_MASTER_SPEC.md`。
+
+## 同期
+
+毎日 16:45 JST のタスク登録スクリプトは `downloads/REGISTER_100OKU_MASTER_SPEC_TASK.ps1`。`-Register` を付けない限り登録しない。この引き渡し時点では未登録。最初の反映は Owner PC で同期スクリプトを1回実行する。Cloud 上の dry-run と self-test は D: を作っていない。
