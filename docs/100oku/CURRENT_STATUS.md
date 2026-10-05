@@ -6,6 +6,12 @@ Owner PC の初回同期は PASS した。`MASTER_SPEC_SYNC=PASS`、`DESTINATION
 
 この作業コピーは、その後に MASTER 本文と `100億PROJECT_MASTER_SPEC.docx` を広げた版である。Cloud Agent はこの版を D: へ書いていない。対象は `100億PROJECT_MASTER_SPEC.md`、`CURRENT_STATUS.md`、`CHANGELOG.md`、`HANDOVER.md`、および `docs/100oku` の `.docx`。16:45 のタスクは未登録である。
 
+## Acceptance の層
+
+- HISTORICAL BASELINE は `docs/AI_COCKPIT_MASTER_SPEC.md`（2026-09-22）だけである。G0 から G5 の表はそこに無い。
+- G0 から G5 は Current Acceptance（2026-10-03、`docs/P0_ACCEPTANCE_MATRIX.md`）である。G0 は FAIL、G1 は NOT_RUN、G2 は NOT_RUN、G3 は PARTIAL、G4 は NOT_RUN、G5 は NOT_RUN。HISTORICAL BASELINE ではない。
+- Collector の銘柄対応 PASS と Supervisor の台帳再読込 PASS は、その後の別観測である。G0 から G5 を置き換えない。
+
 ## Research Data Lane
 
 - FETCHED **3/17**
