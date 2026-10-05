@@ -85,7 +85,10 @@ class ParallelLaneTests(unittest.TestCase):
         lane = brain.research_data_lane()
         self.assertEqual(len(lane), 17)
         for item in lane:
-            self.assertEqual(item["fetch_status"], "NOT_FETCHED")
+            if item["id"] == "short_sale_ratio":
+                self.assertEqual(item["fetch_status"], "FETCHED")
+            else:
+                self.assertEqual(item["fetch_status"], "NOT_FETCHED")
             self.assertFalse(item["trading_adoption"])
             self.assertFalse(item["real_submit_allowed"])
             self.assertTrue(item["source_candidate"])
