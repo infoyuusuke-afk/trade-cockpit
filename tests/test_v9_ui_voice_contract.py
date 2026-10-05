@@ -221,6 +221,22 @@ class V9UiVoiceContract(unittest.TestCase):
         self.assertIn("公開スナップショット", generator)
         self.assertIn("window.livePriceBlocked", index)
 
+    def test_identity_price_is_collector_gateway_agreement_only(self):
+        card = read("card_system.js")
+        gateway = read("downloads/AI_COCKPIT_GATEWAY_V9.ps1")
+        self.assertIn("export function resolveIdentityLivePrice", card)
+        self.assertIn('IDENTITY_TICKER = "285A.T"', card)
+        self.assertIn("Access-Control-Allow-Private-Network: true", gateway)
+        for rel in ("index.html", "scripts/update.py"):
+            text = read(rel)
+            self.assertIn("http://127.0.0.1:28580/live_ms2.json", text)
+            self.assertIn("http://127.0.0.1:28581/live_ms2.json", text)
+            self.assertIn('id="kio-live-current-price"', text)
+            self.assertIn("resolveIdentityLivePrice", text)
+            self.assertIn("paintIdentity", text)
+            self.assertIn("公開スナップショットは現在値にしない", text)
+            self.assertNotIn('fetchJson("live_ms2.json', text)
+
     def test_gateway_source_stays_parseable_by_windows_powershell_51(self):
         """Owner PC commit 755378509 failed closed before port 28581 opened.
 

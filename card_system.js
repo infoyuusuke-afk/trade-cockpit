@@ -118,6 +118,85 @@ export function livePriceBlocked(data) {
   return "";
 }
 
+export const IDENTITY_TICKER = "285A.T";
+
+function diagnosticPrice(payload) {
+  const diag = payload && payload.live_price_diagnostics;
+  if (!diag) return null;
+  const price = Number(diag.current_price);
+  return Number.isFinite(price) ? price : null;
+}
+
+function rowPrice(payload) {
+  const row = payload && payload.kioxia;
+  if (!row || row.price == null || row.price === "") return null;
+  const price = Number(row.price);
+  return Number.isFinite(price) ? price : null;
+}
+
+function payloadFresh(payload, nowMs) {
+  const raw = String((payload && payload.updated_at) || "");
+  const parsed = Date.parse(raw.replace(" ", "T"));
+  if (!Number.isFinite(parsed)) return false;
+  const age = (nowMs - parsed) / 1000;
+  return age >= -30 && age <= 60;
+}
+
+/**
+ * Paint 285A only when the Collector payload and the Gateway payload
+ * publish the same identity price. A snapshot, a fixed fallback, a
+ * mismatched symbol, or a one-sided value stays blank.
+ */
+export function resolveIdentityLivePrice(collector, gateway, nowMs = Date.now()) {
+  const blocked = {
+    ok: false,
+    symbol: IDENTITY_TICKER,
+    collector_value: null,
+    gateway_value: null,
+    ui_value: null,
+    reason: "GATEWAY_OR_COLLECTOR_MISSING",
+  };
+  if (!collector || !gateway) return blocked;
+  const collectorBlock = livePriceBlocked(collector);
+  const gatewayBlock = livePriceBlocked(gateway);
+  const collectorValue = diagnosticPrice(collector);
+  const gatewayValue = diagnosticPrice(gateway);
+  if (collectorBlock) return { ...blocked, collector_value: collectorValue, gateway_value: gatewayValue, reason: "COLLECTOR_" + collectorBlock };
+  if (gatewayBlock) return { ...blocked, collector_value: collectorValue, gateway_value: gatewayValue, reason: "GATEWAY_" + gatewayBlock };
+  if (collector.real_submit_allowed !== false || gateway.real_submit_allowed !== false) {
+    return { ...blocked, collector_value: collectorValue, gateway_value: gatewayValue, reason: "REAL_SUBMIT_NOT_LOCKED" };
+  }
+  if (!payloadFresh(collector, nowMs) || !payloadFresh(gateway, nowMs)) {
+    return { ...blocked, collector_value: collectorValue, gateway_value: gatewayValue, reason: "STALE_OR_MISSING_TIMESTAMP" };
+  }
+  const collectorSymbol = String(collector.live_price_diagnostics.symbol || "");
+  const gatewaySymbol = String(gateway.live_price_diagnostics.symbol || "");
+  if (collectorSymbol !== IDENTITY_TICKER || gatewaySymbol !== IDENTITY_TICKER) {
+    return { ...blocked, collector_value: collectorValue, gateway_value: gatewayValue, reason: "WRONG_SYMBOL_MAPPING" };
+  }
+  if (collectorValue == null || gatewayValue == null || collectorValue !== gatewayValue || collectorValue <= 0) {
+    return { ...blocked, collector_value: collectorValue, gateway_value: gatewayValue, reason: "PRICE_MISMATCH" };
+  }
+  const collectorRow = rowPrice(collector);
+  const gatewayRow = rowPrice(gateway);
+  if ((collectorRow != null && collectorRow !== collectorValue) || (gatewayRow != null && gatewayRow !== gatewayValue)) {
+    return { ...blocked, collector_value: collectorValue, gateway_value: gatewayValue, reason: "SYMBOL_ROW_MISMATCH" };
+  }
+  return {
+    ok: true,
+    symbol: IDENTITY_TICKER,
+    collector_value: collectorValue,
+    gateway_value: gatewayValue,
+    ui_value: collectorValue,
+    reason: "MATCH",
+  };
+}
+
+export function identityPriceText(chain) {
+  if (!chain || chain.ok !== true || !Number.isFinite(chain.ui_value) || chain.ui_value <= 0) return "—";
+  return Number(chain.ui_value).toLocaleString("ja-JP") + "円";
+}
+
 function directionInfo(model) {
   const direction = DIRECTIONS.has(model.direction) ? model.direction : "wait";
   const label = model.directionLabel ?? DEFAULT_LABELS[direction];
@@ -293,6 +372,8 @@ if (typeof window !== "undefined") {
   window.renderCockpitCard = renderCockpitCard;
   window.renderCockpitWatchRow = renderCockpitWatchRow;
   window.livePriceBlocked = livePriceBlocked;
+  window.resolveIdentityLivePrice = resolveIdentityLivePrice;
+  window.identityPriceText = identityPriceText;
   window.CANONICAL_MS2_SOURCE = CANONICAL_MS2_SOURCE;
   window.recordOnAir = recordOnAir;
   window.getOnAirLog = getOnAirLog;

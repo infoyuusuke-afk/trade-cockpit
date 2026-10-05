@@ -134,7 +134,7 @@ function Get-ContentType([string]$path) {
 }
 
 function Send-Response($stream, [string]$status, [string]$contentType, [byte[]]$body) {
-    $headers = "HTTP/1.1 $status`r`nContent-Type: $contentType`r`nContent-Length: $($body.Length)`r`nCache-Control: no-store`r`nAccess-Control-Allow-Origin: *`r`nConnection: close`r`n`r`n"
+    $headers = "HTTP/1.1 $status`r`nContent-Type: $contentType`r`nContent-Length: $($body.Length)`r`nCache-Control: no-store`r`nAccess-Control-Allow-Origin: *`r`nAccess-Control-Allow-Methods: GET, OPTIONS`r`nAccess-Control-Allow-Headers: *`r`nAccess-Control-Allow-Private-Network: true`r`nConnection: close`r`n`r`n"
     $hb = [Text.Encoding]::ASCII.GetBytes($headers)
     $stream.Write($hb, 0, $hb.Length)
     if ($body.Length -gt 0) { $stream.Write($body, 0, $body.Length) }
