@@ -51,6 +51,9 @@ class MasterSpecSyncBridgeTests(unittest.TestCase):
         self.assertNotIn("RssOrder", sync)
         self.assertIn("TASK_TIME=16:45", register)
         self.assertIn("TASK_REGISTER=NOT_RUN", register)
+        self.assertIn("REASON=PATH_HAS_SPACE_OR_QUOTE", register)
+        self.assertIn('-File " + $sync + " -RepoRoot " + $root', register)
+        self.assertNotIn('-File "\'', register)
         self.assertLess(register.index("TASK_REGISTER=NOT_RUN"), register.index("schtasks.exe"))
 
     def test_manifest_lists_the_working_copy(self):

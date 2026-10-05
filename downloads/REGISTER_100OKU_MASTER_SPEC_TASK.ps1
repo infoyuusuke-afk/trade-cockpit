@@ -16,7 +16,13 @@ function Get-DefaultRepoRoot {
 $root = Get-DefaultRepoRoot
 $sync = [IO.Path]::Combine([IO.Path]::Combine($root, "downloads"), "SYNC_100OKU_MASTER_SPEC.ps1")
 $task = "TradeCockpit-100oku-MasterSpec-Sync"
-$action = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' + $sync + '" -RepoRoot "' + $root + '"'
+# schtasks splits a /TR value on embedded quotes. These paths have no spaces.
+if ($root.IndexOf(" ") -ge 0 -or $root.IndexOf([char]34) -ge 0 -or $sync.IndexOf(" ") -ge 0 -or $sync.IndexOf([char]34) -ge 0) {
+    Write-Output "TASK_REGISTER=FAIL"
+    Write-Output "REASON=PATH_HAS_SPACE_OR_QUOTE"
+    exit 1
+}
+$action = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File " + $sync + " -RepoRoot " + $root
 
 Write-Output "TASK_NAME=$task"
 Write-Output "TASK_TIME=16:45"
