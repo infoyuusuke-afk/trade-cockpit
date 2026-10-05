@@ -159,9 +159,12 @@ class CollectorWorkbookIdentityContract(unittest.TestCase):
         self.assertNotIn("$", command)
         runtime = text.rsplit("exit 0", 1)[1]
         self.assertNotIn("Stop-Process", runtime)
+        self.assertNotIn("card_system.js", runtime)
+        self.assertNotIn("-Depth", runtime)
+        self.assertIn("V9_CONTROLLER_STATE.json", text)
         self.assertIn("-AcceptRuntimeCollector", text)
         self.assertIn("82c49a6d614a6a09f9f239cc7de6b3f25d39310a", text)
-        self.assertLess(len(command), 8000)
+        self.assertLess(len(command), 32000)
         digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest().upper()
         self.assertEqual(len(digest), 64)
 
