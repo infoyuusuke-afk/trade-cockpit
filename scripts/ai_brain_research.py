@@ -932,35 +932,50 @@ def research_data_lane() -> tuple:
     """Recorded sources stay unadopted. A fetched row is still not a trade input."""
     if set(LANE_SURVEY) != {item["id"] for item in DATA_LANE}:
         raise RuntimeError("research data lane survey does not match the registry")
+    import research_lane_investor_flow as investor_flow
     import research_lane_short_sale as short_sale
 
-    loaded = short_sale.load_latest()
-    short_status = loaded.get("fetch_status")
+    loaded_by_id = {
+        "short_sale_ratio": short_sale.load_latest(),
+        "investor_futures_flow": investor_flow.load_latest(),
+    }
+    value_field = {
+        "short_sale_ratio": "short_ratio_for_research",
+        "investor_futures_flow": "foreign_nikkei225_futures_net_yen_for_research",
+    }
     rows = []
     for item in DATA_LANE:
         survey = LANE_SURVEY[item["id"]]
         status = "NOT_FETCHED"
         extra = {}
-        if item["id"] == "short_sale_ratio" and short_status == "FETCHED":
+        loaded = loaded_by_id.get(item["id"])
+        if loaded is not None and loaded.get("fetch_status") == "FETCHED":
             status = "FETCHED"
+            field = value_field[item["id"]]
             extra = {
                 "source": loaded.get("source"),
                 "fetched_at": loaded.get("fetched_at"),
+                "first_seen_at": loaded.get("first_seen_at"),
                 "available_at": loaded.get("available_at"),
+                "published_at": loaded.get("published_at"),
+                "published_at_basis": loaded.get("published_at_basis"),
                 "freshness": loaded.get("freshness"),
+                "freshness_basis": loaded.get("freshness_basis"),
+                "business_day_gap": loaded.get("business_day_gap"),
+                "calendar_age_days": loaded.get("calendar_age_days"),
                 "license_note": loaded.get("license_note"),
                 "session_date": loaded.get("session_date"),
                 "sha256": loaded.get("sha256"),
-                "short_ratio_for_research": loaded.get("short_ratio_for_research"),
+                field: loaded.get(field),
                 "counts_as_live_sample": False,
                 "promotion_candidate": False,
                 "source_stage": "OFFICIAL_PUBLIC",
             }
-        elif item["id"] == "short_sale_ratio" and short_status == "FAIL_CLOSED":
+        elif loaded is not None and loaded.get("fetch_status") == "FAIL_CLOSED":
             status = "FAIL_CLOSED"
             extra = {
                 "freshness": "MALFORMED",
-                "short_ratio_for_research": None,
+                value_field[item["id"]]: None,
                 "reason": "MALFORMED",
             }
         rows.append({
@@ -975,6 +990,12 @@ def research_data_lane() -> tuple:
             **extra,
         })
     return tuple(rows)
+
+
+def research_lane_fetch_summary(lane: tuple | None = None) -> dict:
+    rows = research_data_lane() if lane is None else lane
+    fetched = [item["id"] for item in rows if item.get("fetch_status") == "FETCHED"]
+    return {"fetched": len(fetched), "registry": len(rows), "ids": fetched}
 
 
 def _trial_from_shadow_trade(record: dict, source: str) -> dict:

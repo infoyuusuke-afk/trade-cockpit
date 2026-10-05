@@ -8,11 +8,18 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sys
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path
 from urllib.parse import urljoin
 from urllib.request import Request, urlopen
+
+_SCRIPTS = Path(__file__).resolve().parent
+if str(_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS))
+
+import jpx_business_calendar as jpx_calendar
 
 ROOT = Path(__file__).resolve().parents[1]
 STORE = ROOT / "data" / "research_lane" / "short_sale_ratio"
@@ -21,7 +28,6 @@ LATEST = STORE / "latest.json"
 HISTORY = STORE / "history.jsonl"
 PAGE = "https://www.jpx.co.jp/markets/statistics-equities/short-selling/"
 JST = timezone(timedelta(hours=9))
-MAX_FRESH_DAYS = 4
 LICENSE_NOTE = (
     "JPX/東証が公開する立会市場の空売り売買代金の合計。個別の保有や注文ではない。"
     "出典URLを残す。売買条件には使わない。trading_adoption=false。"
@@ -76,12 +82,7 @@ def parse_short_sale_text(text: str) -> dict:
 
 
 def freshness(session_date: str, fetched_at: datetime) -> str:
-    session = datetime.strptime(session_date, "%Y-%m-%d").date()
-    observed = fetched_at.astimezone(JST).date()
-    age = (observed - session).days
-    if age < 0 or age > MAX_FRESH_DAYS:
-        return "STALE"
-    return "FRESH"
+    return jpx_calendar.daily_freshness(session_date, fetched_at)["freshness"]
 
 
 def _pdf_text(blob: bytes) -> str:
@@ -91,13 +92,13 @@ def _pdf_text(blob: bytes) -> str:
     return "\n".join(page.extract_text() or "" for page in reader.pages)
 
 
-def _fetch(url: str) -> bytes:
+def _fetch(url: str) -> tuple[bytes, str | None]:
     request = Request(url, headers={"User-Agent": "TradeCockpit-JPX-PointInTime/1.0"})
     with urlopen(request, timeout=30) as response:
         body = response.read()
         if getattr(response, "status", 200) != 200 or not body:
             raise ValueError("MISSING")
-        return body
+        return body, response.headers.get("Last-Modified")
 
 
 def discover_market_pdfs(html: str) -> list[str]:
@@ -110,20 +111,31 @@ def discover_market_pdfs(html: str) -> list[str]:
     return list(dict.fromkeys(found))
 
 
-def build_record(blob: bytes, source_url: str, fetched_at: datetime) -> dict:
+def _clock_fields(session_date: str, seen_at: datetime, last_modified: str | None) -> dict:
+    seen = seen_at.astimezone(JST)
+    published = jpx_calendar.verified_last_modified(last_modified, session_date, seen)
+    detail = jpx_calendar.daily_freshness(session_date, seen)
+    return {
+        "session_date": session_date,
+        "first_seen_at": seen.isoformat(),
+        "fetched_at": seen.isoformat(),
+        "available_at": seen.isoformat(),
+        "published_at": None if published is None else published.isoformat(),
+        "published_at_basis": None if published is None else "http_last_modified",
+        **detail,
+    }
+
+
+def build_record(blob: bytes, source_url: str, fetched_at: datetime, last_modified: str | None = None) -> dict:
     if not blob.startswith(b"%PDF"):
         raise ValueError("MALFORMED")
     parsed = parse_short_sale_text(_pdf_text(blob))
     digest = hashlib.sha256(blob).hexdigest()
-    state = freshness(parsed["session_date"], fetched_at)
+    clock = _clock_fields(parsed["session_date"], fetched_at, last_modified)
     return {
         "id": "short_sale_ratio",
         "source": source_url,
         "source_page": PAGE,
-        "fetched_at": fetched_at.astimezone(JST).isoformat(),
-        "available_at": fetched_at.astimezone(JST).isoformat(),
-        "session_date": parsed["session_date"],
-        "freshness": state,
         "license_note": LICENSE_NOTE,
         "sha256": digest,
         "trading_adoption": False,
@@ -132,7 +144,8 @@ def build_record(blob: bytes, source_url: str, fetched_at: datetime) -> dict:
         "promotion_candidate": False,
         "source_stage": "OFFICIAL_PUBLIC",
         **parsed,
-        "short_ratio_for_research": parsed["short_ratio"] if state == "FRESH" else None,
+        **clock,
+        "short_ratio_for_research": parsed["short_ratio"] if clock["freshness"] == "FRESH" else None,
     }
 
 
@@ -172,11 +185,23 @@ def write_store(records: list[dict], blobs: dict[str, bytes]) -> dict:
         previous = by_session.get(session)
         if previous and previous.get("sha256") == record["sha256"]:
             record = dict(record)
-            record["fetched_at"] = previous["fetched_at"]
-            record["available_at"] = previous["available_at"]
-            record["freshness"] = previous["freshness"]
+            seen = previous.get("first_seen_at") or previous["fetched_at"]
+            verified_published = record.get("published_at")
+            verified_basis = record.get("published_at_basis")
+            record.update(_clock_fields(record["session_date"], datetime.fromisoformat(seen), None))
+            record["first_seen_at"] = seen
+            record["fetched_at"] = seen
+            record["available_at"] = seen
+            if previous.get("published_at"):
+                record["published_at"] = previous["published_at"]
+                record["published_at_basis"] = previous.get("published_at_basis")
+            elif verified_published:
+                record["published_at"] = verified_published
+                record["published_at_basis"] = verified_basis
+            detail = jpx_calendar.daily_freshness(record["session_date"], datetime.fromisoformat(seen))
+            record.update(detail)
             record["short_ratio_for_research"] = (
-                record["short_ratio"] if record["freshness"] == "FRESH" else None
+                record["short_ratio"] if detail["freshness"] == "FRESH" else None
             )
         by_session[session] = record
     ordered = [by_session[key] for key in sorted(by_session)]
@@ -191,15 +216,15 @@ def write_store(records: list[dict], blobs: dict[str, bytes]) -> dict:
 
 def fetch_and_store(now: datetime | None = None) -> dict:
     fetched_at = now or datetime.now(JST)
-    html = _fetch(PAGE).decode("utf-8", "replace")
-    urls = discover_market_pdfs(html)
+    html, _header = _fetch(PAGE)
+    urls = discover_market_pdfs(html.decode("utf-8", "replace"))
     if not urls:
         raise ValueError("MISSING")
     records = []
     blobs = {}
     for url in urls:
-        blob = _fetch(url)
-        record = build_record(blob, url, fetched_at)
+        blob, last_modified = _fetch(url)
+        record = build_record(blob, url, fetched_at, last_modified)
         blobs[record["sha256"]] = blob
         records.append(record)
     return write_store(records, blobs)
@@ -250,20 +275,34 @@ def load_latest(now: datetime | None = None) -> dict:
         ):
             if record.get(key) != parsed[key]:
                 raise ValueError("MALFORMED")
+        seen_text = record.get("first_seen_at") or record.get("fetched_at")
+        seen = datetime.fromisoformat(seen_text)
+        published = record.get("published_at")
+        if published is not None:
+            if record.get("published_at_basis") != "http_last_modified":
+                raise ValueError("MALFORMED")
+            stamp = datetime.fromisoformat(published)
+            session = datetime.strptime(record["session_date"], "%Y-%m-%d").date()
+            if stamp.tzinfo is None or stamp > seen or stamp.astimezone(JST).date() < session:
+                raise ValueError("MALFORMED")
         clock = now or datetime.now(JST)
+        at_fetch = jpx_calendar.daily_freshness(record["session_date"], seen)
+        current = jpx_calendar.daily_freshness(record["session_date"], clock)
         record = dict(record)
-        record["freshness_at_fetch"] = record["freshness"]
-        record["freshness"] = freshness(record["session_date"], clock)
+        record["first_seen_at"] = seen.astimezone(JST).isoformat()
+        record["published_at"] = published
+        record["freshness_at_fetch"] = at_fetch["freshness"]
+        record.update(current)
         record["fetch_status"] = "FETCHED"
         record["trading_adoption"] = False
         record["counts_as_live_sample"] = False
         record["promotion_candidate"] = False
-        if record["freshness"] == "FRESH" and record["freshness_at_fetch"] == "FRESH":
+        if current["freshness"] == "FRESH" and at_fetch["freshness"] == "FRESH":
             record["short_ratio_for_research"] = record["short_ratio"]
             record["reason"] = "FRESH"
         else:
             record["short_ratio_for_research"] = None
-            record["reason"] = "STALE"
+            record["reason"] = current["freshness"] if current["freshness"] != "FRESH" else "STALE"
         return record
     except (OSError, json.JSONDecodeError, ValueError, TypeError, ImportError):
         closed["fetch_status"] = "FAIL_CLOSED"
@@ -276,7 +315,7 @@ def load_latest(now: datetime | None = None) -> dict:
 # contribution, license clarity, history fetchability, implementation speed, available_at clarity.
 LANE_PRIORITY = (
     {"id": "short_sale_ratio", "rank": 1, "contribution": 5, "license": 5, "history": 5, "speed": 5, "available_at": 3, "score": 23, "fetch_this_turn": True, "why": "JPXの日次合計。出典付きの公開統計。履歴PDFがある。PDFに時刻は無いのでavailable_atは初回観測時刻。"},
-    {"id": "investor_futures_flow", "rank": 2, "contribution": 4, "license": 5, "history": 5, "speed": 4, "available_at": 4, "score": 22, "fetch_this_turn": False, "why": "JPX投資部門別。週次で第4営業日15:30。既存の公式アーカイブ経路がある。今回は取得していない。"},
+    {"id": "investor_futures_flow", "rank": 2, "contribution": 4, "license": 5, "history": 5, "speed": 4, "available_at": 4, "score": 22, "fetch_this_turn": True, "why": "JPX先物の投資部門別。週次CSVを取得する。公表時刻はLast-Modifiedが検証できたときだけ入れる。"},
     {"id": "arbitrage_balance", "rank": 3, "contribution": 5, "license": 4, "history": 3, "speed": 2, "available_at": 3, "score": 17, "fetch_this_turn": False, "why": "プログラム売買ページは確認した。PDFは参加者別で、合計だけを切る処理が未完了。参加者名は保存しない。"},
     {"id": "earnings_schedule", "rank": 4, "contribution": 3, "license": 4, "history": 4, "speed": 3, "available_at": 3, "score": 17, "fetch_this_turn": False, "why": "裁定残と同点。日程であり需給の数値ではない。既存の日程読取とは別に、今回の取得対象にはしない。"},
     {"id": "macro_release", "rank": 5, "contribution": 3, "license": 3, "history": 3, "speed": 2, "available_at": 4, "score": 15, "fetch_this_turn": False, "why": "予定時刻だけがある。結果の数値系列は未接続。"},

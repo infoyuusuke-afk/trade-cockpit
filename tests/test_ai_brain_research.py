@@ -312,7 +312,7 @@ class ResearchLayerTests(unittest.TestCase):
         self.assertTrue(all(item["trading_adoption"] is False for item in lane))
         self.assertEqual(
             {item["id"] for item in lane if item["fetch_status"] == "FETCHED"},
-            {"short_sale_ratio"},
+            {"short_sale_ratio", "investor_futures_flow"},
         )
         shikiho = next(item for item in lane if item["id"] == "shikiho_fundamentals")
         self.assertIn("転載しない", shikiho["license"])
