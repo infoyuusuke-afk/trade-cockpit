@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-05 10:46:37 JST",
+  "updated_at": "2026-10-05 10:48:46 JST",
   "source": "固定監視リスト（JPX取得失敗）",
   "universe_count": 100,
   "scanned_count": 100,
@@ -12,15 +12,15 @@
       "name": "パナソニックHD（6752）",
       "setup": "5日線反発",
       "score": 85,
-      "close": 4675.0,
+      "close": 4694.0,
       "trigger": 4730,
       "stop": 4485,
       "target1": 5100,
       "target2": 5340,
-      "ma5": 4534.4,
+      "ma5": 4538.2,
       "rvol": 0.38,
-      "ret20": 8.82,
-      "atr_pct": 3.51,
+      "ret20": 9.26,
+      "atr_pct": 3.49,
       "signal_date": "2026-10-05",
       "reason": "5日線反発／終値が主要移動平均線上／出来高比0.38倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
@@ -384,7 +384,7 @@
           "o": 4640.0,
           "h": 4724.0,
           "l": 4608.0,
-          "c": 4675.0
+          "c": 4694.0
         }
       ],
       "supply_verified": false,
@@ -410,15 +410,15 @@
       "name": "マクニカHD（3132）",
       "setup": "5日線反発",
       "score": 85,
-      "close": 4259.0,
+      "close": 4262.0,
       "trigger": 4295,
       "stop": 4180,
       "target1": 4470,
       "target2": 4580,
-      "ma5": 4224.6,
+      "ma5": 4225.2,
       "rvol": 0.32,
-      "ret20": 20.17,
-      "atr_pct": 3.3,
+      "ret20": 20.26,
+      "atr_pct": 3.29,
       "signal_date": "2026-10-05",
       "reason": "5日線反発／終値が主要移動平均線上／出来高比0.32倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
@@ -782,7 +782,7 @@
           "o": 4245.0,
           "h": 4289.0,
           "l": 4235.0,
-          "c": 4259.0
+          "c": 4262.0
         }
       ],
       "supply_verified": false,
@@ -808,14 +808,14 @@
       "name": "オムロン（6645）",
       "setup": "5日線反発",
       "score": 85,
-      "close": 6567.0,
+      "close": 6563.0,
       "trigger": 6575,
-      "stop": 6390,
-      "target1": 6850,
-      "target2": 7040,
-      "ma5": 6439.6,
+      "stop": 6385,
+      "target1": 6860,
+      "target2": 7050,
+      "ma5": 6438.8,
       "rvol": 0.26,
-      "ret20": 5.32,
+      "ret20": 5.26,
       "atr_pct": 2.48,
       "signal_date": "2026-10-05",
       "reason": "5日線反発／終値が主要移動平均線上／出来高比0.26倍",
@@ -1180,7 +1180,7 @@
           "o": 6533.0,
           "h": 6569.0,
           "l": 6477.0,
-          "c": 6567.0
+          "c": 6563.0
         }
       ],
       "supply_verified": false,
@@ -1206,17 +1206,17 @@
       "name": "ソフトバンクグループ（9984）",
       "setup": "5日線反発",
       "score": 80,
-      "close": 6540.0,
+      "close": 6546.0,
       "trigger": 6575,
       "stop": 6275,
       "target1": 7025,
       "target2": 7325,
-      "ma5": 6403.2,
-      "rvol": 0.36,
-      "ret20": 32.82,
+      "ma5": 6404.4,
+      "rvol": 0.37,
+      "ret20": 32.94,
       "atr_pct": 6.36,
       "signal_date": "2026-10-05",
-      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.36倍",
+      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.37倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
       "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
       "chart": [
@@ -1578,7 +1578,7 @@
           "o": 6476.0,
           "h": 6570.0,
           "l": 6416.0,
-          "c": 6540.0
+          "c": 6546.0
         }
       ],
       "supply_verified": false,
@@ -1604,17 +1604,17 @@
       "name": "京セラ（6971）",
       "setup": "5日線反発",
       "score": 75,
-      "close": 3863.0,
-      "trigger": 3870,
+      "close": 3867.0,
+      "trigger": 3875,
       "stop": 3680,
-      "target1": 4155,
-      "target2": 4345,
-      "ma5": 3718.0,
-      "rvol": 0.33,
-      "ret20": 9.71,
+      "target1": 4170,
+      "target2": 4360,
+      "ma5": 3718.8,
+      "rvol": 0.34,
+      "ret20": 9.83,
       "atr_pct": 2.97,
       "signal_date": "2026-10-05",
-      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.33倍",
+      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.34倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
       "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
       "chart": [
@@ -1974,9 +1974,9 @@
         },
         {
           "o": 3761.0,
-          "h": 3864.0,
+          "h": 3869.0,
           "l": 3755.0,
-          "c": 3863.0
+          "c": 3867.0
         }
       ],
       "supply_verified": false,
@@ -2002,14 +2002,14 @@
       "name": "THK（6481）",
       "setup": "5日線反発",
       "score": 75,
-      "close": 6729.0,
+      "close": 6723.0,
       "trigger": 6765,
       "stop": 6540,
       "target1": 7100,
       "target2": 7330,
-      "ma5": 6603.2,
+      "ma5": 6602.0,
       "rvol": 0.28,
-      "ret20": 7.58,
+      "ret20": 7.48,
       "atr_pct": 2.97,
       "signal_date": "2026-10-05",
       "reason": "5日線反発／終値が主要移動平均線上／出来高比0.28倍",
@@ -2374,7 +2374,7 @@
           "o": 6675.0,
           "h": 6757.0,
           "l": 6662.0,
-          "c": 6729.0
+          "c": 6723.0
         }
       ],
       "supply_verified": false,
@@ -2798,17 +2798,17 @@
       "name": "東京エレクトロン（8035）",
       "setup": "5日線反発",
       "score": 70,
-      "close": 12720.0,
+      "close": 12740.0,
       "trigger": 12765,
-      "stop": 11995,
-      "target1": 13920,
-      "target2": 14690,
-      "ma5": 12144.0,
-      "rvol": 0.48,
-      "ret20": 19.75,
+      "stop": 12000,
+      "target1": 13910,
+      "target2": 14680,
+      "ma5": 12148.0,
+      "rvol": 0.49,
+      "ret20": 19.94,
       "atr_pct": 3.78,
       "signal_date": "2026-10-05",
-      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.48倍",
+      "reason": "5日線反発／終値が主要移動平均線上／出来高比0.49倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
       "caution": "大幅GU時は飛び乗らず、寄り後の高値更新を再確認。",
       "chart": [
@@ -3170,7 +3170,7 @@
           "o": 12400.0,
           "h": 12760.0,
           "l": 12295.0,
-          "c": 12720.0
+          "c": 12740.0
         }
       ],
       "supply_verified": false,
@@ -3196,8 +3196,8 @@
   "overnight_short": [],
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-10-05T10:46:33+09:00",
-    "decision_at": "2026-10-05T10:46:33+09:00",
+    "generated_at": "2026-10-05T10:48:42+09:00",
+    "decision_at": "2026-10-05T10:48:42+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -3517,10 +3517,10 @@
       "name": "富士電機（6504）",
       "score": 77,
       "phase": "買い集め後の上放れ",
-      "close": 15135.0,
-      "ret5": 10.43,
-      "ret20": 16.38,
-      "rvol": 0.28,
+      "close": 15130.0,
+      "ret5": 10.4,
+      "ret20": 16.34,
+      "rvol": 0.29,
       "up_down_volume_ratio": 2.39,
       "obv_impulse": 0.85,
       "clv20": 0.27,
@@ -3891,7 +3891,7 @@
           "o": 14955.0,
           "h": 15195.0,
           "l": 14905.0,
-          "c": 15135.0
+          "c": 15130.0
         }
       ],
       "supply_verified": false,
@@ -3910,13 +3910,13 @@
       "name": "パナソニックHD（6752）",
       "score": 76,
       "phase": "買い集め後の上放れ",
-      "close": 4675.0,
-      "ret5": 4.61,
-      "ret20": 8.82,
+      "close": 4694.0,
+      "ret5": 5.03,
+      "ret20": 9.26,
       "rvol": 0.38,
       "up_down_volume_ratio": 1.76,
       "obv_impulse": 0.5,
-      "clv20": 0.09,
+      "clv20": 0.11,
       "down_volume_ratio": 0.91,
       "higher_low_pct": 3.55,
       "trigger": 4730,
@@ -4284,7 +4284,7 @@
           "o": 4640.0,
           "h": 4724.0,
           "l": 4608.0,
-          "c": 4675.0
+          "c": 4694.0
         }
       ],
       "supply_verified": false,
@@ -4303,13 +4303,13 @@
       "name": "ソフトバンクグループ（9984）",
       "score": 72,
       "phase": "上放れ待ち",
-      "close": 6540.0,
-      "ret5": 4.74,
-      "ret20": 32.82,
-      "rvol": 0.36,
+      "close": 6546.0,
+      "ret5": 4.84,
+      "ret20": 32.94,
+      "rvol": 0.37,
       "up_down_volume_ratio": 2.42,
       "obv_impulse": 0.37,
-      "clv20": 0.18,
+      "clv20": 0.19,
       "down_volume_ratio": 0.92,
       "higher_low_pct": 20.23,
       "trigger": 6970,
@@ -4677,7 +4677,7 @@
           "o": 6476.0,
           "h": 6570.0,
           "l": 6416.0,
-          "c": 6540.0
+          "c": 6546.0
         }
       ],
       "supply_verified": false,
@@ -4696,13 +4696,13 @@
       "name": "SCREEN HD（7735）",
       "score": 72,
       "phase": "買い集め後の上放れ",
-      "close": 15785.0,
-      "ret5": 13.07,
-      "ret20": 20.08,
-      "rvol": 0.52,
-      "up_down_volume_ratio": 2.04,
-      "obv_impulse": 0.74,
-      "clv20": 0.11,
+      "close": 15810.0,
+      "ret5": 13.25,
+      "ret20": 20.27,
+      "rvol": 0.53,
+      "up_down_volume_ratio": 2.05,
+      "obv_impulse": 0.75,
+      "clv20": 0.12,
       "down_volume_ratio": 0.94,
       "higher_low_pct": 4.12,
       "trigger": 16120,
@@ -4710,7 +4710,7 @@
       "target1": 22100,
       "target2": 26100,
       "signal_date": "2026-10-05",
-      "reason": "上昇日/下落日出来高 2.04倍／OBV +0.74／下落日出来高 0.94倍／安値切上げ +4.1%",
+      "reason": "上昇日/下落日出来高 2.05倍／OBV +0.75／下落日出来高 0.94倍／安値切上げ +4.1%",
       "chart": [
         {
           "o": 17500.0,
@@ -5070,7 +5070,7 @@
           "o": 15725.0,
           "h": 16110.0,
           "l": 15495.0,
-          "c": 15785.0
+          "c": 15810.0
         }
       ],
       "supply_verified": false,
@@ -5089,13 +5089,13 @@
       "name": "ローム（6963）",
       "score": 71,
       "phase": "買い集め後の上放れ",
-      "close": 5341.0,
-      "ret5": 10.51,
-      "ret20": 14.39,
-      "rvol": 0.42,
+      "close": 5357.0,
+      "ret5": 10.84,
+      "ret20": 14.74,
+      "rvol": 0.43,
       "up_down_volume_ratio": 2.74,
       "obv_impulse": 0.78,
-      "clv20": 0.26,
+      "clv20": 0.27,
       "down_volume_ratio": 1.07,
       "higher_low_pct": 3.25,
       "trigger": 5430,
@@ -5463,7 +5463,7 @@
           "o": 5300.0,
           "h": 5419.0,
           "l": 5232.0,
-          "c": 5341.0
+          "c": 5357.0
         }
       ],
       "supply_verified": false,
@@ -5482,13 +5482,13 @@
       "name": "ナブテスコ（6268）",
       "score": 71,
       "phase": "上放れ待ち",
-      "close": 4978.0,
-      "ret5": 4.1,
-      "ret20": 15.1,
+      "close": 4973.0,
+      "ret5": 3.99,
+      "ret20": 14.98,
       "rvol": 0.27,
       "up_down_volume_ratio": 2.44,
       "obv_impulse": 0.62,
-      "clv20": 0.26,
+      "clv20": 0.25,
       "down_volume_ratio": 0.97,
       "higher_low_pct": 6.83,
       "trigger": 5070,
@@ -5856,7 +5856,7 @@
           "o": 5056.0,
           "h": 5062.0,
           "l": 4957.0,
-          "c": 4978.0
+          "c": 4973.0
         }
       ],
       "supply_verified": false,
@@ -5875,10 +5875,10 @@
       "name": "SWCC（5805）",
       "score": 71,
       "phase": "上放れ待ち",
-      "close": 2903.0,
-      "ret5": 8.32,
-      "ret20": 8.48,
-      "rvol": 0.46,
+      "close": 2901.0,
+      "ret5": 8.25,
+      "ret20": 8.41,
+      "rvol": 0.47,
       "up_down_volume_ratio": 1.94,
       "obv_impulse": 0.43,
       "clv20": 0.13,
@@ -6249,7 +6249,7 @@
           "o": 2880.0,
           "h": 2932.0,
           "l": 2858.0,
-          "c": 2903.0
+          "c": 2901.0
         }
       ],
       "supply_verified": false,
@@ -6268,9 +6268,9 @@
       "name": "THK（6481）",
       "score": 70,
       "phase": "買い集め後の上放れ",
-      "close": 6729.0,
-      "ret5": 4.63,
-      "ret20": 7.58,
+      "close": 6723.0,
+      "ret5": 4.54,
+      "ret20": 7.48,
       "rvol": 0.28,
       "up_down_volume_ratio": 1.59,
       "obv_impulse": 0.17,
@@ -6642,7 +6642,7 @@
           "o": 6675.0,
           "h": 6757.0,
           "l": 6662.0,
-          "c": 6729.0
+          "c": 6723.0
         }
       ],
       "supply_verified": false,
@@ -6661,9 +6661,9 @@
       "name": "日立製作所（6501）",
       "score": 69,
       "phase": "買い集め後の上放れ",
-      "close": 5628.0,
-      "ret5": 1.99,
-      "ret20": 5.49,
+      "close": 5627.0,
+      "ret5": 1.98,
+      "ret20": 5.47,
       "rvol": 0.37,
       "up_down_volume_ratio": 1.88,
       "obv_impulse": 0.43,
@@ -7035,7 +7035,7 @@
           "o": 5638.0,
           "h": 5693.0,
           "l": 5622.0,
-          "c": 5628.0
+          "c": 5627.0
         }
       ],
       "supply_verified": false,
@@ -7054,9 +7054,9 @@
       "name": "安川電機（6506）",
       "score": 69,
       "phase": "買い集め後の上放れ",
-      "close": 4858.0,
-      "ret5": 9.09,
-      "ret20": 8.56,
+      "close": 4855.0,
+      "ret5": 9.03,
+      "ret20": 8.49,
       "rvol": 0.53,
       "up_down_volume_ratio": 1.37,
       "obv_impulse": 0.43,
@@ -7428,7 +7428,7 @@
           "o": 4876.0,
           "h": 4905.0,
           "l": 4811.0,
-          "c": 4858.0
+          "c": 4855.0
         }
       ],
       "supply_verified": false,
@@ -7447,13 +7447,13 @@
       "name": "パワーエックス（485A）",
       "score": 67,
       "phase": "上放れ待ち",
-      "close": 2131.0,
-      "ret5": 4.92,
-      "ret20": 27.3,
+      "close": 2128.0,
+      "ret5": 4.78,
+      "ret20": 27.12,
       "rvol": 0.2,
-      "up_down_volume_ratio": 2.27,
+      "up_down_volume_ratio": 2.24,
       "obv_impulse": 0.15,
-      "clv20": 0.09,
+      "clv20": 0.08,
       "down_volume_ratio": 0.87,
       "higher_low_pct": 19.22,
       "trigger": 2444,
@@ -7461,7 +7461,7 @@
       "target1": 3172,
       "target2": 3656,
       "signal_date": "2026-10-05",
-      "reason": "上昇日/下落日出来高 2.27倍／OBV +0.15／下落日出来高 0.87倍／安値切上げ +19.2%",
+      "reason": "上昇日/下落日出来高 2.24倍／OBV +0.15／下落日出来高 0.87倍／安値切上げ +19.2%",
       "chart": [
         {
           "o": 2017.0,
@@ -7821,7 +7821,7 @@
           "o": 2123.0,
           "h": 2164.0,
           "l": 2091.0,
-          "c": 2131.0
+          "c": 2128.0
         }
       ],
       "supply_verified": false,
@@ -7840,10 +7840,10 @@
       "name": "住友電気工業（5802）",
       "score": 67,
       "phase": "上放れ待ち",
-      "close": 2453.0,
-      "ret5": 11.5,
-      "ret20": 13.8,
-      "rvol": 0.49,
+      "close": 2453.5,
+      "ret5": 11.52,
+      "ret20": 13.83,
+      "rvol": 0.5,
       "up_down_volume_ratio": 1.76,
       "obv_impulse": 0.79,
       "clv20": 0.14,
@@ -8214,7 +8214,7 @@
           "o": 2440.5,
           "h": 2482.0,
           "l": 2424.5,
-          "c": 2453.0
+          "c": 2453.5
         }
       ],
       "supply_verified": false,
@@ -8233,10 +8233,10 @@
       "name": "サイバーセキュリティクラウド（4493）",
       "score": 67,
       "phase": "上放れ待ち",
-      "close": 2024.0,
-      "ret5": 6.53,
-      "ret20": 12.44,
-      "rvol": 1.41,
+      "close": 2025.0,
+      "ret5": 6.58,
+      "ret20": 12.5,
+      "rvol": 1.42,
       "up_down_volume_ratio": 1.65,
       "obv_impulse": 0.38,
       "clv20": -0.13,
@@ -8606,8 +8606,8 @@
         {
           "o": 2100.0,
           "h": 2140.0,
-          "l": 2024.0,
-          "c": 2024.0
+          "l": 2023.0,
+          "c": 2025.0
         }
       ],
       "supply_verified": false,
@@ -8626,13 +8626,13 @@
       "name": "ハーモニック・ドライブ・システムズ（6324）",
       "score": 66,
       "phase": "買い集め後の上放れ",
-      "close": 6680.0,
-      "ret5": 4.37,
-      "ret20": 25.56,
+      "close": 6670.0,
+      "ret5": 4.22,
+      "ret20": 25.38,
       "rvol": 0.26,
       "up_down_volume_ratio": 2.24,
       "obv_impulse": 0.44,
-      "clv20": 0.12,
+      "clv20": 0.11,
       "down_volume_ratio": 1.17,
       "higher_low_pct": 12.1,
       "trigger": 6780,
@@ -9000,7 +9000,7 @@
           "o": 6700.0,
           "h": 6770.0,
           "l": 6620.0,
-          "c": 6680.0
+          "c": 6670.0
         }
       ],
       "supply_verified": false,
@@ -9019,10 +9019,10 @@
       "name": "アイサンテクノロジー（4667）",
       "score": 64,
       "phase": "上放れ待ち",
-      "close": 1092.0,
-      "ret5": -0.58,
-      "ret20": 4.17,
-      "rvol": 0.09,
+      "close": 1088.0,
+      "ret5": -0.94,
+      "ret20": 3.78,
+      "rvol": 0.1,
       "up_down_volume_ratio": 2.77,
       "obv_impulse": 0.01,
       "clv20": -0.2,
@@ -9393,7 +9393,7 @@
           "o": 1044.0,
           "h": 1108.0,
           "l": 1040.0,
-          "c": 1092.0
+          "c": 1088.0
         }
       ],
       "supply_verified": false,
@@ -9805,9 +9805,9 @@
       "name": "マクニカHD（3132）",
       "score": 61,
       "phase": "上放れ待ち",
-      "close": 4259.0,
-      "ret5": 0.83,
-      "ret20": 20.17,
+      "close": 4262.0,
+      "ret5": 0.9,
+      "ret20": 20.26,
       "rvol": 0.32,
       "up_down_volume_ratio": 1.65,
       "obv_impulse": 0.19,
@@ -10179,7 +10179,7 @@
           "o": 4245.0,
           "h": 4289.0,
           "l": 4235.0,
-          "c": 4259.0
+          "c": 4262.0
         }
       ],
       "supply_verified": false,
@@ -10198,11 +10198,11 @@
       "name": "フジクラ（5803）",
       "score": 60,
       "phase": "上放れ待ち",
-      "close": 5573.0,
-      "ret5": 12.43,
-      "ret20": 9.49,
-      "rvol": 0.57,
-      "up_down_volume_ratio": 1.16,
+      "close": 5582.0,
+      "ret5": 12.61,
+      "ret20": 9.67,
+      "rvol": 0.58,
+      "up_down_volume_ratio": 1.15,
       "obv_impulse": 0.35,
       "clv20": -0.03,
       "down_volume_ratio": 0.93,
@@ -10212,7 +10212,7 @@
       "target1": 7070,
       "target2": 7970,
       "signal_date": "2026-10-05",
-      "reason": "上昇日/下落日出来高 1.16倍／OBV +0.35／下落日出来高 0.93倍／安値切上げ +3.7%",
+      "reason": "上昇日/下落日出来高 1.15倍／OBV +0.35／下落日出来高 0.93倍／安値切上げ +3.7%",
       "chart": [
         {
           "o": 5254.0,
@@ -10572,7 +10572,7 @@
           "o": 5660.0,
           "h": 5685.0,
           "l": 5532.0,
-          "c": 5573.0
+          "c": 5582.0
         }
       ],
       "supply_verified": false,
@@ -10589,7 +10589,7 @@
   "large_lot_accumulation_note": "価格・出来高・OBV・終値位置・安値切り上げから買い集めの痕跡を推定。大口の実在を断定せず、大量保有報告・信用需給・会社IRで確認する。",
   "speculative_theme_note": "監視専用。出来高・騰落・値幅の異常度を検出した銘柄を通常LONG/SHORT候補から隔離。仕手株との断定ではなく、会社IR・適時開示・信用需給を確認するための警戒リスト。",
   "monthly_weekly_hammers": [],
-  "credit_supply_updated_at": "2026-10-05 10:44:43 JST",
+  "credit_supply_updated_at": "2026-10-05 10:46:59 JST",
   "long_term_ma_rebounds": [],
   "long_term_ma_rebounds_unverified": [
     {
@@ -10600,11 +10600,11 @@
       "timeframe": "週足",
       "status": "暫定・需給未確認",
       "score": 82,
-      "close": 4631.0,
+      "close": 4632.0,
       "ma_label": "50週線",
-      "ma_value": 4492.36,
-      "ma_slope": 0.27,
-      "trend_return": 5.97,
+      "ma_value": 4492.38,
+      "ma_slope": 0.28,
+      "trend_return": 6.0,
       "candle": "陽線反発",
       "volume_ratio": 0.04,
       "trigger": 4670,
@@ -10973,7 +10973,7 @@
           "o": 4627.0,
           "h": 4661.0,
           "l": 4599.0,
-          "c": 4631.0
+          "c": 4632.0
         }
       ],
       "supply_verified": false,
@@ -10996,15 +10996,15 @@
       "setup": "ハンマー高値突破",
       "phase": "反転確認",
       "score": 96,
-      "close": 2221.0,
+      "close": 2213.0,
       "trigger": 2230,
       "stop": 1887,
       "target1": 2744,
       "target2": 3088,
       "volume_ratio": 6.66,
       "fall_from_10d": 40.15,
-      "ma5": 2208.6,
-      "ma20": 2560.1,
+      "ma5": 2207.0,
+      "ma20": 2559.7,
       "signal_date": "2026-10-05",
       "reason": "10日高値圏から−40.1%／出来高6.66倍／ハンマー高値突破",
       "caution": "逆張り候補。発動価格を上抜かなければ買わず、パターン安値割れで即撤退。",
@@ -11367,7 +11367,7 @@
           "o": 2166.0,
           "h": 2229.0,
           "l": 2096.0,
-          "c": 2221.0
+          "c": 2213.0
         }
       ]
     }
