@@ -6,6 +6,8 @@ param(
 )
 
 # Print the daily 16:45 JST registration. Do not register unless -Register is present.
+# The Owner runs downloads/SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1, which calls this
+# script with -Register only after the worktree checks pass. Do not pass a long inline -Command.
 # This script does not start or stop Excel, MarketSpeed II, the Collector, the Gateway, or AI SHADOW.
 # It does not submit orders. real_submit_allowed is unchanged.
 $ErrorActionPreference = "Stop"
@@ -235,6 +237,3 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "TASK_REGISTER=PASS"
 exit 0
-# OWNER_REGISTER_INNER_BEGIN
-# $env:GIT_TERMINAL_PROMPT = "0"; $env:GCM_INTERACTIVE = "Never"; $r = "C:\Users\yusuk\code\trade-cockpit-100oku-master-sync"; $b = "cursor/master-spec-fetch-sync-d483"; git -C $r fetch origin ("refs/heads/" + $b + ":refs/remotes/origin/" + $b); if ($LASTEXITCODE -ne 0) { Write-Output "REGISTER_ABORT=FETCH_FAILED"; exit 1 }; $status = & git -C $r status --porcelain --untracked-files=normal 2>&1; if ($LASTEXITCODE -ne 0) { Write-Output "REGISTER_ABORT=WORKTREE_UNREADABLE"; exit 1 }; $statusText = (($status | ForEach-Object { "$_" }) -join "`n").Trim(); if (-not [string]::IsNullOrWhiteSpace($statusText)) { Write-Output "REGISTER_ABORT=WORKTREE_DIRTY"; exit 1 }; $headRaw = & git -C $r rev-parse HEAD 2>&1; if ($LASTEXITCODE -ne 0) { Write-Output "REGISTER_ABORT=WORKTREE_UNREADABLE"; exit 1 }; $headText = (($headRaw | ForEach-Object { "$_" }) -join "`n").Trim(); $remoteRaw = & git -C $r rev-parse ("refs/remotes/origin/" + $b) 2>&1; $remoteCode = $LASTEXITCODE; $remoteText = (($remoteRaw | ForEach-Object { "$_" }) -join "`n").Trim(); if ($remoteCode -ne 0 -or [string]::IsNullOrWhiteSpace($headText) -or [string]::IsNullOrWhiteSpace($remoteText)) { Write-Output "REGISTER_ABORT=REMOTE_COMMIT_MISSING"; exit 1 }; & git -C $r merge-base --is-ancestor $headText $remoteText; if ($LASTEXITCODE -ne 0) { & git -C $r merge-base --is-ancestor $remoteText $headText; if ($LASTEXITCODE -eq 0) { Write-Output "REGISTER_ABORT=LOCAL_COMMITS_NOT_ON_REMOTE"; exit 1 }; Write-Output "REGISTER_ABORT=HISTORY_DIVERGED"; exit 1 }; & git -C $r -c advice.detachedHead=false checkout --detach $remoteText; if ($LASTEXITCODE -ne 0) { Write-Output "REGISTER_ABORT=CHECKOUT_FAILED"; exit 1 }; $afterRaw = & git -C $r rev-parse HEAD 2>&1; $afterCode = $LASTEXITCODE; $afterText = (($afterRaw | ForEach-Object { "$_" }) -join "`n").Trim(); $again = & git -C $r status --porcelain --untracked-files=normal 2>&1; $againCode = $LASTEXITCODE; $againText = (($again | ForEach-Object { "$_" }) -join "`n").Trim(); if ($afterCode -ne 0 -or $againCode -ne 0 -or $afterText -ne $remoteText -or -not [string]::IsNullOrWhiteSpace($againText)) { Write-Output "REGISTER_ABORT=HEAD_MISMATCH"; exit 1 }; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File ($r + "\downloads\REGISTER_100OKU_MASTER_SPEC_TASK.ps1") -Register -RepoRoot $r; exit $LASTEXITCODE
-# OWNER_REGISTER_INNER_END

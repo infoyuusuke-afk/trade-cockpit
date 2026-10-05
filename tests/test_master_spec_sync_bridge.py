@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SYNC = ROOT / "downloads" / "SYNC_100OKU_MASTER_SPEC.ps1"
 REGISTER = ROOT / "downloads" / "REGISTER_100OKU_MASTER_SPEC_TASK.ps1"
+SAFE = ROOT / "downloads" / "SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1"
 WRAPPER = ROOT / "downloads" / "UPDATE_AND_SYNC_100OKU_MASTER_SPEC.ps1"
 MANIFEST = ROOT / "docs" / "100oku" / "SYNC_MANIFEST.json"
 PWSH_CANDIDATES = (
@@ -25,7 +26,7 @@ def pwsh_path():
 
 class MasterSpecSyncBridgeTests(unittest.TestCase):
     def test_scripts_stay_ascii_and_fail_closed(self):
-        for path in (SYNC, REGISTER, WRAPPER):
+        for path in (SYNC, REGISTER, SAFE, WRAPPER):
             raw = path.read_bytes()
             self.assertFalse(raw.startswith(b"\xef\xbb\xbf"), path.name)
             raw.decode("ascii")
@@ -54,6 +55,12 @@ class MasterSpecSyncBridgeTests(unittest.TestCase):
         self.assertNotIn("RssOrder", sync)
         self.assertNotIn("RssOrder", wrapper)
         self.assertNotIn("real_submit_allowed = True", wrapper)
+        safe = SAFE.read_text(encoding="ascii")
+        self.assertNotIn("Stop-Process", safe)
+        self.assertNotIn("RssOrder", safe)
+        self.assertNotIn("real_submit_allowed = True", safe)
+        self.assertNotIn("schtasks.exe", safe)
+        self.assertNotIn("OWNER_REGISTER_INNER", register)
         self.assertIn("TASK_TIME=16:45", register)
         self.assertIn("TASK_REGISTER=NOT_RUN", register)
         self.assertIn("REASON=PATH_HAS_SPACE_OR_QUOTE", register)
@@ -201,115 +208,83 @@ class MasterSpecSyncBridgeTests(unittest.TestCase):
             self.assertIn(token, guard.stdout, token)
         self.assertNotIn("TASK_REGISTER=PASS", guard.stdout)
 
-    def test_owner_register_line_checks_before_checkout(self):
+    def test_safe_register_file_parses_and_self_tests(self):
         pwsh = pwsh_path()
         if pwsh is None:
             self.skipTest("pwsh is not installed")
-        text = REGISTER.read_text(encoding="ascii")
-        begin = text.index("# OWNER_REGISTER_INNER_BEGIN\n")
-        end = text.index("# OWNER_REGISTER_INNER_END\n")
-        body = text[begin:end].splitlines()[1:]
-        self.assertEqual(len(body), 1)
-        self.assertTrue(body[0].startswith("# "))
-        inner = body[0][2:]
-        self.assertNotIn("'", inner)
-        prefix, suffix = inner.split("& powershell.exe", 1)
-        self.assertIn("-Register -RepoRoot $r", suffix)
-        self.assertIn("REGISTER_100OKU_MASTER_SPEC_TASK.ps1", suffix)
-        self.assertLess(prefix.index("REGISTER_ABORT=WORKTREE_DIRTY"), prefix.index("checkout --detach"))
-        self.assertLess(prefix.index("REGISTER_ABORT=LOCAL_COMMITS_NOT_ON_REMOTE"), prefix.index("checkout --detach"))
-        self.assertLess(prefix.index("REGISTER_ABORT=HISTORY_DIVERGED"), prefix.index("checkout --detach"))
-        self.assertLess(prefix.index("--porcelain"), prefix.index("merge-base"))
-        self.assertLess(prefix.index("merge-base"), prefix.index("checkout --detach"))
-        root_token = r"C:\Users\yusuk\code\trade-cockpit-100oku-master-sync"
-        branch = "cursor/master-spec-fetch-sync-d483"
-
-        def git(*args, cwd=None):
-            subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, text=True)
-
-        def build():
-            import tempfile
-            from pathlib import Path as FsPath
-            temp = FsPath(tempfile.mkdtemp(prefix="owner-register-"))
-            bare = temp / "remote.git"
-            seed = temp / "seed"
-            clone = temp / "clone"
-            dedicated = temp / "dedicated"
-            git("init", "-q", "--bare", str(bare))
-            git("init", "-q", str(seed))
-            (seed / "note.txt").write_text("base\n", encoding="ascii")
-            git("-C", str(seed), "add", "--", ".")
-            git("-C", str(seed), "-c", "user.email=sync-selftest@example.com", "-c", "user.name=sync-selftest", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "base")
-            base = subprocess.check_output(["git", "-C", str(seed), "rev-parse", "HEAD"], text=True).strip()
-            git("-C", str(seed), "branch", "-M", branch)
-            git("-C", str(seed), "remote", "add", "origin", str(bare))
-            git("-C", str(seed), "push", "-q", "origin", "HEAD:refs/heads/" + branch)
-            git("--git-dir", str(bare), "symbolic-ref", "HEAD", "refs/heads/" + branch)
-            git("clone", "-q", "-b", branch, str(bare), str(clone))
-            git("-C", str(clone), "worktree", "add", "--detach", str(dedicated), base)
-            return temp, seed, dedicated, base
-
-        def invoke(dedicated, script):
-            proc = subprocess.run([str(pwsh), "-NoProfile", "-Command", script], check=False, capture_output=True, text=True)
-            head = subprocess.check_output(["git", "-C", str(dedicated), "rev-parse", "HEAD"], text=True).strip()
-            return proc, head
-
-        import shutil
-        temp, seed, dedicated, base = build()
-        try:
-            (dedicated / "extra.txt").write_text("dirty\n", encoding="ascii")
-            (seed / "note.txt").write_text("base\nforward\n", encoding="ascii")
-            git("-C", str(seed), "add", "--", ".")
-            git("-C", str(seed), "-c", "user.email=sync-selftest@example.com", "-c", "user.name=sync-selftest", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "forward")
-            git("-C", str(seed), "push", "-q", "origin", "HEAD:refs/heads/" + branch)
-            script = prefix.replace(root_token, str(dedicated)) + 'Write-Output "REGISTER_READY=1"'
-            proc, head = invoke(dedicated, script)
-            self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
-            self.assertIn("REGISTER_ABORT=WORKTREE_DIRTY", proc.stdout)
-            self.assertNotIn("REGISTER_READY=1", proc.stdout)
-            self.assertEqual(head, base)
-        finally:
-            shutil.rmtree(temp)
-
-        temp, seed, dedicated, base = build()
-        try:
-            (dedicated / "note.txt").write_text("base\nlocal\n", encoding="ascii")
-            git("-C", str(dedicated), "add", "--", ".")
-            git("-C", str(dedicated), "-c", "user.email=sync-selftest@example.com", "-c", "user.name=sync-selftest", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "local")
-            local = subprocess.check_output(["git", "-C", str(dedicated), "rev-parse", "HEAD"], text=True).strip()
-            script = prefix.replace(root_token, str(dedicated)) + 'Write-Output "REGISTER_READY=1"'
-            proc, head = invoke(dedicated, script)
-            self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
-            self.assertIn("REGISTER_ABORT=LOCAL_COMMITS_NOT_ON_REMOTE", proc.stdout)
-            self.assertNotIn("REGISTER_READY=1", proc.stdout)
-            self.assertEqual(head, local)
-        finally:
-            shutil.rmtree(temp)
-
-        temp, seed, dedicated, base = build()
-        try:
-            (seed / "note.txt").write_text("base\nforward\n", encoding="ascii")
-            git("-C", str(seed), "add", "--", ".")
-            git("-C", str(seed), "-c", "user.email=sync-selftest@example.com", "-c", "user.name=sync-selftest", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "forward")
-            git("-C", str(seed), "push", "-q", "origin", "HEAD:refs/heads/" + branch)
-            tip = subprocess.check_output(["git", "-C", str(seed), "rev-parse", "HEAD"], text=True).strip()
-            script = prefix.replace(root_token, str(dedicated)) + 'Write-Output "REGISTER_READY=1"'
-            proc, head = invoke(dedicated, script)
-            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
-            self.assertIn("REGISTER_READY=1", proc.stdout)
-            self.assertNotIn("REGISTER_ABORT=", proc.stdout)
-            self.assertEqual(head, tip)
-            (dedicated / "extra.txt").write_text("after\n", encoding="ascii")
-            registered = subprocess.run(
-                [str(pwsh), "-NoProfile", "-File", str(REGISTER), "-Register", "-RepoRoot", str(dedicated), "-RemoteBranch", branch],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            self.assertNotEqual(registered.returncode, 0, registered.stdout + registered.stderr)
-            self.assertIn("REGISTER_ABORT=WORKTREE_DIRTY", registered.stdout)
-            self.assertNotIn("TASK_REGISTER=PASS", registered.stdout)
-            self.assertNotIn("SCHTASKS_MISSING", registered.stdout)
-            self.assertEqual(subprocess.check_output(["git", "-C", str(dedicated), "rev-parse", "HEAD"], text=True).strip(), tip)
-        finally:
-            shutil.rmtree(temp)
+        text = SAFE.read_text(encoding="ascii")
+        code = "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
+        self.assertNotIn(" -Command", code)
+        for banned in ("&&", "||", "??", "?.", "-Parallel"):
+            self.assertNotIn(banned, text, banned)
+        self.assertLess(text.index("REGISTER_ABORT=WORKTREE_DIRTY"), text.index("checkout"))
+        self.assertLess(text.index("REGISTER_ABORT=LOCAL_COMMITS_NOT_ON_REMOTE"), text.index("checkout"))
+        self.assertLess(text.index("REGISTER_ABORT=HISTORY_DIVERGED"), text.index("checkout"))
+        check = text.split("function Invoke-SafeRegisterCheck(", 1)[1].split("function Invoke-RegisterScript", 1)[0]
+        self.assertNotIn("reset --hard", check)
+        self.assertIn(
+            "$check = Invoke-SafeRegisterCheck $root $RemoteBranch\n"
+            "if ($check -ne 0) { exit $check }\n"
+            "$registered = Invoke-RegisterScript $root $RemoteBranch",
+            text,
+        )
+        marker = "# OWNER_FILE_COMMAND\n# "
+        start = text.index(marker) + len(marker)
+        owner = text[start:].splitlines()[0].strip()
+        self.assertTrue(owner.startswith("powershell.exe -NoProfile -ExecutionPolicy Bypass -File "))
+        self.assertIn("SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1", owner)
+        self.assertIn('-RepoRoot "', owner)
+        self.assertNotIn("-Command", owner)
+        self.assertNotIn("'", owner)
+        self.assertEqual(owner.count('"'), 4)
+        parsed = subprocess.run(
+            [
+                str(pwsh),
+                "-NoProfile",
+                "-Command",
+                "$e=$null; $t=$null; "
+                "[void][System.Management.Automation.Language.Parser]::ParseFile('"
+                + str(SAFE)
+                + "', [ref]$t, [ref]$e); "
+                "if ($e -and $e.Count -gt 0) { $e | ForEach-Object { $_.ToString() }; exit 1 }; "
+                "Write-Output PARSE=PASS",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(parsed.returncode, 0, parsed.stdout + parsed.stderr)
+        self.assertIn("PARSE=PASS", parsed.stdout)
+        ran = subprocess.run(
+            [str(pwsh), "-NoProfile", "-File", str(SAFE), "-SelfTest"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(ran.returncode, 0, ran.stdout + ran.stderr)
+        for token in (
+            "REGISTER_ABORT=WORKTREE_DIRTY",
+            "REGISTER_ABORT=LOCAL_COMMITS_NOT_ON_REMOTE",
+            "REGISTER_ABORT=HISTORY_DIVERGED",
+            "REGISTER_ABORT=FETCH_FAILED",
+            "CASE=DIRTY",
+            "CASE=LOCAL_ONLY",
+            "CASE=DIVERGED",
+            "CASE=FETCH_FAILED",
+            "CASE=FAST_FORWARD",
+            "CASE=UNCHANGED",
+            "REGISTER_CALLED=0",
+            "REGISTER_CALLED=1",
+            "TASK_REGISTER=PASS",
+            "UPDATE_AND_SYNC_100OKU_MASTER_SPEC.ps1",
+            "SAFE_REGISTER_SELFTEST=PASS",
+            "SELFTEST_WROTE_D_DRIVE=0",
+        ):
+            self.assertIn(token, ran.stdout, token)
+        dirty_at = ran.stdout.index("CASE=DIRTY")
+        forward_at = ran.stdout.index("CASE=FAST_FORWARD")
+        self.assertLess(dirty_at, forward_at)
+        self.assertLess(ran.stdout.index("CASE=LOCAL_ONLY"), forward_at)
+        self.assertLess(ran.stdout.index("CASE=DIVERGED"), forward_at)
+        self.assertLess(ran.stdout.index("CASE=FETCH_FAILED"), forward_at)
+        self.assertNotIn("SAFE_REGISTER_SELFTEST=FAIL", ran.stdout)
