@@ -4,7 +4,9 @@
 
 Owner PC の初回同期は PASS した。`MASTER_SPEC_SYNC=PASS`、`DESTINATION_WRITTEN=1`、`CLOUD_AGENT_WROTE_D_DRIVE=0`、`ARCHIVE=NONE_FIRST_SYNC`、`REPO_COMMIT=116ed28014af7b627b69882b2920ca09aa34924a`。同期された MASTER は当時の 4,644 bytes である。
 
-この作業コピーは、その後に MASTER 本文と `100億PROJECT_MASTER_SPEC.docx` を広げた版である。Cloud Agent はこの版を D: へ書いていない。対象は `100億PROJECT_MASTER_SPEC.md`、`CURRENT_STATUS.md`、`CHANGELOG.md`、`HANDOVER.md`、および `docs/100oku` の `.docx`。16:45 のタスクは未登録である。
+Owner PC はその後、commit `768d1f47553b70e85c0d04f6e4962820a2aef1ab` を `D:\100億PROJECT\MASTER_SPEC` へコピーした。`MASTER_SPEC_SYNC=PASS`、`DESTINATION_WRITTEN=1`、`CLOUD_AGENT_WROTE_D_DRIVE=0`、`ARCHIVE=2026-10-06_0227`。その時点の Markdown は 32,123 bytes、sha256 `b0d21ae173611a9a792335bca2ba5f1e3673dc97f52d78f5517c5393ebc551da`。Word は 51,104 bytes、sha256 `72e9ba6fbb9278ab30d6b2f0f797a529a6fca5ef0b38074bc1ab5ac6adcc6d29`。いま D: にある正式原本はその commit である。この段落を含む後続の repo 差分は、次に wrapper が成功するまで D: へは入らない。
+
+16:45 は未登録である。登録するタスクは `downloads/UPDATE_AND_SYNC_100OKU_MASTER_SPEC.ps1` を実行する。順序は `git fetch origin`、`cursor/master-spec-fetch-sync-d483` の最新 commit の確認、専用 worktree が dirty でないことの確認、その commit への fast-forward、成功時だけ `SYNC_100OKU_MASTER_SPEC.ps1`、sha256 の一致、`LAST_SYNC.json` への source commit と destination hash と result の保存である。remote に新しい commit が無い日は同じ commit をコピーしてよい。fetch 失敗、dirty、ローカルだけの commit、履歴の分岐、対象ファイルの欠落または空、sha256 不一致では D: を更新しない。固定 worktree を fetch なしで毎日コピーするタスクは登録しない。
 
 ## Acceptance の層
 
