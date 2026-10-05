@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-10-05 13:07:03 JST",
+  "updated_at": "2026-10-05 13:09:29 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3222,7 +3222,7 @@
     },
     {
       "date": "2026-10-05",
-      "ret": -1.58,
+      "ret": -1.5,
       "high": 0.66,
       "low": -2.73,
       "type": "寄り天",
@@ -3263,7 +3263,7 @@
         -1.402,
         -1.351,
         -1.504,
-        -1.58
+        -1.504
       ],
       "volume_path": [
         1945300.0,
@@ -3301,13 +3301,13 @@
         22252600.0,
         22902000.0,
         23206500.0,
-        23264700.0
+        23424200.0
       ]
     }
   ],
   "current": {
     "date": "2026-10-05",
-    "ret": -1.58,
+    "ret": -1.5,
     "high": 0.66,
     "low": -2.73,
     "type": "寄り天",
@@ -3348,7 +3348,7 @@
       -1.402,
       -1.351,
       -1.504,
-      -1.58
+      -1.504
     ],
     "volume_path": [
       1945300.0,
@@ -3386,7 +3386,7 @@
       22252600.0,
       22902000.0,
       23206500.0,
-      23264700.0
+      23424200.0
     ]
   },
   "current_1m": [
@@ -4949,11 +4949,29 @@
     },
     {
       "t": "12:52",
-      "o": -1.5036,
+      "o": -1.5545,
       "h": -1.5036,
-      "l": -1.5036,
-      "c": -1.5036,
-      "price": 19325.0,
+      "l": -1.5545,
+      "c": -1.5291,
+      "price": 19320.0,
+      "v": 70400
+    },
+    {
+      "t": "12:53",
+      "o": -1.5291,
+      "h": -1.4271,
+      "l": -1.5291,
+      "c": -1.4781,
+      "price": 19330.0,
+      "v": 50500
+    },
+    {
+      "t": "12:54",
+      "o": -1.4781,
+      "h": -1.4781,
+      "l": -1.4781,
+      "c": -1.4781,
+      "price": 19330.0,
       "v": 0
     }
   ],
@@ -4961,14 +4979,14 @@
   "one_minute_verified": true,
   "technical_levels": {
     "session_open": 19620.0,
-    "daily_ma5": 18690.0,
+    "daily_ma5": 18693.0,
     "pivot_p": 19001.7,
     "pivot_r1": 19413.3,
     "pivot_s1": 18733.3,
     "or15_high": 19750.0,
     "or15_low": 19455.0,
     "return_pct": {
-      "daily_ma5": -4.7401,
+      "daily_ma5": -4.7248,
       "pivot_p": -3.1514,
       "pivot_r1": -1.0535,
       "pivot_s1": -4.5194,
@@ -5120,7 +5138,7 @@
       "max_up_after": 1.24,
       "max_down_after": -2.49,
       "score_components": {
-        "five_minute": 92.0,
+        "five_minute": 92.1,
         "us_market": 80.1,
         "credit_supply": null
       },
@@ -5274,12 +5292,12 @@
         24519200.0,
         24904200.0
       ],
-      "similarity": 86.4,
+      "similarity": 86.5,
       "after_ret": 1.24,
       "max_up_after": 1.4,
       "max_down_after": -0.44,
       "score_components": {
-        "five_minute": 87.9,
+        "five_minute": 88.0,
         "us_market": 82.6,
         "credit_supply": null
       },
@@ -5433,12 +5451,12 @@
         27800800.0,
         28111000.0
       ],
-      "similarity": 86.0,
+      "similarity": 85.9,
       "after_ret": 0.26,
       "max_up_after": 1.06,
       "max_down_after": -1.08,
       "score_components": {
-        "five_minute": 85.7,
+        "five_minute": 85.6,
         "us_market": 86.7,
         "credit_supply": null
       },
@@ -5592,12 +5610,12 @@
         21823500.0,
         22073900.0
       ],
-      "similarity": 81.5,
+      "similarity": 81.6,
       "after_ret": -2.15,
       "max_up_after": 0.22,
       "max_down_after": -2.27,
       "score_components": {
-        "five_minute": 80.6,
+        "five_minute": 80.7,
         "us_market": 84.0,
         "credit_supply": null
       },
@@ -5751,7 +5769,7 @@
         29587000.0,
         29587100.0
       ],
-      "similarity": 81.5,
+      "similarity": 81.4,
       "after_ret": -3.47,
       "max_up_after": 0.4,
       "max_down_after": -3.49,
@@ -5916,7 +5934,7 @@
     "max_up_after": 1.24,
     "max_down_after": -2.49,
     "score_components": {
-      "five_minute": 92.0,
+      "five_minute": 92.1,
       "us_market": 80.1,
       "credit_supply": null
     },
@@ -6043,7 +6061,7 @@
       "or15_up_rate": 46.2,
       "close_up_rate": 38.5,
       "gap_fill_rate": 69.2,
-      "median_day_ret": -1.58,
+      "median_day_ret": -1.5,
       "median_max_up": 1.07,
       "median_max_down": -3.59,
       "median_or15_range": 2.84
