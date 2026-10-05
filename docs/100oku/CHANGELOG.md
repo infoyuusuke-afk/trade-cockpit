@@ -1,6 +1,6 @@
 # CHANGELOG
 
-`D:\100億PROJECT\MASTER_SPEC` は未反映。このファイルはリポジトリ側の差分である。Cloud Agent は D: へ書いていない。
+`D:\100億PROJECT\MASTER_SPEC` の正式原本は commit `768d1f47553b70e85c0d04f6e4962820a2aef1ab` の同期結果である。このファイルの後続の行は、その後の repo 差分であり、次に wrapper が成功するまで D: には入らない。Cloud Agent は D: へ書いていない。
 
 ## 2026-10-06
 
@@ -15,3 +15,5 @@
 - 本番 Research Candidate の保存先を追加した。銘柄行が無いので candidate は 0。`UNIVERSE_SCOPE=LIMITED / PRECISION_WATCH_ONLY`。fixture は本番統計に入れない。Shadow の Entry 条件は変えていない。linked は 0。Shadow Entry は 0。
 - Correlation / Lead-Lag は設計のまま。測定ペアは 0。係数は保存していない。
 - G0 から G5 を Current Acceptance（2026-10-03）と明記した。HISTORICAL BASELINE は 2026-09-22 の `docs/AI_COCKPIT_MASTER_SPEC.md` だけである。その後の Collector 銘柄対応 PASS と Supervisor 再読込 PASS は、G0 から G5 とは別行のままである。
+- Owner PC は広げた MASTER を commit `768d1f47553b70e85c0d04f6e4962820a2aef1ab` で同期した。`MASTER_SPEC_SYNC=PASS`、`ARCHIVE=2026-10-06_0227`。Markdown は 32,123 bytes、sha256 `b0d21ae173611a9a792335bca2ba5f1e3673dc97f52d78f5517c5393ebc551da`。Word は 51,104 bytes、sha256 `72e9ba6fbb9278ab30d6b2f0f797a529a6fca5ef0b38074bc1ab5ac6adcc6d29`。
+- 16:45 用に `downloads/UPDATE_AND_SYNC_100OKU_MASTER_SPEC.ps1` を追加した。`git fetch` のあと、clean な専用 worktree だけを `cursor/master-spec-fetch-sync-d483` の最新 commit へ fast-forward し、その後に同期する。remote が同じ commit の日は再同期してよい。fetch 失敗、dirty、ローカルだけの commit、履歴の分岐、欠落、空、sha256 不一致では D: を更新しない。タスク自体は未登録である。

@@ -4,7 +4,9 @@
 
 この版は、repo の `docs/100oku/` にある AI 作業コピーである。正式原本フォルダは `D:\100億PROJECT\MASTER_SPEC`。Cloud Agent から D: へは書けない。Owner PC の `downloads/SYNC_100OKU_MASTER_SPEC.ps1` だけがコピーする。
 
-Owner PC の初回同期は PASS した。確認行は `MASTER_SPEC_SYNC=PASS`、`DESTINATION_WRITTEN=1`、`CLOUD_AGENT_WROTE_D_DRIVE=0`、`ARCHIVE=NONE_FIRST_SYNC`、`REPO_COMMIT=116ed28014af7b627b69882b2920ca09aa34924a`。そのとき同期された `100億PROJECT_MASTER_SPEC.md` は 4,644 bytes で、Research Data Lane の短い台帳だった。Word 版はその同期に含まれていない。この版はそれより後の作業コピーであり、この記録を書いた Cloud Agent は D: へ書いていない。毎日 16:45 JST のタスクは未登録である。
+Owner PC の初回同期は PASS した。確認行は `MASTER_SPEC_SYNC=PASS`、`DESTINATION_WRITTEN=1`、`CLOUD_AGENT_WROTE_D_DRIVE=0`、`ARCHIVE=NONE_FIRST_SYNC`、`REPO_COMMIT=116ed28014af7b627b69882b2920ca09aa34924a`。そのとき同期された `100億PROJECT_MASTER_SPEC.md` は 4,644 bytes で、Research Data Lane の短い台帳だった。Word 版はその同期に含まれていない。
+
+Owner PC はその後、commit `768d1f47553b70e85c0d04f6e4962820a2aef1ab` を `D:\100億PROJECT\MASTER_SPEC` へコピーした。`MASTER_SPEC_SYNC=PASS`、`DESTINATION_WRITTEN=1`、`CLOUD_AGENT_WROTE_D_DRIVE=0`、`ARCHIVE=2026-10-06_0227`。その時点の Markdown は 32,123 bytes、sha256 `b0d21ae173611a9a792335bca2ba5f1e3673dc97f52d78f5517c5393ebc551da`。Word は 51,104 bytes、sha256 `72e9ba6fbb9278ab30d6b2f0f797a529a6fca5ef0b38074bc1ab5ac6adcc6d29`。いま D: にある正式原本はその commit である。この段落を含む後続の repo 差分は、次に wrapper が成功するまで D: へは入らない。毎日 16:45 JST のタスクは未登録である。
 
 未検証の期待値、勝率、収益は書かない。`SNAPSHOT` の週間数字を LIVE 成績にも Research 成績にも使わない。
 
@@ -85,13 +87,14 @@ HISTORICAL BASELINE は `docs/AI_COCKPIT_MASTER_SPEC.md`（2026-09-22、checkpoi
 | Collector の銘柄対応 | PASS | Owner PC。`RUNTIME_ACCEPTANCE=PASS`。`SYMBOL=285A.T`。その実行の `CURRENT_PRICE=19120`。この 19,120 円は当時の観測であり、常時の現在値ではない |
 | Supervisor の台帳再読込 | PASS | Owner PC。`SUPERVISOR_RELOAD_ACCEPTANCE=PASS`。worktree `4abf0a1a`。`REAL_SUBMIT 0`。`LIVE_SIGNAL_RULE_CHANGE=0`。Collector、Gateway、Excel、MS2 は対象外 |
 | MASTER 初回同期 | PASS | 上記のトークン。対象は当時の 4,644 bytes。この版ではない |
+| MASTER 本文の同期 | PASS | commit `768d1f47553b70e85c0d04f6e4962820a2aef1ab`。`ARCHIVE=2026-10-06_0227`。この表を含む後続差分は未同期 |
 | Research Data Lane | PARTIAL | FETCHED 3/17。`trading_adoption=false` |
 | Control の Brain / Shadow 表示 | PASS | 二段表示の配線。本番候補は 0。選出・Entry・Exit の精度は NOT_RUN |
 | LIVE の往復 | NOT_RUN | 市場時間外や条件未達を、注入で PASS にしない |
 | クリーンな Shadow 標本 | NOT_RUN | `BASELINE_N=0`。`FEATURE_DELTA_EV=NOT_AVAILABLE`。`PROMOTION_CANDIDATE=NONE` |
 | ブローカー建玉 | BLOCKED | `BROKER_POSITION_RSS_UNIMPLEMENTED`。LIVE 注文では解除しない |
 | 手数料 | BLOCKED | `FEE_UNKNOWN`。確認済み料金表が無い。Research の clean N には入れない |
-| 16:45 の自動同期 | NOT_RUN | 登録スクリプトはある。`-Register` は実行していない |
+| 16:45 の自動同期 | NOT_RUN | wrapper はある。`-Register` は実行していない。fetch なしの固定 worktree コピーは登録しない |
 | 週間 15 件 | SNAPSHOT | 下に分離して書く。Research N ではない |
 
 週間保存 `weekly_review.json` は `created_at=2026-09-19 20:17 JST`、週 `2026-09-14～2026-09-20`、15 件、勝率 93.3%、PF 14.32、損益 +109,200 円である。これは SNAPSHOT である。AI Brain の LIVE SHADOW 成績ではなく、`BASELINE_N` にも promotion にも入れない。各行の fees 0 は料金表が無いときの仮置きであり、確認済みの手数料ではない。
@@ -343,7 +346,7 @@ GitHub Actions は、秘密を含まないテストと公開物に使う。MS2 �
 
 毎営業日 16:30 JST に、この MASTER と `CURRENT_STATUS.md` と `CHANGELOG.md` を棚卸しする。見るものは、Acceptance の状態、FETCHED の数、`BASELINE_N`、`real_submit_allowed`、LIVE signal を変えたか、未反映の D:、である。
 
-棚卸しの 15 分後、16:45 JST に Owner PC が作業コピーを `D:\100億PROJECT\MASTER_SPEC` へ同期する、が目標のループである。登録スクリプトは `downloads/REGISTER_100OKU_MASTER_SPEC_TASK.ps1`、タスク名 `TradeCockpit-100oku-MasterSpec-Sync`、時刻 16:45、前提はローカル時計が JST であることである。`-Register` を付けるまで登録しない。この版の完成時点では未登録である。
+棚卸しの 15 分後、16:45 JST に Owner PC が作業コピーを `D:\100億PROJECT\MASTER_SPEC` へ同期する、が目標のループである。実行ファイルは `downloads/UPDATE_AND_SYNC_100OKU_MASTER_SPEC.ps1` である。順序は、`git fetch origin`、remote branch `cursor/master-spec-fetch-sync-d483` の最新 commit の確認、専用 worktree が dirty でないことの確認、HEAD がその commit と同じかその祖先であるときだけの fast-forward、対象ファイルの存在確認、`downloads/SYNC_100OKU_MASTER_SPEC.ps1`、sha256 の一致、`LAST_SYNC.json` への source commit と destination hash と result の保存である。remote に新しい commit が無い日は同じ commit を同期してよい。fetch 失敗、dirty、ローカルだけの commit、履歴の分岐、欠落、空、sha256 不一致では D: を更新しない。後続の MASTER 更新は、この remote branch を fast-forward する。登録スクリプトは `downloads/REGISTER_100OKU_MASTER_SPEC_TASK.ps1`、タスク名 `TradeCockpit-100oku-MasterSpec-Sync`、時刻 16:45、前提はローカル時計が JST であることである。`-Register` を付けるまで登録しない。この版では未登録である。固定 worktree を fetch なしで毎日コピーするタスクは登録しない。
 
 棚卸しで状態が変わっていない項目を、進んだと書かない。
 
@@ -354,12 +357,12 @@ GitHub Actions は、秘密を含まないテストと公開物に使う。MS2 �
 1. repo の `docs/100oku/` を更新する
 2. Markdown と Word の意味を揃える
 3. 同期スクリプトの dry-run で、対象と sha256 を見る
-4. Owner PC が同期スクリプトを実行する
+4. Owner PC の wrapper が remote branch を fetch し、clean な専用 worktree をその commit へ進めてから同期スクリプトを実行する
 5. 上書き前のファイルを `archive\YYYY-MM-DD_HHMM\` へ退避する。同時刻があれば `YYYY-MM-DD_HHMMSS`
 6. コピー後の sha256 が元と一致したときだけ PASS
 7. 欠落、空、hash 不一致は FAIL CLOSED
 8. `LAST_SYNC.json` に時刻、repo commit、対象、sha256、結果を書く。`cloud_agent_wrote_destination` は false
-9. 16:45 の登録は、MASTER と Word が揃った後の別作業である。この版では登録しない
+9. 16:45 の登録は、fetch してから同期する wrapper が揃った後の別作業である。この版では登録しない
 
 同期対象は、`100億PROJECT_MASTER_SPEC.md`、`CURRENT_STATUS.md`、`CHANGELOG.md`、`HANDOVER.md`、および `docs/100oku/` にある `.docx` である。manifest は `docs/100oku/SYNC_MANIFEST.json`。
 

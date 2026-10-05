@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SYNC = ROOT / "downloads" / "SYNC_100OKU_MASTER_SPEC.ps1"
 REGISTER = ROOT / "downloads" / "REGISTER_100OKU_MASTER_SPEC_TASK.ps1"
+WRAPPER = ROOT / "downloads" / "UPDATE_AND_SYNC_100OKU_MASTER_SPEC.ps1"
 MANIFEST = ROOT / "docs" / "100oku" / "SYNC_MANIFEST.json"
 PWSH_CANDIDATES = (
     Path("/tmp/pwsh/pwsh"),
@@ -24,12 +25,13 @@ def pwsh_path():
 
 class MasterSpecSyncBridgeTests(unittest.TestCase):
     def test_scripts_stay_ascii_and_fail_closed(self):
-        for path in (SYNC, REGISTER):
+        for path in (SYNC, REGISTER, WRAPPER):
             raw = path.read_bytes()
             self.assertFalse(raw.startswith(b"\xef\xbb\xbf"), path.name)
             raw.decode("ascii")
         sync = SYNC.read_text(encoding="ascii")
         register = REGISTER.read_text(encoding="ascii")
+        wrapper = WRAPPER.read_text(encoding="ascii")
         for token in (
             "MASTER_SPEC_SYNC=FAIL",
             'return "EMPTY"',
@@ -48,18 +50,37 @@ class MasterSpecSyncBridgeTests(unittest.TestCase):
         self.assertNotIn("real_submit_allowed = True", register)
         self.assertNotIn("Stop-Process", sync)
         self.assertNotIn("Stop-Process", register)
+        self.assertNotIn("Stop-Process", wrapper)
         self.assertNotIn("RssOrder", sync)
+        self.assertNotIn("RssOrder", wrapper)
+        self.assertNotIn("real_submit_allowed = True", wrapper)
         self.assertIn("TASK_TIME=16:45", register)
         self.assertIn("TASK_REGISTER=NOT_RUN", register)
         self.assertIn("REASON=PATH_HAS_SPACE_OR_QUOTE", register)
-        self.assertIn('-File " + $sync + " -RepoRoot " + $root', register)
+        self.assertIn('-File " + $wrapper + " -RepoRoot " + $root', register)
         self.assertNotIn('-File "\'', register)
         self.assertLess(register.index("TASK_REGISTER=NOT_RUN"), register.index("schtasks.exe"))
+        for token in (
+            'Write-Fail "FETCH_FAILED"',
+            'return "DIRTY"',
+            'Write-Fail "LOCAL_COMMITS_NOT_ON_REMOTE"',
+            'Write-Fail "HISTORY_DIVERGED"',
+            'return "MISSING"',
+            'Write-Fail "DESTINATION_HASH_MISMATCH"',
+            "checkout", "--detach",
+            "DRY_RUN_MOVE=NOT_APPLIED",
+            "source_commit",
+            "destination_sha256",
+        ):
+            self.assertIn(token, wrapper)
+        update_body = wrapper.split("function Invoke-UpdateAndSync", 1)[1].split("function New-FixtureFiles", 1)[0]
+        self.assertNotIn("reset --hard", update_body)
 
     def test_manifest_lists_the_working_copy(self):
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(manifest["destination"], r"D:\100億PROJECT\MASTER_SPEC")
         self.assertIs(manifest["cloud_agent_can_write_destination"], False)
+        self.assertEqual(manifest["remote_branch"], "cursor/master-spec-fetch-sync-d483")
         required = manifest["required"]
         self.assertEqual(
             required,
@@ -129,3 +150,27 @@ class MasterSpecSyncBridgeTests(unittest.TestCase):
         self.assertIn("TASK_REGISTER=NOT_RUN", register.stdout)
         self.assertIn("TASK_TIME=16:45", register.stdout)
         self.assertIn("CLOUD_AGENT_WROTE_D_DRIVE=0", register.stdout)
+        self.assertIn("UPDATE_AND_SYNC_100OKU_MASTER_SPEC.ps1", register.stdout)
+        self.assertNotIn("/SYNC_100OKU_MASTER_SPEC.ps1", register.stdout)
+        wrapped = subprocess.run(
+            [str(pwsh), "-NoProfile", "-File", str(WRAPPER), "-SelfTest"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(wrapped.returncode, 0, wrapped.stdout + wrapped.stderr)
+        for token in (
+            "CASE=DIRTY",
+            "CASE=FETCH_FAIL",
+            "CASE=LOCAL_COMMITS",
+            "CASE=DIVERGED",
+            "CASE=DRY_RUN",
+            "CASE=FAST_FORWARD",
+            "CASE=UNCHANGED",
+            "CASE=MISSING",
+            "UPDATE_SYNC_SELFTEST=PASS",
+            "SELFTEST_WROTE_D_DRIVE=0",
+            "DESTINATION_WRITTEN=0",
+            "SOURCE_COMMIT=",
+        ):
+            self.assertIn(token, wrapped.stdout, token)

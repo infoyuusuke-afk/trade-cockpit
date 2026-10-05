@@ -138,6 +138,7 @@ function Copy-VerifiedFile([string]$Source, [string]$DestFile, [string]$ArchiveF
 function New-SyncRecord([string]$Commit, [string]$Root, [string]$Dest, [string]$Mode, [string]$Result, [string]$Archive, $Files) {
     return [ordered]@{
         synced_at = (Get-JstStamp (Get-JstNow))
+        source_commit = $Commit
         repo_commit = $Commit
         repo_root = $Root
         destination = $Dest
@@ -269,7 +270,10 @@ function Invoke-MasterSync([string]$Root, [string]$Dest, [bool]$IsDryRun, [bool]
         }
         $copied += $leaf
     }
-    foreach ($file in $files) { $file.result = "PASS" }
+    foreach ($file in $files) {
+        $file.result = "PASS"
+        $file.destination_sha256 = Get-Sha256Hex (Join-ChildPath $Dest ([string]$file.name))
+    }
     $pass = New-SyncRecord $commit $Root $Dest "sync" "PASS" $archiveName $files
     Write-JsonFile (Join-ChildPath $Dest "LAST_SYNC.json") $pass
     Write-Host "MASTER_SPEC_SYNC=PASS"

@@ -14,15 +14,16 @@ function Get-DefaultRepoRoot {
 }
 
 $root = Get-DefaultRepoRoot
-$sync = [IO.Path]::Combine([IO.Path]::Combine($root, "downloads"), "SYNC_100OKU_MASTER_SPEC.ps1")
+$wrapper = [IO.Path]::Combine([IO.Path]::Combine($root, "downloads"), "UPDATE_AND_SYNC_100OKU_MASTER_SPEC.ps1")
 $task = "TradeCockpit-100oku-MasterSpec-Sync"
 # schtasks splits a /TR value on embedded quotes. These paths have no spaces.
-if ($root.IndexOf(" ") -ge 0 -or $root.IndexOf([char]34) -ge 0 -or $sync.IndexOf(" ") -ge 0 -or $sync.IndexOf([char]34) -ge 0) {
+# The task runs the fetch-then-sync wrapper, not a copy of a frozen worktree.
+if ($root.IndexOf(" ") -ge 0 -or $root.IndexOf([char]34) -ge 0 -or $wrapper.IndexOf(" ") -ge 0 -or $wrapper.IndexOf([char]34) -ge 0) {
     Write-Output "TASK_REGISTER=FAIL"
     Write-Output "REASON=PATH_HAS_SPACE_OR_QUOTE"
     exit 1
 }
-$action = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File " + $sync + " -RepoRoot " + $root
+$action = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File " + $wrapper + " -RepoRoot " + $root
 
 Write-Output "TASK_NAME=$task"
 Write-Output "TASK_TIME=16:45"
@@ -35,9 +36,9 @@ if (-not $Register) {
     exit 0
 }
 
-if (-not (Test-Path -LiteralPath $sync)) {
+if (-not (Test-Path -LiteralPath $wrapper)) {
     Write-Output "TASK_REGISTER=FAIL"
-    Write-Output "REASON=SYNC_SCRIPT_MISSING"
+    Write-Output "REASON=WRAPPER_MISSING"
     exit 1
 }
 
