@@ -2,6 +2,10 @@
 
 このファイルはリポジトリ上の Data Source Registry である。`D:\100億PROJECT\MASTER_SPEC` へは未反映。この環境からそのパスへは書き込めない。
 
+## 正式保存
+
+AI 作業コピーは repo の `docs/100oku/`。正式原本は `D:\100億PROJECT\MASTER_SPEC`。Cloud Agent は D: へ書けない。Owner PC の `downloads/SYNC_100OKU_MASTER_SPEC.ps1` だけがコピーする。上書き前は `archive\YYYY-MM-DD_HHMM\`。hash 不一致、欠落、空ファイルは FAIL CLOSED。`LAST_SYNC.json` は `cloud_agent_wrote_destination=false`。この記録時点では D: へ未反映。16:45 JST のタスクは `downloads/REGISTER_100OKU_MASTER_SPEC_TASK.ps1` に用意し、`-Register` 無しでは登録しない。対象は本書、`CURRENT_STATUS.md`、`CHANGELOG.md`、`HANDOVER.md`。Word 版が `docs/100oku` にあれば `.docx` も対象。
+
 ## Data Source Registry / Research Data Lane
 
 Research Data Lane は公式公開データを研究参照として保持する。`source_stage=OFFICIAL_PUBLIC` は LIVE でも SYNTHETIC/REPLAY でもない。`trading_adoption=false` を維持し、LIVE signal と `real_submit_allowed` は変えない。`published_at` が検証できない行は null のままにする。

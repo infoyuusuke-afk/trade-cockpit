@@ -1,0 +1,13 @@
+{
+  "role": "repo_working_copy",
+  "destination": "D:\\100億PROJECT\\MASTER_SPEC",
+  "cloud_agent_can_write_destination": false,
+  "required": [
+    "docs/100oku/100億PROJECT_MASTER_SPEC.md",
+    "docs/100oku/CURRENT_STATUS.md",
+    "docs/100oku/CHANGELOG.md",
+    "docs/100oku/HANDOVER.md"
+  ],
+  "optional_docx_dir": "docs/100oku",
+  "note": "The Cloud Agent updates this repo folder only. The Owner PC script copies it to the destination. A repo commit is not a D: drive write."
+}
