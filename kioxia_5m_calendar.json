@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-10-06 03:43:06 JST",
+  "updated_at": "2026-10-06 03:45:44 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3800,13 +3800,13 @@
         30787800.0,
         31103100.0
       ],
-      "similarity": 94.5,
+      "similarity": 94.6,
       "after_ret": -7.76,
       "max_up_after": 0.05,
       "max_down_after": -8.54,
       "score_components": {
         "five_minute": null,
-        "us_market": 94.5,
+        "us_market": 94.6,
         "credit_supply": null
       },
       "us_context": {
@@ -3959,13 +3959,13 @@
         23090800.0,
         23387300.0
       ],
-      "similarity": 92.4,
+      "similarity": 92.6,
       "after_ret": -3.53,
       "max_up_after": 0.21,
       "max_down_after": -4.1,
       "score_components": {
         "five_minute": null,
-        "us_market": 92.4,
+        "us_market": 92.6,
         "credit_supply": null
       },
       "us_context": {
@@ -4118,13 +4118,13 @@
         45998300.0,
         46419800.0
       ],
-      "similarity": 91.8,
+      "similarity": 91.9,
       "after_ret": 2.22,
       "max_up_after": 3.21,
       "max_down_after": -0.72,
       "score_components": {
         "five_minute": null,
-        "us_market": 92.8,
+        "us_market": 92.9,
         "credit_supply": 87.8
       },
       "us_context": {
@@ -4479,10 +4479,10 @@
   "market_context": {
     "date": "2026-10-05",
     "values": {
-      "sndk": -1.021,
-      "mu": -1.194,
+      "sndk": -1.028,
+      "mu": -1.15,
       "sox": 0.23,
-      "nasdaq": 1.078
+      "nasdaq": 1.064
     },
     "labels": {
       "sndk": "SanDisk",
