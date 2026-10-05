@@ -1,0 +1,21 @@
+{
+  "note": "REAL DATA (trimmed). Copied from files already public in this repository; subset of records, all original fields kept so the exporter allowlist is exercised. Not synthetic.",
+  "data.json": {
+    "origin": "data.json @ design/auto-publisher-v1 base a9c36659a5c3d742977629c98c78c592e8c87cc1",
+    "original_sha256": "2a060d26e61519bed3e4757058bb37e20fcdc191fd667ed4838d40082bef6077",
+    "kept_stocks": [
+      "キーエンス（6861）",
+      "THK（6481）",
+      "富士電機（6504）",
+      "キオクシアHD（285A）",
+      "ニデック（6594）",
+      "東京エレクトロン（8035）",
+      "QPS研究所（5595）"
+    ]
+  },
+  "paper_trade_history.json": {
+    "origin": "paper_trade_history.json @ main eaa5bbbd56cfdeecfa3ef5368f614df476b1f8bd",
+    "original_sha256": "c73b96536ffc7578cff64c6d85df0591499cf337bb134acb3fdd48760bc3aa05",
+    "kept": "all 2026-09-25 + 2026-09-23 entries + one '順序不明' entry"
+  }
+}

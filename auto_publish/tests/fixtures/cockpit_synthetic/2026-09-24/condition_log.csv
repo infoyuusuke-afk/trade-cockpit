@@ -1,0 +1,11 @@
+﻿captured_at,ticker,name,price,vwap,ema9,ema20,trend_long,trend_short,or5_high,or5_low,or15_high,or15_low,bar_burst,flow_bias,whipsaw,chase_guard,or5_long,or5_short,or15_long,or15_short,pullback_long,pullback_short,signal,strategy
+"2026-09-24 09:00:05","TST1.T","テスト半導体","2260","2255","2257.74","2253.22","False","False","2280","2240","2300","2230","1.8","0.21","False","False","False","False","False","False","False","False","監視",""
+"2026-09-24 09:00:05","TST2.T","テスト素材","910","909","909.09","907.27","False","False","2280","2240","2300","2230","1.8","0.21","False","False","False","False","False","False","False","False","監視",""
+"2026-09-24 09:07:10","TST1.T","テスト半導体","2290","2270","2287.71","2283.13","True","False","2280","2240","2300","2230","1.8","0.21","False","False","True","False","False","False","False","False","初動買い候補","OR5"
+"2026-09-24 09:07:20","TST1.T","テスト半導体","2292","2271","2289.71","2285.12","True","False","2280","2240","2300","2230","1.8","0.21","False","False","True","False","False","False","False","False","初動買い候補","OR5"
+"2026-09-24 09:07:20","TST1.T","テスト半導体","2292","2271","2289.71","2285.12","True","False","2280","2240","2300","2230","1.8","0.21","False","False","True","False","False","False","False","False","初動買い候補","OR5"
+"2026-09-24 09:16:05","TST1.T","テスト半導体","2310","2280","2307.69","2303.07","True","False","2280","2240","2300","2230","1.8","0.21","False","False","False","False","True","False","False","False","買いサイン","OR15"
+"2026-09-24 09:18:00","TST2.T","テスト素材","895","902","894.11","892.31","False","True","2280","2240","2300","2230","1.8","0.21","False","False","False","False","False","True","False","False","空売りサイン","OR15"
+"2026-09-24 09:30:00","TST3.T","テスト機械","1180","1170","1178.82","1176.46","True","False","2280","2240","2300","2230","1.8","0.21","False","False","False","False","True","False","False","False","買いサイン","OR15"
+"2026-09-24 10:05:00","TST1.T","テスト半導体","2320","2295","2317.68","2313.04","True","False","2280","2240","2300","2230","1.8","0.21","False","False","False","False","False","False","True","False","押し目待ち","押し目"
+"2026-09-24 15:40:00","TST1.T","テスト半導体","2345","2301","2342.66","2337.97","False","False","2280","2240","2300","2230","1.8","0.21","False","False","False","False","False","False","False","False","市場時間外",""

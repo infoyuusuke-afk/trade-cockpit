@@ -1,0 +1,5 @@
+# Fixture bytes are hashed (SHA256) and pinned in golden files: never normalise line endings.
+tests/fixtures/** -text
+tests/golden/** -text
+# Raw bytes are hashed into evidence (tse_calendar_sha256): never let checkout translate line endings.
+config/tse_calendar.json -text
