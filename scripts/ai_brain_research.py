@@ -854,9 +854,9 @@ LANE_SURVEY = {
         "available_at": "未確認。推定で埋めない。",
     },
     "arbitrage_balance": {
-        "source_candidate": "JPXの裁定取引残高統計。掲載URLは未確認なので空欄。",
-        "source_url": None,
-        "history_fetchable": None,
+        "source_candidate": "JPXプログラム売買・裁定取引の日次合計。参加者別PDFの合計ポジションは未切り出し。",
+        "source_url": "https://www.jpx.co.jp/markets/statistics-equities/program/",
+        "history_fetchable": True,
         "available_at": "公表ファイルの時刻。日中の速報とは限らない。",
     },
     "crude": {
@@ -929,20 +929,50 @@ LANE_SURVEY = {
 
 
 def research_data_lane() -> tuple:
-    """Survey only. A recorded source URL does not fetch a value or admit a trade."""
+    """Recorded sources stay unadopted. A fetched row is still not a trade input."""
     if set(LANE_SURVEY) != {item["id"] for item in DATA_LANE}:
         raise RuntimeError("research data lane survey does not match the registry")
+    import research_lane_short_sale as short_sale
+
+    loaded = short_sale.load_latest()
+    short_status = loaded.get("fetch_status")
     rows = []
     for item in DATA_LANE:
         survey = LANE_SURVEY[item["id"]]
+        status = "NOT_FETCHED"
+        extra = {}
+        if item["id"] == "short_sale_ratio" and short_status == "FETCHED":
+            status = "FETCHED"
+            extra = {
+                "source": loaded.get("source"),
+                "fetched_at": loaded.get("fetched_at"),
+                "available_at": loaded.get("available_at"),
+                "freshness": loaded.get("freshness"),
+                "license_note": loaded.get("license_note"),
+                "session_date": loaded.get("session_date"),
+                "sha256": loaded.get("sha256"),
+                "short_ratio_for_research": loaded.get("short_ratio_for_research"),
+                "counts_as_live_sample": False,
+                "promotion_candidate": False,
+                "source_stage": "OFFICIAL_PUBLIC",
+            }
+        elif item["id"] == "short_sale_ratio" and short_status == "FAIL_CLOSED":
+            status = "FAIL_CLOSED"
+            extra = {
+                "freshness": "MALFORMED",
+                "short_ratio_for_research": None,
+                "reason": "MALFORMED",
+            }
         rows.append({
             **item,
             **survey,
             "surveyed_on": "2026-10-05",
-            "fetch_status": "NOT_FETCHED",
+            "available_at_rule": survey["available_at"],
+            "fetch_status": status,
             "trading_adoption": False,
             "lane": "research_data_lane",
             "real_submit_allowed": False,
+            **extra,
         })
     return tuple(rows)
 

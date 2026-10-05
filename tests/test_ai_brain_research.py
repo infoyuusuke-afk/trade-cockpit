@@ -309,7 +309,11 @@ class ResearchLayerTests(unittest.TestCase):
             next(item["priority"] for item in lane if item["id"] == "crude"),
             next(item["priority"] for item in lane if item["id"] == "official_speech"),
         )
-        self.assertTrue(all(item["fetch_status"] == "NOT_FETCHED" and item["trading_adoption"] is False for item in lane))
+        self.assertTrue(all(item["trading_adoption"] is False for item in lane))
+        self.assertEqual(
+            {item["id"] for item in lane if item["fetch_status"] == "FETCHED"},
+            {"short_sale_ratio"},
+        )
         shikiho = next(item for item in lane if item["id"] == "shikiho_fundamentals")
         self.assertIn("転載しない", shikiho["license"])
 
