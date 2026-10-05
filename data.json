@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-05 12:08:03 JST",
+  "updated_at": "2026-10-05 12:10:32 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -6073,37 +6073,37 @@
     },
     "ドル円": {
       "ok": true,
-      "price": 158.04,
+      "price": 157.98,
       "open": 157.83,
       "high": 158.06,
       "low": 157.43,
       "prev_close": 157.93,
-      "change_pct": 0.07,
-      "ret5": 0.37,
+      "change_pct": 0.03,
+      "ret5": 0.33,
       "ret5_prev": 0.27,
-      "ret20": 1.18,
+      "ret20": 1.14,
       "rvol": 0,
       "turnover": 0,
       "atr14": 1.27,
       "atr_pct": 0.8,
-      "ma5": 157.66,
-      "ma20": 156.27,
+      "ma5": 157.65,
+      "ma20": 156.26,
       "ma60": 158.83,
-      "from_ma5": 0.24,
-      "from_ma20": 1.13,
+      "from_ma5": 0.21,
+      "from_ma20": 1.1,
       "touch_ma5": true,
-      "to_high20": -0.6,
-      "to_high52": -3.62,
-      "bb_upper": 159.79,
+      "to_high20": -0.64,
+      "to_high52": -3.66,
+      "bb_upper": 159.78,
       "bb_lower": 152.75,
-      "bb_width": 4.51,
+      "bb_width": 4.5,
       "bb_width_change": -0.19,
       "bb_percentile": 75.8,
       "bb_expansion_score": 35.5,
-      "day_score": 1.18,
-      "swing_score": 3.42,
+      "day_score": 1.14,
+      "swing_score": 3.4,
       "stable_score": 1.21,
-      "momentum_score": 7.26,
+      "momentum_score": 7.24,
       "high_score": 0.0,
       "chart": [
         {
@@ -6423,22 +6423,22 @@
           "o": 157.83,
           "h": 158.06,
           "l": 157.43,
-          "c": 158.04,
+          "c": 157.98,
           "v": 0
         }
       ],
       "data_date": "2026-10-05",
       "data_age_days": 0,
-      "chart_last_close": 158.04,
+      "chart_last_close": 157.98,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
       "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-05）",
-      "market_supply_score": 73,
+      "market_supply_score": 72,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給73点／上昇日出来高÷下落日2.00倍／安値切上げ×",
+      "market_supply_status": "市場需給72点／上昇日出来高÷下落日2.00倍／安値切上げ×",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
@@ -44361,8 +44361,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-10-05T12:07:21+09:00",
-    "decision_at": "2026-10-05T12:07:21+09:00",
+    "generated_at": "2026-10-05T12:09:43+09:00",
+    "decision_at": "2026-10-05T12:09:43+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -49163,7 +49163,7 @@
           "h": 15700.0,
           "l": 15700.0,
           "c": 15700.0,
-          "v": 0
+          "v": 2200
         }
       ],
       "intraday_regime": {
@@ -50307,13 +50307,13 @@
     }
   ],
   "strong_yen_top5": {
-    "usd_jpy": 158.038,
-    "usd_jpy_change_pct": 0.11,
-    "usd_jpy_ret5": 0.37,
+    "usd_jpy": 157.977,
+    "usd_jpy_change_pct": 0.07,
+    "usd_jpy_ret5": 0.33,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-10-05T12:07:00+09:00",
+    "fx_observed_at": "2026-10-05T12:10:00+09:00",
     "statement_study": {
-      "updated_at": "2026-10-05 12:07:57 JST",
+      "updated_at": "2026-10-05 12:10:27 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -51959,7 +51959,7 @@
         "ticker": "2782.T",
         "price": 4455.0,
         "change_pct": -0.45,
-        "score": 47,
+        "score": 48,
         "sensitivity": 94,
         "reason": "輸入雑貨の原価負担が大きく、円高による仕入採算改善を確認する銘柄",
         "source": "https://www.seria-group.com/corporate/ir/",
@@ -54363,7 +54363,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-10-05 12:07:45 JST",
+    "credit_supply_updated_at": "2026-10-05 12:10:15 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -74015,14 +74015,14 @@
   ],
   "morning_snapshot": {
     "date": "2026-10-05",
-    "fixed_at": "2026-10-05 12:08:03 JST",
+    "fixed_at": "2026-10-05 12:10:32 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-10-05",
-    "fixed_at": "2026-10-05 12:08:51 JST",
+    "fixed_at": "2026-10-05 12:11:19 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
@@ -74051,7 +74051,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-05 12:08:51 JST",
+        "signal_time": "2026-10-05 12:11:19 JST",
         "source": "morning_snapshot"
       },
       {
@@ -74080,7 +74080,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-05 12:08:51 JST",
+        "signal_time": "2026-10-05 12:11:19 JST",
         "source": "morning_snapshot"
       },
       {
@@ -74109,7 +74109,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-05 12:08:51 JST",
+        "signal_time": "2026-10-05 12:11:19 JST",
         "source": "morning_snapshot"
       },
       {
@@ -74138,7 +74138,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-05 12:08:51 JST",
+        "signal_time": "2026-10-05 12:11:19 JST",
         "source": "morning_snapshot"
       },
       {
@@ -74167,7 +74167,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-05 12:08:51 JST",
+        "signal_time": "2026-10-05 12:11:19 JST",
         "source": "morning_snapshot"
       }
     ]
