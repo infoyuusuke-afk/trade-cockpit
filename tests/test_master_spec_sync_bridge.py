@@ -24,6 +24,25 @@ def pwsh_path():
     return None
 
 
+def owner_bootstrap_line(text):
+    marker = "# OWNER_BOOTSTRAP_COMMAND\n# "
+    start = text.index(marker) + len(marker)
+    return text[start:].splitlines()[0].strip()
+
+
+def bootstrap_stages(line):
+    prefix = 'cmd /c "'
+    if not line.startswith(prefix) or not line.endswith('"'):
+        raise AssertionError("bootstrap must be one cmd /c string")
+    inner = line[len(prefix):-1]
+    if '"' in inner:
+        raise AssertionError("bootstrap string contains a nested quote")
+    stages = [part.strip() for part in inner.split("&&")]
+    if len(stages) != 3:
+        raise AssertionError("bootstrap must be fetch, show, and -File")
+    return stages
+
+
 class MasterSpecSyncBridgeTests(unittest.TestCase):
     def test_scripts_stay_ascii_and_fail_closed(self):
         for path in (SYNC, REGISTER, SAFE, WRAPPER):
@@ -216,7 +235,7 @@ class MasterSpecSyncBridgeTests(unittest.TestCase):
         code = "\n".join(line for line in text.splitlines() if not line.lstrip().startswith("#"))
         self.assertNotIn(" -Command", code)
         for banned in ("&&", "||", "??", "?.", "-Parallel"):
-            self.assertNotIn(banned, text, banned)
+            self.assertNotIn(banned, code, banned)
         self.assertLess(text.index("REGISTER_ABORT=WORKTREE_DIRTY"), text.index("checkout"))
         self.assertLess(text.index("REGISTER_ABORT=LOCAL_COMMITS_NOT_ON_REMOTE"), text.index("checkout"))
         self.assertLess(text.index("REGISTER_ABORT=HISTORY_DIVERGED"), text.index("checkout"))
@@ -228,15 +247,13 @@ class MasterSpecSyncBridgeTests(unittest.TestCase):
             "$registered = Invoke-RegisterScript $root $RemoteBranch",
             text,
         )
-        marker = "# OWNER_FILE_COMMAND\n# "
-        start = text.index(marker) + len(marker)
-        owner = text[start:].splitlines()[0].strip()
-        self.assertTrue(owner.startswith("powershell.exe -NoProfile -ExecutionPolicy Bypass -File "))
-        self.assertIn("SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1", owner)
-        self.assertIn('-RepoRoot "', owner)
+        owner = owner_bootstrap_line(text)
+        self.assertTrue(owner.startswith('cmd /c "git -C '))
         self.assertNotIn("-Command", owner)
         self.assertNotIn("'", owner)
-        self.assertEqual(owner.count('"'), 4)
+        self.assertNotIn("`", owner)
+        self.assertEqual(owner.count('"'), 2)
+        self.assertNotIn("checkout", owner)
         parsed = subprocess.run(
             [
                 str(pwsh),
@@ -288,3 +305,187 @@ class MasterSpecSyncBridgeTests(unittest.TestCase):
         self.assertLess(ran.stdout.index("CASE=DIVERGED"), forward_at)
         self.assertLess(ran.stdout.index("CASE=FETCH_FAILED"), forward_at)
         self.assertNotIn("SAFE_REGISTER_SELFTEST=FAIL", ran.stdout)
+
+    def test_bootstrap_extracts_script_without_checkout(self):
+        pwsh = pwsh_path()
+        if pwsh is None:
+            self.skipTest("pwsh is not installed")
+        import os
+        import shutil
+        import tempfile
+
+        line = owner_bootstrap_line(SAFE.read_text(encoding="ascii"))
+        fetch, show, launch = bootstrap_stages(line)
+        self.assertTrue(fetch.startswith("git -C "))
+        self.assertIn(" fetch origin refs/heads/cursor/master-spec-fetch-sync-d483:", fetch)
+        self.assertIn(":downloads/SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1 > ", show)
+        self.assertTrue(launch.startswith("powershell.exe -NoProfile -ExecutionPolicy Bypass -File "))
+        self.assertIn(" -RepoRoot ", launch)
+        self.assertNotIn("checkout", fetch + show)
+        env = os.environ.copy()
+        env["OWNER_LINE"] = line
+        parsed = subprocess.run(
+            [
+                str(pwsh),
+                "-NoProfile",
+                "-Command",
+                "$e=$null; $t=$null; "
+                "$ast=[System.Management.Automation.Language.Parser]::ParseInput($env:OWNER_LINE, [ref]$t, [ref]$e); "
+                "if ($e -and $e.Count -gt 0) { $e | ForEach-Object { $_.ToString() }; exit 1 }; "
+                "$chains=$ast.FindAll({ param($n) $n -is [System.Management.Automation.Language.PipelineChainAst] }, $true); "
+                "if ($chains.Count -gt 0) { Write-Output 'PIPELINE_CHAIN'; exit 1 }; "
+                "Write-Output PARSE51=PASS",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(parsed.returncode, 0, parsed.stdout + parsed.stderr)
+        self.assertIn("PARSE51=PASS", parsed.stdout)
+
+        branch = "cursor/master-spec-fetch-sync-d483"
+        work_token = r"C:\Users\yusuk\code\trade-cockpit-100oku-master-sync"
+        file_token = r"C:\Users\yusuk\code\SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1"
+        stub = "\n".join(
+            [
+                'param([string]$RepoRoot = "", [string]$RemoteBranch = "", [switch]$Register)',
+                '$stamp = Join-Path $RepoRoot "register-called.txt"',
+                '[System.IO.File]::WriteAllText($stamp, "called")',
+                'Write-Host "TASK_ACTION=powershell.exe -File C:\\repo\\downloads\\UPDATE_AND_SYNC_100OKU_MASTER_SPEC.ps1 -RepoRoot C:\\repo"',
+                'Write-Host "TASK_REGISTER=PASS"',
+                "exit 0",
+                "",
+            ]
+        )
+
+        def git(*args):
+            subprocess.run(["git", *args], check=True, capture_output=True, text=True)
+
+        def head(path):
+            return subprocess.check_output(["git", "-C", str(path), "rev-parse", "HEAD"], text=True).strip()
+
+        def porcelain(path):
+            return subprocess.check_output(
+                ["git", "-C", str(path), "status", "--porcelain", "--untracked-files=normal"],
+                text=True,
+            )
+
+        def build():
+            temp = Path(tempfile.mkdtemp(prefix="bootstrap-register-"))
+            bare = temp / "remote.git"
+            main = temp / "main"
+            dedicated = temp / "dedicated"
+            outside = temp / "SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1"
+            git("init", "-q", "--bare", str(bare))
+            git("init", "-q", str(main))
+            for key, value in (
+                ("user.email", "sync-selftest@example.com"),
+                ("user.name", "sync-selftest"),
+                ("commit.gpgsign", "false"),
+                ("core.autocrlf", "false"),
+            ):
+                git("-C", str(main), "config", key, value)
+            (main / "note.txt").write_text("base\n", encoding="ascii")
+            git("-C", str(main), "add", "--", ".")
+            git("-C", str(main), "commit", "-q", "-m", "base")
+            base = head(main)
+            git("-C", str(main), "branch", "-M", branch)
+            git("-C", str(main), "remote", "add", "origin", str(bare))
+            git("-C", str(main), "push", "-q", "origin", "HEAD:refs/heads/" + branch)
+            downloads = main / "downloads"
+            downloads.mkdir()
+            (downloads / "SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1").write_bytes(SAFE.read_bytes())
+            (downloads / "REGISTER_100OKU_MASTER_SPEC_TASK.ps1").write_text(stub, encoding="ascii")
+            git("-C", str(main), "add", "--", ".")
+            git("-C", str(main), "commit", "-q", "-m", "safe")
+            git("-C", str(main), "push", "-q", "origin", "HEAD:refs/heads/" + branch)
+            tip = head(main)
+            git("--git-dir", str(bare), "symbolic-ref", "HEAD", "refs/heads/" + branch)
+            (main / "main-local.txt").write_text("leave-main\n", encoding="ascii")
+            git("-C", str(main), "worktree", "add", "--detach", str(dedicated), base)
+            return temp, main, dedicated, outside, base, tip
+
+        def run(dedicated, outside, expect_script_absent):
+            adapted = line.replace(work_token, str(dedicated)).replace(file_token, str(outside))
+            stages = bootstrap_stages(adapted)
+            before = head(dedicated)
+            fetch_proc = subprocess.run(stages[0].split(), check=False, capture_output=True)
+            self.assertEqual(fetch_proc.returncode, 0, fetch_proc.stderr.decode())
+            self.assertEqual(head(dedicated), before)
+            show_cmd, show_dest = stages[1].split(" > ", 1)
+            show_proc = subprocess.run(show_cmd.split(), check=False, capture_output=True)
+            self.assertEqual(show_proc.returncode, 0, show_proc.stderr.decode())
+            Path(show_dest).write_bytes(show_proc.stdout)
+            self.assertEqual(head(dedicated), before)
+            self.assertEqual(Path(show_dest).read_bytes(), SAFE.read_bytes())
+            script_in_tree = dedicated / "downloads" / "SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1"
+            self.assertEqual(expect_script_absent, not script_in_tree.exists())
+            launch_args = stages[2].split()
+            self.assertEqual(launch_args[0], "powershell.exe")
+            launch_args[0] = str(pwsh)
+            launched = subprocess.run(launch_args, check=False, capture_output=True, text=True)
+            return before, launched
+
+        temp, main, dedicated, outside, base, tip = build()
+        try:
+            main_head = head(main)
+            (dedicated / "extra.txt").write_text("dirty\n", encoding="ascii")
+            before, launched = run(dedicated, outside, True)
+            self.assertNotEqual(launched.returncode, 0, launched.stdout + launched.stderr)
+            self.assertIn("REGISTER_ABORT=WORKTREE_DIRTY", launched.stdout)
+            self.assertNotIn("TASK_REGISTER=PASS", launched.stdout)
+            self.assertEqual(head(dedicated), before)
+            self.assertEqual(head(main), main_head)
+            self.assertIn("main-local.txt", porcelain(main))
+            self.assertFalse((dedicated / "register-called.txt").exists())
+        finally:
+            shutil.rmtree(temp)
+
+        temp, main, dedicated, outside, base, tip = build()
+        try:
+            (dedicated / "local.txt").write_text("local\n", encoding="ascii")
+            git("-C", str(dedicated), "add", "--", ".")
+            git("-C", str(dedicated), "commit", "-q", "-m", "local")
+            local = head(dedicated)
+            before, launched = run(dedicated, outside, True)
+            self.assertNotEqual(launched.returncode, 0, launched.stdout + launched.stderr)
+            self.assertIn("REGISTER_ABORT=HISTORY_DIVERGED", launched.stdout)
+            self.assertNotIn("TASK_REGISTER=PASS", launched.stdout)
+            self.assertEqual(head(dedicated), local)
+            self.assertFalse((dedicated / "register-called.txt").exists())
+        finally:
+            shutil.rmtree(temp)
+
+        temp, main, dedicated, outside, base, tip = build()
+        try:
+            git("-C", str(dedicated), "checkout", "-q", "--detach", tip)
+            (dedicated / "local.txt").write_text("local\n", encoding="ascii")
+            git("-C", str(dedicated), "add", "--", ".")
+            git("-C", str(dedicated), "commit", "-q", "-m", "local")
+            local = head(dedicated)
+            before, launched = run(dedicated, outside, False)
+            self.assertNotEqual(launched.returncode, 0, launched.stdout + launched.stderr)
+            self.assertIn("REGISTER_ABORT=LOCAL_COMMITS_NOT_ON_REMOTE", launched.stdout)
+            self.assertNotIn("TASK_REGISTER=PASS", launched.stdout)
+            self.assertEqual(head(dedicated), local)
+            self.assertEqual(before, local)
+            self.assertFalse((dedicated / "register-called.txt").exists())
+        finally:
+            shutil.rmtree(temp)
+
+        temp, main, dedicated, outside, base, tip = build()
+        try:
+            main_head = head(main)
+            before, launched = run(dedicated, outside, True)
+            self.assertEqual(launched.returncode, 0, launched.stdout + launched.stderr)
+            self.assertIn("TASK_REGISTER=PASS", launched.stdout)
+            self.assertIn("UPDATE_AND_SYNC_100OKU_MASTER_SPEC.ps1", launched.stdout)
+            self.assertIn("REGISTER_CHECK=PASS", launched.stdout)
+            self.assertEqual(head(dedicated), tip)
+            self.assertNotEqual(before, tip)
+            self.assertEqual(head(main), main_head)
+            self.assertIn("main-local.txt", porcelain(main))
+            self.assertTrue((dedicated / "register-called.txt").is_file())
+        finally:
+            shutil.rmtree(temp)

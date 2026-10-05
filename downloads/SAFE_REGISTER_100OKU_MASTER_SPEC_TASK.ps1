@@ -5,9 +5,10 @@ param(
 )
 
 # First registration of the 16:45 master-spec task.
-# Run this file. Do not pass the checks as an inline -Command.
-# OWNER_FILE_COMMAND
-# powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Users\yusuk\code\trade-cockpit-100oku-master-sync\downloads\SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1" -RepoRoot "C:\Users\yusuk\code\trade-cockpit-100oku-master-sync"
+# The Owner does not run this file from the detached worktree. A one-line cmd bootstrap
+# fetches the branch, writes this blob outside the worktree, then runs that file.
+# OWNER_BOOTSTRAP_COMMAND
+# cmd /c "git -C C:\Users\yusuk\code\trade-cockpit-100oku-master-sync fetch origin refs/heads/cursor/master-spec-fetch-sync-d483:refs/remotes/origin/cursor/master-spec-fetch-sync-d483 && git -C C:\Users\yusuk\code\trade-cockpit-100oku-master-sync show refs/remotes/origin/cursor/master-spec-fetch-sync-d483:downloads/SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1 > C:\Users\yusuk\code\SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1 && powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\yusuk\code\SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1 -RepoRoot C:\Users\yusuk\code\trade-cockpit-100oku-master-sync"
 # This script does not copy files to D: and does not start or stop Excel, MarketSpeed II,
 # the Collector, the Gateway, or AI SHADOW. It does not submit orders.
 # real_submit_allowed is unchanged.

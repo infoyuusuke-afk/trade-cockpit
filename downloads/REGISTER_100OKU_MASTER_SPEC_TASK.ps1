@@ -6,8 +6,9 @@ param(
 )
 
 # Print the daily 16:45 JST registration. Do not register unless -Register is present.
-# The Owner runs downloads/SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1, which calls this
-# script with -Register only after the worktree checks pass. Do not pass a long inline -Command.
+# The Owner bootstrap writes downloads/SAFE_REGISTER_100OKU_MASTER_SPEC_TASK.ps1 outside
+# the worktree and runs that file. It calls this script with -Register only after the
+# worktree checks pass. Do not pass a long inline -Command.
 # This script does not start or stop Excel, MarketSpeed II, the Collector, the Gateway, or AI SHADOW.
 # It does not submit orders. real_submit_allowed is unchanged.
 $ErrorActionPreference = "Stop"
