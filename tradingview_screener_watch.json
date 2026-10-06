@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-06 12:00:38 JST",
+  "updated_at": "2026-10-06 12:02:55 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -4064,22 +4064,6 @@
       "already_watched": false
     },
     {
-      "code": "8802",
-      "name": "Mitsubishi Estate Company, Limited",
-      "exchange": "TSE",
-      "price": 3480,
-      "change_pct": 0.4329004329004329,
-      "volume": 1263700,
-      "relative_volume": 0.32858454089950573,
-      "atr_pct": 2.27,
-      "vwap": 3475.666666666666,
-      "high": 3486,
-      "low": 3461,
-      "market_cap": 4158043820068,
-      "sector": "Finance",
-      "already_watched": false
-    },
-    {
       "code": "4568",
       "name": "Daiichi Sankyo Company, Limited",
       "exchange": "TSE",
@@ -4093,6 +4077,22 @@
       "low": 2711,
       "market_cap": 4929440514038,
       "sector": "Health Technology",
+      "already_watched": false
+    },
+    {
+      "code": "8802",
+      "name": "Mitsubishi Estate Company, Limited",
+      "exchange": "TSE",
+      "price": 3480,
+      "change_pct": 0.4329004329004329,
+      "volume": 1263700,
+      "relative_volume": 0.32858454089950573,
+      "atr_pct": 2.27,
+      "vwap": 3475.666666666666,
+      "high": 3486,
+      "low": 3461,
+      "market_cap": 4158043820068,
+      "sector": "Finance",
       "already_watched": false
     },
     {
