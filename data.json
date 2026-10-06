@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-06 16:13:40 JST",
+  "updated_at": "2026-10-06 16:15:41 JST",
   "phase": "寄り付き前8:00版",
   "session": "morning",
   "active_buybacks": [],
@@ -6073,37 +6073,37 @@
     },
     "ドル円": {
       "ok": true,
-      "price": 158.18,
+      "price": 158.14,
       "open": 157.86,
       "high": 158.25,
       "low": 157.76,
       "prev_close": 157.73,
-      "change_pct": 0.29,
-      "ret5": 0.52,
+      "change_pct": 0.26,
+      "ret5": 0.5,
       "ret5_prev": -0.01,
-      "ret20": 2.81,
+      "ret20": 2.79,
       "rvol": 0,
       "turnover": 0,
       "atr14": 1.24,
       "atr_pct": 0.79,
-      "ma5": 157.76,
-      "ma20": 156.47,
+      "ma5": 157.75,
+      "ma20": 156.46,
       "ma60": 158.76,
-      "from_ma5": 0.27,
-      "from_ma20": 1.1,
+      "from_ma5": 0.25,
+      "from_ma20": 1.07,
       "touch_ma5": true,
-      "to_high20": -0.51,
-      "to_high52": -3.53,
+      "to_high20": -0.54,
+      "to_high52": -3.56,
       "bb_upper": 159.87,
       "bb_lower": 153.06,
       "bb_width": 4.35,
       "bb_width_change": -0.17,
       "bb_percentile": 73.3,
       "bb_expansion_score": 36.3,
-      "day_score": 1.41,
-      "swing_score": 3.89,
-      "stable_score": 1.51,
-      "momentum_score": 7.51,
+      "day_score": 1.38,
+      "swing_score": 3.87,
+      "stable_score": 1.5,
+      "momentum_score": 7.49,
       "high_score": 0.0,
       "chart": [
         {
@@ -6423,22 +6423,22 @@
           "o": 157.86,
           "h": 158.25,
           "l": 157.76,
-          "c": 158.18,
+          "c": 158.14,
           "v": 0
         }
       ],
       "data_date": "2026-10-06",
       "data_age_days": 0,
-      "chart_last_close": 158.18,
+      "chart_last_close": 158.14,
       "quote_verified": false,
       "secondary_source": "未取得",
       "secondary_price": null,
       "secondary_date": null,
       "secondary_verified": false,
       "quote_status": "売買利用禁止：一次株価・QUICK照合・チャート終点の不一致（2026-10-06）",
-      "market_supply_score": 84,
+      "market_supply_score": 83,
       "market_supply_improved": true,
-      "market_supply_status": "市場需給84点／上昇日出来高÷下落日2.00倍／安値切上げ○",
+      "market_supply_status": "市場需給83点／上昇日出来高÷下落日2.00倍／安値切上げ○",
       "last_dividend": 0,
       "estimated_ex_date": null,
       "dividend_days": null
@@ -44382,8 +44382,8 @@
   },
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-10-06T16:12:55+09:00",
-    "decision_at": "2026-10-06T16:12:55+09:00",
+    "generated_at": "2026-10-06T16:15:03+09:00",
+    "decision_at": "2026-10-06T16:15:03+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -51728,13 +51728,13 @@
     }
   ],
   "strong_yen_top5": {
-    "usd_jpy": 158.201,
-    "usd_jpy_change_pct": 0.2,
-    "usd_jpy_ret5": 0.52,
+    "usd_jpy": 158.148,
+    "usd_jpy_change_pct": 0.16,
+    "usd_jpy_ret5": 0.5,
     "fx_source": "世界の株価リアルタイムチャート",
-    "fx_observed_at": "2026-10-06T16:13:00+09:00",
+    "fx_observed_at": "2026-10-06T16:15:00+09:00",
     "statement_study": {
-      "updated_at": "2026-10-06 16:13:33 JST",
+      "updated_at": "2026-10-06 16:15:36 JST",
       "price_source": "Yahoo Finance JPY=X 日足",
       "method": "同日・同方向の発言は1クラスター。実弾介入や重要指標が重なる日は純粋な口先介入統計から除外する。",
       "current": {
@@ -55784,7 +55784,7 @@
   "day_ifo_summary": {
     "count": 0,
     "selection_rule": "厳格照合後、信用需給・資金流入・材料段階・イベントリスクの総合上位（最大5）",
-    "credit_supply_updated_at": "2026-10-06 16:13:23 JST",
+    "credit_supply_updated_at": "2026-10-06 16:15:27 JST",
     "shares_each": 100,
     "total_capital": 0,
     "total_profit": 0,
@@ -76218,14 +76218,14 @@
   ],
   "morning_snapshot": {
     "date": "2026-10-06",
-    "fixed_at": "2026-10-06 16:13:40 JST",
+    "fixed_at": "2026-10-06 16:15:41 JST",
     "rule": "8:55に気配確認。発動価格以上かつ買い指値上限以内の時だけ100株IFOを手入力。",
     "candidates": []
   },
   "morning_reviews": [],
   "morning_snapshot_fixed": {
     "date": "2026-10-06",
-    "fixed_at": "2026-10-06 16:14:22 JST",
+    "fixed_at": "2026-10-06 16:16:21 JST",
     "rule": "朝の5銘柄と価格を固定。8:55気配が買い指値上限以内なら100株IFOを手入力し、発動価格到達時だけ仮想約定。",
     "candidates": [
       {
@@ -76254,7 +76254,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-06 16:14:22 JST",
+        "signal_time": "2026-10-06 16:16:21 JST",
         "source": "morning_snapshot"
       },
       {
@@ -76283,7 +76283,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-06 16:14:22 JST",
+        "signal_time": "2026-10-06 16:16:21 JST",
         "source": "morning_snapshot"
       },
       {
@@ -76312,7 +76312,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-06 16:14:22 JST",
+        "signal_time": "2026-10-06 16:16:21 JST",
         "source": "morning_snapshot"
       },
       {
@@ -76341,7 +76341,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-06 16:14:22 JST",
+        "signal_time": "2026-10-06 16:16:21 JST",
         "source": "morning_snapshot"
       },
       {
@@ -76370,7 +76370,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-06 16:14:22 JST",
+        "signal_time": "2026-10-06 16:16:21 JST",
         "source": "morning_snapshot"
       },
       {
@@ -76399,7 +76399,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-06 16:14:22 JST",
+        "signal_time": "2026-10-06 16:16:21 JST",
         "source": "morning_snapshot"
       },
       {
@@ -76428,7 +76428,7 @@
         "regime": null,
         "regime_updated_at": null,
         "high_vol": null,
-        "signal_time": "2026-10-06 16:14:22 JST",
+        "signal_time": "2026-10-06 16:16:21 JST",
         "source": "morning_snapshot"
       }
     ]
