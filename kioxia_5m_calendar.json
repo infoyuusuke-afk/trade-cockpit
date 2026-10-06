@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-10-06 14:27:32 JST",
+  "updated_at": "2026-10-06 14:29:58 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3222,7 +3222,7 @@
     },
     {
       "date": "2026-10-06",
-      "ret": -0.71,
+      "ret": -0.89,
       "high": 1.13,
       "low": -2.53,
       "type": "寄り天",
@@ -3278,7 +3278,7 @@
         -1.289,
         -0.632,
         -0.579,
-        -0.711
+        -0.895
       ],
       "volume_path": [
         970000.0,
@@ -3331,13 +3331,13 @@
         22526600.0,
         23392500.0,
         23840100.0,
-        23892800.0
+        23966400.0
       ]
     }
   ],
   "current": {
     "date": "2026-10-06",
-    "ret": -0.71,
+    "ret": -0.89,
     "high": 1.13,
     "low": -2.53,
     "type": "寄り天",
@@ -3393,7 +3393,7 @@
       -1.289,
       -0.632,
       -0.579,
-      -0.711
+      -0.895
     ],
     "volume_path": [
       970000.0,
@@ -3446,7 +3446,7 @@
       22526600.0,
       23392500.0,
       23840100.0,
-      23892800.0
+      23966400.0
     ]
   },
   "current_1m": [
@@ -5684,11 +5684,29 @@
     },
     {
       "t": "14:12",
-      "o": -0.7368,
-      "h": -0.7368,
+      "o": -0.7105,
+      "h": -0.6842,
       "l": -0.7368,
       "c": -0.7368,
       "price": 18860.0,
+      "v": 12000
+    },
+    {
+      "t": "14:13",
+      "o": -0.7368,
+      "h": -0.7368,
+      "l": -0.8421,
+      "c": -0.7895,
+      "price": 18850.0,
+      "v": 61600
+    },
+    {
+      "t": "14:14",
+      "o": -0.8684,
+      "h": -0.8684,
+      "l": -0.8684,
+      "c": -0.8684,
+      "price": 18835.0,
       "v": 0
     }
   ],
@@ -5696,14 +5714,14 @@
   "one_minute_verified": true,
   "technical_levels": {
     "session_open": 19000.0,
-    "daily_ma5": 18866.0,
+    "daily_ma5": 18859.0,
     "pivot_p": 19320.0,
     "pivot_r1": 19555.0,
     "pivot_s1": 18890.0,
     "or15_high": 19215.0,
     "or15_low": 18980.0,
     "return_pct": {
-      "daily_ma5": -0.7053,
+      "daily_ma5": -0.7421,
       "pivot_p": 1.6842,
       "pivot_r1": 2.9211,
       "pivot_s1": -0.5789,
@@ -5855,7 +5873,7 @@
       "max_up_after": 0.18,
       "max_down_after": -0.85,
       "score_components": {
-        "five_minute": 86.5,
+        "five_minute": 86.4,
         "us_market": 88.0,
         "credit_supply": null
       },
@@ -6009,12 +6027,12 @@
         24519200.0,
         24904200.0
       ],
-      "similarity": 86.8,
+      "similarity": 86.7,
       "after_ret": 0.8,
       "max_up_after": 0.95,
       "max_down_after": -0.28,
       "score_components": {
-        "five_minute": 86.2,
+        "five_minute": 86.1,
         "us_market": 88.2,
         "credit_supply": null
       },
@@ -6168,12 +6186,12 @@
         34405700.0,
         34406000.0
       ],
-      "similarity": 85.6,
+      "similarity": 85.7,
       "after_ret": -0.39,
       "max_up_after": 0.81,
       "max_down_after": -0.42,
       "score_components": {
-        "five_minute": 82.5,
+        "five_minute": 82.7,
         "us_market": 88.0,
         "credit_supply": 100.0
       },
@@ -6339,12 +6357,12 @@
         20702400.0,
         20702700.0
       ],
-      "similarity": 83.6,
+      "similarity": 83.8,
       "after_ret": 1.97,
       "max_up_after": 2.48,
       "max_down_after": -1.3,
       "score_components": {
-        "five_minute": 81.9,
+        "five_minute": 82.1,
         "us_market": 88.2,
         "credit_supply": null
       },
@@ -6498,12 +6516,12 @@
         34372100.0,
         34372200.0
       ],
-      "similarity": 83.1,
+      "similarity": 83.0,
       "after_ret": 0.29,
       "max_up_after": 0.54,
       "max_down_after": -1.13,
       "score_components": {
-        "five_minute": 80.3,
+        "five_minute": 80.2,
         "us_market": 90.3,
         "credit_supply": null
       },
@@ -6663,7 +6681,7 @@
     "max_up_after": 0.18,
     "max_down_after": -0.85,
     "score_components": {
-      "five_minute": 86.5,
+      "five_minute": 86.4,
       "us_market": 88.0,
       "credit_supply": null
     },
