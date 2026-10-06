@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-10-06 11:06:40 JST",
+  "updated_at": "2026-10-06 11:09:26 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3222,9 +3222,9 @@
     },
     {
       "date": "2026-10-06",
-      "ret": -1.92,
+      "ret": -1.82,
       "high": 1.13,
-      "low": -2.05,
+      "low": -2.16,
       "type": "寄り天",
       "bars": 22,
       "path": [
@@ -3249,7 +3249,7 @@
         -1.632,
         -1.947,
         -1.921,
-        -1.921
+        -1.816
       ],
       "volume_path": [
         970000.0,
@@ -3273,15 +3273,15 @@
         12003500.0,
         12730700.0,
         13412000.0,
-        13634900.0
+        14283800.0
       ]
     }
   ],
   "current": {
     "date": "2026-10-06",
-    "ret": -1.92,
+    "ret": -1.82,
     "high": 1.13,
-    "low": -2.05,
+    "low": -2.16,
     "type": "寄り天",
     "bars": 22,
     "path": [
@@ -3306,7 +3306,7 @@
       -1.632,
       -1.947,
       -1.921,
-      -1.921
+      -1.816
     ],
     "volume_path": [
       970000.0,
@@ -3330,7 +3330,7 @@
       12003500.0,
       12730700.0,
       13412000.0,
-      13634900.0
+      14283800.0
     ]
   },
   "current_1m": [
@@ -4290,11 +4290,38 @@
     },
     {
       "t": "10:51",
-      "o": -1.8684,
-      "h": -1.8684,
-      "l": -1.8684,
+      "o": -1.8947,
+      "h": -1.7632,
+      "l": -2.1579,
+      "c": -1.8158,
+      "price": 18655.0,
+      "v": 343400
+    },
+    {
+      "t": "10:52",
+      "o": -1.7895,
+      "h": -1.4211,
+      "l": -1.8947,
+      "c": -1.8421,
+      "price": 18650.0,
+      "v": 239800
+    },
+    {
+      "t": "10:53",
+      "o": -1.8421,
+      "h": -1.7632,
+      "l": -1.9211,
       "c": -1.8684,
       "price": 18645.0,
+      "v": 65700
+    },
+    {
+      "t": "10:54",
+      "o": -1.7895,
+      "h": -1.7895,
+      "l": -1.7895,
+      "c": -1.7895,
+      "price": 18660.0,
       "v": 0
     }
   ],
@@ -4302,14 +4329,14 @@
   "one_minute_verified": true,
   "technical_levels": {
     "session_open": 19000.0,
-    "daily_ma5": 18820.0,
+    "daily_ma5": 18824.0,
     "pivot_p": 19320.0,
     "pivot_r1": 19555.0,
     "pivot_s1": 18890.0,
     "or15_high": 19215.0,
     "or15_low": 18980.0,
     "return_pct": {
-      "daily_ma5": -0.9474,
+      "daily_ma5": -0.9263,
       "pivot_p": 1.6842,
       "pivot_r1": 2.9211,
       "pivot_s1": -0.5789,
@@ -4456,12 +4483,12 @@
         24519200.0,
         24904200.0
       ],
-      "similarity": 89.6,
+      "similarity": 89.5,
       "after_ret": 2.84,
       "max_up_after": 3.0,
       "max_down_after": -0.32,
       "score_components": {
-        "five_minute": 90.1,
+        "five_minute": 90.0,
         "us_market": 88.2,
         "credit_supply": null
       },
@@ -4615,7 +4642,7 @@
         21823500.0,
         22073900.0
       ],
-      "similarity": 87.6,
+      "similarity": 87.7,
       "after_ret": -0.26,
       "max_up_after": 2.15,
       "max_down_after": -0.38,
@@ -4774,12 +4801,12 @@
         25418900.0,
         25419300.0
       ],
-      "similarity": 87.1,
+      "similarity": 87.0,
       "after_ret": -0.71,
       "max_up_after": 0.42,
       "max_down_after": -1.54,
       "score_components": {
-        "five_minute": 88.5,
+        "five_minute": 88.3,
         "us_market": 83.6,
         "credit_supply": null
       },
@@ -5104,12 +5131,12 @@
         29587000.0,
         29587100.0
       ],
-      "similarity": 84.0,
+      "similarity": 83.9,
       "after_ret": -5.01,
       "max_up_after": 0.26,
       "max_down_after": -5.03,
       "score_components": {
-        "five_minute": 81.6,
+        "five_minute": 81.5,
         "us_market": 90.0,
         "credit_supply": null
       },
@@ -5264,12 +5291,12 @@
       24519200.0,
       24904200.0
     ],
-    "similarity": 89.6,
+    "similarity": 89.5,
     "after_ret": 2.84,
     "max_up_after": 3.0,
     "max_down_after": -0.32,
     "score_components": {
-      "five_minute": 90.1,
+      "five_minute": 90.0,
       "us_market": 88.2,
       "credit_supply": null
     },
@@ -5343,87 +5370,80 @@
   "gap_studies": [
     {
       "bucket": "GD 5%以上",
-      "sample": 7,
+      "sample": 3,
       "usable": true,
-      "or15_up_rate": 0.0,
-      "close_up_rate": 14.3,
+      "source": "検証済み日足OHLC",
+      "close_up_rate": 33.3,
       "gap_fill_rate": 0.0,
-      "median_day_ret": -2.46,
-      "median_max_up": 1.52,
-      "median_max_down": -3.52,
-      "median_or15_range": 3.62
+      "median_day_ret": -1.92,
+      "median_max_up": 2.07,
+      "median_max_down": -3.52
     },
     {
       "bucket": "GD 3–5%",
-      "sample": 4,
-      "usable": true,
-      "or15_up_rate": 100.0,
+      "sample": 1,
+      "usable": false,
+      "source": "検証済み日足OHLC",
       "close_up_rate": 100.0,
       "gap_fill_rate": 100.0,
-      "median_day_ret": 7.4,
-      "median_max_up": 8.92,
-      "median_max_down": -0.78,
-      "median_or15_range": 6.16
+      "median_day_ret": 8.44,
+      "median_max_up": 8.44,
+      "median_max_down": -0.26
     },
     {
       "bucket": "GD 1–3%",
-      "sample": 8,
+      "sample": 9,
       "usable": true,
-      "or15_up_rate": 50.0,
-      "close_up_rate": 37.5,
-      "gap_fill_rate": 62.5,
-      "median_day_ret": -1.56,
-      "median_max_up": 1.67,
-      "median_max_down": -2.57,
-      "median_or15_range": 1.81
+      "source": "検証済み日足OHLC",
+      "close_up_rate": 55.6,
+      "gap_fill_rate": 77.8,
+      "median_day_ret": 2.0,
+      "median_max_up": 3.85,
+      "median_max_down": -0.99
     },
     {
       "bucket": "±1%以内",
-      "sample": 12,
+      "sample": 10,
       "usable": true,
-      "or15_up_rate": 75.0,
-      "close_up_rate": 66.7,
-      "gap_fill_rate": 83.3,
-      "median_day_ret": 1.8,
-      "median_max_up": 2.7,
-      "median_max_down": -1.2,
-      "median_or15_range": 2.45
+      "source": "検証済み日足OHLC",
+      "close_up_rate": 60.0,
+      "gap_fill_rate": 90.0,
+      "median_day_ret": 1.38,
+      "median_max_up": 1.75,
+      "median_max_down": -2.72
     },
     {
       "bucket": "GU 1–3%",
-      "sample": 13,
+      "sample": 11,
       "usable": true,
-      "or15_up_rate": 46.2,
-      "close_up_rate": 38.5,
-      "gap_fill_rate": 69.2,
-      "median_day_ret": -2.37,
-      "median_max_up": 1.07,
-      "median_max_down": -3.59,
-      "median_or15_range": 2.84
+      "source": "検証済み日足OHLC",
+      "close_up_rate": 36.4,
+      "gap_fill_rate": 54.5,
+      "median_day_ret": -0.45,
+      "median_max_up": 1.48,
+      "median_max_down": -2.73
     },
     {
       "bucket": "GU 3–5%",
-      "sample": 5,
-      "usable": true,
-      "or15_up_rate": 60.0,
-      "close_up_rate": 80.0,
-      "gap_fill_rate": 40.0,
-      "median_day_ret": 0.29,
-      "median_max_up": 3.02,
-      "median_max_down": -3.47,
-      "median_or15_range": 3.2
+      "sample": 2,
+      "usable": false,
+      "source": "検証済み日足OHLC",
+      "close_up_rate": 50.0,
+      "gap_fill_rate": 50.0,
+      "median_day_ret": -1.84,
+      "median_max_up": 1.36,
+      "median_max_down": -3.92
     },
     {
       "bucket": "GU 5%以上",
-      "sample": 9,
+      "sample": 3,
       "usable": true,
-      "or15_up_rate": 44.4,
+      "source": "検証済み日足OHLC",
       "close_up_rate": 33.3,
-      "gap_fill_rate": 11.1,
-      "median_day_ret": -3.04,
+      "gap_fill_rate": 0.0,
+      "median_day_ret": -1.26,
       "median_max_up": 3.09,
-      "median_max_down": -4.49,
-      "median_or15_range": 3.07
+      "median_max_down": -1.43
     }
   ],
   "forecast_turns": [
