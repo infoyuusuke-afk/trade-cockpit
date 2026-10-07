@@ -1,6 +1,6 @@
 param(
     [string]$RepoRoot = "",
-    [string]$Branch = "fix/v9-ui-voice-convergence",
+    [string]$Branch = "cursor/p0-stale-price-failclosed-d483",
     [string]$ExpectedSha = "",
     [switch]$SkipGitUpdate,
     [string]$RuntimeDirOverride = "",
@@ -10,10 +10,9 @@ param(
     [switch]$RuntimeAcceptSelfTest
 )
 
-# One-shot entry point: update (git fetch/checkout a PINNED branch, or an
-# exact SHA if given) + backup (previous V8 logs/state, timestamped) +
-# start (Controller V8), so the person running this never has to type
-# several separate diagnostic commands by hand.
+# V10 canonical entry point: verify the current checkout, deploy the
+# runtime data workers, then start the V10 Controller. Production startup
+# never mutates git. V8/V9 are not part of the V10 execution path.
 #
 # 2026-09-25 P0 fix: $Branch used to default to "" and silently fall back
 # to "whatever branch this checkout happens to be on right now" - an
