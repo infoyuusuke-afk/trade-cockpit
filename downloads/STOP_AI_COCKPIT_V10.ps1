@@ -75,6 +75,38 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
     } catch { return $false }
 }
 
+
+function Stop-VerifiedHiddenManagedExcelOrphan([int]$ExcelPid,[string]$WorkbookPath) {
+    if ($ExcelPid -le 0 -or [string]::IsNullOrWhiteSpace($WorkbookPath)) { return $false }
+    $xp = Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue
+    if ($null -eq $xp) { return $true }
+
+    try {
+        $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ExcelPid) -ErrorAction Stop
+        $cmd = [string]$info.CommandLine
+        $selfSession = [int](Get-Process -Id $PID -ErrorAction Stop).SessionId
+        $sameSession = ([int]$xp.SessionId -eq $selfSession)
+        $isExcel = ([string]$xp.ProcessName -ieq "EXCEL")
+        $isHidden = ($xp.MainWindowHandle -eq 0)
+        $hasCanonicalPath = (-not [string]::IsNullOrWhiteSpace($cmd) -and $cmd.IndexOf($WorkbookPath,[StringComparison]::OrdinalIgnoreCase) -ge 0)
+
+        $otherExcel = @(
+            Get-Process EXCEL -ErrorAction SilentlyContinue |
+            Where-Object { $_.Id -ne $ExcelPid -and $_.SessionId -eq $selfSession }
+        )
+
+        if ($isExcel -and $sameSession -and $isHidden -and $hasCanonicalPath -and $otherExcel.Count -eq 0) {
+            Stop-Process -Id $ExcelPid -Force -ErrorAction Stop
+            foreach ($attempt in 1..20) {
+                Start-Sleep -Milliseconds 250
+                if ($null -eq (Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue)) { return $true }
+            }
+        }
+    } catch {}
+
+    return ($null -eq (Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue))
+}
+
 function Close-VerifiedManagedExcelNoSave([int]$ExcelPid,[string]$WorkbookPath) {
     if ($ExcelPid -le 0 -or [string]::IsNullOrWhiteSpace($WorkbookPath)) { return $false }
 
@@ -234,10 +266,17 @@ if ($excelPid -gt 0 -and -not [string]::IsNullOrWhiteSpace($workbookName) -and -
         if ($isExcel -and $sameSession -and $hasCanonicalPath -and $titleMatches) {
             Write-Host ("Closing verified V10 runtime workbook without saving transient RSS changes (PID " + $excelPid + ") ...") -ForegroundColor Yellow
             $excelCleanupOk = Close-VerifiedManagedExcelNoSave $excelPid $workbookPath
+            if (-not $excelCleanupOk) {
+                $remaining = Get-Process -Id $excelPid -ErrorAction SilentlyContinue
+                if ($null -ne $remaining -and $remaining.MainWindowHandle -eq 0) {
+                    Write-Host ("Verified V10 Excel PID " + $excelPid + " became a hidden orphan after no-save close; attempting bounded PID-only cleanup...") -ForegroundColor Yellow
+                    $excelCleanupOk = Stop-VerifiedHiddenManagedExcelOrphan $excelPid $workbookPath
+                }
+            }
             if ($excelCleanupOk) {
-                Write-Host ("Verified V10 Excel PID " + $excelPid + " closed without save prompt.") -ForegroundColor Green
+                Write-Host ("Verified V10 Excel PID " + $excelPid + " closed without save prompt and no orphan remains.") -ForegroundColor Green
             } else {
-                Write-Host ("Verified V10 Excel PID " + $excelPid + " could not be closed safely without a prompt. It was NOT force-killed; state is retained.") -ForegroundColor Red
+                Write-Host ("Verified V10 Excel PID " + $excelPid + " could not be fully closed safely; state is retained.") -ForegroundColor Red
             }
         } else {
             Write-Host ("Tracked Excel PID " + $excelPid + " failed ownership checks; not touching it and retaining state.") -ForegroundColor Red
