@@ -1,0 +1,257 @@
+
+param(
+    [int]$Port = 28583,
+    [string]$SbV2BaseUrl = "http://127.0.0.1:5000",
+    [string]$ModelName = "amitaro",
+    [string]$SpeakerName = "",
+    [string]$Style = "Neutral",
+    [string]$StatePath = "C:\AI_Cockpit_OneClick_Starter\V10_VOICE_STATE.json"
+)
+
+$ErrorActionPreference = "Stop"
+$utf8 = New-Object System.Text.UTF8Encoding($false)
+$listener = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback,[int]$Port)
+
+function U([int[]]$CodePoints){
+    $sb = [Text.StringBuilder]::new()
+    foreach($cp in $CodePoints){ [void]$sb.Append([char]$cp) }
+    return $sb.ToString()
+}
+
+if([string]::IsNullOrWhiteSpace($SpeakerName)){
+    $SpeakerName = U @(12354,12415,12383,12429)
+}
+
+$script:VoiceEnabled = $true
+
+function Load-VoiceState {
+    try {
+        if(Test-Path -LiteralPath $StatePath){
+            $j=[IO.File]::ReadAllText($StatePath,[Text.Encoding]::UTF8)|ConvertFrom-Json
+            if($null -ne $j.enabled){ $script:VoiceEnabled=[bool]$j.enabled }
+        }
+    } catch {}
+}
+
+function Save-VoiceState {
+    try {
+        $dir=Split-Path -Parent $StatePath
+        if($dir -and -not(Test-Path -LiteralPath $dir)){ New-Item -ItemType Directory -Path $dir -Force|Out-Null }
+        $tmp=$StatePath+"."+[Guid]::NewGuid().ToString("N")+".tmp"
+        $obj=[ordered]@{enabled=[bool]$script:VoiceEnabled;updated_at=(Get-Date).ToString("o")}
+        [IO.File]::WriteAllText($tmp,($obj|ConvertTo-Json -Compress),[Text.UTF8Encoding]::new($false))
+        Move-Item -LiteralPath $tmp -Destination $StatePath -Force
+    } catch {}
+}
+Load-VoiceState
+
+function Test-TcpPort([int]$p,[int]$timeoutMs=350){
+    $c = New-Object Net.Sockets.TcpClient
+    try {
+        $a=$c.BeginConnect("127.0.0.1",$p,$null,$null)
+        if(-not $a.AsyncWaitHandle.WaitOne($timeoutMs,$false)){ return $false }
+        $c.EndConnect($a); return $true
+    } catch { return $false }
+    finally { try{$c.Close()}catch{} }
+}
+
+function Test-Sbv2Ready {
+    if(-not (Test-TcpPort 5000 300)){ return $false }
+    try {
+        $r=Invoke-WebRequest -UseBasicParsing -Uri ($SbV2BaseUrl.TrimEnd("/") + "/status") -TimeoutSec 2
+        return $r.StatusCode -eq 200
+    } catch { return $false }
+}
+
+function Parse-Query([string]$query){
+    $h=@{}
+    if([string]::IsNullOrWhiteSpace($query)){ return $h }
+    foreach($pair in $query.TrimStart("?").Split("&")){
+        if([string]::IsNullOrWhiteSpace($pair)){ continue }
+        $kv=$pair.Split("=",2)
+        $k=[Uri]::UnescapeDataString(($kv[0] -replace "\+"," "))
+        $v=""
+        if($kv.Count -gt 1){ $v=[Uri]::UnescapeDataString(($kv[1] -replace "\+"," ")) }
+        $h[$k]=$v
+    }
+    return $h
+}
+
+function Normalize-SpeechText([string]$text){
+    if([string]::IsNullOrWhiteSpace($text)){ return "" }
+    $s=$text
+    $pairs = @(
+        @("AI"+(U @(12467,12463,12500,12483,12488)),"AI"+(U @(12371,12367,12404,12387,12392))),
+        @((U @(12461,12458,12463,12471,12450)),(U @(12365,12362,12367,12375,12354))),
+        @("VWAP"+(U @(19978)),(U @(12406,12356,12431,12387,12407,12289,12358,12360))),
+        @("VWAP"+(U @(19979)),(U @(12406,12356,12431,12387,12407,12289,12375,12383))),
+        @("VWAP",(U @(12406,12356,12431,12387,12407))),
+        @("OR15",(U @(12362,12540,12354,12540,12427,12289,12376,12421,12358,12372))),
+        @("OR5",(U @(12362,12540,12354,12540,12427,12289,12372))),
+        @("EMA20",(U @(12356,12540,12360,12416,12360,12540,12289,12395,12376,12421,12358))),
+        @("EMA9",(U @(12356,12540,12360,12416,12360,12540,12289,12365,12421,12358))),
+        @("EMA",(U @(12356,12540,12360,12416,12360,12540))),
+        @("GU",(U @(12366,12419,12387,12407,12354,12387,12407))),
+        @("GD",(U @(12366,12419,12387,12407,12384,12358,12435))),
+        @((U @(27497,12415,20516)),(U @(12354,12422,12415,12397)))
+    )
+    foreach($pair in $pairs){ $s=$s.Replace([string]$pair[0],[string]$pair[1]) }
+    return $s.Replace("%",(U @(12497,12540,12475,12531,12488)))
+}
+
+function Get-Profile([string]$level){
+    switch(($level+"").ToUpperInvariant()){
+        "HOT"    { return @{length=1.03;weight=0.70;split=0.35} }
+        "DANGER" { return @{length=1.10;weight=0.80;split=0.45} }
+        "WATCH"  { return @{length=1.13;weight=0.50;split=0.50} }
+        default  { return @{length=1.20;weight=0.35;split=0.60} }
+    }
+}
+
+function To-Inv([double]$v){ return $v.ToString([Globalization.CultureInfo]::InvariantCulture) }
+
+function Invoke-Sbv2Wav([string]$text,[string]$level){
+    if(-not (Test-Sbv2Ready)){ throw "SBV2_OFFLINE" }
+    $normalized=Normalize-SpeechText $text
+    if([string]::IsNullOrWhiteSpace($normalized)){ throw "EMPTY_TEXT" }
+    if($normalized.Length -gt 500){ $normalized=$normalized.Substring(0,500) }
+    $p=Get-Profile $level
+    $q=[ordered]@{
+        text=$normalized
+        model_name=$ModelName
+        speaker_name=$SpeakerName
+        language="JP"
+        length=(To-Inv ([double]$p.length))
+        auto_split="true"
+        split_interval=(To-Inv ([double]$p.split))
+        style=$Style
+        style_weight=(To-Inv ([double]$p.weight))
+    }
+    $parts=@()
+    foreach($e in $q.GetEnumerator()){
+        $parts += ([Uri]::EscapeDataString([string]$e.Key)+"="+[Uri]::EscapeDataString([string]$e.Value))
+    }
+    $uri=$SbV2BaseUrl.TrimEnd("/")+"/voice?"+($parts -join "&")
+    $tmp=Join-Path $env:TEMP ("ai_cockpit_voice_bridge_"+[Guid]::NewGuid().ToString("N")+".wav")
+    try{
+        Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $tmp -TimeoutSec 30 | Out-Null
+        if(-not(Test-Path -LiteralPath $tmp) -or (Get-Item -LiteralPath $tmp).Length -lt 1000){ throw "SBV2_EMPTY_AUDIO" }
+        return [IO.File]::ReadAllBytes($tmp)
+    } finally {
+        Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Send-Response($stream,[string]$status,[string]$contentType,[byte[]]$body){
+    $nl=[Environment]::NewLine
+    $headers="HTTP/1.1 "+$status+$nl+
+      "Content-Type: "+$contentType+$nl+
+      "Content-Length: "+$body.Length+$nl+
+      "Cache-Control: no-store"+$nl+
+      "Access-Control-Allow-Origin: *"+$nl+
+      "Access-Control-Allow-Methods: GET, OPTIONS"+$nl+
+      "Access-Control-Allow-Headers: *"+$nl+
+      "Access-Control-Allow-Private-Network: true"+$nl+
+      "Connection: close"+$nl+$nl
+    $hb=[Text.Encoding]::ASCII.GetBytes($headers)
+    $stream.Write($hb,0,$hb.Length)
+    if($body.Length -gt 0){ $stream.Write($body,0,$body.Length) }
+    $stream.Flush()
+}
+
+function Send-Json($stream,[string]$status,$obj){
+    $json=$obj|ConvertTo-Json -Depth 4 -Compress
+    Send-Response $stream $status "application/json; charset=utf-8" ($utf8.GetBytes($json))
+}
+
+$listener.Start()
+Write-Host ("AI Cockpit Voice Bridge V10 READY / 127.0.0.1:"+$Port) -ForegroundColor Green
+try{
+    while($true){
+        $client=$listener.AcceptTcpClient()
+        try{
+            $stream=$client.GetStream()
+            $reader=[IO.StreamReader]::new($stream,[Text.Encoding]::ASCII,$false,4096,$true)
+            $requestLine=$reader.ReadLine()
+            while(($line=$reader.ReadLine()) -ne $null -and $line -ne ""){}
+            if([string]::IsNullOrWhiteSpace($requestLine)){ continue }
+            $parts=$requestLine -split " "
+            $method=$parts[0]
+            $target=if($parts.Count -ge 2){$parts[1]}else{"/"}
+            if($method -eq "OPTIONS"){
+                Send-Response $stream "204 No Content" "text/plain" ([byte[]]@()); continue
+            }
+            if($method -ne "GET"){
+                Send-Json $stream "405 Method Not Allowed" @{ok=$false;error="GET_ONLY"}; continue
+            }
+            $uri=[Uri]("http://127.0.0.1:"+$Port+$target)
+            $path=$uri.AbsolutePath
+            if($path -eq "/health"){
+                $ready=Test-Sbv2Ready
+                Send-Json $stream "200 OK" @{ok=$true;backend="Style-Bert-VITS2";model=$ModelName;speaker=$SpeakerName;sbv2_ready=$ready;enabled=[bool]$script:VoiceEnabled;port=$Port}
+                continue
+            }
+            if($path -eq "/control"){
+                $q=Parse-Query $uri.Query
+                $raw=[string]$q["enabled"]
+                if($raw -notin @("1","0","true","false","on","off")){
+                    Send-Json $stream "400 Bad Request" @{ok=$false;error="INVALID_ENABLED"}; continue
+                }
+                $script:VoiceEnabled=($raw -in @("1","true","on"))
+                Save-VoiceState
+                Send-Json $stream "200 OK" @{ok=$true;enabled=[bool]$script:VoiceEnabled;backend="Style-Bert-VITS2"}
+                continue
+            }
+            if($path -notin @("/speak","/announce")){
+                Send-Json $stream "404 Not Found" @{ok=$false;error="NOT_FOUND"}; continue
+            }
+            $q=Parse-Query $uri.Query
+            $text=[string]$q["text"]
+            $level=[string]$q["level"]
+            if([string]::IsNullOrWhiteSpace($level)){ $level="CALM" }
+            if([string]::IsNullOrWhiteSpace($text)){
+                Send-Json $stream "400 Bad Request" @{ok=$false;error="EMPTY_TEXT"}; continue
+            }
+
+            if(-not $script:VoiceEnabled){
+                if($path -eq "/announce"){
+                    Send-Json $stream "200 OK" @{ok=$true;skipped=$true;reason="VOICE_OFF";enabled=$false;backend="Style-Bert-VITS2"}
+                } else {
+                    Send-Response $stream "204 No Content" "text/plain" ([byte[]]@())
+                }
+                continue
+            }
+
+            $mutex=$null; $acquired=$false
+            try{
+                $mutex=[System.Threading.Mutex]::new($false,"Global\KioxiaVoiceMutex")
+                $acquired=$mutex.WaitOne(20000)
+                if(-not $acquired){ throw "VOICE_BUSY" }
+                $wav=Invoke-Sbv2Wav $text $level
+                if($path -eq "/announce"){
+                    $tmp=Join-Path $env:TEMP ("ai_cockpit_voice_play_"+[Guid]::NewGuid().ToString("N")+".wav")
+                    try{
+                        [IO.File]::WriteAllBytes($tmp,$wav)
+                        $player=[System.Media.SoundPlayer]::new($tmp)
+                        $player.Load(); $player.PlaySync(); $player.Dispose()
+                    } finally { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+                    Send-Json $stream "200 OK" @{ok=$true;backend="Style-Bert-VITS2";level=$level}
+                } else {
+                    Send-Response $stream "200 OK" "audio/wav" $wav
+                }
+            } catch {
+                $msg=$_.Exception.Message
+                $status=if($msg -eq "SBV2_OFFLINE"){"503 Service Unavailable"}elseif($msg -eq "VOICE_BUSY"){"429 Too Many Requests"}else{"500 Internal Server Error"}
+                Send-Json $stream $status @{ok=$false;error=$msg;backend="Style-Bert-VITS2"}
+            } finally {
+                if($acquired -and $null -ne $mutex){try{$mutex.ReleaseMutex()}catch{}}
+                if($null -ne $mutex){$mutex.Dispose()}
+            }
+        } catch {
+        } finally {
+            try{$client.Close()}catch{}
+        }
+    }
+} finally {
+    try{$listener.Stop()}catch{}
+}
