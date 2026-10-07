@@ -364,14 +364,20 @@ function Start-ShadowSupervisor([string]$RepoRootResolved, [string]$RuntimeDir) 
     $stdout = Join-Path $LogDir "shadow_supervisor_stdout.log"
     $stderr = Join-Path $LogDir "shadow_supervisor_stderr.log"
     Remove-Item -LiteralPath $stdout, $stderr -Force -ErrorAction SilentlyContinue
-    $argList = $prefix + @(
-        "-u", $scriptPath,
-        "--live", (Join-Path $RuntimeDir "live_ms2.json"),
-        "--data-dir", $dataDir,
-        "--status", $statusPath,
-        "--interval", "5"
+    # Windows PowerShell 5.1 does not reliably quote each element of an
+    # ArgumentList array. RuntimeDir contains spaces ("MarketSpeed II RSS"),
+    # so pass one explicitly-quoted argument string or Python receives the
+    # path as several unrelated arguments.
+    $prefixText = if ($prefix.Count -gt 0) { ($prefix -join " ") + " " } else { "" }
+    $argString = (
+        $prefixText +
+        '-u "' + $scriptPath + '" ' +
+        '--live "' + (Join-Path $RuntimeDir "live_ms2.json") + '" ' +
+        '--data-dir "' + $dataDir + '" ' +
+        '--status "' + $statusPath + '" ' +
+        '--interval 5'
     )
-    return Start-Process -FilePath $python -ArgumentList $argList -WorkingDirectory $RepoRootResolved `
+    return Start-Process -FilePath $python -ArgumentList $argString -WorkingDirectory $RepoRootResolved `
         -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
 }
 
