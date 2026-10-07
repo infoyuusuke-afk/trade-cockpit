@@ -1738,8 +1738,13 @@ try {
         #    not exit the Controller - the user can see this window.
         if ($state.gateway_pid -gt 0) {
             $gp = Get-Process -Id $state.gateway_pid -ErrorAction SilentlyContinue
-            if ($null -eq $gp) {
-                Write-Status "Gateway process is not running - UI is unreachable. Restarting it..." Red
+            $gatewayPortReady = Test-Port $PORT_GATEWAY 250
+            if ($null -eq $gp -or -not $gatewayPortReady) {
+                if ($null -ne $gp -and (Test-OwnedPidIdentity "gateway_pid" ([int]$state.gateway_pid))) {
+                    try { Stop-Process -Id ([int]$state.gateway_pid) -Force -ErrorAction SilentlyContinue } catch {}
+                    Start-Sleep -Milliseconds 250
+                }
+                Write-Status "Gateway is down or not listening - restarting one owned instance..." Red
                 $gatewayProc = Start-Worker -Name "gateway_retry" -Script $Gateway -WorkDir $RepoRootResolved -ExtraArgs $gatewayArgs
                 $state.gateway_pid = [int]$gatewayProc.Id
                 Save-State $state
@@ -1748,8 +1753,13 @@ try {
 
         if ($state.brain_gateway_pid -gt 0) {
             $bgp = Get-Process -Id $state.brain_gateway_pid -ErrorAction SilentlyContinue
-            if ($null -eq $bgp -or -not (Test-Port $PORT_BRAIN 250)) {
-                Write-Status "Brain Gateway is down - restarting under V10 Controller ownership..." Red
+            $brainPortReady = Test-Port $PORT_BRAIN 250
+            if ($null -eq $bgp -or -not $brainPortReady) {
+                if ($null -ne $bgp -and (Test-OwnedPidIdentity "brain_gateway_pid" ([int]$state.brain_gateway_pid))) {
+                    try { Stop-Process -Id ([int]$state.brain_gateway_pid) -Force -ErrorAction SilentlyContinue } catch {}
+                    Start-Sleep -Milliseconds 250
+                }
+                Write-Status "Brain Gateway is down or not listening - restarting one owned instance..." Red
                 $brainGatewayProc = Start-Worker -Name "brain_gateway_retry" -Script $Gateway -WorkDir $RepoRootResolved -ExtraArgs $brainGatewayArgs
                 $state.brain_gateway_pid = [int]$brainGatewayProc.Id
                 Save-State $state
