@@ -267,8 +267,21 @@ if ($excelPid -gt 0 -and -not [string]::IsNullOrWhiteSpace($workbookName) -and -
             Write-Host ("Closing verified V10 runtime workbook without saving transient RSS changes (PID " + $excelPid + ") ...") -ForegroundColor Yellow
             $excelCleanupOk = Close-VerifiedManagedExcelNoSave $excelPid $workbookPath
             if (-not $excelCleanupOk) {
-                $remaining = Get-Process -Id $excelPid -ErrorAction SilentlyContinue
-                if ($null -ne $remaining -and $remaining.MainWindowHandle -eq 0) {
+                # Excel can transition from a visible workbook window to a
+                # hidden orphan a moment AFTER Workbook.Close/Quit returns.
+                # Give that state transition a bounded wait before declaring
+                # cleanup failure.
+                $remaining = $null
+                foreach ($attempt in 1..20) {
+                    $remaining = Get-Process -Id $excelPid -ErrorAction SilentlyContinue
+                    if ($null -eq $remaining) {
+                        $excelCleanupOk = $true
+                        break
+                    }
+                    if ($remaining.MainWindowHandle -eq 0) { break }
+                    Start-Sleep -Milliseconds 250
+                }
+                if (-not $excelCleanupOk -and $null -ne $remaining -and $remaining.MainWindowHandle -eq 0) {
                     Write-Host ("Verified V10 Excel PID " + $excelPid + " became a hidden orphan after no-save close; attempting bounded PID-only cleanup...") -ForegroundColor Yellow
                     $excelCleanupOk = Stop-VerifiedHiddenManagedExcelOrphan $excelPid $workbookPath
                 }
