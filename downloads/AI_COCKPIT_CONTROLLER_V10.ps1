@@ -6,7 +6,7 @@ param(
     [switch]$IdentityProbeSelfTest
 )
 
-# AI Cockpit Controller V8
+# AI Cockpit Controller V10
 #
 # Rebuilt 2026-09-25 to fix two problems observed with V6/the draft V7:
 #   1. The Controller itself could sit blocked for up to 180s (Collector)
@@ -27,7 +27,7 @@ param(
 #     state file. Never enumerates and kills processes by scanning for
 #     "any Excel with no visible window" or similar broad heuristics -
 #     that risks killing a user's unrelated Excel session. (This is the
-#     one thing the draft V7 PR got wrong; V8 does not repeat it.)
+#     one thing the draft V7 PR got wrong; V10 does not repeat it.)
 #   - Collector is supervised independently: if it dies or never becomes
 #     ready, the Controller and the Gateway/UI stay up and the UI stays
 #     fail-closed. The Controller does not exit because Collector failed.
@@ -206,7 +206,7 @@ function Resolve-RuntimeDir([string]$Explicit) {
 function Resolve-RepoRoot([string]$Explicit) {
     if (-not [string]::IsNullOrWhiteSpace($Explicit)) { return $Explicit }
     # Prefer the folder this controller script itself lives two levels
-    # above (...\trade-cockpit\downloads\AI_COCKPIT_CONTROLLER_V8.ps1), if
+    # above (...\trade-cockpit\downloads\AI_COCKPIT_CONTROLLER_V10.ps1), if
     # that looks like a real checkout; otherwise fall back to a Desktop
     # search, same pattern as Resolve-RuntimeDir.
     $candidate = Split-Path -Parent $PSScriptRoot
@@ -790,7 +790,7 @@ function Add-ExcelIdentityIncident($Probe) {
         actions = @("startup aborted before AI SHADOW", "unrelated Excel was not stopped", "canonical workbook was not replaced", "the serious-error dialog was not clicked", "Excel was not relaunched")
         recurrence_key = $key
         recurrence_count = ($prior + 1)
-        log_refs = @("Logs/V9/identity_probe/progress.log", "Logs/V9/identity_probe/result.json", "Logs/V9/identity_probe/open_diagnostics.json")
+        log_refs = @("Logs/V10/identity_probe/progress.log", "Logs/V10/identity_probe/result.json", "Logs/V10/identity_probe/open_diagnostics.json")
         identity_checks = [ordered]@{
             full_name = [string]$Probe.full_name
             hwnd = $Probe.hwnd
@@ -863,7 +863,7 @@ function Invoke-ExcelIdentityProbe {
     foreach ($path in @($resultPath, $progressPath, $stdoutPath, $stderrPath)) {
         if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue }
     }
-    $helper = Join-Path $PSScriptRoot "EXCEL_IDENTITY_PROBE_V9.ps1"
+    $helper = Join-Path $PSScriptRoot "EXCEL_IDENTITY_PROBE_V10.ps1"
     if (-not (Test-Path -LiteralPath $helper)) {
         return @{ ok = $false; code = "EXCEL_IDENTITY_PROBE_FAILED"; elapsed = 0; helper_pid = 0; detail = "identity probe helper missing" }
     }
@@ -959,7 +959,7 @@ function Invoke-ExcelIdentityProbe {
 }
 
 function Invoke-ExcelIdentityProbeSelfTest {
-    $helper = Join-Path $PSScriptRoot "EXCEL_IDENTITY_PROBE_V9.ps1"
+    $helper = Join-Path $PSScriptRoot "EXCEL_IDENTITY_PROBE_V10.ps1"
     $progress = Join-Path ([IO.Path]::GetTempPath()) ("excel_identity_selftest_" + $PID + ".log")
     if (Test-Path -LiteralPath $progress) { Remove-Item -LiteralPath $progress -Force }
     $exe = (Get-Process -Id $PID).Path
@@ -1053,13 +1053,13 @@ try {
             Pop-Location -ErrorAction SilentlyContinue
         }
         if ($actualBranch -ne $ExpectedBranch) {
-            throw "Repo checkout is on branch '$actualBranch', expected '$ExpectedBranch'. Refusing to start (fail-closed) - run RUN_AI_COCKPIT_V9.ps1, which pins and verifies the branch before ever reaching this point."
+            throw "Repo checkout is on branch '$actualBranch', expected '$ExpectedBranch'. Refusing to start (fail-closed) - run RUN_AI_COCKPIT_V10.ps1, which pins and verifies the branch before ever reaching this point."
         }
         Write-Status ("  branch:  " + $actualBranch + " (matches expected)") Green
     }
 
     # 2026-09-25 P0 fix: repo-updated must never be assumed to mean
-    # runtime-updated. RUN_AI_COCKPIT_V9.ps1 deploys Watcher/Heartbeat/
+    # runtime-updated. RUN_AI_COCKPIT_V10.ps1 deploys Watcher/Heartbeat/
     # Collector into RuntimeDir and records their SHA256 in V10_RUNTIME.json;
     # this recomputes the hash of what's ACTUALLY sitting in RuntimeDir
     # right now and refuses to start if it doesn't match what was deployed
@@ -1067,11 +1067,11 @@ try {
     # fail closed here rather than silently running mismatched code).
     $runtimeManifestPath = Join-Path $Root "V10_RUNTIME.json"
     if (-not (Test-Path -LiteralPath $runtimeManifestPath)) {
-        throw "No V10_RUNTIME.json found - runtime scripts were never deployed to RuntimeDir. Run RUN_AI_COCKPIT_V9.ps1 (not this controller directly) so it deploys Watcher/Heartbeat/Collector before starting."
+        throw "No V10_RUNTIME.json found - runtime scripts were never deployed to RuntimeDir. Run RUN_AI_COCKPIT_V10.ps1 (not this controller directly) so it deploys Watcher/Heartbeat/Collector before starting."
     }
     $runtimeManifest = Read-JsonUtf8 $runtimeManifestPath
     if ($runtimeManifest.runtime_dir -ne $RuntimeDir) {
-        throw "V10_RUNTIME.json was deployed for a different RuntimeDir (" + $runtimeManifest.runtime_dir + ") than the one resolved now (" + $RuntimeDir + "). Re-run RUN_AI_COCKPIT_V9.ps1."
+        throw "V10_RUNTIME.json was deployed for a different RuntimeDir (" + $runtimeManifest.runtime_dir + ") than the one resolved now (" + $RuntimeDir + "). Re-run RUN_AI_COCKPIT_V10.ps1."
     }
     foreach ($name in @(
         "Kioxia_RSS_Live_Watcher.ps1",
@@ -1085,15 +1085,15 @@ try {
     )) {
         $expectedHash = $runtimeManifest.files.$name
         if ([string]::IsNullOrWhiteSpace($expectedHash)) {
-            throw "V10_RUNTIME.json has no recorded hash for $name. Re-run RUN_AI_COCKPIT_V9.ps1."
+            throw "V10_RUNTIME.json has no recorded hash for $name. Re-run RUN_AI_COCKPIT_V10.ps1."
         }
         $actualPath = Join-Path $RuntimeDir $name
         if (-not (Test-Path -LiteralPath $actualPath)) {
-            throw "Runtime file missing: $actualPath. Re-run RUN_AI_COCKPIT_V9.ps1."
+            throw "Runtime file missing: $actualPath. Re-run RUN_AI_COCKPIT_V10.ps1."
         }
         $actualHash = (Get-FileHash -LiteralPath $actualPath -Algorithm SHA256).Hash
         if ($actualHash -ne $expectedHash) {
-            throw "Runtime file $name does not match the deployed manifest (RuntimeDir file was changed or reverted since deploy). Re-run RUN_AI_COCKPIT_V9.ps1 to redeploy - refusing to start against unverified runtime code."
+            throw "Runtime file $name does not match the deployed manifest (RuntimeDir file was changed or reverted since deploy). Re-run RUN_AI_COCKPIT_V10.ps1 to redeploy - refusing to start against unverified runtime code."
         }
     }
     Write-Status ("  runtime files: verified against V10_RUNTIME.json (deployed " + $runtimeManifest.deployed_at + ")") Green
@@ -1116,7 +1116,7 @@ try {
     Stop-OwnedFromPreviousState
     Start-Sleep -Milliseconds 500
 
-    Write-Status "Stopping obsolete voice-only workers so old SAPI cannot leak into V9..."
+    Write-Status "Stopping obsolete voice-only workers so old SAPI cannot leak into V10..."
     Stop-LegacyVoiceWorkers
 
     Write-Status "Checking for foreign sessions on 28580/28581/28582/28583..."
@@ -1135,7 +1135,7 @@ try {
         Write-Host "==================================================" -ForegroundColor Red
         foreach ($h in $foreignHits) { Write-Host ("  " + $h) -ForegroundColor Yellow }
         Write-Host ""
-        Write-Host "Another process (an old V6/V7 session, a stale V8 run this" -ForegroundColor Cyan
+        Write-Host "Another process (an old V6/V7 session, a stale legacy run this" -ForegroundColor Cyan
         Write-Host "controller doesn't recognize, or something unrelated) already" -ForegroundColor Cyan
         Write-Host "owns one of these ports. Not killing it automatically - stop it" -ForegroundColor Cyan
         Write-Host "yourself (Task Manager, or the matching STOP_*.ps1 script) and" -ForegroundColor Cyan
