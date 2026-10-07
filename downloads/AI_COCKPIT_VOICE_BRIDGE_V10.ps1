@@ -5,7 +5,7 @@ param(
     [string]$ModelName = "amitaro",
     [string]$SpeakerName = "",
     [string]$Style = "Neutral",
-    [string]$StatePath = "C:\AI_Cockpit_OneClick_Starter\V9_VOICE_STATE.json"
+    [string]$StatePath = "C:\AI_Cockpit_OneClick_Starter\V10_VOICE_STATE.json"
 )
 
 $ErrorActionPreference = "Stop"
@@ -165,7 +165,7 @@ function Send-Json($stream,[string]$status,$obj){
 }
 
 $listener.Start()
-Write-Host ("AI Cockpit Voice Bridge V9 READY / 127.0.0.1:"+$Port) -ForegroundColor Green
+Write-Host ("AI Cockpit Voice Bridge V10 READY / 127.0.0.1:"+$Port) -ForegroundColor Green
 try{
     while($true){
         $client=$listener.AcceptTcpClient()

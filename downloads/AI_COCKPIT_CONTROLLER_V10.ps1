@@ -6,7 +6,7 @@ param(
     [switch]$IdentityProbeSelfTest
 )
 
-# AI Cockpit Controller V8
+# AI Cockpit Controller V10
 #
 # Rebuilt 2026-09-25 to fix two problems observed with V6/the draft V7:
 #   1. The Controller itself could sit blocked for up to 180s (Collector)
@@ -17,7 +17,7 @@ param(
 #      Gateway proxies every page from the PUBLIC GitHub Pages site
 #      (main branch), not from this local checkout. Until those PRs merge
 #      to main, no amount of local script changes makes them visible
-#      through that Gateway. Fixed by AI_COCKPIT_GATEWAY_V9.ps1, which
+#      through that Gateway. Fixed by AI_COCKPIT_GATEWAY_V10.ps1, which
 #      serves index.html/card_system.*/etc. directly from $RepoRoot on
 #      disk - "checkout the branch you want live" IS the deploy step, and
 #      /health reports exactly which git branch/commit is being served.
@@ -27,7 +27,7 @@ param(
 #     state file. Never enumerates and kills processes by scanning for
 #     "any Excel with no visible window" or similar broad heuristics -
 #     that risks killing a user's unrelated Excel session. (This is the
-#     one thing the draft V7 PR got wrong; V8 does not repeat it.)
+#     one thing the draft V7 PR got wrong; V10 does not repeat it.)
 #   - Collector is supervised independently: if it dies or never becomes
 #     ready, the Controller and the Gateway/UI stay up and the UI stays
 #     fail-closed. The Controller does not exit because Collector failed.
@@ -37,11 +37,14 @@ param(
 #     exit" like V6) so it can react to Collector dying or Excel closing
 #     without the user re-running anything.
 #   - Never touches real_submit_allowed, RssOrder, or any order/broker
-#     path. Only supervises the existing read-only Watcher/Collector/
-#     Heartbeat/Gateway processes and the Excel process that hosts them.
+#     path. Supervises the existing read-only Watcher/Collector/
+#     Heartbeat/Gateway processes, one AI SHADOW supervisor, and the
+#     Excel process that hosts the workbook. The shadow supervisor does
+#     not attach to Excel and does not keep running trades after this
+#     controller stops the data path.
 
 $ErrorActionPreference = "Stop"
-$Build = "V9-CONTROLLER-20261002-IDENTITY-PROBE-01"
+$Build = "V10-CONTROLLER-20261007-UNIFIED-LIFECYCLE-01"
 $ExcelIdentityProbeTimeoutSeconds = 35
 $sw = [Diagnostics.Stopwatch]::StartNew()
 
@@ -53,6 +56,7 @@ $PORT_COLLECTOR = 28580
 $PORT_GATEWAY = 28581
 $PORT_WATCHER = 28582
 $PORT_VOICE = 28583
+$PORT_BRAIN = 28584
 
 # ---------------------------------------------------------------- utility
 
@@ -64,7 +68,7 @@ function Write-Status([string]$Message, [ConsoleColor]$Color = [ConsoleColor]::C
 # 2026-09-25 fix: Windows PowerShell 5.1's `Get-Content -Raw` does not
 # reliably treat a BOM-less UTF-8 file as UTF-8 - it can fall back to the
 # system ANSI codepage (Shift-JIS on this machine), corrupting the
-# Japanese RuntimeDir path in V9_RUNTIME.json/V9_CONTROLLER_STATE.json on
+# Japanese RuntimeDir path in V10_RUNTIME.json/V10_CONTROLLER_STATE.json on
 # read-back even though they were written as UTF-8. This is what actually
 # stopped the Controller on the first real-machine run. Every JSON read in
 # this script goes through this helper instead of `Get-Content -Raw`.
@@ -140,7 +144,8 @@ function Test-ForeignSession([hashtable]$OwnPids) {
         @{ port = $PORT_COLLECTOR; label = "Collector" },
         @{ port = $PORT_GATEWAY; label = "Gateway" },
         @{ port = $PORT_WATCHER; label = "Watcher" },
-        @{ port = $PORT_VOICE; label = "VoiceBridge" }
+        @{ port = $PORT_VOICE; label = "VoiceBridge" },
+        @{ port = $PORT_BRAIN; label = "BrainGateway" }
     )) {
         if (-not (Test-Port $entry.port 300)) { continue }
         $owner = Get-ListeningOwnerPid $entry.port
@@ -201,7 +206,7 @@ function Resolve-RuntimeDir([string]$Explicit) {
 function Resolve-RepoRoot([string]$Explicit) {
     if (-not [string]::IsNullOrWhiteSpace($Explicit)) { return $Explicit }
     # Prefer the folder this controller script itself lives two levels
-    # above (窶ｦ\trade-cockpit\downloads\AI_COCKPIT_CONTROLLER_V8.ps1), if
+    # above (...\trade-cockpit\downloads\AI_COCKPIT_CONTROLLER_V10.ps1), if
     # that looks like a real checkout; otherwise fall back to a Desktop
     # search, same pattern as Resolve-RuntimeDir.
     $candidate = Split-Path -Parent $PSScriptRoot
@@ -242,10 +247,12 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
         "watcher_pid"      { "Kioxia_RSS_Live_Watcher.ps1" }
         "heartbeat_pid"    { "Kioxia_Safety_Heartbeat.ps1" }
         "collector_pid"    { "MS2_RSS_100_Collector.ps1" }
-        "gateway_pid"      { "AI_COCKPIT_GATEWAY_V9.ps1" }
-        "voice_bridge_pid" { "AI_COCKPIT_VOICE_BRIDGE_V9.ps1" }
+        "gateway_pid"      { "AI_COCKPIT_GATEWAY_V10.ps1" }
+        "brain_gateway_pid" { "AI_COCKPIT_GATEWAY_V10.ps1" }
+        "voice_bridge_pid" { "AI_COCKPIT_VOICE_BRIDGE_V10.ps1" }
         "sbv2_pid"         { "server_fastapi.py" }
-        "controller_pid"   { "AI_COCKPIT_CONTROLLER_V9.ps1" }
+        "shadow_supervisor_pid" { "ai_shadow_supervisor.py" }
+        "controller_pid"   { "AI_COCKPIT_CONTROLLER_V10.ps1" }
         default            { "" }
     }
     if ([string]::IsNullOrWhiteSpace($expected)) { return $false }
@@ -265,7 +272,7 @@ function Stop-OwnedFromPreviousState {
     if ($null -eq $prev) { return }
     Stop-OwnedJobBridge $PORT_COLLECTOR ([int]$prev.collector_pid) "Collector JSON" | Out-Null
     Stop-OwnedJobBridge $PORT_WATCHER ([int]$prev.watcher_pid) "Watcher JSON" | Out-Null
-    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid", "sbv2_pid", "controller_pid")) {
+    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid", "controller_pid")) {
         $val = $prev.PSObject.Properties[$field]
         if ($null -eq $val -or [int]$val.Value -le 0) { continue }
         $procId = [int]$val.Value
@@ -277,17 +284,16 @@ function Stop-OwnedFromPreviousState {
             Write-Status ("  previous PID " + $procId + " no longer matches " + $field + "; leaving it untouched") Yellow
         }
     }
-    # Excel is only ever stopped by exact PID + the same window-title match
-    # used when we detect a real close, never as part of routine cleanup -
-    # a leftover Excel PID from a previous crashed session might still be
-    # something the user is actively looking at.
+    # Excel is not stopped here and is not stopped before launch. A
+    # previous PID is not ownership. TerminateProcess on one Excel can
+    # close other Excel processes in the same session.
 }
 
 # A workbook title change does not establish ownership of the Excel process.
 # Release the workers' COM references; never force-kill Excel, which may also
 # host a user's other workbooks. A surviving Excel is reported for acceptance.
 function Stop-ManagedWorkersOnWorkbookClose($SessionState) {
-    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "voice_bridge_pid", "sbv2_pid")) {
+    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid")) {
         $workerPid = [int]$SessionState.$field
         if ($workerPid -le 0 -or $workerPid -eq [int]$SessionState.excel_pid) { continue }
         $worker = Get-Process -Id $workerPid -ErrorAction SilentlyContinue
@@ -303,6 +309,76 @@ function Start-Worker([string]$Name, [string]$Script, [string]$WorkDir, [string]
     $args = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $Script + '"'
     if (-not [string]::IsNullOrWhiteSpace($ExtraArgs)) { $args += " " + $ExtraArgs }
     return Start-Process -FilePath "powershell.exe" -ArgumentList $args -WorkingDirectory $WorkDir `
+        -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+}
+
+function Write-ShadowStoppedStatus([string]$StatusPath, [string]$Reason) {
+    $payload = [ordered]@{
+        schema_version = "ai-shadow-supervisor-1"
+        state = "STOPPED"
+        reason = $Reason
+        updated_at = (Get-Date).ToString("o")
+        real_submit_allowed = $false
+        ui_independent = $true
+        open_observation_count = $null
+        resume_blocked = $true
+    }
+    $parent = Split-Path -Parent $StatusPath
+    if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+    $tmp = $StatusPath + ".tmp"
+    [IO.File]::WriteAllText($tmp, ($payload | ConvertTo-Json -Depth 4), [Text.UTF8Encoding]::new($false))
+    Move-Item -LiteralPath $tmp -Destination $StatusPath -Force
+}
+
+function Start-ShadowSupervisor([string]$RepoRootResolved, [string]$RuntimeDir) {
+    $scriptPath = Join-Path $RepoRootResolved "scripts\ai_shadow_supervisor.py"
+    $statusPath = Join-Path $RuntimeDir "ai_shadow_status.json"
+    if (-not (Test-Path -LiteralPath $scriptPath)) {
+        Write-ShadowStoppedStatus $statusPath "SUPERVISOR_SCRIPT_MISSING"
+        Write-Status "  AI SHADOW supervisor script missing - STOPPED fail-closed. Excel/RSS were not touched." Yellow
+        return $null
+    }
+    $python = $null
+    foreach ($cand in @(
+        (Join-Path $RepoRootResolved ".venv\Scripts\python.exe"),
+        (Join-Path $RepoRootResolved "venv\Scripts\python.exe")
+    )) {
+        if (Test-Path -LiteralPath $cand) { $python = $cand; break }
+    }
+    if (-not $python) {
+        $cmd = Get-Command python.exe -ErrorAction SilentlyContinue
+        if ($null -ne $cmd) { $python = $cmd.Source }
+    }
+    $prefix = @()
+    if (-not $python) {
+        $py = Get-Command py.exe -ErrorAction SilentlyContinue
+        if ($null -ne $py) {
+            $python = $py.Source
+            $prefix = @("-3")
+        }
+    }
+    $dataDir = Join-Path $LogDir "ai_shadow"
+    if (-not (Test-Path -LiteralPath $dataDir)) { New-Item -ItemType Directory -Path $dataDir -Force | Out-Null }
+    if (-not $python) {
+        Write-ShadowStoppedStatus $statusPath "PYTHON_NOT_FOUND"
+        Write-Status "  AI SHADOW python not found - STOPPED fail-closed. Excel/RSS were not touched." Yellow
+        return $null
+    }
+    $stdout = Join-Path $LogDir "shadow_supervisor_stdout.log"
+    $stderr = Join-Path $LogDir "shadow_supervisor_stderr.log"
+    Remove-Item -LiteralPath $stdout, $stderr -Force -ErrorAction SilentlyContinue
+    # Windows PowerShell 5.1 flattens -ArgumentList to one command-line
+    # string and does not preserve element boundaries for paths containing
+    # spaces. Quote every path-valued argument explicitly so MarketSpeed II
+    # RSS runtime paths stay a single argv element.
+    $argList = $prefix + @(
+        "-u", ('"' + $scriptPath + '"'),
+        "--live", ('"' + (Join-Path $RuntimeDir "live_ms2.json") + '"'),
+        "--data-dir", ('"' + $dataDir + '"'),
+        "--status", ('"' + $statusPath + '"'),
+        "--interval", "5"
+    )
+    return Start-Process -FilePath $python -ArgumentList $argList -WorkingDirectory $RepoRootResolved `
         -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
 }
 
@@ -357,6 +433,14 @@ function Get-CurrentSessionId {
     return [int]$self.SessionId
 }
 
+function Test-OtherExcelInSession([int]$ExceptPid) {
+    $sessionId = Get-CurrentSessionId
+    $others = @(Get-Process EXCEL -ErrorAction SilentlyContinue | Where-Object {
+        [int]$_.SessionId -eq $sessionId -and [int]$_.Id -ne $ExceptPid
+    })
+    return ($others.Count -gt 0)
+}
+
 function Get-ForeignExcelProcesses([int[]]$AllowedPids = @(), [int]$SessionId = -1) {
     if ($SessionId -lt 0) { $SessionId = Get-CurrentSessionId }
     return @(
@@ -369,6 +453,39 @@ function Get-ForeignExcelProcesses([int[]]$AllowedPids = @(), [int]$SessionId = 
     )
 }
 
+function Get-CanonicalWorkbookConflicts([string]$WorkbookPath, [string]$WorkbookName, [int[]]$AllowedPids = @()) {
+    $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
+    $hits = New-Object System.Collections.Generic.List[object]
+    $seen = @{}
+    foreach ($proc in @(Get-ExcelProcessForWorkbook $WorkbookName)) {
+        if ($null -eq $proc) { continue }
+        $pidValue = [int]$proc.Id
+        if ($AllowedPids -contains $pidValue) { continue }
+        if ($seen.ContainsKey($pidValue)) { continue }
+        $seen[$pidValue] = $true
+        [void]$hits.Add($proc)
+    }
+    foreach ($proc in @(Get-ForeignExcelProcesses $AllowedPids)) {
+        if ($null -eq $proc) { continue }
+        $pidValue = [int]$proc.Id
+        if ($seen.ContainsKey($pidValue)) { continue }
+        if ([string]::IsNullOrWhiteSpace($WorkbookPath)) { continue }
+        $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $pidValue) -ErrorAction SilentlyContinue
+        if ($null -eq $info) { continue }
+        $cmd = [string]$info.CommandLine
+        if ([string]::IsNullOrWhiteSpace($cmd)) { continue }
+        if ($cmd.IndexOf($WorkbookPath, $ordinalIgnoreCase) -ge 0) {
+            $seen[$pidValue] = $true
+            [void]$hits.Add($proc)
+        }
+    }
+    return @($hits.ToArray())
+}
+
+function Get-IsolatedExcelArguments([string]$WorkbookPath) {
+    return '/x "' + $WorkbookPath + '"'
+}
+
 function Test-LaunchedExcelOwnership([int]$ExcelPid,[string]$WorkbookPath,[int]$ControllerPid) {
     if ($ExcelPid -le 0) { return $false }
     $proc = Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue
@@ -376,9 +493,10 @@ function Test-LaunchedExcelOwnership([int]$ExcelPid,[string]$WorkbookPath,[int]$
     $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ExcelPid) -ErrorAction SilentlyContinue
     if ($null -eq $info) { return $false }
     $cmd = [string]$info.CommandLine
+    $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
     $isCanonicalWorkbook = (
         -not [string]::IsNullOrWhiteSpace($cmd) -and
-        $cmd.IndexOf($WorkbookPath,[StringComparison]::OrdinalIgnoreCase) -ge 0
+        $cmd.IndexOf($WorkbookPath, $ordinalIgnoreCase) -ge 0
     )
     $isControllerChild = ([int]$info.ParentProcessId -eq $ControllerPid)
     $isSameSession = ([int]$proc.SessionId -eq (Get-CurrentSessionId))
@@ -386,11 +504,14 @@ function Test-LaunchedExcelOwnership([int]$ExcelPid,[string]$WorkbookPath,[int]$
 }
 
 function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$ControllerPid) {
-    if ($ExcelPid -le 0) { return $true }
+    if ($ExcelPid -le 0) { return $false }
 
     $proc = Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue
-    if ($null -eq $proc) { return $true }
+    if ($null -eq $proc) { return $false }
     if (-not (Test-LaunchedExcelOwnership $ExcelPid $WorkbookPath $ControllerPid)) { return $false }
+    # TerminateProcess on one Excel can take down other Excel processes in
+    # the same session. A pre-existing workbook must keep this from running.
+    if (Test-OtherExcelInSession $ExcelPid) { return $false }
 
     Stop-Process -Id $ExcelPid -Force -ErrorAction SilentlyContinue
     foreach ($attempt in 1..10) {
@@ -454,6 +575,279 @@ function Wait-OwnedHelperProcess {
     }
 }
 
+function Get-OperationsIncidentPath {
+    return (Join-Path $LogDir "ai_shadow\incidents.jsonl")
+}
+
+function Read-OperationsIncidents([string]$Path) {
+    if (-not (Test-Path -LiteralPath $Path)) { return @() }
+    $text = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false))
+    $rows = @()
+    foreach ($line in ($text -split '\r?\n')) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        $parsed = $line | ConvertFrom-Json
+        if ($parsed.record_class -ne "operations_incident" -or $parsed.real_submit_allowed -ne $false) {
+            throw "operations incident log is not a readable operations diary"
+        }
+        $rows += $parsed
+    }
+    return @($rows)
+}
+
+function Write-OperationsIncidentFile([string]$Path, $Rows) {
+    $parent = Split-Path -Parent $Path
+    if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
+    $body = ""
+    foreach ($row in @($Rows)) {
+        $body += (($row | ConvertTo-Json -Compress -Depth 6) + "`n")
+    }
+    $tmp = $Path + ".tmp"
+    [IO.File]::WriteAllText($tmp, $body, [Text.UTF8Encoding]::new($false))
+    Move-Item -LiteralPath $tmp -Destination $Path -Force
+}
+
+function Get-CanonicalWorkbookOpenDiagnostics([string]$WorkbookPath, [string]$LaunchArguments) {
+    $name = [IO.Path]::GetFileName($WorkbookPath)
+    $diag = [ordered]@{
+        workbook_name = $name
+        workbook_readable = $false
+        has_vba_project = $false
+        external_link_count = 0
+        zip_error = ""
+        document_recovery_match_count = 0
+        disabled_item_count = 0
+        disabled_item_name_match = $false
+        disabled_count_meaning = "count_only"
+        startup_item_count = 0
+        addin_leaf_names = @()
+        marketspeed_addin_present = $false
+        safe_mode_switch = ($LaunchArguments -match '(?i)(^|\s)/(safemode|s)(\s|$)')
+        launch_switches = "/x"
+        registry_error = ""
+    }
+    try {
+        Add-Type -AssemblyName System.IO.Compression -ErrorAction SilentlyContinue
+        Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+        $stream = [IO.File]::Open($WorkbookPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+        try {
+            $zip = New-Object IO.Compression.ZipArchive($stream, [IO.Compression.ZipArchiveMode]::Read)
+            try {
+                $diag.workbook_readable = $true
+                $links = 0
+                foreach ($entry in $zip.Entries) {
+                    $full = [string]$entry.FullName
+                    if ($full -eq "xl/vbaProject.bin") { $diag.has_vba_project = $true }
+                    if ($full.StartsWith("xl/externalLinks/")) { $links++ }
+                }
+                $diag.external_link_count = $links
+            } finally { $zip.Dispose() }
+        } finally { $stream.Dispose() }
+    } catch {
+        $diag.zip_error = $_.Exception.Message
+    }
+    $excelKey = "HKCU:\Software\Microsoft\Office\16.0\Excel"
+    try {
+        $recovery = Join-Path $excelKey "Resiliency\DocumentRecovery"
+        if (Test-Path -LiteralPath $recovery) {
+            $matches = 0
+            $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
+            foreach ($child in @(Get-ChildItem -LiteralPath $recovery -ErrorAction SilentlyContinue)) {
+                $props = Get-ItemProperty -LiteralPath $child.PSPath -ErrorAction SilentlyContinue
+                if ($null -eq $props) { continue }
+                foreach ($prop in $props.PSObject.Properties) {
+                    if ($prop.Name -like "PS*") { continue }
+                    $text = $null
+                    if ($prop.Value -is [string]) { $text = [string]$prop.Value }
+                    if (-not [string]::IsNullOrWhiteSpace($text) -and $text.IndexOf($name, $ordinalIgnoreCase) -ge 0) {
+                        $matches++
+                        break
+                    }
+                }
+            }
+            $diag.document_recovery_match_count = $matches
+        }
+        foreach ($pair in @(
+            @{ Path = (Join-Path $excelKey "Resiliency\DisabledItems"); Field = "disabled_item_count" },
+            @{ Path = (Join-Path $excelKey "Resiliency\StartupItems"); Field = "startup_item_count" }
+        )) {
+            if (-not (Test-Path -LiteralPath $pair.Path)) { continue }
+            $count = @(Get-ChildItem -LiteralPath $pair.Path -ErrorAction SilentlyContinue).Count
+            $props = Get-ItemProperty -LiteralPath $pair.Path -ErrorAction SilentlyContinue
+            if ($null -ne $props) {
+                foreach ($prop in $props.PSObject.Properties) {
+                    if ($prop.Name -like "PS*") { continue }
+                    $count++
+                }
+            }
+            $diag[$pair.Field] = $count
+        }
+        $leaves = New-Object System.Collections.Generic.List[string]
+        foreach ($keyPath in @(
+            (Join-Path $excelKey "Add-in Manager"),
+            (Join-Path $excelKey "Options")
+        )) {
+            if (-not (Test-Path -LiteralPath $keyPath)) { continue }
+            $props = Get-ItemProperty -LiteralPath $keyPath -ErrorAction SilentlyContinue
+            if ($null -eq $props) { continue }
+            foreach ($prop in $props.PSObject.Properties) {
+                if ($prop.Name -like "PS*") { continue }
+                $raw = [string]$prop.Value
+                if ([string]::IsNullOrWhiteSpace($raw)) { continue }
+                $rakuten = -join @([char]0x697D, [char]0x5929)
+                if ($raw -match ('MarketSpeed|RSS|' + $rakuten)) { $diag.marketspeed_addin_present = $true }
+                $leaf = [IO.Path]::GetFileName($raw.Trim('"'))
+                if ([string]::IsNullOrWhiteSpace($leaf) -or $leaf -notmatch '\.(xll|xlam|dll|exe)$') { continue }
+                if (-not $leaves.Contains($leaf) -and $leaves.Count -lt 30) { [void]$leaves.Add($leaf) }
+            }
+        }
+        $diag.addin_leaf_names = @($leaves)
+    } catch {
+        $diag.registry_error = $_.Exception.Message
+    }
+    return $diag
+}
+
+function Complete-ExcelProbeResult($Probe, $Process) {
+    if ($null -eq $Probe.dialog_text) { $Probe.dialog_text = "" }
+    $Probe.launched_excel_pid = 0
+    $Probe.process_exited = $false
+    $Probe.excel_exit_code = $null
+    $Probe.excel_exit_at = ""
+    if ($null -eq $Process) { return $Probe }
+    $Probe.launched_excel_pid = [int]$Process.Id
+    try { $Process.Refresh() } catch {}
+    $exited = $false
+    try { $exited = [bool]$Process.HasExited } catch { $exited = $true }
+    $Probe.process_exited = $exited
+    if (-not $exited) { return $Probe }
+    try { $Probe.excel_exit_code = [int]$Process.ExitCode } catch {}
+    try { $Probe.excel_exit_at = $Process.ExitTime.ToString("o") } catch {}
+    if ($Probe.code -eq "EXCEL_IDENTITY_MISMATCH") { return $Probe }
+    if ([bool]$Probe.ok) {
+        $Probe.ok = $false
+        $Probe.code = "EXCEL_PROCESS_EXITED"
+        $Probe.last_error = "LAUNCHED_PID_EXITED"
+        $Probe.detail = "Excel exited after the probe reported verification"
+        return $Probe
+    }
+    if ($Probe.code -eq "EXCEL_SERIOUS_ERROR_PROMPT" -or -not [string]::IsNullOrWhiteSpace([string]$Probe.dialog_text)) {
+        $Probe.code = "EXCEL_PROCESS_EXITED"
+        $Probe.last_error = "PREVIOUS_SERIOUS_ERROR_DIALOG"
+        return $Probe
+    }
+    $Probe.code = "EXCEL_PROCESS_EXITED"
+    if ([string]::IsNullOrWhiteSpace([string]$Probe.last_error) -or [string]$Probe.last_error -in @("PROBE_TIMEOUT", "ROT_MONIKER_NOT_REGISTERED", "NOT_STARTED", "RESULT_MISSING")) {
+        $Probe.last_error = "LAUNCHED_PID_EXITED"
+    }
+    return $Probe
+}
+
+function Add-ExcelIdentityIncident($Probe) {
+    $path = Get-OperationsIncidentPath
+    try {
+        $existing = @(Read-OperationsIncidents $path)
+    } catch {
+        Write-Status ("  operations incident log unreadable; identity failure stays fail-closed. " + $_.Exception.Message) Red
+        return
+    }
+    try {
+    $code = [string]$Probe.code
+    if ([string]::IsNullOrWhiteSpace($code)) { $code = "EXCEL_IDENTITY_PROBE_FAILED" }
+    $component = "excel_identity"
+    if ($code -eq "EXCEL_SERIOUS_ERROR_PROMPT" -or $code -eq "EXCEL_WORKBOOK_OPEN_BLOCKED" -or [string]$Probe.last_error -eq "PREVIOUS_SERIOUS_ERROR_DIALOG" -or [string]$Probe.last_error -eq "HWND_PROCESS_NOT_READY" -or [string]$Probe.last_error -eq "EXCEL_BUSY" -or -not [string]::IsNullOrWhiteSpace([string]$Probe.dialog_text)) {
+        $component = "workbook_open"
+    } elseif ($code -eq "EXCEL_PROCESS_EXITED") {
+        $component = "excel_process_exit"
+    }
+    $key = $component + "|" + $code
+    $prior = @($existing | Where-Object { [string]$_.recurrence_key -eq $key }).Count
+    $seed = (Get-Date).ToString("o") + "|" + $key
+    $sha = [Security.Cryptography.SHA256]::Create().ComputeHash([Text.Encoding]::UTF8.GetBytes($seed))
+    $id = "inc-" + (([BitConverter]::ToString($sha) -replace "-","").ToLowerInvariant().Substring(0, 16))
+    $diagnostics = $null
+    try { $diagnostics = Get-CanonicalWorkbookOpenDiagnostics $WorkbookPath ('/x "' + $WorkbookPath + '"') } catch { $diagnostics = $null }
+    try {
+        $diagPath = Join-Path $LogDir "identity_probe\open_diagnostics.json"
+        $diagDir = Split-Path -Parent $diagPath
+        if (-not (Test-Path -LiteralPath $diagDir)) { New-Item -ItemType Directory -Path $diagDir -Force | Out-Null }
+        if ($null -ne $diagnostics) {
+            [IO.File]::WriteAllText($diagPath, ($diagnostics | ConvertTo-Json -Depth 5), [Text.UTF8Encoding]::new($false))
+        }
+    } catch {}
+    $incident = [ordered]@{
+        record_class = "operations_incident"
+        incident_id = $id
+        occurrence_at = (Get-Date).ToString("o")
+        recovery_at = $null
+        duration_seconds = $null
+        component = $component
+        error_code = $code
+        symptom = [string]$Probe.detail
+        suspected_cause = [string]$Probe.last_error
+        confirmed_cause = $null
+        impact_scope = "startup"
+        real_trade_impact = "NONE_REAL_SUBMIT_REMAINS_FALSE"
+        shadow_impact = "STOPPED"
+        fail_closed = $true
+        invalidated_signal_count = $null
+        recovery_mode = $null
+        actions = @("startup aborted before AI SHADOW", "unrelated Excel was not stopped", "canonical workbook was not replaced", "the serious-error dialog was not clicked", "Excel was not relaunched")
+        recurrence_key = $key
+        recurrence_count = ($prior + 1)
+        log_refs = @("Logs/V10/identity_probe/progress.log", "Logs/V10/identity_probe/result.json", "Logs/V10/identity_probe/open_diagnostics.json")
+        identity_checks = [ordered]@{
+            full_name = [string]$Probe.full_name
+            hwnd = $Probe.hwnd
+            excel_pid = $Probe.excel_pid
+            launched_excel_pid = $Probe.launched_excel_pid
+            process_exited = [bool]$Probe.process_exited
+            excel_exit_code = $Probe.excel_exit_code
+            excel_exit_at = [string]$Probe.excel_exit_at
+            dialog_text = [string]$Probe.dialog_text
+            parent_pid = $Probe.parent_pid
+            command_line_match = [bool]$Probe.command_line_match
+            parent_match = [bool]$Probe.parent_match
+            session_match = [bool]$Probe.session_match
+            rot_candidate_count = $Probe.rot_candidate_count
+            attempts = $Probe.attempts
+            last_error = [string]$Probe.last_error
+        }
+        open_diagnostics = $diagnostics
+        real_submit_allowed = $false
+    }
+        Write-OperationsIncidentFile $path (@($existing) + @([pscustomobject]$incident))
+        Write-Status ("  operations incident " + $id + " / " + $component + " / " + $code) Yellow
+    } catch {
+        Write-Status ("  operations incident was not recorded. " + $_.Exception.Message) Red
+    }
+}
+
+function Close-OpenExcelIdentityIncidents {
+    $path = Get-OperationsIncidentPath
+    if (-not (Test-Path -LiteralPath $path)) { return }
+    try {
+        $existing = @(Read-OperationsIncidents $path)
+    } catch {
+        Write-Status ("  operations incident log unreadable after identity verification. " + $_.Exception.Message) Yellow
+        return
+    }
+    $changed = $false
+    $now = Get-Date
+    foreach ($row in $existing) {
+        if ([string]$row.component -in @("excel_identity", "workbook_open", "excel_process_exit") -and [string]::IsNullOrWhiteSpace([string]$row.recovery_at)) {
+            $row.recovery_at = $now.ToString("o")
+            try {
+                $started = [datetime]$row.occurrence_at
+                $row.duration_seconds = [int][Math]::Max(0, ($now - $started).TotalSeconds)
+            } catch { $row.duration_seconds = $null }
+            $row.recovery_mode = "MANUAL"
+            $row.shadow_impact = "IDENTITY_VERIFIED_SHADOW_NOT_YET_STARTED"
+            $changed = $true
+        }
+    }
+    if ($changed) { Write-OperationsIncidentFile $path $existing }
+}
+
 function Invoke-ExcelIdentityProbe {
     param(
         [string]$WorkbookPath,
@@ -473,7 +867,7 @@ function Invoke-ExcelIdentityProbe {
     foreach ($path in @($resultPath, $progressPath, $stdoutPath, $stderrPath)) {
         if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue }
     }
-    $helper = Join-Path $PSScriptRoot "EXCEL_IDENTITY_PROBE_V9.ps1"
+    $helper = Join-Path $PSScriptRoot "EXCEL_IDENTITY_PROBE_V10.ps1"
     if (-not (Test-Path -LiteralPath $helper)) {
         return @{ ok = $false; code = "EXCEL_IDENTITY_PROBE_FAILED"; elapsed = 0; helper_pid = 0; detail = "identity probe helper missing" }
     }
@@ -485,6 +879,7 @@ function Invoke-ExcelIdentityProbe {
     $helperArgs = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $helper + '"' +
         ' -WorkbookPath "' + $WorkbookPath + '"' +
         ' -ExpectedExcelPid ' + $ExpectedExcelPid +
+        ' -ControllerPid ' + $PID +
         ' -ResultPath "' + $resultPath + '"' +
         ' -ProgressPath "' + $progressPath + '"' +
         ' -AttemptBudgetSeconds ' + $TimeoutSeconds
@@ -493,28 +888,67 @@ function Invoke-ExcelIdentityProbe {
     $wait = Wait-OwnedHelperProcess -Process $helperProc -TimeoutSeconds $TimeoutSeconds -ProgressPath $progressPath
     if ($wait.timed_out) {
         Write-Status ("EXCEL_IDENTITY_PROBE_TIMEOUT after " + $wait.elapsed + "s") Red
-        return @{ ok = $false; code = "EXCEL_IDENTITY_PROBE_TIMEOUT"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "helper PID $($wait.helper_pid) exceeded ${TimeoutSeconds}s" }
+        $partial = $null
+        if (Test-Path -LiteralPath $resultPath) {
+            try { $partial = [IO.File]::ReadAllText($resultPath, [Text.Encoding]::UTF8) | ConvertFrom-Json } catch { $partial = $null }
+        }
+        $tail = Tail-Log $progressPath
+        $detail = "helper PID $($wait.helper_pid) exceeded ${TimeoutSeconds}s"
+        if ($null -ne $partial -and -not [string]::IsNullOrWhiteSpace([string]$partial.message)) { $detail = [string]$partial.message }
+        elseif (-not [string]::IsNullOrWhiteSpace($tail)) { $detail = $tail }
+        Write-Status ("  identity timeout detail: " + $detail) Red
+        return @{
+            ok = $false; code = "EXCEL_IDENTITY_PROBE_TIMEOUT"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid
+            detail = $detail; last_error = "PROBE_TIMEOUT"; full_name = [string]$partial.full_name
+            hwnd = $partial.hwnd; excel_pid = $partial.excel_pid; parent_pid = $partial.parent_pid
+            command_line_match = [bool]$partial.command_line_match; parent_match = [bool]$partial.parent_match
+            session_match = [bool]$partial.session_match; rot_candidate_count = $partial.rot_candidate_count
+            attempts = $partial.attempts; dialog_text = [string]$partial.dialog_text
+        }
     }
     if (-not (Test-Path -LiteralPath $resultPath)) {
         $err = Tail-Log $stderrPath
-        return @{ ok = $false; code = "EXCEL_IDENTITY_PROBE_FAILED"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; exit_code = $wait.exit_code; detail = $err }
+        $progress = Tail-Log $progressPath
+        return @{
+            ok = $false; code = "EXCEL_IDENTITY_PROBE_FAILED"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid
+            exit_code = $wait.exit_code; detail = ($progress + " " + $err).Trim(); last_error = "RESULT_MISSING"
+            full_name = ""; hwnd = 0; excel_pid = 0; parent_pid = 0
+            command_line_match = $false; parent_match = $false; session_match = $false
+            rot_candidate_count = 0; attempts = 0; dialog_text = ""
+        }
     }
     $result = [IO.File]::ReadAllText($resultPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
     $code = [string]$result.code
     if ($code -eq "EXCEL_IDENTITY_MISMATCH" -or -not [bool]$result.ok) {
         if ([string]::IsNullOrWhiteSpace($code)) { $code = "EXCEL_IDENTITY_PROBE_FAILED" }
-        return @{ ok = $false; code = $code; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; exit_code = $wait.exit_code; detail = [string]$result.message }
+        Write-Status ("  identity " + $code + " / " + [string]$result.message) Red
+        return @{
+            ok = $false; code = $code; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; exit_code = $wait.exit_code
+            detail = [string]$result.message; last_error = [string]$result.last_error
+            full_name = [string]$result.full_name; hwnd = $result.hwnd; excel_pid = $result.excel_pid
+            parent_pid = $result.parent_pid; command_line_match = [bool]$result.command_line_match
+            parent_match = [bool]$result.parent_match; session_match = [bool]$result.session_match
+            rot_candidate_count = $result.rot_candidate_count; attempts = $result.attempts
+            dialog_text = [string]$result.dialog_text
+        }
     }
     $fullName = [string]$result.full_name
     $hwnd = 0L
     try { $hwnd = [Int64]$result.hwnd } catch { $hwnd = 0L }
     $reportedPid = 0
     try { $reportedPid = [int]$result.excel_pid } catch { $reportedPid = 0 }
-    if ($fullName -ine $WorkbookPath -or $hwnd -eq 0 -or $reportedPid -ne $ExpectedExcelPid) {
-        return @{ ok = $false; code = "EXCEL_IDENTITY_MISMATCH"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "reported identity did not match the launched workbook" }
+    $fullNameIsLocal = $fullName -match '^[A-Za-z]:\\'
+    if ($hwnd -eq 0 -or $reportedPid -ne $ExpectedExcelPid) {
+        return @{ ok = $false; code = "EXCEL_IDENTITY_MISMATCH"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "reported HWND or PID did not match the launched workbook"; last_error = "PID_OR_HWND_MISMATCH"; full_name = $fullName; hwnd = $hwnd; excel_pid = $reportedPid; parent_pid = $result.parent_pid; command_line_match = [bool]$result.command_line_match; parent_match = [bool]$result.parent_match; session_match = [bool]$result.session_match; rot_candidate_count = $result.rot_candidate_count; attempts = $result.attempts }
+    }
+    if ($fullNameIsLocal -and ($fullName -ine $WorkbookPath) -and -not [bool]$result.full_name_same_file) {
+        return @{ ok = $false; code = "EXCEL_IDENTITY_MISMATCH"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "reported local workbook is not the canonical file"; last_error = "FULL_NAME_DIFFERENT_FILE"; full_name = $fullName; hwnd = $hwnd; excel_pid = $reportedPid; parent_pid = $result.parent_pid; command_line_match = [bool]$result.command_line_match; parent_match = [bool]$result.parent_match; session_match = [bool]$result.session_match; rot_candidate_count = $result.rot_candidate_count; attempts = $result.attempts }
+    }
+    if (-not $fullNameIsLocal -and (-not [bool]$result.command_line_match -or -not [bool]$result.parent_match -or -not [bool]$result.session_match)) {
+        return @{ ok = $false; code = "EXCEL_IDENTITY_MISMATCH"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "cloud workbook moniker was not bound to the launched Excel"; last_error = "CLOUD_MONIKER_UNBOUND"; full_name = $fullName; hwnd = $hwnd; excel_pid = $reportedPid; parent_pid = $result.parent_pid; command_line_match = [bool]$result.command_line_match; parent_match = [bool]$result.parent_match; session_match = [bool]$result.session_match; rot_candidate_count = $result.rot_candidate_count; attempts = $result.attempts }
     }
     if (-not (Test-LaunchedExcelOwnership $ExpectedExcelPid $WorkbookPath $PID)) {
-        return @{ ok = $false; code = "EXCEL_IDENTITY_MISMATCH"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "canonical command line, parent PID, or session did not match" }
+        return @{ ok = $false; code = "EXCEL_IDENTITY_MISMATCH"; elapsed = $wait.elapsed; helper_pid = $wait.helper_pid; detail = "canonical command line, parent PID, or session did not match"; last_error = "OWNERSHIP_MISMATCH"; full_name = $fullName; hwnd = $hwnd; excel_pid = $reportedPid; parent_pid = $result.parent_pid; command_line_match = [bool]$result.command_line_match; parent_match = [bool]$result.parent_match; session_match = [bool]$result.session_match; rot_candidate_count = $result.rot_candidate_count; attempts = $result.attempts }
     }
     Write-Status "Excel identity verified" Green
     return @{
@@ -529,7 +963,7 @@ function Invoke-ExcelIdentityProbe {
 }
 
 function Invoke-ExcelIdentityProbeSelfTest {
-    $helper = Join-Path $PSScriptRoot "EXCEL_IDENTITY_PROBE_V9.ps1"
+    $helper = Join-Path $PSScriptRoot "EXCEL_IDENTITY_PROBE_V10.ps1"
     $progress = Join-Path ([IO.Path]::GetTempPath()) ("excel_identity_selftest_" + $PID + ".log")
     if (Test-Path -LiteralPath $progress) { Remove-Item -LiteralPath $progress -Force }
     $exe = (Get-Process -Id $PID).Path
@@ -563,8 +997,8 @@ if ($IdentityProbeSelfTest) {
     exit 0
 }
 
-$StateFile = Join-Path $Root "V9_CONTROLLER_STATE.json"
-$LogDir = Join-Path $Root "Logs\V9"
+$StateFile = Join-Path $Root "V10_CONTROLLER_STATE.json"
+$LogDir = Join-Path $Root "Logs\V10"
 if (-not (Test-Path -LiteralPath $Root)) { New-Item -ItemType Directory -Path $Root -Force | Out-Null }
 if (-not (Test-Path -LiteralPath $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
 
@@ -587,16 +1021,19 @@ $state = [ordered]@{
     collector_pid              = 0
     collector_status           = "NOT_STARTED"
     gateway_pid                = 0
+    brain_gateway_pid          = 0
     voice_bridge_pid           = 0
     voice_bridge_status        = "NOT_STARTED"
     sbv2_pid                   = 0
     sbv2_status                = "NOT_STARTED"
+    shadow_supervisor_pid      = 0
+    shadow_supervisor_status   = "NOT_STARTED"
 }
 
 try {
     Clear-Host
     Write-Host "==================================================" -ForegroundColor DarkCyan
-    Write-Host " AI COCKPIT CONTROLLER V9" -ForegroundColor Cyan
+    Write-Host " AI COCKPIT CONTROLLER V10" -ForegroundColor Cyan
     Write-Host (" " + $Build) -ForegroundColor DarkCyan
     Write-Host " Logs: $LogDir" -ForegroundColor DarkCyan
     Write-Host "==================================================" -ForegroundColor DarkCyan
@@ -620,25 +1057,25 @@ try {
             Pop-Location -ErrorAction SilentlyContinue
         }
         if ($actualBranch -ne $ExpectedBranch) {
-            throw "Repo checkout is on branch '$actualBranch', expected '$ExpectedBranch'. Refusing to start (fail-closed) - run RUN_AI_COCKPIT_V9.ps1, which pins and verifies the branch before ever reaching this point."
+            throw "Repo checkout is on branch '$actualBranch', expected '$ExpectedBranch'. Refusing to start (fail-closed) - run RUN_AI_COCKPIT_V10.ps1, which pins and verifies the branch before ever reaching this point."
         }
         Write-Status ("  branch:  " + $actualBranch + " (matches expected)") Green
     }
 
     # 2026-09-25 P0 fix: repo-updated must never be assumed to mean
-    # runtime-updated. RUN_AI_COCKPIT_V9.ps1 deploys Watcher/Heartbeat/
-    # Collector into RuntimeDir and records their SHA256 in V9_RUNTIME.json;
+    # runtime-updated. RUN_AI_COCKPIT_V10.ps1 deploys Watcher/Heartbeat/
+    # Collector into RuntimeDir and records their SHA256 in V10_RUNTIME.json;
     # this recomputes the hash of what's ACTUALLY sitting in RuntimeDir
     # right now and refuses to start if it doesn't match what was deployed
     # (missing manifest, stale runtime, or a file changed since deploy all
     # fail closed here rather than silently running mismatched code).
-    $runtimeManifestPath = Join-Path $Root "V9_RUNTIME.json"
+    $runtimeManifestPath = Join-Path $Root "V10_RUNTIME.json"
     if (-not (Test-Path -LiteralPath $runtimeManifestPath)) {
-        throw "No V9_RUNTIME.json found - runtime scripts were never deployed to RuntimeDir. Run RUN_AI_COCKPIT_V9.ps1 (not this controller directly) so it deploys Watcher/Heartbeat/Collector before starting."
+        throw "No V10_RUNTIME.json found - runtime scripts were never deployed to RuntimeDir. Run RUN_AI_COCKPIT_V10.ps1 (not this controller directly) so it deploys Watcher/Heartbeat/Collector before starting."
     }
     $runtimeManifest = Read-JsonUtf8 $runtimeManifestPath
     if ($runtimeManifest.runtime_dir -ne $RuntimeDir) {
-        throw "V9_RUNTIME.json was deployed for a different RuntimeDir (" + $runtimeManifest.runtime_dir + ") than the one resolved now (" + $RuntimeDir + "). Re-run RUN_AI_COCKPIT_V9.ps1."
+        throw "V10_RUNTIME.json was deployed for a different RuntimeDir (" + $runtimeManifest.runtime_dir + ") than the one resolved now (" + $RuntimeDir + "). Re-run RUN_AI_COCKPIT_V10.ps1."
     }
     foreach ($name in @(
         "Kioxia_RSS_Live_Watcher.ps1",
@@ -652,24 +1089,24 @@ try {
     )) {
         $expectedHash = $runtimeManifest.files.$name
         if ([string]::IsNullOrWhiteSpace($expectedHash)) {
-            throw "V9_RUNTIME.json has no recorded hash for $name. Re-run RUN_AI_COCKPIT_V9.ps1."
+            throw "V10_RUNTIME.json has no recorded hash for $name. Re-run RUN_AI_COCKPIT_V10.ps1."
         }
         $actualPath = Join-Path $RuntimeDir $name
         if (-not (Test-Path -LiteralPath $actualPath)) {
-            throw "Runtime file missing: $actualPath. Re-run RUN_AI_COCKPIT_V9.ps1."
+            throw "Runtime file missing: $actualPath. Re-run RUN_AI_COCKPIT_V10.ps1."
         }
         $actualHash = (Get-FileHash -LiteralPath $actualPath -Algorithm SHA256).Hash
         if ($actualHash -ne $expectedHash) {
-            throw "Runtime file $name does not match the deployed manifest (RuntimeDir file was changed or reverted since deploy). Re-run RUN_AI_COCKPIT_V9.ps1 to redeploy - refusing to start against unverified runtime code."
+            throw "Runtime file $name does not match the deployed manifest (RuntimeDir file was changed or reverted since deploy). Re-run RUN_AI_COCKPIT_V10.ps1 to redeploy - refusing to start against unverified runtime code."
         }
     }
-    Write-Status ("  runtime files: verified against V9_RUNTIME.json (deployed " + $runtimeManifest.deployed_at + ")") Green
+    Write-Status ("  runtime files: verified against V10_RUNTIME.json (deployed " + $runtimeManifest.deployed_at + ")") Green
 
     $Watcher = Join-Path $RuntimeDir "Kioxia_RSS_Live_Watcher.ps1"
     $Heartbeat = Join-Path $RuntimeDir "Kioxia_Safety_Heartbeat.ps1"
     $Collector = Join-Path $RuntimeDir "MS2_RSS_100_Collector.ps1"
-    $Gateway = Join-Path $PSScriptRoot "AI_COCKPIT_GATEWAY_V9.ps1"
-    $VoiceBridge = Join-Path $PSScriptRoot "AI_COCKPIT_VOICE_BRIDGE_V9.ps1"
+    $Gateway = Join-Path $PSScriptRoot "AI_COCKPIT_GATEWAY_V10.ps1"
+    $VoiceBridge = Join-Path $PSScriptRoot "AI_COCKPIT_VOICE_BRIDGE_V10.ps1"
     $WorkbookPath = Join-Path $RuntimeDir "Kioxia_MS2_RSS_Live_Signals.xlsx"
     $WorkbookName = [IO.Path]::GetFileName($WorkbookPath)
     $state.workbook_name = $WorkbookName
@@ -683,7 +1120,7 @@ try {
     Stop-OwnedFromPreviousState
     Start-Sleep -Milliseconds 500
 
-    Write-Status "Stopping obsolete voice-only workers so old SAPI cannot leak into V9..."
+    Write-Status "Stopping obsolete voice-only workers so old SAPI cannot leak into V10..."
     Stop-LegacyVoiceWorkers
 
     Write-Status "Checking for foreign sessions on 28580/28581/28582/28583..."
@@ -702,7 +1139,7 @@ try {
         Write-Host "==================================================" -ForegroundColor Red
         foreach ($h in $foreignHits) { Write-Host ("  " + $h) -ForegroundColor Yellow }
         Write-Host ""
-        Write-Host "Another process (an old V6/V7 session, a stale V8 run this" -ForegroundColor Cyan
+        Write-Host "Another process (an old V6/V7 session, a stale legacy run this" -ForegroundColor Cyan
         Write-Host "controller doesn't recognize, or something unrelated) already" -ForegroundColor Cyan
         Write-Host "owns one of these ports. Not killing it automatically - stop it" -ForegroundColor Cyan
         Write-Host "yourself (Task Manager, or the matching STOP_*.ps1 script) and" -ForegroundColor Cyan
@@ -722,25 +1159,24 @@ try {
     }
     Write-Status ("  MarketSpeed II: READY / session " + $currentSessionId) Green
 
-    # P0 safety interlock: Excel isolation is enforced at the Windows
-    # session boundary. Block any unrelated Excel in THIS session, while
-    # deliberately ignoring work Excel running in another session.
+    # Foreign Excel may stay open. Isolation is the new /x process plus
+    # canonical identity checks. Presence alone does not stop startup,
+    # and this interlock never closes, kills, or clicks another Excel.
     $foreignExcelAtStartup = @(Get-ForeignExcelProcesses)
     if ($foreignExcelAtStartup.Count -gt 0) {
         Write-Host ""
-        Write-Host "==================================================" -ForegroundColor Red
-        Write-Host " EXCEL SAFETY INTERLOCK" -ForegroundColor Red
-        Write-Host "==================================================" -ForegroundColor Red
+        Write-Host "==================================================" -ForegroundColor Yellow
+        Write-Host " EXCEL SAFETY INTERLOCK" -ForegroundColor Yellow
+        Write-Host "==================================================" -ForegroundColor Yellow
         foreach ($foreignExcel in $foreignExcelAtStartup) {
-            Write-Host ("  PID " + $foreignExcel.Id + " / " + $foreignExcel.MainWindowTitle) -ForegroundColor Yellow
+            Write-Host ("  leaving foreign Excel untouched: PID " + $foreignExcel.Id + " / " + $foreignExcel.MainWindowTitle) -ForegroundColor Yellow
         }
         Write-Host ""
-        Write-Host "Another Excel process is already running in this Windows session." -ForegroundColor Cyan
-        Write-Host "AI Cockpit will NOT start MS2/RSS Excel beside it." -ForegroundColor Cyan
-        Write-Host "Close unrelated Excel workbooks first, or use the future isolated-session mode." -ForegroundColor Cyan
-        throw "Excel safety interlock: foreign Excel process detected."
+        Write-Host "Foreign Excel is present. It will not be closed, killed, or operated." -ForegroundColor Cyan
+        Write-Host "AI Cockpit will launch a separate isolated Excel /x for the canonical workbook only." -ForegroundColor Cyan
+    } else {
+        Write-Status "  Excel safety interlock: no pre-existing Excel process." Green
     }
-    Write-Status "  Excel safety interlock: no pre-existing Excel process." Green
 
     Write-Status "Starting unified voice backend (Style-Bert-VITS2 only)..."
     if (Test-Port 5000 350) {
@@ -783,20 +1219,37 @@ try {
     Write-Status ("  Gateway: READY / http://127.0.0.1:" + $PORT_GATEWAY + "/?live=1") Green
     Start-Process ("http://127.0.0.1:" + $PORT_GATEWAY + "/?live=1")
 
+    Write-Status "Starting Brain Gateway under V10 Controller ownership..."
+    $brainGatewayArgs = '-RepoRoot "' + $RepoRootResolved + '" -RuntimeDir "' + $RuntimeDir + '" -Build "' + $Build + '-BRAIN" -Port ' + $PORT_BRAIN
+    $brainGatewayProc = Start-Worker -Name "brain_gateway" -Script $Gateway -WorkDir $RepoRootResolved -ExtraArgs $brainGatewayArgs
+    $state.brain_gateway_pid = [int]$brainGatewayProc.Id
+    Save-State $state
+    if (-not (Wait-PortBounded $PORT_BRAIN 20 "BrainGateway")) {
+        $err = Tail-Log (Join-Path $LogDir "brain_gateway_stderr.log")
+        throw "Brain Gateway did not open port $PORT_BRAIN within 20s. $err"
+    }
+    Write-Status ("  Brain Gateway: READY / http://127.0.0.1:" + $PORT_BRAIN + "/?brain=1") Green
+    Start-Process ("http://127.0.0.1:" + $PORT_BRAIN + "/?brain=1")
+
     Write-Status "Opening MS2 RSS workbook (isolated Excel /x; canonical path only)..."
     Write-Status ("  canonical: " + $WorkbookPath) DarkGray
 
-    $existingExcel = @(Get-ExcelProcessForWorkbook $WorkbookName)
+    $existingExcel = @(Get-CanonicalWorkbookConflicts $WorkbookPath $WorkbookName @())
 
     if ($existingExcel.Count -gt 0) {
+        # A pre-existing canonical Excel is not adopted and is not stopped.
+        # TerminateProcess on one Excel PID can close other Excel processes
+        # in the same session, including unrelated workbooks.
         $state.excel_pid = 0
         $state.workbook_identity_verified = $false
         Save-State $state
-
+        foreach ($proc in $existingExcel) {
+            Write-Status ("  pre-existing canonical Excel PID " + $proc.Id + " was not stopped and was not adopted.") Yellow
+        }
         throw (
             "RSS workbook is already open in Excel PID " +
             $existingExcel[0].Id +
-            ". Refusing to take ownership."
+            ". Refusing to take ownership. Foreign Excel was not touched."
         )
     }
 
@@ -809,21 +1262,43 @@ try {
         throw "EXCEL.EXE was not found."
     }
 
-    $launchedExcelProc = Start-Process `
-        -FilePath $excelExe `
-        -ArgumentList "/x","`"$WorkbookPath`"" `
-        -PassThru
+    # Windows PowerShell 5.1 re-quotes an ArgumentList array. A path that
+    # already contains spaces (MarketSpeed II RSS) was being passed to
+    # Excel with broken quotes, so the canonical workbook never reached
+    # the ROT. ProcessStartInfo keeps one /x argument and the full path.
+    if ($WorkbookPath.Contains('"')) { throw "Canonical workbook path contains a quote. Refusing to launch." }
+    $excelStart = New-Object System.Diagnostics.ProcessStartInfo
+    $excelStart.FileName = $excelExe
+    $excelStart.UseShellExecute = $false
+    $excelStart.Arguments = Get-IsolatedExcelArguments $WorkbookPath
+    $launchedExcelProc = [Diagnostics.Process]::Start($excelStart)
+    $state.excel_pid = [int]$launchedExcelProc.Id
+    $state.workbook_identity_verified = $false
+    Save-State $state
 
     Write-Status (
         "  isolated Excel launched / PID " +
         $launchedExcelProc.Id
     ) DarkGray
 
-    $probe = Invoke-ExcelIdentityProbe `
+    $conflictAfterLaunch = @(Get-CanonicalWorkbookConflicts $WorkbookPath $WorkbookName @([int]$launchedExcelProc.Id))
+    if ($conflictAfterLaunch.Count -gt 0) {
+        $state.excel_pid = 0
+        $state.workbook_identity_verified = $false
+        Save-State $state
+        Write-Status ("  launched Excel PID " + $launchedExcelProc.Id + " was not stopped. Pre-existing Excel was not touched.") Yellow
+        throw (
+            "RSS workbook is already open in Excel PID " +
+            $conflictAfterLaunch[0].Id +
+            ". Refusing to take ownership. Foreign Excel was not touched."
+        )
+    }
+
+    $probe = Complete-ExcelProbeResult (Invoke-ExcelIdentityProbe `
         -WorkbookPath $WorkbookPath `
         -ExpectedExcelPid ([int]$launchedExcelProc.Id) `
         -TimeoutSeconds $ExcelIdentityProbeTimeoutSeconds `
-        -LogDirectory $LogDir
+        -LogDirectory $LogDir) $launchedExcelProc
 
     if (-not $probe.ok) {
         $state.excel_pid = 0
@@ -831,19 +1306,23 @@ try {
         $state.excel_identity_error = [string]$probe.code
         Save-State $state
 
-        $ownedStopped = Stop-VerifiedOwnedExcel ([int]$launchedExcelProc.Id) $WorkbookPath $PID
-        if ($ownedStopped) {
-            Write-Status "  verified owned Excel stopped after identity failure." Yellow
-        }
+        $openCrash = $probe.code -in @("EXCEL_PROCESS_EXITED", "EXCEL_SERIOUS_ERROR_PROMPT", "EXCEL_WORKBOOK_OPEN_BLOCKED") -or [bool]$probe.process_exited -or [string]$probe.last_error -in @("HWND_PROCESS_NOT_READY", "EXCEL_BUSY", "PREVIOUS_SERIOUS_ERROR_DIALOG")
+        Write-Status ("  launched Excel PID " + $probe.launched_excel_pid + " / process_exited " + [bool]$probe.process_exited + " / exit_code " + $probe.excel_exit_code + " / exit_at " + $probe.excel_exit_at) Yellow
+        Write-Status "  launched Excel was not stopped after identity or workbook-open failure. Work Excel was not touched. Startup does not reopen Excel." Yellow
+        Add-ExcelIdentityIncident $probe
         Write-Status "AI Cockpit startup failed closed" Red
         Write-Status "Unrelated Excel processes were not touched" Yellow
-        throw ("Excel identity probe failed closed: " + $probe.code)
+        if ($openCrash) {
+            throw ("Excel workbook open failed closed: " + $probe.code + " / PID " + $probe.launched_excel_pid + " / exit_code " + $probe.excel_exit_code + " / " + [string]$probe.detail)
+        }
+        throw ("Excel identity probe failed closed: " + $probe.code + " / " + [string]$probe.detail)
     }
 
     $state.excel_pid = [int]$launchedExcelProc.Id
     $state.workbook_identity_verified = $true
     $state.excel_identity_error = ""
     Save-State $state
+    Close-OpenExcelIdentityIncidents
 
     Write-Status (
         "  Excel PID: " +
@@ -890,6 +1369,17 @@ try {
     }
     Save-State $state
 
+    Write-Status "Starting AI SHADOW supervisor (UI-independent; it fail-closes until live data passes)..."
+    $shadowProc = Start-ShadowSupervisor $RepoRootResolved $RuntimeDir
+    if ($null -ne $shadowProc) {
+        $state.shadow_supervisor_pid = [int]$shadowProc.Id
+        $state.shadow_supervisor_status = if ($shadowProc.HasExited) { "CRASHED" } else { "STARTING" }
+        Write-Status ("  AI SHADOW supervisor PID " + $state.shadow_supervisor_pid) Green
+    } else {
+        $state.shadow_supervisor_status = "STOPPED"
+    }
+    Save-State $state
+
     Write-Status "Startup complete. Entering supervision loop (Ctrl+C to stop everything)." Green
     Write-Host ""
     Write-Host "This window supervises the running session. Closing the MS2 workbook" -ForegroundColor Cyan
@@ -909,17 +1399,19 @@ try {
     $lastVoiceRestartAt = Get-Date "2000-01-01"
     $sbv2RestartAttempts = 0
     $lastSbv2RestartAt = Get-Date "2000-01-01"
+    $shadowRestartAttempts = 0
+    $lastShadowRestartAt = Get-Date "2000-01-01"
     while ($true) {
         Start-Sleep -Seconds 2
 
-        # P0 runtime interlock: if another Excel process appears while the
-        # AI Cockpit session is active, fail closed. Never touch the foreign
-        # process; stop only controller-owned workers and verified owned Excel.
+        # A foreign Excel with some other workbook may keep running.
+        # Fail closed only when another process already has the canonical
+        # workbook. Never close, kill, or click that foreign process.
         $allowedExcelPids = @()
         if ([int]$state.excel_pid -gt 0) { $allowedExcelPids += [int]$state.excel_pid }
-        $foreignExcelNow = @(Get-ForeignExcelProcesses $allowedExcelPids)
+        $foreignExcelNow = @(Get-CanonicalWorkbookConflicts $WorkbookPath $WorkbookName $allowedExcelPids)
         if ($foreignExcelNow.Count -gt 0) {
-            Write-Status "FOREIGN EXCEL DETECTED - FAIL-CLOSED SAFETY STOP." Red
+            Write-Status "CANONICAL WORKBOOK CONFLICT - FAIL-CLOSED SAFETY STOP." Red
             foreach ($foreignExcel in $foreignExcelNow) {
                 Write-Status ("  leaving foreign Excel untouched: PID " + $foreignExcel.Id + " / " + $foreignExcel.MainWindowTitle) Yellow
             }
@@ -987,12 +1479,10 @@ try {
 
                     $isHidden = ($xp2.MainWindowHandle -eq 0)
 
+                    $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
                     $isCanonicalWorkbook = (
                         -not [string]::IsNullOrWhiteSpace($excelCmd) -and
-                        $excelCmd.IndexOf(
-                            $WorkbookPath,
-                            [StringComparison]::OrdinalIgnoreCase
-                        ) -ge 0
+                        $excelCmd.IndexOf($WorkbookPath, $ordinalIgnoreCase) -ge 0
                     )
 
                     $isControllerChild = (
@@ -1000,10 +1490,12 @@ try {
                         [int]$excelInfo.ParentProcessId -eq $PID
                     )
 
+                    $otherExcelPresent = Test-OtherExcelInSession ([int]$state.excel_pid)
                     if (
                         $isHidden -and
                         $isCanonicalWorkbook -and
-                        $isControllerChild
+                        $isControllerChild -and
+                        -not $otherExcelPresent
                     ) {
                         Write-Status (
                             "  terminating verified hidden AI Cockpit Excel PID " +
@@ -1059,6 +1551,7 @@ try {
                             "hidden=" + $isHidden +
                             ", canonicalWorkbook=" + $isCanonicalWorkbook +
                             ", controllerChild=" + $isControllerChild +
+                            ", otherExcelPresent=" + $otherExcelPresent +
                             ". It will NOT be force-stopped."
                         ) Red
 
@@ -1214,15 +1707,65 @@ try {
             Write-Status ("Collector recovered - LIVE / " + $PORT_COLLECTOR) Green
         }
 
+        # 4b) AI SHADOW is a background observer. Restart the process if it
+        # dies, but never start a second copy while the recorded PID is alive,
+        # and never let its failure stop Collector, Excel, or the Gateway.
+        $sp = if ($state.shadow_supervisor_pid -gt 0) { Get-Process -Id $state.shadow_supervisor_pid -ErrorAction SilentlyContinue } else { $null }
+        if ($null -eq $sp) {
+            if ($state.shadow_supervisor_status -ne "STOPPED" -and $state.shadow_supervisor_status -ne "DOWN") {
+                Write-Status "AI SHADOW supervisor is down - observations stay fail-closed until it restarts." Yellow
+            }
+            $state.shadow_supervisor_status = "DOWN"
+            $secsSinceShadow = ((Get-Date) - $lastShadowRestartAt).TotalSeconds
+            if ($shadowRestartAttempts -lt 5 -and $secsSinceShadow -gt 20) {
+                $shadowRestartAttempts++
+                $lastShadowRestartAt = Get-Date
+                Write-Status ("AI SHADOW supervisor restart attempt " + $shadowRestartAttempts + "/5") Yellow
+                $shadowProc = Start-ShadowSupervisor $RepoRootResolved $RuntimeDir
+                if ($null -ne $shadowProc) {
+                    $state.shadow_supervisor_pid = [int]$shadowProc.Id
+                    $state.shadow_supervisor_status = "STARTING"
+                } else {
+                    $state.shadow_supervisor_status = "STOPPED"
+                }
+            }
+            Save-State $state
+        } elseif ($state.shadow_supervisor_status -ne "RUNNING") {
+            $state.shadow_supervisor_status = "RUNNING"
+            $shadowRestartAttempts = 0
+            Save-State $state
+            Write-Status "AI SHADOW supervisor process is alive. Engine state is published in ai_shadow_status.json." Green
+        }
+
         # 5) Is Gateway still alive? This one we do treat as worth a clear
         #    warning (the UI itself becomes unreachable), but we still do
         #    not exit the Controller - the user can see this window.
         if ($state.gateway_pid -gt 0) {
             $gp = Get-Process -Id $state.gateway_pid -ErrorAction SilentlyContinue
-            if ($null -eq $gp) {
-                Write-Status "Gateway process is not running - UI is unreachable. Restarting it..." Red
+            $gatewayPortReady = Test-Port $PORT_GATEWAY 250
+            if ($null -eq $gp -or -not $gatewayPortReady) {
+                if ($null -ne $gp -and (Test-OwnedPidIdentity "gateway_pid" ([int]$state.gateway_pid))) {
+                    try { Stop-Process -Id ([int]$state.gateway_pid) -Force -ErrorAction SilentlyContinue } catch {}
+                    Start-Sleep -Milliseconds 250
+                }
+                Write-Status "Gateway is down or not listening - restarting one owned instance..." Red
                 $gatewayProc = Start-Worker -Name "gateway_retry" -Script $Gateway -WorkDir $RepoRootResolved -ExtraArgs $gatewayArgs
                 $state.gateway_pid = [int]$gatewayProc.Id
+                Save-State $state
+            }
+        }
+
+        if ($state.brain_gateway_pid -gt 0) {
+            $bgp = Get-Process -Id $state.brain_gateway_pid -ErrorAction SilentlyContinue
+            $brainPortReady = Test-Port $PORT_BRAIN 250
+            if ($null -eq $bgp -or -not $brainPortReady) {
+                if ($null -ne $bgp -and (Test-OwnedPidIdentity "brain_gateway_pid" ([int]$state.brain_gateway_pid))) {
+                    try { Stop-Process -Id ([int]$state.brain_gateway_pid) -Force -ErrorAction SilentlyContinue } catch {}
+                    Start-Sleep -Milliseconds 250
+                }
+                Write-Status "Brain Gateway is down or not listening - restarting one owned instance..." Red
+                $brainGatewayProc = Start-Worker -Name "brain_gateway_retry" -Script $Gateway -WorkDir $RepoRootResolved -ExtraArgs $brainGatewayArgs
+                $state.brain_gateway_pid = [int]$brainGatewayProc.Id
                 Save-State $state
             }
         }
@@ -1230,7 +1773,7 @@ try {
 } catch {
     Write-Host ""
     Write-Host "==================================================" -ForegroundColor Red
-    Write-Host " AI COCKPIT CONTROLLER V9 - STOPPED ON ERROR" -ForegroundColor Red
+    Write-Host " AI COCKPIT CONTROLLER V10 - STOPPED ON ERROR" -ForegroundColor Red
     Write-Host "==================================================" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Yellow
     Write-Host ""
