@@ -265,7 +265,7 @@ function Test-CollectorCommandLine([string]$CommandLine) {
         "RUN_AI_COCKPIT_V10.ps1",
         "Kioxia_RSS_Live_Watcher.ps1",
         "Kioxia_Safety_Heartbeat.ps1",
-        "AI_COCKPIT_GATEWAY_V9.ps1",
+        "AI_COCKPIT_GATEWAY_V10.ps1",
         "EXCEL.EXE"
     )) {
         if ($CommandLine.IndexOf($name, $cmp) -ge 0) { return $false }
@@ -714,7 +714,7 @@ if ($RuntimeAcceptSelfTest) {
 
 $repo = Resolve-RepoRoot
 Write-Host "==================================================" -ForegroundColor DarkCyan
-Write-Host " AI COCKPIT V9 - update + backup + start" -ForegroundColor Cyan
+Write-Host " AI COCKPIT V10 - deploy + start" -ForegroundColor Cyan
 Write-Host "==================================================" -ForegroundColor DarkCyan
 Write-Host ("Repo:   " + $repo) -ForegroundColor Cyan
 Write-Host ("Branch: " + $Branch) -ForegroundColor Cyan
@@ -734,10 +734,10 @@ try {
         throw "AcceptRuntimeCollector requires -ExpectedSha. Refusing to copy an unpinned checkout into RuntimeDir."
     }
     # V10 production invariant: startup never mutates the git worktree.
-$SkipGitUpdate = $true
- else {
-        Write-Host "Skipping git update (-SkipGitUpdate) - using whatever is already checked out." -ForegroundColor DarkGray
-    }
+    # The checked-out branch/SHA is verified below, but startup never fetches,
+    # checks out, resets, cleans, stashes, or mutates the worktree.
+    $SkipGitUpdate = $true
+    Write-Host "V10 startup: git mutation disabled; using the current checkout exactly as-is." -ForegroundColor DarkGray
 
     $actualBranch = (Invoke-GitFatal $repo @("rev-parse", "--abbrev-ref", "HEAD") "could not read the current branch after update").Trim()
     $actualSha = (Invoke-GitFatal $repo @("rev-parse", "HEAD") "could not read the current commit after update").Trim()
@@ -873,7 +873,7 @@ if (Test-Path -LiteralPath $logDir) {
 }
 $stateFile = Join-Path $root "V10_CONTROLLER_STATE.json"
 if (Test-Path -LiteralPath $stateFile) {
-    $stateBackup = Join-Path $root ("V9_CONTROLLER_STATE_backup_" + (Get-Date -Format "yyyyMMdd_HHmmss") + ".json")
+    $stateBackup = Join-Path $root ("V10_CONTROLLER_STATE_backup_" + (Get-Date -Format "yyyyMMdd_HHmmss") + ".json")
     Copy-Item -LiteralPath $stateFile -Destination $stateBackup -Force -ErrorAction SilentlyContinue
 }
 
