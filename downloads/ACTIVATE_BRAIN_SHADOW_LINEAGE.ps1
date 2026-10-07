@@ -62,12 +62,11 @@ $canonicalShadowBefore = IdText (Get-Ids {
 & git -C $RepoRoot fetch origin $Branch | Out-Host
 if ($LASTEXITCODE -ne 0) { throw "GIT_FETCH_FAILED" }
 
-$remote = "origin/$Branch"
-$supervisorText = Get-GitText ($remote + ":scripts/ai_shadow_supervisor.py")
-$bridgeText = Get-GitText ($remote + ":scripts/production_candidate_bridge.py")
-
-Write-Utf8NoBom (Join-Path $BrainRoot "scripts\ai_shadow_supervisor.py") $supervisorText
-Write-Utf8NoBom (Join-Path $BrainRoot "scripts\production_candidate_bridge.py") $bridgeText
+# BrainRoot is an existing git worktree. Resetting the worktree lets git
+# write the repository bytes directly and avoids Windows PowerShell
+# re-decoding UTF-8 Japanese source through the console code page.
+& git -C $BrainRoot reset --hard ("origin/" + $Branch) | Out-Host
+if ($LASTEXITCODE -ne 0) { throw "BRAIN_WORKTREE_RESET_FAILED" }
 
 $python = Get-Python
 $exe = [string]$python.exe
