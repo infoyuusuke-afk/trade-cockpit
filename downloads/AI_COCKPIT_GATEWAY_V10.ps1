@@ -116,6 +116,23 @@ function Test-HealthProcess([int]$ProcessId, [string]$ScriptName, [datetime]$Sta
         return ([string]$process.CommandLine -match [regex]::Escape($ScriptName))
     } catch { return $false }
 }
+
+function Test-ControllerHealthProcess([int]$ProcessId, [datetime]$StateWrittenAt) {
+    if ($ProcessId -le 0) { return $false }
+    try {
+        $process = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction Stop
+        if ($null -eq $process -or [string]::IsNullOrWhiteSpace([string]$process.CommandLine)) { return $false }
+        if ([datetime]$process.CreationDate -gt $StateWrittenAt) { return $false }
+        $cmd = [string]$process.CommandLine
+        # RUN invokes Controller synchronously with &, so the State controller_pid
+        # may legitimately be the RUN PowerShell host. Accept only these two
+        # V10 identities; never treat an arbitrary powershell.exe as Controller.
+        return (
+            $cmd -match [regex]::Escape("AI_COCKPIT_CONTROLLER_V10.ps1") -or
+            $cmd -match [regex]::Escape("RUN_AI_COCKPIT_V10.ps1")
+        )
+    } catch { return $false }
+}
 function Get-ContentType([string]$path) {
     switch -Regex ($path.ToLowerInvariant()) {
         '\.html?$' { return 'text/html; charset=utf-8' }
@@ -502,7 +519,7 @@ try {
                         $stateWrittenAt = (Get-Item -LiteralPath $controllerStateFile).LastWriteTime
                         $stateAge = ((Get-Date) - $stateWrittenAt).TotalSeconds
                         $liveAge = if ($liveExists) { ((Get-Date) - (Get-Item -LiteralPath $liveJson).LastWriteTime).TotalSeconds } else { [double]::PositiveInfinity }
-                        $controllerAlive = Test-HealthProcess ([int]$st.controller_pid) 'AI_COCKPIT_CONTROLLER_V10.ps1' $stateWrittenAt
+                        $controllerAlive = Test-ControllerHealthProcess ([int]$st.controller_pid) $stateWrittenAt
                         $sessionFresh = $controllerAlive -and $stateAge -ge 0 -and $stateAge -le 30
                         foreach ($check in @(
                             @{field='watcher'; script='Kioxia_RSS_Live_Watcher.ps1'},
