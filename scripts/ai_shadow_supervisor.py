@@ -43,6 +43,8 @@ IDENTITY_SYMBOL = "285A.T"
 RUNTIME_MANIFEST_PATH = "C:\\AI_Cockpit_OneClick_Starter\\V9_RUNTIME.json"
 MAX_AGE_SECONDS = 60
 STATUS_STALE_SECONDS = 30
+CANDIDATE_SIDECAR_FILENAME = "brain_candidate_live.json"
+CANDIDATE_SIDECAR_MAX_AGE_SECONDS = 30
 
 LONG_ENTRY_SIGNALS = frozenset({"初動買い候補", "買いサイン", "持ち越しロング確定"})
 SHORT_ENTRY_SIGNALS = frozenset({"初動ショート候補", "空売りサイン", "持ち越しショート確定"})
@@ -436,6 +438,61 @@ def entry_candidate(row: dict) -> dict | None:
     if isinstance(candidate_id, str) and candidate_id:
         record["candidate_id"] = candidate_id
     return record
+
+
+def attach_candidate_sidecar(payload, *, live_path: Path, now: datetime) -> dict:
+    """Attach a research candidate_id to exactly one already-valid entry row.
+
+    This never creates or changes a signal, side, price, geometry, quantity,
+    execution authority, or real_submit_allowed. Invalid/missing/stale sidecars
+    are ignored so candidate lineage cannot relax the baseline Shadow gate.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    sidecar_path = live_path.parent / CANDIDATE_SIDECAR_FILENAME
+    try:
+        sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeError):
+        return payload
+    if not isinstance(sidecar, dict):
+        return payload
+    if sidecar.get("execution_authority") is not False or sidecar.get("real_submit_allowed") is not False:
+        return payload
+    candidate_id = sidecar.get("candidate_id")
+    symbol = sidecar.get("symbol")
+    side = sidecar.get("side")
+    if not isinstance(candidate_id, str) or not candidate_id:
+        return payload
+    if not isinstance(symbol, str) or not symbol or side not in {"LONG", "SHORT"}:
+        return payload
+    generated = parse_timestamp(sidecar.get("generated_at"), now.tzinfo)
+    if generated is None:
+        return payload
+    age = (now - generated).total_seconds()
+    if age < 0 or age > CANDIDATE_SIDECAR_MAX_AGE_SECONDS:
+        return payload
+
+    rows = payload.get("all_targets")
+    if not isinstance(rows, list):
+        return payload
+    match_indexes = []
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict) or row.get("ticker") != symbol:
+            continue
+        signal = row.get("signal")
+        if not isinstance(signal, str) or _side_of(signal) != side:
+            continue
+        if entry_candidate(row) is None:
+            continue
+        match_indexes.append(index)
+    if len(match_indexes) != 1:
+        return payload
+
+    enriched = dict(payload)
+    enriched_rows = [dict(row) if isinstance(row, dict) else row for row in rows]
+    enriched_rows[match_indexes[0]]["candidate_id"] = candidate_id
+    enriched["all_targets"] = enriched_rows
+    return enriched
 
 
 def position_key(ticker: str, side: str) -> str:
@@ -1498,6 +1555,8 @@ def run_once(data_dir: Path, live_path: Path, status_path: Path, *, now: datetim
         except (OSError, json.JSONDecodeError, ValueError):
             payload = None
             file_mtime = None
+    if isinstance(payload, dict):
+        payload = attach_candidate_sidecar(payload, live_path=live_path, now=moment)
     verdict = assess_live_payload(
         payload,
         file_mtime=file_mtime,
