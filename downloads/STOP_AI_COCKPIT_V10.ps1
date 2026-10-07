@@ -65,6 +65,103 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
     } catch { return $false }
 }
 
+function Close-VerifiedManagedExcelNoSave([int]$ExcelPid,[string]$WorkbookPath) {
+    if ($ExcelPid -le 0 -or [string]::IsNullOrWhiteSpace($WorkbookPath)) { return $false }
+
+    $xp = Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue
+    if ($null -eq $xp -or $xp.MainWindowHandle -eq 0) { return $false }
+
+    if (-not ("AIExcelNative" -as [type])) {
+        Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class AIExcelNative {
+    [DllImport("oleacc.dll")]
+    public static extern int AccessibleObjectFromWindow(
+        IntPtr hwnd,
+        uint dwObjectID,
+        ref Guid riid,
+        [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+}
+"@
+    }
+
+    $native = $null
+    $app = $null
+    $targetBook = $null
+    try {
+        $iid = [Guid]"00020400-0000-0000-C000-000000000046"
+        $nativeObj = $null
+        $hr = [AIExcelNative]::AccessibleObjectFromWindow(
+            [IntPtr]$xp.MainWindowHandle,
+            [uint32]0xFFFFFFF0,
+            [ref]$iid,
+            [ref]$nativeObj
+        )
+        if ($hr -ne 0 -or $null -eq $nativeObj) { return $false }
+        $native = $nativeObj
+
+        try { $app = $native.Application } catch { $app = $native }
+        if ($null -eq $app) { return $false }
+
+        $appHwnd = 0
+        try { $appHwnd = [int64]$app.Hwnd } catch { return $false }
+        $resolvedPid = [uint32]0
+        [void][AIExcelNative]::GetWindowThreadProcessId([IntPtr]$appHwnd, [ref]$resolvedPid)
+        if ([int]$resolvedPid -ne $ExcelPid) { return $false }
+
+        foreach ($book in @($app.Workbooks)) {
+            $full = ""
+            try { $full = [string]$book.FullName } catch {}
+            if (-not [string]::IsNullOrWhiteSpace($full) -and
+                [string]::Equals($full, $WorkbookPath, [StringComparison]::OrdinalIgnoreCase)) {
+                $targetBook = $book
+                break
+            }
+            try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($book) } catch {}
+        }
+        if ($null -eq $targetBook) { return $false }
+
+        $oldAlerts = $true
+        try { $oldAlerts = [bool]$app.DisplayAlerts } catch {}
+        try { $app.DisplayAlerts = $false } catch {}
+
+        # V10 runtime writes/RSS formula injection are transient. Safe Stop must
+        # close the canonical runtime workbook without saving them and without
+        # showing the "Save changes?" dialog.
+        $targetBook.Close($false)
+
+        try {
+            if ([int]$app.Workbooks.Count -eq 0) { $app.Quit() }
+        } catch {}
+
+        try { $app.DisplayAlerts = $oldAlerts } catch {}
+
+        foreach ($attempt in 1..30) {
+            Start-Sleep -Milliseconds 500
+            if ($null -eq (Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue)) { return $true }
+        }
+        return $false
+    } catch {
+        return $false
+    } finally {
+        if ($null -ne $targetBook) {
+            try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($targetBook) } catch {}
+        }
+        if ($null -ne $app -and $app -ne $native) {
+            try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($app) } catch {}
+        }
+        if ($null -ne $native) {
+            try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($native) } catch {}
+        }
+        [GC]::Collect()
+        [GC]::WaitForPendingFinalizers()
+    }
+}
+
 Stop-OwnedJobBridge 28580 ([int]$state.collector_pid) "Collector JSON"
 Stop-OwnedJobBridge 28582 ([int]$state.watcher_pid) "Watcher JSON"
 
@@ -102,22 +199,12 @@ if ($excelPid -gt 0 -and -not [string]::IsNullOrWhiteSpace($workbookName) -and -
         $titleMatches = (-not [string]::IsNullOrWhiteSpace([string]$xp.MainWindowTitle) -and $xp.MainWindowTitle -like ("*" + $workbookName + "*"))
 
         if ($isExcel -and $sameSession -and $hasCanonicalPath -and $titleMatches) {
-            Write-Host ("Requesting normal close of verified V10 Excel PID " + $excelPid + " ...") -ForegroundColor Yellow
-            $closeRequested = $false
-            try { $closeRequested = [bool]$xp.CloseMainWindow() } catch {}
-            if ($closeRequested) {
-                foreach ($attempt in 1..30) {
-                    Start-Sleep -Milliseconds 500
-                    if ($null -eq (Get-Process -Id $excelPid -ErrorAction SilentlyContinue)) {
-                        $excelCleanupOk = $true
-                        break
-                    }
-                }
-            }
+            Write-Host ("Closing verified V10 runtime workbook without saving transient RSS changes (PID " + $excelPid + ") ...") -ForegroundColor Yellow
+            $excelCleanupOk = Close-VerifiedManagedExcelNoSave $excelPid $workbookPath
             if ($excelCleanupOk) {
-                Write-Host ("Verified V10 Excel PID " + $excelPid + " closed normally.") -ForegroundColor Green
+                Write-Host ("Verified V10 Excel PID " + $excelPid + " closed without save prompt.") -ForegroundColor Green
             } else {
-                Write-Host ("Verified V10 Excel PID " + $excelPid + " did not close normally. It was NOT force-killed; state is retained.") -ForegroundColor Red
+                Write-Host ("Verified V10 Excel PID " + $excelPid + " could not be closed safely without a prompt. It was NOT force-killed; state is retained.") -ForegroundColor Red
             }
         } else {
             Write-Host ("Tracked Excel PID " + $excelPid + " failed ownership checks; not touching it and retaining state.") -ForegroundColor Red
