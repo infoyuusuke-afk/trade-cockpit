@@ -2,10 +2,14 @@ param(
     [string]$RepoRoot = "C:\AI_Cockpit_Current\trade-cockpit"
 )
 $ErrorActionPreference = "Stop"
-$source = Join-Path $RepoRoot "downloads\START_AI_COCKPIT_VALIDATED.cmd"
-if (-not (Test-Path -LiteralPath $source)) { throw "STARTER_SOURCE_NOT_FOUND" }
 $desktop = [Environment]::GetFolderPath("Desktop")
-$dest = Join-Path $desktop "AI_Cockpit_Start.cmd"
-Copy-Item -LiteralPath $source -Destination $dest -Force
-Write-Host ("INSTALLED=" + $dest) -ForegroundColor Green
-Write-Host "Tomorrow: log in to MarketSpeed II, then double-click AI_Cockpit_Start.cmd." -ForegroundColor Green
+$items = @(
+    @{ source = (Join-Path $RepoRoot "downloads\START_AI_COCKPIT_VALIDATED.cmd"); dest = (Join-Path $desktop "AI_Cockpit_Start.cmd") },
+    @{ source = (Join-Path $RepoRoot "downloads\STOP_AI_COCKPIT_VALIDATED.cmd");  dest = (Join-Path $desktop "AI_Cockpit_Stop.cmd") }
+)
+foreach ($item in $items) {
+    if (-not (Test-Path -LiteralPath $item.source)) { throw ("STARTER_SOURCE_NOT_FOUND: " + $item.source) }
+    Copy-Item -LiteralPath $item.source -Destination $item.dest -Force
+    Write-Host ("INSTALLED=" + $item.dest) -ForegroundColor Green
+}
+Write-Host "Daily operation: log in to MarketSpeed II -> AI_Cockpit_Start.cmd. End of day -> AI_Cockpit_Stop.cmd." -ForegroundColor Green
