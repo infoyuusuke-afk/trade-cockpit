@@ -108,3 +108,11 @@ Unknown values must be marked 未集計/未確認. Never invent them.
 - docs/AI_COCKPIT_V10_INCIDENT_AND_FIX_LOG.md
 - docs/AI_COCKPIT_V10_CLEANUP_LOG.md
 - docs/AI_COCKPIT_V10_LOG_POLICY.md
+
+
+## 3.1 Canonical Brain definition
+Brain is the 365-day continuous edge-discovery and realtime strategy-selection authority.
+It continuously discovers permitted strategy ideas, validates them with point-in-time-safe evidence, maintains context-specific Champion/Challenger rankings, and during the TSE session publishes the best eligible symbol + LONG / SHORT / NO-TRADE advisory signal.
+The strategy roster is dynamic; the existing 8 strategy Supervisors are not a permanent target count.
+Shadow is the attributed measurement/feedback layer for Brain decisions.
+Canonical detailed spec: `docs/BRAIN_CONTINUOUS_EDGE_DISCOVERY_REALTIME_SIGNAL_SPEC_V1.md`.

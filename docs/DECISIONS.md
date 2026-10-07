@@ -63,3 +63,12 @@ If execution reveals a missing requirement, stop at the boundary and return the 
 ## D-015 Prevent specification drift
 Do not create a new format, new KPI, new architecture, new role split or new definition of done during execution.
 If a change is justified, record it first as a decision in DECISIONS.md, then update the relevant spec, then implement.
+
+
+## D-016 Brain is the continuous edge-discovery and realtime-selection authority
+The Brain is not a fixed 8-Supervisor committee and not a health dashboard.
+Its canonical role is to continuously discover permitted trading methods, normalize and validate them, learn context-specific expected value, select the best current strategy/symbol during market hours, and publish LONG / SHORT / NO-TRADE advisory signals with complete evidence.
+The number of strategies and strategy modules is dynamic and evidence-driven.
+Existing strategy Supervisors are internal specialist modules, not a fixed target roster.
+Shadow measures Brain decisions and feeds performance back; it does not replace Brain decision ownership.
+`real_submit_allowed=false` remains mandatory.
