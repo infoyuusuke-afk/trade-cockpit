@@ -367,11 +367,15 @@ function Start-ShadowSupervisor([string]$RepoRootResolved, [string]$RuntimeDir) 
     $stdout = Join-Path $LogDir "shadow_supervisor_stdout.log"
     $stderr = Join-Path $LogDir "shadow_supervisor_stderr.log"
     Remove-Item -LiteralPath $stdout, $stderr -Force -ErrorAction SilentlyContinue
+    # Windows PowerShell 5.1 flattens -ArgumentList to one command-line
+    # string and does not preserve element boundaries for paths containing
+    # spaces. Quote every path-valued argument explicitly so MarketSpeed II
+    # RSS runtime paths stay a single argv element.
     $argList = $prefix + @(
-        "-u", $scriptPath,
-        "--live", (Join-Path $RuntimeDir "live_ms2.json"),
-        "--data-dir", $dataDir,
-        "--status", $statusPath,
+        "-u", ('"' + $scriptPath + '"'),
+        "--live", ('"' + (Join-Path $RuntimeDir "live_ms2.json") + '"'),
+        "--data-dir", ('"' + $dataDir + '"'),
+        "--status", ('"' + $statusPath + '"'),
         "--interval", "5"
     )
     return Start-Process -FilePath $python -ArgumentList $argList -WorkingDirectory $RepoRootResolved `
