@@ -12,9 +12,36 @@ At the beginning of each Claude Code / Cursor / agent session in this repository
 Every progress report starts with: 現実の紙幣 -> Project net P/L -> 100億円までの残額 -> 今日の実現利益/売上 -> 今日の実費 -> Owner労務コスト -> then technical progress / Acceptance / Blockers / Next actions.
 Unknown money values must be marked 未集計 / 未確認. Never infer them.
 
+## Single orchestration authority
+Normal ChatGPT chat owns problem definition, prioritization, architecture, specification, Acceptance and integration.
+
+Cursor / Claude Code / Work / Cloud are executors, not independent planners.
+Do not reinterpret vague requests into a new architecture.
+Do not change priorities, KPIs, Definition of Done or system roles during execution.
+
+A task is executable only when the handoff packet states:
+- objective / economic reason,
+- confirmed facts and unknowns,
+- exact inputs,
+- exact outputs,
+- implementation or calculation rule,
+- safety constraints,
+- Acceptance / DoD.
+
+If any of these are materially missing, return the gap rather than inventing it.
+
+## Handoff discipline
+Normal chat should not hand off analysis/reporting/calculation/specification merely because another executor exists.
+Use Work/Cloud only for bounded operations that truly require local PC, GUI, browser or file access.
+Use Cursor/Claude Code only after the implementation specification is frozen.
+
+Executor output is evidence only. It is not accepted project truth until normal chat verifies it against Acceptance and updates canonical state.
+
+No cascading handoffs between executors unless explicitly authorized in the canonical spec.
+
 ## Responsibilities
 ChatGPT: architecture, prioritization, acceptance, integration.
-Cursor / Claude Code: coding, tests, implementation.
+Cursor / Claude Code: coding, tests, implementation from frozen spec.
 Cloud / Work: bounded execution only; no independent architecture changes.
 Owner: nearly zero-operation target.
 

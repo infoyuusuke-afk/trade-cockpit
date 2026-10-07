@@ -14,7 +14,9 @@ Do not restore V8/V9 active runtime paths. Git history is sufficient for old-cod
 Owner should not become the default debugger. Repeated manual PowerShell, screenshots and process cleanup are a system failure condition.
 
 ## D-005 Bounded executors
-Cursor/Codex implement. Cloud/Work receive bounded execution tasks. Architecture/prioritization/acceptance remains centralized.
+Cursor/Codex implement only after the normal-chat orchestrator fixes objective, specification and Acceptance.
+Cloud/Work execute only bounded tasks that genuinely require local/browser/GUI/file capability.
+Executors must not independently redesign architecture, reprioritize the project, or redefine success.
 
 ## D-006 Lifecycle acceptance
 No PASS from START alone. Required lifecycle: START -> RUNNING -> STOP -> CLEAN -> RESTART.
@@ -33,3 +35,31 @@ EVENT 5 must evolve to: market-wide discovery -> candidate promotion -> live enr
 
 ## D-011 No local optimization trap
 At each prioritization point evaluate actual cash impact, blocker severity, Owner labor, time-to-completion, opportunity cost, and parallelizable revenue work. Do not let one technical defect consume all project capacity indefinitely.
+
+## D-012 Normal-chat-first orchestration
+The normal ChatGPT chat is the single orchestration layer.
+Before any handoff, it must define:
+- why the task matters to money / P0,
+- confirmed facts and unknowns,
+- exact inputs,
+- exact outputs,
+- calculation/decision rules,
+- safety constraints,
+- Acceptance / DoD,
+- next-action owner.
+
+Do not hand off analysis, reporting, comparison or specification work merely for convenience.
+First exhaust repository/shared logs/connected evidence available to normal chat.
+
+## D-013 Executor output is evidence, not authority
+Work/Cloud/Cursor results are not automatically accepted project truth.
+They return bounded execution evidence.
+Normal chat verifies that evidence against the frozen specification and Acceptance before updating canonical state.
+
+## D-014 No cascading handoffs
+One executor must not delegate to another executor or create a parallel architecture branch unless the canonical spec explicitly authorizes it.
+If execution reveals a missing requirement, stop at the boundary and return the gap to normal chat for specification update.
+
+## D-015 Prevent specification drift
+Do not create a new format, new KPI, new architecture, new role split or new definition of done during execution.
+If a change is justified, record it first as a decision in DECISIONS.md, then update the relevant spec, then implement.

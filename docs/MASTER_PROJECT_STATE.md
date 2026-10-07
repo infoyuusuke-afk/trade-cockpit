@@ -40,10 +40,29 @@ Current UI uses `speculative_theme_watch` static/current scan data and does not 
 market-wide scan -> HOT promotion -> MS2 RSS live promotion -> real-time tracking -> EVENT 5.
 
 ## 4. Architecture ownership
-- ChatGPT: architecture, prioritization, acceptance, integration decisions
-- Cursor/Codex: implementation against canonical specs
-- Cloud/Work: bounded execution tasks only; no independent architecture decisions
-- Owner: should be nearly zero-operation; only unavoidable local confirmation / approval
+- ChatGPT normal chat: single orchestration authority for problem definition, priorities, architecture, specification, acceptance, and integration.
+- Cursor/Codex: implementation only after specification and Acceptance are fixed.
+- Cloud/Work: bounded execution only when local/browser/GUI/file access is truly required; no architecture, no reinterpretation, no priority changes.
+- Owner: should be nearly zero-operation; only unavoidable local confirmation / approval.
+
+## 4.1 Mandatory handoff gate
+**Do not hand work to Work/Cloud/Cursor merely because they are available.**
+The normal-chat orchestrator must first complete, in writing:
+1. objective and economic reason,
+2. exact current facts / unknowns,
+3. input data source,
+4. required output,
+5. algorithm / decision rule when applicable,
+6. safety constraints,
+7. Acceptance / Definition of Done,
+8. owner of the next action.
+
+Handoff is allowed only if the remaining task requires capability that normal chat cannot execute directly, such as local-PC/GUI/browser/file operations or bounded implementation.
+
+The executor must receive a frozen task packet and must not redesign it.
+Executor output is evidence/results only; it does not become architecture or project truth until normal-chat Acceptance checks it and updates canonical state.
+
+For analysis/reporting/calculation requests, first use available shared logs, repository data, connected sources, and existing evidence. Do not escalate to Work by default.
 
 ## 5. Canonical runtime
 Repository: `infoyuusuke-afk/trade-cockpit`
