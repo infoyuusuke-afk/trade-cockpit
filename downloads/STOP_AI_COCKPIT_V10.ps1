@@ -54,14 +54,24 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
         "voice_bridge_pid" { "AI_COCKPIT_VOICE_BRIDGE_V10.ps1" }
         "sbv2_pid"         { "server_fastapi.py" }
         "shadow_supervisor_pid" { "ai_shadow_supervisor.py" }
-        "controller_pid"   { "AI_COCKPIT_CONTROLLER_V10.ps1" }
+        # RUN invokes Controller synchronously with &, so controller_pid is
+        # the RUN PowerShell host itself. Accept either identity, but never
+        # a generic powershell.exe match.
+        "controller_pid"   { "__V10_CONTROLLER_OR_RUN__" }
         default            { "" }
     }
     if ([string]::IsNullOrWhiteSpace($expected)) { return $false }
     try {
         $wmi = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction SilentlyContinue
         $cmd = if ($null -ne $wmi) { [string]$wmi.CommandLine } else { "" }
-        return (-not [string]::IsNullOrWhiteSpace($cmd) -and $cmd -match [regex]::Escape($expected))
+        if ([string]::IsNullOrWhiteSpace($cmd)) { return $false }
+        if ($Field -eq "controller_pid") {
+            return (
+                $cmd -match [regex]::Escape("AI_COCKPIT_CONTROLLER_V10.ps1") -or
+                $cmd -match [regex]::Escape("RUN_AI_COCKPIT_V10.ps1")
+            )
+        }
+        return ($cmd -match [regex]::Escape($expected))
     } catch { return $false }
 }
 
@@ -162,10 +172,33 @@ public static class AIExcelNative {
     }
 }
 
+# Stop the supervising RUN/Controller host FIRST. Otherwise it can restart
+# Gateway/Voice/Shadow while Safe Stop is still tearing workers down.
+$controllerVal = $state.PSObject.Properties["controller_pid"]
+if ($null -ne $controllerVal -and [int]$controllerVal.Value -gt 0) {
+    $controllerPid = [int]$controllerVal.Value
+    $controllerProc = Get-Process -Id $controllerPid -ErrorAction SilentlyContinue
+    if ($null -ne $controllerProc -and (Test-OwnedPidIdentity "controller_pid" $controllerPid)) {
+        try { Stop-Process -Id $controllerPid -Force -ErrorAction SilentlyContinue } catch {}
+        foreach ($attempt in 1..20) {
+            Start-Sleep -Milliseconds 250
+            if ($null -eq (Get-Process -Id $controllerPid -ErrorAction SilentlyContinue)) { break }
+        }
+        if ($null -ne (Get-Process -Id $controllerPid -ErrorAction SilentlyContinue)) {
+            Write-Host ("Controller/RUN PID " + $controllerPid + " did not stop; aborting before worker teardown.") -ForegroundColor Red
+            exit 2
+        }
+        Write-Host ("Stopped controller_pid (PID " + $controllerPid + ")") -ForegroundColor Green
+    } elseif ($null -ne $controllerProc) {
+        Write-Host ("PID " + $controllerPid + " no longer matches V10 Controller/RUN; not stopping it.") -ForegroundColor Red
+        exit 2
+    }
+}
+
 Stop-OwnedJobBridge 28580 ([int]$state.collector_pid) "Collector JSON"
 Stop-OwnedJobBridge 28582 ([int]$state.watcher_pid) "Watcher JSON"
 
-foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid", "controller_pid")) {
+foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid")) {
     $val = $state.PSObject.Properties[$field]
     if ($null -eq $val -or [int]$val.Value -le 0) { continue }
     $procId = [int]$val.Value
