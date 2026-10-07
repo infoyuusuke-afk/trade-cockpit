@@ -1,6 +1,6 @@
 param(
     [string]$RepoRoot = "",
-    [string]$Branch = "fix/v9-ui-voice-convergence",
+    [string]$Branch = "release/ai-cockpit-20261008",
     [string]$ExpectedSha = "",
     [switch]$SkipGitUpdate,
     [string]$RuntimeDirOverride = "",
