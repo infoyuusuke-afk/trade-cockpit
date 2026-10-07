@@ -897,4 +897,67 @@ if (Test-Path -LiteralPath $stateFile) {
 
 Write-Host "Starting Controller V9..." -ForegroundColor Cyan
 Write-Host ""
-& (Join-Path $repo "downloads\AI_COCKPIT_CONTROLLER_V9.ps1") -RepoRoot $repo -ExpectedBranch $Branch -RuntimeDirOverride $runtimeDirForDeploy -Root $Root
+
+# Start Controller in its own process so RUN can continue to the Brain lane.
+# This preserves the persistent Controller while keeping startup orchestration
+# in this canonical RUN entrypoint.
+$psExe = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+$controllerScript = Join-Path $repo "downloads\AI_COCKPIT_CONTROLLER_V9.ps1"
+$controllerArgs = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $controllerScript +
+    '" -RepoRoot "' + $repo +
+    '" -ExpectedBranch "' + $Branch +
+    '" -RuntimeDirOverride "' + $runtimeDirForDeploy +
+    '" -Root "' + $Root + '"'
+$controllerProcess = Start-Process -FilePath $psExe -ArgumentList $controllerArgs -PassThru
+Write-Host ("  Controller PID=" + $controllerProcess.Id) -ForegroundColor Cyan
+
+function Test-AiCockpitLoopbackPort([int]$Port,[int]$TimeoutMs=400) {
+    $client = New-Object Net.Sockets.TcpClient
+    try {
+        $async = $client.BeginConnect("127.0.0.1",$Port,$null,$null)
+        if (-not $async.AsyncWaitHandle.WaitOne($TimeoutMs,$false)) { return $false }
+        $client.EndConnect($async)
+        return $true
+    } catch {
+        return $false
+    } finally {
+        try { $client.Close() } catch {}
+    }
+}
+
+function Wait-AiCockpitLoopbackPort([int]$Port,[int]$Seconds) {
+    $deadline = (Get-Date).AddSeconds($Seconds)
+    while ((Get-Date) -lt $deadline) {
+        if (Test-AiCockpitLoopbackPort $Port 400) { return $true }
+        if ($controllerProcess.HasExited) {
+            throw ("CONTROLLER_EXITED_BEFORE_PORT_" + $Port + " code=" + $controllerProcess.ExitCode)
+        }
+        Start-Sleep -Milliseconds 500
+    }
+    return $false
+}
+
+foreach ($port in 28580,28581,28582,28583) {
+    if (-not (Wait-AiCockpitLoopbackPort $port 75)) {
+        throw ("PORT_TIMEOUT_" + $port)
+    }
+    Write-Host ("  Port " + $port + " READY") -ForegroundColor Green
+}
+
+# Brain lane: same current checkout, same runtime, no second worktree and no git mutation.
+if (-not (Test-AiCockpitLoopbackPort 28584 500)) {
+    $brainGateway = Join-Path $repo "downloads\AI_COCKPIT_GATEWAY_V9.ps1"
+    if (-not (Test-Path -LiteralPath $brainGateway -PathType Leaf)) {
+        throw "BRAIN_GATEWAY_SCRIPT_NOT_FOUND"
+    }
+    $brainArgs = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $brainGateway +
+        '" -RepoRoot "' + $repo +
+        '" -RuntimeDir "' + $runtimeDirForDeploy +
+        '" -Build "V9-BRAIN-CURRENT" -Port 28584'
+    Start-Process -FilePath $psExe -ArgumentList $brainArgs | Out-Null
+    if (-not (Wait-AiCockpitLoopbackPort 28584 20)) {
+        throw "BRAIN_GATEWAY_28584_TIMEOUT"
+    }
+}
+Write-Host "  Port 28584 READY (Brain Gateway)" -ForegroundColor Green
+Start-Process "http://127.0.0.1:28584/?brain=1"
