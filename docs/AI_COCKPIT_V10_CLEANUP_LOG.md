@@ -36,3 +36,37 @@ Git history remains the recovery/audit trail.
 See:
 - docs/AI_COCKPIT_V10_INCIDENT_AND_FIX_LOG.md
 - docs/AI_COCKPIT_V10_LOG_POLICY.md
+
+
+## Local V10 runtime folder cleanup completed — 2026-10-08
+
+Target:
+`C:\Users\yusuk\Desktop\デイトレ\MarketSpeed II RSS\files`
+
+Completed:
+- Deleted 60 unreferenced legacy backup files (~5.54 MB).
+- Removed the now-empty V8 evacuation folder.
+- Moved 18 log files covering the prior 9 days into `history\<date>` folders.
+- Total files reduced from 274 to 214.
+- Files visible at the folder root reduced from 46 to 28.
+
+Verification:
+- 8 required V10 files matched the recorded SHA256 values.
+- Kept the active Excel workbook, current state/status JSON, same-day logs, and history under `records`.
+- Verified content integrity for all 18 moved logs.
+- Confirmed zero unexpected missing files.
+- No Excel / PowerShell / MarketSpeed II stop or restart was performed.
+- No active runtime code was changed.
+- Full runtime acceptance was outside the scope of this cleanup.
+
+Evidence retained in the local working folder's `outputs` directory:
+- `deletion_manifest.csv`
+- `history_move_manifest.csv`
+- `remaining_files.csv`
+- `verification.json`
+- `history_verification.json`
+
+Status:
+`LOCAL_RUNTIME_FOLDER_CLEANUP=PASS`
+
+No additional deletion rules or automatic cleanup scheduling were configured.
