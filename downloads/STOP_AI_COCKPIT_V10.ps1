@@ -111,42 +111,26 @@ function Close-VerifiedManagedExcelNoSave([int]$ExcelPid,[string]$WorkbookPath) 
     if ($ExcelPid -le 0 -or [string]::IsNullOrWhiteSpace($WorkbookPath)) { return $false }
 
     $xp = Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue
-    if ($null -eq $xp -or $xp.MainWindowHandle -eq 0) { return $false }
+    if ($null -eq $xp) { return $true }
 
     if (-not ("AIExcelNative" -as [type])) {
         Add-Type @"
 using System;
 using System.Runtime.InteropServices;
 public static class AIExcelNative {
-    [DllImport("oleacc.dll")]
-    public static extern int AccessibleObjectFromWindow(
-        IntPtr hwnd,
-        uint dwObjectID,
-        ref Guid riid,
-        [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
-
     [DllImport("user32.dll")]
     public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 }
 "@
     }
 
-    $native = $null
     $app = $null
     $targetBook = $null
     try {
-        $iid = [Guid]"00020400-0000-0000-C000-000000000046"
-        $nativeObj = $null
-        $hr = [AIExcelNative]::AccessibleObjectFromWindow(
-            [IntPtr]$xp.MainWindowHandle,
-            [uint32]0xFFFFFFF0,
-            [ref]$iid,
-            [ref]$nativeObj
-        )
-        if ($hr -ne 0 -or $null -eq $nativeObj) { return $false }
-        $native = $nativeObj
-
-        try { $app = $native.Application } catch { $app = $native }
+        # This is the same ROT path that succeeds manually on the Owner PC.
+        # We still fail closed unless the resolved Excel.Application HWND maps
+        # to the exact PID recorded by V10 state.
+        $app = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
         if ($null -eq $app) { return $false }
 
         $appHwnd = 0
@@ -167,23 +151,17 @@ public static class AIExcelNative {
         }
         if ($null -eq $targetBook) { return $false }
 
-        $oldAlerts = $true
-        try { $oldAlerts = [bool]$app.DisplayAlerts } catch {}
         try { $app.DisplayAlerts = $false } catch {}
 
-        # V10 runtime writes/RSS formula injection are transient. Safe Stop must
-        # close the canonical runtime workbook without saving them and without
-        # showing the "Save changes?" dialog.
+        # Runtime RSS writes are transient. Never persist them into the clean
+        # canonical workbook during Safe Stop.
         $targetBook.Close($false)
+        try { $app.Quit() } catch {}
 
-        try {
-            if ([int]$app.Workbooks.Count -eq 0) { $app.Quit() }
-        } catch {}
-
-        try { $app.DisplayAlerts = $oldAlerts } catch {}
-
-        foreach ($attempt in 1..30) {
-            Start-Sleep -Milliseconds 500
+        # The window can disappear before EXCEL.EXE exits. Wait briefly; the
+        # caller will perform the verified hidden-orphan cleanup if needed.
+        foreach ($attempt in 1..20) {
+            Start-Sleep -Milliseconds 250
             if ($null -eq (Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue)) { return $true }
         }
         return $false
@@ -193,11 +171,8 @@ public static class AIExcelNative {
         if ($null -ne $targetBook) {
             try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($targetBook) } catch {}
         }
-        if ($null -ne $app -and $app -ne $native) {
+        if ($null -ne $app) {
             try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($app) } catch {}
-        }
-        if ($null -ne $native) {
-            try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($native) } catch {}
         }
         [GC]::Collect()
         [GC]::WaitForPendingFinalizers()
