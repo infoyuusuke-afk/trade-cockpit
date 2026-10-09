@@ -1,4 +1,5 @@
-﻿# Kioxia安全ゲート用の独立した最小限プロセス（2026-09-15 未明・ChatGPT C-011指摘への対応）。
+﻿# V6_RUNTIME_BUILD: MS2-RUNTIME-20260925-02
+# Kioxia安全ゲート用の独立した最小限プロセス（2026-09-15 未明・ChatGPT C-011指摘への対応）。
 #
 # 背景: DASHBOARD!A5等のNOW()ベースの鮮度ゲートは、Excelの仕様上「時間が経過しただけ」では
 # 再評価されない（volatile関数は再計算がトリガーされた時にだけ再評価される）。
@@ -96,6 +97,15 @@ public class KioxiaRotFinder {
     }
 }
 '@ -ErrorAction SilentlyContinue
+
+function Release-ComObjectSafe($obj) {
+    if ($null -eq $obj) { return }
+    try {
+        if ([Runtime.InteropServices.Marshal]::IsComObject($obj)) {
+            [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($obj)
+        }
+    } catch {}
+}
 
 $bookFileName = "Kioxia_MS2_RSS_Live_Signals.xlsx"
 $dashboardSheetName = "DASHBOARD"
@@ -196,23 +206,45 @@ $consecutiveFailures = 0
 $lastAlertAt = Get-Date "2000-01-01"
 $lastLoggedOk = Get-Date "2000-01-01"
 $heartbeatStartedAt = Get-Date
+$everAttached = $false
 
 Write-Host "[HEARTBEAT] SAFETY GATE : STARTING / 90s GRACE" -ForegroundColor Cyan
 
 while ($true) {
     $failed = $false
     $errorDetail = ""
+    $bookMissing = $false
+    $book = $null
+    $dashboard = $null
     try {
         # ROTを毎回列挙し、ファイル名が一致するモニカーの指す生きているCOMオブジェクトを
         # 直接取得する（文字列の再解釈はしない。ローカルパス・OneDriveクラウドURLのどちらでも対応）。
         $book = [KioxiaRotFinder]::FindLiveObject($bookFileName)
-        if ($null -eq $book) { throw "ワークブックがROTに見つかりません（Excel未起動またはブック未オープン）" }
+        if ($null -eq $book) {
+            $bookMissing = $true
+            throw "ワークブックがROTに見つかりません（Excel未起動またはブック未オープン）"
+        }
+        $everAttached = $true
         # 安全ゲート数式(NOW()ベース)があるDASHBOARDシートを明示的に指定して再計算する。
         # 別シートを再計算してもDASHBOARDのNOW()は再評価されないため、シート指定が必須。
-        $book.Worksheets.Item($dashboardSheetName).Calculate()
+        $dashboard = $book.Worksheets.Item($dashboardSheetName)
+        $dashboard.Calculate()
     } catch {
         $failed = $true
         $errorDetail = $_.Exception.Message
+    } finally {
+        Release-ComObjectSafe $dashboard
+        Release-ComObjectSafe $book
+        $dashboard = $null
+        $book = $null
+    }
+
+    # Once we have successfully attached, disappearance from the ROT means the
+    # user closed the workbook. Exit instead of keeping Excel alive or reopening it.
+    if ($bookMissing -and $everAttached) {
+        Write-LocalSourceHealth "STOPPED" 1 @("WORKBOOK_CLOSED")
+        Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Workbook closed. Heartbeat is releasing COM and exiting." -ForegroundColor Yellow
+        break
     }
 
     if ($failed) {
@@ -243,3 +275,9 @@ while ($true) {
     }
     Start-Sleep -Seconds $intervalSeconds
 }
+
+[GC]::Collect()
+[GC]::WaitForPendingFinalizers()
+[GC]::Collect()
+[GC]::WaitForPendingFinalizers()
+Write-Host "[HEARTBEAT] Excel COM references released." -ForegroundColor Yellow

@@ -41,7 +41,7 @@ SUPERVISORS = {
     "DATA_QUALITY": "Data Quality Supervisor",
     "MARKET_REGIME": "Market Regime Supervisor",
     "SCALP": "SCALP Supervisor",
-    "EVENT": "Event Supervisor",
+    "EVENT": "Momentum / 急騰 Supervisor",
     "REALTIME_DAYTRADE": "Realtime Daytrade Supervisor",
     "OVERNIGHT": "Overnight Supervisor",
     "SWING": "Swing Supervisor",

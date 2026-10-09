@@ -4,6 +4,14 @@ on:
     paths:
       - "scripts/**"
       - "tests/**"
+      - "downloads/V6_Runtime_Contract.ps1"
+      - "downloads/START_AI_COCKPIT_V6.ps1"
+      - "downloads/INSTALL_AI_COCKPIT_V6.ps1"
+      - "downloads/AI_Cockpit_Local_Gateway.ps1"
+      - "downloads/DIAG_AI_COCKPIT_V6_EXCEL.ps1"
+      - "ms2_live/Kioxia_RSS_Live_Watcher.ps1"
+      - "ms2_live/Kioxia_Safety_Heartbeat.ps1"
+      - "ms2_live/MS2_RSS_100_Collector.ps1"
       - "data/ev_calibration.json"
       - "data/strategy_registry.json"
       - "data/research_input_schema.json"
@@ -12,6 +20,7 @@ on:
       - "config/ai_organization_v1.json"
       - ".github/workflows/mobile-control-tests.yml"
   workflow_dispatch:
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -21,4 +30,85 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt lxml
+      - name: Parse Excel startup PowerShell
+        shell: pwsh
+        run: |
+          $files = @(
+            "downloads/V6_Runtime_Contract.ps1",
+            "downloads/START_AI_COCKPIT_V6.ps1",
+            "downloads/INSTALL_AI_COCKPIT_V6.ps1",
+            "downloads/DIAG_AI_COCKPIT_V6_EXCEL.ps1",
+            "downloads/AI_Cockpit_Local_Gateway.ps1",
+            "ms2_live/Kioxia_RSS_Live_Watcher.ps1",
+            "ms2_live/Kioxia_Safety_Heartbeat.ps1",
+            "ms2_live/MS2_RSS_100_Collector.ps1"
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($file, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error ($file + ": " + $_.Message) }
+              exit 1
+            }
+          }
       - run: python -m unittest discover -s tests -p "test_*.py" -v
+
+  windows-powershell-51:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse startup scripts with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          Write-Host ("PSVersion=" + $PSVersionTable.PSVersion.ToString())
+          $files = @(
+            "downloads/V6_Runtime_Contract.ps1",
+            "downloads/START_AI_COCKPIT_V6.ps1",
+            "downloads/INSTALL_AI_COCKPIT_V6.ps1",
+            "downloads/DIAG_AI_COCKPIT_V6_EXCEL.ps1",
+            "downloads/AI_Cockpit_Local_Gateway.ps1",
+            "ms2_live/Kioxia_RSS_Live_Watcher.ps1",
+            "ms2_live/Kioxia_Safety_Heartbeat.ps1",
+            "ms2_live/MS2_RSS_100_Collector.ps1"
+          )
+          $failed = $false
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($file, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $failed = $true
+              foreach ($err in $errors) {
+                Write-Host ("ERROR file=" + $file + " line=" + $err.Extent.StartLineNumber + " col=" + $err.Extent.StartColumnNumber + " text=[" + $err.Extent.Text + "] message=" + $err.Message) -ForegroundColor Red
+              }
+            } else {
+              Write-Host ("PASS " + $file) -ForegroundColor Green
+            }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Simulate installer raw download and BOM normalization on Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $url = "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/downloads/START_AI_COCKPIT_V6.ps1"
+          $raw = Join-Path $env:TEMP "launcher.raw"
+          $norm = Join-Path $env:TEMP "launcher.norm.ps1"
+          Invoke-WebRequest $url -OutFile $raw -UseBasicParsing
+          $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+          $utf8Bom = New-Object System.Text.UTF8Encoding($true)
+          $text = [IO.File]::ReadAllText($raw,$utf8NoBom)
+          if($text -notmatch "V6-PS51-ASCII-20260925-01"){ throw "launcher build marker missing after raw download" }
+          [IO.File]::WriteAllText($norm,$text,$utf8Bom)
+          $tokens=$null
+          $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile($norm,[ref]$tokens,[ref]$errors) | Out-Null
+          foreach($err in $errors){
+            Write-Host ("ERROR line="+$err.Extent.StartLineNumber+" col="+$err.Extent.StartColumnNumber+" text=["+$err.Extent.Text+"] message="+$err.Message) -ForegroundColor Red
+          }
+          if($errors.Count -gt 0){ exit 1 }
+          Write-Host "PASS raw download + UTF8 BOM normalization + PS5.1 parse" -ForegroundColor Green
+
+      - name: Runtime identity and safe cleanup behavioral contracts
+        shell: powershell
+        run: ./tests/test_v6_runtime_contract.ps1

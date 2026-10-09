@@ -1348,4 +1348,126 @@ document.addEventListener("DOMContentLoaded",()=>{
  loadWatcherKioxia(); setInterval(loadWatcherKioxia,3000);
 });
 </script>
-<script src="earnings-calendar.js" defer></script></body></html>
+<script src="earnings-calendar.js" defer></script>
+<script>
+(() => {
+  const STYLE_ID = "cockpit-card-unifier-style";
+  const addStyles = () => {
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = \`
+      body.cards-only table.legacy-table-cardified{display:none!important}
+      body.cards-only .table-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;margin:9px 0 14px}
+      body.cards-only .unified-data-card{background:linear-gradient(180deg,#111c26,#0b131b);border:1px solid #375268;border-radius:10px;padding:10px;min-width:0;box-shadow:0 1px 0 #ffffff08}
+      body.cards-only .unified-data-card.long{border-color:#277a5a}
+      body.cards-only .unified-data-card.short{border-color:#8c3b46}
+      body.cards-only .unified-data-card.block{border-color:#8a6530}
+      body.cards-only .unified-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid #283b4b}
+      body.cards-only .unified-card-head b{font-size:15px;color:#f0f7ff;overflow-wrap:anywhere}
+      body.cards-only .unified-card-head small{color:#8097a8;white-space:nowrap}
+      body.cards-only .unified-card-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+      body.cards-only .unified-card-metric{background:#0a151e;border:1px solid #223847;border-radius:7px;padding:7px;min-width:0}
+      body.cards-only .unified-card-metric>span{display:block;color:#8299a9;font-size:10px;margin-bottom:3px}
+      body.cards-only .unified-card-value{color:#eaf4fa;font-weight:700;overflow-wrap:anywhere}
+      body.cards-only .unified-card-value small{font-weight:400;color:#9fb0bd}
+      body.cards-only .unified-status-card{grid-column:1/-1}
+      body.cards-only .unified-status-card .unified-card-metrics{display:block}
+      body.cards-only .focus-chart-wrap{display:none!important}
+      body.cards-only .focus-layout{grid-template-columns:minmax(250px,.8fr) minmax(300px,1.2fr)!important}
+      body.cards-only .event-table-wrap{overflow:visible!important}
+      @media(max-width:760px){
+        body.cards-only .table-card-grid{grid-template-columns:1fr}
+        body.cards-only .unified-card-metrics{grid-template-columns:1fr 1fr}
+        body.cards-only .focus-layout{grid-template-columns:1fr!important}
+      }
+    \`;
+    document.head.appendChild(style);
+  };
+
+  const clean = value => String(value || "").replace(/\s+/g," ").trim();
+  const classify = text => {
+    const t = clean(text).toUpperCase();
+    if (/(LIVE DATA INVALID|売買利用禁止|禁止|FAIL|ERROR|BLOCK)/.test(t)) return "block";
+    if (/(SHORT|SELL|売り|下落|DOWN)/.test(t)) return "short";
+    if (/(LONG|BUY|買い|上昇|UP)/.test(t)) return "long";
+    return "wait";
+  };
+  let seq = 0;
+
+  const headersFor = table => {
+    let hs = [...table.querySelectorAll("thead th")].map(x => clean(x.textContent));
+    if (hs.length) return hs;
+    const headerRow = [...table.rows].find(r => r.querySelector("th"));
+    return headerRow ? [...headerRow.cells].map(x => clean(x.textContent)) : [];
+  };
+
+  const rowsFor = table => {
+    const bodyRows = [...table.querySelectorAll("tbody tr")];
+    if (bodyRows.length) return bodyRows;
+    return [...table.rows].filter(r => !r.querySelector("th"));
+  };
+
+  const renderTable = table => {
+    if (!table || !table.isConnected) return;
+    if (!table.dataset.cardMirrorId) table.dataset.cardMirrorId = "card-mirror-" + (++seq);
+    const id = table.dataset.cardMirrorId;
+    let grid = table.parentElement?.querySelector(':scope > .table-card-grid[data-card-for="' + id + '"]');
+    if (!grid) {
+      grid = document.createElement("div");
+      grid.className = "table-card-grid";
+      grid.dataset.cardFor = id;
+      table.insertAdjacentElement("afterend", grid);
+    }
+    table.classList.add("legacy-table-cardified");
+    table.setAttribute("aria-hidden","true");
+    const headers = headersFor(table);
+    const rows = rowsFor(table);
+    if (!rows.length) {
+      grid.innerHTML = '<article class="unified-data-card unified-status-card"><div class="unified-card-head"><b>データ待ち</b></div></article>';
+      return;
+    }
+    grid.innerHTML = rows.map((row, rowIndex) => {
+      const cells = [...row.cells];
+      if (!cells.length) return "";
+      const rowText = clean(row.textContent);
+      const colspanOnly = cells.length === 1 && Number(cells[0].getAttribute("colspan") || 1) > 1;
+      if (colspanOnly) {
+        return '<article class="unified-data-card unified-status-card ' + classify(rowText) + '"><div class="unified-card-head"><b>' + (cells[0].innerHTML || "状態") + '</b></div></article>';
+      }
+      const primaryIndex = cells.length > 1 && /^#?\d+$/.test(clean(cells[0].textContent)) ? 1 : 0;
+      const primary = cells[primaryIndex] ? cells[primaryIndex].innerHTML : ("#" + (rowIndex + 1));
+      const metrics = cells.map((cell, i) => {
+        const label = headers[i] || ("項目 " + (i + 1));
+        return '<div class="unified-card-metric"><span>' + label + '</span><div class="unified-card-value">' + cell.innerHTML + '</div></div>';
+      }).join("");
+      return '<article class="unified-data-card ' + classify(rowText) + '"><div class="unified-card-head"><b>' + primary + '</b><small>#' + (rowIndex + 1) + '</small></div><div class="unified-card-metrics">' + metrics + '</div></article>';
+    }).join("");
+  };
+
+  const observeTable = table => {
+    if (table.dataset.cardObserved === "1") { renderTable(table); return; }
+    table.dataset.cardObserved = "1";
+    renderTable(table);
+    new MutationObserver(() => renderTable(table)).observe(table,{childList:true,subtree:true,characterData:true});
+  };
+
+  const activate = () => {
+    addStyles();
+    document.body.classList.add("cards-only");
+    document.querySelectorAll("table").forEach(observeTable);
+    const rootObserver = new MutationObserver(mutations => {
+      mutations.forEach(m => m.addedNodes.forEach(node => {
+        if (!(node instanceof Element)) return;
+        if (node.matches?.("table")) observeTable(node);
+        node.querySelectorAll?.("table").forEach(observeTable);
+      }));
+    });
+    rootObserver.observe(document.body,{childList:true,subtree:true});
+  };
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded",activate,{once:true});
+  else activate();
+})();
+</script>
+</body></html>

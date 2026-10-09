@@ -1,11 +1,59 @@
-﻿$ErrorActionPreference = "Stop"
+﻿# V6_RUNTIME_BUILD: MS2-RUNTIME-20260925-02
+param([string]$WorkbookPath = "")
 
-$bookPath = Join-Path $PSScriptRoot "Kioxia_MS2_RSS_Live_Signals.xlsx"
-if (-not (Test-Path $bookPath)) {
-    Write-Host "同じフォルダーに Kioxia_MS2_RSS_Live_Signals.xlsx を置いてください。" -ForegroundColor Red
+$ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($WorkbookPath)) { $WorkbookPath = Join-Path $PSScriptRoot "Kioxia_MS2_RSS_Live_Signals.xlsx" }
+$bookPath = [IO.Path]::GetFullPath($WorkbookPath)
+if (-not (Test-Path -LiteralPath $bookPath)) {
+    Write-Host ("Kioxia workbook が見つかりません: " + $bookPath) -ForegroundColor Red
     Read-Host "Enterで終了"
     exit 1
 }
+
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+
+public static class KioxiaWatcherRotFinder {
+    [DllImport("ole32.dll")]
+    private static extern int GetRunningObjectTable(int reserved, out IRunningObjectTable rot);
+    [DllImport("ole32.dll")]
+    private static extern int CreateBindCtx(int reserved, out IBindCtx bindCtx);
+
+    public static object FindByIdentity(string expectedFullPath, string bookFileName) {
+        IRunningObjectTable rot;
+        if (GetRunningObjectTable(0, out rot) != 0 || rot == null) return null;
+        IEnumMoniker en;
+        rot.EnumRunning(out en);
+        en.Reset();
+        var mk = new IMoniker[1];
+        object uniqueNameMatch = null;
+        int nameMatchCount = 0;
+        while (en.Next(1, mk, IntPtr.Zero) == 0) {
+            IBindCtx ctx;
+            CreateBindCtx(0, out ctx);
+            try {
+                string name;
+                mk[0].GetDisplayName(ctx, null, out name);
+                if (String.IsNullOrEmpty(name)) continue;
+                object obj;
+                if (name.EndsWith(expectedFullPath, StringComparison.OrdinalIgnoreCase)) {
+                    rot.GetObject(mk[0], out obj);
+                    return obj;
+                }
+                if (name.EndsWith(bookFileName, StringComparison.OrdinalIgnoreCase)) {
+                    rot.GetObject(mk[0], out obj);
+                    uniqueNameMatch = obj;
+                    nameMatchCount++;
+                }
+            } catch { }
+        }
+        return nameMatchCount == 1 ? uniqueNameMatch : null;
+    }
+}
+'@ -ErrorAction SilentlyContinue
 
 function Write-AtomicUtf8([string]$path, [string]$content) {
     $tmp = "$path.tmp"
@@ -224,6 +272,15 @@ function Set-CellFormula($range, $formula, [int]$maxAttempts = 20, [int]$delayMs
     }
 }
 
+function Release-ComObjectSafe($obj) {
+    if ($null -eq $obj) { return }
+    try {
+        if ([Runtime.InteropServices.Marshal]::IsComObject($obj)) {
+            [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($obj)
+        }
+    } catch {}
+}
+
 function Invoke-ComRetry([scriptblock]$Action, [int]$maxAttempts = 8, [int]$delayMs = 500) {
     # 2026-09-15実機で判明: 起動直後（RSS接続・再計算がまだ進行中の間）はExcel自体がCOM呼び出しを
     # 拒否することがあり（HRESULT 0x80010001 RPC_E_CALL_REJECTED、いわゆる「サーバーがビジー」）、
@@ -371,43 +428,21 @@ function Read-Chart($sheet, [string]$anchor) {
     } catch { return @() }
 }
 
-try {
-    $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
-    Write-Host "RSS接続済みのExcelへ接続しました。" -ForegroundColor Green
-} catch {
-    # 2026-09-14深夜の実機検証で判明: New-Object -ComObject Excel.Applicationで生成した
-    # Excelインスタンスは、MS2 RSSアドイン（COMアドイン）が読み込まれずRssMarket等が
-    # #NAME?エラーになり、RSSリボンタブ自体も存在しないことを確認した。ファイルを通常どおり
-    # 開く（シェル経由でExcel.exeを起動する）必要があるため、Start-Processでファイルを開き、
-    # Excelプロセスが起動するのを待ってからGetActiveObjectで接続し直す。
-    Write-Host "Excelが起動していません。ファイルを開いてアドインを正しく読み込みます。" -ForegroundColor Yellow
-    Start-Process $bookPath
-    $excel = $null
-    $connectDeadline = (Get-Date).AddSeconds(60)
-    while ($null -eq $excel -and (Get-Date) -lt $connectDeadline) {
-        Start-Sleep -Seconds 2
-        try { $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application") } catch {}
-    }
-    if ($null -eq $excel) {
-        Write-Host "Excelの起動を確認できませんでした。" -ForegroundColor Red
-        Read-Host "Enterで終了"
-        exit 1
-    }
-    Write-Host "Excelへ接続しました。RSSタブで『接続』を確認してください。" -ForegroundColor Yellow
+$bookFileName=[IO.Path]::GetFileName($bookPath)
+$book=$null
+$connectDeadline=(Get-Date).AddSeconds(60)
+while($null -eq $book -and (Get-Date) -lt $connectDeadline){
+    try { $book=[KioxiaWatcherRotFinder]::FindByIdentity($bookPath,$bookFileName) } catch {}
+    if($null -eq $book){ Start-Sleep -Seconds 2 }
 }
+if($null -eq $book){
+    Write-Host "対象ブックが開いていません。Watcherはブックを自動再起動せず終了します。" -ForegroundColor Red
+    exit 1
+}
+$excel=Invoke-ComRetry { $book.Application }
+Write-Host ("RSS対象Excelへ接続しました: " + $bookFileName) -ForegroundColor Green
 Invoke-ComRetry { $excel.Visible = $true } | Out-Null
 Invoke-ComRetry { $excel.DisplayAlerts = $false } | Out-Null
-$book = Invoke-ComRetry {
-    $found = $null
-    foreach ($candidate in $excel.Workbooks) {
-        if ($candidate.FullName -eq $bookPath -or $candidate.Name -eq "Kioxia_MS2_RSS_Live_Signals.xlsx") {
-            $found = $candidate
-            break
-        }
-    }
-    if ($null -eq $found) { $found = $excel.Workbooks.Open($bookPath) }
-    return $found
-}
 $rss = Invoke-ComRetry { $book.Worksheets.Item("RSS接続") }
 $calc = Invoke-ComRetry { $book.Worksheets.Item("計算") }
 $dash = Invoke-ComRetry { $book.Worksheets.Item("DASHBOARD") }
@@ -550,17 +585,25 @@ $script:tickPollSeq = 0
 # キオクシアタブの一本化（ユーザー指示・2026-09-15）: これまでExcelのDASHBOARDシートと
 # 公開コクピットのキオクシアタブが別々の計算式で似た指標を出しており「どちらを見ればいいか
 # わからない」状態だった。WatcherのDASHBOARD計算結果をJSONとして書き出し、ローカルHTTP
-# （127.0.0.1:28581）で配信することで、ブラウザ側がこのJSONを直接読みに行けるようにする。
+# （127.0.0.1:28582）で配信することで、ブラウザ側がこのJSONを直接読みに行けるようにする。
 # Excelは裏で動かしたまま、PC上ではブラウザだけを見ればよい構成にするための土台。
 $watcherJsonPath = Join-Path $PSScriptRoot "kioxia_watcher_live.json"
-$watcherBridgeJob = Start-LocalJsonBridge $watcherJsonPath 28581
-Write-Host "キオクシアWatcher連携: http://127.0.0.1:28581/kioxia_watcher_live.json" -ForegroundColor Cyan
+$watcherBridgeJob = Start-LocalJsonBridge $watcherJsonPath 28582
+Write-Host "キオクシアWatcher連携: http://127.0.0.1:28582/kioxia_watcher_live.json" -ForegroundColor Cyan
 
 Write-Host "キオクシアLIVE監視を開始しました。終了はこの画面で Ctrl+C。" -ForegroundColor Cyan
 $dash.Activate()
 
 try {
     while ($true) {
+      $liveBook=$null
+      try { $liveBook=[KioxiaWatcherRotFinder]::FindByIdentity($bookPath,$bookFileName) } catch {}
+      if($null -eq $liveBook){
+          Write-Host "対象ブックがROTから消えました。WatcherはCOM参照を解放して終了します。" -ForegroundColor Yellow
+          break
+      }
+      Release-ComObjectSafe $liveBook
+      $liveBook=$null
       # 100銘柄収集器等との同時COMアクセスで、書き込みが一時的にキャスト例外を起こすことがあるため、
       # 監視ループ本体を丸ごとtry/catchで守る（1回失敗しても次のループで復帰する。売買サインの状態が
       # 更新されないまま古い値で残るのを避けるため、失敗時は短く待って次のループへ）。
@@ -894,12 +937,28 @@ try {
         }
         $pendingEvaluations = @($pendingEvaluations | Where-Object { -not $_.Done15 })
       } catch {
+          $closed=$false
+          $probeBook=$null
+          try { $probeBook=[KioxiaWatcherRotFinder]::FindByIdentity($bookPath,$bookFileName) } catch {}
+          if($null -eq $probeBook){ $closed=$true }
+          if($null -ne $probeBook){ Release-ComObjectSafe $probeBook; $probeBook=$null }
+          if($closed){
+              Write-Host "対象ブックが閉じられました。WatcherはCOM参照を解放して終了します。" -ForegroundColor Yellow
+              break
+          }
           Write-Host ("監視ループ内でエラー（継続します）: " + $_.Exception.Message + " | 行: " + $_.InvocationInfo.ScriptLineNumber + " | " + $_.InvocationInfo.Line.Trim()) -ForegroundColor DarkYellow
       }
       Start-Sleep -Seconds 2
     }
 } finally {
-    $rss.Range("B16").Value2 = "停止"
-    $book.Save()
-    Write-Host "監視を停止しました。Excelは開いたままです。" -ForegroundColor Yellow
+    if($null -ne $watcherBridgeJob){ Stop-Job $watcherBridgeJob -ErrorAction SilentlyContinue; Remove-Job $watcherBridgeJob -Force -ErrorAction SilentlyContinue }
+    # Do not save or reopen a workbook the user has closed. Release all Excel RCWs
+    # so EXCEL.EXE can terminate normally when this was its last workbook.
+    foreach($com in @($log,$dash,$calc,$rss,$book,$excel,$speaker)){ Release-ComObjectSafe $com }
+    $log=$null; $dash=$null; $calc=$null; $rss=$null; $book=$null; $excel=$null; $speaker=$null
+    [GC]::Collect()
+    [GC]::WaitForPendingFinalizers()
+    [GC]::Collect()
+    [GC]::WaitForPendingFinalizers()
+    Write-Host "監視を停止しました。Excel COM参照を解放しました。" -ForegroundColor Yellow
 }
