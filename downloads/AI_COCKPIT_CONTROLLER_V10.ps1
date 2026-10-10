@@ -648,6 +648,31 @@ function New-UnknownIdentityDiagnostics([string]$Reason, [double]$DurationMs = 0
     }
 }
 
+function Write-AgentDebugLog(
+    [string]$HypothesisId,
+    [string]$Location,
+    [string]$Message,
+    $Data
+) {
+    $path = if ([string]::IsNullOrWhiteSpace($env:AGENT_DEBUG_LOG)) {
+        "/opt/cursor/logs/debug.log"
+    } else {
+        $env:AGENT_DEBUG_LOG
+    }
+    $entry = [ordered]@{
+        hypothesisId = $HypothesisId
+        location = $Location
+        message = $Message
+        data = $Data
+        timestamp = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+    }
+    [IO.File]::AppendAllText(
+        $path,
+        (($entry | ConvertTo-Json -Depth 5 -Compress) + [Environment]::NewLine),
+        [Text.UTF8Encoding]::new($false)
+    )
+}
+
 function Get-IdentityDiagnosticStateSnapshot($State) {
     $snapshot = [ordered]@{}
     foreach ($field in @(
@@ -711,6 +736,12 @@ function Start-IdentityDiagnosticsWorkerProcess(
     [int]$TestDelayMs = 0
 ) {
     $clock = [Diagnostics.Stopwatch]::StartNew()
+    $debugForcedTimeout = ($TestDelayMs -gt 0)
+    if ($debugForcedTimeout) {
+        #region agent log
+        Write-AgentDebugLog "A,D" "AI_COCKPIT_CONTROLLER_V10.ps1:737" "forced-timeout launch entry" ([ordered]@{ test_delay_ms=$TestDelayMs; host_edition=[string]$PSVersionTable.PSEdition })
+        #endregion
+    }
     $workRoot = Join-Path ([IO.Path]::GetTempPath()) ("v10-identity-" + [Guid]::NewGuid().ToString("N"))
     $inputPath = Join-Path $workRoot "input.json"
     $outputPath = Join-Path $workRoot "output.json"
@@ -727,6 +758,11 @@ function Start-IdentityDiagnosticsWorkerProcess(
         }
         [IO.File]::WriteAllText($inputPath, ($input | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
 
+        if ($debugForcedTimeout) {
+            #region agent log
+            Write-AgentDebugLog "A" "AI_COCKPIT_CONTROLLER_V10.ps1:760" "before worker process spawn" ([ordered]@{ elapsed_ms=[Math]::Round($clock.Elapsed.TotalMilliseconds,3) })
+            #endregion
+        }
         $hostExecutable = [Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
         $arguments = @(
             "-NoLogo",
@@ -740,11 +776,17 @@ function Start-IdentityDiagnosticsWorkerProcess(
         ) -join " "
         $worker = Start-Process -FilePath $hostExecutable -ArgumentList $arguments `
             -WindowStyle Hidden -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -PassThru
+        if ($debugForcedTimeout) {
+            #region agent log
+            Write-AgentDebugLog "A,D" "AI_COCKPIT_CONTROLLER_V10.ps1:778" "worker process spawned" ([ordered]@{ elapsed_ms=[Math]::Round($clock.Elapsed.TotalMilliseconds,3); worker_id=$worker.Id })
+            #endregion
+        }
         return [ordered]@{
             process = $worker
             clock = $clock
             work_root = $workRoot
             output_path = $outputPath
+            debug_forced_timeout = $debugForcedTimeout
         }
     } catch {
         if ($null -ne $worker -and -not $worker.HasExited) {
@@ -766,6 +808,7 @@ function Complete-IdentityDiagnosticsWorkerProcess(
     $clock = Get-DiagnosticProperty $Job "clock"
     $workRoot = [string](Get-DiagnosticProperty $Job "work_root" "")
     $outputPath = [string](Get-DiagnosticProperty $Job "output_path" "")
+    $debugForcedTimeout = [bool](Get-DiagnosticProperty $Job "debug_forced_timeout" $false)
     $completed = $false
     $result = $null
     try {
@@ -774,9 +817,26 @@ function Complete-IdentityDiagnosticsWorkerProcess(
             $result = New-UnknownIdentityDiagnostics "DIAGNOSTIC_WORKER_INVALID_STATE"
         } elseif ($WaitForBudget) {
             $remainingMs = [Math]::Max(1, $TimeoutMs - [int]$clock.Elapsed.TotalMilliseconds)
-            if (-not $worker.WaitForExit($remainingMs)) {
+            if ($debugForcedTimeout) {
+                #region agent log
+                Write-AgentDebugLog "A,B" "AI_COCKPIT_CONTROLLER_V10.ps1:817" "before budget wait" ([ordered]@{ elapsed_ms=[Math]::Round($clock.Elapsed.TotalMilliseconds,3); remaining_ms=$remainingMs })
+                #endregion
+            }
+            $exitedInBudget = $worker.WaitForExit($remainingMs)
+            if ($debugForcedTimeout) {
+                #region agent log
+                Write-AgentDebugLog "B" "AI_COCKPIT_CONTROLLER_V10.ps1:824" "budget wait returned" ([ordered]@{ elapsed_ms=[Math]::Round($clock.Elapsed.TotalMilliseconds,3); exited=$exitedInBudget })
+                #endregion
+            }
+            if (-not $exitedInBudget) {
+                $stopStartedMs = $clock.Elapsed.TotalMilliseconds
                 try { Stop-Process -Id $worker.Id -Force -ErrorAction SilentlyContinue } catch {}
                 try { [void]$worker.WaitForExit(250) } catch {}
+                if ($debugForcedTimeout) {
+                    #region agent log
+                    Write-AgentDebugLog "B,C" "AI_COCKPIT_CONTROLLER_V10.ps1:833" "worker stop and reap completed" ([ordered]@{ elapsed_ms=[Math]::Round($clock.Elapsed.TotalMilliseconds,3); stop_reap_ms=[Math]::Round(($clock.Elapsed.TotalMilliseconds-$stopStartedMs),3); has_exited=$worker.HasExited })
+                    #endregion
+                }
                 $completed = $true
                 $result = New-UnknownIdentityDiagnostics "DIAGNOSTIC_TIMEOUT" $clock.Elapsed.TotalMilliseconds
             }
@@ -809,7 +869,14 @@ function Complete-IdentityDiagnosticsWorkerProcess(
         if ($completed) {
             if ($null -ne $clock) { $clock.Stop() }
             if (-not [string]::IsNullOrWhiteSpace($workRoot)) {
+                $cleanupClock = [Diagnostics.Stopwatch]::StartNew()
                 Remove-Item -LiteralPath $workRoot -Recurse -Force -ErrorAction SilentlyContinue
+                $cleanupClock.Stop()
+                if ($debugForcedTimeout) {
+                    #region agent log
+                    Write-AgentDebugLog "C,D" "AI_COCKPIT_CONTROLLER_V10.ps1:873" "worker temp cleanup completed" ([ordered]@{ total_elapsed_ms=[Math]::Round($clock.Elapsed.TotalMilliseconds,3); cleanup_ms=[Math]::Round($cleanupClock.Elapsed.TotalMilliseconds,3) })
+                    #endregion
+                }
             }
         }
     }
