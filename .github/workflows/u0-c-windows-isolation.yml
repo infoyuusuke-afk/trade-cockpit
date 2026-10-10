@@ -20,7 +20,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 10
     env:
-      TARGET_SHA: d1e5073c6bc9081d0d09b429c31d2e063dc190ec
+      TARGET_SHA: 23f408952d237287432fb808b1397dcdc23974fb
     steps:
       - name: Checkout fixed U0-C commit
         shell: pwsh
