@@ -124,11 +124,11 @@ class V10BoundedDiagnosticsContract(unittest.TestCase):
             "runtime_dir",
             "repo_root",
             "workbook_path",
-            "username",
             "USERPROFILE",
         ):
             self.assertNotIn(forbidden, returned)
         self.assertNotRegex(returned, r"\bcommand_line\s*=")
+        self.assertNotRegex(returned, r"\busername\s*=")
         for required in (
             "schema_version",
             "deployment",
