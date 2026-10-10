@@ -6,8 +6,13 @@ param(
     [switch]$IdentityProbeSelfTest,
     [switch]$IdentityDiagnosticsSelfTest,
     [switch]$IdentityDiagnosticsBenchmark,
+    [switch]$BoundedIdentityDiagnosticsBenchmark,
     [string]$BenchmarkOutputPath = "",
-    [ValidateRange(20, 500)][int]$BenchmarkIterations = 100
+    [ValidateRange(20, 500)][int]$BenchmarkIterations = 100,
+    [switch]$IdentityDiagnosticsWorker,
+    [string]$IdentityDiagnosticsInputPath = "",
+    [string]$IdentityDiagnosticsOutputPath = "",
+    [ValidateRange(0, 60000)][int]$IdentityDiagnosticsTestDelayMs = 0
 )
 
 # AI Cockpit Controller V10
@@ -61,6 +66,7 @@ $PORT_GATEWAY = 28581
 $PORT_WATCHER = 28582
 $PORT_VOICE = 28583
 $PORT_BRAIN = 28584
+$IDENTITY_DIAGNOSTICS_TIMEOUT_MS = 1500
 
 # ---------------------------------------------------------------- utility
 
@@ -629,6 +635,140 @@ function Update-IdentityDiagnostics($State, [string]$ResolvedRepoRoot, [string]$
     }
 }
 
+function New-UnknownIdentityDiagnostics([string]$Reason, [double]$DurationMs = 0) {
+    return [ordered]@{
+        schema_version = "v10-runtime-identity-1"
+        checked_at = (Get-Date).ToString("o")
+        duration_ms = [Math]::Round([Math]::Max(0, $DurationMs), 3)
+        overall = "UNKNOWN"
+        reason_codes = @($Reason)
+        processes = [ordered]@{}
+        ports = [ordered]@{}
+        ui = [ordered]@{ status = "UNKNOWN"; reason_codes = @($Reason) }
+    }
+}
+
+function Get-IdentityDiagnosticStateSnapshot($State) {
+    $snapshot = [ordered]@{}
+    foreach ($field in @(
+        "session_id", "controller_pid", "gateway_pid", "brain_gateway_pid",
+        "voice_bridge_pid", "watcher_pid", "heartbeat_pid", "collector_pid",
+        "shadow_supervisor_pid"
+    )) {
+        $snapshot[$field] = Get-DiagnosticProperty $State $field
+    }
+    $previous = Get-DiagnosticProperty $State "identity_diagnostics"
+    if ($null -ne $previous) { $snapshot["identity_diagnostics"] = $previous }
+    return $snapshot
+}
+
+function Invoke-IdentityDiagnosticsWorker(
+    [string]$InputPath,
+    [string]$OutputPath,
+    [int]$TestDelayMs = 0
+) {
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    $result = $null
+    try {
+        if ([string]::IsNullOrWhiteSpace($InputPath) -or
+            [string]::IsNullOrWhiteSpace($OutputPath)) {
+            throw "Worker input/output path is required."
+        }
+        $input = Read-JsonUtf8 $InputPath
+        if ($TestDelayMs -gt 0) { Start-Sleep -Milliseconds $TestDelayMs }
+        $script:Root = [string](Get-DiagnosticProperty $input "root")
+        $repoRoot = [string](Get-DiagnosticProperty $input "repo_root")
+        $runtimeDir = [string](Get-DiagnosticProperty $input "runtime_dir")
+        $state = Get-DiagnosticProperty $input "state"
+        if ([string]::IsNullOrWhiteSpace($script:Root) -or
+            [string]::IsNullOrWhiteSpace($repoRoot) -or
+            [string]::IsNullOrWhiteSpace($runtimeDir) -or
+            $null -eq $state) {
+            throw "Worker input schema is incomplete."
+        }
+        $result = Update-IdentityDiagnostics $state $repoRoot $runtimeDir
+    } catch {
+        $result = New-UnknownIdentityDiagnostics "DIAGNOSTIC_WORKER_EXCEPTION" $clock.Elapsed.TotalMilliseconds
+    }
+    $clock.Stop()
+    $result["duration_ms"] = [Math]::Round($clock.Elapsed.TotalMilliseconds, 3)
+    $tmp = $OutputPath + "." + $PID + ".tmp"
+    [IO.File]::WriteAllText($tmp, ($result | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
+    Move-Item -LiteralPath $tmp -Destination $OutputPath -Force
+}
+
+function Quote-IdentityDiagnosticArgument([string]$Value) {
+    if ($Value.IndexOf('"') -ge 0) {
+        throw "Diagnostic worker argument contains an unsupported quote."
+    }
+    return '"' + $Value + '"'
+}
+
+function Invoke-BoundedIdentityDiagnostics(
+    $State,
+    [string]$ResolvedRepoRoot,
+    [string]$ResolvedRuntimeDir,
+    [int]$TimeoutMs = 1500,
+    [int]$TestDelayMs = 0
+) {
+    $clock = [Diagnostics.Stopwatch]::StartNew()
+    $workRoot = Join-Path ([IO.Path]::GetTempPath()) ("v10-identity-" + [Guid]::NewGuid().ToString("N"))
+    $inputPath = Join-Path $workRoot "input.json"
+    $outputPath = Join-Path $workRoot "output.json"
+    $stdoutPath = Join-Path $workRoot "stdout.log"
+    $stderrPath = Join-Path $workRoot "stderr.log"
+    $worker = $null
+    try {
+        New-Item -ItemType Directory -Path $workRoot -Force | Out-Null
+        $input = [ordered]@{
+            root = $Root
+            repo_root = $ResolvedRepoRoot
+            runtime_dir = $ResolvedRuntimeDir
+            state = Get-IdentityDiagnosticStateSnapshot $State
+        }
+        [IO.File]::WriteAllText($inputPath, ($input | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
+
+        $hostExecutable = [Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+        $arguments = @(
+            "-NoLogo",
+            "-NoProfile",
+            "-ExecutionPolicy", "Bypass",
+            "-File", (Quote-IdentityDiagnosticArgument $PSCommandPath),
+            "-IdentityDiagnosticsWorker",
+            "-IdentityDiagnosticsInputPath", (Quote-IdentityDiagnosticArgument $inputPath),
+            "-IdentityDiagnosticsOutputPath", (Quote-IdentityDiagnosticArgument $outputPath),
+            "-IdentityDiagnosticsTestDelayMs", [string]$TestDelayMs
+        ) -join " "
+        $worker = Start-Process -FilePath $hostExecutable -ArgumentList $arguments `
+            -WindowStyle Hidden -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -PassThru
+
+        $remainingMs = [Math]::Max(1, $TimeoutMs - [int]$clock.Elapsed.TotalMilliseconds)
+        if (-not $worker.WaitForExit($remainingMs)) {
+            try { Stop-Process -Id $worker.Id -Force -ErrorAction SilentlyContinue } catch {}
+            try { [void]$worker.WaitForExit(250) } catch {}
+            return (New-UnknownIdentityDiagnostics "DIAGNOSTIC_TIMEOUT" $clock.Elapsed.TotalMilliseconds)
+        }
+        $worker.Refresh()
+        if ($worker.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
+            return (New-UnknownIdentityDiagnostics "DIAGNOSTIC_WORKER_FAILED" $clock.Elapsed.TotalMilliseconds)
+        }
+        $result = Read-JsonUtf8 $outputPath
+        if ([string](Get-DiagnosticProperty $result "schema_version" "") -ne "v10-runtime-identity-1") {
+            return (New-UnknownIdentityDiagnostics "DIAGNOSTIC_WORKER_INVALID_OUTPUT" $clock.Elapsed.TotalMilliseconds)
+        }
+        return $result
+    } catch {
+        if ($null -ne $worker -and -not $worker.HasExited) {
+            try { Stop-Process -Id $worker.Id -Force -ErrorAction SilentlyContinue } catch {}
+            try { [void]$worker.WaitForExit(250) } catch {}
+        }
+        return (New-UnknownIdentityDiagnostics "DIAGNOSTIC_LAUNCH_FAILED" $clock.Elapsed.TotalMilliseconds)
+    } finally {
+        $clock.Stop()
+        Remove-Item -LiteralPath $workRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Invoke-IdentityDiagnosticsSelfTest {
     $baseExpected = [ordered]@{ pid=42; session_id=3; parent_pid=7; script_raw_sha256="abc" }
     $baseObserved = [ordered]@{ query_status="OK"; pid=42; session_id=3; parent_pid=7; creation_time_utc="2026-01-01T00:00:00.0000000Z"; script_path_match=$true; script_raw_sha256="abc" }
@@ -896,6 +1036,200 @@ function Invoke-IdentityDiagnosticsBenchmark(
             [Text.UTF8Encoding]::new($false)
         )
         Write-Output "U0_F_BENCHMARK_COMPLETE"
+    } finally {
+        foreach ($listener in $listeners) {
+            try { $listener.Stop() } catch {}
+        }
+        $script:Root = $previousRoot
+        Remove-Item -LiteralPath $benchmarkRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Invoke-BoundedIdentityDiagnosticsBenchmark(
+    [string]$ResolvedRepoRoot,
+    [string]$OutputPath,
+    [int]$Iterations
+) {
+    if ([string]::IsNullOrWhiteSpace($ResolvedRepoRoot) -or
+        -not (Test-Path -LiteralPath (Join-Path $ResolvedRepoRoot "index.html") -PathType Leaf)) {
+        throw "Benchmark requires a valid repository root."
+    }
+    if ([string]::IsNullOrWhiteSpace($OutputPath)) { throw "BenchmarkOutputPath is required." }
+
+    $benchmarkRoot = Join-Path ([IO.Path]::GetTempPath()) ("u0g-v10-benchmark-" + [Guid]::NewGuid().ToString("N"))
+    $runtimeDir = Join-Path $ResolvedRepoRoot "ms2_live"
+    $listeners = New-Object System.Collections.Generic.List[object]
+    $previousRoot = $script:Root
+    New-Item -ItemType Directory -Path $benchmarkRoot -Force | Out-Null
+    try {
+        $script:Root = $benchmarkRoot
+        $repoArtifacts = [ordered]@{}
+        foreach ($relativePath in @(
+            "downloads/RUN_AI_COCKPIT_V10.ps1",
+            "downloads/AI_COCKPIT_CONTROLLER_V10.ps1",
+            "downloads/AI_COCKPIT_GATEWAY_V10.ps1",
+            "downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1",
+            "scripts/ai_shadow_supervisor.py",
+            "index.html", "theme.css", "focus.css", "next-theme-radar.css",
+            "next-theme-radar.js", "card_system.css", "card_system.js",
+            "card_table_adapter.css", "card_table_adapter.js", "voice_client.js",
+            "opportunity_radar.js", "trade_control.js", "earnings-calendar.js"
+        )) {
+            $fullPath = Join-Path $ResolvedRepoRoot $relativePath.Replace("/", "\")
+            $repoArtifacts[$relativePath] = [ordered]@{
+                source_raw_sha256 = if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+                    (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+                } else { $null }
+            }
+        }
+        $runtimeArtifacts = [ordered]@{}
+        foreach ($name in @("Kioxia_RSS_Live_Watcher.ps1", "Kioxia_Safety_Heartbeat.ps1", "MS2_RSS_100_Collector.ps1")) {
+            $runtimeArtifacts[$name] = [ordered]@{
+                deployed_raw_sha256 = (Get-FileHash -LiteralPath (Join-Path $runtimeDir $name) -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+            }
+        }
+        $manifest = [ordered]@{
+            repo_sha = "benchmark"
+            repo_branch = "benchmark"
+            runtime_dir = "sanitized"
+            files = [ordered]@{}
+            deployed_at = (Get-Date).ToString("o")
+            identity_diagnostics = [ordered]@{
+                schema_version = "v10-deployment-identity-1"
+                repo_artifacts = $repoArtifacts
+                runtime_artifacts = $runtimeArtifacts
+                approved_ui_baseline_id = "benchmark-fixture"
+            }
+        }
+        $manifestPath = Join-Path $benchmarkRoot "V10_RUNTIME.json"
+        [IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+
+        $sessionId = [int](Get-Process -Id $PID -ErrorAction Stop).SessionId
+        $state = [ordered]@{
+            controller_pid = $PID
+            session_id = $sessionId
+            gateway_pid = $PID
+            brain_gateway_pid = $PID
+            voice_bridge_pid = $PID
+            watcher_pid = $PID
+            heartbeat_pid = $PID
+            collector_pid = $PID
+            shadow_supervisor_pid = $PID
+        }
+        foreach ($port in 28580..28584) {
+            $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $port)
+            $listener.Start()
+            [void]$listeners.Add($listener)
+        }
+
+        # Warm process launch, providers, and filesystem caches.
+        Invoke-BoundedIdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir $IDENTITY_DIAGNOSTICS_TIMEOUT_MS | Out-Null
+
+        $normalTiming = Measure-IdentityBenchmarkSet $Iterations {
+            Invoke-BoundedIdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir $IDENTITY_DIAGNOSTICS_TIMEOUT_MS
+        }
+        $loopSamples = New-Object System.Collections.Generic.List[double]
+        $loopIterations = [Math]::Min(20, $Iterations)
+        for ($iteration = 0; $iteration -lt $loopIterations; $iteration++) {
+            $sample = [Diagnostics.Stopwatch]::StartNew()
+            Start-Sleep -Seconds 2
+            Invoke-BoundedIdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir $IDENTITY_DIAGNOSTICS_TIMEOUT_MS | Out-Null
+            $sample.Stop()
+            [void]$loopSamples.Add($sample.Elapsed.TotalMilliseconds)
+        }
+        $loopTiming = Get-BenchmarkLatencySummary $loopSamples.ToArray()
+
+        foreach ($listener in $listeners) { $listener.Stop() }
+        $listeners.Clear()
+        $badState = [ordered]@{
+            controller_pid = 2147483000
+            session_id = $sessionId
+            gateway_pid = 2147483001
+            brain_gateway_pid = 2147483002
+            voice_bridge_pid = 2147483003
+            watcher_pid = 2147483004
+            heartbeat_pid = 2147483005
+            collector_pid = 2147483006
+            shadow_supervisor_pid = 2147483007
+        }
+        $abnormalTiming = Measure-IdentityBenchmarkSet $Iterations {
+            Invoke-BoundedIdentityDiagnostics $badState $ResolvedRepoRoot $runtimeDir $IDENTITY_DIAGNOSTICS_TIMEOUT_MS
+        }
+
+        [IO.File]::WriteAllText($manifestPath, "{not-json", [Text.UTF8Encoding]::new($false))
+        $malformedTiming = Measure-IdentityBenchmarkSet $Iterations {
+            Invoke-BoundedIdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir $IDENTITY_DIAGNOSTICS_TIMEOUT_MS
+        }
+        $malformedResult = Invoke-BoundedIdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir $IDENTITY_DIAGNOSTICS_TIMEOUT_MS
+        $malformedUnknown = (
+            [string]$malformedResult.overall -eq "UNKNOWN" -and
+            @($malformedResult.reason_codes) -contains "DIAGNOSTIC_EXCEPTION"
+        )
+
+        $timeoutSamples = New-Object System.Collections.Generic.List[double]
+        $timeoutUnknown = $true
+        $timeoutIterations = [Math]::Min(20, $Iterations)
+        for ($iteration = 0; $iteration -lt $timeoutIterations; $iteration++) {
+            $sample = [Diagnostics.Stopwatch]::StartNew()
+            $timeoutResult = Invoke-BoundedIdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir `
+                $IDENTITY_DIAGNOSTICS_TIMEOUT_MS 5000
+            $sample.Stop()
+            [void]$timeoutSamples.Add($sample.Elapsed.TotalMilliseconds)
+            if ([string]$timeoutResult.overall -ne "UNKNOWN" -or
+                @($timeoutResult.reason_codes) -notcontains "DIAGNOSTIC_TIMEOUT") {
+                $timeoutUnknown = $false
+            }
+        }
+        $timeoutTiming = Get-BenchmarkLatencySummary $timeoutSamples.ToArray()
+        Start-Sleep -Milliseconds 250
+        $workerSurvivors = 0
+        try {
+            $workerSurvivors = @(
+                Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object {
+                    [int]$_.SessionId -eq $sessionId -and
+                    [string]$_.CommandLine -match "IdentityDiagnosticsWorker"
+                }
+            ).Count
+        } catch {
+            $workerSurvivors = -1
+        }
+
+        $evidence = [ordered]@{
+            schema_version = "u0-g-bounded-diagnostics-benchmark-1"
+            measured_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+            iterations = $Iterations
+            loop_iterations = $loopIterations
+            timeout_iterations = $timeoutIterations
+            timeout_budget_ms = $IDENTITY_DIAGNOSTICS_TIMEOUT_MS
+            environment = [ordered]@{
+                os = [Environment]::OSVersion.VersionString
+                powershell_edition = $PSVersionTable.PSEdition
+                powershell_version = $PSVersionTable.PSVersion.ToString()
+                logical_processors = [Environment]::ProcessorCount
+                hosted_runner = ($env:GITHUB_ACTIONS -eq "true")
+                owner_pc = $false
+                excel_or_ms2_used = $false
+            }
+            bounded_normal = $normalTiming
+            loop_with_two_second_sleep = $loopTiming
+            bounded_missing_processes_and_ports = $abnormalTiming
+            bounded_malformed_manifest = $malformedTiming
+            malformed_returns_unknown = $malformedUnknown
+            forced_timeout = $timeoutTiming
+            timeout_returns_unknown = $timeoutUnknown
+            surviving_worker_count = $workerSurvivors
+            control_contract = [ordered]@{
+                diagnostic_result_controls_supervision = $false
+                diagnostic_result_controls_orders = $false
+            }
+        }
+        $outputParent = Split-Path -Parent $OutputPath
+        if (-not [string]::IsNullOrWhiteSpace($outputParent) -and
+            -not (Test-Path -LiteralPath $outputParent -PathType Container)) {
+            New-Item -ItemType Directory -Path $outputParent -Force | Out-Null
+        }
+        [IO.File]::WriteAllText($OutputPath, ($evidence | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
+        Write-Output "U0_G_BENCHMARK_COMPLETE"
     } finally {
         foreach ($listener in $listeners) {
             try { $listener.Stop() } catch {}
@@ -1655,6 +1989,14 @@ function Invoke-ExcelIdentityProbeSelfTest {
 # MAIN
 # ======================================================================
 
+if ($IdentityDiagnosticsWorker) {
+    Invoke-IdentityDiagnosticsWorker `
+        $IdentityDiagnosticsInputPath `
+        $IdentityDiagnosticsOutputPath `
+        $IdentityDiagnosticsTestDelayMs
+    exit 0
+}
+
 if ($IdentityProbeSelfTest) {
     Invoke-ExcelIdentityProbeSelfTest
     exit 0
@@ -1671,6 +2013,11 @@ if ($IdentityDiagnosticsSelfTest) {
 
 if ($IdentityDiagnosticsBenchmark) {
     Invoke-IdentityDiagnosticsBenchmark $RepoRoot $BenchmarkOutputPath $BenchmarkIterations
+    exit 0
+}
+
+if ($BoundedIdentityDiagnosticsBenchmark) {
+    Invoke-BoundedIdentityDiagnosticsBenchmark $RepoRoot $BenchmarkOutputPath $BenchmarkIterations
     exit 0
 }
 
@@ -2082,11 +2429,16 @@ try {
     while ($true) {
         Start-Sleep -Seconds 2
 
-        # Evidence-only diagnostics. Failures are recorded as UNKNOWN by
-        # Update-IdentityDiagnostics and never alter supervision decisions.
+        # Evidence-only diagnostics. The owned short-lived worker has a
+        # finite budget; timeout/failure becomes UNKNOWN and never changes
+        # supervision decisions.
         if (((Get-Date) - $lastIdentityDiagnosticsAt).TotalSeconds -ge 30) {
             try {
-                $state["identity_diagnostics"] = Update-IdentityDiagnostics $state $RepoRootResolved $RuntimeDir
+                $state["identity_diagnostics"] = Invoke-BoundedIdentityDiagnostics `
+                    $state `
+                    $RepoRootResolved `
+                    $RuntimeDir `
+                    $IDENTITY_DIAGNOSTICS_TIMEOUT_MS
                 Save-State $state
             } catch {
                 # Diagnostics must not interrupt the existing supervision loop.

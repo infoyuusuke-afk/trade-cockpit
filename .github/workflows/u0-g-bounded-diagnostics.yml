@@ -1,0 +1,141 @@
+name: U0-G Bounded Diagnostics
+
+on:
+  push:
+    branches:
+      - "cursor/u0-g-bounded-diagnostics-3921"
+    paths:
+      - ".github/workflows/u0-g-bounded-diagnostics.yml"
+      - "downloads/AI_COCKPIT_CONTROLLER_V10.ps1"
+      - "downloads/AI_COCKPIT_PREFLIGHT_V10.ps1"
+      - "tests/test_v10_bounded_diagnostics.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-isolation:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact U0-G revision
+        shell: pwsh
+        run: |
+          git init .
+          git config core.autocrlf false
+          git remote add origin https://github.com/infoyuusuke-afk/trade-cockpit.git
+          git fetch --depth=1 origin $env:GITHUB_SHA
+          git checkout --detach FETCH_HEAD
+          if ((git rev-parse HEAD) -ne $env:GITHUB_SHA) {
+            throw "Checked-out commit does not match GITHUB_SHA."
+          }
+
+      - name: Run U0-C and U0-G contract tests
+        shell: pwsh
+        run: |
+          python -m unittest `
+            tests.test_v10_identity_diagnostics `
+            tests.test_v10_bounded_diagnostics -v
+
+      - name: Parse U0-G scripts with PowerShell 7
+        shell: pwsh
+        run: |
+          foreach ($file in @(
+            "downloads/AI_COCKPIT_CONTROLLER_V10.ps1",
+            "downloads/AI_COCKPIT_PREFLIGHT_V10.ps1"
+          )) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path -LiteralPath $file),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -ne 0) {
+              $errors | ForEach-Object { Write-Error ($file + ": " + $_.Message) }
+              throw "PowerShell 7 syntax validation failed."
+            }
+          }
+
+      - name: Parse U0-G scripts with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          foreach ($file in @(
+            "downloads/AI_COCKPIT_CONTROLLER_V10.ps1",
+            "downloads/AI_COCKPIT_PREFLIGHT_V10.ps1"
+          )) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path -LiteralPath $file),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -ne 0) {
+              $errors | ForEach-Object { Write-Error ($file + ": " + $_.Message) }
+              throw "Windows PowerShell 5.1 syntax validation failed."
+            }
+          }
+
+      - name: Run fixtures with PowerShell 7
+        shell: pwsh
+        run: |
+          & .\downloads\AI_COCKPIT_CONTROLLER_V10.ps1 -IdentityDiagnosticsSelfTest
+          if ($LASTEXITCODE -ne 0) { throw "Identity fixture failed." }
+          $output = Join-Path $env:RUNNER_TEMP "u0-g-preflight-ps7.json"
+          & .\downloads\AI_COCKPIT_PREFLIGHT_V10.ps1 `
+            -RepoRoot $PWD.Path `
+            -OutputPath $output `
+            -SelfTest
+          if ($LASTEXITCODE -ne 0) { throw "Sanitized preflight fixture failed." }
+
+      - name: Run fixtures with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          & .\downloads\AI_COCKPIT_CONTROLLER_V10.ps1 -IdentityDiagnosticsSelfTest
+          if ($LASTEXITCODE -ne 0) { throw "Identity fixture failed." }
+          $output = Join-Path $env:RUNNER_TEMP "u0-g-preflight-ps51.json"
+          & .\downloads\AI_COCKPIT_PREFLIGHT_V10.ps1 `
+            -RepoRoot $PWD.Path `
+            -OutputPath $output `
+            -SelfTest
+          if ($LASTEXITCODE -ne 0) { throw "Sanitized preflight fixture failed." }
+
+      - name: Benchmark Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $output = Join-Path $env:RUNNER_TEMP "u0-g-benchmark-ps51.json"
+          & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
+            -File ".\downloads\AI_COCKPIT_CONTROLLER_V10.ps1" `
+            -BoundedIdentityDiagnosticsBenchmark `
+            -RepoRoot $PWD.Path `
+            -BenchmarkOutputPath $output `
+            -BenchmarkIterations 100
+          if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell 5.1 benchmark failed." }
+          $evidence = Get-Content -LiteralPath $output -Raw -Encoding UTF8 | ConvertFrom-Json
+          if (-not $evidence.timeout_returns_unknown) { throw "Timeout was not UNKNOWN." }
+          if ($evidence.surviving_worker_count -ne 0) { throw "Diagnostic worker survived timeout." }
+          if ($evidence.forced_timeout.max_ms -gt 2000) { throw "Timeout exceeded acceptance ceiling." }
+          Write-Output "U0_G_PS51_EVIDENCE_BEGIN"
+          Get-Content -LiteralPath $output -Raw -Encoding UTF8
+          Write-Output "U0_G_PS51_EVIDENCE_END"
+
+      - name: Benchmark PowerShell 7
+        shell: pwsh
+        run: |
+          $output = Join-Path $env:RUNNER_TEMP "u0-g-benchmark-ps7.json"
+          & pwsh.exe -NoLogo -NoProfile `
+            -File ".\downloads\AI_COCKPIT_CONTROLLER_V10.ps1" `
+            -BoundedIdentityDiagnosticsBenchmark `
+            -RepoRoot $PWD.Path `
+            -BenchmarkOutputPath $output `
+            -BenchmarkIterations 100
+          if ($LASTEXITCODE -ne 0) { throw "PowerShell 7 benchmark failed." }
+          $evidence = Get-Content -LiteralPath $output -Raw -Encoding UTF8 | ConvertFrom-Json
+          if (-not $evidence.timeout_returns_unknown) { throw "Timeout was not UNKNOWN." }
+          if ($evidence.surviving_worker_count -ne 0) { throw "Diagnostic worker survived timeout." }
+          if ($evidence.forced_timeout.max_ms -gt 2000) { throw "Timeout exceeded acceptance ceiling." }
+          Write-Output "U0_G_PS7_EVIDENCE_BEGIN"
+          Get-Content -LiteralPath $output -Raw -Encoding UTF8
+          Write-Output "U0_G_PS7_EVIDENCE_END"
