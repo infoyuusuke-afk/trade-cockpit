@@ -198,7 +198,8 @@ function Get-SafeUiAssetPath([string]$RootPath, [string]$RelativePath) {
         $resolvedRoot = [IO.Path]::GetFullPath($RootPath)
         $rootPrefix = $resolvedRoot.TrimEnd("\", "/") + [IO.Path]::DirectorySeparatorChar
         $resolved = [IO.Path]::GetFullPath((Join-Path $resolvedRoot $RelativePath))
-        if (-not $resolved.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) { return $null }
+        $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
+        if (-not $resolved.StartsWith($rootPrefix, $ordinalIgnoreCase)) { return $null }
         if (-not (Test-Path -LiteralPath $resolved -PathType Leaf)) { return $null }
         $rootItem = Get-Item -LiteralPath $resolvedRoot -Force -ErrorAction Stop
         $fileItem = Get-Item -LiteralPath $resolved -Force -ErrorAction Stop
@@ -244,10 +245,22 @@ function Get-LocalUiIdentity {
     }
 }
 
+function Get-GatewayDiagnosticProperty($Object, [string]$Name, $Default = $null) {
+    if ($null -eq $Object) { return $Default }
+    if ($Object -is [Collections.IDictionary] -and $Object.Contains($Name)) {
+        return $Object[$Name]
+    }
+    try {
+        $property = $Object.PSObject.Properties[$Name]
+        if ($null -ne $property) { return $property.Value }
+    } catch {}
+    return $Default
+}
+
 function Get-SanitizedIdentityDiagnostics($State) {
-    $source = $null
-    try { $source = $State.identity_diagnostics } catch { $source = $null }
-    if ($null -eq $source) {
+    $source = Get-GatewayDiagnosticProperty $State "identity_diagnostics"
+    $sourceSchema = [string](Get-GatewayDiagnosticProperty $source "schema_version" "")
+    if ($null -eq $source -or $sourceSchema -ne "v10-runtime-identity-1") {
         return [ordered]@{
             schema_version = "v10-runtime-identity-1"
             overall = "UNKNOWN"
@@ -260,47 +273,50 @@ function Get-SanitizedIdentityDiagnostics($State) {
         }
     }
     $processes = [ordered]@{}
-    foreach ($property in @($source.processes.PSObject.Properties)) {
+    $sourceProcesses = Get-GatewayDiagnosticProperty $source "processes"
+    foreach ($property in @($sourceProcesses.PSObject.Properties)) {
         $entry = $property.Value
         $processes[$property.Name] = [ordered]@{
-            role = $entry.role
-            pid = $entry.pid
-            session_id = $entry.session_id
-            parent_pid = $entry.parent_pid
-            creation_time_utc = $entry.creation_time_utc
-            generation = $entry.generation
-            script_relpath = $entry.script_relpath
-            script_raw_sha256 = $entry.script_raw_sha256
-            expected_raw_sha256 = $entry.expected_raw_sha256
-            status = $entry.status
-            reason_codes = @($entry.reason_codes)
+            role = Get-GatewayDiagnosticProperty $entry "role"
+            pid = Get-GatewayDiagnosticProperty $entry "pid"
+            session_id = Get-GatewayDiagnosticProperty $entry "session_id"
+            parent_pid = Get-GatewayDiagnosticProperty $entry "parent_pid"
+            creation_time_utc = Get-GatewayDiagnosticProperty $entry "creation_time_utc"
+            generation = Get-GatewayDiagnosticProperty $entry "generation"
+            script_relpath = Get-GatewayDiagnosticProperty $entry "script_relpath"
+            script_raw_sha256 = Get-GatewayDiagnosticProperty $entry "script_raw_sha256"
+            expected_raw_sha256 = Get-GatewayDiagnosticProperty $entry "expected_raw_sha256"
+            status = [string](Get-GatewayDiagnosticProperty $entry "status" "UNKNOWN")
+            reason_codes = @(Get-GatewayDiagnosticProperty $entry "reason_codes" @("MALFORMED_PROCESS_EVIDENCE"))
         }
     }
     $ports = [ordered]@{}
-    foreach ($property in @($source.ports.PSObject.Properties)) {
+    $sourcePorts = Get-GatewayDiagnosticProperty $source "ports"
+    foreach ($property in @($sourcePorts.PSObject.Properties)) {
         $entry = $property.Value
         $ports[$property.Name] = [ordered]@{
-            expected_role = $entry.expected_role
-            owner_pids = @($entry.owner_pids)
-            listener_count = $entry.listener_count
-            loopback_only = $entry.loopback_only
-            status = $entry.status
-            reason_codes = @($entry.reason_codes)
+            expected_role = Get-GatewayDiagnosticProperty $entry "expected_role"
+            owner_pids = @(Get-GatewayDiagnosticProperty $entry "owner_pids" @())
+            listener_count = Get-GatewayDiagnosticProperty $entry "listener_count"
+            loopback_only = Get-GatewayDiagnosticProperty $entry "loopback_only"
+            status = [string](Get-GatewayDiagnosticProperty $entry "status" "UNKNOWN")
+            reason_codes = @(Get-GatewayDiagnosticProperty $entry "reason_codes" @("MALFORMED_PORT_EVIDENCE"))
         }
     }
+    $sourceUi = Get-GatewayDiagnosticProperty $source "ui"
     $controllerUi = [ordered]@{
-        assets = $source.ui.assets
-        baseline_id = $source.ui.baseline_id
-        baseline_status = $source.ui.baseline_status
-        status = $source.ui.status
-        reason_codes = @($source.ui.reason_codes)
+        assets = Get-GatewayDiagnosticProperty $sourceUi "assets" ([ordered]@{})
+        baseline_id = Get-GatewayDiagnosticProperty $sourceUi "baseline_id"
+        baseline_status = [string](Get-GatewayDiagnosticProperty $sourceUi "baseline_status" "UNKNOWN")
+        status = [string](Get-GatewayDiagnosticProperty $sourceUi "status" "UNKNOWN")
+        reason_codes = @(Get-GatewayDiagnosticProperty $sourceUi "reason_codes" @("MALFORMED_UI_EVIDENCE"))
     }
     return [ordered]@{
-        schema_version = [string]$source.schema_version
-        overall = [string]$source.overall
-        reason_codes = @($source.reason_codes)
-        checked_at = $source.checked_at
-        deployment_status = [string]$source.deployment_status
+        schema_version = $sourceSchema
+        overall = [string](Get-GatewayDiagnosticProperty $source "overall" "UNKNOWN")
+        reason_codes = @(Get-GatewayDiagnosticProperty $source "reason_codes" @("MALFORMED_IDENTITY_EVIDENCE"))
+        checked_at = Get-GatewayDiagnosticProperty $source "checked_at"
+        deployment_status = [string](Get-GatewayDiagnosticProperty $source "deployment_status" "UNKNOWN")
         processes = $processes
         ports = $ports
         ui = [ordered]@{

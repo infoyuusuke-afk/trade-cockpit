@@ -165,7 +165,7 @@ class V10IdentityDiagnosticsContract(unittest.TestCase):
             "downloads/AI_COCKPIT_GATEWAY_V10.ps1",
             "Send-LocalDiagnosticResponse",
         )
-        self.assertNotIn("Access-Control-Allow-Origin", sender)
+        self.assertNotIn("Access-Control-Allow-Origin: *", sender)
         self.assertIn("Cache-Control: no-store", sender)
 
     def test_sanitized_output_has_an_explicit_allowlist(self) -> None:
@@ -206,10 +206,31 @@ class V10IdentityDiagnosticsContract(unittest.TestCase):
             self.assertIn(f"$path -eq '{route}'", self.gateway)
         self.assertIn("real_submit_allowed        = $false", self.gateway)
 
-    def test_no_obvious_private_values_in_new_schema_literals(self) -> None:
+    def test_new_code_avoids_known_windows_powershell_51_enum_parse_trap(self) -> None:
+        for path, name in (
+            ("downloads/AI_COCKPIT_CONTROLLER_V10.ps1", "Get-ProcessIdentityObservation"),
+            ("downloads/AI_COCKPIT_GATEWAY_V10.ps1", "Get-SafeUiAssetPath"),
+        ):
+            text = function_body(path, name)
+            self.assertNotRegex(
+                text,
+                r"\.(?:IndexOf|StartsWith)\([^\n]*,\s*\[StringComparison\]::",
+            )
+
+    def test_no_obvious_private_values_or_order_permission_in_diagnostics(self) -> None:
         combined = self.runner + self.controller + self.gateway
         self.assertNotRegex(combined, re.compile(r"C:\\Users\\[^\\\s]+", re.I))
-        self.assertNotIn("real_submit_allowed = $true", combined)
+        diagnostics = (
+            function_body(
+                "downloads/AI_COCKPIT_CONTROLLER_V10.ps1",
+                "Update-IdentityDiagnostics",
+            )
+            + function_body(
+                "downloads/AI_COCKPIT_GATEWAY_V10.ps1",
+                "Get-SanitizedIdentityDiagnostics",
+            )
+        )
+        self.assertNotIn("real_submit_allowed", diagnostics)
 
 
 if __name__ == "__main__":

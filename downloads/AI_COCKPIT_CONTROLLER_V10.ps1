@@ -376,10 +376,11 @@ function Get-ProcessIdentityObservation(
         $result.parent_pid = [int]$process.ParentProcessId
         $result.creation_time_utc = ([datetime]$process.CreationDate).ToUniversalTime().ToString("o")
         $commandLine = [string]$process.CommandLine
+        $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
         foreach ($candidate in $ScriptCandidates) {
             $fullPath = [string](Get-DiagnosticProperty $candidate "full_path" "")
             if ([string]::IsNullOrWhiteSpace($fullPath)) { continue }
-            if ($commandLine.IndexOf($fullPath, [StringComparison]::OrdinalIgnoreCase) -lt 0) { continue }
+            if ($commandLine.IndexOf($fullPath, $ordinalIgnoreCase) -lt 0) { continue }
             $result.script_path_match = $true
             $result.script_relpath = [string](Get-DiagnosticProperty $candidate "relative_path" "")
             if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
@@ -1823,7 +1824,7 @@ try {
         # Update-IdentityDiagnostics and never alter supervision decisions.
         if (((Get-Date) - $lastIdentityDiagnosticsAt).TotalSeconds -ge 30) {
             try {
-                $state.identity_diagnostics = Update-IdentityDiagnostics $state $RepoRootResolved $RuntimeDir
+                $state["identity_diagnostics"] = Update-IdentityDiagnostics $state $RepoRootResolved $RuntimeDir
                 Save-State $state
             } catch {
                 # Diagnostics must not interrupt the existing supervision loop.
