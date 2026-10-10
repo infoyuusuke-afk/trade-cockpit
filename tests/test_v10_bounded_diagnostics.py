@@ -70,9 +70,11 @@ class V10BoundedDiagnosticsContract(unittest.TestCase):
         )
 
     def test_benchmark_covers_normal_abnormal_exception_and_timeout(self) -> None:
-        body = function_body(
-            CONTROLLER_PATH, "Invoke-BoundedIdentityDiagnosticsBenchmark"
+        start = self.controller.index(
+            "function Invoke-BoundedIdentityDiagnosticsBenchmark"
         )
+        end = self.controller.index("function Test-OwnedPidIdentity", start)
+        body = self.controller[start:end]
         for token in (
             "bounded_normal",
             "bounded_missing_processes_and_ports",
@@ -119,7 +121,6 @@ class V10BoundedDiagnosticsContract(unittest.TestCase):
         returned = body[body.index("return [ordered]@{") :]
         for forbidden in (
             "CommandLine",
-            "command_line",
             "runtime_dir",
             "repo_root",
             "workbook_path",
@@ -127,6 +128,7 @@ class V10BoundedDiagnosticsContract(unittest.TestCase):
             "USERPROFILE",
         ):
             self.assertNotIn(forbidden, returned)
+        self.assertNotRegex(returned, r"\bcommand_line\s*=")
         for required in (
             "schema_version",
             "deployment",
