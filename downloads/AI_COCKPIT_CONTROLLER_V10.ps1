@@ -66,7 +66,7 @@ $PORT_GATEWAY = 28581
 $PORT_WATCHER = 28582
 $PORT_VOICE = 28583
 $PORT_BRAIN = 28584
-$IDENTITY_DIAGNOSTICS_TIMEOUT_MS = 1800
+$IDENTITY_DIAGNOSTICS_TIMEOUT_MS = 5000
 
 # ---------------------------------------------------------------- utility
 
@@ -887,7 +887,7 @@ function Invoke-BoundedIdentityDiagnostics(
     $State,
     [string]$ResolvedRepoRoot,
     [string]$ResolvedRuntimeDir,
-    [int]$TimeoutMs = 1800,
+    [int]$TimeoutMs = 5000,
     [int]$TestDelayMs = 0
 ) {
     try {
@@ -973,6 +973,36 @@ function Measure-IdentityBenchmarkSet([int]$Iterations, [scriptblock]$Action) {
     $summary["working_set_after_bytes"] = [int64]$processAfter.WorkingSet64
     $summary["peak_working_set_bytes"] = $peakWorkingSet
     return $summary
+}
+
+function Get-IdentityBenchmarkCompletionSummary([object[]]$Results) {
+    $validResults = 0
+    $timeoutResults = 0
+    $workerErrorResults = 0
+    $workerErrors = @(
+        "DIAGNOSTIC_LAUNCH_FAILED",
+        "DIAGNOSTIC_WORKER_FAILED",
+        "DIAGNOSTIC_WORKER_INVALID_STATE",
+        "DIAGNOSTIC_WORKER_INVALID_OUTPUT",
+        "DIAGNOSTIC_WORKER_EXCEPTION"
+    )
+    foreach ($result in $Results) {
+        $reasons = @((Get-DiagnosticProperty $result "reason_codes" @()))
+        if ($reasons -contains "DIAGNOSTIC_TIMEOUT") {
+            $timeoutResults++
+        } elseif (@($reasons | Where-Object { $_ -in $workerErrors }).Count -gt 0 -or
+            [string](Get-DiagnosticProperty $result "schema_version" "") -ne "v10-runtime-identity-1") {
+            $workerErrorResults++
+        } else {
+            $validResults++
+        }
+    }
+    return [ordered]@{
+        iterations = $Results.Count
+        valid_results = $validResults
+        timeout_results = $timeoutResults
+        worker_error_results = $workerErrorResults
+    }
 }
 
 function Invoke-IdentityDiagnosticsBenchmark(
@@ -1256,9 +1286,13 @@ function Invoke-BoundedIdentityDiagnosticsBenchmark(
         # Warm process launch, providers, and filesystem caches.
         Invoke-BoundedIdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir $IDENTITY_DIAGNOSTICS_TIMEOUT_MS | Out-Null
 
+        $normalResults = New-Object System.Collections.Generic.List[object]
         $normalTiming = Measure-IdentityBenchmarkSet $Iterations {
-            Invoke-BoundedIdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir $IDENTITY_DIAGNOSTICS_TIMEOUT_MS
+            $normalResult = Invoke-BoundedIdentityDiagnostics `
+                $state $ResolvedRepoRoot $runtimeDir $IDENTITY_DIAGNOSTICS_TIMEOUT_MS
+            [void]$normalResults.Add($normalResult)
         }
+        $normalCompletion = Get-IdentityBenchmarkCompletionSummary $normalResults.ToArray()
         $loopSamples = New-Object System.Collections.Generic.List[double]
         $asyncJob = $null
         $loopIterations = [Math]::Min(20, $Iterations)
@@ -1312,7 +1346,7 @@ function Invoke-BoundedIdentityDiagnosticsBenchmark(
         for ($iteration = 0; $iteration -lt $timeoutIterations; $iteration++) {
             $sample = [Diagnostics.Stopwatch]::StartNew()
             $timeoutResult = Invoke-BoundedIdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir `
-                $IDENTITY_DIAGNOSTICS_TIMEOUT_MS 5000
+                $IDENTITY_DIAGNOSTICS_TIMEOUT_MS 10000
             $sample.Stop()
             [void]$timeoutSamples.Add($sample.Elapsed.TotalMilliseconds)
             if ([string]$timeoutResult.overall -ne "UNKNOWN" -or
@@ -1351,6 +1385,7 @@ function Invoke-BoundedIdentityDiagnosticsBenchmark(
                 excel_or_ms2_used = $false
             }
             bounded_normal = $normalTiming
+            normal_completion = $normalCompletion
             loop_with_two_second_sleep = $loopTiming
             bounded_missing_processes_and_ports = $abnormalTiming
             bounded_malformed_manifest = $malformedTiming

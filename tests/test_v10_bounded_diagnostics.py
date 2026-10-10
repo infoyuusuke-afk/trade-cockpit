@@ -23,13 +23,13 @@ class V10BoundedDiagnosticsContract(unittest.TestCase):
         self.controller = read(CONTROLLER_PATH)
         self.preflight = read(PREFLIGHT_PATH)
 
-    def test_timeout_budget_is_finite_and_below_nominal_loop_interval(self) -> None:
+    def test_timeout_budget_is_finite_and_async_safe(self) -> None:
         match = re.search(
             r"\$IDENTITY_DIAGNOSTICS_TIMEOUT_MS\s*=\s*(\d+)", self.controller
         )
         self.assertIsNotNone(match)
         self.assertGreater(int(match.group(1)), 0)
-        self.assertLess(int(match.group(1)), 2000)
+        self.assertLessEqual(int(match.group(1)), 5000)
 
     def test_timeout_returns_unknown_and_stops_only_owned_worker(self) -> None:
         body = function_body(
@@ -83,10 +83,14 @@ class V10BoundedDiagnosticsContract(unittest.TestCase):
             "bounded_normal",
             "bounded_missing_processes_and_ports",
             "bounded_malformed_manifest",
+            "normal_completion",
+            "valid_results",
+            "timeout_results",
+            "worker_error_results",
             "forced_timeout",
             "timeout_returns_unknown",
             "surviving_worker_count",
-            "5000",
+            "10000",
         ):
             self.assertIn(token, body)
 

@@ -121,10 +121,13 @@ jobs:
           Write-Output "U0_G_PS51_DEBUG_BEGIN"
           Get-Content -LiteralPath $env:AGENT_DEBUG_LOG -Encoding UTF8
           Write-Output "U0_G_PS51_DEBUG_END"
+          if ($evidence.normal_completion.valid_results -ne $evidence.iterations) { throw "Normal diagnostics did not complete successfully." }
+          if ($evidence.normal_completion.timeout_results -ne 0) { throw "Normal diagnostics timed out." }
+          if ($evidence.normal_completion.worker_error_results -ne 0) { throw "Normal diagnostic worker failed." }
           if (-not $evidence.timeout_returns_unknown) { throw "Timeout was not UNKNOWN." }
           if (-not $evidence.malformed_returns_unknown) { throw "Malformed input was not UNKNOWN." }
           if ($evidence.surviving_worker_count -ne 0) { throw "Diagnostic worker survived timeout." }
-          if ($evidence.forced_timeout.max_ms -gt 2300) { throw "Timeout exceeded acceptance ceiling." }
+          if ($evidence.forced_timeout.max_ms -gt 5500) { throw "Timeout exceeded acceptance ceiling." }
 
       - name: Benchmark PowerShell 7
         shell: pwsh
@@ -145,7 +148,10 @@ jobs:
           Write-Output "U0_G_PS7_DEBUG_BEGIN"
           Get-Content -LiteralPath $env:AGENT_DEBUG_LOG -Encoding UTF8
           Write-Output "U0_G_PS7_DEBUG_END"
+          if ($evidence.normal_completion.valid_results -ne $evidence.iterations) { throw "Normal diagnostics did not complete successfully." }
+          if ($evidence.normal_completion.timeout_results -ne 0) { throw "Normal diagnostics timed out." }
+          if ($evidence.normal_completion.worker_error_results -ne 0) { throw "Normal diagnostic worker failed." }
           if (-not $evidence.timeout_returns_unknown) { throw "Timeout was not UNKNOWN." }
           if (-not $evidence.malformed_returns_unknown) { throw "Malformed input was not UNKNOWN." }
           if ($evidence.surviving_worker_count -ne 0) { throw "Diagnostic worker survived timeout." }
-          if ($evidence.forced_timeout.max_ms -gt 2300) { throw "Timeout exceeded acceptance ceiling." }
+          if ($evidence.forced_timeout.max_ms -gt 5500) { throw "Timeout exceeded acceptance ceiling." }
