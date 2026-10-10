@@ -6,6 +6,10 @@ on:
       - "cursor/u0-c-v10-diagnostics-3921"
     paths:
       - ".github/workflows/u0-c-windows-isolation.yml"
+      - "downloads/RUN_AI_COCKPIT_V10.ps1"
+      - "downloads/AI_COCKPIT_CONTROLLER_V10.ps1"
+      - "downloads/AI_COCKPIT_GATEWAY_V10.ps1"
+      - "tests/test_v10_identity_diagnostics.py"
   workflow_dispatch:
 
 permissions:
@@ -16,7 +20,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 10
     env:
-      TARGET_SHA: e631ee89878d72915554841b93e9682a592ba268
+      TARGET_SHA: d1e5073c6bc9081d0d09b429c31d2e063dc190ec
     steps:
       - name: Checkout fixed U0-C commit
         shell: pwsh
