@@ -786,6 +786,7 @@ function Start-IdentityDiagnosticsWorkerProcess(
             clock = $clock
             work_root = $workRoot
             output_path = $outputPath
+            stderr_path = $stderrPath
             debug_forced_timeout = $debugForcedTimeout
         }
     } catch {
@@ -808,6 +809,7 @@ function Complete-IdentityDiagnosticsWorkerProcess(
     $clock = Get-DiagnosticProperty $Job "clock"
     $workRoot = [string](Get-DiagnosticProperty $Job "work_root" "")
     $outputPath = [string](Get-DiagnosticProperty $Job "output_path" "")
+    $stderrPath = [string](Get-DiagnosticProperty $Job "stderr_path" "")
     $debugForcedTimeout = [bool](Get-DiagnosticProperty $Job "debug_forced_timeout" $false)
     $completed = $false
     $result = $null
@@ -854,6 +856,22 @@ function Complete-IdentityDiagnosticsWorkerProcess(
             $worker.Refresh()
             $completed = $true
             if ($worker.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
+                if (-not [string]::IsNullOrWhiteSpace($env:AGENT_DEBUG_LOG) -and
+                    [int](Get-DiagnosticProperty $script:AgentWorkerFailureLogCount "value" 0) -lt 3) {
+                    if ($null -eq $script:AgentWorkerFailureLogCount) {
+                        $script:AgentWorkerFailureLogCount = [ordered]@{ value=0 }
+                    }
+                    $script:AgentWorkerFailureLogCount.value++
+                    $stderrText = ""
+                    if (-not [string]::IsNullOrWhiteSpace($stderrPath) -and
+                        (Test-Path -LiteralPath $stderrPath -PathType Leaf)) {
+                        $stderrText = [IO.File]::ReadAllText($stderrPath, [Text.Encoding]::UTF8)
+                        if ($stderrText.Length -gt 2000) { $stderrText = $stderrText.Substring(0, 2000) }
+                    }
+                    #region agent log
+                    Write-AgentDebugLog "E,F,G" "AI_COCKPIT_CONTROLLER_V10.ps1:863" "diagnostic worker exited without valid output" ([ordered]@{ exit_code=$worker.ExitCode; output_exists=(Test-Path -LiteralPath $outputPath -PathType Leaf); stderr=$stderrText })
+                    #endregion
+                }
                 $result = New-UnknownIdentityDiagnostics "DIAGNOSTIC_WORKER_FAILED" $clock.Elapsed.TotalMilliseconds
             } else {
                 $result = Read-JsonUtf8 $outputPath

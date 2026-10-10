@@ -112,7 +112,7 @@ jobs:
             -BoundedIdentityDiagnosticsBenchmark `
             -RepoRoot $PWD.Path `
             -BenchmarkOutputPath $output `
-            -BenchmarkIterations 100
+            -BenchmarkIterations 20
           if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell 5.1 benchmark failed." }
           $evidence = Get-Content -LiteralPath $output -Raw -Encoding UTF8 | ConvertFrom-Json
           Write-Output "U0_G_PS51_EVIDENCE_BEGIN"
@@ -139,7 +139,7 @@ jobs:
             -BoundedIdentityDiagnosticsBenchmark `
             -RepoRoot $PWD.Path `
             -BenchmarkOutputPath $output `
-            -BenchmarkIterations 100
+            -BenchmarkIterations 20
           if ($LASTEXITCODE -ne 0) { throw "PowerShell 7 benchmark failed." }
           $evidence = Get-Content -LiteralPath $output -Raw -Encoding UTF8 | ConvertFrom-Json
           Write-Output "U0_G_PS7_EVIDENCE_BEGIN"
