@@ -74,9 +74,7 @@ class V10BoundedDiagnosticsContract(unittest.TestCase):
         )
 
     def test_benchmark_covers_normal_abnormal_exception_and_timeout(self) -> None:
-        start = self.controller.index(
-            "function Invoke-BoundedIdentityDiagnosticsBenchmark"
-        )
+        start = self.controller.index("function Get-IdentityBenchmarkCompletionSummary")
         end = self.controller.index("function Test-OwnedPidIdentity", start)
         body = self.controller[start:end]
         for token in (
