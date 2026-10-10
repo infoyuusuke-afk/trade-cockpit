@@ -85,13 +85,7 @@ jobs:
       - name: Run side-effect-free identity fixture
         shell: powershell
         run: |
-          $output = @(
-            & .\downloads\AI_COCKPIT_CONTROLLER_V10.ps1 -IdentityDiagnosticsSelfTest
-          )
-          $output | ForEach-Object { Write-Output $_ }
-          if (($output -join "`n").IndexOf(
-              "V10 identity diagnostics fixture self-test passed.",
-              [StringComparison]::Ordinal
-            ) -lt 0) {
-            throw "Identity diagnostics fixture did not report PASS."
+          & .\downloads\AI_COCKPIT_CONTROLLER_V10.ps1 -IdentityDiagnosticsSelfTest
+          if ($LASTEXITCODE -ne 0) {
+            throw "Identity diagnostics fixture failed."
           }
