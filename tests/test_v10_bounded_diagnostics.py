@@ -32,7 +32,9 @@ class V10BoundedDiagnosticsContract(unittest.TestCase):
         self.assertLess(int(match.group(1)), 2000)
 
     def test_timeout_returns_unknown_and_stops_only_owned_worker(self) -> None:
-        body = function_body(CONTROLLER_PATH, "Invoke-BoundedIdentityDiagnostics")
+        body = function_body(
+            CONTROLLER_PATH, "Complete-IdentityDiagnosticsWorkerProcess"
+        )
         self.assertIn("$worker.WaitForExit($remainingMs)", body)
         self.assertIn('New-UnknownIdentityDiagnostics "DIAGNOSTIC_TIMEOUT"', body)
         self.assertIn("Stop-Process -Id $worker.Id", body)
@@ -45,7 +47,9 @@ class V10BoundedDiagnosticsContract(unittest.TestCase):
         )
         self.assertLess(worker_gate, state_initialization)
         self.assertIn("exit 0", self.controller[worker_gate:state_initialization])
-        body = function_body(CONTROLLER_PATH, "Invoke-BoundedIdentityDiagnostics")
+        body = function_body(
+            CONTROLLER_PATH, "Start-IdentityDiagnosticsWorkerProcess"
+        )
         self.assertIn("Start-Process", body)
         self.assertNotIn("Start-Job", body)
 
@@ -55,11 +59,11 @@ class V10BoundedDiagnosticsContract(unittest.TestCase):
             self.controller.index("# ---------------------------------------------------- supervision loop"),
         )
         loop = self.controller[loop_start:]
-        self.assertIn("Invoke-BoundedIdentityDiagnostics", loop)
+        self.assertIn("Start-IdentityDiagnosticsWorkerProcess", loop)
+        self.assertIn("Complete-IdentityDiagnosticsWorkerProcess", loop)
         self.assertNotIn("Update-IdentityDiagnostics $state", loop)
         assignment = re.search(
-            r'\$state\["identity_diagnostics"\]\s*=\s*'
-            r"Invoke-BoundedIdentityDiagnostics",
+            r'\$state\["identity_diagnostics"\]\s*=\s*\$completion\.result',
             loop,
         )
         self.assertIsNotNone(assignment)

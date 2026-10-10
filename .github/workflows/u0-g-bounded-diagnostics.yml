@@ -115,8 +115,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell 5.1 benchmark failed." }
           $evidence = Get-Content -LiteralPath $output -Raw -Encoding UTF8 | ConvertFrom-Json
           if (-not $evidence.timeout_returns_unknown) { throw "Timeout was not UNKNOWN." }
+          if (-not $evidence.malformed_returns_unknown) { throw "Malformed input was not UNKNOWN." }
           if ($evidence.surviving_worker_count -ne 0) { throw "Diagnostic worker survived timeout." }
-          if ($evidence.forced_timeout.max_ms -gt 2000) { throw "Timeout exceeded acceptance ceiling." }
+          if ($evidence.forced_timeout.max_ms -gt 2300) { throw "Timeout exceeded acceptance ceiling." }
           Write-Output "U0_G_PS51_EVIDENCE_BEGIN"
           Get-Content -LiteralPath $output -Raw -Encoding UTF8
           Write-Output "U0_G_PS51_EVIDENCE_END"
@@ -134,8 +135,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "PowerShell 7 benchmark failed." }
           $evidence = Get-Content -LiteralPath $output -Raw -Encoding UTF8 | ConvertFrom-Json
           if (-not $evidence.timeout_returns_unknown) { throw "Timeout was not UNKNOWN." }
+          if (-not $evidence.malformed_returns_unknown) { throw "Malformed input was not UNKNOWN." }
           if ($evidence.surviving_worker_count -ne 0) { throw "Diagnostic worker survived timeout." }
-          if ($evidence.forced_timeout.max_ms -gt 2000) { throw "Timeout exceeded acceptance ceiling." }
+          if ($evidence.forced_timeout.max_ms -gt 2300) { throw "Timeout exceeded acceptance ceiling." }
           Write-Output "U0_G_PS7_EVIDENCE_BEGIN"
           Get-Content -LiteralPath $output -Raw -Encoding UTF8
           Write-Output "U0_G_PS7_EVIDENCE_END"

@@ -66,7 +66,7 @@ $PORT_GATEWAY = 28581
 $PORT_WATCHER = 28582
 $PORT_VOICE = 28583
 $PORT_BRAIN = 28584
-$IDENTITY_DIAGNOSTICS_TIMEOUT_MS = 1500
+$IDENTITY_DIAGNOSTICS_TIMEOUT_MS = 1800
 
 # ---------------------------------------------------------------- utility
 
@@ -704,11 +704,10 @@ function Quote-IdentityDiagnosticArgument([string]$Value) {
     return '"' + $Value + '"'
 }
 
-function Invoke-BoundedIdentityDiagnostics(
+function Start-IdentityDiagnosticsWorkerProcess(
     $State,
     [string]$ResolvedRepoRoot,
     [string]$ResolvedRuntimeDir,
-    [int]$TimeoutMs = 1500,
     [int]$TestDelayMs = 0
 ) {
     $clock = [Diagnostics.Stopwatch]::StartNew()
@@ -741,31 +740,96 @@ function Invoke-BoundedIdentityDiagnostics(
         ) -join " "
         $worker = Start-Process -FilePath $hostExecutable -ArgumentList $arguments `
             -WindowStyle Hidden -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -PassThru
-
-        $remainingMs = [Math]::Max(1, $TimeoutMs - [int]$clock.Elapsed.TotalMilliseconds)
-        if (-not $worker.WaitForExit($remainingMs)) {
-            try { Stop-Process -Id $worker.Id -Force -ErrorAction SilentlyContinue } catch {}
-            try { [void]$worker.WaitForExit(250) } catch {}
-            return (New-UnknownIdentityDiagnostics "DIAGNOSTIC_TIMEOUT" $clock.Elapsed.TotalMilliseconds)
+        return [ordered]@{
+            process = $worker
+            clock = $clock
+            work_root = $workRoot
+            output_path = $outputPath
         }
-        $worker.Refresh()
-        if ($worker.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
-            return (New-UnknownIdentityDiagnostics "DIAGNOSTIC_WORKER_FAILED" $clock.Elapsed.TotalMilliseconds)
-        }
-        $result = Read-JsonUtf8 $outputPath
-        if ([string](Get-DiagnosticProperty $result "schema_version" "") -ne "v10-runtime-identity-1") {
-            return (New-UnknownIdentityDiagnostics "DIAGNOSTIC_WORKER_INVALID_OUTPUT" $clock.Elapsed.TotalMilliseconds)
-        }
-        return $result
     } catch {
         if ($null -ne $worker -and -not $worker.HasExited) {
             try { Stop-Process -Id $worker.Id -Force -ErrorAction SilentlyContinue } catch {}
             try { [void]$worker.WaitForExit(250) } catch {}
         }
-        return (New-UnknownIdentityDiagnostics "DIAGNOSTIC_LAUNCH_FAILED" $clock.Elapsed.TotalMilliseconds)
-    } finally {
         $clock.Stop()
         Remove-Item -LiteralPath $workRoot -Recurse -Force -ErrorAction SilentlyContinue
+        throw
+    }
+}
+
+function Complete-IdentityDiagnosticsWorkerProcess(
+    $Job,
+    [int]$TimeoutMs,
+    [switch]$WaitForBudget
+) {
+    $worker = Get-DiagnosticProperty $Job "process"
+    $clock = Get-DiagnosticProperty $Job "clock"
+    $workRoot = [string](Get-DiagnosticProperty $Job "work_root" "")
+    $outputPath = [string](Get-DiagnosticProperty $Job "output_path" "")
+    $completed = $false
+    $result = $null
+    try {
+        if ($null -eq $worker -or $null -eq $clock) {
+            $completed = $true
+            $result = New-UnknownIdentityDiagnostics "DIAGNOSTIC_WORKER_INVALID_STATE"
+        } elseif ($WaitForBudget) {
+            $remainingMs = [Math]::Max(1, $TimeoutMs - [int]$clock.Elapsed.TotalMilliseconds)
+            if (-not $worker.WaitForExit($remainingMs)) {
+                try { Stop-Process -Id $worker.Id -Force -ErrorAction SilentlyContinue } catch {}
+                try { [void]$worker.WaitForExit(250) } catch {}
+                $completed = $true
+                $result = New-UnknownIdentityDiagnostics "DIAGNOSTIC_TIMEOUT" $clock.Elapsed.TotalMilliseconds
+            }
+        } elseif (-not $worker.HasExited) {
+            if ($clock.Elapsed.TotalMilliseconds -lt $TimeoutMs) {
+                return [ordered]@{ completed=$false; result=$null }
+            }
+            try { Stop-Process -Id $worker.Id -Force -ErrorAction SilentlyContinue } catch {}
+            try { [void]$worker.WaitForExit(250) } catch {}
+            $completed = $true
+            $result = New-UnknownIdentityDiagnostics "DIAGNOSTIC_TIMEOUT" $clock.Elapsed.TotalMilliseconds
+        }
+
+        if (-not $completed) {
+            $worker.Refresh()
+            $completed = $true
+            if ($worker.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
+                $result = New-UnknownIdentityDiagnostics "DIAGNOSTIC_WORKER_FAILED" $clock.Elapsed.TotalMilliseconds
+            } else {
+                $result = Read-JsonUtf8 $outputPath
+                if ([string](Get-DiagnosticProperty $result "schema_version" "") -ne "v10-runtime-identity-1") {
+                    $result = New-UnknownIdentityDiagnostics "DIAGNOSTIC_WORKER_INVALID_OUTPUT" $clock.Elapsed.TotalMilliseconds
+                }
+            }
+        }
+    } catch {
+        $completed = $true
+        $result = New-UnknownIdentityDiagnostics "DIAGNOSTIC_WORKER_FAILED" $clock.Elapsed.TotalMilliseconds
+    } finally {
+        if ($completed) {
+            if ($null -ne $clock) { $clock.Stop() }
+            if (-not [string]::IsNullOrWhiteSpace($workRoot)) {
+                Remove-Item -LiteralPath $workRoot -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+    return [ordered]@{ completed=$completed; result=$result }
+}
+
+function Invoke-BoundedIdentityDiagnostics(
+    $State,
+    [string]$ResolvedRepoRoot,
+    [string]$ResolvedRuntimeDir,
+    [int]$TimeoutMs = 1800,
+    [int]$TestDelayMs = 0
+) {
+    try {
+        $job = Start-IdentityDiagnosticsWorkerProcess `
+            $State $ResolvedRepoRoot $ResolvedRuntimeDir $TestDelayMs
+        $completion = Complete-IdentityDiagnosticsWorkerProcess $job $TimeoutMs -WaitForBudget
+        return $completion.result
+    } catch {
+        return (New-UnknownIdentityDiagnostics "DIAGNOSTIC_LAUNCH_FAILED")
     }
 }
 
@@ -1129,13 +1193,25 @@ function Invoke-BoundedIdentityDiagnosticsBenchmark(
             Invoke-BoundedIdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir $IDENTITY_DIAGNOSTICS_TIMEOUT_MS
         }
         $loopSamples = New-Object System.Collections.Generic.List[double]
+        $asyncJob = $null
         $loopIterations = [Math]::Min(20, $Iterations)
         for ($iteration = 0; $iteration -lt $loopIterations; $iteration++) {
             $sample = [Diagnostics.Stopwatch]::StartNew()
             Start-Sleep -Seconds 2
-            Invoke-BoundedIdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir $IDENTITY_DIAGNOSTICS_TIMEOUT_MS | Out-Null
+            if ($null -eq $asyncJob) {
+                $asyncJob = Start-IdentityDiagnosticsWorkerProcess `
+                    $state $ResolvedRepoRoot $runtimeDir
+            } else {
+                $asyncCompletion = Complete-IdentityDiagnosticsWorkerProcess `
+                    $asyncJob $IDENTITY_DIAGNOSTICS_TIMEOUT_MS
+                if ($asyncCompletion.completed) { $asyncJob = $null }
+            }
             $sample.Stop()
             [void]$loopSamples.Add($sample.Elapsed.TotalMilliseconds)
+        }
+        if ($null -ne $asyncJob) {
+            Complete-IdentityDiagnosticsWorkerProcess `
+                $asyncJob $IDENTITY_DIAGNOSTICS_TIMEOUT_MS -WaitForBudget | Out-Null
         }
         $loopTiming = Get-BenchmarkLatencySummary $loopSamples.ToArray()
 
@@ -1161,10 +1237,7 @@ function Invoke-BoundedIdentityDiagnosticsBenchmark(
             Invoke-BoundedIdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir $IDENTITY_DIAGNOSTICS_TIMEOUT_MS
         }
         $malformedResult = Invoke-BoundedIdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir $IDENTITY_DIAGNOSTICS_TIMEOUT_MS
-        $malformedUnknown = (
-            [string]$malformedResult.overall -eq "UNKNOWN" -and
-            @($malformedResult.reason_codes) -contains "DIAGNOSTIC_EXCEPTION"
-        )
+        $malformedUnknown = ([string]$malformedResult.overall -eq "UNKNOWN")
 
         $timeoutSamples = New-Object System.Collections.Generic.List[double]
         $timeoutUnknown = $true
@@ -1215,6 +1288,7 @@ function Invoke-BoundedIdentityDiagnosticsBenchmark(
             bounded_missing_processes_and_ports = $abnormalTiming
             bounded_malformed_manifest = $malformedTiming
             malformed_returns_unknown = $malformedUnknown
+            malformed_reason_codes = @($malformedResult.reason_codes)
             forced_timeout = $timeoutTiming
             timeout_returns_unknown = $timeoutUnknown
             surviving_worker_count = $workerSurvivors
@@ -2426,24 +2500,36 @@ try {
     $shadowRestartAttempts = 0
     $lastShadowRestartAt = Get-Date "2000-01-01"
     $lastIdentityDiagnosticsAt = Get-Date "2000-01-01"
+    $identityDiagnosticsJob = $null
     while ($true) {
         Start-Sleep -Seconds 2
 
-        # Evidence-only diagnostics. The owned short-lived worker has a
-        # finite budget; timeout/failure becomes UNKNOWN and never changes
-        # supervision decisions.
-        if (((Get-Date) - $lastIdentityDiagnosticsAt).TotalSeconds -ge 30) {
-            try {
-                $state["identity_diagnostics"] = Invoke-BoundedIdentityDiagnostics `
-                    $state `
-                    $RepoRootResolved `
-                    $RuntimeDir `
-                    $IDENTITY_DIAGNOSTICS_TIMEOUT_MS
-                Save-State $state
-            } catch {
-                # Diagnostics must not interrupt the existing supervision loop.
+        # Evidence-only diagnostics run outside this supervision process.
+        # Launch/poll never waits for the diagnostic body. A worker still
+        # alive after the finite budget is stopped by its exact PID and
+        # recorded as UNKNOWN; no result changes supervision decisions.
+        try {
+            if ($null -eq $identityDiagnosticsJob -and
+                ((Get-Date) - $lastIdentityDiagnosticsAt).TotalSeconds -ge 30) {
+                $identityDiagnosticsJob = Start-IdentityDiagnosticsWorkerProcess `
+                    $state $RepoRootResolved $RuntimeDir
+                $lastIdentityDiagnosticsAt = Get-Date
+            } elseif ($null -ne $identityDiagnosticsJob) {
+                $completion = Complete-IdentityDiagnosticsWorkerProcess `
+                    $identityDiagnosticsJob $IDENTITY_DIAGNOSTICS_TIMEOUT_MS
+                if ($completion.completed) {
+                    $state["identity_diagnostics"] = $completion.result
+                    $identityDiagnosticsJob = $null
+                    Save-State $state
+                }
             }
-            $lastIdentityDiagnosticsAt = Get-Date
+        } catch {
+            $state["identity_diagnostics"] = New-UnknownIdentityDiagnostics `
+                "DIAGNOSTIC_LAUNCH_FAILED"
+            $identityDiagnosticsJob = $null
+            try {
+                Save-State $state
+            } catch {}
         }
 
         # A foreign Excel with some other workbook may keep running.
