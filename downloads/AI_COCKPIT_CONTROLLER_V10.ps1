@@ -3,7 +3,8 @@ param(
     [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
     [string]$ExpectedBranch = "",
     [string]$RuntimeDirOverride = "",
-    [switch]$IdentityProbeSelfTest
+    [switch]$IdentityProbeSelfTest,
+    [switch]$IdentityDiagnosticsSelfTest
 )
 
 # AI Cockpit Controller V10
@@ -240,6 +241,410 @@ function Save-State($state) {
     $tmp = $StateFile + "." + $PID + ".tmp"
     [IO.File]::WriteAllText($tmp, ($state | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
     Move-Item -LiteralPath $tmp -Destination $StateFile -Force
+}
+
+function Get-DiagnosticProperty($Object, [string]$Name, $Default = $null) {
+    if ($null -eq $Object) { return $Default }
+    if ($Object -is [Collections.IDictionary] -and $Object.Contains($Name)) {
+        return $Object[$Name]
+    }
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) { return $Default }
+    return $property.Value
+}
+
+function New-IdentityResult([string]$Status, [string[]]$Reasons) {
+    return [ordered]@{
+        status = $Status
+        reason_codes = @($Reasons | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -Unique)
+    }
+}
+
+function Compare-ProcessIdentity($Expected, $Observed, $Previous = $null) {
+    if ([string](Get-DiagnosticProperty $Observed "query_status" "UNKNOWN") -ne "OK") {
+        return (New-IdentityResult "UNKNOWN" @("PROCESS_QUERY_FAILED"))
+    }
+    $expectedPid = [int](Get-DiagnosticProperty $Expected "pid" 0)
+    $observedPid = [int](Get-DiagnosticProperty $Observed "pid" 0)
+    if ($expectedPid -le 0 -or $observedPid -le 0) {
+        return (New-IdentityResult "FAIL" @("PROCESS_NOT_FOUND"))
+    }
+    if ($expectedPid -ne $observedPid) {
+        return (New-IdentityResult "FAIL" @("PID_MISMATCH"))
+    }
+    $previousPid = [int](Get-DiagnosticProperty $Previous "pid" 0)
+    $previousCreated = [string](Get-DiagnosticProperty $Previous "creation_time_utc" "")
+    $observedCreated = [string](Get-DiagnosticProperty $Observed "creation_time_utc" "")
+    if ($previousPid -eq $observedPid -and
+        -not [string]::IsNullOrWhiteSpace($previousCreated) -and
+        $previousCreated -ne $observedCreated) {
+        return (New-IdentityResult "FAIL" @("PID_REUSED"))
+    }
+    $expectedSession = [int](Get-DiagnosticProperty $Expected "session_id" -1)
+    $observedSession = [int](Get-DiagnosticProperty $Observed "session_id" -2)
+    if ($expectedSession -lt 0 -or $observedSession -ne $expectedSession) {
+        return (New-IdentityResult "FAIL" @("SESSION_MISMATCH"))
+    }
+    $expectedParent = [int](Get-DiagnosticProperty $Expected "parent_pid" 0)
+    $observedParent = [int](Get-DiagnosticProperty $Observed "parent_pid" 0)
+    if ($expectedParent -gt 0 -and $observedParent -ne $expectedParent) {
+        return (New-IdentityResult "FAIL" @("PARENT_MISMATCH"))
+    }
+    if ((Get-DiagnosticProperty $Observed "script_path_match" $false) -ne $true) {
+        return (New-IdentityResult "FAIL" @("SCRIPT_PATH_MISMATCH"))
+    }
+    $expectedHash = [string](Get-DiagnosticProperty $Expected "script_raw_sha256" "")
+    $observedHash = [string](Get-DiagnosticProperty $Observed "script_raw_sha256" "")
+    if ([string]::IsNullOrWhiteSpace($expectedHash) -or [string]::IsNullOrWhiteSpace($observedHash)) {
+        return (New-IdentityResult "UNKNOWN" @("SCRIPT_HASH_UNAVAILABLE"))
+    }
+    if ($expectedHash -ne $observedHash) {
+        return (New-IdentityResult "FAIL" @("SCRIPT_HASH_MISMATCH"))
+    }
+    return (New-IdentityResult "VERIFIED" @())
+}
+
+function Compare-PortIdentity($Expected, $Observed) {
+    if ([string](Get-DiagnosticProperty $Observed "query_status" "UNKNOWN") -ne "OK") {
+        return (New-IdentityResult "UNKNOWN" @("PORT_QUERY_FAILED"))
+    }
+    $owners = @((Get-DiagnosticProperty $Observed "owner_pids" @()) | ForEach-Object { [int]$_ } | Sort-Object -Unique)
+    if ($owners.Count -eq 0) {
+        return (New-IdentityResult "FAIL" @("PORT_NOT_LISTENING"))
+    }
+    if ((Get-DiagnosticProperty $Observed "loopback_only" $false) -ne $true) {
+        return (New-IdentityResult "FAIL" @("NON_LOOPBACK_LISTENER"))
+    }
+    if ($owners.Count -ne 1) {
+        return (New-IdentityResult "FAIL" @("MULTIPLE_OWNERS"))
+    }
+    $expectedPid = [int](Get-DiagnosticProperty $Expected "pid" 0)
+    if ($owners[0] -eq $expectedPid -and $expectedPid -gt 0) {
+        return (New-IdentityResult "VERIFIED" @())
+    }
+    $bridgePids = @((Get-DiagnosticProperty $Observed "verified_bridge_pids" @()) | ForEach-Object { [int]$_ })
+    if ($bridgePids -contains $owners[0]) {
+        return (New-IdentityResult "VERIFIED_BRIDGE_CHILD" @())
+    }
+    return (New-IdentityResult "FAIL" @("FOREIGN_OWNER"))
+}
+
+function Get-ManifestArtifactHash($Manifest, [string]$Kind, [string]$Key) {
+    try {
+        $identity = Get-DiagnosticProperty $Manifest "identity_diagnostics"
+        if ($null -eq $identity) { return "" }
+        $map = Get-DiagnosticProperty $identity $Kind
+        if ($null -eq $map) { return "" }
+        $entry = Get-DiagnosticProperty $map $Key
+        if ($null -eq $entry) { return "" }
+        if ($Kind -eq "runtime_artifacts") {
+            return [string](Get-DiagnosticProperty $entry "deployed_raw_sha256" "")
+        }
+        return [string](Get-DiagnosticProperty $entry "source_raw_sha256" "")
+    } catch {
+        return ""
+    }
+}
+
+function Get-ProcessIdentityObservation(
+    [string]$Role,
+    [int]$ProcessId,
+    [object[]]$ScriptCandidates
+) {
+    $result = [ordered]@{
+        role = $Role
+        query_status = "UNKNOWN"
+        pid = $ProcessId
+        session_id = $null
+        parent_pid = $null
+        creation_time_utc = $null
+        script_relpath = $null
+        script_raw_sha256 = $null
+        script_path_match = $false
+    }
+    if ($ProcessId -le 0) {
+        $result.query_status = "NOT_FOUND"
+        return $result
+    }
+    try {
+        $process = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction Stop
+        if ($null -eq $process) {
+            $result.query_status = "NOT_FOUND"
+            return $result
+        }
+        $result.session_id = [int]$process.SessionId
+        $result.parent_pid = [int]$process.ParentProcessId
+        $result.creation_time_utc = ([datetime]$process.CreationDate).ToUniversalTime().ToString("o")
+        $commandLine = [string]$process.CommandLine
+        foreach ($candidate in $ScriptCandidates) {
+            $fullPath = [string](Get-DiagnosticProperty $candidate "full_path" "")
+            if ([string]::IsNullOrWhiteSpace($fullPath)) { continue }
+            if ($commandLine.IndexOf($fullPath, [StringComparison]::OrdinalIgnoreCase) -lt 0) { continue }
+            $result.script_path_match = $true
+            $result.script_relpath = [string](Get-DiagnosticProperty $candidate "relative_path" "")
+            if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+                $result.script_raw_sha256 = (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+            }
+            break
+        }
+        $result.query_status = "OK"
+    } catch {
+        $result.query_status = "UNKNOWN"
+    }
+    return $result
+}
+
+function Get-PortOwnerSet([int]$Port, [int]$ExpectedParentPid, [int]$ExpectedSessionId) {
+    $result = [ordered]@{
+        query_status = "UNKNOWN"
+        owner_pids = @()
+        verified_bridge_pids = @()
+        listener_count = 0
+        loopback_only = $false
+    }
+    try {
+        $listeners = @(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction Stop)
+        $result.listener_count = $listeners.Count
+        $result.owner_pids = @($listeners | ForEach-Object { [int]$_.OwningProcess } | Sort-Object -Unique)
+        $nonLoopback = @($listeners | Where-Object {
+            [string]$_.LocalAddress -notin @("127.0.0.1", "::1")
+        })
+        $result.loopback_only = ($listeners.Count -gt 0 -and $nonLoopback.Count -eq 0)
+        if ($ExpectedParentPid -gt 0) {
+            $verifiedBridge = @()
+            foreach ($ownerPid in $result.owner_pids) {
+                if ([int]$ownerPid -eq $ExpectedParentPid) { continue }
+                try {
+                    $owner = Get-CimInstance Win32_Process -Filter ("ProcessId = " + [int]$ownerPid) -ErrorAction Stop
+                    if ([int]$owner.ParentProcessId -eq $ExpectedParentPid -and
+                        [int]$owner.SessionId -eq $ExpectedSessionId -and
+                        [string]$owner.Name -match "^(powershell|pwsh)\.exe$") {
+                        $verifiedBridge += [int]$ownerPid
+                    }
+                } catch {}
+            }
+            $result.verified_bridge_pids = @($verifiedBridge | Sort-Object -Unique)
+        }
+        $result.query_status = "OK"
+    } catch {
+        $result.query_status = "UNKNOWN"
+    }
+    return $result
+}
+
+function Get-UiIdentityEvidence([string]$ResolvedRepoRoot, $Manifest) {
+    $uiFiles = @(
+        "index.html", "theme.css", "focus.css", "next-theme-radar.css",
+        "next-theme-radar.js", "card_system.css", "card_system.js",
+        "card_table_adapter.css", "card_table_adapter.js", "voice_client.js",
+        "opportunity_radar.js", "trade_control.js", "earnings-calendar.js"
+    )
+    $assets = [ordered]@{}
+    $status = "VERIFIED"
+    $reasons = New-Object System.Collections.Generic.List[string]
+    foreach ($relativePath in $uiFiles) {
+        $fullPath = Join-Path $ResolvedRepoRoot $relativePath
+        $actual = $null
+        try {
+            if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+                $status = "FAIL"
+                [void]$reasons.Add("UI_ASSET_MISSING")
+            } else {
+                $actual = (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+                $expected = Get-ManifestArtifactHash $Manifest "repo_artifacts" $relativePath
+                if ([string]::IsNullOrWhiteSpace($expected)) {
+                    if ($status -ne "FAIL") { $status = "UNKNOWN" }
+                    [void]$reasons.Add("UI_HASH_EXPECTATION_MISSING")
+                } elseif ($actual -ne $expected) {
+                    $status = "FAIL"
+                    [void]$reasons.Add("UI_ASSET_HASH_MISMATCH")
+                }
+            }
+        } catch {
+            if ($status -ne "FAIL") { $status = "UNKNOWN" }
+            [void]$reasons.Add("UI_ASSET_READ_FAILED")
+        }
+        $assets[$relativePath] = $actual
+    }
+    $baselineId = $null
+    try { $baselineId = $Manifest.identity_diagnostics.approved_ui_baseline_id } catch {}
+    $baselineStatus = if ([string]::IsNullOrWhiteSpace([string]$baselineId)) { "UNKNOWN" } else { $status }
+    if ($baselineStatus -eq "UNKNOWN") { [void]$reasons.Add("BASELINE_NOT_APPROVED") }
+    return [ordered]@{
+        assets = $assets
+        baseline_id = $baselineId
+        baseline_status = $baselineStatus
+        status = $status
+        reason_codes = @($reasons | Select-Object -Unique)
+    }
+}
+
+function Update-IdentityDiagnostics($State, [string]$ResolvedRepoRoot, [string]$ResolvedRuntimeDir) {
+    try {
+        $manifestPath = Join-Path $Root "V10_RUNTIME.json"
+        if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+            return [ordered]@{
+                schema_version = "v10-runtime-identity-1"
+                checked_at = (Get-Date).ToString("o")
+                overall = "UNKNOWN"
+                reason_codes = @("MANIFEST_MISSING")
+                processes = [ordered]@{}
+                ports = [ordered]@{}
+                ui = [ordered]@{ status = "UNKNOWN"; reason_codes = @("MANIFEST_MISSING") }
+            }
+        }
+        $manifest = Read-JsonUtf8 $manifestPath
+        $manifestIdentity = Get-DiagnosticProperty $manifest "identity_diagnostics"
+        $schemaVersion = [string](Get-DiagnosticProperty $manifestIdentity "schema_version" "")
+        $deploymentStatus = if ($schemaVersion -eq "v10-deployment-identity-1") { "VERIFIED" } else { "UNKNOWN" }
+        $previousIdentity = Get-DiagnosticProperty $State "identity_diagnostics"
+        $previousProcesses = Get-DiagnosticProperty $previousIdentity "processes"
+        $sessionId = [int](Get-DiagnosticProperty $State "session_id" -1)
+        $controllerPid = [int](Get-DiagnosticProperty $State "controller_pid" 0)
+        $roleDefinitions = @(
+            [ordered]@{ role="controller"; pid=$controllerPid; parent=0; scripts=@(
+                [ordered]@{ relative_path="downloads/RUN_AI_COCKPIT_V10.ps1"; full_path=(Join-Path $ResolvedRepoRoot "downloads\RUN_AI_COCKPIT_V10.ps1"); kind="repo_artifacts"; key="downloads/RUN_AI_COCKPIT_V10.ps1" },
+                [ordered]@{ relative_path="downloads/AI_COCKPIT_CONTROLLER_V10.ps1"; full_path=(Join-Path $ResolvedRepoRoot "downloads\AI_COCKPIT_CONTROLLER_V10.ps1"); kind="repo_artifacts"; key="downloads/AI_COCKPIT_CONTROLLER_V10.ps1" }
+            )},
+            [ordered]@{ role="gateway"; pid=[int]$State.gateway_pid; parent=$controllerPid; scripts=@(
+                [ordered]@{ relative_path="downloads/AI_COCKPIT_GATEWAY_V10.ps1"; full_path=(Join-Path $ResolvedRepoRoot "downloads\AI_COCKPIT_GATEWAY_V10.ps1"); kind="repo_artifacts"; key="downloads/AI_COCKPIT_GATEWAY_V10.ps1" }
+            )},
+            [ordered]@{ role="brain_gateway"; pid=[int]$State.brain_gateway_pid; parent=$controllerPid; scripts=@(
+                [ordered]@{ relative_path="downloads/AI_COCKPIT_GATEWAY_V10.ps1"; full_path=(Join-Path $ResolvedRepoRoot "downloads\AI_COCKPIT_GATEWAY_V10.ps1"); kind="repo_artifacts"; key="downloads/AI_COCKPIT_GATEWAY_V10.ps1" }
+            )},
+            [ordered]@{ role="voice_bridge"; pid=[int]$State.voice_bridge_pid; parent=$controllerPid; scripts=@(
+                [ordered]@{ relative_path="downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1"; full_path=(Join-Path $ResolvedRepoRoot "downloads\AI_COCKPIT_VOICE_BRIDGE_V10.ps1"); kind="repo_artifacts"; key="downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1" }
+            )},
+            [ordered]@{ role="watcher"; pid=[int]$State.watcher_pid; parent=$controllerPid; scripts=@(
+                [ordered]@{ relative_path="Kioxia_RSS_Live_Watcher.ps1"; full_path=(Join-Path $ResolvedRuntimeDir "Kioxia_RSS_Live_Watcher.ps1"); kind="runtime_artifacts"; key="Kioxia_RSS_Live_Watcher.ps1" }
+            )},
+            [ordered]@{ role="heartbeat"; pid=[int]$State.heartbeat_pid; parent=$controllerPid; scripts=@(
+                [ordered]@{ relative_path="Kioxia_Safety_Heartbeat.ps1"; full_path=(Join-Path $ResolvedRuntimeDir "Kioxia_Safety_Heartbeat.ps1"); kind="runtime_artifacts"; key="Kioxia_Safety_Heartbeat.ps1" }
+            )},
+            [ordered]@{ role="collector"; pid=[int]$State.collector_pid; parent=$controllerPid; scripts=@(
+                [ordered]@{ relative_path="MS2_RSS_100_Collector.ps1"; full_path=(Join-Path $ResolvedRuntimeDir "MS2_RSS_100_Collector.ps1"); kind="runtime_artifacts"; key="MS2_RSS_100_Collector.ps1" }
+            )},
+            [ordered]@{ role="shadow_supervisor"; pid=[int]$State.shadow_supervisor_pid; parent=$controllerPid; scripts=@(
+                [ordered]@{ relative_path="scripts/ai_shadow_supervisor.py"; full_path=(Join-Path $ResolvedRepoRoot "scripts\ai_shadow_supervisor.py"); kind="repo_artifacts"; key="scripts/ai_shadow_supervisor.py" }
+            )}
+        )
+        $processes = [ordered]@{}
+        $hasFail = $false
+        $hasUnknown = ($deploymentStatus -ne "VERIFIED")
+        foreach ($definition in $roleDefinitions) {
+            $observation = Get-ProcessIdentityObservation $definition.role ([int]$definition.pid) $definition.scripts
+            $matchedScript = @($definition.scripts | Where-Object {
+                [string]$_.relative_path -eq [string]$observation.script_relpath
+            } | Select-Object -First 1)
+            $expectedHash = ""
+            if ($matchedScript.Count -gt 0) {
+                $expectedHash = Get-ManifestArtifactHash $manifest ([string]$matchedScript[0].kind) ([string]$matchedScript[0].key)
+            }
+            $expected = [ordered]@{
+                pid = [int]$definition.pid
+                session_id = $sessionId
+                parent_pid = [int]$definition.parent
+                script_raw_sha256 = $expectedHash
+            }
+            $previous = $null
+            if ($null -ne $previousProcesses) {
+                $previous = Get-DiagnosticProperty $previousProcesses ([string]$definition.role)
+            }
+            $comparison = Compare-ProcessIdentity $expected $observation $previous
+            $generation = [int](Get-DiagnosticProperty $previous "generation" 0)
+            if ([int](Get-DiagnosticProperty $previous "pid" 0) -ne [int]$observation.pid) { $generation++ }
+            $processes[$definition.role] = [ordered]@{
+                role = [string]$definition.role
+                pid = [int]$observation.pid
+                session_id = $observation.session_id
+                parent_pid = $observation.parent_pid
+                creation_time_utc = $observation.creation_time_utc
+                generation = $generation
+                script_relpath = $observation.script_relpath
+                script_raw_sha256 = $observation.script_raw_sha256
+                expected_raw_sha256 = $expectedHash
+                status = $comparison.status
+                reason_codes = $comparison.reason_codes
+            }
+            if ($comparison.status -eq "FAIL") { $hasFail = $true }
+            if ($comparison.status -eq "UNKNOWN") { $hasUnknown = $true }
+        }
+        $portDefinitions = @(
+            [ordered]@{ port=28580; role="collector"; bridge=$true },
+            [ordered]@{ port=28581; role="gateway"; bridge=$false },
+            [ordered]@{ port=28582; role="watcher"; bridge=$true },
+            [ordered]@{ port=28583; role="voice_bridge"; bridge=$false },
+            [ordered]@{ port=28584; role="brain_gateway"; bridge=$false }
+        )
+        $ports = [ordered]@{}
+        foreach ($portDefinition in $portDefinitions) {
+            $roleEvidence = $processes[[string]$portDefinition.role]
+            $expectedPid = [int]$roleEvidence.pid
+            $bridgeParent = if ($portDefinition.bridge) { $expectedPid } else { 0 }
+            $observation = Get-PortOwnerSet ([int]$portDefinition.port) $bridgeParent $sessionId
+            $comparison = Compare-PortIdentity ([ordered]@{ pid=$expectedPid }) $observation
+            $ports[[string]$portDefinition.port] = [ordered]@{
+                expected_role = [string]$portDefinition.role
+                owner_pids = @($observation.owner_pids)
+                listener_count = [int]$observation.listener_count
+                loopback_only = [bool]$observation.loopback_only
+                status = $comparison.status
+                reason_codes = $comparison.reason_codes
+            }
+            if ($comparison.status -eq "FAIL") { $hasFail = $true }
+            if ($comparison.status -eq "UNKNOWN") { $hasUnknown = $true }
+        }
+        $ui = Get-UiIdentityEvidence $ResolvedRepoRoot $manifest
+        if ($ui.status -eq "FAIL") { $hasFail = $true }
+        if ($ui.status -eq "UNKNOWN" -or $ui.baseline_status -eq "UNKNOWN") { $hasUnknown = $true }
+        $overall = if ($hasFail) { "FAIL" } elseif ($hasUnknown) { "UNKNOWN" } else { "VERIFIED" }
+        $overallReasons = New-Object System.Collections.Generic.List[string]
+        if ($deploymentStatus -ne "VERIFIED") { [void]$overallReasons.Add("LEGACY_OR_INVALID_MANIFEST_SCHEMA") }
+        if ($ui.baseline_status -eq "UNKNOWN") { [void]$overallReasons.Add("BASELINE_NOT_APPROVED") }
+        return [ordered]@{
+            schema_version = "v10-runtime-identity-1"
+            session_observation_id = [string](Get-DiagnosticProperty $previousIdentity "session_observation_id" ([Guid]::NewGuid().ToString("D")))
+            checked_at = (Get-Date).ToString("o")
+            deployment_status = $deploymentStatus
+            processes = $processes
+            ports = $ports
+            ui = $ui
+            overall = $overall
+            reason_codes = @($overallReasons)
+        }
+    } catch {
+        return [ordered]@{
+            schema_version = "v10-runtime-identity-1"
+            checked_at = (Get-Date).ToString("o")
+            overall = "UNKNOWN"
+            reason_codes = @("DIAGNOSTIC_EXCEPTION")
+            processes = [ordered]@{}
+            ports = [ordered]@{}
+            ui = [ordered]@{ status = "UNKNOWN"; reason_codes = @("DIAGNOSTIC_EXCEPTION") }
+        }
+    }
+}
+
+function Invoke-IdentityDiagnosticsSelfTest {
+    $baseExpected = [ordered]@{ pid=42; session_id=3; parent_pid=7; script_raw_sha256="abc" }
+    $baseObserved = [ordered]@{ query_status="OK"; pid=42; session_id=3; parent_pid=7; creation_time_utc="2026-01-01T00:00:00.0000000Z"; script_path_match=$true; script_raw_sha256="abc" }
+    $previous = [ordered]@{ pid=42; creation_time_utc="2026-01-01T00:00:00.0000000Z" }
+    if ((Compare-ProcessIdentity $baseExpected $baseObserved $previous).status -ne "VERIFIED") { return $false }
+    $changed = $baseObserved.Clone(); $changed.creation_time_utc = "2026-01-01T00:00:01.0000000Z"
+    if ((Compare-ProcessIdentity $baseExpected $changed $previous).reason_codes -notcontains "PID_REUSED") { return $false }
+    $changed = $baseObserved.Clone(); $changed.session_id = 9
+    if ((Compare-ProcessIdentity $baseExpected $changed $previous).reason_codes -notcontains "SESSION_MISMATCH") { return $false }
+    $changed = $baseObserved.Clone(); $changed.parent_pid = 9
+    if ((Compare-ProcessIdentity $baseExpected $changed $previous).reason_codes -notcontains "PARENT_MISMATCH") { return $false }
+    $changed = $baseObserved.Clone(); $changed.script_path_match = $false
+    if ((Compare-ProcessIdentity $baseExpected $changed $previous).reason_codes -notcontains "SCRIPT_PATH_MISMATCH") { return $false }
+    $changed = $baseObserved.Clone(); $changed.script_raw_sha256 = "def"
+    if ((Compare-ProcessIdentity $baseExpected $changed $previous).reason_codes -notcontains "SCRIPT_HASH_MISMATCH") { return $false }
+    $port = [ordered]@{ query_status="OK"; owner_pids=@(44); verified_bridge_pids=@(); listener_count=1; loopback_only=$true }
+    if ((Compare-PortIdentity ([ordered]@{pid=42}) $port).reason_codes -notcontains "FOREIGN_OWNER") { return $false }
+    $port.verified_bridge_pids = @(44)
+    if ((Compare-PortIdentity ([ordered]@{pid=42}) $port).status -ne "VERIFIED_BRIDGE_CHILD") { return $false }
+    return $true
 }
 
 function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
@@ -997,6 +1402,15 @@ if ($IdentityProbeSelfTest) {
     exit 0
 }
 
+if ($IdentityDiagnosticsSelfTest) {
+    if (-not (Invoke-IdentityDiagnosticsSelfTest)) {
+        Write-Error "V10 identity diagnostics fixture self-test failed."
+        exit 1
+    }
+    Write-Host "V10 identity diagnostics fixture self-test passed."
+    exit 0
+}
+
 $StateFile = Join-Path $Root "V10_CONTROLLER_STATE.json"
 $LogDir = Join-Path $Root "Logs\V10"
 if (-not (Test-Path -LiteralPath $Root)) { New-Item -ItemType Directory -Path $Root -Force | Out-Null }
@@ -1401,8 +1815,21 @@ try {
     $lastSbv2RestartAt = Get-Date "2000-01-01"
     $shadowRestartAttempts = 0
     $lastShadowRestartAt = Get-Date "2000-01-01"
+    $lastIdentityDiagnosticsAt = Get-Date "2000-01-01"
     while ($true) {
         Start-Sleep -Seconds 2
+
+        # Evidence-only diagnostics. Failures are recorded as UNKNOWN by
+        # Update-IdentityDiagnostics and never alter supervision decisions.
+        if (((Get-Date) - $lastIdentityDiagnosticsAt).TotalSeconds -ge 30) {
+            try {
+                $state.identity_diagnostics = Update-IdentityDiagnostics $state $RepoRootResolved $RuntimeDir
+                Save-State $state
+            } catch {
+                # Diagnostics must not interrupt the existing supervision loop.
+            }
+            $lastIdentityDiagnosticsAt = Get-Date
+        }
 
         # A foreign Excel with some other workbook may keep running.
         # Fail closed only when another process already has the canonical
