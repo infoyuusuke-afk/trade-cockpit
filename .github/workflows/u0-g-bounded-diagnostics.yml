@@ -106,21 +106,17 @@ jobs:
         shell: powershell
         run: |
           $output = Join-Path $env:RUNNER_TEMP "u0-g-benchmark-ps51.json"
-          $env:AGENT_DEBUG_LOG = Join-Path $env:RUNNER_TEMP ("u0-g-debug-ps51-" + [Guid]::NewGuid().ToString("N") + ".log")
           & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
             -File ".\downloads\AI_COCKPIT_CONTROLLER_V10.ps1" `
             -BoundedIdentityDiagnosticsBenchmark `
             -RepoRoot $PWD.Path `
             -BenchmarkOutputPath $output `
-            -BenchmarkIterations 20
+            -BenchmarkIterations 100
           if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell 5.1 benchmark failed." }
           $evidence = Get-Content -LiteralPath $output -Raw -Encoding UTF8 | ConvertFrom-Json
           Write-Output "U0_G_PS51_EVIDENCE_BEGIN"
           Get-Content -LiteralPath $output -Raw -Encoding UTF8
           Write-Output "U0_G_PS51_EVIDENCE_END"
-          Write-Output "U0_G_PS51_DEBUG_BEGIN"
-          Get-Content -LiteralPath $env:AGENT_DEBUG_LOG -Encoding UTF8
-          Write-Output "U0_G_PS51_DEBUG_END"
           if ($evidence.normal_completion.valid_results -ne $evidence.iterations) { throw "Normal diagnostics did not complete successfully." }
           if ($evidence.normal_completion.timeout_results -ne 0) { throw "Normal diagnostics timed out." }
           if ($evidence.normal_completion.worker_error_results -ne 0) { throw "Normal diagnostic worker failed." }
@@ -133,21 +129,17 @@ jobs:
         shell: pwsh
         run: |
           $output = Join-Path $env:RUNNER_TEMP "u0-g-benchmark-ps7.json"
-          $env:AGENT_DEBUG_LOG = Join-Path $env:RUNNER_TEMP ("u0-g-debug-ps7-" + [Guid]::NewGuid().ToString("N") + ".log")
           & pwsh.exe -NoLogo -NoProfile `
             -File ".\downloads\AI_COCKPIT_CONTROLLER_V10.ps1" `
             -BoundedIdentityDiagnosticsBenchmark `
             -RepoRoot $PWD.Path `
             -BenchmarkOutputPath $output `
-            -BenchmarkIterations 20
+            -BenchmarkIterations 100
           if ($LASTEXITCODE -ne 0) { throw "PowerShell 7 benchmark failed." }
           $evidence = Get-Content -LiteralPath $output -Raw -Encoding UTF8 | ConvertFrom-Json
           Write-Output "U0_G_PS7_EVIDENCE_BEGIN"
           Get-Content -LiteralPath $output -Raw -Encoding UTF8
           Write-Output "U0_G_PS7_EVIDENCE_END"
-          Write-Output "U0_G_PS7_DEBUG_BEGIN"
-          Get-Content -LiteralPath $env:AGENT_DEBUG_LOG -Encoding UTF8
-          Write-Output "U0_G_PS7_DEBUG_END"
           if ($evidence.normal_completion.valid_results -ne $evidence.iterations) { throw "Normal diagnostics did not complete successfully." }
           if ($evidence.normal_completion.timeout_results -ne 0) { throw "Normal diagnostics timed out." }
           if ($evidence.normal_completion.worker_error_results -ne 0) { throw "Normal diagnostic worker failed." }
