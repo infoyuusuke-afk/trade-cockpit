@@ -4,7 +4,10 @@ param(
     [string]$ExpectedBranch = "",
     [string]$RuntimeDirOverride = "",
     [switch]$IdentityProbeSelfTest,
-    [switch]$IdentityDiagnosticsSelfTest
+    [switch]$IdentityDiagnosticsSelfTest,
+    [switch]$IdentityDiagnosticsBenchmark,
+    [string]$BenchmarkOutputPath = "",
+    [ValidateRange(20, 500)][int]$BenchmarkIterations = 100
 )
 
 # AI Cockpit Controller V10
@@ -652,6 +655,254 @@ function Invoke-IdentityDiagnosticsSelfTest {
     $port.verified_bridge_pids = @(44)
     if ((Compare-PortIdentity ([ordered]@{pid=42}) $port).status -ne "VERIFIED_BRIDGE_CHILD") { return $false }
     return $true
+}
+
+function Get-BenchmarkLatencySummary([double[]]$Samples) {
+    $sorted = @($Samples | Sort-Object)
+    if ($sorted.Count -eq 0) { throw "Benchmark sample set is empty." }
+    $percentile = {
+        param([double]$P)
+        $index = [Math]::Ceiling(($P / 100.0) * $sorted.Count) - 1
+        $index = [Math]::Max(0, [Math]::Min($sorted.Count - 1, $index))
+        return [double]$sorted[$index]
+    }
+    return [ordered]@{
+        iterations = $sorted.Count
+        mean_ms = [Math]::Round(($sorted | Measure-Object -Average).Average, 3)
+        p95_ms = [Math]::Round((& $percentile 95), 3)
+        p99_ms = [Math]::Round((& $percentile 99), 3)
+        max_ms = [Math]::Round([double]$sorted[-1], 3)
+    }
+}
+
+function Measure-IdentityBenchmarkSet([int]$Iterations, [scriptblock]$Action) {
+    $samples = New-Object System.Collections.Generic.List[double]
+    $processBefore = Get-Process -Id $PID -ErrorAction Stop
+    $cpuBeforeMs = $processBefore.TotalProcessorTime.TotalMilliseconds
+    $workingSetBefore = [int64]$processBefore.WorkingSet64
+    $peakWorkingSet = $workingSetBefore
+    $wall = [Diagnostics.Stopwatch]::StartNew()
+    for ($iteration = 0; $iteration -lt $Iterations; $iteration++) {
+        $sample = [Diagnostics.Stopwatch]::StartNew()
+        & $Action | Out-Null
+        $sample.Stop()
+        [void]$samples.Add($sample.Elapsed.TotalMilliseconds)
+        $workingSet = [int64](Get-Process -Id $PID -ErrorAction Stop).WorkingSet64
+        if ($workingSet -gt $peakWorkingSet) { $peakWorkingSet = $workingSet }
+    }
+    $wall.Stop()
+    $processAfter = Get-Process -Id $PID -ErrorAction Stop
+    $cpuMs = [Math]::Max(0, $processAfter.TotalProcessorTime.TotalMilliseconds - $cpuBeforeMs)
+    $summary = Get-BenchmarkLatencySummary $samples.ToArray()
+    $summary["cpu_ms"] = [Math]::Round($cpuMs, 3)
+    $summary["cpu_percent_one_core"] = if ($wall.Elapsed.TotalMilliseconds -gt 0) {
+        [Math]::Round(($cpuMs / $wall.Elapsed.TotalMilliseconds) * 100.0, 3)
+    } else { 0 }
+    $summary["working_set_before_bytes"] = $workingSetBefore
+    $summary["working_set_after_bytes"] = [int64]$processAfter.WorkingSet64
+    $summary["peak_working_set_bytes"] = $peakWorkingSet
+    return $summary
+}
+
+function Invoke-IdentityDiagnosticsBenchmark(
+    [string]$ResolvedRepoRoot,
+    [string]$OutputPath,
+    [int]$Iterations
+) {
+    if ([string]::IsNullOrWhiteSpace($ResolvedRepoRoot) -or
+        -not (Test-Path -LiteralPath (Join-Path $ResolvedRepoRoot "index.html") -PathType Leaf)) {
+        throw "Benchmark requires a valid repository root."
+    }
+    if ([string]::IsNullOrWhiteSpace($OutputPath)) {
+        throw "BenchmarkOutputPath is required."
+    }
+
+    $benchmarkRoot = Join-Path ([IO.Path]::GetTempPath()) ("u0f-v10-benchmark-" + [Guid]::NewGuid().ToString("N"))
+    $runtimeDir = Join-Path $ResolvedRepoRoot "ms2_live"
+    $listeners = New-Object System.Collections.Generic.List[object]
+    $previousRoot = $script:Root
+    New-Item -ItemType Directory -Path $benchmarkRoot -Force | Out-Null
+    try {
+        $script:Root = $benchmarkRoot
+        $uiFiles = @(
+            "index.html", "theme.css", "focus.css", "next-theme-radar.css",
+            "next-theme-radar.js", "card_system.css", "card_system.js",
+            "card_table_adapter.css", "card_table_adapter.js", "voice_client.js",
+            "opportunity_radar.js", "trade_control.js", "earnings-calendar.js"
+        )
+        $repoFiles = @(
+            "downloads/RUN_AI_COCKPIT_V10.ps1",
+            "downloads/AI_COCKPIT_CONTROLLER_V10.ps1",
+            "downloads/AI_COCKPIT_GATEWAY_V10.ps1",
+            "downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1",
+            "scripts/ai_shadow_supervisor.py"
+        ) + $uiFiles
+        $repoArtifacts = [ordered]@{}
+        foreach ($relativePath in $repoFiles) {
+            $fullPath = Join-Path $ResolvedRepoRoot $relativePath.Replace("/", "\")
+            $repoArtifacts[$relativePath] = [ordered]@{
+                source_raw_sha256 = if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+                    (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+                } else { $null }
+            }
+        }
+        $runtimeArtifacts = [ordered]@{}
+        foreach ($name in @("Kioxia_RSS_Live_Watcher.ps1", "Kioxia_Safety_Heartbeat.ps1", "MS2_RSS_100_Collector.ps1")) {
+            $fullPath = Join-Path $runtimeDir $name
+            $runtimeArtifacts[$name] = [ordered]@{
+                deployed_raw_sha256 = (Get-FileHash -LiteralPath $fullPath -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+            }
+        }
+        $manifest = [ordered]@{
+            repo_sha = "benchmark"
+            repo_branch = "benchmark"
+            runtime_dir = "sanitized"
+            files = [ordered]@{}
+            deployed_at = (Get-Date).ToString("o")
+            identity_diagnostics = [ordered]@{
+                schema_version = "v10-deployment-identity-1"
+                repo_artifacts = $repoArtifacts
+                runtime_artifacts = $runtimeArtifacts
+                approved_ui_baseline_id = "benchmark-fixture"
+            }
+        }
+        $manifestPath = Join-Path $benchmarkRoot "V10_RUNTIME.json"
+        [IO.File]::WriteAllText(
+            $manifestPath,
+            ($manifest | ConvertTo-Json -Depth 8),
+            [Text.UTF8Encoding]::new($false)
+        )
+
+        $sessionId = [int](Get-Process -Id $PID -ErrorAction Stop).SessionId
+        $state = [ordered]@{
+            controller_pid = $PID
+            session_id = $sessionId
+            gateway_pid = $PID
+            brain_gateway_pid = $PID
+            voice_bridge_pid = $PID
+            watcher_pid = $PID
+            heartbeat_pid = $PID
+            collector_pid = $PID
+            shadow_supervisor_pid = $PID
+        }
+        foreach ($port in 28580..28584) {
+            $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $port)
+            $listener.Start()
+            [void]$listeners.Add($listener)
+        }
+
+        # Warm providers and filesystem caches before collecting samples.
+        Get-ProcessIdentityObservation "controller" $PID @(
+            [ordered]@{ full_path=$PSCommandPath; relative_path="downloads/AI_COCKPIT_CONTROLLER_V10.ps1" }
+        ) | Out-Null
+        foreach ($port in 28580..28584) { Get-PortOwnerSet $port 0 $sessionId | Out-Null }
+        Get-UiIdentityEvidence $ResolvedRepoRoot $manifest | Out-Null
+        Update-IdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir | Out-Null
+
+        $processTiming = Measure-IdentityBenchmarkSet $Iterations {
+            Get-ProcessIdentityObservation "controller" $PID @(
+                [ordered]@{ full_path=$PSCommandPath; relative_path="downloads/AI_COCKPIT_CONTROLLER_V10.ps1" }
+            )
+        }
+        $portTiming = Measure-IdentityBenchmarkSet $Iterations {
+            foreach ($port in 28580..28584) { Get-PortOwnerSet $port 0 $sessionId }
+        }
+        $uiTiming = Measure-IdentityBenchmarkSet $Iterations {
+            Get-UiIdentityEvidence $ResolvedRepoRoot $manifest
+        }
+        $normalTiming = Measure-IdentityBenchmarkSet $Iterations {
+            Update-IdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir
+        }
+
+        $loopSamples = New-Object System.Collections.Generic.List[double]
+        $loopIterations = [Math]::Min(20, $Iterations)
+        for ($iteration = 0; $iteration -lt $loopIterations; $iteration++) {
+            $sample = [Diagnostics.Stopwatch]::StartNew()
+            Start-Sleep -Seconds 2
+            Update-IdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir | Out-Null
+            $sample.Stop()
+            [void]$loopSamples.Add($sample.Elapsed.TotalMilliseconds)
+        }
+        $loopTiming = Get-BenchmarkLatencySummary $loopSamples.ToArray()
+
+        foreach ($listener in $listeners) { $listener.Stop() }
+        $listeners.Clear()
+        $badState = [ordered]@{
+            controller_pid = 2147483000
+            session_id = $sessionId
+            gateway_pid = 2147483001
+            brain_gateway_pid = 2147483002
+            voice_bridge_pid = 2147483003
+            watcher_pid = 2147483004
+            heartbeat_pid = 2147483005
+            collector_pid = 2147483006
+            shadow_supervisor_pid = 2147483007
+        }
+        $abnormalTiming = Measure-IdentityBenchmarkSet $Iterations {
+            Update-IdentityDiagnostics $badState $ResolvedRepoRoot $runtimeDir
+        }
+
+        [IO.File]::WriteAllText($manifestPath, "{not-json", [Text.UTF8Encoding]::new($false))
+        $exceptionResult = Update-IdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir
+        $exceptionIsolation = (
+            [string]$exceptionResult.overall -eq "UNKNOWN" -and
+            @($exceptionResult.reason_codes) -contains "DIAGNOSTIC_EXCEPTION"
+        )
+        $exceptionTiming = Measure-IdentityBenchmarkSet $Iterations {
+            Update-IdentityDiagnostics $state $ResolvedRepoRoot $runtimeDir
+        }
+
+        $environment = [ordered]@{
+            os = [Environment]::OSVersion.VersionString
+            powershell_edition = $PSVersionTable.PSEdition
+            powershell_version = $PSVersionTable.PSVersion.ToString()
+            logical_processors = [Environment]::ProcessorCount
+            hosted_runner = ($env:GITHUB_ACTIONS -eq "true")
+            owner_pc = $false
+            excel_or_ms2_used = $false
+        }
+        $evidence = [ordered]@{
+            schema_version = "u0-f-controller-benchmark-1"
+            measured_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+            iterations = $Iterations
+            loop_iterations = $loopIterations
+            environment = $environment
+            normal = [ordered]@{
+                process_identity = $processTiming
+                five_port_owner_queries = $portTiming
+                ui_sha256 = $uiTiming
+                full_diagnostics = $normalTiming
+                loop_with_two_second_sleep = $loopTiming
+            }
+            abnormal = [ordered]@{
+                missing_processes_and_ports = $abnormalTiming
+                malformed_manifest = $exceptionTiming
+                exception_returns_unknown = $exceptionIsolation
+            }
+            timeout_contract = [ordered]@{
+                explicit_total_timeout = $false
+                guaranteed_max_ms = $null
+                status = "UNBOUNDED_BY_CODE"
+            }
+        }
+        $outputParent = Split-Path -Parent $OutputPath
+        if (-not [string]::IsNullOrWhiteSpace($outputParent) -and
+            -not (Test-Path -LiteralPath $outputParent -PathType Container)) {
+            New-Item -ItemType Directory -Path $outputParent -Force | Out-Null
+        }
+        [IO.File]::WriteAllText(
+            $OutputPath,
+            ($evidence | ConvertTo-Json -Depth 10),
+            [Text.UTF8Encoding]::new($false)
+        )
+        Write-Output "U0_F_BENCHMARK_COMPLETE"
+    } finally {
+        foreach ($listener in $listeners) {
+            try { $listener.Stop() } catch {}
+        }
+        $script:Root = $previousRoot
+        Remove-Item -LiteralPath $benchmarkRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
@@ -1415,6 +1666,11 @@ if ($IdentityDiagnosticsSelfTest) {
         exit 1
     }
     Write-Host "V10 identity diagnostics fixture self-test passed."
+    exit 0
+}
+
+if ($IdentityDiagnosticsBenchmark) {
+    Invoke-IdentityDiagnosticsBenchmark $RepoRoot $BenchmarkOutputPath $BenchmarkIterations
     exit 0
 }
 

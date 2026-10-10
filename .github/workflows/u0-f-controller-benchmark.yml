@@ -1,0 +1,96 @@
+name: U0-F Controller Benchmark
+
+on:
+  push:
+    branches:
+      - "cursor/u0-f-controller-benchmark-3921"
+    paths:
+      - ".github/workflows/u0-f-controller-benchmark.yml"
+      - "downloads/AI_COCKPIT_CONTROLLER_V10.ps1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-benchmark:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact benchmark revision
+        shell: pwsh
+        run: |
+          git init .
+          git config core.autocrlf false
+          git remote add origin https://github.com/infoyuusuke-afk/trade-cockpit.git
+          git fetch --depth=1 origin $env:GITHUB_SHA
+          git checkout --detach FETCH_HEAD
+          if ((git rev-parse HEAD) -ne $env:GITHUB_SHA) {
+            throw "Checked-out commit does not match GITHUB_SHA."
+          }
+
+      - name: Run U0-C contract tests
+        shell: pwsh
+        run: python -m unittest tests.test_v10_identity_diagnostics -v
+
+      - name: Parse Controller with PowerShell 7
+        shell: pwsh
+        run: |
+          $path = Resolve-Path -LiteralPath ".\downloads\AI_COCKPIT_CONTROLLER_V10.ps1"
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            $path,
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -ne 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            throw "PowerShell 7 syntax validation failed."
+          }
+
+      - name: Parse Controller with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $path = Resolve-Path -LiteralPath ".\downloads\AI_COCKPIT_CONTROLLER_V10.ps1"
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            $path,
+            [ref]$tokens,
+            [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -ne 0) {
+            $errors | ForEach-Object { Write-Error $_.Message }
+            throw "Windows PowerShell 5.1 syntax validation failed."
+          }
+
+      - name: Benchmark Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $output = Join-Path $env:RUNNER_TEMP "u0-f-benchmark-ps51.json"
+          & powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
+            -File ".\downloads\AI_COCKPIT_CONTROLLER_V10.ps1" `
+            -IdentityDiagnosticsBenchmark `
+            -RepoRoot $PWD.Path `
+            -BenchmarkOutputPath $output `
+            -BenchmarkIterations 100
+          if ($LASTEXITCODE -ne 0) { throw "Windows PowerShell 5.1 benchmark failed." }
+          Write-Output "U0_F_PS51_EVIDENCE_BEGIN"
+          Get-Content -LiteralPath $output -Raw -Encoding UTF8
+          Write-Output "U0_F_PS51_EVIDENCE_END"
+
+      - name: Benchmark PowerShell 7
+        shell: pwsh
+        run: |
+          $output = Join-Path $env:RUNNER_TEMP "u0-f-benchmark-ps7.json"
+          & pwsh.exe -NoLogo -NoProfile `
+            -File ".\downloads\AI_COCKPIT_CONTROLLER_V10.ps1" `
+            -IdentityDiagnosticsBenchmark `
+            -RepoRoot $PWD.Path `
+            -BenchmarkOutputPath $output `
+            -BenchmarkIterations 100
+          if ($LASTEXITCODE -ne 0) { throw "PowerShell 7 benchmark failed." }
+          Write-Output "U0_F_PS7_EVIDENCE_BEGIN"
+          Get-Content -LiteralPath $output -Raw -Encoding UTF8
+          Write-Output "U0_F_PS7_EVIDENCE_END"
