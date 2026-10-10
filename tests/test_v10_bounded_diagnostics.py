@@ -57,7 +57,13 @@ class V10BoundedDiagnosticsContract(unittest.TestCase):
         body = function_body(
             CONTROLLER_PATH, "Start-IdentityDiagnosticsWorkerProcess"
         )
-        self.assertIn("Start-Process", body)
+        self.assertIn("Diagnostics.ProcessStartInfo", body)
+        self.assertIn("New-Object Diagnostics.Process", body)
+        self.assertIn("$worker.Start()", body)
+        self.assertIn("RedirectStandardOutput = $true", body)
+        self.assertIn("RedirectStandardError = $true", body)
+        self.assertIn("ReadToEndAsync()", body)
+        self.assertNotIn("Start-Process", body)
         self.assertNotIn("Start-Job", body)
 
     def test_supervision_uses_bounded_wrapper_without_control_branching(self) -> None:

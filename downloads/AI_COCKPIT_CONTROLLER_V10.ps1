@@ -745,9 +745,9 @@ function Start-IdentityDiagnosticsWorkerProcess(
     $workRoot = Join-Path ([IO.Path]::GetTempPath()) ("v10-identity-" + [Guid]::NewGuid().ToString("N"))
     $inputPath = Join-Path $workRoot "input.json"
     $outputPath = Join-Path $workRoot "output.json"
-    $stdoutPath = Join-Path $workRoot "stdout.log"
-    $stderrPath = Join-Path $workRoot "stderr.log"
     $worker = $null
+    $stdoutTask = $null
+    $stderrTask = $null
     try {
         New-Item -ItemType Directory -Path $workRoot -Force | Out-Null
         $input = [ordered]@{
@@ -774,8 +774,18 @@ function Start-IdentityDiagnosticsWorkerProcess(
             "-IdentityDiagnosticsOutputPath", (Quote-IdentityDiagnosticArgument $outputPath),
             "-IdentityDiagnosticsTestDelayMs", [string]$TestDelayMs
         ) -join " "
-        $worker = Start-Process -FilePath $hostExecutable -ArgumentList $arguments `
-            -WindowStyle Hidden -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -PassThru
+        $startInfo = New-Object Diagnostics.ProcessStartInfo
+        $startInfo.FileName = $hostExecutable
+        $startInfo.Arguments = $arguments
+        $startInfo.UseShellExecute = $false
+        $startInfo.CreateNoWindow = $true
+        $startInfo.RedirectStandardOutput = $true
+        $startInfo.RedirectStandardError = $true
+        $worker = New-Object Diagnostics.Process
+        $worker.StartInfo = $startInfo
+        if (-not $worker.Start()) { throw "Diagnostic worker process did not start." }
+        $stdoutTask = $worker.StandardOutput.ReadToEndAsync()
+        $stderrTask = $worker.StandardError.ReadToEndAsync()
         if ($debugForcedTimeout) {
             #region agent log
             Write-AgentDebugLog "A,D" "AI_COCKPIT_CONTROLLER_V10.ps1:778" "worker process spawned" ([ordered]@{ elapsed_ms=[Math]::Round($clock.Elapsed.TotalMilliseconds,3); worker_id=$worker.Id })
@@ -786,7 +796,8 @@ function Start-IdentityDiagnosticsWorkerProcess(
             clock = $clock
             work_root = $workRoot
             output_path = $outputPath
-            stderr_path = $stderrPath
+            stdout_task = $stdoutTask
+            stderr_task = $stderrTask
             debug_forced_timeout = $debugForcedTimeout
         }
     } catch {
@@ -809,7 +820,8 @@ function Complete-IdentityDiagnosticsWorkerProcess(
     $clock = Get-DiagnosticProperty $Job "clock"
     $workRoot = [string](Get-DiagnosticProperty $Job "work_root" "")
     $outputPath = [string](Get-DiagnosticProperty $Job "output_path" "")
-    $stderrPath = [string](Get-DiagnosticProperty $Job "stderr_path" "")
+    $stdoutTask = Get-DiagnosticProperty $Job "stdout_task"
+    $stderrTask = Get-DiagnosticProperty $Job "stderr_task"
     $debugForcedTimeout = [bool](Get-DiagnosticProperty $Job "debug_forced_timeout" $false)
     $completed = $false
     $result = $null
@@ -863,6 +875,12 @@ function Complete-IdentityDiagnosticsWorkerProcess(
                 $worker.Refresh()
                 $exitCodeValue = $worker.ExitCode
             } catch {}
+            $stdoutText = ""
+            $stderrText = ""
+            try {
+                if ($null -ne $stdoutTask) { $stdoutText = [string]($stdoutTask.GetAwaiter().GetResult()) }
+                if ($null -ne $stderrTask) { $stderrText = [string]($stderrTask.GetAwaiter().GetResult()) }
+            } catch {}
             $exitCodeKnown = ($null -ne $exitCodeValue)
             $outputExists = Test-Path -LiteralPath $outputPath -PathType Leaf
             $completed = $true
@@ -873,12 +891,7 @@ function Complete-IdentityDiagnosticsWorkerProcess(
                         $script:AgentWorkerFailureLogCount = [ordered]@{ value=0 }
                     }
                     $script:AgentWorkerFailureLogCount.value++
-                    $stderrText = ""
-                    if (-not [string]::IsNullOrWhiteSpace($stderrPath) -and
-                        (Test-Path -LiteralPath $stderrPath -PathType Leaf)) {
-                        $stderrText = [IO.File]::ReadAllText($stderrPath, [Text.Encoding]::UTF8)
-                        if ($stderrText.Length -gt 2000) { $stderrText = $stderrText.Substring(0, 2000) }
-                    }
+                    if ($stderrText.Length -gt 2000) { $stderrText = $stderrText.Substring(0, 2000) }
                     #region agent log
                     Write-AgentDebugLog "E,F,G" "AI_COCKPIT_CONTROLLER_V10.ps1:874" "diagnostic worker exited without valid output" ([ordered]@{ exit_code=$exitCodeValue; output_exists=$outputExists; stderr=$stderrText })
                     #endregion
