@@ -36,6 +36,13 @@ class V10BoundedDiagnosticsContract(unittest.TestCase):
             CONTROLLER_PATH, "Complete-IdentityDiagnosticsWorkerProcess"
         )
         self.assertIn("$worker.WaitForExit($remainingMs)", body)
+        self.assertIn("$worker.WaitForExit()", body)
+        self.assertIn("$exitCodeKnown", body)
+        self.assertRegex(body, r"\[int\]\$exitCodeValue\s+-ne\s+0")
+        self.assertLess(
+            body.index("$worker.WaitForExit()"),
+            body.index("$exitCodeValue = $worker.ExitCode"),
+        )
         self.assertIn('New-UnknownIdentityDiagnostics "DIAGNOSTIC_TIMEOUT"', body)
         self.assertIn("Stop-Process -Id $worker.Id", body)
         self.assertNotRegex(body, r"Stop-Process\s+-Name|Get-Process\s+.*Stop-Process")

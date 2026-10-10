@@ -853,9 +853,20 @@ function Complete-IdentityDiagnosticsWorkerProcess(
         }
 
         if (-not $completed) {
-            $worker.Refresh()
+            $exitCodeValue = $null
+            try {
+                # The timed overload can report completion before Windows
+                # PowerShell 5.1 materializes ExitCode. The process is already
+                # confirmed exited here, so this only finalizes its Process
+                # state and redirected streams; it does not wait on live work.
+                $worker.WaitForExit()
+                $worker.Refresh()
+                $exitCodeValue = $worker.ExitCode
+            } catch {}
+            $exitCodeKnown = ($null -ne $exitCodeValue)
+            $outputExists = Test-Path -LiteralPath $outputPath -PathType Leaf
             $completed = $true
-            if ($worker.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
+            if (-not $exitCodeKnown -or [int]$exitCodeValue -ne 0 -or -not $outputExists) {
                 if (-not [string]::IsNullOrWhiteSpace($env:AGENT_DEBUG_LOG) -and
                     [int](Get-DiagnosticProperty $script:AgentWorkerFailureLogCount "value" 0) -lt 3) {
                     if ($null -eq $script:AgentWorkerFailureLogCount) {
@@ -869,12 +880,16 @@ function Complete-IdentityDiagnosticsWorkerProcess(
                         if ($stderrText.Length -gt 2000) { $stderrText = $stderrText.Substring(0, 2000) }
                     }
                     #region agent log
-                    Write-AgentDebugLog "E,F,G" "AI_COCKPIT_CONTROLLER_V10.ps1:863" "diagnostic worker exited without valid output" ([ordered]@{ exit_code=$worker.ExitCode; output_exists=(Test-Path -LiteralPath $outputPath -PathType Leaf); stderr=$stderrText })
+                    Write-AgentDebugLog "E,F,G" "AI_COCKPIT_CONTROLLER_V10.ps1:874" "diagnostic worker exited without valid output" ([ordered]@{ exit_code=$exitCodeValue; output_exists=$outputExists; stderr=$stderrText })
                     #endregion
                 }
                 $result = New-UnknownIdentityDiagnostics "DIAGNOSTIC_WORKER_FAILED" $clock.Elapsed.TotalMilliseconds
             } else {
-                $result = Read-JsonUtf8 $outputPath
+                try {
+                    $result = Read-JsonUtf8 $outputPath
+                } catch {
+                    $result = New-UnknownIdentityDiagnostics "DIAGNOSTIC_WORKER_INVALID_OUTPUT" $clock.Elapsed.TotalMilliseconds
+                }
                 if ([string](Get-DiagnosticProperty $result "schema_version" "") -ne "v10-runtime-identity-1") {
                     $result = New-UnknownIdentityDiagnostics "DIAGNOSTIC_WORKER_INVALID_OUTPUT" $clock.Elapsed.TotalMilliseconds
                 }
