@@ -1,0 +1,99 @@
+name: U0-C Windows Isolation
+
+on:
+  push:
+    branches:
+      - "cursor/u0-c-v10-diagnostics-3921"
+    paths:
+      - ".github/workflows/u0-c-windows-isolation.yml"
+      - "downloads/RUN_AI_COCKPIT_V10.ps1"
+      - "downloads/AI_COCKPIT_CONTROLLER_V10.ps1"
+      - "downloads/AI_COCKPIT_GATEWAY_V10.ps1"
+      - "tests/test_v10_identity_diagnostics.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-isolation:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    env:
+      TARGET_SHA: 23f408952d237287432fb808b1397dcdc23974fb
+    steps:
+      - name: Checkout fixed U0-C commit
+        shell: pwsh
+        run: |
+          git init .
+          git config core.autocrlf false
+          git remote add origin https://github.com/infoyuusuke-afk/trade-cockpit.git
+          git fetch --depth=1 origin $env:TARGET_SHA
+          git checkout --detach FETCH_HEAD
+          if ((git rev-parse HEAD) -ne $env:TARGET_SHA) {
+            throw "Checked-out commit does not match TARGET_SHA."
+          }
+
+      - name: Run 12 U0-C contract tests
+        shell: pwsh
+        run: python -m unittest tests.test_v10_identity_diagnostics -v
+
+      - name: Parse U0-C scripts with PowerShell 7
+        shell: pwsh
+        run: |
+          $files = @(
+            "downloads/RUN_AI_COCKPIT_V10.ps1",
+            "downloads/AI_COCKPIT_CONTROLLER_V10.ps1",
+            "downloads/AI_COCKPIT_GATEWAY_V10.ps1"
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path -LiteralPath $file),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -ne 0) {
+              $errors | ForEach-Object { Write-Error ($file + ": " + $_.Message) }
+              throw "PowerShell 7 syntax validation failed."
+            }
+          }
+
+      - name: Parse U0-C scripts with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $files = @(
+            "downloads/RUN_AI_COCKPIT_V10.ps1",
+            "downloads/AI_COCKPIT_CONTROLLER_V10.ps1",
+            "downloads/AI_COCKPIT_GATEWAY_V10.ps1"
+          )
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path -LiteralPath $file),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -ne 0) {
+              $errors | ForEach-Object { Write-Error ($file + ": " + $_.Message) }
+              throw "Windows PowerShell 5.1 syntax validation failed."
+            }
+          }
+
+      - name: Run side-effect-free identity fixture with PowerShell 7
+        shell: pwsh
+        run: |
+          & .\downloads\AI_COCKPIT_CONTROLLER_V10.ps1 -IdentityDiagnosticsSelfTest
+          if ($LASTEXITCODE -ne 0) {
+            throw "Identity diagnostics fixture failed."
+          }
+
+      - name: Run side-effect-free identity fixture with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          & .\downloads\AI_COCKPIT_CONTROLLER_V10.ps1 -IdentityDiagnosticsSelfTest
+          if ($LASTEXITCODE -ne 0) {
+            throw "Identity diagnostics fixture failed."
+          }

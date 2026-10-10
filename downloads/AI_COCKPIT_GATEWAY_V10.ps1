@@ -158,6 +158,174 @@ function Send-Response($stream, [string]$status, [string]$contentType, [byte[]]$
     $stream.Flush()
 }
 
+function Send-LocalDiagnosticResponse($stream, [string]$status, [byte[]]$body) {
+    # Deliberately no Access-Control-Allow-Origin header. This endpoint is
+    # loopback-only and its fixed, sanitized payload is not readable by an
+    # unrelated browser origin.
+    $headers = "HTTP/1.1 $status`r`nContent-Type: application/json; charset=utf-8`r`nContent-Length: $($body.Length)`r`nCache-Control: no-store`r`nConnection: close`r`n`r`n"
+    $headerBytes = [Text.Encoding]::ASCII.GetBytes($headers)
+    $stream.Write($headerBytes, 0, $headerBytes.Length)
+    if ($body.Length -gt 0) { $stream.Write($body, 0, $body.Length) }
+    $stream.Flush()
+}
+
+$UI_ASSET_ALLOWLIST = @(
+    "index.html",
+    "theme.css",
+    "focus.css",
+    "next-theme-radar.css",
+    "next-theme-radar.js",
+    "card_system.css",
+    "card_system.js",
+    "card_table_adapter.css",
+    "card_table_adapter.js",
+    "voice_client.js",
+    "opportunity_radar.js",
+    "trade_control.js",
+    "earnings-calendar.js"
+)
+
+function Get-SafeUiAssetPath([string]$RootPath, [string]$RelativePath) {
+    try {
+        if ([string]::IsNullOrWhiteSpace($RootPath) -or [string]::IsNullOrWhiteSpace($RelativePath)) { return $null }
+        if ([IO.Path]::IsPathRooted($RelativePath) -or
+            $RelativePath.StartsWith("\\") -or
+            $RelativePath.Contains("..") -or
+            $RelativePath.Contains("://") -or
+            $UI_ASSET_ALLOWLIST -notcontains $RelativePath) {
+            return $null
+        }
+        $resolvedRoot = [IO.Path]::GetFullPath($RootPath)
+        $rootPrefix = $resolvedRoot.TrimEnd("\", "/") + [IO.Path]::DirectorySeparatorChar
+        $resolved = [IO.Path]::GetFullPath((Join-Path $resolvedRoot $RelativePath))
+        $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
+        if (-not $resolved.StartsWith($rootPrefix, $ordinalIgnoreCase)) { return $null }
+        if (-not (Test-Path -LiteralPath $resolved -PathType Leaf)) { return $null }
+        $rootItem = Get-Item -LiteralPath $resolvedRoot -Force -ErrorAction Stop
+        $fileItem = Get-Item -LiteralPath $resolved -Force -ErrorAction Stop
+        if (($rootItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
+            ($fileItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            return $null
+        }
+        return $resolved
+    } catch {
+        return $null
+    }
+}
+
+function Get-LocalUiIdentity {
+    $assets = [ordered]@{}
+    $status = "VERIFIED"
+    $reasons = New-Object System.Collections.Generic.List[string]
+    foreach ($relativePath in $UI_ASSET_ALLOWLIST) {
+        $safePath = Get-SafeUiAssetPath $RepoRoot $relativePath
+        if ([string]::IsNullOrWhiteSpace([string]$safePath)) {
+            $assets[$relativePath] = $null
+            $status = "FAIL"
+            [void]$reasons.Add("UI_ASSET_UNSAFE_OR_MISSING")
+            continue
+        }
+        try {
+            $assets[$relativePath] = (Get-FileHash -LiteralPath $safePath -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+        } catch {
+            $assets[$relativePath] = $null
+            if ($status -ne "FAIL") { $status = "UNKNOWN" }
+            [void]$reasons.Add("UI_ASSET_READ_FAILED")
+        }
+    }
+    $git = Get-GitInfo $RepoRoot
+    return [ordered]@{
+        status = $status
+        reason_codes = @($reasons | Select-Object -Unique)
+        repo_sha = $git.sha
+        repo_branch = $git.branch
+        build = $Build
+        assets = $assets
+        dynamic_build_badge = $true
+    }
+}
+
+function Get-GatewayDiagnosticProperty($Object, [string]$Name, $Default = $null) {
+    if ($null -eq $Object) { return $Default }
+    if ($Object -is [Collections.IDictionary] -and $Object.Contains($Name)) {
+        return $Object[$Name]
+    }
+    try {
+        $property = $Object.PSObject.Properties[$Name]
+        if ($null -ne $property) { return $property.Value }
+    } catch {}
+    return $Default
+}
+
+function Get-SanitizedIdentityDiagnostics($State) {
+    $source = Get-GatewayDiagnosticProperty $State "identity_diagnostics"
+    $sourceSchema = [string](Get-GatewayDiagnosticProperty $source "schema_version" "")
+    if ($null -eq $source -or $sourceSchema -ne "v10-runtime-identity-1") {
+        return [ordered]@{
+            schema_version = "v10-runtime-identity-1"
+            overall = "UNKNOWN"
+            reason_codes = @("LEGACY_OR_MISSING_IDENTITY_DIAGNOSTICS")
+            checked_at = $null
+            deployment_status = "UNKNOWN"
+            processes = [ordered]@{}
+            ports = [ordered]@{}
+            ui = [ordered]@{ controller_observation=$null; gateway_observation=(Get-LocalUiIdentity) }
+        }
+    }
+    $processes = [ordered]@{}
+    $sourceProcesses = Get-GatewayDiagnosticProperty $source "processes"
+    foreach ($property in @($sourceProcesses.PSObject.Properties)) {
+        $entry = $property.Value
+        $processes[$property.Name] = [ordered]@{
+            role = Get-GatewayDiagnosticProperty $entry "role"
+            pid = Get-GatewayDiagnosticProperty $entry "pid"
+            session_id = Get-GatewayDiagnosticProperty $entry "session_id"
+            parent_pid = Get-GatewayDiagnosticProperty $entry "parent_pid"
+            creation_time_utc = Get-GatewayDiagnosticProperty $entry "creation_time_utc"
+            generation = Get-GatewayDiagnosticProperty $entry "generation"
+            script_relpath = Get-GatewayDiagnosticProperty $entry "script_relpath"
+            script_raw_sha256 = Get-GatewayDiagnosticProperty $entry "script_raw_sha256"
+            expected_raw_sha256 = Get-GatewayDiagnosticProperty $entry "expected_raw_sha256"
+            status = [string](Get-GatewayDiagnosticProperty $entry "status" "UNKNOWN")
+            reason_codes = @(Get-GatewayDiagnosticProperty $entry "reason_codes" @("MALFORMED_PROCESS_EVIDENCE"))
+        }
+    }
+    $ports = [ordered]@{}
+    $sourcePorts = Get-GatewayDiagnosticProperty $source "ports"
+    foreach ($property in @($sourcePorts.PSObject.Properties)) {
+        $entry = $property.Value
+        $ports[$property.Name] = [ordered]@{
+            expected_role = Get-GatewayDiagnosticProperty $entry "expected_role"
+            owner_pids = @(Get-GatewayDiagnosticProperty $entry "owner_pids" @())
+            listener_count = Get-GatewayDiagnosticProperty $entry "listener_count"
+            loopback_only = Get-GatewayDiagnosticProperty $entry "loopback_only"
+            status = [string](Get-GatewayDiagnosticProperty $entry "status" "UNKNOWN")
+            reason_codes = @(Get-GatewayDiagnosticProperty $entry "reason_codes" @("MALFORMED_PORT_EVIDENCE"))
+        }
+    }
+    $sourceUi = Get-GatewayDiagnosticProperty $source "ui"
+    $controllerUi = [ordered]@{
+        assets = Get-GatewayDiagnosticProperty $sourceUi "assets" ([ordered]@{})
+        baseline_id = Get-GatewayDiagnosticProperty $sourceUi "baseline_id"
+        baseline_status = [string](Get-GatewayDiagnosticProperty $sourceUi "baseline_status" "UNKNOWN")
+        status = [string](Get-GatewayDiagnosticProperty $sourceUi "status" "UNKNOWN")
+        reason_codes = @(Get-GatewayDiagnosticProperty $sourceUi "reason_codes" @("MALFORMED_UI_EVIDENCE"))
+    }
+    return [ordered]@{
+        schema_version = $sourceSchema
+        overall = [string](Get-GatewayDiagnosticProperty $source "overall" "UNKNOWN")
+        reason_codes = @(Get-GatewayDiagnosticProperty $source "reason_codes" @("MALFORMED_IDENTITY_EVIDENCE"))
+        checked_at = Get-GatewayDiagnosticProperty $source "checked_at"
+        deployment_status = [string](Get-GatewayDiagnosticProperty $source "deployment_status" "UNKNOWN")
+        processes = $processes
+        ports = $ports
+        ui = [ordered]@{
+            controller_observation = $controllerUi
+            gateway_observation = (Get-LocalUiIdentity)
+        }
+    }
+}
+
 function Get-GitInfo([string]$repoRoot) {
     $branch = "unknown"
     $sha = "unknown"
@@ -470,6 +638,21 @@ try {
 
             $uri = [Uri]("http://127.0.0.1:" + $Port + $rawPath)
             $path = $uri.AbsolutePath
+
+            if ($path -eq '/_v10/identity') {
+                $identityState = $null
+                try {
+                    if (Test-Path -LiteralPath $controllerStateFile -PathType Leaf) {
+                        $identityState = Read-JsonUtf8 $controllerStateFile
+                    }
+                } catch {
+                    $identityState = $null
+                }
+                $identityPayload = Get-SanitizedIdentityDiagnostics $identityState
+                $identityJson = $identityPayload | ConvertTo-Json -Depth 10
+                Send-LocalDiagnosticResponse $stream '200 OK' ($utf8.GetBytes($identityJson))
+                continue
+            }
 
             if ($path -eq '/health') {
                 $git = Get-GitInfo $RepoRoot

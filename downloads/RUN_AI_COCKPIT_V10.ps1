@@ -94,7 +94,54 @@ function Resolve-RuntimeDirForDeploy([string]$Explicit) {
 }
 
 function Get-Sha256Hex([string]$Path) {
-    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256 -ErrorAction Stop).Hash
+}
+
+function Get-GitBlobId([string]$RepoPath, [string]$RelativePath) {
+    try {
+        $blob = & git -C $RepoPath rev-parse ("HEAD:" + $RelativePath.Replace("\", "/")) 2>$null
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace([string]$blob)) { return $null }
+        return ([string]$blob).Trim()
+    } catch {
+        return $null
+    }
+}
+
+function Get-RepoArtifactIdentity([string]$RepoPath, [string]$RelativePath) {
+    $localRelative = $RelativePath.Replace("/", "\")
+    $fullPath = Join-Path $RepoPath $localRelative
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        return [ordered]@{
+            source_relpath   = $RelativePath.Replace("\", "/")
+            git_blob_sha1    = (Get-GitBlobId $RepoPath $RelativePath)
+            source_raw_sha256 = $null
+            present          = $false
+        }
+    }
+    return [ordered]@{
+        source_relpath    = $RelativePath.Replace("\", "/")
+        git_blob_sha1     = (Get-GitBlobId $RepoPath $RelativePath)
+        source_raw_sha256 = (Get-Sha256Hex $fullPath).ToLowerInvariant()
+        present           = $true
+    }
+}
+
+function Get-RepoArtifactIdentityMap([string]$RepoPath, [string[]]$RelativePaths) {
+    $result = [ordered]@{}
+    foreach ($relativePath in $RelativePaths) {
+        $result[$relativePath.Replace("\", "/")] = Get-RepoArtifactIdentity $RepoPath $relativePath
+    }
+    return $result
+}
+
+function Test-RepoArtifactsClean([string]$RepoPath, [string[]]$RelativePaths) {
+    try {
+        $normalized = @($RelativePaths | ForEach-Object { $_.Replace("\", "/") })
+        & git -C $RepoPath diff --quiet HEAD -- @normalized
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    }
 }
 
 function Format-PathCodePoints([string]$Value) {
@@ -129,6 +176,27 @@ $RUNTIME_DEPLOY_FILES = @(
     "SPEAK_LIVE_EMOTION.ps1"
 )
 
+$REPO_IDENTITY_FILES = @(
+    "downloads/RUN_AI_COCKPIT_V10.ps1",
+    "downloads/AI_COCKPIT_CONTROLLER_V10.ps1",
+    "downloads/AI_COCKPIT_GATEWAY_V10.ps1",
+    "downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1",
+    "scripts/ai_shadow_supervisor.py",
+    "index.html",
+    "theme.css",
+    "focus.css",
+    "next-theme-radar.css",
+    "next-theme-radar.js",
+    "card_system.css",
+    "card_system.js",
+    "card_table_adapter.css",
+    "card_table_adapter.js",
+    "voice_client.js",
+    "opportunity_radar.js",
+    "trade_control.js",
+    "earnings-calendar.js"
+)
+
 function Deploy-RuntimeFiles([string]$RepoRoot, [string]$RuntimeDir) {
     $staged = @{}
     $allStagedPaths = @()
@@ -156,7 +224,12 @@ function Deploy-RuntimeFiles([string]$RepoRoot, [string]$RuntimeDir) {
             if ($sourceHash -ne $stagedHash) {
                 throw "Runtime deploy: SHA256 mismatch between source and staged copy of $name - not deploying anything."
             }
-            $staged[$name] = @{ staged_path = $stagedPath; dest_path = $dest; sha256 = $sourceHash }
+            $staged[$name] = @{
+                staged_path = $stagedPath
+                dest_path = $dest
+                source_relpath = ("ms2_live/" + $name)
+                sha256 = $sourceHash
+            }
         }
     } catch {
         foreach ($stagedPath in $allStagedPaths) {
@@ -185,6 +258,7 @@ function Deploy-RuntimeFiles([string]$RepoRoot, [string]$RuntimeDir) {
     }
 
     $deployedHashes = [ordered]@{}
+    $artifactIdentity = [ordered]@{}
     $replaced = New-Object System.Collections.Generic.List[string]
     try {
         foreach ($name in $RUNTIME_DEPLOY_FILES) {
@@ -208,6 +282,13 @@ function Deploy-RuntimeFiles([string]$RepoRoot, [string]$RuntimeDir) {
             if ($actual -ne $staged[$name].sha256) {
                 throw "Runtime deploy verification failed: deployed SHA256 mismatch for $name."
             }
+            $artifactIdentity[$name] = [ordered]@{
+                source_relpath       = $staged[$name].source_relpath
+                git_blob_sha1        = (Get-GitBlobId $RepoRoot $staged[$name].source_relpath)
+                source_raw_sha256    = ([string]$staged[$name].sha256).ToLowerInvariant()
+                deployed_raw_sha256  = ([string]$actual).ToLowerInvariant()
+                raw_match            = ([string]$actual -eq [string]$staged[$name].sha256)
+            }
         }
     } catch {
         $deployError = $_
@@ -229,7 +310,11 @@ function Deploy-RuntimeFiles([string]$RepoRoot, [string]$RuntimeDir) {
         throw $deployError
     }
 
-    return @{ hashes = $deployedHashes; backup_dir = $backupDir }
+    return @{
+        hashes = $deployedHashes
+        backup_dir = $backupDir
+        artifact_identity = $artifactIdentity
+    }
 }
 
 function Test-CollectorIdentityContract([string]$Text) {
@@ -794,12 +879,26 @@ try {
 
     $runtimeManifestRoot = $Root
     if (-not (Test-Path -LiteralPath $runtimeManifestRoot)) { New-Item -ItemType Directory -Path $runtimeManifestRoot -Force | Out-Null }
+    $identityDiagnostics = [ordered]@{
+        schema_version = "v10-deployment-identity-1"
+        deployment_id = [Guid]::NewGuid().ToString("D")
+        observed_at = (Get-Date).ToString("o")
+        repo = [ordered]@{
+            sha = $actualSha
+            branch = $actualBranch
+            worktree_clean_for_artifacts = (Test-RepoArtifactsClean $repo $REPO_IDENTITY_FILES)
+        }
+        runtime_artifacts = $deployResult.artifact_identity
+        repo_artifacts = (Get-RepoArtifactIdentityMap $repo $REPO_IDENTITY_FILES)
+        approved_ui_baseline_id = $null
+    }
     $runtimeManifest = [ordered]@{
         repo_sha    = $actualSha
         repo_branch = $actualBranch
         runtime_dir = $runtimeDirForDeploy
         files       = $deployResult.hashes
         deployed_at = (Get-Date).ToString("o")
+        identity_diagnostics = $identityDiagnostics
     }
     $runtimeManifestPath = Join-Path $runtimeManifestRoot "V10_RUNTIME.json"
     [IO.File]::WriteAllText($runtimeManifestPath, ($runtimeManifest | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
