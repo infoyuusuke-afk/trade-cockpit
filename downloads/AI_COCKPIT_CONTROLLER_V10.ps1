@@ -631,21 +631,21 @@ function Invoke-IdentityDiagnosticsSelfTest {
     $baseObserved = [ordered]@{ query_status="OK"; pid=42; session_id=3; parent_pid=7; creation_time_utc="2026-01-01T00:00:00.0000000Z"; script_path_match=$true; script_raw_sha256="abc" }
     $previous = [ordered]@{ pid=42; creation_time_utc="2026-01-01T00:00:00.0000000Z" }
     $copyObserved = {
-        param($Source)
+        param($Source, [ref]$Destination)
         $copy = [ordered]@{}
         foreach ($key in $Source.Keys) { $copy[$key] = $Source[$key] }
-        Write-Output -NoEnumerate $copy
+        $Destination.Value = $copy
     }
     if ((Compare-ProcessIdentity $baseExpected $baseObserved $previous).status -ne "VERIFIED") { return $false }
-    $changed = & $copyObserved $baseObserved; $changed.creation_time_utc = "2026-01-01T00:00:01.0000000Z"
+    $changed = $null; & $copyObserved $baseObserved ([ref]$changed); $changed.creation_time_utc = "2026-01-01T00:00:01.0000000Z"
     if ((Compare-ProcessIdentity $baseExpected $changed $previous).reason_codes -notcontains "PID_REUSED") { return $false }
-    $changed = & $copyObserved $baseObserved; $changed.session_id = 9
+    $changed = $null; & $copyObserved $baseObserved ([ref]$changed); $changed.session_id = 9
     if ((Compare-ProcessIdentity $baseExpected $changed $previous).reason_codes -notcontains "SESSION_MISMATCH") { return $false }
-    $changed = & $copyObserved $baseObserved; $changed.parent_pid = 9
+    $changed = $null; & $copyObserved $baseObserved ([ref]$changed); $changed.parent_pid = 9
     if ((Compare-ProcessIdentity $baseExpected $changed $previous).reason_codes -notcontains "PARENT_MISMATCH") { return $false }
-    $changed = & $copyObserved $baseObserved; $changed.script_path_match = $false
+    $changed = $null; & $copyObserved $baseObserved ([ref]$changed); $changed.script_path_match = $false
     if ((Compare-ProcessIdentity $baseExpected $changed $previous).reason_codes -notcontains "SCRIPT_PATH_MISMATCH") { return $false }
-    $changed = & $copyObserved $baseObserved; $changed.script_raw_sha256 = "def"
+    $changed = $null; & $copyObserved $baseObserved ([ref]$changed); $changed.script_raw_sha256 = "def"
     if ((Compare-ProcessIdentity $baseExpected $changed $previous).reason_codes -notcontains "SCRIPT_HASH_MISMATCH") { return $false }
     $port = [ordered]@{ query_status="OK"; owner_pids=@(44); verified_bridge_pids=@(); listener_count=1; loopback_only=$true }
     if ((Compare-PortIdentity ([ordered]@{pid=42}) $port).reason_codes -notcontains "FOREIGN_OWNER") { return $false }
