@@ -8,6 +8,7 @@ independent fill authenticity require actual-machine acceptance.
 import hashlib
 import json
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 try:
@@ -62,14 +63,14 @@ def append_candidate(repo_root,record_id,evidence_bytes,anchor_hex,*,fail_after_
     # NEVER overwrite previous or partial artifact. Anchors are in another DB.
     # Preflight both sides first; races still fail at INSERT's primary key.
     for path in (evidence_path,anchor_path):
-        with _connect(path) as conn:
+        with closing(_connect(path)) as conn:
             if conn.execute("SELECT 1 FROM immutable_artifact WHERE id=?",(record_id,)).fetchone():
                 raise FileExistsError("previous or partial evidence requires manual review")
-    with _connect(evidence_path) as conn:
+    with closing(_connect(evidence_path)) as conn:
         _immutable_insert(conn,record_id,evidence_bytes)
     if fail_after_evidence:
         raise OSError("injected failure after evidence commit")
-    with _connect(anchor_path) as conn:
+    with closing(_connect(anchor_path)) as conn:
         _immutable_insert(conn,record_id,anchor_hex.encode("ascii"))
     return inspect_candidate(repo_root,record_id,expected_anchor=anchor_hex)
 
@@ -82,7 +83,7 @@ def inspect_candidate(repo_root,record_id,*,expected_anchor):
     anchor_path=_db(repo_root,"anchor")
     vals=[]
     for path in (evidence_path,anchor_path):
-        with _connect(path) as conn:
+        with closing(_connect(path)) as conn:
             vals.append(conn.execute("SELECT schema,payload,digest FROM immutable_artifact WHERE id=?",(record_id,)).fetchone())
     if any(v is None for v in vals):
         return "HOLD_INCOMPLETE_PAIR"
