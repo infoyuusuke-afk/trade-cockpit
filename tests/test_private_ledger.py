@@ -66,8 +66,17 @@ class RealLedgerSafetyTests(unittest.TestCase):
         self.assertIn("non_numeric_price",pl.validate_entry(make_entry(price=True)))
 
     def test_reconciliation_status_does_not_accept_unverified_pass(self):
-        self.assertIn("invalid_reconciliation_status",pl.validate_entry(make_entry(reconciliation_status="PASS")))
+        self.assertIn("reconciliation_requires_independent_evidence",pl.validate_entry(make_entry(reconciliation_status="PASS")))
+        self.assertIn("reconciliation_requires_independent_evidence",pl.validate_entry(make_entry(reconciliation_status="照合済み")))
+        self.assertIn("reconciliation_requires_independent_evidence",pl.validate_entry(make_entry(reconciliation_status="実績未取得")))
         self.assertEqual(pl.validate_entry(make_entry(reconciliation_status="未照合")),[])
+
+    def test_unverified_reconciled_entry_does_not_create_ledger(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/"ledger.jsonl"
+            with self.assertRaises(ValueError):
+                pl.append_entry(make_entry(reconciliation_status="照合済み"),path=path)
+            self.assertFalse(path.exists())
 
     def test_rejected_financial_entry_writes_nothing(self):
         with tempfile.TemporaryDirectory() as d:
