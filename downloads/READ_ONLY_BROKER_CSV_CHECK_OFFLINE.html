@@ -34,7 +34,7 @@ dt { color:#46566b; } dd { margin:0; font-weight:600; overflow-wrap:anywhere; }
 <dt>Encoding</dt><dd id="encoding">—</dd>
 <dt>Columns</dt><dd id="columns">—</dd>
 </dl>
-<p class="warning">CANDIDATE_ONLYはヘッダー形式の候補です。実約定・証券会社真正性・売買期待値の検証や発注を意味しません。</p>
+<p id="status-note" class="warning">ファイルは未選択です。診断結果が出るまで、候補形式の説明は表示しません。</p>
 <p class="note">この画面はPC内のファイルを読み取り、ヘッダーだけを判定します。通信・送信・保存・注文の機能はありません。選択したファイル名、フルパス、取引行は画面に表示しません。セキュリティ設定の変更は不要です。</p>
 </main>
 <script>
@@ -45,6 +45,14 @@ dt { color:#46566b; } dd { margin:0; font-weight:600; overflow-wrap:anywhere; }
   const REQUIRED = ['約定日','銘柄コード','売買区分','数量［株］','単価［円］'];
   const INQUIRY = ['約定時刻','約定数量','約定単価','コード'];
   const blocked = () => ({status:'BLOCKED',family:'UNKNOWN',encoding:'UNKNOWN',columns:0});
+  const STATUS_NOTE = {
+    CANDIDATE_ONLY:'CANDIDATE_ONLYはヘッダー形式の候補です。実約定・証券会社真正性・売買期待値の検証や発注を意味しません。',
+    BLOCKED:'BLOCKEDはヘッダー候補ではありません。未知・不一致・破損・サイズ超過などは拒否です。約定・証券会社真正性・期待値は未検証のままです。',
+    FILE_NOT_SELECTED:'ファイルは未選択です。診断結果が出るまで、候補形式の説明は表示しません。'
+  };
+  function statusNote(status) {
+    return Object.prototype.hasOwnProperty.call(STATUS_NOTE, status) ? STATUS_NOTE[status] : STATUS_NOTE.FILE_NOT_SELECTED;
+  }
   function firstCsvRecord(text) {
     if (!text || text.length > MAX_BYTES) return null;
     const out=[]; let field='', quoted=false, quoteClosed=false;
@@ -91,20 +99,23 @@ dt { color:#46566b; } dd { margin:0; font-weight:600; overflow-wrap:anywhere; }
     return {status:family==='LEGACY_HISTORY_CANDIDATE'&&unique?'CANDIDATE_ONLY':'BLOCKED',family,encoding:encName,columns:names.length};
   }
   // This pure, no-I/O classifier is also covered by synthetic-data unit tests.
-  if (typeof window!=='undefined') window.CsvHeaderClassifier={classify};
+  if (typeof window!=='undefined') window.CsvHeaderClassifier={classify,statusNote};
   if (typeof document==='undefined') return;
   const input=document.getElementById('csv-file');
   const status=document.getElementById('status');
   const family=document.getElementById('family');
   const encoding=document.getElementById('encoding');
   const columns=document.getElementById('columns');
+  const note=document.getElementById('status-note');
   function show(r) {
     status.textContent='Status: '+r.status;
     status.className=r.status==='BLOCKED'?'blocked':r.status==='CANDIDATE_ONLY'?'candidate':'';
     family.textContent=r.family;
     encoding.textContent=r.encoding;
     columns.textContent=String(r.columns);
+    note.textContent=statusNote(r.status);
   }
+  note.textContent=statusNote('FILE_NOT_SELECTED');
   input.addEventListener('change',async()=>{
     show(blocked());
     if (input.files.length!==1) return;
