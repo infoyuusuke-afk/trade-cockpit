@@ -2795,7 +2795,14 @@ document.addEventListener("DOMContentLoaded",()=>{
   if(!health||!cards)return;
   try{
    const d=await fetchMs2();
-   const parsed=new Date(String(d.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,stale=d.stale||age>60;
+   // Public snapshots are never a live feed, even if their timestamp is recent.
+   // Keep fail-closed when identity, coverage, clock or data freshness is uncertain.
+   const parsed=new Date(String(d.updated_at||"").replace(" ","T"));
+   const age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:Infinity;
+   const localSource=d.connection_source==="自宅PC・MS2 RSS LIVE";
+   const schemaOk=d.schema_version==="ms2-common-1.0";
+   const coverageOk=Number.isFinite(Number(d.valid))&&Number.isFinite(Number(d.universe))&&Number(d.universe)>0&&Number(d.valid)>=Math.max(90,Math.ceil(Number(d.universe)*0.9));
+   const stale=!localSource||!schemaOk||!coverageOk||d.stale!==false||age>60||age< -5;
    health.className="ms2-health "+(stale?"stale":"live"); health.textContent=stale?"データ停止・売買禁止":"LIVE 接続中";
    const common=document.getElementById("ms2-common-status"),caps=d.capabilities||{},gate=d.account_gate||{};
    if(common){const coverage=caps.market?.status||"未確認",depth=caps.orderflow?.depth10||"未確認",blocks=(gate.blocks||[]).join("／")||"なし";common.querySelector(".score").textContent=coverage;common.querySelector(".ms2-metrics").innerHTML=`<span>対象<b>${esc(d.valid||0)}/${esc(d.universe||0)}銘柄</b></span><span>共通判定<b>5分類・取得確認値のみ</b></span><span>自動発注<b>${caps.auto_order?.enabled?"ON":"OFF（既定）"}</b></span><span>10本板<b>${esc(depth)}</b></span><span>口座ゲート<b>${esc(gate.status||"未確認")}</b></span><span>停止理由<b>${esc(blocks)}</b></span>`;}
