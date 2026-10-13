@@ -67,6 +67,19 @@ class WatcherStaleUiTests(unittest.TestCase):
     def test_fresh_watcher_updates_signal_field_not_just_status_badge(self):
         self.assertIn('put("kio-watcher-signal",w.signal||"判定待ち")', self.script)
 
+    def test_gateway_and_watcher_have_distinct_loopback_ports(self):
+        watcher = (ROOT / "ms2_live" / "Kioxia_RSS_Live_Watcher.ps1").read_text(encoding="utf-8-sig")
+        gateway = (ROOT / "downloads" / "AI_Cockpit_Local_Gateway.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("[int]$WatcherBridgePort = 28582", watcher)
+        self.assertIn("Start-LocalJsonBridge $watcherJsonPath $WatcherBridgePort", watcher)
+        self.assertIn("[int]$Port = 28581", gateway)
+        self.assertIn("http://127.0.0.1:28582/kioxia_watcher_live.json", self.script)
+        self.assertNotIn("127.0.0.1:28581/kioxia_watcher_live.json", self.script)
+
+    def test_wrong_port_responses_cannot_be_treated_as_watcher_live(self):
+        self.assertIn('w.schema_version!=="kioxia-watcher-1.0"', self.script)
+        self.assertIn('clearWatcherKioxia("Watcher応答形式不一致', self.script)
+
 
 if __name__ == "__main__":
     unittest.main()
