@@ -45,6 +45,21 @@ def safe_report(report):
                 data.append(f"{key}: {value}")
     return ("\n".join(data) if data else "形式不明：BLOCKED") + "\n" + WARN
 
+def allowed_selected_local_csv(filename):
+    """Reject remote/linked paths; never follow a junction to network storage."""
+    file=Path(filename)
+    if file.suffix.lower()!=".csv" or not file.is_absolute():
+        raise ValueError("INVALID_LOCAL_CSV")
+    # UNC shares are nonlocal even if Windows exposes a native file dialog.
+    if str(file).startswith(("\\\\", "//")):
+        raise ValueError("REMOTE_PATH_BLOCKED")
+    for component in (file, *file.parents):
+        if component.is_symlink() or (hasattr(component,"is_junction") and component.is_junction()):
+            raise ValueError("LINKED_PATH_BLOCKED")
+    if not file.is_file() or file.stat().st_size>MAX_BYTES:
+        raise ValueError("INVALID_OR_OVERSIZED_CSV")
+    return file
+
 def select_and_probe():
     """One user-initiated file selection only, with no persistent output."""
     import tkinter as tk
@@ -61,11 +76,7 @@ def select_and_probe():
         if not file_path:
             return 0
         try:
-            file=Path(file_path)
-            if file.suffix.lower()!=".csv" or file.is_symlink() or not file.is_file():
-                raise ValueError("NOT_LOCAL_CSV")
-            if file.stat().st_size>MAX_BYTES:
-                raise ValueError("FILE_TOO_LARGE")
+            file=allowed_selected_local_csv(file_path)
             report=inspect_header(file)
             messagebox.showinfo("約定CSV形式診断｜非公開",safe_report(report),parent=root)
             return 0 if report.get("status")=="JP_HEADER_CANDIDATE_ONLY" else 2
