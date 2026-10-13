@@ -22,7 +22,7 @@ WARN = "診断結果は候補判定のみ。証券会社の真正性・実約定
 def safe_report(report):
     """Privacy-safe, fixed-key summary only; never echo files or row values."""
     if not isinstance(report, dict):
-        return "診断できませんでした。\\n" + WARN
+        return "診断できませんでした。\n" + WARN
     data = []
     for key in SAFE_FIELDS:
         value = report.get(key)
@@ -43,7 +43,7 @@ def safe_report(report):
             }
             if value in accepted[key]:
                 data.append(f"{key}: {value}")
-    return ("\\n".join(data) if data else "形式不明：BLOCKED") + "\\n" + WARN
+    return ("\n".join(data) if data else "形式不明：BLOCKED") + "\n" + WARN
 
 def select_and_probe():
     """One user-initiated file selection only, with no persistent output."""
