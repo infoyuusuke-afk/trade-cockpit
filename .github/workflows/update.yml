@@ -64,7 +64,11 @@ concurrency:
 jobs:
   update:
     environment: main-data-writer
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      !(github.event_name == 'push' &&
+        github.actor == 'github-actions[bot]' &&
+        startsWith(github.event.head_commit.message, 'Auto-update trade cockpit'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

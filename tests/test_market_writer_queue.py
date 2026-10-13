@@ -40,7 +40,17 @@ class MarketWriterQueueTests(unittest.TestCase):
                 self.assertEqual(config["permissions"], {"contents": "read"})
                 for job in config["jobs"].values():
                     self.assertEqual(job["environment"], "main-data-writer")
-                    self.assertEqual(job["if"], "github.ref == 'refs/heads/main'")
+                    condition = job["if"]
+                    self.assertIn("github.ref == 'refs/heads/main'", condition)
+                    if name == "update.yml":
+                        self.assertIn("github.actor == 'github-actions[bot]'", condition)
+                        self.assertIn(
+                            "startsWith(github.event.head_commit.message, "
+                            "'Auto-update trade cockpit')",
+                            condition,
+                        )
+                    else:
+                        self.assertEqual(condition, "github.ref == 'refs/heads/main'")
                     self.assertGreater(job["timeout-minutes"], 0)
                     checkouts = [s for s in job["steps"]
                                  if s.get("uses", "").startswith("actions/checkout@")]
@@ -50,6 +60,14 @@ class MarketWriterQueueTests(unittest.TestCase):
                     self.assertEqual(checkouts[0]["with"]["ref"], "main")
                     self.assertEqual(checkouts[0]["with"]["ssh-key"],
                                      "${{ secrets.MAIN_DATA_WRITER_DEPLOY_KEY }}")
+
+    def test_update_writer_does_not_reenter_from_its_own_generated_commit(self):
+        config = yaml.safe_load((WORKFLOWS / "update.yml").read_text(encoding="utf-8"))
+        condition = config["jobs"]["update"]["if"]
+        self.assertIn("github.event_name == 'push'", condition)
+        self.assertIn("github.actor == 'github-actions[bot]'", condition)
+        self.assertIn("'Auto-update trade cockpit'", condition)
+        self.assertNotIn("github.event_name == 'schedule' &&", condition)
 
     def test_ci_smoke_queue_is_isolated_from_production(self):
         config = yaml.safe_load((WORKFLOWS / "market-writer-queue-tests.yml").read_text(encoding="utf-8"))
