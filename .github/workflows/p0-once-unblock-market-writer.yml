@@ -1,0 +1,48 @@
+name: P0 One-Shot Owner-Approved Writer Recovery
+on:
+  push:
+    branches:
+      - p0/recover-market-writer-run-37440050197
+    paths:
+      - '.github/workflows/p0-once-unblock-market-writer.yml'
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  unblock:
+    if: >-
+      github.repository == 'infoyuusuke-afk/trade-cockpit' &&
+      github.ref == 'refs/heads/p0/recover-market-writer-run-37440050197' &&
+      github.event.head_commit.message == 'P0 Owner-authorized unblock waiting market writer 37440050197'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify exact main and stale queue states, then cancel only approved runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="repos/infoyuusuke-afk/trade-cockpit"
+          expected_main="b76c6e851cb1bb04daca2d6f1fab1a6886ec9718"
+          main_sha="$(gh api "${ROOT}/git/ref/heads/main" --jq '.object.sha')"
+          test "${main_sha}" = "${expected_main}" || { echo "::error::Main SHA changed; refusing recovery"; exit 1; }
+          holder_sha="$(gh api "${ROOT}/actions/runs/37440050197" --jq '.head_sha')"
+          holder_status="$(gh api "${ROOT}/actions/runs/37440050197" --jq '.status')"
+          test "${holder_sha}" = "74dcfb9d4bdb49114f0ccc838e36c806639ae88e" && test "${holder_status}" = waiting || { echo "::error::Stuck holder identity/status changed"; exit 1; }
+          old_sha="$(gh api "${ROOT}/actions/runs/38363627981" --jq '.head_sha')"
+          old_status="$(gh api "${ROOT}/actions/runs/38363627981" --jq '.status')"
+          test "${old_sha}" = "99d9f5e99d1f62ed99b7d4385166860199447bac" && test "${old_status}" = pending || { echo "::error::Old pending run changed; refusing recovery"; exit 1; }
+          echo "Cancelling only approved pre-merge pending #38363627981, then Oct 6 stuck holder #37440050197"
+          gh api -X POST "${ROOT}/actions/runs/38363627981/cancel" >/dev/null
+          gh api -X POST "${ROOT}/actions/runs/37440050197/cancel" >/dev/null
+          sleep 6
+          echo "#### Recovery result" >> "${GITHUB_STEP_SUMMARY}"
+          for run in 38363627981 37440050197; do
+            state="$(gh api "${ROOT}/actions/runs/${run}" --jq '.status + "/" + (.conclusion // "none")')"
+            echo "- Run #${run}: ${state}" >> "${GITHUB_STEP_SUMMARY}"
+            echo "Run #${run}: ${state}"
+          done
+          echo "No production environment policy, broker, order permissions, or market data files changed by this one-off." >> "${GITHUB_STEP_SUMMARY}"
