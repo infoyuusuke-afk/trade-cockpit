@@ -94,8 +94,10 @@ def validate_entry(entry: dict) -> list[str]:
             # Reconciliation never treats it as independent execution proof.
         except (ValueError, TypeError):
             problems.append("invalid_executed_at")
-    if entry.get("reconciliation_status") not in (None, *RECONCILIATION_STATUSES):
-        problems.append("invalid_reconciliation_status")
+    if entry.get("reconciliation_status") not in (None, "未照合"):
+        # Never let a submitter certify a broker reconciliation on creation.
+        # Independently evidenced reconciliation is a separate workflow.
+        problems.append("reconciliation_requires_independent_evidence")
     return problems
 
 
