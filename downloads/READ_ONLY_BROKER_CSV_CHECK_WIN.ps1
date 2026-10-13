@@ -2,6 +2,7 @@
 # No Python, no network, no broker credentials, no logging or filesystem writes.
 # Does not authenticate broker records or inspect row contents beyond the first CSV header.
 param([switch]$TestOnly, [string]$FilePath)
+Add-Type -AssemblyName Microsoft.VisualBasic
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
