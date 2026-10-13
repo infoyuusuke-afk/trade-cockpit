@@ -40,7 +40,7 @@ class PrivateBrokerCSVPreflightTests(unittest.TestCase):
 
     def test_broker_shaped_file_without_ai_decision_id_is_not_rejected(self):
         fields=tuple(x for x in FIELDS if x!="decision_snapshot_id")
-        report=audit_csv(self.write([sample()],fields=fields))
+        report=audit_csv(self.write([{k:v for k,v in sample().items() if k in fields}],fields=fields))
         self.assertEqual(report["rejected_records"],0)
         self.assertEqual(report["decision_unlinked_records"],1)
         self.assertFalse(report["automated_reconciliation_allowed"])
