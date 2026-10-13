@@ -1,4 +1,4 @@
-# Offline, read-only broker CSV header candidate diagnostic for Windows PowerShell 5.1.
+﻿# Offline, read-only broker CSV header candidate diagnostic for Windows PowerShell 5.1.
 # No Python, no network, no broker credentials, no logging or filesystem writes.
 # Does not authenticate broker records or inspect row contents beyond the first CSV header.
 param([switch]$TestOnly, [string]$FilePath)
