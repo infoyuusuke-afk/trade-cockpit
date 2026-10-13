@@ -1,0 +1,23 @@
+name: Private CSV Picker Windows Contract
+on:
+  pull_request:
+    paths:
+      - "scripts/private_broker_csv_picker.py"
+      - "tests/test_private_broker_csv_picker_windows_acceptance.py"
+      - ".github/workflows/private-csv-picker-windows.yml"
+permissions:
+  contents: read
+jobs:
+  local-picker-contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run offline picker unit contracts without any real CSV data
+        run: python -m unittest discover -s tests -p "test_private_broker_csv_picker_windows_acceptance.py" -v
