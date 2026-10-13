@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-13 18:45:52 JST",
+  "updated_at": "2026-10-13 21:59:15 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -4592,22 +4592,6 @@
       "already_watched": false
     },
     {
-      "code": "6361",
-      "name": "Ebara Corporation",
-      "exchange": "TSE",
-      "price": 4620,
-      "change_pct": -3.4482758620689653,
-      "volume": 2899500,
-      "relative_volume": 1.0007731442811485,
-      "atr_pct": 3.9,
-      "vwap": 4619.333333333333,
-      "high": 4682,
-      "low": 4556,
-      "market_cap": 2188770681152,
-      "sector": "Producer Manufacturing",
-      "already_watched": false
-    },
-    {
       "code": "7259",
       "name": "Aisin Corporation",
       "exchange": "TSE",
@@ -4620,6 +4604,22 @@
       "high": 2209.5,
       "low": 2158,
       "market_cap": 1573343725647,
+      "sector": "Producer Manufacturing",
+      "already_watched": false
+    },
+    {
+      "code": "6361",
+      "name": "Ebara Corporation",
+      "exchange": "TSE",
+      "price": 4620,
+      "change_pct": -3.4482758620689653,
+      "volume": 2899500,
+      "relative_volume": 1.0007731442811485,
+      "atr_pct": 3.9,
+      "vwap": 4619.333333333333,
+      "high": 4682,
+      "low": 4556,
+      "market_cap": 2188770681152,
       "sector": "Producer Manufacturing",
       "already_watched": false
     },
@@ -4992,22 +4992,6 @@
       "already_watched": false
     },
     {
-      "code": "9005",
-      "name": "TOKYU CORPORATION",
-      "exchange": "TSE",
-      "price": 1588,
-      "change_pct": 0.6656101426307449,
-      "volume": 2588000,
-      "relative_volume": 0.8569479672320051,
-      "atr_pct": 1.47,
-      "vwap": 1585.6666666666667,
-      "high": 1596.5,
-      "low": 1572.5,
-      "market_cap": 949442792358,
-      "sector": "Retail Trade",
-      "already_watched": false
-    },
-    {
       "code": "3659",
       "name": "NEXON Co., Ltd.",
       "exchange": "TSE",
@@ -5021,6 +5005,22 @@
       "low": 2656.5,
       "market_cap": 2009004306213,
       "sector": "Technology Services",
+      "already_watched": false
+    },
+    {
+      "code": "9005",
+      "name": "TOKYU CORPORATION",
+      "exchange": "TSE",
+      "price": 1588,
+      "change_pct": 0.6656101426307449,
+      "volume": 2588000,
+      "relative_volume": 0.8569479672320051,
+      "atr_pct": 1.47,
+      "vwap": 1585.6666666666667,
+      "high": 1596.5,
+      "low": 1572.5,
+      "market_cap": 949442792358,
+      "sector": "Retail Trade",
       "already_watched": false
     },
     {
