@@ -21,7 +21,23 @@ JP_HEADER_CANDIDATES={
     "単価［円］","手数料［円］","税金等［円］","諸費用［円］",
 }
 JP_CRITICAL={"約定日","銘柄コード","売買区分","数量［株］","単価［円］"}
+# Multiple broker export screens expose distinct *candidate* headers.
+# These are NOT certified current production layouts.
+EXECUTION_INQUIRY_MARKERS={"約定時刻","約定数量","約定単価","コード"}
+TRADE_HISTORY_MARKERS={"受渡日","手数料［円］","税金等［円］"}
 ENCODINGS=("utf-8-sig","cp932")
+
+def classify_csv_family(names):
+    fields=set(names)
+    legacy=JP_CRITICAL.issubset(fields)
+    inquiry=bool(fields & EXECUTION_INQUIRY_MARKERS)
+    if legacy and inquiry:
+        return "AMBIGUOUS_MIXED_HEADERS"
+    if legacy:
+        return "TRADE_HISTORY_LEGACY_CANDIDATE"
+    if inquiry:
+        return "EXECUTION_INQUIRY_CANDIDATE"
+    return "UNKNOWN_BROKER_CSV_TYPE"
 
 def inspect_header(path: Path):
     data=Path(path).read_bytes()
@@ -50,10 +66,13 @@ def inspect_header(path: Path):
     names=[x.strip() for x in header]
     matching=set(names)&JP_HEADER_CANDIDATES
     required_missing=JP_CRITICAL-set(names)
+    family=classify_csv_family(names)
+    ambiguous=family=="AMBIGUOUS_MIXED_HEADERS"
+    duplicate=len(names)!=len(set(names))
     # Only aggregate counts + known public schema names, never the actual
     # unknown header values (which can contain private content).
     return {"schema_version":"broker-jp-header-candidate-v1",
-            "status":"JP_HEADER_CANDIDATE_ONLY" if not required_missing and len(names)==len(set(names)) else "BLOCKED",
+            "status":"JP_HEADER_CANDIDATE_ONLY" if family=="TRADE_HISTORY_LEGACY_CANDIDATE" and not duplicate else "BLOCKED",\n            "format_family_candidate":family,
             "encoding_candidate":encoding,"columns_count":len(names),
             "recognized_column_count":len(matching),
             "missing_known_fields":sorted(required_missing),
