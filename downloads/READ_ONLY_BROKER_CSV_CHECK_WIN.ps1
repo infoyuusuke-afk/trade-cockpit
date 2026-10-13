@@ -102,6 +102,8 @@ if ($TestOnly) {
         exit 0
     } catch {
         Write-Output 'Status: BLOCKED'
+        # Only a safe exception type, never any source path, header, row or exception text.
+        Write-Output ('FaultClass: ' + $_.Exception.GetType().Name)
         exit 2
     }
 }
