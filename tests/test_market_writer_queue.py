@@ -68,6 +68,22 @@ class MarketWriterQueueTests(unittest.TestCase):
         self.assertIn("github.actor == 'github-actions[bot]'", condition)
         self.assertIn("'Auto-update trade cockpit'", condition)
         self.assertNotIn("github.event_name == 'schedule' &&", condition)
+        # Event-level path filters are evaluated before the job guard; a
+        # bot-authored generated-output push must not queue the workflow.
+        triggers = config.get("on", config.get(True))
+        self.assertIsNotNone(triggers)
+        push_paths = set(triggers["push"]["paths"])
+        generated_outputs = {
+            "credit_supply.json",
+            "kioxia_catalysts.json",
+            "kioxia_prediction_history.json",
+            "investor_regime.json",
+        }
+        self.assertFalse(
+            push_paths & generated_outputs,
+            f"Generated outputs unexpectedly trigger update.yml: {push_paths & generated_outputs}",
+        )
+        self.assertIn("scripts/investor_regime.py", push_paths)
 
     def test_ci_smoke_queue_is_isolated_from_production(self):
         config = yaml.safe_load((WORKFLOWS / "market-writer-queue-tests.yml").read_text(encoding="utf-8"))
