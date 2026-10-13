@@ -38,6 +38,26 @@ class PrivateBrokerCSVPreflightTests(unittest.TestCase):
         self.assertFalse(report["real_submit_allowed"])
         self.assertEqual(len(report["source_sha256"]),64)
 
+    def test_broker_shaped_file_without_ai_decision_id_is_not_rejected(self):
+        fields=tuple(x for x in FIELDS if x!="decision_snapshot_id")
+        report=audit_csv(self.write([sample()],fields=fields))
+        self.assertEqual(report["rejected_records"],0)
+        self.assertEqual(report["decision_unlinked_records"],1)
+        self.assertFalse(report["automated_reconciliation_allowed"])
+        self.assertFalse(report["ev_training_allowed"])
+
+    def test_trade_day_missing_fees_are_pending_not_zero(self):
+        report=audit_csv(self.write([sample(fee="")]))
+        self.assertEqual(report["rejected_records"],0)
+        self.assertEqual(report["fee_pending_records"],1)
+        self.assertEqual(report["eligible_to_compare"],0)
+        self.assertFalse(report["source_authenticated"])
+
+    def test_real_zero_fee_is_explicitly_distinct_from_pending(self):
+        report=audit_csv(self.write([sample(fee="0")]))
+        self.assertEqual(report["fee_pending_records"],0)
+        self.assertEqual(report["eligible_to_compare"],1)
+
     def test_duplicate_execution_id_rejected(self):
         report=audit_csv(self.write([sample(),sample(order_id="O2")]))
         self.assertEqual(report["reasons"]["DUPLICATE_EXECUTION_ID"],1)
