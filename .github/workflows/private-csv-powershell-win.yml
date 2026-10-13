@@ -1,0 +1,18 @@
+name: Python-free Private CSV Windows Test
+on:
+  pull_request:
+    paths:
+      - "downloads/READ_ONLY_BROKER_CSV_CHECK_WIN.ps1"
+      - "downloads/READ_ONLY_BROKER_CSV_CHECK_WIN.cmd"
+      - "tests/test_private_broker_csv_powershell_win.ps1"
+      - ".github/workflows/private-csv-powershell-win.yml"
+permissions:
+  contents: read
+jobs:
+  native-windows-csv-diagnostic:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run synthetic CSV checks on Windows PowerShell without any brokerage data
+        shell: powershell
+        run: .\tests\test_private_broker_csv_powershell_win.ps1
