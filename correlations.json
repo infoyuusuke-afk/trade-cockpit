@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-13 23:32:20 JST",
+  "updated_at": "2026-10-14 07:51:19 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -97,6 +97,37 @@
     {
       "anchor": "キオクシアHD（285A）",
       "anchor_ticker": "285A.T",
+      "peer": "005930.KS",
+      "peer_ticker": "005930.KS",
+      "relation": "韓国前日→日本翌日",
+      "expected": "正相関",
+      "reason": "Samsung Electronics、メモリ半導体地合いの先行確認",
+      "corr20": 0.23,
+      "corr60": 0.11,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": null,
+      "lead_bars": null,
+      "bars": 0,
+      "state": "不成立",
+      "confidence": 58,
+      "anchor_today": {
+        "ret": -4.44,
+        "or15": "下抜け",
+        "vwap": "下",
+        "ema": "上向き"
+      },
+      "peer_today": {
+        "ret": null,
+        "or15": "未取得",
+        "vwap": "未取得",
+        "ema": "未取得"
+      },
+      "decision": "この関係を売買根拠にしない"
+    },
+    {
+      "anchor": "キオクシアHD（285A）",
+      "anchor_ticker": "285A.T",
       "peer": "任天堂（7974）",
       "peer_ticker": "7974.T",
       "relation": "日本同時",
@@ -128,51 +159,20 @@
     {
       "anchor": "キオクシアHD（285A）",
       "anchor_ticker": "285A.T",
-      "peer": "005930.KS",
-      "peer_ticker": "005930.KS",
-      "relation": "韓国前日→日本翌日",
-      "expected": "正相関",
-      "reason": "Samsung Electronics、メモリ半導体地合いの先行確認",
-      "corr20": 0.13,
-      "corr60": 0.1,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": null,
-      "lead_bars": null,
-      "bars": 0,
-      "state": "不成立",
-      "confidence": 56,
-      "anchor_today": {
-        "ret": -4.44,
-        "or15": "下抜け",
-        "vwap": "下",
-        "ema": "上向き"
-      },
-      "peer_today": {
-        "ret": null,
-        "or15": "未取得",
-        "vwap": "未取得",
-        "ema": "未取得"
-      },
-      "decision": "この関係を売買根拠にしない"
-    },
-    {
-      "anchor": "キオクシアHD（285A）",
-      "anchor_ticker": "285A.T",
       "peer": "000660.KS",
       "peer_ticker": "000660.KS",
       "relation": "韓国前日→日本翌日",
       "expected": "正相関",
       "reason": "SK Hynix、DRAM/NAND価格連動の先行確認",
-      "corr20": 0.15,
-      "corr60": 0.02,
+      "corr20": 0.24,
+      "corr60": 0.03,
       "sample20": 20,
       "sample60": 60,
       "intraday_corr": null,
       "lead_bars": null,
       "bars": 0,
       "state": "不成立",
-      "confidence": 54,
+      "confidence": 57,
       "anchor_today": {
         "ret": -4.44,
         "or15": "下抜け",

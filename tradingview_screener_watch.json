@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-13 23:32:44 JST",
+  "updated_at": "2026-10-14 07:51:42 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -360,7 +360,7 @@
           "vwap": 15416.666666666666,
           "high": 16025,
           "low": 15045,
-          "market_cap": 28811776948242,
+          "market_cap": 28816336966553,
           "sector": "Electronic Technology",
           "already_watched": true
         },
@@ -504,7 +504,7 @@
           "vwap": 10728.333333333334,
           "high": 11200,
           "low": 10365,
-          "market_cap": 6517612993469,
+          "market_cap": 6518331978149,
           "sector": "Electronic Technology",
           "already_watched": false
         },
@@ -1218,7 +1218,7 @@
           "vwap": 15416.666666666666,
           "high": 16025,
           "low": 15045,
-          "market_cap": 28811776948242,
+          "market_cap": 28816336966553,
           "sector": "Electronic Technology",
           "already_watched": true
         },
@@ -1319,7 +1319,7 @@
           "vwap": 15416.666666666666,
           "high": 16025,
           "low": 15045,
-          "market_cap": 28811776948242,
+          "market_cap": 28816336966553,
           "sector": "Electronic Technology",
           "already_watched": true
         },
@@ -1479,7 +1479,7 @@
           "vwap": 10728.333333333334,
           "high": 11200,
           "low": 10365,
-          "market_cap": 6517612993469,
+          "market_cap": 6518331978149,
           "sector": "Electronic Technology",
           "already_watched": false
         },
@@ -1755,7 +1755,7 @@
       "vwap": 15416.666666666666,
       "high": 16025,
       "low": 15045,
-      "market_cap": 28811776948242,
+      "market_cap": 28816336966553,
       "sector": "Electronic Technology",
       "already_watched": true
     },
@@ -2475,7 +2475,7 @@
       "vwap": 10728.333333333334,
       "high": 11200,
       "low": 10365,
-      "market_cap": 6517612993469,
+      "market_cap": 6518331978149,
       "sector": "Electronic Technology",
       "already_watched": false
     },
@@ -3963,7 +3963,7 @@
       "vwap": 1729.3333333333333,
       "high": 1746.5,
       "low": 1701,
-      "market_cap": 1226327673309,
+      "market_cap": 1226332806885,
       "sector": "Retail Trade",
       "already_watched": false
     },
@@ -4592,22 +4592,6 @@
       "already_watched": false
     },
     {
-      "code": "6361",
-      "name": "Ebara Corporation",
-      "exchange": "TSE",
-      "price": 4620,
-      "change_pct": -3.4482758620689653,
-      "volume": 2899500,
-      "relative_volume": 1.0007731442811485,
-      "atr_pct": 3.9,
-      "vwap": 4619.333333333333,
-      "high": 4682,
-      "low": 4556,
-      "market_cap": 2188770681152,
-      "sector": "Producer Manufacturing",
-      "already_watched": false
-    },
-    {
       "code": "7259",
       "name": "Aisin Corporation",
       "exchange": "TSE",
@@ -4620,6 +4604,22 @@
       "high": 2209.5,
       "low": 2158,
       "market_cap": 1573343725647,
+      "sector": "Producer Manufacturing",
+      "already_watched": false
+    },
+    {
+      "code": "6361",
+      "name": "Ebara Corporation",
+      "exchange": "TSE",
+      "price": 4620,
+      "change_pct": -3.4482758620689653,
+      "volume": 2899500,
+      "relative_volume": 1.0007731442811485,
+      "atr_pct": 3.9,
+      "vwap": 4619.333333333333,
+      "high": 4682,
+      "low": 4556,
+      "market_cap": 2188770681152,
       "sector": "Producer Manufacturing",
       "already_watched": false
     },
