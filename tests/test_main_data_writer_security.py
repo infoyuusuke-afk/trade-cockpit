@@ -38,7 +38,11 @@ class MainDataWriterSecurityTests(unittest.TestCase):
                 self.assertIn("contents: read", text)
                 self.assertNotIn("contents: write", text)
                 self.assertIn("environment: main-data-writer", text)
-                self.assertIn("if: github.ref == 'refs/heads/main'", text)
+                self.assertRegex(
+                    text,
+                    r"(?m)^\s*if:(?: >-\n\s+| )"
+                    r"github\.ref == 'refs/heads/main'",
+                )
                 self.assertIn(
                     "ssh-key: ${{ secrets.MAIN_DATA_WRITER_DEPLOY_KEY }}",
                     text,
