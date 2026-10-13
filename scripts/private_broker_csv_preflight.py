@@ -13,7 +13,8 @@ from datetime import datetime
 from pathlib import Path
 
 MAX_BYTES=8*1024*1024
-FIELDS=("execution_id","order_id","ticker","side","price","quantity","fee","executed_at","decision_snapshot_id")
+FIELDS=("execution_id","order_id","ticker","side","price","quantity","fee","executed_at")
+OPTIONAL_FIELDS=("decision_snapshot_id",)
 
 def private_csv_path(repo_root,relative):
     if not isinstance(relative,str) or "\\" in relative:
@@ -63,34 +64,46 @@ def audit_csv(path):
     errors={}
     seen=set()
     total=0
+    fee_pending=0
+    decision_unlinked=0
     try:
         import io
         reader=csv.DictReader(io.StringIO(raw.decode("utf-8-sig"),newline=""))
-        if reader.fieldnames is None or len(reader.fieldnames)!=len(set(reader.fieldnames)) or set(reader.fieldnames)!=set(FIELDS):
+        if reader.fieldnames is None or len(reader.fieldnames)!=len(set(reader.fieldnames)) or not set(FIELDS).issubset(reader.fieldnames) or not set(reader.fieldnames).issubset(set(FIELDS)|set(OPTIONAL_FIELDS)):
             raise ValueError("CSV_COLUMN_CONTRACT_MISMATCH")
         for item in reader:
             total+=1
             reason=None
             if None in item or any(v is None for v in item.values()):
                 reason="CSV_ROW_SHAPE_INVALID"
-            elif any(not str(item[k]).strip() for k in ("execution_id","order_id","ticker","side","decision_snapshot_id")):
+            elif any(not str(item[k]).strip() for k in ("execution_id","order_id","ticker","side")):
                 reason="IDENTIFIER_MISSING"
             elif item["side"] not in ("BUY","SELL"):
                 reason="SIDE_INVALID"
-            elif not _number(item["price"],True) or not _number(item["quantity"],True) or not _number(item["fee"]):
+            elif not _number(item["price"],True) or not _number(item["quantity"],True):
                 reason="PRICE_QTY_FEE_INVALID"
+            elif item["fee"].strip() and not _number(item["fee"]):
+                reason="PRICE_QTY_FEE_INVALID"
+            elif not item["fee"].strip():
+                # Domestic-stock fee/charges may not be available on trade day.
+                # Preserve as pending, never impute a zero fee.
+                fee_pending+=1
             elif not _timestamp(item["executed_at"]):
                 reason="TIMESTAMP_INVALID"
             elif item["execution_id"] in seen:
                 reason="DUPLICATE_EXECUTION_ID"
             if item.get("execution_id"):
                 seen.add(item["execution_id"])
+            if not (item.get("decision_snapshot_id") or "").strip():
+                decision_unlinked+=1
             if reason:
                 errors[reason]=errors.get(reason,0)+1
     except (UnicodeError,csv.Error) as exc:
         raise ValueError("CSV_DECODE_OR_SYNTAX_INVALID") from exc
-    return {"schema_version":"broker-offline-preflight-v1","records_examined":total,
-            "rejected_records":sum(errors.values()),"eligible_to_compare":total-sum(errors.values()),
+    return {"schema_version":"broker-offline-preflight-v2","records_examined":total,
+            "rejected_records":sum(errors.values()),
+            "fee_pending_records":fee_pending,"decision_unlinked_records":decision_unlinked,
+            "eligible_to_compare":max(0,total-sum(errors.values())-fee_pending),
             "reasons":dict(sorted(errors.items())),"source_sha256":digest,
             "source_authenticated":False,"automated_reconciliation_allowed":False,
             "ev_training_allowed":False,"real_submit_allowed":False}
@@ -110,7 +123,7 @@ def main():
         print(json.dumps(report,sort_keys=True))
         return 2
     print(json.dumps(report,sort_keys=True))
-    return 0 if report["rejected_records"]==0 else 2
+    return 0 if report["rejected_records"]==0 and report["fee_pending_records"]==0 else 2
 
 if __name__=="__main__":
     raise SystemExit(main())
