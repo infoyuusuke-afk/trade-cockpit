@@ -1,0 +1,52 @@
+name: Market Writer Queue Tests
+
+on:
+  push:
+    branches: [fix/p0-market-writer-queue]
+    paths:
+      - '.github/workflows/**'
+      - 'tests/test_market_writer_queue.py'
+      - 'tests/test_main_data_writer_security.py'
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'tests/test_market_writer_queue.py'
+      - 'tests/test_main_data_writer_security.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install PyYAML==6.0.3
+      - run: python -m unittest tests.test_main_data_writer_security tests.test_market_writer_queue -v
+
+  # Three contenders exceed the default one-pending limit. All must complete;
+  # job start/end timestamps provide evidence of serialized hosted execution.
+  queue-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    strategy:
+      fail-fast: false
+      matrix:
+        slot: [1, 2, 3]
+    concurrency:
+      group: p0-writer-queue-smoke-${{ github.run_id }}
+      queue: max
+      cancel-in-progress: false
+    steps:
+      - name: Hold isolated slot briefly
+        run: |
+          date --utc --iso-8601=seconds
+          sleep 10
+          date --utc --iso-8601=seconds
