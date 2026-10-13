@@ -1,21 +1,15 @@
 @echo off
 setlocal
-set "SCRIPT=%~dp0READ_ONLY_BROKER_CSV_CHECK_WIN.ps1"
-if not exist "%SCRIPT%" (
-  echo CSV checker is missing. No data was read or sent.
+set "HTML=%~dp0READ_ONLY_BROKER_CSV_CHECK_OFFLINE.html"
+if not exist "%HTML%" (
+  echo Offline CSV diagnostic HTML is missing. No CSV was read or sent.
   pause
   exit /b 2
 )
-where powershell.exe >nul 2>nul
+REM Browser-only offline file; no external app installation or security setting changes.
+start "" "%HTML%"
 if errorlevel 1 (
-  echo Windows PowerShell is unavailable. No data was read or sent.
-  pause
-  exit /b 2
-)
-REM No execution-policy override, account connection, network request or install.
-powershell.exe -NoProfile -File "%SCRIPT%"
-if errorlevel 1 (
-  echo Diagnostic blocked or could not run. No CSV was uploaded.
+  echo Browser launch failed. You may double-click the HTML directly.
   pause
   exit /b 2
 )
