@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $script = Join-Path $root 'downloads\READ_ONLY_BROKER_CSV_CHECK_WIN.ps1'
 if (-not (Test-Path -LiteralPath $script)) { throw 'MISSING_DIAGNOSTIC_SCRIPT' }
