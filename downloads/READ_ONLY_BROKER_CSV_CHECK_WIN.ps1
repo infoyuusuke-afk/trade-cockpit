@@ -18,7 +18,7 @@ function Get-HeaderCandidate([string]$SelectedPath) {
         if (($at.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
             throw 'LINKED_PATH'
         }
-        $at = $at.Parent
+        if ($at -is [System.IO.FileInfo]) { $at = $at.Directory } else { $at = $at.Parent }
     }
     # Read once; only the first CSV record is parsed. No transaction rows are returned.
     $raw = [System.IO.File]::ReadAllBytes($full)
