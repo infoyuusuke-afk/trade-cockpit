@@ -28,6 +28,8 @@ try {
         if ($exitCode -eq 0 -and -not $out.Contains('実約定・証券会社真正性・EV学習は確認していません。')) { throw 'MISSING_UNVERIFIED_WARNING' }
     }
     Write-Output 'WIN_POWERSHELL_OFFLINE_CSV_DIAGNOSTIC_SYNTHETIC_PASS'
+    # The last synthetic invalid CSV intentionally exited 2. Reset the shell status.
+    $global:LASTEXITCODE = 0
 } finally {
     if (Test-Path -LiteralPath $folder) { Remove-Item -LiteralPath $folder -Recurse -Force }
 }
