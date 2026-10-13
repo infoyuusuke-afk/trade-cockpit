@@ -2,6 +2,7 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import sqlite3
+from contextlib import closing
 import unittest
 from scripts.shadow_forward_windows_sqlite_candidate import append_candidate, inspect_candidate, _db
 
@@ -33,12 +34,12 @@ class WindowsSQLiteCandidateTests(unittest.TestCase):
   append_candidate(self.root,"paper_3",b"first",A)
   with self.assertRaises(FileExistsError):
    append_candidate(self.root,"paper_3",b"second",A)
-  with sqlite3.connect(str(_db(self.root,"evidence"))) as conn:
+  with closing(sqlite3.connect(str(_db(self.root,"evidence")),isolation_level=None)) as conn:
    self.assertEqual(conn.execute("SELECT payload FROM immutable_artifact WHERE id='paper_3'").fetchone()[0],b"first")
 
  def test_modified_evidence_is_detected(self):
   append_candidate(self.root,"paper_4",b"original",A)
-  with sqlite3.connect(str(_db(self.root,"evidence"))) as conn:
+  with closing(sqlite3.connect(str(_db(self.root,"evidence")),isolation_level=None)) as conn:
    conn.execute("UPDATE immutable_artifact SET payload=? WHERE id=?",(b"tampered","paper_4"))
   self.assertEqual(inspect_candidate(self.root,"paper_4",expected_anchor=A),"BLOCK_DIGEST_MISMATCH")
 
@@ -56,7 +57,7 @@ class WindowsSQLiteCandidateTests(unittest.TestCase):
 
  def test_explicit_block_on_missing_anchor(self):
   append_candidate(self.root,"paper_6",b"data",A)
-  with sqlite3.connect(str(_db(self.root,"anchor"))) as conn:
+  with closing(sqlite3.connect(str(_db(self.root,"anchor")),isolation_level=None)) as conn:
    conn.execute("DELETE FROM immutable_artifact WHERE id='paper_6'")
   self.assertEqual(inspect_candidate(self.root,"paper_6",expected_anchor=A),"HOLD_INCOMPLETE_PAIR")
 
