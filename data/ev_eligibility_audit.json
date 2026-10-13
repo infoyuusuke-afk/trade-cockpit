@@ -1,0 +1,13 @@
+{
+  "schema_version": "ev-eligibility-audit-v1",
+  "records_examined": 263,
+  "eligible_records": 0,
+  "excluded_records": 263,
+  "exclusions": {
+    "NOT_TRIGGERED": 168,
+    "STRATEGY_KEY_MISSING": 95
+  },
+  "execution_lane": "PAPER_OBSERVED_ONLY",
+  "real_submit_allowed": false,
+  "contains_raw_prices": false
+}
