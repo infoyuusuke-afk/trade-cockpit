@@ -25,6 +25,23 @@ class JapaneseBrokerHeaderTests(unittest.TestCase):
         self.assertFalse(r["real_submit_allowed"])
     def test_utf8_header_candidate(self):
         self.assertEqual(inspect_header(self.make(encoding="utf-8-sig"))["encoding_candidate"],"utf-8-sig")
+    def test_execution_inquiry_not_misread_as_trade_history(self):
+        inquiry=["約定日","約定時刻","コード","売買","約定数量","約定単価"]
+        report=inspect_header(self.make(headers=inquiry))
+        self.assertEqual(report["format_family_candidate"],"EXECUTION_INQUIRY_CANDIDATE")
+        self.assertEqual(report["status"],"BLOCKED")
+        self.assertFalse(report["reconciliation_allowed"])
+
+    def test_mixed_types_refused_even_with_legacy_fields(self):
+        report=inspect_header(self.make(headers=HEADERS+["約定時刻"]))
+        self.assertEqual(report["format_family_candidate"],"AMBIGUOUS_MIXED_HEADERS")
+        self.assertEqual(report["status"],"BLOCKED")
+
+    def test_unknown_layout_not_assumed_to_be_broker(self):
+        report=inspect_header(self.make(headers=["取引日","種類","値段"]))
+        self.assertEqual(report["format_family_candidate"],"UNKNOWN_BROKER_CSV_TYPE")
+        self.assertEqual(report["status"],"BLOCKED")
+
     def test_missing_critical_column_blocks(self):
         r=inspect_header(self.make(headers=HEADERS[:-1][:2]+HEADERS[3:]))
         self.assertEqual(r["status"],"BLOCKED")
