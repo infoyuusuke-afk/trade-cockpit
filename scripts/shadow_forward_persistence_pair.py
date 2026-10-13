@@ -7,7 +7,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from shadow_forward_private_commit import CommitResult, evidence_commit_status
+try:
+    from .shadow_forward_private_commit import CommitResult, evidence_commit_status
+except ImportError:  # existing top-level script import remains supported
+    from shadow_forward_private_commit import CommitResult, evidence_commit_status
 
 
 @dataclass(frozen=True)

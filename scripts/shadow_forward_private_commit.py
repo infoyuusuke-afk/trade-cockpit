@@ -8,7 +8,10 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-import shadow_forward_private_path as path_policy
+try:
+    from . import shadow_forward_private_path as path_policy
+except ImportError:  # existing top-level script import remains supported
+    import shadow_forward_private_path as path_policy
 
 
 def _platform_name() -> str:
