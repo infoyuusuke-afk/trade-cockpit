@@ -42,6 +42,41 @@ class ValidateEntryTests(unittest.TestCase):
         self.assertIn("missing_name", problems)
 
 
+class RealLedgerSafetyTests(unittest.TestCase):
+    def test_rejects_nonfinite_real_values(self):
+        for field in ("price", "quantity", "fee"):
+            for value in (float("nan"), float("inf"), float("-inf"), "nan"):
+                errors=pl.validate_entry(make_entry(**{field:value}))
+                self.assertIn(f"non_finite_{field}",errors)
+
+    def test_rejects_negative_or_zero_prices_and_quantities(self):
+        for field in ("price", "quantity"):
+            for value in (-100.0, 0.0):
+                self.assertIn(f"invalid_value_{field}",pl.validate_entry(make_entry(**{field:value})))
+
+    def test_fees_zero_allowed_but_negative_rejected(self):
+        self.assertEqual(pl.validate_entry(make_entry(fee=0.0)),[])
+        self.assertIn("invalid_value_fee",pl.validate_entry(make_entry(fee=-0.01)))
+
+    def test_invalid_real_execution_date_rejected(self):
+        self.assertIn("invalid_executed_at",pl.validate_entry(make_entry(executed_at="not-a-date")))
+        self.assertIn("invalid_executed_at",pl.validate_entry(make_entry(executed_at="2026-02-30 09:00:00")))
+
+    def test_boolean_not_a_valid_financial_number(self):
+        self.assertIn("non_numeric_price",pl.validate_entry(make_entry(price=True)))
+
+    def test_reconciliation_status_does_not_accept_unverified_pass(self):
+        self.assertIn("invalid_reconciliation_status",pl.validate_entry(make_entry(reconciliation_status="PASS")))
+        self.assertEqual(pl.validate_entry(make_entry(reconciliation_status="未照合")),[])
+
+    def test_rejected_financial_entry_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/"ledger.jsonl"
+            with self.assertRaises(ValueError):
+                pl.append_entry(make_entry(price=float("nan")),path=path)
+            self.assertFalse(path.exists())
+
+
 class NormalizeEntryTests(unittest.TestCase):
     def test_generates_trade_id_when_absent(self):
         record = pl.normalize_entry(make_entry())

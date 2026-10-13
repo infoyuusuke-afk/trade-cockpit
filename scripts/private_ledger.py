@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -67,13 +68,34 @@ def validate_entry(entry: dict) -> list[str]:
     side = entry.get("side")
     if side is not None and side not in VALID_SIDES:
         problems.append(f"invalid_side:{side}")
+    # Real-trade records must never accept NaN/Inf, negative fees or
+    # impossible prices/quantities. Keep legacy finite numeric strings valid.
     for numeric_field in ("price", "quantity", "fee"):
         value = entry.get(numeric_field)
-        if value is not None:
-            try:
-                float(value)
-            except (TypeError, ValueError):
-                problems.append(f"non_numeric_{numeric_field}")
+        if value is None:
+            continue
+        try:
+            if isinstance(value, bool):
+                raise ValueError("boolean is not a price or quantity")
+            number = float(value)
+        except (TypeError, ValueError, OverflowError):
+            problems.append(f"non_numeric_{numeric_field}")
+            continue
+        if not math.isfinite(number):
+            problems.append(f"non_finite_{numeric_field}")
+        elif number < 0 or (numeric_field != "fee" and number == 0):
+            problems.append(f"invalid_value_{numeric_field}")
+    if not isinstance(entry.get("executed_at"), str):
+        problems.append("invalid_executed_at")
+    else:
+        try:
+            observed_time = datetime.fromisoformat(entry["executed_at"])
+            # Legacy naive JST entry format is supported for display only.
+            # Reconciliation never treats it as independent execution proof.
+        except (ValueError, TypeError):
+            problems.append("invalid_executed_at")
+    if entry.get("reconciliation_status") not in (None, *RECONCILIATION_STATUSES):
+        problems.append("invalid_reconciliation_status")
     return problems
 
 
