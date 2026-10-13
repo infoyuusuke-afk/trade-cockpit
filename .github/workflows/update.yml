@@ -34,12 +34,8 @@ on:
       - "scripts/live_focus.py"
       - "scripts/investor_regime.py"
       - "tests/test_investor_regime.py"
-      - "investor_regime.json"
       - "ms2_live/**"
       - "watchlist.json"
-      - "credit_supply.json"
-      - "kioxia_catalysts.json"
-      - "kioxia_prediction_history.json"
       - "fx_statement_events.json"
       - "buybacks.json"
       - "requirements.txt"
@@ -58,12 +54,17 @@ permissions:
 
 concurrency:
   group: trade-cockpit-writer
+  queue: max
   cancel-in-progress: false
 
 jobs:
   update:
     environment: main-data-writer
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      !(github.event_name == 'push' &&
+        github.actor == 'github-actions[bot]' &&
+        startsWith(github.event.head_commit.message, 'Auto-update trade cockpit'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -71,6 +72,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          ref: main # Resolve current state after acquiring the writer slot.
           ssh-key: ${{ secrets.MAIN_DATA_WRITER_DEPLOY_KEY }}
       - name: Sync latest generated state
         run: git pull --rebase origin main
