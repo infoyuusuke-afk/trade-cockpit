@@ -3431,3 +3431,8 @@ Current repository-only backlog has been reduced to external/actual-machine acce
 - Issue #57 remains open by design: Replay 15-second evidence exists, but the required separate real Claude/MCP `TSE:285A` / `15S` / `Asia/Tokyo` handoff payload and sanitized intake receipt have not been evidenced. Do not substitute another timeframe or synthesize bars.
 - Issue #17 remains open by design: code separates TSE `285A.T` from JNX reference handling and prevents JNX from driving TSE OR/VWAP/EMA signals, but the four-scenario Windows/MS2 acceptance matrix still requires actual-machine evidence.
 - No remaining repository-only step authorizes broker submission, RssOrder, Scheduled Task/autostart activation, private-data publication, or LIVE promotion.
+
+
+## 2026-10-13 strategy expectancy ledger
+
+`scripts/strategy_expectancy_ledger.py` measures one closed-trade cohort at a time. It keeps REAL_FILL separate from VIRTUAL_SIGNAL, keeps TRAIN/TEST/SHADOW/REAL separate, and deducts explicit fees and slippage. Missing costs are excluded rather than treated as zero. Duplicate fills, lookahead, undeclared survivorship, unordered sequences, incomplete MFE/MAE, and samples below 30 leave `expectancy_demonstrated` false. `promotion_eligible` and `real_submit_allowed` stay false. Legacy `paper_trade_history.json` rows do not satisfy the contract. The module does not read a broker and is not wired into the live dashboard.
