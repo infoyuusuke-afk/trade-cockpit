@@ -45,5 +45,13 @@ class PrivateBrokerFilePickerContractTests(unittest.TestCase):
         for dangerous in ("curl ", "Invoke-WebRequest", "git push", "submit_order", "start /B"):
             self.assertNotIn(dangerous,text)
 
+    def test_cmd_probes_python_and_tk_before_any_gui(self):
+        text=(Path(__file__).resolve().parents[1]/"downloads/READ_ONLY_BROKER_CSV_CHECK.cmd").read_text(encoding="utf-8")
+        self.assertEqual(text.count('import sys, tkinter; assert sys.version_info >= (3, 9)'),2)
+        self.assertLess(text.index('py -3 -c'),text.index('py -3 "scripts'))
+        self.assertLess(text.index('python -c'),text.index('python "scripts'))
+        self.assertNotIn("exit /b %errorlevel%",text)
+        self.assertIn("if errorlevel 1 exit /b 2",text)
+
 if __name__=="__main__":
     unittest.main()
