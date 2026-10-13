@@ -1316,7 +1316,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  document.addEventListener("ms2RssUpdate",e=>{const k=e.detail?.kioxia,el=document.getElementById("kio-preopen-stat");if(!el||!k)return;const h=k.preopen_historical;el.textContent=h?(h.ready?`${h.prediction}（n=${h.sample_days}日）`:`蓄積中 ${h.sample_days}/10日`):"統計蓄積中";});
 
  // キオクシアタブの一本化（2026-09-15）: Excel(Kioxia_RSS_Live_Watcher.ps1)がローカルの
- // 127.0.0.1:28581で配信するJSONを直接読み、Excelを開かなくても同じ内容を確認できるようにする。
+ // 127.0.0.1:28582のWatcher専用ポートからJSONを読む。28581はGatewayが使用する。
  // 公開スナップショットは無い（自宅PC上でブラウザを開いた時だけ意味を持つデータのため）。
  async function loadWatcherKioxia(){
   const stateEl=document.getElementById("kio-watcher-state");
@@ -1343,7 +1343,9 @@ document.addEventListener("DOMContentLoaded",()=>{
    Object.entries(cleared).forEach(([id,value])=>put(id,value));
   };
   try{
-   const w=await fetchJson("http://127.0.0.1:28581/kioxia_watcher_live.json?t="+Date.now(),1800);
+   const w=await fetchJson("http://127.0.0.1:28582/kioxia_watcher_live.json?t="+Date.now(),1800);
+   if(w.schema_version!=="kioxia-watcher-1.0"){clearWatcherKioxia("Watcher応答形式不一致・売買利用禁止","専用ポート28582のデータ形式未確認");return}
+
    const parsed=new Date(String(w.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:Infinity,stale=age>60||age< -5;
    if(stale){clearWatcherKioxia("データ停止（60秒超未更新）","最終更新 "+(w.updated_at||"不明")+"／売買利用禁止");return}
    const yen1=v=>v==null?"—":Number(v).toLocaleString("ja-JP")+"円";
