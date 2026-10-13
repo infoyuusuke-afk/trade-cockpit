@@ -72,7 +72,8 @@ def inspect_header(path: Path):
     # Only aggregate counts + known public schema names, never the actual
     # unknown header values (which can contain private content).
     return {"schema_version":"broker-jp-header-candidate-v1",
-            "status":"JP_HEADER_CANDIDATE_ONLY" if family=="TRADE_HISTORY_LEGACY_CANDIDATE" and not duplicate else "BLOCKED",\n            "format_family_candidate":family,
+            "status":"JP_HEADER_CANDIDATE_ONLY" if family=="TRADE_HISTORY_LEGACY_CANDIDATE" and not duplicate else "BLOCKED",
+            "format_family_candidate":family,
             "encoding_candidate":encoding,"columns_count":len(names),
             "recognized_column_count":len(matching),
             "missing_known_fields":sorted(required_missing),
