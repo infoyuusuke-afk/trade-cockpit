@@ -22,7 +22,7 @@ class PrivateBrokerCSVPreflightTests(unittest.TestCase):
     def write(self,rows,filename="test.csv",fields=FIELDS):
         path=self.directory/filename
         with path.open("w",newline="",encoding="utf-8") as handle:
-            wr=csv.DictWriter(handle,fieldnames=fields)
+            wr=csv.DictWriter(handle,fieldnames=fields,extrasaction="ignore")
             wr.writeheader()
             wr.writerows(rows)
         return path
