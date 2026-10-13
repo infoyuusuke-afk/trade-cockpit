@@ -37,6 +37,13 @@ def _push_trigger_block(text: str) -> str | None:
     return match.group(0) if match else None
 
 
+def _has_main_job_guard(text: str) -> bool:
+    return bool(re.search(
+        r"(?m)^\s*if:(?: >-\n\s+| )github\.ref == 'refs/heads/main'",
+        text,
+    ))
+
+
 class AutoCommitWorkflowScopeTest(unittest.TestCase):
     def test_self_committing_workflows_are_main_only(self):
         offenders = []
@@ -65,7 +72,7 @@ class AutoCommitWorkflowScopeTest(unittest.TestCase):
             checks = {
                 "contents_read": bool(re.search(r"permissions:\s*\n\s*contents:\s*read", text)),
                 "environment": "environment: main-data-writer" in text,
-                "main_job_guard": "if: github.ref == 'refs/heads/main'" in text,
+                "main_job_guard": _has_main_job_guard(text),
                 "deploy_key": "MAIN_DATA_WRITER_DEPLOY_KEY" in text,
             }
             if not all(checks.values()):
