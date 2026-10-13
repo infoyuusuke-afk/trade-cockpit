@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-13 17:22:56 JST",
+  "updated_at": "2026-10-13 17:54:46 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -4592,22 +4592,6 @@
       "already_watched": false
     },
     {
-      "code": "7259",
-      "name": "Aisin Corporation",
-      "exchange": "TSE",
-      "price": 2196.5,
-      "change_pct": 0.5493247882810712,
-      "volume": 2899500,
-      "relative_volume": 1.209823794244418,
-      "atr_pct": 2.03,
-      "vwap": 2188,
-      "high": 2209.5,
-      "low": 2158,
-      "market_cap": 1573343725647,
-      "sector": "Producer Manufacturing",
-      "already_watched": false
-    },
-    {
       "code": "6361",
       "name": "Ebara Corporation",
       "exchange": "TSE",
@@ -4620,6 +4604,22 @@
       "high": 4682,
       "low": 4556,
       "market_cap": 2188770681152,
+      "sector": "Producer Manufacturing",
+      "already_watched": false
+    },
+    {
+      "code": "7259",
+      "name": "Aisin Corporation",
+      "exchange": "TSE",
+      "price": 2196.5,
+      "change_pct": 0.5493247882810712,
+      "volume": 2899500,
+      "relative_volume": 1.209823794244418,
+      "atr_pct": 2.03,
+      "vwap": 2188,
+      "high": 2209.5,
+      "low": 2158,
+      "market_cap": 1573343725647,
       "sector": "Producer Manufacturing",
       "already_watched": false
     },
