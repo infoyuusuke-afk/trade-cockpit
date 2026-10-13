@@ -2836,12 +2836,33 @@ document.addEventListener("DOMContentLoaded",()=>{
   const stateEl=document.getElementById("kio-watcher-state");
   if(!stateEl)return;
   const put=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};
+  // Watcher is display-only, but stale values must never retain old signal,
+  // entry/stop levels or board data after a timeout or failed local fetch.
+  const clearWatcherKioxia=(status,source)=>{
+   stateEl.textContent=status;
+   const cleared={
+    "kio-watcher-source":source,
+    "kio-watcher-signal":"無効・データ待ち",
+    "kio-watcher-conditions":"更新未確認・売買利用禁止",
+    "kio-watcher-entry":"条件未成立",
+    "kio-watcher-target":"1R／2R —",
+    "kio-watcher-under":"—",
+    "kio-watcher-flow":"—",
+    "kio-watcher-tick":"データ待ち",
+    "kio-watcher-board":"データ待ち",
+    "kio-watcher-bias":"データ待ち",
+    "kio-watcher-stopzone":"データ待ち",
+    "kio-watcher-pts":"未取得"
+   };
+   Object.entries(cleared).forEach(([id,value])=>put(id,value));
+  };
   try{
    const w=await fetchJson("http://127.0.0.1:28581/kioxia_watcher_live.json?t="+Date.now(),1800);
-   const parsed=new Date(String(w.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:999999,stale=age>60;
-   if(stale){stateEl.textContent="データ停止（60秒超未更新）";put("kio-watcher-conditions","");return}
+   const parsed=new Date(String(w.updated_at||"").replace(" ","T")),age=Number.isFinite(parsed.getTime())?(Date.now()-parsed.getTime())/1000:Infinity,stale=age>60||age< -5;
+   if(stale){clearWatcherKioxia("データ停止（60秒超未更新）","最終更新 "+(w.updated_at||"不明")+"／売買利用禁止");return}
    const yen1=v=>v==null?"—":Number(v).toLocaleString("ja-JP")+"円";
    stateEl.textContent=`${esc(w.signal||"判定待ち")}／${esc(w.state||"")}`;
+   put("kio-watcher-signal",w.signal||"判定待ち");
    document.getElementById("kio-watcher-source").textContent=`${w.updated_at}／${w.source||"Excel Watcher"}`;
    put("kio-watcher-conditions",`価格${esc(w.conditions?.price)}・出来高${esc(w.conditions?.volume)}・EMA${esc(w.conditions?.ema)}・${esc(w.conditions?.or15)}`);
    put("kio-watcher-entry",w.entry_price!=null?`発動 ${yen1(w.entry_price)} ／ 損切 ${yen1(w.stop_price)}`:"条件未成立");
@@ -2854,8 +2875,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    put("kio-watcher-stopzone",esc(w.stop_zone_text||"データ待ち"));
    put("kio-watcher-pts",w.pts_price!=null?`${yen1(w.pts_price)}／前日比${esc(w.pts_change_pct_text||"—")}／気配${esc(w.pts_quote_text||"—")}（${esc(w.pts_time_text||"—")}）`:"未取得");
   }catch(e){
-   stateEl.textContent="Excel Watcher未接続（自宅PC上でのみ表示されます）";
-   document.getElementById("kio-watcher-source").textContent="http://127.0.0.1:28581 へ接続できません";
+   clearWatcherKioxia("Excel Watcher未接続・売買利用禁止","ローカルWatcherへ接続できません");
   }
  }
  loadMs2Live(); setInterval(loadMs2Live,5000);
