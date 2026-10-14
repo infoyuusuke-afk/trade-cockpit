@@ -1,0 +1,38 @@
+name: MS2 Collector safe append offline acceptance
+on:
+  pull_request:
+    paths:
+      - ms2_live/MS2_RSS_100_Collector.ps1
+      - tests/ms2_collector_safe_append_fault.ps1
+      - tests/test_ms2_collector_safe_append_patch.py
+      - docs/MS2_COLLECTOR_SAFE_APPEND_OFFLINE_V1.md
+      - .github/workflows/ms2-collector-safe-append-offline.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static-regression:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Actual Collector source static invariants
+        shell: bash
+        run: python -m unittest discover -s tests -p 'test_ms2_collector_safe_append_patch.py' -v
+
+  windows-ps51-fault:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse and inject faults only in actual Collector append function
+        shell: powershell
+        run: |
+          Write-Output "WIN_PS_VERSION=$($PSVersionTable.PSVersion)"
+          .\tests\ms2_collector_safe_append_fault.ps1 -CollectorPath .\ms2_live\MS2_RSS_100_Collector.ps1
