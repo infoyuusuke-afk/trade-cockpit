@@ -248,5 +248,24 @@ class MS2ReceiptContractTests(unittest.TestCase):
         self.assertEqual(self.assess(caps, recs), self.assess(list(reversed(caps)), list(reversed(recs))))
 
 
+    def test_unhashable_stream_fails_closed(self):
+        caps, recs = fixture()
+        caps[0]["stream"] = ["MARKET_SNAPSHOT"]
+        result = self.assess(caps, recs)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn("STREAM_INVALID", result["reason_counts"])
+
+    def test_unhashable_receipt_phase_fails_closed(self):
+        caps, recs = fixture()
+        recs[0]["phase"] = ["QUEUED"]
+        result = self.assess(caps, recs)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn("RECEIPT_PHASE_INVALID", result["reason_counts"])
+
+    def test_bad_input_container_fails_closed(self):
+        result = c.evaluate({"not": "a list"}, [], health())
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn("INPUT_COLLECTION_INVALID", result["reason_counts"])
+
 if __name__ == "__main__":
     unittest.main()
