@@ -11,11 +11,10 @@ Python, does not open a pipe, and does not take a file lock.
 
 A synchronous ``python.exe`` or pipe on every poll is not this design.
 
-The offline writer no longer imports ``fcntl`` at module scope. It can
-persist one already packed 2048-byte record on Windows and Linux. The
-spawned handoff worker still imports ``fcntl``, so that process is not
-started on Windows. ``SharedMemory.unlink`` remains a no-op there. A GitHub
-Windows runner is not the owner PC. Power-loss durability is not claimed.
+The offline bridge uses the same lifecycle and spawned durable worker on
+Windows and Linux. Windows mappings disappear only when the last handle
+closes; no attached process may unlink a mapping. A GitHub runner is not the
+owner PC. Power-loss durability and Issue #356 IPC integrity remain gates.
 """
 from __future__ import annotations
 
@@ -138,8 +137,8 @@ def bridge_contract() -> dict:
         "hard_realtime_reason": "CPYTHON_USERSPACE_ON_GENERAL_PURPOSE_OS",
         "live_watcher_connection": "P0_BLOCKED",
         "durable_writer_on_windows": "OFFLINE_IMPLEMENTED",
-        "durable_writer_via_handoff_worker": "P0_BLOCKED",
-        "durable_writer_blocker": "HANDOFF_WORKER_STILL_IMPORTS_FCNTL",
+        "durable_writer_via_handoff_worker": "OFFLINE_IMPLEMENTED",
+        "durable_writer_blocker": None,
         "durable_writer_owner_pc": "NOT_VERIFIED",
         "power_loss_durability": "NOT_VERIFIED",
         "powershell_memory_mapped_file": "NOT_VERIFIED",
@@ -278,6 +277,7 @@ class BridgeSession:
         self._shm = None
         self._process = None
         self._lock_fd = None
+        self._owns_mapping = False
         self._stopped = False
         self._generation = 0
         self.map_name = ""
@@ -367,11 +367,13 @@ class BridgeSession:
                 self._process.kill()
                 killed = True
                 self._process.join(0.05)
+        exit_verified = self._process is None or not self._process.is_alive()
         self._stopped = True
-        self.status = "STOPPED"
+        self.status = "STOPPED" if exit_verified else "STOP_PENDING"
         self._close_handles()
         return {
-            "status": "STOPPED",
+            "status": self.status,
+            "worker_exit_verified": exit_verified,
             "killed": killed,
             "elapsed_s": time.monotonic() - started,
             "timeout_s": timeout_s,
@@ -380,99 +382,20 @@ class BridgeSession:
         }
 
     def _close_handles(self) -> None:
-        if self._shm is not None:
-            name = self._shm
-            self._shm = None
-            name.close()
-            try:
-                name.unlink()
-            except FileNotFoundError:
-                pass
-        if self._lock_fd is not None:
-            fd = self._lock_fd
-            self._lock_fd = None
-            try:
-                import fcntl
-                fcntl.flock(fd, fcntl.LOCK_UN)
-            except OSError:
-                pass
-            os.close(fd)
+        from scripts.ms2_nonblocking_handoff import HandoffSession
+        HandoffSession._close_handles(self)
 
 
-def start_bridge(repo_root, relative: str | None = None, *, enabled: bool = False, fault: int = 0) -> BridgeSession:
-    """Start the spawned worker only when ``enabled`` is exactly True.
-
-    The default creates no directory and no process. Windows cannot import the
-    pinned writer, so that platform returns P0_BLOCKED without a retry.
-    """
-    if enabled is not True or not relative:
-        return BridgeSession("DISABLED", "SIDECAR_DISABLED")
-    try:
-        from scripts.ms2_nonblocking_handoff import _quarantine_unpublished, _worker_entry
-    except ModuleNotFoundError as exc:
-        if getattr(exc, "name", None) != "fcntl":
-            raise
-        blocked = BridgeSession("P0_BLOCKED", "HANDOFF_IMPORTS_FCNTL")
-        return blocked
-    root = Path(repo_root)
-    runtime = root / "data" / "private" / "ms2_sidecar" / "runtime"
-    runtime.mkdir(parents=True, exist_ok=True)
-    os.chmod(runtime, 0o700)
-    unpublished = runtime / "unpublished"
-    unpublished.mkdir(exist_ok=True)
-    lock_path = runtime / "ps_bridge.lock"
-    fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
-    import fcntl
-    try:
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
-        os.close(fd)
-        return BridgeSession("ALREADY_RUNNING", "DUPLICATE_START")
-    generation = (time.monotonic_ns() & ((1 << 63) - 1)) or 1
-    discarded = _quarantine_unpublished(root, generation)
-    name = _map_name()
-    try:
-        shm = shared_memory.SharedMemory(create=True, size=SHM_SIZE, name=name)
-    except Exception:
-        fcntl.flock(fd, fcntl.LOCK_UN)
-        os.close(fd)
-        failed = BridgeSession("START_FAILED", "MAPPING_CREATE_FAILED")
-        return failed
-    buf = shm.buf
-    buf[:] = b"\0" * SHM_SIZE
-    stamp_header(buf, generation)
-    _store(buf, OFF_STALE_DISCARDED, discarded)
-    _store(buf, OFF_FAULT, int(fault))
-    session = BridgeSession("STARTING", "STARTING")
-    session._shm = shm
-    session._lock_fd = fd
-    session._generation = generation
-    session.map_name = shm.name
-    from multiprocessing import get_context
-    context = get_context(START_METHOD)
-    process = context.Process(
-        target=_worker_entry,
-        args=(shm.name, str(root), relative),
-        daemon=False,
-    )
-    try:
-        process.start()
-    except Exception:
-        session.status = "START_FAILED"
-        session.reason = "WORKER_START_FAILED"
-        session.stop(0.05)
-        return session
-    session._process = process
-    deadline = time.monotonic() + 2
-    while time.monotonic() < deadline:
-        if _load(buf, OFF_HEARTBEAT) and process.is_alive():
-            session.status = "STARTED"
-            session.reason = "STARTED"
-            return session
-        time.sleep(0.01)
-    session.status = "START_FAILED"
-    session.reason = "WORKER_START_FAILED"
-    session.stop(0.05)
+def start_bridge(repo_root, relative: str | None = None, *, enabled: bool = False,
+                 fault: int = 0) -> BridgeSession:
+    """Reuse one cross-platform owner lifecycle; never start in the poll path."""
+    from scripts.ms2_nonblocking_handoff import start_handoff
+    owned = start_handoff(repo_root, relative, enabled=enabled, fault=fault, map_name=_map_name())
+    session = BridgeSession(owned.status, owned.reason)
+    session.__dict__.update(owned.__dict__)
+    # Transfer only handles created by this owner, never another map's handles.
+    owned._shm = owned._process = owned._lock_fd = None
+    owned._owns_mapping = False
     return session
 
 
