@@ -10,8 +10,7 @@ The producer path does not take a lock, does not call ``json.dumps``, and
 does not call a blocking write. Queue capacity is fixed. When it is full the
 incoming record is dropped and counted. The worker never reads Excel.
 The 2048-byte slot layout lives in ``scripts/ms2_bridge_record.py`` so a
-PowerShell producer can share it without importing this module's ``fcntl``
-writer.
+PowerShell producer shares the same slot with the spawned durable worker.
 
 This is not a hard real-time guarantee. CPython on a general-purpose OS can
 still be delayed by the scheduler. Live watcher connection stays blocked.
@@ -20,7 +19,6 @@ from __future__ import annotations
 
 import ctypes
 import errno
-import fcntl
 import hashlib
 import json
 import os
@@ -34,7 +32,10 @@ from multiprocessing import shared_memory
 from pathlib import Path
 
 from scripts.ms2_bridge_record import RECORD_SIZE, pack_capture, unpack_capture
-from scripts.ms2_offline_observation_writer import record_captured_observation
+from scripts.ms2_offline_observation_writer import (
+    record_captured_observation, _lock_native, _unlock_native,
+    resolve_write_path, _is_reparse, exclusive_writer_lock,
+)
 
 HANDOFF_VERSION = "ms2-nonblocking-handoff-0.1"
 AUDITED_MAIN_SHA = "b235fde33a47975ca771e3d6c2b4d0e4b613d600"
@@ -231,7 +232,8 @@ def _classify(report: dict) -> str:
     return "FAIL_CLOSED"
 
 
-def _worker_loop(buf, repo_root: str, relative: str) -> None:
+def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = None) -> None:
+    generation = _load(buf, _OFF_GENERATION) if generation is None else generation
     _store(buf, _OFF_WORKER_PID, os.getpid())
     _store(buf, _OFF_HEARTBEAT, time.monotonic_ns())
     while True:
@@ -254,6 +256,14 @@ def _worker_loop(buf, repo_root: str, relative: str) -> None:
             continue
         write_index = _load(buf, _OFF_WRITE)
         read_index = _load(buf, _OFF_READ)
+        header = bytes(buf[176:188])
+        expected = b"NBH1" + bytes((1, QUEUE_CAPACITY)) + struct.pack("<HI", RECORD_SIZE, SHM_SIZE)
+        if (_load(buf, _OFF_GENERATION) != generation or header != expected
+                or read_index > write_index or write_index - read_index > QUEUE_CAPACITY):
+            _add(buf, _OFF_FAIL_CLOSED)
+            _store(buf, _OFF_FLAGS, flags | _FLAG_KILL)
+            _reason(buf, "IPC_HEADER_CORRUPT")
+            return
         if write_index == read_index or fault == FAULT_HOLD:
             time.sleep(0.002)
             continue
@@ -291,15 +301,47 @@ def _worker_loop(buf, repo_root: str, relative: str) -> None:
         _store(buf, _OFF_READ, read_index + 1)
 
 
-def _worker_entry(shm_name: str, repo_root: str, relative: str) -> None:
-    shm = shared_memory.SharedMemory(name=shm_name)
+def _worker_entry(shm_name: str, repo_root: str, relative: str, generation: int | None = None) -> None:
+    # The child holds a separate lease. If its owner crashes, a new owner
+    # cannot start until this worker exits, even while disk IO is stalled.
+    runtime = Path(repo_root) / "data/private/ms2_sidecar/runtime"
+    fd = _take_lifecycle_lock(runtime / "worker.lock")
+    shm = None
     try:
-        _worker_loop(shm.buf, repo_root, relative)
+        shm = shared_memory.SharedMemory(name=shm_name)
+        _worker_loop(shm.buf, repo_root, relative, generation)
     finally:
-        shm.close()
+        if shm is not None:
+            shm.close()  # Attached worker never unlinks someone else's mapping.
+        _drop_lifecycle_lock(fd)
+
+
+def _take_lifecycle_lock(path: Path) -> int:
+    if _is_reparse(path):
+        raise ValueError("PRIVATE_PATH_LINK")
+    fd = os.open(path, os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        _lock_native(fd)
+    except BaseException:
+        os.close(fd)
+        raise
+    return fd
+
+
+def _drop_lifecycle_lock(fd: int) -> None:
+    try:
+        _unlock_native(fd)
+    finally:
+        os.close(fd)
 
 
 def _quarantine_unpublished(root: Path, generation: int) -> int:
+    private = root / "data/private/ms2_sidecar"
+    with exclusive_writer_lock(private):
+        return _quarantine_unpublished_locked(root, generation)
+
+
+def _quarantine_unpublished_locked(root: Path, generation: int) -> int:
     private = root / "data" / "private" / "ms2_sidecar"
     if not private.exists():
         return 0
@@ -335,6 +377,7 @@ class HandoffSession:
         self._shm = None
         self._process = None
         self._lock_fd = None
+        self._owns_mapping = False
         self._refused = 0
         self._invalid = 0
         self._timezone_refused = 0
@@ -486,72 +529,88 @@ class HandoffSession:
 
     def _close_handles(self) -> None:
         if self._shm is not None:
-            self._shm.close()
-            try:
-                self._shm.unlink()
-            except FileNotFoundError:
-                pass
+            shm = self._shm
             self._shm = None
+            shm.close()
+            if self._owns_mapping and os.name != "nt":
+                try:
+                    shm.unlink()
+                except FileNotFoundError:
+                    pass
+            self._owns_mapping = False
         if self._lock_fd is not None:
-            try:
-                fcntl.flock(self._lock_fd, fcntl.LOCK_UN)
-            except OSError:
-                pass
-            os.close(self._lock_fd)
+            fd = self._lock_fd
             self._lock_fd = None
+            _drop_lifecycle_lock(fd)
 
 
-def start_handoff(repo_root, relative: str | None = None, *, enabled: bool = False, fault: int = FAULT_NONE) -> HandoffSession:
-    """Start the worker only when ``enabled`` is exactly True. The default writes nothing."""
+def start_handoff(repo_root, relative: str | None = None, *, enabled: bool = False,
+                  fault: int = FAULT_NONE, map_name: str | None = None) -> HandoffSession:
+    """Offline startup only. No lock wait, no retry, one spawn, bounded readiness."""
     if enabled is not True or not relative:
         return HandoffSession("DISABLED", "SIDECAR_DISABLED")
-    root = Path(repo_root)
-    runtime = root / "data" / "private" / "ms2_sidecar" / "runtime"
-    runtime.mkdir(parents=True, exist_ok=True)
-    os.chmod(runtime, 0o700)
-    unpublished = runtime / "unpublished"
-    unpublished.mkdir(exist_ok=True)
-    lock_path = runtime / "handoff.lock"
-    fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
-    try:
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
-        os.close(fd)
-        session = HandoffSession("ALREADY_RUNNING", "DUPLICATE_START")
-        return session
-    generation = time.monotonic_ns() & ((1 << 64) - 1)
-    discarded = _quarantine_unpublished(root, generation)
-    name = "n" + uuid.uuid4().hex[:16]
-    shm = shared_memory.SharedMemory(create=True, size=SHM_SIZE, name=name)
-    buf = shm.buf
-    buf[:] = b"\0" * SHM_SIZE
-    _store(buf, _OFF_GENERATION, generation)
-    _store(buf, _OFF_STALE_DISCARDED, discarded)
-    _store(buf, _OFF_FAULT, int(fault))
     session = HandoffSession("STARTING", "STARTING")
-    session._shm = shm
-    session._lock_fd = fd
-    session._repo = str(root)
-    context = get_context("spawn")
-    process = context.Process(target=_worker_entry, args=(name, str(root), relative), daemon=False)
     try:
-        process.start()
-    except Exception:
+        path = resolve_write_path(repo_root, relative)
+        root = Path(repo_root).resolve()
+        runtime = path.parent / "runtime"
+        if _is_reparse(runtime) or _is_reparse(runtime / "unpublished"):
+            raise ValueError("PRIVATE_PATH_LINK")
+        runtime.mkdir(parents=True, exist_ok=True)
+        os.chmod(runtime, 0o700)
+        (runtime / "unpublished").mkdir(exist_ok=True)
+        # Shared by both entry points: no parallel bridge/handoff owners.
+        session._lock_fd = _take_lifecycle_lock(runtime / "handoff.lock")
+        probe_fd = _take_lifecycle_lock(runtime / "worker.lock")
+        _drop_lifecycle_lock(probe_fd)
+        generation = (time.monotonic_ns() & ((1 << 63) - 1)) or 1
+        discarded = _quarantine_unpublished(root, generation)
+        name = map_name or ("b" + uuid.uuid4().hex[:11])
+        # create=True refuses collisions. We never attach/unlink a colliding map.
+        shm = shared_memory.SharedMemory(create=True, size=SHM_SIZE, name=name)
+        session._shm = shm
+        session._owns_mapping = True
+        session._generation = generation
+        session.map_name = shm.name
+        session._repo = str(root)
+        buf = shm.buf
+        buf[:] = b"\0" * SHM_SIZE
+        from scripts.ms2_ps_python_bridge import stamp_header
+        stamp_header(buf, generation)
+        _store(buf, _OFF_STALE_DISCARDED, discarded)
+        _store(buf, _OFF_FAULT, int(fault))
+        context = get_context("spawn")
+        process = context.Process(target=_worker_entry, args=(name, str(root), relative, generation), daemon=False)
+        try:
+            process.start()
+        except Exception:
+            session.reason = "WORKER_START_FAILED"
+            session._close_handles()
+            session.status = "START_FAILED"
+            return session
+        session._process = process
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline:
+            if _load(buf, _OFF_HEARTBEAT) and process.is_alive():
+                session.status = "STARTED"
+                session.reason = "STARTED"
+                return session
+            if not process.is_alive():
+                break
+            time.sleep(0.01)
+        session.stop(0.05)
         session.status = "START_FAILED"
         session.reason = "WORKER_START_FAILED"
-        session.stop(0.05)
         return session
-    session._process = process
-    deadline = time.monotonic() + 2
-    while time.monotonic() < deadline:
-        if _load(buf, _OFF_HEARTBEAT) and process.is_alive():
-            session.status = "STARTED"
-            session.reason = "STARTED"
-            return session
-        time.sleep(0.01)
-    session.status = "START_FAILED"
-    session.reason = "WORKER_START_FAILED"
-    session.stop(0.05)
+    except BlockingIOError:
+        session._close_handles()
+        session.status, session.reason = "ALREADY_RUNNING", "DUPLICATE_START"
+    except FileExistsError:
+        session._close_handles()
+        session.status, session.reason = "START_FAILED", "MAPPING_CREATE_FAILED"
+    except (OSError, ValueError):
+        session._close_handles()
+        session.status, session.reason = "START_FAILED", "STARTUP_REFUSED"
     return session
 
 

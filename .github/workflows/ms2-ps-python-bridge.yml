@@ -16,6 +16,8 @@ jobs:
   linux-offline:
     runs-on: ubuntu-latest
     steps:
+      - name: Preserve pinned bytes
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -24,6 +26,8 @@ jobs:
   windows-synthetic:
     runs-on: windows-latest
     steps:
+      - name: Preserve pinned bytes
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:

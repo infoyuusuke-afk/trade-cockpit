@@ -6,7 +6,7 @@ import time
 import unittest
 from pathlib import Path
 
-import fcntl
+from scripts import ms2_offline_observation_writer as writer_lock
 
 from scripts.ms2_nonblocking_handoff import (
     DROP_POLICY,
@@ -255,18 +255,18 @@ class NonblockingHandoffTests(unittest.TestCase):
 
         json.dumps = boom
         calls = {"flock": 0}
-        real_flock = fcntl.flock
+        real_flock = writer_lock._lock_native
 
-        def counting_flock(fd, op):
+        def counting_flock(fd):
             calls["flock"] += 1
-            return real_flock(fd, op)
+            return real_flock(fd)
 
-        fcntl.flock = counting_flock
+        writer_lock._lock_native = counting_flock
         try:
             item = session.submit(_board(poll_seq=6))
         finally:
             json.dumps = original
-            fcntl.flock = real_flock
+            writer_lock._lock_native = real_flock
         self.assertEqual(item["status"], "ACCEPTED")
         self.assertEqual(calls["flock"], 0)
         self.assertFalse(item["blocking_syscall"])
@@ -448,9 +448,12 @@ class NonblockingHandoffTests(unittest.TestCase):
         self.assertFalse(banned & set(_worker_entry.__code__.co_names))
         session = self._start()
         pid = session.metrics()["worker_pid"]
-        command = Path(f"/proc/{pid}/cmdline").read_bytes().lower()
-        self.assertNotIn(b"excel", command)
-        self.assertNotIn(b"kioxia_rss_live_watcher", command)
+        proc_path = Path(f"/proc/{pid}/cmdline")
+        if proc_path.exists():
+            command = proc_path.read_bytes().lower()
+            self.assertNotIn(b"excel", command)
+            self.assertNotIn(b"kioxia_rss_live_watcher", command)
+        self.assertEqual(session._process.name.split("-")[0], "SpawnProcess")
         self.assertEqual(session.metrics()["com_reads_added"], 0)
         self.assertEqual(hashlib.sha256((ROOT / "paper_trade_history.json").read_bytes()).hexdigest(), HISTORY_SHA)
         self.assertEqual(hashlib.sha256((ROOT / "scripts/ms2_watcher_sidecar_contract.py").read_bytes()).hexdigest(), CONTRACT_SHA)

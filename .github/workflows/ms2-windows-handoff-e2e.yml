@@ -1,0 +1,35 @@
+name: MS2 Windows Handoff E2E
+on:
+  pull_request:
+    paths:
+      - 'scripts/ms2_nonblocking_handoff.py'
+      - 'scripts/ms2_ps_python_bridge*'
+      - 'scripts/ms2_offline_observation_writer.py'
+      - 'scripts/ms2_bridge_record.py'
+      - 'tests/test_ms2_*'
+      - 'tests/ms2_handoff_e2e_producer.ps1'
+      - '.github/workflows/ms2-windows-handoff-e2e.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Preserve pinned file bytes
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Offline E2E and lifecycle plus inherited durability fault suite
+        run: python -m unittest tests.test_ms2_windows_handoff_e2e tests.test_ms2_nonblocking_handoff tests.test_ms2_ps_python_bridge tests.test_ms2_windows_durable_writer tests.test_ms2_offline_observation_writer tests.test_ms2_watcher_sidecar_contract tests.test_ms2_watcher_integration_preflight -v
+      - name: PS5.1 binary packing and mapping fault tests
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: .\tests\test_ms2_ps_python_bridge.ps1
