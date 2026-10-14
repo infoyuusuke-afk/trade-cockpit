@@ -29,6 +29,9 @@ def classify(report: Any) -> dict:
         "boundary": "SYNTHETIC_NATIVE_PIPELINE_ONLY",
         "counts": counts,
         "full_boundary": {"n": None, "p99_ms": None, "max_ms": None},
+        "latency_anatomy": {"status": "UNVERIFIED", "n": None, "over_5ms_count": None,
+                            "slowest_full_ms": None, "slowest_components_ms": None,
+                            "largest_measured_component_at_peak": "UNKNOWN"},
         "reasons": [],
         "readback_count_consistent": False,
         "normal_no_drop": False,
@@ -96,6 +99,40 @@ def classify(report: Any) -> dict:
             reasons.append("MAX_FIVE_MS_FAILED")
     else:
         reasons.append("LATENCY_EVIDENCE_MISSING_OR_INVALID")
+    anatomy = report.get("latency_anatomy")
+    if (
+        isinstance(anatomy, dict)
+        and anatomy.get("status") == "SYNTHETIC_SEGMENTS_REPORTED_ONLY"
+        and _nonnegative_int(anatomy.get("n"))
+        and _nonnegative_int(anatomy.get("over_5ms_count"))
+        and _finite_nonnegative(anatomy.get("slowest_full_ms"))
+        and isinstance(anatomy.get("slowest_components_ms"), dict)
+        and anatomy.get("os_root_cause_proven") is False
+        and anatomy.get("production_latency_bound_proven") is False
+    ):
+        components = anatomy["slowest_components_ms"]
+        fields = ("capture_ms", "packing_ms", "submit_ms", "unattributed_ms")
+        if (
+            all(_finite_nonnegative(components.get(k)) for k in fields)
+            and anatomy.get("largest_measured_component_at_peak") in fields
+            and anatomy["over_5ms_count"] <= anatomy["n"]
+            and anatomy["n"] == out["full_boundary"]["n"]
+            and out["full_boundary"]["max_ms"] is not None
+            and abs(anatomy["slowest_full_ms"] - out["full_boundary"]["max_ms"]) <= 0.001
+            and abs(sum(components[k] for k in fields) - anatomy["slowest_full_ms"]) <= 0.051
+        ):
+            out["latency_anatomy"] = {
+                "status": "SYNTHETIC_CORRELATED_TIMING_ONLY",
+                "n": anatomy["n"],
+                "over_5ms_count": anatomy["over_5ms_count"],
+                "slowest_full_ms": anatomy["slowest_full_ms"],
+                "slowest_components_ms": {k: components[k] for k in fields},
+                "largest_measured_component_at_peak": anatomy["largest_measured_component_at_peak"],
+            }
+        else:
+            reasons.append("CORRELATED_STAGE_EVIDENCE_INCONSISTENT")
+    else:
+        reasons.append("CORRELATED_STAGE_EVIDENCE_MISSING")
     for name in ("Writer_fsync", "verified_readback", "receipt_to_verified_readback_upper_bound"):
         item = report.get(name)
         if not isinstance(item, dict) or not _nonnegative_int(item.get("N")) or item["N"] == 0:
@@ -111,7 +148,8 @@ def classify(report: Any) -> dict:
             "PERFORMANCE_STATE_UNAUTHORIZED", "EVIDENCE_CLOSURE_STATE_UNAUTHORIZED",
             "ACTUAL_WRITER_OVERLAP_NOT_OBSERVED", "RESTART_NO_REPLAY_UNVERIFIED",
             "ATTEMPTS_NOT_ACCOUNTED", "ACCEPTED_VS_READBACK_CONFLICT",
-            "LATENCY_EVIDENCE_MISSING_OR_INVALID"}
+            "LATENCY_EVIDENCE_MISSING_OR_INVALID",
+            "CORRELATED_STAGE_EVIDENCE_INCONSISTENT", "CORRELATED_STAGE_EVIDENCE_MISSING"}
     if hard.isdisjoint(reasons) and not any(reason.startswith("COUNT_INVALID_") for reason in reasons):
         out["status"] = "SYNTHETIC_EVIDENCE_CLASSIFIED_ONLY"
     out["reasons"] = sorted(set(reasons))
