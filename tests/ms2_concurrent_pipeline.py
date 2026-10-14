@@ -205,7 +205,7 @@ def run(mode='normal',n=24,native=False):
             assert stopped['worker_exit_verified']
             restarted=start(root)
             try:
-                assert restarted.status=='STARTED'
+                assert restarted.status=='STARTED', restarted.reason
                 assert restarted._generation!=gen
                 time.sleep(.02)
                 assert restarted.metrics()['queued']==0 and restarted.metrics()['durable']==0
@@ -250,6 +250,13 @@ def main():
     p=argparse.ArgumentParser();p.add_argument('--output',default='concurrent372.json');a=p.parse_args()
     modes=('normal','delay','queue_full','gate_busy','permission','partial','before_replace','after_replace','worker_kill','kill','stop','duplicate','receipt_loss')
     if os.name=='nt':modes=(*modes,'producer_kill')
-    results=[run(m,n=100 if m in {'normal','delay'} else 16,native=os.name=='nt') for m in modes]
-    Path(a.output).write_text(json.dumps(results,indent=2));print(json.dumps(results))
+    results=[];failed=False
+    for m in modes:
+        try:r=run(m,n=100 if m in {'normal','delay'} else 16,native=os.name=='nt')
+        except Exception as e:
+            failed=True;r=dict(mode=m,status='FAIL',error=type(e).__name__,detail=str(e),production='P0_BLOCKED')
+        results.append(r)
+        Path(a.output).write_text(json.dumps(results,indent=2))
+        print('CONCURRENT_CASE='+json.dumps(r),flush=True)
+    if failed:raise RuntimeError('CONCURRENT_COHORT_FAILURES_RETAINED')
 if __name__=='__main__':main()
