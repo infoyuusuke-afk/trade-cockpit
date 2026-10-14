@@ -51,7 +51,7 @@ class CollectorPatchSafetyTests(unittest.TestCase):
         self.assertIn("recording_degraded=[bool]$script:ms2RecordFaulted", self.source)
 
     def test_hold_gate_checks_writer_and_missing(self):
-        self.assertIn("$provisionalHoldTop5=if($script:ms2RecordFaulted){@()}else:", self.source)
+        self.assertIn("$provisionalHoldTop5=if($script:ms2RecordFaulted){@()}else{", self.source)
         self.assertIn("@($_.source_missing_fields).Count -eq 0", self.source)
 
     def test_csv_schema_unchanged(self):
