@@ -1,0 +1,29 @@
+name: MS2 receipt contract synthetic audit
+on:
+  pull_request:
+    paths:
+      - scripts/ms2_observation_receipt_contract.py
+      - tests/test_ms2_observation_receipt_contract.py
+      - docs/MS2_OBSERVATION_RECEIPT_CONTRACT_V1.md
+      - .github/workflows/ms2-observation-receipt-offline.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-receipt:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: MS2 offline receipts, source-health, shadow contract regression
+        shell: bash
+        run: |
+          python -m unittest discover -s tests -p 'test_ms2_observation_receipt_contract.py' -v
+          python -m unittest discover -s tests -p 'test_local_source_health_contract.py' -v
