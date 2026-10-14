@@ -137,21 +137,22 @@ foreach($mode in @('normal','writer_blocked','queue_full','gate_held','writer_ki
     $mmf='Local\ms2_synth_'+$nonce
     $mtx='Local\ms2_synth_gate_'+$nonce
     $bus=[SyntheticMs2Bus]::new($mmf,$mtx,$true)
-    $job=$null
+    $workerProcess=$null
     try {
-        $job=Start-Job -ScriptBlock {
-            param($source,$map,$gate,$case)
-            & $source -Worker -MapName $map -MutexName $gate -Mode $case
-        } -ArgumentList $scriptPath,$mmf,$mtx,$mode
+        # A real external Windows PowerShell process with an independently
+        # killable PID. Never wait on a PowerShell background-job pipeline.
+        $arguments='-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$scriptPath+'" -Worker -MapName "'+$mmf+'" -MutexName "'+$mtx+'" -Mode "'+$mode+'"'
+        $workerProcess=Start-Process -FilePath (Join-Path $PSHOME 'powershell.exe') -ArgumentList $arguments -PassThru -WindowStyle Hidden
+        Require ($workerProcess.Id -ne $PID) 'DISTINCT_WINDOWS_PROCESS'
         $deadline=[Diagnostics.Stopwatch]::StartNew()
         while($bus.Ready -ne 1 -and $deadline.ElapsedMilliseconds -lt 15000){
-            if($job.State -eq 'Failed'){throw 'WORKER_PROCESS_FAILED_BEFORE_READY'}
+            if($workerProcess.HasExited){throw 'WORKER_PROCESS_EXITED_BEFORE_READY'}
             [Threading.Thread]::Sleep(10)
         }
         Require ($bus.Ready -eq 1) 'WORKER_READY'
         if($mode -eq 'writer_killed') {
-            Stop-Job $job -ErrorAction Stop
-            Require ($job.State -in @('Stopped','Completed','Failed')) 'WORKER_STOPPED'
+            if(-not $workerProcess.HasExited){$workerProcess.Kill()}
+            Require ($workerProcess.WaitForExit(10000)) 'WORKER_TERMINATION_TIMED_OUT'
         } elseif($mode -eq 'writer_blocked' -or $mode -eq 'gate_held' -or $mode -eq 'queue_full') {
             $start=[Diagnostics.Stopwatch]::StartNew()
             while($bus.WorkerState -ne $(if($mode -eq 'gate_held'){1}else{2}) -and $start.ElapsedMilliseconds -lt 4000) {
@@ -210,9 +211,15 @@ foreach($mode in @('normal','writer_blocked','queue_full','gate_held','writer_ki
         }
         $results+=New-Object psobject -Property $line
     } finally {
-        if($null -ne $job) {
-            if($job.State -eq 'Running') {Stop-Job $job -ErrorAction SilentlyContinue}
-            Remove-Job $job -Force -ErrorAction SilentlyContinue
+        if($null -ne $workerProcess) {
+            try {
+                if(-not $workerProcess.HasExited){$workerProcess.Kill()}
+                [void]$workerProcess.WaitForExit(10000)
+            } catch {
+                # Broken worker lifecycle is a fatal test result, never a
+                # claim of safe OS cancellation.
+                throw 'WORKER_CLEANUP_NOT_VERIFIED'
+            } finally {$workerProcess.Dispose()}
         }
         $bus.Dispose()
     }
