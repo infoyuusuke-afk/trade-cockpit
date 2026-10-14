@@ -239,6 +239,7 @@ def evaluate(captures: list[dict], receipts: list[dict],
                 phases["CONFLICT"] += 1
             else:
                 phases["DROPPED_PRE_QUEUE"] += 1
+                reasons["CAPTURE_DROPPED_PRE_QUEUE"] += 1
         elif "QUEUED" not in items:
             phases["CONFLICT"] += 1
             reasons["CLAIM_OR_REJECTION_WITHOUT_QUEUE"] += 1
@@ -257,6 +258,7 @@ def evaluate(captures: list[dict], receipts: list[dict],
                 reasons["REJECTION_BEFORE_QUEUE"] += 1
             else:
                 phases["REJECTED_AFTER_QUEUE"] += 1
+                reasons["CAPTURE_REJECTED_AFTER_QUEUE"] += 1
         else:
             phases["UNKNOWN_QUEUED_NOT_PERSISTED"] += 1
             reasons["PERSISTENCE_UNCONFIRMED"] += 1
