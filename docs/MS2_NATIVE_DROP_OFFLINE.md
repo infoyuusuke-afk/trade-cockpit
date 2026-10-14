@@ -20,7 +20,7 @@ is preserved. Synthetic records remain NOT_CLOSED and eligible N=0.
 
 Separate 1024-byte evidence mapping, owned and retained by the supervisor.
 It does not change the market payload, queue envelope or hash semantics.
-One PowerShell producer per session, seqlock odd before capture, even after
+One PowerShell producer per session, two mirrored banks; seqlock odd before capture, even after
 reason counters, poll span and first/last UTC Unix-millisecond event clocks.
 Clocks may regress: an invalid snapshot is refused, not normalized.
 Counter/sequence regression, inconsistent totals, torn generation/update
@@ -31,8 +31,9 @@ Supervisor commits OPEN before launching the producer. Every approximately
 10ms it snapshots without locking the producer and writes same-directory
 temporary JSON, flush/fsync, atomic replace (POSIX directory fsync).
 On producer death it commits the last consistent counters with UNKNOWN tail.
-If killed in an odd update, the last complete checkpoint remains a lower
-bound. A DROP between checkpoints survives producer death when the supervisor
+If killed in an odd update, the previous even mirror is readable even when
+the supervisor missed the preceding even window. Checkpoint/mirror counts
+remain a lower bound. A DROP between checkpoints survives producer death when the supervisor
 can still read the retained map; supervisor/disk/IPC failure can lose detail.
 OPEN/RUNNING checkpoints and missing/corrupt checkpoints never mean no gaps.
 Power-loss durability, Windows directory metadata durability, fsync honesty
@@ -60,9 +61,11 @@ PowerShell critical loop. CPU/memory/OS scheduling still interfere.
 N=100 per condition, nearest-rank p50/p95/p99/max, ACCEPTED/DROP separated.
 Full boundary includes capture, packing, bridge submit and shared-evidence
 updates. Capture/packing/submit separately reported. Attach is outside loop;
-cold start includes Bridge/Writer spawn only, excludes PS startup/Add-Type.
+cold_start_ms includes Bridge/Writer spawn only; native_cold_start_ms separately
+includes actual PS process startup, dot-source/Add-Type, attach and preinit
+handshake, with supervisor polling overhead. N=10 across the conditions.
 Disk checkpoints and final downstream persistence wait are separate measures,
-not per-record end-to-end latency. Full process cold start is NOT VERIFIED.
+not per-record end-to-end latency. Owner-machine cold start is NOT VERIFIED.
 Mock price/audio/signal loop spacing includes benchmark pacing and scheduling;
 no real audio/price service accuracy or hard real-time claim. 5ms hard maximum
 is NOT MET unless proven; this work always keeps production P0_BLOCKED.

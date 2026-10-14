@@ -22,7 +22,7 @@ class NativeDropTests(unittest.TestCase):
             self.assertEqual(r['evidence']['outcome'],'PRODUCER_CRASH')
             self.assertEqual(r['evidence']['tail'],'UNKNOWN')
             self.assertEqual(r['evidence']['snapshot']['total'],1)
-            self.assertEqual(r['evidence']['snapshot_integrity'],'TORN_OR_INVALID')
+            self.assertEqual(r['evidence']['snapshot_integrity'],'VERIFIED')
     def test_queue_busy_kill_writer_and_generation_negative(self):
         for mode in ('queue_full','gate_busy','kill','writer_stopped','old_generation','corrupt'):
             r=run_case(mode,n=20)
@@ -30,9 +30,9 @@ class NativeDropTests(unittest.TestCase):
             self.assertEqual(r['evidence']['snapshot']['total'],20)
             self.assertGreater(r['DROP']['full_ms']['N'],0)
     def test_actual_drop_counters_survive_hard_killed_ps_producer(self):
-        r=run_case('gate_busy',n=5,pause='after_drop')
+        r=run_case('invalid',n=5,pause='after_drop')
         self.assertEqual(r['evidence']['outcome'],'PRODUCER_CRASH')
-        self.assertEqual(r['evidence']['snapshot']['counters']['GATE_BUSY']['count'],2)
+        self.assertEqual(r['evidence']['snapshot']['counters']['INVALID']['count'],2)
         self.assertEqual(r['evidence']['snapshot_integrity'],'VERIFIED')
         self.assertEqual(r['evidence']['tail'],'UNKNOWN')
 

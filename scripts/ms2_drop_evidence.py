@@ -18,13 +18,13 @@ REASONS = ('ACCEPTED', 'QUEUE_FULL', 'GATE_BUSY', 'NOT_READY', 'STALE',
 SIZE = 1024
 
 
-def read_snapshot(buf, generation):
-    first = struct.unpack_from('<q', buf, 0)[0]
+def _read_bank(buf, generation, offset):
+    first = struct.unpack_from('<q', buf, offset)[0]
     if first & 1:
         return None
-    raw = bytes(buf[:SIZE])
-    last = struct.unpack_from('<q', buf, 0)[0]
-    values = struct.unpack_from('<128q', raw)
+    raw = bytes(buf[offset:offset+512])
+    last = struct.unpack_from('<q', buf, offset)[0]
+    values = struct.unpack_from('<64q', raw)
     if first != last or values[0] != first or values[1] != generation:
         return None
     total, last_poll, complete = values[2:5]
@@ -42,6 +42,14 @@ def read_snapshot(buf, generation):
                 last_poll=last_poll, producer_complete=bool(complete), counters=counters)
 
 
+def read_snapshot(buf, generation):
+    # The producer mirrors each complete counter bank before beginning the
+    # next poll. Crash during a new odd update retains the previous even bank.
+    candidates=[x for x in (_read_bank(buf,generation,0),_read_bank(buf,generation,512)) if x is not None]
+    if not candidates:return None
+    return max(candidates,key=lambda x:x['version'])
+
+
 class Evidence:
     def __init__(self, root, generation):
         self.root = Path(root).resolve() / 'data/private/ms2_sidecar/drop'
@@ -52,6 +60,7 @@ class Evidence:
         self.shm = shared_memory.SharedMemory(create=True, name='e'+uuid.uuid4().hex[:11], size=SIZE)
         self.shm.buf[:] = b'\0' * SIZE
         struct.pack_into('<q', self.shm.buf, 8, generation)
+        struct.pack_into('<q', self.shm.buf, 520, generation)
         self.previous = None
         self.last = None
         self.checkpoint('OPEN')  # Before producer creation; not on critical loop.

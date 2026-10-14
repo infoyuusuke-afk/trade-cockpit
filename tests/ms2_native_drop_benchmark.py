@@ -45,7 +45,7 @@ def run_case(mode='normal',n=100,pause='none'):
         cold_ms=(time.perf_counter()-cold)*1000
         if session.status!='STARTED': raise RuntimeError(session.reason)
         e=Evidence(tmp,session._generation)
-        cpu=[]
+        cpu=[]; process=None; native_cold_ms=None
         try:
             priority=lower_worker(session._process.pid)
             if mode=='cpu':
@@ -54,10 +54,12 @@ def run_case(mode='normal',n=100,pause='none'):
             command=['powershell.exe','-NoProfile','-File',str(ROOT/'tests/ms2_native_drop_producer.ps1'),
                 '-MapName',session.map_name,'-EvidenceName',e.shm.name,'-Generation',str(e.generation),
                 '-N',str(n),'-Mode',mode,'-PauseAt',pause]
+            ps_start=time.perf_counter()
             process=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
             deadline=time.monotonic()+40; killed=False; checkpoint_times=[]
             while process.poll() is None:
                 if struct.unpack_from('<q',e.shm.buf,40)[0]==1:
+                    native_cold_ms=(time.perf_counter()-ps_start)*1000
                     if mode=='kill': struct.pack_into('<Q',session._shm.buf,32,1)
                     if mode=='gate_busy': struct.pack_into('<I',session._shm.buf,192,1)
                     if mode=='old_generation': struct.pack_into('<Q',session._shm.buf,112,session._generation+1)
@@ -96,6 +98,8 @@ def run_case(mode='normal',n=100,pause='none'):
                 tail='UNKNOWN' if killed else evidence['tail']))
             assert recover(e.path)==evidence
             result=dict(mode=mode,priority=priority,cold_start_ms=cold_ms,
+                native_cold_start_ms=native_cold_ms,CPU_busy_processes=len(cpu),
+                CPU_count=os.cpu_count(),CPU_saturation='NOT_VERIFIED',
                 evidence=evidence,persisted=persisted,jsonl_reread=len(rows),
                 persistence_wait_ms=(time.perf_counter()-disk_wait)*1000,
                 checkpoint_disk=stats(checkpoint_times),ps=aggregate.get('ps'),
@@ -108,6 +112,8 @@ def run_case(mode='normal',n=100,pause='none'):
                 result[state]={key:stats([s[key] for s in samples]) for key in ('capture_ms','packing_ms','submit_ms','full_ms')}
             return result
         finally:
+            if process is not None and process.poll() is None:
+                process.kill();process.wait(timeout=3)
             for p in cpu: p.kill(); p.wait(timeout=3)
             struct.pack_into('<I',session._shm.buf,192,0)
             session.stop(.1); e.close()
@@ -117,6 +123,12 @@ def main():
     parser=argparse.ArgumentParser();parser.add_argument('--output',default='native-drop-latency.json');args=parser.parse_args()
     if os.name=='nt':
         results=[run_case(mode) for mode in ('normal','cpu','queue_full','gate_busy','not_ready','stale','invalid','stop','kill','writer_stopped')]
+        for r in results:
+            assert r['evidence']['snapshot']['total']==100
+            assert r['mock_counts']==[100,100,100]
+            assert r['ACCEPTED']['full_ms']['N']+r['DROP']['full_ms']['N']==100
+            assert r['jsonl_reread']==r['persisted']
+        print('NATIVE_COLD_START='+json.dumps(stats([r['native_cold_start_ms'] for r in results])))
     else: results=[dict(native_ps51='NOT_VERIFIED',production='P0_BLOCKED')]
     Path(args.output).write_text(json.dumps(results,indent=2))
     # Only aggregates; no payload, map names, paths, secrets or raw observations.

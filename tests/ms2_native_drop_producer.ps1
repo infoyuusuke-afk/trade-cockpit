@@ -22,9 +22,14 @@ public sealed class OfflineDropJournal : IDisposable {
     if(count==0) { view.Write(offset+8,poll); view.Write(offset+24,unixMs); }
     view.Write(offset,count+1); view.Write(offset+16,poll); view.Write(offset+32,unixMs);
     view.Write(16,view.ReadInt64(16)+1); view.Write(24,poll);
-    Thread.MemoryBarrier(); view.Write(0,++version);
+    Thread.MemoryBarrier(); view.Write(0,++version); Mirror();
   }
-  public void Complete() { Begin(); view.Write(32,(long)1); Thread.MemoryBarrier(); view.Write(0,++version); }
+  void Mirror() {
+    byte[] bank=new byte[504]; view.ReadArray<byte>(8,bank,0,504);
+    view.Write(512,version-1); Thread.MemoryBarrier();
+    view.WriteArray<byte>(520,bank,0,504);Thread.MemoryBarrier();view.Write(512,version);
+  }
+  public void Complete() { Begin(); view.Write(32,(long)1); Thread.MemoryBarrier(); view.Write(0,++version); Mirror(); }
   public void Dispose() { view.Dispose(); map.Dispose(); }
 }
 '@

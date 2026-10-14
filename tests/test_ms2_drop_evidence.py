@@ -47,9 +47,17 @@ class DropEvidenceTests(unittest.TestCase):
     def test_corrupt_generation_counter_and_regression_refused(self):
         self.event(); self.e.checkpoint()
         struct.pack_into('<q',self.e.shm.buf,16,0)
+        struct.pack_into('<q',self.e.shm.buf,520,25)
         self.assertIsNone(read_snapshot(self.e.shm.buf,23))
         self.assertEqual(self.e.checkpoint()['snapshot_integrity'],'TORN_OR_INVALID')
         self.assertIsNone(read_snapshot(self.e.shm.buf,24))
+    def test_mirrored_complete_bank_survives_next_poll_crash_without_checkpoint(self):
+        self.event();self.e.shm.buf[512:1024]=self.e.shm.buf[:512]
+        struct.pack_into('<q',self.e.shm.buf,0,3)
+        r=self.e.checkpoint('PRODUCER_CRASH')
+        self.assertEqual(r['snapshot']['total'],1)
+        self.assertEqual(r['snapshot_integrity'],'VERIFIED')
+        self.assertEqual(r['tail'],'UNKNOWN')
     def test_truncated_or_tampered_ledger_blocked_no_replay(self):
         self.e.path.write_bytes(b'{"body":')
         self.assertEqual(recover(self.e.path)['state'],'BLOCKED')
