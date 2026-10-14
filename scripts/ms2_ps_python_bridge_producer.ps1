@@ -65,7 +65,15 @@ function ConvertTo-Ms2PsBridgeRecord($Capture) {
             if ($problem) { return New-Ms2PsBridgeRefusal $problem }
         }
     }
-    $parsed = @()
+    # A single reusable descriptor set per capture avoids allocating four
+    # new selector dictionaries at each depth. Descriptors are never mutated.
+    $bridgeFields = @(
+        @{ Key = "AskPrice"; Out = "ask"; Known = "ask_known"; Positive = $true },
+        @{ Key = "BidPrice"; Out = "bid"; Known = "bid_known"; Positive = $true },
+        @{ Key = "AskQty"; Out = "ask_qty"; Known = "ask_qty_known"; Positive = $false },
+        @{ Key = "BidQty"; Out = "bid_qty"; Known = "bid_qty_known"; Positive = $false }
+    )
+    $parsed = New-Object 'System.Collections.Generic.List[hashtable]'
     $expected = 1
     foreach ($item in $levels) {
         $number = $item.Level
@@ -74,12 +82,7 @@ function ConvertTo-Ms2PsBridgeRecord($Capture) {
             return New-Ms2PsBridgeRefusal "LEVEL_SEQUENCE_GAP"
         }
         $row = @{ level = [int]$number; ask = $null; bid = $null; ask_qty = $null; bid_qty = $null; ask_known = $false; bid_known = $false; ask_qty_known = $false; bid_qty_known = $false; read_at = "" }
-        foreach ($pair in @(
-            @{ Key = "AskPrice"; Out = "ask"; Known = "ask_known"; Positive = $true },
-            @{ Key = "BidPrice"; Out = "bid"; Known = "bid_known"; Positive = $true },
-            @{ Key = "AskQty"; Out = "ask_qty"; Known = "ask_qty_known"; Positive = $false },
-            @{ Key = "BidQty"; Out = "bid_qty"; Known = "bid_qty_known"; Positive = $false }
-        )) {
+        foreach ($pair in $bridgeFields) {
             if (-not $item.ContainsKey($pair.Key)) { continue }
             $raw = $item[$pair.Key]
             if ($null -eq $raw) { continue }
@@ -101,7 +104,7 @@ function ConvertTo-Ms2PsBridgeRecord($Capture) {
             if (([string]$readAt).Length -gt 40) { return New-Ms2PsBridgeRefusal "TIMESTAMP_INVALID" }
             $row["read_at"] = [string]$readAt
         }
-        $parsed += $row
+        [void]$parsed.Add($row)
         $expected += 1
     }
     $buffer = New-Object byte[] 2048
