@@ -24,6 +24,7 @@ from scripts import ms2_ipc_integrity as ipc
 from scripts.ms2_bridge_record import pack_capture, unpack_capture
 from scripts.ms2_poll_reconciliation import Ledger, canonical, digest, expected_record
 from tests.ms2_native_drop_benchmark import stats
+from scripts.ms2_native_latency_anatomy import diagnose
 
 ROOT=Path(__file__).resolve().parents[1]
 REL='data/private/ms2_sidecar/concurrent372.jsonl'
@@ -238,7 +239,8 @@ def run(mode='normal',n=24,native=False):
                 drops=sum(e['state']!='ACCEPTED' for e in samples),states=states,concurrent_completion_observed=overlap,
                 close_state='NOT_CLOSED',cold_start=stats(cold),first_warmup=stats([ready['warmup_ms']] if ready else []),
                 prewarm='DISPOSABLE_IPC_NO_WRITER' if native and mode!='cold' else 'NONE',
-                cohorts=cohorts,Worker_processing=stats([e['worker_ms'] for e in worker_events]),
+                cohorts=cohorts,latency_anatomy=diagnose(samples),
+                Worker_processing=stats([e['worker_ms'] for e in worker_events]),
                 Writer_fsync=stats([v for e in worker_events for v in e['fsync_ms']]),
                 receipt_to_verified_readback_upper_bound=stats(latencies),restart_new_generation_no_replay=True,
                 verified_readback=stats(readbacks),ledger_checkpoint=stats(checkpoints),
