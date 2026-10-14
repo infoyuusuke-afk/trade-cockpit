@@ -211,6 +211,15 @@ function Write-Ms2PsBridgeInt64($Accessor, [int64]$Offset, [int64]$Value) {
     [void]$script:Ms2WriteInt64.Invoke($Accessor, @($Offset, $Value))
 }
 
+function Write-Ms2PsBridgeBytes($Accessor, [int64]$Offset, [byte[]]$Bytes) {
+    $arguments = New-Object object[] 4
+    $arguments[0] = $Offset
+    $arguments[1] = $Bytes
+    $arguments[2] = [int]0
+    $arguments[3] = [int]$Bytes.Length
+    [void]$script:Ms2WriteArray.Invoke($Accessor, $arguments)
+}
+
 function Open-Ms2PsBridge([string]$MapName, [int]$Size) {
     $candidates = @($MapName)
     if ($MapName -notmatch '^b[a-f0-9]{11}$') {
@@ -276,9 +285,14 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
         return @{ Status = "REFUSED"; Reason = "RECORD_SIZE"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     }
     $accessor = $Session.Accessor
+    if (($accessor.ReadInt64(32) -band 3) -ne 0) {
+        Write-Ms2PsBridgeInt64 $accessor 144 ($accessor.ReadInt64(144) + 1)
+        return @{ Status = "KILL_SWITCH"; Reason = "KILL_SWITCH"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
+    }
     if (-not (Enter-Ms2PsBridgeGate $Session)) {
         return @{ Status = "REFUSED"; Reason = "PRODUCER_BUSY"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     }
+    $stage = "HEADER"
     try {
         $flags = $accessor.ReadInt64(32)
         if (($flags -band 3) -ne 0) {
@@ -295,6 +309,7 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
             Write-Ms2PsBridgeInt64 $accessor 16 ($accessor.ReadInt64(16) + 1)
             return @{ Status = "DROPPED"; Reason = "DROP_NEWEST"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
         }
+        $stage = "PREFIX"
         $meta = [int64](512 + ($write % 8) * 64)
         Write-Ms2PsBridgeInt64 $accessor $meta 0
         $prefix = New-Object byte[] 24
@@ -304,12 +319,16 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
         $inputBytes = New-Object byte[] 2072
         [Array]::Copy($prefix, 0, $inputBytes, 0, 24)
         [Array]::Copy($Record, 0, $inputBytes, 24, 2048)
+        $stage = "CHECKSUM"
         $sha = [Security.Cryptography.SHA256]::Create()
         try { $digest = $sha.ComputeHash($inputBytes) } finally { $sha.Dispose() }
-        [void]$script:Ms2WriteArray.Invoke($accessor, @([long]($meta + 8), $prefix, [int]0, [int]24))
-        [void]$script:Ms2WriteArray.Invoke($accessor, @([long]($meta + 32), $digest, [int]0, [int]32))
+        $stage = "ENVELOPE"
+        Write-Ms2PsBridgeBytes $accessor ([long]($meta + 8)) $prefix
+        Write-Ms2PsBridgeBytes $accessor ([long]($meta + 32)) $digest
         $slot = [int64](4096 + ($write % 8) * 2048)
-        [void]$script:Ms2WriteArray.Invoke($accessor, @($slot, $Record, [int]0, [int]2048))
+        $stage = "PAYLOAD"
+        Write-Ms2PsBridgeBytes $accessor $slot $Record
+        $stage = "COMMIT"
         Write-Ms2PsBridgeInt64 $accessor $meta ($write + 1)
         Write-Ms2PsBridgeInt64 $accessor 0 ($write + 1)
         Write-Ms2PsBridgeInt64 $accessor 48 ($accessor.ReadInt64(48) + 1)
@@ -317,7 +336,7 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
         return @{ Status = "ACCEPTED"; Reason = "QUEUED"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     } catch {
         Write-Ms2PsBridgeInt64 $accessor 32 ($accessor.ReadInt64(32) -bor 1)
-        return @{ Status = "DROPPED"; Reason = "IPC_REFUSED"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
+        return @{ Status = "DROPPED"; Reason = ("IPC_REFUSED_" + $stage + "_" + $_.Exception.GetType().Name); ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     } finally {
         Exit-Ms2PsBridgeGate $Session
     }

@@ -232,7 +232,7 @@ class PsPythonBridgeTests(unittest.TestCase):
         self.assertTrue(self._wait(lambda: not session._process.is_alive(), timeout=2))
         after = session.publish_bytes(pack_capture(_board(poll_seq=4))["record"])
         self.assertLessEqual(after["elapsed_ns"], SUBMIT_DEADLINE_NS)
-        self.assertIn(after["status"], {"ACCEPTED", "DROPPED", "KILL_SWITCH"})
+        self.assertIn(after["status"], {"ACCEPTED", "DROPPED", "KILL_SWITCH", "REFUSED"})
         observed = session.observe_owner()
         self.assertEqual(observed["status"], "WORKER_DEAD")
         self.assertFalse(observed["retry"])

@@ -85,7 +85,7 @@ class IntegrityTests(unittest.TestCase):
         ctx=get_context('spawn'); p=ctx.Process(target=crash_holding,args=(s.map_name,))
         p.start(); p.join(3); self.assertEqual(p.exitcode,91)
         self.wait(lambda: s.metrics()['fail_closed'] == 1)
-        self.assertEqual(s.submit_capture(_board())['status'], 'REFUSED')
+        self.assertIn(s.submit_capture(_board())['status'], {'REFUSED','KILL_SWITCH'})
         self.assertEqual(s.metrics()['durable'], 0)
         self.assertFalse((self.root / RELATIVE).exists())
         old_name=s.map_name; old_gen=s._generation

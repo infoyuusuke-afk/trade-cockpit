@@ -187,6 +187,9 @@ def publish_into(buf, blob, generation: int | None = None) -> dict:
     started = time.monotonic_ns()
     if type(blob) is not bytes or len(blob) != RECORD_SIZE:
         return _result("REFUSED", "RECORD_SIZE", started, buf)
+    if _load(buf, OFF_FLAGS) & (FLAG_KILL | FLAG_STOP):
+        _add(buf, OFF_KILL_DROPS)
+        return _result("KILL_SWITCH", "KILL_SWITCH", started, buf)
     if not ipc.acquire(buf):
         return _result("REFUSED", "PRODUCER_BUSY", started, buf)
     try:
