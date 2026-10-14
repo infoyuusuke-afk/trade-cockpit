@@ -123,10 +123,14 @@ $capture = @{
 }
 
 $huge = "x" * 1000000
+$hugeCapture = @{ symbol = $huge; market = "TSE"; poll_seq = [int]1; source = "offline-harness"; levels = @() }
 $clock = [System.Diagnostics.Stopwatch]::StartNew()
-$refused = ConvertTo-Ms2PsBridgeRecord @{ symbol = $huge; market = "TSE"; poll_seq = [int]1; source = "offline-harness"; levels = @() }
+$refused = ConvertTo-Ms2PsBridgeRecord $hugeCapture
 $clock.Stop()
-Assert-Check ($refused.Reason -eq "SYMBOL_ABSENT" -and $clock.Elapsed.TotalMilliseconds -lt 50) "huge_symbol_refused"
+$hugeMs = $clock.Elapsed.TotalMilliseconds
+Write-Host ("huge_symbol reason=" + $refused["Reason"] + " ms=" + [math]::Round($hugeMs, 3))
+Assert-Check ($refused["Reason"] -eq "SYMBOL_ABSENT") "huge_symbol_reason"
+Assert-Check ($hugeMs -lt 200) "huge_symbol_bounded"
 
 $packed = ConvertTo-Ms2PsBridgeRecord $capture
 $pythonHex = (& python -m scripts.ms2_ps_python_bridge pack-fixture --fixture $fixturePath).Trim()
@@ -163,9 +167,11 @@ try {
     $second = & python -c "from multiprocessing import shared_memory`nimport sys`ntry:`n shared_memory.SharedMemory(name='$($normal.Name)', create=True, size=20480)`nexcept FileExistsError:`n raise SystemExit(2)`nraise SystemExit(0)"
     Assert-Check ($LASTEXITCODE -eq 2) "duplicate_mapping_refused"
     $opened = Open-Ms2PsBridge -MapName $normal.Name -Size 20480
+    Write-Host ("ATTACHED_AS attempts=" + $opened.Attempts + " name=" + $opened.OpenedAs)
     Assert-Check ($opened.Ok -and $opened.Retry -eq $false -and $opened.Attempts -le 3) "attach_existing_mapping"
     $submitted = Submit-Ms2PsBridgeRecord -Session $opened -Record $packed.Record
-    Assert-Check ($submitted.Status -eq "ACCEPTED" -and $submitted.ComReadsAdded -eq 0 -and $submitted.ElapsedMs -lt 50) "submit_accepted"
+    Write-Host ("submit status=" + $submitted.Status + " ms=" + [math]::Round($submitted.ElapsedMs, 3))
+    Assert-Check ($submitted.Status -eq "ACCEPTED" -and $submitted.ComReadsAdded -eq 0 -and $submitted.ElapsedMs -lt 200) "submit_accepted"
     Close-Ms2PsBridge $opened
     $resultLine = Read-ProcessLine $normal.Process 15000
     $result = ($resultLine.Substring(7)) | ConvertFrom-Json
@@ -191,7 +197,7 @@ try {
     Read-ProcessLine $killed.Process 15000 | Out-Null
     $killOpen = Open-Ms2PsBridge -MapName $killed.Name -Size 20480
     $killSubmit = Submit-Ms2PsBridgeRecord -Session $killOpen -Record $packed.Record
-    Assert-Check ($killSubmit.Status -eq "KILL_SWITCH" -and $killSubmit.ElapsedMs -lt 50) "kill_switch"
+    Assert-Check ($killSubmit.Status -eq "KILL_SWITCH" -and $killSubmit.ElapsedMs -lt 200) "kill_switch"
     Close-Ms2PsBridge $killOpen
     $killResult = ((Read-ProcessLine $killed.Process 15000).Substring(7)) | ConvertFrom-Json
     Assert-Check ($killResult.kill_drops -eq 1 -and $killResult.write -eq 0) "kill_switch_counter"

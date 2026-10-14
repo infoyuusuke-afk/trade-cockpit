@@ -40,8 +40,8 @@ function Add-Ms2PsBridgeDouble([byte[]]$Buffer, [int]$Offset, [double]$Value) {
 
 function ConvertTo-Ms2PsBridgeRecord($Capture) {
     if ($null -eq $Capture) { return New-Ms2PsBridgeRefusal "BOARD_INPUT_INVALID" }
-    $symbol = [string]$Capture.symbol
-    if ([string]::IsNullOrEmpty($symbol) -or $symbol.Length -gt 32) { return New-Ms2PsBridgeRefusal "SYMBOL_ABSENT" }
+    $symbol = $Capture["symbol"]
+    if ($symbol -isnot [string] -or $symbol.Length -lt 1 -or $symbol.Length -gt 32) { return New-Ms2PsBridgeRefusal "SYMBOL_ABSENT" }
     $market = [string]$Capture.market
     if ($market -ne "TSE" -and $market -ne "JNX") { return New-Ms2PsBridgeRefusal "MARKET_INVALID" }
     $poll = $Capture.poll_seq
@@ -179,6 +179,12 @@ foreach ($method in [System.IO.MemoryMappedFiles.MemoryMappedViewAccessor].GetMe
         break
     }
 }
+$script:Ms2WriteInt64 = [System.IO.MemoryMappedFiles.MemoryMappedViewAccessor].GetMethod("Write", [type[]]@([int64], [int64]))
+if ($null -eq $script:Ms2WriteInt64) { throw "WRITE_INT64_MISSING" }
+
+function Write-Ms2PsBridgeInt64($Accessor, [int64]$Offset, [int64]$Value) {
+    [void]$script:Ms2WriteInt64.Invoke($Accessor, @($Offset, $Value))
+}
 
 function Open-Ms2PsBridge([string]$MapName, [int]$Size) {
     $candidates = @($MapName)
@@ -246,7 +252,7 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
     $accessor = $Session.Accessor
     $flags = $accessor.ReadInt64(32)
     if ((($flags -band 1) -ne 0) -or (($flags -band 2) -ne 0)) {
-        $accessor.WriteInt64(144, ($accessor.ReadInt64(144) + 1))
+        Write-Ms2PsBridgeInt64 $accessor 144 ($accessor.ReadInt64(144) + 1)
         return @{ Status = "KILL_SWITCH"; Reason = "KILL_SWITCH"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     }
     $generation = $accessor.ReadInt64(112)
@@ -256,7 +262,7 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
     $write = $accessor.ReadInt64(0)
     $read = $accessor.ReadInt64(8)
     if (($write - $read) -ge $script:Ms2PsBridgeCapacity) {
-        $accessor.WriteInt64(16, ($accessor.ReadInt64(16) + 1))
+        Write-Ms2PsBridgeInt64 $accessor 16 ($accessor.ReadInt64(16) + 1)
         return @{ Status = "DROPPED"; Reason = "DROP_NEWEST"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     }
     $slot = [int64]($script:Ms2PsBridgeSlotBase + (($write % $script:Ms2PsBridgeCapacity) * $script:Ms2PsBridgeRecordSize))
@@ -266,9 +272,9 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
     $writeArgs[2] = [int]0
     $writeArgs[3] = [int]$script:Ms2PsBridgeRecordSize
     [void]$script:Ms2WriteArray.Invoke($accessor, $writeArgs)
-    $accessor.WriteInt64(0, ($write + 1))
-    $accessor.WriteInt64(48, ($accessor.ReadInt64(48) + 1))
-    $accessor.WriteInt64(160, ($accessor.ReadInt64(160) + 1))
+    Write-Ms2PsBridgeInt64 $accessor 0 ($write + 1)
+    Write-Ms2PsBridgeInt64 $accessor 48 ($accessor.ReadInt64(48) + 1)
+    Write-Ms2PsBridgeInt64 $accessor 160 ($accessor.ReadInt64(160) + 1)
     return @{ Status = "ACCEPTED"; Reason = "QUEUED"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
 }
 
