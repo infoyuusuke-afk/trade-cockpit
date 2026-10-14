@@ -162,6 +162,9 @@ Assert-Check ($contract.live_watcher_connection -eq "P0_BLOCKED") "watcher_conne
 Assert-Check ($contract.real_submit_allowed -eq $false) "real_submit_false"
 Assert-Check ($contract.extra_com_reads -eq 0) "extra_com_zero"
 
+$authRefused = Open-Ms2PsBridge -MapName "b00000000000" -Size 20480 -RequireProcessAuthentication
+Assert-Check (-not $authRefused.Ok -and $authRefused.Reason -eq "SAME_USER_AUTH_UNRESOLVED" -and -not $authRefused.Retry) "same_user_auth_refused"
+
 $holders = @()
 try {
     $normal = Start-Hold "empty"

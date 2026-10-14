@@ -231,7 +231,10 @@ function Assert-Ms2IpcSecurity($Security) {
     }
 }
 
-function Open-Ms2PsBridge([string]$MapName, [int]$Size) {
+function Open-Ms2PsBridge([string]$MapName, [int]$Size, [switch]$RequireProcessAuthentication, [switch]$TraceTiming) {
+    if ($RequireProcessAuthentication) {
+        return @{ Ok = $false; Reason = "SAME_USER_AUTH_UNRESOLVED"; Retry = $false }
+    }
     $candidates = @($MapName)
     if ($MapName -notmatch '^b[a-f0-9]{11}$') {
         return @{ Ok = $false; Reason = "MAP_NAME_SCOPE"; Retry = $false }
@@ -281,6 +284,7 @@ function Open-Ms2PsBridge([string]$MapName, [int]$Size) {
             Map = $opened
             Accessor = $accessor
             Generation = $generation
+            TraceTiming = [bool]$TraceTiming
             Mutex = $mutex
         }
     } catch {
@@ -310,6 +314,10 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
     $Session.LastMutexMs = $started.Elapsed.TotalMilliseconds - $gateStarted
     $publishStarted = $started.Elapsed.TotalMilliseconds
     $stage = "HEADER"
+    if ($Session.TraceTiming) {
+        $Session.LastStages = @{}
+        if ($Session.TraceTiming) { $stageStarted = $started.Elapsed.TotalMilliseconds }
+    }
     try {
         $flags = $accessor.ReadInt64(32)
         if (($flags -band 3) -ne 0) {
@@ -326,7 +334,9 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
             Write-Ms2PsBridgeInt64 $accessor 16 ($accessor.ReadInt64(16) + 1)
             return @{ Status = "DROPPED"; Reason = "DROP_NEWEST"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
         }
+        if ($Session.TraceTiming) { $Session.LastStages[$stage] = $started.Elapsed.TotalMilliseconds - $stageStarted }
         $stage = "PREFIX"
+        if ($Session.TraceTiming) { $stageStarted = $started.Elapsed.TotalMilliseconds }
         $meta = [int64](512 + ($write % 8) * 64)
         Write-Ms2PsBridgeInt64 $accessor $meta 0
         $prefix = New-Object byte[] 24
@@ -336,16 +346,24 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
         $inputBytes = New-Object byte[] 2072
         [Array]::Copy($prefix, 0, $inputBytes, 0, 24)
         [Array]::Copy($Record, 0, $inputBytes, 24, 2048)
+        if ($Session.TraceTiming) { $Session.LastStages[$stage] = $started.Elapsed.TotalMilliseconds - $stageStarted }
         $stage = "CHECKSUM"
+        if ($Session.TraceTiming) { $stageStarted = $started.Elapsed.TotalMilliseconds }
         $sha = [Security.Cryptography.SHA256]::Create()
         try { $digest = $sha.ComputeHash($inputBytes) } finally { $sha.Dispose() }
+        if ($Session.TraceTiming) { $Session.LastStages[$stage] = $started.Elapsed.TotalMilliseconds - $stageStarted }
         $stage = "ENVELOPE"
+        if ($Session.TraceTiming) { $stageStarted = $started.Elapsed.TotalMilliseconds }
         Write-Ms2PsBridgeBytes $accessor ([long]($meta + 8)) $prefix
         Write-Ms2PsBridgeBytes $accessor ([long]($meta + 32)) $digest
         $slot = [int64](4096 + ($write % 8) * 2048)
+        if ($Session.TraceTiming) { $Session.LastStages[$stage] = $started.Elapsed.TotalMilliseconds - $stageStarted }
         $stage = "PAYLOAD"
+        if ($Session.TraceTiming) { $stageStarted = $started.Elapsed.TotalMilliseconds }
         Write-Ms2PsBridgeBytes $accessor $slot $Record
+        if ($Session.TraceTiming) { $Session.LastStages[$stage] = $started.Elapsed.TotalMilliseconds - $stageStarted }
         $stage = "COMMIT"
+        if ($Session.TraceTiming) { $stageStarted = $started.Elapsed.TotalMilliseconds }
         Write-Ms2PsBridgeInt64 $accessor $meta ($write + 1)
         Write-Ms2PsBridgeInt64 $accessor 0 ($write + 1)
         Write-Ms2PsBridgeInt64 $accessor 48 ($accessor.ReadInt64(48) + 1)
@@ -355,7 +373,10 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
         Write-Ms2PsBridgeInt64 $accessor 32 ($accessor.ReadInt64(32) -bor 1)
         return @{ Status = "DROPPED"; Reason = ("IPC_REFUSED_" + $stage + "_" + $_.Exception.GetType().Name); ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     } finally {
+        if ($Session.TraceTiming) { $Session.LastStages[$stage] = $started.Elapsed.TotalMilliseconds - $stageStarted }
+        if ($Session.TraceTiming) { $unlockStarted = $started.Elapsed.TotalMilliseconds }
         Exit-Ms2PsBridgeGate $Session
+        if ($Session.TraceTiming) { $Session.LastStages["UNLOCK"] = $started.Elapsed.TotalMilliseconds - $unlockStarted }
         $Session.LastPublishMs = $started.Elapsed.TotalMilliseconds - $publishStarted
     }
 

@@ -149,6 +149,9 @@ class SecurityTests(unittest.TestCase):
                     print('WINDOWS_IPC_PHASES=' + json.dumps(report, sort_keys=True))
                     self.assertEqual(report['accepted'], 8)
                     self.assertEqual(report['dropped'], 192)
+                    self.assertEqual(report['complete_steady']['samples'], 200)
+                    self.assertIn('UNLOCK', report['stage_stats'])
+                    self.assertIn('gc_delta', report['worst'])
                     for phase in ('packing', 'attach', 'mutex', 'publish'):
                         self.assertGreater(report['phases'][phase]['samples'], 0)
                 finally:

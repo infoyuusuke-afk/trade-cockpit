@@ -150,6 +150,7 @@ def bridge_contract() -> dict:
         "real_submit_allowed": False,
         "promotion_eligible": False,
         "statistical_edge_confirmed": False,
+        "same_user_authentication": "SAME_USER_AUTH_UNRESOLVED",
         "autostart": False,
     }
 
@@ -399,10 +400,11 @@ class BridgeSession:
 
 
 def start_bridge(repo_root, relative: str | None = None, *, enabled: bool = False,
-                 fault: int = 0) -> BridgeSession:
+                 fault: int = 0, require_process_authentication: bool = False) -> BridgeSession:
     """Reuse one cross-platform owner lifecycle; never start in the poll path."""
     from scripts.ms2_nonblocking_handoff import start_handoff
-    owned = start_handoff(repo_root, relative, enabled=enabled, fault=fault, map_name=_map_name())
+    owned = start_handoff(repo_root, relative, enabled=enabled, fault=fault, map_name=_map_name(),
+                          require_process_authentication=require_process_authentication)
     session = BridgeSession(owned.status, owned.reason)
     session.__dict__.update(owned.__dict__)
     # Transfer only handles created by this owner, never another map's handles.
