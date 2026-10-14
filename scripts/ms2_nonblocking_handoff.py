@@ -269,10 +269,20 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
                 _store(buf, _OFF_FLAGS, flags | _FLAG_KILL)
                 _reason(buf, str(exc))
                 return
-            # Gate can still be abandoned even if no index was published.
+            # Idle/HOLD never acquires a free gate or steals a just-released
+            # publisher gate. Seeing it free breaks the busy-duration interval.
+            now = time.monotonic_ns()
             if struct.unpack_from("<I", buf, ipc.GATE)[0] == 0:
-                time.sleep(0.002)
-                continue
+                gate_busy_since = None
+            elif gate_busy_since is None:
+                gate_busy_since = now
+            elif now - gate_busy_since > STALL_AFTER_NS:
+                _add(buf, _OFF_FAIL_CLOSED)
+                _store(buf, _OFF_FLAGS, flags | _FLAG_KILL)
+                _reason(buf, "IPC_GATE_ABANDONED")
+                return
+            time.sleep(0.002)
+            continue
         if not ipc.acquire(buf):
             now = time.monotonic_ns()
             if gate_busy_since is None:
