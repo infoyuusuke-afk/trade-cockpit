@@ -71,7 +71,7 @@ class AnatomyTests(unittest.TestCase):
         out = json.dumps(diagnose(rows))
         self.assertNotIn("SYNTHETIC_SECRET", out)
         self.assertNotIn("2026-10-14", out)
-        self.assertFalse(json.loads(out)["release_eligible"] if "release_eligible" in out else False)
+        self.assertFalse(json.loads(out)["production_latency_bound_proven"])
 
     def test_determinism(self):
         a = [record(0, 0, 0, 0), record(1, 1, 1, 3.1)]
