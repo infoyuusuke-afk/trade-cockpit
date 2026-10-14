@@ -9,6 +9,7 @@ import os
 import struct
 import subprocess
 import tempfile
+import threading
 import time
 from pathlib import Path
 from scripts.ms2_drop_evidence import Evidence, recover
@@ -56,6 +57,11 @@ def run_case(mode='normal',n=100,pause='none'):
                 '-N',str(n),'-Mode',mode,'-PauseAt',pause]
             ps_start=time.perf_counter()
             process=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+            # Drain stdout concurrently: Windows pipe capacity must not make
+            # aggregate-only output block process exit after 100 samples.
+            output=[]
+            reader=threading.Thread(target=lambda:output.append(process.communicate()),daemon=True)
+            reader.start()
             deadline=time.monotonic()+40; killed=False; checkpoint_times=[]
             while process.poll() is None:
                 if struct.unpack_from('<q',e.shm.buf,40)[0]==1:
@@ -74,7 +80,9 @@ def run_case(mode='normal',n=100,pause='none'):
                 if time.monotonic()>deadline:
                     process.kill(); raise RuntimeError('PS_DEADLINE')
                 time.sleep(.01)
-            stdout,stderr=process.communicate(timeout=3)
+            reader.join(3)
+            if reader.is_alive() or not output:raise RuntimeError('OUTPUT_DRAIN_DEADLINE')
+            stdout,stderr=output[0]
             evidence=e.checkpoint('PRODUCER_CRASH' if killed else 'EXIT_0' if process.returncode==0 else 'PRODUCER_ERROR')
             if not killed and process.returncode: raise RuntimeError(stderr)
             aggregate=json.loads(stdout) if not killed else {}
