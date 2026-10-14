@@ -18,7 +18,7 @@
 
 2秒ループから `python.exe` を起動しない。起動確認はループの外の1回で、時間上限があり、失敗しても繰り返さない。インタプリタが無い、すぐ終了する、応答しない、のどれでも Watcher 側の関数は待たずに戻る設計である。ただし、その関数を Watcher へ結ぶ変更は入っていない。
 
-Windows で耐久 JSONL まで書く経路は **P0_BLOCKED** である。既存の writer はモジュール先頭で `fcntl` を import し、そのバイト列は固定されている。Windows の `SharedMemory.unlink` は何もしない。だから「共有メモリへ置ける」ことと「Windows で JSONL まで残せる」ことは分けて書く。
+オフラインの JSONL Writer は Windows でも import できる。モジュール先頭の `fcntl` は外した。既に詰めた 2048 バイトは `persist_bridge_record` が受け、Watcher も共有メモリも開かない。spawn する handoff ワーカーは今も `fcntl` を import するので、そのプロセス起動は Windows では **P0_BLOCKED** のままである。`SharedMemory.unlink` は Windows では何もしない。電源断への耐性は未検証である。所有者PCでの合格は書いていない。
 
 起動方式は `spawn` だけを使う。`fork` で親のメモリを引き継ぐ前提は置かない。
 

@@ -1,0 +1,35 @@
+name: MS2 Windows Durable Writer
+
+on:
+  pull_request:
+    paths:
+      - "scripts/ms2_offline_observation_writer.py"
+      - "scripts/ms2_bridge_record.py"
+      - "tests/test_ms2_windows_durable_writer.py"
+      - "tests/test_ms2_offline_observation_writer.py"
+      - ".github/workflows/ms2-windows-durable-writer.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Synthetic durability on Linux
+        run: python -m unittest tests.test_ms2_offline_observation_writer tests.test_ms2_windows_durable_writer -v
+
+  windows-synthetic:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Synthetic durability on Windows without Excel or brokerage data
+        run: python -m unittest tests.test_ms2_offline_observation_writer tests.test_ms2_windows_durable_writer -v

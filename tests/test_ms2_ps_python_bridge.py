@@ -50,7 +50,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RELATIVE = "data/private/ms2_sidecar/board.jsonl"
 HISTORY_SHA = "6da1968f71d9e54011d3180d934a683ba9829833d1d4e743fbd42b4172f2d554"
 CONTRACT_SHA = "ffc45ca155d297506ce2f9f8758531e5a721df8f4dfef26c0dc0793b0c4ed80b"
-WRITER_SHA = "1a3761ebbc2eb18fbceaa87c60b7ebe0f71d2770437d881e52a7f68fe0bb4d5b"
+WRITER_SHA = "8efaa421a475286f1eab1bd3bf13900536530b554acdb60a6a08889bc77515c3"
 SPAWN_MARKER = "import-time"
 
 
@@ -459,7 +459,11 @@ class PsPythonBridgeTests(unittest.TestCase):
         contract = bridge_contract()
         self.assertEqual(contract["price_voice_sign_runtime"], "NOT_VERIFIED")
         self.assertEqual(contract["live_watcher_connection"], "P0_BLOCKED")
-        self.assertEqual(contract["durable_writer_on_windows"], "P0_BLOCKED")
+        self.assertEqual(contract["durable_writer_on_windows"], "OFFLINE_IMPLEMENTED")
+        self.assertEqual(contract["durable_writer_via_handoff_worker"], "P0_BLOCKED")
+        self.assertEqual(contract["durable_writer_blocker"], "HANDOFF_WORKER_STILL_IMPORTS_FCNTL")
+        self.assertEqual(contract["durable_writer_owner_pc"], "NOT_VERIFIED")
+        self.assertEqual(contract["power_loss_durability"], "NOT_VERIFIED")
         self.assertFalse(contract["producer_wired_to_watcher"])
         self.assertFalse(contract["watcher_modified"])
         self.assertFalse(contract["real_submit_allowed"])
