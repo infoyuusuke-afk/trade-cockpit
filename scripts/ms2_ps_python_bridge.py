@@ -179,7 +179,7 @@ def stamp_header(buf, generation: int) -> None:
     buf[PROTO_OFFSET + 5] = QUEUE_CAPACITY
     struct.pack_into("<HI", buf, PROTO_OFFSET + 6, RECORD_SIZE, SHM_SIZE)
     _store(buf, OFF_GENERATION, int(generation))
-    ipc.prepare(int(generation))
+    ipc.prepare(int(generation), create=True)
 
 
 def publish_into(buf, blob, generation: int | None = None) -> dict:
@@ -381,7 +381,8 @@ class BridgeSession:
         exit_verified = self._process is None or not self._process.is_alive()
         self._stopped = True
         self.status = "STOPPED" if exit_verified else "STOP_PENDING"
-        self._close_handles()
+        if exit_verified:
+            self._close_handles()
         return {
             "status": self.status,
             "worker_exit_verified": exit_verified,
@@ -448,9 +449,9 @@ def hold_mapping(name: str, preset: str = "empty", timeout_s: float = 20.0) -> i
         return 2
     if len(name) < 8 or len(name) > 16 or any(ch not in "abcdefghijklmnopqrstuvwxyz0123456789" for ch in name):
         return 2
-    shm = shared_memory.SharedMemory(create=True, size=SHM_SIZE, name=name)
+    shm = ipc.create_mapping(name, SHM_SIZE)
     try:
-        ipc.windows_acl_audit(shm.name, harden_owned=True)
+        ipc.windows_acl_audit(shm.name)
         buf = shm.buf
         buf[:] = b"\0" * SHM_SIZE
         stamp_header(buf, 1)

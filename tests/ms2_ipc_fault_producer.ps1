@@ -1,11 +1,17 @@
 param([string]$MapName, [ValidateSet("timing", "crash")][string]$Mode)
+$startup=[Diagnostics.Stopwatch]::StartNew()
 $ErrorActionPreference = "Stop"
 . (Join-Path (Split-Path -Parent $PSScriptRoot) "scripts\ms2_ps_python_bridge_producer.ps1")
 $capture = @{ symbol="285A.T"; market="TSE"; poll_seq=[int]3; source="offline-harness"; data_freshness="STALE";
     watcher_observed_at="2026-10-14T01:00:00.000+09:00";
     levels=@(@{Level=[int]1; BidPrice=[double]100; AskPrice=[double]101; BidQty=$null; AskQty=[int]0}) }
+$packing=[Diagnostics.Stopwatch]::StartNew()
 $packed = ConvertTo-Ms2PsBridgeRecord $capture
+$firstPackingMs=$packing.Elapsed.TotalMilliseconds
+$attaching=[Diagnostics.Stopwatch]::StartNew()
 $session = Open-Ms2PsBridge -MapName $MapName -Size 20480
+$attachMs=$attaching.Elapsed.TotalMilliseconds
+$startupMs=$startup.Elapsed.TotalMilliseconds
 if (-not $session.Ok -or -not $packed.Ok) { throw "ATTACH_OR_PACK" }
 try {
     if ($Mode -eq "crash") {
@@ -16,17 +22,35 @@ try {
         [Threading.Thread]::Sleep(30000)
         throw "EXPECTED_KILL"
     }
-    $samples=@();$accepted=0;$dropped=0
+    function Stats($Values) {
+        $v=@($Values | Sort-Object);$n=$v.Count
+        return @{samples=$n;p50_ms=$v[[Math]::Ceiling($n*.50)-1];p95_ms=$v[[Math]::Ceiling($n*.95)-1];p99_ms=$v[[Math]::Ceiling($n*.99)-1];max_ms=$v[$n-1]}
+    }
+    $packSamples=@();$attachSamples=@()
+    for ($i=0; $i -lt 50; $i++) {
+        $t=[Diagnostics.Stopwatch]::StartNew();$p=ConvertTo-Ms2PsBridgeRecord $capture
+        $packSamples += $t.Elapsed.TotalMilliseconds
+        if (-not $p.Ok) {throw "PACK"}
+        $t=[Diagnostics.Stopwatch]::StartNew();$a=Open-Ms2PsBridge $MapName 20480
+        $attachSamples += $t.Elapsed.TotalMilliseconds
+        if (-not $a.Ok) {throw "ATTACH"};Close-Ms2PsBridge $a
+    }
+    $samples=@();$mutexSamples=@();$publishSamples=@();$acceptedSamples=@();$fullSamples=@();$accepted=0;$dropped=0
     for ($i=0; $i -lt 200; $i++) {
         $watch=[Diagnostics.Stopwatch]::StartNew()
         $r=Submit-Ms2PsBridgeRecord $session $packed.Record
-        $samples += $watch.Elapsed.TotalMilliseconds
-        if ($r.Status -eq "ACCEPTED") {$accepted++}
-        elseif ($r.Status -eq "DROPPED" -and $r.Reason -eq "DROP_NEWEST") {$dropped++}
+        $elapsed=$watch.Elapsed.TotalMilliseconds
+        $samples += $elapsed
+        $mutexSamples += $session.LastMutexMs
+        $publishSamples += $session.LastPublishMs
+        if ($r.Status -eq "ACCEPTED") {$accepted++;$acceptedSamples += $elapsed}
+        elseif ($r.Status -eq "DROPPED" -and $r.Reason -eq "DROP_NEWEST") {$dropped++;$fullSamples += $elapsed}
         else {throw ("UNEXPECTED_"+$r.Status+"_"+$r.Reason)}
     }
     $sorted=@($samples | Sort-Object)
     @{ samples=200; accepted=$accepted; dropped=$dropped; p50_ms=$sorted[99]; p95_ms=$sorted[189];
        p99_ms=$sorted[197]; max_ms=$sorted[199]; context="Windows synthetic PS5.1 submit incl call overhead";
-       hard_realtime_guaranteed=$false } | ConvertTo-Json -Compress
+       phases=@{packing=(Stats $packSamples);attach=(Stats $attachSamples);mutex=(Stats $mutexSamples);publish=(Stats $publishSamples);accepted=(Stats $acceptedSamples);full=(Stats $fullSamples)};
+       cold=@{packing_ms=$firstPackingMs;attach_ms=$attachMs;startup_ms=$startupMs};
+       hard_realtime_guaranteed=$false } | ConvertTo-Json -Depth 5 -Compress
 } finally { Close-Ms2PsBridge $session }

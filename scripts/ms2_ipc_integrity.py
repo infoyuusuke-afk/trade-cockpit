@@ -27,10 +27,27 @@ if os.name == 'nt':
     _native.ReleaseMutex.argtypes = [w.HANDLE]
     _native.CloseHandle.argtypes = [w.HANDLE]
     _mutexes = {}
-    def prepare(generation):
+    def prepare(generation, *, create=False):
         if generation not in _mutexes:
-            handle = _native.CreateMutexW(None, False, 'Local\\ms2ipc-v2-' + str(generation))
-            if not handle: raise ValueError('IPC_MUTEX_CREATE_FAILED')
+            name = 'Local\\ms2ipc-v2-' + str(generation)
+            if create:
+                with creation_security() as attributes:
+                    handle = _native.CreateMutexW(attributes, False, name)
+                    error = ctypes.get_last_error()
+                if not handle: raise ValueError('IPC_MUTEX_CREATE_FAILED')
+                if error == 183:
+                    _native.CloseHandle(handle)
+                    raise ValueError('IPC_MUTEX_COLLISION')
+            else:
+                _native.OpenMutexW.argtypes = [w.DWORD, w.BOOL, w.LPCWSTR]
+                _native.OpenMutexW.restype = w.HANDLE
+                handle = _native.OpenMutexW(0x100001 | 0x20000, False, name)
+                if not handle: raise ValueError('IPC_MUTEX_ATTACH_FAILED')
+            try:
+                windows_acl_audit(name, object_handle=handle)
+            except Exception:
+                _native.CloseHandle(handle)
+                raise
             _mutexes[generation] = handle
     def gate(buf, expected, desired):
         generation = struct.unpack_from('<Q', buf, 112)[0]
@@ -62,7 +79,7 @@ else:
     _cas.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32,
                      ctypes.c_bool, ctypes.c_int, ctypes.c_int]
     _cas.restype = ctypes.c_bool
-    def prepare(generation): pass
+    def prepare(generation, *, create=False): pass
     def gate(buf, expected, desired):
         word = ctypes.c_uint32.from_buffer(buf, GATE)
         old = ctypes.c_uint32(expected)
@@ -115,7 +132,7 @@ def read_slot(buf, generation, sequence):
     return blob
 
 
-def windows_acl_audit(name, *, harden_owned=False):
+def windows_acl_audit(name, *, harden_owned=False, object_handle=None):
     """Read actual mapping owner/DACL; never broaden its permissions.
 
     Allow only current token user, SYSTEM and local Administrators. This
@@ -161,7 +178,7 @@ def windows_acl_audit(name, *, harden_owned=False):
             raise ValueError('ACL_TOKEN_UNREADABLE')
         current=sid_string(ctypes.c_void_p.from_buffer(data).value)
         trusted={current,'S-1-5-18','S-1-5-32-544'}
-        handle=kernel.OpenFileMappingW(0x20000 | (0x40000 if harden_owned else 0),False,name)
+        handle=object_handle or kernel.OpenFileMappingW(0x20000 | (0x40000 if harden_owned else 0),False,name)
         if not handle:raise ValueError('ACL_MAP_UNREADABLE')
         owner=ctypes.c_void_p();dacl=ctypes.c_void_p()
         if adv.GetSecurityInfo(handle,6,5,ctypes.byref(owner),None,
@@ -211,5 +228,79 @@ def windows_acl_audit(name, *, harden_owned=False):
         return {'status':'PASS','untrusted_grants':0,'same_user_authentication':'NOT_VERIFIED'}
     finally:
         if descriptor.value:kernel.LocalFree(descriptor)
-        if handle:kernel.CloseHandle(handle)
+        if handle and object_handle is None:kernel.CloseHandle(handle)
         if token:kernel.CloseHandle(token)
+
+
+from contextlib import contextmanager
+
+@contextmanager
+def creation_security():
+    """Non-inheritable current-user-only DACL supplied to the create syscall.
+
+    SID is an OS principal boundary, not same-user process authentication.
+    Administrators with ownership/debug privileges remain outside this boundary.
+    """
+    from ctypes import wintypes as w
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    adv = ctypes.WinDLL('advapi32', use_last_error=True)
+    kernel.GetCurrentProcess.restype = w.HANDLE
+    kernel.CloseHandle.argtypes = [w.HANDLE]
+    kernel.LocalFree.argtypes = [ctypes.c_void_p]
+    adv.OpenProcessToken.argtypes = [w.HANDLE, w.DWORD, ctypes.POINTER(w.HANDLE)]
+    adv.GetTokenInformation.argtypes = [w.HANDLE, ctypes.c_int, ctypes.c_void_p, w.DWORD, ctypes.POINTER(w.DWORD)]
+    adv.ConvertSidToStringSidW.argtypes = [ctypes.c_void_p, ctypes.POINTER(w.LPWSTR)]
+    adv.ConvertStringSecurityDescriptorToSecurityDescriptorW.argtypes = [w.LPCWSTR, w.DWORD, ctypes.POINTER(ctypes.c_void_p), ctypes.c_void_p]
+    class Attributes(ctypes.Structure):
+        _fields_ = [('length', w.DWORD), ('descriptor', ctypes.c_void_p), ('inherit', w.BOOL)]
+    token = w.HANDLE(); sid = w.LPWSTR(); descriptor = ctypes.c_void_p()
+    try:
+        if not adv.OpenProcessToken(kernel.GetCurrentProcess(), 8, ctypes.byref(token)):
+            raise ValueError('ACL_TOKEN_UNREADABLE')
+        size = w.DWORD()
+        adv.GetTokenInformation(token, 1, None, 0, ctypes.byref(size))
+        data = ctypes.create_string_buffer(size.value)
+        if not adv.GetTokenInformation(token, 1, data, size.value, ctypes.byref(size)):
+            raise ValueError('ACL_TOKEN_UNREADABLE')
+        if not adv.ConvertSidToStringSidW(ctypes.c_void_p.from_buffer(data).value, ctypes.byref(sid)):
+            raise ValueError('ACL_SID_UNREADABLE')
+        # Explicit owner avoids elevated-token default-owner ambiguity.
+        sddl = 'O:' + sid.value + 'D:P(A;;GA;;;' + sid.value + ')'
+        if not adv.ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, 1, ctypes.byref(descriptor), None):
+            raise ValueError('ACL_CREATE_FAILED')
+        attributes = Attributes(ctypes.sizeof(Attributes), descriptor, False)
+        yield ctypes.byref(attributes)
+    finally:
+        if descriptor.value: kernel.LocalFree(descriptor)
+        if sid: kernel.LocalFree(ctypes.cast(sid, ctypes.c_void_p))
+        if token: kernel.CloseHandle(token)
+
+
+def create_mapping(name, size):
+    """Exclusive map creation; never repair/attach an existing object's ACL."""
+    from multiprocessing import shared_memory
+    if os.name != 'nt':
+        return shared_memory.SharedMemory(create=True, name=name, size=size)
+    from ctypes import wintypes as w
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.CreateFileMappingW.argtypes = [w.HANDLE, ctypes.c_void_p, w.DWORD, w.DWORD, w.DWORD, w.LPCWSTR]
+    kernel.CreateFileMappingW.restype = w.HANDLE
+    kernel.CloseHandle.argtypes = [w.HANDLE]
+    with creation_security() as attributes:
+        handle = kernel.CreateFileMappingW(w.HANDLE(-1), attributes, 4, 0, size, name)
+        error = ctypes.get_last_error()
+    if not handle: raise ValueError('IPC_MAP_CREATE_FAILED')
+    try:
+        if error == 183: raise FileExistsError('IPC_MAP_COLLISION')
+        windows_acl_audit(name, object_handle=handle)
+        # Keep native handle until Python has its own mapped view/handle.
+        return shared_memory.SharedMemory(name=name)
+    finally:
+        kernel.CloseHandle(handle)
+
+
+def close_generation(generation):
+    """Release only this process's cached handle, never another owner resource."""
+    if os.name == 'nt':
+        handle = _mutexes.pop(generation, None)
+        if handle: _native.CloseHandle(handle)

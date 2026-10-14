@@ -236,13 +236,28 @@ def _classify(report: dict) -> str:
 
 def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = None) -> None:
     generation = _load(buf, _OFF_GENERATION) if generation is None else generation
+    ipc.prepare(generation)
     _store(buf, _OFF_WORKER_PID, os.getpid())
     _store(buf, _OFF_HEARTBEAT, time.monotonic_ns())
     gate_busy_since = None
     next_read = 0
     write_highwater = 0
+    from multiprocessing import parent_process
+    parent = parent_process()
+    def owner_dead():
+        if parent is None:  # Direct/unit invocation has no spawned owner.
+            return False
+        if parent.is_alive():
+            return False
+        _store(buf, _OFF_FLAGS, _load(buf, _OFF_FLAGS) | _FLAG_STOP | _FLAG_KILL)
+        _reason(buf, "OWNER_DEAD_QUARANTINED")
+        return True
     while True:
         fault = _load(buf, _OFF_FAULT)
+        if fault == FAULT_BLOCK_UNCHECKED:
+            time.sleep(30)  # Deliberately uninterruptible synthetic I/O.
+            continue
+        if owner_dead(): return
         if fault == FAULT_CRASH:
             os._exit(97)
         if fault == FAULT_STALL:
@@ -256,9 +271,6 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
         if flags & (_FLAG_STOP | _FLAG_KILL):
             _reason(buf, "STOPPED")
             return
-        if fault == FAULT_BLOCK_UNCHECKED:
-            time.sleep(30)
-            continue
         if (_load(buf, _OFF_WRITE) == _load(buf, _OFF_READ) or fault == FAULT_HOLD):
             try:
                 write_index, read_index = ipc.validate_header(buf, generation)
@@ -320,17 +332,20 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
         if blob is None:
             time.sleep(0.002)
             continue
+        if owner_dead(): return
         if _load(buf, _OFF_FLAGS) & (_FLAG_STOP | _FLAG_KILL):
             _reason(buf, "STOPPED")
             return
         if fault == FAULT_BLOCK_IO:
             deadline = time.monotonic() + 30
             while time.monotonic() < deadline:
+                if owner_dead(): return
                 if _load(buf, _OFF_FLAGS) & (_FLAG_STOP | _FLAG_KILL):
                     _reason(buf, "ABANDONED")
                     return
                 _store(buf, _OFF_HEARTBEAT, time.monotonic_ns())
                 time.sleep(0.02)
+        if owner_dead(): return
         capture = unpack_capture(blob)
         if capture is None:
             _add(buf, _OFF_FAIL_CLOSED)
@@ -365,6 +380,7 @@ def _worker_entry(shm_name: str, repo_root: str, relative: str, generation: int 
     finally:
         if shm is not None:
             shm.close()  # Attached worker never unlinks someone else's mapping.
+        ipc.close_generation(generation)
         _drop_lifecycle_lock(fd)
 
 
@@ -566,7 +582,8 @@ class HandoffSession:
         exit_verified = self._process is None or not self._process.is_alive()
         self._stopped = True
         self.status = "STOPPED" if exit_verified else "STOP_PENDING"
-        self._close_handles()
+        if exit_verified:
+            self._close_handles()
         return {
             "status": self.status,
             "worker_exit_verified": exit_verified,
@@ -578,6 +595,7 @@ class HandoffSession:
         }
 
     def _close_handles(self) -> None:
+        ipc.close_generation(getattr(self, "_generation", 0))
         if self._shm is not None:
             shm = self._shm
             self._shm = None
@@ -617,10 +635,10 @@ def start_handoff(repo_root, relative: str | None = None, *, enabled: bool = Fal
         discarded = _quarantine_unpublished(root, generation)
         name = map_name or ("b" + uuid.uuid4().hex[:11])
         # create=True refuses collisions. We never attach/unlink a colliding map.
-        shm = shared_memory.SharedMemory(create=True, size=SHM_SIZE, name=name)
+        shm = ipc.create_mapping(name, SHM_SIZE)
         session._shm = shm
         session._owns_mapping = True
-        ipc.windows_acl_audit(shm.name, harden_owned=True)
+        ipc.windows_acl_audit(shm.name)
         session._generation = generation
         session.map_name = shm.name
         session._repo = str(root)
