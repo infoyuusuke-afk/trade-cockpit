@@ -115,7 +115,7 @@ def read_slot(buf, generation, sequence):
     return blob
 
 
-def windows_acl_audit(name):
+def windows_acl_audit(name, *, harden_owned=False):
     """Read actual mapping owner/DACL; never broaden its permissions.
 
     Allow only current token user, SYSTEM and local Administrators. This
@@ -139,6 +139,10 @@ def windows_acl_audit(name):
         ctypes.POINTER(ctypes.c_void_p),ctypes.c_void_p,ctypes.POINTER(ctypes.c_void_p),
         ctypes.c_void_p,ctypes.POINTER(ctypes.c_void_p)]
     adv.GetSecurityInfo.restype=w.DWORD
+    adv.ConvertStringSecurityDescriptorToSecurityDescriptorW.argtypes=[w.LPCWSTR,w.DWORD,ctypes.POINTER(ctypes.c_void_p),ctypes.c_void_p]
+    adv.GetSecurityDescriptorDacl.argtypes=[ctypes.c_void_p,ctypes.POINTER(w.BOOL),ctypes.POINTER(ctypes.c_void_p),ctypes.POINTER(w.BOOL)]
+    adv.SetSecurityInfo.argtypes=[w.HANDLE,ctypes.c_int,w.DWORD,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p]
+    adv.SetSecurityInfo.restype=w.DWORD
     adv.GetAce.argtypes=[ctypes.c_void_p,w.DWORD,ctypes.POINTER(ctypes.c_void_p)]
     def sid_string(ptr):
         output=w.LPWSTR()
@@ -157,14 +161,36 @@ def windows_acl_audit(name):
             raise ValueError('ACL_TOKEN_UNREADABLE')
         current=sid_string(ctypes.c_void_p.from_buffer(data).value)
         trusted={current,'S-1-5-18','S-1-5-32-544'}
-        handle=kernel.OpenFileMappingW(0x20000,False,name)
+        handle=kernel.OpenFileMappingW(0x20000 | (0x40000 if harden_owned else 0),False,name)
         if not handle:raise ValueError('ACL_MAP_UNREADABLE')
         owner=ctypes.c_void_p();dacl=ctypes.c_void_p()
         if adv.GetSecurityInfo(handle,6,5,ctypes.byref(owner),None,
                                ctypes.byref(dacl),None,ctypes.byref(descriptor)):
             raise ValueError('ACL_MAP_UNREADABLE')
-        if not dacl.value or sid_string(owner) not in trusted:
-            raise ValueError('ACL_UNSAFE_OWNER_OR_NULL_DACL')
+        if sid_string(owner) not in trusted:
+            raise ValueError('ACL_UNSAFE_OWNER')
+        if harden_owned:
+            # Only called immediately after create=True succeeded. Never
+            # modify the DACL of an attached/colliding/unknown map.
+            narrowed=ctypes.c_void_p()
+            try:
+                sddl='D:P(A;;GA;;;'+current+')(A;;GA;;;SY)(A;;GA;;;BA)'
+                if not adv.ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl,1,ctypes.byref(narrowed),None):
+                    raise ValueError('ACL_NARROW_FAILED')
+                present=w.BOOL();defaulted=w.BOOL();new_dacl=ctypes.c_void_p()
+                if not adv.GetSecurityDescriptorDacl(narrowed,ctypes.byref(present),ctypes.byref(new_dacl),ctypes.byref(defaulted)):
+                    raise ValueError('ACL_NARROW_FAILED')
+                if adv.SetSecurityInfo(handle,6,4|0x80000000,None,None,new_dacl,None):
+                    raise ValueError('ACL_NARROW_FAILED')
+            finally:
+                if narrowed.value:kernel.LocalFree(narrowed)
+            # Re-read the actual resulting ACL instead of assuming success.
+            kernel.LocalFree(descriptor);descriptor=ctypes.c_void_p()
+            if adv.GetSecurityInfo(handle,6,5,ctypes.byref(owner),None,
+                                   ctypes.byref(dacl),None,ctypes.byref(descriptor)):
+                raise ValueError('ACL_MAP_UNREADABLE')
+        if not dacl.value:
+            raise ValueError('ACL_NULL_DACL')
         # ACL header: revision,size,acecount; ACE allow layout: header,mask,SID.
         header=ctypes.string_at(dacl,8)
         count=struct.unpack_from('<H',header,4)[0]

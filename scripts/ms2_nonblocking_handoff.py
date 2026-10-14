@@ -610,7 +610,7 @@ def start_handoff(repo_root, relative: str | None = None, *, enabled: bool = Fal
         shm = shared_memory.SharedMemory(create=True, size=SHM_SIZE, name=name)
         session._shm = shm
         session._owns_mapping = True
-        ipc.windows_acl_audit(shm.name)
+        ipc.windows_acl_audit(shm.name, harden_owned=True)
         session._generation = generation
         session.map_name = shm.name
         session._repo = str(root)

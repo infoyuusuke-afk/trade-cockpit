@@ -447,6 +447,7 @@ def hold_mapping(name: str, preset: str = "empty", timeout_s: float = 20.0) -> i
         return 2
     shm = shared_memory.SharedMemory(create=True, size=SHM_SIZE, name=name)
     try:
+        ipc.windows_acl_audit(shm.name, harden_owned=True)
         buf = shm.buf
         buf[:] = b"\0" * SHM_SIZE
         stamp_header(buf, 1)

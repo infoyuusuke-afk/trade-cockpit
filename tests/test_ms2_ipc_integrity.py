@@ -135,7 +135,7 @@ class IntegrityTests(unittest.TestCase):
         adv.SetSecurityInfo.argtypes=[w.HANDLE,ctypes.c_int,w.DWORD,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p]
         handle=None;sd=ctypes.c_void_p()
         try:
-            self.assertEqual(ipc.windows_acl_audit(name)['status'],'PASS')
+            self.assertEqual(ipc.windows_acl_audit(name,harden_owned=True)['status'],'PASS')
             handle=kernel.OpenFileMappingW(0x40000,False,name);self.assertTrue(handle)
             self.assertTrue(adv.ConvertStringSecurityDescriptorToSecurityDescriptorW('D:(A;;GA;;;WD)',1,ctypes.byref(sd),None))
             present=w.BOOL();defaulted=w.BOOL();dacl=ctypes.c_void_p()
