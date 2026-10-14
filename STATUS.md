@@ -3445,3 +3445,15 @@ Clocks stay distinct. `event_time` is accepted only with basis `EXCHANGE_SUPPLIE
 A complete synthetic record can be projected to the Draft PR #345 shape `ms2-pit-observation-0.1`. The projection is `evidence_origin=SYNTHETIC`. This module does not authenticate a capture, does not import the unmerged fill evaluator, and does not emit a virtual close. `eligible_observed_n=0`. EV, PF, DD, and verified net are unknown. `real_submit_allowed`, `promotion_eligible`, and `statistical_edge_confirmed` stay false.
 
 `python3 -m unittest tests.test_ms2_watcher_sidecar_contract -v` — 31 tests, OK. The full local discovery was 1654 tests with one pre-existing error, `test_dialog_cancel_does_not_probe`, because this environment has no `tkinter`. Windows/Excel acceptance W1–W4 in `windows_acceptance_checklist()` was not run. A live watcher edit still needs a separate OWNER approval.
+
+## Issue #348 offline captured-board writer (not wired)
+
+Latest main inspected: `1243ef1dd7001d36b789c4855e0626e8e896cce5`. This branch stacks on the unmerged sidecar contract `ce2f43b66cbb138320da8813d90f59b8cb909da0` (Draft PR #347). `ms2_live/Kioxia_RSS_Live_Watcher.ps1` is byte-identical to that commit and to latest main. It was not modified.
+
+`Read-BoardDepth` (lines 342–355) still performs 40 sequential `Value2` reads. The loop calls it once at line 602 and keeps `$board` in memory. `Write-TickLogDiff` (lines 276–307) increments `poll_seq` and computes the gap locally; it does not return that gap. The loop `Get-Date` at line 586 has no numeric offset. This module does not add a COM read and does not invent `+09:00`.
+
+`scripts/ms2_offline_observation_writer.py` accepts an already-captured board, tick, or gap object and appends `ms2-watcher-sidecar-0.1` only under `data/private/ms2_sidecar/<file>.jsonl`. The default call is disabled and does not create the directory. Missing sizes stay null. A sequential read is `snapshot_atomic=false`. `poll_seq` is not written as `exchange_sequence`. `available_at` stays null unless the caller supplies a separate durable-read clock. Writer failures return reason codes and do not raise. Corrupt, legacy CSV, duplicate, and bad-path inputs are left unchanged. A complete synthetic record can audit as `PROJECTABLE_SYNTHETIC` and stays `NOT_CLOSED` with `eligible_observed_n=0`.
+
+`watcher_integration_proposal()` lists the future watcher touch, the fsync latency risk, the 50ms session shutoff, and Windows checks W1–W4. `applied` is false. Those checks were not run. `real_submit_allowed`, `promotion_eligible`, and `statistical_edge_confirmed` stay false. The 263-row history and the canonical execution-contract hash fields are unchanged.
+
+`python3 -m unittest tests.test_ms2_offline_observation_writer tests.test_ms2_watcher_sidecar_contract` — 48 tests, OK (17 new writer tests and the existing 31 contract tests). Full local discovery: 1671 tests, one pre-existing error `test_dialog_cancel_does_not_probe` (`ModuleNotFoundError: tkinter`), one skip. One durable append of a synthetic board measured about 2.6ms in this environment. That is not a Windows/Excel measurement.
