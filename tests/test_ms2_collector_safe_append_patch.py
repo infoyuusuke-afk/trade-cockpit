@@ -50,6 +50,11 @@ class CollectorPatchSafetyTests(unittest.TestCase):
         self.assertIn("foreach ($candidate in $results) {$candidate.signal='保存品質不明・売買禁止'}", self.source)
         self.assertIn("recording_degraded=[bool]$script:ms2RecordFaulted", self.source)
 
+    def test_safety_gate_datafresh_fails_closed(self):
+        self.assertIn("-DataFresh ($validCount -ge 90 -and -not $script:ms2RecordFaulted -and @($result.source_missing_fields).Count -eq 0)", self.source)
+        self.assertIn("-DataFresh ($validCount -ge 90 -and -not $script:ms2RecordFaulted) -OpenOrders", self.source)
+        self.assertIn("market=@{status=if($validCount -ge 90 -and -not $script:ms2RecordFaulted)", self.source)
+
     def test_hold_gate_checks_writer_and_missing(self):
         self.assertIn("$provisionalHoldTop5=if($script:ms2RecordFaulted){@()}else{", self.source)
         self.assertIn("@($_.source_missing_fields).Count -eq 0", self.source)
