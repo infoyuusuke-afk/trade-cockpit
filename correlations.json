@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-14 21:19:04 JST",
+  "updated_at": "2026-10-15 07:51:02 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -25,7 +25,7 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 0.99,
+        "ret": 0.94,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -490,7 +490,7 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 0.99,
+        "ret": 0.94,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -517,75 +517,13 @@
       "anchor_today": {
         "ret": 0.32,
         "or15": "上抜け",
-        "vwap": "下",
+        "vwap": "上",
         "ema": "下向き"
       },
       "peer_today": {
         "ret": 0.04,
         "or15": "レンジ内",
         "vwap": "上",
-        "ema": "下向き"
-      },
-      "decision": "売買の確認材料に使用"
-    },
-    {
-      "anchor": "NEC（6701）",
-      "anchor_ticker": "6701.T",
-      "peer": "富士通（6702）",
-      "peer_ticker": "6702.T",
-      "relation": "自動検出・正相関",
-      "expected": "正相関",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.94,
-      "corr60": 0.8,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": 0.46,
-      "lead_bars": 0,
-      "bars": 300,
-      "state": "確認",
-      "confidence": 87,
-      "anchor_today": {
-        "ret": -0.1,
-        "or15": "レンジ内",
-        "vwap": "下",
-        "ema": "下向き"
-      },
-      "peer_today": {
-        "ret": 0.21,
-        "or15": "レンジ内",
-        "vwap": "下",
-        "ema": "下向き"
-      },
-      "decision": "売買の確認材料に使用"
-    },
-    {
-      "anchor": "富士通（6702）",
-      "anchor_ticker": "6702.T",
-      "peer": "NEC（6701）",
-      "peer_ticker": "6701.T",
-      "relation": "自動検出・正相関",
-      "expected": "正相関",
-      "reason": "直近20日・60日から同時方向を自動検出",
-      "corr20": 0.94,
-      "corr60": 0.8,
-      "sample20": 20,
-      "sample60": 60,
-      "intraday_corr": 0.46,
-      "lead_bars": 0,
-      "bars": 300,
-      "state": "確認",
-      "confidence": 87,
-      "anchor_today": {
-        "ret": 0.21,
-        "or15": "レンジ内",
-        "vwap": "下",
-        "ema": "下向き"
-      },
-      "peer_today": {
-        "ret": -0.1,
-        "or15": "レンジ内",
-        "vwap": "下",
         "ema": "下向き"
       },
       "decision": "売買の確認材料に使用"
@@ -615,6 +553,68 @@
       },
       "peer_today": {
         "ret": 0.13,
+        "or15": "レンジ内",
+        "vwap": "下",
+        "ema": "下向き"
+      },
+      "decision": "売買の確認材料に使用"
+    },
+    {
+      "anchor": "NEC（6701）",
+      "anchor_ticker": "6701.T",
+      "peer": "富士通（6702）",
+      "peer_ticker": "6702.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.94,
+      "corr60": 0.8,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": 0.45,
+      "lead_bars": 0,
+      "bars": 300,
+      "state": "確認",
+      "confidence": 86,
+      "anchor_today": {
+        "ret": -0.1,
+        "or15": "レンジ内",
+        "vwap": "下",
+        "ema": "下向き"
+      },
+      "peer_today": {
+        "ret": 0.21,
+        "or15": "レンジ内",
+        "vwap": "下",
+        "ema": "下向き"
+      },
+      "decision": "売買の確認材料に使用"
+    },
+    {
+      "anchor": "富士通（6702）",
+      "anchor_ticker": "6702.T",
+      "peer": "NEC（6701）",
+      "peer_ticker": "6701.T",
+      "relation": "自動検出・正相関",
+      "expected": "正相関",
+      "reason": "直近20日・60日から同時方向を自動検出",
+      "corr20": 0.94,
+      "corr60": 0.8,
+      "sample20": 20,
+      "sample60": 60,
+      "intraday_corr": 0.45,
+      "lead_bars": 0,
+      "bars": 300,
+      "state": "確認",
+      "confidence": 86,
+      "anchor_today": {
+        "ret": 0.21,
+        "or15": "レンジ内",
+        "vwap": "下",
+        "ema": "下向き"
+      },
+      "peer_today": {
+        "ret": -0.1,
         "or15": "レンジ内",
         "vwap": "下",
         "ema": "下向き"
@@ -732,7 +732,7 @@
       "state": "確認",
       "confidence": 84,
       "anchor_today": {
-        "ret": 0.99,
+        "ret": 0.94,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -796,7 +796,7 @@
       "anchor_today": {
         "ret": 0.8,
         "or15": "レンジ内",
-        "vwap": "下",
+        "vwap": "上",
         "ema": "下向き"
       },
       "peer_today": {
@@ -951,7 +951,7 @@
       "anchor_today": {
         "ret": -2.46,
         "or15": "レンジ内",
-        "vwap": "上",
+        "vwap": "下",
         "ema": "下向き"
       },
       "peer_today": {
@@ -988,7 +988,7 @@
       "peer_today": {
         "ret": -2.46,
         "or15": "レンジ内",
-        "vwap": "上",
+        "vwap": "下",
         "ema": "下向き"
       },
       "decision": "売買の確認材料に使用"
@@ -1017,7 +1017,7 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 0.99,
+        "ret": 0.94,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -1048,7 +1048,7 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 0.99,
+        "ret": 0.94,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -1112,7 +1112,7 @@
       "peer_today": {
         "ret": -2.46,
         "or15": "レンジ内",
-        "vwap": "上",
+        "vwap": "下",
         "ema": "下向き"
       },
       "decision": "売買の確認材料に使用"
@@ -1236,7 +1236,7 @@
       "peer_today": {
         "ret": 0.32,
         "or15": "上抜け",
-        "vwap": "下",
+        "vwap": "上",
         "ema": "下向き"
       },
       "decision": "売買の確認材料に使用"
@@ -1389,7 +1389,7 @@
         "ema": "上向き"
       },
       "peer_today": {
-        "ret": 0.99,
+        "ret": 0.94,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -1414,7 +1414,7 @@
       "state": "確認",
       "confidence": 74,
       "anchor_today": {
-        "ret": 0.99,
+        "ret": 0.94,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -1794,7 +1794,7 @@
       "peer_today": {
         "ret": 0.32,
         "or15": "上抜け",
-        "vwap": "下",
+        "vwap": "上",
         "ema": "下向き"
       },
       "decision": "売買の確認材料に使用"
@@ -1854,7 +1854,7 @@
         "ema": "下向き"
       },
       "peer_today": {
-        "ret": 0.99,
+        "ret": 0.94,
         "or15": "上抜け",
         "vwap": "上",
         "ema": "下向き"
@@ -2090,10 +2090,10 @@
       "corr60": 0.45,
       "sample20": 20,
       "sample60": 60,
-      "intraday_corr": 0.24,
+      "intraday_corr": 0.25,
       "lead_bars": 0,
       "bars": 300,
-      "state": "不安定",
+      "state": "確認",
       "confidence": 70,
       "anchor_today": {
         "ret": -0.81,
@@ -2107,7 +2107,7 @@
         "vwap": "上",
         "ema": "下向き"
       },
-      "decision": "この関係を売買根拠にしない"
+      "decision": "売買の確認材料に使用"
     },
     {
       "anchor": "ハーモニック・ドライブ・システムズ（6324）",
@@ -2532,7 +2532,7 @@
       "anchor_today": {
         "ret": -3.79,
         "or15": "レンジ内",
-        "vwap": "上",
+        "vwap": "下",
         "ema": "上向き"
       },
       "peer_today": {
@@ -2555,7 +2555,7 @@
       "corr60": 0.27,
       "sample20": 20,
       "sample60": 55,
-      "intraday_corr": 0.17,
+      "intraday_corr": 0.18,
       "lead_bars": -1,
       "bars": 300,
       "state": "不安定",
@@ -2679,7 +2679,7 @@
       "corr60": 0.17,
       "sample20": 20,
       "sample60": 58,
-      "intraday_corr": -0.16,
+      "intraday_corr": -0.15,
       "lead_bars": -3,
       "bars": 219,
       "state": "不安定",
