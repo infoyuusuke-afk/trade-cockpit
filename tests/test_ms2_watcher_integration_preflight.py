@@ -1,5 +1,4 @@
 import errno
-import fcntl
 import hashlib
 import json
 import os
@@ -304,9 +303,10 @@ class WatcherIntegrationPreflightTests(unittest.TestCase):
             raise PermissionError(errno.EACCES, "denied")
 
         def lock_busy(fd, op):
-            if op & fcntl.LOCK_EX:
+            # #358 injected hook uses portable POSIX operation bits.
+            if op != 8:  # unlock hook is a no-op: acquisition always refuses
                 raise BlockingIOError()
-            return fcntl.flock(fd, op)
+            return None
 
         def write_full(fd, data):
             raise OSError(errno.ENOSPC, "full")
