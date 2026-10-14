@@ -126,6 +126,15 @@ class PollTests(unittest.TestCase):
         self.assertEqual(self.rows()[0]['persisted_at'],T1)
         row=json.loads(raw);self.assertIsNone(row['available_at']);self.assertIsNone(row['levels'][0]['bid_qty'])
         self.assertEqual(row['levels'][0]['ask_qty'],0)
+    def test_events_cannot_be_updated_or_deleted(self):
+        receipt(self.l,1)
+        for sql in ('DELETE FROM events','UPDATE events SET body=body'):
+            with self.assertRaises(sqlite3.IntegrityError):
+                with self.l.db:self.l.db.execute(sql)
+        with self.assertRaisesRegex(ValueError,'READBACK_REQUIRED'):
+            self.l.add(stage='PERSISTED_VERIFIED')
+        self.assertEqual(len(self.rows()),1)
+
     def test_clock_required_future_evidence_and_unknown_not_closed(self):
         with self.assertRaises(ValueError):receipt(self.l,1,t='2026-10-14T00:00:00')
         receipt(self.l,1,t=T2);self.assertEqual(self.rows(T1),[])
@@ -135,7 +144,6 @@ class PollTests(unittest.TestCase):
             receipt(self.l,p);receipt(self.l,p,'UNKNOWN_TERMINAL',t=T1,reason=reason)
         self.assertTrue(all(r['evidence_status']=='UNKNOWN_TERMINAL' and not r['permanent_loss_proven'] for r in self.rows()))
 
-if __name__=='__main__':unittest.main()
 
 class SpawnedWriterReplayTests(unittest.TestCase):
     def test_exact_shapes_real_delayed_writer_resume_and_hard_kill(self):
@@ -146,3 +154,5 @@ class SpawnedWriterReplayTests(unittest.TestCase):
                 self.assertEqual(r['paused'].get('UNKNOWN_TERMINAL'),accepted-persisted)
                 self.assertEqual(r['final'].get('PERSISTED_VERIFIED',0),accepted if resume else persisted)
                 self.assertEqual(r['close_state'],'NOT_CLOSED')
+
+if __name__=='__main__':unittest.main()

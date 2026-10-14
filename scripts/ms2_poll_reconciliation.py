@@ -69,6 +69,14 @@ class Ledger:
           CREATE TABLE IF NOT EXISTS meta(session TEXT, generation INTEGER);
           CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY, body BLOB NOT NULL);
           CREATE TABLE IF NOT EXISTS conflicts(poll INTEGER PRIMARY KEY, reason TEXT NOT NULL);
+          CREATE TRIGGER IF NOT EXISTS events_no_update BEFORE UPDATE ON events
+            BEGIN SELECT RAISE(ABORT,'IMMUTABLE_EVIDENCE'); END;
+          CREATE TRIGGER IF NOT EXISTS events_no_delete BEFORE DELETE ON events
+            BEGIN SELECT RAISE(ABORT,'IMMUTABLE_EVIDENCE'); END;
+          CREATE TRIGGER IF NOT EXISTS conflicts_no_update BEFORE UPDATE ON conflicts
+            BEGIN SELECT RAISE(ABORT,'IMMUTABLE_CONFLICT'); END;
+          CREATE TRIGGER IF NOT EXISTS conflicts_no_delete BEFORE DELETE ON conflicts
+            BEGIN SELECT RAISE(ABORT,'IMMUTABLE_CONFLICT'); END;
         ''')
         with self.db:
             m = self.db.execute('SELECT * FROM meta').fetchall()

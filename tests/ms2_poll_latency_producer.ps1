@@ -28,7 +28,11 @@ if($Mode -eq 'drop'){$view.Write([long]0,[long]8)}
 try{
  for($poll=1;$poll -le $N;$poll++){
   $full=[Diagnostics.Stopwatch]::StartNew()
-  $mock=[Diagnostics.Stopwatch]::StartNew();$priceMock=$poll;$audioMock=$poll;$signalMock=$poll;$mockMs=$mock.Elapsed.TotalMilliseconds
+  $mock=[Diagnostics.Stopwatch]::StartNew()
+  $price=[Diagnostics.Stopwatch]::StartNew();$priceMock=$poll;$priceMs=$price.Elapsed.TotalMilliseconds
+  $audio=[Diagnostics.Stopwatch]::StartNew();$audioMock=$poll;$audioMs=$audio.Elapsed.TotalMilliseconds
+  $signal=[Diagnostics.Stopwatch]::StartNew();$signalMock=$poll;$signalMs=$signal.Elapsed.TotalMilliseconds
+  $mockMs=$mock.Elapsed.TotalMilliseconds
   $captureTimer=[Diagnostics.Stopwatch]::StartNew()
   $stamp=[DateTimeOffset]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffzzz')
   $base.poll_seq=[int]$poll;$base.observation_id=('latency-'+$poll);$base.watcher_observed_at=$stamp
@@ -41,7 +45,7 @@ try{
   $observed=[DateTimeOffset]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffzzz')
   # Synthetic record retained only in memory AFTER the measured boundary.
   $samples.Add(@{poll_seq=$poll;state=$result.Status;reason=$result.Reason;observed_at=$observed;
-   record=[Convert]::ToBase64String($packed.Record);mock_ms=$mockMs;capture_ms=$captureMs;
+   record=[Convert]::ToBase64String($packed.Record);mock_ms=$mockMs;price_mock_ms=$priceMs;audio_mock_ms=$audioMs;signal_mock_ms=$signalMs;capture_ms=$captureMs;
    packing_ms=$packingMs;submit_ms=$submitMs;full_ms=$fullMs})
   if($Mode -eq 'accepted'){Start-Sleep -Milliseconds 5}
  }

@@ -85,7 +85,7 @@ def run(mode,n=100,contention=False):
         if mode=='gate_busy':assert all(s['reason']=='PRODUCER_BUSY' for s in samples)
         if mode=='drop':assert all(s['reason']=='DROP_NEWEST' for s in samples)
         assert len(received)==len(accepted)
-        writer_times=[];checkpoint_times=[];expected={};states=[]
+        writer_times=[];readback_times=[];checkpoint_times=[];expected={};states=[]
         with tempfile.TemporaryDirectory() as tmp:
             ledger=Ledger(Path(tmp)/'audit','native',generation)
             try:
@@ -99,9 +99,11 @@ def run(mode,n=100,contention=False):
                     capture=unpack_capture(blob);start=time.perf_counter()
                     report=record_captured_observation(tmp,'data/private/ms2_sidecar/native370.jsonl',capture,enabled=True)
                     if report['transition']!='APPENDED':raise RuntimeError('WRITER_NOT_APPENDED')
+                    writer_times.append((time.perf_counter()-start)*1000)
+                    verify_start=time.perf_counter()
                     raw=Path(tmp,'data/private/ms2_sidecar/native370.jsonl').read_bytes()
                     ledger.verify_readback(raw,expected,now(),source_session='native',source_generation=generation)
-                    writer_times.append((time.perf_counter()-start)*1000)
+                    readback_times.append((time.perf_counter()-verify_start)*1000)
                 for _ in range(10):
                     start=time.perf_counter();r=ledger.checkpoint(now(),window_ended=True)
                     checkpoint_times.append((time.perf_counter()-start)*1000)
@@ -110,10 +112,10 @@ def run(mode,n=100,contention=False):
             finally:ledger.close()
         cohorts={}
         for name,group in [('steady_ACCEPTED',accepted),('steady_DROP',drops if mode!='gate_busy' else []),('GATE_BUSY',drops if mode=='gate_busy' else [])]:
-            cohorts[name]={key:stats([s[key] for s in group]) for key in ('mock_ms','capture_ms','packing_ms','submit_ms','full_ms')}
+            cohorts[name]={key:stats([s[key] for s in group]) for key in ('mock_ms','price_mock_ms','audio_mock_ms','signal_mock_ms','capture_ms','packing_ms','submit_ms','full_ms')}
         return dict(mode=mode,contention=contention,cpu_processes=len(cpu),cpu_saturation='NOT_VERIFIED',ps=aggregate['ps'],
             cold_start=stats([cold_ms]),first_warmup=stats([aggregate['first_warmup_ms']]),cohorts=cohorts,
-            Writer_save_and_verified_readback=stats(writer_times),ledger_checkpoint=stats(checkpoint_times),
+            Writer_save_completion=stats(writer_times),verified_readback_and_ledger_import=stats(readback_times),ledger_checkpoint=stats(checkpoint_times),
             reconciliation=states,close_state='NOT_CLOSED',mock_counts=aggregate['mock_counts'],
             five_ms='NOT_MET',production='P0_BLOCKED',native_pipeline='MICRO_FIXTURE_NOT_LIVE',
             same_user_auth='SAME_USER_AUTH_UNRESOLVED',eligible_observed_n=0)
