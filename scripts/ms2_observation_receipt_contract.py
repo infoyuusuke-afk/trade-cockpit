@@ -201,6 +201,7 @@ def evaluate(captures: list[dict], receipts: list[dict],
         if max(observed) - min(observed) + 1 != len(observed):
             reasons["OBSERVED_POLL_SEQ_GAP"] += 1
 
+    receipt_events: dict[tuple, datetime] = {}
     for item in receipts:
         try:
             key, event_at = _receipt(item)
@@ -217,9 +218,7 @@ def evaluate(captures: list[dict], receipts: list[dict],
             reasons["RECEIPT_PRECEDES_CREATION"] += 1
             continue
         phase_key = (key, item["phase"])
-        prev = receipt_events.get(phase_key) if "receipt_events" in locals() else None
-        if "receipt_events" not in locals():
-            receipt_events = {}
+        prev = receipt_events.get(phase_key)
         if prev is not None:
             if prev != event_at:
                 reasons["RECEIPT_EVENT_CONFLICT"] += 1
@@ -227,7 +226,7 @@ def evaluate(captures: list[dict], receipts: list[dict],
         receipt_events[phase_key] = event_at
 
     receipts_by_key: defaultdict[tuple, dict[str, datetime]] = defaultdict(dict)
-    for (key, phase), when in locals().get("receipt_events", {}).items():
+    for (key, phase), when in receipt_events.items():
         receipts_by_key[key][phase] = when
     for key in records:
         items = receipts_by_key.get(key, {})
