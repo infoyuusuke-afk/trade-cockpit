@@ -65,7 +65,7 @@ def _identity(record: dict) -> tuple[str, int, str, str]:
     if not isinstance(symbol, str) or not symbol.strip() or len(symbol) > 64:
         raise ContractError("SYMBOL_INVALID")
     stream = record.get("stream")
-    if stream not in STREAMS:
+    if not isinstance(stream, str) or stream not in STREAMS:
         raise ContractError("STREAM_INVALID")
     return (record["session_id"], seq, symbol, stream)
 
@@ -95,7 +95,7 @@ def _receipt(record: dict) -> tuple[tuple, datetime]:
     key = _identity(record)
     if record["schema_version"] != SCHEMA_VERSION:
         raise ContractError("SCHEMA_INVALID")
-    if record["phase"] not in PHASES:
+    if not isinstance(record["phase"], str) or record["phase"] not in PHASES:
         raise ContractError("RECEIPT_PHASE_INVALID")
     if not isinstance(record["record_sha256"], str) or not DIGEST.fullmatch(record["record_sha256"]):
         raise ContractError("RECORD_DIGEST_INVALID")
