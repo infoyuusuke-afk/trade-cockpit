@@ -53,7 +53,8 @@ def _read_keys(root: Path, name: str) -> Counter:
                     raise ProbeBlocked("KEY_INDEX_CAPACITY_EXCEEDED")
             file_after = q1._stat_key(os.fstat(f.fileno()))
         after = q1._stat_key(path.stat())
-        if before != after or file_before != file_after or before != file_before:
+        if (before != after or file_before != file_after or
+            before[2:4] != file_before[2:4]):
             raise ProbeBlocked("SOURCE_CHANGED_DURING_READ")
         return counts
     except (OSError, UnicodeError, csv.Error, ValueError, OverflowError) as error:
