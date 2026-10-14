@@ -58,6 +58,14 @@ class DropEvidenceTests(unittest.TestCase):
         self.assertEqual(r['snapshot']['total'],1)
         self.assertEqual(r['snapshot_integrity'],'VERIFIED')
         self.assertEqual(r['tail'],'UNKNOWN')
+    def test_terminal_dead_ingress_rejects_before_shutdown_gate(self):
+        from scripts.ms2_isolated_observation import Ingress, DEAD
+        i=Ingress(get_context('spawn'),7);i.meta[2]=DEAD
+        i.gate.acquire()
+        try:
+            self.assertEqual(i.offer(b'x'*2048,1,time.monotonic_ns()),('DROP','NOT_READY'))
+            self.assertEqual(i.meta[0],0)
+        finally:i.gate.release()
     def test_truncated_or_tampered_ledger_blocked_no_replay(self):
         self.e.path.write_bytes(b'{"body":')
         self.assertEqual(recover(self.e.path)['state'],'BLOCKED')

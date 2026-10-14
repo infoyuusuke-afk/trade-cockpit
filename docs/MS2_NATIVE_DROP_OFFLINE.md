@@ -7,6 +7,9 @@ The supervisor lowers the Writer's priority before starting PowerShell.
 This exercises the native Bridge path; it does **not** replace #367's Python
 fixed-copy ingress or prove a native connection to that anonymous mapping.
 No Watcher modification, Excel/MS2/COM call, account data, or real order.
+Inherited #367 terminal DEAD ingress now refuses NOT_READY before gate
+contention, preventing consumer shutdown from masking a known dead state as
+GATE_BUSY. This changes only refusal ordering, never acceptance or payload.
 
 Read-only Watcher trace: `ms2_live/Kioxia_RSS_Live_Watcher.ps1` sets `$now`
 before sequential price/tick/board reads around lines 586–602. Board formulas

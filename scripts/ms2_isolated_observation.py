@@ -74,6 +74,11 @@ class Ingress:
         self.last_poll = poll  # Even a DROP cannot be retried with the same poll.
         if generation is not None and (type(generation) is not int or generation != self.generation):
             return self._drop('OLD_GENERATION', poll, now)
+        # DEAD is terminal for this generation. Reject before contending with
+        # the consumer's shutdown/finally gate. This can only reject, never
+        # authorize publication from an unsynchronized readiness read.
+        if self.meta[2] == DEAD:
+            return self._drop('NOT_READY', poll, now)
         if not self.gate.acquire(False):
             return self._drop('GATE_BUSY', poll, now)
         try:
