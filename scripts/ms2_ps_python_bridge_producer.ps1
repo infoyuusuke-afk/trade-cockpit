@@ -220,6 +220,17 @@ function Write-Ms2PsBridgeBytes($Accessor, [int64]$Offset, [byte[]]$Bytes) {
     [void]$script:Ms2WriteArray.Invoke($Accessor, $arguments)
 }
 
+function Assert-Ms2IpcSecurity($Security) {
+    $sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $trusted = @($sid, "S-1-5-18", "S-1-5-32-544")
+    if ($trusted -notcontains $Security.GetOwner([System.Security.Principal.SecurityIdentifier]).Value) { throw "ACL_UNSAFE_OWNER" }
+    $rules = $Security.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier])
+    if ($rules.Count -eq 0) { throw "ACL_EMPTY_GRANT" }
+    foreach ($rule in $rules) {
+        if ($rule.AccessControlType -eq [System.Security.AccessControl.AccessControlType]::Allow -and $trusted -notcontains $rule.IdentityReference.Value) { throw "ACL_UNTRUSTED_GRANT" }
+    }
+}
+
 function Open-Ms2PsBridge([string]$MapName, [int]$Size) {
     $candidates = @($MapName)
     if ($MapName -notmatch '^b[a-f0-9]{11}$') {
@@ -231,7 +242,7 @@ function Open-Ms2PsBridge([string]$MapName, [int]$Size) {
     foreach ($candidate in $candidates) {
         $tried += 1
         try {
-            $opened = [System.IO.MemoryMappedFiles.MemoryMappedFile]::OpenExisting($candidate, [System.IO.MemoryMappedFiles.MemoryMappedFileRights]::ReadWrite)
+            $opened = [System.IO.MemoryMappedFiles.MemoryMappedFile]::OpenExisting($candidate, ([System.IO.MemoryMappedFiles.MemoryMappedFileRights]::ReadWrite -bor [System.IO.MemoryMappedFiles.MemoryMappedFileRights]::ReadPermissions))
             $used = $candidate
             break
         } catch {
@@ -244,6 +255,7 @@ function Open-Ms2PsBridge([string]$MapName, [int]$Size) {
     $accessor = $null
     try {
         if ($null -eq $script:Ms2WriteArray) { throw "WRITE_ARRAY_MISSING" }
+        Assert-Ms2IpcSecurity ($opened.GetAccessControl())
         $accessor = $opened.CreateViewAccessor(0, $Size, [System.IO.MemoryMappedFiles.MemoryMappedFileAccess]::ReadWrite)
         $label = -join @(
             [char]$accessor.ReadByte($script:Ms2PsBridgeProto),
@@ -258,6 +270,8 @@ function Open-Ms2PsBridge([string]$MapName, [int]$Size) {
         }
         $generation = $accessor.ReadInt64(112)
         if ($generation -le 0) { throw "GENERATION_MISMATCH" }
+        $mutex = [System.Threading.Mutex]::OpenExisting(("Local\ms2ipc-v2-" + $generation), ([System.Security.AccessControl.MutexRights]::Synchronize -bor [System.Security.AccessControl.MutexRights]::Modify -bor [System.Security.AccessControl.MutexRights]::ReadPermissions))
+        try { Assert-Ms2IpcSecurity ($mutex.GetAccessControl()) } catch { $mutex.Dispose(); throw }
         return @{
             Ok = $true
             Reason = "ATTACHED"
@@ -267,7 +281,7 @@ function Open-Ms2PsBridge([string]$MapName, [int]$Size) {
             Map = $opened
             Accessor = $accessor
             Generation = $generation
-            Mutex = [System.Threading.Mutex]::new($false, ("Local\ms2ipc-v2-" + $generation))
+            Mutex = $mutex
         }
     } catch {
         if ($null -ne $accessor) { $accessor.Dispose() }
@@ -289,9 +303,12 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
         Write-Ms2PsBridgeInt64 $accessor 144 ($accessor.ReadInt64(144) + 1)
         return @{ Status = "KILL_SWITCH"; Reason = "KILL_SWITCH"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     }
+    $gateStarted = $started.Elapsed.TotalMilliseconds
     if (-not (Enter-Ms2PsBridgeGate $Session)) {
         return @{ Status = "REFUSED"; Reason = "PRODUCER_BUSY"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     }
+    $Session.LastMutexMs = $started.Elapsed.TotalMilliseconds - $gateStarted
+    $publishStarted = $started.Elapsed.TotalMilliseconds
     $stage = "HEADER"
     try {
         $flags = $accessor.ReadInt64(32)
@@ -339,6 +356,7 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
         return @{ Status = "DROPPED"; Reason = ("IPC_REFUSED_" + $stage + "_" + $_.Exception.GetType().Name); ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     } finally {
         Exit-Ms2PsBridgeGate $Session
+        $Session.LastPublishMs = $started.Elapsed.TotalMilliseconds - $publishStarted
     }
 
 }
