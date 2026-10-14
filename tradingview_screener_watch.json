@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-14 17:03:02 JST",
+  "updated_at": "2026-10-14 19:39:25 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -2027,7 +2027,7 @@
       "vwap": 203.23333333333335,
       "high": 210.5,
       "low": 199.6,
-      "market_cap": 49367892295.799995,
+      "market_cap": 48523996701,
       "sector": "Process Industries",
       "already_watched": false
     },
@@ -6059,7 +6059,7 @@
       "vwap": 3538.3333333333335,
       "high": 3700,
       "low": 3455,
-      "market_cap": 298340588000,
+      "market_cap": 295471928500,
       "sector": "Technology Services",
       "already_watched": true
     },
