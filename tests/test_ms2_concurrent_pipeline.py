@@ -4,7 +4,7 @@ from tests.ms2_concurrent_pipeline import run
 
 class ConcurrentTests(unittest.TestCase):
     def test_real_bridge_writer_concurrent_faults(self):
-        for mode in ('normal','delay','queue_full','gate_busy','permission','partial','before_replace','after_replace','worker_kill','kill','stop','duplicate'):
+        for mode in ('normal','delay','queue_full','gate_busy','permission','partial','before_replace','after_replace','worker_kill','kill','stop','duplicate','receipt_loss'):
             with self.subTest(mode=mode):
                 r=run(mode,n=16)
                 self.assertEqual(r['attempts'],16)

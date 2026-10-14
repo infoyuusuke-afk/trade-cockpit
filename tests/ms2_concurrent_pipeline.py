@@ -81,7 +81,7 @@ def run(mode='normal',n=24,native=False):
         s=start(root,faults.get(mode,0))
         if s.status!='STARTED':raise RuntimeError(s.reason)
         gen=s._generation;sid='native-'+str(gen);ledger=Ledger(Path(root,'ledger'),sid,gen)
-        expected={};samples=[];timings=[];readbacks=[];process=None;reader=None;err=[];messages=queue.Queue()
+        expected={};samples=[];timings=[];readbacks=[];latencies=[];first_readback=set();process=None;reader=None;err=[];messages=queue.Queue()
         consumed=set();worker_events=[];overlap=False;ready={};cold=[];checkpoints=[];partial_killed=False
         path=Path(root,REL);audit=Path(root,'worker-evidence.jsonl')
         def import_worker():
@@ -98,7 +98,7 @@ def run(mode='normal',n=24,native=False):
                 # Only an actual negative Writer result certifies post-queue refusal.
                 if e['transition'] not in {'APPENDED','REPLAY'}:
                     ledger.add(poll_seq=poll,payload_identity=e['payload_identity'],stage='REJECTED_POST_QUEUE',
-                        observed_at=e['observed_at'],reason_code='WRITER_'+e['transition'],source_digest=identity)
+                        observed_at=now(),reason_code='WRITER_'+e['transition'],source_digest=identity)
         def verify():
             if not path.exists():return
             raw=path.read_bytes()
@@ -107,7 +107,17 @@ def run(mode='normal',n=24,native=False):
             # A persisted row without receipt is retained as orphan evidence, not fabricated acceptance.
             if any(r['poll_seq'] not in expected for r in rows):return
             t=time.perf_counter()
-            ledger.verify_readback(raw,expected,now(),source_session=sid,source_generation=gen)
+            observed=now()
+            try:ledger.verify_readback(raw,expected,observed,source_session=sid,source_generation=gen)
+            except ValueError as e:
+                if mode=='receipt_loss' and str(e)=='QUEUE_EVIDENCE_REQUIRED':return
+                raise
+            for row in rows:
+                poll=row['poll_seq']
+                if poll in first_readback:continue
+                receipt=next(e for e in samples if e['poll_seq']==poll and e['state']=='ACCEPTED')
+                elapsed=(datetime.fromisoformat(observed)-datetime.fromisoformat(receipt['observed_at'])).total_seconds()*1000
+                latencies.append(elapsed);first_readback.add(poll)
             readbacks.append((time.perf_counter()-t)*1000)
         def receive(e):
             nonlocal partial_killed
@@ -115,8 +125,10 @@ def run(mode='normal',n=24,native=False):
             row=expected_record(unpack_capture(blob));poll=e['poll_seq'];expected[poll]=row
             if e['generation']!=gen or e['session_id']!=sid:raise ValueError('RECEIPT_GENERATION')
             samples.append(e)
-            ledger.add(poll_seq=poll,payload_identity=digest(row),stage='QUEUED' if e['state']=='ACCEPTED' else 'DROPPED_PRE_QUEUE',
+            ledger.add(poll_seq=poll,payload_identity=digest(row),stage='UNKNOWN_PENDING' if mode=='receipt_loss' and len(samples)==1 else 'QUEUED' if e['state']=='ACCEPTED' else 'DROPPED_PRE_QUEUE',
                 observed_at=e['observed_at'],reason_code=e['reason'],source_digest=digest(e))
+            if mode=='receipt_loss' and len(samples)==1:
+                assert not any(x['stage']=='QUEUED' for x in ledger.events())
             if mode in {'partial','before_replace','after_replace'} and not partial_killed:
                 deadline=time.monotonic()+3
                 wanted={'partial':'IO_INFLIGHT','before_replace':'BEFORE_REPLACE','after_replace':'AFTER_REPLACE'}[mode]
@@ -146,10 +158,12 @@ def run(mode='normal',n=24,native=False):
                     e=messages.get(timeout=30)
                     if e['kind']=='done':break
                     receive(e)
+                    if mode=='producer_kill' and len(samples)==2:
+                        process.kill();break
                     if mode=='gate_busy':struct.pack_into('<I',s._shm.buf,192,0)
                     process.stdin.write('NEXT\n');process.stdin.flush()
                 process.wait(timeout=5)
-                if process.returncode or err:raise RuntimeError(str(err)+process.stderr.read())
+                if (process.returncode and mode!='producer_kill') or err:raise RuntimeError(str(err)+process.stderr.read())
             else:
                 if mode=='gate_busy':struct.pack_into('<I',s._shm.buf,192,1)
                 for i in range(1,n+1):
@@ -177,13 +191,26 @@ def run(mode='normal',n=24,native=False):
             pending=ledger.reconcile(report['as_of'])
             assert all(p['close_state']=='NOT_CLOSED' for p in report['polls'])
             if mode=='normal':
-                assert states.get('PERSISTED_VERIFIED',0)==sum(e['state']=='ACCEPTED' for e in samples)
+                assert states.get('PERSISTED_VERIFIED',0)==sum(e['state']=='ACCEPTED' for e in samples), json.dumps(dict(states=states,worker=[{k:e[k] for k in ('poll_seq','transition','reasons')} for e in worker_events],metrics=s.metrics(),reason=h._read_reason(s._shm.buf)))
                 assert overlap,'NO_CONCURRENT_COMPLETION'
             if mode in {'partial','before_replace'}:assert states.get('PERSISTED_VERIFIED',0)==0
             if mode=='after_replace':assert states.get('PERSISTED_VERIFIED',0)==1
+            if mode=='receipt_loss':assert report['polls'][0]['evidence_status']=='UNKNOWN_TERMINAL'
             if mode=='permission':assert states.get('REJECTED_POST_QUEUE',0)>0
             if mode=='queue_full':assert states.get('UNKNOWN_TERMINAL',0)>0 and states.get('DROPPED_PRE_QUEUE',0)>0
             if mode=='duplicate':assert states.get('PERSISTED_VERIFIED',0)==1
+            # Actual Bridge restart creates a new generation and never replays old IPC.
+            prior_bytes=path.read_bytes() if path.exists() else None
+            stopped=s.stop(.1)
+            assert stopped['worker_exit_verified']
+            restarted=start(root)
+            try:
+                assert restarted.status=='STARTED'
+                assert restarted._generation!=gen
+                time.sleep(.02)
+                assert restarted.metrics()['queued']==0 and restarted.metrics()['durable']==0
+                assert (path.read_bytes() if path.exists() else None)==prior_bytes
+            finally:restarted.stop(.1)
             # Replay immutable checkpoint deterministically; corruption of cache cannot rewrite evidence.
             checkpoint=ledger.path.with_suffix('.checkpoint.json');checkpoint.write_bytes(b'{broken')
             assert ledger.checkpoint(report['as_of'],window_ended=True)==report
@@ -207,6 +234,7 @@ def run(mode='normal',n=24,native=False):
                 close_state='NOT_CLOSED',cold_start=stats(cold),first_warmup=stats([ready['warmup_ms']] if ready else []),
                 cohorts=cohorts,Worker_processing=stats([e['worker_ms'] for e in worker_events]),
                 Writer_fsync=stats([v for e in worker_events for v in e['fsync_ms']]),
+                receipt_to_verified_readback_upper_bound=stats(latencies),restart_new_generation_no_replay=True,
                 verified_readback=stats(readbacks),ledger_checkpoint=stats(checkpoints),
                 receipt_tail='NOT_CLOSED',five_ms='NOT_MET',production='P0_BLOCKED',eligible_observed_n=0,
                 instrumentation='receipt ACK and worker audit fsync add unmeasured pacing; no throughput or WCET guarantee')
@@ -220,7 +248,8 @@ def run(mode='normal',n=24,native=False):
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--output',default='concurrent372.json');a=p.parse_args()
-    modes=('normal','delay','queue_full','gate_busy','permission','partial','before_replace','after_replace','worker_kill','kill','stop','duplicate')
+    modes=('normal','delay','queue_full','gate_busy','permission','partial','before_replace','after_replace','worker_kill','kill','stop','duplicate','receipt_loss')
+    if os.name=='nt':modes=(*modes,'producer_kill')
     results=[run(m,n=100 if m in {'normal','delay'} else 16,native=os.name=='nt') for m in modes]
     Path(a.output).write_text(json.dumps(results,indent=2));print(json.dumps(results))
 if __name__=='__main__':main()
