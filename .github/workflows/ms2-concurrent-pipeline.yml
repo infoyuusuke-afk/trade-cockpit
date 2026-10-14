@@ -1,0 +1,34 @@
+name: MS2 Native Concurrent Persistence Offline
+on:
+  pull_request:
+    paths:
+      - 'tests/*ms2*concurrent*'
+      - '.github/workflows/ms2-concurrent-pipeline.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Concurrent and inherited contracts
+        run: python -m unittest tests.test_ms2_concurrent_pipeline tests.test_ms2_poll_reconciliation tests.test_ms2_drop_evidence tests.test_ms2_ipc_boundaries tests.test_ms2_ipc_security tests.test_ms2_ipc_integrity tests.test_ms2_windows_handoff_e2e tests.test_ms2_nonblocking_handoff tests.test_ms2_ps_python_bridge tests.test_ms2_windows_durable_writer tests.test_ms2_offline_observation_writer tests.test_ms2_watcher_sidecar_contract tests.test_ms2_watcher_integration_preflight -v
+      - name: Native Windows or Linux protocol fixture measurements
+        run: python -m tests.ms2_concurrent_pipeline --output concurrent372.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: concurrent372-${{ runner.os }}
+          path: concurrent372.json
