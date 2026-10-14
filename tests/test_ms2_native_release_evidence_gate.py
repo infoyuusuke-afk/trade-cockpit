@@ -16,6 +16,14 @@ def fixture():
         "states": {"PERSISTED_VERIFIED": 100},
         "cohorts": {"steady_ACCEPTED": {"full_ms": {
             "N": 99, "p99_ms": 2.0, "max_ms": 3.0}}},
+        "latency_anatomy": {
+            "status": "SYNTHETIC_SEGMENTS_REPORTED_ONLY",
+            "n": 99, "over_5ms_count": 0, "slowest_full_ms": 3.0,
+            "slowest_components_ms": {"capture_ms": 0.4, "packing_ms": 1.0,
+                                      "submit_ms": 1.2, "unattributed_ms": 0.4},
+            "largest_measured_component_at_peak": "submit_ms",
+            "os_root_cause_proven": False, "production_latency_bound_proven": False,
+        },
         "Writer_fsync": {"N": 100}, "verified_readback": {"N": 6},
         "receipt_to_verified_readback_upper_bound": {"N": 100},
         "private_symbol": "SYNTHETIC_SECRET",
@@ -122,6 +130,32 @@ class ReleaseGateTests(unittest.TestCase):
                           "N": 1, "p99_ms": 1.0, "max_ms": 1.0}}})
         self.assertIn("SYNTHETIC_COHORT_TOO_SMALL", x["reasons"])
         self.assertFalse(x["normal_no_drop"])
+
+    def test_missing_latency_anatomy_refuses_synthetic_classification(self):
+        row = fixture()
+        row.pop("latency_anatomy")
+        x = classify(row)
+        self.assertEqual(x["status"], "EVIDENCE_INVALID")
+        self.assertIn("CORRELATED_STAGE_EVIDENCE_MISSING", x["reasons"])
+
+    def test_peak_from_another_sample_refused(self):
+        row = fixture()
+        row["latency_anatomy"]["slowest_full_ms"] = 12.0
+        x = classify(row)
+        self.assertIn("CORRELATED_STAGE_EVIDENCE_INCONSISTENT", x["reasons"])
+        self.assertFalse(x["release_eligible"])
+
+    def test_missing_stage_rejected(self):
+        row = fixture()
+        row["latency_anatomy"]["slowest_components_ms"].pop("submit_ms")
+        x = classify(row)
+        self.assertEqual(x["status"], "EVIDENCE_INVALID")
+
+    def test_anatomy_does_not_authorize_live_if_fast(self):
+        x = self.gate()
+        self.assertEqual(x["latency_anatomy"]["status"], "SYNTHETIC_CORRELATED_TIMING_ONLY")
+        self.assertFalse(x["source_authenticated"])
+        self.assertFalse(x["release_eligible"])
 
     def test_deterministic(self):
         self.assertEqual(self.gate(), self.gate())
