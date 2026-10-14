@@ -151,7 +151,11 @@ $forkText = (& python -c "import multiprocessing as m`ntry:`n m.get_context('for
 Assert-Check ($forkText -eq "FORK_ABSENT") "windows_spawn_only"
 
 $contract = (& python -m scripts.ms2_ps_python_bridge contract) | ConvertFrom-Json
-Assert-Check ($contract.durable_writer_on_windows -eq "P0_BLOCKED") "durable_writer_blocked"
+Assert-Check ($contract.durable_writer_on_windows -eq "OFFLINE_IMPLEMENTED") "offline_durable_writer_implemented"
+Assert-Check ($contract.durable_writer_via_handoff_worker -eq "P0_BLOCKED") "handoff_durable_writer_blocked"
+Assert-Check ($contract.durable_writer_blocker -eq "HANDOFF_WORKER_STILL_IMPORTS_FCNTL") "handoff_blocker_exact"
+Assert-Check ($contract.durable_writer_owner_pc -eq "NOT_VERIFIED") "durable_owner_pc_not_verified"
+Assert-Check ($contract.power_loss_durability -eq "NOT_VERIFIED") "power_loss_not_verified"
 Assert-Check ($contract.windows_sleep_resume -eq "NOT_VERIFIED") "sleep_resume_not_verified"
 Assert-Check ($contract.windows_owner_pc -eq "NOT_VERIFIED") "owner_pc_not_verified"
 Assert-Check ($contract.live_watcher_connection -eq "P0_BLOCKED") "watcher_connection_blocked"
@@ -211,7 +215,8 @@ try {
 
 Write-Host "NOT_VERIFIED windows_sleep_resume"
 Write-Host "NOT_VERIFIED windows_owner_pc"
-Write-Host "P0_BLOCKED durable_writer_on_windows"
+Write-Host "OFFLINE_IMPLEMENTED durable_writer_on_windows"
+Write-Host "P0_BLOCKED durable_writer_via_handoff_worker"
 Write-Host "P0_BLOCKED live_watcher_connection"
 if ($failures.Count -gt 0) {
     Write-Host ("FAILED " + ($failures -join ","))

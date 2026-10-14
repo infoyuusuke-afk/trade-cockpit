@@ -197,18 +197,21 @@ class WindowsDurableWriterTests(unittest.TestCase):
             self.assertEqual(self._path().read_bytes(), original)
         else:
             user = os.environ.get("USERNAME") or os.environ.get("USER") or ""
+            # Replacing this user's grant leaves group grants (e.g. Administrators)
+            # effective. An explicit write deny exercises real Windows ACL refusal.
             grant = subprocess.run(
-                ["icacls", str(sidecar), "/inheritance:r", "/grant:r", f"{user}:(OI)(CI)(R)"],
+                ["icacls", str(sidecar), "/deny", f"{user}:(OI)(CI)(W)"],
                 capture_output=True, text=True,
             )
             try:
+                self.assertEqual(grant.returncode, 0, grant.stderr)
                 refused = self._write(_board(poll_seq=9), relative=other)
             finally:
-                subprocess.run(
-                    ["icacls", str(sidecar), "/grant:r", f"{user}:(OI)(CI)(F)"],
+                restored = subprocess.run(
+                    ["icacls", str(sidecar), "/remove:d", user],
                     capture_output=True, text=True,
                 )
-            self.assertEqual(grant.returncode, 0, grant.stderr)
+            self.assertEqual(restored.returncode, 0, restored.stderr)
             self.assertIn("WRITE_FAILED", refused["reasons"])
             self.assertFalse((sidecar / "other.jsonl").exists())
             self.assertEqual(self._path().read_bytes(), original)
