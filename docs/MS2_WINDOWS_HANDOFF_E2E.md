@@ -24,7 +24,10 @@ process creation or pipe is added to PowerShell submission or the Watcher.
 Startup validates private destination/reparse paths, acquires the owner lock,
 probes the worker lease, quarantines unpublished files while holding #358's
 writer lock, creates a fresh uniquely named map, stamps its protocol/generation,
-then spawns once. Readiness deadline is two seconds. Failures close owned
+then spawns once. Readiness deadline is two seconds. Stop waits at most
+0.25s plus a 0.05s kill-join; a still-exiting Worker yields STOP_PENDING with
+worker_exit_verified=false. Immediate restart remains refused until its lease
+is released. Tests separately await the known child exit before restart. Failures close owned
 handles; an existing map is refused, never attached, cleared or unlinked.
 Only a creating owner unlinks its POSIX map. An attached Worker closes only.
 On Windows there is no unlink call: the map survives until the last handle
@@ -45,7 +48,7 @@ remains a blocking gate. Existing packing/hash/canonical semantics are unchanged
 
 ## Evidence boundaries
 
-`MS2 Windows Handoff E2E` runs the same 131-test suite on Windows and Linux.
+`MS2 Windows Handoff E2E` runs the same 132-test suite on Windows and Linux.
 Windows additionally executes Windows PowerShell 5.1 in the E2E test and the
 existing packing/mapping fault script. The E2E rereads the resulting private
 JSONL and checks null/zero quantities, absent event/availability clocks,

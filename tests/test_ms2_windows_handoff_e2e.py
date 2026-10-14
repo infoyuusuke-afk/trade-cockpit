@@ -169,6 +169,24 @@ class WindowsHandoffE2ETests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             shared_memory.SharedMemory(name=name)
 
+    def test_stop_reports_pending_when_known_child_has_not_exited(self):
+        session = self.start(fault=handoff.FAULT_HOLD)
+        real_process = session._process
+        class StillExiting:
+            def is_alive(self): return True
+            def join(self, timeout): pass
+            def kill(self): pass
+        session._process = StillExiting()
+        try:
+            result = session.stop(0)
+            self.assertEqual(result["status"], "STOP_PENDING")
+            self.assertFalse(result["worker_exit_verified"])
+            self.assertTrue(result["killed"])
+        finally:
+            session._process = real_process
+            real_process.join(2)
+            self.assertFalse(real_process.is_alive())
+
     def test_invalid_private_path_is_refused_before_spawn(self):
         with patch.object(handoff, "get_context") as context:
             session = handoff.start_handoff(self.root, "public.jsonl", enabled=True)

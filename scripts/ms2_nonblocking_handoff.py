@@ -515,11 +515,13 @@ class HandoffSession:
                 self._process.kill()
                 killed = True
                 self._process.join(0.05)
+        exit_verified = self._process is None or not self._process.is_alive()
         self._stopped = True
-        self.status = "STOPPED"
+        self.status = "STOPPED" if exit_verified else "STOP_PENDING"
         self._close_handles()
         return {
-            "status": "STOPPED",
+            "status": self.status,
+            "worker_exit_verified": exit_verified,
             "abandoned": abandoned,
             "killed": killed,
             "elapsed_s": time.monotonic() - started,

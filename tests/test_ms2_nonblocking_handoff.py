@@ -292,6 +292,8 @@ class NonblockingHandoffTests(unittest.TestCase):
         spill.mkdir(parents=True, exist_ok=True)
         (spill / "old.bin").write_bytes(b"STALE-QUEUE")
         (private / ".board.jsonl.9.tmp").write_bytes(b"PARTIAL")
+        session._process.join(2)
+        self.assertFalse(session._process.is_alive())
         restarted = self._start()
         self.assertEqual(restarted.status, "STARTED")
         self.assertGreaterEqual(restarted.metrics()["stale_discarded"], 2)
