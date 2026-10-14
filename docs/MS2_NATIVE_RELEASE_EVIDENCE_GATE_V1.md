@@ -26,3 +26,16 @@ All test inputs are synthesized. All changes are new files, no canonical 2048-by
 
 **Next decision after CI**: select a minimal existing-IPC Release Cut to cover an actual isolated private market-data Writer, then seek separate explicit OWNER approval before actual Collector wiring and Windows private live use. If normal-phase DROP persists, fix throughput/queue backpressure through an independently reviewed small patch without replaying UNKNOWN or coupling monitor to Writer. Evidence N for real eligible trading remains zero and EV/PF/DD/net profit/¥10 billion remaining UNKNOWN.
 
+
+
+## Bounded correlated latency repeat, 2026-10-15 (synthetic ONLY)
+
+The Native Windows fixture reports timings correlated for the same slowest steady ACCEPTED poll. Its capture_ms is synthetic stamp preparation, packing_ms is PowerShell payload conversion, submit_ms is native IPC submission; unattributed_ms is the residual of full_ms minus the measured stages. The largest measured component is NOT proof of its OS root cause. No original ticker, market time, payload, digest or private path is emitted.
+
+Windows runs 3 fresh isolated synthetic sessions x 48 attempted observations; Linux one protocol-only session x 24. Each returns anonymous N, normal DROP, fsync/readback evidence and independent cold/first/steady metrics. Separate-stage aggregate maxima from different polls MUST NOT be added or declared the cause of the full maximum. The signal and critical real Collector are not part of this test.
+
+A green workflow means a valid classification, not a production release. Any normal DROP, max>5ms, missing timing evidence or readback discrepancy is explicitly recorded. Even repeated max<=5ms is NOT an OS worst-case execution-time proof. Preserve the prior 24-attempt Windows max 51.9509ms/zero DROP as an independent failed performance result.
+
+Finite stop rule: after three Windows cohorts, document actual stage-correlated results and unresolved tail. Do not endlessly repeat synthetic benchmarks. Proceed next to a separately approved plan for a minimal private, point-in-time Collector-to-existing-Writer data capture route rather than proliferating IPC.
+
+All real submission, promotion, live source authentication, production acceptance and finance statistics remain blocked/UNKNOWN. This is not permission to start MS2/Excel, operate OWNER PC, merge main or edit the live Collector.
