@@ -13,15 +13,21 @@ Clocks are written only when the caller measured them. A naive watcher
 ``Get-Date`` string is not given an offset. ``poll_seq`` stays the loop
 counter. Missing sizes stay null. ``available_at`` is not copied from the
 watcher clock. Nothing here is a virtual close.
+
+The lock is non-blocking and owned by one process. POSIX uses ``flock``.
+Windows uses ``LockFileEx`` and does not import ``fcntl``. A temp file is
+created in the same directory and replaces the published JSONL only after
+flush and read-back. A crash before that replace leaves the published bytes
+in place. Power-loss durability is not claimed.
 """
 from __future__ import annotations
 
 import errno
-import fcntl
 import hashlib
 import json
 import math
 import os
+import stat
 import time
 from datetime import datetime
 from pathlib import Path
@@ -152,6 +158,9 @@ def watcher_integration_proposal() -> dict:
             {"id": "W3", "status": "NOT_VERIFIED", "check": "Ctrl+C. B16 becomes 停止. Excel stays up. Force-killing Excel is a failed stop."},
             {"id": "W4", "status": "NOT_VERIFIED", "check": "On COM errors, a frozen sign, a poll gap, or a sidecar exception: flag off, Ctrl+C, restore the audited watcher. Do not keep trading from a stale dashboard."},
         ],
+        "durable_writer_owner_pc": "NOT_VERIFIED",
+        "power_loss_durability": "NOT_VERIFIED",
+        "durable_plan": "docs/MS2_WINDOWS_DURABLE_WRITER.md",
     }
 
 
@@ -185,6 +194,15 @@ def _safety_report() -> dict:
         "file_sha256": None,
         "row_count": 0,
         "elapsed_ms": 0,
+        "lock_wait_s": 0,
+        "lock_backend": "windows-lockfileex" if os.name == "nt" else "posix-flock",
+        "same_directory_replace": True,
+        "crash_consistency": "PUBLISHED_BYTES_STABLE_UNTIL_REPLACE",
+        "power_loss_durability": "NOT_VERIFIED",
+        "directory_fsync": "WINDOWS_NOT_SUPPORTED" if os.name == "nt" else "POSIX_WHEN_REPLACE_SUCCEEDS",
+        "live_watcher_connection": "P0_BLOCKED",
+        "owner_pc_acceptance": "NOT_VERIFIED",
+        "recovery_transitions": [],
     }
 
 
@@ -877,6 +895,25 @@ def build_captured_record(capture: dict) -> dict:
     return {"ok": True, "record": record, "reasons": checked["incomplete"]}
 
 
+def _is_reparse(path: Path) -> bool:
+    """True for a symlink, a Windows junction, or any other reparse point."""
+    try:
+        if path.is_symlink():
+            return True
+        is_junction = getattr(path, "is_junction", None)
+        if callable(is_junction) and is_junction():
+            return True
+    except OSError:
+        return True
+    if os.name != "nt":
+        return False
+    try:
+        info = os.lstat(path)
+    except OSError:
+        return False
+    return bool(getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+
+
 def resolve_write_path(repo_root, relative: str) -> Path:
     """Resolve a new or existing jsonl path under data/private/ms2_sidecar."""
     if not isinstance(relative, str) or not relative or relative.startswith(("/", "\\")) or "\\" in relative:
@@ -888,20 +925,25 @@ def resolve_write_path(repo_root, relative: str) -> Path:
     current = root
     for part in parts[:-1]:
         current = current / part
-        if current.is_symlink():
+        if _is_reparse(current):
             raise ValueError("PRIVATE_PATH_LINK")
         if current.exists() and not current.is_dir():
             raise ValueError("PRIVATE_PATH_INVALID")
     target = current / parts[-1]
-    if target.is_symlink():
+    if _is_reparse(target):
         raise ValueError("PRIVATE_PATH_LINK")
     allowed = (root / "data" / "private" / "ms2_sidecar").resolve()
-    if target.parent.resolve() != allowed:
+    if _is_reparse(target.parent) or target.parent.resolve() != allowed:
         raise ValueError("PRIVATE_PATH_INVALID")
     return target
 
 
 def _io_reason(exc: OSError) -> str:
+    winerror = getattr(exc, "winerror", None)
+    # 32/33 are sharing and lock violations. Replace of a file another handle
+    # still has open is often access denied (5) rather than 32.
+    if winerror in {32, 33} or (type(exc) is _ReplaceFailed and winerror == 5):
+        return "WINDOWS_SHARING_VIOLATION"
     if isinstance(exc, PermissionError) or exc.errno in {errno.EACCES, errno.EPERM}:
         return "WRITE_FAILED"
     if exc.errno == errno.ENOSPC:
@@ -913,7 +955,115 @@ class _ReadbackMismatch(Exception):
     pass
 
 
-def _atomic_write(path: Path, payload: bytes, hooks: dict) -> None:
+class _ReplaceFailed(OSError):
+    """The published file was not replaced. Its previous bytes stay in place."""
+
+    def __init__(self, exc: OSError):
+        super().__init__(exc.errno or 0, exc.strerror or "replace failed")
+        self.winerror = getattr(exc, "winerror", None)
+
+
+# POSIX flock operation bits. Injected hooks still receive these values.
+_FLOCK_EX_NB = 2 | 4
+_FLOCK_UN = 8
+
+
+def _lock_windows(fd: int) -> None:
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    class _Overlapped(ctypes.Structure):
+        _fields_ = [
+            ("Internal", ctypes.c_void_p),
+            ("InternalHigh", ctypes.c_void_p),
+            ("Offset", wintypes.DWORD),
+            ("OffsetHigh", wintypes.DWORD),
+            ("hEvent", wintypes.HANDLE),
+        ]
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.LockFileEx.argtypes = [
+        wintypes.HANDLE, wintypes.DWORD, wintypes.DWORD,
+        wintypes.DWORD, wintypes.DWORD, ctypes.POINTER(_Overlapped),
+    ]
+    kernel.LockFileEx.restype = wintypes.BOOL
+    overlapped = _Overlapped()
+    exclusive_now = 0x00000002 | 0x00000001
+    held = kernel.LockFileEx(msvcrt.get_osfhandle(fd), exclusive_now, 0, 1, 0, ctypes.byref(overlapped))
+    if held:
+        return
+    error = ctypes.get_last_error()
+    if error in {32, 33}:
+        raise BlockingIOError(errno.EAGAIN, "writer lock held")
+    raised = OSError(error, "LockFileEx failed")
+    raised.winerror = error
+    raise raised
+
+
+def _unlock_windows(fd: int) -> None:
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    class _Overlapped(ctypes.Structure):
+        _fields_ = [
+            ("Internal", ctypes.c_void_p),
+            ("InternalHigh", ctypes.c_void_p),
+            ("Offset", wintypes.DWORD),
+            ("OffsetHigh", wintypes.DWORD),
+            ("hEvent", wintypes.HANDLE),
+        ]
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.UnlockFileEx.argtypes = [
+        wintypes.HANDLE, wintypes.DWORD, wintypes.DWORD,
+        wintypes.DWORD, ctypes.POINTER(_Overlapped),
+    ]
+    kernel.UnlockFileEx.restype = wintypes.BOOL
+    overlapped = _Overlapped()
+    kernel.UnlockFileEx(msvcrt.get_osfhandle(fd), 0, 1, 0, ctypes.byref(overlapped))
+
+
+def _lock_native(fd: int) -> None:
+    if os.name == "nt":
+        _lock_windows(fd)
+        return
+    import fcntl
+    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def _unlock_native(fd: int) -> None:
+    if os.name == "nt":
+        _unlock_windows(fd)
+        return
+    import fcntl
+    fcntl.flock(fd, fcntl.LOCK_UN)
+
+
+def _fsync_directory(directory: Path) -> str:
+    """Persist the directory entry after replace when the platform allows it.
+
+    Windows exposes file flush, not this directory flush. Either result is
+    still short of a proven power-loss guarantee.
+    """
+    if os.name == "nt":
+        return "WINDOWS_NOT_SUPPORTED"
+    fd = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
+    return "POSIX_FSYNC"
+
+
+def _atomic_write(path: Path, payload: bytes, hooks: dict) -> dict:
+    """Write a temp file beside ``path`` and replace only after read-back.
+
+    The temp name stays in the same directory, so the replace does not cross
+    a volume. On Windows a destination opened without sharing for delete
+    makes the replace fail and the previous published bytes remain.
+    """
     open_fn = hooks.get("open", os.open)
     write_fn = hooks.get("write", os.write)
     fsync_fn = hooks.get("fsync", os.fsync)
@@ -922,11 +1072,19 @@ def _atomic_write(path: Path, payload: bytes, hooks: dict) -> None:
     unlink_fn = hooks.get("unlink", os.unlink)
     read_fn = hooks.get("read", lambda item: Path(item).read_bytes())
     chmod_fn = hooks.get("chmod", os.chmod)
-    tmp = path.parent / f".{path.name}.{os.getpid()}.tmp"
+    tmp = path.parent / f".{path.name}.{os.getpid()}.{time.time_ns()}.tmp"
+    info = {"directory_fsync": "SKIPPED", "same_directory_temp": True}
     fd = None
     try:
-        fd = open_fn(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        write_fn(fd, payload)
+        fd = open_fn(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0), 0o600)
+        remaining = payload
+        while remaining:
+            written = write_fn(fd, remaining)
+            if not isinstance(written, int):
+                break
+            if written <= 0:
+                raise OSError(errno.EIO, "short write")
+            remaining = remaining[written:]
         fsync_fn(fd)
     except Exception:
         if fd is not None:
@@ -948,14 +1106,14 @@ def _atomic_write(path: Path, payload: bytes, hooks: dict) -> None:
             pass
         raise
     try:
-        written = read_fn(tmp)
+        written_back = read_fn(tmp)
     except Exception:
         try:
             unlink_fn(tmp)
         except Exception:
             pass
         raise
-    if written != payload:
+    if written_back != payload:
         try:
             unlink_fn(tmp)
         except Exception:
@@ -963,24 +1121,42 @@ def _atomic_write(path: Path, payload: bytes, hooks: dict) -> None:
         raise _ReadbackMismatch()
     try:
         replace_fn(tmp, path)
-        chmod_fn(path, 0o600)
+    except OSError as exc:
+        try:
+            unlink_fn(tmp)
+        except Exception:
+            pass
+        raise _ReplaceFailed(exc) from exc
     except Exception:
         try:
             unlink_fn(tmp)
         except Exception:
             pass
         raise
+    try:
+        chmod_fn(path, 0o600)
+    except OSError:
+        if os.name != "nt":
+            raise
     if read_fn(path) != payload:
         raise _ReadbackMismatch()
+    try:
+        info["directory_fsync"] = _fsync_directory(path.parent)
+    except OSError:
+        info["directory_fsync"] = "DIRECTORY_FSYNC_FAILED"
+    return info
 
 
 def _acquire_lock(directory: Path, hooks: dict) -> int:
+    """Take the writer lock or fail at once. This call does not wait."""
     open_fn = hooks.get("open", os.open)
-    flock_fn = hooks.get("flock", fcntl.flock)
     close_fn = hooks.get("close", os.close)
-    fd = open_fn(directory / LOCK_NAME, os.O_CREAT | os.O_RDWR, 0o600)
+    fd = open_fn(directory / LOCK_NAME, os.O_CREAT | os.O_RDWR | getattr(os, "O_BINARY", 0), 0o600)
     try:
-        flock_fn(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if "flock" in hooks:
+            hooks["flock"](fd, _FLOCK_EX_NB)
+        else:
+            _lock_native(fd)
     except BlockingIOError:
         close_fn(fd)
         raise
@@ -989,12 +1165,123 @@ def _acquire_lock(directory: Path, hooks: dict) -> int:
 
 def _release_lock(fd: int, hooks: dict) -> None:
     close_fn = hooks.get("close", os.close)
-    flock_fn = hooks.get("flock", fcntl.flock)
     try:
-        flock_fn(fd, fcntl.LOCK_UN)
+        if "flock" in hooks:
+            hooks["flock"](fd, _FLOCK_UN)
+        else:
+            _unlock_native(fd)
     except OSError:
         pass
     close_fn(fd)
+
+
+class exclusive_writer_lock:
+    """Hold the single writer lock until the block exits. Tests use this."""
+
+    def __init__(self, directory):
+        self.directory = Path(directory)
+        self.fd = None
+
+    def __enter__(self):
+        self.directory.mkdir(parents=True, exist_ok=True)
+        self.fd = _acquire_lock(self.directory, {})
+        return self
+
+    def __exit__(self, *_args):
+        if self.fd is not None:
+            _release_lock(self.fd, {})
+            self.fd = None
+        return False
+
+
+def _recovery_path(path: Path) -> Path:
+    return path.parent / f".{path.name}.recovery.jsonl"
+
+
+def _temp_names(path: Path) -> list[Path]:
+    prefix = f".{path.name}."
+    found = []
+    if not path.parent.exists():
+        return found
+    for item in path.parent.iterdir():
+        if item.name.startswith(prefix) and item.name.endswith(".tmp"):
+            found.append(item)
+    return found
+
+
+def _append_recovery(path: Path, events: list[dict]) -> None:
+    """Record quarantine or refusal. This file is not an observation JSONL."""
+    if not events:
+        return
+    journal = _recovery_path(path)
+    if _is_reparse(journal):
+        raise OSError(errno.EPERM, "recovery reparse")
+    quarantine = path.parent / f".{path.name}.quarantine"
+    journal_prefix = f".{journal.name}."
+    if path.parent.exists():
+        for item in list(path.parent.iterdir()):
+            if not (item.name.startswith(journal_prefix) and item.name.endswith(".tmp")):
+                continue
+            if _is_reparse(item) or not item.is_file():
+                raise OSError(errno.EPERM, "recovery temp reparse")
+            if quarantine.exists() and (_is_reparse(quarantine) or not quarantine.is_dir()):
+                raise OSError(errno.EPERM, "quarantine reparse")
+            quarantine.mkdir(exist_ok=True)
+            os.replace(item, quarantine / f"{time.time_ns()}-{item.name}")
+            events = [
+                {"transition": "QUARANTINED_PARTIAL", "reason": "RECOVERY_TEMP_LEFTOVER", "repaired": False},
+                *events,
+            ]
+    existing = b""
+    if journal.exists() and not _is_reparse(journal):
+        existing = journal.read_bytes()
+        if existing and not existing.endswith(b"\n"):
+            quarantine = path.parent / f".{path.name}.quarantine"
+            if _is_reparse(quarantine):
+                raise OSError(errno.EPERM, "quarantine reparse")
+            quarantine.mkdir(exist_ok=True)
+            os.replace(journal, quarantine / f"{time.time_ns()}-recovery-partial")
+            existing = b""
+            events = [
+                {"transition": "RECOVERY_LOG_QUARANTINED", "reason": "PARTIAL_RECOVERY_LOG", "repaired": False},
+                *events,
+            ]
+    body = "".join(
+        json.dumps(item, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
+        for item in events
+    )
+    _atomic_write(journal, existing + body.encode("utf-8"), {})
+
+
+def _quarantine_partials(path: Path) -> list[dict]:
+    """Move leftover temp files aside. Do not merge them into the published file."""
+    leftovers = _temp_names(path)
+    if not leftovers:
+        return []
+    quarantine = path.parent / f".{path.name}.quarantine"
+    if quarantine.exists() and (_is_reparse(quarantine) or not quarantine.is_dir()):
+        raise OSError(errno.EPERM, "quarantine reparse")
+    events = []
+    published = b""
+    if path.exists() and not _is_reparse(path) and path.is_file():
+        published = path.read_bytes()
+    digest = hashlib.sha256(published).hexdigest()
+    quarantine.mkdir(exist_ok=True)
+    for item in leftovers:
+        if _is_reparse(item) or not item.is_file():
+            raise OSError(errno.EPERM, "temp reparse")
+        dest = quarantine / f"{time.time_ns()}-{item.name}"
+        os.replace(item, dest)
+        events.append({
+            "transition": "QUARANTINED_PARTIAL",
+            "reason": "TEMP_LEFTOVER",
+            "repaired": False,
+            "published_sha256": digest,
+            "published_bytes": len(published),
+            "quarantine_name": dest.name,
+        })
+    _append_recovery(path, events)
+    return events
 
 
 def _parse_existing(raw: bytes) -> list[dict] | None:
@@ -1067,56 +1354,102 @@ def _record(repo_root, relative, capture, *, enabled: bool, hooks: dict) -> dict
         return _blocked(["WRITE_LOCKED", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN", "CAPTURE_NOT_AUTHENTICATED"])
     except OSError as exc:
         return _blocked([_io_reason(exc), "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN", "CAPTURE_NOT_AUTHENTICATED"])
+    recovery: list[dict] = []
     try:
+        try:
+            recovery = _quarantine_partials(path)
+        except OSError as exc:
+            report = _blocked([
+                _io_reason(exc), "TEMP_LEFTOVER", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN",
+            ])
+            report["recovery_transitions"] = list(recovery)
+            return report
+
+        def finish(report: dict) -> dict:
+            report["recovery_transitions"] = list(recovery)
+            return report
+
         existing = path.read_bytes() if path.exists() else b""
         if existing:
             if len(existing) > MAX_BYTES or len(existing) + len(line) > MAX_BYTES:
-                return _blocked(["PRIVATE_FILE_TOO_LARGE", "EXISTING_FILE_PRESERVED", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"])
+                return finish(_blocked(["PRIVATE_FILE_TOO_LARGE", "EXISTING_FILE_PRESERVED", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"]))
             prior = audit_sidecar_bytes(existing)
             if prior["contract_status"] == "BLOCKED":
-                return _blocked([*prior["reasons"], "EXISTING_FILE_PRESERVED"])
+                reason = "DATA_CORRUPT" if "DATA_CORRUPT" in prior["reasons"] else "EXISTING_FILE_PRESERVED"
+                event = {
+                    "transition": "CORRUPT_PRESERVED" if reason == "DATA_CORRUPT" else "BLOCKED_PRESERVED",
+                    "reason": reason,
+                    "repaired": False,
+                    "published_bytes": len(existing),
+                    "published_sha256": hashlib.sha256(existing).hexdigest(),
+                }
+                try:
+                    _append_recovery(path, [event])
+                    recovery = [*recovery, event]
+                except OSError:
+                    pass
+                return finish(_blocked([*prior["reasons"], "EXISTING_FILE_PRESERVED"]))
             parsed = _parse_existing(existing)
             if parsed is None:
-                return _blocked(["DATA_CORRUPT", "EXISTING_FILE_PRESERVED", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"])
+                event = {
+                    "transition": "CORRUPT_PRESERVED",
+                    "reason": "DATA_CORRUPT",
+                    "repaired": False,
+                    "published_bytes": len(existing),
+                    "published_sha256": hashlib.sha256(existing).hexdigest(),
+                }
+                try:
+                    _append_recovery(path, [event])
+                    recovery = [*recovery, event]
+                except OSError:
+                    pass
+                return finish(_blocked(["DATA_CORRUPT", "EXISTING_FILE_PRESERVED", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"]))
             token = _canonical(record)
             for item in parsed:
                 if _canonical(item) == token:
-                    return _from_audit(
+                    return finish(_from_audit(
                         prior, writer_status="IDEMPOTENT", transition="REPLAY",
                         reasons=[*prior["reasons"], "IDEMPOTENT_REPLAY"],
                         writes_performed=False, payload=existing,
-                    )
+                    ))
                 if item.get("observation_id") == record.get("observation_id"):
-                    return _blocked(["DUPLICATE_CONFLICT", "NOT_APPENDED", "EXISTING_FILE_PRESERVED", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"])
+                    return finish(_blocked(["DUPLICATE_CONFLICT", "NOT_APPENDED", "EXISTING_FILE_PRESERVED", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"]))
                 if (item.get("symbol"), item.get("market"), item.get("kind"), item.get("poll_seq")) == (
                     record.get("symbol"), record.get("market"), record.get("kind"), record.get("poll_seq")
                 ):
-                    return _blocked(["DUPLICATE_POLL", "NOT_APPENDED", "EXISTING_FILE_PRESERVED", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"])
+                    return finish(_blocked(["DUPLICATE_POLL", "NOT_APPENDED", "EXISTING_FILE_PRESERVED", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"]))
             candidate = existing + line
         else:
             if len(line) > MAX_BYTES:
-                return _blocked(["PRIVATE_FILE_TOO_LARGE", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"])
+                return finish(_blocked(["PRIVATE_FILE_TOO_LARGE", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"]))
             candidate = line
         preview = audit_sidecar_bytes(candidate)
         if preview["contract_status"] not in {"ADMITTED_INCOMPLETE", "PROJECTABLE_SYNTHETIC"}:
-            return _blocked([*preview["reasons"], "NOT_APPENDED", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"])
+            return finish(_blocked([*preview["reasons"], "NOT_APPENDED", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"]))
         previous = existing if existing else None
         try:
-            _atomic_write(path, candidate, hooks)
+            info = _atomic_write(path, candidate, hooks)
         except _ReadbackMismatch:
             _restore(path, previous, hooks)
-            return _blocked(["READBACK_MISMATCH", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"])
+            return finish(_blocked(["READBACK_MISMATCH", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"]))
+        except _ReplaceFailed as exc:
+            return finish(_blocked([
+                _io_reason(exc), "REPLACE_FAILED", "ELIGIBLE_OBSERVED_N_ZERO",
+                "ECONOMICS_UNKNOWN", "CAPTURE_NOT_AUTHENTICATED",
+            ]))
         except OSError as exc:
-            return _blocked([_io_reason(exc), "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN", "CAPTURE_NOT_AUTHENTICATED"])
+            return finish(_blocked([
+                _io_reason(exc), "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN", "CAPTURE_NOT_AUTHENTICATED",
+            ]))
         final = path.read_bytes()
         if final != candidate:
             _restore(path, previous, hooks)
-            return _blocked(["READBACK_MISMATCH", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"])
+            return finish(_blocked(["READBACK_MISMATCH", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"]))
         confirmed = audit_sidecar_bytes(final)
         if confirmed["contract_status"] != preview["contract_status"]:
             _restore(path, previous, hooks)
-            return _blocked(["READBACK_MISMATCH", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"])
-        return _from_audit(
+            return finish(_blocked(["READBACK_MISMATCH", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"]))
+        report = _from_audit(
             confirmed,
             writer_status=confirmed["contract_status"],
             transition="APPENDED",
@@ -1124,6 +1457,11 @@ def _record(repo_root, relative, capture, *, enabled: bool, hooks: dict) -> dict
             writes_performed=True,
             payload=final,
         )
+        report["directory_fsync"] = info.get("directory_fsync", report["directory_fsync"])
+        report["recovery_transitions"] = recovery
+        if existing and final[:len(existing)] != existing:
+            report["reasons"] = sorted(set(report["reasons"]) | {"PUBLISHED_PREFIX_LOST"})
+        return report
     finally:
         _release_lock(fd, hooks)
 
@@ -1162,8 +1500,49 @@ def record_captured_observation(repo_root, relative, capture=None, *, enabled: b
     report["eligible_observed_n"] = 0
     report["exchange_order_proven"] = False
     report["snapshot_atomic_guaranteed"] = False
+    report["power_loss_durability"] = "NOT_VERIFIED"
+    report["live_watcher_connection"] = "P0_BLOCKED"
+    report["owner_pc_acceptance"] = "NOT_VERIFIED"
+    report["lock_wait_s"] = 0
+    if hooks and "flock" in hooks:
+        report["lock_backend"] = "injected-flock"
     if "ECONOMICS_UNKNOWN" not in report["reasons"] or "ELIGIBLE_OBSERVED_N_ZERO" not in report["reasons"]:
         report["reasons"] = sorted(set(report["reasons"]) | {"ECONOMICS_UNKNOWN", "ELIGIBLE_OBSERVED_N_ZERO"})
+    return report
+
+
+def persist_bridge_record(repo_root, relative, blob: bytes, *, enabled: bool = False, hooks=None) -> dict:
+    """Persist one already packed 2048-byte bridge record.
+
+    This does not open shared memory, a pipe, Excel, or the live watcher.
+    The handoff worker still imports ``fcntl`` and is not started here.
+    """
+    if enabled is not True:
+        report = record_captured_observation(repo_root, relative, None, enabled=False, hooks=hooks)
+        report["bridge_format"] = "NBH1-2048"
+        report["watcher_io"] = False
+        report["handoff_worker"] = "NOT_STARTED"
+        return report
+    from scripts.ms2_bridge_record import RECORD_SIZE, unpack_capture
+
+    if not isinstance(blob, (bytes, bytearray)) or len(blob) != RECORD_SIZE:
+        report = _blocked(["BRIDGE_RECORD_REFUSED", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"])
+        report["bridge_format"] = "NBH1-2048"
+        report["watcher_io"] = False
+        report["handoff_worker"] = "NOT_STARTED"
+        return report
+    capture = unpack_capture(bytes(blob))
+    if not isinstance(capture, dict):
+        report = _blocked(["BRIDGE_RECORD_REFUSED", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"])
+        report["bridge_format"] = "NBH1-2048"
+        report["watcher_io"] = False
+        report["handoff_worker"] = "NOT_STARTED"
+        return report
+    report = record_captured_observation(repo_root, relative, capture, enabled=True, hooks=hooks)
+    report["bridge_format"] = "NBH1-2048"
+    report["watcher_io"] = False
+    report["handoff_worker"] = "NOT_STARTED"
+    report["live_watcher_connection"] = "P0_BLOCKED"
     return report
 
 

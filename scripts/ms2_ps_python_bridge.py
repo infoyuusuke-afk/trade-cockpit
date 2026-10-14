@@ -11,11 +11,11 @@ Python, does not open a pipe, and does not take a file lock.
 
 A synchronous ``python.exe`` or pipe on every poll is not this design.
 
-Durable JSONL on Windows is P0_BLOCKED. The pinned offline writer imports
-``fcntl`` at module scope, and ``SharedMemory.unlink`` does nothing on
-Windows. This Linux process can still run the existing worker. A GitHub
-Windows runner is not the owner PC, and neither one has been treated as a
-pass by the constants below.
+The offline writer no longer imports ``fcntl`` at module scope. It can
+persist one already packed 2048-byte record on Windows and Linux. The
+spawned handoff worker still imports ``fcntl``, so that process is not
+started on Windows. ``SharedMemory.unlink`` remains a no-op there. A GitHub
+Windows runner is not the owner PC. Power-loss durability is not claimed.
 """
 from __future__ import annotations
 
@@ -137,8 +137,11 @@ def bridge_contract() -> dict:
         "hard_realtime_guaranteed": False,
         "hard_realtime_reason": "CPYTHON_USERSPACE_ON_GENERAL_PURPOSE_OS",
         "live_watcher_connection": "P0_BLOCKED",
-        "durable_writer_on_windows": "P0_BLOCKED",
-        "durable_writer_blocker": "PINNED_WRITER_IMPORTS_FCNTL_AND_WINDOWS_UNLINK_IS_A_NOOP",
+        "durable_writer_on_windows": "OFFLINE_IMPLEMENTED",
+        "durable_writer_via_handoff_worker": "P0_BLOCKED",
+        "durable_writer_blocker": "HANDOFF_WORKER_STILL_IMPORTS_FCNTL",
+        "durable_writer_owner_pc": "NOT_VERIFIED",
+        "power_loss_durability": "NOT_VERIFIED",
         "powershell_memory_mapped_file": "NOT_VERIFIED",
         "windows_owner_pc": "NOT_VERIFIED",
         "windows_sleep_resume": "NOT_VERIFIED",
@@ -409,7 +412,7 @@ def start_bridge(repo_root, relative: str | None = None, *, enabled: bool = Fals
     except ModuleNotFoundError as exc:
         if getattr(exc, "name", None) != "fcntl":
             raise
-        blocked = BridgeSession("P0_BLOCKED", "WINDOWS_FCNTL_WRITER")
+        blocked = BridgeSession("P0_BLOCKED", "HANDOFF_IMPORTS_FCNTL")
         return blocked
     root = Path(repo_root)
     runtime = root / "data" / "private" / "ms2_sidecar" / "runtime"

@@ -1,5 +1,4 @@
 import errno
-import fcntl
 import hashlib
 import io
 import json
@@ -24,6 +23,7 @@ from scripts.ms2_offline_observation_writer import (
     WATCHER_INTEGRATION_APPLIED,
     WRITER_DEFAULT_ENABLED,
     build_captured_record,
+    exclusive_writer_lock,
     isolated_poll_boundary,
     main,
     producer_trace,
@@ -208,7 +208,11 @@ class OfflineObservationWriterTests(unittest.TestCase):
         pit = audited["pit_records"][0]
         self.assertEqual(pit["schema_version"], "ms2-pit-observation-0.1")
         self.assertNotEqual(pit["sequence"], pit["poll_seq"])
-        self.assertEqual(self._path().stat().st_mode & 0o777, 0o600)
+        if os.name == "posix":
+            self.assertEqual(self._path().stat().st_mode & 0o777, 0o600)
+        else:
+            self.assertTrue(self._path().is_file())
+            self.assertFalse(self._path().is_symlink())
         via_contract = audit_private_sidecar(self.root, RELATIVE)
         self.assertEqual(via_contract["contract_status"], "PROJECTABLE_SYNTHETIC")
 
@@ -385,11 +389,15 @@ class OfflineObservationWriterTests(unittest.TestCase):
         private = self.root / "data" / "private"
         private.mkdir(parents=True)
         link = private / "ms2_sidecar"
-        link.symlink_to(outside, target_is_directory=True)
-        linked = self._write()
-        self.assertIn("PRIVATE_PATH_LINK", linked["reasons"])
-        self.assertEqual(list(outside.iterdir()), [])
-        link.unlink()
+        try:
+            link.symlink_to(outside, target_is_directory=True)
+        except OSError:
+            link = None
+        if link is not None:
+            linked = self._write()
+            self.assertIn("PRIVATE_PATH_LINK", linked["reasons"])
+            self.assertEqual(list(outside.iterdir()), [])
+            link.unlink()
         sidecar = private / "ms2_sidecar"
         sidecar.mkdir()
         corrupt = sidecar / "board.jsonl"
@@ -427,15 +435,11 @@ class OfflineObservationWriterTests(unittest.TestCase):
         self.assertIn("WRITE_FAILED", failed["reasons"])
         self.assertEqual(self._path().read_bytes(), original)
 
-        lock_path = self._path().parent / ".writer.lock"
-        fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
-        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        try:
+        with exclusive_writer_lock(self._path().parent):
             locked = self._write(_board(poll_seq=6))
-        finally:
-            fcntl.flock(fd, fcntl.LOCK_UN)
-            os.close(fd)
         self.assertIn("WRITE_LOCKED", locked["reasons"])
+        self.assertEqual(locked["lock_wait_s"], 0)
+        self.assertLess(locked["elapsed_ms"], 1000)
         self.assertEqual(self._path().read_bytes(), original)
 
         def explode(*_args, **_kwargs):

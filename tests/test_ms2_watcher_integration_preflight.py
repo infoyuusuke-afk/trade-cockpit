@@ -35,7 +35,7 @@ from tests.test_ms2_offline_observation_writer import PINNED_SHA256
 
 ROOT = Path(__file__).resolve().parents[1]
 RELATIVE = "data/private/ms2_sidecar/board.jsonl"
-WRITER_SHA256 = "1a3761ebbc2eb18fbceaa87c60b7ebe0f71d2770437d881e52a7f68fe0bb4d5b"
+WRITER_SHA256 = "8efaa421a475286f1eab1bd3bf13900536530b554acdb60a6a08889bc77515c3"
 
 
 def _level(number, read_at=None, *, bid=100, ask=101, bid_qty=None, ask_qty=None):
