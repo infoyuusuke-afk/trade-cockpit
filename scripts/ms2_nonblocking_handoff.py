@@ -94,6 +94,7 @@ FAULT_FILE_LOCK = 5
 FAULT_CRASH = 6
 FAULT_STALL = 7
 FAULT_BLOCK_UNCHECKED = 8
+FAULT_CONSUMER_GATE = 9  # synthetic crash-during-read injection
 
 
 def _atom(buf, offset: int) -> ctypes.c_uint64:
@@ -258,7 +259,7 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
         if fault == FAULT_BLOCK_UNCHECKED:
             time.sleep(30)
             continue
-        if h_empty := (_load(buf, _OFF_WRITE) == _load(buf, _OFF_READ) or fault == FAULT_HOLD):
+        if (_load(buf, _OFF_WRITE) == _load(buf, _OFF_READ) or fault == FAULT_HOLD):
             try:
                 write_index, read_index = ipc.validate_header(buf, generation)
                 if read_index != next_read or write_index < write_highwater:
@@ -290,6 +291,8 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
             if read_index != next_read or write_index < write_highwater:
                 raise ValueError("IPC_INDEX_ROLLBACK")
             write_highwater = write_index
+            if fault == FAULT_CONSUMER_GATE:
+                time.sleep(30)
             if write_index == read_index or fault == FAULT_HOLD:
                 blob = None
             else:
@@ -647,9 +650,10 @@ def start_handoff(repo_root, relative: str | None = None, *, enabled: bool = Fal
     except FileExistsError:
         session._close_handles()
         session.status, session.reason = "START_FAILED", "MAPPING_CREATE_FAILED"
-    except (OSError, ValueError):
+    except (OSError, ValueError) as exc:
         session._close_handles()
-        session.status, session.reason = "START_FAILED", "STARTUP_REFUSED"
+        reason = str(exc) if isinstance(exc, ValueError) and str(exc).replace("_", "").isalnum() else "STARTUP_REFUSED"
+        session.status, session.reason = "START_FAILED", reason
     return session
 
 

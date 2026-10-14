@@ -95,6 +95,59 @@ class IntegrityTests(unittest.TestCase):
         self.assertNotEqual(new._generation,old_gen)
         self.assertEqual(new.metrics()['queued'],0)
 
+    def test_consumer_killed_inside_read_gate_cannot_reuse_map(self):
+        s=self.start(fault=h.FAULT_CONSUMER_GATE)
+        self.assertEqual(s.submit_capture(_board())['status'],'ACCEPTED')
+        self.wait(lambda:struct.unpack_from('<I',s._shm.buf,ipc.GATE)[0]==1)
+        s._process.kill();s._process.join(3)
+        self.assertFalse(s._process.is_alive())
+        self.assertEqual(s.submit_capture(_board())['reason'],'PRODUCER_BUSY')
+        self.assertEqual(s.observe_owner()['status'],'WORKER_DEAD')
+        self.assertFalse((self.root/RELATIVE).exists())
+        s.stop();new=self.start()
+        self.assertEqual(new.metrics()['queued'],0)
+
+    def test_consumer_rejects_index_rollback_and_valid_old_slot(self):
+        s=self.start()
+        self.assertEqual(s.submit_capture(_board())['status'],'ACCEPTED')
+        self.wait(lambda:s.metrics()['durable']==1)
+        raw=(self.root/RELATIVE).read_bytes()
+        s.set_fault(h.FAULT_HOLD)
+        self.assertTrue(ipc.acquire(s._shm.buf))
+        try:struct.pack_into('<QQ',s._shm.buf,0,1,0)
+        finally:ipc.release(s._shm.buf)
+        self.wait(lambda:s.metrics()['fail_closed']==1)
+        self.assertEqual((self.root/RELATIVE).read_bytes(),raw)
+        self.assertEqual(s.metrics()['durable'],1)
+
+    @unittest.skipUnless(os.name=='nt','actual Windows mapping DACL')
+    def test_windows_actual_acl_broad_grant_refused(self):
+        from ctypes import wintypes as w
+        import ctypes, uuid
+        name='b'+uuid.uuid4().hex[:11]
+        shm=shared_memory.SharedMemory(create=True,name=name,size=h.SHM_SIZE)
+        kernel=ctypes.WinDLL('kernel32',use_last_error=True)
+        adv=ctypes.WinDLL('advapi32',use_last_error=True)
+        kernel.OpenFileMappingW.argtypes=[w.DWORD,w.BOOL,w.LPCWSTR];kernel.OpenFileMappingW.restype=w.HANDLE
+        kernel.CloseHandle.argtypes=[w.HANDLE];kernel.LocalFree.argtypes=[ctypes.c_void_p]
+        adv.ConvertStringSecurityDescriptorToSecurityDescriptorW.argtypes=[w.LPCWSTR,w.DWORD,ctypes.POINTER(ctypes.c_void_p),ctypes.c_void_p]
+        adv.GetSecurityDescriptorDacl.argtypes=[ctypes.c_void_p,ctypes.POINTER(w.BOOL),ctypes.POINTER(ctypes.c_void_p),ctypes.POINTER(w.BOOL)]
+        adv.SetSecurityInfo.argtypes=[w.HANDLE,ctypes.c_int,w.DWORD,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p,ctypes.c_void_p]
+        handle=None;sd=ctypes.c_void_p()
+        try:
+            self.assertEqual(ipc.windows_acl_audit(name)['status'],'PASS')
+            handle=kernel.OpenFileMappingW(0x40000,False,name);self.assertTrue(handle)
+            self.assertTrue(adv.ConvertStringSecurityDescriptorToSecurityDescriptorW('D:(A;;GA;;;WD)',1,ctypes.byref(sd),None))
+            present=w.BOOL();defaulted=w.BOOL();dacl=ctypes.c_void_p()
+            self.assertTrue(adv.GetSecurityDescriptorDacl(sd,ctypes.byref(present),ctypes.byref(dacl),ctypes.byref(defaulted)))
+            self.assertEqual(adv.SetSecurityInfo(handle,6,4,None,None,dacl,None),0)
+            with self.assertRaisesRegex(ValueError,'ACL_UNTRUSTED_GRANT'):
+                ipc.windows_acl_audit(name)
+        finally:
+            if sd.value:kernel.LocalFree(sd)
+            if handle:kernel.CloseHandle(handle)
+            shm.close()
+
     def test_aba_slot_and_wraparound_refused(self):
         buf=bytearray(h.SHM_SIZE);stamp_header(buf,17)
         blob=h.pack_capture(_board())['record']
