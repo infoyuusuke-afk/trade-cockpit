@@ -62,7 +62,7 @@ def main(argv=None) -> int:
             # Restrict traceback to a known public fixture's final frame.
             frames = traceback.extract_tb(exc.__traceback__)
             safe = next((item for item in reversed(frames)
-                         if item.filename.replace("\\\\", "/").endswith(
+                         if item.filename.replace(chr(92), "/").endswith(
                              "/tests/ms2_concurrent_pipeline.py")), None)
             print(json.dumps({
                 "status": "SYNTHETIC_RUN_FAILED",
