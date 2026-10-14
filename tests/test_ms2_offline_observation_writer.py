@@ -32,7 +32,15 @@ from scripts.ms2_offline_observation_writer import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-PIN = "ce2f43b66cbb138320da8813d90f59b8cb909da0"
+PINNED_SHA256 = {
+    "scripts/ms2_watcher_sidecar_contract.py": "ffc45ca155d297506ce2f9f8758531e5a721df8f4dfef26c0dc0793b0c4ed80b",
+    "ms2_live/Kioxia_RSS_Live_Watcher.ps1": "4babc10249c2ebd603b28dfc20542224ce4b7b646fe16111ff398f76d2f60c1b",
+    "ms2_live/Resample_Kioxia_Ticks_15s.ps1": "0e2884a21a3ee325282576a8f57b8500bc38f2e7a34b44b8a8aee634bfa939a1",
+    "scripts/execution_contract.py": "4c3e7d87978cdb4b187569cc7c3a8f8054ef2d7e289376a7023013807f7b9fdf",
+    "scripts/shadow_fill_model.py": "a3a345b35f56ae190a76baf41e6eae6b75bf4cb2bee8355d7e6291fecf73d04a",
+    "scripts/fill_execution_collector_contract.py": "6229f956c0c97bd8b4003af68fc871ca6b9e12e2399b7067242b00d0085feac9",
+    "paper_trade_history.json": "6da1968f71d9e54011d3180d934a683ba9829833d1d4e743fbd42b4172f2d554",
+}
 RELATIVE = "data/private/ms2_sidecar/board.jsonl"
 TICK_RELATIVE = "data/private/ms2_sidecar/ticks.jsonl"
 GAP_RELATIVE = "data/private/ms2_sidecar/gaps.jsonl"
@@ -579,17 +587,11 @@ class OfflineObservationWriterTests(unittest.TestCase):
         self.assertIn("TIMEZONE_UNKNOWN", refused["reasons"])
 
     def test_contract_watcher_history_and_canonical_hash_stay_pinned(self):
-        for relative in (
-            "scripts/ms2_watcher_sidecar_contract.py",
-            "ms2_live/Kioxia_RSS_Live_Watcher.ps1",
-            "ms2_live/Resample_Kioxia_Ticks_15s.ps1",
-            "scripts/execution_contract.py",
-            "scripts/shadow_fill_model.py",
-            "scripts/fill_execution_collector_contract.py",
-            "paper_trade_history.json",
-        ):
-            pinned = subprocess.check_output(["git", "show", f"{PIN}:{relative}"])
-            self.assertEqual((ROOT / relative).read_bytes(), pinned, relative)
+        for relative, digest in PINNED_SHA256.items():
+            data = (ROOT / relative).read_bytes()
+            self.assertEqual(hashlib.sha256(data).hexdigest(), digest, relative)
+            committed = subprocess.check_output(["git", "show", f"HEAD:{relative}"])
+            self.assertEqual(data, committed, relative)
         self.assertEqual(_HASH_FIELDS, (
             "symbol", "side", "quantity", "order_type", "limit_price",
             "planned_entry", "planned_stop", "strategy_id", "strategy_version",
