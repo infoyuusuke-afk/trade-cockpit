@@ -2,8 +2,18 @@ import json
 import os
 import struct
 import tempfile
+import time
 import unittest
+from multiprocessing import get_context, shared_memory
+from pathlib import Path
 from scripts.ms2_drop_evidence import Evidence, read_snapshot, recover
+
+
+def checkpoint_victim(root, conn, fault):
+    e=Evidence(root,31)
+    conn.send((str(e.path),e.shm.name));conn.close()
+    try: e.checkpoint('EXIT_0',fault)
+    finally: e.close()
 
 
 class DropEvidenceTests(unittest.TestCase):
@@ -55,5 +65,26 @@ class DropEvidenceTests(unittest.TestCase):
             self.assertEqual(recover(other.path)['snapshot']['total'],0)
             self.assertEqual(recover(other.path)['tail'],'UNKNOWN')
         finally: other.close()
+    def test_real_checkpoint_owner_kill_preserves_open_commit(self):
+        for fault in ('pause_partial','pause_before_replace'):
+            ctx=get_context('spawn');parent,child=ctx.Pipe()
+            victim=ctx.Process(target=checkpoint_victim,args=(self.tmp.name,child,fault))
+            victim.start();child.close()
+            retained=None
+            try:
+                self.assertTrue(parent.poll(5));path_text,map_name=parent.recv();path=Path(path_text)
+                retained=shared_memory.SharedMemory(name=map_name)
+                deadline=time.monotonic()+5
+                while not path.with_suffix('.tmp').exists() and time.monotonic()<deadline:time.sleep(.01)
+                self.assertTrue(path.with_suffix('.tmp').exists())
+                victim.kill();victim.join(3);self.assertFalse(victim.is_alive())
+                r=recover(path)
+                self.assertEqual(r['outcome'],'OPEN');self.assertEqual(r['tail'],'UNKNOWN')
+            finally:
+                if victim.is_alive():victim.kill();victim.join(3)
+                parent.close()
+                if retained is not None:
+                    retained.close()
+                    if os.name!='nt':retained.unlink()
 
 if __name__=='__main__': unittest.main()

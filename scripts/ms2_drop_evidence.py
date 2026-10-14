@@ -56,7 +56,7 @@ class Evidence:
         self.last = None
         self.checkpoint('OPEN')  # Before producer creation; not on critical loop.
 
-    def checkpoint(self, outcome='RUNNING', fault=None):
+    def checkpoint(self, outcome='RUNNING', fault=None, downstream=None):
         snap = read_snapshot(self.shm.buf, self.generation)
         if snap is not None and self.last is not None:
             for key, old in self.last['counters'].items():
@@ -74,15 +74,21 @@ class Evidence:
             accepted_means='QUEUED_ONLY', timestamp_domain='UNIX_MS_UTC',
             power_loss='NOT_VERIFIED', real_submit_allowed=False,
             promotion_eligible=False, statistical_edge_confirmed=False)
+        if downstream is not None:
+            body['downstream'] = downstream
         raw = json.dumps(body, sort_keys=True, separators=(',', ':')).encode()
         envelope = json.dumps(dict(body=body, sha256=hashlib.sha256(raw).hexdigest()), sort_keys=True).encode()
         temp = self.path.with_suffix('.tmp')
         with open(temp, 'wb') as stream:
             if os.name != 'nt': os.chmod(temp, 0o600)
             stream.write(envelope[:len(envelope)//2])
+            if fault == 'pause_partial':
+                stream.flush()
+                time.sleep(30)  # Synthetic supervisor-only hard-kill boundary.
             if fault == 'partial': raise RuntimeError('SYNTHETIC_PARTIAL_WRITE')
             stream.write(envelope[len(envelope)//2:]); stream.flush(); os.fsync(stream.fileno())
         if fault == 'before_replace': raise RuntimeError('SYNTHETIC_BEFORE_REPLACE')
+        if fault == 'pause_before_replace': time.sleep(30)
         os.replace(temp, self.path)
         if os.name != 'nt':
             fd = os.open(self.root, os.O_RDONLY)

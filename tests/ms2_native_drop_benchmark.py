@@ -48,11 +48,6 @@ def run_case(mode='normal',n=100,pause='none'):
         cpu=[]
         try:
             priority=lower_worker(session._process.pid)
-            if mode=='kill': struct.pack_into('<Q',session._shm.buf,32,1)
-            if mode=='gate_busy': struct.pack_into('<I',session._shm.buf,192,1)
-            if mode=='old_generation': struct.pack_into('<Q',session._shm.buf,112,session._generation+1)
-            if mode=='corrupt': session._shm.buf[180]=99
-            if mode=='writer_stopped': session._process.kill(); session._process.join(2)
             if mode=='cpu':
                 for _ in range(2):
                     cpu.append(subprocess.Popen([__import__('sys').executable,'-c','while True: pass']))
@@ -62,9 +57,17 @@ def run_case(mode='normal',n=100,pause='none'):
             process=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
             deadline=time.monotonic()+40; killed=False; checkpoint_times=[]
             while process.poll() is None:
+                if struct.unpack_from('<q',e.shm.buf,40)[0]==1:
+                    if mode=='kill': struct.pack_into('<Q',session._shm.buf,32,1)
+                    if mode=='gate_busy': struct.pack_into('<I',session._shm.buf,192,1)
+                    if mode=='old_generation': struct.pack_into('<Q',session._shm.buf,112,session._generation+1)
+                    if mode=='corrupt': session._shm.buf[180]=99
+                    if mode=='writer_stopped': session._process.kill(); session._process.join(2)
+                    struct.pack_into('<q',e.shm.buf,40,2)
                 started=time.perf_counter(); e.checkpoint(); checkpoint_times.append((time.perf_counter()-started)*1000)
                 # The second poll is in-flight, including after queue acceptance.
-                if pause!='none' and struct.unpack_from('<q',e.shm.buf,0)[0]==3:
+                target_version=4 if pause=='after_drop' else 3
+                if pause!='none' and struct.unpack_from('<q',e.shm.buf,0)[0]==target_version:
                     process.kill(); killed=True
                 if time.monotonic()>deadline:
                     process.kill(); raise RuntimeError('PS_DEADLINE')
@@ -85,6 +88,12 @@ def run_case(mode='normal',n=100,pause='none'):
                 assert row['snapshot_atomic'] is False and row['sequence_basis']=='POLL'
                 assert row['available_at'] is None and row['levels'][0]['bid_qty'] is None
                 assert row['levels'][0]['ask_qty']==0
+            evidence=e.checkpoint(evidence['outcome'],downstream=dict(
+                state='PERSISTED' if persisted else 'NOT_CLOSED', persisted=persisted,
+                jsonl_reread=len(rows), accepted_lower_bound=expected,
+                accepted_not_persisted=max(0,expected-persisted),
+                gap_status='GAP_EVIDENCE' if expected!=persisted else 'NOT_CLOSED',
+                tail='UNKNOWN' if killed else evidence['tail']))
             assert recover(e.path)==evidence
             result=dict(mode=mode,priority=priority,cold_start_ms=cold_ms,
                 evidence=evidence,persisted=persisted,jsonl_reread=len(rows),

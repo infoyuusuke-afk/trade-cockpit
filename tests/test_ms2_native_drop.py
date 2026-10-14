@@ -9,7 +9,12 @@ class NativeDropTests(unittest.TestCase):
         self.assertTrue(r['ps'].startswith('5.1.'))
         self.assertEqual(r['evidence']['snapshot']['total'],10)
         self.assertEqual(r['evidence']['tail'],'ACCOUNTED_TO_PRODUCER_COMPLETE')
-        self.assertEqual(r['persisted'],r['ACCEPTED']['full_ms']['N'])
+        # ACCEPTED is queue-only; a cold/stale acquisition can be discarded.
+        self.assertGreater(r['persisted'],0)
+        accepted=r['ACCEPTED']['full_ms']['N']
+        self.assertLessEqual(r['persisted'],accepted)
+        self.assertEqual(r['evidence']['downstream']['accepted_not_persisted'],accepted-r['persisted'])
+        self.assertEqual(r['jsonl_reread'],r['persisted'])
         self.assertEqual(r['mock_counts'],[10,10,10])
     def test_actual_producer_kill_before_and_after_acceptance(self):
         for pause in ('before_capture','after_accept'):
@@ -24,5 +29,11 @@ class NativeDropTests(unittest.TestCase):
             self.assertEqual(r['evidence']['close_state'],'NOT_CLOSED')
             self.assertEqual(r['evidence']['snapshot']['total'],20)
             self.assertGreater(r['DROP']['full_ms']['N'],0)
+    def test_actual_drop_counters_survive_hard_killed_ps_producer(self):
+        r=run_case('gate_busy',n=5,pause='after_drop')
+        self.assertEqual(r['evidence']['outcome'],'PRODUCER_CRASH')
+        self.assertEqual(r['evidence']['snapshot']['counters']['GATE_BUSY']['count'],2)
+        self.assertEqual(r['evidence']['snapshot_integrity'],'VERIFIED')
+        self.assertEqual(r['evidence']['tail'],'UNKNOWN')
 
 if __name__=='__main__':unittest.main()

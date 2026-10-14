@@ -74,7 +74,8 @@ or IPC readiness detection. In particular a stalled Writer could accept into
 the existing queue before the inherited watchdog refuses; NOT_CLOSED applies.
 Real uncancellable OS I/O and entire-machine CPU saturation remain unverified.
 Inherited partial-JSONL/owner/worker kill tests must also pass; new evidence
-checkpoint partial-write fault is injected, not an OS kill during fsync.
+checkpoint partial-write/before-replace faults include actual supervisor-process
+hard kill; they do not prove OS kill or cancellation inside fsync.
 
 real_submit_allowed=false; promotion_eligible=false;
 statistical_edge_confirmed=false. OWNER PC W1–W4 NOT VERIFIED.

@@ -33,6 +33,16 @@ $session=Open-Ms2PsBridge -MapName $MapName -Size 20480
 $attachMs=$timer.Elapsed.TotalMilliseconds
 if (-not $session.Ok) { throw 'ATTACH_REFUSED' }
 $journal=New-Object OfflineDropJournal($EvidenceName,$Generation)
+# Supervisor injects faults only after attach. This preinit wait is not measured.
+$controlMap=[IO.MemoryMappedFiles.MemoryMappedFile]::OpenExisting($EvidenceName)
+$controlView=$controlMap.CreateViewAccessor(0,1024)
+$controlView.Write([long]40,[long]1)
+$readyDeadline=[DateTime]::UtcNow.AddSeconds(10)
+while($controlView.ReadInt64(40) -ne 2) {
+  if([DateTime]::UtcNow -gt $readyDeadline) { throw 'PREINIT_DEADLINE' }
+  Start-Sleep -Milliseconds 1
+}
+$controlView.Dispose();$controlMap.Dispose()
 $samples=New-Object System.Collections.Generic.List[object]
 $loop=[Diagnostics.Stopwatch]::StartNew(); $lastTick=0.0; $jitter=New-Object System.Collections.Generic.List[double]
 try {
@@ -75,6 +85,7 @@ try {
     $submitMs=$full.Elapsed.TotalMilliseconds-$submitStart
     if($PauseAt -eq 'after_accept' -and $poll -eq 2) { Start-Sleep -Seconds 30 }
     $journal.End($reason,$poll,[DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())
+    if($PauseAt -eq 'after_drop' -and $poll -eq 2) { Start-Sleep -Seconds 30 }
     $fullMs=$full.Elapsed.TotalMilliseconds
     $samples.Add(@{state=$state;reason=$reason;capture_ms=$captureMs;packing_ms=$packingMs;submit_ms=$submitMs;full_ms=$fullMs})
     # Benchmark pacing is outside measured producer boundary.
