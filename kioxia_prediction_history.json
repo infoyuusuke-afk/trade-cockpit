@@ -1,6 +1,6 @@
 {
   "ticker": "285A.T",
-  "updated_at": "2026-10-14 15:37:18 JST",
+  "updated_at": "2026-10-14 17:04:22 JST",
   "records": [
     {
       "date": "2026-09-07",
@@ -213,20 +213,20 @@
     },
     {
       "date": "2026-10-14",
-      "analog_date": "2026-10-13",
-      "similarity": 84.4,
-      "predicted_close_ret": -4.438,
+      "analog_date": "2026-08-28",
+      "similarity": 82.7,
+      "predicted_close_ret": -7.129,
       "actual_close_ret": -6.23,
-      "absolute_error": 1.792,
+      "absolute_error": 0.899,
       "direction_hit": true,
-      "path_fit": 75.7,
+      "path_fit": 76.7,
       "decision": "売買禁止"
     }
   ],
   "summary": {
     "sample": 20,
     "direction_hit_rate": 90.0,
-    "mean_absolute_error": 0.852
+    "mean_absolute_error": 0.807
   },
   "rule": "15:25以降の二経路照合済み実績だけを1営業日1件保存。方向一致率と絶対誤差を翌回の信頼度監査に使用。"
 }
