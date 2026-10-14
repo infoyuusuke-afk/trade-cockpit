@@ -1564,7 +1564,7 @@ try {
                 volume_burst=$result.volume_burst;flow_bias=$result.flow_bias;under_ratio=$result.under_ratio
                 market_alignment=$alignment;or15_break=$or15Break;rebound=([string]$result.strategy -in @('OR15押し目','OR15戻り'))
             }
-            $safetyGate=Get-MS2SafetyGate -DataFresh ($validCount -ge 90) -OpenOrders $null -MarginBuyingPower $null -MarginRate $null -ShortableQuantity $result.shortable_quantity -AutoOrderEnabled $AutoOrderEnabled
+            $safetyGate=Get-MS2SafetyGate -DataFresh ($validCount -ge 90 -and -not $script:ms2RecordFaulted -and @($result.source_missing_fields).Count -eq 0) -OpenOrders $null -MarginBuyingPower $null -MarginRate $null -ShortableQuantity $result.shortable_quantity -AutoOrderEnabled $AutoOrderEnabled
             $result|Add-Member -NotePropertyName common_decision -NotePropertyValue $commonDecision.decision -Force
             $result|Add-Member -NotePropertyName common_score -NotePropertyValue $commonDecision.score -Force
             $result|Add-Member -NotePropertyName common_long_score -NotePropertyValue $commonDecision.long_score -Force
@@ -1677,10 +1677,10 @@ try {
         }
         Write-AtomicUtf8 $holdStatsPath (($holdStats|ConvertTo-Json -Depth 6))
         $qualified=@($results|Where-Object{$_.signal -in @("買いサイン","空売りサイン","OR5上抜け・地合待ち","OR5下抜け・地合待ち","OR15利確警戒","OR15戻り警戒","押し目待ち","戻り待ち","初動買い候補","初動ショート候補","買い準備","ショート準備","監視")}|Sort-Object @{Expression={if($_.signal -in @("買いサイン","空売りサイン")){0}elseif($_.signal -in @("OR5上抜け・地合待ち","OR5下抜け・地合待ち","OR15利確警戒","OR15戻り警戒","押し目待ち","戻り待ち")){1}elseif($_.signal -in @("初動買い候補","初動ショート候補")){2}elseif($_.signal -in @("買い準備","ショート準備")){3}else{4}}},@{Expression={[Math]::Abs($_.score)};Descending=$true}|Select-Object -First 5)
-        $accountGate=Get-MS2SafetyGate -DataFresh ($validCount -ge 90) -OpenOrders $null -MarginBuyingPower $null -MarginRate $null -ShortableQuantity $null -AutoOrderEnabled $AutoOrderEnabled
+        $accountGate=Get-MS2SafetyGate -DataFresh ($validCount -ge 90 -and -not $script:ms2RecordFaulted) -OpenOrders $null -MarginBuyingPower $null -MarginRate $null -ShortableQuantity $null -AutoOrderEnabled $AutoOrderEnabled
         $capabilities=[ordered]@{
-            market=@{status=if($validCount -ge 90){'確認済み'}else{'未確認'};fields=@('現在値','前日比','1分足','5分足','OR5','OR15','VWAP','EMA9/20','出来高加速')}
-            orderflow=@{status=if($validCount -ge 90){'一部確認済み'}else{'未確認'};fields=@('最良気配','成行買数量/成行売数量','OVER/UNDER','歩み値');depth10='未実装・RSS負荷上限を実機確認後に有効化'}
+            market=@{status=if($validCount -ge 90 -and -not $script:ms2RecordFaulted){'確認済み'}else{'未確認'};fields=@('現在値','前日比','1分足','5分足','OR5','OR15','VWAP','EMA9/20','出来高加速')}
+            orderflow=@{status=if($validCount -ge 90 -and -not $script:ms2RecordFaulted){'一部確認済み'}else{'未確認'};fields=@('最良気配','成行買数量/成行売数量','OVER/UNDER','歩み値');depth10='未実装・RSS負荷上限を実機確認後に有効化'}
             credit=@{status='一部確認済み';fields=@('信用買残','信用売残','信用倍率','売建可能数量')}
             account=@{status='未確認';fields=@('注文','約定','建玉','含み損益','信用余力','保証金率');privacy='公開JSONへ口座数値を出力しない'}
             auto_order=@{enabled=$false;status='既定で無効';implementation='発注関数なし'}
