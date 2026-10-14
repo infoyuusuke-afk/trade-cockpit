@@ -172,27 +172,29 @@ function ConvertTo-Ms2PsBridgeRecord($Capture) {
     return @{ Ok = $true; Reason = "PACKED"; Record = $buffer }
 }
 
-# Compile once on offline attach, never in Submit. CAS is cross-process and
-# non-waiting; a killed holder leaves the map fenced until handles close.
-if (-not ("Ms2IpcGateV2" -as [type])) {
-    $parameters = New-Object System.CodeDom.Compiler.CompilerParameters
-    $parameters.CompilerOptions = "/unsafe"
-    $parameters.GenerateInMemory = $true
-    Add-Type -CompilerParameters $parameters -TypeDefinition @"
-using System;
-using System.Threading;
-using System.IO.MemoryMappedFiles;
-public static class Ms2IpcGateV2 {
-    public static unsafe bool Exchange(MemoryMappedViewAccessor view, int expected, int desired) {
-        byte* p = null;
-        view.SafeMemoryMappedViewHandle.AcquirePointer(ref p);
-        try {
-            p += view.PointerOffset + 192;
-            return Interlocked.CompareExchange(ref *((int*)p), desired, expected) == expected;
-        } finally { view.SafeMemoryMappedViewHandle.ReleasePointer(); }
-    }
+# Native named mutex: zero timeout, no retry. The persistent shared gate
+# additionally fences owner death; no participant forcibly unlocks it.
+function Enter-Ms2PsBridgeGate($Session) {
+    $owned = $false
+    try {
+        try { $owned = $Session.Mutex.WaitOne(0) }
+        catch [System.Threading.AbandonedMutexException] {
+            Write-Ms2PsBridgeInt64 $Session.Accessor 32 ($Session.Accessor.ReadInt64(32) -bor 1)
+            $Session.Mutex.ReleaseMutex()
+            return $false
+        }
+        if (-not $owned) { return $false }
+        if ($Session.Accessor.ReadInt32(192) -ne 0) {
+            $Session.Mutex.ReleaseMutex()
+            return $false
+        }
+        $Session.Accessor.Write([long]192, [int]1)
+        return $true
+    } catch { if ($owned) { try { $Session.Mutex.ReleaseMutex() } catch {} }; return $false }
 }
-"@
+function Exit-Ms2PsBridgeGate($Session) {
+    $Session.Accessor.Write([long]192, [int]0)
+    $Session.Mutex.ReleaseMutex()
 }
 
 $script:Ms2WriteArray = $null
@@ -256,6 +258,7 @@ function Open-Ms2PsBridge([string]$MapName, [int]$Size) {
             Map = $opened
             Accessor = $accessor
             Generation = $generation
+            Mutex = [System.Threading.Mutex]::new($false, ("Local\ms2ipc-v2-" + $generation))
         }
     } catch {
         if ($null -ne $accessor) { $accessor.Dispose() }
@@ -273,7 +276,7 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
         return @{ Status = "REFUSED"; Reason = "RECORD_SIZE"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     }
     $accessor = $Session.Accessor
-    if (-not [Ms2IpcGateV2]::Exchange($accessor, 0, 1)) {
+    if (-not (Enter-Ms2PsBridgeGate $Session)) {
         return @{ Status = "REFUSED"; Reason = "PRODUCER_BUSY"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     }
     try {
@@ -316,7 +319,7 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
         Write-Ms2PsBridgeInt64 $accessor 32 ($accessor.ReadInt64(32) -bor 1)
         return @{ Status = "DROPPED"; Reason = "IPC_REFUSED"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     } finally {
-        if (-not [Ms2IpcGateV2]::Exchange($accessor, 1, 0)) { throw "IPC_GATE_CORRUPT" }
+        Exit-Ms2PsBridgeGate $Session
     }
 
 }
@@ -324,5 +327,6 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
 function Close-Ms2PsBridge($Session) {
     if ($null -eq $Session) { return }
     try { if ($Session.Accessor) { $Session.Accessor.Dispose() } } catch {}
+    try { if ($Session.Mutex) { $Session.Mutex.Dispose() } } catch {}
     try { if ($Session.Map) { $Session.Map.Dispose() } } catch {}
 }

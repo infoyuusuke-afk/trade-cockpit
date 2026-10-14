@@ -179,6 +179,7 @@ def stamp_header(buf, generation: int) -> None:
     buf[PROTO_OFFSET + 5] = QUEUE_CAPACITY
     struct.pack_into("<HI", buf, PROTO_OFFSET + 6, RECORD_SIZE, SHM_SIZE)
     _store(buf, OFF_GENERATION, int(generation))
+    ipc.prepare(int(generation))
 
 
 def publish_into(buf, blob, generation: int | None = None) -> dict:

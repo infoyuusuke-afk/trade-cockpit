@@ -9,7 +9,7 @@ $session = Open-Ms2PsBridge -MapName $MapName -Size 20480
 if (-not $session.Ok -or -not $packed.Ok) { throw "ATTACH_OR_PACK" }
 try {
     if ($Mode -eq "crash") {
-        if (-not [Ms2IpcGateV2]::Exchange($session.Accessor, 0, 1)) { throw "BUSY" }
+        if (-not (Enter-Ms2PsBridgeGate $session)) { throw "BUSY" }
         Write-Ms2PsBridgeInt64 $session.Accessor 512 0
         $session.Accessor.Write([long]4096, [byte]78)
         Write-Output "HELD"

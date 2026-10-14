@@ -238,6 +238,8 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
     _store(buf, _OFF_WORKER_PID, os.getpid())
     _store(buf, _OFF_HEARTBEAT, time.monotonic_ns())
     gate_busy_since = None
+    next_read = 0
+    write_highwater = 0
     while True:
         fault = _load(buf, _OFF_FAULT)
         if fault == FAULT_CRASH:
@@ -256,6 +258,20 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
         if fault == FAULT_BLOCK_UNCHECKED:
             time.sleep(30)
             continue
+        if h_empty := (_load(buf, _OFF_WRITE) == _load(buf, _OFF_READ) or fault == FAULT_HOLD):
+            try:
+                write_index, read_index = ipc.validate_header(buf, generation)
+                if read_index != next_read or write_index < write_highwater:
+                    raise ValueError("IPC_INDEX_ROLLBACK")
+            except ValueError as exc:
+                _add(buf, _OFF_FAIL_CLOSED)
+                _store(buf, _OFF_FLAGS, flags | _FLAG_KILL)
+                _reason(buf, str(exc))
+                return
+            # Gate can still be abandoned even if no index was published.
+            if struct.unpack_from("<I", buf, ipc.GATE)[0] == 0:
+                time.sleep(0.002)
+                continue
         if not ipc.acquire(buf):
             now = time.monotonic_ns()
             if gate_busy_since is None:
@@ -271,12 +287,16 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
         try:
             fault = _load(buf, _OFF_FAULT)
             write_index, read_index = ipc.validate_header(buf, generation)
+            if read_index != next_read or write_index < write_highwater:
+                raise ValueError("IPC_INDEX_ROLLBACK")
+            write_highwater = write_index
             if write_index == read_index or fault == FAULT_HOLD:
                 blob = None
             else:
                 blob = ipc.read_slot(buf, generation, read_index)
                 # Claim the immutable local copy while holding the common gate.
                 _store(buf, _OFF_READ, read_index + 1)
+                next_read = read_index + 1
         except ValueError as exc:
             _add(buf, _OFF_FAIL_CLOSED)
             _store(buf, _OFF_FLAGS, flags | _FLAG_KILL)

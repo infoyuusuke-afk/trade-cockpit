@@ -17,26 +17,56 @@ LIMIT = (1 << 63) - 1
 HEADER = b'NBH1' + bytes((2, 8)) + struct.pack('<HI', 2048, 20480)
 
 if os.name == 'nt':
+    from ctypes import wintypes as w
+    import atexit
     _native = ctypes.WinDLL('kernel32', use_last_error=True)
-    _cas = _native.InterlockedCompareExchange
-    _cas.argtypes = [ctypes.c_void_p, ctypes.c_long, ctypes.c_long]
-    _cas.restype = ctypes.c_long
-    def _exchange(address, expected, desired):
-        return _cas(address, desired, expected) == expected
+    _native.CreateMutexW.argtypes = [ctypes.c_void_p, w.BOOL, w.LPCWSTR]
+    _native.CreateMutexW.restype = w.HANDLE
+    _native.WaitForSingleObject.argtypes = [w.HANDLE, w.DWORD]
+    _native.WaitForSingleObject.restype = w.DWORD
+    _native.ReleaseMutex.argtypes = [w.HANDLE]
+    _native.CloseHandle.argtypes = [w.HANDLE]
+    _mutexes = {}
+    def prepare(generation):
+        if generation not in _mutexes:
+            handle = _native.CreateMutexW(None, False, 'Local\\ms2ipc-v2-' + str(generation))
+            if not handle: raise ValueError('IPC_MUTEX_CREATE_FAILED')
+            _mutexes[generation] = handle
+    def gate(buf, expected, desired):
+        generation = struct.unpack_from('<Q', buf, 112)[0]
+        prepare(generation)
+        handle = _mutexes[generation]
+        if expected == 0:
+            status = _native.WaitForSingleObject(handle, 0)
+            if status == 0x80: # acquired, but previous holder died
+                struct.pack_into('<I', buf, GATE, 1)
+                _native.ReleaseMutex(handle)
+                return False
+            if status != 0: return False
+            if struct.unpack_from('<I', buf, GATE)[0] != 0:
+                _native.ReleaseMutex(handle)
+                return False
+            struct.pack_into('<I', buf, GATE, 1)
+            return True
+        if struct.unpack_from('<I', buf, GATE)[0] != 1:
+            _native.ReleaseMutex(handle)
+            return False
+        struct.pack_into('<I', buf, GATE, 0)
+        return bool(_native.ReleaseMutex(handle))
+    @atexit.register
+    def _close_mutexes():
+        for handle in _mutexes.values(): _native.CloseHandle(handle)
 else:
     _native = ctypes.CDLL(ctypes.util.find_library('atomic') or 'libatomic.so.1')
     _cas = _native.__atomic_compare_exchange_4
     _cas.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32,
                      ctypes.c_bool, ctypes.c_int, ctypes.c_int]
     _cas.restype = ctypes.c_bool
-    def _exchange(address, expected, desired):
+    def prepare(generation): pass
+    def gate(buf, expected, desired):
+        word = ctypes.c_uint32.from_buffer(buf, GATE)
         old = ctypes.c_uint32(expected)
-        return _cas(address, ctypes.byref(old), desired, False, 5, 5)
-
-
-def gate(buf, expected, desired):
-    word = ctypes.c_uint32.from_buffer(buf, GATE)
-    return bool(_exchange(ctypes.addressof(word), expected, desired))
+        return bool(_cas(ctypes.addressof(word), ctypes.byref(old), desired, False, 5, 5))
 
 
 def acquire(buf):
