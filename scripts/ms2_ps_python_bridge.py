@@ -381,7 +381,8 @@ class BridgeSession:
         exit_verified = self._process is None or not self._process.is_alive()
         self._stopped = True
         self.status = "STOPPED" if exit_verified else "STOP_PENDING"
-        self._close_handles()
+        if exit_verified:
+            self._close_handles()
         return {
             "status": self.status,
             "worker_exit_verified": exit_verified,

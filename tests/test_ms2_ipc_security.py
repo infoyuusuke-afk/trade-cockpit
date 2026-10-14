@@ -23,7 +23,45 @@ def owner(root, pipe):
     pipe.recv()  # Parent kills this exact owned Process object.
 
 
+def racing_create(name, ready, release, pipe):
+    ready.wait(5)
+    mapping = None
+    try:
+        mapping = ipc.create_mapping(name, h.SHM_SIZE)
+        pipe.send('CREATED')
+        release.wait(5)
+    except FileExistsError:
+        pipe.send('COLLISION')
+    finally:
+        if mapping:
+            mapping.close()
+            if os.name != 'nt': mapping.unlink()
+        pipe.close()
+
+
 class SecurityTests(unittest.TestCase):
+    def test_concurrent_creators_have_exactly_one_owner(self):
+        ctx = get_context('spawn'); ready = ctx.Event(); release = ctx.Event()
+        name = 'b' + uuid.uuid4().hex[:11]
+        children = []; pipes = []
+        try:
+            for _ in range(3):
+                parent, child = ctx.Pipe()
+                process = ctx.Process(target=racing_create, args=(name, ready, release, child))
+                process.start(); children.append(process); pipes.append(parent); child.close()
+            ready.set()
+            outcomes = []
+            for pipe in pipes:
+                self.assertTrue(pipe.poll(8)); outcomes.append(pipe.recv())
+            self.assertEqual(sorted(outcomes), ['COLLISION', 'COLLISION', 'CREATED'])
+        finally:
+            release.set()
+            for process in children:
+                process.join(6)
+                if process.is_alive(): process.kill(); process.join(5)
+                self.assertEqual(process.exitcode, 0)
+            for pipe in pipes: pipe.close()
+
     def test_exclusive_map_collision_never_changes_foreign_bytes(self):
         name = 'b' + uuid.uuid4().hex[:11]
         foreign = ipc.create_mapping(name, h.SHM_SIZE)
