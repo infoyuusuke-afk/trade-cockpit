@@ -65,7 +65,7 @@ def complete_lines(path):
     return [json.loads(p) for p in parts[:-1] if p]
 
 def synthetic(poll,generation,duplicate=False):
-    stamp='2026-10-14T00:00:00+00:00' if duplicate else now()
+    stamp='2026-10-14T00:00:00+00:00' if duplicate else datetime.now(timezone.utc).isoformat(timespec='milliseconds')
     return dict(symbol='285A.T',market='TSE',source='synthetic-372',poll_seq=poll,
         observation_id='s'+str(generation)+'-'+str(poll),watcher_observed_at=stamp,
         read_started_at=stamp,read_finished_at=stamp,sequence_basis='POLL',snapshot_atomic=False,
@@ -155,7 +155,9 @@ def run(mode='normal',n=24,native=False):
                 for i in range(1,n+1):
                     poll=1 if mode=='duplicate' else i;t=time.perf_counter();c=synthetic(poll,gen,mode=='duplicate')
                     capture_ms=(time.perf_counter()-t)*1000;t1=time.perf_counter();packed=pack_capture(c)
-                    packing_ms=(time.perf_counter()-t1)*1000;t1=time.perf_counter();r=s.publish_bytes(packed['record'])
+                    packing_ms=(time.perf_counter()-t1)*1000
+                    if not packed['ok']:raise ValueError(packed['reason'])
+                    t1=time.perf_counter();r=s.publish_bytes(packed['record'])
                     submit_ms=(time.perf_counter()-t1)*1000
                     receive(dict(kind='receipt',session_id=sid,generation=gen,poll_seq=poll,attempt=i,
                         state=r['status'],reason=r['reason'],observed_at=now(),record=base64.b64encode(packed['record']).decode(),
