@@ -31,6 +31,7 @@ from multiprocessing import Process, get_context
 from multiprocessing import shared_memory
 from pathlib import Path
 
+from scripts import ms2_ipc_integrity as ipc
 from scripts.ms2_bridge_record import RECORD_SIZE, pack_capture, unpack_capture
 from scripts.ms2_offline_observation_writer import (
     record_captured_observation, _lock_native, _unlock_native,
@@ -236,6 +237,7 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
     generation = _load(buf, _OFF_GENERATION) if generation is None else generation
     _store(buf, _OFF_WORKER_PID, os.getpid())
     _store(buf, _OFF_HEARTBEAT, time.monotonic_ns())
+    gate_busy_since = None
     while True:
         fault = _load(buf, _OFF_FAULT)
         if fault == FAULT_CRASH:
@@ -254,26 +256,44 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
         if fault == FAULT_BLOCK_UNCHECKED:
             time.sleep(30)
             continue
-        write_index = _load(buf, _OFF_WRITE)
-        read_index = _load(buf, _OFF_READ)
-        header = bytes(buf[176:188])
-        expected = b"NBH1" + bytes((1, QUEUE_CAPACITY)) + struct.pack("<HI", RECORD_SIZE, SHM_SIZE)
-        if (_load(buf, _OFF_GENERATION) != generation or header != expected
-                or read_index > write_index or write_index - read_index > QUEUE_CAPACITY):
-            _add(buf, _OFF_FAIL_CLOSED)
-            _store(buf, _OFF_FLAGS, flags | _FLAG_KILL)
-            _reason(buf, "IPC_HEADER_CORRUPT")
-            return
-        if write_index == read_index or fault == FAULT_HOLD:
+        if not ipc.acquire(buf):
+            now = time.monotonic_ns()
+            if gate_busy_since is None:
+                gate_busy_since = now
+            if now - gate_busy_since > STALL_AFTER_NS:
+                _add(buf, _OFF_FAIL_CLOSED)
+                _store(buf, _OFF_FLAGS, flags | _FLAG_KILL)
+                _reason(buf, "IPC_GATE_ABANDONED")
+                return
             time.sleep(0.002)
             continue
-        slot = SLOT_BASE + (read_index % QUEUE_CAPACITY) * RECORD_SIZE
-        blob = bytes(buf[slot:slot + RECORD_SIZE])
+        gate_busy_since = None
+        try:
+            fault = _load(buf, _OFF_FAULT)
+            write_index, read_index = ipc.validate_header(buf, generation)
+            if write_index == read_index or fault == FAULT_HOLD:
+                blob = None
+            else:
+                blob = ipc.read_slot(buf, generation, read_index)
+                # Claim the immutable local copy while holding the common gate.
+                _store(buf, _OFF_READ, read_index + 1)
+        except ValueError as exc:
+            _add(buf, _OFF_FAIL_CLOSED)
+            _store(buf, _OFF_FLAGS, flags | _FLAG_KILL)
+            _reason(buf, str(exc))
+            return
+        finally:
+            ipc.release(buf)
+        if blob is None:
+            time.sleep(0.002)
+            continue
+        if _load(buf, _OFF_FLAGS) & (_FLAG_STOP | _FLAG_KILL):
+            _reason(buf, "STOPPED")
+            return
         if fault == FAULT_BLOCK_IO:
             deadline = time.monotonic() + 30
             while time.monotonic() < deadline:
                 if _load(buf, _OFF_FLAGS) & (_FLAG_STOP | _FLAG_KILL):
-                    _store(buf, _OFF_READ, read_index + 1)
                     _reason(buf, "ABANDONED")
                     return
                 _store(buf, _OFF_HEARTBEAT, time.monotonic_ns())
@@ -298,7 +318,6 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
                 _add(buf, _OFF_FAIL_CLOSED)
             if report.get("com_reads_added"):
                 _add(buf, _OFF_COM_READS, int(report["com_reads_added"]))
-        _store(buf, _OFF_READ, read_index + 1)
 
 
 def _worker_entry(shm_name: str, repo_root: str, relative: str, generation: int | None = None) -> None:
@@ -435,12 +454,8 @@ class HandoffSession:
             if packed["reason"] == "TIMEZONE_NOT_GUESSED":
                 self._timezone_refused += 1
             return self._result("REFUSED", packed["reason"], started)
-        slot = SLOT_BASE + (write_index % QUEUE_CAPACITY) * RECORD_SIZE
-        record = packed["record"]
-        buf[slot:slot + RECORD_SIZE] = record
-        _store(buf, _OFF_WRITE, write_index + 1)
-        _add(buf, _OFF_QUEUED)
-        return self._result("ACCEPTED", "QUEUED", started)
+        from scripts.ms2_ps_python_bridge import publish_into
+        return publish_into(buf, packed["record"], self._generation)
 
     def _result(self, status: str, reason: str, started: int) -> dict:
         depth = 0
@@ -572,6 +587,7 @@ def start_handoff(repo_root, relative: str | None = None, *, enabled: bool = Fal
         shm = shared_memory.SharedMemory(create=True, size=SHM_SIZE, name=name)
         session._shm = shm
         session._owns_mapping = True
+        ipc.windows_acl_audit(shm.name)
         session._generation = generation
         session.map_name = shm.name
         session._repo = str(root)
@@ -581,6 +597,7 @@ def start_handoff(repo_root, relative: str | None = None, *, enabled: bool = Fal
         stamp_header(buf, generation)
         _store(buf, _OFF_STALE_DISCARDED, discarded)
         _store(buf, _OFF_FAULT, int(fault))
+        from scripts.ms2_ps_python_bridge import publish_into
         context = get_context("spawn")
         process = context.Process(target=_worker_entry, args=(name, str(root), relative, generation), daemon=False)
         try:

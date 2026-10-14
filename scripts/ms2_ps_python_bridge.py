@@ -28,6 +28,7 @@ import uuid
 from multiprocessing import shared_memory
 from pathlib import Path
 
+from scripts import ms2_ipc_integrity as ipc
 from scripts.ms2_bridge_record import MAGIC, RECORD_SIZE, pack_capture, unpack_capture
 
 BRIDGE_VERSION = "ms2-ps-python-bridge-0.1"
@@ -174,7 +175,7 @@ def _result(status: str, reason: str, started: int, buf=None) -> dict:
 def stamp_header(buf, generation: int) -> None:
     """Mark a mapping the PowerShell opener can recognize without reading a file."""
     buf[PROTO_OFFSET:PROTO_OFFSET + 4] = MAGIC
-    buf[PROTO_OFFSET + 4] = 1
+    buf[PROTO_OFFSET + 4] = 2
     buf[PROTO_OFFSET + 5] = QUEUE_CAPACITY
     struct.pack_into("<HI", buf, PROTO_OFFSET + 6, RECORD_SIZE, SHM_SIZE)
     _store(buf, OFF_GENERATION, int(generation))
@@ -185,19 +186,25 @@ def publish_into(buf, blob, generation: int | None = None) -> dict:
     started = time.monotonic_ns()
     if type(blob) is not bytes or len(blob) != RECORD_SIZE:
         return _result("REFUSED", "RECORD_SIZE", started, buf)
-    if generation is not None and _load(buf, OFF_GENERATION) != int(generation):
-        return _result("DROPPED", "GENERATION_MISMATCH", started, buf)
-    if _load(buf, OFF_FLAGS) & (FLAG_KILL | FLAG_STOP):
-        _add(buf, OFF_KILL_DROPS)
-        return _result("KILL_SWITCH", "KILL_SWITCH", started, buf)
-    write_index = _load(buf, OFF_WRITE)
-    read_index = _load(buf, OFF_READ)
-    if write_index - read_index >= QUEUE_CAPACITY:
-        _add(buf, OFF_DROPPED)
-        return _result("DROPPED", DROP_POLICY, started, buf)
-    slot = SLOT_BASE + (write_index % QUEUE_CAPACITY) * RECORD_SIZE
-    buf[slot:slot + RECORD_SIZE] = blob
-    _store(buf, OFF_WRITE, write_index + 1)
+    if not ipc.acquire(buf):
+        return _result("REFUSED", "PRODUCER_BUSY", started, buf)
+    try:
+        if generation is None:
+            generation = _load(buf, OFF_GENERATION)
+        write_index, read_index = ipc.validate_header(buf, generation)
+        if _load(buf, OFF_FLAGS) & (FLAG_KILL | FLAG_STOP):
+            _add(buf, OFF_KILL_DROPS)
+            return _result("KILL_SWITCH", "KILL_SWITCH", started, buf)
+        if write_index - read_index >= QUEUE_CAPACITY:
+            _add(buf, OFF_DROPPED)
+            return _result("DROPPED", DROP_POLICY, started, buf)
+        ipc.seal(buf, blob, generation, write_index)
+        _store(buf, OFF_WRITE, write_index + 1)
+    except ValueError as exc:
+        _store(buf, OFF_FLAGS, _load(buf, OFF_FLAGS) | FLAG_KILL)
+        return _result("DROPPED", str(exc), started, buf)
+    finally:
+        ipc.release(buf)
     _add(buf, OFF_QUEUED)
     _add(buf, OFF_SUBMIT_COUNT)
     elapsed = time.monotonic_ns() - started

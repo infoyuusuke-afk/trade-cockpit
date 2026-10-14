@@ -172,6 +172,29 @@ function ConvertTo-Ms2PsBridgeRecord($Capture) {
     return @{ Ok = $true; Reason = "PACKED"; Record = $buffer }
 }
 
+# Compile once on offline attach, never in Submit. CAS is cross-process and
+# non-waiting; a killed holder leaves the map fenced until handles close.
+if (-not ("Ms2IpcGateV2" -as [type])) {
+    $parameters = New-Object System.CodeDom.Compiler.CompilerParameters
+    $parameters.CompilerOptions = "/unsafe"
+    $parameters.GenerateInMemory = $true
+    Add-Type -CompilerParameters $parameters -TypeDefinition @"
+using System;
+using System.Threading;
+using System.IO.MemoryMappedFiles;
+public static class Ms2IpcGateV2 {
+    public static unsafe bool Exchange(MemoryMappedViewAccessor view, int expected, int desired) {
+        byte* p = null;
+        view.SafeMemoryMappedViewHandle.AcquirePointer(ref p);
+        try {
+            p += view.PointerOffset + 192;
+            return Interlocked.CompareExchange(ref *((int*)p), desired, expected) == expected;
+        } finally { view.SafeMemoryMappedViewHandle.ReleasePointer(); }
+    }
+}
+"@
+}
+
 $script:Ms2WriteArray = $null
 foreach ($method in [System.IO.MemoryMappedFiles.MemoryMappedViewAccessor].GetMethods()) {
     if ($method.Name -eq "WriteArray" -and $method.IsGenericMethodDefinition) {
@@ -188,9 +211,8 @@ function Write-Ms2PsBridgeInt64($Accessor, [int64]$Offset, [int64]$Value) {
 
 function Open-Ms2PsBridge([string]$MapName, [int]$Size) {
     $candidates = @($MapName)
-    if ($MapName -notmatch '\\') {
-        $candidates += ("Local\" + $MapName)
-        $candidates += ("Global\" + $MapName)
+    if ($MapName -notmatch '^b[a-f0-9]{11}$') {
+        return @{ Ok = $false; Reason = "MAP_NAME_SCOPE"; Retry = $false }
     }
     $opened = $null
     $used = $null
@@ -218,12 +240,13 @@ function Open-Ms2PsBridge([string]$MapName, [int]$Size) {
             [char]$accessor.ReadByte($script:Ms2PsBridgeProto + 2),
             [char]$accessor.ReadByte($script:Ms2PsBridgeProto + 3)
         )
-        if ($label -ne "NBH1") {
+        if ($label -ne "NBH1" -or $accessor.ReadByte(180) -ne 2 -or $accessor.ReadByte(181) -ne 8 -or $accessor.ReadUInt16(182) -ne 2048 -or $accessor.ReadUInt32(184) -ne 20480 -or $Size -ne 20480) {
             $accessor.Dispose()
             $opened.Dispose()
             return @{ Ok = $false; Reason = "PROTO_MISMATCH"; Attempts = $tried; Retry = $false }
         }
         $generation = $accessor.ReadInt64(112)
+        if ($generation -le 0) { throw "GENERATION_MISMATCH" }
         return @{
             Ok = $true
             Reason = "ATTACHED"
@@ -250,32 +273,52 @@ function Submit-Ms2PsBridgeRecord($Session, [byte[]]$Record) {
         return @{ Status = "REFUSED"; Reason = "RECORD_SIZE"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     }
     $accessor = $Session.Accessor
-    $flags = $accessor.ReadInt64(32)
-    if ((($flags -band 1) -ne 0) -or (($flags -band 2) -ne 0)) {
-        Write-Ms2PsBridgeInt64 $accessor 144 ($accessor.ReadInt64(144) + 1)
-        return @{ Status = "KILL_SWITCH"; Reason = "KILL_SWITCH"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
+    if (-not [Ms2IpcGateV2]::Exchange($accessor, 0, 1)) {
+        return @{ Status = "REFUSED"; Reason = "PRODUCER_BUSY"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
     }
-    $generation = $accessor.ReadInt64(112)
-    if ($generation -ne $Session.Generation) {
-        return @{ Status = "DROPPED"; Reason = "GENERATION_MISMATCH"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
+    try {
+        $flags = $accessor.ReadInt64(32)
+        if (($flags -band 3) -ne 0) {
+            Write-Ms2PsBridgeInt64 $accessor 144 ($accessor.ReadInt64(144) + 1)
+            return @{ Status = "KILL_SWITCH"; Reason = "KILL_SWITCH"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
+        }
+        $generation = $accessor.ReadInt64(112)
+        if ($generation -le 0 -or $generation -ne $Session.Generation) { throw "GENERATION_MISMATCH" }
+        if ($accessor.ReadByte(180) -ne 2 -or $accessor.ReadByte(181) -ne 8 -or $accessor.ReadUInt16(182) -ne 2048 -or $accessor.ReadUInt32(184) -ne 20480) { throw "IPC_HEADER_CORRUPT" }
+        $write = $accessor.ReadInt64(0)
+        $read = $accessor.ReadInt64(8)
+        if ($read -lt 0 -or $write -lt $read -or ($write - $read) -gt 8 -or $write -eq [long]::MaxValue) { throw "IPC_SEQUENCE_CORRUPT" }
+        if (($write - $read) -eq 8) {
+            Write-Ms2PsBridgeInt64 $accessor 16 ($accessor.ReadInt64(16) + 1)
+            return @{ Status = "DROPPED"; Reason = "DROP_NEWEST"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
+        }
+        $meta = [int64](512 + ($write % 8) * 64)
+        Write-Ms2PsBridgeInt64 $accessor $meta 0
+        $prefix = New-Object byte[] 24
+        [Array]::Copy([BitConverter]::GetBytes($generation), 0, $prefix, 0, 8)
+        [Array]::Copy([BitConverter]::GetBytes($write), 0, $prefix, 8, 8)
+        [Array]::Copy([BitConverter]::GetBytes([long]2048), 0, $prefix, 16, 8)
+        $inputBytes = New-Object byte[] 2072
+        [Array]::Copy($prefix, 0, $inputBytes, 0, 24)
+        [Array]::Copy($Record, 0, $inputBytes, 24, 2048)
+        $sha = [Security.Cryptography.SHA256]::Create()
+        try { $digest = $sha.ComputeHash($inputBytes) } finally { $sha.Dispose() }
+        [void]$script:Ms2WriteArray.Invoke($accessor, @([long]($meta + 8), $prefix, [int]0, [int]24))
+        [void]$script:Ms2WriteArray.Invoke($accessor, @([long]($meta + 32), $digest, [int]0, [int]32))
+        $slot = [int64](4096 + ($write % 8) * 2048)
+        [void]$script:Ms2WriteArray.Invoke($accessor, @($slot, $Record, [int]0, [int]2048))
+        Write-Ms2PsBridgeInt64 $accessor $meta ($write + 1)
+        Write-Ms2PsBridgeInt64 $accessor 0 ($write + 1)
+        Write-Ms2PsBridgeInt64 $accessor 48 ($accessor.ReadInt64(48) + 1)
+        Write-Ms2PsBridgeInt64 $accessor 160 ($accessor.ReadInt64(160) + 1)
+        return @{ Status = "ACCEPTED"; Reason = "QUEUED"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
+    } catch {
+        Write-Ms2PsBridgeInt64 $accessor 32 ($accessor.ReadInt64(32) -bor 1)
+        return @{ Status = "DROPPED"; Reason = "IPC_REFUSED"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
+    } finally {
+        if (-not [Ms2IpcGateV2]::Exchange($accessor, 1, 0)) { throw "IPC_GATE_CORRUPT" }
     }
-    $write = $accessor.ReadInt64(0)
-    $read = $accessor.ReadInt64(8)
-    if (($write - $read) -ge $script:Ms2PsBridgeCapacity) {
-        Write-Ms2PsBridgeInt64 $accessor 16 ($accessor.ReadInt64(16) + 1)
-        return @{ Status = "DROPPED"; Reason = "DROP_NEWEST"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
-    }
-    $slot = [int64]($script:Ms2PsBridgeSlotBase + (($write % $script:Ms2PsBridgeCapacity) * $script:Ms2PsBridgeRecordSize))
-    $writeArgs = New-Object object[] 4
-    $writeArgs[0] = $slot
-    $writeArgs[1] = $Record
-    $writeArgs[2] = [int]0
-    $writeArgs[3] = [int]$script:Ms2PsBridgeRecordSize
-    [void]$script:Ms2WriteArray.Invoke($accessor, $writeArgs)
-    Write-Ms2PsBridgeInt64 $accessor 0 ($write + 1)
-    Write-Ms2PsBridgeInt64 $accessor 48 ($accessor.ReadInt64(48) + 1)
-    Write-Ms2PsBridgeInt64 $accessor 160 ($accessor.ReadInt64(160) + 1)
-    return @{ Status = "ACCEPTED"; Reason = "QUEUED"; ElapsedMs = $started.Elapsed.TotalMilliseconds; Retry = $false; ComReadsAdded = 0 }
+
 }
 
 function Close-Ms2PsBridge($Session) {
