@@ -9,6 +9,7 @@ import argparse
 import json
 import os
 import sys
+import traceback
 
 from scripts.ms2_native_release_evidence_gate import classify
 from tests.ms2_concurrent_pipeline import run
@@ -56,11 +57,22 @@ def main(argv=None) -> int:
         try:
             report = run(mode="normal", n=n, native=native)
         except Exception as exc:
-            print(json.dumps({"status": "SYNTHETIC_RUN_FAILED",
-                              "iteration": iteration,
-                              "error_type": type(exc).__name__,
-                              "release_eligible": False,
-                              "real_submit_allowed": False}, sort_keys=True))
+            # Never emit an exception's raw str(): synthetic payloads, temp
+            # paths, hashes or private paths could be included in failures.
+            # Restrict traceback to a known public fixture's final frame.
+            frames = traceback.extract_tb(exc.__traceback__)
+            safe = next((item for item in reversed(frames)
+                         if item.filename.replace("\\\\", "/").endswith(
+                             "/tests/ms2_concurrent_pipeline.py")), None)
+            print(json.dumps({
+                "status": "SYNTHETIC_RUN_FAILED",
+                "iteration": iteration,
+                "error_type": type(exc).__name__,
+                "fixture_line": safe.lineno if safe else None,
+                "fixture_function": safe.name if safe else "UNKNOWN",
+                "release_eligible": False,
+                "real_submit_allowed": False,
+            }, sort_keys=True))
             return 1
         gate = classify(report)
         result = {
