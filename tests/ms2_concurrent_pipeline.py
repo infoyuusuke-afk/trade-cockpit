@@ -15,10 +15,12 @@ import queue
 import struct
 import subprocess
 import tempfile
+import uuid
 import threading
 import time
 from scripts import ms2_nonblocking_handoff as h
-from scripts.ms2_ps_python_bridge import start_bridge
+from scripts.ms2_ps_python_bridge import start_bridge, stamp_header, SHM_SIZE
+from scripts import ms2_ipc_integrity as ipc
 from scripts.ms2_bridge_record import pack_capture, unpack_capture
 from scripts.ms2_poll_reconciliation import Ledger, canonical, digest, expected_record
 from tests.ms2_native_drop_benchmark import stats
@@ -83,6 +85,7 @@ def run(mode='normal',n=24,native=False):
         gen=s._generation;sid='native-'+str(gen);ledger=Ledger(Path(root,'ledger'),sid,gen)
         expected={};samples=[];timings=[];readbacks=[];latencies=[];first_readback=set();process=None;reader=None;err=[];messages=queue.Queue()
         consumed=set();worker_events=[];overlap=False;ready={};cold=[];checkpoints=[];partial_killed=False
+        warm_map=None;warm_gen=gen+1
         path=Path(root,REL);audit=Path(root,'worker-evidence.jsonl')
         def import_worker():
             nonlocal overlap
@@ -142,9 +145,11 @@ def run(mode='normal',n=24,native=False):
             import_worker();verify()
         try:
             if native:
+                warm_map=ipc.create_mapping('b'+uuid.uuid4().hex[:11],SHM_SIZE)
+                warm_map.buf[:]=b'\0'*SHM_SIZE;stamp_header(warm_map.buf,warm_gen)
                 t=time.perf_counter()
                 process=subprocess.Popen(['powershell.exe','-NoProfile','-File',str(ROOT/'tests/ms2_concurrent_producer.ps1'),
-                    '-MapName',s.map_name,'-Generation',str(gen),'-N',str(n),'-Mode',mode],
+                    '-MapName',s.map_name,'-WarmMap',warm_map.name,'-Generation',str(gen),'-N',str(n),'-Mode',mode],
                     stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,bufsize=1)
                 def drain():
                     try:
@@ -232,6 +237,7 @@ def run(mode='normal',n=24,native=False):
                 attempts=len(samples),queued=sum(e['state']=='ACCEPTED' for e in samples),
                 drops=sum(e['state']!='ACCEPTED' for e in samples),states=states,concurrent_completion_observed=overlap,
                 close_state='NOT_CLOSED',cold_start=stats(cold),first_warmup=stats([ready['warmup_ms']] if ready else []),
+                prewarm='DISPOSABLE_IPC_NO_WRITER' if native and mode!='cold' else 'NONE',
                 cohorts=cohorts,Worker_processing=stats([e['worker_ms'] for e in worker_events]),
                 Writer_fsync=stats([v for e in worker_events for v in e['fsync_ms']]),
                 receipt_to_verified_readback_upper_bound=stats(latencies),restart_new_generation_no_replay=True,
@@ -245,11 +251,14 @@ def run(mode='normal',n=24,native=False):
                 for f in (process.stdin,process.stdout,process.stderr):f.close()
             if s._shm is not None:struct.pack_into('<I',s._shm.buf,192,0)
             s.stop(.1);ledger.close()
+            if warm_map is not None:
+                ipc.close_generation(warm_gen);warm_map.close()
+                if os.name!='nt':warm_map.unlink()
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--output',default='concurrent372.json');a=p.parse_args()
     modes=('normal','delay','queue_full','gate_busy','permission','partial','before_replace','after_replace','worker_kill','kill','stop','duplicate','receipt_loss')
-    if os.name=='nt':modes=(*modes,'producer_kill')
+    if os.name=='nt':modes=(*modes,'producer_kill','cold')
     results=[];failed=False
     for m in modes:
         try:r=run(m,n=100 if m in {'normal','delay'} else 16,native=os.name=='nt')
