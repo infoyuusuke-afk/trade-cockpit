@@ -3,7 +3,7 @@ $ErrorActionPreference='Stop'
 if($PSVersionTable.PSVersion.Major -ne 5 -or $PSVersionTable.PSVersion.Minor -ne 1){throw 'PS51_REQUIRED'}
 . (Join-Path (Split-Path -Parent $PSScriptRoot) 'scripts\ms2_ps_python_bridge_producer.ps1')
 $session=Open-Ms2PsBridge -MapName $MapName -Size 20480
-if(-not $session.Ok){throw 'ATTACH_REFUSED'}
+if(-not $session.Ok){throw ('ATTACH_REFUSED_'+$session.Reason)}
 $map=[IO.MemoryMappedFiles.MemoryMappedFile]::OpenExisting($MapName)
 $view=$map.CreateViewAccessor(0,20480)
 $samples=New-Object System.Collections.Generic.List[object]

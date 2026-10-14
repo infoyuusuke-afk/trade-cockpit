@@ -136,3 +136,13 @@ class PollTests(unittest.TestCase):
         self.assertTrue(all(r['evidence_status']=='UNKNOWN_TERMINAL' and not r['permanent_loss_proven'] for r in self.rows()))
 
 if __name__=='__main__':unittest.main()
+
+class SpawnedWriterReplayTests(unittest.TestCase):
+    def test_exact_shapes_real_delayed_writer_resume_and_hard_kill(self):
+        from tests.ms2_poll_fault_replay import replay
+        for accepted,persisted in ((83,80),(79,77),(8,0)):
+            for resume in (False,True):
+                r=replay(accepted,persisted,resume=resume)
+                self.assertEqual(r['paused'].get('UNKNOWN_TERMINAL'),accepted-persisted)
+                self.assertEqual(r['final'].get('PERSISTED_VERIFIED',0),accepted if resume else persisted)
+                self.assertEqual(r['close_state'],'NOT_CLOSED')

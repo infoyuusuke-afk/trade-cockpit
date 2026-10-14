@@ -29,7 +29,7 @@ def run(mode,n=100,contention=False):
     if os.name!='nt':return dict(native_ps51='NOT_VERIFIED',five_ms='NOT_MET',production='P0_BLOCKED')
     import uuid,sys
     generation=time.time_ns()//1000
-    shm=ipc.create_mapping('p'+uuid.uuid4().hex[:11],SHM_SIZE)
+    shm=ipc.create_mapping('b'+uuid.uuid4().hex[:11],SHM_SIZE)
     cpu=[];process=None;stop=threading.Event();reader=None;received=[];output=[];drain_errors=[]
     try:
         shm.buf[:]=b'\0'*SHM_SIZE;stamp_header(shm.buf,generation)
@@ -55,7 +55,10 @@ def run(mode,n=100,contention=False):
         reader=threading.Thread(target=lambda:output.append(process.communicate()),daemon=True);reader.start()
         deadline=time.monotonic()+40
         while struct.unpack_from('<Q',shm.buf,120)[0]!=1:
-            if process.poll() is not None or time.monotonic()>deadline:raise RuntimeError('NATIVE_START_FAILED')
+            if process.poll() is not None:
+                reader.join(3)
+                raise RuntimeError('NATIVE_START_FAILED: '+(output[0][1] if output else 'NO_OUTPUT'))
+            if time.monotonic()>deadline:raise RuntimeError('NATIVE_START_DEADLINE')
             time.sleep(.001)
         cold_ms=(time.perf_counter()-cold)*1000
         warm_deadline=time.monotonic()+3

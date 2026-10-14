@@ -112,19 +112,20 @@ class Ledger:
                     payload_identity=payload_identity, stage=stage, observed_at=observed_at,
                     reason_code=reason_code, source_digest=source_digest)
         identity = digest(body)
-        prior = [e for e in self.events() if e['poll_seq'] == poll_seq]
-        states = {e['stage'] for e in prior} | {stage}
-        conflict = any(e['payload_identity'] != payload_identity for e in prior)
-        conflict |= ('DROPPED_PRE_QUEUE' in states and bool(states & {'QUEUED', 'PERSISTED_VERIFIED', 'REJECTED_POST_QUEUE'}))
-        conflict |= {'REJECTED_POST_QUEUE', 'PERSISTED_VERIFIED'} <= states
-        # A post-queue claim requires positive queue evidence, even if received
-        # out of order upstream. Caller can retry after importing the receipt.
-        if stage in {'REJECTED_POST_QUEUE', 'PERSISTED_VERIFIED'} and 'QUEUED' not in states:
-            raise ValueError('QUEUE_EVIDENCE_REQUIRED')
-        q = [clock(e['observed_at']) for e in prior if e['stage'] == 'QUEUED']
-        if stage in {'PERSISTED_VERIFIED', 'REJECTED_POST_QUEUE'} and q and clock(observed_at) < min(q):
-            conflict = True
         with self.db:
+            self.db.execute('BEGIN IMMEDIATE')
+            prior = [e for e in self.events() if e['poll_seq'] == poll_seq]
+            states = {e['stage'] for e in prior} | {stage}
+            conflict = any(e['payload_identity'] != payload_identity for e in prior)
+            conflict |= ('DROPPED_PRE_QUEUE' in states and bool(states & {'QUEUED', 'PERSISTED_VERIFIED', 'REJECTED_POST_QUEUE'}))
+            conflict |= {'REJECTED_POST_QUEUE', 'PERSISTED_VERIFIED'} <= states
+            # A post-queue claim requires positive queue evidence, even if received
+            # out of order upstream. Caller can retry after importing the receipt.
+            if stage in {'REJECTED_POST_QUEUE', 'PERSISTED_VERIFIED'} and 'QUEUED' not in states:
+                raise ValueError('QUEUE_EVIDENCE_REQUIRED')
+            q = [clock(e['observed_at']) for e in prior if e['stage'] == 'QUEUED']
+            if stage in {'PERSISTED_VERIFIED', 'REJECTED_POST_QUEUE'} and q and clock(observed_at) < min(q):
+                conflict = True
             self.db.execute('INSERT OR IGNORE INTO events VALUES (?,?)', (identity, canonical(body)))
             if conflict:
                 self.db.execute('INSERT OR IGNORE INTO conflicts VALUES (?,?)', (poll_seq, 'CONFLICTING_EVIDENCE'))
