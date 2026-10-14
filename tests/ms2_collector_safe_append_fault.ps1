@@ -47,7 +47,8 @@ try {
     $calls = 0
     $denied = { param($p,$l) throw 'sensitive private synthetic path should never leak' }
     $captured = @(& { Invoke-MS2SafeCsvAppend -Path $file -Line 'synth,200' -Stream snapshot -Writer $denied } 6>&1)
-    Assert-True ($captured[0] -eq $false) 'THROW_RETURN_FALSE'
+    $returnValues = @($captured | Where-Object { $_ -is [bool] })
+    Assert-True ($returnValues.Count -eq 1 -and $returnValues[0] -eq $false) 'THROW_RETURN_FALSE'
     Assert-True ($script:ms2RecordFaulted) 'STICKY_DEGRADED_STATE'
     Assert-True ($script:ms2RecordErrors['snapshot'] -eq 1) 'REASON_STREAM_AGGREGATE'
     Assert-True (($captured | Out-String) -notmatch 'sensitive private synthetic path') 'NO_PRIVATE_EXCEPTION_OUTPUT'
