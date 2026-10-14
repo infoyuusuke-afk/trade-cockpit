@@ -270,7 +270,7 @@ class OfflineLane:
         if self.process.is_alive(): return dict(status='STOP_PENDING', reason='CONSUMER_NOT_EXITED')
         try:
             result = self.conn.recv() if self.conn.poll(.1) else dict(status='P0_BLOCKED', reason='STOP_NOT_PROVEN')
-        except EOFError:
+        except (EOFError, OSError):
             result = dict(status='P0_BLOCKED', reason='CONSUMER_CRASH_ORPHAN_NOT_PROVEN')
         if 'stop' in result: result['status'] = result['stop']['status']
         self.stop_report = result

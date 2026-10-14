@@ -129,7 +129,9 @@ class IsolatedTests(unittest.TestCase):
         self.inject(lambda i: i.tags.__setitem__(2,time.monotonic_ns()-2_000_000_000),'STALE_ACQUISITION')
 
     def test_consumer_hard_stop_price_voice_signal_continue(self):
-        lane=self.lane(); lane.process.kill(); lane.process.join(2)
+        lane=self.lane()
+        old=shared_memory.SharedMemory(name=lane.start_report['map_name'])
+        lane.process.kill(); lane.process.join(2)
         # Exact owned child only. Orphan writer must detect dead B owner.
         i=lane.ingress
         price=voice=signal=0
@@ -139,7 +141,6 @@ class IsolatedTests(unittest.TestCase):
         self.assertEqual((price,voice,signal),(200,200,200))
         self.assertGreater(sum(v[0] for v in i.counts.values()),0)
         self.assertLessEqual(i.meta[0]-i.meta[1],8)
-        old=shared_memory.SharedMemory(name=lane.start_report['map_name'])
         try:
             self.wait(lambda: h._read_reason(old.buf)=='OWNER_DEAD_QUARANTINED')
         finally:

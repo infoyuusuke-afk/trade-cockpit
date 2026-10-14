@@ -103,3 +103,16 @@ real_submit_allowed=false; promotion_eligible=false;
 statistical_edge_confirmed=false; real N=0; EV/PF/DD/economics UNKNOWN.
 DO NOT MERGE. No live connection/COM/autostart/OWNER PC/orders/promotion.
 Watcher edits, live connection, main merge need separate authorization.
+
+## Initial Windows CI and repair
+
+Initial head 5770368: isolated Windows job failed because test attached to a
+mapping after Consumer death (Windows map had already disappeared), and
+stop() did not handle Windows BrokenPipeError from poll(). Repair retains
+an exact owned inspection handle before kill and returns P0_BLOCKED on dead
+control pipe. No production gate or timing assertion changed.
+Inherited E2E initial job also failed unchanged 5ms assertion: 16ms sample
+in test_09_slow_serialization_is_not_on_the_producer_path. This is retained
+as a missed latency target, not cured by any later green rerun. Initial
+inherited Windows packing+submit max109.4042ms was also observed. This
+prototype moves that work to B; it does not resolve old bridge tail latency.
