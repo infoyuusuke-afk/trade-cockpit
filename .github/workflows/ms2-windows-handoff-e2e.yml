@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Offline E2E and lifecycle plus inherited durability fault suite
-        run: python -m unittest tests.test_ms2_ipc_security tests.test_ms2_ipc_integrity tests.test_ms2_windows_handoff_e2e tests.test_ms2_nonblocking_handoff tests.test_ms2_ps_python_bridge tests.test_ms2_windows_durable_writer tests.test_ms2_offline_observation_writer tests.test_ms2_watcher_sidecar_contract tests.test_ms2_watcher_integration_preflight -v
+        run: python -m unittest tests.test_ms2_ipc_boundaries tests.test_ms2_ipc_security tests.test_ms2_ipc_integrity tests.test_ms2_windows_handoff_e2e tests.test_ms2_nonblocking_handoff tests.test_ms2_ps_python_bridge tests.test_ms2_windows_durable_writer tests.test_ms2_offline_observation_writer tests.test_ms2_watcher_sidecar_contract tests.test_ms2_watcher_integration_preflight -v
       - name: PS5.1 binary packing and mapping fault tests
         if: runner.os == 'Windows'
         shell: powershell

@@ -94,6 +94,10 @@ FAULT_FILE_LOCK = 5
 FAULT_CRASH = 6
 FAULT_STALL = 7
 FAULT_BLOCK_UNCHECKED = 8
+FAULT_WRITE_INFLIGHT = 10  # Pause inside temp write until harness releases.
+FAULT_BEFORE_REPLACE = 11
+FAULT_AFTER_REPLACE = 12
+
 FAULT_CONSUMER_GATE = 9  # synthetic crash-during-read injection
 
 
@@ -151,6 +155,7 @@ def handoff_contract() -> dict:
         "real_submit_allowed": False,
         "promotion_eligible": False,
         "statistical_edge_confirmed": False,
+        "same_user_authentication": "SAME_USER_AUTH_UNRESOLVED",
         "windows_acceptance": "NOT_VERIFIED",
     }
 
@@ -215,6 +220,37 @@ def _hooks_for(fault: int) -> dict | None:
             raise BlockingIOError(errno.EAGAIN, "Resource temporarily unavailable")
         return {"flock": _flock}
     return None
+
+
+def _owner_io_hooks(buf, fault, owner_dead):
+    """Fence *before* replace; cannot cancel an already-entered OS syscall.
+
+    Fault pauses model a syscall which cannot observe parent death until it
+    returns. Only the harness can release it. Lease remains held throughout.
+    """
+    hooks = dict(_hooks_for(fault) or {})
+    def pause(code, reason):
+        if fault == code:
+            _reason(buf, reason)
+            while _load(buf, _OFF_FAULT) == code:
+                time.sleep(.005)
+    original_write = hooks.get("write", os.write)
+    def write(fd, payload):
+        if fault == FAULT_WRITE_INFLIGHT:
+            # A partial temp is real; published JSONL is untouched.
+            amount = os.write(fd, payload[:max(1, len(payload)//2)])
+            pause(FAULT_WRITE_INFLIGHT, "IO_INFLIGHT")
+            return amount
+        return original_write(fd, payload)
+    def replace(src, dst):
+        pause(FAULT_BEFORE_REPLACE, "BEFORE_REPLACE")
+        if owner_dead() or _load(buf, _OFF_FLAGS) & (_FLAG_STOP | _FLAG_KILL):
+            raise OSError(errno.ECANCELED, "OWNER_COMMIT_REFUSED")
+        os.replace(src, dst)
+        pause(FAULT_AFTER_REPLACE, "AFTER_REPLACE")
+        # Never undo an already-published valid record on owner death.
+    hooks.update(write=write, replace=replace)
+    return hooks
 
 
 def _classify(report: dict) -> str:
@@ -352,8 +388,9 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
             _reason(buf, "RECORD_CORRUPT")
         else:
             report = record_captured_observation(
-                repo_root, relative, capture, enabled=True, hooks=_hooks_for(fault),
+                repo_root, relative, capture, enabled=True, hooks=_owner_io_hooks(buf, fault, owner_dead),
             )
+            if owner_dead(): return
             kind = _classify(report)
             _reason(buf, kind)
             if kind == "APPENDED":
@@ -613,10 +650,13 @@ class HandoffSession:
 
 
 def start_handoff(repo_root, relative: str | None = None, *, enabled: bool = False,
-                  fault: int = FAULT_NONE, map_name: str | None = None) -> HandoffSession:
+                  fault: int = FAULT_NONE, map_name: str | None = None,
+                  require_process_authentication: bool = False) -> HandoffSession:
     """Offline startup only. No lock wait, no retry, one spawn, bounded readiness."""
     if enabled is not True or not relative:
         return HandoffSession("DISABLED", "SIDECAR_DISABLED")
+    if require_process_authentication:
+        return HandoffSession("P0_BLOCKED", "SAME_USER_AUTH_UNRESOLVED")
     session = HandoffSession("STARTING", "STARTING")
     try:
         path = resolve_write_path(repo_root, relative)
