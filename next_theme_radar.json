@@ -1,22 +1,22 @@
 {
   "schema_version": "next-theme-radar-0.2",
-  "updated_at": "2026-10-14T14:17:26.678224+09:00",
+  "updated_at": "2026-10-14T19:27:20.313472+09:00",
   "source_note": "ニュース集約RSSは一次資料ではない。価格・資金流入は取得済み証拠だけで採点。",
   "themes": [
     {
       "theme_id": "jpy-stablecoin",
       "theme": "円ステーブルコイン",
       "status": "NO_EVENT",
-      "score": 35,
+      "score": 15,
       "score_breakdown": {
         "novelty": 0,
         "catalyst": 0,
         "money_flow": 0,
         "japan_link": 15,
-        "breadth": 5,
-        "small_cap": 10,
+        "breadth": 0,
+        "small_cap": 0,
         "overseas_lead": 0,
-        "price_confirmation": 5
+        "price_confirmation": 0
       },
       "weights": {
         "novelty": 15,
@@ -60,13 +60,13 @@
           "type": "資本・業務提携",
           "group": "第2群",
           "source_url": "https://heroz.jp/ir-files/en/20260226/Notice_Regarding_Business_Alliance_with_JPYC_Inc_and_Subscription_of_Series_B1_Preferred_Share.pdf",
-          "market_reaction_verified": true,
-          "change_pct": 8.369098712446352,
-          "relative_volume": 3.00410575740798,
-          "turnover_yen": 6329518500
+          "market_reaction_verified": false,
+          "change_pct": 0.14306151645207438,
+          "relative_volume": 4.083323146836554,
+          "turnover_yen": null
         }
       ],
-      "reacting_stock_count": 1,
+      "reacting_stock_count": 0,
       "evidence": {
         "news_fresh": false,
         "money_flow_fresh": false,
