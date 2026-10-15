@@ -695,6 +695,11 @@ def audit_private_observation(repo_root, relative_path: str | None, *, signal=No
     try:
         raw = _read_stable_snapshot(path)
         diag_raw = _read_stable_snapshot(diag_path) if diag_path is not None else None
+        # Reading two individually stable files is not an atomic pair.
+        # Refuse a changed primary while reading the gap diagnostic, even
+        # when the current primary bytes are syntactically valid.
+        if diag_path is not None and _read_stable_snapshot(path) != raw:
+            raise ValueError("SOURCE_CHANGED_DURING_READ")
     except ValueError as exc:
         return _report(status="BLOCKED", state="BLOCKED",
                        reasons=[str(exc)], producer_id="none")
