@@ -357,6 +357,42 @@ class Ms2ObservationIngressTests(unittest.TestCase):
         self.assertNotIn("SUSPECTED_GAP", clean["reasons"])
         self.assertIsNone(clean["decision"])
 
+    def test_08b_primary_changes_during_diagnostic_read_is_blocked(self):
+        self.write_csv(
+            "ticks_race.csv", TICK_HEADER,
+            [["2026-10-14 09:00:01", "09:00:01", "1000", "100", "7"]],
+        )
+        diag = self.write_csv(
+            "diag_race.csv", DIAG_HEADER,
+            [["2026-10-14 09:00:02", "300", "10", "1", "False"]],
+        )
+        ticks = self.directory / "ticks_race.csv"
+        first = ticks.read_bytes()
+        modified = first.replace(b"1000", b"1010")
+        original_read = Path.read_bytes
+        seen_diag = [0]
+
+        def overwrite_primary_when_diagnostic_is_read(candidate):
+            data = original_read(candidate)
+            if candidate == diag:
+                seen_diag[0] += 1
+                if seen_diag[0] == 1:
+                    ticks.write_bytes(modified)  # External-Writer race simulation.
+            return data
+
+        with patch.object(Path, "read_bytes", overwrite_primary_when_diagnostic_is_read):
+            report = audit_private_observation(
+                self.root, RELATIVE.format("ticks_race.csv"),
+                diag_relative_path=RELATIVE.format("diag_race.csv"),
+            )
+        self.assertEqual(seen_diag[0], 2)
+        self.assertEqual(report["status"], "BLOCKED")
+        self.assertEqual(report["reasons"], ["SOURCE_CHANGED_DURING_READ"])
+        self.assertEqual(report["forwarded_event_ids"], [])
+        self.assertIsNone(report["decision"])
+        self.assertEqual(report["eligible_observed_n"], 0)
+        self.assertEqual(ticks.read_bytes(), modified)
+
     def test_09_duplicate_and_conflicting_event_ids(self):
         row = quote_row("e1", at(9, 1), 999, 998, 999.5, 1)
         self.write_jsonl([row, dict(row)])
