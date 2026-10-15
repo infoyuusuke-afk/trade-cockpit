@@ -21,6 +21,8 @@ CODE_FILES = (
     'scripts/shadow_fill_model.py',
     'tests/test_ms2_offline_csv_snapshot.py',
     'scripts/run_ms2_offline_acceptance.cmd',
+    'scripts/ms2_local_csv_capture.py',
+    'scripts/run_ms2_local_csv_capture.cmd',
 )
 # Fixed, reviewed names only. Never serialize test exceptions, skip messages,
 # arbitrary test identifiers, stdout, environment variables or user paths.
