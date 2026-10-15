@@ -514,5 +514,146 @@ class WindowsDurableWriterTests(unittest.TestCase):
         self.assertEqual(refused["close_state"], "NOT_CLOSED")
 
 
+class WriterReplaceTests(unittest.TestCase):
+    """Issue #382: Windows POSIX-semantics replace and post-replace outcomes."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.path = self.root / RELATIVE
+        first = self._write(3)
+        self.assertEqual(first["writer_status"], "ADMITTED_INCOMPLETE", first["reasons"])
+        self.original = self.path.read_bytes()
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _write(self, poll, hooks=None):
+        return record_captured_observation(self.root, RELATIVE, _board(poll_seq=poll), enabled=True, hooks=hooks)
+
+    def _leftovers(self):
+        return sorted(item.name for item in self.path.parent.iterdir()
+                      if item.name.endswith(".tmp") or ".posix-rename-probe." in item.name)
+
+    def _assert_new_published(self):
+        current = self.path.read_bytes()
+        self.assertTrue(current.startswith(self.original) and current != self.original and current.endswith(b"\n"))
+
+    def test_replace_method_is_platform_specific(self):
+        report = self._write(4)
+        self.assertEqual(report["writer_status"], "ADMITTED_INCOMPLETE", report["reasons"])
+        self.assertEqual(report["replace_method"], "POSIX_RENAME" if os.name == "nt" else "OS_REPLACE")
+        self._assert_new_published()
+        self.assertEqual(self._leftovers(), [])
+
+    def test_post_replace_readback_failure_is_unverified_not_refused(self):
+        target = str(self.path)
+
+        def read(item):
+            if str(item) == target:
+                raise PermissionError(errno.EACCES, "synthetic post-replace read failure")
+            return Path(item).read_bytes()
+
+        report = self._write(4, hooks={"read": read})
+        self.assertEqual(report["transition"], "PUBLISH_UNVERIFIED")
+        self.assertIn("PUBLISHED_UNVERIFIED", report["reasons"])
+        self.assertNotIn("REPLACE_FAILED", report["reasons"])
+        self.assertFalse(report["writes_performed"])
+        # Published bytes are kept for independent readback, never rolled back.
+        self._assert_new_published()
+
+    def test_post_replace_mismatch_restores_previous_bytes(self):
+        target = str(self.path)
+        report = self._write(4, hooks={"read": lambda item: b"x" if str(item) == target else Path(item).read_bytes()})
+        self.assertIn("READBACK_MISMATCH", report["reasons"])
+        self.assertNotIn("PUBLISHED_UNVERIFIED", report["reasons"])
+        self.assertEqual(self.path.read_bytes(), self.original)
+
+    def test_hook_replace_failure_still_preserves_bytes(self):
+        def replace(src, dst):
+            raise OSError(errno.EIO, "synthetic replace failure")
+
+        report = self._write(4, hooks={"replace": replace})
+        self.assertIn("REPLACE_FAILED", report["reasons"])
+        self.assertEqual(self.path.read_bytes(), self.original)
+        self.assertEqual(self._leftovers(), [])
+
+
+@unittest.skipUnless(os.name == "nt", "Windows replace semantics")
+class WindowsPosixReplaceTests(WriterReplaceTests):
+
+    def _rename(self, behaviour):
+        import scripts.ms2_offline_observation_writer as writer
+        from unittest.mock import patch
+        real = writer._posix_rename_win
+        calls = []
+
+        def fake(src, dst):
+            calls.append(Path(dst).name)
+            return behaviour(real, src, dst)
+
+        return patch.object(writer, "_posix_rename_win", fake), calls
+
+    def test_a_share_delete_reader_keeps_old_and_new_reader_sees_new(self):
+        from tests.ms2_concurrent_pipeline import open_published, read_published
+        with open_published(self.path) as held:
+            report = self._write(4)
+            old_view = held.read()
+        self.assertEqual(report["writer_status"], "ADMITTED_INCOMPLETE", report["reasons"])
+        self.assertEqual(old_view, self.original)
+        self.assertEqual(read_published(self.path), self.path.read_bytes())
+        self._assert_new_published()
+
+    def test_b_reader_refusing_delete_share_fails_closed(self):
+        with open(self.path, "rb"):
+            report = self._write(4)
+        self.assertIn("REPLACE_FAILED", report["reasons"])
+        self.assertIn("WINDOWS_SHARING_VIOLATION", report["reasons"])
+        self.assertEqual(self.path.read_bytes(), self.original)
+        self.assertEqual(self._leftovers(), [])
+
+    def test_c1_proven_unsupported_falls_back_to_os_replace(self):
+        patcher, calls = self._rename(lambda real, src, dst: 87)
+        with patcher:
+            report = self._write(4)
+        self.assertEqual(report["writer_status"], "ADMITTED_INCOMPLETE", report["reasons"])
+        self.assertEqual(report["replace_method"], "OS_REPLACE_POSIX_UNSUPPORTED")
+        self.assertEqual(len(calls), 2)  # the replace, then the private probe
+        self._assert_new_published()
+        self.assertEqual(self._leftovers(), [])
+
+    def test_c2_unsupported_code_with_working_probe_is_not_a_fallback(self):
+        target = self.path.name
+        patcher, calls = self._rename(lambda real, src, dst: 87 if Path(dst).name == target else real(src, dst))
+        with patcher:
+            report = self._write(4)
+        self.assertIn("REPLACE_FAILED", report["reasons"])
+        self.assertEqual(self.path.read_bytes(), self.original)
+        self.assertEqual(self._leftovers(), [])
+
+    def test_c3_access_denied_is_never_treated_as_unsupported(self):
+        patcher, calls = self._rename(lambda real, src, dst: 5)
+        with patcher:
+            report = self._write(4)
+        self.assertIn("REPLACE_FAILED", report["reasons"])
+        self.assertIn("WINDOWS_SHARING_VIOLATION", report["reasons"])
+        self.assertEqual(len(calls), 1)  # no probe, no fallback
+        self.assertEqual(self.path.read_bytes(), self.original)
+
+    def test_c4_error_after_an_applied_rename_is_unverified_not_refused(self):
+        def applied_then_error(real, src, dst):
+            self.assertEqual(real(src, dst), 0)
+            return 87
+
+        patcher, calls = self._rename(applied_then_error)
+        with patcher:
+            report = self._write(4)
+        self.assertEqual(report["transition"], "PUBLISH_UNVERIFIED")
+        self.assertIn("PUBLISHED_UNVERIFIED", report["reasons"])
+        self.assertEqual(len(calls), 1)  # outcome unproven: no fallback
+        self._assert_new_published()
+        self.assertEqual(self._leftovers(), [])
+
+
 if __name__ == "__main__":
     unittest.main()

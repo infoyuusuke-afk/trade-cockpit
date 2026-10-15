@@ -50,7 +50,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RELATIVE = "data/private/ms2_sidecar/board.jsonl"
 HISTORY_SHA = "6da1968f71d9e54011d3180d934a683ba9829833d1d4e743fbd42b4172f2d554"
 CONTRACT_SHA = "ffc45ca155d297506ce2f9f8758531e5a721df8f4dfef26c0dc0793b0c4ed80b"
-WRITER_SHA = "8efaa421a475286f1eab1bd3bf13900536530b554acdb60a6a08889bc77515c3"
+WRITER_SHA = "14bea3d3a805dd62d99f91b76677110cecb7427aedb04ea92f1435595f90f722"
 SPAWN_MARKER = "import-time"
 
 

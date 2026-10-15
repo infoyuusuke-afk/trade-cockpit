@@ -35,7 +35,7 @@ from scripts import ms2_ipc_integrity as ipc
 from scripts.ms2_bridge_record import RECORD_SIZE, pack_capture, unpack_capture
 from scripts.ms2_offline_observation_writer import (
     record_captured_observation, _lock_native, _unlock_native,
-    resolve_write_path, _is_reparse, exclusive_writer_lock,
+    resolve_write_path, _is_reparse, exclusive_writer_lock, _replace_published,
 )
 
 HANDOFF_VERSION = "ms2-nonblocking-handoff-0.1"
@@ -259,8 +259,9 @@ def _owner_io_hooks(buf, fault, owner_dead):
         pause(FAULT_BEFORE_REPLACE, "BEFORE_REPLACE")
         if owner_dead() or _load(buf, _OFF_FLAGS) & (_FLAG_STOP | _FLAG_KILL):
             raise OSError(errno.ECANCELED, "OWNER_COMMIT_REFUSED")
-        os.replace(src, dst)
+        method = _replace_published(src, dst)
         pause(FAULT_AFTER_REPLACE, "AFTER_REPLACE")
+        return method
         # Never undo an already-published valid record on owner death.
     hooks.update(write=write, replace=replace)
     return hooks
@@ -270,6 +271,8 @@ def _classify(report: dict) -> str:
     reasons = set(report.get("reasons") or [])
     if report.get("writes_performed"):
         return "APPENDED"
+    if "PUBLISHED_UNVERIFIED" in reasons:
+        return "PUBLISH_UNVERIFIED"  # not a refusal: left for independent readback
     if "DISK_FULL" in reasons:
         return "DISK_FULL"
     if "WRITE_LOCKED" in reasons:

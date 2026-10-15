@@ -952,7 +952,19 @@ def _io_reason(exc: OSError) -> str:
 
 
 class _ReadbackMismatch(Exception):
-    pass
+    def __init__(self, published: bool = False):
+        super().__init__("readback mismatch")
+        self.published = published
+
+
+class _PublishOutcomeUnknown(OSError):
+    """The replace may have published the new bytes, but that is not proven.
+
+    Never reported as a refusal: the caller leaves it for independent readback.
+    """
+
+    def __init__(self, detail: str):
+        super().__init__(errno.EIO, detail)
 
 
 class _ReplaceFailed(OSError):
@@ -1057,6 +1069,131 @@ def _fsync_directory(directory: Path) -> str:
     return "POSIX_FSYNC"
 
 
+# Windows FileRenameInfoEx flags and the errors that mean "not supported here".
+_FILE_RENAME_INFO_EX = 22
+_RENAME_REPLACE_IF_EXISTS = 0x1
+_RENAME_POSIX_SEMANTICS = 0x2
+_RENAME_UNSUPPORTED = frozenset({1, 50, 87})  # INVALID_FUNCTION, NOT_SUPPORTED, INVALID_PARAMETER
+
+
+def _win_kernel():
+    import ctypes
+    from ctypes import wintypes
+
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.CreateFileW.argtypes = [
+        wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p,
+        wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE,
+    ]
+    kernel.CreateFileW.restype = wintypes.HANDLE
+    kernel.SetFileInformationByHandle.argtypes = [
+        wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD,
+    ]
+    kernel.SetFileInformationByHandle.restype = wintypes.BOOL
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.CloseHandle.restype = wintypes.BOOL
+    return kernel
+
+
+def _posix_rename_win(src, dst) -> int:
+    """Rename ``src`` over ``dst`` with POSIX semantics. Returns 0 or a Win32 error.
+
+    Readers that opened ``dst`` sharing delete keep reading the complete old
+    file; readers that refuse delete sharing make this fail (32), unchanged.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    class _FileRenameInfo(ctypes.Structure):
+        # union { BOOLEAN ReplaceIfExists; DWORD Flags; } is DWORD-sized.
+        _fields_ = [
+            ("Flags", wintypes.DWORD),
+            ("RootDirectory", wintypes.HANDLE),
+            ("FileNameLength", wintypes.DWORD),
+            ("FileName", wintypes.WCHAR * 1),
+        ]
+
+    kernel = _win_kernel()
+    delete, synchronize = 0x00010000, 0x00100000
+    share_all = 0x1 | 0x2 | 0x4
+    open_existing, open_reparse_point = 3, 0x00200000
+    handle = kernel.CreateFileW(
+        os.fspath(src), delete | synchronize, share_all, None, open_existing, open_reparse_point, None,
+    )
+    if handle is None or handle == wintypes.HANDLE(-1).value:
+        return ctypes.get_last_error() or 5
+    try:
+        name = os.path.abspath(os.fspath(dst))
+        encoded = name.encode("utf-16-le")
+        offset = _FileRenameInfo.FileName.offset
+        size = max(ctypes.sizeof(_FileRenameInfo), offset + len(encoded) + 2)
+        buffer = (ctypes.c_byte * size)()
+        info = _FileRenameInfo.from_buffer(buffer)
+        info.Flags = _RENAME_REPLACE_IF_EXISTS | _RENAME_POSIX_SEMANTICS
+        info.RootDirectory = None
+        info.FileNameLength = len(encoded)  # bytes, without the terminator
+        ctypes.memmove(ctypes.addressof(buffer) + offset, encoded, len(encoded))
+        if kernel.SetFileInformationByHandle(handle, _FILE_RENAME_INFO_EX, buffer, size):
+            return 0
+        return ctypes.get_last_error() or 5
+    finally:
+        kernel.CloseHandle(handle)
+
+
+def _file_identity(item) -> tuple | None:
+    try:
+        st = os.stat(item, follow_symlinks=False)
+    except FileNotFoundError:
+        return None
+    return (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns)
+
+
+def _posix_rename_unsupported(directory: Path) -> bool:
+    """Confirm on two private probe files that POSIX rename is unsupported here."""
+    stem = directory / f".posix-rename-probe.{os.getpid()}.{time.time_ns()}"
+    first, second = Path(f"{stem}.a"), Path(f"{stem}.b")
+    try:
+        for item in (first, second):
+            fd = os.open(item, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0), 0o600)
+            os.close(fd)
+        return _posix_rename_win(first, second) in _RENAME_UNSUPPORTED
+    except OSError:
+        return False
+    finally:
+        for item in (first, second):
+            try:
+                os.unlink(item)
+            except OSError:
+                pass
+
+
+def _replace_published(src, dst) -> str:
+    """Atomically replace ``dst`` with the fsynced same-directory temp ``src``.
+
+    POSIX: os.replace, unchanged. Windows: os.replace refuses any destination
+    that a reader holds open, even with delete sharing, so POSIX-semantics
+    rename is used. Only a proven-unsupported rename whose first attempt left
+    both files untouched falls back to os.replace. Every other error raises.
+    """
+    if os.name != "nt":
+        os.replace(src, dst)
+        return "OS_REPLACE"
+    src_before, dst_before = _file_identity(src), _file_identity(dst)
+    error = _posix_rename_win(src, dst)
+    if error == 0:
+        return "POSIX_RENAME"
+    untouched = (src_before is not None and _file_identity(src) == src_before
+                 and _file_identity(dst) == dst_before)
+    if not untouched:
+        raise _PublishOutcomeUnknown(f"POSIX_RENAME_ERROR_{error}_OUTCOME_UNPROVEN")
+    if error in _RENAME_UNSUPPORTED and _posix_rename_unsupported(Path(dst).parent):
+        os.replace(src, dst)
+        return "OS_REPLACE_POSIX_UNSUPPORTED"
+    raised = OSError(errno.EACCES if error in {5, 32, 33} else errno.EIO, f"POSIX rename failed ({error})")
+    raised.winerror = error
+    raise raised
+
+
 def _atomic_write(path: Path, payload: bytes, hooks: dict) -> dict:
     """Write a temp file beside ``path`` and replace only after read-back.
 
@@ -1068,7 +1205,7 @@ def _atomic_write(path: Path, payload: bytes, hooks: dict) -> dict:
     write_fn = hooks.get("write", os.write)
     fsync_fn = hooks.get("fsync", os.fsync)
     close_fn = hooks.get("close", os.close)
-    replace_fn = hooks.get("replace", os.replace)
+    replace_fn = hooks.get("replace", _replace_published)
     unlink_fn = hooks.get("unlink", os.unlink)
     read_fn = hooks.get("read", lambda item: Path(item).read_bytes())
     chmod_fn = hooks.get("chmod", os.chmod)
@@ -1120,7 +1257,13 @@ def _atomic_write(path: Path, payload: bytes, hooks: dict) -> dict:
             pass
         raise _ReadbackMismatch()
     try:
-        replace_fn(tmp, path)
+        method = replace_fn(tmp, path)
+    except _PublishOutcomeUnknown:
+        try:
+            unlink_fn(tmp)
+        except Exception:
+            pass
+        raise
     except OSError as exc:
         try:
             unlink_fn(tmp)
@@ -1133,13 +1276,19 @@ def _atomic_write(path: Path, payload: bytes, hooks: dict) -> dict:
         except Exception:
             pass
         raise
+    info["replace_method"] = method if isinstance(method, str) else "HOOK"
+    # From here the new bytes may be published. A failure is not a refusal.
     try:
-        chmod_fn(path, 0o600)
-    except OSError:
-        if os.name != "nt":
-            raise
-    if read_fn(path) != payload:
-        raise _ReadbackMismatch()
+        try:
+            chmod_fn(path, 0o600)
+        except OSError:
+            if os.name != "nt":
+                raise
+        published = read_fn(path)
+    except Exception as exc:
+        raise _PublishOutcomeUnknown("POST_REPLACE_READBACK_FAILED") from exc
+    if published != payload:
+        raise _ReadbackMismatch(published=True)
     try:
         info["directory_fsync"] = _fsync_directory(path.parent)
     except OSError:
@@ -1429,9 +1578,12 @@ def _record(repo_root, relative, capture, *, enabled: bool, hooks: dict) -> dict
         previous = existing if existing else None
         try:
             info = _atomic_write(path, candidate, hooks)
-        except _ReadbackMismatch:
-            _restore(path, previous, hooks)
+        except _ReadbackMismatch as exc:
+            if not _restore(path, previous, hooks) and exc.published:
+                return finish(_unverified("READBACK_MISMATCH", "RESTORE_FAILED"))
             return finish(_blocked(["READBACK_MISMATCH", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"]))
+        except _PublishOutcomeUnknown:
+            return finish(_unverified())
         except _ReplaceFailed as exc:
             return finish(_blocked([
                 _io_reason(exc), "REPLACE_FAILED", "ELIGIBLE_OBSERVED_N_ZERO",
@@ -1441,9 +1593,13 @@ def _record(repo_root, relative, capture, *, enabled: bool, hooks: dict) -> dict
             return finish(_blocked([
                 _io_reason(exc), "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN", "CAPTURE_NOT_AUTHENTICATED",
             ]))
-        final = path.read_bytes()
+        try:
+            final = path.read_bytes()
+        except OSError:
+            return finish(_unverified())
         if final != candidate:
-            _restore(path, previous, hooks)
+            if not _restore(path, previous, hooks):
+                return finish(_unverified("READBACK_MISMATCH", "RESTORE_FAILED"))
             return finish(_blocked(["READBACK_MISMATCH", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"]))
         confirmed = audit_sidecar_bytes(final)
         if confirmed["contract_status"] != preview["contract_status"]:
@@ -1458,6 +1614,7 @@ def _record(repo_root, relative, capture, *, enabled: bool, hooks: dict) -> dict
             payload=final,
         )
         report["directory_fsync"] = info.get("directory_fsync", report["directory_fsync"])
+        report["replace_method"] = info.get("replace_method", "UNKNOWN")
         report["recovery_transitions"] = recovery
         if existing and final[:len(existing)] != existing:
             report["reasons"] = sorted(set(report["reasons"]) | {"PUBLISHED_PREFIX_LOST"})
@@ -1466,16 +1623,24 @@ def _record(repo_root, relative, capture, *, enabled: bool, hooks: dict) -> dict
         _release_lock(fd, hooks)
 
 
-def _restore(path: Path, previous: bytes | None, hooks: dict) -> None:
+def _restore(path: Path, previous: bytes | None, hooks: dict) -> bool:
+    """Put back the previous bytes after a proven mismatch. False when not done."""
     try:
         if previous is None:
             if path.exists():
                 path.unlink()
-            return
+            return True
         direct = {key: value for key, value in hooks.items() if key not in {"read", "write", "replace", "open"}}
         _atomic_write(path, previous, direct)
+        return True
     except Exception:
-        return
+        return False
+
+
+def _unverified(*extra: str) -> dict:
+    """The new bytes may be published; only independent readback can tell."""
+    return _blocked([*extra, "PUBLISHED_UNVERIFIED", "ELIGIBLE_OBSERVED_N_ZERO", "ECONOMICS_UNKNOWN"],
+                    transition="PUBLISH_UNVERIFIED")
 
 
 def record_captured_observation(repo_root, relative, capture=None, *, enabled: bool = False, hooks=None) -> dict:

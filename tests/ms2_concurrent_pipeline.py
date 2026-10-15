@@ -274,7 +274,7 @@ def normal_failure_evidence(states, samples, worker_events, session, producer, n
         states=states,
         worker_transitions=dict(Counter(e['transition'] for e in worker_events)),
         # Reason codes only (no record fields) for any post-queue Writer refusal.
-        worker_refusal_reasons=dict(Counter(r for e in worker_events if e['transition'] not in {'APPENDED','REPLAY'}
+        worker_refusal_reasons=dict(Counter(r for e in worker_events if e['transition'] not in {'APPENDED','REPLAY','PUBLISH_UNVERIFIED'}
                                             for r in e.get('reasons') or [])),
         worker_alive=bool(session._process.is_alive()),
         worker_exitcode=session._process.exitcode,
@@ -323,7 +323,8 @@ def run(mode='normal',n=24,native=False):
                 consumed.add(identity);worker_events.append(e)
                 if len(samples)<n:overlap=True
                 # Only an actual negative Writer result certifies post-queue refusal.
-                if e['transition'] not in {'APPENDED','REPLAY'}:
+                # PUBLISH_UNVERIFIED may have published: only readback decides, never a refusal.
+                if e['transition'] not in {'APPENDED','REPLAY','PUBLISH_UNVERIFIED'}:
                     ledger.add(poll_seq=poll,payload_identity=e['payload_identity'],stage='REJECTED_POST_QUEUE',
                         observed_at=now(),reason_code='WRITER_'+e['transition'],source_digest=identity)
         def verify():
