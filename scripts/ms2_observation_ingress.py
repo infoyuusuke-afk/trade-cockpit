@@ -296,6 +296,36 @@ def resolve_private_input(repo_root, relative: str) -> Path:
     return resolved
 
 
+def _read_stable_snapshot(path: Path) -> bytes:
+    """Read two independent views; reject concurrent private file mutation.
+
+    Offline read consistency is NOT fsync proof, authenticated source evidence,
+    a producer available_at timestamp, or real-market eligibility.
+    """
+    try:
+        if path.is_symlink():
+            raise ValueError("PRIVATE_PATH_LINK")
+        before = path.stat()
+        if before.st_size > MAX_BYTES:
+            raise ValueError("PRIVATE_FILE_TOO_LARGE")
+        first = path.read_bytes()
+        middle = path.stat()
+        if len(first) > MAX_BYTES:
+            raise ValueError("PRIVATE_FILE_TOO_LARGE")
+        second = path.read_bytes()
+        after = path.stat()
+        if path.is_symlink():
+            raise ValueError("PRIVATE_PATH_LINK")
+    except OSError as exc:
+        raise ValueError("SOURCE_READ_FAILED") from exc
+    if len(second) > MAX_BYTES:
+        raise ValueError("PRIVATE_FILE_TOO_LARGE")
+    identity = lambda st: (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns)
+    if identity(before) != identity(middle) or identity(middle) != identity(after) or first != second:
+        raise ValueError("SOURCE_CHANGED_DURING_READ")
+    return second
+
+
 def _decode(raw: bytes) -> str:
     try:
         return raw.decode("utf-8-sig")
@@ -656,16 +686,13 @@ def audit_private_observation(repo_root, relative_path: str | None, *, signal=No
     except OSError:
         return _report(status="BLOCKED", state="BLOCKED", reasons=["PRIVATE_PATH_INVALID"], producer_id="none")
 
-    raw = path.read_bytes()
-    if len(raw) > MAX_BYTES:
-        return _report(status="BLOCKED", state="BLOCKED", reasons=["PRIVATE_FILE_TOO_LARGE"], producer_id="none")
+    try:
+        raw = _read_stable_snapshot(path)
+        diag_raw = _read_stable_snapshot(diag_path) if diag_path is not None else None
+    except ValueError as exc:
+        return _report(status="BLOCKED", state="BLOCKED",
+                       reasons=[str(exc)], producer_id="none")
     digest = hashlib.sha256(raw).hexdigest()
-    diag_raw = diag_path.read_bytes() if diag_path is not None else None
-    if diag_raw is not None and len(diag_raw) > MAX_BYTES:
-        return _report(
-            status="BLOCKED", state="BLOCKED", reasons=["PRIVATE_FILE_TOO_LARGE"],
-            producer_id="none", bytes_read=len(raw) + len(diag_raw),
-        )
     stripped = raw.lstrip(b"\xef\xbb\xbf").lstrip()
     try:
         if stripped.startswith(b"{") or path.suffix.lower() == ".jsonl":
