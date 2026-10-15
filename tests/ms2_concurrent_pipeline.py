@@ -94,36 +94,39 @@ def _set_suspended(pid, suspended):
         os.kill(pid,signal.SIGSTOP if suspended else signal.SIGCONT)
 
 
+def _load_index(buf,offset):return struct.unpack_from('<Q',buf,offset)[0]
+
+
 def _pause_loop(buf, pid, stop, pause_s=0.16, limit=10):
     """Issue #382 repro: pause the worker between two *separate* short gate holds.
 
-    Suspend only after the worker started an iteration while the gate was held
-    (heartbeat newer than the busy edge), and resume preferably while a later
-    hold is in progress. Holds stay short; only the worker's own scheduling has
-    a gap. The gate itself is never touched here.
+    Suspend only inside a producer hold (the worker very likely sampled it
+    busy), and resume preferably while a later hold is in progress. Holds stay
+    short; only the worker's own scheduling has a gap. The gate itself is never touched here.
     """
     def gate():return struct.unpack_from('<I',buf,ipc.GATE)[0]
     def wait(cond,timeout):
-        end=time.monotonic()+timeout
-        while time.monotonic()<end:
+        end=time.perf_counter()+timeout  # monotonic is ~15.6ms on Windows py3.12
+        while time.perf_counter()<end:
             if cond():return True
         return False
     log=[]
     while not stop() and len(log)<limit:
         if not wait(lambda:gate()==1,0.2):continue
-        edge=time.monotonic_ns();sampled=False;end=time.monotonic()+0.005
-        # The gate must stay busy without a gap while the worker completes a
-        # new iteration. A worker-held gate cannot do that: it releases first.
-        while time.monotonic()<end:
-            if gate()!=1:break
-            if h._load(buf,h._OFF_HEARTBEAT)>edge:sampled=True;break
-        if not sampled:continue
-        _set_suspended(pid,True);paused=time.monotonic_ns()
+        # Heartbeat is too coarse to show one worker iteration (Python 3.12 on
+        # Windows: monotonic ~15.6ms). Instead pause only inside a producer
+        # hold: busy with an empty queue for 1ms without a gap. The worker
+        # holds the gate only to claim a queued slot, so it cannot be the holder.
+        end=time.perf_counter()+0.001;producer=True
+        while time.perf_counter()<end:
+            if gate()!=1 or _load_index(buf,h._OFF_WRITE)!=_load_index(buf,h._OFF_READ):producer=False;break
+        if not producer:continue
+        _set_suspended(pid,True);paused=time.perf_counter()
         try:
             time.sleep(pause_s)
             resumed_busy=wait(lambda:gate()==1,0.3)
         finally:_set_suspended(pid,False)
-        log.append(dict(pause_ms=round((time.monotonic_ns()-paused)/1e6,3),resumed_while_gate_busy=bool(resumed_busy)))
+        log.append(dict(pause_ms=round((time.perf_counter()-paused)*1e3,3),resumed_while_gate_busy=bool(resumed_busy)))
         time.sleep(.05)
     return log
 
