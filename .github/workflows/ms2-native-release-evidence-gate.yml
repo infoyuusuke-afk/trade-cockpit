@@ -1,0 +1,64 @@
+name: MS2 Native Writer Release Evidence Gate
+on:
+  pull_request:
+    paths:
+      - scripts/ms2_native_latency_anatomy.py
+      - scripts/ms2_native_release_evidence_gate.py
+      - tests/test_ms2_native_latency_anatomy.py
+      - tests/ms2_concurrent_pipeline.py
+      - tests/test_ms2_native_release_evidence_gate.py
+      - tests/ms2_native_pack_byte_parity.ps1
+      - tests/ms2_native_release_probe.py
+      - docs/MS2_NATIVE_RELEASE_EVIDENCE_GATE_V1.md
+      - .github/workflows/ms2-native-release-evidence-gate.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gate-unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Synthetic zero-promotion and negative evidence tests
+        run: python -m unittest tests.test_ms2_native_release_evidence_gate tests.test_ms2_native_latency_anatomy -v
+
+  pinned-ps51-byte-parity:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: PowerShell 5.1 exact canonical 2048-byte and refusal parity
+        shell: powershell
+        run: |
+          .\tests\ms2_native_pack_byte_parity.ps1 -BaselineCommit 9861b9ed0acb375bbe137c5b485a670c3d1feffe -CurrentPath scripts/ms2_ps_python_bridge_producer.ps1
+
+  real-existing-writer-probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Existing isolated Writer + published fsync/readback, anonymous release blockers
+        run: python -m tests.ms2_native_release_probe

@@ -35,7 +35,7 @@ from scripts import ms2_ipc_integrity as ipc
 from scripts.ms2_bridge_record import RECORD_SIZE, pack_capture, unpack_capture
 from scripts.ms2_offline_observation_writer import (
     record_captured_observation, _lock_native, _unlock_native,
-    resolve_write_path, _is_reparse, exclusive_writer_lock,
+    resolve_write_path, _is_reparse, exclusive_writer_lock, _replace_published,
 )
 
 HANDOFF_VERSION = "ms2-nonblocking-handoff-0.1"
@@ -81,6 +81,19 @@ _OFF_SUBMIT_COUNT = 160
 _OFF_LAST_ELAPSED_NS = 168
 _OFF_REASON = 256
 _REASON_SIZE = 32
+
+# Issue #382: only the write index counts as gate progress. It is the one
+# existing counter every producer stores strictly inside the gate (ACCEPTED);
+# dropped, kill drops, queued and submit count are also bumped outside the gate
+# by refused or post-release submit paths, so a submitter retrying against a
+# stuck gate would keep resetting the stall timer. A busy gate with an unchanged
+# write index is treated as the same hold however long the worker itself was
+# off-CPU, so a stuck gate keeps counting toward STALL_AFTER_NS. Known limits,
+# both fail closed (never silently pass): holds that end without an ACCEPTED
+# record (queue full / Kill Switch inside the gate) do not advance it, and a
+# sample taken after a hold's write but before its release cannot be told apart
+# from the next hold until that one commits.
+_GATE_PROGRESS = (_OFF_WRITE,)
 
 _FLAG_KILL = 1
 _FLAG_STOP = 2
@@ -246,8 +259,9 @@ def _owner_io_hooks(buf, fault, owner_dead):
         pause(FAULT_BEFORE_REPLACE, "BEFORE_REPLACE")
         if owner_dead() or _load(buf, _OFF_FLAGS) & (_FLAG_STOP | _FLAG_KILL):
             raise OSError(errno.ECANCELED, "OWNER_COMMIT_REFUSED")
-        os.replace(src, dst)
+        method = _replace_published(src, dst)
         pause(FAULT_AFTER_REPLACE, "AFTER_REPLACE")
+        return method
         # Never undo an already-published valid record on owner death.
     hooks.update(write=write, replace=replace)
     return hooks
@@ -257,6 +271,8 @@ def _classify(report: dict) -> str:
     reasons = set(report.get("reasons") or [])
     if report.get("writes_performed"):
         return "APPENDED"
+    if "PUBLISHED_UNVERIFIED" in reasons:
+        return "PUBLISH_UNVERIFIED"  # not a refusal: left for independent readback
     if "DISK_FULL" in reasons:
         return "DISK_FULL"
     if "WRITE_LOCKED" in reasons:
@@ -276,10 +292,20 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
     _store(buf, _OFF_WORKER_PID, os.getpid())
     _store(buf, _OFF_HEARTBEAT, time.monotonic_ns())
     gate_busy_since = None
+    gate_busy_progress = None
     next_read = 0
     write_highwater = 0
     from multiprocessing import parent_process
     parent = parent_process()
+    def gate_stalled(now):
+        # A release between samples cannot be seen directly; protocol progress
+        # can. Unchanged progress across any sampling gap stays one hold.
+        nonlocal gate_busy_since, gate_busy_progress
+        progress = tuple(_load(buf, offset) for offset in _GATE_PROGRESS)
+        if gate_busy_since is None or progress != gate_busy_progress:
+            gate_busy_since = now
+            gate_busy_progress = progress
+        return now - gate_busy_since > STALL_AFTER_NS
     def owner_dead():
         if parent is None:  # Direct/unit invocation has no spawned owner.
             return False
@@ -322,9 +348,7 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
             now = time.monotonic_ns()
             if struct.unpack_from("<I", buf, ipc.GATE)[0] == 0:
                 gate_busy_since = None
-            elif gate_busy_since is None:
-                gate_busy_since = now
-            elif now - gate_busy_since > STALL_AFTER_NS:
+            elif gate_stalled(now):
                 _add(buf, _OFF_FAIL_CLOSED)
                 _store(buf, _OFF_FLAGS, flags | _FLAG_KILL)
                 _reason(buf, "IPC_GATE_ABANDONED")
@@ -332,10 +356,7 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
             time.sleep(0.002)
             continue
         if not ipc.acquire(buf):
-            now = time.monotonic_ns()
-            if gate_busy_since is None:
-                gate_busy_since = now
-            if now - gate_busy_since > STALL_AFTER_NS:
+            if gate_stalled(time.monotonic_ns()):
                 _add(buf, _OFF_FAIL_CLOSED)
                 _store(buf, _OFF_FLAGS, flags | _FLAG_KILL)
                 _reason(buf, "IPC_GATE_ABANDONED")

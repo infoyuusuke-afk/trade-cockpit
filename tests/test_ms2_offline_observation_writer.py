@@ -8,6 +8,7 @@ import tempfile
 import time
 import unittest
 from contextlib import redirect_stdout
+from datetime import datetime, timezone
 from pathlib import Path
 
 from scripts.execution_contract import _HASH_FIELDS
@@ -215,6 +216,39 @@ class OfflineObservationWriterTests(unittest.TestCase):
             self.assertFalse(self._path().is_symlink())
         via_contract = audit_private_sidecar(self.root, RELATIVE)
         self.assertEqual(via_contract["contract_status"], "PROJECTABLE_SYNTHETIC")
+
+    def test_writer_readback_clock_is_local_evidence_not_consumer_available_at(self):
+        report = self._write(_synthetic())
+        self.assertEqual(report["transition"], "APPENDED")
+        stamp = datetime.fromisoformat(report["writer_readback_completed_at"])
+        self.assertIsNotNone(stamp.utcoffset())
+        self.assertEqual(stamp.utcoffset(), timezone.utc.utcoffset(stamp))
+        self.assertEqual(report["writer_readback_clock_basis"], "WRITER_LOCAL_UTC_AFTER_READBACK")
+        self.assertEqual(report["eligible_observed_n"], 0)
+        self.assertFalse(report["promotion_eligible"])
+        self.assertIsNone(report["verified_net_pnl_yen"])
+        self.assertFalse(report["real_submit_allowed"])
+        default_report = self._write(enabled=False)
+        self.assertNotIn("writer_readback_completed_at", default_report)
+
+    def test_untrusted_available_at_claim_is_not_authenticated_evidence(self):
+        # Even a valid local Writer APPENDED receipt plus a caller-asserted
+        # DURABLE_CONSUMER_READ clock does not establish trusted provenance.
+        report = self._write(_synthetic(
+            available_at_basis="DURABLE_CONSUMER_READ",
+            source="synthetic-fixture",
+        ))
+        self.assertEqual(report["transition"], "APPENDED")
+        self.assertEqual(report["writer_status"], "PROJECTABLE_SYNTHETIC")
+        self.assertFalse(report["promotion_eligible"])
+        self.assertFalse(report["statistical_edge_confirmed"])
+        self.assertEqual(report["eligible_observed_n"], 0)
+        self.assertIsNone(report["verified_net_pnl_yen"])
+        audited = audit_sidecar_bytes(self._path().read_bytes())
+        self.assertIn("CAPTURE_NOT_AUTHENTICATED", audited["reasons"])
+        self.assertEqual(audited["pit_evidence_origin"], "SYNTHETIC")
+        self.assertEqual(audited["close_state"], "NOT_CLOSED")
+        self.assertEqual(self._rows()[0]["available_at_basis"], "DURABLE_CONSUMER_READ")
 
     def test_missing_quantity_is_not_zero_and_reason_set_matches_contract(self):
         report = self._write()
