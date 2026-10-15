@@ -68,6 +68,35 @@ class CoordinationLedgerV1Tests(unittest.TestCase):
         self.assertEqual(report["invalid_messages"][0]["error"],
                          "DUPLICATE_MESSAGE_ID")
 
+    def test_same_parent_distinct_ack_ids_blocked(self):
+        again = reply()
+        again["message_id"] = "DEV-20261015-ACK-002"
+        report = reconcile([
+            {"body": body(BASE)},
+            {"body": body(reply())},
+            {"body": body(again)},
+        ], now=NOW)
+        self.assertEqual(len(report["valid_messages"]), 2)
+        self.assertEqual(report["invalid_messages"][0]["error"],
+                         "DUPLICATE_ACK_FOR_PARENT")
+
+    def test_ack_for_different_parent_remains_valid(self):
+        second_task = deepcopy(BASE)
+        second_task["message_id"] = "COORD-20261015-DEV-002"
+        second_task["project_item_id"] = "P0-WINDOWS-LATENCY"
+        second_ack = reply()
+        second_ack["message_id"] = "DEV-20261015-ACK-002"
+        second_ack["project_item_id"] = second_task["project_item_id"]
+        second_ack["in_reply_to"] = second_task["message_id"]
+        report = reconcile([
+            {"body": body(BASE)},
+            {"body": body(reply())},
+            {"body": body(second_task)},
+            {"body": body(second_ack)},
+        ], now=NOW)
+        self.assertEqual(len(report["valid_messages"]), 4)
+        self.assertEqual(report["invalid_messages"], [])
+
     def test_wrong_direction_blocked(self):
         other = reply()
         other["recipient_role"] = "spec_audit"
