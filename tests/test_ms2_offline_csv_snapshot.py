@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from scripts import ms2_offline_csv_snapshot as m
@@ -115,6 +116,32 @@ class SnapshotTests(unittest.TestCase):
         (self.root / 'data').symlink_to(outside, target_is_directory=True)
         self.assertBlocked(self.run_snapshot())
         self.assertEqual(list(outside.iterdir()), [])
+
+    def test_stat_api_timestamp_representation_difference(self):
+        original = m.os.fstat
+        def handle_stat(fd):
+            info = original(fd)
+            return SimpleNamespace(st_dev=info.st_dev, st_ino=info.st_ino,
+                                   st_size=info.st_size, st_mode=info.st_mode,
+                                   st_mtime_ns=info.st_mtime_ns + 1,
+                                   st_ctime_ns=info.st_ctime_ns + 1)
+        with patch.object(m.os, 'fstat', handle_stat):
+            self.assertEqual(self.run_snapshot()['state'], 'PRESERVED_UNAUTHENTICATED')
+
+    def test_handle_timestamp_mutation_refused(self):
+        original = m.os.fstat
+        calls = 0
+        def handle_stat(fd):
+            nonlocal calls
+            calls += 1
+            info = original(fd)
+            return SimpleNamespace(st_dev=info.st_dev, st_ino=info.st_ino,
+                                   st_size=info.st_size, st_mode=info.st_mode,
+                                   st_mtime_ns=info.st_mtime_ns + calls,
+                                   st_ctime_ns=info.st_ctime_ns)
+        with patch.object(m.os, 'fstat', handle_stat):
+            self.assertBlocked(self.run_snapshot())
+        self.assertFalse(self.output().exists())
 
     def test_change_between_reads_rejected(self):
         original = Path.open
