@@ -7,6 +7,7 @@ import unittest
 from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 from scripts.ms2_observation_ingress import (
     BAR_HEADER,
@@ -569,6 +570,52 @@ class Ms2ObservationIngressTests(unittest.TestCase):
         self.assertEqual(accepted["state"], "CLOSED")
         self.assertEqual(accepted["eligible_observed_n"], 0)
         self.assertEqual(accepted["synthetic_decision_n"], 1)
+
+    def test_14c_changed_jsonl_during_readback_is_not_admitted(self):
+        path = self.write_jsonl(closed_rows(), name="racing.jsonl")
+        before = path.read_bytes()
+        modified = closed_rows()
+        modified[2]["ask"] = 1023
+        next_bytes = ("\\n".join(json.dumps(row) for row in modified) + "\\n").encode("utf-8")
+        read_original = Path.read_bytes
+        seen = [0]
+
+        def mutate_after_first_read(candidate):
+            data = read_original(candidate)
+            if candidate == path:
+                seen[0] += 1
+                if seen[0] == 1:
+                    path.write_bytes(next_bytes)  # Simulates an external Writer, NOT ingress.
+            return data
+
+        with patch.object(Path, "read_bytes", mutate_after_first_read):
+            report = self.audit("racing.jsonl")
+        self.assertEqual(seen[0], 2)
+        self.assertNotEqual(before, path.read_bytes())
+        self.assertEqual(report["status"], "BLOCKED")
+        self.assertEqual(report["reasons"], ["SOURCE_CHANGED_DURING_READ"])
+        self.assertFalse(report["forwarded_to_evaluator"])
+        self.assertEqual(report["forwarded_event_ids"], [])
+        self.assertIsNone(report["decision"])
+        self.assertEqual(report["eligible_observed_n"], 0)
+
+    def test_14d_unreadable_private_source_fails_closed(self):
+        path = self.write_jsonl(closed_rows(), name="unreadable.jsonl")
+        original = path.read_bytes()
+        read_original = Path.read_bytes
+
+        def deny_one(candidate):
+            if candidate == path:
+                raise PermissionError("synthetic-reader-denied")
+            return read_original(candidate)
+
+        with patch.object(Path, "read_bytes", deny_one):
+            report = self.audit("unreadable.jsonl")
+        self.assertEqual(report["status"], "BLOCKED")
+        self.assertEqual(report["reasons"], ["SOURCE_READ_FAILED"])
+        self.assertFalse(report["forwarded_to_evaluator"])
+        self.assertIsNone(report["decision"])
+        self.assertEqual(path.read_bytes(), original)
 
     def test_15_replay_is_deterministic(self):
         rows = list(reversed(closed_rows()))
