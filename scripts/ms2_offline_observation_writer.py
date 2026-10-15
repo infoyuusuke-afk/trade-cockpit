@@ -29,7 +29,7 @@ import math
 import os
 import stat
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from scripts.ms2_watcher_sidecar_contract import (
@@ -1597,6 +1597,9 @@ def _record(repo_root, relative, capture, *, enabled: bool, hooks: dict) -> dict
             final = path.read_bytes()
         except OSError:
             return finish(_unverified())
+        # This timestamp is sampled after Writer's own published-file read.
+        # It is a local receipt clock, NOT consumer available_at or source proof.
+        readback_completed_at = datetime.now(timezone.utc).isoformat()
         if final != candidate:
             if not _restore(path, previous, hooks):
                 return finish(_unverified("READBACK_MISMATCH", "RESTORE_FAILED"))
@@ -1613,6 +1616,8 @@ def _record(repo_root, relative, capture, *, enabled: bool, hooks: dict) -> dict
             writes_performed=True,
             payload=final,
         )
+        report["writer_readback_completed_at"] = readback_completed_at
+        report["writer_readback_clock_basis"] = "WRITER_LOCAL_UTC_AFTER_READBACK"
         report["directory_fsync"] = info.get("directory_fsync", report["directory_fsync"])
         report["replace_method"] = info.get("replace_method", "UNKNOWN")
         report["recovery_transitions"] = recovery
