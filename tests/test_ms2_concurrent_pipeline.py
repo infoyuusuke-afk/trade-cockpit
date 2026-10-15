@@ -159,6 +159,57 @@ class ConcurrentTests(unittest.TestCase):
         self.assertEqual(h._read_reason(buf), 'IPC_GATE_ABANDONED')
         self.assertTrue(h._load(buf, h._OFF_FLAGS) & h._FLAG_KILL)
 
+    def _out_of_gate_submitter(self, buf, generation):
+        """Real HandoffSession.submit on the same mapping: it refuses on a
+        busy gate (or a full queue) but still bumps counters outside the gate."""
+        session = h.HandoffSession('STARTED', '')
+        session._shm = SimpleNamespace(buf=buf)
+        session._generation = generation
+        attempts = []
+        def submit(s):
+            before = {name: h._load(buf, off) for name, off in
+                      (('submit', h._OFF_SUBMIT_COUNT), ('dropped', h._OFF_DROPPED), ('write', h._OFF_WRITE))}
+            r = session.submit(synthetic(1000 + len(attempts), generation))
+            after = {name: h._load(buf, off) for name, off in
+                     (('submit', h._OFF_SUBMIT_COUNT), ('dropped', h._OFF_DROPPED), ('write', h._OFF_WRITE))}
+            attempts.append((r['status'], r['reason'], before, after))
+        return submit, attempts
+
+    def _stuck_with_out_of_gate_updates(self, queued):
+        # Issue #382 (ChatGPT audit): a stuck gate held >=600ms while another
+        # submitter retries every 20-30ms. Each retry fails on the gate (or a
+        # full queue) yet moves SUBMIT_COUNT/DROPPED outside the gate.
+        generation = 7_000_000 + os.getpid() % 100_000
+        holder = {}
+        def setup(s):
+            for _ in range(queued):
+                s.commit()
+            s.take(); holder['at'] = s.now
+            holder['submit'], holder['attempts'] = self._out_of_gate_submitter(s.buf, h._load(s.buf, h._OFF_GENERATION))
+        def tick(s):
+            if 'submit' in holder and (s.now - holder.get('last', 0)) >= 20_000_000 + (len(holder['attempts']) % 2) * 10_000_000:
+                holder['last'] = s.now; holder['submit'](s)
+        events = {1: setup}
+        events.update({k: tick for k in range(2, 400)})  # 2ms worker samples, ~0.8s
+        buf, script = _drive_worker(events, stop_after=400)
+        attempts = holder['attempts']
+        refused = [a for a in attempts if a[0] in {'REFUSED', 'DROPPED'}]
+        self.assertGreater(len(refused), 3)
+        self.assertTrue(all(a[3]['write'] == a[2]['write'] for a in refused))  # nothing entered the gate
+        self.assertTrue(any(a[3]['submit'] > a[2]['submit'] for a in refused))  # out-of-gate update happened
+        self.assertEqual(h._read_reason(buf), 'IPC_GATE_ABANDONED')
+        self.assertTrue(h._load(buf, h._OFF_FLAGS) & h._FLAG_KILL)
+        self.assertLess(script.now - holder['at'], h.STALL_AFTER_NS + 10_000_000)
+        return attempts
+
+    def test_stuck_gate_with_out_of_gate_submit_count_still_fails_closed(self):
+        attempts = self._stuck_with_out_of_gate_updates(queued=0)
+        self.assertTrue(all(a[1] == 'PRODUCER_BUSY' for a in attempts if a[0] == 'REFUSED'))
+
+    def test_stuck_gate_with_out_of_gate_dropped_still_fails_closed(self):
+        attempts = self._stuck_with_out_of_gate_updates(queued=h.QUEUE_CAPACITY)
+        self.assertTrue(any(a[0] == 'DROPPED' and a[3]['dropped'] > a[2]['dropped'] for a in attempts))
+
     def test_released_gate_between_normal_samples_is_not_abandonment(self):
         events = {}
         for k in range(2, 200, 4):  # 2ms holds every 8ms for ~0.8s

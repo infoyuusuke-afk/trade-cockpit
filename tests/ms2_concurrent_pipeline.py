@@ -175,14 +175,30 @@ def worker_pause_injector(session, done, log, root, pattern='pause'):
     log.extend(json.loads(out.strip().splitlines()[-1]))
 
 
-def hold_gate_while_stuttering(session, root, hold_s=0.6):
+def _out_of_gate_retries(session, done, log, interval_s=0.025):
+    """Another in-process submitter (existing HandoffSession.submit) retrying
+    every ~25ms on the same mapping. Every try is refused at the busy gate but
+    still bumps SUBMIT_COUNT outside the gate."""
+    other=h.HandoffSession('STARTED','');other._shm=session._shm;other._generation=session._generation
+    other._process=session._process
+    seq=0
+    while not done.wait(interval_s):
+        seq+=1;before=h._load(session._shm.buf,h._OFF_SUBMIT_COUNT)
+        r=other.submit(synthetic(10_000+seq,session._generation))
+        log.append(dict(status=r['status'],reason=r['reason'],submit_count_moved=h._load(session._shm.buf,h._OFF_SUBMIT_COUNT)>before))
+
+
+def hold_gate_while_stuttering(session, root, hold_s=0.6, stutter=True, retries=False):
     """A truly stuck gate: one real hold (>=300ms) while the live worker samples
-    only every 30-40ms. The worker must fail closed inside the hold."""
+    only every 30-40ms and/or another submitter keeps moving counters outside
+    the gate. The worker must fail closed inside the hold."""
     buf=session._shm.buf
     if not ipc.acquire(buf):raise RuntimeError('STUCK_GATE_NOT_ACQUIRED')
-    log=[];done=threading.Event();held=time.perf_counter();detected_ms=None
-    stutter=threading.Thread(target=worker_pause_injector,args=(session,done,log,root,'stutter'),daemon=True)
-    stutter.start()
+    log=[];tries=[];done=threading.Event();held=time.perf_counter();detected_ms=None
+    helpers=[]
+    if stutter:helpers.append(threading.Thread(target=worker_pause_injector,args=(session,done,log,root,'stutter'),daemon=True))
+    if retries:helpers.append(threading.Thread(target=_out_of_gate_retries,args=(session,done,tries),daemon=True))
+    for t in helpers:t.start()
     try:
         hb0=h._load(buf,h._OFF_HEARTBEAT)
         while time.perf_counter()-held<hold_s:
@@ -191,11 +207,14 @@ def hold_gate_while_stuttering(session, root, hold_s=0.6):
             time.sleep(.001)
         heartbeat_advanced=h._load(buf,h._OFF_HEARTBEAT)>hb0 or detected_ms is not None
     finally:
-        done.set();stutter.join(15)
+        done.set()
+        for t in helpers:t.join(15)
         ipc.release(buf)
     return dict(hold_ms=round((time.perf_counter()-held)*1e3,3),detected_ms=detected_ms,
         reason=h._read_reason(buf),kill=bool(h._load(buf,h._OFF_FLAGS)&h._FLAG_KILL),
-        fail_closed=h._load(buf,h._OFF_FAIL_CLOSED),heartbeat_advanced=heartbeat_advanced,stutter=log)
+        fail_closed=h._load(buf,h._OFF_FAIL_CLOSED),heartbeat_advanced=heartbeat_advanced,stutter=log,
+        out_of_gate_retries=dict(Counter(t['reason'] for t in tries)),
+        out_of_gate_submit_count_moves=sum(t['submit_count_moved'] for t in tries))
 
 
 def normal_failure_evidence(states, samples, worker_events, session, producer, native):
@@ -324,6 +343,7 @@ def run(mode='normal',n=24,native=False):
                 if mode=='gate_busy':struct.pack_into('<I',s._shm.buf,192,1)
                 if mode=='worker_pause':injector.start()
                 if mode=='gate_stuck':stuck=hold_gate_while_stuttering(s,root)
+                if mode=='gate_stuck_submit':stuck=hold_gate_while_stuttering(s,root,stutter=False,retries=True)
                 process.stdin.write('GO\n');process.stdin.flush()
                 while True:
                     e=messages.get(timeout=30)
@@ -339,6 +359,7 @@ def run(mode='normal',n=24,native=False):
                 if mode=='gate_busy':struct.pack_into('<I',s._shm.buf,192,1)
                 if mode=='worker_pause':injector.start()
                 if mode=='gate_stuck':stuck=hold_gate_while_stuttering(s,root)
+                if mode=='gate_stuck_submit':stuck=hold_gate_while_stuttering(s,root,stutter=False,retries=True)
                 for i in range(1,n+1):
                     poll=1 if mode=='duplicate' else i;t=time.perf_counter();c=synthetic(poll,gen,mode=='duplicate')
                     capture_ms=(time.perf_counter()-t)*1000;t1=time.perf_counter();packed=pack_capture(c)
@@ -365,7 +386,9 @@ def run(mode='normal',n=24,native=False):
             states=dict(Counter(p['evidence_status'] for p in report['polls']))
             pending=ledger.reconcile(report['as_of'])
             assert all(p['close_state']=='NOT_CLOSED' for p in report['polls'])
-            if mode=='gate_stuck':
+            if mode=='gate_stuck_submit' and not stuck['out_of_gate_submit_count_moves']:
+                raise AssertionError(json.dumps(dict(failure='NO_OUT_OF_GATE_UPDATE_EXERCISED',stuck=stuck),sort_keys=True))
+            if mode in {'gate_stuck','gate_stuck_submit'}:
                 # Fail closed inside the stuck hold; nothing after it may be accepted.
                 if not(stuck['detected_ms'] is not None and stuck['kill'] and stuck['heartbeat_advanced']
                        and states.get('DROPPED_PRE_QUEUE',0)==len(samples)):
@@ -442,7 +465,7 @@ def main():
     p.add_argument('--pause-map');p.add_argument('--pause-pid',type=int);p.add_argument('--pause-stop')
     p.add_argument('--pause-pattern',default='pause');a=p.parse_args()
     if a.pause_map:return _pause_process_main(a.pause_map,a.pause_pid,a.pause_stop,a.pause_pattern)
-    modes=('normal','worker_pause','gate_stuck','delay','queue_full','gate_busy','permission','partial','before_replace','after_replace','worker_kill','kill','stop','duplicate','receipt_loss')
+    modes=('normal','worker_pause','gate_stuck','gate_stuck_submit','delay','queue_full','gate_busy','permission','partial','before_replace','after_replace','worker_kill','kill','stop','duplicate','receipt_loss')
     if os.name=='nt':modes=(*modes,'producer_kill','cold')
     results=[];failed=False
     for m in modes:
