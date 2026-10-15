@@ -233,7 +233,7 @@ class OfflineObservationWriterTests(unittest.TestCase):
         self.assertIn("CAPTURE_NOT_AUTHENTICATED", audited["reasons"])
         self.assertEqual(audited["pit_evidence_origin"], "SYNTHETIC")
         self.assertEqual(audited["close_state"], "NOT_CLOSED")
-        self.assertEqual(audited["pit_records"][0]["available_at_basis"], "DURABLE_CONSUMER_READ")
+        self.assertEqual(self._rows()[0]["available_at_basis"], "DURABLE_CONSUMER_READ")
 
     def test_missing_quantity_is_not_zero_and_reason_set_matches_contract(self):
         report = self._write()
