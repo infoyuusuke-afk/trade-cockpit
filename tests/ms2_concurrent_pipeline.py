@@ -165,7 +165,9 @@ def _pause_loop(buf, pid, stop, pause_s=0.16, limit=10):
         _set_suspended(pid,True);paused=time.perf_counter()
         try:
             time.sleep(pause_s)
-            resumed_busy=wait(lambda:gate()==1,0.3)
+            # Record the gate state at resume; never extend the worker's suspension
+            # by waiting up to 300ms for a later, unrelated producer gate hold.
+            resumed_busy=(gate()==1)
         finally:_set_suspended(pid,False)
         log.append(dict(pause_ms=round((time.perf_counter()-paused)*1e3,3),resumed_while_gate_busy=bool(resumed_busy)))
         time.sleep(.05)
