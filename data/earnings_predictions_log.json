@@ -918,7 +918,10 @@
     "logged_at": "2026-10-13 17:20:18 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -0.13,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -0.25,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "3075",
@@ -1167,7 +1170,10 @@
     "logged_at": "2026-10-13 17:20:21 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.0,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 20.19,
+    "actual_direction": "上昇",
+    "hit": false
   },
   {
     "code": "3892",
@@ -1644,7 +1650,10 @@
     "logged_at": "2026-10-13 17:20:26 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -0.45,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 1.95,
+    "actual_direction": "上昇",
+    "hit": false
   },
   {
     "code": "7928",
