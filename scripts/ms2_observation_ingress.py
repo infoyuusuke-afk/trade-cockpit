@@ -662,7 +662,8 @@ def _forward(signal, observations, *, as_of, evidence_origin, cost) -> dict:
 def audit_private_observation(repo_root, relative_path: str | None, *, signal=None, as_of=None,
                               evidence_origin: str = "SYNTHETIC", cost=None,
                               diag_relative_path: str | None = None,
-                              expected_sha256: str | None = None) -> dict:
+                              expected_sha256: str | None = None,
+                              writer_receipt: dict | None = None) -> dict:
     """Read one opted-in private file, or read nothing when the path is unset.
 
     The same bytes and the same caller arguments produce the same report.
@@ -705,6 +706,32 @@ def audit_private_observation(repo_root, relative_path: str | None, *, signal=No
         return _report(status="BLOCKED", state="BLOCKED",
                        reasons=[str(exc)], producer_id="none")
     digest = hashlib.sha256(raw).hexdigest()
+    # The existing Writer report is diagnostic, never independent provenance.
+    # Accept only a completed APPENDED publication, then compare the receipt
+    # digest against the independently read file. No observed promotion.
+    if writer_receipt is not None:
+        if not isinstance(writer_receipt, dict):
+            return _report(status="BLOCKED", state="BLOCKED",
+                           reasons=["WRITER_RECEIPT_INVALID"], producer_id="none",
+                           bytes_read=len(raw), input_sha256=digest)
+        if (writer_receipt.get("transition") != "APPENDED"
+                or writer_receipt.get("writes_performed") is not True
+                or writer_receipt.get("writer_status") not in {"ADMITTED_INCOMPLETE", "PROJECTABLE_SYNTHETIC"}
+                or writer_receipt.get("real_submit_allowed") is not False
+                or writer_receipt.get("eligible_observed_n") != 0):
+            return _report(status="BLOCKED", state="BLOCKED",
+                           reasons=["WRITER_PUBLICATION_UNVERIFIED"], producer_id="none",
+                           bytes_read=len(raw), input_sha256=digest)
+        receipt_hash = writer_receipt.get("file_sha256")
+        if (not isinstance(receipt_hash, str) or len(receipt_hash) != 64
+                or any(c not in "0123456789abcdef" for c in receipt_hash)):
+            return _report(status="BLOCKED", state="BLOCKED",
+                           reasons=["WRITER_RECEIPT_INVALID"], producer_id="none",
+                           bytes_read=len(raw), input_sha256=digest)
+        if receipt_hash != digest:
+            return _report(status="BLOCKED", state="BLOCKED",
+                           reasons=["PUBLISHED_SHA256_MISMATCH"], producer_id="none",
+                           bytes_read=len(raw), input_sha256=digest)
     # Only a caller-supplied, independently obtained publication digest can
     # cross-check this read. Do not infer provenance or available_at from it.
     if expected_sha256 is not None:
