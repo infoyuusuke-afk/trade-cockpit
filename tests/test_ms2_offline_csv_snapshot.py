@@ -108,33 +108,49 @@ class SnapshotTests(unittest.TestCase):
         import stat
         original_lstat = Path.lstat
 
-        def refuse_as_link(linked_path, run):
+        def refuse_as_link(linked_path, run, *, mode=stat.S_IFLNK, attributes=0):
             def fake_lstat(path, *args, **kwargs):
                 if path == linked_path:
-                    return SimpleNamespace(st_mode=stat.S_IFLNK, st_file_attributes=0)
+                    return SimpleNamespace(st_mode=mode, st_file_attributes=attributes)
                 return original_lstat(path, *args, **kwargs)
             with patch.object(Path, 'lstat', fake_lstat):
                 self.assertBlocked(run())
 
         target = self.source / 'original.csv'
+        # The fixture file MUST be moved before attempting a native link.
+        # Otherwise symlink_to always raises FileExistsError and silently
+        # reduces this test to the mocked fallback even on Linux.
+        self.tick.rename(target)
         try:
-            self.tick.symlink_to(target)
-        except OSError:
-            refuse_as_link(self.tick, self.run_snapshot)
-        else:
-            self.assertBlocked(self.run_snapshot())
-            self.tick.unlink()
+            self.assertFalse(self.tick.exists())
+            try:
+                self.tick.symlink_to(target)
+            except (OSError, NotImplementedError):
+                refuse_as_link(self.tick, self.run_snapshot)
+                # Windows directory reparse points can be non-symlink modes.
+                refuse_as_link(self.tick, self.run_snapshot,
+                               mode=stat.S_IFREG, attributes=0x400)
+            else:
+                self.assertTrue(self.tick.is_symlink())
+                self.assertBlocked(self.run_snapshot())
+        finally:
+            if self.tick.is_symlink():
+                self.tick.unlink()
+            target.rename(self.tick)
 
         outside = self.root / 'outside'
         outside.mkdir()
         link = self.root / 'data'
         try:
             link.symlink_to(outside, target_is_directory=True)
-        except OSError:
-            # Destination path-link gate, not a substitute for a native
-            # Windows reparse-point / ACL acceptance test.
+        except (OSError, NotImplementedError):
+            # These are synthetic refusal checks, not proof of native
+            # Windows junction / reparse-point or ACL behavior.
             refuse_as_link(link, self.run_snapshot)
+            refuse_as_link(link, self.run_snapshot,
+                           mode=stat.S_IFDIR, attributes=0x400)
         else:
+            self.assertTrue(link.is_symlink())
             self.assertBlocked(self.run_snapshot())
             self.assertEqual(list(outside.iterdir()), [])
             link.unlink()

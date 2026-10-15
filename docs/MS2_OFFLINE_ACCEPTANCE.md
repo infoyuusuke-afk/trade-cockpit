@@ -24,8 +24,10 @@ python -m scripts.ms2_offline_acceptance
 Do not pass CSV paths or other arguments. Exit 0 and `PASS: SYNTHETIC_ONLY` mean
 all 14 checks executed without failures or skips and evidence was saved/read back.
 Nonzero means BLOCKED; do not proceed to real capture. A missing Python runtime
-also blocks. Symlink creation may require Windows Developer Mode; lack of that
-capability produces BLOCKED, never a false PASS. Do not elevate automatically.
+also blocks. Symlink creation may require Windows Developer Mode. If native link creation
+is unavailable, the synthetic suite exercises fail-closed link and reparse
+attributes through mocked metadata instead of claiming native link coverage.
+A synthetic PASS is never Windows junction/ACL acceptance. Do not elevate automatically.
 
 ## Evidence and limits
 
