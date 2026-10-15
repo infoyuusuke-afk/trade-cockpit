@@ -14,6 +14,7 @@ from pathlib import Path
 import queue
 import struct
 import subprocess
+import sys
 import tempfile
 import uuid
 import threading
@@ -93,34 +94,63 @@ def _set_suspended(pid, suspended):
         os.kill(pid,signal.SIGSTOP if suspended else signal.SIGCONT)
 
 
-def worker_pause_injector(session, done, log, pause_s=0.16, limit=10):
+def _pause_loop(buf, pid, stop, pause_s=0.16, limit=10):
     """Issue #382 repro: pause the worker between two *separate* short gate holds.
 
     Suspend only after the worker started an iteration while the gate was held
-    (heartbeat newer than the busy edge), and resume only while a later hold is
-    in progress. Every hold stays short; only the worker's own scheduling has a
-    gap. The gate itself is never touched here.
+    (heartbeat newer than the busy edge), and resume preferably while a later
+    hold is in progress. Holds stay short; only the worker's own scheduling has
+    a gap. The gate itself is never touched here.
     """
-    buf=session._shm.buf;pid=session._process.pid
     def gate():return struct.unpack_from('<I',buf,ipc.GATE)[0]
     def wait(cond,timeout):
         end=time.monotonic()+timeout
-        while not done.is_set() and time.monotonic()<end:
+        while time.monotonic()<end:
             if cond():return True
         return False
-    while not done.is_set() and len(log)<limit:
-        if not wait(lambda:gate()==1,1.0):continue
-        edge=time.monotonic_ns()
-        sampled=wait(lambda:h._load(buf,h._OFF_HEARTBEAT)>edge and gate()==1,0.005)
+    log=[]
+    while not stop() and len(log)<limit:
+        if not wait(lambda:gate()==1,0.2):continue
+        edge=time.monotonic_ns();sampled=False;end=time.monotonic()+0.005
+        # The gate must stay busy without a gap while the worker completes a
+        # new iteration. A worker-held gate cannot do that: it releases first.
+        while time.monotonic()<end:
+            if gate()!=1:break
+            if h._load(buf,h._OFF_HEARTBEAT)>edge:sampled=True;break
         if not sampled:continue
         _set_suspended(pid,True);paused=time.monotonic_ns()
         try:
             time.sleep(pause_s)
-            # Prefer resuming inside a later, different hold; never wait forever.
             resumed_busy=wait(lambda:gate()==1,0.3)
         finally:_set_suspended(pid,False)
         log.append(dict(pause_ms=round((time.monotonic_ns()-paused)/1e6,3),resumed_while_gate_busy=bool(resumed_busy)))
         time.sleep(.05)
+    return log
+
+
+def _pause_process_main(map_name, pid, stopfile):
+    """Separate process so the spin is not starved by this harness's GIL."""
+    from multiprocessing import shared_memory
+    shm=shared_memory.SharedMemory(name=map_name)
+    if os.name!='nt':
+        from multiprocessing import resource_tracker
+        resource_tracker.unregister(shm._name,'shared_memory')  # never unlink owner map
+    try:print(json.dumps(_pause_loop(shm.buf,pid,lambda:os.path.exists(stopfile))),flush=True)
+    finally:shm.close()
+
+
+def worker_pause_injector(session, done, log, root):
+    stopfile=str(Path(root,'pause.stop'))
+    child=subprocess.Popen([sys.executable,'-m','tests.ms2_concurrent_pipeline','--pause-map',session.map_name,
+        '--pause-pid',str(session._process.pid),'--pause-stop',stopfile],
+        cwd=str(ROOT),stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+    done.wait()
+    Path(stopfile).touch()
+    try:out,err=child.communicate(timeout=10)
+    except subprocess.TimeoutExpired:
+        child.kill();out,err=child.communicate()
+    if child.returncode!=0:raise RuntimeError('PAUSE_INJECTOR_FAILED '+err[-500:])
+    log.extend(json.loads(out.strip().splitlines()[-1]))
 
 
 def normal_failure_evidence(states, samples, worker_events, session, producer, native):
@@ -171,7 +201,7 @@ def run(mode='normal',n=24,native=False):
         consumed=set();worker_events=[];overlap=False;ready={};cold=[];checkpoints=[];partial_killed=False
         warm_map=None;warm_gen=gen+1
         pauses=[];pause_done=threading.Event()
-        injector=threading.Thread(target=worker_pause_injector,args=(s,pause_done,pauses),daemon=True)
+        injector=threading.Thread(target=worker_pause_injector,args=(s,pause_done,pauses,root),daemon=True)
         path=Path(root,REL);audit=Path(root,'worker-evidence.jsonl')
         def import_worker():
             nonlocal overlap
@@ -272,7 +302,7 @@ def run(mode='normal',n=24,native=False):
                     if mode=='gate_busy':struct.pack_into('<I',s._shm.buf,192,0)
                     if mode!='queue_full':time.sleep(.005)
             pause_done.set()
-            if injector.is_alive():injector.join(2)
+            if injector.is_alive():injector.join(15)
             # Bounded observation window; missing reports retain UNKNOWN, never DROP.
             end=time.monotonic()+3
             while time.monotonic()<end:
@@ -353,7 +383,9 @@ def run(mode='normal',n=24,native=False):
                 if os.name!='nt':warm_map.unlink()
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--output',default='concurrent372.json');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--output',default='concurrent372.json')
+    p.add_argument('--pause-map');p.add_argument('--pause-pid',type=int);p.add_argument('--pause-stop');a=p.parse_args()
+    if a.pause_map:return _pause_process_main(a.pause_map,a.pause_pid,a.pause_stop)
     modes=('normal','worker_pause','delay','queue_full','gate_busy','permission','partial','before_replace','after_replace','worker_kill','kill','stop','duplicate','receipt_loss')
     if os.name=='nt':modes=(*modes,'producer_kill','cold')
     results=[];failed=False
