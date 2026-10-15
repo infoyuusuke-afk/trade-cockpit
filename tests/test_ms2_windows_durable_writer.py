@@ -547,10 +547,11 @@ class WriterReplaceTests(unittest.TestCase):
         self.assertEqual(self._leftovers(), [])
 
     def test_post_replace_readback_failure_is_unverified_not_refused(self):
-        target = str(self.path)
+        # Match by name: the Writer passes its resolved path (8.3/long-name forms differ on Windows).
+        target = self.path.name
 
         def read(item):
-            if str(item) == target:
+            if Path(item).name == target:
                 raise PermissionError(errno.EACCES, "synthetic post-replace read failure")
             return Path(item).read_bytes()
 
@@ -563,8 +564,8 @@ class WriterReplaceTests(unittest.TestCase):
         self._assert_new_published()
 
     def test_post_replace_mismatch_restores_previous_bytes(self):
-        target = str(self.path)
-        report = self._write(4, hooks={"read": lambda item: b"x" if str(item) == target else Path(item).read_bytes()})
+        target = self.path.name
+        report = self._write(4, hooks={"read": lambda item: b"x" if Path(item).name == target else Path(item).read_bytes()})
         self.assertIn("READBACK_MISMATCH", report["reasons"])
         self.assertNotIn("PUBLISHED_UNVERIFIED", report["reasons"])
         self.assertEqual(self.path.read_bytes(), self.original)
