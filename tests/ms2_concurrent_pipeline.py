@@ -131,21 +131,36 @@ def _pause_loop(buf, pid, stop, pause_s=0.16, limit=10):
     return log
 
 
-def _pause_process_main(map_name, pid, stopfile):
+def _stutter_loop(pid, stop, off_s=0.033, on_s=0.002):
+    """Issue #382 counterexample: the worker keeps running (heartbeat advances)
+    but only gets ~2ms of CPU every ~35ms, so busy samples are 30-40ms apart."""
+    cycles=0
+    while not stop():
+        _set_suspended(pid,True)
+        try:time.sleep(off_s)
+        finally:_set_suspended(pid,False)
+        cycles+=1
+        end=time.perf_counter()+on_s
+        while time.perf_counter()<end:pass
+    return [dict(stutter_cycles=cycles,off_ms=off_s*1e3,on_ms=on_s*1e3)]
+
+
+def _pause_process_main(map_name, pid, stopfile, pattern='pause'):
     """Separate process so the spin is not starved by this harness's GIL."""
     from multiprocessing import shared_memory
     shm=shared_memory.SharedMemory(name=map_name)
     if os.name!='nt':
         from multiprocessing import resource_tracker
         resource_tracker.unregister(shm._name,'shared_memory')  # never unlink owner map
-    try:print(json.dumps(_pause_loop(shm.buf,pid,lambda:os.path.exists(stopfile))),flush=True)
+    stop=lambda:os.path.exists(stopfile)
+    try:print(json.dumps(_stutter_loop(pid,stop) if pattern=='stutter' else _pause_loop(shm.buf,pid,stop)),flush=True)
     finally:shm.close()
 
 
-def worker_pause_injector(session, done, log, root):
-    stopfile=str(Path(root,'pause.stop'))
+def worker_pause_injector(session, done, log, root, pattern='pause'):
+    stopfile=str(Path(root,'pause.'+pattern+'.stop'))
     child=subprocess.Popen([sys.executable,'-m','tests.ms2_concurrent_pipeline','--pause-map',session.map_name,
-        '--pause-pid',str(session._process.pid),'--pause-stop',stopfile],
+        '--pause-pid',str(session._process.pid),'--pause-stop',stopfile,'--pause-pattern',pattern],
         cwd=str(ROOT),stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
     done.wait()
     Path(stopfile).touch()
@@ -154,6 +169,29 @@ def worker_pause_injector(session, done, log, root):
         child.kill();out,err=child.communicate()
     if child.returncode!=0:raise RuntimeError('PAUSE_INJECTOR_FAILED '+err[-500:])
     log.extend(json.loads(out.strip().splitlines()[-1]))
+
+
+def hold_gate_while_stuttering(session, root, hold_s=0.6):
+    """A truly stuck gate: one real hold (>=300ms) while the live worker samples
+    only every 30-40ms. The worker must fail closed inside the hold."""
+    buf=session._shm.buf
+    if not ipc.acquire(buf):raise RuntimeError('STUCK_GATE_NOT_ACQUIRED')
+    log=[];done=threading.Event();held=time.perf_counter();detected_ms=None
+    stutter=threading.Thread(target=worker_pause_injector,args=(session,done,log,root,'stutter'),daemon=True)
+    stutter.start()
+    try:
+        hb0=h._load(buf,h._OFF_HEARTBEAT)
+        while time.perf_counter()-held<hold_s:
+            if detected_ms is None and h._read_reason(buf)=='IPC_GATE_ABANDONED':
+                detected_ms=round((time.perf_counter()-held)*1e3,3)
+            time.sleep(.001)
+        heartbeat_advanced=h._load(buf,h._OFF_HEARTBEAT)>hb0 or detected_ms is not None
+    finally:
+        done.set();stutter.join(15)
+        ipc.release(buf)
+    return dict(hold_ms=round((time.perf_counter()-held)*1e3,3),detected_ms=detected_ms,
+        reason=h._read_reason(buf),kill=bool(h._load(buf,h._OFF_FLAGS)&h._FLAG_KILL),
+        fail_closed=h._load(buf,h._OFF_FAIL_CLOSED),heartbeat_advanced=heartbeat_advanced,stutter=log)
 
 
 def normal_failure_evidence(states, samples, worker_events, session, producer, native):
@@ -203,7 +241,7 @@ def run(mode='normal',n=24,native=False):
         expected={};samples=[];timings=[];readbacks=[];latencies=[];first_readback=set();process=None;reader=None;err=[];messages=queue.Queue()
         consumed=set();worker_events=[];overlap=False;ready={};cold=[];checkpoints=[];partial_killed=False
         warm_map=None;warm_gen=gen+1
-        pauses=[];pause_done=threading.Event()
+        pauses=[];pause_done=threading.Event();stuck=None
         injector=threading.Thread(target=worker_pause_injector,args=(s,pause_done,pauses,root),daemon=True)
         path=Path(root,REL);audit=Path(root,'worker-evidence.jsonl')
         def import_worker():
@@ -278,6 +316,7 @@ def run(mode='normal',n=24,native=False):
                 ready=messages.get(timeout=30);assert ready['kind']=='ready';cold=[(time.perf_counter()-t)*1000]
                 if mode=='gate_busy':struct.pack_into('<I',s._shm.buf,192,1)
                 if mode=='worker_pause':injector.start()
+                if mode=='gate_stuck':stuck=hold_gate_while_stuttering(s,root)
                 process.stdin.write('GO\n');process.stdin.flush()
                 while True:
                     e=messages.get(timeout=30)
@@ -292,6 +331,7 @@ def run(mode='normal',n=24,native=False):
             else:
                 if mode=='gate_busy':struct.pack_into('<I',s._shm.buf,192,1)
                 if mode=='worker_pause':injector.start()
+                if mode=='gate_stuck':stuck=hold_gate_while_stuttering(s,root)
                 for i in range(1,n+1):
                     poll=1 if mode=='duplicate' else i;t=time.perf_counter();c=synthetic(poll,gen,mode=='duplicate')
                     capture_ms=(time.perf_counter()-t)*1000;t1=time.perf_counter();packed=pack_capture(c)
@@ -318,6 +358,11 @@ def run(mode='normal',n=24,native=False):
             states=dict(Counter(p['evidence_status'] for p in report['polls']))
             pending=ledger.reconcile(report['as_of'])
             assert all(p['close_state']=='NOT_CLOSED' for p in report['polls'])
+            if mode=='gate_stuck':
+                # Fail closed inside the stuck hold; nothing after it may be accepted.
+                if not(stuck['detected_ms'] is not None and stuck['kill'] and stuck['heartbeat_advanced']
+                       and states.get('DROPPED_PRE_QUEUE',0)==len(samples)):
+                    raise AssertionError(json.dumps(dict(failure='STUCK_GATE_NOT_FAIL_CLOSED',stuck=stuck,states=states),sort_keys=True))
             if mode in {'normal','worker_pause'}:
                 if states.get('PERSISTED_VERIFIED',0)!=sum(e['state']=='ACCEPTED' for e in samples):
                     evidence=normal_failure_evidence(states,samples,worker_events,s,process,native)
@@ -370,7 +415,7 @@ def run(mode='normal',n=24,native=False):
                 receipt_to_verified_readback_upper_bound=stats(latencies),restart_new_generation_no_replay=True,
                 verified_readback=stats(readbacks),ledger_checkpoint=stats(checkpoints),
                 receipt_tail='NOT_CLOSED',five_ms='NOT_MET',production='P0_BLOCKED',eligible_observed_n=0,
-                injected_pauses=pauses,gate_hold_max_ms=max([float(e['gate_hold_ms']) for e in samples if isinstance(e.get('gate_hold_ms'),(int,float))],default=None),
+                injected_pauses=pauses,stuck_gate=stuck,gate_hold_max_ms=max([float(e['gate_hold_ms']) for e in samples if isinstance(e.get('gate_hold_ms'),(int,float))],default=None),
                 instrumentation='receipt ACK and worker audit fsync add unmeasured pacing; no throughput or WCET guarantee')
         finally:
             pause_done.set()
@@ -387,9 +432,10 @@ def run(mode='normal',n=24,native=False):
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--output',default='concurrent372.json')
-    p.add_argument('--pause-map');p.add_argument('--pause-pid',type=int);p.add_argument('--pause-stop');a=p.parse_args()
-    if a.pause_map:return _pause_process_main(a.pause_map,a.pause_pid,a.pause_stop)
-    modes=('normal','worker_pause','delay','queue_full','gate_busy','permission','partial','before_replace','after_replace','worker_kill','kill','stop','duplicate','receipt_loss')
+    p.add_argument('--pause-map');p.add_argument('--pause-pid',type=int);p.add_argument('--pause-stop')
+    p.add_argument('--pause-pattern',default='pause');a=p.parse_args()
+    if a.pause_map:return _pause_process_main(a.pause_map,a.pause_pid,a.pause_stop,a.pause_pattern)
+    modes=('normal','worker_pause','gate_stuck','delay','queue_full','gate_busy','permission','partial','before_replace','after_replace','worker_kill','kill','stop','duplicate','receipt_loss')
     if os.name=='nt':modes=(*modes,'producer_kill','cold')
     results=[];failed=False
     for m in modes:

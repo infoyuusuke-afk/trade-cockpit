@@ -111,6 +111,26 @@ class ConcurrentTests(unittest.TestCase):
         self.assertTrue(h._load(buf, h._OFF_FLAGS) & h._FLAG_KILL)
         self.assertEqual(h._load(buf, h._OFF_READ), 0)  # nothing claimed
 
+    def test_stuck_hold_with_30_to_40ms_worker_sampling_still_fails_closed(self):
+        # Counterexample to a gap-reset watchdog: one hold, never released,
+        # while the live worker (heartbeat advancing) samples every 30-40ms.
+        def stutter(s):
+            s.now += 28_000_000 + (s.sleeps % 2) * 10_000_000  # +2ms sleep = 30/40ms
+        events = {k: stutter for k in range(3, 10_000)}
+        events[2] = lambda s: s.take()
+        heartbeats = []
+        original = _GateScript.sleep
+        def sleep(s, seconds):
+            heartbeats.append(h._load(s.buf, h._OFF_HEARTBEAT))
+            original(s, seconds)
+        with patch.object(_GateScript, 'sleep', sleep):
+            buf, script = _drive_worker(events, stop_after=200)  # ~7s virtual
+        self.assertGreater(len(set(heartbeats)), 10)  # worker kept running
+        self.assertEqual(h._read_reason(buf), 'IPC_GATE_ABANDONED')
+        self.assertTrue(h._load(buf, h._OFF_FLAGS) & h._FLAG_KILL)
+        # Inside the hold, bounded by threshold plus one 40ms sampling gap.
+        self.assertLess(script.now - script._held_at, h.STALL_AFTER_NS + 45_000_000)
+
     def test_released_gate_between_normal_samples_is_not_abandonment(self):
         events = {}
         for k in range(2, 200, 4):  # 2ms holds every 8ms for ~0.8s
