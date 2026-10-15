@@ -545,8 +545,8 @@ class Ms2ObservationIngressTests(unittest.TestCase):
         third = json.dumps(rows[2], ensure_ascii=False).encode("utf-8")
         for payload in (
             first,
-            first + b"\\n" + second,
-            first + b"\\n" + second + b"\\n" + third,
+            first + b"\n" + second,
+            first + b"\n" + second + b"\n" + third,
         ):
             with self.subTest(size=len(payload)):
                 path.write_bytes(payload)
@@ -563,7 +563,7 @@ class Ms2ObservationIngressTests(unittest.TestCase):
 
         # A fully terminated CRLF stream is valid and retains the original
         # synthetic-vs-recorded boundary; this check never promotes live data.
-        path.write_bytes(first + b"\\r\\n" + second + b"\\r\\n" + third + b"\\r\\n")
+        path.write_bytes(first + b"\r\n" + second + b"\r\n" + third + b"\r\n")
         accepted = self.audit("torn.jsonl")
         self.assertEqual(accepted["status"], "FORWARDED")
         self.assertEqual(accepted["state"], "CLOSED")
