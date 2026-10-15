@@ -576,7 +576,7 @@ class Ms2ObservationIngressTests(unittest.TestCase):
         before = path.read_bytes()
         modified = closed_rows()
         modified[2]["ask"] = 1023
-        next_bytes = ("\\n".join(json.dumps(row) for row in modified) + "\\n").encode("utf-8")
+        next_bytes = ("\n".join(json.dumps(row) for row in modified) + "\n").encode("utf-8")
         read_original = Path.read_bytes
         seen = [0]
 
