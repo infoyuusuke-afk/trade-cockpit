@@ -48,10 +48,15 @@ def _read(path):
     views = []
     for _ in range(2):
         with path.open('rb') as stream:
-            if _identity(os.fstat(stream.fileno())) != _identity(before):
+            handle_before = os.fstat(stream.fileno())
+            # Windows path-stat and handle-stat timestamps can differ in
+            # representation. Compare identities across APIs, and full
+            # timestamps only within each API, before/after the read.
+            if ((handle_before.st_dev, handle_before.st_ino, handle_before.st_size)
+                    != (before.st_dev, before.st_ino, before.st_size)):
                 raise ValueError('SOURCE_CHANGED_DURING_READ')
             raw = stream.read(MAX_BYTES + 1)
-            if _identity(os.fstat(stream.fileno())) != _identity(before):
+            if _identity(os.fstat(stream.fileno())) != _identity(handle_before):
                 raise ValueError('SOURCE_CHANGED_DURING_READ')
         if (len(raw) != before.st_size or len(raw) > MAX_BYTES
                 or _identity(_checked_path(path).stat()) != _identity(before)):
