@@ -415,6 +415,41 @@ class Ms2ObservationIngressTests(unittest.TestCase):
                 self.assertFalse(refused["forwarded_to_evaluator"])
                 self.assertEqual(refused["eligible_observed_n"], 0)
 
+    def test_08d_writer_receipt_must_match_independent_readback(self):
+        path = self.write_jsonl(closed_rows(), name="writer_receipt.jsonl")
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        receipt = {
+            "transition": "APPENDED",
+            "writes_performed": True,
+            "writer_status": "PROJECTABLE_SYNTHETIC",
+            "real_submit_allowed": False,
+            "eligible_observed_n": 0,
+            "file_sha256": digest,
+        }
+        matched = self.audit("writer_receipt.jsonl", writer_receipt=receipt)
+        self.assertEqual(matched["status"], "FORWARDED")
+        self.assertEqual(matched["eligible_observed_n"], 0)
+        self.assertEqual(matched["synthetic_decision_n"], 1)
+        for changes, reason in (
+            ({"transition": "PUBLISH_UNVERIFIED"}, "WRITER_PUBLICATION_UNVERIFIED"),
+            ({"writes_performed": False}, "WRITER_PUBLICATION_UNVERIFIED"),
+            ({"writer_status": "BLOCKED"}, "WRITER_PUBLICATION_UNVERIFIED"),
+            ({"real_submit_allowed": True}, "WRITER_PUBLICATION_UNVERIFIED"),
+            ({"eligible_observed_n": 1}, "WRITER_PUBLICATION_UNVERIFIED"),
+            ({"file_sha256": "0" * 64}, "PUBLISHED_SHA256_MISMATCH"),
+            ({"file_sha256": "bad"}, "WRITER_RECEIPT_INVALID"),
+        ):
+            with self.subTest(changes=changes):
+                candidate = dict(receipt, **changes)
+                blocked = self.audit("writer_receipt.jsonl", writer_receipt=candidate)
+                self.assertEqual(blocked["state"], "BLOCKED")
+                self.assertEqual(blocked["reasons"], [reason])
+                self.assertIsNone(blocked["decision"])
+                self.assertFalse(blocked["forwarded_to_evaluator"])
+                self.assertEqual(blocked["eligible_observed_n"], 0)
+        invalid = self.audit("writer_receipt.jsonl", writer_receipt=[])
+        self.assertEqual(invalid["reasons"], ["WRITER_RECEIPT_INVALID"])
+
     def test_09_duplicate_and_conflicting_event_ids(self):
         row = quote_row("e1", at(9, 1), 999, 998, 999.5, 1)
         self.write_jsonl([row, dict(row)])
