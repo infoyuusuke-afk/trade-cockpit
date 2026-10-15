@@ -535,6 +535,41 @@ class Ms2ObservationIngressTests(unittest.TestCase):
         unknown = self.audit("unknown.csv")
         self.assertEqual(unknown["reasons"], ["UNKNOWN_MS2_SCHEMA"])
 
+    def test_14b_valid_jsonl_without_terminating_newline_is_not_published(self):
+        # Even a syntactically complete JSON object without the Writer's final
+        # newline can be an interrupted write. Its content cannot be admitted.
+        path = self.directory / "torn.jsonl"
+        rows = closed_rows()
+        first = json.dumps(rows[0], ensure_ascii=False).encode("utf-8")
+        second = json.dumps(rows[1], ensure_ascii=False).encode("utf-8")
+        third = json.dumps(rows[2], ensure_ascii=False).encode("utf-8")
+        for payload in (
+            first,
+            first + b"\\n" + second,
+            first + b"\\n" + second + b"\\n" + third,
+        ):
+            with self.subTest(size=len(payload)):
+                path.write_bytes(payload)
+                unchanged = path.read_bytes()
+                report = self.audit("torn.jsonl")
+                self.assertEqual(report["status"], "BLOCKED")
+                self.assertEqual(report["state"], "BLOCKED")
+                self.assertEqual(report["reasons"], ["PARTIAL_PUBLISHED_JSONL"])
+                self.assertEqual(report["forwarded_event_ids"], [])
+                self.assertFalse(report["forwarded_to_evaluator"])
+                self.assertIsNone(report["decision"])
+                self.assertEqual(report["eligible_observed_n"], 0)
+                self.assertEqual(path.read_bytes(), unchanged)
+
+        # A fully terminated CRLF stream is valid and retains the original
+        # synthetic-vs-recorded boundary; this check never promotes live data.
+        path.write_bytes(first + b"\\r\\n" + second + b"\\r\\n" + third + b"\\r\\n")
+        accepted = self.audit("torn.jsonl")
+        self.assertEqual(accepted["status"], "FORWARDED")
+        self.assertEqual(accepted["state"], "CLOSED")
+        self.assertEqual(accepted["eligible_observed_n"], 0)
+        self.assertEqual(accepted["synthetic_decision_n"], 1)
+
     def test_15_replay_is_deterministic(self):
         rows = list(reversed(closed_rows()))
         self.write_jsonl(rows)
