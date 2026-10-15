@@ -393,6 +393,28 @@ class Ms2ObservationIngressTests(unittest.TestCase):
         self.assertEqual(report["eligible_observed_n"], 0)
         self.assertEqual(ticks.read_bytes(), modified)
 
+    def test_08c_optional_expected_publication_sha256(self):
+        path = self.write_jsonl(closed_rows(), name="digest.jsonl")
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        matched = self.audit("digest.jsonl", expected_sha256=digest)
+        self.assertEqual(matched["status"], "FORWARDED")
+        self.assertEqual(matched["input_sha256"], digest)
+        self.assertEqual(matched["eligible_observed_n"], 0)
+
+        for supplied, reason in (
+            ("0" * 64, "PUBLISHED_SHA256_MISMATCH"),
+            ("bad", "EXPECTED_SHA256_INVALID"),
+            ("F" * 64, "EXPECTED_SHA256_INVALID"),
+            ([], "EXPECTED_SHA256_INVALID"),
+        ):
+            with self.subTest(reason=reason, value=str(supplied)):
+                refused = self.audit("digest.jsonl", expected_sha256=supplied)
+                self.assertEqual(refused["state"], "BLOCKED")
+                self.assertEqual(refused["reasons"], [reason])
+                self.assertIsNone(refused["decision"])
+                self.assertFalse(refused["forwarded_to_evaluator"])
+                self.assertEqual(refused["eligible_observed_n"], 0)
+
     def test_09_duplicate_and_conflicting_event_ids(self):
         row = quote_row("e1", at(9, 1), 999, 998, 999.5, 1)
         self.write_jsonl([row, dict(row)])
