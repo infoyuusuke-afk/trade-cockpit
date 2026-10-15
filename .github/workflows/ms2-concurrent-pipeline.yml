@@ -33,3 +33,39 @@ jobs:
         with:
           name: concurrent372-${{ runner.os }}
           path: concurrent372.json
+  reader-share:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Independent reader vs Writer atomic replace (synthetic)
+        run: python -m unittest tests.test_ms2_concurrent_pipeline.PublishedReaderShareTests tests.test_ms2_windows_durable_writer -v
+  windows-repeat:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Native normal and worker_pause, 20 runs each (synthetic)
+        run: python -m tests.ms2_concurrent_pipeline --modes normal,worker_pause --repeat 20 --output repeat372.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: repeat372-windows
+          path: repeat372.json

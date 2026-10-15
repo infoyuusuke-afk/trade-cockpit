@@ -273,3 +273,78 @@ class ConcurrentTests(unittest.TestCase):
         self.assertEqual(r['states'].get('PERSISTED_VERIFIED'),r['queued'])
 
 if __name__=='__main__':unittest.main()
+
+
+class PublishedReaderShareTests(unittest.TestCase):
+    """Issue #382: the harness's independent reader vs the Writer's os.replace."""
+
+    def setUp(self):
+        from tests.test_ms2_windows_durable_writer import RELATIVE, _board
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = __import__('pathlib').Path(self._tmp.name)
+        self.relative = RELATIVE
+        self.board = _board
+        self.path = self.root / RELATIVE
+        self.assertEqual(self._append(3)['writer_status'], 'ADMITTED_INCOMPLETE')
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _append(self, poll):
+        from scripts.ms2_offline_observation_writer import record_captured_observation
+        return record_captured_observation(self.root, self.relative, self.board(poll_seq=poll), enabled=True)
+
+    def test_default_read_handle_blocks_replace_on_windows_fail_closed(self):
+        # Measures the cause: Python's default open() shares read/write but not delete.
+        original = self.path.read_bytes()
+        with open(self.path, 'rb'):
+            report = self._append(4)
+        if os.name == 'nt':
+            self.assertIn('REPLACE_FAILED', report['reasons'])
+            self.assertIn('WINDOWS_SHARING_VIOLATION', report['reasons'])
+            self.assertEqual(self.path.read_bytes(), original)
+        else:
+            self.assertEqual(report['writer_status'], 'ADMITTED_INCOMPLETE')
+
+    def test_harness_reader_handle_does_not_block_atomic_replace(self):
+        from tests.ms2_concurrent_pipeline import open_published, read_published
+        original = read_published(self.path)
+        with open_published(self.path) as held:
+            report = self._append(4)
+            old_view = held.read()
+        self.assertEqual(report['writer_status'], 'ADMITTED_INCOMPLETE', report['reasons'])
+        self.assertNotIn('REPLACE_FAILED', report['reasons'])
+        # The open handle sees only the complete previous version, never a mix.
+        self.assertEqual(old_view, original)
+        fresh = read_published(self.path)
+        self.assertTrue(fresh.startswith(original) and fresh.endswith(b'\n') and fresh != original)
+
+    def test_reader_process_and_writer_replace_race(self):
+        import base64, json, subprocess, sys, time
+        from tests.ms2_concurrent_pipeline import ROOT
+        stop = self.root / 'share-stop'
+        reader = subprocess.Popen(
+            [sys.executable, '-m', 'tests.ms2_concurrent_pipeline', '--share-reader', str(self.path),
+             '--share-stop', str(stop)], cwd=str(ROOT), stdout=subprocess.PIPE, text=True)
+        writer = {}
+        try:
+            time.sleep(0.3)
+            for poll in range(4, 44):
+                report = self._append(poll)
+                key = report['writer_status'] if 'REPLACE_FAILED' not in report['reasons'] else 'REPLACE_FAILED'
+                writer[key] = writer.get(key, 0) + 1
+                time.sleep(0.002)
+        finally:
+            stop.write_bytes(b'')
+            out, _ = reader.communicate(timeout=30)
+        observed = json.loads(out.strip().splitlines()[-1])
+        final = self.path.read_bytes()
+        torn = sum(1 for item in observed['snapshots']
+                   if not (final.startswith(base64.b64decode(item)) and base64.b64decode(item).endswith(b'\n')))
+        print('SHARE_RACE=' + json.dumps(dict(os=os.name, writer=writer, reader=observed['seen'],
+                                              reader_errors=observed['errors'], torn_reads=torn,
+                                              distinct_versions_read=len(observed['snapshots']))), flush=True)
+        self.assertEqual(torn, 0)
+        self.assertGreater(observed['seen'].get('reads', 0), 0)
+        self.assertEqual(writer, {'ADMITTED_INCOMPLETE': 40})
+        self.assertEqual(observed['errors'], {})

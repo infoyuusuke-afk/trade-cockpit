@@ -63,6 +63,26 @@ def start(root,fault=0):
     try:return start_bridge(root,REL,enabled=True,fault=fault)
     finally:h._worker_entry=ORIGINAL_ENTRY
 
+def open_published(path):
+    """Independent read handle on the Writer's published JSONL."""
+    return open(path,'rb')
+
+def read_published(path):
+    with open_published(path) as f:return f.read()
+
+def _share_reader_main(target,stopfile):
+    """Synthetic second process: read the published JSONL in a tight loop while
+    the Writer replaces it. Read errors and partial reads are counted, never hidden."""
+    target=Path(target);seen=Counter();snapshots=set();errors=Counter()
+    while not os.path.exists(stopfile):
+        try:raw=read_published(target)
+        except FileNotFoundError:seen['missing']+=1;continue
+        except OSError as e:
+            errors[type(e).__name__+':'+str(getattr(e,'winerror',None) or e.errno)]+=1;continue
+        seen['reads']+=1;snapshots.add(raw)
+    print(json.dumps(dict(seen=dict(seen),errors=dict(errors),
+        snapshots=[base64.b64encode(x).decode() for x in snapshots])),flush=True)
+
 def complete_lines(path):
     if not path.exists():return []
     raw=path.read_bytes();parts=raw.split(b'\n')
@@ -287,7 +307,7 @@ def run(mode='normal',n=24,native=False):
                         observed_at=now(),reason_code='WRITER_'+e['transition'],source_digest=identity)
         def verify():
             if not path.exists():return
-            raw=path.read_bytes()
+            raw=read_published(path)
             if not raw.endswith(b'\n'):raise ValueError('PARTIAL_PUBLISHED_JSONL')
             rows=[json.loads(l) for l in raw.splitlines()]
             # A persisted row without receipt is retained as orphan evidence, not fabricated acceptance.
@@ -406,7 +426,7 @@ def run(mode='normal',n=24,native=False):
             if mode=='queue_full':assert states.get('UNKNOWN_TERMINAL',0)>0 and states.get('DROPPED_PRE_QUEUE',0)>0
             if mode=='duplicate':assert states.get('PERSISTED_VERIFIED',0)==1
             # Actual Bridge restart creates a new generation and never replays old IPC.
-            prior_bytes=path.read_bytes() if path.exists() else None
+            prior_bytes=read_published(path) if path.exists() else None
             stopped=s.stop(.1)
             assert stopped['worker_exit_verified']
             restarted=start(root)
@@ -415,7 +435,7 @@ def run(mode='normal',n=24,native=False):
                 assert restarted._generation!=gen
                 time.sleep(.02)
                 assert restarted.metrics()['queued']==0 and restarted.metrics()['durable']==0
-                assert (path.read_bytes() if path.exists() else None)==prior_bytes
+                assert (read_published(path) if path.exists() else None)==prior_bytes
             finally:restarted.stop(.1)
             # Replay immutable checkpoint deterministically; corruption of cache cannot rewrite evidence.
             checkpoint=ledger.path.with_suffix('.checkpoint.json');checkpoint.write_bytes(b'{broken')
@@ -424,7 +444,7 @@ def run(mode='normal',n=24,native=False):
             other=Ledger(Path(root,'ledger'),'next',gen+1)
             try:
                 if path.exists():
-                    try:other.verify_readback(path.read_bytes(),expected,now(),source_session=sid,source_generation=gen)
+                    try:other.verify_readback(read_published(path),expected,now(),source_session=sid,source_generation=gen)
                     except ValueError as e:assert str(e)=='STALE_GENERATION'
                     else:raise AssertionError('STALE_REPLAY_ACCEPTED')
                 assert other.reconcile(now())['polls']==[]
@@ -460,18 +480,42 @@ def run(mode='normal',n=24,native=False):
                 ipc.close_generation(warm_gen);warm_map.close()
                 if os.name!='nt':warm_map.unlink()
 
+def repeat_counts(r):
+    """One line per repeated run: saved / refused / UNKNOWN / DROP, failures kept."""
+    states=r.get('states')
+    if states is None and r.get('status')=='FAIL':
+        try:states=json.loads(r.get('detail','')).get('states')
+        except ValueError:states=None
+    states=states or {}
+    detail={}
+    if r.get('status')=='FAIL':
+        try:d=json.loads(r.get('detail',''))
+        except ValueError:d={}
+        detail=dict(failure=d.get('failure') or r.get('error'),worker_refusal_reasons=d.get('worker_refusal_reasons'))
+    return dict(mode=r.get('mode'),iteration=r.get('iteration'),status=r.get('status','PASS'),
+        persisted_verified=states.get('PERSISTED_VERIFIED',0),rejected_post_queue=states.get('REJECTED_POST_QUEUE',0),
+        unknown=states.get('UNKNOWN_TERMINAL',0)+states.get('UNKNOWN_PENDING',0),dropped_pre_queue=states.get('DROPPED_PRE_QUEUE',0),
+        pauses=len(r.get('injected_pauses') or []),**detail)
+
 def main():
     p=argparse.ArgumentParser();p.add_argument('--output',default='concurrent372.json')
     p.add_argument('--pause-map');p.add_argument('--pause-pid',type=int);p.add_argument('--pause-stop')
-    p.add_argument('--pause-pattern',default='pause');a=p.parse_args()
+    p.add_argument('--pause-pattern',default='pause');p.add_argument('--share-reader');p.add_argument('--share-stop')
+    p.add_argument('--modes');p.add_argument('--repeat',type=int,default=1);a=p.parse_args()
+    if a.share_reader:return _share_reader_main(a.share_reader,a.share_stop)
     if a.pause_map:return _pause_process_main(a.pause_map,a.pause_pid,a.pause_stop,a.pause_pattern)
     modes=('normal','worker_pause','gate_stuck','gate_stuck_submit','delay','queue_full','gate_busy','permission','partial','before_replace','after_replace','worker_kill','kill','stop','duplicate','receipt_loss')
     if os.name=='nt':modes=(*modes,'producer_kill','cold')
+    if a.modes:modes=tuple(a.modes.split(','))
     results=[];failed=False
-    for m in modes:
+    for iteration in range(1,a.repeat+1):
+      for m in modes:
         try:r=run(m,n=100 if m in {'normal','worker_pause','delay'} else 16,native=os.name=='nt')
         except Exception as e:
             failed=True;r=dict(mode=m,status='FAIL',error=type(e).__name__,detail=str(e),production='P0_BLOCKED')
+        if a.repeat>1:
+            r['iteration']=iteration
+            print('REPEAT_CASE='+json.dumps(repeat_counts(r)),flush=True)
         results.append(r)
         Path(a.output).write_text(json.dumps(results,indent=2))
         print('CONCURRENT_CASE='+json.dumps(r),flush=True)
