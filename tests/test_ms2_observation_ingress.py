@@ -808,6 +808,35 @@ class Ms2ObservationIngressTests(unittest.TestCase):
         self.assertIn("MIXED_SESSION", session["decision"]["reasons"])
         self.assertIsNone(session["decision"]["verified_net_pnl_yen"])
 
+    def test_malformed_kind_and_market_types_fail_closed(self):
+        # JSON arrays/objects must not escape the ingress as TypeError.
+        invalid = ([], {}, ["QUOTE"], {"type": "QUOTE"}, None, False, 42, "OTHER")
+        for field, reason in (("kind", "KIND_INVALID"), ("market", "MARKET_INVALID")):
+            for index, value in enumerate(invalid):
+                with self.subTest(field=field, index=index):
+                    row = quote_row("bad", at(9, 1), 999, 998, 999.5, 1, **{field: value})
+                    name = f"invalid_{field}_{index}.jsonl"
+                    path = self.write_jsonl([row], name=name)
+                    original = path.read_bytes()
+                    report = self.audit(name)
+                    self.assertEqual(report["status"], "BLOCKED")
+                    self.assertEqual(report["state"], "BLOCKED")
+                    self.assertIn(reason, report["reasons"])
+                    self.assertIsNone(report["decision"])
+                    self.assertFalse(report["forwarded_to_evaluator"])
+                    self.assertEqual(report["forwarded_event_ids"], [])
+                    self.assertEqual(report["eligible_observed_n"], 0)
+                    self.assertEqual(path.read_bytes(), original)
+                    self.assertFalse(report["safety"]["real_submit_allowed"])
+
+        # A valid, uniform market is still admitted to the synthetic audit.
+        rows = [dict(row, market="TSE") for row in closed_rows()]
+        self.write_jsonl(rows, name="valid_market.jsonl")
+        accepted = self.audit("valid_market.jsonl")
+        self.assertEqual(accepted["status"], "FORWARDED")
+        self.assertEqual(accepted["state"], "CLOSED")
+        self.assertEqual(accepted["eligible_observed_n"], 0)
+
     def test_export_omits_fill_prices(self):
         self.write_jsonl(closed_rows())
         report = self.audit()
