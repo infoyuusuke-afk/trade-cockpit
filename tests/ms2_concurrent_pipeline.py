@@ -134,15 +134,19 @@ def _pause_loop(buf, pid, stop, pause_s=0.16, limit=10):
 def _stutter_loop(pid, stop, off_s=0.033, on_s=0.002):
     """Issue #382 counterexample: the worker keeps running (heartbeat advances)
     but only gets ~2ms of CPU every ~35ms, so busy samples are 30-40ms apart."""
-    cycles=0
+    cycles=0;ended='STOPPED'
     while not stop():
-        _set_suspended(pid,True)
+        try:_set_suspended(pid,True)
+        except OSError:ended='WORKER_EXITED';break  # it failed closed and left
         try:time.sleep(off_s)
-        finally:_set_suspended(pid,False)
+        finally:
+            try:_set_suspended(pid,False)
+            except OSError:ended='WORKER_EXITED'
         cycles+=1
+        if ended!='STOPPED':break
         end=time.perf_counter()+on_s
         while time.perf_counter()<end:pass
-    return [dict(stutter_cycles=cycles,off_ms=off_s*1e3,on_ms=on_s*1e3)]
+    return [dict(stutter_cycles=cycles,off_ms=off_s*1e3,on_ms=on_s*1e3,ended=ended)]
 
 
 def _pause_process_main(map_name, pid, stopfile, pattern='pause'):
