@@ -30,7 +30,27 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt lxml
-      - run: python -m unittest tests.test_offline_save_checkpoint tests.test_ms2_offline_csv_snapshot tests.test_ms2_offline_acceptance tests.test_ms2_local_csv_capture -v
+      - run: python -m unittest tests.test_offline_save_checkpoint tests.test_ms2_offline_csv_snapshot tests.test_ms2_offline_acceptance tests.test_ms2_local_csv_capture tests.test_ms2_offline_bundle -v
       - name: Offline synthetic acceptance through OWNER launcher
         shell: cmd
         run: scripts\run_ms2_offline_acceptance.cmd
+      - name: Build code-only local CSV bundle
+        run: python -m scripts.build_ms2_offline_bundle
+      - name: Verify extracted standalone bundle
+        shell: pwsh
+        run: |
+          $target = Join-Path $env:RUNNER_TEMP 'ms2-csv-bundle-test'
+          Expand-Archive -LiteralPath 'dist/MS2_CSV_Local_Offline.zip' -DestinationPath $target
+          Push-Location $target
+          try {
+            cmd /c scripts\run_ms2_offline_acceptance.cmd
+            if ($LASTEXITCODE -ne 0) { throw 'Packaged synthetic acceptance BLOCKED' }
+          } finally {
+            Pop-Location
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MS2_CSV_Local_Offline
+          path: dist/MS2_CSV_Local_Offline.zip
+          if-no-files-found: error
+          retention-days: 14
