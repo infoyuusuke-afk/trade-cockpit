@@ -425,6 +425,7 @@ class Ms2ObservationIngressTests(unittest.TestCase):
             "real_submit_allowed": False,
             "eligible_observed_n": 0,
             "file_sha256": digest,
+            "bytes_written": len(path.read_bytes()),
         }
         matched = self.audit("writer_receipt.jsonl", writer_receipt=receipt)
         self.assertEqual(matched["status"], "FORWARDED")
@@ -438,6 +439,9 @@ class Ms2ObservationIngressTests(unittest.TestCase):
             ({"eligible_observed_n": 1}, "WRITER_PUBLICATION_UNVERIFIED"),
             ({"file_sha256": "0" * 64}, "PUBLISHED_SHA256_MISMATCH"),
             ({"file_sha256": "bad"}, "WRITER_RECEIPT_INVALID"),
+            ({"bytes_written": None}, "WRITER_PUBLICATION_SIZE_MISMATCH"),
+            ({"bytes_written": False}, "WRITER_PUBLICATION_SIZE_MISMATCH"),
+            ({"bytes_written": len(path.read_bytes()) - 1}, "WRITER_PUBLICATION_SIZE_MISMATCH"),
         ):
             with self.subTest(changes=changes):
                 candidate = dict(receipt, **changes)
