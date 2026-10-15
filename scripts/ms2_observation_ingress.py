@@ -54,7 +54,7 @@ import hashlib
 import io
 import json
 import math
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from scripts.timeseries_fill_audit import (
@@ -324,6 +324,35 @@ def _read_stable_snapshot(path: Path) -> bytes:
     if identity(before) != identity(middle) or identity(middle) != identity(after) or first != second:
         raise ValueError("SOURCE_CHANGED_DURING_READ")
     return second
+
+
+def independent_consumer_readback(repo_root, relative_path: str | None) -> dict:
+    """Offline read-only proof of when *this consumer* finished reading bytes.
+
+    This is neither exchange provenance nor market available_at. No promotion
+    or submit route is reachable from this metadata-only reader.
+    """
+    if not relative_path:
+        return {"state": "BLOCKED", "reason": "PRIVATE_PATH_UNSET",
+                "eligible_observed_n": 0, "real_submit_allowed": False}
+    try:
+        path = resolve_private_input(repo_root, relative_path)
+        raw = _read_stable_snapshot(path)
+    except (ValueError, OSError) as exc:
+        code = str(exc) if isinstance(exc, ValueError) else "SOURCE_READ_FAILED"
+        return {"state": "BLOCKED", "reason": code,
+                "eligible_observed_n": 0, "real_submit_allowed": False}
+    completed = datetime.now(timezone.utc).isoformat()
+    return {
+        "state": "READBACK_OBSERVED_ONLY",
+        "reason": "SOURCE_PROVENANCE_NOT_AUTHENTICATED",
+        "consumer_readback_completed_at": completed,
+        "consumer_clock_basis": "LOCAL_UTC_POST_READBACK",
+        "input_sha256": hashlib.sha256(raw).hexdigest(),
+        "bytes_read": len(raw),
+        "eligible_observed_n": 0,
+        "real_submit_allowed": False,
+    }
 
 
 def _decode(raw: bytes) -> str:
