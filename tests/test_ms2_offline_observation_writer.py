@@ -216,6 +216,25 @@ class OfflineObservationWriterTests(unittest.TestCase):
         via_contract = audit_private_sidecar(self.root, RELATIVE)
         self.assertEqual(via_contract["contract_status"], "PROJECTABLE_SYNTHETIC")
 
+    def test_untrusted_available_at_claim_is_not_authenticated_evidence(self):
+        # Even a valid local Writer APPENDED receipt plus a caller-asserted
+        # DURABLE_CONSUMER_READ clock does not establish trusted provenance.
+        report = self._write(_synthetic(
+            available_at_basis="DURABLE_CONSUMER_READ",
+            source="synthetic-fixture",
+        ))
+        self.assertEqual(report["transition"], "APPENDED")
+        self.assertEqual(report["writer_status"], "PROJECTABLE_SYNTHETIC")
+        self.assertFalse(report["promotion_eligible"])
+        self.assertFalse(report["statistical_edge_confirmed"])
+        self.assertEqual(report["eligible_observed_n"], 0)
+        self.assertIsNone(report["verified_net_pnl_yen"])
+        audited = audit_sidecar_bytes(self._path().read_bytes())
+        self.assertIn("CAPTURE_NOT_AUTHENTICATED", audited["reasons"])
+        self.assertEqual(audited["pit_evidence_origin"], "SYNTHETIC")
+        self.assertEqual(audited["close_state"], "NOT_CLOSED")
+        self.assertEqual(audited["pit_records"][0]["available_at_basis"], "DURABLE_CONSUMER_READ")
+
     def test_missing_quantity_is_not_zero_and_reason_set_matches_contract(self):
         report = self._write()
         self.assertEqual(report["writer_status"], "ADMITTED_INCOMPLETE")
