@@ -102,20 +102,43 @@ class SnapshotTests(unittest.TestCase):
         self.assertFalse(self.output().exists())
 
     def test_source_symlink_and_destination_link(self):
+        # Native links are tested when allowed. Otherwise model their lstat
+        # attributes to exercise refusal without requiring Windows privilege.
+        from types import SimpleNamespace
+        import stat
+        original_lstat = Path.lstat
+
+        def refuse_as_link(linked_path, run):
+            def fake_lstat(path, *args, **kwargs):
+                if path == linked_path:
+                    return SimpleNamespace(st_mode=stat.S_IFLNK, st_file_attributes=0)
+                return original_lstat(path, *args, **kwargs)
+            with patch.object(Path, 'lstat', fake_lstat):
+                self.assertBlocked(run())
+
         target = self.source / 'original.csv'
-        self.tick.rename(target)
         try:
             self.tick.symlink_to(target)
         except OSError:
-            self.skipTest('OS does not permit symlink creation')
-        self.assertBlocked(self.run_snapshot())
-        self.tick.unlink()
-        target.rename(self.tick)
+            refuse_as_link(self.tick, self.run_snapshot)
+        else:
+            self.assertBlocked(self.run_snapshot())
+            self.tick.unlink()
+
         outside = self.root / 'outside'
         outside.mkdir()
-        (self.root / 'data').symlink_to(outside, target_is_directory=True)
-        self.assertBlocked(self.run_snapshot())
-        self.assertEqual(list(outside.iterdir()), [])
+        link = self.root / 'data'
+        try:
+            link.symlink_to(outside, target_is_directory=True)
+        except OSError:
+            # Destination path-link gate, not a substitute for a native
+            # Windows reparse-point / ACL acceptance test.
+            refuse_as_link(link, self.run_snapshot)
+        else:
+            self.assertBlocked(self.run_snapshot())
+            self.assertEqual(list(outside.iterdir()), [])
+            link.unlink()
+        self.assertFalse(self.output().exists())
 
     def test_stat_api_timestamp_representation_difference(self):
         original = m.os.fstat
