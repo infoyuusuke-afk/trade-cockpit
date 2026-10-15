@@ -74,6 +74,35 @@ def synthetic(poll,generation,duplicate=False):
         read_started_at=stamp,read_finished_at=stamp,sequence_basis='POLL',snapshot_atomic=False,
         levels=[dict(Level=1,AskPrice=101,BidPrice=100,AskQty=0,BidQty=None,read_at=stamp)])
 
+
+def normal_failure_evidence(states, samples, worker_events, session, producer, native):
+    """Bounded, privacy-safe synthetic failure snapshot; no private record fields."""
+    buf = session._shm.buf
+    heartbeat_ns = h._load(buf, h._OFF_HEARTBEAT)
+    heartbeat_age_ns = max(0, time.monotonic_ns() - heartbeat_ns) if heartbeat_ns else None
+    return dict(
+        boundary='SYNTHETIC_FIXTURE_ONLY',
+        failure='NORMAL_RECEIPT_READBACK_MISMATCH',
+        native=bool(native),
+        accepted=sum(e['state'] == 'ACCEPTED' for e in samples),
+        states=states,
+        worker_transitions=dict(Counter(e['transition'] for e in worker_events)),
+        worker_alive=bool(session._process.is_alive()),
+        worker_exitcode=session._process.exitcode,
+        producer_exitcode=producer.poll() if producer is not None else None,
+        gate_word=struct.unpack_from('<I', buf, ipc.GATE)[0],
+        write_index=h._load(buf, h._OFF_WRITE),
+        read_index=h._load(buf, h._OFF_READ),
+        flags=h._load(buf, h._OFF_FLAGS),
+        fail_closed_count=h._load(buf, h._OFF_FAIL_CLOSED),
+        heartbeat_age_ms=round(heartbeat_age_ns / 1_000_000, 3) if heartbeat_age_ns is not None else None,
+        gate_stall_threshold_ms=h.STALL_AFTER_NS / 1_000_000,
+        reason=h._read_reason(buf),
+        mutex_abandonment_proven=False,
+        production='P0_BLOCKED',
+    )
+
+
 def run(mode='normal',n=24,native=False):
     if native and os.name!='nt':return dict(native_ps51='NOT_VERIFIED',production='P0_BLOCKED')
     faults={'queue_full':h.FAULT_HOLD,'partial':h.FAULT_WRITE_INFLIGHT,
@@ -197,7 +226,10 @@ def run(mode='normal',n=24,native=False):
             pending=ledger.reconcile(report['as_of'])
             assert all(p['close_state']=='NOT_CLOSED' for p in report['polls'])
             if mode=='normal':
-                assert states.get('PERSISTED_VERIFIED',0)==sum(e['state']=='ACCEPTED' for e in samples), json.dumps(dict(states=states,worker=[{k:e[k] for k in ('poll_seq','transition','reasons')} for e in worker_events],metrics=s.metrics(),reason=h._read_reason(s._shm.buf)))
+                if states.get('PERSISTED_VERIFIED',0)!=sum(e['state']=='ACCEPTED' for e in samples):
+                    raise AssertionError(json.dumps(
+                        normal_failure_evidence(states,samples,worker_events,s,process,native),
+                        sort_keys=True))
                 assert overlap,'NO_CONCURRENT_COMPLETION'
             if mode in {'partial','before_replace'}:assert states.get('PERSISTED_VERIFIED',0)==0
             if mode=='after_replace':assert states.get('PERSISTED_VERIFIED',0)==1
