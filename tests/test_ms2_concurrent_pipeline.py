@@ -81,6 +81,38 @@ def _drive_worker(events, *, stop_after=200, queued=False, held=False):
 
 class ConcurrentTests(unittest.TestCase):
 
+    def test_worker_pause_injector_does_not_extend_suspend_for_later_busy_gate(self):
+        """Synthetic clock: a missed later gate must not add 300ms of suspension."""
+        from tests import ms2_concurrent_pipeline as cp
+        buf = bytearray(h.SHM_SIZE)
+        struct.pack_into('<I', buf, ipc.GATE, 1)
+        clock = [0.0]
+        suspend_calls = []
+
+        def perf_counter():
+            clock[0] += 0.00025
+            return clock[0]
+
+        def sleep(duration):
+            clock[0] += duration
+            if duration == 0.02:
+                struct.pack_into('<I', buf, ipc.GATE, 0)
+
+        def suspend(pid, value):
+            suspend_calls.append(value)
+
+        with patch.object(cp, '_set_suspended', side_effect=suspend), \
+             patch.object(cp.time, 'perf_counter', side_effect=perf_counter), \
+             patch.object(cp.time, 'sleep', side_effect=sleep):
+            pauses = cp._pause_loop(buf, 123, lambda: False, pause_s=0.02, limit=1)
+
+        self.assertEqual(suspend_calls, [True, False])
+        self.assertEqual(len(pauses), 1)
+        self.assertFalse(pauses[0]['resumed_while_gate_busy'])
+        self.assertLess(pauses[0]['pause_ms'], 25)
+        self.assertGreaterEqual(pauses[0]['pause_ms'], 20)
+
+
     # Issue #382: IPC_GATE_ABANDONED must mean one gate hold was observed
     # continuously for STALL_AFTER_NS, not that two unrelated short holds were
     # sampled on either side of a pause in the worker's own scheduling.
