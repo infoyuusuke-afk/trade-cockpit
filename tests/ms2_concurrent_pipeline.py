@@ -64,8 +64,29 @@ def start(root,fault=0):
     finally:h._worker_entry=ORIGINAL_ENTRY
 
 def open_published(path):
-    """Independent read handle on the Writer's published JSONL."""
-    return open(path,'rb')
+    """Independent read handle on the Writer's published JSONL.
+
+    Windows: Python's open() shares read/write but not delete, and any such
+    handle makes the Writer's os.replace fail. This read-only handle also
+    shares delete so the replace can proceed; the handle keeps reading the
+    complete previous file, never a mix. Open failures are raised, not hidden.
+    """
+    if os.name!='nt':return open(path,'rb')
+    import ctypes,msvcrt
+    from ctypes import wintypes
+    kernel=ctypes.WinDLL('kernel32',use_last_error=True)
+    kernel.CreateFileW.argtypes=[wintypes.LPCWSTR,wintypes.DWORD,wintypes.DWORD,ctypes.c_void_p,
+        wintypes.DWORD,wintypes.DWORD,wintypes.HANDLE]
+    kernel.CreateFileW.restype=wintypes.HANDLE
+    kernel.CloseHandle.argtypes=[wintypes.HANDLE]
+    generic_read,share_all,open_existing=0x80000000,0x1|0x2|0x4,3
+    handle=kernel.CreateFileW(str(path),generic_read,share_all,None,open_existing,0x80,None)
+    if handle is None or handle==wintypes.HANDLE(-1).value:
+        error=ctypes.get_last_error();raise ctypes.WinError(error)
+    try:fd=msvcrt.open_osfhandle(handle,os.O_RDONLY|os.O_BINARY)
+    except Exception:
+        kernel.CloseHandle(handle);raise
+    return os.fdopen(fd,'rb')
 
 def read_published(path):
     with open_published(path) as f:return f.read()
