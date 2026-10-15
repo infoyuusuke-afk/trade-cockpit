@@ -122,6 +122,7 @@ def parse_message(body: str, *, now: datetime | None = None) -> dict[str, str] |
 def reconcile(comments: list[dict[str, Any]], *, now: datetime | None = None) -> dict[str, Any]:
     """Validate messages and causal relations without claiming role identity."""
     seen: dict[str, dict[str, str]] = {}
+    acked_parent_role: set[tuple[str, str]] = set()
     valid: list[dict[str, str]] = []
     errors: list[dict[str, str]] = []
     for index, comment in enumerate(comments):
@@ -152,6 +153,11 @@ def reconcile(comments: list[dict[str, Any]], *, now: datetime | None = None) ->
                     "RESULT", "REPORT"
                 }:
                     raise InvalidMessage("INVALID_REVIEW_PARENT")
+            if message["event_type"] == "ACK" and parent_id:
+                dedupe_key = (parent_id, message["source_role"])
+                if dedupe_key in acked_parent_role:
+                    raise InvalidMessage("DUPLICATE_ACK_FOR_PARENT")
+                acked_parent_role.add(dedupe_key)
             seen[mid] = message
             valid.append({
                 "message_id": mid,
