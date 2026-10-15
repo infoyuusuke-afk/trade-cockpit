@@ -392,11 +392,6 @@ def _jsonl_records(raw: bytes) -> list[dict]:
     text = _decode(raw)
     if not text.strip():
         raise ValueError("EMPTY_INPUT")
-    # A JSON object can be syntactically valid before the Writer publishes its
-    # terminating newline. Never treat that potentially torn last row as a
-    # complete observation, including when earlier rows are complete.
-    if not raw.endswith(b"\n"):
-        raise ValueError("PARTIAL_PUBLISHED_JSONL")
     records = []
     for line in text.splitlines():
         if not line.strip():
@@ -408,6 +403,10 @@ def _jsonl_records(raw: bytes) -> list[dict]:
         if not isinstance(item, dict):
             raise ValueError("DATA_CORRUPT")
         records.append(item)
+    # Keep malformed JSON's existing DATA_CORRUPT reason. A syntactically
+    # complete last object is still uncommitted without its newline.
+    if not raw.endswith(b"\n"):
+        raise ValueError("PARTIAL_PUBLISHED_JSONL")
     return records
 
 
