@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-15 21:00:49 JST",
+  "updated_at": "2026-10-16 07:50:40 JST",
   "source": "固定監視リスト（JPX取得失敗）",
   "universe_count": 100,
   "scanned_count": 100,
@@ -809,10 +809,10 @@
       "setup": "BB上方拡大",
       "score": 100,
       "close": 1939.0,
-      "trigger": 2009,
+      "trigger": 2008,
       "stop": 1787,
-      "target1": 2342,
-      "target2": 2564,
+      "target1": 2340,
+      "target2": 2560,
       "ma5": 1884.4,
       "rvol": 1.48,
       "ret20": 18.81,
@@ -1178,7 +1178,7 @@
         },
         {
           "o": 1920.0,
-          "h": 2008.0,
+          "h": 2007.0,
           "l": 1890.0,
           "c": 1939.0
         }
@@ -3993,10 +3993,10 @@
       "setup": "5日線反発",
       "score": 100,
       "close": 2911.5,
-      "trigger": 2920,
+      "trigger": 2921,
       "stop": 2852,
-      "target1": 3022,
-      "target2": 3090,
+      "target1": 3024,
+      "target2": 3094,
       "ma5": 2871.6,
       "rvol": 1.01,
       "ret20": 10.24,
@@ -4362,7 +4362,7 @@
         },
         {
           "o": 2859.5,
-          "h": 2919.0,
+          "h": 2920.0,
           "l": 2840.0,
           "c": 2911.5
         }
@@ -4760,7 +4760,7 @@
         },
         {
           "o": 4595.0,
-          "h": 4854.0,
+          "h": 4855.0,
           "l": 4550.0,
           "c": 4804.0
         }
@@ -8376,10 +8376,10 @@
       "setup": "安値割れ",
       "score": 100,
       "close": 8608.0,
-      "trigger": 8575,
+      "trigger": 8570,
       "stop": 9385,
-      "target1": 7360,
-      "target2": 6550,
+      "target1": 7350,
+      "target2": 6530,
       "ma5": 9269.0,
       "rvol": 1.48,
       "ret20": -9.24,
@@ -8746,7 +8746,7 @@
         {
           "o": 9047.0,
           "h": 9047.0,
-          "l": 8582.0,
+          "l": 8576.0,
           "c": 8608.0
         }
       ],
@@ -9168,8 +9168,8 @@
   ],
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-10-15T21:00:43+09:00",
-    "decision_at": "2026-10-15T21:00:43+09:00",
+    "generated_at": "2026-10-16T07:50:36+09:00",
+    "decision_at": "2026-10-16T07:50:36+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -9497,7 +9497,7 @@
       "atr_pct": 2.74,
       "ma20_dist": 14.18,
       "acceleration": 5.24,
-      "upper_wick_pct": 16.4,
+      "upper_wick_pct": 16.7,
       "turnover": 54401456800,
       "signal_date": "2026-10-15",
       "chart": [
@@ -9857,7 +9857,7 @@
         },
         {
           "o": 4595.0,
-          "h": 4854.0,
+          "h": 4855.0,
           "l": 4550.0,
           "c": 4804.0
         }
@@ -10281,7 +10281,7 @@
       "atr_pct": 5.49,
       "ma20_dist": 8.47,
       "acceleration": 11.97,
-      "upper_wick_pct": 58.5,
+      "upper_wick_pct": 58.1,
       "turnover": 3203615800,
       "signal_date": "2026-10-15",
       "chart": [
@@ -10641,7 +10641,7 @@
         },
         {
           "o": 1920.0,
-          "h": 2008.0,
+          "h": 2007.0,
           "l": 1890.0,
           "c": 1939.0
         }
@@ -11824,7 +11824,7 @@
         },
         {
           "o": 4595.0,
-          "h": 4854.0,
+          "h": 4855.0,
           "l": 4550.0,
           "c": 4804.0
         }
@@ -15755,7 +15755,7 @@
         {
           "o": 5670.0,
           "h": 5710.0,
-          "l": 5579.0,
+          "l": 5575.0,
           "c": 5595.0
         }
       ],
@@ -16147,7 +16147,7 @@
         },
         {
           "o": 2168.0,
-          "h": 2197.0,
+          "h": 2196.5,
           "l": 2095.5,
           "c": 2107.5
         }
@@ -17719,7 +17719,7 @@
         },
         {
           "o": 2859.5,
-          "h": 2919.0,
+          "h": 2920.0,
           "l": 2840.0,
           "c": 2911.5
         }
@@ -18917,7 +18917,7 @@
       "technical_score": 84
     }
   ],
-  "credit_supply_updated_at": "2026-10-15 19:21:48 JST",
+  "credit_supply_updated_at": "2026-10-15 21:01:17 JST",
   "long_term_ma_rebounds": [],
   "long_term_ma_rebounds_unverified": [],
   "daily_capitulation_reversals": [],
