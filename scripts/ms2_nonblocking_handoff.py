@@ -51,6 +51,10 @@ RETRY_POLICY = "NO_RETRY"
 SUBMIT_DEADLINE_NS = 5_000_000
 STOP_TIMEOUT_S = 0.25
 STALL_AFTER_NS = 150_000_000
+# Issue #382: a busy gate counts toward STALL_AFTER_NS only while this worker
+# keeps observing it. A longer gap in the worker's own sampling (scheduler,
+# suspension) may hide a release, so the busy interval restarts after it.
+GATE_SAMPLE_MAX_GAP_NS = 25_000_000
 HEARTBEAT_GRACE_NS = 1_000_000_000
 EXISTING_BOARD_COM_READS = 40
 EXTRA_COM_READS = 0
@@ -276,10 +280,17 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
     _store(buf, _OFF_WORKER_PID, os.getpid())
     _store(buf, _OFF_HEARTBEAT, time.monotonic_ns())
     gate_busy_since = None
+    gate_busy_seen = None
     next_read = 0
     write_highwater = 0
     from multiprocessing import parent_process
     parent = parent_process()
+    def gate_stalled(now):
+        nonlocal gate_busy_since, gate_busy_seen
+        if gate_busy_since is None or now - gate_busy_seen > GATE_SAMPLE_MAX_GAP_NS:
+            gate_busy_since = now
+        gate_busy_seen = now
+        return now - gate_busy_since > STALL_AFTER_NS
     def owner_dead():
         if parent is None:  # Direct/unit invocation has no spawned owner.
             return False
@@ -322,9 +333,7 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
             now = time.monotonic_ns()
             if struct.unpack_from("<I", buf, ipc.GATE)[0] == 0:
                 gate_busy_since = None
-            elif gate_busy_since is None:
-                gate_busy_since = now
-            elif now - gate_busy_since > STALL_AFTER_NS:
+            elif gate_stalled(now):
                 _add(buf, _OFF_FAIL_CLOSED)
                 _store(buf, _OFF_FLAGS, flags | _FLAG_KILL)
                 _reason(buf, "IPC_GATE_ABANDONED")
@@ -332,10 +341,7 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
             time.sleep(0.002)
             continue
         if not ipc.acquire(buf):
-            now = time.monotonic_ns()
-            if gate_busy_since is None:
-                gate_busy_since = now
-            if now - gate_busy_since > STALL_AFTER_NS:
+            if gate_stalled(time.monotonic_ns()):
                 _add(buf, _OFF_FAIL_CLOSED)
                 _store(buf, _OFF_FLAGS, flags | _FLAG_KILL)
                 _reason(buf, "IPC_GATE_ABANDONED")
