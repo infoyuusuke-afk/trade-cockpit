@@ -50,7 +50,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Independent reader vs Writer atomic replace (synthetic)
-        run: python -m unittest tests.test_ms2_concurrent_pipeline.PublishedReaderShareTests tests.test_ms2_windows_durable_writer -v
+        run: python -m unittest tests.test_ms2_concurrent_pipeline.WindowsReplaceSemanticsDiagnostic tests.test_ms2_concurrent_pipeline.PublishedReaderShareTests tests.test_ms2_windows_durable_writer -v
   windows-repeat:
     runs-on: windows-latest
     timeout-minutes: 45

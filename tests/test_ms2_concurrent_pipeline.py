@@ -348,3 +348,58 @@ class PublishedReaderShareTests(unittest.TestCase):
         self.assertGreater(observed['seen'].get('reads', 0), 0)
         self.assertEqual(writer, {'ADMITTED_INCOMPLETE': 40})
         self.assertEqual(observed['errors'], {})
+
+
+@unittest.skipUnless(os.name == 'nt', 'Windows rename semantics diagnostic')
+class WindowsReplaceSemanticsDiagnostic(unittest.TestCase):
+    """Measurement only: which rename call can replace a file a reader holds open.
+    Records winerror per case; the Writer itself is not changed here."""
+
+    def _rename_posix(self, src, dst):
+        import ctypes
+        from ctypes import wintypes
+        k = ctypes.WinDLL('kernel32', use_last_error=True)
+        k.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p,
+                                  wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+        k.CreateFileW.restype = wintypes.HANDLE
+        k.SetFileInformationByHandle.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD]
+        k.SetFileInformationByHandle.restype = wintypes.BOOL
+        k.CloseHandle.argtypes = [wintypes.HANDLE]
+        h = k.CreateFileW(str(src), 0x00010000, 0x7, None, 3, 0x80, None)
+        if h is None or h == wintypes.HANDLE(-1).value:
+            return 'OPEN_' + str(ctypes.get_last_error())
+        try:
+            name = str(dst)
+            size = 20 + (len(name) + 1) * 2
+            buf = ctypes.create_string_buffer(size)
+            struct.pack_into('<IQI', buf, 0, 0x1 | 0x2, 0, len(name) * 2)
+            ctypes.memmove(ctypes.addressof(buf) + 20, ctypes.create_unicode_buffer(name), (len(name) + 1) * 2)
+            ok = k.SetFileInformationByHandle(h, 22, buf, size)
+            return 'OK' if ok else 'ERR_' + str(ctypes.get_last_error())
+        finally:
+            k.CloseHandle(h)
+
+    def test_measure_replace_while_reader_holds_handle(self):
+        import json, pathlib
+        from tests.ms2_concurrent_pipeline import open_published
+        results = {}
+        with tempfile.TemporaryDirectory() as d:
+            for reader in ('python_open', 'share_delete'):
+                for how in ('os_replace', 'posix_rename'):
+                    dst = pathlib.Path(d, reader + how + '.jsonl'); src = pathlib.Path(d, reader + how + '.tmp')
+                    dst.write_bytes(b'old\n'); src.write_bytes(b'old\nnew\n')
+                    held = open(dst, 'rb') if reader == 'python_open' else open_published(dst)
+                    try:
+                        if how == 'os_replace':
+                            try:
+                                os.replace(src, dst); outcome = 'OK'
+                            except OSError as e:
+                                outcome = 'ERR_' + str(e.winerror)
+                        else:
+                            outcome = self._rename_posix(src, dst)
+                        old_view = held.read()
+                    finally:
+                        held.close()
+                    results[reader + '+' + how] = dict(outcome=outcome, held_handle_read=old_view.decode(),
+                                                       published=dst.read_bytes().decode())
+        print('REPLACE_SEMANTICS=' + json.dumps(results, sort_keys=True), flush=True)
