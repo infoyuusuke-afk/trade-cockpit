@@ -392,6 +392,11 @@ def _jsonl_records(raw: bytes) -> list[dict]:
     text = _decode(raw)
     if not text.strip():
         raise ValueError("EMPTY_INPUT")
+    # A JSON object can be syntactically valid before the Writer publishes its
+    # terminating newline. Never treat that potentially torn last row as a
+    # complete observation, including when earlier rows are complete.
+    if not raw.endswith(b"\n"):
+        raise ValueError("PARTIAL_PUBLISHED_JSONL")
     records = []
     for line in text.splitlines():
         if not line.strip():
@@ -699,7 +704,7 @@ def audit_private_observation(repo_root, relative_path: str | None, *, signal=No
         else:
             producer, reasons, row_count = _legacy_reasons(header, body, diag_raw)
     except ValueError as exc:
-        code = str(exc) if str(exc) in {"DATA_CORRUPT", "EMPTY_INPUT"} else "DATA_CORRUPT"
+        code = str(exc) if str(exc) in {"DATA_CORRUPT", "EMPTY_INPUT", "PARTIAL_PUBLISHED_JSONL"} else "DATA_CORRUPT"
         return _report(
             status="BLOCKED", state="BLOCKED", reasons=[code],
             producer_id="ms2_live.unreadable", bytes_read=len(raw), input_sha256=digest,
