@@ -178,5 +178,150 @@ class CheckpointTests(unittest.TestCase):
         self.assertEqual(cp.load(self.state), first)
 
 
+class ReceiptCheckpointTests(unittest.TestCase):
+    """Synthetic file/receipt integration, including deterministic race injection."""
+    def setUp(self):
+        CheckpointTests.setUp(self)
+        self.prior = cp.initialize(self.state, self.data)
+        private = self.root / 'data/private/ms2_observations'
+        private.mkdir(parents=True)
+        self.data = private / 'synthetic.jsonl'
+        self.data.write_bytes(b'synthetic-next\n')
+        from scripts.ms2_observation_ingress import independent_consumer_readback
+        self.consumer = independent_consumer_readback(
+            self.root, 'data/private/ms2_observations/synthetic.jsonl')
+        self.writer = dict(transition='APPENDED', writes_performed=True,
+            eligible_observed_n=0, real_submit_allowed=False,
+            file_sha256=self.consumer['input_sha256'],
+            bytes_written=self.consumer['bytes_read'],
+            writer_readback_completed_at='2026-01-01T00:00:00+00:00',
+            writer_readback_clock_basis='WRITER_LOCAL_UTC_AFTER_READBACK')
+
+    def receipt_update(self, **changes):
+        args = dict(writer_receipt=self.writer, consumer_receipt=self.consumer,
+                    generation=2, expected_record_sha256=self.prior['record_sha256'])
+        args.update(changes)
+        return cp.advance_from_receipts(self.state, self.data, **args)
+
+    def test_receipt_success_and_no_promotion(self):
+        saved = self.receipt_update()
+        self.assertEqual(cp.load(self.state), saved)
+        self.assertEqual(saved['record']['sha256'], self.consumer['input_sha256'])
+        self.assertEqual(saved['record']['byte_count'], self.consumer['bytes_read'])
+        self.assertEqual(saved['record']['generation'], 2)
+        for key in ('source_authenticated', 'promotion_eligible', 'real_submit_allowed'):
+            self.assertIs(saved['record'][key], False)
+        self.assertNotIn('available_at', saved['record'])
+        with self.assertRaises(cp.CheckpointError):
+            self.receipt_update(generation=3, expected_record_sha256=saved['record_sha256'])
+        self.assertEqual(cp.load(self.state), saved)
+
+    def test_receipt_mismatch_and_unconfirmed_preserve_state(self):
+        before = self.state.read_bytes()
+        for changes in ({'file_sha256': '0'*64}, {'bytes_written': 1},
+                        {'transition': 'PENDING'}, {'writes_performed': False}):
+            with self.subTest(changes=changes), self.assertRaises(cp.CheckpointError):
+                self.receipt_update(writer_receipt=dict(self.writer, **changes))
+            self.assertEqual(self.state.read_bytes(), before)
+        # Two agreeing but stale/false receipts still cannot authorize different bytes.
+        for w, c in (({'file_sha256': '0'*64}, {'input_sha256': '0'*64}),
+                     ({'bytes_written': 1}, {'bytes_read': 1})):
+            with self.assertRaises(cp.CheckpointError):
+                self.receipt_update(writer_receipt=dict(self.writer, **w),
+                                    consumer_receipt=dict(self.consumer, **c))
+            self.assertEqual(self.state.read_bytes(), before)
+
+    def test_receipt_generation_and_previous_state(self):
+        before = self.state.read_bytes()
+        for generation in (1, 3):
+            with self.assertRaises(cp.CheckpointError):
+                self.receipt_update(generation=generation)
+        with self.assertRaises(cp.CheckpointError):
+            self.receipt_update(expected_record_sha256='0'*64)
+        self.assertEqual(self.state.read_bytes(), before)
+        for raw in (None, b'broken'):
+            if raw is None:
+                self.state.unlink()
+            else:
+                self.state.write_bytes(raw)
+            with self.assertRaises(cp.CheckpointError):
+                self.receipt_update()
+            self.assertEqual(self.state.read_bytes() if self.state.exists() else None, raw)
+
+    def test_receipt_reconcile_to_file_race(self):
+        from scripts import ms2_observation_ingress as ingress
+        original = ingress.reconcile_writer_consumer_receipts
+        before = self.state.read_bytes()
+        def race(*args, **kwargs):
+            matched = original(*args, **kwargs)
+            self.data.write_bytes(b'changed-after-reconciliation')
+            return matched
+        with patch.object(ingress, 'reconcile_writer_consumer_receipts', side_effect=race):
+            with self.assertRaises(cp.CheckpointError):
+                self.receipt_update()
+        self.assertEqual(self.state.read_bytes(), before)
+
+    def test_receipt_staging_race_and_identity_replacement(self):
+        before = self.state.read_bytes()
+        read = cp._read
+        original_data = self.data.read_bytes()
+        for same_bytes in (False, True):
+            def race(path):
+                result = read(path)
+                if path != self.state:
+                    replacement = self.data.with_suffix('.tmp')
+                    replacement.write_bytes(original_data if same_bytes else b'changed')
+                    replacement.replace(self.data)
+                return result
+            with patch.object(cp, '_read', side_effect=race):
+                with self.assertRaises(cp.CheckpointError):
+                    self.receipt_update()
+            self.assertEqual(self.state.read_bytes(), before)
+            self.data.write_bytes(original_data)
+
+    def test_receipt_post_commit_failures_never_success(self):
+        replace = cp.os.replace
+        def race(src, dst):
+            replace(src, dst)
+            self.data.write_bytes(b'changed-after-commit')
+        with patch.object(cp.os, 'replace', side_effect=race):
+            with self.assertRaises(cp.CheckpointError):
+                self.receipt_update()
+        self.assertEqual(cp.load(self.state)['record']['generation'], 2)
+
+    def test_receipt_committed_readback_failure(self):
+        read = cp._read
+        count = 0
+        def fail(path):
+            nonlocal count
+            if path == self.state:
+                count += 1
+                if count == 2:
+                    raise cp.CheckpointError('COMMITTED_READBACK_FAILED')
+            return read(path)
+        with patch.object(cp, '_read', side_effect=fail):
+            with self.assertRaises(cp.CheckpointError):
+                self.receipt_update()
+
+    def test_receipt_concurrent_updates(self):
+        barrier = threading.Barrier(2)
+        outcomes = []
+        def worker():
+            barrier.wait()
+            try:
+                self.receipt_update()
+                outcomes.append('saved')
+            except cp.CheckpointError:
+                outcomes.append('blocked')
+        threads = [threading.Thread(target=worker) for _ in range(2)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(5)
+            self.assertFalse(t.is_alive())
+        self.assertCountEqual(outcomes, ['saved', 'blocked'])
+        self.assertEqual(cp.load(self.state)['record']['generation'], 2)
+
+
 if __name__ == '__main__':
     unittest.main()

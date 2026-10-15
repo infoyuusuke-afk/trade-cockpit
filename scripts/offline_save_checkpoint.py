@@ -97,13 +97,33 @@ def load(path):
         return _read(path)
 
 
-def _save(path, data_path, generation, expected, bootstrap):
+def _receipt_snapshot(data_path, evidence, identity=None):
+    """Recheck bytes and file identity; receipts alone never authorize a save."""
+    try:
+        if data_path.is_symlink():
+            raise CheckpointError('PATH_INVALID')
+        before = data_path.stat()
+        raw = data_path.read_bytes()
+        after = data_path.stat()
+    except OSError:
+        raise CheckpointError('DATA_READ_FAILED') from None
+    stamp = lambda st: (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns)
+    current = stamp(after)
+    if (data_path.is_symlink() or stamp(before) != current
+            or (identity is not None and current != identity)
+            or _digest(raw) != evidence[0] or len(raw) != evidence[1]):
+        raise CheckpointError('RECEIPT_DATA_CHANGED_OR_MISMATCH')
+    return current
+
+
+def _save(path, data_path, generation, expected, bootstrap, evidence=None):
     path, data_path = Path(path), Path(data_path)
     if path.resolve() == data_path.resolve() or path.is_symlink() or data_path.is_symlink():
         raise CheckpointError('PATH_INVALID')
     if not _integer(generation, 1):
         raise CheckpointError('GENERATION_INVALID')
     with _locked(path):
+        identity = _receipt_snapshot(data_path, evidence) if evidence else None
         if bootstrap:
             if path.exists() or generation != 1:
                 raise CheckpointError('BOOTSTRAP_REFUSED')
@@ -123,6 +143,8 @@ def _save(path, data_path, generation, expected, bootstrap):
         if not first or first != second:
             raise CheckpointError('DATA_EMPTY_OR_UNSTABLE')
         digest = _digest(second)
+        if evidence and (digest, len(second)) != evidence:
+            raise CheckpointError('RECEIPT_DATA_CHANGED_OR_MISMATCH')
         if previous and digest == previous['record']['sha256']:
             raise CheckpointError('DUPLICATE_DATA')
         record = _validate(dict(version=1, generation=generation, sha256=digest,
@@ -141,12 +163,16 @@ def _save(path, data_path, generation, expected, bootstrap):
                 os.fsync(handle.fileno())
             if _read(temp) != envelope:
                 raise CheckpointError('STAGED_READBACK_FAILED')
+            if evidence:
+                _receipt_snapshot(data_path, evidence, identity)
             os.replace(temp, path)
             temp = None
             # A failure here means commit outcome is unverified. Never return success
             # or retry blindly; load and compare before another update.
             if _read(path) != envelope:
                 raise CheckpointError('COMMITTED_READBACK_FAILED')
+            if evidence:
+                _receipt_snapshot(data_path, evidence, identity)
             return envelope
         finally:
             if temp is not None:
@@ -161,3 +187,26 @@ def initialize(path, data_path):
 def advance(path, data_path, *, generation, expected_record_sha256):
     """CAS update of exactly the next generation; stale writers are rejected."""
     return _save(path, data_path, generation, expected_record_sha256, False)
+
+
+def advance_from_receipts(path, data_path, *, writer_receipt, consumer_receipt,
+                          generation, expected_record_sha256):
+    """Offline reconciliation followed by a CAS update; never bootstraps.
+
+    Generation is local save order, not exchange event order. Writer receipts
+    are unauthenticated. Checks cover mutation through committed readback, not
+    future writes after this call. As with advance(), only cooperating local
+    checkpoint writers are supported. Post-commit errors leave outcome unknown;
+    callers must load/reconcile, never report success or blindly retry.
+    """
+    from scripts.ms2_observation_ingress import reconcile_writer_consumer_receipts
+
+    # Copy before reconciliation: subsequent caller mutations cannot change
+    # which byte identity the transaction authorizes.
+    import copy
+    matched = reconcile_writer_consumer_receipts(
+        copy.deepcopy(writer_receipt), copy.deepcopy(consumer_receipt))
+    if matched['state'] != 'READBACK_MATCH_ONLY':
+        raise CheckpointError('RECEIPT_REJECTED:' + matched['reason'])
+    evidence = (matched['published_sha256'], matched['bytes_verified'])
+    return _save(path, data_path, generation, expected_record_sha256, False, evidence)
