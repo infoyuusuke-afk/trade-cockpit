@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-14 21:22:56 JST",
+  "updated_at": "2026-10-15 21:07:32 JST",
   "horizon": "swing",
   "data_quality": {
     "credit_supply": "ok",
@@ -17,15 +17,13 @@
     {
       "code": "285A",
       "name": "キオクシアホールディングス",
-      "score": -45,
-      "direction": "SHORT",
-      "supply_phase": "悪化",
-      "trade_bias": "戻り売り優先・踏み上げ決め打ち禁止",
-      "margin_buy_change_1w_pct": 10.5,
-      "credit_ratio": 54.17,
+      "score": -15,
+      "direction": "WATCH",
+      "supply_phase": "中立",
+      "trade_bias": "価格確認を優先",
+      "margin_buy_change_1w_pct": 0.37,
+      "credit_ratio": 35.47,
       "reasons": [
-        "信用需給フェーズ: 悪化（戻り売り優先・踏み上げ決め打ち禁止）",
-        "信用買い残が週次10.5%増加（将来の戻り売り圧力増）",
         "海外投資家が買→売に転換（-1週目）",
         "市場レジーム: DISTRIBUTION（確信度87）"
       ],
