@@ -18,7 +18,7 @@ function Measure-Twice([string]$Name, [scriptblock]$Body) {
 }
 
 if ($Mode -eq "primitives") {
-    $map = [System.IO.MemoryMappedFiles.MemoryMappedFile]::CreateNew($null, 20480)
+    $map = [System.IO.MemoryMappedFiles.MemoryMappedFile]::CreateNew(("ms2probe-" + [guid]::NewGuid().ToString("N")), 20480)
     $acc = $map.CreateViewAccessor(0, 20480)
     $mutex = New-Object System.Threading.Mutex($false)
     $inbuf = New-Object byte[] 2072

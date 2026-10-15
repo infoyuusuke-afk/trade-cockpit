@@ -234,6 +234,38 @@ function Assert-Ms2IpcSecurity($Security) {
     }
 }
 
+# PS5.1 binds call sites, JITs reflection invokes and initialises SHA256 on the
+# first execution of each path (~65ms on a CI runner vs ~2ms afterwards). Run
+# one submit against a private, uniquely named map and an unnamed mutex at attach
+# time so the first real submit is measured without that one-time cost. The shared
+# map, its gate and its counters are never touched here.
+function Invoke-Ms2PsBridgeWarmup([bool]$TraceTiming) {
+    $map = $null
+    $accessor = $null
+    $mutex = $null
+    try {
+        $map = [System.IO.MemoryMappedFiles.MemoryMappedFile]::CreateNew(("ms2warm-" + [guid]::NewGuid().ToString("N")), 20480)
+        $accessor = $map.CreateViewAccessor(0, 20480, [System.IO.MemoryMappedFiles.MemoryMappedFileAccess]::ReadWrite)
+        $label = [Text.Encoding]::ASCII.GetBytes("NBH1")
+        for ($i = 0; $i -lt 4; $i++) { $accessor.Write([long]($script:Ms2PsBridgeProto + $i), [byte]$label[$i]) }
+        $accessor.Write([long]180, [byte]2)
+        $accessor.Write([long]181, [byte]8)
+        $accessor.Write([long]182, [uint16]2048)
+        $accessor.Write([long]184, [uint32]20480)
+        $accessor.Write([long]112, [long]1)
+        $mutex = New-Object System.Threading.Mutex($false)
+        $warmSession = @{ Ok = $true; Accessor = $accessor; Generation = [long]1; TraceTiming = $TraceTiming; Mutex = $mutex }
+        $result = Submit-Ms2PsBridgeRecord -Session $warmSession -Record (New-Object byte[] $script:Ms2PsBridgeRecordSize)
+        return ($result.Status -eq "ACCEPTED" -and $accessor.ReadInt64(0) -eq 1)
+    } catch {
+        return $false
+    } finally {
+        if ($null -ne $accessor) { $accessor.Dispose() }
+        if ($null -ne $mutex) { $mutex.Dispose() }
+        if ($null -ne $map) { $map.Dispose() }
+    }
+}
+
 function Open-Ms2PsBridge([string]$MapName, [int]$Size, [switch]$RequireProcessAuthentication, [switch]$TraceTiming) {
     if ($RequireProcessAuthentication) {
         return @{ Ok = $false; Reason = "SAME_USER_AUTH_UNRESOLVED"; Retry = $false }
@@ -278,6 +310,12 @@ function Open-Ms2PsBridge([string]$MapName, [int]$Size, [switch]$RequireProcessA
         if ($generation -le 0) { throw "GENERATION_MISMATCH" }
         $mutex = [System.Threading.Mutex]::OpenExisting(("Local\ms2ipc-v2-" + $generation), ([System.Security.AccessControl.MutexRights]::Synchronize -bor [System.Security.AccessControl.MutexRights]::Modify -bor [System.Security.AccessControl.MutexRights]::ReadPermissions))
         try { Assert-Ms2IpcSecurity ($mutex.GetAccessControl()) } catch { $mutex.Dispose(); throw }
+        if (-not (Invoke-Ms2PsBridgeWarmup ([bool]$TraceTiming))) {
+            $mutex.Dispose()
+            $accessor.Dispose()
+            $opened.Dispose()
+            return @{ Ok = $false; Reason = "WARMUP_FAILED"; Attempts = $tried; Retry = $false }
+        }
         return @{
             Ok = $true
             Reason = "ATTACHED"
