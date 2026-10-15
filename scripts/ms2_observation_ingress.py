@@ -722,6 +722,15 @@ def audit_private_observation(repo_root, relative_path: str | None, *, signal=No
             return _report(status="BLOCKED", state="BLOCKED",
                            reasons=["WRITER_PUBLICATION_UNVERIFIED"], producer_id="none",
                            bytes_read=len(raw), input_sha256=digest)
+        # A digest alone does not bind the reported publication length.
+        # The Writer's APPENDED receipt contains bytes_written for the full
+        # published file. A missing/false/bool length must fail closed.
+        receipt_size = writer_receipt.get("bytes_written")
+        if (isinstance(receipt_size, bool) or not isinstance(receipt_size, int)
+                or receipt_size != len(raw)):
+            return _report(status="BLOCKED", state="BLOCKED",
+                           reasons=["WRITER_PUBLICATION_SIZE_MISMATCH"],
+                           producer_id="none", bytes_read=len(raw), input_sha256=digest)
         receipt_hash = writer_receipt.get("file_sha256")
         if (not isinstance(receipt_hash, str) or len(receipt_hash) != 64
                 or any(c not in "0123456789abcdef" for c in receipt_hash)):
