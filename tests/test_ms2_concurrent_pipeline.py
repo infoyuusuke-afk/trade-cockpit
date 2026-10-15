@@ -372,7 +372,10 @@ class WindowsReplaceSemanticsDiagnostic(unittest.TestCase):
             name = str(dst)
             size = 20 + (len(name) + 1) * 2
             buf = ctypes.create_string_buffer(size)
-            struct.pack_into('<IQI', buf, 0, 0x1 | 0x2, 0, len(name) * 2)
+            # x64 FILE_RENAME_INFO: Flags@0, RootDirectory@8, FileNameLength@16, FileName@20.
+            struct.pack_into('<I', buf, 0, 0x1 | 0x2)
+            struct.pack_into('<Q', buf, 8, 0)
+            struct.pack_into('<I', buf, 16, len(name) * 2)
             ctypes.memmove(ctypes.addressof(buf) + 20, ctypes.create_unicode_buffer(name), (len(name) + 1) * 2)
             ok = k.SetFileInformationByHandle(h, 22, buf, size)
             return 'OK' if ok else 'ERR_' + str(ctypes.get_last_error())
