@@ -13,7 +13,7 @@ jobs:
       github.ref == 'refs/heads/main' &&
       github.ref_protected == true &&
       vars.CLAUDE_ROUTINE_BRIDGE_ENABLED == 'true' &&
-      github.event.issue.number == 171 &&
+      github.event.issue.number == 282 &&
       !github.event.issue.pull_request &&
       format('{0}', github.event.sender.id) == '307830101' &&
       startsWith(github.event.comment.body, 'GPT-CLAUDE-NEXT-V2') &&
