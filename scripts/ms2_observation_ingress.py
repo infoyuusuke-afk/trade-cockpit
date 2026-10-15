@@ -493,10 +493,15 @@ def _prepare_jsonl(records: list[dict], *, evidence_origin: str) -> tuple[list[s
             reasons.append("EVENT_ID_ABSENT")
             continue
         kind = record.get("kind")
-        if kind not in {"QUOTE", "ORDERED_PRINT", "OHLCV_BAR"}:
+        if not isinstance(kind, str) or kind not in {"QUOTE", "ORDERED_PRINT", "OHLCV_BAR"}:
             reasons.append("KIND_INVALID")
             continue
         local: list[str] = []
+        # JSON values can be unhashable (e.g. arrays/dicts). Reject invalid
+        # market values before building the mixed-market set.
+        market = record.get("market")
+        if "market" in record and (not isinstance(market, str) or market not in {"TSE", "JNX"}):
+            local.append("MARKET_INVALID")
         if not isinstance(record.get("source"), str) or not str(record.get("source")).strip():
             local.append("SOURCE_ABSENT")
         if not isinstance(record.get("symbol"), str) or not str(record.get("symbol")).strip():
@@ -610,6 +615,7 @@ def _prepare_jsonl(records: list[dict], *, evidence_origin: str) -> tuple[list[s
         "SCHEMA_VERSION_UNKNOWN",
         "EVENT_ID_ABSENT",
         "KIND_INVALID",
+        "MARKET_INVALID",
         "SOURCE_ABSENT",
         "SYMBOL_ABSENT",
         "EVENT_TIME_ABSENT",
