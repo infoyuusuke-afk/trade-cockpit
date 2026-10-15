@@ -16,6 +16,7 @@ from scripts.ms2_observation_ingress import (
     TICK_HEADER,
     audit_private_observation,
     independent_consumer_readback,
+    reconcile_writer_consumer_receipts,
     cohort_report,
     main,
     redact_for_export,
@@ -474,6 +475,44 @@ class Ms2ObservationIngressTests(unittest.TestCase):
         blocked = independent_consumer_readback(self.root, None)
         self.assertEqual(blocked["state"], "BLOCKED")
         self.assertEqual(blocked["reason"], "PRIVATE_PATH_UNSET")
+
+    def test_08f_writer_consumer_receipts_are_metadata_only(self):
+        self.write_jsonl(closed_rows(), name="two_receipts.jsonl")
+        consumer = independent_consumer_readback(self.root, RELATIVE.format("two_receipts.jsonl"))
+        digest = consumer["input_sha256"]
+        bytes_count = consumer["bytes_read"]
+        writer_time = (datetime.fromisoformat(consumer["consumer_readback_completed_at"])
+                       - timedelta(seconds=1)).isoformat()
+        writer = {
+            "transition": "APPENDED", "writes_performed": True,
+            "eligible_observed_n": 0, "real_submit_allowed": False,
+            "file_sha256": digest, "bytes_written": bytes_count,
+            "writer_readback_completed_at": writer_time,
+            "writer_readback_clock_basis": "WRITER_LOCAL_UTC_AFTER_READBACK",
+        }
+        matched = reconcile_writer_consumer_receipts(writer, consumer)
+        self.assertEqual(matched["state"], "READBACK_MATCH_ONLY")
+        self.assertEqual(matched["reason"], "SOURCE_PROVENANCE_NOT_AUTHENTICATED")
+        self.assertEqual(matched["eligible_observed_n"], 0)
+        self.assertFalse(matched["real_submit_allowed"])
+        self.assertNotIn("available_at", matched)
+        for changes, reason in (
+            ({"file_sha256": "0" * 64}, "PUBLICATION_READBACK_MISMATCH"),
+            ({"bytes_written": bytes_count + 1}, "PUBLICATION_READBACK_MISMATCH"),
+            ({"bytes_written": True}, "PUBLICATION_READBACK_MISMATCH"),
+            ({"transition": "PUBLISH_UNVERIFIED"}, "RECEIPT_UNVERIFIED"),
+            ({"real_submit_allowed": True}, "RECEIPT_UNVERIFIED"),
+            ({"writer_readback_completed_at": "no-clock"}, "CLOCK_ORDER_UNVERIFIED"),
+            ({"writer_readback_completed_at":
+              (datetime.fromisoformat(consumer["consumer_readback_completed_at"])
+               + timedelta(seconds=1)).isoformat()}, "CLOCK_ORDER_UNVERIFIED"),
+        ):
+            with self.subTest(changes=changes):
+                rejected = reconcile_writer_consumer_receipts(dict(writer, **changes), consumer)
+                self.assertEqual(rejected["state"], "BLOCKED")
+                self.assertEqual(rejected["reason"], reason)
+                self.assertEqual(rejected["eligible_observed_n"], 0)
+        self.assertEqual(reconcile_writer_consumer_receipts(None, consumer)["state"], "BLOCKED")
 
     def test_09_duplicate_and_conflicting_event_ids(self):
         row = quote_row("e1", at(9, 1), 999, 998, 999.5, 1)
