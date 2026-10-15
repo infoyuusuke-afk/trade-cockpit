@@ -355,6 +355,55 @@ def independent_consumer_readback(repo_root, relative_path: str | None) -> dict:
     }
 
 
+def reconcile_writer_consumer_receipts(writer_receipt, consumer_receipt) -> dict:
+    """Compare existing offline publication and independent readback evidence.
+
+    This checks byte identity and local-clock order, not producer identity,
+    authenticated receipt signatures, exchange timing, or durable generation.
+    """
+    result = {"state": "BLOCKED", "reason": "RECEIPT_INVALID",
+              "eligible_observed_n": 0, "real_submit_allowed": False}
+    if not isinstance(writer_receipt, dict) or not isinstance(consumer_receipt, dict):
+        return result
+    if (writer_receipt.get("transition") != "APPENDED"
+            or writer_receipt.get("writes_performed") is not True
+            or writer_receipt.get("eligible_observed_n") != 0
+            or writer_receipt.get("real_submit_allowed") is not False
+            or consumer_receipt.get("state") != "READBACK_OBSERVED_ONLY"
+            or consumer_receipt.get("eligible_observed_n") != 0
+            or consumer_receipt.get("real_submit_allowed") is not False):
+        return {**result, "reason": "RECEIPT_UNVERIFIED"}
+    published = writer_receipt.get("file_sha256")
+    consumed = consumer_receipt.get("input_sha256")
+    bytes_written = writer_receipt.get("bytes_written")
+    bytes_read = consumer_receipt.get("bytes_read")
+    if (not isinstance(published, str) or len(published) != 64
+            or any(c not in "0123456789abcdef" for c in published)
+            or not isinstance(consumed, str) or len(consumed) != 64
+            or any(c not in "0123456789abcdef" for c in consumed)
+            or type(bytes_written) is not int or type(bytes_read) is not int
+            or bytes_written <= 0 or bytes_written != bytes_read or published != consumed):
+        return {**result, "reason": "PUBLICATION_READBACK_MISMATCH"}
+    if (writer_receipt.get("writer_readback_clock_basis") != "WRITER_LOCAL_UTC_AFTER_READBACK"
+            or consumer_receipt.get("consumer_clock_basis") != "LOCAL_UTC_POST_READBACK"):
+        return {**result, "reason": "CLOCK_EVIDENCE_ABSENT"}
+    try:
+        writer_at = datetime.fromisoformat(writer_receipt["writer_readback_completed_at"])
+        consumer_at = datetime.fromisoformat(consumer_receipt["consumer_readback_completed_at"])
+        if (not _aware(writer_at) or not _aware(consumer_at)
+                or writer_at.utcoffset() != timezone.utc.utcoffset(writer_at)
+                or consumer_at.utcoffset() != timezone.utc.utcoffset(consumer_at)
+                or consumer_at < writer_at):
+            return {**result, "reason": "CLOCK_ORDER_UNVERIFIED"}
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return {**result, "reason": "CLOCK_ORDER_UNVERIFIED"}
+    return {"state": "READBACK_MATCH_ONLY",
+            "reason": "SOURCE_PROVENANCE_NOT_AUTHENTICATED",
+            "published_sha256": published, "bytes_verified": bytes_read,
+            "consumer_readback_completed_at": consumer_receipt["consumer_readback_completed_at"],
+            "eligible_observed_n": 0, "real_submit_allowed": False}
+
+
 def _decode(raw: bytes) -> str:
     try:
         return raw.decode("utf-8-sig")
