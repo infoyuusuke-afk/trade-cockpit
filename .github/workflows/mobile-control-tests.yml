@@ -30,4 +30,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt lxml
-      - run: python -m unittest tests.test_offline_save_checkpoint tests.test_ms2_offline_csv_snapshot -v
+      - run: python -m unittest tests.test_offline_save_checkpoint tests.test_ms2_offline_csv_snapshot tests.test_ms2_offline_acceptance -v
+      - name: Offline synthetic acceptance through OWNER launcher
+        shell: cmd
+        run: scripts\run_ms2_offline_acceptance.cmd
