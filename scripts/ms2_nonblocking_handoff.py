@@ -82,16 +82,18 @@ _OFF_LAST_ELAPSED_NS = 168
 _OFF_REASON = 256
 _REASON_SIZE = 32
 
-# Issue #382: every producer gate hold that ends changes at least one of
-# these existing counters before release (ACCEPTED: write index, queued and
-# submit count; queue full: dropped; Kill Switch inside the gate: kill drops;
-# IPC error: flags). A busy gate whose progress is unchanged is treated as the
-# same hold however long the worker itself was off-CPU, so a stuck gate keeps
-# counting toward STALL_AFTER_NS. Known limit: a sample taken after a hold's
-# last counter write but before its release cannot be told apart from the next
-# hold until that one commits; that case fails closed (never silently passes).
-_GATE_PROGRESS = (_OFF_WRITE, _OFF_DROPPED, _OFF_KILL_DROPS, _OFF_FLAGS,
-                  _OFF_QUEUED, _OFF_SUBMIT_COUNT)
+# Issue #382: only the write index counts as gate progress. It is the one
+# existing counter every producer stores strictly inside the gate (ACCEPTED);
+# dropped, kill drops, queued and submit count are also bumped outside the gate
+# by refused or post-release submit paths, so a submitter retrying against a
+# stuck gate would keep resetting the stall timer. A busy gate with an unchanged
+# write index is treated as the same hold however long the worker itself was
+# off-CPU, so a stuck gate keeps counting toward STALL_AFTER_NS. Known limits,
+# both fail closed (never silently pass): holds that end without an ACCEPTED
+# record (queue full / Kill Switch inside the gate) do not advance it, and a
+# sample taken after a hold's write but before its release cannot be told apart
+# from the next hold until that one commits.
+_GATE_PROGRESS = (_OFF_WRITE,)
 
 _FLAG_KILL = 1
 _FLAG_STOP = 2
