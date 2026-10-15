@@ -209,6 +209,9 @@ def normal_failure_evidence(states, samples, worker_events, session, producer, n
         accepted=sum(e['state'] == 'ACCEPTED' for e in samples),
         states=states,
         worker_transitions=dict(Counter(e['transition'] for e in worker_events)),
+        # Reason codes only (no record fields) for any post-queue Writer refusal.
+        worker_refusal_reasons=dict(Counter(r for e in worker_events if e['transition'] not in {'APPENDED','REPLAY'}
+                                            for r in e.get('reasons') or [])),
         worker_alive=bool(session._process.is_alive()),
         worker_exitcode=session._process.exitcode,
         producer_exitcode=producer.poll() if producer is not None else None,
