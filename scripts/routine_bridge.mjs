@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 export const REPO = 'infoyuusuke-afk/trade-cockpit';
-export const ISSUE = 171;
+export const ISSUE = 282;
 export const GPT_ACTOR_ID = 307830101;
 export const GPT_APP_ID = 1144995;
 export const GPT_APP_OWNER_ID = 14957082;
