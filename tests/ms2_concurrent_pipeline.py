@@ -80,6 +80,9 @@ def normal_failure_evidence(states, samples, worker_events, session, producer, n
     buf = session._shm.buf
     heartbeat_ns = h._load(buf, h._OFF_HEARTBEAT)
     heartbeat_age_ns = max(0, time.monotonic_ns() - heartbeat_ns) if heartbeat_ns else None
+    holds = [float(e['gate_hold_ms']) for e in samples
+             if e['state'] == 'ACCEPTED' and isinstance(e.get('gate_hold_ms'), (int, float))
+             and 0 <= float(e['gate_hold_ms']) < 60000]
     return dict(
         boundary='SYNTHETIC_FIXTURE_ONLY',
         failure='NORMAL_RECEIPT_READBACK_MISMATCH',
@@ -98,6 +101,9 @@ def normal_failure_evidence(states, samples, worker_events, session, producer, n
         heartbeat_age_ms=round(heartbeat_age_ns / 1_000_000, 3) if heartbeat_age_ns is not None else None,
         gate_stall_threshold_ms=h.STALL_AFTER_NS / 1_000_000,
         reason=h._read_reason(buf),
+        producer_gate_hold_max_ms=(round(max(holds), 3) if holds else None),
+        producer_gate_hold_over_threshold=sum(v > h.STALL_AFTER_NS / 1_000_000 for v in holds),
+        producer_gate_hold_measured_n=len(holds),
         mutex_abandonment_proven=False,
         production='P0_BLOCKED',
     )

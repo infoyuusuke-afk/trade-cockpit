@@ -32,7 +32,10 @@ try {
   if(-not $p.Ok){throw 'PACK_REFUSED'}
   $t.Restart();$r=Submit-Ms2PsBridgeRecord $session $p.Record;$submit=$t.Elapsed.TotalMilliseconds;$elapsed=$full.Elapsed.TotalMilliseconds
   # Per-poll independent receipt stream; transport/backpressure is OUTSIDE timing.
-  @{kind='receipt';session_id=('native-'+$Generation);generation=$Generation;poll_seq=$poll;attempt=$i;state=$r.Status;reason=$r.Reason;observed_at=[DateTimeOffset]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffzzz');record=[Convert]::ToBase64String($p.Record);capture_ms=$capture;packing_ms=$packing;submit_ms=$submit;full_ms=$elapsed}|ConvertTo-Json -Compress
+  # LastPublishMs is collected by the existing producer after unlock, with no new gate work.
+  # Synthetic-only numeric diagnostic: never include the record, map or private source.
+  $gateHold=if($r.Status -eq 'ACCEPTED' -and $null -ne $session.LastPublishMs){[double]$session.LastPublishMs}else{$null}
+  @{kind='receipt';session_id=('native-'+$Generation);generation=$Generation;poll_seq=$poll;attempt=$i;state=$r.Status;reason=$r.Reason;observed_at=[DateTimeOffset]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffzzz');record=[Convert]::ToBase64String($p.Record);capture_ms=$capture;packing_ms=$packing;submit_ms=$submit;full_ms=$elapsed;gate_hold_ms=$gateHold}|ConvertTo-Json -Compress
   if([Console]::ReadLine() -ne 'NEXT'){throw 'NEXT_REQUIRED'}
   if($Mode -ne 'queue_full'){Start-Sleep -Milliseconds 5}
  }
