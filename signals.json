@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-15 16:44:17 JST",
+  "updated_at": "2026-10-15 19:21:30 JST",
   "source": "固定監視リスト（JPX取得失敗）",
   "universe_count": 100,
   "scanned_count": 100,
@@ -4760,7 +4760,7 @@
         },
         {
           "o": 4595.0,
-          "h": 4854.0,
+          "h": 4855.0,
           "l": 4550.0,
           "c": 4804.0
         }
@@ -7978,10 +7978,10 @@
       "setup": "安値割れ",
       "score": 100,
       "close": 2406.0,
-      "trigger": 2367,
+      "trigger": 2368,
       "stop": 2572,
-      "target1": 2060,
-      "target2": 1854,
+      "target1": 2062,
+      "target2": 1858,
       "ma5": 2546.0,
       "rvol": 1.55,
       "ret20": -9.72,
@@ -8348,7 +8348,7 @@
         {
           "o": 2461.5,
           "h": 2466.5,
-          "l": 2368.5,
+          "l": 2369.0,
           "c": 2406.0
         }
       ],
@@ -9168,8 +9168,8 @@
   ],
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-10-15T16:44:13+09:00",
-    "decision_at": "2026-10-15T16:44:13+09:00",
+    "generated_at": "2026-10-15T19:21:25+09:00",
+    "decision_at": "2026-10-15T19:21:25+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -9497,7 +9497,7 @@
       "atr_pct": 2.74,
       "ma20_dist": 14.18,
       "acceleration": 5.24,
-      "upper_wick_pct": 16.4,
+      "upper_wick_pct": 16.7,
       "turnover": 54401456800,
       "signal_date": "2026-10-15",
       "chart": [
@@ -9857,7 +9857,7 @@
         },
         {
           "o": 4595.0,
-          "h": 4854.0,
+          "h": 4855.0,
           "l": 4550.0,
           "c": 4804.0
         }
@@ -11824,7 +11824,7 @@
         },
         {
           "o": 4595.0,
-          "h": 4854.0,
+          "h": 4855.0,
           "l": 4550.0,
           "c": 4804.0
         }
@@ -18917,7 +18917,7 @@
       "technical_score": 84
     }
   ],
-  "credit_supply_updated_at": "2026-10-15 15:36:14 JST",
+  "credit_supply_updated_at": "2026-10-15 16:44:46 JST",
   "long_term_ma_rebounds": [],
   "long_term_ma_rebounds_unverified": [],
   "daily_capitulation_reversals": [],
