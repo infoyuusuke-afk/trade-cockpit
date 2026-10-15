@@ -15,6 +15,7 @@ from scripts.ms2_observation_ingress import (
     DIAG_HEADER,
     TICK_HEADER,
     audit_private_observation,
+    independent_consumer_readback,
     cohort_report,
     main,
     redact_for_export,
@@ -453,6 +454,26 @@ class Ms2ObservationIngressTests(unittest.TestCase):
                 self.assertEqual(blocked["eligible_observed_n"], 0)
         invalid = self.audit("writer_receipt.jsonl", writer_receipt=[])
         self.assertEqual(invalid["reasons"], ["WRITER_RECEIPT_INVALID"])
+
+    def test_08e_independent_consumer_readback_is_not_market_available_at(self):
+        path = self.write_jsonl(closed_rows(), name="consumer_readback.jsonl")
+        stamp_before = datetime.now(timezone.utc)
+        report = independent_consumer_readback(self.root, RELATIVE.format("consumer_readback.jsonl"))
+        stamp_after = datetime.now(timezone.utc)
+        self.assertEqual(report["state"], "READBACK_OBSERVED_ONLY")
+        self.assertEqual(report["reason"], "SOURCE_PROVENANCE_NOT_AUTHENTICATED")
+        self.assertEqual(report["consumer_clock_basis"], "LOCAL_UTC_POST_READBACK")
+        measured = datetime.fromisoformat(report["consumer_readback_completed_at"])
+        self.assertLessEqual(stamp_before, measured)
+        self.assertLessEqual(measured, stamp_after)
+        self.assertEqual(report["bytes_read"], len(path.read_bytes()))
+        self.assertEqual(report["input_sha256"], hashlib.sha256(path.read_bytes()).hexdigest())
+        self.assertEqual(report["eligible_observed_n"], 0)
+        self.assertFalse(report["real_submit_allowed"])
+        self.assertNotIn("available_at", report)
+        blocked = independent_consumer_readback(self.root, None)
+        self.assertEqual(blocked["state"], "BLOCKED")
+        self.assertEqual(blocked["reason"], "PRIVATE_PATH_UNSET")
 
     def test_09_duplicate_and_conflicting_event_ids(self):
         row = quote_row("e1", at(9, 1), 999, 998, 999.5, 1)
