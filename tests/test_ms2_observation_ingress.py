@@ -514,6 +514,29 @@ class Ms2ObservationIngressTests(unittest.TestCase):
                 self.assertEqual(rejected["eligible_observed_n"], 0)
         self.assertEqual(reconcile_writer_consumer_receipts(None, consumer)["state"], "BLOCKED")
 
+    def test_08g_independent_checkpoint_rejects_identical_replay(self):
+        self.write_jsonl(closed_rows(), name="replay.jsonl")
+        consumer = independent_consumer_readback(self.root, RELATIVE.format("replay.jsonl"))
+        stamp = (datetime.fromisoformat(consumer["consumer_readback_completed_at"])
+                 - timedelta(seconds=1)).isoformat()
+        writer = {
+            "transition": "APPENDED", "writes_performed": True,
+            "eligible_observed_n": 0, "real_submit_allowed": False,
+            "file_sha256": consumer["input_sha256"], "bytes_written": consumer["bytes_read"],
+            "writer_readback_completed_at": stamp,
+            "writer_readback_clock_basis": "WRITER_LOCAL_UTC_AFTER_READBACK",
+        }
+        replay = reconcile_writer_consumer_receipts(
+            writer, consumer, prior_verified_sha256=consumer["input_sha256"])
+        self.assertEqual(replay["state"], "BLOCKED")
+        self.assertEqual(replay["reason"], "PUBLICATION_NOT_ADVANCED")
+        invalid = reconcile_writer_consumer_receipts(writer, consumer, prior_verified_sha256="bad")
+        self.assertEqual(invalid["reason"], "PRIOR_CHECKPOINT_INVALID")
+        advanced = reconcile_writer_consumer_receipts(writer, consumer, prior_verified_sha256="0" * 64)
+        self.assertEqual(advanced["state"], "READBACK_MATCH_ONLY")
+        self.assertEqual(advanced["eligible_observed_n"], 0)
+        self.assertFalse(advanced["real_submit_allowed"])
+
     def test_09_duplicate_and_conflicting_event_ids(self):
         row = quote_row("e1", at(9, 1), 999, 998, 999.5, 1)
         self.write_jsonl([row, dict(row)])
