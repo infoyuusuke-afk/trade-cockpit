@@ -75,6 +75,54 @@ def synthetic(poll,generation,duplicate=False):
         levels=[dict(Level=1,AskPrice=101,BidPrice=100,AskQty=0,BidQty=None,read_at=stamp)])
 
 
+def _set_suspended(pid, suspended):
+    """Synthetic fault: take the spawned Writer worker off-CPU, then resume it."""
+    if os.name=='nt':
+        import ctypes
+        kernel=ctypes.WinDLL('kernel32',use_last_error=True);ntdll=ctypes.WinDLL('ntdll')
+        kernel.OpenProcess.restype=ctypes.c_void_p
+        handle=kernel.OpenProcess(0x0800,False,pid)  # PROCESS_SUSPEND_RESUME only
+        if not handle:raise OSError('WORKER_SUSPEND_OPEN_FAILED')
+        try:
+            call=ntdll.NtSuspendProcess if suspended else ntdll.NtResumeProcess
+            call.argtypes=[ctypes.c_void_p]
+            if call(handle)!=0:raise OSError('WORKER_SUSPEND_FAILED')
+        finally:kernel.CloseHandle(ctypes.c_void_p(handle))
+    else:
+        import signal
+        os.kill(pid,signal.SIGSTOP if suspended else signal.SIGCONT)
+
+
+def worker_pause_injector(session, done, log, pause_s=0.16, limit=10):
+    """Issue #382 repro: pause the worker between two *separate* short gate holds.
+
+    Suspend only after the worker started an iteration while the gate was held
+    (heartbeat newer than the busy edge), and resume only while a later hold is
+    in progress. Every hold stays short; only the worker's own scheduling has a
+    gap. The gate itself is never touched here.
+    """
+    buf=session._shm.buf;pid=session._process.pid
+    def gate():return struct.unpack_from('<I',buf,ipc.GATE)[0]
+    def wait(cond,timeout):
+        end=time.monotonic()+timeout
+        while not done.is_set() and time.monotonic()<end:
+            if cond():return True
+        return False
+    while not done.is_set() and len(log)<limit:
+        if not wait(lambda:gate()==1,1.0):continue
+        edge=time.monotonic_ns()
+        sampled=wait(lambda:h._load(buf,h._OFF_HEARTBEAT)>edge and gate()==1,0.005)
+        if not sampled:continue
+        _set_suspended(pid,True);paused=time.monotonic_ns()
+        try:
+            time.sleep(pause_s)
+            # Prefer resuming inside a later, different hold; never wait forever.
+            resumed_busy=wait(lambda:gate()==1,0.3)
+        finally:_set_suspended(pid,False)
+        log.append(dict(pause_ms=round((time.monotonic_ns()-paused)/1e6,3),resumed_while_gate_busy=bool(resumed_busy)))
+        time.sleep(.05)
+
+
 def normal_failure_evidence(states, samples, worker_events, session, producer, native):
     """Bounded, privacy-safe synthetic failure snapshot; no private record fields."""
     buf = session._shm.buf
@@ -122,6 +170,8 @@ def run(mode='normal',n=24,native=False):
         expected={};samples=[];timings=[];readbacks=[];latencies=[];first_readback=set();process=None;reader=None;err=[];messages=queue.Queue()
         consumed=set();worker_events=[];overlap=False;ready={};cold=[];checkpoints=[];partial_killed=False
         warm_map=None;warm_gen=gen+1
+        pauses=[];pause_done=threading.Event()
+        injector=threading.Thread(target=worker_pause_injector,args=(s,pause_done,pauses),daemon=True)
         path=Path(root,REL);audit=Path(root,'worker-evidence.jsonl')
         def import_worker():
             nonlocal overlap
@@ -194,6 +244,7 @@ def run(mode='normal',n=24,native=False):
                 reader=threading.Thread(target=drain,daemon=True);reader.start()
                 ready=messages.get(timeout=30);assert ready['kind']=='ready';cold=[(time.perf_counter()-t)*1000]
                 if mode=='gate_busy':struct.pack_into('<I',s._shm.buf,192,1)
+                if mode=='worker_pause':injector.start()
                 process.stdin.write('GO\n');process.stdin.flush()
                 while True:
                     e=messages.get(timeout=30)
@@ -207,6 +258,7 @@ def run(mode='normal',n=24,native=False):
                 if (process.returncode and mode!='producer_kill') or err:raise RuntimeError(str(err)+process.stderr.read())
             else:
                 if mode=='gate_busy':struct.pack_into('<I',s._shm.buf,192,1)
+                if mode=='worker_pause':injector.start()
                 for i in range(1,n+1):
                     poll=1 if mode=='duplicate' else i;t=time.perf_counter();c=synthetic(poll,gen,mode=='duplicate')
                     capture_ms=(time.perf_counter()-t)*1000;t1=time.perf_counter();packed=pack_capture(c)
@@ -219,6 +271,8 @@ def run(mode='normal',n=24,native=False):
                         capture_ms=capture_ms,packing_ms=packing_ms,submit_ms=submit_ms,full_ms=(time.perf_counter()-t)*1000))
                     if mode=='gate_busy':struct.pack_into('<I',s._shm.buf,192,0)
                     if mode!='queue_full':time.sleep(.005)
+            pause_done.set()
+            if injector.is_alive():injector.join(2)
             # Bounded observation window; missing reports retain UNKNOWN, never DROP.
             end=time.monotonic()+3
             while time.monotonic()<end:
@@ -231,11 +285,11 @@ def run(mode='normal',n=24,native=False):
             states=dict(Counter(p['evidence_status'] for p in report['polls']))
             pending=ledger.reconcile(report['as_of'])
             assert all(p['close_state']=='NOT_CLOSED' for p in report['polls'])
-            if mode=='normal':
+            if mode in {'normal','worker_pause'}:
                 if states.get('PERSISTED_VERIFIED',0)!=sum(e['state']=='ACCEPTED' for e in samples):
-                    raise AssertionError(json.dumps(
-                        normal_failure_evidence(states,samples,worker_events,s,process,native),
-                        sort_keys=True))
+                    evidence=normal_failure_evidence(states,samples,worker_events,s,process,native)
+                    if mode=='worker_pause':evidence.update(failure='WORKER_PAUSE_RECEIPT_READBACK_MISMATCH',injected_pauses=pauses)
+                    raise AssertionError(json.dumps(evidence,sort_keys=True))
                 assert overlap,'NO_CONCURRENT_COMPLETION'
             if mode in {'partial','before_replace'}:assert states.get('PERSISTED_VERIFIED',0)==0
             if mode=='after_replace':assert states.get('PERSISTED_VERIFIED',0)==1
@@ -283,8 +337,11 @@ def run(mode='normal',n=24,native=False):
                 receipt_to_verified_readback_upper_bound=stats(latencies),restart_new_generation_no_replay=True,
                 verified_readback=stats(readbacks),ledger_checkpoint=stats(checkpoints),
                 receipt_tail='NOT_CLOSED',five_ms='NOT_MET',production='P0_BLOCKED',eligible_observed_n=0,
+                injected_pauses=pauses,gate_hold_max_ms=max([float(e['gate_hold_ms']) for e in samples if isinstance(e.get('gate_hold_ms'),(int,float))],default=None),
                 instrumentation='receipt ACK and worker audit fsync add unmeasured pacing; no throughput or WCET guarantee')
         finally:
+            pause_done.set()
+            if injector.is_alive():injector.join(2)
             if process is not None:
                 if process.poll() is None:process.kill();process.wait(timeout=5)
                 if reader:reader.join(3)
@@ -297,11 +354,11 @@ def run(mode='normal',n=24,native=False):
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--output',default='concurrent372.json');a=p.parse_args()
-    modes=('normal','delay','queue_full','gate_busy','permission','partial','before_replace','after_replace','worker_kill','kill','stop','duplicate','receipt_loss')
+    modes=('normal','worker_pause','delay','queue_full','gate_busy','permission','partial','before_replace','after_replace','worker_kill','kill','stop','duplicate','receipt_loss')
     if os.name=='nt':modes=(*modes,'producer_kill','cold')
     results=[];failed=False
     for m in modes:
-        try:r=run(m,n=100 if m in {'normal','delay'} else 16,native=os.name=='nt')
+        try:r=run(m,n=100 if m in {'normal','worker_pause','delay'} else 16,native=os.name=='nt')
         except Exception as e:
             failed=True;r=dict(mode=m,status='FAIL',error=type(e).__name__,detail=str(e),production='P0_BLOCKED')
         results.append(r)
