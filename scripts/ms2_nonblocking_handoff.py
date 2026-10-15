@@ -51,10 +51,6 @@ RETRY_POLICY = "NO_RETRY"
 SUBMIT_DEADLINE_NS = 5_000_000
 STOP_TIMEOUT_S = 0.25
 STALL_AFTER_NS = 150_000_000
-# Issue #382: a busy gate counts toward STALL_AFTER_NS only while this worker
-# keeps observing it. A longer gap in the worker's own sampling (scheduler,
-# suspension) may hide a release, so the busy interval restarts after it.
-GATE_SAMPLE_MAX_GAP_NS = 25_000_000
 HEARTBEAT_GRACE_NS = 1_000_000_000
 EXISTING_BOARD_COM_READS = 40
 EXTRA_COM_READS = 0
@@ -85,6 +81,17 @@ _OFF_SUBMIT_COUNT = 160
 _OFF_LAST_ELAPSED_NS = 168
 _OFF_REASON = 256
 _REASON_SIZE = 32
+
+# Issue #382: every producer gate hold that ends changes at least one of
+# these existing counters before release (ACCEPTED: write index, queued and
+# submit count; queue full: dropped; Kill Switch inside the gate: kill drops;
+# IPC error: flags). A busy gate whose progress is unchanged is treated as the
+# same hold however long the worker itself was off-CPU, so a stuck gate keeps
+# counting toward STALL_AFTER_NS. Known limit: a sample taken after a hold's
+# last counter write but before its release cannot be told apart from the next
+# hold until that one commits; that case fails closed (never silently passes).
+_GATE_PROGRESS = (_OFF_WRITE, _OFF_DROPPED, _OFF_KILL_DROPS, _OFF_FLAGS,
+                  _OFF_QUEUED, _OFF_SUBMIT_COUNT)
 
 _FLAG_KILL = 1
 _FLAG_STOP = 2
@@ -280,16 +287,19 @@ def _worker_loop(buf, repo_root: str, relative: str, generation: int | None = No
     _store(buf, _OFF_WORKER_PID, os.getpid())
     _store(buf, _OFF_HEARTBEAT, time.monotonic_ns())
     gate_busy_since = None
-    gate_busy_seen = None
+    gate_busy_progress = None
     next_read = 0
     write_highwater = 0
     from multiprocessing import parent_process
     parent = parent_process()
     def gate_stalled(now):
-        nonlocal gate_busy_since, gate_busy_seen
-        if gate_busy_since is None or now - gate_busy_seen > GATE_SAMPLE_MAX_GAP_NS:
+        # A release between samples cannot be seen directly; protocol progress
+        # can. Unchanged progress across any sampling gap stays one hold.
+        nonlocal gate_busy_since, gate_busy_progress
+        progress = tuple(_load(buf, offset) for offset in _GATE_PROGRESS)
+        if gate_busy_since is None or progress != gate_busy_progress:
             gate_busy_since = now
-        gate_busy_seen = now
+            gate_busy_progress = progress
         return now - gate_busy_since > STALL_AFTER_NS
     def owner_dead():
         if parent is None:  # Direct/unit invocation has no spawned owner.

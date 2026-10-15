@@ -5,8 +5,10 @@ import unittest
 from unittest.mock import patch
 from scripts import ms2_nonblocking_handoff as h
 from scripts import ms2_ipc_integrity as ipc
-from tests.ms2_concurrent_pipeline import run, normal_failure_evidence
+import tempfile
+from tests.ms2_concurrent_pipeline import run, normal_failure_evidence, synthetic
 from scripts.ms2_ps_python_bridge import stamp_header
+from scripts.ms2_bridge_record import pack_capture
 
 
 class _GateScript:
@@ -29,7 +31,19 @@ class _GateScript:
     def take(self):
         self.assert_true(ipc.acquire(self.buf))
         self._held_at = self.now
-    def give(self):
+    def commit(self):
+        """Producer ACCEPTED path inside the hold: seal, publish, count."""
+        write = h._load(self.buf, h._OFF_WRITE)
+        generation = h._load(self.buf, h._OFF_GENERATION)
+        record = pack_capture(synthetic(write + 1, generation))['record']
+        ipc.seal(self.buf, record, generation, write)
+        h._store(self.buf, h._OFF_WRITE, write + 1)
+        h._add(self.buf, h._OFF_QUEUED)
+        h._add(self.buf, h._OFF_SUBMIT_COUNT)
+    def give(self, commit=True):
+        # A real producer hold never ends without moving a progress counter.
+        if commit:
+            self.commit()
         ipc.release(self.buf)
         self.holds.append(self.now - self._held_at)
         self._held_at = None
@@ -44,7 +58,7 @@ class _GateScript:
             action(self)
         if self.sleeps >= self.stop_after:
             if self._held_at is not None:
-                self.give()
+                self.give(commit=False)
             h._store(self.buf, h._OFF_FLAGS, h._load(self.buf, h._OFF_FLAGS) | h._FLAG_STOP)
 
 
@@ -53,14 +67,14 @@ def _drive_worker(events, *, stop_after=200, queued=False, held=False):
     generation = 7_000_000 + os.getpid() % 100_000
     buf = bytearray(h.SHM_SIZE)
     stamp_header(buf, generation)
-    if queued:  # A committed slot the worker never reaches before STOP.
-        h._store(buf, h._OFF_WRITE, 1)
     script = _GateScript(buf, events, stop_after)
+    if queued:  # One committed slot already waiting.
+        script.commit()
     if held:  # Producer already inside the gate when the worker starts.
         script.take()
     try:
-        with patch.object(h, 'time', script):
-            h._worker_loop(buf, os.getcwd(), 'unused.jsonl', generation)
+        with tempfile.TemporaryDirectory() as root, patch.object(h, 'time', script):
+            h._worker_loop(buf, root, 'data/private/ms2_sidecar/gate382.jsonl', generation)
     finally:
         ipc.close_generation(generation)
     return buf, script
@@ -125,11 +139,25 @@ class ConcurrentTests(unittest.TestCase):
             original(s, seconds)
         with patch.object(_GateScript, 'sleep', sleep):
             buf, script = _drive_worker(events, stop_after=200)  # ~7s virtual
-        self.assertGreater(len(set(heartbeats)), 10)  # worker kept running
+        self.assertGreaterEqual(len(set(heartbeats)), 4)  # worker kept running in the hold
         self.assertEqual(h._read_reason(buf), 'IPC_GATE_ABANDONED')
         self.assertTrue(h._load(buf, h._OFF_FLAGS) & h._FLAG_KILL)
         # Inside the hold, bounded by threshold plus one 40ms sampling gap.
         self.assertLess(script.now - script._held_at, h.STALL_AFTER_NS + 45_000_000)
+
+    def test_ambiguous_tail_sample_fails_closed_known_limit(self):
+        # Proven limit of the existing IPC: the worker samples hold A after its
+        # last counter write but before release, is off-CPU 200ms, and resumes
+        # inside hold B before B commits. Gate word and every counter are
+        # identical to one 200ms hold, so no observer of this IPC can tell the
+        # two apart. The watchdog must take the safe side: fail closed.
+        def a_committed(s): s.take(); s.commit()     # A's counters already moved
+        def descheduled(s):
+            s.now += 1_000_000; s.give(commit=False)  # A releases (tail only)
+            s.now += 199_000_000; s.take()           # B in progress, uncommitted
+        buf, script = _drive_worker({2: a_committed, 3: descheduled}, stop_after=40)
+        self.assertEqual(h._read_reason(buf), 'IPC_GATE_ABANDONED')
+        self.assertTrue(h._load(buf, h._OFF_FLAGS) & h._FLAG_KILL)
 
     def test_released_gate_between_normal_samples_is_not_abandonment(self):
         events = {}
