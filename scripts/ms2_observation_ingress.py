@@ -661,7 +661,8 @@ def _forward(signal, observations, *, as_of, evidence_origin, cost) -> dict:
 
 def audit_private_observation(repo_root, relative_path: str | None, *, signal=None, as_of=None,
                               evidence_origin: str = "SYNTHETIC", cost=None,
-                              diag_relative_path: str | None = None) -> dict:
+                              diag_relative_path: str | None = None,
+                              expected_sha256: str | None = None) -> dict:
     """Read one opted-in private file, or read nothing when the path is unset.
 
     The same bytes and the same caller arguments produce the same report.
@@ -704,6 +705,19 @@ def audit_private_observation(repo_root, relative_path: str | None, *, signal=No
         return _report(status="BLOCKED", state="BLOCKED",
                        reasons=[str(exc)], producer_id="none")
     digest = hashlib.sha256(raw).hexdigest()
+    # Only a caller-supplied, independently obtained publication digest can
+    # cross-check this read. Do not infer provenance or available_at from it.
+    if expected_sha256 is not None:
+        if (not isinstance(expected_sha256, str)
+                or len(expected_sha256) != 64
+                or any(c not in "0123456789abcdef" for c in expected_sha256)):
+            return _report(status="BLOCKED", state="BLOCKED",
+                           reasons=["EXPECTED_SHA256_INVALID"],
+                           producer_id="none", bytes_read=len(raw), input_sha256=digest)
+        if digest != expected_sha256:
+            return _report(status="BLOCKED", state="BLOCKED",
+                           reasons=["PUBLISHED_SHA256_MISMATCH"],
+                           producer_id="none", bytes_read=len(raw), input_sha256=digest)
     stripped = raw.lstrip(b"\xef\xbb\xbf").lstrip()
     try:
         if stripped.startswith(b"{") or path.suffix.lower() == ".jsonl":
