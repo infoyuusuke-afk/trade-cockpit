@@ -355,7 +355,7 @@ def independent_consumer_readback(repo_root, relative_path: str | None) -> dict:
     }
 
 
-def reconcile_writer_consumer_receipts(writer_receipt, consumer_receipt) -> dict:
+def reconcile_writer_consumer_receipts(writer_receipt, consumer_receipt, *, prior_verified_sha256=None) -> dict:
     """Compare existing offline publication and independent readback evidence.
 
     This checks byte identity and local-clock order, not producer identity,
@@ -384,6 +384,15 @@ def reconcile_writer_consumer_receipts(writer_receipt, consumer_receipt) -> dict
             or type(bytes_written) is not int or type(bytes_read) is not int
             or bytes_written <= 0 or bytes_written != bytes_read or published != consumed):
         return {**result, "reason": "PUBLICATION_READBACK_MISMATCH"}
+    # Only an independently retained checkpoint can detect an identical-byte
+    # replay. This does NOT establish a trusted monotonic generation itself.
+    if prior_verified_sha256 is not None:
+        if (not isinstance(prior_verified_sha256, str)
+                or len(prior_verified_sha256) != 64
+                or any(c not in "0123456789abcdef" for c in prior_verified_sha256)):
+            return {**result, "reason": "PRIOR_CHECKPOINT_INVALID"}
+        if prior_verified_sha256 == published:
+            return {**result, "reason": "PUBLICATION_NOT_ADVANCED"}
     if (writer_receipt.get("writer_readback_clock_basis") != "WRITER_LOCAL_UTC_AFTER_READBACK"
             or consumer_receipt.get("consumer_clock_basis") != "LOCAL_UTC_POST_READBACK"):
         return {**result, "reason": "CLOCK_EVIDENCE_ABSENT"}
