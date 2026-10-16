@@ -229,3 +229,46 @@ OWNER P0-25 audit found exactly four listeners, three owned by recorded PIDs and
 Updated Stop-OwnedJobBridge requires an opened parent/child Process handle, the parent's expected Collector or Watcher script command line, matched PowerShell executable names, child ParentProcessId matching the original parent, identical Windows sessions, and consistent CIM/handle creation timestamps. It terminates only the checked child Process object and requires a successful WaitForExit. An unverifiable bridge causes the entire stop to fail closed while retaining state. The parent/child hardening does **not** grant stop permission on the OWNER PC: legacy BRAIN PID remains missing and preflight refuses before reaching that code.
 
 An independent final check also refuses to delete Controller state unless all recorded workers are confirmed stopped and all V10 ports are no longer listening. Thus the status of process exit is checked, not inferred from a Stop-Process command returning. Synthetic tests do not prove PID ownership of the seven specific OWNER processes; a separately approved legacy graceful-stop path is still necessary.
+
+
+## P0-26 Independent legacy live-session shutdown admission (read-only)
+
+The OWNER's real machine is still in the OLD session: 7 recorded PIDs alive,
+7 command-line script matches, four V10 listening ports (three directly
+tracked and one potential child), legacy JSON missing brain_observer_pid, no
+strictly matching independent observer, no uninspectable script hosts. These
+counts were already gathered with one local audit and must not be requested
+again merely to make development progress.
+
+New downloads/PREFLIGHT_V10_LEGACY_SHUTDOWN_V1.ps1 implements a distinct
+**evidence-only preflight**, not a STOP command. It uses the immutable
+historical state as its declared candidate set, refuses any state schema
+containing a brain_observer_pid (normal STOP must own that case), checks
+required fields, valid start time and directory information, OS process
+creation-time agreement between an open Windows process handle and CIM,
+expected script path and executable type, same current session, and no
+duplicate tracked PIDs. A running Excel at the recorded excel_pid is an
+absolute veto; no Excel COM or process closing is performed. It rejects
+potential orphan BRAIN observer script hosts, uninspectable script hosts,
+unattributed listeners, and unexplained or impossible parent/child
+relationships on 28580–28584. All output consists of status/counts only
+without user paths, PIDs or command-line values, and always includes
+STOP_ALLOWED=false / CUTOVER_ELIGIBLE=false / REAL_SUBMIT_ALLOWED=false.
+
+The Windows Actions tests spawn disposable, named PowerShell and Python
+hosts to exercise the real read-only script: ordinary old session inspection
+must leave Controller and JSON unchanged, while an orphan observer, a live
+Excel PID, a reused or foreign Controller PID, a newly recorded BRAIN PID,
+or incomplete legacy schema must fail closed. The tests do not stop Excel,
+Controller, BRAIN, or synthetic workers. No real-PC preflight run is implied
+by GitHub CI success.
+
+**Important: this change does NOT create a production legacy stop path.**
+P0-26B remains required: independently pin the verified Controller/worker
+process handles, admit only a fully identified parent/child bridge, preserve
+the old state and its backup, stop Controller first without child restart,
+then drain verified workers, distinguish and protect work Excel, and require
+all PIDs/ports at zero before declaring success. Failure must preserve
+recovery evidence. The production command shall remain inaccessible until
+the Windows isolated destructive acceptance passes; no OWNER operation is
+requested yet.
