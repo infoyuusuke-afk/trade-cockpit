@@ -111,6 +111,22 @@ if ($SelfTest) {
  if (@(Get-BrainPreflightBlockers $st $he $br $sha $now 0) -cnotcontains "GATEWAY_SHA_UNVERIFIED") {
   throw "WRONG_GATEWAY_BUILD_ACCEPTED"
  }
+ $he.ui_sha=$sha
+ $br.engine_pid=1235
+ if (@(Get-BrainPreflightBlockers $st $he $br $sha $now 0) -cnotcontains "BRAIN_OWNER_OR_STATE_UNVERIFIED") {
+  throw "RECYCLED_BRAIN_PID_ACCEPTED"
+ }
+ $br.engine_pid=1234
+ $br.updated_at="2026-01-01T00:00:00+00:00"
+ if (@(Get-BrainPreflightBlockers $st $he $br $sha $now 0) -cnotcontains "BRAIN_STALE_OR_FUTURE") {
+  throw "STALE_BRAIN_ACCEPTED"
+ }
+ $br.updated_at=$stamp
+ $br.promotion_eligible=$true
+ if (@(Get-BrainPreflightBlockers $st $he $br $sha $now 0) -cnotcontains "BRAIN_UNSAFE_PROMOTION") {
+  throw "FALSE_PROMOTION_ACCEPTED"
+ }
+ $br.promotion_eligible=$false
  if (Test-Timestamp "2026-10-17 09:00:00" $now 30) { throw "NAIVE_TIME_ACCEPTED" }
  Write-Output "PASS: V10_BRAIN_READONLY_PREFLIGHT_SYNTHETIC"
  exit 0
