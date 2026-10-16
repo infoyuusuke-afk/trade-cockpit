@@ -3,6 +3,7 @@
 Never deploys, stops a worker, modifies OWNER files or handles account CSV.
 All mutations are inside GitHub-hosted Windows RUNNER_TEMP.
 """
+import base64
 import hashlib
 import json
 import os
@@ -69,6 +70,25 @@ class SafeCutoverBackup(unittest.TestCase):
                 "-ExpectedBranch", branch, "-ExpectedSha", sha or self.sha,
                 "-BackupRoot", str(backup or self.backups)]
         return subprocess.run(args, capture_output=True, text=True, errors="replace", timeout=35)
+
+    def invoke_with_multiple_desktops(self, roots, mode="Plan"):
+        # -File cannot bind PowerShell array arguments from a native process;
+        # use WindowsPowerShell's UTF-16LE EncodedCommand in synthetic CI.
+        def q(value):
+            return "'" + str(value).replace("'", "''") + "'"
+        list_arg = ",".join(q(p) for p in roots)
+        command = (
+            f"& {q(SCRIPT)} -Mode {mode} -RepoRoot {q(self.repo)} "
+            f"-StateRoot {q(self.state)} -DesktopRoots @({list_arg}) "
+            f"-ExpectedBranch 'old' -ExpectedSha {q(self.sha)} "
+            f"-BackupRoot {q(self.backups)}"
+        )
+        token = base64.b64encode(command.encode("utf-16-le")).decode("ascii")
+        return subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive",
+             "-EncodedCommand", token], capture_output=True, text=True,
+            errors="replace", timeout=35
+        )
 
     def assert_no_live_changes(self):
         for key, original in self.orig.items():
@@ -209,6 +229,67 @@ class SafeCutoverBackup(unittest.TestCase):
         self.assertIn("BLOCK_DISCOVERY_ACTION=", source)
         self.assertIn('if ($stage -eq "DISCOVER_CANDIDATES")', source)
         self.assertIn('Write-Output ("BLOCK_REASON="+$reason)', source)
+        self.assertIn('BACKUP_RESULT=VERIFIED_PARTIAL_LOCAL_ONLY', source)
+        self.assertIn('CUTOVER_ELIGIBLE=false', source)
+
+    def test_missing_optional_desktop_is_reported_not_silently_ignored(self):
+        missing = self.root / "missing-public-desktop"
+        plan = self.invoke_with_multiple_desktops([self.desktop, missing])
+        self.assertEqual(plan.returncode, 0, plan.stdout + plan.stderr)
+        self.assertIn("CUTOVER_PLAN=READ_ONLY_PARTIAL", plan.stdout)
+        self.assertIn("UNVERIFIED_DESKTOP_COUNT=1", plan.stdout)
+        self.assertIn("UNVERIFIED_DESKTOP_INDEX=2", plan.stdout)
+        self.assertIn("UNVERIFIED_DESKTOP_ACTION=DESKTOP_EXISTS", plan.stdout)
+        self.assertIn("CUTOVER_ELIGIBLE=false", plan.stdout)
+        self.assertNotIn(str(missing), plan.stdout)
+        self.assertFalse(self.backups.exists())
+
+        result = self.invoke_with_multiple_desktops(
+            [self.desktop, missing], mode="BackupOnly")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("BACKUP_RESULT=VERIFIED_PARTIAL_LOCAL_ONLY", result.stdout)
+        snapshot = next(self.backups.iterdir())
+        manifest = json.loads(
+            (snapshot / "manifest.json").read_text(encoding="utf-8"))
+        self.assertFalse(manifest["desktop_inventory_complete"])
+        self.assertFalse(manifest["cutover_eligible"])
+        self.assertEqual(manifest["unverified_desktop_indexes"], [2])
+        self.assertEqual(len(manifest["files"]), len(self.orig))
+        self.assert_no_live_changes()
+
+    def test_third_desktop_junction_is_quarantined_without_following(self):
+        second = self.root / "second-desktop"
+        second.mkdir()
+        target = self.root / "junction-target"
+        target.mkdir()
+        (target / "AI_SECRET.cmd").write_text("do not read", encoding="utf-8")
+        junction = self.root / "third-desktop-junction"
+        create = subprocess.run(
+            ["cmd.exe", "/c", "mklink", "/J", str(junction), str(target)],
+            capture_output=True, text=True, errors="replace", timeout=15
+        )
+        if create.returncode != 0:
+            self.skipTest("Windows fixture cannot create an NTFS junction")
+        plan = self.invoke_with_multiple_desktops(
+            [self.desktop, second, junction])
+        self.assertEqual(plan.returncode, 0, plan.stdout + plan.stderr)
+        self.assertIn("CUTOVER_PLAN=READ_ONLY_PARTIAL", plan.stdout)
+        self.assertIn("UNVERIFIED_DESKTOP_INDEX=3", plan.stdout)
+        self.assertIn("UNVERIFIED_DESKTOP_ACTION=DESKTOP_ATTRIBUTES", plan.stdout)
+        self.assertIn("CUTOVER_ELIGIBLE=false", plan.stdout)
+        self.assertNotIn(str(junction), plan.stdout)
+        backup = self.invoke_with_multiple_desktops(
+            [self.desktop, second, junction], mode="BackupOnly")
+        self.assertEqual(backup.returncode, 0, backup.stdout + backup.stderr)
+        self.assertIn("BACKUP_RESULT=VERIFIED_PARTIAL_LOCAL_ONLY", backup.stdout)
+        snapshot = next(self.backups.iterdir())
+        self.assertFalse(list(snapshot.rglob("AI_SECRET.cmd")))
+        manifest = json.loads(
+            (snapshot / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["unverified_desktop_indexes"], [3])
+        self.assertFalse(manifest["desktop_inventory_complete"])
+        self.assertFalse(manifest["cutover_eligible"])
+        self.assert_no_live_changes()
 
     def test_selftest_always_plan_only(self):
         result = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive",
