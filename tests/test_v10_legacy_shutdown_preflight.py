@@ -1,6 +1,7 @@
 """P0-26 admission gate: disposable Windows processes, never a live shutdown."""
 import json
 import os
+import socket
 import subprocess
 import sys
 import tempfile
@@ -107,6 +108,23 @@ class LegacyShutdownEligibility(unittest.TestCase):
         p=self.invoke()
         self.assertEqual(p.returncode,2,p.stdout+p.stderr)
         self.assertIn("PREFLIGHT_BLOCK_REASON=NOT_A_LEGACY_STATE",p.stdout)
+
+    def test_unattributed_v10_listener_is_never_authorized(self):
+        sock=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+        try:
+            try:
+                sock.bind(("127.0.0.1",28584))
+            except OSError:
+                self.skipTest("V10 audit port already occupied in CI")
+            sock.listen(1)
+            p=self.invoke()
+            self.assertEqual(p.returncode,2,p.stdout+p.stderr)
+            self.assertIn("PREFLIGHT_BLOCK_REASON=PORT_CHILD_IDENTITY_NOT_PROVEN",p.stdout)
+            self.assertIsNone(self.controller.poll())
+            self.assertTrue(self.state_path.is_file())
+        finally:
+            sock.close()
 
     def test_missing_state_fields_fail_closed_without_mutation(self):
         del self.state["collector_pid"]
