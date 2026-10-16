@@ -37,7 +37,7 @@ class Integration(unittest.TestCase):
         self.assertIn("BRAIN_OBSERVING_PUBLICATION_ONLY",g)
         self.assertIn("brain_publication_state      = 'UNKNOWN_NOT_PUBLISHED'",g)
         self.assertIn("real_submit_allowed        = $false",g)
-        self.assertNotIn("source_authenticated = $true",g)
+        self.assertNotIn("$runtime.source_authenticated = $true",g)
     def test_engine_does_not_call_broker_or_mutate_market_input(self):
         s=self.engine
         self.assertIn('"real_submit_allowed": False',s)
