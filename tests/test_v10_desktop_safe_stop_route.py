@@ -110,11 +110,9 @@ class PinnedDesktopRouteTests(unittest.TestCase):
 
     def test_repository_wrapper_is_correct_route(self):
         fixture = self.repo / "downloads" / "STOP_AI_COCKPIT_V10.cmd"
-        fixture.write_text(
-            '@echo off\nsetlocal\nset "SCRIPT=%~dp0STOP_AI_COCKPIT_V10.ps1"\n'
-            'powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%"\n'
-            'set "RC=%ERRORLEVEL%"\nif not "%RC%"=="0" pause\nexit /b %RC%\n',
-            encoding="utf-8",
+        # Validate the exact tracked wrapper bytes, not a rewritten lookalike.
+        fixture.write_bytes(
+            (ROOT / "downloads" / "STOP_AI_COCKPIT_V10.cmd").read_bytes()
         )
         result = self.audit(cmd_path=fixture)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
