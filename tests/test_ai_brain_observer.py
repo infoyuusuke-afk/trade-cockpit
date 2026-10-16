@@ -42,6 +42,8 @@ class BrainObserverTests(unittest.TestCase):
         self.assertIsNone(out["last_market_data_at"])
         status=status_snapshot(out,now=NOW,pid=1234)
         self.assertFalse(status["source_authenticated"])
+        self.assertFalse(status["signal_provenance_verified"])
+        self.assertFalse(status["exchange_tick_date_verified"])
         self.assertFalse(status["cross_source_join_allowed"])
         self.assertFalse(status["promotion_eligible"])
         self.assertEqual(status["eligible_observed_n"],0)
