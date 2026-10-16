@@ -29,6 +29,8 @@ function Get-Hash([string]$Path) {
 function Get-Candidates([string]$Repo,[string]$State,[string[]]$Desktops) {
  $script:DiscoveryLocationIndex = 0
  $script:DiscoveryAction = "BUILD_REQUIRED_PATHS"
+ $script:UnverifiedDesktopIndexes = New-Object 'System.Collections.Generic.List[int]'
+ $script:UnverifiedDesktopActions = New-Object 'System.Collections.Generic.List[string]'
  $items = New-Object 'System.Collections.Generic.List[object]'
  foreach ($x in @(
    @{ Path=(Join-Path $State "START_AI_COCKPIT.ps1"); Key="starter/START_AI_COCKPIT.ps1"; Essential=$true },
@@ -47,16 +49,25 @@ function Get-Candidates([string]$Repo,[string]$State,[string[]]$Desktops) {
   $script:DiscoveryLocationIndex = $i
   $script:DiscoveryAction = "DESKTOP_EXISTS"
   if (-not (Test-Path -LiteralPath $d -PathType Container)) { continue }
-  $script:DiscoveryAction = "DESKTOP_ATTRIBUTES"
-  [void](Assert-Regular $d)
-  # Enumerate ONLY AI-prefixed launch/stop entries. A broad Get-ChildItem
-  # on OneDrive/public Desktop may try to hydrate unrelated cloud placeholders.
-  # Do not silently skip a failing selected Desktop: fail closed with location
-  # index and operation only; neither path nor exception text is printed.
-  $script:DiscoveryAction = "ENUM_AI_CMD"
-  $cmdFiles = @(Get-ChildItem -LiteralPath $d -File -Filter "AI*.cmd" -ErrorAction Stop)
-  $script:DiscoveryAction = "ENUM_AI_LNK"
-  $lnkFiles = @(Get-ChildItem -LiteralPath $d -File -Filter "AI*.lnk" -ErrorAction Stop)
+  # An optional Desktop can be an inaccessible common/OneDrive directory.
+  # Quarantine a whole directory without following links or pretending it
+  # contained no launchers. Preserve a partial backup for accessible roots.
+  # Any failure elsewhere still fails closed; no active launchers are changed.
+  try {
+   $script:DiscoveryAction = "DESKTOP_ATTRIBUTES"
+   [void](Assert-Regular $d)
+   $script:DiscoveryAction = "ENUM_AI_CMD"
+   $cmdFiles = @(Get-ChildItem -LiteralPath $d -File -Filter "AI*.cmd" -ErrorAction Stop)
+   $script:DiscoveryAction = "ENUM_AI_LNK"
+   $lnkFiles = @(Get-ChildItem -LiteralPath $d -File -Filter "AI*.lnk" -ErrorAction Stop)
+  } catch {
+   if ($script:DiscoveryAction -notin @("DESKTOP_ATTRIBUTES","ENUM_AI_CMD","ENUM_AI_LNK")) {
+    throw
+   }
+   [void]$script:UnverifiedDesktopIndexes.Add([int]$i)
+   [void]$script:UnverifiedDesktopActions.Add([string]$script:DiscoveryAction)
+   continue
+  }
   $script:DiscoveryAction = "ADD_CANDIDATES"
   $found = @($cmdFiles) + @($lnkFiles)
   if ($found.Count -gt 40) { throw "TOO_MANY_DESKTOP_ENTRIES" }
@@ -140,10 +151,25 @@ try {
  Write-Output ("DESKTOP_CMD_COUNT=" + $desktopCmds)
  Write-Output ("DESKTOP_LNK_COUNT=" + $desktopLinks)
  Write-Output ("ESSENTIAL_MISSING=" + $essentialMissing)
+ $unverifiedCount=@($script:UnverifiedDesktopIndexes).Count
+ Write-Output ("UNVERIFIED_DESKTOP_COUNT=" + $unverifiedCount)
+ if ($unverifiedCount -gt 0) {
+  foreach ($index in $script:UnverifiedDesktopIndexes) {
+   Write-Output ("UNVERIFIED_DESKTOP_INDEX=" + $index)
+  }
+  foreach ($operation in $script:UnverifiedDesktopActions) {
+   Write-Output ("UNVERIFIED_DESKTOP_ACTION=" + $operation)
+  }
+ }
+ Write-Output "CUTOVER_ELIGIBLE=false"
  Write-Output "REAL_SUBMIT_ALLOWED=false"
  $stage = "PLAN_COMPLETE"
  if ($Mode -eq "Plan") {
-  Write-Output "CUTOVER_PLAN=READ_ONLY"
+  if ($unverifiedCount -gt 0) {
+   Write-Output "CUTOVER_PLAN=READ_ONLY_PARTIAL"
+  } else {
+   Write-Output "CUTOVER_PLAN=READ_ONLY"
+  }
   exit 0
  }
  $stage = "BACKUP_PRECONDITIONS"
@@ -195,6 +221,10 @@ try {
    no_changes_to_active_files=$true
    real_submit_allowed=$false
    source_pin_match=[bool]$pinMatch
+   desktop_inventory_complete=($unverifiedCount -eq 0)
+   unverified_desktop_indexes=@($script:UnverifiedDesktopIndexes.ToArray())
+   unverified_desktop_actions=@($script:UnverifiedDesktopActions.ToArray())
+   cutover_eligible=$false
    files=@($receipts.ToArray())
  }
  $receiptFile=Join-Path $snapshot "manifest.json"
@@ -202,7 +232,11 @@ try {
                          (New-Object Text.UTF8Encoding($false)))
  if (-not (Test-Path -LiteralPath $receiptFile)) { throw "MANIFEST_MISSING" }
  $modeResult="BACKUP_VERIFIED"
- Write-Output "BACKUP_RESULT=VERIFIED_LOCAL_ONLY"
+ if ($unverifiedCount -eq 0) {
+  Write-Output "BACKUP_RESULT=VERIFIED_LOCAL_ONLY"
+ } else {
+  Write-Output "BACKUP_RESULT=VERIFIED_PARTIAL_LOCAL_ONLY"
+ }
  Write-Output ("BACKUP_FILES=" + $receipts.Count)
  Write-Output ("BACKUP_SNAPSHOT_ID=" + $id)
  Write-Output "ACTIVE_ENTRY_FILES_MODIFIED=false"
