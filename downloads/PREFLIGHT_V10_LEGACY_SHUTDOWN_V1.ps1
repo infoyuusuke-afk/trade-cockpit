@@ -3,8 +3,15 @@ P0-26 legacy STOP admission gate.
 Pure read-only. No kill, Excel COM, state moves, Git, broker, network,
 working directory change, script execution or sensitive data disclosure.
 Never itself authorizes a stop or release cutover.
+
+-AdmissionOut (used only by STOP_V10_LEGACY_SESSION_V1.ps1): additionally
+writes one new JSON admission record (PIDs, creation times, roles) to that
+path. In this mode a live Excel is recorded as left untouched instead of
+vetoed, and a BRAIN observer is admitted only when it is the recorded
+Controller's own child with the exact observer identity. Without the switch
+the gate behaves exactly as before.
 #>
-param([string]$Root="C:\AI_Cockpit_OneClick_Starter")
+param([string]$Root="C:\AI_Cockpit_OneClick_Starter",[string]$AdmissionOut="")
 $ErrorActionPreference="Stop"
 $stage="ROOT"
 function Refuse([string]$Reason){ throw $Reason }
@@ -54,6 +61,14 @@ function Verify-Process($proc,[string]$ExpectedLeaf,[string]$ExpectedFull,[datet
  }catch {return $false}
 }
 try{
+ $admit=-not [string]::IsNullOrWhiteSpace($AdmissionOut)
+ if($admit){
+  $admitPath=[IO.Path]::GetFullPath($AdmissionOut)
+  if((Test-Path -LiteralPath $admitPath) -or
+     -not (Test-Path -LiteralPath ([IO.Path]::GetDirectoryName($admitPath)) -PathType Container)){
+   Refuse "ADMISSION_OUT_INVALID"
+  }
+ }
  $stateRootPath=[IO.Path]::GetFullPath($Root)
  $rootObj=Get-Item -LiteralPath $stateRootPath -ErrorAction Stop
  if(-not $rootObj.PSIsContainer -or
@@ -63,6 +78,8 @@ try{
  $path=Join-Path $stateRootPath "V10_CONTROLLER_STATE.json"
  if(-not (Test-Path -LiteralPath $path -PathType Leaf)){Refuse "STATE_MISSING"}
  $body=Read-UniquePlainFile $path
+ $sha=[Security.Cryptography.SHA256]::Create()
+ try{$stateHash=([BitConverter]::ToString($sha.ComputeHash([IO.File]::ReadAllBytes($path)))).Replace("-","")}finally{$sha.Dispose()}
  $s=$body | ConvertFrom-Json -ErrorAction Stop
  if($null -eq $s -or $s -isnot [pscustomobject]){Refuse "STATE_JSON_INVALID"}
  $stage="STATE_SCHEMA"
@@ -111,8 +128,26 @@ try{
   ([string]$_.CommandLine).IndexOf("ai_brain_observer.py",
      [StringComparison]::OrdinalIgnoreCase) -ge 0
  })
- if($candidate.Count -gt 0){Refuse "UNTRACKED_BRAIN_CANDIDATE"}
+ $brainRecord=$null
+ if($candidate.Count -gt 0){
+  # Admission mode only: the single observer must be the recorded
+  # Controller's own child with the exact observer launch identity.
+  # Anything else is an unproven BRAIN and still blocks.
+  $ctlPid=0
+  if(-not $admit -or $candidate.Count -ne 1 -or
+     -not [int]::TryParse([string]$s.controller_pid,[ref]$ctlPid) -or $ctlPid -le 0 -or
+     [int]$candidate[0].ParentProcessId -ne $ctlPid -or
+     ([string]$candidate[0].CommandLine).IndexOf((Join-Path $runtime "live_ms2.json"),
+       [StringComparison]::OrdinalIgnoreCase) -lt 0 -or
+     -not (Verify-Process $candidate[0] "ai_brain_observer.py" (Join-Path $repo "scripts\ai_brain_observer.py") $since)){
+   Refuse "UNTRACKED_BRAIN_CANDIDATE"
+  }
+  $brainRecord=[ordered]@{role="brain_observer";pid=[int]$candidate[0].ProcessId;
+   created_utc_ticks=([datetime]$candidate[0].CreationDate).ToUniversalTime().Ticks;
+   exe=[string]$candidate[0].Name}
+ }
  $currentSession=(Get-Process -Id $PID -ErrorAction Stop).SessionId
+ $members=New-Object System.Collections.ArrayList
  $expectedCohort=New-Object 'System.Collections.Generic.HashSet[int]'
  $admitted=0
  $live=0
@@ -136,6 +171,9 @@ try{
    $match=Verify-Process $byPid[$tracked] "RUN_AI_COCKPIT_V10.ps1" "" $since
   }
   if(-not $match){Refuse "TRACKED_PROCESS_IDENTITY_NOT_PROVEN"}
+  [void]$members.Add([ordered]@{role=$key;pid=$tracked;
+   created_utc_ticks=([datetime]$byPid[$tracked].CreationDate).ToUniversalTime().Ticks;
+   exe=[string]$byPid[$tracked].Name})
   $admitted++
  }
  $excelPid=0
@@ -145,12 +183,21 @@ try{
  $excelLive=($excelPid -gt 0 -and $byPid.ContainsKey($excelPid))
  # Don't touch any Excel process, including the managed workbook: a
  # separate Excel COM/HWND admission gate is required before destructive stop.
- if($excelLive){Refuse "EXCEL_PROCESS_STILL_ALIVE"}
+ # Admission mode records it as left untouched; STOP never closes Excel.
+ if($excelLive -and -not $admit){Refuse "EXCEL_PROCESS_STILL_ALIVE"}
+ if($excelPid -gt 0 -and ($expectedCohort.Contains($excelPid) -or
+    ($null -ne $brainRecord -and [int]$brainRecord.pid -eq $excelPid))){
+  Refuse "EXCEL_PID_COLLIDES_WITH_WORKER"
+ }
+ if($null -ne $brainRecord -and $expectedCohort.Contains([int]$brainRecord.pid)){
+  Refuse "DUPLICATED_TRACKED_PID"
+ }
  $stage="PORTS"
  $listeners=@(Get-NetTCPConnection -State Listen -ErrorAction Stop |
   Where-Object { @(28580,28581,28582,28583,28584) -contains [int]$_.LocalPort })
  $ownedPorts=0
  $childPorts=0
+ $bridges=New-Object System.Collections.ArrayList
  foreach($port in $listeners){
   $n=[int]$port.OwningProcess
   if($expectedCohort.Contains($n)){
@@ -182,14 +229,34 @@ try{
      [Math]::Abs(($childProc.StartTime.ToUniversalTime()-$childBirth).TotalSeconds) -gt 2){
    Refuse "PORT_CHILD_IDENTITY_NOT_PROVEN"
   }
+  [void]$bridges.Add([ordered]@{role="bridge_child";port=[int]$port.LocalPort;pid=$n;
+   parent_pid=$parentId;created_utc_ticks=$childBirth.Ticks;exe=[string]$child.Name})
   $childPorts++
+ }
+ if($admit){
+  $stage="ADMISSION"
+  $record=[ordered]@{schema="V10_LEGACY_STOP_ADMISSION_V1";state_sha256=$stateHash;
+   members=@($members);bridges=@($bridges);brain=$brainRecord;
+   brain_status=$(if($null -eq $brainRecord){"ABSENT_VERIFIED"}else{"OWNED_CHILD_ADMITTED"});
+   excel_pid=$excelPid;excel_live=[bool]$excelLive;excel_action="NONE"}
+  $json=ConvertTo-Json -Depth 6 -Compress $record
+  $tmp=$admitPath+".tmp"
+  [IO.File]::WriteAllText($tmp,$json,(New-Object Text.UTF8Encoding($false)))
+  [IO.File]::Move($tmp,$admitPath)
  }
  Write-Output "LEGACY_STATE_SCHEMA=COMPATIBLE"
  Write-Output ("TRACKED_LIVE_EXACT="+$admitted)
  Write-Output ("LISTENER_DIRECT="+$ownedPorts)
  Write-Output ("LISTENER_CHILD_VERIFIED="+$childPorts)
  Write-Output "UNTRACKED_BRAIN_CANDIDATES=0"
- Write-Output "MANAGED_EXCEL_LIVE=false"
+ if($admit){
+  Write-Output ("BRAIN_STATUS="+$(if($null -eq $brainRecord){"ABSENT_VERIFIED"}else{"OWNED_CHILD_ADMITTED"}))
+  Write-Output ("MANAGED_EXCEL_LIVE="+([string][bool]$excelLive).ToLowerInvariant())
+  Write-Output "EXCEL_ACTION=NONE"
+  Write-Output "ADMISSION_RECORD=WRITTEN"
+ }else{
+  Write-Output "MANAGED_EXCEL_LIVE=false"
+ }
  Write-Output "PREFLIGHT_RESULT=EVIDENCE_ONLY_PASS"
  Write-Output "STOP_ALLOWED=false"
  Write-Output "CUTOVER_ELIGIBLE=false"
@@ -202,7 +269,8 @@ try{
   "UNTRACKED_BRAIN_CANDIDATE","TRACKED_PID_INVALID","CONTROLLER_PID_MISSING",
   "DUPLICATED_TRACKED_PID","TRACKED_PROCESS_IDENTITY_NOT_PROVEN",
   "EXCEL_PID_INVALID","EXCEL_PROCESS_STILL_ALIVE","PORT_PROCESS_NOT_FOUND",
-  "PORT_CHILD_IDENTITY_NOT_PROVEN","PORT_PARENT_NOT_FOUND")
+  "PORT_CHILD_IDENTITY_NOT_PROVEN","PORT_PARENT_NOT_FOUND",
+  "ADMISSION_OUT_INVALID","EXCEL_PID_COLLIDES_WITH_WORKER")
  $why=if($known -ccontains [string]$_.Exception.Message){
   [string]$_.Exception.Message
  }else{"UNVERIFIED"}
