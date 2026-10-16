@@ -53,6 +53,10 @@ try {
     if($health.runtime.brain_publication_state -ne 'UNKNOWN_NOT_PUBLISHED'){throw 'BRAIN_WAS_FABRICATED'}
     if($health.runtime.shadow_heartbeat_status -ne 'SHADOW_PROCESS_UNVERIFIED'){throw 'FAKE_SHADOW_PID_ACCEPTED'}
     if($null -ne $health.runtime.shadow_heartbeat_at){throw 'FAKE_SHADOW_HEARTBEAT_EXPOSED'}
+    if($health.execution.shadow_engine_state -ne 'PAUSED_FAIL_CLOSED'){throw 'LEGACY_UNVERIFIED_SHADOW_REPORTED_RUNNING'}
+    if($health.execution.shadow_engine_reason -ne 'SHADOW_IDENTITY_OR_HEARTBEAT_UNVERIFIED'){throw 'LEGACY_SHADOW_REASON_NOT_BLOCKED'}
+    if($null -ne $health.execution.shadow_engine_updated_at){throw 'UNVERIFIED_LEGACY_HEARTBEAT_EXPOSED'}
+    if($null -ne $health.execution.shadow_ops){throw 'UNVERIFIED_LEGACY_OPERATIONS_EXPOSED'}
     if($health.execution.real_submit_allowed -ne $false){throw 'REAL_ORDER_FLAG_UNSAFE'}
     if($health.runtime.fail_closed -ne $true){throw 'RUNTIME_FAIL_CLOSED_NOT_SET'}
     [IO.File]::Delete($runtimeWatcher)
