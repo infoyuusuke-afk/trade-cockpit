@@ -187,7 +187,7 @@ function Get-V10ShadowHeartbeatProof([string]$RuntimeDirectory, [int]$ExpectedPi
             return $result
         }
         $stamp = [string]$data.updated_at
-        if ($stamp -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$') {
+        if ($stamp -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,7})?(Z|[+-]\d{2}:\d{2})$') {
             $result.status = 'SHADOW_TIMESTAMP_INVALID'
             return $result
         }
@@ -670,7 +670,7 @@ if ($ShadowHeartbeatSelfTest) {
         }
         [IO.File]::WriteAllText($path, ($fixture | ConvertTo-Json -Depth 4))
         $ok = Get-V10ShadowHeartbeatProof $tmp 4242 $true
-        if ($ok.status -ne 'SHADOW_RUNNING_HEARTBEAT_ONLY' -or $null -eq $ok.heartbeat_at) { throw 'SHADOW_SYNTHETIC_HEARTBEAT_FAILED' }
+        if ($ok.status -ne 'SHADOW_RUNNING_HEARTBEAT_ONLY' -or $null -eq $ok.heartbeat_at) { throw ('SHADOW_SYNTHETIC_HEARTBEAT_FAILED: ' + $ok.status) }
         $mismatch = Get-V10ShadowHeartbeatProof $tmp 4243 $true
         if ($mismatch.status -ne 'SHADOW_PID_MISMATCH' -or $null -ne $mismatch.heartbeat_at) { throw 'SHADOW_PID_GUARD_FAILED' }
         if ((Get-V10ShadowHeartbeatProof $tmp 4242 $false).status -ne 'SHADOW_PROCESS_UNVERIFIED') { throw 'SHADOW_PROCESS_GUARD_FAILED' }
