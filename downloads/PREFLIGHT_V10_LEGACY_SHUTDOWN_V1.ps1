@@ -54,13 +54,13 @@ function Verify-Process($proc,[string]$ExpectedLeaf,[string]$ExpectedFull,[datet
  }catch {return $false}
 }
 try{
- $home=[IO.Path]::GetFullPath($Root)
- $rootObj=Get-Item -LiteralPath $home -ErrorAction Stop
+ $stateRootPath=[IO.Path]::GetFullPath($Root)
+ $rootObj=Get-Item -LiteralPath $stateRootPath -ErrorAction Stop
  if(-not $rootObj.PSIsContainer -or
     (($rootObj.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)){
   Refuse "UNTRUSTED_ROOT"
  }
- $path=Join-Path $home "V10_CONTROLLER_STATE.json"
+ $path=Join-Path $stateRootPath "V10_CONTROLLER_STATE.json"
  if(-not (Test-Path -LiteralPath $path -PathType Leaf)){Refuse "STATE_MISSING"}
  $body=Read-UniquePlainFile $path
  $s=$body | ConvertFrom-Json -ErrorAction Stop
