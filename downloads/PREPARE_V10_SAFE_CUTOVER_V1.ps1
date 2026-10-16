@@ -27,6 +27,8 @@ function Get-Hash([string]$Path) {
  return (Get-FileHash -LiteralPath $Path -Algorithm SHA256 -ErrorAction Stop).Hash.ToUpperInvariant()
 }
 function Get-Candidates([string]$Repo,[string]$State,[string[]]$Desktops) {
+ $script:DiscoveryLocationIndex = 0
+ $script:DiscoveryAction = "BUILD_REQUIRED_PATHS"
  $items = New-Object 'System.Collections.Generic.List[object]'
  foreach ($x in @(
    @{ Path=(Join-Path $State "START_AI_COCKPIT.ps1"); Key="starter/START_AI_COCKPIT.ps1"; Essential=$true },
@@ -42,11 +44,21 @@ function Get-Candidates([string]$Repo,[string]$State,[string[]]$Desktops) {
  $i = 0
  foreach ($d in $Desktops) {
   $i += 1
+  $script:DiscoveryLocationIndex = $i
+  $script:DiscoveryAction = "DESKTOP_EXISTS"
   if (-not (Test-Path -LiteralPath $d -PathType Container)) { continue }
+  $script:DiscoveryAction = "DESKTOP_ATTRIBUTES"
   [void](Assert-Regular $d)
-  # Only entry files; never back up personal workbooks, runtime or market data.
-  $found = @(Get-ChildItem -LiteralPath $d -File -ErrorAction Stop |
-     Where-Object { $_.Name -like "AI*.cmd" -or $_.Name -like "AI*.lnk" })
+  # Enumerate ONLY AI-prefixed launch/stop entries. A broad Get-ChildItem
+  # on OneDrive/public Desktop may try to hydrate unrelated cloud placeholders.
+  # Do not silently skip a failing selected Desktop: fail closed with location
+  # index and operation only; neither path nor exception text is printed.
+  $script:DiscoveryAction = "ENUM_AI_CMD"
+  $cmdFiles = @(Get-ChildItem -LiteralPath $d -File -Filter "AI*.cmd" -ErrorAction Stop)
+  $script:DiscoveryAction = "ENUM_AI_LNK"
+  $lnkFiles = @(Get-ChildItem -LiteralPath $d -File -Filter "AI*.lnk" -ErrorAction Stop)
+  $script:DiscoveryAction = "ADD_CANDIDATES"
+  $found = @($cmdFiles) + @($lnkFiles)
   if ($found.Count -gt 40) { throw "TOO_MANY_DESKTOP_ENTRIES" }
   foreach ($file in $found) {
    [void]$items.Add(@{
@@ -56,6 +68,7 @@ function Get-Candidates([string]$Repo,[string]$State,[string[]]$Desktops) {
    })
   }
  }
+ $script:DiscoveryAction = "COMPLETE"
  return $items.ToArray()
 }
 
@@ -224,6 +237,22 @@ try {
  }
  Write-Output ("BLOCK_STAGE="+$stage)
  Write-Output ("BLOCK_REASON="+$reason)
+ if ($stage -eq "DISCOVER_CANDIDATES") {
+  $n=0
+  if ($script:DiscoveryLocationIndex -is [int] -and
+      $script:DiscoveryLocationIndex -ge 0 -and
+      $script:DiscoveryLocationIndex -le 20) {
+   $n=$script:DiscoveryLocationIndex
+  }
+  $knownActions=@("BUILD_REQUIRED_PATHS","DESKTOP_EXISTS","DESKTOP_ATTRIBUTES",
+                  "ENUM_AI_CMD","ENUM_AI_LNK","ADD_CANDIDATES","COMPLETE")
+  $op="UNKNOWN"
+  if ($knownActions -ccontains [string]$script:DiscoveryAction) {
+   $op=[string]$script:DiscoveryAction
+  }
+  Write-Output ("BLOCK_DESKTOP_INDEX="+$n)
+  Write-Output ("BLOCK_DISCOVERY_ACTION="+$op)
+ }
  Write-Output "CUTOVER_PLAN=BLOCKED"
  Write-Output "CUTOVER_APPLIED=false"
  Write-Output "REAL_SUBMIT_ALLOWED=false"
