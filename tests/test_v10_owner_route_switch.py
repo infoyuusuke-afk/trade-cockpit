@@ -144,7 +144,7 @@ class SafeRouteSwitch(unittest.TestCase):
         (self.state/"V10_CONTROLLER_STATE.json").write_text("synthetic")
         p=self.run_switch()
         self.assertNotEqual(p.returncode,0,p.stdout+p.stderr)
-        self.assertIn("V10_ROUTE_BLOCK_REASON=STATE_JSON_INVALID",p.stdout)
+        self.assertIn("V10_ROUTE_BLOCK_REASON=STATE_FILE_INVALID",p.stdout)
         self.assertEqual(self.link.read_bytes(),self.before)
         self.assertFalse(list(self.state.glob("V10_release_*")))
         self.assert_not_changed()
