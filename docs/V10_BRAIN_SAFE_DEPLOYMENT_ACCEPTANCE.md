@@ -30,3 +30,35 @@ The broad Mobile Control Tests workflow remains FAIL for the current HEAD, and i
 - Establish safe restoration to the previous known-good startup/stop installation and independent BRAIN teardown; do not invoke a new Safe Stop version against unmatched old Controller state.
 - An authorized on-machine, nontrading acceptance must verify the actual recorded Controller/BRAIN identity and fresh state, then confirm the managed processes exit and unrelated Excel/Python/Collector/Watcher instances are not targeted.
 - A nonzero refusal, stale identity, or retained state means STOP is **not** verified and requires investigation, not an unconditional retry or an unrelated-process kill.
+
+## P0-15 Desktop stop launcher route and rollback audit
+
+### Observed repository facts (not a verified OWNER machine installation)
+
+- Parent Draft PR #402 head is the base commit of Draft PR #403: 6fe2574b0ac2b95cc384b05eb5afbb538f1c99ac.
+- The tracked downloads/STOP_AI_COCKPIT_V10.cmd invokes its sibling STOP_AI_COCKPIT_V10.ps1. However, the actual desktop "AIコクピット_安全停止.cmd" is outside GitHub, and its *current* bytes/target cannot be confirmed remotely.
+- downloads/RUN_AI_COCKPIT_V10.ps1 has an older default Branch (cursor/p0-stale-price-failclosed-d483). Merely fetching PR #403 does **not** select or install it. No automatic branch switch is allowed for this acceptance.
+- Legacy downloads/STOP_AI_COCKPIT.ps1 enumerates process command-lines, and legacy INSTALL_AI_COCKPIT_CLEAN_STARTUP.ps1 can install that broad STOP script. Do not invoke/replace the OWNER's stop entry with those legacy files.
+- The runtime-only V10 RUN script has a Collector file backup/restore mechanism; this is **not** proof of full versioned rollback of Desktop launchers, Controller, Gateway, BRAIN and Safe Stop together.
+
+### Separate read-only Desktop route verification
+
+New script: downloads/VERIFY_V10_DESKTOP_SAFE_STOP_ROUTE.ps1. It requires an *explicit* actual Desktop CMD path, a local repository path, and approved full 40-hex Git SHA + branch. It reads (does not execute) CMD text, rejects multiple shell operations, extra commands, missing/unresolved target, legacy STOP, dirty tracked checkout, SHA/branch mismatch and a Safe Stop that lacks the BRAIN contract. It returns only VERIFIED_READONLY/exit 0 or BLOCKED/exit 2. Success never establishes that an old process is safely stopped or that the machine is installed/approved.
+
+Only **after** branch/SHA approval and after the matching code is deliberately installed, an operator can run this read-only check with appropriate values:
+
+    powershell.exe -NoProfile -File "C:\AI_Cockpit_Current\trade-cockpit\downloads\VERIFY_V10_DESKTOP_SAFE_STOP_ROUTE.ps1" -RepoRoot "C:\AI_Cockpit_Current\trade-cockpit" -DesktopStopCmd "THE_ACTUAL_DESKTOP_STOP_CMD_FULL_PATH" -ExpectedBranch "APPROVED_BRANCH" -ExpectedSha "APPROVED_FULL_40_HEX_SHA"
+
+Do not substitute the repo CMD path for the actual Desktop CMD when checking what the OWNER normally clicks. The tracked repository wrapper has its own isolated CI contract test only.
+
+### Required installation and rollback safety gate (not yet executed)
+
+1. Confirm the working active Desktop START/STOP entry targets, local Git full SHA/branch, installed runtime version, state-file location, and actual running-process identities. Capture only non-sensitive local diagnostics; do not upload private state or market snapshots.
+2. Create immutable local backups of the entire pair of Desktop entry files and V10 RUN/STOP/Controller/Gateway/BRAIN files **before** any replacement; record paths and SHA256 values. The in-repo Collector runtime backup does not substitute for this checkpoint.
+3. Refuse the deployment if a tracked V10 Controller/BRAIN PID or any relevant worker cannot be safely attributed to the intended repo/runtime; do not replace the active Safe Stop entry or rely on a generic process killer.
+4. Independently verify the exact new Desktop safe stop CMD target + approved Git HEAD with the *read-only* route audit. Fail-closed/BLOCKED means no deployment.
+5. In separately authorized nontrading Windows acceptance, stop all specifically owned worker processes and confirm unrelated work Excel, Python, Collector, Watcher and other processes are not terminated. Retain state when actual stop is incomplete.
+6. Only after every worker is confirmed stopped may the previously backed-up launchers and code be restored together. Revalidate the restored stop route **before** any restart. Do not assume an older STOP script can terminate a newer independent BRAIN safely.
+7. If a stop, restore or identity check fails, leave the system in HOLD and retain local evidence. Do not silently report SAFE or enable live submission. No unattended Owner machine deployment has been authorized.
+
+The CI Desktop-route fixture runs inside GitHub-hosted Windows and uses a disposable synthetic Git repo; **it never inspects or executes the real Desktop launcher**.
