@@ -1,0 +1,19 @@
+name: V10 Live Provenance Safety
+on:
+  pull_request:
+    paths:
+      - "index.html"
+      - "tests/test_v10_live_provenance.py"
+      - ".github/workflows/v10-live-provenance.yml"
+  workflow_dispatch:
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_v10_live_provenance.py -v
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_v10_live_provenance.py -v
