@@ -6,6 +6,7 @@ on:
       - "downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1"
       - "tests/test_v10_brain_safestop_preflight.py"
       - "tests/test_v10_brain_safestop_windows_integration.py"
+      - "docs/V10_BRAIN_SAFE_DEPLOYMENT_ACCEPTANCE.md"
       - ".github/workflows/v10-brain-safestop-preflight.yml"
   workflow_dispatch:
 jobs:
