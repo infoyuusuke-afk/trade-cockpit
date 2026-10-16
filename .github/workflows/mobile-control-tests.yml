@@ -74,6 +74,32 @@ jobs:
           path: dist/MS2_CSV_Windows_Builtin.zip
           if-no-files-found: error
           retention-days: 14
+      - name: Verify actual read-only one-paste diagnostic in Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $doc = Get-Content -LiteralPath 'docs/MS2_CSV_READONLY_ONEPASTE.md' -Raw -Encoding UTF8
+          $fence = [string][char]96 + [string][char]96 + [string][char]96
+          $m = [regex]::Match($doc, '(?s)' + [regex]::Escape($fence) + 'powershell\s*(.*?)\s*' + [regex]::Escape($fence))
+          if (-not $m.Success) { throw 'ONEPASTE_MISSING' }
+          $check = [scriptblock]::Create($m.Groups[1].Value)
+          $temp = Join-Path $env:RUNNER_TEMP 'ms2-csv-onepaste-synthetic'
+          New-Item -ItemType Directory -Path $temp -Force | Out-Null
+          $target = Join-Path $temp 'kioxia_ticks_20260102.csv'
+          $sample = 'recorded_at,tick_time,price,volume,poll_seq' + [string][char]13 + [string][char]10 +
+                    '2026-01-02 09:00:00,09:00:00,100.5,10,1' + [string][char]13 + [string][char]10
+          [byte[]]$raw = @([byte]0xEF, [byte]0xBB, [byte]0xBF) + [Text.Encoding]::UTF8.GetBytes($sample)
+          [IO.File]::WriteAllBytes($target, $raw)
+          $env:MS2_CSV_DIAG_PATH = $target
+          $good = (& $check | Out-String)
+          if ($good -notmatch 'PASS_READONLY_FORMAT' -or $good -notmatch 'rows\s*:\s*1') {
+            throw 'GOOD_SYNTHETIC_CSV_REJECTED'
+          }
+          [IO.File]::WriteAllText($target, 'wrong' + [string][char]10)
+          $bad = (& $check | Out-String)
+          if ($bad -notmatch 'BLOCKED: READONLY_FORMAT_OR_SOURCE' -or $bad -match 'PASS_READONLY_FORMAT') {
+            throw 'BAD_SYNTHETIC_CSV_ACCEPTED'
+          }
+          Remove-Item Env:MS2_CSV_DIAG_PATH
       - name: Install pinned Windows packager for hosted CI
         run: python -m pip install pyinstaller==6.16.0
       - name: Build offline Python-free Windows executable
