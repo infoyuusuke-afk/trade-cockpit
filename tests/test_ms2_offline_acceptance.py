@@ -11,6 +11,12 @@ from scripts import ms2_offline_acceptance as a
 
 
 class AcceptanceTests(unittest.TestCase):
+    def test_frozen_root_points_to_executable_folder(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(a.sys, 'frozen', True, create=True), \
+                 patch.object(a.sys, 'executable', str(Path(directory) / 'MS2_Local_CSV.exe')):
+                self.assertEqual(a.runtime_root(), Path(directory).resolve())
+
     def test_actual_synthetic_contract(self):
         report = a.run_acceptance()
         self.assertEqual(len(report['checks']), 14)

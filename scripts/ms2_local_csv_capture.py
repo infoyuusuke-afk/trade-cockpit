@@ -58,9 +58,40 @@ def capture_selection(selection, repo_root=ROOT):
     return 'BLOCKED'
 
 
+def _frozen_synthetic_check():
+    try:
+        report = run_acceptance()
+        if report.get('state') != 'PASS' or report.get('scope') != 'SYNTHETIC_ONLY':
+            print('BLOCKED: SYNTHETIC_CHECK')
+            return 1
+        save_evidence(report)
+    except Exception:
+        print('BLOCKED: SYNTHETIC_CHECK')
+        return 1
+    print('PASS: SYNTHETIC_ONLY')
+    return 0
+
+
+def _frozen_result_dialog(state):
+    if not getattr(sys, 'frozen', False):
+        return
+    try:
+        from tkinter import messagebox
+        if state == 'PRESERVED_UNAUTHENTICATED':
+            messagebox.showinfo('MS2 CSV', 'ローカル保全完了（未認証）。実注文は禁止です。')
+        elif state == 'CANCELLED':
+            messagebox.showinfo('MS2 CSV', 'キャンセルしました。')
+        else:
+            messagebox.showwarning('MS2 CSV', '安全検査で停止。原本は変更していません。')
+    except Exception:
+        pass
+
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
+    if argv == ['--synthetic-check'] and getattr(sys, 'frozen', False):
+        return _frozen_synthetic_check()
     if argv:
         print('BLOCKED: ARGUMENTS_NOT_SUPPORTED')
         return 2
@@ -68,6 +99,7 @@ def main(argv=None):
         state = capture_selection(select_file())
     except Exception:
         state = 'BLOCKED'
+    _frozen_result_dialog(state)
     if state == 'PRESERVED_UNAUTHENTICATED':
         print('PRESERVED_UNAUTHENTICATED: LOCAL_ONLY')
         return 0

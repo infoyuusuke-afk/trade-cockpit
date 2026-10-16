@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt lxml
-      - run: python -m unittest tests.test_offline_save_checkpoint tests.test_ms2_offline_csv_snapshot tests.test_ms2_offline_acceptance tests.test_ms2_local_csv_capture tests.test_ms2_offline_bundle -v
+      - run: python -m unittest tests.test_offline_save_checkpoint tests.test_ms2_offline_csv_snapshot tests.test_ms2_offline_acceptance tests.test_ms2_local_csv_capture tests.test_ms2_offline_bundle tests.test_ms2_windows_exe_bundle -v
       - name: Offline synthetic acceptance through OWNER launcher
         shell: cmd
         run: scripts\run_ms2_offline_acceptance.cmd
@@ -52,5 +52,25 @@ jobs:
         with:
           name: MS2_CSV_Local_Offline
           path: dist/MS2_CSV_Local_Offline.zip
+          if-no-files-found: error
+          retention-days: 14
+      - name: Install pinned Windows packager for hosted CI
+        run: python -m pip install pyinstaller==6.16.0
+      - name: Build offline Python-free Windows executable
+        run: python -m scripts.build_ms2_windows_exe
+      - name: Test fresh extracted executable without Python
+        shell: pwsh
+        run: |
+          $target = Join-Path $env:RUNNER_TEMP 'ms2-frozen'
+          Expand-Archive -LiteralPath 'dist/MS2_CSV_Windows_NoPython.zip' -DestinationPath $target
+          $exe = Join-Path $target 'MS2_Local_CSV/MS2_Local_CSV.exe'
+          & $exe --synthetic-check
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged synthetic acceptance FAILED' }
+          & $exe 'private.csv'
+          if ($LASTEXITCODE -ne 2) { throw 'Arbitrary path not rejected' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MS2_CSV_Windows_NoPython
+          path: dist/MS2_CSV_Windows_NoPython.zip
           if-no-files-found: error
           retention-days: 14

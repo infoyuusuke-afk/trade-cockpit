@@ -84,6 +84,28 @@ class LocalCaptureTests(unittest.TestCase):
                  patch.object(c, 'save_evidence'), patch.object(c, 'preserve_csv', return_value=result):
                 self.assertEqual(c.capture_selection(str(self.tick), self.repo), 'BLOCKED')
 
+    def test_frozen_synthetic_check_does_not_read_market(self):
+        with patch.object(c.sys, 'frozen', True, create=True), \
+             patch.object(c, 'run_acceptance', return_value=self.ok), \
+             patch.object(c, 'save_evidence') as evidence, \
+             patch.object(c, 'preserve_csv') as preserve, \
+             patch.object(c, 'select_file') as picker, \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(c.main(['--synthetic-check']), 0)
+        evidence.assert_called_once_with(self.ok)
+        picker.assert_not_called()
+        preserve.assert_not_called()
+        self.assertIn('PASS', output.getvalue())
+
+    def test_frozen_synthetic_refuses_failed_preflight(self):
+        with patch.object(c.sys, 'frozen', True, create=True), \
+             patch.object(c, 'run_acceptance', return_value={'state': 'BLOCKED', 'scope': 'SYNTHETIC_ONLY'}), \
+             patch.object(c, 'preserve_csv') as preserve, \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(c.main(['--synthetic-check']), 1)
+        preserve.assert_not_called()
+        self.assertIn('BLOCKED', output.getvalue())
+
     def test_main_no_cli_market_path_or_exception_disclosure(self):
         out = io.StringIO()
         with patch.object(c, 'select_file') as picker, contextlib.redirect_stdout(out):

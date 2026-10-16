@@ -6,13 +6,20 @@ from datetime import datetime, timezone
 import hashlib
 import io
 import json
+import sys
 from pathlib import Path
 import unittest
 import uuid
 
 from scripts.ms2_offline_csv_snapshot import SAFETY, _checked_path
 
-ROOT = Path(__file__).resolve().parents[1]
+def runtime_root():
+    if getattr(sys, 'frozen', False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parents[1]
+
+
+ROOT = runtime_root()
 CODE_FILES = (
     'scripts/ms2_offline_acceptance.py',
     'scripts/ms2_offline_csv_snapshot.py',
