@@ -66,8 +66,10 @@ jobs:
           $exe = Join-Path $target 'MS2_Local_CSV/MS2_Local_CSV.exe'
           & $exe --synthetic-check
           if ($LASTEXITCODE -ne 0) { throw 'Packaged synthetic acceptance FAILED' }
-          & $exe 'private.csv'
-          if ($LASTEXITCODE -ne 2) { throw 'Arbitrary path not rejected' }
+          # A nonzero exit is expected here. Use Start-Process so
+          # PowerShell does not convert the intentional denial into a CI error.
+          $denied = Start-Process -FilePath $exe -ArgumentList 'private.csv' -Wait -PassThru -NoNewWindow
+          if ($denied.ExitCode -ne 2) { throw 'Arbitrary path not rejected' }
       - uses: actions/upload-artifact@v4
         with:
           name: MS2_CSV_Windows_NoPython
