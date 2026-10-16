@@ -1,0 +1,38 @@
+name: V10 Watcher Gateway Publication Integration
+on:
+  pull_request:
+    paths:
+      - "downloads/AI_COCKPIT_GATEWAY_V10.ps1"
+      - "index.html"
+      - "v10_publication_status.js"
+      - "tests/test_v10_watcher_gateway_publisher.py"
+      - "tests/test_v10_publication_status.cjs"
+      - "tests/test_v10_publication_http.ps1"
+      - ".github/workflows/v10-watcher-gateway-publication.yml"
+jobs:
+  windows-ps51:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse PowerShell 5.1 Gateway
+        shell: powershell
+        run: |
+          $tokens=$null; $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path "downloads/AI_COCKPIT_GATEWAY_V10.ps1").Path,[ref]$tokens,[ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { throw "$errors" }
+      - name: Execute local Watcher JSON synthetic reader
+        shell: powershell
+        run: |
+          & ".\downloads\AI_COCKPIT_GATEWAY_V10.ps1" -RepoRoot (Get-Location).Path -PublicationSelfTest
+      - run: python -m unittest discover -s tests -p test_v10_watcher_gateway_publisher.py -v
+      - run: node --test tests/test_v10_publication_status.cjs
+      - name: End-to-end HTTP health and static asset smoke (synthetic)
+        shell: powershell
+        run: |
+          & ".\tests\test_v10_publication_http.ps1"
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_v10_watcher_gateway_publisher.py -v
+      - run: node --test tests/test_v10_publication_status.cjs

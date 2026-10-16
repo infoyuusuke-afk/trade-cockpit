@@ -3,7 +3,8 @@ param(
     [string]$RuntimeDir = "",
     [string]$Build = "unknown",
     [int]$Port = 28581,
-    [switch]$SnapshotGuardSelfTest
+    [switch]$SnapshotGuardSelfTest,
+    [switch]$PublicationSelfTest
 )
 
 # AI Cockpit Gateway V10
@@ -54,6 +55,69 @@ $utf8 = [Text.UTF8Encoding]::new($false)
 function Read-JsonUtf8([string]$Path) {
     $text = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8)
     return $text | ConvertFrom-Json
+}
+
+
+# A recent publication is NOT a recent market tick, source authentication, or
+# a trading gate. Validate only the producer's exact timestamp contract.
+function Get-V10PublicationState([string]$Stamp, [string]$TimezoneName,
+    [bool]$ProcessVerified, [datetime]$LastWriteUtc) {
+    if (-not $ProcessVerified) { return 'PROCESS_UNVERIFIED' }
+    if ($TimezoneName -cne 'Asia/Tokyo') { return 'TIMEZONE_UNVERIFIED' }
+    if ([string]::IsNullOrWhiteSpace($Stamp)) { return 'TIMESTAMP_MISSING' }
+    $published = [datetimeoffset]::MinValue
+    $valid = [datetimeoffset]::TryParseExact(
+        $Stamp, 'yyyy-MM-ddTHH:mm:sszzz',
+        [Globalization.CultureInfo]::InvariantCulture,
+        [Globalization.DateTimeStyles]::None, [ref]$published)
+    if (-not $valid -or $published.Offset.TotalHours -ne 9) { return 'TIMESTAMP_INVALID' }
+    $stampAge = ([datetimeoffset]::UtcNow - $published.ToUniversalTime()).TotalSeconds
+    $fileAge = ([datetime]::UtcNow - $LastWriteUtc).TotalSeconds
+    if ($stampAge -lt 0 -or $fileAge -lt 0) { return 'TIMESTAMP_FUTURE' }
+    if ($stampAge -gt 60 -or $fileAge -gt 60) { return 'PUBLICATION_STALE' }
+    return 'RECENT_PUBLICATION_ONLY'
+}
+
+# The Watcher writes this exact local file under its PowerShell PSScriptRoot.
+# Never read CSVs, infer timestamps from file mtimes, or copy private rows
+# into the public health response. Missing/invalid files stay unknown.
+function Get-V10WatcherPublication([string]$RepositoryRoot, [bool]$ProcessVerified) {
+    $result = [ordered]@{
+        observed_at_offset = $null
+        timestamp_timezone = $null
+        publication_state = 'WATCHER_FILE_UNAVAILABLE'
+    }
+    $file = Join-Path (Join-Path $RepositoryRoot 'ms2_live') 'kioxia_watcher_live.json'
+    try {
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return $result }
+        $item = Get-Item -LiteralPath $file -ErrorAction Stop
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            $result.publication_state = 'WATCHER_FILE_UNTRUSTED'
+            return $result
+        }
+        if ($item.Length -le 2 -or $item.Length -gt 65536) {
+            $result.publication_state = 'WATCHER_FILE_SIZE_INVALID'
+            return $result
+        }
+        $data = Read-JsonUtf8 $file
+        if ([string]$data.schema_version -cne 'kioxia-watcher-1.0' -or
+            [string]$data.source -cne 'Kioxia_RSS_Live_Watcher (Excel RSS)') {
+            $result.publication_state = 'WATCHER_IDENTITY_UNVERIFIED'
+            return $result
+        }
+        $stamp = [string]$data.observed_at_offset
+        $zone = [string]$data.timestamp_timezone
+        $state = Get-V10PublicationState $stamp $zone $ProcessVerified $item.LastWriteTimeUtc
+        $result.publication_state = $state
+        if ($state -eq 'RECENT_PUBLICATION_ONLY') {
+            $result.observed_at_offset = $stamp
+            $result.timestamp_timezone = $zone
+        }
+        return $result
+    } catch {
+        $result.publication_state = 'WATCHER_FILE_UNREADABLE'
+        return $result
+    }
 }
 
 function Get-ShadowEnginePublication([string]$RuntimeDirectory) {
@@ -483,6 +547,41 @@ function Add-StaticSnapshotNotice([string]$Html, [datetime]$ReferenceDate) {
     return $Html + $notice
 }
 
+
+if ($PublicationSelfTest) {
+    $now = Get-Date
+    $stamp = $now.ToString('yyyy-MM-ddTHH:mm:sszzz')
+    # Synthetic fixture uses the explicit Asia/Tokyo contract independently of
+    # runner machine timezone. A writer in JST would publish +09:00.
+    $tokyo = [TimeZoneInfo]::FindSystemTimeZoneById('Tokyo Standard Time')
+    $tokyoNow = [TimeZoneInfo]::ConvertTimeFromUtc([datetime]::UtcNow, $tokyo)
+    $jstStamp = $tokyoNow.ToString('yyyy-MM-ddTHH:mm:ss') + '+09:00'
+    $recent = Get-V10PublicationState $jstStamp 'Asia/Tokyo' $true ([datetime]::UtcNow)
+    if ($recent -ne 'RECENT_PUBLICATION_ONLY') { throw "RECENT_PUBLICATION_FAILED: $recent" }
+    if ((Get-V10PublicationState $jstStamp 'Asia/Tokyo' $false ([datetime]::UtcNow)) -ne 'PROCESS_UNVERIFIED') { throw 'PROCESS_GUARD_FAILED' }
+    if ((Get-V10PublicationState $jstStamp 'UNKNOWN' $true ([datetime]::UtcNow)) -ne 'TIMEZONE_UNVERIFIED') { throw 'ZONE_GUARD_FAILED' }
+    $oldStamp = ([datetime]::ParseExact('2026-01-01T09:00:00', 'yyyy-MM-ddTHH:mm:ss',
+        [Globalization.CultureInfo]::InvariantCulture)).ToString('yyyy-MM-ddTHH:mm:ss') + '+09:00'
+    if ((Get-V10PublicationState $oldStamp 'Asia/Tokyo' $true ([datetime]::UtcNow)) -ne 'PUBLICATION_STALE') { throw 'STALE_GUARD_FAILED' }
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ([IO.Path]::GetRandomFileName())
+    [void][IO.Directory]::CreateDirectory((Join-Path $tmp 'ms2_live'))
+    try {
+        $file = Join-Path (Join-Path $tmp 'ms2_live') 'kioxia_watcher_live.json'
+        $fixture = '{"schema_version":"kioxia-watcher-1.0","source":"Kioxia_RSS_Live_Watcher (Excel RSS)","observed_at_offset":"' + $jstStamp + '","timestamp_timezone":"Asia/Tokyo"}'
+        [IO.File]::WriteAllText($file, $fixture, [Text.UTF8Encoding]::new($false))
+        $verified = Get-V10WatcherPublication $tmp $true
+        if ($verified.publication_state -ne 'RECENT_PUBLICATION_ONLY') { throw 'WATCHER_LOCAL_FILE_NOT_READ' }
+        $denied = Get-V10WatcherPublication $tmp $false
+        if ($denied.publication_state -ne 'PROCESS_UNVERIFIED' -or $null -ne $denied.observed_at_offset) { throw 'UNVERIFIED_FILE_EXPOSED' }
+        [IO.File]::WriteAllText($file, '{"schema_version":"wrong"}')
+        if ((Get-V10WatcherPublication $tmp $true).publication_state -ne 'WATCHER_IDENTITY_UNVERIFIED') { throw 'WATCHER_SCHEMA_GUARD_FAILED' }
+        [IO.File]::Delete($file)
+        if ((Get-V10WatcherPublication $tmp $true).publication_state -ne 'WATCHER_FILE_UNAVAILABLE') { throw 'MISSING_WATCHER_NOT_BLOCKED' }
+    } finally { if ([IO.Directory]::Exists($tmp)) { [IO.Directory]::Delete($tmp, $true) } }
+    Write-Output 'PASS: V10_WATCHER_PUBLICATION_SYNTHETIC'
+    exit 0
+}
+
 if ($SnapshotGuardSelfTest) {
     $fixture = '<html><header><div class="sub">2026-09-25 10:41:50 JST</div></header><main>OLD</main></html>'
     $fixed = Add-StaticSnapshotNotice $fixture ([datetime]'2026-10-16')
@@ -557,6 +656,11 @@ try {
                     live_updated_at            = $null
                     collector_observed_at_offset = $null
                     collector_timestamp_timezone = $null
+                    collector_publication_state   = 'UNKNOWN'
+                    watcher_observed_at_offset   = $null
+                    watcher_timestamp_timezone   = $null
+                    watcher_publication_state    = 'UNKNOWN'
+                    brain_publication_state      = 'UNKNOWN_NOT_PUBLISHED'
                     source_timestamp           = $null
                     live_symbol                = $null
                     live_current_price         = $null
@@ -613,6 +717,13 @@ try {
                         $runtime.live_updated_at = [string]$healthLive.updated_at
                         $runtime.collector_observed_at_offset = [string]$healthLive.observed_at_offset
                         $runtime.collector_timestamp_timezone = [string]$healthLive.timestamp_timezone
+                        $collectorFileItem = Get-Item -LiteralPath $liveJson -ErrorAction Stop
+                        $runtime.collector_publication_state = Get-V10PublicationState `
+                            $runtime.collector_observed_at_offset `
+                            $runtime.collector_timestamp_timezone `
+                            ($runtime.collector_status -eq 'LIVE') `
+                            $collectorFileItem.LastWriteTimeUtc
+
                         $runtime.price_source_status = [string]$healthLive.price_source_status
                         $runtime.data_conflict = ($healthLive.data_conflict -eq $true)
                         $runtime.stale_reason = [string]$healthLive.stale_reason
@@ -627,6 +738,12 @@ try {
                         }
                     } catch {}
                 }
+                # Read only the Watcher-owned local JSON. It may live in a
+                # different working tree; in that case state stays UNKNOWN.
+                $watcherProof = Get-V10WatcherPublication $RepoRoot ($runtime.watcher_status -eq 'LIVE')
+                $runtime.watcher_observed_at_offset = $watcherProof.observed_at_offset
+                $runtime.watcher_timestamp_timezone = $watcherProof.timestamp_timezone
+                $runtime.watcher_publication_state = $watcherProof.publication_state
                 $execution = [ordered]@{
                     real_submit_allowed        = $false
                     real_order_route            = 'DISABLED'
