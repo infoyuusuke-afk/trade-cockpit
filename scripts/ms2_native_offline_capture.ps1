@@ -1,4 +1,4 @@
-# Offline local MS2 preservation using built-in Windows PowerShell. No network/order.
+﻿# Offline local MS2 preservation using built-in Windows PowerShell. No network/order.
 param([switch]$SyntheticTest)
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
