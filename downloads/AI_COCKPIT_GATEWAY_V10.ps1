@@ -2,7 +2,8 @@ param(
     [Parameter(Mandatory = $true)][string]$RepoRoot,
     [string]$RuntimeDir = "",
     [string]$Build = "unknown",
-    [int]$Port = 28581
+    [int]$Port = 28581,
+    [switch]$SnapshotGuardSelfTest
 )
 
 # AI Cockpit Gateway V10
@@ -441,6 +442,64 @@ function Add-BuildBadge([string]$html, [string]$branch, [string]$sha, [string]$b
     return $html + $badge
 }
 
+
+# P0 archival provenance: V10 checkout may lag behind generated main.
+# Never rewrite historical numbers or make snapshot data appear live.
+function Add-StaticSnapshotNotice([string]$Html, [datetime]$ReferenceDate) {
+    if ([string]::IsNullOrEmpty($Html)) { return $Html }
+    if ($Html.Contains('id="v10-static-snapshot-warning"')) { return $Html }
+    $header = [regex]::Match($Html, '(?is)<header\b[^>]*>.*?</header>')
+    $stamp = if ($header.Success) { [regex]::Match($header.Value, '\b\d{4}-\d{2}-\d{2}\b') } else { $null }
+    $dateText = '&#19981;&#26126;'
+    $status = 'DATE_UNVERIFIED'
+    $detail = '&#22266;&#23450;&#20998;&#26512;&#12398;&#26356;&#26032;&#26085;&#12364;&#19981;&#26126;&#12414;&#12383;&#12399;&#26410;&#26469;&#12391;&#12377;&#12290;&#29694;&#22312;&#12398;&#24066;&#22580;&#12487;&#12540;&#12479;&#12392;&#12375;&#12390;&#20351;&#29992;&#31105;&#27490;&#12391;&#12377;&#12290;'
+    if ($null -ne $stamp -and $stamp.Success) {
+        $parsed = [datetime]::MinValue
+        $ok = [datetime]::TryParseExact($stamp.Value, 'yyyy-MM-dd',
+            [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::None, [ref]$parsed)
+        if ($ok) {
+            $dateText = [Net.WebUtility]::HtmlEncode($stamp.Value)
+            if ($parsed.Date -lt $ReferenceDate.Date) {
+                $status = 'HISTORICAL'
+                $detail = '&#12371;&#12398;&#30011;&#38754;&#12398;&#22266;&#23450;&#20998;&#26512;&#12399;&#36942;&#21435;&#12398;&#26085;&#20184;&#12391;&#12377;&#12290;&#29694;&#22312;&#12398;&#24066;&#22580;&#21028;&#26029;&#12420;&#22770;&#36023;&#12469;&#12452;&#12531;&#12395;&#20351;&#29992;&#12375;&#12394;&#12356;&#12391;&#12367;&#12384;&#12373;&#12356;&#12290;'
+            } elseif ($parsed.Date -eq $ReferenceDate.Date) {
+                $status = 'SAME_DAY_STATIC'
+                $detail = '&#26412;&#26085;&#12398;&#26085;&#20184;&#12391;&#12418;&#12289;&#22266;&#23450;&#20998;&#26512;&#12392;LIVE&#35251;&#28204;&#12399;&#21029;&#12391;&#12377;&#12290;Gateway&#12398;&#29694;&#22312;&#20516;&#12539;&#39854;&#24230;&#12539;&#20986;&#25152;&#12434;&#29420;&#31435;&#30906;&#35469;&#12377;&#12427;&#12414;&#12391;&#22770;&#36023;&#31105;&#27490;&#12391;&#12377;&#12290;'
+            }
+        }
+    }
+    $notice = '<aside id="v10-static-snapshot-warning" role="status" ' +
+        'data-snapshot-status="' + $status + '" ' +
+        'style="position:relative;z-index:10;margin:12px 20px;padding:14px 16px;' +
+        'border:2px solid #d7a145;border-radius:8px;background:#191811;color:#f2deb8;' +
+        'font:600 13px/1.6 system-ui,sans-serif;">' +
+        '<strong>&#22266;&#23450;&#12473;&#12490;&#12483;&#12503;&#12471;&#12519;&#12483;&#12488;&#65372;LIVE&#24773;&#22577;&#12391;&#12399;&#12354;&#12426;&#12414;&#12379;&#12435;</strong><div>' + $detail + '</div>' +
+        '<div>&#30011;&#38754;&#20869;&#12398;&#22522;&#28310;&#26085;: <time>' + $dateText + '</time> / &#23455;&#27880;&#25991;&#31105;&#27490;&#65295;&#22266;&#23450;&#12487;&#12540;&#12479;&#12399;&#26410;&#35469;&#35388;</div></aside>'
+    $mainTag = [regex]::Match($Html, '(?i)<main\b')
+    if ($mainTag.Success) { return $Html.Insert($mainTag.Index, $notice) }
+    $closing = $Html.IndexOf('</body>', [StringComparison]::OrdinalIgnoreCase)
+    if ($closing -ge 0) { return $Html.Insert($closing, $notice) }
+    return $Html + $notice
+}
+
+if ($SnapshotGuardSelfTest) {
+    $fixture = '<html><header><div class="sub">2026-09-25 10:41:50 JST</div></header><main>OLD</main></html>'
+    $fixed = Add-StaticSnapshotNotice $fixture ([datetime]'2026-10-16')
+    if (-not $fixed.Contains('data-snapshot-status="HISTORICAL"')) { throw 'STATIC_HISTORICAL_NOT_FLAGGED' }
+    if (-not $fixed.Contains('2026-09-25 10:41:50')) { throw 'HISTORICAL_BYTES_REWRITTEN' }
+    if ([regex]::Matches($fixed, 'id="v10-static-snapshot-warning"').Count -ne 1) { throw 'MISSING_OR_DUPLICATE_WARNING' }
+    if ((Add-StaticSnapshotNotice $fixed ([datetime]'2026-10-16')) -cne $fixed) { throw 'NOTICE_NOT_IDEMPOTENT' }
+    $same = Add-StaticSnapshotNotice $fixture ([datetime]'2026-09-25')
+    if (-not $same.Contains('data-snapshot-status="SAME_DAY_STATIC"')) { throw 'SAME_DAY_SNAPSHOT_NOT_FLAGGED' }
+    $unknown = Add-StaticSnapshotNotice '<html><main>UNKNOWN</main></html>' ([datetime]'2026-10-16')
+    if (-not $unknown.Contains('data-snapshot-status="DATE_UNVERIFIED"')) { throw 'MISSING_DATE_NOT_BLOCKED' }
+    $future = Add-StaticSnapshotNotice $fixture ([datetime]'2026-09-24')
+    if (-not $future.Contains('data-snapshot-status="DATE_UNVERIFIED"')) { throw 'FUTURE_DATE_NOT_BLOCKED' }
+    Write-Output 'PASS: V10_STATIC_SNAPSHOT_GUARD_SYNTHETIC'
+    exit 0
+}
+
 try {
     $listener.Start()
     Write-Host ("AI Cockpit Gateway V10: http://127.0.0.1:{0}/?live=1" -f $Port) -ForegroundColor Green
@@ -665,6 +724,7 @@ try {
             if ($resolvedFull -match '(?i)index\.html$') {
                 $git = Get-GitInfo $RepoRoot
                 $html = Get-Content -LiteralPath $resolvedFull -Raw -Encoding UTF8
+                $html = Add-StaticSnapshotNotice $html (Get-Date)
                 $html = Add-BuildBadge $html $git.branch $git.sha $Build
                 Send-Response $stream '200 OK' $ct ($utf8.GetBytes($html))
             } else {
