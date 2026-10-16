@@ -70,7 +70,14 @@ class PinnedDeliveryTests(unittest.TestCase):
         }
         (self.snapshot/"manifest.json").write_text(json.dumps(manifest),encoding="utf-8")
         for filename in DEPS:
-            shutil.copy2(REPO/"downloads"/filename,self.deps/filename)
+            # Windows checkout may convert LF to CRLF. Production delivery
+            # downloads the raw Git blob, not checkout-expanded working bytes.
+            # Reconstruct fixture exactly from the immutable Git object.
+            raw=subprocess.check_output(
+                ["git","show",f"HEAD:downloads/{filename}"],
+                cwd=REPO, timeout=15
+            )
+            (self.deps/filename).write_bytes(raw)
 
     def run_audit(self, mode="Inspect", fixture=None, snapshot_id=None):
         args=[
