@@ -65,14 +65,17 @@ if ($SelfTest) {
  exit 0
 }
 $modeResult="BLOCKED"
+$stage = "VALIDATE_ARGS"
 try {
  if (-not [string]::IsNullOrWhiteSpace($ExpectedSha) -and
      $ExpectedSha -cnotmatch '^[0-9a-fA-F]{40}$') { throw "BAD_PIN" }
  if ([string]::IsNullOrWhiteSpace($ExpectedBranch)) { throw "BRANCH_REQUIRED" }
+ $stage = "VALIDATE_ROOTS"
  $repo = [IO.Path]::GetFullPath($RepoRoot)
  $state = [IO.Path]::GetFullPath($StateRoot)
  [void](Assert-Regular $repo)
  [void](Assert-Regular $state)
+ $stage = "RESOLVE_DESKTOPS"
  $desktops = @()
  if ($DesktopRoots.Count -gt 0) {
   $desktops = @($DesktopRoots | Where-Object { $_ } |
@@ -87,12 +90,14 @@ try {
     ForEach-Object { [IO.Path]::GetFullPath($_) } | Select-Object -Unique
  }
  if ($desktops.Count -lt 1) { throw "DESKTOP_REQUIRED" }
+ $stage = "DISCOVER_CANDIDATES"
  $items=@(Get-Candidates $repo $state $desktops)
  if ($items.Count -lt 5 -or $items.Count -gt 110) { throw "INVALID_INPUT_COUNT" }
  $present=New-Object 'System.Collections.Generic.List[object]'
  $essentialMissing=0
  $desktopCmds=0
  $desktopLinks=0
+ $stage = "VERIFY_FILES"
  foreach ($item in $items) {
   if (-not (Test-Path -LiteralPath $item.Path -PathType Leaf)) {
    if ($item.Essential) { $essentialMissing+=1 }
@@ -107,6 +112,7 @@ try {
      Bytes=[long]$info.Length
   })
  }
+ $stage = "VERIFY_GIT_STATE"
  $head=(& git -C $repo rev-parse HEAD 2>$null)
  $gitStatus=$LASTEXITCODE
  $actualBranch=(& git -C $repo rev-parse --abbrev-ref HEAD 2>$null)
@@ -122,13 +128,16 @@ try {
  Write-Output ("DESKTOP_LNK_COUNT=" + $desktopLinks)
  Write-Output ("ESSENTIAL_MISSING=" + $essentialMissing)
  Write-Output "REAL_SUBMIT_ALLOWED=false"
+ $stage = "PLAN_COMPLETE"
  if ($Mode -eq "Plan") {
   Write-Output "CUTOVER_PLAN=READ_ONLY"
   exit 0
  }
+ $stage = "BACKUP_PRECONDITIONS"
  if ($essentialMissing -ne 0 -or $desktopCmds -lt 2 -or $desktopLinks -lt 1) {
   throw "BACKUP_INPUT_INCOMPLETE"
  }
+ $stage = "BACKUP_TARGET"
  if (-not $BackupRoot) { $BackupRoot=Join-Path $state "V10_cutover_snapshots" }
  $root=[IO.Path]::GetFullPath($BackupRoot)
  foreach ($source in @($repo,$state)+$desktops) {
@@ -149,6 +158,7 @@ try {
  $id=(Get-Date -Format "yyyyMMdd_HHmmss") + "_" + [guid]::NewGuid().ToString("N").Substring(0,12)
  $snapshot=Join-Path $root $id
  New-Item -ItemType Directory -Path $snapshot -ErrorAction Stop | Out-Null
+ $stage = "BACKUP_COPY_VERIFY"
  $receipts=New-Object 'System.Collections.Generic.List[object]'
  foreach ($entry in $present) {
   $dest=Join-Path $snapshot ($entry.Key.Replace('/',[IO.Path]::DirectorySeparatorChar))
@@ -165,6 +175,7 @@ try {
   }
   [void]$receipts.Add([ordered]@{ name=$entry.Key; sha256=$after; bytes=$entry.Bytes })
  }
+ $stage = "BACKUP_MANIFEST"
  $manifest=[ordered]@{
    schema="v10_cutover_backup_v1"
    evidence_only=$true
@@ -185,6 +196,34 @@ try {
  Write-Output "CUTOVER_APPLIED=false"
  exit 0
 } catch {
+ # Never echo the original exception text: OS paths can contain user identity,
+ # private Desktop folders or account-related filenames.
+ $reason="UNCLASSIFIED"
+ $message=[string]$_.Exception.Message
+ foreach ($known in @(
+  "BAD_PIN","BRANCH_REQUIRED","REPARSE_REFUSED","TOO_MANY_DESKTOP_ENTRIES",
+  "DESKTOP_REQUIRED","INVALID_INPUT_COUNT","INVALID_ENTRY_SIZE",
+  "BACKUP_INPUT_INCOMPLETE","BACKUP_ROOT_INSIDE_SOURCE",
+  "BACKUP_ROOT_COLLISION","BACKUP_DEST_COLLISION",
+  "BACKUP_HASH_MISMATCH","MANIFEST_MISSING"
+ )) {
+  if ($message -ceq $known) { $reason=$known; break }
+ }
+ if ($reason -eq "UNCLASSIFIED") {
+  $ex=$_.Exception
+  if ($ex -is [System.UnauthorizedAccessException]) { $reason="ACCESS_DENIED" }
+  elseif ($ex -is [System.IO.FileNotFoundException] -or
+          $ex -is [System.Management.Automation.ItemNotFoundException] -or
+          $ex -is [System.IO.DirectoryNotFoundException]) {
+   $reason="PATH_NOT_FOUND"
+  }
+  elseif ($ex -is [System.IO.IOException]) { $reason="IO_FAILURE" }
+  elseif ($ex -is [System.Management.Automation.RuntimeException]) {
+   $reason="POWERSHELL_RUNTIME"
+  }
+ }
+ Write-Output ("BLOCK_STAGE="+$stage)
+ Write-Output ("BLOCK_REASON="+$reason)
  Write-Output "CUTOVER_PLAN=BLOCKED"
  Write-Output "CUTOVER_APPLIED=false"
  Write-Output "REAL_SUBMIT_ALLOWED=false"
