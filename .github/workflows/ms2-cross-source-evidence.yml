@@ -1,0 +1,19 @@
+name: MS2 Cross Source Evidence CI
+on:
+  pull_request:
+    paths:
+      - "scripts/ms2_cross_source_evidence.py"
+      - "tests/test_ms2_cross_source_evidence.py"
+      - ".github/workflows/ms2-cross-source-evidence.yml"
+  workflow_dispatch:
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_ms2_cross_source_evidence.py -v
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_ms2_cross_source_evidence.py -v
