@@ -62,7 +62,7 @@ class SafeCutoverBackup(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         return p
 
-    def run(self, mode="Plan", sha=None, branch="old", backup=None):
+    def invoke_prepare(self, mode="Plan", sha=None, branch="old", backup=None):
         args = ["powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(SCRIPT),
                 "-Mode", mode, "-RepoRoot", str(self.repo),
                 "-StateRoot", str(self.state), "-DesktopRoots", str(self.desktop),
@@ -77,7 +77,7 @@ class SafeCutoverBackup(unittest.TestCase):
                          "account,private\n1,yes")
 
     def test_plan_has_zero_write_side_effects(self):
-        result = self.run()
+        result = self.invoke_prepare()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("SOURCE_PIN_MATCH=true", result.stdout)
         self.assertIn("CUTOVER_PLAN=READ_ONLY", result.stdout)
@@ -85,7 +85,7 @@ class SafeCutoverBackup(unittest.TestCase):
         self.assert_no_live_changes()
 
     def test_backup_only_snapshot_integrity_and_manifest(self):
-        result = self.run(mode="BackupOnly")
+        result = self.invoke_prepare(mode="BackupOnly")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("BACKUP_RESULT=VERIFIED_LOCAL_ONLY", result.stdout)
         self.assertIn("CUTOVER_APPLIED=false", result.stdout)
@@ -106,7 +106,7 @@ class SafeCutoverBackup(unittest.TestCase):
         self.assert_no_live_changes()
 
     def test_stale_local_git_still_permits_old_state_backup(self):
-        result = self.run(mode="BackupOnly", sha="0" * 40, branch="future-uninstalled")
+        result = self.invoke_prepare(mode="BackupOnly", sha="0" * 40, branch="future-uninstalled")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("SOURCE_PIN_MATCH=false", result.stdout)
         snapshot = next(self.backups.iterdir())
@@ -116,36 +116,36 @@ class SafeCutoverBackup(unittest.TestCase):
 
     def test_missing_debug_launcher_refuses_backup(self):
         (self.state / "AI_COCKPIT_START_DEBUG.cmd").unlink()
-        result = self.run(mode="BackupOnly")
+        result = self.invoke_prepare(mode="BackupOnly")
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn("CUTOVER_PLAN=BLOCKED", result.stdout)
         self.assertFalse(self.backups.exists())
 
     def test_missing_stop_cmd_refuses_backup(self):
         (self.desktop / "AI Cockpit STOP.cmd").unlink()
-        result = self.run(mode="BackupOnly")
+        result = self.invoke_prepare(mode="BackupOnly")
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertFalse(self.backups.exists())
 
     def test_missing_shortcut_refuses_backup(self):
         (self.desktop / "AI Cockpit START.lnk").unlink()
-        result = self.run(mode="BackupOnly")
+        result = self.invoke_prepare(mode="BackupOnly")
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertFalse(self.backups.exists())
 
     def test_destination_inside_repo_refused(self):
-        result = self.run(mode="BackupOnly", backup=self.repo / "backups")
+        result = self.invoke_prepare(mode="BackupOnly", backup=self.repo / "backups")
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertFalse((self.repo / "backups").exists())
 
     def test_bad_pin_format_refused(self):
-        result = self.run(mode="BackupOnly", sha="not-full-sha")
+        result = self.invoke_prepare(mode="BackupOnly", sha="not-full-sha")
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertFalse(self.backups.exists())
 
     def test_plan_without_debug_is_observation_not_successful_backup(self):
         (self.state / "AI_COCKPIT_START_DEBUG.cmd").unlink()
-        result = self.run(mode="Plan")
+        result = self.invoke_prepare(mode="Plan")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("ESSENTIAL_MISSING=1", result.stdout)
         self.assertFalse(self.backups.exists())
