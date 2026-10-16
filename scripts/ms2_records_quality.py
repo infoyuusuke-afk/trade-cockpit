@@ -159,7 +159,9 @@ def _audit_file(root: Path, file_name: str, date_name: str) -> dict:
         finally:
             csv.field_size_limit(original_limit)
         after = path.stat()
-        if _stat_key(before) != _stat_key(after) or fd_before != fd_after:
+        # Bind path and open-descriptor observations to the same file identity.
+        # Individually stable views do not rule out a pathname/open race.
+        if not (_stat_key(before) == fd_before == fd_after == _stat_key(after)):
             _reason(reasons, "FILE_CHANGED_DURING_READ")
         if report["records_parsed"] == 0:
             _reason(reasons, "NO_DATA_ROWS")

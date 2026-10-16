@@ -1,5 +1,6 @@
 """Synthetic-only checks. No MS2/Excel/real CSV access or network."""
 import csv
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -159,6 +160,32 @@ class QualityTests(unittest.TestCase):
             return value
         with patch.object(audit_mod, "_stat_key", side_effect=change_key):
             self.assertIn("FILE_CHANGED_DURING_READ", audit_mod.audit(self.root)["files"]["ticks.csv"]["reason_counts"])
+
+    def test_path_and_open_descriptor_must_refer_to_same_file(self):
+        # A different opened file with matching size and mtime is not the path.
+        target = self.root / "ticks.csv"
+        decoy = Path(self.tmp.name) / "synthetic_decoy.csv"
+        decoy.write_bytes(target.read_bytes())
+        before = target.stat()
+        os.utime(decoy, ns=(before.st_atime_ns, before.st_mtime_ns))
+        self.assertEqual(before.st_size, decoy.stat().st_size)
+        self.assertEqual(before.st_mtime_ns, decoy.stat().st_mtime_ns)
+        if audit_mod._stat_key(before) == audit_mod._stat_key(decoy.stat()):
+            self.skipTest("Filesystem cannot distinguish separate file identities")
+        real_open = Path.open
+
+        def redirect_open(path, *args, **kwargs):
+            if path == target:
+                return real_open(decoy, *args, **kwargs)
+            return real_open(path, *args, **kwargs)
+
+        with patch.object(Path, "open", new=redirect_open):
+            result = audit_mod.audit(self.root)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn("FILE_CHANGED_DURING_READ", result["files"]["ticks.csv"]["reason_counts"])
+        self.assertFalse(result["source_authenticated"])
+        self.assertFalse(result["pit_research_eligible"])
+        self.assertFalse(result["real_submit_allowed"])
 
     def test_no_broker_or_account_fields_in_output(self):
         text = repr(audit_mod.audit(self.root))
