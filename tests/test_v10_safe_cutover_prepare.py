@@ -62,10 +62,10 @@ class SafeCutoverBackup(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         return p
 
-    def invoke_prepare(self, mode="Plan", sha=None, branch="old", backup=None):
+    def invoke_prepare(self, mode="Plan", sha=None, branch="old", backup=None, state=None):
         args = ["powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(SCRIPT),
                 "-Mode", mode, "-RepoRoot", str(self.repo),
-                "-StateRoot", str(self.state), "-DesktopRoots", str(self.desktop),
+                "-StateRoot", str(state or self.state), "-DesktopRoots", str(self.desktop),
                 "-ExpectedBranch", branch, "-ExpectedSha", sha or self.sha,
                 "-BackupRoot", str(backup or self.backups)]
         return subprocess.run(args, capture_output=True, text=True, errors="replace", timeout=35)
@@ -119,6 +119,8 @@ class SafeCutoverBackup(unittest.TestCase):
         result = self.invoke_prepare(mode="BackupOnly")
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn("CUTOVER_PLAN=BLOCKED", result.stdout)
+        self.assertIn("BLOCK_STAGE=BACKUP_PRECONDITIONS", result.stdout)
+        self.assertIn("BLOCK_REASON=BACKUP_INPUT_INCOMPLETE", result.stdout)
         self.assertFalse(self.backups.exists())
 
     def test_missing_stop_cmd_refuses_backup(self):
@@ -137,17 +139,41 @@ class SafeCutoverBackup(unittest.TestCase):
         result = self.invoke_prepare(mode="BackupOnly", backup=self.repo / "backups")
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertFalse((self.repo / "backups").exists())
+        self.assertIn("BLOCK_STAGE=BACKUP_TARGET", result.stdout)
+        self.assertIn("BLOCK_REASON=BACKUP_ROOT_INSIDE_SOURCE", result.stdout)
 
     def test_bad_pin_format_refused(self):
         result = self.invoke_prepare(mode="BackupOnly", sha="not-full-sha")
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertFalse(self.backups.exists())
+        self.assertIn("BLOCK_STAGE=VALIDATE_ARGS", result.stdout)
+        self.assertIn("BLOCK_REASON=BAD_PIN", result.stdout)
 
     def test_plan_without_debug_is_observation_not_successful_backup(self):
         (self.state / "AI_COCKPIT_START_DEBUG.cmd").unlink()
         result = self.invoke_prepare(mode="Plan")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("ESSENTIAL_MISSING=1", result.stdout)
+        self.assertFalse(self.backups.exists())
+
+    def test_missing_root_reports_safe_reason_not_private_path(self):
+        missing = self.root / "missing-state-folder"
+        result = self.invoke_prepare(state=missing)
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("BLOCK_STAGE=VALIDATE_ROOTS", result.stdout)
+        self.assertIn("BLOCK_REASON=PATH_NOT_FOUND", result.stdout)
+        self.assertNotIn(str(self.root), result.stdout)
+        self.assertFalse(self.backups.exists())
+
+    def test_too_many_candidate_files_reports_discovery_block(self):
+        for i in range(41):
+            (self.desktop / f"AI_EXTRA_{i:02d}.cmd").write_text(
+                "@echo off", encoding="ascii")
+        result = self.invoke_prepare()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("BLOCK_STAGE=DISCOVER_CANDIDATES", result.stdout)
+        self.assertIn("BLOCK_REASON=TOO_MANY_DESKTOP_ENTRIES", result.stdout)
+        self.assertNotIn(str(self.root), result.stdout)
         self.assertFalse(self.backups.exists())
 
     def test_selftest_always_plan_only(self):
