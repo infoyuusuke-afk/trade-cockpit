@@ -3,6 +3,10 @@ on:
   pull_request:
     paths:
       - "scripts/ai_brain_observer.py"
+      - "downloads/AI_COCKPIT_CONTROLLER_V10.ps1"
+      - "downloads/AI_COCKPIT_GATEWAY_V10.ps1"
+      - "v10_publication_status.js"
+      - "tests/test_v10_brain_runtime_integration.py"
       - "tests/test_ai_brain_observer.py"
       - ".github/workflows/v10-independent-brain.yml"
   workflow_dispatch:
@@ -11,8 +15,24 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate PowerShell 5.1 Controller and Gateway syntax
+        shell: powershell
+        run: |
+          foreach ($path in @("downloads/AI_COCKPIT_CONTROLLER_V10.ps1", "downloads/AI_COCKPIT_GATEWAY_V10.ps1")) {
+            $tokens=$null; $errors=$null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path,[ref]$tokens,[ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { throw "$path failed: $errors" }
+          }
       - name: Synthetic read-only source and file safety
         run: python -m unittest discover -s tests -p test_ai_brain_observer.py -v
+      - name: Controller Gateway and stop ownership contract
+        run: python -m unittest discover -s tests -p test_v10_brain_runtime_integration.py -v
+      - name: UI non-promotion contract
+        run: node --test tests/test_v10_publication_status.cjs
+      - name: Controller Gateway and stop ownership contract
+        run: python -m unittest discover -s tests -p test_v10_brain_runtime_integration.py -v
+      - name: UI non-promotion contract
+        run: node --test tests/test_v10_publication_status.cjs
   ubuntu:
     runs-on: ubuntu-latest
     steps:
