@@ -6,6 +6,7 @@ No MS2, Excel, broker API, market data, workstation or service is accessed.
 import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -158,6 +159,39 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_PID_UNRECORDED", result.stdout)
         self.assertIsNone(self.controller.poll())
         self.assertIsNone(self.brain.poll())
+
+    def test_foreign_worker_refuses_before_controller_or_brain_stop(self):
+        # Ownership mismatch for a tracked worker must not produce half-stop.
+        self.state["shadow_supervisor_pid"] = self.foreign.pid
+        self.write_state()
+        old = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), old)
+        self.assertIsNone(self.controller.poll(), "Controller stopped before foreign worker check")
+        self.assertIsNone(self.brain.poll(), "BRAIN stopped before foreign worker check")
+
+    def test_unrelated_listener_prevents_false_stop_success(self):
+        # Binding a V10 port is NOT permission to kill its owner. The state
+        # must be retained if a listener survives the real process teardown.
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            try:
+                listener.bind(("127.0.0.1", 28584))
+            except OSError:
+                self.skipTest("V10 test port already occupied on Windows runner")
+            listener.listen(1)
+            self.write_state()
+            result = self.run_stop()
+            self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+            self.assertIn("SAFE_STOP_VERIFY=LISTEN_PORTS_REMAIN", result.stdout)
+            self.assertTrue(self.state_path.exists(), "state erased with live V10 listener")
+            self.assertIsNotNone(self.controller.poll(), "Controller not stopped in synthetic test")
+            self.assertIsNotNone(self.brain.poll(), "BRAIN not stopped in synthetic test")
+        finally:
+            listener.close()
 
     def test_corrupt_state_does_not_kill_any_worker(self):
         self.state_path.write_text("{malformed", encoding="utf-8")
