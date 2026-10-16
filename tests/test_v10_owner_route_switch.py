@@ -5,6 +5,7 @@ BRAIN or broker account interactions are performed.
 """
 import base64
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -66,7 +67,31 @@ class SafeRouteSwitch(unittest.TestCase):
                          capture_output=True,text=True,timeout=20)
         self.assertEqual(p.returncode,0,p.stdout+p.stderr)
 
-    def run_switch(self,mode="Switch",pin=None,switch_id=None):
+    def write_dormant_state(self, controller_pid=2147000000):
+        state={
+            "controller_pid":controller_pid,
+            "session_id":1,
+            "started_at":"2026-10-01T09:01:00",
+            "repo_root":str(self.source),
+            "runtime_dir":str(self.root/"runtime"),
+            "brain_observer_pid":0,
+            "excel_pid":0,
+            "collector_pid":0,
+            "watcher_pid":0,
+            "heartbeat_pid":0,
+            "gateway_pid":0,
+            "brain_gateway_pid":0,
+            "voice_bridge_pid":0,
+            "shadow_supervisor_pid":0,
+            "sbv2_pid":0
+        }
+        (self.state/"V10_CONTROLLER_STATE.json").write_text(
+            json.dumps(state),encoding="utf-8")
+        return (self.state/"V10_CONTROLLER_STATE.json").read_bytes()
+
+    def run_switch(self,mode="Switch",pin=None,switch_id=None,
+                   archive_stale=False):
+
         args=["powershell.exe","-NoProfile","-NonInteractive",
               "-ExecutionPolicy","Bypass","-File",str(SCRIPT),
               "-Mode",mode,"-StateRoot",str(self.state),
@@ -76,6 +101,8 @@ class SafeRouteSwitch(unittest.TestCase):
             args+=["-PinnedSha",pin or self.sha]
         else:
             args+=["-SwitchId",switch_id or ""]
+        if archive_stale:
+            args+=["-ArchiveVerifiedStaleState"]
         return subprocess.run(args,capture_output=True,text=True,
                               errors="replace",timeout=90)
 
@@ -117,9 +144,68 @@ class SafeRouteSwitch(unittest.TestCase):
         (self.state/"V10_CONTROLLER_STATE.json").write_text("synthetic")
         p=self.run_switch()
         self.assertNotEqual(p.returncode,0,p.stdout+p.stderr)
-        self.assertIn("V10_ROUTE_BLOCK_REASON=ACTIVE_V10_STATE",p.stdout)
+        self.assertIn("V10_ROUTE_BLOCK_REASON=STATE_JSON_INVALID",p.stdout)
         self.assertEqual(self.link.read_bytes(),self.before)
         self.assertFalse(list(self.state.glob("V10_release_*")))
+        self.assert_not_changed()
+
+    def test_dormant_state_probe_does_not_modify_source(self):
+        old=self.write_dormant_state()
+        p=self.run_switch(mode="InspectState")
+        self.assertEqual(p.returncode,0,p.stdout+p.stderr)
+        self.assertIn("STATE_STATUS=VERIFIED_DORMANT",p.stdout)
+        self.assertIn("STATE_FILE_MODIFIED=false",p.stdout)
+        self.assertEqual((self.state/"V10_CONTROLLER_STATE.json").read_bytes(),old)
+        self.assertEqual(self.link.read_bytes(),self.before)
+        self.assertFalse(list(self.state.glob("V10_release_*")))
+        self.assert_not_changed()
+
+    def test_dormant_state_without_explicit_archive_blocks(self):
+        old=self.write_dormant_state()
+        p=self.run_switch()
+        self.assertNotEqual(p.returncode,0,p.stdout+p.stderr)
+        self.assertIn("V10_ROUTE_BLOCK_REASON=ACTIVE_V10_STATE",p.stdout)
+        self.assertEqual((self.state/"V10_CONTROLLER_STATE.json").read_bytes(),old)
+        self.assertEqual(self.link.read_bytes(),self.before)
+        self.assert_not_changed()
+
+    def test_explicit_archive_then_switch_and_rollback_restores_state(self):
+        old=self.write_dormant_state()
+        p=self.run_switch(archive_stale=True)
+        self.assertEqual(p.returncode,0,p.stdout+p.stderr)
+        self.assertIn("V10_ROUTE_SWITCH=PASS_NOT_STARTED",p.stdout)
+        self.assertIn("OLD_STATE_ARCHIVED=true",p.stdout)
+        self.assertFalse((self.state/"V10_CONTROLLER_STATE.json").exists())
+        switch_id=re.findall(r"V10_SWITCH_ID=([0-9a-f]{32})",p.stdout)[0]
+        backup=self.state/("V10_route_cutover_"+switch_id)
+        self.assertEqual((backup/"prior-controller-state.json").read_bytes(),old)
+        p2=self.run_switch(mode="Rollback",switch_id=switch_id)
+        self.assertEqual(p2.returncode,0,p2.stdout+p2.stderr)
+        self.assertIn("V10_ROUTE_ROLLBACK=PASS",p2.stdout)
+        self.assertEqual((self.state/"V10_CONTROLLER_STATE.json").read_bytes(),old)
+        self.assertEqual(self.link.read_bytes(),self.before)
+        self.assert_not_changed()
+
+    def test_state_recorded_pid_currently_alive_is_never_archived(self):
+        old=self.write_dormant_state(controller_pid=os.getpid())
+        p=self.run_switch(archive_stale=True)
+        self.assertNotEqual(p.returncode,0,p.stdout+p.stderr)
+        self.assertIn("V10_ROUTE_BLOCK_REASON=STATE_TRACKED_PID_STILL_EXISTS",p.stdout)
+        self.assertEqual((self.state/"V10_CONTROLLER_STATE.json").read_bytes(),old)
+        self.assertEqual(self.link.read_bytes(),self.before)
+        self.assertFalse(list(self.state.glob("V10_release_*")))
+        self.assert_not_changed()
+
+    def test_missing_brain_identity_in_state_is_not_guessed(self):
+        self.write_dormant_state()
+        state_file=self.state/"V10_CONTROLLER_STATE.json"
+        doc=json.loads(state_file.read_text())
+        doc.pop("brain_observer_pid")
+        state_file.write_text(json.dumps(doc),encoding="utf-8")
+        p=self.run_switch(archive_stale=True)
+        self.assertNotEqual(p.returncode,0,p.stdout+p.stderr)
+        self.assertIn("V10_ROUTE_BLOCK_REASON=STATE_OWNERSHIP_INCOMPLETE",p.stdout)
+        self.assertEqual(self.link.read_bytes(),self.before)
         self.assert_not_changed()
 
     def test_wrong_sha_fails_without_touching_original(self):
