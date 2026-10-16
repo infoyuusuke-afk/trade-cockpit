@@ -102,15 +102,15 @@ try {
  foreach ($receipt in $files) {
   $rel=[string]$receipt.name
   $part=$rel.Split('/')
-  $matches=@()
+  $hits=@()
   if ($part[0] -eq "starter") {
    $candidate=Join-Path $state $part[1]
-   if (FileMatch $candidate $receipt) { $matches=@($candidate) }
+   if (FileMatch $candidate $receipt) { $hits=@($candidate) }
   } elseif ($part[0] -eq "repo") {
    $candidate=if ($part[1] -eq "ai_brain_observer.py") {
       Join-Path $repo "scripts\ai_brain_observer.py"
    } else { Join-Path (Join-Path $repo "downloads") $part[1] }
-   if (FileMatch $candidate $receipt) { $matches=@($candidate) }
+   if (FileMatch $candidate $receipt) { $hits=@($candidate) }
   } elseif ($part[0] -cmatch '^desktop[0-9]+$') {
    $desktopExpected++
    # Never use part[0] as a Desktop number: it reflects old enumeration
@@ -119,14 +119,14 @@ try {
     if ([string]::Equals($item.Name,$part[1],[StringComparison]::OrdinalIgnoreCase) -and
         $item.Bytes -eq [long]$receipt.bytes -and
         (FileMatch $item.Full $receipt)) {
-       $matches+=@($item.Full)
+       $hits+=@($item.Full)
     }
    }
   } else { Fail "ENTRY_CLASS_UNEXPECTED" }
-  if ($matches.Count -eq 1 -and $used.Add($matches[0])) {
+  if ($hits.Count -eq 1 -and $used.Add($hits[0])) {
    $mapped++
    if ($part[0] -cmatch '^desktop[0-9]+$') { $desktopMatched++ }
-  } elseif ($matches.Count -gt 1) {
+  } elseif ($hits.Count -gt 1) {
    $ambiguous++
    [void]$unresolved.Add($rel)
   } else {
