@@ -1,0 +1,19 @@
+name: V10 Runtime Health Adapter Safety
+on:
+  pull_request:
+    paths:
+      - "scripts/ms2_v10_health_adapter.py"
+      - "tests/test_ms2_v10_health_adapter.py"
+      - ".github/workflows/v10-health-adapter.yml"
+  workflow_dispatch:
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_ms2_v10_health_adapter.py -v
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_ms2_v10_health_adapter.py -v
