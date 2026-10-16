@@ -95,7 +95,7 @@ jobs:
       - name: Synthetic orphan BRAIN ownership and port audit (never stops processes)
         shell: powershell
         run: python -m unittest discover -s tests -p test_v10_live_ownership_readonly.py -v
-      - name: Strict legacy shutdown admission only (six live-process tests)
+      - name: Strict legacy shutdown admission only (seven live-process tests)
         shell: powershell
         run: python -m unittest discover -s tests -p test_v10_legacy_shutdown_preflight.py -v
   ubuntu:
