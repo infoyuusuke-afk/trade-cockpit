@@ -25,8 +25,9 @@ function SafeItem([string]$Path){
 }
 function CheckQuiescent([string]$Root){
  if(Test-Path -LiteralPath (Join-Path $Root "V10_CONTROLLER_STATE.json")){Deny "ACTIVE_V10_STATE"}
- foreach($port in @(28580,28581,28582,28583,28584)){
-  if(@(Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue).Count -gt 0){
+ $listening=@(Get-NetTCPConnection -State Listen -ErrorAction Stop)
+ foreach($conn in $listening){
+  if(@(28580,28581,28582,28583,28584) -contains [int]$conn.LocalPort){
    Deny "PORT_BUSY"
   }
  }
@@ -119,6 +120,19 @@ try{
  $found=@(FindOldShortcut)
  if($found.Count -ne 1){Deny "START_SHORTCUT_NOT_UNIQUE"}
  $originalLink=[string]$found[0]
+ $expectedLegacy=Join-Path $state "AI_COCKPIT_START_DEBUG.cmd"
+ $shellCheck=New-Object -ComObject WScript.Shell
+ $existingShortcut=$shellCheck.CreateShortcut($originalLink)
+ $expectedArgs='/k ""'+$expectedLegacy+'""'
+ if (-not [string]::Equals([string]$existingShortcut.TargetPath,
+       (Join-Path $env:SystemRoot "System32\cmd.exe"),
+       [StringComparison]::OrdinalIgnoreCase) -or
+     -not [string]::Equals([string]$existingShortcut.Arguments,
+       $expectedArgs,[StringComparison]::OrdinalIgnoreCase) -or
+     -not [string]::Equals([string]$existingShortcut.WorkingDirectory,
+       $state,[StringComparison]::OrdinalIgnoreCase)){
+  Deny "LEGACY_SHORTCUT_CHANGED"
+ }
  $desktop=Split-Path -Parent $originalLink
  $newStopLink=Join-Path $desktop "AI Cockpit V10 SAFE STOP.lnk"
  if(Test-Path -LiteralPath $newStopLink){Deny "STOP_LINK_EXISTS"}
@@ -176,6 +190,14 @@ try{
  $originalMoved=$true
  Move-Item -LiteralPath $draftStart -Destination $originalLink -ErrorAction Stop
  Move-Item -LiteralPath $draftStop -Destination $newStopLink -ErrorAction Stop
+ $readStart=$shell.CreateShortcut($originalLink)
+ $readStop=$shell.CreateShortcut($newStopLink)
+ if (-not [string]::Equals([string]$readStart.TargetPath,
+       $startCmd,[StringComparison]::OrdinalIgnoreCase) -or
+     -not [string]::Equals([string]$readStop.TargetPath,
+       $stopCmd,[StringComparison]::OrdinalIgnoreCase)){
+  Deny "NEW_SHORTCUT_TARGET_MISMATCH"
+ }
  $record=[ordered]@{
   id=$id;link=$originalLink;stop=$newStopLink
   old_hash=$oldHash
@@ -212,7 +234,8 @@ try{
   "DESKTOP_UNVERIFIED","START_SHORTCUT_NOT_UNIQUE","STOP_LINK_EXISTS","BAD_PIN",
   "FIXTURE_RESTRICTED","RELEASE_ALREADY_PRESENT","CLONE_FAILED","COMMIT_NOT_PRESENT",
   "PIN_BRANCH_FAILED","PIN_MISMATCH","STOP_BRAIN_CONTRACT_MISSING",
-  "BACKUP_MISMATCH","BAD_SWITCH_ID","BAD_RECEIPT","LINK_CHANGED","ROLLBACK_HASH")
+  "BACKUP_MISMATCH","BAD_SWITCH_ID","BAD_RECEIPT","LINK_CHANGED","ROLLBACK_HASH",
+  "LEGACY_SHORTCUT_CHANGED","NEW_SHORTCUT_TARGET_MISMATCH")
  if($known -ccontains [string]$_.Exception.Message){$reason=[string]$_.Exception.Message}
  Write-Output ("V10_ROUTE_BLOCK_STAGE="+$phase)
  Write-Output ("V10_ROUTE_BLOCK_REASON="+$reason)
