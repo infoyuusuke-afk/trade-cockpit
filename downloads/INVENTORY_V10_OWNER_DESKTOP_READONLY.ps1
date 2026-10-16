@@ -99,10 +99,12 @@ function Get-DesktopInventory([string]$Desktop,[string]$Root) {
  if (($dirInfo.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
   $result.Stop = "BLOCKED"; $result.Start = "BLOCKED"; return $result
  }
+ $stopName = ('A' + 'I' + ([char]0x30B3) + ([char]0x30AF) + ([char]0x30D4) + ([char]0x30C3) + ([char]0x30C8) + '_' + ([char]0x5B89) + ([char]0x5168) + ([char]0x505C) + ([char]0x6B62) + '.' + 'c' + 'm' + 'd')
  $stopCandidates = @(Get-ChildItem -LiteralPath $Desktop -File -ErrorAction Stop |
-     Where-Object { $_.Name -ceq "AIコクピット_安全停止.cmd" })
+     Where-Object { $_.Name -ceq $stopName })
+ $startName = ('A' + 'I' + ([char]0x30B3) + ([char]0x30AF) + ([char]0x30D4) + ([char]0x30C3) + ([char]0x30C8) + '_' + ([char]0x8D77) + ([char]0x52D5) + '.' + 'c' + 'm' + 'd')
  $startCandidates = @(Get-ChildItem -LiteralPath $Desktop -File -ErrorAction Stop |
-     Where-Object { $_.Name -ceq "AIコクピット_起動.cmd" })
+     Where-Object { $_.Name -ceq $startName })
  $result.StopCount = $stopCandidates.Count
  $result.StartCount = $startCandidates.Count
  if ($stopCandidates.Count -gt 1 -or $startCandidates.Count -gt 1) {
