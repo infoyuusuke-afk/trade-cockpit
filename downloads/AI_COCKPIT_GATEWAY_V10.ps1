@@ -181,7 +181,8 @@ function Get-V10BrainObserverProof([string]$RuntimeDirectory, [int]$ExpectedPid,
             $data.cross_source_join_allowed -ne $false -or
             $data.promotion_eligible -ne $false -or
             $null -ne $data.last_market_data_at -or
-            $data.exchange_tick_date_verified -eq $true -or
+            $data.exchange_tick_date_verified -ne $false -or
+            $data.signal_provenance_verified -ne $false -or
             $data.tested_expectancy_available -ne $false -or
             [string]$data.eligible_observed_n -cne '0') {
             $result.status = 'BRAIN_UNSAFE_EVIDENCE_CLAIM'
