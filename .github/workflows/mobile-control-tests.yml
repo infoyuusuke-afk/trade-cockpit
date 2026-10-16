@@ -54,6 +54,26 @@ jobs:
           path: dist/MS2_CSV_Local_Offline.zip
           if-no-files-found: error
           retention-days: 14
+      - name: Built-in Windows PowerShell synthetic acceptance (no EXE)
+        shell: pwsh
+        run: |
+          & powershell.exe -NoLogo -NoProfile -STA -File scripts/ms2_native_offline_capture.ps1 -SyntheticTest
+          if ($LASTEXITCODE -ne 0) { throw 'PowerShell synthetic acceptance BLOCKED' }
+      - name: Build script-only Windows package
+        run: python -m scripts.build_ms2_native_bundle
+      - name: Verify unpacked Windows PowerShell package
+        shell: pwsh
+        run: |
+          $folder = Join-Path $env:RUNNER_TEMP 'ms2-builtin'
+          Expand-Archive -LiteralPath dist/MS2_CSV_Windows_Builtin.zip -DestinationPath $folder
+          & powershell.exe -NoLogo -NoProfile -STA -File (Join-Path $folder 'scripts/ms2_native_offline_capture.ps1') -SyntheticTest
+          if ($LASTEXITCODE -ne 0) { throw 'Unpacked PowerShell synthetic acceptance BLOCKED' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MS2_CSV_Windows_Builtin
+          path: dist/MS2_CSV_Windows_Builtin.zip
+          if-no-files-found: error
+          retention-days: 14
       - name: Install pinned Windows packager for hosted CI
         run: python -m pip install pyinstaller==6.16.0
       - name: Build offline Python-free Windows executable
