@@ -1,0 +1,18 @@
+name: V10 Receipt Reader
+on:
+  pull_request:
+    paths:
+      - "scripts/ms2_v10_receipt_reader.py"
+      - "tests/test_ms2_v10_receipt_reader.py"
+      - ".github/workflows/v10-receipt-reader.yml"
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_ms2_v10_receipt_reader.py -v
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_ms2_v10_receipt_reader.py -v
