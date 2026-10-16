@@ -11,6 +11,8 @@ on:
       - "tests/test_v10_desktop_safe_stop_route.py"
       - "downloads/INVENTORY_V10_OWNER_DESKTOP_READONLY.ps1"
       - "tests/test_v10_owner_desktop_inventory.py"
+      - "downloads/PREPARE_V10_SAFE_CUTOVER_V1.ps1"
+      - "tests/test_v10_safe_cutover_prepare.py"
       - "docs/V10_BRAIN_SAFE_DEPLOYMENT_ACCEPTANCE.md"
       - ".github/workflows/v10-brain-safestop-preflight.yml"
   workflow_dispatch:
@@ -22,7 +24,7 @@ jobs:
       - name: Parse Windows PowerShell 5.1 files
         shell: powershell
         run: |
-          foreach ($p in @("downloads/STOP_AI_COCKPIT_V10.ps1","downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1","downloads/VERIFY_V10_DESKTOP_SAFE_STOP_ROUTE.ps1","downloads/INVENTORY_V10_OWNER_DESKTOP_READONLY.ps1")) {
+          foreach ($p in @("downloads/STOP_AI_COCKPIT_V10.ps1","downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1","downloads/VERIFY_V10_DESKTOP_SAFE_STOP_ROUTE.ps1","downloads/INVENTORY_V10_OWNER_DESKTOP_READONLY.ps1","downloads/PREPARE_V10_SAFE_CUTOVER_V1.ps1")) {
             $t=$null; $e=$null
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $p).Path,[ref]$t,[ref]$e) | Out-Null
             if ($e.Count -gt 0) { throw "${p}: $e" }
@@ -53,6 +55,9 @@ jobs:
       - name: Full OWNER desktop inventory (synthetic Windows only)
         shell: powershell
         run: python -m unittest discover -s tests -p test_v10_owner_desktop_inventory.py -v
+      - name: Safe cutover backup and manifest (isolated Windows only)
+        shell: powershell
+        run: python -m unittest discover -s tests -p test_v10_safe_cutover_prepare.py -v
   ubuntu:
     runs-on: ubuntu-latest
     steps:
