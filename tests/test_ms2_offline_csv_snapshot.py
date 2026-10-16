@@ -168,6 +168,62 @@ class SnapshotTests(unittest.TestCase):
             link.unlink()
         self.assertFalse(self.output().exists())
 
+    def test_poll_reset_session_manifest(self):
+        raw = (b'recorded_at,tick_time,price,volume,poll_seq\r\n'
+               b'2026-01-02 09:00:00,09:00:00,1,1,2169\r\n'
+               b'2026-01-02 12:23:42,12:23:41,2,1,1\r\n'
+               b'2026-01-02 12:23:43,12:23:42,3,1,2\r\n')
+        self.tick.write_bytes(raw)
+        result = self.run_snapshot()
+        self.assertEqual(result['state'], 'PRESERVED_UNAUTHENTICATED')
+        saved = self.output() / result['snapshot_id']
+        report = json.loads((saved / 'manifest.json').read_text())['session_audit']
+        self.assertEqual(report['session_count'], 2)
+        self.assertEqual(report['poll_reset_count'], 1)
+        self.assertEqual(report['boundaries'][0]['at_csv_line'], 3)
+        self.assertEqual(report['boundaries'][0]['previous_poll_seq'], 2169)
+        self.assertEqual(report['boundaries'][0]['current_poll_seq'], 1)
+        self.assertEqual(report['segments'][0]['row_count'], 1)
+        self.assertEqual(report['segments'][1]['row_count'], 2)
+        self.assertFalse(report['boundaries'][0]['restart_confirmed_by_machine'])
+        self.assertIsNone(report['boundaries'][0]['capture_downtime_seconds'])
+        self.assertFalse(report['cross_session_join_allowed'])
+        self.assertFalse(report['source_authenticated'])
+        self.assertFalse(report['real_submit_allowed'])
+        self.assertEqual((saved / self.tick.name).read_bytes(), raw)
+
+    def test_repeated_poll_does_not_split_session(self):
+        raw = (b'recorded_at,tick_time,price,volume,poll_seq\n'
+               b'2026-01-02 09:00:00,09:00:00,1,1,1\n'
+               b'2026-01-02 09:00:00,09:00:00,2,2,1\n'
+               b'2026-01-02 09:00:01,09:00:01,3,3,2\n')
+        self.tick.write_bytes(raw)
+        result = self.run_snapshot()
+        self.assertEqual(result['state'], 'PRESERVED_UNAUTHENTICATED')
+        report = json.loads((self.output() / result['snapshot_id'] / 'manifest.json').read_text())['session_audit']
+        self.assertEqual(report['session_count'], 1)
+        self.assertEqual(report['poll_reset_count'], 0)
+        self.assertEqual(report['segments'][0]['row_count'], 3)
+        self.assertEqual(report['long_append_intervals_count'], 0)
+
+    def test_restart_delta_not_confirmed_gap(self):
+        raw = (b'recorded_at,tick_time,price,volume,poll_seq\n'
+               b'2026-01-02 09:01:00,09:01:00,1,1,10\n'
+               b'2026-01-02 09:00:59,09:00:59,2,2,1\n'
+               b'2026-01-02 12:00:00,12:00:00,3,3,2\n')
+        self.tick.write_bytes(raw)
+        result = self.run_snapshot()
+        self.assertEqual(result['state'], 'PRESERVED_UNAUTHENTICATED')
+        report = json.loads((self.output() / result['snapshot_id'] / 'manifest.json').read_text())['session_audit']
+        self.assertEqual(report['append_clock_reversal_count'], 1)
+        self.assertEqual(report['long_append_intervals_count'], 1)
+        self.assertEqual(report['poll_reset_count'], 1)
+        self.assertEqual(report['boundaries'][0]['adjacent_append_clock_delta_seconds'], -1)
+        self.assertEqual(report['gap_state'], 'UNKNOWN_NO_JOINED_DIAGNOSTIC')
+        self.assertIsNone(report['verified_missing_tick_count'])
+        self.assertFalse(report['promotion_eligible'])
+        self.assertFalse(report['exchange_order_established'])
+
     def test_stat_api_timestamp_representation_difference(self):
         original = m.os.fstat
         def handle_stat(fd):

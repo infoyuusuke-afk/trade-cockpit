@@ -22,6 +22,7 @@ FILES = (
     'scripts/ms2_offline_acceptance.py',
     'scripts/run_ms2_offline_acceptance.cmd',
     'scripts/ms2_offline_csv_snapshot.py',
+    'scripts/ms2_tick_session_audit.py',
     'scripts/ms2_observation_ingress.py',
     'scripts/timeseries_fill_audit.py',
     'scripts/shadow_fill_model.py',

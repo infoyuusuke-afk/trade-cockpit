@@ -20,6 +20,7 @@ import shutil
 import stat
 from datetime import datetime
 
+from scripts.ms2_tick_session_audit import audit_tick_sessions
 from scripts.ms2_observation_ingress import (
     MAX_BYTES, TICK_HEADER, DIAG_HEADER, _csv_table, _legacy_reasons,
 )
@@ -121,6 +122,7 @@ def preserve_csv(repo_root, source_root=None, input_name=None, *, diag_name=None
             paths.append(source / diag_name)
         raws = [_read(p) for p in paths]
         _validate(raws[0], TICK_HEADER, day)
+        session_audit = audit_tick_sessions(raws[0])
         if diag_name is not None:
             _validate(raws[1], DIAG_HEADER, day)
         # Reuse ingress diagnostic semantics without interpreting them as proof.
@@ -154,7 +156,8 @@ def preserve_csv(repo_root, source_root=None, input_name=None, *, diag_name=None
                 raise ValueError('PRESERVATION_READBACK_MISMATCH')
         manifest = dict(SAFETY, state='PRESERVED_UNAUTHENTICATED', pair_atomic=False,
                         pair_evidence='INDEPENDENT_FILE_READS_NOT_SIMULTANEOUS',
-                        files=entries, limitations=limitations)
+                        files=entries, limitations=limitations,
+                        session_audit=session_audit)
         with (destination / 'manifest.json').open('x', encoding='utf-8') as stream:
             json.dump(manifest, stream, sort_keys=True)
             stream.flush()

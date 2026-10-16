@@ -51,6 +51,7 @@ def private_root():
 CODE_FILES = (
     'scripts/ms2_offline_acceptance.py',
     'scripts/ms2_offline_csv_snapshot.py',
+    'scripts/ms2_tick_session_audit.py',
     'scripts/ms2_observation_ingress.py',
     'scripts/timeseries_fill_audit.py',
     'scripts/shadow_fill_model.py',
@@ -76,6 +77,9 @@ CHECKS = (
     'tick_change_during_diag_rejected',
     'failed_publication_protects_previous_snapshot',
     'readback_corruption_refused',
+    'poll_reset_session_manifest',
+    'repeated_poll_does_not_split_session',
+    'restart_delta_not_confirmed_gap',
 )
 
 
