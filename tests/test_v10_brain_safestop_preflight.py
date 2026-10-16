@@ -11,6 +11,10 @@ class PreflightSafety(unittest.TestCase):
         self.assertIn('"brain_observer_pid" { "ai_brain_observer.py" }',self.stop)
         self.assertIn('"sbv2_pid", "shadow_supervisor_pid", "brain_observer_pid"))',self.stop)
         self.assertIn("Test-OwnedPidIdentity $field $procId",self.stop)
+        self.assertIn('$brainStopVerified = $true',self.stop)
+        self.assertIn('BRAIN observer PID',self.stop)
+        self.assertIn('if (-not $brainStopVerified)',self.stop)
+        self.assertLess(self.stop.index('if (-not $brainStopVerified)'),self.stop.index('Remove-Item -LiteralPath $StateFile -Force'))
     def test_no_generic_process_kill(self):
         for text in ("Stop-Process -Name","taskkill","Get-Process -Name python"):
             self.assertNotIn(text,self.stop)

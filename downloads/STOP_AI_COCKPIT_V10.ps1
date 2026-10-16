@@ -206,6 +206,7 @@ if ($null -ne $controllerVal -and [int]$controllerVal.Value -gt 0) {
 Stop-OwnedJobBridge 28580 ([int]$state.collector_pid) "Collector JSON"
 Stop-OwnedJobBridge 28582 ([int]$state.watcher_pid) "Watcher JSON"
 
+$brainStopVerified = $true
 foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid", "brain_observer_pid")) {
     $val = $state.PSObject.Properties[$field]
     if ($null -eq $val -or [int]$val.Value -le 0) { continue }
@@ -213,8 +214,24 @@ foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_p
     $p = Get-Process -Id $procId -ErrorAction SilentlyContinue
     if ($null -ne $p -and (Test-OwnedPidIdentity $field $procId)) {
         try { Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue } catch {}
-        Write-Host ("Stopped " + $field + " (PID " + $procId + ")") -ForegroundColor Green
+        if ($field -eq "brain_observer_pid") {
+            # Unlike legacy status-only cleanup, require confirmed exit.
+            # A still-running BRAIN prevents success and state deletion.
+            foreach ($attempt in 1..20) {
+                if ($null -eq (Get-Process -Id $procId -ErrorAction SilentlyContinue)) { break }
+                Start-Sleep -Milliseconds 250
+            }
+            if ($null -ne (Get-Process -Id $procId -ErrorAction SilentlyContinue)) {
+                $brainStopVerified = $false
+                Write-Host ("BRAIN observer PID " + $procId + " remains alive; retain state.") -ForegroundColor Red
+            } else {
+                Write-Host ("Stopped verified BRAIN observer (PID " + $procId + ")") -ForegroundColor Green
+            }
+        } else {
+            Write-Host ("Stopped " + $field + " (PID " + $procId + ")") -ForegroundColor Green
+        }
     } elseif ($null -ne $p) {
+        if ($field -eq "brain_observer_pid") { $brainStopVerified = $false }
         Write-Host ("PID " + $procId + " no longer matches " + $field + "; not stopping it.") -ForegroundColor Yellow
     }
 }
@@ -275,6 +292,11 @@ if ($excelPid -gt 0 -and -not [string]::IsNullOrWhiteSpace($workbookName) -and -
 
 if (-not $excelCleanupOk) {
     Write-Host "AI Cockpit V10 worker processes stopped, but managed Excel cleanup is incomplete." -ForegroundColor Red
+    exit 2
+}
+
+if (-not $brainStopVerified) {
+    Write-Host "V10 BRAIN safe stop incomplete; retained state for owner review. No unrelated PID was touched." -ForegroundColor Red
     exit 2
 }
 
