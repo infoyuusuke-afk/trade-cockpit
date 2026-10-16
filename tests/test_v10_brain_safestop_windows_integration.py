@@ -125,16 +125,39 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.assertTrue(self.state_path.exists(), "evidence deleted on refusal")
         self.assertIsNone(self.brain.poll(), "correct BRAIN killed despite mismatch")
         self.assertIsNone(self.foreign.poll(), "unrelated Python killed")
-        self.assertIn("identity unverified", result.stdout)
+        self.assertIsNone(self.controller.poll(), "foreign BRAIN PID must not stop Controller")
+        self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_IDENTITY_UNVERIFIED", result.stdout)
 
-    def test_missing_brain_pid_is_blocked_after_controller_exit(self):
+    def test_zero_brain_pid_blocks_before_controller_stop(self):
         self.state["brain_observer_pid"] = 0
         self.write_state()
         result = self.run_stop()
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertTrue(self.state_path.exists())
         self.assertIsNone(self.brain.poll(), "missing PID allowed broad scan")
-        self.assertIn("Latest BRAIN PID/state unverified", result.stdout)
+        self.assertIsNone(self.controller.poll(), "partial stop on zero BRAIN PID")
+        self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_PID_UNRECORDED", result.stdout)
+
+    def test_owner_legacy_state_missing_brain_property_never_half_stops(self):
+        self.state.pop("brain_observer_pid")
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_PID_UNRECORDED", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        self.assertIsNone(self.controller.poll(), "Controller killed before legacy safety check")
+        self.assertIsNone(self.brain.poll(), "BRAIN killed without recorded ownership")
+        self.assertIsNone(self.foreign.poll(), "unrelated Python killed")
+
+    def test_invalid_brain_pid_never_stops_controller(self):
+        self.state["brain_observer_pid"] = "not-a-pid"
+        self.write_state()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_PID_UNRECORDED", result.stdout)
+        self.assertIsNone(self.controller.poll())
+        self.assertIsNone(self.brain.poll())
 
     def test_corrupt_state_does_not_kill_any_worker(self):
         self.state_path.write_text("{malformed", encoding="utf-8")
