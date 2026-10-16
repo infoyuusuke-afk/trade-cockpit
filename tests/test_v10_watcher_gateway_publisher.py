@@ -20,7 +20,7 @@ class GatewayPublisherSafety(unittest.TestCase):
         controller=(ROOT/"downloads/AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
         self.assertIn('$dest = Join-Path $RuntimeDir $name',run)
         self.assertIn('$Watcher = Join-Path $RuntimeDir "Kioxia_RSS_Live_Watcher.ps1"',controller)
-        self.assertIn('-RuntimeDir \\"',controller)
+        self.assertIn(' -RuntimeDir "',controller)
         self.assertIn('$gatewayProc = Start-Worker',controller)
         self.assertIn('$state.brain_gateway_pid',controller)
         self.assertIn('AI_COCKPIT_GATEWAY_V10.ps1',controller)
