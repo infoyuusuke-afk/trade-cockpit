@@ -26,6 +26,9 @@ try {
     [IO.File]::WriteAllText((Join-Path $repoRoot 'ms2_live\kioxia_watcher_live.json'),$watcher)
     $runtimeWatcher=Join-Path $runtime 'kioxia_watcher_live.json'
     [IO.File]::WriteAllText($runtimeWatcher,'{"schema_version":"wrong"}')
+    $shadowFile=Join-Path $runtime 'ai_shadow_status.json'
+    $shadow='{"schema_version":"ai-shadow-supervisor-1","engine_pid":4242,"state":"RUNNING","updated_at":"'+([datetimeoffset]::UtcNow).ToString('o')+'","ui_independent":true,"real_submit_allowed":false,"resume_blocked":false}'
+    [IO.File]::WriteAllText($shadowFile,$shadow)
     $args=@('-NoProfile','-NonInteractive','-File',('"' + $gateway + '"'),
         '-RepoRoot',('"' + $repoRoot + '"'),'-RuntimeDir',('"' + $runtime + '"'),
         '-Port',[string]$port)
@@ -48,11 +51,16 @@ try {
     if($health.runtime.watcher_publication_state -ne 'PROCESS_UNVERIFIED'){throw 'UNVERIFIED_WATCHER_WAS_NOT_BLOCKED'}
     if($null -ne $health.runtime.watcher_observed_at_offset){throw 'UNVERIFIED_WATCHER_TIMESTAMP_EXPOSED'}
     if($health.runtime.brain_publication_state -ne 'UNKNOWN_NOT_PUBLISHED'){throw 'BRAIN_WAS_FABRICATED'}
+    if($health.runtime.shadow_heartbeat_status -ne 'SHADOW_PROCESS_UNVERIFIED'){throw 'FAKE_SHADOW_PID_ACCEPTED'}
+    if($null -ne $health.runtime.shadow_heartbeat_at){throw 'FAKE_SHADOW_HEARTBEAT_EXPOSED'}
     if($health.execution.real_submit_allowed -ne $false){throw 'REAL_ORDER_FLAG_UNSAFE'}
     if($health.runtime.fail_closed -ne $true){throw 'RUNTIME_FAIL_CLOSED_NOT_SET'}
     [IO.File]::Delete($runtimeWatcher)
     $health=(Invoke-WebRequest -Uri "$baseUrl/health" -UseBasicParsing -TimeoutSec 5).Content | ConvertFrom-Json
     if($health.runtime.watcher_publication_state -ne 'WATCHER_FILE_UNAVAILABLE'){throw 'GATEWAY_USED_REPO_DECOY_ON_MISSING_RUNTIME'}
+    [IO.File]::Delete($shadowFile)
+    $health=(Invoke-WebRequest -Uri "$baseUrl/health" -UseBasicParsing -TimeoutSec 5).Content | ConvertFrom-Json
+    if($health.runtime.shadow_heartbeat_status -ne 'SHADOW_FILE_UNAVAILABLE'){throw 'SHADOW_MISSING_NOT_FAIL_CLOSED'}
     $page=Invoke-WebRequest -Uri "$baseUrl/" -UseBasicParsing -TimeoutSec 5
     if($page.Content -notmatch 'v10-static-snapshot-warning'){throw 'HISTORICAL_NOTICE_MISSING'}
     $asset=Invoke-WebRequest -Uri "$baseUrl/v10_publication_status.js" -UseBasicParsing -TimeoutSec 5
