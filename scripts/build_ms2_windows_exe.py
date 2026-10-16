@@ -25,7 +25,10 @@ def installer_arguments(root=ROOT):
             '--specpath', str(root / 'build_frozen'),
             '--hidden-import', 'tests.test_ms2_offline_csv_snapshot']
     for path in CODE_FILES:
-        args.extend(['--add-data', path + os.pathsep + str(Path(path).parent)])
+        # --specpath changes where PyInstaller resolves relative input paths.
+        # Always bind an absolute checked source beneath the pinned repo root.
+        args.extend(['--add-data',
+                     str(root / path) + os.pathsep + str(Path(path).parent)])
     return args + [ENTRYPOINT]
 
 
