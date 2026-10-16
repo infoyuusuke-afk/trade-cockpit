@@ -20,7 +20,16 @@ if (-not (Test-Path -LiteralPath $StateFile)) {
 # Get-Content -Raw does not reliably treat a BOM-less UTF-8 file as UTF-8
 # under Windows PowerShell 5.1 (can fall back to the system ANSI codepage,
 # corrupting Japanese paths on read-back) - read explicitly as UTF-8.
-$state = [IO.File]::ReadAllText($StateFile, [Text.Encoding]::UTF8) | ConvertFrom-Json
+# A missing or corrupt state must never be interpreted as an empty clean stop.
+try {
+    $state = [IO.File]::ReadAllText($StateFile, [Text.Encoding]::UTF8) | ConvertFrom-Json -ErrorAction Stop
+    if ($null -eq $state -or [int]$state.controller_pid -le 0) {
+        throw "Controller identity missing"
+    }
+} catch {
+    Write-Host "V10 Controller state missing or invalid; refusing unverified Safe Stop." -ForegroundColor Red
+    exit 2
+}
 
 function Get-PortOwner([int]$Port) {
     try {
@@ -76,6 +85,38 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
     } catch { return $false }
 }
 
+
+# Opens the specific tracked process handle before checking command line and
+# creation time. A later PID reuse must never retarget a Stop-Process -Id call.
+function Test-ExactBrainHandle([System.Diagnostics.Process]$Proc,$State) {
+    if ($null -eq $Proc) { return $false }
+    try {
+        $handle = $Proc.Handle
+        if ($handle -eq [IntPtr]::Zero -or $Proc.HasExited) { return $false }
+        $cim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $Proc.Id) -ErrorAction Stop
+        if ($null -eq $cim -or [string]$cim.Name -notmatch '^(python|pythonw|py)\.exe$') {
+            return $false
+        }
+        $cmd = [string]$cim.CommandLine
+        $repo = [string]$State.repo_root
+        $runtime = [string]$State.runtime_dir
+        if ([string]::IsNullOrWhiteSpace($repo) -or [string]::IsNullOrWhiteSpace($runtime) -or
+            [string]::IsNullOrWhiteSpace($cmd)) { return $false }
+        foreach ($arg in @(
+            (Join-Path $repo "scripts\ai_brain_observer.py"),
+            (Join-Path $runtime "live_ms2.json"),
+            (Join-Path $runtime "ai_brain_observer_status_v1.json"),
+            "--live", "--status"
+        )) {
+            if ($cmd.IndexOf($arg, [StringComparison]::OrdinalIgnoreCase) -lt 0) { return $false }
+        }
+        $fromHandle = $Proc.StartTime.ToUniversalTime()
+        $fromCim = ([datetime]$cim.CreationDate).ToUniversalTime()
+        if ([Math]::Abs(($fromHandle - $fromCim).TotalSeconds) -gt 2) { return $false }
+        $controllerStarted = ([datetime]$State.started_at).ToUniversalTime()
+        return ($fromHandle -ge $controllerStarted.AddSeconds(-10))
+    } catch { return $false }
+}
 
 function Stop-VerifiedHiddenManagedExcelOrphan([int]$ExcelPid,[string]$WorkbookPath) {
     if ($ExcelPid -le 0 -or [string]::IsNullOrWhiteSpace($WorkbookPath)) { return $false }
@@ -203,6 +244,24 @@ if ($null -ne $controllerVal -and [int]$controllerVal.Value -gt 0) {
     }
 }
 
+# Controller may have restarted BRAIN and atomically replaced its state after
+# our initial read. Re-read only AFTER the Controller has actually exited.
+# Refuse a missing, malformed or different session instead of using stale PIDs.
+try {
+    $latest = [IO.File]::ReadAllText($StateFile, [Text.Encoding]::UTF8) | ConvertFrom-Json -ErrorAction Stop
+    if ($null -eq $latest -or
+        [int]$latest.controller_pid -ne [int]$state.controller_pid -or
+        [string]$latest.session_id -cne [string]$state.session_id -or
+        [string]$latest.repo_root -cne [string]$state.repo_root -or
+        [int]$latest.brain_observer_pid -le 0) {
+        throw "BRAIN identity or session not recorded"
+    }
+    $state = $latest
+} catch {
+    Write-Host "Latest BRAIN PID/state unverified after Controller exit; retained state." -ForegroundColor Red
+    exit 2
+}
+
 Stop-OwnedJobBridge 28580 ([int]$state.collector_pid) "Collector JSON"
 Stop-OwnedJobBridge 28582 ([int]$state.watcher_pid) "Watcher JSON"
 
@@ -212,26 +271,37 @@ foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_p
     if ($null -eq $val -or [int]$val.Value -le 0) { continue }
     $procId = [int]$val.Value
     $p = Get-Process -Id $procId -ErrorAction SilentlyContinue
-    if ($null -ne $p -and (Test-OwnedPidIdentity $field $procId)) {
-        try { Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue } catch {}
-        if ($field -eq "brain_observer_pid") {
-            # Unlike legacy status-only cleanup, require confirmed exit.
-            # A still-running BRAIN prevents success and state deletion.
-            foreach ($attempt in 1..20) {
-                if ($null -eq (Get-Process -Id $procId -ErrorAction SilentlyContinue)) { break }
-                Start-Sleep -Milliseconds 250
-            }
-            if ($null -ne (Get-Process -Id $procId -ErrorAction SilentlyContinue)) {
+    if ($field -eq "brain_observer_pid") {
+        if ($null -eq $p) {
+            Write-Host ("Recorded BRAIN observer PID " + $procId + " already exited.") -ForegroundColor Yellow
+            continue
+        }
+        if (-not (Test-OwnedPidIdentity $field $procId) -or
+            -not (Test-ExactBrainHandle $p $state)) {
+            $brainStopVerified = $false
+            Write-Host ("BRAIN observer PID " + $procId + " identity unverified; not stopping.") -ForegroundColor Red
+            continue
+        }
+        try {
+            # Kill/WaitForExit operate on the already-opened process object,
+            # never look up the same numeric PID again after verification.
+            $p.Kill()
+            if (-not $p.WaitForExit(5000) -or -not $p.HasExited) {
                 $brainStopVerified = $false
                 Write-Host ("BRAIN observer PID " + $procId + " remains alive; retain state.") -ForegroundColor Red
             } else {
                 Write-Host ("Stopped verified BRAIN observer (PID " + $procId + ")") -ForegroundColor Green
             }
-        } else {
-            Write-Host ("Stopped " + $field + " (PID " + $procId + ")") -ForegroundColor Green
+        } catch {
+            $brainStopVerified = $false
+            Write-Host ("BRAIN observer PID " + $procId + " stop denied; retain state.") -ForegroundColor Red
         }
+        continue
+    }
+    if ($null -ne $p -and (Test-OwnedPidIdentity $field $procId)) {
+        try { Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue } catch {}
+        Write-Host ("Stopped " + $field + " (PID " + $procId + ")") -ForegroundColor Green
     } elseif ($null -ne $p) {
-        if ($field -eq "brain_observer_pid") { $brainStopVerified = $false }
         Write-Host ("PID " + $procId + " no longer matches " + $field + "; not stopping it.") -ForegroundColor Yellow
     }
 }
@@ -300,5 +370,11 @@ if (-not $brainStopVerified) {
     exit 2
 }
 
-Remove-Item -LiteralPath $StateFile -Force -ErrorAction SilentlyContinue
+try {
+    Remove-Item -LiteralPath $StateFile -Force -ErrorAction Stop
+    if (Test-Path -LiteralPath $StateFile) { throw "STATE_FILE_STILL_PRESENT" }
+} catch {
+    Write-Host "V10 state removal failed; cannot report Safe Stop success." -ForegroundColor Red
+    exit 2
+}
 Write-Host "AI Cockpit V10 managed processes and verified managed Excel stopped." -ForegroundColor Green
