@@ -78,17 +78,30 @@ function Get-V10PublicationState([string]$Stamp, [string]$TimezoneName,
     return 'RECENT_PUBLICATION_ONLY'
 }
 
-# The Watcher writes this exact local file under its PowerShell PSScriptRoot.
-# Never read CSVs, infer timestamps from file mtimes, or copy private rows
-# into the public health response. Missing/invalid files stay unknown.
-function Get-V10WatcherPublication([string]$RepositoryRoot, [bool]$ProcessVerified) {
+# V10 RUN deploys Watcher into RuntimeDir, NOT RepoRoot/ms2_live.
+# Watcher writes its JSON beside its deployed script under PSScriptRoot.
+# Never read repo checkout snapshots or guess another directory.
+function Get-V10WatcherPublication([string]$RuntimeDirectory, [bool]$ProcessVerified) {
     $result = [ordered]@{
         observed_at_offset = $null
         timestamp_timezone = $null
         publication_state = 'WATCHER_FILE_UNAVAILABLE'
     }
-    $file = Join-Path (Join-Path $RepositoryRoot 'ms2_live') 'kioxia_watcher_live.json'
+    if ([string]::IsNullOrWhiteSpace($RuntimeDirectory)) {
+        $result.publication_state = 'WATCHER_RUNTIME_UNAVAILABLE'
+        return $result
+    }
     try {
+        if (-not (Test-Path -LiteralPath $RuntimeDirectory -PathType Container)) {
+            $result.publication_state = 'WATCHER_RUNTIME_UNAVAILABLE'
+            return $result
+        }
+        $dir = Get-Item -LiteralPath $RuntimeDirectory -ErrorAction Stop
+        if (($dir.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            $result.publication_state = 'WATCHER_RUNTIME_UNTRUSTED'
+            return $result
+        }
+        $file = Join-Path $RuntimeDirectory 'kioxia_watcher_live.json'
         if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return $result }
         $item = Get-Item -LiteralPath $file -ErrorAction Stop
         if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
@@ -564,19 +577,28 @@ if ($PublicationSelfTest) {
         [Globalization.CultureInfo]::InvariantCulture)).ToString('yyyy-MM-ddTHH:mm:ss') + '+09:00'
     if ((Get-V10PublicationState $oldStamp 'Asia/Tokyo' $true ([datetime]::UtcNow)) -ne 'PUBLICATION_STALE') { throw 'STALE_GUARD_FAILED' }
     $tmp = Join-Path ([IO.Path]::GetTempPath()) ([IO.Path]::GetRandomFileName())
-    [void][IO.Directory]::CreateDirectory((Join-Path $tmp 'ms2_live'))
+    $runtimeFixture = Join-Path $tmp 'files'
+    $repoFixture = Join-Path (Join-Path $tmp 'repo') 'ms2_live'
+    [void][IO.Directory]::CreateDirectory($runtimeFixture)
+    [void][IO.Directory]::CreateDirectory($repoFixture)
     try {
-        $file = Join-Path (Join-Path $tmp 'ms2_live') 'kioxia_watcher_live.json'
+        $file = Join-Path $runtimeFixture 'kioxia_watcher_live.json'
         $fixture = '{"schema_version":"kioxia-watcher-1.0","source":"Kioxia_RSS_Live_Watcher (Excel RSS)","observed_at_offset":"' + $jstStamp + '","timestamp_timezone":"Asia/Tokyo"}'
+        # Repo checkout has a deliberately valid decoy. It must be ignored.
+        [IO.File]::WriteAllText((Join-Path $repoFixture 'kioxia_watcher_live.json'), $fixture)
+        [IO.File]::WriteAllText($file, '{"schema_version":"not-a-watcher"}')
+        $untrusted = Get-V10WatcherPublication $runtimeFixture $true
+        if ($untrusted.publication_state -ne 'WATCHER_IDENTITY_UNVERIFIED') { throw 'WATCHER_REPO_DECOY_WAS_USED' }
         [IO.File]::WriteAllText($file, $fixture, [Text.UTF8Encoding]::new($false))
-        $verified = Get-V10WatcherPublication $tmp $true
+        $verified = Get-V10WatcherPublication $runtimeFixture $true
         if ($verified.publication_state -ne 'RECENT_PUBLICATION_ONLY') { throw 'WATCHER_LOCAL_FILE_NOT_READ' }
-        $denied = Get-V10WatcherPublication $tmp $false
+        $denied = Get-V10WatcherPublication $runtimeFixture $false
         if ($denied.publication_state -ne 'PROCESS_UNVERIFIED' -or $null -ne $denied.observed_at_offset) { throw 'UNVERIFIED_FILE_EXPOSED' }
         [IO.File]::WriteAllText($file, '{"schema_version":"wrong"}')
-        if ((Get-V10WatcherPublication $tmp $true).publication_state -ne 'WATCHER_IDENTITY_UNVERIFIED') { throw 'WATCHER_SCHEMA_GUARD_FAILED' }
+        if ((Get-V10WatcherPublication $runtimeFixture $true).publication_state -ne 'WATCHER_IDENTITY_UNVERIFIED') { throw 'WATCHER_SCHEMA_GUARD_FAILED' }
         [IO.File]::Delete($file)
-        if ((Get-V10WatcherPublication $tmp $true).publication_state -ne 'WATCHER_FILE_UNAVAILABLE') { throw 'MISSING_WATCHER_NOT_BLOCKED' }
+        if ((Get-V10WatcherPublication $runtimeFixture $true).publication_state -ne 'WATCHER_FILE_UNAVAILABLE') { throw 'MISSING_WATCHER_NOT_BLOCKED' }
+        if ((Get-V10WatcherPublication '' $true).publication_state -ne 'WATCHER_RUNTIME_UNAVAILABLE') { throw 'MISSING_RUNTIME_NOT_BLOCKED' }
     } finally { if ([IO.Directory]::Exists($tmp)) { [IO.Directory]::Delete($tmp, $true) } }
     Write-Output 'PASS: V10_WATCHER_PUBLICATION_SYNTHETIC'
     exit 0
@@ -740,7 +762,7 @@ try {
                 }
                 # Read only the Watcher-owned local JSON. It may live in a
                 # different working tree; in that case state stays UNKNOWN.
-                $watcherProof = Get-V10WatcherPublication $RepoRoot ($runtime.watcher_status -eq 'LIVE')
+                $watcherProof = Get-V10WatcherPublication $RuntimeDir ($runtime.watcher_status -eq 'LIVE')
                 $runtime.watcher_observed_at_offset = $watcherProof.observed_at_offset
                 $runtime.watcher_timestamp_timezone = $watcherProof.timestamp_timezone
                 $runtime.watcher_publication_state = $watcherProof.publication_state

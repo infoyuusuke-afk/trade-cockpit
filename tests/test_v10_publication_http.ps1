@@ -22,7 +22,10 @@ try {
     $tokyo=[TimeZoneInfo]::FindSystemTimeZoneById('Tokyo Standard Time')
     $jst=[TimeZoneInfo]::ConvertTimeFromUtc([datetime]::UtcNow,$tokyo).ToString('yyyy-MM-ddTHH:mm:ss')+'+09:00'
     $watcher='{"schema_version":"kioxia-watcher-1.0","source":"Kioxia_RSS_Live_Watcher (Excel RSS)","observed_at_offset":"'+$jst+'","timestamp_timezone":"Asia/Tokyo"}'
+    # Valid checkout decoy; the real Watcher is deployed under RuntimeDir.
     [IO.File]::WriteAllText((Join-Path $repoRoot 'ms2_live\kioxia_watcher_live.json'),$watcher)
+    $runtimeWatcher=Join-Path $runtime 'kioxia_watcher_live.json'
+    [IO.File]::WriteAllText($runtimeWatcher,'{"schema_version":"wrong"}')
     $args=@('-NoProfile','-NonInteractive','-File',('"' + $gateway + '"'),
         '-RepoRoot',('"' + $repoRoot + '"'),'-RuntimeDir',('"' + $runtime + '"'),
         '-Port',[string]$port)
@@ -39,11 +42,17 @@ try {
     if($null -eq $resp){throw 'GATEWAY_HTTP_NOT_READY_WITHIN_15S'}
     $health=$resp.Content | ConvertFrom-Json
     if($health.status -ne 'ok'){throw 'GATEWAY_HEALTH_NOT_OK'}
+    if($health.runtime.watcher_publication_state -ne 'WATCHER_IDENTITY_UNVERIFIED'){throw 'GATEWAY_USED_REPO_DECOY_OR_WRONG_RUNTIME'}
+    [IO.File]::WriteAllText($runtimeWatcher,$watcher)
+    $health=(Invoke-WebRequest -Uri "$baseUrl/health" -UseBasicParsing -TimeoutSec 5).Content | ConvertFrom-Json
     if($health.runtime.watcher_publication_state -ne 'PROCESS_UNVERIFIED'){throw 'UNVERIFIED_WATCHER_WAS_NOT_BLOCKED'}
     if($null -ne $health.runtime.watcher_observed_at_offset){throw 'UNVERIFIED_WATCHER_TIMESTAMP_EXPOSED'}
     if($health.runtime.brain_publication_state -ne 'UNKNOWN_NOT_PUBLISHED'){throw 'BRAIN_WAS_FABRICATED'}
     if($health.execution.real_submit_allowed -ne $false){throw 'REAL_ORDER_FLAG_UNSAFE'}
     if($health.runtime.fail_closed -ne $true){throw 'RUNTIME_FAIL_CLOSED_NOT_SET'}
+    [IO.File]::Delete($runtimeWatcher)
+    $health=(Invoke-WebRequest -Uri "$baseUrl/health" -UseBasicParsing -TimeoutSec 5).Content | ConvertFrom-Json
+    if($health.runtime.watcher_publication_state -ne 'WATCHER_FILE_UNAVAILABLE'){throw 'GATEWAY_USED_REPO_DECOY_ON_MISSING_RUNTIME'}
     $page=Invoke-WebRequest -Uri "$baseUrl/" -UseBasicParsing -TimeoutSec 5
     if($page.Content -notmatch 'v10-static-snapshot-warning'){throw 'HISTORICAL_NOTICE_MISSING'}
     $asset=Invoke-WebRequest -Uri "$baseUrl/v10_publication_status.js" -UseBasicParsing -TimeoutSec 5
