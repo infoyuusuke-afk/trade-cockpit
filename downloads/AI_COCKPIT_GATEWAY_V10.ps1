@@ -5,7 +5,8 @@ param(
     [int]$Port = 28581,
     [switch]$SnapshotGuardSelfTest,
     [switch]$PublicationSelfTest,
-    [switch]$ShadowHeartbeatSelfTest
+    [switch]$ShadowHeartbeatSelfTest,
+    [switch]$BrainObserverSelfTest
 )
 
 # AI Cockpit Gateway V10
@@ -137,6 +138,134 @@ function Get-V10WatcherPublication([string]$RuntimeDirectory, [bool]$ProcessVeri
 
 # SHADOW is a separate observation supervisor, NOT the BRAIN strategy engine.
 # This evidence is an authenticated process-publication heartbeat only.
+
+# Controller-owned BRAIN observation worker is independent from port 28584
+# (which is only another Gateway). This does NOT authenticate market ticks.
+function Get-V10BrainObserverProof([string]$RuntimeDirectory, [int]$ExpectedPid, [bool]$ProcessVerified) {
+    $result = [ordered]@{
+        status = 'BRAIN_FILE_UNAVAILABLE'
+        updated_at = $null
+        watch_count = $null
+        process_role = 'INDEPENDENT_BRAIN_OBSERVER_NOT_TRADE_ENGINE'
+    }
+    if ([string]::IsNullOrWhiteSpace($RuntimeDirectory)) {
+        $result.status = 'BRAIN_RUNTIME_UNAVAILABLE'
+        return $result
+    }
+    try {
+        if (-not (Test-Path -LiteralPath $RuntimeDirectory -PathType Container)) {
+            $result.status = 'BRAIN_RUNTIME_UNAVAILABLE'
+            return $result
+        }
+        $dir = Get-Item -LiteralPath $RuntimeDirectory -ErrorAction Stop
+        if (($dir.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            $result.status = 'BRAIN_RUNTIME_UNTRUSTED'
+            return $result
+        }
+        $path = Join-Path $RuntimeDirectory 'ai_brain_observer_status_v1.json'
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $result }
+        $item = Get-Item -LiteralPath $path -ErrorAction Stop
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
+            $item.Length -le 2 -or $item.Length -gt 65536) {
+            $result.status = 'BRAIN_FILE_UNTRUSTED'
+            return $result
+        }
+        $data = Read-JsonUtf8 $path
+        if ([string]$data.schema_version -cne 'ai-brain-observer-1' -or
+            [string]$data.component_role -cne 'INDEPENDENT_BRAIN_OBSERVER_NOT_TRADE_ENGINE') {
+            $result.status = 'BRAIN_SCHEMA_UNVERIFIED'
+            return $result
+        }
+        if ($data.real_submit_allowed -ne $false -or
+            $data.source_authenticated -ne $false -or
+            $data.cross_source_join_allowed -ne $false -or
+            $data.promotion_eligible -ne $false -or
+            $null -ne $data.last_market_data_at -or
+            $data.exchange_tick_date_verified -eq $true -or
+            $data.tested_expectancy_available -ne $false -or
+            [string]$data.eligible_observed_n -cne '0') {
+            $result.status = 'BRAIN_UNSAFE_EVIDENCE_CLAIM'
+            return $result
+        }
+        if (-not $ProcessVerified -or $ExpectedPid -le 0) {
+            $result.status = 'BRAIN_PROCESS_UNVERIFIED'
+            return $result
+        }
+        $publishedPid = 0
+        if (-not [int]::TryParse([string]$data.engine_pid, [ref]$publishedPid) -or
+            $publishedPid -ne $ExpectedPid) {
+            $result.status = 'BRAIN_PID_MISMATCH'
+            return $result
+        }
+        $stamp = [string]$data.updated_at
+        if ($stamp -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,7})?(Z|[+-]\d{2}:\d{2})$') {
+            $result.status = 'BRAIN_TIME_INVALID'
+            return $result
+        }
+        $parsed = [datetimeoffset]::MinValue
+        $valid = [datetimeoffset]::TryParse($stamp,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::None, [ref]$parsed)
+        if (-not $valid) {
+            $result.status = 'BRAIN_TIME_INVALID'
+            return $result
+        }
+        $age = ([datetimeoffset]::UtcNow - $parsed.ToUniversalTime()).TotalSeconds
+        $fileAge = ([datetime]::UtcNow - $item.LastWriteTimeUtc).TotalSeconds
+        if ($age -lt 0 -or $fileAge -lt 0 -or $age -gt 30 -or $fileAge -gt 30) {
+            $result.status = 'BRAIN_STALE_OR_FUTURE'
+            return $result
+        }
+        $state = [string]$data.state
+        if ($state -cnotin @('BLOCKED', 'OBSERVATION_ONLY')) {
+            $result.status = 'BRAIN_STATE_INVALID'
+            return $result
+        }
+        if ($state -ceq 'BLOCKED') {
+            $result.status = 'BRAIN_INPUT_BLOCKED'
+            $result.updated_at = $parsed.ToUniversalTime().ToString('o')
+            return $result
+        }
+        # A recent BRAIN publication is not a dated exchange tick.
+        $sourceStamp = [datetimeoffset]::MinValue
+        $sourceRaw = [string]$data.source_publication_at
+        $sourceOK = $sourceRaw -cmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,7})?(Z|[+-]\d{2}:\d{2})$' -and
+            [datetimeoffset]::TryParse($sourceRaw, [Globalization.CultureInfo]::InvariantCulture,
+                [Globalization.DateTimeStyles]::None, [ref]$sourceStamp)
+        if (-not $sourceOK) {
+            $result.status = 'BRAIN_SOURCE_TIME_UNVERIFIED'
+            return $result
+        }
+        $sourceAge = ([datetimeoffset]::UtcNow - $sourceStamp.ToUniversalTime()).TotalSeconds
+        if ($sourceAge -lt 0 -or $sourceAge -gt 60) {
+            $result.status = 'BRAIN_SOURCE_STALE'
+            return $result
+        }
+        $watchCount = 0
+        foreach ($key in @('OR15_ABOVE_VWAP_WATCH', 'OR15_BELOW_VWAP_WATCH')) {
+            $count = $data.watch_counts.$key
+            $parsedCount = 0
+            if (-not [int]::TryParse([string]$count, [ref]$parsedCount) -or
+                $parsedCount -lt 0 -or $parsedCount -gt 110) {
+                $result.status = 'BRAIN_WATCH_COUNTS_INVALID'
+                return $result
+            }
+            $watchCount += $parsedCount
+        }
+        if ($watchCount -gt 110) {
+            $result.status = 'BRAIN_WATCH_COUNTS_INVALID'
+            return $result
+        }
+        $result.status = 'BRAIN_OBSERVING_PUBLICATION_ONLY'
+        $result.updated_at = $parsed.ToUniversalTime().ToString('o')
+        $result.watch_count = $watchCount
+        return $result
+    } catch {
+        $result.status = 'BRAIN_STATUS_UNREADABLE'
+        return $result
+    }
+}
+
 function Get-V10ShadowHeartbeatProof([string]$RuntimeDirectory, [int]$ExpectedPid,
     [bool]$ProcessVerified) {
     $result = [ordered]@{
@@ -652,6 +781,55 @@ function Add-StaticSnapshotNotice([string]$Html, [datetime]$ReferenceDate) {
 
 
 
+
+if ($BrainObserverSelfTest) {
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ([IO.Path]::GetRandomFileName())
+    [void][IO.Directory]::CreateDirectory($tmp)
+    try {
+        $file = Join-Path $tmp 'ai_brain_observer_status_v1.json'
+        $stamp = ([datetimeoffset]::UtcNow).ToString('o')
+        $fixture = [ordered]@{
+            schema_version = 'ai-brain-observer-1'
+            component_role = 'INDEPENDENT_BRAIN_OBSERVER_NOT_TRADE_ENGINE'
+            engine_pid = 2222
+            updated_at = $stamp
+            state = 'OBSERVATION_ONLY'
+            source_publication_at = $stamp
+            last_market_data_at = $null
+            exchange_tick_date_verified = $false
+            real_submit_allowed = $false
+            source_authenticated = $false
+            cross_source_join_allowed = $false
+            promotion_eligible = $false
+            tested_expectancy_available = $false
+            eligible_observed_n = 0
+            watch_counts = @{ OR15_ABOVE_VWAP_WATCH = 3; OR15_BELOW_VWAP_WATCH = 4 }
+        }
+        [IO.File]::WriteAllText($file, ($fixture | ConvertTo-Json -Depth 4))
+        $good = Get-V10BrainObserverProof $tmp 2222 $true
+        if ($good.status -ne 'BRAIN_OBSERVING_PUBLICATION_ONLY' -or $good.watch_count -ne 7) { throw ('BRAIN_SYNTHETIC_FAILED ' + $good.status) }
+        if ((Get-V10BrainObserverProof $tmp 2222 $false).status -ne 'BRAIN_PROCESS_UNVERIFIED') { throw 'BRAIN_PROCESS_GUARD_FAILED' }
+        if ((Get-V10BrainObserverProof $tmp 2223 $true).status -ne 'BRAIN_PID_MISMATCH') { throw 'BRAIN_PID_GUARD_FAILED' }
+        $fixture.source_authenticated = $true
+        [IO.File]::WriteAllText($file, ($fixture | ConvertTo-Json -Depth 4))
+        if ((Get-V10BrainObserverProof $tmp 2222 $true).status -ne 'BRAIN_UNSAFE_EVIDENCE_CLAIM') { throw 'BRAIN_TRUST_CLAIM_GUARD_FAILED' }
+        $fixture.source_authenticated = $false
+        $fixture.updated_at = '2026-01-01T00:00:00+00:00'
+        [IO.File]::WriteAllText($file, ($fixture | ConvertTo-Json -Depth 4))
+        if ((Get-V10BrainObserverProof $tmp 2222 $true).status -ne 'BRAIN_STALE_OR_FUTURE') { throw 'BRAIN_STALE_GUARD_FAILED' }
+        $fixture.updated_at = $stamp
+        $fixture.state = 'BLOCKED'
+        [IO.File]::WriteAllText($file, ($fixture | ConvertTo-Json -Depth 4))
+        if ((Get-V10BrainObserverProof $tmp 2222 $true).status -ne 'BRAIN_INPUT_BLOCKED') { throw 'BRAIN_BLOCKED_INPUT_GUARD_FAILED' }
+        [IO.File]::Delete($file)
+        if ((Get-V10BrainObserverProof $tmp 2222 $true).status -ne 'BRAIN_FILE_UNAVAILABLE') { throw 'BRAIN_MISSING_GUARD_FAILED' }
+    } finally {
+        if ([IO.Directory]::Exists($tmp)) { [IO.Directory]::Delete($tmp, $true) }
+    }
+    Write-Output 'PASS: V10_INDEPENDENT_BRAIN_OBSERVER_SYNTHETIC'
+    exit 0
+}
+
 if ($ShadowHeartbeatSelfTest) {
     # Synthetic ProcessVerified=true is a fixture, not real process attestation.
     $tmp = Join-Path ([IO.Path]::GetTempPath()) ([IO.Path]::GetRandomFileName())
@@ -819,6 +997,10 @@ try {
                     watcher_timestamp_timezone   = $null
                     watcher_publication_state    = 'UNKNOWN'
                     brain_publication_state      = 'UNKNOWN_NOT_PUBLISHED'
+                    brain_observer_state         = 'BRAIN_NOT_VERIFIED'
+                    brain_observer_updated_at    = $null
+                    brain_observer_watch_count   = $null
+                    brain_observer_role          = 'INDEPENDENT_BRAIN_OBSERVER_NOT_TRADE_ENGINE'
                     shadow_heartbeat_status      = 'SHADOW_NOT_VERIFIED'
                     shadow_heartbeat_at          = $null
                     shadow_component_role        = 'SHADOW_OBSERVER_NOT_BRAIN'
@@ -828,6 +1010,8 @@ try {
                 }
                 $shadowExpectedPid = 0
                 $shadowProcessVerified = $false
+                $brainExpectedPid = 0
+                $brainProcessVerified = $false
                 try {
                     if (Test-Path -LiteralPath $controllerStateFile) {
                         $st = Read-JsonUtf8 $controllerStateFile
@@ -851,6 +1035,8 @@ try {
                         $sessionFresh = $controllerAlive -and $stateAge -ge 0 -and $stateAge -le 30
                         $shadowExpectedPid = [int]$st.shadow_supervisor_pid
                         $shadowProcessVerified = $sessionFresh -and (Test-HealthProcess $shadowExpectedPid 'ai_shadow_supervisor.py' $stateWrittenAt)
+                        $brainExpectedPid = [int]$st.brain_observer_pid
+                        $brainProcessVerified = $sessionFresh -and (Test-HealthProcess $brainExpectedPid 'ai_brain_observer.py' $stateWrittenAt)
                         foreach ($check in @(
                             @{field='watcher'; script='Kioxia_RSS_Live_Watcher.ps1'},
                             @{field='heartbeat'; script='Kioxia_Safety_Heartbeat.ps1'},
@@ -913,6 +1099,11 @@ try {
                 $runtime.shadow_heartbeat_status = $shadowProof.status
                 $runtime.shadow_heartbeat_at = $shadowProof.heartbeat_at
                 $runtime.shadow_component_role = $shadowProof.component_role
+                $brainProof = Get-V10BrainObserverProof $RuntimeDir $brainExpectedPid $brainProcessVerified
+                $runtime.brain_observer_state = $brainProof.status
+                $runtime.brain_observer_updated_at = $brainProof.updated_at
+                $runtime.brain_observer_watch_count = $brainProof.watch_count
+                $runtime.brain_observer_role = $brainProof.process_role
                 $execution = [ordered]@{
                     real_submit_allowed        = $false
                     real_order_route            = 'DISABLED'
