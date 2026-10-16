@@ -147,6 +147,23 @@ class RehearseSnapshotTest(unittest.TestCase):
         self.check_block(self.verify(mode="Rehearse",parent=Path("C:/Windows/Temp")/
                                      "V10-UNAPPROVED-LOCATION"),"STAGING_MUST_BE_IN_TEMP")
 
+    def test_stage_parent_junction_cannot_redirect_copy(self):
+        real=self.root/"junction-target"
+        real.mkdir()
+        (real/"must_remain").write_text("PRESERVED",encoding="utf-8")
+        junction=self.root/"stage-junction"
+        mk=subprocess.run(["cmd.exe","/c","mklink","/J",str(junction),str(real)],
+            capture_output=True,text=True,timeout=15)
+        if mk.returncode!=0:
+            self.skipTest("Unable to create temporary junction")
+        p=self.verify(mode="Rehearse",parent=junction)
+        self.assertEqual(p.returncode,2,p.stdout+p.stderr)
+        self.assertIn("BLOCK_REASON=REPARSE_REFUSED",p.stdout)
+        self.assertIn("SNAPSHOT_RECEIPT=BLOCKED",p.stdout)
+        self.assertEqual((real/"must_remain").read_text(encoding="utf-8"),
+                         "PRESERVED")
+        self.assertEqual([x.name for x in real.iterdir()],["must_remain"])
+
     def test_snapshot_directory_reparse_refused(self):
         actual=self.root/"real-source"
         actual.mkdir()
