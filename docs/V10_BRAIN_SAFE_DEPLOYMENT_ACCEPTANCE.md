@@ -272,3 +272,56 @@ all PIDs/ports at zero before declaring success. Failure must preserve
 recovery evidence. The production command shall remain inaccessible until
 the Windows isolated destructive acceptance passes; no OWNER operation is
 requested yet.
+
+## P0-26B Legacy session Safe Stop (destructive, synthetic acceptance only)
+
+downloads/STOP_V10_LEGACY_SESSION_V1.ps1 is the stop path for a legacy state
+without brain_observer_pid. The normal STOP still refuses that state.
+
+- Admission comes only from PREFLIGHT_V10_LEGACY_SHUTDOWN_V1.ps1 -AdmissionOut.
+  Without the switch the preflight is unchanged (all seven earlier tests pass).
+- BRAIN has three outcomes:
+  - ABSENT_VERIFIED: no observer host and no opaque script host.
+  - OWNED_CHILD_ADMITTED: the single observer is the recorded Controller's own
+    child with the exact launch identity.
+  - Anything else blocks (UNTRACKED_BRAIN_CANDIDATE / OPAQUE_SCRIPT_HOST_PRESENT).
+  - No PID is written into any state file.
+- Each admitted process is pinned by an opened handle with matching creation
+  time and executable. The Controller/RUN host is stopped first.
+- A second admission must see the identical state hash and no new process.
+- Workers, then bridge children, then an admitted BRAIN are killed only
+  through their pinned handles.
+- Excel is never closed, killed or contacted by COM. A managed Excel in the
+  same instance as business workbooks cannot be closed safely, so it is left
+  as is. The EXCEL.EXE set (PID plus creation time) must be identical before
+  and after.
+- Success needs:
+  - 0 managed PIDs alive
+  - no LISTEN on 28580-28584
+  - no observer host
+  - unchanged Excel set
+  The state is then moved, never deleted, into
+  V10_LEGACY_STOP_EVIDENCE\<UTC stamp>\ and V10_LEGACY_STOP_RESULT.json records
+  the result.
+- Any failure after the Controller stop is PARTIAL_STOP (exit 3). The state
+  stays in place and result.json lists each role's kill outcome. Recovery is
+  to rerun the script (it re-admits only what is still alive) or start the
+  old starter.
+- Without -Execute it is a dry run that stops nothing.
+
+tests/test_v10_legacy_safe_stop.py: 12/12 PASS on Windows Actions with
+disposable hosts only. Covered:
+- restarting Controller
+- bridge children on 28580/28582
+- EXCEL.exe stand-ins for managed and business workbooks
+- unrelated Python
+- orphan vs owned BRAIN
+- foreign PID
+- Excel/worker PID collision
+- simulated kill failure then rerun
+- late listener
+- corrupt state
+- non-legacy state
+- missing state
+
+Not verified on the OWNER PC; no real-machine stop has been performed.
