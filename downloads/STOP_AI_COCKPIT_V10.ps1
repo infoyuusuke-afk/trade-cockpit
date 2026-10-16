@@ -44,13 +44,44 @@ function Stop-OwnedJobBridge([int]$Port,[int]$ExpectedParentId,[string]$Label) {
     $owner = Get-PortOwner $Port
     if ($owner -le 0) { return }
     try {
-        $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $owner) -ErrorAction SilentlyContinue
-        if ($null -eq $info) { return }
-        if ([int]$info.ParentProcessId -eq $ExpectedParentId -and [string]$info.Name -match "^(powershell|pwsh)\.exe$") {
-            Stop-Process -Id $owner -Force -ErrorAction SilentlyContinue
-            Write-Host ("Stopped " + $Label + " bridge child (PID " + $owner + ")") -ForegroundColor Green
+        $expectedScript = switch ($Port) {
+            28580 { "MS2_RSS_100_Collector.ps1" }
+            28582 { "Kioxia_RSS_Live_Watcher.ps1" }
+            default { "" }
         }
-    } catch {}
+        if (-not $expectedScript) { throw "UNRECOGNIZED_BRIDGE" }
+        $parent = Get-Process -Id $ExpectedParentId -ErrorAction Stop
+        $child = Get-Process -Id $owner -ErrorAction Stop
+        $parentHandle = $parent.Handle
+        $childHandle = $child.Handle
+        if ($parentHandle -eq [IntPtr]::Zero -or $childHandle -eq [IntPtr]::Zero -or
+            $parent.HasExited -or $child.HasExited) { throw "PROCESS_HANDLE_NOT_LIVE" }
+        $parentCim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ExpectedParentId) -ErrorAction Stop
+        $childCim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $owner) -ErrorAction Stop
+        if ([int]$childCim.ParentProcessId -ne $ExpectedParentId -or
+            [string]$parentCim.Name -notmatch '^(powershell|pwsh)\.exe$' -or
+            [string]$childCim.Name -notmatch '^(powershell|pwsh)\.exe$' -or
+            ([string]$parentCim.CommandLine).IndexOf($expectedScript,[StringComparison]::OrdinalIgnoreCase) -lt 0 -or
+            [int]$parent.SessionId -ne [int]$child.SessionId) {
+            throw "BRIDGE_PARENT_IDENTITY_FAILED"
+        }
+        $parentStarted = $parent.StartTime.ToUniversalTime()
+        $childStarted = $child.StartTime.ToUniversalTime()
+        if ($childStarted -lt $parentStarted.AddSeconds(-2) -or
+            [Math]::Abs(($parentStarted - ([datetime]$parentCim.CreationDate).ToUniversalTime()).TotalSeconds) -gt 2 -or
+            [Math]::Abs(($childStarted - ([datetime]$childCim.CreationDate).ToUniversalTime()).TotalSeconds) -gt 2) {
+            throw "BRIDGE_START_TIME_MISMATCH"
+        }
+        # Same verified child handle for identity and Kill: never re-resolve PID.
+        $child.Kill()
+        if (-not $child.WaitForExit(5000) -or -not $child.HasExited) {
+            throw "BRIDGE_NOT_TERMINATED"
+        }
+        Write-Host ("Stopped verified " + $Label + " bridge child.") -ForegroundColor Green
+    } catch {
+        $script:bridgeStopVerified = $false
+        Write-Host ("Bridge child ownership or exit unverified; retained state.") -ForegroundColor Red
+    }
 }
 
 function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
@@ -321,6 +352,7 @@ foreach ($field in @("watcher_pid","heartbeat_pid","collector_pid","gateway_pid"
     }
 }
 
+$script:bridgeStopVerified = $true
 Stop-OwnedJobBridge 28580 ([int]$state.collector_pid) "Collector JSON"
 Stop-OwnedJobBridge 28582 ([int]$state.watcher_pid) "Watcher JSON"
 
@@ -440,7 +472,7 @@ if (-not $excelCleanupOk) {
     exit 2
 }
 
-if (-not $brainStopVerified -or -not $workerStopVerified) {
+if (-not $brainStopVerified -or -not $workerStopVerified -or -not $script:bridgeStopVerified) {
     Write-Host "V10 safe stop incomplete; recorded state retained for owner review." -ForegroundColor Red
     exit 2
 }
