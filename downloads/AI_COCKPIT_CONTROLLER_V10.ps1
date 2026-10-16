@@ -1229,7 +1229,8 @@ try {
         throw "Brain Gateway did not open port $PORT_BRAIN within 20s. $err"
     }
     Write-Status ("  Brain Gateway: READY / http://127.0.0.1:" + $PORT_BRAIN + "/?brain=1") Green
-    Start-Process ("http://127.0.0.1:" + $PORT_BRAIN + "/?brain=1")
+    # P0 single-browser entry: Brain Gateway remains on port 28584, but no
+    # second browser opens. Use the existing BRAIN tab in the 28581 UI.
 
     Write-Status "Opening MS2 RSS workbook (isolated Excel /x; canonical path only)..."
     Write-Status ("  canonical: " + $WorkbookPath) DarkGray
