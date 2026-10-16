@@ -15,6 +15,14 @@ class PreflightSafety(unittest.TestCase):
         self.assertIn('BRAIN observer PID',self.stop)
         self.assertIn('if (-not $brainStopVerified)',self.stop)
         self.assertLess(self.stop.index('if (-not $brainStopVerified)'),self.stop.index('Remove-Item -LiteralPath $StateFile -Force'))
+    def test_legacy_missing_brain_pid_refused_before_any_controller_stop(self):
+        early=self.stop.index('SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_PID_UNRECORDED')
+        controller=self.stop.index('# Stop the supervising RUN/Controller host FIRST.')
+        self.assertLess(early,controller)
+        self.assertIn('SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_IDENTITY_UNVERIFIED',self.stop)
+        self.assertIn('[int]::TryParse([string]$brainIdentity.Value',self.stop)
+        self.assertIn('Test-ExactBrainHandle $beforeBrain $state',self.stop)
+
     def test_final_state_is_reread_after_controller_stops(self):
         # Latest BRAIN PID may change while Controller is still supervising.
         controller_stop=self.stop.index("Stop-OwnedJobBridge 28580")
