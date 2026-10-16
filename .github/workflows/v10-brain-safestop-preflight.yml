@@ -27,8 +27,9 @@ jobs:
       - name: Unapproved SHA refused without side effects
         shell: powershell
         run: |
-          & ".\downloads\AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1" -RepoRoot (Get-Location).Path -ExpectedSha ('0'*40) -ExpectedBranch 'not-approved'
+          & powershell.exe -NoProfile -NonInteractive -File ".\downloads\AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1" -RepoRoot (Get-Location).Path -ExpectedSha ('0'*40) -ExpectedBranch 'not-approved'
           if ($LASTEXITCODE -ne 2) { throw "INVALID_SHA_ACCEPTED" }
+          Write-Output "PASS: SHA_MISMATCH_REFUSED_NO_SIDE_EFFECTS"
       - run: python -m unittest discover -s tests -p test_v10_brain_safestop_preflight.py -v
   ubuntu:
     runs-on: ubuntu-latest
