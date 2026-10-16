@@ -15,6 +15,8 @@ class GatewayPublisherSafety(unittest.TestCase):
         self.assertIn("Get-V10ShadowHeartbeatProof $RuntimeDir $shadowExpectedPid $shadowProcessVerified",s)
         self.assertIn("SHADOW_OBSERVER_NOT_BRAIN",s)
         self.assertIn("SHADOW_ORDER_FLAG_UNSAFE",s)
+        self.assertIn("SHADOW_IDENTITY_OR_HEARTBEAT_UNVERIFIED",s)
+        self.assertIn("$execution.shadow_open_observation_count = $null",s)
         self.assertIn("real_submit_allowed        = $false",s)
         self.assertIn("'RECENT_PUBLICATION_ONLY'",s)
         self.assertNotIn("source_authenticated = $true",s)
