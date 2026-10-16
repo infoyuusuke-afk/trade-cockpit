@@ -29,6 +29,9 @@ try {
     $shadowFile=Join-Path $runtime 'ai_shadow_status.json'
     $shadow='{"schema_version":"ai-shadow-supervisor-1","engine_pid":4242,"state":"RUNNING","updated_at":"'+([datetimeoffset]::UtcNow).ToString('o')+'","ui_independent":true,"real_submit_allowed":false,"resume_blocked":false}'
     [IO.File]::WriteAllText($shadowFile,$shadow)
+    $brainFile=Join-Path $runtime 'ai_brain_observer_status_v1.json'
+    $brain='{"schema_version":"ai-brain-observer-1","component_role":"INDEPENDENT_BRAIN_OBSERVER_NOT_TRADE_ENGINE","engine_pid":2222,"updated_at":"'+([datetimeoffset]::UtcNow).ToString('o')+'","state":"OBSERVATION_ONLY","source_publication_at":"'+([datetimeoffset]::UtcNow).ToString('o')+'","last_market_data_at":null,"exchange_tick_date_verified":false,"signal_provenance_verified":false,"real_submit_allowed":false,"source_authenticated":false,"cross_source_join_allowed":false,"promotion_eligible":false,"tested_expectancy_available":false,"eligible_observed_n":0,"watch_counts":{"OR15_ABOVE_VWAP_WATCH":3,"OR15_BELOW_VWAP_WATCH":4}}'
+    [IO.File]::WriteAllText($brainFile,$brain)
     $args=@('-NoProfile','-NonInteractive','-File',('"' + $gateway + '"'),
         '-RepoRoot',('"' + $repoRoot + '"'),'-RuntimeDir',('"' + $runtime + '"'),
         '-Port',[string]$port)
@@ -53,6 +56,8 @@ try {
     if($health.runtime.brain_publication_state -ne 'UNKNOWN_NOT_PUBLISHED'){throw 'BRAIN_WAS_FABRICATED'}
     if($health.runtime.shadow_heartbeat_status -ne 'SHADOW_PROCESS_UNVERIFIED'){throw 'FAKE_SHADOW_PID_ACCEPTED'}
     if($null -ne $health.runtime.shadow_heartbeat_at){throw 'FAKE_SHADOW_HEARTBEAT_EXPOSED'}
+    if($health.runtime.brain_observer_state -ne 'BRAIN_PROCESS_UNVERIFIED'){throw 'FAKE_BRAIN_PID_ACCEPTED'}
+    if($null -ne $health.runtime.brain_observer_watch_count){throw 'FAKE_BRAIN_WATCH_COUNTS_EXPOSED'}
     if($health.execution.shadow_engine_state -ne 'PAUSED_FAIL_CLOSED'){throw 'LEGACY_UNVERIFIED_SHADOW_REPORTED_RUNNING'}
     if($health.execution.shadow_engine_reason -ne 'SHADOW_IDENTITY_OR_HEARTBEAT_UNVERIFIED'){throw 'LEGACY_SHADOW_REASON_NOT_BLOCKED'}
     if($null -ne $health.execution.shadow_engine_updated_at){throw 'UNVERIFIED_LEGACY_HEARTBEAT_EXPOSED'}
@@ -63,8 +68,10 @@ try {
     $health=(Invoke-WebRequest -Uri "$baseUrl/health" -UseBasicParsing -TimeoutSec 5).Content | ConvertFrom-Json
     if($health.runtime.watcher_publication_state -ne 'WATCHER_FILE_UNAVAILABLE'){throw 'GATEWAY_USED_REPO_DECOY_ON_MISSING_RUNTIME'}
     [IO.File]::Delete($shadowFile)
+    [IO.File]::Delete($brainFile)
     $health=(Invoke-WebRequest -Uri "$baseUrl/health" -UseBasicParsing -TimeoutSec 5).Content | ConvertFrom-Json
     if($health.runtime.shadow_heartbeat_status -ne 'SHADOW_FILE_UNAVAILABLE'){throw 'SHADOW_MISSING_NOT_FAIL_CLOSED'}
+    if($health.runtime.brain_observer_state -ne 'BRAIN_FILE_UNAVAILABLE'){throw 'BRAIN_MISSING_NOT_FAIL_CLOSED'}
     $page=Invoke-WebRequest -Uri "$baseUrl/" -UseBasicParsing -TimeoutSec 5
     if($page.Content -notmatch 'v10-static-snapshot-warning'){throw 'HISTORICAL_NOTICE_MISSING'}
     $asset=Invoke-WebRequest -Uri "$baseUrl/v10_publication_status.js" -UseBasicParsing -TimeoutSec 5

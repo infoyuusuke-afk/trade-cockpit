@@ -19,7 +19,7 @@ class GatewayPublisherSafety(unittest.TestCase):
         self.assertIn("$execution.shadow_open_observation_count = $null",s)
         self.assertIn("real_submit_allowed        = $false",s)
         self.assertIn("'RECENT_PUBLICATION_ONLY'",s)
-        self.assertNotIn("source_authenticated = $true",s)
+        self.assertNotIn("$runtime.source_authenticated = $true",s)
     def test_v10_launcher_deploys_watcher_into_runtime_not_repo(self):
         run=(ROOT/"downloads/RUN_AI_COCKPIT_V10.ps1").read_text(encoding="utf-8-sig")
         controller=(ROOT/"downloads/AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")

@@ -27,6 +27,18 @@
       default: return "未確認";
     }
   }
+  function brainObserverLabel(state) {
+    switch (state) {
+      case "BRAIN_OBSERVING_PUBLICATION_ONLY": return "独立観測中（価格時刻・期待値未認証）";
+      case "BRAIN_INPUT_BLOCKED": return "入力不備により観測停止";
+      case "BRAIN_STALE_OR_FUTURE":
+      case "BRAIN_SOURCE_STALE": return "観測遅延";
+      case "BRAIN_UNSAFE_EVIDENCE_CLAIM": return "不正な認証要求を拒否";
+      case "BRAIN_PROCESS_UNVERIFIED":
+      case "BRAIN_PID_MISMATCH": return "プロセス未検証";
+      default: return "未確認";
+    }
+  }
   function summarizeHealth(data) {
     if (!data || data.status !== "ok" || !data.runtime ||
         !data.execution || data.execution.real_submit_allowed !== false) {
@@ -35,7 +47,7 @@
     const r=data.runtime;
     const collector=statusLabel(r.collector_publication_state);
     const watcher=statusLabel(r.watcher_publication_state);
-    const brain="未検証（独立した観測証拠なし）";
+    const brain="未検証（市場ティックの日付と期待値）・観測器 "+brainObserverLabel(r.brain_observer_state);
     const shadow=shadowLabel(r.shadow_heartbeat_status);
     return {state:"PUBLICATION_ONLY",text:
       "取得証拠: Collector "+collector+" ／ Watcher "+watcher+
@@ -44,7 +56,7 @@
       " ｜ 固定分析は過去データ・実注文禁止"};
   }
   if (typeof module !== "undefined" && module.exports) {
-    module.exports={statusLabel,shadowLabel,summarizeHealth};
+    module.exports={statusLabel,shadowLabel,brainObserverLabel,summarizeHealth};
   }
   if (typeof document === "undefined" || typeof root.fetch !== "function") return;
   const panel=document.getElementById("v10-publication-panel");

@@ -1,0 +1,40 @@
+name: V10 Independent Brain Observation
+on:
+  pull_request:
+    paths:
+      - "scripts/ai_brain_observer.py"
+      - "downloads/AI_COCKPIT_CONTROLLER_V10.ps1"
+      - "downloads/AI_COCKPIT_GATEWAY_V10.ps1"
+      - "v10_publication_status.js"
+      - "tests/test_v10_brain_runtime_integration.py"
+      - "tests/test_ai_brain_observer.py"
+      - "tests/test_v10_publication_http.ps1"
+      - ".github/workflows/v10-independent-brain.yml"
+  workflow_dispatch:
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Controller and Gateway PowerShell 5.1 syntax
+        shell: powershell
+        run: |
+          foreach ($path in @("downloads/AI_COCKPIT_CONTROLLER_V10.ps1", "downloads/AI_COCKPIT_GATEWAY_V10.ps1")) {
+            $tokens=$null; $errors=$null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path,[ref]$tokens,[ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { throw "$path parse error: $errors" }
+          }
+      - run: python -m unittest discover -s tests -p test_ai_brain_observer.py -v
+      - run: python -m unittest discover -s tests -p test_v10_brain_runtime_integration.py -v
+      - run: node --test tests/test_v10_publication_status.cjs
+      - name: Independent BRAIN gateway evidence safety fixtures
+        shell: powershell
+        run: |
+          & ".\downloads\AI_COCKPIT_GATEWAY_V10.ps1" -RepoRoot (Get-Location).Path -BrainObserverSelfTest
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_ai_brain_observer.py -v
+      - run: python -m unittest discover -s tests -p test_v10_brain_runtime_integration.py -v
+      - run: node --test tests/test_v10_publication_status.cjs

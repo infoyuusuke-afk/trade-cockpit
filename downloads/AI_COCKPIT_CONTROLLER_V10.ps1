@@ -252,6 +252,7 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
         "voice_bridge_pid" { "AI_COCKPIT_VOICE_BRIDGE_V10.ps1" }
         "sbv2_pid"         { "server_fastapi.py" }
         "shadow_supervisor_pid" { "ai_shadow_supervisor.py" }
+        "brain_observer_pid" { "ai_brain_observer.py" }
         "controller_pid"   { "AI_COCKPIT_CONTROLLER_V10.ps1" }
         default            { "" }
     }
@@ -272,7 +273,7 @@ function Stop-OwnedFromPreviousState {
     if ($null -eq $prev) { return }
     Stop-OwnedJobBridge $PORT_COLLECTOR ([int]$prev.collector_pid) "Collector JSON" | Out-Null
     Stop-OwnedJobBridge $PORT_WATCHER ([int]$prev.watcher_pid) "Watcher JSON" | Out-Null
-    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid", "controller_pid")) {
+    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid", "brain_observer_pid", "controller_pid")) {
         $val = $prev.PSObject.Properties[$field]
         if ($null -eq $val -or [int]$val.Value -le 0) { continue }
         $procId = [int]$val.Value
@@ -293,7 +294,7 @@ function Stop-OwnedFromPreviousState {
 # Release the workers' COM references; never force-kill Excel, which may also
 # host a user's other workbooks. A surviving Excel is reported for acceptance.
 function Stop-ManagedWorkersOnWorkbookClose($SessionState) {
-    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid")) {
+    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid", "brain_observer_pid")) {
         $workerPid = [int]$SessionState.$field
         if ($workerPid -le 0 -or $workerPid -eq [int]$SessionState.excel_pid) { continue }
         $worker = Get-Process -Id $workerPid -ErrorAction SilentlyContinue
@@ -380,6 +381,51 @@ function Start-ShadowSupervisor([string]$RepoRootResolved, [string]$RuntimeDir) 
     )
     return Start-Process -FilePath $python -ArgumentList $argList -WorkingDirectory $RepoRootResolved `
         -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+}
+
+
+# Independent read-only MS2 BRAIN observer. Never a second browser gateway.
+function Start-BrainObserver([string]$RepoRootResolved, [string]$RuntimeDir) {
+    $scriptPath = Join-Path $RepoRootResolved "scripts\ai_brain_observer.py"
+    if (-not (Test-Path -LiteralPath $scriptPath -PathType Leaf)) {
+        Write-Status "  BRAIN observer missing - stays UNKNOWN." Yellow
+        return $null
+    }
+    $python = $null
+    $prefix = @()
+    foreach ($candidate in @(
+        (Join-Path $RepoRootResolved ".venv\Scripts\python.exe"),
+        (Join-Path $RepoRootResolved "venv\Scripts\python.exe")
+    )) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { $python = $candidate; break }
+    }
+    if (-not $python) {
+        $cmd = Get-Command python.exe -ErrorAction SilentlyContinue
+        if ($null -ne $cmd) { $python = $cmd.Source }
+    }
+    if (-not $python) {
+        $cmd = Get-Command py.exe -ErrorAction SilentlyContinue
+        if ($null -ne $cmd) { $python = $cmd.Source; $prefix = @("-3") }
+    }
+    if (-not $python) {
+        Write-Status "  BRAIN Python missing - existing Excel/MS2 unchanged." Yellow
+        return $null
+    }
+    $statusPath = Join-Path $RuntimeDir "ai_brain_observer_status_v1.json"
+    $stdout = Join-Path $LogDir "brain_observer_stdout.log"
+    $stderr = Join-Path $LogDir "brain_observer_stderr.log"
+    $arguments = $prefix + @(
+        "-u", ('"' + $scriptPath + '"'),
+        "--live", ('"' + (Join-Path $RuntimeDir "live_ms2.json") + '"'),
+        "--status", ('"' + $statusPath + '"'),
+        "--interval", "5"
+    )
+    try {
+        return Start-Process -FilePath $python -ArgumentList $arguments -WorkingDirectory $RepoRootResolved -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru -ErrorAction Stop
+    } catch {
+        Write-Status "  BRAIN observer start refused - existing workers untouched." Yellow
+        return $null
+    }
 }
 
 function Start-Sbv2Managed {
@@ -1028,6 +1074,8 @@ $state = [ordered]@{
     sbv2_status                = "NOT_STARTED"
     shadow_supervisor_pid      = 0
     shadow_supervisor_status   = "NOT_STARTED"
+    brain_observer_pid         = 0
+    brain_observer_status      = "NOT_STARTED"
 }
 
 try {
@@ -1381,6 +1429,17 @@ try {
     }
     Save-State $state
 
+    Write-Status "Starting independent BRAIN observation (read-only; no trading)..."
+    $brainObserverProc = Start-BrainObserver $RepoRootResolved $RuntimeDir
+    if ($null -ne $brainObserverProc) {
+        $state.brain_observer_pid = [int]$brainObserverProc.Id
+        $state.brain_observer_status = if ($brainObserverProc.HasExited) { "CRASHED" } else { "STARTING" }
+        Write-Status ("  BRAIN observer PID " + $state.brain_observer_pid) Green
+    } else {
+        $state.brain_observer_status = "STOPPED"
+    }
+    Save-State $state
+
     Write-Status "Startup complete. Entering supervision loop (Ctrl+C to stop everything)." Green
     Write-Host ""
     Write-Host "This window supervises the running session. Closing the MS2 workbook" -ForegroundColor Cyan
@@ -1402,6 +1461,8 @@ try {
     $lastSbv2RestartAt = Get-Date "2000-01-01"
     $shadowRestartAttempts = 0
     $lastShadowRestartAt = Get-Date "2000-01-01"
+    $brainObserverRestartAttempts = 0
+    $lastBrainObserverRestartAt = Get-Date "2000-01-01"
     while ($true) {
         Start-Sleep -Seconds 2
 
@@ -1736,6 +1797,32 @@ try {
             $shadowRestartAttempts = 0
             Save-State $state
             Write-Status "AI SHADOW supervisor process is alive. Engine state is published in ai_shadow_status.json." Green
+        }
+
+        # Independent BRAIN observer: bounded restart; no other worker changes.
+        $bp = if ($state.brain_observer_pid -gt 0) { Get-Process -Id $state.brain_observer_pid -ErrorAction SilentlyContinue } else { $null }
+        $brainPidVerified = $null -ne $bp -and (Test-OwnedPidIdentity "brain_observer_pid" ([int]$state.brain_observer_pid))
+        if (-not $brainPidVerified) {
+            $state.brain_observer_status = "DOWN"
+            $secondsSinceBrain = ((Get-Date) - $lastBrainObserverRestartAt).TotalSeconds
+            if ($brainObserverRestartAttempts -lt 5 -and $secondsSinceBrain -gt 20) {
+                $brainObserverRestartAttempts++
+                $lastBrainObserverRestartAt = Get-Date
+                Write-Status ("BRAIN observer restart " + $brainObserverRestartAttempts + "/5; no real orders.") Yellow
+                $brainObserverProc = Start-BrainObserver $RepoRootResolved $RuntimeDir
+                if ($null -ne $brainObserverProc) {
+                    $state.brain_observer_pid = [int]$brainObserverProc.Id
+                    $state.brain_observer_status = "STARTING"
+                } else {
+                    $state.brain_observer_pid = 0
+                    $state.brain_observer_status = "STOPPED"
+                }
+            }
+            Save-State $state
+        } elseif ($state.brain_observer_status -ne "RUNNING") {
+            $state.brain_observer_status = "RUNNING"
+            $brainObserverRestartAttempts = 0
+            Save-State $state
         }
 
         # 5) Is Gateway still alive? This one we do treat as worth a clear

@@ -28,6 +28,10 @@ jobs:
         shell: powershell
         run: |
           & ".\downloads\AI_COCKPIT_GATEWAY_V10.ps1" -RepoRoot (Get-Location).Path -ShadowHeartbeatSelfTest
+      - name: Validate independent BRAIN worker identity and source block
+        shell: powershell
+        run: |
+          & ".\downloads\AI_COCKPIT_GATEWAY_V10.ps1" -RepoRoot (Get-Location).Path -BrainObserverSelfTest
       - run: python -m unittest discover -s tests -p test_v10_watcher_gateway_publisher.py -v
       - run: node --test tests/test_v10_publication_status.cjs
       - name: End-to-end HTTP health and static asset smoke (synthetic)
