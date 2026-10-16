@@ -8,7 +8,8 @@ param(
  [string]$PinnedSha="",
  [string]$SwitchId="",
  [string]$StateRoot="C:\AI_Cockpit_OneClick_Starter",
- [string]$FixtureRepo=""
+ [string]$FixtureRepo="",
+ [string]$FixtureDesktopRoot=""
 )
 $ErrorActionPreference="Stop"
 $phase="INPUT"
@@ -42,8 +43,15 @@ function FindOldShortcut(){
   (Join-Path $env:USERPROFILE "Desktop"),
   (Join-Path $env:USERPROFILE "OneDrive\Desktop"),
   [Environment]::GetFolderPath("CommonDesktopDirectory"))
+ if($FixtureDesktopRoot){
+  if($env:GITHUB_ACTIONS -cne "true" -or $env:RUNNER_OS -cne "Windows"){
+   Deny "FIXTURE_RESTRICTED"
+  }
+  $paths=@($FixtureDesktopRoot)
+ }
  $seen=New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
  $results=New-Object 'System.Collections.Generic.List[string]'
+ $script:UnverifiedDesktopCount=0
  foreach($v in $paths){
   if(-not $v){continue}
   $d=[IO.Path]::GetFullPath($v)
@@ -55,7 +63,11 @@ function FindOldShortcut(){
     [void](SafeItem $f.FullName)
     [void]$results.Add($f.FullName)
    }
-  }catch{Deny "DESKTOP_UNVERIFIED"}
+  }catch{
+   # Optional extra Desktop may belong to a discarded account/redirect.
+   # We switch only the exact existing shortcut found in an accessible root.
+   $script:UnverifiedDesktopCount++
+  }
  }
  return $results.ToArray()
 }
@@ -182,6 +194,7 @@ try{
  Write-Output "OLD_LINK_BACKUP_VERIFIED=true"
  Write-Output "PINNED_START_AND_STOP_INSTALLED=true"
  Write-Output "NO_APP_STARTED=true"
+ Write-Output ("UNVERIFIED_DESKTOP_COUNT="+[int]$script:UnverifiedDesktopCount)
  Write-Output "REAL_SUBMIT_ALLOWED=false"
  exit 0
 }catch{
