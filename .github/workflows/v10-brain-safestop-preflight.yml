@@ -18,7 +18,7 @@ jobs:
           foreach ($p in @("downloads/STOP_AI_COCKPIT_V10.ps1","downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1")) {
             $t=$null; $e=$null
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $p).Path,[ref]$t,[ref]$e) | Out-Null
-            if ($e.Count -gt 0) { throw "$p: $e" }
+            if ($e.Count -gt 0) { throw "${p}: $e" }
           }
       - name: Fail-closed synthetic preflight
         shell: powershell
