@@ -30,7 +30,7 @@ class Compatibility(unittest.TestCase):
         self.assertFalse(result["runtime_applied"])
 
     def test_identical_or_future_candidate_blocked(self):
-        for candidate in (BASE,BASE.replace(b"2026-09-25 10:41:50",b"2026-10-31 10:41:50",1)):
+        for candidate in (BASE,BASE.replace(b"2026-09-25", b"2026-10-31", 2)):
             self.assertEqual(audit(BASE,candidate,date(2026,10,16))["status"],"BLOCKED_UI_ASSET_INCOMPATIBLE")
 
     def test_date_only_and_conflicting_header_dates_blocked(self):
