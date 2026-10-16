@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - "downloads/STOP_AI_COCKPIT_V10.ps1"
+      - "downloads/STOP_AI_COCKPIT_V10.cmd"
       - "downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1"
       - "tests/test_v10_brain_safestop_preflight.py"
       - "tests/test_v10_brain_safestop_windows_integration.py"
