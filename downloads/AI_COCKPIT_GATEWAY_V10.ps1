@@ -575,9 +575,9 @@ if ($PublicationSelfTest) {
         if ($denied.publication_state -ne 'PROCESS_UNVERIFIED' -or $null -ne $denied.observed_at_offset) { throw 'UNVERIFIED_FILE_EXPOSED' }
         [IO.File]::WriteAllText($file, '{"schema_version":"wrong"}')
         if ((Get-V10WatcherPublication $tmp $true).publication_state -ne 'WATCHER_IDENTITY_UNVERIFIED') { throw 'WATCHER_SCHEMA_GUARD_FAILED' }
-        Remove-Item -LiteralPath $file -Force
+        [IO.File]::Delete($file)
         if ((Get-V10WatcherPublication $tmp $true).publication_state -ne 'WATCHER_FILE_UNAVAILABLE') { throw 'MISSING_WATCHER_NOT_BLOCKED' }
-    } finally { Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue }
+    } finally { if ([IO.Directory]::Exists($tmp)) { [IO.Directory]::Delete($tmp, $true) } }
     Write-Output 'PASS: V10_WATCHER_PUBLICATION_SYNTHETIC'
     exit 0
 }
