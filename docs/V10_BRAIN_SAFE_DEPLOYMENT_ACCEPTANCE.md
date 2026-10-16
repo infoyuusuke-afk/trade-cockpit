@@ -272,3 +272,83 @@ all PIDs/ports at zero before declaring success. Failure must preserve
 recovery evidence. The production command shall remain inaccessible until
 the Windows isolated destructive acceptance passes; no OWNER operation is
 requested yet.
+
+## P0-26B Legacy session Safe Stop (destructive, synthetic acceptance only)
+
+downloads/STOP_V10_LEGACY_SESSION_V1.ps1 is the stop path for a legacy state
+without brain_observer_pid. The normal STOP still refuses that state.
+
+- Admission comes only from PREFLIGHT_V10_LEGACY_SHUTDOWN_V1.ps1 -AdmissionOut.
+  Without the switch the preflight is unchanged (all seven earlier tests pass).
+- BRAIN has three outcomes:
+  - ABSENT_VERIFIED: no observer host and no opaque script host.
+  - OWNED_CHILD_ADMITTED: the single observer is the recorded Controller's own
+    child with the exact launch identity.
+  - Anything else blocks (UNTRACKED_BRAIN_CANDIDATE / OPAQUE_SCRIPT_HOST_PRESENT).
+  - No PID is written into any state file.
+- Each admitted process is pinned by an opened handle with matching creation
+  time and executable. The Controller/RUN host is stopped first.
+- A second admission must see the identical state hash and no new process.
+- Workers, then bridge children, then an admitted BRAIN are killed only
+  through their pinned handles.
+- Excel is never closed, killed or contacted by COM. A managed Excel in the
+  same instance as business workbooks cannot be closed safely, so it is left
+  as is. The EXCEL.EXE set (PID plus creation time) must be identical before
+  and after.
+- Success needs:
+  - 0 managed PIDs alive
+  - no LISTEN on 28580-28584
+  - no observer host
+  - unchanged Excel set
+  The state is then moved, never deleted, into
+  V10_LEGACY_STOP_EVIDENCE\<UTC stamp>\ and V10_LEGACY_STOP_RESULT.json records
+  the result.
+- Any failure after the Controller stop is PARTIAL_STOP (exit 3). The state
+  stays in place and result.json lists each role's kill outcome. Recovery is
+  to rerun the script (it re-admits only what is still alive) or start the
+  old starter.
+- Without -Execute it is a dry run that stops nothing.
+
+tests/test_v10_legacy_safe_stop.py: 12/12 PASS on Windows Actions with
+disposable hosts only. Covered:
+- restarting Controller
+- bridge children on 28580/28582
+- EXCEL.exe stand-ins for managed and business workbooks
+- unrelated Python
+- orphan vs owned BRAIN
+- foreign PID
+- Excel/worker PID collision
+- simulated kill failure then rerun
+- late listener
+- corrupt state
+- non-legacy state
+- missing state
+
+Not verified on the OWNER PC; no real-machine stop has been performed.
+
+## P0-26C Review fixes (GPT review on PR #404)
+
+- Any exception after the first kill is PARTIAL_STOP
+  (UNEXPECTED_ERROR_AFTER_STOP_BEGAN) with evidence result.json; before any
+  kill it is BLOCKED.
+- Success commits in order: verified state copy into evidence, root result
+  bound to the evidence leaf, state hash and admission hash, then removal of
+  the original state. A failure at any step is PARTIAL_STOP with the state
+  retained; a rerun completes the commit.
+- ALREADY_STOPPED needs the evidence to still verify, no admitted
+  (PID, creation time) alive, no BRAIN host, no legacy script host and no V10
+  LISTEN. Otherwise BLOCKED.
+- Attribution uses parsed argv: the Controller must run
+  AI_COCKPIT_CONTROLLER_V10.ps1 or RUN_AI_COCKPIT_V10.ps1 as its -File
+  operand; a port child must be a Start-Job host (same executable as its
+  parent, arguments exactly [-Version n] -s -NoLogo -NoProfile). Names elsewhere on the
+  command line never count.
+- -RecoveryCheck (read-only) is the gate after PARTIAL_STOP:
+  START_OLD_STARTER_ALLOWED=true only with nothing of the session alive and no
+  V10 LISTEN or BRAIN; RERUN_STOP_EXECUTE when only originals remain;
+  otherwise OWNER_REVIEW_REQUIRED.
+- Fault injection (-SimulateFault) runs only on GitHub Actions under
+  RUNNER_TEMP.
+
+tests/test_v10_legacy_safe_stop.py now has 20 tests (8 added for P0-26C).
+Not verified on the OWNER PC; no real-machine stop has been performed.
