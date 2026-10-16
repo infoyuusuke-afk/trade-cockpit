@@ -555,6 +555,8 @@ try {
                     data_conflict              = $null
                     stale_reason               = $null
                     live_updated_at            = $null
+                    collector_observed_at_offset = $null
+                    collector_timestamp_timezone = $null
                     source_timestamp           = $null
                     live_symbol                = $null
                     live_current_price         = $null
@@ -609,6 +611,8 @@ try {
                         $healthLive = Read-JsonUtf8 $liveJson
                         $healthDiag = $healthLive.live_price_diagnostics
                         $runtime.live_updated_at = [string]$healthLive.updated_at
+                        $runtime.collector_observed_at_offset = [string]$healthLive.observed_at_offset
+                        $runtime.collector_timestamp_timezone = [string]$healthLive.timestamp_timezone
                         $runtime.price_source_status = [string]$healthLive.price_source_status
                         $runtime.data_conflict = ($healthLive.data_conflict -eq $true)
                         $runtime.stale_reason = [string]$healthLive.stale_reason
