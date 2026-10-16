@@ -17,28 +17,38 @@ class AcceptanceTests(unittest.TestCase):
                  patch.object(a.sys, 'executable', str(Path(directory) / 'MS2_Local_CSV.exe')):
                 self.assertEqual(a.runtime_root(), Path(directory).resolve())
 
-    def test_frozen_private_root_moves_under_localappdata(self):
-        import os
+    def test_frozen_private_root_is_d_drive_and_saves_evidence_there(self):
         with tempfile.TemporaryDirectory() as folder, \
              patch.object(a.sys, 'frozen', True, create=True), \
-             patch.dict(os.environ, {'LOCALAPPDATA': folder}):
+             patch.object(a, '_d_drive_root', return_value=Path(folder)):
             base = a.private_root()
-            # Windows temp aliases can use either 8.3 or expanded paths.
-            self.assertEqual(base.resolve(), (Path(folder) / 'AI_Cockpit_MS2_Private').resolve())
+            expected = Path(folder) / 'AI_Cockpit_Data' / 'MS2_CSV'
+            # Windows temp paths may have distinct 8.3 and expanded aliases.
+            self.assertEqual(base.resolve(), expected.resolve())
             a.save_evidence({'state': 'BLOCKED'})
             evidence = list((base / 'data/private/ms2_offline_acceptance').glob('*.json'))
             self.assertEqual(len(evidence), 1)
             self.assertEqual(json.loads(evidence[0].read_text()), {'state': 'BLOCKED'})
             self.assertFalse((Path(folder) / 'data').exists())
 
-    def test_missing_frozen_localappdata_refuses_no_exe_fallback(self):
-        import os
-        with patch.object(a.sys, 'frozen', True, create=True), \
-             patch.dict(os.environ, {'LOCALAPPDATA': ''}):
+    def test_missing_d_drive_fails_closed_without_c_fallback(self):
+        with tempfile.TemporaryDirectory() as folder, \
+             patch.object(a.sys, 'frozen', True, create=True), \
+             patch.object(a, '_d_drive_root', return_value=Path(folder) / 'missing_D'):
+            with self.assertRaises(OSError):
+                a.private_root()
+            with self.assertRaises(OSError):
+                a.save_evidence({'state': 'PASS'})
+            self.assertEqual(list(Path(folder).iterdir()), [])
+
+    def test_d_drive_reparse_or_symlink_is_refused(self):
+        with tempfile.TemporaryDirectory() as folder, \
+             patch.object(a.sys, 'frozen', True, create=True), \
+             patch.object(a, '_d_drive_root', return_value=Path(folder)), \
+             patch.object(a, '_checked_path', side_effect=ValueError('PATH_LINK')):
             with self.assertRaises(ValueError):
                 a.private_root()
-            with self.assertRaises(ValueError):
-                a.save_evidence({'state': 'PASS'})
+            self.assertEqual(list(Path(folder).iterdir()), [])
 
     def test_actual_synthetic_contract(self):
         report = a.run_acceptance()

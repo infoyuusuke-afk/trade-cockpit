@@ -23,22 +23,31 @@ def runtime_root():
 ROOT = runtime_root()
 
 
-def private_root():
-    """Frozen CSV/evidence stays under per-user LocalAppData, not the EXE folder.
+def _d_drive_root():
+    """Fixed owner storage drive; never infer a location from the EXE."""
+    if os.name != 'nt':
+        raise ValueError('D_DRIVE_WINDOWS_ONLY')
+    return Path('D:\\')
 
-    Refuse missing, redirected-to-link or non-absolute paths; do not fall
-    back to Downloads, Desktop, repository checkout or a temporary folder.
-    Non-frozen source checkout retains its existing test-only behavior.
+
+def private_root():
+    """Frozen CSV/evidence goes ONLY to D:\\AI_Cockpit_Data\\MS2_CSV.
+
+    A missing/unavailable D: drive or a symlink/reparse-point parent BLOCKS
+    capture. Never silently fall back to C:, user profile, Downloads, synced
+    folders, the EXE folder or an external server.
+    Non-frozen source-checkout tests retain their explicit local sandbox.
     """
     if not getattr(sys, 'frozen', False):
         return ROOT
-    base = os.environ.get('LOCALAPPDATA', '')
-    if not base or not Path(base).is_absolute():
-        raise ValueError('LOCAL_PRIVATE_ROOT_UNAVAILABLE')
-    parent = _checked_path(base)
-    target = parent / 'AI_Cockpit_MS2_Private'
-    target.mkdir(mode=0o700, exist_ok=True)
-    return _checked_path(target)
+    parent = _checked_path(_d_drive_root())  # D: must exist, no fallback
+    if not parent.is_dir():
+        raise ValueError('D_DRIVE_UNAVAILABLE')
+    for name in ('AI_Cockpit_Data', 'MS2_CSV'):
+        parent = parent / name
+        parent.mkdir(mode=0o700, exist_ok=True)
+        parent = _checked_path(parent)
+    return parent
 CODE_FILES = (
     'scripts/ms2_offline_acceptance.py',
     'scripts/ms2_offline_csv_snapshot.py',

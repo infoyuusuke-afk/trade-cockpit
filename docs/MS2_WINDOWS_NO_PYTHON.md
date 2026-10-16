@@ -7,14 +7,16 @@ The EXE uses a bundled Python runtime and is not digitally signed.
 
 STOP the MS2 CSV writer first. Consent in the dialog, then select precisely
 one existing kioxia_ticks_YYYYMMDD.csv. The original is never edited.
-Success stores a private snapshot and manifest under the Windows per-user
-local directory %LOCALAPPDATA%\\AI_Cockpit_MS2_Private\\data\\private\\ms2_csv_snapshots.
-Synthetic acceptance evidence is separately stored under the same base at
-data/private/ms2_offline_acceptance. The EXE's extracted/download location
-is never used to store live CSVs. A missing or linked local profile directory
-blocks saving rather than falling back. LocalAppData normally is not synced,
-but organization/user backup policies may differ; verify privacy on OWNER PC.
-NEVER upload or sync these files to a public repository.
+Success stores the private CSV snapshot and manifest ONLY under:
+D:\\AI_Cockpit_Data\\MS2_CSV\\data\\private\\ms2_csv_snapshots
+Synthetic acceptance evidence is under:
+D:\\AI_Cockpit_Data\\MS2_CSV\\data\\private\\ms2_offline_acceptance
+The extracted EXE location never receives market CSVs. The D: drive must be
+present and writable. Missing D: or a linked/reparse parent BLOCKS execution;
+there is NO fallback to C:, LocalAppData, Downloads, Desktop or the EXE.
+Ensure D: is a local, non-synced drive: if a backup or cloud-sync program
+watches that path, data could be transmitted by that separate software.
+NEVER upload these files to a public repository.
 
 Hosted Windows CI tests a fresh ZIP extraction by running the packaged EXE's
 --synthetic-check option (14 synthetic checks, NO market CSV). Arbitrary
