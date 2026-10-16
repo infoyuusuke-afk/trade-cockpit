@@ -23,6 +23,18 @@ class PreflightSafety(unittest.TestCase):
         self.assertIn('[int]::TryParse([string]$brainIdentity.Value',self.stop)
         self.assertIn('Test-ExactBrainHandle $beforeBrain $state',self.stop)
 
+    def test_preflight_checks_worker_ownership_before_controller_teardown(self):
+        first=self.stop.index('# P0-25 verify every recorded worker BEFORE terminating the supervisor.')
+        ctrl=self.stop.index('# Stop the supervising RUN/Controller host FIRST.')
+        second=self.stop.index('# Every record must belong to the saved session before stopping ANY worker.')
+        self.assertLess(first,ctrl)
+        self.assertLess(ctrl,second)
+        self.assertIn('SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID',self.stop)
+        self.assertIn('SAFE_STOP_VERIFY=LISTEN_PORTS_REMAIN',self.stop)
+        self.assertIn('SAFE_STOP_VERIFY=TRACKED_PID_STILL_PRESENT',self.stop)
+        self.assertLess(self.stop.index('SAFE_STOP_VERIFY=TRACKED_PID_STILL_PRESENT'),
+                        self.stop.index('Remove-Item -LiteralPath $StateFile -Force'))
+
     def test_final_state_is_reread_after_controller_stops(self):
         # Latest BRAIN PID may change while Controller is still supervising.
         controller_stop=self.stop.index("Stop-OwnedJobBridge 28580")
