@@ -4,7 +4,8 @@ NEVER runs V10, stops a process, touches Excel, MS2, trade, or legacy checkout.
 A successful switch means "routes installed, APP NOT STARTED", not acceptance.
 #>
 param(
- [ValidateSet("Switch","Rollback")][string]$Mode="Switch",
+ [ValidateSet("Switch","Rollback","InspectState")][string]$Mode="Switch",
+ [switch]$ArchiveVerifiedStaleState,
  [string]$PinnedSha="",
  [string]$SwitchId="",
  [string]$StateRoot="C:\AI_Cockpit_OneClick_Starter",
@@ -14,6 +15,10 @@ param(
 $ErrorActionPreference="Stop"
 $phase="INPUT"
 $originalMoved=$false
+$staleArchived=$false
+$stateFile=""
+$staleBackup=""
+$staleHash=""
 $originalLink=""
 $newStopLink=""
 $backupDir=""
@@ -23,8 +28,54 @@ function SafeItem([string]$Path){
  if (($o.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){Deny "REPARSE_REFUSED"}
  return $o
 }
-function CheckQuiescent([string]$Root){
- if(Test-Path -LiteralPath (Join-Path $Root "V10_CONTROLLER_STATE.json")){Deny "ACTIVE_V10_STATE"}
+function CheckDormantState([string]$Root){
+ $target=Join-Path $Root "V10_CONTROLLER_STATE.json"
+ if(-not (Test-Path -LiteralPath $target)){return "ABSENT"}
+ $item=SafeItem $target
+ if($item.PSIsContainer -or $item.Length -lt 30 -or $item.Length -gt 65536){
+  Deny "STATE_FILE_INVALID"
+ }
+ try{
+  $parsed=([IO.File]::ReadAllText($target,[Text.Encoding]::UTF8) |
+          ConvertFrom-Json -ErrorAction Stop)
+ }catch{Deny "STATE_JSON_INVALID"}
+ $fields=@("controller_pid","session_id","started_at","repo_root",
+  "runtime_dir","brain_observer_pid","excel_pid","collector_pid",
+  "watcher_pid","heartbeat_pid","gateway_pid","brain_gateway_pid",
+  "voice_bridge_pid","shadow_supervisor_pid","sbv2_pid")
+ foreach($field in $fields){
+  if($parsed.PSObject.Properties.Match($field).Count -ne 1){
+   Deny "STATE_OWNERSHIP_INCOMPLETE"
+  }
+ }
+ if([int]$parsed.controller_pid -le 0 -or
+    [string]::IsNullOrWhiteSpace([string]$parsed.repo_root) -or
+    [string]::IsNullOrWhiteSpace([string]$parsed.runtime_dir) -or
+    [string]::IsNullOrWhiteSpace([string]$parsed.started_at)){
+  Deny "STATE_OWNERSHIP_INCOMPLETE"
+ }
+ try{$started=[datetime]$parsed.started_at}catch{Deny "STATE_OWNERSHIP_INCOMPLETE"}
+ $processes=@(Get-CimInstance Win32_Process -ErrorAction Stop)
+ foreach($field in $fields){
+  if($field -notlike "*_pid"){continue}
+  $oldPid=[int]$parsed.$field
+  if($oldPid -lt 0){Deny "STATE_OWNERSHIP_INCOMPLETE"}
+  if($oldPid -le 0){continue}
+  foreach($p in $processes){
+   if([int]$p.ProcessId -eq $oldPid){
+    # Includes PID reuse by an unrelated process: never risk overwriting
+    # the state for a PID that currently belongs to somebody else.
+    Deny "STATE_TRACKED_PID_STILL_EXISTS"
+   }
+  }
+ }
+ return "VERIFIED_DORMANT"
+}
+function CheckQuiescent([string]$Root,[bool]$AllowDormant=$false){
+ $script:DormantStatus=CheckDormantState $Root
+ if($script:DormantStatus -eq "VERIFIED_DORMANT" -and -not $AllowDormant){
+  Deny "ACTIVE_V10_STATE"
+ }
  $listening=@(Get-NetTCPConnection -State Listen -ErrorAction Stop)
  foreach($conn in $listening){
   if(@(28580,28581,28582,28583,28584) -contains [int]$conn.LocalPort){
@@ -86,6 +137,15 @@ function Quoted([string]$Value){
 $state=[IO.Path]::GetFullPath($StateRoot)
 try{
  [void](SafeItem $state)
+ if($Mode -eq "InspectState"){
+  $phase="STATE_INSPECTION"
+  CheckQuiescent $state $true
+  Write-Output ("STATE_STATUS="+$script:DormantStatus)
+  Write-Output "STATE_FILE_MODIFIED=false"
+  Write-Output "CUTOVER_APPLIED=false"
+  Write-Output "REAL_SUBMIT_ALLOWED=false"
+  exit 0
+ }
  if($Mode -eq "Rollback"){
   $phase="ROLLBACK"
   if($SwitchId -cnotmatch '^[0-9a-f]{32}$'){Deny "BAD_SWITCH_ID"}
@@ -109,6 +169,14 @@ try{
   Copy-Item -LiteralPath $bak -Destination $old -ErrorAction Stop
   Remove-Item -LiteralPath $stop -Force -ErrorAction Stop
   if((Get-FileHash $old -Algorithm SHA256).Hash -ine [string]$record.old_hash){Deny "ROLLBACK_HASH"}
+  if([bool]$record.state_archived){
+   $restorePath=Join-Path $state "V10_CONTROLLER_STATE.json"
+   $archive=Join-Path $backupDir "prior-controller-state.json"
+   if(Test-Path -LiteralPath $restorePath){Deny "STATE_RESTORATION_CONFLICT"}
+   if((Get-FileHash $archive -Algorithm SHA256).Hash -ine
+      [string]$record.prior_state_hash){Deny "STATE_RESTORATION_HASH"}
+   Copy-Item -LiteralPath $archive -Destination $restorePath -ErrorAction Stop
+  }
   Write-Output "V10_ROUTE_ROLLBACK=PASS"
   Write-Output "REAL_SUBMIT_ALLOWED=false"
   exit 0
@@ -116,7 +184,7 @@ try{
  $phase="GUARDS"
  if($PinnedSha -cnotmatch '^[0-9a-f]{40}$'){Deny "BAD_PIN"}
  if($FixtureRepo -and ($env:GITHUB_ACTIONS -cne "true" -or $env:RUNNER_OS -cne "Windows")){Deny "FIXTURE_RESTRICTED"}
- CheckQuiescent $state
+ CheckQuiescent $state ([bool]$ArchiveVerifiedStaleState)
  $found=@(FindOldShortcut)
  if($found.Count -ne 1){Deny "START_SHORTCUT_NOT_UNIQUE"}
  $originalLink=[string]$found[0]
@@ -184,7 +252,19 @@ try{
  $l=$shell.CreateShortcut($draftStart);$l.TargetPath=$startCmd;$l.WorkingDirectory=$backupDir;$l.Save()
  $l=$shell.CreateShortcut($draftStop);$l.TargetPath=$stopCmd;$l.WorkingDirectory=$backupDir;$l.Save()
  [void](SafeItem $draftStart);[void](SafeItem $draftStop)
- CheckQuiescent $state
+ CheckQuiescent $state ([bool]$ArchiveVerifiedStaleState)
+ $phase="STATE_ARCHIVE"
+ if($script:DormantStatus -eq "VERIFIED_DORMANT"){
+  if(-not $ArchiveVerifiedStaleState){Deny "ACTIVE_V10_STATE"}
+  $stateFile=Join-Path $state "V10_CONTROLLER_STATE.json"
+  $staleBackup=Join-Path $backupDir "prior-controller-state.json"
+  $staleHash=(Get-FileHash $stateFile -Algorithm SHA256).Hash
+  Move-Item -LiteralPath $stateFile -Destination $staleBackup -ErrorAction Stop
+  $staleArchived=$true
+  if((Get-FileHash $staleBackup -Algorithm SHA256).Hash -ine $staleHash){
+   Deny "STATE_ARCHIVE_HASH_MISMATCH"
+  }
+ }
  $phase="SWITCH"
  Move-Item -LiteralPath $originalLink -Destination (Join-Path $backupDir "original-moved.lnk") -ErrorAction Stop
  $originalMoved=$true
@@ -201,6 +281,8 @@ try{
  $record=[ordered]@{
   id=$id;link=$originalLink;stop=$newStopLink
   old_hash=$oldHash
+  state_archived=[bool]$staleArchived
+  prior_state_hash=[string]$staleHash
   new_hash=(Get-FileHash $originalLink -Algorithm SHA256).Hash
   stop_hash=(Get-FileHash $newStopLink -Algorithm SHA256).Hash
   real_submit_allowed=$false
@@ -216,6 +298,7 @@ try{
  Write-Output "OLD_LINK_BACKUP_VERIFIED=true"
  Write-Output "PINNED_START_AND_STOP_INSTALLED=true"
  Write-Output "NO_APP_STARTED=true"
+ Write-Output ("OLD_STATE_ARCHIVED="+([bool]$staleArchived).ToString().ToLowerInvariant())
  Write-Output ("UNVERIFIED_DESKTOP_COUNT="+[int]$script:UnverifiedDesktopCount)
  Write-Output "REAL_SUBMIT_ALLOWED=false"
  exit 0
@@ -229,13 +312,23 @@ try{
    }
   }catch{}
  }
+ if($staleArchived -and $stateFile -and $staleBackup){
+  try{
+   if(-not (Test-Path -LiteralPath $stateFile)){
+    Move-Item -LiteralPath $staleBackup -Destination $stateFile -ErrorAction Stop
+   }
+  }catch{}
+ }
  $reason="GENERIC_FAILURE"
  $known=@("REPARSE_REFUSED","ACTIVE_V10_STATE","PORT_BUSY","OLD_COCKPIT_PROCESS_PRESENT",
   "DESKTOP_UNVERIFIED","START_SHORTCUT_NOT_UNIQUE","STOP_LINK_EXISTS","BAD_PIN",
   "FIXTURE_RESTRICTED","RELEASE_ALREADY_PRESENT","CLONE_FAILED","COMMIT_NOT_PRESENT",
   "PIN_BRANCH_FAILED","PIN_MISMATCH","STOP_BRAIN_CONTRACT_MISSING",
   "BACKUP_MISMATCH","BAD_SWITCH_ID","BAD_RECEIPT","LINK_CHANGED","ROLLBACK_HASH",
-  "LEGACY_SHORTCUT_CHANGED","NEW_SHORTCUT_TARGET_MISMATCH")
+  "LEGACY_SHORTCUT_CHANGED","NEW_SHORTCUT_TARGET_MISMATCH",
+  "STATE_FILE_INVALID","STATE_JSON_INVALID","STATE_OWNERSHIP_INCOMPLETE",
+  "STATE_TRACKED_PID_STILL_EXISTS","STATE_ARCHIVE_HASH_MISMATCH",
+  "STATE_RESTORATION_CONFLICT","STATE_RESTORATION_HASH")
  if($known -ccontains [string]$_.Exception.Message){$reason=[string]$_.Exception.Message}
  Write-Output ("V10_ROUTE_BLOCK_STAGE="+$phase)
  Write-Output ("V10_ROUTE_BLOCK_REASON="+$reason)
