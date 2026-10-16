@@ -41,7 +41,7 @@ class ControllerStateDiagnose(unittest.TestCase):
     def save(self):
         self.file.write_text(json.dumps(self.state),encoding="utf-8")
 
-    def run(self):
+    def invoke_diagnosis(self):
         return subprocess.run(
             ["powershell.exe","-NoProfile","-NonInteractive",
              "-ExecutionPolicy","Bypass","-File",str(SCRIPT),
@@ -57,7 +57,7 @@ class ControllerStateDiagnose(unittest.TestCase):
         self.assertIn("REAL_SUBMIT_ALLOWED=false",p.stdout)
 
     def test_absent_state_is_readonly_no_recovery(self):
-        p=self.run()
+        p=self.invoke_diagnosis()
         self.assertEqual(p.returncode,0,p.stdout+p.stderr)
         self.assertIn("STATE_SCHEMA=ABSENT",p.stdout)
         self.assertIn("DIAG_RESULT=READ_ONLY",p.stdout)
@@ -67,7 +67,7 @@ class ControllerStateDiagnose(unittest.TestCase):
     def test_complete_state_preserved_unchanged(self):
         self.save()
         before=self.file.read_bytes()
-        p=self.run()
+        p=self.invoke_diagnosis()
         self.assertEqual(p.returncode,0,p.stdout+p.stderr)
         self.assertIn("STATE_SCHEMA=COMPLETE",p.stdout)
         self.assertIn("MISSING_REQUIRED_COUNT=0",p.stdout)
@@ -81,7 +81,7 @@ class ControllerStateDiagnose(unittest.TestCase):
         self.state.pop("brain_observer_pid")
         self.save()
         before=self.file.read_bytes()
-        p=self.run()
+        p=self.invoke_diagnosis()
         self.assertEqual(p.returncode,0,p.stdout+p.stderr)
         self.assertIn("STATE_SCHEMA=INCOMPLETE",p.stdout)
         self.assertIn("MISSING_REQUIRED_COUNT=1",p.stdout)
@@ -93,7 +93,7 @@ class ControllerStateDiagnose(unittest.TestCase):
         self.state["runtime_dir"]=""
         self.state["repo_root"]=""
         self.save()
-        p=self.run()
+        p=self.invoke_diagnosis()
         self.assertEqual(p.returncode,0,p.stdout+p.stderr)
         self.assertIn("INVALID_REQUIRED_COUNT=2",p.stdout)
         self.assertIn("INVALID_FIELD=repo_root",p.stdout)
@@ -103,7 +103,7 @@ class ControllerStateDiagnose(unittest.TestCase):
     def test_occupied_pid_detected_without_disclosing_pid(self):
         self.state["controller_pid"]=os.getpid()
         self.save()
-        p=self.run()
+        p=self.invoke_diagnosis()
         self.assertEqual(p.returncode,0,p.stdout+p.stderr)
         self.assertIn("RECORDED_PID_ALIVE_COUNT=1",p.stdout)
         self.check_privacy(p)
@@ -111,7 +111,7 @@ class ControllerStateDiagnose(unittest.TestCase):
     def test_malformed_state_fails_closed_and_preserves_bytes(self):
         self.file.write_bytes(b"{broken file --- secret")
         before=self.file.read_bytes()
-        p=self.run()
+        p=self.invoke_diagnosis()
         self.assertNotEqual(p.returncode,0,p.stdout+p.stderr)
         self.assertIn("DIAG_RESULT=BLOCKED",p.stdout)
         self.assertEqual(self.file.read_bytes(),before)
