@@ -14,7 +14,7 @@ class WindowsExeTests(unittest.TestCase):
         self.assertIn('--onedir', command)
         self.assertIn('tests.test_ms2_offline_csv_snapshot', command)
         for filename in b.CODE_FILES:
-            self.assertIn(filename, ' '.join(command))
+            self.assertTrue(any(str(Path(filename)) in argument for argument in command))
         self.assertNotIn('data/private', ' '.join(command))
 
     def test_no_argument_ever_accepted(self):
