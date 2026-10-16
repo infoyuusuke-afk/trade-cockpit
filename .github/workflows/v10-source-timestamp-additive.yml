@@ -1,0 +1,27 @@
+name: V10 Source Timestamp Additive
+on:
+  pull_request:
+    paths:
+      - "ms2_live/Kioxia_RSS_Live_Watcher.ps1"
+      - "ms2_live/MS2_RSS_100_Collector.ps1"
+      - "tests/test_v10_source_timestamp_additive.py"
+      - ".github/workflows/v10-source-timestamp-additive.yml"
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse PowerShell 5.1 source
+        shell: powershell
+        run: |
+          foreach ($path in @("ms2_live/Kioxia_RSS_Live_Watcher.ps1","ms2_live/MS2_RSS_100_Collector.ps1")) {
+            $tokens=$null; $errors=$null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path,[ref]$tokens,[ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) { throw "$path parse failed: $errors" }
+          }
+      - run: python -m unittest discover -s tests -p test_v10_source_timestamp_additive.py -v
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_v10_source_timestamp_additive.py -v

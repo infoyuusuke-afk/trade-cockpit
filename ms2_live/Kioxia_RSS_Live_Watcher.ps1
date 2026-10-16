@@ -829,6 +829,8 @@ try {
             $watcherPayload = [ordered]@{
                 schema_version = "kioxia-watcher-1.0"
                 updated_at = $now.ToString("yyyy-MM-dd HH:mm:ss")
+                observed_at_offset = $now.ToString("yyyy-MM-ddTHH:mm:sszzz")
+                timestamp_timezone = "Asia/Tokyo"
                 source = "Kioxia_RSS_Live_Watcher (Excel RSS)"
                 state = $state
                 signal = $signal
