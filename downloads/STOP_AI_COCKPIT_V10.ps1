@@ -244,6 +244,24 @@ if ($null -ne $beforeBrain -and
     exit 2
 }
 
+# P0-25 verify every recorded worker BEFORE terminating the supervisor.
+# A reused PID or unrelated process prevents partial teardown.
+foreach ($field in @("watcher_pid","heartbeat_pid","collector_pid","gateway_pid",
+    "brain_gateway_pid","voice_bridge_pid","sbv2_pid","shadow_supervisor_pid")) {
+    $member = $state.PSObject.Properties[$field]
+    if ($null -eq $member) { continue }
+    $tracked = 0
+    if (-not [int]::TryParse([string]$member.Value,[ref]$tracked) -or $tracked -lt 0) {
+        Write-Host "SAFE_STOP_PREFLIGHT=BLOCKED_INVALID_WORKER_PID; no workers stopped." -ForegroundColor Red
+        exit 2
+    }
+    $handle = if ($tracked -gt 0) { Get-Process -Id $tracked -ErrorAction SilentlyContinue } else { $null }
+    if ($null -ne $handle -and -not (Test-OwnedPidIdentity $field $tracked)) {
+        Write-Host "SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID; retain state." -ForegroundColor Red
+        exit 2
+    }
+}
+
 # Stop the supervising RUN/Controller host FIRST. Otherwise it can restart
 # Gateway/Voice/Shadow while Safe Stop is still tearing workers down.
 $controllerVal = $state.PSObject.Properties["controller_pid"]
