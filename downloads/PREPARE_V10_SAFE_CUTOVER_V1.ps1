@@ -48,7 +48,11 @@ function Get-Candidates([string]$Repo,[string]$State,[string[]]$Desktops) {
   $i += 1
   $script:DiscoveryLocationIndex = $i
   $script:DiscoveryAction = "DESKTOP_EXISTS"
-  if (-not (Test-Path -LiteralPath $d -PathType Container)) { continue }
+  if (-not (Test-Path -LiteralPath $d -PathType Container)) {
+   [void]$script:UnverifiedDesktopIndexes.Add([int]$i)
+   [void]$script:UnverifiedDesktopActions.Add("DESKTOP_EXISTS")
+   continue
+  }
   # An optional Desktop can be an inaccessible common/OneDrive directory.
   # Quarantine a whole directory without following links or pretending it
   # contained no launchers. Preserve a partial backup for accessible roots.
