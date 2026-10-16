@@ -325,3 +325,30 @@ disposable hosts only. Covered:
 - missing state
 
 Not verified on the OWNER PC; no real-machine stop has been performed.
+
+## P0-26C Review fixes (GPT review on PR #404)
+
+- Any exception after the first kill is PARTIAL_STOP
+  (UNEXPECTED_ERROR_AFTER_STOP_BEGAN) with evidence result.json; before any
+  kill it is BLOCKED.
+- Success commits in order: verified state copy into evidence, root result
+  bound to the evidence leaf, state hash and admission hash, then removal of
+  the original state. A failure at any step is PARTIAL_STOP with the state
+  retained; a rerun completes the commit.
+- ALREADY_STOPPED needs the evidence to still verify, no admitted
+  (PID, creation time) alive, no BRAIN host, no legacy script host and no V10
+  LISTEN. Otherwise BLOCKED.
+- Attribution uses parsed argv: the Controller must run
+  AI_COCKPIT_CONTROLLER_V10.ps1 or RUN_AI_COCKPIT_V10.ps1 as its -File
+  operand; a port child must be a Start-Job host (same executable as its
+  parent, arguments exactly -s -NoLogo -NoProfile). Names elsewhere on the
+  command line never count.
+- -RecoveryCheck (read-only) is the gate after PARTIAL_STOP:
+  START_OLD_STARTER_ALLOWED=true only with nothing of the session alive and no
+  V10 LISTEN or BRAIN; RERUN_STOP_EXECUTE when only originals remain;
+  otherwise OWNER_REVIEW_REQUIRED.
+- Fault injection (-SimulateFault) runs only on GitHub Actions under
+  RUNNER_TEMP.
+
+tests/test_v10_legacy_safe_stop.py now has 20 tests (8 added for P0-26C).
+Not verified on the OWNER PC; no real-machine stop has been performed.

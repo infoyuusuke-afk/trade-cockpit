@@ -1,4 +1,4 @@
-"""P0-26B: destructive acceptance of STOP_V10_LEGACY_SESSION_V1.ps1.
+"""P0-26B/C: destructive acceptance of STOP_V10_LEGACY_SESSION_V1.ps1.
 
 Windows GitHub Actions only. Every process is a disposable synthetic host
 created here under RUNNER_TEMP: a looping Controller that launches and may
@@ -56,8 +56,17 @@ LISTEN_THEN_SLEEP = (
     "$l.Start()\nStart-Sleep -Seconds 300\n"
 )
 
-# A legacy worker that hands its port to a JSON-bridge child process.
+# A legacy worker that hands its port to a Start-Job JSON bridge, as
+# MS2_RSS_100_Collector / Kioxia watcher do (Start-LocalJsonBridge).
 BRIDGE_PARENT = (
+    "param([int]$Port,[string]$Mark)\n"
+    "$j = Start-Job -ArgumentList $Port -ScriptBlock { param($p)\n"
+    "  $l = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, $p); $l.Start(); Start-Sleep -Seconds 300 }\n"
+    "Start-Sleep -Seconds 300\n"
+)
+
+# Not a job host: a plain powershell -Command child holding the port.
+BRIDGE_PARENT_RAW = (
     "param([int]$Port,[string]$Mark)\n"
     "$code = '$l=New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback,' + $Port + ');$l.Start();Start-Sleep 300 # ' + $Mark\n"
     "Start-Process -FilePath powershell.exe -ArgumentList @('-NoProfile','-Command',$code) -WindowStyle Hidden\n"
@@ -156,10 +165,16 @@ class LegacySessionSafeStop(unittest.TestCase):
             pass
 
     def kill_marked(self):
+        # Marked hosts, their unmarked job-host children, then whatever still
+        # owns a V10 port (setUp skipped the test if one was taken before).
         subprocess.run([PS, "-NoProfile", "-Command",
-                        "Get-CimInstance Win32_Process | Where-Object { ([string]$_.CommandLine).Contains('"
-                        + self.mark + "') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"],
-                        capture_output=True, timeout=60)
+                        "$all = @(Get-CimInstance Win32_Process); "
+                        "$m = @($all | Where-Object { ([string]$_.CommandLine).Contains('" + self.mark + "') } | ForEach-Object { [int]$_.ProcessId }); "
+                        "$k = @($all | Where-Object { $m -contains [int]$_.ParentProcessId -and [string]$_.Name -eq 'powershell.exe' } | ForEach-Object { [int]$_.ProcessId }); "
+                        "foreach ($i in ($k + $m)) { Stop-Process -Id $i -Force -ErrorAction SilentlyContinue }; "
+                        "Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { 28580..28584 -contains [int]$_.LocalPort } | "
+                        "ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"],
+                       capture_output=True, timeout=60)
         deadline = time.time() + 15
         while time.time() < deadline and any(port_listening(p) for p in ALL_PORTS):
             time.sleep(0.2)
@@ -171,8 +186,13 @@ class LegacySessionSafeStop(unittest.TestCase):
     def py_worker(self, role, script):
         return {"role": role, "exe": sys.executable, "args": [str(script), self.mark]}
 
-    def start_session(self, restart=False, owned_brain=False):
+    def start_session(self, restart=False, owned_brain=False, bridge="job", controller=None):
         dl = self.repo / "downloads"
+        if bridge == "raw":
+            (self.runtime / "MS2_RSS_100_Collector.ps1").write_text(BRIDGE_PARENT_RAW, encoding="ascii")
+        controller = controller or self.controller_script
+        if controller != self.controller_script:
+            controller.write_text(CONTROLLER, encoding="ascii")
         workers = [
             self.ps_worker("watcher_pid", self.runtime / "Kioxia_RSS_Live_Watcher.ps1", "-Port", "28582"),
             self.ps_worker("heartbeat_pid", self.runtime / "Kioxia_Safety_Heartbeat.ps1"),
@@ -196,7 +216,7 @@ class LegacySessionSafeStop(unittest.TestCase):
         spec_path = self.root / "spec.json"
         spec_path.write_text(json.dumps(spec), encoding="utf-8")
         self.controller = self.spawn([PS, "-NoProfile", "-NonInteractive", "-File",
-                                      str(self.controller_script), "-Spec", str(spec_path)])
+                                      str(controller), "-Spec", str(spec_path)])
         deadline = time.time() + 60
         while time.time() < deadline and not self.ready.exists():
             time.sleep(0.2)
@@ -209,6 +229,12 @@ class LegacySessionSafeStop(unittest.TestCase):
         time.sleep(1)
         self.state = json.loads(self.state_path.read_text(encoding="utf-8"))
         self.assertNotIn("brain_observer_pid", self.state)
+        # Evidence of the real Start-Job host command line the gate requires.
+        kids = subprocess.run([PS, "-NoProfile", "-Command",
+                               f"Get-CimInstance Win32_Process -Filter 'ParentProcessId = {int(self.state['collector_pid'])}' | "
+                               "ForEach-Object { 'BRIDGE_CHILD ' + $_.Name + ' | ' + $_.CommandLine }"],
+                              capture_output=True, text=True, timeout=60).stdout
+        print(f"--- {self._testMethodName} bridge={bridge}\n{kids}")
 
     def run_stop(self, *extra):
         r = subprocess.run([PS, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
@@ -223,6 +249,18 @@ class LegacySessionSafeStop(unittest.TestCase):
         self.assertTrue(alive(self.excel_managed), "managed Excel stand-in was touched")
         self.assertTrue(alive(self.excel_business), "business Excel stand-in was touched")
         return r
+
+    def run_recovery(self):
+        r = self.run_stop("-RecoveryCheck")
+        self.assertIn("RECOVERY_CHECK=COMPLETE", r.stdout)
+        self.assertIn("PROCESSES_STOPPED=0", r.stdout)
+        return r
+
+    def assert_all_session_stopped(self):
+        self.assertFalse(alive(self.controller))
+        for pid in self.worker_pids():
+            self.assertFalse(pid_alive(pid))
+        self.assertFalse(any(port_listening(p) for p in ALL_PORTS))
 
     def worker_pids(self):
         return [int(self.state[k]) for k in self.state if k.endswith("_pid") and k not in ("controller_pid", "excel_pid")]
@@ -333,7 +371,7 @@ class LegacySessionSafeStop(unittest.TestCase):
     def test_08_worker_stop_failure_is_partial_and_rerun_completes(self):
         self.start_session()
         before = self.state_path.read_bytes()
-        r = self.run_stop("-Execute", "-SimulateKillFailureRole", "gateway_pid")
+        r = self.run_stop("-Execute", "-SimulateFault", "kill:gateway_pid")
         self.assertEqual(r.returncode, 3)
         self.assertIn("LEGACY_STOP_RESULT=PARTIAL_STOP", r.stdout)
         self.assertIn("LEGACY_STOP_REASON=MANAGED_PROCESS_NOT_STOPPED", r.stdout)
@@ -346,11 +384,21 @@ class LegacySessionSafeStop(unittest.TestCase):
         result = json.loads((ev[0] / "result.json").read_text(encoding="utf-8"))
         self.assertEqual(result["result"], "PARTIAL_STOP")
         self.assertIn("KILL_FAILED_SIMULATED", [k["outcome"] for k in result["kills"]])
+        # Restart gate: the original gateway is alive, so only a rerun is allowed.
+        rc = self.run_recovery()
+        self.assertEqual(rc.returncode, 0)
+        self.assertIn("ORIGINAL_MANAGED_ALIVE=1", rc.stdout)
+        self.assertIn("LISTENERS_UNATTRIBUTED=0", rc.stdout)
+        self.assertIn("RECOVERY_ACTION=RERUN_STOP_EXECUTE", rc.stdout)
+        self.assertIn("START_OLD_STARTER_ALLOWED=false", rc.stdout)
+        self.assertTrue(pid_alive(int(self.state["gateway_pid"])))
         again = self.run_stop("-Execute")
         self.assertEqual(again.returncode, 0)
         self.assertIn("LEGACY_STOP_RESULT=STOPPED_VERIFIED", again.stdout)
         self.assertFalse(pid_alive(int(self.state["gateway_pid"])))
         self.assertFalse(any(port_listening(p) for p in ALL_PORTS))
+        done = self.run_recovery()
+        self.assertIn("RECOVERY_ACTION=NONE_ALREADY_STOPPED", done.stdout)
 
     # -- 10. A listener that survives teardown fails the stop --------------
     def test_09_port_listening_after_teardown_is_partial(self):
@@ -371,6 +419,13 @@ class LegacySessionSafeStop(unittest.TestCase):
         self.assertIn("STATE_FILE=RETAINED", r.stdout)
         self.assertTrue(self.state_path.exists())
         self.assertTrue(alive(late), "an unadmitted listener owner was stopped")
+        # Restart gate: an unattributed listener means no rerun and no restart.
+        rc = self.run_recovery()
+        self.assertEqual(rc.returncode, 2)
+        self.assertIn("LISTENERS_UNATTRIBUTED=1", rc.stdout)
+        self.assertIn("RECOVERY_ACTION=OWNER_REVIEW_REQUIRED", rc.stdout)
+        self.assertIn("START_OLD_STARTER_ALLOWED=false", rc.stdout)
+        self.assertTrue(alive(late))
 
     # -- 11. Corrupt state ------------------------------------------------
     def test_10_corrupt_state_is_refused_without_side_effects(self):
@@ -396,6 +451,146 @@ class LegacySessionSafeStop(unittest.TestCase):
         r = self.run_stop("-Execute")
         self.assertEqual(r.returncode, 2)
         self.assertIn("LEGACY_STOP_REASON=STATE_MISSING", r.stdout)
+
+    # -- P0-26C 1. Exception after the stop began --------------------------
+    def test_13_exception_after_controller_stop_is_partial_with_evidence(self):
+        self.start_session()
+        before = self.state_path.read_bytes()
+        r = self.run_stop("-Execute", "-SimulateFault", "after_controller")
+        self.assertEqual(r.returncode, 3)
+        self.assertIn("LEGACY_STOP_RESULT=PARTIAL_STOP", r.stdout)
+        self.assertIn("LEGACY_STOP_REASON=UNEXPECTED_ERROR_AFTER_STOP_BEGAN", r.stdout)
+        self.assertIn("STATE_FILE=RETAINED", r.stdout)
+        self.assertIn("EVIDENCE_RESULT_WRITTEN=true", r.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        self.assertFalse(alive(self.controller))
+        ev = self.evidence_dirs()
+        self.assertEqual(len(ev), 1)
+        result = json.loads((ev[0] / "result.json").read_text(encoding="utf-8"))
+        self.assertEqual(result["result"], "PARTIAL_STOP")
+        self.assertEqual([k["role"] for k in result["kills"]], ["controller_pid"])
+        self.assertIn("SIMULATED_FAULT_AFTER_CONTROLLER", result["detail"])
+        rc = self.run_recovery()
+        self.assertIn("RECOVERY_ACTION=RERUN_STOP_EXECUTE", rc.stdout)
+        self.assertIn("START_OLD_STARTER_ALLOWED=false", rc.stdout)
+        again = self.run_stop("-Execute")
+        self.assertEqual(again.returncode, 0)
+        self.assertIn("LEGACY_STOP_RESULT=STOPPED_VERIFIED", again.stdout)
+        self.assert_all_session_stopped()
+
+    # -- P0-26C 2. Commit failures keep the state and recover ---------------
+    def test_14_result_write_failure_keeps_state_and_rerun_commits(self):
+        self.start_session()
+        before = self.state_path.read_bytes()
+        r = self.run_stop("-Execute", "-SimulateFault", "result_write")
+        self.assertEqual(r.returncode, 3)
+        self.assertIn("LEGACY_STOP_REASON=STATE_COMMIT_FAILED", r.stdout)
+        self.assertIn("STATE_FILE=RETAINED", r.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        self.assertFalse((self.root / "V10_LEGACY_STOP_RESULT.json").exists())
+        self.assert_all_session_stopped()
+        rc = self.run_recovery()
+        self.assertEqual(rc.returncode, 0)
+        self.assertIn("ORIGINAL_MANAGED_ALIVE=0", rc.stdout)
+        self.assertIn("START_OLD_STARTER_ALLOWED=true", rc.stdout)
+        again = self.run_stop("-Execute")
+        self.assertEqual(again.returncode, 0)
+        self.assertIn("LEGACY_STOP_RESULT=STOPPED_VERIFIED", again.stdout)
+        self.assertIn("STATE_FILE=ARCHIVED_IN_EVIDENCE", again.stdout)
+        self.assertFalse(self.state_path.exists())
+        third = self.run_stop("-Execute")
+        self.assertEqual(third.returncode, 0)
+        self.assertIn("LEGACY_STOP_RESULT=ALREADY_STOPPED", third.stdout)
+
+    def test_15_state_remove_failure_keeps_state_and_rerun_commits(self):
+        self.start_session()
+        before = self.state_path.read_bytes()
+        r = self.run_stop("-Execute", "-SimulateFault", "state_remove")
+        self.assertEqual(r.returncode, 3)
+        self.assertIn("LEGACY_STOP_REASON=STATE_COMMIT_FAILED", r.stdout)
+        self.assertIn("STATE_FILE=RETAINED", r.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        self.assertEqual((self.evidence_dirs()[0] / "V10_CONTROLLER_STATE.legacy.json").read_bytes(), before)
+        again = self.run_stop("-Execute")
+        self.assertEqual(again.returncode, 0)
+        self.assertIn("LEGACY_STOP_RESULT=STOPPED_VERIFIED", again.stdout)
+        self.assertFalse(self.state_path.exists())
+
+    # -- P0-26C 3. A previous success never hides a live session ------------
+    def test_16_previous_success_with_live_brain_or_legacy_host_is_blocked(self):
+        self.start_session()
+        self.assertEqual(self.run_stop("-Execute").returncode, 0)
+        brain = self.spawn([sys.executable, str(self.repo / "scripts" / "ai_brain_observer.py"),
+                            "--live", str(self.runtime / "live_ms2.json"), self.mark])
+        time.sleep(0.5)
+        r = self.run_stop("-Execute")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("LEGACY_STOP_REASON=BRAIN_HOST_PRESENT", r.stdout)
+        self.assertNotIn("ALREADY_STOPPED", r.stdout)
+        self.assertTrue(alive(brain))
+        self.kill_proc(brain)
+        hb = self.spawn([PS, "-NoProfile", "-NonInteractive", "-File",
+                         str(self.runtime / "Kioxia_Safety_Heartbeat.ps1"), "-Mark", self.mark])
+        time.sleep(1)
+        r = self.run_stop("-Execute")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("LEGACY_STOP_REASON=LEGACY_HOST_PRESENT", r.stdout)
+        self.assertTrue(alive(hb))
+        self.kill_proc(hb)
+        self.assertIn("LEGACY_STOP_RESULT=ALREADY_STOPPED", self.run_stop("-Execute").stdout)
+
+    def test_17_forged_or_tampered_previous_result_is_blocked(self):
+        result = self.root / "V10_LEGACY_STOP_RESULT.json"
+        result.write_text(json.dumps({"schema": "V10_LEGACY_STOP_RESULT_V1", "result": "STOPPED_VERIFIED",
+                                      "evidence": "20261016T000000000Z", "state_sha256": "0" * 64}), encoding="utf-8")
+        r = self.run_stop("-Execute")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("LEGACY_STOP_REASON=PREVIOUS_RESULT_UNVERIFIED", r.stdout)
+        self.start_session()
+        self.assertEqual(self.run_stop("-Execute").returncode, 0)
+        legacy = self.evidence_dirs()[0] / "V10_CONTROLLER_STATE.legacy.json"
+        legacy.write_bytes(legacy.read_bytes() + b" ")
+        r = self.run_stop("-Execute")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("LEGACY_STOP_REASON=PREVIOUS_RESULT_UNVERIFIED", r.stdout)
+
+    # -- P0-26C 4. Strict Controller / bridge attribution -------------------
+    def test_18_controller_pid_naming_run_script_in_text_is_refused(self):
+        self.start_session()
+        run_path = self.root / "RUN_AI_COCKPIT_V10.ps1"
+        decoy = self.root / "decoy.ps1"
+        decoy.write_text(SLEEP_PS, encoding="ascii")
+        fakes = [
+            [PS, "-NoProfile", "-Command",
+             f"Start-Sleep 300 # -File {run_path} {self.controller_script} {self.mark}"],
+            [PS, "-NoProfile", "-File", str(decoy), "-Mark", f"{self.mark} -File {run_path}"],
+        ]
+        for argv in fakes:
+            fake = self.spawn(argv)
+            time.sleep(1)
+            self.state["controller_pid"] = fake.pid
+            self.state_path.write_text(json.dumps(self.state), encoding="utf-8")
+            r = self.run_stop("-Execute")
+            self.assertEqual(r.returncode, 2)
+            self.assertIn("LEGACY_STOP_REASON=TRACKED_PROCESS_IDENTITY_NOT_PROVEN", r.stdout)
+            self.assertTrue(alive(fake))
+            self.assert_nothing_stopped()
+
+    def test_19_controller_inside_run_host_is_admitted_and_stopped(self):
+        self.start_session(controller=self.root / "RUN_AI_COCKPIT_V10.ps1")
+        r = self.run_stop("-Execute")
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("LEGACY_STOP_RESULT=STOPPED_VERIFIED", r.stdout)
+        self.assertIn("ADMITTED_PROCESSES=11", r.stdout)
+        self.assert_all_session_stopped()
+
+    def test_20_port_child_that_is_not_a_job_host_is_refused(self):
+        self.start_session(bridge="raw")
+        r = self.run_stop("-Execute")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("LEGACY_STOP_REASON=PORT_CHILD_IDENTITY_NOT_PROVEN", r.stdout)
+        self.assert_nothing_stopped()
+        self.assertTrue(port_listening(28580))
 
 
 if __name__ == "__main__":
