@@ -1,7 +1,8 @@
 <#
 P0-21: Read-only, hash-exact source-to-original-target matching for a local
 P0-19 snapshot. No actual restore, change, process stop, launch, Git mutation,
-network, cross-account discovery, Excel, trade, or write.
+network, cross-account discovery, Excel or trade. Optional SaveEncryptedMap
+writes a DPAPI CurrentUser-only PRIVATE evidence file, never live launchers.
 Use explicit DesktopRoots to avoid accidentally scanning a rejected old account.
 Desktop ordinal in the snapshot is NOT a path and is NEVER used as an identity.
 #>
@@ -9,7 +10,8 @@ param(
  [Parameter(Mandatory=$true)][string]$Snapshot,
  [string]$RepoRoot = "C:\AI_Cockpit_Current\trade-cockpit",
  [string]$StateRoot = "C:\AI_Cockpit_OneClick_Starter",
- [string[]]$DesktopRoots = @()
+ [string[]]$DesktopRoots = @(),
+ [switch]$SaveEncryptedMap
 )
 $ErrorActionPreference="Stop"
 $stage="ARGUMENTS"
@@ -99,6 +101,7 @@ try {
  $desktopExpected=0; $desktopMatched=0
  $used=new-object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
  $unresolved=New-Object 'System.Collections.Generic.List[string]'
+ $localMatches=New-Object 'System.Collections.Generic.List[object]'
  foreach ($receipt in $files) {
   $rel=[string]$receipt.name
   $part=$rel.Split('/')
@@ -125,6 +128,10 @@ try {
   } else { Fail "ENTRY_CLASS_UNEXPECTED" }
   if ($hits.Count -eq 1 -and $used.Add($hits[0])) {
    $mapped++
+   [void]$localMatches.Add([ordered]@{
+      source=[string]$rel; target=[string]$hits[0];
+      sha256=[string]$receipt.sha256; bytes=[long]$receipt.bytes
+   })
    if ($part[0] -cmatch '^desktop[0-9]+$') { $desktopMatched++ }
   } elseif ($hits.Count -gt 1) {
    $ambiguous++
@@ -153,15 +160,67 @@ try {
  } else {
   Write-Output "TARGET_MAP_STATUS=PARTIAL_HOLD"
  }
- # No output containing paths, even for matching entries; the mapping stays
- # ephemeral within this PowerShell process and cannot restore any files.
+ # Optional OWNER-local-only encrypted receipt. This is NOT a restore map
+ # authorization: even when all matches are unique, never mark cutover ready.
+ # Absolute targets remain only in a DPAPI CurrentUser-protected payload.
+ if ($SaveEncryptedMap) {
+  $stage="PRIVATE_MAP_SAVE"
+  if ($mapped -lt 1) { Fail "NO_MATCHES_TO_SAVE" }
+  Add-Type -AssemblyName System.Security -ErrorAction Stop
+  $identity=[Security.Principal.WindowsIdentity]::GetCurrent()
+  if ($null -eq $identity.User) { Fail "WINDOWS_IDENTITY_REQUIRED" }
+  $manifestHash=(Get-FileHash -LiteralPath (Join-Path $dir "manifest.json") -Algorithm SHA256).Hash
+  $payload=[ordered]@{
+   schema="v10_restore_private_map_v1"
+   snapshot=$dir
+   manifest_sha256=$manifestHash
+   owner_sid=$identity.User.Value
+   created_utc=[DateTime]::UtcNow.ToString("o")
+   desktop_roots=@($roots.ToArray())
+   backed_up_entry_count=[int]$files.Count
+   matched_entry_count=[int]$mapped
+   missing_count=[int]$missing
+   ambiguous_count=[int]$ambiguous
+   unverified_root_indexes=@($unverified.ToArray())
+   desktop_inventory_partial=[bool]$partial
+   cutover_eligible=$false
+   real_submit_allowed=$false
+   matches=@($localMatches.ToArray())
+  }
+  $json=$payload | ConvertTo-Json -Depth 7 -Compress
+  $clear=[Text.Encoding]::UTF8.GetBytes($json)
+  $entropy=[Text.Encoding]::UTF8.GetBytes("100B_PROJECT_P0_22_LOCAL_RESTORE_MAP_V1")
+  try {
+   $cipher=[Security.Cryptography.ProtectedData]::Protect(
+    $clear,$entropy,[Security.Cryptography.DataProtectionScope]::CurrentUser)
+  } finally {
+   [Array]::Clear($clear,0,$clear.Length)
+  }
+  $root=Join-Path $state "V10_private_restore_maps"
+  if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+   New-Item -ItemType Directory -Path $root -ErrorAction Stop | Out-Null
+  }
+  [void](Checked $root)
+  $mapId=[guid]::NewGuid().ToString("N")
+  $mapPath=Join-Path $root ($mapId+".dpapi")
+  if (Test-Path -LiteralPath $mapPath) { Fail "MAP_FILE_COLLISION" }
+  $outstream=New-Object IO.FileStream($mapPath,[IO.FileMode]::CreateNew,
+       [IO.FileAccess]::Write,[IO.FileShare]::None)
+  try { $outstream.Write($cipher,0,$cipher.Length); $outstream.Flush($true) }
+  finally { $outstream.Dispose() }
+  Write-Output "ENCRYPTED_MAP_RESULT=SAVED_PRIVATE_ONLY"
+  Write-Output ("ENCRYPTED_MAP_ID="+$mapId)
+  Write-Output "ENCRYPTED_MAP_CUTOVER_READY=false"
+ }
+ # Without the switch absolutely no local files are created or edited.
  exit 0
 } catch {
  $message=[string]$_.Exception.Message
  $safe="UNCLASSIFIED"
  $allow=@("REPARSE_REFUSED","UNTRUSTED_DESKTOP_ENTRY","SNAPSHOT_NOT_VERIFIED",
   "EXPLICIT_DESKTOP_ROOTS_REQUIRED","TOO_MANY_ROOTS","ROOT_NOT_ABSOLUTE",
-  "DUPLICATE_ROOT","INVALID_DESKTOP_ROOT","ENTRY_CLASS_UNEXPECTED")
+  "DUPLICATE_ROOT","INVALID_DESKTOP_ROOT","ENTRY_CLASS_UNEXPECTED",
+  "NO_MATCHES_TO_SAVE","WINDOWS_IDENTITY_REQUIRED","MAP_FILE_COLLISION")
  if ($allow -ccontains $message) { $safe=$message }
  Write-Output ("BLOCK_STAGE="+$stage)
  Write-Output ("BLOCK_REASON="+$safe)
