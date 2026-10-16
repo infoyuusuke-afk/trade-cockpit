@@ -54,6 +54,7 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
         "voice_bridge_pid" { "AI_COCKPIT_VOICE_BRIDGE_V10.ps1" }
         "sbv2_pid"         { "server_fastapi.py" }
         "shadow_supervisor_pid" { "ai_shadow_supervisor.py" }
+        "brain_observer_pid" { "ai_brain_observer.py" }
         # RUN invokes Controller synchronously with &, so controller_pid is
         # the RUN PowerShell host itself. Accept either identity, but never
         # a generic powershell.exe match.
@@ -205,7 +206,7 @@ if ($null -ne $controllerVal -and [int]$controllerVal.Value -gt 0) {
 Stop-OwnedJobBridge 28580 ([int]$state.collector_pid) "Collector JSON"
 Stop-OwnedJobBridge 28582 ([int]$state.watcher_pid) "Watcher JSON"
 
-foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid")) {
+foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid", "brain_observer_pid")) {
     $val = $state.PSObject.Properties[$field]
     if ($null -eq $val -or [int]$val.Value -le 0) { continue }
     $procId = [int]$val.Value
