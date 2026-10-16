@@ -150,6 +150,64 @@ function Test-V10TrackedCmd([string]$Repo,[string]$Role) {
  } catch { return $false }
 }
 
+# Native IShellLinkW + IPersistFile.Load read only. Never call Resolve or Save.
+# Unicode filenames are handled by the wide-char COM interface, not ANSI WScript.
+function Read-V10ShortcutUnicode([string]$Path) {
+ if (-not ("V10SafeShellLink" -as [type])) {
+  $src = @'
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+[ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+public class V10ShellLinkClass {}
+[ComImport, Guid("000214F9-0000-0000-C000-000000000046"),
+ InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+public interface IV10ShellLinkW {
+ void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int size, IntPtr findData, int flags);
+ void GetIDList(out IntPtr pidl);
+ void SetIDList(IntPtr pidl);
+ void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder name, int size);
+ void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string name);
+ void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int size);
+ void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string path);
+ void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder args, int size);
+ void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string args);
+ void GetHotkey(out short hotkey);
+ void SetHotkey(short hotkey);
+ void GetShowCmd(out int show);
+ void SetShowCmd(int show);
+ void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path, int size, out int icon);
+ void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string path, int icon);
+ void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string path, uint reserved);
+ void Resolve(IntPtr hwnd, uint flags);
+ void SetPath([MarshalAs(UnmanagedType.LPWStr)] string path);
+}
+public static class V10SafeShellLink {
+ public static string[] Read(string linkPath) {
+  object obj = new V10ShellLinkClass();
+  try {
+   // STGM_READ = 0; do not resolve the destination or alter the link.
+   ((IPersistFile)obj).Load(linkPath, 0);
+   var link = (IV10ShellLinkW)obj;
+   var path = new StringBuilder(32768);
+   var args = new StringBuilder(32768);
+   var workdir = new StringBuilder(32768);
+   link.GetPath(path, path.Capacity, IntPtr.Zero, 4); // SLGP_RAWPATH
+   link.GetArguments(args, args.Capacity);
+   link.GetWorkingDirectory(workdir, workdir.Capacity);
+   return new string[] { path.ToString(), args.ToString(), workdir.ToString() };
+  } finally {
+   if (obj != null && Marshal.IsComObject(obj)) Marshal.FinalReleaseComObject(obj);
+  }
+ }
+}
+'@
+  Add-Type -TypeDefinition $src -Language CSharp -ErrorAction Stop
+ }
+ return [V10SafeShellLink]::Read($Path)
+}
+
 function Get-V10ShortcutInventory([string]$Desktop,[string]$Repo) {
  $result = [ordered]@{ Start = "MISSING"; Stop = "MISSING"; Other = "NONE" }
  try {
@@ -160,7 +218,6 @@ function Get-V10ShortcutInventory([string]$Desktop,[string]$Repo) {
   $jaStop = ([char]0x5B89) + ([string][char]0x5168) + ([string][char]0x505C) +
             ([string][char]0x6B62)
   $counts = @{ START = 0; STOP = 0 }
-  $ws = $null
   foreach ($file in $items) {
    $label = [IO.Path]::GetFileNameWithoutExtension($file.Name)
    if (-not ($label.StartsWith($jaPrefix,[StringComparison]::OrdinalIgnoreCase) -or
@@ -175,16 +232,15 @@ function Get-V10ShortcutInventory([string]$Desktop,[string]$Repo) {
    $role = if ($isStart) { "START" } else { "STOP" }
    $counts[$role] += 1
    $class = "BLOCKED"
-   $shortcut = $null
    try {
     if (($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
         $file.Length -le 0 -or $file.Length -gt 65536 -or
         -not (Test-V10TrackedCmd $Repo $role)) { throw "BAD_SHORTCUT_OR_WRAPPER" }
-    if ($null -eq $ws) { $ws = New-Object -ComObject WScript.Shell -ErrorAction Stop }
-    $shortcut = $ws.CreateShortcut($file.FullName)
-    $target = [string]$shortcut.TargetPath
-    $arguments = [string]$shortcut.Arguments
-    $workdir = [string]$shortcut.WorkingDirectory
+    $linkData = @(Read-V10ShortcutUnicode $file.FullName)
+    if ($linkData.Count -ne 3) { throw "LNK_FIELDS_UNVERIFIED" }
+    $target = [string]$linkData[0]
+    $arguments = [string]$linkData[1]
+    $workdir = [string]$linkData[2]
     $cmd = if ($role -eq "START") { "START_AI_COCKPIT_V10.cmd" } else { "STOP_AI_COCKPIT_V10.cmd" }
     $expected = [IO.Path]::GetFullPath((Join-Path $Repo ("downloads\" + $cmd)))
     if (-not [IO.Path]::IsPathRooted($target) -or $target.StartsWith('\\') -or
@@ -196,14 +252,10 @@ function Get-V10ShortcutInventory([string]$Desktop,[string]$Repo) {
                        [StringComparison]::OrdinalIgnoreCase)) { throw "WORKDIR_UNTRUSTED" }
     $class = "EXPECTED"
    } catch { $class = "BLOCKED" }
-   finally {
-    if ($null -ne $shortcut) { try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($shortcut) } catch {} }
-   }
    $result[$role.Substring(0,1) + $role.Substring(1).ToLowerInvariant()] = $class
   }
   if ($counts.START -gt 1) { $result.Start = "AMBIGUOUS" }
   if ($counts.STOP -gt 1) { $result.Stop = "AMBIGUOUS" }
-  if ($null -ne $ws) { try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($ws) } catch {} }
  } catch { $result.Other = "BLOCKED" }
  return $result
 }
