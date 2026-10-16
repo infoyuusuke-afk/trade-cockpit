@@ -17,6 +17,8 @@ on:
       - "tests/test_v10_snapshot_restore_rehearsal.py"
       - "downloads/VERIFY_V10_RESTORE_TARGET_MAP.ps1"
       - "tests/test_v10_restore_target_map.py"
+      - "downloads/VERIFY_V10_ENCRYPTED_RESTORE_MAP.ps1"
+      - "tests/test_v10_restore_map_dpapi.py"
       - "docs/V10_BRAIN_SAFE_DEPLOYMENT_ACCEPTANCE.md"
       - ".github/workflows/v10-brain-safestop-preflight.yml"
   workflow_dispatch:
@@ -28,7 +30,7 @@ jobs:
       - name: Parse Windows PowerShell 5.1 files
         shell: powershell
         run: |
-          foreach ($p in @("downloads/STOP_AI_COCKPIT_V10.ps1","downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1","downloads/VERIFY_V10_DESKTOP_SAFE_STOP_ROUTE.ps1","downloads/INVENTORY_V10_OWNER_DESKTOP_READONLY.ps1","downloads/PREPARE_V10_SAFE_CUTOVER_V1.ps1","downloads/VERIFY_V10_SNAPSHOT_RESTORE_REHEARSAL.ps1","downloads/VERIFY_V10_RESTORE_TARGET_MAP.ps1")) {
+          foreach ($p in @("downloads/STOP_AI_COCKPIT_V10.ps1","downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1","downloads/VERIFY_V10_DESKTOP_SAFE_STOP_ROUTE.ps1","downloads/INVENTORY_V10_OWNER_DESKTOP_READONLY.ps1","downloads/PREPARE_V10_SAFE_CUTOVER_V1.ps1","downloads/VERIFY_V10_SNAPSHOT_RESTORE_REHEARSAL.ps1","downloads/VERIFY_V10_RESTORE_TARGET_MAP.ps1","downloads/VERIFY_V10_ENCRYPTED_RESTORE_MAP.ps1")) {
             $t=$null; $e=$null
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $p).Path,[ref]$t,[ref]$e) | Out-Null
             if ($e.Count -gt 0) { throw "${p}: $e" }
@@ -68,6 +70,9 @@ jobs:
       - name: Hash-exact restore target map (no ordinal or file writes)
         shell: powershell
         run: python -m unittest discover -s tests -p test_v10_restore_target_map.py -v
+      - name: DPAPI CurrentUser protected target map (synthetic only)
+        shell: powershell
+        run: python -m unittest discover -s tests -p test_v10_restore_map_dpapi.py -v
   ubuntu:
     runs-on: ubuntu-latest
     steps:
