@@ -798,6 +798,7 @@ if ($BrainObserverSelfTest) {
             source_publication_at = $stamp
             last_market_data_at = $null
             exchange_tick_date_verified = $false
+            signal_provenance_verified = $false
             real_submit_allowed = $false
             source_authenticated = $false
             cross_source_join_allowed = $false
