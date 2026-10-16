@@ -176,6 +176,40 @@ class SafeCutoverBackup(unittest.TestCase):
         self.assertNotIn(str(self.root), result.stdout)
         self.assertFalse(self.backups.exists())
 
+    def test_unrelated_desktop_files_excluded_from_plan_and_snapshot(self):
+        # Desktop OneDrive may contain many unrelated files; only AI launcher
+        # CMD/LNK entries should be enumerated or copied.
+        (self.desktop / "ZZ_UNRELATED_LARGE_FILE.txt").write_bytes(b"x" * 2000000)
+        (self.desktop / "Photo Archive.csv").write_text(
+            "private,should_not_be_read", encoding="utf-8")
+        for i in range(65):
+            (self.desktop / f"Other_{i:03d}.txt").write_text(
+                "unrelated", encoding="ascii")
+        result = self.invoke_prepare(mode="Plan")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("DESKTOP_CMD_COUNT=2", result.stdout)
+        self.assertIn("DESKTOP_LNK_COUNT=1", result.stdout)
+        self.assertFalse(self.backups.exists())
+        result = self.invoke_prepare(mode="BackupOnly")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        snapshot = next(self.backups.iterdir())
+        manifest = json.loads((snapshot / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(manifest["files"]), len(self.orig))
+        self.assertFalse(list(snapshot.rglob("*.csv")))
+        self.assertFalse(list(snapshot.rglob("ZZ_*")))
+        self.assertFalse(list(snapshot.rglob("Other_*")))
+        self.assert_no_live_changes()
+
+    def test_filter_scanning_and_indexed_fail_closed_diagnostics_contract(self):
+        source = SCRIPT.read_text(encoding="ascii")
+        self.assertIn('-Filter "AI*.cmd" -ErrorAction Stop', source)
+        self.assertIn('-Filter "AI*.lnk" -ErrorAction Stop', source)
+        self.assertNotIn("Get-ChildItem -LiteralPath $d -File -ErrorAction Stop", source)
+        self.assertIn("BLOCK_DESKTOP_INDEX=", source)
+        self.assertIn("BLOCK_DISCOVERY_ACTION=", source)
+        self.assertIn('if ($stage -eq "DISCOVER_CANDIDATES")', source)
+        self.assertIn('Write-Output ("BLOCK_REASON="+$reason)', source)
+
     def test_selftest_always_plan_only(self):
         result = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive",
                                  "-File", str(SCRIPT), "-SelfTest"],
