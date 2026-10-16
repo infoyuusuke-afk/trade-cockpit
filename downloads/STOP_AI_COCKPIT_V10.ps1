@@ -285,10 +285,29 @@ try {
     exit 2
 }
 
+# Every record must belong to the saved session before stopping ANY worker.
+# A reused PID or unrelated process prevents partial teardown.
+foreach ($field in @("watcher_pid","heartbeat_pid","collector_pid","gateway_pid",
+    "brain_gateway_pid","voice_bridge_pid","sbv2_pid","shadow_supervisor_pid")) {
+    $member = $state.PSObject.Properties[$field]
+    if ($null -eq $member) { continue }
+    $tracked = 0
+    if (-not [int]::TryParse([string]$member.Value,[ref]$tracked) -or $tracked -lt 0) {
+        Write-Host "SAFE_STOP_PREFLIGHT=BLOCKED_INVALID_WORKER_PID; no workers stopped." -ForegroundColor Red
+        exit 2
+    }
+    $handle = if ($tracked -gt 0) { Get-Process -Id $tracked -ErrorAction SilentlyContinue } else { $null }
+    if ($null -ne $handle -and -not (Test-OwnedPidIdentity $field $tracked)) {
+        Write-Host "SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID; retain state." -ForegroundColor Red
+        exit 2
+    }
+}
+
 Stop-OwnedJobBridge 28580 ([int]$state.collector_pid) "Collector JSON"
 Stop-OwnedJobBridge 28582 ([int]$state.watcher_pid) "Watcher JSON"
 
 $brainStopVerified = $true
+$workerStopVerified = $true
 foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid", "brain_observer_pid")) {
     $val = $state.PSObject.Properties[$field]
     if ($null -eq $val -or [int]$val.Value -le 0) { continue }
@@ -322,10 +341,25 @@ foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_p
         continue
     }
     if ($null -ne $p -and (Test-OwnedPidIdentity $field $procId)) {
-        try { Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue } catch {}
-        Write-Host ("Stopped " + $field + " (PID " + $procId + ")") -ForegroundColor Green
+        try {
+            # Hold the verified Process object instead of looking up a
+            # numeric PID again (which could have been recycled).
+            $openedHandle = $p.Handle
+            if ($openedHandle -eq [IntPtr]::Zero -or $p.HasExited) {
+                throw "PROCESS_HANDLE_INVALID"
+            }
+            $p.Kill()
+            if (-not $p.WaitForExit(5000) -or -not $p.HasExited) {
+                throw "WORKER_STILL_RUNNING"
+            }
+            Write-Host ("Stopped verified " + $field) -ForegroundColor Green
+        } catch {
+            $workerStopVerified = $false
+            Write-Host ("Worker " + $field + " exit unverified; retained state.") -ForegroundColor Red
+        }
     } elseif ($null -ne $p) {
-        Write-Host ("PID " + $procId + " no longer matches " + $field + "; not stopping it.") -ForegroundColor Yellow
+        $workerStopVerified = $false
+        Write-Host ("Worker " + $field + " ownership changed; retaining state.") -ForegroundColor Red
     }
 }
 
@@ -388,9 +422,34 @@ if (-not $excelCleanupOk) {
     exit 2
 }
 
-if (-not $brainStopVerified) {
-    Write-Host "V10 BRAIN safe stop incomplete; retained state for owner review. No unrelated PID was touched." -ForegroundColor Red
+if (-not $brainStopVerified -or -not $workerStopVerified) {
+    Write-Host "V10 safe stop incomplete; recorded state retained for owner review." -ForegroundColor Red
     exit 2
+}
+
+# A worker may outlive its wrapper via a child JSON bridge, or a new
+# listener may bind before teardown ends. Never claim stopped / delete
+# recovery evidence while any of the V10 ports are still in LISTEN.
+try {
+    $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop |
+        Where-Object { @(28580,28581,28582,28583,28584) -contains [int]$_.LocalPort })
+    if ($listeners.Count -gt 0) {
+        Write-Host "SAFE_STOP_VERIFY=LISTEN_PORTS_REMAIN; retained state." -ForegroundColor Red
+        exit 2
+    }
+} catch {
+    Write-Host "SAFE_STOP_VERIFY=PORT_AUDIT_FAILED; retained state." -ForegroundColor Red
+    exit 2
+}
+foreach ($field in @("controller_pid","watcher_pid","heartbeat_pid",
+    "collector_pid","gateway_pid","brain_gateway_pid","voice_bridge_pid",
+    "sbv2_pid","shadow_supervisor_pid","brain_observer_pid")) {
+    $entry = $state.PSObject.Properties[$field]
+    if ($null -eq $entry -or [int]$entry.Value -le 0) { continue }
+    if ($null -ne (Get-Process -Id ([int]$entry.Value) -ErrorAction SilentlyContinue)) {
+        Write-Host "SAFE_STOP_VERIFY=TRACKED_PID_STILL_PRESENT; retained state." -ForegroundColor Red
+        exit 2
+    }
 }
 
 try {
