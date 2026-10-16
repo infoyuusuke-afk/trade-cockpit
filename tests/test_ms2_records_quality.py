@@ -1,5 +1,6 @@
 """Synthetic-only checks. No MS2/Excel/real CSV access or network."""
 import csv
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -159,6 +160,72 @@ class QualityTests(unittest.TestCase):
             return value
         with patch.object(audit_mod, "_stat_key", side_effect=change_key):
             self.assertIn("FILE_CHANGED_DURING_READ", audit_mod.audit(self.root)["files"]["ticks.csv"]["reason_counts"])
+
+    def test_path_and_open_descriptor_must_refer_to_same_file(self):
+        # A different opened file with matching size and mtime is not the path.
+        target = self.root / "ticks.csv"
+        decoy = Path(self.tmp.name) / "synthetic_decoy.csv"
+        decoy.write_bytes(target.read_bytes())
+        before = target.stat()
+        os.utime(decoy, ns=(before.st_atime_ns, before.st_mtime_ns))
+        self.assertEqual(before.st_size, decoy.stat().st_size)
+        self.assertEqual(before.st_mtime_ns, decoy.stat().st_mtime_ns)
+        if audit_mod._stat_key(before) == audit_mod._stat_key(decoy.stat()):
+            self.skipTest("Filesystem cannot distinguish separate file identities")
+        real_open = Path.open
+
+        def redirect_open(path, *args, **kwargs):
+            if path == target:
+                return real_open(decoy, *args, **kwargs)
+            return real_open(path, *args, **kwargs)
+
+        with patch.object(Path, "open", new=redirect_open):
+            result = audit_mod.audit(self.root)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn("FILE_CHANGED_DURING_READ", result["files"]["ticks.csv"]["reason_counts"])
+        self.assertFalse(result["source_authenticated"])
+        self.assertFalse(result["pit_research_eligible"])
+        self.assertFalse(result["real_submit_allowed"])
+
+    def test_windows_cross_api_timestamp_difference_is_not_mutation(self):
+        # Windows stat(path) and fstat(handle) can express the same file
+        # timestamps differently. Both views must be stable internally.
+        original = audit_mod._stat_key
+        calls = [0]
+
+        def simulated_windows_view(stat):
+            calls[0] += 1
+            key = original(stat)
+            if calls[0] <= 2:  # descriptor before/after
+                return key[:3] + (key[3] + 1_000_000, key[4] + 1_000_000)
+            return key  # pathname before/after
+
+        with patch.object(audit_mod, "_stat_key", side_effect=simulated_windows_view):
+            report = audit_mod._audit_file(self.root, "ticks.csv", "2026-10-14")
+        self.assertEqual(calls[0], 4)
+        self.assertEqual(report["status"], "Q1_PARSED_ONLY")
+        self.assertEqual(report["reason_counts"], {})
+        self.assertFalse(report["source_authenticated"])
+
+    def test_descriptor_timestamp_change_remains_fail_closed(self):
+        # An actual within-descriptor mutation must not be hidden by
+        # permitting cross-API timestamp representation differences.
+        original = audit_mod._stat_key
+        calls = [0]
+
+        def changed_descriptor_view(stat):
+            calls[0] += 1
+            key = original(stat)
+            if calls[0] == 2:  # descriptor after read
+                return key[:3] + (key[3] + 1, key[4])
+            return key
+
+        with patch.object(audit_mod, "_stat_key", side_effect=changed_descriptor_view):
+            report = audit_mod._audit_file(self.root, "ticks.csv", "2026-10-14")
+        self.assertEqual(calls[0], 4)
+        self.assertEqual(report["status"], "BLOCKED")
+        self.assertIn("FILE_CHANGED_DURING_READ", report["reason_counts"])
+        self.assertFalse(report["pit_eligible"])
 
     def test_no_broker_or_account_fields_in_output(self):
         text = repr(audit_mod.audit(self.root))

@@ -158,6 +158,50 @@ class AlignmentTests(unittest.TestCase):
                 probe._read_keys(self.day, "market_snapshots.csv")
         self.assertEqual(raised.exception.code, "SOURCE_CHANGED_DURING_READ")
 
+
+    def _mutate_after_q1(self, file_name, mutate):
+        # Q1 validates original bytes; a producer may replace a CSV before Q2.
+        original_audit = probe.q1.audit
+
+        def audit_then_mutate(day_dir):
+            result = original_audit(day_dir)
+            self.assertEqual(result["status"], "Q1_PARSED_ONLY")
+            mutate(self.rows[file_name])
+            with (self.day / file_name).open("w", encoding="utf8", newline="") as f:
+                writer = csv.DictWriter(f, fieldnames=q1.HEADERS[file_name])
+                writer.writeheader()
+                writer.writerows(self.rows[file_name])
+            return result
+
+        with patch.object(probe.q1, "audit", side_effect=audit_then_mutate):
+            return self.report()
+
+    def test_second_pass_invalid_numeric_after_q1(self):
+        def change(rows):
+            rows[0]["price"] = "not-a-number"
+        x = self._mutate_after_q1("market_snapshots.csv", change)
+        self.assertEqual(x["status"], "BLOCKED")
+        self.assertIn("SECOND_PASS_NUMERIC_INVALID", x["reason_codes"])
+        self.assertFalse(x["pit_research_eligible"])
+        self.assertEqual(x["eligible_observed_n"], 0)
+
+    def test_second_pass_wrong_day_after_q1(self):
+        def change(rows):
+            rows[0]["captured_at"] = "2026-10-13 09:00:10"
+        x = self._mutate_after_q1("condition_log.csv", change)
+        self.assertEqual(x["status"], "BLOCKED")
+        self.assertIn("SECOND_PASS_KEY_INVALID", x["reason_codes"])
+        self.assertFalse(x["shadow_forward_eligible"])
+
+    def test_second_pass_clock_reverse_after_q1(self):
+        def change(rows):
+            rows.append(make_row("under_over.csv", "2026-10-14 09:00:09"))
+        x = self._mutate_after_q1("under_over.csv", change)
+        self.assertEqual(x["status"], "BLOCKED")
+        self.assertIn("SECOND_PASS_CLOCK_REVERSE", x["reason_codes"])
+        self.assertFalse(x["performance_eligible"])
+        self.assertFalse(x["real_submit_allowed"])
+
     def test_index_limit_rejects(self):
         self.rows["market_snapshots.csv"].append(make_row("market_snapshots.csv", "2026-10-14 09:00:20"))
         self.save()

@@ -159,7 +159,16 @@ def _audit_file(root: Path, file_name: str, date_name: str) -> dict:
         finally:
             csv.field_size_limit(original_limit)
         after = path.stat()
-        if _stat_key(before) != _stat_key(after) or fd_before != fd_after:
+        # Bind path and open-descriptor observations to the same file identity.
+        # Individually stable views do not rule out a pathname/open race.
+        # Windows can expose different timestamp representations through path
+        # stat and handle fstat. Preserve complete stability checks within each
+        # API, and bind the two views using stable file identity and size.
+        path_before = _stat_key(before)
+        path_after = _stat_key(after)
+        if (path_before != path_after or fd_before != fd_after
+                or path_before[:3] != fd_before[:3]
+                or path_after[:3] != fd_after[:3]):
             _reason(reasons, "FILE_CHANGED_DURING_READ")
         if report["records_parsed"] == 0:
             _reason(reasons, "NO_DATA_ROWS")
