@@ -173,6 +173,8 @@ try {
   $payload=[ordered]@{
    schema="v10_restore_private_map_v1"
    snapshot=$dir
+   state_root=$state
+   repo_root=$repo
    manifest_sha256=$manifestHash
    owner_sid=$identity.User.Value
    created_utc=[DateTime]::UtcNow.ToString("o")
