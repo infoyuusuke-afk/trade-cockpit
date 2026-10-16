@@ -341,7 +341,7 @@ Not verified on the OWNER PC; no real-machine stop has been performed.
 - Attribution uses parsed argv: the Controller must run
   AI_COCKPIT_CONTROLLER_V10.ps1 or RUN_AI_COCKPIT_V10.ps1 as its -File
   operand; a port child must be a Start-Job host (same executable as its
-  parent, arguments exactly -s -NoLogo -NoProfile). Names elsewhere on the
+  parent, arguments exactly [-Version n] -s -NoLogo -NoProfile). Names elsewhere on the
   command line never count.
 - -RecoveryCheck (read-only) is the gate after PARTIAL_STOP:
   START_OLD_STARTER_ALLOWED=true only with nothing of the session alive and no

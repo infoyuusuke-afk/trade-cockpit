@@ -305,8 +305,13 @@ try{
   $parent=$byPid[$parentId]
   if($null -eq $parent){Refuse "PORT_PARENT_NOT_FOUND"}
   # Only a Start-Job JSON bridge: same PowerShell executable as its parent
-  # and exactly the job-host arguments, nothing else on its command line.
-  $jobArgs=@(Get-Argv $child | Select-Object -Skip 1 | ForEach-Object { $_.ToLowerInvariant() } | Sort-Object)
+  # and exactly the job-host arguments, nothing else on its command line
+  # (PS5.1 writes "-Version 5.1 -s -NoLogo -NoProfile").
+  $jobArgv=@(Get-Argv $child | Select-Object -Skip 1 | ForEach-Object { $_.ToLowerInvariant() })
+  if($jobArgv.Count -eq 5 -and $jobArgv[0] -ceq "-version" -and $jobArgv[1] -cmatch '^\d+(\.\d+){0,3}$'){
+   $jobArgv=@($jobArgv | Select-Object -Skip 2)
+  }
+  $jobArgs=@($jobArgv | Sort-Object)
   if(-not (Same-Path ([string]$child.ExecutablePath) ([string]$parent.ExecutablePath)) -or
      ($jobArgs -join " ") -cne "-nologo -noprofile -s"){
    Refuse "PORT_CHILD_IDENTITY_NOT_PROVEN"
