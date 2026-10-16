@@ -8,6 +8,7 @@ param(
  [string]$DesktopRoot = "",
  [string]$ExpectedBranch = "",
  [string]$ExpectedSha = "",
+ [switch]$VerifyShortcuts,
  [switch]$SelfTest
 )
 $ErrorActionPreference = "Stop"
@@ -119,6 +120,94 @@ function Get-DesktopInventory([string]$Desktop,[string]$Root) {
  return $result
 }
 
+
+# WScript.Shell.CreateShortcut opens a local .lnk without executing it. Never call Save().
+# Strict acceptance: one recognized START and one recognized STOP shortcut, each
+# pointing DIRECTLY to the pinned tracked V10 .cmd; wrappers are parsed, not run.
+function Test-V10TrackedCmd([string]$Repo,[string]$Role) {
+ try {
+  $name = if ($Role -eq "START") { "START_AI_COCKPIT_V10" } else { "STOP_AI_COCKPIT_V10" }
+  $cmdPath = Join-Path $Repo ("downloads\" + $name + ".cmd")
+  $info = Get-Item -LiteralPath $cmdPath -ErrorAction Stop
+  if (($info.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $info.Length -gt 2048) {
+   return $false
+  }
+  $actual = [IO.File]::ReadAllText($cmdPath,[Text.Encoding]::UTF8).TrimStart([char]0xFEFF)
+  $actual = $actual.Replace(([string][char]13 + [string][char]10),[string][char]10).Trim()
+  $expected = @(
+   '@echo off',
+   'setlocal',
+   ('set "SCRIPT=%~dp0' + $name.Replace('_V10','_V10') + '.ps1"'),
+   'powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%"',
+   'set "RC=%ERRORLEVEL%"',
+   'if not "%RC%"=="0" pause',
+   'exit /b %RC%'
+  )
+  # START's script is RUN_AI_COCKPIT_V10.ps1, not START_AI_COCKPIT_V10.ps1.
+  if ($Role -eq "START") { $expected[2] = 'set "SCRIPT=%~dp0RUN_AI_COCKPIT_V10.ps1"' }
+  return [string]::Equals($actual,[string]::Join([string][char]10,$expected),
+                         [StringComparison]::Ordinal)
+ } catch { return $false }
+}
+
+function Get-V10ShortcutInventory([string]$Desktop,[string]$Repo) {
+ $result = [ordered]@{ Start = "MISSING"; Stop = "MISSING"; Other = "NONE" }
+ try {
+  $items = @(Get-ChildItem -LiteralPath $Desktop -File -Filter "*.lnk" -ErrorAction Stop)
+  $jaPrefix = 'AI' + ([char]0x30B3) + ([char]0x30AF) + ([char]0x30D4) +
+              ([char]0x30C3) + ([char]0x30C8)
+  $jaStart = ([char]0x8D77) + ([string][char]0x52D5)
+  $jaStop = ([char]0x5B89) + ([string][char]0x5168) + ([string][char]0x505C) +
+            ([string][char]0x6B62)
+  $counts = @{ START = 0; STOP = 0 }
+  $ws = $null
+  foreach ($file in $items) {
+   $label = [IO.Path]::GetFileNameWithoutExtension($file.Name)
+   if (-not ($label.StartsWith($jaPrefix,[StringComparison]::OrdinalIgnoreCase) -or
+             $label.StartsWith("AI Cockpit",[StringComparison]::OrdinalIgnoreCase))) {
+    continue
+   }
+   $isStart = ($label.IndexOf($jaStart,[StringComparison]::OrdinalIgnoreCase) -ge 0 -or
+               $label -match '(?i)\bSTART\b')
+   $isStop = ($label.IndexOf($jaStop,[StringComparison]::OrdinalIgnoreCase) -ge 0 -or
+              $label -match '(?i)\bSTOP\b')
+   if ($isStart -eq $isStop) { $result.Other = "UNKNOWN_AI_SHORTCUT"; continue }
+   $role = if ($isStart) { "START" } else { "STOP" }
+   $counts[$role] += 1
+   $class = "BLOCKED"
+   $shortcut = $null
+   try {
+    if (($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
+        $file.Length -le 0 -or $file.Length -gt 65536 -or
+        -not (Test-V10TrackedCmd $Repo $role)) { throw "BAD_SHORTCUT_OR_WRAPPER" }
+    if ($null -eq $ws) { $ws = New-Object -ComObject WScript.Shell -ErrorAction Stop }
+    $shortcut = $ws.CreateShortcut($file.FullName)
+    $target = [string]$shortcut.TargetPath
+    $arguments = [string]$shortcut.Arguments
+    $workdir = [string]$shortcut.WorkingDirectory
+    $cmd = if ($role -eq "START") { "START_AI_COCKPIT_V10.cmd" } else { "STOP_AI_COCKPIT_V10.cmd" }
+    $expected = [IO.Path]::GetFullPath((Join-Path $Repo ("downloads\" + $cmd)))
+    if (-not [IO.Path]::IsPathRooted($target) -or $target.StartsWith('\\') -or
+        $target.Contains('%') -or -not [string]::IsNullOrWhiteSpace($arguments) -or
+        -not [string]::Equals([IO.Path]::GetFullPath($target),$expected,
+                             [StringComparison]::OrdinalIgnoreCase)) { throw "TARGET_NOT_PINNED" }
+    if ($workdir -and -not [string]::Equals([IO.Path]::GetFullPath($workdir),
+                       [IO.Path]::GetFullPath((Join-Path $Repo "downloads")),
+                       [StringComparison]::OrdinalIgnoreCase)) { throw "WORKDIR_UNTRUSTED" }
+    $class = "EXPECTED"
+   } catch { $class = "BLOCKED" }
+   finally {
+    if ($null -ne $shortcut) { try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($shortcut) } catch {} }
+   }
+   $result[$role.Substring(0,1) + $role.Substring(1).ToLowerInvariant()] = $class
+  }
+  if ($counts.START -gt 1) { $result.Start = "AMBIGUOUS" }
+  if ($counts.STOP -gt 1) { $result.Stop = "AMBIGUOUS" }
+  if ($null -ne $ws) { try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($ws) } catch {} }
+ } catch { $result.Other = "BLOCKED" }
+ return $result
+}
+
 if ($SelfTest) {
  $root = Join-Path $env:TEMP "safe-test"
  $valid = '@echo off'+[char]10+'setlocal'+[char]10+'set "SCRIPT=%~dp0STOP_AI_COCKPIT_V10.ps1"'+[char]10+'powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT%"'+[char]10+'set "RC=%ERRORLEVEL%"'+[char]10+'if not "%RC%"=="0" pause'+[char]10+'exit /b %RC%'
@@ -141,6 +230,9 @@ $source = "BLOCKED"
 $startSource = "BLOCKED"
 $desktopStop = "MISSING"
 $desktopStart = "MISSING"
+$shortcutStart = "NOT_CHECKED"
+$shortcutStop = "NOT_CHECKED"
+$shortcutOther = "NOT_CHECKED"
 try {
  if ($ExpectedSha -notmatch '^[0-9a-fA-F]{40}$' -or -not $ExpectedBranch) {
   throw "PIN_REQUIRED"
@@ -165,6 +257,12 @@ try {
  $inventory = Get-DesktopInventory $desktop $root
  $desktopStop = $inventory.Stop
  $desktopStart = $inventory.Start
+ if ($VerifyShortcuts) {
+  $shortcuts = Get-V10ShortcutInventory $desktop $root
+  $shortcutStart = $shortcuts.Start
+  $shortcutStop = $shortcuts.Stop
+  $shortcutOther = $shortcuts.Other
+ }
 } catch {
  # Deliberately do not print absolute Windows paths, CMD text, JSON, or secrets.
 }
@@ -173,10 +271,15 @@ Write-Output ("V10_STOP_SOURCE="+$source)
 Write-Output ("V10_START_SOURCE="+$startSource)
 Write-Output ("DESKTOP_STOP_ROUTE="+$desktopStop)
 Write-Output ("DESKTOP_START_ROUTE="+$desktopStart)
+Write-Output ("SHORTCUT_START_ROUTE="+$shortcutStart)
+Write-Output ("SHORTCUT_STOP_ROUTE="+$shortcutStop)
+Write-Output ("SHORTCUT_OTHER="+$shortcutOther)
 Write-Output "OWNER_LIVE_RUNTIME_VERIFIED=0"
 Write-Output "REAL_SUBMIT_ALLOWED=0"
-if ($pin -eq "VERIFIED" -and $source -eq "PRESENT" -and $startSource -eq "PRESENT" -and $desktopStop -eq "EXPECTED" -and $desktopStart -eq "EXPECTED") {
- Write-Output "V10_OWNER_DESKTOP_INVENTORY=ROUTES_READONLY_VERIFIED"
+if ($pin -eq "VERIFIED" -and $source -eq "PRESENT" -and $startSource -eq "PRESENT" -and $desktopStop -eq "EXPECTED" -and $desktopStart -eq "EXPECTED" -and
+    (-not $VerifyShortcuts -or ($shortcutStart -eq "EXPECTED" -and $shortcutStop -eq "EXPECTED" -and $shortcutOther -eq "NONE"))) {
+ if ($VerifyShortcuts) { Write-Output "V10_OWNER_DESKTOP_INVENTORY=ROUTES_AND_SHORTCUTS_READONLY_VERIFIED" }
+ else { Write-Output "V10_OWNER_DESKTOP_INVENTORY=ROUTES_READONLY_VERIFIED" }
  exit 0
 }
 Write-Output "V10_OWNER_DESKTOP_INVENTORY=BLOCKED"
