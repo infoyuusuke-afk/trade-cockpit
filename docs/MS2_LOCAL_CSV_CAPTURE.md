@@ -11,7 +11,9 @@ Stop writing to the selected CSV before using this tool.
 2. Approve the local-only dialog and select ONE existing
    kioxia_ticks_YYYYMMDD.csv file from its current folder.
 3. PRESERVED_UNAUTHENTICATED: LOCAL_ONLY means its bytes were saved
-   to data/private/ms2_csv_snapshots with a final manifest.
+   under data/private/ms2_csv_snapshots with a final manifest.
+   Source-checkout mode writes to the checkout's private folder; the
+   frozen Windows EXE instead uses %LOCALAPPDATA%\\AI_Cockpit_MS2_Private.
    BLOCKED and CANCELLED do not indicate a successful snapshot.
 
 All 14 synthetic acceptance checks run first, with local private evidence.

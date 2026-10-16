@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import hashlib
 import io
 import json
+import os
 import sys
 from pathlib import Path
 import unittest
@@ -20,6 +21,24 @@ def runtime_root():
 
 
 ROOT = runtime_root()
+
+
+def private_root():
+    """Frozen CSV/evidence stays under per-user LocalAppData, not the EXE folder.
+
+    Refuse missing, redirected-to-link or non-absolute paths; do not fall
+    back to Downloads, Desktop, repository checkout or a temporary folder.
+    Non-frozen source checkout retains its existing test-only behavior.
+    """
+    if not getattr(sys, 'frozen', False):
+        return ROOT
+    base = os.environ.get('LOCALAPPDATA', '')
+    if not base or not Path(base).is_absolute():
+        raise ValueError('LOCAL_PRIVATE_ROOT_UNAVAILABLE')
+    parent = _checked_path(base)
+    target = parent / 'AI_Cockpit_MS2_Private'
+    target.mkdir(mode=0o700, exist_ok=True)
+    return _checked_path(target)
 CODE_FILES = (
     'scripts/ms2_offline_acceptance.py',
     'scripts/ms2_offline_csv_snapshot.py',
@@ -85,7 +104,7 @@ def run_acceptance():
 
 def save_evidence(report):
     # Fixed private location, exclusive new file; never overwrite a prior report.
-    parent = _checked_path(ROOT)
+    parent = _checked_path(private_root())
     for name in ('data', 'private', 'ms2_offline_acceptance'):
         parent = parent / name
         parent.mkdir(exist_ok=True, mode=0o700)

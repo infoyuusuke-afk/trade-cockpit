@@ -17,6 +17,28 @@ class AcceptanceTests(unittest.TestCase):
                  patch.object(a.sys, 'executable', str(Path(directory) / 'MS2_Local_CSV.exe')):
                 self.assertEqual(a.runtime_root(), Path(directory).resolve())
 
+    def test_frozen_private_root_moves_under_localappdata(self):
+        import os
+        with tempfile.TemporaryDirectory() as folder, \
+             patch.object(a.sys, 'frozen', True, create=True), \
+             patch.dict(os.environ, {'LOCALAPPDATA': folder}):
+            base = a.private_root()
+            self.assertEqual(base, Path(folder).resolve() / 'AI_Cockpit_MS2_Private')
+            a.save_evidence({'state': 'BLOCKED'})
+            evidence = list((base / 'data/private/ms2_offline_acceptance').glob('*.json'))
+            self.assertEqual(len(evidence), 1)
+            self.assertEqual(json.loads(evidence[0].read_text()), {'state': 'BLOCKED'})
+            self.assertFalse((Path(folder) / 'data').exists())
+
+    def test_missing_frozen_localappdata_refuses_no_exe_fallback(self):
+        import os
+        with patch.object(a.sys, 'frozen', True, create=True), \
+             patch.dict(os.environ, {'LOCALAPPDATA': ''}):
+            with self.assertRaises(ValueError):
+                a.private_root()
+            with self.assertRaises(ValueError):
+                a.save_evidence({'state': 'PASS'})
+
     def test_actual_synthetic_contract(self):
         report = a.run_acceptance()
         self.assertEqual(len(report['checks']), 14)

@@ -58,6 +58,18 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(self.tick.stat().st_mtime_ns, before.st_mtime_ns)
         self.assertEqual(self.tick.stat().st_ino, before.st_ino)
 
+    def test_actual_watcher_utf8_bom_and_crlf_preserved_as_bytes(self):
+        # PowerShell 5.1 Out-File -Encoding utf8 commonly writes a BOM.
+        tick = b'\xef\xbb\xbf' + TICK
+        diag = b'\xef\xbb\xbf' + DIAG.replace(b'\n', b'\r\n')
+        self.tick.write_bytes(tick)
+        self.diag.write_bytes(diag)
+        result = self.run_snapshot(diag_name=self.diag.name)
+        self.assertEqual(result['state'], 'PRESERVED_UNAUTHENTICATED')
+        location = self.output() / result['snapshot_id']
+        self.assertEqual((location / self.tick.name).read_bytes(), tick)
+        self.assertEqual((location / self.diag.name).read_bytes(), diag)
+
     def test_duplicate_and_existing_data_protected(self):
         first = self.run_snapshot()
         saved = self.output() / first['snapshot_id']

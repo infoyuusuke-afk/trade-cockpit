@@ -106,6 +106,20 @@ class LocalCaptureTests(unittest.TestCase):
         preserve.assert_not_called()
         self.assertIn('BLOCKED', output.getvalue())
 
+    def test_frozen_capture_uses_separate_private_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            local = Path(directory)
+            with patch.object(c, 'run_acceptance', return_value=self.ok), \
+                 patch.object(c, 'save_evidence'), \
+                 patch.object(c, 'private_root', return_value=local) as private, \
+                 patch.object(c, 'preserve_csv', return_value={
+                     'state': 'PRESERVED_UNAUTHENTICATED',
+                     'source_authenticated': False, 'promotion_eligible': False,
+                     'real_submit_allowed': False}) as preserved:
+                self.assertEqual(c.capture_selection(str(self.tick)), 'PRESERVED_UNAUTHENTICATED')
+            private.assert_called_once_with()
+            preserved.assert_called_once_with(local, self.source, self.tick.name)
+
     def test_main_no_cli_market_path_or_exception_disclosure(self):
         out = io.StringIO()
         with patch.object(c, 'select_file') as picker, contextlib.redirect_stdout(out):

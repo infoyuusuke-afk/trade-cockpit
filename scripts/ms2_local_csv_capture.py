@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 import re
 import sys
-from scripts.ms2_offline_acceptance import ROOT, run_acceptance, save_evidence
+from scripts.ms2_offline_acceptance import ROOT, private_root, run_acceptance, save_evidence
 from scripts.ms2_offline_csv_snapshot import preserve_csv
 
 TICK_NAME = re.compile(r'kioxia_ticks_\d{8}\.csv')
@@ -33,7 +33,7 @@ def select_file():
         root.destroy()
 
 
-def capture_selection(selection, repo_root=ROOT):
+def capture_selection(selection, repo_root=None):
     """Only fixed states are returned; no selected path or CSV content escapes."""
     if not selection:
         return 'CANCELLED'
@@ -47,7 +47,8 @@ def capture_selection(selection, repo_root=ROOT):
         if report.get('state') != 'PASS' or report.get('scope') != 'SYNTHETIC_ONLY':
             return 'BLOCKED'
         save_evidence(report)
-        result = preserve_csv(repo_root, chosen.parent, chosen.name)
+        target_root = private_root() if repo_root is None else repo_root
+        result = preserve_csv(target_root, chosen.parent, chosen.name)
         if (result.get('state') == 'PRESERVED_UNAUTHENTICATED'
                 and result.get('source_authenticated') is False
                 and result.get('promotion_eligible') is False
