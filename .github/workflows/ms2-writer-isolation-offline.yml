@@ -1,0 +1,39 @@
+name: MS2 Windows blocked Writer isolation synthetic
+on:
+  pull_request:
+    paths:
+      - scripts/ms2_collector_critical_path_inventory.py
+      - tests/test_ms2_collector_critical_path_inventory.py
+      - tests/ms2_writer_process_isolation_synthetic.ps1
+      - docs/MS2_COLLECTOR_PROCESS_ISOLATION_ACCEPTANCE_V1.md
+      - .github/workflows/ms2-writer-isolation-offline.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static-source:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Public-code-only critical path inventory
+        shell: bash
+        run: python -m unittest discover -s tests -p 'test_ms2_collector_critical_path_inventory.py' -v
+
+  windows-ps51-real-process:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Separate PowerShell process blocked writer / full ring / killed worker
+        shell: powershell
+        run: |
+          Write-Output "PS_VERSION=$($PSVersionTable.PSVersion)"
+          .\tests\ms2_writer_process_isolation_synthetic.ps1 -Iterations 120
