@@ -133,6 +133,18 @@ try {
  if (-not $StageParent) { $StageParent=Join-Path $temp "V10_snapshot_rehearsals" }
  $parent=[IO.Path]::GetFullPath($StageParent)
  if (-not (Below $parent $temp)) { Fail "STAGING_MUST_BE_IN_TEMP" }
+ # Reject existing junctions anywhere between TEMP and destination before
+ # creating any directory. Never resolve through a redirected TEMP subtree.
+ $cursor=$parent
+ while ($true) {
+  if (Test-Path -LiteralPath $cursor) { [void](Regular $cursor) }
+  if ([string]::Equals($cursor,$temp,[StringComparison]::OrdinalIgnoreCase)) {
+   break
+  }
+  $ancestor=Split-Path -Parent $cursor
+  if (-not $ancestor -or $ancestor -ieq $cursor) { Fail "STAGING_ROOT_UNVERIFIED" }
+  $cursor=$ancestor
+ }
  if (-not (Test-Path -LiteralPath $parent -PathType Container)) {
   New-Item -ItemType Directory -Path $parent -Force -ErrorAction Stop | Out-Null
  }
@@ -170,7 +182,7 @@ try {
   'FILE_COUNT_INVALID','UNSAFE_ENTRY_PATH','DUPLICATE_ENTRY','ENTRY_HASH_INVALID',
   'ENTRY_SIZE_INVALID','ENTRY_SIZE_MISMATCH','ENTRY_HASH_MISMATCH',
   'REQUIRED_ENTRY_ABSENT','STAGING_MUST_BE_IN_TEMP',
-  'STAGING_SOURCE_COLLISION','STAGING_HASH_MISMATCH')
+  'STAGING_SOURCE_COLLISION','STAGING_HASH_MISMATCH','STAGING_ROOT_UNVERIFIED')
  if ($known -ccontains $msg) { $reason=$msg }
  elseif ($_.Exception -is [System.UnauthorizedAccessException]) {
   $reason="ACCESS_DENIED"
