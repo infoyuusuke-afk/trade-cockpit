@@ -933,6 +933,25 @@ try {
                 )) {
                     $execution[$shadowKey] = $shadowPub[$shadowKey]
                 }
+                # Legacy SHADOW state used only file mtime; never allow it to
+                # claim RUNNING, RECOVERING, or expose old counts unless the
+                # independently verified PID + heartbeat proof also passes.
+                $shadowProven = @(
+                    'SHADOW_RUNNING_HEARTBEAT_ONLY',
+                    'SHADOW_PAUSED_FAIL_CLOSED_HEARTBEAT_ONLY',
+                    'SHADOW_RECOVERING_HEARTBEAT_ONLY',
+                    'SHADOW_STOPPED_HEARTBEAT_ONLY'
+                ) -ccontains $shadowProof.status
+                if (-not $shadowProven) {
+                    if (@('RUNNING', 'RECOVERING') -ccontains [string]$execution.shadow_engine_state) {
+                        $execution.shadow_engine_state = 'PAUSED_FAIL_CLOSED'
+                        $execution.shadow_engine_reason = 'SHADOW_IDENTITY_OR_HEARTBEAT_UNVERIFIED'
+                    }
+                    $execution.shadow_engine_updated_at = $null
+                    $execution.shadow_open_observation_count = $null
+                    $execution.shadow_ops = $null
+                    $execution.shadow_latest_incident = $null
+                }
 
                 $payload = [ordered]@{
                     status           = 'ok'
