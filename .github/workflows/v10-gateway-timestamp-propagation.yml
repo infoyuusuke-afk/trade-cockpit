@@ -1,0 +1,24 @@
+name: V10 Gateway Timestamp Propagation
+on:
+  pull_request:
+    paths:
+      - "downloads/AI_COCKPIT_GATEWAY_V10.ps1"
+      - "tests/test_v10_gateway_timestamp_propagation.py"
+      - ".github/workflows/v10-gateway-timestamp-propagation.yml"
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PowerShell 5.1 syntax
+        shell: powershell
+        run: |
+          $tokens=$null; $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path "downloads/AI_COCKPIT_GATEWAY_V10.ps1").Path,[ref]$tokens,[ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { throw "$errors" }
+      - run: python -m unittest discover -s tests -p test_v10_gateway_timestamp_propagation.py -v
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_v10_gateway_timestamp_propagation.py -v
