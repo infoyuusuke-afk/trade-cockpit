@@ -221,6 +221,29 @@ public static class AIExcelNative {
     }
 }
 
+# P0-25: The legacy state produced before independent BRAIN tracking may
+# omit brain_observer_pid even while Controller, Excel and workers are alive.
+# Fail closed BEFORE stopping Controller or any worker. Otherwise a half-stop
+# leaves 4+ listening ports and the original state behind (unsafe cutover).
+# The lack of a recorded BRAIN identity is NOT proof of BRAIN absence.
+$brainIdentity = $state.PSObject.Properties["brain_observer_pid"]
+$brainPidForGuard = 0
+if ($null -eq $brainIdentity -or
+    -not [int]::TryParse([string]$brainIdentity.Value,[ref]$brainPidForGuard) -or
+    $brainPidForGuard -le 0) {
+    Write-Host "SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_PID_UNRECORDED; no processes stopped." -ForegroundColor Red
+    exit 2
+}
+# The tracked process may already have exited: that is a legitimate
+# idempotent stop. A living PID MUST still match the exact BRAIN handle.
+$beforeBrain = Get-Process -Id $brainPidForGuard -ErrorAction SilentlyContinue
+if ($null -ne $beforeBrain -and
+    (-not (Test-OwnedPidIdentity "brain_observer_pid" $brainPidForGuard) -or
+     -not (Test-ExactBrainHandle $beforeBrain $state))) {
+    Write-Host "SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_IDENTITY_UNVERIFIED; no processes stopped." -ForegroundColor Red
+    exit 2
+}
+
 # Stop the supervising RUN/Controller host FIRST. Otherwise it can restart
 # Gateway/Voice/Shadow while Safe Stop is still tearing workers down.
 $controllerVal = $state.PSObject.Properties["controller_pid"]
