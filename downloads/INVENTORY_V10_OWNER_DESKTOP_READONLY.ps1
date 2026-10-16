@@ -78,6 +78,20 @@ function Test-StopCode([string]$Root) {
  } catch { return "BLOCKED" }
 }
 
+function Test-StartCode([string]$Root) {
+ try {
+  $runner = Join-Path $Root "downloads\RUN_AI_COCKPIT_V10.ps1"
+  $item = Get-Item -LiteralPath $runner -ErrorAction Stop
+  if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { return "BLOCKED" }
+  $body = [IO.File]::ReadAllText($runner,[Text.Encoding]::UTF8)
+  foreach ($required in @('AI_COCKPIT_CONTROLLER_V10.ps1','ExpectedSha',
+                          'Branch mismatch after checkout','SHA mismatch after checkout')) {
+   if (-not $body.Contains($required)) { return "BLOCKED" }
+  }
+  return "PRESENT"
+ } catch { return "BLOCKED" }
+}
+
 function Get-DesktopInventory([string]$Desktop,[string]$Root) {
  $result = [ordered]@{ Stop = "MISSING"; Start = "MISSING"; StopCount = 0; StartCount = 0 }
  if (-not (Test-Path -LiteralPath $Desktop -PathType Container)) { return $result }
@@ -122,6 +136,7 @@ if ($SelfTest) {
 
 $pin = "BLOCKED"
 $source = "BLOCKED"
+$startSource = "BLOCKED"
 $desktopStop = "MISSING"
 $desktopStart = "MISSING"
 try {
@@ -139,6 +154,7 @@ try {
  if ($LASTEXITCODE -ne 0 -or $changes.Count -gt 0) { throw "DIRTY_CHECKOUT" }
  $pin = "VERIFIED"
  $source = Test-StopCode $root
+ $startSource = Test-StartCode $root
  if (-not $DesktopRoot) {
   $DesktopRoot = [Environment]::GetFolderPath('Desktop')
  }
@@ -152,11 +168,12 @@ try {
 }
 Write-Output ("V10_PIN="+$pin)
 Write-Output ("V10_STOP_SOURCE="+$source)
+Write-Output ("V10_START_SOURCE="+$startSource)
 Write-Output ("DESKTOP_STOP_ROUTE="+$desktopStop)
 Write-Output ("DESKTOP_START_ROUTE="+$desktopStart)
 Write-Output "OWNER_LIVE_RUNTIME_VERIFIED=0"
 Write-Output "REAL_SUBMIT_ALLOWED=0"
-if ($pin -eq "VERIFIED" -and $source -eq "PRESENT" -and $desktopStop -eq "EXPECTED" -and $desktopStart -eq "EXPECTED") {
+if ($pin -eq "VERIFIED" -and $source -eq "PRESENT" -and $startSource -eq "PRESENT" -and $desktopStop -eq "EXPECTED" -and $desktopStart -eq "EXPECTED") {
  Write-Output "V10_OWNER_DESKTOP_INVENTORY=ROUTES_READONLY_VERIFIED"
  exit 0
 }
