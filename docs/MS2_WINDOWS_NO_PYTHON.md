@@ -19,7 +19,7 @@ watches that path, data could be transmitted by that separate software.
 NEVER upload these files to a public repository.
 
 Hosted Windows CI tests a fresh ZIP extraction by running the packaged EXE's
---synthetic-check option (14 synthetic checks, NO market CSV). Arbitrary
+--synthetic-check option (17 synthetic checks, NO market CSV). Arbitrary
 arguments are rejected. Market files are not included in the artifact.
 
 If SmartScreen or your organization blocks unsigned applications, do NOT

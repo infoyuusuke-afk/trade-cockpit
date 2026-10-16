@@ -52,7 +52,7 @@ class AcceptanceTests(unittest.TestCase):
 
     def test_actual_synthetic_contract(self):
         report = a.run_acceptance()
-        self.assertEqual(len(report['checks']), 14)
+        self.assertEqual(len(report['checks']), 17)
         self.assertIn(report['state'], ('PASS', 'BLOCKED'))
         self.assertEqual(report['state'] == 'PASS', all(c['status'] == 'PASS' for c in report['checks']))
         for key in ('real_submit_allowed', 'source_authenticated', 'promotion_eligible',

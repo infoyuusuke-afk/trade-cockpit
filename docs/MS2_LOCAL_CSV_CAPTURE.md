@@ -17,7 +17,7 @@ Stop writing to the selected CSV before using this tool.
    A missing D: drive blocks capture. No automatic C: fallback.
    BLOCKED and CANCELLED do not indicate a successful snapshot.
 
-All 14 synthetic acceptance checks run first, with local private evidence.
+All 17 synthetic acceptance checks run first, with local private evidence.
 Corrupted, moving, duplicate, symlinked or unexpected CSV inputs fail closed.
 The source is never rewritten, renamed or removed. No diagnostic pair is
 captured here; pair_atomic=false. The snapshot engine checks source

@@ -22,7 +22,7 @@ python -m scripts.ms2_offline_acceptance
 ```
 
 Do not pass CSV paths or other arguments. Exit 0 and `PASS: SYNTHETIC_ONLY` mean
-all 14 checks executed without failures or skips and evidence was saved/read back.
+all 17 checks executed without failures or skips and evidence was saved/read back.
 Nonzero means BLOCKED; do not proceed to real capture. A missing Python runtime
 also blocks. Symlink creation may require Windows Developer Mode. If native link creation
 is unavailable, the synthetic suite exercises fail-closed link and reparse
@@ -54,3 +54,7 @@ machine; real MS2 capture/authentication and production Shadow remain unverified
 Real capture is a separate acceptance step requiring an explicitly selected
 offline source and private storage. This package neither starts it nor grants
 permission for orders, merging or deployment.
+
+## Poll-reset session-boundary evidence
+
+The private snapshot manifest now includes session_audit with session row ranges, poll_seq decreases, and watcher append-clock deltas. It never edits the CSV or authenticates the source. A decrease from poll_seq 2169 to 1 becomes a restart CANDIDATE boundary; the 2026-10-16 OWNER-reported manual restart is contextual testimony, not machine proof. Adjacent recorded_at delta does not establish downtime or missing exchange ticks. Missing tick count remains null, gap_state UNKNOWN_NO_JOINED_DIAGNOSTIC, and cross_session_join_allowed false. Do not join sessions to calculate strategy PF/EV until independently verified.
