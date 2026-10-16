@@ -8,9 +8,11 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 import csv
+from datetime import datetime
 import json
 import os
 from pathlib import Path
+import re
 
 from scripts import ms2_records_quality as q1
 
@@ -42,12 +44,36 @@ def _read_keys(root: Path, name: str) -> Counter:
             reader = csv.DictReader(f, restkey="__extra_columns__", strict=True)
             if tuple(reader.fieldnames or ()) != q1.HEADERS[name]:
                 raise ProbeBlocked("HEADER_CONTRACT_MISMATCH")
+            # Q1 and this second read are not atomic. Reject invalid rows
+            # introduced after the initial Q1 audit instead of reporting
+            # candidate matches for data that Q1 never validated.
+            previous = {}
             for number, row in enumerate(reader, start=1):
                 if number > q1.MAX_ROWS:
                     raise ProbeBlocked("ROW_LIMIT_EXCEEDED")
                 if "__extra_columns__" in row or any(v is None for v in row.values()):
                     raise ProbeBlocked("ROW_SHAPE_INVALID")
-                key = (row["ticker"], row["captured_at"])
+                ticker = row["ticker"]
+                captured_at = row["captured_at"]
+                if not ticker.strip() or not re.fullmatch(
+                    r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{1,6})?",
+                    captured_at,
+                ):
+                    raise ProbeBlocked("SECOND_PASS_KEY_INVALID")
+                try:
+                    stamp = datetime.fromisoformat(captured_at)
+                except ValueError as error:
+                    raise ProbeBlocked("SECOND_PASS_KEY_INVALID") from error
+                if stamp.tzinfo is not None or stamp.date().isoformat() != root.name:
+                    raise ProbeBlocked("SECOND_PASS_KEY_INVALID")
+                if ticker in previous and stamp < previous[ticker]:
+                    raise ProbeBlocked("SECOND_PASS_CLOCK_REVERSE")
+                previous[ticker] = stamp
+                numeric_reasons = {}
+                q1._check_numeric(row, numeric_reasons)
+                if numeric_reasons:
+                    raise ProbeBlocked("SECOND_PASS_NUMERIC_INVALID")
+                key = (ticker, captured_at)
                 counts[key] += 1
                 if len(counts) > MAX_UNIQUE_KEYS:
                     raise ProbeBlocked("KEY_INDEX_CAPACITY_EXCEEDED")
