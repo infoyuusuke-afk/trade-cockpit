@@ -68,11 +68,17 @@ class OwnerDesktopReadOnlyFixture(unittest.TestCase):
 
     def create_lnk(self, name, target, arguments="", workdir=None):
         path = self.desktop / name
+        # WScript.Shell.Save uses legacy ANSI conversion for the shortcut
+        # filename on hosted Windows. Create an ASCII-named fixture first,
+        # then use Python's Unicode-aware Windows rename to exercise actual
+        # Japanese .lnk names without conflating COM save encoding.
+        staged = (self.desktop / ("__fixture_" + str(len(list(self.desktop.glob("*.lnk")))) + ".lnk")
+                  if any(ord(ch) > 127 for ch in name) else path)
         def p(s):
             return "'" + str(s).replace("'", "''") + "'"
         script = (
             "$w=New-Object -ComObject WScript.Shell; "
-            f"$s=$w.CreateShortcut({p(path)}); "
+            f"$s=$w.CreateShortcut({p(staged)}); "
             f"$s.TargetPath={p(target)}; $s.Arguments={p(arguments)}; "
             f"$s.WorkingDirectory={p(workdir or self.repo / 'downloads')}; "
             "$s.Save()"
@@ -86,6 +92,9 @@ class OwnerDesktopReadOnlyFixture(unittest.TestCase):
             capture_output=True, text=True, errors="replace", timeout=15
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        if staged != path:
+            self.assertTrue(staged.is_file())
+            staged.rename(path)
         self.assertTrue(path.is_file())
         return path
 
