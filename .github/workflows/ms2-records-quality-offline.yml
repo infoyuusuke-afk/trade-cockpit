@@ -1,0 +1,27 @@
+name: MS2 records offline contract
+on:
+  pull_request:
+    paths:
+      - scripts/ms2_records_quality.py
+      - tests/test_ms2_records_quality.py
+      - docs/MS2_RECORDS_EXTRACTION_CONTRACT_V1.md
+      - .github/workflows/ms2-records-quality-offline.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-only:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Offline synthetic tests (no real MS2 or Excel files)
+        shell: bash
+        run: python -m unittest discover -s tests -p 'test_ms2_records_quality.py' -v
