@@ -1,0 +1,28 @@
+name: MS2 Collector offline fault boundary
+on:
+  pull_request:
+    paths:
+      - scripts/ms2_collector_fault_boundary_offline.py
+      - tests/test_ms2_collector_fault_boundary_offline.py
+      - docs/MS2_COLLECTOR_FAILURE_ISOLATION_ACCEPTANCE_V1.md
+      - .github/workflows/ms2-collector-fault-boundary-offline.yml
+      - ms2_live/MS2_RSS_100_Collector.ps1
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-boundary:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ['3.11', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Offline MS2 Collector static inventory and fault-policy negative tests
+        shell: bash
+        run: python -m unittest discover -s tests -p 'test_ms2_collector_fault_boundary_offline.py' -v
