@@ -10,7 +10,8 @@ REQUIRED_UI = (
     "card_system.js", "trade_control.js", "voice_client.js",
     "opportunity_radar.js", "card_table_adapter.js",
 )
-STAMP = re.compile(r"<header\b[^>]*>.*?\b(20\d\d-\d\d-\d\d)\b", re.I | re.S)
+HEADER = re.compile(r"<header\b[^>]*>(.*?)</header>", re.I | re.S)
+DATES = re.compile(r"\b20\d\d-\d\d-\d\d\b")
 
 
 def inspect(raw: bytes):
@@ -20,24 +21,31 @@ def inspect(raw: bytes):
         txt = raw.decode("utf-8-sig")
     except UnicodeDecodeError as exc:
         raise ValueError("UI_UTF8_INVALID") from exc
-    m = STAMP.search(txt)
+    m = HEADER.search(txt)
     if not m:
         raise ValueError("UI_DATE_UNKNOWN")
+    dates = set(DATES.findall(m.group(1)))
+    if len(dates) != 1:
+        raise ValueError("UI_HEADER_DATES_CONFLICT_OR_UNKNOWN")
     try:
-        stamp = date.fromisoformat(m.group(1))
+        stamp = date.fromisoformat(next(iter(dates)))
     except ValueError as exc:
         raise ValueError("UI_DATE_INVALID") from exc
-    return stamp, set(t for t in REQUIRED_UI if t in txt), hashlib.sha256(raw).hexdigest()
+    # Date/timestamp-only edits are not substantive UI updates.
+    body_without_header = HEADER.sub("<header>DATE_ELIDED</header>", txt, count=1)
+    structural_sha = hashlib.sha256(body_without_header.encode("utf-8")).hexdigest()
+    return stamp, set(t for t in REQUIRED_UI if t in txt), hashlib.sha256(raw).hexdigest(), structural_sha
 
 
 def audit(baseline: bytes, candidate: bytes, today: date):
-    old_date, old_controls, old_sha = inspect(baseline)
-    new_date, new_controls, new_sha = inspect(candidate)
+    old_date, old_controls, old_sha, old_structure = inspect(baseline)
+    new_date, new_controls, new_sha, new_structure = inspect(candidate)
     missing = sorted(set(REQUIRED_UI) - old_controls)
     incompatible = sorted(old_controls - new_controls)
     unchanged = old_sha == new_sha
+    date_only = old_structure == new_structure
     newer = old_date < new_date <= today
-    allowed = not missing and not incompatible and not unchanged and newer
+    allowed = not missing and not incompatible and not unchanged and not date_only and newer
     return {
         "status": "PREFLIGHT_ONLY_PASS" if allowed else "BLOCKED_UI_ASSET_INCOMPATIBLE",
         "baseline_date": old_date.isoformat(),
@@ -46,6 +54,7 @@ def audit(baseline: bytes, candidate: bytes, today: date):
         "missing_from_candidate": incompatible,
         "date_invalid": not newer,
         "identical": unchanged,
+        "date_only_or_header_only_change": date_only,
         "runtime_applied": False,
         "source_authenticated": False,
         "real_submit_allowed": False,
