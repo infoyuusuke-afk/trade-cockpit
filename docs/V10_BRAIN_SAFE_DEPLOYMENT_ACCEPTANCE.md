@@ -62,3 +62,15 @@ Do not substitute the repo CMD path for the actual Desktop CMD when checking wha
 7. If a stop, restore or identity check fails, leave the system in HOLD and retain local evidence. Do not silently report SAFE or enable live submission. No unattended Owner machine deployment has been authorized.
 
 The CI Desktop-route fixture runs inside GitHub-hosted Windows and uses a disposable synthetic Git repo; **it never inspects or executes the real Desktop launcher**.
+
+## P0-16 Owner desktop start/stop read-only inventory (implementation, not deployed)
+
+New downloads/INVENTORY_V10_OWNER_DESKTOP_READONLY.ps1 reads the local checkout branch/full SHA and tracked-file cleanliness, checks the concrete V10 RUN and STOP source files, and classifies the **actual Desktop** CMD pair by matching explicit PowerShell -File invocation targets. Only these two names are considered: AIコクピット_起動.cmd and AIコクピット_安全停止.cmd. It never executes the CMD contents; no scripts, Excel automation, process control, network requests, logs, CSV reads, uploads or file writes occur. It emits classification codes only; no Windows paths, PIDs, branch names, account data, command-line text or market observations are printed.
+
+After separate, explicit approval of the exact installed branch and complete commit SHA, the read-only inspection command on an OWNER machine is:
+
+    powershell.exe -NoProfile -File "C:\AI_Cockpit_Current\trade-cockpit\downloads\INVENTORY_V10_OWNER_DESKTOP_READONLY.ps1" -RepoRoot "C:\AI_Cockpit_Current\trade-cockpit" -ExpectedBranch "APPROVED_BRANCH" -ExpectedSha "APPROVED_FULL_40_HEX_SHA"
+
+If the Desktop is in a separate known folder, specify -DesktopRoot "ACTUAL_DESKTOP_FOLDER". Do not assume GitHub changes are already installed locally, and do not run the example against an old installation. An absent CMD, a different/legacy target, a missing V10 source, a bad pin or a dirty tracked checkout returns BLOCKED / exit 2. A successful ROUTES_READONLY_VERIFIED / exit 0 is **not** proof of active V10 running state, actual shutdown behavior or rollback readiness. In particular, Windows .lnk shortcut destinations, multiple Desktop folders and running-process ownership are not verified by this scanner; treat those separately before any adoption.
+
+GitHub-hosted isolated Windows fixture (11 acceptance cases, synthetic Desktop and synthetic pinned Git checkout) tests normal route, old startup/stop, missing files, arbitrary commands, dirty checkout, wrong pin and absence of the target folder. This does not provide any OWNER PC evidence.
