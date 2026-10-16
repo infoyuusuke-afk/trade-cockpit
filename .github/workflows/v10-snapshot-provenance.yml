@@ -1,0 +1,32 @@
+name: V10 Snapshot Provenance Safety
+on:
+  pull_request:
+    paths:
+      - "downloads/AI_COCKPIT_GATEWAY_V10.ps1"
+      - "tests/test_v10_snapshot_provenance.py"
+      - ".github/workflows/v10-snapshot-provenance.yml"
+  workflow_dispatch:
+jobs:
+  ubuntu-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_v10_snapshot_provenance.py -v
+  windows-synthetic:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_v10_snapshot_provenance.py -v
+      - name: Windows PowerShell 5.1 parser
+        shell: powershell
+        run: |
+          $tokens=$null; $errors=$null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Join-Path (Get-Location) 'downloads/AI_COCKPIT_GATEWAY_V10.ps1'),
+            [ref]$tokens, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { throw 'V10_SNAPSHOT_GATEWAY_PARSE_FAILED' }
+      - name: Windows PowerShell 5.1 synthetic HTML fixtures
+        shell: powershell
+        run: |
+          & powershell.exe -NoLogo -NoProfile -File downloads/AI_COCKPIT_GATEWAY_V10.ps1 -RepoRoot (Get-Location).Path -SnapshotGuardSelfTest
+          if ($LASTEXITCODE -ne 0) { throw 'V10_SNAPSHOT_SELFTEST_FAILED' }
