@@ -138,6 +138,26 @@ class AlignmentTests(unittest.TestCase):
         self.assertEqual(x["status"], "BLOCKED")
         self.assertIn("SOURCE_CHANGED_DURING_READ", x["reason_codes"])
 
+    def test_windows_path_handle_timestamp_representation_skew_allowed(self):
+        # Windows path.stat and fstat may expose different time encodings.
+        # Both views are stable, and dev/inode/size bind to the same file.
+        path_view = (1, 11, 500, 100, 300)
+        handle_view = (1, 11, 500, 200, 400)
+        with patch.object(probe.q1, "_stat_key",
+                          side_effect=[path_view, handle_view, handle_view, path_view]):
+            keys = probe._read_keys(self.day, "market_snapshots.csv")
+        self.assertEqual(sum(keys.values()), 1)
+
+    def test_same_size_and_timestamps_different_file_identity_blocked(self):
+        # Same size and timestamp must not hide a pathname/handle race.
+        path_view = (1, 11, 500, 100, 300)
+        handle_view = (1, 12, 500, 100, 300)
+        with patch.object(probe.q1, "_stat_key",
+                          side_effect=[path_view, handle_view, handle_view, path_view]):
+            with self.assertRaises(probe.ProbeBlocked) as raised:
+                probe._read_keys(self.day, "market_snapshots.csv")
+        self.assertEqual(raised.exception.code, "SOURCE_CHANGED_DURING_READ")
+
     def test_index_limit_rejects(self):
         self.rows["market_snapshots.csv"].append(make_row("market_snapshots.csv", "2026-10-14 09:00:20"))
         self.save()

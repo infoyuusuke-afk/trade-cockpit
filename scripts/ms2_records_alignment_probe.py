@@ -54,7 +54,7 @@ def _read_keys(root: Path, name: str) -> Counter:
             file_after = q1._stat_key(os.fstat(f.fileno()))
         after = q1._stat_key(path.stat())
         if (before != after or file_before != file_after or
-            before[2:4] != file_before[2:4]):
+            before[:3] != file_before[:3] or after[:3] != file_after[:3]):
             raise ProbeBlocked("SOURCE_CHANGED_DURING_READ")
         return counts
     except (OSError, UnicodeError, csv.Error, ValueError, OverflowError) as error:
