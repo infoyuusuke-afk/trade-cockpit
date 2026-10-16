@@ -1,0 +1,21 @@
+name: V10 Independent Brain Observation
+on:
+  pull_request:
+    paths:
+      - "scripts/ai_brain_observer.py"
+      - "tests/test_ai_brain_observer.py"
+      - ".github/workflows/v10-independent-brain.yml"
+  workflow_dispatch:
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synthetic read-only source and file safety
+        run: python -m unittest discover -s tests -p test_ai_brain_observer.py -v
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synthetic read-only source and file safety
+        run: python -m unittest discover -s tests -p test_ai_brain_observer.py -v
