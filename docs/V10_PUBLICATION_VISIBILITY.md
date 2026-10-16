@@ -33,3 +33,27 @@ an independent BRAIN analysis engine. No BRAIN data producer is verified.
 
 Windows CI exercises actual loopback HTTP with a synthetic RuntimeDir and
 an unrelated checkout decoy. It never starts Excel or verifies OWNER-PC live ticks.
+
+## SHADOW owner identity versus BRAIN (P0-12)
+
+V10 Controller runs the same Gateway script on ports 28581 and 28584. The
+second port is **not** an independently operating BRAIN strategy analysis
+engine. Separately, the real Controller-owned Python observer
+`scripts/ai_shadow_supervisor.py` writes `ai_shadow_status.json` in
+RuntimeDir. Those SHADOW publications are NOT fourth-source BRAIN evidence.
+
+The Gateway now validates that separate SHADOW file, its
+`ai-shadow-supervisor-1` schema, explicit `real_submit_allowed=false`,
+`engine_pid` matching the Controller-owned PID confirmed by Win32_Process
+command line, timezone-bearing `updated_at`, modification age <=30 seconds,
+allowed state and resume flag. Only then does `/health` declare
+`SHADOW_RUNNING_HEARTBEAT_ONLY`. This means the observer emitted a recent
+status file, NOT that the latest exchange tick is genuine, a strategy
+is profitable, a broker order is permitted, or BRAIN exists. The UI labels
+SHADOW and BRAIN independently, with BRAIN explicitly UNKNOWN.
+
+Windows PowerShell 5.1 synthetic checks cover fresh/missing/stale PID mismatch,
+unverified process identity, time without timezone, unsafe trade flag and
+resume block. The HTTP smoke test runs a real Gateway process with synthetic
+JSON without a Controller, requiring SHADOW to remain UNVERIFIED. No OWNER
+PC deployment or live MS2 test has occurred.

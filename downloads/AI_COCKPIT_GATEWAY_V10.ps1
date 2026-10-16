@@ -4,7 +4,8 @@ param(
     [string]$Build = "unknown",
     [int]$Port = 28581,
     [switch]$SnapshotGuardSelfTest,
-    [switch]$PublicationSelfTest
+    [switch]$PublicationSelfTest,
+    [switch]$ShadowHeartbeatSelfTest
 )
 
 # AI Cockpit Gateway V10
@@ -129,6 +130,95 @@ function Get-V10WatcherPublication([string]$RuntimeDirectory, [bool]$ProcessVeri
         return $result
     } catch {
         $result.publication_state = 'WATCHER_FILE_UNREADABLE'
+        return $result
+    }
+}
+
+
+# SHADOW is a separate observation supervisor, NOT the BRAIN strategy engine.
+# This evidence is an authenticated process-publication heartbeat only.
+function Get-V10ShadowHeartbeatProof([string]$RuntimeDirectory, [int]$ExpectedPid,
+    [bool]$ProcessVerified) {
+    $result = [ordered]@{
+        status = 'SHADOW_FILE_UNAVAILABLE'
+        heartbeat_at = $null
+        component_role = 'SHADOW_OBSERVER_NOT_BRAIN'
+    }
+    if ([string]::IsNullOrWhiteSpace($RuntimeDirectory)) {
+        $result.status = 'SHADOW_RUNTIME_UNAVAILABLE'
+        return $result
+    }
+    try {
+        if (-not (Test-Path -LiteralPath $RuntimeDirectory -PathType Container)) {
+            $result.status = 'SHADOW_RUNTIME_UNAVAILABLE'
+            return $result
+        }
+        $dir = Get-Item -LiteralPath $RuntimeDirectory -ErrorAction Stop
+        if (($dir.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            $result.status = 'SHADOW_RUNTIME_UNTRUSTED'
+            return $result
+        }
+        $path = Join-Path $RuntimeDirectory 'ai_shadow_status.json'
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $result }
+        $item = Get-Item -LiteralPath $path -ErrorAction Stop
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
+            $item.Length -le 2 -or $item.Length -gt 65536) {
+            $result.status = 'SHADOW_FILE_UNTRUSTED'
+            return $result
+        }
+        $data = Read-JsonUtf8 $path
+        if ([string]$data.schema_version -cne 'ai-shadow-supervisor-1' -or
+            $data.ui_independent -ne $true) {
+            $result.status = 'SHADOW_IDENTITY_UNVERIFIED'
+            return $result
+        }
+        if ($data.real_submit_allowed -ne $false) {
+            $result.status = 'SHADOW_ORDER_FLAG_UNSAFE'
+            return $result
+        }
+        if ($ExpectedPid -le 0 -or -not $ProcessVerified) {
+            $result.status = 'SHADOW_PROCESS_UNVERIFIED'
+            return $result
+        }
+        $publishedPid = 0
+        if (-not [int]::TryParse([string]$data.engine_pid, [ref]$publishedPid) -or
+            $publishedPid -ne $ExpectedPid) {
+            $result.status = 'SHADOW_PID_MISMATCH'
+            return $result
+        }
+        $stamp = [string]$data.updated_at
+        if ($stamp -cnotmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,7})?(Z|[+-]\d{2}:\d{2})$') {
+            $result.status = 'SHADOW_TIMESTAMP_INVALID'
+            return $result
+        }
+        $parsed = [datetimeoffset]::MinValue
+        $valid = [datetimeoffset]::TryParse($stamp,
+            [Globalization.CultureInfo]::InvariantCulture,
+            [Globalization.DateTimeStyles]::None, [ref]$parsed)
+        if (-not $valid) {
+            $result.status = 'SHADOW_TIMESTAMP_INVALID'
+            return $result
+        }
+        $age = ([datetimeoffset]::UtcNow - $parsed.ToUniversalTime()).TotalSeconds
+        $fileAge = ([datetime]::UtcNow - $item.LastWriteTimeUtc).TotalSeconds
+        if ($age -lt 0 -or $fileAge -lt 0 -or $age -gt 30 -or $fileAge -gt 30) {
+            $result.status = 'SHADOW_TIMESTAMP_STALE_OR_FUTURE'
+            return $result
+        }
+        $publishedState = [string]$data.state
+        if (@('RUNNING','PAUSED_FAIL_CLOSED','RECOVERING','STOPPED') -cnotcontains $publishedState) {
+            $result.status = 'SHADOW_STATE_UNVERIFIED'
+            return $result
+        }
+        if ($publishedState -eq 'RUNNING' -and $data.resume_blocked -ne $false) {
+            $result.status = 'SHADOW_RESUME_UNVERIFIED'
+            return $result
+        }
+        $result.status = 'SHADOW_' + $publishedState + '_HEARTBEAT_ONLY'
+        $result.heartbeat_at = $parsed.ToUniversalTime().ToString('o')
+        return $result
+    } catch {
+        $result.status = 'SHADOW_STATUS_UNREADABLE'
         return $result
     }
 }
@@ -561,6 +651,52 @@ function Add-StaticSnapshotNotice([string]$Html, [datetime]$ReferenceDate) {
 }
 
 
+
+if ($ShadowHeartbeatSelfTest) {
+    # Synthetic ProcessVerified=true is a fixture, not real process attestation.
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ([IO.Path]::GetRandomFileName())
+    [void][IO.Directory]::CreateDirectory($tmp)
+    try {
+        $path = Join-Path $tmp 'ai_shadow_status.json'
+        $stamp = ([datetimeoffset]::UtcNow).ToString('o')
+        $fixture = [ordered]@{
+            schema_version = 'ai-shadow-supervisor-1'
+            engine_pid = 4242
+            state = 'RUNNING'
+            updated_at = $stamp
+            ui_independent = $true
+            real_submit_allowed = $false
+            resume_blocked = $false
+        }
+        [IO.File]::WriteAllText($path, ($fixture | ConvertTo-Json -Depth 4))
+        $ok = Get-V10ShadowHeartbeatProof $tmp 4242 $true
+        if ($ok.status -ne 'SHADOW_RUNNING_HEARTBEAT_ONLY' -or $null -eq $ok.heartbeat_at) { throw ('SHADOW_SYNTHETIC_HEARTBEAT_FAILED: ' + $ok.status) }
+        $mismatch = Get-V10ShadowHeartbeatProof $tmp 4243 $true
+        if ($mismatch.status -ne 'SHADOW_PID_MISMATCH' -or $null -ne $mismatch.heartbeat_at) { throw 'SHADOW_PID_GUARD_FAILED' }
+        if ((Get-V10ShadowHeartbeatProof $tmp 4242 $false).status -ne 'SHADOW_PROCESS_UNVERIFIED') { throw 'SHADOW_PROCESS_GUARD_FAILED' }
+        $fixture.real_submit_allowed = $true
+        [IO.File]::WriteAllText($path, ($fixture | ConvertTo-Json -Depth 4))
+        if ((Get-V10ShadowHeartbeatProof $tmp 4242 $true).status -ne 'SHADOW_ORDER_FLAG_UNSAFE') { throw 'SHADOW_ORDER_GUARD_FAILED' }
+        $fixture.real_submit_allowed = $false
+        $fixture.updated_at = '2026-01-01T00:00:00+00:00'
+        [IO.File]::WriteAllText($path, ($fixture | ConvertTo-Json -Depth 4))
+        if ((Get-V10ShadowHeartbeatProof $tmp 4242 $true).status -ne 'SHADOW_TIMESTAMP_STALE_OR_FUTURE') { throw 'SHADOW_STALE_GUARD_FAILED' }
+        $fixture.updated_at = '2026-10-01 09:00:00'
+        [IO.File]::WriteAllText($path, ($fixture | ConvertTo-Json -Depth 4))
+        if ((Get-V10ShadowHeartbeatProof $tmp 4242 $true).status -ne 'SHADOW_TIMESTAMP_INVALID') { throw 'SHADOW_TIMEZONE_GUARD_FAILED' }
+        $fixture.updated_at = $stamp
+        $fixture.resume_blocked = $true
+        [IO.File]::WriteAllText($path, ($fixture | ConvertTo-Json -Depth 4))
+        if ((Get-V10ShadowHeartbeatProof $tmp 4242 $true).status -ne 'SHADOW_RESUME_UNVERIFIED') { throw 'SHADOW_RESUME_GUARD_FAILED' }
+        [IO.File]::Delete($path)
+        if ((Get-V10ShadowHeartbeatProof $tmp 4242 $true).status -ne 'SHADOW_FILE_UNAVAILABLE') { throw 'SHADOW_MISSING_GUARD_FAILED' }
+    } finally {
+        if ([IO.Directory]::Exists($tmp)) { [IO.Directory]::Delete($tmp, $true) }
+    }
+    Write-Output 'PASS: V10_SHADOW_HEARTBEAT_SYNTHETIC'
+    exit 0
+}
+
 if ($PublicationSelfTest) {
     $now = Get-Date
     $stamp = $now.ToString('yyyy-MM-ddTHH:mm:sszzz')
@@ -683,10 +819,15 @@ try {
                     watcher_timestamp_timezone   = $null
                     watcher_publication_state    = 'UNKNOWN'
                     brain_publication_state      = 'UNKNOWN_NOT_PUBLISHED'
+                    shadow_heartbeat_status      = 'SHADOW_NOT_VERIFIED'
+                    shadow_heartbeat_at          = $null
+                    shadow_component_role        = 'SHADOW_OBSERVER_NOT_BRAIN'
                     source_timestamp           = $null
                     live_symbol                = $null
                     live_current_price         = $null
                 }
+                $shadowExpectedPid = 0
+                $shadowProcessVerified = $false
                 try {
                     if (Test-Path -LiteralPath $controllerStateFile) {
                         $st = Read-JsonUtf8 $controllerStateFile
@@ -708,6 +849,8 @@ try {
                         $liveAge = if ($liveExists) { ((Get-Date) - (Get-Item -LiteralPath $liveJson).LastWriteTime).TotalSeconds } else { [double]::PositiveInfinity }
                         $controllerAlive = Test-ControllerHealthProcess ([int]$st.controller_pid) $stateWrittenAt
                         $sessionFresh = $controllerAlive -and $stateAge -ge 0 -and $stateAge -le 30
+                        $shadowExpectedPid = [int]$st.shadow_supervisor_pid
+                        $shadowProcessVerified = $sessionFresh -and (Test-HealthProcess $shadowExpectedPid 'ai_shadow_supervisor.py' $stateWrittenAt)
                         foreach ($check in @(
                             @{field='watcher'; script='Kioxia_RSS_Live_Watcher.ps1'},
                             @{field='heartbeat'; script='Kioxia_Safety_Heartbeat.ps1'},
@@ -766,6 +909,10 @@ try {
                 $runtime.watcher_observed_at_offset = $watcherProof.observed_at_offset
                 $runtime.watcher_timestamp_timezone = $watcherProof.timestamp_timezone
                 $runtime.watcher_publication_state = $watcherProof.publication_state
+                $shadowProof = Get-V10ShadowHeartbeatProof $RuntimeDir $shadowExpectedPid $shadowProcessVerified
+                $runtime.shadow_heartbeat_status = $shadowProof.status
+                $runtime.shadow_heartbeat_at = $shadowProof.heartbeat_at
+                $runtime.shadow_component_role = $shadowProof.component_role
                 $execution = [ordered]@{
                     real_submit_allowed        = $false
                     real_order_route            = 'DISABLED'
@@ -785,6 +932,25 @@ try {
                     "shadow_ui_independent"
                 )) {
                     $execution[$shadowKey] = $shadowPub[$shadowKey]
+                }
+                # Legacy SHADOW state used only file mtime; never allow it to
+                # claim RUNNING, RECOVERING, or expose old counts unless the
+                # independently verified PID + heartbeat proof also passes.
+                $shadowProven = @(
+                    'SHADOW_RUNNING_HEARTBEAT_ONLY',
+                    'SHADOW_PAUSED_FAIL_CLOSED_HEARTBEAT_ONLY',
+                    'SHADOW_RECOVERING_HEARTBEAT_ONLY',
+                    'SHADOW_STOPPED_HEARTBEAT_ONLY'
+                ) -ccontains $shadowProof.status
+                if (-not $shadowProven) {
+                    if (@('RUNNING', 'RECOVERING') -ccontains [string]$execution.shadow_engine_state) {
+                        $execution.shadow_engine_state = 'PAUSED_FAIL_CLOSED'
+                        $execution.shadow_engine_reason = 'SHADOW_IDENTITY_OR_HEARTBEAT_UNVERIFIED'
+                    }
+                    $execution.shadow_engine_updated_at = $null
+                    $execution.shadow_open_observation_count = $null
+                    $execution.shadow_ops = $null
+                    $execution.shadow_latest_incident = $null
                 }
 
                 $payload = [ordered]@{

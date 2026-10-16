@@ -24,6 +24,10 @@ jobs:
         shell: powershell
         run: |
           & ".\downloads\AI_COCKPIT_GATEWAY_V10.ps1" -RepoRoot (Get-Location).Path -PublicationSelfTest
+      - name: Validate SHADOW owner PID heartbeat and order safety
+        shell: powershell
+        run: |
+          & ".\downloads\AI_COCKPIT_GATEWAY_V10.ps1" -RepoRoot (Get-Location).Path -ShadowHeartbeatSelfTest
       - run: python -m unittest discover -s tests -p test_v10_watcher_gateway_publisher.py -v
       - run: node --test tests/test_v10_publication_status.cjs
       - name: End-to-end HTTP health and static asset smoke (synthetic)

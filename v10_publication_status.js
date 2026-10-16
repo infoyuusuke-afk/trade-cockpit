@@ -14,6 +14,19 @@
       default: return "未確認";
     }
   }
+  function shadowLabel(state) {
+    switch(state) {
+      case "SHADOW_RUNNING_HEARTBEAT_ONLY": return "プロセス発行確認（市場観測未認証）";
+      case "SHADOW_PAUSED_FAIL_CLOSED_HEARTBEAT_ONLY": return "安全停止中";
+      case "SHADOW_STOPPED_HEARTBEAT_ONLY": return "停止";
+      case "SHADOW_RECOVERING_HEARTBEAT_ONLY": return "復旧中・判断禁止";
+      case "SHADOW_TIMESTAMP_STALE_OR_FUTURE": return "発行遅延・時刻異常";
+      case "SHADOW_PID_MISMATCH":
+      case "SHADOW_PROCESS_UNVERIFIED": return "プロセス未検証";
+      case "SHADOW_ORDER_FLAG_UNSAFE": return "安全フラグ異常";
+      default: return "未確認";
+    }
+  }
   function summarizeHealth(data) {
     if (!data || data.status !== "ok" || !data.runtime ||
         !data.execution || data.execution.real_submit_allowed !== false) {
@@ -23,13 +36,15 @@
     const collector=statusLabel(r.collector_publication_state);
     const watcher=statusLabel(r.watcher_publication_state);
     const brain="未検証（独立した観測証拠なし）";
+    const shadow=shadowLabel(r.shadow_heartbeat_status);
     return {state:"PUBLICATION_ONLY",text:
       "取得証拠: Collector "+collector+" ／ Watcher "+watcher+
-      " ／ Gateway 応答あり ／ BRAIN "+brain+
+      " ／ Gateway 応答あり ／ SHADOW "+shadow+
+      " ／ BRAIN "+brain+"（28584はGatewayのみ）"+
       " ｜ 固定分析は過去データ・実注文禁止"};
   }
   if (typeof module !== "undefined" && module.exports) {
-    module.exports={statusLabel,summarizeHealth};
+    module.exports={statusLabel,shadowLabel,summarizeHealth};
   }
   if (typeof document === "undefined" || typeof root.fetch !== "function") return;
   const panel=document.getElementById("v10-publication-panel");
