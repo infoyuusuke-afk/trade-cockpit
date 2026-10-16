@@ -161,6 +161,7 @@ def status_snapshot(result, *, now, pid):
         "source_publication_at": result["source_publication_at"],
         "last_market_data_at": None,
         "exchange_tick_date_verified": False,
+        "signal_provenance_verified": False,
         "observed_rows": result["observed_rows"],
         "watch_counts": result["watch_counts"],
         "watch_observations": result["watch_observations"],
