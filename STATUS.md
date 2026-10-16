@@ -1,6 +1,12 @@
 # trade-cockpit STATUS
 
-最終更新: 2026-10-14（Issue #342 時系列仮想約定監査を Draft で追加。main 未マージ）
+最終更新: 2026-10-14（Issue #344 の private MS2 読み取り接続を Draft で追加。main 未マージ）
+
+## Issue #344 MS2観測の読み取り専用接続（2026-10-14）
+
+`scripts/ms2_observation_ingress.py` は、Watcher が実際に書く tick / diag / 15秒足 / 気配値ログを、パスが明示されたときだけ読む。`tick_time` は秒精度の時刻だけで日付もタイムゾーンも無い。`recorded_at` は追記時のローカル時計で、取引所の約定順ではない。`poll_seq` はポーリング順である。`available_at`、板数量、鮮度はファイルに無い。欠ける項目は補完せず、理由コードで BLOCKED にする。歩み値の価格を bid/ask にはコピーしない。
+
+明示的な point-in-time JSONL だけを、既存の `scripts/timeseries_fill_audit.py`（PR #343）へ渡す。その経路は契約テストであり、Watcher の認証済み実観測ではない。`evidence_origin=RECORDED` は拒否し、適格な実観測 N は 0 のまま。合成の CLOSED は仮想見積もりで、EV/PF/DD には入れない。収集器、15秒足生成、fill model、canonical hash、263件の履歴は変更していない。`real_submit_allowed` / `promotion_eligible` / `statistical_edge_confirmed` は false。これは main マージでも実注文の許可でもない。
 
 ## Issue #342 時系列仮想約定監査（2026-10-14）
 

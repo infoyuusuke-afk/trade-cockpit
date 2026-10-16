@@ -22,3 +22,103 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt lxml
       - run: python -m unittest discover -s tests -p "test_*.py" -v
+  windows-checkpoint:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt lxml
+      - run: python -m unittest tests.test_offline_save_checkpoint tests.test_ms2_offline_csv_snapshot tests.test_ms2_offline_acceptance tests.test_ms2_local_csv_capture tests.test_ms2_offline_bundle tests.test_ms2_windows_exe_bundle -v
+      - name: Offline synthetic acceptance through OWNER launcher
+        shell: cmd
+        run: scripts\run_ms2_offline_acceptance.cmd
+      - name: Build code-only local CSV bundle
+        run: python -m scripts.build_ms2_offline_bundle
+      - name: Verify extracted standalone bundle
+        shell: pwsh
+        run: |
+          $target = Join-Path $env:RUNNER_TEMP 'ms2-csv-bundle-test'
+          Expand-Archive -LiteralPath 'dist/MS2_CSV_Local_Offline.zip' -DestinationPath $target
+          Push-Location $target
+          try {
+            cmd /c scripts\run_ms2_offline_acceptance.cmd
+            if ($LASTEXITCODE -ne 0) { throw 'Packaged synthetic acceptance BLOCKED' }
+          } finally {
+            Pop-Location
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MS2_CSV_Local_Offline
+          path: dist/MS2_CSV_Local_Offline.zip
+          if-no-files-found: error
+          retention-days: 14
+      - name: Built-in Windows PowerShell synthetic acceptance (no EXE)
+        shell: pwsh
+        run: |
+          & powershell.exe -NoLogo -NoProfile -STA -File scripts/ms2_native_offline_capture.ps1 -SyntheticTest
+          if ($LASTEXITCODE -ne 0) { throw 'PowerShell synthetic acceptance BLOCKED' }
+      - name: Build script-only Windows package
+        run: python -m scripts.build_ms2_native_bundle
+      - name: Verify unpacked Windows PowerShell package
+        shell: pwsh
+        run: |
+          $folder = Join-Path $env:RUNNER_TEMP 'ms2-builtin'
+          Expand-Archive -LiteralPath dist/MS2_CSV_Windows_Builtin.zip -DestinationPath $folder
+          & powershell.exe -NoLogo -NoProfile -STA -File (Join-Path $folder 'scripts/ms2_native_offline_capture.ps1') -SyntheticTest
+          if ($LASTEXITCODE -ne 0) { throw 'Unpacked PowerShell synthetic acceptance BLOCKED' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MS2_CSV_Windows_Builtin
+          path: dist/MS2_CSV_Windows_Builtin.zip
+          if-no-files-found: error
+          retention-days: 14
+      - name: Verify actual read-only one-paste diagnostic in Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $doc = Get-Content -LiteralPath 'docs/MS2_CSV_READONLY_ONEPASTE.md' -Raw -Encoding UTF8
+          $fence = [string][char]96 + [string][char]96 + [string][char]96
+          $m = [regex]::Match($doc, '(?s)' + [regex]::Escape($fence) + 'powershell\s*(.*?)\s*' + [regex]::Escape($fence))
+          if (-not $m.Success) { throw 'ONEPASTE_MISSING' }
+          $check = [scriptblock]::Create($m.Groups[1].Value)
+          $temp = Join-Path $env:RUNNER_TEMP 'ms2-csv-onepaste-synthetic'
+          New-Item -ItemType Directory -Path $temp -Force | Out-Null
+          $target = Join-Path $temp 'kioxia_ticks_20260102.csv'
+          $sample = 'recorded_at,tick_time,price,volume,poll_seq' + [string][char]13 + [string][char]10 +
+                    '2026-01-02 09:00:00,09:00:00,100.5,10,1' + [string][char]13 + [string][char]10
+          [byte[]]$raw = @([byte]0xEF, [byte]0xBB, [byte]0xBF) + [Text.Encoding]::UTF8.GetBytes($sample)
+          [IO.File]::WriteAllBytes($target, $raw)
+          $env:MS2_CSV_DIAG_PATH = $target
+          $good = (& $check | Out-String)
+          if ($good -notmatch 'PASS_READONLY_FORMAT' -or $good -notmatch 'rows\s*:\s*1') {
+            throw 'GOOD_SYNTHETIC_CSV_REJECTED'
+          }
+          [IO.File]::WriteAllText($target, 'wrong' + [string][char]10)
+          $bad = (& $check | Out-String)
+          if ($bad -notmatch 'BLOCKED: READONLY_FORMAT_OR_SOURCE' -or $bad -match 'PASS_READONLY_FORMAT') {
+            throw 'BAD_SYNTHETIC_CSV_ACCEPTED'
+          }
+          Remove-Item Env:MS2_CSV_DIAG_PATH
+      - name: Install pinned Windows packager for hosted CI
+        run: python -m pip install pyinstaller==6.16.0
+      - name: Build offline Python-free Windows executable
+        run: python -m scripts.build_ms2_windows_exe
+      - name: Test fresh extracted executable without Python
+        shell: pwsh
+        run: |
+          $target = Join-Path $env:RUNNER_TEMP 'ms2-frozen'
+          Expand-Archive -LiteralPath 'dist/MS2_CSV_Windows_NoPython.zip' -DestinationPath $target
+          $exe = Join-Path $target 'MS2_Local_CSV/MS2_Local_CSV.exe'
+          & $exe --synthetic-check
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged synthetic acceptance FAILED' }
+          # A nonzero exit is expected here. Use Start-Process so
+          # PowerShell does not convert the intentional denial into a CI error.
+          $denied = Start-Process -FilePath $exe -ArgumentList 'private.csv' -Wait -PassThru -NoNewWindow
+          if ($denied.ExitCode -ne 2) { throw 'Arbitrary path not rejected' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MS2_CSV_Windows_NoPython
+          path: dist/MS2_CSV_Windows_NoPython.zip
+          if-no-files-found: error
+          retention-days: 14
