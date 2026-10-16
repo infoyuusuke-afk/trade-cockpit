@@ -11,6 +11,40 @@ $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 . (Join-Path $PSScriptRoot "MS2_Common_Engine.ps1")
 $AutoOrderEnabled = $false # 安全上の固定既定値。発注関数はこの収集器に実装しない。
 
+# Synchronous finite-error containment, NOT an isolated/nonblocking Writer.
+# A partial append may have occurred; never retry after UNKNOWN in this session.
+$script:ms2RecordFaulted = $false
+$script:ms2RecordErrors = @{}
+function Invoke-MS2SafeCsvAppend {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][string]$Path,
+        [Parameter(Mandatory=$true)][string]$Line,
+        [Parameter(Mandatory=$true)]
+        [ValidateSet('ticks','condition','under_over','snapshot','credit','preopen','pts','ir_pts','signals')]
+        [string]$Stream,
+        [scriptblock]$Writer
+    )
+    if ($script:ms2RecordFaulted) { return $false }
+    try {
+        if ($null -eq $Writer) {
+            Add-Content -LiteralPath $Path -Value $Line -Encoding UTF8 -ErrorAction Stop
+        } else {
+            & $Writer $Path $Line | Out-Null
+        }
+        return $true
+    } catch {
+        $script:ms2RecordFaulted = $true
+        if ($null -eq $script:ms2RecordErrors) { $script:ms2RecordErrors = @{} }
+        if (-not $script:ms2RecordErrors.ContainsKey($Stream)) { $script:ms2RecordErrors[$Stream] = 0 }
+        $script:ms2RecordErrors[$Stream]++
+        # Do not expose raw symbols, source paths, market values or errors.
+        Write-Host ('[MS2 RECORD] PERSISTENCE UNKNOWN; STREAM=' + $Stream + '; NO_TRADE') -ForegroundColor Red
+        return $false
+    }
+}
+
+
 function Get-SafeNumber($value, [double]$minValue, [double]$maxValue) {
     if ($null -eq $value -or $value -is [System.Array]) { return $null }
     try { $number = [Convert]::ToDouble($value) } catch { return $null }
@@ -981,6 +1015,18 @@ try {
                 else{continue}
             }
             $validCount++
+            # Preserve a separate missing/unknown flag before legacy zero fallback.
+            $sourceMissingFields = @()
+            if ($null -eq $volume) {$sourceMissingFields += 'volume'}
+            if ($null -eq $vwap) {$sourceMissingFields += 'vwap'}
+            if ($null -eq $bid) {$sourceMissingFields += 'bid'}
+            if ($null -eq $ask) {$sourceMissingFields += 'ask'}
+            if ($null -eq $bidQty) {$sourceMissingFields += 'bid_qty'}
+            if ($null -eq $askQty) {$sourceMissingFields += 'ask_qty'}
+            if ($null -eq $marketSell) {$sourceMissingFields += 'market_sell'}
+            if ($null -eq $marketBuy) {$sourceMissingFields += 'market_buy'}
+            if ($null -eq $over) {$sourceMissingFields += 'over'}
+            if ($null -eq $under) {$sourceMissingFields += 'under'}
             if ($null -eq $volume) {$volume=0}; if ($null -eq $vwap) {$vwap=0}; if ($null -eq $bid) {$bid=0}; if ($null -eq $ask) {$ask=0}
             if ($null -eq $bidQty) {$bidQty=0}; if ($null -eq $askQty) {$askQty=0}; if ($null -eq $marketSell) {$marketSell=0}; if ($null -eq $marketBuy) {$marketBuy=0}
             if ($null -eq $over) {$over=0}; if ($null -eq $under) {$under=0}
@@ -1192,8 +1238,9 @@ try {
                     if (-not $seenTicks.ContainsKey($tickKey)) {
                         $tickDir=if ($ask -gt 0 -and $tickPrice -ge $ask) {"BUY_EST"} elseif ($bid -gt 0 -and $tickPrice -le $bid) {"SELL_EST"} else {"UNKNOWN"}
                         $line=@($now.ToString("yyyy-MM-dd HH:mm:ss.fff"),$ticker,$s.Name,$tickTime,$tickPrice,$tickDir,$bid,$ask,"方向は気配との比較による推定") | ForEach-Object {Escape-Csv $_}
-                        Add-Content -Encoding UTF8 -Path $tickCsv -Value ($line -join ',')
-                        $seenTicks[$tickKey]=$now
+                        if (Invoke-MS2SafeCsvAppend -Path $tickCsv -Line ($line -join ',') -Stream 'ticks') {
+                            $seenTicks[$tickKey]=$now
+                        }
                     }
                 }
             }
@@ -1204,26 +1251,28 @@ try {
                 $orHighForLog=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
                 $orLowForLog=if($orLow.ContainsKey($ticker)){$orLow[$ticker]}else{0}
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$vwap,$ema9,$ema20,$trendLong,$trendShort,$or5HighValue,$or5LowValue,$orHighForLog,$orLowForLog,[Math]::Round($barBurst,3),[Math]::Round($flowBias,4),$whipsaw,$chaseGuard,$or5Long,$or5Short,$or15Long,$or15Short,$pullbackLong,$pullbackShort,$signal,$strategy)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $conditionCsv -Value ($line -join ',')
+                [void](Invoke-MS2SafeCsvAppend -Path $conditionCsv -Line ($line -join ',') -Stream 'condition')
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$over,$under,[Math]::Round($underRatio,5),[Math]::Round($uoChange,5),$vwap)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $supplyCsv -Value ($line -join ',')
+                [void](Invoke-MS2SafeCsvAppend -Path $supplyCsv -Line ($line -join ',') -Stream 'under_over')
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$volume,$vwap,$bid,$ask,$bidQty,$askQty,$marketSell,$marketBuy,$over,$under)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $snapshotCsv -Value ($line -join ',')
+                [void](Invoke-MS2SafeCsvAppend -Path $snapshotCsv -Line ($line -join ',') -Stream 'snapshot')
                 if (-not $creditSaved.ContainsKey($ticker)) {
                     $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$creditSell,$creditSellChange,$creditBuy,$creditBuyChange,$creditRatio)|ForEach-Object{Escape-Csv $_}
-                    Add-Content -Encoding UTF8 -Path $creditCsv -Value ($line -join ',')
-                    $creditSaved[$ticker]=$true
+                    if (Invoke-MS2SafeCsvAppend -Path $creditCsv -Line ($line -join ',') -Stream 'credit') {
+                        $creditSaved[$ticker]=$true
+                    }
                 }
             }
             if($snapshotDue -and $inPreopen){
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$reference,$quoteCenter,$gapPct,$bid,$ask,$bidQty,$askQty,$marketSell,$marketBuy,[Math]::Round($marketImbalance*100,2),$over,$under,[Math]::Round($underRatio*100,2),$quoteChange1m,$quoteChange5m,$specialSell,$specialBuy,[Math]::Round($preopenScore,1),$preopenPlan)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $preopenCsv -Value ($line -join ',')
+                [void](Invoke-MS2SafeCsvAppend -Path $preopenCsv -Line ($line -join ',') -Stream 'preopen')
             }
 
             $orHighValue=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
             $orLowValue=if($orLow.ContainsKey($ticker)){$orLow[$ticker]}else{0}
             $results += [pscustomobject]@{
                 ticker=$ticker;name=$s.Name;sector=$s.Sector;price=$price;volume=$volume;vwap=$vwap
+                source_missing_fields=@($sourceMissingFields);source_quality=if($sourceMissingFields.Count -gt 0){'MISSING_OR_UNKNOWN'}else{'LEGACY_UNATTESTED'}
                 change_pct=Get-SafeNumber (Get-TableValue $values $r 4 32) -1000 1000
                 bid=$bid;ask=$ask;bid_qty=$bidQty;ask_qty=$askQty;market_sell=$marketSell;market_buy=$marketBuy;over=$over;under=$under
                 under_ratio=[Math]::Round($underRatio*100,1);under_change=[Math]::Round($uoChange*100,1)
@@ -1312,7 +1361,7 @@ try {
             $ptsResults += $ptsRow
             if($snapshotDue -and $inPts){
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ptsTicker,$stock.Name,$ptsDate,$ptsTime,$ptsPrice,$tseClose,$ptsGap,$ptsVolume,$tseVolume,$ptsVolumeRatio,$turnover,$ptsVwap,$ptsBid,$ptsAsk,$spreadPct,$ptsBidQty,$ptsAskQty,$ptsOver,$ptsUnder,$ptsUnderRatio,$ptsTick,$biasScore,$expectation,$stance)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $ptsCsv -Value ($line -join ',')
+                [void](Invoke-MS2SafeCsvAppend -Path $ptsCsv -Line ($line -join ',') -Stream 'pts')
             }
         }
 
@@ -1390,7 +1439,7 @@ try {
         if($snapshotDue -and $inPts){
             foreach($ir in $irPtsTop5){
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ir.code,$ir.ticker,$ir.name,$ir.disclosure_time,$ir.material_label,$ir.material_score,$ir.title,$ir.official_url,$ir.pts_price,$ir.tse_close,$ir.gap_pct,$ir.turnover,$ir.spread_pct,$ir.under_ratio,$ir.pts_score,$ir.total_score,$ir.judgement)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $irPtsCsv -Value ($line -join ',')
+                [void](Invoke-MS2SafeCsvAppend -Path $irPtsCsv -Line ($line -join ',') -Stream 'ir_pts')
             }
         }
         $kioxiaPts=$ptsResults|Where-Object{$_.tse_ticker -eq "285A.T"}|Select-Object -First 1
@@ -1461,6 +1510,7 @@ try {
             }
             if($validCount -lt 90){$result.signal="データ不足・売買禁止"}
             elseif([string]$result.special_quote -ne "なし"){$result.signal="特別気配・売買禁止"}
+            if($script:ms2RecordFaulted -or @($result.source_missing_fields).Count -gt 0){$result.signal="データ品質不明・売買禁止"}
 
             $range=[double]$result.day_high-[double]$result.day_low
             $closeLocation=if($range -gt 0){Limit (([double]$result.price-[double]$result.day_low)/$range) 0 1}else{0.5}
@@ -1514,7 +1564,7 @@ try {
                 volume_burst=$result.volume_burst;flow_bias=$result.flow_bias;under_ratio=$result.under_ratio
                 market_alignment=$alignment;or15_break=$or15Break;rebound=([string]$result.strategy -in @('OR15押し目','OR15戻り'))
             }
-            $safetyGate=Get-MS2SafetyGate -DataFresh ($validCount -ge 90) -OpenOrders $null -MarginBuyingPower $null -MarginRate $null -ShortableQuantity $result.shortable_quantity -AutoOrderEnabled $AutoOrderEnabled
+            $safetyGate=Get-MS2SafetyGate -DataFresh ($validCount -ge 90 -and -not $script:ms2RecordFaulted -and @($result.source_missing_fields).Count -eq 0) -OpenOrders $null -MarginBuyingPower $null -MarginRate $null -ShortableQuantity $result.shortable_quantity -AutoOrderEnabled $AutoOrderEnabled
             $result|Add-Member -NotePropertyName common_decision -NotePropertyValue $commonDecision.decision -Force
             $result|Add-Member -NotePropertyName common_score -NotePropertyValue $commonDecision.score -Force
             $result|Add-Member -NotePropertyName common_long_score -NotePropertyValue $commonDecision.long_score -Force
@@ -1529,13 +1579,16 @@ try {
                 $logKey=([string]$result.ticker+'|'+[string]$result.strategy+'|'+[string]$result.signal_bar_time)
                 if(-not $loggedSignals.ContainsKey($logKey)){
                     $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$result.ticker,$result.name,$result.signal,$result.strategy,$result.signal_bar_time,$result.entry_price,$result.stop_price,$result.target1,$result.target2,$marketState,$breadthPct,$sectorPct,$holdSignal,$result.hold_score)|ForEach-Object{Escape-Csv $_}
-                    Add-Content -Encoding UTF8 -Path $signalCsv -Value ($line -join ',')
-                    $loggedSignals[$logKey]=$true
+                    if (Invoke-MS2SafeCsvAppend -Path $signalCsv -Line ($line -join ',') -Stream 'signals') {
+                        $loggedSignals[$logKey]=$true
+                    } else {
+                        $result.signal='保存品質不明・売買禁止'
+                    }
                 }
             }
         }
         $kioxia=$results|Where-Object{$_.ticker -eq "285A.T"}|Select-Object -First 1
-        $provisionalHoldTop5=@($results|Where-Object{$validCount -ge 90 -and $_.special_quote -eq "なし" -and $_.hold_signal -in @("持ち越しロング候補","持ち越しショート候補")}|Sort-Object hold_score -Descending|Select-Object -First 5)
+        $provisionalHoldTop5=if($script:ms2RecordFaulted){@()}else{@($results|Where-Object{$validCount -ge 90 -and @($_.source_missing_fields).Count -eq 0 -and $_.special_quote -eq "なし" -and $_.hold_signal -in @("持ち越しロング候補","持ち越しショート候補")}|Sort-Object hold_score -Descending|Select-Object -First 5)}
         if(-not $holdFinalized -and $now.TimeOfDay -ge [TimeSpan]::Parse("15:25:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("15:26:00")){
             $rank=0
             $finalHoldTop5=@($provisionalHoldTop5|ForEach-Object{
@@ -1619,12 +1672,15 @@ try {
             if($auditChanged){Write-CsvObjects $holdHistoryPath $holdHistory;Write-CsvObjects $auditV2Path $auditV2}
         }
         $holdStats=Get-OvernightHoldStats $holdHistory
+        if ($script:ms2RecordFaulted) {
+            foreach ($candidate in $results) {$candidate.signal='保存品質不明・売買禁止'}
+        }
         Write-AtomicUtf8 $holdStatsPath (($holdStats|ConvertTo-Json -Depth 6))
         $qualified=@($results|Where-Object{$_.signal -in @("買いサイン","空売りサイン","OR5上抜け・地合待ち","OR5下抜け・地合待ち","OR15利確警戒","OR15戻り警戒","押し目待ち","戻り待ち","初動買い候補","初動ショート候補","買い準備","ショート準備","監視")}|Sort-Object @{Expression={if($_.signal -in @("買いサイン","空売りサイン")){0}elseif($_.signal -in @("OR5上抜け・地合待ち","OR5下抜け・地合待ち","OR15利確警戒","OR15戻り警戒","押し目待ち","戻り待ち")){1}elseif($_.signal -in @("初動買い候補","初動ショート候補")){2}elseif($_.signal -in @("買い準備","ショート準備")){3}else{4}}},@{Expression={[Math]::Abs($_.score)};Descending=$true}|Select-Object -First 5)
-        $accountGate=Get-MS2SafetyGate -DataFresh ($validCount -ge 90) -OpenOrders $null -MarginBuyingPower $null -MarginRate $null -ShortableQuantity $null -AutoOrderEnabled $AutoOrderEnabled
+        $accountGate=Get-MS2SafetyGate -DataFresh ($validCount -ge 90 -and -not $script:ms2RecordFaulted) -OpenOrders $null -MarginBuyingPower $null -MarginRate $null -ShortableQuantity $null -AutoOrderEnabled $AutoOrderEnabled
         $capabilities=[ordered]@{
-            market=@{status=if($validCount -ge 90){'確認済み'}else{'未確認'};fields=@('現在値','前日比','1分足','5分足','OR5','OR15','VWAP','EMA9/20','出来高加速')}
-            orderflow=@{status=if($validCount -ge 90){'一部確認済み'}else{'未確認'};fields=@('最良気配','成行買数量/成行売数量','OVER/UNDER','歩み値');depth10='未実装・RSS負荷上限を実機確認後に有効化'}
+            market=@{status=if($validCount -ge 90 -and -not $script:ms2RecordFaulted){'確認済み'}else{'未確認'};fields=@('現在値','前日比','1分足','5分足','OR5','OR15','VWAP','EMA9/20','出来高加速')}
+            orderflow=@{status=if($validCount -ge 90 -and -not $script:ms2RecordFaulted){'一部確認済み'}else{'未確認'};fields=@('最良気配','成行買数量/成行売数量','OVER/UNDER','歩み値');depth10='未実装・RSS負荷上限を実機確認後に有効化'}
             credit=@{status='一部確認済み';fields=@('信用買残','信用売残','信用倍率','売建可能数量')}
             account=@{status='未確認';fields=@('注文','約定','建玉','含み損益','信用余力','保証金率');privacy='公開JSONへ口座数値を出力しない'}
             auto_order=@{enabled=$false;status='既定で無効';implementation='発注関数なし'}
@@ -1641,7 +1697,7 @@ try {
         } else {
             [ordered]@{status=$statsStatus;scanned_days=0;completed_days=0;incomplete_day_count=0;last_completed_day=$null;minimum_days=10}
         }
-        $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;stale=($validCount -lt 90);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
+        $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");source="MarketSpeed II RSS / local PC";universe=100;valid=$validCount;stale=($validCount -lt 90 -or $script:ms2RecordFaulted);recording_degraded=[bool]$script:ms2RecordFaulted;record_failure_stream_classes=@($script:ms2RecordErrors.Keys|Sort-Object);preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
         $jsonText=$payload|ConvertTo-Json -Depth 6
         Write-AtomicUtf8 $jsonPath $jsonText
         if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $jsonText }
