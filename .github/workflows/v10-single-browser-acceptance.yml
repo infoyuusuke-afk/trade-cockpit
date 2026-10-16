@@ -1,0 +1,32 @@
+name: V10 Single Browser Acceptance
+on:
+  pull_request:
+    paths:
+      - "downloads/AI_COCKPIT_CONTROLLER_V10.ps1"
+      - "downloads/START_AI_COCKPIT_V10.cmd"
+      - "tests/test_v10_single_browser.py"
+      - ".github/workflows/v10-single-browser-acceptance.yml"
+  workflow_dispatch:
+jobs:
+  single-browser-ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static safe-start contract
+        run: python -m unittest tests.test_v10_single_browser -v
+  single-browser-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Static safe-start contract on Windows
+        run: python -m unittest tests.test_v10_single_browser -v
+      - name: Windows PowerShell 5.1 parses V10 Controller
+        shell: powershell
+        run: |
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Join-Path (Get-Location) 'downloads/AI_COCKPIT_CONTROLLER_V10.ps1'),
+            [ref]$tokens, [ref]$errors
+          ) | Out-Null
+          if ($errors.Count -ne 0) { throw 'V10_CONTROLLER_POWERSHELL_PARSE_FAILED' }
