@@ -13,8 +13,8 @@ class PreflightSafety(unittest.TestCase):
         self.assertIn("Test-OwnedPidIdentity $field $procId",self.stop)
         self.assertIn('$brainStopVerified = $true',self.stop)
         self.assertIn('BRAIN observer PID',self.stop)
-        self.assertIn('if (-not $brainStopVerified)',self.stop)
-        self.assertLess(self.stop.index('if (-not $brainStopVerified)'),self.stop.index('Remove-Item -LiteralPath $StateFile -Force'))
+        self.assertIn('if (-not $brainStopVerified -or -not $workerStopVerified)',self.stop)
+        self.assertLess(self.stop.index('if (-not $brainStopVerified -or -not $workerStopVerified)'),self.stop.index('Remove-Item -LiteralPath $StateFile -Force'))
     def test_legacy_missing_brain_pid_refused_before_any_controller_stop(self):
         early=self.stop.index('SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_PID_UNRECORDED')
         controller=self.stop.index('# Stop the supervising RUN/Controller host FIRST.')
