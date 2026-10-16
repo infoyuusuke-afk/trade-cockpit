@@ -1,0 +1,18 @@
+name: Private CSV Offline Browser Windows Synthetic Test
+on:
+  pull_request:
+    paths:
+      - "downloads/READ_ONLY_BROKER_CSV_CHECK_WIN.cmd"
+      - "downloads/READ_ONLY_BROKER_CSV_CHECK_OFFLINE.html"
+      - "tests/test_private_broker_csv_offline_browser.mjs"
+      - ".github/workflows/private-csv-offline-browser-windows.yml"
+permissions:
+  contents: read
+jobs:
+  windows-offline-csv-diagnostic:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run offline classifier synthetic tests on Windows Node
+        shell: pwsh
+        run: node --test tests/test_private_broker_csv_offline_browser.mjs

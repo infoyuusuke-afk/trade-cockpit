@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; form-action 'none'; img-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'">
+<title>楽天証券CSV形式診断｜オフライン受入</title>
+<style>
+:root { color-scheme: light; font-family: 'Yu Gothic', Meiryo, sans-serif; }
+body { background:#eef2f7; color:#172334; margin:0; padding:22px; }
+main { background:white; border:1px solid #d6dfeb; border-radius:14px; max-width:690px; margin:25px auto; padding:26px; box-shadow:0 10px 28px #15273a12; }
+h1 { font-size:22px; margin:0 0 12px; }
+p { line-height:1.7; }
+.note { font-size:13px; color:#52627a; }
+.picker { display:block; background:#eef6ff; border:1px solid #bad5ed; padding:18px; border-radius:9px; margin:20px 0; }
+input[type=file] { width:100%; max-width:100%; font-size:15px; }
+#status { padding:12px; font-weight:700; background:#eef2f7; border-radius:8px; }
+#status.blocked { background:#fff0ed; color:#9e281e; }
+#status.candidate { background:#e9f7ec; color:#16552c; }
+dl { display:grid; grid-template-columns:140px 1fr; row-gap:12px; margin-top:17px; }
+dt { color:#46566b; } dd { margin:0; font-weight:600; overflow-wrap:anywhere; }
+.warning { background:#fff7dd; padding:12px; border-radius:8px; font-size:13px; }
+@media(max-width:520px) { main { padding:16px; margin:0; } dl { grid-template-columns:100px 1fr; } }
+</style>
+</head>
+<body>
+<main>
+<h1>楽天証券 CSV形式診断（受入専用）</h1>
+<p>オフライン・読み取り専用。<strong>同梱の合成CSVだけ</strong>を選んでください。実口座データは使わないでください。</p>
+<label class="picker">検証する合成CSVを選択<br><br><input id="csv-file" type="file" accept=".csv,text/csv"></label>
+<div id="status" role="status" aria-live="polite">Status: FILE_NOT_SELECTED</div>
+<dl>
+<dt>Family</dt><dd id="family">—</dd>
+<dt>Encoding</dt><dd id="encoding">—</dd>
+<dt>Columns</dt><dd id="columns">—</dd>
+</dl>
+<p class="warning">CANDIDATE_ONLYはヘッダー形式の候補です。実約定・証券会社真正性・売買期待値の検証や発注を意味しません。</p>
+<p class="note">この画面はPC内のファイルを読み取り、ヘッダーだけを判定します。通信・送信・保存・注文の機能はありません。選択したファイル名、フルパス、取引行は画面に表示しません。セキュリティ設定の変更は不要です。</p>
+</main>
+<script>
+'use strict';
+(function(){
+  const MAX_BYTES = 8 * 1024 * 1024;
+  const MAX_HEADER_CHARS = 131072;
+  const REQUIRED = ['約定日','銘柄コード','売買区分','数量［株］','単価［円］'];
+  const INQUIRY = ['約定時刻','約定数量','約定単価','コード'];
+  const blocked = () => ({status:'BLOCKED',family:'UNKNOWN',encoding:'UNKNOWN',columns:0});
+  function firstCsvRecord(text) {
+    if (!text || text.length > MAX_BYTES) return null;
+    const out=[]; let field='', quoted=false, quoteClosed=false;
+    let i=0;
+    for (;i<text.length && i<MAX_HEADER_CHARS;i++) {
+      const c=text[i];
+      if (quoted) {
+        if (c==='"') {
+          if (text[i+1]==='"') {field+='"';i++;}
+          else {quoted=false;quoteClosed=true;}
+        } else {field+=c;}
+      } else if (c===',') {
+        out.push(field);field='';quoteClosed=false;
+      } else if (c==='\n'||c==='\r') {
+        if (c==='\r' && text[i+1]==='\n') i++;
+        out.push(field);return out;
+      } else if (c==='"' && field==='' && !quoteClosed) {
+        quoted=true;
+      } else if (quoteClosed || c==='"') {
+        return null;
+      } else {field+=c;}
+      if (out.length >= 1000) return null;
+    }
+    if (quoted || i>=MAX_HEADER_CHARS) return null;
+    out.push(field);return out;
+  }
+  function classify(bytes, filename) {
+    if (typeof filename!=='string'|| !/\.csv$/i.test(filename) ||
+        !bytes || bytes.byteLength===0 || bytes.byteLength>MAX_BYTES) return blocked();
+    let fields=null,encName='UNKNOWN';
+    for (const [encoding,label] of [['utf-8','UTF8'],['shift_jis','CP932']]) {
+      try {
+        const decoded=new TextDecoder(encoding,{fatal:true}).decode(bytes);
+        const parsed=firstCsvRecord(decoded);
+        if (parsed) {fields=parsed;encName=label;break;}
+      } catch (_) { /* malformed candidate encoding: try the next one */ }
+    }
+    if (!fields) return blocked();
+    const names=fields.map(x=>x.replace(/^\uFEFF/,''));
+    const unique=new Set(names).size===names.length;
+    const legacy=REQUIRED.every(name=>names.includes(name));
+    const inquiry=INQUIRY.some(name=>names.includes(name));
+    const family=legacy&&inquiry?'AMBIGUOUS':legacy?'LEGACY_HISTORY_CANDIDATE':inquiry?'EXECUTION_INQUIRY_CANDIDATE':'UNKNOWN';
+    return {status:family==='LEGACY_HISTORY_CANDIDATE'&&unique?'CANDIDATE_ONLY':'BLOCKED',family,encoding:encName,columns:names.length};
+  }
+  // This pure, no-I/O classifier is also covered by synthetic-data unit tests.
+  if (typeof window!=='undefined') window.CsvHeaderClassifier={classify};
+  if (typeof document==='undefined') return;
+  const input=document.getElementById('csv-file');
+  const status=document.getElementById('status');
+  const family=document.getElementById('family');
+  const encoding=document.getElementById('encoding');
+  const columns=document.getElementById('columns');
+  function show(r) {
+    status.textContent='Status: '+r.status;
+    status.className=r.status==='BLOCKED'?'blocked':r.status==='CANDIDATE_ONLY'?'candidate':'';
+    family.textContent=r.family;
+    encoding.textContent=r.encoding;
+    columns.textContent=String(r.columns);
+  }
+  input.addEventListener('change',async()=>{
+    show(blocked());
+    if (input.files.length!==1) return;
+    const selected=input.files[0];
+    if (!/\.csv$/i.test(selected.name)||selected.size===0||selected.size>MAX_BYTES) return;
+    try {show(classify(await selected.arrayBuffer(),selected.name));}
+    catch (_) {show(blocked());}
+  });
+})();
+</script>
+</body>
+</html>
