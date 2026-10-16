@@ -30,6 +30,8 @@ class OwnerDesktopReadOnlyFixture(unittest.TestCase):
         (self.repo / "downloads").mkdir(parents=True)
         self.stop = self.repo / "downloads" / "STOP_AI_COCKPIT_V10.ps1"
         shutil.copy2(STOP, self.stop)
+        shutil.copy2(SOURCE_ROOT / "downloads" / "RUN_AI_COCKPIT_V10.ps1",
+                     self.repo / "downloads" / "RUN_AI_COCKPIT_V10.ps1")
         self.desktop = self.root / "desktop"
         self.desktop.mkdir()
         self.start = self.desktop / "AIコクピット_起動.cmd"
@@ -37,7 +39,8 @@ class OwnerDesktopReadOnlyFixture(unittest.TestCase):
         self.write_cmd(self.start, self.repo / "downloads" / "RUN_AI_COCKPIT_V10.ps1")
         self.write_cmd(self.stopcmd, self.stop)
         self.git("init", "-b", "ci-pin")
-        self.git("add", "downloads/STOP_AI_COCKPIT_V10.ps1")
+        self.git("add", "downloads/STOP_AI_COCKPIT_V10.ps1",
+                 "downloads/RUN_AI_COCKPIT_V10.ps1")
         self.git("-c", "user.name=P0-CI", "-c", "user.email=ci@example.invalid",
                  "commit", "-m", "synthetic fixture only")
         self.sha = self.git("rev-parse", "HEAD").stdout.strip()
@@ -83,6 +86,7 @@ class OwnerDesktopReadOnlyFixture(unittest.TestCase):
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         for token in (
             "V10_PIN=VERIFIED", "V10_STOP_SOURCE=PRESENT",
+            "V10_START_SOURCE=PRESENT",
             "DESKTOP_START_ROUTE=EXPECTED", "DESKTOP_STOP_ROUTE=EXPECTED",
             "V10_OWNER_DESKTOP_INVENTORY=ROUTES_READONLY_VERIFIED",
             "OWNER_LIVE_RUNTIME_VERIFIED=0", "REAL_SUBMIT_ALLOWED=0",
@@ -103,6 +107,10 @@ class OwnerDesktopReadOnlyFixture(unittest.TestCase):
     def test_missing_stop_refused(self):
         self.stopcmd.unlink()
         self.assert_blocked(self.audit(), "DESKTOP_STOP_ROUTE=MISSING")
+
+    def test_missing_start_script_does_not_pass_even_with_correct_cmd(self):
+        (self.repo / "downloads" / "RUN_AI_COCKPIT_V10.ps1").unlink()
+        self.assert_blocked(self.audit(), "V10_PIN=BLOCKED")
 
     def test_missing_start_refused(self):
         self.start.unlink()
