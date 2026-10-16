@@ -2,6 +2,7 @@
 
 All paths below RUNNER_TEMP; no connection to a real Desktop, Excel or MS2.
 """
+import base64
 import os
 import shutil
 import subprocess
@@ -76,8 +77,12 @@ class OwnerDesktopReadOnlyFixture(unittest.TestCase):
             f"$s.WorkingDirectory={p(workdir or self.repo / 'downloads')}; "
             "$s.Save()"
         )
+        # PowerShell 5.1's -Command path depends on the Windows console
+        # encoding; Japanese shortcut names must use UTF-16LE transport.
+        encoded = base64.b64encode(script.encode("utf-16-le")).decode("ascii")
         result = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+            ["powershell.exe", "-NoProfile", "-NonInteractive",
+             "-EncodedCommand", encoded],
             capture_output=True, text=True, errors="replace", timeout=15
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
