@@ -23,7 +23,8 @@ class AcceptanceTests(unittest.TestCase):
              patch.object(a.sys, 'frozen', True, create=True), \
              patch.dict(os.environ, {'LOCALAPPDATA': folder}):
             base = a.private_root()
-            self.assertEqual(base, Path(folder).resolve() / 'AI_Cockpit_MS2_Private')
+            # Windows temp aliases can use either 8.3 or expanded paths.
+            self.assertEqual(base.resolve(), (Path(folder) / 'AI_Cockpit_MS2_Private').resolve())
             a.save_evidence({'state': 'BLOCKED'})
             evidence = list((base / 'data/private/ms2_offline_acceptance').glob('*.json'))
             self.assertEqual(len(evidence), 1)
