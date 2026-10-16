@@ -13,8 +13,8 @@ class PreflightSafety(unittest.TestCase):
         self.assertIn("Test-OwnedPidIdentity $field $procId",self.stop)
         self.assertIn('$brainStopVerified = $true',self.stop)
         self.assertIn('BRAIN observer PID',self.stop)
-        self.assertIn('if (-not $brainStopVerified -or -not $workerStopVerified)',self.stop)
-        self.assertLess(self.stop.index('if (-not $brainStopVerified -or -not $workerStopVerified)'),self.stop.index('Remove-Item -LiteralPath $StateFile -Force'))
+        self.assertIn('if (-not $brainStopVerified -or -not $workerStopVerified -or -not $script:bridgeStopVerified)',self.stop)
+        self.assertLess(self.stop.index('if (-not $brainStopVerified -or -not $workerStopVerified -or -not $script:bridgeStopVerified)'),self.stop.index('Remove-Item -LiteralPath $StateFile -Force'))
     def test_legacy_missing_brain_pid_refused_before_any_controller_stop(self):
         early=self.stop.index('SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_PID_UNRECORDED')
         controller=self.stop.index('# Stop the supervising RUN/Controller host FIRST.')
@@ -22,6 +22,16 @@ class PreflightSafety(unittest.TestCase):
         self.assertIn('SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_IDENTITY_UNVERIFIED',self.stop)
         self.assertIn('[int]::TryParse([string]$brainIdentity.Value',self.stop)
         self.assertIn('Test-ExactBrainHandle $beforeBrain $state',self.stop)
+
+    def test_bridge_stop_only_from_verified_parent_and_pinned_handle(self):
+        self.assertIn('Get-Process -Id $ExpectedParentId -ErrorAction Stop',self.stop)
+        self.assertIn('Get-Process -Id $owner -ErrorAction Stop',self.stop)
+        self.assertIn('[int]$childCim.ParentProcessId -ne $ExpectedParentId',self.stop)
+        self.assertIn('$child.Kill()',self.stop)
+        self.assertIn('$child.WaitForExit(5000)',self.stop)
+        self.assertIn('$script:bridgeStopVerified = $false',self.stop)
+        self.assertLess(self.stop.index('if (-not $brainStopVerified -or -not $workerStopVerified'),
+                        self.stop.index('Remove-Item -LiteralPath $StateFile -Force'))
 
     def test_preflight_checks_worker_ownership_before_controller_teardown(self):
         first=self.stop.index('# P0-25 verify every recorded worker BEFORE terminating the supervisor.')
