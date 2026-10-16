@@ -15,6 +15,35 @@ class PreflightSafety(unittest.TestCase):
         self.assertIn('BRAIN observer PID',self.stop)
         self.assertIn('if (-not $brainStopVerified)',self.stop)
         self.assertLess(self.stop.index('if (-not $brainStopVerified)'),self.stop.index('Remove-Item -LiteralPath $StateFile -Force'))
+    def test_final_state_is_reread_after_controller_stops(self):
+        # Latest BRAIN PID may change while Controller is still supervising.
+        controller_stop=self.stop.index("Stop-OwnedJobBridge 28580")
+        reread=self.stop.index("$latest = [IO.File]::ReadAllText($StateFile")
+        self.assertLess(reread, controller_stop)
+        self.assertIn("[int]$latest.controller_pid -ne [int]$state.controller_pid",self.stop)
+        self.assertIn("[string]$latest.session_id -cne [string]$state.session_id",self.stop)
+        self.assertIn("[int]$latest.brain_observer_pid -le 0",self.stop)
+        self.assertIn('Write-Host "Latest BRAIN PID/state unverified after Controller exit; retained state."',self.stop)
+
+    def test_brain_process_handle_is_pinned_for_kill(self):
+        section=self.stop.split('if ($field -eq "brain_observer_pid") {',1)[1].split('    if ($null -ne $p -and',1)[0]
+        self.assertIn("Test-ExactBrainHandle $p $state",section)
+        self.assertIn("$p.Kill()",section)
+        self.assertIn("$p.WaitForExit(5000)",section)
+        self.assertNotIn("Stop-Process -Id $procId",section)
+        self.assertIn("$handle = $Proc.Handle",self.stop)
+        self.assertIn("([datetime]$cim.CreationDate).ToUniversalTime()",self.stop)
+        for required in ("scripts\\ai_brain_observer.py", "live_ms2.json", "ai_brain_observer_status_v1.json"):
+            self.assertIn(required,self.stop)
+        self.assertIn("$brainStopVerified = $false",section)
+
+    def test_corrupt_state_and_deletion_error_cannot_report_success(self):
+        self.assertIn("ConvertFrom-Json -ErrorAction Stop",self.stop)
+        self.assertIn("Controller state missing or invalid",self.stop)
+        self.assertIn("Remove-Item -LiteralPath $StateFile -Force -ErrorAction Stop",self.stop)
+        self.assertIn("STATE_FILE_STILL_PRESENT",self.stop)
+        self.assertIn("V10 state removal failed; cannot report Safe Stop success.",self.stop)
+
     def test_no_generic_process_kill(self):
         for text in ("Stop-Process -Name","taskkill","Get-Process -Name python"):
             self.assertNotIn(text,self.stop)
