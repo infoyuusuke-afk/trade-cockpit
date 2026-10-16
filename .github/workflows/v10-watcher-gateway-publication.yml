@@ -7,6 +7,7 @@ on:
       - "v10_publication_status.js"
       - "tests/test_v10_watcher_gateway_publisher.py"
       - "tests/test_v10_publication_status.cjs"
+      - "tests/test_v10_publication_http.ps1"
       - ".github/workflows/v10-watcher-gateway-publication.yml"
 jobs:
   windows-ps51:
@@ -25,6 +26,10 @@ jobs:
           & ".\downloads\AI_COCKPIT_GATEWAY_V10.ps1" -RepoRoot (Get-Location).Path -PublicationSelfTest
       - run: python -m unittest discover -s tests -p test_v10_watcher_gateway_publisher.py -v
       - run: node --test tests/test_v10_publication_status.cjs
+      - name: End-to-end HTTP health and static asset smoke (synthetic)
+        shell: powershell
+        run: |
+          & ".\tests\test_v10_publication_http.ps1"
   ubuntu:
     runs-on: ubuntu-latest
     steps:
