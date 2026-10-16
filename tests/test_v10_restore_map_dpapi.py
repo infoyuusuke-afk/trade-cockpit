@@ -35,7 +35,7 @@ class PrivateMapFixture(unittest.TestCase):
         self.desktop2=self.root/"shortcut-desktop"
         self.desktop1.mkdir()
         self.desktop2.mkdir()
-        self.snapshot=self.root/"20261017_044407_abcdefgh1234"
+        self.snapshot=self.root/"20261017_044407_abcdef123456"
         self.snapshot.mkdir()
         self.files={
             "starter/START_AI_COCKPIT.ps1":(self.state/"START_AI_COCKPIT.ps1",b"# legacy starter"),
