@@ -1,0 +1,13 @@
+# P0 V10 independent BRAIN safe stop and branch-pinned read-only preflight
+
+P0-14 fixes a real independent BRAIN cleanup omission: the owner-facing V10 safe-stop script did not include brain_observer_pid even though the Controller created that child in P0-13. Safe Stop now checks its exact recorded PID and Python script identity before attempting to terminate it. No general python.exe or Excel name matching is allowed.
+
+New script: downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1. It only reads Git branch and full pinned SHA, Git tracked file cleanliness, the STOP script BRAIN registration, local V10 Controller state, the private BRAIN status file, and 127.0.0.1:28581/health. It never installs, launches or kills workers, modifies any local or git file, reads broker account data, or sends private rows outside the machine.
+
+Usage is for a later separately authorized OWNER-PC deployment, not now. Example after a reviewed branch/SHA is actually installed:
+
+powershell.exe -NoProfile -File "C:\AI_Cockpit_Current\trade-cockpit\downloads\AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1" -RepoRoot "C:\AI_Cockpit_Current\trade-cockpit" -ExpectedBranch "APPROVED_BRANCH" -ExpectedSha "FULL_40_CHARACTER_APPROVED_SHA"
+
+No approved install branch or full SHA for OWNER PC has been authorized in this step. DO NOT run this against active market Excel until integration and rollback are separately approved.
+
+Results: BLOCKED exit 2 with nonsensitive blocker codes, or OBSERVATION_ONLY exit 0 when fresh and owned BRAIN process status confirms an independent observer. Never establishes authenticated exchange ticks, strategy expectancy, safe trade execution, profitability, or cross-source join. Real submit remains prohibited. Windows CI checks source syntax, synthetic bad timestamp/false authentication/wrong SHA, and wrong-SHA refusal against an ephemeral Git checkout. None of these are actual OWNER Windows/MS2 live acceptance. No PRs were merged and no PC deployment or rollback was performed.
