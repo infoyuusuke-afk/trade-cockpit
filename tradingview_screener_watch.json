@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-16 16:33:14 JST",
+  "updated_at": "2026-10-16 19:09:02 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -392,7 +392,7 @@
           "vwap": 3117.3333333333335,
           "high": 3240,
           "low": 2927,
-          "market_cap": 283587482000,
+          "market_cap": 282358056500,
           "sector": "Technology Services",
           "already_watched": true
         },
@@ -781,7 +781,7 @@
           "vwap": 3117.3333333333335,
           "high": 3240,
           "low": 2927,
-          "market_cap": 283587482000,
+          "market_cap": 282358056500,
           "sector": "Technology Services",
           "already_watched": true
         },
@@ -2779,7 +2779,7 @@
       "vwap": 3117.3333333333335,
       "high": 3240,
       "low": 2927,
-      "market_cap": 283587482000,
+      "market_cap": 282358056500,
       "sector": "Technology Services",
       "already_watched": true
     },
@@ -3179,7 +3179,7 @@
       "vwap": 200.93333333333328,
       "high": 203.2,
       "low": 199.4,
-      "market_cap": 46789322422.8,
+      "market_cap": 47305036397.4,
       "sector": "Process Industries",
       "already_watched": false
     },
