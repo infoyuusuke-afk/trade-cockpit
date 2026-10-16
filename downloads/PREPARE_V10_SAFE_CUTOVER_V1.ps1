@@ -56,7 +56,7 @@ function Get-Candidates([string]$Repo,[string]$State,[string[]]$Desktops) {
    })
   }
  }
- return ,$items.ToArray()
+ return $items.ToArray()
 }
 
 if ($SelfTest) {
