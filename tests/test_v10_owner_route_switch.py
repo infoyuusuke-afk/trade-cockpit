@@ -56,7 +56,10 @@ class SafeRouteSwitch(unittest.TestCase):
 
     def make_link(self,path):
         q=lambda x:"'"+str(x).replace("'","''")+"'"
-        ps=f"$s=New-Object -ComObject WScript.Shell; $l=$s.CreateShortcut({q(path)}); $l.TargetPath='C:\\Windows\\System32\\cmd.exe'; $l.Arguments='/k echo legacy'; $l.Save()"
+        ps=(f"$s=New-Object -ComObject WScript.Shell; $l=$s.CreateShortcut({q(path)}); "
+            f"$l.TargetPath='C:\\Windows\\System32\\cmd.exe'; "
+            f"$l.Arguments='/k \"\"{self.state}\\AI_COCKPIT_START_DEBUG.cmd\"\"'; "
+            f"$l.WorkingDirectory={q(self.state)}; $l.Save()")
         encoded=base64.b64encode(ps.encode("utf-16-le")).decode("ascii")
         p=subprocess.run(["powershell.exe","-NoProfile","-NonInteractive",
                           "-EncodedCommand",encoded],
@@ -124,6 +127,24 @@ class SafeRouteSwitch(unittest.TestCase):
         self.assertNotEqual(p.returncode,0,p.stdout+p.stderr)
         self.assertIn("V10_ROUTE_BLOCK_REASON=COMMIT_NOT_PRESENT",p.stdout)
         self.assertEqual(self.link.read_bytes(),self.before)
+        self.assert_not_changed()
+
+    def test_changed_legacy_target_refuses_before_clone(self):
+        self.make_link(self.link)
+        q=lambda x:"'"+str(x).replace("'","''")+"'"
+        ps=(f"$s=New-Object -ComObject WScript.Shell; "
+            f"$l=$s.CreateShortcut({q(self.link)}); "
+            "$l.Arguments='/k echo unreviewed'; $l.Save()")
+        encoded=base64.b64encode(ps.encode("utf-16-le")).decode("ascii")
+        subprocess.run(["powershell.exe","-NoProfile","-NonInteractive",
+                        "-EncodedCommand",encoded],
+                       capture_output=True,text=True,timeout=20,check=True)
+        changed=self.link.read_bytes()
+        p=self.run_switch()
+        self.assertNotEqual(p.returncode,0,p.stdout+p.stderr)
+        self.assertIn("V10_ROUTE_BLOCK_REASON=LEGACY_SHORTCUT_CHANGED",p.stdout)
+        self.assertEqual(self.link.read_bytes(),changed)
+        self.assertFalse(list(self.state.glob("V10_release_*")))
         self.assert_not_changed()
 
     def test_missing_old_shortcut_refuses_without_clone(self):
