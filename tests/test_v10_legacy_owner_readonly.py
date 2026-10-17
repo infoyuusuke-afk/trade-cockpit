@@ -330,7 +330,8 @@ def _delivery(self):
                           "[Net.ServicePointManager]::SecurityProtocol=[Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; "
                           f"$f=Join-Path $env:TEMP ('v10-entry-check-'+[guid]::NewGuid().ToString('N')+'.ps1'); "
                           f"Invoke-WebRequest -UseBasicParsing -Uri '{url}' -OutFile $f; "
-                          "(Get-FileHash -Algorithm SHA256 -LiteralPath $f).Hash; Remove-Item -LiteralPath $f"],
+                          "$s=[Security.Cryptography.SHA256]::Create(); ([BitConverter]::ToString($s.ComputeHash([IO.File]::ReadAllBytes($f)))).Replace('-',''); "
+                          "Remove-Item -LiteralPath $f"],
                          capture_output=True, text=True, timeout=120)
     self.assertEqual(out.stdout.strip(), sha, out.stderr[-1000:])
 

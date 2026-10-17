@@ -30,7 +30,8 @@ $d=Join-Path $env:TEMP ('v10-owner-entry-'+[guid]::NewGuid().ToString('N')); [vo
 $f=Join-Path $d 'VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1'
 [Net.ServicePointManager]::SecurityProtocol=[Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/$c/downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1" -OutFile $f
-if ((Get-FileHash -Algorithm SHA256 -LiteralPath $f).Hash -cne $h) { 'ENTRY_RESULT=BLOCKED_ENTRY_HASH_MISMATCH' } else { powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $f -PinnedCommit 81a68023889952fa5d4bf7ad383c9ee581bdc991 }
+$s=[Security.Cryptography.SHA256]::Create(); $got=([BitConverter]::ToString($s.ComputeHash([IO.File]::ReadAllBytes($f)))).Replace('-',''); $s.Dispose()
+if ($got -cne $h) { 'ENTRY_RESULT=BLOCKED_ENTRY_HASH_MISMATCH' } else { powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $f -PinnedCommit 81a68023889952fa5d4bf7ad383c9ee581bdc991 }
 Remove-Item -LiteralPath $d -Recurse -Force
 ```
 
