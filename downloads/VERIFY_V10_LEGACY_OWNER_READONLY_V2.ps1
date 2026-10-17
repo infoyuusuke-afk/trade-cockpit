@@ -166,7 +166,7 @@ function Test-EntryAlive($Entry){
  try{
   if($p.HasExited){return $false}
   return ([Math]::Abs($p.StartTime.ToUniversalTime().Ticks-[long]$Entry.created_utc_ticks) -le [TimeSpan]::TicksPerSecond*2)
- }catch{return $true}
+ }catch{return $false}
 }
 function Get-ControllerHost($Entry){
  if($null -eq $Entry){return "NOT_RUNNING"}
