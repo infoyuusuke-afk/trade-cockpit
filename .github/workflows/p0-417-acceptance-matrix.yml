@@ -1,0 +1,66 @@
+name: P0-417 Explicit Acceptance Matrix
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/p0-417-acceptance-matrix.yml"
+      - "docs/P0_417_ACCEPTANCE_MATRIX.md"
+      - "tests/test_p0_417_matrix_contract.py"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  v10-current:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: V10 current Collector source and isolated self-test
+        shell: powershell
+        run: python -m unittest discover -s tests -p test_v10_collector_workbook_contract.py -v
+  legacy-v8-historic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: current
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: b81b8877b12a33368e91e5e156a2fc7ac4529349
+          path: historical
+          persist-credentials: false
+      - name: Matrix responsibility and fail-closed contract
+        run: python -m unittest discover -s current/tests -p test_p0_417_matrix_contract.py -v
+      - name: Original V8 structural tests against pinned historic files
+        run: python current/scripts/ci_historical_v8_v9.py --history historical --mode v8
+  legacy-v9-historic:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: current
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: b81b8877b12a33368e91e5e156a2fc7ac4529349
+          path: historical
+          persist-credentials: false
+      - name: Historic V9 Collector source and synthetic test
+        shell: powershell
+        run: python current/scripts/ci_historical_v8_v9.py --history historical --mode collector
+      - name: Historic V9 diagnostics source and synthetic tests
+        shell: powershell
+        run: python current/scripts/ci_historical_v8_v9.py --history historical --mode v9-diagnostics
+  v2-readonly-synthetic:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: V2 differential safety contract
+        shell: powershell
+        run: python -m unittest discover -s tests -p test_v10_metadata_v2_safety_contract.py -v
+      - name: V2 read-only three-snapshot synthetic checks
+        shell: powershell
+        run: python -m unittest discover -s tests -p test_v10_owner_state_metadata_v2.py -v
