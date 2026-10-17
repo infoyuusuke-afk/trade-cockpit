@@ -10,6 +10,8 @@ import re
 import subprocess
 import sys
 
+from ci_failure_regression_guard import report as report_regressions
+
 
 def classify(name):
     parts = name.split(".")
@@ -61,6 +63,7 @@ def main(argv=None):
             print("P0_417_MISSING_FILE=REDACTED COUNT=" + str(count), flush=True)
     summary = re.search(r"Ran\s+(\d+)\s+tests?\s+in\s+[\d.]+s", result.stdout)
     print("P0_417_EXECUTED=" + (summary.group(1) if summary else "UNKNOWN"), flush=True)
+    report_regressions(result.stdout)
     print("P0_417_ORIGINAL_EXIT_CODE=" + str(result.returncode), flush=True)
     print("P0_417_RESULT=" + ("PASS" if result.returncode == 0 else "FAIL"), flush=True)
     return result.returncode
