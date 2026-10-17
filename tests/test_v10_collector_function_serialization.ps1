@@ -23,6 +23,10 @@ foreach ($name in $names) {
  $definition=[scriptblock]::Create($node.Extent.Text)
  . $definition
  $fromDisk=$node.Body.GetScriptBlock().ToString()
+ if(@($node.Parameters).Count -gt 0) {
+  $argsText=@($node.Parameters | ForEach-Object { $_.Extent.Text }) -join ", "
+  $fromDisk="param("+$argsText+")`r`n"+$fromDisk
+ }
  $fromRuntime=(Get-Item ("function:" + $name) -ErrorAction Stop).ScriptBlock.ToString()
  $astText+="function "+$name+" {`r`n"+$fromDisk+"`r`n}`r`n"
  $runtimeText+="function "+$name+" {`r`n"+$fromRuntime+"`r`n}`r`n"
