@@ -51,7 +51,7 @@ class WindowsAttribution(tsl.LegacySessionSafeStop):
         self.assertNotIn(str(self.repo), out.stdout)
         self.assertNotIn(str(self.runtime), out.stdout)
         for l in out.stdout.splitlines():
-            self.assertRegex(l, r"^[A-Z0-9_]+=[A-Z0-9_]+$")
+            self.assertRegex(l, r"^[A-Z0-9_]+=[A-Za-z0-9_]+$")
         for tag in ("PROCESSES_STOPPED=0", "EXCEL_ACTION=NONE",
                     "STOP_ALLOWED=false", "CUTOVER_ELIGIBLE=false",
                     "REAL_SUBMIT_ALLOWED=false", "STATE_MODIFIED=false"):
