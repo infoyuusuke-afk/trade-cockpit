@@ -202,6 +202,107 @@ class ShadowHandoffAcceptance(unittest.TestCase):
         self.assertEqual(ticket["side"], "SELL")
         self.assertEqual(self.evaluate(ticket, pending, self.decide(pending))["state"], "SIMULATED_SHADOW_READY")
 
+    def synthetic_execution_inputs(self):
+        start = self.now
+        now = self.now + timedelta(seconds=2)
+        policy = {
+            "policy_version": "execution-safety-0.1.0",
+            "max_ticket_age_sec": 15,
+            "max_price_drift_bps": 50,
+            "authorization_ttl_sec": 3600,
+            "master_kill_ttl_sec": 3600,
+            "daily_stop_yen": 3000,
+            "max_open_positions": 1,
+        }
+        risk = {
+            "decision": "PASS", "merge_hash": "m" * 64,
+            "allowed_qty": 100, "symbol": "285A", "side": "BUY",
+            "policy_version": "risk-gate-0.1.0", "horizon": "day",
+        }
+        snap = {
+            "simulation_only": True,
+            "kill_switch": {
+                "status": "ARMED", "armed_at": start.isoformat(),
+                "expires_at": (start + timedelta(seconds=3600)).isoformat(),
+            },
+            "human_session_authorized": True,
+            "authorization_issued_at": start.isoformat(),
+            "authorization_expires_at": (start + timedelta(seconds=3600)).isoformat(),
+            "authorization_session_id": "MOCK_NOT_AUTHENTICATED",
+            "data_freshness": "OK",
+            "market_session_allowed": True,
+            "symbol_tradeable": True,
+            "broker_link_health": "OK",
+            "conflict_state": "CANDIDATE_READY",
+            "expected_position_qty": 0,
+            "broker_position_qty": 0,
+            "buying_power_check": True,
+            "short_availability_check": True,
+            "realized_pnl_today_yen": 0.0,
+            "open_positions_count": 0,
+            "known_intents": [],
+            "pending_orders": [],
+            "price_tick_valid": True,
+            "qty_lot_valid": True,
+            "quote_price": 2000.0,
+            "quote_asof": (start + timedelta(seconds=1)).isoformat(),
+            "broker_snapshot_fingerprint": "SYNTHETIC_FIXTURE_NOT_A_REAL_BROKER",
+        }
+        return {
+            "now": now, "quote_price": 2000.0,
+            "quote_asof": (start + timedelta(seconds=1)).isoformat(),
+            "risk_decision": risk,
+            "simulated_broker_snapshot": snap,
+            "execution_policy": policy,
+            "known_shadow_orders": [],
+        }
+
+    def test_existing_permission_and_shadow_engine_are_really_called(self):
+        ticket, pending = self.create()
+        decision = self.decide(pending)
+        args = self.synthetic_execution_inputs()
+        out = m.dispatch_synthetic_shadow_order(ticket, pending, decision, **args)
+        self.assertEqual(out["state"], "SIMULATED_SHADOW_ORDER_NEW", out)
+        self.assertEqual(out["shadow_status"], "NEW")
+        self.assertEqual(len(out["shadow_order_id"]), 64)
+        self.assertFalse(out["real_submit_allowed"])
+        self.assertNotIn("broker_order_id", out)
+
+    def test_core_shadow_duplicate_guard_refuses_second_order(self):
+        ticket, pending = self.create()
+        decision = self.decide(pending)
+        args = self.synthetic_execution_inputs()
+        first = m.dispatch_synthetic_shadow_order(ticket, pending, decision, **args)
+        self.assertEqual(first["state"], "SIMULATED_SHADOW_ORDER_NEW", first)
+        args["known_shadow_orders"] = [{
+            "shadow_order_id": first["shadow_order_id"], "real_submit_allowed": False,
+        }]
+        second = m.dispatch_synthetic_shadow_order(ticket, pending, decision, **args)
+        self.assertEqual(second["state"], "BLOCKED")
+        self.assertIn("DUPLICATE_IGNORED", second["reason"])
+
+    def test_core_permission_master_kill_disarmed_is_blocked(self):
+        ticket, pending = self.create()
+        decision = self.decide(pending)
+        args = self.synthetic_execution_inputs()
+        args["simulated_broker_snapshot"]["kill_switch"]["status"] = "DISARMED"
+        out = m.dispatch_synthetic_shadow_order(ticket, pending, decision, **args)
+        self.assertEqual(out["state"], "BLOCKED")
+        self.assertIn("BLOCK_MASTER_KILL_DISARMED", out.get("block_reasons", []))
+
+    def test_core_requires_simulated_broker_snapshot_and_risk_lineage(self):
+        ticket, pending = self.create()
+        decision = self.decide(pending)
+        args = self.synthetic_execution_inputs()
+        args["simulated_broker_snapshot"]["simulation_only"] = False
+        out = m.dispatch_synthetic_shadow_order(ticket, pending, decision, **args)
+        self.assertEqual(out["state"], "BLOCKED")
+        args = self.synthetic_execution_inputs()
+        args["risk_decision"]["allowed_qty"] = 200
+        out = m.dispatch_synthetic_shadow_order(ticket, pending, decision, **args)
+        self.assertEqual(out["state"], "BLOCKED")
+        self.assertIn("BLOCK_RISK_LINEAGE_MISMATCH", out.get("block_reasons", []))
+
     def test_owner_label_is_not_device_authentication(self):
         source = inspect.getsource(m)
         self.assertIn("NOT identity authentication", source)
