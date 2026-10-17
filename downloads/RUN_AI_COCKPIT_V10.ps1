@@ -1,13 +1,15 @@
 param(
     [string]$RepoRoot = "",
-    [string]$Branch = "cursor/p0-stale-price-failclosed-d483",
+    [string]$Branch = "",
     [string]$ExpectedSha = "",
     [switch]$SkipGitUpdate,
     [string]$RuntimeDirOverride = "",
     [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
     [switch]$DeployRuntimeOnly,
     [switch]$AcceptRuntimeCollector,
-    [switch]$RuntimeAcceptSelfTest
+    [switch]$RuntimeAcceptSelfTest,
+    [switch]$VerifySourceOnly,
+    [string]$ApprovalFile = ""
 )
 
 # V10 canonical entry point: verify the current checkout, deploy the
@@ -706,9 +708,50 @@ function Invoke-RuntimeAcceptSelfTest {
     }
 }
 
+if ($VerifySourceOnly -and $RuntimeAcceptSelfTest) {
+    Write-Host "SOURCE_ONLY_FORBIDS_RUNTIME_ACTIONS" -ForegroundColor Red
+    exit 2
+}
 if ($RuntimeAcceptSelfTest) {
     Invoke-RuntimeAcceptSelfTest
     exit 0
+}
+
+# Local source pin: supplied deliberately by an approved installer/operator.
+# The file is never generated, refreshed or auto-selected by this script.
+# A SHA pin prevents accidentally executing an unexpected Git checkout; it
+# is not proof that the external approval file was cryptographically signed.
+if (-not [string]::IsNullOrWhiteSpace($ApprovalFile)) {
+    if (-not [string]::IsNullOrWhiteSpace($Branch) -or -not [string]::IsNullOrWhiteSpace($ExpectedSha)) {
+        Write-Host "APPROVAL_FILE_DISALLOWS_OVERRIDE" -ForegroundColor Red
+        exit 2
+    }
+    try {
+        if (-not (Test-Path -LiteralPath $ApprovalFile -PathType Leaf)) {
+            throw "V10_APPROVED_SOURCE_FILE_MISSING"
+        }
+        $approval = ([IO.File]::ReadAllText($ApprovalFile, [Text.Encoding]::UTF8) | ConvertFrom-Json -ErrorAction Stop)
+        if ([string]$approval.schema -cne "v10_approved_source_v1") {
+            throw "V10_APPROVED_SOURCE_SCHEMA_INVALID"
+        }
+        if ($approval.PSObject.Properties.Name -notcontains "real_submit_allowed" -or
+            $approval.real_submit_allowed -isnot [bool] -or $approval.real_submit_allowed) {
+            throw "V10_APPROVED_SOURCE_REAL_SUBMIT_MUST_BE_FALSE"
+        }
+        if ($approval.PSObject.Properties.Name -notcontains "branch" -or
+            $approval.PSObject.Properties.Name -notcontains "commit_sha") {
+            throw "V10_APPROVED_SOURCE_IDENTITY_MISSING"
+        }
+        $Branch = [string]$approval.branch
+        $ExpectedSha = [string]$approval.commit_sha
+    } catch {
+        Write-Host "V10_APPROVED_SOURCE=BLOCKED" -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Yellow
+        Write-Host "RUNTIME_FILES_TOUCHED=0"
+        Write-Host "CONTROLLER_STARTED=0"
+        Write-Host "REAL_SUBMIT_ALLOWED=0"
+        exit 2
+    }
 }
 
 $repo = Resolve-RepoRoot
@@ -726,6 +769,28 @@ if (-not [string]::IsNullOrWhiteSpace($ExpectedSha)) {
 }
 
 try {
+    # A bounded read-only Git identity gate for future Owner Windows acceptance.
+    # Never permit incompatible switches to make a "verify" attempt deploy.
+    if ($VerifySourceOnly -and ($DeployRuntimeOnly -or $AcceptRuntimeCollector -or $RuntimeAcceptSelfTest)) {
+        throw "SOURCE_ONLY_FORBIDS_RUNTIME_ACTIONS"
+    }
+    if ($VerifySourceOnly -and [string]::IsNullOrWhiteSpace($ExpectedSha)) {
+        throw "SOURCE_ONLY_REQUIRES_PINNED_SHA"
+    }
+    # All normal V10 starts require an explicit reviewed branch and full SHA.
+    # NEVER infer approval from the current checkout or a historical default.
+    if ([string]::IsNullOrWhiteSpace($Branch)) {
+        throw "V10_REVIEWED_BRANCH_REQUIRED"
+    }
+    if ($Branch -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$' -or
+        $Branch.Contains("..") -or $Branch.EndsWith("/") -or $Branch.EndsWith(".") ) {
+        throw "V10_REVIEWED_BRANCH_INVALID"
+    }
+    if (-not $VerifySourceOnly -and
+        -not $DeployRuntimeOnly -and -not $AcceptRuntimeCollector -and
+        [string]::IsNullOrWhiteSpace($ExpectedSha)) {
+        throw "V10_NORMAL_START_REQUIRES_PINNED_SHA"
+    }
     if ($DeployRuntimeOnly -and [string]::IsNullOrWhiteSpace($ExpectedSha)) {
         throw "DeployRuntimeOnly requires -ExpectedSha. Refusing to copy an unpinned checkout into RuntimeDir."
     }
@@ -756,6 +821,34 @@ try {
         if (-not [string]::Equals($actualSha, $ExpectedSha, [StringComparison]::OrdinalIgnoreCase)) {
             throw "PINNED_SHA_IDENTITY_MISMATCH: unexpected runtime commit."
         }
+    }
+
+    # HEAD identity alone does not authenticate the working files that
+    # PowerShell, Python, Node or runtime deployment will actually execute.
+    # Include staged/unstaged modifications AND untracked nonignored files.
+    # Never attempt git checkout/reset/clean as a "repair" on Owner's PC.
+    $worktreeStatus = @(Invoke-GitFatal $repo @("status", "--porcelain=v1", "--untracked-files=all") "could not validate Git working tree")
+    if (-not [string]::IsNullOrWhiteSpace(($worktreeStatus -join "`n"))) {
+        throw "V10_WORKTREE_NOT_CLEAN: refusing modified or untracked checkout."
+    }
+    # CLI branch + SHA is useful for a read-only diagnostic, but can never
+    # replace the explicit local Owner pin for mutating deployment or launch.
+    if (-not $VerifySourceOnly -and [string]::IsNullOrWhiteSpace($ApprovalFile)) {
+        throw "V10_MUTATING_START_REQUIRES_APPROVAL_FILE"
+    }
+
+    # No process, port, Excel, MS2, runtime files, state, or Git mutation.
+    # This validates the checkout identity ONLY: not local runtime readiness.
+    if ($VerifySourceOnly) {
+        Write-Host "V10_SOURCE_ONLY=PASS" -ForegroundColor Green
+        Write-Host "GIT_BRANCH_AND_FULL_SHA_MATCH=1" -ForegroundColor Green
+        Write-Host "RUNTIME_FILES_TOUCHED=0"
+        Write-Host "CONTROLLER_STARTED=0"
+        Write-Host "EXCEL_TOUCHED=0"
+        Write-Host "MS2_TOUCHED=0"
+        Write-Host "SOURCE_AUTHENTICATED=0"
+        Write-Host "REAL_SUBMIT_ALLOWED=0"
+        exit 0
     }
 
     Write-Host ""
@@ -852,6 +945,14 @@ try {
         exit 0
     }
 } catch {
+    if ($VerifySourceOnly) {
+        Write-Host "V10_SOURCE_ONLY=BLOCKED" -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Yellow
+        Write-Host "RUNTIME_FILES_TOUCHED=0"
+        Write-Host "CONTROLLER_STARTED=0"
+        Write-Host "REAL_SUBMIT_ALLOWED=0"
+        [Environment]::Exit(2)
+    }
     Write-Host ""
     Write-Host "==================================================" -ForegroundColor Red
     Write-Host " UPDATE/DEPLOY FAILED - CONTROLLER NOT STARTED (fail-closed)" -ForegroundColor Red
