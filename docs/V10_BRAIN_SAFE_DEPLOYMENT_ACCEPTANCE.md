@@ -352,3 +352,46 @@ Not verified on the OWNER PC; no real-machine stop has been performed.
 
 tests/test_v10_legacy_safe_stop.py now has 20 tests (8 added for P0-26C).
 Not verified on the OWNER PC; no real-machine stop has been performed.
+
+## P0-27 Non-stopping SHA-pinned OWNER acceptance entry (Issue #405)
+
+downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1 is the single OWNER entry. It
+never stops, starts, switches or kills anything and never runs -Execute.
+
+- It needs -PinnedCommit equal to the reviewed P0-26C commit
+  81a68023889952fa5d4bf7ad383c9ee581bdc991. It fetches PREFLIGHT and STOP for
+  that commit into its own TEMP folder and requires their exact Git blob
+  hashes. A local copy is never run. Old, CRLF-converted or missing copies
+  are BLOCKED.
+- Windows PowerShell 5.1 (Desktop) only; any other host is BLOCKED.
+- The target must be an absolute local folder (no UNC, no reparse point)
+  holding V10_CONTROLLER_STATE.json.
+- Judged: Controller/RUN -File operand, Start-Job bridges, venv children,
+  BRAIN absence or ownership, Excel PID collision, attribution of every LISTEN
+  on 28580-28584 (PREFLIGHT -AdmissionOut), plus STOP -RecoveryCheck.
+- Before and after must be identical: state file, root result and evidence,
+  EXCEL.EXE set, V10 listeners, admitted processes, launch files (root
+  CMD/BAT/LNK/PS1/VBS; Desktop and Startup LNK/CMD/BAT).
+- Results:
+  - READONLY_VERIFIED: strict mode. The only write is the entry's own
+    %TEMP%\v10-owner-readonly-<guid> folder (two fetched scripts and the
+    admission record), removed before the result is printed.
+  - DRY_RUN_READY: with -IncludeStopDryRun, also STOP without -Execute. STOP
+    writes and removes %TEMP%\v10-legacy-stop-dryrun-<UTC> (a copy of the
+    state and an admission record); the set of such folders must be unchanged.
+  - BLOCKED: anything unverified, denied or unknown.
+- Output is codes and counts only. STOP_ALLOWED, CUTOVER_ELIGIBLE and
+  REAL_SUBMIT_ALLOWED are always false, and EXCEL_WORKBOOK_COEXISTENCE is
+  NOT_EVALUATED: a pass never says a new V10 can start with business Excel open.
+
+tests/test_v10_legacy_owner_readonly.py: static checks, plus 14 Windows
+synthetic cases including a real fetch of the pinned blobs from GitHub. Not
+run on the OWNER PC.
+
+P0-27 review gates (GPT review on PR #406):
+- The entry is delivered only by docs/V10_P0_27_OWNER_READONLY_DELIVERY.md:
+  full commit SHA plus entry blob and SHA256.
+- Launch-file scope is reported as LISTED_FOLDERS_ONLY.
+- The first OWNER run is strict mode only.
+- STOP_ALLOWED, CUTOVER_ELIGIBLE and REAL_SUBMIT_ALLOWED stay false, and
+  Excel coexistence stays NOT_EVALUATED.
