@@ -12,7 +12,7 @@ from pathlib import Path
 
 def classify(test_id):
     # Discover can produce unittest.loader._FailedTest.<module> entries.
-    module = test_id.rsplit(".", 2)[-2] if test_id.count(".") >= 2 else test_id
+    module = test_id.split(".", 1)[0]
     if "._FailedTest." in test_id:
         module = test_id.rsplit(".", 1)[-1]
     if (module.startswith(("test_v8_", "test_v9_",
