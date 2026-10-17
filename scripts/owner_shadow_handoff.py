@@ -17,6 +17,7 @@ import math
 from datetime import datetime, timedelta, timezone
 
 from scripts import build_mobile_approvals, owner_approval_queue
+from scripts import execution_contract, execution_permission, shadow_execution, shadow_fill_model
 
 SCHEMA = "owner-shadow-handoff-1.0"
 MAX_SOURCE_AGE_SECONDS = 15
@@ -250,6 +251,88 @@ def evaluate_shadow_handoff(ticket: dict, pending: dict, decision: dict, *,
         return {**result, "state": "SIMULATED_SHADOW_READY",
                 "reason": "SYNTHETIC_REVIEW_PASSED",
                 "request_id": ident, "ticket_fingerprint": ticket["ticket_fingerprint"]}
+    except (ValueError, TypeError, KeyError, OverflowError) as exc:
+        return {**result, "reason": str(exc)[:120]}
+
+
+def dispatch_synthetic_shadow_order(ticket: dict, pending: dict, decision: dict, *,
+                                    now: datetime, quote_price: float, quote_asof: str,
+                                    risk_decision: dict, simulated_broker_snapshot: dict,
+                                    execution_policy: dict,
+                                    known_shadow_orders: list[dict]) -> dict:
+    """Exercise ORIGINAL execution Permission/Reconfirmation/Shadow core in memory.
+
+    Strictly MOCK_ONLY. This function intentionally cannot authenticate an
+    actual Owner/device, broker/account/source data, or persistent duplicate ledger.
+    It has no broker adapter, I/O, network access or order submission.
+    """
+    result = {
+        "schema_version": SCHEMA, "mode": "PAPER_ONLY", "state": "BLOCKED",
+        "reason": "UNVERIFIED", "real_submit_allowed": False,
+    }
+    checked = evaluate_shadow_handoff(ticket, pending, decision, now=now,
+                                      quote_price=quote_price, quote_asof=quote_asof)
+    if checked.get("state") != "SIMULATED_SHADOW_READY":
+        return {**result, "reason": checked.get("reason", "PAPER_REVIEW_BLOCKED")}
+    try:
+        now = _now(now)
+        if not all(isinstance(x, dict) for x in
+                   (ticket, risk_decision, simulated_broker_snapshot, execution_policy)):
+            raise ValueError("synthetic required dictionaries missing")
+        if simulated_broker_snapshot.get("simulation_only") is not True:
+            raise ValueError("not a synthetic broker snapshot")
+        if not isinstance(known_shadow_orders, list):
+            raise ValueError("known shadow orders list required")
+        if not _fresh(_timestamp(ticket["data_as_of"]), now, MAX_SOURCE_AGE_SECONDS):
+            raise ValueError("original market source stale at shadow handoff")
+        if execution_policy.get("policy_version") != "execution-safety-0.1.0":
+            raise ValueError("unsupported execution policy")
+        # Bind the Owner-reviewed proposal to the canonical Intent lineage.
+        # Simulation alone is not an authenticated confirmation for real money.
+        intent = execution_contract.build_intent(
+            symbol=ticket["symbol"], side=ticket["side"],
+            quantity=ticket["quantity"], order_type="LIMIT",
+            limit_price=ticket["limit_price"], planned_entry=ticket["limit_price"],
+            planned_stop=ticket["stop_price"], planned_target=None,
+            strategy_id=ticket["strategy_key"], strategy_version=SCHEMA,
+            decision_snapshot_id=ticket["ticket_fingerprint"],
+            signal_known_at=ticket["data_as_of"],
+            risk_policy_version=risk_decision.get("policy_version"),
+            execution_policy_version=execution_policy["policy_version"],
+            shadow_fill_model_version=shadow_fill_model.FILL_MODEL_VERSION,
+            merge_hash=risk_decision.get("merge_hash"),
+        )
+        # Existing execution_contract creates a wall-clock created_at. This
+        # timestamp injection is ONLY allowed inside this synthetic harness.
+        intent["created_at"] = now.isoformat()
+        permission = execution_permission.evaluate_permission(
+            intent, risk_decision, simulated_broker_snapshot, execution_policy, now=now)
+        if permission.get("permission_status") != "ORDER_TICKET_READY":
+            return {**result, "reason": "PERMISSION_" +
+                    str(permission.get("permission_status")),
+                    "block_reasons": permission.get("block_reasons")}
+        reconfirm = execution_permission.evaluate_reconfirmation(
+            intent, risk_decision, permission, simulated_broker_snapshot,
+            execution_policy, now=now)
+        if reconfirm.get("reconfirm_status") != "CONFIRM_READY":
+            return {**result, "reason": "RECONFIRM_" +
+                    str(reconfirm.get("reconfirm_status")),
+                    "block_reasons": reconfirm.get("block_reasons")}
+        shadow = shadow_execution.submit_shadow_order(
+            intent, risk_decision, permission, known_orders=known_shadow_orders,
+            submitted_at=now, now=now)
+        if shadow.get("status") != "NEW" or shadow.get("real_submit_allowed") is not False:
+            return {**result, "reason": "SHADOW_" + str(shadow.get("status")),
+                    "block_reasons": shadow.get("reject_reasons")}
+        return {
+            **result,
+            "state": "SIMULATED_SHADOW_ORDER_NEW",
+            "reason": "PURE_CORE_SHADOW_CREATED_NO_FILL",
+            "shadow_order_id": shadow["shadow_order_id"],
+            "intent_hash": intent["intent_hash"],
+            "ticket_fingerprint": ticket["ticket_fingerprint"],
+            "shadow_status": "NEW",
+        }
     except (ValueError, TypeError, KeyError, OverflowError) as exc:
         return {**result, "reason": str(exc)[:120]}
 
