@@ -15,6 +15,7 @@ on:
       - "trade_control.js"
       - "v10_publication_status.js"
       - "tests/test_v10_runtime_bundle_candidate.py"
+      - "tests/test_v10_local_http_security.py"
       - ".github/workflows/v10-candidate-runtime-bundle-synthetic.yml"
   workflow_dispatch:
 permissions:
@@ -28,7 +29,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Byte-for-byte equality to exact 29 reviewed-candidate blobs (read-only)
+      - name: Compare 24 unchanged + 1 UI stale repair + 4 security-pinned sources
         shell: bash
         run: |
           set -euo pipefail
@@ -46,12 +47,24 @@ jobs:
               # A separate V10 UI fail-closed contract validates content.
               echo "V10_INDEX_STALE_SAFETY_REPAIR=index.html"
               test "$(git rev-parse "HEAD:$file")" = "cb01cce5f7ed30f2670361ec5fad93ac3c57a693"
+            elif [[ "$file" == "downloads/AI_COCKPIT_GATEWAY_V10.ps1" ||
+                    "$file" == "downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1" ||
+                    "$file" == "ms2_live/MS2_RSS_100_Collector.ps1" ||
+                    "$file" == "ms2_live/Kioxia_RSS_Live_Watcher.ps1" ]]; then
+              # Four explicit security repairs, each locked to the reviewed
+              # HEAD:path blob, not falsely claimed identical to prior V10.
+              expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
+              test "$(git rev-parse "HEAD:$file")" = "$expected"
+              test "$(git rev-parse "HEAD:$file")" != "$(git rev-parse "$pinned:$file")"
+              echo "V10_LOCAL_HTTP_SECURITY_REPAIR=$file"
             else
               git show "$pinned:$file" | cmp - "$file"
               echo "CANDIDATE_SOURCE_UNMODIFIED=$file"
             fi
           done
           echo "APPROVED_FOR_RUNTIME=0"
+      - name: V10 local HTTP security static contract
+        run: python -m unittest discover -s tests -p test_v10_local_http_security.py -v
       - name: Candidate manifest and V10 static UI/runtime dependencies
         run: python -m unittest discover -s tests -p test_v10_runtime_bundle_candidate.py -v
       - name: V10 guarded entry static contracts
@@ -88,6 +101,11 @@ jobs:
             [void][Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path,[ref]$tokens,[ref]$parseErrors)
             if ($parseErrors.Count -gt 0) { throw ('V10_CANDIDATE_PS_PARSE_FAILED: ' + $path + ' count=' + $parseErrors.Count) }
           }
+      - name: Windows local HTTP genuine listener security and negative requests
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_v10_local_http_security.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Source manifest / UI source acceptance
         shell: powershell
         run: |
