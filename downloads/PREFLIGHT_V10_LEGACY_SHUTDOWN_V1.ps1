@@ -151,6 +151,13 @@ function Test-CollectorEncodedInitJob($Child,[string]$CollectorPath) {
    },$true))
    if($found.Count -ne 1){return (Reject-CollectorJob "COLLECTOR_SOURCE_FUNCTION_MISMATCH")}
    $inner=$found[0].Body.GetScriptBlock().ToString()
+   # Windows PowerShell function: Name([type]$arg) stores this header as
+   # param(...) + CRLF in the function: provider's ScriptBlock.ToString().
+   # Body.GetScriptBlock() excludes that header; reconstruct it without invoking.
+   if(@($found[0].Parameters).Count -gt 0) {
+    $declarations=@($found[0].Parameters | ForEach-Object { $_.Extent.Text })
+    $inner="param("+($declarations -join ", ")+")`r`n"+$inner
+   }
    $expected+="function "+$name+" {`r`n"+$inner+"`r`n}`r`n"
   }
   if([string]::Equals($decoded,$expected,[StringComparison]::Ordinal)) {
