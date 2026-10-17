@@ -969,7 +969,11 @@ try {
             # Reject forged Host/Origin, cross-site browser requests and bad PNA preflights.
             $expectedHost = "127.0.0.1:" + [string]$Port
             $expectedOrigin = "http://" + $expectedHost
-            $hostOk = $requestHeaders.ContainsKey('host') -and $requestHeaders['host'] -ceq $expectedHost
+            $hostOk = $requestHeaders.ContainsKey('host') -and
+                ($requestHeaders['host'] -ceq $expectedHost -or
+                 ($requestHeaders['host'] -ceq '127.0.0.1' -and
+                  -not $requestHeaders.ContainsKey('origin') -and
+                  -not $requestHeaders.ContainsKey('sec-fetch-site')))
             $originOk = -not $requestHeaders.ContainsKey('origin') -or $requestHeaders['origin'] -ceq $expectedOrigin
             $fetchSiteOk = -not $requestHeaders.ContainsKey('sec-fetch-site') -or $requestHeaders['sec-fetch-site'] -cne 'cross-site'
             if (-not ($hostOk -and $originOk -and $fetchSiteOk)) {
@@ -1225,7 +1229,7 @@ try {
             # from the local Git checkout (e.g. .git/config, secrets or private data).
             $relative = if ($path -eq '/') { 'index.html' } else { $path.TrimStart('/') }
             $relative = [Uri]::UnescapeDataString($relative)
-            $allowedUiFiles = @('index.html', 'card_system.css', 'card_system.js', 'card_table_adapter.css', 'card_table_adapter.js', 'correlations.json', 'credit_supply.json', 'earnings-calendar.js', 'event_calendar.json', 'focus.css', 'kioxia_5m_calendar.json', 'kioxia_breaking_radar.json', 'kioxia_catalysts.json', 'kioxia_prediction_history.json', 'live_focus.json', 'next-theme-radar.css', 'next-theme-radar.js', 'next_theme_radar.json', 'opportunity_radar.js', 'signals.json', 'theme.css', 'trade_control.js', 'v10_publication_status.js', 'voice_client.js', 'world_market.json')
+            $allowedUiFiles = @('index.html', 'card_system.css', 'card_system.js', 'card_table_adapter.css', 'card_table_adapter.js', 'correlations.json', 'credit_supply.json', 'earnings-calendar.js', 'event_calendar.json', 'focus.css', 'kioxia_5m_calendar.json', 'kioxia_breaking_radar.json', 'kioxia_catalysts.json', 'kioxia_prediction_history.json', 'live_focus.json', 'paper_trade_history.json', 'weekly_review.json', 'earnings_calendar.json', 'next-theme-radar.css', 'next-theme-radar.js', 'next_theme_radar.json', 'opportunity_radar.js', 'signals.json', 'theme.css', 'trade_control.js', 'v10_publication_status.js', 'voice_client.js', 'world_market.json')
             if ($allowedUiFiles -cnotcontains $relative) {
                 Send-Response $stream '404 Not Found' 'text/plain; charset=utf-8' ($utf8.GetBytes('V10_PUBLIC_PATH_NOT_ALLOWED'))
                 continue
