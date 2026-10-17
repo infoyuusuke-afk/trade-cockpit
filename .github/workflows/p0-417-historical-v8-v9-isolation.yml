@@ -1,0 +1,43 @@
+name: P0-417 Historical V8 V9 Isolation
+on:
+  pull_request:
+    paths:
+      - "scripts/ci_historical_v8_v9.py"
+      - ".github/workflows/p0-417-historical-v8-v9-isolation.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  history-v8-static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: current
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: b81b8877b12a33368e91e5e156a2fc7ac4529349
+          path: historical
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Run original V8 contract against exact historical source
+        run: python current/scripts/ci_historical_v8_v9.py --history historical --mode v8
+  history-v9-collector:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: current
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: b81b8877b12a33368e91e5e156a2fc7ac4529349
+          path: historical
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Run original V9 Collector workbook identity contract on synthetic Windows host
+        shell: powershell
+        run: python current/scripts/ci_historical_v8_v9.py --history historical --mode collector
