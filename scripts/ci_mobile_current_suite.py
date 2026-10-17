@@ -51,6 +51,13 @@ def missing_legacy_refs(module):
             if not (ROOT / "downloads" / name).exists()]
 
 
+
+def verify_exclusion_ids(excluded, discovered_ids):
+    absent = sorted(excluded - discovered_ids)
+    if absent:
+        raise SystemExit("LEGACY_LIST_ID_NOT_DISCOVERED: " + ",".join(absent))
+
+
 def main():
     excluded = load_excluded()
     for test_id in excluded:
@@ -59,6 +66,9 @@ def main():
     # Same import roots as `python -m unittest discover -s tests` run from ROOT.
     sys.path[:0] = [str(ROOT), str(TESTS)]
     tests = list(flatten(unittest.defaultTestLoader.discover(str(TESTS), pattern="test_*.py", top_level_dir=str(TESTS))))
+    # Fail closed when an excluded test was renamed/removed or discovery changed.
+    # Never silently accept a stale list that no longer matches collected IDs.
+    verify_exclusion_ids(excluded, {test.id() for test in tests})
     kept, skipped = [], []
     for test in tests:
         (skipped if test.id() in excluded else kept).append(test)
