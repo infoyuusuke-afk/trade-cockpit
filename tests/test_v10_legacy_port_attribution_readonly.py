@@ -75,7 +75,7 @@ class WindowsAttribution(tsl.LegacySessionSafeStop):
         self.assertEqual(before, self.state_path.read_bytes())
         self.assert_nothing_stopped()
 
-    def test_06_collector_with_real_initialization_script_is_attributed(self):
+    def test_06_collector_init_encoded_command_is_reported_unverified(self):
         # The real Collector Start-Job uses -InitializationScript, unlike Watcher.
         # Reproduce that concrete topology without changing any real process.
         collector = self.runtime / "MS2_RSS_100_Collector.ps1"
@@ -94,8 +94,9 @@ class WindowsAttribution(tsl.LegacySessionSafeStop):
         self.start_session()
         before = self.state_path.read_bytes()
         r = self.execute()
-        self.assertEqual(r.returncode, 0, r.stdout)
-        self.assertIn("PORT_28580=JOB_BRIDGE_VERIFIED", r.stdout)
+        self.assertEqual(r.returncode, 2, r.stdout)
+        self.assertIn("PORT_28580=UNVERIFIED", r.stdout)
+        self.assertIn("PORT_28580_REASON=START_JOB_ARGV_MISMATCH", r.stdout)
         self.assertIn("PORT_28582=JOB_BRIDGE_VERIFIED", r.stdout)
         self.assertEqual(before, self.state_path.read_bytes())
         self.assert_nothing_stopped()
