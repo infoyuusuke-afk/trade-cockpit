@@ -20,6 +20,12 @@ Example **shape only** (placeholders are deliberately invalid; NOT approved):
 
 The local file is a *source-selection record*, **not a cryptographic signature** or proof that an approval was granted. Do not treat it as an approval substitute or copy a Draft PR SHA into production automatically.
 
+### Final fail-closed source admission (Draft)
+- Even when the supplied branch and full SHA match, the checkout must be **clean** under `git status --porcelain=v1 --untracked-files=all`. Staged/unstaged tracked changes and untracked nonignored files are not permitted. A matching commit ID does not mean locally modified scripts are reviewed.
+- A command-line `-Branch` plus `-ExpectedSha` may be used with `-VerifySourceOnly` for **read-only** source diagnostics, but can **never** authorize normal startup, `-DeployRuntimeOnly`, or `-AcceptRuntimeCollector` without an explicit `-ApprovalFile`. These are all mutating runtime modes.
+- A dirty checkout is rejected with `V10_WORKTREE_NOT_CLEAN`; missing approval for a mutating mode is rejected with `V10_MUTATING_START_REQUIRES_APPROVAL_FILE` before touching runtime files or starting the Controller. **Do not automatically run git clean/reset/checkout** to hide differences. Review them and restore a verified approved checkout through a separate authorized workflow.
+- The approval file is Git-ignored and may be present in the `downloads` folder without triggering the dirty-check, but this is *not* proof that the signer/author was the OWNER. Production requires independent authorization, plus machine and market-data provenance acceptance.
+
 ## Source-only preflight (future Windows acceptance, no startup)
 After the review/approved pin is installed, use a read-only check instead of launching the cockpit:
 
