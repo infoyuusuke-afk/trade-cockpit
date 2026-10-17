@@ -10,10 +10,11 @@ Checks, all read-only on the session:
     Controller/RUN, Start-Job bridges, venv children, BRAIN absence or
     ownership, managed Excel PID, owners of LISTEN 28580-28584;
   - STOP -RecoveryCheck (writes nothing);
-  - with -IncludeStopDryRun, STOP without -Execute (handle pinning only).
-State file, root result/evidence, Excel process set, V10 listeners, admitted
+  - -IncludeStopDryRun is explicitly REFUSED by this V2 entry.
+State content, root result/evidence, Excel process set, V10 listeners, admitted
 processes and launch files (root CMD/BAT/LNK/PS1/VBS, Desktop and Startup
-LNK/CMD/BAT) are fingerprinted before and after and must be identical. Only
+LNK/CMD/BAT) are compared before and after. State mtime-only changes may be
+accepted after a third content-hash read; changes elsewhere always block. Only
 those listed folders are compared (LAUNCH_SCOPE=LISTED_FOLDERS_ONLY); other
 desktops, profiles or shortcuts elsewhere are not inspected.
 
@@ -187,6 +188,10 @@ function Get-ControllerHost($Entry){
 $result="BLOCKED"
 $reason=""
 try{
+ $stage="MODE"
+ # V2 is strictly a read-only admission check. STOP dry-run belongs to V1 only.
+ # Refuse the switch BEFORE even downloading or invoking any STOP component.
+ if($IncludeStopDryRun){Block "STOP_DRY_RUN_V2_DISABLED"}
  $stage="ENVIRONMENT"
  if($PSVersionTable.PSVersion.Major -ne 5 -or [string]$PSVersionTable.PSEdition -cne "Desktop" -or
     [Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT){
