@@ -37,7 +37,9 @@ Remove-Item -LiteralPath $d -Recurse -Force
 
 `-Root` is left at its default `C:\AI_Cockpit_OneClick_Starter`.
 
-The P0-30 source-parity defect was reproduced with production Collector functions on Windows 5.1: function-header typed parameters are represented as param(...) inside function-provider ScriptBlock.ToString(), but omitted by the original AST Body.GetScriptBlock.ToString(). The revised parser reconstructs only this exact param header without executing a source script. This must pass CI before OWNER recheck.\n\nWhen the P0-27 admission gate blocks, the new optional P0_27_BLOCK_PORT and P0_27_BLOCK_DETAIL are masked fixed reason codes only. They never prove ownership or authorize a stop. No PID, path, command-line arguments, source text or workbook name is emitted.
+The P0-30 source-parity defect was reproduced with production Collector functions on Windows 5.1: function-header typed parameters are represented as param(...) inside function-provider ScriptBlock.ToString(), but omitted by the original AST Body.GetScriptBlock.ToString(). The revised parser reconstructs only this exact param header without executing a source script. This must pass CI before OWNER recheck.
+
+When the P0-27 admission gate blocks, the new optional P0_27_BLOCK_PORT and P0_27_BLOCK_DETAIL are masked fixed reason codes only. They never prove ownership or authorize a stop. No PID, path, command-line arguments, source text or workbook name is emitted.
 
 ## What a pass means and does not mean
 
