@@ -53,9 +53,13 @@ def missing_legacy_refs(module):
 
 
 def verify_exclusion_ids(excluded, discovered_ids):
-    absent = sorted(excluded - discovered_ids)
-    if absent:
-        raise SystemExit("LEGACY_LIST_ID_NOT_DISCOVERED: " + ",".join(absent))
+    # main does not yet contain the stacked V10/legacy test inventory.
+    # Accept zero matches on main, or every pinned ID on the V10 stack.
+    # Any partial match means discovery/renaming changed and must fail closed.
+    present = excluded & discovered_ids
+    if present and present != excluded:
+        absent = sorted(excluded - present)
+        raise SystemExit("LEGACY_LIST_PARTIALLY_DISCOVERED: " + ",".join(absent))
 
 
 def main():
