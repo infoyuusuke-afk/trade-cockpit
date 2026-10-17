@@ -114,12 +114,17 @@ function Verify-Process($proc,[string]$ExpectedLeaf,[string[]]$ExpectedFull,[dat
 # An arbitrary EncodedCommand is never sufficient for admission: reconstruct
 # the exact initialization text from the four parsed Collector functions.
 # No source function or decoded command is executed or displayed.
+function Reject-CollectorJob([string]$Code) {
+ $script:P030Detail=$Code
+ return $false
+}
 function Test-CollectorEncodedInitJob($Child,[string]$CollectorPath) {
+ $script:P030Detail="COLLECTOR_INIT_UNVERIFIED"
  try {
-  if([string]::IsNullOrWhiteSpace($CollectorPath)){return $false}
+  if([string]::IsNullOrWhiteSpace($CollectorPath)){return (Reject-CollectorJob "COLLECTOR_SOURCE_UNREADABLE")}
   $file=Get-Item -LiteralPath $CollectorPath -ErrorAction Stop
   if($file.PSIsContainer -or (($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) -or
-     $file.Length -lt 100 -or $file.Length -gt 400000){return $false}
+     $file.Length -lt 100 -or $file.Length -gt 400000){return (Reject-CollectorJob "COLLECTOR_SOURCE_UNTRUSTED")}
   $a=@(Get-Argv $Child)
   if($a.Count -eq 8 -and $a[1] -ieq "-Version" -and
      $a[2] -match '^\d+(\.\d+){0,3}$'){
@@ -128,14 +133,14 @@ function Test-CollectorEncodedInitJob($Child,[string]$CollectorPath) {
   if($a.Count -ne 6 -or $a[1] -ine "-s" -or $a[2] -ine "-NoLogo" -or
      $a[3] -ine "-NoProfile" -or $a[4] -ine "-EncodedCommand" -or
      [string]::IsNullOrWhiteSpace($a[5]) -or $a[5].Length -gt 150000 -or
-     $a[5] -cnotmatch '^[A-Za-z0-9+/]+={0,2}$'){return $false}
+     $a[5] -cnotmatch '^[A-Za-z0-9+/]+={0,2}$'){return (Reject-CollectorJob "COLLECTOR_ARGV_LAYOUT_MISMATCH")}
   $bytes=[Convert]::FromBase64String($a[5])
-  if($bytes.Length -lt 64 -or $bytes.Length -gt 100000 -or ($bytes.Length % 2) -ne 0){return $false}
+  if($bytes.Length -lt 64 -or $bytes.Length -gt 100000 -or ($bytes.Length % 2) -ne 0){return (Reject-CollectorJob "COLLECTOR_ENCODED_PAYLOAD_INVALID")}
   $decoded=[Text.Encoding]::Unicode.GetString($bytes)
-  if($decoded.IndexOf([char]0) -ge 0){return $false}
+  if($decoded.IndexOf([char]0) -ge 0){return (Reject-CollectorJob "COLLECTOR_ENCODED_PAYLOAD_INVALID")}
   $t=$null;$errors=$null
   $ast=[Management.Automation.Language.Parser]::ParseFile($CollectorPath,[ref]$t,[ref]$errors)
-  if($null -eq $ast -or $errors.Count -ne 0){return $false}
+  if($null -eq $ast -or $errors.Count -ne 0){return (Reject-CollectorJob "COLLECTOR_SOURCE_PARSE_ERROR")}
   $names=@("Get-NormalizedLocalWorkbookPath","Get-CollectorFileIdentityType",
            "Test-SameCanonicalWorkbookFile","Get-PublishedWorkbookGate")
   $expected=""
@@ -144,12 +149,16 @@ function Test-CollectorEncodedInitJob($Child,[string]$CollectorPath) {
      param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and
        [string]::Equals($n.Name,$name,[StringComparison]::Ordinal)
    },$true))
-   if($found.Count -ne 1){return $false}
+   if($found.Count -ne 1){return (Reject-CollectorJob "COLLECTOR_SOURCE_FUNCTION_MISMATCH")}
    $inner=$found[0].Body.GetScriptBlock().ToString()
    $expected+="function "+$name+" {`r`n"+$inner+"`r`n}`r`n"
   }
-  return [string]::Equals($decoded,$expected,[StringComparison]::Ordinal)
- } catch {return $false}
+  if([string]::Equals($decoded,$expected,[StringComparison]::Ordinal)) {
+   $script:P030Detail="COLLECTOR_INIT_MATCH"
+   return $true
+  }
+  return (Reject-CollectorJob "COLLECTOR_INIT_TEXT_MISMATCH")
+ } catch {return (Reject-CollectorJob "COLLECTOR_INIT_INSPECTION_UNAVAILABLE")}
 }
 function Get-VenvChild($Parent,$All){
  $pa=@(Get-Argv $Parent)
@@ -329,6 +338,8 @@ try{
  $childPorts=0
  $bridges=New-Object System.Collections.ArrayList
  foreach($port in $listeners){
+  $script:P030Port=[int]$port.LocalPort
+  $script:P030Detail="PORT_CHILD_UNVERIFIED"
   $n=[int]$port.OwningProcess
   if($expectedCohort.Contains($n)){
    $ownedPorts++
@@ -358,10 +369,14 @@ try{
   if(-not $jobExact -and $parentId -eq [int]$s.collector_pid){
    $collectorInitExact=Test-CollectorEncodedInitJob $child (Join-Path $runtime "MS2_RSS_100_Collector.ps1")
   }
-  if(-not (Same-Path ([string]$child.ExecutablePath) ([string]$parent.ExecutablePath)) -or
-     -not ($jobExact -or $collectorInitExact)){
+  if(-not (Same-Path ([string]$child.ExecutablePath) ([string]$parent.ExecutablePath))){
+   $script:P030Detail="HOST_EXE_PATH_MISMATCH"
    Refuse "PORT_CHILD_IDENTITY_NOT_PROVEN"
   }
+  if(-not ($jobExact -or $collectorInitExact)){
+   Refuse "PORT_CHILD_IDENTITY_NOT_PROVEN"
+  }
+  $script:P030Detail="LIFETIME_OR_SESSION_UNVERIFIED"
   $parentBirth=([datetime]$parent.CreationDate).ToUniversalTime()
   $childBirth=([datetime]$child.CreationDate).ToUniversalTime()
   if($childBirth -lt $parentBirth.AddSeconds(-2) -or
@@ -423,6 +438,18 @@ try{
  $why=if($known -ccontains [string]$_.Exception.Message){
   [string]$_.Exception.Message
  }else{"UNVERIFIED"}
+ if($stage -ceq "PORTS" -and $why -ceq "PORT_CHILD_IDENTITY_NOT_PROVEN") {
+  $allowed=@("COLLECTOR_SOURCE_UNREADABLE","COLLECTOR_SOURCE_UNTRUSTED",
+   "COLLECTOR_ARGV_LAYOUT_MISMATCH","COLLECTOR_ENCODED_PAYLOAD_INVALID",
+   "COLLECTOR_SOURCE_PARSE_ERROR","COLLECTOR_SOURCE_FUNCTION_MISMATCH",
+   "COLLECTOR_INIT_TEXT_MISMATCH","COLLECTOR_INIT_INSPECTION_UNAVAILABLE",
+   "HOST_EXE_PATH_MISMATCH","LIFETIME_OR_SESSION_UNVERIFIED",
+   "PORT_CHILD_UNVERIFIED","COLLECTOR_INIT_UNVERIFIED")
+  $code=if($allowed -ccontains [string]$script:P030Detail){[string]$script:P030Detail}else{"UNVERIFIED"}
+  Write-Output ("PREFLIGHT_PORT_DIAGNOSTIC="+$code)
+  $portSafe=if(@(28580,28581,28582,28583,28584) -contains [int]$script:P030Port){[string]$script:P030Port}else{"UNKNOWN"}
+  Write-Output ("PREFLIGHT_PORT_NUM="+$portSafe)
+ }
  Write-Output ("PREFLIGHT_BLOCK_STAGE="+$stage)
  Write-Output ("PREFLIGHT_BLOCK_REASON="+$why)
  Write-Output "PREFLIGHT_RESULT=BLOCKED"
