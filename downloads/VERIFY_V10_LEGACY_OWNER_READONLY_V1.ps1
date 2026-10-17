@@ -13,7 +13,13 @@ Checks, all read-only on the session:
   - with -IncludeStopDryRun, STOP without -Execute (handle pinning only).
 State file, root result/evidence, Excel process set, V10 listeners, admitted
 processes and launch files (root CMD/BAT/LNK/PS1/VBS, Desktop and Startup
-LNK/CMD/BAT) are fingerprinted before and after and must be identical.
+LNK/CMD/BAT) are fingerprinted before and after and must be identical. Only
+those listed folders are compared (LAUNCH_SCOPE=LISTED_FOLDERS_ONLY); other
+desktops, profiles or shortcuts elsewhere are not inspected.
+
+The entry itself is not self-verifying: it must be fetched by full commit
+SHA and matched to its published Git blob and SHA256 before it runs
+(docs/V10_P0_27_OWNER_READONLY_DELIVERY.md).
 
 Temporary files, the only writes:
   - one folder %TEMP%\v10-owner-readonly-<guid> holding the two fetched
@@ -105,10 +111,14 @@ function Get-LaunchFiles([string]$RootFull){
   [Environment]::GetFolderPath("Startup"),[Environment]::GetFolderPath("CommonStartup"))
  $seen=New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
  $rows=New-Object System.Collections.ArrayList
+ $script:LaunchDirsChecked=0
+ $script:LaunchDirsAbsent=0
  foreach($d in $dirs){
-  if(-not $d -or -not (Test-Path -LiteralPath $d -PathType Container)){continue}
+  if(-not $d){$script:LaunchDirsAbsent++;continue}
   $full=[IO.Path]::GetFullPath($d).TrimEnd([char]92)
   if(-not $seen.Add($full)){continue}
+  if(-not (Test-Path -LiteralPath $full -PathType Container)){$script:LaunchDirsAbsent++;continue}
+  $script:LaunchDirsChecked++
   $ext=if($full -ieq $RootFull.TrimEnd([char]92)){'^\.(cmd|bat|lnk|ps1|vbs)$'}else{'^\.(lnk|cmd|bat)$'}
   foreach($f in @(Get-ChildItem -LiteralPath $full -File -Force -ErrorAction Stop | Where-Object { $_.Extension -match $ext })){
    [void]$rows.Add($f.FullName.ToLowerInvariant()+"|"+$f.Length+"|"+$f.LastWriteTimeUtc.Ticks+"|"+(Sha256Bytes (Read-Bytes $f.FullName "LAUNCH_FILE_UNREADABLE")))
@@ -268,6 +278,10 @@ try{
  $counts.LISTENERS_UNCHANGED=([string]($after.Listen -ceq $before.Listen)).ToLowerInvariant()
  $counts.MANAGED_PROCESSES_UNCHANGED=([string](@($entries | Where-Object { -not (Test-EntryAlive $_) }).Count -eq 0)).ToLowerInvariant()
  $counts.LAUNCH_FILES_CHECKED=$after.LaunchCount
+ # Only the listed folders are compared; other desktops or profiles are not inspected.
+ $counts.LAUNCH_SCOPE="LISTED_FOLDERS_ONLY"
+ $counts.LAUNCH_DIRS_CHECKED=$script:LaunchDirsChecked
+ $counts.LAUNCH_DIRS_ABSENT=$script:LaunchDirsAbsent
  $counts.LAUNCH_FILES_UNCHANGED=([string]($after.Launch -ceq $before.Launch)).ToLowerInvariant()
  $counts.STOP_DRY_RUN_TEMP_LEFT=([string]($after.DryRunDirs -cne $before.DryRunDirs)).ToLowerInvariant()
  foreach($k in @("STATE_UNCHANGED","ROOT_RESULT_AND_EVIDENCE_UNCHANGED","EXCEL_SET_UNCHANGED","LISTENERS_UNCHANGED",

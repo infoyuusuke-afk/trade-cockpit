@@ -146,6 +146,9 @@ class OwnerReadonlyWindows(tsl.LegacySessionSafeStop):
                      "MANAGED_PROCESSES_UNCHANGED=true", "LAUNCH_FILES_UNCHANGED=true"):
             self.assertIn(line, r.stdout)
         self.assertGreaterEqual(int(re.search(r"LAUNCH_FILES_CHECKED=(\d+)", r.stdout).group(1)), 1)
+        self.assertIn("LAUNCH_SCOPE=LISTED_FOLDERS_ONLY", r.stdout)
+        self.assertGreaterEqual(int(re.search(r"LAUNCH_DIRS_CHECKED=(\d+)", r.stdout).group(1)), 1)
+        self.assertRegex(r.stdout, r"LAUNCH_DIRS_ABSENT=\d+")
         self.assert_session_untouched(before)
 
     def test_02_stop_dry_run_mode_is_distinct_and_leaves_no_temp(self):
