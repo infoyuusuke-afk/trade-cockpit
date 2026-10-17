@@ -787,9 +787,43 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$C
                     $stream = $client.GetStream()
                     $reader = [IO.StreamReader]::new($stream,[Text.Encoding]::ASCII,$false,1024,$true)
                     $requestLine = $reader.ReadLine()
-                    while (($line = $reader.ReadLine()) -ne $null -and $line -ne "") {}
-                    $method = if ($requestLine) { ($requestLine -split ' ')[0] } else { "GET" }
-                    if ($method -eq "OPTIONS") {
+                    $requestHeaders = @{}
+                    $headerCount = 0
+                    while (($line = $reader.ReadLine()) -ne $null -and $line -ne "") {
+                        $headerCount++
+                        if ($headerCount -gt 64 -or $line.Length -gt 8192) { throw "V10_HTTP_HEADERS_TOO_LARGE" }
+                        $splitAt = $line.IndexOf(':')
+                        if ($splitAt -le 0) { throw "V10_HTTP_HEADER_MALFORMED" }
+                        $key = $line.Substring(0, $splitAt).Trim().ToLowerInvariant()
+                        if ($requestHeaders.ContainsKey($key)) { throw "V10_HTTP_DUPLICATE_HEADER" }
+                        $requestHeaders[$key] = $line.Substring($splitAt + 1).Trim()
+                    }
+                    $parts = if ($requestLine) { $requestLine -split ' ' } else { @() }
+                    $method = if ($parts.Count -ge 1) { $parts[0] } else { "" }
+                    $target = if ($parts.Count -ge 2) { $parts[1] } else { "" }
+                    $route = ($target -split '\?')[0]
+                    $expectedHost = "127.0.0.1:" + [string]$Port
+                    $browserOrigin = 'http://127.0.0.1:28581'
+                    $hasOrigin = $requestHeaders.ContainsKey('origin')
+                    $hostOk = $requestHeaders.ContainsKey('host') -and
+                        ($requestHeaders['host'] -ceq $expectedHost -or
+                         ($requestHeaders['host'] -ceq '127.0.0.1' -and -not $hasOrigin -and
+                          -not $requestHeaders.ContainsKey('sec-fetch-site')))
+                    $originOk = -not $hasOrigin -or $requestHeaders['origin'] -ceq $browserOrigin
+                    $siteOk = -not $requestHeaders.ContainsKey('sec-fetch-site') -or $requestHeaders['sec-fetch-site'] -cne 'cross-site'
+                    if (-not ($hostOk -and $originOk -and $siteOk)) {
+                        $bodyBytes = $utf8.GetBytes('{"status":"blocked","reason":"V10_HTTP_ORIGIN_BLOCKED","real_submit_allowed":false}')
+                        $status = "403 Forbidden"
+                        $contentType = "application/json; charset=utf-8"
+                    } elseif ($route -notin @('/', '/live_ms2.json')) {
+                        $bodyBytes = $utf8.GetBytes('{"status":"blocked","reason":"V10_HTTP_ROUTE_BLOCKED","real_submit_allowed":false}')
+                        $status = "404 Not Found"
+                        $contentType = "application/json; charset=utf-8"
+                    } elseif ($method -notin @("GET", "OPTIONS")) {
+                        $bodyBytes = $utf8.GetBytes('{"status":"blocked","reason":"V10_HTTP_METHOD_BLOCKED","real_submit_allowed":false}')
+                        $status = "405 Method Not Allowed"
+                        $contentType = "application/json; charset=utf-8"
+                    } elseif ($method -eq "OPTIONS") {
                         $bodyBytes = [byte[]]@()
                         $status = "204 No Content"
                         $contentType = "text/plain"
@@ -809,7 +843,9 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$C
                         $status = "503 Service Unavailable"
                         $contentType = "application/json; charset=utf-8"
                     }
-                    $headers = "HTTP/1.1 $status`r`nContent-Type: $contentType`r`nContent-Length: $($bodyBytes.Length)`r`nCache-Control: no-store`r`nAccess-Control-Allow-Origin: *`r`nAccess-Control-Allow-Methods: GET, OPTIONS`r`nAccess-Control-Allow-Headers: *`r`nAccess-Control-Allow-Private-Network: true`r`nConnection: close`r`n`r`n"
+                    $allowUiOrigin = $hasOrigin -and $requestHeaders['origin'] -ceq $browserOrigin -and $hostOk -and $siteOk
+                    $cors = if ($allowUiOrigin) { "`r`nAccess-Control-Allow-Origin: $browserOrigin`r`nAccess-Control-Allow-Methods: GET, OPTIONS`r`nAccess-Control-Allow-Headers: Content-Type`r`nAccess-Control-Allow-Private-Network: true`r`nVary: Origin" } else { "" }
+                    $headers = "HTTP/1.1 $status`r`nContent-Type: $contentType`r`nContent-Length: $($bodyBytes.Length)`r`nCache-Control: no-store`r`nX-Content-Type-Options: nosniff" + $cors + "`r`nConnection: close`r`n`r`n"
                     $headerBytes = [Text.Encoding]::ASCII.GetBytes($headers)
                     $stream.Write($headerBytes,0,$headerBytes.Length)
                     if ($bodyBytes.Length -gt 0) { $stream.Write($bodyBytes,0,$bodyBytes.Length) }
