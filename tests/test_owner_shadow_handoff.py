@@ -67,7 +67,7 @@ class ShadowHandoffAcceptance(unittest.TestCase):
         self.assertEqual(result["state"], "SIMULATED_SHADOW_READY")
         self.assertFalse(result["real_submit_allowed"])
         self.assertNotIn("broker_order_id", result)
-        self.assertEqual(m.synthetic_demo(), "PASS: SYNTHETIC_OWNER_PAPER_HANDOFF_ONLY")
+        self.assertEqual(m.synthetic_demo(), "PASS: SYNTHETIC_OWNER_TO_SHADOW_CORE_NO_REAL_ORDER")
 
     def test_no_automatic_approval_or_real_money_queue(self):
         ticket, pending = self.create()
