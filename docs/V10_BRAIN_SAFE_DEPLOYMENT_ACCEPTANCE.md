@@ -387,3 +387,11 @@ never stops, starts, switches or kills anything and never runs -Execute.
 tests/test_v10_legacy_owner_readonly.py: static checks, plus 14 Windows
 synthetic cases including a real fetch of the pinned blobs from GitHub. Not
 run on the OWNER PC.
+
+P0-27 review gates (GPT review on PR #406):
+- The entry is delivered only by docs/V10_P0_27_OWNER_READONLY_DELIVERY.md:
+  full commit SHA plus entry blob and SHA256.
+- Launch-file scope is reported as LISTED_FOLDERS_ONLY.
+- The first OWNER run is strict mode only.
+- STOP_ALLOWED, CUTOVER_ELIGIBLE and REAL_SUBMIT_ALLOWED stay false, and
+  Excel coexistence stays NOT_EVALUATED.

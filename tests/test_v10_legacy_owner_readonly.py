@@ -61,6 +61,20 @@ class OwnerReadonlyStatic(unittest.TestCase):
             if "Remove-Item" in line:
                 self.assertIn("-LiteralPath $tempRoot", line)
 
+    def test_delivery_procedure_pins_this_entry_by_commit_blob_and_sha256(self):
+        doc = (REPO / "docs" / "V10_P0_27_OWNER_READONLY_DELIVERY.md").read_text(encoding="utf-8")
+        entry = subprocess.run(["git", "show", "HEAD:downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1"], cwd=REPO,
+                               capture_output=True, check=True).stdout
+        self.assertIn(f"`{blob_sha1(entry)}`", doc)
+        self.assertIn(f"$h='{hashlib.sha256(entry).hexdigest().upper()}'", doc)
+        commit = re.search(r"\$c='([0-9a-f]{40})'", doc).group(1)
+        self.assertIn(f"`{commit}`", doc)
+        self.assertIn("raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/$c/downloads/", doc)
+        self.assertIn(f"-PinnedCommit {PINNED}", doc)
+        block = doc.split("```powershell", 1)[1].split("```", 1)[0]
+        self.assertNotIn("-IncludeStopDryRun", block)
+        self.assertNotIn("-Execute", block)
+
     def test_always_reports_no_permission(self):
         for line in ("STOP_ALLOWED=false", "CUTOVER_ELIGIBLE=false", "REAL_SUBMIT_ALLOWED=false",
                      "PROCESSES_STOPPED=0", "EXCEL_ACTION=NONE", "EXCEL_WORKBOOK_COEXISTENCE=NOT_EVALUATED"):
@@ -303,6 +317,25 @@ class OwnerReadonlyWindows(tsl.LegacySessionSafeStop):
         self.assertIn("SCRIPT_BLOBS_VERIFIED=2", r.stdout)
         self.assert_session_untouched(before)
 
+
+OwnerReadonlyWindows.test_15_delivery_url_serves_the_documented_entry = lambda self: self._delivery()
+
+
+def _delivery(self):
+    doc = (REPO / "docs" / "V10_P0_27_OWNER_READONLY_DELIVERY.md").read_text(encoding="utf-8")
+    commit = re.search(r"\$c='([0-9a-f]{40})'", doc).group(1)
+    sha = re.search(r"\$h='([0-9A-F]{64})'", doc).group(1)
+    url = f"https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/{commit}/downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1"
+    out = subprocess.run([PS, "-NoProfile", "-Command",
+                          "[Net.ServicePointManager]::SecurityProtocol=[Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12; "
+                          f"$f=Join-Path $env:TEMP ('v10-entry-check-'+[guid]::NewGuid().ToString('N')+'.ps1'); "
+                          f"Invoke-WebRequest -UseBasicParsing -Uri '{url}' -OutFile $f; "
+                          "(Get-FileHash -Algorithm SHA256 -LiteralPath $f).Hash; Remove-Item -LiteralPath $f"],
+                         capture_output=True, text=True, timeout=120)
+    self.assertEqual(out.stdout.strip(), sha, out.stderr[-1000:])
+
+
+OwnerReadonlyWindows._delivery = _delivery
 
 # Only the P0-27 cases run here; the inherited Safe Stop cases have their own step.
 for _name in dir(tsl.LegacySessionSafeStop):

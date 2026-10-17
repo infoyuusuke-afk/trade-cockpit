@@ -33,6 +33,7 @@ on:
       - "tests/test_v10_legacy_safe_stop.py"
       - "downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1"
       - "tests/test_v10_legacy_owner_readonly.py"
+      - "docs/V10_P0_27_OWNER_READONLY_DELIVERY.md"
       - "docs/V10_BRAIN_SAFE_DEPLOYMENT_ACCEPTANCE.md"
       - ".github/workflows/v10-brain-safestop-preflight.yml"
   workflow_dispatch:
