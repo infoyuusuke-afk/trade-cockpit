@@ -47,10 +47,10 @@ class MetadataOnlyStatic(unittest.TestCase):
 
 @unittest.skipUnless(owner.ON_WINDOWS_ACTIONS, "Windows Actions synthetic session only")
 class MetadataOnlyWindows(owner.OwnerReadonlyWindows):
-    def run_verify_v2(self, *args, **kwargs):
+    def run_verify_v2(self, *args, script=V2, **kwargs):
         saved = owner.VERIFY
         try:
-            owner.VERIFY = V2
+            owner.VERIFY = script
             return self.run_verify(*args, **kwargs)
         finally:
             owner.VERIFY = saved
@@ -116,11 +116,51 @@ class MetadataOnlyWindows(owner.OwnerReadonlyWindows):
         self.assert_nothing_stopped()
 
 
+    def test_04_content_changed_only_at_recheck_is_blocked(self):
+        """Adversarial disposable verifier: flip state bytes precisely before read #3.
+
+        Test instrumentation is deliberately NOT present in the production V2;
+        the synthetic injected script stays under the disposable fixture root.
+        """
+        self.start_session()
+        injected = self.root / "v2-adversarial-recheck.ps1"
+        code = V2.read_text(encoding="utf-8")
+        anchor = "$recheck=Get-Fingerprint $rootFull"
+        self.assertEqual(code.count(anchor), 1)
+        patch = ('[IO.File]::AppendAllText((Join-Path $rootFull '
+                 '"V10_CONTROLLER_STATE.json"), " ")' + "\n  " + anchor)
+        injected.write_text(code.replace(anchor, patch), encoding="utf-8")
+        original = self.state_path.read_bytes()
+        stop = threading.Event()
+
+        def touch():
+            while not stop.is_set():
+                os.utime(self.state_path, None)
+                stop.wait(0.03)
+
+        t = threading.Thread(target=touch, daemon=True)
+        t.start()
+        try:
+            r = self.run_verify_v2(script=injected)
+        finally:
+            stop.set()
+            t.join(timeout=3)
+        self.assert_blocked(r, "CHANGED_DURING_CHECK_STATE_UNCHANGED")
+        self.assertIn("STATE_CHANGE_CLASS=METADATA_ONLY", r.stdout)
+        self.assertIn("STATE_RECHECK=FAIL", r.stdout)
+        self.assertIn("STATE_METADATA_ONLY_ACCEPTED=false", r.stdout)
+        self.assertEqual(self.state_path.read_bytes(), original + b" ")
+        self.assert_nothing_stopped()
+
+
 # Do not re-run inherited stopping synthetic tests in this focused suite.
 for _class in (owner.OwnerReadonlyWindows, safe_stop.LegacySessionSafeStop):
     for _name in dir(_class):
         if _name.startswith("test_"):
             setattr(MetadataOnlyWindows, _name, None)
+# Delete loop globals: unittest discovery otherwise treats a TestCase class alias
+# as an extra test suite (20 unrelated destructive dummy-host tests).
+del _class, _name
 
 if __name__ == "__main__":
     unittest.main()
