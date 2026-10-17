@@ -1,0 +1,18 @@
+name: P0-417 CI Attribution Contract
+on:
+  pull_request:
+    paths:
+      - "scripts/ci_attributed_unittest.py"
+      - "tests/test_ci_attributed_unittest.py"
+      - ".github/workflows/mobile-control-tests.yml"
+      - ".github/workflows/p0-417-ci-attribution-contract.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ubuntu-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Synthetic tests prove failure is preserved
+        run: python -m unittest discover -s tests -p test_ci_attributed_unittest.py -v
