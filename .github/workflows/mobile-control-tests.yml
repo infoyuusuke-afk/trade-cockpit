@@ -12,14 +12,120 @@ on:
       - "config/ai_organization_v1.json"
       - ".github/workflows/mobile-control-tests.yml"
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
-  test:
+  current-v10:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt lxml
-      # Fail-visible attribution: run the entire discovered test inventory.
-      - run: python scripts/ci_attributed_unittest.py --tests tests
+      - name: Verify current-lane provenance and full-discovery accountability
+        run: python -m unittest discover -s tests -p test_p0_417_current_lane_provenance.py -v
+      - name: CURRENT V10 synthetic lane - all current test failures are fatal
+        run: python scripts/ci_current_v10_lane.py
+  archived-v8:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: current
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: b81b8877b12a33368e91e5e156a2fc7ac4529349
+          path: historical
+          persist-credentials: false
+      - name: Immutable archived V8 contract
+        run: python current/scripts/ci_historical_v8_v9.py --history historical --mode v8
+  archived-v9:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: current
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: b81b8877b12a33368e91e5e156a2fc7ac4529349
+          path: historical
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 7c67b3da874610a3121c1f0d1b48ad5fae445fbb
+          path: second_history
+          persist-credentials: false
+      - name: Archived V9 Collector source and synthetic tests
+        shell: powershell
+        run: python current/scripts/ci_historical_v8_v9.py --history historical --mode collector
+      - name: Archived V9 diagnostics source and synthetic tests
+        shell: powershell
+        run: python current/scripts/ci_historical_v8_v9.py --history historical --mode v9-diagnostics
+      - name: Second-generation Collector source and 11 original tests
+        shell: powershell
+        working-directory: second_history
+        run: python -m unittest discover -s tests -p test_collector_workbook_identity.py -v
+  shadow-cross-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: current
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: b81b8877b12a33368e91e5e156a2fc7ac4529349
+          path: historical
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 7c67b3da874610a3121c1f0d1b48ad5fae445fbb
+          path: second_history
+          persist-credentials: false
+      - name: Sole V9 test gap must remain explicit; V10 replacement must pass
+        run: python current/scripts/ci_shadow_gap_reconciliation.py historical second_history
+  full-suite-forensic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt lxml
+      - name: Prove monolithic failure cannot be laundered into a pass
+        run: python -m unittest discover -s tests -p test_ci_mobile_migration_gate.py -v
+      - name: Run full original suite and fail unless exactly 115 known failures remain
+        run: python scripts/ci_mobile_migration_gate.py
+  synthetic-acceptance:
+    if: ${{ always() }}
+    needs: [current-v10, archived-v8, archived-v9, shadow-cross-version, full-suite-forensic]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate mandatory evidence - not OWNER runtime approval
+        env:
+          CURRENT: ${{ needs.current-v10.result }}
+          V8: ${{ needs.archived-v8.result }}
+          V9: ${{ needs.archived-v9.result }}
+          SHADOW: ${{ needs.shadow-cross-version.result }}
+          FORENSIC: ${{ needs.full-suite-forensic.result }}
+        run: |
+          for result in "$CURRENT" "$V8" "$V9" "$SHADOW" "$FORENSIC"; do
+            if [ "$result" != success ]; then
+              echo "P0_417_SYNTHETIC_ACCEPTANCE=BLOCKED"
+              exit 1
+            fi
+          done
+          echo "P0_417_SYNTHETIC_ACCEPTANCE=PASS_LIMITED"
+          echo "P0_417_MONOLITH_FULL_PASS=false"
+          echo "P0_417_HISTORICAL_SHADOW_GAP=1"
+          echo "STOP_ALLOWED=false"
+          echo "CUTOVER_ELIGIBLE=false"
+          echo "REAL_SUBMIT_ALLOWED=false"
