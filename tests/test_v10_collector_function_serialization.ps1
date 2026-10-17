@@ -27,6 +27,19 @@ foreach ($name in $names) {
  $astText+="function "+$name+" {`r`n"+$fromDisk+"`r`n}`r`n"
  $runtimeText+="function "+$name+" {`r`n"+$fromRuntime+"`r`n}`r`n"
  $matches[$name]=[string]::Equals($fromRuntime,$fromDisk,[StringComparison]::Ordinal)
+ if(-not $matches[$name]) {
+  $trimRuntime=$fromRuntime.TrimStart()
+  $first=if($trimRuntime.Length){[int][char]$trimRuntime[0]}else{0}
+  $bodyIndex=$fromRuntime.IndexOf($fromDisk,[StringComparison]::Ordinal)
+  $nodeParams=@($node.Parameters)
+  $parameterText=@($nodeParams | ForEach-Object { $_.Extent.Text }) -join ","
+  $runtimeHasParam=$fromRuntime.Contains($parameterText) -and ($parameterText.Length -gt 0)
+  Write-Output ("SERIALIZATION_DIAG_"+$name.Replace("-","_").ToUpperInvariant()+"_PARAMS="+$nodeParams.Count)
+  Write-Output ("SERIALIZATION_DIAG_"+$name.Replace("-","_").ToUpperInvariant()+"_FIRST_CHAR_CODE="+$first)
+  Write-Output ("SERIALIZATION_DIAG_"+$name.Replace("-","_").ToUpperInvariant()+"_BODY_OFFSET="+$bodyIndex)
+  Write-Output ("SERIALIZATION_DIAG_"+$name.Replace("-","_").ToUpperInvariant()+"_PARAM_TEXT_PRESENT="+$runtimeHasParam)
+ }
+
 }
 function Normalize-Newlines([string]$Text) { return (($Text -replace "`r`n","`n") -replace "`r","`n") }
 $exact=[string]::Equals($runtimeText,$astText,[StringComparison]::Ordinal)
