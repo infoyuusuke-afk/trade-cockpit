@@ -123,7 +123,8 @@ class OwnerReadonlyWindows(tsl.LegacySessionSafeStop):
         pids = [self.excel_managed.pid, self.excel_business.pid, self.foreign_py.pid]
         if getattr(self, "state", None):
             pids += [int(v) for k, v in self.state.items() if k.endswith("_pid") and int(v) > 0]
-        for pid in pids:
+        # Counts on the output are small; only a PID that cannot be a count proves a leak.
+        for pid in (p for p in pids if p >= 100):
             self.assertNotRegex(out, re.compile(rf"={pid}$", re.M))
         self.assertTrue(tsl.alive(self.foreign_py))
         self.assertTrue(tsl.alive(self.excel_managed))
