@@ -86,6 +86,62 @@ try {
             throw ("V10_RELEASE_COMPONENT_EMPTY: " + $relative)
         }
     }
+    # A clean checkout is necessary but does not prove that every runtime
+    # component came from the same V10 release candidate. Check Git blob
+    # identities against an explicit tracked manifest, fail closed on mix.
+    # The manifest records candidate evidence; NOT an Owner approval.
+    $manifestPath = Join-Path $repo "downloads\V10_RELEASE_BUNDLE_MANIFEST.json"
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        throw "V10_RELEASE_MANIFEST_MISSING"
+    }
+    $manifestItem = Get-Item -LiteralPath $manifestPath -ErrorAction Stop
+    if (($manifestItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or
+        $manifestItem.Length -le 2 -or $manifestItem.Length -gt 8192) {
+        throw "V10_RELEASE_MANIFEST_UNTRUSTED"
+    }
+    $manifest = [IO.File]::ReadAllText($manifestPath, [Text.Encoding]::UTF8) |
+        ConvertFrom-Json -ErrorAction Stop
+    if ($null -eq $manifest -or $manifest -isnot [pscustomobject] -or
+        $manifest.PSObject.Properties.Name.Count -ne 4 -or
+        [string]$manifest.schema -cne "v10_release_candidate_blobs_v1" -or
+        [string]$manifest.candidate_source_commit -cnotmatch '^[0-9a-fA-F]{40}$' -or
+        $manifest.files -isnot [array]) {
+        throw "V10_RELEASE_MANIFEST_SCHEMA_INVALID"
+    }
+    if ($manifest.PSObject.Properties.Name -notcontains "real_submit_allowed" -or
+        $manifest.real_submit_allowed -isnot [bool] -or
+        $manifest.real_submit_allowed) {
+        throw "V10_RELEASE_MANIFEST_REAL_SUBMIT_MUST_BE_FALSE"
+    }
+    $records = @($manifest.files)
+    if ($records.Count -ne $required.Count) {
+        throw "V10_RELEASE_MANIFEST_FILE_COUNT_MISMATCH"
+    }
+    $pinned = @{}
+    foreach ($record in $records) {
+        if ($null -eq $record -or $record -isnot [pscustomobject] -or
+            $record.PSObject.Properties.Name.Count -ne 2 -or
+            $record.PSObject.Properties.Name -notcontains "path" -or
+            $record.PSObject.Properties.Name -notcontains "git_blob_sha") {
+            throw "V10_RELEASE_MANIFEST_FILE_SCHEMA_INVALID"
+        }
+        $name = [string]$record.path
+        $blob = [string]$record.git_blob_sha
+        if ($required -cnotcontains $name -or $pinned.ContainsKey($name) -or
+            $blob -cnotmatch '^[0-9a-fA-F]{40}$') {
+            throw "V10_RELEASE_MANIFEST_FILE_INVALID"
+        }
+        $pinned[$name] = $blob
+    }
+    foreach ($relative in $required) {
+        $actualBlob = & git --no-optional-locks -C $repo rev-parse ("HEAD:" + $relative) 2>&1
+        if ($LASTEXITCODE -ne 0 -or
+            -not [string]::Equals(([string]$actualBlob).Trim(),
+                [string]$pinned[$relative], [StringComparison]::OrdinalIgnoreCase)) {
+            throw ("V10_RELEASE_SOURCE_BLOB_MISMATCH: " + $relative)
+        }
+    }
+    Write-Output "V10_RELEASE_SOURCE_BLOBS_MATCH=17"
     $runner = Join-Path $repo "downloads\RUN_AI_COCKPIT_V10.ps1"
     # Fail closed on a stale V10 RUN that lacks the reviewed admission gate.
     $runnerSource = [IO.File]::ReadAllText($runner, [Text.Encoding]::UTF8)
