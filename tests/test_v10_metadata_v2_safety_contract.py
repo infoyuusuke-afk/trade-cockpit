@@ -31,6 +31,12 @@ def audit_surface(v1, v2):
     original_prefix = v1[:i1].replace(ORIGINAL, REPLACED)
     assert original_prefix.count("}catch{return $true}") == 1, "V1 identity handler moved"
     assert prefix.count("}catch{return $false}") == 1, "V2 identity error must fail closed"
+    mode_guard = (' $stage="MODE"\n'
+                  ' # V2 is strictly a read-only admission check. STOP dry-run belongs to V1 only.\n'
+                  ' # Refuse the switch BEFORE even downloading or invoking any STOP component.\n'
+                  ' if($IncludeStopDryRun){Block "STOP_DRY_RUN_V2_DISABLED"}\n')
+    assert prefix.count(mode_guard) == 1, "V2 must reject STOP dry-run exactly once"
+    prefix = prefix.replace(mode_guard, "", 1)
     assert prefix.replace("}catch{return $false}", "}catch{return $true}", 1) == original_prefix, "other preflight code changed"
     assert v1[j1:] == v2[j2:], "catch/cleanup/safety report changed"
     gate = v2[i2:j2]
@@ -80,6 +86,12 @@ class V2SafetyContract(unittest.TestCase):
 
     def test_identity_exception_cannot_revert_to_success(self):
         tampered = self.v2.replace("}catch{return $false}", "}catch{return $true}", 1)
+        with self.assertRaises(AssertionError):
+            audit_surface(self.v1, tampered)
+
+    def test_stop_dryrun_cannot_be_reenabled(self):
+        tampered = self.v2.replace('if($IncludeStopDryRun){Block "STOP_DRY_RUN_V2_DISABLED"}',
+                                   'if($IncludeStopDryRun){$null=0}', 1)
         with self.assertRaises(AssertionError):
             audit_surface(self.v1, tampered)
 
