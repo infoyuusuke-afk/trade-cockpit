@@ -228,6 +228,18 @@ try{
     -not (Test-Path -LiteralPath $admission -PathType Leaf)){
   $why=Get-Value $a.Lines "PREFLIGHT_BLOCK_REASON"
   if(-not (Is-Code $why)){$why="UNVERIFIED"}
+  if($why -ceq "PORT_CHILD_IDENTITY_NOT_PROVEN"){
+   $d=Get-Value $a.Lines "PREFLIGHT_PORT_DIAGNOSTIC"
+   $allowed=@("COLLECTOR_SOURCE_UNREADABLE","COLLECTOR_SOURCE_UNTRUSTED",
+     "COLLECTOR_ARGV_LAYOUT_MISMATCH","COLLECTOR_ENCODED_PAYLOAD_INVALID",
+     "COLLECTOR_SOURCE_PARSE_ERROR","COLLECTOR_SOURCE_FUNCTION_MISMATCH",
+     "COLLECTOR_INIT_TEXT_MISMATCH","COLLECTOR_INIT_INSPECTION_UNAVAILABLE",
+     "HOST_EXE_PATH_MISMATCH","LIFETIME_OR_SESSION_UNVERIFIED",
+     "PORT_CHILD_UNVERIFIED","COLLECTOR_INIT_UNVERIFIED")
+   $counts.P0_27_BLOCK_DETAIL=if($allowed -ccontains $d){$d}else{"UNVERIFIED"}
+   $port=Get-Value $a.Lines "PREFLIGHT_PORT_NUM"
+   $counts.P0_27_BLOCK_PORT=if(@("28580","28581","28582","28583","28584") -ccontains $port){$port}else{"UNKNOWN"}
+  }
   Block ("PREFLIGHT_"+$why)
  }
  $rec=[IO.File]::ReadAllText($admission,[Text.Encoding]::UTF8) | ConvertFrom-Json
