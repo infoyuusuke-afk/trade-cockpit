@@ -291,10 +291,15 @@ class SafeStopWindowsIsolation(unittest.TestCase):
     def child_pids(parent_pid):
         out = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
-             "(Get-CimInstance Win32_Process -Filter 'ParentProcessId = %d').ProcessId" % parent_pid],
+             "Get-CimInstance Win32_Process -Filter 'ParentProcessId = %d' | "
+             "ForEach-Object { '{0} {1}' -f $_.ProcessId, $_.Name }" % parent_pid],
             capture_output=True, text=True, timeout=30,
         ).stdout
-        return [int(x) for x in out.split() if x.strip().isdigit()]
+        rows = [line.split(None, 1) for line in out.splitlines() if line.strip()]
+        print("LAUNCHER_CHILDREN=" + ";".join(" ".join(r) for r in rows))
+        # conhost.exe also hangs off console launchers; only the interpreter matters.
+        return [int(r[0]) for r in rows
+                if len(r) == 2 and r[1].lower() in ("python.exe", "pythonw.exe")]
 
     @staticmethod
     def pid_alive(pid):
@@ -316,7 +321,7 @@ class SafeStopWindowsIsolation(unittest.TestCase):
             child = self.child_pids(launcher.pid)
             if child:
                 break
-        self.assertEqual(len(child), 1, "launcher did not spawn exactly one interpreter child")
+        self.assertEqual(len(child), 1, "launcher did not spawn exactly one python.exe child")
         self.addCleanup(self.kill_pid, child[0])
         self.state["brain_observer_pid"] = launcher.pid
         self.write_state()
