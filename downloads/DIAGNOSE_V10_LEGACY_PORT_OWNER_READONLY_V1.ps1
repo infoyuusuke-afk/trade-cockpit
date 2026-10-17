@@ -35,7 +35,7 @@ function Process-Snapshot($Pids,$Map) {
 function Listener-Snapshot {
  $list=@(Get-NetTCPConnection -State Listen -ErrorAction Stop |
   Where-Object { $ports -contains [int]$_.LocalPort })
- return ,$list
+ return $list
 }
 function Listener-Identity($Listeners) {
  return ((@($Listeners | ForEach-Object {
@@ -74,7 +74,7 @@ public static class P028Argv {
   $script:HostArgvTypeReady=$true
  }
  if([string]::IsNullOrWhiteSpace([string]$Proc.CommandLine)){return @()}
- return ,@([P028Argv]::Split([string]$Proc.CommandLine))
+ return @([P028Argv]::Split([string]$Proc.CommandLine))
 }
 function Classify($Listener,$Tracked,$Map,$Session) {
  $pidNum=[int]$Listener.OwningProcess
