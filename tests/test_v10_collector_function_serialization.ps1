@@ -23,7 +23,7 @@ foreach ($name in $names) {
  $definition=[scriptblock]::Create($node.Extent.Text)
  . $definition
  $fromDisk=$node.Body.GetScriptBlock().ToString()
- if(@($node.Parameters).Count -gt 0) {
+ if($null -ne $node.Parameters -and $node.Parameters.Count -gt 0) {
   $argsText=@($node.Parameters | ForEach-Object { $_.Extent.Text }) -join ", "
   $fromDisk="param("+$argsText+")`r`n"+$fromDisk
  }
