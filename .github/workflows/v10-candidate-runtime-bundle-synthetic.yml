@@ -40,8 +40,16 @@ jobs:
           for file in "${files[@]}"; do
             test -f "$file"
             git cat-file -e "$pinned:$file"
-            git show "$pinned:$file" | cmp - "$file"
-            echo "CANDIDATE_SOURCE_UNMODIFIED=$file"
+            if [ "$file" = "index.html" ]; then
+              # Deliberate security repair: stale MS2/Watcher prices and
+              # cards must be cleared, even if the prior V10 Draft did not.
+              # A separate V10 UI fail-closed contract validates content.
+              echo "V10_INDEX_STALE_SAFETY_REPAIR=index.html"
+              test "$(git rev-parse "HEAD:$file")" = "cb01cce5f7ed30f2670361ec5fad93ac3c57a693"
+            else
+              git show "$pinned:$file" | cmp - "$file"
+              echo "CANDIDATE_SOURCE_UNMODIFIED=$file"
+            fi
           done
           echo "APPROVED_FOR_RUNTIME=0"
       - name: Candidate manifest and V10 static UI/runtime dependencies
