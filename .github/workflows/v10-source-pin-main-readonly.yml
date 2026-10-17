@@ -1,4 +1,4 @@
-name: V10 Main Source Pin Read-only (No Runtime)
+name: V10 Source Pin + Guarded Startup (Synthetic)
 on:
   pull_request:
     paths:
@@ -6,6 +6,8 @@ on:
       - "tests/test_v10_readonly_source_pin_main.py"
       - "downloads/START_AI_COCKPIT_V10.ps1"
       - "downloads/START_AI_COCKPIT_V10.cmd"
+      - "downloads/V10_RELEASE_BUNDLE_MANIFEST.json"
+      - "docs/V10_MAIN_READONLY_SOURCE_PREFLIGHT.md"
       - "tests/test_v10_guarded_launch_main.py"
       - ".gitignore"
       - ".github/workflows/v10-source-pin-main-readonly.yml"
