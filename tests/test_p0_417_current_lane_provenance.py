@@ -31,7 +31,10 @@ class ProvenanceTests(unittest.TestCase):
         script=(Path(__file__).resolve().parents[1]/"scripts"/"ci_current_v10_lane.py").read_text()
         self.assertIn("ADDITIONAL_NOT_REPLACING_MONOLITH",script)
         workflow=(Path(__file__).resolve().parents[1]/".github/workflows"/"mobile-control-tests.yml").read_text()
-        self.assertIn("python scripts/ci_attributed_unittest.py --tests tests",workflow)
+        self.assertIn("python scripts/ci_mobile_migration_gate.py", workflow)
+        gate=(Path(__file__).resolve().parents[1]/"scripts"/"ci_mobile_migration_gate.py").read_text()
+        self.assertIn('ci_attributed_unittest.py"), "--tests", "tests"',gate)
+        self.assertIn("P0_417_MONOLITH_FULL_PASS=false",gate)
 
     def test_partition_reports_accountability(self):
         case=Stub("test_pass")
