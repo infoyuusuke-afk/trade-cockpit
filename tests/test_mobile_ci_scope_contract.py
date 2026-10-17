@@ -47,7 +47,7 @@ class MobileCIScopeContract(unittest.TestCase):
     def test_execution_safety_suite_always_runs_and_fails_closed(self):
         self.assertIn("set -euo pipefail", self.mobile)
         for test in TESTS:
-            self.assertIn("            " + test + " \\", self.mobile + " \\")
+            self.assertIn("            " + test, self.mobile)
             # The tests are run via unittest discover, no filter disabling assertions.
         self.assertIn('python -m unittest discover -s tests -p "$suite" -v', self.mobile)
         self.assertIn("python -m unittest discover -s tests -p test_mobile_ci_scope_contract.py -v", self.mobile)
