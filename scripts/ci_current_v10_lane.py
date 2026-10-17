@@ -4,6 +4,7 @@ This lane is additional and never replaces the monolithic FAIL-visible job.
 Only explicitly archived V8/V9 cases can be omitted from this current-only lane.
 Their historic SHA-pinned source is separately tested in the acceptance matrix.
 """
+import os
 import re
 import sys
 import unittest
@@ -53,6 +54,8 @@ def partition_discovery(suite):
 
 
 def main():
+    # Match `python -m unittest discover` import resolution from repo root.
+    sys.path.insert(0, os.getcwd())
     suite = unittest.TestLoader().discover("tests", pattern="test_*.py")
     current, historical, current_ids = partition_discovery(suite)
     print("P0_417_CURRENT_LANE=ADDITIONAL_NOT_REPLACING_MONOLITH", flush=True)
