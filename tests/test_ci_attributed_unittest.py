@@ -1,23 +1,18 @@
-"""P0-417: synthetic tests of fail-visible attribution; does not run live scripts."""
+"""P0-417: synthetic proof that full-suite execution is never filtered."""
 import contextlib
 import io
-import tempfile
-import textwrap
+import sys
 import unittest
 from pathlib import Path
-import sys
+from unittest.mock import patch
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import ci_attributed_unittest as target
 
 
-class FakeCase(unittest.TestCase):
-    def test_stub(self):
-        pass
-
-
 class AttributionTests(unittest.TestCase):
-    def test_classification_covers_legacy_and_loader_failure(self):
+    def test_classification_covers_legacy_and_other(self):
         for name in (
             "test_v9_cache_rest.CacheRestTests.test_refuses",
             "test_v8_boot.Boot.test_one",
@@ -31,48 +26,40 @@ class AttributionTests(unittest.TestCase):
                      "unittest.loader._FailedTest.test_unknown"):
             self.assertEqual(target.classify(name), "CURRENT_OTHER", name)
 
-    def test_grouping_never_drops_a_test(self):
-        case = FakeCase("test_stub")
-        nested = unittest.TestSuite([unittest.TestSuite([case])])
-        groups, ids = target.make_groups(nested)
-        self.assertEqual(ids, [case.id()])
-        self.assertEqual(sum(x.countTestCases() for x in groups.values()), 1)
+    def test_parses_final_unittest_failure_lines(self):
+        output = ("FAIL: test_missing (test_v9_cache_rest.CacheRestTests.test_missing)\n"
+                  "ERROR: test_config (test_v10_config.Modern.test_config)\n"
+                  "Ran 2 tests in 0.001s\nFAILED (failures=1, errors=1)\n")
+        g = target.classify_output(output)
+        self.assertEqual(g["LEGACY_V8_V9"], {"FAIL": 1, "ERROR": 0})
+        self.assertEqual(g["CURRENT_OTHER"], {"FAIL": 0, "ERROR": 1})
 
-    def test_mixed_pass_fail_preserves_failure_exit(self):
-        with tempfile.TemporaryDirectory(prefix="p0417-synthetic-") as tmp:
-            folder = Path(tmp)
-            (folder / "test_regular.py").write_text(textwrap.dedent("""
-                import unittest
-                class Current(unittest.TestCase):
-                    def test_pass(self): self.assertTrue(True)
-            """), encoding="utf-8")
-            (folder / "test_v9_legacy.py").write_text(textwrap.dedent("""
-                import unittest
-                class Legacy(unittest.TestCase):
-                    def test_fail(self): self.assertEqual(1, 2)
-            """), encoding="utf-8")
-            stdout = io.StringIO()
-            with contextlib.redirect_stdout(stdout):
-                code = target.main(["--tests", str(folder)])
-            self.assertEqual(code, 1)
-            text = stdout.getvalue()
-            self.assertIn("P0_417_DISCOVERED=2", text)
-            self.assertIn("P0_417_GROUP_RESULT=CURRENT_OTHER:PASS", text)
-            self.assertIn("P0_417_GROUP_RESULT=LEGACY_V8_V9:FAIL", text)
-            self.assertIn("P0_417_RESULT=FAIL", text)
+    def test_error_exit_is_preserved_exactly_without_group_reorder(self):
+        fake = SimpleNamespace(returncode=1, stdout=(
+            "FAIL: test_bad (test_v9_cache_rest.CacheRest.test_bad)\n"
+            "Ran 1 test in 0.001s\nFAILED (failures=1)\n"))
+        out = io.StringIO()
+        with patch.object(target.subprocess, "run", return_value=fake) as p:
+            with contextlib.redirect_stdout(out):
+                code = target.main(["--tests", "tests"])
+        self.assertEqual(code, 1)
+        command = p.call_args.args[0]
+        self.assertEqual(command, [sys.executable, "-m", "unittest", "discover",
+                                   "-s", "tests", "-p", "test_*.py", "-v"])
+        self.assertEqual(p.call_args.kwargs["check"], False)
+        self.assertIn("P0_417_ORIGINAL_EXIT_CODE=1", out.getvalue())
+        self.assertIn("P0_417_GROUP_FAILURES=LEGACY_V8_V9 FAIL=1 ERROR=0", out.getvalue())
 
-    def test_only_current_tests_can_pass(self):
-        with tempfile.TemporaryDirectory(prefix="p0417-synthetic-") as tmp:
-            folder = Path(tmp)
-            (folder / "test_current_only.py").write_text(textwrap.dedent("""
-                import unittest
-                class Current(unittest.TestCase):
-                    def test_pass(self): self.assertTrue(True)
-            """), encoding="utf-8")
-            with contextlib.redirect_stdout(io.StringIO()) as output:
-                code = target.main(["--tests", str(folder)])
-            self.assertEqual(code, 0)
-            self.assertIn("P0_417_RESULT=PASS", output.getvalue())
+    def test_success_exit_and_original_output_preserved(self):
+        fake = SimpleNamespace(returncode=0, stdout="Ran 2 tests in 0.002s\nOK\n")
+        out = io.StringIO()
+        with patch.object(target.subprocess, "run", return_value=fake):
+            with contextlib.redirect_stdout(out):
+                code = target.main()
+        self.assertEqual(code, 0)
+        self.assertIn("Ran 2 tests in 0.002s", out.getvalue())
+        self.assertIn("P0_417_EXECUTED=2", out.getvalue())
+        self.assertIn("P0_417_RESULT=PASS", out.getvalue())
 
 
 if __name__ == "__main__":
