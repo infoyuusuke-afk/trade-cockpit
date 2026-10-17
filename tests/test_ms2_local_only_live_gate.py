@@ -19,7 +19,41 @@ class LocalOnlyMs2GateTests(unittest.TestCase):
         cls.page = (ROOT / "index.html").read_text(encoding="utf-8")
 
     def test_generated_page_exactly_matches_script(self):
-        self.assertIn(self.script, self.page)
+        # V10's local Gateway index uses its own fetch path. Preserve
+        # identical safety semantics rather than silently declaring the
+        # generated legacy inline script to be the new V10 implementation.
+        if (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").is_file():
+            # V10 transport marks public/cached/failed local responses
+            # unusable, and the full price provenance check remains.
+            self.assertIn('d._transport_fail_closed=true', self.page)
+            self.assertIn('d.stale=true', self.page)
+            self.assertIn('d.real_submit_allowed=false', self.page)
+            self.assertIn('window.livePriceBlocked', self.page)
+            self.assertIn('CACHED_OR_SAMPLE_PAYLOAD', self.page)
+            self.assertIn('staleFromAge=d.stale||age>60||age< -5', self.page)
+            # The dashboard must not render any stale top/held/PTS/IR
+            # prices, and transport errors must erase prior cards.
+            for field, alias in (
+                ("top5", "xs"), ("hold_top5", "holds"),
+                ("pts_top5", "pts"), ("ir_pts_top5", "ir")
+            ):
+                self.assertIn(
+                    f'const {alias}=!stale&&Array.isArray(d.{field})?d.{field}:[];',
+                    self.page
+                )
+            self.assertIn('if(cards)cards.innerHTML=""', self.page)
+            self.assertIn('if(holdCards)holdCards.innerHTML=""', self.page)
+            self.assertIn('if(ptsCards)ptsCards.innerHTML=""', self.page)
+            self.assertIn('if(irCards)irCards.innerHTML=""', self.page)
+            self.assertEqual(
+                self.page.count(
+                    "const all=d.stale===false&&"
+                    "Array.isArray(d.all_targets)?d.all_targets:[]"
+                ),
+                2
+            )
+        else:
+            self.assertIn(self.script, self.page)
 
     def test_only_local_collector_can_be_live(self):
         self.assertIn('localSource=d.connection_source==="自宅PC・MS2 RSS LIVE"', self.script)
