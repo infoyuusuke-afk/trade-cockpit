@@ -234,7 +234,10 @@ class OwnerReadonlyWindows(tsl.LegacySessionSafeStop):
     def test_07_port_child_that_is_not_a_job_host_is_blocked(self):
         self.start_session(bridge="raw")
         before = self.state_path.read_bytes()
-        self.assert_blocked(self.run_verify(), "PREFLIGHT_PORT_CHILD_IDENTITY_NOT_PROVEN")
+        r = self.run_verify()
+        self.assert_blocked(r, "PREFLIGHT_PORT_CHILD_IDENTITY_NOT_PROVEN")
+        self.assertIn("P0_27_BLOCK_PORT=28580", r.stdout)
+        self.assertIn("P0_27_BLOCK_DETAIL=", r.stdout)
         self.assert_session_untouched(before)
 
     # -- Excel ---------------------------------------------------------------
