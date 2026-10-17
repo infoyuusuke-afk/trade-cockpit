@@ -1,0 +1,69 @@
+name: V10 Launcher Source Pin (Synthetic)
+on:
+  pull_request:
+    paths:
+      - "downloads/RUN_AI_COCKPIT_V10.ps1"
+      - "tests/test_v10_launcher_pin_contract.py"
+      - ".github/workflows/p0-v10-launcher-source-pin.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: V10 source admission contracts (no runtime)
+        run: python -m unittest discover -s tests -p test_v10_launcher_pin_contract.py -v
+  windows-negative:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Windows PS5.1 wrong-branch/full-SHA fail-closed synthetic cases
+        run: python -m unittest discover -s tests -p test_v10_launcher_pin_contract.py -v
+  # Verification only: do NOT copy these historical CI fixes into this PR.
+  # Overlay the six pinned #434 files inside the ephemeral runner workspace,
+  # then exercise the entire V10 stack with only V8/V9 IDs excluded.
+  v10-legacy-combined:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Overlay exact six CI files from reviewed Draft PR 434 (temporary runner only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          pinned="51f9278cc4e062dfb580d1ecf98ac54b05cd0875"
+          git fetch --no-tags --depth=1 origin "$pinned"
+          files=(
+            .github/workflows/legacy-full-suite-diagnostic.yml
+            .github/workflows/mobile-control-tests.yml
+            docs/P0_33_MOBILE_CI_LEGACY_SPLIT.md
+            scripts/ci_legacy_v8_v9_excluded.txt
+            scripts/ci_mobile_current_suite.py
+            tests/test_mobile_ci_scope_contract.py
+          )
+          for file in "${files[@]}"; do
+            git cat-file -e "$pinned:$file"
+            mkdir -p "$(dirname "$file")"
+            git show "$pinned:$file" > "$file"
+            echo "PINNED_CI_OVERLAY=$file"
+          done
+          echo "PINNED_CI_HEAD=$pinned"
+      - name: Install existing Python test dependencies
+        run: pip install -r requirements.txt lxml
+      - name: Assert V10 scope and pinned V8/V9 exclusions
+        run: python -m unittest discover -s tests -p test_mobile_ci_scope_contract.py -v
+      - name: Exercise current V10 full suite with exactly pinned legacy exclusions
+        run: python scripts/ci_mobile_current_suite.py

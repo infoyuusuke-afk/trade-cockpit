@@ -742,11 +742,20 @@ try {
     $actualSha = (Invoke-GitFatal $repo @("rev-parse", "HEAD") "could not read the current commit after update").Trim()
     Write-Host ("Now on " + $actualBranch + " @ " + $actualSha.Substring(0, 8)) -ForegroundColor Green
 
-    if (-not $SkipGitUpdate -and $actualBranch -ne $Branch) {
-        throw "Branch mismatch after checkout: expected '$Branch', got '$actualBranch'. Refusing to start Controller against an unexpected branch."
+    # Startup never mutates Git, but MUST still verify the requested branch.
+    # SkipGitUpdate controls mutation and cannot disable source admission.
+    if ($actualBranch -cne $Branch) {
+        throw "BRANCH_IDENTITY_MISMATCH: refusing unreviewed runtime source."
     }
-    if (-not [string]::IsNullOrWhiteSpace($ExpectedSha) -and -not $actualSha.StartsWith($ExpectedSha)) {
-        throw "SHA mismatch after checkout: expected '$ExpectedSha', got '$actualSha'. Refusing to start Controller against an unverified commit."
+    # Legacy one-click without ExpectedSha still relies on a fixed Branch.
+    # When a SHA is supplied, only a full 40-hex exact match is accepted.
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedSha)) {
+        if ($ExpectedSha -cnotmatch '^[0-9a-fA-F]{40}$') {
+            throw "PINNED_SHA_MUST_BE_FULL_40_HEX: shortened or malformed commit ID."
+        }
+        if (-not [string]::Equals($actualSha, $ExpectedSha, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "PINNED_SHA_IDENTITY_MISMATCH: unexpected runtime commit."
+        }
     }
 
     Write-Host ""
