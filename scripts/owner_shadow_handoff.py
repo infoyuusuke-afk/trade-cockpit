@@ -367,7 +367,51 @@ def synthetic_demo() -> str:
         consumed_ids=set())
     if checked["state"] != "SIMULATED_SHADOW_READY" or checked["real_submit_allowed"] is not False:
         raise RuntimeError(checked["reason"])
-    return "PASS: SYNTHETIC_OWNER_PAPER_HANDOFF_ONLY"
+    policy = {
+        "policy_version": "execution-safety-0.1.0",
+        "max_ticket_age_sec": 15,
+        "max_price_drift_bps": 50,
+        "authorization_ttl_sec": 3600,
+        "master_kill_ttl_sec": 3600,
+        "daily_stop_yen": 3000,
+        "max_open_positions": 1,
+    }
+    risk = {
+        "decision": "PASS", "merge_hash": "m" * 64,
+        "allowed_qty": 100, "symbol": ticket["symbol"],
+        "side": ticket["side"], "policy_version": "risk-gate-0.1.0",
+        "horizon": "day",
+    }
+    fresh_at = (now + timedelta(seconds=1)).isoformat()
+    snapshot = {
+        "simulation_only": True,
+        "kill_switch": {
+            "status": "ARMED", "armed_at": now.isoformat(),
+            "expires_at": (now + timedelta(seconds=3600)).isoformat(),
+        },
+        "human_session_authorized": True,
+        "authorization_issued_at": now.isoformat(),
+        "authorization_expires_at": (now + timedelta(seconds=3600)).isoformat(),
+        "authorization_session_id": "SYNTHETIC_NOT_AUTHENTICATED",
+        "data_freshness": "OK", "market_session_allowed": True,
+        "symbol_tradeable": True, "broker_link_health": "OK",
+        "conflict_state": "CANDIDATE_READY",
+        "expected_position_qty": 0, "broker_position_qty": 0,
+        "buying_power_check": True, "short_availability_check": True,
+        "realized_pnl_today_yen": 0.0, "open_positions_count": 0,
+        "known_intents": [], "pending_orders": [],
+        "price_tick_valid": True, "qty_lot_valid": True,
+        "quote_price": 2000.0, "quote_asof": fresh_at,
+        "broker_snapshot_fingerprint": "SYNTHETIC_NOT_BROKER",
+    }
+    shadow_result = dispatch_synthetic_shadow_order(
+        ticket, pending, decision, now=now + timedelta(seconds=2),
+        quote_price=2000.0, quote_asof=fresh_at,
+        risk_decision=risk, simulated_broker_snapshot=snapshot,
+        execution_policy=policy, known_shadow_orders=[])
+    if shadow_result["state"] != "SIMULATED_SHADOW_ORDER_NEW" or shadow_result["real_submit_allowed"] is not False:
+        raise RuntimeError(shadow_result["reason"])
+    return "PASS: SYNTHETIC_OWNER_TO_SHADOW_CORE_NO_REAL_ORDER"
 
 
 if __name__ == "__main__":
