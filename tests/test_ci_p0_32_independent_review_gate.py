@@ -21,8 +21,11 @@ class ReviewAdmission(unittest.TestCase):
         self.assertEqual(module.verdict(pr(),[review()]),"APPROVED_INDEPENDENT_CURRENT_HEAD")
     def test_no_review_is_blocked(self):
         self.assertTrue(module.verdict(pr(),[]).startswith("BLOCKED"))
-    def test_draft_is_blocked_even_with_approval(self):
-        self.assertEqual(module.verdict(pr(True),[review()]),"BLOCKED_DRAFT_OR_MERGED")
+    def test_draft_independent_approval_is_recorded_without_readying_pr(self):
+        self.assertEqual(module.verdict(pr(True),[review()]),"APPROVED_INDEPENDENT_CURRENT_HEAD")
+    def test_merged_pr_is_blocked(self):
+        x=pr();x["merged"]=True
+        self.assertEqual(module.verdict(x,[review()]),"BLOCKED_MERGED")
     def test_author_approval_is_never_independent(self):
         self.assertTrue(module.verdict(pr(),[review(login="original-owner")]).startswith("BLOCKED"))
     def test_bot_approval_is_never_independent(self):
