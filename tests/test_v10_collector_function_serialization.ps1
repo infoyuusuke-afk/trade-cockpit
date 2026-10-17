@@ -19,9 +19,9 @@ foreach ($name in $names) {
  },$true) | Where-Object { $_.Name -ceq $name })
  if($hits.Count -ne 1){throw "COLLECTOR_FUNCTION_COUNT_MISMATCH"}
  $node=$hits[0]
- # Define each function in this disposable CI process, never call its body.
+ # Dot-source only each function declaration into this disposable CI scope; never call its body.
  $definition=[scriptblock]::Create($node.Extent.Text)
- $null=$definition.Invoke()
+ . $definition
  $fromDisk=$node.Body.GetScriptBlock().ToString()
  $fromRuntime=(Get-Item ("function:" + $name) -ErrorAction Stop).ScriptBlock.ToString()
  $astText+="function "+$name+" {`r`n"+$fromDisk+"`r`n}`r`n"
