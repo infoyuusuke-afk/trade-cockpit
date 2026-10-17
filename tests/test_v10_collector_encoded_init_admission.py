@@ -64,7 +64,7 @@ class Admissions(tsl.LegacySessionSafeStop):
   self.start_session()
   r=self.check()
   self.assertEqual(r.returncode,2,r.stdout)
-  self.assertIn("PREFLIGHT_PORT_CHILD_IDENTITY_NOT_PROVEN",r.stdout)
+  self.assertIn("PREFLIGHT_BLOCK_REASON=PORT_CHILD_IDENTITY_NOT_PROVEN",r.stdout)
   self.assert_nothing_stopped()
  def test_03_normal_start_job_still_works(self):
   self.start_session()
