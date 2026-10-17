@@ -10,11 +10,10 @@ Checks, all read-only on the session:
     Controller/RUN, Start-Job bridges, venv children, BRAIN absence or
     ownership, managed Excel PID, owners of LISTEN 28580-28584;
   - STOP -RecoveryCheck (writes nothing);
-  - -IncludeStopDryRun is explicitly REFUSED by this V2 entry.
-State content, root result/evidence, Excel process set, V10 listeners, admitted
+  - with -IncludeStopDryRun, STOP without -Execute (handle pinning only).
+State file, root result/evidence, Excel process set, V10 listeners, admitted
 processes and launch files (root CMD/BAT/LNK/PS1/VBS, Desktop and Startup
-LNK/CMD/BAT) are compared before and after. State mtime-only changes may be
-accepted after a third content-hash read; changes elsewhere always block. Only
+LNK/CMD/BAT) are fingerprinted before and after and must be identical. Only
 those listed folders are compared (LAUNCH_SCOPE=LISTED_FOLDERS_ONLY); other
 desktops, profiles or shortcuts elsewhere are not inspected.
 
