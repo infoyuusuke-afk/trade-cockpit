@@ -202,6 +202,24 @@ class MetadataOnlyWindows(owner.OwnerReadonlyWindows):
         self.assert_nothing_stopped()
 
 
+    def test_06_process_identity_timestamp_exception_must_block(self):
+        """A process with unreadable StartTime must never be admitted as alive."""
+        self.start_session()
+        injected = self.root / "v2-unverifiable-process.ps1"
+        code = V2.read_text(encoding="utf-8")
+        needle = "return ([Math]::Abs($p.StartTime.ToUniversalTime().Ticks-[long]$Entry.created_utc_ticks) -le [TimeSpan]::TicksPerSecond*2)"
+        self.assertEqual(code.count(needle), 1)
+        injected.write_text(code.replace(needle, 'throw "SYNTHETIC_PROCESS_STARTTIME_UNREADABLE"'),
+                            encoding="utf-8")
+        original = self.state_path.read_bytes()
+        r = self.run_verify_v2(script=injected)
+        self.assertNotEqual(r.returncode, 0, r.stdout)
+        self.assertIn("P0_27_RESULT=BLOCKED", r.stdout)
+        self.assertIn("MANAGED_PROCESSES_UNCHANGED=false", r.stdout)
+        self.assert_session_untouched(original)
+        self.assert_nothing_stopped()
+
+
 # Do not re-run inherited stopping synthetic tests in this focused suite.
 for _class in (owner.OwnerReadonlyWindows, safe_stop.LegacySessionSafeStop):
     for _name in dir(_class):

@@ -26,7 +26,12 @@ def audit_surface(v1, v2):
     i2 = v2.index(GATE_V2)
     j1 = v1.index(SUFFIX, i1)
     j2 = v2.index(SUFFIX, i2)
-    assert v1[:i1].replace(ORIGINAL, REPLACED) == v2[:i2], "preflight changed"
+    # Only authorized difference ahead of the metadata gate: V2 identity errors must block.
+    prefix = v2[:i2]
+    original_prefix = v1[:i1].replace(ORIGINAL, REPLACED)
+    assert original_prefix.count("}catch{return $true}") == 1, "V1 identity handler moved"
+    assert prefix.count("}catch{return $false}") == 1, "V2 identity error must fail closed"
+    assert prefix.replace("}catch{return $false}", "}catch{return $true}", 1) == original_prefix, "other preflight code changed"
     assert v1[j1:] == v2[j2:], "catch/cleanup/safety report changed"
     gate = v2[i2:j2]
     # New success classification must be distinct and never hide old false.
@@ -72,6 +77,11 @@ class V2SafetyContract(unittest.TestCase):
 
     def test_only_documented_gate_changed(self):
         audit_surface(self.v1, self.v2)
+
+    def test_identity_exception_cannot_revert_to_success(self):
+        tampered = self.v2.replace("}catch{return $false}", "}catch{return $true}", 1)
+        with self.assertRaises(AssertionError):
+            audit_surface(self.v1, tampered)
 
     def test_tampered_stop_permission_rejected(self):
         tampered = self.v2.replace('Write-Output "STOP_ALLOWED=false"',

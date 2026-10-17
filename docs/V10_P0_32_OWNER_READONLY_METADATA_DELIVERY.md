@@ -5,16 +5,16 @@
 
 ## 固定検証ソース
 - entry `downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V2.ps1`
-- entry commit: `58dcbf530bcf44e34716484aa0887464d1c5b5ad`
-- entry Git blob: `7708a007dfa70d80b6aa6990538f2ef4c7acf3b1`
-- entry SHA256: `C40E1DACED6AC7DE3838E66505D89A0B0B8155992DFEC343A89D3A7296D93C57`
+- entry commit: `1e83b5e06efe4ba011a14c066781546f78adcf0c`
+- entry Git blob: `e5cae39f48e2c97082702ab8536cf4f440b08e5b`
+- entry SHA256: `A0A96CF3A21893A93E5014486C2D302ED195904D4D256B063027BBDECA5C74EC`
 - child PREFLIGHT/STOP fixed commit: `4e4b59e4f054cd91d0122f717f0f6d60c28d70d5` (V1と同じ)
 - **1ファイルのsource hashが異なれば実行せずBLOCK**。HEADや最新mainを直接参照しない。
 
 ## OWNER実行予定のコマンド（CI・独立レビューPASSまで使用禁止）
 ```powershell
-$c='58dcbf530bcf44e34716484aa0887464d1c5b5ad'
-$h='C40E1DACED6AC7DE3838E66505D89A0B0B8155992DFEC343A89D3A7296D93C57'
+$c='1e83b5e06efe4ba011a14c066781546f78adcf0c'
+$h='A0A96CF3A21893A93E5014486C2D302ED195904D4D256B063027BBDECA5C74EC'
 $p='4e4b59e4f054cd91d0122f717f0f6d60c28d70d5'
 $d=Join-Path $env:TEMP ('v10-owner-v2-'+[guid]::NewGuid().ToString('N'))
 try {
@@ -34,6 +34,10 @@ finally {
   }
 }
 ```
+
+## P0-32 追加安全修正
+- V2は状態ファイルの検査だけでなく、採用済みプロセスの開始時刻が読み取れない場合も異常として拒否する。旧V1の同経路は修正しない。
+- 新しい固定PINはこの修正済みV2のGit blobを参照する。以前のV2固定PINは使わないこと。
 
 ## 判定
 - `P0_27_RESULT=READONLY_VERIFIED`: 旧V1と同じ完全不変の読取専用診断。
