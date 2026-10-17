@@ -4,6 +4,14 @@ on:
     paths:
       - "downloads/RUN_AI_COCKPIT_V10.ps1"
       - "tests/test_v10_launcher_pin_contract.py"
+      - "downloads/AI_COCKPIT_CONTROLLER_V10.ps1"
+      - "downloads/STOP_AI_COCKPIT_V10.ps1"
+      - "downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1"
+      - "downloads/START_AI_COCKPIT_V10.cmd"
+      - "tests/test_v10_brain_argv_contract.py"
+      - "tests/test_v10_brain_safestop_preflight.py"
+      - "tests/test_v10_brain_safestop_windows_integration.py"
+      - "tests/test_v10_single_browser.py"
       - ".github/workflows/p0-v10-launcher-source-pin.yml"
   workflow_dispatch:
 permissions:
@@ -19,6 +27,8 @@ jobs:
           python-version: "3.12"
       - name: V10 source admission contracts (no runtime)
         run: python -m unittest discover -s tests -p test_v10_launcher_pin_contract.py -v
+      - name: V10 one-browser/no-order source contracts
+        run: python -m unittest discover -s tests -p test_v10_single_browser.py -v
   windows-negative:
     runs-on: windows-latest
     timeout-minutes: 10
@@ -29,6 +39,28 @@ jobs:
           python-version: "3.12"
       - name: Windows PS5.1 wrong-branch/full-SHA fail-closed synthetic cases
         run: python -m unittest discover -s tests -p test_v10_launcher_pin_contract.py -v
+  # Integration gate: stop disposable mock Controller/Python processes ONLY.
+  # No Owner PC, real Excel, MS2, trading or deployment is accessed.
+  windows-brain-safe-stop:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Exact argv identity, PowerShell 5.1, synthetic paths
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_v10_brain_argv_contract.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s tests -p test_v10_brain_safestop_preflight.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Real stop script with disposable mock workers ONLY
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_v10_brain_safestop_windows_integration.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   # Exercise ACTUALLY COMMITTED V10 files. Pinned #434 is reference only.
   v10-legacy-integrated:
     runs-on: ubuntu-latest
