@@ -46,7 +46,7 @@ def use_canonical_historical_line_endings(history):
     listing = subprocess.run(["git", "-C", str(root), "ls-files", "-z", "downloads/*.ps1"],
                              capture_output=True, check=True).stdout
     converted = 0
-    for item in listing.split(b"\\0"):
+    for item in listing.split(b"\0"):
         if not item:
             continue
         rel = item.decode("utf-8")
@@ -56,7 +56,7 @@ def use_canonical_historical_line_endings(history):
         actual = target.read_bytes()
         if actual == expected:
             continue
-        if actual.replace(b"\\r\\n", b"\\n") != expected:
+        if actual.replace(b"\r\n", b"\n") != expected:
             print("P0_417_HISTORIC_BYTES_UNEXPECTED=" + rel, flush=True)
             return 2
         target.write_bytes(expected)
