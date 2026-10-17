@@ -42,14 +42,19 @@ class SafeStopWindowsIsolation(unittest.TestCase):
             "powershell.exe", "-NoProfile", "-NonInteractive",
             "-File", str(self.controller_script),
         ])
-        # Python -c executes only time.sleep, not the repository observer.
-        # Its remaining argv imitates *exactly* the BRAIN launch identity.
-        self.brain = self.spawn([
-            sys.executable, "-c", "import time; time.sleep(120)",
-            str(REPO / "scripts" / "ai_brain_observer.py"),
+        # A private sleep-only script uses the actual Controller argv layout.
+        # Never execute the repository observer or use -c as a positive fixture.
+        self.fixture_repo = self.root / "synthetic repo"
+        (self.fixture_repo / "scripts").mkdir(parents=True)
+        self.brain_script = self.fixture_repo / "scripts" / "ai_brain_observer.py"
+        self.brain_script.write_text("import time; time.sleep(120)\n", encoding="utf-8")
+        self.brain_argv = [
+            sys.executable, "-u", str(self.brain_script),
             "--live", str(self.runtime / "live_ms2.json"),
             "--status", str(self.runtime / "ai_brain_observer_status_v1.json"),
-        ])
+            "--interval", "5",
+        ]
+        self.brain = self.spawn(self.brain_argv)
         self.foreign = self.spawn([
             sys.executable, "-c", "import time; time.sleep(120)",
             "UNRELATED_PYTHON_NO_BRAIN_IDENTITY",
@@ -63,7 +68,7 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.state = {
             "controller_pid": self.controller.pid,
             "brain_observer_pid": self.brain.pid,
-            "repo_root": str(REPO),
+            "repo_root": str(self.fixture_repo),
             "runtime_dir": str(self.runtime),
             "session_id": "ci-synthetic-only",
             "started_at": (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat(),
@@ -128,6 +133,36 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.assertIsNone(self.foreign.poll(), "unrelated Python killed")
         self.assertIsNone(self.controller.poll(), "foreign BRAIN PID must not stop Controller")
         self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_IDENTITY_UNVERIFIED", result.stdout)
+
+    def assert_decoy_refused(self, argv):
+        decoy = self.spawn(argv)
+        time.sleep(0.3)
+        self.assertIsNone(decoy.poll())
+        self.state["brain_observer_pid"] = decoy.pid
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("BLOCKED_BRAIN_IDENTITY_UNVERIFIED", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (decoy, self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "identity rejection must precede any stop")
+
+    def test_python_c_with_all_brain_paths_is_not_owned(self):
+        self.assert_decoy_refused([
+            sys.executable, "-c", "import time; time.sleep(120)",
+            *self.brain_argv[2:],
+        ])
+
+    def test_script_path_suffix_is_not_owned(self):
+        decoy_script = Path(str(self.brain_script) + ".foreign.py")
+        decoy_script.write_text("import time; time.sleep(120)\n", encoding="utf-8")
+        args = list(self.brain_argv)
+        args[2] = str(decoy_script)
+        self.assert_decoy_refused(args)
+
+    def test_duplicate_status_override_is_not_owned(self):
+        self.assert_decoy_refused(self.brain_argv + ["--status", str(self.root / "foreign.json")])
 
     def test_zero_brain_pid_blocks_before_controller_stop(self):
         self.state["brain_observer_pid"] = 0
