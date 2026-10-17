@@ -823,6 +823,20 @@ try {
         }
     }
 
+    # HEAD identity alone does not authenticate the working files that
+    # PowerShell, Python, Node or runtime deployment will actually execute.
+    # Include staged/unstaged modifications AND untracked nonignored files.
+    # Never attempt git checkout/reset/clean as a "repair" on Owner's PC.
+    $worktreeStatus = @(Invoke-GitFatal $repo @("status", "--porcelain=v1", "--untracked-files=all") "could not validate Git working tree")
+    if (-not [string]::IsNullOrWhiteSpace(($worktreeStatus -join "`n"))) {
+        throw "V10_WORKTREE_NOT_CLEAN: refusing modified or untracked checkout."
+    }
+    # CLI branch + SHA is useful for a read-only diagnostic, but can never
+    # replace the explicit local Owner pin for mutating deployment or launch.
+    if (-not $VerifySourceOnly -and [string]::IsNullOrWhiteSpace($ApprovalFile)) {
+        throw "V10_MUTATING_START_REQUIRES_APPROVAL_FILE"
+    }
+
     # No process, port, Excel, MS2, runtime files, state, or Git mutation.
     # This validates the checkout identity ONLY: not local runtime readiness.
     if ($VerifySourceOnly) {
