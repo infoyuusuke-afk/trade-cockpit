@@ -43,9 +43,9 @@ param(
  [string]$FixtureRoot=""
 )
 $ErrorActionPreference="Stop"
-$ReviewedCommit="2d2553adf52ee5631df4dbc2de81668048a7b4a6"
+$ReviewedCommit="4e4b59e4f054cd91d0122f717f0f6d60c28d70d5"
 $Spec=@(
- @{Name="PREFLIGHT_V10_LEGACY_SHUTDOWN_V1.ps1";Blob="02921f850ceefd2b451f2b92eb34153fdf446c1f"},
+ @{Name="PREFLIGHT_V10_LEGACY_SHUTDOWN_V1.ps1";Blob="94cbce7f4352bac9b1fdb0749a15f8a15400ba7b"},
  @{Name="STOP_V10_LEGACY_SESSION_V1.ps1";Blob="bc883ea583c065b335361fc33498d5a8c4fc77ab"}
 )
 $V10Ports=@(28580,28581,28582,28583,28584)
@@ -228,6 +228,18 @@ try{
     -not (Test-Path -LiteralPath $admission -PathType Leaf)){
   $why=Get-Value $a.Lines "PREFLIGHT_BLOCK_REASON"
   if(-not (Is-Code $why)){$why="UNVERIFIED"}
+  if($why -ceq "PORT_CHILD_IDENTITY_NOT_PROVEN"){
+   $d=Get-Value $a.Lines "PREFLIGHT_PORT_DIAGNOSTIC"
+   $allowed=@("COLLECTOR_SOURCE_UNREADABLE","COLLECTOR_SOURCE_UNTRUSTED",
+     "COLLECTOR_ARGV_LAYOUT_MISMATCH","COLLECTOR_ENCODED_PAYLOAD_INVALID",
+     "COLLECTOR_SOURCE_PARSE_ERROR","COLLECTOR_SOURCE_FUNCTION_MISMATCH",
+     "COLLECTOR_INIT_TEXT_MISMATCH","COLLECTOR_INIT_INSPECTION_UNAVAILABLE",
+     "HOST_EXE_PATH_MISMATCH","LIFETIME_OR_SESSION_UNVERIFIED",
+     "PORT_CHILD_UNVERIFIED","COLLECTOR_INIT_UNVERIFIED")
+   $counts.P0_27_BLOCK_DETAIL=if($allowed -ccontains $d){$d}else{"UNVERIFIED"}
+   $port=Get-Value $a.Lines "PREFLIGHT_PORT_NUM"
+   $counts.P0_27_BLOCK_PORT=if(@("28580","28581","28582","28583","28584") -ccontains $port){$port}else{"UNKNOWN"}
+  }
   Block ("PREFLIGHT_"+$why)
  }
  $rec=[IO.File]::ReadAllText($admission,[Text.Encoding]::UTF8) | ConvertFrom-Json

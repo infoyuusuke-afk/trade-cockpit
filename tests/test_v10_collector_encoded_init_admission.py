@@ -7,9 +7,9 @@ REPO=Path(__file__).resolve().parents[1]
 PREFLIGHT=REPO/"downloads"/"PREFLIGHT_V10_LEGACY_SHUTDOWN_V1.ps1"
 WIN=os.name=="nt" and os.environ.get("GITHUB_ACTIONS")=="true" and os.environ.get("RUNNER_OS")=="Windows"
 COLLECTOR= r"""param([int]$Port,[string]$Mark)
-function Get-NormalizedLocalWorkbookPath { param($p) return $p }
+function Get-NormalizedLocalWorkbookPath([string]$p) { return $p }
 function Get-CollectorFileIdentityType { return 'fixture' }
-function Test-SameCanonicalWorkbookFile { param($a,$b) return ($a -eq $b) }
+function Test-SameCanonicalWorkbookFile([string]$a, [string]$b) { return ($a -eq $b) }
 function Get-PublishedWorkbookGate { return '' }
 $names=@("Get-NormalizedLocalWorkbookPath","Get-CollectorFileIdentityType","Test-SameCanonicalWorkbookFile","Get-PublishedWorkbookGate")
 $text=""
@@ -65,6 +65,8 @@ class Admissions(tsl.LegacySessionSafeStop):
   r=self.check()
   self.assertEqual(r.returncode,2,r.stdout)
   self.assertIn("PREFLIGHT_BLOCK_REASON=PORT_CHILD_IDENTITY_NOT_PROVEN",r.stdout)
+  self.assertIn("PREFLIGHT_PORT_DIAGNOSTIC=COLLECTOR_INIT_TEXT_MISMATCH",r.stdout)
+  self.assertIn("PREFLIGHT_PORT_NUM=28580",r.stdout)
   self.assert_nothing_stopped()
  def test_03_normal_start_job_still_works(self):
   self.start_session()

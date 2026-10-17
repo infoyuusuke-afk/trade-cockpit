@@ -23,7 +23,7 @@ import test_v10_legacy_safe_stop as tsl  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 VERIFY = REPO / "downloads" / "VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1"
-PINNED = "2d2553adf52ee5631df4dbc2de81668048a7b4a6"
+PINNED = "4e4b59e4f054cd91d0122f717f0f6d60c28d70d5"
 COMPONENTS = ("PREFLIGHT_V10_LEGACY_SHUTDOWN_V1.ps1", "STOP_V10_LEGACY_SESSION_V1.ps1")
 PS = tsl.PS
 ON_WINDOWS_ACTIONS = (os.name == "nt" and os.environ.get("GITHUB_ACTIONS") == "true"
@@ -234,7 +234,10 @@ class OwnerReadonlyWindows(tsl.LegacySessionSafeStop):
     def test_07_port_child_that_is_not_a_job_host_is_blocked(self):
         self.start_session(bridge="raw")
         before = self.state_path.read_bytes()
-        self.assert_blocked(self.run_verify(), "PREFLIGHT_PORT_CHILD_IDENTITY_NOT_PROVEN")
+        r = self.run_verify()
+        self.assert_blocked(r, "PREFLIGHT_PORT_CHILD_IDENTITY_NOT_PROVEN")
+        self.assertIn("P0_27_BLOCK_PORT=28580", r.stdout)
+        self.assertIn("P0_27_BLOCK_DETAIL=", r.stdout)
         self.assert_session_untouched(before)
 
     # -- Excel ---------------------------------------------------------------
