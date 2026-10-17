@@ -1,0 +1,33 @@
+name: P0-417 V10 Collector Identity Contract
+on:
+  pull_request:
+    paths:
+      - "tests/test_v10_collector_workbook_contract.py"
+      - "ms2_live/MS2_RSS_100_Collector.ps1"
+      - "downloads/AI_COCKPIT_CONTROLLER_V10.ps1"
+      - ".github/workflows/p0-417-v10-collector-identity.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ubuntu-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_v10_collector_workbook_contract.py -v
+  windows-ps51-synthetic:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse current Collector and Controller
+        shell: powershell
+        run: |
+          foreach ($p in @("ms2_live/MS2_RSS_100_Collector.ps1","downloads/AI_COCKPIT_CONTROLLER_V10.ps1")) {
+            $t=$null; $e=$null
+            [Management.Automation.Language.Parser]::ParseFile((Resolve-Path $p).Path,[ref]$t,[ref]$e) | Out-Null
+            if ($e.Count -gt 0) { throw "P0_417_CURRENT_PARSE_FAILED" }
+          }
+      - name: Current Collector identity synthetic self-test and static safeguards
+        shell: powershell
+        run: python -m unittest discover -s tests -p test_v10_collector_workbook_contract.py -v
