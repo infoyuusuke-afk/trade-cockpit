@@ -28,7 +28,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Byte-for-byte equality to exact 28 reviewed-candidate blobs (read-only)
+      - name: Byte-for-byte equality to exact 29 reviewed-candidate blobs (read-only)
         shell: bash
         run: |
           set -euo pipefail
@@ -36,7 +36,7 @@ jobs:
           git fetch --no-tags --depth=1 origin "$pinned"
           python -m json.tool downloads/V10_RELEASE_BUNDLE_MANIFEST.json > /dev/null
           mapfile -t files < <(python -c 'import json; print("\n".join(item["path"] for item in json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json", encoding="utf-8"))["files"]))')
-          test "${#files[@]}" -eq 28
+          test "${#files[@]}" -eq 29
           for file in "${files[@]}"; do
             test -f "$file"
             git cat-file -e "$pinned:$file"
