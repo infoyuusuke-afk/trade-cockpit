@@ -41,3 +41,20 @@ jobs:
       - name: Run original V9 Collector workbook identity contract on synthetic Windows host
         shell: powershell
         run: python current/scripts/ci_historical_v8_v9.py --history historical --mode collector
+  history-v9-diagnostics:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: current
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: b81b8877b12a33368e91e5e156a2fc7ac4529349
+          path: historical
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Original V9 diagnostic selftests on synthetic Windows only
+        shell: powershell
+        run: python current/scripts/ci_historical_v8_v9.py --history historical --mode v9-diagnostics
