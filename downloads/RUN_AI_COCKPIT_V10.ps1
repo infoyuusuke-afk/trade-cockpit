@@ -742,153 +742,19 @@ try {
     $actualSha = (Invoke-GitFatal $repo @("rev-parse", "HEAD") "could not read the current commit after update").Trim()
     Write-Host ("Now on " + $actualBranch + " @ " + $actualSha.Substring(0, 8)) -ForegroundColor Green
 
-    # Startup intentionally never mutates Git, but it MUST still verify the
-    # requested branch. -SkipGitUpdate controls mutation, not source admission.
-    # Detached HEAD or an unexpected branch is not an approved V10 runtime.
+    # Startup never mutates Git, but MUST still verify the requested branch.
+    # SkipGitUpdate controls mutation and cannot disable source admission.
     if ($actualBranch -cne $Branch) {
         throw "BRANCH_IDENTITY_MISMATCH: refusing unreviewed runtime source."
     }
-    # A SHA is optional for legacy one-click compatibility; when supplied, it
-    # must be a FULL immutable 40-hex commit (never accept a short prefix).
-    # A later release gate must require a pinned SHA for production cutover.
+    # Legacy one-click without ExpectedSha still relies on a fixed Branch.
+    # When a SHA is supplied, only a full 40-hex exact match is accepted.
     if (-not [string]::IsNullOrWhiteSpace($ExpectedSha)) {
-        if ($ExpectedSha -cnotmatch '^[0-9a-fA-F]{40}
-
-    Write-Host ""
-    Write-Host "Deploying runtime scripts (Watcher/Heartbeat/Collector) to RuntimeDir..." -ForegroundColor Yellow
-    $runtimeDirForDeploy = Resolve-RuntimeDirForDeploy $RuntimeDirOverride
-    Write-Host ("  RuntimeDir: " + $runtimeDirForDeploy) -ForegroundColor Cyan
-    Write-Host ("  RUNTIME_DIR_CODEPOINTS=" + (Format-PathCodePoints $runtimeDirForDeploy)) -ForegroundColor Cyan
-    $collectorBefore = Join-Path $runtimeDirForDeploy "MS2_RSS_100_Collector.ps1"
-    $collectorBeforeHash = ""
-    if (Test-Path -LiteralPath $collectorBefore) { $collectorBeforeHash = Get-Sha256Hex $collectorBefore }
-    Write-Host ("  COLLECTOR_BEFORE_SHA256=" + $collectorBeforeHash) -ForegroundColor Cyan
-    $collectorSource = Join-Path $repo "ms2_live\MS2_RSS_100_Collector.ps1"
-    $collectorText = [IO.File]::ReadAllText($collectorSource, [Text.Encoding]::UTF8)
-    $destinationText = ""
-    if (Test-Path -LiteralPath $collectorBefore) {
-        $destinationText = [IO.File]::ReadAllText($collectorBefore, [Text.Encoding]::UTF8)
-    }
-    $rollbackBlock = Get-IdentityRollbackBlock $collectorText $destinationText
-    if (-not [string]::IsNullOrWhiteSpace($rollbackBlock)) {
-        throw "RUNTIME_ROLLBACK_BLOCKED: the runtime Collector already publishes 285A workbook identity and this checkout does not. Runtime files were not replaced. Excel, MS2, Collector, and Controller were not touched."
-    }
-    if (($DeployRuntimeOnly -or $AcceptRuntimeCollector) -and -not (Test-CollectorIdentityContract $collectorText)) {
-        throw "Refusing to deploy a collector that does not publish the 285A workbook identity quote."
-    }
-    $oldCollectorId = 0
-    $handoff = "DIRECT_RESTART"
-    if ($AcceptRuntimeCollector) {
-        $collectorIds = @(Get-CollectorProcessIds)
-        $controllerCount = Get-ControllerProcessCount
-        Write-Host ("  COLLECTOR_PROCESS_BEFORE=" + $collectorIds.Count) -ForegroundColor Cyan
-        Write-Host ("  CONTROLLER_PROCESS_BEFORE=" + $controllerCount) -ForegroundColor Cyan
-        $handoff = Get-CollectorHandoffMode $controllerCount $collectorIds.Count
-        Write-Host ("  HANDOFF=" + $handoff) -ForegroundColor Cyan
-        if ($handoff -eq "REFUSE_CONTROLLER") {
-            throw ("CONTROLLER_PROCESS_BEFORE=" + $controllerCount + ". Expected 0 or 1. No files were copied. Excel, MS2, and Collector were not touched.")
-        }
-        if ($handoff -eq "REFUSE_COLLECTOR") {
-            throw ("COLLECTOR_PROCESS_BEFORE=" + $collectorIds.Count + ". Expected exactly one Collector. No files were copied. Excel, MS2, and Controller were not touched.")
-        }
-        $oldCollectorId = 0
-        if ($handoff -ne "DIRECT_START") { $oldCollectorId = [int]$collectorIds[0] }
-    }
-    $deployResult = Deploy-RuntimeFiles -RepoRoot $repo -RuntimeDir $runtimeDirForDeploy
-    Write-Host ("  Deployed " + $RUNTIME_DEPLOY_FILES.Count + " files, backup: " + $deployResult.backup_dir) -ForegroundColor Green
-
-    $runtimeManifestRoot = $Root
-    if (-not (Test-Path -LiteralPath $runtimeManifestRoot)) { New-Item -ItemType Directory -Path $runtimeManifestRoot -Force | Out-Null }
-    $runtimeManifest = [ordered]@{
-        repo_sha    = $actualSha
-        repo_branch = $actualBranch
-        runtime_dir = $runtimeDirForDeploy
-        files       = $deployResult.hashes
-        deployed_at = (Get-Date).ToString("o")
-    }
-    $runtimeManifestPath = Join-Path $runtimeManifestRoot "V10_RUNTIME.json"
-    [IO.File]::WriteAllText($runtimeManifestPath, ($runtimeManifest | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
-    Write-Host ("  Runtime manifest written: " + $runtimeManifestPath) -ForegroundColor Green
-    $collectorAfterHash = Get-Sha256Hex (Join-Path $runtimeDirForDeploy "MS2_RSS_100_Collector.ps1")
-    $sourceHash = Get-Sha256Hex $collectorSource
-    if ($collectorAfterHash -ne $sourceHash) {
-        Restore-RuntimeBackupFiles ([string]$deployResult.backup_dir) $runtimeDirForDeploy
-        throw ("RUNTIME_SHA256_MISMATCH repo=" + $sourceHash + " runtime=" + $collectorAfterHash)
-    }
-    Write-Host ("  COLLECTOR_AFTER_SHA256=" + $collectorAfterHash) -ForegroundColor Green
-    Write-Host "  RUNTIME_SHA256_MATCH=1" -ForegroundColor Green
-    Write-Host ("  REPO_SHA=" + $actualSha) -ForegroundColor Green
-    if ($AcceptRuntimeCollector) {
-        $accepted = Invoke-AcceptRuntimeCollector $runtimeDirForDeploy ([string]$deployResult.backup_dir) $oldCollectorId $collectorBeforeHash $handoff
-        $diag = $null
-        try { $diag = $accepted.live_price_diagnostics } catch { $diag = $null }
-        $symbol = [string]$accepted.symbol
-        if ([string]::IsNullOrWhiteSpace($symbol) -and $null -ne $diag) { $symbol = [string]$diag.symbol }
-        $price = $accepted.current_price
-        if ($null -eq $price -and $null -ne $diag) { $price = $diag.current_price }
-        $count = $accepted.collector_count
-        if ($null -eq $count -and $null -ne $diag) { $count = $diag.collector_count }
-        Write-Host "RUNTIME_ACCEPTANCE=PASS" -ForegroundColor Green
-        Write-Host ("SYMBOL=" + $symbol) -ForegroundColor Green
-        Write-Host ("CURRENT_PRICE=" + $price) -ForegroundColor Green
-        Write-Host ("COLLECTOR_COUNT=" + $count) -ForegroundColor Green
-        Write-Host "WORKBOOK_IDENTITY_VERIFIED=1" -ForegroundColor Green
-        Write-Host ("PREOPEN=" + [int](Test-LocalPreopen)) -ForegroundColor Green
-        Write-Host "REAL_SUBMIT_ALLOWED=0" -ForegroundColor Green
-        Write-Host "EXCEL_TOUCHED=0" -ForegroundColor Green
-        Write-Host "MS2_TOUCHED=0" -ForegroundColor Green
-        Write-Host "CONTROLLER_STOPPED=0" -ForegroundColor Green
-        Write-Host "CONTROLLER_STARTED=0" -ForegroundColor Green
-        Write-Host "ROLLBACK=0" -ForegroundColor Green
-        Write-Host ("BACKUP=" + $deployResult.backup_dir) -ForegroundColor Green
-        Write-Host ("COLLECTOR_RUNTIME_SHA256=" + $collectorAfterHash) -ForegroundColor Green
-        Write-Host ("REPO_SHA=" + $actualSha) -ForegroundColor Green
-        Write-Host ""
-        Read-Host "Press Enter to close"
-        exit 0
-    }
-} catch {
-    Write-Host ""
-    Write-Host "==================================================" -ForegroundColor Red
-    Write-Host " UPDATE/DEPLOY FAILED - CONTROLLER NOT STARTED (fail-closed)" -ForegroundColor Red
-    Write-Host "==================================================" -ForegroundColor Red
-    Write-Host $_.Exception.Message -ForegroundColor Yellow
-    Write-Host ""
-    Read-Host "Press Enter to close"
-    [Environment]::Exit(1)
-}
-
-if ($DeployRuntimeOnly) {
-    Write-Host "DEPLOY_RUNTIME_ONLY=1" -ForegroundColor Green
-    Write-Host "EXCEL_TOUCHED=0" -ForegroundColor Green
-    Write-Host "COLLECTOR_PROCESS_STOPPED=0" -ForegroundColor Green
-    Write-Host "CONTROLLER_STARTED=0" -ForegroundColor Green
-    Write-Host "REAL_SUBMIT_ALLOWED=0" -ForegroundColor Green
-    Write-Host "The running Collector process keeps the code it already loaded. This copy does not restart it." -ForegroundColor Yellow
-    exit 0
-}
-
-$root = $Root
-$logDir = Join-Path $root "Logs\V10"
-if (Test-Path -LiteralPath $logDir) {
-    $backupDir = Join-Path $root ("Logs\V10_backup_" + (Get-Date -Format "yyyyMMdd_HHmmss"))
-    Write-Host ("Backing up previous logs to: " + $backupDir) -ForegroundColor Yellow
-    Move-Item -LiteralPath $logDir -Destination $backupDir -Force -ErrorAction SilentlyContinue
-}
-$stateFile = Join-Path $root "V10_CONTROLLER_STATE.json"
-if (Test-Path -LiteralPath $stateFile) {
-    $stateBackup = Join-Path $root ("V10_CONTROLLER_STATE_backup_" + (Get-Date -Format "yyyyMMdd_HHmmss") + ".json")
-    Copy-Item -LiteralPath $stateFile -Destination $stateBackup -Force -ErrorAction SilentlyContinue
-}
-
-Write-Host "Starting Controller V10..." -ForegroundColor Cyan
-Write-Host ""
-& (Join-Path $repo "downloads\AI_COCKPIT_CONTROLLER_V10.ps1") -RepoRoot $repo -ExpectedBranch $Branch -RuntimeDirOverride $runtimeDirForDeploy -Root $Root
-) {
-            throw "PINNED_SHA_MUST_BE_FULL_40_HEX: refusing shortened or malformed commit ID."
+        if ($ExpectedSha -cnotmatch '^[0-9a-fA-F]{40}$') {
+            throw "PINNED_SHA_MUST_BE_FULL_40_HEX: shortened or malformed commit ID."
         }
         if (-not [string]::Equals($actualSha, $ExpectedSha, [StringComparison]::OrdinalIgnoreCase)) {
-            throw "PINNED_SHA_IDENTITY_MISMATCH: refusing unexpected runtime commit."
+            throw "PINNED_SHA_IDENTITY_MISMATCH: unexpected runtime commit."
         }
     }
 
