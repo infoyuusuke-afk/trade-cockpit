@@ -4,6 +4,7 @@ on:
     paths:
       - "downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V2.ps1"
       - "tests/test_v10_owner_state_metadata_v2.py"
+      - "docs/V10_P0_32_OWNER_READONLY_METADATA_DELIVERY.md"
       - ".github/workflows/p0-32-metadata-only-triple-check.yml"
   workflow_dispatch:
 permissions:
