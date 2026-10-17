@@ -32,7 +32,10 @@ class AcceptanceMatrixContract(unittest.TestCase):
 
     def test_monolithic_ci_retains_fail_visible_full_discovery(self):
         s = MOBILE.read_text(encoding="utf-8")
-        self.assertIn("python scripts/ci_attributed_unittest.py --tests tests", s)
+        self.assertIn("python scripts/ci_mobile_migration_gate.py", s)
+        gate = (ROOT / "scripts" / "ci_mobile_migration_gate.py").read_text(encoding="utf-8")
+        self.assertIn('ci_attributed_unittest.py"), "--tests", "tests"', gate)
+        self.assertIn("P0_417_MONOLITH_FULL_PASS=false",gate)
         runner = (ROOT / "scripts/ci_attributed_unittest.py").read_text(encoding="utf-8")
         self.assertIn('"-s", args.tests, "-p", "test_*.py", "-v"', runner)
         self.assertIn("return result.returncode", runner)
