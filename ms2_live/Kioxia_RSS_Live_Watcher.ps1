@@ -1,6 +1,4 @@
-﻿param([ValidateRange(1024,65535)][int]$WatcherBridgePort = 28582)
-
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 $bookPath = Join-Path $PSScriptRoot "Kioxia_MS2_RSS_Live_Signals.xlsx"
 if (-not (Test-Path $bookPath)) {
@@ -139,20 +137,14 @@ function Get-StopClusterZones([double]$price, [double]$orHigh, [double]$orLow, [
 # システム全体で共有する名前付きMutex（Global\KioxiaVoiceMutex）を使い、他プロセスの発話が
 # 終わるまで待ってから同期的に(Speak flag=0)話すことで、重なりを防ぐ。
 function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 20000) {
-    if ($null -eq $speaker -or [string]::IsNullOrEmpty($text)) { return }
-    $mutex = $null
-    $acquired = $false
+    if ([string]::IsNullOrWhiteSpace($text)) { return }
     try {
-        $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
-        $acquired = $mutex.WaitOne($timeoutMs)
-        # flag=0は同期発話（話し終わるまで戻らない）。これによりMutex保持中に他プロセスの
-        # 音声と時間的に重ならないことが保証される。取得できなくても発話自体は試みる
-        # （音声通知が完全に鳴らないより、多少重なっても鳴る方を優先）。
-        $speaker.Speak($text, 0) | Out-Null
+        $encoded = [Uri]::EscapeDataString($text)
+        $uri = "http://127.0.0.1:28583/announce?level=WATCH&text=" + $encoded
+        $r = Invoke-WebRequest -UseBasicParsing -Uri $uri -TimeoutSec ([Math]::Max(3,[int]($timeoutMs/1000)))
+        if ($r.StatusCode -ne 200) { throw "Voice bridge HTTP " + $r.StatusCode }
     } catch {
-    } finally {
-        if ($acquired -and $null -ne $mutex) { try { $mutex.ReleaseMutex() } catch {} }
-        if ($null -ne $mutex) { $mutex.Dispose() }
+        Write-Host ("[WATCHER VOICE] SBV2 bridge unavailable; no legacy SAPI fallback: " + $_.Exception.Message) -ForegroundColor DarkYellow
     }
 }
 
@@ -374,7 +366,7 @@ function Read-Chart($sheet, [string]$anchor) {
 }
 
 try {
-    $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
+    $excel = ([Runtime.InteropServices.Marshal]::BindToMoniker($bookPath)).Application
     Write-Host "RSS接続済みのExcelへ接続しました。" -ForegroundColor Green
 } catch {
     # 2026-09-14深夜の実機検証で判明: New-Object -ComObject Excel.Applicationで生成した
@@ -383,12 +375,21 @@ try {
     # 開く（シェル経由でExcel.exeを起動する）必要があるため、Start-Processでファイルを開き、
     # Excelプロセスが起動するのを待ってからGetActiveObjectで接続し直す。
     Write-Host "Excelが起動していません。ファイルを開いてアドインを正しく読み込みます。" -ForegroundColor Yellow
-    Start-Process $bookPath
+    $excelExe = @(
+    "C:\Program Files\Microsoft Office\Root\Office16\EXCEL.EXE",
+    "C:\Program Files (x86)\Microsoft Office\Root\Office16\EXCEL.EXE"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if (-not $excelExe) {
+    throw "EXCEL.EXE が見つかりません。"
+}
+
+Start-Process -FilePath $excelExe -ArgumentList "/x","`"$bookPath`""
     $excel = $null
     $connectDeadline = (Get-Date).AddSeconds(60)
     while ($null -eq $excel -and (Get-Date) -lt $connectDeadline) {
         Start-Sleep -Seconds 2
-        try { $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application") } catch {}
+        try { $excel = ([Runtime.InteropServices.Marshal]::BindToMoniker($bookPath)).Application } catch {}
     }
     if ($null -eq $excel) {
         Write-Host "Excelの起動を確認できませんでした。" -ForegroundColor Red
@@ -398,7 +399,7 @@ try {
     Write-Host "Excelへ接続しました。RSSタブで『接続』を確認してください。" -ForegroundColor Yellow
 }
 Invoke-ComRetry { $excel.Visible = $true } | Out-Null
-Invoke-ComRetry { $excel.DisplayAlerts = $false } | Out-Null
+# Do not mutate Excel.Application.DisplayAlerts here. It is application-scoped and can leak into unrelated Excel UI after abnormal termination.
 $book = Invoke-ComRetry {
     $found = $null
     foreach ($candidate in $excel.Workbooks) {
@@ -508,9 +509,7 @@ $dash.Range("G25").NumberFormat = "hh:mm:ss"
 # 過去のA5/B5と同じ理由（非アンカーセルへの書き込みは無音で無視される）で表示されないため、
 # ラベルと値を1つの文字列に結合してA26へ毎ループ書き込む。
 
-$speaker = New-Object -ComObject SAPI.SpVoice
-$speaker.Volume = 100
-$speaker.Rate = -2   # ユーザー指摘（聞き取りづらい）への対応。標準(0)よりやや遅くして聞き取りやすくする
+$speaker = $true # V9 voice goes only through the SBV2 bridge on 28583; no Windows SAPI
 $lastSpokenSignal = ""
 $lastSpokenAt = Get-Date "2000-01-01"
 $lastLoggedBar = ""
@@ -552,11 +551,16 @@ $script:tickPollSeq = 0
 # キオクシアタブの一本化（ユーザー指示・2026-09-15）: これまでExcelのDASHBOARDシートと
 # 公開コクピットのキオクシアタブが別々の計算式で似た指標を出しており「どちらを見ればいいか
 # わからない」状態だった。WatcherのDASHBOARD計算結果をJSONとして書き出し、ローカルHTTP
-# （既定127.0.0.1:28582）で配信する。28581はAI Cockpit Gateway専用のため競合させない。
+# （127.0.0.1:28582）で配信することで、ブラウザ側がこのJSONを直接読みに行けるようにする。
 # Excelは裏で動かしたまま、PC上ではブラウザだけを見ればよい構成にするための土台。
+#
+# ポート28582（2026-09-25修正・V8）: 以前は28581を使っていたが、AI_COCKPIT_GATEWAY_V8.ps1
+# が公開ページ全体をローカルから配信するために同じ28581を使うため、同時起動すると
+# 片方がbindに失敗して無言で壊れていた（Start-Jobの例外はここでは検知されない）。
+# Watcher専用ポートを28582へ分離し、Controller側の生存監視にも使えるようにした。
 $watcherJsonPath = Join-Path $PSScriptRoot "kioxia_watcher_live.json"
-$watcherBridgeJob = Start-LocalJsonBridge $watcherJsonPath $WatcherBridgePort
-Write-Host ("キオクシアWatcher連携: http://127.0.0.1:{0}/kioxia_watcher_live.json" -f $WatcherBridgePort) -ForegroundColor Cyan
+$watcherBridgeJob = Start-LocalJsonBridge $watcherJsonPath 28582
+Write-Host "キオクシアWatcher連携: http://127.0.0.1:28582/kioxia_watcher_live.json" -ForegroundColor Cyan
 
 Write-Host "キオクシアLIVE監視を開始しました。終了はこの画面で Ctrl+C。" -ForegroundColor Cyan
 $dash.Activate()
@@ -825,6 +829,8 @@ try {
             $watcherPayload = [ordered]@{
                 schema_version = "kioxia-watcher-1.0"
                 updated_at = $now.ToString("yyyy-MM-dd HH:mm:ss")
+                observed_at_offset = $now.ToString("yyyy-MM-ddTHH:mm:sszzz")
+                timestamp_timezone = "Asia/Tokyo"
                 source = "Kioxia_RSS_Live_Watcher (Excel RSS)"
                 state = $state
                 signal = $signal
@@ -901,6 +907,10 @@ try {
       Start-Sleep -Seconds 2
     }
 } finally {
+    if ($null -ne $watcherBridgeJob) {
+        Stop-Job $watcherBridgeJob -ErrorAction SilentlyContinue
+        Remove-Job $watcherBridgeJob -Force -ErrorAction SilentlyContinue
+    }
     $rss.Range("B16").Value2 = "停止"
     $book.Save()
     Write-Host "監視を停止しました。Excelは開いたままです。" -ForegroundColor Yellow
