@@ -34,6 +34,16 @@ class AttributionTests(unittest.TestCase):
         self.assertEqual(g["LEGACY_V8_V9"], {"FAIL": 1, "ERROR": 0})
         self.assertEqual(g["CURRENT_OTHER"], {"FAIL": 0, "ERROR": 1})
 
+    def test_missing_dependency_path_is_reduced_to_basename(self):
+        log = ("FileNotFoundError: [Errno 2] No such file or directory: "
+               "'/home/runner/private/downloads/RUN_AI_COCKPIT_V9.ps1'\n"
+               "FileNotFoundError: [Errno 2] No such file or directory: "
+               "'C:\\work\\downloads\\RUN_AI_COCKPIT_V9.ps1'\n")
+        counts = target.missing_dependency_summary(log)
+        self.assertEqual(counts, {"RUN_AI_COCKPIT_V9.ps1": 2})
+        self.assertNotIn("/home/runner", str(counts))
+        self.assertNotIn("C:\\work", str(counts))
+
     def test_error_exit_is_preserved_exactly_without_group_reorder(self):
         fake = SimpleNamespace(returncode=1, stdout=(
             "FAIL: test_bad (test_v9_cache_rest.CacheRest.test_bad)\n"
