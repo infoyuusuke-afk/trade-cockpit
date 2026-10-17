@@ -35,8 +35,9 @@ def main(argv=None):
         print("P0_417_RECONCILE=BLOCKED_WRONG_ARGUMENTS", flush=True)
         return 2
     root = Path(__file__).resolve().parents[1]
+    locations = [str(Path(x).resolve(strict=True)) for x in args]
     original = [sys.executable, str(root / "scripts/ci_historic_id_coverage.py"),
-                args[0], args[1]]
+                *locations]
     observed = subprocess.run(original, cwd=str(root), text=True,
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                               check=False)
