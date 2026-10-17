@@ -6,6 +6,7 @@ acts on an OWNER machine, broker, workbook, or live cockpit.
 import hashlib
 import os
 import re
+import subprocess
 import sys
 import threading
 import unittest
@@ -49,7 +50,9 @@ class MetadataOnlyStatic(unittest.TestCase):
 
     def test_immutable_delivery_pins_entry_and_reviewed_components(self):
         document = (REPO / "docs" / "V10_P0_32_OWNER_READONLY_METADATA_DELIVERY.md").read_text(encoding="utf-8")
-        data = V2.read_bytes()
+        # git show yields canonical Git blob bytes, independent of Windows CRLF checkout.
+        data = subprocess.run(["git", "show", "HEAD:downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V2.ps1"],
+                              cwd=REPO, capture_output=True, check=True).stdout
         blob = hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
         expected_hash = hashlib.sha256(data).hexdigest().upper()
         self.assertIn("Git blob: `" + blob + "`", document)
