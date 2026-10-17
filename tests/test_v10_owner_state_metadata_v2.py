@@ -114,26 +114,23 @@ class MetadataOnlyWindows(owner.OwnerReadonlyWindows):
             self.assertIn(s, r.stdout)
         self.assert_session_untouched(original)
 
-    def test_03_content_mutation_remains_blocked(self):
+    def test_03_content_mutation_after_admission_remains_blocked(self):
+        """Deterministic synthetic-only state rewrite after preflight succeeds."""
         self.start_session()
-        stop = threading.Event()
-
-        def mutate():
-            while not stop.is_set():
-                with self.state_path.open("ab") as stream:
-                    stream.write(b" ")
-                stop.wait(0.05)
-
-        t = threading.Thread(target=mutate, daemon=True)
-        t.start()
-        try:
-            r = self.run_verify_v2()
-        finally:
-            stop.set()
-            t.join(timeout=3)
+        injected = self.root / "v2-adversarial-after.ps1"
+        code = V2.read_text(encoding="utf-8")
+        anchor = '$stage="FINGERPRINT_AFTER"'
+        self.assertEqual(code.count(anchor), 1)
+        patch = ('[IO.File]::AppendAllText((Join-Path $rootFull '
+                 '"V10_CONTROLLER_STATE.json"), " ")' + "\n " + anchor)
+        injected.write_text(code.replace(anchor, patch), encoding="utf-8")
+        original = self.state_path.read_bytes()
+        r = self.run_verify_v2(script=injected)
         self.assert_blocked(r, "CHANGED_DURING_CHECK_STATE_UNCHANGED")
+        self.assertIn("P0_27_BLOCK_STAGE=FINGERPRINT_AFTER", r.stdout)
         self.assertIn("STATE_CHANGE_CLASS=CONTENT_CHANGED", r.stdout)
         self.assertIn("STATE_METADATA_ONLY_ACCEPTED=false", r.stdout)
+        self.assertEqual(self.state_path.read_bytes(), original + b" ")
         self.assert_nothing_stopped()
 
 
