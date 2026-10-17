@@ -22,7 +22,7 @@ $c='30e4838f47a29ce26dad328f5002d972732c2600'
 $h='8855AF82866A7ABCE972275D3DB8CF855251DB2D1F612B80E669D0548199C620'
 $d=Join-Path $env:TEMP ('p028-owner-'+[guid]::NewGuid().ToString('N'))
 try {
-  [void](New-Item -ItemType Directory -LiteralPath $d -ErrorAction Stop)
+  [void](New-Item -ItemType Directory -Path $d -ErrorAction Stop)
   $f=Join-Path $d 'DIAGNOSE_V10_LEGACY_PORT_OWNER_READONLY_V1.ps1'
   [Net.ServicePointManager]::SecurityProtocol=[Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
   Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/$c/downloads/DIAGNOSE_V10_LEGACY_PORT_OWNER_READONLY_V1.ps1" -OutFile $f -ErrorAction Stop
