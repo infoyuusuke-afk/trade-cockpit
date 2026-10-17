@@ -202,6 +202,20 @@ class MetadataOnlyWindows(owner.OwnerReadonlyWindows):
         self.assert_nothing_stopped()
 
 
+    def test_07_stop_dry_run_switch_blocked_before_package_or_stop(self):
+        """Explicit STOP dry-run flag cannot launch even synthetic STOP script."""
+        self.start_session()
+        initial = self.state_path.read_bytes()
+        r = self.run_verify_v2("-IncludeStopDryRun")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("P0_27_RESULT=BLOCKED", r.stdout)
+        self.assertIn("P0_27_BLOCK_STAGE=MODE", r.stdout)
+        self.assertIn("P0_27_BLOCK_REASON=STOP_DRY_RUN_V2_DISABLED", r.stdout)
+        self.assertNotIn("SCRIPT_BLOBS_VERIFIED=", r.stdout)
+        self.assertNotIn("ADMITTED_PROCESSES=", r.stdout)
+        self.assert_session_untouched(initial)
+        self.assert_nothing_stopped()
+
     def test_06_process_identity_timestamp_exception_must_block(self):
         """A process with unreadable StartTime must never be admitted as alive."""
         self.start_session()
