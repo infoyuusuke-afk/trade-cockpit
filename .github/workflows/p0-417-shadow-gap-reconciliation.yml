@@ -1,0 +1,33 @@
+name: P0-417 Shadow Historic Gap Reconciliation
+on:
+  pull_request:
+    paths:
+      - "scripts/ci_shadow_gap_reconciliation.py"
+      - "tests/test_ci_shadow_gap_reconciliation.py"
+      - ".github/workflows/p0-417-shadow-gap-reconciliation.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: current
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: b81b8877b12a33368e91e5e156a2fc7ac4529349
+          path: historical
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 7c67b3da874610a3121c1f0d1b48ad5fae445fbb
+          path: second_history
+          persist-credentials: false
+      - name: Synthetic negative-test proof
+        run: python -m unittest discover -s current/tests -p test_ci_shadow_gap_reconciliation.py -v
+      - name: Verify original coverage fails with exact one gap and V10 replacement succeeds
+        run: python current/scripts/ci_shadow_gap_reconciliation.py historical second_history
