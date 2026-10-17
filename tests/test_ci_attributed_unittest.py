@@ -64,7 +64,7 @@ class AttributionTests(unittest.TestCase):
     def test_only_current_tests_can_pass(self):
         with tempfile.TemporaryDirectory(prefix="p0417-synthetic-") as tmp:
             folder = Path(tmp)
-            (folder / "test_regular.py").write_text(textwrap.dedent("""
+            (folder / "test_current_only.py").write_text(textwrap.dedent("""
                 import unittest
                 class Current(unittest.TestCase):
                     def test_pass(self): self.assertTrue(True)
