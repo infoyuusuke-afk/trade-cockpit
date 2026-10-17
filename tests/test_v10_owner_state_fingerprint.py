@@ -61,6 +61,34 @@ class StateFingerprintLive(owner.OwnerReadonlyWindows):
         self.assertEqual(self.state_path.read_bytes(), baseline)
         self.assert_nothing_stopped()
 
+    def test_02_valid_json_content_refresh_remains_blocked(self):
+        self.start_session()
+        stop = threading.Event()
+        count = [0]
+
+        def writer():
+            # JSON stays valid (trailing whitespace), but bytes change.
+            while not stop.is_set():
+                with self.state_path.open("ab") as stream:
+                    stream.write(b" ")
+                count[0] += 1
+                stop.wait(0.06)
+
+        thread = threading.Thread(target=writer, daemon=True)
+        thread.start()
+        try:
+            r = self.run_verify()
+        finally:
+            stop.set()
+            thread.join(timeout=3)
+
+        self.assertGreater(count[0], 2)
+        self.assert_blocked(r, "CHANGED_DURING_CHECK_STATE_UNCHANGED")
+        self.assertIn("P0_27_BLOCK_STAGE=FINGERPRINT_AFTER", r.stdout)
+        self.assertIn("STATE_CONTENT_UNCHANGED=false", r.stdout)
+        self.assertIn("STATE_CHANGE_CLASS=CONTENT_CHANGED", r.stdout)
+        self.assert_nothing_stopped()
+
 
 # Avoid inheriting safe-stop or other destructive tests into this focused suite.
 for _name in dir(owner.OwnerReadonlyWindows):
