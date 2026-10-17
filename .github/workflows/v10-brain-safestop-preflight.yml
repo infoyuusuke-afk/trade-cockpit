@@ -33,6 +33,7 @@ on:
       - "tests/test_v10_legacy_safe_stop.py"
       - "downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1"
       - "tests/test_v10_legacy_owner_readonly.py"
+      - "tests/test_v10_owner_state_fingerprint.py"
       - "downloads/DIAGNOSE_V10_LEGACY_PORT_OWNER_READONLY_V1.ps1"
       - "tests/test_v10_legacy_port_attribution_readonly.py"
       - "tests/test_v10_collector_encoded_init_admission.py"
@@ -68,6 +69,7 @@ jobs:
           Write-Output "PASS: SHA_MISMATCH_REFUSED_NO_SIDE_EFFECTS"
       - run: python -m unittest discover -s tests -p test_v10_brain_safestop_preflight.py -v
       - run: python -m unittest discover -s tests -p test_v10_legacy_owner_readonly.py -v
+      - run: python -m unittest discover -s tests -p test_v10_owner_state_fingerprint.py -v
       - run: python -m unittest discover -s tests -p test_v10_legacy_port_attribution_readonly.py -v
       - run: python -m unittest discover -s tests -p test_v10_collector_encoded_init_admission.py -v
       - name: P0-28 live-port owner diagnostic (read-only synthetic hosts)
