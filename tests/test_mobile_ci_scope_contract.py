@@ -79,6 +79,16 @@ class MobileCIScopeContract(unittest.TestCase):
         self.assertIn("LEGACY_EXCLUSION_NOT_PROVEN", source)
         self.assertIn("MOBILE_SAFETY_SUITE_MISSING", source)
 
+    def test_pinned_exclusion_ids_must_still_be_discovered(self):
+        # Regression: stale exclusions cannot silently survive a test rename.
+        validator = self.runner.verify_exclusion_ids
+        ids = {"test_v9_fake.Legacy.test_old", "test_v8_fake.Legacy.test_old"}
+        self.assertIsNone(validator(ids, set(ids)))
+        with self.assertRaisesRegex(SystemExit, "LEGACY_LIST_ID_NOT_DISCOVERED"):
+            validator(ids, {"test_v9_fake.Legacy.test_old"})
+        with self.assertRaisesRegex(SystemExit, "test_v8_fake"):
+            validator(ids, set())
+
     def test_exclusion_requires_a_missing_v8_v9_script(self):
         runner = self.runner
         with tempfile.TemporaryDirectory() as tmp:
