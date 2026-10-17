@@ -32,3 +32,22 @@ jobs:
         run: python -m unittest discover -s current/tests -p test_ci_historic_id_coverage.py -v
       - name: Verify exact original test coverage (fail closed on missing IDs)
         run: python current/scripts/ci_historic_id_coverage.py historical second_history
+
+  second-generation-collector:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 7c67b3da874610a3121c1f0d1b48ad5fae445fbb
+          path: second_history
+          persist-credentials: false
+      - name: Verify exact second source commit
+        shell: powershell
+        run: |
+          $actual = git -C second_history rev-parse HEAD
+          if ($actual -cne "7c67b3da874610a3121c1f0d1b48ad5fae445fbb") { throw "P0_417_SECOND_PIN_MISMATCH" }
+      - name: Execute second-generation Collector original contracts
+        shell: powershell
+        working-directory: second_history
+        run: python -m unittest discover -s tests -p test_collector_workbook_identity.py -v
