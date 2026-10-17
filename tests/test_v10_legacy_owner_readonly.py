@@ -233,7 +233,7 @@ class OwnerReadonlyWindows(tsl.LegacySessionSafeStop):
         self.start_session()
         before = self.state_path.read_bytes()
         user = os.environ.get("USERNAME", "")
-        subprocess.run(["icacls", str(self.state_path), "/deny", f"{user}:(R)"], check=True, capture_output=True)
+        subprocess.run(["icacls", str(self.state_path), "/deny", f"{user}:(RD)"], check=True, capture_output=True)
         self.addCleanup(subprocess.run, ["icacls", str(self.state_path), "/remove:d", user], capture_output=True)
         self.assert_blocked(self.run_verify(), "STATE_UNREADABLE")
         subprocess.run(["icacls", str(self.state_path), "/remove:d", user], check=True, capture_output=True)
