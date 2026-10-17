@@ -39,7 +39,7 @@ def audit(history):
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--history", required=True)
-    parser.add_argument("--mode", choices=["audit", "v8", "collector"], default="audit")
+    parser.add_argument("--mode", choices=["audit", "v8", "collector", "v9-diagnostics"], default="audit")
     args = parser.parse_args(argv)
     rc = audit(args.history)
     if rc:
@@ -47,7 +47,11 @@ def main(argv=None):
     if args.mode == "audit":
         return 0
     pattern = {"v8": "test_ai_cockpit_v8_controller_contract.py",
-               "collector": "test_collector_workbook_identity.py"}[args.mode]
+               "collector": "test_collector_workbook_identity.py",
+               "v9-diagnostics": "test_v9_*.py"}[args.mode]
+    if args.mode == "v9-diagnostics" and sys.platform != "win32":
+        print("P0_417_HISTORIC_RESULT=BLOCKED_REQUIRES_WINDOWS", flush=True)
+        return 2
     print("P0_417_HISTORIC_TEST=" + pattern, flush=True)
     command = [sys.executable, "-m", "unittest", "discover", "-s", "tests",
                "-p", pattern, "-v"]
