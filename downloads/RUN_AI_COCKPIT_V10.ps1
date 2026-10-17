@@ -707,6 +707,10 @@ function Invoke-RuntimeAcceptSelfTest {
     }
 }
 
+if ($VerifySourceOnly -and $RuntimeAcceptSelfTest) {
+    Write-Host "SOURCE_ONLY_FORBIDS_RUNTIME_ACTIONS" -ForegroundColor Red
+    exit 2
+}
 if ($RuntimeAcceptSelfTest) {
     Invoke-RuntimeAcceptSelfTest
     exit 0
