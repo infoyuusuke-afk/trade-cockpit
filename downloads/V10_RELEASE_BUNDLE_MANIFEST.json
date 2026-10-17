@@ -1,0 +1,75 @@
+{
+  "schema": "v10_release_candidate_blobs_v1",
+  "candidate_source_commit": "e906dedc45448ca20428a7ca1afa1126eaeeedaa",
+  "real_submit_allowed": false,
+  "files": [
+    {
+      "path": "downloads/RUN_AI_COCKPIT_V10.ps1",
+      "git_blob_sha": "4c5e74a5496f4a9a77733c8a7376137c8e99c848"
+    },
+    {
+      "path": "downloads/AI_COCKPIT_CONTROLLER_V10.ps1",
+      "git_blob_sha": "186b27dec700be8ed5a05db9028e61a71e8f005f"
+    },
+    {
+      "path": "downloads/AI_COCKPIT_GATEWAY_V10.ps1",
+      "git_blob_sha": "59d2acfb71cc17d462736a019a003566febc422c"
+    },
+    {
+      "path": "downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1",
+      "git_blob_sha": "1297b12a5247e8173801fa97829e4ced1ef23ea8"
+    },
+    {
+      "path": "downloads/STOP_AI_COCKPIT_V10.ps1",
+      "git_blob_sha": "64cbb17c65972ecc322226d1dc73e5b40cb62d1c"
+    },
+    {
+      "path": "downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1",
+      "git_blob_sha": "5730222751331c2a304712b6f6ed408de4835a11"
+    },
+    {
+      "path": "scripts/ai_shadow_supervisor.py",
+      "git_blob_sha": "abdbcdd58a478cc2f82db64846985b4f0f5af835"
+    },
+    {
+      "path": "scripts/ai_brain_observer.py",
+      "git_blob_sha": "291fadfa8b402fd6491c3f3eda8c23df3eb3ce20"
+    },
+    {
+      "path": "ms2_live/Kioxia_RSS_Live_Watcher.ps1",
+      "git_blob_sha": "4c3127c3e4b756455850b4a74c30e2eb0f5326d6"
+    },
+    {
+      "path": "ms2_live/Kioxia_Safety_Heartbeat.ps1",
+      "git_blob_sha": "43cc11b74764cac824e27905ed40ba3f9b524676"
+    },
+    {
+      "path": "ms2_live/MS2_RSS_100_Collector.ps1",
+      "git_blob_sha": "744f465504f3a9ff628ab78b3ff765fada7af87a"
+    },
+    {
+      "path": "ms2_live/MS2_Common_Engine.ps1",
+      "git_blob_sha": "51a1af60cdd65cd631d1d164566d271d037f597a"
+    },
+    {
+      "path": "ms2_live/BUILD_KIOXIA_TIME_STATS.ps1",
+      "git_blob_sha": "0fe2361968fae04390c3844ae07d7c06bdcdcea4"
+    },
+    {
+      "path": "ms2_live/SPEAK_TODAY_STRATEGY.ps1",
+      "git_blob_sha": "e879edecbc359bbbaa8420001a9a7b3e1b39ac52"
+    },
+    {
+      "path": "ms2_live/SPEAK_LIVE_EMOTION.ps1",
+      "git_blob_sha": "0b12d11d2ac4dc21f4787eb298e2fc63d29b6d74"
+    },
+    {
+      "path": "index.html",
+      "git_blob_sha": "4fea22161cbfdde2ec42279baf91da64c2864359"
+    },
+    {
+      "path": "card_system.js",
+      "git_blob_sha": "3cdae4ebcd15ca2d7a3c907e519d7f010ce1c903"
+    }
+  ]
+}
