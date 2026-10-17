@@ -117,6 +117,57 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
 }
 
 
+function Test-BrainCommandLine([string]$CommandLine,[string]$Repo,[string]$Runtime) {
+    try {
+        if ([string]::IsNullOrWhiteSpace($CommandLine) -or
+            -not [IO.Path]::IsPathRooted($Repo) -or
+            -not [IO.Path]::IsPathRooted($Runtime)) { return $false }
+        if (-not ("V10StopBrainArgv" -as [type])) {
+            Add-Type -ErrorAction Stop -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class V10StopBrainArgv {
+    [DllImport("shell32.dll", SetLastError=true)]
+    static extern IntPtr CommandLineToArgvW([MarshalAs(UnmanagedType.LPWStr)] string cmd, out int n);
+    [DllImport("kernel32.dll")] static extern IntPtr LocalFree(IntPtr p);
+    public static string[] Split(string cmd) {
+        int n; IntPtr p = CommandLineToArgvW(cmd, out n);
+        if (p == IntPtr.Zero) throw new InvalidOperationException();
+        try {
+            string[] args = new string[n];
+            for (int i = 0; i < n; i++) args[i] = Marshal.PtrToStringUni(Marshal.ReadIntPtr(p, i * IntPtr.Size));
+            return args;
+        } finally { LocalFree(p); }
+    }
+}
+"@
+        }
+        $argv = @([V10StopBrainArgv]::Split($CommandLine))
+        if ($argv.Count -lt 2) { return $false }
+        $exe = [IO.Path]::GetFileName($argv[0])
+        $offset = 1
+        if ($exe -ieq "py.exe") {
+            if ($argv[1] -cne "-3") { return $false }
+            $offset = 2
+        } elseif ($exe -inotmatch '^(python|pythonw)\.exe$') { return $false }
+        # Match the Controller's complete launch contract. -c/-m, suffixes,
+        # duplicated switches and paths merely mentioned as data never qualify.
+        $expected = @("-u", (Join-Path $Repo "scripts\ai_brain_observer.py"),
+            "--live", (Join-Path $Runtime "live_ms2.json"),
+            "--status", (Join-Path $Runtime "ai_brain_observer_status_v1.json"),
+            "--interval", "5")
+        if ($argv.Count -ne $offset + $expected.Count) { return $false }
+        for ($i = 0; $i -lt $expected.Count; $i++) {
+            if ($i -in @(1,3,5)) {
+                if (-not [IO.Path]::IsPathRooted($argv[$offset+$i]) -or
+                    -not [string]::Equals([IO.Path]::GetFullPath($argv[$offset+$i]),
+                        [IO.Path]::GetFullPath($expected[$i]), [StringComparison]::OrdinalIgnoreCase)) { return $false }
+            } elseif ($argv[$offset+$i] -cne $expected[$i]) { return $false }
+        }
+        return $true
+    } catch { return $false }
+}
+
 # Opens the specific tracked process handle before checking command line and
 # creation time. A later PID reuse must never retarget a Stop-Process -Id call.
 function Test-ExactBrainHandle([System.Diagnostics.Process]$Proc,$State) {
@@ -133,14 +184,7 @@ function Test-ExactBrainHandle([System.Diagnostics.Process]$Proc,$State) {
         $runtime = [string]$State.runtime_dir
         if ([string]::IsNullOrWhiteSpace($repo) -or [string]::IsNullOrWhiteSpace($runtime) -or
             [string]::IsNullOrWhiteSpace($cmd)) { return $false }
-        foreach ($arg in @(
-            (Join-Path $repo "scripts\ai_brain_observer.py"),
-            (Join-Path $runtime "live_ms2.json"),
-            (Join-Path $runtime "ai_brain_observer_status_v1.json"),
-            "--live", "--status"
-        )) {
-            if ($cmd.IndexOf($arg, [StringComparison]::OrdinalIgnoreCase) -lt 0) { return $false }
-        }
+        if (-not (Test-BrainCommandLine $cmd $repo $runtime)) { return $false }
         $fromHandle = $Proc.StartTime.ToUniversalTime()
         $fromCim = ([datetime]$cim.CreationDate).ToUniversalTime()
         if ([Math]::Abs(($fromHandle - $fromCim).TotalSeconds) -gt 2) { return $false }

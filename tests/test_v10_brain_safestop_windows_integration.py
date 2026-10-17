@@ -42,14 +42,19 @@ class SafeStopWindowsIsolation(unittest.TestCase):
             "powershell.exe", "-NoProfile", "-NonInteractive",
             "-File", str(self.controller_script),
         ])
-        # Python -c executes only time.sleep, not the repository observer.
-        # Its remaining argv imitates *exactly* the BRAIN launch identity.
-        self.brain = self.spawn([
-            sys.executable, "-c", "import time; time.sleep(120)",
-            str(REPO / "scripts" / "ai_brain_observer.py"),
+        # A private sleep-only script uses the actual Controller argv layout.
+        # Never execute the repository observer or use -c as a positive fixture.
+        self.fixture_repo = self.root / "synthetic repo"
+        (self.fixture_repo / "scripts").mkdir(parents=True)
+        self.brain_script = self.fixture_repo / "scripts" / "ai_brain_observer.py"
+        self.brain_script.write_text("import time; time.sleep(120)\n", encoding="utf-8")
+        self.brain_argv = [
+            sys.executable, "-u", str(self.brain_script),
             "--live", str(self.runtime / "live_ms2.json"),
             "--status", str(self.runtime / "ai_brain_observer_status_v1.json"),
-        ])
+            "--interval", "5",
+        ]
+        self.brain = self.spawn(self.brain_argv)
         self.foreign = self.spawn([
             sys.executable, "-c", "import time; time.sleep(120)",
             "UNRELATED_PYTHON_NO_BRAIN_IDENTITY",
@@ -63,7 +68,7 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.state = {
             "controller_pid": self.controller.pid,
             "brain_observer_pid": self.brain.pid,
-            "repo_root": str(REPO),
+            "repo_root": str(self.fixture_repo),
             "runtime_dir": str(self.runtime),
             "session_id": "ci-synthetic-only",
             "started_at": (datetime.now(timezone.utc) - timedelta(seconds=10)).isoformat(),
@@ -128,6 +133,36 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.assertIsNone(self.foreign.poll(), "unrelated Python killed")
         self.assertIsNone(self.controller.poll(), "foreign BRAIN PID must not stop Controller")
         self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_IDENTITY_UNVERIFIED", result.stdout)
+
+    def assert_decoy_refused(self, argv):
+        decoy = self.spawn(argv)
+        time.sleep(0.3)
+        self.assertIsNone(decoy.poll())
+        self.state["brain_observer_pid"] = decoy.pid
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("BLOCKED_BRAIN_IDENTITY_UNVERIFIED", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (decoy, self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "identity rejection must precede any stop")
+
+    def test_python_c_with_all_brain_paths_is_not_owned(self):
+        self.assert_decoy_refused([
+            sys.executable, "-c", "import time; time.sleep(120)",
+            *self.brain_argv[2:],
+        ])
+
+    def test_script_path_suffix_is_not_owned(self):
+        decoy_script = Path(str(self.brain_script) + ".foreign.py")
+        decoy_script.write_text("import time; time.sleep(120)\n", encoding="utf-8")
+        args = list(self.brain_argv)
+        args[2] = str(decoy_script)
+        self.assert_decoy_refused(args)
+
+    def test_duplicate_status_override_is_not_owned(self):
+        self.assert_decoy_refused(self.brain_argv + ["--status", str(self.root / "foreign.json")])
 
     def test_zero_brain_pid_blocks_before_controller_stop(self):
         self.state["brain_observer_pid"] = 0
@@ -209,6 +244,108 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.assertIsNone(self.controller.poll())
         self.assertIsNone(self.brain.poll())
         self.assertTrue(self.state_path.exists())
+
+    def assert_nothing_stopped(self, result):
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("BLOCKED_BRAIN_IDENTITY_UNVERIFIED", result.stdout)
+        self.assertTrue(self.state_path.exists(), "evidence deleted on refusal")
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "refusal must precede any stop")
+
+    def test_brain_created_before_session_is_not_owned(self):
+        # Exact argv, but the process predates the recorded session: PID reuse.
+        self.state["started_at"] = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+        self.write_state()
+        self.assert_nothing_stopped(self.run_stop())
+
+    def test_unparseable_session_time_fails_closed(self):
+        self.state["started_at"] = "not-a-timestamp"
+        self.write_state()
+        self.assert_nothing_stopped(self.run_stop())
+
+    def test_relative_repo_root_fails_closed(self):
+        self.state["repo_root"] = "synthetic repo"
+        self.write_state()
+        self.assert_nothing_stopped(self.run_stop())
+
+    def test_unrecorded_excel_collector_watcher_survive_valid_stop(self):
+        # Synthetic look-alikes only: a renamed ping.exe and sleep-only scripts.
+        fake_excel = self.root / "EXCEL.EXE"
+        shutil.copyfile(Path(os.environ["SystemRoot"]) / "System32" / "PING.EXE", fake_excel)
+        bystanders = [self.spawn([str(fake_excel), "-n", "120", "127.0.0.1"])]
+        for name in ("MS2_RSS_100_Collector.ps1", "Kioxia_RSS_Live_Watcher.ps1"):
+            script = self.root / name
+            script.write_text("Start-Sleep -Seconds 120\n", encoding="utf-8")
+            bystanders.append(self.spawn([
+                "powershell.exe", "-NoProfile", "-NonInteractive", "-File", str(script),
+            ]))
+        time.sleep(1)
+        self.write_state()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIsNotNone(self.brain.poll(), "BRAIN is still alive")
+        for proc in bystanders:
+            self.assertIsNone(proc.poll(), "unrecorded bystander process was stopped")
+
+    @staticmethod
+    def child_pids(parent_pid):
+        out = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+             "Get-CimInstance Win32_Process -Filter 'ParentProcessId = %d' | "
+             "ForEach-Object { '{0} {1}' -f $_.ProcessId, $_.Name }" % parent_pid],
+            capture_output=True, text=True, timeout=30,
+        ).stdout
+        rows = [line.split(None, 1) for line in out.splitlines() if line.strip()]
+        print("LAUNCHER_CHILDREN=" + ";".join(" ".join(r) for r in rows))
+        # conhost.exe also hangs off console launchers; only the interpreter matters.
+        return [int(r[0]) for r in rows
+                if len(r) == 2 and r[1].lower() in ("python.exe", "pythonw.exe")]
+
+    @staticmethod
+    def pid_alive(pid):
+        out = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+             "[bool](Get-Process -Id %d -ErrorAction SilentlyContinue)" % pid],
+            capture_output=True, text=True, timeout=30,
+        ).stdout
+        return out.strip() == "True"
+
+    def kill_pid(self, pid):
+        subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+
+    def assert_launcher_stop_leaves_no_brain(self, launcher_argv):
+        launcher = self.spawn(launcher_argv + self.brain_argv[1:])
+        child = []
+        for _ in range(40):
+            time.sleep(0.25)
+            child = self.child_pids(launcher.pid)
+            if child:
+                break
+        self.assertEqual(len(child), 1, "launcher did not spawn exactly one python.exe child")
+        self.addCleanup(self.kill_pid, child[0])
+        self.state["brain_observer_pid"] = launcher.pid
+        self.write_state()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIsNotNone(launcher.poll(), "tracked launcher is still alive")
+        for _ in range(20):
+            if not self.pid_alive(child[0]):
+                break
+            time.sleep(0.25)
+        self.assertFalse(self.pid_alive(child[0]), "BRAIN interpreter child survived Safe Stop")
+        self.assertIsNone(self.brain.poll(), "unrecorded BRAIN-like process was stopped")
+
+    def test_venv_redirector_brain_child_does_not_survive(self):
+        venv = self.root / "venv"
+        subprocess.run([sys.executable, "-m", "venv", "--without-pip", str(venv)],
+                       check=True, timeout=120)
+        self.assert_launcher_stop_leaves_no_brain([str(venv / "Scripts" / "python.exe")])
+
+    def test_py_launcher_brain_child_does_not_survive(self):
+        py = shutil.which("py.exe")
+        if py is None:
+            self.skipTest("PY_LAUNCHER_NOT_INSTALLED_ON_RUNNER")
+        self.assert_launcher_stop_leaves_no_brain([py, "-3"])
 
     def test_recorded_brain_already_exited_is_idempotent(self):
         self.brain.kill()
