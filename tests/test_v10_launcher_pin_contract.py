@@ -37,6 +37,24 @@ class V10SourceAdmissionContract(unittest.TestCase):
         self.assertLess(admission, sha_check)
         self.assertLess(sha_check, deployment)
 
+    def test_read_only_preflight_checks_full_identity_before_any_deploy(self):
+        self.assertIn("[switch]$VerifySourceOnly", SOURCE)
+        self.assertIn("SOURCE_ONLY_REQUIRES_PINNED_SHA", SOURCE)
+        self.assertIn("SOURCE_ONLY_FORBIDS_RUNTIME_ACTIONS", SOURCE)
+        self.assertIn("V10_SOURCE_ONLY=PASS", SOURCE)
+        self.assertIn("GIT_BRANCH_AND_FULL_SHA_MATCH=1", SOURCE)
+        self.assertIn("SOURCE_AUTHENTICATED=0", SOURCE)
+        self.assertIn("RUNTIME_FILES_TOUCHED=0", SOURCE)
+        self.assertIn("CONTROLLER_STARTED=0", SOURCE)
+        self.assertLess(SOURCE.index('if ($actualBranch -cne $Branch)'),
+                        SOURCE.index('Write-Host "V10_SOURCE_ONLY=PASS"'))
+        self.assertLess(SOURCE.index("PINNED_SHA_IDENTITY_MISMATCH"),
+                        SOURCE.index('Write-Host "V10_SOURCE_ONLY=PASS"'))
+        self.assertLess(SOURCE.index('Write-Host "V10_SOURCE_ONLY=PASS"'),
+                        SOURCE.index('Write-Host "Deploying runtime scripts'))
+        self.assertLess(SOURCE.index('if ($VerifySourceOnly -and $RuntimeAcceptSelfTest)'),
+                        SOURCE.index('if ($RuntimeAcceptSelfTest)'))
+
     def test_offline_selftest_entry_stays_independent(self):
         self.assertIn("if ($RuntimeAcceptSelfTest)", SOURCE)
         self.assertLess(SOURCE.index("if ($RuntimeAcceptSelfTest)"),
@@ -85,6 +103,61 @@ class WindowsOfflineWrongSource(unittest.TestCase):
         self.assertIn(marker, output, output[-3000:])
         self.assertFalse((state_root / "V10_RUNTIME.json").exists())
         self.assertFalse((state_root / "V10_CONTROLLER_STATE.json").exists())
+
+    def invoke_source_only(self, branch, sha, extra=()):
+        state_root = self.root / "source_only_no_files"
+        args = [
+            "powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive",
+            "-ExecutionPolicy", "Bypass", "-File", str(RUNNER),
+            "-RepoRoot", str(self.checkout),
+            "-Root", str(state_root),
+            "-Branch", branch,
+            "-ExpectedSha", sha,
+            "-VerifySourceOnly",
+            *extra,
+        ]
+        before = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.checkout,
+                                text=True, capture_output=True, check=True).stdout.strip()
+        result = subprocess.run(args, input="\n", text=True,
+                                capture_output=True, timeout=35)
+        after = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.checkout,
+                               text=True, capture_output=True, check=True).stdout.strip()
+        self.assertEqual(before, after, "verify mode modified Git HEAD")
+        self.assertFalse(state_root.exists(), "verify mode touched runtime state directory")
+        return result, result.stdout + "\n" + result.stderr
+
+    def test_source_only_positive_uses_matching_branch_and_full_sha(self):
+        result, output = self.invoke_source_only("reviewed-v10", self.sha)
+        self.assertEqual(result.returncode, 0, output[-3000:])
+        for marker in ("V10_SOURCE_ONLY=PASS", "GIT_BRANCH_AND_FULL_SHA_MATCH=1",
+                       "RUNTIME_FILES_TOUCHED=0", "CONTROLLER_STARTED=0",
+                       "EXCEL_TOUCHED=0", "MS2_TOUCHED=0",
+                       "SOURCE_AUTHENTICATED=0", "REAL_SUBMIT_ALLOWED=0"):
+            self.assertIn(marker, output)
+
+    def test_source_only_without_sha_fails_closed(self):
+        result, output = self.invoke_source_only("reviewed-v10", "")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("SOURCE_ONLY_REQUIRES_PINNED_SHA", output)
+        self.assertIn("V10_SOURCE_ONLY=BLOCKED", output)
+
+    def test_source_only_with_deploy_flag_fails_closed(self):
+        result, output = self.invoke_source_only("reviewed-v10", self.sha,
+                                                  ("-DeployRuntimeOnly",))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("SOURCE_ONLY_FORBIDS_RUNTIME_ACTIONS", output)
+
+    def test_source_only_wrong_branch_fails_closed(self):
+        result, output = self.invoke_source_only("foreign-branch", self.sha)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("BRANCH_IDENTITY_MISMATCH", output)
+        self.assertIn("V10_SOURCE_ONLY=BLOCKED", output)
+
+    def test_source_only_with_selftest_refuses_before_writes(self):
+        result, output = self.invoke_source_only("reviewed-v10", self.sha,
+                                                  ("-RuntimeAcceptSelfTest",))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("SOURCE_ONLY_FORBIDS_RUNTIME_ACTIONS", output)
 
     def test_wrong_branch_refused_before_runtime(self):
         self.invoke_invalid("unexpected-branch", self.sha, "BRANCH_IDENTITY_MISMATCH")
