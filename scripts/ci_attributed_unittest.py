@@ -1,74 +1,55 @@
-"""P0-417: execute *every* discovered unittest while attributing old V8/V9 failures.
+"""P0-417: analyze failures without changing unittest collection or execution.
 
-This runner never filters, skips, or rewrites a failing test. It separates
-legacy V8/V9 tests from modern tests for accountable GitHub Actions output.
-The overall exit code remains nonzero when EITHER group fails.
+Runs EXACTLY the old full-suite command, preserving its exit code; after it
+finishes, classifies reported failures as legacy V8/V9 or current/other.
+This runner MUST NOT filter tests, change suite order, or suppress failures.
 """
 import argparse
+import re
+import subprocess
 import sys
-import unittest
-from pathlib import Path
 
 
-def classify(test_id):
-    # Discover can produce unittest.loader._FailedTest.<module> entries.
-    module = test_id.split(".", 1)[0]
-    if "._FailedTest." in test_id:
-        module = test_id.rsplit(".", 1)[-1]
-    if (module.startswith(("test_v8_", "test_v9_",
-                           "test_ai_cockpit_v8_", "test_ai_cockpit_v9_"))):
+def classify(name):
+    parts = name.split(".")
+    module = parts[0]
+    if "._FailedTest." in name:
+        module = parts[-1]
+    if module.startswith(("test_v8_", "test_v9_",
+                          "test_ai_cockpit_v8_", "test_ai_cockpit_v9_")):
         return "LEGACY_V8_V9"
     return "CURRENT_OTHER"
 
 
-def flatten(suite):
-    for item in suite:
-        if isinstance(item, unittest.TestSuite):
-            yield from flatten(item)
-        else:
-            yield item
-
-
-def make_groups(suite):
-    groups = {"CURRENT_OTHER": unittest.TestSuite(), "LEGACY_V8_V9": unittest.TestSuite()}
-    seen = []
-    for case in flatten(suite):
-        seen.append(case.id())
-        groups[classify(case.id())].addTest(case)
-    return groups, seen
+def classify_output(output):
+    groups = {"CURRENT_OTHER": {"FAIL": 0, "ERROR": 0},
+              "LEGACY_V8_V9": {"FAIL": 0, "ERROR": 0}}
+    # TextTestRunner prints one final 'FAIL: ...' or 'ERROR: ...' per failed test.
+    for kind, name in re.findall(r"(?m)^(FAIL|ERROR):\s+[^\n(]+\(([^)]+)\)", output):
+        groups[classify(name)][kind] += 1
+    return groups
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tests", default="tests")
     args = parser.parse_args(argv)
-    root = Path(args.tests)
-    loader = unittest.TestLoader()
-    suite = loader.discover(str(root), pattern="test_*.py")
-    groups, ids = make_groups(suite)
-    if len(ids) != len(set(ids)):
-        print("P0_417_RESULT=DISCOVERY_DUPLICATE_IDS", flush=True)
-        return 2
-    print("P0_417_DISCOVERED=" + str(len(ids)), flush=True)
-    print("P0_417_TEST_GROUPS=CURRENT_OTHER,LEGACY_V8_V9", flush=True)
-    passed = True
-    total = 0
-    for label, cases in groups.items():
-        count = cases.countTestCases()
-        total += count
-        print("P0_417_GROUP=" + label + " COUNT=" + str(count), flush=True)
-        result = unittest.TextTestRunner(verbosity=2, stream=sys.stdout).run(cases)
-        print("P0_417_GROUP_RESULT=" + label + ":" +
-              ("PASS" if result.wasSuccessful() else "FAIL") +
-              " FAILURES=" + str(len(result.failures)) +
-              " ERRORS=" + str(len(result.errors)) +
-              " SKIPPED=" + str(len(result.skipped)), flush=True)
-        passed = passed and result.wasSuccessful()
-    if total != len(ids):
-        print("P0_417_RESULT=DISCOVERY_COUNT_MISMATCH", flush=True)
-        return 2
-    print("P0_417_RESULT=" + ("PASS" if passed else "FAIL"), flush=True)
-    return 0 if passed else 1
+    command = [sys.executable, "-m", "unittest", "discover",
+               "-s", args.tests, "-p", "test_*.py", "-v"]
+    print("P0_417_EXECUTION=UNCHANGED_FULL_UNITTEST_DISCOVERY", flush=True)
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                            text=True, errors="replace", check=False)
+    print(result.stdout, end="", flush=True)
+    grouped = classify_output(result.stdout)
+    for label in ("CURRENT_OTHER", "LEGACY_V8_V9"):
+        x = grouped[label]
+        print("P0_417_GROUP_FAILURES=" + label +
+              " FAIL=" + str(x["FAIL"]) + " ERROR=" + str(x["ERROR"]), flush=True)
+    summary = re.search(r"Ran\s+(\d+)\s+tests?\s+in\s+[\d.]+s", result.stdout)
+    print("P0_417_EXECUTED=" + (summary.group(1) if summary else "UNKNOWN"), flush=True)
+    print("P0_417_ORIGINAL_EXIT_CODE=" + str(result.returncode), flush=True)
+    print("P0_417_RESULT=" + ("PASS" if result.returncode == 0 else "FAIL"), flush=True)
+    return result.returncode
 
 
 if __name__ == "__main__":
