@@ -105,8 +105,15 @@ class WindowsOfflineWrongSource(unittest.TestCase):
             return subprocess.run(["git", *args], cwd=cls.checkout,
                                   text=True, capture_output=True, check=True, timeout=20)
         git("init", "-b", "reviewed-v10")
+        # The real one-click local pin is Git-ignored; exercise that exact
+        # installation layout in a disposable source repo.
+        (cls.checkout / ".gitignore").write_text(
+            "downloads/V10_APPROVED_SOURCE.json\n", encoding="utf-8")
+        (cls.checkout / "tracked-v10-source.txt").write_text(
+            "reviewed source\n", encoding="utf-8")
+        git("add", ".gitignore", "tracked-v10-source.txt")
         git("-c", "user.name=synthetic", "-c", "user.email=synthetic@example.invalid",
-            "commit", "--allow-empty", "-m", "synthetic reviewed source")
+            "commit", "-m", "synthetic reviewed source")
         cls.sha = git("rev-parse", "HEAD").stdout.strip()
         assert len(cls.sha) == 40
 
@@ -276,7 +283,7 @@ class WindowsOfflineWrongSource(unittest.TestCase):
 
     def test_dirty_tracked_checkout_refuses_read_only_pass(self):
         tracked = self.checkout / "tracked-v10-source.txt"
-        tracked.write_text("known-good", encoding="utf-8")
+        tracked.write_text("STAGED CHANGED SOURCE\n", encoding="utf-8")
         try:
             subprocess.run(["git", "add", tracked.name], cwd=self.checkout,
                            capture_output=True, text=True, check=True, timeout=15)
@@ -285,9 +292,50 @@ class WindowsOfflineWrongSource(unittest.TestCase):
             self.assertIn("V10_WORKTREE_NOT_CLEAN", output)
             self.assertIn("V10_SOURCE_ONLY=BLOCKED", output)
         finally:
-            subprocess.run(["git", "reset", "--quiet"], cwd=self.checkout,
-                           capture_output=True, text=True, check=True, timeout=15)
-            tracked.unlink(missing_ok=True)
+            subprocess.run(["git", "restore", "--staged", "--worktree", "--", tracked.name],
+                           cwd=self.checkout, capture_output=True, text=True,
+                           check=True, timeout=15)
+
+    def test_unstaged_tracked_checkout_refuses_read_only_pass(self):
+        tracked = self.checkout / "tracked-v10-source.txt"
+        tracked.write_text("UNSTAGED CHANGED SOURCE\n", encoding="utf-8")
+        try:
+            result, output = self.invoke_source_only("reviewed-v10", self.sha)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("V10_WORKTREE_NOT_CLEAN", output)
+            self.assertIn("V10_SOURCE_ONLY=BLOCKED", output)
+        finally:
+            subprocess.run(["git", "restore", "--worktree", "--", tracked.name],
+                           cwd=self.checkout, capture_output=True, text=True,
+                           check=True, timeout=15)
+
+    def test_gitignored_owner_pin_allows_readonly_identity_verification(self):
+        approval = self.checkout / "downloads" / "V10_APPROVED_SOURCE.json"
+        approval.parent.mkdir(exist_ok=True)
+        approval.write_text(json.dumps(self.reviewed()), encoding="utf-8")
+        try:
+            result = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-NonInteractive",
+                 "-ExecutionPolicy", "Bypass", "-File", str(RUNNER),
+                 "-RepoRoot", str(self.checkout), "-ApprovalFile", str(approval),
+                 "-Root", str(self.root / "ignored_pin_no_runtime"),
+                 "-VerifySourceOnly"],
+                input="\n", capture_output=True, text=True, timeout=35)
+            output = result.stdout + "\n" + result.stderr
+            self.assertEqual(result.returncode, 0, output[-3000:])
+            self.assertIn("V10_SOURCE_ONLY=PASS", output)
+            self.assertIn("RUNTIME_FILES_TOUCHED=0", output)
+            self.assertIn("REAL_SUBMIT_ALLOWED=0", output)
+            status = subprocess.run(
+                ["git", "status", "--porcelain=v1", "--untracked-files=all"],
+                cwd=self.checkout, capture_output=True, text=True,
+                check=True, timeout=15)
+            self.assertEqual(status.stdout.strip(), "",
+                             "Git-ignored approval pin polluted source checkout")
+            self.assertFalse((self.root / "ignored_pin_no_runtime").exists())
+        finally:
+            approval.unlink(missing_ok=True)
+            approval.parent.rmdir()
 
     def test_untracked_checkout_refuses_read_only_pass(self):
         untracked = self.checkout / "foreign-entry.py"
