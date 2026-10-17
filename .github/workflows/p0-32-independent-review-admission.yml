@@ -17,12 +17,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - run: python -m unittest discover -s tests -p test_ci_p0_32_independent_review_gate.py -v
   independent-admission:
     needs: [gate-unit-tests]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
       - name: Current SHA independent GitHub reviewer proof - required before real acceptance
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

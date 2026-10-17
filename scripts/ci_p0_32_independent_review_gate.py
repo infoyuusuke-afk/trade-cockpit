@@ -15,8 +15,10 @@ def verdict(pr, reviews):
     try:
         author = pr["user"]["login"].casefold()
         head = pr["head"]["sha"]
-        if pr["draft"] is not False or pr["merged"] is not False:
-            return "BLOCKED_DRAFT_OR_MERGED"
+        # Review receipt is valid on a Draft PR.  It never authorizes a merge,
+        # cutover, stop, live order or marking the PR ready for review.
+        if pr["merged"] is not False:
+            return "BLOCKED_MERGED"
         if not isinstance(head, str) or len(head) != 40 or not all(c in "0123456789abcdef" for c in head):
             return "BLOCKED_HEAD"
         # The latest review by each account supersedes earlier reviews.
@@ -77,6 +79,7 @@ def main():
         result = "BLOCKED_UNVERIFIED"
     print("P0_32_REVIEW_ADMISSION=" + result, flush=True)
     print("P0_32_INDEPENDENT_REVIEW_REQUIRED=true", flush=True)
+    print("P0_32_REVIEW_IS_NOT_DEPLOY_APPROVAL=true", flush=True)
     print("STOP_ALLOWED=false", flush=True)
     print("CUTOVER_ELIGIBLE=false", flush=True)
     print("REAL_SUBMIT_ALLOWED=false", flush=True)
