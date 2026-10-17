@@ -21,4 +21,5 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt lxml
-      - run: python -m unittest discover -s tests -p "test_*.py" -v
+      # Fail-visible attribution: run the entire discovered test inventory.
+      - run: python scripts/ci_attributed_unittest.py --tests tests
