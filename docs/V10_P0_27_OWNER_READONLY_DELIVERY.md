@@ -8,11 +8,11 @@ authorisation.
 
 | Item | Value |
 |---|---|
-| Entry commit (full SHA, never a branch URL) | `b736de76f15613830ba4235d88a05e19d68c5c41` |
+| Entry commit (full SHA, never a branch URL) | `d0d0719b2c0a488d4926c417cdb997e595735106` |
 | Entry file | `downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1` |
-| Entry Git blob | `b2b51dfba68e3b6cf85d06fa195464269d947937` |
-| Entry SHA256 (exact bytes served for that commit) | `7CEAE1F42D8DA87A73DFF271D1BD2A2F9F4A6CF69EFEA0120F222328ECAD6210` |
-| Reviewed components commit (`-PinnedCommit`) | `81a68023889952fa5d4bf7ad383c9ee581bdc991` |
+| Entry Git blob | `5bbae780a8f11fc98a85aca37fac69c2cdac8505` |
+| Entry SHA256 (exact bytes served for that commit) | `278DDB6AABF42057429F4A0FA274FCD91F024DEE2B51DD0AFFC7891BF7B51164` |
+| Reviewed components commit (`-PinnedCommit`) | `2d2553adf52ee5631df4dbc2de81668048a7b4a6` |
 
 The entry checks the two components it fetches by Git blob, but it cannot
 check itself. The procedure below therefore fetches the entry by full
@@ -25,13 +25,13 @@ The first OWNER acceptance uses strict mode only. Do not add
 `-IncludeStopDryRun` or `-Execute`. The procedure never passes either.
 
 ```powershell
-$c='b736de76f15613830ba4235d88a05e19d68c5c41'; $h='7CEAE1F42D8DA87A73DFF271D1BD2A2F9F4A6CF69EFEA0120F222328ECAD6210'
+$c='d0d0719b2c0a488d4926c417cdb997e595735106'; $h='278DDB6AABF42057429F4A0FA274FCD91F024DEE2B51DD0AFFC7891BF7B51164'
 $d=Join-Path $env:TEMP ('v10-owner-entry-'+[guid]::NewGuid().ToString('N')); [void](New-Item -ItemType Directory -Path $d)
 $f=Join-Path $d 'VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1'
 [Net.ServicePointManager]::SecurityProtocol=[Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/$c/downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1" -OutFile $f
 $s=[Security.Cryptography.SHA256]::Create(); $got=([BitConverter]::ToString($s.ComputeHash([IO.File]::ReadAllBytes($f)))).Replace('-',''); $s.Dispose()
-if ($got -cne $h) { 'ENTRY_RESULT=BLOCKED_ENTRY_HASH_MISMATCH' } else { powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $f -PinnedCommit 81a68023889952fa5d4bf7ad383c9ee581bdc991 }
+if ($got -cne $h) { 'ENTRY_RESULT=BLOCKED_ENTRY_HASH_MISMATCH' } else { powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $f -PinnedCommit 2d2553adf52ee5631df4dbc2de81668048a7b4a6 }
 Remove-Item -LiteralPath $d -Recurse -Force
 ```
 

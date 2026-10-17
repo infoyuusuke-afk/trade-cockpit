@@ -110,6 +110,47 @@ function Verify-Process($proc,[string]$ExpectedLeaf,[string[]]$ExpectedFull,[dat
 }
 # A venv python.exe redirector re-launches the base interpreter with the
 # same arguments; that one child belongs to the same managed host.
+# Collector Start-Job -InitializationScript adds -EncodedCommand (UTF16-LE).
+# An arbitrary EncodedCommand is never sufficient for admission: reconstruct
+# the exact initialization text from the four parsed Collector functions.
+# No source function or decoded command is executed or displayed.
+function Test-CollectorEncodedInitJob($Child,[string]$CollectorPath) {
+ try {
+  if([string]::IsNullOrWhiteSpace($CollectorPath)){return $false}
+  $file=Get-Item -LiteralPath $CollectorPath -ErrorAction Stop
+  if($file.PSIsContainer -or (($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) -or
+     $file.Length -lt 100 -or $file.Length -gt 400000){return $false}
+  $a=@(Get-Argv $Child)
+  if($a.Count -eq 8 -and $a[1] -ieq "-Version" -and
+     $a[2] -match '^\d+(\.\d+){0,3}$'){
+   $a=@($a[0]) + @($a | Select-Object -Skip 3)
+  }
+  if($a.Count -ne 6 -or $a[1] -ine "-s" -or $a[2] -ine "-NoLogo" -or
+     $a[3] -ine "-NoProfile" -or $a[4] -ine "-EncodedCommand" -or
+     [string]::IsNullOrWhiteSpace($a[5]) -or $a[5].Length -gt 150000 -or
+     $a[5] -cnotmatch '^[A-Za-z0-9+/]+={0,2}$'){return $false}
+  $bytes=[Convert]::FromBase64String($a[5])
+  if($bytes.Length -lt 64 -or $bytes.Length -gt 100000 -or ($bytes.Length % 2) -ne 0){return $false}
+  $decoded=[Text.Encoding]::Unicode.GetString($bytes)
+  if($decoded.IndexOf([char]0) -ge 0){return $false}
+  $t=$null;$errors=$null
+  $ast=[Management.Automation.Language.Parser]::ParseFile($CollectorPath,[ref]$t,[ref]$errors)
+  if($null -eq $ast -or $errors.Count -ne 0){return $false}
+  $names=@("Get-NormalizedLocalWorkbookPath","Get-CollectorFileIdentityType",
+           "Test-SameCanonicalWorkbookFile","Get-PublishedWorkbookGate")
+  $expected=""
+  foreach($name in $names){
+   $found=@($ast.FindAll({
+     param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and
+       [string]::Equals($n.Name,$name,[StringComparison]::Ordinal)
+   },$true))
+   if($found.Count -ne 1){return $false}
+   $inner=$found[0].Body.GetScriptBlock().ToString()
+   $expected+="function "+$name+" {`r`n"+$inner+"`r`n}`r`n"
+  }
+  return [string]::Equals($decoded,$expected,[StringComparison]::Ordinal)
+ } catch {return $false}
+}
 function Get-VenvChild($Parent,$All){
  $pa=@(Get-Argv $Parent)
  $kids=@($All | Where-Object { [int]$_.ParentProcessId -eq [int]$Parent.ProcessId -and
@@ -312,8 +353,13 @@ try{
    $jobArgv=@($jobArgv | Select-Object -Skip 2)
   }
   $jobArgs=@($jobArgv | Sort-Object)
+  $jobExact=(($jobArgs -join " ") -ceq "-nologo -noprofile -s")
+  $collectorInitExact=$false
+  if(-not $jobExact -and $parentId -eq [int]$s.collector_pid){
+   $collectorInitExact=Test-CollectorEncodedInitJob $child (Join-Path $runtime "MS2_RSS_100_Collector.ps1")
+  }
   if(-not (Same-Path ([string]$child.ExecutablePath) ([string]$parent.ExecutablePath)) -or
-     ($jobArgs -join " ") -cne "-nologo -noprofile -s"){
+     -not ($jobExact -or $collectorInitExact)){
    Refuse "PORT_CHILD_IDENTITY_NOT_PROVEN"
   }
   $parentBirth=([datetime]$parent.CreationDate).ToUniversalTime()
