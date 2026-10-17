@@ -12,6 +12,7 @@ import sys
 
 CURRENT = pathlib.Path(__file__).resolve().parents[1]
 PIN = "b81b8877b12a33368e91e5e156a2fc7ac4529349"
+SECOND_PIN = "7c67b3da874610a3121c1f0d1b48ad5fae445fbb"
 PREFIXES = ("test_v8_", "test_v9_", "test_ai_cockpit_v8_", "test_ai_cockpit_v9_")
 EXTRAS = {"test_collector_workbook_identity"}
 EXACT = {"test_ai_shadow_supervisor.ContractSourceTests.test_controller_and_gateway_keep_real_submit_locked"}
@@ -40,7 +41,7 @@ def classify_id(x):
     return module.startswith(PREFIXES) or module in EXTRAS or x in EXACT
 
 
-def audit(current, historical):
+def audit(current, historical, second=None):
     current_ids = {x for group in test_ids(current).values() for x in group if classify_id(x)}
     old = test_ids(historical)
     historic_executed = {x for module, group in old.items()
@@ -48,6 +49,11 @@ def audit(current, historical):
                             module == "test_collector_workbook_identity" or
                             module.startswith("test_v9_")
                          for x in group}
+    if second is not None:
+        later = test_ids(second)
+        # Only the 5 additional Collector contracts absent from the primary pin.
+        historic_executed |= {x for x in later.get("test_collector_workbook_identity", [])
+                              if x in current_ids}
     unmapped = sorted(current_ids - historic_executed)
     old_only = sorted(historic_executed - current_ids)
     return {"current_archive":len(current_ids), "historical_executed":len(historic_executed),
@@ -56,10 +62,18 @@ def audit(current, historical):
 
 
 def main(argv):
-    if len(argv) != 1:
-        raise SystemExit("Usage: ci_historic_id_coverage.py HISTORICAL_CHECKOUT")
+    if len(argv) != 2:
+        raise SystemExit("Usage: ci_historic_id_coverage.py HISTORY_V8_V9 SECOND_HISTORY_COLLECTOR")
     root = pathlib.Path(argv[0]).resolve(strict=True)
-    report = audit(CURRENT, root)
+    secondary = pathlib.Path(argv[1]).resolve(strict=True)
+    for location, pin in ((root, PIN), (secondary, SECOND_PIN)):
+        import subprocess
+        actual = subprocess.run(["git", "-C", str(location), "rev-parse", "HEAD"],
+                                check=True, capture_output=True, text=True).stdout.strip()
+        if actual != pin:
+            print("P0_417_COVERAGE_WRONG_PIN", flush=True)
+            return 2
+    report = audit(CURRENT, root, secondary)
     for key in ("current_archive", "historical_executed", "exact_matched"):
         print("P0_417_COVERAGE_" + key.upper() + "=" + str(report[key]), flush=True)
     print("P0_417_COVERAGE_UNMAPPED=" + str(len(report["unmapped"])), flush=True)
