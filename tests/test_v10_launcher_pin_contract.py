@@ -4,6 +4,7 @@ All tests are synthetic. Windows tests use a temporary disposable Git
 repository and intentionally WRONG admissions; the real Controller,
 MS2/Excel, and broker are never launched.
 """
+import json
 import shutil
 import subprocess
 import sys
@@ -54,6 +55,24 @@ class V10SourceAdmissionContract(unittest.TestCase):
                         SOURCE.index('Write-Host "Deploying runtime scripts'))
         self.assertLess(SOURCE.index('if ($VerifySourceOnly -and $RuntimeAcceptSelfTest)'),
                         SOURCE.index('if ($RuntimeAcceptSelfTest)'))
+
+    def test_one_click_has_no_implicit_old_branch_and_requires_local_pin(self):
+        cmd = (ROOT / "downloads" / "START_AI_COCKPIT_V10.cmd").read_text(encoding="utf-8-sig")
+        ignore = (ROOT / ".gitignore").read_text(encoding="utf-8-sig")
+        self.assertIn('[string]$Branch = ""', SOURCE)
+        self.assertIn("V10_NORMAL_START_REQUIRES_PINNED_SHA", SOURCE)
+        self.assertIn("V10_REVIEWED_BRANCH_REQUIRED", SOURCE)
+        self.assertIn("V10_APPROVED_SOURCE_FILE_MISSING", SOURCE)
+        self.assertIn("V10_APPROVED_SOURCE_REAL_SUBMIT_MUST_BE_FALSE", SOURCE)
+        self.assertIn("APPROVAL_FILE_DISALLOWS_OVERRIDE", SOURCE)
+        self.assertIn('-ApprovalFile "%APPROVAL%"', cmd)
+        self.assertIn("V10_APPROVED_SOURCE.json", cmd)
+        self.assertNotIn("cursor/p0-stale-price-failclosed-d483", cmd)
+        self.assertIn("downloads/V10_APPROVED_SOURCE.json", ignore)
+        self.assertFalse((ROOT / "downloads" / "V10_APPROVED_SOURCE.json").exists(),
+                         "Owner-local approved pin must never be committed")
+        self.assertLess(SOURCE.index("V10_NORMAL_START_REQUIRES_PINNED_SHA"),
+                        SOURCE.index('Write-Host "Deploying runtime scripts'))
 
     def test_offline_selftest_entry_stays_independent(self):
         self.assertIn("if ($RuntimeAcceptSelfTest)", SOURCE)
@@ -159,8 +178,92 @@ class WindowsOfflineWrongSource(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("SOURCE_ONLY_FORBIDS_RUNTIME_ACTIONS", output)
 
-    def test_wrong_branch_refused_before_runtime(self):
-        self.invoke_invalid("unexpected-branch", self.sha, "BRANCH_IDENTITY_MISMATCH")
+    def invoke_approval(self, config, flags=('-VerifySourceOnly',)):
+        approval_path = self.root / "synthetic_V10_APPROVED_SOURCE.json"
+        if config is None:
+            approval_path.unlink(missing_ok=True)
+        elif isinstance(config, str):
+            approval_path.write_text(config, encoding="utf-8")
+        else:
+            approval_path.write_text(json.dumps(config), encoding="utf-8")
+        state_dir = self.root / "approval_only_no_runtime"
+        args = ["powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive",
+                "-ExecutionPolicy", "Bypass", "-File", str(RUNNER),
+                "-RepoRoot", str(self.checkout),
+                "-Root", str(state_dir),
+                "-ApprovalFile", str(approval_path), *flags]
+        before = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.checkout,
+                                check=True, text=True, capture_output=True).stdout.strip()
+        result = subprocess.run(args, capture_output=True, text=True,
+                                input="\n", timeout=35)
+        after = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.checkout,
+                               check=True, text=True, capture_output=True).stdout.strip()
+        self.assertEqual(before, after, "pin parser modified Git HEAD")
+        self.assertFalse(state_dir.exists(), "pin parser touched the state directory")
+        return result, result.stdout + "\n" + result.stderr
+
+    def reviewed(self, **overrides):
+        config = {"schema": "v10_approved_source_v1",
+                  "branch": "reviewed-v10", "commit_sha": self.sha,
+                  "real_submit_allowed": False}
+        config.update(overrides)
+        return config
+
+    def test_approved_local_pin_allows_source_only_without_runtime(self):
+        res, output = self.invoke_approval(self.reviewed())
+        self.assertEqual(res.returncode, 0, output[-3000:])
+        self.assertIn("V10_SOURCE_ONLY=PASS", output)
+        self.assertIn("REAL_SUBMIT_ALLOWED=0", output)
+
+    def test_missing_local_pin_refused(self):
+        res, output = self.invoke_approval(None)
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn("V10_APPROVED_SOURCE_FILE_MISSING", output)
+        self.assertIn("V10_APPROVED_SOURCE=BLOCKED", output)
+
+    def test_malformed_local_pin_refused(self):
+        res, output = self.invoke_approval("{NOT JSON}")
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn("V10_APPROVED_SOURCE=BLOCKED", output)
+
+    def test_local_pin_enabling_real_trading_refused(self):
+        res, output = self.invoke_approval(self.reviewed(real_submit_allowed=True))
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn("V10_APPROVED_SOURCE_REAL_SUBMIT_MUST_BE_FALSE", output)
+
+    def test_local_pin_short_sha_refused(self):
+        res, output = self.invoke_approval(self.reviewed(commit_sha=self.sha[:8]))
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn("PINNED_SHA_MUST_BE_FULL_40_HEX", output)
+
+    def test_local_pin_bad_branch_refused(self):
+        res, output = self.invoke_approval(self.reviewed(branch="../unreviewed"))
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn("V10_REVIEWED_BRANCH_INVALID", output)
+
+    def test_local_pin_commandline_override_refused(self):
+        res, output = self.invoke_approval(self.reviewed(),
+                                           ("-VerifySourceOnly", "-Branch", "reviewed-v10"))
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn("APPROVAL_FILE_DISALLOWS_OVERRIDE", output)
+
+    def test_ordinary_unpinned_launcher_is_blocked_before_deploy(self):
+        res, output = self.invoke_approval(None, flags=())
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn("V10_APPROVED_SOURCE_FILE_MISSING", output)
+
+    def test_direct_normal_launch_requires_sha_even_with_branch(self):
+        state_dir = self.root / "direct_unpinned_never_started"
+        args = ["powershell.exe", "-NoProfile", "-NonInteractive",
+                "-ExecutionPolicy", "Bypass", "-File", str(RUNNER),
+                "-RepoRoot", str(self.checkout),
+                "-Root", str(state_dir), "-Branch", "reviewed-v10"]
+        res = subprocess.run(args, text=True, capture_output=True, input="\n", timeout=35)
+        self.assertNotEqual(res.returncode, 0)
+        self.assertIn("V10_NORMAL_START_REQUIRES_PINNED_SHA", res.stdout)
+        self.assertFalse(state_dir.exists())
+
+    def test_wrong_branch_refused_before_runtime(self):        self.invoke_invalid("unexpected-branch", self.sha, "BRANCH_IDENTITY_MISMATCH")
 
     def test_short_sha_refused_before_runtime(self):
         self.invoke_invalid("reviewed-v10", self.sha[:8], "PINNED_SHA_MUST_BE_FULL_40_HEX")
