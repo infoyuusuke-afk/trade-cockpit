@@ -4,6 +4,9 @@ on:
     paths:
       - "scripts/ci_attributed_unittest.py"
       - "tests/test_ci_attributed_unittest.py"
+      - "tests/test_ci_failure_regression_guard.py"
+      - "tests/ci_known_failures_p0417.json"
+      - "scripts/ci_failure_regression_guard.py"
       - ".github/workflows/mobile-control-tests.yml"
       - ".github/workflows/p0-417-ci-attribution-contract.yml"
   workflow_dispatch:
@@ -15,4 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Synthetic tests prove failure is preserved
-        run: python -m unittest discover -s tests -p test_ci_attributed_unittest.py -v
+        run: |
+          python -m unittest discover -s tests -p test_ci_attributed_unittest.py -v
+          python -m unittest discover -s tests -p test_ci_failure_regression_guard.py -v
