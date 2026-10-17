@@ -36,6 +36,35 @@ def audit(history):
     print("P0_417_HISTORY_FILES_VERIFIED=" + str(len(PATHS)), flush=True)
     return 0
 
+def use_canonical_historical_line_endings(history):
+    """Rehydrate ONLY CRLF-translated PowerShell files in disposable checkout.
+
+    The git object remains the immutable source of truth. Unexpected byte
+    differences are refused, not corrected, and no current V10 file is touched.
+    """
+    root = Path(history).resolve(strict=True)
+    listing = subprocess.run(["git", "-C", str(root), "ls-files", "-z", "downloads/*.ps1"],
+                             capture_output=True, check=True).stdout
+    converted = 0
+    for item in listing.split(b"\\0"):
+        if not item:
+            continue
+        rel = item.decode("utf-8")
+        expected = subprocess.run(["git", "-C", str(root), "show", "HEAD:" + rel],
+                                  capture_output=True, check=True).stdout
+        target = root / rel
+        actual = target.read_bytes()
+        if actual == expected:
+            continue
+        if actual.replace(b"\\r\\n", b"\\n") != expected:
+            print("P0_417_HISTORIC_BYTES_UNEXPECTED=" + rel, flush=True)
+            return 2
+        target.write_bytes(expected)
+        converted += 1
+    print("P0_417_HISTORICAL_CANONICAL_LINE_ENDINGS=" + str(converted), flush=True)
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--history", required=True)
@@ -52,6 +81,10 @@ def main(argv=None):
     if args.mode == "v9-diagnostics" and sys.platform != "win32":
         print("P0_417_HISTORIC_RESULT=BLOCKED_REQUIRES_WINDOWS", flush=True)
         return 2
+    if args.mode == "v9-diagnostics":
+        normalized = use_canonical_historical_line_endings(args.history)
+        if normalized:
+            return normalized
     print("P0_417_HISTORIC_TEST=" + pattern, flush=True)
     command = [sys.executable, "-m", "unittest", "discover", "-s", "tests",
                "-p", pattern, "-v"]
