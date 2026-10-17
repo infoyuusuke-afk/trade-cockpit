@@ -3,7 +3,9 @@
 Original V1/P0-31 verifier and its tests remain unchanged. This suite never
 acts on an OWNER machine, broker, workbook, or live cockpit.
 """
+import hashlib
 import os
+import re
 import sys
 import threading
 import unittest
@@ -43,6 +45,22 @@ class MetadataOnlyStatic(unittest.TestCase):
             self.assertIn('Write-Output "' + s + '"', new)
         for unsafe in ("Stop-Process", "Start-Process", "taskkill", "-ComObject", ".Kill("):
             self.assertNotIn(unsafe, new.split("#>", 1)[1])
+
+
+    def test_immutable_delivery_pins_entry_and_reviewed_components(self):
+        document = (REPO / "docs" / "V10_P0_32_OWNER_READONLY_METADATA_DELIVERY.md").read_text(encoding="utf-8")
+        data = V2.read_bytes()
+        blob = hashlib.sha1(b"blob %d\\0" % len(data) + data).hexdigest()
+        expected_hash = hashlib.sha256(data).hexdigest().upper()
+        self.assertIn("Git blob: \`" + blob + "\`", document)
+        self.assertIn("$h='" + expected_hash + "'", document)
+        commit = re.search(r"\\$c='([a-f0-9]{40})'", document)
+        self.assertIsNotNone(commit)
+        self.assertIn("\`" + commit.group(1) + "\`", document)
+        self.assertIn("raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/$c/", document)
+        self.assertIn("-PinnedCommit $p", document)
+        self.assertIn("$p='4e4b59e4f054cd91d0122f717f0f6d60c28d70d5'", document)
+        self.assertNotIn("-IncludeStopDryRun", document.split("\`\`\`powershell", 1)[1].split("\`\`\`", 1)[0])
 
 
 @unittest.skipUnless(owner.ON_WINDOWS_ACTIONS, "Windows Actions synthetic session only")
@@ -150,6 +168,37 @@ class MetadataOnlyWindows(owner.OwnerReadonlyWindows):
         self.assertIn("STATE_RECHECK=FAIL", r.stdout)
         self.assertIn("STATE_METADATA_ONLY_ACCEPTED=false", r.stdout)
         self.assertEqual(self.state_path.read_bytes(), original + b" ")
+        self.assert_nothing_stopped()
+
+
+    def test_05_launch_file_changed_only_during_recheck_is_blocked(self):
+        """Synthetic-only injection must never permit a late launch-file change."""
+        self.start_session()
+        injected = self.root / "v2-adversarial-launch.ps1"
+        code = V2.read_text(encoding="utf-8")
+        anchor = "$recheck=Get-Fingerprint $rootFull"
+        self.assertEqual(code.count(anchor), 1)
+        patch = ('[IO.File]::AppendAllText((Join-Path $rootFull '
+                 '"START_AI_COCKPIT_V10.cmd"), "synthetic tamper")' + "\n  " + anchor)
+        injected.write_text(code.replace(anchor, patch), encoding="utf-8")
+        stop = threading.Event()
+
+        def touch():
+            while not stop.is_set():
+                os.utime(self.state_path, None)
+                stop.wait(0.03)
+
+        t = threading.Thread(target=touch, daemon=True)
+        t.start()
+        try:
+            r = self.run_verify_v2(script=injected)
+        finally:
+            stop.set()
+            t.join(timeout=3)
+        self.assert_blocked(r, "CHANGED_DURING_CHECK_STATE_UNCHANGED")
+        self.assertIn("STATE_CHANGE_CLASS=METADATA_ONLY", r.stdout)
+        self.assertIn("STATE_RECHECK=FAIL", r.stdout)
+        self.assertIn("STATE_METADATA_ONLY_ACCEPTED=false", r.stdout)
         self.assert_nothing_stopped()
 
 
