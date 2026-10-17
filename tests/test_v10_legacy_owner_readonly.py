@@ -23,7 +23,7 @@ import test_v10_legacy_safe_stop as tsl  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 VERIFY = REPO / "downloads" / "VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1"
-PINNED = "f2261e257bc22bc70fe5105e94f6494c291dae08"
+PINNED = "4e4b59e4f054cd91d0122f717f0f6d60c28d70d5"
 COMPONENTS = ("PREFLIGHT_V10_LEGACY_SHUTDOWN_V1.ps1", "STOP_V10_LEGACY_SESSION_V1.ps1")
 PS = tsl.PS
 ON_WINDOWS_ACTIONS = (os.name == "nt" and os.environ.get("GITHUB_ACTIONS") == "true"
