@@ -82,7 +82,8 @@ try {
         "theme.css",
         "focus.css",
         "next-theme-radar.css",
-        "next-theme-radar.js"
+        "next-theme-radar.js",
+        "earnings-calendar.js"
     )
     foreach ($relative in $required) {
         $full = [IO.Path]::GetFullPath((Join-Path $repo $relative))
@@ -152,7 +153,7 @@ try {
             throw ("V10_RELEASE_SOURCE_BLOB_MISMATCH: " + $relative)
         }
     }
-    Write-Output "V10_RELEASE_SOURCE_BLOBS_MATCH=28"
+    Write-Output "V10_RELEASE_SOURCE_BLOBS_MATCH=29"
     $runner = Join-Path $repo "downloads\RUN_AI_COCKPIT_V10.ps1"
     # Fail closed on a stale V10 RUN that lacks the reviewed admission gate.
     $runnerSource = [IO.File]::ReadAllText($runner, [Text.Encoding]::UTF8)
