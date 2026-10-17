@@ -187,6 +187,10 @@ function Get-ControllerHost($Entry){
 $result="BLOCKED"
 $reason=""
 try{
+ $stage="MODE"
+ # V2 is strictly a read-only admission check. STOP dry-run belongs to V1 only.
+ # Refuse the switch BEFORE even downloading or invoking any STOP component.
+ if($IncludeStopDryRun){Block "STOP_DRY_RUN_V2_DISABLED"}
  $stage="ENVIRONMENT"
  if($PSVersionTable.PSVersion.Major -ne 5 -or [string]$PSVersionTable.PSEdition -cne "Desktop" -or
     [Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT){
