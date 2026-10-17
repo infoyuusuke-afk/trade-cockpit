@@ -1,0 +1,72 @@
+name: V10 Isolated Safe Stop (No Runtime)
+on:
+  pull_request:
+    paths:
+      - "downloads/STOP_AI_COCKPIT_V10.ps1"
+      - "downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1"
+      - "tests/test_v10_brain_argv_contract.py"
+      - "tests/test_v10_brain_safestop_preflight.py"
+      - "tests/test_v10_brain_safestop_windows_integration.py"
+      - ".github/workflows/p0-v10-isolated-safestop.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify exactly five source blobs from V10 reviewed Draft, no overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          pinned="e906dedc45448ca20428a7ca1afa1126eaeeedaa"
+          git fetch --no-tags --depth=1 origin "$pinned"
+          files=(
+            downloads/STOP_AI_COCKPIT_V10.ps1
+            downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1
+            tests/test_v10_brain_argv_contract.py
+            tests/test_v10_brain_safestop_preflight.py
+            tests/test_v10_brain_safestop_windows_integration.py
+          )
+          for file in "${files[@]}"; do
+            git cat-file -e "$pinned:$file"
+            git show "$pinned:$file" | cmp - "$file"
+            echo "SOURCE_UNMODIFIED=$file"
+          done
+          echo "NO_OWNER_RUNTIME_TOUCHED=1"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pure V10 safe-stop source and fail-closed contracts
+        run: python -m unittest discover -s tests -p test_v10_brain_safestop_preflight.py -v
+  windows-mock-only:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check V10 stop PowerShell syntax (never execute)
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          foreach ($path in @('downloads/STOP_AI_COCKPIT_V10.ps1','downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1')) {
+            $tokens=$null; $parseErrors=$null
+            [void][Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path,[ref]$tokens,[ref]$parseErrors)
+            if ($parseErrors.Count -gt 0) { throw ('V10_PARSE_FAILED: '+$path) }
+          }
+      - name: Exact BRAIN argv parser and preflight contracts
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_v10_brain_argv_contract.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s tests -p test_v10_brain_safestop_preflight.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Stop ONLY disposable fake processes in Windows runner
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_v10_brain_safestop_windows_integration.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
