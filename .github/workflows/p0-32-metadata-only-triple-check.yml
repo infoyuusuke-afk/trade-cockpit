@@ -1,0 +1,36 @@
+name: P0-32 Metadata-Only Triple-Check CI
+on:
+  pull_request:
+    paths:
+      - "downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V2.ps1"
+      - "tests/test_v10_owner_state_metadata_v2.py"
+      - "tests/test_v10_metadata_v2_safety_contract.py"
+      - "docs/V10_P0_32_OWNER_READONLY_METADATA_DELIVERY.md"
+      - ".github/workflows/p0-32-metadata-only-triple-check.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-ps51:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse independent V2 with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $tokens=$null; $errors=$null
+          [Management.Automation.Language.Parser]::ParseFile((Resolve-Path "downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V2.ps1").Path,[ref]$tokens,[ref]$errors) | Out-Null
+          if($errors.Count -gt 0){throw "P0_32_PARSE_FAILED"}
+      - name: P0-32 three-point verification on disposable synthetic session only
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_v10_metadata_v2_safety_contract.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s tests -p test_v10_owner_state_metadata_v2.py -v
+  ubuntu-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_v10_metadata_v2_safety_contract.py -v
+      - run: python -m unittest discover -s tests -p test_v10_owner_state_metadata_v2.py -v
