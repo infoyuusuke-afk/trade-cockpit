@@ -55,7 +55,7 @@ class AttributionTests(unittest.TestCase):
         out = io.StringIO()
         with patch.object(target.subprocess, "run", return_value=fake):
             with contextlib.redirect_stdout(out):
-                code = target.main()
+                code = target.main([])
         self.assertEqual(code, 0)
         self.assertIn("Ran 2 tests in 0.002s", out.getvalue())
         self.assertIn("P0_417_EXECUTED=2", out.getvalue())
