@@ -75,6 +75,31 @@ class WindowsAttribution(tsl.LegacySessionSafeStop):
         self.assertEqual(before, self.state_path.read_bytes())
         self.assert_nothing_stopped()
 
+    def test_06_collector_with_real_initialization_script_is_attributed(self):
+        # The real Collector Start-Job uses -InitializationScript, unlike Watcher.
+        # Reproduce that concrete topology without changing any real process.
+        collector = self.runtime / "MS2_RSS_100_Collector.ps1"
+        collector.write_text(
+            "param([int]$Port,[string]$Mark)\n"
+            "$init = { function Get-Identity { return 'synthetic' } }\n"
+            "$j = Start-Job -Name ('MS2_JSON_BRIDGE_' + $PID) "
+            "-InitializationScript $init -ArgumentList $Port -ScriptBlock {\n"
+            "  param($p)\n"
+            "  $null = Get-Identity\n"
+            "  $l = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, $p); "
+            "$l.Start(); Start-Sleep -Seconds 300 }\n"
+            "Start-Sleep -Seconds 300\n",
+            encoding="ascii"
+        )
+        self.start_session()
+        before = self.state_path.read_bytes()
+        r = self.execute()
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("PORT_28580=JOB_BRIDGE_VERIFIED", r.stdout)
+        self.assertIn("PORT_28582=JOB_BRIDGE_VERIFIED", r.stdout)
+        self.assertEqual(before, self.state_path.read_bytes())
+        self.assert_nothing_stopped()
+
     def test_02_unapproved_non_job_bridge_refused_without_stop(self):
         self.start_session(bridge="raw")
         before = self.state_path.read_bytes()
