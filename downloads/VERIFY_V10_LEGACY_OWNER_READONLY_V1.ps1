@@ -43,9 +43,9 @@ param(
  [string]$FixtureRoot=""
 )
 $ErrorActionPreference="Stop"
-$ReviewedCommit="f2261e257bc22bc70fe5105e94f6494c291dae08"
+$ReviewedCommit="4e4b59e4f054cd91d0122f717f0f6d60c28d70d5"
 $Spec=@(
- @{Name="PREFLIGHT_V10_LEGACY_SHUTDOWN_V1.ps1";Blob="88490f4c6539036c3133e69a05c4066d23026417"},
+ @{Name="PREFLIGHT_V10_LEGACY_SHUTDOWN_V1.ps1";Blob="94cbce7f4352bac9b1fdb0749a15f8a15400ba7b"},
  @{Name="STOP_V10_LEGACY_SESSION_V1.ps1";Blob="bc883ea583c065b335361fc33498d5a8c4fc77ab"}
 )
 $V10Ports=@(28580,28581,28582,28583,28584)
