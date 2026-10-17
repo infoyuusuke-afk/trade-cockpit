@@ -29,10 +29,8 @@ jobs:
           python-version: "3.12"
       - name: Windows PS5.1 wrong-branch/full-SHA fail-closed synthetic cases
         run: python -m unittest discover -s tests -p test_v10_launcher_pin_contract.py -v
-  # Verification only: do NOT copy these historical CI fixes into this PR.
-  # Overlay the six pinned #434 files inside the ephemeral runner workspace,
-  # then exercise the entire V10 stack with only V8/V9 IDs excluded.
-  v10-legacy-combined:
+  # Exercise ACTUALLY COMMITTED V10 files. Pinned #434 is reference only.
+  v10-legacy-integrated:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -40,7 +38,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Overlay exact six CI files from reviewed Draft PR 434 (temporary runner only)
+      - name: Fail-closed content parity against reviewed Draft PR 434
         shell: bash
         run: |
           set -euo pipefail
@@ -56,14 +54,14 @@ jobs:
           )
           for file in "${files[@]}"; do
             git cat-file -e "$pinned:$file"
-            mkdir -p "$(dirname "$file")"
-            git show "$pinned:$file" > "$file"
-            echo "PINNED_CI_OVERLAY=$file"
+            test -f "$file"
+            git show "$pinned:$file" | cmp - "$file"
+            echo "PINNED_CI_CONTENT_MATCH=$file"
           done
-          echo "PINNED_CI_HEAD=$pinned"
+          echo "PINNED_CI_REFERENCE_HEAD=$pinned"
       - name: Install existing Python test dependencies
         run: pip install -r requirements.txt lxml
-      - name: Assert V10 scope and pinned V8/V9 exclusions
+      - name: Validate committed V10 test-scope contracts
         run: python -m unittest discover -s tests -p test_mobile_ci_scope_contract.py -v
-      - name: Exercise current V10 full suite with exactly pinned legacy exclusions
+      - name: Exercise committed V10 current suite without any overlay
         run: python scripts/ci_mobile_current_suite.py
