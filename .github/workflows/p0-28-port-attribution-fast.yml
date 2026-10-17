@@ -4,6 +4,8 @@ on:
     paths:
       - "downloads/DIAGNOSE_V10_LEGACY_PORT_OWNER_READONLY_V1.ps1"
       - "tests/test_v10_legacy_port_attribution_readonly.py"
+      - "tests/test_v10_collector_encoded_init_admission.py"
+      - "downloads/PREFLIGHT_V10_LEGACY_SHUTDOWN_V1.ps1"
       - "docs/V10_P0_28_PORT_OWNER_READONLY_DELIVERY.md"
       - ".github/workflows/p0-28-port-attribution-fast.yml"
   workflow_dispatch:
@@ -23,3 +25,5 @@ jobs:
           if ($errors.Count -gt 0) { throw 'P0_28_PARSE_FAILED' }
       - name: P0-28 isolated port-owner tests only (disposable dummy processes)
         run: python -m unittest discover -s tests -p test_v10_legacy_port_attribution_readonly.py -v
+      - name: P0-29 exact encoded initializer admission vs injected script
+        run: python -m unittest discover -s tests -p test_v10_collector_encoded_init_admission.py -v
