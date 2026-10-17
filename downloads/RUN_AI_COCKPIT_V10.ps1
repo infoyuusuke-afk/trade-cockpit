@@ -7,7 +7,8 @@ param(
     [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
     [switch]$DeployRuntimeOnly,
     [switch]$AcceptRuntimeCollector,
-    [switch]$RuntimeAcceptSelfTest
+    [switch]$RuntimeAcceptSelfTest,
+    [switch]$VerifySourceOnly
 )
 
 # V10 canonical entry point: verify the current checkout, deploy the
@@ -726,6 +727,14 @@ if (-not [string]::IsNullOrWhiteSpace($ExpectedSha)) {
 }
 
 try {
+    # A bounded read-only Git identity gate for future Owner Windows acceptance.
+    # Never permit incompatible switches to make a "verify" attempt deploy.
+    if ($VerifySourceOnly -and ($DeployRuntimeOnly -or $AcceptRuntimeCollector -or $RuntimeAcceptSelfTest)) {
+        throw "SOURCE_ONLY_FORBIDS_RUNTIME_ACTIONS"
+    }
+    if ($VerifySourceOnly -and [string]::IsNullOrWhiteSpace($ExpectedSha)) {
+        throw "SOURCE_ONLY_REQUIRES_PINNED_SHA"
+    }
     if ($DeployRuntimeOnly -and [string]::IsNullOrWhiteSpace($ExpectedSha)) {
         throw "DeployRuntimeOnly requires -ExpectedSha. Refusing to copy an unpinned checkout into RuntimeDir."
     }
@@ -756,6 +765,20 @@ try {
         if (-not [string]::Equals($actualSha, $ExpectedSha, [StringComparison]::OrdinalIgnoreCase)) {
             throw "PINNED_SHA_IDENTITY_MISMATCH: unexpected runtime commit."
         }
+    }
+
+    # No process, port, Excel, MS2, runtime files, state, or Git mutation.
+    # This validates the checkout identity ONLY: not local runtime readiness.
+    if ($VerifySourceOnly) {
+        Write-Host "V10_SOURCE_ONLY=PASS" -ForegroundColor Green
+        Write-Host "GIT_BRANCH_AND_FULL_SHA_MATCH=1" -ForegroundColor Green
+        Write-Host "RUNTIME_FILES_TOUCHED=0"
+        Write-Host "CONTROLLER_STARTED=0"
+        Write-Host "EXCEL_TOUCHED=0"
+        Write-Host "MS2_TOUCHED=0"
+        Write-Host "SOURCE_AUTHENTICATED=0"
+        Write-Host "REAL_SUBMIT_ALLOWED=0"
+        exit 0
     }
 
     Write-Host ""
@@ -852,6 +875,14 @@ try {
         exit 0
     }
 } catch {
+    if ($VerifySourceOnly) {
+        Write-Host "V10_SOURCE_ONLY=BLOCKED" -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Yellow
+        Write-Host "RUNTIME_FILES_TOUCHED=0"
+        Write-Host "CONTROLLER_STARTED=0"
+        Write-Host "REAL_SUBMIT_ALLOWED=0"
+        [Environment]::Exit(2)
+    }
     Write-Host ""
     Write-Host "==================================================" -ForegroundColor Red
     Write-Host " UPDATE/DEPLOY FAILED - CONTROLLER NOT STARTED (fail-closed)" -ForegroundColor Red
