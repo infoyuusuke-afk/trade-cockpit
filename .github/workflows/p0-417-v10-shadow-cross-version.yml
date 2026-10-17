@@ -1,0 +1,33 @@
+name: P0-417 Current V10 Shadow Cross-Version Safety
+on:
+  pull_request:
+    paths:
+      - "tests/test_p0_417_v10_shadow_cross_version.py"
+      - "downloads/AI_COCKPIT_CONTROLLER_V10.ps1"
+      - "downloads/AI_COCKPIT_GATEWAY_V10.ps1"
+      - "scripts/ai_shadow_supervisor.py"
+      - "trade_control.js"
+      - ".github/workflows/p0-417-v10-shadow-cross-version.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ubuntu-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_p0_417_v10_shadow_cross_version.py -v
+  windows-static:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Current-source safety contract, not owner execution
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_p0_417_v10_shadow_cross_version.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($p in @("downloads/AI_COCKPIT_CONTROLLER_V10.ps1","downloads/AI_COCKPIT_GATEWAY_V10.ps1")) {
+            $t=$null; $e=$null
+            [Management.Automation.Language.Parser]::ParseFile((Resolve-Path $p).Path,[ref]$t,[ref]$e) | Out-Null
+            if ($e.Count -gt 0) { throw "P0_417_CURRENT_SCRIPT_PARSE_FAILED" }
+          }
