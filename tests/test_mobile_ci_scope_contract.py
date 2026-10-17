@@ -79,6 +79,18 @@ class MobileCIScopeContract(unittest.TestCase):
         self.assertIn("LEGACY_EXCLUSION_NOT_PROVEN", source)
         self.assertIn("MOBILE_SAFETY_SUITE_MISSING", source)
 
+    def test_pinned_exclusion_ids_are_all_or_none_across_branches(self):
+        # main contains no legacy cases; the stacked V10 branch contains all.
+        # A partially discovered inventory is a regression, not a PASS.
+        validator = self.runner.verify_exclusion_ids
+        ids = {"test_v9_fake.Legacy.test_old", "test_v8_fake.Legacy.test_old"}
+        self.assertIsNone(validator(ids, set(ids)))
+        self.assertIsNone(validator(ids, set()))
+        with self.assertRaisesRegex(SystemExit, "LEGACY_LIST_PARTIALLY_DISCOVERED"):
+            validator(ids, {"test_v9_fake.Legacy.test_old"})
+        with self.assertRaisesRegex(SystemExit, "test_v8_fake"):
+            validator(ids, {"test_v9_fake.Legacy.test_old"})
+
     def test_exclusion_requires_a_missing_v8_v9_script(self):
         runner = self.runner
         with tempfile.TemporaryDirectory() as tmp:

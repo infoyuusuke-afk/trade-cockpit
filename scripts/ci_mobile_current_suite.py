@@ -51,6 +51,17 @@ def missing_legacy_refs(module):
             if not (ROOT / "downloads" / name).exists()]
 
 
+
+def verify_exclusion_ids(excluded, discovered_ids):
+    # main does not yet contain the stacked V10/legacy test inventory.
+    # Accept zero matches on main, or every pinned ID on the V10 stack.
+    # Any partial match means discovery/renaming changed and must fail closed.
+    present = excluded & discovered_ids
+    if present and present != excluded:
+        absent = sorted(excluded - present)
+        raise SystemExit("LEGACY_LIST_PARTIALLY_DISCOVERED: " + ",".join(absent))
+
+
 def main():
     excluded = load_excluded()
     for test_id in excluded:
@@ -59,6 +70,9 @@ def main():
     # Same import roots as `python -m unittest discover -s tests` run from ROOT.
     sys.path[:0] = [str(ROOT), str(TESTS)]
     tests = list(flatten(unittest.defaultTestLoader.discover(str(TESTS), pattern="test_*.py", top_level_dir=str(TESTS))))
+    # Fail closed when an excluded test was renamed/removed or discovery changed.
+    # Never silently accept a stale list that no longer matches collected IDs.
+    verify_exclusion_ids(excluded, {test.id() for test in tests})
     kept, skipped = [], []
     for test in tests:
         (skipped if test.id() in excluded else kept).append(test)
