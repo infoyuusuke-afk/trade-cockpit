@@ -1,6 +1,6 @@
 param(
     [string]$RepoRoot = "",
-    [string]$Branch = "cursor/p0-stale-price-failclosed-d483",
+    [string]$Branch = "",
     [string]$ExpectedSha = "",
     [switch]$SkipGitUpdate,
     [string]$RuntimeDirOverride = "",
@@ -8,7 +8,8 @@ param(
     [switch]$DeployRuntimeOnly,
     [switch]$AcceptRuntimeCollector,
     [switch]$RuntimeAcceptSelfTest,
-    [switch]$VerifySourceOnly
+    [switch]$VerifySourceOnly,
+    [string]$ApprovalFile = ""
 )
 
 # V10 canonical entry point: verify the current checkout, deploy the
@@ -716,6 +717,43 @@ if ($RuntimeAcceptSelfTest) {
     exit 0
 }
 
+# Local source pin: supplied deliberately by an approved installer/operator.
+# The file is never generated, refreshed or auto-selected by this script.
+# A SHA pin prevents accidentally executing an unexpected Git checkout; it
+# is not proof that the external approval file was cryptographically signed.
+if (-not [string]::IsNullOrWhiteSpace($ApprovalFile)) {
+    if (-not [string]::IsNullOrWhiteSpace($Branch) -or -not [string]::IsNullOrWhiteSpace($ExpectedSha)) {
+        Write-Host "APPROVAL_FILE_DISALLOWS_OVERRIDE" -ForegroundColor Red
+        exit 2
+    }
+    try {
+        if (-not (Test-Path -LiteralPath $ApprovalFile -PathType Leaf)) {
+            throw "V10_APPROVED_SOURCE_FILE_MISSING"
+        }
+        $approval = ([IO.File]::ReadAllText($ApprovalFile, [Text.Encoding]::UTF8) | ConvertFrom-Json -ErrorAction Stop)
+        if ([string]$approval.schema -cne "v10_approved_source_v1") {
+            throw "V10_APPROVED_SOURCE_SCHEMA_INVALID"
+        }
+        if ($approval.PSObject.Properties.Name -notcontains "real_submit_allowed" -or
+            $approval.real_submit_allowed -isnot [bool] -or $approval.real_submit_allowed) {
+            throw "V10_APPROVED_SOURCE_REAL_SUBMIT_MUST_BE_FALSE"
+        }
+        if ($approval.PSObject.Properties.Name -notcontains "branch" -or
+            $approval.PSObject.Properties.Name -notcontains "commit_sha") {
+            throw "V10_APPROVED_SOURCE_IDENTITY_MISSING"
+        }
+        $Branch = [string]$approval.branch
+        $ExpectedSha = [string]$approval.commit_sha
+    } catch {
+        Write-Host "V10_APPROVED_SOURCE=BLOCKED" -ForegroundColor Red
+        Write-Host $_.Exception.Message -ForegroundColor Yellow
+        Write-Host "RUNTIME_FILES_TOUCHED=0"
+        Write-Host "CONTROLLER_STARTED=0"
+        Write-Host "REAL_SUBMIT_ALLOWED=0"
+        exit 2
+    }
+}
+
 $repo = Resolve-RepoRoot
 Write-Host "==================================================" -ForegroundColor DarkCyan
 Write-Host " AI COCKPIT V10 - deploy + start" -ForegroundColor Cyan
@@ -738,6 +776,20 @@ try {
     }
     if ($VerifySourceOnly -and [string]::IsNullOrWhiteSpace($ExpectedSha)) {
         throw "SOURCE_ONLY_REQUIRES_PINNED_SHA"
+    }
+    # All normal V10 starts require an explicit reviewed branch and full SHA.
+    # NEVER infer approval from the current checkout or a historical default.
+    if ([string]::IsNullOrWhiteSpace($Branch)) {
+        throw "V10_REVIEWED_BRANCH_REQUIRED"
+    }
+    if ($Branch -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$' -or
+        $Branch.Contains("..") -or $Branch.EndsWith("/") -or $Branch.EndsWith(".") ) {
+        throw "V10_REVIEWED_BRANCH_INVALID"
+    }
+    if (-not $VerifySourceOnly -and
+        -not $DeployRuntimeOnly -and -not $AcceptRuntimeCollector -and
+        [string]::IsNullOrWhiteSpace($ExpectedSha)) {
+        throw "V10_NORMAL_START_REQUIRES_PINNED_SHA"
     }
     if ($DeployRuntimeOnly -and [string]::IsNullOrWhiteSpace($ExpectedSha)) {
         throw "DeployRuntimeOnly requires -ExpectedSha. Refusing to copy an unpinned checkout into RuntimeDir."
