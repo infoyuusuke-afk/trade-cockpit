@@ -30,6 +30,8 @@ jobs:
           ref: b81b8877b12a33368e91e5e156a2fc7ac4529349
           path: historical
           persist-credentials: false
+      - name: Matrix responsibility and fail-closed contract
+        run: python -m unittest discover -s current/tests -p test_p0_417_matrix_contract.py -v
       - name: Original V8 structural tests against pinned historic files
         run: python current/scripts/ci_historical_v8_v9.py --history historical --mode v8
   legacy-v9-historic:
