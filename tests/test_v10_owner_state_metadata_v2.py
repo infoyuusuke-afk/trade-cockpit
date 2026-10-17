@@ -50,17 +50,17 @@ class MetadataOnlyStatic(unittest.TestCase):
     def test_immutable_delivery_pins_entry_and_reviewed_components(self):
         document = (REPO / "docs" / "V10_P0_32_OWNER_READONLY_METADATA_DELIVERY.md").read_text(encoding="utf-8")
         data = V2.read_bytes()
-        blob = hashlib.sha1(b"blob %d\\0" % len(data) + data).hexdigest()
+        blob = hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
         expected_hash = hashlib.sha256(data).hexdigest().upper()
-        self.assertIn("Git blob: \`" + blob + "\`", document)
+        self.assertIn("Git blob: `" + blob + "`", document)
         self.assertIn("$h='" + expected_hash + "'", document)
-        commit = re.search(r"\\$c='([a-f0-9]{40})'", document)
+        commit = re.search(r"\$c='([a-f0-9]{40})'", document)
         self.assertIsNotNone(commit)
-        self.assertIn("\`" + commit.group(1) + "\`", document)
+        self.assertIn("`" + commit.group(1) + "`", document)
         self.assertIn("raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/$c/", document)
         self.assertIn("-PinnedCommit $p", document)
         self.assertIn("$p='4e4b59e4f054cd91d0122f717f0f6d60c28d70d5'", document)
-        self.assertNotIn("-IncludeStopDryRun", document.split("\`\`\`powershell", 1)[1].split("\`\`\`", 1)[0])
+        self.assertNotIn("-IncludeStopDryRun", document.split("```powershell", 1)[1].split("```", 1)[0])
 
 
 @unittest.skipUnless(owner.ON_WINDOWS_ACTIONS, "Windows Actions synthetic session only")
