@@ -1,0 +1,27 @@
+name: P0-417 Current V10 Inventory Lane
+on:
+  pull_request:
+    paths:
+      - "scripts/ci_current_v10_lane.py"
+      - "tests/test_p0_417_current_lane_provenance.py"
+      - ".github/workflows/p0-417-current-v10-inventory.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_p0_417_current_lane_provenance.py -v
+  current:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt lxml
+      - name: Enumerate original test inventory and execute only explicit current cases
+        run: python scripts/ci_current_v10_lane.py
