@@ -5,6 +5,7 @@ finishes, classifies reported failures as legacy V8/V9 or current/other.
 This runner MUST NOT filter tests, change suite order, or suppress failures.
 """
 import argparse
+import collections
 import re
 import subprocess
 import sys
@@ -30,6 +31,12 @@ def classify_output(output):
     return groups
 
 
+def missing_dependency_summary(output):
+    # Never emit absolute runner paths; only safe source basenames.
+    paths = re.findall(r"FileNotFoundError: \[Errno 2\] No such file or directory: '([^']+)'", output)
+    return collections.Counter(path.replace("\\", "/").rsplit("/", 1)[-1] for path in paths)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tests", default="tests")
@@ -45,6 +52,13 @@ def main(argv=None):
         x = grouped[label]
         print("P0_417_GROUP_FAILURES=" + label +
               " FAIL=" + str(x["FAIL"]) + " ERROR=" + str(x["ERROR"]), flush=True)
+    missing = missing_dependency_summary(result.stdout)
+    print("P0_417_MISSING_DEPENDENCIES=" + str(sum(missing.values())), flush=True)
+    for filename, count in sorted(missing.items()):
+        if re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", filename):
+            print("P0_417_MISSING_FILE=" + filename + " COUNT=" + str(count), flush=True)
+        else:
+            print("P0_417_MISSING_FILE=REDACTED COUNT=" + str(count), flush=True)
     summary = re.search(r"Ran\s+(\d+)\s+tests?\s+in\s+[\d.]+s", result.stdout)
     print("P0_417_EXECUTED=" + (summary.group(1) if summary else "UNKNOWN"), flush=True)
     print("P0_417_ORIGINAL_EXIT_CODE=" + str(result.returncode), flush=True)
