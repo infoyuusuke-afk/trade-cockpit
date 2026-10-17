@@ -74,6 +74,17 @@ class V10SourceAdmissionContract(unittest.TestCase):
         self.assertLess(SOURCE.index("V10_NORMAL_START_REQUIRES_PINNED_SHA"),
                         SOURCE.index('Write-Host "Deploying runtime scripts'))
 
+    def test_worktree_clean_and_approval_gate_precede_runtime(self):
+        self.assertIn("V10_WORKTREE_NOT_CLEAN", SOURCE)
+        self.assertIn("V10_MUTATING_START_REQUIRES_APPROVAL_FILE", SOURCE)
+        self.assertIn('git checkout', SOURCE)  # comments may mention recovery, never execute it
+        self.assertIn('--porcelain=v1", "--untracked-files=all"', SOURCE)
+        deploy = SOURCE.index('Write-Host "Deploying runtime scripts')
+        self.assertLess(SOURCE.index("V10_WORKTREE_NOT_CLEAN"), deploy)
+        self.assertLess(SOURCE.index("V10_MUTATING_START_REQUIRES_APPROVAL_FILE"), deploy)
+        self.assertLess(SOURCE.index("V10_WORKTREE_NOT_CLEAN"),
+                        SOURCE.index('Write-Host "V10_SOURCE_ONLY=PASS"'))
+
     def test_offline_selftest_entry_stays_independent(self):
         self.assertIn("if ($RuntimeAcceptSelfTest)", SOURCE)
         self.assertLess(SOURCE.index("if ($RuntimeAcceptSelfTest)"),
@@ -263,7 +274,61 @@ class WindowsOfflineWrongSource(unittest.TestCase):
         self.assertIn("V10_NORMAL_START_REQUIRES_PINNED_SHA", res.stdout)
         self.assertFalse(state_dir.exists())
 
-    def test_wrong_branch_refused_before_runtime(self):        self.invoke_invalid("unexpected-branch", self.sha, "BRANCH_IDENTITY_MISMATCH")
+    def test_dirty_tracked_checkout_refuses_read_only_pass(self):
+        tracked = self.checkout / "tracked-v10-source.txt"
+        tracked.write_text("known-good", encoding="utf-8")
+        try:
+            subprocess.run(["git", "add", tracked.name], cwd=self.checkout,
+                           capture_output=True, text=True, check=True, timeout=15)
+            result, output = self.invoke_source_only("reviewed-v10", self.sha)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("V10_WORKTREE_NOT_CLEAN", output)
+            self.assertIn("V10_SOURCE_ONLY=BLOCKED", output)
+        finally:
+            subprocess.run(["git", "reset", "--quiet"], cwd=self.checkout,
+                           capture_output=True, text=True, check=True, timeout=15)
+            tracked.unlink(missing_ok=True)
+
+    def test_untracked_checkout_refuses_read_only_pass(self):
+        untracked = self.checkout / "foreign-entry.py"
+        untracked.write_text("print('unreviewed')\n", encoding="utf-8")
+        try:
+            result, output = self.invoke_source_only("reviewed-v10", self.sha)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("V10_WORKTREE_NOT_CLEAN", output)
+            self.assertIn("V10_SOURCE_ONLY=BLOCKED", output)
+        finally:
+            untracked.unlink(missing_ok=True)
+
+    def test_cli_branch_sha_cannot_authorize_normal_runtime(self):
+        state = self.root / "no_direct_mutating_runtime"
+        args = ["powershell.exe", "-NoProfile", "-NonInteractive",
+                "-ExecutionPolicy", "Bypass", "-File", str(RUNNER),
+                "-RepoRoot", str(self.checkout), "-Root", str(state),
+                "-Branch", "reviewed-v10", "-ExpectedSha", self.sha]
+        result = subprocess.run(args, input="\n", capture_output=True,
+                                text=True, timeout=35)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("V10_MUTATING_START_REQUIRES_APPROVAL_FILE",
+                      result.stdout + result.stderr)
+        self.assertFalse(state.exists())
+
+    def test_cli_branch_sha_cannot_authorize_deploy_only(self):
+        state = self.root / "no_direct_deploy_runtime"
+        args = ["powershell.exe", "-NoProfile", "-NonInteractive",
+                "-ExecutionPolicy", "Bypass", "-File", str(RUNNER),
+                "-RepoRoot", str(self.checkout), "-Root", str(state),
+                "-Branch", "reviewed-v10", "-ExpectedSha", self.sha,
+                "-DeployRuntimeOnly"]
+        result = subprocess.run(args, input="\n", capture_output=True,
+                                text=True, timeout=35)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("V10_MUTATING_START_REQUIRES_APPROVAL_FILE",
+                      result.stdout + result.stderr)
+        self.assertFalse(state.exists())
+
+    def test_wrong_branch_refused_before_runtime(self):
+        self.invoke_invalid("unexpected-branch", self.sha, "BRANCH_IDENTITY_MISMATCH")
 
     def test_short_sha_refused_before_runtime(self):
         self.invoke_invalid("reviewed-v10", self.sha[:8], "PINNED_SHA_MUST_BE_FULL_40_HEX")
