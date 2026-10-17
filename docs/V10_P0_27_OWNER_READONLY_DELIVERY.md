@@ -8,11 +8,11 @@ authorisation.
 
 | Item | Value |
 |---|---|
-| Entry commit (full SHA, never a branch URL) | `d20f9655904468f8b201771a5753b8f106b38ec2` |
+| Entry commit (full SHA, never a branch URL) | `4e2cabdcfed9f53cb731802890d32b39bd95b6a7` |
 | Entry file | `downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1` |
-| Entry Git blob | `fd40b678976aca40b1f8e01d36533d1d87ac3a0e` |
-| Entry SHA256 (exact bytes served for that commit) | `71E3DF68DE60ACCADCF65FC4854D3CEF0C2B5B3EDF5D75B81481788718F858F9` |
-| Reviewed components commit (`-PinnedCommit`) | `f2261e257bc22bc70fe5105e94f6494c291dae08` |
+| Entry Git blob | `a3e9aaf2d12778ca0b34c623e1f69e9cb60f600d` |
+| Entry SHA256 (exact bytes served for that commit) | `79CAE019A465F56032260A375E039C5A783D36016C3597BD3DAE8AB3760D09B1` |
+| Reviewed components commit (`-PinnedCommit`) | `4e4b59e4f054cd91d0122f717f0f6d60c28d70d5` |
 
 The entry checks the two components it fetches by Git blob, but it cannot
 check itself. The procedure below therefore fetches the entry by full
@@ -25,19 +25,19 @@ The first OWNER acceptance uses strict mode only. Do not add
 `-IncludeStopDryRun` or `-Execute`. The procedure never passes either.
 
 ```powershell
-$c='d20f9655904468f8b201771a5753b8f106b38ec2'; $h='71E3DF68DE60ACCADCF65FC4854D3CEF0C2B5B3EDF5D75B81481788718F858F9'
+$c='4e2cabdcfed9f53cb731802890d32b39bd95b6a7'; $h='79CAE019A465F56032260A375E039C5A783D36016C3597BD3DAE8AB3760D09B1'
 $d=Join-Path $env:TEMP ('v10-owner-entry-'+[guid]::NewGuid().ToString('N')); [void](New-Item -ItemType Directory -Path $d)
 $f=Join-Path $d 'VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1'
 [Net.ServicePointManager]::SecurityProtocol=[Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 Invoke-WebRequest -UseBasicParsing -Uri "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/$c/downloads/VERIFY_V10_LEGACY_OWNER_READONLY_V1.ps1" -OutFile $f
 $s=[Security.Cryptography.SHA256]::Create(); $got=([BitConverter]::ToString($s.ComputeHash([IO.File]::ReadAllBytes($f)))).Replace('-',''); $s.Dispose()
-if ($got -cne $h) { 'ENTRY_RESULT=BLOCKED_ENTRY_HASH_MISMATCH' } else { powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $f -PinnedCommit f2261e257bc22bc70fe5105e94f6494c291dae08 }
+if ($got -cne $h) { 'ENTRY_RESULT=BLOCKED_ENTRY_HASH_MISMATCH' } else { powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $f -PinnedCommit 4e4b59e4f054cd91d0122f717f0f6d60c28d70d5 }
 Remove-Item -LiteralPath $d -Recurse -Force
 ```
 
 `-Root` is left at its default `C:\AI_Cockpit_OneClick_Starter`.
 
-When the P0-27 admission gate blocks, the new optional P0_27_BLOCK_PORT and P0_27_BLOCK_DETAIL are masked fixed reason codes only. They never prove ownership or authorize a stop. No PID, path, command-line arguments, source text or workbook name is emitted.
+The P0-30 source-parity defect was reproduced with production Collector functions on Windows 5.1: function-header typed parameters are represented as param(...) inside function-provider ScriptBlock.ToString(), but omitted by the original AST Body.GetScriptBlock.ToString(). The revised parser reconstructs only this exact param header without executing a source script. This must pass CI before OWNER recheck.\n\nWhen the P0-27 admission gate blocks, the new optional P0_27_BLOCK_PORT and P0_27_BLOCK_DETAIL are masked fixed reason codes only. They never prove ownership or authorize a stop. No PID, path, command-line arguments, source text or workbook name is emitted.
 
 ## What a pass means and does not mean
 
