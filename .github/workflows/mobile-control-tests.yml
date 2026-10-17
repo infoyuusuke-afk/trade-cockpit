@@ -4,7 +4,6 @@ on:
     paths:
       - "scripts/**"
       - "tests/**"
-      - "scripts/ci_attributed_unittest.py"
       - "data/ev_calibration.json"
       - "data/strategy_registry.json"
       - "data/research_input_schema.json"
