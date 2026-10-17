@@ -21,9 +21,14 @@ jobs:
           ref: b81b8877b12a33368e91e5e156a2fc7ac4529349
           path: historical
           persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 7c67b3da874610a3121c1f0d1b48ad5fae445fbb
+          path: second_history
+          persist-credentials: false
       - name: Verify immutable historical checkout
         run: python current/scripts/ci_historical_v8_v9.py --history historical --mode audit
       - name: Verify audit controls
         run: python -m unittest discover -s current/tests -p test_ci_historic_id_coverage.py -v
       - name: Verify exact original test coverage (fail closed on missing IDs)
-        run: python current/scripts/ci_historic_id_coverage.py historical
+        run: python current/scripts/ci_historic_id_coverage.py historical second_history
