@@ -129,9 +129,16 @@ function Get-LaunchFiles([string]$RootFull){
 function Get-Fingerprint([string]$RootFull){
  $fp=@{}
  $state=Join-Path $RootFull "V10_CONTROLLER_STATE.json"
- $fp.State=if(Test-Path -LiteralPath $state -PathType Leaf){
-  $b=Read-Bytes $state "STATE_UNREADABLE"; (Sha256Bytes $b)+"|"+(Get-Item -LiteralPath $state).LastWriteTimeUtc.Ticks
- }else{"ABSENT"}
+ # Keep the exact legacy composite fingerprint for fail-closed admission.
+ # Separate the internal factors only to classify a rejected read-only check.
+ $fp.StateHash="ABSENT"
+ $fp.StateTimestamp="ABSENT"
+ if(Test-Path -LiteralPath $state -PathType Leaf){
+  $b=Read-Bytes $state "STATE_UNREADABLE"
+  $fp.StateHash=Sha256Bytes $b
+  $fp.StateTimestamp=[string](Get-Item -LiteralPath $state).LastWriteTimeUtc.Ticks
+ }
+ $fp.State=$fp.StateHash+"|"+$fp.StateTimestamp
  $result=Join-Path $RootFull "V10_LEGACY_STOP_RESULT.json"
  $fp.Result=if(Test-Path -LiteralPath $result -PathType Leaf){Sha256Bytes (Read-Bytes $result "RESULT_UNREADABLE")}else{"ABSENT"}
  $ev=Join-Path $RootFull "V10_LEGACY_STOP_EVIDENCE"
@@ -284,6 +291,10 @@ try{
 
  $stage="FINGERPRINT_AFTER"
  $after=Get-Fingerprint $rootFull
+ # Diagnostic details, not an exception: ANY change still BLOCKS this check.
+ $counts.STATE_CONTENT_UNCHANGED=([string]($after.StateHash -ceq $before.StateHash)).ToLowerInvariant()
+ $counts.STATE_TIMESTAMP_UNCHANGED=([string]($after.StateTimestamp -ceq $before.StateTimestamp)).ToLowerInvariant()
+ $counts.STATE_CHANGE_CLASS=if($counts.STATE_CONTENT_UNCHANGED -cne "true"){"CONTENT_CHANGED"}elseif($counts.STATE_TIMESTAMP_UNCHANGED -cne "true"){"METADATA_ONLY"}else{"NO_CHANGE"}
  $counts.STATE_UNCHANGED=([string]($after.State -ceq $before.State)).ToLowerInvariant()
  $counts.ROOT_RESULT_AND_EVIDENCE_UNCHANGED=([string]($after.Result -ceq $before.Result -and $after.Evidence -ceq $before.Evidence)).ToLowerInvariant()
  $counts.EXCEL_SET_UNCHANGED=([string]($after.Excel -ceq $before.Excel)).ToLowerInvariant()
