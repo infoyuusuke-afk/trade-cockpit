@@ -154,7 +154,7 @@ function Test-CollectorEncodedInitJob($Child,[string]$CollectorPath) {
    # Windows PowerShell function: Name([type]$arg) stores this header as
    # param(...) + CRLF in the function: provider's ScriptBlock.ToString().
    # Body.GetScriptBlock() excludes that header; reconstruct it without invoking.
-   if(@($found[0].Parameters).Count -gt 0) {
+   if($null -ne $found[0].Parameters -and $found[0].Parameters.Count -gt 0) {
     $declarations=@($found[0].Parameters | ForEach-Object { $_.Extent.Text })
     $inner="param("+($declarations -join ", ")+")`r`n"+$inner
    }
