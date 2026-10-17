@@ -1,0 +1,29 @@
+name: P0-417 Historic ID Coverage Audit
+on:
+  pull_request:
+    paths:
+      - "scripts/ci_historic_id_coverage.py"
+      - "tests/test_ci_historic_id_coverage.py"
+      - ".github/workflows/p0-417-historic-id-coverage.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exact-id-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: current
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: b81b8877b12a33368e91e5e156a2fc7ac4529349
+          path: historical
+          persist-credentials: false
+      - name: Verify immutable historical checkout
+        run: python current/scripts/ci_historical_v8_v9.py --history historical --mode audit
+      - name: Verify audit controls
+        run: python -m unittest discover -s current/tests -p test_ci_historic_id_coverage.py -v
+      - name: Verify exact original test coverage (fail closed on missing IDs)
+        run: python current/scripts/ci_historic_id_coverage.py historical
