@@ -87,6 +87,43 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertIn('Join-Path $sbvRoot "server_fastapi.py"', controller)
         self.assertIn("Start-Process -FilePath $exe -ArgumentList $serverArg", controller)
 
+    def test_controller_reuses_exact_stop_identity_contract(self):
+        controller = (STOP.parent / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
+        stop_core = self.source.split("# Parse the actual interpreter script argument.", 1)[1].split(
+            "function Test-BrainCommandLine(", 1)[0].strip()
+        controller_core = controller.split("# Parse the actual interpreter script argument.", 1)[1].split(
+            "# Stop only PIDs recorded", 1)[0].strip()
+        self.assertEqual(controller_core, stop_core,
+                         "Controller and standalone STOP must share equivalent argv/path/PID checks")
+
+    def test_controller_refuses_unverified_previous_state_without_auto_kill(self):
+        controller = (STOP.parent / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
+        prior = controller.split("function Stop-OwnedFromPreviousState {", 1)[1].split(
+            "# A workbook title change", 1)[0]
+        self.assertIn("PREVIOUS_V10_STATE_REQUIRES_SAFE_STOP", prior)
+        self.assertIn("PREVIOUS_V10_STATE_CORRUPT", prior)
+        self.assertNotIn("Stop-Process", prior)
+        self.assertNotIn("Stop-OwnedJobBridge", prior)
+        self.assertNotIn("Kill()", prior)
+
+    def test_controller_child_and_gateway_cleanup_use_verified_handles(self):
+        controller = (STOP.parent / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
+        bridge = controller.split("function Stop-OwnedJobBridge(", 1)[1].split(
+            "# Preflight: a port already", 1)[0]
+        self.assertIn("$childProc.Kill()", bridge)
+        self.assertIn("$childProc.WaitForExit(5000)", bridge)
+        self.assertIn("Test-OwnedPidIdentity $parentField $ExpectedParentId", bridge)
+        self.assertNotIn("Stop-Process -Id $owner", bridge)
+        cleanup = controller.split("function Stop-ManagedWorkersOnWorkbookClose(", 1)[1].split(
+            "function Start-Worker(", 1)[0]
+        self.assertIn("$worker.Kill()", cleanup)
+        self.assertIn("$worker.WaitForExit(5000)", cleanup)
+        self.assertNotIn("Stop-Process -Id $workerPid", cleanup)
+        self.assertIn("$gp.Kill()", controller)
+        self.assertIn("$bgp.Kill()", controller)
+        self.assertNotIn("Stop-Process -Id ([int]$state.gateway_pid)", controller)
+        self.assertNotIn("Stop-Process -Id ([int]$state.brain_gateway_pid)", controller)
+
     def test_refusal_precedes_controller_stop(self):
         src = self.source
         preflight = src.index("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID")
