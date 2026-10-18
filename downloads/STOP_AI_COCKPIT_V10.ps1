@@ -800,6 +800,18 @@ function Test-V10RecoveryStateInvariants($RecordedState) {
     } catch { return $false }
 }
 
+# Same lock name and StateRoot canonicalization as the V10 Controller.
+# The archive must own this mutex for the entire final verification+rename.
+function Get-V10RecoveryMutexName([string]$StateRoot) {
+    $normalized = [IO.Path]::GetFullPath($StateRoot).TrimEnd([char]'\').ToUpperInvariant()
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+        $hash = [BitConverter]::ToString(
+            $sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($normalized))).Replace("-", "")
+        return ("Local\AI_Cockpit_V10_Lifecycle_" + $hash)
+    } finally { $sha.Dispose() }
+}
+
 function Invoke-V10VerifiedStaleArchive($RecordedState) {
     Write-Host "RECOVERY_ARCHIVE=EXPLICIT_REVIEWED_OPERATION"
     Write-Host "REAL_SUBMIT_ALLOWED=0"
@@ -813,7 +825,16 @@ function Invoke-V10VerifiedStaleArchive($RecordedState) {
         Write-Host "RECOVERY_ARCHIVE=REFUSED_MISSING_OR_WRONG_EXPECTED_IDENTITY"
         return 2
     }
+    $mutex = $null
+    $mutexHeld = $false
     try {
+        $mutex = New-Object Threading.Mutex($false,(Get-V10RecoveryMutexName $Root))
+        try {
+            $mutexHeld = $mutex.WaitOne(0)
+        } catch [Threading.AbandonedMutexException] {
+            $mutexHeld = $true
+        }
+        if (-not $mutexHeld) { throw "V10_LIFECYCLE_LOCK_BUSY" }
         $item = Get-Item -LiteralPath $StateFile -ErrorAction Stop
         if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
             throw "REPARSE_POINT_STATE"
@@ -869,6 +890,11 @@ function Invoke-V10VerifiedStaleArchive($RecordedState) {
         Write-Host ("RECOVERY_ARCHIVE=REFUSED_OR_UNVERIFIED; reason=" + $_.Exception.Message) -ForegroundColor Red
         Write-Host "AUTOMATIC_STATE_DELETION_ALLOWED=0"
         return 2
+    } finally {
+        if ($mutexHeld -and $null -ne $mutex) {
+            try { $mutex.ReleaseMutex() } catch {}
+        }
+        if ($null -ne $mutex) { $mutex.Dispose() }
     }
 }
 
