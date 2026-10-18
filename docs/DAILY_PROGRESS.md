@@ -17,6 +17,8 @@ Newest first. Keep one short entry per day; detailed evidence stays in PRs and t
 - V10 roadmap G0–G6 frozen (D-018).
 - One AI per PR (D-017).
 - V10 localhost security is release-blocking P0 (D-021).
+- V10 runs with no other Excel in use; Controller and Safe Stop refuse with a clear reason (D-023).
+- OWNER instructions take effect for AIs only once recorded as a D-number (D-024).
 
 ### 2. Work (all Draft; nothing merged; no real-machine action)
 - PR #441: V10 localhost security fix (GPT).

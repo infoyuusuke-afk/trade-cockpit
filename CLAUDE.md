@@ -9,7 +9,7 @@ At the beginning of each Claude Code / Cursor / agent session in this repository
 6. docs/AI_COCKPIT_MASTER_SPEC.md
 7. The latest `[100B_COORD_V1]` records in Issue #282.
 
-The files above are the last ACCEPTED snapshot. A later traceable formal decision in Issue #282 takes precedence but stays `PENDING_DOC_SYNC` until it is checked into `main`. Precedence never removes an OWNER approval condition, and a role label alone does not replace OWNER approval. Not every comment is a formal decision, and an unmerged PR is not the `main` state. See docs/DECISIONS.md D-022 for the sync owner and reviews.
+The files above are the last ACCEPTED snapshot. A later traceable formal decision in Issue #282 takes precedence but stays `PENDING_DOC_SYNC` until it is checked into `main`. Precedence never removes an OWNER approval condition, and a role label alone does not replace OWNER approval. Not every comment is a formal decision, and an unmerged PR is not the `main` state. See docs/DECISIONS.md D-022 for the sync owner and reviews. OWNER instructions that change an operating assumption take effect for AIs only once recorded as a D-number (D-024). Check code assumptions against DECISIONS.md before implementing or auditing; for example, V10 runs with no other Excel in use (D-023).
 Editing these documents does not by itself start work by any other AI.
 
 ## Mandatory priority rule

@@ -126,3 +126,16 @@ Source: Issue #282 COORD-V10-DATA-RIGHTS-ORDER-GATES-20261018-V1 §4 and COORD-V
 - Sync procedure: after a formal decision, the GPT lead names one document owner (one AI). That owner updates DECISIONS.md, CURRENT_WBS.md and DAILY_PROGRESS.md in one Draft PR. The GPT lead reviews the exact HEAD, and the OWNER approves the merge. No auto-merge.
 - Editing these documents does not by itself start work by any other AI.
 Source: PR #443 review P443-GPT-INDEPENDENT-REVIEW-20261018-V1 (GPT lead, 2026-10-18), items 3 and 6.
+
+## D-023 V10 runs with no other Excel in use
+- While AI Cockpit V10 is running, the OWNER does not use any other Excel file in the same Windows session. V10's Excel is the only Excel.
+- Controller startup: if another Excel process exists in the session, refuse to start and show "Close other Excel files, then start again." Never close, kill, save or click that Excel.
+- Safe Stop: if another Excel exists, refuse to stop anything and show the same reason. This refusal is the intended behavior, not a defect.
+- This supersedes the earlier V10 design assumption "foreign Excel may stay open" (Controller code from 2026-10-07, carried into PR #444).
+Source: OWNER instruction (given earlier in chat, restated 2026-10-18 16:26Z in the Claude audit thread); PR #445 independent audit P1 (Claude, 2026-10-18).
+
+## D-024 OWNER instructions must be recorded before implementation
+- An OWNER instruction that changes an operating assumption, a safety rule or acceptance is not in force for the AIs until it is recorded here as a D-number with its source. A chat-only instruction is not seen by the next AI session.
+- When an AI receives such an instruction in chat, it records it in a docs-only Draft PR (D-022 procedure) or asks the GPT lead to do so, before building on it.
+- Before implementing or auditing, check the design assumption against DECISIONS.md. If code contradicts a recorded decision, report the contradiction instead of silently following the code.
+Source: OWNER instruction 2026-10-18 16:32Z ("食い違いが起きないよう修正しなさい") after D-023 was found missing from all canonical records.
