@@ -86,7 +86,7 @@ function Stop-OwnedJobBridge([int]$Port,[int]$ExpectedParentId,[string]$Label) {
 
 # Parse the actual interpreter script argument. A script basename appearing only
 # in -c, -Command, a comment, or another inert argument is not ownership.
-function Test-StopWorkerScriptArgument([string]$CommandLine,[string]$Field,[string[]]$ExpectedNames) {
+function Test-StopWorkerScriptArgument([string]$CommandLine,[string]$Field,[string[]]$ExpectedNames,[string]$RepoPath,[string]$RuntimePath) {
     try {
         if (-not ("V10StopWorkerArgv" -as [type])) {
             Add-Type -ErrorAction Stop -TypeDefinition @"
@@ -139,9 +139,31 @@ public static class V10StopWorkerArgv {
             $scriptPath = [string]$argv[$index]
             if ($Field -ne "sbv2_pid" -and -not [IO.Path]::IsPathRooted($scriptPath)) { return $false }
         } else { return $false }
-        $basename = [IO.Path]::GetFileName($scriptPath)
+        # Except for the independently installed SBV2 runtime, require the
+        # Controller-recorded, absolute source path. A foreign process with
+        # the same script basename must never inherit the tracked PID's rights.
+        if ($Field -eq "sbv2_pid") {
+            return [string]::Equals([IO.Path]::GetFileName($scriptPath),
+                "server_fastapi.py", [StringComparison]::OrdinalIgnoreCase)
+        }
+        if (-not [IO.Path]::IsPathRooted($scriptPath) -or
+            -not [IO.Path]::IsPathRooted($RepoPath) -or
+            -not [IO.Path]::IsPathRooted($RuntimePath)) { return $false }
+        $expectedDir = switch ($Field) {
+            { $_ -in @("watcher_pid", "heartbeat_pid", "collector_pid") } { $RuntimePath; break }
+            { $_ -in @("controller_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid") } {
+                Join-Path $RepoPath "downloads"; break
+            }
+            { $_ -in @("shadow_supervisor_pid", "brain_observer_pid") } {
+                Join-Path $RepoPath "scripts"; break
+            }
+            default { "" }
+        }
+        if ([string]::IsNullOrWhiteSpace($expectedDir)) { return $false }
+        $actualPath = [IO.Path]::GetFullPath($scriptPath)
         foreach ($name in $ExpectedNames) {
-            if ([string]::Equals($basename, $name, [StringComparison]::OrdinalIgnoreCase)) {
+            $expectedPath = [IO.Path]::GetFullPath((Join-Path $expectedDir $name))
+            if ([string]::Equals($actualPath, $expectedPath, [StringComparison]::OrdinalIgnoreCase)) {
                 return $true
             }
         }
@@ -186,7 +208,7 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
         foreach ($name in $names) {
             $escaped = [regex]::Escape($name)
             if ([regex]::IsMatch($cmd, '(?i)(?<![A-Za-z0-9_.-])' + $escaped + '(?=$|[\s"'']|\\)') -and
-                (Test-StopWorkerScriptArgument $cmd $Field $names)) {
+                (Test-StopWorkerScriptArgument $cmd $Field $names ([string]$state.repo_root) ([string]$state.runtime_dir))) {
                 return $true
             }
         }
@@ -422,16 +444,22 @@ if ($null -ne $controllerVal -and [int]$controllerVal.Value -gt 0) {
     $controllerPid = [int]$controllerVal.Value
     $controllerProc = Get-Process -Id $controllerPid -ErrorAction SilentlyContinue
     if ($null -ne $controllerProc -and (Test-OwnedPidIdentity "controller_pid" $controllerPid)) {
-        try { Stop-Process -Id $controllerPid -Force -ErrorAction SilentlyContinue } catch {}
-        foreach ($attempt in 1..20) {
-            Start-Sleep -Milliseconds 250
-            if ($null -eq (Get-Process -Id $controllerPid -ErrorAction SilentlyContinue)) { break }
-        }
-        if ($null -ne (Get-Process -Id $controllerPid -ErrorAction SilentlyContinue)) {
-            Write-Host ("Controller/RUN PID " + $controllerPid + " did not stop; aborting before worker teardown.") -ForegroundColor Red
+        try {
+            # Terminate through the already-opened Controller process handle.
+            # A recycled numeric PID must never redirect the stop operation.
+            $controllerHandle = $controllerProc.Handle
+            if ($controllerHandle -eq [IntPtr]::Zero -or $controllerProc.HasExited) {
+                throw "CONTROLLER_HANDLE_NOT_LIVE"
+            }
+            $controllerProc.Kill()
+            if (-not $controllerProc.WaitForExit(5000) -or -not $controllerProc.HasExited) {
+                throw "CONTROLLER_NOT_TERMINATED"
+            }
+            Write-Host ("Stopped verified controller_pid (PID " + $controllerPid + ")") -ForegroundColor Green
+        } catch {
+            Write-Host ("Controller/RUN PID " + $controllerPid + " stop unverified; aborting before worker teardown.") -ForegroundColor Red
             exit 2
         }
-        Write-Host ("Stopped controller_pid (PID " + $controllerPid + ")") -ForegroundColor Green
     } elseif ($null -ne $controllerProc) {
         Write-Host ("PID " + $controllerPid + " no longer matches V10 Controller/RUN; not stopping it.") -ForegroundColor Red
         exit 2
