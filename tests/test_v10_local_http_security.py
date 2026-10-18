@@ -1,0 +1,374 @@
+"""Read-only V10 localhost HTTP security checks (no MS2, order or Owner PC)."""
+from __future__ import annotations
+
+import contextlib
+import os
+from pathlib import Path
+import socket
+import subprocess
+import tempfile
+import time
+import unittest
+
+ROOT = Path(__file__).resolve().parents[1]
+GATEWAY = ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1"
+VOICE = ROOT / "downloads" / "AI_COCKPIT_VOICE_BRIDGE_V10.ps1"
+COLLECTOR = ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1"
+WATCHER = ROOT / "ms2_live" / "Kioxia_RSS_Live_Watcher.ps1"
+
+
+def read(path: Path) -> str:
+    return path.read_text(encoding="utf-8-sig")
+
+
+class SecuritySourceAcceptance(unittest.TestCase):
+    def test_no_wildcard_cors_on_any_v10_local_bridge(self):
+        for path in (GATEWAY, VOICE, COLLECTOR, WATCHER):
+            with self.subTest(path=str(path.relative_to(ROOT))):
+                source = read(path)
+                self.assertNotIn("Access-Control-Allow-Origin: *", source)
+                self.assertIn("V10_HTTP_ORIGIN_BLOCKED", source)
+                self.assertIn("sec-fetch-site", source)
+                self.assertIn("expectedHost", source)
+                self.assertIn("X-Content-Type-Options: nosniff", source)
+
+    def test_only_local_ui_receives_worker_cross_origin_grant(self):
+        for path in (VOICE, COLLECTOR, WATCHER):
+            with self.subTest(path=str(path.relative_to(ROOT))):
+                source = read(path)
+                self.assertIn("http://127.0.0.1:28581", source)
+                self.assertIn("Access-Control-Allow-Private-Network: true", source)
+                self.assertIn("Vary: Origin", source)
+        self.assertNotIn("Access-Control-Allow-Private-Network", read(GATEWAY))
+
+    def test_gateway_public_static_paths_fail_closed(self):
+        text = read(GATEWAY)
+        self.assertIn("V10_PUBLIC_PATH_NOT_ALLOWED", text)
+        self.assertIn("V10_REPARSE_PUBLIC_FILE_BLOCKED", text)
+        self.assertIn("$allowedUiFiles -cnotcontains $relative", text)
+        for sensitive in ("CLAUDE.md", "V10_APPROVED_SOURCE.json", "config.json", ".git/config"):
+            self.assertNotIn("'" + sensitive + "'", text)
+        for public in (
+            "index.html", "voice_client.js", "trade_control.js",
+            "credit_supply.json", "event_calendar.json",
+            "paper_trade_history.json", "weekly_review.json",
+            "earnings_calendar.json", "signals.json", "live_focus.json",
+        ):
+            self.assertIn("'" + public + "'", text)
+
+    def test_voice_control_and_announce_not_anonymous_browser_side_effects(self):
+        text = read(VOICE)
+        self.assertIn("V10_VOICE_BROWSER_ORIGIN_REQUIRED", text)
+        self.assertIn("V10_VOICE_INTERNAL_CALLER_UNVERIFIED", text)
+        self.assertIn("PowerShell", text)
+        self.assertIn("'cross-site'", text)
+        self.assertIn("$text.Length -gt 1024", text)
+
+    def test_worker_routes_are_explicitly_bounded(self):
+        self.assertIn("'/live_ms2.json'", read(COLLECTOR))
+        self.assertIn("'/kioxia_watcher_live.json'", read(WATCHER))
+        for path in (COLLECTOR, WATCHER):
+            self.assertIn("V10_HTTP_ROUTE_BLOCKED", read(path))
+            self.assertIn("V10_HTTP_METHOD_BLOCKED", read(path))
+
+
+@unittest.skipUnless(os.name == "nt", "Native HTTP negative tests need Windows PowerShell 5.1")
+class NativeWindowsHttpAcceptance(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory(prefix="v10-http-security-")
+        cls.gateway_port = cls._free_port()
+        cls.voice_port = cls._free_port()
+        cls.collector_port = cls._free_port()
+        cls.watcher_port = cls._free_port()
+        cls.processes = []
+        cls._launch(
+            [str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", cls.tmp.name,
+             "-Port", str(cls.gateway_port)],
+            cls.gateway_port,
+        )
+        cls._launch(
+            [str(VOICE), "-Port", str(cls.voice_port),
+             "-StatePath", str(Path(cls.tmp.name) / "voice-state.json")],
+            cls.voice_port,
+        )
+        # Run the ACTUAL production Start-Job script-block body in a disposable
+        # PowerShell process without starting MarketSpeed II, Excel, or any
+        # workbook. The PowerShell AST extracts it from the reviewed file;
+        # no HTTP implementation is copied into this test.
+        cls.watcher_fixture = Path(cls.tmp.name) / "synthetic-watcher.json"
+        cls.watcher_fixture.write_text('{"kind":"synthetic-only","real_submit_allowed":false}', encoding="utf-8")
+        cls._launch_local_worker(
+            WATCHER, cls.watcher_port, cls.watcher_fixture
+        )
+        cls._launch_local_worker(
+            COLLECTOR, cls.collector_port, Path(cls.tmp.name) / "absent-live-ms2.json"
+        )
+
+    @classmethod
+    def _launch_local_worker(cls, source_file: Path, port: int, fixture: Path):
+        # Use Parser AST instead of executing the entire Collector/Watcher,
+        # which would acquire live Excel/MS2. This runs the same HTTP loop
+        # packaged in its Start-Job ScriptBlockExpressionAst.
+        wrapper = Path(cls.tmp.name) / ("listener-" + source_file.stem + ".ps1")
+        wrapper.write_text(r"""
+param(
+    [Parameter(Mandatory=$true)][string]$SourceFile,
+    [Parameter(Mandatory=$true)][int]$Port,
+    [Parameter(Mandatory=$true)][string]$JsonFile
+)
+$ErrorActionPreference = 'Stop'
+$tokens = $null
+$parseErrors = $null
+$ast = [Management.Automation.Language.Parser]::ParseFile(
+    $SourceFile, [ref]$tokens, [ref]$parseErrors)
+if ($parseErrors.Count -ne 0) { throw 'V10_WORKER_SOURCE_PARSE_FAILED' }
+$functions = @($ast.FindAll({
+    param($node)
+    $node -is [Management.Automation.Language.FunctionDefinitionAst] -and
+    $node.Name -eq 'Start-LocalJsonBridge'
+}, $true))
+if ($functions.Count -ne 1) { throw 'V10_WORKER_BRIDGE_IDENTITY_AMBIGUOUS' }
+$blocks = @($functions[0].FindAll({
+    param($node)
+    $node -is [Management.Automation.Language.ScriptBlockExpressionAst] -and
+    $node.Extent.Text.Contains('V10_HTTP_ORIGIN_BLOCKED')
+}, $true))
+if ($blocks.Count -ne 1) { throw 'V10_WORKER_SCRIPTBLOCK_AMBIGUOUS' }
+$implementation = $blocks[0].Extent.Text.Trim()
+if (-not ($implementation.StartsWith('{') -and $implementation.EndsWith('}'))) {
+    throw 'V10_WORKER_SCRIPTBLOCK_INVALID'
+}
+$loop = [scriptblock]::Create(
+    $implementation.Substring(1, $implementation.Length - 2))
+# The Collector fixture does not exist: its valid HTTP caller must receive
+# 503 fail-closed, never a fabricated real price. The Watcher gets fake JSON.
+& $loop $JsonFile $Port (Join-Path $env:TEMP 'v10-absent-state.json') 'SYNTHETIC_NOT_REAL_WORKBOOK'
+""", encoding="utf-8")
+        cls._launch([
+            str(wrapper), "-SourceFile", str(source_file),
+            "-Port", str(port), "-JsonFile", str(fixture),
+        ], port)
+
+    @classmethod
+    def tearDownClass(cls):
+        for process in getattr(cls, "processes", []):
+            with contextlib.suppress(Exception):
+                process.terminate()
+                process.wait(timeout=5)
+            with contextlib.suppress(Exception):
+                process.kill()
+        if hasattr(cls, "tmp"):
+            cls.tmp.cleanup()
+
+    @staticmethod
+    def _free_port():
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("127.0.0.1", 0))
+            return s.getsockname()[1]
+
+    @classmethod
+    def _launch(cls, args, port):
+        process = subprocess.Popen(
+            ["powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive",
+             "-ExecutionPolicy", "Bypass", "-File", *args],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            cwd=str(ROOT),
+        )
+        cls.processes.append(process)
+        until = time.monotonic() + 18
+        while time.monotonic() < until:
+            if process.poll() is not None:
+                raise AssertionError(f"V10 synthetic listener exited early: {args[0]} ({process.returncode})")
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                    return
+            except OSError:
+                time.sleep(0.1)
+        raise AssertionError(f"V10 synthetic listener failed to bind {port}")
+
+    @staticmethod
+    def _request(port, path, *, host=None, origin=None, site=None, agent=None, method="GET"):
+        host = f"127.0.0.1:{port}" if host is None else host
+        lines = [f"{method} {path} HTTP/1.1", f"Host: {host}", "Connection: close"]
+        if origin is not None:
+            lines.append("Origin: " + origin)
+        if site is not None:
+            lines.append("Sec-Fetch-Site: " + site)
+        if agent is not None:
+            lines.append("User-Agent: " + agent)
+        request = ("\r\n".join(lines) + "\r\n\r\n").encode("ascii")
+        with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
+            sock.settimeout(8)
+            sock.sendall(request)
+            raw = bytearray()
+            while True:
+                chunk = sock.recv(65536)
+                if not chunk:
+                    break
+                raw.extend(chunk)
+                if len(raw) > 5_000_000:
+                    raise AssertionError("response too large")
+        self_status = bytes(raw).split(b"\r\n", 1)[0]
+        return self_status.decode("ascii", errors="replace"), bytes(raw)
+
+    def test_gateway_allows_approved_ui_and_rejects_private_files(self):
+        status, raw = self._request(self.gateway_port, "/index.html")
+        self.assertIn("200 OK", status)
+        self.assertNotIn(b"Access-Control-Allow-Origin: *", raw)
+        for path in ("/CLAUDE.md", "/.git/config", "/downloads/VERIFY_V10_SOURCE_PIN_READONLY.ps1", "/data/private/accounts.json"):
+            with self.subTest(path=path):
+                status, _ = self._request(self.gateway_port, path)
+                self.assertIn("404 Not Found", status)
+
+    def test_gateway_rejects_dns_rebinding_and_cross_site(self):
+        for kwargs in (
+            {"host": "evil.invalid"},
+            {"origin": "https://evil.invalid"},
+            {"origin": "null"},
+            {"site": "cross-site"},
+        ):
+            with self.subTest(kwargs=kwargs):
+                status, raw = self._request(self.gateway_port, "/health", **kwargs)
+                self.assertIn("403 Forbidden", status)
+                self.assertNotIn(b"Access-Control-Allow-Origin:", raw)
+
+    def test_gateway_own_origin_and_preflight_behavior(self):
+        origin = f"http://127.0.0.1:{self.gateway_port}"
+        status, _ = self._request(self.gateway_port, "/index.html", origin=origin, site="same-origin")
+        self.assertIn("200 OK", status)
+        status, _ = self._request(self.gateway_port, "/health", method="OPTIONS", origin=origin)
+        self.assertIn("403 Forbidden", status)
+
+    def test_voice_cross_site_control_rejected_and_ui_control_accepted(self):
+        port = self.voice_port
+        for kwargs in (
+            {},
+            {"origin": "https://evil.invalid"},
+            {"site": "cross-site"},
+            {"host": "evil.invalid"},
+        ):
+            with self.subTest(kwargs=kwargs):
+                status, raw = self._request(port, "/control?enabled=0", **kwargs)
+                self.assertIn("403 Forbidden", status)
+                self.assertNotIn(b"Access-Control-Allow-Origin: *", raw)
+        status, raw = self._request(
+            port, "/control?enabled=0",
+            origin="http://127.0.0.1:28581", site="same-site"
+        )
+        self.assertIn("200 OK", status)
+        self.assertIn(b'"enabled":false', raw)
+        self.assertIn(b"Access-Control-Allow-Origin: http://127.0.0.1:28581", raw)
+
+    def test_voice_external_image_cannot_announce(self):
+        status, _ = self._request(
+            self.voice_port, "/announce?level=WATCH&text=blocked",
+            site="cross-site", agent="Mozilla/5.0"
+        )
+        self.assertIn("403 Forbidden", status)
+        status, _ = self._request(
+            self.voice_port, "/announce?level=WATCH&text=blocked",
+            agent="Mozilla/5.0"
+        )
+        self.assertIn("403 Forbidden", status)
+
+    def test_voice_internal_powershell_announcement_compatibility(self):
+        # Disable only the isolated synthetic voice instance; no backend audio.
+        status, _ = self._request(
+            self.voice_port, "/control?enabled=0",
+            origin="http://127.0.0.1:28581"
+        )
+        self.assertIn("200 OK", status)
+        status, raw = self._request(
+            self.voice_port, "/announce?level=WATCH&text=synthetic",
+            agent="Windows PowerShell/5.1"
+        )
+        self.assertIn("200 OK", status)
+        self.assertIn(b'"skipped":true', raw)
+
+    def test_collector_and_watcher_real_listener_cross_site_guards(self):
+        for port, path, expected_status in (
+            (self.collector_port, "/live_ms2.json", "503 Service Unavailable"),
+            (self.watcher_port, "/kioxia_watcher_live.json", "200 OK"),
+        ):
+            with self.subTest(worker_port=port):
+                # The UI is the only browser origin given cross-origin access.
+                status, raw = self._request(
+                    port, path, origin="http://127.0.0.1:28581", site="same-site")
+                self.assertIn(expected_status, status)
+                self.assertIn(
+                    b"Access-Control-Allow-Origin: http://127.0.0.1:28581", raw)
+                self.assertIn(b"Access-Control-Allow-Private-Network: true", raw)
+                self.assertIn(b'"real_submit_allowed":false', raw)
+
+                # No-Origin internal PowerShell request remains compatible.
+                status, raw = self._request(port, path, agent="Windows PowerShell/5.1")
+                self.assertIn(expected_status, status)
+                self.assertNotIn(b"Access-Control-Allow-Origin:", raw)
+
+                for options in (
+                    {"host": "attacker.invalid"},
+                    {"origin": "https://attacker.invalid"},
+                    {"origin": "null"},
+                    {"site": "cross-site"},
+                    {"origin": "http://127.0.0.1:12345"},
+                ):
+                    with self.subTest(worker_port=port, attack=options):
+                        status, raw = self._request(port, path, **options)
+                        self.assertIn("403 Forbidden", status)
+                        self.assertNotIn(b"Access-Control-Allow-Origin:", raw)
+
+                for wrong in ("/CLAUDE.md", "/.git/config", "/private/account.json", "/other"):
+                    with self.subTest(worker_port=port, wrong_path=wrong):
+                        status, _ = self._request(port, wrong)
+                        self.assertIn("404 Not Found", status)
+
+                status, _ = self._request(port, path, method="POST")
+                self.assertIn("405 Method Not Allowed", status)
+
+                # Denied browser origin never receives the positive PNA headers.
+                status, raw = self._request(
+                    port, path, method="OPTIONS",
+                    origin="https://attacker.invalid", site="cross-site"
+                )
+                self.assertIn("403 Forbidden", status)
+                self.assertNotIn(b"Access-Control-Allow-Private-Network: true", raw)
+
+    def test_gateway_health_omits_private_absolute_checkout_path(self):
+        status, raw = self._request(self.gateway_port, "/health")
+        self.assertIn("200 OK", status)
+        payload = raw.split(b"\r\n\r\n", 1)[1]
+        self.assertNotIn(b'"repo_root"', payload)
+        self.assertNotIn(str(ROOT).encode("utf-8"), payload)
+
+    def test_gateway_refuses_actual_windows_reparsepoint_static_file(self):
+        # Enforce actual filesystem behavior, not mere source-string presence.
+        # A private file outside the disposable webroot must never leak
+        # through an otherwise whitelisted credit_supply.json path.
+        root = Path(self.tmp.name) / "reparse-webroot"
+        root.mkdir()
+        (root / "index.html").write_text("<html>synthetic</html>", encoding="utf-8")
+        target = Path(self.tmp.name) / "PRIVATE_DO_NOT_SERVE.txt"
+        marker = "PRIVATE_TEST_TOKEN_NEVER_EXPOSE"
+        target.write_text(marker, encoding="utf-8")
+        link = root / "credit_supply.json"
+        try:
+            os.symlink(target, link)
+        except OSError as exc:
+            self.fail("Windows CI cannot create required symlink test fixture: " + str(exc))
+        self.assertTrue(link.is_symlink(), "fixture must be a real symlink/reparse point")
+        port = self._free_port()
+        self._launch([
+            str(GATEWAY), "-RepoRoot", str(root),
+            "-RuntimeDir", self.tmp.name, "-Port", str(port)
+        ], port)
+        status, raw = self._request(port, "/credit_supply.json")
+        self.assertIn("403 Forbidden", status)
+        self.assertIn(b"V10_REPARSE_PUBLIC_FILE_BLOCKED", raw)
+        self.assertNotIn(marker.encode("utf-8"), raw)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -144,15 +144,19 @@ function Invoke-Sbv2Wav([string]$text,[string]$level){
 
 function Send-Response($stream,[string]$status,[string]$contentType,[byte[]]$body){
     $nl=[Environment]::NewLine
+    # CORS is granted only to the explicitly trusted local V10 display.
+    $cors=if($script:V10CorsOrigin -ceq 'http://127.0.0.1:28581'){
+      "Access-Control-Allow-Origin: http://127.0.0.1:28581"+$nl+
+      "Access-Control-Allow-Methods: GET, OPTIONS"+$nl+
+      "Access-Control-Allow-Headers: Content-Type"+$nl+
+      "Access-Control-Allow-Private-Network: true"+$nl+"Vary: Origin"+$nl
+    }else{""}
     $headers="HTTP/1.1 "+$status+$nl+
       "Content-Type: "+$contentType+$nl+
       "Content-Length: "+$body.Length+$nl+
       "Cache-Control: no-store"+$nl+
-      "Access-Control-Allow-Origin: *"+$nl+
-      "Access-Control-Allow-Methods: GET, OPTIONS"+$nl+
-      "Access-Control-Allow-Headers: *"+$nl+
-      "Access-Control-Allow-Private-Network: true"+$nl+
-      "Connection: close"+$nl+$nl
+      "X-Content-Type-Options: nosniff"+$nl+
+      $cors+"Connection: close"+$nl+$nl
     $hb=[Text.Encoding]::ASCII.GetBytes($headers)
     $stream.Write($hb,0,$hb.Length)
     if($body.Length -gt 0){ $stream.Write($body,0,$body.Length) }
@@ -172,20 +176,61 @@ try{
         try{
             $stream=$client.GetStream()
             $reader=[IO.StreamReader]::new($stream,[Text.Encoding]::ASCII,$false,4096,$true)
+            $script:V10CorsOrigin = ''
             $requestLine=$reader.ReadLine()
-            while(($line=$reader.ReadLine()) -ne $null -and $line -ne ""){}
+            $requestHeaders=@{}
+            $headerCount=0
+            while(($line=$reader.ReadLine()) -ne $null -and $line -ne ""){
+                $headerCount++
+                if($headerCount -gt 64 -or $line.Length -gt 8192){throw "V10_HTTP_HEADERS_TOO_LARGE"}
+                $splitAt=$line.IndexOf(':')
+                if($splitAt -le 0){throw "V10_HTTP_HEADER_MALFORMED"}
+                $key=$line.Substring(0,$splitAt).Trim().ToLowerInvariant()
+                if($requestHeaders.ContainsKey($key)){throw "V10_HTTP_DUPLICATE_HEADER"}
+                $requestHeaders[$key]=$line.Substring($splitAt+1).Trim()
+            }
             if([string]::IsNullOrWhiteSpace($requestLine)){ continue }
             $parts=$requestLine -split " "
             $method=$parts[0]
             $target=if($parts.Count -ge 2){$parts[1]}else{"/"}
+            $expectedHost="127.0.0.1:"+[string]$Port
+            $allowedOrigin='http://127.0.0.1:28581'
+            $hasOrigin=$requestHeaders.ContainsKey('origin')
+            $hostOk=$requestHeaders.ContainsKey('host') -and
+                ($requestHeaders['host'] -ceq $expectedHost -or
+                 ($requestHeaders['host'] -ceq '127.0.0.1' -and -not $hasOrigin -and
+                  -not $requestHeaders.ContainsKey('sec-fetch-site')))
+            $originOk=-not $hasOrigin -or $requestHeaders['origin'] -ceq $allowedOrigin
+            $siteOk=-not $requestHeaders.ContainsKey('sec-fetch-site') -or $requestHeaders['sec-fetch-site'] -cne 'cross-site'
+            if(-not($hostOk -and $originOk -and $siteOk)){
+                Send-Json $stream "403 Forbidden" @{ok=$false;error="V10_HTTP_ORIGIN_BLOCKED"}; continue
+            }
+            if($hasOrigin){$script:V10CorsOrigin=$allowedOrigin}
             if($method -eq "OPTIONS"){
-                Send-Response $stream "204 No Content" "text/plain" ([byte[]]@()); continue
+                if(-not $hasOrigin){
+                    Send-Json $stream "403 Forbidden" @{ok=$false;error="V10_HTTP_PREFLIGHT_BLOCKED"}
+                }else{
+                    Send-Response $stream "204 No Content" "text/plain" ([byte[]]@())
+                }
+                continue
             }
             if($method -ne "GET"){
                 Send-Json $stream "405 Method Not Allowed" @{ok=$false;error="GET_ONLY"}; continue
             }
             $uri=[Uri]("http://127.0.0.1:"+$Port+$target)
             $path=$uri.AbsolutePath
+            # /control and /speak require an allowed browser Origin.
+            # Legacy PowerShell Collector/Watcher use no-Origin /announce.
+            # Remote browser navigation/images MUST NOT trigger voice side effects.
+            if($path -in @('/control','/speak') -and -not $hasOrigin){
+                Send-Json $stream "403 Forbidden" @{ok=$false;error="V10_VOICE_BROWSER_ORIGIN_REQUIRED"}; continue
+            }
+            if($path -eq '/announce' -and -not $hasOrigin){
+                $agent=if($requestHeaders.ContainsKey('user-agent')){[string]$requestHeaders['user-agent']}else{''}
+                if($agent -notmatch '(?i)PowerShell' -or $requestHeaders.ContainsKey('sec-fetch-site')){
+                    Send-Json $stream "403 Forbidden" @{ok=$false;error="V10_VOICE_INTERNAL_CALLER_UNVERIFIED"}; continue
+                }
+            }
             if($path -eq "/health"){
                 $ready=Test-Sbv2Ready
                 Send-Json $stream "200 OK" @{ok=$true;backend="Style-Bert-VITS2";model=$ModelName;speaker=$SpeakerName;sbv2_ready=$ready;enabled=[bool]$script:VoiceEnabled;port=$Port}
@@ -209,8 +254,8 @@ try{
             $text=[string]$q["text"]
             $level=[string]$q["level"]
             if([string]::IsNullOrWhiteSpace($level)){ $level="CALM" }
-            if([string]::IsNullOrWhiteSpace($text)){
-                Send-Json $stream "400 Bad Request" @{ok=$false;error="EMPTY_TEXT"}; continue
+            if([string]::IsNullOrWhiteSpace($text) -or $text.Length -gt 1024){
+                Send-Json $stream "400 Bad Request" @{ok=$false;error="VOICE_TEXT_INVALID"}; continue
             }
 
             if(-not $script:VoiceEnabled){

@@ -449,7 +449,7 @@ function Get-ContentType([string]$path) {
 }
 
 function Send-Response($stream, [string]$status, [string]$contentType, [byte[]]$body) {
-    $headers = "HTTP/1.1 $status`r`nContent-Type: $contentType`r`nContent-Length: $($body.Length)`r`nCache-Control: no-store`r`nAccess-Control-Allow-Origin: *`r`nConnection: close`r`n`r`n"
+    $headers = "HTTP/1.1 $status`r`nContent-Type: $contentType`r`nContent-Length: $($body.Length)`r`nCache-Control: no-store`r`nX-Content-Type-Options: nosniff`r`nConnection: close`r`n`r`n"
     $hb = [Text.Encoding]::ASCII.GetBytes($headers)
     $stream.Write($hb, 0, $hb.Length)
     if ($body.Length -gt 0) { $stream.Write($body, 0, $body.Length) }
@@ -949,14 +949,40 @@ try {
             $stream = $client.GetStream()
             $reader = [IO.StreamReader]::new($stream, [Text.Encoding]::ASCII, $false, 4096, $true)
             $requestLine = $reader.ReadLine()
-            while (($line = $reader.ReadLine()) -ne $null -and $line -ne "") {}
+            $requestHeaders = @{}
+            $headerCount = 0
+            while (($line = $reader.ReadLine()) -ne $null -and $line -ne "") {
+                $headerCount++
+                if ($headerCount -gt 64 -or $line.Length -gt 8192) { throw "V10_HTTP_HEADERS_TOO_LARGE" }
+                $splitAt = $line.IndexOf(':')
+                if ($splitAt -le 0) { throw "V10_HTTP_HEADER_MALFORMED" }
+                $key = $line.Substring(0, $splitAt).Trim().ToLowerInvariant()
+                if ($requestHeaders.ContainsKey($key)) { throw "V10_HTTP_DUPLICATE_HEADER" }
+                $requestHeaders[$key] = $line.Substring($splitAt + 1).Trim()
+            }
             if ([string]::IsNullOrWhiteSpace($requestLine)) { continue }
             $parts = $requestLine -split ' '
             $method = $parts[0]
             $rawPath = if ($parts.Count -ge 2) { $parts[1] } else { '/' }
 
+            # Browser navigation and localhost are not an authorization boundary.
+            # Reject forged Host/Origin, cross-site browser requests and bad PNA preflights.
+            $expectedHost = "127.0.0.1:" + [string]$Port
+            $expectedOrigin = "http://" + $expectedHost
+            $hostOk = $requestHeaders.ContainsKey('host') -and
+                ($requestHeaders['host'] -ceq $expectedHost -or
+                 ($requestHeaders['host'] -ceq '127.0.0.1' -and
+                  -not $requestHeaders.ContainsKey('origin') -and
+                  -not $requestHeaders.ContainsKey('sec-fetch-site')))
+            $originOk = -not $requestHeaders.ContainsKey('origin') -or $requestHeaders['origin'] -ceq $expectedOrigin
+            $fetchSiteOk = -not $requestHeaders.ContainsKey('sec-fetch-site') -or $requestHeaders['sec-fetch-site'] -cne 'cross-site'
+            if (-not ($hostOk -and $originOk -and $fetchSiteOk)) {
+                Send-Response $stream '403 Forbidden' 'text/plain; charset=utf-8' ($utf8.GetBytes('V10_HTTP_ORIGIN_BLOCKED'))
+                continue
+            }
             if ($method -eq 'OPTIONS') {
-                Send-Response $stream '204 No Content' 'text/plain' ([byte[]]@())
+                # Same-origin UI needs no browser cross-origin grants.
+                Send-Response $stream '403 Forbidden' 'text/plain' ([byte[]]@())
                 continue
             }
             if ($method -ne 'GET') {
@@ -1152,7 +1178,7 @@ try {
                     ui_branch        = $git.branch
                     ui_sha           = $git.sha
                     ui_build         = $Build
-                    repo_root        = $RepoRoot
+                    # Do not disclose absolute local paths or Windows usernames.
                     live_json_exists = $liveExists
                     live_json_mtime  = $liveMtime
                     runtime          = $runtime
@@ -1199,9 +1225,15 @@ try {
                 Send-Response $stream '200 OK' 'application/json; charset=utf-8' $bytes
                 continue
             }
-            # Static file, served directly from the local repo checkout.
+            # Serve ONLY the explicit public UI files. Never serve arbitrary files
+            # from the local Git checkout (e.g. .git/config, secrets or private data).
             $relative = if ($path -eq '/') { 'index.html' } else { $path.TrimStart('/') }
             $relative = [Uri]::UnescapeDataString($relative)
+            $allowedUiFiles = @('index.html', 'card_system.css', 'card_system.js', 'card_table_adapter.css', 'card_table_adapter.js', 'correlations.json', 'credit_supply.json', 'earnings-calendar.js', 'event_calendar.json', 'focus.css', 'kioxia_5m_calendar.json', 'kioxia_breaking_radar.json', 'kioxia_catalysts.json', 'kioxia_prediction_history.json', 'live_focus.json', 'paper_trade_history.json', 'weekly_review.json', 'earnings_calendar.json', 'next-theme-radar.css', 'next-theme-radar.js', 'next_theme_radar.json', 'opportunity_radar.js', 'signals.json', 'theme.css', 'trade_control.js', 'v10_publication_status.js', 'voice_client.js', 'world_market.json')
+            if ($allowedUiFiles -cnotcontains $relative) {
+                Send-Response $stream '404 Not Found' 'text/plain; charset=utf-8' ($utf8.GetBytes('V10_PUBLIC_PATH_NOT_ALLOWED'))
+                continue
+            }
             # Reject any path that escapes RepoRoot (no "..", no absolute
             # drive references) before touching the filesystem.
             if ($relative -match '\.\.' -or $relative -match '^[A-Za-z]:' -or $relative.StartsWith('\\')) {
@@ -1219,6 +1251,11 @@ try {
 
             if (-not (Test-Path -LiteralPath $resolvedFull -PathType Leaf)) {
                 Send-Response $stream '404 Not Found' 'text/plain; charset=utf-8' ($utf8.GetBytes('Not found: ' + $relative))
+                continue
+            }
+            $publicItem = Get-Item -LiteralPath $resolvedFull -Force
+            if (($publicItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                Send-Response $stream '403 Forbidden' 'text/plain; charset=utf-8' ($utf8.GetBytes('V10_REPARSE_PUBLIC_FILE_BLOCKED'))
                 continue
             }
 
