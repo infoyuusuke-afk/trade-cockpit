@@ -265,6 +265,29 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.assertEqual(self.state_path.read_bytes(), original)
         self.assertIsNone(self.foreign.poll(), "foreign PID was stopped by recovery")
 
+    def test_archive_refuses_untracked_v10_worker_before_state_rename(self):
+        original, digest, session = self.prepare_synthetic_archive_state()
+        self.controller.kill()
+        self.controller.wait(timeout=10)
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        untracked_script = self.root / "Kioxia_RSS_Live_Watcher.ps1"
+        untracked_script.write_text("Start-Sleep -Seconds 120\n", encoding="utf-8")
+        untracked = self.spawn([
+            "powershell.exe", "-NoProfile", "-NonInteractive",
+            "-File", str(untracked_script),
+        ])
+        time.sleep(0.3)
+        self.assertIsNone(untracked.poll())
+        self.assertEqual(self.state["watcher_pid"], 0)
+        result = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("RECOVERY_ARCHIVE=REFUSED_OR_UNVERIFIED", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), original)
+        self.assertEqual(list(self.root.glob("V10_CONTROLLER_STATE.archived.*.json")), [])
+        self.assertIsNone(untracked.poll(), "recovery killed an unrecorded worker")
+        self.assertIsNone(self.foreign.poll(), "recovery killed unrelated Python")
+
     def test_archive_refuses_missing_brain_record_even_if_all_processes_exited(self):
         self.state.pop("brain_observer_pid")
         original, digest, session = self.prepare_synthetic_archive_state()
