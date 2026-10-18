@@ -651,10 +651,15 @@ $job = Start-LocalJsonBridge $JsonFile $Port $canonical $RuntimeDir
 try {
     $until = (Get-Date).AddMinutes(10)
     while (-not (Test-Path -LiteralPath $StopFile) -and (Get-Date) -lt $until) {
-        if ($job.State -ne 'Running') { throw ('BRIDGE_JOB_' + $job.State) }
+        if ($job.State -ne 'Running') {
+            $detail = (Receive-Job $job 2>&1 | Out-String) + ' ' + ($job.ChildJobs[0].JobStateInfo.Reason | Out-String)
+            throw ('BRIDGE_JOB_' + $job.State + ': ' + $detail)
+        }
         Start-Sleep -Milliseconds 200
     }
 } finally {
+    # The job blocks in AcceptTcpClient; one connection lets it see the stop.
+    try { $c = [Net.Sockets.TcpClient]::new('127.0.0.1', $Port); $c.Close() } catch {}
     Stop-Job $job -ErrorAction SilentlyContinue
     Remove-Job $job -Force -ErrorAction SilentlyContinue
 }

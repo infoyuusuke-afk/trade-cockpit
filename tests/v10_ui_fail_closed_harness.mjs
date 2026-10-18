@@ -12,7 +12,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const html = readFileSync(path.join(root, "index.html"), "utf8");
+// A Windows checkout may carry CRLF line endings.
+const html = readFileSync(path.join(root, "index.html"), "utf8").replace(/\r\n/g, "\n");
 const { livePriceBlocked } = await import(pathToFileURL(path.join(root, "card_system.js")).href);
 
 function slice(startMarker, endMarker) {
