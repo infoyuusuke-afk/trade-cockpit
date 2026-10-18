@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory = $true)][string]$RepoRoot,
     [string]$RuntimeDir = "",
     [string]$Build = "unknown",
@@ -580,6 +580,14 @@ function Test-SameCanonicalWorkbookFile([string]$ActualFullName, [string]$Expect
     }
 }
 
+function Get-WorkbookPublicationId([string]$Value) {
+    $path = Get-NormalizedLocalWorkbookPath $Value
+    if ([string]::IsNullOrWhiteSpace($path)) { return '' }
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($path.ToUpperInvariant())))).Replace('-', '').ToLowerInvariant() }
+    finally { $sha.Dispose() }
+}
+
 function Get-PublishedWorkbookGate {
     param(
         [bool]$HasIdentityField,
@@ -587,7 +595,8 @@ function Get-PublishedWorkbookGate {
         [string]$FullName,
         [string]$ExpectedPath,
         [string]$Symbol,
-        [bool]$ControllerVerified
+        [bool]$ControllerVerified,
+        [string]$PublicationId = ""
     )
     $reasons = New-Object System.Collections.Generic.List[string]
     $ordinal = [StringComparison]::Ordinal
@@ -595,7 +604,9 @@ function Get-PublishedWorkbookGate {
     if (-not [string]::Equals([string]$Symbol, $identity, $ordinal)) {
         [void]$reasons.Add("WRONG_SYMBOL_MAPPING")
     }
-    $proved = $IdentityVerified -and (Test-SameCanonicalWorkbookFile $FullName $ExpectedPath)
+    $expectedId = Get-WorkbookPublicationId $ExpectedPath
+    $proved = $IdentityVerified -and -not [string]::IsNullOrWhiteSpace($expectedId) -and
+        $PublicationId -ceq $expectedId -and $FullName -ceq [IO.Path]::GetFileName($ExpectedPath)
     if ($HasIdentityField) {
         if (-not $proved) { [void]$reasons.Add("WRONG_SOURCE_WORKBOOK") }
     } elseif (-not $ControllerVerified) {
@@ -691,7 +702,7 @@ function Get-LivePriceRejection {
     if (-not [string]::IsNullOrWhiteSpace($RuntimeDir)) {
         $canonicalWorkbookPath = Join-Path $RuntimeDir "Kioxia_MS2_RSS_Live_Signals.xlsx"
     }
-    $gateText = Get-PublishedWorkbookGate $hasIdentityField $identityVerified $workbookFullName $canonicalWorkbookPath $identitySymbol $workbookVerified
+    $gateText = Get-PublishedWorkbookGate $hasIdentityField $identityVerified $workbookFullName $canonicalWorkbookPath $identitySymbol $workbookVerified ([string]$diag.workbook_identity_id)
     if (-not [string]::IsNullOrWhiteSpace($gateText)) {
         foreach ($gateReason in ($gateText -split ",")) {
             if (-not [string]::IsNullOrWhiteSpace($gateReason)) { [void]$reasons.Add($gateReason) }
@@ -718,7 +729,7 @@ function Get-LivePriceRejection {
         file_age_seconds = [Math]::Round($FileAgeSeconds, 1)
         payload_age_seconds = $(if ([double]::IsInfinity($PayloadAgeSeconds)) { $null } else { [Math]::Round($PayloadAgeSeconds, 1) })
         symbol = $symbol
-        current_price = $currentPrice
+        current_price = $null
         collector_pid = $collectorPid
         collector_count = $collectorCount
         watcher_count = $watcherCount

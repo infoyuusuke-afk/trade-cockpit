@@ -16,6 +16,7 @@ on:
       - "v10_publication_status.js"
       - "tests/test_v10_runtime_bundle_candidate.py"
       - "tests/test_v10_local_http_security.py"
+      - "tests/test_v10_brain*.py"
       - ".github/workflows/v10-candidate-runtime-bundle-synthetic.yml"
   workflow_dispatch:
 permissions:
@@ -115,4 +116,16 @@ jobs:
         shell: powershell
         run: |
           python -m unittest discover -s tests -p test_v10_guarded_launch_main.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Original safe-stop source contracts and exact argv regressions
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_v10_brain_safestop_preflight.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s tests -p test_v10_brain_argv_contract.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Original 19 safe-stop cases on disposable hosted processes only
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_v10_brain_safestop_windows_integration.py -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

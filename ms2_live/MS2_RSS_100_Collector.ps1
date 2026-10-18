@@ -234,6 +234,14 @@ function Get-IdentityQuote($Rows) {
     }
 }
 
+function Get-WorkbookPublicationId([string]$Value) {
+    $path = Get-NormalizedLocalWorkbookPath $Value
+    if ([string]::IsNullOrWhiteSpace($path)) { return '' }
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($path.ToUpperInvariant())))).Replace('-', '').ToLowerInvariant() }
+    finally { $sha.Dispose() }
+}
+
 function Get-PublishedWorkbookGate {
     param(
         [bool]$HasIdentityField,
@@ -241,7 +249,8 @@ function Get-PublishedWorkbookGate {
         [string]$FullName,
         [string]$ExpectedPath,
         [string]$Symbol,
-        [bool]$ControllerVerified
+        [bool]$ControllerVerified,
+        [string]$PublicationId = ""
     )
     $reasons = New-Object System.Collections.Generic.List[string]
     $ordinal = [StringComparison]::Ordinal
@@ -249,7 +258,9 @@ function Get-PublishedWorkbookGate {
     if (-not [string]::Equals([string]$Symbol, $identity, $ordinal)) {
         [void]$reasons.Add("WRONG_SYMBOL_MAPPING")
     }
-    $proved = $IdentityVerified -and (Test-SameCanonicalWorkbookFile $FullName $ExpectedPath)
+    $expectedId = Get-WorkbookPublicationId $ExpectedPath
+    $proved = $IdentityVerified -and -not [string]::IsNullOrWhiteSpace($expectedId) -and
+        $PublicationId -ceq $expectedId -and $FullName -ceq [IO.Path]::GetFileName($ExpectedPath)
     if ($HasIdentityField) {
         if (-not $proved) { [void]$reasons.Add("WRONG_SOURCE_WORKBOOK") }
     } elseif (-not $ControllerVerified) {
@@ -263,6 +274,7 @@ function Get-WorkbookIdentityInitialization {
         "Get-NormalizedLocalWorkbookPath",
         "Get-CollectorFileIdentityType",
         "Test-SameCanonicalWorkbookFile",
+        "Get-WorkbookPublicationId",
         "Get-PublishedWorkbookGate"
     )
     $text = ""
@@ -314,7 +326,7 @@ function Invoke-WorkbookIdentitySelfTest {
     $kept = Get-IdentityQuote @([pscustomobject]@{ticker="285A.T"; sheet_code="285A.T"; price=$null; source_timestamp="08:05:53"})
     if (-not $kept.ok -or $kept.symbol -ne "285A.T" -or $kept.current_price -ne 0 -or $kept.source_timestamp -ne "08:05:53") { throw "preopen zero price must publish 285A.T" }
     $script:preopenIdentitySpare = $null
-    $proved = Get-PublishedWorkbookGate $true $true $expected $expected "285A.T" $false
+    $proved = Get-PublishedWorkbookGate $true $true ([IO.Path]::GetFileName($expected)) $expected "285A.T" $false (Get-WorkbookPublicationId $expected)
     if (-not [string]::IsNullOrWhiteSpace($proved)) { throw ("proved 285A must pass without controller flag: " + $proved) }
     $legacy = Get-PublishedWorkbookGate $false $false "" $expected "8035.T" $false
     if ($legacy -notmatch "WRONG_SOURCE_WORKBOOK") { throw "missing identity must keep controller fail-closed" }
@@ -323,11 +335,11 @@ function Invoke-WorkbookIdentitySelfTest {
     if ($legacyVerified -notmatch "WRONG_SOURCE_WORKBOOK") { throw "legacy payload without identity proof must stay fail-closed" }
     $otherBook = Get-PublishedWorkbookGate $true $true "C:\other\Kioxia_MS2_RSS_Live_Signals.xlsx" $expected "285A.T" $true
     if ($otherBook -notmatch "WRONG_SOURCE_WORKBOOK") { throw "other workbook must fail closed even when controller is true" }
-    $wrongSymbol = Get-PublishedWorkbookGate $true $true $expected $expected "8035.T" $true
+    $wrongSymbol = Get-PublishedWorkbookGate $true $true ([IO.Path]::GetFileName($expected)) $expected "8035.T" $true (Get-WorkbookPublicationId $expected)
     if ($wrongSymbol -notmatch "WRONG_SYMBOL_MAPPING") { throw "proved workbook with 8035 must fail closed" }
     $init = Get-WorkbookIdentityInitialization
     $probe = Start-Job -InitializationScript $init -ScriptBlock {
-        Get-PublishedWorkbookGate $true $true "C:\MarketSpeed II RSS\files\Kioxia_MS2_RSS_Live_Signals.xlsx" "C:\MarketSpeed II RSS\files\Kioxia_MS2_RSS_Live_Signals.xlsx" "285A.T" $false
+        Get-PublishedWorkbookGate $true $true "Kioxia_MS2_RSS_Live_Signals.xlsx" "C:\MarketSpeed II RSS\files\Kioxia_MS2_RSS_Live_Signals.xlsx" "285A.T" $false (Get-WorkbookPublicationId "C:\MarketSpeed II RSS\files\Kioxia_MS2_RSS_Live_Signals.xlsx")
     }
     $done = Wait-Job $probe -Timeout 30
     if ($null -eq $done) {
@@ -746,7 +758,7 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$C
                     }
                 }
             }
-            $gateText = Get-PublishedWorkbookGate $hasIdentityField $identityVerified $workbookFullName $CanonicalWorkbookPath $identitySymbol $workbookVerified
+            $gateText = Get-PublishedWorkbookGate $hasIdentityField $identityVerified $workbookFullName $CanonicalWorkbookPath $identitySymbol $workbookVerified ([string]$diag.workbook_identity_id)
             if (-not [string]::IsNullOrWhiteSpace($gateText)) {
                 foreach ($gateReason in ($gateText -split ",")) {
                     if (-not [string]::IsNullOrWhiteSpace($gateReason)) { [void]$reasons.Add($gateReason) }
@@ -768,12 +780,12 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$C
                 file_age_seconds = [Math]::Round($fileAge, 1)
                 payload_age_seconds = $(if ([double]::IsInfinity($payloadAge)) { $null } else { [Math]::Round($payloadAge, 1) })
                 symbol = $symbol
-                current_price = $currentPrice
+                current_price = $null
                 collector_count = $collectorCount
                 watcher_count = $watcherCount
                 data_conflict = [bool]($dataConflict -or $identity.Count -gt 0)
                 workbook_identity_verified = [bool]$identityVerified
-                workbook_full_name = $workbookFullName
+                workbook_full_name = [IO.Path]::GetFileName($workbookFullName)
                 real_submit_allowed = $false
                 live_values_available = $false
                 max_age_seconds = 60
@@ -1810,10 +1822,8 @@ try {
         $coverageStale = ($validCount -lt 90)
         $publishLiveValues = (-not $script:priceSourceMismatch) -and (-not $coverageStale)
         $staleReason = if ($script:priceSourceMismatch) { $priceSourceReason } elseif ($coverageStale) { "INSUFFICIENT_COVERAGE" } else { "" }
-        $publishedFullName = Get-NormalizedLocalWorkbookPath $loopFull
-        if ($workbookCanonical -and $publishedFullName -eq "") {
-            $publishedFullName = Get-NormalizedLocalWorkbookPath $script:canonicalWorkbookPath
-        }
+        $publishedFullName = [IO.Path]::GetFileName($loopFull)
+        if ($workbookCanonical) { $publishedFullName = [IO.Path]::GetFileName($script:canonicalWorkbookPath) }
         $livePriceDiagnostics = [ordered]@{
             source_timestamp = $identityQuote.source_timestamp
             updated_at = $now.ToString("yyyy-MM-dd HH:mm:ss")
@@ -1823,6 +1833,7 @@ try {
             source_mode = $(if ($workbookCanonical) { "MS2_RSS_WORKBOOK" } else { "NONCANONICAL_WORKBOOK" })
             workbook_name = [string]$loopName
             workbook_full_name = $publishedFullName
+            workbook_identity_id = $(if ($workbookCanonical) { Get-WorkbookPublicationId $script:canonicalWorkbookPath } else { "" })
             workbook_identity_verified = [bool]$workbookCanonical
             collector_pid = $PID
             collector_count = $collectorProcessCount

@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import contextlib
+import json
+import hashlib
+from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
 import socket
@@ -71,8 +74,37 @@ class SecuritySourceAcceptance(unittest.TestCase):
             self.assertIn("V10_HTTP_ROUTE_BLOCKED", read(path))
             self.assertIn("V10_HTTP_METHOD_BLOCKED", read(path))
 
+    @unittest.skipUnless(os.name == "nt", "PowerShell pure AST helper test")
+    def test_sanitized_workbook_identity_matches_both_consumers(self):
+        script = r'''param([string]$Source)
+$ErrorActionPreference='Stop'
+$t=$null; $e=$null
+$ast=[Management.Automation.Language.Parser]::ParseFile($Source,[ref]$t,[ref]$e)
+if($e.Count){throw 'PARSE_FAILED'}
+foreach($name in @('Get-NormalizedLocalWorkbookPath','Get-WorkbookPublicationId','Get-PublishedWorkbookGate')) {
+ $defs=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name},$true))
+ if($defs.Count -ne 1){throw 'HELPER_MISSING'}
+ . ([scriptblock]::Create($defs[0].Extent.Text))
+}
+$expected='C:\synthetic\Synthetic.xlsx'
+$id=Get-WorkbookPublicationId $expected
+if((Get-PublishedWorkbookGate $true $true 'Synthetic.xlsx' $expected '285A.T' $false $id) -ne ''){throw 'VALID_REJECTED'}
+foreach($bad in @('',(Get-WorkbookPublicationId 'C:\other\Synthetic.xlsx'))) {
+ if((Get-PublishedWorkbookGate $true $true 'Synthetic.xlsx' $expected '285A.T' $true $bad) -notmatch 'WRONG_SOURCE_WORKBOOK'){throw 'WRONG_ID_ALLOWED'}
+}
+if((Get-PublishedWorkbookGate $true $false 'Synthetic.xlsx' $expected '285A.T' $true $id) -notmatch 'WRONG_SOURCE_WORKBOOK'){throw 'FALSE_IDENTITY_ALLOWED'}
+if((Get-PublishedWorkbookGate $true $true 'Synthetic.xlsx' $expected '8035.T' $true $id) -notmatch 'WRONG_SYMBOL_MAPPING'){throw 'WRONG_SYMBOL_ALLOWED'}
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            wrapper = Path(tmp) / "pure-identity.ps1"
+            wrapper.write_text(script, encoding="utf-8")
+            for source in (COLLECTOR, GATEWAY):
+                result = subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(wrapper), str(source)], capture_output=True, text=True, timeout=30)
+                self.assertEqual(result.returncode, 0, result.stderr)
 
-@unittest.skipUnless(os.name == "nt", "Native HTTP negative tests need Windows PowerShell 5.1")
+
+
+@unittest.skipUnless(os.name == "nt" and os.environ.get("GITHUB_ACTIONS") == "true" and os.environ.get("RUNNER_OS") == "Windows", "Native listeners run only on disposable hosted Windows CI")
 class NativeWindowsHttpAcceptance(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -97,13 +129,12 @@ class NativeWindowsHttpAcceptance(unittest.TestCase):
         # workbook. The PowerShell AST extracts it from the reviewed file;
         # no HTTP implementation is copied into this test.
         cls.watcher_fixture = Path(cls.tmp.name) / "synthetic-watcher.json"
-        cls.watcher_fixture.write_text('{"kind":"synthetic-only","real_submit_allowed":false}', encoding="utf-8")
+        cls.watcher_fixture.write_text(json.dumps(cls._watcher_payload()), encoding="utf-8")
         cls._launch_local_worker(
             WATCHER, cls.watcher_port, cls.watcher_fixture
         )
-        cls._launch_local_worker(
-            COLLECTOR, cls.collector_port, Path(cls.tmp.name) / "absent-live-ms2.json"
-        )
+        cls.collector_fixture = Path(cls.tmp.name) / "synthetic-collector.json"
+        cls._launch_local_worker(COLLECTOR, cls.collector_port, cls.collector_fixture)
 
     @classmethod
     def _launch_local_worker(cls, source_file: Path, port: int, fixture: Path):
@@ -139,16 +170,101 @@ $implementation = $blocks[0].Extent.Text.Trim()
 if (-not ($implementation.StartsWith('{') -and $implementation.EndsWith('}'))) {
     throw 'V10_WORKER_SCRIPTBLOCK_INVALID'
 }
+# Serialize the actual private identity helpers for the extracted Collector job.
+foreach ($name in @('Get-NormalizedLocalWorkbookPath','Get-WorkbookPublicationId','Get-PublishedWorkbookGate')) {
+    $defs = @($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name}, $true))
+    if ($defs.Count -eq 1) { . ([scriptblock]::Create($defs[0].Extent.Text)) }
+}
 $loop = [scriptblock]::Create(
     $implementation.Substring(1, $implementation.Length - 2))
 # The Collector fixture does not exist: its valid HTTP caller must receive
 # 503 fail-closed, never a fabricated real price. The Watcher gets fake JSON.
-& $loop $JsonFile $Port (Join-Path $env:TEMP 'v10-absent-state.json') 'SYNTHETIC_NOT_REAL_WORKBOOK'
+# Explicit external dependency fake: never inspect host processes or Excel.
+# The production listener and its rejection function remain unmodified.
+function Get-CimInstance { [pscustomobject]@{CommandLine='MS2_RSS_100_Collector.ps1'} }
+& $loop $JsonFile $Port (Join-Path $env:TEMP 'v10-absent-state.json') 'C:\synthetic\Synthetic.xlsx' 
 """, encoding="utf-8")
         cls._launch([
             str(wrapper), "-SourceFile", str(source_file),
             "-Port", str(port), "-JsonFile", str(fixture),
         ], port)
+
+    @staticmethod
+    def _watcher_payload():
+        now = datetime.now(timezone(timedelta(hours=9))).replace(microsecond=0)
+        return dict(schema_version="kioxia-watcher-1.0",
+                    source="Kioxia_RSS_Live_Watcher (Excel RSS)",
+                    timestamp_timezone="Asia/Tokyo", updated_at=now.strftime("%Y-%m-%d %H:%M:%S"),
+                    observed_at_offset=now.isoformat(), real_submit_allowed=False,
+                    price=123.0, signal="SYNTHETIC_ONLY")
+
+    @staticmethod
+    def _collector_payload():
+        return dict(updated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    source="MarketSpeed II RSS / local PC", real_submit_allowed=False,
+                    live_price_diagnostics=dict(source_mode="MS2_RSS_WORKBOOK",
+                    price_source_status="OK", symbol="285A.T", current_price=123.0,
+                    live_values_available=True, workbook_identity_verified=True,
+                    workbook_full_name="Synthetic.xlsx", workbook_identity_id=hashlib.sha256(r"C:\SYNTHETIC\SYNTHETIC.XLSX".encode()).hexdigest()))
+
+    def test_watcher_data_freshness_and_lineage_fail_closed(self):
+        path = self.watcher_fixture
+        mutations = [
+            {"source": "cached snapshot"}, {"schema_version": "unknown"},
+            {"observed_at_offset": "2020-01-01T09:00:00+09:00", "updated_at": "2020-01-01 09:00:00"},
+            {"observed_at_offset": "2099-01-01T09:00:00+09:00"},
+            {"observed_at_offset": "2026-10-18 09:00:00"},
+            {"updated_at": "invalid"}, {"real_submit_allowed": True},
+            {"stale": True}, {"data_conflict": True},
+        ]
+        try:
+            for changes in mutations:
+                with self.subTest(changes=changes):
+                    payload = self._watcher_payload(); payload.update(changes)
+                    path.write_text(json.dumps(payload), encoding="utf-8")
+                    status, raw = self._request(self.watcher_port, "/kioxia_watcher_live.json")
+                    self.assertIn("503", status)
+                    self.assertNotIn(b'"price"', raw)
+                    self.assertIn(b'"real_submit_allowed":false', raw)
+            for content in ("not json", "null", "{}"):
+                path.write_text(content, encoding="utf-8")
+                self.assertIn("503", self._request(self.watcher_port, "/")[0])
+            path.write_text(json.dumps(self._watcher_payload()), encoding="utf-8")
+            os.utime(path, (time.time()-120, time.time()-120))
+            self.assertIn("503", self._request(self.watcher_port, "/")[0])
+            path.unlink()
+            self.assertIn("503", self._request(self.watcher_port, "/")[0])
+        finally:
+            path.write_text(json.dumps(self._watcher_payload()), encoding="utf-8")
+        status, raw = self._request(self.watcher_port, "/")
+        self.assertIn("200 OK", status)
+        self.assertEqual(json.loads(raw.split(b"\r\n\r\n", 1)[1])["price"], 123.0)
+
+    def test_collector_data_present_and_privacy(self):
+        path = self.collector_fixture
+        try:
+            payload = self._collector_payload()
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            status, raw = self._request(self.collector_port, "/live_ms2.json", origin="http://127.0.0.1:28581")
+            self.assertIn("200 OK", status)
+            self.assertNotIn(b"C:", raw)
+            self.assertEqual(json.loads(raw.split(b"\r\n\r\n", 1)[1])["live_price_diagnostics"]["current_price"], 123.0)
+            for key, value in (("workbook_identity_id", "other-workbook"),
+                               ("workbook_identity_verified", False),
+                               ("symbol", "8035.T"),
+                               ("workbook_full_name", r"C:\Users\PRIVATE_TEST_USER\Synthetic.xlsx")):
+                payload = self._collector_payload()
+                payload["live_price_diagnostics"][key] = value
+                path.write_text(json.dumps(payload), encoding="utf-8")
+                status, raw = self._request(self.collector_port, "/")
+                self.assertIn("503", status)
+                self.assertNotIn(b"PRIVATE_TEST_USER", raw)
+                self.assertIsNone(json.loads(raw.split(b"\r\n\r\n", 1)[1])["current_price"])
+            payload = self._collector_payload(); payload["updated_at"] = "2000-01-01 00:00:00"
+            path.write_text(json.dumps(payload), encoding="utf-8")
+            self.assertIn("503", self._request(self.collector_port, "/")[0])
+        finally:
+            path.unlink(missing_ok=True)
 
     @classmethod
     def tearDownClass(cls):

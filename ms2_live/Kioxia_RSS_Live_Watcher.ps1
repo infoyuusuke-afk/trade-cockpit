@@ -83,12 +83,46 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port) {
                         $bodyBytes = [byte[]]@()
                         $status = "204 No Content"
                         $contentType = "text/plain"
-                    } elseif (Test-Path $JsonFile) {
-                        $bodyBytes = $utf8.GetBytes([IO.File]::ReadAllText($JsonFile,[Text.Encoding]::UTF8))
-                        $status = "200 OK"
+                    } elseif (Test-Path -LiteralPath $JsonFile) {
+                        # Publication freshness and declared lineage, NOT exchange-time
+                        # freshness or cryptographic authentication of MS2.
+                        $reason = "WATCHER_INVALID_PAYLOAD"
+                        $valid = $false
+                        try {
+                            $item = Get-Item -LiteralPath $JsonFile -ErrorAction Stop
+                            $raw = [IO.File]::ReadAllText($JsonFile,[Text.Encoding]::UTF8)
+                            $obj = $raw | ConvertFrom-Json -ErrorAction Stop
+                            $stamp = [string]$obj.observed_at_offset
+                            $fileAge = ([DateTime]::UtcNow - $item.LastWriteTimeUtc).TotalSeconds
+                            if ($obj.schema_version -cne 'kioxia-watcher-1.0' -or
+                                $obj.source -cne 'Kioxia_RSS_Live_Watcher (Excel RSS)' -or
+                                $obj.timestamp_timezone -cne 'Asia/Tokyo' -or
+                                $obj.real_submit_allowed -isnot [bool] -or $obj.real_submit_allowed -ne $false) {
+                                $reason = 'WATCHER_SOURCE_MISMATCH'
+                            } elseif ($stamp -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+09:00$') {
+                                $reason = 'WATCHER_TIMESTAMP_INVALID'
+                            } else {
+                                $observed = [DateTimeOffset]::ParseExact($stamp, "yyyy-MM-dd'T'HH:mm:sszzz", [Globalization.CultureInfo]::InvariantCulture)
+                                $age = ([DateTimeOffset]::UtcNow - $observed).TotalSeconds
+                                if ($age -lt 0 -or $age -gt 60 -or $fileAge -lt 0 -or $fileAge -gt 60 -or
+                                    [string]$obj.updated_at -cne $observed.ToString('yyyy-MM-dd HH:mm:ss')) {
+                                    $reason = 'WATCHER_STALE_OR_FUTURE'
+                                } elseif ($obj.stale -eq $true -or $obj.data_conflict -eq $true -or
+                                          (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+                                    $reason = 'WATCHER_UNTRUSTED_PAYLOAD'
+                                } else { $valid = $true }
+                            }
+                        } catch { $valid = $false }
+                        if ($valid) {
+                            $bodyBytes = $utf8.GetBytes($raw)
+                            $status = "200 OK"
+                        } else {
+                            $bodyBytes = $utf8.GetBytes((@{status='blocked';reason=$reason;stale=$true;live_values_available=$false;real_submit_allowed=$false} | ConvertTo-Json -Compress))
+                            $status = "503 Service Unavailable"
+                        }
                         $contentType = "application/json; charset=utf-8"
                     } else {
-                        $bodyBytes = $utf8.GetBytes('{"status":"waiting"}')
+                        $bodyBytes = $utf8.GetBytes('{"status":"waiting","stale":true,"live_values_available":false,"real_submit_allowed":false}')
                         $status = "503 Service Unavailable"
                         $contentType = "application/json; charset=utf-8"
                     }
@@ -868,6 +902,7 @@ try {
                 observed_at_offset = $now.ToString("yyyy-MM-ddTHH:mm:sszzz")
                 timestamp_timezone = "Asia/Tokyo"
                 source = "Kioxia_RSS_Live_Watcher (Excel RSS)"
+                real_submit_allowed = $false
                 state = $state
                 signal = $signal
                 price = $price
