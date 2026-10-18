@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
     [switch]$InspectOnly,
     [switch]$ArchiveVerifiedStaleState,
@@ -542,11 +542,27 @@ public static class AIExcelNative {
 # matching title or matching substring alone never authorizes a partial stop.
 # Inaccessible Excel COM/ROT is UNKNOWN and must retain the original session.
 function Test-StopExcelPreflight($State) {
+    $script:StopExcelPreflightReason = "BLOCKED_EXCEL_IDENTITY_OR_WORKBOOKS"
+    $script:StopOtherExcelPids = ""
     $excelPid = 0
     if ($null -eq $State -or
         -not [int]::TryParse([string]$State.excel_pid,[ref]$excelPid) -or $excelPid -lt 0) {
         return $false
     }
+    # D-023: detect other Excel before COM/ROT or any shutdown, even if
+    # the recorded V10 Excel is absent. Enumeration failure stays fail-closed.
+    try {
+        $selfSession = (Get-Process -Id $PID -ErrorAction Stop).SessionId
+        $otherExcel = @(Get-Process -ErrorAction Stop | Where-Object {
+            $_.ProcessName -ieq "EXCEL" -and $_.Id -ne $excelPid -and
+            $_.SessionId -eq $selfSession
+        })
+        if ($otherExcel.Count -gt 0) {
+            $script:StopExcelPreflightReason = "BLOCKED_OTHER_EXCEL_OPEN"
+            $script:StopOtherExcelPids = ($otherExcel | ForEach-Object { [string]$_.Id }) -join ','
+            return $false
+        }
+    } catch { return $false }
     if ($excelPid -eq 0) { return $true }
     $proc = Get-Process -Id $excelPid -ErrorAction SilentlyContinue
     if ($null -eq $proc) { return $true }
@@ -581,7 +597,11 @@ function Test-StopExcelPreflight($State) {
         }
         $otherExcel = @(Get-Process EXCEL -ErrorAction Stop |
             Where-Object { $_.Id -ne $excelPid -and $_.SessionId -eq $selfSession })
-        if ($otherExcel.Count -ne 0) { return $false }
+        if ($otherExcel.Count -ne 0) {
+            $script:StopExcelPreflightReason = "BLOCKED_OTHER_EXCEL_OPEN"
+            $script:StopOtherExcelPids = ($otherExcel | ForEach-Object { [string]$_.Id }) -join ','
+            return $false
+        }
 
         if (-not ("V10StopExcelPreflightNative" -as [type])) {
             Add-Type -ErrorAction Stop -TypeDefinition @"
@@ -665,6 +685,11 @@ function Invoke-V10StopReadOnlyInspection($RecordedState) {
                     $live = $true
                 } else {
                     $status = "ALIVE_FOREIGN_OR_UNVERIFIED"
+                    if ($field -eq "excel_pid" -and
+                        $script:StopExcelPreflightReason -eq "BLOCKED_OTHER_EXCEL_OPEN") {
+                        $status = "ALIVE_BLOCKED_OTHER_EXCEL_OPEN"
+                        Write-Host ("ほかのExcelを閉じてから、もう一度STOPしてください。 PID=" + $script:StopOtherExcelPids)
+                    }
                     $blocked = $true
                 }
             } elseif ($status -eq "UNKNOWN" -or $status -eq "INVALID") {
@@ -960,7 +985,11 @@ foreach ($field in @("watcher_pid","heartbeat_pid","collector_pid","gateway_pid"
 # No partial worker or Controller shutdown when Excel already fails
 # ownership or workbook-exclusivity checks.
 if (-not (Test-StopExcelPreflight $state)) {
-    Write-Host "SAFE_STOP_PREFLIGHT=BLOCKED_EXCEL_IDENTITY_OR_WORKBOOKS; no processes stopped." -ForegroundColor Red
+    if ($script:StopExcelPreflightReason -eq "BLOCKED_OTHER_EXCEL_OPEN") {
+        Write-Host ("SAFE_STOP_PREFLIGHT=BLOCKED_OTHER_EXCEL_OPEN; ほかのExcelを閉じてから、もう一度STOPしてください。 PID=" + $script:StopOtherExcelPids) -ForegroundColor Red
+    } else {
+        Write-Host "SAFE_STOP_PREFLIGHT=BLOCKED_EXCEL_IDENTITY_OR_WORKBOOKS; no processes stopped." -ForegroundColor Red
+    }
     exit 2
 }
 

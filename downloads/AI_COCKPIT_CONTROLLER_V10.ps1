@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$RepoRoot = "",
     [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
     [string]$ExpectedBranch = "",
@@ -800,6 +800,18 @@ function Get-ForeignExcelProcesses([int[]]$AllowedPids = @(), [int]$SessionId = 
             -not ($AllowedPids -contains $pidValue)
         }
     )
+}
+
+function Assert-NoOtherExcelAtStartup {
+    # D-023 / D-024: inventory only; never attach to or operate another Excel.
+    $sessionId = Get-CurrentSessionId
+    $others = @(Get-Process -ErrorAction Stop | Where-Object {
+        $_.ProcessName -ieq "EXCEL" -and [int]$_.SessionId -eq $sessionId
+    })
+    if ($others.Count -gt 0) {
+        $ids = ($others | ForEach-Object { [string]$_.Id }) -join ','
+        throw ("START_PREFLIGHT=BLOCKED_OTHER_EXCEL_OPEN; ほかのExcelを閉じてから、もう一度起動してください。 PID=" + $ids)
+    }
 }
 
 function Get-CanonicalWorkbookConflicts([string]$WorkbookPath, [string]$WorkbookName, [int[]]$AllowedPids = @()) {
@@ -1617,24 +1629,8 @@ try {
     }
     Write-Status ("  MarketSpeed II: READY / session " + $currentSessionId) Green
 
-    # Foreign Excel may stay open. Isolation is the new /x process plus
-    # canonical identity checks. Presence alone does not stop startup,
-    # and this interlock never closes, kills, or clicks another Excel.
-    $foreignExcelAtStartup = @(Get-ForeignExcelProcesses)
-    if ($foreignExcelAtStartup.Count -gt 0) {
-        Write-Host ""
-        Write-Host "==================================================" -ForegroundColor Yellow
-        Write-Host " EXCEL SAFETY INTERLOCK" -ForegroundColor Yellow
-        Write-Host "==================================================" -ForegroundColor Yellow
-        foreach ($foreignExcel in $foreignExcelAtStartup) {
-            Write-Host ("  leaving foreign Excel untouched: PID " + $foreignExcel.Id + " / " + $foreignExcel.MainWindowTitle) -ForegroundColor Yellow
-        }
-        Write-Host ""
-        Write-Host "Foreign Excel is present. It will not be closed, killed, or operated." -ForegroundColor Cyan
-        Write-Host "AI Cockpit will launch a separate isolated Excel /x for the canonical workbook only." -ForegroundColor Cyan
-    } else {
-        Write-Status "  Excel safety interlock: no pre-existing Excel process." Green
-    }
+    # D-023: refuse before starting any managed worker or Excel.
+    Assert-NoOtherExcelAtStartup
 
     Write-Status "Starting unified voice backend (Style-Bert-VITS2 only)..."
     if (Test-Port 5000 350) {
@@ -1727,6 +1723,7 @@ try {
     # the ROT. ProcessStartInfo keeps one /x argument and the full path.
     if ($WorkbookPath.Contains('"')) { throw "Canonical workbook path contains a quote. Refusing to launch." }
     $excelStart = New-Object System.Diagnostics.ProcessStartInfo
+    Assert-NoOtherExcelAtStartup
     $excelStart.FileName = $excelExe
     $excelStart.UseShellExecute = $false
     $excelStart.Arguments = Get-IsolatedExcelArguments $WorkbookPath
