@@ -1,6 +1,9 @@
 param(
     [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
-    [switch]$InspectOnly
+    [switch]$InspectOnly,
+    [switch]$ArchiveVerifiedStaleState,
+    [string]$ExpectedSessionId = "",
+    [string]$ExpectedStateSha256 = ""
 )
 
 # Stops only the PIDs this Controller (AI_COCKPIT_CONTROLLER_V10.ps1) itself
@@ -13,7 +16,15 @@ param(
 $ErrorActionPreference = "SilentlyContinue"
 $StateFile = Join-Path $Root "V10_CONTROLLER_STATE.json"
 
+if ($InspectOnly -and $ArchiveVerifiedStaleState) {
+    Write-Host "RECOVERY_ARCHIVE=REFUSED_CONFLICTING_MODES; no changes." -ForegroundColor Red
+    exit 2
+}
 if (-not (Test-Path -LiteralPath $StateFile)) {
+    if ($ArchiveVerifiedStaleState) {
+        Write-Host "RECOVERY_ARCHIVE=REFUSED_NO_STATE; no changes." -ForegroundColor Red
+        exit 2
+    }
     if ($InspectOnly) {
         Write-Host "V10_STOP_INSPECTION=READONLY"
         Write-Host "RECOVERY_CLASS=NO_STATE"
@@ -36,6 +47,10 @@ try {
         throw "Controller identity missing"
     }
 } catch {
+    if ($ArchiveVerifiedStaleState) {
+        Write-Host "RECOVERY_ARCHIVE=REFUSED_INVALID_STATE; no changes." -ForegroundColor Red
+        exit 2
+    }
     if ($InspectOnly) {
         Write-Host "V10_STOP_INSPECTION=BLOCKED_UNVERIFIED"
         Write-Host "RECOVERY_CLASS=INVALID_STATE"
@@ -682,8 +697,136 @@ function Invoke-V10StopReadOnlyInspection($RecordedState) {
 }
 
 if ($InspectOnly) {
+    $snapshotSha = Get-V10RecoverySha256 ([IO.File]::ReadAllBytes($StateFile))
+    Write-Host ("STATE_SHA256=" + $snapshotSha)
+    Write-Host ("SESSION_ID=" + [string]$state.session_id)
     $inspectionResult = Invoke-V10StopReadOnlyInspection $state
     exit $inspectionResult
+}
+
+# The only permitted path from a proven stale V10 state to a fresh startup
+# is an EXPLICIT, session-and-hash-pinned archive of the original evidence.
+# No process/Excel/port is stopped here. This mode is not called by RUN.
+# Refuse unknown, foreign, corrupt, untracked legacy BRAIN or active PID/port.
+function Test-V10RecoveryStateInvariants($RecordedState) {
+    if ($null -eq $RecordedState) { return $false }
+    foreach ($field in @("controller_pid","excel_pid","watcher_pid","heartbeat_pid",
+        "collector_pid","gateway_pid","brain_gateway_pid","voice_bridge_pid",
+        "sbv2_pid","shadow_supervisor_pid","brain_observer_pid")) {
+        $entry = $RecordedState.PSObject.Properties[$field]
+        $id = 0
+        if ($null -eq $entry -or
+            -not [int]::TryParse([string]$entry.Value,[ref]$id) -or
+            $id -lt 0) { return $false }
+        if ($field -in @("controller_pid","brain_observer_pid") -and $id -le 0) {
+            return $false
+        }
+        if ($id -gt 0 -and (Get-V10TrackedPidEvidence $id) -ne "ABSENT") {
+            return $false
+        }
+    }
+    try {
+        if ([string]::IsNullOrWhiteSpace([string]$RecordedState.session_id) -or
+            [string]::IsNullOrWhiteSpace([string]$RecordedState.repo_root) -or
+            [string]::IsNullOrWhiteSpace([string]$RecordedState.runtime_dir) -or
+            -not [IO.Path]::IsPathRooted([string]$RecordedState.repo_root) -or
+            -not [IO.Path]::IsPathRooted([string]$RecordedState.runtime_dir) -or
+            -not [IO.Path]::IsPathRooted([string]$RecordedState.workbook_path)) {
+            return $false
+        }
+        $expectedWorkbook = [IO.Path]::GetFullPath(
+            (Join-Path ([string]$RecordedState.runtime_dir) "Kioxia_MS2_RSS_Live_Signals.xlsx"))
+        if (-not [string]::Equals(
+            ([IO.Path]::GetFullPath([string]$RecordedState.workbook_path)),
+            $expectedWorkbook, [StringComparison]::OrdinalIgnoreCase)) {
+            return $false
+        }
+        $startedAt = [datetimeoffset]::Parse([string]$RecordedState.started_at)
+        if ($startedAt -gt [datetimeoffset]::UtcNow.AddMinutes(5)) { return $false }
+        $ports = @(Get-NetTCPConnection -State Listen -ErrorAction Stop |
+            Where-Object { @(28580,28581,28582,28583,28584) -contains [int]$_.LocalPort })
+        if ($ports.Count -ne 0) { return $false }
+        return $true
+    } catch { return $false }
+}
+
+function Get-V10RecoverySha256([byte[]]$Payload) {
+    if ($null -eq $Payload) { throw "STATE_BYTES_UNAVAILABLE" }
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+        return [BitConverter]::ToString($sha.ComputeHash($Payload)).Replace("-","").ToLowerInvariant()
+    } finally { $sha.Dispose() }
+}
+
+function Invoke-V10VerifiedStaleArchive($RecordedState) {
+    Write-Host "RECOVERY_ARCHIVE=EXPLICIT_REVIEWED_OPERATION"
+    Write-Host "REAL_SUBMIT_ALLOWED=0"
+    Write-Host "PROCESS_TERMINATED=0"
+    Write-Host "EXCEL_CLOSED=0"
+    # A user must explicitly supply the exact session and SHA-256 observed in
+    # read-only inspection. A generic -ArchiveVerifiedStaleState is insufficient.
+    if ([string]::IsNullOrWhiteSpace($ExpectedSessionId) -or
+        [string]$ExpectedSessionId -cne [string]$RecordedState.session_id -or
+        [string]$ExpectedStateSha256 -notmatch '^[a-fA-F0-9]{64}$') {
+        Write-Host "RECOVERY_ARCHIVE=REFUSED_MISSING_OR_WRONG_EXPECTED_IDENTITY"
+        return 2
+    }
+    try {
+        $item = Get-Item -LiteralPath $StateFile -ErrorAction Stop
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "REPARSE_POINT_STATE"
+        }
+        $before = [IO.File]::ReadAllBytes($StateFile)
+        $pin = Get-V10RecoverySha256 $before
+        if ($pin -cne $ExpectedStateSha256.ToLowerInvariant()) {
+            throw "STATE_HASH_CHANGED"
+        }
+        # Do not use the earlier parsed state as a substitute for the pinned
+        # snapshot. Parse the exact bytes being reviewed.
+        $verified = [Text.Encoding]::UTF8.GetString($before) |
+            ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $verified -or
+            [string]$verified.session_id -cne $ExpectedSessionId -or
+            -not (Test-V10RecoveryStateInvariants $verified)) {
+            throw "STALE_STATE_PROOF_FAILED"
+        }
+        # Recheck after disk read: PID reuse or a new TCP listener must refuse
+        # the archive even when the state hash itself has not changed.
+        if (-not (Test-V10RecoveryStateInvariants $verified)) {
+            throw "RECHECK_PROOF_FAILED"
+        }
+        $archiveName = "V10_CONTROLLER_STATE.archived." +
+            ([datetime]::UtcNow.ToString("yyyyMMddTHHmmssZ")) + "." +
+            ([guid]::NewGuid().ToString("N")) + ".json"
+        $target = Join-Path $Root $archiveName
+        if (Test-Path -LiteralPath $target) { throw "ARCHIVE_COLLISION" }
+        # Same-directory rename preserves the bytes; never erase or overwrite
+        # the original state as a shortcut. Confirm the snapshot again.
+        if ((Get-V10RecoverySha256 ([IO.File]::ReadAllBytes($StateFile))) -cne $pin) {
+            throw "STATE_CHANGED_BEFORE_RENAME"
+        }
+        [IO.File]::Move($StateFile,$target)
+        if (-not (Test-Path -LiteralPath $target -PathType Leaf) -or
+            (Test-Path -LiteralPath $StateFile) -or
+            (Get-V10RecoverySha256 ([IO.File]::ReadAllBytes($target))) -cne $pin) {
+            throw "ARCHIVE_VERIFICATION_FAILED"
+        }
+        Write-Host "RECOVERY_ARCHIVE=VERIFIED_ARCHIVED"
+        Write-Host ("ARCHIVED_STATE_SHA256=" + $pin)
+        Write-Host ("ARCHIVE_PATH=" + $target)
+        Write-Host "ACTIVE_STATE_ARCHIVED=1"
+        Write-Host "CONTROLLER_STARTED=0"
+        Write-Host "STOP_ALLOWED=0"
+        return 0
+    } catch {
+        Write-Host ("RECOVERY_ARCHIVE=REFUSED_OR_UNVERIFIED; reason=" + $_.Exception.Message) -ForegroundColor Red
+        Write-Host "AUTOMATIC_STATE_DELETION_ALLOWED=0"
+        return 2
+    }
+}
+
+if ($ArchiveVerifiedStaleState) {
+    exit (Invoke-V10VerifiedStaleArchive $state)
 }
 
 # P0-25: The legacy state produced before independent BRAIN tracking may
