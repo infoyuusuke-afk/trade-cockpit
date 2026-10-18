@@ -718,6 +718,53 @@ function Test-LaunchedExcelOwnership([int]$ExcelPid,[string]$WorkbookPath,[int]$
     return ($isCanonicalWorkbook -and $isControllerChild -and $isSameSession)
 }
 
+function Test-OnlyCanonicalExcelWorkbookOpen($Application,[string]$WorkbookPath) {
+    if ($null -eq $Application -or [string]::IsNullOrWhiteSpace($WorkbookPath)) { return $false }
+    try {
+        $books = @($Application.Workbooks)
+        if ($books.Count -ne 1) { return $false }
+        $openPath = [string]$books[0].FullName
+        if ([string]::IsNullOrWhiteSpace($openPath)) { return $false }
+        return [string]::Equals([IO.Path]::GetFullPath($openPath),
+            [IO.Path]::GetFullPath($WorkbookPath), [StringComparison]::OrdinalIgnoreCase)
+    } catch { return $false }
+}
+
+# A Controller-owned Excel PID may contain foreign unsaved workbooks.
+# Prove that the ROT instance belongs to the PID and that this process has
+# either zero workbooks or only the canonical RSS workbook before force-kill.
+function Test-ManagedExcelWorkbooksExclusive([int]$ExcelPid,[string]$WorkbookPath) {
+    if ($ExcelPid -le 0 -or [string]::IsNullOrWhiteSpace($WorkbookPath)) { return $false }
+    $app = $null
+    try {
+        if (-not ("V10ControllerExcelPidNative" -as [type])) {
+            Add-Type -ErrorAction Stop -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class V10ControllerExcelPidNative {
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+}
+"@
+        }
+        $app = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
+        if ($null -eq $app) { return $false }
+        $hwnd = [int64]$app.Hwnd
+        if ($hwnd -eq 0) { return $false }
+        $foundPid = [uint32]0
+        [void][V10ControllerExcelPidNative]::GetWindowThreadProcessId([IntPtr]$hwnd,[ref]$foundPid)
+        if ([int]$foundPid -ne $ExcelPid) { return $false }
+        $workbooks = @($app.Workbooks)
+        if ($workbooks.Count -eq 0) { return $true }
+        return (Test-OnlyCanonicalExcelWorkbookOpen $app $WorkbookPath)
+    } catch { return $false }
+    finally {
+        if ($null -ne $app) {
+            try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($app) } catch {}
+        }
+    }
+}
+
 function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$ControllerPid) {
     if ($ExcelPid -le 0) { return $false }
 
@@ -727,6 +774,7 @@ function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$Cont
     # TerminateProcess on one Excel can take down other Excel processes in
     # the same session. A pre-existing workbook must keep this from running.
     if (Test-OtherExcelInSession $ExcelPid) { return $false }
+    if (-not (Test-ManagedExcelWorkbooksExclusive $ExcelPid $WorkbookPath)) { return $false }
 
     # Kill only the already-verified EXCEL.EXE handle, never look up an
     # untrusted bare numeric PID again after the ownership check.
@@ -742,7 +790,8 @@ function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$Cont
         }
         # Do not signal a process that exited or was replaced during checks.
         if ($proc.HasExited -or -not (Test-LaunchedExcelOwnership $ExcelPid $WorkbookPath $ControllerPid) -or
-            (Test-OtherExcelInSession $ExcelPid)) { return $false }
+            (Test-OtherExcelInSession $ExcelPid) -or
+            -not (Test-ManagedExcelWorkbooksExclusive $ExcelPid $WorkbookPath)) { return $false }
         $proc.Kill()
         return ($proc.WaitForExit(5000) -and $proc.HasExited)
     } catch {
@@ -1712,99 +1761,20 @@ try {
                 $xp2 = Get-Process -Id ([int]$state.excel_pid) -ErrorAction SilentlyContinue
 
                 if ($null -ne $xp2) {
-                    $excelInfo = Get-CimInstance Win32_Process `
-                        -Filter ("ProcessId = " + [int]$state.excel_pid) `
-                        -ErrorAction SilentlyContinue
-
-                    $excelCmd = if ($null -ne $excelInfo) {
-                        [string]$excelInfo.CommandLine
-                    } else {
-                        ""
-                    }
-
-                    $isHidden = ($xp2.MainWindowHandle -eq 0)
-
-                    $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
-                    $isCanonicalWorkbook = (
-                        -not [string]::IsNullOrWhiteSpace($excelCmd) -and
-                        $excelCmd.IndexOf($WorkbookPath, $ordinalIgnoreCase) -ge 0
-                    )
-
-                    $isControllerChild = (
-                        $null -ne $excelInfo -and
-                        [int]$excelInfo.ParentProcessId -eq $PID
-                    )
-
-                    $otherExcelPresent = Test-OtherExcelInSession ([int]$state.excel_pid)
-                    if (
-                        $isHidden -and
-                        $isCanonicalWorkbook -and
-                        $isControllerChild -and
-                        -not $otherExcelPresent
-                    ) {
+                    # A workbook-close event is not license to kill a foreign
+                    # Excel or a visible process with another open workbook.
+                    if ($xp2.MainWindowHandle -ne 0 -or
+                        -not (Stop-VerifiedOwnedExcel ([int]$state.excel_pid) $WorkbookPath $PID)) {
                         Write-Status (
-                            "  terminating verified hidden AI Cockpit Excel PID " +
-                            $state.excel_pid
-                        ) Yellow
-
-                        Stop-Process `
-                            -Id ([int]$state.excel_pid) `
-                            -Force `
-                            -ErrorAction Stop
-
-                        # Bound the wait; never report clean shutdown until
-                        # the tracked process is actually gone.
-                        $excelGone = $false
-
-                        foreach ($attempt in 1..10) {
-                            Start-Sleep -Milliseconds 500
-
-                            if (
-                                $null -eq (
-                                    Get-Process `
-                                        -Id ([int]$state.excel_pid) `
-                                        -ErrorAction SilentlyContinue
-                                )
-                            ) {
-                                $excelGone = $true
-                                break
-                            }
-                        }
-
-                        if (-not $excelGone) {
-                            Write-Status (
-                                "ERROR: verified AI Cockpit Excel PID " +
-                                $state.excel_pid +
-                                " did not terminate."
-                            ) Red
-
-                            Save-State $state
-                            [Environment]::Exit(2)
-                        }
-
-                        Write-Status (
-                            "  verified AI Cockpit Excel PID " +
-                            $state.excel_pid +
-                            " terminated."
-                        ) Green
-                    }
-                    else {
-                        Write-Status (
-                            "ERROR: remaining Excel PID " +
-                            $state.excel_pid +
-                            " failed ownership verification. " +
-                            "hidden=" + $isHidden +
-                            ", canonicalWorkbook=" + $isCanonicalWorkbook +
-                            ", controllerChild=" + $isControllerChild +
-                            ", otherExcelPresent=" + $otherExcelPresent +
-                            ". It will NOT be force-stopped."
+                            "ERROR: tracked Excel remains, hidden/exclusive ownership not verified. " +
+                            "No Excel process was force-killed; V10 state retained."
                         ) Red
-
-                        # Keep state for diagnosis instead of deleting our
-                        # only ownership evidence.
                         Save-State $state
                         [Environment]::Exit(2)
                     }
+                    Write-Status (
+                        "  verified exclusive AI Cockpit Excel terminated by held process handle."
+                    ) Green
                 }
 
                 # Final tracked-PID verification before deleting state.
