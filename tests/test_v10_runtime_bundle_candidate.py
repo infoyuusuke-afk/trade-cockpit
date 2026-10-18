@@ -54,8 +54,8 @@ class V10BundleCandidateContract(unittest.TestCase):
         self.assertFalse((ROOT / "downloads" / "V10_APPROVED_SOURCE.json").exists())
 
     def test_manifest_exact_paths_and_count(self):
-        self.assertEqual(len(self.pins), 29)
-        self.assertEqual(len(self.manifest["files"]), 29)
+        self.assertEqual(len(self.pins), 30)
+        self.assertEqual(len(self.manifest["files"]), 30)
         block = re.search(r"\$required = @\((.*?)\)\s*foreach", self.entry, re.S)
         self.assertIsNotNone(block)
         checked = set(re.findall(r'"([^"]+)"', block.group(1)))
@@ -89,8 +89,17 @@ class V10BundleCandidateContract(unittest.TestCase):
             "REAL_SUBMIT_ALLOWED=0",
         ):
             self.assertIn(marker, self.runner)
-        self.assertIn("V10_RELEASE_SOURCE_BLOBS_MATCH=29", self.entry)
+        self.assertIn("V10_RELEASE_SOURCE_BLOBS_MATCH=30", self.entry)
         self.assertIn("V10_START_PREFLIGHT=PASS_NO_RUNTIME", self.entry)
+
+    def test_controller_excel_identity_dependency_is_always_tracked(self):
+        helper = "downloads/EXCEL_IDENTITY_PROBE_V10.ps1"
+        self.assertIn(helper, self.pins)
+        controller = (ROOT / "downloads" / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(
+            encoding="utf-8-sig"
+        )
+        self.assertIn('Join-Path $PSScriptRoot "EXCEL_IDENTITY_PROBE_V10.ps1"', controller)
+        self.assertTrue((ROOT / helper).is_file())
 
     def test_owner_run_and_stop_remain_separate(self):
         self.assertTrue((ROOT / "downloads" / "STOP_AI_COCKPIT_V10.ps1").is_file())
