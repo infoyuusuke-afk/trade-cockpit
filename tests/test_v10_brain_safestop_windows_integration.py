@@ -236,6 +236,41 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.assertIsNone(self.brain.poll())
         self.assertTrue(self.state_path.exists())
 
+    def test_inert_worker_script_name_argument_cannot_authorize_stop(self):
+        # A Python -c program mentioning the owned basename as inert argv
+        # must not be mistaken for the managed SHADOW script.
+        decoy = self.spawn([
+            sys.executable, "-c", "import time; time.sleep(120)",
+            "ai_shadow_supervisor.py",
+        ])
+        time.sleep(0.3)
+        self.assertIsNone(decoy.poll())
+        self.state["shadow_supervisor_pid"] = decoy.pid
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("BLOCKED_FOREIGN_WORKER_PID", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (decoy, self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "inert script basename must not grant STOP ownership")
+
+    def test_controller_name_in_powershell_command_cannot_authorize_stop(self):
+        decoy = self.spawn([
+            "powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+            "Start-Sleep -Seconds 120 # RUN_AI_COCKPIT_V10.ps1",
+        ])
+        time.sleep(0.3)
+        self.assertIsNone(decoy.poll())
+        self.state["controller_pid"] = decoy.pid
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (decoy, self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "PowerShell -Command mention must not grant ownership")
+
     def test_foreign_controller_pid_blocks_before_teardown(self):
         self.state["controller_pid"] = self.foreign.pid
         self.write_state()
