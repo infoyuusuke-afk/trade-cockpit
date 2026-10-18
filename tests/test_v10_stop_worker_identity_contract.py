@@ -388,7 +388,9 @@ class StopWorkerIdentityContract(unittest.TestCase):
             "function Test-V10RecoveryStateInvariants", 1)[0]
         self.assertIn("Get-CimInstance Win32_Process -ErrorAction Stop", scan)
         for name in ("AI_COCKPIT_CONTROLLER_V10", "Kioxia_RSS_Live_Watcher",
-                     "ai_brain_observer", "ai_shadow_supervisor"):
+                     "ai_brain_observer", "ai_shadow_supervisor",
+                     "RUN_AI_COCKPIT_V[6789]", "AI_COCKPIT_CONTROLLER_V[6789]",
+                     "SPEAK_TODAY_STRATEGY", "SPEAK_LIVE_EMOTION"):
             self.assertIn(name, scan)
         self.assertNotIn(".Kill()", scan)
         self.assertNotIn("Stop-Process", scan)
