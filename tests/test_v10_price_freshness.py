@@ -203,6 +203,112 @@ class SupervisorIntegration(unittest.TestCase):
         self.assertEqual([e for e in engine["ledger"] if e.get("event_type") == "virtual_entry"], [])
 
 
+IDENTITY_FRESH = {"source_timestamp": "10:00:01", "source_timestamp_at": "2026-10-19T10:00:01+09:00",
+                  "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE",
+                  "source_timestamp_observed_at": "2026-10-19T10:00:02+09:00"}
+
+
+def _signal_row(ticker, signal, quote):
+    row = {"ticker": ticker, "signal": signal, "strategy": "synthetic", "price": 100.0,
+           "entry_price": 100.0, "stop_price": 95.0, "data": "LIVE"}
+    row.update(quote)
+    return row
+
+
+def _row_quote(at, observed=None, basis="COLLECTOR_OBSERVED_CHANGE"):
+    if at is None:
+        return {"source_timestamp": "09:55:00", "source_timestamp_at": None,
+                "source_timestamp_basis": "UNOBSERVED_SINCE_START", "source_timestamp_observed_at": None}
+    return {"source_timestamp": at[11:19], "source_timestamp_at": at, "source_timestamp_basis": basis,
+            "source_timestamp_observed_at": observed or at}
+
+
+class PerRowFreshness(unittest.TestCase):
+    """A fresh board does not make every row's price fresh."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="v10-row-"))
+        self.data = self.tmp / "ai_shadow"
+        self.live = self.tmp / "live_ms2.json"
+        self.status = self.tmp / "ai_shadow_status.json"
+        self.now = _ts("2026-10-19T10:00:05+09:00")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _cycle(self, rows, now=None, identity=None, updated=None):
+        now = now or self.now
+        payload = _full_payload(now, identity or IDENTITY_FRESH)
+        payload["all_targets"] = rows
+        self.live.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        os.utime(self.live, (now.timestamp(), now.timestamp()))
+        return sup.run_once(self.data, self.live, self.status, now=now)
+
+    @staticmethod
+    def _events(engine, kind):
+        return [e for e in engine["ledger"] if e.get("event_type") == kind]
+
+    def test_board_fresh_but_signal_row_five_minutes_old_writes_no_entry(self):
+        rows = [
+            _signal_row("SYN0.T", "待機", _row_quote("2026-10-19T10:00:03+09:00")),  # just traded
+            _signal_row("SYN1.T", "買いサイン", _row_quote("2026-10-19T09:55:05+09:00")),  # 5 min old
+        ]
+        engine = self._cycle(rows)
+        status = json.loads(self.status.read_text(encoding="utf-8"))
+        self.assertEqual(status["quote_freshness"]["state"], "FRESH")  # the board itself is fresh
+        self.assertEqual(self._events(engine, "virtual_entry"), [])
+        judgment = self._events(engine, "board_judgment")[-1]
+        row = [j for j in judgment["judgments"] if j["ticker"] == "SYN1.T"][0]
+        self.assertFalse(row["entry_candidate"])
+        self.assertEqual(row["row_quote_state"], "STALE")
+
+    def test_undated_future_and_unverified_rows_write_no_entry(self):
+        for name, quote in (
+            ("undated", _row_quote(None)),
+            ("future", _row_quote("2026-10-19T10:03:00+09:00", observed="2026-10-19T10:00:04+09:00")),
+            ("assumed_date", _row_quote("2026-10-19T10:00:03+09:00", basis="ASSUMED_TODAY")),
+        ):
+            with self.subTest(case=name):
+                shutil.rmtree(self.data, ignore_errors=True)
+                engine = self._cycle([_signal_row("SYN1.T", "買いサイン", quote)])
+                self.assertEqual(self._events(engine, "virtual_entry"), [])
+
+    def test_row_from_other_trading_day_blocks_board(self):
+        engine = self._cycle([_signal_row("SYN1.T", "買いサイン", _row_quote("2026-10-16T14:59:59+09:00"))])
+        status = json.loads(self.status.read_text(encoding="utf-8"))
+        self.assertEqual(status["state"], "PAUSED_FAIL_CLOSED")
+        self.assertIn("MIXED_SOURCE_DATES", status["quote_freshness"]["reasons"])
+        self.assertEqual(self._events(engine, "virtual_entry"), [])
+
+    def test_fresh_signal_row_opens_entry_with_dated_quote(self):
+        engine = self._cycle([_signal_row("SYN1.T", "買いサイン", _row_quote("2026-10-19T10:00:04+09:00"))])
+        entries = self._events(engine, "virtual_entry")
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["source_timestamp_at"], "2026-10-19T10:00:04+09:00")
+        self.assertIs(entries[0]["real_submit_allowed"], False)
+        self.assertIsNone(entries[0]["quantity"])
+
+    def test_exit_is_not_marked_from_a_stale_row_quote(self):
+        engine = self._cycle([_signal_row("SYN1.T", "買いサイン", _row_quote("2026-10-19T10:00:04+09:00"))])
+        self.assertEqual(len(self._events(engine, "virtual_entry")), 1)
+
+        later = _ts("2026-10-19T10:06:00+09:00")
+        identity = dict(IDENTITY_FRESH, source_timestamp="10:05:59", source_timestamp_at="2026-10-19T10:05:59+09:00",
+                        source_timestamp_observed_at="2026-10-19T10:05:59+09:00")
+        stale_exit = _signal_row("SYN1.T", "待機", _row_quote("2026-10-19T10:00:04+09:00"))
+        engine = self._cycle([stale_exit], now=later, identity=identity)
+        self.assertEqual(self._events(engine, "virtual_exit"), [])
+        self.assertIn("SYN1.T|LONG", engine["open_positions"])
+
+        later2 = _ts("2026-10-19T10:06:02+09:00")
+        identity2 = dict(identity, source_timestamp="10:06:01", source_timestamp_at="2026-10-19T10:06:01+09:00",
+                         source_timestamp_observed_at="2026-10-19T10:06:01+09:00")
+        fresh_exit = _signal_row("SYN1.T", "待機", _row_quote("2026-10-19T10:06:00+09:00"))
+        engine = self._cycle([fresh_exit], now=later2, identity=identity2)
+        self.assertEqual(len(self._events(engine, "virtual_exit")), 1)
+        self.assertNotIn("SYN1.T|LONG", engine["open_positions"])
+
+
 class RiskGateFreshness(unittest.TestCase):
     def setUp(self):
         self.policy = rg.load_policy()
@@ -240,12 +346,12 @@ class RiskGateFreshness(unittest.TestCase):
         self.assertNotIn("real_submit_allowed", got)
 
 
-def _powershell():
-    for name in ("powershell", "pwsh"):
-        path = shutil.which(name)
-        if path:
-            return path
-    return None
+def _windows_powershell():
+    # Production runs these scripts in Windows PowerShell 5.1 (powershell.exe).
+    # pwsh 7 ConvertFrom-Json turns ISO-8601 strings into DateTime, so a pwsh
+    # run would not test the production parser. Parity runs only on 5.1, and
+    # the Windows CI job fails if this class is skipped.
+    return shutil.which("powershell")
 
 
 PS_HARNESS = r"""
@@ -264,7 +370,7 @@ function Import-Functions([string]$Path, [string[]]$Names) {
 }
 Import-Functions $Gateway @('Get-JstNow','ConvertFrom-OffsetTimestamp','Get-MarketSession','New-QuoteFreshnessVerdict','Get-QuoteFreshness','Get-CombinedQuoteFreshness')
 $fixture = [IO.File]::ReadAllText($Cases, [Text.Encoding]::UTF8) | ConvertFrom-Json
-$out = [ordered]@{ cases = [ordered]@{}; combined = [ordered]@{}; collector = @() }
+$out = [ordered]@{ ps_major = $PSVersionTable.PSVersion.Major; cases = [ordered]@{}; combined = [ordered]@{}; collector = @(); rows = @() }
 $byName = @{}
 foreach ($case in $fixture.cases) {
     $live = [pscustomobject]@{ live_price_diagnostics = $case.diag; all_targets = @($case.rows) }
@@ -288,6 +394,14 @@ $s5 = Update-QuoteObservation $s4 '23:59:59' ([DateTimeOffset]::Parse('2026-10-1
 $s6 = Update-QuoteObservation $s5 '' ([DateTimeOffset]::Parse('2026-10-19T09:30:04+09:00'))
 $s7 = Update-QuoteObservation $s6 '10:00:01' ([DateTimeOffset]::Parse('2026-10-19T01:00:02+00:00'))
 $out.collector = @($s1, $s2, $s3, $s4, $s5, $s6, $s7)
+# Per-row dating resets at the JST date change, so rows never mix days.
+Import-Functions $Collector @('Get-RowQuoteObservation')
+$table = @{}
+$r1 = Get-RowQuoteObservation $table 'syn1.t' '14:59:00' ([DateTimeOffset]::Parse('2026-10-16T14:59:30+09:00'))
+$r2 = Get-RowQuoteObservation $table 'SYN1.T' '15:00:00' ([DateTimeOffset]::Parse('2026-10-16T15:00:01+09:00'))
+$r3 = Get-RowQuoteObservation $table 'SYN1.T' '15:00:00' ([DateTimeOffset]::Parse('2026-10-19T08:59:00+09:00'))
+$r4 = Get-RowQuoteObservation $table 'SYN1.T' '09:00:05' ([DateTimeOffset]::Parse('2026-10-19T09:00:06+09:00'))
+$out.rows = @($r1, $r2, $r3, $r4)
 $out | ConvertTo-Json -Depth 8 -Compress
 """
 
@@ -297,9 +411,9 @@ class PowerShellParity(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        exe = _powershell()
+        exe = _windows_powershell()
         if exe is None:
-            raise unittest.SkipTest("PowerShell not available; the Windows CI job runs this class")
+            raise unittest.SkipTest("Windows PowerShell 5.1 not available; the Windows CI job runs this class")
         tmp = Path(tempfile.mkdtemp(prefix="v10-fresh-ps-"))
         try:
             script = tmp / "harness.ps1"
@@ -315,7 +429,10 @@ class PowerShellParity(unittest.TestCase):
         if proc.returncode != 0:
             raise AssertionError("PowerShell harness failed: " + stdout[-2000:] +
                                  proc.stderr.decode("utf-8", errors="replace")[-2000:])
-        cls.result = json.loads(stdout.splitlines()[-1].lstrip("﻿"))
+        cls.result = json.loads(stdout.splitlines()[-1].lstrip("\ufeff"))
+
+    def test_runs_on_windows_powershell_5(self):
+        self.assertEqual(self.result["ps_major"], 5)
 
     def test_gateway_matches_shared_cases_and_python(self):
         for case in CASES["cases"]:
@@ -359,6 +476,15 @@ class PowerShellParity(unittest.TestCase):
         self.assertIsNone(s6["source_timestamp_at"])
         # Observation clock given in UTC is converted to JST explicitly.
         self.assertEqual(s7["source_timestamp_at"], "2026-10-19T10:00:01+09:00")
+
+    def test_collector_row_dating_resets_at_jst_day_change(self):
+        r1, r2, r3, r4 = self.result["rows"]
+        self.assertEqual(r1["basis"], "UNOBSERVED_SINCE_START")
+        self.assertEqual(r2["source_timestamp_at"], "2026-10-16T15:00:00+09:00")
+        # Monday before the first trade: Friday's observation is dropped.
+        self.assertIsNone(r3["source_timestamp_at"])
+        self.assertEqual(r3["basis"], "UNOBSERVED_SINCE_START")
+        self.assertEqual(r4["source_timestamp_at"], "2026-10-19T09:00:05+09:00")
 
 
 class SourceContracts(unittest.TestCase):

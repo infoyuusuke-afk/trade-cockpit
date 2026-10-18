@@ -33,16 +33,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: PowerShell available for Gateway/Collector parity
-        shell: bash
-        run: |
-          if command -v powershell >/dev/null 2>&1; then echo "PS=powershell"; elif command -v pwsh >/dev/null 2>&1; then echo "PS=pwsh"; else echo "NO_POWERSHELL"; exit 1; fi
       - name: Freshness negative/positive cases, Shadow/health/Risk Gate parity
         shell: bash
         run: |
           set -o pipefail
           python -m unittest tests/test_v10_price_freshness.py -v 2>&1 | tee freshness.log
-          if grep -E "skipped|SKIP" freshness.log; then echo "PARITY_TESTS_MUST_NOT_SKIP"; exit 1; fi
+          # Gateway/Collector parity runs in Windows PowerShell 5.1, the
+          # production host. It may skip on Linux (no powershell.exe) but
+          # must never skip on Windows.
+          if [ "$RUNNER_OS" = "Windows" ] && grep -E "skipped|SKIP" freshness.log; then echo "PARITY_TESTS_MUST_NOT_SKIP_ON_WINDOWS"; exit 1; fi
       - name: Existing Risk Gate regression
         shell: bash
         run: python -m unittest tests/test_risk_gate.py -v

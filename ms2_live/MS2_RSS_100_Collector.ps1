@@ -67,6 +67,7 @@ function Get-SheetSymbolCode($table, [int]$row) {
 $script:IdentityTicker = "285A.T"
 $script:preopenIdentitySpare = $null
 $script:identityQuoteObservation = $null
+$script:rowQuoteObservations = @{}
 
 function Get-NormalizedLocalWorkbookPath([string]$Value) {
     if ([string]::IsNullOrWhiteSpace($Value)) { return "" }
@@ -228,6 +229,23 @@ function Update-QuoteObservation($Previous, [string]$SourceTime, [DateTimeOffset
         basis = "COLLECTOR_OBSERVED_CHANGE"
         observed_at = $observed
     }
+}
+
+function Get-RowQuoteObservation([hashtable]$Table, [string]$Ticker, [string]$SourceTime, [DateTimeOffset]$NowJst) {
+    # Per-row quote dating, same rule as the identity quote. An observation
+    # from an earlier JST day is dropped: the row stays undated until it is
+    # seen to change today, so one payload never mixes trading dates.
+    $key = ([string]$Ticker).Trim().ToUpperInvariant()
+    $previous = $null
+    if ($Table.ContainsKey($key)) { $previous = $Table[$key] }
+    $today = $NowJst.ToOffset([TimeSpan]::FromHours(9)).ToString("yyyy-MM-dd", [Globalization.CultureInfo]::InvariantCulture)
+    if ($null -ne $previous -and -not [string]::IsNullOrEmpty([string]$previous.observed_at) -and
+        ([string]$previous.observed_at).Substring(0, 10) -ne $today) {
+        $previous = [pscustomobject]@{ source_time = [string]$previous.source_time; source_timestamp_at = $null; basis = "UNOBSERVED_SINCE_START"; observed_at = $null }
+    }
+    $next = Update-QuoteObservation $previous $SourceTime $NowJst
+    $Table[$key] = $next
+    return $next
 }
 
 function Get-IdentityQuote($Rows) {
@@ -1303,6 +1321,7 @@ try {
         # RssMarket関数はアドイン側から自動更新されるため、2秒ごとの強制再計算は行わない。
         # 強制再計算するとRSS更新と衝突し、Excel固有の0x800AC472が発生する。
         $now = Get-Date
+        $loopJst = Get-JstNow
         if ($StopAfterClose -and $now.TimeOfDay -ge [TimeSpan]::Parse("23:59:00")) {
             if (Test-Path $statsScript) {
                 try { & $statsScript -RecordsRoot $dataRoot -OutputJson $statsJsonPath -OutputCsv (Join-Path $PSScriptRoot "kioxia_time_stats.csv") }
@@ -1784,6 +1803,7 @@ try {
             $sheetCode = Get-SheetSymbolCode $codeColumn $r
             $expectedCode = ([string]$ticker).Trim().ToUpperInvariant()
             $quoteTime = Get-TimeText (Get-TableValue $values $r 2)
+            $rowObservation = Get-RowQuoteObservation $script:rowQuoteObservations $expectedCode $quoteTime $loopJst
             if ($diagnosticSamples.Count -lt 5) {
                 $diagnosticSamples += [ordered]@{symbol=$expectedCode; current_price=$price; source_timestamp=$quoteTime; sheet_code=$sheetCode}
             }
@@ -1796,6 +1816,7 @@ try {
             $results += [pscustomobject]@{
                 ticker=$ticker;name=$s.Name;sector=$s.Sector;price=$price;volume=$volume;vwap=$vwap
                 source_timestamp=$quoteTime;sheet_code=$sheetCode
+                source_timestamp_at=$rowObservation.source_timestamp_at;source_timestamp_basis=$rowObservation.basis;source_timestamp_observed_at=$rowObservation.observed_at
                 change_pct=Get-SafeNumber (Get-TableValue $values $r 4 32) -1000 1000
                 bid=$bid;ask=$ask;bid_qty=$bidQty;ask_qty=$askQty;market_sell=$marketSell;market_buy=$marketBuy;over=$over;under=$under
                 under_ratio=[Math]::Round($underRatio*100,1);under_change=[Math]::Round($uoChange*100,1)

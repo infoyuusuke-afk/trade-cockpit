@@ -261,6 +261,27 @@ def assess_quote_freshness(payload, *, now: datetime, previous_quote_at=None,
                               max_age=max_quote_age_seconds)
 
 
+ROW_QUOTE_FIELDS = ("source_timestamp", "source_timestamp_at", "source_timestamp_basis", "source_timestamp_observed_at")
+
+
+def row_quote_freshness(row, *, now: datetime, board_quote_at=None) -> dict:
+    """The same quote rules applied to one board row.
+
+    A fresh board (the identity quote just traded) says nothing about another
+    row's price. A row is usable for a virtual entry or exit only if its own
+    quote is dated, within the age limit, not in the future, and on the same
+    JST trading date as the board's identity quote.
+    """
+    fields = {key: row.get(key) for key in ROW_QUOTE_FIELDS} if isinstance(row, dict) else {}
+    verdict = assess_quote_freshness({"live_price_diagnostics": fields, "all_targets": []}, now=now)
+    board = parse_offset_timestamp(board_quote_at) if isinstance(board_quote_at, str) else None
+    row_at = parse_offset_timestamp(verdict.get("quote_at")) if verdict.get("quote_at") else None
+    if verdict.get("fresh") and (board is None or row_at is None or row_at.date() != board.date()):
+        reason = "BOARD_QUOTE_DATE_UNKNOWN" if board is None else "MIXED_SOURCE_DATES"
+        verdict = dict(verdict, state=INVALID, fresh=False, reasons=sorted(set(verdict["reasons"]) | {reason}))
+    return verdict
+
+
 def freshness_verdicts_agree(*verdicts) -> bool:
     """Components agree when they reach the same state and the same fresh bit.
 
@@ -941,20 +962,31 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
         return engine
 
     rows = payload.get("all_targets") if isinstance(payload, dict) else []
+    board_freshness = verdict.get("quote_freshness") if isinstance(verdict.get("quote_freshness"), dict) else {}
+    board_quote_at = board_freshness.get("quote_at") if board_freshness.get("fresh") is True else None
+    row_fresh: dict[str, dict] = {}
     by_key = {}
     judgments = []
     for row in rows:
         if not isinstance(row, dict):
             continue
-        candidate = entry_candidate(row)
         ticker = row.get("ticker") if isinstance(row.get("ticker"), str) else ""
+        row_verdict = row_quote_freshness(row, now=now, board_quote_at=board_quote_at)
+        if ticker:
+            row_fresh[ticker] = row_verdict
+        candidate = entry_candidate(row)
+        # A virtual entry needs this row's own fresh quote, not just a fresh board.
+        if candidate is not None and row_verdict.get("fresh") is not True:
+            candidate = None
         if candidate is not None:
+            candidate["source_timestamp_at"] = row_verdict.get("quote_at")
             by_key[position_key(candidate["ticker"], candidate["side"])] = candidate
         judgments.append({
             "ticker": ticker,
             "signal": row.get("signal"),
             "strategy": row.get("strategy") if isinstance(row.get("strategy"), str) else "",
             "entry_candidate": candidate is not None,
+            "row_quote_state": row_verdict.get("state"),
         })
 
     exits = []
@@ -966,6 +998,10 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
                 current = row
                 break
         if current is None or not _row_price_ok(current):
+            continue
+        # An exit price from an undated, old, future or other-day quote is
+        # not marked; the observation stays open until a fresh quote arrives.
+        if (row_fresh.get(ticker) or {}).get("fresh") is not True:
             continue
         still_same_side = _side_of(current.get("signal")) == side if isinstance(current.get("signal"), str) else False
         if still_same_side:
@@ -1017,6 +1053,7 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
             "target2": candidate["target2"],
             "published_price": candidate["price"],
             "source_timestamp": candidate["source_timestamp"],
+            "source_timestamp_at": candidate.get("source_timestamp_at"),
             "quantity": None,
             "performance_bucket": "open_unrealized_not_marked",
             "decision_rationale": _rationale(candidate),
