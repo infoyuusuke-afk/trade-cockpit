@@ -1178,7 +1178,7 @@ try {
                     ui_branch        = $git.branch
                     ui_sha           = $git.sha
                     ui_build         = $Build
-                    repo_root        = $RepoRoot
+                    # Do not disclose absolute local paths or Windows usernames.
                     live_json_exists = $liveExists
                     live_json_mtime  = $liveMtime
                     runtime          = $runtime
