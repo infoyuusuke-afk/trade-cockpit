@@ -78,6 +78,12 @@ class SafeStopWindowsIsolation(unittest.TestCase):
             "excel_pid": 0,
             "collector_pid": 0,
             "watcher_pid": 0,
+            "heartbeat_pid": 0,
+            "gateway_pid": 0,
+            "brain_gateway_pid": 0,
+            "voice_bridge_pid": 0,
+            "sbv2_pid": 0,
+            "shadow_supervisor_pid": 0,
         }
 
     def spawn(self, argv):
