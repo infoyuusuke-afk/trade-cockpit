@@ -112,7 +112,19 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
                 $cmd -match [regex]::Escape("RUN_AI_COCKPIT_V10.ps1")
             )
         }
-        return ($cmd -match [regex]::Escape($expected))
+        # A script-name substring is not process ownership: reject forged
+        # command lines, PID reuse and processes from another session.
+        $proc = Get-Process -Id $ProcessId -ErrorAction Stop
+        if ($proc.HasExited -or $proc.Handle -eq [IntPtr]::Zero) { return $false }
+        $cimStarted = ([datetime]$wmi.CreationDate).ToUniversalTime()
+        $handleStarted = $proc.StartTime.ToUniversalTime()
+        if ([Math]::Abs(($handleStarted - $cimStarted).TotalSeconds) -gt 2) { return $false }
+        $selfSession = (Get-Process -Id $PID -ErrorAction Stop).SessionId
+        if ([int]$proc.SessionId -ne [int]$selfSession) { return $false }
+        # Require the script to be a distinct argv-like token, not a substring
+        # embedded in a different filename such as fake_<script>.ps1.
+        $escaped = [regex]::Escape($expected)
+        return [regex]::IsMatch($cmd, '(?i)(?<![A-Za-z0-9_.-])' + $escaped + '(?=$|[\\s"''\\])')
     } catch { return $false }
 }
 
