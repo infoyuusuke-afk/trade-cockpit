@@ -236,6 +236,21 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.assertIsNone(self.brain.poll())
         self.assertTrue(self.state_path.exists())
 
+    def test_valid_recorded_shadow_worker_is_stopped(self):
+        script = self.fixture_repo / "scripts" / "ai_shadow_supervisor.py"
+        script.write_text("import time; time.sleep(120)\n", encoding="utf-8")
+        shadow = self.spawn([sys.executable, "-u", str(script)])
+        time.sleep(0.3)
+        self.assertIsNone(shadow.poll())
+        self.state["shadow_supervisor_pid"] = shadow.pid
+        self.write_state()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIsNotNone(shadow.poll(), "recorded SHADOW worker survived valid stop")
+        self.assertIsNotNone(self.controller.poll(), "Controller survived valid stop")
+        self.assertIsNotNone(self.brain.poll(), "BRAIN survived valid stop")
+        self.assertFalse(self.state_path.exists(), "verified stop retained state")
+
     def test_inert_worker_script_name_argument_cannot_authorize_stop(self):
         # A Python -c program mentioning the owned basename as inert argv
         # must not be mistaken for the managed SHADOW script.
