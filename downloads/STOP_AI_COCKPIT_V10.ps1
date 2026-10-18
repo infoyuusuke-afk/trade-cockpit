@@ -1,5 +1,6 @@
 param(
-    [string]$Root = "C:\AI_Cockpit_OneClick_Starter"
+    [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
+    [switch]$InspectOnly
 )
 
 # Stops only the PIDs this Controller (AI_COCKPIT_CONTROLLER_V10.ps1) itself
@@ -13,6 +14,14 @@ $ErrorActionPreference = "SilentlyContinue"
 $StateFile = Join-Path $Root "V10_CONTROLLER_STATE.json"
 
 if (-not (Test-Path -LiteralPath $StateFile)) {
+    if ($InspectOnly) {
+        Write-Host "V10_STOP_INSPECTION=READONLY"
+        Write-Host "RECOVERY_CLASS=NO_STATE"
+        Write-Host "STATE_MUTATED=0"
+        Write-Host "PROCESS_TERMINATED=0"
+        Write-Host "EXCEL_CLOSED=0"
+        exit 0
+    }
     Write-Host "No V10 state file found - nothing to stop." -ForegroundColor DarkGray
     exit 0
 }
@@ -27,6 +36,14 @@ try {
         throw "Controller identity missing"
     }
 } catch {
+    if ($InspectOnly) {
+        Write-Host "V10_STOP_INSPECTION=BLOCKED_UNVERIFIED"
+        Write-Host "RECOVERY_CLASS=INVALID_STATE"
+        Write-Host "STATE_MUTATED=0"
+        Write-Host "PROCESS_TERMINATED=0"
+        Write-Host "EXCEL_CLOSED=0"
+        exit 2
+    }
     Write-Host "V10 Controller state missing or invalid; refusing unverified Safe Stop." -ForegroundColor Red
     exit 2
 }
@@ -577,6 +594,96 @@ public static class V10StopExcelPreflightNative {
             try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($app) } catch {}
         }
     }
+}
+
+# Read-only recovery inspector: a prior failed STOP can block startup because
+# Controller intentionally preserves V10_CONTROLLER_STATE.json. Diagnose the
+# cause without granting this script permission to kill, close, save, deploy,
+# change state or override guarded RUN. A result is never an authorization to
+# delete a stale state file or to submit a live order.
+function Invoke-V10StopReadOnlyInspection($RecordedState) {
+    Write-Host "V10_STOP_INSPECTION=READONLY"
+    Write-Host "STATE_MUTATED=0"
+    Write-Host "PROCESS_TERMINATED=0"
+    Write-Host "EXCEL_CLOSED=0"
+    Write-Host "REAL_SUBMIT_ALLOWED=0"
+    $blocked = $false
+    $live = $false
+    $recorded = 0
+    foreach ($field in @("controller_pid","excel_pid","watcher_pid",
+        "heartbeat_pid","collector_pid","gateway_pid","brain_gateway_pid",
+        "voice_bridge_pid","sbv2_pid","shadow_supervisor_pid","brain_observer_pid")) {
+        $entry = $RecordedState.PSObject.Properties[$field]
+        $pidValue = 0
+        $status = "NOT_RECORDED"
+        if ($null -eq $entry -or
+            -not [int]::TryParse([string]$entry.Value,[ref]$pidValue) -or
+            $pidValue -lt 0) {
+            $status = "UNKNOWN"
+            $blocked = $true
+        } elseif ($pidValue -eq 0) {
+            $status = "NOT_STARTED"
+        } else {
+            $recorded++
+            $status = Get-V10TrackedPidEvidence $pidValue
+            if ($status -eq "ALIVE") {
+                $owned = $false
+                if ($field -eq "excel_pid") {
+                    $owned = Test-StopExcelPreflight $RecordedState
+                } else {
+                    $owned = Test-OwnedPidIdentity $field $pidValue
+                    if ($owned -and $field -eq "brain_observer_pid") {
+                        $opened = Get-Process -Id $pidValue -ErrorAction SilentlyContinue
+                        $owned = (Test-ExactBrainHandle $opened $RecordedState)
+                    }
+                }
+                if ($owned) {
+                    $status = "ALIVE_OWNED"
+                    $live = $true
+                } else {
+                    $status = "ALIVE_FOREIGN_OR_UNVERIFIED"
+                    $blocked = $true
+                }
+            } elseif ($status -eq "UNKNOWN" -or $status -eq "INVALID") {
+                $blocked = $true
+            }
+        }
+        Write-Host ("PID_" + $field + "=" + $status)
+    }
+    try {
+        $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop |
+            Where-Object { @(28580,28581,28582,28583,28584) -contains [int]$_.LocalPort })
+        foreach ($port in @(28580,28581,28582,28583,28584)) {
+            $present = @($listeners | Where-Object { [int]$_.LocalPort -eq $port }).Count -gt 0
+            Write-Host ("PORT_" + $port + "=" + $(if ($present) { "LISTEN" } else { "FREE" }))
+            if ($present) { $blocked = $true }
+        }
+    } catch {
+        foreach ($port in @(28580,28581,28582,28583,28584)) {
+            Write-Host ("PORT_" + $port + "=UNKNOWN")
+        }
+        $blocked = $true
+    }
+    if ($blocked) {
+        Write-Host "V10_STOP_INSPECTION=BLOCKED_UNVERIFIED"
+        Write-Host "RECOVERY_CLASS=REQUIRES_INDEPENDENT_REVIEW"
+        Write-Host "AUTOMATIC_STATE_DELETION_ALLOWED=0"
+        return 2
+    }
+    if ($live) {
+        Write-Host "RECOVERY_CLASS=ACTIVE_V10_PROCESS"
+    } elseif ($recorded -gt 0) {
+        Write-Host "RECOVERY_CLASS=STALE_STATE_REVIEW_REQUIRED"
+    } else {
+        Write-Host "RECOVERY_CLASS=EMPTY_TRACKING_REVIEW_REQUIRED"
+    }
+    Write-Host "AUTOMATIC_STATE_DELETION_ALLOWED=0"
+    return 0
+}
+
+if ($InspectOnly) {
+    $inspectionResult = Invoke-V10StopReadOnlyInspection $state
+    exit $inspectionResult
 }
 
 # P0-25: The legacy state produced before independent BRAIN tracking may
