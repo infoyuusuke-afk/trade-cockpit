@@ -728,12 +728,26 @@ function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$Cont
     # the same session. A pre-existing workbook must keep this from running.
     if (Test-OtherExcelInSession $ExcelPid) { return $false }
 
-    Stop-Process -Id $ExcelPid -Force -ErrorAction SilentlyContinue
-    foreach ($attempt in 1..10) {
-        Start-Sleep -Milliseconds 300
-        if ($null -eq (Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue)) { return $true }
+    # Kill only the already-verified EXCEL.EXE handle, never look up an
+    # untrusted bare numeric PID again after the ownership check.
+    try {
+        $handle = $proc.Handle
+        if ($handle -eq [IntPtr]::Zero -or $proc.HasExited -or
+            [string]$proc.ProcessName -ine "EXCEL") { return $false }
+        $cim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ExcelPid) -ErrorAction Stop
+        if ($null -eq $cim -or [int]$cim.ProcessId -ne $ExcelPid -or
+            [Math]::Abs(($proc.StartTime.ToUniversalTime() -
+                ([datetime]$cim.CreationDate).ToUniversalTime()).TotalSeconds) -gt 2) {
+            return $false
+        }
+        # Do not signal a process that exited or was replaced during checks.
+        if ($proc.HasExited -or -not (Test-LaunchedExcelOwnership $ExcelPid $WorkbookPath $ControllerPid) -or
+            (Test-OtherExcelInSession $ExcelPid)) { return $false }
+        $proc.Kill()
+        return ($proc.WaitForExit(5000) -and $proc.HasExited)
+    } catch {
+        return $false
     }
-    return $false
 }
 
 function Wait-OwnedHelperProcess {
