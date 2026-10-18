@@ -4,7 +4,8 @@ param(
     [string]$ExpectedBranch = "",
     [string]$RuntimeDirOverride = "",
     [switch]$IdentityProbeSelfTest,
-    [switch]$LifecycleLockProbeSelfTest
+    [switch]$LifecycleLockProbeSelfTest,
+    [switch]$LegacyRuntimeAuditOnly
 )
 
 # AI Cockpit Controller V10
@@ -738,6 +739,29 @@ function Assert-NoUnmanagedLegacyRuntimeProcesses {
     }
 }
 
+
+
+# An explicit standalone OWNER acceptance probe. This deliberately executes
+# before StateRoot creation, lifecycle mutex acquisition, runtime deployment,
+# state writes and ANY Worker/Excel startup. A failed audit never auto-stops.
+if ($LegacyRuntimeAuditOnly) {
+    Write-Output "V10_LEGACY_RUNTIME_AUDIT=READONLY"
+    Write-Output "PROCESS_TERMINATED=0"
+    Write-Output "STATE_MUTATED=0"
+    Write-Output "EXCEL_STARTED=0"
+    Write-Output "REAL_SUBMIT_ALLOWED=0"
+    try {
+        Assert-NoUnmanagedLegacyRuntimeProcesses
+        Write-Output "V10_LEGACY_RUNTIME_AUDIT=CLEAR_OBSERVED_INTERPRETERS"
+        Write-Output "CONTROLLER_STARTED=0"
+        exit 0
+    } catch {
+        Write-Output "V10_LEGACY_RUNTIME_AUDIT=BLOCKED"
+        Write-Output ("AUDIT_REASON=" + $_.Exception.Message)
+        Write-Output "CONTROLLER_STARTED=0"
+        exit 2
+    }
+}
 
 function Tail-Log([string]$Path, [int]$Lines = 15) {
     if (Test-Path -LiteralPath $Path) {
