@@ -67,7 +67,15 @@ Assert-Case 'powershell -File C:\legacy\SPEAK_LIVE_EMOTION.ps1' $true
 Assert-Case 'powershell -File C:\current\AI_COCKPIT_CONTROLLER_V10.ps1' $false
 Assert-Case 'powershell -File C:\scripts\UNRELATED.ps1' $false
 Assert-Case 'python -m pytest tests/test_RUN_AI_COCKPIT_V9.ps1' $false 'python.exe'
-Assert-Case '' $false
+$script:Processes=@([pscustomobject]@{
+    Name='powershell.exe'; ProcessId=45678; CommandLine=''
+})
+$blocked=$false
+try { Assert-NoUnmanagedLegacyRuntimeProcesses } catch {
+    $blocked=($_.Exception.Message -match 'UNMANAGED_RUNTIME_COMMANDLINE_UNAVAILABLE')
+}
+if(-not $blocked){throw 'UNREADABLE_POWERSHELL_ARGV_ALLOWED'}
+Assert-Case '' $false 'notepad.exe'
 $script:Denied=$true
 $blocked=$false
 try { Assert-NoUnmanagedLegacyRuntimeProcesses } catch {
@@ -85,7 +93,7 @@ Write-Output ('LEGACY_PORTFREE_CASES_PASS='+($script:Scanned))
                 capture_output=True, text=True, errors="replace", timeout=40,
             )
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertIn("LEGACY_PORTFREE_CASES_PASS=11", r.stdout)
+        self.assertIn("LEGACY_PORTFREE_CASES_PASS=12", r.stdout)
 
 
 if __name__ == "__main__":
