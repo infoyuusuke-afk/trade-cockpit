@@ -173,28 +173,55 @@ function Stop-OwnedJobBridge([int]$Port,[int]$ExpectedParentId,[string]$Label) {
 # Only a PID this controller itself recorded (current run's own state, or
 # nothing at all) is acceptable; anything else stops startup outright
 # rather than silently treating an unknown listener as "our session".
+# Enumerate real OS listeners across ALL local addresses (IPv4/IPv6).
+# A TCP connect to 127.0.0.1 is NOT proof that another binding is absent.
+# Unavailable/incomplete listener inventory is an explicit startup blocker.
 function Test-ForeignSession([hashtable]$OwnPids) {
     $foreign = @()
-    foreach ($entry in @(
+    $entries = @(
         @{ port = $PORT_COLLECTOR; label = "Collector" },
         @{ port = $PORT_GATEWAY; label = "Gateway" },
         @{ port = $PORT_WATCHER; label = "Watcher" },
         @{ port = $PORT_VOICE; label = "VoiceBridge" },
         @{ port = $PORT_BRAIN; label = "BrainGateway" }
-    )) {
-        if (-not (Test-Port $entry.port 300)) { continue }
-        $owner = Get-ListeningOwnerPid $entry.port
-        $isOwn = $false
-        foreach ($ownedPid in $OwnPids.Values) {
-            if ($ownedPid -gt 0 -and $owner -eq $ownedPid) { $isOwn = $true; break }
-        }
-        if (-not $isOwn) {
-            $procName = "unknown"
-            try {
-                $p = Get-Process -Id $owner -ErrorAction SilentlyContinue
-                if ($null -ne $p) { $procName = $p.ProcessName }
-            } catch {}
-            $foreign += ("port " + $entry.port + " (" + $entry.label + ") owned by PID " + $owner + " (" + $procName + ")")
+    )
+    $listeners = $null
+    try {
+        $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop)
+    } catch {
+        return @("LISTENER_INVENTORY_UNKNOWN: refusing startup until Windows TCP listener inventory is available")
+    }
+    if ($null -eq $listeners) {
+        return @("LISTENER_INVENTORY_UNKNOWN: no reliable TCP listener inventory")
+    }
+    foreach ($entry in $entries) {
+        foreach ($listener in @($listeners | Where-Object {
+            [int]$_.LocalPort -eq [int]$entry.port
+        })) {
+            $owner = 0
+            if (-not [int]::TryParse([string]$listener.OwningProcess,[ref]$owner) -or
+                $owner -le 0) {
+                $foreign += ("port " + $entry.port + " (" + $entry.label +
+                    ") has unknown listener owner; startup refused")
+                continue
+            }
+            $isOwn = $false
+            foreach ($ownedPid in $OwnPids.Values) {
+                if ($ownedPid -gt 0 -and $owner -eq $ownedPid) {
+                    $isOwn = $true
+                    break
+                }
+            }
+            if (-not $isOwn) {
+                $procName = "unknown"
+                try {
+                    $p = Get-Process -Id $owner -ErrorAction Stop
+                    if ($null -ne $p) { $procName = $p.ProcessName }
+                } catch {}
+                $foreign += ("port " + $entry.port + " (" + $entry.label +
+                    ") on " + [string]$listener.LocalAddress +
+                    " owned by PID " + $owner + " (" + $procName + ")")
+            }
         }
     }
     return $foreign
