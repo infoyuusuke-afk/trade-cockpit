@@ -335,6 +335,42 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.assertEqual(list(self.root.glob("V10_CONTROLLER_STATE.archived.*.json")), [])
         self.assertIsNone(self.foreign.poll())
 
+    def test_archive_refuses_competing_controller_lifecycle_lock(self):
+        original, digest, session = self.prepare_synthetic_archive_state()
+        self.controller.kill()
+        self.controller.wait(timeout=10)
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        canonical = str(self.root.resolve()).rstrip("\\\\").upper()
+        lock_name = "Local\\AI_Cockpit_V10_Lifecycle_" + hashlib.sha256(
+            canonical.encode("utf-8")
+        ).hexdigest().upper()
+        ready = self.root / "lifecycle-lock-acquired.marker"
+        script = (
+            "$mutex=New-Object Threading.Mutex($false,'" + lock_name + "'); "
+            "try { "
+            "if(-not $mutex.WaitOne(0)){throw 'MUTEX_BUSY'}; "
+            "[IO.File]::WriteAllText('" + str(ready).replace("'", "''") + "','acquired'); "
+            "Start-Sleep -Seconds 30 "
+            "} finally { try{$mutex.ReleaseMutex()}catch{}; $mutex.Dispose() }"
+        )
+        holder = self.spawn([
+            "powershell.exe", "-NoProfile", "-NonInteractive",
+            "-Command", script,
+        ])
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and not ready.exists():
+            self.assertIsNone(holder.poll(), "synthetic mutex holder failed")
+            time.sleep(0.1)
+        self.assertTrue(ready.exists(), "synthetic competing Controller lock missing")
+        result = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("V10_LIFECYCLE_LOCK_BUSY", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), original)
+        self.assertEqual(list(self.root.glob("V10_CONTROLLER_STATE.archived.*.json")), [])
+        self.assertIsNone(holder.poll(), "archive terminated mutex holder")
+        self.assertIsNone(self.foreign.poll(), "archive terminated unrelated process")
+
     def test_archive_verified_stale_state_renames_and_preserves_exact_bytes(self):
         # No OWNER processes or data. All managed PIDs have exited; only a
         # synthetic unrelated Python process remains outside the V10 state.
