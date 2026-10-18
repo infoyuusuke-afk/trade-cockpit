@@ -150,6 +150,18 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         for proc in (self.controller, self.brain, self.foreign):
             self.assertIsNone(proc.poll(), "foreign PID diagnosis killed process")
 
+    def test_readonly_inspection_missing_worker_identity_retains_original_state(self):
+        self.state.pop("heartbeat_pid")
+        self.write_state()
+        original = self.state_path.read_bytes()
+        result = self.run_stop("-InspectOnly")
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("PID_heartbeat_pid=UNKNOWN", result.stdout)
+        self.assertIn("RECOVERY_CLASS=REQUIRES_INDEPENDENT_REVIEW", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), original)
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "missing tracked PID must not stop any process")
+
     def test_readonly_inspection_no_state_is_idempotent(self):
         self.assertFalse(self.state_path.exists())
         result = self.run_stop("-InspectOnly")
