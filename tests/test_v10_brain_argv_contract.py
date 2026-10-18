@@ -59,5 +59,48 @@ Write-Output "ARGV_CASES_PASS=$count"
         self.assertIn("ARGV_CASES_PASS=12", result.stdout)
 
 
+    def test_sbv2_exact_interpreter_and_server_paths(self):
+        # Extract the pure identity helper. Never execute the STOP entrypoint
+        # or start a real voice service on the hosted Windows runner.
+        source = ROOT / "downloads" / "STOP_AI_COCKPIT_V10.ps1"
+        script = r'''
+param([string]$Source)
+$ErrorActionPreference='Stop'
+$tokens=$null; $errors=$null
+$ast=[Management.Automation.Language.Parser]::ParseFile($Source,[ref]$tokens,[ref]$errors)
+if($errors.Count){throw 'PARSE_FAILED'}
+$fn=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Test-StopWorkerScriptArgument'},$true))
+if($fn.Count -ne 1){throw 'FUNCTION_NOT_UNIQUE'}
+. ([scriptblock]::Create($fn[0].Extent.Text))
+$repo='C:\synthetic repo'; $runtime='C:\synthetic runtime'
+$valid='"C:\sbv2\Style-Bert-VITS2\venv\Scripts\python.exe" "C:\sbv2\Style-Bert-VITS2\server_fastapi.py"'
+$cases=@(
+    @($valid,$true),
+    @($valid.Replace('python.exe','pythonw.exe'),$true),
+    @($valid.Replace('C:\sbv2\Style-Bert-VITS2\server_fastapi.py','C:\foreign\server_fastapi.py'),$false),
+    @($valid.Replace('venv\Scripts\python.exe','other\python.exe'),$false),
+    @('"C:\sbv2\Style-Bert-VITS2\venv\Scripts\python.exe" server_fastapi.py',$false),
+    @('"C:\sbv2\Style-Bert-VITS2\venv\Scripts\python.exe" -c "print(1)" "C:\sbv2\Style-Bert-VITS2\server_fastapi.py"',$false)
+)
+$count=0
+foreach($case in $cases){
+    $actual=Test-StopWorkerScriptArgument $case[0] 'sbv2_pid' @('server_fastapi.py') $repo $runtime
+    if($actual -ne $case[1]){throw ('SBV2_CASE_FAILED_'+$count)}
+    $count++
+}
+Write-Output "SBV2_ARGV_CASES_PASS=$count"
+'''
+        with tempfile.TemporaryDirectory(prefix="sbv2-argv-pure-") as tmp:
+            harness = Path(tmp) / "contract.ps1"
+            harness.write_text(script, encoding="utf-8")
+            result = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-NonInteractive",
+                 "-ExecutionPolicy", "Bypass", "-File", str(harness), str(source)],
+                capture_output=True, text=True, timeout=30,
+            )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("SBV2_ARGV_CASES_PASS=6", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
