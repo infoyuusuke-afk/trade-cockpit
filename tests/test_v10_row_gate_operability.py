@@ -736,26 +736,13 @@ class CollectorBridgeHttp(unittest.TestCase):
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
         cls.live = cls.runtime / "live_ms2.json"
         cls.stop = Path(cls.tmp.name) / "stop.flag"
-        cls.port = _free_port()
-        script = Path(cls.tmp.name) / "bridge_harness.ps1"
-        script.write_text(BRIDGE_HARNESS, encoding="utf-8-sig")
-        child_env = dict(os.environ, V10_TEST_COLLECTOR_SOURCE=str(COLLECTOR))
-        cls.bridge = subprocess.Popen(
-            [cls.exe, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script),
-             "-JsonFile", str(cls.live), "-Port", str(cls.port), "-RuntimeDir", str(cls.runtime),
-             "-StopFile", str(cls.stop)],
-            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=child_env)
-        until = time.monotonic() + 60
-        while time.monotonic() < until:
-            if cls.bridge.poll() is not None:
-                raise AssertionError("bridge harness exited: " + cls.bridge.stderr.read().decode("utf-8", "replace")[-2000:])
-            try:
-                with socket.create_connection(("127.0.0.1", cls.port), timeout=0.5):
-                    break
-            except OSError:
-                time.sleep(0.2)
-        else:
-            raise AssertionError("bridge failed to bind")
+        cls.port, cls.bridge = cls._start_bridge(cls.live)
+        # A second bridge that is only ever sent refused boards. It has no
+        # served history, so an old quote is reported as stale there, not as
+        # a regression against what the first bridge already served.
+        cls.cold_live = cls.runtime / "cold" / "live_ms2.json"
+        cls.cold_live.parent.mkdir()
+        cls.cold_port, cls.cold_bridge = cls._start_bridge(cls.cold_live)
         deadline = time.monotonic() + 30
         while True:
             status, written, body = cls._serve(cls._payload())
@@ -765,11 +752,36 @@ class CollectorBridgeHttp(unittest.TestCase):
         cls.warmup = (status, body)
 
     @classmethod
+    def _start_bridge(cls, live):
+        port = _free_port()
+        script = Path(cls.tmp.name) / "bridge_harness.ps1"
+        script.write_text(BRIDGE_HARNESS, encoding="utf-8-sig")
+        child_env = dict(os.environ, V10_TEST_COLLECTOR_SOURCE=str(COLLECTOR))
+        bridge = subprocess.Popen(
+            [cls.exe, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script),
+             "-JsonFile", str(live), "-Port", str(port), "-RuntimeDir", str(cls.runtime),
+             "-StopFile", str(cls.stop)],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=child_env)
+        until = time.monotonic() + 60
+        while time.monotonic() < until:
+            if bridge.poll() is not None:
+                raise AssertionError("bridge harness exited: " + bridge.stderr.read().decode("utf-8", "replace")[-2000:])
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                    break
+            except OSError:
+                time.sleep(0.2)
+        else:
+            raise AssertionError("bridge failed to bind")
+        return port, bridge
+
+    @classmethod
     def tearDownClass(cls):
         if hasattr(cls, "stop"):
             cls.stop.write_text("stop", encoding="utf-8")
-        bridge = getattr(cls, "bridge", None)
-        if bridge is not None:
+        for bridge in (getattr(cls, "bridge", None), getattr(cls, "cold_bridge", None)):
+            if bridge is None:
+                continue
             try:
                 bridge.wait(timeout=30)
             except Exception:
@@ -796,12 +808,13 @@ class CollectorBridgeHttp(unittest.TestCase):
         return payload
 
     @classmethod
-    def _serve(cls, payload):
+    def _serve(cls, payload, cold=False):
+        live, port = (cls.cold_live, cls.cold_port) if cold else (cls.live, cls.port)
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        tmp = cls.live.with_suffix(".tmp")
+        tmp = live.with_suffix(".tmp")
         tmp.write_bytes(data)
-        os.replace(tmp, cls.live)
-        status, body = _http_get(cls.port, "/live_ms2.json")
+        os.replace(tmp, live)
+        status, body = _http_get(port, "/live_ms2.json")
         return status, data, body
 
     def _rejected(self, status, body, *codes, hidden=()):
@@ -834,7 +847,7 @@ class CollectorBridgeHttp(unittest.TestCase):
 
     def test_one_stale_row_refuses_the_board(self):
         extra = {"SYN03.T": {"signal": BUY, "price": 777.25}}
-        status, _, body = self._serve(self._payload(stale={"SYN03.T"}, row_extra=extra))
+        status, _, body = self._serve(self._payload(stale={"SYN03.T"}, row_extra=extra), cold=True)
         verdict = self._rejected(status, body, "ROW_QUOTE_NOT_FRESH", "ROW_STALE_SOURCE_QUOTE", hidden=("777.25", BUY))
         self.assertEqual(verdict["availability"]["state_counts"]["FRESH"], 99)
         self.assertEqual(verdict["availability"]["availability_status"], "BLOCKED_ROW_QUOTES")
@@ -850,7 +863,7 @@ class CollectorBridgeHttp(unittest.TestCase):
 
     def test_identity_stale_refuses_the_board(self):
         now = datetime.now(timezone.utc).astimezone(JST)
-        status, _, body = self._serve(self._payload(identity_at=now - timedelta(minutes=5)))
+        status, _, body = self._serve(self._payload(identity_at=now - timedelta(minutes=5)), cold=True)
         self._rejected(status, body, "STALE_SOURCE_QUOTE", "IDENTITY_QUOTE_NOT_FRESH")
 
     def test_regression_after_a_served_board_is_refused(self):
