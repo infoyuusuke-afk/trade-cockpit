@@ -2001,9 +2001,20 @@ try {
             $gp = Get-Process -Id $state.gateway_pid -ErrorAction SilentlyContinue
             $gatewayPortReady = Test-Port $PORT_GATEWAY 250
             if ($null -eq $gp -or -not $gatewayPortReady) {
-                if ($null -ne $gp -and (Test-OwnedPidIdentity "gateway_pid" ([int]$state.gateway_pid))) {
-                    try { Stop-Process -Id ([int]$state.gateway_pid) -Force -ErrorAction SilentlyContinue } catch {}
-                    Start-Sleep -Milliseconds 250
+                if ($null -ne $gp) {
+                    if (-not (Test-OwnedPidIdentity "gateway_pid" ([int]$state.gateway_pid))) {
+                        throw "FOREIGN_GATEWAY_PID_PID: no restart and no process terminated."
+                    }
+                    try {
+                        $ownedHandle = $gp.Handle
+                        if ($ownedHandle -eq [IntPtr]::Zero -or $gp.HasExited) { throw "PROCESS_HANDLE_NOT_LIVE" }
+                        $gp.Kill()
+                        if (-not $gp.WaitForExit(5000) -or -not $gp.HasExited) {
+                            throw "GATEWAY_NOT_TERMINATED"
+                        }
+                    } catch {
+                        throw "VERIFIED_GATEWAY_PID_STOP_FAILED: refusing competing restart."
+                    }
                 }
                 Write-Status "Gateway is down or not listening - restarting one owned instance..." Red
                 $gatewayProc = Start-Worker -Name "gateway_retry" -Script $Gateway -WorkDir $RepoRootResolved -ExtraArgs $gatewayArgs
@@ -2016,9 +2027,20 @@ try {
             $bgp = Get-Process -Id $state.brain_gateway_pid -ErrorAction SilentlyContinue
             $brainPortReady = Test-Port $PORT_BRAIN 250
             if ($null -eq $bgp -or -not $brainPortReady) {
-                if ($null -ne $bgp -and (Test-OwnedPidIdentity "brain_gateway_pid" ([int]$state.brain_gateway_pid))) {
-                    try { Stop-Process -Id ([int]$state.brain_gateway_pid) -Force -ErrorAction SilentlyContinue } catch {}
-                    Start-Sleep -Milliseconds 250
+                if ($null -ne $bgp) {
+                    if (-not (Test-OwnedPidIdentity "brain_gateway_pid" ([int]$state.brain_gateway_pid))) {
+                        throw "FOREIGN_BRAIN_GATEWAY_PID_PID: no restart and no process terminated."
+                    }
+                    try {
+                        $ownedHandle = $bgp.Handle
+                        if ($ownedHandle -eq [IntPtr]::Zero -or $bgp.HasExited) { throw "PROCESS_HANDLE_NOT_LIVE" }
+                        $bgp.Kill()
+                        if (-not $bgp.WaitForExit(5000) -or -not $bgp.HasExited) {
+                            throw "GATEWAY_NOT_TERMINATED"
+                        }
+                    } catch {
+                        throw "VERIFIED_BRAIN_GATEWAY_PID_STOP_FAILED: refusing competing restart."
+                    }
                 }
                 Write-Status "Brain Gateway is down or not listening - restarting one owned instance..." Red
                 $brainGatewayProc = Start-Worker -Name "brain_gateway_retry" -Script $Gateway -WorkDir $RepoRootResolved -ExtraArgs $brainGatewayArgs
