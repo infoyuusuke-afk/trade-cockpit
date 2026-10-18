@@ -128,5 +128,50 @@ Write-Output ("EXCEL_ORPHAN_MOCK_CASES_PASS=" + $script:Checks)
         self.assertIn("EXCEL_ORPHAN_MOCK_CASES_PASS=6", result.stdout)
 
 
+    def test_canonical_workbook_exclusivity_pure_powershell(self):
+        # Extract ONLY the pure workbook guard: no ROT/Excel invocation.
+        script = r'''
+param([string]$Source)
+$ErrorActionPreference='Stop'
+$tokens=$null; $errors=$null
+$ast=[Management.Automation.Language.Parser]::ParseFile($Source,[ref]$tokens,[ref]$errors)
+if($errors.Count){throw 'PARSE_FAILED'}
+$fn=@($ast.FindAll({
+    param($n)
+    $n -is [Management.Automation.Language.FunctionDefinitionAst] -and
+    $n.Name -eq 'Test-OnlyCanonicalExcelWorkbookOpen'
+},$true))
+if($fn.Count -ne 1){throw 'FUNCTION_NOT_UNIQUE'}
+. ([scriptblock]::Create($fn[0].Extent.Text))
+$target='C:\synthetic\canonical.xlsx'
+$canonical=[pscustomobject]@{FullName=$target}
+$foreign=[pscustomobject]@{FullName='C:\company\unsaved-budget.xlsx'}
+$cases=@(
+    @([pscustomobject]@{Workbooks=@($canonical)},$true),
+    @([pscustomobject]@{Workbooks=@($canonical,$foreign)},$false),
+    @([pscustomobject]@{Workbooks=@($foreign)},$false),
+    @([pscustomobject]@{Workbooks=@()},$false),
+    @([pscustomobject]@{Workbooks=@([pscustomobject]@{FullName=''})},$false)
+)
+$count=0
+foreach($case in $cases){
+    $actual=Test-OnlyCanonicalExcelWorkbookOpen $case[0] $target
+    if([bool]$actual -ne [bool]$case[1]){throw ('EXCLUSIVE_BOOK_CASE_FAILED_'+$count)}
+    $count++
+}
+Write-Output ('EXCLUSIVE_WORKBOOK_CASES_PASS='+$count)
+'''
+        with tempfile.TemporaryDirectory(prefix="v10-excel-workbooks-pure-") as tmp:
+            harness = Path(tmp) / "harness.ps1"
+            harness.write_text(script, encoding="utf-8")
+            result = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-NonInteractive",
+                 "-ExecutionPolicy", "Bypass", "-File", str(harness), str(STOP)],
+                capture_output=True, text=True, errors="replace", timeout=45,
+            )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("EXCLUSIVE_WORKBOOK_CASES_PASS=5", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()
