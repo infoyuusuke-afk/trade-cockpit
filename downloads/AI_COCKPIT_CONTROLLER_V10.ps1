@@ -1338,6 +1338,36 @@ $LogDir = Join-Path $Root "Logs\V10"
 if (-not (Test-Path -LiteralPath $Root)) { New-Item -ItemType Directory -Path $Root -Force | Out-Null }
 if (-not (Test-Path -LiteralPath $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
 
+# Shared Controller/archive interlock, scoped to the canonical V10 State Root.
+# Hold for the Controller's full process lifetime (including startup): an
+# archive cannot cross its final absence probe while a new Controller starts.
+function Get-V10RecoveryMutexName([string]$StateRoot) {
+    $normalized = [IO.Path]::GetFullPath($StateRoot).TrimEnd([char]'\').ToUpperInvariant()
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+        $hash = [BitConverter]::ToString(
+            $sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($normalized))).Replace("-", "")
+        return ("Local\AI_Cockpit_V10_Lifecycle_" + $hash)
+    } finally { $sha.Dispose() }
+}
+$V10LifecycleMutex = New-Object Threading.Mutex($false,(Get-V10RecoveryMutexName $Root))
+$V10LifecycleHeld = $false
+try {
+    try {
+        $V10LifecycleHeld = $V10LifecycleMutex.WaitOne(0)
+    } catch [Threading.AbandonedMutexException] {
+        # The previous holder died. This Controller must still check and
+        # refuse a stale state/foreign port before any worker is started.
+        $V10LifecycleHeld = $true
+    }
+    if (-not $V10LifecycleHeld) {
+        throw "V10_LIFECYCLE_LOCK_BUSY: startup refused while archive/Controller is active."
+    }
+} catch {
+    $V10LifecycleMutex.Dispose()
+    throw
+}
+
 $state = [ordered]@{
     build                      = $Build
     controller_pid             = $PID
