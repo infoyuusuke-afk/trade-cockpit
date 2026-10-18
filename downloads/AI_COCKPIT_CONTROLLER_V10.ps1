@@ -459,6 +459,64 @@ function Stop-ManagedWorkersOnWorkbookClose($SessionState) {
         }
     }
 }
+# Workbook-close shutdown MUST NOT erase ownership evidence until all
+# managed worker PIDs and listener ports are confirmed gone. Error, unknown
+# PID or inaccessible CIM/TCP inventory is a refusal, not a clean shutdown.
+function Test-V10WorkbookCloseTeardownComplete($SessionState) {
+    if ($null -eq $SessionState -or [int]$SessionState.controller_pid -ne [int]$PID) {
+        return $false
+    }
+    try {
+        foreach ($field in @("watcher_pid","heartbeat_pid","collector_pid",
+            "gateway_pid","brain_gateway_pid","voice_bridge_pid","sbv2_pid",
+            "shadow_supervisor_pid","brain_observer_pid")) {
+            $value = 0
+            if (-not [int]::TryParse([string]$SessionState.$field,[ref]$value) -or $value -lt 0) {
+                return $false
+            }
+            if ($value -le 0) { continue }
+            $cim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $value) -ErrorAction Stop
+            if ($null -ne $cim) { return $false }
+        }
+        $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop |
+            Where-Object { @(28580,28581,28582,28583,28584) -contains [int]$_.LocalPort })
+        if ($listeners.Count -gt 0) { return $false }
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+# A concurrent writer or a failed Remove-Item must not turn a partial stop
+# into a false SUCCESS. Read back the identity and all tracked PIDs before
+# deleting the state; verify the file is actually gone afterward.
+function Remove-V10VerifiedShutdownState($SessionState) {
+    try {
+        if (-not (Test-Path -LiteralPath $StateFile -PathType Leaf)) { return $false }
+        $disk = [IO.File]::ReadAllText($StateFile,[Text.Encoding]::UTF8) |
+            ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $disk -or
+            [int]$disk.controller_pid -ne [int]$SessionState.controller_pid -or
+            [int]$disk.excel_pid -ne [int]$SessionState.excel_pid -or
+            [string]$disk.started_at -cne [string]$SessionState.started_at -or
+            [string]$disk.session_id -cne [string]$SessionState.session_id) {
+            return $false
+        }
+        foreach ($field in @("watcher_pid","heartbeat_pid","collector_pid",
+            "gateway_pid","brain_gateway_pid","voice_bridge_pid","sbv2_pid",
+            "shadow_supervisor_pid","brain_observer_pid")) {
+            if ([string]$disk.$field -cne [string]$SessionState.$field) { return $false }
+        }
+        # Repeat the checks immediately before deleting the only recovery
+        # evidence; false / exceptions leave the file untouched.
+        if (-not (Test-V10WorkbookCloseTeardownComplete $SessionState)) { return $false }
+        Remove-Item -LiteralPath $StateFile -Force -ErrorAction Stop
+        return (-not (Test-Path -LiteralPath $StateFile))
+    } catch {
+        return $false
+    }
+}
+
 function Start-Worker([string]$Name, [string]$Script, [string]$WorkDir, [string]$ExtraArgs = "") {
     $stdout = Join-Path $LogDir ($Name + "_stdout.log")
     $stderr = Join-Path $LogDir ($Name + "_stderr.log")
@@ -1793,9 +1851,18 @@ try {
 
                 Write-Status "  Excel cleanup verified: tracked AI Cockpit Excel is gone." Green
 
-                Remove-Item -LiteralPath $StateFile -Force -ErrorAction SilentlyContinue
-                Write-Status "Managed-worker shutdown requested. Review the process checks for any remaining processes." Green
-                Start-Sleep -Seconds 2
+                # Stop requests alone are not proof of shutdown. A surviving
+                # worker/port or an unreadable audit must retain V10 state.
+                if (-not (Test-V10WorkbookCloseTeardownComplete $state)) {
+                    Write-Status "SAFE_STOP_VERIFY=WORKER_OR_PORT_REMAINS; retaining V10 state." Red
+                    Save-State $state
+                    [Environment]::Exit(2)
+                }
+                if (-not (Remove-V10VerifiedShutdownState $state)) {
+                    Write-Status "SAFE_STOP_VERIFY=STATE_REMOVAL_UNVERIFIED; retain evidence." Red
+                    [Environment]::Exit(2)
+                }
+                Write-Status "SAFE_STOP_VERIFY=VERIFIED_ALL_WORKERS_EXCEL_PORTS_GONE; state removed." Green
                 [Environment]::Exit(0)
             }
         }
