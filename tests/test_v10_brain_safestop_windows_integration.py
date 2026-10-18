@@ -388,6 +388,30 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.write_state()
         self.assert_nothing_stopped(self.run_stop())
 
+    def test_tracked_foreign_excel_pid_blocks_all_teardown(self):
+        # A tracked PID may be recycled into any unrelated process.
+        # Check preflight refuses BEFORE Controller/Brain are terminated.
+        self.state["excel_pid"] = self.foreign.pid
+        self.state["workbook_path"] = str(self.runtime / "Kioxia_MS2_RSS_Live_Signals.xlsx")
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_EXCEL_IDENTITY_OR_WORKBOOKS", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for process in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(process.poll(), "failed Excel preflight allowed a partial stop")
+
+    def test_invalid_recorded_excel_pid_blocks_all_teardown(self):
+        self.state["excel_pid"] = "reused-or-garbled"
+        self.write_state()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_EXCEL_IDENTITY_OR_WORKBOOKS", result.stdout)
+        self.assertTrue(self.state_path.exists())
+        for process in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(process.poll(), "malformed Excel PID allowed teardown")
+
     def test_unrecorded_excel_collector_watcher_survive_valid_stop(self):
         # Synthetic look-alikes only: a renamed ping.exe and sleep-only scripts.
         fake_excel = self.root / "EXCEL.EXE"
