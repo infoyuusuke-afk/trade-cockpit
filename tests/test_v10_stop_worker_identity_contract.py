@@ -124,6 +124,18 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertNotIn("Stop-Process -Id ([int]$state.gateway_pid)", controller)
         self.assertNotIn("Stop-Process -Id ([int]$state.brain_gateway_pid)", controller)
 
+    def test_controller_excel_termination_uses_verified_held_handle(self):
+        controller = (STOP.parent / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
+        excel = controller.split("function Stop-VerifiedOwnedExcel(", 1)[1].split(
+            "function Wait-OwnedHelperProcess", 1)[0]
+        self.assertIn("Test-LaunchedExcelOwnership $ExcelPid $WorkbookPath $ControllerPid", excel)
+        self.assertIn("Test-OtherExcelInSession $ExcelPid", excel)
+        self.assertIn("$handle = $proc.Handle", excel)
+        self.assertIn("([datetime]$cim.CreationDate).ToUniversalTime()", excel)
+        self.assertIn("$proc.Kill()", excel)
+        self.assertIn("$proc.WaitForExit(5000)", excel)
+        self.assertNotIn("Stop-Process -Id $ExcelPid", excel)
+
     def test_refusal_precedes_controller_stop(self):
         src = self.source
         preflight = src.index("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID")
