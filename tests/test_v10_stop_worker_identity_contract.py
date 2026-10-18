@@ -49,7 +49,7 @@ class StopWorkerIdentityContract(unittest.TestCase):
         helper = self.source.split("function Test-StopWorkerScriptArgument(", 1)[1].split(
             "function Test-OwnedPidIdentity(", 1)[0]
         self.assertIn("CommandLineToArgvW", helper)
-        self.assertIn('"-(Command|EncodedCommand|CommandWithArgs)"', helper.replace("^", "").replace("$", ""))
+        self.assertIn("-(Command|EncodedCommand|CommandWithArgs)", helper)
         self.assertIn('"sbv2_pid"', helper)
         self.assertIn("IsPathRooted", helper)
 
