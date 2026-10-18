@@ -104,7 +104,7 @@ jobs:
           foreach ($path in $paths) {
             $tokens=$null; $parseErrors=$null
             [void][Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path,[ref]$tokens,[ref]$parseErrors)
-            if ($parseErrors.Count -gt 0) { throw ('V10_CANDIDATE_PS_PARSE_FAILED: ' + $path + ' count=' + $parseErrors.Count) }
+            if ($parseErrors.Count -gt 0) { foreach ($e in $parseErrors) { Write-Host ('PARSE_DETAIL=' + $e.Extent.StartLineNumber + ':' + $e.Extent.StartColumnNumber + ' ' + $e.Message) }; throw ('V10_CANDIDATE_PS_PARSE_FAILED: ' + $path + ' count=' + $parseErrors.Count) }
           }
       - name: Windows local HTTP genuine listener security and negative requests
         shell: powershell
