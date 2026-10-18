@@ -139,12 +139,20 @@ public static class V10StopWorkerArgv {
             $scriptPath = [string]$argv[$index]
             if ($Field -ne "sbv2_pid" -and -not [IO.Path]::IsPathRooted($scriptPath)) { return $false }
         } else { return $false }
-        # Except for the independently installed SBV2 runtime, require the
-        # Controller-recorded, absolute source path. A foreign process with
-        # the same script basename must never inherit the tracked PID's rights.
+        # SBV2 also needs path-accurate ownership. The Controller now launches
+        # the fixed absolute server path, so unrelated server_fastapi.py
+        # scripts (or another interpreter) cannot be killed.
         if ($Field -eq "sbv2_pid") {
-            return [string]::Equals([IO.Path]::GetFileName($scriptPath),
-                "server_fastapi.py", [StringComparison]::OrdinalIgnoreCase)
+            if (-not [IO.Path]::IsPathRooted($scriptPath) -or
+                -not [IO.Path]::IsPathRooted($argv[0])) { return $false }
+            $sbvRoot = "C:\sbv2\Style-Bert-VITS2"
+            $expectedServer = [IO.Path]::GetFullPath((Join-Path $sbvRoot "server_fastapi.py"))
+            $actualServer = [IO.Path]::GetFullPath($scriptPath)
+            $actualInterpreter = [IO.Path]::GetFullPath($argv[0])
+            $expectedExe = if ($exe -ieq "pythonw.exe") { "pythonw.exe" } else { "python.exe" }
+            $expectedInterpreter = [IO.Path]::GetFullPath((Join-Path $sbvRoot ("venv\Scripts\" + $expectedExe)))
+            return ([string]::Equals($actualServer, $expectedServer, [StringComparison]::OrdinalIgnoreCase) -and
+                [string]::Equals($actualInterpreter, $expectedInterpreter, [StringComparison]::OrdinalIgnoreCase))
         }
         if (-not [IO.Path]::IsPathRooted($scriptPath) -or
             -not [IO.Path]::IsPathRooted($RepoPath) -or
