@@ -259,8 +259,15 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         cls.processes.append(subprocess.Popen(
             [cls.exe, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(fake)],
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+        # Two Gateways read the same runtime directory. The warm one serves
+        # the positive cases and so remembers what it served (regression
+        # check). The cold one only ever receives payloads that must be
+        # refused, so each negative case is judged without that memory and
+        # its own reason (stale, undated, future) is the one reported.
         cls.port = cls._free_port()
-        cls._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(cls.runtime), "-Port", str(cls.port)])
+        cls._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(cls.runtime), "-Port", str(cls.port)], cls.port)
+        cls.cold_port = cls._free_port()
+        cls._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(cls.runtime), "-Port", str(cls.cold_port)], cls.cold_port)
         cls.live = cls.runtime / "live_ms2.json"
         cls.shadow = cls.runtime / "ai_shadow_status.json"
         # The listener and the stand-in are up; the first all-fresh request
@@ -294,7 +301,7 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
             return s.getsockname()[1]
 
     @classmethod
-    def _launch(cls, args):
+    def _launch(cls, args, port):
         process = subprocess.Popen(
             [cls.exe, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", *args],
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=str(ROOT))
@@ -304,16 +311,17 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
             if process.poll() is not None:
                 raise AssertionError(f"Gateway exited early ({process.returncode})")
             try:
-                with socket.create_connection(("127.0.0.1", cls.port), timeout=0.5):
+                with socket.create_connection(("127.0.0.1", port), timeout=0.5):
                     return
             except OSError:
                 time.sleep(0.1)
         raise AssertionError("Gateway failed to bind")
 
     @classmethod
-    def _request(cls, path):
-        request = (f"GET {path} HTTP/1.1\r\nHost: 127.0.0.1:{cls.port}\r\nConnection: close\r\n\r\n").encode("ascii")
-        with socket.create_connection(("127.0.0.1", cls.port), timeout=5) as sock:
+    def _request(cls, path, port=None):
+        port = port or cls.port
+        request = (f"GET {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n").encode("ascii")
+        with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:
             sock.settimeout(15)
             sock.sendall(request)
             raw = bytearray()
@@ -370,13 +378,17 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         return rows
 
     @classmethod
-    def _serve(cls, payload, path="/live_ms2.json"):
+    def _serve(cls, payload, path="/live_ms2.json", port=None):
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         tmp = cls.live.with_suffix(".tmp")
         tmp.write_bytes(data)
         os.replace(tmp, cls.live)
-        status, body = cls._request(path)
+        status, body = cls._request(path, port)
         return status, data, body
+
+    def _refuse(self, payload):
+        """Send a payload that must be refused to the Gateway with no served history."""
+        return self._serve(payload, port=self.cold_port)
 
     def _assert_rejected(self, status, written, body, *codes, hidden=()):
         self.assertIn("503", status)
@@ -401,6 +413,14 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         self.assertEqual(self.live.read_bytes(), written)
         return verdict
 
+    def test_stale_row_after_served_history_is_still_refused(self):
+        # On the warm Gateway a stale row is also older than what was served,
+        # so it is reported as a regression; it is refused either way.
+        now = self._now()
+        stale = _row("SYN03.T", _quote(now - timedelta(minutes=5)), price=888.75, signal=BUY)
+        status, written, body = self._serve(self._payload(rows=self._rows(now, {"SYN03.T": stale}), now=now))
+        self._assert_rejected(status, written, body, "ROW_QUOTE_NOT_FRESH", hidden=("888.75", BUY))
+
     def test_00_harness_reaches_freshness_gate(self):
         status, body = self.warmup
         self.assertIn("200", status, body[:2000])
@@ -414,7 +434,7 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
     def test_identity_fresh_other_row_five_minutes_old_is_not_live(self):
         now = self._now()
         stale = _row("SYN03.T", _quote(now - timedelta(minutes=5)), price=777.25)
-        status, written, body = self._serve(self._payload(rows=self._rows(now, {"SYN03.T": stale}), now=now))
+        status, written, body = self._refuse(self._payload(rows=self._rows(now, {"SYN03.T": stale}), now=now))
         verdict = self._assert_rejected(status, written, body, "ROW_QUOTE_NOT_FRESH", "ROW_STALE_SOURCE_QUOTE",
                                         hidden=("777.25",))
         self.assertEqual(verdict["row_freshness"]["not_fresh_row_count"], 1)
@@ -424,20 +444,20 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
     def test_row_with_unknown_date_fails_closed(self):
         now = self._now()
         undated = _row("SYN02.T", _quote(None))
-        status, written, body = self._serve(self._payload(rows=self._rows(now, {"SYN02.T": undated}), now=now))
+        status, written, body = self._refuse(self._payload(rows=self._rows(now, {"SYN02.T": undated}), now=now))
         self._assert_rejected(status, written, body, "ROW_QUOTE_NOT_FRESH", "ROW_SOURCE_DATE_UNKNOWN")
 
     def test_row_with_missing_time_fails_closed(self):
         now = self._now()
         missing = {"ticker": "SYN04.T", "name": "synthetic", "price": 104.0, "signal": "監視", "data": "LIVE",
                    "source_timestamp": ""}
-        status, written, body = self._serve(self._payload(rows=self._rows(now, {"SYN04.T": missing}), now=now))
+        status, written, body = self._refuse(self._payload(rows=self._rows(now, {"SYN04.T": missing}), now=now))
         self._assert_rejected(status, written, body, "ROW_QUOTE_NOT_FRESH", "ROW_SOURCE_TIMESTAMP_MISSING")
 
     def test_row_in_future_fails_closed(self):
         now = self._now()
         future = _row("SYN05.T", _quote(now + timedelta(minutes=5)))
-        status, written, body = self._serve(self._payload(rows=self._rows(now, {"SYN05.T": future}), now=now))
+        status, written, body = self._refuse(self._payload(rows=self._rows(now, {"SYN05.T": future}), now=now))
         self._assert_rejected(status, written, body, "ROW_QUOTE_NOT_FRESH", "ROW_SOURCE_TIMESTAMP_IN_FUTURE")
 
     def test_row_time_regression_fails_closed(self):
@@ -455,7 +475,7 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
                      score=91, entry_price=654.0, stop_price=640.0, target1=670.0, vwap=650.5)
         payload = self._payload(rows=self._rows(now, {"SYN02.T": stale}), now=now)
         self.assertEqual(payload["top5"][0]["ticker"], "SYN02.T")
-        status, written, body = self._serve(payload)
+        status, written, body = self._refuse(payload)
         self._assert_rejected(status, written, body, "ROW_STALE_SOURCE_QUOTE",
                               hidden=("654.5", "654.0", "640.0", "670.0", "650.5", "初動買い候補"))
 
@@ -463,13 +483,13 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         now = self._now()
         stale = _row("SYN01.T", _quote(now - timedelta(minutes=5)), price=512.5, signal=BUY, strategy="synthetic",
                      score=95, entry_price=512.0, stop_price=500.0, target1=530.0, target2=545.0)
-        status, written, body = self._serve(self._payload(rows=self._rows(now, {"SYN01.T": stale}), now=now))
+        status, written, body = self._refuse(self._payload(rows=self._rows(now, {"SYN01.T": stale}), now=now))
         self._assert_rejected(status, written, body, "ROW_STALE_SOURCE_QUOTE",
                               hidden=("512.5", "512.0", "500.0", "530.0", "545.0", BUY))
 
     def test_identity_stale_fails_whole_response(self):
         now = self._now()
-        status, written, body = self._serve(self._payload(identity_at=now - timedelta(minutes=5), now=now))
+        status, written, body = self._refuse(self._payload(identity_at=now - timedelta(minutes=5), now=now))
         verdict = self._assert_rejected(status, written, body, "STALE_SOURCE_QUOTE")
         self.assertFalse(verdict["quote_freshness"]["fresh"])
 
@@ -478,9 +498,12 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         now = self._now()
         old = now - timedelta(minutes=10)
         rows = [_row(IDENTITY, _quote(old), price=1000.0)] + [_row(f"SYN0{i}.T", _quote(old)) for i in range(1, 6)]
-        status, written, body = self._serve(self._payload(rows=rows, identity_at=old, now=now))
+        status, written, body = self._refuse(self._payload(rows=rows, identity_at=old, now=now))
         self._assert_rejected(status, written, body, "STALE_SOURCE_QUOTE", "ROW_STALE_SOURCE_QUOTE")
         os.utime(self.live, None)
+        status, body = self._request("/live_ms2.json", self.cold_port)
+        self.assertIn("503", status)
+        # The warm Gateway, which has served fresh payloads, refuses it too.
         status, body = self._request("/live_ms2.json")
         self.assertIn("503", status)
 
