@@ -84,6 +84,8 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertNotIn(".Kill()", guard)
         self.assertIn("UNMANAGED_LEGACY_RUNTIME_PROCESS", guard)
         self.assertIn("UNMANAGED_RUNTIME_INVENTORY_UNAVAILABLE", guard)
+        self.assertIn("UNMANAGED_RUNTIME_COMMANDLINE_UNAVAILABLE", guard)
+        self.assertNotIn("IsNullOrWhiteSpace($commandLine)) { continue }", guard)
         self.assertIn("Get-CimInstance Win32_Process -ErrorAction Stop", guard)
         for script in ("RUN_AI_COCKPIT_V[6789]", "AI_COCKPIT_CONTROLLER_V[6789]",
                        "SPEAK_TODAY_STRATEGY", "SPEAK_LIVE_EMOTION",
