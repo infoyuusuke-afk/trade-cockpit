@@ -3,7 +3,8 @@ param(
     [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
     [string]$ExpectedBranch = "",
     [string]$RuntimeDirOverride = "",
-    [switch]$IdentityProbeSelfTest
+    [switch]$IdentityProbeSelfTest,
+    [switch]$LifecycleLockProbeSelfTest
 )
 
 # AI Cockpit Controller V10
@@ -1366,6 +1367,20 @@ try {
 } catch {
     $V10LifecycleMutex.Dispose()
     throw
+}
+
+# Hosted synthetic contract probe: exercise the real Controller entrypoint
+# mutex acquisition before ANY worker/Excel/state operation. Even if a
+# caller uses this explicit probe on Windows, it cannot launch a worker.
+if ($LifecycleLockProbeSelfTest) {
+    Write-Output "V10_CONTROLLER_LIFECYCLE_LOCK=ACQUIRED"
+    try {
+        $V10LifecycleMutex.ReleaseMutex()
+        $V10LifecycleHeld = $false
+    } finally {
+        $V10LifecycleMutex.Dispose()
+    }
+    exit 0
 }
 
 $state = [ordered]@{
