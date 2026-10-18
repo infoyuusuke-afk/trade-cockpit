@@ -84,6 +84,71 @@ function Stop-OwnedJobBridge([int]$Port,[int]$ExpectedParentId,[string]$Label) {
     }
 }
 
+# Parse the actual interpreter script argument. A script basename appearing only
+# in -c, -Command, a comment, or another inert argument is not ownership.
+function Test-StopWorkerScriptArgument([string]$CommandLine,[string]$Field,[string[]]$ExpectedNames) {
+    try {
+        if (-not ("V10StopWorkerArgv" -as [type])) {
+            Add-Type -ErrorAction Stop -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class V10StopWorkerArgv {
+    [DllImport("shell32.dll", SetLastError=true)]
+    static extern IntPtr CommandLineToArgvW([MarshalAs(UnmanagedType.LPWStr)] string cmd, out int n);
+    [DllImport("kernel32.dll")] static extern IntPtr LocalFree(IntPtr p);
+    public static string[] Split(string cmd) {
+        int n; IntPtr p = CommandLineToArgvW(cmd, out n);
+        if (p == IntPtr.Zero) throw new InvalidOperationException();
+        try {
+            string[] args = new string[n];
+            for (int i = 0; i < n; i++) args[i] = Marshal.PtrToStringUni(Marshal.ReadIntPtr(p, i * IntPtr.Size));
+            return args;
+        } finally { LocalFree(p); }
+    }
+}
+"@
+        }
+        $argv = @([V10StopWorkerArgv]::Split($CommandLine))
+        if ($argv.Count -lt 2) { return $false }
+        $exe = [IO.Path]::GetFileName($argv[0])
+        $scriptPath = ""
+        if ($exe -imatch '^(powershell|pwsh)\.exe$') {
+            if ($Field -in @("shadow_supervisor_pid", "brain_observer_pid", "sbv2_pid")) { return $false }
+            $fileIndex = -1
+            for ($i = 1; $i -lt $argv.Count; $i++) {
+                if ($argv[$i] -imatch '^-(Command|EncodedCommand|CommandWithArgs)$') { return $false }
+                if ($argv[$i] -ieq "-File") {
+                    if ($fileIndex -ge 0 -or $i + 1 -ge $argv.Count) { return $false }
+                    $fileIndex = $i + 1
+                }
+            }
+            if ($fileIndex -lt 0) { return $false }
+            $scriptPath = [string]$argv[$fileIndex]
+            if (-not [IO.Path]::IsPathRooted($scriptPath)) { return $false }
+        } elseif ($exe -imatch '^(python|pythonw|py)\.exe$') {
+            if ($Field -notin @("shadow_supervisor_pid", "brain_observer_pid", "sbv2_pid")) { return $false }
+            $index = 1
+            if ($exe -ieq "py.exe") {
+                if ($argv.Count -le $index -or $argv[$index] -cne "-3") { return $false }
+                $index++
+            }
+            if ($argv.Count -gt $index -and $argv[$index] -cne "-u" -and
+                $Field -in @("shadow_supervisor_pid", "brain_observer_pid")) { return $false }
+            if ($argv.Count -gt $index -and $argv[$index] -ceq "-u") { $index++ }
+            if ($argv.Count -le $index -or $argv[$index] -match '^-') { return $false }
+            $scriptPath = [string]$argv[$index]
+            if ($Field -ne "sbv2_pid" -and -not [IO.Path]::IsPathRooted($scriptPath)) { return $false }
+        } else { return $false }
+        $basename = [IO.Path]::GetFileName($scriptPath)
+        foreach ($name in $ExpectedNames) {
+            if ([string]::Equals($basename, $name, [StringComparison]::OrdinalIgnoreCase)) {
+                return $true
+            }
+        }
+        return $false
+    } catch { return $false }
+}
+
 function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
     $expected = switch ($Field) {
         "watcher_pid"      { "Kioxia_RSS_Live_Watcher.ps1" }
@@ -120,7 +185,8 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
         } else { @($expected) }
         foreach ($name in $names) {
             $escaped = [regex]::Escape($name)
-            if ([regex]::IsMatch($cmd, '(?i)(?<![A-Za-z0-9_.-])' + $escaped + '(?=$|[\s"'']|\\)')) {
+            if ([regex]::IsMatch($cmd, '(?i)(?<![A-Za-z0-9_.-])' + $escaped + '(?=$|[\s"'']|\\)') -and
+                (Test-StopWorkerScriptArgument $cmd $Field $names)) {
                 return $true
             }
         }
