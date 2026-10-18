@@ -4,6 +4,7 @@ Processes and state are synthetic, unique to an isolated RUNNER_TEMP folder.
 No MS2, Excel, broker API, market data, workstation or service is accessed.
 """
 import json
+import hashlib
 import os
 import shutil
 import socket
@@ -36,7 +37,12 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.runtime = self.root / "runtime"
         self.runtime.mkdir()
         self.children = []
-        self.controller_script = self.root / "AI_COCKPIT_CONTROLLER_V10.ps1"
+        # The real RUN entrypoint executes the Controller from repo/downloads.
+        # Preserve that exact path layout in the positive hosted fixture.
+        self.fixture_repo = self.root / "synthetic repo"
+        (self.fixture_repo / "scripts").mkdir(parents=True)
+        (self.fixture_repo / "downloads").mkdir(parents=True)
+        self.controller_script = self.fixture_repo / "downloads" / "AI_COCKPIT_CONTROLLER_V10.ps1"
         self.controller_script.write_text("Start-Sleep -Seconds 120\n", encoding="utf-8")
         self.controller = self.spawn([
             "powershell.exe", "-NoProfile", "-NonInteractive",
@@ -44,8 +50,6 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         ])
         # A private sleep-only script uses the actual Controller argv layout.
         # Never execute the repository observer or use -c as a positive fixture.
-        self.fixture_repo = self.root / "synthetic repo"
-        (self.fixture_repo / "scripts").mkdir(parents=True)
         self.brain_script = self.fixture_repo / "scripts" / "ai_brain_observer.py"
         self.brain_script.write_text("import time; time.sleep(120)\n", encoding="utf-8")
         self.brain_argv = [
@@ -75,6 +79,12 @@ class SafeStopWindowsIsolation(unittest.TestCase):
             "excel_pid": 0,
             "collector_pid": 0,
             "watcher_pid": 0,
+            "heartbeat_pid": 0,
+            "gateway_pid": 0,
+            "brain_gateway_pid": 0,
+            "voice_bridge_pid": 0,
+            "sbv2_pid": 0,
+            "shadow_supervisor_pid": 0,
         }
 
     def spawn(self, argv):
@@ -103,16 +113,311 @@ class SafeStopWindowsIsolation(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def run_stop(self):
+    def run_stop(self, *extra_args):
         self.assertTrue(STOP.is_file())
         result = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive",
-             "-File", str(STOP), "-Root", str(self.root)],
+             "-File", str(STOP), "-Root", str(self.root), *extra_args],
             capture_output=True, text=True, errors="replace", timeout=45,
         )
         self.assertIsNone(self.foreign.poll(),
                           "Safe Stop touched unrelated Python process")
         return result
+
+    def test_readonly_inspection_never_stops_live_owned_session(self):
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop("-InspectOnly")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("V10_STOP_INSPECTION=READONLY", result.stdout)
+        self.assertIn("PID_controller_pid=ALIVE_OWNED", result.stdout)
+        self.assertIn("PID_brain_observer_pid=ALIVE_OWNED", result.stdout)
+        self.assertIn("RECOVERY_CLASS=ACTIVE_V10_PROCESS", result.stdout)
+        self.assertIn("STATE_MUTATED=0", result.stdout)
+        self.assertIn("PROCESS_TERMINATED=0", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "read-only inspection terminated a process")
+
+    def test_readonly_inspection_foreign_brain_refused_before_any_stop(self):
+        self.state["brain_observer_pid"] = self.foreign.pid
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop("-InspectOnly")
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("PID_brain_observer_pid=ALIVE_FOREIGN_OR_UNVERIFIED", result.stdout)
+        self.assertIn("RECOVERY_CLASS=REQUIRES_INDEPENDENT_REVIEW", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "foreign PID diagnosis killed process")
+
+    def test_readonly_inspection_missing_worker_identity_retains_original_state(self):
+        self.state.pop("heartbeat_pid")
+        self.write_state()
+        original = self.state_path.read_bytes()
+        result = self.run_stop("-InspectOnly")
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("PID_heartbeat_pid=UNKNOWN", result.stdout)
+        self.assertIn("RECOVERY_CLASS=REQUIRES_INDEPENDENT_REVIEW", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), original)
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "missing tracked PID must not stop any process")
+
+    def test_readonly_inspection_no_state_is_idempotent(self):
+        self.assertFalse(self.state_path.exists())
+        result = self.run_stop("-InspectOnly")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("RECOVERY_CLASS=NO_STATE", result.stdout)
+        self.assertFalse(self.state_path.exists())
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "missing-state diagnosis killed process")
+
+    def test_readonly_inspection_corrupt_state_preserves_bytes(self):
+        self.state_path.write_text("{malformed", encoding="utf-8")
+        before = self.state_path.read_bytes()
+        result = self.run_stop("-InspectOnly")
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("RECOVERY_CLASS=INVALID_STATE", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "corrupt-state diagnosis killed process")
+
+    def test_readonly_inspection_exited_brain_keeps_stale_state(self):
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop("-InspectOnly")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("PID_brain_observer_pid=ABSENT", result.stdout)
+        self.assertIn("PID_controller_pid=ALIVE_OWNED", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        self.assertIsNone(self.controller.poll(), "inspection killed live Controller")
+        self.assertIsNone(self.foreign.poll(), "inspection killed foreign process")
+
+    def test_readonly_inspection_reports_unrelated_listener_without_touching_it(self):
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            try:
+                listener.bind(("127.0.0.1", 28584))
+            except OSError:
+                self.skipTest("synthetic V10 test port already occupied")
+            listener.listen(1)
+            self.write_state()
+            before = self.state_path.read_bytes()
+            result = self.run_stop("-InspectOnly")
+            self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+            self.assertIn("PORT_28584=LISTEN", result.stdout)
+            self.assertIn("RECOVERY_CLASS=REQUIRES_INDEPENDENT_REVIEW", result.stdout)
+            self.assertEqual(self.state_path.read_bytes(), before)
+            for proc in (self.controller, self.brain, self.foreign):
+                self.assertIsNone(proc.poll(), "listener diagnosis killed process")
+        finally:
+            listener.close()
+
+    def prepare_synthetic_archive_state(self):
+        self.state["workbook_path"] = str(self.runtime / "Kioxia_MS2_RSS_Live_Signals.xlsx")
+        self.state["workbook_name"] = "Kioxia_MS2_RSS_Live_Signals.xlsx"
+        self.write_state()
+        raw = self.state_path.read_bytes()
+        return raw, hashlib.sha256(raw).hexdigest(), self.state["session_id"]
+
+    def archive_args(self, digest, session):
+        return ("-ArchiveVerifiedStaleState",
+                "-ExpectedSessionId", session,
+                "-ExpectedStateSha256", digest)
+
+    def test_archive_live_owned_state_is_refused_without_terminating_anything(self):
+        original, digest, session = self.prepare_synthetic_archive_state()
+        result = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("RECOVERY_ARCHIVE=REFUSED_OR_UNVERIFIED", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), original)
+        self.assertEqual(list(self.root.glob("V10_CONTROLLER_STATE.archived.*.json")), [])
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "archive attempted to stop a running process")
+
+    def test_archive_requires_explicit_matching_session_and_state_sha(self):
+        original, digest, session = self.prepare_synthetic_archive_state()
+        for argv in [
+            ("-ArchiveVerifiedStaleState",),
+            self.archive_args("0" * 64, session),
+            self.archive_args(digest, session + "-foreign"),
+            ("-ArchiveVerifiedStaleState", "-InspectOnly"),
+        ]:
+            with self.subTest(argv=argv):
+                result = self.run_stop(*argv)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertEqual(self.state_path.read_bytes(), original)
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "incorrect recovery pins stopped a process")
+
+    def test_archive_refuses_foreign_recorded_pid_without_killing(self):
+        self.state["shadow_supervisor_pid"] = self.foreign.pid
+        original, digest, session = self.prepare_synthetic_archive_state()
+        self.controller.kill()
+        self.controller.wait(timeout=10)
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        result = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("RECOVERY_ARCHIVE=REFUSED_OR_UNVERIFIED", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), original)
+        self.assertIsNone(self.foreign.poll(), "foreign PID was stopped by recovery")
+
+    def test_archive_refuses_port_free_legacy_v9_controller_and_preserves_state(self):
+        original, digest, session = self.prepare_synthetic_archive_state()
+        self.controller.kill()
+        self.controller.wait(timeout=10)
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        legacy_script = self.root / "AI_COCKPIT_CONTROLLER_V9.ps1"
+        legacy_script.write_text("Start-Sleep -Seconds 120\n", encoding="utf-8")
+        legacy = self.spawn([
+            "powershell.exe", "-NoProfile", "-NonInteractive",
+            "-File", str(legacy_script),
+        ])
+        time.sleep(0.3)
+        self.assertIsNone(legacy.poll(), "synthetic legacy V9 failed to start")
+        result = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("RECOVERY_ARCHIVE=REFUSED_OR_UNVERIFIED", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), original)
+        self.assertFalse(list(self.root.glob("V10_CONTROLLER_STATE.archived.*.json")))
+        self.assertIsNone(legacy.poll(), "archive terminated a legacy process")
+        self.assertIsNone(self.foreign.poll(), "archive terminated unrelated Python")
+
+    def test_archive_refuses_untracked_v10_worker_before_state_rename(self):
+        original, digest, session = self.prepare_synthetic_archive_state()
+        self.controller.kill()
+        self.controller.wait(timeout=10)
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        untracked_script = self.root / "Kioxia_RSS_Live_Watcher.ps1"
+        untracked_script.write_text("Start-Sleep -Seconds 120\n", encoding="utf-8")
+        untracked = self.spawn([
+            "powershell.exe", "-NoProfile", "-NonInteractive",
+            "-File", str(untracked_script),
+        ])
+        time.sleep(0.3)
+        self.assertIsNone(untracked.poll())
+        self.assertEqual(self.state["watcher_pid"], 0)
+        result = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("RECOVERY_ARCHIVE=REFUSED_OR_UNVERIFIED", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), original)
+        self.assertEqual(list(self.root.glob("V10_CONTROLLER_STATE.archived.*.json")), [])
+        self.assertIsNone(untracked.poll(), "recovery killed an unrecorded worker")
+        self.assertIsNone(self.foreign.poll(), "recovery killed unrelated Python")
+
+    def test_archive_refuses_missing_brain_record_even_if_all_processes_exited(self):
+        self.state.pop("brain_observer_pid")
+        original, digest, session = self.prepare_synthetic_archive_state()
+        self.controller.kill()
+        self.controller.wait(timeout=10)
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        result = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertEqual(self.state_path.read_bytes(), original)
+        self.assertIsNone(self.foreign.poll())
+
+    def test_archive_refuses_free_state_when_an_unrelated_v10_port_is_listening(self):
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            try:
+                listener.bind(("127.0.0.1", 28584))
+            except OSError:
+                self.skipTest("synthetic V10 test port already occupied")
+            listener.listen(1)
+            original, digest, session = self.prepare_synthetic_archive_state()
+            self.controller.kill()
+            self.controller.wait(timeout=10)
+            self.brain.kill()
+            self.brain.wait(timeout=10)
+            result = self.run_stop(*self.archive_args(digest, session))
+            self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+            self.assertIn("RECOVERY_ARCHIVE=REFUSED_OR_UNVERIFIED", result.stdout)
+            self.assertEqual(self.state_path.read_bytes(), original)
+            self.assertIsNone(self.foreign.poll())
+        finally:
+            listener.close()
+
+    def test_archive_refuses_modified_state_hash_and_preserves_original_bytes(self):
+        original, digest, session = self.prepare_synthetic_archive_state()
+        self.controller.kill()
+        self.controller.wait(timeout=10)
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        amended = original + b" "
+        self.state_path.write_bytes(amended)
+        result = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertEqual(self.state_path.read_bytes(), amended)
+        self.assertEqual(list(self.root.glob("V10_CONTROLLER_STATE.archived.*.json")), [])
+        self.assertIsNone(self.foreign.poll())
+
+    def test_archive_refuses_competing_controller_lifecycle_lock(self):
+        original, digest, session = self.prepare_synthetic_archive_state()
+        self.controller.kill()
+        self.controller.wait(timeout=10)
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        canonical = str(self.root.resolve()).rstrip("\\\\").upper()
+        lock_name = "Local\\AI_Cockpit_V10_Lifecycle_" + hashlib.sha256(
+            canonical.encode("utf-8")
+        ).hexdigest().upper()
+        ready = self.root / "lifecycle-lock-acquired.marker"
+        script = (
+            "$mutex=New-Object Threading.Mutex($false,'" + lock_name + "'); "
+            "try { "
+            "if(-not $mutex.WaitOne(0)){throw 'MUTEX_BUSY'}; "
+            "[IO.File]::WriteAllText('" + str(ready).replace("'", "''") + "','acquired'); "
+            "Start-Sleep -Seconds 30 "
+            "} finally { try{$mutex.ReleaseMutex()}catch{}; $mutex.Dispose() }"
+        )
+        holder = self.spawn([
+            "powershell.exe", "-NoProfile", "-NonInteractive",
+            "-Command", script,
+        ])
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and not ready.exists():
+            self.assertIsNone(holder.poll(), "synthetic mutex holder failed")
+            time.sleep(0.1)
+        self.assertTrue(ready.exists(), "synthetic competing Controller lock missing")
+        result = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("V10_LIFECYCLE_LOCK_BUSY", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), original)
+        self.assertEqual(list(self.root.glob("V10_CONTROLLER_STATE.archived.*.json")), [])
+        self.assertIsNone(holder.poll(), "archive terminated mutex holder")
+        self.assertIsNone(self.foreign.poll(), "archive terminated unrelated process")
+
+    def test_archive_verified_stale_state_renames_and_preserves_exact_bytes(self):
+        # No OWNER processes or data. All managed PIDs have exited; only a
+        # synthetic unrelated Python process remains outside the V10 state.
+        original, digest, session = self.prepare_synthetic_archive_state()
+        self.controller.kill()
+        self.controller.wait(timeout=10)
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        result = self.run_stop(*self.archive_args(digest, session))
+        if "STALE_STATE_PROOF_FAILED" in result.stdout and "Get-NetTCPConnection" in result.stdout:
+            self.skipTest("V10 synthetic ports unavailable on shared runner")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("RECOVERY_ARCHIVE=VERIFIED_ARCHIVED", result.stdout)
+        self.assertIn("ACTIVE_STATE_ARCHIVED=1", result.stdout)
+        self.assertIn("PROCESS_TERMINATED=0", result.stdout)
+        self.assertFalse(self.state_path.exists(), "active state was not unblocked")
+        archived = list(self.root.glob("V10_CONTROLLER_STATE.archived.*.json"))
+        self.assertEqual(len(archived), 1)
+        self.assertEqual(archived[0].read_bytes(), original, "state evidence was changed")
+        self.assertEqual(hashlib.sha256(archived[0].read_bytes()).hexdigest(), digest)
+        self.assertIsNone(self.foreign.poll())
+        retry = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(retry.returncode, 2, retry.stdout + retry.stderr)
+        self.assertIn("RECOVERY_ARCHIVE=REFUSED_NO_STATE", retry.stdout)
+        self.assertEqual(archived[0].read_bytes(), original)
 
     def test_valid_owned_brain_is_really_stopped(self):
         self.write_state()
@@ -236,6 +541,123 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.assertIsNone(self.brain.poll())
         self.assertTrue(self.state_path.exists())
 
+    def test_valid_recorded_shadow_worker_is_stopped(self):
+        script = self.fixture_repo / "scripts" / "ai_shadow_supervisor.py"
+        script.write_text("import time; time.sleep(120)\n", encoding="utf-8")
+        shadow = self.spawn([sys.executable, "-u", str(script)])
+        time.sleep(0.3)
+        self.assertIsNone(shadow.poll())
+        self.state["shadow_supervisor_pid"] = shadow.pid
+        self.write_state()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIsNotNone(shadow.poll(), "recorded SHADOW worker survived valid stop")
+        self.assertIsNotNone(self.controller.poll(), "Controller survived valid stop")
+        self.assertIsNotNone(self.brain.poll(), "BRAIN survived valid stop")
+        self.assertFalse(self.state_path.exists(), "verified stop retained state")
+
+    def test_foreign_same_named_controller_from_other_folder_is_refused(self):
+        # A matching basename alone does not establish tracked repo ownership.
+        foreign_script = self.root / "AI_COCKPIT_CONTROLLER_V10.ps1"
+        foreign_script.write_text("Start-Sleep -Seconds 120\n", encoding="utf-8")
+        decoy = self.spawn(["powershell.exe", "-NoProfile", "-NonInteractive",
+                            "-File", str(foreign_script)])
+        time.sleep(0.3)
+        self.assertIsNone(decoy.poll())
+        self.state["controller_pid"] = decoy.pid
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (decoy, self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "foreign same-named Controller was stopped")
+
+    def test_foreign_same_named_watcher_from_other_folder_is_refused(self):
+        # Only runtime_dir/Kioxia_RSS_Live_Watcher.ps1 is an owned watcher.
+        foreign_script = self.root / "Kioxia_RSS_Live_Watcher.ps1"
+        foreign_script.write_text("Start-Sleep -Seconds 120\n", encoding="utf-8")
+        decoy = self.spawn(["powershell.exe", "-NoProfile", "-NonInteractive",
+                            "-File", str(foreign_script)])
+        time.sleep(0.3)
+        self.assertIsNone(decoy.poll())
+        self.state["watcher_pid"] = decoy.pid
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("BLOCKED_FOREIGN_WORKER_PID", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (decoy, self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "foreign same-named Watcher was stopped")
+
+    def test_valid_recorded_runtime_watcher_is_stopped(self):
+        script = self.runtime / "Kioxia_RSS_Live_Watcher.ps1"
+        script.write_text("Start-Sleep -Seconds 120\n", encoding="utf-8")
+        watcher = self.spawn(["powershell.exe", "-NoProfile", "-NonInteractive",
+                              "-File", str(script)])
+        time.sleep(0.3)
+        self.assertIsNone(watcher.poll())
+        self.state["watcher_pid"] = watcher.pid
+        self.write_state()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIsNotNone(watcher.poll(), "valid recorded runtime Watcher survived")
+        self.assertIsNotNone(self.controller.poll())
+        self.assertIsNotNone(self.brain.poll())
+        self.assertFalse(self.state_path.exists())
+
+    def test_foreign_same_named_sbv2_script_refused(self):
+        server = self.root / "server_fastapi.py"
+        server.write_text("import time; time.sleep(120)\n", encoding="utf-8")
+        decoy = self.spawn([sys.executable, str(server)])
+        time.sleep(0.3)
+        self.assertIsNone(decoy.poll())
+        self.state["sbv2_pid"] = decoy.pid
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("BLOCKED_FOREIGN_WORKER_PID", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (decoy, self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "foreign SBV2 basename must never grant stop authority")
+
+    def test_inert_worker_script_name_argument_cannot_authorize_stop(self):
+        # A Python -c program mentioning the owned basename as inert argv
+        # must not be mistaken for the managed SHADOW script.
+        decoy = self.spawn([
+            sys.executable, "-c", "import time; time.sleep(120)",
+            "ai_shadow_supervisor.py",
+        ])
+        time.sleep(0.3)
+        self.assertIsNone(decoy.poll())
+        self.state["shadow_supervisor_pid"] = decoy.pid
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("BLOCKED_FOREIGN_WORKER_PID", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (decoy, self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "inert script basename must not grant STOP ownership")
+
+    def test_controller_name_in_powershell_command_cannot_authorize_stop(self):
+        decoy = self.spawn([
+            "powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+            "Start-Sleep -Seconds 120 # RUN_AI_COCKPIT_V10.ps1",
+        ])
+        time.sleep(0.3)
+        self.assertIsNone(decoy.poll())
+        self.state["controller_pid"] = decoy.pid
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (decoy, self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "PowerShell -Command mention must not grant ownership")
+
     def test_foreign_controller_pid_blocks_before_teardown(self):
         self.state["controller_pid"] = self.foreign.pid
         self.write_state()
@@ -267,6 +689,30 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.state["repo_root"] = "synthetic repo"
         self.write_state()
         self.assert_nothing_stopped(self.run_stop())
+
+    def test_tracked_foreign_excel_pid_blocks_all_teardown(self):
+        # A tracked PID may be recycled into any unrelated process.
+        # Check preflight refuses BEFORE Controller/Brain are terminated.
+        self.state["excel_pid"] = self.foreign.pid
+        self.state["workbook_path"] = str(self.runtime / "Kioxia_MS2_RSS_Live_Signals.xlsx")
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_EXCEL_IDENTITY_OR_WORKBOOKS", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for process in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(process.poll(), "failed Excel preflight allowed a partial stop")
+
+    def test_invalid_recorded_excel_pid_blocks_all_teardown(self):
+        self.state["excel_pid"] = "reused-or-garbled"
+        self.write_state()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("SAFE_STOP_PREFLIGHT=PID_INVENTORY_UNVERIFIED", result.stdout)
+        self.assertTrue(self.state_path.exists())
+        for process in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(process.poll(), "malformed Excel PID allowed teardown")
 
     def test_unrecorded_excel_collector_watcher_survive_valid_stop(self):
         # Synthetic look-alikes only: a renamed ping.exe and sleep-only scripts.

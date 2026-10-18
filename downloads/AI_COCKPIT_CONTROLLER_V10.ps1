@@ -1,9 +1,11 @@
-param(
+﻿param(
     [string]$RepoRoot = "",
     [string]$Root = "C:\AI_Cockpit_OneClick_Starter",
     [string]$ExpectedBranch = "",
     [string]$RuntimeDirOverride = "",
-    [switch]$IdentityProbeSelfTest
+    [switch]$IdentityProbeSelfTest,
+    [switch]$LifecycleLockProbeSelfTest,
+    [switch]$LegacyRuntimeAuditOnly
 )
 
 # AI Cockpit Controller V10
@@ -119,17 +121,51 @@ function Stop-OwnedJobBridge([int]$Port,[int]$ExpectedParentId,[string]$Label) {
     $owner = Get-ListeningOwnerPid $Port
     if ($owner -le 0) { return $true }
     try {
-        $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $owner) -ErrorAction SilentlyContinue
-        if ($null -eq $info) { return $false }
-        $name = [string]$info.Name
-        $parent = [int]$info.ParentProcessId
-        if ($parent -eq $ExpectedParentId -and $name -match "^(powershell|pwsh)\.exe$") {
-            Stop-Process -Id $owner -Force -ErrorAction SilentlyContinue
-            Write-Status ("  stopped owned {0} bridge child: port {1}, PID {2}, parent {3}" -f $Label,$Port,$owner,$ExpectedParentId) DarkGray
-            return $true
+        $scriptName = switch ($Port) {
+            28580 { "MS2_RSS_100_Collector.ps1" }
+            28582 { "Kioxia_RSS_Live_Watcher.ps1" }
+            default { "" }
         }
-    } catch {}
-    return $false
+        $parentField = switch ($Port) {
+            28580 { "collector_pid" }
+            28582 { "watcher_pid" }
+            default { "" }
+        }
+        if (-not $scriptName -or -not $parentField -or
+            -not (Test-OwnedPidIdentity $parentField $ExpectedParentId)) {
+            throw "BRIDGE_PARENT_UNVERIFIED"
+        }
+        $parentProc = Get-Process -Id $ExpectedParentId -ErrorAction Stop
+        $childProc = Get-Process -Id $owner -ErrorAction Stop
+        $parentHandle = $parentProc.Handle
+        $childHandle = $childProc.Handle
+        if ($parentHandle -eq [IntPtr]::Zero -or $childHandle -eq [IntPtr]::Zero -or
+            $parentProc.HasExited -or $childProc.HasExited) { throw "BRIDGE_HANDLE_NOT_LIVE" }
+        $parentCim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ExpectedParentId) -ErrorAction Stop
+        $childCim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $owner) -ErrorAction Stop
+        if ([int]$childCim.ParentProcessId -ne $ExpectedParentId -or
+            [string]$parentCim.Name -notmatch '^(powershell|pwsh)\.exe$' -or
+            [string]$childCim.Name -notmatch '^(powershell|pwsh)\.exe$' -or
+            [int]$parentProc.SessionId -ne [int]$childProc.SessionId) {
+            throw "BRIDGE_PARENT_CHILD_UNVERIFIED"
+        }
+        $parentStarted = $parentProc.StartTime.ToUniversalTime()
+        $childStarted = $childProc.StartTime.ToUniversalTime()
+        if ($childStarted -lt $parentStarted.AddSeconds(-2) -or
+            [Math]::Abs(($parentStarted - ([datetime]$parentCim.CreationDate).ToUniversalTime()).TotalSeconds) -gt 2 -or
+            [Math]::Abs(($childStarted - ([datetime]$childCim.CreationDate).ToUniversalTime()).TotalSeconds) -gt 2) {
+            throw "BRIDGE_START_TIME_MISMATCH"
+        }
+        $childProc.Kill()
+        if (-not $childProc.WaitForExit(5000) -or -not $childProc.HasExited) {
+            throw "BRIDGE_CHILD_STILL_RUNNING"
+        }
+        Write-Status ("  stopped verified {0} bridge child: port {1}, PID {2}" -f $Label,$Port,$owner) DarkGray
+        return $true
+    } catch {
+        Write-Status ("  BRIDGE_STOP_REFUSED: " + $Label + " / " + $_.Exception.Message) Yellow
+        return $false
+    }
 }
 
 # Preflight: a port already LISTENing is not, by itself, evidence that
@@ -138,28 +174,55 @@ function Stop-OwnedJobBridge([int]$Port,[int]$ExpectedParentId,[string]$Label) {
 # Only a PID this controller itself recorded (current run's own state, or
 # nothing at all) is acceptable; anything else stops startup outright
 # rather than silently treating an unknown listener as "our session".
+# Enumerate real OS listeners across ALL local addresses (IPv4/IPv6).
+# A TCP connect to 127.0.0.1 is NOT proof that another binding is absent.
+# Unavailable/incomplete listener inventory is an explicit startup blocker.
 function Test-ForeignSession([hashtable]$OwnPids) {
     $foreign = @()
-    foreach ($entry in @(
+    $entries = @(
         @{ port = $PORT_COLLECTOR; label = "Collector" },
         @{ port = $PORT_GATEWAY; label = "Gateway" },
         @{ port = $PORT_WATCHER; label = "Watcher" },
         @{ port = $PORT_VOICE; label = "VoiceBridge" },
         @{ port = $PORT_BRAIN; label = "BrainGateway" }
-    )) {
-        if (-not (Test-Port $entry.port 300)) { continue }
-        $owner = Get-ListeningOwnerPid $entry.port
-        $isOwn = $false
-        foreach ($ownedPid in $OwnPids.Values) {
-            if ($ownedPid -gt 0 -and $owner -eq $ownedPid) { $isOwn = $true; break }
-        }
-        if (-not $isOwn) {
-            $procName = "unknown"
-            try {
-                $p = Get-Process -Id $owner -ErrorAction SilentlyContinue
-                if ($null -ne $p) { $procName = $p.ProcessName }
-            } catch {}
-            $foreign += ("port " + $entry.port + " (" + $entry.label + ") owned by PID " + $owner + " (" + $procName + ")")
+    )
+    $listeners = $null
+    try {
+        $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop)
+    } catch {
+        return @("LISTENER_INVENTORY_UNKNOWN: refusing startup until Windows TCP listener inventory is available")
+    }
+    if ($null -eq $listeners) {
+        return @("LISTENER_INVENTORY_UNKNOWN: no reliable TCP listener inventory")
+    }
+    foreach ($entry in $entries) {
+        foreach ($listener in @($listeners | Where-Object {
+            [int]$_.LocalPort -eq [int]$entry.port
+        })) {
+            $owner = 0
+            if (-not [int]::TryParse([string]$listener.OwningProcess,[ref]$owner) -or
+                $owner -le 0) {
+                $foreign += ("port " + $entry.port + " (" + $entry.label +
+                    ") has unknown listener owner; startup refused")
+                continue
+            }
+            $isOwn = $false
+            foreach ($ownedPid in $OwnPids.Values) {
+                if ($ownedPid -gt 0 -and $owner -eq $ownedPid) {
+                    $isOwn = $true
+                    break
+                }
+            }
+            if (-not $isOwn) {
+                $procName = "unknown"
+                try {
+                    $p = Get-Process -Id $owner -ErrorAction Stop
+                    if ($null -ne $p) { $procName = $p.ProcessName }
+                } catch {}
+                $foreign += ("port " + $entry.port + " (" + $entry.label +
+                    ") on " + [string]$listener.LocalAddress +
+                    " owned by PID " + $owner + " (" + $procName + ")")
+            }
         }
     }
     return $foreign
@@ -242,6 +305,101 @@ function Save-State($state) {
     Move-Item -LiteralPath $tmp -Destination $StateFile -Force
 }
 
+# Parse the actual interpreter script argument. A script basename appearing only
+# in -c, -Command, a comment, or another inert argument is not ownership.
+function Test-StopWorkerScriptArgument([string]$CommandLine,[string]$Field,[string[]]$ExpectedNames,[string]$RepoPath,[string]$RuntimePath) {
+    try {
+        if (-not ("V10StopWorkerArgv" -as [type])) {
+            Add-Type -ErrorAction Stop -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class V10StopWorkerArgv {
+    [DllImport("shell32.dll", SetLastError=true)]
+    static extern IntPtr CommandLineToArgvW([MarshalAs(UnmanagedType.LPWStr)] string cmd, out int n);
+    [DllImport("kernel32.dll")] static extern IntPtr LocalFree(IntPtr p);
+    public static string[] Split(string cmd) {
+        int n; IntPtr p = CommandLineToArgvW(cmd, out n);
+        if (p == IntPtr.Zero) throw new InvalidOperationException();
+        try {
+            string[] args = new string[n];
+            for (int i = 0; i < n; i++) args[i] = Marshal.PtrToStringUni(Marshal.ReadIntPtr(p, i * IntPtr.Size));
+            return args;
+        } finally { LocalFree(p); }
+    }
+}
+"@
+        }
+        $argv = @([V10StopWorkerArgv]::Split($CommandLine))
+        if ($argv.Count -lt 2) { return $false }
+        $exe = [IO.Path]::GetFileName($argv[0])
+        $scriptPath = ""
+        if ($exe -imatch '^(powershell|pwsh)\.exe$') {
+            if ($Field -in @("shadow_supervisor_pid", "brain_observer_pid", "sbv2_pid")) { return $false }
+            $fileIndex = -1
+            for ($i = 1; $i -lt $argv.Count; $i++) {
+                if ($argv[$i] -imatch '^-(Command|EncodedCommand|CommandWithArgs)$') { return $false }
+                if ($argv[$i] -ieq "-File") {
+                    if ($fileIndex -ge 0 -or $i + 1 -ge $argv.Count) { return $false }
+                    $fileIndex = $i + 1
+                }
+            }
+            if ($fileIndex -lt 0) { return $false }
+            $scriptPath = [string]$argv[$fileIndex]
+            if (-not [IO.Path]::IsPathRooted($scriptPath)) { return $false }
+        } elseif ($exe -imatch '^(python|pythonw|py)\.exe$') {
+            if ($Field -notin @("shadow_supervisor_pid", "brain_observer_pid", "sbv2_pid")) { return $false }
+            $index = 1
+            if ($exe -ieq "py.exe") {
+                if ($argv.Count -le $index -or $argv[$index] -cne "-3") { return $false }
+                $index++
+            }
+            if ($argv.Count -gt $index -and $argv[$index] -cne "-u" -and
+                $Field -in @("shadow_supervisor_pid", "brain_observer_pid")) { return $false }
+            if ($argv.Count -gt $index -and $argv[$index] -ceq "-u") { $index++ }
+            if ($argv.Count -le $index -or $argv[$index] -match '^-') { return $false }
+            $scriptPath = [string]$argv[$index]
+            if ($Field -ne "sbv2_pid" -and -not [IO.Path]::IsPathRooted($scriptPath)) { return $false }
+        } else { return $false }
+        # SBV2 also needs path-accurate ownership. The Controller now launches
+        # the fixed absolute server path, so unrelated server_fastapi.py
+        # scripts (or another interpreter) cannot be killed.
+        if ($Field -eq "sbv2_pid") {
+            if (-not [IO.Path]::IsPathRooted($scriptPath) -or
+                -not [IO.Path]::IsPathRooted($argv[0])) { return $false }
+            $sbvRoot = "C:\sbv2\Style-Bert-VITS2"
+            $expectedServer = [IO.Path]::GetFullPath((Join-Path $sbvRoot "server_fastapi.py"))
+            $actualServer = [IO.Path]::GetFullPath($scriptPath)
+            $actualInterpreter = [IO.Path]::GetFullPath($argv[0])
+            $expectedExe = if ($exe -ieq "pythonw.exe") { "pythonw.exe" } else { "python.exe" }
+            $expectedInterpreter = [IO.Path]::GetFullPath((Join-Path $sbvRoot ("venv\Scripts\" + $expectedExe)))
+            return ([string]::Equals($actualServer, $expectedServer, [StringComparison]::OrdinalIgnoreCase) -and
+                [string]::Equals($actualInterpreter, $expectedInterpreter, [StringComparison]::OrdinalIgnoreCase))
+        }
+        if (-not [IO.Path]::IsPathRooted($scriptPath) -or
+            -not [IO.Path]::IsPathRooted($RepoPath) -or
+            -not [IO.Path]::IsPathRooted($RuntimePath)) { return $false }
+        $expectedDir = switch ($Field) {
+            { $_ -in @("watcher_pid", "heartbeat_pid", "collector_pid") } { $RuntimePath; break }
+            { $_ -in @("controller_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid") } {
+                Join-Path $RepoPath "downloads"; break
+            }
+            { $_ -in @("shadow_supervisor_pid", "brain_observer_pid") } {
+                Join-Path $RepoPath "scripts"; break
+            }
+            default { "" }
+        }
+        if ([string]::IsNullOrWhiteSpace($expectedDir)) { return $false }
+        $actualPath = [IO.Path]::GetFullPath($scriptPath)
+        foreach ($name in $ExpectedNames) {
+            $expectedPath = [IO.Path]::GetFullPath((Join-Path $expectedDir $name))
+            if ([string]::Equals($actualPath, $expectedPath, [StringComparison]::OrdinalIgnoreCase)) {
+                return $true
+            }
+        }
+        return $false
+    } catch { return $false }
+}
+
 function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
     $expected = switch ($Field) {
         "watcher_pid"      { "Kioxia_RSS_Live_Watcher.ps1" }
@@ -253,56 +411,141 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
         "sbv2_pid"         { "server_fastapi.py" }
         "shadow_supervisor_pid" { "ai_shadow_supervisor.py" }
         "brain_observer_pid" { "ai_brain_observer.py" }
-        "controller_pid"   { "AI_COCKPIT_CONTROLLER_V10.ps1" }
+        # RUN invokes Controller synchronously with &, so controller_pid is
+        # the RUN PowerShell host itself. Accept either identity, but never
+        # a generic powershell.exe match.
+        "controller_pid"   { "__V10_CONTROLLER_OR_RUN__" }
         default            { "" }
     }
     if ([string]::IsNullOrWhiteSpace($expected)) { return $false }
     try {
         $wmi = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction SilentlyContinue
-        if ($null -eq $wmi) { return $false }
-        $cmd = [string]$wmi.CommandLine
-        return (-not [string]::IsNullOrWhiteSpace($cmd) -and $cmd -match [regex]::Escape($expected))
+        $cmd = if ($null -ne $wmi) { [string]$wmi.CommandLine } else { "" }
+        if ([string]::IsNullOrWhiteSpace($cmd)) { return $false }
+        $proc = Get-Process -Id $ProcessId -ErrorAction Stop
+        if ($proc.HasExited -or $proc.Handle -eq [IntPtr]::Zero) { return $false }
+        $cimStarted = ([datetime]$wmi.CreationDate).ToUniversalTime()
+        $handleStarted = $proc.StartTime.ToUniversalTime()
+        if ([Math]::Abs(($handleStarted - $cimStarted).TotalSeconds) -gt 2) { return $false }
+        if ([int]$wmi.ProcessId -ne $ProcessId -or [string]$wmi.Name -notmatch '^(powershell|pwsh|python|pythonw|py)\.exe$') { return $false }
+        $selfSession = (Get-Process -Id $PID -ErrorAction Stop).SessionId
+        if ([int]$proc.SessionId -ne [int]$selfSession) { return $false }
+        # Token boundaries exclude spoofed names such as fake_RUN_AI_COCKPIT_V10.ps1.
+        $names = if ($Field -eq "controller_pid") {
+            @("AI_COCKPIT_CONTROLLER_V10.ps1", "RUN_AI_COCKPIT_V10.ps1")
+        } else { @($expected) }
+        foreach ($name in $names) {
+            $escaped = [regex]::Escape($name)
+            if ([regex]::IsMatch($cmd, '(?i)(?<![A-Za-z0-9_.-])' + $escaped + '(?=$|[\s"'']|\\)') -and
+                (Test-StopWorkerScriptArgument $cmd $Field $names ([string]$state.repo_root) ([string]$state.runtime_dir))) {
+                return $true
+            }
+        }
+        return $false
     } catch { return $false }
 }
+
 
 # Stop only PIDs recorded in OUR OWN previous state file - never a broad
 # process-table scan. A PID that no longer exists, or that now belongs to
 # a different process (recycled by Windows), is silently skipped.
+# A previous Controller's state is NOT a stop authorization for this new
+# Controller. All prior sessions must pass the reviewed standalone Safe Stop
+# before a fresh V10 session can replace the evidence file.
 function Stop-OwnedFromPreviousState {
+    if (-not (Test-Path -LiteralPath $StateFile -PathType Leaf)) { return }
     $prev = Read-State
-    if ($null -eq $prev) { return }
-    Stop-OwnedJobBridge $PORT_COLLECTOR ([int]$prev.collector_pid) "Collector JSON" | Out-Null
-    Stop-OwnedJobBridge $PORT_WATCHER ([int]$prev.watcher_pid) "Watcher JSON" | Out-Null
-    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid", "brain_observer_pid", "controller_pid")) {
-        $val = $prev.PSObject.Properties[$field]
-        if ($null -eq $val -or [int]$val.Value -le 0) { continue }
-        $procId = [int]$val.Value
-        $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
-        if ($null -ne $proc -and (Test-OwnedPidIdentity $field $procId)) {
-            try { Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue } catch {}
-            Write-Status ("  stopped previous {0} (PID {1})" -f $field, $procId) DarkGray
-        } elseif ($null -ne $proc) {
-            Write-Status ("  previous PID " + $procId + " no longer matches " + $field + "; leaving it untouched") Yellow
-        }
+    if ($null -eq $prev) {
+        throw "PREVIOUS_V10_STATE_CORRUPT: no worker terminated; use verified Safe Stop and retain evidence."
     }
-    # Excel is not stopped here and is not stopped before launch. A
-    # previous PID is not ownership. TerminateProcess on one Excel can
-    # close other Excel processes in the same session.
+    throw "PREVIOUS_V10_STATE_REQUIRES_SAFE_STOP: no worker terminated or state overwritten."
 }
 
 # A workbook title change does not establish ownership of the Excel process.
 # Release the workers' COM references; never force-kill Excel, which may also
 # host a user's other workbooks. A surviving Excel is reported for acceptance.
+# Never re-resolve a numeric PID after checking ownership. A workbook-close
+# cleanup uses each already-opened process handle and preserves foreign workers.
 function Stop-ManagedWorkersOnWorkbookClose($SessionState) {
     foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid", "brain_observer_pid")) {
         $workerPid = [int]$SessionState.$field
         if ($workerPid -le 0 -or $workerPid -eq [int]$SessionState.excel_pid) { continue }
         $worker = Get-Process -Id $workerPid -ErrorAction SilentlyContinue
-        if ($null -ne $worker -and (Test-OwnedPidIdentity $field $workerPid)) {
-            Stop-Process -Id $workerPid -Force -ErrorAction SilentlyContinue
+        if ($null -eq $worker) { continue }
+        if (-not (Test-OwnedPidIdentity $field $workerPid)) {
+            Write-Status ("  WORKER_STOP_REFUSED: " + $field + " identity unverified") Yellow
+            continue
+        }
+        try {
+            $handle = $worker.Handle
+            if ($handle -eq [IntPtr]::Zero -or $worker.HasExited) { throw "WORKER_HANDLE_NOT_LIVE" }
+            $worker.Kill()
+            if (-not $worker.WaitForExit(5000) -or -not $worker.HasExited) {
+                throw "WORKER_NOT_TERMINATED"
+            }
+        } catch {
+            Write-Status ("  WORKER_STOP_UNVERIFIED: " + $field + " / " + $_.Exception.Message) Yellow
         }
     }
 }
+# Workbook-close shutdown MUST NOT erase ownership evidence until all
+# managed worker PIDs and listener ports are confirmed gone. Error, unknown
+# PID or inaccessible CIM/TCP inventory is a refusal, not a clean shutdown.
+function Test-V10WorkbookCloseTeardownComplete($SessionState) {
+    if ($null -eq $SessionState -or [int]$SessionState.controller_pid -ne [int]$PID) {
+        return $false
+    }
+    try {
+        foreach ($field in @("watcher_pid","heartbeat_pid","collector_pid",
+            "gateway_pid","brain_gateway_pid","voice_bridge_pid","sbv2_pid",
+            "shadow_supervisor_pid","brain_observer_pid")) {
+            $value = 0
+            if (-not [int]::TryParse([string]$SessionState.$field,[ref]$value) -or $value -lt 0) {
+                return $false
+            }
+            if ($value -le 0) { continue }
+            $cim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $value) -ErrorAction Stop
+            if ($null -ne $cim) { return $false }
+        }
+        $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction Stop |
+            Where-Object { @(28580,28581,28582,28583,28584) -contains [int]$_.LocalPort })
+        if ($listeners.Count -gt 0) { return $false }
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+# A concurrent writer or a failed Remove-Item must not turn a partial stop
+# into a false SUCCESS. Read back the identity and all tracked PIDs before
+# deleting the state; verify the file is actually gone afterward.
+function Remove-V10VerifiedShutdownState($SessionState) {
+    try {
+        if (-not (Test-Path -LiteralPath $StateFile -PathType Leaf)) { return $false }
+        $disk = [IO.File]::ReadAllText($StateFile,[Text.Encoding]::UTF8) |
+            ConvertFrom-Json -ErrorAction Stop
+        if ($null -eq $disk -or
+            [int]$disk.controller_pid -ne [int]$SessionState.controller_pid -or
+            [int]$disk.excel_pid -ne [int]$SessionState.excel_pid -or
+            [string]$disk.started_at -cne [string]$SessionState.started_at -or
+            [string]$disk.session_id -cne [string]$SessionState.session_id) {
+            return $false
+        }
+        foreach ($field in @("watcher_pid","heartbeat_pid","collector_pid",
+            "gateway_pid","brain_gateway_pid","voice_bridge_pid","sbv2_pid",
+            "shadow_supervisor_pid","brain_observer_pid")) {
+            if ([string]$disk.$field -cne [string]$SessionState.$field) { return $false }
+        }
+        # Repeat the checks immediately before deleting the only recovery
+        # evidence; false / exceptions leave the file untouched.
+        if (-not (Test-V10WorkbookCloseTeardownComplete $SessionState)) { return $false }
+        Remove-Item -LiteralPath $StateFile -Force -ErrorAction Stop
+        return (-not (Test-Path -LiteralPath $StateFile))
+    } catch {
+        return $false
+    }
+}
+
 function Start-Worker([string]$Name, [string]$Script, [string]$WorkDir, [string]$ExtraArgs = "") {
     $stdout = Join-Path $LogDir ($Name + "_stdout.log")
     $stderr = Join-Path $LogDir ($Name + "_stderr.log")
@@ -446,17 +689,77 @@ function Start-Sbv2Managed {
     $stdout = Join-Path $LogDir "sbv2_stdout.log"
     $stderr = Join-Path $LogDir "sbv2_stderr.log"
     Remove-Item -LiteralPath $stdout,$stderr -Force -ErrorAction SilentlyContinue
-    return Start-Process -FilePath $exe -ArgumentList "server_fastapi.py" -WorkingDirectory $sbvRoot -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+    # The STOP identity check must be able to verify the exact owned script
+    # path. Relative script argv does not prove the working directory.
+    $serverArg = '"' + [IO.Path]::GetFullPath($server) + '"'
+    return Start-Process -FilePath $exe -ArgumentList $serverArg -WorkingDirectory $sbvRoot -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
 }
 
-function Stop-LegacyVoiceWorkers {
-    foreach ($p in @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)) {
-        $cmd = [string]$p.CommandLine
-        if ([string]::IsNullOrWhiteSpace($cmd)) { continue }
-        if ($cmd -match "SPEAK_TODAY_STRATEGY\.ps1|SPEAK_LIVE_EMOTION\.ps1") {
-            try { Stop-Process -Id ([int]$p.ProcessId) -Force -ErrorAction SilentlyContinue } catch {}
-            Write-Status ("  stopped legacy voice worker PID " + $p.ProcessId) DarkGray
+# Never terminate processes discovered by an unrestricted system-wide scan.
+# An unmanaged legacy voice process blocks startup until the owner stops the
+# verified old runtime; it cannot inherit V10 Controller's stop authority.
+# Read-only process argv audit before V10 starts any worker. Legacy runtimes
+# can be alive even with all 28580-28584 ports FREE; a socket-only preflight
+# is insufficient. This is NOT a blanket process-name termination authority.
+function Assert-NoUnmanagedLegacyRuntimeProcesses {
+    try {
+        $processes = @(Get-CimInstance Win32_Process -ErrorAction Stop)
+    } catch {
+        throw "UNMANAGED_RUNTIME_INVENTORY_UNAVAILABLE: refusing startup; no process terminated."
+    }
+    $suspectScripts = @(
+        'RUN_AI_COCKPIT_V[6789]\.ps1',
+        'AI_COCKPIT_CONTROLLER_V[6789]\.ps1',
+        'AI_COCKPIT_GATEWAY_V[6789]\.ps1',
+        'STOP_AI_COCKPIT_V[6789]\.ps1',
+        'SPEAK_TODAY_STRATEGY\.ps1',
+        'SPEAK_LIVE_EMOTION\.ps1',
+        'Kioxia_RSS_Live_Watcher\.ps1',
+        'MS2_RSS_100_Collector\.ps1',
+        'Kioxia_Safety_Heartbeat\.ps1'
+    )
+    foreach ($proc in $processes) {
+        if ([string]$proc.Name -notmatch '^(?:powershell|pwsh|python|pythonw|py)\.exe$') { continue }
+        $commandLine = [string]$proc.CommandLine
+        # A PowerShell/Python interpreter with unreadable argv could be an
+        # idle old V8/V9 runtime with all TCP ports free. UNKNOWN must not
+        # become a false "no legacy sessions" startup clearance. No kill.
+        if ([string]::IsNullOrWhiteSpace($commandLine)) {
+            throw ("UNMANAGED_RUNTIME_COMMANDLINE_UNAVAILABLE: PID " +
+                [string]$proc.ProcessId + " (" + [string]$proc.Name +
+                "); no process terminated; V10 startup denied.")
         }
+        foreach ($scriptName in $suspectScripts) {
+            if ($commandLine -match ('(?i)(?:^|[\\/"\s])' + $scriptName + '(?:["\s]|$)')) {
+                throw ("UNMANAGED_LEGACY_RUNTIME_PROCESS: PID " + [string]$proc.ProcessId +
+                    " script " + $scriptName +
+                    "; no process terminated; V10 startup denied.")
+            }
+        }
+    }
+}
+
+
+
+# An explicit standalone OWNER acceptance probe. This deliberately executes
+# before StateRoot creation, lifecycle mutex acquisition, runtime deployment,
+# state writes and ANY Worker/Excel startup. A failed audit never auto-stops.
+if ($LegacyRuntimeAuditOnly) {
+    Write-Output "V10_LEGACY_RUNTIME_AUDIT=READONLY"
+    Write-Output "PROCESS_TERMINATED=0"
+    Write-Output "STATE_MUTATED=0"
+    Write-Output "EXCEL_STARTED=0"
+    Write-Output "REAL_SUBMIT_ALLOWED=0"
+    try {
+        Assert-NoUnmanagedLegacyRuntimeProcesses
+        Write-Output "V10_LEGACY_RUNTIME_AUDIT=CLEAR_OBSERVED_INTERPRETERS"
+        Write-Output "CONTROLLER_STARTED=0"
+        exit 0
+    } catch {
+        Write-Output "V10_LEGACY_RUNTIME_AUDIT=BLOCKED"
+        Write-Output ("AUDIT_REASON=" + $_.Exception.Message)
+        Write-Output "CONTROLLER_STARTED=0"
+        exit 2
     }
 }
 
@@ -497,6 +800,18 @@ function Get-ForeignExcelProcesses([int[]]$AllowedPids = @(), [int]$SessionId = 
             -not ($AllowedPids -contains $pidValue)
         }
     )
+}
+
+function Assert-NoOtherExcelAtStartup {
+    # D-023 / D-024: inventory only; never attach to or operate another Excel.
+    $sessionId = Get-CurrentSessionId
+    $others = @(Get-Process -ErrorAction Stop | Where-Object {
+        $_.ProcessName -ieq "EXCEL" -and [int]$_.SessionId -eq $sessionId
+    })
+    if ($others.Count -gt 0) {
+        $ids = ($others | ForEach-Object { [string]$_.Id }) -join ','
+        throw ("START_PREFLIGHT=BLOCKED_OTHER_EXCEL_OPEN; ほかのExcelを閉じてから、もう一度起動してください。 PID=" + $ids)
+    }
 }
 
 function Get-CanonicalWorkbookConflicts([string]$WorkbookPath, [string]$WorkbookName, [int[]]$AllowedPids = @()) {
@@ -549,6 +864,53 @@ function Test-LaunchedExcelOwnership([int]$ExcelPid,[string]$WorkbookPath,[int]$
     return ($isCanonicalWorkbook -and $isControllerChild -and $isSameSession)
 }
 
+function Test-OnlyCanonicalExcelWorkbookOpen($Application,[string]$WorkbookPath) {
+    if ($null -eq $Application -or [string]::IsNullOrWhiteSpace($WorkbookPath)) { return $false }
+    try {
+        $books = @($Application.Workbooks)
+        if ($books.Count -ne 1) { return $false }
+        $openPath = [string]$books[0].FullName
+        if ([string]::IsNullOrWhiteSpace($openPath)) { return $false }
+        return [string]::Equals([IO.Path]::GetFullPath($openPath),
+            [IO.Path]::GetFullPath($WorkbookPath), [StringComparison]::OrdinalIgnoreCase)
+    } catch { return $false }
+}
+
+# A Controller-owned Excel PID may contain foreign unsaved workbooks.
+# Prove that the ROT instance belongs to the PID and that this process has
+# either zero workbooks or only the canonical RSS workbook before force-kill.
+function Test-ManagedExcelWorkbooksExclusive([int]$ExcelPid,[string]$WorkbookPath) {
+    if ($ExcelPid -le 0 -or [string]::IsNullOrWhiteSpace($WorkbookPath)) { return $false }
+    $app = $null
+    try {
+        if (-not ("V10ControllerExcelPidNative" -as [type])) {
+            Add-Type -ErrorAction Stop -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class V10ControllerExcelPidNative {
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+}
+"@
+        }
+        $app = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
+        if ($null -eq $app) { return $false }
+        $hwnd = [int64]$app.Hwnd
+        if ($hwnd -eq 0) { return $false }
+        $foundPid = [uint32]0
+        [void][V10ControllerExcelPidNative]::GetWindowThreadProcessId([IntPtr]$hwnd,[ref]$foundPid)
+        if ([int]$foundPid -ne $ExcelPid) { return $false }
+        $workbooks = @($app.Workbooks)
+        if ($workbooks.Count -eq 0) { return $true }
+        return (Test-OnlyCanonicalExcelWorkbookOpen $app $WorkbookPath)
+    } catch { return $false }
+    finally {
+        if ($null -ne $app) {
+            try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($app) } catch {}
+        }
+    }
+}
+
 function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$ControllerPid) {
     if ($ExcelPid -le 0) { return $false }
 
@@ -558,13 +920,29 @@ function Stop-VerifiedOwnedExcel([int]$ExcelPid,[string]$WorkbookPath,[int]$Cont
     # TerminateProcess on one Excel can take down other Excel processes in
     # the same session. A pre-existing workbook must keep this from running.
     if (Test-OtherExcelInSession $ExcelPid) { return $false }
+    if (-not (Test-ManagedExcelWorkbooksExclusive $ExcelPid $WorkbookPath)) { return $false }
 
-    Stop-Process -Id $ExcelPid -Force -ErrorAction SilentlyContinue
-    foreach ($attempt in 1..10) {
-        Start-Sleep -Milliseconds 300
-        if ($null -eq (Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue)) { return $true }
+    # Kill only the already-verified EXCEL.EXE handle, never look up an
+    # untrusted bare numeric PID again after the ownership check.
+    try {
+        $handle = $proc.Handle
+        if ($handle -eq [IntPtr]::Zero -or $proc.HasExited -or
+            [string]$proc.ProcessName -ine "EXCEL") { return $false }
+        $cim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ExcelPid) -ErrorAction Stop
+        if ($null -eq $cim -or [int]$cim.ProcessId -ne $ExcelPid -or
+            [Math]::Abs(($proc.StartTime.ToUniversalTime() -
+                ([datetime]$cim.CreationDate).ToUniversalTime()).TotalSeconds) -gt 2) {
+            return $false
+        }
+        # Do not signal a process that exited or was replaced during checks.
+        if ($proc.HasExited -or -not (Test-LaunchedExcelOwnership $ExcelPid $WorkbookPath $ControllerPid) -or
+            (Test-OtherExcelInSession $ExcelPid) -or
+            -not (Test-ManagedExcelWorkbooksExclusive $ExcelPid $WorkbookPath)) { return $false }
+        $proc.Kill()
+        return ($proc.WaitForExit(5000) -and $proc.HasExited)
+    } catch {
+        return $false
     }
-    return $false
 }
 
 function Wait-OwnedHelperProcess {
@@ -1048,6 +1426,50 @@ $LogDir = Join-Path $Root "Logs\V10"
 if (-not (Test-Path -LiteralPath $Root)) { New-Item -ItemType Directory -Path $Root -Force | Out-Null }
 if (-not (Test-Path -LiteralPath $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Force | Out-Null }
 
+# Shared Controller/archive interlock, scoped to the canonical V10 State Root.
+# Hold for the Controller's full process lifetime (including startup): an
+# archive cannot cross its final absence probe while a new Controller starts.
+function Get-V10RecoveryMutexName([string]$StateRoot) {
+    $normalized = [IO.Path]::GetFullPath($StateRoot).TrimEnd([char]'\').ToUpperInvariant()
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+        $hash = [BitConverter]::ToString(
+            $sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($normalized))).Replace("-", "")
+        return ("Local\AI_Cockpit_V10_Lifecycle_" + $hash)
+    } finally { $sha.Dispose() }
+}
+$V10LifecycleMutex = New-Object Threading.Mutex($false,(Get-V10RecoveryMutexName $Root))
+$V10LifecycleHeld = $false
+try {
+    try {
+        $V10LifecycleHeld = $V10LifecycleMutex.WaitOne(0)
+    } catch [Threading.AbandonedMutexException] {
+        # The previous holder died. This Controller must still check and
+        # refuse a stale state/foreign port before any worker is started.
+        $V10LifecycleHeld = $true
+    }
+    if (-not $V10LifecycleHeld) {
+        throw "V10_LIFECYCLE_LOCK_BUSY: startup refused while archive/Controller is active."
+    }
+} catch {
+    $V10LifecycleMutex.Dispose()
+    throw
+}
+
+# Hosted synthetic contract probe: exercise the real Controller entrypoint
+# mutex acquisition before ANY worker/Excel/state operation. Even if a
+# caller uses this explicit probe on Windows, it cannot launch a worker.
+if ($LifecycleLockProbeSelfTest) {
+    Write-Output "V10_CONTROLLER_LIFECYCLE_LOCK=ACQUIRED"
+    try {
+        $V10LifecycleMutex.ReleaseMutex()
+        $V10LifecycleHeld = $false
+    } finally {
+        $V10LifecycleMutex.Dispose()
+    }
+    exit 0
+}
+
 $state = [ordered]@{
     build                      = $Build
     controller_pid             = $PID
@@ -1168,8 +1590,8 @@ try {
     Stop-OwnedFromPreviousState
     Start-Sleep -Milliseconds 500
 
-    Write-Status "Stopping obsolete voice-only workers so old SAPI cannot leak into V10..."
-    Stop-LegacyVoiceWorkers
+    Write-Status "Checking for unmanaged legacy V6-V9 and port-free RSS workers without terminating them..."
+    Assert-NoUnmanagedLegacyRuntimeProcesses
 
     Write-Status "Checking for foreign sessions on 28580/28581/28582/28583..."
     $ownedNow = @{
@@ -1207,24 +1629,8 @@ try {
     }
     Write-Status ("  MarketSpeed II: READY / session " + $currentSessionId) Green
 
-    # Foreign Excel may stay open. Isolation is the new /x process plus
-    # canonical identity checks. Presence alone does not stop startup,
-    # and this interlock never closes, kills, or clicks another Excel.
-    $foreignExcelAtStartup = @(Get-ForeignExcelProcesses)
-    if ($foreignExcelAtStartup.Count -gt 0) {
-        Write-Host ""
-        Write-Host "==================================================" -ForegroundColor Yellow
-        Write-Host " EXCEL SAFETY INTERLOCK" -ForegroundColor Yellow
-        Write-Host "==================================================" -ForegroundColor Yellow
-        foreach ($foreignExcel in $foreignExcelAtStartup) {
-            Write-Host ("  leaving foreign Excel untouched: PID " + $foreignExcel.Id + " / " + $foreignExcel.MainWindowTitle) -ForegroundColor Yellow
-        }
-        Write-Host ""
-        Write-Host "Foreign Excel is present. It will not be closed, killed, or operated." -ForegroundColor Cyan
-        Write-Host "AI Cockpit will launch a separate isolated Excel /x for the canonical workbook only." -ForegroundColor Cyan
-    } else {
-        Write-Status "  Excel safety interlock: no pre-existing Excel process." Green
-    }
+    # D-023: refuse before starting any managed worker or Excel.
+    Assert-NoOtherExcelAtStartup
 
     Write-Status "Starting unified voice backend (Style-Bert-VITS2 only)..."
     if (Test-Port 5000 350) {
@@ -1317,6 +1723,7 @@ try {
     # the ROT. ProcessStartInfo keeps one /x argument and the full path.
     if ($WorkbookPath.Contains('"')) { throw "Canonical workbook path contains a quote. Refusing to launch." }
     $excelStart = New-Object System.Diagnostics.ProcessStartInfo
+    Assert-NoOtherExcelAtStartup
     $excelStart.FileName = $excelExe
     $excelStart.UseShellExecute = $false
     $excelStart.Arguments = Get-IsolatedExcelArguments $WorkbookPath
@@ -1529,99 +1936,20 @@ try {
                 $xp2 = Get-Process -Id ([int]$state.excel_pid) -ErrorAction SilentlyContinue
 
                 if ($null -ne $xp2) {
-                    $excelInfo = Get-CimInstance Win32_Process `
-                        -Filter ("ProcessId = " + [int]$state.excel_pid) `
-                        -ErrorAction SilentlyContinue
-
-                    $excelCmd = if ($null -ne $excelInfo) {
-                        [string]$excelInfo.CommandLine
-                    } else {
-                        ""
-                    }
-
-                    $isHidden = ($xp2.MainWindowHandle -eq 0)
-
-                    $ordinalIgnoreCase = [StringComparison]::OrdinalIgnoreCase
-                    $isCanonicalWorkbook = (
-                        -not [string]::IsNullOrWhiteSpace($excelCmd) -and
-                        $excelCmd.IndexOf($WorkbookPath, $ordinalIgnoreCase) -ge 0
-                    )
-
-                    $isControllerChild = (
-                        $null -ne $excelInfo -and
-                        [int]$excelInfo.ParentProcessId -eq $PID
-                    )
-
-                    $otherExcelPresent = Test-OtherExcelInSession ([int]$state.excel_pid)
-                    if (
-                        $isHidden -and
-                        $isCanonicalWorkbook -and
-                        $isControllerChild -and
-                        -not $otherExcelPresent
-                    ) {
+                    # A workbook-close event is not license to kill a foreign
+                    # Excel or a visible process with another open workbook.
+                    if ($xp2.MainWindowHandle -ne 0 -or
+                        -not (Stop-VerifiedOwnedExcel ([int]$state.excel_pid) $WorkbookPath $PID)) {
                         Write-Status (
-                            "  terminating verified hidden AI Cockpit Excel PID " +
-                            $state.excel_pid
-                        ) Yellow
-
-                        Stop-Process `
-                            -Id ([int]$state.excel_pid) `
-                            -Force `
-                            -ErrorAction Stop
-
-                        # Bound the wait; never report clean shutdown until
-                        # the tracked process is actually gone.
-                        $excelGone = $false
-
-                        foreach ($attempt in 1..10) {
-                            Start-Sleep -Milliseconds 500
-
-                            if (
-                                $null -eq (
-                                    Get-Process `
-                                        -Id ([int]$state.excel_pid) `
-                                        -ErrorAction SilentlyContinue
-                                )
-                            ) {
-                                $excelGone = $true
-                                break
-                            }
-                        }
-
-                        if (-not $excelGone) {
-                            Write-Status (
-                                "ERROR: verified AI Cockpit Excel PID " +
-                                $state.excel_pid +
-                                " did not terminate."
-                            ) Red
-
-                            Save-State $state
-                            [Environment]::Exit(2)
-                        }
-
-                        Write-Status (
-                            "  verified AI Cockpit Excel PID " +
-                            $state.excel_pid +
-                            " terminated."
-                        ) Green
-                    }
-                    else {
-                        Write-Status (
-                            "ERROR: remaining Excel PID " +
-                            $state.excel_pid +
-                            " failed ownership verification. " +
-                            "hidden=" + $isHidden +
-                            ", canonicalWorkbook=" + $isCanonicalWorkbook +
-                            ", controllerChild=" + $isControllerChild +
-                            ", otherExcelPresent=" + $otherExcelPresent +
-                            ". It will NOT be force-stopped."
+                            "ERROR: tracked Excel remains, hidden/exclusive ownership not verified. " +
+                            "No Excel process was force-killed; V10 state retained."
                         ) Red
-
-                        # Keep state for diagnosis instead of deleting our
-                        # only ownership evidence.
                         Save-State $state
                         [Environment]::Exit(2)
                     }
+                    Write-Status (
+                        "  verified exclusive AI Cockpit Excel terminated by held process handle."
+                    ) Green
                 }
 
                 # Final tracked-PID verification before deleting state.
@@ -1640,9 +1968,18 @@ try {
 
                 Write-Status "  Excel cleanup verified: tracked AI Cockpit Excel is gone." Green
 
-                Remove-Item -LiteralPath $StateFile -Force -ErrorAction SilentlyContinue
-                Write-Status "Managed-worker shutdown requested. Review the process checks for any remaining processes." Green
-                Start-Sleep -Seconds 2
+                # Stop requests alone are not proof of shutdown. A surviving
+                # worker/port or an unreadable audit must retain V10 state.
+                if (-not (Test-V10WorkbookCloseTeardownComplete $state)) {
+                    Write-Status "SAFE_STOP_VERIFY=WORKER_OR_PORT_REMAINS; retaining V10 state." Red
+                    Save-State $state
+                    [Environment]::Exit(2)
+                }
+                if (-not (Remove-V10VerifiedShutdownState $state)) {
+                    Write-Status "SAFE_STOP_VERIFY=STATE_REMOVAL_UNVERIFIED; retain evidence." Red
+                    [Environment]::Exit(2)
+                }
+                Write-Status "SAFE_STOP_VERIFY=VERIFIED_ALL_WORKERS_EXCEL_PORTS_GONE; state removed." Green
                 [Environment]::Exit(0)
             }
         }
@@ -1832,9 +2169,20 @@ try {
             $gp = Get-Process -Id $state.gateway_pid -ErrorAction SilentlyContinue
             $gatewayPortReady = Test-Port $PORT_GATEWAY 250
             if ($null -eq $gp -or -not $gatewayPortReady) {
-                if ($null -ne $gp -and (Test-OwnedPidIdentity "gateway_pid" ([int]$state.gateway_pid))) {
-                    try { Stop-Process -Id ([int]$state.gateway_pid) -Force -ErrorAction SilentlyContinue } catch {}
-                    Start-Sleep -Milliseconds 250
+                if ($null -ne $gp) {
+                    if (-not (Test-OwnedPidIdentity "gateway_pid" ([int]$state.gateway_pid))) {
+                        throw "FOREIGN_GATEWAY_PID_PID: no restart and no process terminated."
+                    }
+                    try {
+                        $ownedHandle = $gp.Handle
+                        if ($ownedHandle -eq [IntPtr]::Zero -or $gp.HasExited) { throw "PROCESS_HANDLE_NOT_LIVE" }
+                        $gp.Kill()
+                        if (-not $gp.WaitForExit(5000) -or -not $gp.HasExited) {
+                            throw "GATEWAY_NOT_TERMINATED"
+                        }
+                    } catch {
+                        throw "VERIFIED_GATEWAY_PID_STOP_FAILED: refusing competing restart."
+                    }
                 }
                 Write-Status "Gateway is down or not listening - restarting one owned instance..." Red
                 $gatewayProc = Start-Worker -Name "gateway_retry" -Script $Gateway -WorkDir $RepoRootResolved -ExtraArgs $gatewayArgs
@@ -1847,9 +2195,20 @@ try {
             $bgp = Get-Process -Id $state.brain_gateway_pid -ErrorAction SilentlyContinue
             $brainPortReady = Test-Port $PORT_BRAIN 250
             if ($null -eq $bgp -or -not $brainPortReady) {
-                if ($null -ne $bgp -and (Test-OwnedPidIdentity "brain_gateway_pid" ([int]$state.brain_gateway_pid))) {
-                    try { Stop-Process -Id ([int]$state.brain_gateway_pid) -Force -ErrorAction SilentlyContinue } catch {}
-                    Start-Sleep -Milliseconds 250
+                if ($null -ne $bgp) {
+                    if (-not (Test-OwnedPidIdentity "brain_gateway_pid" ([int]$state.brain_gateway_pid))) {
+                        throw "FOREIGN_BRAIN_GATEWAY_PID_PID: no restart and no process terminated."
+                    }
+                    try {
+                        $ownedHandle = $bgp.Handle
+                        if ($ownedHandle -eq [IntPtr]::Zero -or $bgp.HasExited) { throw "PROCESS_HANDLE_NOT_LIVE" }
+                        $bgp.Kill()
+                        if (-not $bgp.WaitForExit(5000) -or -not $bgp.HasExited) {
+                            throw "GATEWAY_NOT_TERMINATED"
+                        }
+                    } catch {
+                        throw "VERIFIED_BRAIN_GATEWAY_PID_STOP_FAILED: refusing competing restart."
+                    }
                 }
                 Write-Status "Brain Gateway is down or not listening - restarting one owned instance..." Red
                 $brainGatewayProc = Start-Worker -Name "brain_gateway_retry" -Script $Gateway -WorkDir $RepoRootResolved -ExtraArgs $brainGatewayArgs
