@@ -31,7 +31,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Compare 24 unchanged + 1 UI stale repair + 4 security-pinned sources
+      - name: Compare source pins including explicit Controller and STOP safety repairs
         shell: bash
         run: |
           set -euo pipefail
@@ -49,12 +49,13 @@ jobs:
               # A separate V10 UI fail-closed contract validates content.
               echo "V10_INDEX_STALE_SAFETY_REPAIR=index.html"
               test "$(git rev-parse "HEAD:$file")" = "cb01cce5f7ed30f2670361ec5fad93ac3c57a693"
-            elif [[ "$file" == "downloads/STOP_AI_COCKPIT_V10.ps1" ||
+            elif [[ "$file" == "downloads/AI_COCKPIT_CONTROLLER_V10.ps1" ||
+                    "$file" == "downloads/STOP_AI_COCKPIT_V10.ps1" ||
                     "$file" == "downloads/AI_COCKPIT_GATEWAY_V10.ps1" ||
                     "$file" == "downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1" ||
                     "$file" == "ms2_live/MS2_RSS_100_Collector.ps1" ||
                     "$file" == "ms2_live/Kioxia_RSS_Live_Watcher.ps1" ]]; then
-              # Four explicit security repairs, each locked to the reviewed
+              # Explicit security repairs, each locked to the reviewed
               # HEAD:path blob, not falsely claimed identical to prior V10.
               expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
               test "$(git rev-parse "HEAD:$file")" = "$expected"
