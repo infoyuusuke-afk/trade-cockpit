@@ -209,6 +209,36 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertLess(orphan.index("Test-NoExcelWorkbooksForPid $ExcelPid"),
                         orphan.index("$xp.Kill()"))
 
+    def test_workbook_close_retains_state_until_worker_and_listener_checks_pass(self):
+        controller = (STOP.parent / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
+        audit = controller.split("function Test-V10WorkbookCloseTeardownComplete(", 1)[1].split(
+            "function Remove-V10VerifiedShutdownState(", 1)[0]
+        self.assertIn("Get-CimInstance Win32_Process", audit)
+        self.assertIn("Get-NetTCPConnection -State Listen -ErrorAction Stop", audit)
+        self.assertIn("28584", audit)
+        for field in ("watcher_pid", "collector_pid", "brain_gateway_pid",
+                      "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid",
+                      "brain_observer_pid"):
+            self.assertIn(field, audit)
+        deletion = controller.split("function Remove-V10VerifiedShutdownState(", 1)[1].split(
+            "function Start-Worker(", 1)[0]
+        self.assertIn("ConvertFrom-Json -ErrorAction Stop", deletion)
+        self.assertIn("[string]$disk.started_at -cne [string]$SessionState.started_at", deletion)
+        self.assertIn("Test-V10WorkbookCloseTeardownComplete $SessionState", deletion)
+        self.assertIn("Remove-Item -LiteralPath $StateFile -Force -ErrorAction Stop", deletion)
+        self.assertIn("-not (Test-Path -LiteralPath $StateFile)", deletion)
+        close = controller.split('Write-Status "Workbook close detected', 1)[1].split(
+            "# Voice backend is presentation-only", 1)[0]
+        self.assertIn("if (-not (Test-V10WorkbookCloseTeardownComplete $state))", close)
+        self.assertIn("if (-not (Remove-V10VerifiedShutdownState $state))", close)
+        self.assertIn("SAFE_STOP_VERIFY=WORKER_OR_PORT_REMAINS", close)
+        self.assertIn("SAFE_STOP_VERIFY=STATE_REMOVAL_UNVERIFIED", close)
+        self.assertNotIn("Remove-Item -LiteralPath $StateFile -Force -ErrorAction SilentlyContinue", close)
+        self.assertLess(close.index("Test-V10WorkbookCloseTeardownComplete $state"),
+                        close.index("Remove-V10VerifiedShutdownState $state"))
+        self.assertLess(close.index("Remove-V10VerifiedShutdownState $state"),
+                        close.index("[Environment]::Exit(0)"))
+
     def test_refusal_precedes_controller_stop(self):
         src = self.source
         preflight = src.index("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID")
