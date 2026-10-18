@@ -1,0 +1,60 @@
+name: V10 Price Freshness (Synthetic)
+# P0-V10-ACCEPTANCE-FIX-20261019. Proves with synthetic data only that an old
+# quote is never reported fresh by the Shadow supervisor, the V10 Gateway
+# /health and the Risk Gate, and that the three agree. CI PASS is not a
+# Windows real-machine acceptance and does not approve deployment.
+on:
+  pull_request:
+    paths:
+      - "scripts/ai_shadow_supervisor.py"
+      - "scripts/risk_gate.py"
+      - "downloads/AI_COCKPIT_GATEWAY_V10.ps1"
+      - "ms2_live/MS2_RSS_100_Collector.ps1"
+      - "tests/test_v10_price_freshness.py"
+      - "tests/test_risk_gate.py"
+      - "tests/fixtures/v10_price_freshness_cases.json"
+      - ".github/workflows/v10-price-freshness.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  freshness:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      # The verdict must not depend on the runner's local time zone.
+      TZ: America/Los_Angeles
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: PowerShell available for Gateway/Collector parity
+        shell: bash
+        run: |
+          if command -v powershell >/dev/null 2>&1; then echo "PS=powershell"; elif command -v pwsh >/dev/null 2>&1; then echo "PS=pwsh"; else echo "NO_POWERSHELL"; exit 1; fi
+      - name: Freshness negative/positive cases, Shadow/health/Risk Gate parity
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m unittest tests/test_v10_price_freshness.py -v 2>&1 | tee freshness.log
+          if grep -E "skipped|SKIP" freshness.log; then echo "PARITY_TESTS_MUST_NOT_SKIP"; exit 1; fi
+      - name: Existing Risk Gate regression
+        shell: bash
+        run: python -m unittest tests/test_risk_gate.py -v
+      - name: Parse changed PowerShell without launching anything
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($path in @('downloads/AI_COCKPIT_GATEWAY_V10.ps1','ms2_live/MS2_RSS_100_Collector.ps1')) {
+            $tokens=$null; $parseErrors=$null
+            [void][Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path,[ref]$tokens,[ref]$parseErrors)
+            if ($parseErrors.Count -gt 0) { throw ('V10_FRESHNESS_PS_PARSE_FAILED: ' + $path) }
+          }
+          Write-Output "REAL_SUBMIT_ALLOWED=0"
+          Write-Output "APPROVED_FOR_RUNTIME=0"

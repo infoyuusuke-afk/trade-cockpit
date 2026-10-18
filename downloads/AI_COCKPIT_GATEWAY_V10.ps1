@@ -362,6 +362,7 @@ function Get-ShadowEnginePublication([string]$RuntimeDirectory) {
         shadow_ops = $null
         shadow_latest_incident = $null
         shadow_ui_independent = $true
+        shadow_quote_freshness = $null
     }
     if ([string]::IsNullOrWhiteSpace($RuntimeDirectory)) { return $result }
     $path = Join-Path $RuntimeDirectory "ai_shadow_status.json"
@@ -397,6 +398,7 @@ function Get-ShadowEnginePublication([string]$RuntimeDirectory) {
         $result.shadow_open_observation_count = $status.open_observation_count
         $result.shadow_ops = $status.ops
         $result.shadow_latest_incident = $status.latest_incident
+        $result.shadow_quote_freshness = $status.quote_freshness
         return $result
     } catch {
         $result.shadow_engine_state = "PAUSED_FAIL_CLOSED"
@@ -615,6 +617,155 @@ function Get-PublishedWorkbookGate {
     return ($reasons -join ",")
 }
 
+# Quote freshness (P0-V10-ACCEPTANCE-FIX-20261019). Same rules and reason
+# codes as assess_quote_freshness in scripts/ai_shadow_supervisor.py; the
+# shared synthetic cases in tests/fixtures/v10_price_freshness_cases.json are
+# run against both. Writer time (updated_at, mtime) is not quote time: a
+# time-of-day without a dated, offset-carrying source_timestamp_at is never
+# fresh. All clock arithmetic is explicit JST, not the PC's local zone.
+function Get-JstNow {
+    return [DateTimeOffset]::UtcNow.ToOffset([TimeSpan]::FromHours(9))
+}
+
+function ConvertFrom-OffsetTimestamp($Value) {
+    if ($Value -isnot [string]) { return $null }
+    $text = $Value.Trim()
+    if ([string]::IsNullOrEmpty($text) -or $text -notmatch '(Z|[+-]\d{2}:?\d{2})$') { return $null }
+    $parsed = [DateTimeOffset]::MinValue
+    $styles = [Globalization.DateTimeStyles]::None
+    if (-not [DateTimeOffset]::TryParse($text, [Globalization.CultureInfo]::InvariantCulture, $styles, [ref]$parsed)) { return $null }
+    return $parsed.ToOffset([TimeSpan]::FromHours(9))
+}
+
+function Get-MarketSession([DateTimeOffset]$Moment) {
+    $local = $Moment.ToOffset([TimeSpan]::FromHours(9))
+    if ($local.DayOfWeek -eq [DayOfWeek]::Saturday -or $local.DayOfWeek -eq [DayOfWeek]::Sunday) { return "CLOSED_WEEKEND" }
+    $clock = $local.TimeOfDay
+    foreach ($window in @(@('09:00:00','11:30:00'), @('12:30:00','15:30:00'))) {
+        if ($clock -ge [TimeSpan]::Parse($window[0]) -and $clock -le [TimeSpan]::Parse($window[1])) { return "OPEN_BY_CLOCK" }
+    }
+    return "CLOSED_OUTSIDE_HOURS"
+}
+
+function New-QuoteFreshnessVerdict([string]$State, [string[]]$Reasons, [DateTimeOffset]$Now, $QuoteAt, $Basis, [int]$MaxAge) {
+    $list = New-Object System.Collections.Generic.List[string]
+    foreach ($reason in @($Reasons)) { if (-not [string]::IsNullOrEmpty($reason) -and -not $list.Contains($reason)) { [void]$list.Add($reason) } }
+    $sorted = $list.ToArray()
+    [Array]::Sort($sorted, [StringComparer]::Ordinal)
+    $fmt = "yyyy-MM-ddTHH:mm:sszzz"
+    $inv = [Globalization.CultureInfo]::InvariantCulture
+    $age = $null
+    $quoteText = $null
+    if ($null -ne $QuoteAt) {
+        $age = [Math]::Round(($Now - $QuoteAt).TotalSeconds, 3)
+        $quoteText = $QuoteAt.ToString($fmt, $inv)
+    }
+    return [ordered]@{
+        schema_version = "price-freshness-1"
+        state = $State
+        fresh = ($State -eq "FRESH" -and $sorted.Count -eq 0)
+        reasons = @($sorted)
+        quote_at = $quoteText
+        quote_basis = $(if ($Basis -is [string]) { $Basis } else { $null })
+        quote_age_seconds = $age
+        evaluated_at = $Now.ToString($fmt, $inv)
+        max_quote_age_seconds = $MaxAge
+        market_session = (Get-MarketSession $Now)
+        timezone = "Asia/Tokyo"
+        order_allowed = $false
+        real_submit_allowed = $false
+    }
+}
+
+function Get-QuoteFreshness {
+    param(
+        $LiveObj,
+        [DateTimeOffset]$Now = (Get-JstNow),
+        $PreviousQuoteAt = $null,
+        [int]$MaxQuoteAgeSeconds = 120,
+        [int]$FutureSkewSeconds = 5
+    )
+    $Now = $Now.ToOffset([TimeSpan]::FromHours(9))
+    if ($null -eq $LiveObj) { return (New-QuoteFreshnessVerdict "UNKNOWN" @("MISSING_PAYLOAD") $Now $null $null $MaxQuoteAgeSeconds) }
+    $diag = $LiveObj.live_price_diagnostics
+    if ($null -eq $diag) { $diag = [pscustomobject]@{} }
+    $rawTime = $diag.source_timestamp
+    $rawAt = $diag.source_timestamp_at
+    $basis = $diag.source_timestamp_basis
+    $timeOnly = ($rawTime -is [string] -and $rawTime.Trim() -match '^\d{2}:\d{2}:\d{2}$')
+
+    if ($null -eq $rawAt -or ($rawAt -is [string] -and $rawAt -eq "")) {
+        $reason = if ($null -eq $rawTime -or ($rawTime -is [string] -and $rawTime -eq "")) { "SOURCE_TIMESTAMP_MISSING" } elseif ($timeOnly) { "SOURCE_DATE_UNKNOWN" } else { "SOURCE_TIMESTAMP_UNPARSEABLE" }
+        return (New-QuoteFreshnessVerdict "UNKNOWN" @($reason) $Now $null $basis $MaxQuoteAgeSeconds)
+    }
+    $quoteAt = ConvertFrom-OffsetTimestamp $rawAt
+    if ($null -eq $quoteAt) { return (New-QuoteFreshnessVerdict "UNKNOWN" @("SOURCE_TIMESTAMP_NO_OFFSET") $Now $null $basis $MaxQuoteAgeSeconds) }
+    if (@("MS2_RSS_DATE_ITEM", "COLLECTOR_OBSERVED_CHANGE") -cnotcontains [string]$basis -or $basis -isnot [string]) {
+        return (New-QuoteFreshnessVerdict "UNKNOWN" @("SOURCE_DATE_BASIS_UNVERIFIED") $Now $quoteAt $basis $MaxQuoteAgeSeconds)
+    }
+
+    $invalid = New-Object System.Collections.Generic.List[string]
+    $inv = [Globalization.CultureInfo]::InvariantCulture
+    if ($timeOnly) {
+        if ($quoteAt.ToString("HH:mm:ss", $inv) -ne $rawTime.Trim()) { [void]$invalid.Add("SOURCE_TIMESTAMP_INCONSISTENT") }
+    } elseif (-not ($null -eq $rawTime -or ($rawTime -is [string] -and $rawTime -eq ""))) {
+        [void]$invalid.Add("SOURCE_TIMESTAMP_UNPARSEABLE")
+    }
+    $age = ($Now - $quoteAt).TotalSeconds
+    if ($age -lt -$FutureSkewSeconds) { [void]$invalid.Add("SOURCE_TIMESTAMP_IN_FUTURE") }
+
+    if ($basis -ceq "COLLECTOR_OBSERVED_CHANGE") {
+        $observed = ConvertFrom-OffsetTimestamp $diag.source_timestamp_observed_at
+        if ($null -eq $observed) { return (New-QuoteFreshnessVerdict "UNKNOWN" @("SOURCE_OBSERVATION_MISSING") $Now $quoteAt $basis $MaxQuoteAgeSeconds) }
+        if (($observed - $Now).TotalSeconds -gt $FutureSkewSeconds) { [void]$invalid.Add("SOURCE_OBSERVATION_IN_FUTURE") }
+        if (($quoteAt - $observed).TotalSeconds -gt $FutureSkewSeconds) { [void]$invalid.Add("SOURCE_TIMESTAMP_AFTER_OBSERVATION") }
+    }
+
+    $previous = ConvertFrom-OffsetTimestamp $PreviousQuoteAt
+    if ($null -ne $previous -and $quoteAt -lt $previous) { [void]$invalid.Add("SOURCE_TIMESTAMP_REGRESSION") }
+
+    $rowDates = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($row in @($LiveObj.all_targets)) {
+        if ($null -eq $row) { continue }
+        $rowAt = $row.source_timestamp_at
+        if ($null -eq $rowAt -or ($rowAt -is [string] -and $rowAt -eq "")) { continue }
+        $parsedRow = ConvertFrom-OffsetTimestamp $rowAt
+        [void]$rowDates.Add($(if ($null -eq $parsedRow) { "INVALID" } else { $parsedRow.ToString("yyyy-MM-dd", $inv) }))
+    }
+    if ($rowDates.Count -gt 0 -and ($rowDates.Count -ne 1 -or -not $rowDates.Contains($quoteAt.ToString("yyyy-MM-dd", $inv)))) {
+        [void]$invalid.Add("MIXED_SOURCE_DATES")
+    }
+
+    if ($invalid.Count -gt 0) { return (New-QuoteFreshnessVerdict "INVALID" $invalid.ToArray() $Now $quoteAt $basis $MaxQuoteAgeSeconds) }
+    if ($age -gt $MaxQuoteAgeSeconds) { return (New-QuoteFreshnessVerdict "STALE" @("STALE_SOURCE_QUOTE") $Now $quoteAt $basis $MaxQuoteAgeSeconds) }
+    return (New-QuoteFreshnessVerdict "FRESH" @() $Now $quoteAt $basis $MaxQuoteAgeSeconds)
+}
+
+function Get-CombinedQuoteFreshness($GatewayVerdict, $ShadowVerdict) {
+    # /health is fresh only when its own verdict and the Shadow supervisor's
+    # published verdict are both FRESH. Either side missing, not fresh, or the
+    # two disagreeing (one FRESH, one not) is fail-closed.
+    $reasons = New-Object System.Collections.Generic.List[string]
+    foreach ($verdict in @($GatewayVerdict, $ShadowVerdict)) {
+        if ($null -eq $verdict) { [void]$reasons.Add("FRESHNESS_VERDICT_MISSING"); continue }
+        if ($verdict.fresh -ne $true -or [string]$verdict.state -cne "FRESH") {
+            $own = @($verdict.reasons | Where-Object { -not [string]::IsNullOrEmpty([string]$_) })
+            if ($own.Count -eq 0) { [void]$reasons.Add("FRESHNESS_NOT_FRESH") } else { foreach ($r in $own) { [void]$reasons.Add([string]$r) } }
+        }
+        if ($verdict.real_submit_allowed -ne $false) { [void]$reasons.Add("REAL_SUBMIT_NOT_FALSE") }
+    }
+    if ($null -eq $GatewayVerdict -or $null -eq $ShadowVerdict -or
+        [string]$GatewayVerdict.state -cne [string]$ShadowVerdict.state -or
+        ($GatewayVerdict.fresh -eq $true) -ne ($ShadowVerdict.fresh -eq $true)) {
+        [void]$reasons.Add("FRESHNESS_VERDICT_MISMATCH")
+    }
+    $unique = @($reasons | Select-Object -Unique)
+    $sorted = [string[]]$unique
+    if ($null -eq $sorted) { $sorted = [string[]]@() }
+    [Array]::Sort($sorted, [StringComparer]::Ordinal)
+    return [ordered]@{ fresh = ($sorted.Count -eq 0); reasons = @($sorted); real_submit_allowed = $false }
+}
+
 function Get-LivePriceRejection {
     param(
         $LiveObj,
@@ -622,9 +773,17 @@ function Get-LivePriceRejection {
         [double]$PayloadAgeSeconds,
         $UpdatedAtRaw,
         $FileMtime,
-        [int]$MaxAgeSeconds = 60
+        [int]$MaxAgeSeconds = 60,
+        $QuoteFreshness = $null
     )
     $reasons = New-Object System.Collections.Generic.List[string]
+    # A recent write is not a recent quote. Without a fresh, dated quote the
+    # payload is stale even when updated_at and mtime are seconds old.
+    if ($null -eq $QuoteFreshness) { $QuoteFreshness = Get-QuoteFreshness -LiveObj $LiveObj }
+    if ($QuoteFreshness.fresh -ne $true) {
+        foreach ($r in @($QuoteFreshness.reasons)) { if (-not [string]::IsNullOrEmpty([string]$r)) { [void]$reasons.Add([string]$r) } }
+        if (@($QuoteFreshness.reasons).Count -eq 0) { [void]$reasons.Add("FRESHNESS_NOT_FRESH") }
+    }
     $canonicalSource = "MarketSpeed II RSS / local PC"
     $fresh = (
         $FileAgeSeconds -ge 0 -and $FileAgeSeconds -le $MaxAgeSeconds -and
@@ -710,7 +869,11 @@ function Get-LivePriceRejection {
     }
     $unique = @($reasons | Select-Object -Unique)
     if ($unique.Count -eq 0) { return $null }
-    $identity = @($unique | Where-Object { $_ -notin @("STALE_OR_MISSING_TIMESTAMP","LIVE_VALUES_UNAVAILABLE","INSUFFICIENT_COVERAGE") })
+    $freshnessCodes = @("STALE_SOURCE_QUOTE","SOURCE_DATE_UNKNOWN","SOURCE_TIMESTAMP_MISSING","SOURCE_TIMESTAMP_UNPARSEABLE",
+        "SOURCE_TIMESTAMP_NO_OFFSET","SOURCE_DATE_BASIS_UNVERIFIED","SOURCE_TIMESTAMP_INCONSISTENT","SOURCE_TIMESTAMP_IN_FUTURE",
+        "SOURCE_OBSERVATION_MISSING","SOURCE_OBSERVATION_IN_FUTURE","SOURCE_TIMESTAMP_AFTER_OBSERVATION",
+        "SOURCE_TIMESTAMP_REGRESSION","MIXED_SOURCE_DATES","FRESHNESS_NOT_FRESH","MISSING_PAYLOAD")
+    $identity = @($unique | Where-Object { $_ -notin (@("STALE_OR_MISSING_TIMESTAMP","LIVE_VALUES_UNAVAILABLE","INSUFFICIENT_COVERAGE") + $freshnessCodes) })
     $statusName = if ($identity.Count -gt 0) { "PRICE_SOURCE_MISMATCH" } else { "stale" }
     $reasonText = if ($unique -contains "STALE_OR_MISSING_TIMESTAMP" -and $identity.Count -eq 0) {
         "live_ms2.json freshness threshold exceeded"
@@ -737,6 +900,7 @@ function Get-LivePriceRejection {
         real_submit_allowed = $false
         live_values_available = $false
         max_age_seconds = $MaxAgeSeconds
+        quote_freshness = $QuoteFreshness
     }
 }
 
@@ -1100,6 +1264,7 @@ try {
                         )
                     }
                 } catch {}
+                $healthLive = $null
                 if ($liveExists) {
                     try {
                         $healthLive = Read-JsonUtf8 $liveJson
@@ -1127,6 +1292,22 @@ try {
                             if (-not [string]::IsNullOrWhiteSpace([string]$healthDiag.stale_reason)) { $runtime.stale_reason = [string]$healthDiag.stale_reason }
                         }
                     } catch {}
+                }
+                # Quote freshness: /health agrees with the Shadow supervisor or
+                # fails closed. A recent live_ms2.json write is not enough.
+                $gatewayFreshness = Get-QuoteFreshness -LiveObj $healthLive
+                $shadowFreshness = (Get-ShadowEnginePublication $RuntimeDir).shadow_quote_freshness
+                $freshnessCombined = Get-CombinedQuoteFreshness $gatewayFreshness $shadowFreshness
+                $runtime['quote_freshness'] = $gatewayFreshness
+                $runtime['shadow_quote_freshness'] = $shadowFreshness
+                $runtime['quote_freshness_combined'] = $freshnessCombined
+                if ($freshnessCombined.fresh -ne $true) {
+                    $runtime.fail_closed = $true
+                    if ([string]$runtime.price_source_status -eq "OK" -or [string]::IsNullOrWhiteSpace([string]$runtime.price_source_status)) {
+                        $runtime.price_source_status = "STALE"
+                    }
+                    $staleParts = @(([string]$runtime.stale_reason) -split ',' | Where-Object { $_ }) + @($freshnessCombined.reasons)
+                    $runtime.stale_reason = (@($staleParts | Select-Object -Unique) -join ',')
                 }
                 # Read only the Watcher-owned local JSON. It may live in a
                 # different working tree; in that case state stays UNKNOWN.

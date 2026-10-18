@@ -66,6 +66,7 @@ function Get-SheetSymbolCode($table, [int]$row) {
 
 $script:IdentityTicker = "285A.T"
 $script:preopenIdentitySpare = $null
+$script:identityQuoteObservation = $null
 
 function Get-NormalizedLocalWorkbookPath([string]$Value) {
     if ([string]::IsNullOrWhiteSpace($Value)) { return "" }
@@ -190,6 +191,43 @@ function Test-PreopenZeroPriceIdentity([bool]$InPreopen, [string]$Ticker, [strin
     if ([string]$QuoteTime -notmatch '^\d{2}:\d{2}:\d{2}$') { return $false }
     if ($null -ne $Price) { return $false }
     return $true
+}
+
+function Get-JstNow {
+    # Explicit JST (UTC+09:00, no DST). Never the PC's local time zone.
+    return [DateTimeOffset]::UtcNow.ToOffset([TimeSpan]::FromHours(9))
+}
+
+function Update-QuoteObservation($Previous, [string]$SourceTime, [DateTimeOffset]$NowJst, [int]$FutureSkewSeconds = 5) {
+    # MS2 RSS 現在値詳細時刻 has no date. A date is attached only when this
+    # Collector saw the value change: the change happened by NowJst, so the
+    # quote belongs to NowJst's JST date unless that would put it in the
+    # future. The first value after start, an unchanged value carried from an
+    # earlier day, or a malformed value never gets a date invented for it.
+    $text = ([string]$SourceTime).Trim()
+    $jst = $NowJst.ToOffset([TimeSpan]::FromHours(9))
+    if ($text -notmatch '^\d{2}:\d{2}:\d{2}$') {
+        return [pscustomobject]@{ source_time = $text; source_timestamp_at = $null; basis = "SOURCE_TIME_MISSING"; observed_at = $null }
+    }
+    if ($null -eq $Previous) {
+        return [pscustomobject]@{ source_time = $text; source_timestamp_at = $null; basis = "UNOBSERVED_SINCE_START"; observed_at = $null }
+    }
+    if ([string]$Previous.source_time -eq $text) { return $Previous }
+    $clock = [TimeSpan]::Zero
+    if (-not [TimeSpan]::TryParseExact($text, 'hh\:mm\:ss', [Globalization.CultureInfo]::InvariantCulture, [ref]$clock)) {
+        return [pscustomobject]@{ source_time = $text; source_timestamp_at = $null; basis = "SOURCE_TIME_MISSING"; observed_at = $null }
+    }
+    $candidate = [DateTimeOffset]::new($jst.Date.Add($clock), [TimeSpan]::FromHours(9))
+    $observed = $jst.ToString("yyyy-MM-ddTHH:mm:sszzz", [Globalization.CultureInfo]::InvariantCulture)
+    if (($candidate - $jst).TotalSeconds -gt $FutureSkewSeconds) {
+        return [pscustomobject]@{ source_time = $text; source_timestamp_at = $null; basis = "SOURCE_TIME_AFTER_OBSERVATION"; observed_at = $observed }
+    }
+    return [pscustomobject]@{
+        source_time = $text
+        source_timestamp_at = $candidate.ToString("yyyy-MM-ddTHH:mm:sszzz", [Globalization.CultureInfo]::InvariantCulture)
+        basis = "COLLECTOR_OBSERVED_CHANGE"
+        observed_at = $observed
+    }
 }
 
 function Get-IdentityQuote($Rows) {
@@ -1804,6 +1842,7 @@ try {
         $workbookCanonical = Test-BoundWorkbookIdentity $loopName $loopFull $script:canonicalWorkbookPath $WorkbookName
         if (-not $workbookCanonical) { [void]$sourceReasons.Add("WRONG_SOURCE_WORKBOOK") }
         $identityQuote = Get-IdentityQuote $results
+        $script:identityQuoteObservation = Update-QuoteObservation $script:identityQuoteObservation ([string]$identityQuote.source_timestamp) (Get-JstNow)
         if (-not $identityQuote.ok) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
         if ($symbolMismatchCount -gt 0) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
         $collectorProcessCount = Get-ScriptProcessCount "MS2_RSS_100_Collector.ps1"
@@ -1826,6 +1865,10 @@ try {
         if ($workbookCanonical) { $publishedFullName = [IO.Path]::GetFileName($script:canonicalWorkbookPath) }
         $livePriceDiagnostics = [ordered]@{
             source_timestamp = $identityQuote.source_timestamp
+            source_timestamp_at = $script:identityQuoteObservation.source_timestamp_at
+            source_timestamp_basis = $script:identityQuoteObservation.basis
+            source_timestamp_observed_at = $script:identityQuoteObservation.observed_at
+            source_timezone = "Asia/Tokyo"
             updated_at = $now.ToString("yyyy-MM-dd HH:mm:ss")
             symbol = $identityQuote.symbol
             current_price = $identityQuote.current_price

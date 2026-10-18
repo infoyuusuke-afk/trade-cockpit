@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Compare 24 unchanged + 1 UI stale repair + 4 security-pinned sources
+      - name: Compare 23 unchanged + 1 UI stale repair + 4 security-pinned + 1 freshness-repaired sources
         shell: bash
         run: |
           set -euo pipefail
@@ -48,6 +48,14 @@ jobs:
               # A separate V10 UI fail-closed contract validates content.
               echo "V10_INDEX_STALE_SAFETY_REPAIR=index.html"
               test "$(git rev-parse "HEAD:$file")" = "cb01cce5f7ed30f2670361ec5fad93ac3c57a693"
+            elif [[ "$file" == "scripts/ai_shadow_supervisor.py" ]]; then
+              # P0-V10-ACCEPTANCE-FIX-20261019 quote-freshness repair (writer
+              # time is not quote time). Locked to the manifest blob; the
+              # synthetic proof is tests/test_v10_price_freshness.py.
+              expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
+              test "$(git rev-parse "HEAD:$file")" = "$expected"
+              test "$(git rev-parse "HEAD:$file")" != "$(git rev-parse "$pinned:$file")"
+              echo "V10_PRICE_FRESHNESS_REPAIR=$file"
             elif [[ "$file" == "downloads/AI_COCKPIT_GATEWAY_V10.ps1" ||
                     "$file" == "downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1" ||
                     "$file" == "ms2_live/MS2_RSS_100_Collector.ps1" ||

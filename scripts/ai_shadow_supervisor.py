@@ -23,8 +23,9 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time as clock_time, timedelta, timezone
 from pathlib import Path
 
 SCHEMA_VERSION = "ai-shadow-supervisor-1"
@@ -69,18 +70,246 @@ def parse_timestamp(value, tz) -> datetime | None:
     return parsed.astimezone(tz)
 
 
-def assess_live_payload(payload, *, file_mtime: datetime | None, now: datetime, max_age_seconds: int = MAX_AGE_SECONDS) -> dict:
+# --- Quote freshness (P0-V10-ACCEPTANCE-FIX-20261019) ----------------------
+# Writer time is not quote time. updated_at, observed_at_offset and the file
+# mtime only prove that the Collector rewrote live_ms2.json. They say nothing
+# about when the market produced the price. The 2026-10-19 Windows acceptance
+# found a Friday 15:30 quote republished every 2 seconds and reported as fresh
+# at Monday 02:14 JST.
+#
+# The functions below judge the quote itself and keep four times apart:
+#   occurrence  source_timestamp (MS2 RSS 現在値詳細時刻, time of day only)
+#   quote_at    source_timestamp_at, the occurrence with an explicit date and
+#               offset, plus source_timestamp_basis saying how the date was
+#               found
+#   observed    source_timestamp_observed_at, when the Collector saw it change
+#   written     updated_at / file mtime (checked in assess_live_payload,
+#               necessary but never sufficient)
+# A time of day without a date is never assumed to be today. No date, no
+# offset, a future quote, a quote older than the last accepted one, or two
+# trading dates in one payload is not fresh. A closed market is reported
+# separately and never makes an old quote fresh. Every verdict carries
+# real_submit_allowed False and order_allowed False. Clock arithmetic uses JST
+# (UTC+09:00, no DST) explicitly, never the local time zone of the PC.
+
+FRESHNESS_SCHEMA_VERSION = "price-freshness-1"
+JST = timezone(timedelta(hours=9), "JST")
+MAX_QUOTE_AGE_SECONDS = 120
+FUTURE_SKEW_SECONDS = 5
+
+FRESH = "FRESH"
+STALE = "STALE"
+UNKNOWN = "UNKNOWN"
+INVALID = "INVALID"
+
+# Bases that carry real date evidence. Anything else is not a dated quote.
+DATED_BASES = frozenset({"MS2_RSS_DATE_ITEM", "COLLECTOR_OBSERVED_CHANGE"})
+
+# TSE cash equity continuous sessions (JST). Holidays are not modelled, so a
+# weekday holiday reports OPEN_BY_CLOCK; quote age still decides freshness.
+SESSIONS = ((clock_time(9, 0), clock_time(11, 30)), (clock_time(12, 30), clock_time(15, 30)))
+
+_TIME_ONLY = re.compile(r"^\d{2}:\d{2}:\d{2}$")
+_OFFSET_SUFFIX = re.compile(r"(Z|[+-]\d{2}:?\d{2})$")
+
+
+def now_jst() -> datetime:
+    return datetime.now(timezone.utc).astimezone(JST)
+
+
+def parse_offset_timestamp(value) -> datetime | None:
+    """ISO 8601 with an explicit offset only. Naive text is rejected."""
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text or not _OFFSET_SUFFIX.search(text):
+        return None
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    return parsed.astimezone(JST)
+
+
+def market_session(moment: datetime) -> str:
+    local = moment.astimezone(JST)
+    if local.weekday() >= 5:
+        return "CLOSED_WEEKEND"
+    clock = local.time()
+    for start, end in SESSIONS:
+        if start <= clock <= end:
+            return "OPEN_BY_CLOCK"
+    return "CLOSED_OUTSIDE_HOURS"
+
+
+def _quote_diagnostics(payload) -> dict:
+    diag = payload.get("live_price_diagnostics") if isinstance(payload, dict) else None
+    return diag if isinstance(diag, dict) else {}
+
+
+def _row_quote_dates(payload) -> set:
+    rows = payload.get("all_targets") if isinstance(payload, dict) else None
+    dates = set()
+    if not isinstance(rows, list):
+        return dates
+    for row in rows:
+        if not isinstance(row, dict) or row.get("source_timestamp_at") in (None, ""):
+            continue
+        parsed = parse_offset_timestamp(row.get("source_timestamp_at"))
+        dates.add(parsed.date() if parsed is not None else None)
+    return dates
+
+
+def _freshness_verdict(state: str, reasons: list[str], *, now: datetime,
+                       quote_at: datetime | None, basis, max_age: int) -> dict:
+    unique = sorted(set(reasons))
+    return {
+        "schema_version": FRESHNESS_SCHEMA_VERSION,
+        "state": state,
+        "fresh": state == FRESH and not unique,
+        "reasons": unique,
+        "quote_at": quote_at.isoformat(timespec="seconds") if quote_at is not None else None,
+        "quote_basis": basis if isinstance(basis, str) else None,
+        "quote_age_seconds": round((now - quote_at).total_seconds(), 3) if quote_at is not None else None,
+        "evaluated_at": now.isoformat(timespec="seconds"),
+        "max_quote_age_seconds": max_age,
+        "market_session": market_session(now),
+        "timezone": "Asia/Tokyo",
+        "order_allowed": False,
+        "real_submit_allowed": False,
+    }
+
+
+def assess_quote_freshness(payload, *, now: datetime, previous_quote_at=None,
+                           max_quote_age_seconds: int = MAX_QUOTE_AGE_SECONDS,
+                           future_skew_seconds: int = FUTURE_SKEW_SECONDS) -> dict:
+    """Freshness verdict for the identity quote of a live payload."""
+    if not isinstance(now, datetime) or now.tzinfo is None or now.utcoffset() is None:
+        epoch = datetime(1970, 1, 1, tzinfo=JST)
+        return _freshness_verdict(INVALID, ["NOW_NOT_TIMEZONE_AWARE"], now=epoch, quote_at=None,
+                                  basis=None, max_age=max_quote_age_seconds)
+    now = now.astimezone(JST)
+    if not isinstance(payload, dict):
+        return _freshness_verdict(UNKNOWN, ["MISSING_PAYLOAD"], now=now, quote_at=None,
+                                  basis=None, max_age=max_quote_age_seconds)
+
+    diag = _quote_diagnostics(payload)
+    raw_time = diag.get("source_timestamp")
+    raw_at = diag.get("source_timestamp_at")
+    basis = diag.get("source_timestamp_basis")
+
+    if raw_at in (None, ""):
+        if raw_time in (None, ""):
+            reason = "SOURCE_TIMESTAMP_MISSING"
+        elif isinstance(raw_time, str) and _TIME_ONLY.match(raw_time.strip()):
+            reason = "SOURCE_DATE_UNKNOWN"
+        else:
+            reason = "SOURCE_TIMESTAMP_UNPARSEABLE"
+        return _freshness_verdict(UNKNOWN, [reason], now=now, quote_at=None, basis=basis,
+                                  max_age=max_quote_age_seconds)
+
+    quote_at = parse_offset_timestamp(raw_at)
+    if quote_at is None:
+        return _freshness_verdict(UNKNOWN, ["SOURCE_TIMESTAMP_NO_OFFSET"], now=now, quote_at=None,
+                                  basis=basis, max_age=max_quote_age_seconds)
+    if not isinstance(basis, str) or basis not in DATED_BASES:
+        return _freshness_verdict(UNKNOWN, ["SOURCE_DATE_BASIS_UNVERIFIED"], now=now,
+                                  quote_at=quote_at, basis=basis, max_age=max_quote_age_seconds)
+
+    invalid: list[str] = []
+    if isinstance(raw_time, str) and _TIME_ONLY.match(raw_time.strip()):
+        if quote_at.strftime("%H:%M:%S") != raw_time.strip():
+            invalid.append("SOURCE_TIMESTAMP_INCONSISTENT")
+    elif raw_time not in (None, ""):
+        invalid.append("SOURCE_TIMESTAMP_UNPARSEABLE")
+
+    age = (now - quote_at).total_seconds()
+    if age < -future_skew_seconds:
+        invalid.append("SOURCE_TIMESTAMP_IN_FUTURE")
+
+    if basis == "COLLECTOR_OBSERVED_CHANGE":
+        observed = parse_offset_timestamp(diag.get("source_timestamp_observed_at"))
+        if observed is None:
+            return _freshness_verdict(UNKNOWN, ["SOURCE_OBSERVATION_MISSING"], now=now,
+                                      quote_at=quote_at, basis=basis, max_age=max_quote_age_seconds)
+        if (observed - now).total_seconds() > future_skew_seconds:
+            invalid.append("SOURCE_OBSERVATION_IN_FUTURE")
+        if (quote_at - observed).total_seconds() > future_skew_seconds:
+            invalid.append("SOURCE_TIMESTAMP_AFTER_OBSERVATION")
+
+    previous = previous_quote_at
+    if isinstance(previous, str):
+        previous = parse_offset_timestamp(previous)
+    if isinstance(previous, datetime) and previous.tzinfo is not None and quote_at < previous.astimezone(JST):
+        invalid.append("SOURCE_TIMESTAMP_REGRESSION")
+
+    dates = _row_quote_dates(payload)
+    if None in dates or (dates and dates != {quote_at.date()}):
+        invalid.append("MIXED_SOURCE_DATES")
+
+    if invalid:
+        return _freshness_verdict(INVALID, invalid, now=now, quote_at=quote_at, basis=basis,
+                                  max_age=max_quote_age_seconds)
+    if age > max_quote_age_seconds:
+        return _freshness_verdict(STALE, ["STALE_SOURCE_QUOTE"], now=now, quote_at=quote_at,
+                                  basis=basis, max_age=max_quote_age_seconds)
+    return _freshness_verdict(FRESH, [], now=now, quote_at=quote_at, basis=basis,
+                              max_age=max_quote_age_seconds)
+
+
+def freshness_verdicts_agree(*verdicts) -> bool:
+    """Components agree when they reach the same state and the same fresh bit.
+
+    They evaluate at slightly different instants (Shadow every 5 seconds,
+    /health per request), so two FRESH verdicts may name different quotes.
+    One component calling a quote fresh while another does not is a mismatch.
+    """
+    if len(verdicts) < 2:
+        return False
+    keys = set()
+    for verdict in verdicts:
+        if not isinstance(verdict, dict):
+            return False
+        keys.add((verdict.get("state"), verdict.get("fresh") is True))
+    return len(keys) == 1
+
+
+def combined_freshness(*verdicts) -> tuple[bool, list[str]]:
+    """Fresh only if every verdict is fresh and all of them agree."""
+    reasons: list[str] = []
+    if not freshness_verdicts_agree(*verdicts):
+        reasons.append("FRESHNESS_VERDICT_MISMATCH")
+    for verdict in verdicts:
+        if not isinstance(verdict, dict):
+            reasons.append("FRESHNESS_VERDICT_MISSING")
+            continue
+        if verdict.get("fresh") is not True or verdict.get("state") != FRESH:
+            reasons.extend(verdict.get("reasons") or ["FRESHNESS_NOT_FRESH"])
+        if verdict.get("real_submit_allowed") is not False:
+            reasons.append("REAL_SUBMIT_NOT_FALSE")
+    unique = sorted(set(reasons))
+    return (not unique, unique)
+
+
+def assess_live_payload(payload, *, file_mtime: datetime | None, now: datetime, max_age_seconds: int = MAX_AGE_SECONDS,
+                        previous_quote_at=None) -> dict:
     """Same fail-closed idea as the gateway/collector price gate.
 
     Unknown, stale, sample, conflicting, or non-canonical input is not tradable.
-    A passing verdict still forces real_submit_allowed false.
+    A recent write (updated_at, mtime) is required but does not make the quote
+    fresh: assess_quote_freshness must also pass. A passing verdict still
+    forces real_submit_allowed false.
     """
     reasons: list[str] = []
     if now.tzinfo is None or now.utcoffset() is None:
         reasons.append("NOW_NOT_TIMEZONE_AWARE")
     if not isinstance(payload, dict):
         reasons.append("MISSING_PAYLOAD")
-        return _verdict(reasons)
+        return _verdict(reasons, assess_quote_freshness(payload, now=now))
 
     if payload.get("real_submit_allowed") is not False:
         reasons.append("REAL_SUBMIT_NOT_FALSE")
@@ -147,12 +376,19 @@ def assess_live_payload(payload, *, file_mtime: datetime | None, now: datetime, 
         mage = (now - file_mtime.astimezone(tz)).total_seconds()
         if mage < 0 or mage > max_age_seconds:
             reasons.append("STALE_OR_MISSING_TIMESTAMP")
-    return _verdict(reasons)
+    freshness = assess_quote_freshness(payload, now=now, previous_quote_at=previous_quote_at)
+    if not freshness["fresh"]:
+        reasons.extend(freshness["reasons"] or ["FRESHNESS_NOT_FRESH"])
+        # The Collector's own stale flag said fresh while the quote is not:
+        # the two judgements disagree, which is itself a fail-closed reason.
+        if isinstance(payload, dict) and payload.get("stale") is False:
+            reasons.append("FRESHNESS_VERDICT_MISMATCH")
+    return _verdict(reasons, freshness)
 
 
-def _verdict(reasons: list[str]) -> dict:
+def _verdict(reasons: list[str], freshness: dict | None = None) -> dict:
     unique = sorted(set(reasons))
-    return {"ok": not unique, "reasons": unique, "real_submit_allowed": False}
+    return {"ok": not unique, "reasons": unique, "real_submit_allowed": False, "quote_freshness": freshness}
 
 
 def board_fingerprint(payload: dict) -> str:
@@ -497,6 +733,9 @@ def _primary_reason(reasons: list[str]) -> str:
         return "UNKNOWN"
     preferred = (
         "PRICE_SOURCE_MISMATCH", "DATA_CONFLICT", "STALE_OR_MISSING_TIMESTAMP",
+        "FRESHNESS_VERDICT_MISMATCH", "STALE_SOURCE_QUOTE", "SOURCE_DATE_UNKNOWN",
+        "SOURCE_TIMESTAMP_MISSING", "SOURCE_TIMESTAMP_IN_FUTURE", "SOURCE_TIMESTAMP_REGRESSION",
+        "MIXED_SOURCE_DATES",
         "CACHED_OR_SAMPLE_PAYLOAD", "WRONG_SOURCE_WORKBOOK", "WRONG_SYMBOL_MAPPING",
         "DUPLICATE_COLLECTOR", "DUPLICATE_WATCHER", "LIVE_VALUES_UNAVAILABLE",
         "MISSING_PAYLOAD", "REAL_SUBMIT_NOT_FALSE",
@@ -507,12 +746,21 @@ def _primary_reason(reasons: list[str]) -> str:
     return reasons[0]
 
 
+FRESHNESS_REASONS = frozenset({
+    "STALE_SOURCE_QUOTE", "SOURCE_DATE_UNKNOWN", "SOURCE_TIMESTAMP_MISSING", "SOURCE_TIMESTAMP_UNPARSEABLE",
+    "SOURCE_TIMESTAMP_NO_OFFSET", "SOURCE_DATE_BASIS_UNVERIFIED", "SOURCE_TIMESTAMP_INCONSISTENT",
+    "SOURCE_TIMESTAMP_IN_FUTURE", "SOURCE_OBSERVATION_MISSING", "SOURCE_OBSERVATION_IN_FUTURE",
+    "SOURCE_TIMESTAMP_AFTER_OBSERVATION", "SOURCE_TIMESTAMP_REGRESSION", "MIXED_SOURCE_DATES",
+    "FRESHNESS_VERDICT_MISMATCH", "FRESHNESS_NOT_FRESH",
+})
+
+
 def _component_for(reason: str) -> str:
     if reason in {"DUPLICATE_COLLECTOR", "COLLECTOR_PROCESS_UNVERIFIED"}:
         return "collector"
     if reason == "DUPLICATE_WATCHER":
         return "watcher"
-    if reason in {"STALE_OR_MISSING_TIMESTAMP", "MISSING_PAYLOAD", "INSUFFICIENT_COVERAGE"}:
+    if reason in {"STALE_OR_MISSING_TIMESTAMP", "MISSING_PAYLOAD", "INSUFFICIENT_COVERAGE"} or reason in FRESHNESS_REASONS:
         return "live_ms2"
     if reason in {"PRICE_SOURCE_MISMATCH", "WRONG_SOURCE_WORKBOOK", "WRONG_SYMBOL_MAPPING", "CACHED_OR_SAMPLE_PAYLOAD", "DATA_CONFLICT"}:
         return "price_source"
@@ -942,6 +1190,7 @@ def status_snapshot(engine: dict, *, now: datetime) -> dict:
         "open_observation_count": len(engine["open_positions"]),
         "resume_blocked": engine["state"].get("resume_blocked") is True,
         "engine_pid": os.getpid(),
+        "quote_freshness": engine.get("quote_freshness"),
         "latest_incident": latest,
         "ops": ops,
     }
@@ -1041,18 +1290,24 @@ def read_manual_recovery(data_dir: Path) -> str:
 
 
 def run_once(data_dir: Path, live_path: Path, status_path: Path, *, now: datetime | None = None) -> dict:
-    moment = now or datetime.now().astimezone()
+    moment = (now or now_jst()).astimezone(JST)
     engine = load_engine(data_dir, now=moment)
     payload = None
     file_mtime = None
     if live_path.exists():
         try:
             payload = json.loads(live_path.read_text(encoding="utf-8"))
-            file_mtime = datetime.fromtimestamp(live_path.stat().st_mtime, tz=moment.tzinfo)
+            file_mtime = datetime.fromtimestamp(live_path.stat().st_mtime, tz=timezone.utc).astimezone(JST)
         except (OSError, json.JSONDecodeError, ValueError):
             payload = None
             file_mtime = None
-    verdict = assess_live_payload(payload, file_mtime=file_mtime, now=moment)
+    previous_quote_at = engine["state"].get("last_fresh_quote_at")
+    verdict = assess_live_payload(payload, file_mtime=file_mtime, now=moment, previous_quote_at=previous_quote_at)
+    freshness = verdict.get("quote_freshness")
+    engine["quote_freshness"] = freshness
+    if verdict.get("ok") and isinstance(freshness, dict) and freshness.get("fresh") is True:
+        # Only a quote accepted as fresh moves the regression floor forward.
+        engine["state"]["last_fresh_quote_at"] = freshness.get("quote_at")
     apply_cycle(engine, payload, verdict, now=moment, data_dir=data_dir, recovery_mode=read_manual_recovery(data_dir))
     publish_status(engine, status_path, now=moment)
     return engine
@@ -1070,7 +1325,7 @@ def main(argv: list[str] | None = None) -> int:
     live_path = Path(args.live)
     status_path = Path(args.status)
     lock_path = data_dir / "supervisor.lock.json"
-    now = datetime.now().astimezone()
+    now = now_jst()
     lock = acquire_singleton(lock_path, pid=os.getpid(), now=now)
     if lock == "ALREADY_RUNNING":
         print("ALREADY_RUNNING")
@@ -1083,7 +1338,7 @@ def main(argv: list[str] | None = None) -> int:
             run_once(data_dir, live_path, status_path, now=now)
             return 0
         while True:
-            moment = datetime.now().astimezone()
+            moment = now_jst()
             touch_lock(lock_path, pid=os.getpid(), now=moment)
             run_once(data_dir, live_path, status_path, now=moment)
             time.sleep(max(1.0, args.interval))
