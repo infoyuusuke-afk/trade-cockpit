@@ -725,6 +725,38 @@ if ($InspectOnly) {
 # is an EXPLICIT, session-and-hash-pinned archive of the original evidence.
 # No process/Excel/port is stopped here. This mode is not called by RUN.
 # Refuse unknown, foreign, corrupt, untracked legacy BRAIN or active PID/port.
+# Read-only discovery of UNTRACKED V10 components. Never use a broad
+# process-name scan as kill authority. Treat positive V10 script argv evidence
+# as a reason to refuse archive, including workers missing from stale JSON.
+function Test-NoUntrackedV10Process {
+    try {
+        $all = @(Get-CimInstance Win32_Process -ErrorAction Stop)
+        $patterns = @(
+            '(?i)(?:^|[\\/"\s])AI_COCKPIT_CONTROLLER_V10\.ps1(?:["\s]|$)',
+            '(?i)(?:^|[\\/"\s])RUN_AI_COCKPIT_V10\.ps1(?:["\s]|$)',
+            '(?i)(?:^|[\\/"\s])AI_COCKPIT_GATEWAY_V10\.ps1(?:["\s]|$)',
+            '(?i)(?:^|[\\/"\s])AI_COCKPIT_VOICE_BRIDGE_V10\.ps1(?:["\s]|$)',
+            '(?i)(?:^|[\\/"\s])Kioxia_RSS_Live_Watcher\.ps1(?:["\s]|$)',
+            '(?i)(?:^|[\\/"\s])MS2_RSS_100_Collector\.ps1(?:["\s]|$)',
+            '(?i)(?:^|[\\/"\s])ai_brain_observer\.py(?:["\s]|$)',
+            '(?i)(?:^|[\\/"\s])ai_shadow_supervisor\.py(?:["\s]|$)',
+            '(?i)(?:^|[\\/"\s])server_fastapi\.py(?:["\s]|$)'
+        )
+        foreach ($process in $all) {
+            $name = [string]$process.Name
+            if ($name -notmatch '^(powershell|pwsh|python|pythonw|py)\.exe$') {
+                continue
+            }
+            $cmd = [string]$process.CommandLine
+            if ([string]::IsNullOrWhiteSpace($cmd)) { return $false }
+            foreach ($pattern in $patterns) {
+                if ($cmd -match $pattern) { return $false }
+            }
+        }
+        return $true
+    } catch { return $false }
+}
+
 function Test-V10RecoveryStateInvariants($RecordedState) {
     if ($null -eq $RecordedState) { return $false }
     foreach ($field in @("controller_pid","excel_pid","watcher_pid","heartbeat_pid",
@@ -763,6 +795,7 @@ function Test-V10RecoveryStateInvariants($RecordedState) {
         $ports = @(Get-NetTCPConnection -State Listen -ErrorAction Stop |
             Where-Object { @(28580,28581,28582,28583,28584) -contains [int]$_.LocalPort })
         if ($ports.Count -ne 0) { return $false }
+        if (-not (Test-NoUntrackedV10Process)) { return $false }
         return $true
     } catch { return $false }
 }
@@ -813,6 +846,11 @@ function Invoke-V10VerifiedStaleArchive($RecordedState) {
         # the original state as a shortcut. Confirm the snapshot again.
         if ((Get-V10RecoverySha256 ([IO.File]::ReadAllBytes($StateFile))) -cne $pin) {
             throw "STATE_CHANGED_BEFORE_RENAME"
+        }
+        # A newly launched, unrecorded V10 process must block the final
+        # state rename even if its listener has not yet bound a port.
+        if (-not (Test-V10RecoveryStateInvariants $verified)) {
+            throw "PRE_RENAME_PROCESS_OR_PORT_CHANGED"
         }
         [IO.File]::Move($StateFile,$target)
         if (-not (Test-Path -LiteralPath $target -PathType Leaf) -or
