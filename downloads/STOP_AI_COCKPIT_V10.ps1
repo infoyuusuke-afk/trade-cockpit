@@ -566,23 +566,6 @@ try {
     exit 2
 }
 Write-Host "AI Cockpit V10 managed processes and verified managed Excel stopped." -ForegroundColor Green
-) { return $false }
-        $selfSession = (Get-Process -Id $PID -ErrorAction Stop).SessionId
-        if ([int]$proc.SessionId -ne [int]$selfSession) { return $false }
-        # Token boundaries exclude spoofed names such as fake_RUN_AI_COCKPIT_V10.ps1.
-        $names = if ($Field -eq "controller_pid") {
-            @("AI_COCKPIT_CONTROLLER_V10.ps1", "RUN_AI_COCKPIT_V10.ps1")
-        } else { @($expected) }
-        foreach ($name in $names) {
-            $escaped = [regex]::Escape($name)
-            if ([regex]::IsMatch($cmd, '(?i)(?<![A-Za-z0-9_.-])' + $escaped + '(?=$|[\s"'']|\\)')) {
-                return $true
-            }
-        }
-        return $false
-    } catch { return $false }
-}
-
 
 function Test-BrainCommandLine([string]$CommandLine,[string]$Repo,[string]$Runtime) {
     try {
