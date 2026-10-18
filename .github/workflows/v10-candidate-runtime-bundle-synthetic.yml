@@ -23,6 +23,7 @@ on:
       - "tests/test_v10_stop_pid_evidence_mock.py"
       - "tests/test_v10_controller_lifecycle_lock_windows.py"
       - "tests/test_v10_foreign_listener_windows.py"
+      - "tests/test_v10_legacy_portfree_windows.py"
       - ".github/workflows/v10-candidate-runtime-bundle-synthetic.yml"
   workflow_dispatch:
 permissions:
@@ -146,6 +147,11 @@ jobs:
         shell: powershell
         run: |
           python -m unittest discover -s tests -p test_v10_stop_pid_evidence_mock.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Controller port-free legacy process argv preflight (NO REAL PROCESSES)
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_v10_legacy_portfree_windows.py -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Controller foreign IPv4 and IPv6 listener preflight (NO REAL LISTENERS)
         shell: powershell
