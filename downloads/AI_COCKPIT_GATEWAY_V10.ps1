@@ -42,6 +42,11 @@ if ([string]::IsNullOrWhiteSpace($RuntimeDir)) {
 }
 $liveJson = if ($RuntimeDir) { Join-Path $RuntimeDir "live_ms2.json" } else { "" }
 $controllerStateFile = "C:\AI_Cockpit_OneClick_Starter\V10_CONTROLLER_STATE.json"
+# Last quote times this Gateway served as LIVE (identity quote and each row).
+# A later payload whose quote is older is a regression and is refused. Kept in
+# memory only; a Gateway restart starts empty.
+$script:LastServedIdentityQuoteAt = $null
+$script:LastServedRowQuoteAt = @{}
 
 if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot "index.html"))) {
     throw "RepoRoot does not look like a trade-cockpit checkout (index.html not found): $RepoRoot"
@@ -741,6 +746,113 @@ function Get-QuoteFreshness {
     return (New-QuoteFreshnessVerdict "FRESH" @() $Now $quoteAt $basis $MaxQuoteAgeSeconds)
 }
 
+function Get-RowQuoteFreshness {
+    # One board row, judged by its own quote with the identity-quote rules.
+    # Same rule as row_quote_freshness in scripts/ai_shadow_supervisor.py: a
+    # fresh identity quote says nothing about another row's price, and a row
+    # dated on another JST day than the identity quote is never fresh.
+    # The Gateway also refuses a row whose quote went back in time against
+    # the last quote it served for that ticker.
+    param(
+        $Row,
+        [DateTimeOffset]$Now = (Get-JstNow),
+        $BoardQuoteAt = $null,
+        $PreviousQuoteAt = $null,
+        [int]$MaxQuoteAgeSeconds = 120
+    )
+    $fields = [ordered]@{}
+    $isObject = ($Row -is [System.Management.Automation.PSCustomObject]) -or ($Row -is [System.Collections.IDictionary])
+    foreach ($key in @("source_timestamp", "source_timestamp_at", "source_timestamp_basis", "source_timestamp_observed_at")) {
+        $fields[$key] = $(if ($isObject) { $Row.$key } else { $null })
+    }
+    $probe = [pscustomobject]@{ live_price_diagnostics = [pscustomobject]$fields; all_targets = @() }
+    $verdict = Get-QuoteFreshness -LiveObj $probe -Now $Now -PreviousQuoteAt $PreviousQuoteAt -MaxQuoteAgeSeconds $MaxQuoteAgeSeconds
+    if ($verdict.fresh -eq $true) {
+        $board = ConvertFrom-OffsetTimestamp $BoardQuoteAt
+        $rowAt = ConvertFrom-OffsetTimestamp $verdict.quote_at
+        $inv = [Globalization.CultureInfo]::InvariantCulture
+        if ($null -eq $board -or $null -eq $rowAt -or $rowAt.ToString("yyyy-MM-dd", $inv) -ne $board.ToString("yyyy-MM-dd", $inv)) {
+            $reason = if ($null -eq $board) { "BOARD_QUOTE_DATE_UNKNOWN" } else { "MIXED_SOURCE_DATES" }
+            $verdict = New-QuoteFreshnessVerdict "INVALID" @($reason) $Now $rowAt $verdict.quote_basis $MaxQuoteAgeSeconds
+        }
+    }
+    return $verdict
+}
+
+function Get-BoardRowFreshness {
+    # Every row of all_targets must carry its own fresh quote before
+    # /live_ms2.json is served as LIVE. Masking single rows cannot be made
+    # complete: market_state, breadth_pct, valid, kioxia, top5, hold_top5,
+    # pts_top5, ir_pts_top5 and every row's market_state/breadth_pct are
+    # computed over all rows. So one stale, undated, future or regressed row
+    # rejects the whole response. Unknown is not fresh.
+    param(
+        $LiveObj,
+        [DateTimeOffset]$Now = (Get-JstNow),
+        $BoardQuoteAt = $null,
+        $PreviousRowQuotes = $null,
+        [int]$MaxQuoteAgeSeconds = 120
+    )
+    $reasons = New-Object System.Collections.Generic.List[string]
+    $accepted = [ordered]@{}
+    $notFresh = New-Object System.Collections.Generic.List[object]
+    $rowCount = 0
+    $freshCount = 0
+    $rows = $null
+    if ($null -ne $LiveObj) { $rows = $LiveObj.all_targets }
+    if ($null -eq $rows -or $rows -is [string] -or @($rows).Count -eq 0) {
+        [void]$reasons.Add("BOARD_ROWS_MISSING")
+    } else {
+        $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        foreach ($row in @($rows)) {
+            $rowCount++
+            $isObject = ($row -is [System.Management.Automation.PSCustomObject]) -or ($row -is [System.Collections.IDictionary])
+            $ticker = $(if ($isObject) { $row.ticker } else { $null })
+            if ($ticker -isnot [string] -or [string]::IsNullOrWhiteSpace($ticker)) {
+                [void]$reasons.Add("ROW_TICKER_MISSING")
+                if ($notFresh.Count -lt 10) { [void]$notFresh.Add([ordered]@{ ticker = $null; state = "UNKNOWN"; reasons = @("ROW_TICKER_MISSING") }) }
+                continue
+            }
+            if (-not $seen.Add($ticker)) {
+                [void]$reasons.Add("ROW_TICKER_DUPLICATE")
+                if ($notFresh.Count -lt 10) { [void]$notFresh.Add([ordered]@{ ticker = $ticker; state = "INVALID"; reasons = @("ROW_TICKER_DUPLICATE") }) }
+                continue
+            }
+            $previous = $null
+            if ($PreviousRowQuotes -is [System.Collections.IDictionary] -and $PreviousRowQuotes.Contains($ticker)) { $previous = $PreviousRowQuotes[$ticker] }
+            $verdict = Get-RowQuoteFreshness -Row $row -Now $Now -BoardQuoteAt $BoardQuoteAt -PreviousQuoteAt $previous -MaxQuoteAgeSeconds $MaxQuoteAgeSeconds
+            if ($verdict.fresh -eq $true) {
+                $freshCount++
+                $accepted[$ticker] = $verdict.quote_at
+                continue
+            }
+            $own = @($verdict.reasons | Where-Object { -not [string]::IsNullOrEmpty([string]$_) })
+            if ($own.Count -eq 0) { $own = @("FRESHNESS_NOT_FRESH") }
+            foreach ($r in $own) { [void]$reasons.Add("ROW_" + [string]$r) }
+            if ($notFresh.Count -lt 10) { [void]$notFresh.Add([ordered]@{ ticker = $ticker; state = [string]$verdict.state; reasons = @($own) }) }
+        }
+    }
+    if ($reasons.Count -gt 0) { [void]$reasons.Add("ROW_QUOTE_NOT_FRESH") }
+    $unique = @($reasons | Select-Object -Unique)
+    $sorted = [string[]]$unique
+    if ($null -eq $sorted) { $sorted = [string[]]@() }
+    [Array]::Sort($sorted, [StringComparer]::Ordinal)
+    return [ordered]@{
+        schema_version = "board-row-freshness-1"
+        fresh = ($sorted.Count -eq 0)
+        reasons = @($sorted)
+        row_count = $rowCount
+        fresh_row_count = $freshCount
+        not_fresh_row_count = ($rowCount - $freshCount)
+        not_fresh_sample = $notFresh.ToArray()
+        accepted_quote_at = $accepted
+        board_quote_at = $(if ($BoardQuoteAt -is [string]) { $BoardQuoteAt } else { $null })
+        max_quote_age_seconds = $MaxQuoteAgeSeconds
+        order_allowed = $false
+        real_submit_allowed = $false
+    }
+}
+
 function Get-CombinedQuoteFreshness($GatewayVerdict, $ShadowVerdict) {
     # /health is fresh only when its own verdict and the Shadow supervisor's
     # published verdict are both FRESH. Either side missing, not fresh, or the
@@ -774,7 +886,8 @@ function Get-LivePriceRejection {
         $UpdatedAtRaw,
         $FileMtime,
         [int]$MaxAgeSeconds = 60,
-        $QuoteFreshness = $null
+        $QuoteFreshness = $null,
+        $RowFreshness = $null
     )
     $reasons = New-Object System.Collections.Generic.List[string]
     # A recent write is not a recent quote. Without a fresh, dated quote the
@@ -783,6 +896,13 @@ function Get-LivePriceRejection {
     if ($QuoteFreshness.fresh -ne $true) {
         foreach ($r in @($QuoteFreshness.reasons)) { if (-not [string]::IsNullOrEmpty([string]$r)) { [void]$reasons.Add([string]$r) } }
         if (@($QuoteFreshness.reasons).Count -eq 0) { [void]$reasons.Add("FRESHNESS_NOT_FRESH") }
+    }
+    # A fresh identity quote does not make other rows fresh. Every row must
+    # pass its own quote check, or the whole response is refused.
+    if ($null -eq $RowFreshness) { $RowFreshness = Get-BoardRowFreshness -LiveObj $LiveObj -BoardQuoteAt $QuoteFreshness.quote_at }
+    if ($RowFreshness.fresh -ne $true) {
+        foreach ($r in @($RowFreshness.reasons)) { if (-not [string]::IsNullOrEmpty([string]$r)) { [void]$reasons.Add([string]$r) } }
+        if (@($RowFreshness.reasons).Count -eq 0) { [void]$reasons.Add("ROW_QUOTE_NOT_FRESH") }
     }
     $canonicalSource = "MarketSpeed II RSS / local PC"
     $fresh = (
@@ -873,7 +993,7 @@ function Get-LivePriceRejection {
         "SOURCE_TIMESTAMP_NO_OFFSET","SOURCE_DATE_BASIS_UNVERIFIED","SOURCE_TIMESTAMP_INCONSISTENT","SOURCE_TIMESTAMP_IN_FUTURE",
         "SOURCE_OBSERVATION_MISSING","SOURCE_OBSERVATION_IN_FUTURE","SOURCE_TIMESTAMP_AFTER_OBSERVATION",
         "SOURCE_TIMESTAMP_REGRESSION","MIXED_SOURCE_DATES","FRESHNESS_NOT_FRESH","MISSING_PAYLOAD")
-    $identity = @($unique | Where-Object { $_ -notin (@("STALE_OR_MISSING_TIMESTAMP","LIVE_VALUES_UNAVAILABLE","INSUFFICIENT_COVERAGE") + $freshnessCodes) })
+    $identity = @($unique | Where-Object { $_ -notin (@("STALE_OR_MISSING_TIMESTAMP","LIVE_VALUES_UNAVAILABLE","INSUFFICIENT_COVERAGE") + $freshnessCodes) -and $_ -notmatch '^(ROW_|BOARD_ROWS_MISSING$)' })
     $statusName = if ($identity.Count -gt 0) { "PRICE_SOURCE_MISMATCH" } else { "stale" }
     $reasonText = if ($unique -contains "STALE_OR_MISSING_TIMESTAMP" -and $identity.Count -eq 0) {
         "live_ms2.json freshness threshold exceeded"
@@ -901,6 +1021,14 @@ function Get-LivePriceRejection {
         live_values_available = $false
         max_age_seconds = $MaxAgeSeconds
         quote_freshness = $QuoteFreshness
+        row_freshness = [ordered]@{
+            fresh = ($RowFreshness.fresh -eq $true)
+            reasons = @($RowFreshness.reasons)
+            row_count = $RowFreshness.row_count
+            fresh_row_count = $RowFreshness.fresh_row_count
+            not_fresh_row_count = $RowFreshness.not_fresh_row_count
+            not_fresh_sample = @($RowFreshness.not_fresh_sample)
+        }
     }
 }
 
@@ -1301,6 +1429,21 @@ try {
                 $runtime['quote_freshness'] = $gatewayFreshness
                 $runtime['shadow_quote_freshness'] = $shadowFreshness
                 $runtime['quote_freshness_combined'] = $freshnessCombined
+                # Same row gate as /live_ms2.json (without the served-history
+                # regression check, which only /live_ms2.json records).
+                $healthRows = Get-BoardRowFreshness -LiveObj $healthLive -BoardQuoteAt $gatewayFreshness.quote_at
+                $runtime['board_row_freshness'] = [ordered]@{
+                    fresh = ($healthRows.fresh -eq $true)
+                    reasons = @($healthRows.reasons)
+                    row_count = $healthRows.row_count
+                    fresh_row_count = $healthRows.fresh_row_count
+                    not_fresh_row_count = $healthRows.not_fresh_row_count
+                    not_fresh_sample = @($healthRows.not_fresh_sample)
+                }
+                if ($healthRows.fresh -ne $true) {
+                    $runtime.fail_closed = $true
+                    $runtime.stale_reason = (@((@(([string]$runtime.stale_reason) -split ',' | Where-Object { $_ }) + @($healthRows.reasons)) | Select-Object -Unique) -join ',')
+                }
                 if ($freshnessCombined.fresh -ne $true) {
                     $runtime.fail_closed = $true
                     if ([string]$runtime.price_source_status -eq "OK" -or [string]::IsNullOrWhiteSpace([string]$runtime.price_source_status)) {
@@ -1393,8 +1536,14 @@ try {
                 $payloadAgeSeconds = [double]::PositiveInfinity
                 $updatedAtRaw = $null
                 $liveObj = $null
+                # Judge and serve the same bytes. Reading the file again after
+                # the check could serve a newer, unchecked payload.
+                $bytes = [byte[]]@()
                 try {
-                    $liveObj = Read-JsonUtf8 $liveJson
+                    $bytes = [IO.File]::ReadAllBytes($liveJson)
+                    $liveText = [Text.Encoding]::UTF8.GetString($bytes)
+                    if ($liveText.Length -gt 0 -and $liveText[0] -eq [char]0xFEFF) { $liveText = $liveText.Substring(1) }
+                    $liveObj = $liveText | ConvertFrom-Json
                     $updatedAtRaw = [string]$liveObj.updated_at
                     if (-not [string]::IsNullOrWhiteSpace($updatedAtRaw)) {
                         $cleanUpdatedAt = $updatedAtRaw -replace '\s+JST\s*$',''
@@ -1406,14 +1555,21 @@ try {
                     $liveObj = $null
                 }
 
-                $rejection = Get-LivePriceRejection -LiveObj $liveObj -FileAgeSeconds $fileAgeSeconds -PayloadAgeSeconds $payloadAgeSeconds -UpdatedAtRaw $updatedAtRaw -FileMtime $liveItem.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss') -MaxAgeSeconds $LIVE_JSON_MAX_AGE_SECONDS
-                if ($null -ne $rejection) {
+                $liveNow = Get-JstNow
+                $liveQuoteFreshness = Get-QuoteFreshness -LiveObj $liveObj -Now $liveNow -PreviousQuoteAt $script:LastServedIdentityQuoteAt
+                $liveRowFreshness = Get-BoardRowFreshness -LiveObj $liveObj -Now $liveNow -BoardQuoteAt $liveQuoteFreshness.quote_at -PreviousRowQuotes $script:LastServedRowQuoteAt
+                $rejection = Get-LivePriceRejection -LiveObj $liveObj -FileAgeSeconds $fileAgeSeconds -PayloadAgeSeconds $payloadAgeSeconds -UpdatedAtRaw $updatedAtRaw -FileMtime $liveItem.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss') -MaxAgeSeconds $LIVE_JSON_MAX_AGE_SECONDS -QuoteFreshness $liveQuoteFreshness -RowFreshness $liveRowFreshness
+                if ($null -ne $rejection -or $null -eq $liveObj -or $bytes.Length -eq 0) {
+                    if ($null -eq $rejection) { $rejection = [ordered]@{ status = "stale"; stale_reason = "MISSING_PAYLOAD"; real_submit_allowed = $false; live_values_available = $false; data_conflict = $true } }
                     $stalePayload = $rejection | ConvertTo-Json -Depth 6
                     Send-Response $stream '503 Service Unavailable' 'application/json; charset=utf-8' ($utf8.GetBytes($stalePayload))
                     continue
                 }
 
-                $bytes = [IO.File]::ReadAllBytes($liveJson)
+                $script:LastServedIdentityQuoteAt = $liveQuoteFreshness.quote_at
+                foreach ($servedTicker in @($liveRowFreshness.accepted_quote_at.Keys)) {
+                    $script:LastServedRowQuoteAt[$servedTicker] = $liveRowFreshness.accepted_quote_at[$servedTicker]
+                }
                 Send-Response $stream '200 OK' 'application/json; charset=utf-8' $bytes
                 continue
             }

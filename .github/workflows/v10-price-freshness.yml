@@ -1,8 +1,11 @@
 name: V10 Price Freshness (Synthetic)
 # P0-V10-ACCEPTANCE-FIX-20261019. Proves with synthetic data only that an old
 # quote is never reported fresh by the Shadow supervisor, the V10 Gateway
-# /health and the Risk Gate, and that the three agree. CI PASS is not a
-# Windows real-machine acceptance and does not approve deployment.
+# /health and the Risk Gate, and that the three agree. On Windows the real
+# Gateway listener also proves that /live_ms2.json never serves a stale row
+# (price, signal, top5 candidate) as LIVE while the identity quote is fresh.
+# CI PASS is not a Windows real-machine acceptance and does not approve
+# deployment.
 on:
   pull_request:
     paths:
@@ -11,6 +14,7 @@ on:
       - "downloads/AI_COCKPIT_GATEWAY_V10.ps1"
       - "ms2_live/MS2_RSS_100_Collector.ps1"
       - "tests/test_v10_price_freshness.py"
+      - "tests/test_v10_live_row_gate_http.py"
       - "tests/test_risk_gate.py"
       - "tests/fixtures/v10_price_freshness_cases.json"
       - ".github/workflows/v10-price-freshness.yml"
@@ -37,7 +41,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          python -m unittest tests/test_v10_price_freshness.py -v 2>&1 | tee freshness.log
+          python -m unittest tests/test_v10_price_freshness.py tests/test_v10_live_row_gate_http.py -v 2>&1 | tee freshness.log
           # Gateway/Collector parity runs in Windows PowerShell 5.1, the
           # production host. It may skip on Linux (no powershell.exe) but
           # must never skip on Windows.
