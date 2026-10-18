@@ -318,7 +318,7 @@ class StopWorkerIdentityContract(unittest.TestCase):
             "Move-Item", "Start-Process", "$targetBook.Close(", "$app.Quit()",
         ):
             self.assertNotIn(destructive, inspection)
-        inspect_call = src.index("if ($InspectOnly) {\n    $inspectionResult")
+        inspect_call = src.index("if ($InspectOnly) {\n    try {\n        $snapshotSha")
         self.assertLess(inspect_call, src.index("$controllerProc.Kill()"))
         self.assertLess(inspect_call, src.index("Stop-OwnedJobBridge 28580"))
         self.assertLess(inspect_call, src.index("Remove-Item -LiteralPath $StateFile -Force"))
