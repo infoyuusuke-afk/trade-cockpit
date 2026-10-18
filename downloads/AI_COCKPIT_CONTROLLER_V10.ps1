@@ -242,6 +242,101 @@ function Save-State($state) {
     Move-Item -LiteralPath $tmp -Destination $StateFile -Force
 }
 
+# Parse the actual interpreter script argument. A script basename appearing only
+# in -c, -Command, a comment, or another inert argument is not ownership.
+function Test-StopWorkerScriptArgument([string]$CommandLine,[string]$Field,[string[]]$ExpectedNames,[string]$RepoPath,[string]$RuntimePath) {
+    try {
+        if (-not ("V10StopWorkerArgv" -as [type])) {
+            Add-Type -ErrorAction Stop -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class V10StopWorkerArgv {
+    [DllImport("shell32.dll", SetLastError=true)]
+    static extern IntPtr CommandLineToArgvW([MarshalAs(UnmanagedType.LPWStr)] string cmd, out int n);
+    [DllImport("kernel32.dll")] static extern IntPtr LocalFree(IntPtr p);
+    public static string[] Split(string cmd) {
+        int n; IntPtr p = CommandLineToArgvW(cmd, out n);
+        if (p == IntPtr.Zero) throw new InvalidOperationException();
+        try {
+            string[] args = new string[n];
+            for (int i = 0; i < n; i++) args[i] = Marshal.PtrToStringUni(Marshal.ReadIntPtr(p, i * IntPtr.Size));
+            return args;
+        } finally { LocalFree(p); }
+    }
+}
+"@
+        }
+        $argv = @([V10StopWorkerArgv]::Split($CommandLine))
+        if ($argv.Count -lt 2) { return $false }
+        $exe = [IO.Path]::GetFileName($argv[0])
+        $scriptPath = ""
+        if ($exe -imatch '^(powershell|pwsh)\.exe$') {
+            if ($Field -in @("shadow_supervisor_pid", "brain_observer_pid", "sbv2_pid")) { return $false }
+            $fileIndex = -1
+            for ($i = 1; $i -lt $argv.Count; $i++) {
+                if ($argv[$i] -imatch '^-(Command|EncodedCommand|CommandWithArgs)$') { return $false }
+                if ($argv[$i] -ieq "-File") {
+                    if ($fileIndex -ge 0 -or $i + 1 -ge $argv.Count) { return $false }
+                    $fileIndex = $i + 1
+                }
+            }
+            if ($fileIndex -lt 0) { return $false }
+            $scriptPath = [string]$argv[$fileIndex]
+            if (-not [IO.Path]::IsPathRooted($scriptPath)) { return $false }
+        } elseif ($exe -imatch '^(python|pythonw|py)\.exe$') {
+            if ($Field -notin @("shadow_supervisor_pid", "brain_observer_pid", "sbv2_pid")) { return $false }
+            $index = 1
+            if ($exe -ieq "py.exe") {
+                if ($argv.Count -le $index -or $argv[$index] -cne "-3") { return $false }
+                $index++
+            }
+            if ($argv.Count -gt $index -and $argv[$index] -cne "-u" -and
+                $Field -in @("shadow_supervisor_pid", "brain_observer_pid")) { return $false }
+            if ($argv.Count -gt $index -and $argv[$index] -ceq "-u") { $index++ }
+            if ($argv.Count -le $index -or $argv[$index] -match '^-') { return $false }
+            $scriptPath = [string]$argv[$index]
+            if ($Field -ne "sbv2_pid" -and -not [IO.Path]::IsPathRooted($scriptPath)) { return $false }
+        } else { return $false }
+        # SBV2 also needs path-accurate ownership. The Controller now launches
+        # the fixed absolute server path, so unrelated server_fastapi.py
+        # scripts (or another interpreter) cannot be killed.
+        if ($Field -eq "sbv2_pid") {
+            if (-not [IO.Path]::IsPathRooted($scriptPath) -or
+                -not [IO.Path]::IsPathRooted($argv[0])) { return $false }
+            $sbvRoot = "C:\sbv2\Style-Bert-VITS2"
+            $expectedServer = [IO.Path]::GetFullPath((Join-Path $sbvRoot "server_fastapi.py"))
+            $actualServer = [IO.Path]::GetFullPath($scriptPath)
+            $actualInterpreter = [IO.Path]::GetFullPath($argv[0])
+            $expectedExe = if ($exe -ieq "pythonw.exe") { "pythonw.exe" } else { "python.exe" }
+            $expectedInterpreter = [IO.Path]::GetFullPath((Join-Path $sbvRoot ("venv\Scripts\" + $expectedExe)))
+            return ([string]::Equals($actualServer, $expectedServer, [StringComparison]::OrdinalIgnoreCase) -and
+                [string]::Equals($actualInterpreter, $expectedInterpreter, [StringComparison]::OrdinalIgnoreCase))
+        }
+        if (-not [IO.Path]::IsPathRooted($scriptPath) -or
+            -not [IO.Path]::IsPathRooted($RepoPath) -or
+            -not [IO.Path]::IsPathRooted($RuntimePath)) { return $false }
+        $expectedDir = switch ($Field) {
+            { $_ -in @("watcher_pid", "heartbeat_pid", "collector_pid") } { $RuntimePath; break }
+            { $_ -in @("controller_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid") } {
+                Join-Path $RepoPath "downloads"; break
+            }
+            { $_ -in @("shadow_supervisor_pid", "brain_observer_pid") } {
+                Join-Path $RepoPath "scripts"; break
+            }
+            default { "" }
+        }
+        if ([string]::IsNullOrWhiteSpace($expectedDir)) { return $false }
+        $actualPath = [IO.Path]::GetFullPath($scriptPath)
+        foreach ($name in $ExpectedNames) {
+            $expectedPath = [IO.Path]::GetFullPath((Join-Path $expectedDir $name))
+            if ([string]::Equals($actualPath, $expectedPath, [StringComparison]::OrdinalIgnoreCase)) {
+                return $true
+            }
+        }
+        return $false
+    } catch { return $false }
+}
+
 function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
     $expected = switch ($Field) {
         "watcher_pid"      { "Kioxia_RSS_Live_Watcher.ps1" }
@@ -253,41 +348,54 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
         "sbv2_pid"         { "server_fastapi.py" }
         "shadow_supervisor_pid" { "ai_shadow_supervisor.py" }
         "brain_observer_pid" { "ai_brain_observer.py" }
-        "controller_pid"   { "AI_COCKPIT_CONTROLLER_V10.ps1" }
+        # RUN invokes Controller synchronously with &, so controller_pid is
+        # the RUN PowerShell host itself. Accept either identity, but never
+        # a generic powershell.exe match.
+        "controller_pid"   { "__V10_CONTROLLER_OR_RUN__" }
         default            { "" }
     }
     if ([string]::IsNullOrWhiteSpace($expected)) { return $false }
     try {
         $wmi = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction SilentlyContinue
-        if ($null -eq $wmi) { return $false }
-        $cmd = [string]$wmi.CommandLine
-        return (-not [string]::IsNullOrWhiteSpace($cmd) -and $cmd -match [regex]::Escape($expected))
+        $cmd = if ($null -ne $wmi) { [string]$wmi.CommandLine } else { "" }
+        if ([string]::IsNullOrWhiteSpace($cmd)) { return $false }
+        $proc = Get-Process -Id $ProcessId -ErrorAction Stop
+        if ($proc.HasExited -or $proc.Handle -eq [IntPtr]::Zero) { return $false }
+        $cimStarted = ([datetime]$wmi.CreationDate).ToUniversalTime()
+        $handleStarted = $proc.StartTime.ToUniversalTime()
+        if ([Math]::Abs(($handleStarted - $cimStarted).TotalSeconds) -gt 2) { return $false }
+        if ([int]$wmi.ProcessId -ne $ProcessId -or [string]$wmi.Name -notmatch '^(powershell|pwsh|python|pythonw|py)\.exe$') { return $false }
+        $selfSession = (Get-Process -Id $PID -ErrorAction Stop).SessionId
+        if ([int]$proc.SessionId -ne [int]$selfSession) { return $false }
+        # Token boundaries exclude spoofed names such as fake_RUN_AI_COCKPIT_V10.ps1.
+        $names = if ($Field -eq "controller_pid") {
+            @("AI_COCKPIT_CONTROLLER_V10.ps1", "RUN_AI_COCKPIT_V10.ps1")
+        } else { @($expected) }
+        foreach ($name in $names) {
+            $escaped = [regex]::Escape($name)
+            if ([regex]::IsMatch($cmd, '(?i)(?<![A-Za-z0-9_.-])' + $escaped + '(?=$|[\s"'']|\\)') -and
+                (Test-StopWorkerScriptArgument $cmd $Field $names ([string]$state.repo_root) ([string]$state.runtime_dir))) {
+                return $true
+            }
+        }
+        return $false
     } catch { return $false }
 }
+
 
 # Stop only PIDs recorded in OUR OWN previous state file - never a broad
 # process-table scan. A PID that no longer exists, or that now belongs to
 # a different process (recycled by Windows), is silently skipped.
+# A previous Controller's state is NOT a stop authorization for this new
+# Controller. All prior sessions must pass the reviewed standalone Safe Stop
+# before a fresh V10 session can replace the evidence file.
 function Stop-OwnedFromPreviousState {
+    if (-not (Test-Path -LiteralPath $StateFile -PathType Leaf)) { return }
     $prev = Read-State
-    if ($null -eq $prev) { return }
-    Stop-OwnedJobBridge $PORT_COLLECTOR ([int]$prev.collector_pid) "Collector JSON" | Out-Null
-    Stop-OwnedJobBridge $PORT_WATCHER ([int]$prev.watcher_pid) "Watcher JSON" | Out-Null
-    foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid", "brain_observer_pid", "controller_pid")) {
-        $val = $prev.PSObject.Properties[$field]
-        if ($null -eq $val -or [int]$val.Value -le 0) { continue }
-        $procId = [int]$val.Value
-        $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
-        if ($null -ne $proc -and (Test-OwnedPidIdentity $field $procId)) {
-            try { Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue } catch {}
-            Write-Status ("  stopped previous {0} (PID {1})" -f $field, $procId) DarkGray
-        } elseif ($null -ne $proc) {
-            Write-Status ("  previous PID " + $procId + " no longer matches " + $field + "; leaving it untouched") Yellow
-        }
+    if ($null -eq $prev) {
+        throw "PREVIOUS_V10_STATE_CORRUPT: no worker terminated; use verified Safe Stop and retain evidence."
     }
-    # Excel is not stopped here and is not stopped before launch. A
-    # previous PID is not ownership. TerminateProcess on one Excel can
-    # close other Excel processes in the same session.
+    throw "PREVIOUS_V10_STATE_REQUIRES_SAFE_STOP: no worker terminated or state overwritten."
 }
 
 # A workbook title change does not establish ownership of the Excel process.
