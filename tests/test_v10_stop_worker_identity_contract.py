@@ -299,7 +299,7 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertIn("[switch]$InspectOnly", src)
         self.assertEqual(src.count("function Invoke-V10StopReadOnlyInspection("), 1)
         inspection = src.split("function Invoke-V10StopReadOnlyInspection(", 1)[1].split(
-            "# P0-25: The legacy state", 1)[0]
+            "function Test-V10RecoveryStateInvariants(", 1)[0]
         for fragment in (
             "Get-V10TrackedPidEvidence $pidValue",
             "Test-StopExcelPreflight $RecordedState",
@@ -322,6 +322,39 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertLess(inspect_call, src.index("$controllerProc.Kill()"))
         self.assertLess(inspect_call, src.index("Stop-OwnedJobBridge 28580"))
         self.assertLess(inspect_call, src.index("Remove-Item -LiteralPath $StateFile -Force"))
+
+    def test_recovery_archive_rejects_unverified_stale_state_and_preserves_evidence(self):
+        src = self.source
+        self.assertIn("[switch]$ArchiveVerifiedStaleState", src)
+        self.assertIn("if ($InspectOnly -and $ArchiveVerifiedStaleState)", src)
+        proof = src.split("function Test-V10RecoveryStateInvariants(", 1)[1].split(
+            "function Invoke-V10VerifiedStaleArchive(", 1)[0]
+        self.assertIn('Get-V10TrackedPidEvidence $id) -ne "ABSENT"', proof)
+        self.assertIn('if ($field -in @("controller_pid","brain_observer_pid")', proof)
+        self.assertIn("Get-NetTCPConnection -State Listen -ErrorAction Stop", proof)
+        for port in ("28580", "28581", "28582", "28583", "28584"):
+            self.assertIn(port, proof)
+        self.assertIn("Kioxia_MS2_RSS_Live_Signals.xlsx", proof)
+        archive = src.split("function Invoke-V10VerifiedStaleArchive(", 1)[1].split(
+            "# P0-25: The legacy state", 1)[0]
+        for guard in (
+            "ExpectedSessionId -cne",
+            "ExpectedStateSha256 -notmatch",
+            "Get-V10RecoverySha256 $before",
+            "Test-V10RecoveryStateInvariants $verified",
+            "Get-V10RecoverySha256 ([IO.File]::ReadAllBytes($StateFile))",
+            "[IO.File]::Move($StateFile,$target)",
+            "Get-V10RecoverySha256 ([IO.File]::ReadAllBytes($target))",
+            "RECOVERY_ARCHIVE=VERIFIED_ARCHIVED",
+        ):
+            self.assertIn(guard, archive)
+        self.assertGreaterEqual(archive.count("Test-V10RecoveryStateInvariants $verified"), 2)
+        for destructive in ("Stop-Process", ".Kill()", "$app.Quit()", "$targetBook.Close(",
+                            "Remove-Item -LiteralPath $StateFile"):
+            self.assertNotIn(destructive, archive)
+        archive_dispatch = src.index("if ($ArchiveVerifiedStaleState) {\n    exit (Invoke-V10VerifiedStaleArchive $state)")
+        controller_kill = src.index("$controllerProc.Kill()")
+        self.assertLess(archive_dispatch, controller_kill)
 
     def test_refusal_precedes_controller_stop(self):
         src = self.source
