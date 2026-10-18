@@ -134,7 +134,35 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertIn("([datetime]$cim.CreationDate).ToUniversalTime()", excel)
         self.assertIn("$proc.Kill()", excel)
         self.assertIn("$proc.WaitForExit(5000)", excel)
+        self.assertIn("Test-ManagedExcelWorkbooksExclusive $ExcelPid $WorkbookPath", excel)
+        self.assertGreaterEqual(excel.count("Test-ManagedExcelWorkbooksExclusive $ExcelPid $WorkbookPath"), 2,
+                                "Must recheck COM workbook ownership immediately before process kill")
         self.assertNotIn("Stop-Process -Id $ExcelPid", excel)
+
+    def test_controller_excel_kill_refuses_same_pid_foreign_workbooks(self):
+        controller = (STOP.parent / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
+        helper = controller.split("function Test-ManagedExcelWorkbooksExclusive(", 1)[1].split(
+            "function Stop-VerifiedOwnedExcel(", 1)[0]
+        self.assertIn('GetActiveObject("Excel.Application")', helper)
+        self.assertIn("GetWindowThreadProcessId", helper)
+        self.assertIn("if ([int]$foundPid -ne $ExcelPid) { return $false }", helper)
+        self.assertIn("if ($workbooks.Count -eq 0) { return $true }", helper)
+        self.assertIn("Test-OnlyCanonicalExcelWorkbookOpen $app $WorkbookPath", helper)
+        expected = self.source.split("function Test-OnlyCanonicalExcelWorkbookOpen(", 1)[1].split(
+            "# Do not force-kill", 1)[0].strip()
+        actual = controller.split("function Test-OnlyCanonicalExcelWorkbookOpen(", 1)[1].split(
+            "# A Controller-owned Excel PID", 1)[0].strip()
+        self.assertEqual(actual, expected, "STOP and Controller workbook-exclusivity rules must match")
+
+    def test_controller_workbook_close_never_kills_raw_numeric_excel_pid(self):
+        controller = (STOP.parent / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
+        branch = controller.split('Write-Status "Workbook close detected', 1)[1].split(
+            "# Final tracked-PID verification", 1)[0]
+        self.assertNotIn("Stop-Process", branch)
+        self.assertIn("Stop-VerifiedOwnedExcel ([int]$state.excel_pid) $WorkbookPath $PID", branch)
+        self.assertIn("Save-State $state", branch)
+        self.assertIn("[Environment]::Exit(2)", branch)
+        self.assertIn("if ($xp2.MainWindowHandle -ne 0", branch)
 
     def test_hidden_excel_orphan_pid_reuse_must_be_refused(self):
         """Release-blocking regression: no numeric PID termination for Excel."""
