@@ -9,15 +9,17 @@
 3. [docs/DAILY_PROGRESS.md](docs/DAILY_PROGRESS.md)：日々の進捗
 4. [docs/DECISIONS.md](docs/DECISIONS.md)：正式な決定事項（D-001〜）
 5. [docs/AI_COCKPIT_MASTER_SPEC.md](docs/AI_COCKPIT_MASTER_SPEC.md)：目標アーキテクチャとフェーズゲート
-6. Issue #282 の最新 `[100B_COORD_V1]` 記録：詳細な判断履歴。上の文書より新しい判断はこちらにある。
+6. Issue #282 の最新 `[100B_COORD_V1]` 記録：詳細な判断履歴。上の文書より新しい正式判断は、`main` に反映するまで `PENDING_DOC_SYNC` として扱う（優先順位と反映手順は DECISIONS.md D-022）。
 
 ## 今の要点（2026-10-18）
 
-- 現実の紙幣、Project純損益、100億円までの残額：未確認または UNKNOWN（UNKNOWN は 0 ではない）。
+- 現実の紙幣：未確認。Project純損益と100億円までの残額：UNKNOWN（UNKNOWN は 0 ではない）。
 - V10 の完成形：AI が最大限自動化し、OWNER は最終承認だけを行う（D-020）。実注文は禁止のまま。
   - `REAL_SUBMIT_ALLOWED=false`、`STOP_ALLOWED=false`、`CUTOVER_ELIGIBLE=false`。
-- 最優先は P0-1：V10 localhost セキュリティの修正（Draft PR #441）と、その独立レビュー。
-- V10 本体は `main` に未統合（Draft PR #438、#439、#440、#441）。実機受入は P0-27 で BLOCKED（Issue #408）。
+- 最優先は P0-1：V10 localhost セキュリティの修正（Draft PR #441）。
+  - 旧 HEAD `1eb6dd5` の独立監査は CONDITIONAL PASS。指摘3件を GPT が修正し、新 HEAD `44f417a` の合成 CI は 9/9 PASS。
+  - 新 HEAD の独立再監査は未実施。Draft・未マージで、OWNER の Windows 実機では未検証。
+- V10 本体は `main` に未統合（Draft PR #438、#439、#440、#441）。実機受入は P0-27 の ADMISSION で BLOCKED。次は Issue #408（非停止の診断）。
 
 ## 運用ルール
 

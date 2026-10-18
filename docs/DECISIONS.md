@@ -1,7 +1,7 @@
 # 100億PROJECT — DECISIONS
 Updated: 2026-10-18 JST
 
-> D-001〜D-016 were recorded on 2026-10-08 on the V10 branch line and are carried to `main` unchanged, except D-002 and D-005 are annotated below.
+> D-001〜D-016 were recorded on 2026-10-08 on the V10 branch line and are carried to `main` unchanged, except D-002, D-005 and D-016 are annotated below (the original text is kept).
 > D-017 onward summarize later formal decisions; the full text is the Issue #282 record named in each entry.
 
 ## D-001 Money before technology
@@ -9,7 +9,8 @@ Every progress report starts with real cash and P/L. Technical completion never 
 
 ## D-002 GitHub is canonical shared state
 Cross-agent state belongs in MASTER_PROJECT_STATE.md / CURRENT_WBS.md / DAILY_PROGRESS.md / DECISIONS.md. Chats are not the canonical project database.
-2026-10-18 annotation: these files now live on `main` (previously only on unmerged V10 branches). Issue #282 `[100B_COORD_V1]` records hold the detailed history; a decision newer than these files must be reflected here before it counts as canonical.
+2026-10-18 annotation: PR #443 brings these files to `main` (previously they existed only on unmerged V10 branches). Issue #282 `[100B_COORD_V1]` records hold the detailed history.
+Precedence: the `main` files are the last ACCEPTED snapshot. A later traceable formal decision on Issue #282 takes precedence but is `PENDING_DOC_SYNC` until it is checked into `main`, and it never removes an OWNER approval condition it states. See D-022.
 
 ## D-003 V10 only in production
 Do not restore V8/V9 active runtime paths. Git history is sufficient for old-code recovery/audit.
@@ -77,6 +78,7 @@ The number of strategies and strategy modules is dynamic and evidence-driven.
 Existing strategy Supervisors are internal specialist modules, not a fixed target roster.
 Shadow measures Brain decisions and feeds performance back; it does not replace Brain decision ownership.
 `real_submit_allowed=false` remains mandatory.
+2026-10-18 annotation: D-016 is the target architecture, not the implemented state. The actual V10 BRAIN observer is not yet the continuous live strategy-selection authority.
 
 
 ## D-017 One AI per PR / file set
@@ -116,3 +118,11 @@ Before expanding sensitive local data or adding any execution path:
 Browser-reachable control functions must not be grown into the order-approval function.
 Source: Issue #282 COORD-V10-DATA-RIGHTS-ORDER-GATES-20261018-V1 §4 and COORD-V10-OWNER-FINAL-APPROVAL-20261018-V1 §2.
 
+## D-022 Precedence of Issue #282 decisions and document sync
+- The `main` canonical documents are the last ACCEPTED snapshot.
+- A later formal decision on Issue #282 takes precedence only if it is traceable (it has a record_id and is recorded as an OWNER instruction or a GPT lead formal decision). Until it is checked into `main`, its state is `PENDING_DOC_SYNC`.
+- Precedence never removes an OWNER approval condition stated in that decision. A role label alone does not substitute for OWNER approval.
+- Not every Issue #282 comment is a formal decision. A new PR is not the `main` state until it is merged.
+- Sync procedure: after a formal decision, the GPT lead names one document owner (one AI). That owner updates DECISIONS.md, CURRENT_WBS.md and DAILY_PROGRESS.md in one Draft PR. The GPT lead reviews the exact HEAD, and the OWNER approves the merge. No auto-merge.
+- Editing these documents does not by itself start work by any other AI.
+Source: PR #443 review P443-GPT-INDEPENDENT-REVIEW-20261018-V1 (GPT lead, 2026-10-18), items 3 and 6.

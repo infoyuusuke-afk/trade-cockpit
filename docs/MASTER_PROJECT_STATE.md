@@ -18,9 +18,9 @@ Authority: Canonical cross-agent project state (main). Detailed decision history
 - Project realized trading profit: **未確認**
 - Project operating cost: **未集計**
 - Owner labor cost: **未集計**
-- Project net P/L: **未確定。黒字化未達**
-- Owner-reported historical trading loss before/alongside project: **3,500万円超**
-- 100億円 target remaining: **UNKNOWN（100億円＋未集計のProject赤字）**
+- Project net P/L: **UNKNOWN（台帳の照合が終わるまで）**
+- 100億円 target remaining: **UNKNOWN**
+- Rule: OWNER個人の過去の売買損益は、Project会計に混ぜない。また、公開リポジトリに載せない。
 - Rule: 技術完成度を現実の利益として計上しない。紙幣・実現損益だけを収益KPIとする。UNKNOWNは0ではない。
 
 ## 1. Current target (formal decision COORD-V10-OWNER-FINAL-APPROVAL-20261018-V1)
@@ -35,16 +35,19 @@ V10の完成形は「AIが可能な作業を最大限自動化し、OWNERは重�
   - OWNER実機 P0-27 は ADMISSION で BLOCKED（`PREFLIGHT_PORT_CHILD_IDENTITY_NOT_PROVEN`）。何も停止していない。
   - 次は Issue #408（P0-28：非停止の診断）。
 - V10 の localhost セキュリティ欠陥（広すぎる CORS、静的ファイル配信の許可リストなし、Voice の GET 制御）は release-blocking P0 である。
-  - 修正の Draft は PR #441。合成 CI は PASS。独立セキュリティレビューは未実施。
+  - 修正の Draft は PR #441（main ではなく #440 のブランチが base）。
+  - Claude の独立監査は旧 HEAD `1eb6dd5` を対象に CONDITIONAL PASS（指摘3件）。
+  - GPT 開発責任者が3件を同じPRで修正し、新 HEAD `44f417a` で Windows/Ubuntu の合成 CI 9/9 PASS（[#441 comment](https://github.com/infoyuusuke-afk/trade-cockpit/pull/441#issuecomment-6243558199)、[#282 record](https://github.com/infoyuusuke-afk/trade-cockpit/issues/282#issuecomment-6243564254)）。
+  - 新 HEAD の独立再監査は未実施。Draft・未マージで、OWNER の Windows 実機では未検証。
 - AI候補 → 模擬OWNER承認 → Shadow の合成E2Eは PR #442（Draft、合成CI PASS）。
-  - 本人認証、実市場データ、Shadow約定、期待値の証明はまだない。
+  - 紙の上の模擬レビューだけである。本人認証されたスマホ承認、実際のShadow約定、実注文はない。実市場データと期待値の証明もない。
 - `real_submit_allowed=false`、`STOP_ALLOWED=false`、`CUTOVER_ELIGIBLE=false`。
 - V8/V9 の本番実行経路は復活させない。
 
 ## 3. Known current gaps
 - `owner_approval_queue.py` の `decided_by="OWNER"` は文字列の確認であり、本人認証ではない。
 - 実市場データの利用権限が、データ源ごとに確定していない（DECISIONS.md D-019）。
-- 正本ドキュメントが、main・V10系ブランチ・Issue #282 に分散していた（2026-10-18 に本PRで main へ一本化）。
+- 正本ドキュメントが、main・V10系ブランチ・Issue #282 に分散していた（2026-10-18 に main へ一本化する Draft PR #443 を作成済み。マージ待ち）。
 - EVENT 5 / HOT銘柄は、まだ全市場のリアルタイムレーンになっていない（2026-10-08 以降、未解消）。
 
 ## 4. Architecture ownership (2026-10-18 formal decision)
@@ -106,6 +109,13 @@ Work / Cloud / Cursor / Claude などに作業を渡すのは、それらが使�
 4. `docs/DECISIONS.md`
 5. `STATUS.md`（短い入口。2026-09-24 までの詳細な履歴は `docs/history/STATUS_ARCHIVE_UNTIL_2026-09-24.md`）
 6. `docs/AI_COCKPIT_MASTER_SPEC.md`
-7. Issue #282 の最新 `[100B_COORD_V1]` 記録。この文書より新しい判断は、Issue #282 側が優先する。正本へ反映するまでは「未反映」として扱う。
+7. Issue #282 の最新 `[100B_COORD_V1]` 記録。
+
+## 8.1 正本の優先順位（Issue #282 との関係）
+- `main` の上記文書は、最後に受入（ACCEPTED）された時点の記録である。
+- その後に Issue #282 に記録された正式判断は、出典をたどれるもの（record_id があり、OWNER の指示または統括の正式判断として記録されたもの）に限り、`main` の文書より優先する。`main` に反映するまでは `PENDING_DOC_SYNC` として扱う。
+- ただし、その判断に OWNER 承認の条件が書かれている場合、その条件は優先によって省略されない。役割の名前を名乗るだけでは、OWNER の承認を代わりにできない。
+- Issue #282 のすべてのコメントが正式判断ではない。新しい PR も、マージされるまでは `main` の状態ではない。
+- 反映の担当：正式判断の後、統括が1人の文書担当（AI）を指名する。その担当が DECISIONS.md・CURRENT_WBS.md・DAILY_PROGRESS.md を1本の Draft PR で更新する。統括が内容を確認し、OWNER がマージを承認する（D-022）。
 
 `docs/AI_SHARED_SHEET.md` は、C-xxx 番号の履歴的な調整シートである。新しい判断は、DECISIONS.md と Issue #282 に記録する。

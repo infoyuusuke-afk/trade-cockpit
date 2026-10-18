@@ -7,7 +7,10 @@ At the beginning of each Claude Code / Cursor / agent session in this repository
 4. docs/DECISIONS.md
 5. STATUS.md (short entry point; history in docs/history/STATUS_ARCHIVE_UNTIL_2026-09-24.md)
 6. docs/AI_COCKPIT_MASTER_SPEC.md
-7. The latest `[100B_COORD_V1]` records in Issue #282. They hold decisions newer than the files above.
+7. The latest `[100B_COORD_V1]` records in Issue #282.
+
+The files above are the last ACCEPTED snapshot. A later traceable formal decision in Issue #282 takes precedence but stays `PENDING_DOC_SYNC` until it is checked into `main`. Precedence never removes an OWNER approval condition, and a role label alone does not replace OWNER approval. Not every comment is a formal decision, and an unmerged PR is not the `main` state. See docs/DECISIONS.md D-022 for the sync owner and reviews.
+Editing these documents does not by itself start work by any other AI.
 
 ## Mandatory priority rule
 Every progress report starts with: 現実の紙幣 -> Project net P/L -> 100億円までの残額 -> 今日の実現利益/売上 -> 今日の実費 -> Owner労務コスト -> then technical progress / Acceptance / Blockers / Next actions.

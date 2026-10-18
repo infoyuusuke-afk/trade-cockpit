@@ -9,17 +9,18 @@ All stages: `REAL_SUBMIT_ALLOWED=false`, `STOP_ALLOWED=false`, `CUTOVER_ELIGIBLE
 
 | Stage | Work | Pass condition | Owner (primary) | Independent check | State (2026-10-18) |
 |---|---|---|---|---|---|
-| P0-1 | V10 localhost security fix | Reject Host/Origin spoofing, DNS rebinding, CSRF, non-allowlisted files, symlinks, misuse of `/control` `/speak` `/announce` | GPT development lead | Claude audit + GPT lead | Draft PR #441 (HEAD 1eb6dd5, synthetic CI 9/9 PASS). Independent security review pending |
+| P0-1 | V10 localhost security fix | Reject Host/Origin spoofing, DNS rebinding, CSRF, non-allowlisted files, symlinks, misuse of `/control` `/speak` `/announce` | GPT development lead | Claude audit + GPT lead | Draft PR #441 (base #440, not main). Claude audit of old HEAD 1eb6dd5: CONDITIONAL PASS (3 findings). GPT fixed all 3 → new HEAD 44f417a, Windows/Ubuntu synthetic CI 9/9 PASS. Independent re-audit of 44f417a pending. Not verified on OWNER Windows |
 | P0-2 | Unify V10 core on main | Correct start/stop, source pin, CI, independent acceptance | GPT development lead | GPT lead | Drafts #438 (STOP), #439 (source pin / guarded start), #440 (engine candidate), #441 (security) not integrated. #435 (P0-14) and #434 (legacy CI split) also Draft |
-| P0-3 | Windows real-machine acceptance | Safe operation confirmed by an OWNER-approved procedure | GPT lead + OWNER | GPT lead | BLOCKED: P0-27 at ADMISSION. Issue #408 (P0-28 non-stopping diagnosis) waiting for instruction |
+| P0-3 | Windows real-machine acceptance | Safe operation confirmed by an OWNER-approved procedure | GPT lead + OWNER | GPT lead | BLOCKED: P0-27 at ADMISSION. Issue #408 (P0-28) is a non-stopping diagnosis, waiting for instruction |
 | P1-1 | Automated collection of licensed data | Source, retrieval time, usage rights and gaps verified | GPT development lead | GPT lead | Not started. Rights per source: DECISIONS.md D-019 |
 | P1-2 | V10 screener + analyst AI integration | Supply/demand and PRE-NEXT predictions recorded reproducibly | GPT development lead / analyst GPTs | Specialist analysts | Not started. Display-only bridge first (ROADMAP G5) |
-| P1-3 | Order draft → Shadow → phone approval (simulated) | One safe loop from OWNER approval to simulated execution | GPT development lead | GPT lead | Synthetic E2E Draft PR #442 (HEAD a221297, CI PASS). No device authentication yet |
+| P1-3 | Order draft → Shadow → phone approval (simulated) | One safe loop from OWNER approval to simulated execution | GPT development lead | GPT lead | Synthetic E2E Draft PR #442 (HEAD a221297, CI PASS). Paper-only simulated review: no authenticated phone, no actual Shadow fill, no real order |
 | P2 | Limited real-order design and review | Independent acceptance + separate explicit OWNER approval | — | — | Not authorized |
 | P3 | Full operation by track record | Risk, revenue and operating quality re-verified | — | — | Not authorized |
 
 ## Parallel / maintenance
-- Canonical ledger unification: this docs-only PR (Claude draft; GPT lead content review; OWNER merge approval).
+- Canonical ledger unification: Draft PR #443 prepared, pending merge (Claude is the sole editor; GPT lead reviews the exact HEAD; OWNER approves the merge).
+- Document sync after each formal Issue #282 decision: D-022.
 - Legacy V8/V9 test isolation: Draft PR #434. Merge awaits GPT lead approval.
 - Revenue lane: must not be starved. Record actual cash only, never projected value.
 

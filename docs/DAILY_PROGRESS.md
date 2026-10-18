@@ -19,16 +19,19 @@ Newest first. Keep one short entry per day; detailed evidence stays in PRs and t
 - V10 localhost security is release-blocking P0 (D-021).
 
 ### 2. Work (all Draft; nothing merged; no real-machine action)
-- PR #441: V10 localhost security fix (GPT). Synthetic CI 9/9 PASS. Independent review pending.
-- PR #442: synthetic AI candidate → simulated OWNER approval → Shadow E2E (GPT). CI PASS.
+- PR #441: V10 localhost security fix (GPT).
+  - Claude independent audit (OWNER-directed) of old HEAD 1eb6dd5: CONDITIONAL PASS with 3 findings.
+  - GPT fixed all 3 in the same PR. New HEAD 44f417a: Windows/Ubuntu synthetic CI 9/9 PASS.
+  - Independent re-audit of the new HEAD pending. Draft, unmerged, not verified on OWNER Windows.
+- PR #442: synthetic AI candidate → simulated OWNER approval → Shadow E2E (GPT). CI PASS. Paper-only: no authenticated phone, no actual Shadow fill, no real order.
 - PR #440 independent audit (Claude, OWNER-directed): FAIL on the security P0 findings that led to #441.
 - PR #439 substitute report (Claude): PARTIAL.
 - PR #434 legacy V8/V9 test split: CI green. Merge awaits approval.
 - PR #435 P0-14 BRAIN exact-argv tests: synthetic Windows CI 19/19.
-- Canonical ledger unified onto `main` (this file set; docs-only PR).
+- Canonical ledger unification: Draft PR #443 prepared, pending merge.
 
 ### 3. Blockers
-- P0-27 real-machine acceptance BLOCKED at ADMISSION. Next is Issue #408 (P0-28).
+- P0-27 real-machine acceptance BLOCKED at ADMISSION. Next is Issue #408 (P0-28, non-stopping diagnosis).
 - No OWNER device authentication exists for approvals.
 - GPT Work usage limits slow development. OWNER is considering a plan change; the cost is an OWNER decision.
 
