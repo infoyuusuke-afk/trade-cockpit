@@ -119,17 +119,51 @@ function Stop-OwnedJobBridge([int]$Port,[int]$ExpectedParentId,[string]$Label) {
     $owner = Get-ListeningOwnerPid $Port
     if ($owner -le 0) { return $true }
     try {
-        $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $owner) -ErrorAction SilentlyContinue
-        if ($null -eq $info) { return $false }
-        $name = [string]$info.Name
-        $parent = [int]$info.ParentProcessId
-        if ($parent -eq $ExpectedParentId -and $name -match "^(powershell|pwsh)\.exe$") {
-            Stop-Process -Id $owner -Force -ErrorAction SilentlyContinue
-            Write-Status ("  stopped owned {0} bridge child: port {1}, PID {2}, parent {3}" -f $Label,$Port,$owner,$ExpectedParentId) DarkGray
-            return $true
+        $scriptName = switch ($Port) {
+            28580 { "MS2_RSS_100_Collector.ps1" }
+            28582 { "Kioxia_RSS_Live_Watcher.ps1" }
+            default { "" }
         }
-    } catch {}
-    return $false
+        $parentField = switch ($Port) {
+            28580 { "collector_pid" }
+            28582 { "watcher_pid" }
+            default { "" }
+        }
+        if (-not $scriptName -or -not $parentField -or
+            -not (Test-OwnedPidIdentity $parentField $ExpectedParentId)) {
+            throw "BRIDGE_PARENT_UNVERIFIED"
+        }
+        $parentProc = Get-Process -Id $ExpectedParentId -ErrorAction Stop
+        $childProc = Get-Process -Id $owner -ErrorAction Stop
+        $parentHandle = $parentProc.Handle
+        $childHandle = $childProc.Handle
+        if ($parentHandle -eq [IntPtr]::Zero -or $childHandle -eq [IntPtr]::Zero -or
+            $parentProc.HasExited -or $childProc.HasExited) { throw "BRIDGE_HANDLE_NOT_LIVE" }
+        $parentCim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ExpectedParentId) -ErrorAction Stop
+        $childCim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $owner) -ErrorAction Stop
+        if ([int]$childCim.ParentProcessId -ne $ExpectedParentId -or
+            [string]$parentCim.Name -notmatch '^(powershell|pwsh)\.exe$' -or
+            [string]$childCim.Name -notmatch '^(powershell|pwsh)\.exe$' -or
+            [int]$parentProc.SessionId -ne [int]$childProc.SessionId) {
+            throw "BRIDGE_PARENT_CHILD_UNVERIFIED"
+        }
+        $parentStarted = $parentProc.StartTime.ToUniversalTime()
+        $childStarted = $childProc.StartTime.ToUniversalTime()
+        if ($childStarted -lt $parentStarted.AddSeconds(-2) -or
+            [Math]::Abs(($parentStarted - ([datetime]$parentCim.CreationDate).ToUniversalTime()).TotalSeconds) -gt 2 -or
+            [Math]::Abs(($childStarted - ([datetime]$childCim.CreationDate).ToUniversalTime()).TotalSeconds) -gt 2) {
+            throw "BRIDGE_START_TIME_MISMATCH"
+        }
+        $childProc.Kill()
+        if (-not $childProc.WaitForExit(5000) -or -not $childProc.HasExited) {
+            throw "BRIDGE_CHILD_STILL_RUNNING"
+        }
+        Write-Status ("  stopped verified {0} bridge child: port {1}, PID {2}" -f $Label,$Port,$owner) DarkGray
+        return $true
+    } catch {
+        Write-Status ("  BRIDGE_STOP_REFUSED: " + $Label + " / " + $_.Exception.Message) Yellow
+        return $false
+    }
 }
 
 # Preflight: a port already LISTENing is not, by itself, evidence that
@@ -401,13 +435,27 @@ function Stop-OwnedFromPreviousState {
 # A workbook title change does not establish ownership of the Excel process.
 # Release the workers' COM references; never force-kill Excel, which may also
 # host a user's other workbooks. A surviving Excel is reported for acceptance.
+# Never re-resolve a numeric PID after checking ownership. A workbook-close
+# cleanup uses each already-opened process handle and preserves foreign workers.
 function Stop-ManagedWorkersOnWorkbookClose($SessionState) {
     foreach ($field in @("watcher_pid", "heartbeat_pid", "collector_pid", "gateway_pid", "brain_gateway_pid", "voice_bridge_pid", "sbv2_pid", "shadow_supervisor_pid", "brain_observer_pid")) {
         $workerPid = [int]$SessionState.$field
         if ($workerPid -le 0 -or $workerPid -eq [int]$SessionState.excel_pid) { continue }
         $worker = Get-Process -Id $workerPid -ErrorAction SilentlyContinue
-        if ($null -ne $worker -and (Test-OwnedPidIdentity $field $workerPid)) {
-            Stop-Process -Id $workerPid -Force -ErrorAction SilentlyContinue
+        if ($null -eq $worker) { continue }
+        if (-not (Test-OwnedPidIdentity $field $workerPid)) {
+            Write-Status ("  WORKER_STOP_REFUSED: " + $field + " identity unverified") Yellow
+            continue
+        }
+        try {
+            $handle = $worker.Handle
+            if ($handle -eq [IntPtr]::Zero -or $worker.HasExited) { throw "WORKER_HANDLE_NOT_LIVE" }
+            $worker.Kill()
+            if (-not $worker.WaitForExit(5000) -or -not $worker.HasExited) {
+                throw "WORKER_NOT_TERMINATED"
+            }
+        } catch {
+            Write-Status ("  WORKER_STOP_UNVERIFIED: " + $field + " / " + $_.Exception.Message) Yellow
         }
     }
 }
