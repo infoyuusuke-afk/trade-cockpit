@@ -28,7 +28,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Byte-for-byte equality to exact 29 reviewed-candidate blobs (read-only)
+      - name: Byte-for-byte equality to exact 30 reviewed-candidate blobs (read-only)
         shell: bash
         run: |
           set -euo pipefail
@@ -36,7 +36,7 @@ jobs:
           git fetch --no-tags --depth=1 origin "$pinned"
           python -m json.tool downloads/V10_RELEASE_BUNDLE_MANIFEST.json > /dev/null
           mapfile -t files < <(python -c 'import json; print("\n".join(item["path"] for item in json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json", encoding="utf-8"))["files"]))')
-          test "${#files[@]}" -eq 29
+          test "${#files[@]}" -eq 30
           for file in "${files[@]}"; do
             test -f "$file"
             git cat-file -e "$pinned:$file"
@@ -71,6 +71,7 @@ jobs:
           $paths = @(
             'downloads/RUN_AI_COCKPIT_V10.ps1',
             'downloads/AI_COCKPIT_CONTROLLER_V10.ps1',
+            'downloads/EXCEL_IDENTITY_PROBE_V10.ps1',
             'downloads/AI_COCKPIT_GATEWAY_V10.ps1',
             'downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1',
             'downloads/STOP_AI_COCKPIT_V10.ps1',
