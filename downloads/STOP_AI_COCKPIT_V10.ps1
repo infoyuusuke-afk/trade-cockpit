@@ -303,6 +303,42 @@ function Test-ExactBrainHandle([System.Diagnostics.Process]$Proc,$State) {
 
 # A tracked Excel PID is not an ownership token; require matching session,
 # canonical workbook, original Controller parent and creation time.
+# Only an exclusive canonical workbook may be closed as part of V10 STOP.
+# Same-PID foreign workbooks are not visible to the process-level checks.
+function Test-OnlyCanonicalExcelWorkbookOpen($Application,[string]$WorkbookPath) {
+    if ($null -eq $Application -or [string]::IsNullOrWhiteSpace($WorkbookPath)) { return $false }
+    try {
+        $books = @($Application.Workbooks)
+        if ($books.Count -ne 1) { return $false }
+        $openPath = [string]$books[0].FullName
+        if ([string]::IsNullOrWhiteSpace($openPath)) { return $false }
+        return [string]::Equals([IO.Path]::GetFullPath($openPath),
+            [IO.Path]::GetFullPath($WorkbookPath), [StringComparison]::OrdinalIgnoreCase)
+    } catch { return $false }
+}
+
+# Do not force-kill a hidden Excel process unless the same COM application
+# (HWND -> recorded PID) currently exposes ZERO remaining workbooks.
+# Missing/unavailable ROT identity is UNKNOWN: fail closed and retain state.
+function Test-NoExcelWorkbooksForPid([int]$ExcelPid) {
+    if ($ExcelPid -le 0 -or -not ("AIExcelNative" -as [type])) { return $false }
+    $application = $null
+    try {
+        $application = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
+        if ($null -eq $application) { return $false }
+        $hwnd = [int64]$application.Hwnd
+        $foundPid = [uint32]0
+        [void][AIExcelNative]::GetWindowThreadProcessId([IntPtr]$hwnd, [ref]$foundPid)
+        if ([int]$foundPid -ne $ExcelPid) { return $false }
+        return (@($application.Workbooks).Count -eq 0)
+    } catch { return $false }
+    finally {
+        if ($null -ne $application) {
+            try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($application) } catch {}
+        }
+    }
+}
+
 function Stop-VerifiedHiddenManagedExcelOrphan([int]$ExcelPid,[string]$WorkbookPath,
     [datetime]$ExpectedStartUtc,[int]$ExpectedControllerPid) {
     if ($ExcelPid -le 0 -or [string]::IsNullOrWhiteSpace($WorkbookPath) -or
@@ -337,6 +373,7 @@ function Stop-VerifiedHiddenManagedExcelOrphan([int]$ExcelPid,[string]$WorkbookP
             Where-Object { $_.Id -ne $ExcelPid -and $_.SessionId -eq $selfSession }
         )
         if ($otherExcel.Count -gt 0 -or $xp.HasExited) { return $false }
+        if (-not (Test-NoExcelWorkbooksForPid $ExcelPid)) { return $false }
 
         $xp.Kill()
         return ($xp.WaitForExit(5000) -and $xp.HasExited)
@@ -375,24 +412,31 @@ public static class AIExcelNative {
         [void][AIExcelNative]::GetWindowThreadProcessId([IntPtr]$appHwnd, [ref]$resolvedPid)
         if ([int]$resolvedPid -ne $ExcelPid) { return $false }
 
+        # Verify exact workbook exclusivity before any COM mutation. A
+        # company workbook may share this PID despite the target window title.
+        if (-not (Test-OnlyCanonicalExcelWorkbookOpen $app $WorkbookPath)) {
+            return $false
+        }
         foreach ($book in @($app.Workbooks)) {
             $full = ""
             try { $full = [string]$book.FullName } catch {}
             if (-not [string]::IsNullOrWhiteSpace($full) -and
-                [string]::Equals($full, $WorkbookPath, [StringComparison]::OrdinalIgnoreCase)) {
+                [string]::Equals([IO.Path]::GetFullPath($full),
+                    [IO.Path]::GetFullPath($WorkbookPath), [StringComparison]::OrdinalIgnoreCase)) {
                 $targetBook = $book
                 break
             }
             try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($book) } catch {}
         }
         if ($null -eq $targetBook) { return $false }
-
-        try { $app.DisplayAlerts = $false } catch {}
-
-        # Runtime RSS writes are transient. Never persist them into the clean
-        # canonical workbook during Safe Stop.
+        # Close only the canonical RSS workbook. Do not set DisplayAlerts=false
+        # on the entire Excel instance; foreign unsaved work must never be
+        # discarded by automation.
         $targetBook.Close($false)
-        try { $app.Quit() } catch {}
+        # A foreign workbook may have been opened while Close was running.
+        # Quit is authorized only if the application now has zero workbooks.
+        if (@($app.Workbooks).Count -ne 0) { return $false }
+        try { $app.Quit() } catch { return $false }
 
         # The window can disappear before EXCEL.EXE exits. Wait briefly; the
         # caller will perform the verified hidden-orphan cleanup if needed.
