@@ -265,6 +265,28 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.assertEqual(self.state_path.read_bytes(), original)
         self.assertIsNone(self.foreign.poll(), "foreign PID was stopped by recovery")
 
+    def test_archive_refuses_port_free_legacy_v9_controller_and_preserves_state(self):
+        original, digest, session = self.prepare_synthetic_archive_state()
+        self.controller.kill()
+        self.controller.wait(timeout=10)
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        legacy_script = self.root / "AI_COCKPIT_CONTROLLER_V9.ps1"
+        legacy_script.write_text("Start-Sleep -Seconds 120\n", encoding="utf-8")
+        legacy = self.spawn([
+            "powershell.exe", "-NoProfile", "-NonInteractive",
+            "-File", str(legacy_script),
+        ])
+        time.sleep(0.3)
+        self.assertIsNone(legacy.poll(), "synthetic legacy V9 failed to start")
+        result = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("RECOVERY_ARCHIVE=REFUSED_OR_UNVERIFIED", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), original)
+        self.assertFalse(list(self.root.glob("V10_CONTROLLER_STATE.archived.*.json")))
+        self.assertIsNone(legacy.poll(), "archive terminated a legacy process")
+        self.assertIsNone(self.foreign.poll(), "archive terminated unrelated Python")
+
     def test_archive_refuses_untracked_v10_worker_before_state_rename(self):
         original, digest, session = self.prepare_synthetic_archive_state()
         self.controller.kill()
