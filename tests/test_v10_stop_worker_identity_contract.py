@@ -73,6 +73,18 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertIn('[IO.Path]::IsPathRooted($argv[0])', helper)
         self.assertIn('$actualInterpreter', helper)
 
+    def test_controller_never_auto_kills_unmanaged_legacy_voice(self):
+        controller = (STOP.parent / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("function Assert-NoUnmanagedLegacyVoiceWorkers", controller)
+        self.assertIn("Assert-NoUnmanagedLegacyVoiceWorkers", controller)
+        self.assertNotIn("function Stop-LegacyVoiceWorkers", controller)
+        guard = controller.split("function Assert-NoUnmanagedLegacyVoiceWorkers", 1)[1].split(
+            "function Tail-Log", 1)[0]
+        self.assertNotIn("Stop-Process", guard)
+        self.assertIn("UNMANAGED_LEGACY_VOICE_PROCESS", guard)
+        self.assertIn('Join-Path $sbvRoot "server_fastapi.py"', controller)
+        self.assertIn("Start-Process -FilePath $exe -ArgumentList $serverArg", controller)
+
     def test_refusal_precedes_controller_stop(self):
         src = self.source
         preflight = src.index("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID")
