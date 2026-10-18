@@ -417,7 +417,10 @@ function Get-CimInstance { [pscustomobject]@{CommandLine='MS2_RSS_100_Collector.
                 self.assertIn(
                     b"Access-Control-Allow-Origin: http://127.0.0.1:28581", raw)
                 self.assertIn(b"Access-Control-Allow-Private-Network: true", raw)
-                self.assertIn(b'"real_submit_allowed":false', raw)
+                # Parse the body: Collector emits compact JSON, Watcher
+                # emits "key": value with a space. The value must be false.
+                body = json.loads(raw.split(b"\r\n\r\n", 1)[1].decode("utf-8"))
+                self.assertIs(body.get("real_submit_allowed"), False)
 
                 # No-Origin internal PowerShell request remains compatible.
                 status, raw = self._request(port, path, agent="Windows PowerShell/5.1")
