@@ -82,6 +82,8 @@ class StopWorkerIdentityContract(unittest.TestCase):
             "function Tail-Log", 1)[0]
         self.assertNotIn("Stop-Process", guard)
         self.assertIn("UNMANAGED_LEGACY_VOICE_PROCESS", guard)
+        self.assertIn("LEGACY_VOICE_INVENTORY_UNAVAILABLE", guard)
+        self.assertIn("Get-CimInstance Win32_Process -ErrorAction Stop", guard)
         self.assertIn('Join-Path $sbvRoot "server_fastapi.py"', controller)
         self.assertIn("Start-Process -FilePath $exe -ArgumentList $serverArg", controller)
 
