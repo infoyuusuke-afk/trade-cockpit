@@ -720,10 +720,14 @@ function Assert-NoUnmanagedLegacyRuntimeProcesses {
     foreach ($proc in $processes) {
         if ([string]$proc.Name -notmatch '^(?:powershell|pwsh|python|pythonw|py)\.exe$') { continue }
         $commandLine = [string]$proc.CommandLine
-        # CIM can omit CommandLine for protected foreign interpreters; this
-        # scan makes no positive identity claim in that situation. Listener
-        # and recorded-PID guards remain in force.
-        if ([string]::IsNullOrWhiteSpace($commandLine)) { continue }
+        # A PowerShell/Python interpreter with unreadable argv could be an
+        # idle old V8/V9 runtime with all TCP ports free. UNKNOWN must not
+        # become a false "no legacy sessions" startup clearance. No kill.
+        if ([string]::IsNullOrWhiteSpace($commandLine)) {
+            throw ("UNMANAGED_RUNTIME_COMMANDLINE_UNAVAILABLE: PID " +
+                [string]$proc.ProcessId + " (" + [string]$proc.Name +
+                "); no process terminated; V10 startup denied.")
+        }
         foreach ($scriptName in $suspectScripts) {
             if ($commandLine -match ('(?i)(?:^|[\\/"\s])' + $scriptName + '(?:["\s]|$)')) {
                 throw ("UNMANAGED_LEGACY_RUNTIME_PROCESS: PID " + [string]$proc.ProcessId +
