@@ -407,7 +407,7 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.write_state()
         result = self.run_stop()
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
-        self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_EXCEL_IDENTITY_OR_WORKBOOKS", result.stdout)
+        self.assertIn("SAFE_STOP_PREFLIGHT=PID_INVENTORY_UNVERIFIED", result.stdout)
         self.assertTrue(self.state_path.exists())
         for process in (self.controller, self.brain, self.foreign):
             self.assertIsNone(process.poll(), "malformed Excel PID allowed teardown")
