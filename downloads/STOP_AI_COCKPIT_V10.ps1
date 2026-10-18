@@ -106,14 +106,6 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
         $wmi = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction SilentlyContinue
         $cmd = if ($null -ne $wmi) { [string]$wmi.CommandLine } else { "" }
         if ([string]::IsNullOrWhiteSpace($cmd)) { return $false }
-        if ($Field -eq "controller_pid") {
-            return (
-                $cmd -match [regex]::Escape("AI_COCKPIT_CONTROLLER_V10.ps1") -or
-                $cmd -match [regex]::Escape("RUN_AI_COCKPIT_V10.ps1")
-            )
-        }
-        # A script-name substring is not process ownership: reject forged
-        # command lines, PID reuse and processes from another session.
         $proc = Get-Process -Id $ProcessId -ErrorAction Stop
         if ($proc.HasExited -or $proc.Handle -eq [IntPtr]::Zero) { return $false }
         $cimStarted = ([datetime]$wmi.CreationDate).ToUniversalTime()
@@ -121,10 +113,17 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
         if ([Math]::Abs(($handleStarted - $cimStarted).TotalSeconds) -gt 2) { return $false }
         $selfSession = (Get-Process -Id $PID -ErrorAction Stop).SessionId
         if ([int]$proc.SessionId -ne [int]$selfSession) { return $false }
-        # Require the script to be a distinct argv-like token, not a substring
-        # embedded in a different filename such as fake_<script>.ps1.
-        $escaped = [regex]::Escape($expected)
-        return [regex]::IsMatch($cmd, '(?i)(?<![A-Za-z0-9_.-])' + $escaped + '(?=$|[\s"'']|\\)')
+        # Token boundaries exclude spoofed names such as fake_RUN_AI_COCKPIT_V10.ps1.
+        $names = if ($Field -eq "controller_pid") {
+            @("AI_COCKPIT_CONTROLLER_V10.ps1", "RUN_AI_COCKPIT_V10.ps1")
+        } else { @($expected) }
+        foreach ($name in $names) {
+            $escaped = [regex]::Escape($name)
+            if ([regex]::IsMatch($cmd, '(?i)(?<![A-Za-z0-9_.-])' + $escaped + '(?=$|[\s"'']|\\)')) {
+                return $true
+            }
+        }
+        return $false
     } catch { return $false }
 }
 
