@@ -697,23 +697,43 @@ function Start-Sbv2Managed {
 # Never terminate processes discovered by an unrestricted system-wide scan.
 # An unmanaged legacy voice process blocks startup until the owner stops the
 # verified old runtime; it cannot inherit V10 Controller's stop authority.
-function Assert-NoUnmanagedLegacyVoiceWorkers {
-    # An unavailable WMI inventory is UNKNOWN, never proof that no legacy
-    # voice worker exists. Refuse startup rather than silently assuming clean.
+# Read-only process argv audit before V10 starts any worker. Legacy runtimes
+# can be alive even with all 28580-28584 ports FREE; a socket-only preflight
+# is insufficient. This is NOT a blanket process-name termination authority.
+function Assert-NoUnmanagedLegacyRuntimeProcesses {
     try {
         $processes = @(Get-CimInstance Win32_Process -ErrorAction Stop)
     } catch {
-        throw "LEGACY_VOICE_INVENTORY_UNAVAILABLE: no process terminated; startup denied."
+        throw "UNMANAGED_RUNTIME_INVENTORY_UNAVAILABLE: refusing startup; no process terminated."
     }
-    foreach ($p in $processes) {
-        $cmd = [string]$p.CommandLine
-        if ([string]::IsNullOrWhiteSpace($cmd)) { continue }
-        if ($cmd -match "SPEAK_TODAY_STRATEGY\.ps1|SPEAK_LIVE_EMOTION\.ps1") {
-            throw ("UNMANAGED_LEGACY_VOICE_PROCESS: PID " + $p.ProcessId +
-                " - no process was terminated. Stop the prior runtime through its verified owner.")
+    $suspectScripts = @(
+        'RUN_AI_COCKPIT_V[6789]\.ps1',
+        'AI_COCKPIT_CONTROLLER_V[6789]\.ps1',
+        'AI_COCKPIT_GATEWAY_V[6789]\.ps1',
+        'STOP_AI_COCKPIT_V[6789]\.ps1',
+        'SPEAK_TODAY_STRATEGY\.ps1',
+        'SPEAK_LIVE_EMOTION\.ps1',
+        'Kioxia_RSS_Live_Watcher\.ps1',
+        'MS2_RSS_100_Collector\.ps1',
+        'Kioxia_Safety_Heartbeat\.ps1'
+    )
+    foreach ($proc in $processes) {
+        if ([string]$proc.Name -notmatch '^(?:powershell|pwsh|python|pythonw|py)\.exe$') { continue }
+        $commandLine = [string]$proc.CommandLine
+        # CIM can omit CommandLine for protected foreign interpreters; this
+        # scan makes no positive identity claim in that situation. Listener
+        # and recorded-PID guards remain in force.
+        if ([string]::IsNullOrWhiteSpace($commandLine)) { continue }
+        foreach ($scriptName in $suspectScripts) {
+            if ($commandLine -match ('(?i)(?:^|[\\/"\s])' + $scriptName + '(?:["\s]|$)')) {
+                throw ("UNMANAGED_LEGACY_RUNTIME_PROCESS: PID " + [string]$proc.ProcessId +
+                    " script " + $scriptName +
+                    "; no process terminated; V10 startup denied.")
+            }
         }
     }
 }
+
 
 function Tail-Log([string]$Path, [int]$Lines = 15) {
     if (Test-Path -LiteralPath $Path) {
@@ -1530,8 +1550,8 @@ try {
     Stop-OwnedFromPreviousState
     Start-Sleep -Milliseconds 500
 
-    Write-Status "Checking for unmanaged legacy voice workers without terminating foreign processes..."
-    Assert-NoUnmanagedLegacyVoiceWorkers
+    Write-Status "Checking for unmanaged legacy V6-V9 and port-free RSS workers without terminating them..."
+    Assert-NoUnmanagedLegacyRuntimeProcesses
 
     Write-Status "Checking for foreign sessions on 28580/28581/28582/28583..."
     $ownedNow = @{
