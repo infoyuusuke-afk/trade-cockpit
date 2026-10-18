@@ -124,7 +124,7 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
         # Require the script to be a distinct argv-like token, not a substring
         # embedded in a different filename such as fake_<script>.ps1.
         $escaped = [regex]::Escape($expected)
-        return [regex]::IsMatch($cmd, '(?i)(?<![A-Za-z0-9_.-])' + $escaped + '(?=$|[\\s"''\\])')
+        return [regex]::IsMatch($cmd, '(?i)(?<![A-Za-z0-9_.-])' + $escaped + '(?=$|[\s"'']|\\)')
     } catch { return $false }
 }
 
