@@ -4,6 +4,11 @@ name: V10 Price Freshness (Synthetic)
 # /health and the Risk Gate, and that the three agree. On Windows the real
 # Gateway listener also proves that /live_ms2.json never serves a stale row
 # (price, signal, top5 candidate) as LIVE while the identity quote is fresh.
+# P0-V10-ROW-GATE-OPERABILITY-20261019 adds the 100-symbol completeness gate,
+# the observation endpoint, the Collector bridge (28580) gate, Shadow
+# availability records, the dashboard's fail-closed display (Node) and a
+# 3-hour continuous 100-symbol synthetic run (metrics uploaded as an artifact;
+# synthetic, not market results).
 # CI PASS is not a Windows real-machine acceptance and does not approve
 # deployment.
 on:
@@ -15,6 +20,10 @@ on:
       - "ms2_live/MS2_RSS_100_Collector.ps1"
       - "tests/test_v10_price_freshness.py"
       - "tests/test_v10_live_row_gate_http.py"
+      - "tests/test_v10_row_gate_operability.py"
+      - "tests/v10_ui_fail_closed_harness.mjs"
+      - "index.html"
+      - "card_system.js"
       - "tests/test_risk_gate.py"
       - "tests/fixtures/v10_price_freshness_cases.json"
       - ".github/workflows/v10-price-freshness.yml"
@@ -28,7 +37,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 45
     env:
       # The verdict must not depend on the runner's local time zone.
       TZ: America/Los_Angeles
@@ -41,11 +50,19 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          python -m unittest tests/test_v10_price_freshness.py tests/test_v10_live_row_gate_http.py -v 2>&1 | tee freshness.log
+          export V10_SYNTHETIC_METRICS="$PWD/v10_synthetic_metrics.json"
+          python -m unittest tests/test_v10_price_freshness.py tests/test_v10_live_row_gate_http.py tests/test_v10_row_gate_operability.py -v 2>&1 | tee freshness.log
           # Gateway/Collector parity runs in Windows PowerShell 5.1, the
           # production host. It may skip on Linux (no powershell.exe) but
           # must never skip on Windows.
           if [ "$RUNNER_OS" = "Windows" ] && grep -E "skipped|SKIP" freshness.log; then echo "PARITY_TESTS_MUST_NOT_SKIP_ON_WINDOWS"; exit 1; fi
+      - name: Upload continuous synthetic metrics (synthetic only)
+        if: always() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: v10-continuous-synthetic-metrics
+          path: v10_synthetic_metrics.json
+          if-no-files-found: error
       - name: Existing Risk Gate regression
         shell: bash
         run: python -m unittest tests/test_risk_gate.py -v

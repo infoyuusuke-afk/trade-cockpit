@@ -223,8 +223,28 @@ def _row_quote(at, observed=None, basis="COLLECTOR_OBSERVED_CHANGE"):
             "source_timestamp_observed_at": observed or at}
 
 
+SYNTHETIC_UNIVERSE = ["SYN%d.T" % i for i in range(100)]
+
+
+def write_synthetic_watchlist(directory):
+    stocks = {"synthetic %03d" % i: {"ticker": t, "sector": "synthetic"} for i, t in enumerate(SYNTHETIC_UNIVERSE)}
+    (Path(directory) / "watchlist_100.json").write_text(json.dumps({"stocks": stocks}), encoding="utf-8")
+
+
+def complete_board(rows, now):
+    """The given rows plus a fresh, signal-free row for every other synthetic ticker."""
+    given = {r["ticker"] for r in rows}
+    at = (now - timedelta(seconds=1)).isoformat(timespec="seconds")
+    padding = [_signal_row(t, "待機", _row_quote(at)) for t in SYNTHETIC_UNIVERSE if t not in given]
+    return list(rows) + padding
+
+
 class PerRowFreshness(unittest.TestCase):
-    """A fresh board does not make every row's price fresh."""
+    """A fresh board does not make every row's price fresh.
+
+    Each cycle publishes a complete 100-row synthetic board, so that only the
+    rows under test decide the outcome (a short board is never decision
+    available)."""
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="v10-row-"))
@@ -232,6 +252,7 @@ class PerRowFreshness(unittest.TestCase):
         self.live = self.tmp / "live_ms2.json"
         self.status = self.tmp / "ai_shadow_status.json"
         self.now = _ts("2026-10-19T10:00:05+09:00")
+        write_synthetic_watchlist(self.tmp)
 
     def tearDown(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
@@ -239,7 +260,9 @@ class PerRowFreshness(unittest.TestCase):
     def _cycle(self, rows, now=None, identity=None, updated=None):
         now = now or self.now
         payload = _full_payload(now, identity or IDENTITY_FRESH)
-        payload["all_targets"] = rows
+        payload["all_targets"] = complete_board(rows, now)
+        payload["universe"] = 100
+        payload["valid"] = 100
         self.live.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
         os.utime(self.live, (now.timestamp(), now.timestamp()))
         return sup.run_once(self.data, self.live, self.status, now=now)

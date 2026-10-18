@@ -43,10 +43,14 @@ if ([string]::IsNullOrWhiteSpace($RuntimeDir)) {
 $liveJson = if ($RuntimeDir) { Join-Path $RuntimeDir "live_ms2.json" } else { "" }
 $controllerStateFile = "C:\AI_Cockpit_OneClick_Starter\V10_CONTROLLER_STATE.json"
 # Last quote times this Gateway served as LIVE (identity quote and each row).
-# A later payload whose quote is older is a regression and is refused. Kept in
-# memory only; a Gateway restart starts empty.
+# A later payload whose quote is older is a regression and is refused. The
+# history is saved beside live_ms2.json after every LIVE response and read back
+# at start, so a Gateway restart does not forget it. A missing history file is
+# reported as a history-loss risk on /health; an unreadable one refuses LIVE.
 $script:LastServedIdentityQuoteAt = $null
 $script:LastServedRowQuoteAt = @{}
+$script:ServedHistoryPath = if ($RuntimeDir) { Join-Path $RuntimeDir "v10_gateway_served_quotes.json" } else { "" }
+$script:ServedHistoryState = "NOT_LOADED"
 
 if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot "index.html"))) {
     throw "RepoRoot does not look like a trade-cockpit checkout (index.html not found): $RepoRoot"
@@ -368,6 +372,7 @@ function Get-ShadowEnginePublication([string]$RuntimeDirectory) {
         shadow_latest_incident = $null
         shadow_ui_independent = $true
         shadow_quote_freshness = $null
+        shadow_board_availability = $null
     }
     if ([string]::IsNullOrWhiteSpace($RuntimeDirectory)) { return $result }
     $path = Join-Path $RuntimeDirectory "ai_shadow_status.json"
@@ -404,6 +409,7 @@ function Get-ShadowEnginePublication([string]$RuntimeDirectory) {
         $result.shadow_ops = $status.ops
         $result.shadow_latest_incident = $status.latest_incident
         $result.shadow_quote_freshness = $status.quote_freshness
+        $result.shadow_board_availability = $status.board_availability
         return $result
     } catch {
         $result.shadow_engine_state = "PAUSED_FAIL_CLOSED"
@@ -785,7 +791,9 @@ function Get-BoardRowFreshness {
     # complete: market_state, breadth_pct, valid, kioxia, top5, hold_top5,
     # pts_top5, ir_pts_top5 and every row's market_state/breadth_pct are
     # computed over all rows. So one stale, undated, future or regressed row
-    # rejects the whole response. Unknown is not fresh.
+    # rejects the whole response. Unknown is not fresh. Every row's verdict is
+    # still returned (row_verdicts, state_counts) so the observation layer can
+    # report fresh and missing rows without serving any derived value.
     param(
         $LiveObj,
         [DateTimeOffset]$Now = (Get-JstNow),
@@ -796,6 +804,8 @@ function Get-BoardRowFreshness {
     $reasons = New-Object System.Collections.Generic.List[string]
     $accepted = [ordered]@{}
     $notFresh = New-Object System.Collections.Generic.List[object]
+    $verdictRows = New-Object System.Collections.Generic.List[object]
+    $stateCounts = [ordered]@{ FRESH = 0; STALE = 0; UNKNOWN = 0; INVALID = 0 }
     $rowCount = 0
     $freshCount = 0
     $rows = $null
@@ -810,17 +820,24 @@ function Get-BoardRowFreshness {
             $ticker = $(if ($isObject) { $row.ticker } else { $null })
             if ($ticker -isnot [string] -or [string]::IsNullOrWhiteSpace($ticker)) {
                 [void]$reasons.Add("ROW_TICKER_MISSING")
+                $stateCounts.UNKNOWN++
+                [void]$verdictRows.Add([ordered]@{ ticker = $null; state = "UNKNOWN"; reasons = @("ROW_TICKER_MISSING"); quote_at = $null; quote_age_seconds = $null })
                 if ($notFresh.Count -lt 10) { [void]$notFresh.Add([ordered]@{ ticker = $null; state = "UNKNOWN"; reasons = @("ROW_TICKER_MISSING") }) }
                 continue
             }
             if (-not $seen.Add($ticker)) {
                 [void]$reasons.Add("ROW_TICKER_DUPLICATE")
+                $stateCounts.INVALID++
+                [void]$verdictRows.Add([ordered]@{ ticker = $ticker; state = "INVALID"; reasons = @("ROW_TICKER_DUPLICATE"); quote_at = $null; quote_age_seconds = $null })
                 if ($notFresh.Count -lt 10) { [void]$notFresh.Add([ordered]@{ ticker = $ticker; state = "INVALID"; reasons = @("ROW_TICKER_DUPLICATE") }) }
                 continue
             }
             $previous = $null
             if ($PreviousRowQuotes -is [System.Collections.IDictionary] -and $PreviousRowQuotes.Contains($ticker)) { $previous = $PreviousRowQuotes[$ticker] }
             $verdict = Get-RowQuoteFreshness -Row $row -Now $Now -BoardQuoteAt $BoardQuoteAt -PreviousQuoteAt $previous -MaxQuoteAgeSeconds $MaxQuoteAgeSeconds
+            $stateName = [string]$verdict.state
+            if ($stateCounts.Contains($stateName)) { $stateCounts[$stateName]++ } else { $stateCounts.INVALID++ }
+            [void]$verdictRows.Add([ordered]@{ ticker = $ticker; state = $stateName; reasons = @($verdict.reasons); quote_at = $verdict.quote_at; quote_age_seconds = $verdict.quote_age_seconds })
             if ($verdict.fresh -eq $true) {
                 $freshCount++
                 $accepted[$ticker] = $verdict.quote_at
@@ -845,11 +862,251 @@ function Get-BoardRowFreshness {
         fresh_row_count = $freshCount
         not_fresh_row_count = ($rowCount - $freshCount)
         not_fresh_sample = $notFresh.ToArray()
+        state_counts = $stateCounts
+        row_verdicts = $verdictRows.ToArray()
         accepted_quote_at = $accepted
         board_quote_at = $(if ($BoardQuoteAt -is [string]) { $BoardQuoteAt } else { $null })
         max_quote_age_seconds = $MaxQuoteAgeSeconds
         order_allowed = $false
         real_submit_allowed = $false
+    }
+}
+
+function Get-ExpectedUniverse([string]$RuntimeDirectory) {
+    # The Collector watches the first 100 stocks of watchlist_100.json in its
+    # runtime directory (the Controller pins that file's hash at start-up).
+    # The board is complete only against that set. When the set cannot be
+    # read, has fewer than 100 tickers, or repeats one, completeness is not
+    # verified and is never reported as passing.
+    $expectedCount = 100
+    $result = [ordered]@{ verified = $false; reason = "UNIVERSE_WATCHLIST_MISSING"; expected_count = $expectedCount; tickers = [string[]]@() }
+    if ([string]::IsNullOrWhiteSpace($RuntimeDirectory)) { return $result }
+    $path = Join-Path $RuntimeDirectory "watchlist_100.json"
+    if (-not (Test-Path -LiteralPath $path)) { return $result }
+    try {
+        $watch = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) | ConvertFrom-Json
+        $list = New-Object System.Collections.Generic.List[string]
+        $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        $stocks = $null
+        if ($null -ne $watch) { $stocks = $watch.stocks }
+        if ($null -eq $stocks -or $stocks -isnot [System.Management.Automation.PSCustomObject]) { $result.reason = "UNIVERSE_WATCHLIST_INVALID"; return $result }
+        foreach ($prop in @($stocks.PSObject.Properties)) {
+            if ($list.Count -ge $expectedCount) { break }
+            $ticker = $null
+            if ($null -ne $prop.Value) { $ticker = $prop.Value.ticker }
+            if ($ticker -isnot [string] -or [string]::IsNullOrWhiteSpace($ticker)) { $result.reason = "UNIVERSE_WATCHLIST_INVALID"; return $result }
+            $ticker = $ticker.Trim()
+            if (-not $seen.Add($ticker)) { $result.reason = "UNIVERSE_WATCHLIST_DUPLICATE"; return $result }
+            [void]$list.Add($ticker)
+        }
+        if ($list.Count -ne $expectedCount) { $result.reason = "UNIVERSE_WATCHLIST_COUNT"; return $result }
+        $result.verified = $true
+        $result.reason = $null
+        $result.tickers = $list.ToArray()
+    } catch {
+        $result.reason = "UNIVERSE_WATCHLIST_UNREADABLE"
+    }
+    return $result
+}
+
+function Get-BoardAvailability {
+    # Decision availability of one live_ms2.json board, kept apart from the
+    # health of the data source. The board may be used for signals, ranking
+    # or any derived value only when the identity quote is fresh, every
+    # all_targets row is fresh, and the rows are exactly the expected
+    # universe. Missing rows are reported, never dropped: 99 present rows of
+    # 100 are an incomplete board, not a 99-symbol board. The Collector's
+    # valid>=90 quality count is reported separately and grants nothing.
+    param($LiveObj, $QuoteFreshness, $RowFreshness, $Universe)
+    $reasons = New-Object System.Collections.Generic.List[string]
+    $identityFresh = ($null -ne $QuoteFreshness -and $QuoteFreshness.fresh -eq $true)
+    if (-not $identityFresh) { [void]$reasons.Add("IDENTITY_QUOTE_NOT_FRESH") }
+    $rowsFresh = ($null -ne $RowFreshness -and $RowFreshness.fresh -eq $true)
+    if ($null -eq $RowFreshness) {
+        [void]$reasons.Add("ROW_QUOTE_NOT_FRESH")
+    } elseif (-not $rowsFresh) {
+        foreach ($r in @($RowFreshness.reasons)) { if (-not [string]::IsNullOrEmpty([string]$r)) { [void]$reasons.Add([string]$r) } }
+    }
+    $present = New-Object System.Collections.Generic.List[string]
+    $rows = $null
+    if ($null -ne $LiveObj) { $rows = $LiveObj.all_targets }
+    $rowCount = 0
+    if ($null -ne $rows -and $rows -isnot [string]) {
+        foreach ($row in @($rows)) {
+            $rowCount++
+            $isObject = ($row -is [System.Management.Automation.PSCustomObject]) -or ($row -is [System.Collections.IDictionary])
+            $ticker = $(if ($isObject) { $row.ticker } else { $null })
+            if ($ticker -is [string] -and -not [string]::IsNullOrWhiteSpace($ticker)) { [void]$present.Add($ticker.Trim()) }
+        }
+    }
+    $declared = $null
+    if ($null -ne $LiveObj) { $declared = $LiveObj.universe }
+    $declaredOk = (($declared -is [int]) -or ($declared -is [long])) -and $declared -gt 0
+    if (-not $declaredOk) { [void]$reasons.Add("UNIVERSE_DECLARED_MISSING") }
+    elseif ($declared -ne $rowCount) { [void]$reasons.Add("UNIVERSE_DECLARED_MISMATCH") }
+    $missing = New-Object System.Collections.Generic.List[string]
+    $unexpected = New-Object System.Collections.Generic.List[string]
+    $expectedCount = $null
+    $universeVerified = ($null -ne $Universe -and $Universe.verified -eq $true)
+    if (-not $universeVerified) {
+        [void]$reasons.Add("UNIVERSE_UNVERIFIED")
+        if ($null -ne $Universe -and -not [string]::IsNullOrEmpty([string]$Universe.reason)) { [void]$reasons.Add([string]$Universe.reason) }
+    } else {
+        $expected = @($Universe.tickers)
+        $expectedCount = $expected.Count
+        $expectedSet = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        foreach ($t in $expected) { [void]$expectedSet.Add([string]$t) }
+        $presentSet = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        foreach ($t in $present) { [void]$presentSet.Add($t) }
+        foreach ($t in $expected) { if (-not $presentSet.Contains([string]$t)) { [void]$missing.Add([string]$t) } }
+        foreach ($t in $presentSet) { if (-not $expectedSet.Contains($t)) { [void]$unexpected.Add($t) } }
+        if ($missing.Count -gt 0) { [void]$reasons.Add("UNIVERSE_ROW_MISSING") }
+        if ($unexpected.Count -gt 0) { [void]$reasons.Add("UNIVERSE_ROW_UNEXPECTED") }
+        if ($declaredOk -and $declared -ne $expectedCount) { [void]$reasons.Add("UNIVERSE_DECLARED_MISMATCH") }
+    }
+    $unique = @($reasons | Select-Object -Unique)
+    $sorted = [string[]]$unique
+    if ($null -eq $sorted) { $sorted = [string[]]@() }
+    [Array]::Sort($sorted, [StringComparer]::Ordinal)
+    $completenessReasons = @($sorted | Where-Object { $_ -like 'UNIVERSE_*' })
+    $status = "AVAILABLE"
+    if (-not $identityFresh) { $status = "BLOCKED_IDENTITY_QUOTE" }
+    elseif ($completenessReasons.Count -gt 0) { $status = "BLOCKED_UNIVERSE_INCOMPLETE" }
+    elseif (-not $rowsFresh) { $status = "BLOCKED_ROW_QUOTES" }
+    $counts = [ordered]@{ FRESH = 0; STALE = 0; UNKNOWN = 0; INVALID = 0; MISSING = $missing.Count }
+    if ($null -ne $RowFreshness -and $null -ne $RowFreshness.state_counts) {
+        foreach ($k in @("FRESH", "STALE", "UNKNOWN", "INVALID")) { $counts[$k] = [int]$RowFreshness.state_counts[$k] }
+    }
+    $base = $(if ($null -ne $expectedCount) { $expectedCount } elseif ($declaredOk) { [int]$declared } else { $rowCount })
+    $coverage = $null
+    if ($base -gt 0) { $coverage = [Math]::Round(100.0 * $counts.FRESH / $base, 1) }
+    $valid = $null
+    if ($null -ne $LiveObj -and (($LiveObj.valid -is [int]) -or ($LiveObj.valid -is [long]))) { $valid = [int]$LiveObj.valid }
+    $missingSample = @($missing | Select-Object -First 10)
+    $unexpectedSample = @($unexpected | Select-Object -First 10)
+    return [ordered]@{
+        schema_version = "board-availability-1"
+        decision_available = ($sorted.Count -eq 0)
+        availability_status = $status
+        reasons = @($sorted)
+        identity_quote_fresh = $identityFresh
+        universe_verified = $universeVerified
+        universe_expected_count = $expectedCount
+        universe_declared = $(if ($declaredOk) { [int]$declared } else { $null })
+        row_count = $rowCount
+        state_counts = $counts
+        fresh_coverage_pct = $coverage
+        missing_count = $missing.Count
+        missing_sample = $missingSample
+        unexpected_count = $unexpected.Count
+        unexpected_sample = $unexpectedSample
+        collector_valid_count = $valid
+        collector_valid_quality_pass = ($null -ne $valid -and $valid -ge 90)
+        order_allowed = $false
+        real_submit_allowed = $false
+    }
+}
+
+function Read-LiveSnapshot([string]$Path) {
+    # Read live_ms2.json once. The bytes judged are the bytes served; reading
+    # the file again after the check could serve a newer, unchecked payload.
+    $item = Get-Item -LiteralPath $Path
+    $snap = [ordered]@{
+        bytes = [byte[]]@()
+        obj = $null
+        updated_at = $null
+        payload_age_seconds = [double]::PositiveInfinity
+        file_age_seconds = ((Get-Date) - $item.LastWriteTime).TotalSeconds
+        file_mtime = $item.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss')
+    }
+    try {
+        $snap.bytes = [IO.File]::ReadAllBytes($Path)
+        $text = [Text.Encoding]::UTF8.GetString($snap.bytes)
+        if ($text.Length -gt 0 -and $text[0] -eq [char]0xFEFF) { $text = $text.Substring(1) }
+        $snap.obj = $text | ConvertFrom-Json
+        $snap.updated_at = [string]$snap.obj.updated_at
+        if (-not [string]::IsNullOrWhiteSpace($snap.updated_at)) {
+            $clean = $snap.updated_at -replace '\s+JST\s*$',''
+            $parsed = Get-Date $clean -ErrorAction Stop
+            $snap.payload_age_seconds = ((Get-Date) - $parsed).TotalSeconds
+        }
+    } catch {
+        $snap.payload_age_seconds = [double]::PositiveInfinity
+        $snap.obj = $null
+    }
+    return $snap
+}
+
+function Get-AvailabilitySummary($Availability) {
+    # The consumer-facing subset of Get-BoardAvailability (no ticker lists
+    # beyond the 10-item samples).
+    if ($null -eq $Availability) { return $null }
+    return [ordered]@{
+        decision_available = ($Availability.decision_available -eq $true)
+        availability_status = [string]$Availability.availability_status
+        reasons = @($Availability.reasons)
+        universe_verified = ($Availability.universe_verified -eq $true)
+        universe_expected_count = $Availability.universe_expected_count
+        universe_declared = $Availability.universe_declared
+        row_count = $Availability.row_count
+        state_counts = $Availability.state_counts
+        fresh_coverage_pct = $Availability.fresh_coverage_pct
+        missing_count = $Availability.missing_count
+        missing_sample = @($Availability.missing_sample)
+        unexpected_count = $Availability.unexpected_count
+        collector_valid_count = $Availability.collector_valid_count
+        collector_valid_quality_pass = ($Availability.collector_valid_quality_pass -eq $true)
+        order_allowed = $false
+        real_submit_allowed = $false
+    }
+}
+
+function Import-ServedHistory([string]$Path) {
+    # Restore the served quote history saved by an earlier Gateway process.
+    # NO_HISTORY_FILE: first start or the file was removed; the regression
+    # check has nothing to compare against until the first LIVE response, and
+    # /health says so. UNREADABLE: LIVE is refused until the file is readable
+    # or removed by the OWNER; an unknown history is not an empty one.
+    $result = [ordered]@{ state = "NO_HISTORY_FILE"; identity = $null; rows = @{} }
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path)) { return $result }
+    try {
+        $saved = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8) | ConvertFrom-Json
+        if ($null -eq $saved -or [string]$saved.schema_version -cne "v10-served-quotes-1") { throw "SCHEMA" }
+        $identity = $saved.identity_quote_at
+        if ($null -ne $identity -and $null -eq (ConvertFrom-OffsetTimestamp $identity)) { throw "IDENTITY" }
+        $rows = @{}
+        if ($null -ne $saved.row_quote_at) {
+            foreach ($prop in @($saved.row_quote_at.PSObject.Properties)) {
+                if ($null -eq (ConvertFrom-OffsetTimestamp $prop.Value)) { throw "ROW" }
+                $rows[[string]$prop.Name] = [string]$prop.Value
+            }
+        }
+        $result.state = "RESTORED"
+        $result.identity = $identity
+        $result.rows = $rows
+    } catch {
+        $result.state = "UNREADABLE"
+    }
+    return $result
+}
+
+function Save-ServedHistory([string]$Path, $IdentityQuoteAt, $RowQuotes) {
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+    $sortedRows = [ordered]@{}
+    foreach ($key in @($RowQuotes.Keys | Sort-Object)) { $sortedRows[[string]$key] = $RowQuotes[$key] }
+    $body = [ordered]@{
+        schema_version = "v10-served-quotes-1"
+        identity_quote_at = $IdentityQuoteAt
+        row_quote_at = $sortedRows
+        real_submit_allowed = $false
+    } | ConvertTo-Json -Depth 4
+    $temporary = $Path + ".tmp"
+    try {
+        [IO.File]::WriteAllText($temporary, $body, [Text.UTF8Encoding]::new($false))
+        if (Test-Path -LiteralPath $Path) { [IO.File]::Replace($temporary, $Path, $null) } else { [IO.File]::Move($temporary, $Path) }
+        return $true
+    } catch {
+        return $false
     }
 }
 
@@ -887,7 +1144,8 @@ function Get-LivePriceRejection {
         $FileMtime,
         [int]$MaxAgeSeconds = 60,
         $QuoteFreshness = $null,
-        $RowFreshness = $null
+        $RowFreshness = $null,
+        $Availability = $null
     )
     $reasons = New-Object System.Collections.Generic.List[string]
     # A recent write is not a recent quote. Without a fresh, dated quote the
@@ -898,11 +1156,13 @@ function Get-LivePriceRejection {
         if (@($QuoteFreshness.reasons).Count -eq 0) { [void]$reasons.Add("FRESHNESS_NOT_FRESH") }
     }
     # A fresh identity quote does not make other rows fresh. Every row must
-    # pass its own quote check, or the whole response is refused.
+    # pass its own quote check and the rows must be exactly the expected
+    # universe, or the whole response is refused.
     if ($null -eq $RowFreshness) { $RowFreshness = Get-BoardRowFreshness -LiveObj $LiveObj -BoardQuoteAt $QuoteFreshness.quote_at }
-    if ($RowFreshness.fresh -ne $true) {
-        foreach ($r in @($RowFreshness.reasons)) { if (-not [string]::IsNullOrEmpty([string]$r)) { [void]$reasons.Add([string]$r) } }
-        if (@($RowFreshness.reasons).Count -eq 0) { [void]$reasons.Add("ROW_QUOTE_NOT_FRESH") }
+    if ($null -eq $Availability) { $Availability = Get-BoardAvailability -LiveObj $LiveObj -QuoteFreshness $QuoteFreshness -RowFreshness $RowFreshness -Universe (Get-ExpectedUniverse $RuntimeDir) }
+    if ($Availability.decision_available -ne $true) {
+        foreach ($r in @($Availability.reasons)) { if (-not [string]::IsNullOrEmpty([string]$r)) { [void]$reasons.Add([string]$r) } }
+        if (@($Availability.reasons).Count -eq 0) { [void]$reasons.Add("BOARD_DECISION_UNAVAILABLE") }
     }
     $canonicalSource = "MarketSpeed II RSS / local PC"
     $fresh = (
@@ -993,7 +1253,7 @@ function Get-LivePriceRejection {
         "SOURCE_TIMESTAMP_NO_OFFSET","SOURCE_DATE_BASIS_UNVERIFIED","SOURCE_TIMESTAMP_INCONSISTENT","SOURCE_TIMESTAMP_IN_FUTURE",
         "SOURCE_OBSERVATION_MISSING","SOURCE_OBSERVATION_IN_FUTURE","SOURCE_TIMESTAMP_AFTER_OBSERVATION",
         "SOURCE_TIMESTAMP_REGRESSION","MIXED_SOURCE_DATES","FRESHNESS_NOT_FRESH","MISSING_PAYLOAD")
-    $identity = @($unique | Where-Object { $_ -notin (@("STALE_OR_MISSING_TIMESTAMP","LIVE_VALUES_UNAVAILABLE","INSUFFICIENT_COVERAGE") + $freshnessCodes) -and $_ -notmatch '^(ROW_|BOARD_ROWS_MISSING$)' })
+    $identity = @($unique | Where-Object { $_ -notin (@("STALE_OR_MISSING_TIMESTAMP","LIVE_VALUES_UNAVAILABLE","INSUFFICIENT_COVERAGE","IDENTITY_QUOTE_NOT_FRESH","BOARD_DECISION_UNAVAILABLE") + $freshnessCodes) -and $_ -notmatch '^(ROW_|UNIVERSE_|BOARD_ROWS_MISSING$)' })
     $statusName = if ($identity.Count -gt 0) { "PRICE_SOURCE_MISMATCH" } else { "stale" }
     $reasonText = if ($unique -contains "STALE_OR_MISSING_TIMESTAMP" -and $identity.Count -eq 0) {
         "live_ms2.json freshness threshold exceeded"
@@ -1029,6 +1289,8 @@ function Get-LivePriceRejection {
             not_fresh_row_count = $RowFreshness.not_fresh_row_count
             not_fresh_sample = @($RowFreshness.not_fresh_sample)
         }
+        availability = (Get-AvailabilitySummary $Availability)
+        source_reasons = @($identity)
     }
 }
 
@@ -1240,6 +1502,11 @@ if ($SnapshotGuardSelfTest) {
     exit 0
 }
 
+$restoredHistory = Import-ServedHistory $script:ServedHistoryPath
+$script:ServedHistoryState = $restoredHistory.state
+$script:LastServedIdentityQuoteAt = $restoredHistory.identity
+$script:LastServedRowQuoteAt = $restoredHistory.rows
+
 try {
     $listener.Start()
     Write-Host ("AI Cockpit Gateway V10: http://127.0.0.1:{0}/?live=1" -f $Port) -ForegroundColor Green
@@ -1429,8 +1696,12 @@ try {
                 $runtime['quote_freshness'] = $gatewayFreshness
                 $runtime['shadow_quote_freshness'] = $shadowFreshness
                 $runtime['quote_freshness_combined'] = $freshnessCombined
-                # Same row gate as /live_ms2.json (without the served-history
-                # regression check, which only /live_ms2.json records).
+                # Same row and universe gate as /live_ms2.json (without the
+                # served-history regression check, which only /live_ms2.json
+                # records). source_status keeps what the Collector reported
+                # about its source; availability says whether the board may be
+                # used. A healthy source does not make a stale board usable.
+                $runtime['source_status'] = $(if ([string]::IsNullOrWhiteSpace([string]$runtime.price_source_status)) { 'UNKNOWN' } else { [string]$runtime.price_source_status })
                 $healthRows = Get-BoardRowFreshness -LiveObj $healthLive -BoardQuoteAt $gatewayFreshness.quote_at
                 $runtime['board_row_freshness'] = [ordered]@{
                     fresh = ($healthRows.fresh -eq $true)
@@ -1440,9 +1711,31 @@ try {
                     not_fresh_row_count = $healthRows.not_fresh_row_count
                     not_fresh_sample = @($healthRows.not_fresh_sample)
                 }
-                if ($healthRows.fresh -ne $true) {
+                $healthAvailability = Get-BoardAvailability -LiveObj $healthLive -QuoteFreshness $gatewayFreshness -RowFreshness $healthRows -Universe (Get-ExpectedUniverse $RuntimeDir)
+                $runtime['availability'] = Get-AvailabilitySummary $healthAvailability
+                # The Shadow supervisor publishes its own availability verdict.
+                # Missing, or disagreeing on decision_available, is fail-closed.
+                $shadowAvailability = (Get-ShadowEnginePublication $RuntimeDir).shadow_board_availability
+                $runtime['shadow_board_availability'] = $shadowAvailability
+                $runtime['served_history'] = [ordered]@{
+                    state = $script:ServedHistoryState
+                    identity_quote_at = $script:LastServedIdentityQuoteAt
+                    row_count = $script:LastServedRowQuoteAt.Count
+                    history_loss_risk = (@("RESTORED", "SAVED") -cnotcontains $script:ServedHistoryState)
+                }
+                $availabilityReasons = @()
+                if ($healthAvailability.decision_available -ne $true) { $availabilityReasons += @($healthAvailability.reasons) }
+                if ($null -eq $shadowAvailability) { $availabilityReasons += "SHADOW_BOARD_AVAILABILITY_MISSING" }
+                elseif (($shadowAvailability.decision_available -eq $true) -ne ($healthAvailability.decision_available -eq $true)) { $availabilityReasons += "BOARD_AVAILABILITY_MISMATCH" }
+                elseif ($shadowAvailability.real_submit_allowed -ne $false) { $availabilityReasons += "REAL_SUBMIT_NOT_FALSE" }
+                $runtime['decision_available'] = ($availabilityReasons.Count -eq 0 -and $healthAvailability.decision_available -eq $true)
+                $runtime['availability_status'] = $(if ($runtime['decision_available']) { 'AVAILABLE' } elseif ($healthAvailability.decision_available -ne $true) { [string]$healthAvailability.availability_status } else { 'BLOCKED_SHADOW_DISAGREES' })
+                if ($availabilityReasons.Count -gt 0) {
                     $runtime.fail_closed = $true
-                    $runtime.stale_reason = (@((@(([string]$runtime.stale_reason) -split ',' | Where-Object { $_ }) + @($healthRows.reasons)) | Select-Object -Unique) -join ',')
+                    if ([string]$runtime.price_source_status -eq "OK" -or [string]::IsNullOrWhiteSpace([string]$runtime.price_source_status)) {
+                        $runtime.price_source_status = "STALE"
+                    }
+                    $runtime.stale_reason = (@((@(([string]$runtime.stale_reason) -split ',' | Where-Object { $_ }) + $availabilityReasons) | Select-Object -Unique) -join ',')
                 }
                 if ($freshnessCombined.fresh -ne $true) {
                     $runtime.fail_closed = $true
@@ -1451,6 +1744,18 @@ try {
                     }
                     $staleParts = @(([string]$runtime.stale_reason) -split ',' | Where-Object { $_ }) + @($freshnessCombined.reasons)
                     $runtime.stale_reason = (@($staleParts | Select-Object -Unique) -join ',')
+                }
+                if ($runtime.fail_closed -eq $true) {
+                    # Fail-closed /health presents no LIVE price. price_source_status
+                    # is never left OK beside fail_closed; the Collector's own
+                    # report stays in source_status.
+                    $runtime['decision_available'] = $false
+                    if ($runtime['availability_status'] -eq 'AVAILABLE') { $runtime['availability_status'] = 'BLOCKED_FAIL_CLOSED' }
+                    if ([string]$runtime.price_source_status -eq "OK" -or [string]::IsNullOrWhiteSpace([string]$runtime.price_source_status)) {
+                        $runtime.price_source_status = "FAIL_CLOSED"
+                    }
+                    $runtime.live_current_price = $null
+                    $runtime.source_timestamp = $null
                 }
                 # Read only the Watcher-owned local JSON. It may live in a
                 # different working tree; in that case state stays UNKNOWN.
@@ -1530,35 +1835,17 @@ try {
                     continue
                 }
 
-                $LIVE_JSON_MAX_AGE_SECONDS = 60
-                $liveItem = Get-Item -LiteralPath $liveJson
-                $fileAgeSeconds = ((Get-Date) - $liveItem.LastWriteTime).TotalSeconds
-                $payloadAgeSeconds = [double]::PositiveInfinity
-                $updatedAtRaw = $null
-                $liveObj = $null
-                # Judge and serve the same bytes. Reading the file again after
-                # the check could serve a newer, unchecked payload.
-                $bytes = [byte[]]@()
-                try {
-                    $bytes = [IO.File]::ReadAllBytes($liveJson)
-                    $liveText = [Text.Encoding]::UTF8.GetString($bytes)
-                    if ($liveText.Length -gt 0 -and $liveText[0] -eq [char]0xFEFF) { $liveText = $liveText.Substring(1) }
-                    $liveObj = $liveText | ConvertFrom-Json
-                    $updatedAtRaw = [string]$liveObj.updated_at
-                    if (-not [string]::IsNullOrWhiteSpace($updatedAtRaw)) {
-                        $cleanUpdatedAt = $updatedAtRaw -replace '\s+JST\s*$',''
-                        $parsedUpdatedAt = Get-Date $cleanUpdatedAt -ErrorAction Stop
-                        $payloadAgeSeconds = ((Get-Date) - $parsedUpdatedAt).TotalSeconds
-                    }
-                } catch {
-                    $payloadAgeSeconds = [double]::PositiveInfinity
-                    $liveObj = $null
-                }
-
+                $snap = Read-LiveSnapshot $liveJson
+                $bytes = $snap.bytes
+                $liveObj = $snap.obj
                 $liveNow = Get-JstNow
                 $liveQuoteFreshness = Get-QuoteFreshness -LiveObj $liveObj -Now $liveNow -PreviousQuoteAt $script:LastServedIdentityQuoteAt
                 $liveRowFreshness = Get-BoardRowFreshness -LiveObj $liveObj -Now $liveNow -BoardQuoteAt $liveQuoteFreshness.quote_at -PreviousRowQuotes $script:LastServedRowQuoteAt
-                $rejection = Get-LivePriceRejection -LiveObj $liveObj -FileAgeSeconds $fileAgeSeconds -PayloadAgeSeconds $payloadAgeSeconds -UpdatedAtRaw $updatedAtRaw -FileMtime $liveItem.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss') -MaxAgeSeconds $LIVE_JSON_MAX_AGE_SECONDS -QuoteFreshness $liveQuoteFreshness -RowFreshness $liveRowFreshness
+                $liveAvailability = Get-BoardAvailability -LiveObj $liveObj -QuoteFreshness $liveQuoteFreshness -RowFreshness $liveRowFreshness -Universe (Get-ExpectedUniverse $RuntimeDir)
+                $rejection = Get-LivePriceRejection -LiveObj $liveObj -FileAgeSeconds $snap.file_age_seconds -PayloadAgeSeconds $snap.payload_age_seconds -UpdatedAtRaw $snap.updated_at -FileMtime $snap.file_mtime -MaxAgeSeconds 60 -QuoteFreshness $liveQuoteFreshness -RowFreshness $liveRowFreshness -Availability $liveAvailability
+                if ($null -eq $rejection -and $script:ServedHistoryState -ceq "UNREADABLE") {
+                    $rejection = [ordered]@{ status = "stale"; reason = "SERVED_HISTORY_UNREADABLE"; stale_reason = "SERVED_HISTORY_UNREADABLE"; price_source_status = "STALE"; current_price = $null; real_submit_allowed = $false; live_values_available = $false; data_conflict = $false }
+                }
                 if ($null -ne $rejection -or $null -eq $liveObj -or $bytes.Length -eq 0) {
                     if ($null -eq $rejection) { $rejection = [ordered]@{ status = "stale"; stale_reason = "MISSING_PAYLOAD"; real_submit_allowed = $false; live_values_available = $false; data_conflict = $true } }
                     $stalePayload = $rejection | ConvertTo-Json -Depth 6
@@ -1570,7 +1857,74 @@ try {
                 foreach ($servedTicker in @($liveRowFreshness.accepted_quote_at.Keys)) {
                     $script:LastServedRowQuoteAt[$servedTicker] = $liveRowFreshness.accepted_quote_at[$servedTicker]
                 }
+                if (Save-ServedHistory $script:ServedHistoryPath $script:LastServedIdentityQuoteAt $script:LastServedRowQuoteAt) {
+                    $script:ServedHistoryState = "SAVED"
+                } else {
+                    $script:ServedHistoryState = "SAVE_FAILED"
+                }
                 Send-Response $stream '200 OK' 'application/json; charset=utf-8' $bytes
+                continue
+            }
+            if ($path -eq '/observation_ms2.json') {
+                # Observation layer. Reports every expected ticker's quote state
+                # and, for FRESH rows only, the observed price. It never carries
+                # signals, scores, entry/stop/targets, indicators, top5/hold/pts
+                # lists or market aggregates, and it never makes the board
+                # usable for decisions: decision_available comes from the same
+                # Get-BoardAvailability as /live_ms2.json. A payload that fails
+                # a source, identity or writer-time check is refused whole.
+                if (-not $liveJson -or -not (Test-Path -LiteralPath $liveJson)) {
+                    Send-Response $stream '503 Service Unavailable' 'application/json; charset=utf-8' ($utf8.GetBytes('{"status":"waiting","observation_available":false,"stale_reason":"MISSING_PAYLOAD","real_submit_allowed":false,"order_allowed":false}'))
+                    continue
+                }
+                $obsSnap = Read-LiveSnapshot $liveJson
+                $obsObj = $obsSnap.obj
+                $obsNow = Get-JstNow
+                $obsQuote = Get-QuoteFreshness -LiveObj $obsObj -Now $obsNow -PreviousQuoteAt $script:LastServedIdentityQuoteAt
+                $obsRows = Get-BoardRowFreshness -LiveObj $obsObj -Now $obsNow -BoardQuoteAt $obsQuote.quote_at -PreviousRowQuotes $script:LastServedRowQuoteAt
+                $obsAvailability = Get-BoardAvailability -LiveObj $obsObj -QuoteFreshness $obsQuote -RowFreshness $obsRows -Universe (Get-ExpectedUniverse $RuntimeDir)
+                $obsRejection = Get-LivePriceRejection -LiveObj $obsObj -FileAgeSeconds $obsSnap.file_age_seconds -PayloadAgeSeconds $obsSnap.payload_age_seconds -UpdatedAtRaw $obsSnap.updated_at -FileMtime $obsSnap.file_mtime -MaxAgeSeconds 60 -QuoteFreshness $obsQuote -RowFreshness $obsRows -Availability $obsAvailability
+                $obsBlockers = @()
+                if ($null -eq $obsObj) { $obsBlockers += "MISSING_PAYLOAD" }
+                if ($null -ne $obsRejection) {
+                    $obsBlockers += @($obsRejection.source_reasons)
+                    foreach ($writerReason in @("STALE_OR_MISSING_TIMESTAMP", "LIVE_VALUES_UNAVAILABLE")) {
+                        if ((([string]$obsRejection.stale_reason) -split ',') -contains $writerReason) { $obsBlockers += $writerReason }
+                    }
+                }
+                $obsBlockers = @($obsBlockers | Where-Object { -not [string]::IsNullOrEmpty([string]$_) } | Select-Object -Unique)
+                if ($obsBlockers.Count -gt 0) {
+                    $obsBody = [ordered]@{ status = "blocked"; observation_available = $false; stale_reason = ($obsBlockers -join ","); decision_available = $false; real_submit_allowed = $false; order_allowed = $false } | ConvertTo-Json -Depth 4
+                    Send-Response $stream '503 Service Unavailable' 'application/json; charset=utf-8' ($utf8.GetBytes($obsBody))
+                    continue
+                }
+                $priceByTicker = @{}
+                foreach ($row in @($obsObj.all_targets)) {
+                    if ($null -ne $row -and $row.ticker -is [string] -and -not $priceByTicker.ContainsKey($row.ticker)) { $priceByTicker[$row.ticker] = $row.price }
+                }
+                $obsList = New-Object System.Collections.Generic.List[object]
+                foreach ($v in @($obsRows.row_verdicts)) {
+                    $isFresh = ([string]$v.state -ceq "FRESH")
+                    $obsPrice = $null
+                    if ($isFresh -and $null -ne $v.ticker -and $priceByTicker.ContainsKey($v.ticker)) { $obsPrice = $priceByTicker[$v.ticker] }
+                    [void]$obsList.Add([ordered]@{ ticker = $v.ticker; state = [string]$v.state; reasons = @($v.reasons); quote_at = $v.quote_at; quote_age_seconds = $v.quote_age_seconds; observed_price = $obsPrice })
+                }
+                $obsPayload = [ordered]@{
+                    schema_version = "v10-observation-1"
+                    status = "observing"
+                    observation_available = $true
+                    evaluated_at = $obsNow.ToString("yyyy-MM-ddTHH:mm:sszzz", [Globalization.CultureInfo]::InvariantCulture)
+                    collector_updated_at = $obsSnap.updated_at
+                    decision_available = ($obsAvailability.decision_available -eq $true)
+                    availability = (Get-AvailabilitySummary $obsAvailability)
+                    identity_quote_freshness = $obsQuote
+                    missing_tickers = @($obsAvailability.missing_sample)
+                    rows = $obsList.ToArray()
+                    derived_fields = "WITHHELD"
+                    order_allowed = $false
+                    real_submit_allowed = $false
+                } | ConvertTo-Json -Depth 6
+                Send-Response $stream '200 OK' 'application/json; charset=utf-8' ($utf8.GetBytes($obsPayload))
                 continue
             }
             # Serve ONLY the explicit public UI files. Never serve arbitrary files

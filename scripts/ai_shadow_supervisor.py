@@ -264,7 +264,7 @@ def assess_quote_freshness(payload, *, now: datetime, previous_quote_at=None,
 ROW_QUOTE_FIELDS = ("source_timestamp", "source_timestamp_at", "source_timestamp_basis", "source_timestamp_observed_at")
 
 
-def row_quote_freshness(row, *, now: datetime, board_quote_at=None) -> dict:
+def row_quote_freshness(row, *, now: datetime, board_quote_at=None, previous_quote_at=None) -> dict:
     """The same quote rules applied to one board row.
 
     A fresh board (the identity quote just traded) says nothing about another
@@ -273,13 +273,286 @@ def row_quote_freshness(row, *, now: datetime, board_quote_at=None) -> dict:
     JST trading date as the board's identity quote.
     """
     fields = {key: row.get(key) for key in ROW_QUOTE_FIELDS} if isinstance(row, dict) else {}
-    verdict = assess_quote_freshness({"live_price_diagnostics": fields, "all_targets": []}, now=now)
+    verdict = assess_quote_freshness({"live_price_diagnostics": fields, "all_targets": []}, now=now,
+                                     previous_quote_at=previous_quote_at)
     board = parse_offset_timestamp(board_quote_at) if isinstance(board_quote_at, str) else None
     row_at = parse_offset_timestamp(verdict.get("quote_at")) if verdict.get("quote_at") else None
     if verdict.get("fresh") and (board is None or row_at is None or row_at.date() != board.date()):
         reason = "BOARD_QUOTE_DATE_UNKNOWN" if board is None else "MIXED_SOURCE_DATES"
         verdict = dict(verdict, state=INVALID, fresh=False, reasons=sorted(set(verdict["reasons"]) | {reason}))
     return verdict
+
+
+# Board availability: the same identity, per-row and universe gate as
+# Get-BoardRowFreshness / Get-ExpectedUniverse / Get-BoardAvailability in
+# downloads/AI_COCKPIT_GATEWAY_V10.ps1. The source being healthy (identity
+# checks pass) is kept apart from whether the board may be used for any
+# decision. tests/test_v10_row_gate_operability.py compares the two sides.
+EXPECTED_UNIVERSE_COUNT = 100
+AVAILABILITY_SCHEMA_VERSION = "board-availability-1"
+OBSERVATION_SCHEMA_VERSION = "v10-board-observation-1"
+
+
+def board_row_freshness(payload, *, now: datetime, board_quote_at=None, previous_row_quotes=None) -> dict:
+    """Every all_targets row judged by its own quote; unknown is not fresh."""
+    reasons: list[str] = []
+    accepted: dict[str, str] = {}
+    not_fresh: list[dict] = []
+    verdict_rows: list[dict] = []
+    counts = {FRESH: 0, STALE: 0, UNKNOWN: 0, INVALID: 0}
+    rows = payload.get("all_targets") if isinstance(payload, dict) else None
+    fresh_count = 0
+    row_count = 0
+    if not isinstance(rows, list) or not rows:
+        reasons.append("BOARD_ROWS_MISSING")
+    else:
+        seen: set[str] = set()
+        for row in rows:
+            row_count += 1
+            ticker = row.get("ticker") if isinstance(row, dict) else None
+            if not isinstance(ticker, str) or not ticker.strip():
+                reasons.append("ROW_TICKER_MISSING")
+                counts[UNKNOWN] += 1
+                verdict_rows.append({"ticker": None, "state": UNKNOWN, "reasons": ["ROW_TICKER_MISSING"],
+                                     "quote_at": None, "quote_age_seconds": None})
+                if len(not_fresh) < 10:
+                    not_fresh.append({"ticker": None, "state": UNKNOWN, "reasons": ["ROW_TICKER_MISSING"]})
+                continue
+            if ticker in seen:
+                reasons.append("ROW_TICKER_DUPLICATE")
+                counts[INVALID] += 1
+                verdict_rows.append({"ticker": ticker, "state": INVALID, "reasons": ["ROW_TICKER_DUPLICATE"],
+                                     "quote_at": None, "quote_age_seconds": None})
+                if len(not_fresh) < 10:
+                    not_fresh.append({"ticker": ticker, "state": INVALID, "reasons": ["ROW_TICKER_DUPLICATE"]})
+                continue
+            seen.add(ticker)
+            previous = previous_row_quotes.get(ticker) if isinstance(previous_row_quotes, dict) else None
+            verdict = row_quote_freshness(row, now=now, board_quote_at=board_quote_at, previous_quote_at=previous)
+            state = verdict.get("state")
+            counts[state if state in counts else INVALID] += 1
+            verdict_rows.append({"ticker": ticker, "state": state, "reasons": list(verdict.get("reasons") or []),
+                                 "quote_at": verdict.get("quote_at"),
+                                 "quote_age_seconds": verdict.get("quote_age_seconds")})
+            if verdict.get("fresh") is True:
+                fresh_count += 1
+                accepted[ticker] = verdict.get("quote_at")
+                continue
+            own = [r for r in (verdict.get("reasons") or []) if r] or ["FRESHNESS_NOT_FRESH"]
+            reasons.extend("ROW_" + r for r in own)
+            if len(not_fresh) < 10:
+                not_fresh.append({"ticker": ticker, "state": state, "reasons": own})
+    if reasons:
+        reasons.append("ROW_QUOTE_NOT_FRESH")
+    unique = sorted(set(reasons))
+    return {
+        "schema_version": "board-row-freshness-1",
+        "fresh": not unique,
+        "reasons": unique,
+        "row_count": row_count,
+        "fresh_row_count": fresh_count,
+        "not_fresh_row_count": row_count - fresh_count,
+        "not_fresh_sample": not_fresh,
+        "state_counts": counts,
+        "row_verdicts": verdict_rows,
+        "accepted_quote_at": accepted,
+        "board_quote_at": board_quote_at if isinstance(board_quote_at, str) else None,
+        "max_quote_age_seconds": MAX_QUOTE_AGE_SECONDS,
+        "order_allowed": False,
+        "real_submit_allowed": False,
+    }
+
+
+def load_expected_universe(directory: Path | None) -> dict:
+    """The first 100 tickers of watchlist_100.json, or an unverified result."""
+    result = {"verified": False, "reason": "UNIVERSE_WATCHLIST_MISSING",
+              "expected_count": EXPECTED_UNIVERSE_COUNT, "tickers": []}
+    if directory is None:
+        return result
+    path = Path(directory) / "watchlist_100.json"
+    if not path.exists():
+        return result
+    try:
+        watch = json.loads(path.read_text(encoding="utf-8-sig"))
+        stocks = watch.get("stocks") if isinstance(watch, dict) else None
+        if not isinstance(stocks, dict):
+            return dict(result, reason="UNIVERSE_WATCHLIST_INVALID")
+        tickers: list[str] = []
+        for value in stocks.values():
+            if len(tickers) >= EXPECTED_UNIVERSE_COUNT:
+                break
+            ticker = value.get("ticker") if isinstance(value, dict) else None
+            if not isinstance(ticker, str) or not ticker.strip():
+                return dict(result, reason="UNIVERSE_WATCHLIST_INVALID")
+            ticker = ticker.strip()
+            if ticker in tickers:
+                return dict(result, reason="UNIVERSE_WATCHLIST_DUPLICATE")
+            tickers.append(ticker)
+        if len(tickers) != EXPECTED_UNIVERSE_COUNT:
+            return dict(result, reason="UNIVERSE_WATCHLIST_COUNT")
+        return {"verified": True, "reason": None, "expected_count": EXPECTED_UNIVERSE_COUNT, "tickers": tickers}
+    except (OSError, ValueError):
+        return dict(result, reason="UNIVERSE_WATCHLIST_UNREADABLE")
+
+
+def _plain_positive_int(value) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        return None
+    return value
+
+
+def assess_board_availability(payload, quote_freshness: dict | None, row_freshness: dict | None,
+                              universe: dict | None) -> dict:
+    """Whether this board may be used for any decision (entry, exit, ranking).
+
+    99 present rows of 100 are an incomplete board, never a 99-symbol board.
+    The Collector's valid>=90 quality count is reported and grants nothing.
+    """
+    reasons: list[str] = []
+    identity_fresh = isinstance(quote_freshness, dict) and quote_freshness.get("fresh") is True
+    if not identity_fresh:
+        reasons.append("IDENTITY_QUOTE_NOT_FRESH")
+    rows_fresh = isinstance(row_freshness, dict) and row_freshness.get("fresh") is True
+    if not isinstance(row_freshness, dict):
+        reasons.append("ROW_QUOTE_NOT_FRESH")
+    elif not rows_fresh:
+        reasons.extend(r for r in (row_freshness.get("reasons") or []) if r)
+    rows = payload.get("all_targets") if isinstance(payload, dict) else None
+    present: list[str] = []
+    row_count = 0
+    if isinstance(rows, list):
+        for row in rows:
+            row_count += 1
+            ticker = row.get("ticker") if isinstance(row, dict) else None
+            if isinstance(ticker, str) and ticker.strip():
+                present.append(ticker.strip())
+    declared = _plain_positive_int(payload.get("universe")) if isinstance(payload, dict) else None
+    if declared is None:
+        reasons.append("UNIVERSE_DECLARED_MISSING")
+    elif declared != row_count:
+        reasons.append("UNIVERSE_DECLARED_MISMATCH")
+    missing: list[str] = []
+    unexpected: list[str] = []
+    expected_count = None
+    verified = isinstance(universe, dict) and universe.get("verified") is True
+    if not verified:
+        reasons.append("UNIVERSE_UNVERIFIED")
+        if isinstance(universe, dict) and universe.get("reason"):
+            reasons.append(str(universe["reason"]))
+    else:
+        expected = [str(t) for t in universe.get("tickers") or []]
+        expected_count = len(expected)
+        present_set = list(dict.fromkeys(present))
+        missing = [t for t in expected if t not in set(present_set)]
+        unexpected = [t for t in present_set if t not in set(expected)]
+        if missing:
+            reasons.append("UNIVERSE_ROW_MISSING")
+        if unexpected:
+            reasons.append("UNIVERSE_ROW_UNEXPECTED")
+        if declared is not None and declared != expected_count:
+            reasons.append("UNIVERSE_DECLARED_MISMATCH")
+    unique = sorted(set(reasons))
+    if not identity_fresh:
+        status = "BLOCKED_IDENTITY_QUOTE"
+    elif any(r.startswith("UNIVERSE_") for r in unique):
+        status = "BLOCKED_UNIVERSE_INCOMPLETE"
+    elif not rows_fresh:
+        status = "BLOCKED_ROW_QUOTES"
+    else:
+        status = "AVAILABLE"
+    counts = {FRESH: 0, STALE: 0, UNKNOWN: 0, INVALID: 0, "MISSING": len(missing)}
+    if isinstance(row_freshness, dict) and isinstance(row_freshness.get("state_counts"), dict):
+        for key in (FRESH, STALE, UNKNOWN, INVALID):
+            counts[key] = int(row_freshness["state_counts"].get(key) or 0)
+    base = expected_count if expected_count is not None else (declared if declared is not None else row_count)
+    coverage = round(100.0 * counts[FRESH] / base, 1) if base else None
+    valid = payload.get("valid") if isinstance(payload, dict) else None
+    valid = valid if isinstance(valid, int) and not isinstance(valid, bool) else None
+    return {
+        "schema_version": AVAILABILITY_SCHEMA_VERSION,
+        "decision_available": not unique,
+        "availability_status": status,
+        "reasons": unique,
+        "identity_quote_fresh": identity_fresh,
+        "universe_verified": verified,
+        "universe_expected_count": expected_count,
+        "universe_declared": declared,
+        "row_count": row_count,
+        "state_counts": counts,
+        "fresh_coverage_pct": coverage,
+        "missing_count": len(missing),
+        "missing_sample": missing[:10],
+        "unexpected_count": len(unexpected),
+        "unexpected_sample": unexpected[:10],
+        "collector_valid_count": valid,
+        "collector_valid_quality_pass": valid is not None and valid >= 90,
+        "order_allowed": False,
+        "real_submit_allowed": False,
+    }
+
+
+def _last_jsonl_record(path: Path) -> dict | None:
+    if not path.exists():
+        return None
+    try:
+        with path.open("rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            size = handle.tell()
+            handle.seek(max(0, size - 65536))
+            tail = handle.read().decode("utf-8", errors="replace")
+    except OSError:
+        return None
+    for line in reversed(tail.splitlines()):
+        if line.strip():
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                return None
+            return item if isinstance(item, dict) else None
+    return None
+
+
+def record_board_observation(data_dir: Path, *, now: datetime, payload, verdict: dict, availability: dict,
+                             rows: dict, missing_tickers: list[str], engine_state: str | None) -> dict:
+    """Observation layer: one record per cycle, whatever the decision state.
+
+    Fresh rows keep being counted; STALE, UNKNOWN, INVALID and missing rows
+    are written down as missing data, never dropped. seq is contiguous, so a
+    gap in the saved records is visible.
+    """
+    path = data_dir / "board_availability.jsonl"
+    last = _last_jsonl_record(path)
+    last_seq = _plain_int(last.get("seq")) if isinstance(last, dict) else None
+    previous_at = parse_offset_timestamp(last.get("at")) if isinstance(last, dict) else None
+    non_fresh = [{"ticker": r.get("ticker"), "state": r.get("state"), "reasons": r.get("reasons")}
+                 for r in rows.get("row_verdicts") or [] if r.get("state") != FRESH]
+    freshness = verdict.get("quote_freshness") if isinstance(verdict.get("quote_freshness"), dict) else {}
+    record = {
+        "record_class": "board_observation",
+        "schema_version": OBSERVATION_SCHEMA_VERSION,
+        "seq": (last_seq or 0) + 1,
+        "previous_record_readable": last is None or last_seq is not None,
+        "at": now.isoformat(timespec="seconds"),
+        "seconds_since_previous": round((now - previous_at).total_seconds(), 3) if previous_at else None,
+        "collector_updated_at": payload.get("updated_at") if isinstance(payload, dict) else None,
+        "source_checks_pass": verdict.get("ok") is True,
+        "source_reasons": sorted(set(r for r in verdict.get("reasons") or [] if r)),
+        "identity_quote_state": freshness.get("state"),
+        "identity_quote_at": freshness.get("quote_at"),
+        "decision_available": availability.get("decision_available") is True,
+        "availability_status": availability.get("availability_status"),
+        "availability_reasons": availability.get("reasons"),
+        "state_counts": availability.get("state_counts"),
+        "fresh_coverage_pct": availability.get("fresh_coverage_pct"),
+        "missing_count": availability.get("missing_count"),
+        "missing_tickers": list(missing_tickers),
+        "non_fresh_rows": non_fresh,
+        "shadow_state": engine_state,
+        "order_allowed": False,
+        "real_submit_allowed": False,
+    }
+    _append_jsonl(path, record)
+    return record
 
 
 def freshness_verdicts_agree(*verdicts) -> bool:
@@ -909,8 +1182,15 @@ def unresolved_excel_open_incident(engine: dict) -> dict | None:
     return found
 
 
-def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir: Path, recovery_mode: str = "AUTO") -> dict:
-    """One supervisor cycle. Fail-closed input never creates or closes a virtual trade."""
+def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir: Path, recovery_mode: str = "AUTO",
+                availability: dict | None = None) -> dict:
+    """One supervisor cycle. Fail-closed input never creates or closes a virtual trade.
+
+    A board that passes the source checks but is not decision-available
+    (identity quote, any row, or the 100-symbol universe not fresh and
+    complete) is observed and judged, but opens and closes nothing: signals,
+    market state and rankings were computed over every row.
+    """
     engine["state"]["real_submit_allowed"] = False
     if engine["state"].get("resume_blocked") is True:
         engine["state"]["state"] = "PAUSED_FAIL_CLOSED"
@@ -962,6 +1242,9 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
         return engine
 
     rows = payload.get("all_targets") if isinstance(payload, dict) else []
+    decision_available = isinstance(availability, dict) and availability.get("decision_available") is True
+    decision_reasons = [] if decision_available else list(
+        (availability or {}).get("reasons") or ["BOARD_AVAILABILITY_MISSING"])
     board_freshness = verdict.get("quote_freshness") if isinstance(verdict.get("quote_freshness"), dict) else {}
     board_quote_at = board_freshness.get("quote_at") if board_freshness.get("fresh") is True else None
     row_fresh: dict[str, dict] = {}
@@ -978,6 +1261,9 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
         # A virtual entry needs this row's own fresh quote, not just a fresh board.
         if candidate is not None and row_verdict.get("fresh") is not True:
             candidate = None
+        # ...and a board whose every row is fresh and complete.
+        if candidate is not None and not decision_available:
+            candidate = None
         if candidate is not None:
             candidate["source_timestamp_at"] = row_verdict.get("quote_at")
             by_key[position_key(candidate["ticker"], candidate["side"])] = candidate
@@ -990,7 +1276,7 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
         })
 
     exits = []
-    for key, position in list(engine["open_positions"].items()):
+    for key, position in list(engine["open_positions"].items() if decision_available else []):
         ticker, side = key.split("|", 1)
         current = None
         for row in rows:
@@ -1069,6 +1355,8 @@ def apply_cycle(engine: dict, payload, verdict: dict, *, now: datetime, data_dir
         "entry_seqs": entries,
         "exit_seqs": exits,
         "judgments": judgments,
+        "decision_available": decision_available,
+        "decision_block_reasons": decision_reasons,
     })
     engine["ledger"].append(judgment)
     _append_jsonl(data_dir / "ledger.jsonl", judgment)
@@ -1228,6 +1516,9 @@ def status_snapshot(engine: dict, *, now: datetime) -> dict:
         "resume_blocked": engine["state"].get("resume_blocked") is True,
         "engine_pid": os.getpid(),
         "quote_freshness": engine.get("quote_freshness"),
+        "board_availability": engine.get("board_availability"),
+        "decision_state": "DECISION_AVAILABLE" if (engine.get("board_availability") or {}).get("decision_available") is True
+        else "DECISION_BLOCKED",
         "latest_incident": latest,
         "ops": ops,
     }
@@ -1345,7 +1636,19 @@ def run_once(data_dir: Path, live_path: Path, status_path: Path, *, now: datetim
     if verdict.get("ok") and isinstance(freshness, dict) and freshness.get("fresh") is True:
         # Only a quote accepted as fresh moves the regression floor forward.
         engine["state"]["last_fresh_quote_at"] = freshness.get("quote_at")
-    apply_cycle(engine, payload, verdict, now=moment, data_dir=data_dir, recovery_mode=read_manual_recovery(data_dir))
+    # Same gate as the Gateway's /health: rows judged against the identity
+    # quote date, universe from the watchlist beside live_ms2.json.
+    board_quote_at = freshness.get("quote_at") if isinstance(freshness, dict) else None
+    rows = board_row_freshness(payload, now=moment, board_quote_at=board_quote_at)
+    universe = load_expected_universe(live_path.parent)
+    availability = assess_board_availability(payload, freshness, rows, universe)
+    engine["board_availability"] = availability
+    apply_cycle(engine, payload, verdict, now=moment, data_dir=data_dir, recovery_mode=read_manual_recovery(data_dir),
+                availability=availability)
+    present = {r.get("ticker") for r in rows.get("row_verdicts") or []}
+    missing = [t for t in universe.get("tickers") or [] if t not in present]
+    record_board_observation(data_dir, now=moment, payload=payload, verdict=verdict, availability=availability,
+                             rows=rows, missing_tickers=missing, engine_state=engine["state"].get("state"))
     publish_status(engine, status_path, now=moment)
     return engine
 

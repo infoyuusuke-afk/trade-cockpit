@@ -325,13 +325,422 @@ function Get-PublishedWorkbookGate {
     return ($reasons -join ",")
 }
 
+# --- V10 shared quote freshness and board availability -------------------
+# Verbatim copies of the same functions in downloads/AI_COCKPIT_GATEWAY_V10.ps1.
+# The bridge on 127.0.0.1:28580 is the UI's primary live source, so it applies
+# the same identity, per-row and universe gate as the Gateway's /live_ms2.json.
+# tests/test_v10_row_gate_operability.py fails if the copies drift apart.
+function ConvertFrom-OffsetTimestamp($Value) {
+    if ($Value -isnot [string]) { return $null }
+    $text = $Value.Trim()
+    if ([string]::IsNullOrEmpty($text) -or $text -notmatch '(Z|[+-]\d{2}:?\d{2})$') { return $null }
+    $parsed = [DateTimeOffset]::MinValue
+    $styles = [Globalization.DateTimeStyles]::None
+    if (-not [DateTimeOffset]::TryParse($text, [Globalization.CultureInfo]::InvariantCulture, $styles, [ref]$parsed)) { return $null }
+    return $parsed.ToOffset([TimeSpan]::FromHours(9))
+}
+
+function Get-MarketSession([DateTimeOffset]$Moment) {
+    $local = $Moment.ToOffset([TimeSpan]::FromHours(9))
+    if ($local.DayOfWeek -eq [DayOfWeek]::Saturday -or $local.DayOfWeek -eq [DayOfWeek]::Sunday) { return "CLOSED_WEEKEND" }
+    $clock = $local.TimeOfDay
+    foreach ($window in @(@('09:00:00','11:30:00'), @('12:30:00','15:30:00'))) {
+        if ($clock -ge [TimeSpan]::Parse($window[0]) -and $clock -le [TimeSpan]::Parse($window[1])) { return "OPEN_BY_CLOCK" }
+    }
+    return "CLOSED_OUTSIDE_HOURS"
+}
+
+function New-QuoteFreshnessVerdict([string]$State, [string[]]$Reasons, [DateTimeOffset]$Now, $QuoteAt, $Basis, [int]$MaxAge) {
+    $list = New-Object System.Collections.Generic.List[string]
+    foreach ($reason in @($Reasons)) { if (-not [string]::IsNullOrEmpty($reason) -and -not $list.Contains($reason)) { [void]$list.Add($reason) } }
+    $sorted = $list.ToArray()
+    [Array]::Sort($sorted, [StringComparer]::Ordinal)
+    $fmt = "yyyy-MM-ddTHH:mm:sszzz"
+    $inv = [Globalization.CultureInfo]::InvariantCulture
+    $age = $null
+    $quoteText = $null
+    if ($null -ne $QuoteAt) {
+        $age = [Math]::Round(($Now - $QuoteAt).TotalSeconds, 3)
+        $quoteText = $QuoteAt.ToString($fmt, $inv)
+    }
+    return [ordered]@{
+        schema_version = "price-freshness-1"
+        state = $State
+        fresh = ($State -eq "FRESH" -and $sorted.Count -eq 0)
+        reasons = @($sorted)
+        quote_at = $quoteText
+        quote_basis = $(if ($Basis -is [string]) { $Basis } else { $null })
+        quote_age_seconds = $age
+        evaluated_at = $Now.ToString($fmt, $inv)
+        max_quote_age_seconds = $MaxAge
+        market_session = (Get-MarketSession $Now)
+        timezone = "Asia/Tokyo"
+        order_allowed = $false
+        real_submit_allowed = $false
+    }
+}
+
+function Get-QuoteFreshness {
+    param(
+        $LiveObj,
+        [DateTimeOffset]$Now = (Get-JstNow),
+        $PreviousQuoteAt = $null,
+        [int]$MaxQuoteAgeSeconds = 120,
+        [int]$FutureSkewSeconds = 5
+    )
+    $Now = $Now.ToOffset([TimeSpan]::FromHours(9))
+    if ($null -eq $LiveObj) { return (New-QuoteFreshnessVerdict "UNKNOWN" @("MISSING_PAYLOAD") $Now $null $null $MaxQuoteAgeSeconds) }
+    $diag = $LiveObj.live_price_diagnostics
+    if ($null -eq $diag) { $diag = [pscustomobject]@{} }
+    $rawTime = $diag.source_timestamp
+    $rawAt = $diag.source_timestamp_at
+    $basis = $diag.source_timestamp_basis
+    $timeOnly = ($rawTime -is [string] -and $rawTime.Trim() -match '^\d{2}:\d{2}:\d{2}$')
+
+    if ($null -eq $rawAt -or ($rawAt -is [string] -and $rawAt -eq "")) {
+        $reason = if ($null -eq $rawTime -or ($rawTime -is [string] -and $rawTime -eq "")) { "SOURCE_TIMESTAMP_MISSING" } elseif ($timeOnly) { "SOURCE_DATE_UNKNOWN" } else { "SOURCE_TIMESTAMP_UNPARSEABLE" }
+        return (New-QuoteFreshnessVerdict "UNKNOWN" @($reason) $Now $null $basis $MaxQuoteAgeSeconds)
+    }
+    $quoteAt = ConvertFrom-OffsetTimestamp $rawAt
+    if ($null -eq $quoteAt) { return (New-QuoteFreshnessVerdict "UNKNOWN" @("SOURCE_TIMESTAMP_NO_OFFSET") $Now $null $basis $MaxQuoteAgeSeconds) }
+    if (@("MS2_RSS_DATE_ITEM", "COLLECTOR_OBSERVED_CHANGE") -cnotcontains [string]$basis -or $basis -isnot [string]) {
+        return (New-QuoteFreshnessVerdict "UNKNOWN" @("SOURCE_DATE_BASIS_UNVERIFIED") $Now $quoteAt $basis $MaxQuoteAgeSeconds)
+    }
+
+    $invalid = New-Object System.Collections.Generic.List[string]
+    $inv = [Globalization.CultureInfo]::InvariantCulture
+    if ($timeOnly) {
+        if ($quoteAt.ToString("HH:mm:ss", $inv) -ne $rawTime.Trim()) { [void]$invalid.Add("SOURCE_TIMESTAMP_INCONSISTENT") }
+    } elseif (-not ($null -eq $rawTime -or ($rawTime -is [string] -and $rawTime -eq ""))) {
+        [void]$invalid.Add("SOURCE_TIMESTAMP_UNPARSEABLE")
+    }
+    $age = ($Now - $quoteAt).TotalSeconds
+    if ($age -lt -$FutureSkewSeconds) { [void]$invalid.Add("SOURCE_TIMESTAMP_IN_FUTURE") }
+
+    if ($basis -ceq "COLLECTOR_OBSERVED_CHANGE") {
+        $observed = ConvertFrom-OffsetTimestamp $diag.source_timestamp_observed_at
+        if ($null -eq $observed) { return (New-QuoteFreshnessVerdict "UNKNOWN" @("SOURCE_OBSERVATION_MISSING") $Now $quoteAt $basis $MaxQuoteAgeSeconds) }
+        if (($observed - $Now).TotalSeconds -gt $FutureSkewSeconds) { [void]$invalid.Add("SOURCE_OBSERVATION_IN_FUTURE") }
+        if (($quoteAt - $observed).TotalSeconds -gt $FutureSkewSeconds) { [void]$invalid.Add("SOURCE_TIMESTAMP_AFTER_OBSERVATION") }
+    }
+
+    $previous = ConvertFrom-OffsetTimestamp $PreviousQuoteAt
+    if ($null -ne $previous -and $quoteAt -lt $previous) { [void]$invalid.Add("SOURCE_TIMESTAMP_REGRESSION") }
+
+    $rowDates = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($row in @($LiveObj.all_targets)) {
+        if ($null -eq $row) { continue }
+        $rowAt = $row.source_timestamp_at
+        if ($null -eq $rowAt -or ($rowAt -is [string] -and $rowAt -eq "")) { continue }
+        $parsedRow = ConvertFrom-OffsetTimestamp $rowAt
+        [void]$rowDates.Add($(if ($null -eq $parsedRow) { "INVALID" } else { $parsedRow.ToString("yyyy-MM-dd", $inv) }))
+    }
+    if ($rowDates.Count -gt 0 -and ($rowDates.Count -ne 1 -or -not $rowDates.Contains($quoteAt.ToString("yyyy-MM-dd", $inv)))) {
+        [void]$invalid.Add("MIXED_SOURCE_DATES")
+    }
+
+    if ($invalid.Count -gt 0) { return (New-QuoteFreshnessVerdict "INVALID" $invalid.ToArray() $Now $quoteAt $basis $MaxQuoteAgeSeconds) }
+    if ($age -gt $MaxQuoteAgeSeconds) { return (New-QuoteFreshnessVerdict "STALE" @("STALE_SOURCE_QUOTE") $Now $quoteAt $basis $MaxQuoteAgeSeconds) }
+    return (New-QuoteFreshnessVerdict "FRESH" @() $Now $quoteAt $basis $MaxQuoteAgeSeconds)
+}
+
+function Get-RowQuoteFreshness {
+    # One board row, judged by its own quote with the identity-quote rules.
+    # Same rule as row_quote_freshness in scripts/ai_shadow_supervisor.py: a
+    # fresh identity quote says nothing about another row's price, and a row
+    # dated on another JST day than the identity quote is never fresh.
+    # The Gateway also refuses a row whose quote went back in time against
+    # the last quote it served for that ticker.
+    param(
+        $Row,
+        [DateTimeOffset]$Now = (Get-JstNow),
+        $BoardQuoteAt = $null,
+        $PreviousQuoteAt = $null,
+        [int]$MaxQuoteAgeSeconds = 120
+    )
+    $fields = [ordered]@{}
+    $isObject = ($Row -is [System.Management.Automation.PSCustomObject]) -or ($Row -is [System.Collections.IDictionary])
+    foreach ($key in @("source_timestamp", "source_timestamp_at", "source_timestamp_basis", "source_timestamp_observed_at")) {
+        $fields[$key] = $(if ($isObject) { $Row.$key } else { $null })
+    }
+    $probe = [pscustomobject]@{ live_price_diagnostics = [pscustomobject]$fields; all_targets = @() }
+    $verdict = Get-QuoteFreshness -LiveObj $probe -Now $Now -PreviousQuoteAt $PreviousQuoteAt -MaxQuoteAgeSeconds $MaxQuoteAgeSeconds
+    if ($verdict.fresh -eq $true) {
+        $board = ConvertFrom-OffsetTimestamp $BoardQuoteAt
+        $rowAt = ConvertFrom-OffsetTimestamp $verdict.quote_at
+        $inv = [Globalization.CultureInfo]::InvariantCulture
+        if ($null -eq $board -or $null -eq $rowAt -or $rowAt.ToString("yyyy-MM-dd", $inv) -ne $board.ToString("yyyy-MM-dd", $inv)) {
+            $reason = if ($null -eq $board) { "BOARD_QUOTE_DATE_UNKNOWN" } else { "MIXED_SOURCE_DATES" }
+            $verdict = New-QuoteFreshnessVerdict "INVALID" @($reason) $Now $rowAt $verdict.quote_basis $MaxQuoteAgeSeconds
+        }
+    }
+    return $verdict
+}
+
+function Get-BoardRowFreshness {
+    # Every row of all_targets must carry its own fresh quote before
+    # /live_ms2.json is served as LIVE. Masking single rows cannot be made
+    # complete: market_state, breadth_pct, valid, kioxia, top5, hold_top5,
+    # pts_top5, ir_pts_top5 and every row's market_state/breadth_pct are
+    # computed over all rows. So one stale, undated, future or regressed row
+    # rejects the whole response. Unknown is not fresh. Every row's verdict is
+    # still returned (row_verdicts, state_counts) so the observation layer can
+    # report fresh and missing rows without serving any derived value.
+    param(
+        $LiveObj,
+        [DateTimeOffset]$Now = (Get-JstNow),
+        $BoardQuoteAt = $null,
+        $PreviousRowQuotes = $null,
+        [int]$MaxQuoteAgeSeconds = 120
+    )
+    $reasons = New-Object System.Collections.Generic.List[string]
+    $accepted = [ordered]@{}
+    $notFresh = New-Object System.Collections.Generic.List[object]
+    $verdictRows = New-Object System.Collections.Generic.List[object]
+    $stateCounts = [ordered]@{ FRESH = 0; STALE = 0; UNKNOWN = 0; INVALID = 0 }
+    $rowCount = 0
+    $freshCount = 0
+    $rows = $null
+    if ($null -ne $LiveObj) { $rows = $LiveObj.all_targets }
+    if ($null -eq $rows -or $rows -is [string] -or @($rows).Count -eq 0) {
+        [void]$reasons.Add("BOARD_ROWS_MISSING")
+    } else {
+        $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        foreach ($row in @($rows)) {
+            $rowCount++
+            $isObject = ($row -is [System.Management.Automation.PSCustomObject]) -or ($row -is [System.Collections.IDictionary])
+            $ticker = $(if ($isObject) { $row.ticker } else { $null })
+            if ($ticker -isnot [string] -or [string]::IsNullOrWhiteSpace($ticker)) {
+                [void]$reasons.Add("ROW_TICKER_MISSING")
+                $stateCounts.UNKNOWN++
+                [void]$verdictRows.Add([ordered]@{ ticker = $null; state = "UNKNOWN"; reasons = @("ROW_TICKER_MISSING"); quote_at = $null; quote_age_seconds = $null })
+                if ($notFresh.Count -lt 10) { [void]$notFresh.Add([ordered]@{ ticker = $null; state = "UNKNOWN"; reasons = @("ROW_TICKER_MISSING") }) }
+                continue
+            }
+            if (-not $seen.Add($ticker)) {
+                [void]$reasons.Add("ROW_TICKER_DUPLICATE")
+                $stateCounts.INVALID++
+                [void]$verdictRows.Add([ordered]@{ ticker = $ticker; state = "INVALID"; reasons = @("ROW_TICKER_DUPLICATE"); quote_at = $null; quote_age_seconds = $null })
+                if ($notFresh.Count -lt 10) { [void]$notFresh.Add([ordered]@{ ticker = $ticker; state = "INVALID"; reasons = @("ROW_TICKER_DUPLICATE") }) }
+                continue
+            }
+            $previous = $null
+            if ($PreviousRowQuotes -is [System.Collections.IDictionary] -and $PreviousRowQuotes.Contains($ticker)) { $previous = $PreviousRowQuotes[$ticker] }
+            $verdict = Get-RowQuoteFreshness -Row $row -Now $Now -BoardQuoteAt $BoardQuoteAt -PreviousQuoteAt $previous -MaxQuoteAgeSeconds $MaxQuoteAgeSeconds
+            $stateName = [string]$verdict.state
+            if ($stateCounts.Contains($stateName)) { $stateCounts[$stateName]++ } else { $stateCounts.INVALID++ }
+            [void]$verdictRows.Add([ordered]@{ ticker = $ticker; state = $stateName; reasons = @($verdict.reasons); quote_at = $verdict.quote_at; quote_age_seconds = $verdict.quote_age_seconds })
+            if ($verdict.fresh -eq $true) {
+                $freshCount++
+                $accepted[$ticker] = $verdict.quote_at
+                continue
+            }
+            $own = @($verdict.reasons | Where-Object { -not [string]::IsNullOrEmpty([string]$_) })
+            if ($own.Count -eq 0) { $own = @("FRESHNESS_NOT_FRESH") }
+            foreach ($r in $own) { [void]$reasons.Add("ROW_" + [string]$r) }
+            if ($notFresh.Count -lt 10) { [void]$notFresh.Add([ordered]@{ ticker = $ticker; state = [string]$verdict.state; reasons = @($own) }) }
+        }
+    }
+    if ($reasons.Count -gt 0) { [void]$reasons.Add("ROW_QUOTE_NOT_FRESH") }
+    $unique = @($reasons | Select-Object -Unique)
+    $sorted = [string[]]$unique
+    if ($null -eq $sorted) { $sorted = [string[]]@() }
+    [Array]::Sort($sorted, [StringComparer]::Ordinal)
+    return [ordered]@{
+        schema_version = "board-row-freshness-1"
+        fresh = ($sorted.Count -eq 0)
+        reasons = @($sorted)
+        row_count = $rowCount
+        fresh_row_count = $freshCount
+        not_fresh_row_count = ($rowCount - $freshCount)
+        not_fresh_sample = $notFresh.ToArray()
+        state_counts = $stateCounts
+        row_verdicts = $verdictRows.ToArray()
+        accepted_quote_at = $accepted
+        board_quote_at = $(if ($BoardQuoteAt -is [string]) { $BoardQuoteAt } else { $null })
+        max_quote_age_seconds = $MaxQuoteAgeSeconds
+        order_allowed = $false
+        real_submit_allowed = $false
+    }
+}
+
+function Get-ExpectedUniverse([string]$RuntimeDirectory) {
+    # The Collector watches the first 100 stocks of watchlist_100.json in its
+    # runtime directory (the Controller pins that file's hash at start-up).
+    # The board is complete only against that set. When the set cannot be
+    # read, has fewer than 100 tickers, or repeats one, completeness is not
+    # verified and is never reported as passing.
+    $expectedCount = 100
+    $result = [ordered]@{ verified = $false; reason = "UNIVERSE_WATCHLIST_MISSING"; expected_count = $expectedCount; tickers = [string[]]@() }
+    if ([string]::IsNullOrWhiteSpace($RuntimeDirectory)) { return $result }
+    $path = Join-Path $RuntimeDirectory "watchlist_100.json"
+    if (-not (Test-Path -LiteralPath $path)) { return $result }
+    try {
+        $watch = [IO.File]::ReadAllText($path, [Text.Encoding]::UTF8) | ConvertFrom-Json
+        $list = New-Object System.Collections.Generic.List[string]
+        $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        $stocks = $null
+        if ($null -ne $watch) { $stocks = $watch.stocks }
+        if ($null -eq $stocks -or $stocks -isnot [System.Management.Automation.PSCustomObject]) { $result.reason = "UNIVERSE_WATCHLIST_INVALID"; return $result }
+        foreach ($prop in @($stocks.PSObject.Properties)) {
+            if ($list.Count -ge $expectedCount) { break }
+            $ticker = $null
+            if ($null -ne $prop.Value) { $ticker = $prop.Value.ticker }
+            if ($ticker -isnot [string] -or [string]::IsNullOrWhiteSpace($ticker)) { $result.reason = "UNIVERSE_WATCHLIST_INVALID"; return $result }
+            $ticker = $ticker.Trim()
+            if (-not $seen.Add($ticker)) { $result.reason = "UNIVERSE_WATCHLIST_DUPLICATE"; return $result }
+            [void]$list.Add($ticker)
+        }
+        if ($list.Count -ne $expectedCount) { $result.reason = "UNIVERSE_WATCHLIST_COUNT"; return $result }
+        $result.verified = $true
+        $result.reason = $null
+        $result.tickers = $list.ToArray()
+    } catch {
+        $result.reason = "UNIVERSE_WATCHLIST_UNREADABLE"
+    }
+    return $result
+}
+
+function Get-BoardAvailability {
+    # Decision availability of one live_ms2.json board, kept apart from the
+    # health of the data source. The board may be used for signals, ranking
+    # or any derived value only when the identity quote is fresh, every
+    # all_targets row is fresh, and the rows are exactly the expected
+    # universe. Missing rows are reported, never dropped: 99 present rows of
+    # 100 are an incomplete board, not a 99-symbol board. The Collector's
+    # valid>=90 quality count is reported separately and grants nothing.
+    param($LiveObj, $QuoteFreshness, $RowFreshness, $Universe)
+    $reasons = New-Object System.Collections.Generic.List[string]
+    $identityFresh = ($null -ne $QuoteFreshness -and $QuoteFreshness.fresh -eq $true)
+    if (-not $identityFresh) { [void]$reasons.Add("IDENTITY_QUOTE_NOT_FRESH") }
+    $rowsFresh = ($null -ne $RowFreshness -and $RowFreshness.fresh -eq $true)
+    if ($null -eq $RowFreshness) {
+        [void]$reasons.Add("ROW_QUOTE_NOT_FRESH")
+    } elseif (-not $rowsFresh) {
+        foreach ($r in @($RowFreshness.reasons)) { if (-not [string]::IsNullOrEmpty([string]$r)) { [void]$reasons.Add([string]$r) } }
+    }
+    $present = New-Object System.Collections.Generic.List[string]
+    $rows = $null
+    if ($null -ne $LiveObj) { $rows = $LiveObj.all_targets }
+    $rowCount = 0
+    if ($null -ne $rows -and $rows -isnot [string]) {
+        foreach ($row in @($rows)) {
+            $rowCount++
+            $isObject = ($row -is [System.Management.Automation.PSCustomObject]) -or ($row -is [System.Collections.IDictionary])
+            $ticker = $(if ($isObject) { $row.ticker } else { $null })
+            if ($ticker -is [string] -and -not [string]::IsNullOrWhiteSpace($ticker)) { [void]$present.Add($ticker.Trim()) }
+        }
+    }
+    $declared = $null
+    if ($null -ne $LiveObj) { $declared = $LiveObj.universe }
+    $declaredOk = (($declared -is [int]) -or ($declared -is [long])) -and $declared -gt 0
+    if (-not $declaredOk) { [void]$reasons.Add("UNIVERSE_DECLARED_MISSING") }
+    elseif ($declared -ne $rowCount) { [void]$reasons.Add("UNIVERSE_DECLARED_MISMATCH") }
+    $missing = New-Object System.Collections.Generic.List[string]
+    $unexpected = New-Object System.Collections.Generic.List[string]
+    $expectedCount = $null
+    $universeVerified = ($null -ne $Universe -and $Universe.verified -eq $true)
+    if (-not $universeVerified) {
+        [void]$reasons.Add("UNIVERSE_UNVERIFIED")
+        if ($null -ne $Universe -and -not [string]::IsNullOrEmpty([string]$Universe.reason)) { [void]$reasons.Add([string]$Universe.reason) }
+    } else {
+        $expected = @($Universe.tickers)
+        $expectedCount = $expected.Count
+        $expectedSet = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        foreach ($t in $expected) { [void]$expectedSet.Add([string]$t) }
+        $presentSet = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        foreach ($t in $present) { [void]$presentSet.Add($t) }
+        foreach ($t in $expected) { if (-not $presentSet.Contains([string]$t)) { [void]$missing.Add([string]$t) } }
+        foreach ($t in $presentSet) { if (-not $expectedSet.Contains($t)) { [void]$unexpected.Add($t) } }
+        if ($missing.Count -gt 0) { [void]$reasons.Add("UNIVERSE_ROW_MISSING") }
+        if ($unexpected.Count -gt 0) { [void]$reasons.Add("UNIVERSE_ROW_UNEXPECTED") }
+        if ($declaredOk -and $declared -ne $expectedCount) { [void]$reasons.Add("UNIVERSE_DECLARED_MISMATCH") }
+    }
+    $unique = @($reasons | Select-Object -Unique)
+    $sorted = [string[]]$unique
+    if ($null -eq $sorted) { $sorted = [string[]]@() }
+    [Array]::Sort($sorted, [StringComparer]::Ordinal)
+    $completenessReasons = @($sorted | Where-Object { $_ -like 'UNIVERSE_*' })
+    $status = "AVAILABLE"
+    if (-not $identityFresh) { $status = "BLOCKED_IDENTITY_QUOTE" }
+    elseif ($completenessReasons.Count -gt 0) { $status = "BLOCKED_UNIVERSE_INCOMPLETE" }
+    elseif (-not $rowsFresh) { $status = "BLOCKED_ROW_QUOTES" }
+    $counts = [ordered]@{ FRESH = 0; STALE = 0; UNKNOWN = 0; INVALID = 0; MISSING = $missing.Count }
+    if ($null -ne $RowFreshness -and $null -ne $RowFreshness.state_counts) {
+        foreach ($k in @("FRESH", "STALE", "UNKNOWN", "INVALID")) { $counts[$k] = [int]$RowFreshness.state_counts[$k] }
+    }
+    $base = $(if ($null -ne $expectedCount) { $expectedCount } elseif ($declaredOk) { [int]$declared } else { $rowCount })
+    $coverage = $null
+    if ($base -gt 0) { $coverage = [Math]::Round(100.0 * $counts.FRESH / $base, 1) }
+    $valid = $null
+    if ($null -ne $LiveObj -and (($LiveObj.valid -is [int]) -or ($LiveObj.valid -is [long]))) { $valid = [int]$LiveObj.valid }
+    $missingSample = @($missing | Select-Object -First 10)
+    $unexpectedSample = @($unexpected | Select-Object -First 10)
+    return [ordered]@{
+        schema_version = "board-availability-1"
+        decision_available = ($sorted.Count -eq 0)
+        availability_status = $status
+        reasons = @($sorted)
+        identity_quote_fresh = $identityFresh
+        universe_verified = $universeVerified
+        universe_expected_count = $expectedCount
+        universe_declared = $(if ($declaredOk) { [int]$declared } else { $null })
+        row_count = $rowCount
+        state_counts = $counts
+        fresh_coverage_pct = $coverage
+        missing_count = $missing.Count
+        missing_sample = $missingSample
+        unexpected_count = $unexpected.Count
+        unexpected_sample = $unexpectedSample
+        collector_valid_count = $valid
+        collector_valid_quality_pass = ($null -ne $valid -and $valid -ge 90)
+        order_allowed = $false
+        real_submit_allowed = $false
+    }
+}
+
+function Get-AvailabilitySummary($Availability) {
+    # The consumer-facing subset of Get-BoardAvailability (no ticker lists
+    # beyond the 10-item samples).
+    if ($null -eq $Availability) { return $null }
+    return [ordered]@{
+        decision_available = ($Availability.decision_available -eq $true)
+        availability_status = [string]$Availability.availability_status
+        reasons = @($Availability.reasons)
+        universe_verified = ($Availability.universe_verified -eq $true)
+        universe_expected_count = $Availability.universe_expected_count
+        universe_declared = $Availability.universe_declared
+        row_count = $Availability.row_count
+        state_counts = $Availability.state_counts
+        fresh_coverage_pct = $Availability.fresh_coverage_pct
+        missing_count = $Availability.missing_count
+        missing_sample = @($Availability.missing_sample)
+        unexpected_count = $Availability.unexpected_count
+        collector_valid_count = $Availability.collector_valid_count
+        collector_valid_quality_pass = ($Availability.collector_valid_quality_pass -eq $true)
+        order_allowed = $false
+        real_submit_allowed = $false
+    }
+}
+# --- end V10 shared functions ---------------------------------------------
+
 function Get-WorkbookIdentityInitialization {
     $names = @(
         "Get-NormalizedLocalWorkbookPath",
         "Get-CollectorFileIdentityType",
         "Test-SameCanonicalWorkbookFile",
         "Get-WorkbookPublicationId",
-        "Get-PublishedWorkbookGate"
+        "Get-PublishedWorkbookGate",
+        "Get-JstNow",
+        "ConvertFrom-OffsetTimestamp",
+        "Get-MarketSession",
+        "New-QuoteFreshnessVerdict",
+        "Get-QuoteFreshness",
+        "Get-RowQuoteFreshness",
+        "Get-BoardRowFreshness",
+        "Get-ExpectedUniverse",
+        "Get-BoardAvailability",
+        "Get-AvailabilitySummary"
     )
     $text = ""
     foreach ($fn in $names) {
@@ -721,14 +1130,17 @@ function Get-TdnetDisclosures([DateTime]$date) {
     return @($found.Values|Sort-Object time -Descending)
 }
 
-function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$CanonicalWorkbookPath = "") {
+function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$CanonicalWorkbookPath = "", [string]$UniverseDirectory = "") {
     $controllerState = "C:\AI_Cockpit_OneClick_Starter\V9_CONTROLLER_STATE.json"
     $identityInit = Get-WorkbookIdentityInitialization
-    return Start-Job -Name ("MS2_JSON_BRIDGE_" + $PID) -InitializationScript $identityInit -ArgumentList $jsonFile,$port,$controllerState,$CanonicalWorkbookPath -ScriptBlock {
-        param($JsonFile,$Port,$ControllerState,$CanonicalWorkbookPath)
+    return Start-Job -Name ("MS2_JSON_BRIDGE_" + $PID) -InitializationScript $identityInit -ArgumentList $jsonFile,$port,$controllerState,$CanonicalWorkbookPath,$UniverseDirectory -ScriptBlock {
+        param($JsonFile,$Port,$ControllerState,$CanonicalWorkbookPath,$UniverseDirectory)
         $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,[int]$Port)
         $utf8 = [Text.UTF8Encoding]::new($false)
         $canonicalSource = "MarketSpeed II RSS / local PC"
+        # Quote times this bridge last served as LIVE. Only a 200 moves them;
+        # an older quote afterwards is a regression and is refused.
+        $bridgeServed = @{ identity = $null; rows = @{}; pending = $null }
         function Get-BridgeProcessCount([string]$ScriptName) {
             try {
                 $procs = @(Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" -ErrorAction Stop | Where-Object {
@@ -758,6 +1170,21 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$C
             if ($fileAge -lt 0 -or $fileAge -gt 60 -or $payloadAge -lt 0 -or $payloadAge -gt 60) {
                 [void]$reasons.Add("STALE_OR_MISSING_TIMESTAMP")
             }
+            # Writer time is not quote time. Same identity, per-row and
+            # universe gate as the Gateway's /live_ms2.json.
+            $bridgeNow = Get-JstNow
+            $quoteFreshness = Get-QuoteFreshness -LiveObj $obj -Now $bridgeNow -PreviousQuoteAt $bridgeServed.identity
+            $rowFreshness = Get-BoardRowFreshness -LiveObj $obj -Now $bridgeNow -BoardQuoteAt $quoteFreshness.quote_at -PreviousRowQuotes $bridgeServed.rows
+            $availability = Get-BoardAvailability -LiveObj $obj -QuoteFreshness $quoteFreshness -RowFreshness $rowFreshness -Universe (Get-ExpectedUniverse $UniverseDirectory)
+            if ($quoteFreshness.fresh -ne $true) {
+                foreach ($r in @($quoteFreshness.reasons)) { if (-not [string]::IsNullOrEmpty([string]$r)) { [void]$reasons.Add([string]$r) } }
+                if (@($quoteFreshness.reasons).Count -eq 0) { [void]$reasons.Add("FRESHNESS_NOT_FRESH") }
+            }
+            if ($availability.decision_available -ne $true) {
+                foreach ($r in @($availability.reasons)) { if (-not [string]::IsNullOrEmpty([string]$r)) { [void]$reasons.Add([string]$r) } }
+                if (@($availability.reasons).Count -eq 0) { [void]$reasons.Add("BOARD_DECISION_UNAVAILABLE") }
+            }
+            $bridgeServed.pending = [ordered]@{ identity = $quoteFreshness.quote_at; rows = $rowFreshness.accepted_quote_at }
             $source = if ($null -ne $obj) { [string]$obj.source } else { "" }
             if ($source -ne $canonicalSource -or $source -match '(?i)sample|snapshot|cache|static|fixture|公開') {
                 [void]$reasons.Add("CACHED_OR_SAMPLE_PAYLOAD")
@@ -822,7 +1249,11 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$C
             }
             $unique = @($reasons | Select-Object -Unique)
             if ($unique.Count -eq 0) { return $null }
-            $identity = @($unique | Where-Object { $_ -notin @("STALE_OR_MISSING_TIMESTAMP","LIVE_VALUES_UNAVAILABLE","INSUFFICIENT_COVERAGE") })
+            $freshnessCodes = @("STALE_SOURCE_QUOTE","SOURCE_DATE_UNKNOWN","SOURCE_TIMESTAMP_MISSING","SOURCE_TIMESTAMP_UNPARSEABLE",
+                "SOURCE_TIMESTAMP_NO_OFFSET","SOURCE_DATE_BASIS_UNVERIFIED","SOURCE_TIMESTAMP_INCONSISTENT","SOURCE_TIMESTAMP_IN_FUTURE",
+                "SOURCE_OBSERVATION_MISSING","SOURCE_OBSERVATION_IN_FUTURE","SOURCE_TIMESTAMP_AFTER_OBSERVATION",
+                "SOURCE_TIMESTAMP_REGRESSION","MIXED_SOURCE_DATES","FRESHNESS_NOT_FRESH","MISSING_PAYLOAD")
+            $identity = @($unique | Where-Object { $_ -notin (@("STALE_OR_MISSING_TIMESTAMP","LIVE_VALUES_UNAVAILABLE","INSUFFICIENT_COVERAGE","IDENTITY_QUOTE_NOT_FRESH","BOARD_DECISION_UNAVAILABLE") + $freshnessCodes) -and $_ -notmatch '^(ROW_|UNIVERSE_|BOARD_ROWS_MISSING$)' })
             $statusName = if ($identity.Count -gt 0) { "PRICE_SOURCE_MISMATCH" } else { "stale" }
             return [ordered]@{
                 status = $statusName
@@ -845,6 +1276,16 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$C
                 real_submit_allowed = $false
                 live_values_available = $false
                 max_age_seconds = 60
+                quote_freshness = $quoteFreshness
+                row_freshness = [ordered]@{
+                    fresh = ($rowFreshness.fresh -eq $true)
+                    reasons = @($rowFreshness.reasons)
+                    row_count = $rowFreshness.row_count
+                    fresh_row_count = $rowFreshness.fresh_row_count
+                    not_fresh_row_count = $rowFreshness.not_fresh_row_count
+                    not_fresh_sample = @($rowFreshness.not_fresh_sample)
+                }
+                availability = (Get-AvailabilitySummary $availability)
             }
         }
         try {
@@ -904,6 +1345,8 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$C
                         } else {
                             $bodyBytes = $utf8.GetBytes($raw)
                             $status = "200 OK"
+                            $bridgeServed.identity = $bridgeServed.pending.identity
+                            foreach ($servedTicker in @($bridgeServed.pending.rows.Keys)) { $bridgeServed.rows[$servedTicker] = $bridgeServed.pending.rows[$servedTicker] }
                         }
                         $contentType = "application/json; charset=utf-8"
                     } else {
@@ -1309,7 +1752,7 @@ $holdStats = Get-OvernightHoldStats $holdHistory
 $browserOpened = $true # Collector must never open browser tabs
 $script:priceSourceMismatch = $false
 $script:deferFirstTdnet = $liveSheetReady
-$bridgeJob = Start-LocalJsonBridge $jsonPath 28580 $script:canonicalWorkbookPath
+$bridgeJob = Start-LocalJsonBridge $jsonPath 28580 $script:canonicalWorkbookPath (Split-Path -Parent ([IO.Path]::GetFullPath($WatchlistPath)))
 
 Write-Host "[RSS] 100 STOCKS : RUNNING / CTRL+C TO STOP" -ForegroundColor Green
 Write-Host "[LIVE] 127.0.0.1:28580 : READY" -ForegroundColor Cyan

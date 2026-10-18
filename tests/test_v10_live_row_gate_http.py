@@ -37,6 +37,10 @@ JST = timezone(timedelta(hours=9))
 IDENTITY = "285A.T"
 WORKBOOK = "Kioxia_MS2_RSS_Live_Signals.xlsx"
 BUY = "買いサイン"  # buy signal label used by the Collector
+# The synthetic 100-symbol universe written to watchlist_100.json in the
+# temporary runtime directory; every payload below carries exactly these rows
+# unless a case removes, repeats or replaces one.
+UNIVERSE = [IDENTITY] + ["SYN%02d.T" % i for i in range(1, 100)]
 
 
 def _load(name, rel):
@@ -47,6 +51,7 @@ def _load(name, rel):
 
 
 sup = _load("v10_shadow_supervisor_row_gate", "scripts/ai_shadow_supervisor.py")
+oper = _load("v10_row_gate_operability_helpers", "tests/test_v10_row_gate_operability.py")
 
 
 def _windows_powershell():
@@ -245,6 +250,7 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         cls.tmp = tempfile.TemporaryDirectory(prefix="v10-rowgate-http-")
         cls.runtime = Path(cls.tmp.name) / "runtime"
         cls.runtime.mkdir()
+        oper.write_watchlist(cls.runtime, UNIVERSE)
         env = _run_powershell(cls.exe, ENV_HARNESS, ["-Gateway", str(GATEWAY), "-RuntimeDir", str(cls.runtime)])
         assert env["ps_major"] == 5, env
         cls.utc_offset = timedelta(seconds=int(env["utc_offset_seconds"]))
@@ -368,11 +374,11 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         return payload
 
     @staticmethod
-    def _rows(now, overrides=None):
-        fresh = now - timedelta(seconds=2)
-        rows = [_row(IDENTITY, _quote(fresh), price=1000.0)]
-        for i in range(1, 6):
-            rows.append(_row(f"SYN0{i}.T", _quote(fresh), price=100.0 + i))
+    def _rows(now, overrides=None, at=None):
+        quote_at = at or (now - timedelta(seconds=2))
+        rows = [_row(IDENTITY, _quote(quote_at), price=1000.0)]
+        for i, ticker in enumerate(UNIVERSE[1:], start=1):
+            rows.append(_row(ticker, _quote(quote_at), price=100.0 + i))
         for ticker, row in (overrides or {}).items():
             rows = [row if r["ticker"] == ticker else r for r in rows]
         return rows
@@ -497,7 +503,7 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         # updated_at and mtime are seconds old; every quote is 10 minutes old.
         now = self._now()
         old = now - timedelta(minutes=10)
-        rows = [_row(IDENTITY, _quote(old), price=1000.0)] + [_row(f"SYN0{i}.T", _quote(old)) for i in range(1, 6)]
+        rows = self._rows(now, at=old)
         status, written, body = self._refuse(self._payload(rows=rows, identity_at=old, now=now))
         self._assert_rejected(status, written, body, "STALE_SOURCE_QUOTE", "ROW_STALE_SOURCE_QUOTE")
         os.utime(self.live, None)
@@ -507,11 +513,14 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         status, body = self._request("/live_ms2.json")
         self.assertIn("503", status)
 
-    def _shadow_status(self, state, fresh):
+    def _shadow_status(self, state, fresh, decision_available=None, omit_availability=False):
         payload = {"state": "RUNNING", "reason": "synthetic", "updated_at": _iso(self._now()),
                    "real_submit_allowed": False,
                    "quote_freshness": {"state": state, "fresh": fresh, "reasons": [] if fresh else ["STALE_SOURCE_QUOTE"],
                                        "real_submit_allowed": False, "order_allowed": False}}
+        if not omit_availability:
+            payload["board_availability"] = {"decision_available": fresh if decision_available is None else decision_available,
+                                             "availability_status": "SYNTHETIC", "real_submit_allowed": False}
         self.shadow.write_text(json.dumps(payload), encoding="utf-8")
 
     def _health(self):
@@ -538,12 +547,247 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         now = self._now()
         stale = _row("SYN03.T", _quote(now - timedelta(minutes=5)))
         self._serve(self._payload(rows=self._rows(now, {"SYN03.T": stale}), now=now))
-        self._shadow_status("FRESH", True)
+        self._shadow_status("FRESH", True, decision_available=False)
         runtime = self._health()
         self.assertIs(runtime["quote_freshness_combined"]["fresh"], True)
         self.assertIs(runtime["board_row_freshness"]["fresh"], False)
         self.assertIs(runtime["fail_closed"], True)
         self.assertIn("ROW_STALE_SOURCE_QUOTE", runtime["stale_reason"].split(","))
+        # The Collector's own source report stays visible, but /health no
+        # longer pairs fail_closed with price_source_status OK or a price.
+        self.assertEqual(runtime["source_status"], "OK")
+        self.assertNotEqual(runtime["price_source_status"], "OK")
+        self.assertIsNone(runtime["live_current_price"])
+        self.assertIsNone(runtime["source_timestamp"])
+        self.assertIs(runtime["decision_available"], False)
+        self.assertEqual(runtime["availability_status"], "BLOCKED_ROW_QUOTES")
+        self.assertEqual(runtime["availability"]["state_counts"]["STALE"], 1)
+        self.assertEqual(runtime["availability"]["state_counts"]["FRESH"], 99)
+        self.assertNotIn("BOARD_AVAILABILITY_MISMATCH", runtime["stale_reason"].split(","))
+
+    # --- P0-V10-ROW-GATE-OPERABILITY-20261019 ---------------------------------
+
+    def _observe(self, port=None):
+        status, body = self._request("/observation_ms2.json", port or self.cold_port)
+        return status, json.loads(body.decode("utf-8-sig"))
+
+    def _assert_observation_only(self, obs, *hidden):
+        for key in ("all_targets", "top5", "hold_top5", "pts_top5", "ir_pts_top5", "kioxia", "market_state",
+                    "breadth_pct", "valid"):
+            self.assertNotIn(key, obs)
+        self.assertEqual(obs["derived_fields"], "WITHHELD")
+        self.assertIs(obs["real_submit_allowed"], False)
+        self.assertIs(obs["order_allowed"], False)
+        text = json.dumps(obs, ensure_ascii=False)
+        for needle in ("signal", "entry_price", "stop_price", "target1", "vwap", "score") + hidden:
+            self.assertNotIn(needle, text)
+
+    def test_99_fresh_1_stale_keeps_observing_normal_rows(self):
+        now = self._now()
+        stale = _row("SYN03.T", _quote(now - timedelta(minutes=5)), price=777.25, signal=BUY, entry_price=777.0)
+        status, written, body = self._refuse(self._payload(rows=self._rows(now, {"SYN03.T": stale}), now=now))
+        self._assert_rejected(status, written, body, "ROW_STALE_SOURCE_QUOTE", hidden=("777.25",))
+        status, obs = self._observe()
+        self.assertIn("200", status, obs)
+        self.assertIs(obs["observation_available"], True)
+        self.assertIs(obs["decision_available"], False)
+        self.assertEqual(len(obs["rows"]), 100)
+        by_ticker = {r["ticker"]: r for r in obs["rows"]}
+        self.assertEqual(by_ticker["SYN03.T"]["state"], "STALE")
+        self.assertIsNone(by_ticker["SYN03.T"]["observed_price"])
+        fresh = [r for r in obs["rows"] if r["state"] == "FRESH"]
+        self.assertEqual(len(fresh), 99)
+        self.assertTrue(all(r["observed_price"] is not None for r in fresh))
+        self.assertEqual(obs["availability"]["state_counts"]["FRESH"], 99)
+        self.assertEqual(obs["availability"]["availability_status"], "BLOCKED_ROW_QUOTES")
+        self._assert_observation_only(obs, "777.25", BUY)
+
+    def test_90_10_coverage_and_availability_are_reported(self):
+        now = self._now()
+        old = now - timedelta(minutes=5)
+        rows = self._rows(now, {t: _row(t, _quote(old)) for t in UNIVERSE[90:]})
+        status, written, body = self._refuse(self._payload(rows=rows, now=now))
+        verdict = self._assert_rejected(status, written, body, "ROW_STALE_SOURCE_QUOTE")
+        self.assertEqual(verdict["availability"]["state_counts"]["FRESH"], 90)
+        self.assertEqual(verdict["availability"]["state_counts"]["STALE"], 10)
+        self.assertEqual(verdict["availability"]["fresh_coverage_pct"], 90.0)
+        self.assertIs(verdict["availability"]["collector_valid_quality_pass"], True)
+        status, obs = self._observe()
+        self.assertIn("200", status, obs)
+        self.assertEqual(sum(1 for r in obs["rows"] if r["state"] == "FRESH"), 90)
+        self.assertEqual(obs["availability"]["fresh_coverage_pct"], 90.0)
+
+    def test_one_of_100_missing_fails_completeness(self):
+        now = self._now()
+        rows = [r for r in self._rows(now) if r["ticker"] != "SYN42.T"]
+        for declared in (99, 100):
+            with self.subTest(declared=declared):
+                payload = self._payload(rows=rows, now=now, extra={"universe": declared})
+                status, written, body = self._refuse(payload)
+                verdict = self._assert_rejected(status, written, body, "UNIVERSE_ROW_MISSING", "UNIVERSE_DECLARED_MISMATCH")
+                self.assertEqual(verdict["availability"]["missing_count"], 1)
+                self.assertEqual(verdict["availability"]["missing_sample"], ["SYN42.T"])
+                self.assertEqual(verdict["availability"]["availability_status"], "BLOCKED_UNIVERSE_INCOMPLETE")
+                status, obs = self._observe()
+                self.assertIn("200", status, obs)
+                self.assertEqual(obs["missing_tickers"], ["SYN42.T"])
+                self.assertEqual(len(obs["rows"]), 99)
+
+    def test_duplicate_ticker_fails_closed(self):
+        now = self._now()
+        rows = [r for r in self._rows(now) if r["ticker"] != "SYN11.T"] + [_row("SYN12.T", _quote(now - timedelta(seconds=2)))]
+        status, written, body = self._refuse(self._payload(rows=rows, now=now, extra={"universe": 100}))
+        verdict = self._assert_rejected(status, written, body, "ROW_TICKER_DUPLICATE", "UNIVERSE_ROW_MISSING")
+        self.assertEqual(verdict["availability"]["state_counts"]["INVALID"], 1)
+
+    def test_identity_stale_never_serves_the_identity_price(self):
+        now = self._now()
+        old = now - timedelta(minutes=5)
+        rows = self._rows(now, {IDENTITY: _row(IDENTITY, _quote(old), price=1234.5)})
+        status, written, body = self._refuse(self._payload(rows=rows, identity_at=old, now=now))
+        self._assert_rejected(status, written, body, "STALE_SOURCE_QUOTE", hidden=("1234.5",))
+        status, obs = self._observe()
+        self.assertIn("200", status, obs)
+        identity = [r for r in obs["rows"] if r["ticker"] == IDENTITY][0]
+        self.assertEqual(identity["state"], "STALE")
+        self.assertIsNone(identity["observed_price"])
+        self.assertIs(obs["identity_quote_freshness"]["fresh"], False)
+        self._shadow_status("STALE", False)
+        runtime = self._health()
+        self.assertIsNone(runtime["live_current_price"])
+        self.assertNotEqual(runtime["price_source_status"], "OK")
+        self.assertEqual(runtime["availability_status"], "BLOCKED_IDENTITY_QUOTE")
+
+    def test_startup_unknown_stays_unknown(self):
+        now = self._now()
+        rows = [_row(t, _quote(None)) for t in UNIVERSE]
+        payload = self._payload(rows=rows, now=now)
+        payload["live_price_diagnostics"].update(_quote(None))
+        status, written, body = self._refuse(payload)
+        self._assert_rejected(status, written, body, "SOURCE_DATE_UNKNOWN", "ROW_SOURCE_DATE_UNKNOWN")
+        status, obs = self._observe()
+        self.assertIn("200", status, obs)
+        self.assertTrue(all(r["state"] in ("UNKNOWN", "INVALID") for r in obs["rows"]))
+        self.assertTrue(all(r["observed_price"] is None for r in obs["rows"]))
+        self.assertEqual(obs["availability"]["fresh_coverage_pct"], 0.0)
+
+    def test_thin_row_keeps_observation_without_false_live(self):
+        for _ in range(3):
+            now = self._now()
+            thin = _row("SYN99.T", _quote(now - timedelta(minutes=30)), price=55.5)
+            status, written, body = self._refuse(self._payload(rows=self._rows(now, {"SYN99.T": thin}), now=now))
+            self._assert_rejected(status, written, body, "ROW_STALE_SOURCE_QUOTE", hidden=("55.5",))
+            status, obs = self._observe()
+            self.assertIn("200", status, obs)
+            self.assertEqual([r["ticker"] for r in obs["rows"] if r["state"] != "FRESH"], ["SYN99.T"])
+
+    def test_health_shadow_board_availability_mismatch_fails_closed(self):
+        self._serve(self._payload())
+        self._shadow_status("FRESH", True, decision_available=False)
+        runtime = self._health()
+        self.assertIs(runtime["availability"]["decision_available"], True)
+        self.assertIn("BOARD_AVAILABILITY_MISMATCH", runtime["stale_reason"].split(","))
+        self.assertIs(runtime["fail_closed"], True)
+        self.assertIs(runtime["decision_available"], False)
+        self.assertEqual(runtime["availability_status"], "BLOCKED_SHADOW_DISAGREES")
+        self.assertIsNone(runtime["live_current_price"])
+        self._shadow_status("FRESH", True, omit_availability=True)
+        runtime = self._health()
+        self.assertIn("SHADOW_BOARD_AVAILABILITY_MISSING", runtime["stale_reason"].split(","))
+        self.assertIs(runtime["fail_closed"], True)
+
+    def test_recovery_serves_only_the_new_board(self):
+        now = self._now()
+        stale = _row("SYN08.T", _quote(now - timedelta(minutes=5)))
+        status, _, _ = self._serve(self._payload(rows=self._rows(now, {"SYN08.T": stale}), now=now))
+        self.assertIn("503", status)
+        status, written, body = self._serve(self._payload())
+        self.assertIn("200 OK", status, body[:2000])
+        self.assertEqual(body, written)
+
+    def test_ui_shows_stopped_for_real_gateway_refusals(self):
+        now = self._now()
+        stale = _row("SYN03.T", _quote(now - timedelta(minutes=5)), signal=BUY)
+        _, _, row_body = self._refuse(self._payload(rows=self._rows(now, {"SYN03.T": stale}), now=now))
+        rows = [r for r in self._rows(now) if r["ticker"] != "SYN42.T"]
+        _, _, missing_body = self._refuse(self._payload(rows=rows, now=now, extra={"universe": 100}))
+        self._shadow_status("FRESH", True, decision_available=False)
+        health = json.loads(self._request("/health")[1].decode("utf-8-sig"))
+        live = oper.ui_live_body()
+        cases = [
+            {"name": "row_stale", "bridge_status": 503, "bridge_body": row_body.decode("utf-8-sig"), "health": None},
+            {"name": "universe_missing", "bridge_status": 503, "bridge_body": missing_body.decode("utf-8-sig"),
+             "health": None},
+            {"name": "health_fail_closed", "bridge_status": 200, "bridge_body": json.dumps(live), "health": health},
+        ]
+        result = oper.run_ui_cases(cases)
+        self.assertIsNotNone(result, "node missing on Windows")
+        for name, got in result.items():
+            with self.subTest(case=name):
+                self.assertNotIn("error", got)
+                self.assertIs(got["stale"], True)
+                self.assertEqual(got["xs_len"], 0)
+
+    def test_restart_restores_served_history_and_detects_regression(self):
+        runtime = Path(self.tmp.name) / "restart-runtime"
+        runtime.mkdir()
+        oper.write_watchlist(runtime, UNIVERSE)
+        history = runtime / "v10_gateway_served_quotes.json"
+        live = runtime / "live_ms2.json"
+        # The synthetic workbook identity is bound to the runtime directory.
+        restart_id = _run_powershell(self.exe, ENV_HARNESS, ["-Gateway", str(GATEWAY), "-RuntimeDir", str(runtime)])[
+            "workbook_identity_id"]
+
+        def launch():
+            port = self._free_port()
+            self._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(runtime), "-Port", str(port)], port)
+            return port, self.processes[-1]
+
+        def serve(port, payload):
+            payload["live_price_diagnostics"]["workbook_identity_id"] = restart_id
+            data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            live.write_bytes(data)
+            return self._request("/live_ms2.json", port)
+
+        def served_history(port):
+            status, body = self._request("/health", port)
+            return json.loads(body.decode("utf-8-sig"))["runtime"]["served_history"]
+
+        port, process = launch()
+        self.assertEqual(served_history(port)["state"], "NO_HISTORY_FILE")
+        self.assertIs(served_history(port)["history_loss_risk"], True)
+        now = self._now()
+        status, _ = serve(port, self._payload(now=now))
+        self.assertIn("200 OK", status)
+        self.assertTrue(history.exists())
+        self.assertEqual(served_history(port)["state"], "SAVED")
+        process.terminate()
+        process.wait(timeout=10)
+
+        port, process = launch()
+        restored = served_history(port)
+        self.assertEqual(restored["state"], "RESTORED")
+        self.assertIs(restored["history_loss_risk"], False)
+        self.assertEqual(restored["row_count"], 100)
+        later = self._now()
+        older = self._payload(rows=self._rows(later, at=now - timedelta(seconds=20)), identity_at=now - timedelta(seconds=20),
+                              now=later)
+        status, body = serve(port, older)
+        self.assertIn("503", status)
+        reasons = json.loads(body.decode("utf-8-sig"))["stale_reason"].split(",")
+        self.assertIn("SOURCE_TIMESTAMP_REGRESSION", reasons)
+        self.assertIn("ROW_SOURCE_TIMESTAMP_REGRESSION", reasons)
+        process.terminate()
+        process.wait(timeout=10)
+
+        history.write_text("{not json", encoding="utf-8")
+        port, process = launch()
+        self.assertEqual(served_history(port)["state"], "UNREADABLE")
+        status, body = serve(port, self._payload())
+        self.assertIn("503", status)
+        self.assertIn("SERVED_HISTORY_UNREADABLE", json.loads(body.decode("utf-8-sig"))["stale_reason"])
+        process.terminate()
+        process.wait(timeout=10)
 
 
 if __name__ == "__main__":
