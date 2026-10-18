@@ -35,6 +35,7 @@ class StopWorkerIdentityContract(unittest.TestCase):
     def test_stop_script_contains_one_body_and_no_appended_payload(self):
         src = self.source
         self.assertEqual(src.count("function Test-OwnedPidIdentity("), 1)
+        self.assertEqual(src.count("function Test-StopWorkerScriptArgument("), 1)
         self.assertEqual(src.count("function Test-BrainCommandLine("), 1)
         self.assertEqual(src.count("function Test-ExactBrainHandle("), 1)
         self.assertTrue(
@@ -42,6 +43,15 @@ class StopWorkerIdentityContract(unittest.TestCase):
                 'Write-Host "AI Cockpit V10 managed processes and verified managed Excel stopped." -ForegroundColor Green'
             ), "STOP source must end after its success status, without an appended duplicate"
         )
+
+    def test_actual_script_argument_required_for_ownership(self):
+        self.assertIn("Test-StopWorkerScriptArgument $cmd $Field $names", self.block)
+        helper = self.source.split("function Test-StopWorkerScriptArgument(", 1)[1].split(
+            "function Test-OwnedPidIdentity(", 1)[0]
+        self.assertIn("CommandLineToArgvW", helper)
+        self.assertIn('"-(Command|EncodedCommand|CommandWithArgs)"', helper.replace("^", "").replace("$", ""))
+        self.assertIn('"sbv2_pid"', helper)
+        self.assertIn("IsPathRooted", helper)
 
     def test_refusal_precedes_controller_stop(self):
         src = self.source
