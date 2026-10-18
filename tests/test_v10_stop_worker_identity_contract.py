@@ -294,6 +294,35 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertIn("SAFE_STOP_VERIFY=STATE_CHANGED_BEFORE_DELETE", final)
         self.assertIn("excel_pid", final)
 
+    def test_recovery_inspection_exits_before_any_destructive_stop(self):
+        src = self.source
+        self.assertIn("[switch]$InspectOnly", src)
+        self.assertEqual(src.count("function Invoke-V10StopReadOnlyInspection("), 1)
+        inspection = src.split("function Invoke-V10StopReadOnlyInspection(", 1)[1].split(
+            "# P0-25: The legacy state", 1)[0]
+        for fragment in (
+            "Get-V10TrackedPidEvidence $pidValue",
+            "Test-StopExcelPreflight $RecordedState",
+            "Test-ExactBrainHandle $opened $RecordedState",
+            "Get-NetTCPConnection -State Listen -ErrorAction Stop",
+            "AUTOMATIC_STATE_DELETION_ALLOWED=0",
+            "STATE_MUTATED=0",
+            "PROCESS_TERMINATED=0",
+            "EXCEL_CLOSED=0",
+            "RECOVERY_CLASS=STALE_STATE_REVIEW_REQUIRED",
+            "RECOVERY_CLASS=REQUIRES_INDEPENDENT_REVIEW",
+        ):
+            self.assertIn(fragment, inspection)
+        for destructive in (
+            "Stop-Process", ".Kill()", "Remove-Item", "Save-State",
+            "Move-Item", "Start-Process", "$targetBook.Close(", "$app.Quit()",
+        ):
+            self.assertNotIn(destructive, inspection)
+        inspect_call = src.index("if ($InspectOnly) {\n    $inspectionResult")
+        self.assertLess(inspect_call, src.index("$controllerProc.Kill()"))
+        self.assertLess(inspect_call, src.index("Stop-OwnedJobBridge 28580"))
+        self.assertLess(inspect_call, src.index("Remove-Item -LiteralPath $StateFile -Force"))
+
     def test_refusal_precedes_controller_stop(self):
         src = self.source
         preflight = src.index("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID")
