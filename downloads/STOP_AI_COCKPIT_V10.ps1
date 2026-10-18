@@ -111,7 +111,8 @@ function Test-OwnedPidIdentity([string]$Field,[int]$ProcessId) {
         $cimStarted = ([datetime]$wmi.CreationDate).ToUniversalTime()
         $handleStarted = $proc.StartTime.ToUniversalTime()
         if ([Math]::Abs(($handleStarted - $cimStarted).TotalSeconds) -gt 2) { return $false }
-        if ([int]$wmi.ProcessId -ne $ProcessId -or [string]$wmi.Name -notmatch '^(powershell|pwsh|python|pythonw)\.exe
+        if ([int]$wmi.ProcessId -ne $ProcessId -or [string]$wmi.Name -notmatch '^(powershell|pwsh|python|pythonw)\.exe$') { return $false }
+        $selfSession = (Get-Process -Id $PID -ErrorAction Stop).SessionId
         if ([int]$proc.SessionId -ne [int]$selfSession) { return $false }
         # Token boundaries exclude spoofed names such as fake_RUN_AI_COCKPIT_V10.ps1.
         $names = if ($Field -eq "controller_pid") {
