@@ -1,0 +1,101 @@
+name: V10 Candidate Runtime Bundle (Synthetic)
+on:
+  pull_request:
+    paths:
+      - "downloads/*V10*.ps1"
+      - "downloads/V10_RELEASE_BUNDLE_MANIFEST.json"
+      - "scripts/ai_brain_observer.py"
+      - "scripts/ai_shadow_supervisor.py"
+      - "ms2_live/*.ps1"
+      - "index.html"
+      - "card_system.*"
+      - "card_table_adapter.*"
+      - "voice_client.js"
+      - "opportunity_radar.js"
+      - "trade_control.js"
+      - "v10_publication_status.js"
+      - "tests/test_v10_runtime_bundle_candidate.py"
+      - ".github/workflows/v10-candidate-runtime-bundle-synthetic.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  full-source-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Byte-for-byte equality to exact 30 reviewed-candidate blobs (read-only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          pinned="e906dedc45448ca20428a7ca1afa1126eaeeedaa"
+          git fetch --no-tags --depth=1 origin "$pinned"
+          python -m json.tool downloads/V10_RELEASE_BUNDLE_MANIFEST.json > /dev/null
+          mapfile -t files < <(python -c 'import json; print("\n".join(item["path"] for item in json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json", encoding="utf-8"))["files"]))')
+          test "${#files[@]}" -eq 30
+          for file in "${files[@]}"; do
+            test -f "$file"
+            git cat-file -e "$pinned:$file"
+            if [ "$file" = "index.html" ]; then
+              # Deliberate security repair: stale MS2/Watcher prices and
+              # cards must be cleared, even if the prior V10 Draft did not.
+              # A separate V10 UI fail-closed contract validates content.
+              echo "V10_INDEX_STALE_SAFETY_REPAIR=index.html"
+              test "$(git rev-parse "HEAD:$file")" = "cb01cce5f7ed30f2670361ec5fad93ac3c57a693"
+            else
+              git show "$pinned:$file" | cmp - "$file"
+              echo "CANDIDATE_SOURCE_UNMODIFIED=$file"
+            fi
+          done
+          echo "APPROVED_FOR_RUNTIME=0"
+      - name: Candidate manifest and V10 static UI/runtime dependencies
+        run: python -m unittest discover -s tests -p test_v10_runtime_bundle_candidate.py -v
+      - name: V10 guarded entry static contracts
+        run: python -m unittest discover -s tests -p test_v10_guarded_launch_main.py -v
+  windows-parser-and-mock:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Parse candidate runtime PowerShell scripts without launching anything
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $paths = @(
+            'downloads/RUN_AI_COCKPIT_V10.ps1',
+            'downloads/AI_COCKPIT_CONTROLLER_V10.ps1',
+            'downloads/EXCEL_IDENTITY_PROBE_V10.ps1',
+            'downloads/AI_COCKPIT_GATEWAY_V10.ps1',
+            'downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1',
+            'downloads/STOP_AI_COCKPIT_V10.ps1',
+            'downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1',
+            'ms2_live/Kioxia_RSS_Live_Watcher.ps1',
+            'ms2_live/Kioxia_Safety_Heartbeat.ps1',
+            'ms2_live/MS2_RSS_100_Collector.ps1',
+            'ms2_live/MS2_Common_Engine.ps1',
+            'ms2_live/BUILD_KIOXIA_TIME_STATS.ps1',
+            'ms2_live/SPEAK_TODAY_STRATEGY.ps1',
+            'ms2_live/SPEAK_LIVE_EMOTION.ps1'
+          )
+          foreach ($path in $paths) {
+            $tokens=$null; $parseErrors=$null
+            [void][Management.Automation.Language.Parser]::ParseFile((Resolve-Path $path).Path,[ref]$tokens,[ref]$parseErrors)
+            if ($parseErrors.Count -gt 0) { throw ('V10_CANDIDATE_PS_PARSE_FAILED: ' + $path + ' count=' + $parseErrors.Count) }
+          }
+      - name: Source manifest / UI source acceptance
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_v10_runtime_bundle_candidate.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Windows guarded start with fake reviewed RUN only (NO OWNER RUNTIME)
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_v10_guarded_launch_main.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

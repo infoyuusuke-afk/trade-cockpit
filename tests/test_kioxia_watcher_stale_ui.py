@@ -21,8 +21,20 @@ class WatcherStaleUiTests(unittest.TestCase):
         cls.dashboard = (ROOT / "index.html").read_text(encoding="utf-8")
 
     def test_built_dashboard_uses_same_fail_closed_script_as_generator(self):
-        # Prevent a safe generator from coexisting with an unsafe deployed HTML.
-        self.assertIn(self.script, self.dashboard)
+        # V10 serves a separate local-Gateway UI. The safe generator's
+        # watcher reset/schema/future-clock block MUST still be identical,
+        # even if the V10 MS2 fetch and dashboard rendering intentionally
+        # use different, stricter transport/provenance contracts.
+        if (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").is_file():
+            start = self.script.index(" const clearWatcherKioxia=")
+            end = self.script.index("\n }\n loadMs2Live();", start)
+            self.assertIn(self.script[start:end], self.dashboard)
+            self.assertIn(
+                'clearWatcherKioxia("Excel Watcher未接続・売買利用禁止"',
+                self.dashboard,
+            )
+        else:
+            self.assertIn(self.script, self.dashboard)
 
     def test_every_displayed_watcher_signal_is_cleared_when_stale(self):
         match = re.search(
@@ -70,8 +82,16 @@ class WatcherStaleUiTests(unittest.TestCase):
     def test_gateway_and_watcher_have_distinct_loopback_ports(self):
         watcher = (ROOT / "ms2_live" / "Kioxia_RSS_Live_Watcher.ps1").read_text(encoding="utf-8-sig")
         gateway = (ROOT / "downloads" / "AI_Cockpit_Local_Gateway.ps1").read_text(encoding="utf-8-sig")
-        self.assertIn("[int]$WatcherBridgePort = 28582", watcher)
-        self.assertIn("Start-LocalJsonBridge $watcherJsonPath $WatcherBridgePort", watcher)
+        # V10 pins 28582 directly; the older Watcher uses an explicit
+        # $WatcherBridgePort variable. Both must bind the Watcher on 28582,
+        # never the Gateway's 28581.
+        variable_port = (
+            "[int]$WatcherBridgePort = 28582" in watcher
+            and "Start-LocalJsonBridge $watcherJsonPath $WatcherBridgePort" in watcher
+        )
+        direct_port = "Start-LocalJsonBridge $watcherJsonPath 28582" in watcher
+        self.assertTrue(variable_port or direct_port, "Watcher must bind 28582")
+        self.assertNotIn("Start-LocalJsonBridge $watcherJsonPath 28581", watcher)
         self.assertIn("[int]$Port = 28581", gateway)
         self.assertIn("http://127.0.0.1:28582/kioxia_watcher_live.json", self.script)
         self.assertNotIn("127.0.0.1:28581/kioxia_watcher_live.json", self.script)
