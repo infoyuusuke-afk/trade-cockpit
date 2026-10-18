@@ -1880,7 +1880,6 @@ try {
                 Write-Status "  AI Cockpit Excel stopped; foreign Excel was not touched." Green
             }
 
-            Save-State $state
             [Environment]::Exit(3)
         }
 
@@ -1923,7 +1922,6 @@ try {
                             "ERROR: tracked Excel remains, hidden/exclusive ownership not verified. " +
                             "No Excel process was force-killed; V10 state retained."
                         ) Red
-                        Save-State $state
                         [Environment]::Exit(2)
                     }
                     Write-Status (
@@ -1941,7 +1939,6 @@ try {
                         "ERROR: tracked Excel still exists; state retained."
                     ) Red
 
-                    Save-State $state
                     [Environment]::Exit(2)
                 }
 
@@ -1951,7 +1948,6 @@ try {
                 # worker/port or an unreadable audit must retain V10 state.
                 if (-not (Test-V10WorkbookCloseTeardownComplete $state)) {
                     Write-Status "SAFE_STOP_VERIFY=WORKER_OR_PORT_REMAINS; retaining V10 state." Red
-                    Save-State $state
                     [Environment]::Exit(2)
                 }
                 if (-not (Remove-V10VerifiedShutdownState $state)) {
