@@ -446,16 +446,22 @@ function Start-Sbv2Managed {
     $stdout = Join-Path $LogDir "sbv2_stdout.log"
     $stderr = Join-Path $LogDir "sbv2_stderr.log"
     Remove-Item -LiteralPath $stdout,$stderr -Force -ErrorAction SilentlyContinue
-    return Start-Process -FilePath $exe -ArgumentList "server_fastapi.py" -WorkingDirectory $sbvRoot -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+    # The STOP identity check must be able to verify the exact owned script
+    # path. Relative script argv does not prove the working directory.
+    $serverArg = '"' + [IO.Path]::GetFullPath($server) + '"'
+    return Start-Process -FilePath $exe -ArgumentList $serverArg -WorkingDirectory $sbvRoot -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
 }
 
-function Stop-LegacyVoiceWorkers {
+# Never terminate processes discovered by an unrestricted system-wide scan.
+# An unmanaged legacy voice process blocks startup until the owner stops the
+# verified old runtime; it cannot inherit V10 Controller's stop authority.
+function Assert-NoUnmanagedLegacyVoiceWorkers {
     foreach ($p in @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)) {
         $cmd = [string]$p.CommandLine
         if ([string]::IsNullOrWhiteSpace($cmd)) { continue }
         if ($cmd -match "SPEAK_TODAY_STRATEGY\.ps1|SPEAK_LIVE_EMOTION\.ps1") {
-            try { Stop-Process -Id ([int]$p.ProcessId) -Force -ErrorAction SilentlyContinue } catch {}
-            Write-Status ("  stopped legacy voice worker PID " + $p.ProcessId) DarkGray
+            throw ("UNMANAGED_LEGACY_VOICE_PROCESS: PID " + $p.ProcessId +
+                " - no process was terminated. Stop the prior runtime through its verified owner.")
         }
     }
 }
@@ -1168,8 +1174,8 @@ try {
     Stop-OwnedFromPreviousState
     Start-Sleep -Milliseconds 500
 
-    Write-Status "Stopping obsolete voice-only workers so old SAPI cannot leak into V10..."
-    Stop-LegacyVoiceWorkers
+    Write-Status "Checking for unmanaged legacy voice workers without terminating foreign processes..."
+    Assert-NoUnmanagedLegacyVoiceWorkers
 
     Write-Status "Checking for foreign sessions on 28580/28581/28582/28583..."
     $ownedNow = @{
