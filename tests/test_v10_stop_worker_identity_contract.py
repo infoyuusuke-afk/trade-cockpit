@@ -239,6 +239,32 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertLess(close.index("Remove-V10VerifiedShutdownState $state"),
                         close.index("[Environment]::Exit(0)"))
 
+    def test_excel_preflight_refuses_partial_teardown_before_controller_kill(self):
+        src = self.source
+        self.assertEqual(src.count("function Test-StopExcelPreflight("), 1)
+        start = src.index("function Test-StopExcelPreflight(")
+        end = src.index("# P0-25:", start)
+        block = src[start:end]
+        for marker in (
+            "[string]$info.Name -ine \"EXCEL.EXE\"",
+            "[int]$info.ParentProcessId -ne $controllerPid",
+            "$proc.StartTime.ToUniversalTime()",
+            "($started -",
+            "$cmd.IndexOf($canonicalLaunch, [StringComparison]::OrdinalIgnoreCase)",
+            "GetActiveObject(\"Excel.Application\")",
+            "GetWindowThreadProcessId",
+            "$otherExcel.Count -ne 0",
+            "Test-OnlyCanonicalExcelWorkbookOpen $app $workbookPath",
+        ):
+            self.assertIn(marker, block)
+        call = src.index("if (-not (Test-StopExcelPreflight $state))")
+        controller_stop = src.index("$controllerProc.Kill()")
+        bridge_stop = src.index("Stop-OwnedJobBridge 28580")
+        self.assertLess(call, controller_stop)
+        self.assertLess(call, bridge_stop)
+        self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_EXCEL_IDENTITY_OR_WORKBOOKS", src)
+        self.assertNotIn("Stop-Process -Id $ExcelPid", block)
+
     def test_refusal_precedes_controller_stop(self):
         src = self.source
         preflight = src.index("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID")
