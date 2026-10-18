@@ -356,6 +356,26 @@ class StopWorkerIdentityContract(unittest.TestCase):
         controller_kill = src.index("$controllerProc.Kill()")
         self.assertLess(archive_dispatch, controller_kill)
 
+    def test_archive_rechecks_untracked_v10_processes_before_rename(self):
+        src = self.source
+        scan = src.split("function Test-NoUntrackedV10Process", 1)[1].split(
+            "function Test-V10RecoveryStateInvariants", 1)[0]
+        self.assertIn("Get-CimInstance Win32_Process -ErrorAction Stop", scan)
+        for name in ("AI_COCKPIT_CONTROLLER_V10", "Kioxia_RSS_Live_Watcher",
+                     "ai_brain_observer", "ai_shadow_supervisor"):
+            self.assertIn(name, scan)
+        self.assertNotIn(".Kill()", scan)
+        self.assertNotIn("Stop-Process", scan)
+        invariant = src.split("function Test-V10RecoveryStateInvariants", 1)[1].split(
+            "function Invoke-V10VerifiedStaleArchive", 1)[0]
+        self.assertIn("Test-NoUntrackedV10Process", invariant)
+        archive = src.split("function Invoke-V10VerifiedStaleArchive", 1)[1].split(
+            "# P0-25: The legacy state", 1)[0]
+        self.assertIn("PRE_RENAME_PROCESS_OR_PORT_CHANGED", archive)
+        self.assertGreaterEqual(archive.count("Test-V10RecoveryStateInvariants $verified"), 3)
+        self.assertLess(archive.index("PRE_RENAME_PROCESS_OR_PORT_CHANGED"),
+                        archive.index("[IO.File]::Move($StateFile,$target)"))
+
     def test_refusal_precedes_controller_stop(self):
         src = self.source
         preflight = src.index("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID")
