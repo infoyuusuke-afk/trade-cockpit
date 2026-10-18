@@ -4,6 +4,7 @@ Processes and state are synthetic, unique to an isolated RUNNER_TEMP folder.
 No MS2, Excel, broker API, market data, workstation or service is accessed.
 """
 import json
+import hashlib
 import os
 import shutil
 import socket
@@ -213,6 +214,129 @@ class SafeStopWindowsIsolation(unittest.TestCase):
                 self.assertIsNone(proc.poll(), "listener diagnosis killed process")
         finally:
             listener.close()
+
+    def prepare_synthetic_archive_state(self):
+        self.state["workbook_path"] = str(self.runtime / "Kioxia_MS2_RSS_Live_Signals.xlsx")
+        self.state["workbook_name"] = "Kioxia_MS2_RSS_Live_Signals.xlsx"
+        self.write_state()
+        raw = self.state_path.read_bytes()
+        return raw, hashlib.sha256(raw).hexdigest(), self.state["session_id"]
+
+    def archive_args(self, digest, session):
+        return ("-ArchiveVerifiedStaleState",
+                "-ExpectedSessionId", session,
+                "-ExpectedStateSha256", digest)
+
+    def test_archive_live_owned_state_is_refused_without_terminating_anything(self):
+        original, digest, session = self.prepare_synthetic_archive_state()
+        result = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("RECOVERY_ARCHIVE=REFUSED_OR_UNVERIFIED", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), original)
+        self.assertEqual(list(self.root.glob("V10_CONTROLLER_STATE.archived.*.json")), [])
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "archive attempted to stop a running process")
+
+    def test_archive_requires_explicit_matching_session_and_state_sha(self):
+        original, digest, session = self.prepare_synthetic_archive_state()
+        for argv in [
+            ("-ArchiveVerifiedStaleState",),
+            self.archive_args("0" * 64, session),
+            self.archive_args(digest, session + "-foreign"),
+            ("-ArchiveVerifiedStaleState", "-InspectOnly"),
+        ]:
+            with self.subTest(argv=argv):
+                result = self.run_stop(*argv)
+                self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertEqual(self.state_path.read_bytes(), original)
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "incorrect recovery pins stopped a process")
+
+    def test_archive_refuses_foreign_recorded_pid_without_killing(self):
+        self.state["shadow_supervisor_pid"] = self.foreign.pid
+        original, digest, session = self.prepare_synthetic_archive_state()
+        self.controller.kill()
+        self.controller.wait(timeout=10)
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        result = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("RECOVERY_ARCHIVE=REFUSED_OR_UNVERIFIED", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), original)
+        self.assertIsNone(self.foreign.poll(), "foreign PID was stopped by recovery")
+
+    def test_archive_refuses_missing_brain_record_even_if_all_processes_exited(self):
+        self.state.pop("brain_observer_pid")
+        original, digest, session = self.prepare_synthetic_archive_state()
+        self.controller.kill()
+        self.controller.wait(timeout=10)
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        result = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertEqual(self.state_path.read_bytes(), original)
+        self.assertIsNone(self.foreign.poll())
+
+    def test_archive_refuses_free_state_when_an_unrelated_v10_port_is_listening(self):
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            try:
+                listener.bind(("127.0.0.1", 28584))
+            except OSError:
+                self.skipTest("synthetic V10 test port already occupied")
+            listener.listen(1)
+            original, digest, session = self.prepare_synthetic_archive_state()
+            self.controller.kill()
+            self.controller.wait(timeout=10)
+            self.brain.kill()
+            self.brain.wait(timeout=10)
+            result = self.run_stop(*self.archive_args(digest, session))
+            self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+            self.assertIn("RECOVERY_ARCHIVE=REFUSED_OR_UNVERIFIED", result.stdout)
+            self.assertEqual(self.state_path.read_bytes(), original)
+            self.assertIsNone(self.foreign.poll())
+        finally:
+            listener.close()
+
+    def test_archive_refuses_modified_state_hash_and_preserves_original_bytes(self):
+        original, digest, session = self.prepare_synthetic_archive_state()
+        self.controller.kill()
+        self.controller.wait(timeout=10)
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        amended = original + b" "
+        self.state_path.write_bytes(amended)
+        result = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertEqual(self.state_path.read_bytes(), amended)
+        self.assertEqual(list(self.root.glob("V10_CONTROLLER_STATE.archived.*.json")), [])
+        self.assertIsNone(self.foreign.poll())
+
+    def test_archive_verified_stale_state_renames_and_preserves_exact_bytes(self):
+        # No OWNER processes or data. All managed PIDs have exited; only a
+        # synthetic unrelated Python process remains outside the V10 state.
+        original, digest, session = self.prepare_synthetic_archive_state()
+        self.controller.kill()
+        self.controller.wait(timeout=10)
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        result = self.run_stop(*self.archive_args(digest, session))
+        if "STALE_STATE_PROOF_FAILED" in result.stdout and "Get-NetTCPConnection" in result.stdout:
+            self.skipTest("V10 synthetic ports unavailable on shared runner")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("RECOVERY_ARCHIVE=VERIFIED_ARCHIVED", result.stdout)
+        self.assertIn("ACTIVE_STATE_ARCHIVED=1", result.stdout)
+        self.assertIn("PROCESS_TERMINATED=0", result.stdout)
+        self.assertFalse(self.state_path.exists(), "active state was not unblocked")
+        archived = list(self.root.glob("V10_CONTROLLER_STATE.archived.*.json"))
+        self.assertEqual(len(archived), 1)
+        self.assertEqual(archived[0].read_bytes(), original, "state evidence was changed")
+        self.assertEqual(hashlib.sha256(archived[0].read_bytes()).hexdigest(), digest)
+        self.assertIsNone(self.foreign.poll())
+        retry = self.run_stop(*self.archive_args(digest, session))
+        self.assertEqual(retry.returncode, 2, retry.stdout + retry.stderr)
+        self.assertIn("RECOVERY_ARCHIVE=REFUSED_NO_STATE", retry.stdout)
+        self.assertEqual(archived[0].read_bytes(), original)
 
     def test_valid_owned_brain_is_really_stopped(self):
         self.write_state()
