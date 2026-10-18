@@ -305,6 +305,22 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.assertIsNotNone(self.brain.poll())
         self.assertFalse(self.state_path.exists())
 
+    def test_foreign_same_named_sbv2_script_refused(self):
+        server = self.root / "server_fastapi.py"
+        server.write_text("import time; time.sleep(120)\n", encoding="utf-8")
+        decoy = self.spawn([sys.executable, str(server)])
+        time.sleep(0.3)
+        self.assertIsNone(decoy.poll())
+        self.state["sbv2_pid"] = decoy.pid
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("BLOCKED_FOREIGN_WORKER_PID", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (decoy, self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "foreign SBV2 basename must never grant stop authority")
+
     def test_inert_worker_script_name_argument_cannot_authorize_stop(self):
         # A Python -c program mentioning the owned basename as inert argv
         # must not be mistaken for the managed SHADOW script.
