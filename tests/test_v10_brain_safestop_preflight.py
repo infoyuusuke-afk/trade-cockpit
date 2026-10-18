@@ -41,8 +41,10 @@ class PreflightSafety(unittest.TestCase):
         self.assertLess(ctrl,second)
         self.assertIn('SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID',self.stop)
         self.assertIn('SAFE_STOP_VERIFY=LISTEN_PORTS_REMAIN',self.stop)
-        self.assertIn('SAFE_STOP_VERIFY=TRACKED_PID_STILL_PRESENT',self.stop)
-        self.assertLess(self.stop.index('SAFE_STOP_VERIFY=TRACKED_PID_STILL_PRESENT'),
+        self.assertIn('SAFE_STOP_VERIFY=TRACKED_PID_NOT_PROVEN_ABSENT',self.stop)
+        self.assertIn('if ($evidence -ne "ABSENT")',self.stop)
+        self.assertIn('Get-V10TrackedPidEvidence $tracked',self.stop)
+        self.assertLess(self.stop.index('SAFE_STOP_VERIFY=TRACKED_PID_NOT_PROVEN_ABSENT'),
                         self.stop.index('Remove-Item -LiteralPath $StateFile -Force'))
 
     def test_final_state_is_reread_after_controller_stops(self):
