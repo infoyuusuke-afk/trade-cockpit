@@ -301,35 +301,46 @@ function Test-ExactBrainHandle([System.Diagnostics.Process]$Proc,$State) {
     } catch { return $false }
 }
 
-function Stop-VerifiedHiddenManagedExcelOrphan([int]$ExcelPid,[string]$WorkbookPath) {
-    if ($ExcelPid -le 0 -or [string]::IsNullOrWhiteSpace($WorkbookPath)) { return $false }
+# A tracked Excel PID is not an ownership token; require matching session,
+# canonical workbook, original Controller parent and creation time.
+function Stop-VerifiedHiddenManagedExcelOrphan([int]$ExcelPid,[string]$WorkbookPath,
+    [datetime]$ExpectedStartUtc,[int]$ExpectedControllerPid) {
+    if ($ExcelPid -le 0 -or [string]::IsNullOrWhiteSpace($WorkbookPath) -or
+        $ExpectedControllerPid -le 0 -or
+        $ExpectedStartUtc -le [datetime]"2020-01-01") { return $false }
     $xp = Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue
     if ($null -eq $xp) { return $true }
 
     try {
+        # The opened handle remains the kill target even if PID changes.
+        $handle = $xp.Handle
+        if ($handle -eq [IntPtr]::Zero -or $xp.HasExited -or
+            [string]$xp.ProcessName -ine "EXCEL") { return $false }
         $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ExcelPid) -ErrorAction Stop
-        $cmd = [string]$info.CommandLine
+        if ($null -eq $info -or [int]$info.ProcessId -ne $ExcelPid -or
+            [string]$info.Name -ine "EXCEL.EXE" -or
+            [int]$info.ParentProcessId -ne $ExpectedControllerPid) { return $false }
+        $cimStart = ([datetime]$info.CreationDate).ToUniversalTime()
+        $handleStart = $xp.StartTime.ToUniversalTime()
+        if ([Math]::Abs(($handleStart - $cimStart).TotalSeconds) -gt 2 -or
+            $handleStart -lt $ExpectedStartUtc.ToUniversalTime().AddSeconds(-10)) { return $false }
         $selfSession = [int](Get-Process -Id $PID -ErrorAction Stop).SessionId
-        $sameSession = ([int]$xp.SessionId -eq $selfSession)
-        $isExcel = ([string]$xp.ProcessName -ieq "EXCEL")
-        $isHidden = ($xp.MainWindowHandle -eq 0)
-        $hasCanonicalPath = (-not [string]::IsNullOrWhiteSpace($cmd) -and $cmd.IndexOf($WorkbookPath,[StringComparison]::OrdinalIgnoreCase) -ge 0)
-
+        if ([int]$xp.SessionId -ne $selfSession -or
+            $xp.MainWindowHandle -ne 0) { return $false }
+        $cmd = [string]$info.CommandLine
+        if ([string]::IsNullOrWhiteSpace($cmd) -or
+            $cmd.IndexOf($WorkbookPath,[StringComparison]::OrdinalIgnoreCase) -lt 0) { return $false }
+        # Avoid force-killing any Excel if another one in this Windows session
+        # may have unsaved Owner workbooks.
         $otherExcel = @(
-            Get-Process EXCEL -ErrorAction SilentlyContinue |
+            Get-Process EXCEL -ErrorAction Stop |
             Where-Object { $_.Id -ne $ExcelPid -and $_.SessionId -eq $selfSession }
         )
+        if ($otherExcel.Count -gt 0 -or $xp.HasExited) { return $false }
 
-        if ($isExcel -and $sameSession -and $isHidden -and $hasCanonicalPath -and $otherExcel.Count -eq 0) {
-            Stop-Process -Id $ExcelPid -Force -ErrorAction Stop
-            foreach ($attempt in 1..20) {
-                Start-Sleep -Milliseconds 250
-                if ($null -eq (Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue)) { return $true }
-            }
-        }
-    } catch {}
-
-    return ($null -eq (Get-Process -Id $ExcelPid -ErrorAction SilentlyContinue))
+        $xp.Kill()
+        return ($xp.WaitForExit(5000) -and $xp.HasExited)
+    } catch { return $false }
 }
 
 function Close-VerifiedManagedExcelNoSave([int]$ExcelPid,[string]$WorkbookPath) {
@@ -610,8 +621,9 @@ if ($excelPid -gt 0 -and -not [string]::IsNullOrWhiteSpace($workbookName) -and -
                     Start-Sleep -Milliseconds 250
                 }
                 if (-not $excelCleanupOk -and $null -ne $remaining -and $remaining.MainWindowHandle -eq 0) {
-                    Write-Host ("Verified V10 Excel PID " + $excelPid + " became a hidden orphan after no-save close; attempting bounded PID-only cleanup...") -ForegroundColor Yellow
-                    $excelCleanupOk = Stop-VerifiedHiddenManagedExcelOrphan $excelPid $workbookPath
+                    Write-Host ("Verified V10 Excel PID " + $excelPid + " became a hidden orphan after no-save close; attempting handle-pinned identity cleanup...") -ForegroundColor Yellow
+                    $excelCleanupOk = Stop-VerifiedHiddenManagedExcelOrphan $excelPid $workbookPath `
+                        ([datetime]$state.started_at).ToUniversalTime() ([int]$state.controller_pid)
                 }
             }
             if ($excelCleanupOk) {
