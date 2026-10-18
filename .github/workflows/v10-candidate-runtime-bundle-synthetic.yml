@@ -22,6 +22,7 @@ on:
       - "tests/test_v10_workbook_close_teardown_mock.py"
       - "tests/test_v10_stop_pid_evidence_mock.py"
       - "tests/test_v10_controller_lifecycle_lock_windows.py"
+      - "tests/test_v10_foreign_listener_windows.py"
       - ".github/workflows/v10-candidate-runtime-bundle-synthetic.yml"
   workflow_dispatch:
 permissions:
@@ -145,6 +146,11 @@ jobs:
         shell: powershell
         run: |
           python -m unittest discover -s tests -p test_v10_stop_pid_evidence_mock.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Controller foreign IPv4 and IPv6 listener preflight (NO REAL LISTENERS)
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_v10_foreign_listener_windows.py -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Real Controller entrypoint versus synthetic archive lock (NO WORKERS)
         shell: powershell
