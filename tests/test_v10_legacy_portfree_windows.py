@@ -96,5 +96,32 @@ Write-Output ('LEGACY_PORTFREE_CASES_PASS='+($script:Scanned))
         self.assertIn("LEGACY_PORTFREE_CASES_PASS=12", r.stdout)
 
 
+    def test_real_controller_readonly_audit_creates_no_state_or_workers(self):
+        # Run the actual Controller entrypoint in its dedicated pre-start
+        # inspection mode. Runner inventory may legitimately be CLEAR or
+        # BLOCKED; both are fail-closed as regards startup side effects.
+        with tempfile.TemporaryDirectory(prefix="v10-audit-only-", dir=os.environ["RUNNER_TEMP"]) as tmp:
+            root = Path(tmp) / "nonexistent-state-root"
+            self.assertFalse(root.exists())
+            result = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-NonInteractive",
+                 "-ExecutionPolicy", "Bypass", "-File", str(SOURCE),
+                 "-Root", str(root), "-LegacyRuntimeAuditOnly"],
+                capture_output=True, text=True, errors="replace", timeout=40,
+            )
+            self.assertIn(result.returncode, (0, 2), result.stdout + result.stderr)
+            self.assertIn("V10_LEGACY_RUNTIME_AUDIT=READONLY", result.stdout)
+            self.assertIn("PROCESS_TERMINATED=0", result.stdout)
+            self.assertIn("STATE_MUTATED=0", result.stdout)
+            self.assertIn("EXCEL_STARTED=0", result.stdout)
+            self.assertIn("CONTROLLER_STARTED=0", result.stdout)
+            if result.returncode == 0:
+                self.assertIn("V10_LEGACY_RUNTIME_AUDIT=CLEAR_OBSERVED_INTERPRETERS", result.stdout)
+            else:
+                self.assertIn("V10_LEGACY_RUNTIME_AUDIT=BLOCKED", result.stdout)
+                self.assertIn("AUDIT_REASON=", result.stdout)
+            self.assertFalse(root.exists(), "read-only audit created StateRoot")
+
+
 if __name__ == "__main__":
     unittest.main()
