@@ -579,13 +579,6 @@ public static class V10StopExcelPreflightNative {
     }
 }
 
-# The global SilentlyContinue preference must not hide access-denied
-# process discovery. Complete PID inventory is required before ANY stop.
-if (-not (Test-V10RecordedPidInventory $state)) {
-    Write-Host "SAFE_STOP_PREFLIGHT=PID_INVENTORY_UNVERIFIED; no processes stopped." -ForegroundColor Red
-    exit 2
-}
-
 # P0-25: The legacy state produced before independent BRAIN tracking may
 # omit brain_observer_pid even while Controller, Excel and workers are alive.
 # Fail closed BEFORE stopping Controller or any worker. Otherwise a half-stop
@@ -606,6 +599,13 @@ if ($null -ne $beforeBrain -and
     (-not (Test-OwnedPidIdentity "brain_observer_pid" $brainPidForGuard) -or
      -not (Test-ExactBrainHandle $beforeBrain $state))) {
     Write-Host "SAFE_STOP_PREFLIGHT=BLOCKED_BRAIN_IDENTITY_UNVERIFIED; no processes stopped." -ForegroundColor Red
+    exit 2
+}
+
+# The global SilentlyContinue preference must not hide access-denied
+# process discovery. Complete PID inventory is required before ANY stop.
+if (-not (Test-V10RecordedPidInventory $state)) {
+    Write-Host "SAFE_STOP_PREFLIGHT=PID_INVENTORY_UNVERIFIED; no processes stopped." -ForegroundColor Red
     exit 2
 }
 
