@@ -64,6 +64,15 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertIn("[StringComparison]::OrdinalIgnoreCase", helper)
         self.assertIn("([string]$state.repo_root) ([string]$state.runtime_dir)", self.block)
 
+    def test_sbv2_requires_absolute_owned_server_and_interpreter(self):
+        helper = self.source.split("function Test-StopWorkerScriptArgument(", 1)[1].split(
+            "function Test-OwnedPidIdentity(", 1)[0]
+        self.assertIn('C:\\sbv2\\Style-Bert-VITS2', helper)
+        self.assertIn('Join-Path $sbvRoot "server_fastapi.py"', helper)
+        self.assertIn('("venv\\Scripts\\" + $expectedExe)', helper)
+        self.assertIn('[IO.Path]::IsPathRooted($argv[0])', helper)
+        self.assertIn('$actualInterpreter', helper)
+
     def test_refusal_precedes_controller_stop(self):
         src = self.source
         preflight = src.index("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID")
