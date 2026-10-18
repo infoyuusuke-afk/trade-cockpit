@@ -53,11 +53,27 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertIn('"sbv2_pid"', helper)
         self.assertIn("IsPathRooted", helper)
 
+    def test_stopped_script_path_must_match_tracked_repo_or_runtime(self):
+        helper = self.source.split("function Test-StopWorkerScriptArgument(", 1)[1].split(
+            "function Test-OwnedPidIdentity(", 1)[0]
+        self.assertIn("[IO.Path]::GetFullPath($scriptPath)", helper)
+        self.assertIn("[IO.Path]::GetFullPath((Join-Path $expectedDir $name))", helper)
+        self.assertIn('Join-Path $RepoPath "downloads"', helper)
+        self.assertIn('Join-Path $RepoPath "scripts"', helper)
+        self.assertIn('$RuntimePath; break', helper)
+        self.assertIn("[StringComparison]::OrdinalIgnoreCase", helper)
+        self.assertIn("([string]$state.repo_root) ([string]$state.runtime_dir)", self.block)
+
     def test_refusal_precedes_controller_stop(self):
         src = self.source
         preflight = src.index("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID")
-        controller_stop = src.index("Stop-Process -Id $controllerPid")
+        controller_stop = src.index("$controllerProc.Kill()")
         self.assertLess(preflight, controller_stop)
+        controller = src[src.index('# Stop the supervising RUN/Controller host FIRST.'):
+                         src.index('# Controller may have restarted BRAIN')]
+        self.assertIn('$controllerHandle = $controllerProc.Handle', controller)
+        self.assertIn('$controllerProc.WaitForExit(5000)', controller)
+        self.assertNotIn('Stop-Process -Id $controllerPid', controller)
 
 if __name__ == "__main__":
     unittest.main()
