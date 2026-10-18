@@ -36,7 +36,12 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.runtime = self.root / "runtime"
         self.runtime.mkdir()
         self.children = []
-        self.controller_script = self.root / "AI_COCKPIT_CONTROLLER_V10.ps1"
+        # The real RUN entrypoint executes the Controller from repo/downloads.
+        # Preserve that exact path layout in the positive hosted fixture.
+        self.fixture_repo = self.root / "synthetic repo"
+        (self.fixture_repo / "scripts").mkdir(parents=True)
+        (self.fixture_repo / "downloads").mkdir(parents=True)
+        self.controller_script = self.fixture_repo / "downloads" / "AI_COCKPIT_CONTROLLER_V10.ps1"
         self.controller_script.write_text("Start-Sleep -Seconds 120\n", encoding="utf-8")
         self.controller = self.spawn([
             "powershell.exe", "-NoProfile", "-NonInteractive",
@@ -44,8 +49,6 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         ])
         # A private sleep-only script uses the actual Controller argv layout.
         # Never execute the repository observer or use -c as a positive fixture.
-        self.fixture_repo = self.root / "synthetic repo"
-        (self.fixture_repo / "scripts").mkdir(parents=True)
         self.brain_script = self.fixture_repo / "scripts" / "ai_brain_observer.py"
         self.brain_script.write_text("import time; time.sleep(120)\n", encoding="utf-8")
         self.brain_argv = [
@@ -250,6 +253,57 @@ class SafeStopWindowsIsolation(unittest.TestCase):
         self.assertIsNotNone(self.controller.poll(), "Controller survived valid stop")
         self.assertIsNotNone(self.brain.poll(), "BRAIN survived valid stop")
         self.assertFalse(self.state_path.exists(), "verified stop retained state")
+
+    def test_foreign_same_named_controller_from_other_folder_is_refused(self):
+        # A matching basename alone does not establish tracked repo ownership.
+        foreign_script = self.root / "AI_COCKPIT_CONTROLLER_V10.ps1"
+        foreign_script.write_text("Start-Sleep -Seconds 120\n", encoding="utf-8")
+        decoy = self.spawn(["powershell.exe", "-NoProfile", "-NonInteractive",
+                            "-File", str(foreign_script)])
+        time.sleep(0.3)
+        self.assertIsNone(decoy.poll())
+        self.state["controller_pid"] = decoy.pid
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (decoy, self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "foreign same-named Controller was stopped")
+
+    def test_foreign_same_named_watcher_from_other_folder_is_refused(self):
+        # Only runtime_dir/Kioxia_RSS_Live_Watcher.ps1 is an owned watcher.
+        foreign_script = self.root / "Kioxia_RSS_Live_Watcher.ps1"
+        foreign_script.write_text("Start-Sleep -Seconds 120\n", encoding="utf-8")
+        decoy = self.spawn(["powershell.exe", "-NoProfile", "-NonInteractive",
+                            "-File", str(foreign_script)])
+        time.sleep(0.3)
+        self.assertIsNone(decoy.poll())
+        self.state["watcher_pid"] = decoy.pid
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("BLOCKED_FOREIGN_WORKER_PID", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (decoy, self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "foreign same-named Watcher was stopped")
+
+    def test_valid_recorded_runtime_watcher_is_stopped(self):
+        script = self.runtime / "Kioxia_RSS_Live_Watcher.ps1"
+        script.write_text("Start-Sleep -Seconds 120\n", encoding="utf-8")
+        watcher = self.spawn(["powershell.exe", "-NoProfile", "-NonInteractive",
+                              "-File", str(script)])
+        time.sleep(0.3)
+        self.assertIsNone(watcher.poll())
+        self.state["watcher_pid"] = watcher.pid
+        self.write_state()
+        result = self.run_stop()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIsNotNone(watcher.poll(), "valid recorded runtime Watcher survived")
+        self.assertIsNotNone(self.controller.poll())
+        self.assertIsNotNone(self.brain.poll())
+        self.assertFalse(self.state_path.exists())
 
     def test_inert_worker_script_name_argument_cannot_authorize_stop(self):
         # A Python -c program mentioning the owned basename as inert argv
