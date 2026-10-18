@@ -87,6 +87,13 @@ function Get-CimInstance {
         CommandLine = $script:Cmd
     }
 }
+# Substitute the COM/ROT side-effect-free evidence check. False simulates
+# either a foreign workbook inside this SAME Excel PID or inaccessible ROT.
+$script:RotExclusive = $true
+function Test-NoExcelWorkbooksForPid {
+    param([int]$ExcelPid)
+    return ($ExcelPid -eq $script:ProcessPid -and [bool]$script:RotExclusive)
+}
 $script:Checks = 0
 function Invoke-Case([bool]$ShouldSucceed,[int]$Parent,[datetime]$Started) {
     $script:Fake.HasExited = $false
@@ -113,6 +120,9 @@ $script:ExtraExcel = $false
 $script:Cmd = 'C:\synthetic\EXCEL.EXE /x "C:\foreign\other.xlsx"'
 Invoke-Case $false 4321 $oldSession                   # wrong canonical workbook
 $script:Cmd = 'C:\synthetic\EXCEL.EXE /x "C:\synthetic\canonical.xlsx"'
+$script:RotExclusive = $false
+Invoke-Case $false 4321 $oldSession                   # foreign workbook in SAME PID / ROT UNKNOWN
+$script:RotExclusive = $true
 Invoke-Case $true 4321 $oldSession                    # exact synthetic ownership only
 Write-Output ("EXCEL_ORPHAN_MOCK_CASES_PASS=" + $script:Checks)
 '''
@@ -125,7 +135,7 @@ Write-Output ("EXCEL_ORPHAN_MOCK_CASES_PASS=" + $script:Checks)
                 capture_output=True, text=True, errors="replace", timeout=45,
             )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("EXCEL_ORPHAN_MOCK_CASES_PASS=6", result.stdout)
+        self.assertIn("EXCEL_ORPHAN_MOCK_CASES_PASS=7", result.stdout)
 
 
     def test_canonical_workbook_exclusivity_pure_powershell(self):
