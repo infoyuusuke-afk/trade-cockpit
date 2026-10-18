@@ -376,6 +376,28 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertLess(archive.index("PRE_RENAME_PROCESS_OR_PORT_CHANGED"),
                         archive.index("[IO.File]::Move($StateFile,$target)"))
 
+    def test_controller_and_stop_share_exclusive_lifecycle_mutex(self):
+        controller = (STOP.parent / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
+        start_marker = "function Get-V10RecoveryMutexName([string]$StateRoot) {"
+        self.assertEqual(controller.count(start_marker), 1)
+        self.assertEqual(self.source.count(start_marker), 1)
+        a = controller.split(start_marker, 1)[1].split("$V10LifecycleMutex =", 1)[0].strip()
+        b = self.source.split(start_marker, 1)[1].split("function Invoke-V10VerifiedStaleArchive", 1)[0].strip()
+        self.assertEqual(a, b, "STOP and Controller must compute same root-scoped mutex name")
+        self.assertIn("$V10LifecycleMutex.WaitOne(0)", controller)
+        self.assertLess(controller.index("$V10LifecycleMutex.WaitOne(0)"),
+                        controller.index("Stop-OwnedFromPreviousState\n    Start-Sleep"))
+        archive = self.source.split("function Invoke-V10VerifiedStaleArchive(", 1)[1].split(
+            "if ($ArchiveVerifiedStaleState) {\n    exit", 1)[0]
+        self.assertIn("$mutex.WaitOne(0)", archive)
+        self.assertIn('throw "V10_LIFECYCLE_LOCK_BUSY"', archive)
+        self.assertIn("$mutex.ReleaseMutex()", archive)
+        self.assertIn("$mutex.Dispose()", archive)
+        self.assertLess(archive.index("$mutex.WaitOne(0)"),
+                        archive.index("Test-V10RecoveryStateInvariants $verified"))
+        self.assertLess(archive.index("[IO.File]::Move($StateFile,$target)"),
+                        archive.index("$mutex.ReleaseMutex()"))
+
     def test_refusal_precedes_controller_stop(self):
         src = self.source
         preflight = src.index("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID")
