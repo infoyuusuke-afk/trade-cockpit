@@ -136,6 +136,20 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertIn("$proc.WaitForExit(5000)", excel)
         self.assertNotIn("Stop-Process -Id $ExcelPid", excel)
 
+    def test_hidden_excel_orphan_pid_reuse_must_be_refused(self):
+        """Release-blocking regression: no numeric PID termination for Excel."""
+        src = self.source
+        orphan = src.split("function Stop-VerifiedHiddenManagedExcelOrphan(", 1)[1].split(
+            "function Close-VerifiedManagedExcelNoSave(", 1)[0]
+        self.assertNotIn("Stop-Process -Id $ExcelPid", orphan)
+        self.assertIn("$xp.Kill()", orphan)
+        self.assertIn("$xp.WaitForExit(5000)", orphan)
+        self.assertIn("$xp.StartTime.ToUniversalTime()", orphan)
+        self.assertIn("([datetime]$info.CreationDate).ToUniversalTime()", orphan)
+        self.assertIn("$info.ParentProcessId", orphan)
+        self.assertIn("$ExpectedStartUtc", orphan)
+        self.assertIn("$ExpectedControllerPid", orphan)
+
     def test_refusal_precedes_controller_stop(self):
         src = self.source
         preflight = src.index("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID")
