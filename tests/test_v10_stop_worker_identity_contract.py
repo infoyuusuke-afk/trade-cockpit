@@ -27,6 +27,22 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertIn("pythonw", s)
         self.assertIn("RUN_AI_COCKPIT_V10.ps1", s)
 
+    def test_py_launcher_supported_without_truncated_regex(self):
+        self.assertIn(
+            "'^(powershell|pwsh|python|pythonw|py)\\.exe$'", self.block
+        )
+
+    def test_stop_script_contains_one_body_and_no_appended_payload(self):
+        src = self.source
+        self.assertEqual(src.count("function Test-OwnedPidIdentity("), 1)
+        self.assertEqual(src.count("function Test-BrainCommandLine("), 1)
+        self.assertEqual(src.count("function Test-ExactBrainHandle("), 1)
+        self.assertTrue(
+            src.rstrip().endswith(
+                'Write-Host "AI Cockpit V10 managed processes and verified managed Excel stopped." -ForegroundColor Green'
+            ), "STOP source must end after its success status, without an appended duplicate"
+        )
+
     def test_refusal_precedes_controller_stop(self):
         src = self.source
         preflight = src.index("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID")
