@@ -20,6 +20,7 @@ on:
       - "tests/test_v10_stop_worker_identity_contract.py"
       - "tests/test_v10_stop_excel_orphan_mock.py"
       - "tests/test_v10_workbook_close_teardown_mock.py"
+      - "tests/test_v10_stop_pid_evidence_mock.py"
       - ".github/workflows/v10-candidate-runtime-bundle-synthetic.yml"
   workflow_dispatch:
 permissions:
@@ -138,6 +139,11 @@ jobs:
         shell: powershell
         run: |
           python -m unittest discover -s tests -p test_v10_workbook_close_teardown_mock.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: STOP PID inventory accessibility and state consistency (MOCKS ONLY)
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_v10_stop_pid_evidence_mock.py -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Original safe-stop source contracts and exact argv regressions
         shell: powershell
