@@ -732,6 +732,13 @@ function Test-NoUntrackedV10Process {
     try {
         $all = @(Get-CimInstance Win32_Process -ErrorAction Stop)
         $patterns = @(
+            '(?i)(?:^|[\\/"\s])RUN_AI_COCKPIT_V[6789]\.ps1(?:["\s]|$)',
+            '(?i)(?:^|[\\/"\s])AI_COCKPIT_CONTROLLER_V[6789]\.ps1(?:["\s]|$)',
+            '(?i)(?:^|[\\/"\s])AI_COCKPIT_GATEWAY_V[6789]\.ps1(?:["\s]|$)',
+            '(?i)(?:^|[\\/"\s])STOP_AI_COCKPIT_V[6789]\.ps1(?:["\s]|$)',
+            '(?i)(?:^|[\\/"\s])SPEAK_TODAY_STRATEGY\.ps1(?:["\s]|$)',
+            '(?i)(?:^|[\\/"\s])SPEAK_LIVE_EMOTION\.ps1(?:["\s]|$)',
+            '(?i)(?:^|[\\/"\s])Kioxia_Safety_Heartbeat\.ps1(?:["\s]|$)',
             '(?i)(?:^|[\\/"\s])AI_COCKPIT_CONTROLLER_V10\.ps1(?:["\s]|$)',
             '(?i)(?:^|[\\/"\s])RUN_AI_COCKPIT_V10\.ps1(?:["\s]|$)',
             '(?i)(?:^|[\\/"\s])AI_COCKPIT_GATEWAY_V10\.ps1(?:["\s]|$)',
