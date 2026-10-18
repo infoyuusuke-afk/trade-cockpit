@@ -73,17 +73,22 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertIn('[IO.Path]::IsPathRooted($argv[0])', helper)
         self.assertIn('$actualInterpreter', helper)
 
-    def test_controller_never_auto_kills_unmanaged_legacy_voice(self):
+    def test_controller_never_auto_kills_unmanaged_legacy_runtime(self):
         controller = (STOP.parent / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
-        self.assertIn("function Assert-NoUnmanagedLegacyVoiceWorkers", controller)
-        self.assertIn("Assert-NoUnmanagedLegacyVoiceWorkers", controller)
+        marker = "function Assert-NoUnmanagedLegacyRuntimeProcesses"
+        self.assertIn(marker, controller)
+        self.assertIn("Assert-NoUnmanagedLegacyRuntimeProcesses", controller)
         self.assertNotIn("function Stop-LegacyVoiceWorkers", controller)
-        guard = controller.split("function Assert-NoUnmanagedLegacyVoiceWorkers", 1)[1].split(
-            "function Tail-Log", 1)[0]
+        guard = controller.split(marker, 1)[1].split("function Tail-Log", 1)[0]
         self.assertNotIn("Stop-Process", guard)
-        self.assertIn("UNMANAGED_LEGACY_VOICE_PROCESS", guard)
-        self.assertIn("LEGACY_VOICE_INVENTORY_UNAVAILABLE", guard)
+        self.assertNotIn(".Kill()", guard)
+        self.assertIn("UNMANAGED_LEGACY_RUNTIME_PROCESS", guard)
+        self.assertIn("UNMANAGED_RUNTIME_INVENTORY_UNAVAILABLE", guard)
         self.assertIn("Get-CimInstance Win32_Process -ErrorAction Stop", guard)
+        for script in ("RUN_AI_COCKPIT_V[6789]", "AI_COCKPIT_CONTROLLER_V[6789]",
+                       "SPEAK_TODAY_STRATEGY", "SPEAK_LIVE_EMOTION",
+                       "Kioxia_RSS_Live_Watcher", "MS2_RSS_100_Collector"):
+            self.assertIn(script, guard)
         self.assertIn('Join-Path $sbvRoot "server_fastapi.py"', controller)
         self.assertIn("Start-Process -FilePath $exe -ArgumentList $serverArg", controller)
 
