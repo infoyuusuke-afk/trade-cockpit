@@ -94,6 +94,25 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertIn('Join-Path $sbvRoot "server_fastapi.py"', controller)
         self.assertIn("Start-Process -FilePath $exe -ArgumentList $serverArg", controller)
 
+    def test_readonly_legacy_audit_entrypoint_precedes_state_and_all_startup(self):
+        controller = (STOP.parent / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("[switch]$LegacyRuntimeAuditOnly", controller)
+        start = controller.index("if ($LegacyRuntimeAuditOnly) {")
+        end = controller.index("function Tail-Log", start)
+        branch = controller[start:end]
+        self.assertIn("Assert-NoUnmanagedLegacyRuntimeProcesses", branch)
+        self.assertIn("V10_LEGACY_RUNTIME_AUDIT=BLOCKED", branch)
+        self.assertIn("V10_LEGACY_RUNTIME_AUDIT=CLEAR_OBSERVED_INTERPRETERS", branch)
+        self.assertIn("CONTROLLER_STARTED=0", branch)
+        self.assertIn("PROCESS_TERMINATED=0", branch)
+        self.assertIn("STATE_MUTATED=0", branch)
+        for destructive in ("Start-Worker", "Start-Process", ".Kill()", "Save-State",
+                            "Remove-Item", "Move-Item", "Stop-Process"):
+            self.assertNotIn(destructive, branch)
+        self.assertLess(end, controller.index("$StateFile = Join-Path $Root"))
+        self.assertLess(end, controller.index("$V10LifecycleMutex ="))
+        self.assertLess(end, controller.index("Stop-OwnedFromPreviousState\n    Start-Sleep"))
+
     def test_controller_reuses_exact_stop_identity_contract(self):
         controller = (STOP.parent / "AI_COCKPIT_CONTROLLER_V10.ps1").read_text(encoding="utf-8-sig")
         stop_core = self.source.split("# Parse the actual interpreter script argument.", 1)[1].split(
