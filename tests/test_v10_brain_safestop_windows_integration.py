@@ -106,16 +106,95 @@ class SafeStopWindowsIsolation(unittest.TestCase):
             encoding="utf-8",
         )
 
-    def run_stop(self):
+    def run_stop(self, *extra_args):
         self.assertTrue(STOP.is_file())
         result = subprocess.run(
             ["powershell.exe", "-NoProfile", "-NonInteractive",
-             "-File", str(STOP), "-Root", str(self.root)],
+             "-File", str(STOP), "-Root", str(self.root), *extra_args],
             capture_output=True, text=True, errors="replace", timeout=45,
         )
         self.assertIsNone(self.foreign.poll(),
                           "Safe Stop touched unrelated Python process")
         return result
+
+    def test_readonly_inspection_never_stops_live_owned_session(self):
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop("-InspectOnly")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("V10_STOP_INSPECTION=READONLY", result.stdout)
+        self.assertIn("PID_controller_pid=ALIVE_OWNED", result.stdout)
+        self.assertIn("PID_brain_observer_pid=ALIVE_OWNED", result.stdout)
+        self.assertIn("RECOVERY_CLASS=ACTIVE_V10_PROCESS", result.stdout)
+        self.assertIn("STATE_MUTATED=0", result.stdout)
+        self.assertIn("PROCESS_TERMINATED=0", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "read-only inspection terminated a process")
+
+    def test_readonly_inspection_foreign_brain_refused_before_any_stop(self):
+        self.state["brain_observer_pid"] = self.foreign.pid
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop("-InspectOnly")
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("PID_brain_observer_pid=ALIVE_FOREIGN_OR_UNVERIFIED", result.stdout)
+        self.assertIn("RECOVERY_CLASS=REQUIRES_INDEPENDENT_REVIEW", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "foreign PID diagnosis killed process")
+
+    def test_readonly_inspection_no_state_is_idempotent(self):
+        self.assertFalse(self.state_path.exists())
+        result = self.run_stop("-InspectOnly")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("RECOVERY_CLASS=NO_STATE", result.stdout)
+        self.assertFalse(self.state_path.exists())
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "missing-state diagnosis killed process")
+
+    def test_readonly_inspection_corrupt_state_preserves_bytes(self):
+        self.state_path.write_text("{malformed", encoding="utf-8")
+        before = self.state_path.read_bytes()
+        result = self.run_stop("-InspectOnly")
+        self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+        self.assertIn("RECOVERY_CLASS=INVALID_STATE", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        for proc in (self.controller, self.brain, self.foreign):
+            self.assertIsNone(proc.poll(), "corrupt-state diagnosis killed process")
+
+    def test_readonly_inspection_exited_brain_keeps_stale_state(self):
+        self.brain.kill()
+        self.brain.wait(timeout=10)
+        self.write_state()
+        before = self.state_path.read_bytes()
+        result = self.run_stop("-InspectOnly")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("PID_brain_observer_pid=ABSENT", result.stdout)
+        self.assertIn("PID_controller_pid=ALIVE_OWNED", result.stdout)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        self.assertIsNone(self.controller.poll(), "inspection killed live Controller")
+        self.assertIsNone(self.foreign.poll(), "inspection killed foreign process")
+
+    def test_readonly_inspection_reports_unrelated_listener_without_touching_it(self):
+        listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            try:
+                listener.bind(("127.0.0.1", 28584))
+            except OSError:
+                self.skipTest("synthetic V10 test port already occupied")
+            listener.listen(1)
+            self.write_state()
+            before = self.state_path.read_bytes()
+            result = self.run_stop("-InspectOnly")
+            self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+            self.assertIn("PORT_28584=LISTEN", result.stdout)
+            self.assertIn("RECOVERY_CLASS=REQUIRES_INDEPENDENT_REVIEW", result.stdout)
+            self.assertEqual(self.state_path.read_bytes(), before)
+            for proc in (self.controller, self.brain, self.foreign):
+                self.assertIsNone(proc.poll(), "listener diagnosis killed process")
+        finally:
+            listener.close()
 
     def test_valid_owned_brain_is_really_stopped(self):
         self.write_state()
