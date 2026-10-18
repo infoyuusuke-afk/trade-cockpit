@@ -459,6 +459,79 @@ public static class AIExcelNative {
     }
 }
 
+# Preflight Excel BEFORE stopping the Controller or workers. A tracked PID,
+# matching title or matching substring alone never authorizes a partial stop.
+# Inaccessible Excel COM/ROT is UNKNOWN and must retain the original session.
+function Test-StopExcelPreflight($State) {
+    $excelPid = 0
+    if ($null -eq $State -or
+        -not [int]::TryParse([string]$State.excel_pid,[ref]$excelPid) -or $excelPid -lt 0) {
+        return $false
+    }
+    if ($excelPid -eq 0) { return $true }
+    $proc = Get-Process -Id $excelPid -ErrorAction SilentlyContinue
+    if ($null -eq $proc) { return $true }
+    $app = $null
+    try {
+        $handle = $proc.Handle
+        if ($handle -eq [IntPtr]::Zero -or $proc.HasExited -or
+            [string]$proc.ProcessName -ine "EXCEL") { return $false }
+        $controllerPid = 0
+        if (-not [int]::TryParse([string]$State.controller_pid,[ref]$controllerPid) -or
+            $controllerPid -le 0) { return $false }
+        $workbookPath = [string]$State.workbook_path
+        if ([string]::IsNullOrWhiteSpace($workbookPath) -or
+            -not [IO.Path]::IsPathRooted($workbookPath)) { return $false }
+        $info = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $excelPid) -ErrorAction Stop
+        if ($null -eq $info -or [int]$info.ProcessId -ne $excelPid -or
+            [string]$info.Name -ine "EXCEL.EXE" -or
+            [int]$info.ParentProcessId -ne $controllerPid) { return $false }
+        $started = $proc.StartTime.ToUniversalTime()
+        if ([Math]::Abs(($started -
+            ([datetime]$info.CreationDate).ToUniversalTime()).TotalSeconds) -gt 2 -or
+            $started -lt ([datetime]$State.started_at).ToUniversalTime().AddSeconds(-10)) {
+            return $false
+        }
+        $selfSession = (Get-Process -Id $PID -ErrorAction Stop).SessionId
+        if ([int]$proc.SessionId -ne [int]$selfSession) { return $false }
+        $cmd = [string]$info.CommandLine
+        $canonicalLaunch = '/x "' + $workbookPath + '"'
+        if ([string]::IsNullOrWhiteSpace($cmd) -or
+            $cmd.IndexOf($canonicalLaunch, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+            return $false
+        }
+        $otherExcel = @(Get-Process EXCEL -ErrorAction Stop |
+            Where-Object { $_.Id -ne $excelPid -and $_.SessionId -eq $selfSession })
+        if ($otherExcel.Count -ne 0) { return $false }
+
+        if (-not ("V10StopExcelPreflightNative" -as [type])) {
+            Add-Type -ErrorAction Stop -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public static class V10StopExcelPreflightNative {
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
+}
+"@
+        }
+        $app = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
+        if ($null -eq $app) { return $false }
+        $hwnd = [int64]$app.Hwnd
+        if ($hwnd -eq 0) { return $false }
+        $resolvedPid = [uint32]0
+        [void][V10StopExcelPreflightNative]::GetWindowThreadProcessId([IntPtr]$hwnd,[ref]$resolvedPid)
+        if ([int]$resolvedPid -ne $excelPid) { return $false }
+        $count = @($app.Workbooks).Count
+        if ($count -eq 0) { return ($proc.MainWindowHandle -eq 0) }
+        return (Test-OnlyCanonicalExcelWorkbookOpen $app $workbookPath)
+    } catch { return $false }
+    finally {
+        if ($null -ne $app) {
+            try { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($app) } catch {}
+        }
+    }
+}
+
 # P0-25: The legacy state produced before independent BRAIN tracking may
 # omit brain_observer_pid even while Controller, Excel and workers are alive.
 # Fail closed BEFORE stopping Controller or any worker. Otherwise a half-stop
@@ -498,6 +571,13 @@ foreach ($field in @("watcher_pid","heartbeat_pid","collector_pid","gateway_pid"
         Write-Host "SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID; retain state." -ForegroundColor Red
         exit 2
     }
+}
+
+# No partial worker or Controller shutdown when Excel already fails
+# ownership or workbook-exclusivity checks.
+if (-not (Test-StopExcelPreflight $state)) {
+    Write-Host "SAFE_STOP_PREFLIGHT=BLOCKED_EXCEL_IDENTITY_OR_WORKBOOKS; no processes stopped." -ForegroundColor Red
+    exit 2
 }
 
 # Stop the supervising RUN/Controller host FIRST. Otherwise it can restart
