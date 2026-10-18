@@ -150,6 +150,37 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertIn("$ExpectedStartUtc", orphan)
         self.assertIn("$ExpectedControllerPid", orphan)
 
+    def test_excel_quit_refuses_another_workbook_in_same_pid(self):
+        src = self.source
+        guard = src.split("function Test-OnlyCanonicalExcelWorkbookOpen(", 1)[1].split(
+            "function Test-NoExcelWorkbooksForPid(", 1)[0]
+        self.assertIn("$books.Count -ne 1", guard)
+        self.assertIn("[IO.Path]::GetFullPath($openPath)", guard)
+        self.assertIn("[IO.Path]::GetFullPath($WorkbookPath)", guard)
+        close = src.split("function Close-VerifiedManagedExcelNoSave(", 1)[1].split(
+            "# P0-25:", 1)[0]
+        self.assertIn("Test-OnlyCanonicalExcelWorkbookOpen $app $WorkbookPath", close)
+        self.assertLess(close.index("Test-OnlyCanonicalExcelWorkbookOpen $app $WorkbookPath"),
+                        close.index("$targetBook.Close($false)"))
+        self.assertLess(close.index("$targetBook.Close($false)"),
+                        close.index("if (@($app.Workbooks).Count -ne 0) { return $false }"))
+        self.assertLess(close.index("if (@($app.Workbooks).Count -ne 0) { return $false }"),
+                        close.index("$app.Quit()"))
+        self.assertNotIn("$app.DisplayAlerts = $false", close)
+
+    def test_hidden_excel_orphan_needs_zero_workbook_com_evidence(self):
+        src = self.source
+        verify = src.split("function Test-NoExcelWorkbooksForPid(", 1)[1].split(
+            "function Stop-VerifiedHiddenManagedExcelOrphan(", 1)[0]
+        self.assertIn('GetActiveObject("Excel.Application")', verify)
+        self.assertIn("GetWindowThreadProcessId", verify)
+        self.assertIn("return (@($application.Workbooks).Count -eq 0)", verify)
+        orphan = src.split("function Stop-VerifiedHiddenManagedExcelOrphan(", 1)[1].split(
+            "function Close-VerifiedManagedExcelNoSave(", 1)[0]
+        self.assertIn("Test-NoExcelWorkbooksForPid $ExcelPid", orphan)
+        self.assertLess(orphan.index("Test-NoExcelWorkbooksForPid $ExcelPid"),
+                        orphan.index("$xp.Kill()"))
+
     def test_refusal_precedes_controller_stop(self):
         src = self.source
         preflight = src.index("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID")
