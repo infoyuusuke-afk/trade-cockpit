@@ -456,7 +456,14 @@ function Start-Sbv2Managed {
 # An unmanaged legacy voice process blocks startup until the owner stops the
 # verified old runtime; it cannot inherit V10 Controller's stop authority.
 function Assert-NoUnmanagedLegacyVoiceWorkers {
-    foreach ($p in @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)) {
+    # An unavailable WMI inventory is UNKNOWN, never proof that no legacy
+    # voice worker exists. Refuse startup rather than silently assuming clean.
+    try {
+        $processes = @(Get-CimInstance Win32_Process -ErrorAction Stop)
+    } catch {
+        throw "LEGACY_VOICE_INVENTORY_UNAVAILABLE: no process terminated; startup denied."
+    }
+    foreach ($p in $processes) {
         $cmd = [string]$p.CommandLine
         if ([string]::IsNullOrWhiteSpace($cmd)) { continue }
         if ($cmd -match "SPEAK_TODAY_STRATEGY\.ps1|SPEAK_LIVE_EMOTION\.ps1") {
