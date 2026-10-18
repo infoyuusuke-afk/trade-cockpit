@@ -11,6 +11,7 @@ import unittest
 from pathlib import Path
 
 STOP = Path(__file__).resolve().parents[1] / "downloads" / "STOP_AI_COCKPIT_V10.ps1"
+CONTROLLER = STOP.parent / "AI_COCKPIT_CONTROLLER_V10.ps1"
 
 
 @unittest.skipUnless(
@@ -181,6 +182,107 @@ Write-Output ('EXCLUSIVE_WORKBOOK_CASES_PASS='+$count)
             )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("EXCLUSIVE_WORKBOOK_CASES_PASS=5", result.stdout)
+
+
+    def test_controller_excel_stop_requires_exclusivity_before_each_kill(self):
+        # No real Excel or Windows process is created. AST-extract only the
+        # production Controller's Excel stop function and substitute mocks.
+        script = r'''
+param([string]$Source)
+$ErrorActionPreference='Stop'
+$tokens=$null; $errors=$null
+$ast=[Management.Automation.Language.Parser]::ParseFile($Source,[ref]$tokens,[ref]$errors)
+if($errors.Count){throw 'CONTROLLER_PARSE_FAILED'}
+$fn=@($ast.FindAll({
+    param($n)
+    $n -is [Management.Automation.Language.FunctionDefinitionAst] -and
+    $n.Name -eq 'Stop-VerifiedOwnedExcel'
+},$true))
+if($fn.Count -ne 1){throw 'CONTROLLER_EXCEL_STOP_NOT_UNIQUE'}
+. ([scriptblock]::Create($fn[0].Extent.Text))
+$script:ProcessPid=12345
+$script:Parent=4321
+$script:Workbook='C:\synthetic\canonical.xlsx'
+$script:RecordedStart=(Get-Date).AddSeconds(-5)
+$script:CimStart=$script:RecordedStart
+$script:OtherExcel=$false
+$script:Ownership=$true
+$script:Checks=0
+$script:GateIndex=0
+$script:Gate=@()
+$script:Fake=[pscustomobject]@{
+    Id=$script:ProcessPid
+    Handle=[IntPtr]1
+    HasExited=$false
+    ProcessName='EXCEL'
+    StartTime=$script:RecordedStart
+    KillCalled=$false
+}
+$script:Fake | Add-Member -MemberType ScriptMethod -Name Kill -Value {
+    $this.KillCalled=$true
+    $this.HasExited=$true
+}
+$script:Fake | Add-Member -MemberType ScriptMethod -Name WaitForExit -Value {
+    param([int]$milliseconds)
+    return [bool]$this.HasExited
+}
+function Get-Process {
+    param([int]$Id)
+    if($Id -eq $script:ProcessPid){return $script:Fake}
+    return $null
+}
+function Get-CimInstance {
+    param([string]$ClassName,[string]$Filter)
+    return [pscustomobject]@{ProcessId=$script:ProcessPid;CreationDate=$script:CimStart}
+}
+function Test-LaunchedExcelOwnership {
+    param([int]$ExcelPid,[string]$WorkbookPath,[int]$ControllerPid)
+    return $script:Ownership
+}
+function Test-OtherExcelInSession {
+    param([int]$ExceptPid)
+    return $script:OtherExcel
+}
+function Test-ManagedExcelWorkbooksExclusive {
+    param([int]$ExcelPid,[string]$WorkbookPath)
+    if($script:GateIndex -ge $script:Gate.Count){throw 'UNEXPECTED_EXCLUSIVITY_GATE'}
+    $result=[bool]$script:Gate[$script:GateIndex]
+    $script:GateIndex++
+    return $result
+}
+function Invoke-Case([bool[]]$Sequence,[bool]$Expected) {
+    $script:Fake.KillCalled=$false
+    $script:Fake.HasExited=$false
+    $script:Gate=@($Sequence)
+    $script:GateIndex=0
+    $actual=Stop-VerifiedOwnedExcel $script:ProcessPid $script:Workbook $script:Parent
+    if([bool]$actual -ne $Expected){throw ('CONTROLLER_RESULT_MISMATCH_'+$script:Checks)}
+    if([bool]$script:Fake.KillCalled -ne $Expected){throw ('CONTROLLER_FOREIGN_KILL_'+$script:Checks)}
+    $script:Checks++
+}
+Invoke-Case @($false) $false
+Invoke-Case @($true,$false) $false
+Invoke-Case @($true,$true) $true
+$script:CimStart=(Get-Date).AddMinutes(-10)
+Invoke-Case @($true,$true) $false
+$script:CimStart=$script:RecordedStart
+$script:OtherExcel=$true
+Invoke-Case @($true,$true) $false
+$script:OtherExcel=$false
+$script:Ownership=$false
+Invoke-Case @($true,$true) $false
+Write-Output ('CONTROLLER_EXCEL_GATE_CASES_PASS='+$script:Checks)
+'''
+        with tempfile.TemporaryDirectory(prefix="v10-controller-excel-guard-") as tmp:
+            harness = Path(tmp) / "guard.ps1"
+            harness.write_text(script, encoding="utf-8")
+            result = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-NonInteractive",
+                 "-ExecutionPolicy", "Bypass", "-File", str(harness), str(CONTROLLER)],
+                capture_output=True, text=True, errors="replace", timeout=45,
+            )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("CONTROLLER_EXCEL_GATE_CASES_PASS=6", result.stdout)
 
 
 if __name__ == "__main__":
