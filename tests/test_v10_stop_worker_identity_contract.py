@@ -265,6 +265,35 @@ class StopWorkerIdentityContract(unittest.TestCase):
         self.assertIn("SAFE_STOP_PREFLIGHT=BLOCKED_EXCEL_IDENTITY_OR_WORKBOOKS", src)
         self.assertNotIn("Stop-Process -Id $ExcelPid", block)
 
+    def test_cim_pid_liveness_is_three_state_and_fail_closed(self):
+        src = self.source
+        evidence = src.split("function Get-V10TrackedPidEvidence(", 1)[1].split(
+            "function Test-V10RecordedPidInventory(", 1)[0]
+        self.assertIn("Get-CimInstance Win32_Process", evidence)
+        self.assertIn("-ErrorAction Stop", evidence)
+        self.assertIn('return "ABSENT"', evidence)
+        self.assertIn('return "ALIVE"', evidence)
+        self.assertIn('return "UNKNOWN"', evidence)
+        self.assertIn("([datetime]$cim.CreationDate).ToUniversalTime()", evidence)
+        self.assertIn("$process.Handle", evidence)
+        inventory = src.split("function Test-V10RecordedPidInventory(", 1)[1].split(
+            "function Stop-OwnedJobBridge(", 1)[0]
+        self.assertIn("excel_pid", inventory)
+        self.assertIn("brain_observer_pid", inventory)
+        self.assertIn('Get-V10TrackedPidEvidence $id', inventory)
+        preflight = src.index("if (-not (Test-V10RecordedPidInventory $state))")
+        controller_kill = src.index("$controllerProc.Kill()")
+        self.assertLess(preflight, controller_kill)
+        after_controller = src.index("SAFE_STOP_VERIFY=LATEST_PID_OR_EXCEL_UNVERIFIED")
+        bridge = src.index("Stop-OwnedJobBridge 28580")
+        self.assertLess(controller_kill, after_controller)
+        self.assertLess(after_controller, bridge)
+        final = src.split("SAFE_STOP_VERIFY=LISTEN_PORTS_REMAIN", 1)[1]
+        self.assertIn("Get-V10TrackedPidEvidence $tracked", final)
+        self.assertIn('if ($evidence -ne "ABSENT")', final)
+        self.assertIn("SAFE_STOP_VERIFY=STATE_CHANGED_BEFORE_DELETE", final)
+        self.assertIn("excel_pid", final)
+
     def test_refusal_precedes_controller_stop(self):
         src = self.source
         preflight = src.index("SAFE_STOP_PREFLIGHT=BLOCKED_FOREIGN_WORKER_PID")
