@@ -730,17 +730,7 @@ function Get-WorkbookIdentityInitialization {
         "Get-CollectorFileIdentityType",
         "Test-SameCanonicalWorkbookFile",
         "Get-WorkbookPublicationId",
-        "Get-PublishedWorkbookGate",
-        "Get-JstNow",
-        "ConvertFrom-OffsetTimestamp",
-        "Get-MarketSession",
-        "New-QuoteFreshnessVerdict",
-        "Get-QuoteFreshness",
-        "Get-RowQuoteFreshness",
-        "Get-BoardRowFreshness",
-        "Get-ExpectedUniverse",
-        "Get-BoardAvailability",
-        "Get-AvailabilitySummary"
+        "Get-PublishedWorkbookGate"
     )
     $text = ""
     foreach ($fn in $names) {
@@ -1130,11 +1120,34 @@ function Get-TdnetDisclosures([DateTime]$date) {
     return @($found.Values|Sort-Object time -Descending)
 }
 
-function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$CanonicalWorkbookPath = "", [string]$UniverseDirectory = "") {
+function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$CanonicalWorkbookPath = "", [string]$UniverseDirectory = "", [string]$GateSource = "") {
     $controllerState = "C:\AI_Cockpit_OneClick_Starter\V9_CONTROLLER_STATE.json"
     $identityInit = Get-WorkbookIdentityInitialization
-    return Start-Job -Name ("MS2_JSON_BRIDGE_" + $PID) -InitializationScript $identityInit -ArgumentList $jsonFile,$port,$controllerState,$CanonicalWorkbookPath,$UniverseDirectory -ScriptBlock {
-        param($JsonFile,$Port,$ControllerState,$CanonicalWorkbookPath,$UniverseDirectory)
+    return Start-Job -Name ("MS2_JSON_BRIDGE_" + $PID) -InitializationScript $identityInit -ArgumentList $jsonFile,$port,$controllerState,$CanonicalWorkbookPath,$UniverseDirectory,$GateSource -ScriptBlock {
+        param($JsonFile,$Port,$ControllerState,$CanonicalWorkbookPath,$UniverseDirectory,$GateSource)
+        # Windows PowerShell 5.1 passes -InitializationScript on the child
+        # process command line, so the shared gate functions are too large to
+        # go there ("The filename or extension is too long"). The job loads
+        # them from this Collector file instead; any missing one stops it.
+        $gateNames = @("Get-JstNow","ConvertFrom-OffsetTimestamp","Get-MarketSession","New-QuoteFreshnessVerdict",
+                       "Get-QuoteFreshness","Get-RowQuoteFreshness","Get-BoardRowFreshness","Get-ExpectedUniverse",
+                       "Get-BoardAvailability","Get-AvailabilitySummary")
+        if (-not [string]::IsNullOrWhiteSpace($GateSource)) {
+            $gateTokens = $null
+            $gateErrors = $null
+            $gateAst = [Management.Automation.Language.Parser]::ParseFile($GateSource, [ref]$gateTokens, [ref]$gateErrors)
+            if ($gateErrors.Count -ne 0) { throw "V10_BRIDGE_GATE_SOURCE_PARSE_FAILED" }
+            foreach ($gateName in $gateNames) {
+                $gateDefs = @($gateAst.FindAll({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $gateName }, $true))
+                if ($gateDefs.Count -ne 1) { throw ("V10_BRIDGE_GATE_FUNCTION_AMBIGUOUS " + $gateName) }
+                . ([scriptblock]::Create($gateDefs[0].Extent.Text))
+            }
+        }
+        foreach ($gateName in $gateNames) {
+            if (-not (Get-Command $gateName -CommandType Function -ErrorAction SilentlyContinue)) {
+                throw ("V10_BRIDGE_GATE_FUNCTION_MISSING " + $gateName)
+            }
+        }
         $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,[int]$Port)
         $utf8 = [Text.UTF8Encoding]::new($false)
         $canonicalSource = "MarketSpeed II RSS / local PC"
@@ -1752,7 +1765,7 @@ $holdStats = Get-OvernightHoldStats $holdHistory
 $browserOpened = $true # Collector must never open browser tabs
 $script:priceSourceMismatch = $false
 $script:deferFirstTdnet = $liveSheetReady
-$bridgeJob = Start-LocalJsonBridge $jsonPath 28580 $script:canonicalWorkbookPath (Split-Path -Parent ([IO.Path]::GetFullPath($WatchlistPath)))
+$bridgeJob = Start-LocalJsonBridge $jsonPath 28580 $script:canonicalWorkbookPath (Split-Path -Parent ([IO.Path]::GetFullPath($WatchlistPath))) $PSCommandPath
 
 Write-Host "[RSS] 100 STOCKS : RUNNING / CTRL+C TO STOP" -ForegroundColor Green
 Write-Host "[LIVE] 127.0.0.1:28580 : READY" -ForegroundColor Cyan

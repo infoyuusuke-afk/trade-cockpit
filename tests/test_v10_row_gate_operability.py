@@ -160,10 +160,18 @@ class SharedFunctionCopies(unittest.TestCase):
                           _function_text(text, "Get-JstNow"))
 
     def test_bridge_job_receives_and_applies_the_gate(self):
+        # PS 5.1 puts -InitializationScript on the child command line; the
+        # gate functions there made the 28580 job fail to start. They are
+        # loaded inside the job from the Collector file instead.
         init = _function_text(self.collector, "Get-WorkbookIdentityInitialization")
         for name in SHARED_FUNCTIONS + ("Get-JstNow",):
-            self.assertIn('"' + name + '"', init)
+            self.assertNotIn('"' + name + '"', init)
         bridge = _function_text(self.collector, "Start-LocalJsonBridge")
+        for name in SHARED_FUNCTIONS + ("Get-JstNow",):
+            self.assertIn('"' + name + '"', bridge)
+        self.assertIn("[Management.Automation.Language.Parser]::ParseFile($GateSource", bridge)
+        self.assertIn('throw ("V10_BRIDGE_GATE_FUNCTION_MISSING " + $gateName)', bridge)
+        self.assertIn("$WatchlistPath))) $PSCommandPath", self.collector)
         self.assertIn("Get-BoardAvailability -LiveObj $obj", bridge)
         self.assertIn("-Universe (Get-ExpectedUniverse $UniverseDirectory)", bridge)
         self.assertIn("-PreviousRowQuotes $bridgeServed.rows", bridge)
@@ -645,9 +653,10 @@ $ErrorActionPreference = 'Stop'
 # The Collector path comes from the environment so this harness's own
 # command line does not look like a second Collector process.
 $collector = $env:V10_TEST_COLLECTOR_SOURCE
-Import-Functions $collector @('Get-NormalizedLocalWorkbookPath','Get-CollectorFileIdentityType','Test-SameCanonicalWorkbookFile','Get-WorkbookPublicationId','Get-PublishedWorkbookGate',""" + GATE_FUNCTIONS + r""",'Get-WorkbookIdentityInitialization','Start-LocalJsonBridge')
+Import-Functions $collector @('Get-NormalizedLocalWorkbookPath','Get-CollectorFileIdentityType','Test-SameCanonicalWorkbookFile','Get-WorkbookPublicationId','Get-PublishedWorkbookGate','Get-WorkbookIdentityInitialization','Start-LocalJsonBridge')
+# The gate functions are not imported here: the job must load them itself.
 $canonical = Join-Path $RuntimeDir 'Kioxia_MS2_RSS_Live_Signals.xlsx'
-$job = Start-LocalJsonBridge $JsonFile $Port $canonical $RuntimeDir
+$job = Start-LocalJsonBridge $JsonFile $Port $canonical $RuntimeDir $collector
 try {
     $until = (Get-Date).AddMinutes(10)
     while (-not (Test-Path -LiteralPath $StopFile) -and (Get-Date) -lt $until) {

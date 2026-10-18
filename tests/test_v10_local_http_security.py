@@ -177,8 +177,9 @@ if (-not ($implementation.StartsWith('{') -and $implementation.EndsWith('}'))) {
     throw 'V10_WORKER_SCRIPTBLOCK_INVALID'
 }
 # Serialize the actual private identity helpers for the extracted Collector job.
-# P0-V10-ROW-GATE-OPERABILITY: the Collector job also receives the shared
-# quote/row/universe gate functions (Get-WorkbookIdentityInitialization).
+# P0-V10-ROW-GATE-OPERABILITY: the Collector job also needs the shared
+# quote/row/universe gate functions; with no GateSource argument the job
+# requires them to be defined already, so they are dot-sourced here.
 foreach ($name in @('Get-NormalizedLocalWorkbookPath','Get-WorkbookPublicationId','Get-PublishedWorkbookGate',
                     'Get-JstNow','ConvertFrom-OffsetTimestamp','Get-MarketSession','New-QuoteFreshnessVerdict',
                     'Get-QuoteFreshness','Get-RowQuoteFreshness','Get-BoardRowFreshness','Get-ExpectedUniverse',
