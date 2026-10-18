@@ -39,6 +39,53 @@ function Get-PortOwner([int]$Port) {
     return 0
 }
 
+# Distinguish a proven absent PID from an inaccessible process inventory.
+# The script's global SilentlyContinue policy must never turn access denied
+# into an apparently completed STOP. No process is terminated by this probe.
+function Get-V10TrackedPidEvidence([int]$ProcessId) {
+    if ($ProcessId -le 0) { return "INVALID" }
+    try {
+        $cim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction Stop
+        if ($null -eq $cim) { return "ABSENT" }
+        if ([int]$cim.ProcessId -ne $ProcessId) { return "UNKNOWN" }
+        $process = Get-Process -Id $ProcessId -ErrorAction Stop
+        if ($null -eq $process -or $process.HasExited -or
+            [int]$process.Id -ne $ProcessId) { return "UNKNOWN" }
+        $handle = $process.Handle
+        if ($handle -eq [IntPtr]::Zero) { return "UNKNOWN" }
+        $cimStarted = ([datetime]$cim.CreationDate).ToUniversalTime()
+        $processStarted = $process.StartTime.ToUniversalTime()
+        if ([Math]::Abs(($cimStarted - $processStarted).TotalSeconds) -gt 2) {
+            return "UNKNOWN"
+        }
+        return "ALIVE"
+    } catch {
+        return "UNKNOWN"
+    }
+}
+
+# Check every recorded PID before ANY mutation. Missing optional fields are
+# handled by the existing strict identity contracts; malformed or unobservable
+# recorded PIDs must never be interpreted as already stopped.
+function Test-V10RecordedPidInventory($State) {
+    if ($null -eq $State) { return $false }
+    foreach ($field in @("controller_pid","excel_pid","watcher_pid","heartbeat_pid",
+        "collector_pid","gateway_pid","brain_gateway_pid","voice_bridge_pid",
+        "sbv2_pid","shadow_supervisor_pid","brain_observer_pid")) {
+        $entry = $State.PSObject.Properties[$field]
+        if ($null -eq $entry) { continue }
+        $id = 0
+        if (-not [int]::TryParse([string]$entry.Value,[ref]$id) -or $id -lt 0) {
+            return $false
+        }
+        if ($id -eq 0) { continue }
+        if ((Get-V10TrackedPidEvidence $id) -in @("UNKNOWN","INVALID")) {
+            return $false
+        }
+    }
+    return $true
+}
+
 function Stop-OwnedJobBridge([int]$Port,[int]$ExpectedParentId,[string]$Label) {
     if ($ExpectedParentId -le 0) { return }
     $owner = Get-PortOwner $Port
@@ -532,6 +579,13 @@ public static class V10StopExcelPreflightNative {
     }
 }
 
+# The global SilentlyContinue preference must not hide access-denied
+# process discovery. Complete PID inventory is required before ANY stop.
+if (-not (Test-V10RecordedPidInventory $state)) {
+    Write-Host "SAFE_STOP_PREFLIGHT=PID_INVENTORY_UNVERIFIED; no processes stopped." -ForegroundColor Red
+    exit 2
+}
+
 # P0-25: The legacy state produced before independent BRAIN tracking may
 # omit brain_observer_pid even while Controller, Excel and workers are alive.
 # Fail closed BEFORE stopping Controller or any worker. Otherwise a half-stop
@@ -617,13 +671,26 @@ try {
     if ($null -eq $latest -or
         [int]$latest.controller_pid -ne [int]$state.controller_pid -or
         [string]$latest.session_id -cne [string]$state.session_id -or
+        [string]$latest.started_at -cne [string]$state.started_at -or
         [string]$latest.repo_root -cne [string]$state.repo_root -or
+        [string]$latest.runtime_dir -cne [string]$state.runtime_dir -or
+        [int]$latest.excel_pid -ne [int]$state.excel_pid -or
+        [string]$latest.workbook_path -cne [string]$state.workbook_path -or
         [int]$latest.brain_observer_pid -le 0) {
         throw "BRAIN identity or session not recorded"
     }
     $state = $latest
 } catch {
     Write-Host "Latest BRAIN PID/state unverified after Controller exit; retained state." -ForegroundColor Red
+    exit 2
+}
+
+# The Controller may have refreshed worker PIDs before exiting. Confirm
+# its final state has no unreadable or recycled process identities before
+# proceeding to bridge/worker/Excel teardown.
+if (-not (Test-V10RecordedPidInventory $state) -or
+    -not (Test-StopExcelPreflight $state)) {
+    Write-Host "SAFE_STOP_VERIFY=LATEST_PID_OR_EXCEL_UNVERIFIED; retained state." -ForegroundColor Red
     exit 2
 }
 
@@ -785,15 +852,48 @@ try {
     Write-Host "SAFE_STOP_VERIFY=PORT_AUDIT_FAILED; retained state." -ForegroundColor Red
     exit 2
 }
-foreach ($field in @("controller_pid","watcher_pid","heartbeat_pid",
+foreach ($field in @("controller_pid","excel_pid","watcher_pid","heartbeat_pid",
     "collector_pid","gateway_pid","brain_gateway_pid","voice_bridge_pid",
     "sbv2_pid","shadow_supervisor_pid","brain_observer_pid")) {
     $entry = $state.PSObject.Properties[$field]
-    if ($null -eq $entry -or [int]$entry.Value -le 0) { continue }
-    if ($null -ne (Get-Process -Id ([int]$entry.Value) -ErrorAction SilentlyContinue)) {
-        Write-Host "SAFE_STOP_VERIFY=TRACKED_PID_STILL_PRESENT; retained state." -ForegroundColor Red
+    if ($null -eq $entry) { continue }
+    $tracked = 0
+    if (-not [int]::TryParse([string]$entry.Value,[ref]$tracked) -or $tracked -lt 0) {
+        Write-Host "SAFE_STOP_VERIFY=TRACKED_PID_INVALID; retained state." -ForegroundColor Red
         exit 2
     }
+    if ($tracked -eq 0) { continue }
+    $evidence = Get-V10TrackedPidEvidence $tracked
+    if ($evidence -ne "ABSENT") {
+        Write-Host ("SAFE_STOP_VERIFY=TRACKED_PID_NOT_PROVEN_ABSENT; field=" + $field +
+            "; evidence=" + $evidence + "; retained state.") -ForegroundColor Red
+        exit 2
+    }
+}
+
+# Another writer may have modified the state while workers stopped. Never
+# delete recovery evidence belonging to a different session or PID list.
+try {
+    $onDisk = [IO.File]::ReadAllText($StateFile,[Text.Encoding]::UTF8) |
+        ConvertFrom-Json -ErrorAction Stop
+    if ($null -eq $onDisk -or
+        [string]$onDisk.session_id -cne [string]$state.session_id -or
+        [string]$onDisk.started_at -cne [string]$state.started_at -or
+        [int]$onDisk.controller_pid -ne [int]$state.controller_pid -or
+        [int]$onDisk.excel_pid -ne [int]$state.excel_pid -or
+        [string]$onDisk.workbook_path -cne [string]$state.workbook_path) {
+        throw "SESSION_CHANGED"
+    }
+    foreach ($field in @("watcher_pid","heartbeat_pid","collector_pid",
+        "gateway_pid","brain_gateway_pid","voice_bridge_pid","sbv2_pid",
+        "shadow_supervisor_pid","brain_observer_pid")) {
+        if ([string]$onDisk.$field -cne [string]$state.$field) {
+            throw "WORKER_LIST_CHANGED"
+        }
+    }
+} catch {
+    Write-Host "SAFE_STOP_VERIFY=STATE_CHANGED_BEFORE_DELETE; retained state." -ForegroundColor Red
+    exit 2
 }
 
 try {
