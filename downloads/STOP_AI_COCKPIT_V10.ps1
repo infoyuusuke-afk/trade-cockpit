@@ -611,6 +611,14 @@ public static class V10StopExcelPreflightNative {
     }
 }
 
+function Get-V10RecoverySha256([byte[]]$Payload) {
+    if ($null -eq $Payload) { throw "STATE_BYTES_UNAVAILABLE" }
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+        return [BitConverter]::ToString($sha.ComputeHash($Payload)).Replace("-","").ToLowerInvariant()
+    } finally { $sha.Dispose() }
+}
+
 # Read-only recovery inspector: a prior failed STOP can block startup because
 # Controller intentionally preserves V10_CONTROLLER_STATE.json. Diagnose the
 # cause without granting this script permission to kill, close, save, deploy,
@@ -697,7 +705,16 @@ function Invoke-V10StopReadOnlyInspection($RecordedState) {
 }
 
 if ($InspectOnly) {
-    $snapshotSha = Get-V10RecoverySha256 ([IO.File]::ReadAllBytes($StateFile))
+    try {
+        $snapshotSha = Get-V10RecoverySha256 ([IO.File]::ReadAllBytes($StateFile))
+    } catch {
+        Write-Host "V10_STOP_INSPECTION=BLOCKED_UNVERIFIED"
+        Write-Host "RECOVERY_CLASS=STATE_READ_FAILED"
+        Write-Host "STATE_MUTATED=0"
+        Write-Host "PROCESS_TERMINATED=0"
+        Write-Host "EXCEL_CLOSED=0"
+        exit 2
+    }
     Write-Host ("STATE_SHA256=" + $snapshotSha)
     Write-Host ("SESSION_ID=" + [string]$state.session_id)
     $inspectionResult = Invoke-V10StopReadOnlyInspection $state
@@ -748,14 +765,6 @@ function Test-V10RecoveryStateInvariants($RecordedState) {
         if ($ports.Count -ne 0) { return $false }
         return $true
     } catch { return $false }
-}
-
-function Get-V10RecoverySha256([byte[]]$Payload) {
-    if ($null -eq $Payload) { throw "STATE_BYTES_UNAVAILABLE" }
-    $sha = [Security.Cryptography.SHA256]::Create()
-    try {
-        return [BitConverter]::ToString($sha.ComputeHash($Payload)).Replace("-","").ToLowerInvariant()
-    } finally { $sha.Dispose() }
 }
 
 function Invoke-V10VerifiedStaleArchive($RecordedState) {
