@@ -190,6 +190,22 @@ class ResearchConsumerTests(unittest.TestCase):
             os.utime(status, (NOW.timestamp(), NOW.timestamp()))
             before = {p: p.read_bytes() for p in (live, watch, ledger, status)}
             judgment = self.read(status)
+            if judgment["reason"] == "CONTEXT_CHANGED_DURING_READ":
+                before = status.lstat()
+                with status.open("rb") as handle:
+                    opened = os.fstat(handle.fileno())
+                    handle.read()
+                    closed = os.fstat(handle.fileno())
+                after = status.lstat()
+                def mismatched(a, b):
+                    fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink")
+                    return [name for name in fields if getattr(a, name) != getattr(b, name)]
+                self.fail("WINDOWS_STAT_IDENTITY_DIAGNOSTIC " + str({
+                    "path_vs_handle_before": mismatched(before, opened),
+                    "handle_before_vs_after": mismatched(opened, closed),
+                    "path_before_vs_after": mismatched(before, after),
+                    "path_vs_handle_after": mismatched(after, closed),
+                }))
             self.assertEqual(judgment["research_decision"], "COLLECT_MORE_VIRTUAL_SAMPLES", judgment)
             self.assertEqual(before, {p: p.read_bytes() for p in before})
 
