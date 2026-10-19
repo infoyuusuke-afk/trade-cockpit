@@ -23,72 +23,6 @@ MAX_AGE_SECONDS = 60
 ALLOWED = {"OR15_ABOVE_VWAP_WATCH", "OR15_BELOW_VWAP_WATCH"}
 MAX_OBSERVATIONS = 5
 
-# Optional research-only bridge. Disabled for the canonical V10 launch.
-# Never grants source authentication, expectancy, strategy promotion or orders.
-_RESEARCH_FALSE_FLAGS = (
-    "costs_verified", "broker_fills_verified", "tested_expectancy_available",
-    "source_authenticated", "brain_trade_decision_eligible", "promotion_eligible",
-    "real_submit_allowed",
-)
-_RESEARCH_RESULT_KEYS = set(_RESEARCH_FALSE_FLAGS) | {
-    "schema_version", "state", "reason", "research_decision",
-    "virtual_sample_count", "data_lane",
-}
-
-
-def _blocked_research(reason="RESEARCH_CONSUMER_UNAVAILABLE"):
-    return {
-        "schema_version": "v10-brain-research-judgment-1",
-        "state": "BLOCKED", "reason": reason,
-        "research_decision": "HOLD_RESEARCH",
-        "virtual_sample_count": None,
-        "data_lane": "UNAUTHENTICATED_VIRTUAL_RESEARCH_NOT_EXECUTION",
-        **{flag: False for flag in _RESEARCH_FALSE_FLAGS},
-    }
-
-
-def _opt_in_research(private_dir, *, now):
-    """Read an explicit private context; emit only contract-checked research data.
-
-    This is not an autonomous producer or a trade decision. A missing/stale
-    context fails closed on this invocation; there is no last-good fallback.
-    """
-    try:
-        from scripts.v10_brain_research_consumer import STATUS_NAME, consume_local
-        directory = Path(private_dir)
-        result = consume_local(
-            context_path=directory / STATUS_NAME, private_dir=directory, now=now
-        )
-        if type(result) is not dict or set(result) != _RESEARCH_RESULT_KEYS:
-            return _blocked_research()
-        if (result["schema_version"] != "v10-brain-research-judgment-1" or
-                result["data_lane"] != "UNAUTHENTICATED_VIRTUAL_RESEARCH_NOT_EXECUTION" or
-                any(result[flag] is not False for flag in _RESEARCH_FALSE_FLAGS)):
-            return _blocked_research()
-        state, decision, reason = (result[key] for key in
-                                   ("state", "research_decision", "reason"))
-        if state == "BLOCKED":
-            if (decision != "HOLD_RESEARCH" or type(reason) is not str or
-                    len(reason) > 80 or not reason or
-                    any(ch not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_" for ch in reason) or
-                    result["virtual_sample_count"] is not None):
-                return _blocked_research()
-        elif state == "RESEARCH_OBSERVATION_ONLY":
-            if (reason is not None or decision not in (
-                    "COLLECT_MORE_VIRTUAL_SAMPLES",
-                    "REVIEW_CONTAMINATED_VIRTUAL_DATA",
-                    "REVIEW_VIRTUAL_RESEARCH_ONLY") or
-                    type(result["virtual_sample_count"]) is not int or
-                    not 0 <= result["virtual_sample_count"] <= 100_000):
-                return _blocked_research()
-        else:
-            return _blocked_research()
-        return {key: result[key] for key in _RESEARCH_RESULT_KEYS}
-    except Exception:
-        # Deliberately sanitized; do not leak source paths or exception text.
-        return _blocked_research()
-
-
 
 def _aware(value):
     if not isinstance(value, str) or not value:
@@ -275,8 +209,7 @@ def write_status(path: Path, status: dict):
         temp.unlink(missing_ok=True)
 
 
-def run_once(live_path: Path, status_path: Path, *, now=None, pid=None,
-             research_private_dir=None):
+def run_once(live_path: Path, status_path: Path, *, now=None, pid=None):
     now = now or datetime.now(timezone.utc)
     pid = pid if pid is not None else os.getpid()
     try:
@@ -287,8 +220,6 @@ def run_once(live_path: Path, status_path: Path, *, now=None, pid=None,
         result = analyze({}, now=now, file_modified_at=None)
         result["reasons"] = sorted(set(result["reasons"] + ["INPUT_UNAVAILABLE_OR_INVALID"]))
     status = status_snapshot(result, now=now, pid=pid)
-    if research_private_dir is not None:
-        status["research_context"] = _opt_in_research(research_private_dir, now=now)
     write_status(status_path, status)
     return status
 
@@ -299,17 +230,15 @@ def main(argv=None):
     parser.add_argument("--status", required=True)
     parser.add_argument("--interval", type=float, default=5.0)
     parser.add_argument("--once", action="store_true")
-    parser.add_argument("--research-private-dir", default=None,
-                        help="Explicit private research folder (opt-in; no orders)")
     args = parser.parse_args(argv)
     if not 2 <= args.interval <= 60:
         parser.error("interval must be between 2 and 60 seconds")
     live, status_path = Path(args.live), Path(args.status)
     if args.once:
-        run_once(live, status_path, research_private_dir=args.research_private_dir)
+        run_once(live, status_path)
         return 0
     while True:
-        run_once(live, status_path, research_private_dir=args.research_private_dir)
+        run_once(live, status_path)
         time.sleep(args.interval)
 
 
