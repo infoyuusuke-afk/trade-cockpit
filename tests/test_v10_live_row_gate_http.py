@@ -20,6 +20,7 @@ Both classes need Windows PowerShell 5.1; the Windows CI job fails if they
 skip. CI PASS is not a real-machine acceptance and does not approve deploy.
 """
 import importlib.util
+import hashlib
 import json
 import os
 import shutil
@@ -27,6 +28,7 @@ import socket
 import stat
 import subprocess
 import tempfile
+import threading
 import time
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -237,6 +239,31 @@ class GatewayRowParity(unittest.TestCase):
 
 
 FAKE_COLLECTOR_NAME = "MS2_RSS_100_Collector.ps1"
+# Explicit first-run acceptance for a new runtime directory. The Gateway
+# ignores it once a history or lock file exists there.
+ACCEPT_EMPTY = ("-ServedHistoryBootstrap", "ACCEPT_EMPTY_HISTORY")
+
+
+def _hold_history_lock(history):
+    """Hold the Gateway's history lock file the way another Gateway does
+    (Windows share mode none). Returns a function that releases it."""
+    import ctypes
+    from ctypes import wintypes
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.CreateFileW.restype = wintypes.HANDLE
+    kernel32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+                                     wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    lock = str(history) + ".lock"
+    deadline = time.monotonic() + 5
+    while True:
+        # GENERIC_READ | GENERIC_WRITE, no sharing, OPEN_ALWAYS, normal file.
+        handle = kernel32.CreateFileW(lock, 0xC0000000, 0, None, 4, 0x80, None)
+        if handle not in (None, ctypes.c_void_p(-1).value):
+            return lambda: kernel32.CloseHandle(handle)
+        if time.monotonic() > deadline:
+            raise OSError(ctypes.get_last_error(), "history lock not acquired")
+        time.sleep(0.05)
 
 
 @unittest.skipUnless(os.name == "nt", "Real Gateway listener needs Windows PowerShell 5.1; the Windows CI job runs this class")
@@ -273,9 +300,12 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         # refused, so each negative case is judged without that memory and
         # its own reason (stale, undated, future) is the one reported.
         cls.port = cls._free_port()
-        cls._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(cls.runtime), "-Port", str(cls.port)], cls.port)
+        # The directory is new, so both accept an empty history explicitly.
+        cls._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(cls.runtime), "-Port", str(cls.port),
+                     *ACCEPT_EMPTY], cls.port)
         cls.cold_port = cls._free_port()
-        cls._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(cls.runtime), "-Port", str(cls.cold_port)], cls.cold_port)
+        cls._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(cls.runtime), "-Port", str(cls.cold_port),
+                     *ACCEPT_EMPTY], cls.cold_port)
         cls.live = cls.runtime / "live_ms2.json"
         cls.shadow = cls.runtime / "ai_shadow_status.json"
         # The listener and the stand-in are up; the first all-fresh request
@@ -785,7 +815,8 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
 
         def launch():
             port = self._free_port()
-            self._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(runtime), "-Port", str(port)], port)
+            self._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(runtime), "-Port", str(port),
+                          *ACCEPT_EMPTY], port)
             return port, self.processes[-1]
 
         def serve(port, payload):
@@ -801,6 +832,8 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         port, process = launch()
         self.assertEqual(served_history(port)["state"], "NO_HISTORY_FILE")
         self.assertIs(served_history(port)["history_loss_risk"], True)
+        self.assertIs(served_history(port)["empty_history_accepted"], True)
+        self.assertIsNone(served_history(port)["start_floor_at"])
         now = self._now()
         status, _ = serve(port, self._payload(now=now))
         self.assertIn("200 OK", status)
@@ -813,6 +846,10 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         restored = served_history(port)
         self.assertEqual(restored["state"], "RESTORED")
         self.assertIs(restored["history_loss_risk"], False)
+        # Acceptance is ignored once a history exists: the start floor applies.
+        self.assertIs(restored["empty_history_accepted"], False)
+        self.assertIs(restored["prior_service_evidence"], True)
+        self.assertIsNotNone(restored["start_floor_at"])
         self.assertEqual(restored["row_count"], 100)
         later = self._now()
         older = self._payload(rows=self._rows(later, at=now - timedelta(seconds=20)), identity_at=now - timedelta(seconds=20),
@@ -889,7 +926,7 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
     # in memory and on disk. Each case uses its own runtime directory and
     # Gateway so no other test's history interferes.
 
-    def _isolated(self, name, *extra_args):
+    def _isolated(self, name, *extra_args, accept=True):
         runtime = Path(self.tmp.name) / name
         runtime.mkdir()
         oper.write_watchlist(runtime, UNIVERSE)
@@ -899,12 +936,14 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
 
         class Isolated:
             history = runtime / "v10_gateway_served_quotes.json"
+            evidence = runtime / "v10_gateway_served_quotes.json.evidence.json"
+            lock = runtime / "v10_gateway_served_quotes.json.lock"
             live = runtime / "live_ms2.json"
 
             def launch(self):
                 self.port = test._free_port()
                 test._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(runtime),
-                              "-Port", str(self.port), *extra_args], self.port)
+                              "-Port", str(self.port), *extra_args, *(ACCEPT_EMPTY if accept else ())], self.port)
                 self.process = test.processes[-1]
                 return self
 
@@ -923,6 +962,25 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
 
             def health(self, port=None):
                 return json.loads(test._request("/health", port or self.port)[1].decode("utf-8-sig"))["runtime"]
+
+            def write_evidence(self, committed, pending=None, generation=99):
+                self.evidence.write_text(json.dumps({
+                    "schema_version": "v10-served-history-evidence-1", "committed_sha256": committed,
+                    "pending_sha256": pending, "generation": generation, "real_submit_allowed": False}), encoding="utf-8")
+
+            def write_peer_history(self, at):
+                """What another Gateway commits: a valid history and evidence naming it."""
+                peer = json.loads(self.history.read_text(encoding="utf-8"))
+                peer["identity_quote_at"] = _iso(at)
+                peer["row_quote_at"] = {ticker: _iso(at) for ticker in peer["row_quote_at"]}
+                data = json.dumps(peer).encode("utf-8")
+                self.history.write_bytes(data)
+                self.write_evidence(hashlib.sha256(data).hexdigest())
+                return data
+
+            def wait_past_floor(self, port=None):
+                floor = datetime.fromisoformat(self.health(port)["served_history"]["start_floor_at"])
+                time.sleep(max(0.0, (floor - test._now()).total_seconds() + 1.5))
 
             def saved_identity(self):
                 return json.loads(self.history.read_text(encoding="utf-8"))["identity_quote_at"]
@@ -1044,28 +1102,329 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         self._assert_history_refusal(status, written, body, "SERVED_HISTORY_CONFLICT")
         gw.stop()
 
-    def test_history_changed_by_another_writer_is_not_adopted(self):
-        gw = self._isolated("history-concurrent").launch()
+    def test_peer_gateway_history_is_merged_and_never_lowered(self):
+        # Production runs two Gateways (main and brain) on one runtime
+        # directory, so the history file has two writers. A newer history
+        # verified by the other Gateway raises this one's floor; it is never
+        # overwritten with older times and never ends LIVE for good.
+        gw = self._isolated("history-peer").launch()
         base = self._now() - timedelta(seconds=30)
         status, _, body = gw.serve(base)
         self.assertIn("200 OK", status, body[:500])
-        # A second Gateway on the same runtime directory restores that history
-        # and then serves a newer quote, rewriting the file.
         other = self._isolated_peer(gw)
-        status, _, body = gw.serve(base + timedelta(seconds=10), port=other)
+        gw.wait_past_floor(other)
+        peer_at = self._now() - timedelta(seconds=1)
+        status, _, body = gw.serve(peer_at, port=other)
         self.assertIn("200 OK", status, body[:500])
+        self.assertEqual(gw.saved_identity(), _iso(peer_at))
         foreign = gw.history.read_bytes()
-        status, written, body = gw.serve(base + timedelta(seconds=20))
-        self._assert_history_refusal(status, written, body, "SERVED_HISTORY_CONFLICT")
+        # Newer than anything this Gateway served, older than the peer's.
+        status, written, body = gw.serve(peer_at - timedelta(seconds=2))
+        verdict = self._assert_history_refusal(status, written, body, "SERVED_HISTORY_PEER_NEWER")
+        reasons = str(verdict["stale_reason"]).split(",")
+        self.assertIn("SOURCE_TIMESTAMP_REGRESSION", reasons)
+        self.assertIn("ROW_SOURCE_TIMESTAMP_REGRESSION", reasons)
         self.assertEqual(gw.history.read_bytes(), foreign)
         history = gw.health()["served_history"]
-        self.assertEqual(history["state"], "CONFLICT")
-        self.assertEqual(history["identity_quote_at"], _iso(base))
-        # Corrupt bytes written by someone else are refused the same way.
+        self.assertEqual(history["identity_quote_at"], _iso(peer_at))
+        self.assertEqual(history["peer_adoptions"], 1)
+        self.assertEqual(history["state"], "SAVED")
+        # The same quote again is now a plain regression in memory.
+        status, written, body = gw.serve(peer_at - timedelta(seconds=2))
+        self.assertIn("503", status)
+        self.assertIn("SOURCE_TIMESTAMP_REGRESSION", json.loads(body.decode("utf-8-sig"))["stale_reason"].split(","))
+        self.assertEqual(gw.history.read_bytes(), foreign)
+        # A newer quote is served and saved over the merged history.
+        later = self._now()
+        status, written, body = gw.serve(later)
+        self.assertIn("200 OK", status, body[:500])
+        self.assertEqual(body, written)
+        self.assertEqual(gw.saved_identity(), _iso(later))
+        # Bytes that are not a valid history are never adopted.
         gw.history.write_text("{not json", encoding="utf-8")
-        status, written, body = gw.serve(base + timedelta(seconds=25))
+        status, written, body = gw.serve(self._now())
         self._assert_history_refusal(status, written, body, "SERVED_HISTORY_CONFLICT")
         self.assertEqual(gw.history.read_text(encoding="utf-8"), "{not json")
+        self.assertEqual(gw.health()["served_history"]["state"], "CONFLICT")
+        self.assertEqual(gw.temporaries(), [])
+        gw.stop()
+
+    def test_writer_waits_for_the_history_lock_and_cannot_lower_the_floor(self):
+        # Deterministic interleaving: this Gateway has checked the board and
+        # is about to save while another writer holds the lock and commits a
+        # newer history. After the lock is released, the waiting save sees
+        # that history and refuses instead of overwriting it.
+        gw = self._isolated("history-lock").launch()
+        base = self._now() - timedelta(seconds=30)
+        status, _, body = gw.serve(base)
+        self.assertIn("200 OK", status, body[:500])
+        result = {}
+        release = _hold_history_lock(gw.history)
+        try:
+            waiting = threading.Thread(target=lambda: result.update(response=gw.serve(base + timedelta(seconds=10))))
+            waiting.start()
+            time.sleep(0.7)
+            self.assertTrue(waiting.is_alive(), "the save did not wait for the history lock")
+            gw.write_peer_history(base + timedelta(seconds=15))
+        finally:
+            release()
+        waiting.join(timeout=15)
+        self.assertFalse(waiting.is_alive())
+        status, written, body = result["response"]
+        verdict = self._assert_history_refusal(status, written, body, "SERVED_HISTORY_PEER_NEWER")
+        self.assertIn("SOURCE_TIMESTAMP_REGRESSION", str(verdict["stale_reason"]).split(","))
+        self.assertEqual(gw.saved_identity(), _iso(base + timedelta(seconds=15)))
+        # A lock held past 2 s is a refusal, and nothing is written.
+        before = gw.history.read_bytes()
+        release = _hold_history_lock(gw.history)
+        try:
+            status, written, body = gw.serve(base + timedelta(seconds=20))
+        finally:
+            release()
+        self._assert_history_refusal(status, written, body, "SERVED_HISTORY_LOCK_TIMEOUT")
+        self.assertEqual(gw.history.read_bytes(), before)
+        self.assertEqual(gw.health()["served_history"]["state"], "SAVE_FAILED")
+        status, written, body = gw.serve(base + timedelta(seconds=20))
+        self.assertIn("200 OK", status, body[:500])
+        self.assertEqual(gw.saved_identity(), _iso(base + timedelta(seconds=20)))
+        self.assertEqual(gw.health()["served_history"]["state"], "SAVED")
+        self.assertEqual(gw.temporaries(), [])
+        gw.stop()
+
+    # ---- P0-V10-SERVED-HISTORY-RECOVERY-CONCURRENCY-20261019 (instruction 9) ----
+    # The evidence file names, by SHA-256, the history last verified
+    # (committed) and the one being written (pending). After a restart LIVE
+    # is refused unless the history on disk is one the evidence names, and a
+    # quote older than the new process's start floor is refused regardless.
+
+    def _assert_refused_state(self, gw, state, at):
+        history = gw.health()["served_history"]
+        self.assertEqual(history["state"], state)
+        status, written, body = gw.serve(at)
+        self._assert_history_refusal(status, written, body, "SERVED_HISTORY_" + state)
+
+    def test_deleted_history_is_refused_until_a_verified_copy_is_back(self):
+        gw = self._isolated("history-deleted").launch()
+        served = self._now() - timedelta(seconds=5)
+        status, _, body = gw.serve(served)
+        self.assertIn("200 OK", status, body[:500])
+        good = gw.history.read_bytes()
+        gw.stop()
+        gw.history.unlink()
+        # The evidence says a history was committed: not a first start, and
+        # the acceptance passed again is not honoured.
+        gw.launch()
+        history = gw.health()["served_history"]
+        self.assertIs(history["empty_history_accepted"], False)
+        self.assertIs(history["prior_service_evidence"], True)
+        self._assert_refused_state(gw, "LOST", served - timedelta(seconds=3))
+        gw.wait_past_floor()
+        self._assert_refused_state(gw, "LOST", self._now())
+        self.assertFalse(gw.history.exists())
+        gw.stop()
+        # Recovery only from the history the evidence names.
+        gw.history.write_bytes(good)
+        gw.launch()
+        self.assertEqual(gw.health()["served_history"]["state"], "RESTORED")
+        status, _, body = gw.serve(served - timedelta(seconds=3))
+        self.assertIn("SOURCE_TIMESTAMP_REGRESSION", json.loads(body.decode("utf-8-sig"))["stale_reason"].split(","))
+        gw.wait_past_floor()
+        later = self._now()
+        status, written, body = gw.serve(later)
+        self.assertIn("200 OK", status, body[:500])
+        self.assertEqual(gw.saved_identity(), _iso(later))
+        gw.stop()
+
+    def test_history_rolled_back_to_an_older_copy_is_refused(self):
+        gw = self._isolated("history-rollback").launch()
+        first = self._now() - timedelta(seconds=30)
+        status, _, body = gw.serve(first)
+        self.assertIn("200 OK", status, body[:500])
+        older_copy = gw.history.read_bytes()
+        second = self._now() - timedelta(seconds=10)
+        status, _, body = gw.serve(second)
+        self.assertIn("200 OK", status, body[:500])
+        newest = gw.history.read_bytes()
+        gw.stop()
+        gw.history.write_bytes(older_copy)
+        gw.launch()
+        # Newer than the copy, older than what was really served.
+        self._assert_refused_state(gw, "EVIDENCE_MISMATCH", second - timedelta(seconds=5))
+        gw.wait_past_floor()
+        self._assert_refused_state(gw, "EVIDENCE_MISMATCH", self._now())
+        self.assertEqual(gw.history.read_bytes(), older_copy)
+        gw.stop()
+        gw.history.write_bytes(newest)
+        gw.launch()
+        self.assertEqual(gw.health()["served_history"]["identity_quote_at"], _iso(second))
+        gw.wait_past_floor()
+        status, _, body = gw.serve(self._now())
+        self.assertIn("200 OK", status, body[:500])
+        gw.stop()
+
+    def test_evidence_that_does_not_match_or_cannot_be_read_is_refused(self):
+        gw = self._isolated("history-evidence").launch()
+        served = self._now() - timedelta(seconds=5)
+        status, _, body = gw.serve(served)
+        self.assertIn("200 OK", status, body[:500])
+        gw.stop()
+        gw.write_evidence("0" * 64)
+        gw.launch()
+        gw.wait_past_floor()
+        self._assert_refused_state(gw, "EVIDENCE_MISMATCH", self._now())
+        gw.stop()
+        gw.evidence.write_text("{not json", encoding="utf-8")
+        gw.launch()
+        gw.wait_past_floor()
+        self._assert_refused_state(gw, "EVIDENCE_UNREADABLE", self._now())
+        gw.stop()
+
+    def test_history_and_evidence_both_lost_is_not_an_accepted_first_start(self):
+        gw = self._isolated("history-double-loss").launch()
+        served = self._now() - timedelta(seconds=5)
+        status, _, body = gw.serve(served)
+        self.assertIn("200 OK", status, body[:500])
+        gw.stop()
+        gw.history.unlink()
+        gw.evidence.unlink()
+        # The lock file is still evidence: acceptance is ignored, the start
+        # floor refuses anything that may be older than what was served.
+        gw.launch()
+        history = gw.health()["served_history"]
+        self.assertEqual(history["state"], "NO_HISTORY_FILE")
+        self.assertIs(history["empty_history_accepted"], False)
+        self.assertIs(history["prior_service_evidence"], True)
+        status, written, body = gw.serve(served - timedelta(seconds=3))
+        verdict = self._assert_history_refusal(status, written, body, "SERVED_HISTORY_START_FLOOR")
+        reasons = str(verdict["stale_reason"]).split(",")
+        self.assertIn("QUOTE_BEFORE_GATEWAY_START_FLOOR", reasons)
+        self.assertIn("ROW_QUOTE_BEFORE_GATEWAY_START_FLOOR", reasons)
+        self.assertFalse(gw.history.exists())
+        gw.wait_past_floor()
+        later = self._now()
+        status, _, body = gw.serve(later)
+        self.assertIn("200 OK", status, body[:500])
+        self.assertEqual(gw.saved_identity(), _iso(later))
+        gw.stop()
+
+    def test_a_save_interrupted_by_a_crash_never_serves_older_quotes(self):
+        gw = self._isolated("history-crash").launch()
+        first = self._now() - timedelta(seconds=30)
+        status, _, body = gw.serve(first)
+        self.assertIn("200 OK", status, body[:500])
+        committed = gw.history.read_bytes()
+        committed_sha = hashlib.sha256(committed).hexdigest()
+        gw.stop()
+        # The next save had written its pending evidence and the new history,
+        # then the process died before committing; a temporary is left over.
+        pending_at = self._now() - timedelta(seconds=10)
+        pending = json.loads(committed.decode("utf-8"))
+        pending["identity_quote_at"] = _iso(pending_at)
+        pending["row_quote_at"] = {ticker: _iso(pending_at) for ticker in pending["row_quote_at"]}
+        pending_bytes = json.dumps(pending).encode("utf-8")
+        gw.write_evidence(committed_sha, hashlib.sha256(pending_bytes).hexdigest())
+        gw.history.write_bytes(pending_bytes)
+        (gw.history.parent / (gw.history.name + ".999.dead.tmp")).write_bytes(b"{partial")
+        gw.launch()
+        history = gw.health()["served_history"]
+        self.assertEqual(history["state"], "RESTORED")
+        self.assertEqual(history["identity_quote_at"], _iso(pending_at))
+        status, _, body = gw.serve(pending_at - timedelta(seconds=5))
+        self.assertIn("503", status)
+        self.assertNotIn(b"SYN", body)
+        gw.stop()
+        # Died before the replace: the committed history is still on disk.
+        gw.history.write_bytes(committed)
+        gw.launch()
+        self.assertEqual(gw.health()["served_history"]["identity_quote_at"], _iso(first))
+        status, _, body = gw.serve(pending_at - timedelta(seconds=5))
+        self.assertIn("SERVED_HISTORY_START_FLOOR", json.loads(body.decode("utf-8-sig"))["stale_reason"].split(","))
+        gw.wait_past_floor()
+        status, _, body = gw.serve(self._now())
+        self.assertIn("200 OK", status, body[:500])
+        gw.stop()
+
+    def test_lock_left_by_a_killed_process_does_not_block(self):
+        gw = self._isolated("history-killed-holder").launch()
+        status, _, body = gw.serve(self._now() - timedelta(seconds=20))
+        self.assertIn("200 OK", status, body[:500])
+        holder_script = gw.history.parent / "hold_lock.ps1"
+        holder_script.write_text(
+            "$s=[IO.FileStream]::new('" + str(gw.lock).replace("'", "''") + "','OpenOrCreate','ReadWrite','None')\n"
+            "[Console]::Out.WriteLine('HELD'); [Console]::Out.Flush()\nStart-Sleep -Seconds 120\n", encoding="utf-8")
+        holder = subprocess.Popen([self.exe, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File",
+                                   str(holder_script)], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        self.processes.append(holder)
+        self.assertEqual(holder.stdout.readline().strip(), b"HELD")
+        status, written, body = gw.serve(self._now() - timedelta(seconds=10))
+        self._assert_history_refusal(status, written, body, "SERVED_HISTORY_LOCK_TIMEOUT")
+        holder.kill()
+        holder.wait(timeout=10)
+        status, written, body = gw.serve(self._now() - timedelta(seconds=5))
+        self.assertIn("200 OK", status, body[:500])
+        self.assertEqual(gw.health()["served_history"]["state"], "SAVED")
+        gw.stop()
+
+    def test_different_runtime_directories_do_not_share_the_lock(self):
+        one = self._isolated("history-dir-one").launch()
+        two = self._isolated("history-dir-two").launch()
+        release = _hold_history_lock(one.history)
+        try:
+            status, _, body = two.serve(self._now() - timedelta(seconds=5))
+            self.assertIn("200 OK", status, body[:500])
+        finally:
+            release()
+        self.assertFalse(one.history.exists())
+        one.stop()
+        two.stop()
+
+    def test_two_gateways_serving_together_never_lower_the_history(self):
+        gw = self._isolated("history-together").launch()
+        status, _, body = gw.serve(self._now() - timedelta(seconds=40))
+        self.assertIn("200 OK", status, body[:500])
+        other = self._isolated_peer(gw)
+        gw.wait_past_floor(other)
+        served = []
+        for step in range(6):
+            at = self._now() - timedelta(seconds=1)
+            responses = {}
+
+            def ask(port, key):
+                responses[key] = self._request("/live_ms2.json", port)
+
+            status, written, _ = gw.serve(at)  # writes the board, then asks the first Gateway
+            self.assertIn("200 OK", status)
+            served.append(at)
+            threads = [threading.Thread(target=ask, args=(port, key)) for key, port in (("a", gw.port), ("b", other))]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=15)
+            for key in ("a", "b"):
+                self.assertIn("200 OK", responses[key][0], (key, responses[key][1][:300]))
+                self.assertEqual(responses[key][1], written)
+            self.assertEqual(gw.saved_identity(), _iso(at))
+            time.sleep(1.1)
+        saved = json.loads(gw.history.read_text(encoding="utf-8"))
+        self.assertEqual(saved["identity_quote_at"], _iso(served[-1]))
+        self.assertEqual(set(saved["row_quote_at"].values()), {_iso(served[-1])})
+        self.assertEqual(gw.temporaries(), [])
+        gw.stop()
+
+    def test_new_directory_without_acceptance_starts_with_the_floor(self):
+        # What the Controller launches: no acceptance, so even a first start
+        # refuses quotes from before it started.
+        gw = self._isolated("history-unaccepted", accept=False).launch()
+        history = gw.health()["served_history"]
+        self.assertIs(history["empty_history_accepted"], False)
+        self.assertIs(history["prior_service_evidence"], False)
+        self.assertIsNotNone(history["start_floor_at"])
+        status, written, body = gw.serve(self._now() - timedelta(seconds=20))
+        self._assert_history_refusal(status, written, body, "SERVED_HISTORY_START_FLOOR")
+        self.assertFalse(gw.history.exists())
+        gw.wait_past_floor()
+        status, written, body = gw.serve(self._now())
+        self.assertIn("200 OK", status, body[:500])
         gw.stop()
 
     def _isolated_peer(self, gw):

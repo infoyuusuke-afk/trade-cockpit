@@ -481,5 +481,133 @@ class ShadowFreshOnlyEvaluation(unittest.TestCase):
         self.assertIs(record["observation_pass"], False)
         self.assertIs(record["decision_pass"], False)
 
+
+class ServedHistoryFirstRunAcceptance(unittest.TestCase):
+    """GPT review of 6c0758a, blocker A: an empty served history is accepted
+    only explicitly, and no production launcher ever does so."""
+
+    def test_production_launchers_never_accept_an_empty_history(self):
+        for rel in ("downloads/AI_COCKPIT_CONTROLLER_V10.ps1", "downloads/RUN_AI_COCKPIT_V10.ps1",
+                    "downloads/START_AI_COCKPIT_V10.ps1", "downloads/STOP_AI_COCKPIT_V10.ps1",
+                    "downloads/START_AI_COCKPIT_V10.cmd", "downloads/STOP_AI_COCKPIT_V10.cmd"):
+            with self.subTest(file=rel):
+                text = (ROOT / rel).read_text(encoding="utf-8-sig", errors="replace")
+                self.assertNotIn("ServedHistoryBootstrap", text)
+                self.assertNotIn("ACCEPT_EMPTY_HISTORY", text)
+
+    def test_gateway_guards_the_acceptance_and_the_history_lock(self):
+        text = (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn('[ValidateSet("", "ACCEPT_EMPTY_HISTORY")][string]$ServedHistoryBootstrap = ""', text)
+        # Honoured only without a history or lock file in the directory.
+        self.assertIn('($restoredHistory.state -ceq "NO_HISTORY_FILE") -and -not $script:ServedHistoryPriorEvidence', text)
+        self.assertIn("$lock = Enter-ServedHistoryLock $Path", text)
+        self.assertIn("[IO.FileShare]::None", text.split("function Enter-ServedHistoryLock", 1)[1].split("function ", 1)[0])
+
+
+GATEWAY = ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1"
+
+INTERLEAVE_HARNESS = r"""
+param([string]$Gateway)
+$ErrorActionPreference = 'Stop'
+$t = $null; $e = $null
+$ast = [Management.Automation.Language.Parser]::ParseFile($Gateway, [ref]$t, [ref]$e)
+foreach ($f in $ast.FindAll({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
+    if ($f.Name -match 'ServedHistory|OffsetTimestamp|BytesSha256|SharingViolation|QuoteAt|StartFloor') { . ([scriptblock]::Create($f.Extent.Text)) }
+}
+if ($PSVersionTable.PSVersion.Major -ge 6) {
+    # Local pwsh runs only: keep ISO strings as strings like Windows
+    # PowerShell 5.1, and treat flock contention (EAGAIN) as a sharing violation.
+    function ConvertFrom-Json { param([Parameter(ValueFromPipeline = $true)][string]$InputObject) process { $o = Microsoft.PowerShell.Utility\ConvertFrom-Json -InputObject ($InputObject -replace '"(\d{4}-\d{2}-\d{2}T)', '"~$1'); foreach ($p in @($o.PSObject.Properties)) { if ($p.Value -is [string] -and $p.Value.StartsWith('~')) { $p.Value = $p.Value.Substring(1) } elseif ($p.Value -is [pscustomobject]) { foreach ($q in @($p.Value.PSObject.Properties)) { if ($q.Value -is [string] -and $q.Value.StartsWith('~')) { $q.Value = $q.Value.Substring(1) } } } }; $o } }
+    function Test-SharingViolation($ErrorRecord) { $i = $ErrorRecord.Exception; while ($null -ne $i -and -not ($i -is [IO.IOException])) { $i = $i.InnerException }; return ($null -ne $i -and @(-2147024864, -2147024863, 11) -contains $i.HResult) }
+}
+$dir = Join-Path ([IO.Path]::GetTempPath()) ('v10-interleave-' + [guid]::NewGuid().ToString('N'))
+[void](New-Item -ItemType Directory $dir)
+$path = Join-Path $dir 'v10_gateway_served_quotes.json'
+$out = [ordered]@{}
+try {
+    $base = Save-ServedHistory $path '2026-10-19T10:00:00+09:00' @{ A = '2026-10-19T10:00:00+09:00' } @('A') $null $false ''
+    $start = $base.disk_sha256
+    # Gateway A (10:00:10) and Gateway B (10:00:20) both checked the board
+    # against history $start. B's whole save is forced in between A's
+    # checks and A's replace.
+    $script:b = $null
+    $realIo = ${function:Invoke-ServedHistoryIo}
+    function Invoke-ServedHistoryIo([scriptblock]$Action) {
+        if ($null -eq $script:b -and $Action.ToString() -match 'Replace\(\$temporary, \$Path') {
+            $script:b = Save-ServedHistory $path '2026-10-19T10:00:20+09:00' @{ A = '2026-10-19T10:00:20+09:00' } @('A') $start $true ''
+        }
+        & $realIo $Action
+    }
+    $a = Save-ServedHistory $path '2026-10-19T10:00:10+09:00' @{ A = '2026-10-19T10:00:10+09:00' } @('A') $start $true ''
+    Remove-Item function:Invoke-ServedHistoryIo
+    Set-Item function:Invoke-ServedHistoryIo $realIo
+    $out.a_ok = $a.ok
+    $out.b_ok = $script:b.ok
+    $out.b_reason = $script:b.reason
+    $out.disk_identity = ((ConvertFrom-ServedHistoryContent ([IO.File]::ReadAllBytes($path))).identity)
+    $evidence = Read-ServedHistoryEvidence $path
+    $out.evidence_matches_disk = (Test-ServedHistoryEvidenceMatch $evidence (Get-BytesSha256 ([IO.File]::ReadAllBytes($path))))
+    $out.evidence_generation = $evidence.generation
+    # B retries after A released the lock, from its old history: it merges
+    # A's verified history and saves its newer quote on top.
+    $retry = Save-ServedHistory $path '2026-10-19T10:00:20+09:00' @{ A = '2026-10-19T10:00:20+09:00' } @('A') $start $true ''
+    $out.retry_ok = $retry.ok
+    $out.retry_peer = ($null -ne $retry.peer)
+    $out.retry_identity = ((ConvertFrom-ServedHistoryContent ([IO.File]::ReadAllBytes($path))).identity)
+    # A then tries an older quote from its stale view: refused, disk unchanged.
+    $stale = Save-ServedHistory $path '2026-10-19T10:00:15+09:00' @{ A = '2026-10-19T10:00:15+09:00' } @('A') $a.disk_sha256 $true ''
+    $out.stale_reason = $stale.reason
+    $out.stale_detail = $stale.detail
+    $out.final_identity = ((ConvertFrom-ServedHistoryContent ([IO.File]::ReadAllBytes($path))).identity)
+    $out.temporaries = @(Get-ChildItem -LiteralPath $dir -Filter '*.tmp').Count
+} finally {
+    Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
+}
+$out | ConvertTo-Json -Compress
+"""
+
+
+@unittest.skipUnless(_powershell(), "needs Windows PowerShell 5.1 (CI) or V10_TEST_POWERSHELL")
+class ServedHistoryInterleaving(unittest.TestCase):
+    """GPT review of 6c0758a, blocker B: a save forced in between another
+    Gateway's checks and its replace cannot lower the history on disk."""
+
+    @classmethod
+    def setUpClass(cls):
+        tmp = Path(tempfile.mkdtemp(prefix="v10-interleave-"))
+        try:
+            script = tmp / "harness.ps1"
+            script.write_text(INTERLEAVE_HARNESS, encoding="utf-8-sig")
+            proc = subprocess.run([_powershell(), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File",
+                                   str(script), "-Gateway", str(GATEWAY)], capture_output=True, timeout=120)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+        out = proc.stdout.decode("utf-8", errors="replace").strip()
+        if proc.returncode != 0:
+            raise AssertionError(out[-2000:] + proc.stderr.decode("utf-8", errors="replace")[-2000:])
+        cls.result = json.loads(out.splitlines()[-1].lstrip("﻿"))
+
+    def test_the_interleaved_save_waits_and_is_refused(self):
+        # Without the lock (6c0758a) both saves returned ok and the disk went
+        # back from 10:00:20 to 10:00:10 after 10:00:20 had been served.
+        self.assertIs(self.result["a_ok"], True)
+        self.assertIs(self.result["b_ok"], False)
+        self.assertEqual(self.result["b_reason"], "SERVED_HISTORY_LOCK_TIMEOUT")
+        self.assertEqual(self.result["disk_identity"], "2026-10-19T10:00:10+09:00")
+        self.assertIs(self.result["evidence_matches_disk"], True)
+        self.assertEqual(self.result["evidence_generation"], 2)
+
+    def test_a_retry_merges_the_verified_history_and_moves_forward(self):
+        self.assertIs(self.result["retry_ok"], True)
+        self.assertIs(self.result["retry_peer"], True)
+        self.assertEqual(self.result["retry_identity"], "2026-10-19T10:00:20+09:00")
+
+    def test_an_older_quote_from_a_stale_view_cannot_overwrite(self):
+        self.assertEqual(self.result["stale_reason"], "SERVED_HISTORY_PEER_NEWER")
+        self.assertIn("SOURCE_TIMESTAMP_REGRESSION", self.result["stale_detail"].split(","))
+        self.assertEqual(self.result["final_identity"], "2026-10-19T10:00:20+09:00")
+        self.assertEqual(self.result["temporaries"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()
