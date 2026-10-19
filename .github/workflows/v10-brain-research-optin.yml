@@ -2,6 +2,7 @@ name: V10 Brain Research Opt-In (Synthetic)
 on:
   pull_request:
     paths:
+      - 'scripts/v10_brain_research_optin.py'
       - 'scripts/ai_brain_observer.py'
       - 'scripts/v10_brain_research_consumer.py'
       - 'tests/test_v10_brain_research_optin.py'
