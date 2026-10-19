@@ -33,20 +33,6 @@
       '</article>';
   }
 
-  function classifyRecord(x){
-    const explicit=String(x?.cockpit_tab||x?.tab||"").trim();
-    if(explicit&&TAB_LABELS[explicit])return explicit;
-    const s=String(x?.strategy_id||"").toLowerCase();
-    if(s==="day_rank_long"||s==="day_short_mvp")return "ms2-live";
-    if(s.includes("scalp"))return "scalp";
-    if(s.includes("overnight")||s.includes("hold"))return "overnight";
-    if(s.includes("swing"))return "swing";
-    if(s.includes("value")||s.includes("dividend")||s.includes("buyback"))return "value";
-    if(s.includes("kioxia")||s.includes("285a"))return "kioxia-calendar";
-    if(s.includes("event")||s.includes("material")||s.includes("ir_"))return "event-hot";
-    return null;
-  }
-
   function computeStats(rows){
     const done=rows.filter(x=>knownNumber(x?.pnl_yen)!==null);
     if(!done.length)return null;
@@ -80,7 +66,7 @@
     const cls=stats.pnl>0?"long":stats.pnl<0?"short":"wait";
     return metricCard(label+" 成績",mode==="backtest"?"BACKTEST":"SHADOW/PAPER",[
       ["取引件数",stats.count+"件"],["勝率",pct(stats.winRate)],["PF",stats.pf==null?"—":stats.pf.toFixed(2)],
-      ["平均R",rfmt(stats.avgR)],["損益",money(stats.pnl)],["未決済評価",stats.openMark+"件"]
+      ["平均R",rfmt(stats.avgR)],["仮想損益",money(stats.pnl)],["未決済評価","—"]
     ],"mode・cockpit_tab・取引ID・available_at・確定時刻を検証した仮想履歴のみ。保留 "+unclassified+"件は混ぜません。",cls);
   }
 
@@ -118,7 +104,10 @@
     if(!Array.isArray(raw))return {available:false,total:null,quarantined:null,eligible:[]};
     const candidates=raw.map(x=>performanceEligibility(x,nowMs));
     const ids=new Map();
-    for(const item of candidates)if(item)ids.set(item.id,(ids.get(item.id)||0)+1);
+    for(const item of raw){
+      if(item&&typeof item.trade_id==="string")
+        ids.set(item.trade_id,(ids.get(item.trade_id)||0)+1);
+    }
     const eligible=candidates.filter(x=>x&&ids.get(x.id)===1);
     eligible.sort((a,b)=>a.closed-b.closed||a.available-b.available||a.id.localeCompare(b.id));
     return {available:true,total:raw.length,quarantined:raw.length-eligible.length,eligible};
@@ -146,6 +135,7 @@
       if(v>0){wins++;positive+=v;streak=streak>=0?streak+1:1;}
       else if(v<0){negative-=v;streak=streak<=0?streak-1:-1;}
       else streak=0;
+      if(!Number.isFinite(positive)||!Number.isFinite(negative))return null;
       peak=Math.max(peak,pnl);
       maxDrawdown=Math.max(maxDrawdown,peak-pnl);
       const r=knownNumber(item.row.r);
