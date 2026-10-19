@@ -1,0 +1,34 @@
+name: V10 Brain Research Opt-In (Synthetic)
+on:
+  pull_request:
+    paths:
+      - 'scripts/ai_brain_observer.py'
+      - 'scripts/v10_brain_research_consumer.py'
+      - 'tests/test_v10_brain_research_optin.py'
+      - 'tests/test_v10_brain_research_consumer.py'
+      - 'tests/test_v10_brain_private_research_bridge.py'
+      - '.github/workflows/v10-brain-research-optin.yml'
+permissions:
+  contents: read
+jobs:
+  opt-in-research-contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Print tested head SHA
+        run: git rev-parse HEAD
+      - name: Research producer consumer and opt-in negative tests
+        run: python -B -m unittest discover -s tests -p 'test_v10_brain_*research*.py' -v
+      - name: Existing observer and safe-stop regression tests
+        run: python -B -m unittest discover -s tests -p 'test_v10_brain_safestop_preflight.py' -v
