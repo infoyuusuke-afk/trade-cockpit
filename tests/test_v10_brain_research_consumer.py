@@ -190,22 +190,6 @@ class ResearchConsumerTests(unittest.TestCase):
             os.utime(status, (NOW.timestamp(), NOW.timestamp()))
             before = {p: p.read_bytes() for p in (live, watch, ledger, status)}
             judgment = self.read(status)
-            if judgment["reason"] == "CONTEXT_CHANGED_DURING_READ":
-                before = status.lstat()
-                with status.open("rb") as handle:
-                    opened = os.fstat(handle.fileno())
-                    handle.read()
-                    closed = os.fstat(handle.fileno())
-                after = status.lstat()
-                def mismatched(a, b):
-                    fields = ("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink")
-                    return [name for name in fields if getattr(a, name) != getattr(b, name)]
-                self.fail("WINDOWS_STAT_IDENTITY_DIAGNOSTIC " + str({
-                    "path_vs_handle_before": mismatched(before, opened),
-                    "handle_before_vs_after": mismatched(opened, closed),
-                    "path_before_vs_after": mismatched(before, after),
-                    "path_vs_handle_after": mismatched(after, closed),
-                }))
             self.assertEqual(judgment["research_decision"], "COLLECT_MORE_VIRTUAL_SAMPLES", judgment)
             self.assertEqual(before, {p: p.read_bytes() for p in before})
 
@@ -264,6 +248,46 @@ class ResearchConsumerTests(unittest.TestCase):
             except OSError:
                 self.skipTest("OS does not allow unprivileged symlinks")
             self.blocked(self.read(p))
+
+    def test_windows_fd_ctime_different_from_path_ctime_is_not_a_mutation(self):
+        # Python/Windows may expose different creation-time representations
+        # through path lstat versus descriptor fstat; these are not edits.
+        with tempfile.TemporaryDirectory() as td:
+            p = self.write_context(td)
+            original = os.fstat
+            class DescriptorStat:
+                def __init__(self, raw):
+                    self.raw = raw
+                def __getattr__(self, key):
+                    if key == "st_ctime_ns":
+                        return self.raw.st_ctime_ns + 10_000_000
+                    return getattr(self.raw, key)
+            def descriptor_ctime_variant(fd):
+                return DescriptorStat(original(fd))
+            with patch.object(consumer.os, "fstat", descriptor_ctime_variant):
+                out = self.read(p)
+            self.assertEqual(out["state"], "RESEARCH_OBSERVATION_ONLY", out)
+
+    def test_descriptor_ctime_change_between_reads_still_blocks(self):
+        with tempfile.TemporaryDirectory() as td:
+            p = self.write_context(td)
+            original = os.fstat
+            calls = 0
+            class DescriptorStat:
+                def __init__(self, raw, extra):
+                    self.raw, self.extra = raw, extra
+                def __getattr__(self, key):
+                    if key == "st_ctime_ns":
+                        return self.raw.st_ctime_ns + self.extra
+                    return getattr(self.raw, key)
+            def changing_descriptor_ctime(fd):
+                nonlocal calls
+                calls += 1
+                return DescriptorStat(original(fd), calls * 10_000_000)
+            with patch.object(consumer.os, "fstat", changing_descriptor_ctime):
+                out = self.read(p)
+            self.blocked(out)
+            self.assertEqual(out["reason"], "CONTEXT_CHANGED_DURING_READ")
 
     def test_changed_file_during_read_blocks(self):
         with tempfile.TemporaryDirectory() as td:
