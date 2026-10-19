@@ -179,3 +179,23 @@ Source: OWNER chat and decision card on 2026-10-19 in the Claude project thread 
 - Open point for the GPT lead: if the fixed line cannot start on a trading day, V10 does not run that day. The old line is not a fallback.
 State: PENDING_DOC_SYNC until merged to `main` (D-022).
 Source: OWNER chat 2026-10-19 08:10Z in the Claude project thread (D-024).
+
+## D-029 Specialist AIs report to Issue #282 on their scheduled runs; the coordinator ACKs (2026-10-19)
+- Evidence, 2026-10-19, one-shot interactive tests approved by the OWNER on decision cards:
+  - Revenue Hunter, PRE-NEXT and the supply/SQ analyst each wrote one exact public-safe comment to Issue #282 with their own GitHub connector (6264610794, 6264616075, 6264617113). No safety block reproduced.
+  - The coordinator posted one ACK per report (6264654527, 6264655210, 6264655879).
+  - Each specialist re-read its own ACK and quoted its message_id and comment URL.
+  - This is a full round trip, interactive only.
+- OWNER decision, 2026-10-19 10:05Z ("伝える"): the earlier WRITE_UNAVAILABLE status is lifted for these three roles. Each scheduled run must:
+  - read #282 first
+  - post at most one public-safe REPORT, and only on MATERIAL_CHANGE
+  - cite the last ACK it read in `in_reply_to`
+  - on any denial, stop without retry, edit or channel switch
+- The coordinator ACKs each unanswered REPORT once per run.
+- Schedules, enablement and notification settings are unchanged. The rule is given as a one-time chat message in each task.
+- Still open:
+  - END_TO_END_VERIFIED needs one scheduled-run round trip without OWNER relay.
+  - Role identity stays UNVERIFIED, because all roles post under one GitHub account.
+  - real_submit_allowed=false.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: OWNER decision cards 2026-10-19 09:59Z and 10:05Z in the Claude project thread (D-024); P0-AI-COORDINATION-DELIVERY-RECOVERY.
