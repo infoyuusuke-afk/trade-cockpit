@@ -17,6 +17,8 @@ on:
       - "tests/v10_control_performance_lanes.test.mjs"
       - "scripts/v10_control_paper_provenance_adapter.py"
       - "tests/test_v10_control_paper_provenance_adapter.py"
+      - "scripts/v10_control_private_readback.py"
+      - "tests/test_v10_control_private_readback.py"
       - "v10_publication_status.js"
       - "tests/test_v10_runtime_bundle_candidate.py"
       - "tests/test_v10_local_http_security.py"
@@ -90,6 +92,8 @@ jobs:
         run: node --test tests/v10_control_performance_lanes.test.mjs
       - name: V10 CONTROL PAPER evidence adapter negative tests (pure, no publication)
         run: python -m unittest discover -s tests -p test_v10_control_paper_provenance_adapter.py -v
+      - name: V10 CONTROL private readback and integrity witness negative tests
+        run: python -m unittest discover -s tests -p test_v10_control_private_readback.py -v
       - name: V10 local HTTP security static contract
         run: python -m unittest discover -s tests -p test_v10_local_http_security.py -v
       - name: Candidate manifest and V10 static UI/runtime dependencies
