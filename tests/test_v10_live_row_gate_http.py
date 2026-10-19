@@ -1331,7 +1331,12 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         self.assertEqual(history["identity_quote_at"], _iso(pending_at))
         status, _, body = gw.serve(pending_at - timedelta(seconds=5))
         self.assertIn("503", status)
-        self.assertNotIn(b"SYN", body)
+        verdict = json.loads(body.decode("utf-8-sig"))
+        self.assertIn("SOURCE_TIMESTAMP_REGRESSION", str(verdict["stale_reason"]).split(","))
+        self.assertIsNone(verdict["current_price"])
+        self.assertIs(verdict["real_submit_allowed"], False)
+        for key in ("all_targets", "top5", "hold_top5", "kioxia"):
+            self.assertNotIn(key, verdict)
         gw.stop()
         # Died before the replace: the committed history is still on disk.
         gw.history.write_bytes(committed)
