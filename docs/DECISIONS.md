@@ -198,5 +198,16 @@ Source: OWNER chat 2026-10-19 08:10Z in the Claude project thread (D-024).
   - Role identity stays UNVERIFIED, because all roles post under one GitHub account.
   - real_submit_allowed=false.
 - Amendment, 2026-10-19 10:19Z (OWNER decision card "このまま使う"): after the chat rule, Revenue Hunter itself updated the prompt of its existing hourly task to read #282 first, post at most one REPORT on MATERIAL_CHANGE and re-read it. Its schedule (hourly, condition_watch), ON state, notifications OFF and real_submit_allowed=false are unchanged. This departs from the standing rule that hourly task prompts are not changed, and the OWNER approved keeping it. PRE-NEXT made the same kind of update to its hourly task prompt at about 10:20Z. Its hourly run at :44:09 JST, ON state and notifications OFF are unchanged. The OWNER was informed in the thread and may revert it. The supply/SQ analyst acknowledged the rule in chat and did not report a prompt change. The coordinator likewise added "read #282 first, ACK each unanswered specialist REPORT once, re-read" to its existing hourly task (schedule, ON, notifications OFF unchanged), reported to the OWNER at about 10:21Z.
+- Result, 2026-10-19 (OWNER screenshots): scheduled-run writes are BLOCKED. Revenue Hunter (up to 21:00 JST, twice) and PRE-NEXT (22:50 JST, one REPORT attempt PRENEXT-RUN-2026101922-01) got "This tool call was blocked by OpenAI's safety checks. Please double check what you are sending." Both stopped without retry, rewording or a channel switch. Scheduled-run reads of #282 and of the coordinator ACK work. Supply/SQ is not observed. END_TO_END_VERIFIED: none. Recorded on #282 (6269074696). The OWNER chose to keep the hourly prompts unchanged until the GPT lead decides another upward route.
 State: PENDING_DOC_SYNC until merged to `main` (D-022).
 Source: OWNER decision cards 2026-10-19 09:59Z and 10:05Z in the Claude project thread (D-024); P0-AI-COORDINATION-DELIVERY-RECOVERY.
+
+## D-030 Claude builds a parallel "Claude Brain" as TradingView Pine Script strategies (2026-10-19)
+- OWNER instruction, 2026-10-19 15:20Z: "GTPブレインと並行してクロードブレインを育成しろ、こちらはトレーディングヴューのパインスクリプトとしてバックテスト検証をする、PFがよければザラバ中におれが試す".
+- Claude writes trading-signal strategies in Pine Script. The OWNER runs them in TradingView's Strategy Tester and sends back the numbers (symbol, timeframe, period, PF, trade count, win rate, max drawdown).
+- If the PF is good, the OWNER may try the signal by hand during the trading session. That is the OWNER's own manual trading. No AI sends orders. real_submit_allowed=false is unchanged.
+- This track is separate from V10 and the GPT Brain. It changes no V10 code, task, schedule or Excel. TradingView data is not fed into V10 or BRAIN automatically (TradingView terms; only the OWNER's reported numbers are used).
+- Claude's proposed pass bar, not a decision: PF >= 1.3 with at least 100 trades, PF > 1.0 in both halves of the period, and a similar result on 2-3 symbols. Parameter changes are counted to limit overfitting.
+- Working files: the Claude project's shared folder (claude-brain/). Not in this public repo.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: OWNER chat 2026-10-19 15:20Z in the Claude project thread (D-024).
