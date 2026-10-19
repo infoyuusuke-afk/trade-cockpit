@@ -189,7 +189,8 @@ class ResearchConsumerTests(unittest.TestCase):
             self.assertEqual(out["state"], "RESEARCH_OBSERVATION_ONLY")
             os.utime(status, (NOW.timestamp(), NOW.timestamp()))
             before = {p: p.read_bytes() for p in (live, watch, ledger, status)}
-            self.assertEqual(self.read(status)["research_decision"], "COLLECT_MORE_VIRTUAL_SAMPLES")
+            judgment = self.read(status)
+            self.assertEqual(judgment["research_decision"], "COLLECT_MORE_VIRTUAL_SAMPLES", judgment)
             self.assertEqual(before, {p: p.read_bytes() for p in before})
 
     def test_no_last_good_after_missing_invalid_or_stale_input(self):
