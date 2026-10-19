@@ -47,15 +47,15 @@ $brainProof = @(
  "REAL_SUBMIT_ALLOWED=0"
 )
 if ($SelfTest) {
- if (-not (Test-ExactProof 0 $sourceProof $sourceProof)) { exit 3 }
- if (Test-ExactProof 1 $sourceProof $sourceProof) { exit 3 }
- if (Test-ExactProof 0 @($sourceProof + @("UNREVIEWED=1")) $sourceProof) { exit 3 }
- if (Test-ExactProof 0 @($sourceProof[0..7] + @("REAL_SUBMIT_ALLOWED=1")) $sourceProof) { exit 3 }
- if (Test-ExactProof 0 @($sourceProof[0..7] + @($sourceProof[0])) $sourceProof) { exit 3 }
- if (-not (Test-ExactProof 0 $brainProof $brainProof)) { exit 3 }
- if (Test-ExactProof 2 $brainProof $brainProof) { exit 3 }
- if (Test-ExactProof 0 @($brainProof[0..4] + @("REAL_SUBMIT_ALLOWED=1")) $brainProof) { exit 3 }
- if (Test-ExactProof 0 @($brainProof + @("TICKER=PRIVATE")) $brainProof) { exit 3 }
+ if (-not (Test-ExactProof 0 $sourceProof $sourceProof)) { Write-Output "SELFTEST_FAILURE_CASE=1"; exit 3 }
+ if (Test-ExactProof 1 $sourceProof $sourceProof) { Write-Output "SELFTEST_FAILURE_CASE=2"; exit 3 }
+ if (Test-ExactProof 0 @($sourceProof + @("UNREVIEWED=1")) $sourceProof) { Write-Output "SELFTEST_FAILURE_CASE=3"; exit 3 }
+ if (Test-ExactProof 0 @($sourceProof[0..7] + @("REAL_SUBMIT_ALLOWED=1")) $sourceProof) { Write-Output "SELFTEST_FAILURE_CASE=4"; exit 3 }
+ if (Test-ExactProof 0 @($sourceProof[0..7] + @($sourceProof[0])) $sourceProof) { Write-Output "SELFTEST_FAILURE_CASE=5"; exit 3 }
+ if (-not (Test-ExactProof 0 $brainProof $brainProof)) { Write-Output "SELFTEST_FAILURE_CASE=6"; exit 3 }
+ if (Test-ExactProof 2 $brainProof $brainProof) { Write-Output "SELFTEST_FAILURE_CASE=7"; exit 3 }
+ if (Test-ExactProof 0 @($brainProof[0..4] + @("REAL_SUBMIT_ALLOWED=1")) $brainProof) { Write-Output "SELFTEST_FAILURE_CASE=8"; exit 3 }
+ if (Test-ExactProof 0 @($brainProof + @("TICKER=PRIVATE")) $brainProof) { Write-Output "SELFTEST_FAILURE_CASE=9"; exit 3 }
  Write-Output "V10_WINDOWS_READONLY_SELFTEST=PASS"
  Write-Output "CONTROLLER_STARTED_BY_THIS_CHECK=0"
  Write-Output "REAL_SUBMIT_ALLOWED=0"
