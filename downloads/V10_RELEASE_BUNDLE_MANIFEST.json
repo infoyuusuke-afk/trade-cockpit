@@ -1,0 +1,131 @@
+{
+  "schema": "v10_release_candidate_blobs_v1",
+  "candidate_source_commit": "e906dedc45448ca20428a7ca1afa1126eaeeedaa",
+  "real_submit_allowed": false,
+  "files": [
+    {
+      "path": "downloads/RUN_AI_COCKPIT_V10.ps1",
+      "git_blob_sha": "4c5e74a5496f4a9a77733c8a7376137c8e99c848"
+    },
+    {
+      "path": "downloads/AI_COCKPIT_CONTROLLER_V10.ps1",
+      "git_blob_sha": "186b27dec700be8ed5a05db9028e61a71e8f005f"
+    },
+    {
+      "path": "downloads/EXCEL_IDENTITY_PROBE_V10.ps1",
+      "git_blob_sha": "75fae2d2890ccfebe2ba7315df854ae5dfe0464c"
+    },
+    {
+      "path": "downloads/AI_COCKPIT_GATEWAY_V10.ps1",
+      "git_blob_sha": "70ef4ae62f2e27c5036d5224bfaee5456c4a5360"
+    },
+    {
+      "path": "downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1",
+      "git_blob_sha": "91de01cddc116edd8fb243c5b8213c6fcb987d44"
+    },
+    {
+      "path": "downloads/STOP_AI_COCKPIT_V10.ps1",
+      "git_blob_sha": "64cbb17c65972ecc322226d1dc73e5b40cb62d1c"
+    },
+    {
+      "path": "downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1",
+      "git_blob_sha": "5730222751331c2a304712b6f6ed408de4835a11"
+    },
+    {
+      "path": "scripts/ai_shadow_supervisor.py",
+      "git_blob_sha": "95635db8fbb8a911f198b48f0e2c270abc09eb46"
+    },
+    {
+      "path": "scripts/ai_brain_observer.py",
+      "git_blob_sha": "291fadfa8b402fd6491c3f3eda8c23df3eb3ce20"
+    },
+    {
+      "path": "ms2_live/Kioxia_RSS_Live_Watcher.ps1",
+      "git_blob_sha": "bfe3b35fc4c9fd37ba875bf2dc5b3059344cf1f0"
+    },
+    {
+      "path": "ms2_live/Kioxia_Safety_Heartbeat.ps1",
+      "git_blob_sha": "43cc11b74764cac824e27905ed40ba3f9b524676"
+    },
+    {
+      "path": "ms2_live/MS2_RSS_100_Collector.ps1",
+      "git_blob_sha": "7b6c82b0cb91be284f7219134ba0e9d746c391b4"
+    },
+    {
+      "path": "ms2_live/MS2_Common_Engine.ps1",
+      "git_blob_sha": "51a1af60cdd65cd631d1d164566d271d037f597a"
+    },
+    {
+      "path": "ms2_live/BUILD_KIOXIA_TIME_STATS.ps1",
+      "git_blob_sha": "0fe2361968fae04390c3844ae07d7c06bdcdcea4"
+    },
+    {
+      "path": "ms2_live/SPEAK_TODAY_STRATEGY.ps1",
+      "git_blob_sha": "e879edecbc359bbbaa8420001a9a7b3e1b39ac52"
+    },
+    {
+      "path": "ms2_live/SPEAK_LIVE_EMOTION.ps1",
+      "git_blob_sha": "0b12d11d2ac4dc21f4787eb298e2fc63d29b6d74"
+    },
+    {
+      "path": "ms2_live/watchlist_100.json",
+      "git_blob_sha": "89a570b5337db5fab76e4e2b94cae8065e21c8a4"
+    },
+    {
+      "path": "index.html",
+      "git_blob_sha": "cb01cce5f7ed30f2670361ec5fad93ac3c57a693"
+    },
+    {
+      "path": "card_system.js",
+      "git_blob_sha": "3cdae4ebcd15ca2d7a3c907e519d7f010ce1c903"
+    },
+    {
+      "path": "card_system.css",
+      "git_blob_sha": "8a496fa26e9cafc72ecf5c356611552568f4d601"
+    },
+    {
+      "path": "card_table_adapter.css",
+      "git_blob_sha": "4fda021aee364d1770520e742653f77a44a8281d"
+    },
+    {
+      "path": "voice_client.js",
+      "git_blob_sha": "5b6bcd964ad883d9429eb92eef0b3216ec3f7d82"
+    },
+    {
+      "path": "opportunity_radar.js",
+      "git_blob_sha": "a1891da0be777fce00e3d856d5b606e359e4d09e"
+    },
+    {
+      "path": "card_table_adapter.js",
+      "git_blob_sha": "536e2fb331628574c378a51dd18b780e8c5e7f00"
+    },
+    {
+      "path": "trade_control.js",
+      "git_blob_sha": "b2d438582fb2ff4b97ba3b2077f152f31e12b2b9"
+    },
+    {
+      "path": "v10_publication_status.js",
+      "git_blob_sha": "2388bcb7267fd61847efbb145a1b2babc810ca8a"
+    },
+    {
+      "path": "theme.css",
+      "git_blob_sha": "fe43ba2e1e1c626911292b50fd1f3bbc07a3f4c8"
+    },
+    {
+      "path": "focus.css",
+      "git_blob_sha": "fc2f26fca0e08dc9082a135cdfcf30e52c071ca8"
+    },
+    {
+      "path": "next-theme-radar.css",
+      "git_blob_sha": "84c9fa67a715b979b900313806725ca7a8bcbdc3"
+    },
+    {
+      "path": "next-theme-radar.js",
+      "git_blob_sha": "c7796265d724d6e607a1efc1637171fba5f63cb9"
+    },
+    {
+      "path": "earnings-calendar.js",
+      "git_blob_sha": "7e8303595a46dcea1c0ee26efd880a4001c9e7c4"
+    }
+  ]
+}

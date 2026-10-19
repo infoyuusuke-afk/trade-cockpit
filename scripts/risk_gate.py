@@ -184,13 +184,42 @@ def validate_policy_v0_1(policy) -> list[str]:
     return violations
 
 
+_FRESHNESS_MODULE = None
+
+
+def _price_freshness_block_reasons(price_freshness) -> list[str]:
+    """Same quote-freshness rule as the Shadow supervisor and V10 /health.
+
+    price_freshness is a verdict dict, or a list/tuple of verdicts from
+    several components (e.g. Shadow and /health). Sizing is BLOCKed unless
+    every verdict is FRESH and they agree (combined_freshness in
+    scripts/ai_shadow_supervisor.py). An empty list is not evidence.
+    """
+    global _FRESHNESS_MODULE
+    if _FRESHNESS_MODULE is None:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "_v10_quote_freshness", Path(__file__).resolve().parent / "ai_shadow_supervisor.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _FRESHNESS_MODULE = module
+    verdicts = list(price_freshness) if isinstance(price_freshness, (list, tuple)) else [price_freshness]
+    if not verdicts:
+        return ["PRICE_FRESHNESS_MISSING"]
+    if len(verdicts) == 1:
+        verdicts = verdicts * 2  # a single verdict trivially agrees with itself
+    ok, reasons = _FRESHNESS_MODULE.combined_freshness(*verdicts)
+    return [] if ok else ["PRICE_NOT_FRESH:" + reason for reason in reasons]
+
+
 def _block(base: dict, reasons: list[str]) -> dict:
     return {**base, "decision": "BLOCK", "allowed_qty": 0, "block_reasons": reasons}
 
 
 def evaluate_risk(scenario: dict, *, available_cash_yen, open_positions_count,
                    realized_pnl_today_yen, regime_risk_multiplier,
-                   estimated_fees_buffer_yen, lot_size, policy: dict) -> dict:
+                   estimated_fees_buffer_yen, lot_size, policy: dict,
+                   price_freshness=None) -> dict:
     """Position Sizing / Risk Gateの中核となる純粋関数。同一入力からは常に
     同一のRiskDecisionを返す（generated_atはwall-clockの記録用メタデータで
     あり、判定ロジックには一切使わない）。
@@ -204,6 +233,10 @@ def evaluate_risk(scenario: dict, *, available_cash_yen, open_positions_count,
         呼び出し側が別途集計して渡す口座/商品/regimeスナップショット値
         （このファイルはbroker/Excel/RSSへ取りに行かない）。
     policy: load_policy()が返す辞書。
+    price_freshness: 省略可。scripts/ai_shadow_supervisor.assess_quote_freshness()
+        の判定（またはShadow・/health等の複数判定のリスト）。渡された場合、
+        全てFRESHかつ判定が一致しなければBLOCKする（古い気配でのSizing禁止）。
+        省略時（None）は従来どおり市場データ時刻を扱わない。
     """
     generated_at = now_jst().isoformat()
 
@@ -235,6 +268,11 @@ def evaluate_risk(scenario: dict, *, available_cash_yen, open_positions_count,
 
     if policy_violations:
         return _block(base, policy_violations)
+
+    if price_freshness is not None:
+        freshness_reasons = _price_freshness_block_reasons(price_freshness)
+        if freshness_reasons:
+            return _block(base, freshness_reasons)
 
     # --- BLOCK: 上流scenarioの状態検証 -----------------------------------
     if scenario.get("resolved_status") != "CANDIDATE_READY":

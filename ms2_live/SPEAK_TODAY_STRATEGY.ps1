@@ -11,9 +11,7 @@ $hasMutex = $false
 try { $hasMutex = $mutex.WaitOne(0, $false) } catch { $hasMutex = $false }
 if (-not $hasMutex) { exit 0 }
 
-$speaker = New-Object -ComObject SAPI.SpVoice
-$speaker.Rate = -2   # ユーザー指摘（聞き取りづらい）への対応。標準(0)よりやや遅くする
-$speaker.Volume = 100
+$speaker = $true # V9 SBV2 bridge only; no Windows SAPI
 $activeDay = (Get-Date).ToString("yyyy-MM-dd")
 $preopenSpoken = $false
 $openingRuleSpoken = $false
@@ -25,16 +23,11 @@ $lastModeSpokenAt = [datetime]::MinValue
 # 複数プロセスの発話が重ならないようにする（このスクリプト自身の多重起動防止用$mutexとは別物）。
 function Speak-Text([string]$text) {
     if ([string]::IsNullOrWhiteSpace($text)) { return }
-    $voiceMutex = $null
-    $voiceAcquired = $false
     try {
-        $voiceMutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
-        $voiceAcquired = $voiceMutex.WaitOne(20000)
-        $speaker.Speak($text, 0) | Out-Null
+        $encoded=[Uri]::EscapeDataString($text)
+        Invoke-WebRequest -UseBasicParsing -Uri ("http://127.0.0.1:28583/announce?level=WATCH&text="+$encoded) -TimeoutSec 35 | Out-Null
     } catch {
-    } finally {
-        if ($voiceAcquired -and $null -ne $voiceMutex) { try { $voiceMutex.ReleaseMutex() } catch {} }
-        if ($null -ne $voiceMutex) { $voiceMutex.Dispose() }
+        Write-Host ("[STRATEGY VOICE] SBV2 bridge unavailable; no SAPI fallback: "+$_.Exception.Message) -ForegroundColor DarkYellow
     }
 }
 

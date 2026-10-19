@@ -12,13 +12,19 @@ on:
       - "config/ai_organization_v1.json"
       - ".github/workflows/mobile-control-tests.yml"
   workflow_dispatch:
+permissions:
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt lxml
-      - run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: Fail-closed scope contract (only pinned V8/V9 legacy IDs may be excluded)
+        run: python -m unittest discover -s tests -p test_mobile_ci_scope_contract.py -v
+      - name: Full current suite except tests of removed V8/V9 scripts (D-003)
+        run: python scripts/ci_mobile_current_suite.py

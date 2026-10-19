@@ -1,6 +1,4 @@
-﻿param([ValidateRange(1024,65535)][int]$WatcherBridgePort = 28582)
-
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 $bookPath = Join-Path $PSScriptRoot "Kioxia_MS2_RSS_Live_Signals.xlsx"
 if (-not (Test-Path $bookPath)) {
@@ -45,22 +43,92 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port) {
                     $stream = $client.GetStream()
                     $reader = [IO.StreamReader]::new($stream,[Text.Encoding]::ASCII,$false,1024,$true)
                     $requestLine = $reader.ReadLine()
-                    while (($line = $reader.ReadLine()) -ne $null -and $line -ne "") {}
-                    $method = if ($requestLine) { ($requestLine -split ' ')[0] } else { "GET" }
-                    if ($method -eq "OPTIONS") {
+                    $requestHeaders = @{}
+                    $headerCount = 0
+                    while (($line = $reader.ReadLine()) -ne $null -and $line -ne "") {
+                        $headerCount++
+                        if ($headerCount -gt 64 -or $line.Length -gt 8192) { throw "V10_HTTP_HEADERS_TOO_LARGE" }
+                        $splitAt = $line.IndexOf(':')
+                        if ($splitAt -le 0) { throw "V10_HTTP_HEADER_MALFORMED" }
+                        $key = $line.Substring(0, $splitAt).Trim().ToLowerInvariant()
+                        if ($requestHeaders.ContainsKey($key)) { throw "V10_HTTP_DUPLICATE_HEADER" }
+                        $requestHeaders[$key] = $line.Substring($splitAt + 1).Trim()
+                    }
+                    $parts = if ($requestLine) { $requestLine -split ' ' } else { @() }
+                    $method = if ($parts.Count -ge 1) { $parts[0] } else { "" }
+                    $target = if ($parts.Count -ge 2) { $parts[1] } else { "" }
+                    $route = ($target -split '\?')[0]
+                    $expectedHost = "127.0.0.1:" + [string]$Port
+                    $browserOrigin = 'http://127.0.0.1:28581'
+                    $hasOrigin = $requestHeaders.ContainsKey('origin')
+                    $hostOk = $requestHeaders.ContainsKey('host') -and
+                        ($requestHeaders['host'] -ceq $expectedHost -or
+                         ($requestHeaders['host'] -ceq '127.0.0.1' -and -not $hasOrigin -and
+                          -not $requestHeaders.ContainsKey('sec-fetch-site')))
+                    $originOk = -not $hasOrigin -or $requestHeaders['origin'] -ceq $browserOrigin
+                    $siteOk = -not $requestHeaders.ContainsKey('sec-fetch-site') -or $requestHeaders['sec-fetch-site'] -cne 'cross-site'
+                    if (-not ($hostOk -and $originOk -and $siteOk)) {
+                        $bodyBytes = $utf8.GetBytes('{"status":"blocked","reason":"V10_HTTP_ORIGIN_BLOCKED","real_submit_allowed":false}')
+                        $status = "403 Forbidden"
+                        $contentType = "application/json; charset=utf-8"
+                    } elseif ($route -notin @('/', '/kioxia_watcher_live.json')) {
+                        $bodyBytes = $utf8.GetBytes('{"status":"blocked","reason":"V10_HTTP_ROUTE_BLOCKED","real_submit_allowed":false}')
+                        $status = "404 Not Found"
+                        $contentType = "application/json; charset=utf-8"
+                    } elseif ($method -notin @("GET", "OPTIONS")) {
+                        $bodyBytes = $utf8.GetBytes('{"status":"blocked","reason":"V10_HTTP_METHOD_BLOCKED","real_submit_allowed":false}')
+                        $status = "405 Method Not Allowed"
+                        $contentType = "application/json; charset=utf-8"
+                    } elseif ($method -eq "OPTIONS") {
                         $bodyBytes = [byte[]]@()
                         $status = "204 No Content"
                         $contentType = "text/plain"
-                    } elseif (Test-Path $JsonFile) {
-                        $bodyBytes = $utf8.GetBytes([IO.File]::ReadAllText($JsonFile,[Text.Encoding]::UTF8))
-                        $status = "200 OK"
+                    } elseif (Test-Path -LiteralPath $JsonFile) {
+                        # Publication freshness and declared lineage, NOT exchange-time
+                        # freshness or cryptographic authentication of MS2.
+                        $reason = "WATCHER_INVALID_PAYLOAD"
+                        $valid = $false
+                        try {
+                            $item = Get-Item -LiteralPath $JsonFile -ErrorAction Stop
+                            $raw = [IO.File]::ReadAllText($JsonFile,[Text.Encoding]::UTF8)
+                            $obj = $raw | ConvertFrom-Json -ErrorAction Stop
+                            $stamp = [string]$obj.observed_at_offset
+                            $fileAge = ([DateTime]::UtcNow - $item.LastWriteTimeUtc).TotalSeconds
+                            if ($obj.schema_version -cne 'kioxia-watcher-1.0' -or
+                                $obj.source -cne 'Kioxia_RSS_Live_Watcher (Excel RSS)' -or
+                                $obj.timestamp_timezone -cne 'Asia/Tokyo' -or
+                                $obj.real_submit_allowed -isnot [bool] -or $obj.real_submit_allowed -ne $false) {
+                                $reason = 'WATCHER_SOURCE_MISMATCH'
+                            } elseif ($stamp -notmatch '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+09:00$') {
+                                $reason = 'WATCHER_TIMESTAMP_INVALID'
+                            } else {
+                                $observed = [DateTimeOffset]::ParseExact($stamp, "yyyy-MM-dd'T'HH:mm:sszzz", [Globalization.CultureInfo]::InvariantCulture)
+                                $age = ([DateTimeOffset]::UtcNow - $observed).TotalSeconds
+                                if ($age -lt 0 -or $age -gt 60 -or $fileAge -lt 0 -or $fileAge -gt 60 -or
+                                    [string]$obj.updated_at -cne $observed.ToString('yyyy-MM-dd HH:mm:ss')) {
+                                    $reason = 'WATCHER_STALE_OR_FUTURE'
+                                } elseif ($obj.stale -eq $true -or $obj.data_conflict -eq $true -or
+                                          (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+                                    $reason = 'WATCHER_UNTRUSTED_PAYLOAD'
+                                } else { $valid = $true }
+                            }
+                        } catch { $valid = $false }
+                        if ($valid) {
+                            $bodyBytes = $utf8.GetBytes($raw)
+                            $status = "200 OK"
+                        } else {
+                            $bodyBytes = $utf8.GetBytes((@{status='blocked';reason=$reason;stale=$true;live_values_available=$false;real_submit_allowed=$false} | ConvertTo-Json -Compress))
+                            $status = "503 Service Unavailable"
+                        }
                         $contentType = "application/json; charset=utf-8"
                     } else {
-                        $bodyBytes = $utf8.GetBytes('{"status":"waiting"}')
+                        $bodyBytes = $utf8.GetBytes('{"status":"waiting","stale":true,"live_values_available":false,"real_submit_allowed":false}')
                         $status = "503 Service Unavailable"
                         $contentType = "application/json; charset=utf-8"
                     }
-                    $headers = "HTTP/1.1 $status`r`nContent-Type: $contentType`r`nContent-Length: $($bodyBytes.Length)`r`nCache-Control: no-store`r`nAccess-Control-Allow-Origin: *`r`nAccess-Control-Allow-Methods: GET, OPTIONS`r`nAccess-Control-Allow-Headers: *`r`nAccess-Control-Allow-Private-Network: true`r`nConnection: close`r`n`r`n"
+                    $allowUiOrigin = $hasOrigin -and $requestHeaders['origin'] -ceq $browserOrigin -and $hostOk -and $siteOk
+                    $cors = if ($allowUiOrigin) { "`r`nAccess-Control-Allow-Origin: $browserOrigin`r`nAccess-Control-Allow-Methods: GET, OPTIONS`r`nAccess-Control-Allow-Headers: Content-Type`r`nAccess-Control-Allow-Private-Network: true`r`nVary: Origin" } else { "" }
+                    $headers = "HTTP/1.1 $status`r`nContent-Type: $contentType`r`nContent-Length: $($bodyBytes.Length)`r`nCache-Control: no-store`r`nX-Content-Type-Options: nosniff" + $cors + "`r`nConnection: close`r`n`r`n"
                     $headerBytes = [Text.Encoding]::ASCII.GetBytes($headers)
                     $stream.Write($headerBytes,0,$headerBytes.Length)
                     if ($bodyBytes.Length -gt 0) { $stream.Write($bodyBytes,0,$bodyBytes.Length) }
@@ -139,20 +207,14 @@ function Get-StopClusterZones([double]$price, [double]$orHigh, [double]$orLow, [
 # システム全体で共有する名前付きMutex（Global\KioxiaVoiceMutex）を使い、他プロセスの発話が
 # 終わるまで待ってから同期的に(Speak flag=0)話すことで、重なりを防ぐ。
 function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 20000) {
-    if ($null -eq $speaker -or [string]::IsNullOrEmpty($text)) { return }
-    $mutex = $null
-    $acquired = $false
+    if ([string]::IsNullOrWhiteSpace($text)) { return }
     try {
-        $mutex = New-Object System.Threading.Mutex($false, "Global\KioxiaVoiceMutex")
-        $acquired = $mutex.WaitOne($timeoutMs)
-        # flag=0は同期発話（話し終わるまで戻らない）。これによりMutex保持中に他プロセスの
-        # 音声と時間的に重ならないことが保証される。取得できなくても発話自体は試みる
-        # （音声通知が完全に鳴らないより、多少重なっても鳴る方を優先）。
-        $speaker.Speak($text, 0) | Out-Null
+        $encoded = [Uri]::EscapeDataString($text)
+        $uri = "http://127.0.0.1:28583/announce?level=WATCH&text=" + $encoded
+        $r = Invoke-WebRequest -UseBasicParsing -Uri $uri -TimeoutSec ([Math]::Max(3,[int]($timeoutMs/1000)))
+        if ($r.StatusCode -ne 200) { throw "Voice bridge HTTP " + $r.StatusCode }
     } catch {
-    } finally {
-        if ($acquired -and $null -ne $mutex) { try { $mutex.ReleaseMutex() } catch {} }
-        if ($null -ne $mutex) { $mutex.Dispose() }
+        Write-Host ("[WATCHER VOICE] SBV2 bridge unavailable; no legacy SAPI fallback: " + $_.Exception.Message) -ForegroundColor DarkYellow
     }
 }
 
@@ -374,7 +436,7 @@ function Read-Chart($sheet, [string]$anchor) {
 }
 
 try {
-    $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application")
+    $excel = ([Runtime.InteropServices.Marshal]::BindToMoniker($bookPath)).Application
     Write-Host "RSS接続済みのExcelへ接続しました。" -ForegroundColor Green
 } catch {
     # 2026-09-14深夜の実機検証で判明: New-Object -ComObject Excel.Applicationで生成した
@@ -383,12 +445,21 @@ try {
     # 開く（シェル経由でExcel.exeを起動する）必要があるため、Start-Processでファイルを開き、
     # Excelプロセスが起動するのを待ってからGetActiveObjectで接続し直す。
     Write-Host "Excelが起動していません。ファイルを開いてアドインを正しく読み込みます。" -ForegroundColor Yellow
-    Start-Process $bookPath
+    $excelExe = @(
+    "C:\Program Files\Microsoft Office\Root\Office16\EXCEL.EXE",
+    "C:\Program Files (x86)\Microsoft Office\Root\Office16\EXCEL.EXE"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if (-not $excelExe) {
+    throw "EXCEL.EXE が見つかりません。"
+}
+
+Start-Process -FilePath $excelExe -ArgumentList "/x","`"$bookPath`""
     $excel = $null
     $connectDeadline = (Get-Date).AddSeconds(60)
     while ($null -eq $excel -and (Get-Date) -lt $connectDeadline) {
         Start-Sleep -Seconds 2
-        try { $excel = [Runtime.InteropServices.Marshal]::GetActiveObject("Excel.Application") } catch {}
+        try { $excel = ([Runtime.InteropServices.Marshal]::BindToMoniker($bookPath)).Application } catch {}
     }
     if ($null -eq $excel) {
         Write-Host "Excelの起動を確認できませんでした。" -ForegroundColor Red
@@ -398,7 +469,7 @@ try {
     Write-Host "Excelへ接続しました。RSSタブで『接続』を確認してください。" -ForegroundColor Yellow
 }
 Invoke-ComRetry { $excel.Visible = $true } | Out-Null
-Invoke-ComRetry { $excel.DisplayAlerts = $false } | Out-Null
+# Do not mutate Excel.Application.DisplayAlerts here. It is application-scoped and can leak into unrelated Excel UI after abnormal termination.
 $book = Invoke-ComRetry {
     $found = $null
     foreach ($candidate in $excel.Workbooks) {
@@ -508,9 +579,7 @@ $dash.Range("G25").NumberFormat = "hh:mm:ss"
 # 過去のA5/B5と同じ理由（非アンカーセルへの書き込みは無音で無視される）で表示されないため、
 # ラベルと値を1つの文字列に結合してA26へ毎ループ書き込む。
 
-$speaker = New-Object -ComObject SAPI.SpVoice
-$speaker.Volume = 100
-$speaker.Rate = -2   # ユーザー指摘（聞き取りづらい）への対応。標準(0)よりやや遅くして聞き取りやすくする
+$speaker = $true # V9 voice goes only through the SBV2 bridge on 28583; no Windows SAPI
 $lastSpokenSignal = ""
 $lastSpokenAt = Get-Date "2000-01-01"
 $lastLoggedBar = ""
@@ -552,11 +621,16 @@ $script:tickPollSeq = 0
 # キオクシアタブの一本化（ユーザー指示・2026-09-15）: これまでExcelのDASHBOARDシートと
 # 公開コクピットのキオクシアタブが別々の計算式で似た指標を出しており「どちらを見ればいいか
 # わからない」状態だった。WatcherのDASHBOARD計算結果をJSONとして書き出し、ローカルHTTP
-# （既定127.0.0.1:28582）で配信する。28581はAI Cockpit Gateway専用のため競合させない。
+# （127.0.0.1:28582）で配信することで、ブラウザ側がこのJSONを直接読みに行けるようにする。
 # Excelは裏で動かしたまま、PC上ではブラウザだけを見ればよい構成にするための土台。
+#
+# ポート28582（2026-09-25修正・V8）: 以前は28581を使っていたが、AI_COCKPIT_GATEWAY_V8.ps1
+# が公開ページ全体をローカルから配信するために同じ28581を使うため、同時起動すると
+# 片方がbindに失敗して無言で壊れていた（Start-Jobの例外はここでは検知されない）。
+# Watcher専用ポートを28582へ分離し、Controller側の生存監視にも使えるようにした。
 $watcherJsonPath = Join-Path $PSScriptRoot "kioxia_watcher_live.json"
-$watcherBridgeJob = Start-LocalJsonBridge $watcherJsonPath $WatcherBridgePort
-Write-Host ("キオクシアWatcher連携: http://127.0.0.1:{0}/kioxia_watcher_live.json" -f $WatcherBridgePort) -ForegroundColor Cyan
+$watcherBridgeJob = Start-LocalJsonBridge $watcherJsonPath 28582
+Write-Host "キオクシアWatcher連携: http://127.0.0.1:28582/kioxia_watcher_live.json" -ForegroundColor Cyan
 
 Write-Host "キオクシアLIVE監視を開始しました。終了はこの画面で Ctrl+C。" -ForegroundColor Cyan
 $dash.Activate()
@@ -825,7 +899,10 @@ try {
             $watcherPayload = [ordered]@{
                 schema_version = "kioxia-watcher-1.0"
                 updated_at = $now.ToString("yyyy-MM-dd HH:mm:ss")
+                observed_at_offset = $now.ToString("yyyy-MM-ddTHH:mm:sszzz")
+                timestamp_timezone = "Asia/Tokyo"
                 source = "Kioxia_RSS_Live_Watcher (Excel RSS)"
+                real_submit_allowed = $false
                 state = $state
                 signal = $signal
                 price = $price
@@ -901,6 +978,10 @@ try {
       Start-Sleep -Seconds 2
     }
 } finally {
+    if ($null -ne $watcherBridgeJob) {
+        Stop-Job $watcherBridgeJob -ErrorAction SilentlyContinue
+        Remove-Job $watcherBridgeJob -Force -ErrorAction SilentlyContinue
+    }
     $rss.Range("B16").Value2 = "停止"
     $book.Save()
     Write-Host "監視を停止しました。Excelは開いたままです。" -ForegroundColor Yellow
