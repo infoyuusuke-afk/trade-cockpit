@@ -51,7 +51,7 @@ jobs:
         run: |
           set -o pipefail
           export V10_SYNTHETIC_METRICS="$PWD/v10_synthetic_metrics.json"
-          python -m unittest tests/test_v10_price_freshness.py tests/test_v10_live_row_gate_http.py tests/test_v10_row_gate_operability.py -v 2>&1 | tee freshness.log
+          python -m unittest tests/test_v10_price_freshness.py tests/test_v10_live_row_gate_http.py tests/test_v10_row_gate_operability.py tests/test_v10_market_operability.py -v 2>&1 | tee freshness.log
           # Gateway/Collector parity runs in Windows PowerShell 5.1, the
           # production host. It may skip on Linux (no powershell.exe) but
           # must never skip on Windows.

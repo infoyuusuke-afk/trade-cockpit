@@ -49,7 +49,7 @@ class V10GuardedLaunchContract(unittest.TestCase):
         self.assertIn("RUNTIME_STATE=UNKNOWN_AFTER_RUNNER", SOURCE)
 
     def test_component_inventory_explicit_and_nonempty(self):
-        self.assertEqual(len(self.component_paths()), 30)
+        self.assertEqual(len(self.component_paths()), 31)
         self.assertIn("downloads/STOP_AI_COCKPIT_V10.ps1", self.component_paths())
         self.assertIn("downloads/AI_COCKPIT_CONTROLLER_V10.ps1", self.component_paths())
         self.assertIn("scripts/ai_brain_observer.py", self.component_paths())
@@ -66,11 +66,11 @@ class V10GuardedLaunchContract(unittest.TestCase):
             {item["path"] for item in manifest["files"]},
             set(self.component_paths())
         )
-        self.assertEqual(len(manifest["files"]), 30)
+        self.assertEqual(len(manifest["files"]), 31)
         self.assertIn("V10_RELEASE_SOURCE_BLOB_MISMATCH", SOURCE)
         self.assertIn("V10_RELEASE_MANIFEST_REAL_SUBMIT_MUST_BE_FALSE", SOURCE)
         self.assertLess(
-            SOURCE.index("V10_RELEASE_SOURCE_BLOBS_MATCH=30"),
+            SOURCE.index("V10_RELEASE_SOURCE_BLOBS_MATCH=31"),
             SOURCE.index("V10_REVIEWED_RUNNER_HANDOFF=1")
         )
 

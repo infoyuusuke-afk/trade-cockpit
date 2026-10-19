@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Compare 24 unchanged + 1 UI stale repair + 4 security-pinned + 1 freshness-repaired sources
+      - name: Compare 25 unchanged + 1 UI stale repair + 4 security-pinned + 1 freshness-repaired sources
         shell: bash
         run: |
           set -euo pipefail
@@ -38,7 +38,7 @@ jobs:
           git fetch --no-tags --depth=1 origin "$pinned"
           python -m json.tool downloads/V10_RELEASE_BUNDLE_MANIFEST.json > /dev/null
           mapfile -t files < <(python -c 'import json; print("\n".join(item["path"] for item in json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json", encoding="utf-8"))["files"]))')
-          test "${#files[@]}" -eq 30
+          test "${#files[@]}" -eq 31
           for file in "${files[@]}"; do
             test -f "$file"
             git cat-file -e "$pinned:$file"

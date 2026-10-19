@@ -1332,6 +1332,9 @@ function Get-LivePriceRejection {
         if ($diag.duplicate_collector -eq $true) { [void]$reasons.Add("DUPLICATE_COLLECTOR") }
         if ($diag.duplicate_watcher -eq $true) { [void]$reasons.Add("DUPLICATE_WATCHER") }
         if ([string]$diag.stale_reason -match 'WRONG_SYMBOL_MAPPING') { [void]$reasons.Add("WRONG_SYMBOL_MAPPING") }
+        foreach ($namedReason in @("IDENTITY_UNTRADED", "EXCEL_COM_BUSY", "EXCEL_COM_READ_FAILED")) {
+            if ((([string]$diag.stale_reason) -split ',') -ccontains $namedReason) { [void]$reasons.Add($namedReason) }
+        }
     }
     if ($null -ne $LiveObj -and ($LiveObj.data_conflict -eq $true)) { [void]$reasons.Add("DATA_CONFLICT") }
     if ($null -ne $LiveObj -and [string]$LiveObj.price_source_status -eq "PRICE_SOURCE_MISMATCH") { [void]$reasons.Add("PRICE_SOURCE_MISMATCH") }
@@ -2059,6 +2062,40 @@ try {
                     if ($isFresh -and $null -ne $v.ticker -and $priceByTicker.ContainsKey($v.ticker)) { $obsPrice = $priceByTicker[$v.ticker] }
                     [void]$obsList.Add([ordered]@{ ticker = $v.ticker; state = [string]$v.state; reasons = @($v.reasons); quote_at = $v.quote_at; quote_age_seconds = $v.quote_age_seconds; observed_price = $obsPrice })
                 }
+                # Every expected ticker is listed. One with no row on the board
+                # is UNKNOWN (no price this loop, mapping right), INVALID (the
+                # sheet code is not this ticker) or UNKNOWN/ROW_ABSENT (the
+                # Collector did not say why). Never a price or a time.
+                $listedSet = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+                foreach ($entry in $obsList) { if ($entry.ticker -is [string]) { [void]$listedSet.Add($entry.ticker) } }
+                $declaredMissing = @{}
+                foreach ($m in @($obsObj.missing_rows)) { if ($null -ne $m -and $m.ticker -is [string] -and -not $declaredMissing.ContainsKey($m.ticker)) { $declaredMissing[$m.ticker] = $m } }
+                $obsUniverse = Get-ExpectedUniverse $RuntimeDir
+                if ($null -ne $obsUniverse -and $obsUniverse.verified -eq $true) {
+                    foreach ($expectedTicker in @($obsUniverse.tickers)) {
+                        if ($listedSet.Contains([string]$expectedTicker)) { continue }
+                        $m = $(if ($declaredMissing.ContainsKey([string]$expectedTicker)) { $declaredMissing[[string]$expectedTicker] } else { $null })
+                        $missingState = "UNKNOWN"; $missingReason = "ROW_ABSENT_FROM_PAYLOAD"
+                        if ($null -ne $m) {
+                            if ($m.sheet_code_matches -eq $true) { $missingReason = "ROW_PRICE_MISSING" } else { $missingState = "INVALID"; $missingReason = "ROW_SHEET_CODE_MISMATCH" }
+                        }
+                        [void]$obsList.Add([ordered]@{ ticker = [string]$expectedTicker; state = $missingState; reasons = @($missingReason); quote_at = $null; quote_age_seconds = $null; observed_price = $null })
+                        [void]$listedSet.Add([string]$expectedTicker)
+                    }
+                }
+                $obsCounts = [ordered]@{ FRESH = 0; STALE = 0; UNKNOWN = 0; INVALID = 0 }
+                foreach ($entry in $obsList) { if ($obsCounts.Contains([string]$entry.state)) { $obsCounts[[string]$entry.state]++ } }
+                $obsExpected = $(if ($null -ne $obsUniverse -and $obsUniverse.verified -eq $true) { @($obsUniverse.tickers).Count } else { $null })
+                $obsMissingPrice = @($obsList | Where-Object { @($_.reasons) -contains "ROW_PRICE_MISSING" -or @($_.reasons) -contains "ROW_SHEET_CODE_MISMATCH" -or @($_.reasons) -contains "ROW_ABSENT_FROM_PAYLOAD" }).Count
+                $observationSummary = [ordered]@{
+                    expected_count = $obsExpected
+                    listed_count = $obsList.Count
+                    all_expected_listed = ($null -ne $obsExpected -and $obsList.Count -ge $obsExpected)
+                    state_counts = $obsCounts
+                    fresh_pct = $(if ($obsExpected -gt 0) { [Math]::Round(100.0 * $obsCounts.FRESH / $obsExpected, 1) } else { $null })
+                    missing_row_count = $obsMissingPrice
+                    missing_pct = $(if ($obsExpected -gt 0) { [Math]::Round(100.0 * $obsMissingPrice / $obsExpected, 1) } else { $null })
+                }
                 $obsPayload = [ordered]@{
                     schema_version = "v10-observation-1"
                     status = "observing"
@@ -2069,6 +2106,7 @@ try {
                     availability = (Get-AvailabilitySummary $obsAvailability)
                     identity_quote_freshness = $obsQuote
                     missing_tickers = @($obsAvailability.missing_sample)
+                    observation_summary = $observationSummary
                     rows = $obsList.ToArray()
                     derived_fields = "WITHHELD"
                     order_allowed = $false

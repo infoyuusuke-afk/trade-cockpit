@@ -66,6 +66,9 @@ function Get-SheetSymbolCode($table, [int]$row) {
 
 $script:IdentityTicker = "285A.T"
 $script:preopenIdentitySpare = $null
+# The identity row this loop when its sheet code is the identity ticker but it
+# has no current price (no trade yet). Its own state, not a symbol mismatch.
+$script:identityUntraded = $null
 $script:identityQuoteObservation = $null
 $script:rowQuoteObservations = @{}
 
@@ -274,6 +277,7 @@ function Get-IdentityQuote($Rows) {
         if (Test-PreopenZeroPriceIdentity $true $identity $spareSheet $spareTime $null) {
             return [pscustomobject]@{
                 ok = $true
+                untraded = $false
                 symbol = $identity
                 current_price = 0
                 sheet_code = $identity
@@ -281,13 +285,71 @@ function Get-IdentityQuote($Rows) {
             }
         }
     }
+    if (-not $ok -and $null -eq $match -and $null -ne $script:identityUntraded -and
+        ([string]$script:identityUntraded.sheet_code).Trim().ToUpperInvariant() -ceq $identity) {
+        # Mapping proved by the sheet code; only the price is missing. Still
+        # not a usable quote: ok stays false and nothing is backfilled.
+        return [pscustomobject]@{
+            ok = $false
+            untraded = $true
+            symbol = $identity
+            current_price = $null
+            sheet_code = $identity
+            source_timestamp = $script:identityUntraded.source_timestamp
+        }
+    }
     return [pscustomobject]@{
         ok = $ok
+        untraded = $false
         symbol = $(if ($ok) { $identity } else { $null })
         current_price = $price
         sheet_code = $sheet
         source_timestamp = $stamp
     }
+}
+
+function Set-IdentityNullPriceState([bool]$InPreopen, [string]$SheetCode, [string]$QuoteTime) {
+    # The identity row has no current price this loop. Before the open with a
+    # proper quote time it is the zero-price pre-open spare (unchanged).
+    # Otherwise remember the sheet code and time so Get-IdentityQuote can tell
+    # "not traded yet" (sheet code is the identity) from a wrong mapping.
+    $identity = [string]$script:IdentityTicker
+    if (Test-PreopenZeroPriceIdentity $InPreopen $identity $SheetCode $QuoteTime $null) {
+        $script:preopenIdentitySpare = [pscustomobject]@{
+            ok = $true
+            symbol = $identity
+            current_price = 0
+            sheet_code = $SheetCode
+            source_timestamp = $QuoteTime
+        }
+    } else {
+        $script:identityUntraded = [pscustomobject]@{ sheet_code = $SheetCode; source_timestamp = $QuoteTime }
+    }
+}
+
+function New-MissingRowRecord([string]$Ticker, [string]$SheetCode, [string]$QuoteTime) {
+    # A watchlist row with no current price. sheet_code_matches=false means
+    # the sheet's code cell is not this ticker (mapping problem); true means
+    # the mapping is right and only the price is missing (untraded, or the
+    # RSS cell is empty). The raw time text is kept as is; no date or price.
+    $expected = ([string]$Ticker).Trim().ToUpperInvariant()
+    return [ordered]@{
+        ticker = $Ticker
+        reason = "PRICE_MISSING"
+        sheet_code_matches = (-not [string]::IsNullOrWhiteSpace($SheetCode) -and ([string]$SheetCode).Trim().ToUpperInvariant() -ceq $expected)
+        source_time_text = $(if ([string]::IsNullOrWhiteSpace($QuoteTime)) { $null } else { [string]$QuoteTime })
+        price = $null
+    }
+}
+
+function Get-IdentitySourceReason($IdentityQuote) {
+    # IDENTITY_UNTRADED: the identity row maps to the identity ticker but has
+    # no current price yet (before the first trade). WRONG_SYMBOL_MAPPING:
+    # anything else that is not a usable identity quote. Both fail closed.
+    if ($null -eq $IdentityQuote) { return "WRONG_SYMBOL_MAPPING" }
+    if ($IdentityQuote.ok -eq $true) { return "" }
+    if ($IdentityQuote.untraded -eq $true) { return "IDENTITY_UNTRADED" }
+    return "WRONG_SYMBOL_MAPPING"
 }
 
 function Get-WorkbookPublicationId([string]$Value) {
@@ -1223,6 +1285,9 @@ function Start-LocalJsonBridge([string]$jsonFile, [int]$port = 28580, [string]$C
                 if ($diag.duplicate_collector -eq $true) { [void]$reasons.Add("DUPLICATE_COLLECTOR") }
                 if ($diag.duplicate_watcher -eq $true) { [void]$reasons.Add("DUPLICATE_WATCHER") }
                 if ([string]$diag.stale_reason -match 'WRONG_SYMBOL_MAPPING') { [void]$reasons.Add("WRONG_SYMBOL_MAPPING") }
+                foreach ($namedReason in @("IDENTITY_UNTRADED", "EXCEL_COM_BUSY", "EXCEL_COM_READ_FAILED")) {
+                    if ((([string]$diag.stale_reason) -split ',') -ccontains $namedReason) { [void]$reasons.Add($namedReason) }
+                }
             }
             if ($null -ne $obj -and ($obj.data_conflict -eq $true)) { [void]$reasons.Add("DATA_CONFLICT") }
             if ($null -ne $obj -and [string]$obj.price_source_status -eq "PRICE_SOURCE_MISMATCH") { [void]$reasons.Add("PRICE_SOURCE_MISMATCH") }
@@ -1404,6 +1469,106 @@ function Invoke-ExcelCom {
         }
     }
     throw ($Label + "：Excelが応答しません。数秒後にもう一度実行してください。")
+}
+
+# --- Excel COM reads inside the monitoring loop (P0-2) --------------------
+# Excel rejects COM calls while RSS is recalculating (0x80010001
+# RPC_E_CALL_REJECTED, 0x8001010A RPC_E_SERVERCALL_RETRYLATER, 0x800AC472
+# VBA_E_IGNORE). A loop read retries those at most 8 times, 250 ms apart
+# (about 2 s), like the Watcher's short retry, instead of the 60 s startup
+# retry. Every busy error, recovery and final failure is counted and logged.
+# A read that still fails makes this loop publish a fail-closed payload with
+# no prices; the previous board is never re-published as LIVE.
+$script:excelComTelemetry = [ordered]@{
+    busy_errors = 0; recovered_reads = 0; failed_reads = 0; other_errors = 0; stopped_reads = 0
+    consecutive_failed_loops = 0; last_event = $null
+}
+
+function Get-ExcelComErrorCode($ErrorRecord) {
+    $code = $ErrorRecord.Exception.HResult
+    if ($null -ne $ErrorRecord.Exception.InnerException) { $code = $ErrorRecord.Exception.InnerException.HResult }
+    return [int]$code
+}
+
+function Test-ExcelComBusyCode([int]$Code) {
+    return (@(-2147418111, -2147417846, -2146777998) -contains $Code)
+}
+
+function Add-ExcelComEvent([string]$Kind, [string]$Label, $Code, [int]$Attempts) {
+    $hex = $(if ($null -eq $Code) { "" } else { "0x{0:X8}" -f [int]$Code })
+    $script:excelComTelemetry.last_event = [ordered]@{
+        kind = $Kind; label = $Label; code = $hex; attempts = $Attempts
+        at = (Get-JstNow).ToString("yyyy-MM-ddTHH:mm:sszzz", [Globalization.CultureInfo]::InvariantCulture)
+    }
+    Write-Host ("[EXCEL-COM] {0} {1} code={2} attempts={3}" -f $Kind, $Label, $hex, $Attempts) -ForegroundColor $(if ($Kind -eq "RECOVERED") { "Yellow" } else { "Red" })
+}
+
+function Invoke-ExcelComRead {
+    # Never throws. ok=$true with value, or ok=$false with error_class
+    # BUSY (retries used up), OTHER (not a busy error; not retried) or
+    # STOPPED (ShouldStop returned true before the next attempt).
+    param(
+        [Parameter(Mandatory = $true)][string]$Label,
+        [Parameter(Mandatory = $true)][scriptblock]$Action,
+        [int]$MaxAttempts = 8,
+        [int]$DelayMilliseconds = 250,
+        [scriptblock]$ShouldStop = $null
+    )
+    $busy = 0
+    $code = $null
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        if ($null -ne $ShouldStop -and (& $ShouldStop)) {
+            $script:excelComTelemetry.stopped_reads++
+            Add-ExcelComEvent "STOPPED" $Label $code ($attempt - 1)
+            return [pscustomobject]@{ ok = $false; value = $null; attempts = ($attempt - 1); error_class = "STOPPED"; error_code = $code }
+        }
+        try {
+            $value = & $Action
+            if ($busy -gt 0) {
+                $script:excelComTelemetry.recovered_reads++
+                Add-ExcelComEvent "RECOVERED" $Label $code $attempt
+            }
+            return [pscustomobject]@{ ok = $true; value = $value; attempts = $attempt; error_class = ""; error_code = $null }
+        } catch {
+            $code = Get-ExcelComErrorCode $_
+            if (-not (Test-ExcelComBusyCode $code)) {
+                $script:excelComTelemetry.other_errors++
+                $script:excelComTelemetry.failed_reads++
+                Add-ExcelComEvent "FAILED_OTHER" $Label $code $attempt
+                return [pscustomobject]@{ ok = $false; value = $null; attempts = $attempt; error_class = "OTHER"; error_code = $code }
+            }
+            $busy++
+            $script:excelComTelemetry.busy_errors++
+            if ($attempt -lt $MaxAttempts) { Start-Sleep -Milliseconds $DelayMilliseconds }
+        }
+    }
+    $script:excelComTelemetry.failed_reads++
+    Add-ExcelComEvent "FAILED_BUSY" $Label $code $MaxAttempts
+    return [pscustomobject]@{ ok = $false; value = $null; attempts = $MaxAttempts; error_class = "BUSY"; error_code = $code }
+}
+
+function Get-ExcelComReason($Read) {
+    if ($Read.ok -eq $true) { return "" }
+    if ($Read.error_class -ceq "BUSY") { return "EXCEL_COM_BUSY" }
+    return "EXCEL_COM_READ_FAILED"
+}
+
+function New-ExcelComFailClosedPayload([datetime]$Now, [string]$Reason) {
+    # Published when this loop could not read the board. No rows, prices,
+    # signals or candidates: only the reason and the COM counters.
+    $diag = [ordered]@{
+        price_source_status = $Reason; stale_reason = $Reason; source_mode = "MS2_RSS_WORKBOOK"
+        symbol = $null; current_price = $null; live_values_available = $false; data_conflict = $true
+        real_submit_allowed = $false; collector_pid = $PID; excel_com = $script:excelComTelemetry
+    }
+    return [ordered]@{
+        schema_version = 'ms2-common-1.0'; updated_at = $Now.ToString("yyyy-MM-dd HH:mm:ss")
+        observed_at_offset = $Now.ToString("yyyy-MM-ddTHH:mm:sszzz"); timestamp_timezone = "Asia/Tokyo"
+        source = "MarketSpeed II RSS / local PC"; source_mode = "MS2_RSS_WORKBOOK"; universe = 100; valid = 0
+        stale = $true; stale_reason = $Reason; data_conflict = $true; price_source_status = $Reason
+        live_values_available = $false; real_submit_allowed = $false; live_price_diagnostics = $diag
+        top5 = @(); hold_top5 = @(); pts_top5 = @(); ir_pts_top5 = @(); all_targets = @()
+    }
 }
 
 if (-not (Test-Path $WatchlistPath)) { throw "watchlist_100.json がありません: $WatchlistPath" }
@@ -1902,19 +2067,27 @@ try {
             }
         }
 
-        $valuePacket = Invoke-ExcelCom -Label "リアルタイム値取得" -Action {
+        $valueRead = Invoke-ExcelComRead -Label "リアルタイム値取得" -Action {
             [pscustomobject]@{ Data = $sheet.Range("E2:AJ101").Value2 }
         }
-        $values = $valuePacket.Data
-        $codeColumn = $null
-        try {
-            $codePacket = Invoke-ExcelCom -Label "銘柄コード照合" -Action {
-                [pscustomobject]@{ Data = $sheet.Range("B2:B101").Value2 }
-            }
-            if ($null -ne $codePacket) { $codeColumn = $codePacket.Data }
-        } catch {
-            $codeColumn = $null
+        if ($valueRead.ok -ne $true) {
+            # No board this loop: publish fail-closed (no prices) and try again
+            # next loop. A non-busy error still stops the Collector as before.
+            $script:excelComTelemetry.consecutive_failed_loops++
+            $failText = (New-ExcelComFailClosedPayload $now (Get-ExcelComReason $valueRead)) | ConvertTo-Json -Depth 6
+            Write-AtomicUtf8 $jsonPath $failText
+            if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $failText }
+            if ($valueRead.error_class -ceq "OTHER") { throw ("リアルタイム値取得：Excel COM エラー " + $script:excelComTelemetry.last_event.code) }
+            Start-Sleep -Seconds $IntervalSeconds
+            continue
         }
+        $script:excelComTelemetry.consecutive_failed_loops = 0
+        $values = $valueRead.value.Data
+        $codeColumn = $null
+        $codeRead = Invoke-ExcelComRead -Label "銘柄コード照合" -Action {
+            [pscustomobject]@{ Data = $sheet.Range("B2:B101").Value2 }
+        }
+        if ($codeRead.ok -eq $true -and $null -ne $codeRead.value) { $codeColumn = $codeRead.value.Data }
         $symbolMismatchCount = 0
         $symbolMismatchSamples = @()
         $diagnosticSamples = @()
@@ -1950,7 +2123,12 @@ try {
             }
         }
         $script:preopenIdentitySpare = $null
+        $script:identityUntraded = $null
         $results = @()
+        # Rows with no current price this loop. They are not on the board, but
+        # they are published by ticker (no price, no time invented) so the
+        # observation layer can list all 100 symbols.
+        $missingRows = New-Object System.Collections.Generic.List[object]
         $validCount = 0
         $preopenQuoteCount = 0
         $snapshotDue = (($now - $lastSnapshotAt).TotalSeconds -ge $SnapshotSeconds)
@@ -1998,18 +2176,11 @@ try {
                 if($inPreopen -and $quoteCenter -gt 0){$price=$quoteCenter}
                 elseif($inPreopen -and $null -ne $reference -and $reference -gt 0){$price=$reference}
                 else {
+                    [void]$missingRows.Add((New-MissingRowRecord $ticker (Get-SheetSymbolCode $codeColumn $r) (Get-TimeText (Get-TableValue $values $r 2))))
                     if ($ticker -eq $script:IdentityTicker) {
                         $sheetEarly = Get-SheetSymbolCode $codeColumn $r
                         $quoteEarly = Get-TimeText (Get-TableValue $values $r 2)
-                        if (Test-PreopenZeroPriceIdentity $inPreopen $ticker $sheetEarly $quoteEarly $null) {
-                            $script:preopenIdentitySpare = [pscustomobject]@{
-                                ok = $true
-                                symbol = $script:IdentityTicker
-                                current_price = 0
-                                sheet_code = $sheetEarly
-                                source_timestamp = $quoteEarly
-                            }
-                        }
+                        Set-IdentityNullPriceState $inPreopen $sheetEarly $quoteEarly
                     }
                     continue
                 }
@@ -2309,19 +2480,22 @@ try {
         $sourceReasons = New-Object System.Collections.Generic.List[string]
         $loopName = ""
         $loopFull = ""
-        try {
-            $loopName = [string]$book.Name
-            $loopFull = [string]$book.FullName
-        } catch {
-            $loopName = ""
-            $loopFull = ""
+        $nameRead = Invoke-ExcelComRead -Label "ブック名確認" -Action { [pscustomobject]@{ Name = [string]$book.Name; FullName = [string]$book.FullName } }
+        if ($nameRead.ok -eq $true) {
+            $loopName = [string]$nameRead.value.Name
+            $loopFull = [string]$nameRead.value.FullName
         }
+        # A COM read that failed is reported as such, not as a wrong workbook
+        # or a wrong symbol; either way this loop is fail-closed.
+        $comReasons = @(@((Get-ExcelComReason $nameRead), (Get-ExcelComReason $codeRead)) | Where-Object { $_ } | Select-Object -Unique)
+        foreach ($comReason in $comReasons) { [void]$sourceReasons.Add($comReason) }
         $workbookCanonical = Test-BoundWorkbookIdentity $loopName $loopFull $script:canonicalWorkbookPath $WorkbookName
-        if (-not $workbookCanonical) { [void]$sourceReasons.Add("WRONG_SOURCE_WORKBOOK") }
+        if (-not $workbookCanonical -and $nameRead.ok -eq $true) { [void]$sourceReasons.Add("WRONG_SOURCE_WORKBOOK") }
         $identityQuote = Get-IdentityQuote $results
         $script:identityQuoteObservation = Update-QuoteObservation $script:identityQuoteObservation ([string]$identityQuote.source_timestamp) (Get-JstNow)
-        if (-not $identityQuote.ok) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
-        if ($symbolMismatchCount -gt 0) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
+        $identityReason = Get-IdentitySourceReason $identityQuote
+        if (-not [string]::IsNullOrEmpty($identityReason) -and $codeRead.ok -eq $true) { [void]$sourceReasons.Add($identityReason) }
+        if ($symbolMismatchCount -gt 0 -and $codeRead.ok -eq $true) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
         $collectorProcessCount = Get-ScriptProcessCount "MS2_RSS_100_Collector.ps1"
         $watcherProcessCount = Get-ScriptProcessCount "Kioxia_RSS_Live_Watcher.ps1"
         if ($null -eq $collectorProcessCount) { [void]$sourceReasons.Add("DUPLICATE_PROCESS_CHECK_UNAVAILABLE") }
@@ -2366,6 +2540,7 @@ try {
             live_values_available = [bool]$publishLiveValues
             real_submit_allowed = $false
             symbol_mismatch_count = $symbolMismatchCount
+            excel_com = $script:excelComTelemetry
             mismatches = @($symbolMismatchSamples)
             samples = @($diagnosticSamples)
         }
@@ -2759,7 +2934,7 @@ try {
             Hide-UntrustedLivePrices $irPtsTop5
             Hide-UntrustedLivePrices @($kioxiaPts)
         }
-        $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");observed_at_offset=$now.ToString("yyyy-MM-ddTHH:mm:sszzz");timestamp_timezone="Asia/Tokyo";source="MarketSpeed II RSS / local PC";source_mode=$livePriceDiagnostics.source_mode;universe=100;valid=$validCount;stale=(-not $publishLiveValues);stale_reason=$staleReason;data_conflict=[bool]$script:priceSourceMismatch;price_source_status=$livePriceDiagnostics.price_source_status;live_values_available=[bool]$publishLiveValues;real_submit_allowed=$false;live_price_diagnostics=$livePriceDiagnostics;preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results}
+        $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");observed_at_offset=$now.ToString("yyyy-MM-ddTHH:mm:sszzz");timestamp_timezone="Asia/Tokyo";source="MarketSpeed II RSS / local PC";source_mode=$livePriceDiagnostics.source_mode;universe=100;valid=$validCount;stale=(-not $publishLiveValues);stale_reason=$staleReason;data_conflict=[bool]$script:priceSourceMismatch;price_source_status=$livePriceDiagnostics.price_source_status;live_values_available=[bool]$publishLiveValues;real_submit_allowed=$false;live_price_diagnostics=$livePriceDiagnostics;preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results;missing_row_count=$missingRows.Count;missing_rows=@($missingRows)}
         $jsonText=$payload|ConvertTo-Json -Depth 6
         Write-AtomicUtf8 $jsonPath $jsonText
         if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $jsonText }

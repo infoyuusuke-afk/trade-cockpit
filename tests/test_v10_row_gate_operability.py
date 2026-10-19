@@ -906,7 +906,9 @@ try {
         $now = [DateTimeOffset]::ParseExact($step.now, 'yyyy-MM-ddTHH:mm:sszzz', $inv)
         if ($step.collector_writes -eq $true) {
             $rows = New-Object System.Collections.Generic.List[object]
+            $absent = @($step.absent)
             for ($i = 0; $i -lt $universe.tickers.Count; $i++) {
+                if ($absent -contains $i) { continue }  # no price: the Collector leaves the row out
                 $ticker = $universe.tickers[$i]
                 $obs = Get-RowQuoteObservation $table $ticker ([string]$step.times[$i]) $now
                 [void]$rows.Add([pscustomobject]@{
@@ -918,6 +920,11 @@ try {
                 })
             }
             $lastRows = $rows.ToArray()
+            $lastWrite = $now
+        }
+        if ($step.com_fail -eq $true) {
+            # The Collector could not read Excel: it publishes no rows.
+            $lastRows = @()
             $lastWrite = $now
         }
         $cycles++
@@ -940,6 +947,7 @@ try {
         $reasons = New-Object System.Collections.Generic.List[string]
         foreach ($r in @($a.reasons)) { [void]$reasons.Add([string]$r) }
         if ($writerAge -gt 60) { [void]$reasons.Add('STALE_OR_MISSING_TIMESTAMP') }
+        if ($step.com_fail -eq $true) { [void]$reasons.Add('EXCEL_COM_BUSY') }
         $status = $(if ($reasons.Count -eq 0) { 200 } else { 503 })
         if ($status -eq 200) {
             $servedIdentity = $q.quote_at
@@ -975,6 +983,21 @@ SIM_PROFILES = {
     "all_liquid": (100, 0, 0),
     "liquid_plus_7_medium": (93, 7, 0),
     "mixed_with_3_thin": (90, 7, 3),
+    # Shaped after the aggregate pattern seen on 2026-10-19 (not market data):
+    # 99 of 100 symbols ever priced, the identity untraded until 09:06, a
+    # 16-second all-row freeze and a 30-second Excel COM failure.
+    "market_like_99_of_100": (80, 15, 4),
+}
+
+# Extra events per profile. "absent": watchlist indices that never get a
+# price (left out of the board, named in missing_rows). Times are JST clock.
+SIM_SCENARIOS = {
+    "market_like_99_of_100": {
+        "absent": [99],
+        "identity_first_trade": "09:06:10",
+        "freeze": ("10:04:00", "10:04:16"),
+        "com_fail": ("09:23:00", "09:23:30"),
+    },
 }
 
 
@@ -986,10 +1009,14 @@ def simulation_plan(profile, seed=20261019):
     11:30-12:30 break. The Collector stops writing for two minutes at 10:30.
     """
     liquid, medium, _ = SIM_PROFILES[profile]
+    scenario = SIM_SCENARIOS.get(profile, {})
+    absent = set(scenario.get("absent", []))
     rng = random.Random(seed)
     liquidity = {}
     for index, ticker in enumerate(UNIVERSE):
         liquidity[ticker] = 0.95 if index < liquid else (0.30 if index < liquid + medium else 0.02)
+        if index in absent:
+            liquidity[ticker] = 0.0
     last = {t: "15:00:00" for t in UNIVERSE}  # previous session's close, carried at start
     steps = []
     total = SIM_HOURS * 3600 // SIM_STEP_SECONDS
@@ -997,13 +1024,24 @@ def simulation_plan(profile, seed=20261019):
         now = SIM_START + timedelta(seconds=n * SIM_STEP_SECONDS)
         clock = now.strftime("%H:%M:%S")
         trading = "09:00:00" <= clock <= "11:30:00" or "12:30:00" <= clock <= "15:30:00"
+        freeze = scenario.get("freeze")
+        if freeze and freeze[0] <= clock < freeze[1]:
+            trading = False
         if trading:
             for ticker in UNIVERSE:
+                if ticker == IDENTITY and clock < scenario.get("identity_first_trade", "00:00:00"):
+                    continue
                 if rng.random() < liquidity[ticker]:
                     traded = now - timedelta(seconds=rng.randint(0, SIM_STEP_SECONDS - 1))
                     last[ticker] = traded.strftime("%H:%M:%S")
         writes = not (SIM_STALL[0] <= now < SIM_STALL[1])
-        steps.append({"now": _iso(now), "collector_writes": writes, "times": [last[t] for t in UNIVERSE]})
+        step = {"now": _iso(now), "collector_writes": writes, "times": [last[t] for t in UNIVERSE]}
+        if absent:
+            step["absent"] = sorted(absent)
+        com_fail = scenario.get("com_fail")
+        if com_fail and com_fail[0] <= clock < com_fail[1]:
+            step["com_fail"] = True
+        steps.append(step)
     return steps
 
 
@@ -1067,12 +1105,22 @@ class ContinuousSynthetic100(unittest.TestCase):
             rows = [{"ticker": r["t"], "signal": WAIT, "strategy": "synthetic", "price": 100.0, "data": "LIVE",
                      "source_timestamp": r["s"], "source_timestamp_at": r["at"], "source_timestamp_basis": r["b"],
                      "source_timestamp_observed_at": r["o"]} for r in cycle["rows"]]
-            identity = next(r for r in rows if r["ticker"] == IDENTITY)
+            step = steps[index]
             payload = board(written)
             payload["all_targets"] = rows
             payload["universe"] = 100
-            payload["valid"] = 100
-            payload["live_price_diagnostics"].update({k: identity[k] for k in sup.ROW_QUOTE_FIELDS})
+            payload["valid"] = len(rows)
+            identity = next((r for r in rows if r["ticker"] == IDENTITY), None)
+            if identity is not None:
+                payload["live_price_diagnostics"].update({k: identity[k] for k in sup.ROW_QUOTE_FIELDS})
+            if step.get("absent"):
+                payload["missing_rows"] = [{"ticker": UNIVERSE[i], "reason": "PRICE_MISSING", "sheet_code_matches": True,
+                                            "source_time_text": None, "price": None} for i in step["absent"]]
+            if step.get("com_fail"):
+                for target in (payload, payload["live_price_diagnostics"]):
+                    target.update({"price_source_status": "EXCEL_COM_BUSY", "stale_reason": "EXCEL_COM_BUSY",
+                                   "live_values_available": False, "data_conflict": True})
+                payload["stale"] = True
             live.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
             os.utime(live, (written.timestamp(), written.timestamp()))
             sup.run_once(data, live, status_path, now=now)
@@ -1104,6 +1152,11 @@ class ContinuousSynthetic100(unittest.TestCase):
         seqs = [r["seq"] for r in records]
         gaps = sum(1 for a, b in zip(seqs, seqs[1:]) if b != a + 1)
         agree = sum(1 for s in shadow if s["decision_available"] == gateway[s["index"]]["decision_available"])
+        in_market = lambda at: "09:00:00" <= at[11:19] <= "11:30:00" or "12:30:00" <= at[11:19] <= "15:30:00"
+        market_records = [r for r in records if in_market(r["at"])]
+        pct = lambda part, whole: round(100.0 * part / whole, 1) if whole else None
+        statuses = [c["status"] for c in gateway]
+        recoveries = sum(1 for a, b in zip(statuses, statuses[1:]) if a == 503 and b == 200)
         written = sum(1 for s in steps if s["collector_writes"])
         liquid, medium, thin = SIM_PROFILES[profile]
         return {
@@ -1134,6 +1187,15 @@ class ContinuousSynthetic100(unittest.TestCase):
             "shadow_gateway_decision_agreement_pct": round(100.0 * agree / len(shadow), 1) if shadow else None,
             "observation_records": len(records),
             "observation_seq_gaps": gaps,
+            "observation_pass_pct": pct(sum(1 for r in records if r.get("observation_pass") is True), len(records)),
+            "decision_pass_pct": pct(sum(1 for r in records if r.get("decision_pass") is True), len(records)),
+            "decision_pass_pct_market_hours": pct(sum(1 for r in market_records if r.get("decision_pass") is True),
+                                                  len(market_records)),
+            "shadow_fresh_only_decidable_pct_market_hours": pct(
+                sum(1 for r in market_records if r["shadow_fresh_only"]["would_be_decidable"] is True), len(market_records)),
+            "missing_rate_pct": pct(counts["MISSING"], 100 * total),
+            "not_fresh_rate_pct": pct(100 * total - counts["FRESH"], 100 * total),
+            "recovery_count_503_to_200": recoveries,
             "ledger_lines": ledger_lines,
             "real_submit_allowed": False,
         }
@@ -1174,6 +1236,26 @@ class ContinuousSynthetic100(unittest.TestCase):
         # block the open market except for the injected stall.
         metrics = self.runs["all_liquid"]["metrics"]
         self.assertGreaterEqual(metrics["decision_available_time_pct_market_hours"], 90.0)
+
+    def test_market_like_99_of_100_is_never_reported_as_100(self):
+        run = self.runs["market_like_99_of_100"]
+        absent = UNIVERSE[99]
+        self.assertTrue(all(c["status"] == 503 for c in run["gateway"]))  # whole-board rule kept
+        for record in run["records"]:
+            self.assertEqual(record["missing_tickers"], [absent])
+            self.assertIs(record["decision_pass"], False)
+            self.assertLessEqual(record["shadow_fresh_only"]["fresh_count"], 99)
+            self.assertIs(record["shadow_fresh_only"]["applied_to_decision"], False)
+        for step, cycle in zip(run["steps"], run["gateway"]):
+            if step.get("com_fail"):
+                self.assertIn("EXCEL_COM_BUSY", cycle["reasons"])
+        # Before the identity's first trade nothing is decidable, not even in shadow.
+        early = [r for r in run["records"] if "09:00:00" <= r["at"][11:19] < "09:06:00"]
+        self.assertTrue(early)
+        self.assertTrue(all(r["shadow_fresh_only"]["would_be_decidable"] is False for r in early))
+        com = [r for r, s in zip(run["records"], [run["steps"][x["index"]] for x in run["shadow"]]) if s.get("com_fail")]
+        self.assertTrue(com)
+        self.assertTrue(all(r["observation_pass"] is False for r in com))
 
     def test_shadow_never_decides_on_a_blocked_board(self):
         for profile, run in self.runs.items():

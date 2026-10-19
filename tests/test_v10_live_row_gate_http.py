@@ -53,6 +53,7 @@ def _load(name, rel):
 
 sup = _load("v10_shadow_supervisor_row_gate", "scripts/ai_shadow_supervisor.py")
 oper = _load("v10_row_gate_operability_helpers", "tests/test_v10_row_gate_operability.py")
+market = _load("v10_market_operability_helpers", "tests/test_v10_market_operability.py")
 
 
 def _windows_powershell():
@@ -632,7 +633,50 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
                 status, obs = self._observe()
                 self.assertIn("200", status, obs)
                 self.assertEqual(obs["missing_tickers"], ["SYN42.T"])
-                self.assertEqual(len(obs["rows"]), 99)
+                # P0-4: the observation lists all 100 expected tickers; the
+                # absent one is UNKNOWN with no price or time, never dropped.
+                self.assertEqual(len(obs["rows"]), 100)
+                absent = [r for r in obs["rows"] if r["ticker"] == "SYN42.T"]
+                self.assertEqual(len(absent), 1)
+                self.assertEqual(absent[0]["state"], "UNKNOWN")
+                self.assertEqual(absent[0]["reasons"], ["ROW_ABSENT_FROM_PAYLOAD"])
+                self.assertIsNone(absent[0]["observed_price"])
+                self.assertIsNone(absent[0]["quote_at"])
+                summary = obs["observation_summary"]
+                self.assertEqual((summary["expected_count"], summary["listed_count"]), (100, 100))
+                self.assertIs(summary["all_expected_listed"], True)
+                self.assertEqual(summary["state_counts"]["FRESH"], 99)
+                self.assertEqual(summary["missing_row_count"], 1)
+                self.assertEqual(summary["missing_pct"], 1.0)
+                self.assertIs(obs["decision_available"], False)
+
+    def test_declared_missing_rows_are_classified_not_dropped(self):
+        # P0-5: what the Collector now publishes for a row with no price.
+        now = self._now()
+        rows = [r for r in self._rows(now) if r["ticker"] not in ("SYN42.T", "SYN43.T")]
+        missing = [{"ticker": "SYN42.T", "reason": "PRICE_MISSING", "sheet_code_matches": True,
+                    "source_time_text": None, "price": None},
+                   {"ticker": "SYN43.T", "reason": "PRICE_MISSING", "sheet_code_matches": False,
+                    "source_time_text": "15:00:00", "price": None}]
+        payload = self._payload(rows=rows, now=now, extra={"universe": 100, "missing_rows": missing,
+                                                           "missing_row_count": 2})
+        status, written, body = self._refuse(payload)
+        self._assert_rejected(status, written, body, "UNIVERSE_ROW_MISSING")
+        status, obs = self._observe()
+        self.assertIn("200", status, obs)
+        by_ticker = {r["ticker"]: r for r in obs["rows"]}
+        self.assertEqual(len(obs["rows"]), 100)
+        self.assertEqual((by_ticker["SYN42.T"]["state"], by_ticker["SYN42.T"]["reasons"]), ("UNKNOWN", ["ROW_PRICE_MISSING"]))
+        self.assertEqual((by_ticker["SYN43.T"]["state"], by_ticker["SYN43.T"]["reasons"]), ("INVALID", ["ROW_SHEET_CODE_MISMATCH"]))
+        for t in ("SYN42.T", "SYN43.T"):
+            self.assertIsNone(by_ticker[t]["observed_price"])
+            self.assertIsNone(by_ticker[t]["quote_at"])
+        summary = obs["observation_summary"]
+        self.assertEqual(summary["state_counts"], {"FRESH": 98, "STALE": 0, "UNKNOWN": 1, "INVALID": 1})
+        self.assertEqual(summary["missing_row_count"], 2)
+        self.assertEqual(summary["fresh_pct"], 98.0)
+        self.assertIs(obs["decision_available"], False)
+        self.assertNotIn("15:00:00", json.dumps(obs))
 
     def test_duplicate_ticker_fails_closed(self):
         now = self._now()
@@ -790,6 +834,53 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         process.terminate()
         process.wait(timeout=10)
 
+
+    def test_untraded_identity_is_refused_under_its_own_reason(self):
+        # P0-3: what the Collector publishes before the identity's first trade.
+        now = self._now()
+        payload = self._payload(now=now)
+        payload["live_price_diagnostics"].update({
+            "price_source_status": "PRICE_SOURCE_MISMATCH", "stale_reason": "IDENTITY_UNTRADED",
+            "current_price": None, "symbol": IDENTITY, "data_conflict": True, "live_values_available": False})
+        payload.update({"price_source_status": "PRICE_SOURCE_MISMATCH", "stale_reason": "IDENTITY_UNTRADED",
+                        "data_conflict": True, "live_values_available": False, "stale": True})
+        status, written, body = self._refuse(payload)
+        self.assertIn("503", status)
+        verdict = json.loads(body.decode("utf-8-sig"))
+        reasons = str(verdict["stale_reason"]).split(",")
+        self.assertIn("IDENTITY_UNTRADED", reasons)
+        self.assertIn("PRICE_SOURCE_MISMATCH", reasons)
+        self.assertNotIn("WRONG_SYMBOL_MAPPING", reasons)
+        self.assertIsNone(verdict["current_price"])
+        self.assertIs(verdict["real_submit_allowed"], False)
+        for key in ("all_targets", "top5", "kioxia"):
+            self.assertNotIn(key, verdict)
+        # A real mapping error is still reported as one.
+        payload["live_price_diagnostics"].update({"stale_reason": "WRONG_SYMBOL_MAPPING", "symbol": None})
+        payload["stale_reason"] = "WRONG_SYMBOL_MAPPING"
+        status, written, body = self._refuse(payload)
+        self.assertIn("503", status)
+        reasons = str(json.loads(body.decode("utf-8-sig"))["stale_reason"]).split(",")
+        self.assertIn("WRONG_SYMBOL_MAPPING", reasons)
+        self.assertNotIn("IDENTITY_UNTRADED", reasons)
+
+    def test_excel_com_fail_closed_payload_is_refused(self):
+        # P0-2: what the Collector publishes when a loop cannot read Excel.
+        payload = market.run_com_harness(self.exe)["fail_closed_payload"]
+        payload["updated_at"] = (datetime.now(timezone.utc).replace(tzinfo=None) + self.utc_offset).strftime("%Y-%m-%d %H:%M:%S")
+        status, written, body = self._refuse(payload)
+        self.assertIn("503", status)
+        verdict = json.loads(body.decode("utf-8-sig"))
+        reasons = str(verdict["stale_reason"]).split(",")
+        self.assertIn("EXCEL_COM_BUSY", reasons)
+        self.assertIsNone(verdict["current_price"])
+        self.assertIs(verdict["real_submit_allowed"], False)
+        self.assertIs(verdict["live_values_available"], False)
+        for key in ("all_targets", "top5", "kioxia"):
+            self.assertNotIn(key, verdict)
+        status, body = self._request("/observation_ms2.json", self.cold_port)
+        self.assertIn("503", status)
+        self.assertIs(json.loads(body.decode("utf-8-sig"))["observation_available"], False)
 
     # ---- P0-V10-MARKET-OPERABILITY-20261019 P0-1: verified served history ----
     # Every LIVE (200) response must be on disk first: written atomically,

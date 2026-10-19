@@ -512,6 +512,72 @@ def _last_jsonl_record(path: Path) -> dict | None:
     return None
 
 
+# P0-V10-MARKET-OPERABILITY-20261019 (D-026 plan A, staged): an evaluation of
+# what a fresh-rows-only decision layer would have allowed. SHADOW ONLY: it is
+# recorded beside each observation and never changes decision_available, the
+# Risk Gate, the Permission Gate or the Kill Switch. The threshold is a
+# proposal for the development lead, not an approved rule.
+SHADOW_FRESH_ONLY_MIN_FRESH_PCT = 95.0
+
+
+def shadow_fresh_only_evaluation(payload, rows: dict, availability: dict, *,
+                                 min_fresh_pct: float = SHADOW_FRESH_ONLY_MIN_FRESH_PCT) -> dict:
+    """Would a decision from FRESH rows only be representative, and which
+    published candidates would survive? Market aggregates (top5 ranking,
+    market state, sector strength, breadth) are not recomputed here; they
+    stay withheld until a recomputation is proven."""
+    verdicts = {r.get("ticker"): r for r in rows.get("row_verdicts") or [] if isinstance(r, dict)}
+    expected = availability.get("universe_expected_count")
+    counts = availability.get("state_counts") or {}
+    fresh = int(counts.get(FRESH) or 0)
+    invalid = int(counts.get(INVALID) or 0)
+    fresh_pct = round(100.0 * fresh / expected, 1) if isinstance(expected, int) and expected > 0 else None
+    reasons: list[str] = []
+    if availability.get("identity_quote_fresh") is not True:
+        reasons.append("IDENTITY_QUOTE_NOT_FRESH")
+    if availability.get("universe_verified") is not True:
+        reasons.append("UNIVERSE_UNVERIFIED")
+    if fresh_pct is None or fresh_pct < min_fresh_pct:
+        reasons.append("FRESH_ROWS_NOT_REPRESENTATIVE")
+    if invalid:
+        reasons.append("INVALID_ROWS_PRESENT")
+    if int(availability.get("unexpected_count") or 0):
+        reasons.append("UNEXPECTED_ROWS_PRESENT")
+    published = payload.get("top5") if isinstance(payload, dict) and isinstance(payload.get("top5"), list) else []
+    kept = 0
+    dropped: dict[str, int] = {}
+    for candidate in published:
+        ticker = candidate.get("ticker") if isinstance(candidate, dict) else None
+        verdict = verdicts.get(ticker)
+        if verdict is None:
+            reason = "CANDIDATE_ROW_MISSING"
+        elif verdict.get("state") != FRESH:
+            reason = "CANDIDATE_ROW_NOT_FRESH"
+        elif not verdict.get("quote_at"):
+            reason = "CANDIDATE_INPUT_TIME_UNKNOWN"
+        else:
+            kept += 1
+            continue
+        dropped[reason] = dropped.get(reason, 0) + 1
+    return {
+        "mode": "SHADOW_ONLY",
+        "applied_to_decision": False,
+        "min_fresh_pct": min_fresh_pct,
+        "expected_count": expected,
+        "fresh_count": fresh,
+        "fresh_pct": fresh_pct,
+        "would_be_decidable": not reasons,
+        "reasons": sorted(set(reasons)),
+        "candidates_published": len(published),
+        "candidates_with_fresh_inputs": kept,
+        "candidates_invalidated": sum(dropped.values()),
+        "candidate_invalidation_reasons": dict(sorted(dropped.items())),
+        "aggregates": "WITHHELD_NOT_RECOMPUTED",
+        "order_allowed": False,
+        "real_submit_allowed": False,
+    }
+
+
 def record_board_observation(data_dir: Path, *, now: datetime, payload, verdict: dict, availability: dict,
                              rows: dict, missing_tickers: list[str], engine_state: str | None) -> dict:
     """Observation layer: one record per cycle, whatever the decision state.
@@ -547,12 +613,31 @@ def record_board_observation(data_dir: Path, *, now: datetime, payload, verdict:
         "missing_count": availability.get("missing_count"),
         "missing_tickers": list(missing_tickers),
         "non_fresh_rows": non_fresh,
+        # Observation PASS: source checks pass and every expected ticker is
+        # accounted for (a row or a named missing ticker). Decision PASS:
+        # source checks pass and the board is available for decisions.
+        "decision_pass": verdict.get("ok") is True and availability.get("decision_available") is True,
+        "observation_pass": verdict.get("ok") is True and isinstance(availability.get("universe_expected_count"), int)
+        and len({r.get("ticker") for r in rows.get("row_verdicts") or []} | set(missing_tickers))
+        >= availability.get("universe_expected_count"),
+        "collector_missing_rows": _collector_missing_rows(payload),
+        "shadow_fresh_only": shadow_fresh_only_evaluation(payload, rows, availability),
         "shadow_state": engine_state,
         "order_allowed": False,
         "real_submit_allowed": False,
     }
     _append_jsonl(path, record)
     return record
+
+
+def _collector_missing_rows(payload) -> dict:
+    """The Collector's own list of rows with no price (ticker and mapping only)."""
+    items = payload.get("missing_rows") if isinstance(payload, dict) else None
+    if not isinstance(items, list):
+        return {"published": False, "count": None, "sheet_code_mismatch": None}
+    entries = [i for i in items if isinstance(i, dict)]
+    return {"published": True, "count": len(entries),
+            "sheet_code_mismatch": sum(1 for i in entries if i.get("sheet_code_matches") is not True)}
 
 
 def freshness_verdicts_agree(*verdicts) -> bool:
@@ -651,7 +736,7 @@ def assess_live_payload(payload, *, file_mtime: datetime | None, now: datetime, 
         elif not isinstance(watcher_count, int) or isinstance(watcher_count, bool) or watcher_count < 0 or watcher_count > 1:
             reasons.append("DUPLICATE_WATCHER")
         if isinstance(diag.get("stale_reason"), str) and diag.get("stale_reason"):
-            reasons.append(str(diag.get("stale_reason")))
+            reasons.extend(part for part in str(diag.get("stale_reason")).split(",") if part)
 
     if not isinstance(payload.get("all_targets"), list):
         reasons.append("MISSING_BOARD")
@@ -1025,6 +1110,11 @@ def _write_json(path: Path, payload: dict) -> None:
 def _primary_reason(reasons: list[str]) -> str:
     if not reasons:
         return "UNKNOWN"
+    # The identity ticker has not traded yet: the Collector also reports
+    # PRICE_SOURCE_MISMATCH for it, so name the specific cause. A real symbol
+    # mismatch elsewhere on the board still takes precedence.
+    if "IDENTITY_UNTRADED" in reasons:
+        return "WRONG_SYMBOL_MAPPING" if "WRONG_SYMBOL_MAPPING" in reasons else "IDENTITY_UNTRADED"
     preferred = (
         "PRICE_SOURCE_MISMATCH", "DATA_CONFLICT", "STALE_OR_MISSING_TIMESTAMP",
         "FRESHNESS_VERDICT_MISMATCH", "STALE_SOURCE_QUOTE", "SOURCE_DATE_UNKNOWN",
@@ -1056,7 +1146,7 @@ def _component_for(reason: str) -> str:
         return "watcher"
     if reason in {"STALE_OR_MISSING_TIMESTAMP", "MISSING_PAYLOAD", "INSUFFICIENT_COVERAGE"} or reason in FRESHNESS_REASONS:
         return "live_ms2"
-    if reason in {"PRICE_SOURCE_MISMATCH", "WRONG_SOURCE_WORKBOOK", "WRONG_SYMBOL_MAPPING", "CACHED_OR_SAMPLE_PAYLOAD", "DATA_CONFLICT"}:
+    if reason in {"PRICE_SOURCE_MISMATCH", "WRONG_SOURCE_WORKBOOK", "WRONG_SYMBOL_MAPPING", "IDENTITY_UNTRADED", "EXCEL_COM_BUSY", "EXCEL_COM_READ_FAILED", "CACHED_OR_SAMPLE_PAYLOAD", "DATA_CONFLICT"}:
         return "price_source"
     return "ai_shadow"
 
