@@ -217,10 +217,9 @@ class BrainResearchOptInTests(unittest.TestCase):
             orig = status.read_bytes()
             with patch.object(consumer, "consume_local",
                               side_effect=RuntimeError("PRIVATE_SENTINEL")):
-                # RuntimeError is not an ordinary filesystem error: no exception
-                # may grant success or write any file.
-                with self.assertRaises(RuntimeError):
-                    self.run_optin(status, private)
+                result = self.run_optin(status, private)
+            self.assertEqual(result["state"], "BLOCKED")
+            self.assert_safe(result)
             self.assertEqual(orig, status.read_bytes())
 
 
