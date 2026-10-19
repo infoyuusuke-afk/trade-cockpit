@@ -3354,7 +3354,10 @@
     "logged_at": "2026-10-15 09:52:01 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -0.44,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -2.16,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "2972",
@@ -3363,7 +3366,10 @@
     "logged_at": "2026-10-15 09:52:01 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.08,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -0.16,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "3462",
@@ -3372,7 +3378,10 @@
     "logged_at": "2026-10-15 09:52:01 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -0.67,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -2.29,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "3295",
@@ -3408,6 +3417,51 @@
     "logged_at": "2026-10-16 09:45:30 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 1.11,
+    "status": "pending"
+  },
+  {
+    "code": "3226",
+    "name": "三井不動産アコモデーションファンド投資法人",
+    "target_date": "2026-10-20",
+    "logged_at": "2026-10-19 09:29:46 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.0,
+    "status": "pending"
+  },
+  {
+    "code": "3466",
+    "name": "ラサールロジポート投資法人",
+    "target_date": "2026-10-20",
+    "logged_at": "2026-10-19 09:29:46 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.21,
+    "status": "pending"
+  },
+  {
+    "code": "5933",
+    "name": "アルインコ",
+    "target_date": "2026-10-20",
+    "logged_at": "2026-10-19 09:29:47 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.84,
+    "status": "pending"
+  },
+  {
+    "code": "5990",
+    "name": "スーパーツール",
+    "target_date": "2026-10-20",
+    "logged_at": "2026-10-19 09:29:47 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.48,
+    "status": "pending"
+  },
+  {
+    "code": "8968",
+    "name": "福岡リート投資法人",
+    "target_date": "2026-10-20",
+    "logged_at": "2026-10-19 09:29:48 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.48,
     "status": "pending"
   }
 ]
