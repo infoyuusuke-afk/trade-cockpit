@@ -10,6 +10,8 @@ on:
       - "ms2_live/watchlist_100.json"
       - "scripts/ci_v10_watchlist_replacement.py"
       - "tests/test_v10_watchlist_replacement.py"
+      - "scripts/verify_v10_workbook_watchlist.py"
+      - "tests/test_v10_workbook_watchlist_verify.py"
       - "index.html"
       - "card_system.*"
       - "card_table_adapter.*"
@@ -86,6 +88,8 @@ jobs:
           echo "APPROVED_FOR_RUNTIME=0"
       - name: Watchlist replacement check rejects tampering (99/101 names, two changes, duplicate, reorder, unapproved code)
         run: python -m unittest discover -s tests -p test_v10_watchlist_replacement.py -v
+      - name: Read-only workbook vs watchlist cutover verifier (synthetic workbooks)
+        run: python -m unittest discover -s tests -p test_v10_workbook_watchlist_verify.py -v
       - name: V10 local HTTP security static contract
         run: python -m unittest discover -s tests -p test_v10_local_http_security.py -v
       - name: Candidate manifest and V10 static UI/runtime dependencies
