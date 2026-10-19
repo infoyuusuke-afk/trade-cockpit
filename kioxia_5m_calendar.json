@@ -1,7 +1,7 @@
 {
   "name": "キオクシアHD（285A）",
   "ticker": "285A.T",
-  "updated_at": "2026-10-19 15:36:12 JST",
+  "updated_at": "2026-10-19 17:06:20 JST",
   "source": "Yahoo Finance 285A.T 5分足（取得可能な直近60日）",
   "calendar": [
     {
@@ -3222,7 +3222,7 @@
     },
     {
       "date": "2026-10-19",
-      "ret": 7.7,
+      "ret": 7.62,
       "high": 8.01,
       "low": -0.24,
       "type": "上昇トレンド",
@@ -3288,7 +3288,7 @@
         7.816,
         7.502,
         7.698,
-        7.698
+        7.62
       ],
       "volume_path": [
         2454900.0,
@@ -3351,13 +3351,13 @@
         48070400.0,
         49081100.0,
         49896600.0,
-        50004700.0
+        50634400.0
       ]
     }
   ],
   "current": {
     "date": "2026-10-19",
-    "ret": 7.7,
+    "ret": 7.62,
     "high": 8.01,
     "low": -0.24,
     "type": "上昇トレンド",
@@ -3423,7 +3423,7 @@
       7.816,
       7.502,
       7.698,
-      7.698
+      7.62
     ],
     "volume_path": [
       2454900.0,
@@ -3486,7 +3486,7 @@
       48070400.0,
       49081100.0,
       49896600.0,
-      50004700.0
+      50634400.0
     ]
   },
   "current_1m": [
@@ -6333,20 +6333,56 @@
       "c": 7.6984,
       "price": 13710.0,
       "v": 108100
+    },
+    {
+      "t": "15:21",
+      "o": 7.6984,
+      "h": 7.8162,
+      "l": 7.6984,
+      "c": 7.7376,
+      "price": 13715.0,
+      "v": 71100
+    },
+    {
+      "t": "15:22",
+      "o": 7.7376,
+      "h": 7.7376,
+      "l": 7.5805,
+      "c": 7.6984,
+      "price": 13710.0,
+      "v": 173100
+    },
+    {
+      "t": "15:23",
+      "o": 7.6984,
+      "h": 7.7769,
+      "l": 7.5412,
+      "c": 7.5805,
+      "price": 13695.0,
+      "v": 192600
+    },
+    {
+      "t": "15:24",
+      "o": 7.5412,
+      "h": 7.6591,
+      "l": 7.3841,
+      "c": 7.6198,
+      "price": 13700.0,
+      "v": 192900
     }
   ],
   "one_minute_source": "Yahoo Finance 285A.T 1分足",
   "one_minute_verified": true,
   "technical_levels": {
     "session_open": 12730.0,
-    "daily_ma5": 13947.0,
+    "daily_ma5": 13945.0,
     "pivot_p": 13303.3,
     "pivot_r1": 13751.7,
     "pivot_s1": 12856.7,
     "or15_high": 13185.0,
     "or15_low": 12700.0,
     "return_pct": {
-      "daily_ma5": 9.5601,
+      "daily_ma5": 9.5444,
       "pivot_p": 4.5035,
       "pivot_r1": 8.0259,
       "pivot_s1": 0.9953,
@@ -6498,7 +6534,7 @@
       "max_up_after": 0.39,
       "max_down_after": -0.06,
       "score_components": {
-        "five_minute": 79.8,
+        "five_minute": 79.9,
         "us_market": 75.6,
         "credit_supply": null
       },
@@ -6652,7 +6688,7 @@
         29631700.0,
         29946700.0
       ],
-      "similarity": 72.1,
+      "similarity": 72.2,
       "after_ret": 0.0,
       "max_up_after": 0.09,
       "max_down_after": -0.16,
@@ -6811,12 +6847,12 @@
         44176900.0,
         44177100.0
       ],
-      "similarity": 62.1,
+      "similarity": 62.2,
       "after_ret": 0.08,
       "max_up_after": 0.19,
       "max_down_after": -0.19,
       "score_components": {
-        "five_minute": 56.6,
+        "five_minute": 56.7,
         "us_market": 76.5,
         "credit_supply": null
       },
@@ -6975,7 +7011,7 @@
       "max_up_after": 0.42,
       "max_down_after": -0.87,
       "score_components": {
-        "five_minute": 61.8,
+        "five_minute": 61.9,
         "us_market": 60.7,
         "credit_supply": null
       },
@@ -7129,12 +7165,12 @@
         36035900.0,
         36479100.0
       ],
-      "similarity": 60.3,
+      "similarity": 60.4,
       "after_ret": 0.0,
       "max_up_after": 0.1,
       "max_down_after": -0.2,
       "score_components": {
-        "five_minute": 59.3,
+        "five_minute": 59.4,
         "us_market": 62.9,
         "credit_supply": null
       },
@@ -7294,7 +7330,7 @@
     "max_up_after": 0.39,
     "max_down_after": -0.06,
     "score_components": {
-      "five_minute": 79.8,
+      "five_minute": 79.9,
       "us_market": 75.6,
       "credit_supply": null
     },
@@ -7332,16 +7368,16 @@
     }
   },
   "credit_context": {
-    "date": "2026-10-15",
-    "buy_balance": 48805000,
-    "sell_balance": 1283100,
-    "ratio": 38.04,
-    "standardized_buy": 31471500,
-    "negotiable_buy": 17333500,
-    "standardized_sell": 831400,
-    "negotiable_sell": 451700,
-    "buy_change": -881400,
-    "sell_change": -117700,
+    "date": "2026-10-16",
+    "buy_balance": 47831100,
+    "sell_balance": 1536300,
+    "ratio": 31.13,
+    "standardized_buy": 30476300,
+    "negotiable_buy": 17354800,
+    "standardized_sell": 1054500,
+    "negotiable_sell": 481800,
+    "buy_change": -973900,
+    "sell_change": 253200,
     "phase": "中立"
   },
   "prediction": {
