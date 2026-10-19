@@ -57,6 +57,7 @@ try {
     $required = @(
         "downloads/RUN_AI_COCKPIT_V10.ps1",
         "downloads/AI_COCKPIT_CONTROLLER_V10.ps1",
+        "downloads/EXCEL_IDENTITY_PROBE_V10.ps1",
         "downloads/AI_COCKPIT_GATEWAY_V10.ps1",
         "downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1",
         "downloads/STOP_AI_COCKPIT_V10.ps1",
@@ -153,7 +154,7 @@ try {
             throw ("V10_RELEASE_SOURCE_BLOB_MISMATCH: " + $relative)
         }
     }
-    Write-Output "V10_RELEASE_SOURCE_BLOBS_MATCH=29"
+    Write-Output "V10_RELEASE_SOURCE_BLOBS_MATCH=30"
     $runner = Join-Path $repo "downloads\RUN_AI_COCKPIT_V10.ps1"
     # Fail closed on a stale V10 RUN that lacks the reviewed admission gate.
     $runnerSource = [IO.File]::ReadAllText($runner, [Text.Encoding]::UTF8)

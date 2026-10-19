@@ -54,8 +54,8 @@ class V10BundleCandidateContract(unittest.TestCase):
         self.assertFalse((ROOT / "downloads" / "V10_APPROVED_SOURCE.json").exists())
 
     def test_manifest_exact_paths_and_count(self):
-        self.assertEqual(len(self.pins), 29)
-        self.assertEqual(len(self.manifest["files"]), 29)
+        self.assertEqual(len(self.pins), 30)
+        self.assertEqual(len(self.manifest["files"]), 30)
         block = re.search(r"\$required = @\((.*?)\)\s*foreach", self.entry, re.S)
         self.assertIsNotNone(block)
         checked = set(re.findall(r'"([^"]+)"', block.group(1)))
@@ -89,7 +89,7 @@ class V10BundleCandidateContract(unittest.TestCase):
             "REAL_SUBMIT_ALLOWED=0",
         ):
             self.assertIn(marker, self.runner)
-        self.assertIn("V10_RELEASE_SOURCE_BLOBS_MATCH=29", self.entry)
+        self.assertIn("V10_RELEASE_SOURCE_BLOBS_MATCH=30", self.entry)
         self.assertIn("V10_START_PREFLIGHT=PASS_NO_RUNTIME", self.entry)
 
     def test_owner_run_and_stop_remain_separate(self):
