@@ -1241,8 +1241,10 @@ class ContinuousSynthetic100(unittest.TestCase):
         run = self.runs["market_like_99_of_100"]
         absent = UNIVERSE[99]
         self.assertTrue(all(c["status"] == 503 for c in run["gateway"]))  # whole-board rule kept
-        for record in run["records"]:
-            self.assertEqual(record["missing_tickers"], [absent])
+        shadow_steps = [run["steps"][x["index"]] for x in run["shadow"]]
+        for record, step in zip(run["records"], shadow_steps):
+            # A COM-failure cycle publishes no rows, so all 100 are missing.
+            self.assertEqual(record["missing_tickers"], UNIVERSE if step.get("com_fail") else [absent])
             self.assertIs(record["decision_pass"], False)
             self.assertLessEqual(record["shadow_fresh_only"]["fresh_count"], 99)
             self.assertIs(record["shadow_fresh_only"]["applied_to_decision"], False)
@@ -1253,7 +1255,7 @@ class ContinuousSynthetic100(unittest.TestCase):
         early = [r for r in run["records"] if "09:00:00" <= r["at"][11:19] < "09:06:00"]
         self.assertTrue(early)
         self.assertTrue(all(r["shadow_fresh_only"]["would_be_decidable"] is False for r in early))
-        com = [r for r, s in zip(run["records"], [run["steps"][x["index"]] for x in run["shadow"]]) if s.get("com_fail")]
+        com = [r for r, s in zip(run["records"], shadow_steps) if s.get("com_fail")]
         self.assertTrue(com)
         self.assertTrue(all(r["observation_pass"] is False for r in com))
 
