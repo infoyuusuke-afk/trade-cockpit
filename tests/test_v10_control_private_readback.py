@@ -225,10 +225,6 @@ class PrivateReadbackTests(unittest.TestCase):
 
     def test_future_clock_or_naive_now_fails_closed(self):
         pair = self.install()
-        self.assert_blocked(
-            self.read(pair, now=datetime(2026, 10, 19, 9, 0, tzinfo=JST)),
-            "BLOCK_READBACK_INVALID_OR_UNAVAILABLE",
-        ) if False else None
         rows, audit = self.read(pair, now=datetime(2026, 10, 19, 9, 0, tzinfo=JST))
         self.assertEqual(rows, [])
         self.assertEqual(audit["quarantined_records"], 1)
