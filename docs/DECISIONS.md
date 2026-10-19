@@ -211,3 +211,14 @@ Source: OWNER decision cards 2026-10-19 09:59Z and 10:05Z in the Claude project 
 - Working files: the Claude on the OWNER PC owns the strategy (Desktop folder "Claudeブレイン", CB1 v1 and later). The cloud Claude audits. Not in this public repo.
 State: PENDING_DOC_SYNC until merged to `main` (D-022).
 Source: OWNER chat 2026-10-19 15:20Z in the Claude project thread (D-024).
+
+## D-031 Target function of the Brain: find trading methods automatically and use the one with the highest expected value for the day (2026-10-19)
+- OWNER statement, 2026-10-19 15:54Z: "こういうった手法を自動でさがして当日最も期待値のある手法で売買するのがブレインに求めている機能".
+- Meaning, as Claude records it (the GPT lead owns the architecture):
+  - The Brain keeps a library of candidate methods (for example opening-range breakout, pullback buy) and their measured results, split by market condition (market mood, semiconductor strength, daily trend stage).
+  - Each morning it classifies the day's condition and picks the method with the highest expected value for that condition, only where enough past samples exist.
+  - Methods are searched and re-scored automatically, with out-of-sample checks (first half and second half, walk-forward). The number of variants tried is recorded to limit overfitting.
+- Unchanged constraints: real_submit_allowed=false. Until a separate OWNER decision, the Brain proposes and the OWNER decides each trade. Data for automatic search must be licensed for that use (MS2 data on the OWNER PC, subject to its terms; TradingView data is not used for machine search).
+- The Claude Brain track (D-030) is the manual first step: candidate methods are tested in TradingView by the OWNER.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: OWNER chat 2026-10-19 15:54Z in the Claude project thread (D-024).
