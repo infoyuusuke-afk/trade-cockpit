@@ -16,7 +16,7 @@
   // Missing/blank/boolean values are not zero. A measured numeric 0 remains 0.
   const knownNumber=v=>{
     if(typeof v!=="number"&&typeof v!=="string")return null;
-    if(typeof v==="string"&&(!v.trim()||!/^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?$/.test(v.trim())))return null;
+    if(typeof v==="string"&&(!v.trim()||!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(v.trim())))return null;
     const n=Number(v);
     return Number.isFinite(n)?n:null;
   };
