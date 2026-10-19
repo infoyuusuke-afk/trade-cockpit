@@ -56,6 +56,15 @@ jobs:
               test "$(git rev-parse "HEAD:$file")" = "$expected"
               test "$(git rev-parse "HEAD:$file")" != "$(git rev-parse "$pinned:$file")"
               echo "V10_PRICE_FRESHNESS_REPAIR=$file"
+            elif [[ "$file" == "ms2_live/watchlist_100.json" ]]; then
+              # Delisting repair (OWNER approved 2026-10-19): QPS研究所 5595
+              # was delisted 2025-11-27 and replaced 1:1 by QPS Holdings 464A
+              # (TSE Growth, listed 2025-12-01). Same company and slot, not a
+              # watchlist swap. Locked to the manifest blob.
+              expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
+              test "$(git rev-parse "HEAD:$file")" = "$expected"
+              test "$(git rev-parse "HEAD:$file")" != "$(git rev-parse "$pinned:$file")"
+              echo "V10_WATCHLIST_DELISTING_REPAIR=$file"
             elif [[ "$file" == "downloads/AI_COCKPIT_GATEWAY_V10.ps1" ||
                     "$file" == "downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1" ||
                     "$file" == "ms2_live/MS2_RSS_100_Collector.ps1" ||
