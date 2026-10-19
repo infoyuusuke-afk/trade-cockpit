@@ -208,6 +208,6 @@ Source: OWNER decision cards 2026-10-19 09:59Z and 10:05Z in the Claude project 
 - If the PF is good, the OWNER may try the signal by hand during the trading session. That is the OWNER's own manual trading. No AI sends orders. real_submit_allowed=false is unchanged.
 - This track is separate from V10 and the GPT Brain. It changes no V10 code, task, schedule or Excel. TradingView data is not fed into V10 or BRAIN automatically (TradingView terms; only the OWNER's reported numbers are used).
 - Claude's proposed pass bar, not a decision: PF >= 1.3 with at least 100 trades, PF > 1.0 in both halves of the period, and a similar result on 2-3 symbols. Parameter changes are counted to limit overfitting.
-- Working files: the Claude project's shared folder (claude-brain/). Not in this public repo.
+- Working files: the Claude on the OWNER PC owns the strategy (Desktop folder "Claudeブレイン", CB1 v1 and later). The cloud Claude audits. Not in this public repo.
 State: PENDING_DOC_SYNC until merged to `main` (D-022).
 Source: OWNER chat 2026-10-19 15:20Z in the Claude project thread (D-024).
