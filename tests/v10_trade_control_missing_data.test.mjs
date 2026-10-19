@@ -52,7 +52,7 @@ test("missing PnL must not count as closed zero-PnL trades or dilute win rate",(
   assert.equal(s.count,3);
   assert.equal(s.wins,1);
   assert.equal(s.pnl,60);
-  assert.equal(s.winRate,100/3);
+  assert.ok(Math.abs(s.winRate-100/3)<1e-10);
   assert.equal(s.avgR,-0.5);
 });
 
