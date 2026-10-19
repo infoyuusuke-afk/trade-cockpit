@@ -1552,6 +1552,63 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         self.assertEqual(gw.health(port)["served_history"]["state"], "SAVED")
         gw.stop()
 
+
+    def test_health_refuses_missing_evidence_after_a_verified_live_response(self):
+        # /health and /live_ms2.json must agree after external evidence loss:
+        # an existing history without its VERIFIED evidence is not a valid
+        # "legacy" history after this Gateway has already committed evidence.
+        gw = self._isolated("health-lost-evidence").launch()
+        status, _, body = gw.serve(self._now() - timedelta(seconds=30))
+        self.assertIn("200 OK", status, body[:500])
+        gw.write_board(self._now() - timedelta(seconds=2))
+        gw.shadow_agrees()
+        control = gw.health()
+        # Synthetic HTTP harness does not run a verified Controller, so the
+        # raw board may be fresh while system-level health stays fail-closed.
+        self.assertIs(control["availability"]["decision_available"], True)
+        self.assertEqual(control["availability_status"], "BLOCKED_FAIL_CLOSED")
+        self.assertNotIn("SERVED_HISTORY_FLOOR_UNVERIFIED", control["stale_reason"].split(","))
+        self.assertTrue(gw.evidence.exists())
+        gw.evidence.unlink()
+        health = gw.health()
+        self.assertIs(health["decision_available"], False)
+        self.assertIn("SERVED_HISTORY_FLOOR_UNVERIFIED", health["stale_reason"].split(","))
+        self.assertEqual(health["availability_status"], "BLOCKED_SERVED_HISTORY")
+        self.assertIsNone(health["live_current_price"])
+        status, body = self._request("/live_ms2.json", gw.port)
+        self.assertIn("503", status)
+        self.assertIs(json.loads(body.decode("utf-8-sig"))["real_submit_allowed"], False)
+        gw.stop()
+
+    def test_health_refuses_missing_history_and_evidence_during_a_live_session(self):
+        # The absence of both files mid-session is not a fresh first start.
+        # Without this guard /health may announce AVAILABLE even though the
+        # next /live_ms2.json cannot save its history and returns 503.
+        gw = self._isolated("health-lost-all").launch()
+        status, _, body = gw.serve(self._now() - timedelta(seconds=30))
+        self.assertIn("200 OK", status, body[:500])
+        gw.write_board(self._now() - timedelta(seconds=2))
+        gw.shadow_agrees()
+        control = gw.health()
+        # Synthetic HTTP harness does not run a verified Controller, so the
+        # raw board may be fresh while system-level health stays fail-closed.
+        self.assertIs(control["availability"]["decision_available"], True)
+        self.assertEqual(control["availability_status"], "BLOCKED_FAIL_CLOSED")
+        self.assertNotIn("SERVED_HISTORY_FLOOR_UNVERIFIED", control["stale_reason"].split(","))
+        self.assertTrue(gw.history.exists())
+        self.assertTrue(gw.evidence.exists())
+        gw.history.unlink()
+        gw.evidence.unlink()
+        health = gw.health()
+        self.assertIs(health["decision_available"], False)
+        self.assertIn("SERVED_HISTORY_FLOOR_UNVERIFIED", health["stale_reason"].split(","))
+        self.assertEqual(health["availability_status"], "BLOCKED_SERVED_HISTORY")
+        self.assertIsNone(health["live_current_price"])
+        status, body = self._request("/live_ms2.json", gw.port)
+        self.assertIn("503", status)
+        self.assertIs(json.loads(body.decode("utf-8-sig"))["real_submit_allowed"], False)
+        gw.stop()
+
     def _isolated_peer(self, gw):
         port = self._free_port()
         self._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(gw.history.parent), "-Port", str(port)],
