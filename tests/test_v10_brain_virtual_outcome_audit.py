@@ -47,6 +47,14 @@ class VirtualOutcomeResearchAudit(unittest.TestCase):
         for key in ("symbol", "entry_price", "pnl_yen", "trade_id", "account_number", "owner_name"):
             self.assertNotIn(key, str(output))
 
+    def test_actual_ms2_japanese_strategy_is_accepted(self):
+        events = fixture()
+        events[0]["strategy"] = "OR15押し目"
+        events[1]["strategy"] = "OR15押し目"
+        result = audit(events, now=NOW)
+        self.assertEqual(result["state"], "RESEARCH_OBSERVATION_ONLY")
+        self.assertEqual(result["strategy_statistics"][0]["strategy_id"], "OR15押し目")
+
     def test_contaminated_not_counted_in_strategy(self):
         a = fixture();a[1]["performance_bucket"]="contaminated_by_data_outage"
         output = audit(a,now=NOW)
