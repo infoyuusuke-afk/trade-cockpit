@@ -15,7 +15,8 @@
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   // Missing/blank/boolean values are not zero. A measured numeric 0 remains 0.
   const knownNumber=v=>{
-    if(v===null||v===undefined||typeof v==="boolean"||(typeof v==="string"&&!v.trim()))return null;
+    if(typeof v!=="number"&&typeof v!=="string")return null;
+    if(typeof v==="string"&&(!v.trim()||!/^[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?$/.test(v.trim())))return null;
     const n=Number(v);
     return Number.isFinite(n)?n:null;
   };
@@ -108,7 +109,7 @@
 
   function shadowEngineHtml(exec){
     const allowed=["RUNNING","PAUSED_FAIL_CLOSED","RECOVERING","STOPPED"];
-    const raw=String(exec?.shadow_engine_state||"STOPPED");
+    const raw=typeof exec?.shadow_engine_state==="string"?exec.shadow_engine_state:"";
     const shown=allowed.includes(raw)?raw:"PAUSED_FAIL_CLOSED";
     const ops=exec?.shadow_ops?.daily||null;
     const incident=exec?.shadow_latest_incident||null;
