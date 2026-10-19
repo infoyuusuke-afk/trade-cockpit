@@ -34,7 +34,10 @@ jobs:
           [void][Management.Automation.Language.Parser]::ParseFile($script,[ref]$tokens,[ref]$errors)
           if ($errors.Count -ne 0) { throw 'WINDOWS_READONLY_POWERSHELL_PARSE_FAIL' }
           $proof=@(& powershell.exe -NoLogo -NoProfile -NonInteractive -File $script -SelfTest 2>&1)
-          if ($LASTEXITCODE -ne 0 -or @($proof | Where-Object { $_ -ceq 'V10_WINDOWS_READONLY_SELFTEST=PASS' }).Count -ne 1) {
+          # -SelfTest is pure synthetic: diagnostic code is safe to print.
+          $exitCode=$LASTEXITCODE
+          if ($exitCode -ne 0) { $proof | ForEach-Object { Write-Output ([string]$_) } }
+          if ($exitCode -ne 0 -or @($proof | Where-Object { $_ -ceq 'V10_WINDOWS_READONLY_SELFTEST=PASS' }).Count -ne 1) {
             throw 'WINDOWS_READONLY_SYNTHETIC_PROOF_FAIL'
           }
           if ($proof.Count -ne 3) { throw 'WINDOWS_READONLY_EXTRA_OUTPUT' }
