@@ -197,5 +197,6 @@ Source: OWNER chat 2026-10-19 08:10Z in the Claude project thread (D-024).
   - END_TO_END_VERIFIED needs one scheduled-run round trip without OWNER relay.
   - Role identity stays UNVERIFIED, because all roles post under one GitHub account.
   - real_submit_allowed=false.
+- Amendment, 2026-10-19 10:19Z (OWNER decision card "このまま使う"): after the chat rule, Revenue Hunter itself updated the prompt of its existing hourly task to read #282 first, post at most one REPORT on MATERIAL_CHANGE and re-read it. Its schedule (hourly, condition_watch), ON state, notifications OFF and real_submit_allowed=false are unchanged. This departs from the standing rule that hourly task prompts are not changed, and the OWNER approved keeping it. Prompt changes in the other tasks are UNKNOWN until checked.
 State: PENDING_DOC_SYNC until merged to `main` (D-022).
 Source: OWNER decision cards 2026-10-19 09:59Z and 10:05Z in the Claude project thread (D-024); P0-AI-COORDINATION-DELIVERY-RECOVERY.
