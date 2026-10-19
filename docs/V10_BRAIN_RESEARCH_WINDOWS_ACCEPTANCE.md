@@ -19,9 +19,12 @@ rows, account data or private ledger content for publication.
 2. Read only the local V10_CONTROLLER_STATE.json in the selected state-root.
    Reject stale, changed, symlink/reparse/hardlink, oversized or malformed
    input. Match repo_root; extract runtime_dir and derive the exact
-   ai_brain_observer_status_v1.json location. Run the PR #463 read-only
-   sidecar against that status and PR #461's private context (validated by
-   PR #462). Accept only its restricted non-tradable research output.
+   ai_brain_observer_status_v1.json location. Verify that the
+   Brain status engine_pid matches the Controller-recorded brain_observer_pid,
+   then run PR #463's read-only sidecar against that status and PR #461's
+   private context (validated by PR #462). After the sidecar, reread both
+   the Brain status and Controller state and reject any detected switch or
+   inconsistency. Accept only the restricted non-tradable research output.
 
 No source material, file paths, strategy names, tickers, quote prices, PIDs
 or account details appear in stdout. A failed check produces sanitized
@@ -44,6 +47,11 @@ The existing source-pinned preflight must pass before any research read.
 The prerequisite PR #461 one-shot producer is not started by the verifier.
 A missing or stale context remains BLOCKED; the tool never repairs it,
 resubmits an order or substitutes a cached success.
+
+A passing snapshot is not a guarantee that a process remains alive
+after the check. Because the Controller and Brain publish concurrently,
+a legitimate update between the initial and final reads may also yield
+BLOCKED. This is intentional fail-closed behavior, not a trade signal.
 
 ## Scope/acceptance
 
