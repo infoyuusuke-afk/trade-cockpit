@@ -7,6 +7,9 @@ on:
       - "scripts/ai_brain_observer.py"
       - "scripts/ai_shadow_supervisor.py"
       - "ms2_live/*.ps1"
+      - "ms2_live/watchlist_100.json"
+      - "scripts/ci_v10_watchlist_replacement.py"
+      - "tests/test_v10_watchlist_replacement.py"
       - "index.html"
       - "card_system.*"
       - "card_table_adapter.*"
@@ -34,7 +37,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Compare 25 unchanged + 1 UI stale repair + 4 security-pinned + 1 freshness-repaired sources
+      - name: Compare 24 unchanged + 1 OWNER-approved watchlist + pinned UI / health-loss / freshness repairs
         shell: bash
         run: |
           set -euo pipefail
@@ -60,6 +63,15 @@ jobs:
               test "$(git rev-parse "HEAD:$file")" = "$expected"
               test "$(git rev-parse "$pinned:$file")" != "$expected"
               echo "V10_UI_NULL_DISPLAY_REPAIR=$file"
+            elif [[ "$file" == "ms2_live/watchlist_100.json" ]]; then
+              # OWNER-approved one-symbol replacement, never a general source-pin bypass.
+              # Check manifest pin, original ordering, EXACTLY one changed stock
+              # with approved names/codes, and unique tickers.
+              expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
+              test "$(git rev-parse "HEAD:$file")" = "$expected"
+              git show "$pinned:$file" > /tmp/v10_pinned_watchlist.json
+              python scripts/ci_v10_watchlist_replacement.py "$file" /tmp/v10_pinned_watchlist.json
+              echo "V10_OWNER_APPROVED_WATCHLIST=$file"
             elif [[ "$file" == "scripts/ai_shadow_supervisor.py" ]]; then
               # P0-V10-ACCEPTANCE-FIX-20261019 quote-freshness repair (writer
               # time is not quote time). Locked to the manifest blob; the
@@ -84,6 +96,8 @@ jobs:
             fi
           done
           echo "APPROVED_FOR_RUNTIME=0"
+      - name: Watchlist replacement check rejects wrong name, ticker, order and manifest tampering
+        run: python -m unittest discover -s tests -p test_v10_watchlist_replacement.py -v
       - name: V10 UI missing metrics and no false zeros
         run: node --test tests/v10_trade_control_missing_data.test.mjs
       - name: V10 CONTROL strategy performance provenance and mode isolation
