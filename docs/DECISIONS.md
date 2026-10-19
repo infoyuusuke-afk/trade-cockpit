@@ -139,3 +139,18 @@ Source: OWNER instruction (given earlier in chat, restated 2026-10-18 16:26Z in 
 - When an AI receives such an instruction in chat, it records it in a docs-only Draft PR (D-022 procedure) or asks the GPT lead to do so, before building on it.
 - Before implementing or auditing, check the design assumption against DECISIONS.md. If code contradicts a recorded decision, report the contradiction instead of silently following the code.
 Source: OWNER instruction 2026-10-18 16:32Z ("食い違いが起きないよう修正しなさい") after D-023 was found missing from all canonical records.
+
+## D-025 One-time OWNER exception: trial of unaccepted PR #446 (2026-10-19)
+- On 2026-10-19 the OWNER approved, in chat, one trial of the unaccepted PR #446 commit ab350d28e2d116d468d4e6bcd9bacd6f5538b6c2 on the OWNER PC, with real_submit_allowed=false. Startup failed closed (an untracked required helper was missing); the day ran on the existing V10.
+- This was one exception. It is not an independent acceptance, a standing waiver, a cutover or a merge approval.
+- Any later trial first re-verifies the source pin, the tracked bundle, STOP and rollback, the exact HEAD and the permission boundary, and needs the OWNER's explicit approval again.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: Issue #282 DEV-D025-D026-V10-MARKET-OPERABILITY-20261019 (GPT lead, recording the OWNER report).
+
+## D-026 V10 market operability: staged plan C
+- Plan A first: observe every symbol with its own freshness; derive metrics and candidates only from verified, time-consistent inputs. An unknown or stale candidate, and any aggregate without verified input lineage, stays BLOCKED.
+- Plan B (replacing watchlist symbols) waits for multi-day evidence and OWNER approval. No automatic removal of symbols.
+- 99/100 is never treated as complete. Keep the original expected universe, missing-data and coverage counts, provenance and available_at.
+- The existing whole-board fail-closed rule stays until a partitioned computation is proven by negative tests. Shadow and paper only; real_submit_allowed=false; no wider trading permission.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: Issue #282 DEV-D025-D026-V10-MARKET-OPERABILITY-20261019 (GPT lead formal decision).

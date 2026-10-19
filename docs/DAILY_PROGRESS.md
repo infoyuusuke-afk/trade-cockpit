@@ -19,6 +19,8 @@ Newest first. Keep one short entry per day; detailed evidence stays in PRs and t
 - V10 localhost security is release-blocking P0 (D-021).
 - V10 runs with no other Excel in use; Controller and Safe Stop refuse with a clear reason (D-023).
 - OWNER instructions take effect for AIs only once recorded as a D-number (D-024).
+- 2026-10-19: the trial of unaccepted PR #446 was a one-time OWNER exception, not an acceptance (D-025).
+- 2026-10-19: V10 market operability follows staged plan C; plan A first, watchlist replacement waits for the OWNER (D-026).
 
 ### 2. Work (all Draft; nothing merged; no real-machine action)
 - PR #441: V10 localhost security fix (GPT).
