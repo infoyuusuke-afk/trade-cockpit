@@ -170,3 +170,12 @@ Source: Issue #282 DEV-D025-D026-V10-MARKET-OPERABILITY-20261019 (GPT lead forma
 - The workbook rows (the 100-symbol RSS sheet and any other sheet holding the old code) switch together with the runtime that uses this list. Switching only one side fails closed with ROW_SHEET_CODE_MISMATCH. Shadow and paper only; real_submit_allowed=false.
 State: PENDING_DOC_SYNC until merged to `main` (D-022).
 Source: OWNER chat and decision card on 2026-10-19 in the Claude project thread (D-024), plus GPT lead instruction P0-V10-WATCHLIST-464A-SOURCE-PIN-20261019.
+
+## D-028 V10 runs from the fixed line only; trial of #446 approved (2026-10-19)
+- OWNER instruction, 2026-10-19 08:10Z: "修正版で起動して、おかしなところがあればなおす、古いのはもう起動させない".
+- The previous installed V10 (pre-#446) is retired. AIs must not start it, and must not propose it as an option. Its folder stays only as a rollback copy and evidence.
+- The OWNER approves a trial of the #446 line (HEAD 65d6015b0c6bbd8e53f926baac0fbb8527798c0e at approval time) on the OWNER PC from a separate folder, with real_submit_allowed=false, Shadow and paper only. Defects found in the trial are fixed on the owning PR with negative tests and CI, then re-tried.
+- This is not an independent acceptance, a merge approval or a cutover. D-025 stays a separate one-time record. D-023 (no other Excel) and D-027 (the workbook switches together with the watchlist) still apply. The watchlist and workbook stay on the old code until a runtime HEAD that carries #451 is approved.
+- Open point for the GPT lead: if the fixed line cannot start on a trading day, V10 does not run that day. The old line is not a fallback.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: OWNER chat 2026-10-19 08:10Z in the Claude project thread (D-024).

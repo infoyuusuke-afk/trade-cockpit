@@ -22,6 +22,7 @@ Newest first. Keep one short entry per day; detailed evidence stays in PRs and t
 - 2026-10-19: the trial of unaccepted PR #446 was a one-time OWNER exception, not an acceptance (D-025).
 - 2026-10-19: V10 market operability follows staged plan C; plan A first, watchlist replacement waits for the OWNER (D-026).
 - 2026-10-19: OWNER approved replacing one delisted watchlist code with its successor listing; Draft PR #451, synthetic CI PASS, real machine NOT_RUN (D-027).
+- 2026-10-19: OWNER retired the pre-#446 V10 and approved a trial of the fixed #446 line on the OWNER PC (Shadow only); not an acceptance (D-028).
 
 ### 2. Work (all Draft; nothing merged; no real-machine action)
 - PR #441: V10 localhost security fix (GPT).
