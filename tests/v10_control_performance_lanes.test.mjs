@@ -15,6 +15,7 @@ function harness(fetcher=async()=>({ok:false}),withPane=false){
   const history={innerHTML:""};
   const perTab={innerHTML:""};
   const pane={dataset:{pane:"scalp"},querySelector(q){
+    if(q===":scope > .cc-tab-owner-summary")return {className:"card wide cc-tab-owner-summary"};
     if(q.includes("data-tab-performance"))return perTab;
     if(q.includes("data-execution-control"))return {innerHTML:""};
     return null;
