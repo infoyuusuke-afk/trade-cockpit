@@ -1,0 +1,35 @@
+name: V10 Brain Research Consumer (Synthetic)
+on:
+  pull_request:
+    paths:
+      - 'scripts/v10_brain_research_consumer.py'
+      - 'scripts/v10_brain_private_research_bridge.py'
+      - 'scripts/v10_brain_virtual_outcome_audit.py'
+      - 'tests/test_v10_brain_research_consumer.py'
+      - 'tests/test_v10_brain_private_research_bridge.py'
+      - 'tests/test_v10_brain_virtual_outcome_audit.py'
+      - '.github/workflows/v10-brain-research-consumer.yml'
+permissions:
+  contents: read
+jobs:
+  synthetic-research-consumer:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Exact tested source
+        run: git rev-parse HEAD
+      - name: Consumer and bridge synthetic contracts
+        run: python -B -m unittest discover -s tests -p 'test_v10_brain_*research*.py' -v
+      - name: Virtual audit regression
+        run: python -B -m unittest discover -s tests -p test_v10_brain_virtual_outcome_audit.py -v
