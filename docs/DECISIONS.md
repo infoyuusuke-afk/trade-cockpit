@@ -154,3 +154,19 @@ Source: Issue #282 DEV-D025-D026-V10-MARKET-OPERABILITY-20261019 (GPT lead, reco
 - The existing whole-board fail-closed rule stays until a partitioned computation is proven by negative tests. Shadow and paper only; real_submit_allowed=false; no wider trading permission.
 State: PENDING_DOC_SYNC until merged to `main` (D-022).
 Source: Issue #282 DEV-D025-D026-V10-MARKET-OPERABILITY-20261019 (GPT lead formal decision).
+
+## D-027 V10 watchlist: delisted code replaced by its successor listing (2026-10-19)
+- Change: `QPS研究所（5595）` / `5595.T` → `QPSホールディングス（464A）` / `464A.T` in `ms2_live/watchlist_100.json`, same slot and order, other attributes unchanged.
+- Reason: the company moved to a holding-company structure. The old code was delisted on 2025-11-27 and the successor was listed on 2025-12-01 (1:1). MarketSpeed II RSS returns empty cells for the old code, so the V10 board was always 99/100.
+- OWNER approval: 2026-10-19 07:01Z (decision card, "置き換える"). On 2026-10-19 07:14Z the OWNER also approved the narrow CI source-pin exception for this one file.
+- This is a code change for the same listed business, not a Plan B universe removal or substitution. D-026 still governs any other watchlist replacement.
+- Implementation: Draft PR #451 (stacked on #446).
+  - HEAD e208c6eb2f7209f4e4870a2b18c265ad698c3f61
+  - Watchlist blob `ecff9eed20478bfe2b74b68dbbcf1cbc811fba38`, equal to its pin in `downloads/V10_RELEASE_BUNDLE_MANIFEST.json`
+  - The CI exception is limited to this file: manifest pin equals HEAD blob, 100 entries, original order, exactly this one change, unique tickers. It is enforced by `scripts/ci_v10_watchlist_replacement.py`, with negative tests in `tests/test_v10_watchlist_replacement.py`.
+  - Synthetic CI 9/9 SUCCESS at e208c6eb.
+  - Duplicate PR #452 closed unmerged.
+- Not done: Windows real-machine acceptance (NOT_RUN), the OWNER workbook switch, cutover, merge.
+- The workbook rows (the 100-symbol RSS sheet and any other sheet holding the old code) switch together with the runtime that uses this list. Switching only one side fails closed with ROW_SHEET_CODE_MISMATCH. Shadow and paper only; real_submit_allowed=false.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: OWNER chat and decision card on 2026-10-19 in the Claude project thread (D-024), plus GPT lead instruction P0-V10-WATCHLIST-464A-SOURCE-PIN-20261019.
