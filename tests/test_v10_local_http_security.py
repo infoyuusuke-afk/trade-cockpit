@@ -20,6 +20,9 @@ COLLECTOR = ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1"
 WATCHER = ROOT / "ms2_live" / "Kioxia_RSS_Live_Watcher.ps1"
 
 
+SYNTHETIC_UNIVERSE = ["285A.T"] + ["SYN%02d.T" % i for i in range(1, 100)]
+
+
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8-sig")
 
@@ -133,6 +136,8 @@ class NativeWindowsHttpAcceptance(unittest.TestCase):
         cls._launch_local_worker(
             WATCHER, cls.watcher_port, cls.watcher_fixture
         )
+        stocks = {"synthetic %03d" % i: {"ticker": t} for i, t in enumerate(SYNTHETIC_UNIVERSE)}
+        (Path(cls.tmp.name) / "watchlist_100.json").write_text(json.dumps({"stocks": stocks}), encoding="utf-8")
         cls.collector_fixture = Path(cls.tmp.name) / "synthetic-collector.json"
         cls._launch_local_worker(COLLECTOR, cls.collector_port, cls.collector_fixture)
 
@@ -146,7 +151,8 @@ class NativeWindowsHttpAcceptance(unittest.TestCase):
 param(
     [Parameter(Mandatory=$true)][string]$SourceFile,
     [Parameter(Mandatory=$true)][int]$Port,
-    [Parameter(Mandatory=$true)][string]$JsonFile
+    [Parameter(Mandatory=$true)][string]$JsonFile,
+    [string]$UniverseDir = ""
 )
 $ErrorActionPreference = 'Stop'
 $tokens = $null
@@ -171,7 +177,13 @@ if (-not ($implementation.StartsWith('{') -and $implementation.EndsWith('}'))) {
     throw 'V10_WORKER_SCRIPTBLOCK_INVALID'
 }
 # Serialize the actual private identity helpers for the extracted Collector job.
-foreach ($name in @('Get-NormalizedLocalWorkbookPath','Get-WorkbookPublicationId','Get-PublishedWorkbookGate')) {
+# P0-V10-ROW-GATE-OPERABILITY: the Collector job also needs the shared
+# quote/row/universe gate functions; with no GateSource argument the job
+# requires them to be defined already, so they are dot-sourced here.
+foreach ($name in @('Get-NormalizedLocalWorkbookPath','Get-WorkbookPublicationId','Get-PublishedWorkbookGate',
+                    'Get-JstNow','ConvertFrom-OffsetTimestamp','Get-MarketSession','New-QuoteFreshnessVerdict',
+                    'Get-QuoteFreshness','Get-RowQuoteFreshness','Get-BoardRowFreshness','Get-ExpectedUniverse',
+                    'Get-BoardAvailability','Get-AvailabilitySummary')) {
     $defs = @($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name}, $true))
     if ($defs.Count -eq 1) { . ([scriptblock]::Create($defs[0].Extent.Text)) }
 }
@@ -182,11 +194,12 @@ $loop = [scriptblock]::Create(
 # Explicit external dependency fake: never inspect host processes or Excel.
 # The production listener and its rejection function remain unmodified.
 function Get-CimInstance { [pscustomobject]@{CommandLine='MS2_RSS_100_Collector.ps1'} }
-& $loop $JsonFile $Port (Join-Path $env:TEMP 'v10-absent-state.json') 'C:\synthetic\Synthetic.xlsx' 
+& $loop $JsonFile $Port (Join-Path $env:TEMP 'v10-absent-state.json') 'C:\synthetic\Synthetic.xlsx' $UniverseDir
 """, encoding="utf-8")
         cls._launch([
             str(wrapper), "-SourceFile", str(source_file),
             "-Port", str(port), "-JsonFile", str(fixture),
+            "-UniverseDir", cls.tmp.name,
         ], port)
 
     @staticmethod
@@ -200,12 +213,20 @@ function Get-CimInstance { [pscustomobject]@{CommandLine='MS2_RSS_100_Collector.
 
     @staticmethod
     def _collector_payload():
+        # A complete, freshly dated synthetic 100-row board (the bridge now
+        # applies the Gateway's quote, row and universe gate).
+        quote_at = datetime.now(timezone(timedelta(hours=9))).replace(microsecond=0) - timedelta(seconds=2)
+        quote = dict(source_timestamp=quote_at.strftime("%H:%M:%S"), source_timestamp_at=quote_at.isoformat(),
+                     source_timestamp_basis="COLLECTOR_OBSERVED_CHANGE", source_timestamp_observed_at=quote_at.isoformat())
+        rows = [dict(ticker=t, price=123.0, data="LIVE", **quote) for t in SYNTHETIC_UNIVERSE]
         return dict(updated_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     source="MarketSpeed II RSS / local PC", real_submit_allowed=False,
+                    universe=100, valid=100, all_targets=rows,
                     live_price_diagnostics=dict(source_mode="MS2_RSS_WORKBOOK",
                     price_source_status="OK", symbol="285A.T", current_price=123.0,
                     live_values_available=True, workbook_identity_verified=True,
-                    workbook_full_name="Synthetic.xlsx", workbook_identity_id=hashlib.sha256(r"C:\SYNTHETIC\SYNTHETIC.XLSX".encode()).hexdigest()))
+                    workbook_full_name="Synthetic.xlsx", workbook_identity_id=hashlib.sha256(r"C:\SYNTHETIC\SYNTHETIC.XLSX".encode()).hexdigest(),
+                    **quote))
 
     def test_watcher_data_freshness_and_lineage_fail_closed(self):
         path = self.watcher_fixture

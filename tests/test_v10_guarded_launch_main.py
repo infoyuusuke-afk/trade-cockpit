@@ -49,7 +49,7 @@ class V10GuardedLaunchContract(unittest.TestCase):
         self.assertIn("RUNTIME_STATE=UNKNOWN_AFTER_RUNNER", SOURCE)
 
     def test_component_inventory_explicit_and_nonempty(self):
-        self.assertEqual(len(self.component_paths()), 29)
+        self.assertEqual(len(self.component_paths()), 31)
         self.assertIn("downloads/STOP_AI_COCKPIT_V10.ps1", self.component_paths())
         self.assertIn("downloads/AI_COCKPIT_CONTROLLER_V10.ps1", self.component_paths())
         self.assertIn("scripts/ai_brain_observer.py", self.component_paths())
@@ -66,13 +66,37 @@ class V10GuardedLaunchContract(unittest.TestCase):
             {item["path"] for item in manifest["files"]},
             set(self.component_paths())
         )
-        self.assertEqual(len(manifest["files"]), 29)
+        self.assertEqual(len(manifest["files"]), 31)
         self.assertIn("V10_RELEASE_SOURCE_BLOB_MISMATCH", SOURCE)
         self.assertIn("V10_RELEASE_MANIFEST_REAL_SUBMIT_MUST_BE_FALSE", SOURCE)
         self.assertLess(
-            SOURCE.index("V10_RELEASE_SOURCE_BLOBS_MATCH=29"),
+            SOURCE.index("V10_RELEASE_SOURCE_BLOBS_MATCH=31"),
             SOURCE.index("V10_REVIEWED_RUNNER_HANDOFF=1")
         )
+
+    def test_every_sibling_script_the_runtime_launches_is_a_pinned_component(self):
+        # 2026-10-19 OWNER trial: the Controller looks for
+        # EXCEL_IDENTITY_PROBE_V10.ps1 beside itself, but the file was not
+        # tracked, so a clean checkout failed closed at the Excel identity
+        # probe. Any script found via $PSScriptRoot must ship in the bundle.
+        components = set(self.component_paths())
+        for owner in ("AI_COCKPIT_CONTROLLER_V10.ps1", "STOP_AI_COCKPIT_V10.ps1"):
+            text = (ROOT / "downloads" / owner).read_text(encoding="utf-8-sig")
+            for name in set(re.findall(r'Join-Path \$PSScriptRoot "([^"]+\.ps1)"', text)):
+                with self.subTest(owner=owner, script=name):
+                    self.assertIn("downloads/" + name, components)
+                    self.assertTrue((ROOT / "downloads" / name).is_file())
+        self.assertIn("downloads/EXCEL_IDENTITY_PROBE_V10.ps1", components)
+
+    def test_stop_command_beside_start_command(self):
+        # The OWNER is told to double-click STOP_AI_COCKPIT_V10.cmd next to
+        # START; it must exist in every clean checkout and run only the
+        # recorded-PID Safe Stop.
+        stop_cmd = (ROOT / "downloads" / "STOP_AI_COCKPIT_V10.cmd").read_text(encoding="utf-8-sig")
+        self.assertIn('set "SCRIPT=%~dp0STOP_AI_COCKPIT_V10.ps1"', stop_cmd)
+        self.assertIn('-File "%SCRIPT%"', stop_cmd)
+        self.assertNotIn("taskkill", stop_cmd.lower())
+        self.assertNotIn("stop-process", stop_cmd.lower())
 
     @staticmethod
     def component_paths():

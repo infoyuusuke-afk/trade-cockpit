@@ -13,6 +13,10 @@ on:
       - "voice_client.js"
       - "opportunity_radar.js"
       - "trade_control.js"
+      - "tests/v10_trade_control_missing_data.test.mjs"
+      - "tests/v10_control_performance_lanes.test.mjs"
+      - "scripts/v10_control_paper_provenance_adapter.py"
+      - "tests/test_v10_control_paper_provenance_adapter.py"
       - "v10_publication_status.js"
       - "tests/test_v10_runtime_bundle_candidate.py"
       - "tests/test_v10_local_http_security.py"
@@ -30,7 +34,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Compare 24 unchanged + 1 UI stale repair + 4 security-pinned sources
+      - name: Compare 25 unchanged + 1 UI stale repair + 4 security-pinned + 1 freshness-repaired sources
         shell: bash
         run: |
           set -euo pipefail
@@ -38,7 +42,7 @@ jobs:
           git fetch --no-tags --depth=1 origin "$pinned"
           python -m json.tool downloads/V10_RELEASE_BUNDLE_MANIFEST.json > /dev/null
           mapfile -t files < <(python -c 'import json; print("\n".join(item["path"] for item in json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json", encoding="utf-8"))["files"]))')
-          test "${#files[@]}" -eq 29
+          test "${#files[@]}" -eq 31
           for file in "${files[@]}"; do
             test -f "$file"
             git cat-file -e "$pinned:$file"
@@ -48,6 +52,22 @@ jobs:
               # A separate V10 UI fail-closed contract validates content.
               echo "V10_INDEX_STALE_SAFETY_REPAIR=index.html"
               test "$(git rev-parse "HEAD:$file")" = "cb01cce5f7ed30f2670361ec5fad93ac3c57a693"
+            elif [[ "$file" == "trade_control.js" ]]; then
+              # P0 V10 UI data-integrity repair. Exact blob is reviewed and
+              # pinned in the manifest; no general source-pin exemption.
+              # Missing numeric values must never become measured zero.
+              expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
+              test "$(git rev-parse "HEAD:$file")" = "$expected"
+              test "$(git rev-parse "$pinned:$file")" != "$expected"
+              echo "V10_UI_NULL_DISPLAY_REPAIR=$file"
+            elif [[ "$file" == "scripts/ai_shadow_supervisor.py" ]]; then
+              # P0-V10-ACCEPTANCE-FIX-20261019 quote-freshness repair (writer
+              # time is not quote time). Locked to the manifest blob; the
+              # synthetic proof is tests/test_v10_price_freshness.py.
+              expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
+              test "$(git rev-parse "HEAD:$file")" = "$expected"
+              test "$(git rev-parse "HEAD:$file")" != "$(git rev-parse "$pinned:$file")"
+              echo "V10_PRICE_FRESHNESS_REPAIR=$file"
             elif [[ "$file" == "downloads/AI_COCKPIT_GATEWAY_V10.ps1" ||
                     "$file" == "downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1" ||
                     "$file" == "ms2_live/MS2_RSS_100_Collector.ps1" ||
@@ -64,6 +84,12 @@ jobs:
             fi
           done
           echo "APPROVED_FOR_RUNTIME=0"
+      - name: V10 UI missing metrics and no false zeros
+        run: node --test tests/v10_trade_control_missing_data.test.mjs
+      - name: V10 CONTROL strategy performance provenance and mode isolation
+        run: node --test tests/v10_control_performance_lanes.test.mjs
+      - name: V10 CONTROL PAPER evidence adapter negative tests (pure, no publication)
+        run: python -m unittest discover -s tests -p test_v10_control_paper_provenance_adapter.py -v
       - name: V10 local HTTP security static contract
         run: python -m unittest discover -s tests -p test_v10_local_http_security.py -v
       - name: Candidate manifest and V10 static UI/runtime dependencies
@@ -85,6 +111,7 @@ jobs:
           $paths = @(
             'downloads/RUN_AI_COCKPIT_V10.ps1',
             'downloads/AI_COCKPIT_CONTROLLER_V10.ps1',
+            'downloads/EXCEL_IDENTITY_PROBE_V10.ps1',
             'downloads/AI_COCKPIT_GATEWAY_V10.ps1',
             'downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1',
             'downloads/STOP_AI_COCKPIT_V10.ps1',

@@ -1,0 +1,24 @@
+name: V10 Brain Virtual Outcome Audit (Synthetic)
+on:
+  pull_request:
+    paths:
+      - 'scripts/v10_brain_virtual_outcome_audit.py'
+      - 'tests/test_v10_brain_virtual_outcome_audit.py'
+      - '.github/workflows/v10-brain-virtual-outcome-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pure-audit:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Synthetic virtual-observation negative and read-only tests
+        run: python -m unittest discover -s tests -p test_v10_brain_virtual_outcome_audit.py -v
