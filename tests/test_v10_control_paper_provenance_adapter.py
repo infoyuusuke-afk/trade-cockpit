@@ -260,5 +260,50 @@ class V10ControlPaperEvidenceAdapter(unittest.TestCase):
         self.assertTrue(isinstance(row["pnl_yen"], float))
 
 
+    def test_python_paper_projection_matches_actual_js_control_gate(self):
+        """Synthetic integration: Python writer contract -> actual JS parser."""
+        import json
+        from pathlib import Path
+        import subprocess
+
+        record, reason = project(fixture())
+        self.assertIsNone(reason)
+        payload = {
+            "rows": [
+                record,
+                dict(record, mode="real"),
+                dict(record, available_at=None),
+            ],
+            "now": NOW.isoformat(),
+        }
+        js = r"""
+const fs=require("node:fs");
+const vm=require("node:vm");
+const payload=JSON.parse(fs.readFileSync(0,"utf8"));
+const source=fs.readFileSync("trade_control.js","utf8");
+const reg=/\}\)\(\);\s*$/;
+if(!reg.test(source))throw Error("CONTROL IIFE contract changed");
+const script=source.replace(reg,
+  "globalThis.__v10Test={performanceEligibility};\n})();");
+const context={document:{addEventListener(){}}};
+vm.runInNewContext(script,context,{timeout:2000,filename:"trade_control.js"});
+const matched=payload.rows.map(x=>{
+  const out=context.__v10Test.performanceEligibility(x,Date.parse(payload.now));
+  return out?out.mode:null;
+});
+process.stdout.write(JSON.stringify(matched));
+"""
+        proc = subprocess.run(
+            ["node", "-e", js],
+            input=json.dumps(payload),
+            cwd=Path(__file__).resolve().parents[1],
+            text=True,
+            capture_output=True,
+            check=True,
+            timeout=15,
+        )
+        self.assertEqual(json.loads(proc.stdout), ["shadow", None, None])
+
+
 if __name__ == "__main__":
     unittest.main()
