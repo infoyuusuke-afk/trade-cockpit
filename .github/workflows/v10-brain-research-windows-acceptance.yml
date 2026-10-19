@@ -1,0 +1,36 @@
+name: V10 Brain Research Windows Acceptance (Synthetic)
+on:
+  pull_request:
+    paths:
+      - 'scripts/v10_brain_research_windows_acceptance.py'
+      - 'tests/test_v10_brain_research_windows_acceptance.py'
+      - 'scripts/v10_brain_research_optin.py'
+      - 'scripts/v10_brain_research_consumer.py'
+      - 'downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1'
+      - '.github/workflows/v10-brain-research-windows-acceptance.yml'
+permissions:
+  contents: read
+jobs:
+  private-readonly-acceptance:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Print exact tested HEAD
+        run: git rev-parse HEAD
+      - name: Sidecar and Windows acceptance synthetic negative contracts
+        run: python -B -m unittest discover -s tests -p 'test_v10_brain_*research*.py' -v
+      - name: Existing V10 PowerShell preflight synthetic self-test
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: powershell.exe -NoProfile -NonInteractive -File downloads/AI_COCKPIT_V10_BRAIN_PREFLIGHT.ps1 -SelfTest
