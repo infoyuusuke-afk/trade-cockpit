@@ -117,7 +117,7 @@ class BrainPrivateResearchBridgeTests(unittest.TestCase):
         self.assertFalse(result["costs_verified"])
         self.assertFalse(result["source_authenticated"])
         self.assertFalse(result["real_submit_allowed"])
-        for private in ("1000.T", "100.0", "ledger.jsonl", "account_id", "broker"):
+        for private in ("1000.T", "100.0", "ledger.jsonl", "account_id", "broker_account"):
             self.assertNotIn(private, str(result))
 
     def test_live_observer_watch_is_count_only(self):
