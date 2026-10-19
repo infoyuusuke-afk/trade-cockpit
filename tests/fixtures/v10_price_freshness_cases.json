@@ -1,0 +1,130 @@
+{
+  "schema": "v10-price-freshness-cases-1",
+  "note": "Synthetic data only. No real market prices, accounts or paths. Every time carries an explicit offset; expected verdicts are JST.",
+  "cases": [
+    {
+      "name": "friday_close_republished_monday_0214",
+      "now": "2026-10-19T02:14:00+09:00",
+      "diag": {"source_timestamp": "15:30:00", "source_timestamp_at": "2026-10-16T15:30:00+09:00", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE", "source_timestamp_observed_at": "2026-10-16T15:30:01+09:00"},
+      "expect": {"state": "STALE", "reasons": ["STALE_SOURCE_QUOTE"], "market_session": "CLOSED_OUTSIDE_HOURS"}
+    },
+    {
+      "name": "old_quote_only_mtime_refreshed",
+      "now": "2026-10-19T10:20:00+09:00",
+      "diag": {"source_timestamp": "10:00:01", "source_timestamp_at": "2026-10-19T10:00:01+09:00", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE", "source_timestamp_observed_at": "2026-10-19T10:00:02+09:00"},
+      "expect": {"state": "STALE", "reasons": ["STALE_SOURCE_QUOTE"], "market_session": "OPEN_BY_CLOCK"}
+    },
+    {
+      "name": "time_only_date_unknown",
+      "now": "2026-10-19T10:00:05+09:00",
+      "diag": {"source_timestamp": "10:00:01"},
+      "expect": {"state": "UNKNOWN", "reasons": ["SOURCE_DATE_UNKNOWN"]}
+    },
+    {
+      "name": "unobserved_since_collector_start",
+      "now": "2026-10-19T02:11:40+09:00",
+      "diag": {"source_timestamp": "15:30:00", "source_timestamp_at": null, "source_timestamp_basis": "UNOBSERVED_SINCE_START", "source_timestamp_observed_at": null},
+      "expect": {"state": "UNKNOWN", "reasons": ["SOURCE_DATE_UNKNOWN"]}
+    },
+    {
+      "name": "source_timestamp_missing",
+      "now": "2026-10-19T10:00:05+09:00",
+      "diag": {},
+      "expect": {"state": "UNKNOWN", "reasons": ["SOURCE_TIMESTAMP_MISSING"]}
+    },
+    {
+      "name": "future_quote",
+      "now": "2026-10-19T10:00:00+09:00",
+      "diag": {"source_timestamp": "10:01:00", "source_timestamp_at": "2026-10-19T10:01:00+09:00", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE", "source_timestamp_observed_at": "2026-10-19T10:00:00+09:00"},
+      "expect": {"state": "INVALID", "reasons": ["SOURCE_TIMESTAMP_AFTER_OBSERVATION", "SOURCE_TIMESTAMP_IN_FUTURE"]}
+    },
+    {
+      "name": "time_reversal_against_last_accepted",
+      "now": "2026-10-19T10:00:10+09:00",
+      "previous_quote_at": "2026-10-19T10:00:05+09:00",
+      "diag": {"source_timestamp": "10:00:01", "source_timestamp_at": "2026-10-19T10:00:01+09:00", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE", "source_timestamp_observed_at": "2026-10-19T10:00:09+09:00"},
+      "expect": {"state": "INVALID", "reasons": ["SOURCE_TIMESTAMP_REGRESSION"]}
+    },
+    {
+      "name": "mixed_trading_dates_in_one_payload",
+      "now": "2026-10-19T10:00:05+09:00",
+      "diag": {"source_timestamp": "10:00:01", "source_timestamp_at": "2026-10-19T10:00:01+09:00", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE", "source_timestamp_observed_at": "2026-10-19T10:00:02+09:00"},
+      "rows": [{"ticker": "SYN1.T", "source_timestamp_at": "2026-10-19T10:00:00+09:00"}, {"ticker": "SYN2.T", "source_timestamp_at": "2026-10-16T15:30:00+09:00"}],
+      "expect": {"state": "INVALID", "reasons": ["MIXED_SOURCE_DATES"]}
+    },
+    {
+      "name": "normal_fresh_quote",
+      "now": "2026-10-19T10:00:05+09:00",
+      "previous_quote_at": "2026-10-19T10:00:00+09:00",
+      "diag": {"source_timestamp": "10:00:01", "source_timestamp_at": "2026-10-19T10:00:01+09:00", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE", "source_timestamp_observed_at": "2026-10-19T10:00:02+09:00"},
+      "rows": [{"ticker": "SYN1.T", "source_timestamp_at": "2026-10-19T09:59:58+09:00"}],
+      "expect": {"state": "FRESH", "reasons": [], "market_session": "OPEN_BY_CLOCK"}
+    },
+    {
+      "name": "closed_market_weekend_old_quote",
+      "now": "2026-10-17T11:00:00+09:00",
+      "diag": {"source_timestamp": "15:30:00", "source_timestamp_at": "2026-10-16T15:30:00+09:00", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE", "source_timestamp_observed_at": "2026-10-16T15:30:01+09:00"},
+      "expect": {"state": "STALE", "reasons": ["STALE_SOURCE_QUOTE"], "market_session": "CLOSED_WEEKEND"}
+    },
+    {
+      "name": "holiday_monday_old_friday_quote_on_tuesday_open",
+      "now": "2026-10-13T09:05:00+09:00",
+      "diag": {"source_timestamp": "15:30:00", "source_timestamp_at": "2026-10-09T15:30:00+09:00", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE", "source_timestamp_observed_at": "2026-10-09T15:30:01+09:00"},
+      "expect": {"state": "STALE", "reasons": ["STALE_SOURCE_QUOTE"], "market_session": "OPEN_BY_CLOCK"}
+    },
+    {
+      "name": "lunch_break_old_morning_quote",
+      "now": "2026-10-19T12:00:00+09:00",
+      "diag": {"source_timestamp": "11:30:00", "source_timestamp_at": "2026-10-19T11:30:00+09:00", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE", "source_timestamp_observed_at": "2026-10-19T11:30:01+09:00"},
+      "expect": {"state": "STALE", "reasons": ["STALE_SOURCE_QUOTE"], "market_session": "CLOSED_OUTSIDE_HOURS"}
+    },
+    {
+      "name": "dated_text_without_offset",
+      "now": "2026-10-19T10:00:05+09:00",
+      "diag": {"source_timestamp": "10:00:01", "source_timestamp_at": "2026-10-19T10:00:01", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE", "source_timestamp_observed_at": "2026-10-19T10:00:02+09:00"},
+      "expect": {"state": "UNKNOWN", "reasons": ["SOURCE_TIMESTAMP_NO_OFFSET"]}
+    },
+    {
+      "name": "date_assumed_without_evidence",
+      "now": "2026-10-19T10:00:05+09:00",
+      "diag": {"source_timestamp": "10:00:01", "source_timestamp_at": "2026-10-19T10:00:01+09:00", "source_timestamp_basis": "ASSUMED_TODAY"},
+      "expect": {"state": "UNKNOWN", "reasons": ["SOURCE_DATE_BASIS_UNVERIFIED"]}
+    },
+    {
+      "name": "dated_time_disagrees_with_source_time",
+      "now": "2026-10-19T10:00:05+09:00",
+      "diag": {"source_timestamp": "10:00:02", "source_timestamp_at": "2026-10-19T10:00:01+09:00", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE", "source_timestamp_observed_at": "2026-10-19T10:00:02+09:00"},
+      "expect": {"state": "INVALID", "reasons": ["SOURCE_TIMESTAMP_INCONSISTENT"]}
+    },
+    {
+      "name": "observation_time_missing",
+      "now": "2026-10-19T10:00:05+09:00",
+      "diag": {"source_timestamp": "10:00:01", "source_timestamp_at": "2026-10-19T10:00:01+09:00", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE"},
+      "expect": {"state": "UNKNOWN", "reasons": ["SOURCE_OBSERVATION_MISSING"]}
+    },
+    {
+      "name": "utc_offset_input_same_instant_fresh",
+      "now": "2026-10-19T01:00:05Z",
+      "diag": {"source_timestamp": "10:00:01", "source_timestamp_at": "2026-10-19T01:00:01Z", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE", "source_timestamp_observed_at": "2026-10-19T01:00:02+00:00"},
+      "expect": {"state": "FRESH", "reasons": [], "quote_at": "2026-10-19T10:00:01+09:00"}
+    },
+    {
+      "name": "age_exactly_max_is_fresh",
+      "now": "2026-10-19T10:02:01+09:00",
+      "diag": {"source_timestamp": "10:00:01", "source_timestamp_at": "2026-10-19T10:00:01+09:00", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE", "source_timestamp_observed_at": "2026-10-19T10:00:02+09:00"},
+      "expect": {"state": "FRESH", "reasons": []}
+    },
+    {
+      "name": "age_one_second_over_max_is_stale",
+      "now": "2026-10-19T10:02:02+09:00",
+      "diag": {"source_timestamp": "10:00:01", "source_timestamp_at": "2026-10-19T10:00:01+09:00", "source_timestamp_basis": "COLLECTOR_OBSERVED_CHANGE", "source_timestamp_observed_at": "2026-10-19T10:00:02+09:00"},
+      "expect": {"state": "STALE", "reasons": ["STALE_SOURCE_QUOTE"]}
+    }
+  ],
+  "combined": [
+    {"name": "both_fresh", "a": "normal_fresh_quote", "b": "normal_fresh_quote", "expect_fresh": true, "expect_reasons": []},
+    {"name": "health_fresh_shadow_stale", "a": "normal_fresh_quote", "b": "friday_close_republished_monday_0214", "expect_fresh": false, "expect_reasons": ["FRESHNESS_VERDICT_MISMATCH", "STALE_SOURCE_QUOTE"]},
+    {"name": "both_stale", "a": "friday_close_republished_monday_0214", "b": "friday_close_republished_monday_0214", "expect_fresh": false, "expect_reasons": ["STALE_SOURCE_QUOTE"]},
+    {"name": "shadow_verdict_missing", "a": "normal_fresh_quote", "b": null, "expect_fresh": false, "expect_reasons": ["FRESHNESS_VERDICT_MISMATCH", "FRESHNESS_VERDICT_MISSING"]}
+  ]
+}
