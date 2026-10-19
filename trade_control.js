@@ -59,13 +59,13 @@
       wins,
       winRate:wins/done.length*100,
       pnl:done.reduce((a,x)=>a+(Number(x.pnl_yen)||0),0),
-      pf:losses>0?gains/losses:(gains>0?99:null),
+      pf:losses>0?gains/losses:null,
       avgR:rRows.length?rRows.reduce((a,x)=>a+Number(x.r),0)/rRows.length:null,
       openMark:done.filter(x=>String(x?.exit_reason||"")==="OPEN_MARK"||String(x?.result||"").includes("未決済")).length
     };
   }
 
-  function performanceHtml(tab,stats,unclassified){
+  function performanceHtml(tab,stats,unclassified,mode){
     const label=TAB_LABELS[tab]||tab;
     if(!TRADE_TABS.has(tab)){
       return metricCard(label+" 成績","参考タブ",[
@@ -78,10 +78,175 @@
       ],"このタブ名に紐づく実績タグがまだありません。0件とは解釈しません。","block");
     }
     const cls=stats.pnl>0?"long":stats.pnl<0?"short":"wait";
-    return metricCard(label+" 成績","仮想/Shadow",[
+    return metricCard(label+" 成績",mode==="backtest"?"BACKTEST":"SHADOW/PAPER",[
       ["取引件数",stats.count+"件"],["勝率",pct(stats.winRate)],["PF",stats.pf==null?"—":stats.pf.toFixed(2)],
       ["平均R",rfmt(stats.avgR)],["損益",money(stats.pnl)],["未決済評価",stats.openMark+"件"]
-    ],"paper_trade_history.json のタブ識別可能な履歴のみ。未分類履歴 "+unclassified+"件は混ぜません。",cls);
+    ],"mode・cockpit_tab・取引ID・available_at・確定時刻を検証した仮想履歴のみ。保留 "+unclassified+"件は混ぜません。",cls);
+  }
+
+
+  // CONTROL research display: only explicitly tagged, settled simulated records
+  // are eligible. The public paper history can NEVER authenticate real fills.
+  // No source row is rewritten; legacy/ambiguous rows remain quarantined.
+  const CONTROL_MODES=["shadow","backtest"];
+  const CONTROL_STRATEGIES=["scalp","event-hot","ms2-live","overnight","swing","value","kioxia-calendar"];
+  const JST_OFFSET_MS=9*60*60*1000;
+
+  function evidenceTime(value){
+    if(typeof value!=="string"||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value))return null;
+    const t=Date.parse(value);
+    return Number.isFinite(t)?t:null;
+  }
+
+  function performanceEligibility(x,nowMs){
+    if(!x||typeof x!=="object"||Array.isArray(x))return null;
+    if(!TRADE_TABS.has(x.cockpit_tab))return null;
+    // "paper" is a display synonym of shadow; "real" is never accepted from a paper file.
+    const mode=x.mode==="paper"?"shadow":x.mode;
+    if(!CONTROL_MODES.includes(mode))return null;
+    if(typeof x.trade_id!=="string"||!/^[A-Za-z0-9_.:-]{1,128}$/.test(x.trade_id))return null;
+    const available=evidenceTime(x.available_at),closed=evidenceTime(x.closed_at);
+    if(available===null||closed===null||closed>available||available>nowMs)return null;
+    if(x.status!=null&&x.status!=="CLOSED")return null;
+    if(x.exit_reason==="OPEN_MARK"||String(x.result||"").includes("未決済"))return null;
+    const pnl=knownNumber(x.pnl_yen);
+    if(pnl===null)return null;
+    return {row:x,mode,tab:x.cockpit_tab,id:x.trade_id,pnl,available,closed};
+  }
+
+  function reconcilePerformanceRows(raw,nowMs=Date.now()){
+    if(!Array.isArray(raw))return {available:false,total:null,quarantined:null,eligible:[]};
+    const candidates=raw.map(x=>performanceEligibility(x,nowMs));
+    const ids=new Map();
+    for(const item of candidates)if(item)ids.set(item.id,(ids.get(item.id)||0)+1);
+    const eligible=candidates.filter(x=>x&&ids.get(x.id)===1);
+    eligible.sort((a,b)=>a.closed-b.closed||a.available-b.available||a.id.localeCompare(b.id));
+    return {available:true,total:raw.length,quarantined:raw.length-eligible.length,eligible};
+  }
+
+  function jstDay(t){
+    return new Date(t+JST_OFFSET_MS).toISOString().slice(0,10);
+  }
+  function jstWeek(t){
+    const date=new Date(t+JST_OFFSET_MS);
+    date.setUTCDate(date.getUTCDate()-((date.getUTCDay()+6)%7));
+    return date.toISOString().slice(0,10);
+  }
+
+  function strategyStats(records){
+    if(!records.length)return null;
+    const sorted=[...records].sort((a,b)=>a.closed-b.closed||a.available-b.available||a.id.localeCompare(b.id));
+    let pnl=0,positive=0,negative=0,wins=0,maxDrawdown=0,peak=0;
+    let cumulativeR=0,peakR=0,drawdownR=0,allR=true,streak=0;
+    const rValues=[],mfe=[],mae=[],daily=new Map(),weekly=new Map(),series=[];
+    for(const item of sorted){
+      const v=item.pnl;
+      pnl+=v;
+      if(!Number.isFinite(pnl))return null;
+      if(v>0){wins++;positive+=v;streak=streak>=0?streak+1:1;}
+      else if(v<0){negative-=v;streak=streak<=0?streak-1:-1;}
+      else streak=0;
+      peak=Math.max(peak,pnl);
+      maxDrawdown=Math.max(maxDrawdown,peak-pnl);
+      const r=knownNumber(item.row.r);
+      if(r===null)allR=false;
+      else{
+        rValues.push(r);cumulativeR+=r;
+        peakR=Math.max(peakR,cumulativeR);
+        drawdownR=Math.max(drawdownR,peakR-cumulativeR);
+      }
+      const mfeR=knownNumber(item.row.mfe_r),maeR=knownNumber(item.row.mae_r);
+      if(mfeR!==null)mfe.push(mfeR);
+      if(maeR!==null)mae.push(maeR);
+      const d=jstDay(item.closed),w=jstWeek(item.closed);
+      daily.set(d,(daily.get(d)||0)+v);
+      weekly.set(w,(weekly.get(w)||0)+v);
+      series.push({date:d,pnl_yen:pnl});
+    }
+    const recent=sorted.slice(-20);
+    return {
+      count:sorted.length,wins,winRate:wins/sorted.length*100,pnl,
+      pf:negative>0?positive/negative:null,
+      avgR:rValues.length?rValues.reduce((a,b)=>a+b,0)/rValues.length:null,
+      rN:rValues.length,maxDrawdown,maxDrawdownR:allR?drawdownR:null,
+      mfeAvg:mfe.length===sorted.length?mfe.reduce((a,b)=>a+b,0)/mfe.length:null,
+      maeAvg:mae.length===sorted.length?mae.reduce((a,b)=>a+b,0)/mae.length:null,
+      streak,recentN:recent.length,recentPnl:recent.reduce((a,x)=>a+x.pnl,0),
+      daily:[...daily].map(([date,pnl_yen])=>({date,pnl_yen})),
+      weekly:[...weekly].map(([week,pnl_yen])=>({week,pnl_yen})),
+      cumulative:series
+    };
+  }
+
+  function strategyGroups(accepted){
+    const groups=new Map();
+    for(const x of accepted){
+      const key=x.mode+":"+x.tab;
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push(x);
+    }
+    return groups;
+  }
+
+  function controlPerformanceHtml(audit){
+    const total=audit.available?audit.total+"件":"—";
+    const accepted=audit.available?audit.eligible.length+"件":"—";
+    const held=audit.available?audit.quarantined+"件":"—";
+    const info=metricCard("CONTROL 履歴照合","PROVENANCE",[
+      ["元履歴",total],["表示可能",accepted],["保留（未分類・重複等）",held]
+    ],"trade_id / cockpit_tab / mode / closed_at / available_at / 確定PnLをすべて検証。旧履歴は自動推定しません。","wait");
+    const real=metricCard("REAL｜実取引","未接続",[
+      ["確定損益","—"],["勝率","—"],["取引件数","—"]
+    ],"紙上の取引履歴は実約定の証拠ではありません。認証済みブローカー実績がないため表示できません。","block");
+    if(!audit.available){
+      return info+real+metricCard("SHADOW/PAPER｜仮想","履歴取得不能",[["戦略別成績","—"]],"取得失敗を0件と扱いません。","block")+
+        metricCard("BACKTEST｜検証","履歴取得不能",[["戦略別成績","—"]],"将来時刻・欠測を取り込みません。","block");
+    }
+    const groups=strategyGroups(audit.eligible);
+    let cards=info+real;
+    for(const mode of CONTROL_MODES){
+      let any=false;
+      for(const tab of CONTROL_STRATEGIES){
+        const list=groups.get(mode+":"+tab)||[];
+        if(!list.length)continue;
+        const st=strategyStats(list);
+        if(!st)continue;
+        any=true;
+        const label=mode==="shadow"?"SHADOW/PAPER":"BACKTEST";
+        const trend=(items,key)=>items.slice(-3).map(x=>x[key]+":"+money(x.pnl_yen)).join(" / ")||"—";
+        const cls=st.pnl>0?"long":st.pnl<0?"short":"wait";
+        cards+=metricCard(label+"｜"+TAB_LABELS[tab],st.count>=20?"記録N="+st.count:"N不足",[
+          ["取引件数",st.count+"件"],["仮想累計損益",money(st.pnl)],
+          ["勝率",pct(st.winRate)],["PF",st.pf===null?"—":st.pf.toFixed(2)],
+          ["平均R",rfmt(st.avgR)],["最大DD",money(-st.maxDrawdown)],
+          ["最大DD(R)",rfmt(st.maxDrawdownR===null?null:-st.maxDrawdownR)],
+          ["MFE / MAE",st.mfeAvg===null||st.maeAvg===null?"—":rfmt(st.mfeAvg)+" / "+rfmt(st.maeAvg)],
+          ["直近20件",st.recentN+"件 "+money(st.recentPnl)],
+          ["日次（直近3）",trend(st.daily,"date")],
+          ["週次（直近3）",trend(st.weekly,"week")]
+        ],"紙上の確定履歴のみ。R "+st.rN+"/"+st.count+"件。費用控除・実現損益は未認証。",cls);
+      }
+      if(!any){
+        cards+=metricCard((mode==="shadow"?"SHADOW/PAPER":"BACKTEST")+"｜戦略別","未接続",[
+          ["取引件数","—"],["期待値","—"],["最大DD","—"]
+        ],"必要なモード・画面タグ・時刻・取引ID付きの履歴がありません。0件と断定しません。","block");
+      }
+      const candidates=CONTROL_STRATEGIES.map(tab=>({tab,stats:strategyStats(groups.get(mode+":"+tab)||[])}))
+        .filter(x=>x.stats&&x.stats.count>=20);
+      if(candidates.length>=2){
+        candidates.sort((a,b)=>(b.stats.pnl/b.stats.count)-(a.stats.pnl/a.stats.count));
+        const strongest=candidates[0],weakest=candidates[candidates.length-1];
+        cards+=metricCard((mode==="shadow"?"SHADOW/PAPER":"BACKTEST")+"｜相対強弱","N≥20",[[
+          "平均PnL上位",TAB_LABELS[strongest.tab]+" "+money(strongest.stats.pnl/strongest.stats.count)],
+          ["平均PnL下位",TAB_LABELS[weakest.tab]+" "+money(weakest.stats.pnl/weakest.stats.count)]
+        ],"同一モード内のみ比較。費用/スリッページ・選択バイアスは未検証であり、実発注判断に使用禁止。","wait");
+      }else{
+        cards+=metricCard((mode==="shadow"?"SHADOW/PAPER":"BACKTEST")+"｜相対強弱","N不足",[
+          ["順位","未算定"],["比較可能な戦略",candidates.length+"種類"]
+        ],"1戦略N≥20、同一モードの2戦略以上が揃うまで優劣を表示しません。","wait");
+      }
+    }
+    return cards;
   }
 
   function executionHtml(exec,runtime){
@@ -169,20 +334,29 @@
     const loadedRows=await loadHistory();
     const historyAvailable=Array.isArray(loadedRows);
     const rows=historyAvailable?loadedRows:[];
-    const grouped=new Map();
-    let unclassified=0;
-    rows.forEach(x=>{
-      const tab=classifyRecord(x);
-      if(!tab){unclassified++;return;}
-      if(!grouped.has(tab))grouped.set(tab,[]);
-      grouped.get(tab).push(x);
-    });
+    const audit=reconcilePerformanceRows(loadedRows,Date.now());
+    const grouped=strategyGroups(audit.eligible);
+    const unclassified=audit.available?audit.quarantined:0;
 
     panes.forEach(p=>{
       const tab=p.dataset.pane;
       const box=p.querySelector(":scope > .cc-tab-owner-summary [data-tab-performance]");
-      if(box)box.innerHTML=performanceHtml(tab,computeStats(grouped.get(tab)||[]),unclassified);
+      if(!box)return;
+      const shadow=grouped.get("shadow:"+tab)||[];
+      const backtest=grouped.get("backtest:"+tab)||[];
+      if(shadow.length&&backtest.length){
+        box.innerHTML=metricCard((TAB_LABELS[tab]||tab)+" 成績","モード別表示",[
+          ["集計","CONTROLを参照"],["混合損益","—"]
+        ],"Shadow/PaperとBacktestを合算しません。","wait");
+      }else{
+        const selected=shadow.length?shadow:backtest;
+        box.innerHTML=performanceHtml(tab,computeStats(selected.map(x=>x.row)),unclassified,
+          shadow.length?"shadow":backtest.length?"backtest":null);
+      }
     });
+
+    const strategy=document.getElementById("owner-strategy-performance");
+    if(strategy)strategy.innerHTML=controlPerformanceHtml(audit);
 
     const health=await loadHealth();
     const exec=health?.execution||null,runtime=health?.runtime||null;
@@ -251,6 +425,12 @@
       const section=document.createElement("section");
       section.className="card wide";
       section.innerHTML='<div class="pane-intro"><span>OWNER CONTROL</span><h2>取引・建玉・成績</h2><p>実発注、実建玉、Shadow建玉、各タブ成績をここで一括確認します。</p></div><div id="owner-control-overview" class="cc-grid"><div>状態読込中...</div></div>';
+      control.appendChild(section);
+    }
+    if(control&&!document.getElementById("owner-strategy-performance")){
+      const section=document.createElement("section");
+      section.className="card wide cc-strategy-owner-panel";
+      section.innerHTML='<div class="pane-intro"><span>OWNER CONTROL</span><h2>戦略別パフォーマンス（実績区分・証拠付き）</h2><p>REAL／SHADOW・PAPER／BACKTESTを混同しません。証拠不足は未接続と表示します。</p></div><div id="owner-strategy-performance" class="cc-grid"><div>戦略実績を照合中...</div></div>';
       control.appendChild(section);
     }
     renderOwnerSummaries();
