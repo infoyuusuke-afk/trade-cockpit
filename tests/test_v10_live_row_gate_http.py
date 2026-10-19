@@ -24,6 +24,7 @@ import json
 import os
 import shutil
 import socket
+import stat
 import subprocess
 import tempfile
 import time
@@ -789,6 +790,199 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         process.terminate()
         process.wait(timeout=10)
 
+
+    # ---- P0-V10-MARKET-OPERABILITY-20261019 P0-1: verified served history ----
+    # Every LIVE (200) response must be on disk first: written atomically,
+    # read back and compared. A failed save or readback answers 503 without a
+    # price, signal or candidate, and the Gateway keeps the previous history
+    # in memory and on disk. Each case uses its own runtime directory and
+    # Gateway so no other test's history interferes.
+
+    def _isolated(self, name, *extra_args):
+        runtime = Path(self.tmp.name) / name
+        runtime.mkdir()
+        oper.write_watchlist(runtime, UNIVERSE)
+        workbook_id = _run_powershell(self.exe, ENV_HARNESS, ["-Gateway", str(GATEWAY), "-RuntimeDir", str(runtime)])[
+            "workbook_identity_id"]
+        test = self
+
+        class Isolated:
+            history = runtime / "v10_gateway_served_quotes.json"
+            live = runtime / "live_ms2.json"
+
+            def launch(self):
+                self.port = test._free_port()
+                test._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(runtime),
+                              "-Port", str(self.port), *extra_args], self.port)
+                self.process = test.processes[-1]
+                return self
+
+            def stop(self):
+                self.process.terminate()
+                self.process.wait(timeout=10)
+
+            def serve(self, at, port=None):
+                now = test._now()
+                payload = test._payload(rows=test._rows(now, at=at), identity_at=at, now=now)
+                payload["live_price_diagnostics"]["workbook_identity_id"] = workbook_id
+                data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+                self.live.write_bytes(data)
+                status, body = test._request("/live_ms2.json", port or self.port)
+                return status, data, body
+
+            def health(self, port=None):
+                return json.loads(test._request("/health", port or self.port)[1].decode("utf-8-sig"))["runtime"]
+
+            def saved_identity(self):
+                return json.loads(self.history.read_text(encoding="utf-8"))["identity_quote_at"]
+
+            def temporaries(self):
+                return sorted(p.name for p in runtime.iterdir() if p.name.endswith(".tmp"))
+
+        return Isolated()
+
+    def _assert_history_refusal(self, status, written, body, reason):
+        self.assertIn("503", status)
+        self.assertNotEqual(body, written)
+        verdict = json.loads(body.decode("utf-8-sig"))
+        self.assertIn(reason, str(verdict["stale_reason"]).split(","))
+        self.assertIs(verdict["real_submit_allowed"], False)
+        self.assertIs(verdict["order_allowed"], False)
+        self.assertIs(verdict["decision_available"], False)
+        self.assertIs(verdict["live_values_available"], False)
+        self.assertIsNone(verdict["current_price"])
+        for key in ("all_targets", "top5", "hold_top5", "pts_top5", "ir_pts_top5", "kioxia", "market_state",
+                    "breadth_pct", "live_price_diagnostics"):
+            self.assertNotIn(key, verdict)
+        text = body.decode("utf-8-sig")
+        for needle in ("SYN", IDENTITY, BUY, "1000.0", "price\":1"):
+            self.assertNotIn(needle, text)
+        return verdict
+
+    def test_history_saved_and_read_back_before_each_200(self):
+        gw = self._isolated("history-ok").launch()
+        first = self._now() - timedelta(seconds=20)
+        status, written, body = gw.serve(first)
+        self.assertIn("200 OK", status, body[:500])
+        self.assertEqual(body, written)
+        self.assertEqual(gw.saved_identity(), _iso(first))
+        # A second LIVE response replaces the existing file. Before this fix the
+        # replace call got an empty backup path from PowerShell and failed, the
+        # file kept the first time, and the response was still 200.
+        second = self._now() - timedelta(seconds=5)
+        status, written, body = gw.serve(second)
+        self.assertIn("200 OK", status, body[:500])
+        self.assertEqual(gw.saved_identity(), _iso(second))
+        saved = json.loads(gw.history.read_text(encoding="utf-8"))
+        self.assertEqual(len(saved["row_quote_at"]), 100)
+        self.assertIs(saved["real_submit_allowed"], False)
+        history = gw.health()["served_history"]
+        self.assertEqual(history["state"], "SAVED")
+        self.assertEqual(history["identity_quote_at"], _iso(second))
+        self.assertIsNotNone(history["verified_at"])
+        self.assertEqual(history["failure_count"], 0)
+        self.assertEqual(gw.temporaries(), [])
+        gw.stop()
+
+    def test_history_save_refused_answers_503_and_keeps_previous_history(self):
+        gw = self._isolated("history-refused").launch()
+        base = self._now() - timedelta(seconds=40)
+        status, _, body = gw.serve(base)
+        self.assertIn("200 OK", status, body[:500])
+        before = gw.history.read_bytes()
+        os.chmod(gw.history, stat.S_IREAD)
+        try:
+            refused_at = self._now() - timedelta(seconds=10)
+            status, written, body = gw.serve(refused_at)
+            self._assert_history_refusal(status, written, body, "SERVED_HISTORY_SAVE_FAILED")
+            # The previous good history is untouched and no temporary is left.
+            self.assertEqual(gw.history.read_bytes(), before)
+            self.assertEqual(gw.temporaries(), [])
+            runtime = gw.health()
+            self.assertEqual(runtime["served_history"]["state"], "SAVE_FAILED")
+            self.assertEqual(runtime["served_history"]["identity_quote_at"], _iso(base))
+            self.assertEqual(runtime["served_history"]["failure_count"], 1)
+            self.assertEqual(runtime["served_history"]["last_failure"]["reason"], "SERVED_HISTORY_SAVE_FAILED")
+            self.assertIs(runtime["decision_available"], False)
+            self.assertIs(runtime["fail_closed"], True)
+            self.assertIn("SERVED_HISTORY_SAVE_FAILED", runtime["stale_reason"].split(","))
+            # Still refused while the file cannot be written.
+            status, written, body = gw.serve(refused_at)
+            self._assert_history_refusal(status, written, body, "SERVED_HISTORY_SAVE_FAILED")
+        finally:
+            os.chmod(gw.history, stat.S_IREAD | stat.S_IWRITE)
+        # Recovery needs a new verified save. Memory did not move to the refused
+        # time: a quote older than it but newer than the saved one is served.
+        between = refused_at - timedelta(seconds=5)
+        status, written, body = gw.serve(between)
+        self.assertIn("200 OK", status, body[:500])
+        self.assertEqual(body, written)
+        self.assertEqual(gw.saved_identity(), _iso(between))
+        history = gw.health()["served_history"]
+        self.assertEqual(history["state"], "SAVED")
+        self.assertEqual(history["failure_count"], 2)
+        gw.stop()
+        # After a restart the restored history is the last verified one, so an
+        # older quote is still a regression.
+        gw.launch()
+        self.assertEqual(gw.health()["served_history"]["identity_quote_at"], _iso(between))
+        status, written, body = gw.serve(between - timedelta(seconds=3))
+        self.assertIn("503", status)
+        self.assertIn("SOURCE_TIMESTAMP_REGRESSION", json.loads(body.decode("utf-8-sig"))["stale_reason"].split(","))
+        gw.stop()
+
+    def test_first_save_refused_is_not_live(self):
+        gw = self._isolated("history-first-refused").launch()
+        gw.history.mkdir()  # a directory where the history file must go
+        status, written, body = gw.serve(self._now() - timedelta(seconds=5))
+        self._assert_history_refusal(status, written, body, "SERVED_HISTORY_SAVE_FAILED")
+        self.assertTrue(gw.history.is_dir())
+        self.assertEqual(gw.temporaries(), [])
+        self.assertIsNone(gw.health()["served_history"]["identity_quote_at"])
+        gw.stop()
+
+    def test_readback_mismatch_answers_503_and_stays_closed(self):
+        gw = self._isolated("history-readback", "-ServedHistoryFaultSelfTest", "READBACK_MISMATCH").launch()
+        status, written, body = gw.serve(self._now() - timedelta(seconds=5))
+        self._assert_history_refusal(status, written, body, "SERVED_HISTORY_READBACK_MISMATCH")
+        runtime = gw.health()
+        self.assertEqual(runtime["served_history"]["state"], "CONFLICT")
+        self.assertIsNone(runtime["served_history"]["identity_quote_at"])
+        self.assertIs(runtime["decision_available"], False)
+        status, written, body = gw.serve(self._now() - timedelta(seconds=2))
+        self._assert_history_refusal(status, written, body, "SERVED_HISTORY_CONFLICT")
+        gw.stop()
+
+    def test_history_changed_by_another_writer_is_not_adopted(self):
+        gw = self._isolated("history-concurrent").launch()
+        base = self._now() - timedelta(seconds=30)
+        status, _, body = gw.serve(base)
+        self.assertIn("200 OK", status, body[:500])
+        # A second Gateway on the same runtime directory restores that history
+        # and then serves a newer quote, rewriting the file.
+        other = self._isolated_peer(gw)
+        status, _, body = gw.serve(base + timedelta(seconds=10), port=other)
+        self.assertIn("200 OK", status, body[:500])
+        foreign = gw.history.read_bytes()
+        status, written, body = gw.serve(base + timedelta(seconds=20))
+        self._assert_history_refusal(status, written, body, "SERVED_HISTORY_CONFLICT")
+        self.assertEqual(gw.history.read_bytes(), foreign)
+        history = gw.health()["served_history"]
+        self.assertEqual(history["state"], "CONFLICT")
+        self.assertEqual(history["identity_quote_at"], _iso(base))
+        # Corrupt bytes written by someone else are refused the same way.
+        gw.history.write_text("{not json", encoding="utf-8")
+        status, written, body = gw.serve(base + timedelta(seconds=25))
+        self._assert_history_refusal(status, written, body, "SERVED_HISTORY_CONFLICT")
+        self.assertEqual(gw.history.read_text(encoding="utf-8"), "{not json")
+        gw.stop()
+
+    def _isolated_peer(self, gw):
+        port = self._free_port()
+        self._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(gw.history.parent), "-Port", str(port)],
+                     port)
+        self.assertEqual(gw.health(port)["served_history"]["state"], "RESTORED")
+        return port
 
 if __name__ == "__main__":
     unittest.main()

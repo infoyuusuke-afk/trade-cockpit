@@ -6,7 +6,10 @@
     [switch]$SnapshotGuardSelfTest,
     [switch]$PublicationSelfTest,
     [switch]$ShadowHeartbeatSelfTest,
-    [switch]$BrainObserverSelfTest
+    [switch]$BrainObserverSelfTest,
+    # Test-only fault for the served-history readback. It can only turn a
+    # verified save into a refusal (503); it never makes a response LIVE.
+    [ValidateSet("", "READBACK_MISMATCH")][string]$ServedHistoryFaultSelfTest = ""
 )
 
 # AI Cockpit Gateway V10
@@ -43,14 +46,24 @@ if ([string]::IsNullOrWhiteSpace($RuntimeDir)) {
 $liveJson = if ($RuntimeDir) { Join-Path $RuntimeDir "live_ms2.json" } else { "" }
 $controllerStateFile = "C:\AI_Cockpit_OneClick_Starter\V10_CONTROLLER_STATE.json"
 # Last quote times this Gateway served as LIVE (identity quote and each row).
-# A later payload whose quote is older is a regression and is refused. The
-# history is saved beside live_ms2.json after every LIVE response and read back
-# at start, so a Gateway restart does not forget it. A missing history file is
-# reported as a history-loss risk on /health; an unreadable one refuses LIVE.
+# A later payload whose quote is older is a regression and is refused. Before
+# every LIVE response the new history is written beside live_ms2.json, read
+# back and compared byte for byte; only then is it adopted in memory and the
+# response sent. A failed save or readback answers 503 and keeps the previous
+# history in memory and on disk, so every LIVE response is on disk before it
+# leaves and a restart cannot go back in time. A missing history file at start
+# is reported as a history-loss risk on /health; an unreadable one, or a file
+# changed by someone else while this Gateway runs, refuses LIVE until restart.
 $script:LastServedIdentityQuoteAt = $null
 $script:LastServedRowQuoteAt = @{}
 $script:ServedHistoryPath = if ($RuntimeDir) { Join-Path $RuntimeDir "v10_gateway_served_quotes.json" } else { "" }
 $script:ServedHistoryState = "NOT_LOADED"
+# SHA-256 of the history bytes this Gateway last read or verified on disk
+# ($null: no file is expected). A different file on disk is a conflict.
+$script:ServedHistoryDiskSha = $null
+$script:ServedHistoryLastFailure = $null
+$script:ServedHistoryFailureCount = 0
+$script:ServedHistoryVerifiedAt = $null
 
 if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot "index.html"))) {
     throw "RepoRoot does not look like a trade-cockpit checkout (index.html not found): $RepoRoot"
@@ -1067,10 +1080,12 @@ function Import-ServedHistory([string]$Path) {
     # check has nothing to compare against until the first LIVE response, and
     # /health says so. UNREADABLE: LIVE is refused until the file is readable
     # or removed by the OWNER; an unknown history is not an empty one.
-    $result = [ordered]@{ state = "NO_HISTORY_FILE"; identity = $null; rows = @{} }
+    $result = [ordered]@{ state = "NO_HISTORY_FILE"; identity = $null; rows = @{}; sha256 = $null }
     if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path)) { return $result }
     try {
-        $saved = [IO.File]::ReadAllText($Path, [Text.Encoding]::UTF8) | ConvertFrom-Json
+        $savedBytes = [IO.File]::ReadAllBytes($Path)
+        $result.sha256 = Get-BytesSha256 $savedBytes
+        $saved = (ConvertFrom-ServedHistoryBytes $savedBytes) | ConvertFrom-Json
         if ($null -eq $saved -or [string]$saved.schema_version -cne "v10-served-quotes-1") { throw "SCHEMA" }
         $identity = $saved.identity_quote_at
         if ($null -ne $identity -and $null -eq (ConvertFrom-OffsetTimestamp $identity)) { throw "IDENTITY" }
@@ -1090,23 +1105,134 @@ function Import-ServedHistory([string]$Path) {
     return $result
 }
 
-function Save-ServedHistory([string]$Path, $IdentityQuoteAt, $RowQuotes) {
-    if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+function Get-BytesSha256([byte[]]$Bytes) {
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($sha.ComputeHash($Bytes)) -replace '-', '').ToLowerInvariant() } finally { $sha.Dispose() }
+}
+
+function ConvertFrom-ServedHistoryBytes([byte[]]$Bytes) {
+    # Strict UTF-8: an invalid byte is corruption, not a replacement character.
+    return [Text.UTF8Encoding]::new($false, $true).GetString($Bytes).TrimStart([char]0xFEFF)
+}
+
+function New-ServedHistoryBody($IdentityQuoteAt, $RowQuotes) {
     $sortedRows = [ordered]@{}
-    foreach ($key in @($RowQuotes.Keys | Sort-Object)) { $sortedRows[[string]$key] = $RowQuotes[$key] }
+    foreach ($key in @($RowQuotes.Keys | Sort-Object)) { $sortedRows[[string]$key] = [string]$RowQuotes[$key] }
     $body = [ordered]@{
         schema_version = "v10-served-quotes-1"
         identity_quote_at = $IdentityQuoteAt
         row_quote_at = $sortedRows
         real_submit_allowed = $false
     } | ConvertTo-Json -Depth 4
-    $temporary = $Path + ".tmp"
+    return [Text.UTF8Encoding]::new($false).GetBytes($body)
+}
+
+function Test-SharingViolation($ErrorRecord) {
+    # Windows sharing and lock violations (antivirus, indexer, a reader
+    # holding the file) are worth a short retry; anything else is not.
+    $inner = $ErrorRecord.Exception
+    while ($null -ne $inner -and -not ($inner -is [IO.IOException])) { $inner = $inner.InnerException }
+    return ($null -ne $inner -and @(-2147024864, -2147024863) -contains $inner.HResult)  # 0x80070020, 0x80070021
+}
+
+function Invoke-ServedHistoryIo([scriptblock]$Action) {
+    # Runs a write or replace with at most 5 attempts, 40 ms apart.
+    for ($attempt = 1; $attempt -le 5; $attempt++) {
+        try { [void](& $Action); return } catch {
+            if ($attempt -ge 5 -or -not (Test-SharingViolation $_)) { throw }
+            Start-Sleep -Milliseconds 40
+        }
+    }
+}
+
+function Read-ServedHistoryDisk([string]$Path) {
+    # Returns @{ exists; bytes; sha256 } of the history file as it is on disk.
+    for ($attempt = 1; $attempt -le 5; $attempt++) {
+        if (-not [IO.File]::Exists($Path)) { return @{ exists = $false; bytes = $null; sha256 = $null } }
+        try {
+            [byte[]]$bytes = [IO.File]::ReadAllBytes($Path)
+            return @{ exists = $true; bytes = $bytes; sha256 = (Get-BytesSha256 $bytes) }
+        } catch {
+            if ($attempt -ge 5 -or -not (Test-SharingViolation $_)) { throw }
+            Start-Sleep -Milliseconds 40
+        }
+    }
+}
+
+function Save-ServedHistory([string]$Path, $IdentityQuoteAt, $RowQuotes, [string]$ExpectedDiskSha, [string]$Fault = "") {
+    # Write the candidate history atomically, read it back independently and
+    # compare. Returns ok=$true only when the file on disk is exactly the
+    # candidate. Never throws. reason on failure:
+    #   SERVED_HISTORY_PATH_UNAVAILABLE   no runtime directory
+    #   SERVED_HISTORY_CONFLICT           the file on disk is not the one this
+    #                                     Gateway last verified (another writer,
+    #                                     a removed or replaced file); it is
+    #                                     left untouched
+    #   SERVED_HISTORY_SAVE_FAILED        write or replace failed; the previous
+    #                                     file is unchanged
+    #   SERVED_HISTORY_READBACK_MISMATCH  the file read back is missing, not
+    #                                     the written bytes, or not parseable
+    #                                     to the same times
+    $result = [ordered]@{ ok = $false; reason = $null; detail = $null; disk_sha256 = $ExpectedDiskSha }
+    if ([string]::IsNullOrWhiteSpace($Path)) { $result.reason = "SERVED_HISTORY_PATH_UNAVAILABLE"; return $result }
+    $temporary = "{0}.{1}.{2}.tmp" -f $Path, $PID, ([Guid]::NewGuid().ToString("N"))
     try {
-        [IO.File]::WriteAllText($temporary, $body, [Text.UTF8Encoding]::new($false))
-        if (Test-Path -LiteralPath $Path) { [IO.File]::Replace($temporary, $Path, $null) } else { [IO.File]::Move($temporary, $Path) }
-        return $true
+        $body = New-ServedHistoryBody $IdentityQuoteAt $RowQuotes
+        $bodySha = Get-BytesSha256 $body
+        try { $before = Read-ServedHistoryDisk $Path } catch {
+            $result.reason = "SERVED_HISTORY_SAVE_FAILED"; $result.detail = "PRE_READ_FAILED"; return $result
+        }
+        if (($before.exists -and $before.sha256 -cne $ExpectedDiskSha) -or (-not $before.exists -and -not [string]::IsNullOrEmpty($ExpectedDiskSha))) {
+            $result.reason = "SERVED_HISTORY_CONFLICT"
+            $result.detail = $(if ($before.exists) { "DISK_CHANGED" } else { "DISK_REMOVED" })
+            return $result
+        }
+        try {
+            Invoke-ServedHistoryIo {
+                $stream = [IO.FileStream]::new($temporary, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+                try { $stream.Write($body, 0, $body.Length); $stream.Flush($true) } finally { $stream.Dispose() }
+            }
+            if ($before.exists) {
+                # [NullString]::Value: PowerShell turns $null into "" for a .NET
+                # string argument, and Replace refuses an empty backup path.
+                Invoke-ServedHistoryIo { [IO.File]::Replace($temporary, $Path, [NullString]::Value) }
+            } else {
+                Invoke-ServedHistoryIo { [IO.File]::Move($temporary, $Path) }
+            }
+        } catch {
+            $result.reason = "SERVED_HISTORY_SAVE_FAILED"; $result.detail = $_.Exception.GetType().Name
+            # The previous file is what is on disk now if Replace did not run.
+            try { $after = Read-ServedHistoryDisk $Path; if ($after.exists -and $after.sha256 -ceq $bodySha) { $result.disk_sha256 = $bodySha } } catch {}
+            return $result
+        }
+        try { $back = Read-ServedHistoryDisk $Path } catch { $back = @{ exists = $false; bytes = $null; sha256 = $null } }
+        if ($back.exists) { $result.disk_sha256 = $back.sha256 } else { $result.disk_sha256 = $null }
+        $backSha = $(if ($Fault -ceq "READBACK_MISMATCH") { "0" * 64 } else { $back.sha256 })
+        if (-not $back.exists -or $backSha -cne $bodySha) {
+            # Other bytes than the ones just written mean another writer: the
+            # caller treats that as a conflict and stops serving LIVE.
+            $result.reason = "SERVED_HISTORY_READBACK_MISMATCH"
+            $result.detail = $(if ($back.exists) { "BYTES_DIFFER" } else { "FILE_MISSING" })
+            return $result
+        }
+        # Independent parse of the bytes read back: same identity and row times.
+        $parsed = (ConvertFrom-ServedHistoryBytes $back.bytes) | ConvertFrom-Json
+        $parsedRows = @{}
+        if ($null -ne $parsed.row_quote_at) { foreach ($prop in @($parsed.row_quote_at.PSObject.Properties)) { $parsedRows[[string]$prop.Name] = [string]$prop.Value } }
+        $same = ([string]$parsed.schema_version -ceq "v10-served-quotes-1") -and ([string]$parsed.identity_quote_at -ceq [string]$IdentityQuoteAt) -and ($parsedRows.Count -eq $RowQuotes.Count)
+        if ($same) {
+            foreach ($key in @($RowQuotes.Keys)) {
+                if (-not $parsedRows.ContainsKey([string]$key) -or $parsedRows[[string]$key] -cne [string]$RowQuotes[$key]) { $same = $false; break }
+            }
+        }
+        if (-not $same) { $result.reason = "SERVED_HISTORY_READBACK_MISMATCH"; $result.detail = "CONTENT_DIFFERS"; return $result }
+        $result.ok = $true
+        return $result
     } catch {
-        return $false
+        if ($null -eq $result.reason) { $result.reason = "SERVED_HISTORY_SAVE_FAILED"; $result.detail = $_.Exception.GetType().Name }
+        return $result
+    } finally {
+        try { if ([IO.File]::Exists($temporary)) { [IO.File]::Delete($temporary) } } catch {}
     }
 }
 
@@ -1506,6 +1632,7 @@ $restoredHistory = Import-ServedHistory $script:ServedHistoryPath
 $script:ServedHistoryState = $restoredHistory.state
 $script:LastServedIdentityQuoteAt = $restoredHistory.identity
 $script:LastServedRowQuoteAt = $restoredHistory.rows
+$script:ServedHistoryDiskSha = $restoredHistory.sha256
 
 try {
     $listener.Start()
@@ -1722,14 +1849,20 @@ try {
                     identity_quote_at = $script:LastServedIdentityQuoteAt
                     row_count = $script:LastServedRowQuoteAt.Count
                     history_loss_risk = (@("RESTORED", "SAVED") -cnotcontains $script:ServedHistoryState)
+                    verified_at = $script:ServedHistoryVerifiedAt
+                    last_failure = $script:ServedHistoryLastFailure
+                    failure_count = $script:ServedHistoryFailureCount
                 }
                 $availabilityReasons = @()
                 if ($healthAvailability.decision_available -ne $true) { $availabilityReasons += @($healthAvailability.reasons) }
                 if ($null -eq $shadowAvailability) { $availabilityReasons += "SHADOW_BOARD_AVAILABILITY_MISSING" }
                 elseif (($shadowAvailability.decision_available -eq $true) -ne ($healthAvailability.decision_available -eq $true)) { $availabilityReasons += "BOARD_AVAILABILITY_MISMATCH" }
                 elseif ($shadowAvailability.real_submit_allowed -ne $false) { $availabilityReasons += "REAL_SUBMIT_NOT_FALSE" }
+                # The last LIVE save failed or the history cannot be trusted:
+                # /live_ms2.json refuses, so /health does not claim usable.
+                if (@("UNREADABLE", "CONFLICT", "SAVE_FAILED") -ccontains $script:ServedHistoryState) { $availabilityReasons += ("SERVED_HISTORY_" + $script:ServedHistoryState) }
                 $runtime['decision_available'] = ($availabilityReasons.Count -eq 0 -and $healthAvailability.decision_available -eq $true)
-                $runtime['availability_status'] = $(if ($runtime['decision_available']) { 'AVAILABLE' } elseif ($healthAvailability.decision_available -ne $true) { [string]$healthAvailability.availability_status } else { 'BLOCKED_SHADOW_DISAGREES' })
+                $runtime['availability_status'] = $(if ($runtime['decision_available']) { 'AVAILABLE' } elseif ($healthAvailability.decision_available -ne $true) { [string]$healthAvailability.availability_status } elseif (@($availabilityReasons | Where-Object { ([string]$_).StartsWith("SERVED_HISTORY_") }).Count -eq $availabilityReasons.Count) { 'BLOCKED_SERVED_HISTORY' } else { 'BLOCKED_SHADOW_DISAGREES' })
                 if ($availabilityReasons.Count -gt 0) {
                     $runtime.fail_closed = $true
                     if ([string]$runtime.price_source_status -eq "OK" -or [string]::IsNullOrWhiteSpace([string]$runtime.price_source_status)) {
@@ -1843,8 +1976,9 @@ try {
                 $liveRowFreshness = Get-BoardRowFreshness -LiveObj $liveObj -Now $liveNow -BoardQuoteAt $liveQuoteFreshness.quote_at -PreviousRowQuotes $script:LastServedRowQuoteAt
                 $liveAvailability = Get-BoardAvailability -LiveObj $liveObj -QuoteFreshness $liveQuoteFreshness -RowFreshness $liveRowFreshness -Universe (Get-ExpectedUniverse $RuntimeDir)
                 $rejection = Get-LivePriceRejection -LiveObj $liveObj -FileAgeSeconds $snap.file_age_seconds -PayloadAgeSeconds $snap.payload_age_seconds -UpdatedAtRaw $snap.updated_at -FileMtime $snap.file_mtime -MaxAgeSeconds 60 -QuoteFreshness $liveQuoteFreshness -RowFreshness $liveRowFreshness -Availability $liveAvailability
-                if ($null -eq $rejection -and $script:ServedHistoryState -ceq "UNREADABLE") {
-                    $rejection = [ordered]@{ status = "stale"; reason = "SERVED_HISTORY_UNREADABLE"; stale_reason = "SERVED_HISTORY_UNREADABLE"; price_source_status = "STALE"; current_price = $null; real_submit_allowed = $false; live_values_available = $false; data_conflict = $false }
+                if ($null -eq $rejection -and @("UNREADABLE", "CONFLICT") -ccontains $script:ServedHistoryState) {
+                    $historyReason = "SERVED_HISTORY_" + $script:ServedHistoryState
+                    $rejection = [ordered]@{ status = "stale"; reason = $historyReason; stale_reason = $historyReason; price_source_status = "STALE"; current_price = $null; decision_available = $false; real_submit_allowed = $false; order_allowed = $false; live_values_available = $false; data_conflict = $false }
                 }
                 if ($null -ne $rejection -or $null -eq $liveObj -or $bytes.Length -eq 0) {
                     if ($null -eq $rejection) { $rejection = [ordered]@{ status = "stale"; stale_reason = "MISSING_PAYLOAD"; real_submit_allowed = $false; live_values_available = $false; data_conflict = $true } }
@@ -1853,15 +1987,31 @@ try {
                     continue
                 }
 
-                $script:LastServedIdentityQuoteAt = $liveQuoteFreshness.quote_at
+                # Build the new history on a copy. Memory moves forward only
+                # after the copy is on disk and verified; otherwise 503.
+                $candidateRows = @{}
+                foreach ($key in @($script:LastServedRowQuoteAt.Keys)) { $candidateRows[$key] = $script:LastServedRowQuoteAt[$key] }
                 foreach ($servedTicker in @($liveRowFreshness.accepted_quote_at.Keys)) {
-                    $script:LastServedRowQuoteAt[$servedTicker] = $liveRowFreshness.accepted_quote_at[$servedTicker]
+                    $candidateRows[$servedTicker] = $liveRowFreshness.accepted_quote_at[$servedTicker]
                 }
-                if (Save-ServedHistory $script:ServedHistoryPath $script:LastServedIdentityQuoteAt $script:LastServedRowQuoteAt) {
-                    $script:ServedHistoryState = "SAVED"
-                } else {
-                    $script:ServedHistoryState = "SAVE_FAILED"
+                $saved = Save-ServedHistory $script:ServedHistoryPath $liveQuoteFreshness.quote_at $candidateRows $script:ServedHistoryDiskSha $ServedHistoryFaultSelfTest
+                if ($saved.ok -ne $true) {
+                    $script:ServedHistoryFailureCount++
+                    $script:ServedHistoryLastFailure = [ordered]@{ reason = $saved.reason; detail = $saved.detail; at = (Get-JstNow).ToString("yyyy-MM-ddTHH:mm:sszzz", [Globalization.CultureInfo]::InvariantCulture) }
+                    if ($saved.reason -ceq "SERVED_HISTORY_CONFLICT" -or $saved.detail -ceq "BYTES_DIFFER") { $script:ServedHistoryState = "CONFLICT" }
+                    else {
+                        $script:ServedHistoryState = "SAVE_FAILED"
+                        $script:ServedHistoryDiskSha = $saved.disk_sha256
+                    }
+                    $historyBody = [ordered]@{ status = "stale"; reason = $saved.reason; stale_reason = $saved.reason; price_source_status = "STALE"; current_price = $null; decision_available = $false; real_submit_allowed = $false; order_allowed = $false; live_values_available = $false; data_conflict = $false } | ConvertTo-Json -Depth 4
+                    Send-Response $stream '503 Service Unavailable' 'application/json; charset=utf-8' ($utf8.GetBytes($historyBody))
+                    continue
                 }
+                $script:LastServedIdentityQuoteAt = $liveQuoteFreshness.quote_at
+                $script:LastServedRowQuoteAt = $candidateRows
+                $script:ServedHistoryDiskSha = $saved.disk_sha256
+                $script:ServedHistoryState = "SAVED"
+                $script:ServedHistoryVerifiedAt = (Get-JstNow).ToString("yyyy-MM-ddTHH:mm:sszzz", [Globalization.CultureInfo]::InvariantCulture)
                 Send-Response $stream '200 OK' 'application/json; charset=utf-8' $bytes
                 continue
             }
