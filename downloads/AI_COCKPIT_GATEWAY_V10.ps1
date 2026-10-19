@@ -1345,8 +1345,22 @@ function Get-ServedHistoryCommonFloor {
     $snapshot = Read-ServedHistorySnapshot $script:ServedHistoryPath 500
     if (-not $snapshot.ok) { $floor.ok = $false; return $floor }
     $state = Get-ServedHistoryStartState $snapshot.history $snapshot.evidence $false
-    if ($state -ceq "NO_HISTORY_FILE") { return $floor }
+    if ($state -ceq "NO_HISTORY_FILE") {
+        # A previously served or restored history cannot become a new empty
+        # runtime just because its history and evidence files disappeared.
+        # /live_ms2.json would reject this loss, so /health must too.
+        if ($script:ServedHistoryEvidenceSeen -or
+            -not [string]::IsNullOrEmpty([string]$script:ServedHistoryDiskSha) -or
+            $null -ne $script:LastServedIdentityQuoteAt) { $floor.ok = $false }
+        return $floor
+    }
     if ($state -cne "RESTORED") { $floor.ok = $false; return $floor }
+    # A missing evidence file is not a legacy migration when this Gateway
+    # has already verified a committed evidence record in this process.
+    if ($script:ServedHistoryEvidenceSeen -and -not $snapshot.evidence.exists) {
+        $floor.ok = $false
+        return $floor
+    }
     $floor.identity = Get-LaterQuoteAt $floor.identity $snapshot.history.identity
     foreach ($key in @($snapshot.history.rows.Keys)) {
         $floor.rows[$key] = $(if ($floor.rows.ContainsKey($key)) { Get-LaterQuoteAt $floor.rows[$key] $snapshot.history.rows[$key] } else { $snapshot.history.rows[$key] })
