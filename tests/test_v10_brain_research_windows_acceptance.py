@@ -135,6 +135,56 @@ class WindowsAcceptanceTests(unittest.TestCase):
                     self.assertEqual(out["state"], "BLOCKED")
                     self.safe(out)
 
+    def test_brain_process_pid_must_match_controller_before_sidecar_read(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, root, private, state_path, brain = self.make_inputs(td)
+            body = json.loads(brain.read_text(encoding="utf-8"))
+            body["engine_pid"] = body["engine_pid"] + 1
+            brain.write_text(json.dumps(body), encoding="utf-8")
+            os.utime(brain, (NOW.timestamp(), NOW.timestamp()))
+            with patch.object(acceptance.sidecar, "run_once",
+                              side_effect=AssertionError("must not read research")):
+                out = self.inspect(repo, root, private)
+            self.assertEqual(out["state"], "BLOCKED", out)
+            self.assertEqual(out["reason"], "BRAIN_PID_OR_STATE_MISMATCH")
+            self.safe(out)
+
+    def test_controller_state_switch_after_sidecar_blocks(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, root, private, state_path, brain = self.make_inputs(td)
+            original = acceptance.sidecar.run_once
+            def changed_state(**kwargs):
+                result = original(**kwargs)
+                payload = json.loads(state_path.read_text(encoding="utf-8"))
+                payload["controller_pid"] += 1
+                state_path.write_text(json.dumps(payload), encoding="utf-8")
+                os.utime(state_path, (NOW.timestamp(), NOW.timestamp()))
+                return result
+            with patch.object(acceptance.sidecar, "run_once",
+                              side_effect=changed_state):
+                out = self.inspect(repo, root, private)
+            self.assertEqual(out["state"], "BLOCKED", out)
+            self.assertEqual(out["reason"], "CONTROLLER_CHANGED_DURING_RESEARCH")
+            self.safe(out)
+
+    def test_brain_status_switch_after_sidecar_blocks(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo, root, private, state_path, brain = self.make_inputs(td)
+            original = acceptance.sidecar.run_once
+            def changed_brain(**kwargs):
+                result = original(**kwargs)
+                payload = json.loads(brain.read_text(encoding="utf-8"))
+                payload["engine_pid"] += 1
+                brain.write_text(json.dumps(payload), encoding="utf-8")
+                os.utime(brain, (NOW.timestamp(), NOW.timestamp()))
+                return result
+            with patch.object(acceptance.sidecar, "run_once",
+                              side_effect=changed_brain):
+                out = self.inspect(repo, root, private)
+            self.assertEqual(out["state"], "BLOCKED", out)
+            self.assertEqual(out["reason"], "BRAIN_CHANGED_DURING_RESEARCH")
+            self.safe(out)
+
     def test_missing_context_or_untrusted_sidecar_output_blocks(self):
         with tempfile.TemporaryDirectory() as td:
             repo, root, private, _, _ = self.make_inputs(td)
