@@ -1463,15 +1463,23 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         status, _, body = gw.serve(newer)
         self.assertIn("200 OK", status, body[:500])
         gw.shadow_agrees()
-        # Control: the same board is usable in /health on both Gateways.
+        # Control: the board itself is usable on both Gateways. With no
+        # Controller session in this harness the workers are unverified, so
+        # /health is fail-closed for that reason alone (BLOCKED_FAIL_CLOSED),
+        # never for the served history.
         for port in (gw.port, other):
             runtime = gw.health(port)
-            self.assertIs(runtime["decision_available"], True, (port, runtime.get("stale_reason")))
+            self.assertIs(runtime["availability"]["decision_available"], True, port)
+            self.assertEqual(runtime["availability_status"], "BLOCKED_FAIL_CLOSED", port)
+            self.assertFalse([r for r in runtime["stale_reason"].split(",") if r.startswith("SERVED_HISTORY_")], port)
         # An older board, still fresh, after the newer one was served.
         gw.write_board(newer - timedelta(seconds=2))
         gw.shadow_agrees()
         for port in (other, gw.port):
             runtime = gw.health(port)
+            # The board is still fresh on its own; the served-history floor
+            # is what blocks it, on the Gateway that did not serve it too.
+            self.assertIs(runtime["availability"]["decision_available"], True, port)
             self.assertIs(runtime["decision_available"], False, port)
             reasons = runtime["stale_reason"].split(",")
             self.assertIn("SERVED_HISTORY_FLOOR_REGRESSION", reasons)
@@ -1554,7 +1562,12 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         self.assertIn("200 OK", status, body[:500])
         gw.write_board(self._now() - timedelta(seconds=2))
         gw.shadow_agrees()
-        self.assertIs(gw.health()["decision_available"], True)
+        control = gw.health()
+        # Synthetic HTTP harness does not run a verified Controller, so the
+        # raw board may be fresh while system-level health stays fail-closed.
+        self.assertIs(control["availability"]["decision_available"], True)
+        self.assertEqual(control["availability_status"], "BLOCKED_FAIL_CLOSED")
+        self.assertNotIn("SERVED_HISTORY_FLOOR_UNVERIFIED", control["stale_reason"].split(","))
         self.assertTrue(gw.evidence.exists())
         gw.evidence.unlink()
         health = gw.health()
@@ -1576,7 +1589,12 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         self.assertIn("200 OK", status, body[:500])
         gw.write_board(self._now() - timedelta(seconds=2))
         gw.shadow_agrees()
-        self.assertIs(gw.health()["decision_available"], True)
+        control = gw.health()
+        # Synthetic HTTP harness does not run a verified Controller, so the
+        # raw board may be fresh while system-level health stays fail-closed.
+        self.assertIs(control["availability"]["decision_available"], True)
+        self.assertEqual(control["availability_status"], "BLOCKED_FAIL_CLOSED")
+        self.assertNotIn("SERVED_HISTORY_FLOOR_UNVERIFIED", control["stale_reason"].split(","))
         self.assertTrue(gw.history.exists())
         self.assertTrue(gw.evidence.exists())
         gw.history.unlink()
