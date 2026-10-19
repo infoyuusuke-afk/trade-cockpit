@@ -1,0 +1,26 @@
+name: V10 Brain Private Research Bridge (Synthetic)
+on:
+  pull_request:
+    paths:
+      - 'scripts/v10_brain_private_research_bridge.py'
+      - 'tests/test_v10_brain_private_research_bridge.py'
+      - '.github/workflows/v10-brain-private-research-bridge.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate-private-research-bridge:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Private V10 research bridge and 459 virtual-audit tests (synthetic only)
+        run: |
+          python -m unittest discover -s tests -p test_v10_brain_virtual_outcome_audit.py -v
+          python -m unittest discover -s tests -p test_v10_brain_private_research_bridge.py -v
