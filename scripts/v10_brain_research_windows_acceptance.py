@@ -135,7 +135,8 @@ def run_once(*, repo_root, state_root, private_dir, expected_sha,
             expected_sha=expected_sha, expected_branch=expected_branch)
         if not _preflight_is_valid(returncode, stdout, expected_sha):
             return _result("V10_PREFLIGHT_BLOCKED")
-        state = _stable_state(state_dir / STATE_NAME, now=now)
+        state_path = state_dir / STATE_NAME
+        state = _stable_state(state_path, now=now)
         if (type(state.get("repo_root")) is not str or
                 os.path.normcase(os.path.abspath(state["repo_root"])) !=
                 os.path.normcase(os.path.abspath(str(repo))) or
@@ -149,8 +150,14 @@ def run_once(*, repo_root, state_root, private_dir, expected_sha,
         if not runtime.is_absolute():
             return _result("CONTROLLER_RUNTIME_UNVERIFIED")
         consumer._plain_local(runtime)
+        brain_path = runtime / sidecar.BRAIN_NAME
+        brain_before = sidecar._load_brain_status(brain_path, now)
+        if (type(brain_before.get("engine_pid")) is not int or
+                brain_before["engine_pid"] != state["brain_observer_pid"] or
+                not sidecar._brain_gate(brain_before, now)):
+            return _result("BRAIN_PID_OR_STATE_MISMATCH")
         outcome = sidecar.run_once(
-            brain_status_path=runtime / sidecar.BRAIN_NAME,
+            brain_status_path=brain_path,
             research_private_dir=private, now=now)
         if (type(outcome) is not dict or
                 outcome.get("state") != "RESEARCH_OBSERVATION_ONLY" or
@@ -165,6 +172,18 @@ def run_once(*, repo_root, state_root, private_dir, expected_sha,
                     "REVIEW_CONTAMINATED_VIRTUAL_DATA",
                     "REVIEW_VIRTUAL_RESEARCH_ONLY")):
             return _result("RESEARCH_SNAPSHOT_BLOCKED")
+        # The sidecar cannot bind the published Brain status to the
+        # Controller's recorded PID on its own. Check that association
+        # before and after the sidecar read, including state replacements.
+        brain_after = sidecar._load_brain_status(brain_path, now)
+        if (brain_before != brain_after or
+                type(brain_after.get("engine_pid")) is not int or
+                brain_after["engine_pid"] != state["brain_observer_pid"] or
+                not sidecar._brain_gate(brain_after, now)):
+            return _result("BRAIN_CHANGED_DURING_RESEARCH")
+        state_after = _stable_state(state_path, now=now)
+        if state_after != state:
+            return _result("CONTROLLER_CHANGED_DURING_RESEARCH")
         return _result(
             None, research_decision=outcome["research_decision"],
             n=outcome["virtual_sample_count"])
