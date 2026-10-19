@@ -13,9 +13,15 @@
   const TRADE_TABS=new Set(["scalp","event-hot","ms2-live","overnight","swing","value","kioxia-calendar"]);
 
   const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  const money=v=>Number.isFinite(Number(v))?(Number(v)>=0?"+":"")+Number(v).toLocaleString("ja-JP")+"円":"—";
-  const pct=v=>Number.isFinite(Number(v))?Number(v).toFixed(1)+"%":"—";
-  const rfmt=v=>Number.isFinite(Number(v))?(Number(v)>=0?"+":"")+Number(v).toFixed(2)+"R":"—";
+  // Missing/blank/boolean values are not zero. A measured numeric 0 remains 0.
+  const knownNumber=v=>{
+    if(v===null||v===undefined||typeof v==="boolean"||(typeof v==="string"&&!v.trim()))return null;
+    const n=Number(v);
+    return Number.isFinite(n)?n:null;
+  };
+  const money=v=>{const n=knownNumber(v);return n===null?"—":(n>=0?"+":"")+n.toLocaleString("ja-JP")+"円";};
+  const pct=v=>{const n=knownNumber(v);return n===null?"—":n.toFixed(1)+"%";};
+  const rfmt=v=>{const n=knownNumber(v);return n===null?"—":(n>=0?"+":"")+n.toFixed(2)+"R";};
 
   function metricCard(title,badge,metrics,foot,cls="wait"){
     return '<article class="cc-card cc-card--'+cls+'">'+
@@ -41,12 +47,12 @@
   }
 
   function computeStats(rows){
-    const done=rows.filter(x=>Number.isFinite(Number(x?.pnl_yen)));
+    const done=rows.filter(x=>knownNumber(x?.pnl_yen)!==null);
     if(!done.length)return null;
     const wins=done.filter(x=>Number(x.pnl_yen)>0).length;
     const gains=done.reduce((a,x)=>a+Math.max(0,Number(x.pnl_yen)||0),0);
     const losses=Math.abs(done.reduce((a,x)=>a+Math.min(0,Number(x.pnl_yen)||0),0));
-    const rRows=done.filter(x=>Number.isFinite(Number(x?.r)));
+    const rRows=done.filter(x=>knownNumber(x?.r)!==null);
     return {
       count:done.length,
       wins,
@@ -81,11 +87,13 @@
     const known=!!exec;
     const realAllowed=exec?.real_submit_allowed===true;
     const brokerConnected=exec?.broker_positions_connected===true;
-    const brokerCount=brokerConnected&&Number.isFinite(Number(exec?.broker_position_count))
-      ? String(exec.broker_position_count)+"件":"未接続";
+    const brokerN=knownNumber(exec?.broker_position_count);
+    const brokerCount=!brokerConnected?"未接続":
+      (brokerN!==null&&Number.isInteger(brokerN)&&brokerN>=0?brokerN+"件":"未確認");
     const shadowConnected=exec?.shadow_positions_connected===true;
-    const shadowCount=shadowConnected&&Number.isFinite(Number(exec?.shadow_open_position_count))
-      ? String(exec.shadow_open_position_count)+"件":"未接続";
+    const shadowN=knownNumber(exec?.shadow_open_position_count);
+    const shadowCount=!shadowConnected?"未接続":
+      (shadowN!==null&&Number.isInteger(shadowN)&&shadowN>=0?shadowN+"件":"未確認");
     const cls=realAllowed?"short":"block";
     return metricCard("取引・建玉コントロール",realAllowed?"REAL ORDER ON":"REAL ORDER LOCKED",[
       ["実発注",known?(realAllowed?"ON":"OFF固定"):"状態取得不能"],
@@ -104,17 +112,18 @@
     const shown=allowed.includes(raw)?raw:"PAUSED_FAIL_CLOSED";
     const ops=exec?.shadow_ops?.daily||null;
     const incident=exec?.shadow_latest_incident||null;
-    const num=(value)=>Number.isFinite(Number(value))?String(value):"—";
-    const uptime=ops&&Number.isFinite(Number(ops.shadow_uptime_ratio))?(Math.round(Number(ops.shadow_uptime_ratio)*1000)/10)+"%":"—";
+    const num=value=>{const n=knownNumber(value);return n===null?"—":String(n);};
+    const uptimeRatio=knownNumber(ops?.shadow_uptime_ratio);
+    const uptime=uptimeRatio!==null&&uptimeRatio>=0&&uptimeRatio<=1?(Math.round(uptimeRatio*1000)/10)+"%":"—";
     const foot=incident
       ? String(incident.occurrence_at||"—")+" "+String(incident.error_code||"障害")+" → "+String(incident.shadow_impact||"—")+" / 無効化 "+num(incident.invalidated_signal_count)+" / 復旧 "+String(incident.recovery_mode||"未復旧")
       : "画面を閉じていてもコントローラ配下のAI SHADOWは継続します。状態ファイルが無い、古い、読めないときはRUNNINGにしません。";
     return metricCard("AI SHADOW",shown,[
       ["エンジン",shown],
       ["理由",exec?.shadow_engine_reason||(exec?"":"状態取得不能")],
-      ["仮想建玉",Number.isFinite(Number(exec?.shadow_open_observation_count))?String(exec.shadow_open_observation_count)+"件":"—"],
+      ["仮想建玉",knownNumber(exec?.shadow_open_observation_count)!==null&&Number.isInteger(knownNumber(exec?.shadow_open_observation_count))&&knownNumber(exec?.shadow_open_observation_count)>=0?String(exec.shadow_open_observation_count)+"件":"—"],
       ["日次エラー",num(ops?.error_count)],
-      ["停止時間",ops&&Number.isFinite(Number(ops.total_downtime_seconds))?String(ops.total_downtime_seconds)+"秒":"—"],
+      ["停止時間",knownNumber(ops?.total_downtime_seconds)!==null&&knownNumber(ops?.total_downtime_seconds)>=0?String(ops.total_downtime_seconds)+"秒":"—"],
       ["稼働率",uptime],
       ["鮮度異常",num(ops?.freshness_anomaly_count)],
       ["価格不一致",num(ops?.price_mismatch_count)],
@@ -140,8 +149,8 @@
       const r=await fetch("paper_trade_history.json?t="+Date.now(),{cache:"no-store"});
       if(!r.ok)throw new Error("history unavailable");
       const rows=await r.json();
-      return Array.isArray(rows)?rows:[];
-    }catch(_e){return [];}
+      return Array.isArray(rows)?rows:null;
+    }catch(_e){return null;}
   }
 
   async function loadHealth(){
@@ -156,7 +165,9 @@
     const panes=[...document.querySelectorAll(".tab-pane")];
     panes.forEach(p=>ensureSummarySection(p,p.dataset.pane));
 
-    const rows=await loadHistory();
+    const loadedRows=await loadHistory();
+    const historyAvailable=Array.isArray(loadedRows);
+    const rows=historyAvailable?loadedRows:[];
     const grouped=new Map();
     let unclassified=0;
     rows.forEach(x=>{
@@ -185,8 +196,10 @@
         executionHtml(exec,runtime)+
         shadowEngineHtml(exec)+
         metricCard("実績データの分類","TRACE",[
-          ["総履歴",rows.length+"件"],["未分類",unclassified+"件"],["分類済み",Math.max(0,rows.length-unclassified)+"件"]
-        ],"今後の仮想/Shadow取引は cockpit_tab を必須化して、どのタブの取引か追跡します。",unclassified?"block":"wait");
+          ["総履歴",historyAvailable?rows.length+"件":"—"],
+          ["未分類",historyAvailable?unclassified+"件":"—"],
+          ["分類済み",historyAvailable?Math.max(0,rows.length-unclassified)+"件":"—"]
+        ],historyAvailable?"今後の仮想/Shadow取引は cockpit_tab を必須化して、どのタブの取引か追跡します。":"取引履歴が取得できません。件数や成績を0とは扱いません。",!historyAvailable||unclassified?"block":"wait");
     }
   }
 
@@ -208,8 +221,8 @@
       const r=await fetch("weekly_review.json?t="+Date.now(),{cache:"no-store"});
       if(!r.ok)throw new Error("weekly unavailable");
       const w=await r.json();
-      const best=(Array.isArray(w.best)?w.best:[]).map(x=>tradeCard(x,"BEST",Number(x?.pnl_yen)>=0?"long":"short")).join("");
-      const worst=(Array.isArray(w.worst)?w.worst:[]).map(x=>tradeCard(x,"REVIEW",Number(x?.pnl_yen)<0?"short":"wait")).join("");
+      const best=(Array.isArray(w.best)?w.best:[]).map(x=>tradeCard(x,"BEST",knownNumber(x?.pnl_yen)===null?"wait":knownNumber(x.pnl_yen)>=0?"long":"short")).join("");
+      const worst=(Array.isArray(w.worst)?w.worst:[]).map(x=>tradeCard(x,"REVIEW",knownNumber(x?.pnl_yen)!==null&&knownNumber(x.pnl_yen)<0?"short":"wait")).join("");
       const themes=(Array.isArray(w.themes)?w.themes:[]).map(x=>'<span>'+esc(x)+'</span>').join("");
       const rules=(Array.isArray(w.next_rules)?w.next_rules:[]).map((x,i)=>'<span>'+(i+1)+'. '+esc(x)+'</span>').join("");
       root.className="card wide";
@@ -217,9 +230,10 @@
         '<div class="pane-intro"><span>AI COCKPIT</span><h2>週間振り返り・来週戦略</h2><p>'+esc(w.week||"—")+' / '+esc(w.created_at||"—")+'</p></div>'+
         '<div class="cc-grid">'+
           metricCard("週間成績",esc(w.decision||"REVIEW"),[
-            ["仮想取引",(w.count??0)+"件"],["勝率",pct(w.win_rate)],["PF",Number.isFinite(Number(w.pf))?Number(w.pf).toFixed(2):"—"],
+            ["仮想取引",knownNumber(w.count)!==null&&Number.isInteger(knownNumber(w.count))&&knownNumber(w.count)>=0?String(w.count)+"件":"—"],
+            ["勝率",pct(w.win_rate)],["PF",knownNumber(w.pf)!==null?knownNumber(w.pf).toFixed(2):"—"],
             ["平均R",rfmt(w.avg_r)],["週間損益",money(w.pnl)]
-          ],"仮想検証/Shadowの集計で、実口座損益ではありません。",Number(w.pnl)>=0?"long":"short")+
+          ],"仮想検証/Shadowの集計で、実口座損益ではありません。",knownNumber(w.pnl)===null?"wait":knownNumber(w.pnl)>=0?"long":"short")+
           metricCard("来週の注目テーマ","THEME",[["候補",themes||"更新待ち"]],"テーマ文字列は分析候補であり、保有建玉ではありません。","wait")+
           metricCard("来週のルール","RULES",[["運用",rules||"更新待ち"]],"翌週の検証ルール。","wait")+
         '</div>'+
