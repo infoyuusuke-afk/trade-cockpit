@@ -978,6 +978,23 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
                 self.write_evidence(hashlib.sha256(data).hexdigest())
                 return data
 
+            def shadow_agrees(self):
+                """Shadow publication that agrees the board is usable, so /health
+                can report decision_available=true when nothing else blocks."""
+                (runtime / "ai_shadow_status.json").write_text(json.dumps({
+                    "state": "RUNNING", "reason": "synthetic", "updated_at": _iso(test._now()),
+                    "real_submit_allowed": False,
+                    "quote_freshness": {"state": "FRESH", "fresh": True, "reasons": [],
+                                        "real_submit_allowed": False, "order_allowed": False},
+                    "board_availability": {"decision_available": True, "availability_status": "SYNTHETIC",
+                                           "real_submit_allowed": False}}), encoding="utf-8")
+
+            def write_board(self, at):
+                now = test._now()
+                payload = test._payload(rows=test._rows(now, at=at), identity_at=at, now=now)
+                payload["live_price_diagnostics"]["workbook_identity_id"] = workbook_id
+                self.live.write_bytes(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+
             def wait_past_floor(self, port=None):
                 floor = datetime.fromisoformat(self.health(port)["served_history"]["start_floor_at"])
                 time.sleep(max(0.0, (floor - test._now()).total_seconds() + 1.5))
@@ -1430,6 +1447,101 @@ class GatewayLiveRowGateHttp(unittest.TestCase):
         gw.wait_past_floor()
         status, written, body = gw.serve(self._now())
         self.assertIn("200 OK", status, body[:500])
+        gw.stop()
+
+    # ---- GPT review of 2464f2f: /health floor and the start-up snapshot ----
+
+    def test_health_never_calls_usable_a_board_older_than_the_peer_served(self):
+        gw = self._isolated("health-peer-floor").launch()
+        status, _, body = gw.serve(self._now() - timedelta(seconds=40))
+        self.assertIn("200 OK", status, body[:500])
+        other = self._isolated_peer(gw)
+        gw.wait_past_floor(other)
+        time.sleep(3)
+        newer = self._now() - timedelta(seconds=1)
+        # The first Gateway serves the newer board; the second has not seen it.
+        status, _, body = gw.serve(newer)
+        self.assertIn("200 OK", status, body[:500])
+        gw.shadow_agrees()
+        # Control: the same board is usable in /health on both Gateways.
+        for port in (gw.port, other):
+            runtime = gw.health(port)
+            self.assertIs(runtime["decision_available"], True, (port, runtime.get("stale_reason")))
+        # An older board, still fresh, after the newer one was served.
+        gw.write_board(newer - timedelta(seconds=2))
+        gw.shadow_agrees()
+        for port in (other, gw.port):
+            runtime = gw.health(port)
+            self.assertIs(runtime["decision_available"], False, port)
+            reasons = runtime["stale_reason"].split(",")
+            self.assertIn("SERVED_HISTORY_FLOOR_REGRESSION", reasons)
+            self.assertIn("SERVED_HISTORY_ROW_FLOOR_REGRESSION", reasons)
+            self.assertEqual(runtime["availability_status"], "BLOCKED_SERVED_HISTORY")
+            self.assertIs(runtime["fail_closed"], True)
+            self.assertIsNone(runtime["live_current_price"])
+            # /live_ms2.json refuses the same board.
+            status, body = self._request("/live_ms2.json", port)
+            self.assertIn("503", status)
+        gw.stop()
+
+    def test_start_up_reads_history_and_evidence_under_the_lock(self):
+        gw = self._isolated("startup-snapshot").launch()
+        status, _, body = gw.serve(self._now() - timedelta(seconds=30))
+        self.assertIn("200 OK", status, body[:500])
+        # Another Gateway is in the middle of a save: it holds the lock and
+        # has replaced the history, but not yet committed the evidence.
+        release = _hold_history_lock(gw.history)
+        try:
+            peer_at = self._now() - timedelta(seconds=10)
+            peer = json.loads(gw.history.read_text(encoding="utf-8"))
+            peer["identity_quote_at"] = _iso(peer_at)
+            peer["row_quote_at"] = {ticker: _iso(peer_at) for ticker in peer["row_quote_at"]}
+            data = json.dumps(peer).encode("utf-8")
+            gw.history.write_bytes(data)
+            port = self._free_port()
+            starter = threading.Thread(target=self._launch, args=(
+                [str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(gw.history.parent), "-Port", str(port)], port))
+            starter.start()
+            time.sleep(1.5)
+            with self.assertRaises(OSError):
+                socket.create_connection(("127.0.0.1", port), timeout=0.5).close()
+            gw.write_evidence(hashlib.sha256(data).hexdigest())
+        finally:
+            release()
+        starter.join(timeout=30)
+        history = gw.health(port)["served_history"]
+        # Read after the save finished: the peer's history, not a mismatch.
+        self.assertEqual(history["state"], "RESTORED")
+        self.assertEqual(history["identity_quote_at"], _iso(peer_at))
+        status, written, body = gw.serve(peer_at - timedelta(seconds=3), port=port)
+        self.assertIn("SOURCE_TIMESTAMP_REGRESSION", json.loads(body.decode("utf-8-sig"))["stale_reason"].split(","))
+        gw.wait_past_floor(port)
+        status, written, body = gw.serve(self._now(), port=port)
+        self.assertIn("200 OK", status, body[:500])
+        gw.stop()
+
+    def test_start_up_lock_timeout_refuses_then_recovers(self):
+        gw = self._isolated("startup-lock-timeout").launch()
+        status, _, body = gw.serve(self._now() - timedelta(seconds=30))
+        self.assertIn("200 OK", status, body[:500])
+        port = self._free_port()
+        release = _hold_history_lock(gw.history)
+        try:
+            # Start-up waits 5 s for the lock, then starts without a snapshot.
+            self._launch([str(GATEWAY), "-RepoRoot", str(ROOT), "-RuntimeDir", str(gw.history.parent),
+                          "-Port", str(port)], port)
+            history = gw.health(port)["served_history"]
+            self.assertEqual(history["state"], "UNVERIFIED")
+            self.assertEqual(history["last_failure"]["detail"], "LOCK_TIMEOUT")
+            status, written, body = gw.serve(self._now() - timedelta(seconds=1), port=port)
+            self._assert_history_refusal(status, written, body, "SERVED_HISTORY_UNVERIFIED")
+        finally:
+            release()
+        # Not a permanent block: the next request takes the snapshot.
+        gw.wait_past_floor(port)
+        status, written, body = gw.serve(self._now(), port=port)
+        self.assertIn("200 OK", status, body[:500])
+        self.assertEqual(gw.health(port)["served_history"]["state"], "SAVED")
         gw.stop()
 
     def _isolated_peer(self, gw):

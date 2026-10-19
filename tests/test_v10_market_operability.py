@@ -499,7 +499,7 @@ class ServedHistoryFirstRunAcceptance(unittest.TestCase):
         text = (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
         self.assertIn('[ValidateSet("", "ACCEPT_EMPTY_HISTORY")][string]$ServedHistoryBootstrap = ""', text)
         # Honoured only without a history or lock file in the directory.
-        self.assertIn('($restoredHistory.state -ceq "NO_HISTORY_FILE") -and -not $script:ServedHistoryPriorEvidence', text)
+        self.assertIn('($script:ServedHistoryState -ceq "NO_HISTORY_FILE") -and -not $script:ServedHistoryPriorEvidence', text)
         self.assertIn("$lock = Enter-ServedHistoryLock $Path", text)
         self.assertIn("[IO.FileShare]::None", text.split("function Enter-ServedHistoryLock", 1)[1].split("function ", 1)[0])
 

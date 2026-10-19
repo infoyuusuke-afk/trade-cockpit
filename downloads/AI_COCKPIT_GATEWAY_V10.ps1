@@ -11,9 +11,9 @@
     # verified save into a refusal (503); it never makes a response LIVE.
     [ValidateSet("", "READBACK_MISMATCH")][string]$ServedHistoryFaultSelfTest = "",
     # Explicit first-run acceptance: the caller asserts this runtime directory
-    # has never served LIVE. Honoured only when neither the history file nor
-    # its lock file exists; otherwise the start floor below applies. The
-    # Controller never passes it.
+    # has never served LIVE. Honoured only when no history, evidence or lock
+    # file exists; otherwise the start floor applies. The Controller never
+    # passes it.
     [ValidateSet("", "ACCEPT_EMPTY_HISTORY")][string]$ServedHistoryBootstrap = ""
 )
 
@@ -1303,6 +1303,71 @@ function Get-ServedHistoryStartState($Restored, $Evidence, [bool]$LockExists) {
     return "RESTORED"
 }
 
+function Read-ServedHistorySnapshot([string]$Path, [int]$TimeoutMilliseconds) {
+    # History and evidence read together under the history lock, so a save by
+    # another Gateway cannot land between the two reads. ok=$false (reason
+    # LOCK_TIMEOUT, LOCK_FAILED or READ_FAILED) means nothing is known.
+    $snapshot = @{ ok = $false; reason = $null; history = $null; evidence = $null }
+    $lock = $null
+    try {
+        try { $lock = Enter-ServedHistoryLock $Path $TimeoutMilliseconds } catch {
+            $snapshot.reason = $(if (Test-SharingViolation $_) { "LOCK_TIMEOUT" } else { "LOCK_FAILED" })
+            return $snapshot
+        }
+        try {
+            $snapshot.history = Import-ServedHistory $Path
+            $snapshot.evidence = Read-ServedHistoryEvidence $Path
+        } catch { $snapshot.reason = "READ_FAILED"; return $snapshot }
+        $snapshot.ok = $true
+        return $snapshot
+    } finally {
+        if ($null -ne $lock) { $lock.Dispose() }
+    }
+}
+
+function Set-ServedHistoryFromSnapshot($Snapshot) {
+    $script:ServedHistoryState = Get-ServedHistoryStartState $Snapshot.history $Snapshot.evidence $false
+    $script:ServedHistoryEvidenceSeen = ($Snapshot.evidence.valid -eq $true)
+    $script:ServedHistoryGeneration = $Snapshot.evidence.generation
+    $script:LastServedIdentityQuoteAt = $Snapshot.history.identity
+    $script:LastServedRowQuoteAt = $Snapshot.history.rows
+    $script:ServedHistoryDiskSha = $Snapshot.history.sha256
+}
+
+function Get-ServedHistoryCommonFloor {
+    # The floor shared by every Gateway on this directory: what this process
+    # served, raised by the history on disk when the evidence names it.
+    # ok=$false when that cannot be established (lock busy for 0.5 s, history
+    # unreadable or not the one the evidence names).
+    $floor = @{ ok = $true; identity = $script:LastServedIdentityQuoteAt; rows = @{} }
+    foreach ($key in @($script:LastServedRowQuoteAt.Keys)) { $floor.rows[$key] = $script:LastServedRowQuoteAt[$key] }
+    if ([string]::IsNullOrWhiteSpace($script:ServedHistoryPath)) { return $floor }
+    $snapshot = Read-ServedHistorySnapshot $script:ServedHistoryPath 500
+    if (-not $snapshot.ok) { $floor.ok = $false; return $floor }
+    $state = Get-ServedHistoryStartState $snapshot.history $snapshot.evidence $false
+    if ($state -ceq "NO_HISTORY_FILE") { return $floor }
+    if ($state -cne "RESTORED") { $floor.ok = $false; return $floor }
+    $floor.identity = Get-LaterQuoteAt $floor.identity $snapshot.history.identity
+    foreach ($key in @($snapshot.history.rows.Keys)) {
+        $floor.rows[$key] = $(if ($floor.rows.ContainsKey($key)) { Get-LaterQuoteAt $floor.rows[$key] $snapshot.history.rows[$key] } else { $snapshot.history.rows[$key] })
+    }
+    return $floor
+}
+
+function Get-ServedFloorReasons($Floor, $IdentityQuoteAt, $RowQuotes) {
+    # /health uses the same served-history floor as /live_ms2.json, so it
+    # never calls a board usable that /live_ms2.json would refuse.
+    $reasons = @()
+    if (-not $Floor.ok) { return @("SERVED_HISTORY_FLOOR_UNVERIFIED") }
+    if (Test-QuoteAtBefore $IdentityQuoteAt $Floor.identity) { $reasons += "SERVED_HISTORY_FLOOR_REGRESSION" }
+    if ($RowQuotes -is [System.Collections.IDictionary]) {
+        foreach ($key in @($RowQuotes.Keys)) {
+            if ($Floor.rows.ContainsKey([string]$key) -and (Test-QuoteAtBefore $RowQuotes[$key] $Floor.rows[[string]$key])) { $reasons += "SERVED_HISTORY_ROW_FLOOR_REGRESSION"; break }
+        }
+    }
+    return $reasons
+}
+
 function Save-ServedHistory([string]$Path, $IdentityQuoteAt, $RowQuotes, $ServedRowKeys, [string]$ExpectedDiskSha, [bool]$ExpectEvidence, [string]$Fault = "") {
     # Under the runtime directory's history lock: read the file, merge a
     # newer history another Gateway verified, write the result atomically,
@@ -1830,25 +1895,31 @@ if ($SnapshotGuardSelfTest) {
     exit 0
 }
 
-$restoredHistory = Import-ServedHistory $script:ServedHistoryPath
-$restoredEvidence = $(if ($script:ServedHistoryPath) { Read-ServedHistoryEvidence $script:ServedHistoryPath } else { @{ exists = $false; valid = $false; committed = $null; pending = $null; generation = 0 } })
+# The start floor is taken before anything is read: every quote an earlier
+# Gateway process on this directory served is at most this process's start
+# + 5 s.
+$startFloor = (Get-JstNow).AddSeconds(5).ToString("yyyy-MM-ddTHH:mm:sszzz", [Globalization.CultureInfo]::InvariantCulture)
+# Whether this directory shows any sign that LIVE was served here, checked
+# before this process creates the lock file itself.
 $restoredLock = (-not [string]::IsNullOrWhiteSpace($script:ServedHistoryPath)) -and (Test-Path -LiteralPath ($script:ServedHistoryPath + ".lock"))
-$script:ServedHistoryState = Get-ServedHistoryStartState $restoredHistory $restoredEvidence $restoredLock
-$script:ServedHistoryEvidenceSeen = ($restoredEvidence.valid -eq $true)
-$script:ServedHistoryGeneration = $restoredEvidence.generation
-$script:LastServedIdentityQuoteAt = $restoredHistory.identity
-$script:LastServedRowQuoteAt = $restoredHistory.rows
-$script:ServedHistoryDiskSha = $restoredHistory.sha256
+$startSnapshot = $(if ($script:ServedHistoryPath) { Read-ServedHistorySnapshot $script:ServedHistoryPath 5000 } else {
+    @{ ok = $true; reason = $null; history = (Import-ServedHistory ""); evidence = @{ exists = $false; valid = $false; committed = $null; pending = $null; generation = 0 } } })
+if ($startSnapshot.ok) {
+    Set-ServedHistoryFromSnapshot $startSnapshot
+    $script:ServedHistoryPriorEvidence = $restoredLock -or $startSnapshot.evidence.exists -or ($startSnapshot.history.state -cne "NO_HISTORY_FILE")
+} else {
+    # Another Gateway held the lock for 5 s or the files could not be read:
+    # nothing is known, so LIVE is refused and /live_ms2.json retries.
+    $script:ServedHistoryState = "UNVERIFIED"
+    $script:ServedHistoryLastFailure = [ordered]@{ reason = "SERVED_HISTORY_UNVERIFIED"; detail = $startSnapshot.reason; at = (Get-JstNow).ToString("yyyy-MM-ddTHH:mm:sszzz", [Globalization.CultureInfo]::InvariantCulture) }
+    $script:ServedHistoryPriorEvidence = $true
+}
 # First start and lost or rolled-back history look alike from inside the
 # directory. Unless the caller explicitly accepts an empty history and there
 # is no evidence (history, evidence or lock file) that LIVE was ever served
-# here, quotes
-# older than this process's start + 5 s are refused (Get-StartFloorReasons).
-$script:ServedHistoryPriorEvidence = $restoredLock -or $restoredEvidence.exists -or ($restoredHistory.state -cne "NO_HISTORY_FILE")
-$script:ServedHistoryEmptyAccepted = ($ServedHistoryBootstrap -ceq "ACCEPT_EMPTY_HISTORY") -and ($restoredHistory.state -ceq "NO_HISTORY_FILE") -and -not $script:ServedHistoryPriorEvidence
-if (-not $script:ServedHistoryEmptyAccepted) {
-    $script:ServedHistoryStartFloor = (Get-JstNow).AddSeconds(5).ToString("yyyy-MM-ddTHH:mm:sszzz", [Globalization.CultureInfo]::InvariantCulture)
-}
+# here, quotes older than the start floor are refused (Get-StartFloorReasons).
+$script:ServedHistoryEmptyAccepted = ($ServedHistoryBootstrap -ceq "ACCEPT_EMPTY_HISTORY") -and ($script:ServedHistoryState -ceq "NO_HISTORY_FILE") -and -not $script:ServedHistoryPriorEvidence
+if (-not $script:ServedHistoryEmptyAccepted) { $script:ServedHistoryStartFloor = $startFloor }
 
 try {
     $listener.Start()
@@ -2081,8 +2152,11 @@ try {
                 elseif ($shadowAvailability.real_submit_allowed -ne $false) { $availabilityReasons += "REAL_SUBMIT_NOT_FALSE" }
                 # The last LIVE save failed or the history cannot be trusted:
                 # /live_ms2.json refuses, so /health does not claim usable.
-                if (@("UNREADABLE", "CONFLICT", "SAVE_FAILED", "LOST", "EVIDENCE_MISMATCH", "EVIDENCE_UNREADABLE") -ccontains $script:ServedHistoryState) { $availabilityReasons += ("SERVED_HISTORY_" + $script:ServedHistoryState) }
+                if (@("UNREADABLE", "CONFLICT", "SAVE_FAILED", "LOST", "EVIDENCE_MISMATCH", "EVIDENCE_UNREADABLE", "UNVERIFIED") -ccontains $script:ServedHistoryState) { $availabilityReasons += ("SERVED_HISTORY_" + $script:ServedHistoryState) }
                 if ($healthAvailability.decision_available -eq $true -and @(Get-StartFloorReasons $script:ServedHistoryStartFloor $gatewayFreshness.quote_at $healthRows.accepted_quote_at).Count -gt 0) { $availabilityReasons += "SERVED_HISTORY_START_FLOOR" }
+                if ($healthAvailability.decision_available -eq $true) {
+                    $availabilityReasons += @(Get-ServedFloorReasons (Get-ServedHistoryCommonFloor) $gatewayFreshness.quote_at $healthRows.accepted_quote_at)
+                }
                 $runtime['decision_available'] = ($availabilityReasons.Count -eq 0 -and $healthAvailability.decision_available -eq $true)
                 $runtime['availability_status'] = $(if ($runtime['decision_available']) { 'AVAILABLE' } elseif ($healthAvailability.decision_available -ne $true) { [string]$healthAvailability.availability_status } elseif (@($availabilityReasons | Where-Object { ([string]$_).StartsWith("SERVED_HISTORY_") }).Count -eq $availabilityReasons.Count) { 'BLOCKED_SERVED_HISTORY' } else { 'BLOCKED_SHADOW_DISAGREES' })
                 if ($availabilityReasons.Count -gt 0) {
@@ -2194,11 +2268,17 @@ try {
                 $bytes = $snap.bytes
                 $liveObj = $snap.obj
                 $liveNow = Get-JstNow
+                if ($script:ServedHistoryState -ceq "UNVERIFIED") {
+                    # The start-up snapshot could not be taken; try again now,
+                    # before the regression check uses the restored floor.
+                    $retrySnapshot = Read-ServedHistorySnapshot $script:ServedHistoryPath 2000
+                    if ($retrySnapshot.ok) { Set-ServedHistoryFromSnapshot $retrySnapshot }
+                }
                 $liveQuoteFreshness = Get-QuoteFreshness -LiveObj $liveObj -Now $liveNow -PreviousQuoteAt $script:LastServedIdentityQuoteAt
                 $liveRowFreshness = Get-BoardRowFreshness -LiveObj $liveObj -Now $liveNow -BoardQuoteAt $liveQuoteFreshness.quote_at -PreviousRowQuotes $script:LastServedRowQuoteAt
                 $liveAvailability = Get-BoardAvailability -LiveObj $liveObj -QuoteFreshness $liveQuoteFreshness -RowFreshness $liveRowFreshness -Universe (Get-ExpectedUniverse $RuntimeDir)
                 $rejection = Get-LivePriceRejection -LiveObj $liveObj -FileAgeSeconds $snap.file_age_seconds -PayloadAgeSeconds $snap.payload_age_seconds -UpdatedAtRaw $snap.updated_at -FileMtime $snap.file_mtime -MaxAgeSeconds 60 -QuoteFreshness $liveQuoteFreshness -RowFreshness $liveRowFreshness -Availability $liveAvailability
-                if ($null -eq $rejection -and @("UNREADABLE", "CONFLICT", "LOST", "EVIDENCE_MISMATCH", "EVIDENCE_UNREADABLE") -ccontains $script:ServedHistoryState) {
+                if ($null -eq $rejection -and @("UNREADABLE", "CONFLICT", "LOST", "EVIDENCE_MISMATCH", "EVIDENCE_UNREADABLE", "UNVERIFIED") -ccontains $script:ServedHistoryState) {
                     $historyReason = "SERVED_HISTORY_" + $script:ServedHistoryState
                     $rejection = [ordered]@{ status = "stale"; reason = $historyReason; stale_reason = $historyReason; price_source_status = "STALE"; current_price = $null; decision_available = $false; real_submit_allowed = $false; order_allowed = $false; live_values_available = $false; data_conflict = $false }
                 }
