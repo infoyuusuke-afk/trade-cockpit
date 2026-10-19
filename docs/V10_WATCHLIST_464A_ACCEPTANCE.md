@@ -16,6 +16,17 @@ The Collector compares each row's sheet code with the watchlist ticker. If only 
 
 The runtime takes the watchlist from its pinned source. Editing the watchlist of an installed runtime by hand breaks its hash pin and is not allowed. The new list reaches the PC only with a runtime built from a source that carries it (#451 or a later accepted HEAD).
 
+## The prepared workbook must be rebuilt on switch day
+
+The V10 Watcher writes its signal log into the workbook and saves it on every run. A workbook prepared on an earlier day is stale as soon as V10 runs again, and replacing the live workbook with it would lose those records.
+
+So on switch day:
+1. Take a fresh backup of the current workbook, after V10 is stopped.
+2. Rebuild the prepared workbook from that backup, changing only the old-code cells.
+3. Run the checks below against the new pair.
+
+Prepared copies from earlier days are evidence only. Never install one.
+
 ## Pre-switch checks (read-only, PC)
 
 Each check must be PASS before the switch. A check that cannot be run is NOT_RUN, never PASS.
