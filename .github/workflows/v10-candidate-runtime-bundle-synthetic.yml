@@ -8,6 +8,8 @@ on:
       - "scripts/ai_shadow_supervisor.py"
       - "ms2_live/*.ps1"
       - "ms2_live/watchlist_100.json"
+      - "scripts/ci_v10_watchlist_replacement.py"
+      - "tests/test_v10_watchlist_replacement.py"
       - "index.html"
       - "card_system.*"
       - "card_table_adapter.*"
@@ -56,29 +58,7 @@ jobs:
               expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
               test "$(git rev-parse "HEAD:$file")" = "$expected"
               git show "$pinned:$file" > /tmp/v10_pinned_watchlist.json
-              python - "$file" /tmp/v10_pinned_watchlist.json <<'PY'
-import json, sys
-candidate = json.load(open(sys.argv[1], encoding="utf-8"))
-pinned = json.load(open(sys.argv[2], encoding="utf-8"))
-assert set(candidate) == set(pinned), "WATCHLIST_TOP_LEVEL_CHANGED"
-for key in candidate:
-    if key != "stocks":
-        assert candidate[key] == pinned[key], f"WATCHLIST_UNRELATED_CHANGE:{key}"
-old = list(pinned["stocks"].items())
-new = list(candidate["stocks"].items())
-assert len(old) == len(new) == 100, "WATCHLIST_COUNT_CHANGED"
-changed = [(a, b) for a, b in zip(old, new) if a != b]
-assert len(changed) == 1, "WATCHLIST_CHANGE_COUNT_NOT_ONE"
-(old_name, old_row), (new_name, new_row) = changed[0]
-assert old_name == "QPS研究所（5595）" and new_name == "QPSホールディングス（464A）", "WATCHLIST_UNAPPROVED_NAME"
-assert old_row.get("ticker") == "5595.T" and new_row.get("ticker") == "464A.T", "WATCHLIST_UNAPPROVED_TICKER"
-assert set(old_row) == set(new_row), "WATCHLIST_FIELDS_CHANGED"
-assert all(old_row[k] == new_row[k] for k in old_row if k != "ticker"), "WATCHLIST_OTHER_ATTRIBUTES_CHANGED"
-tickers = [row["ticker"] for _, row in new]
-assert len(tickers) == len(set(tickers)), "WATCHLIST_DUPLICATE_TICKER"
-assert all(isinstance(t, str) and t for t in tickers), "WATCHLIST_INVALID_TICKER"
-print("OWNER_APPROVED_SINGLE_WATCHLIST_REPLACEMENT=PASS")
-PY
+              python scripts/ci_v10_watchlist_replacement.py "$file" /tmp/v10_pinned_watchlist.json
               echo "V10_OWNER_APPROVED_WATCHLIST=$file"
             elif [[ "$file" == "scripts/ai_shadow_supervisor.py" ]]; then
               # P0-V10-ACCEPTANCE-FIX-20261019 quote-freshness repair (writer
@@ -104,6 +84,8 @@ PY
             fi
           done
           echo "APPROVED_FOR_RUNTIME=0"
+      - name: Watchlist replacement check rejects tampering (99/101 names, two changes, duplicate, reorder, unapproved code)
+        run: python -m unittest discover -s tests -p test_v10_watchlist_replacement.py -v
       - name: V10 local HTTP security static contract
         run: python -m unittest discover -s tests -p test_v10_local_http_security.py -v
       - name: Candidate manifest and V10 static UI/runtime dependencies
