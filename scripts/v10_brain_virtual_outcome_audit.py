@@ -22,7 +22,9 @@ _MAX_FILE_BYTES = 12_000_000
 _MAX_EVENTS = 100_000
 _MAX_EVENT_BYTES = 32_768
 _ISO = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$")
-_SAFE_STRATEGY = re.compile(r"^[A-Za-z0-9_./:-]{1,100}$")
+def _safe_strategy(value):
+    return (type(value) is str and 1 <= len(value) <= 100 and
+            value.strip() == value and all(c.isprintable() and c not in ("/", "\\") for c in value))
 _SAFE_SYMBOL = re.compile(r"^[A-Z0-9]{4}(?:\.T)?$")
 
 
@@ -87,7 +89,7 @@ def audit(events, *, now):
         strategy = event.get("strategy")
         if (not isinstance(ticker, str) or not _SAFE_SYMBOL.fullmatch(ticker) or
             side not in ("LONG", "SHORT") or key != ticker + "|" + side or
-            not isinstance(strategy, str) or not _SAFE_STRATEGY.fullmatch(strategy)):
+            not _safe_strategy(strategy)):
             return _blocked("STRATEGY_OR_POSITION_IDENTITY_INVALID")
         if kind == "virtual_entry":
             if key in open_by_key:
