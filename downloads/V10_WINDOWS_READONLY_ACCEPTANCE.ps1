@@ -29,6 +29,11 @@ function Test-ExactProof([int]$ExitCode,[object[]]$Lines,[string[]]$Expected) {
    return $false
   }
  }
+ # Membership alone is insufficient: duplicate safe lines could replace
+ # one required proof line. Require one occurrence of EACH exact marker.
+ foreach ($required in $Expected) {
+  if (@($Lines | Where-Object { $_ -ceq $required }).Count -ne 1) { return $false }
+ }
  return $true
 }
 function Finish-Blocked([string]$Reason) {
