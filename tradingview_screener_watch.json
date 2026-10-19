@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-19 17:06:31 JST",
+  "updated_at": "2026-10-19 20:19:02 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -4448,22 +4448,6 @@
       "already_watched": false
     },
     {
-      "code": "6301",
-      "name": "Komatsu Ltd.",
-      "exchange": "TSE",
-      "price": 7256,
-      "change_pct": 0.7777777777777778,
-      "volume": 2814000,
-      "relative_volume": 0.8144411353552543,
-      "atr_pct": 3.28,
-      "vwap": 7197.333333333333,
-      "high": 7287,
-      "low": 7049,
-      "market_cap": 6418881298828,
-      "sector": "Producer Manufacturing",
-      "already_watched": true
-    },
-    {
       "code": "6753",
       "name": "Sharp Corporation",
       "exchange": "TSE",
@@ -4478,6 +4462,22 @@
       "market_cap": 387932345276,
       "sector": "Consumer Durables",
       "already_watched": false
+    },
+    {
+      "code": "6301",
+      "name": "Komatsu Ltd.",
+      "exchange": "TSE",
+      "price": 7256,
+      "change_pct": 0.7777777777777778,
+      "volume": 2814000,
+      "relative_volume": 0.8144411353552543,
+      "atr_pct": 3.28,
+      "vwap": 7197.333333333333,
+      "high": 7287,
+      "low": 7049,
+      "market_cap": 6418881298828,
+      "sector": "Producer Manufacturing",
+      "already_watched": true
     },
     {
       "code": "3905",
