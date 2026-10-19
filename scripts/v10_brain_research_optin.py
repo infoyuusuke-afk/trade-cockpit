@@ -165,8 +165,8 @@ def run_once(*, brain_status_path, research_private_dir, now):
             return _out("RESEARCH_CONTEXT_UNVERIFIED")
         return _out(None, decision=context["research_decision"],
                     n=context["virtual_sample_count"])
-    except (OSError, ValueError, TypeError, UnicodeError,
-            OverflowError, RecursionError):
+    except Exception:
+        # Consumer/runtime failures may never promote research or reveal paths.
         return _out("LOCAL_RESEARCH_UNAVAILABLE")
 
 
