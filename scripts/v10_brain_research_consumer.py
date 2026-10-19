@@ -129,8 +129,13 @@ def _evaluate(c, *, now, file_modified_at):
     return _result(None, decision=decision, sample_count=total)
 
 
-def _identity(s):
-    return (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns, s.st_nlink)
+def _identity(s, *, same_api=False):
+    # Windows path lstat() and descriptor fstat() can return different
+    # st_ctime_ns representations for an unchanged NTFS file. Compare
+    # creation/change time only within identical stat APIs; cross-check
+    # file ID, device, size, mtime and link count across the APIs.
+    stable = (s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_nlink)
+    return stable + ((s.st_ctime_ns,) if same_api else ())
 
 
 def _plain_local(path):
@@ -181,8 +186,11 @@ def consume_local(*, context_path, private_dir, now):
             closed = os.fstat(handle.fileno())
         _plain_local(path)
         after = path.lstat()
-        if (len(raw) != before.st_size or _identity(before) != _identity(closed) or
-            _identity(before) != _identity(after)):
+        if (len(raw) != before.st_size or
+            _identity(opened, same_api=True) != _identity(closed, same_api=True) or
+            _identity(before, same_api=True) != _identity(after, same_api=True) or
+            _identity(before) != _identity(closed) or
+            _identity(after) != _identity(closed)):
             return _result("CONTEXT_CHANGED_DURING_READ")
         context = json.loads(raw.decode("utf-8-sig"), object_pairs_hook=_pairs, parse_constant=_constant)
         return evaluate_context(context, now=now,
