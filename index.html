@@ -377,13 +377,35 @@ document.addEventListener("DOMContentLoaded",()=>{
  if(!select||!target||!status)return;
  const readPinned=()=>{try{const v=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(v)?[...new Set(v.filter(validTicker))].slice(0,5):[]}catch(_){return []}};
  let pinned=readPinned(), lastAll=[], lastVerified=false;
+ // Collector refresh is nominally every five seconds. A stopped event stream
+ // must revoke quote permission even if the last ms2RssUpdate was green.
+ const FOCUS_EVENT_SILENCE_MS=12000;
+ let lastEventReceivedAt=null;
+ const eventRecent=()=>{
+   if(lastEventReceivedAt===null)return false;
+   const age=Date.now()-lastEventReceivedAt;
+   return Number.isFinite(age)&&age>=-5000&&age<=FOCUS_EVENT_SILENCE_MS;
+ };
+ const blockSilencedEvent=()=>{
+   if(!lastVerified||eventRecent())return;
+   lastVerified=false;
+   lastAll=[];
+   status.textContent="MS2通信が停止・12秒超無受信。価格・シグナル遮断／OWNER固定銘柄は維持。";
+   paint();
+ };
  const save=()=>{try{localStorage.setItem(key,JSON.stringify(pinned))}catch(_){status.textContent="固定銘柄の保存に失敗しました。ページ再読込後は要確認。"}};
  const paint=()=>{
+   // Fail closed even if a browser throttles interval callbacks in background.
+   if(lastVerified&&!eventRecent()){
+     lastVerified=false;
+     lastAll=[];
+     status.textContent="MS2通信が停止・鮮度期限切れ。価格・シグナル遮断。";
+   }
    if(!pinned.length){target.textContent="OWNER指定銘柄なし。MS2一覧から最大5銘柄を選択してください。";return;}
    const map=new Map(lastAll.filter(x=>validTicker(x?.ticker)).map(x=>[x.ticker,x]));
    target.innerHTML=pinned.map(t=>{
      const row=map.get(t);
-     if(lastVerified&&rowQuoteReady(row)&&typeof window.renderScalpCard==="function")
+     if(lastVerified&&eventRecent()&&rowQuoteReady(row)&&typeof window.renderScalpCard==="function")
        return window.renderScalpCard({...row,_stale:false,foot:"OWNER固定｜MS2出所・鮮度検証済｜実注文禁止"},{label:"監視",cls:"wait"},"1m");
      return window.renderCockpitCard({symbol:t.replace(/\.T$/,""),company:row?.name||t,direction:"block",
        failClosed:"MS2入力未認証・鮮度切れ・指定銘柄未取得",freshness:"stale",price:null,
@@ -406,9 +428,20 @@ document.addEventListener("DOMContentLoaded",()=>{
      Number.isFinite(price)&&price>0;
  };
  const validMarket=d=>{
+   // The real MS2 Collector does NOT emit source_authenticated. Never treat
+   // its absence as true: demand the Collector's own explicit workbook
+   // identity proof and canonical local transport, as well as source gates.
+   const diag=d?.live_price_diagnostics;
    if(d?.stale!==false||d?.live_values_available!==true||
       d?.data_conflict!==false||d?.real_submit_allowed!==false||d?._transport_fail_closed===true||
-      d?.source_authenticated===false)return false;
+      d?.source_authenticated===false||
+      d?.connection_source!=="自宅PC・MS2 RSS LIVE"||
+      diag?.workbook_identity_verified!==true||
+      diag?.price_source_status!=="OK"||
+      diag?.source_mode!=="MS2_RSS_WORKBOOK"||
+      diag?.data_conflict!==false||
+      diag?.live_values_available!==true||
+      diag?.real_submit_allowed!==false)return false;
    if(typeof window.livePriceBlocked!=="function"||window.livePriceBlocked(d)!=="")return false;
    // Gateway/Collector expose observed_at_offset. updated_at may lack timezone.
    const raw=typeof d.observed_at_offset==="string"?d.observed_at_offset.trim():"";
@@ -418,6 +451,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  };
  document.addEventListener("ms2RssUpdate",e=>{
    const d=e.detail||{};
+   lastEventReceivedAt=Date.now();
    lastAll=Array.isArray(d.all_targets)?d.all_targets.filter(x=>validTicker(x?.ticker)):[];
    lastVerified=validMarket(d);
    const prev=select.value;
@@ -440,6 +474,13 @@ document.addEventListener("DOMContentLoaded",()=>{
  document.getElementById("focus-owner-remove").addEventListener("click",()=>{
    if(!validTicker(select.value))return;
    pinned=pinned.filter(t=>t!==select.value);save();paint();
+ });
+ const silenceWatchdog=setInterval(blockSilencedEvent,1000);
+ window.addEventListener("pagehide",()=>{
+   clearInterval(silenceWatchdog);
+   lastVerified=false;
+   lastAll=[];
+   paint();
  });
  paint();
 });
