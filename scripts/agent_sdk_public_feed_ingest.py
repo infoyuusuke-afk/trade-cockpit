@@ -73,12 +73,29 @@ def _time(raw: str) -> datetime:
 
 
 def _url(raw: str) -> str:
-    url = urlsplit(raw)
-    if (url.scheme != "https" or url.hostname != HOST or url.port not in (None, 443)
-            or url.username or url.password or url.query or url.fragment
-            or not url.path.startswith("/") or len(raw) > 500):
-        raise EvidenceBlocked("RSS_LINK_NOT_APPROVED_PUBLIC_HTTPS")
-    return raw
+    """Canonicalize BOJ's legacy HTTP RSS *links* to HTTPS, without HTTP fetching.
+
+    Reject credentials, nondefault ports, opaque/ambiguous URLs and any other
+    host. Never fetch the HTTP URL. Only the HTTPS RSS feed itself is fetched;
+    article URLs are recorded as provenance metadata, not downloaded.
+    """
+    try:
+        url = urlsplit(raw)
+        if (url.scheme not in ("http", "https") or url.hostname != HOST
+                or url.port is not None
+                or url.username or url.password or url.query or url.fragment
+                or not url.path.startswith("/")
+                or raw != raw.strip()
+                or "\\\\" in raw
+                or len(raw) > 500):
+            raise EvidenceBlocked("RSS_LINK_NOT_APPROVED_OFFICIAL_ORIGIN")
+    except ValueError as exc:
+        raise EvidenceBlocked("RSS_LINK_INVALID") from exc
+    canonical = "https://" + HOST + url.path
+    # Validate canonical round trip: no embedded C0 controls or path ambiguity.
+    if any(ord(c) <= 32 or ord(c) == 127 for c in canonical):
+        raise EvidenceBlocked("RSS_LINK_CONTROL_CHAR")
+    return canonical
 
 
 def fetch_official_feed(url: str) -> bytes:
