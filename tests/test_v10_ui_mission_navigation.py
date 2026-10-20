@@ -149,5 +149,17 @@ process.stdout.write(JSON.stringify(cases));
         self.assertEqual(json.loads(p.stdout), [True] + [False] * 11)
 
 
+    def test_focus_actual_dom_events_and_actions(self):
+        """Exercise the reviewed page FOCUS script, not a hand-written duplicate."""
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node unavailable; synthetic DOM interaction tests skipped")
+        p = subprocess.run(
+            [node, "--test", str(ROOT / "tests" / "v10_focus_owner_runtime.test.mjs")],
+            cwd=ROOT, text=True, capture_output=True, timeout=30,
+        )
+        self.assertEqual(p.returncode, 0, p.stdout[-5000:] + "\n" + p.stderr[-3500:])
+
+
 if __name__ == "__main__":
     unittest.main()
