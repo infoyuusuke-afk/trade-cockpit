@@ -22,11 +22,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - name: Compile without importing Agents SDK
         run: python -m py_compile scripts/agent_sdk_coordination_pilot.py tests/test_agent_sdk_coordination_pilot.py scripts/agent_sdk_public_feed_ingest.py tests/test_agent_sdk_public_feed_ingest.py scripts/agent_sdk_brain_handoff.py tests/test_agent_sdk_brain_handoff.py
       - name: Offline test for 4 roles, fail-closed and no-key denial
