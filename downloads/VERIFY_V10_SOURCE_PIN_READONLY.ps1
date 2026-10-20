@@ -72,10 +72,15 @@ try {
         throw "V10_FULL_SHA_REQUIRED"
     }
 
-    $top = Read-GitText $repo @("rev-parse","--show-toplevel")
-    $normalizedTop = [IO.Path]::GetFullPath($top.Replace("/","\"))
-    if (-not [string]::Equals($normalizedTop.TrimEnd("\"),$repo.TrimEnd("\"),
-                             [StringComparison]::OrdinalIgnoreCase)) {
+    # Git for Windows emits --show-toplevel in its own output encoding.
+    # Windows PowerShell 5.1 may decode non-ASCII directory names incorrectly.
+    # Instead prove that -C points at the TOP of a non-bare worktree using
+    # encoding-independent ASCII Git predicates. Never accept a subdirectory.
+    $inside = Read-GitText $repo @("rev-parse","--is-inside-work-tree")
+    $bare = Read-GitText $repo @("rev-parse","--is-bare-repository")
+    $prefix = Read-GitText $repo @("rev-parse","--show-prefix")
+    if ($inside -cne "true" -or $bare -cne "false" -or
+        -not [string]::IsNullOrEmpty($prefix)) {
         throw "V10_CHECKOUT_ROOT_MISMATCH"
     }
     $actualBranch = Read-GitText $repo @("symbolic-ref","--quiet","--short","HEAD")
