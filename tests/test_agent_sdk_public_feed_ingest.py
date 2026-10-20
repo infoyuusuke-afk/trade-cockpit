@@ -76,13 +76,38 @@ class PublicFeedTests(unittest.TestCase):
             feed.build_snapshot({"supply_sq": rss(date="2026-10-01T02:00:00+09:00")},
                                 "feed_synthetic_20261021", NOW)
 
+    def test_official_boj_legacy_http_link_normalizes_to_https(self):
+        old_link = "http://www.boj.or.jp/whatsnew/2026/20261020_1.htm"
+        got = feed.parse_feed(
+            rss(date="Tue, 20 Oct 2026 17:00:00 +0900", url=old_link),
+            "pre_next", NOW
+        )
+        self.assertEqual(len(got), 1)
+        self.assertEqual(got[0]["source_url"], LINK)
+        self.assertEqual(got[0]["as_of"], "2026-10-20T08:00:00+00:00")
+        self.assertEqual(got[0]["available_at"], NOW.isoformat())
+
     def test_reject_external_private_and_signed_urls(self):
-        for url in ("https://example.org/news", "http://www.boj.or.jp/example",
+        for url in ("https://example.org/news", "http://example.org/news",
+                    "https://www.boj.or.jp.evil.example/news",
                     "https://www.boj.or.jp/whatsnew?q=token",
                     "https://user:secret@www.boj.or.jp/private",
-                    "https://www.boj.or.jp/x#private"):
+                    "https://www.boj.or.jp/x#private",
+                    "http://www.boj.or.jp:8080/article",
+                    "http://www.boj.or.jp:80/article",
+                    "https://www.boj.or.jp:443/article",
+                    "ftp://www.boj.or.jp/news",
+                    "https://www.boj.or.jp/has space"):
             with self.subTest(url=url):
                 self.assertEqual(feed.parse_feed(rss(url=url), "pre_next", NOW), [])
+
+    def test_http_and_https_versions_are_one_canonical_evidence_id(self):
+        old_link = "http://www.boj.or.jp/whatsnew/2026/20261020_1.htm"
+        one = feed.parse_feed(rss(url=old_link), "pre_next", NOW)
+        two = feed.parse_feed(rss(url=LINK), "pre_next", NOW)
+        self.assertEqual(len(one), 1)
+        self.assertEqual(one[0]["source_id"], two[0]["source_id"])
+        self.assertEqual(one[0]["source_url"], two[0]["source_url"])
 
     def test_no_dtd_entity_processing(self):
         injected = b'<!DOCTYPE rss [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><rss/>'
