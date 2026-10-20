@@ -26,6 +26,7 @@ on:
       - "tests/test_v10_brain*.py"
       - "tests/test_v10_ui_evidence_regression.py"
       - "tests/test_v10_ui_mission_navigation.py"
+      - "tests/v10_focus_owner_runtime.test.mjs"
       - ".github/workflows/v10-candidate-runtime-bundle-synthetic.yml"
   workflow_dispatch:
 permissions:
