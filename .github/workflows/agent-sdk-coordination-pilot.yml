@@ -1,0 +1,29 @@
+name: 100B isolated Agents SDK coordination pilot (offline synthetic)
+# No API credentials and no billable model requests.
+on:
+  pull_request:
+    paths:
+      - "scripts/agent_sdk_coordination_pilot.py"
+      - "tests/test_agent_sdk_coordination_pilot.py"
+      - "docs/AGENT_SDK_COORDINATION_PILOT.md"
+      - ".github/workflows/agent-sdk-coordination-pilot.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-synthetic:
+    name: Research-only offline tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile without importing Agents SDK
+        run: python -m py_compile scripts/agent_sdk_coordination_pilot.py tests/test_agent_sdk_coordination_pilot.py
+      - name: Offline test for 4 roles, fail-closed and no-key denial
+        run: python -m unittest tests.test_agent_sdk_coordination_pilot -v
