@@ -44,6 +44,68 @@ Save to a local example.json and run:
 
 Expected state OFFLINE_SYNTHETIC_NO_API_CALL. The offline provider is a stub and performs ZERO model inference or external communication. Roles lacking input return NO_DATA.
 
+## Phase 4 (isolated): Agents SDK -> signed private Brain RESEARCH sidecar
+
+This branch now contains \`scripts/agent_sdk_brain_handoff.py\` plus
+\`tests/test_agent_sdk_brain_handoff.py\`. This is a PRIVATE FILE handoff
+prototype only. It is NOT connected to the running Brain process,
+not a replacement for \`v10_brain_research_consumer.py\`,
+and cannot change V10, the Excel instance, the market-data gate,
+safety/permission/kill switches or orders. It never sends public GitHub
+comments. Scheduled tasks and API billing settings remain unchanged.
+
+Handoff is strictly OPT IN through --handoff-dir. A future successful
+\`agent_sdk_coordination_pilot.py\` run may export the validated full
+research result and its PUBLIC-only source metadata after its receipt is
+recorded. Earlier runs only stored hash-based SQLite receipts, not
+recoverable model outputs: **do not replay earlier billable run IDs** and
+do not reconstruct missing payloads as if they had been observed.
+
+Safety contract:
+- Local private directory OUTSIDE git and V10, explicitly owner-selected,
+  no symlink/reparse component. One \`agent_research_<run_id>.json\` file,
+  opened once exclusively with no overwrite or hidden retry.
+- Source identity and strict evidence IDs bound to model output. Result
+  always RESEARCH_ONLY or OFFLINE_SYNTHETIC, no trade/profit/provenance
+  promotion. Reject future, stale >15-minute handoffs, unknown timestamp
+  offsets and changed/tampered JSON; no last-good fallback.
+- Full JSON payload covered by HMAC-SHA256 with a separately generated
+  32-byte signing key provided as exactly 64 hex characters through the
+  private environment variable \`AGENT_BRIDGE_HMAC_KEY\`.
+  Never paste this secret in chat, GitHub or Logs, and do not conflate
+  HMAC possession with official market/source authenticity.
+- Research-only receiver validates content, timestamps, file identity,
+  HMAC, source fingerprint, role outputs and disabled order flags,
+  and may create exactly one **local sidecar** ACK
+  \`agent_research_<run_id>.ack.json\`. Replays fail CLOSED.
+  This confirms sidecar receipt only; it is not ACK from a live Brain.
+- Use the preexisting paid-attempt reservation and OpenAI Usage audits for
+  any future OWNER-approved paid run. New handoff capability does not
+  authorize billable calls, a scheduler, a daemon or a production cutover.
+
+**Offline-only Windows test plan (no OpenAI API):** take an explicitly
+new unique synthetic run ID in a separate copy of the public synthetic
+fixture, and use a new private temporary directory. The signer HMAC
+must first be generated privately on the PC. Do not disclose it in chat.
+Call the existing pilot with --offline-test --receipt-db <private-db>
+--handoff-dir <private-dir>, then call:
+
+    .\.venv\Scripts\python.exe scripts/agent_sdk_brain_handoff.py --consume "<private-dir>\agent_research_<run_id>.json" --private-dir "<private-dir>" --write-ack
+
+Expected receiver state is
+\`RESEARCH_ONLY_ACK_RECEIVED_NOT_BRAIN_LIVE\`, not \`LIVE\`,
+\`END_TO_END_VERIFIED\` or market-trading eligibility. The previous
+12 BOJ RSS pieces can only be reused for read-only provenance display;
+they cannot be replayed into another paid run without fresh evidence,
+a new ID, Usage reconciliation and OWNER approval.
+
+**Next gated milestone:** technical contract review by Claude V10
+development lead, explicit owner-approved configuration of a Brain-side
+inbox reader, and real Windows acceptance. No edits to V10 in this PR.
+Only once the actual Brain consumer independently reads a signed
+handoff and emits its own verified ACK can \`END_TO_END_VERIFIED\`
+be considered, and even then research-only until separately authorized.
+
 ## Phase 3: official BOJ RSS -> evidence JSON (manual, no billable AI)
 
 Draft-only intake is implemented in scripts/agent_sdk_public_feed_ingest.py.
