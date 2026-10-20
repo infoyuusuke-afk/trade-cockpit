@@ -26,6 +26,29 @@ class AtomicPublishTests(unittest.TestCase):
         self.assertNotIn("Move-Item -Force", src)
         self.assertIn("finally", src)
 
+    def test_optional_mirror_failure_isolated_from_primary_collector(self):
+        src = COLLECTOR.read_text(encoding="utf-8-sig")
+        self.assertEqual(src.count("Publish-OptionalCockpitMirror $cockpitJsonPath"), 2)
+        self.assertIn("function Publish-OptionalCockpitMirror(", src)
+        helper = src[src.index("function Publish-OptionalCockpitMirror("):src.index("function Ensure-Csv(")]
+        self.assertIn("catch {", helper)
+        self.assertIn("return $false", helper)
+        self.assertIn("Write-AtomicUtf8 $mirrorPath $payload", helper)
+        exe = shutil.which("powershell.exe")
+        if not exe:
+            self.skipTest("synthetic Windows PowerShell execution required")
+        ps = helper + "\n" + r'''
+function Write-AtomicUtf8([string]$path, [string]$content) {
+    throw 'SIMULATED_OPTIONAL_DISPLAY_SHARE_VIOLATION'
+}
+$ErrorActionPreference = 'Stop'
+$result = Publish-OptionalCockpitMirror 'synthetic-not-a-private-path' '{}'
+if ($result -ne $false) { throw 'OPTIONAL_MIRROR_NOT_ISOLATED' }
+'''
+        result = subprocess.run([exe, "-NoProfile", "-NonInteractive", "-Command", ps],
+                                capture_output=True, text=True, timeout=15, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_windows_replace_and_initial_create_preserve_complete_json(self):
         exe = shutil.which("powershell.exe")
         if not exe:
