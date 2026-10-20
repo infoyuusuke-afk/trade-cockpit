@@ -4,6 +4,7 @@ No SDK, API key, external network, Excel, broker or scheduled Task is needed.
 """
 import asyncio
 from datetime import datetime, timezone
+from contextlib import closing
 import importlib.util
 import json
 import os
@@ -187,7 +188,7 @@ class LocalReceipt(unittest.TestCase):
             altered["state"] = "ALTERED"
             with self.assertRaises(pilot.Blocked):
                 pilot.persist_receipt(db, altered, fp)
-            with sqlite3.connect(db) as conn:
+            with closing(sqlite3.connect(db)) as conn:
                 self.assertEqual(conn.execute(
                     "SELECT COUNT(*) FROM runs").fetchone()[0], 1)
 
