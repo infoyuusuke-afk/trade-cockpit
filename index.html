@@ -391,23 +391,30 @@ document.addEventListener("DOMContentLoaded",()=>{
    }).join("");
  };
  const rowQuoteReady=row=>{
-   if(!row||row.quote_valid!==true||typeof row.quote_time!=="string")return false;
-   const raw=row.quote_time.trim();
-   if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(raw))return false;
-   const age=Date.now()-Date.parse(raw);
+   // Reuse Collector's existing point-in-time contract; no invented quote_valid/quote_time.
+   if(!row||row.source_timestamp_basis!=="COLLECTOR_OBSERVED_CHANGE"||
+      typeof row.source_timestamp_at!=="string"||typeof row.source_timestamp_observed_at!=="string"||
+      typeof row.source_timestamp!=="string")return false;
+   const q=row.source_timestamp_at.trim(),obs=row.source_timestamp_observed_at.trim();
+   const withZone=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+   if(!withZone.test(q)||!withZone.test(obs)||!/^\d{2}:\d{2}:\d{2}$/.test(row.source_timestamp))return false;
+   if(q.slice(11,19)!==row.source_timestamp)return false;
+   const quoteMs=Date.parse(q),observedMs=Date.parse(obs),age=Date.now()-quoteMs;
    const price=typeof row.price==="number"?row.price:NaN;
-   return Number.isFinite(age)&&age>=-60000&&age<=60000&&Number.isFinite(price)&&price>0;
+   return Number.isFinite(age)&&age>=-5000&&age<=120000&&
+     Number.isFinite(observedMs)&&observedMs>=quoteMs-5000&&observedMs<=Date.now()+5000&&
+     Number.isFinite(price)&&price>0;
  };
  const validMarket=d=>{
-   if(d?.stale!==false||d?.source_authenticated!==true||d?.live_values_available!==true||
-      d?.data_conflict!==false||d?.real_submit_allowed!==false||d?._transport_fail_closed===true)return false;
+   if(d?.stale!==false||d?.live_values_available!==true||
+      d?.data_conflict!==false||d?.real_submit_allowed!==false||d?._transport_fail_closed===true||
+      d?.source_authenticated===false)return false;
    if(typeof window.livePriceBlocked!=="function"||window.livePriceBlocked(d)!=="")return false;
-   const raw=typeof d.updated_at==="string"?d.updated_at.trim():"";
-   const stamped=/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} JST$/.test(raw)?
-     raw.slice(0,-4).replace(" ","T")+"+09:00":raw;
-   if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(stamped))return false;
-   const age=Date.now()-Date.parse(stamped);
-   return Number.isFinite(age)&&age>=-60000&&age<=60000;
+   // Gateway/Collector expose observed_at_offset. updated_at may lack timezone.
+   const raw=typeof d.observed_at_offset==="string"?d.observed_at_offset.trim():"";
+   if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(raw))return false;
+   const age=Date.now()-Date.parse(raw);
+   return Number.isFinite(age)&&age>=-5000&&age<=60000;
  };
  document.addEventListener("ms2RssUpdate",e=>{
    const d=e.detail||{};
@@ -420,7 +427,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    select.append(placeholder);
    lastAll.forEach(x=>{const option=document.createElement("option");option.value=x.ticker;option.textContent=(x.name||x.ticker)+" ("+x.ticker+")";select.append(option)});
    if([...select.options].some(o=>o.value===prev))select.value=prev;
-   status.textContent=lastVerified?"MS2発行証拠を検証済。銘柄別quote_time/quote_validの確認後のみ価格表示。実注文禁止。":
+   status.textContent=lastVerified?"MS2発行証拠を検証済。銘柄別source_timestamp_atの検証後のみ価格表示。実注文禁止。":
      "MS2市場データ未認証・時刻不明・鮮度切れ。OWNER固定銘柄を保持し、価格とシグナルを遮断。";
    paint();
  });
