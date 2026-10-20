@@ -2,12 +2,13 @@
 
 Manual --fetch only, no model/API/Excel/Broker/GitHub/Scheduler integration.
 Conservative availability: fetched_at, NOT invented public release time.
-Feed publication time must have an explicit timezone and must precede fetch.
+If RSS gives only a publication calendar date, treat the headline as observed at fetch;
+never fabricate an exact public release clock or a predictive lead time.
 """
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from email.utils import parsedate_to_datetime
 import hashlib
 import html
@@ -29,6 +30,7 @@ HOST = "www.boj.or.jp"
 MAX_FEED_BYTES = 1_048_576
 MAX_ITEMS_PER_ROLE = 6
 MAX_AGE = timedelta(days=7)
+JST = timezone(timedelta(hours=9))
 RUN_ID = re.compile(r"^[A-Za-z0-9_-]{8,80}$")
 
 
@@ -129,23 +131,43 @@ def parse_feed(raw: bytes, role: str, observed_at: datetime) -> list[dict]:
         if not title or not published or not link:
             continue
         try:
-            at = _time(published)
             link = _url(link)
-        except EvidenceBlocked:
+            # BOJ RSS may carry a *calendar day* without publication clock.
+            # Never manufacture hh:mm or a zone on such a date. This records
+            # evidence of a headline observed NOW, NOT when the BOJ released it.
+            date_only = bool(re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}", published))
+            if date_only:
+                published_day = date.fromisoformat(published)
+                today_jst = now.astimezone(JST).date()
+                if published_day > today_jst or (today_jst - published_day).days > 7:
+                    continue
+                at = now
+                temporal_label = (
+                    "DATE_ONLY_OBSERVED_AT_FETCH; source calendar day="
+                    + published + "; earliest release TIME UNKNOWN; no lead-time inference. "
+                )
+            else:
+                at = _time(published)
+                if at > now or now - at > MAX_AGE:
+                    continue
+                temporal_label = "EXPLICIT_FEED_PUBLICATION_TIMESTAMP; "
+        except (EvidenceBlocked, ValueError):
             continue
-        if at > now or now - at > MAX_AGE or link in seen:
+        if link in seen:
             continue
         seen.add(link)
         token = hashlib.sha256((role + "\n" + link).encode("utf-8")).hexdigest()[:20]
-        summary = ("Official BOJ RSS headline ONLY; article/data not inspected, "
-                   "not a trading signal: " + title)[:390]
+        summary = (
+            "Official BOJ RSS headline ONLY; article/data not inspected; "
+            + temporal_label + "not a trading signal: " + title
+        )[:390]
         if any(ord(c) < 32 for c in summary):
             continue
         results.append({
             "source_id": f"boj_{role}_{token}",
             "role": role, "source_url": link,
             "as_of": at.isoformat(),
-            # First independently verified access time is fetch time, not pubDate.
+            # available_at is actual first verified fetch, NOT release-time proof.
             "available_at": now.isoformat(),
             "summary": summary,
         })
