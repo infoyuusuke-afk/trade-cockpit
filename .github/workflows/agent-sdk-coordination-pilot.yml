@@ -7,6 +7,8 @@ on:
       - "tests/test_agent_sdk_coordination_pilot.py"
       - "scripts/agent_sdk_public_feed_ingest.py"
       - "tests/test_agent_sdk_public_feed_ingest.py"
+      - "scripts/agent_sdk_brain_handoff.py"
+      - "tests/test_agent_sdk_brain_handoff.py"
       - "docs/AGENT_SDK_COORDINATION_PILOT.md"
       - ".github/workflows/agent-sdk-coordination-pilot.yml"
   workflow_dispatch:
@@ -26,8 +28,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Compile without importing Agents SDK
-        run: python -m py_compile scripts/agent_sdk_coordination_pilot.py tests/test_agent_sdk_coordination_pilot.py scripts/agent_sdk_public_feed_ingest.py tests/test_agent_sdk_public_feed_ingest.py
+        run: python -m py_compile scripts/agent_sdk_coordination_pilot.py tests/test_agent_sdk_coordination_pilot.py scripts/agent_sdk_public_feed_ingest.py tests/test_agent_sdk_public_feed_ingest.py scripts/agent_sdk_brain_handoff.py tests/test_agent_sdk_brain_handoff.py
       - name: Offline test for 4 roles, fail-closed and no-key denial
         run: python -m unittest discover -s tests -p test_agent_sdk_coordination_pilot.py -v
       - name: Offline official RSS intake and timestamp security tests
         run: python -m unittest discover -s tests -p test_agent_sdk_public_feed_ingest.py -v
+      - name: Offline signed research handoff and ACK negative tests
+        run: python -m unittest discover -s tests -p test_agent_sdk_brain_handoff.py -v
