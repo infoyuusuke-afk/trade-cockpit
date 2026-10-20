@@ -126,6 +126,12 @@ const window={livePriceBlocked:d=>d.source==="MarketSpeed II RSS / local PC"?"":
 const original={
  stale:false,live_values_available:true,data_conflict:false,
  real_submit_allowed:false,_transport_fail_closed:false,source:"MarketSpeed II RSS / local PC",
+ connection_source:"自宅PC・MS2 RSS LIVE",
+ live_price_diagnostics:{
+   price_source_status:"OK",source_mode:"MS2_RSS_WORKBOOK",
+   workbook_identity_verified:true,data_conflict:false,
+   live_values_available:true,real_submit_allowed:false
+ },
  observed_at_offset:new Date(Date.now()-30000).toISOString()
 };
 const cases=[
@@ -141,12 +147,15 @@ const cases=[
  validMarket({...original,observed_at_offset:new Date(Date.now()+180000).toISOString()}),
  validMarket({...original,observed_at_offset:"2026-10-20 10:00:00"}),
  validMarket({...original,observed_at_offset:null}),
+ validMarket({...original,live_price_diagnostics:{price_source_status:"OK"}}),
+ validMarket({...original,connection_source:"公開スナップショット"}),
+ validMarket({...original,source_authenticated:false}),
 ];
 process.stdout.write(JSON.stringify(cases));
 """
         p = subprocess.run([node, "-e", js], text=True, capture_output=True, timeout=15)
         self.assertEqual(p.returncode, 0, p.stderr)
-        self.assertEqual(json.loads(p.stdout), [True] + [False] * 11)
+        self.assertEqual(json.loads(p.stdout), [True] + [False] * 14)
 
 
     def test_focus_actual_dom_events_and_actions(self):
