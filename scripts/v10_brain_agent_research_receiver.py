@@ -95,11 +95,16 @@ def _sign(body: dict) -> str:
     return hmac.new(_receiver_key(), _canon(body), hashlib.sha256).hexdigest()
 
 
-def receiver_identity() -> dict:
-    """Self-reported identity of the receiving process (not proof by itself)."""
+def receiver_identity(host_component=None) -> dict:
+    """Self-reported identity of the receiving process (not proof by itself).
+
+    host_component names the V10 process that runs the receiver in-process
+    (for example the Brain observer); None means the standalone CLI.
+    """
     code = Path(__file__).resolve().read_bytes()
     return {
         "component": RECEIVER_COMPONENT,
+        "host_component": host_component or "standalone-cli",
         "receiver_code_sha256": hashlib.sha256(code).hexdigest(),
         "process_id": os.getpid(),
     }
@@ -284,13 +289,13 @@ def _file_sha(path: Path):
         return None
 
 
-def receive_inbox(private_dir, *, now: datetime) -> dict:
+def receive_inbox(private_dir, *, now: datetime, host_component=None) -> dict:
     """One pass: restore missing ACKs, then process new or changed inbox files."""
     now = handoff._now(now)
     root = handoff._private_dir(private_dir)
     handoff._key()      # no sidecar key: nothing can be verified
     _receiver_key()     # no separate receiver key: no Brain ACK can be signed
-    identity = receiver_identity()
+    identity = receiver_identity(host_component)
     results, restored = [], []
     with closing(_connect(root)) as conn:
         for run_id, ack_bytes, ack_sha in conn.execute(
