@@ -158,6 +158,17 @@ process.stdout.write(JSON.stringify(cases));
         self.assertEqual(json.loads(p.stdout), [True] + [False] * 14)
 
 
+    def test_live_provenance_actual_inline_ui_script(self):
+        """Exercise fail-closed observation evidence and no-event expiry in the real inline JS."""
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node unavailable: provenance runtime checks skipped")
+        p = subprocess.run(
+            [node, "--test", str(ROOT / "tests" / "v10_ms2_provenance_runtime.test.mjs")],
+            cwd=ROOT, text=True, capture_output=True, timeout=30,
+        )
+        self.assertEqual(p.returncode, 0, p.stdout[-7000:] + "\n" + p.stderr[-3000:])
+
     def test_focus_actual_dom_events_and_actions(self):
         """Exercise the reviewed page FOCUS script, not a hand-written duplicate."""
         node = shutil.which("node")
