@@ -95,6 +95,16 @@ jobs:
               test "$(git rev-parse "HEAD:$file")" = "$expected"
               test "$(git rev-parse "HEAD:$file")" != "$(git rev-parse "$pinned:$file")"
               echo "V10_PRICE_FRESHNESS_REPAIR=$file"
+            elif [[ "$file" == "scripts/ai_brain_observer.py" ||
+                    "$file" == "downloads/AI_COCKPIT_CONTROLLER_V10.ps1" ]]; then
+              # P0-V10-INTEGRATION-AND-LIVE-START-20261020: the Brain observer
+              # reads only rows the Collector marked FRESH, and the Controller
+              # keeps previous worker logs instead of deleting them. Each is
+              # locked to the reviewed HEAD:path blob in the manifest.
+              expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
+              test "$(git rev-parse "HEAD:$file")" = "$expected"
+              test "$(git rev-parse "HEAD:$file")" != "$(git rev-parse "$pinned:$file")"
+              echo "V10_INTEGRATION_REPAIR=$file"
             elif [[ "$file" == "downloads/AI_COCKPIT_GATEWAY_V10.ps1" ||
                     "$file" == "downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1" ||
                     "$file" == "ms2_live/MS2_RSS_100_Collector.ps1" ||
