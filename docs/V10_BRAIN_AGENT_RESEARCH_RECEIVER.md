@@ -44,7 +44,7 @@ kept only on the PC (never in GitHub or chat).
 $env:AGENT_BRIDGE_HMAC_KEY = '<64 hex characters kept on this PC>'
 cd <reviewed checkout of the approved SHA>
 # 1) sidecar: offline coordination of the saved public file, then signed handoff
-python -B scripts\agent_sdk_coordination_pilot.py --input examples\agent_sdk_public_synthetic_20261021.json --offline --handoff-dir <PRIVATE>
+python -B scripts\agent_sdk_coordination_pilot.py --input examples\agent_sdk_public_synthetic_20261021.json --offline-test --receipt-db <PRIVATE_PARENT>\pilot_receipts.sqlite --handoff-dir <PRIVATE>
 # 2) Brain receiver: receive once, then show receipts/pending
 python -B -m scripts.v10_brain_agent_research_receiver --private-dir <PRIVATE> --once
 python -B -m scripts.v10_brain_agent_research_receiver --private-dir <PRIVATE> --status
@@ -57,8 +57,12 @@ and `--status` (run again after closing the window) lists the run_id under
 result (already received). Exit code 2 / `BLOCKED` is a fail-closed result,
 not a crash.
 
-If the pilot CLI flags above differ in the reviewed SHA, follow
-`docs/AGENT_SDK_COORDINATION_PILOT.md` for step 1; step 2 is unchanged.
+`<PRIVATE_PARENT>` is the folder that contains `<PRIVATE>` (the pilot's own
+receipt database must also stay outside the repository). This exact sequence
+was run offline on the OWNER PC with a Japanese folder name: step 1 printed
+`SIGNED_PRIVATE_RESEARCH_ONLY_PENDING_RECEIVER_ACK`, step 2 `RECEIVED`, the
+status listed the run_id with no ACK mismatch, and a second `--once` returned
+no new result. That was a synthetic offline run, not an end-to-end acceptance.
 
 ## Limits
 
