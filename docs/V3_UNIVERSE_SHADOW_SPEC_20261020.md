@@ -93,13 +93,29 @@ Official Yahoo! Finance support says automated scraping is prohibited:
 https://support.yahoo-net.jp/SccFinance/s/article/H000011276
 Therefore scripts/market_ranking_watch.py MUST NOT be automatically invoked
 for v3 Shadow, until an explicitly authorized replacement is accepted.
-For index/derivatives, Rakuten's official MS2 RSS help lists instrument codes
-and distinct RssMarketHeader / RssFOPMarket functions:
+For index/derivatives, Rakuten's official MS2 RSS help documents:
+- RssIndexMarket("N225","現在値") = Nikkei225 index
+- RssIndexMarket("TOPX","現在値") = TOPIX index
+- RssIndexMarket("MTHR","現在値") = Growth250 index
+- RssIndexMarket("NVI","現在値") = Nikkei VI index
+- RssFOPCode("N225F", "YYYYMM") returns a contract identifier for an
+  explicit maturity; use RssFOPMarket(contract_code, "現在値") only after
+  checking the exact eligible contract/instrument in OWNER's own RSS session.
+- Listed generic futures identifiers include N225.FUT01.OS and
+  N225M.FUT01.OS; contract and update-frequency must be verified on PC.
+- The official RSS FAQ warns certain indices are 10-20 minutes delayed;
+  recording price and timestamp is mandatory, and delayed index data must
+  NEVER be labelled synchronous with a verified live equity price.
+Sources:
 https://marketspeed.jp/ms2_rss/onlinehelp/ohm_002/ohm_002_07.html
 https://marketspeed.jp/ms2_rss/onlinehelp/ohm_002/ohm_002_03.html
-Official documentation is only capability evidence; no successful OWNER-PC RSS
-subscription has been proven. Human-only third-party displays do not confer AI
-processing rights. A source-by-source license review remains mandatory.
+https://marketspeed.jp/ms2_rss/
+Official documentation is capability evidence only; successful OWNER-PC RSS
+subscription and terms for each use are NOT_RUN/UNKNOWN. Probe later inside
+THE existing V10 Excel session (D-023) by observation-only readings; do not
+open a second Excel, enable any order route or alter live formulas without
+separate explicit OWNER runtime authorization. Human-only third-party displays
+do not confer AI processing rights.
 
 ## Acceptance gates (pilot)
 1. Synthetic tests reject missing rights, naive/future times, duplicate symbols,
