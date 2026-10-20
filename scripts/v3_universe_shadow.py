@@ -11,7 +11,7 @@ import json
 import math
 import os
 import re
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 SCHEMA = "v3-universe-shadow-1"
@@ -103,6 +103,23 @@ def build_snapshot(doc):
             if counts[role] > ROLE_LIMITS[role]:
                 raise ShadowReject("ROLE_CAP_EXCEEDED_" + role)
         turnover = _nonnegative(raw.get("prior_day_trading_value_yen"), "TURNOVER_YEN")
+        turnover_day = raw.get("turnover_session_date")
+        turnover_available = raw.get("turnover_available_at")
+        if turnover is None:
+            if turnover_day is not None or turnover_available is not None:
+                raise ShadowReject("TURNOVER_PROVENANCE_WITHOUT_VALUE")
+        else:
+            if not isinstance(turnover_day, str) or not re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}", turnover_day):
+                raise ShadowReject("TURNOVER_SESSION_DATE_REQUIRED")
+            try:
+                session_date = date.fromisoformat(turnover_day)
+            except ValueError as exc:
+                raise ShadowReject("TURNOVER_SESSION_DATE_INVALID") from exc
+            if session_date >= at.date():
+                raise ShadowReject("TURNOVER_MUST_PRECEDE_SELECTION_DATE")
+            turnover_published = _time(turnover_available)
+            if not (observed <= turnover_published <= at):
+                raise ShadowReject("TURNOVER_AVAILABLE_AT_INVALID")
         spread = _nonnegative(raw.get("spread_bps"), "SPREAD_BPS")
         bid = _nonnegative(raw.get("bid_depth_yen"), "BID_DEPTH_YEN")
         ask = _nonnegative(raw.get("ask_depth_yen"), "ASK_DEPTH_YEN")
@@ -115,6 +132,8 @@ def build_snapshot(doc):
             "observed_at": observed.isoformat(),
             "available_at": available.isoformat(),
             "prior_day_trading_value_yen": turnover,
+            "turnover_session_date": turnover_day,
+            "turnover_available_at": turnover_available,
             "turnover_one_percent_cap_yen": cap,
             "spread_bps": spread,
             "bid_depth_yen": bid,
@@ -150,6 +169,7 @@ def compare_outcomes(snapshot, outcomes):
     by_id = {row["instrument_id"]: row for row in snapshot["rows"] if row["instrument_type"] == "EQUITY"}
     selected_at = _time(snapshot["selection_at"])
     seen = set()
+    common_end = None
     results = {True: [], False: []}
     for item in data:
         if not isinstance(item, dict):
@@ -162,6 +182,10 @@ def compare_outcomes(snapshot, outcomes):
         available = _time(item.get("available_at"))
         if not (selected_at < end <= available):
             raise ShadowReject("OUTCOME_TIME_INVALID")
+        if common_end is None:
+            common_end = end
+        elif end != common_end:
+            raise ShadowReject("OUTCOME_HORIZON_MISMATCH")
         value = item.get("return_pct")
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
             raise ShadowReject("OUTCOME_RETURN_INVALID")
@@ -179,6 +203,7 @@ def compare_outcomes(snapshot, outcomes):
         }
     return {
         "observation_only": True,
+        "common_horizon_end_at": common_end.isoformat() if common_end else None,
         "costs_verified": False,
         "fills_verified": False,
         "net_expectancy": None,
@@ -221,10 +246,16 @@ def main():
     parser.add_argument("--output", required=True, help="new private JSON outside Git repository")
     parser.add_argument("--outcomes", help="optional private, post-decision outcome observations")
     args = parser.parse_args()
-    doc = json.loads(Path(args.input).read_text(encoding="utf-8"))
+    input_path = Path(args.input).resolve()
+    if input_path == ROOT or ROOT in input_path.parents:
+        raise ShadowReject("GIT_REPOSITORY_INPUT_FORBIDDEN")
+    doc = json.loads(input_path.read_text(encoding="utf-8"))
     result = build_snapshot(doc)
     if args.outcomes:
-        outcomes = json.loads(Path(args.outcomes).read_text(encoding="utf-8"))
+        outcome_path = Path(args.outcomes).resolve()
+        if outcome_path == ROOT or ROOT in outcome_path.parents:
+            raise ShadowReject("GIT_REPOSITORY_INPUT_FORBIDDEN")
+        outcomes = json.loads(outcome_path.read_text(encoding="utf-8"))
         result["forward_comparison"] = compare_outcomes(result, outcomes)
         result.pop("snapshot_sha256")
         result["snapshot_sha256"] = _digest(result)
