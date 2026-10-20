@@ -21,3 +21,21 @@ runtime action is authorized. No real market data is published.
 
 Never broaden 120-second rule or conflate quote freshness with heartbeat.
 real_submit_allowed=false. Net realized economics UNKNOWN.
+
+## Windows-compatible SQLite candidate added (not production acceptance)
+`sqlite_candidate_append` and `sqlite_candidate_read` reapply the project's
+existing `shadow_forward_windows_sqlite_candidate.py` SQLite pattern:
+`BEGIN IMMEDIATE`, `PRAGMA synchronous=FULL`, rollback-journal mode,
+immutable rows keyed by session+evaluated_at and independent connection readback.
+Do **not** use the preexisting Shadow Forward DB or mutate its immutable ledger.
+This is a separate experimental research-data file with an explicit private path
+outside the repository. A replay/restart reads its retained hash chain.
+
+Limits: Windows power-loss durability, filesystem path races (symlink/reparse
+points), SQLite connection conflict timing on OWNER storage, and independent
+source authentication are NOT verified. The new helper is **not connected** to
+any real V10 process. The SQLite readback is structural integrity relative to
+the stored chain, NOT an external signed witness or proof of original market
+truth; replacing the entire DB and its initial anchor is not detectable without
+independent retention. Do not label it a verified Windows durability solution,
+do not deploy, and never publish private database bytes.
