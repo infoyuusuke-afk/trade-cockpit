@@ -16,6 +16,8 @@ class V10UiEvidenceRegression(unittest.TestCase):
     def setUpClass(cls):
         cls.source = HTML.read_text(encoding="utf-8")
         cls.helpers = cls.source.split(START, 1)[1].split(END, 1)[0]
+        # The START marker is embedded in a JS comment line; omit its trailing prose.
+        cls.helpers = cls.helpers.split("\n", 1)[1]
 
     def evaluate(self, js_expression):
         node = shutil.which("node")
