@@ -24,6 +24,8 @@ on:
       - "tests/test_v10_runtime_bundle_candidate.py"
       - "tests/test_v10_local_http_security.py"
       - "tests/test_v10_brain*.py"
+      - "tests/test_v10_ui_evidence_regression.py"
+      - "tests/test_v10_ui_mission_navigation.py"
       - ".github/workflows/v10-candidate-runtime-bundle-synthetic.yml"
   workflow_dispatch:
 permissions:
@@ -50,11 +52,13 @@ jobs:
             test -f "$file"
             git cat-file -e "$pinned:$file"
             if [ "$file" = "index.html" ]; then
-              # Deliberate security repair: stale MS2/Watcher prices and
-              # cards must be cleared, even if the prior V10 Draft did not.
-              # A separate V10 UI fail-closed contract validates content.
-              echo "V10_INDEX_STALE_SAFETY_REPAIR=index.html"
-              test "$(git rev-parse "HEAD:$file")" = "cb01cce5f7ed30f2670361ec5fad93ac3c57a693"
+              # Independent-review candidate only: exact index.html blob.
+              # No general source-pin relaxation and no runtime authorization.
+              expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
+              test "$expected" = "4047032db898b7f391364e9901a9ca326ce3505e"
+              test "$(git rev-parse "HEAD:$file")" = "$expected"
+              test "$(git rev-parse "$pinned:$file")" != "$expected"
+              echo "V10_UI_CANDIDATE_EXACT_BLOB=$expected"
             elif [[ "$file" == "trade_control.js" ]]; then
               # P0 V10 UI data-integrity repair. Exact blob is reviewed and
               # pinned in the manifest; no general source-pin exemption.
@@ -98,6 +102,10 @@ jobs:
           echo "APPROVED_FOR_RUNTIME=0"
       - name: Watchlist replacement check rejects wrong name, ticker, order and manifest tampering
         run: python -m unittest discover -s tests -p test_v10_watchlist_replacement.py -v
+      - name: OWNER-fixed FOCUS and mission UI source negative regressions
+        run: |
+          python -m unittest discover -s tests -p test_v10_ui_evidence_regression.py -v
+          python -m unittest discover -s tests -p test_v10_ui_mission_navigation.py -v
       - name: V10 UI missing metrics and no false zeros
         run: node --test tests/v10_trade_control_missing_data.test.mjs
       - name: V10 CONTROL strategy performance provenance and mode isolation
