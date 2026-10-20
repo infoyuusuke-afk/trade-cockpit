@@ -68,7 +68,8 @@ def _private_dir(path):
         raise BridgeBlocked("PRIVATE_DIRECTORY_INSIDE_REPOSITORY")
     for part in (p, *p.parents):
         mode = part.lstat()
-        if stat.S_ISLNK(mode.st_mode) or mode.st_file_attributes & 0x400 if os.name == "nt" else stat.S_ISLNK(mode.st_mode):
+        if (stat.S_ISLNK(mode.st_mode) or
+                bool(getattr(mode, "st_file_attributes", 0) & 0x400)):
             raise BridgeBlocked("PRIVATE_DIRECTORY_LINK_UNTRUSTED")
     return p
 
@@ -149,6 +150,11 @@ def _validate_result(source, result, *, now):
         role = item.get("role") if type(item) is dict else None
         if role not in pilot.ROLES or role in by_role:
             raise BridgeBlocked("SPECIALIST_DUPLICATE_OR_INVALID_ROLE")
+        if (set(item) != {
+            "role", "status", "evidence_ids", "hypothesis",
+            "invalidation", "real_submit_allowed"
+        } or item.get("real_submit_allowed") is not False):
+            raise BridgeBlocked("SPECIALIST_RESULT_FIELDS_OR_SAFETY_INVALID")
         assigned = [x for x in valid_source["sources"] if x["role"] == role]
         if not assigned:
             if (item.get("status") != "NO_DATA" or
@@ -162,6 +168,11 @@ def _validate_result(source, result, *, now):
         by_role[role] = item
     if set(by_role) != set(pilot.ROLES):
         raise BridgeBlocked("SPECIALIST_ROLE_MISSING")
+    if (type(result["coordinator"]) is not dict or
+            set(result["coordinator"]) != {
+                "summary", "conflicts", "next_checks", "real_submit_allowed"
+            }):
+        raise BridgeBlocked("COORDINATOR_RESULT_FIELDS_INVALID")
     pilot.validate_coordinator(result["coordinator"])
     if result["coordinator"].get("real_submit_allowed") is not False:
         raise BridgeBlocked("COORDINATOR_ORDER_FLAG_UNSAFE")
