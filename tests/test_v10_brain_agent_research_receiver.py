@@ -26,6 +26,8 @@ from scripts import v10_brain_agent_research_receiver as receiver
 ROOT = Path(__file__).resolve().parents[1]
 NOW = datetime(2026, 10, 21, 1, 40, 0, tzinfo=timezone.utc)
 KEY = "5e" * 32
+NL = bytes([10])
+RX_KEY = "a7" * 32
 
 
 def source_doc(run_id="brain_rx_20261021_01", roles=("pre_next", "supply_sq")):
@@ -67,7 +69,7 @@ def resign(path):
 
 class ReceiverTests(unittest.TestCase):
     def setUp(self):
-        env = patch.dict(os.environ, {bridge.KEY_ENV: KEY})
+        env = patch.dict(os.environ, {bridge.KEY_ENV: KEY, receiver.RECEIVER_KEY_ENV: RX_KEY})
         env.start()
         self.addCleanup(env.stop)
         tmp = tempfile.mkdtemp(prefix="v10-brain-rx-")
@@ -102,8 +104,12 @@ class ReceiverTests(unittest.TestCase):
         self.assertIs(ack["brain_trade_decision_eligible"], False)
         roles = {r["role"]: r["status"] for r in ack["roles"]}
         self.assertEqual(roles, {"pre_next": "NO_SIGNAL", "revenue_hunter": "NO_DATA", "supply_sq": "NO_SIGNAL"})
+        self.assertIs(ack["receiver_key_separate_from_sidecar"], True)
         body = {k: v for k, v in ack.items() if k != "hmac_sha256"}
+        # Signed with the receiver key, not the sidecar key.
         self.assertTrue(hmac.compare_digest(
+            hmac.new(bytes.fromhex(RX_KEY), bridge._canon(body), hashlib.sha256).hexdigest(), ack["hmac_sha256"]))
+        self.assertFalse(hmac.compare_digest(
             hmac.new(bytes.fromhex(KEY), bridge._canon(body), hashlib.sha256).hexdigest(), ack["hmac_sha256"]))
 
     def test_revenue_hunter_without_data_is_no_data(self):
@@ -112,7 +118,8 @@ class ReceiverTests(unittest.TestCase):
         st = receiver.status(self.root)
         self.assertEqual(st["received_run_ids"], ["brain_rx_20261021_01"])
         with sqlite3.connect(str(self.root / receiver.DB_NAME)) as conn:
-            roles = json.loads(conn.execute("SELECT roles_json FROM receipts").fetchone()[0])
+            raw = bytes(conn.execute("SELECT ack_bytes FROM receipts").fetchone()[0])
+        roles = json.loads(raw.decode("utf-8"))["roles"]
         self.assertEqual([r for r in roles if r["role"] == "revenue_hunter"],
                          [{"role": "revenue_hunter", "status": "NO_DATA", "evidence_ids": []}])
 
@@ -208,13 +215,21 @@ class ReceiverTests(unittest.TestCase):
         with patch.dict(os.environ, {bridge.KEY_ENV: ""}):
             with self.assertRaises(bridge.BridgeBlocked):
                 self.receive()
+        with patch.dict(os.environ, {receiver.RECEIVER_KEY_ENV: ""}):
+            with self.assertRaises(receiver.ReceiverBlocked):
+                self.receive()
+        with patch.dict(os.environ, {receiver.RECEIVER_KEY_ENV: KEY}):
+            with self.assertRaisesRegex(receiver.ReceiverBlocked, "MUST_DIFFER"):
+                self.receive()
+        self.assertFalse(list(self.root.glob("*.brain_ack.json")))
         self.assertEqual(receiver.main(["--private-dir", str(self.root), "--status"]), 0)
 
     # -- lifecycle --------------------------------------------------------
     def test_brain_stopped_leaves_envelope_pending(self):
         self.emit()
         st = receiver.status(self.root)
-        self.assertEqual(st["pending_files"], ["agent_research_brain_rx_20261021_01.json"])
+        self.assertEqual([p["file"] for p in st["pending"]], ["agent_research_brain_rx_20261021_01.json"])
+        self.assertEqual(st["pending"][0]["expires_at_unverified"], (NOW + timedelta(minutes=15)).isoformat())
         self.assertEqual(st["received_run_ids"], [])
 
     def test_restart_restores_receipts_and_does_not_reprocess(self):
@@ -223,7 +238,7 @@ class ReceiverTests(unittest.TestCase):
         # New process view: only the private directory survives.
         st = receiver.status(self.root)
         self.assertEqual(st["received_run_ids"], ["brain_rx_20261021_01"])
-        self.assertEqual(st["pending_files"], [])
+        self.assertEqual(st["pending"], [])
         self.assertEqual(st["ack_mismatch_run_ids"], [])
         again = self.receive(now=NOW + timedelta(minutes=2))
         self.assertEqual(again["results"], [])
@@ -246,9 +261,85 @@ class ReceiverTests(unittest.TestCase):
         self.assertTrue((self.root / "agent_research_brain_rx_20261021_01.ack.json").exists())
         st = receiver.status(self.root)
         self.assertEqual(st["received_run_ids"], [])
-        self.assertEqual(st["pending_files"], ["agent_research_brain_rx_20261021_01.json"])
+        self.assertEqual([p["file"] for p in st["pending"]], ["agent_research_brain_rx_20261021_01.json"])
         self.only(self.receive())
         self.assertEqual(receiver.status(self.root)["received_run_ids"], ["brain_rx_20261021_01"])
+
+
+    # -- audit fixes (PR #482 independent audit, points 1-5) -------------
+    def test_crash_between_receipt_and_ack_is_recovered_on_next_pass(self):
+        self.emit()
+        real = bridge._write_once
+
+        def fail_brain_ack(path, content):
+            if str(path).endswith(".brain_ack.json"):
+                raise OSError("simulated crash")
+            return real(path, content)
+        with patch.object(bridge, "_write_once", fail_brain_ack):
+            got = self.only(self.receive())
+        self.assertEqual(got["state"], "RECEIVED")
+        self.assertTrue(got["ack"].startswith("ACK_WRITE_PENDING"))
+        st = receiver.status(self.root)
+        self.assertEqual(st["ack_missing_run_ids"], ["brain_rx_20261021_01"])
+        self.assertEqual(st["received_run_ids"], [])
+        again = self.receive(now=NOW + timedelta(minutes=2))
+        self.assertEqual(again["restored_acks"], [{"run_id": "brain_rx_20261021_01", "ack": "ACK_WRITTEN"}])
+        self.assertEqual(again["results"], [])
+        st = receiver.status(self.root)
+        self.assertEqual(st["received_run_ids"], ["brain_rx_20261021_01"])
+        self.assertEqual(st["ack_missing_run_ids"], [])
+
+    def test_receipt_is_built_from_the_single_verified_read(self):
+        path = self.emit()
+        verified = {}
+        real_verify = bridge.verify_document
+
+        def verify_then_swap(doc, *, file_name, now):
+            out = real_verify(doc, file_name=file_name, now=now)
+            verified["sha"] = hashlib.sha256(bridge._canon(doc)).hexdigest()
+            blob = copy.deepcopy(doc)
+            blob["payload"]["research"]["coordinator"]["summary"] = "swapped after verification"
+            path.write_bytes(bridge._canon(blob) + NL)  # file replaced after the check
+            return out
+        with patch.object(bridge, "verify_document", verify_then_swap):
+            self.only(self.receive())
+        ack = json.loads((self.root / "agent_research_brain_rx_20261021_01.brain_ack.json").read_text("utf-8"))
+        self.assertEqual(ack["envelope_sha256"], verified["sha"])
+
+    def test_brain_ack_forged_with_sidecar_key_is_not_a_receipt(self):
+        self.emit()
+        forged = {"schema_version": receiver.ACK_SCHEMA, "ack_kind": "BRAIN_RECEIVER_ACK",
+                  "run_id": "brain_rx_20261021_01", "real_submit_allowed": False}
+        forged["hmac_sha256"] = hmac.new(bytes.fromhex(KEY), bridge._canon(forged), hashlib.sha256).hexdigest()
+        target = self.root / "agent_research_brain_rx_20261021_01.brain_ack.json"
+        target.write_bytes(bridge._canon(forged) + NL)
+        st = receiver.status(self.root)
+        self.assertEqual(st["received_run_ids"], [])
+        self.assertEqual([p["file"] for p in st["pending"]], ["agent_research_brain_rx_20261021_01.json"])
+        got = self.only(self.receive())
+        self.assertEqual(got["state"], "RECEIVED")
+        self.assertEqual(got["ack"], "ACK_MISMATCH")  # the forged file is never overwritten
+        self.assertEqual(receiver.status(self.root)["ack_mismatch_run_ids"], ["brain_rx_20261021_01"])
+
+    def test_expired_pending_is_blocked_once_and_not_relogged(self):
+        self.emit()
+        first = self.receive(now=NOW + timedelta(minutes=16))
+        self.assertEqual(self.only(first)["reason"], "HANDOFF_STALE_OR_FUTURE")
+        second = self.receive(now=NOW + timedelta(minutes=17))
+        self.assertEqual(second["results"], [])
+        st = receiver.status(self.root)
+        self.assertEqual(st["attempt_counts"], {"BLOCKED": 1})
+        self.assertEqual(st["pending"], [])
+
+    def test_unverified_file_with_received_run_id_is_blocked_not_duplicate(self):
+        path = self.emit()
+        self.only(self.receive())
+        blob = json.loads(path.read_bytes().decode("utf-8"))
+        blob["hmac_sha256"] = "0" * 64
+        path.write_bytes(bridge._canon(blob) + NL)
+        got = self.only(self.receive(now=NOW + timedelta(minutes=2)))
+        self.assertEqual(got["state"], "BLOCKED")
+        self.assertEqual(got["reason"], "HANDOFF_AUTHENTICATION_FAILED")
 
     def test_receipt_table_refuses_real_submit_true(self):
         self.emit()
@@ -270,7 +361,7 @@ class NoOrderPath(unittest.TestCase):
                 names.add((node.module or "").split(".")[0])
                 names |= {a.name for a in node.names}
         self.assertEqual(names - {"__future__", "annotations", "argparse", "contextlib", "closing", "datetime", "timezone",
-                                  "hashlib", "hmac", "json", "os", "pathlib", "Path", "sqlite3", "sys", "",
+                                  "hashlib", "hmac", "json", "os", "pathlib", "Path", "re", "sqlite3", "sys", "",
                                   "agent_sdk_brain_handoff"}, set())
         calls = {n.func.attr for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)}
         for banned in ("system", "popen", "Popen", "urlopen", "connect_ex", "sleep", "startfile"):

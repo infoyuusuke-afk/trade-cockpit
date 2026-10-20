@@ -5,33 +5,38 @@ PROJECT_ITEM_ID: P0-AGENTS-SDK-V10-BRAIN-INTEGRATION-20261021
 The Agents SDK sidecar (scripts/agent_sdk_brain_handoff.py) writes signed,
 non-tradable research envelopes ``agent_research_<run_id>.json`` into an
 OWNER-selected private inbox. This module is the RECEIVING end that the V10
-Brain runs (one-shot, ``--once``): it independently re-verifies every
-envelope, stores a durable receipt, and writes its own Brain ACK.
+Brain runs (one-shot, ``--once``): it reads each envelope once, verifies those
+exact bytes, stores a durable receipt, and writes its own Brain ACK.
 
 Kept apart on purpose:
-- The sidecar's own ``*.ack.json`` (state RESEARCH_ONLY_ACK_RECEIVED_NOT_BRAIN_LIVE)
-  is never read or counted here. Only this receiver writes
-  ``*.brain_ack.json`` with ``ack_kind=BRAIN_RECEIVER_ACK`` and the receiving
-  process identity.
-- Research is stored as a research lane input for Shadow / post-hoc review. It
-  is never promoted to LIVE-authenticated market data, never reaches a trade
-  decision, and ``real_submit_allowed`` is always false.
+- Two keys. The envelope is verified with the sidecar key
+  (AGENT_BRIDGE_HMAC_KEY). The Brain ACK is signed with a separate receiver
+  key (AGENT_BRAIN_RECEIVER_HMAC_KEY) that the sidecar must not hold; the two
+  must differ. A file signed with the sidecar key is not a Brain ACK.
+- The sidecar's own ``*.ack.json`` is never read or counted. Only this
+  receiver writes ``*.brain_ack.json`` with ``ack_kind=BRAIN_RECEIVER_ACK``.
+- Research stays a research-lane input for Shadow / post-hoc review: never
+  LIVE-authenticated market data, never a trade decision,
+  ``real_submit_allowed`` always false.
 - No network, broker, subprocess, timer, scheduler or paid API code. It does
   not touch the 31 pinned V10 runtime files, Excel or the running Brain.
 
 Durability: receipts live in a private SQLite file
 (``brain_agent_research_receipts.sqlite``, BEGIN IMMEDIATE, synchronous=FULL,
-rollback journal). A restart reloads them; a run_id is accepted at most once.
-Every ACK is read back independently after writing.
+rollback journal) together with the exact canonical ACK bytes. If the process
+stops after the receipt is committed but before the ACK file exists, the next
+pass rewrites the ACK from the stored bytes (hash-checked). A run_id is
+received at most once.
 
 States per envelope:
   RECEIVED            verified and stored; Brain ACK written
-  DUPLICATE_REJECTED  run_id already received (or the same file seen again)
-  BLOCKED             verification failed (fail-closed, reason recorded)
-  PENDING             present in the inbox, not yet processed by the receiver
-Per specialist role the stored status stays exactly WATCH / NO_SIGNAL /
-NO_DATA; an envelope that fails is BLOCKED as a whole. Disagreement between
-roles and the coordinator's own conflicts are recorded, never resolved.
+  DUPLICATE_REJECTED  a verified envelope whose run_id was already received
+  BLOCKED             verification failed (fail-closed, reason recorded once
+                      per file content; the same unchanged file is not re-logged)
+  PENDING             present in the inbox, not processed yet. The sidecar's
+                      15-minute freshness window applies: --status shows when
+                      each pending envelope expires; after that it is BLOCKED
+                      (stale) and the research must be re-run.
 """
 from __future__ import annotations
 
@@ -43,6 +48,7 @@ import hmac
 import json
 import os
 from pathlib import Path
+import re
 import sqlite3
 import sys
 
@@ -52,8 +58,9 @@ else:  # direct file mode resolves the sibling script, never a global package
     import agent_sdk_brain_handoff as handoff
 
 RECEIVER_COMPONENT = "v10-brain-agent-research-receiver"
-ACK_SCHEMA = "100b-v10-brain-agent-research-ack-v1"
+ACK_SCHEMA = "100b-v10-brain-agent-research-ack-v2"
 ACK_KIND = "BRAIN_RECEIVER_ACK"
+RECEIVER_KEY_ENV = "AGENT_BRAIN_RECEIVER_HMAC_KEY"
 DB_NAME = "brain_agent_research_receipts.sqlite"
 DATA_LANE = "PUBLIC_RESEARCH_UNAUTHENTICATED_NOT_EXECUTION"
 INBOX_PREFIX = "agent_research_"
@@ -74,8 +81,22 @@ def _iso(moment: datetime) -> str:
     return moment.astimezone(timezone.utc).isoformat()
 
 
+def _receiver_key() -> bytes:
+    raw = os.environ.get(RECEIVER_KEY_ENV, "")
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", raw):
+        raise ReceiverBlocked("RECEIVER_HMAC_KEY_MISSING_OR_INVALID")
+    key = bytes.fromhex(raw)
+    if hmac.compare_digest(key, handoff._key()):
+        raise ReceiverBlocked("RECEIVER_KEY_MUST_DIFFER_FROM_SIDECAR_KEY")
+    return key
+
+
+def _sign(body: dict) -> str:
+    return hmac.new(_receiver_key(), _canon(body), hashlib.sha256).hexdigest()
+
+
 def receiver_identity() -> dict:
-    """Who received: this receiver's code hash and process, not the sidecar."""
+    """Self-reported identity of the receiving process (not proof by itself)."""
     code = Path(__file__).resolve().read_bytes()
     return {
         "component": RECEIVER_COMPONENT,
@@ -96,9 +117,7 @@ def _connect(root: Path) -> sqlite3.Connection:
         " run_id TEXT PRIMARY KEY,"
         " envelope_sha256 TEXT NOT NULL UNIQUE,"
         " received_at TEXT NOT NULL,"
-        " receiver_json TEXT NOT NULL,"
-        " roles_json TEXT NOT NULL,"
-        " conflicts_json TEXT NOT NULL,"
+        " ack_bytes BLOB NOT NULL,"
         " ack_sha256 TEXT NOT NULL,"
         " real_submit_allowed INTEGER NOT NULL CHECK (real_submit_allowed = 0))")
     conn.execute(
@@ -145,36 +164,39 @@ def _roles_and_conflicts(research: dict) -> tuple[list, list]:
     return roles, conflicts
 
 
-def _write_ack(root: Path, ack: dict) -> Path:
-    name = root / (INBOX_PREFIX + ack["run_id"] + BRAIN_ACK_SUFFIX)
-    handoff._write_once(name, _canon(ack) + b"\n")
-    back = json.loads(name.read_bytes().decode("utf-8"))
+def _ack_path(root: Path, run_id: str) -> Path:
+    return root / (INBOX_PREFIX + run_id + BRAIN_ACK_SUFFIX)
+
+
+def _ack_file_matches(path: Path, ack_bytes: bytes) -> bool:
+    try:
+        return path.read_bytes() == ack_bytes
+    except OSError:
+        return False
+
+
+def _ensure_ack(root: Path, run_id: str, ack_bytes: bytes, ack_sha: str) -> str:
+    """Write the stored ACK if it is missing; never overwrite a different file."""
+    if hashlib.sha256(ack_bytes).hexdigest() != ack_sha:
+        raise ReceiverBlocked("STORED_ACK_HASH_MISMATCH")
+    path = _ack_path(root, run_id)
+    if path.exists() or path.is_symlink():
+        return "ACK_PRESENT" if _ack_file_matches(path, ack_bytes) else "ACK_MISMATCH"
+    handoff._write_once(path, ack_bytes)
+    back = json.loads(path.read_bytes().decode("utf-8"))
     body = {k: v for k, v in back.items() if k != "hmac_sha256"}
-    if back != ack or not hmac.compare_digest(
-            hmac.new(handoff._key(), _canon(body), hashlib.sha256).hexdigest(), back["hmac_sha256"]):
+    if path.read_bytes() != ack_bytes or not hmac.compare_digest(_sign(body), back["hmac_sha256"]):
         raise ReceiverBlocked("BRAIN_ACK_INDEPENDENT_READBACK_FAILED")
-    return name
+    return "ACK_WRITTEN"
 
 
 def receive_one(path: Path, root: Path, conn, *, now: datetime, identity: dict) -> dict:
-    """Verify one envelope; on success store the receipt then write the ACK."""
+    """Read once, verify those exact bytes, store the receipt, then the ACK."""
     name = path.name
-    file_sha = None
+    file_sha = _file_sha(path)  # bookkeeping key only; verified content comes from the read below
     try:
-        raw = path.read_bytes()
-        file_sha = hashlib.sha256(raw).hexdigest()
-        known = conn.execute("SELECT run_id FROM receipts WHERE run_id = ?",
-                             (name[len(INBOX_PREFIX):-len(".json")],)).fetchone()
-        if known is not None:
-            _record_attempt(conn, name=name, file_sha=file_sha, run_id=known[0], now=now,
-                            state="DUPLICATE_REJECTED", reason="RUN_ID_ALREADY_RECEIVED")
-            return {"file": name, "state": "DUPLICATE_REJECTED", "reason": "RUN_ID_ALREADY_RECEIVED"}
-        # Independent re-verification: HMAC, exact schema, safety flags,
-        # source binding, freshness, roles and NO_DATA rules. The sidecar's
-        # ACK is not consulted; nothing is written by this call.
-        handoff.consume(input_path=str(path), private_dir=str(root), now=now, write_ack=False)
-        doc = handoff._read_once(path, root)
-        payload = doc["payload"]
+        doc = handoff._read_once(path, root)            # the only read used for verification
+        payload = handoff.verify_document(doc, file_name=name, now=now)
         research = payload["research"]
         if (payload.get("real_submit_allowed") is not False or research.get("real_submit_allowed") is not False
                 or payload.get("brain_trade_decision_eligible") is not False
@@ -190,6 +212,7 @@ def receive_one(path: Path, root: Path, conn, *, now: datetime, identity: dict) 
             "source_fingerprint_sha256": payload["source_fingerprint_sha256"],
             "received_at": _iso(now),
             "receiver": identity,
+            "receiver_key_separate_from_sidecar": True,
             "verification": "PASS",
             "state": "RECEIVED",
             "reasons": [],
@@ -200,8 +223,9 @@ def receive_one(path: Path, root: Path, conn, *, now: datetime, identity: dict) 
             "brain_trade_decision_eligible": False,
             "real_submit_allowed": False,
         }
-        ack["hmac_sha256"] = hmac.new(handoff._key(), _canon(ack), hashlib.sha256).hexdigest()
-        ack_sha = hashlib.sha256(_canon(ack)).hexdigest()
+        ack["hmac_sha256"] = _sign(ack)
+        ack_bytes = _canon(ack) + b"\n"
+        ack_sha = hashlib.sha256(ack_bytes).hexdigest()
         conn.execute("BEGIN IMMEDIATE")
         try:
             if conn.execute("SELECT 1 FROM receipts WHERE run_id = ? OR envelope_sha256 = ?",
@@ -211,11 +235,9 @@ def receive_one(path: Path, root: Path, conn, *, now: datetime, identity: dict) 
                                 state="DUPLICATE_REJECTED", reason="RUN_ID_ALREADY_RECEIVED")
                 return {"file": name, "state": "DUPLICATE_REJECTED", "reason": "RUN_ID_ALREADY_RECEIVED"}
             conn.execute(
-                "INSERT INTO receipts (run_id, envelope_sha256, received_at, receiver_json, roles_json,"
-                " conflicts_json, ack_sha256, real_submit_allowed) VALUES (?,?,?,?,?,?,?,0)",
-                (payload["run_id"], envelope_sha, _iso(now), json.dumps(identity, sort_keys=True),
-                 json.dumps(roles, ensure_ascii=False, sort_keys=True),
-                 json.dumps(conflicts, ensure_ascii=False, sort_keys=True), ack_sha))
+                "INSERT INTO receipts (run_id, envelope_sha256, received_at, ack_bytes, ack_sha256,"
+                " real_submit_allowed) VALUES (?,?,?,?,?,0)",
+                (payload["run_id"], envelope_sha, _iso(now), ack_bytes, ack_sha))
             conn.execute(
                 "INSERT INTO attempts (file_name, file_sha256, run_id, evaluated_at, state, reason,"
                 " real_submit_allowed) VALUES (?,?,?,?,'RECEIVED',NULL,0)",
@@ -227,12 +249,20 @@ def receive_one(path: Path, root: Path, conn, *, now: datetime, identity: dict) 
             except sqlite3.Error:
                 pass
             raise
-        _write_ack(root, ack)
-        return {"file": name, "state": "RECEIVED", "run_id": payload["run_id"], "conflicts": len(conflicts)}
     except (handoff.BridgeBlocked, handoff.pilot.Blocked, ReceiverBlocked) as exc:
         reason = str(exc)
     except (OSError, ValueError, TypeError, KeyError) as exc:
         reason = "INBOX_INPUT_UNVERIFIED:" + type(exc).__name__
+    else:
+        # The receipt is committed. A failure from here on leaves the ACK to be
+        # rewritten from the stored bytes on the next pass (no BLOCKED entry).
+        try:
+            ack_state = _ensure_ack(root, payload["run_id"], ack_bytes, ack_sha)
+        except (OSError, ReceiverBlocked, handoff.BridgeBlocked) as exc:
+            return {"file": name, "state": "RECEIVED", "run_id": payload["run_id"],
+                    "ack": "ACK_WRITE_PENDING:" + (str(exc) or type(exc).__name__)}
+        return {"file": name, "state": "RECEIVED", "run_id": payload["run_id"], "ack": ack_state,
+                "conflicts": len(conflicts)}
     _record_attempt(conn, name=name, file_sha=file_sha, run_id=None, now=now, state="BLOCKED", reason=reason)
     return {"file": name, "state": "BLOCKED", "reason": reason}
 
@@ -247,50 +277,76 @@ def _inbox_files(root: Path) -> list[Path]:
     return out
 
 
+def _file_sha(path: Path):
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
 def receive_inbox(private_dir, *, now: datetime) -> dict:
-    """One pass over the inbox. Already received run_ids are not reprocessed."""
+    """One pass: restore missing ACKs, then process new or changed inbox files."""
     now = handoff._now(now)
     root = handoff._private_dir(private_dir)
-    handoff._key()  # no key, no verification: fail closed before reading anything
+    handoff._key()      # no sidecar key: nothing can be verified
+    _receiver_key()     # no separate receiver key: no Brain ACK can be signed
     identity = receiver_identity()
-    results = []
+    results, restored = [], []
     with closing(_connect(root)) as conn:
-        done = {(r[0], r[1]) for r in conn.execute(
-            "SELECT run_id, file_sha256 FROM attempts WHERE state = 'RECEIVED'")}
+        for run_id, ack_bytes, ack_sha in conn.execute(
+                "SELECT run_id, ack_bytes, ack_sha256 FROM receipts ORDER BY received_at, run_id").fetchall():
+            if not _ack_path(root, run_id).exists():
+                restored.append({"run_id": run_id, "ack": _ensure_ack(root, run_id, bytes(ack_bytes), ack_sha)})
+        seen = {(r[0], r[1]) for r in conn.execute(
+            "SELECT file_name, file_sha256 FROM attempts WHERE file_sha256 IS NOT NULL")}
         for path in _inbox_files(root):
-            run_id = path.name[len(INBOX_PREFIX):-len(".json")]
-            try:
-                sha = hashlib.sha256(path.read_bytes()).hexdigest()
-            except OSError:
-                sha = None
-            if (run_id, sha) in done and (root / (INBOX_PREFIX + run_id + BRAIN_ACK_SUFFIX)).exists():
-                continue  # restart: this exact envelope was already received and acknowledged
+            sha = _file_sha(path)
+            if sha is not None and (path.name, sha) in seen:
+                continue  # this exact file content was already decided (received or blocked)
             results.append(receive_one(path, root, conn, now=now, identity=identity))
-    return {"state": "PASS_COMPLETED", "receiver": RECEIVER_COMPONENT, "results": results,
-            "real_submit_allowed": False}
+    return {"state": "PASS_COMPLETED", "receiver": RECEIVER_COMPONENT, "restored_acks": restored,
+            "results": results, "real_submit_allowed": False}
+
+
+def _pending_expiry(path: Path):
+    """Unverified hint only: when the 15-minute freshness window would end."""
+    try:
+        doc = json.loads(path.read_bytes().decode("utf-8"))
+        emitted = handoff._dt(doc["payload"]["emitted_at"])
+        return _iso(emitted + handoff.MAX_HANDOFF_AGE)
+    except Exception:
+        return None
 
 
 def status(private_dir) -> dict:
     """Receipts after a restart, plus inbox envelopes not yet received (PENDING)."""
     root = handoff._private_dir(private_dir)
     with closing(_connect(root)) as conn:
-        rows = conn.execute("SELECT run_id, envelope_sha256, ack_sha256, roles_json, conflicts_json"
-                            " FROM receipts ORDER BY received_at, run_id").fetchall()
+        rows = conn.execute("SELECT run_id, ack_bytes, ack_sha256 FROM receipts"
+                            " ORDER BY received_at, run_id").fetchall()
         attempts = conn.execute("SELECT state, COUNT(*) FROM attempts GROUP BY state").fetchall()
-    received, mismatched = [], []
-    for run_id, env_sha, ack_sha, roles_json, conflicts_json in rows:
-        ack_path = root / (INBOX_PREFIX + run_id + BRAIN_ACK_SUFFIX)
-        ok = False
-        if ack_path.exists():
-            back = json.loads(ack_path.read_bytes().decode("utf-8"))
-            ok = (hashlib.sha256(_canon(back)).hexdigest() == ack_sha and back.get("ack_kind") == ACK_KIND
-                  and back.get("envelope_sha256") == env_sha and back.get("real_submit_allowed") is False)
-        (received if ok else mismatched).append(run_id)
-    pending = [p.name for p in _inbox_files(root)
-               if p.name[len(INBOX_PREFIX):-len(".json")] not in {r[0] for r in rows}]
+        decided = {(r[0], r[1]) for r in conn.execute("SELECT file_name, file_sha256 FROM attempts")}
+    received, mismatched, ack_missing = [], [], []
+    for run_id, ack_bytes, ack_sha in rows:
+        ack_bytes = bytes(ack_bytes)
+        path = _ack_path(root, run_id)
+        if hashlib.sha256(ack_bytes).hexdigest() != ack_sha:
+            mismatched.append(run_id)
+        elif not path.exists():
+            ack_missing.append(run_id)
+        elif _ack_file_matches(path, ack_bytes):
+            received.append(run_id)
+        else:
+            mismatched.append(run_id)
+    received_ids = {r[0] for r in rows}
+    pending = []
+    for p in _inbox_files(root):
+        if p.name[len(INBOX_PREFIX):-len(".json")] in received_ids or (p.name, _file_sha(p)) in decided:
+            continue
+        pending.append({"file": p.name, "expires_at_unverified": _pending_expiry(p)})
     return {"receiver": RECEIVER_COMPONENT, "received_run_ids": received,
-            "ack_mismatch_run_ids": mismatched, "pending_files": pending,
-            "attempt_counts": dict(attempts), "real_submit_allowed": False}
+            "ack_mismatch_run_ids": mismatched, "ack_missing_run_ids": ack_missing,
+            "pending": pending, "attempt_counts": dict(attempts), "real_submit_allowed": False}
 
 
 def main(argv=None) -> int:
