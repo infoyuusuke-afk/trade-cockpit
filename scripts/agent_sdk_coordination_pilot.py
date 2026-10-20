@@ -232,11 +232,23 @@ async def api_runner(role: str, prompt: str) -> dict:
     else:
         instructions = rule + " " + ROLE_GOALS[role]
         typ = SpecialistOutput
-    model = os.environ.get("OPENAI_AGENT_MODEL", "").strip()
-    agent_options = {"name": role, "instructions": instructions, "output_type": typ}
-    if model:
-        agent_options["model"] = model
-    agent = Agent(**agent_options)
+    # Pin a known low-cost model. Refuse environment-driven model escalation.
+    from agents import ModelSettings, set_default_openai_client
+    from openai import AsyncOpenAI
+    selected = os.environ.get("OPENAI_AGENT_MODEL", PAID_MODEL).strip()
+    if selected != PAID_MODEL:
+        raise Blocked("MODEL_NOT_APPROVED_FOR_PAID_PILOT")
+    set_default_openai_client(
+        AsyncOpenAI(max_retries=0, timeout=30.0), use_for_tracing=False
+    )
+    agent = Agent(
+        name=role, instructions=instructions, output_type=typ,
+        model=PAID_MODEL,
+        model_settings=ModelSettings(
+            max_tokens=600, timeout=30.0, parallel_tool_calls=False,
+            truncation="disabled"
+        ),
+    )
     result = await Runner.run(agent, prompt, max_turns=1)
     return result.final_output_as(typ).model_dump()
 
@@ -278,6 +290,53 @@ def persist_receipt(db_path: Path, result: dict, source_fp: str) -> str:
     return "RECORDED"
 
 
+
+# Conservative one-shot budget reservation. This is a LOCAL attempt budget,
+# not a claim that OpenAI billing has an enforceable dollar hard stop.
+PAID_MODEL = "gpt-5.4-mini"
+PAID_INPUT_LIMIT_BYTES = 8_000
+PAID_RESERVED_CENTS_PER_RUN = 100
+PAID_TOTAL_LEDGER_CENTS = 800
+
+
+def reserve_billable_attempt(db_path: Path, run_id: str, source_fp: str) -> None:
+    """Reserve one entire 4-agent run BEFORE any request, crash-safe and no retry.
+
+    An interrupted/failed attempt remains reserved: the operator must explicitly
+    authorize any fresh run ID after reviewing Usage. Do not auto-refund calls.
+    """
+    db_path = Path(db_path)
+    if (not db_path.name or db_path.is_symlink() or
+            not db_path.parent.is_dir() or db_path.parent.is_symlink()):
+        raise Blocked("BUDGET_LEDGER_PATH_INVALID")
+    with closing(sqlite3.connect(db_path, timeout=5, isolation_level=None)) as conn:
+        conn.execute("PRAGMA synchronous=FULL")
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            conn.execute("""CREATE TABLE IF NOT EXISTS paid_attempts (
+                run_id TEXT PRIMARY KEY,
+                source_fingerprint TEXT NOT NULL,
+                reserved_cents INTEGER NOT NULL,
+                state TEXT NOT NULL,
+                reserved_at TEXT NOT NULL)""")
+            if conn.execute("SELECT 1 FROM paid_attempts WHERE run_id=?", (run_id,)).fetchone():
+                raise Blocked("BILLABLE_REPLAY_BLOCKED")
+            total = conn.execute(
+                "SELECT COALESCE(SUM(reserved_cents), 0) FROM paid_attempts"
+            ).fetchone()[0]
+            if total + PAID_RESERVED_CENTS_PER_RUN > PAID_TOTAL_LEDGER_CENTS:
+                raise Blocked("LOCAL_BUDGET_RESERVATION_EXHAUSTED")
+            conn.execute(
+                "INSERT INTO paid_attempts VALUES (?,?,?,?,?)",
+                (run_id, source_fp, PAID_RESERVED_CENTS_PER_RUN, "ATTEMPT_RESERVED",
+                 datetime.now(timezone.utc).isoformat())
+            )
+            conn.execute("COMMIT")
+        except BaseException:
+            conn.execute("ROLLBACK")
+            raise
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="100B isolated multi-agent research pilot")
     parser.add_argument("--input", required=True, help="JSON with PUBLIC-safe dated evidence")
@@ -287,6 +346,7 @@ def main(argv=None) -> int:
     mode.add_argument("--enable-billable-api", action="store_true",
                       help="OWNER opt-in: charges may apply; no scheduling or broker access")
     parser.add_argument("--receipt-db", help="Optional private local SQLite file")
+    parser.add_argument("--paid-budget-db", help="Mandatory private attempt-budget ledger for billable mode")
     args = parser.parse_args(argv)
     try:
         path = Path(args.input)
@@ -297,6 +357,14 @@ def main(argv=None) -> int:
         validated = validate_snapshot(doc, now)
         if args.enable_billable_api and not os.environ.get("OPENAI_API_KEY"):
             raise Blocked("API_KEY_MISSING_NO_CALL")
+        if args.enable_billable_api:
+            if not args.paid_budget_db:
+                raise Blocked("PAID_BUDGET_LEDGER_REQUIRED_NO_CALL")
+            if path.stat().st_size > PAID_INPUT_LIMIT_BYTES:
+                raise Blocked("PAID_INPUT_TOO_LARGE_NO_CALL")
+            if os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_AGENT_MODEL", PAID_MODEL).strip() != PAID_MODEL:
+                raise Blocked("PAID_MODEL_OR_ENDPOINT_UNAPPROVED_NO_CALL")
+            reserve_billable_attempt(Path(args.paid_budget_db), validated["run_id"], fingerprint(validated))
         runner = api_runner if args.enable_billable_api else offline_runner
         result = asyncio.run(coordinate(validated, runner, now=now))
         if args.offline_test:
@@ -313,8 +381,7 @@ def main(argv=None) -> int:
             "broker_fills_verified": False, "costs_verified": False
         }, sort_keys=True))
         return 0
-    except (Blocked, OSError, ValueError, json.JSONDecodeError, ImportError,
-            RuntimeError, sqlite3.Error) as exc:
+    except (Blocked, Exception) as exc:
         reason = str(exc) if isinstance(exc, Blocked) else "RUNTIME_OR_INPUT_UNVERIFIED"
         print(json.dumps({
             "state": "BLOCKED", "reason": reason,
