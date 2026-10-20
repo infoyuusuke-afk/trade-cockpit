@@ -68,22 +68,44 @@ document.addEventListener("DOMContentLoaded",()=>{
  brainPanel.innerHTML='<h2>AI BRAIN</h2><p class="sub">V10 Brain Gateway / Controller / Market Data / AI Shadow の実稼働状態</p><div class="rotation-grid" id="brain-runtime-grid"><div class="rotation-box"><b>状態</b><strong>接続待ち</strong></div></div>';
  panes.brain.appendChild(brainPanel);
 
+ // V10_UI_EVIDENCE_HELPERS_START: pure source-verification logic, no orders.
+ const cockpitBrainEvidence=(rt,ex)=>{
+   const status=typeof rt?.brain_observer_state==="string"&&rt.brain_observer_state?rt.brain_observer_state:"UNKNOWN";
+   const conflict=rt?.data_conflict===true?"TRUE":rt?.data_conflict===false?"FALSE":"UNKNOWN";
+   const observeOnly=status==="BRAIN_OBSERVING_PUBLICATION_ONLY" &&
+     rt?.data_conflict===false && ex?.real_submit_allowed===false;
+   return {observer:status,dataConflict:conflict,brainState:observeOnly?"OBSERVATION_ONLY":"FAIL-CLOSED"};
+ };
+ const cockpitSnapshotHealth=(raw,nowMs)=>{
+   const stamp=typeof raw==="string"?raw.trim():"";
+   const jst=/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} JST$/;
+   const iso=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+   const normalized=jst.test(stamp)?stamp.slice(0,-4).replace(" ","T")+"+09:00":(iso.test(stamp)?stamp:null);
+   const ts=normalized===null?NaN:Date.parse(normalized);
+   const age=nowMs-ts;
+   if(!Number.isFinite(ts)||!Number.isFinite(age)||age< -60000)
+     return {cls:"status-error",title:"分析時刻未検証・LIVE未検証／最終更新 "+(stamp||"不明")};
+   if(age>180*60*1000)
+     return {cls:"status-error",title:"分析スナップショット鮮度切れ・LIVE未検証／最終更新 "+stamp};
+   return {cls:"status-warn",title:"分析スナップショット（実取引LIVE認証ではありません）／最終更新 "+stamp};
+ };
+ // V10_UI_EVIDENCE_HELPERS_END
  const renderBrain=()=>{
    fetch("/health?t="+Date.now()).then(r=>r.json()).then(h=>{
      const rt=h.runtime||{}, ex=h.execution||{};
-     const ok=!rt.fail_closed && String(ex.shadow_engine_state||"").toUpperCase()!=="STOPPED";
+     const proof=cockpitBrainEvidence(rt,ex);
      const cells=[
-       ["BRAIN GATEWAY","28584 ONLINE"],
+       ["BRAIN OBSERVER",proof.observer],
        ["CONTROLLER",rt.controller_pid?("PID "+rt.controller_pid):"OFFLINE"],
        ["COLLECTOR",rt.collector_status||"UNKNOWN"],
        ["WATCHER",rt.watcher_status||"UNKNOWN"],
        ["RSS EXCEL",rt.workbook_identity_verified?"VERIFIED":"UNVERIFIED"],
        ["PRICE SOURCE",rt.price_source_status||"UNKNOWN"],
-       ["DATA CONFLICT",rt.data_conflict===true?"TRUE":"FALSE"],
+       ["DATA CONFLICT",proof.dataConflict],
        ["AI SHADOW",ex.shadow_engine_state||"STOPPED"],
        ["SHADOW REASON",ex.shadow_engine_reason||"—"],
        ["REAL ORDER",ex.real_submit_allowed===false?"LOCKED":"UNSAFE"],
-       ["BRAIN STATE",ok?"LIVE":"FAIL-CLOSED"],
+       ["BRAIN STATE",proof.brainState],
        ["UPDATED",h.now||"—"]
      ];
      document.getElementById("brain-runtime-grid").innerHTML=cells.map(([k,v])=>'<div class="rotation-box"><b>'+esc(k)+'</b><strong>'+esc(v)+'</strong></div>').join("");
@@ -212,21 +234,16 @@ document.addEventListener("DOMContentLoaded",()=>{
  }).catch(()=>{});
  fetch("signals.json?t="+Date.now()).then(r=>r.json()).then(d=>{
    const badge=document.getElementById("cockpit-status"); if(!badge)return;
-   const todayJst=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Tokyo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
-   const nowHm=new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Tokyo",hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());
-   const weekdayJst=new Intl.DateTimeFormat("en-US",{timeZone:"Asia/Tokyo",weekday:"short"}).format(new Date());
-   const isWeekend=weekdayJst==="Sat"||weekdayJst==="Sun";
-   const updatedAt=String(d.updated_at||"");
-   const isToday=updatedAt.slice(0,10)===todayJst;
-   let cls="status-ok",title="正常稼働中／最終更新 "+(updatedAt||"不明");
-   if(!isToday&&!isWeekend){
-     if(nowHm<"08:20"){cls="status-warn";title="本日の初回更新前（前営業日分を表示中）／最終更新 "+(updatedAt||"不明");}
-     else{cls="status-error";title="更新停止の疑い／最終更新 "+(updatedAt||"不明");}
-   }
+   const result=cockpitSnapshotHealth(d?.updated_at,Date.now());
    badge.classList.remove("status-ok","status-warn","status-error");
-   badge.classList.add(cls);
-   badge.title=title;
- }).catch(()=>{});
+   badge.classList.add(result.cls);
+   badge.title=result.title;
+ }).catch(()=>{
+   const badge=document.getElementById("cockpit-status");if(!badge)return;
+   badge.classList.remove("status-ok","status-warn","status-error");
+   badge.classList.add("status-error");
+   badge.title="分析スナップショット取得失敗・LIVE未検証";
+ });
 });
 </script>
 <!-- COCKPIT_TABS_END -->
