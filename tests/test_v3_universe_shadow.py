@@ -20,6 +20,8 @@ def row(code="TEST.T", roles=None, selected=True, **kw):
         "observed_at": "2026-10-19T15:31:00+09:00",
         "available_at": "2026-10-19T15:32:00+09:00",
         "prior_day_trading_value_yen": 10_000_000_000,
+        "turnover_session_date": "2026-10-19",
+        "turnover_available_at": "2026-10-19T15:40:00+09:00",
         "spread_bps": 5.0,
         "bid_depth_yen": 5_000_000,
         "ask_depth_yen": 4_000_000,
@@ -77,6 +79,8 @@ class V3UniverseShadow(unittest.TestCase):
     def test_unknown_turnover_not_zero_capacity(self):
         r = row()
         r["prior_day_trading_value_yen"] = None
+        r["turnover_session_date"] = None
+        r["turnover_available_at"] = None
         s = mod.build_snapshot(payload([r]))
         self.assertIsNone(s["rows"][0]["turnover_one_percent_cap_yen"])
 
@@ -96,6 +100,34 @@ class V3UniverseShadow(unittest.TestCase):
         obs["rows"][0]["horizon_end_at"] = "2026-10-20T08:30:00+09:00"
         with self.assertRaisesRegex(mod.ShadowReject, "OUTCOME_TIME_INVALID"):
             mod.compare_outcomes(s, obs)
+
+    def test_turnover_point_in_time_rejects_future_or_unidentified_trading_value(self):
+        for change, expected in (
+            ({"turnover_session_date": "2026-10-20"}, "TURNOVER_MUST_PRECEDE"),
+            ({"turnover_available_at": "2026-10-20T15:30:00+09:00"}, "TURNOVER_AVAILABLE"),
+            ({"turnover_available_at": None}, "TIME_MISSING"),
+            ({"turnover_session_date": None}, "TURNOVER_SESSION_DATE_REQUIRED"),
+            ({"turnover_session_date": "2026-10-99"}, "TURNOVER_SESSION_DATE_INVALID"),
+        ):
+            x = row()
+            x.update(change)
+            with self.subTest(change=change), self.assertRaisesRegex(mod.ShadowReject, expected):
+                mod.build_snapshot(payload([x]))
+
+    def test_outcomes_must_use_one_common_horizon(self):
+        snap = mod.build_snapshot(payload())
+        obs = {"schema_version": "v3-universe-outcomes-1", "rows": [
+            {"instrument_id": "TEST.T", "horizon_end_at": "2026-10-20T15:30:00+09:00",
+             "available_at": "2026-10-20T15:31:00+09:00", "return_pct": 1},
+            {"instrument_id": "TST2.T", "horizon_end_at": "2026-10-21T15:30:00+09:00",
+             "available_at": "2026-10-21T15:31:00+09:00", "return_pct": -1}
+        ]}
+        with self.assertRaisesRegex(mod.ShadowReject, "OUTCOME_HORIZON_MISMATCH"):
+            mod.compare_outcomes(snap, obs)
+        obs["rows"][1]["horizon_end_at"] = "2026-10-20T15:30:00+09:00"
+        obs["rows"][1]["available_at"] = "2026-10-20T15:31:00+09:00"
+        got = mod.compare_outcomes(snap, obs)
+        self.assertEqual(got["common_horizon_end_at"], "2026-10-20T15:30:00+09:00")
 
     def test_private_immutable_output_rejects_overwrite_and_repo_paths(self):
         s = mod.build_snapshot(payload())
