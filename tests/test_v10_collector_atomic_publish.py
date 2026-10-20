@@ -41,6 +41,7 @@ Write-AtomicUtf8 $p '{"generation":2}'
 $a=[IO.File]::ReadAllText($p)
 if($a -ne '{"generation":2}'){throw 'SECOND_PUBLISH_FAILED'}
 if(@(Get-ChildItem -LiteralPath (Split-Path $p) -Filter '*.tmp').Count -ne 0){throw 'STAGING_LEAK'}
+if(@(Get-ChildItem -LiteralPath (Split-Path $p) -Filter '*.bak').Count -ne 0){throw 'BACKUP_LEAK'}
 '''
             result = subprocess.run(
                 [exe, "-NoProfile", "-NonInteractive", "-Command", ps],
@@ -75,6 +76,7 @@ if ([IO.File]::ReadAllText($p) -ne '{"generation":1}') { throw 'LAST_GOOD_NOT_PR
 Write-AtomicUtf8 $p '{"generation":3}'
 if ([IO.File]::ReadAllText($p) -ne '{"generation":3}') { throw 'POST_LOCK_RETRY_FAILED' }
 if (@(Get-ChildItem -LiteralPath (Split-Path $p) -Filter '*.tmp').Count -ne 0) { throw 'STAGING_LEAK' }
+if (@(Get-ChildItem -LiteralPath (Split-Path $p) -Filter '*.bak').Count -ne 0) { throw 'BACKUP_LEAK' }
 '''
             result = subprocess.run(
                 [exe, "-NoProfile", "-NonInteractive", "-Command", ps],
