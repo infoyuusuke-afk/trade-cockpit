@@ -18,9 +18,11 @@ import re
 import stat
 import sys
 
-try:
-    from scripts import agent_sdk_coordination_pilot as pilot
-except ModuleNotFoundError:
+# Resolve the actual sibling script in direct CLI mode, and the relative
+# module in package import mode. Never import an unrelated global 'scripts'.
+if __package__:
+    from . import agent_sdk_coordination_pilot as pilot
+else:
     import agent_sdk_coordination_pilot as pilot
 
 SCHEMA = "100b-agent-brain-research-envelope-v1"
