@@ -361,8 +361,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   <p class="sub">監視対象は自動で入れ替えません。価格・板・シグナルはMS2の出所と鮮度が確認できた場合だけ表示。実注文禁止。</p>
   <div class="ec-controls">
     <label>監視銘柄 <select id="focus-owner-select" aria-label="監視銘柄を選ぶ"><option value="">MS2データ待ち</option></select></label>
-    <button type="button" id="focus-owner-add">監視に固定</button>
-    <button type="button" id="focus-owner-remove">選択銘柄を解除</button>
+    <button type="button" class="cockpit-tab" id="focus-owner-add">監視に固定</button>
+    <button type="button" class="cockpit-tab" id="focus-owner-remove">選択銘柄を解除</button>
   </div>
   <p id="focus-owner-status" class="warning">MS2市場データ未認証。OWNERの固定銘柄は保持、売買判断・価格表示を停止。</p>
   <div id="focus-owner-cards" class="cc-grid"><div class="focus-empty">OWNER固定銘柄を選択してください。</div></div>
@@ -383,12 +383,20 @@ document.addEventListener("DOMContentLoaded",()=>{
    const map=new Map(lastAll.filter(x=>validTicker(x?.ticker)).map(x=>[x.ticker,x]));
    target.innerHTML=pinned.map(t=>{
      const row=map.get(t);
-     if(lastVerified&&row&&typeof window.renderScalpCard==="function")
+     if(lastVerified&&rowQuoteReady(row)&&typeof window.renderScalpCard==="function")
        return window.renderScalpCard({...row,_stale:false,foot:"OWNER固定｜MS2出所・鮮度検証済｜実注文禁止"},{label:"監視",cls:"wait"},"1m");
      return window.renderCockpitCard({symbol:t.replace(/\.T$/,""),company:row?.name||t,direction:"block",
        failClosed:"MS2入力未認証・鮮度切れ・指定銘柄未取得",freshness:"stale",price:null,
        foot:"監視銘柄の固定は維持。実注文禁止。"});
    }).join("");
+ };
+ const rowQuoteReady=row=>{
+   if(!row||row.quote_valid!==true||typeof row.quote_time!=="string")return false;
+   const raw=row.quote_time.trim();
+   if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(raw))return false;
+   const age=Date.now()-Date.parse(raw);
+   const price=typeof row.price==="number"?row.price:NaN;
+   return Number.isFinite(age)&&age>=-60000&&age<=60000&&Number.isFinite(price)&&price>0;
  };
  const validMarket=d=>{
    if(d?.stale!==false||d?.source_authenticated!==true||d?.live_values_available!==true||
@@ -412,7 +420,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    select.append(placeholder);
    lastAll.forEach(x=>{const option=document.createElement("option");option.value=x.ticker;option.textContent=(x.name||x.ticker)+" ("+x.ticker+")";select.append(option)});
    if([...select.options].some(o=>o.value===prev))select.value=prev;
-   status.textContent=lastVerified?"MS2データの出所・発行時刻を検証済。表示は監視専用。実注文禁止。":
+   status.textContent=lastVerified?"MS2発行証拠を検証済。銘柄別quote_time/quote_validの確認後のみ価格表示。実注文禁止。":
      "MS2市場データ未認証・時刻不明・鮮度切れ。OWNER固定銘柄を保持し、価格とシグナルを遮断。";
    paint();
  });
