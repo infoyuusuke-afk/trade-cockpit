@@ -9,6 +9,8 @@ import hashlib
 import json
 import os
 import re
+import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -170,3 +172,104 @@ def journal_read(path):
         previous = x["sha256"]
         out.append(x)
     return out
+
+
+def sqlite_candidate_append(path, record, *, inject_failure=False):
+    """Offline Windows-compatible SQLite research adapter.
+
+    Reuses the project's SQLite immutable-artifact pattern (BEGIN IMMEDIATE,
+    synchronous FULL, DELETE journal, independent connection readback).
+    SQLite transaction atomicity does not prove Windows power-loss durability.
+    No actual V10 application or Shadow supervisor data are connected.
+    """
+    target = _private(path)
+    if target.suffix != ".sqlite3":
+        raise EvidenceRejected("SQLITE_EXTENSION_REQUIRED")
+    if not isinstance(record, dict) or record.get("schema_version") != SCHEMA:
+        raise EvidenceRejected("VERDICT_SCHEMA_INVALID")
+    if record.get("real_submit_allowed") is not False:
+        raise EvidenceRejected("REAL_ORDER_FLAG_FORBIDDEN")
+    identifier = record.get("session_id")
+    instant = record.get("evaluated_at")
+    if not isinstance(identifier, str) or not re.fullmatch(r"[A-Za-z0-9_-]{4,64}", identifier):
+        raise EvidenceRejected("SESSION_INVALID")
+    _date(instant)
+    payload = _canonical(record).encode("utf-8")
+    if len(payload) > 2 * 1024 * 1024:
+        raise EvidenceRejected("VERDICT_TOO_LARGE")
+
+    # Separate database dedicated to research verdicts, not a second V10 writer.
+    # BEGIN IMMEDIATE serializes cooperating independent SQLite connections.
+    with closing(sqlite3.connect(str(target), timeout=2.0, isolation_level=None)) as conn:
+        conn.execute("PRAGMA journal_mode=DELETE")
+        conn.execute("PRAGMA synchronous=FULL")
+        conn.execute("""CREATE TABLE IF NOT EXISTS immutable_verdict (
+            seq INTEGER PRIMARY KEY AUTOINCREMENT,
+            session TEXT NOT NULL,
+            evaluated_at TEXT NOT NULL,
+            payload BLOB NOT NULL,
+            prev_sha256 TEXT NOT NULL,
+            sha256 TEXT NOT NULL,
+            UNIQUE(session, evaluated_at)
+        )""")
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            last = conn.execute(
+                "SELECT sha256 FROM immutable_verdict ORDER BY seq DESC LIMIT 1"
+            ).fetchone()
+            prev = last[0] if last else "0" * 64
+            entry = _line(record, prev)
+            conn.execute(
+                """INSERT INTO immutable_verdict(session,evaluated_at,payload,prev_sha256,sha256)
+                   VALUES(?,?,?,?,?)""",
+                (identifier, instant, payload, prev, entry["sha256"]),
+            )
+            if inject_failure:
+                raise OSError("INJECTED_ROLLBACK")
+            conn.execute("COMMIT")
+        except BaseException:
+            conn.execute("ROLLBACK")
+            raise
+
+    verified = sqlite_candidate_read(path)
+    if not verified or verified[-1]["sha256"] != entry["sha256"]:
+        raise EvidenceRejected("SQLITE_INDEPENDENT_READBACK_FAILED")
+    return {
+        "status": "CANDIDATE_READBACK_ONLY_NOT_WINDOWS_DURABILITY_ACCEPTED",
+        "records": len(verified),
+        "head_sha256": entry["sha256"],
+        "real_submit_allowed": False,
+    }
+
+
+def sqlite_candidate_read(path):
+    """Independent SQLite connection: detect record alteration or chain breaks."""
+    target = _private(path)
+    # Read-only URI avoids silently creating an empty DB.
+    if not target.exists() or target.suffix != ".sqlite3":
+        raise EvidenceRejected("SQLITE_CANDIDATE_ABSENT")
+    result = []
+    previous = "0" * 64
+    with closing(sqlite3.connect(str(target), timeout=2.0)) as conn:
+        rows = conn.execute(
+            "SELECT seq,session,evaluated_at,payload,prev_sha256,sha256 "
+            "FROM immutable_verdict ORDER BY seq ASC"
+        )
+        last_seq = 0
+        for seq, session, instant, blob, prev, digest in rows:
+            if seq != last_seq + 1 or prev != previous:
+                raise EvidenceRejected("SQLITE_SEQUENCE_OR_CHAIN_BROKEN")
+            try:
+                value = json.loads(blob)
+            except (ValueError, TypeError) as exc:
+                raise EvidenceRejected("SQLITE_PAYLOAD_INVALID") from exc
+            if (not isinstance(value, dict)
+                    or value.get("session_id") != session
+                    or value.get("evaluated_at") != instant
+                    or value.get("real_submit_allowed") is not False
+                    or _canonical(value).encode("utf-8") != blob
+                    or _line(value, previous)["sha256"] != digest):
+                raise EvidenceRejected("SQLITE_TAMPERED")
+            result.append({"seq": seq, "sha256": digest, "record": value})
+            previous, last_seq = digest, seq
+    return result
