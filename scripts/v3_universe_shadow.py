@@ -109,7 +109,7 @@ def build_snapshot(doc):
             if turnover_day is not None or turnover_available is not None:
                 raise ShadowReject("TURNOVER_PROVENANCE_WITHOUT_VALUE")
         else:
-            if not isinstance(turnover_day, str) or not re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}", turnover_day):
+            if not isinstance(turnover_day, str) or not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", turnover_day):
                 raise ShadowReject("TURNOVER_SESSION_DATE_REQUIRED")
             try:
                 session_date = date.fromisoformat(turnover_day)
