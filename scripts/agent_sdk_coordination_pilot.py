@@ -361,9 +361,12 @@ def main(argv=None) -> int:
             # Validate the output boundary BEFORE any potentially billable request.
             if not args.receipt_db:
                 raise Blocked("HANDOFF_RECEIPT_DB_REQUIRED_NO_CALL")
-            try:
-                from scripts import agent_sdk_brain_handoff as bridge
-            except ModuleNotFoundError:
+            # Use package-relative import or the local script sibling, never
+            # an unrelated installed top-level 'scripts' package. Windows
+            # direct-file execution has __package__ == None.
+            if __package__:
+                from . import agent_sdk_brain_handoff as bridge
+            else:
                 import agent_sdk_brain_handoff as bridge
             bridge._private_dir(Path(args.handoff_dir))
             bridge._key()
