@@ -36,3 +36,16 @@ jobs:
         run: python -m unittest discover -s tests -p test_agent_sdk_public_feed_ingest.py -v
       - name: Offline signed research handoff and ACK negative tests
         run: python -m unittest discover -s tests -p test_agent_sdk_brain_handoff.py -v
+      - name: Reproduce Owner Unicode working directory (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -c "import os,pathlib,shutil; dst=pathlib.Path(os.environ['RUNNER_TEMP'])/'100億PROJECT'/'AGENTS_SDK_PILOT'; [(shutil.copytree(p,dst/p,dirs_exist_ok=True)) for p in ('scripts','tests','examples')]; print('UNICODE_TEST_ROOT_CREATED')"
+          $unicodeRoot = Join-Path $env:RUNNER_TEMP '100億PROJECT\AGENTS_SDK_PILOT'
+          Push-Location $unicodeRoot
+          try {
+            python -m unittest discover -s tests -p test_agent_sdk_brain_handoff.py -v
+            if ($LASTEXITCODE -ne 0) { throw 'UNICODE_PATH_TEST_FAILED' }
+          } finally {
+            Pop-Location
+          }
