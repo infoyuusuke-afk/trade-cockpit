@@ -216,5 +216,61 @@ class LocalReceipt(unittest.TestCase):
             self.assertIs(output["real_submit_allowed"], False)
 
 
+
+class PaidAttemptGate(unittest.TestCase):
+    def test_durable_paid_attempt_reservations_and_replay_block(self):
+        with tempfile.TemporaryDirectory() as td:
+            ledger = Path(td) / "attempts.sqlite"
+            first = "budgeted_run_00001"
+            pilot.reserve_billable_attempt(ledger, first, "fingerprint-a")
+            with self.assertRaisesRegex(pilot.Blocked, "BILLABLE_REPLAY_BLOCKED"):
+                pilot.reserve_billable_attempt(ledger, first, "fingerprint-a")
+            for index in range(2, 9):
+                pilot.reserve_billable_attempt(
+                    ledger, f"budgeted_run_{index:05d}", f"fingerprint-{index}"
+                )
+            with self.assertRaisesRegex(pilot.Blocked, "LOCAL_BUDGET_RESERVATION_EXHAUSTED"):
+                pilot.reserve_billable_attempt(ledger, "budgeted_run_00009", "fingerprint-9")
+            with closing(sqlite3.connect(ledger)) as conn:
+                self.assertEqual(
+                    conn.execute("SELECT SUM(reserved_cents) FROM paid_attempts").fetchone()[0],
+                    pilot.PAID_TOTAL_LEDGER_CENTS
+                )
+                self.assertEqual(
+                    conn.execute("SELECT COUNT(*) FROM paid_attempts").fetchone()[0], 8
+                )
+
+    def test_billable_without_ledger_fails_before_network(self):
+        with tempfile.TemporaryDirectory() as td:
+            fixture = Path(td) / "synthetic.json"
+            fixture.write_text(json.dumps(sample()), encoding="utf-8")
+            safe_env = dict(os.environ)
+            safe_env["OPENAI_API_KEY"] = "sk-fake-unit-test-not-real"
+            denied = subprocess.run(
+                [sys.executable, str(SCRIPT), "--input", str(fixture),
+                 "--enable-billable-api"], env=safe_env, cwd=ROOT,
+                text=True, capture_output=True
+            )
+            self.assertEqual(denied.returncode, 2)
+            self.assertIn("PAID_BUDGET_LEDGER_REQUIRED_NO_CALL", denied.stdout)
+
+    def test_billable_unapproved_model_fails_before_reservation(self):
+        with tempfile.TemporaryDirectory() as td:
+            fixture = Path(td) / "synthetic.json"
+            fixture.write_text(json.dumps(sample()), encoding="utf-8")
+            ledger = Path(td) / "attempts.sqlite"
+            safe_env = dict(os.environ)
+            safe_env["OPENAI_API_KEY"] = "sk-fake-unit-test-not-real"
+            safe_env["OPENAI_AGENT_MODEL"] = "gpt-6-astra"
+            denied = subprocess.run(
+                [sys.executable, str(SCRIPT), "--input", str(fixture),
+                 "--enable-billable-api", "--paid-budget-db", str(ledger)],
+                env=safe_env, cwd=ROOT, text=True, capture_output=True
+            )
+            self.assertEqual(denied.returncode, 2)
+            self.assertIn("PAID_MODEL_OR_ENDPOINT_UNAPPROVED_NO_CALL", denied.stdout)
+            self.assertFalse(ledger.exists())
+
+
 if __name__ == "__main__":
     unittest.main()
