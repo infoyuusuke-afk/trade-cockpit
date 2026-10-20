@@ -62,7 +62,8 @@ function createHarness(){
     for(const cb of listeners.get("visibilitychange")||[])cb({});
   }
   function pagehide(){for(const cb of windowListeners.get("pagehide")||[])cb({});}
-  return {label,event,advance,hide,pagehide,timers,now:()=>time};
+  function pageshow(){for(const cb of windowListeners.get("pageshow")||[])cb({});}
+  return {label,event,advance,hide,pagehide,pageshow,timers,now:()=>time};
 }
 function packet(h, overrides={}){
   return {source:quoteSource,source_mode:"MS2_RSS_WORKBOOK",price_source_status:"OK",
@@ -155,6 +156,13 @@ test("page becomes hidden or closed: revoke and remove watchdog timer",()=>{
   h.pagehide();
   assert.equal(h.label.dataset.marketTrust,"BLOCKED");
   assert.equal(h.timers.size,0);
+  h.pageshow();
+  assert.equal(h.timers.size,1,"bfcache return must re-arm timer");
+  assert.equal(h.label.dataset.marketTrust,"BLOCKED","old data must not restore");
+  h.event(packet(h));
+  assert.equal(h.label.dataset.marketTrust,"OBSERVATION_ONLY");
+  h.advance(12001);
+  assert.equal(h.label.dataset.marketTrust,"BLOCKED");
 });
 
 test("a missing timer tick cannot retroactively authorize a missing event",()=>{
