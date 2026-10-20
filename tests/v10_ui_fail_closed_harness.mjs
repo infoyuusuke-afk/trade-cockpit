@@ -24,6 +24,7 @@ function slice(startMarker, endMarker) {
   return html.slice(start, end + endMarker.length);
 }
 
+const screenSilenceSrc = slice(" const SCREEN_SILENCE_MS=", ";\n");
 const offsetFreshSrc = slice(" const offsetFresh=(value,limit)=>{", "\n };");
 const screenReadySrc = slice(" const screenReady=d=>{", "\n };");
 const rowReadySrc = slice(" const rowReady=x=>{", "\n };");
@@ -35,6 +36,7 @@ const healthTextSrc = slice(" health.textContent=stale?", ";");
 const xsSrc = slice("   const xs=!stale&&", ";\n");
 
 const body = [
+  screenSilenceSrc,
   offsetFreshSrc,
   screenReadySrc,
   rowReadySrc,
