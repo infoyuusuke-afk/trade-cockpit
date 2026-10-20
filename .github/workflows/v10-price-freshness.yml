@@ -33,6 +33,20 @@ on:
 permissions:
   contents: read
 jobs:
+  collector-atomic-windows:
+    runs-on: windows-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Collector atomic first-write, replace, and locked-reader regression
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m unittest tests.test_v10_collector_atomic_publish -v
+          if ($LASTEXITCODE -ne 0) { throw 'COLLECTOR_ATOMIC_REGRESSION_FAILED' }
   freshness:
     strategy:
       fail-fast: false
