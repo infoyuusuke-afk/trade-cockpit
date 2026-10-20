@@ -1,6 +1,7 @@
 """Synthetic-only offline freshness contract tests."""
 import importlib.util
 import tempfile
+import sqlite3
 from pathlib import Path
 import unittest
 
@@ -84,6 +85,54 @@ class FreshnessJournalTests(unittest.TestCase):
             path.write_text(path.read_text().replace('"fresh":2', '"fresh":0'), encoding="utf-8")
             with self.assertRaisesRegex(m.EvidenceRejected, "JOURNAL_HASH_CHAIN_BROKEN"):
                 m.journal_read(path)
+
+
+    def test_sqlite_restart_readback_and_two_writers(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "private.sqlite3"
+            first = m.assess(board())
+            x = m.sqlite_candidate_append(target, first)
+            self.assertEqual(x["records"], 1)
+            self.assertIn("NOT_WINDOWS_DURABILITY_ACCEPTED", x["status"])
+            with self.assertRaises(sqlite3.IntegrityError):
+                m.sqlite_candidate_append(target, first)
+            second = m.assess(board())
+            second["evaluated_at"] = "2026-10-20T13:01:00+00:00"
+            got = m.sqlite_candidate_append(target, second)
+            self.assertEqual(got["records"], 2)
+            self.assertEqual(len(m.sqlite_candidate_read(target)), 2)
+
+    def test_sqlite_rollback_keeps_previous_event(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "private.sqlite3"
+            first = m.assess(board())
+            m.sqlite_candidate_append(path, first)
+            second = m.assess(board())
+            second["evaluated_at"] = "2026-10-20T13:01:00+00:00"
+            with self.assertRaisesRegex(OSError, "INJECTED_ROLLBACK"):
+                m.sqlite_candidate_append(path, second, inject_failure=True)
+            self.assertEqual(len(m.sqlite_candidate_read(path)), 1)
+            m.sqlite_candidate_append(path, second)
+            self.assertEqual(len(m.sqlite_candidate_read(path)), 2)
+
+    def test_sqlite_modified_payload_detected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "private.sqlite3"
+            first = m.assess(board())
+            m.sqlite_candidate_append(path, first)
+            with sqlite3.connect(path) as conn:
+                conn.execute("UPDATE immutable_verdict SET payload=? WHERE seq=1", (b"{}",))
+            with self.assertRaisesRegex(m.EvidenceRejected, "SQLITE_TAMPERED"):
+                m.sqlite_candidate_read(path)
+
+    def test_sqlite_rejects_repo_path_and_bad_real_submit(self):
+        with self.assertRaisesRegex(m.EvidenceRejected, "PUBLIC_REPO_PATH_FORBIDDEN"):
+            m.sqlite_candidate_append(m.REPO / "no-repo.sqlite3", m.assess(board()))
+        with tempfile.TemporaryDirectory() as tmp:
+            bad = m.assess(board())
+            bad["real_submit_allowed"] = True
+            with self.assertRaisesRegex(m.EvidenceRejected, "REAL_ORDER_FLAG_FORBIDDEN"):
+                m.sqlite_candidate_append(Path(tmp) / "private.sqlite3", bad)
 
     def test_repo_path_rejected(self):
         with self.assertRaisesRegex(m.EvidenceRejected, "PUBLIC_REPO_PATH_FORBIDDEN"):
