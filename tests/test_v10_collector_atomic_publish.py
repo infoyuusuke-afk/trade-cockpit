@@ -1,5 +1,6 @@
 """Synthetic-only Collector atomic publish contract; no Excel or V10 start."""
 from pathlib import Path
+import os
 import re
 import shutil
 import subprocess
@@ -33,7 +34,7 @@ class AtomicPublishTests(unittest.TestCase):
             destination = Path(tmp) / "test-publish.json"
             ps = self._function() + "\n" + r'''
 $ErrorActionPreference='Stop'
-$p=$args[0]
+$p=$env:COCKPIT_ATOMIC_TEST_PATH
 Write-AtomicUtf8 $p '{"generation":1}'
 if(-not [IO.File]::Exists($p)){throw 'FIRST_PUBLISH_FAILED'}
 Write-AtomicUtf8 $p '{"generation":2}'
@@ -42,7 +43,8 @@ if($a -ne '{"generation":2}'){throw 'SECOND_PUBLISH_FAILED'}
 if(@(Get-ChildItem -LiteralPath (Split-Path $p) -Filter '*.tmp').Count -ne 0){throw 'STAGING_LEAK'}
 '''
             result = subprocess.run(
-                [exe, "-NoProfile", "-NonInteractive", "-Command", ps, str(destination)],
+                [exe, "-NoProfile", "-NonInteractive", "-Command", ps],
+                env={**os.environ, "COCKPIT_ATOMIC_TEST_PATH": str(destination)},
                 capture_output=True, text=True, timeout=15, check=False
             )
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -56,7 +58,7 @@ if(@(Get-ChildItem -LiteralPath (Split-Path $p) -Filter '*.tmp').Count -ne 0){th
             destination = Path(tmp) / "test-publish.json"
             ps = self._function() + "\n" + r'''
 $ErrorActionPreference='Stop'
-$p=$args[0]
+$p=$env:COCKPIT_ATOMIC_TEST_PATH
 Write-AtomicUtf8 $p '{"generation":1}'
 # A reader intentionally disallows DELETE sharing, as on some antivirus
 # and browser/bridge access paths. Publication must fail boundedly and
@@ -75,7 +77,8 @@ if ([IO.File]::ReadAllText($p) -ne '{"generation":3}') { throw 'POST_LOCK_RETRY_
 if (@(Get-ChildItem -LiteralPath (Split-Path $p) -Filter '*.tmp').Count -ne 0) { throw 'STAGING_LEAK' }
 '''
             result = subprocess.run(
-                [exe, "-NoProfile", "-NonInteractive", "-Command", ps, str(destination)],
+                [exe, "-NoProfile", "-NonInteractive", "-Command", ps],
+                env={**os.environ, "COCKPIT_ATOMIC_TEST_PATH": str(destination)},
                 capture_output=True, text=True, timeout=15, check=False
             )
             self.assertEqual(result.returncode, 0, result.stderr)
