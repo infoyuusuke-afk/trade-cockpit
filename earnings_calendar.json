@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-20T01:13:30.904312+09:00",
+  "updated_at": "2026-10-20T10:17:39.286881+09:00",
   "calendar": [
     {
       "code": "1401",
@@ -2313,7 +2313,7 @@
       "source_url": "https://www.jpx.co.jp/listing/event-schedules/financial-announcement/tvdivq0000001ofb-att/kessan08_1002.xlsx",
       "source": "JPX公表予定",
       "status": "予定（変更あり）",
-      "watched": false,
+      "watched": true,
       "analysis": {
         "label": "未発表・期待判断の根拠不足",
         "recent_tags": [],
@@ -6532,9 +6532,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1178.0,
-        "return_5d_pct": 5.94,
-        "return_20d_pct": -0.42,
+        "last_close": 1194.0,
+        "return_5d_pct": 5.01,
+        "return_20d_pct": -0.33,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -6562,10 +6562,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 76000.0,
-        "return_5d_pct": 2.15,
-        "return_20d_pct": 1.33,
-        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 74900.0,
+        "return_5d_pct": -1.19,
+        "return_20d_pct": -0.66,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -6593,7 +6593,7 @@
       "momentum": {
         "available": true,
         "last_close": 744.0,
-        "return_5d_pct": 0.68,
+        "return_5d_pct": 0.13,
         "return_20d_pct": 0.54,
         "momentum_direction": "中立"
       }
@@ -6622,10 +6622,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3110.0,
-        "return_5d_pct": 1.3,
-        "return_20d_pct": 3.32,
-        "momentum_direction": "中立"
+        "last_close": 3190.0,
+        "return_5d_pct": 3.4,
+        "return_20d_pct": 5.8,
+        "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
     {
@@ -6652,9 +6652,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 104000.0,
-        "return_5d_pct": 1.17,
-        "return_20d_pct": -6.73,
+        "last_close": 102400.0,
+        "return_5d_pct": -1.06,
+        "return_20d_pct": -8.24,
         "momentum_direction": "中立"
       }
     },
@@ -7208,9 +7208,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "配当変更・内容要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261020553217.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -72836,6 +72840,20 @@
   ],
   "catalysts": [
     {
+      "code": "6230",
+      "name": "ＳＡＮＥＩ",
+      "title": "剰余金の配当（中間配当）に関するお知らせ",
+      "published_at": "2026-10-20T09:30:00+09:00",
+      "date": "2026-10-20",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261020553217.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
       "code": "7595",
       "name": "アルゴグラフ",
       "title": "剰余金の配当に関するお知らせ",
@@ -73414,8 +73432,8 @@
   "analysis_note": "上方修正等は表題で明示されたものだけ分類。方向不明の修正は要確認。確率や決算前の上昇予測は未算出。",
   "momentum_target_date": "2026-10-21",
   "momentum_validation": {
-    "resolved_n": 282,
-    "hit_rate_pct": 36.9,
+    "resolved_n": 286,
+    "hit_rate_pct": 37.4,
     "min_n_threshold": 20,
     "status": "参考値（要検証）"
   },
