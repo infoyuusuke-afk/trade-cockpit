@@ -9,6 +9,29 @@
 
 A secondary no-event failure was discovered during pre-release code review: `pagehide` cleared FOCUS and global provenance watchdog timers, but returning from browser back/forward cache did not re-arm them. The corrected source registers `pageshow` for both widgets. On restore, previously accepted evidence remains BLOCKED until a new verified MS2 event; independent one-second timer is restarted, and another 12-second no-event period blocks the display again. Both real inline scripts have clock-advance/reentry negative tests in their existing Node harnesses.
 
+## Independent coordinator P0 MODIFY — all MS2 LIVE lanes (2026-10-20)
+
+Evidence: [Issue #282 comment #6286168929](https://github.com/infoyuusuke-afk/trade-cockpit/issues/282#issuecomment-6286168929); reviewed earlier `ccc6ea8...`, verdict **MODIFY_RELEASE_BLOCKED**. Prior HEAD is superseded; all independent review must target the current PR #474 HEAD.
+
+**Corrective implementation, read-only UI, source-level:**
+- Shared `screenReady(d)` uses explicit Collector identity and canonical local transport, `real_submit_allowed=false`, nonconflicted source, verified workbook, valid fresh offset publication within 12 seconds; `rowReady(x)` independently requires each symbol's Collector-observed quote basis/time and numeric positive price.
+- The common one-second watchdog expires on 12 seconds without accepted `ms2RssUpdate`, including a successful HTTP response that repeatedly serves a frozen publication. It broadcasts a fail-closed synthetic UI event to all source consumers and clears the visible LIVE health, SCALP5, REALTIME candidates, 100-stock watchlist, preopen gap, PTS/IR cards, KIOXIA MS2 source row, historical-looking account/hold summaries and opportunity radar. A detached independent KIOXIA Watcher (port 28582) remains subject to its own existing freshness check; this change does not claim it is authenticated via port 28580.
+- On `pagehide`, hidden browser tab and BFCache `pageshow`, price/display evidence is revoked until a newly verified MS2 event; timers re-arm after BFCache restore, and stale event trails cannot resurrect quotes.
+- `opportunity_radar.js` uses the same source and per-ticker gate; outdated `285A.T` fixed shortlist has been updated to `464A.T` in this display module only. No changes to workbook or Collector migration.
+- `tests/v10_all_live_lanes_silence.test.mjs` executes the actual screen and SCALP/watchlist/gap/KIOXIA/radar handlers with synthetic DOM+clock and confirms all lanes disable without a next event, explicit reconnect, forged/stale source, individual stale rows, and pageshow/visibility blocking. The Python/Node CI runs this test, and the legacy HTTP/200 test runner is adapted to *extract* the actual new source guard rather than implement a duplicate. Safety checks were not relaxed.
+- 31-asset manifest changed exactly **two** reviewed UI sources: `index.html`, `opportunity_radar.js`; all **29 remaining** SHA pins unchanged, `real_submit_allowed=false` and `APPROVED_FOR_RUNTIME=0`.
+- CI must be reverified on the latest exact HEAD. **Never promote a previous green CI run or simulated 3-hour test to Windows real-market acceptance.**
+
+## Navigation source-of-truth reconciliation (no new OWNER tab decision)
+
+Rechecked static `index.html`, dynamically inserted earnings tab from `earnings-calendar.js`, and the 2026-10-20 [canonical reconciliation Draft](https://github.com/infoyuusuke-afk/trade-cockpit/blob/docs/v10-ui-canonical-reconciliation-20261020/docs/V10_UI_SOURCE_RECONCILIATION_AND_OWNER_GATE_20261020.md). The 2026-10-08 sixteen-slot reference was labeled a **mock**, not an independently verified binding signed acceptance. OWNER later delegated keep/delete/refactor based on necessity (no release/merge authority).
+
+**Current top-level actual order including the dynamic earnings insertion (14 slots):** CONTROL → BRAIN → AIトレード日記 → SCALP 5 → EVENT 5 → REALTIME 5 → PRE-NEXT → OVERNIGHT 5 → SWING 5 → VALUE 5 → FOCUS → KIOXIA → 決算日程 → 注意.
+
+**Reference menu (nine):** 円高恩恵TOP5 / 対米投資・SMR / 主体レジーム / 検証・除外 / 相関 / 下ヒゲ / 拡大 / 大口 / 国策. The prior stand-alone weekly review remains **inside AIトレード日記**, not deleted. PRE-NEXT research remains separate from live REALTIME, and FOCUS owner-selected five are not auto-rotated.
+
+No top-tab/button order, palette, typography, pane/score layout, scrolling behavior or dynamic earnings insertion was changed by this coordinator P0 repair. This is a code-vs-draft reconciliation, **not** a claim that every dynamic card's Windows runtime position has been visually accepted by OWNER. If OWNER later identifies a conflicting previously authorized fixed card array, retain RELEASE_BLOCKED and obtain that exact specification before changing the layout.
+
 ## What is now implemented
 
 - Consolidated V10 UI Draft review for [PR #471](https://github.com/infoyuusuke-afk/trade-cockpit/pull/471) generated HTML preservation, [PR #472](https://github.com/infoyuusuke-afk/trade-cockpit/pull/472) Brain/evidence/stale banner, and PR #474 owner FOCUS / PRE-NEXT / Journal / exact blob pins. PR #474's **base is main** for single end-to-end review; older Draft PRs remain unmerged as the patch history.
