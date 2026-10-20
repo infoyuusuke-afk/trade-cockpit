@@ -5,6 +5,10 @@
 **Review target:** https://github.com/infoyuusuke-afk/trade-cockpit/pull/474 (compare to `main`; resolve the **current HEAD** immediately before independent review).  
 **Default safety:** `real_submit_allowed=false`, no live RssOrder/broker orders, no real hedge, no automated merge/deploy, no schedule mutation.
 
+## P0 browser history restore gate
+
+A secondary no-event failure was discovered during pre-release code review: `pagehide` cleared FOCUS and global provenance watchdog timers, but returning from browser back/forward cache did not re-arm them. The corrected source registers `pageshow` for both widgets. On restore, previously accepted evidence remains BLOCKED until a new verified MS2 event; independent one-second timer is restarted, and another 12-second no-event period blocks the display again. Both real inline scripts have clock-advance/reentry negative tests in their existing Node harnesses.
+
 ## What is now implemented
 
 - Consolidated V10 UI Draft review for [PR #471](https://github.com/infoyuusuke-afk/trade-cockpit/pull/471) generated HTML preservation, [PR #472](https://github.com/infoyuusuke-afk/trade-cockpit/pull/472) Brain/evidence/stale banner, and PR #474 owner FOCUS / PRE-NEXT / Journal / exact blob pins. PR #474's **base is main** for single end-to-end review; older Draft PRs remain unmerged as the patch history.
