@@ -59,9 +59,14 @@ quotes, no J-Quants tokens, no paid TDnet API, no scraping, and no trading calls
 are in this adapter. JPX publishes RSS guidance, but an exact approved source
 URL and reuse rights must be separately checked before adding that source.
 
-The parser accepts only official https://www.boj.or.jp URLs without credentials,
-query strings or fragments. Full publication timestamps require an explicit
-timezone; offsetless times, malformed/future entries and content older than
+The parser accepts only www.boj.or.jp official item links with NO
+credentials, nondefault ports, query strings or fragments. BOJ's RSS includes
+legacy http://www.boj.or.jp item links. Such links are normalized IN MEMORY
+to the identical https://www.boj.or.jp path and only the canonical HTTPS URL
+is saved as public provenance. No HTTP article request or redirect is made.
+A Windows HEAD probe for a sample canonical article URL returned HTTP 200
+(OWNER observation, 2026-10-21; not a bulk proof of all article links).
+Full publication timestamps require an explicit timezone; offsetless times, malformed/future entries and content older than
 seven days are REJECTED. Some official feeds publish only a YYYY-MM-DD
 calendar date, with NO PUBLICATION CLOCK. Such items are accepted only as
 CURRENTLY OBSERVED HEADLINE EVIDENCE: as_of = available_at = FETCH TIME,
