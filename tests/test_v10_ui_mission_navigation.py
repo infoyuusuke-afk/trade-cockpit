@@ -132,7 +132,7 @@ const original={
    workbook_identity_verified:true,data_conflict:false,
    live_values_available:true,real_submit_allowed:false
  },
- observed_at_offset:new Date(Date.now()-30000).toISOString()
+ observed_at_offset:new Date(Date.now()-1000).toISOString()
 };
 const cases=[
  validMarket(original),
