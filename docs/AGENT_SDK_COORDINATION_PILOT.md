@@ -44,16 +44,53 @@ Save to a local example.json and run:
 
 Expected state OFFLINE_SYNTHETIC_NO_API_CALL. The offline provider is a stub and performs ZERO model inference or external communication. Roles lacking input return NO_DATA.
 
-## Paid API (not authorized to execute in this Draft)
+## Paid API: manual, locally reserved, OWNER-approved $10 pilot (NOT deployed)
 
-Separate OWNER approval and local cost-control setup are mandatory before enabling API calls. Example gated manual invocation ONLY after approval:
+OWNER reported a one-time initial API credit purchase of $10 (tax extra) and disabled
+auto-reload on 2026-10-20/21. This authorizes only a tightly scoped, manually
+initiated pilot within the purchased credit: it does NOT authorize auto-deployment,
+additional credit, scheduled operation, broker access or an assurance of a dollar
+hard cap. Confirm actual org balance and auto-reload OFF in Platform before use.
 
-    pip install openai-agents
-    python scripts/agent_sdk_coordination_pilot.py --input example.json --enable-billable-api --receipt-db private_receipts.sqlite
+**Preflight**: use the existing isolated Windows checkout and venv (NOT the live V10
+or Excel folder). Require a private session OPENAI_API_KEY. Never paste the secret
+into chat or write it to .env/GitHub. First pull this exact PR branch and run offline
+tests. Use `examples/agent_sdk_public_synthetic_20261021.json`, which explicitly
+contains ONLY fictional test inputs; any resulting hypotheses are NOT trade advice.
 
-Also requires OPENAI_API_KEY set privately. Multiple model calls can incur charges. THIS FIRST PILOT HAS NO HARD API BUDGET CEILING and is therefore not production ready. There is no automatic API invocation, no scheduled task, no API key committed to GitHub. The SDK's default tracing upload is disabled in code, but approved public-only excerpts are still submitted as model input. Source URLs are syntax validated; content is not independently fetched or verified in this pilot.
+    .\.venv\Scripts\python.exe -m unittest discover -s tests -p test_agent_sdk_coordination_pilot.py -v
+    .\.venv\Scripts\python.exe scripts/agent_sdk_coordination_pilot.py --input examples/agent_sdk_public_synthetic_20261021.json --offline-test
 
-The optional SQLite receipt contains only run ID, source fingerprint, output hash, timestamp and research state. It is local-only and must never be committed. Identical repeated receipts are idempotent; conflicting reuse of a run ID blocks. Crash-safe at-most-once billable API requests are NOT yet implemented and must be designed before any scheduled use.
+**Controlled single-run CLI (only after offline PASS and OWNER consent to spend)**:
+
+    .\.venv\Scripts\python.exe scripts/agent_sdk_coordination_pilot.py --input examples/agent_sdk_public_synthetic_20261021.json --enable-billable-api --paid-budget-db "<private-local-path>\paid_attempts.sqlite" --receipt-db "<private-local-path>\receipts.sqlite"
+
+Fail-closed paid gates at exact revision:
+- The complete four-role run ID is transactionally reserved BEFORE the first
+  external request, using private SQLite WAL-independent synchronous FULL and
+  BEGIN IMMEDIATE. A crash or error consumes the reservation and can never be
+  silently retried with the same ID. Different run IDs require explicit manual
+  authorization; no automatic scheduler is installed.
+- A paid attempt reserves **$1 of a lifetime local $8 reservation allowance**
+  (eight attempted runs maximum). This is intentionally conservative against
+  the purchased $10 balance, but IS NOT an actual-dollar hard spending ceiling;
+  actual provider usage can differ and must be checked in Billing.
+- Paid input JSON <=8 KB; model pinned `gpt-5.4-mini`; per agent
+  `max_turns=1`, maximum 600 output tokens, 30-second request timeout,
+  no network/tools, and OpenAI client `max_retries=0`.
+  Maximum planned model calls for a three-specialist plus coordinator run: 4.
+- Model overrides, custom OpenAI endpoint and missing private ledger refuse to
+  start without external API calls. Traces disabled. Generated role outputs are
+  research-only, cannot place orders or send GitHub comments.
+- An SDK/API/validation error may consume a reserved attempt and any provider
+  charges; NO automatic retry, double submit, charge replacement, or resetting
+  of the ledger. Review billing and ask OWNER before authorizing another ID.
+- The local attempt ledger and optional receipt contain no API key, market rows,
+  positions or order history. Keep files OUT of git and public Issue #282.
+
+Actual charges, market-data provenance, source contents, scheduled specialist task
+delivery, local Brain inbox and production readiness remain unverified. A synthetic
+fixture with real API inference proves API orchestration only, not market edge.
 
 ## Invariants
 
@@ -69,7 +106,7 @@ The optional SQLite receipt contains only run ID, source fingerprint, output has
 
 1. Pass offline cross-platform CI and independent review on exact Draft HEAD.
 2. OWNER decides source availability contracts, API budget, model/key custody and spending cap; no charge before approval.
-3. In an approved private runtime, test real SDK multi-agent result with explicit one-time billing authorization and strict call/accounting ceilings.
+3. In an approved private runtime, test a manual bounded four-model-call trial on SYNTHETIC inputs and independently reconcile actual Usage; no auto retry after a reserved attempt.
 4. Add a read-only local Brain inbox adapter with independent source authentication, point-in-time semantics, restart persistence and receiver ACK.
 5. Confirm live compatibility, Windows stop/recovery, safe source evidence and Shadow backtesting on a separate approved candidate SHA.
 6. DEPLOYED and PRODUCTION_VERIFIED require independent evidence; the Draft is neither.
