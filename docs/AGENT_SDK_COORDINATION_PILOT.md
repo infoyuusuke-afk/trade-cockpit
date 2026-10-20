@@ -77,8 +77,9 @@ Safety contract:
 - Research-only receiver validates content, timestamps, file identity,
   HMAC, source fingerprint, role outputs and disabled order flags,
   and may create exactly one **local sidecar** ACK
-  \`agent_research_<run_id>.ack.json\`. Replays fail CLOSED.
-  This confirms sidecar receipt only; it is not ACK from a live Brain.
+  \`agent_research_<run_id>.ack.json\`. The ACK is independently reread and HMAC-signed before success is reported;
+  duplicate handoffs and ACKs fail CLOSED. This confirms sidecar receipt
+  only; it is not ACK from a live Brain.
 - Use the preexisting paid-attempt reservation and OpenAI Usage audits for
   any future OWNER-approved paid run. New handoff capability does not
   authorize billable calls, a scheduler, a daemon or a production cutover.
