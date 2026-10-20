@@ -114,18 +114,25 @@ jobs:
           python scripts/live_focus.py
           python scripts/reliability_report.py
           python scripts/vwap_entry_analysis.py
+          # Preserve the reviewed V10 UI: legacy update.py regenerates old HTML.
+          git restore --source=HEAD --worktree -- index.html
+          git diff --exit-code HEAD -- index.html
+          git diff --cached --exit-code HEAD -- index.html
           python -m unittest discover -s tests -v
           python scripts/validate_output.py
 
       - name: Commit and push updated files
         run: |
-          if git diff --quiet -- index.html data.json signals.json correlations.json credit_supply.json kioxia_5m_calendar.json kioxia_catalysts.json kioxia_prediction_history.json event_calendar.json world_market.json fx_statement_study.json market_ranking_watch.json tradingview_screener_watch.json live_focus.json morning_snapshot.json paper_trade_history.json weekly_review.json investor_regime.json data/jpx_investor day_ifo_candidates_short.json reliability_report.json margin_caution.json vwap_entry_analysis.json; then
+          # Later generators must not overwrite the pinned V10 UI.
+          git diff --exit-code HEAD -- index.html
+          git diff --cached --exit-code HEAD -- index.html
+          if git diff --quiet -- data.json signals.json correlations.json credit_supply.json kioxia_5m_calendar.json kioxia_catalysts.json kioxia_prediction_history.json event_calendar.json world_market.json fx_statement_study.json market_ranking_watch.json tradingview_screener_watch.json live_focus.json morning_snapshot.json paper_trade_history.json weekly_review.json investor_regime.json data/jpx_investor day_ifo_candidates_short.json reliability_report.json margin_caution.json vwap_entry_analysis.json; then
             echo "No changes to commit."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html data.json signals.json
+          git add data.json signals.json
           test ! -f correlations.json || git add correlations.json
           test ! -f credit_supply.json || git add credit_supply.json
           test ! -f kioxia_5m_calendar.json || git add kioxia_5m_calendar.json
