@@ -39,6 +39,17 @@ function element(id) {
   };
 }
 function mounted(persisted={}) {
+  const clock={now:Date.now()};
+  const TestDate=class extends Date {static now(){return clock.now;}};
+  const timers=new Map(), windowEvents=new Map();
+  let nextTimerId=1;
+  const setInterval=(cb,ms)=>{
+    assert.equal(ms,1000,"watchdog cadence must remain finite and frequent");
+    const id=nextTimerId++;
+    timers.set(id,cb);
+    return id;
+  };
+  const clearInterval=id=>timers.delete(id);
   const map = new Map(Object.entries(persisted));
   const ids = ["focus-owner-select","focus-owner-status","focus-owner-cards",
     "focus-owner-add","focus-owner-remove"];
@@ -58,6 +69,10 @@ function mounted(persisted={}) {
   };
   const paintCalls = {current:[],blocked:[]};
   const window = {
+    addEventListener(name,cb) {
+      if(!windowEvents.has(name))windowEvents.set(name,[]);
+      windowEvents.get(name).push(cb);
+    },
     livePriceBlocked,
     renderCockpitCard(model) {
       assert.equal(model.price,null, "BLOCK cards must never leak an old price");
@@ -74,13 +89,20 @@ function mounted(persisted={}) {
     },
   };
   const context=vm.createContext({window, document:doc, localStorage,
-    Date,Number,String,Map,Set,Array,JSON,RegExp,console});
+    Date:TestDate,Number,String,Map,Set,Array,JSON,RegExp,console,
+    setInterval,clearInterval});
   vm.runInContext(focusScript,context,{timeout:3000});
   function fire(type, detail={}) {
-    for (const cb of listeners.get(type)||[]) cb(type==="ms2RssUpdate"?{detail}:{});
+    const callbacks=type==="pagehide"?windowEvents.get(type):listeners.get(type);
+    for (const cb of callbacks||[]) cb(type==="ms2RssUpdate"?{detail}:{});
+  }
+  function advanceClock(ms,runTimers=true){
+    clock.now+=ms;
+    if(runTimers)for(const callback of timers.values())callback();
   }
   fire("DOMContentLoaded");
-  return {nodes,map,paintCalls,fire};
+  return {nodes,map,paintCalls,fire,advanceClock,timers,clock};
+  
 }
 function jst(ms) {
   return new Date(ms+9*3600000).toISOString().slice(0,19)+"+09:00";
@@ -97,7 +119,12 @@ function snapshot(rows=[],overrides={}) {
   return {stale:false,live_values_available:true,data_conflict:false,
     real_submit_allowed:false,source:"MarketSpeed II RSS / local PC",
     source_mode:"MS2_RSS_WORKBOOK",price_source_status:"OK",
-    live_price_diagnostics:{price_source_status:"OK",source_mode:"MS2_RSS_WORKBOOK"},
+    connection_source:"自宅PC・MS2 RSS LIVE",
+    live_price_diagnostics:{
+      price_source_status:"OK",source_mode:"MS2_RSS_WORKBOOK",
+      workbook_identity_verified:true,data_conflict:false,
+      live_values_available:true,real_submit_allowed:false
+    },
     observed_at_offset:new Date(Date.now()-1500).toISOString(),
     all_targets:rows,...overrides};
 }
@@ -182,6 +209,67 @@ test("FOCUS safely discards invalid stored selections without rendering prices",
   const h=mounted({cockpitFocusPinnedV10:'["464A.T","bad",null,42,"464A.T"]'});
   assert.deepEqual(JSON.parse(h.map.get("cockpitFocusPinnedV10")||'["464A.T"]'),["464A.T","bad",null,42,"464A.T"]);
   h.fire("ms2RssUpdate",snapshot([]));
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
+  assert.equal(h.paintCalls.current.length,0);
+});
+
+
+test("NO-EVENT clock advance revokes a previously fresh FOCUS price without a new MS2 event",()=>{
+  const h=mounted({cockpitFocusPinnedV10:JSON.stringify(["464A.T"])});
+  h.fire("ms2RssUpdate",snapshot([row()]));
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[PRICE:464A.T:1234]"));
+  h.advanceClock(11999);
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[PRICE:464A.T:1234]"));
+  h.advanceClock(2);
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
+  assert.ok(h.nodes["focus-owner-status"].textContent.includes("MS2通信が停止"));
+  assert.deepEqual(JSON.parse(h.map.get("cockpitFocusPinnedV10")),["464A.T"]);
+  h.fire("ms2RssUpdate",snapshot([row()]));
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[PRICE:464A.T:1234]"));
+  h.fire("pagehide");
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
+  assert.equal(h.timers.size,0);
+});
+
+test("throttled watchdog cannot re-render an old price after silent clock advance",()=>{
+  const h=mounted();
+  h.fire("ms2RssUpdate",snapshot([row("464A.T"),row("1000.T")]));
+  h.nodes["focus-owner-select"].value="464A.T";
+  h.nodes["focus-owner-add"].click();
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[PRICE:464A.T:1234]"));
+  h.advanceClock(18000,false); // background timer did not run
+  h.nodes["focus-owner-select"].value="1000.T";
+  h.nodes["focus-owner-add"].click(); // forces paint: must independently detect expired event
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:1000]"));
+  assert.deepEqual(JSON.parse(h.map.get("cockpitFocusPinnedV10")),["464A.T","1000.T"]);
+  assert.equal(h.paintCalls.current.length,1); // the original, never a stale repaint
+});
+
+test("Collector does not emit source_authenticated: absent flag needs explicit independent identity proof",()=>{
+  const h=mounted({cockpitFocusPinnedV10:JSON.stringify(["464A.T"])});
+  const trusted=snapshot([row()]);
+  assert.equal(Object.hasOwn(trusted,"source_authenticated"),false);
+  h.fire("ms2RssUpdate",trusted);
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[PRICE:464A.T:1234]"));
+
+  const missing=JSON.parse(JSON.stringify(trusted));
+  delete missing.live_price_diagnostics.workbook_identity_verified;
+  h.fire("ms2RssUpdate",missing);
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
+  h.fire("ms2RssUpdate",snapshot([row()],{source_authenticated:false}));
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
+  h.fire("ms2RssUpdate",snapshot([row()],{live_price_diagnostics:{price_source_status:"OK"}}));
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
+  h.fire("ms2RssUpdate",snapshot([row()],{connection_source:"公開スナップショット"}));
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
+  assert.equal(h.paintCalls.current.length,1);
+});
+
+test("FOCUS watchdog starts before market data and never inserts synthetic quotes",()=>{
+  const h=mounted({cockpitFocusPinnedV10:JSON.stringify(["464A.T"])});
+  assert.equal(h.timers.size,1);
+  h.advanceClock(60000);
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
   assert.equal(h.paintCalls.current.length,0);
 });
