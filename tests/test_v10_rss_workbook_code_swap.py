@@ -142,6 +142,47 @@ class RssWorkbookCodeSwap(unittest.TestCase):
                         "--new-name", "x", "--row", str(ROW)])
         self.assertEqual(rc, 1)
 
+    def test_already_swapped_workbook_is_refused(self):
+        rc, src, out = self.run_swap()
+        self.assertEqual(rc, 0)
+        again = self.d / "again.xlsx"
+        rc2 = swap.main([str(out), str(again), "--old", "5595", "--new", "464A", "--old-name", "合成（5595）",
+                         "--new-name", "QPSホールディングス（464A）", "--row", str(ROW)])
+        self.assertEqual(rc2, 1)
+        self.assertFalse(again.exists())
+
+    def test_rtd_topic_key_form_is_pinned(self):
+        # the OWNER workbook keys TSE topics as "<code>0.T" and JNX topics as "<code>.T.JNX"
+        rc, src, out = self.run_swap()
+        with zipfile.ZipFile(src) as a, zipfile.ZipFile(out) as b:
+            va, vb = a.read("xl/volatileDependencies.xml").decode(), b.read("xl/volatileDependencies.xml").decode()
+        self.assertEqual(va.count("<stp>55950.T</stp>"), len(ITEMS))
+        self.assertEqual(vb.count("<stp>464A0.T</stp>"), len(ITEMS))
+        self.assertEqual(vb.count("<stp>464A.T.JNX</stp>"), 1)
+        self.assertEqual(va.count("<tp"), vb.count("<tp"))
+
+    def test_verify_scope_flags_rtd_change_outside_row(self):
+        rc, src, out = self.run_swap()
+        tampered = self.d / "tampered.xlsx"
+        with zipfile.ZipFile(out) as zin, zipfile.ZipFile(tampered, "w", zipfile.ZIP_DEFLATED) as zout:
+            for i in zin.infolist():
+                data = zin.read(i.filename)
+                if i.filename == "xl/volatileDependencies.xml":
+                    data = data.replace(b"<stp>10000.T</stp>", b"<stp>99990.T</stp>", 1)
+                zout.writestr(i, data)
+        res = swap.verify_scope(str(src), str(tampered), ROW)
+        self.assertFalse(res["rtd_changes_only_target_row"])
+        self.assertFalse(res["ok"])
+
+    def test_new_name_is_xml_escaped(self):
+        src, out = self.d / "src.xlsx", self.d / "out.xlsx"
+        build(src, self.codes)
+        rc = swap.main([str(src), str(out), "--old", "5595", "--new", "464A", "--old-name", "合成（5595）",
+                        "--new-name", "A&B<x>", "--row", str(ROW)])
+        self.assertEqual(rc, 0)
+        with zipfile.ZipFile(out) as b:
+            self.assertIn("<t>A&amp;B&lt;x&gt;</t>", b.read("xl/sharedStrings.xml").decode())
+
 
 if __name__ == "__main__":
     unittest.main()

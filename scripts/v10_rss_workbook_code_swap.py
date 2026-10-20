@@ -9,8 +9,8 @@ below is copied with identical content, and inside those parts only the listed e
   100銘柄RSS  row <row>    : code cell (shared string), name cell (shared string), every
                              "<old>.T" token in that row (RSS formulas + cached text)
   KIOXIA_JNX  row <row>    : code cell (shared string), every "<old>.T.JNX" token in that row
-  sharedStrings.xml        : only the strings used by those three cells (edited in place when
-                             no other cell uses them, otherwise a new string is appended)
+  sharedStrings.xml        : only the strings used by those three cells, edited in place; if any of
+                             them is also used by another cell the run is BLOCKED (no new string is added)
   volatileDependencies.xml : only the RTD topics whose every reference is in that row of those
                              two sheets; topic code switched and cached value cleared so a stale
                              value of the old company can never be read as the new one
@@ -32,6 +32,7 @@ import os
 import re
 import sys
 import zipfile
+from xml.sax.saxutils import escape
 
 RSS_SHEET = "100銘柄RSS"
 JNX_SHEET = "KIOXIA_JNX"
@@ -121,6 +122,8 @@ def swap(src, out, old, new, old_name, new_name, row, exp_rss=None, exp_jnx=None
     if old_t in pre or old_t in post:
         raise Blocked("OLD_CODE_OUTSIDE_TARGET_ROW_100銘柄RSS")
     b_idx, c_idx = shared_index(cell(r_row, f"B{row}")), shared_index(cell(r_row, f"C{row}"))
+    if b_idx is not None and texts[b_idx] == new_t:
+        raise Blocked("ALREADY_SWAPPED_TARGET_ROW_HAS_NEW_CODE")
     if b_idx is None or texts[b_idx] != old_t:
         raise Blocked(f"B{row}_IS_NOT_{old_t}")
     if c_idx is None or texts[c_idx] != old_name:
@@ -155,13 +158,13 @@ def swap(src, out, old, new, old_name, new_name, row, exp_rss=None, exp_jnx=None
     for idx, val in list(edits.items()):
         if count_refs(parts, all_sheet_paths, idx) != 1:
             raise Blocked(f"SHARED_STRING_{idx}_USED_BY_OTHER_CELLS")
-    if any(t in texts for t in (new_t, new_name, new_j)):
+    if any(escape(t) in texts or t in texts for t in (new_t, new_name, new_j)):
         raise Blocked("NEW_STRING_ALREADY_PRESENT")
     pieces, last = [], 0
     for i, m in enumerate(items):
         if i in edits:
             pieces.append(sst[last:m.start()])
-            pieces.append(f"<si><t>{edits[i]}</t></si>")
+            pieces.append(f"<si><t>{escape(edits[i])}</t></si>")
             last = m.end()
     pieces.append(sst[last:])
     parts["xl/sharedStrings.xml"] = "".join(pieces).encode("utf-8")
@@ -227,12 +230,25 @@ def verify_scope(src, out, row, rss_name=RSS_SHEET, jnx_name=JNX_SHEET):
         x1, r1, y1 = split_row(pa[p].decode("utf-8"), row)
         x2, r2, y2 = split_row(pb[p].decode("utf-8"), row)
         res[f"{name}_outside_row_identical"] = (x1 == x2 and y1 == y2)
+    res["rtd_changes_only_target_row"] = True
+    if "xl/volatileDependencies.xml" in pa:
+        rss_id, jnx_id = sheets[rss_name][1], sheets[jnx_name][1]
+        t1 = re.findall(r"<tp(?: [^>]*)?>.*?</tp>", pa["xl/volatileDependencies.xml"].decode("utf-8"), flags=re.S)
+        t2 = re.findall(r"<tp(?: [^>]*)?>.*?</tp>", pb["xl/volatileDependencies.xml"].decode("utf-8"), flags=re.S)
+        res["rtd_topic_count_same"] = len(t1) == len(t2)
+        for u, v in zip(t1, t2):
+            if u != v:
+                refs = re.findall(r'<tr r="[A-Z]+(\d+)" s="(\d+)"/>', v)
+                if not refs or any(int(r) != row or sid not in (rss_id, jnx_id) for r, sid in refs):
+                    res["rtd_changes_only_target_row"] = False
+        if not res["rtd_topic_count_same"]:
+            res["rtd_changes_only_target_row"] = False
     s1, s2 = sst_items(pa["xl/sharedStrings.xml"].decode()), sst_items(pb["xl/sharedStrings.xml"].decode())
     res["shared_strings_count_same"] = len(s1) == len(s2)
     res["shared_strings_changed_idx"] = [i for i, (u, v) in enumerate(zip(s1, s2)) if u.group(0) != v.group(0)]
     res["ok"] = (res["same_part_list_and_order"] and not res["unexpected_changed_parts"]
                  and res[f"{rss_name}_outside_row_identical"] and res[f"{jnx_name}_outside_row_identical"]
-                 and res["shared_strings_count_same"])
+                 and res["shared_strings_count_same"] and res["rtd_changes_only_target_row"])
     return res
 
 
