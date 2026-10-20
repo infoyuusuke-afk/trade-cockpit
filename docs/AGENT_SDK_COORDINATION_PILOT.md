@@ -44,6 +44,50 @@ Save to a local example.json and run:
 
 Expected state OFFLINE_SYNTHETIC_NO_API_CALL. The offline provider is a stub and performs ZERO model inference or external communication. Roles lacking input return NO_DATA.
 
+## Phase 3: official BOJ RSS -> evidence JSON (manual, no billable AI)
+
+Draft-only intake is implemented in scripts/agent_sdk_public_feed_ingest.py.
+BOJ officially publishes RSS (website updates and statistics). Only TWO
+pinned, official RSS endpoints may be fetched and only on explicit --fetch:
+
+- https://www.boj.or.jp/rss/whatsnew.xml => pre_next (macro/regime news CONTEXT ONLY)
+- https://www.boj.or.jp/rss/statistics.xml => supply_sq (macro statistics releases CONTEXT ONLY)
+
+Revenue Hunter is NO_DATA until an independently authorized, dated business
+evidence source is added. No stock-specific JPX daily credit amounts, no MS2
+quotes, no J-Quants tokens, no paid TDnet API, no scraping, and no trading calls
+are in this adapter. JPX publishes RSS guidance, but an exact approved source
+URL and reuse rights must be separately checked before adding that source.
+
+The parser accepts only official https://www.boj.or.jp URLs without credentials,
+query strings or fragments. It rejects RSS entries without an explicitly
+timezone-qualified publication CLOCK, entries dated in the future, and
+entries older than seven days. It never invents source dates. Every accepted
+item has as_of = RSS-declared publication time and available_at =
+the local fetch completion time (CONSERVATIVE first actually verified
+access, NOT proof of the earliest official release). It records only short
+headline text and link, never downloads the article or statistic contents.
+Therefore it CANNOT verify statistical figures or prove market opportunity.
+Explicit DOCTYPE/ENTITY XML is prohibited and redirects are not followed.
+
+For one-time Windows local diagnostic (NO OpenAI API charges, NOT scheduled),
+first ensure an output folder outside the repository, for example a
+user-private folder. Choose a NEW run_id and unused filename on each explicit
+manual attempt. Never put fetched sources into public GitHub:
+
+    .\.venv\Scripts\python.exe scripts/agent_sdk_public_feed_ingest.py --fetch --run-id boj_pilot_20261021_01 --output "<private-path>\official_boj_feed.json"
+    .\.venv\Scripts\python.exe scripts/agent_sdk_coordination_pilot.py --input "<private-path>\official_boj_feed.json" --offline-test
+
+"OFFLINE_SYNTHETIC_NO_API_CALL" tests routing only; an actual AI analysis
+would need a separately approved new PAID run ID, reconciliation of
+prior Usage, and independently verified content rights/provenance.
+
+Phase 3 is NOT yet production complete: first real BOJ HTTP download and
+parse must pass on OWNER Windows with local time and source provenance;
+revenue_hunter, JPX margin balances, exact publication-time proof,
+true agent source-verification and content-based extraction remain pending.
+No V10/Brain live inbox or recurring task connection is implemented.
+
 ## Paid API: manual, locally reserved, OWNER-approved $10 pilot (NOT deployed)
 
 OWNER reported a one-time initial API credit purchase of $10 (tax extra) and disabled
