@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from datetime import datetime, timezone
+from contextlib import closing
 import hashlib
 import json
 import os
@@ -252,7 +253,7 @@ def persist_receipt(db_path: Path, result: dict, source_fp: str) -> str:
     if (db_path.name in ("", ".", "..") or db_path.is_symlink()
             or not db_path.parent.is_dir() or db_path.parent.is_symlink()):
         raise Blocked("PRIVATE_LEDGER_PATH_INVALID")
-    with sqlite3.connect(db_path, timeout=5, isolation_level="IMMEDIATE") as conn:
+    with closing(sqlite3.connect(db_path, timeout=5, isolation_level="IMMEDIATE")) as conn, conn:
         conn.execute("PRAGMA synchronous=FULL")
         conn.execute("""CREATE TABLE IF NOT EXISTS runs (
             run_id TEXT PRIMARY KEY, source_fingerprint TEXT NOT NULL,
