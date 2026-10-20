@@ -158,6 +158,17 @@ process.stdout.write(JSON.stringify(cases));
         self.assertEqual(json.loads(p.stdout), [True] + [False] * 14)
 
 
+    def test_all_live_lanes_12s_no_event_expiry(self):
+        """Execute real MS2 LIVE panel handlers and a no-event clock advance."""
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node unavailable: all-lane synthetic DOM checks skipped")
+        p = subprocess.run(
+            [node, "--test", str(ROOT / "tests" / "v10_all_live_lanes_silence.test.mjs")],
+            cwd=ROOT, text=True, capture_output=True, timeout=30,
+        )
+        self.assertEqual(p.returncode, 0, p.stdout[-8500:] + "\n" + p.stderr[-3500:])
+
     def test_live_provenance_actual_inline_ui_script(self):
         """Exercise fail-closed observation evidence and no-event expiry in the real inline JS."""
         node = shutil.which("node")
