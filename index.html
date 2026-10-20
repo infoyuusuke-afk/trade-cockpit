@@ -1264,8 +1264,60 @@ const kioOneMinuteChart = (points,actual=[],turns=[],signals=[],levels={},isRefr
   if(!kioMarkersPrimitive)kioMarkersPrimitive=LightweightCharts.createSeriesMarkers(kioCandleSeries,markers);
   else kioMarkersPrimitive.setMarkers(markers);
 };
+// KIO_LIVE_BEGIN (P0-V10 Kioxia chart freshness, 2026-10-21)
+// The V10 folder is pinned to one commit, so its kioxia_5m_calendar.json never
+// changes during the day. Prefer the GitHub main copy (public, updated by the
+// scheduled writer) and draw a forecast only when it is for today (JST). A
+// calendar for another day is never drawn as today's forecast.
+const KIO_REMOTE_CALENDAR="https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/kioxia_5m_calendar.json";
+const kioTodayJst=(now=Date.now())=>new Date(now+9*3600e3).toISOString().slice(0,10);
+const kioPickCalendar=(candidates,today)=>{
+  const ok=(candidates||[]).filter(c=>c&&c.data&&typeof c.data==="object"&&!Array.isArray(c.data));
+  const newest=list=>list.slice().sort((a,b)=>String(b.data.updated_at||"").localeCompare(String(a.data.updated_at||"")))[0];
+  const todays=ok.filter(c=>String(c.data.analysis_date||"")===today);
+  if(todays.length)return {...newest(todays),today:true};
+  return ok.length?{...newest(ok),today:false}:null;
+};
+// Actual 1-minute candles from MS2 (Collector bars_1m of 285A.T), as % from the
+// MS2 session open: the same basis as the forecast path. Only a verified LIVE
+// board and a fresh 285A row are used; anything else returns null.
+const kioMs2Actual=(d,row,today)=>{
+  if(!row||window.cockpitMs2ScreenReady?.(d)!==true||window.cockpitMs2RowReady?.(row)!==true)return null;
+  const open=Number(row.open_price);
+  if(!Number.isFinite(open)||open<=0)return null;
+  if(String(row.source_timestamp_at||"").slice(0,10)!==today)return null;
+  const out=[];
+  (Array.isArray(row.bars_1m)?row.bars_1m:[]).forEach(b=>{
+    if(!b||typeof b.t!=="string"||String(b.ts||"").slice(0,10)!==today)return;
+    const v=[b.o,b.h,b.l,b.c].map(Number);
+    if(!v.every(x=>Number.isFinite(x)&&x>0))return;
+    out.push({t:b.t,o:(v[0]/open-1)*100,h:(v[1]/open-1)*100,l:(v[2]/open-1)*100,c:(v[3]/open-1)*100,v:Number(b.v)||0,price:v[3]});
+  });
+  return out.length?out:null;
+};
+window.kioPickCalendar=kioPickCalendar;window.kioMs2Actual=kioMs2Actual;window.kioTodayJst=kioTodayJst;
+document.addEventListener("ms2RssUpdate",e=>{
+  const d=e.detail||{},st=window.kioChartState;
+  if(!st)return;
+  const row=(Array.isArray(d.all_targets)?d.all_targets:[]).find(x=>x&&x.ticker==="285A.T");
+  const actual=kioMs2Actual(d,row,kioTodayJst());
+  const now=Date.now();
+  if(actual){
+    if(window.kioMs2DrawnAt&&now-window.kioMs2DrawnAt<15000)return;
+    st.actual=actual;st.actualSource="MS2";window.kioMs2DrawnAt=now;
+  }else if(st.actualSource==="MS2"){
+    st.actual=[];st.actualSource="NONE";window.kioMs2DrawnAt=0;
+  }else return;
+  kioOneMinuteChart(st.points,st.actual,st.turns,window.kioSignalMarkers||[],st.levels,true);
+  const note=document.getElementById("kio-one-minute-note");
+  if(note)note.textContent=actual?("MS2 実測1分足 "+actual.length+"本（MS2寄り値基準）"):"MS2実測1分足：確認待ち（古い値は表示しません）";
+});
+// KIO_LIVE_END
 Promise.all([
- fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()),
+ Promise.all([
+  fetch(KIO_REMOTE_CALENDAR+"?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(data=>({data,source:"GitHub main"})).catch(()=>null),
+  fetch("kioxia_5m_calendar.json?t="+Date.now()).then(r=>r.ok?r.json():null).then(data=>({data,source:"V10フォルダ"})).catch(()=>null)
+ ]).then(list=>{const pick=kioPickCalendar(list,kioTodayJst());window.kioCalendarPick=pick;return pick?pick.data:{};}),
  fetch("credit_supply.json?t=" + Date.now()).then(r => r.json()).catch(() => ({stocks:{}})),
  fetch("kioxia_catalysts.json?t=" + Date.now()).then(r => r.json()).catch(() => ({items:[]})),
  fetch("kioxia_prediction_history.json?t=" + Date.now()).then(r => r.json()).catch(() => ({summary:{}})),
@@ -1300,7 +1352,7 @@ Promise.all([
     document.getElementById("kio-supply-phase").textContent = "需給未確認・売買利用禁止";
     document.getElementById("kio-supply-date").textContent = "週次信用残を取得できていません";
   }
-  document.getElementById("kioxia-calendar-meta").textContent = (d.source || "5分足") + "／更新 " + d.updated_at + "／" + (d.current_is_today ? "本日観測 " + (d.observed_bars || 0) + "本" : (d.selection_mode || "寄り前選定"));
+  document.getElementById("kioxia-calendar-meta").textContent = (window.kioCalendarPick ? window.kioCalendarPick.source + "・" : "") + (d.source || "5分足") + "／更新 " + d.updated_at + "／" + (d.current_is_today ? "本日観測 " + (d.observed_bars || 0) + "本" : (d.selection_mode || "寄り前選定"));
   document.getElementById("kio-current-type").textContent = d.current_is_today && d.current ? d.current.type + " " + signedPct(d.current.ret, 2) : "本日開始待ち";
   const riskOverlay = d.risk_overlay || {};
   document.getElementById("kio-bias").textContent = riskOverlay.status ? riskOverlay.status + "｜" + (p.bias || "判定保留") : (p.bias || "判定保留");
@@ -1314,7 +1366,8 @@ Promise.all([
   const context = d.market_context || null;
   const usLabels = {sndk:"SanDisk",mu:"Micron",sox:"SOX",nasdaq:"NASDAQ"};
   document.getElementById("kio-selection-mode").textContent = d.selection_mode || "類似日選定";
-  if (best) {
+  const kioPick = window.kioCalendarPick || null;
+  if (best && kioPick && kioPick.today) {
     document.getElementById("kio-best-date").textContent = best.date;
     document.getElementById("kio-best-score").textContent = Number(best.similarity).toFixed(1) + "%";
     window.kioChartState={points:best.path,actual:d.one_minute_verified?(d.current_1m||[]):[],turns:d.forecast_turns||[],levels:d.technical_levels||{}};
@@ -1323,6 +1376,11 @@ Promise.all([
     document.getElementById("kio-one-minute-note").textContent = (d.forecast_resolution || "1分刻み予測") + "／" + (d.one_minute_verified ? (d.one_minute_source + " 実測" + (d.current_1m || []).length + "本") : "実測1分足は未取得。予測線のみ表示") + "／類似日選定は5分足・米国市場・信用需給";
     document.getElementById("kio-best-type").textContent = best.type + "／全日 " + signedPct(best.ret,2);
     document.getElementById("kio-best-plan").textContent = "類似日の照合後 " + signedPct(best.after_ret,2) + "、最大上振れ " + signedPct(best.max_up_after,2) + "、最大下振れ " + signedPct(best.max_down_after,2) + "。" + (riskOverlay.action || (p.sample < 3 ? "サンプル不足のため売買利用禁止。" : "9:15以降のローソク足確認が必須。" ));
+  } else if (best && kioPick && !kioPick.today) {
+    document.getElementById("kio-best-date").textContent = "本日分未更新";
+    document.getElementById("kio-best-plan").textContent = "本日（" + kioTodayJst() + "）の予測データがまだありません。最終 " + (d.updated_at || "—") + "（" + (d.analysis_date || "—") + " 分・" + kioPick.source + "）。前日の予測を本日分として表示しません。";
+    document.getElementById("kio-one-minute-note").textContent = "本日の予測データ待ち。古い予測線は描きません。";
+    kioOneMinuteChart([], [], [], [], {});
   } else {
     document.getElementById("kio-best-date").textContent = "選定不能";
     document.getElementById("kio-best-plan").textContent = "米国市場または5分足データ不足。推定で埋めません。";
