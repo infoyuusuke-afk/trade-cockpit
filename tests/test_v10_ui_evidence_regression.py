@@ -21,7 +21,7 @@ class V10UiEvidenceRegression(unittest.TestCase):
         node = shutil.which("node")
         if not node:
             self.skipTest("Node is not present; static invariants still verified")
-        program = cls = self.helpers + "\nprocess.stdout.write(JSON.stringify(" + js_expression + "));"
+        program = self.helpers + "\nprocess.stdout.write(JSON.stringify(" + js_expression + "));"
         result = subprocess.run(
             [node, "-e", program], text=True, capture_output=True, check=True,
             timeout=15,
@@ -33,6 +33,9 @@ class V10UiEvidenceRegression(unittest.TestCase):
         self.assertEqual(actual, [
             "control", "brain", "scalp", "event-hot", "ms2-live",
             "overnight", "swing", "value", "kioxia-calendar", "events",
+            "strong-yen", "us-smr", "investor-regime", "market",
+            "correlation", "wick", "expansion", "accumulation",
+            "policy", "weekly",
         ])
 
     def test_no_fabricated_brain_gateway_or_live_label(self):
