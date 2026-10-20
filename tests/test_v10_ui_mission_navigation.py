@@ -102,9 +102,11 @@ process.stdout.write(JSON.stringify(cases));
         self.assertEqual(json.loads(p.stdout), [True] + [False] * 11)
 
 
-    def test_kioxia_updated_in_fixed_scalp_selection(self):
-        self.assertIn('const fixed=["464A.T","9984.T","8035.T","6920.T","6857.T"]', self.source)
-        self.assertNotIn('const fixed=["285A.T"', self.source)
+    def test_kioxia_285a_in_fixed_scalp_selection(self):
+        # Kioxia is 285A.T. 464A.T is QPS HD (not Kioxia) and left the
+        # watchlist on 2026-10-21 (OWNER-approved 15-row replacement).
+        self.assertIn('const fixed=["285A.T","9984.T","8035.T","6920.T","6857.T"]', self.source)
+        self.assertNotIn('"464A.T"', self.source)
 
     def test_existing_visual_colors_and_modules_kept(self):
         s = self.source

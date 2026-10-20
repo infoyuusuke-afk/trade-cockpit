@@ -227,7 +227,7 @@
       state.classList.toggle("hot",!stale&&hot>0);
     }
 
-    const fixed=["464A.T","9984.T","8035.T","6920.T","6857.T"]
+    const fixed=["285A.T","9984.T","8035.T","6920.T","6857.T"]
       .map(t=>all.find(x=>String(x.ticker)===t)).filter(Boolean);
     setTimeout(()=>updateFixedCardAttention(fixed,scored),0);
   });

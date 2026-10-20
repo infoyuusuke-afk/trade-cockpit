@@ -117,7 +117,7 @@ function row(now,ticker,preopen=false){
   };
 }
 function good(h){
-  const rows=[row(h.now(),"464A.T"),row(h.now(),"1000.T"),row(h.now(),"1001.T",true)];
+  const rows=[row(h.now(),"285A.T"),row(h.now(),"1000.T"),row(h.now(),"1001.T",true)];
   return {source:"MarketSpeed II RSS / local PC",connection_source:"自宅PC・MS2 RSS LIVE",
     source_mode:"MS2_RSS_WORKBOOK",price_source_status:"OK",
     stale:false,live_values_available:true,data_conflict:false,real_submit_allowed:false,
@@ -148,7 +148,7 @@ test("real UI handlers share the same source and quote admission gate",()=>{
   const h=harness();
   h.send(good(h));
   assert.match(h.nodes.get("unified-mode").className,/live/);
-  assert.match(content(h,"scalp-fixed-5"),/<scalp ticker="464A.T"/);
+  assert.match(content(h,"scalp-fixed-5"),/<scalp ticker="285A.T"/);
   assert.match(content(h,"watchlist-100-rows"),/<watch/);
   assert.match(content(h,"premarket-gap-rows"),/<watch/);
   assert.match(content(h,"opportunity-radar-cards"),/<radar/);
