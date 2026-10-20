@@ -93,7 +93,7 @@ function mounted(persisted={}) {
     setInterval,clearInterval});
   vm.runInContext(focusScript,context,{timeout:3000});
   function fire(type, detail={}) {
-    const callbacks=type==="pagehide"?windowEvents.get(type):listeners.get(type);
+    const callbacks=(type==="pagehide"||type==="pageshow")?windowEvents.get(type):listeners.get(type);
     for (const cb of callbacks||[]) cb(type==="ms2RssUpdate"?{detail}:{});
   }
   function advanceClock(ms,runTimers=true){
@@ -229,6 +229,13 @@ test("NO-EVENT clock advance revokes a previously fresh FOCUS price without a ne
   h.fire("pagehide");
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
   assert.equal(h.timers.size,0);
+  h.fire("pageshow");
+  assert.equal(h.timers.size,1,"watchdog must re-arm after bfcache pageshow");
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
+  h.fire("ms2RssUpdate",snapshot([row()]));
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[PRICE:464A.T:1234]"));
+  h.advanceClock(12001);
+  assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
 });
 
 test("throttled watchdog cannot re-render an old price after silent clock advance",()=>{
