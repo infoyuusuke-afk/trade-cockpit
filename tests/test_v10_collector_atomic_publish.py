@@ -48,5 +48,39 @@ if(@(Get-ChildItem -LiteralPath (Split-Path $p) -Filter '*.tmp').Count -ne 0){th
             self.assertEqual(result.returncode, 0, result.stderr)
 
 
+    def test_windows_locked_reader_cannot_destroy_previous_good_snapshot(self):
+        exe = shutil.which("powershell.exe")
+        if not exe:
+            self.skipTest("Windows PowerShell 5.1 required")
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = Path(tmp) / "test-publish.json"
+            ps = self._function() + "\n" + r'''
+$ErrorActionPreference='Stop'
+$p=$args[0]
+Write-AtomicUtf8 $p '{"generation":1}'
+# A reader intentionally disallows DELETE sharing, as on some antivirus
+# and browser/bridge access paths. Publication must fail boundedly and
+# leave the last complete snapshot available to readers.
+$reader = [IO.File]::Open($p,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)
+$blocked=$false
+try {
+    try { Write-AtomicUtf8 $p '{"generation":2}' }
+    catch { $blocked=$true }
+}
+finally { $reader.Dispose() }
+if (-not $blocked) { throw 'LOCKED_REPLACE_NOT_BLOCKED' }
+if ([IO.File]::ReadAllText($p) -ne '{"generation":1}') { throw 'LAST_GOOD_NOT_PRESERVED' }
+Write-AtomicUtf8 $p '{"generation":3}'
+if ([IO.File]::ReadAllText($p) -ne '{"generation":3}') { throw 'POST_LOCK_RETRY_FAILED' }
+if (@(Get-ChildItem -LiteralPath (Split-Path $p) -Filter '*.tmp').Count -ne 0) { throw 'STAGING_LEAK' }
+'''
+            result = subprocess.run(
+                [exe, "-NoProfile", "-NonInteractive", "-Command", ps, str(destination)],
+                capture_output=True, text=True, timeout=15, check=False
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+
+
 if __name__ == "__main__":
     unittest.main()
