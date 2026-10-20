@@ -50,8 +50,11 @@ test("today in JST", () => {
   assert.equal(kioTodayJst(Date.UTC(2026, 9, 20, 14, 59)), "2026-10-20");
 });
 
+const plain = x => JSON.parse(JSON.stringify(x)); // objects from the vm realm
+
 test("today's calendar is preferred, newest first; another day is never 'today'", () => {
-  const { kioPickCalendar } = load();
+  const { kioPickCalendar: pick } = load();
+  const kioPickCalendar = (...a) => plain(pick(...a));
   const remote = { source: "GitHub main", data: { analysis_date: "2026-10-21", updated_at: "2026-10-21 08:05:00 JST" } };
   const local = { source: "V10フォルダ", data: { analysis_date: "2026-10-19", updated_at: "2026-10-19 22:52:40 JST" } };
   assert.deepEqual(kioPickCalendar([remote, local], "2026-10-21"), { ...remote, today: true });
@@ -76,7 +79,7 @@ function row(extra = {}) {
 
 test("MS2 bars become % from the MS2 open; other-day bars are dropped", () => {
   const { kioMs2Actual } = load();
-  const out = kioMs2Actual({}, row(), "2026-10-21");
+  const out = plain(kioMs2Actual({}, row(), "2026-10-21"));
   assert.equal(out.length, 2);
   assert.equal(out[0].t, "09:00");
   assert.ok(Math.abs(out[0].h - 1.0) < 1e-9);
@@ -117,7 +120,7 @@ test("live update redraws with MS2 candles and clears them when MS2 is not verif
   const blocked = load({ screenReady: false });
   blocked.window.kioChartState = { points: [0, 1], actual: [{ t: "09:00" }], turns: [], levels: {}, actualSource: "MS2" };
   blocked.listeners.ms2RssUpdate[0]({ detail: { all_targets: [row()] } });
-  assert.deepEqual(blocked.window.kioChartState.actual, []);
+  assert.equal(blocked.window.kioChartState.actual.length, 0);
   assert.equal(blocked.window.kioChartState.actualSource, "NONE");
   assert.match(blocked.nodes["kio-one-minute-note"].textContent, /確認待ち/);
 });
