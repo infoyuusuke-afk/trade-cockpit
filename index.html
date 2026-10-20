@@ -275,41 +275,77 @@ document.addEventListener("DOMContentLoaded",()=>{
 <script src="card_table_adapter.js?v=v9-1" defer></script>
 <script src="trade_control.js?v=p0-shadow-supervisor-1" defer></script>
 <style>.unified-mode{margin:8px 6px 0;padding:10px 14px;border:1px solid #272A30;border-radius:10px;background:#101114;display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center}.unified-mode .lamp{width:12px;height:12px;border-radius:50%;background:#63676e;box-shadow:0 0 0 5px #63676e18}.unified-mode.live{border-color:#1f4a37;background:#101114}.unified-mode.live .lamp{background:#35e2ae;box-shadow:0 0 10px #35e2ae66}.unified-mode.stale{border-color:#6b5426}.unified-mode strong{font-size:16px;color:#e7e9eb}.unified-mode span{color:#9aa0a6}.unified-mode b{color:#c7cacd;font-size:12px;font-weight:500}.unified-mode small{color:#63676e;display:block;margin-top:2px}.unified-mode-controls{display:flex;align-items:center;gap:8px}.market-status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#15171B;border:1px solid #272A30;color:#7a7f86;font-size:10.5px;white-space:nowrap}.market-status-pill .dot{width:6px;height:6px;border-radius:50%;background:#4a4e55;flex:none}.market-status-pill.open{color:#8fe3c0;border-color:#1f4a37}.market-status-pill.open .dot{background:#35e2ae;box-shadow:0 0 5px #35e2ae}.voice-toggle{min-width:74px;height:30px;padding:0 10px;border-radius:999px;background:#15171B;border:1px solid #272A30;color:#c7cacd;font-size:13px;line-height:1;display:inline-flex;align-items:center;justify-content:center}@media(max-width:700px){.unified-mode{grid-template-columns:auto 1fr auto}.unified-mode>b{grid-column:3}.unified-mode .unified-mode-controls{grid-column:1/-1}}.voice-toggle.voice-on{color:#1fc79a;border-color:#164536;background:#0d2b23}.voice-toggle:disabled{opacity:.55;cursor:not-allowed}.pts-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}.pts-section-head h3{margin:0}</style>
-<header><div><span class="tag">寄り付き前8:00版</span><div class="sub">2026-09-25 10:41:50 JST／統一取引日 2026-09-25</div></div></header>
+<header><div><span class="tag">過去の参考分析</span><div class="sub">静的分析作成：2026-09-25 10:41:50 JST（本日のLIVE市場情報ではありません）</div></div></header>
 
 <div id="v10-publication-panel" role="status" aria-live="polite" data-publication="UNKNOWN" style="margin:6px 20px 10px;padding:9px 14px;border:1px solid #454b53;border-radius:8px;background:#101114;color:#c4cad1;font:500 12px/1.6 system-ui,sans-serif">取得証拠: Collector 未確認 ／ Watcher 未確認 ／ Gateway 確認中 ／ BRAIN 未検証 ｜ 発行時刻は市場データの認証ではありません・実注文禁止</div>
 <script src="v10_publication_status.js?v=p0-20261017" defer></script>
 <div id="v10-source-provenance" role="status" aria-live="polite" data-market-trust="BLOCKED" style="margin:10px 20px;padding:9px 14px;border:1px solid #ad7432;border-radius:8px;background:#17160f;color:#efd6a3;font:600 13px system-ui,sans-serif">MS2 LIVE 未認証・売買禁止｜固定分析は過去のスナップショット</div>
 <script>
-/* V10 provenance is separate from the dated static snapshot and NEVER authorizes orders. */
+/* V10 provenance: SOURCE/QUOTE proof, never an execution permission.
+ * In particular, MS2 Collector does not emit source_authenticated=true.
+ * A missing field is not acceptance; require its independent workbook ID proof.
+ */
 (function(){
   "use strict";
   const label=document.getElementById("v10-source-provenance");
   if(!label)return;
+  const SILENCE_MS=12000;
+  let lastGoodEventAt=null;
   const block=(reason)=>{
+    lastGoodEventAt=null;
     label.dataset.marketTrust="BLOCKED";
     label.textContent="MS2 LIVE 未認証・売買禁止｜"+reason;
   };
+  const withinAge=(raw,maxMs)=>{
+    if(typeof raw!=="string"||
+       !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(raw.trim()))return false;
+    const age=Date.now()-Date.parse(raw.trim());
+    return Number.isFinite(age)&&age>=-5000&&age<=maxMs;
+  };
+  const provenanceReady=d=>{
+    const diag=d?.live_price_diagnostics;
+    if(d?.stale!==false||d?.live_values_available!==true||
+       d?.data_conflict!==false||d?.real_submit_allowed!==false||
+       d?._transport_fail_closed===true||d?.source_authenticated===false||
+       d?.connection_source!=="自宅PC・MS2 RSS LIVE"||
+       diag?.workbook_identity_verified!==true||
+       diag?.source_mode!=="MS2_RSS_WORKBOOK"||
+       diag?.price_source_status!=="OK"||
+       diag?.data_conflict!==false||
+       diag?.live_values_available!==true||
+       diag?.real_submit_allowed!==false||
+       typeof window.livePriceBlocked!=="function"||
+       window.livePriceBlocked(d)!=="")return false;
+    return withinAge(d.observed_at_offset,60000);
+  };
   block("市場データの出所・鮮度を確認中（固定分析は過去データ）");
   document.addEventListener("ms2RssUpdate",e=>{
-    const d=e.detail||{};
-    const good=d.stale===false && d.live_values_available===true &&
-      d.source_authenticated===true && d.real_submit_allowed===false &&
-      d._transport_fail_closed!==true && d.data_conflict===false;
-    if(!good){
-      block("LIVE証拠不足／固定分析は過去のスナップショット");
+    const d=e?.detail||{};
+    if(!provenanceReady(d)){
+      block("MS2出所・ワークブック識別・時刻の証拠不足（静的分析は過去データ）");
       return;
     }
-    const t=Date.parse(String(d.updated_at||""));
-    const age=Date.now()-t;
-    if(!Number.isFinite(t)||age<0||age>60000){
-      block("記録日時が無効または60秒超の古い観測");
-      return;
-    }
+    lastGoodEventAt=Date.now();
     label.dataset.marketTrust="OBSERVATION_ONLY";
-    label.textContent="MS2観測候補 "+new Date(t).toLocaleString("ja-JP")+"｜売買禁止／固定分析との混在禁止";
+    label.textContent="MS2観測証拠 "+String(d.observed_at_offset)+
+      "｜参照専用・実注文禁止／静的分析は別の過去資料";
   });
-  window.addEventListener("pagehide",()=>block("画面を閉じています"));
+  const expireSilent=()=>{
+    if(lastGoodEventAt===null)return;
+    const age=Date.now()-lastGoodEventAt;
+    if(!Number.isFinite(age)||age< -5000||age>SILENCE_MS)
+      block("MS2通信停止・12秒超の無受信／価格とシグナルの証拠切れ");
+  };
+  const timer=setInterval(expireSilent,1000);
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="hidden")
+      block("画面非表示中・MS2再受信まで観測を禁止");
+    else expireSilent();
+  });
+  window.addEventListener("pagehide",()=>{
+    clearInterval(timer);
+    block("画面を閉じています");
+  });
 })();
 </script>
 <div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><main>
@@ -851,7 +887,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   </div>
 </section>
 <!-- WEEKLY_REVIEW_END -->
-</main><footer><span>情報提供目的。最終判断は板・歩み値・会社IRで確認。</span><span>2026-09-25 10:41:50 JST</span></footer>
+</main><footer><span>参考資料・過去の静的分析。現在の株価・推奨ではありません。</span><span>静的HTML作成：2026-09-25 10:41:50 JST／LIVE未認証</span></footer>
 <script>
 const yen = v => Number(v).toLocaleString("ja-JP");
 const signedPct = (v, digits = 1) => Number.isFinite(Number(v))
