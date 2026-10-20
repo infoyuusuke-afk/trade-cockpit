@@ -26,4 +26,4 @@ jobs:
       - name: Compile without importing Agents SDK
         run: python -m py_compile scripts/agent_sdk_coordination_pilot.py tests/test_agent_sdk_coordination_pilot.py
       - name: Offline test for 4 roles, fail-closed and no-key denial
-        run: python -m unittest tests.test_agent_sdk_coordination_pilot -v
+        run: python -m unittest discover -s tests -p test_agent_sdk_coordination_pilot.py -v
