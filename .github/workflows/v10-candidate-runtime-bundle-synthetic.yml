@@ -28,6 +28,7 @@ on:
       - "tests/test_v10_ui_mission_navigation.py"
       - "tests/v10_focus_owner_runtime.test.mjs"
       - "tests/v10_ms2_provenance_runtime.test.mjs"
+      - "tests/v10_all_live_lanes_silence.test.mjs"
       - ".github/workflows/v10-candidate-runtime-bundle-synthetic.yml"
   workflow_dispatch:
 permissions:
@@ -57,10 +58,18 @@ jobs:
               # Independent-review candidate only: exact index.html blob.
               # No general source-pin relaxation and no runtime authorization.
               expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
-              test "$expected" = "e1b7a279b5493fb52483a51fdd030446ff895254"
+              test "$expected" = "135fe35fdc7e2bb7d89ba82ad8c0006c2b414939"
               test "$(git rev-parse "HEAD:$file")" = "$expected"
               test "$(git rev-parse "$pinned:$file")" != "$expected"
               echo "V10_UI_CANDIDATE_EXACT_BLOB=$expected"
+            elif [[ "$file" == "opportunity_radar.js" ]]; then
+              # Exact reviewed change for 12s screen admission and the
+              # 464A.T Kioxia migration; NOT a wildcard manifest exception.
+              expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
+              test "$expected" = "adc3125a16f84b358001d6a2b158d08b93d26af6"
+              test "$(git rev-parse "HEAD:$file")" = "$expected"
+              test "$(git rev-parse "$pinned:$file")" != "$expected"
+              echo "V10_RADAR_PROVENANCE_CANDIDATE_EXACT_BLOB=$expected"
             elif [[ "$file" == "trade_control.js" ]]; then
               # P0 V10 UI data-integrity repair. Exact blob is reviewed and
               # pinned in the manifest; no general source-pin exemption.
