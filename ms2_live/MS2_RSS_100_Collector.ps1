@@ -727,6 +727,30 @@ function Get-BoardAvailability {
     if (-not $identityFresh) { $status = "BLOCKED_IDENTITY_QUOTE" }
     elseif ($completenessReasons.Count -gt 0) { $status = "BLOCKED_UNIVERSE_INCOMPLETE" }
     elseif (-not $rowsFresh) { $status = "BLOCKED_ROW_QUOTES" }
+    # Fresh-rows-only use (P0-V10-INTEGRATION-AND-LIVE-START-20261020). A board
+    # whose only fault is STALE or UNKNOWN rows may be used row by row when the
+    # identity quote is fresh, the universe is complete, no row is INVALID, at
+    # least 95% of the expected rows are FRESH, and the Collector declares that
+    # every market aggregate was computed from FRESH rows only and that the
+    # signals of all other rows are blocked (aggregate_basis FRESH_ROWS_ONLY).
+    # A non-fresh row is still never used: consumers keep their per-row check.
+    $partialMinFreshPct = 95.0
+    $partialRows = $false
+    $partialReasons = [string[]]@()
+    $aggregateBasis = $null
+    if ($null -ne $LiveObj) { $aggregateBasis = $LiveObj.aggregate_basis }
+    if ($status -ceq "BLOCKED_ROW_QUOTES" -and $aggregateBasis -ceq "FRESH_ROWS_ONLY" -and $null -ne $RowFreshness -and
+        $null -ne $RowFreshness.state_counts -and $null -ne $expectedCount -and $expectedCount -gt 0) {
+        $partialFresh = [int]$RowFreshness.state_counts.FRESH
+        $partialInvalid = [int]$RowFreshness.state_counts.INVALID
+        $partialOther = @($sorted | Where-Object { $_ -notlike 'ROW_*' -or $_ -like 'ROW_TICKER_*' })
+        if ($partialInvalid -eq 0 -and $partialOther.Count -eq 0 -and (100.0 * $partialFresh / $expectedCount) -ge $partialMinFreshPct) {
+            $partialRows = $true
+            $partialReasons = $sorted
+            $sorted = [string[]]@()
+            $status = "AVAILABLE_PARTIAL"
+        }
+    }
     $counts = [ordered]@{ FRESH = 0; STALE = 0; UNKNOWN = 0; INVALID = 0; MISSING = $missing.Count }
     if ($null -ne $RowFreshness -and $null -ne $RowFreshness.state_counts) {
         foreach ($k in @("FRESH", "STALE", "UNKNOWN", "INVALID")) { $counts[$k] = [int]$RowFreshness.state_counts[$k] }
@@ -756,6 +780,9 @@ function Get-BoardAvailability {
         unexpected_sample = $unexpectedSample
         collector_valid_count = $valid
         collector_valid_quality_pass = ($null -ne $valid -and $valid -ge 90)
+        partial_rows = $partialRows
+        partial_reasons = @($partialReasons)
+        partial_min_fresh_pct = $partialMinFreshPct
         order_allowed = $false
         real_submit_allowed = $false
     }
@@ -2753,11 +2780,26 @@ try {
 
         # 地合いと業種の確認を、OR5/OR15の最終点灯条件に使う。
         # UNDER/OVERは補助情報に留め、板の見せ玉だけでサインを出さない。
-        $breadthBase=@($results|Where-Object{$_.vwap -gt 0})
+        # 地合い・業種強度・TOP5は、気配時刻が新しい銘柄（FRESH）だけで計算する
+        # （P0-V10-INTEGRATION-AND-LIVE-START-20261020）。判定はGatewayと同じ
+        # Get-RowQuoteFreshness。古い・時刻不明の銘柄はサインを止め、集計に入れない。
+        $aggregateNow=Get-JstNow
+        $aggregateBoardQuoteAt=$null
+        if($null -ne $script:identityQuoteObservation){$aggregateBoardQuoteAt=$script:identityQuoteObservation.source_timestamp_at}
+        $aggregateFreshCount=0
+        foreach($result in $results){
+            $aggregateVerdict=Get-RowQuoteFreshness -Row $result -Now $aggregateNow -BoardQuoteAt $aggregateBoardQuoteAt
+            $aggregateFresh=($aggregateVerdict.fresh -eq $true)
+            if($aggregateFresh){$aggregateFreshCount++}
+            $result|Add-Member -NotePropertyName aggregate_row_fresh -NotePropertyValue $aggregateFresh -Force
+            $result|Add-Member -NotePropertyName aggregate_row_state -NotePropertyValue ([string]$aggregateVerdict.state) -Force
+        }
+        $aggregateRows=@($results|Where-Object{$_.aggregate_row_fresh -eq $true})
+        $breadthBase=@($aggregateRows|Where-Object{$_.vwap -gt 0})
         $breadthPct=if($breadthBase.Count -ge 20){[Math]::Round((@($breadthBase|Where-Object{$_.price -gt $_.vwap}).Count/$breadthBase.Count)*100,1)}else{$null}
         $marketState=if($null -eq $breadthPct){"地合い確認待ち"}elseif($breadthPct -ge 60){"地合い強い"}elseif($breadthPct -le 40){"地合い弱い"}else{"地合い中立"}
         $sectorBreadth=@{}
-        foreach($sectorGroup in @($results|Where-Object{$_.vwap -gt 0}|Group-Object sector)){
+        foreach($sectorGroup in @($aggregateRows|Where-Object{$_.vwap -gt 0}|Group-Object sector)){
             $sectorItems=@($sectorGroup.Group)
             $sectorBreadth[[string]$sectorGroup.Name]=if($sectorItems.Count -ge 2){[Math]::Round((@($sectorItems|Where-Object{$_.price -gt $_.vwap}).Count/$sectorItems.Count)*100,1)}else{$null}
         }
@@ -2784,6 +2826,7 @@ try {
             }
             if($validCount -lt 90){$result.signal="データ不足・売買禁止"}
             elseif([string]$result.special_quote -ne "なし"){$result.signal="特別気配・売買禁止"}
+            elseif($inSession -and $result.aggregate_row_fresh -ne $true){$result.signal="鮮度不足・売買禁止"}
 
             $range=[double]$result.day_high-[double]$result.day_low
             $closeLocation=if($range -gt 0){Limit (([double]$result.price-[double]$result.day_low)/$range) 0 1}else{0.5}
@@ -2817,6 +2860,7 @@ try {
                 elseif($shortHold -ge 70 -and $shortHold -ge $longHold+15){$holdSignal="持ち越しショート候補";$holdScore=$shortHold}
                 else{$holdSignal="日中限定・持ち越し禁止"}
             }
+            if($result.aggregate_row_fresh -ne $true -and $holdSignal -ne "15時判定待ち"){$holdSignal="鮮度不足・持ち越し判定不可"}
             $result.hold_signal=$holdSignal; $result.hold_score=[Math]::Round($holdScore)
             $result|Add-Member -NotePropertyName market_state -NotePropertyValue $marketState -Force
             $result|Add-Member -NotePropertyName breadth_pct -NotePropertyValue $breadthPct -Force
@@ -2974,7 +3018,7 @@ try {
         # first, outside the literal (this crashed every Collector cycle).
         $missingRowArray = [object[]]$missingRows.ToArray()
         $missingRowCount = [int]$missingRows.Count
-        $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");observed_at_offset=$now.ToString("yyyy-MM-ddTHH:mm:sszzz");timestamp_timezone="Asia/Tokyo";source="MarketSpeed II RSS / local PC";source_mode=$livePriceDiagnostics.source_mode;universe=100;valid=$validCount;stale=(-not $publishLiveValues);stale_reason=$staleReason;data_conflict=[bool]$script:priceSourceMismatch;price_source_status=$livePriceDiagnostics.price_source_status;live_values_available=[bool]$publishLiveValues;real_submit_allowed=$false;live_price_diagnostics=$livePriceDiagnostics;preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results;missing_row_count=$missingRowCount;missing_rows=$missingRowArray}
+        $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");observed_at_offset=$now.ToString("yyyy-MM-ddTHH:mm:sszzz");timestamp_timezone="Asia/Tokyo";source="MarketSpeed II RSS / local PC";source_mode=$livePriceDiagnostics.source_mode;universe=100;valid=$validCount;stale=(-not $publishLiveValues);stale_reason=$staleReason;data_conflict=[bool]$script:priceSourceMismatch;price_source_status=$livePriceDiagnostics.price_source_status;live_values_available=[bool]$publishLiveValues;real_submit_allowed=$false;live_price_diagnostics=$livePriceDiagnostics;preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;aggregate_basis='FRESH_ROWS_ONLY';aggregate_fresh_count=$aggregateFreshCount;aggregate_row_count=@($results).Count;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results;missing_row_count=$missingRowCount;missing_rows=$missingRowArray}
         $jsonText=$payload|ConvertTo-Json -Depth 6
         Write-AtomicUtf8 $jsonPath $jsonText
         if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { $null = Publish-OptionalCockpitMirror $cockpitJsonPath $jsonText }

@@ -997,6 +997,30 @@ function Get-BoardAvailability {
     if (-not $identityFresh) { $status = "BLOCKED_IDENTITY_QUOTE" }
     elseif ($completenessReasons.Count -gt 0) { $status = "BLOCKED_UNIVERSE_INCOMPLETE" }
     elseif (-not $rowsFresh) { $status = "BLOCKED_ROW_QUOTES" }
+    # Fresh-rows-only use (P0-V10-INTEGRATION-AND-LIVE-START-20261020). A board
+    # whose only fault is STALE or UNKNOWN rows may be used row by row when the
+    # identity quote is fresh, the universe is complete, no row is INVALID, at
+    # least 95% of the expected rows are FRESH, and the Collector declares that
+    # every market aggregate was computed from FRESH rows only and that the
+    # signals of all other rows are blocked (aggregate_basis FRESH_ROWS_ONLY).
+    # A non-fresh row is still never used: consumers keep their per-row check.
+    $partialMinFreshPct = 95.0
+    $partialRows = $false
+    $partialReasons = [string[]]@()
+    $aggregateBasis = $null
+    if ($null -ne $LiveObj) { $aggregateBasis = $LiveObj.aggregate_basis }
+    if ($status -ceq "BLOCKED_ROW_QUOTES" -and $aggregateBasis -ceq "FRESH_ROWS_ONLY" -and $null -ne $RowFreshness -and
+        $null -ne $RowFreshness.state_counts -and $null -ne $expectedCount -and $expectedCount -gt 0) {
+        $partialFresh = [int]$RowFreshness.state_counts.FRESH
+        $partialInvalid = [int]$RowFreshness.state_counts.INVALID
+        $partialOther = @($sorted | Where-Object { $_ -notlike 'ROW_*' -or $_ -like 'ROW_TICKER_*' })
+        if ($partialInvalid -eq 0 -and $partialOther.Count -eq 0 -and (100.0 * $partialFresh / $expectedCount) -ge $partialMinFreshPct) {
+            $partialRows = $true
+            $partialReasons = $sorted
+            $sorted = [string[]]@()
+            $status = "AVAILABLE_PARTIAL"
+        }
+    }
     $counts = [ordered]@{ FRESH = 0; STALE = 0; UNKNOWN = 0; INVALID = 0; MISSING = $missing.Count }
     if ($null -ne $RowFreshness -and $null -ne $RowFreshness.state_counts) {
         foreach ($k in @("FRESH", "STALE", "UNKNOWN", "INVALID")) { $counts[$k] = [int]$RowFreshness.state_counts[$k] }
@@ -1026,6 +1050,9 @@ function Get-BoardAvailability {
         unexpected_sample = $unexpectedSample
         collector_valid_count = $valid
         collector_valid_quality_pass = ($null -ne $valid -and $valid -ge 90)
+        partial_rows = $partialRows
+        partial_reasons = @($partialReasons)
+        partial_min_fresh_pct = $partialMinFreshPct
         order_allowed = $false
         real_submit_allowed = $false
     }
@@ -2172,7 +2199,7 @@ try {
                     $availabilityReasons += @(Get-ServedFloorReasons (Get-ServedHistoryCommonFloor) $gatewayFreshness.quote_at $healthRows.accepted_quote_at)
                 }
                 $runtime['decision_available'] = ($availabilityReasons.Count -eq 0 -and $healthAvailability.decision_available -eq $true)
-                $runtime['availability_status'] = $(if ($runtime['decision_available']) { 'AVAILABLE' } elseif ($healthAvailability.decision_available -ne $true) { [string]$healthAvailability.availability_status } elseif (@($availabilityReasons | Where-Object { ([string]$_).StartsWith("SERVED_HISTORY_") }).Count -eq $availabilityReasons.Count) { 'BLOCKED_SERVED_HISTORY' } else { 'BLOCKED_SHADOW_DISAGREES' })
+                $runtime['availability_status'] = $(if ($runtime['decision_available']) { $(if ([string]$healthAvailability.availability_status -ceq 'AVAILABLE_PARTIAL') { 'AVAILABLE_PARTIAL' } else { 'AVAILABLE' }) } elseif ($healthAvailability.decision_available -ne $true) { [string]$healthAvailability.availability_status } elseif (@($availabilityReasons | Where-Object { ([string]$_).StartsWith("SERVED_HISTORY_") }).Count -eq $availabilityReasons.Count) { 'BLOCKED_SERVED_HISTORY' } else { 'BLOCKED_SHADOW_DISAGREES' })
                 if ($availabilityReasons.Count -gt 0) {
                     $runtime.fail_closed = $true
                     if ([string]$runtime.price_source_status -eq "OK" -or [string]::IsNullOrWhiteSpace([string]$runtime.price_source_status)) {
@@ -2193,7 +2220,7 @@ try {
                     # is never left OK beside fail_closed; the Collector's own
                     # report stays in source_status.
                     $runtime['decision_available'] = $false
-                    if ($runtime['availability_status'] -eq 'AVAILABLE') { $runtime['availability_status'] = 'BLOCKED_FAIL_CLOSED' }
+                    if (@('AVAILABLE','AVAILABLE_PARTIAL') -ccontains [string]$runtime['availability_status']) { $runtime['availability_status'] = 'BLOCKED_FAIL_CLOSED' }
                     if ([string]$runtime.price_source_status -eq "OK" -or [string]::IsNullOrWhiteSpace([string]$runtime.price_source_status)) {
                         $runtime.price_source_status = "FAIL_CLOSED"
                     }

@@ -622,6 +622,15 @@ class GatewayShadowAvailabilityParity(unittest.TestCase):
             "watchlist_duplicate": (board(now), dup),
             "watchlist_short": (board(now), short),
             "watchlist_missing": (board(now), missing),
+            # Fresh-rows-only use (P0-V10-INTEGRATION-AND-LIVE-START-20261020).
+            "partial_one_stale": (dict(board(now, stale={"SYN07.T"}), aggregate_basis="FRESH_ROWS_ONLY"), good),
+            "partial_five_stale": (dict(board(now, stale=set(UNIVERSE[95:])), aggregate_basis="FRESH_ROWS_ONLY"), good),
+            "partial_six_stale": (dict(board(now, stale=set(UNIVERSE[94:])), aggregate_basis="FRESH_ROWS_ONLY"), good),
+            "partial_undeclared": (board(now, stale={"SYN07.T"}), good),
+            "partial_identity_stale": (dict(board(now, identity_at=now - timedelta(minutes=5)),
+                                            aggregate_basis="FRESH_ROWS_ONLY"), good),
+            "partial_missing_row": (dict(board(now, drop={"SYN42.T"}, declared=100), aggregate_basis="FRESH_ROWS_ONLY"),
+                                    good),
         }
         cases = []
         cls.expected = {}
@@ -646,18 +655,23 @@ class GatewayShadowAvailabilityParity(unittest.TestCase):
         keys = ("decision_available", "availability_status", "reasons", "identity_quote_fresh", "universe_verified",
                 "universe_expected_count", "universe_declared", "row_count", "state_counts", "fresh_coverage_pct",
                 "missing_count", "missing_sample", "unexpected_count", "unexpected_sample", "collector_valid_count",
-                "collector_valid_quality_pass", "order_allowed", "real_submit_allowed")
+                "collector_valid_quality_pass", "partial_rows", "partial_reasons", "partial_min_fresh_pct",
+                "order_allowed", "real_submit_allowed")
         self.assertEqual(set(self.result["cases"]), set(self.expected))
         for name, py in self.expected.items():
             with self.subTest(case=name):
                 ps = self.result["cases"][name]["availability"]
                 for key in keys:
                     got = ps[key]
-                    if key in ("reasons", "missing_sample", "unexpected_sample"):
+                    if key in ("reasons", "missing_sample", "unexpected_sample", "partial_reasons"):
                         got = list(got or [])
                     self.assertEqual(got, py[key], key)
         self.assertIs(self.expected["all_fresh"]["decision_available"], True)
         self.assertIs(self.expected["one_missing"]["decision_available"], False)
+        self.assertEqual(self.expected["partial_one_stale"]["availability_status"], "AVAILABLE_PARTIAL")
+        self.assertEqual(self.expected["partial_five_stale"]["availability_status"], "AVAILABLE_PARTIAL")
+        for blocked in ("partial_six_stale", "partial_undeclared", "partial_identity_stale", "partial_missing_row"):
+            self.assertIs(self.expected[blocked]["decision_available"], False, blocked)
 
 
 BRIDGE_HARNESS = r"""
