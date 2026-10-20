@@ -69,7 +69,7 @@ class V10MissionNavigation(unittest.TestCase):
         self.assertNotIn("RssOrder", focus)
 
     def test_focus_row_point_in_time_collector_contract(self):
-        self.assertIn("lastVerified&&rowQuoteReady(row)", self.source)
+        self.assertIn("lastVerified&&eventRecent()&&rowQuoteReady(row)", self.source)
         self.assertIn('row.source_timestamp_basis!=="COLLECTOR_OBSERVED_CHANGE"', self.source)
         node = shutil.which("node")
         if not node:
