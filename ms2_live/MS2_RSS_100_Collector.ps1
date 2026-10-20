@@ -906,7 +906,9 @@ function Hide-UntrustedLivePrices($rows) {
 function Write-AtomicUtf8([string]$path, [string]$content) {
     # The single stable "$path.tmp" collided after crash/restart or overlapping
     # attempts. Use a private temporary file per call, in the same directory.
-    $tmp = "$path.$([Guid]::NewGuid().ToString('N')).tmp"
+    $identity = [Guid]::NewGuid().ToString('N')
+    $tmp = "$path.$identity.tmp"
+    $backup = "$path.$identity.bak"
     [IO.File]::WriteAllText($tmp, $content, [Text.UTF8Encoding]::new($false))
     $maxAttempts = 5
     try {
@@ -915,7 +917,9 @@ function Write-AtomicUtf8([string]$path, [string]$content) {
                 if ([IO.File]::Exists($path)) {
                     # Atomic replacement of an existing JSON/CSV file. Readers
                     # see either complete previous or complete new bytes.
-                    [IO.File]::Replace($tmp, $path, $null)
+                    # Windows PowerShell 5.1/.NET Framework requires a legal
+                    # backup path; null may raise "path is not of a legal form".
+                    [IO.File]::Replace($tmp, $path, $backup)
                 } else {
                     # Initial publication; Move is atomic within this directory.
                     [IO.File]::Move($tmp, $path)
@@ -935,6 +939,9 @@ function Write-AtomicUtf8([string]$path, [string]$content) {
         # are handled by independent housekeeping after review.
         if ([IO.File]::Exists($tmp)) {
             try { [IO.File]::Delete($tmp) } catch { }
+        }
+        if ([IO.File]::Exists($backup)) {
+            try { [IO.File]::Delete($backup) } catch { }
         }
     }
 }
