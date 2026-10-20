@@ -51,8 +51,21 @@ class PublicFeedTests(unittest.TestCase):
         self.assertTrue(all(x["available_at"] == NOW.isoformat() for x in snapshot["sources"]))
         self.assertEqual(pilot.validate_snapshot(snapshot, NOW), snapshot)
 
-    def test_missing_date_time_does_not_invent_timestamp(self):
-        for stamp in ("2026-10-20", "", "2026-10-20T15:00:00"):
+    def test_calendar_day_only_is_observed_at_fetch_not_fake_release_time(self):
+        records = feed.parse_feed(rss(date="2026-10-20"), "pre_next", NOW)
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["as_of"], NOW.isoformat())
+        self.assertEqual(records[0]["available_at"], NOW.isoformat())
+        self.assertIn("DATE_ONLY_OBSERVED_AT_FETCH", records[0]["summary"])
+        self.assertIn("earliest release TIME UNKNOWN", records[0]["summary"])
+
+    def test_missing_or_timezone_naive_clock_stays_blocked(self):
+        for stamp in ("", "2026-10-20T15:00:00"):
+            with self.subTest(stamp=stamp):
+                self.assertEqual(feed.parse_feed(rss(date=stamp), "pre_next", NOW), [])
+
+    def test_date_only_future_and_old_are_rejected(self):
+        for stamp in ("2026-10-22", "2026-10-10", "2026-02-30"):
             with self.subTest(stamp=stamp):
                 self.assertEqual(feed.parse_feed(rss(date=stamp), "pre_next", NOW), [])
 
