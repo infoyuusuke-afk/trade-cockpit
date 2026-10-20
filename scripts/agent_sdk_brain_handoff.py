@@ -213,6 +213,26 @@ def consume(*, input_path, private_dir, now, write_ack=False):
     now = _now(now)
     root = _private_dir(private_dir)
     doc = _read_once(Path(input_path), root)
+    payload = verify_document(doc, file_name=Path(input_path).name, now=now)
+    ack = {
+        "schema_version": ACK_SCHEMA,
+        "run_id": payload["run_id"],
+        "envelope_sha256": hashlib.sha256(_canon(doc)).hexdigest(),
+        "received_at": now.isoformat(),
+        "state": "RESEARCH_ONLY_ACK_RECEIVED_NOT_BRAIN_LIVE",
+        "real_submit_allowed": False,
+        "brain_trade_decision_eligible": False,
+    }
+    return _finish_sidecar_ack(ack, root, write_ack)
+
+
+def verify_document(doc, *, file_name, now):
+    """Verify one already-read envelope document; return its payload.
+
+    The caller passes the exact object it read once, so whatever it stores
+    afterwards is the content that was verified (no second read).
+    """
+    now = _now(now)
     if type(doc) is not dict or set(doc) != {"schema_version", "payload", "hmac_sha256"}:
         raise BridgeBlocked("ENVELOPE_SCHEMA_INVALID")
     if doc["schema_version"] != SCHEMA or not isinstance(doc["hmac_sha256"], str):
@@ -241,22 +261,17 @@ def consume(*, input_path, private_dir, now, write_ack=False):
     if emitted > now or not timedelta(0) <= now - emitted <= MAX_HANDOFF_AGE:
         raise BridgeBlocked("HANDOFF_STALE_OR_FUTURE")
     _validate_result(payload["sources"], payload["research"], now=now)
-    if Path(input_path).name != "agent_research_" + payload["run_id"] + ".json":
+    if file_name != "agent_research_" + payload["run_id"] + ".json":
         raise BridgeBlocked("HANDOFF_FILENAME_MISMATCH")
-    ack = {
-        "schema_version": ACK_SCHEMA,
-        "run_id": payload["run_id"],
-        "envelope_sha256": hashlib.sha256(_canon(doc)).hexdigest(),
-        "received_at": now.isoformat(),
-        "state": "RESEARCH_ONLY_ACK_RECEIVED_NOT_BRAIN_LIVE",
-        "real_submit_allowed": False,
-        "brain_trade_decision_eligible": False,
-    }
+    return payload
+
+
+def _finish_sidecar_ack(ack, root, write_ack):
     ack["hmac_sha256"] = hmac.new(
         _key(), _canon(ack), hashlib.sha256
     ).hexdigest()
     if write_ack:
-        name = root / ("agent_research_" + payload["run_id"] + ".ack.json")
+        name = root / ("agent_research_" + ack["run_id"] + ".ack.json")
         _write_once(name, _canon(ack) + b"\n")
         checked = _read_once(name, root)
         if (checked != ack or not hmac.compare_digest(
