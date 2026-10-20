@@ -349,6 +349,7 @@ def main(argv=None) -> int:
     parser.add_argument("--paid-budget-db", help="Mandatory private attempt-budget ledger for billable mode")
     parser.add_argument("--handoff-dir", help="Optional signed private RESEARCH handoff (not V10 deployment)")
     args = parser.parse_args(argv)
+    bridge = None
     try:
         path = Path(args.input)
         if not path.is_file() or path.stat().st_size > 64_000:
@@ -401,8 +402,15 @@ def main(argv=None) -> int:
             "broker_fills_verified": False, "costs_verified": False
         }, sort_keys=True))
         return 0
-    except (Blocked, Exception) as exc:
-        reason = str(exc) if isinstance(exc, Blocked) else "RUNTIME_OR_INPUT_UNVERIFIED"
+    except Exception as exc:
+        # Report only enumerated local fail-closed guard reasons.
+        # Do not leak provider errors, API keys, paths or model contents.
+        if isinstance(exc, Blocked):
+            reason = str(exc)
+        elif bridge is not None and isinstance(exc, bridge.BridgeBlocked):
+            reason = str(exc)
+        else:
+            reason = "RUNTIME_OR_INPUT_UNVERIFIED"
         print(json.dumps({
             "state": "BLOCKED", "reason": reason,
             "real_submit_allowed": False, "api_success": False
