@@ -60,13 +60,18 @@ are in this adapter. JPX publishes RSS guidance, but an exact approved source
 URL and reuse rights must be separately checked before adding that source.
 
 The parser accepts only official https://www.boj.or.jp URLs without credentials,
-query strings or fragments. It rejects RSS entries without an explicitly
-timezone-qualified publication CLOCK, entries dated in the future, and
-entries older than seven days. It never invents source dates. Every accepted
-item has as_of = RSS-declared publication time and available_at =
-the local fetch completion time (CONSERVATIVE first actually verified
-access, NOT proof of the earliest official release). It records only short
-headline text and link, never downloads the article or statistic contents.
+query strings or fragments. Full publication timestamps require an explicit
+timezone; offsetless times, malformed/future entries and content older than
+seven days are REJECTED. Some official feeds publish only a YYYY-MM-DD
+calendar date, with NO PUBLICATION CLOCK. Such items are accepted only as
+CURRENTLY OBSERVED HEADLINE EVIDENCE: as_of = available_at = FETCH TIME,
+with DATE_ONLY_OBSERVED_AT_FETCH and the source's calendar date explicitly
+recorded in summary. This NEVER invents an earlier exact release time,
+creates positive lead-time evidence, or allows intraday signals. With a
+verified full timestamp, as_of = feed-declared publication timestamp and
+available_at = fetch time (CONSERVATIVE first actually verified access,
+NOT proof of the earliest release). It records only short headline text and
+link, never downloads the article or statistic contents.
 Therefore it CANNOT verify statistical figures or prove market opportunity.
 Explicit DOCTYPE/ENTITY XML is prohibited and redirects are not followed.
 
