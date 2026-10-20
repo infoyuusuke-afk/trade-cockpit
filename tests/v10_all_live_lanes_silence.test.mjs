@@ -29,7 +29,7 @@ function oneLine(needle) {
 }
 const sourceCentral=inside(" // One 12-second MS2 admission/expiry contract",
                             "\n const esc=v=>").replace(/\n const esc=v=>$/,"");
-const sourceScalp=inside('document.addEventListener("ms2RssUpdate",e=>{\n    const d=e.detail||{},stale=',"\n  });");
+const sourceScalp=inside('document.addEventListener("ms2RssUpdate",e=>{\n   const d=e.detail||{},stale=',"\n });");
 const sourceUnified=oneLine('document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},live=');
 const sourceWatch=oneLine('document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},box=document.getElementById("watchlist-100-rows")');
 const sourceGap=oneLine('document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},box=document.getElementById("premarket-gap-rows")');
