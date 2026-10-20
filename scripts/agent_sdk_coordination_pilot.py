@@ -347,6 +347,7 @@ def main(argv=None) -> int:
                       help="OWNER opt-in: charges may apply; no scheduling or broker access")
     parser.add_argument("--receipt-db", help="Optional private local SQLite file")
     parser.add_argument("--paid-budget-db", help="Mandatory private attempt-budget ledger for billable mode")
+    parser.add_argument("--handoff-dir", help="Optional signed private RESEARCH handoff (not V10 deployment)")
     args = parser.parse_args(argv)
     try:
         path = Path(args.input)
@@ -355,6 +356,20 @@ def main(argv=None) -> int:
         doc = json.loads(path.read_text(encoding="utf-8"))
         now = datetime.now(timezone.utc)
         validated = validate_snapshot(doc, now)
+        if args.handoff_dir:
+            # Validate the output boundary BEFORE any potentially billable request.
+            if not args.receipt_db:
+                raise Blocked("HANDOFF_RECEIPT_DB_REQUIRED_NO_CALL")
+            try:
+                from scripts import agent_sdk_brain_handoff as bridge
+            except ModuleNotFoundError:
+                import agent_sdk_brain_handoff as bridge
+            bridge._private_dir(Path(args.handoff_dir))
+            bridge._key()
+            expected_handoff = (Path(args.handoff_dir) /
+                ("agent_research_" + validated["run_id"] + ".json"))
+            if expected_handoff.exists() or expected_handoff.is_symlink():
+                raise Blocked("HANDOFF_REPLAY_BLOCKED_NO_CALL")
         if args.enable_billable_api and not os.environ.get("OPENAI_API_KEY"):
             raise Blocked("API_KEY_MISSING_NO_CALL")
         if args.enable_billable_api:
@@ -374,10 +389,15 @@ def main(argv=None) -> int:
             receipt = persist_receipt(
                 Path(args.receipt_db), result, fingerprint(validated)
             )
+        handoff = "NOT_REQUESTED"
+        if args.handoff_dir:
+            bridge.produce(validated, result, private_dir=Path(args.handoff_dir),
+                           now=datetime.now(timezone.utc))
+            handoff = "SIGNED_PRIVATE_RESEARCH_ONLY_PENDING_RECEIVER_ACK"
         print(json.dumps({
             "state": result["state"], "run_id": result["run_id"],
             "specialist_statuses": {x["role"]: x["status"] for x in result["specialists"]},
-            "receipt": receipt, "real_submit_allowed": False,
+            "receipt": receipt, "handoff": handoff, "real_submit_allowed": False,
             "broker_fills_verified": False, "costs_verified": False
         }, sort_keys=True))
         return 0
