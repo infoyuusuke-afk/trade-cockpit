@@ -8,7 +8,6 @@ and workbook identity; a dict supplied here is not authentication.
 """
 from __future__ import annotations
 
-from collections import Counter
 from datetime import datetime, timedelta, timezone
 import math
 import re
@@ -17,7 +16,7 @@ SOURCE_ID = "MS2_RSS_WORKBOOK"
 SCHEMA = "v10-per-symbol-research-0.1"
 ACQUISITION_TTL = timedelta(seconds=12)
 EVIDENCE_TTL = timedelta(seconds=120)
-_TICKER = re.compile(r"^[0-9A-Z]{4,5}(?:\\.T)?$")
+_TICKER = re.compile(r"^[0-9A-Z]{4,5}(?:\.T)?$")
 
 
 def _instant(value):
