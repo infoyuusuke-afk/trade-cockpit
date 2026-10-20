@@ -116,3 +116,50 @@ V10 must be an evidence-driven **observe -> discover -> challenge -> validate ->
 **D-REL-2: UI-source re-pin / release.** Source-only PR #472 modifies the V10 pinned `index.html`. Current manifest and CI deliberately reject the new SHA. Obtain independent current-HEAD review, explicitly authorize exact UI source/hash update and runtime bundle pin reconciliation **without relaxing the hash gate**, then repeat CI and Windows acceptance. PR #471 and #472 remain Draft; no merge until sign-off.
 
 Unrelated old/retired specs, new IPC mechanisms, automations/schedules, and real-order paths must not be touched. Preserve public-safe coordination on Issue #282 and OWNER operations minimal.
+
+## H. Updated OWNER delegation — necessity-first functionality decision, 2026-10-20
+
+OWNER subsequently explicitly authorized the development lead to **keep, delete or modify UI functions based on necessity for ¥10B net realized profit**, instead of requiring preservation of the historical 16-tab count. This **supersedes D-UI-1 as an individual yes/no request**. A safe Draft design iteration is within the authorized scope; no independent approval bypass, real trading, automatic merge or Windows deploy is implied.
+
+### Chosen navigation for Draft PR #474 (function-first; visual style retained)
+
+Primary top-level destinations in display order:
+1. CONTROL — authenticated vs Shadow/Backtest performance, source health and risk state
+2. BRAIN — truth-constrained observer, AI review / fail closed
+3. AIトレード日記 — result tracking, weekly reflection and learning; daily Journal integration remains PARTIAL
+4. SCALP 5 — approved fast transitions, MS2-only live evidence
+5. EVENT 5 — IR / PTS / material-first escalation, source-labeled
+6. REALTIME 5 — 100-stock flow and source-validated discovery, no research-only NEXT THEME
+7. PRE-NEXT — NEXT THEME / pre-move research; hypotheses NOT automatically executable
+8. OVERNIGHT 5 — 15:25 next-day directional study
+9. SWING 5 — multi-day strategy, trend and risk
+10. VALUE 5 — longer duration, cross-reference quality / dividends / buybacks
+11. FOCUS — OWNER-pinned five symbols, never auto-rotated; MS2 stale/unknown => no price
+12. KIOXIA — special monitored instrument with chart and calibrated prediction history
+13. 決算日程 — inserted by `earnings-calendar.js` ahead of 注意
+14. 注意 — risk, events and trading-stop reason
+
+Secondary reference menu is nine: 円高恩恵TOP5 / 対米投資・SMR / 主体レジーム / 検証・除外 / 相関 / 下ヒゲ / 拡大 / 大口 / 国策. Weekly moved into Journal, not deleted as evidence.
+
+### Keep / merge / delete, with business rationale
+
+| Decision | What | Rationale and audit |
+|---|---|---|
+| KEEP | CONTROL, BRAIN, main strategy lanes, KIOXIA, earnings | Needed for verifiable P&L separation, decision audit, horizon-specific OOS/EV and source-specific forecasting |
+| KEEP / TOP-LEVEL | OWNER-fixed FOCUS, PRE-NEXT, AIトレード日記 | Early discovery, persistent human-curated watch and AI feedback loop are central to learning; incomplete parts marked research/partial |
+| MERGE | Weekly review -> AIトレード日記 | Eliminates an empty redundant navigation destination while retaining all historical content and weekly source |
+| MOVE | NEXT THEME RADAR -> PRE-NEXT | Research-stage themes must not sit among source-verified executable REALTIME symbols |
+| DELETE DISPLAY ONLY | Static 2026-09-25 data quality PASS (56/100) | Misleading historical success; mandatory internal collector/Gateway safety gates retained |
+| DELETE / REPLACE | 2026-09-25 FOCUS forecasts and stale trigger voice code (~60k chars) | Old static values falsely presented fresh; replaced with OWNER-selected ticker list and authenticated MS2 read-only cards, no speech or orders |
+| REPAIR UI SINGLE LOCATION | SCALP fixed list 285A.T -> 464A.T | Matches approved successor watchlist intent; workbook/other engines are NOT modified in this Draft; no guessed quotes |
+
+### Non-negotiable acceptance / remaining open gate
+
+- PR #474 is stacked on #472 on #471, **Draft**; exact current HEAD, CI, negative tests and independent review must be obtained before choosing any release.
+- Preexisting `index.html` git SHA and immutable V10 release manifest do not currently match after #472/#474 modifications. Do **not** disable pin checks, merge automatically, or interpret failed pin CI as a software-ready image. The pinned bundle should be updated only after review of the actual source diff and coherent signed/manifest constraints.
+- FOCUS only accepts MS2 payload with explicit `source_authenticated=true`, `live_values_available=true`, `data_conflict=false`, `real_submit_allowed=false`, canonical MS2 source and recent publication timestamp. If any evidence is missing or old it shows BLOCK and no price. Persisted selection stores only public ticker codes locally.
+- No changes to approved color, font, background, telemetry infrastructure, Excel, generated Writer timing, other specialists' tasks, market source endpoints, or real-submit locks.
+- Daily trade journal, objective 100億 expectation score, market-wide non-fixed100 discovery, and actual Shadow EV improvement **are not implemented by these UI changes**; these require dedicated contracts, measured evidence, future review.
+- All Windows real-machine visual tests, exact Excel/PIT quote persistence, latency, independent readback, end-to-end AI learning, realized P&L remain PENDING/UNKNOWN.
+
+**OWNER does not need to decide the tab count again.** The next true OWNER-controlled boundary is the independent-reviewed pinned UI release / Windows deployment decision. The development lead must continue non-release research, negative regression work and evidence collection autonomously.
