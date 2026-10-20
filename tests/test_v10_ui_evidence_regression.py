@@ -33,11 +33,11 @@ class V10UiEvidenceRegression(unittest.TestCase):
     def test_controlled_layout_and_colors_remain_unchanged(self):
         actual = re.findall(r'<button class="cockpit-tab(?: active)?" data-tab="([^"]+)"', self.source)
         self.assertEqual(actual, [
-            "control", "brain", "scalp", "event-hot", "ms2-live",
-            "overnight", "swing", "value", "kioxia-calendar", "events",
+            "control", "brain", "ai-journal", "scalp", "event-hot", "ms2-live", "pre-next",
+            "overnight", "swing", "value", "focus-owner", "kioxia-calendar", "events",
             "strong-yen", "us-smr", "investor-regime", "market",
             "correlation", "wick", "expansion", "accumulation",
-            "policy", "weekly",
+            "policy",
         ])
 
     def test_no_fabricated_brain_gateway_or_live_label(self):
