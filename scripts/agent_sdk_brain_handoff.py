@@ -250,9 +250,19 @@ def consume(*, input_path, private_dir, now, write_ack=False):
         "real_submit_allowed": False,
         "brain_trade_decision_eligible": False,
     }
+    ack["hmac_sha256"] = hmac.new(
+        _key(), _canon(ack), hashlib.sha256
+    ).hexdigest()
     if write_ack:
         name = root / ("agent_research_" + payload["run_id"] + ".ack.json")
         _write_once(name, _canon(ack) + b"\n")
+        checked = _read_once(name, root)
+        if (checked != ack or not hmac.compare_digest(
+            hmac.new(_key(), _canon({k: v for k, v in checked.items()
+                                     if k != "hmac_sha256"}), hashlib.sha256).hexdigest(),
+            checked["hmac_sha256"]
+        )):
+            raise BridgeBlocked("ACK_INDEPENDENT_READBACK_FAILED")
     return ack
 
 
