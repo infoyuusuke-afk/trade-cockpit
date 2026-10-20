@@ -135,7 +135,7 @@ def parse_feed(raw: bytes, role: str, observed_at: datetime) -> list[dict]:
             # BOJ RSS may carry a *calendar day* without publication clock.
             # Never manufacture hh:mm or a zone on such a date. This records
             # evidence of a headline observed NOW, NOT when the BOJ released it.
-            date_only = bool(re.fullmatch(r"\\d{4}-\\d{2}-\\d{2}", published))
+            date_only = bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", published))
             if date_only:
                 published_day = date.fromisoformat(published)
                 today_jst = now.astimezone(JST).date()
