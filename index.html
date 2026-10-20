@@ -8,7 +8,7 @@
 .cockpit-brand small.status-error{color:#f23645;background:#32191d;border-color:#6f2730}
 .cockpit-tab{border:0;border-radius:4px;background:transparent;color:#9ba3af;padding:9px 12px;font-weight:700;white-space:nowrap;cursor:pointer}
 .cockpit-tab:hover{background:#1e222d;color:#d1d4dc}.cockpit-tab.active{color:#fff;background:#2962ff}
-.cockpit-tab.event-alert{color:#fff;background:#f23645;box-shadow:none}
+.cockpit-tab.event-alert{color:#fff;background:#f23645;box-shadow:none} .focus-owner-action{border:0;border-radius:4px;background:transparent;color:#9ba3af;padding:9px 12px;font-weight:700;white-space:nowrap;cursor:pointer}.focus-owner-action:hover{background:#1e222d;color:#d1d4dc}
 .secondary-tabs{margin-left:auto;white-space:nowrap}.secondary-tabs summary{cursor:pointer;color:#9ba3af;padding:9px 10px;border-radius:4px}.secondary-tabs summary:hover{background:#1e222d;color:#d1d4dc}.secondary-tabs[open]{display:flex;gap:2px}
 .tab-pane{display:none}.tab-pane.active{display:block}
 .weekly-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
@@ -226,8 +226,8 @@ document.addEventListener("DOMContentLoaded",()=>{
    }).join(""):'<div class="focus-empty">SCALP 5のMS2 RSSデータ待ち</div>';
  });
 
- document.querySelectorAll(".cockpit-tab").forEach(b=>b.onclick=()=>{
-   document.querySelectorAll(".cockpit-tab").forEach(x=>x.classList.toggle("active",x===b));
+ document.querySelectorAll(".cockpit-tabs .cockpit-tab[data-tab]").forEach(b=>b.onclick=()=>{
+   document.querySelectorAll(".cockpit-tabs .cockpit-tab[data-tab]").forEach(x=>x.classList.toggle("active",x===b));
    document.querySelectorAll(".tab-pane").forEach(x=>x.classList.toggle("active",x.dataset.pane===b.dataset.tab));
    localStorage.setItem("cockpitTabV5",b.dataset.tab);
    if(b.dataset.tab==="kioxia-calendar"&&window.kioChart)requestAnimationFrame(()=>requestAnimationFrame(()=>window.kioChart.timeScale().fitContent()));
@@ -361,8 +361,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   <p class="sub">監視対象は自動で入れ替えません。価格・板・シグナルはMS2の出所と鮮度が確認できた場合だけ表示。実注文禁止。</p>
   <div class="ec-controls">
     <label>監視銘柄 <select id="focus-owner-select" aria-label="監視銘柄を選ぶ"><option value="">MS2データ待ち</option></select></label>
-    <button type="button" class="cockpit-tab" id="focus-owner-add">監視に固定</button>
-    <button type="button" class="cockpit-tab" id="focus-owner-remove">選択銘柄を解除</button>
+    <button type="button" class="focus-owner-action" id="focus-owner-add">監視に固定</button>
+    <button type="button" class="focus-owner-action" id="focus-owner-remove">選択銘柄を解除</button>
   </div>
   <p id="focus-owner-status" class="warning">MS2市場データ未認証。OWNERの固定銘柄は保持、売買判断・価格表示を停止。</p>
   <div id="focus-owner-cards" class="cc-grid"><div class="focus-empty">OWNER固定銘柄を選択してください。</div></div>
