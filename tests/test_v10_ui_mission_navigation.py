@@ -29,7 +29,7 @@ class V10MissionNavigation(unittest.TestCase):
             "focus-owner", "kioxia-calendar", "events",
         ])
         self.assertEqual(len(buttons), 22)
-        self.assertIn('data-tab="earnings"', self.earnings)  # Script-injected tab, not statically duplicated.
+        self.assertIn("button.dataset.tab='earnings'", self.earnings)  # Script-injected tab, not statically duplicated.
 
     def test_reference_preserves_research_without_empty_weekly(self):
         nav = self.nav
