@@ -193,3 +193,24 @@ test("pagehide/pageshow and background-tab disable every panel until new verifie
   h.hide();assertBlocked(h);
   h.send(good(h));h.advance(12001);assertBlocked(h);
 });
+test("unknown data source or an old per-row quote/provenance time never paints LIVE",()=>{
+  const h=harness();
+  const valid=good(h);
+  for(const d of [
+    {...valid,source:"unknown"},
+    {...valid,source:undefined},
+    {...valid,live_price_diagnostics:{...valid.live_price_diagnostics,source_mode:"PUBLIC_SNAPSHOT"}},
+  ]){h.send(d);assertBlocked(h);}
+  // Fresh screen event, but one row's own quote time or observation proof is
+  // older than 120 s: that row must not render even though the screen is LIVE.
+  for(const field of ["source_timestamp_at","source_timestamp_observed_at"]){
+    const d=good(h);
+    const old=new Date(h.now()-121000).toISOString();
+    d.all_targets[1][field]=old;
+    if(field==="source_timestamp_at")d.all_targets[1].source_timestamp=old.slice(11,19);
+    h.send(d);
+    assert.match(h.nodes.get("unified-mode").className,/live/);
+    assert.doesNotMatch(content(h,"watchlist-100-rows"),/symbol="1000"/);
+    assert.match(content(h,"watchlist-100-rows"),/<watch/);
+  }
+});
