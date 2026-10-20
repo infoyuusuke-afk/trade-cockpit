@@ -1410,6 +1410,111 @@ document.addEventListener("liveFocusUpdate",e=>{
 </script>
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
+ // One 12-second MS2 admission/expiry contract for every LIVE-labeled panel.
+ // A fresh HTTP response carrying an old observation never renews validity.
+ const SCREEN_SILENCE_MS=12000;
+ const offsetFresh=(value,limit)=>{
+  if(typeof value!=="string"||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(value.trim()))return false;
+  const age=Date.now()-Date.parse(value.trim());
+  return Number.isFinite(age)&&age>=-5000&&age<=limit;
+ };
+ const screenReady=d=>{
+  const diag=d?.live_price_diagnostics;
+  if(d?.stale!==false||d?.live_values_available!==true||
+     d?.data_conflict!==false||d?.real_submit_allowed!==false||
+     d?._transport_fail_closed===true||d?.source_authenticated===false||
+     d?.source!=="MarketSpeed II RSS / local PC"||
+     d?.connection_source!=="自宅PC・MS2 RSS LIVE"||
+     diag?.workbook_identity_verified!==true||
+     diag?.price_source_status!=="OK"||
+     diag?.source_mode!=="MS2_RSS_WORKBOOK"||
+     diag?.data_conflict!==false||diag?.live_values_available!==true||
+     diag?.real_submit_allowed!==false||
+     typeof window.livePriceBlocked!=="function"||
+     window.livePriceBlocked(d)!=="")return false;
+  return offsetFresh(d.observed_at_offset,SCREEN_SILENCE_MS);
+ };
+ const rowReady=x=>{
+  if(!x||x.source_timestamp_basis!=="COLLECTOR_OBSERVED_CHANGE"||
+     typeof x.source_timestamp_at!=="string"||
+     typeof x.source_timestamp_observed_at!=="string"||
+     typeof x.source_timestamp!=="string")return false;
+  const q=x.source_timestamp_at.trim(),o=x.source_timestamp_observed_at.trim();
+  const diff=Date.parse(o)-Date.parse(q);
+  return offsetFresh(q,120000)&&offsetFresh(o,120000)&&
+     /^\d\d:\d\d:\d\d$/.test(x.source_timestamp)&&
+     q.slice(11,19)===x.source_timestamp&&
+     Number.isFinite(diff)&&diff>=-5000&&
+     typeof x.price==="number"&&Number.isFinite(x.price)&&x.price>0;
+ };
+ window.cockpitMs2ScreenReady=screenReady;
+ window.cockpitMs2RowReady=rowReady;
+ const put=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+ const blocked="MS2通信停止・出所または鮮度未確認／価格・板・シグナル遮断";
+ const clearAll=()=>{
+  const health=document.getElementById("ms2-live-health");
+  if(health){health.className="ms2-health stale";health.textContent="データ停止・売買禁止";}
+  const areas={
+   "ms2-live-meta":blocked,"ms2-live-cards":blocked,
+   "ms2-hold-cards":"MS2停止・持ち越し候補の現在状態は未認証",
+   "ms2-hold-status":"MS2通信停止・現在の候補無効",
+   "ms2-hold-stats":"成績の取得時刻未確認・LIVE表示停止",
+   "ms2-hold-history":"過去成績の更新未確認",
+   "ms2-pts-cards":"PTS現在値の証拠不足",
+   "ms2-ir-pts-cards":"IR/PTS現在値の証拠不足",
+   "ms2-ir-pts-meta":"MS2市場データ未確認",
+   "kio-preopen-plan":"—","kio-preopen-score":"—",
+   "kio-preopen-quote":"—","kio-preopen-gap":"—",
+   "kio-preopen-imbalance":"—","kio-preopen-change":"—",
+   "kio-open-decision":"—","kio-special-quote":"—",
+   "kio-ms2-band":"—","kio-ms2-under":"—",
+   "kio-ms2-under-change":"—","kio-ms2-flow":"—",
+   "kio-ms2-flow-detail":"—","kio-ms2-ticks":"—",
+   "kio-ms2-stat":"—","kio-ms2-stat-detail":"—",
+   "kio-preopen-stat":"—"
+  };
+  Object.entries(areas).forEach(([id,v])=>put(id,v));
+  const common=document.getElementById("ms2-common-status");
+  if(common){
+   const score=common.querySelector(".score"),metrics=common.querySelector(".ms2-metrics");
+   if(score)score.textContent="未検証";
+   if(metrics)metrics.textContent=blocked;
+  }
+  const kio=document.getElementById("kio-ms2-orderflow");
+  if(kio)kio.classList.remove("buy","sell","conflict");
+ };
+ let lastVerifiedEventAt=null,clockTimer=null;
+ const stopReason=reason=>({
+  stale:true,live_values_available:false,data_conflict:true,
+  real_submit_allowed:false,_transport_fail_closed:true,stale_reason:reason
+ });
+ const invalidate=reason=>{
+  lastVerifiedEventAt=null;
+  clearAll();
+  document.dispatchEvent(new CustomEvent("ms2RssUpdate",{detail:stopReason(reason)}));
+ };
+ document.addEventListener("ms2RssUpdate",e=>{
+  if(screenReady(e?.detail||{}))lastVerifiedEventAt=Date.now();
+  else{lastVerifiedEventAt=null;clearAll();}
+ });
+ const expire=()=>{
+  if(lastVerifiedEventAt===null)return;
+  const age=Date.now()-lastVerifiedEventAt;
+  if(Number.isFinite(age)&&age>=-5000&&age<=SCREEN_SILENCE_MS)return;
+  invalidate("MS2_EVENT_SILENCE_12S");
+ };
+ clockTimer=setInterval(expire,1000);
+ document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="hidden")invalidate("MS2_SCREEN_HIDDEN");
+  else expire();
+ });
+ window.addEventListener("pagehide",()=>{
+  clearInterval(clockTimer);clockTimer=null;invalidate("MS2_PAGEHIDE");
+ });
+ window.addEventListener("pageshow",()=>{
+  if(clockTimer===null)clockTimer=setInterval(expire,1000);
+  invalidate("MS2_PAGESHOW_REVERIFY");
+ });
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  const yen=v=>Number(v||0).toLocaleString("ja-JP",{maximumFractionDigits:1})+"円";
  const changeBadge=v=>v==null||!Number.isFinite(Number(v))?"":`<span class="fp-change ${Number(v)>=0?"up":"down"}">${Number(v)>=0?"+":""}${Number(v).toFixed(2)}%</span>`;
