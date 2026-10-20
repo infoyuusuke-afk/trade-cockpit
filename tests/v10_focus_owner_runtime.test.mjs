@@ -107,15 +107,15 @@ function mounted(persisted={}) {
 function jst(ms) {
   return new Date(ms+9*3600000).toISOString().slice(0,19)+"+09:00";
 }
-function row(ticker="464A.T",ageSeconds=8) {
-  const quote=jst(Date.now()-ageSeconds*1000);
-  const observed=jst(Date.now()-(ageSeconds-1)*1000);
+function row(ticker="464A.T",ageSeconds=8,now=Date.now()) {
+  const quote=jst(now-ageSeconds*1000);
+  const observed=jst(now-(ageSeconds-1)*1000);
   return {ticker,name:"Monitor",price:1234,
     source_timestamp_basis:"COLLECTOR_OBSERVED_CHANGE",
     source_timestamp_at:quote,source_timestamp_observed_at:observed,
     source_timestamp:quote.slice(11,19)};
 }
-function snapshot(rows=[],overrides={}) {
+function snapshot(rows=[],overrides={},now=Date.now()) {
   return {stale:false,live_values_available:true,data_conflict:false,
     real_submit_allowed:false,source:"MarketSpeed II RSS / local PC",
     source_mode:"MS2_RSS_WORKBOOK",price_source_status:"OK",
@@ -125,7 +125,7 @@ function snapshot(rows=[],overrides={}) {
       workbook_identity_verified:true,data_conflict:false,
       live_values_available:true,real_submit_allowed:false
     },
-    observed_at_offset:new Date(Date.now()-1500).toISOString(),
+    observed_at_offset:new Date(now-1500).toISOString(),
     all_targets:rows,...overrides};
 }
 
@@ -224,7 +224,7 @@ test("NO-EVENT clock advance revokes a previously fresh FOCUS price without a ne
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
   assert.ok(h.nodes["focus-owner-status"].textContent.includes("MS2通信が停止"));
   assert.deepEqual(JSON.parse(h.map.get("cockpitFocusPinnedV10")),["464A.T"]);
-  h.fire("ms2RssUpdate",snapshot([row()]));
+  h.fire("ms2RssUpdate",snapshot([row("464A.T",8,h.clock.now)],{},h.clock.now));
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[PRICE:464A.T:1234]"));
   h.fire("pagehide");
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
@@ -232,7 +232,7 @@ test("NO-EVENT clock advance revokes a previously fresh FOCUS price without a ne
   h.fire("pageshow");
   assert.equal(h.timers.size,1,"watchdog must re-arm after bfcache pageshow");
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
-  h.fire("ms2RssUpdate",snapshot([row()]));
+  h.fire("ms2RssUpdate",snapshot([row("464A.T",8,h.clock.now)],{},h.clock.now));
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[PRICE:464A.T:1234]"));
   h.advanceClock(12001);
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
