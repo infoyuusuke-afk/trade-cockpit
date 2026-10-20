@@ -68,31 +68,39 @@ class V10MissionNavigation(unittest.TestCase):
         self.assertNotIn("cockpitAnnounce", focus)
         self.assertNotIn("RssOrder", focus)
 
-    def test_focus_per_row_quote_time_and_validity_fail_closed(self):
+    def test_focus_row_point_in_time_collector_contract(self):
         self.assertIn("lastVerified&&rowQuoteReady(row)", self.source)
+        self.assertIn('row.source_timestamp_basis!=="COLLECTOR_OBSERVED_CHANGE"', self.source)
         node = shutil.which("node")
         if not node:
-            self.skipTest("Node unavailable: static assertion still applies")
+            self.skipTest("Node unavailable: static source assertions remain")
         raw = self.source.split("const rowQuoteReady=row=>{", 1)[1].split("\n };", 1)[0]
         js = "const rowQuoteReady=row=>{" + raw + "\n };" + r"""
-const good={quote_valid:true,quote_time:new Date(Date.now()-20000).toISOString(),price:1234};
+const toJst=ms=>new Date(ms+9*3600000).toISOString().slice(0,19)+"+09:00";
+const at=toJst(Date.now()-20000),obs=toJst(Date.now()-17000);
+const good={source_timestamp_basis:"COLLECTOR_OBSERVED_CHANGE",
+ source_timestamp_at:at,source_timestamp_observed_at:obs,
+ source_timestamp:at.slice(11,19),price:1234};
 const cases=[
  rowQuoteReady(good),
- rowQuoteReady({...good,quote_valid:false}),
- rowQuoteReady({...good,quote_valid:null}),
- rowQuoteReady({...good,quote_time:null}),
- rowQuoteReady({...good,quote_time:"2026-10-20 10:00:00 JST"}),
- rowQuoteReady({...good,quote_time:new Date(Date.now()-180000).toISOString()}),
- rowQuoteReady({...good,quote_time:new Date(Date.now()+180000).toISOString()}),
+ rowQuoteReady({...good,source_timestamp_basis:"UNOBSERVED_SINCE_START"}),
+ rowQuoteReady({...good,source_timestamp_at:null}),
+ rowQuoteReady({...good,source_timestamp_observed_at:null}),
+ rowQuoteReady({...good,source_timestamp:"00:00:00"}),
+ rowQuoteReady({...good,source_timestamp_at:toJst(Date.now()-180000)}),
+ rowQuoteReady({...good,source_timestamp_at:toJst(Date.now()+180000)}),
+ rowQuoteReady({...good,source_timestamp_observed_at:toJst(Date.now()-180000)}),
+ rowQuoteReady({...good,source_timestamp_observed_at:toJst(Date.now()+180000)}),
  rowQuoteReady({...good,price:0}),
  rowQuoteReady({...good,price:"1234"}),
- rowQuoteReady(null)
+ rowQuoteReady(null),
 ];
 process.stdout.write(JSON.stringify(cases));
 """
-        proc = subprocess.run([node, "-e", js], capture_output=True, text=True, timeout=15)
-        self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertEqual(json.loads(proc.stdout), [True] + [False] * 9)
+        p = subprocess.run([node, "-e", js], capture_output=True, text=True, timeout=15)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(json.loads(p.stdout), [True] + [False] * 11)
+
 
     def test_kioxia_updated_in_fixed_scalp_selection(self):
         self.assertIn('const fixed=["464A.T","9984.T","8035.T","6920.T","6857.T"]', self.source)
@@ -107,39 +115,38 @@ process.stdout.write(JSON.stringify(cases));
         ):
             self.assertIn(marker, s)
 
-    def test_only_verified_ms2_identity_and_freshness_can_paint_focus(self):
+    def test_only_source_validated_ms2_and_fresh_publication_can_paint_focus(self):
         node = shutil.which("node")
         if not node:
             self.skipTest("Node unavailable: static source contract tests still run")
         raw = self.source.split("const validMarket=d=>{", 1)[1].split("\n };", 1)[0]
         func = "const validMarket=d=>{" + raw + "\n };"
         js = func + r"""
-const window = {livePriceBlocked: d => d.source==="MarketSpeed II RSS / local PC" ? "" : "BAD_SOURCE"};
-const original = {
- stale:false,source_authenticated:true,live_values_available:true,data_conflict:false,
+const window={livePriceBlocked:d=>d.source==="MarketSpeed II RSS / local PC"?"":"BAD_SOURCE"};
+const original={
+ stale:false,live_values_available:true,data_conflict:false,
  real_submit_allowed:false,_transport_fail_closed:false,source:"MarketSpeed II RSS / local PC",
- updated_at:new Date(Date.now()-30000).toISOString()
+ observed_at_offset:new Date(Date.now()-30000).toISOString()
 };
 const cases=[
-  validMarket(original),
-  validMarket({...original,stale:true}),
-  validMarket({...original,source_authenticated:false}),
-  validMarket({...original,live_values_available:false}),
-  validMarket({...original,data_conflict:null}),
-  validMarket({...original,real_submit_allowed:true}),
-  validMarket({...original,_transport_fail_closed:true}),
-  validMarket({...original,source:"Historical data"}),
-  validMarket({...original,updated_at:new Date(Date.now()-3600000).toISOString()}),
-  validMarket({...original,updated_at:new Date(Date.now()+180000).toISOString()}),
-  validMarket({...original,updated_at:"2026-10-20 10:00:00"}),
-  validMarket({...original,updated_at:null}),
+ validMarket(original),
+ validMarket({...original,stale:true}),
+ validMarket({...original,source_authenticated:false}),
+ validMarket({...original,live_values_available:false}),
+ validMarket({...original,data_conflict:null}),
+ validMarket({...original,real_submit_allowed:true}),
+ validMarket({...original,_transport_fail_closed:true}),
+ validMarket({...original,source:"Historical data"}),
+ validMarket({...original,observed_at_offset:new Date(Date.now()-3600000).toISOString()}),
+ validMarket({...original,observed_at_offset:new Date(Date.now()+180000).toISOString()}),
+ validMarket({...original,observed_at_offset:"2026-10-20 10:00:00"}),
+ validMarket({...original,observed_at_offset:null}),
 ];
 process.stdout.write(JSON.stringify(cases));
 """
-        run = subprocess.run([node, "-e", js], text=True, capture_output=True, timeout=15)
-        self.assertEqual(run.returncode, 0, run.stderr)
-        cases = json.loads(run.stdout)
-        self.assertEqual(cases, [True] + [False] * 11)
+        p = subprocess.run([node, "-e", js], text=True, capture_output=True, timeout=15)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(json.loads(p.stdout), [True] + [False] * 11)
 
 
 if __name__ == "__main__":
