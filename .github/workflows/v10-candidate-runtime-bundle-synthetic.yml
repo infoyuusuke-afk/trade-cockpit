@@ -27,6 +27,7 @@ on:
       - "tests/test_v10_ui_evidence_regression.py"
       - "tests/test_v10_ui_mission_navigation.py"
       - "tests/v10_focus_owner_runtime.test.mjs"
+      - "tests/v10_ms2_provenance_runtime.test.mjs"
       - ".github/workflows/v10-candidate-runtime-bundle-synthetic.yml"
   workflow_dispatch:
 permissions:
@@ -56,7 +57,7 @@ jobs:
               # Independent-review candidate only: exact index.html blob.
               # No general source-pin relaxation and no runtime authorization.
               expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
-              test "$expected" = "2b49d6c0a236914dc3d73947fe1aba5f4dae798f"
+              test "$expected" = "5b0367bc6184d2f8a245ad85df004d2ec994a08a"
               test "$(git rev-parse "HEAD:$file")" = "$expected"
               test "$(git rev-parse "$pinned:$file")" != "$expected"
               echo "V10_UI_CANDIDATE_EXACT_BLOB=$expected"
