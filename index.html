@@ -336,7 +336,13 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(!Number.isFinite(age)||age< -5000||age>SILENCE_MS)
       block("MS2通信停止・12秒超の無受信／価格とシグナルの証拠切れ");
   };
-  const timer=setInterval(expireSilent,1000);
+  let timer=setInterval(expireSilent,1000);
+  window.addEventListener("pageshow",()=>{
+    // A page restored from the browser back/forward cache must not keep a
+    // stopped watchdog or reuse evidence gathered before pagehide.
+    if(timer===null) timer=setInterval(expireSilent,1000);
+    block("画面復帰・MS2再受信まで観測を禁止");
+  });
   document.addEventListener("visibilitychange",()=>{
     if(document.visibilityState==="hidden")
       block("画面非表示中・MS2再受信まで観測を禁止");
@@ -344,6 +350,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
   window.addEventListener("pagehide",()=>{
     clearInterval(timer);
+    timer=null;
     block("画面を閉じています");
   });
 })();
@@ -511,9 +518,17 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(!validTicker(select.value))return;
    pinned=pinned.filter(t=>t!==select.value);save();paint();
  });
- const silenceWatchdog=setInterval(blockSilencedEvent,1000);
+ let silenceWatchdog=setInterval(blockSilencedEvent,1000);
+ window.addEventListener("pageshow",()=>{
+   if(silenceWatchdog===null) silenceWatchdog=setInterval(blockSilencedEvent,1000);
+   lastVerified=false;
+   lastAll=[];
+   status.textContent="画面復帰・MS2の再受信まで価格とシグナルを遮断。";
+   paint();
+ });
  window.addEventListener("pagehide",()=>{
    clearInterval(silenceWatchdog);
+   silenceWatchdog=null;
    lastVerified=false;
    lastAll=[];
    paint();
