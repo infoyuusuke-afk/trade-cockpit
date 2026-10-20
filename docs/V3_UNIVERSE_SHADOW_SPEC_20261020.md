@@ -60,11 +60,13 @@ Input schema v3-universe-input-1:
    "roles": ["A","B"], "selected": true|false,
    "observed_at": "ISO offset", "available_at": "ISO offset",
    "prior_day_trading_value_yen": int|null,
+   "turnover_session_date": "YYYY-MM-DD"|null,
+   "turnover_available_at": "ISO offset"|null,
    "spread_bps": number|null, "bid_depth_yen": int|null, "ask_depth_yen": int|null
  }]
 }
 All rows must be known by selection_at. A previous-day total must be explicitly
-available by selection time; **same-day end-of-day trading value is not usable in
+available by selection time and must carry a dated trading session and independently declared turnover_available_at; **same-day end-of-day trading value is not usable in
 a morning selection**. Role ceilings A<=25, B<=8, C<=40, D<=8; no fixed 100
 count and no requirement to fill every allocation in the prototype. Non-equities
 are role A only.
@@ -81,7 +83,7 @@ Optional forward outcomes:
   "instrument_id":"...", "horizon_end_at":"ISO offset",
   "available_at":"ISO offset", "return_pct":number
 }]}
-Outcomes must end AFTER selection and be available no earlier than horizon end;
+All observed cohort outcomes must have the **same horizon_end_at** (no mixing next-day and same-day returns). Outcomes must end AFTER selection and be available no earlier than horizon end;
 they cannot affect selection. This computes only observed mean/absolute returns
 in the selected and nonselected cohorts and explicit coverage, **not EV,
 net P/L, fill expectancy, or strategy profitability**. Missing outcomes stay
@@ -142,3 +144,9 @@ do not confer AI processing rights.
 - P0-e: real-data Windows acceptance. real_submit_allowed=false at every phase.
 
 Economics: actual sales/realized P&L/costs/net project profit/100B remaining UNKNOWN.
+
+## 2026-10-20 v3 PIT hardening (Draft)
+- Turnover now requires both `turnover_session_date` (earlier calendar date than local selection) and `turnover_available_at` not later than selection. Missing value must not carry phantom provenance. This is a conservative proof rule, not a trading-day calendar or an exchange-source authentication guarantee.
+- A comparative return report rejects differing horizons across observed members of selected and nonselected cohorts; remaining unobserved outcomes remain missing.
+- CLI rejects input or outcomes JSON located inside the Git repository. Only external local private inputs are eligible. This is path-containment validation, not a comprehensive Windows native race-proof filesystem witness.
+- Synthetic test and CI PASS do not validate rights, tradeability, live MS2 capture or actual fills.
