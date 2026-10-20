@@ -904,24 +904,37 @@ function Hide-UntrustedLivePrices($rows) {
 }
 
 function Write-AtomicUtf8([string]$path, [string]$content) {
-    $tmp = "$path.tmp"
+    # The single stable "$path.tmp" collided after crash/restart or overlapping
+    # attempts. Use a private temporary file per call, in the same directory.
+    $tmp = "$path.$([Guid]::NewGuid().ToString('N')).tmp"
     [IO.File]::WriteAllText($tmp, $content, [Text.UTF8Encoding]::new($false))
-    # live_ms2.json 等は127.0.0.1:28580経由で他プロセスから同時に読まれているため、
-    # Move-Item -Force が「Cannot create a file when that file already exists」で
-    # 失敗することがある（宛先ファイルが一瞬読み取りロックされているため）。
-    # 数回だけ短い間隔でリトライする。既存の他ファイル（recordsのCSV等）には触れない。
     $maxAttempts = 5
-    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-        try {
-            Move-Item -Force $tmp $path -ErrorAction Stop
-            return
-        } catch {
-            if ($attempt -ge $maxAttempts) {
-                Write-Host ("Write-AtomicUtf8: " + $path + " への書き込みに" + $maxAttempts + "回失敗: " + $_.Exception.Message) -ForegroundColor Yellow
-                if (Test-Path $tmp) { Remove-Item -Force $tmp -ErrorAction SilentlyContinue }
-                throw
+    try {
+        for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            try {
+                if ([IO.File]::Exists($path)) {
+                    # Atomic replacement of an existing JSON/CSV file. Readers
+                    # see either complete previous or complete new bytes.
+                    [IO.File]::Replace($tmp, $path, $null)
+                } else {
+                    # Initial publication; Move is atomic within this directory.
+                    [IO.File]::Move($tmp, $path)
+                }
+                return
+            } catch {
+                if ($attempt -ge $maxAttempts) {
+                    # Do not overwrite/remove the previous good publication.
+                    Write-Host ("Write-AtomicUtf8: publish failed after " + $maxAttempts + " attempts: " + $_.Exception.GetType().Name) -ForegroundColor Yellow
+                    throw
+                }
+                Start-Sleep -Milliseconds 150
             }
-            Start-Sleep -Milliseconds 150
+        }
+    } finally {
+        # Remove only this invocation's staging file. Older crash leftovers
+        # are handled by independent housekeeping after review.
+        if ([IO.File]::Exists($tmp)) {
+            try { [IO.File]::Delete($tmp) } catch { }
         }
     }
 }
