@@ -34,6 +34,10 @@ class StaticSourceOnlyContract(unittest.TestCase):
         self.assertIn("V10_SHA_IDENTITY_MISMATCH", SOURCE)
         self.assertIn('--porcelain=v1","--untracked-files=all"', SOURCE)
         self.assertIn("V10_APPROVED_SOURCE_REAL_SUBMIT_MUST_BE_FALSE", SOURCE)
+        self.assertIn('"--show-prefix"', SOURCE)
+        self.assertIn('"--is-inside-work-tree"', SOURCE)
+        self.assertIn('"--is-bare-repository"', SOURCE)
+        self.assertNotIn('Read-GitText $repo @("rev-parse","--show-toplevel")', SOURCE)
 
     def test_canonical_pin_is_gitignored_not_committed(self):
         ignore = (ROOT / ".gitignore").read_text(encoding="utf-8-sig")
@@ -117,6 +121,25 @@ class WindowsGitIdentityFixture(unittest.TestCase):
                        "MS2_TOUCHED=0", "EXCEL_TOUCHED=0"):
             self.assertIn(marker, message)
         self.assertEqual(self.run_git("status", "--porcelain=v1").stdout.strip(), "")
+
+    def test_unicode_checkout_root_passes_without_decoding_git_path(self):
+        # The OWNER keeps V10 under D:/100億PROJECT. Windows PowerShell 5.1
+        # can misdecode Git --show-toplevel's non-ASCII stdout.
+        new = self.repo.with_name("100億PROJECT_日本語")
+        self.repo.rename(new)
+        self.repo = new
+        self.pin = self.repo / "downloads" / "V10_APPROVED_SOURCE.json"
+        rc, message = self.verify()
+        self.assertEqual(rc, 0, message[-3000:])
+        self.assertIn("V10_READONLY_SOURCE=PASS", message)
+
+    def test_unicode_checkout_nested_root_is_rejected(self):
+        new = self.repo.with_name("100億PROJECT_日本語")
+        self.repo.rename(new)
+        self.repo = new
+        self.pin = self.repo / "downloads" / "V10_APPROVED_SOURCE.json"
+        self.assert_block("V10_CHECKOUT_ROOT_MISMATCH",
+                          repo_dir=self.repo / "downloads")
 
     def test_missing_pin_rejected(self):
         self.assert_block("V10_APPROVED_SOURCE_FILE_MISSING", missing=True)
