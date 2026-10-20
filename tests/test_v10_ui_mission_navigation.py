@@ -68,6 +68,32 @@ class V10MissionNavigation(unittest.TestCase):
         self.assertNotIn("cockpitAnnounce", focus)
         self.assertNotIn("RssOrder", focus)
 
+    def test_focus_per_row_quote_time_and_validity_fail_closed(self):
+        self.assertIn("lastVerified&&rowQuoteReady(row)", self.source)
+        node = shutil.which("node")
+        if not node:
+            self.skipTest("Node unavailable: static assertion still applies")
+        raw = self.source.split("const rowQuoteReady=row=>{", 1)[1].split("\n };", 1)[0]
+        js = "const rowQuoteReady=row=>{" + raw + "\n };" + r"""
+const good={quote_valid:true,quote_time:new Date(Date.now()-20000).toISOString(),price:1234};
+const cases=[
+ rowQuoteReady(good),
+ rowQuoteReady({...good,quote_valid:false}),
+ rowQuoteReady({...good,quote_valid:null}),
+ rowQuoteReady({...good,quote_time:null}),
+ rowQuoteReady({...good,quote_time:"2026-10-20 10:00:00 JST"}),
+ rowQuoteReady({...good,quote_time:new Date(Date.now()-180000).toISOString()}),
+ rowQuoteReady({...good,quote_time:new Date(Date.now()+180000).toISOString()}),
+ rowQuoteReady({...good,price:0}),
+ rowQuoteReady({...good,price:"1234"}),
+ rowQuoteReady(null)
+];
+process.stdout.write(JSON.stringify(cases));
+"""
+        proc = subprocess.run([node, "-e", js], capture_output=True, text=True, timeout=15)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(json.loads(proc.stdout), [True] + [False] * 9)
+
     def test_kioxia_updated_in_fixed_scalp_selection(self):
         self.assertIn('const fixed=["464A.T","9984.T","8035.T","6920.T","6857.T"]', self.source)
         self.assertNotIn('const fixed=["285A.T"', self.source)
