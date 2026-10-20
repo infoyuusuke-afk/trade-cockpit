@@ -87,7 +87,7 @@ document.addEventListener("DOMContentLoaded",()=>{
      return {cls:"status-error",title:"分析時刻未検証・LIVE未検証／最終更新 "+(stamp||"不明")};
    if(age>180*60*1000)
      return {cls:"status-error",title:"分析スナップショット鮮度切れ・LIVE未検証／最終更新 "+stamp};
-   return {cls:"status-warn",title:"分析スナップショット（実取引LIVE認証ではありません）／最終更新 "+stamp};
+   return {cls:"status-warn",title:"分析スナップショット（LIVE未検証）／最終更新 "+stamp};
  };
  // V10_UI_EVIDENCE_HELPERS_END
  const renderBrain=()=>{
