@@ -1,92 +1,125 @@
-# V10 specialist AI analysts (GPT API) — integration on the V10 candidate
+# V10 specialist AI analysts (GPT API) — market-data input, Brain integration, cost controls
 
-Status: implemented and tested offline on branch `integ/v10-agent-analyst-20261021`
-(base: V10 candidate `4c5720f`). Not deployed. No paid API call has been made by this
-change. Research lane only; `real_submit_allowed=false` everywhere.
+PROJECT_ITEM_ID: P0-V10-GPT-API-BRAIN-MARKET-INTELLIGENCE-20261021
+Branch: `integ/v10-agent-analyst-20261021` (PR #486). Not deployed. No paid API call has been made.
+Research lane only; `real_submit_allowed=false` everywhere; nothing here can place or approve an order.
 
 ## Pipeline
 
 ```
-public evidence JSON (dated, https, as_of <= available_at <= now)        scripts/agent_sdk_public_feed_ingest.py (BOJ RSS) or hand-made
-  -> 4 specialists via GPT API: premarket / pre_next / supply_sq / revenue_hunter
-  -> deterministic checks + coordinator (conflicts, next checks)          scripts/agent_sdk_coordination_pilot.py
-  -> signed private envelope (HMAC, sidecar key)                          scripts/agent_sdk_brain_handoff.py
-  -> Brain receiver in the V10 Brain observer: verify, durable receipt,
-     Brain ACK (separate receiver key), display view                      scripts/v10_brain_agent_research_receiver.py (+ ai_brain_observer.py opt-in)
-  -> Gateway /agent_research.json (read-only, safety flags re-checked)   downloads/AI_COCKPIT_GATEWAY_V10.ps1
-  -> BRAIN tab "専門AIアナリスト"                                          index.html
+public sources (manual --fetch)                          scripts/agent_sdk_evidence_bundle.py
+  BOJ RSS headlines -> pre_next / supply_sq              scripts/agent_sdk_public_feed_ingest.py
+  JPX 日々公表銘柄等信用取引残高 -> supply_sq            scripts/agent_sdk_jpx_margin_ingest.py
+  -> one evidence file, schema 100b-public-agent-evidence-v2
+-> 4 specialists via GPT API (premarket / pre_next / supply_sq / revenue_hunter),
+   each only with its own eligible sources, then deterministic checks + coordinator
+                                                         scripts/agent_sdk_coordination_pilot.py
+-> signed private envelope (sidecar key)                 scripts/agent_sdk_brain_handoff.py
+-> Brain receiver inside the V10 Brain observer: verify, SQLite receipt, Brain ACK
+   (separate receiver key), signed display view          scripts/v10_brain_agent_research_receiver.py
+-> Gateway /agent_research.json re-verifies the view's signature and age
+                                                         downloads/AI_COCKPIT_GATEWAY_V10.ps1
+-> BRAIN tab "専門AIアナリスト" (AI inference, research only)   index.html
 ```
 
-The existing ChatGPT Tasks and chat-to-chat/copy-paste routes are not used.
+## Evidence v2 (time contract)
 
-## Every report (result schema `100b-agent-bridge-result-v2`)
+Every source has `source_id, role, source_url, source_name, source_type, as_of, available_at,
+fetched_at, data_status, summary`.
 
-| Field | Meaning |
-|---|---|
-| `report_id` | `<run_id>.<role>`; the same id appears in the envelope, the Brain ACK, the display view and the screen |
-| `role` (担当) | premarket, pre_next, supply_sq, revenue_hunter |
-| `lane` | `MARKET_RESEARCH_NOT_EXECUTION`, or `PROJECT_PROGRESS_NOT_TRADING` for Revenue Hunter (never compared with market roles, never a trade input) |
-| `target_at` (対象日時) | from `--target-at` (offset-aware) |
-| `generated_at`, `expires_at` (有効期限) | `expires_at = generated_at + ROLE_VALIDITY[role]` (checked again by the handoff verifier) |
-| `evidence_ids`, `evidence` (出典) | only supplied source ids; `evidence` repeats each cited source's URL and `available_at` |
-| `hypothesis`, `conditions` (成立条件), `invalidation` (撤回条件) | model text, length-checked |
-| `status` | WATCH / NO_SIGNAL, or NO_DATA (no source for the role), or UNAVAILABLE (`API_OR_RUNTIME_FAILED` / `OUTPUT_VALIDATION_FAILED`) |
+- The timestamps must be ordered `as_of <= available_at <= fetched_at <= now`.
+- `data_status` is either `PUBLICATION_TIME_VERIFIED` (the publisher states the release time)
+  or `DATE_ONLY_OBSERVED_AT_FETCH`. For a date-only source, `available_at` must equal
+  `fetched_at`: no earlier release clock is invented.
+- URLs must be public https, with no credentials, query or fragment.
+- v1 evidence is refused.
 
-On the screen a report is usable as research only while it is unexpired, has at least one
-cited source and is WATCH/NO_SIGNAL. Expired, unsourced, NO_DATA and UNAVAILABLE reports
-are shown as 利用不可 with the reason; the browser re-checks the expiry itself.
+A role only receives sources that meet both conditions:
+- published at or before `target_at` (no lookahead);
+- within its window: premarket 18 h, others 7 days (provisional).
 
-## Failure isolation
+The excluded ids are recorded in the report and re-checked by the handoff verifier. A role with
+no eligible source is `NO_DATA` (`NO_SOURCE` or `NO_ELIGIBLE_SOURCE`); nothing is guessed.
 
-- One role's API call or output failing makes only that role UNAVAILABLE; the others and
-  the coordinator still run. If no role is usable the coordinator is UNAVAILABLE.
-- The sidecar is a separate, manually started process. The Brain observer runs the
-  receiver inside a try block every 30 s; a receiver error is printed and the observer
-  keeps running. The Gateway route returns DISABLED/UNAVAILABLE JSON and never touches
-  `/live_ms2.json`, `/health` or the Collector. MS2 collection does not depend on any of it.
+## Data sources
 
-## Cost and duplicate charging
+| Source | Role | State |
+|---|---|---|
+| BOJ RSS (whatsnew, statistics) | pre_next, supply_sq | connected; headline metadata only |
+| JPX 日々公表銘柄等信用取引残高 (daily, "16:00を目安") | supply_sq | connected: index page → newest `*_mtdaily.xlsx`, allowlisted path, no redirects, stdlib xlsx reader; requested codes only. It covers daily-publication issues only and is NOT the daily margin balance of all issues. Checked once against the live 2026-10-21 file: 347/347 rows parsed. The file is not committed |
+| JPX 投資部門別 先物・OP (weekly CSV, 4th business day 15:30) | supply_sq | not connected: the CSV uses numeric product/investor codes whose table is not published with it; reading them by guess is refused |
+| JPX 投資部門別 株式 (weekly xlsx), 裁定取引 (weekly) | supply_sq | not connected yet (multi-level headers; next candidate) |
+| TDnet 適時開示 | pre_next | not connected: `release.tdnet.info/robots.txt` disallows all automated access; the paid TDnet API is an OWNER decision |
+| J-Quants daily margin of all issues | supply_sq | not used: contract and cost are OWNER decisions |
+| Overseas indices before the open | premarket | not connected: no approved free source with a verified time contract yet |
 
-Carried over from #481 (OWNER decision 2026-10-20/21): model pinned `gpt-5.4-mini`,
-`max_turns=1`, 600 output tokens, 30 s timeout, `max_retries=0`, no tools, traces off,
-custom endpoint/model refused; $1 reserved per paid run before any request, lifetime local
-reservation $8 (8 runs) against the $10 prepaid credit with auto-reload off.
+Reuse rights: fetched figures stay in private files (never GitHub). Sending them to a paid model
+is an OWNER decision.
 
-Added here: one paid run per (JST target date, `--slot`) (`BILLABLE_SLOT_ALREADY_RUN`)
-and at most `PAID_MAX_RUNS_PER_JST_DAY = 2` paid runs per JST day
-(`DAILY_PAID_RUN_CAP_REACHED`), both in the same crash-safe reservation transaction
-as the existing run-id replay block. A run now makes at most 5 model calls
-(4 specialists + coordinator). The local reservation is not an actual-dollar hard stop;
-actual usage must be reconciled in the OpenAI Usage page.
+## Reports (result v3)
 
-## Not decided yet (provisional values in code)
+Every report has:
+- `report_id` (`<run_id>.<role>`), `role`, `lane`, `target_at`, `generated_at`, `expires_at`;
+- `evidence` (id, URL, source name, data status, available_at) and `excluded_source_ids`;
+- `hypothesis`, `conditions`, `invalidation`;
+- `status` WATCH / NO_SIGNAL / NO_DATA / UNAVAILABLE.
 
-- Run frequency / schedule: manual only. No scheduled task is created.
-- `ROLE_VALIDITY`: premarket 3 h, pre_next 24 h, supply_sq 24 h, revenue_hunter 7 days.
-- `PAID_MAX_RUNS_PER_JST_DAY = 2`.
-- Sources for premarket and revenue_hunter: none approved yet, so those roles are NO_DATA
-  until a dated public source with confirmed reuse rights is added.
+Revenue Hunter is in `PROJECT_PROGRESS_NOT_TRADING` and is never compared with the market roles.
+One role's API or output failure makes only that role UNAVAILABLE.
 
-## Keys (unchanged)
+## Brain receipt, ACK and display authenticity
 
-`OPENAI_API_KEY`, `AGENT_BRIDGE_HMAC_KEY` (sidecar) and a different
-`AGENT_BRAIN_RECEIVER_HMAC_KEY` (receiver) live only in the OWNER PC environment.
-`V10_AGENT_RESEARCH_INBOX` (absolute private folder outside the repository) turns the
-receiver and the Gateway route on; unset means off.
+- Envelope: HMAC with the sidecar key; schema, safety flags and source binding are checked;
+  it must be received within 15 minutes of emission.
+- Receipt: SQLite (BEGIN IMMEDIATE, synchronous=FULL); a run_id is received once; receipts and
+  ACKs survive a restart.
+- Brain ACK: signed with a separate receiver key and read back independently.
+- Display: `agent_research_display_v1.json` is a signed wrapper (`body_json` plus an HMAC with
+  the receiver key).
+- Gateway `/agent_research.json` re-verifies, with the same private key:
+  - the signature;
+  - the schema and the flags (`real_submit_allowed`, `brain_trade_decision_eligible` and
+    `live_market_data` must all be false);
+  - that `generated_at` is within 300 s.
 
-## Manual run (after OWNER approval of the exact SHA and of a paid run)
+  Otherwise it answers 503 UNAVAILABLE with a reason, and the screen shows that reason.
+- A report is shown as usable only while it is unexpired and sourced. Expired, unsourced,
+  NO_DATA and UNAVAILABLE reports are shown as not usable.
 
-```powershell
-python -B scripts\agent_sdk_public_feed_ingest.py --fetch --run-id <new id> --output <PRIVATE_PARENT>\evidence.json
-python -B scripts\agent_sdk_coordination_pilot.py --input <PRIVATE_PARENT>\evidence.json --enable-billable-api `
-  --paid-budget-db <PRIVATE_PARENT>\paid_attempts.sqlite --receipt-db <PRIVATE_PARENT>\pilot_receipts.sqlite `
-  --handoff-dir <INBOX> --target-at 2026-10-22T08:30:00+09:00 --slot premarket_0830
-```
+## Paid-run controls (nothing runs without the OWNER)
 
-The Brain observer receives within 30 s when `V10_AGENT_RESEARCH_INBOX=<INBOX>`; the
-envelope must be received within 15 minutes of emission or it is BLOCKED (stale).
+Before any request:
+- the run is blocked unless `--enable-billable-api` and `OPENAI_API_KEY` are both given;
+- the pinned model, with no custom endpoint;
+- input ≤ 8 KB;
+- **the one fixed ledger**: `--paid-budget-db` must be `AGENT_PAID_LEDGER_PATH`, and the ledger's
+  stored id must equal `AGENT_PAID_LEDGER_ID`. A new or swapped file is refused, so counts cannot
+  be reset. Create the ledger once with `--init-paid-ledger <absolute path>`;
+- **explicit approval**: `AGENT_PAID_RUN_APPROVED_RUN_ID` must equal this run_id;
+- the crash-safe reservation, which blocks:
+  - a replay of the same run_id;
+  - a second run for the same JST date + slot;
+  - more than 2 runs per JST day;
+  - more than the $8 lifetime reservation;
+- each reservation records the model, max output tokens, timeout and maximum model calls;
+- `max_retries=0`, so nothing is re-sent after a failure or timeout.
 
-## Evidence that is NOT produced by CI
+The local reservation is not a provider-side stop. To reconcile it with OpenAI Usage, run
+`scripts/agent_paid_ledger_report.py --ledger <ledger> --usage-csv <Usage export>`. It flags:
+- usage on a day with no reservation;
+- usage above that day's reservations;
+- a total above the $10 credit.
 
-Real API connectivity, actual cost, Brain receipt on the OWNER PC, screen display on the
-OWNER PC and OWNER Windows acceptance all require separate runs on the PC.
+`python scripts/agent_sdk_coordination_pilot.py --print-settings` prints every limit with its
+status:
+- APPROVED (OWNER, #481): model, retries, tokens, timeout, $1 per run, $8 lifetime.
+- PROVISIONAL: calls per run, runs per day, the slot rule, validity, source windows.
+- UNDECIDED: run frequency.
+
+## Not done / not claimed
+
+- Real API connectivity: not run.
+- Brain receipt in the running V10 on the OWNER PC: not run.
+- Screen check on the OWNER PC: not run.
+- OWNER Windows acceptance: not run (see `docs/V10_AGENT_ANALYST_WINDOWS_ACCEPTANCE.md`).
+- Actual revenue, realized P&L, costs, net profit and the remainder to 10 billion yen: UNKNOWN.

@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import sys
 from urllib.parse import urlsplit
 
 SCHEMA = "100b-public-agent-evidence-v2"
@@ -380,13 +381,13 @@ async def api_runner(role: str, prompt: str) -> dict:
     if selected != PAID_MODEL:
         raise Blocked("MODEL_NOT_APPROVED_FOR_PAID_PILOT")
     set_default_openai_client(
-        AsyncOpenAI(max_retries=0, timeout=30.0), use_for_tracing=False
+        AsyncOpenAI(max_retries=0, timeout=float(PAID_TIMEOUT_SECONDS)), use_for_tracing=False
     )
     agent = Agent(
         name=role, instructions=instructions, output_type=typ,
         model=PAID_MODEL,
         model_settings=ModelSettings(
-            max_tokens=600, timeout=30.0, parallel_tool_calls=False,
+            max_tokens=PAID_MAX_OUTPUT_TOKENS, timeout=float(PAID_TIMEOUT_SECONDS), parallel_tool_calls=False,
             truncation="disabled"
         ),
     )
@@ -442,6 +443,74 @@ PAID_TOTAL_LEDGER_CENTS = 800
 # JST calendar day, and one paid run per (JST target date, slot).
 PAID_MAX_RUNS_PER_JST_DAY = 2
 JST = timezone(timedelta(hours=9))
+PAID_MAX_OUTPUT_TOKENS = 600
+PAID_TIMEOUT_SECONDS = 30
+PAID_MAX_MODEL_CALLS = len(ROLES) + 1
+# One private ledger for every paid run. Its absolute path and its id are
+# held only in the OWNER's environment; a different or new file has a
+# different id and is refused, so swapping the file cannot reset the counts.
+PAID_LEDGER_PATH_ENV = "AGENT_PAID_LEDGER_PATH"
+PAID_LEDGER_ID_ENV = "AGENT_PAID_LEDGER_ID"
+# Explicit per-run permission: the OWNER sets this to the exact run_id.
+PAID_RUN_APPROVAL_ENV = "AGENT_PAID_RUN_APPROVED_RUN_ID"
+LEDGER_ID = re.compile(r"^ledger_[0-9a-f]{32}$")
+
+# Which numbers are OWNER decisions and which are provisional (shown by
+# --print-settings and in the docs; provisional values are not a spec).
+SETTINGS = {
+    "model": (PAID_MODEL, "APPROVED_OWNER_2026-10-20/21 (#481 $10 pilot)"),
+    "openai_max_retries": (0, "APPROVED_OWNER_2026-10-20/21 (#481)"),
+    "max_output_tokens_per_call": (PAID_MAX_OUTPUT_TOKENS, "APPROVED_OWNER_2026-10-20/21 (#481)"),
+    "timeout_seconds_per_call": (PAID_TIMEOUT_SECONDS, "APPROVED_OWNER_2026-10-20/21 (#481)"),
+    "reserved_cents_per_run": (PAID_RESERVED_CENTS_PER_RUN, "APPROVED_OWNER_2026-10-20/21 (#481)"),
+    "lifetime_reserved_cents": (PAID_TOTAL_LEDGER_CENTS, "APPROVED_OWNER_2026-10-20/21 (#481, $10 prepaid, auto-reload off)"),
+    "max_model_calls_per_run": (PAID_MAX_MODEL_CALLS, "PROVISIONAL (4 specialists + coordinator)"),
+    "max_paid_runs_per_jst_day": (PAID_MAX_RUNS_PER_JST_DAY, "PROVISIONAL"),
+    "one_paid_run_per_jst_date_and_slot": (True, "PROVISIONAL"),
+    "role_validity_hours": ({k: v.total_seconds() / 3600 for k, v in ROLE_VALIDITY.items()}, "PROVISIONAL"),
+    "role_source_window_hours": ({k: v.total_seconds() / 3600 for k, v in ROLE_SOURCE_WINDOW.items()}, "PROVISIONAL"),
+    "run_frequency": ("manual only, no scheduler", "UNDECIDED"),
+}
+
+
+def init_paid_ledger(db_path: Path) -> str:
+    """Create the one private ledger; returns its id for AGENT_PAID_LEDGER_ID."""
+    db_path = Path(db_path)
+    if (not db_path.is_absolute() or db_path.exists() or db_path.is_symlink()
+            or not db_path.parent.is_dir() or db_path.parent.is_symlink()):
+        raise Blocked("PAID_LEDGER_INIT_PATH_INVALID_OR_EXISTS")
+    ledger_id = "ledger_" + os.urandom(16).hex()
+    with closing(sqlite3.connect(db_path, timeout=5, isolation_level=None)) as conn:
+        conn.execute("PRAGMA synchronous=FULL")
+        conn.execute("BEGIN IMMEDIATE")
+        conn.execute("CREATE TABLE ledger_meta (ledger_id TEXT NOT NULL, created_at TEXT NOT NULL)")
+        conn.execute("INSERT INTO ledger_meta VALUES (?, ?)", (ledger_id, datetime.now(timezone.utc).isoformat()))
+        conn.execute("COMMIT")
+    return ledger_id
+
+
+def check_paid_ledger(db_path: Path, run_id: str) -> None:
+    """Fixed location, known identity and explicit per-run approval, before any request."""
+    want = os.environ.get(PAID_LEDGER_PATH_ENV, "")
+    want_id = os.environ.get(PAID_LEDGER_ID_ENV, "")
+    if not want or not Path(want).is_absolute():
+        raise Blocked("PAID_LEDGER_LOCATION_NOT_CONFIGURED_NO_CALL")
+    if Path(db_path).resolve() != Path(want).resolve():
+        raise Blocked("PAID_LEDGER_NOT_THE_FIXED_LOCATION_NO_CALL")
+    if not LEDGER_ID.fullmatch(want_id):
+        raise Blocked("PAID_LEDGER_ID_NOT_CONFIGURED_NO_CALL")
+    path = Path(db_path)
+    if not path.is_file() or path.is_symlink():
+        raise Blocked("PAID_LEDGER_MISSING_NO_CALL")
+    try:
+        with closing(sqlite3.connect(path, timeout=5)) as conn:
+            got = conn.execute("SELECT ledger_id FROM ledger_meta").fetchall()
+    except sqlite3.Error as exc:
+        raise Blocked("PAID_LEDGER_UNREADABLE_NO_CALL") from exc
+    if got != [(want_id,)]:
+        raise Blocked("PAID_LEDGER_IDENTITY_MISMATCH_NO_CALL")
+    if os.environ.get(PAID_RUN_APPROVAL_ENV, "") != run_id:
+        raise Blocked("PAID_RUN_NOT_APPROVED_FOR_THIS_RUN_ID_NO_CALL")
 
 
 def reserve_billable_attempt(db_path: Path, run_id: str, source_fp: str, *,
@@ -475,6 +544,10 @@ def reserve_billable_attempt(db_path: Path, run_id: str, source_fp: str, *,
                 conn.execute("ALTER TABLE paid_attempts ADD COLUMN slot_key TEXT")
             if "jst_day" not in cols:
                 conn.execute("ALTER TABLE paid_attempts ADD COLUMN jst_day TEXT")
+            for name, kind in (("model", "TEXT"), ("max_output_tokens", "INTEGER"),
+                               ("timeout_seconds", "INTEGER"), ("max_model_calls", "INTEGER")):
+                if name not in cols:
+                    conn.execute("ALTER TABLE paid_attempts ADD COLUMN %s %s" % (name, kind))
             if conn.execute("SELECT 1 FROM paid_attempts WHERE run_id=?", (run_id,)).fetchone():
                 raise Blocked("BILLABLE_REPLAY_BLOCKED")
             if slot_key is not None and conn.execute(
@@ -490,9 +563,11 @@ def reserve_billable_attempt(db_path: Path, run_id: str, source_fp: str, *,
                 raise Blocked("LOCAL_BUDGET_RESERVATION_EXHAUSTED")
             conn.execute(
                 "INSERT INTO paid_attempts (run_id, source_fingerprint, reserved_cents, state,"
-                " reserved_at, slot_key, jst_day) VALUES (?,?,?,?,?,?,?)",
+                " reserved_at, slot_key, jst_day, model, max_output_tokens, timeout_seconds,"
+                " max_model_calls) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 (run_id, source_fp, PAID_RESERVED_CENTS_PER_RUN, "ATTEMPT_RESERVED",
-                 now.isoformat(), slot_key, day)
+                 now.isoformat(), slot_key, day, PAID_MODEL, PAID_MAX_OUTPUT_TOKENS,
+                 PAID_TIMEOUT_SECONDS, PAID_MAX_MODEL_CALLS)
             )
             conn.execute("COMMIT")
         except BaseException:
@@ -501,6 +576,19 @@ def reserve_billable_attempt(db_path: Path, run_id: str, source_fp: str, *,
 
 
 def main(argv=None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv == ["--print-settings"]:
+        print(json.dumps({k: {"value": v, "status": st} for k, (v, st) in SETTINGS.items()},
+                         ensure_ascii=False, sort_keys=True))
+        return 0
+    if len(argv) == 2 and argv[0] == "--init-paid-ledger":
+        try:
+            print(json.dumps({"state": "PAID_LEDGER_CREATED", "ledger_id": init_paid_ledger(Path(argv[1])),
+                              "next": "set " + PAID_LEDGER_PATH_ENV + " and " + PAID_LEDGER_ID_ENV + " privately"}))
+            return 0
+        except Blocked as exc:
+            print(json.dumps({"state": "BLOCKED", "reason": str(exc)}))
+            return 2
     parser = argparse.ArgumentParser(description="100B isolated multi-agent research pilot")
     parser.add_argument("--input", required=True, help="JSON with PUBLIC-safe dated evidence")
     mode = parser.add_mutually_exclusive_group(required=True)
@@ -552,6 +640,7 @@ def main(argv=None) -> int:
                 raise Blocked("PAID_INPUT_TOO_LARGE_NO_CALL")
             if os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_AGENT_MODEL", PAID_MODEL).strip() != PAID_MODEL:
                 raise Blocked("PAID_MODEL_OR_ENDPOINT_UNAPPROVED_NO_CALL")
+            check_paid_ledger(Path(args.paid_budget_db), validated["run_id"])
             slot_key = _time(target_at).astimezone(JST).date().isoformat() + ":" + args.slot
             reserve_billable_attempt(Path(args.paid_budget_db), validated["run_id"], fingerprint(validated),
                                      slot_key=slot_key, now=now)
