@@ -124,3 +124,21 @@ test("live update redraws with MS2 candles and clears them when MS2 is not verif
   assert.equal(blocked.window.kioChartState.actualSource, "NONE");
   assert.match(blocked.nodes["kio-one-minute-note"].textContent, /確認待ち/);
 });
+
+
+test("Kioxia JSON HTML encoder prevents injection and blocks unsafe links", () => {
+  const begin = html.indexOf("// KIO_HTML_SAFE_BEGIN");
+  const end = html.indexOf("// KIO_HTML_SAFE_END");
+  assert.ok(begin >= 0 && end > begin);
+  const sandbox = { URL };
+  vm.createContext(sandbox);
+  vm.runInContext(html.slice(begin, end) + "\n;globalThis.__kioSafe={kioEsc,kioSafeHref};", sandbox);
+  const { kioEsc, kioSafeHref } = sandbox.__kioSafe;
+  assert.equal(kioEsc("<img src=x onerror='alert(1)'>"), "&lt;img src=x onerror=&#39;alert(1)&#39;&gt;");
+  assert.equal(kioEsc("<script>alert(1)</script>"), "&lt;script&gt;alert(1)&lt;/script&gt;");
+  assert.equal(kioSafeHref("javascript:alert(1)"), "#");
+  assert.equal(kioSafeHref("data:text/html,<script>alert(1)</script>"), "#");
+  assert.equal(kioSafeHref("https://user:password@example.org/"), "#");
+  assert.match(kioSafeHref("https://www.jpx.co.jp/markets/"), /^https:\/\/www\.jpx\.co\.jp/);
+  assert.ok(!kioSafeHref("https://example.org/?x=<script>").includes("<script>"));
+});

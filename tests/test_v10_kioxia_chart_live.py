@@ -35,6 +35,25 @@ class KioxiaChartSourceContract(unittest.TestCase):
         for marker in ('id="kio-best-path"', 'id="kio-one-minute-note"', "本日予測・実測1分足（大判）"):
             self.assertIn(marker, self.page)
 
+    def test_kioxia_untrusted_html_fields_have_scoped_encoder_and_https_links(self):
+        page = self.page
+        start = page.index("// KIO_HTML_SAFE_BEGIN")
+        end = page.index("// KIO_HTML_SAFE_END")
+        self.assertLess(start, end)
+        self.assertGreater(page.rfind("<script", 0, start), page.rfind("</script>", 0, start))
+        block = page[page.index('document.getElementById("kio-us-context").innerHTML'):
+                     page.index("}).catch(() => {", page.index('document.getElementById("kio-us-context").innerHTML'))]
+        for needle in ("kioEsc(x.title)", "kioEsc(x.fact)", "kioEsc(x.expectation)",
+                       "kioEsc(x.risk)", "kioEsc(x.next_checkpoint)", "kioEsc(x.impact)",
+                       "kioEsc(x.kind)", "kioEsc(x.stage)", "kioEsc(mp.note",
+                       "kioEsc(x.type)", "kioEsc(cs.phase)", "kioSafeHref(x.source_url)",
+                       "kioSafeHref(x.url)", "kioEsc(usLabels[k] || k)"):
+            self.assertIn(needle, block, needle)
+        self.assertIn('u.protocol==="https:"', page[start:end])
+        self.assertNotIn("+x.source_url+", block)
+        self.assertNotIn("+x.title+", block)
+
+
     def test_node_runtime_cases(self):
         node = shutil.which("node")
         if not node:
