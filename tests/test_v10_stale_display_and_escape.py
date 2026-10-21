@@ -20,65 +20,30 @@ def section(sid):
     return HTML[start:HTML.index("</section>", start)]
 
 
-class StaleSnapshotNotShownAsCurrent(unittest.TestCase):
-    def test_external_rankings_have_no_0925_tables(self):
-        for sid in ("market-ranking-watch", "tradingview-screener-watch"):
-            with self.subTest(section=sid):
-                body = section(sid)
-                self.assertNotIn("<table>", body)
-                self.assertIn("当日のランキングは未取得です", body)
-                self.assertIn("過去資料・当日値ではありません", body)
-        self.assertNotIn("フルヤ金属", HTML)
-        self.assertNotIn("Birdman", HTML)
+class StaticSnapshotRemoved(unittest.TestCase):
+    """OWNER 2026-10-21: the 2026-09-25 snapshot sections are never updated in V10,
+    so they are removed (地合いサマリー, 資金流入テーマTOP5, 国策, rankings, 市場警報 ...).
+    Tabs that only held them are hidden; MS2 LIVE and runtime-filled sections stay."""
 
-    def test_usd_jpy_0925_value_is_not_displayed(self):
-        body = section("strong-yen-top5")
-        self.assertNotIn("USD/JPY 158.7", body)
-        self.assertIn("USD/JPY：当日値は未取得", body)
-        self.assertIn("2026-09-25 時点の過去資料", body)
+    def test_snapshot_sections_and_numbers_are_gone(self):
+        for text in ("① 地合いサマリー", "② 当日資金流入テーマ TOP5", "<h2>国策テーマ・実戦優先順位", "🚨 市場警報",
+                     "外部ランキング発掘", "<h2>円高恩恵銘柄 TOP5", "フルヤ金属", "Birdman", "USD/JPY 158.7",
+                     "snapshot-past", 'id="sector-rotation"', 'id="investor-regime"', 'id="us-smr-watch"'):
+            with self.subTest(text=text):
+                self.assertNotIn(text, HTML)
 
-    def test_header_and_footer_stay_labelled_as_past(self):
+    def test_only_header_and_footer_still_name_0925_and_say_past(self):
+        lines = [l for l in HTML.splitlines() if "2026-09-25" in l and not l.lstrip().startswith("//")]
+        self.assertEqual(len(lines), 2)
         self.assertIn("静的分析作成：2026-09-25 10:41:50 JST（本日のLIVE市場情報ではありません）", HTML)
         self.assertIn("静的HTML作成：2026-09-25 10:41:50 JST／LIVE未認証", HTML)
 
-    def test_remaining_0925_mentions_are_all_marked_past(self):
-        for line in HTML.splitlines():
-            if "2026-09-25" in line:
-                with self.subTest(line=line.strip()[:60]):
-                    self.assertTrue(any(k in line for k in ("過去", "本日のLIVE市場情報ではありません", "LIVE未認証")), line[:120])
-
-
-class StaticSnapshotSectionsLabelled(unittest.TestCase):
-    """OWNER 2026-10-21: every section whose numbers are baked into the page
-    (the 2026-09-25 snapshot, e.g. 地合いサマリー on 検証・除外, 資金流入テーマ
-    TOP5 on 国策) says it is 9/25 past data. Runtime-filled sections are not."""
-
-    def sections(self):
-        import re
-        main = HTML[HTML.index("<main"):HTML.index("</main>")]
-        for m in re.finditer(r'<section([^>]*)>(.*?)</section>', main, re.S):
-            yield m.group(1), m.group(2)
-
-    def test_named_owner_sections_are_labelled(self):
-        for title in ("① 地合いサマリー", "② 当日資金流入テーマ TOP5", "国策テーマ・実戦優先順位"):
-            with self.subTest(section=title):
-                body = [b for _, b in self.sections() if title in b][0]
-                self.assertIn("9/25時点の過去データ", body)
-
-    def test_every_static_table_section_is_labelled_or_already_marked_past(self):
-        import re
-        for attrs, body in self.sections():
-            ids = set(re.findall(r'id="([^"]+)"', body))
-            dynamic = any(('getElementById("' + i + '")') in HTML for i in ids)
-            if dynamic or "<tr" not in body:
-                continue
-            with self.subTest(section=(re.findall(r"<h2[^>]*>(.*?)</h2>", body) or [attrs])[0][:30]):
-                self.assertTrue("9/25時点の過去データ" in body or "過去資料" in body)
-
-    def test_live_sections_are_not_labelled_past(self):
-        for sid in ("ms2-live-top5", "overnight-top5", "watchlist-100", "premarket-gap-ranking", "focus-owner-panel"):
+    def test_snapshot_only_tabs_are_hidden_and_live_sections_stay(self):
+        self.assertIn('const SNAPSHOT_ONLY_TABS=["strong-yen","us-smr","investor-regime","expansion","policy",...policyTabs];', HTML)
+        for sid in ("ms2-live-top5", "overnight-top5", "watchlist-100", "premarket-gap-ranking", "focus-owner-panel",
+                    "kioxia-5m-calendar", "weekly-review", "event-calendar", "correlation-monitor", "world-market-live"):
             with self.subTest(section=sid):
-                self.assertNotIn("9/25時点の過去データ", section(sid))
+                self.assertIn('id="' + sid + '"', HTML)
 
 
 class KioxiaRendererEscapes(unittest.TestCase):
