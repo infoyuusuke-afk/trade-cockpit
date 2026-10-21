@@ -175,6 +175,18 @@ class RuleShadow(unittest.TestCase):
         self.assertEqual(view["forward"]["R3A_0915"]["n"], 1)   # 09:00:05 fill, exit at the same tick by 09:15
         self.assertAlmostEqual(view["forward"]["R3A_0915"]["recent"][0]["return_pct"], -2.80 / 365, places=6)
 
+    def test_gap_uses_the_reference_price_and_skips_splits(self):
+        write_day(self.records, "2026-10-21", [], [("G.T", "15:24:00", 1000), ("S.T", "15:24:00", 5000)])
+        write_day(self.records, "2026-10-22", [], [("G.T", "09:00:05", 1015), ("G.T", "09:59:00", 1030),
+                                                   ("S.T", "09:00:05", 1010), ("S.T", "09:59:00", 1020)])
+        (self.records / "2026-10-22" / "preopen.csv").write_text(
+            "captured_at,ticker,name,reference_price\n"
+            '"2026-10-22 08:59:50","G.T","n","1020"\n'      # official close 1020: the open 1015 is a -0.5 % gap
+            '"2026-10-22 09:00:10","G.T","n","990"\n',      # after 09:00: ignored
+            encoding="utf-8-sig")
+        view = ev.build_rule_shadow(self.records, now=NOW)
+        self.assertEqual(view["forward"]["R3A_1000"]["n"], 0)   # G.T: below 1 % with the reference; S.T: -80 % is a split
+
     def test_default_replay_is_unchanged(self):
         sig = {"signal": "買いサイン", "entry": "1000", "stop": "990", "target1": "1010", "captured_at": "2026-10-22 09:20:00", "signal_bar": "b"}
         ticks = [("09:21:00", 0, 1000), ("09:30:00", 1, 1010)]

@@ -264,16 +264,37 @@ GAP_RULES = {
 }
 
 
-def gap_trades(prev_ticks: dict, ticks: dict, rule: dict) -> list[dict]:
+# The recorded ticks stop before the 15:30 closing auction, so the last tick is not the
+# official close: the previous close is the exchange reference price (基準値, already
+# adjusted for splits) from that morning's preopen.csv when it was recorded. A gap this
+# large is a corporate action (split) rather than a market gap and is skipped.
+MAX_GAP_PCT = 20.0
+
+
+def load_reference_prices(path: Path) -> dict:
+    """Last reference price per issue logged before 09:00 in preopen.csv ({} if none)."""
+    out = {}
+    if not path.is_file():
+        return out
+    with open(path, newline="", encoding="utf-8-sig") as f:
+        for r in csv.DictReader(f):
+            price = _f(r.get("reference_price"))
+            if price and price > 0 and str(r.get("captured_at", ""))[11:19] < "09:00:00":
+                out[r.get("ticker", "")] = price
+    return out
+
+
+def gap_trades(prev_ticks: dict, ticks: dict, rule: dict, reference: dict | None = None) -> list[dict]:
     out = []
     for ticker, rows in ticks.items():
         before = [p for t, _, p in prev_ticks.get(ticker, []) if t <= "15:30:00"]
         day = [(t, p) for t, _, p in rows if t >= "09:00:00"]
-        if not before or not day:
+        close = (reference or {}).get(ticker) or (before[-1] if before else None)
+        if not close or not day:
             continue
-        close, (open_t, open_) = before[-1], day[0]
+        open_t, open_ = day[0]
         gap = (open_ / close - 1) * 100
-        if abs(gap) < rule["min_gap_pct"]:
+        if abs(gap) < rule["min_gap_pct"] or abs(gap) >= MAX_GAP_PCT:
             continue
         side = rule["direction"] * (1 if gap > 0 else -1)
         upto = [(t, p) for t, p in day if t <= rule["exit"]]
@@ -334,8 +355,9 @@ def build_rule_shadow(records: Path, *, now: datetime) -> dict:
             prev_ticks = ticks
             continue
         if prev_ticks is not None:
+            reference = load_reference_prices(day_dir / "preopen.csv")
             for key, rule in GAP_RULES.items():
-                trades[key].extend(dict(t, day=day) for t in gap_trades(prev_ticks, ticks, rule))
+                trades[key].extend(dict(t, day=day) for t in gap_trades(prev_ticks, ticks, rule, reference))
         prev_ticks = ticks
         if (day_dir / "brain_picks.csv").is_file():
             trades["BRAIN"].extend(dict(t, day=day) for t in brain_trades(day_dir / "brain_picks.csv", ticks))
