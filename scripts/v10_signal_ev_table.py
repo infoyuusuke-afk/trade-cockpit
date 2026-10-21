@@ -32,7 +32,16 @@ SCHEMA = "100b-v10-signal-ev-table-v1"
 JST = timezone(timedelta(hours=9))
 FILL_WINDOW = timedelta(minutes=30)       # PROVISIONAL
 EXIT_TIME = "15:20:00"
-COST_PER_SIDE = 0.001                     # PROVISIONAL: 0.1 % per side
+# Costs (OWNER 2026-10-21: 楽天証券ゼロコース, 制度信用, mainly day trading).
+# Rates from https://www.rakuten-sec.co.jp/web/domestic/margin/commission.html
+# (checked 2026-10-21): commission 0; 制度信用 buyer interest 2.80 %/year;
+# stock lending fee (short) 1.10 %/year. Whether a same-day round trip is
+# charged one day is not stated there: one day is assumed (conservative).
+COMMISSION_PCT_PER_SIDE = 0.0
+LONG_INTEREST_PCT_PER_YEAR = 2.80
+SHORT_LENDING_FEE_PCT_PER_YEAR = 1.10
+FINANCING_DAYS_PER_DAY_TRADE = 1          # UNVERIFIED (one day assumed)
+SLIPPAGE_PCT_PER_SIDE = 0.0               # PROVISIONAL: shown as the break-even value instead
 MIN_N = 20
 SIDES = {"買いサイン": 1, "空売りサイン": -1}
 
@@ -96,9 +105,15 @@ def replay(signal: dict, ticks: list) -> dict | None:
     return _result(side, entry, closes[-1] if closes else entry, "TIME_EXIT")
 
 
+def cost_pct(side: int) -> float:
+    """Round-trip cost of one day trade in %, before slippage is added."""
+    rate = LONG_INTEREST_PCT_PER_YEAR if side > 0 else SHORT_LENDING_FEE_PCT_PER_YEAR
+    return 2 * (COMMISSION_PCT_PER_SIDE + SLIPPAGE_PCT_PER_SIDE) + rate / 365 * FINANCING_DAYS_PER_DAY_TRADE
+
+
 def _result(side, entry, exit_price, how):
-    gross = side * (exit_price / entry - 1)
-    return {"state": "FILLED", "exit": how, "gross_pct": gross * 100, "return_pct": (gross - 2 * COST_PER_SIDE) * 100}
+    gross = side * (exit_price / entry - 1) * 100
+    return {"state": "FILLED", "exit": how, "side": side, "gross_pct": gross, "return_pct": gross - cost_pct(side)}
 
 
 def stats(trades: list[dict]) -> dict:
@@ -118,6 +133,8 @@ def stats(trades: list[dict]) -> dict:
         "ev_pct": round(sum(returns) / n, 3),
         "pf": round(sum(wins) / loss, 2) if loss > 0 else None,
         "gross_ev_pct": round(sum(gross) / n, 3),
+        # the slippage per side at which this group's average net return is zero
+        "breakeven_slippage_pct_per_side": round((sum(returns) / n) / 2 + SLIPPAGE_PCT_PER_SIDE, 4),
         "gross_win_rate_pct": round(sum(1 for g in gross if g > 0) / n * 100, 1),
         "exits": exits,
         "status": "OK" if n >= MIN_N else "INSUFFICIENT",
@@ -158,8 +175,14 @@ def build(records: Path, *, now: datetime, days: list[str] | None = None) -> dic
         "basis": "BACKTEST_OF_RECORDED_COCKPIT_SIGNALS_ON_RECORDED_MS2_TICKS",
         "days": used_days,
         "assumptions": {"fill_window_minutes": FILL_WINDOW.total_seconds() / 60, "exit_time_jst": EXIT_TIME,
-                        "cost_pct_per_side": COST_PER_SIDE * 100, "min_n": MIN_N,
-                        "status": "PROVISIONAL (fill window and cost are not OWNER decisions)"},
+                        "commission_pct_per_side": COMMISSION_PCT_PER_SIDE,
+                        "long_interest_pct_per_year": LONG_INTEREST_PCT_PER_YEAR,
+                        "short_lending_fee_pct_per_year": SHORT_LENDING_FEE_PCT_PER_YEAR,
+                        "financing_days_per_day_trade": FINANCING_DAYS_PER_DAY_TRADE,
+                        "slippage_pct_per_side": SLIPPAGE_PCT_PER_SIDE, "min_n": MIN_N,
+                        "status": "楽天証券ゼロコース・制度信用 (OWNER 2026-10-21; rates checked 2026-10-21); "
+                                  "1 financing day per day trade UNVERIFIED; slippage 0 PROVISIONAL (break-even shown); "
+                                  "fill window PROVISIONAL"},
         "counts": counts,
         "by_strategy": {k: stats(v) for k, v in sorted(by_strategy.items())},
         "by_strategy_ticker": {k: stats(v) for k, v in sorted(by_ticker.items())},
