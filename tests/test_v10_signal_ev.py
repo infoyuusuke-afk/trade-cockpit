@@ -175,6 +175,23 @@ class RuleShadow(unittest.TestCase):
         self.assertEqual(view["forward"]["R3A_0915"]["n"], 1)   # 09:00:05 fill, exit at the same tick by 09:15
         self.assertAlmostEqual(view["forward"]["R3A_0915"]["recent"][0]["return_pct"], -2.80 / 365, places=6)
 
+    def test_r4_needs_the_move_from_open_and_r5_a_gap_down(self):
+        write_day(self.records, "2026-10-21", [], [("C.T", "15:24:00", 1000), ("E.T", "15:24:00", 1000)])
+        write_day(self.records, "2026-10-22", [
+            ("11:00:00", "A.T", "買いサイン", "OR15押し目", "1010", "1000", "1015"),    # +1.0 % from the open: R4
+            ("11:00:00", "B.T", "買いサイン", "OR15押し目", "1003", "993", "1008"),     # +0.3 %: not R4
+            ("10:30:00", "C.T", "空売りサイン", "OR15戻り", "975", "980", "970"),       # opened -2 %: R5
+            ("10:30:00", "E.T", "空売りサイン", "OR15戻り", "1005", "1010", "1000"),    # opened +0.5 %: not R5
+        ], [("A.T", "09:00:05", 1000), ("A.T", "11:01:00", 1010), ("A.T", "11:10:00", 1021),
+            ("B.T", "09:00:05", 1000), ("B.T", "11:01:00", 1003), ("B.T", "11:10:00", 1009),
+            ("C.T", "09:00:05", 980), ("C.T", "10:31:00", 975), ("C.T", "10:40:00", 959),
+            ("E.T", "09:00:05", 1005), ("E.T", "10:31:00", 1005), ("E.T", "10:40:00", 990)])
+        view = ev.build_rule_shadow(self.records, now=NOW)
+        r4, r5 = view["forward"]["R4"], view["forward"]["R5"]
+        self.assertEqual([(t["ticker"], t["exit"], t["exit_price"]) for t in r4["recent"]], [("A.T", "TARGET", 1021.0)])
+        self.assertEqual([(t["ticker"], t["exit"], t["exit_price"]) for t in r5["recent"]], [("C.T", "TARGET", 959.0)])
+        self.assertEqual((view["rules"]["R4"]["min_move_pct"], view["rules"]["R5"]["gap"]), (0.5, "down"))
+
     def test_gap_uses_the_reference_price_and_skips_splits(self):
         write_day(self.records, "2026-10-21", [], [("G.T", "15:24:00", 1000), ("S.T", "15:24:00", 5000)])
         write_day(self.records, "2026-10-22", [], [("G.T", "09:00:05", 1015), ("G.T", "09:59:00", 1030),

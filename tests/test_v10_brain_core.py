@@ -76,6 +76,19 @@ class Pick(unittest.TestCase):
         self.assertEqual(view["picks"][0]["ticker"], "G.T")
         self.assertIn("信用倍率不明（空売り状況 未確認）", view["picks"][0]["flags"])
 
+    def test_r4_r5_conditions_and_the_best_matching_rule(self):
+        up = dict(target("K.T", entry=1010, stop=1000, t1=1015), open_price=1000)          # +1 % from the open
+        flat = dict(target("L.T", entry=1003, stop=993, t1=1008), open_price=1000)         # +0.3 %: R1 only
+        down = dict(target("M.T", "空売りサイン", "OR15戻り", 975, 980, 970), open_price=980, reference_price=1000)
+        split = dict(target("N.T", "空売りサイン", "OR15戻り", 975, 980, 970), open_price=200, reference_price=1000)
+        view = brain.pick(live([up, flat, down, split]), ev_table=None, rule_shadow=SHADOW, now=NOW)
+        rules = {p["ticker"]: p["rule"] for p in view["picks"]}
+        # 09:30: K.T matches R1 and R4; R4 rests on more trades (0.5 x 93) and wins
+        self.assertEqual(rules, {"K.T": "R4", "L.T": "R1", "M.T": "R5"})
+        self.assertNotIn("N.T", rules)   # an -80 % "gap" is a split, not R5
+        k = next(p for p in view["picks"] if p["ticker"] == "K.T")
+        self.assertEqual((k["target"], k["stop"]), (1020, 1000))
+
     def test_not_live(self):
         for kw in ({"stale": True}, {"valid": False}, {"at": "2026-10-22 09:28:00"}, {"at": ""}):
             view = brain.pick(live([target("A.T")], **kw), ev_table=TABLE, rule_shadow=SHADOW, now=NOW)

@@ -254,6 +254,10 @@ document.addEventListener("DOMContentLoaded",()=>{
    for(const [k,r] of Object.entries(rules)){
      if(r.side!==side||!(r.from<=hm&&hm<r.to))continue;
      if(r.market&&!String(x?.market_state||"").includes(r.market))continue;
+     // ④: entry at least min_move_pct beyond the open; ⑤: opened >= 1 % below the reference price (splits skipped)
+     const o=Number(x?.open_price),ref=Number(x?.reference_price),en=Number(x?.entry_price);
+     if(r.min_move_pct!=null&&!(o>0&&Number.isFinite(en)&&side*(en/o-1)*100>=r.min_move_pct))continue;
+     if(r.gap==="down"){const g=(o>0&&ref>0)?(o/ref-1)*100:NaN;if(!(g<=-1&&Math.abs(g)<20))continue;}
      const e=Number(x?.entry_price),t=Number(x?.target1);
      if(!Number.isFinite(e)||!Number.isFinite(t)||e<=0)return {key:k,rule:r};
      const base=Math.abs(t-e);
