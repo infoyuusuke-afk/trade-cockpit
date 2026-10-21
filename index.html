@@ -226,7 +226,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const evPanel=document.createElement("section");
  evPanel.className="card wide";
  evPanel.id="signal-ev-ranking";
- evPanel.innerHTML='<h2>期待値ランキング（今点灯中のサイン）</h2><p class="warning">期待値は過去の記録（MS2）で同じサインを検証したバックテストの数字です。発注はしません。回数20回未満は「根拠不足」で順位に入れません。</p><div id="signal-ev-summary" class="sub">期待値データ取得待ち</div><div id="signal-ev-rows"><div class="focus-empty">点灯中のサインなし</div></div>';
+ evPanel.innerHTML='<h2>期待値ランキング（今点灯中のサイン）</h2><div id="brain-pick-rows"><div class="focus-empty">ブレインの選択 取得待ち</div></div><p class="warning">期待値は過去の記録（MS2）で同じサインを検証したバックテストの数字です。発注はしません。回数20回未満は「根拠不足」で順位に入れません。</p><div id="signal-ev-summary" class="sub">期待値データ取得待ち</div><div id="signal-ev-rows"><div class="focus-empty">点灯中のサインなし</div></div>';
  if(panes["ms2-live"]){const intro=panes["ms2-live"].querySelector(":scope > .pane-intro");if(intro)intro.after(evPanel);else panes["ms2-live"].prepend(evPanel);}
  let evTable=null;
  const evStatFor=(t,x)=>{
@@ -270,8 +270,26 @@ document.addEventListener("DOMContentLoaded",()=>{
    '<p class="sub">記録のみ：'+Object.entries(ruleShadow.gap_rules||{}).map(([k,r])=>{
      const f=ruleShadow.forward?.[k]||{};
      return esc(r.label)+" → "+(f.n?esc(f.n)+"回・平均"+evPct(f.ev_pct)+"・PF"+esc(f.pf??"—"):"まだ0回");
-   }).join("／")+'</p>';
+   }).join("／")+'</p>'+
+   '<p class="sub">ブレインの選択の成績（仮想）：'+(()=>{const f=ruleShadow.forward?.BRAIN||{};return f.n?esc(f.n)+"回・平均"+evPct(f.ev_pct)+"・PF"+esc(f.pf??"—"):"まだ0回";})()+'</p>';
  };
+ // Brain core picks: the top live signals by expected value (Brain observer, every pass).
+ // Shown only while the screen is LIVE and the pick file is under 30 s old. Virtual; no orders.
+ let brainPick=null;
+ const renderBrain=d=>{
+   const box=document.getElementById("brain-pick-rows");
+   if(!box)return;
+   const age=brainPick?(Date.now()-Date.parse(brainPick.generated_at))/1000:Infinity;
+   if(window.cockpitMs2ScreenReady?.(d)!==true||!(age<=30)){box.innerHTML='<div class="focus-empty">ブレインの選択：LIVEでないため表示しません</div>';return;}
+   if(brainPick.state!=="PICK"){box.innerHTML='<div class="focus-empty">ブレインの選択：今は見送り（基準を超える期待値のサインなし・'+esc(brainPick.considered)+'件を確認）</div>';return;}
+   box.innerHTML='<p class="sub">ブレインの選択（期待値の高い順・Shadow・発注しません）</p><div class="rotation-grid">'+brainPick.picks.map(p=>
+     '<div class="rotation-box"><b>'+esc(p.rank)+'. '+esc(p.name)+'｜'+esc(p.signal)+'・'+esc(p.strategy)+'</b>'+
+     '<strong>期待値 '+evPct(p.score_pct)+'（根拠 '+esc(p.n_eff)+'回分）</strong>'+
+     '<small>'+(p.rule_label?esc(p.rule_label):p.source==="TICKER"?"この銘柄の同じサインの記録":"同じ戦略の全銘柄の記録")+'</small>'+
+     '<small>発動 '+esc(p.entry)+'／損切 '+esc(p.stop)+'／目標 '+esc(p.target)+'</small>'+
+     (p.flags&&p.flags.length?'<small>'+p.flags.map(esc).join("／")+'</small>':'')+'</div>').join("")+'</div>';
+ };
+ const loadBrain=()=>fetch("/brain_pick.json?t="+Date.now()).then(r=>r.json()).then(v=>{brainPick=(v&&v.schema_version==="100b-v10-brain-pick-v1"&&v.real_submit_allowed===false&&v.trade_instruction===false)?v:null;renderBrain(evLast);}).catch(()=>{brainPick=null;renderBrain(evLast);});
  const evRowHtml=(r,i)=>{
    const x=r.x,s=r.ev,ok=s&&s.status==="OK";
    const rule=ruleFor(x,Date.now());
@@ -300,9 +318,11 @@ document.addEventListener("DOMContentLoaded",()=>{
  const loadRules=()=>fetch("/rule_shadow.json?t="+Date.now()).then(r=>r.json()).then(v=>{ruleShadow=(v&&v.schema_version==="100b-v10-rule-shadow-v1"&&v.real_submit_allowed===false)?v:null;renderEv(evLast);}).catch(()=>{ruleShadow=null;});
  let evLast={};
  const loadEv=()=>fetch("/signal_ev.json?t="+Date.now()).then(r=>r.json()).then(t=>{evTable=(t&&t.schema_version==="100b-v10-signal-ev-table-v1"&&t.real_submit_allowed===false)?t:null;renderEv(evLast);}).catch(()=>{evTable=null;renderEv(evLast);});
- document.addEventListener("ms2RssUpdate",e=>{evLast=e.detail||{};renderEv(evLast);});
+ document.addEventListener("ms2RssUpdate",e=>{evLast=e.detail||{};renderEv(evLast);renderBrain(evLast);});
  loadEv();
  loadRules();
+ loadBrain();
+ setInterval(loadBrain,5000);
  setInterval(loadEv,600000);
  setInterval(loadRules,600000);
  // Night PTS -> next-morning watch candidates (REALTIME 5). The PTS list comes from the
