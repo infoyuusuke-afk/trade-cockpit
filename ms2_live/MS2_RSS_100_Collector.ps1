@@ -1955,6 +1955,8 @@ $orLow = @{}
 $or5High = @{}
 $or5Low = @{}
 $minuteBars = @{}
+$LiveRowBars1m = 60
+$LiveRowBars5m = 24
 $currentMinuteBars = @{}
 $dayHigh = @{}
 $dayLow = @{}
@@ -2889,8 +2891,18 @@ try {
             $result|Add-Member -NotePropertyName common_coverage -NotePropertyValue $commonDecision.coverage -Force
             $result|Add-Member -NotePropertyName common_missing -NotePropertyValue @($commonDecision.missing) -Force
             $result|Add-Member -NotePropertyName safety_gate -NotePropertyValue $safetyGate -Force
-            $result|Add-Member -NotePropertyName bars_1m -NotePropertyValue @(Convert-LiveBars @($minuteBars[[string]$result.ticker]) 1 ([double]$result.vwap)) -Force
-            $result|Add-Member -NotePropertyName bars_5m -NotePropertyValue @(Convert-LiveBars @($minuteBars[[string]$result.ticker]) 5 ([double]$result.vwap)) -Force
+            # Rows other than Kioxia carry only recent bars (cards draw the last 36 1-minute closes).
+            # Full-day bars for 100 rows made live_ms2.json ~15MB by 11:00 and the 2-second cycle ~25 s.
+            $rowBars=@($minuteBars[[string]$result.ticker])
+            if([string]$result.ticker -ne "285A.T"){
+                $rowBars1m=@($rowBars|Select-Object -Last $LiveRowBars1m)
+                $rowBars5m=@(Convert-LiveBars @($rowBars|Select-Object -Last ($LiveRowBars5m*5+5)) 5 ([double]$result.vwap)|Select-Object -Last $LiveRowBars5m)
+            } else {
+                $rowBars1m=$rowBars
+                $rowBars5m=@(Convert-LiveBars $rowBars 5 ([double]$result.vwap))
+            }
+            $result|Add-Member -NotePropertyName bars_1m -NotePropertyValue @(Convert-LiveBars $rowBars1m 1 ([double]$result.vwap)) -Force
+            $result|Add-Member -NotePropertyName bars_5m -NotePropertyValue $rowBars5m -Force
 
             if($result.signal -in @("買いサイン","空売りサイン") -and -not [string]::IsNullOrWhiteSpace([string]$result.signal_bar_time)){
                 $logKey=([string]$result.ticker+'|'+[string]$result.strategy+'|'+[string]$result.signal_bar_time)
@@ -3019,7 +3031,7 @@ try {
         $missingRowArray = [object[]]$missingRows.ToArray()
         $missingRowCount = [int]$missingRows.Count
         $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");observed_at_offset=$now.ToString("yyyy-MM-ddTHH:mm:sszzz");timestamp_timezone="Asia/Tokyo";source="MarketSpeed II RSS / local PC";source_mode=$livePriceDiagnostics.source_mode;universe=100;valid=$validCount;stale=(-not $publishLiveValues);stale_reason=$staleReason;data_conflict=[bool]$script:priceSourceMismatch;price_source_status=$livePriceDiagnostics.price_source_status;live_values_available=[bool]$publishLiveValues;real_submit_allowed=$false;live_price_diagnostics=$livePriceDiagnostics;preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;aggregate_basis='FRESH_ROWS_ONLY';aggregate_fresh_count=$aggregateFreshCount;aggregate_row_count=@($results).Count;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results;missing_row_count=$missingRowCount;missing_rows=$missingRowArray}
-        $jsonText=$payload|ConvertTo-Json -Depth 6
+        $jsonText=$payload|ConvertTo-Json -Depth 6 -Compress
         Write-AtomicUtf8 $jsonPath $jsonText
         if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { $null = Publish-OptionalCockpitMirror $cockpitJsonPath $jsonText }
 
