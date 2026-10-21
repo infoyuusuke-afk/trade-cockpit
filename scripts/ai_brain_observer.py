@@ -50,7 +50,7 @@ AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_AC
 # (or when missing) into RuntimeDir/signal_ev_table_v1.json, which the Gateway
 # serves read-only for the REALTIME 5 ranking. The module is loaded only from
 # bytes whose git blob equals the pin. It never touches live data or orders.
-SIGNAL_EV_MODULE = ("v10_signal_ev_table", "d6f3756178157d637e3a9f9725c37736869fa3de")
+SIGNAL_EV_MODULE = ("v10_signal_ev_table", "2ed66182bca336ca3656df38f25e56bc8e71f3f5")
 SIGNAL_EV_FILE = "signal_ev_table_v1.json"
 SIGNAL_EV_REBUILD_AFTER_JST = (15, 35)
 # Night PTS -> next-morning watch candidates, rebuilt every 5 minutes from the
