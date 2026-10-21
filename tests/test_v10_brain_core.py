@@ -190,24 +190,43 @@ class CollectorVoice(unittest.TestCase):
         self.assertIn("[string]$_.rule -in @('R1','R2','R4','R5')", text)
         self.assertIn("ルール5の対象候補です。", text)
         self.assertIn("$spokenRuleSignals=@{}; $preopenGapSpoken=$false", text)   # reset each day
+        # audit 6325885133: live gate, current-row re-check, cap per cycle, rounding, coverage gate
+        self.assertIn("if ($publishLiveValues) {", text)
+        self.assertIn("$row[0].aggregate_row_fresh -ne $true -or [string]$row[0].signal -ne [string]$x.signal", text)
+        self.assertIn("if ($ruleVoices -ge $MaxRuleVoicesPerCycle) { break }", text)
+        self.assertIn("$MaxRuleVoicesPerCycle = 1", text)
+        self.assertIn("[Math]::Round([double]$x.entry,1)", text)
+        self.assertIn("$preopenCovered -ge $PreopenMinCoverage", text)
+        i = text.index("$preopenCovered -ge $PreopenMinCoverage")
+        self.assertLess(text.index("$preopenGapSpoken=$true", i), text.index("Add-LoopMark 'voice_tail'"))
+        watcher = (ROOT / "ms2_live" / "Kioxia_RSS_Live_Watcher.ps1").read_text(encoding="utf-8-sig")
+        self.assertNotIn("キオクシア、買いサイン点灯", watcher)                # OWNER: Kioxia sign voice stopped
+        self.assertNotIn("往復ピンタ警戒", text)
 
     @unittest.skipUnless(shutil.which("powershell.exe"), "Windows PowerShell 5.1 required")
     def test_brain_rule_signal_reader_fails_silent(self):
         harness = r"""
 param([string]$Collector, [string]$Dir)
 $t=$null;$e=$null;$ast=[Management.Automation.Language.Parser]::ParseFile($Collector,[ref]$t,[ref]$e)
-$fn=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Get-BrainRuleSignals'},$true))
-. ([scriptblock]::Create($fn[0].Extent.Text))
-(Get-Item -LiteralPath (Join-Path $Dir 'old.json')).LastWriteTime = (Get-Date).AddMinutes(-2)
+foreach($name in 'Test-BrainPickFresh','Get-BrainRuleSignals'){
+  $fn=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name},$true))
+  . ([scriptblock]::Create($fn[0].Extent.Text))
+}
 $o=[ordered]@{}
-foreach($n in 'valid','old','unsafe','notlive','missing','broken'){ $o[$n]=(@(Get-BrainRuleSignals (Join-Path $Dir ($n+'.json')) (Get-Date)) | ForEach-Object { $_.ticker+':'+$_.rule }) -join ',' }
+foreach($n in 'valid','old','future','nooffset','unsafe','stringflag','notlive','oddstate','missing','broken'){ $o[$n]=(@(Get-BrainRuleSignals (Join-Path $Dir ($n+'.json')) (Get-Date)) | ForEach-Object { $_.ticker+':'+$_.rule }) -join ',' }
 $o | ConvertTo-Json -Compress
 """
         sig = [{"ticker": "A.T", "rule": "R1", "signal": "買いサイン"}, {"ticker": "Z.T", "rule": "R3A_1000", "signal": "買いサイン"}]
+        now = datetime.now(timezone.utc)
         good = {"schema_version": brain.SCHEMA, "real_submit_allowed": False, "trade_instruction": False, "state": "PICK",
-                "rule_signals": sig}
-        files = {"valid": good, "old": good, "unsafe": dict(good, real_submit_allowed=True),
-                 "notlive": dict(good, state="NOT_LIVE")}
+                "generated_at": now.isoformat(), "rule_signals": sig}
+        files = {"valid": good,
+                 "old": dict(good, generated_at=(now - timedelta(seconds=45)).isoformat()),      # by its own generated_at
+                 "future": dict(good, generated_at=(now + timedelta(seconds=30)).isoformat()),
+                 "nooffset": dict(good, generated_at=now.strftime("%Y-%m-%dT%H:%M:%S")),
+                 "unsafe": dict(good, real_submit_allowed=True),
+                 "stringflag": dict(good, real_submit_allowed="false"),
+                 "notlive": dict(good, state="NOT_LIVE"), "oddstate": dict(good, state="LIVE")}
         with tempfile.TemporaryDirectory() as d:
             for name, doc in files.items():
                 (Path(d) / (name + ".json")).write_text(json.dumps(doc, ensure_ascii=False), encoding="utf-8")
@@ -217,7 +236,8 @@ $o | ConvertTo-Json -Compress
             p = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(h), "-Collector", str(COLLECTOR),
                                 "-Dir", d], capture_output=True, text=True, encoding="utf-8", errors="replace")
         self.assertEqual(json.loads(p.stdout.strip().splitlines()[-1]),
-                         {"valid": "A.T:R1", "old": "", "unsafe": "", "notlive": "", "missing": "", "broken": ""})
+                         {"valid": "A.T:R1", "old": "", "future": "", "nooffset": "", "unsafe": "", "stringflag": "",
+                          "notlive": "", "oddstate": "", "missing": "", "broken": ""})
 
 
 class Wiring(unittest.TestCase):
