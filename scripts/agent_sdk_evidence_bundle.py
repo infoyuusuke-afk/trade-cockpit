@@ -4,11 +4,13 @@ approved read-only adapters. Manual --fetch only; no model call.
 Adapters (each can fail on its own without stopping the others):
   boj         BOJ RSS headlines -> pre_next / supply_sq
   jpx_margin  JPX 日々公表銘柄等信用取引残高 -> supply_sq (requested codes only)
+  jpx_margin_all  JPX 銘柄別信用取引残高 (all issues, daily PDF) -> supply_sq (requested
+              codes, in the caller's priority order; OWNER 2026-10-22)
 
 Not connected (no approved free source with a verified time contract yet):
 premarket overseas indices, TDnet (robots.txt disallows automated access),
 JPX investor-type futures CSV (code tables not published with the file),
-J-Quants daily margin of all issues (contract and cost are OWNER decisions).
+J-Quants (contract and cost are OWNER decisions).
 Those roles stay NO_DATA instead of being filled with guesses.
 """
 from __future__ import annotations
@@ -21,14 +23,16 @@ import sys
 
 if __package__:
     from . import agent_sdk_coordination_pilot as pilot
+    from . import agent_sdk_jpx_margin_all_ingest as jpx_all
     from . import agent_sdk_jpx_margin_ingest as jpx
     from . import agent_sdk_public_feed_ingest as boj
 else:
     import agent_sdk_coordination_pilot as pilot
+    import agent_sdk_jpx_margin_all_ingest as jpx_all
     import agent_sdk_jpx_margin_ingest as jpx
     import agent_sdk_public_feed_ingest as boj
 
-ADAPTERS = ("boj", "jpx_margin")
+ADAPTERS = ("jpx_margin_all", "boj", "jpx_margin")
 
 
 def bundle(run_id: str, results: dict, *, now: datetime) -> tuple[dict, dict]:
@@ -39,7 +43,7 @@ def bundle(run_id: str, results: dict, *, now: datetime) -> tuple[dict, dict]:
         if got is None:
             status[name] = "NOT_REQUESTED"
         elif isinstance(got, Exception):
-            status[name] = "BLOCKED:" + (str(got) if isinstance(got, (boj.EvidenceBlocked, jpx.MarginBlocked))
+            status[name] = "BLOCKED:" + (str(got) if isinstance(got, (boj.EvidenceBlocked, jpx.MarginBlocked, jpx_all.MarginBlocked))
                                          else type(got).__name__)
         else:
             status[name] = "OK:%d" % len(got)
@@ -57,16 +61,31 @@ def main(argv=None) -> int:
     ap.add_argument("--run-id", required=True)
     ap.add_argument("--output", required=True, type=Path)
     ap.add_argument("--boj", action="store_true", help="BOJ RSS headlines")
+    ap.add_argument("--boj-per-role", type=int, help="Keep only the first N BOJ headlines per role (input size)")
     ap.add_argument("--jpx-margin-codes", help="JPX daily-publication margin for these codes, e.g. 285A,8035")
+    ap.add_argument("--jpx-margin-all-codes", help="JPX all-issue margin for these codes, priority first (max 150)")
     args = ap.parse_args(argv)
     now = datetime.now(timezone.utc)
     results = {}
     if args.boj:
         try:
             feeds = {role: boj.fetch_official_feed(url) for role, url in boj.FEEDS.items()}
-            results["boj"] = boj.build_snapshot(feeds, args.run_id, now)["sources"]
+            rows = boj.build_snapshot(feeds, args.run_id, now)["sources"]
+            if args.boj_per_role is not None:
+                kept, count = [], {}
+                for row in rows:
+                    count[row["role"]] = count.get(row["role"], 0) + 1
+                    if count[row["role"]] <= args.boj_per_role:
+                        kept.append(row)
+                rows = kept
+            results["boj"] = rows
         except Exception as exc:  # one adapter failing never stops the others
             results["boj"] = exc
+    if args.jpx_margin_all_codes:
+        try:
+            results["jpx_margin_all"] = jpx_all.fetch_sources(jpx_all.parse_codes(args.jpx_margin_all_codes), observed_at=now)[0]
+        except Exception as exc:
+            results["jpx_margin_all"] = exc
     if args.jpx_margin_codes:
         try:
             results["jpx_margin"] = jpx.fetch_sources(jpx.parse_codes(args.jpx_margin_codes), observed_at=now)[0]

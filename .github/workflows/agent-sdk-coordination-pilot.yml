@@ -10,6 +10,8 @@ on:
       - "scripts/agent_sdk_jpx_margin_ingest.py"
       - "scripts/agent_sdk_evidence_bundle.py"
       - "tests/test_agent_sdk_jpx_margin_ingest.py"
+      - "scripts/agent_sdk_jpx_margin_all_ingest.py"
+      - "tests/test_agent_sdk_jpx_margin_all_ingest.py"
       - "scripts/agent_paid_ledger_report.py"
       - "tests/test_agent_paid_ledger_controls.py"
       - "docs/V10_AGENT_ANALYST_WINDOWS_ACCEPTANCE.md"
@@ -52,6 +54,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_agent_sdk_public_feed_ingest.py -v
       - name: JPX daily-publication margin adapter, evidence bundle and supply_sq path to the display (offline)
         run: python -m unittest discover -s tests -p test_agent_sdk_jpx_margin_ingest.py -v
+      - name: JPX all-issue margin adapter (daily PDF text layout, checksums, bundle wiring; offline)
+        run: python -m unittest discover -s tests -p test_agent_sdk_jpx_margin_all_ingest.py -v
       - name: Paid-run controls (fixed ledger, identity, approval, audit, Usage reconciliation; no API call)
         run: python -m unittest discover -s tests -p test_agent_paid_ledger_controls.py -v
       - name: Offline signed research handoff and ACK negative tests

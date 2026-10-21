@@ -159,7 +159,7 @@ class Evidence(unittest.TestCase):
         rows = jpx.build_sources(parsed, ["285A"], FILE_URL, observed_at=NOW)
         doc, status = bundler.bundle("bundle_test_0001", {"boj": boj.EvidenceBlocked("RSS_FETCH_UNAVAILABLE"),
                                                           "jpx_margin": rows}, now=NOW)
-        self.assertEqual(status, {"boj": "BLOCKED:RSS_FETCH_UNAVAILABLE", "jpx_margin": "OK:1"})
+        self.assertEqual(status, {"boj": "BLOCKED:RSS_FETCH_UNAVAILABLE", "jpx_margin": "OK:1", "jpx_margin_all": "NOT_REQUESTED"})
         self.assertEqual({r["role"] for r in doc["sources"]}, {"supply_sq"})
         with self.assertRaisesRegex(boj.EvidenceBlocked, "NO_EVIDENCE_FROM_ANY_ADAPTER"):
             bundler.bundle("bundle_test_0002", {"boj": boj.EvidenceBlocked("X")}, now=NOW)
