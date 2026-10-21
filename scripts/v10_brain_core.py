@@ -133,7 +133,7 @@ def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: da
     local = now.astimezone(JST)
     hm = local.strftime("%H:%M")
     base = {"schema_version": SCHEMA, "generated_at": now.astimezone(timezone.utc).isoformat(), "picks": [],
-            "excluded": [], "considered": 0, "real_submit_allowed": False, "trade_instruction": False,
+            "excluded": [], "rule_signals": [], "considered": 0, "real_submit_allowed": False, "trade_instruction": False,
             "thresholds": {"max_picks": MAX_PICKS, "shrink_n": SHRINK_N, "backtest_weight": BACKTEST_WEIGHT,
                            "min_score_pct": MIN_SCORE_PCT, "short_min_credit_ratio": SHORT_MIN_CREDIT_RATIO,
                            "status": "PROVISIONAL"},
@@ -174,6 +174,14 @@ def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: da
             continue
         score = est["ev_pct"] * est["n_eff"] / (est["n_eff"] + SHRINK_N)
         dist = abs(target - entry)
+        if est["source"] == "RULE":
+            # OWNER 2026-10-22 「音声は①②④⑤だけ」: every lit signal matching a rule, for the
+            # Collector's voice (whatever its score; the squeeze-risk shorts above are left out).
+            base["rule_signals"].append({"ticker": row.get("ticker"), "name": name, "signal": row.get("signal"),
+                                         "strategy": row.get("strategy"), "signal_bar": row.get("signal_bar_time"),
+                                         "rule": est["rule"], "entry": entry,
+                                         "target": round(entry + side * est["target_mult"] * dist, 4),
+                                         "stop": round(entry - side * est["stop_mult"] * dist, 4)})
         scored.append({"ticker": row.get("ticker"), "name": name, "side": side, "signal": row.get("signal"),
                        "strategy": row.get("strategy"), "signal_bar": row.get("signal_bar_time"),
                        "market_state": row.get("market_state"), "entry": entry,

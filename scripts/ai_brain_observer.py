@@ -62,7 +62,7 @@ PTS_PICKUP_INTERVAL = timedelta(minutes=5)
 # signals with the EV table and the rule Shadow, write the top picks to
 # RuntimeDir/brain_pick_v1.json for the Gateway and log new picks to
 # records/<day>/brain_picks.csv for the rule Shadow (pinned module, no orders).
-BRAIN_CORE_MODULE = ("v10_brain_core", "af1bd4a68b931f83668d53b1329fff7cb09f2d78")
+BRAIN_CORE_MODULE = ("v10_brain_core", "5929de272585e94fb36c3be1df0b01528b427ea1")
 
 
 def _aware(value):
