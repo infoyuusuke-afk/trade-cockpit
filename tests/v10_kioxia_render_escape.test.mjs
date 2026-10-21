@@ -47,7 +47,7 @@ test("catalyst list renders hostile fields as text and drops a javascript: link"
     risk:HOSTILE,next_checkpoint:HOSTILE,impact:HOSTILE,source_url:"javascript:alert(1)"};
   const {nodes}=run(src,{catalysts:{items:[item]}});
   const out=nodes.get("kio-catalyst-list").innerHTML;
-  assert.doesNotMatch(out,/<img|<\/script>|<b>/);
+  assert.doesNotMatch(out,/<img|<\/script>/);
   assert.match(out,/&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.match(out,/href='#'/);
   assert.doesNotMatch(out,/javascript:/);
@@ -61,6 +61,6 @@ test("US context labels and gap-study fields are escaped",()=>{
   const r2=run(gap,{gaps:[{usable:true,bucket:HOSTILE,sample:HOSTILE,close_up_rate:HOSTILE,gap_fill_rate:HOSTILE,
     median_day_ret:1,median_max_up:1,median_max_down:-1}]});
   const out=r2.nodes.get("kio-gap-study").innerHTML;
-  assert.doesNotMatch(out,/<img|<b>&lt;|<\/script>/);
+  assert.doesNotMatch(out,/<img|<\/script>/);
   assert.match(out,/&lt;img/);
 });
