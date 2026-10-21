@@ -241,6 +241,10 @@ def build(records: Path, *, now: datetime, days: list[str] | None = None) -> dic
 # (first 14 days chosen, last 7 days checked). Forward results count only days from
 # RULES_FORWARD_FROM, i.e. after the rules were fixed. Virtual only; no orders.
 RULES_SCHEMA = "100b-v10-rule-shadow-v1"
+# Recomputed by build_rule_shadow's own replay (reference-price gaps, split-sized gaps
+# skipped) on 2026-09-19..10-21; test = the last third of the days (from 2026-10-14).
+R4_BACKTEST = {"train": {"n": 188, "ev_pct": 0.111, "pf": 1.63}, "test": {"n": 93, "ev_pct": 0.103, "pf": 1.54}}
+R5_BACKTEST = {"train": {"n": 24, "ev_pct": 0.15, "pf": 1.75}, "test": {"n": 44, "ev_pct": 0.387, "pf": 4.19}}
 RULES_FORWARD_FROM = "2026-10-22"
 RULES = {
     "R1": {"label": "① 買い 9:15〜10:00・目標2倍・損切り2倍", "side": 1, "from": "09:15", "to": "10:00",
@@ -249,6 +253,14 @@ RULES = {
     "R2": {"label": "② 売り 地合い弱い日 9:15〜10:00・目標3倍・損切り2倍・最長60分", "side": -1, "from": "09:15",
            "to": "10:00", "market": "弱い", "target_mult": 3.0, "stop_mult": 2.0, "max_hold_minutes": 60,
            "backtest": {"train": {"n": 37, "ev_pct": 0.103, "pf": 1.52}, "test": {"n": 53, "ev_pct": 0.183, "pf": 1.79}}},
+    # OWNER 2026-10-22 「④⑤もSHADOW追加」: round-2 search on 2026-09-19..10-21 records,
+    # kept only because each of three equal day blocks was positive (train = first two).
+    "R4": {"label": "④ 買い 寄りから+0.5%以上上げている銘柄の押し目・目標2倍・損切り2倍", "side": 1, "from": "09:00",
+           "to": "15:20", "market": None, "target_mult": 2.0, "stop_mult": 2.0, "max_hold_minutes": None,
+           "min_move_pct": 0.5, "backtest": R4_BACKTEST},
+    "R5": {"label": "⑤ 売り 窓を1%以上下に開けた日の戻り売り・目標3倍・損切り2倍・最長60分", "side": -1, "from": "09:00",
+           "to": "15:20", "market": None, "target_mult": 3.0, "stop_mult": 2.0, "max_hold_minutes": 60,
+           "gap": "down", "backtest": R5_BACKTEST},
 }
 
 
@@ -308,11 +320,42 @@ def gap_trades(prev_ticks: dict, ticks: dict, rule: dict, reference: dict | None
     return out
 
 
-def rule_matches(rule: dict, signal: dict) -> bool:
+def day_context(prev_ticks: dict | None, ticks: dict, reference: dict | None = None) -> dict:
+    """Each issue's open (first tick at or after 09:00) and opening gap in % against the
+    reference price, else the previous day's last tick (None when unknown or split-sized)."""
+    opens, gaps = {}, {}
+    for ticker, rows in ticks.items():
+        day = [p for t, _, p in rows if t >= "09:00:00"]
+        if not day:
+            continue
+        opens[ticker] = day[0]
+        before = [p for t, _, p in (prev_ticks or {}).get(ticker, []) if t <= "15:30:00"]
+        close = (reference or {}).get(ticker) or (before[-1] if before else None)
+        if close:
+            gap = (day[0] / close - 1) * 100
+            gaps[ticker] = gap if abs(gap) < MAX_GAP_PCT else None
+    return {"open": opens, "gap": gaps}
+
+
+def context_matches(rule: dict, side: int, ticker: str, entry, context: dict | None) -> bool:
+    """The R4 move-from-open and R5 gap-down conditions (True for rules without them)."""
+    if rule.get("min_move_pct") is not None:
+        open_ = ((context or {}).get("open") or {}).get(ticker)
+        if not open_ or entry is None or side * (entry / open_ - 1) * 100 < rule["min_move_pct"]:
+            return False
+    if rule.get("gap") == "down":
+        gap = ((context or {}).get("gap") or {}).get(ticker)
+        if gap is None or gap > -1.0:
+            return False
+    return True
+
+
+def rule_matches(rule: dict, signal: dict, context: dict | None = None) -> bool:
     side = SIDES.get(signal.get("signal"))
     hm = str(signal.get("captured_at", ""))[11:16]
     return (side == rule["side"] and rule["from"] <= hm < rule["to"]
-            and (rule["market"] is None or rule["market"] in str(signal.get("market_state", ""))))
+            and (rule["market"] is None or rule["market"] in str(signal.get("market_state", "")))
+            and context_matches(rule, side, signal.get("ticker", ""), _f(signal.get("entry")), context))
 
 
 def brain_trades(picks_path: Path, ticks: dict) -> list[dict]:
@@ -354,8 +397,9 @@ def build_rule_shadow(records: Path, *, now: datetime) -> dict:
         if day < RULES_FORWARD_FROM:
             prev_ticks = ticks
             continue
+        reference = load_reference_prices(day_dir / "preopen.csv")
+        context = day_context(prev_ticks, ticks, reference)
         if prev_ticks is not None:
-            reference = load_reference_prices(day_dir / "preopen.csv")
             for key, rule in GAP_RULES.items():
                 trades[key].extend(dict(t, day=day) for t in gap_trades(prev_ticks, ticks, rule, reference))
         prev_ticks = ticks
@@ -370,7 +414,7 @@ def build_rule_shadow(records: Path, *, now: datetime) -> dict:
         for key, rule in RULES.items():
             open_until = {}
             for s in signals:
-                if not rule_matches(rule, s):
+                if not rule_matches(rule, s, context):
                     continue
                 setup = (s.get("ticker", ""), s.get("strategy", ""), s.get("signal", ""))
                 stamp = str(s.get("captured_at", ""))[11:19]

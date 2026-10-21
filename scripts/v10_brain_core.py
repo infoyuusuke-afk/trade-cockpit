@@ -59,21 +59,45 @@ def _live_time(raw) -> datetime | None:
     return None
 
 
-def rule_for(rules: dict, row: dict, hm: str):
+MAX_GAP_PCT = 20.0  # same as the rule Shadow: a larger gap is a split, not a market gap
+
+
+def _context_ok(rule: dict, row: dict, side: int) -> bool:
+    """R4: the entry is at least min_move_pct beyond the day's open in the signal's
+    direction. R5: the day opened at least 1 % below the reference price (前日終値)."""
+    open_ = _f(row.get("open_price"))
+    if rule.get("min_move_pct") is not None:
+        entry = _f(row.get("entry_price"))
+        if not open_ or open_ <= 0 or entry is None or side * (entry / open_ - 1) * 100 < rule["min_move_pct"]:
+            return False
+    if rule.get("gap") == "down":
+        ref = _f(row.get("reference_price"))
+        if not open_ or not ref or ref <= 0:
+            return False
+        gap = (open_ / ref - 1) * 100
+        if gap > -1.0 or abs(gap) >= MAX_GAP_PCT:
+            return False
+    return True
+
+
+def rules_for(rules: dict, row: dict, hm: str) -> list:
     side = SIDES.get(row.get("signal"))
+    out = []
     for key, rule in (rules or {}).items():
         if rule.get("side") != side or not (rule.get("from", "") <= hm < rule.get("to", "")):
             continue
         if rule.get("market") and rule["market"] not in str(row.get("market_state", "")):
             continue
-        return key, rule
-    return None, None
+        if not _context_ok(rule, row, side):
+            continue
+        out.append((key, rule))
+    return out
 
 
 def estimate(row: dict, *, ev_table: dict | None, rule_shadow: dict | None, hm: str) -> dict:
     """Expected net return in % of one trade on this signal, and what it rests on."""
-    key, rule = rule_for((rule_shadow or {}).get("rules"), row, hm)
-    if rule:
+    best = None
+    for key, rule in rules_for((rule_shadow or {}).get("rules"), row, hm):
         test = (rule.get("backtest") or {}).get("test") or {}
         fwd = ((rule_shadow or {}).get("forward") or {}).get(key) or {}
         w_bt = BACKTEST_WEIGHT * (test.get("n") or 0)
@@ -81,8 +105,14 @@ def estimate(row: dict, *, ev_table: dict | None, rule_shadow: dict | None, hm: 
         ev_bt, ev_fw = _f(test.get("ev_pct")) or 0.0, _f(fwd.get("ev_pct")) or 0.0
         n_eff = w_bt + n_fw
         ev = (w_bt * ev_bt + n_fw * ev_fw) / n_eff if n_eff else None
-        return {"rule": key, "label": rule.get("label"), "ev_pct": ev, "n_eff": n_eff, "source": "RULE",
-                "target_mult": rule.get("target_mult", 1.0), "stop_mult": rule.get("stop_mult", 1.0)}
+        if ev is None:
+            continue
+        got = {"rule": key, "label": rule.get("label"), "ev_pct": ev, "n_eff": n_eff, "source": "RULE",
+               "target_mult": rule.get("target_mult", 1.0), "stop_mult": rule.get("stop_mult", 1.0)}
+        if best is None or ev * n_eff / (n_eff + SHRINK_N) > best["ev_pct"] * best["n_eff"] / (best["n_eff"] + SHRINK_N):
+            best = got  # several rules can match one signal: the best supported one is used
+    if best:
+        return best
     strat = str(row.get("strategy", "")) + "|" + str(row.get("signal", ""))
     for level, stat in (("TICKER", ((ev_table or {}).get("by_strategy_ticker") or {}).get(strat + "|" + str(row.get("ticker", "")))),
                         ("STRATEGY", ((ev_table or {}).get("by_strategy") or {}).get(strat))):
