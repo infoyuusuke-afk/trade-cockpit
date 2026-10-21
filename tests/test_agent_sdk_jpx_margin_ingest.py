@@ -198,7 +198,7 @@ class SupplyPathEndToEnd(unittest.TestCase):
         bridge.produce(doc, result, private_dir=self.inbox, now=NOW + timedelta(minutes=2))
         out = receiver.receive_inbox(self.inbox, now=NOW + timedelta(minutes=3))
         self.assertEqual([r["state"] for r in out["results"]], ["RECEIVED"])
-        view = json.loads((self.inbox / receiver.DISPLAY_NAME).read_text("utf-8"))
+        view = receiver.read_display(self.inbox, now=NOW + timedelta(minutes=3))
         rep = {r["role"]: r for r in view["runs"][0]["reports"]}["supply_sq"]
         self.assertEqual((rep["status"], rep["usable"]), ("WATCH", True))
         self.assertEqual(rep["evidence"][0]["source_name"], jpx.SOURCE_NAME)

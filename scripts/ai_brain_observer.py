@@ -41,7 +41,7 @@ AGENT_PACKAGE = "v10_pinned_agent"
 AGENT_RECEIVER_MODULES = (
     ("agent_sdk_coordination_pilot", "c600bae0874eb4266d8ba737f4a551ce186c0604"),
     ("agent_sdk_brain_handoff", "b936f22ecb086fa56d4fad3361f0fce87c03be35"),
-    ("v10_brain_agent_research_receiver", "f749d06983c2db1d92207725787b50ecf9506403"),
+    ("v10_brain_agent_research_receiver", "5269ad6bb8f048b4ff45b35ac2535c9612693614"),
 )
 AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_ACK", "AGENT_RECEIVER_")
 

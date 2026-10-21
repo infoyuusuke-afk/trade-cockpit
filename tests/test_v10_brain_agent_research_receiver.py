@@ -135,7 +135,7 @@ class ReceiverTests(unittest.TestCase):
         doc = source_doc()
         self.emit(doc, research(doc, runner=divergent_runner))
         self.receive()
-        view = json.loads((self.root / receiver.DISPLAY_NAME).read_text("utf-8"))
+        view = receiver.read_display(self.root, now=NOW + timedelta(minutes=1))
         self.assertEqual(view["schema_version"], receiver.DISPLAY_SCHEMA)
         self.assertIs(view["real_submit_allowed"], False)
         self.assertIs(view["brain_trade_decision_eligible"], False)
@@ -149,9 +149,34 @@ class ReceiverTests(unittest.TestCase):
         self.assertEqual(rep["premarket"]["not_usable_reason"], "NO_DATA")
         # 25 hours later the pre_next report has expired and is not usable.
         receiver.receive_inbox(self.root, now=NOW + timedelta(hours=25))
-        later = json.loads((self.root / receiver.DISPLAY_NAME).read_text("utf-8"))
+        later = receiver.read_display(self.root, now=NOW + timedelta(hours=25))
         rep = {r["role"]: r for r in later["runs"][0]["reports"]}
         self.assertEqual((rep["pre_next"]["usable"], rep["pre_next"]["not_usable_reason"]), (False, "EXPIRED"))
+
+    def test_display_is_signed_and_checked_for_tampering_age_and_key(self):
+        self.emit()
+        self.receive()
+        path = self.root / receiver.DISPLAY_NAME
+        signed = json.loads(path.read_text("utf-8"))
+        self.assertEqual(signed["schema_version"], receiver.DISPLAY_WRAPPER_SCHEMA)
+        # stale: 6 minutes after the view was generated
+        with self.assertRaisesRegex(receiver.ReceiverBlocked, "DISPLAY_STALE_OR_FUTURE"):
+            receiver.read_display(self.root, now=NOW + timedelta(minutes=7))
+        # tampered body
+        bad = dict(signed, body_json=signed["body_json"].replace('"WATCH"', '"NO_SIGNAL"').replace("NO_SIGNAL", "WATCH", 1))
+        path.write_text(json.dumps(bad), encoding="utf-8")
+        with self.assertRaisesRegex(receiver.ReceiverBlocked, "DISPLAY_SIGNATURE_INVALID"):
+            receiver.read_display(self.root, now=NOW + timedelta(minutes=1))
+        # re-signed with the sidecar key instead of the receiver key
+        forged = dict(signed, hmac_sha256=hmac.new(bytes.fromhex(KEY), signed["body_json"].encode("utf-8"),
+                                                   hashlib.sha256).hexdigest())
+        path.write_text(json.dumps(forged), encoding="utf-8")
+        with self.assertRaisesRegex(receiver.ReceiverBlocked, "DISPLAY_SIGNATURE_INVALID"):
+            receiver.read_display(self.root, now=NOW + timedelta(minutes=1))
+        # an unsigned view (the old format) is refused
+        path.write_text(signed["body_json"], encoding="utf-8")
+        with self.assertRaisesRegex(receiver.ReceiverBlocked, "DISPLAY_WRAPPER_INVALID"):
+            receiver.read_display(self.root, now=NOW + timedelta(minutes=1))
 
     def test_display_file_is_never_taken_as_an_envelope(self):
         self.emit()
