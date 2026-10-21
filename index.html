@@ -71,6 +71,54 @@ document.addEventListener("DOMContentLoaded",()=>{
  brainPanel.innerHTML='<h2>AI BRAIN</h2><p class="sub">V10 Brain Gateway / Controller / Market Data / AI Shadow の実稼働状態</p><div class="rotation-grid" id="brain-runtime-grid"><div class="rotation-box"><b>状態</b><strong>接続待ち</strong></div></div>';
  panes.brain.appendChild(brainPanel);
 
+ // Specialist AI analysts (GPT API research). Research lane only: never a
+ // price source and never a trade signal. A report is shown as usable only
+ // while unexpired, sourced and WATCH/NO_SIGNAL; Revenue Hunter is project
+ // progress and is listed apart from the market roles.
+ const agentPanel=document.createElement("section");
+ agentPanel.className="card wide";
+ agentPanel.id="agent-research";
+ agentPanel.innerHTML='<h2>専門AIアナリスト</h2><p class="sub">GPT APIの研究レポート（BRAIN受信・ACK済みのものだけ）。価格・板・出来高はMS2の検証済み情報だけを使い、このレポートは売買判定・発注に使いません。</p><div id="agent-research-body"><div class="focus-empty">取得待ち</div></div>';
+ panes.brain.appendChild(agentPanel);
+ const AGENT_ROLE_LABEL={premarket:"寄り前",pre_next:"PRE-NEXT",supply_sq:"需給・SQ",revenue_hunter:"Revenue Hunter（PROJECT進捗）"};
+ const AGENT_REASON_LABEL={EXPIRED:"期限切れ・利用不可",NO_SOURCE:"出典なし・利用不可",NO_DATA:"データ不足・利用不可",UNAVAILABLE:"分析失敗・利用不可"};
+ const agentReportUsable=(rep,nowMs)=>{
+   const exp=Date.parse(rep?.expires_at||"");
+   if(!Number.isFinite(exp)||exp<=nowMs)return {ok:false,reason:"EXPIRED"};
+   if(rep?.usable!==true)return {ok:false,reason:rep?.not_usable_reason||"UNAVAILABLE"};
+   if(!Array.isArray(rep?.evidence)||rep.evidence.length===0)return {ok:false,reason:"NO_SOURCE"};
+   return {ok:true,reason:null};
+ };
+ const agentReportCard=(rep,nowMs)=>{
+   const u=agentReportUsable(rep,nowMs);
+   const links=(Array.isArray(rep.evidence)?rep.evidence:[]).map(e=>'<a href="'+kioSafeUrl(e.source_url)+'" target="_blank" rel="noopener">'+esc(e.source_id)+'</a>').join(" ")||"—";
+   return '<div class="rotation-box"><b>'+esc(AGENT_ROLE_LABEL[rep.role]||rep.role)+'｜'+esc(rep.status)+'</b>'+
+     '<strong>'+(u.ok?"研究用・参照可":esc(AGENT_REASON_LABEL[u.reason]||u.reason))+'</strong>'+
+     '<small>report_id '+esc(rep.report_id)+'<br>対象 '+esc(rep.target_at)+'／期限 '+esc(rep.expires_at)+'</small>'+
+     '<small>仮説：'+esc(rep.hypothesis)+'<br>成立条件：'+esc(rep.conditions)+'<br>撤回条件：'+esc(rep.invalidation)+'</small>'+
+     '<small>出典：'+links+'</small></div>';
+ };
+ const renderAgentResearch=()=>{
+   fetch("/agent_research.json?t="+Date.now()).then(r=>r.json()).then(v=>{
+     const box=document.getElementById("agent-research-body");
+     if(v?.state==="DISABLED"){box.innerHTML='<div class="focus-empty">専門AI連携は未設定（受け箱 V10_AGENT_RESEARCH_INBOX が未設定）</div>';return;}
+     if(v?.real_submit_allowed!==false||!Array.isArray(v?.runs)){box.innerHTML='<div class="focus-empty">専門AIレポート利用不可</div>';return;}
+     const nowMs=Date.now();
+     box.innerHTML=v.runs.slice(0,3).map(run=>{
+       const reps=Array.isArray(run.reports)?run.reports:[];
+       const market=reps.filter(x=>x.lane==="MARKET_RESEARCH_NOT_EXECUTION"),progress=reps.filter(x=>x.lane==="PROJECT_PROGRESS_NOT_TRADING");
+       return '<h3>'+esc(run.slot||"")+'｜run '+esc(run.run_id)+'</h3><p class="sub">受信 '+esc(run.received_at)+'／ACK '+esc(String(run.ack_sha256||"").slice(0,12))+'／統括 '+esc(run.coordinator?.status||"—")+'：'+esc(run.coordinator?.summary||"")+'</p>'+
+         (Array.isArray(run.verification_checks)&&run.verification_checks.length?'<p class="warning">確認事項：'+run.verification_checks.map(esc).join("／")+'</p>':"")+
+         '<div class="rotation-grid">'+market.map(x=>agentReportCard(x,nowMs)).join("")+'</div>'+
+         (progress.length?'<h3>PROJECT進捗（売買判定に使わない）</h3><div class="rotation-grid">'+progress.map(x=>agentReportCard(x,nowMs)).join("")+'</div>':"");
+     }).join("")||'<div class="focus-empty">受信済みレポートなし</div>';
+   }).catch(()=>{
+     document.getElementById("agent-research-body").innerHTML='<div class="focus-empty">専門AIレポート利用不可（取得失敗）</div>';
+   });
+ };
+ renderAgentResearch();
+ setInterval(renderAgentResearch,30000);
+
  // V10_UI_EVIDENCE_HELPERS_START: pure source-verification logic, no orders.
  const cockpitBrainEvidence=(rt,ex)=>{
    const status=typeof rt?.brain_observer_state==="string"&&rt.brain_observer_state?rt.brain_observer_state:"UNKNOWN";
