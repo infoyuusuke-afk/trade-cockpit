@@ -250,7 +250,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    const verdict=!ok?"根拠不足":Number(s.ev_pct)>0?"期待値プラス":"期待値マイナス";
    return '<div class="rotation-box"><b>'+(ok?(i+1)+". ":"")+esc(x.name||x.ticker)+'｜'+esc(x.signal)+'・'+esc(x.strategy)+'</b>'+
      '<strong>'+esc(verdict)+'</strong>'+
-     '<small>期待値（手数料込） '+(s?evPct(s.ev_pct):"—")+'／手数料前 '+(s?evPct(s.gross_ev_pct):"—")+'</small>'+
+     '<small>期待値（費用込） '+(s?evPct(s.ev_pct):"—")+'／費用前 '+(s?evPct(s.gross_ev_pct):"—")+'／損益分岐の約定ずれ 片道'+(s&&s.breakeven_slippage_pct_per_side!=null?esc(s.breakeven_slippage_pct_per_side)+"%":"—")+'</small>'+
      '<small>勝率 '+(s&&s.win_rate_pct!=null?esc(s.win_rate_pct)+"%":"—")+'／PF '+(s&&s.pf!=null?esc(s.pf):"—")+'／'+(s?esc(s.n)+"回（"+esc(s.level)+"）":"記録なし")+'</small>'+
      '<small>発動 '+esc(x.entry_price??"—")+'／損切 '+esc(x.stop_price??"—")+'／目標 '+esc(x.target1??"—")+'</small></div>';
  };
@@ -260,7 +260,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(!evTable){sum.textContent="期待値データなし（過去記録の検証表が未作成）";}
    else{
      const st=Object.entries(evTable.by_strategy||{}).map(([k,v])=>esc(k.replace("|","・"))+" "+evPct(v.ev_pct)+"（"+esc(v.n)+"回）").join("／");
-     sum.innerHTML="検証期間 "+esc((evTable.days||[])[0]||"—")+"〜"+esc((evTable.days||[]).slice(-1)[0]||"—")+"・"+esc((evTable.days||[]).length)+"日／戦略別："+st+"／手数料 片道"+esc(evTable.assumptions?.cost_pct_per_side)+"%（暫定）";
+     sum.innerHTML="検証期間 "+esc((evTable.days||[])[0]||"—")+"〜"+esc((evTable.days||[]).slice(-1)[0]||"—")+"・"+esc((evTable.days||[]).length)+"日／戦略別："+st+"／費用：手数料"+esc(evTable.assumptions?.commission_pct_per_side)+"%・制度信用金利 年"+esc(evTable.assumptions?.long_interest_pct_per_year)+"%（売りは貸株料 年"+esc(evTable.assumptions?.short_lending_fee_pct_per_year)+"%）・スリッページ"+esc(evTable.assumptions?.slippage_pct_per_side)+"%（約定のずれは含まない）";
    }
    const live=window.cockpitMs2ScreenReady?.(d)===true;
    if(!live){box.innerHTML='<div class="focus-empty">LIVEでないため表示しません</div>';return;}

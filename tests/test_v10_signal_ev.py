@@ -59,11 +59,15 @@ class Replay(unittest.TestCase):
         self.assertEqual(buy_stats["n"], 2)
         self.assertEqual(buy_stats["exits"], {"TARGET": 1, "TIME_EXIT": 1})
         self.assertAlmostEqual(buy_stats["gross_ev_pct"], (1.0 + 0.5) / 2, places=3)
-        self.assertAlmostEqual(buy_stats["ev_pct"], (1.0 + 0.5) / 2 - 0.2, places=3)
+        # 楽天ゼロコース: no commission; 制度信用 buyer interest 2.80 %/year for one day
+        self.assertAlmostEqual(buy_stats["ev_pct"], (1.0 + 0.5) / 2 - 2.80 / 365, places=3)
+        self.assertAlmostEqual(buy_stats["breakeven_slippage_pct_per_side"], ((1.0 + 0.5) / 2 - 2.80 / 365) / 2, places=3)
         self.assertEqual(buy_stats["status"], "INSUFFICIENT")
         short_stats = table["by_strategy"]["OR15戻り|空売りサイン"]
         self.assertEqual(short_stats["exits"], {"STOP": 1})
         self.assertAlmostEqual(short_stats["gross_ev_pct"], -1.0, places=3)
+        self.assertAlmostEqual(short_stats["ev_pct"], -1.0 - 1.10 / 365, places=3)  # 貸株料 1.10 %/year, one day
+        self.assertEqual(table["assumptions"]["commission_pct_per_side"], 0.0)
         self.assertIs(table["real_submit_allowed"], False)
         self.assertIs(table["trade_instruction"], False)
 
