@@ -316,6 +316,7 @@ class Orchestration(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["coordinator"]["summary"], "Coordinator call or output failed (COORDINATOR_OUTPUT_INVALID)")
         self.assertEqual(pilot.SETTINGS["max_output_tokens_coordinator"][0], 1500)
         self.assertEqual(pilot.SETTINGS["max_output_tokens_per_call"][0], 600)
+        self.assertEqual(pilot.SETTINGS["paid_input_limit_bytes"][0], 24000)
 
     async def test_every_report_is_traceable_and_expires(self):
         result = await pilot.coordinate(sample(), fake_provider, now=NOW,

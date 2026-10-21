@@ -458,7 +458,9 @@ def persist_receipt(db_path: Path, result: dict, source_fp: str) -> str:
 # Conservative one-shot budget reservation. This is a LOCAL attempt budget,
 # not a claim that OpenAI billing has an enforceable dollar hard stop.
 PAID_MODEL = "gpt-5.4-mini"
-PAID_INPUT_LIMIT_BYTES = 8_000
+# OWNER 2026-10-22 「目的は全ての信用残、24000OK」: room for the JPX all-issue margin of
+# every watched issue (about 21 KB with six BOJ headlines).
+PAID_INPUT_LIMIT_BYTES = 24_000
 PAID_RESERVED_CENTS_PER_RUN = 100
 PAID_TOTAL_LEDGER_CENTS = 800
 # PROVISIONAL (frequency is not decided yet): at most this many paid runs per
@@ -498,6 +500,7 @@ SETTINGS = {
     "model": (PAID_MODEL, "APPROVED_OWNER_2026-10-20/21 (#481 $10 pilot)"),
     "openai_max_retries": (0, "APPROVED_OWNER_2026-10-20/21 (#481)"),
     "max_output_tokens_per_call": (PAID_MAX_OUTPUT_TOKENS, "APPROVED_OWNER_2026-10-20/21 (#481)"),
+    "paid_input_limit_bytes": (PAID_INPUT_LIMIT_BYTES, "APPROVED_OWNER_2026-10-22 (24000OK)"),
     "max_output_tokens_coordinator": (PAID_COORDINATOR_MAX_OUTPUT_TOKENS, "APPROVED_OWNER_2026-10-22 (review after live_20261022_01)"),
     "timeout_seconds_per_call": (PAID_TIMEOUT_SECONDS, "APPROVED_OWNER_2026-10-20/21 (#481)"),
     "reserved_cents_per_run": (PAID_RESERVED_CENTS_PER_RUN, "APPROVED_OWNER_2026-10-20/21 (#481)"),
