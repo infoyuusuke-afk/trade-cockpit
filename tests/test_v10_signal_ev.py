@@ -195,6 +195,13 @@ class ObserverDailyRebuild(unittest.TestCase):
         self.assertEqual(self.obs.signal_ev_pass(state, self.live, now=after_close)["signal_ev"], "BUILT")
         self.assertIsNone(self.obs.signal_ev_pass(state, self.live, now=after_close + timedelta(minutes=20)))
 
+    def test_a_table_from_an_earlier_day_is_rebuilt_at_the_morning_start(self):
+        evening = datetime(2026, 10, 21, 6, 0, tzinfo=timezone.utc)   # 15:00 JST: built, before the close rebuild
+        self.assertEqual(self.obs.signal_ev_pass({}, self.live, now=evening)["signal_ev"], "BUILT")
+        next_morning = datetime(2026, 10, 21, 23, 30, tzinfo=timezone.utc)  # 08:30 JST next day, fresh process
+        self.assertEqual(self.obs.signal_ev_pass({}, self.live, now=next_morning)["signal_ev"], "BUILT")
+        self.assertIsNone(self.obs.signal_ev_pass({}, self.live, now=next_morning + timedelta(hours=1)))
+
     def test_modified_module_is_refused_and_never_raises(self):
         scripts = Path(tempfile.mkdtemp(prefix="v10-obs-ev-mod-"))
         self.addCleanup(shutil.rmtree, scripts, True)
