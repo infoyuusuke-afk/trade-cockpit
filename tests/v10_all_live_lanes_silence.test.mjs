@@ -214,3 +214,20 @@ test("unknown data source or an old per-row quote/provenance time never paints L
     assert.match(content(h,"watchlist-100-rows"),/<watch/);
   }
 });
+test("OWNER lamp colour: green LIVE, red stopped in session, yellow off-hours, blue PTS",()=>{
+  const at=iso=>{const h=harness();h.advance(Date.parse(iso)-h.now(),false);return h;};
+  const lamp=(iso,isLive)=>{const h=at(iso);h.send(isLive?good(h):{...good(h),stale:true});
+    return [h.nodes.get("unified-mode").className,h.nodes.get("unified-mode-title").textContent];};
+  let [cls,title]=lamp("2026-10-21T01:00:00Z",true);            // Wed 10:00 JST
+  assert.match(cls,/\blive\b/);assert.match(cls,/lamp-live/);
+  [cls,title]=lamp("2026-10-21T01:00:00Z",false);               // Wed 10:00 JST, no LIVE
+  assert.match(cls,/stale/);assert.match(cls,/lamp-down/);assert.match(title,/停止/);assert.match(title,/事前分析/);
+  [cls,title]=lamp("2026-10-21T02:45:00Z",false);               // Wed 11:45 JST lunch
+  assert.match(cls,/lamp-off/);assert.match(title,/時間外/);
+  [cls,title]=lamp("2026-10-21T06:45:00Z",false);               // Wed 15:45 JST after close
+  assert.match(cls,/lamp-off/);
+  [cls,title]=lamp("2026-10-21T09:00:00Z",false);               // Wed 18:00 JST night PTS
+  assert.match(cls,/lamp-pts/);assert.match(title,/PTS/);
+  [cls,title]=lamp("2026-10-24T01:00:00Z",false);               // Sat 10:00 JST
+  assert.match(cls,/lamp-off/);
+});
