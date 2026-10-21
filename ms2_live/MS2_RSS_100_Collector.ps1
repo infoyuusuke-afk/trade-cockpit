@@ -1936,6 +1936,14 @@ function Invoke-SbV2Speak([string]$text) {
 }
 
 # Watcher・Heartbeat・AUTO_START等と共有の名前付きMutexで音声を直列化する。
+# Timing only (OWNER 2026-10-21 "2だけ"): one [TIMING] line per completed cycle in the
+# Collector log, milliseconds per section. Decisions and outputs are unchanged.
+function Add-LoopMark([string]$Name) {
+    if ($null -eq $script:loopTimer) { return }
+    $script:loopMarks.Add($Name + '=' + ($script:loopTimer.ElapsedMilliseconds - $script:loopLastMs))
+    $script:loopLastMs = $script:loopTimer.ElapsedMilliseconds
+}
+
 function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 30000) {
     if ($script:priceSourceMismatch) { return }
     if ([string]::IsNullOrWhiteSpace($text)) { return }
@@ -2007,6 +2015,7 @@ try {
         # 強制再計算するとRSS更新と衝突し、Excel固有の0x800AC472が発生する。
         $now = Get-Date
         $loopJst = Get-JstNow
+        $script:loopTimer = [Diagnostics.Stopwatch]::StartNew(); $script:loopLastMs = 0; $script:loopMarks = New-Object System.Collections.Generic.List[string]
         if ($StopAfterClose -and $now.TimeOfDay -ge [TimeSpan]::Parse("23:59:00")) {
             if (Test-Path $statsScript) {
                 try { & $statsScript -RecordsRoot $dataRoot -OutputJson $statsJsonPath -OutputCsv (Join-Path $PSScriptRoot "kioxia_time_stats.csv") }
@@ -2145,6 +2154,7 @@ try {
             Start-Sleep -Seconds $IntervalSeconds
             continue
         }
+        Add-LoopMark 'excel_read'
         $script:excelComTelemetry.consecutive_failed_loops = 0
         $values = $valueRead.value.Data
         $codeColumn = $null
@@ -2532,6 +2542,7 @@ try {
             }
             $previous[$ticker]=[pscustomobject]@{Price=$price;Volume=$volume;UnderRatio=$underRatio}
         }
+        Add-LoopMark 'rows_read'
         $preopenRecordingStatus=if($now.TimeOfDay -ge [TimeSpan]::Parse("08:00:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:00:00")){
             if($preopenQuoteCount -gt 0){"記録中 $preopenQuoteCount/100"}else{"RSS気配未取得"}
         }else{"時間外"}
@@ -2560,6 +2571,7 @@ try {
         $identityReason = Get-IdentitySourceReason $identityQuote
         if (-not [string]::IsNullOrEmpty($identityReason) -and $codeRead.ok -eq $true) { [void]$sourceReasons.Add($identityReason) }
         if ($symbolMismatchCount -gt 0 -and $codeRead.ok -eq $true) { [void]$sourceReasons.Add("WRONG_SYMBOL_MAPPING") }
+        Add-LoopMark 'identity'
         $collectorProcessCount = Get-ScriptProcessCount "MS2_RSS_100_Collector.ps1"
         $watcherProcessCount = Get-ScriptProcessCount "Kioxia_RSS_Live_Watcher.ps1"
         if ($null -eq $collectorProcessCount) { [void]$sourceReasons.Add("DUPLICATE_PROCESS_CHECK_UNAVAILABLE") }
@@ -2567,6 +2579,7 @@ try {
         elseif ($collectorProcessCount -lt 1) { [void]$sourceReasons.Add("COLLECTOR_PROCESS_UNVERIFIED") }
         if ($null -eq $watcherProcessCount) { [void]$sourceReasons.Add("DUPLICATE_PROCESS_CHECK_UNAVAILABLE") }
         elseif ($watcherProcessCount -gt 1) { [void]$sourceReasons.Add("DUPLICATE_WATCHER") }
+        Add-LoopMark 'process_check'
         $script:priceSourceMismatch = ($sourceReasons.Count -gt 0)
         $priceSourceReason = ($sourceReasons -join ",")
         if ($script:priceSourceMismatch) {
@@ -2619,6 +2632,7 @@ try {
             $kioxia | Add-Member -NotePropertyName bars_5m -NotePropertyValue @(Convert-LiveBars $kioxiaBars 5 ([double]$kioxia.vwap)) -Force
             $kioxia | Add-Member -NotePropertyName bars_15m -NotePropertyValue @(Convert-LiveBars $kioxiaBars 15 ([double]$kioxia.vwap)) -Force
         }
+        Add-LoopMark 'kioxia'
         $inPts = Test-JnxSession $now
         $tseIndex=@{}
         foreach($item in $results){$tseIndex[[string]$item.ticker]=$item}
@@ -2785,6 +2799,7 @@ try {
         # 地合い・業種強度・TOP5は、気配時刻が新しい銘柄（FRESH）だけで計算する
         # （P0-V10-INTEGRATION-AND-LIVE-START-20261020）。判定はGatewayと同じ
         # Get-RowQuoteFreshness。古い・時刻不明の銘柄はサインを止め、集計に入れない。
+        Add-LoopMark 'pts_ir_signal'
         $aggregateNow=Get-JstNow
         $aggregateBoardQuoteAt=$null
         if($null -ne $script:identityQuoteObservation){$aggregateBoardQuoteAt=$script:identityQuoteObservation.source_timestamp_at}
@@ -2800,6 +2815,7 @@ try {
         $breadthBase=@($aggregateRows|Where-Object{$_.vwap -gt 0})
         $breadthPct=if($breadthBase.Count -ge 20){[Math]::Round((@($breadthBase|Where-Object{$_.price -gt $_.vwap}).Count/$breadthBase.Count)*100,1)}else{$null}
         $marketState=if($null -eq $breadthPct){"地合い確認待ち"}elseif($breadthPct -ge 60){"地合い強い"}elseif($breadthPct -le 40){"地合い弱い"}else{"地合い中立"}
+        Add-LoopMark 'aggregate'
         $sectorBreadth=@{}
         foreach($sectorGroup in @($aggregateRows|Where-Object{$_.vwap -gt 0}|Group-Object sector)){
             $sectorItems=@($sectorGroup.Group)
@@ -2914,6 +2930,7 @@ try {
             }
         }
         $kioxia=$results|Where-Object{$_.ticker -eq "285A.T"}|Select-Object -First 1
+        Add-LoopMark 'rows_decide'
         $provisionalHoldTop5=@($results|Where-Object{$validCount -ge 90 -and $_.special_quote -eq "なし" -and $_.hold_signal -in @("持ち越しロング候補","持ち越しショート候補")}|Sort-Object hold_score -Descending|Select-Object -First 5)
         if(-not $holdFinalized -and $now.TimeOfDay -ge [TimeSpan]::Parse("15:25:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("15:26:00")){
             $rank=0
@@ -2999,6 +3016,7 @@ try {
         }
         $holdStats=Get-OvernightHoldStats $holdHistory
         Write-AtomicUtf8 $holdStatsPath (($holdStats|ConvertTo-Json -Depth 6))
+        Add-LoopMark 'hold'
         $qualified=@($results|Where-Object{$_.signal -in @("買いサイン","空売りサイン","OR5上抜け・地合待ち","OR5下抜け・地合待ち","OR15利確警戒","OR15戻り警戒","押し目待ち","戻り待ち","初動買い候補","初動ショート候補","買い準備","ショート準備","監視")}|Sort-Object @{Expression={if($_.signal -in @("買いサイン","空売りサイン")){0}elseif($_.signal -in @("OR5上抜け・地合待ち","OR5下抜け・地合待ち","OR15利確警戒","OR15戻り警戒","押し目待ち","戻り待ち")){1}elseif($_.signal -in @("初動買い候補","初動ショート候補")){2}elseif($_.signal -in @("買い準備","ショート準備")){3}else{4}}},@{Expression={[Math]::Abs($_.score)};Descending=$true}|Select-Object -First 5)
         $accountGate=Get-MS2SafetyGate -DataFresh ($validCount -ge 90) -OpenOrders $null -MarginBuyingPower $null -MarginRate $null -ShortableQuantity $null -AutoOrderEnabled $AutoOrderEnabled
         $capabilities=[ordered]@{
@@ -3030,9 +3048,11 @@ try {
         # first, outside the literal (this crashed every Collector cycle).
         $missingRowArray = [object[]]$missingRows.ToArray()
         $missingRowCount = [int]$missingRows.Count
+        Add-LoopMark 'prepare'
         $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");observed_at_offset=$now.ToString("yyyy-MM-ddTHH:mm:sszzz");timestamp_timezone="Asia/Tokyo";source="MarketSpeed II RSS / local PC";source_mode=$livePriceDiagnostics.source_mode;universe=100;valid=$validCount;stale=(-not $publishLiveValues);stale_reason=$staleReason;data_conflict=[bool]$script:priceSourceMismatch;price_source_status=$livePriceDiagnostics.price_source_status;live_values_available=[bool]$publishLiveValues;real_submit_allowed=$false;live_price_diagnostics=$livePriceDiagnostics;preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;aggregate_basis='FRESH_ROWS_ONLY';aggregate_fresh_count=$aggregateFreshCount;aggregate_row_count=@($results).Count;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results;missing_row_count=$missingRowCount;missing_rows=$missingRowArray}
         $jsonText=$payload|ConvertTo-Json -Depth 6 -Compress
         Write-AtomicUtf8 $jsonPath $jsonText
+        Add-LoopMark 'json_write'
         if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { $null = Publish-OptionalCockpitMirror $cockpitJsonPath $jsonText }
 
         $cards = if ($qualified.Count -eq 0) {'<div class="empty">発動条件を満たす候補なし</div>'} else {($qualified|ForEach-Object{
@@ -3076,6 +3096,7 @@ try {
             $kioxiaCard='<section class="focus '+$kioxiaClass+'"><div class="focus-title"><span>キオクシア専用・常時監視</span><b>'+ (Escape-Html $kioxia.signal) +' / '+ (Escape-Html $kioxia.strategy) +'</b><strong>'+([string]$kioxia.score)+'</strong></div><div class="focus-body"><div class="price">'+("{0:N1}" -f $kioxia.price)+'円</div><div class="metrics"><span>注文目安<br><b>'+ (Escape-Html $entryText) +'</b></span><span>地合い<br><b>'+ (Escape-Html $kioxia.market_state) +' '+([string]$kioxia.breadth_pct)+'%</b></span><span>持ち越し<br><b>'+ (Escape-Html $kioxia.hold_signal) +' '+([string]$kioxia.hold_score)+'</b></span><span>8:55作戦<br><b>'+ (Escape-Html $kioxia.preopen_plan) +'</b></span><span>寄り前気配<br><b>'+([string]$kioxia.preopen_quote)+'円</b></span><span>GU/GD<br><b>'+([string]$kioxia.preopen_gap_pct)+'%</b></span><span>特別気配<br><b>'+ (Escape-Html $kioxia.special_quote) +'</b></span><span>VWAP<br><b>'+([string]$kioxia.vwap)+'</b></span><span>EMA9/20<br><b>'+([string]$kioxia.ema9)+' / '+([string]$kioxia.ema20)+'</b></span><span>UNDER<br><b>'+([string]$kioxia.under_ratio)+'%</b></span><span>歩み値偏り<br><b>'+([string]$kioxia.flow_bias)+'%</b></span><span>時間帯統計<br><b>'+ (Escape-Html $historyText) +'</b></span><span>JNX夜間PTS<br><b>'+ (Escape-Html $ptsPriceText) +'</b></span><span>東証終値比<br><b>'+ (Escape-Html $ptsGapText) +'</b></span><span>PTS判定<br><b>'+ (Escape-Html $ptsState) +'</b></span></div></div><small>'+ (Escape-Html $orText) +' / 確定1分足で判定 / PTSは参考 / 注文は武蔵で手動 / 成行禁止</small></section>'
         }
         $html='<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta http-equiv="refresh" content="3"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MS2 LIVE TOP5 Ver.1</title><style>body{margin:0;background:#05090d;color:#edf5fa;font-family:Segoe UI,Yu Gothic,sans-serif}main{max-width:1300px;margin:auto;padding:22px}header{display:flex;justify-content:space-between;align-items:end;border-bottom:1px solid #253541;padding-bottom:16px}h1{margin:0;font-size:29px}h2{margin:28px 0 2px;font-size:22px}.sub{margin:0;color:#8296a5;font-size:12px}header span,.note{color:#8296a5}.status{color:#4be0b6}.focus{margin-top:16px;padding:18px;background:linear-gradient(135deg,#102433,#0b151d);border:1px solid #39708e;border-left:6px solid #42b8f5;border-radius:14px}.focus.buy{border-left-color:#36dfa9}.focus.sell{border-left-color:#ff6370}.focus.block{border-left-color:#f5c451}.focus-title{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:center}.focus-title span{font-size:20px;font-weight:800}.focus-title b{padding:7px 12px;border-radius:99px;background:#172630}.focus-title strong{font-size:26px}.focus-body{display:grid;grid-template-columns:210px 1fr;gap:14px;align-items:center}.focus small{display:block;color:#8eb3c8;margin-top:10px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-top:16px}.pick{background:#0d161e;border:1px solid #253744;border-left:4px solid #789;border-radius:12px;padding:15px}.pick.buy{border-left-color:#36dfa9}.pick.sell{border-left-color:#ff6370}.pick.block{border-left-color:#f5c451}.head{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}.head span{font-size:11px;border-radius:99px;background:#172630;padding:5px 8px}.head b{font-size:16px}.head strong{font-size:22px}.price{font-size:29px;font-weight:800;margin:12px 0}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:5px}.metrics span{background:#111f29;border-radius:7px;padding:8px;color:#8296a5;font-size:10px}.metrics b{color:#e9f3f8;font-size:14px}.pick small{display:block;color:#758895;margin-top:12px}.pick a{color:#55c8ff}.note{margin-top:18px;padding:12px;background:#10171d;border-radius:8px}.empty{padding:50px;text-align:center;color:#8ca0ae}@media(max-width:650px){header{align-items:start;flex-direction:column}.focus-body{grid-template-columns:1fr}.focus-title{grid-template-columns:1fr auto}.metrics{grid-template-columns:1fr 1fr}}</style></head><body><main><header><div><span>MARKETSPEED II RSS・試運転 Ver.1</span><h1>デイトレ100銘柄 LIVE TOP5</h1></div><div><b class="status">'+ (Escape-Html $marketState) +' / VWAP上 '+([string]$breadthPct)+'%</b><br>有効 '+$validCount+'/100<br>'+ (Escape-Html $now.ToString("yyyy-MM-dd HH:mm:ss")) +'</div></header>'+$kioxiaCard+'<section class="grid">'+$cards+'</section>'+$holdSection+$ptsSection+$irPtsSection+'<p class="note">確定1分足だけを使用。OR5は初動、OR15は地合いが弱ければ利確警戒、押し戻りは反転足を確認します。UNDER/OVER単独では売買しません。注文は武蔵で手動、特別気配・往復ピンタ・データ不足時は売買禁止です。</p></main></body></html>'
+        Add-LoopMark 'html_build'
         Write-AtomicUtf8 $htmlPath $html
         # Browser launch intentionally disabled here; one-click launcher opens localhost:28581 only.
 
@@ -3153,6 +3174,8 @@ try {
                 $kioFlowCandidate=""
             }
         }
+        Add-LoopMark 'voice_tail'
+        Write-Host ('[TIMING] ' + $now.ToString('HH:mm:ss') + ' total=' + $script:loopTimer.ElapsedMilliseconds + ' ' + ($script:loopMarks -join ' '))
         Start-Sleep -Seconds $IntervalSeconds
     }
 } finally {
