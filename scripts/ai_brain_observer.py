@@ -8,12 +8,15 @@ verified exchange tick time.
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+import hashlib
 import json
 import math
 import os
 from pathlib import Path
+import sys
 import time
+import types
 
 SCHEMA = "ai-brain-observer-1"
 SOURCE = "MarketSpeed II RSS / local PC"
@@ -22,6 +25,25 @@ MAX_INPUT_BYTES = 8_000_000
 MAX_AGE_SECONDS = 60
 ALLOWED = {"OR15_ABOVE_VWAP_WATCH", "OR15_BELOW_VWAP_WATCH"}
 MAX_OBSERVATIONS = 5
+
+# Opt-in Agents SDK research receiver (P0-AGENTS-SDK-V10-BRAIN-INTEGRATION-20261021).
+# Off unless the OWNER sets V10_AGENT_RESEARCH_INBOX (absolute private folder)
+# plus both HMAC keys. When off, nothing below is imported or run and this
+# observer behaves exactly as before. When on, the three modules are loaded
+# only from bytes whose git blob SHA-1 equals the pins below (this file is
+# itself pinned in the V10 release manifest), then the receiver runs in this
+# process at most every 30 s. It writes only to the private inbox, never to the
+# observer status, live data, Excel or any order path.
+AGENT_INBOX_ENV = "V10_AGENT_RESEARCH_INBOX"
+AGENT_RECEIVER_INTERVAL = timedelta(seconds=30)
+AGENT_HOST_COMPONENT = "v10-ai-brain-observer"
+AGENT_PACKAGE = "v10_pinned_agent"
+AGENT_RECEIVER_MODULES = (
+    ("agent_sdk_coordination_pilot", "e09690bd97fae74738a51fde36f1a7345e1b2504"),
+    ("agent_sdk_brain_handoff", "60444ff2b2c42842c6a9cdc6103f722bf349de2c"),
+    ("v10_brain_agent_research_receiver", "ebc321b82703e205956cfbd3a64fa4b39044e50f"),
+)
+AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_ACK", "AGENT_RECEIVER_")
 
 
 def _aware(value):
@@ -217,6 +239,66 @@ def write_status(path: Path, status: dict):
         temp.unlink(missing_ok=True)
 
 
+def git_blob_sha1(raw: bytes) -> str:
+    """Git blob id of a checked-out file (CRLF from core.autocrlf normalised)."""
+    data = raw.replace(b"\r\n", b"\n")
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+
+
+def load_agent_receiver(script_dir: Path):
+    """Load the receiver and its two dependencies from pinned bytes only."""
+    package = sys.modules.get(AGENT_PACKAGE)
+    if package is None:
+        package = types.ModuleType(AGENT_PACKAGE)
+        package.__path__ = []
+        sys.modules[AGENT_PACKAGE] = package
+    for name, pin in AGENT_RECEIVER_MODULES:
+        qualified = AGENT_PACKAGE + "." + name
+        if qualified in sys.modules:
+            continue
+        path = script_dir / (name + ".py")
+        raw = path.read_bytes()
+        if git_blob_sha1(raw) != pin:
+            raise RuntimeError("AGENT_RECEIVER_MODULE_PIN_MISMATCH:" + name)
+        module = types.ModuleType(qualified)
+        module.__file__ = str(path)
+        module.__package__ = AGENT_PACKAGE
+        sys.modules[qualified] = module
+        try:
+            exec(compile(raw, str(path), "exec"), module.__dict__)
+        except Exception:
+            del sys.modules[qualified]
+            raise
+        setattr(package, name, module)
+    return sys.modules[AGENT_PACKAGE + ".v10_brain_agent_research_receiver"]
+
+
+def agent_receiver_pass(state: dict, *, now=None, script_dir=None):
+    """Opt-in: receive signed agent research once per interval. Never raises."""
+    inbox = os.environ.get(AGENT_INBOX_ENV, "")
+    if not inbox:
+        return None
+    now = now or datetime.now(timezone.utc)
+    if state.get("next_at") is not None and now < state["next_at"]:
+        return None
+    state["next_at"] = now + AGENT_RECEIVER_INTERVAL
+    try:
+        receiver = state.get("module") or load_agent_receiver(Path(script_dir or Path(__file__).resolve().parent))
+        state["module"] = receiver
+        out = receiver.receive_inbox(inbox, now=now, host_component=AGENT_HOST_COMPONENT)
+        counts = {}
+        for item in out["results"]:
+            counts[item["state"]] = counts.get(item["state"], 0) + 1
+        summary = {"agent_receiver": "PASS", "results": counts, "restored_acks": len(out["restored_acks"])}
+    except Exception as exc:  # fail closed, keep the observer running
+        text = str(exc)
+        reason = text if text.startswith(AGENT_KNOWN_REASONS) else type(exc).__name__
+        summary = {"agent_receiver": "BLOCKED", "reason": reason}
+    summary["real_submit_allowed"] = False
+    print(json.dumps(summary, sort_keys=True), flush=True)
+    return summary
+
+
 def run_once(live_path: Path, status_path: Path, *, now=None, pid=None):
     now = now or datetime.now(timezone.utc)
     pid = pid if pid is not None else os.getpid()
@@ -245,8 +327,10 @@ def main(argv=None):
     if args.once:
         run_once(live, status_path)
         return 0
+    agent_state = {}
     while True:
         run_once(live, status_path)
+        agent_receiver_pass(agent_state)
         time.sleep(args.interval)
 
 
