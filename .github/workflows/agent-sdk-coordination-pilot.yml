@@ -7,6 +7,9 @@ on:
       - "tests/test_agent_sdk_coordination_pilot.py"
       - "scripts/agent_sdk_public_feed_ingest.py"
       - "tests/test_agent_sdk_public_feed_ingest.py"
+      - "scripts/agent_sdk_jpx_margin_ingest.py"
+      - "scripts/agent_sdk_evidence_bundle.py"
+      - "tests/test_agent_sdk_jpx_margin_ingest.py"
       - "scripts/agent_sdk_brain_handoff.py"
       - "tests/test_agent_sdk_brain_handoff.py"
       - "scripts/v10_brain_agent_research_receiver.py"
@@ -44,6 +47,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_agent_sdk_coordination_pilot.py -v
       - name: Offline official RSS intake and timestamp security tests
         run: python -m unittest discover -s tests -p test_agent_sdk_public_feed_ingest.py -v
+      - name: JPX daily-publication margin adapter, evidence bundle and supply_sq path to the display (offline)
+        run: python -m unittest discover -s tests -p test_agent_sdk_jpx_margin_ingest.py -v
       - name: Offline signed research handoff and ACK negative tests
         run: python -m unittest discover -s tests -p test_agent_sdk_brain_handoff.py -v
       - name: V10 Brain receiver (independent verify, durable receipt, Brain ACK, restart, negatives)

@@ -58,6 +58,9 @@ class PublicFeedTests(unittest.TestCase):
         self.assertEqual(records[0]["available_at"], NOW.isoformat())
         self.assertIn("DATE_ONLY_OBSERVED_AT_FETCH", records[0]["summary"])
         self.assertIn("earliest release TIME UNKNOWN", records[0]["summary"])
+        self.assertEqual(records[0]["data_status"], "DATE_ONLY_OBSERVED_AT_FETCH")
+        self.assertEqual(records[0]["fetched_at"], NOW.isoformat())
+        self.assertEqual(records[0]["source_type"], "OFFICIAL_RSS_HEADLINE")
 
     def test_missing_or_timezone_naive_clock_stays_blocked(self):
         for stamp in ("", "2026-10-20T15:00:00"):
@@ -86,6 +89,7 @@ class PublicFeedTests(unittest.TestCase):
         self.assertEqual(got[0]["source_url"], LINK)
         self.assertEqual(got[0]["as_of"], "2026-10-20T08:00:00+00:00")
         self.assertEqual(got[0]["available_at"], NOW.isoformat())
+        self.assertEqual(got[0]["data_status"], "PUBLICATION_TIME_VERIFIED")
 
     def test_reject_external_private_and_signed_urls(self):
         for url in ("https://example.org/news", "http://example.org/news",
