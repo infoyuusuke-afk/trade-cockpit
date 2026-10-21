@@ -1954,6 +1954,25 @@ function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 30000
         Write-Host "[VOICE] V9 SBV2 bridge unavailable - no legacy fallback" -ForegroundColor Red
     }
 }
+# OWNER 2026-10-22 「音声は①②④⑤だけ」: signal voices come only from the Brain
+# observer's rule matches in brain_pick_v1.json (same folder, at most 30 s old,
+# flags checked). Any problem gives an empty list, i.e. silence, never a guess.
+function Get-BrainRuleSignals([string]$Path, [datetime]$Now) {
+    try {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return @() }
+        $item = Get-Item -LiteralPath $Path -Force
+        if ($item.Length -le 2 -or $item.Length -gt 1048576 -or ($Now - $item.LastWriteTime).TotalSeconds -gt 30) { return @() }
+        $view = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-brain-pick-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false -or [string]$view.state -ceq 'NOT_LIVE') { return @() }
+        return @($view.rule_signals | Where-Object { [string]$_.rule -in @('R1','R2','R4','R5') -and [string]$_.signal -in @('買いサイン','空売りサイン') })
+    } catch {
+        return @()
+    }
+}
+$brainPickPath = Join-Path $PSScriptRoot "brain_pick_v1.json"
+$spokenRuleSignals = @{}
+$preopenGapSpoken = $false
 $previous = @{}
 $history = @{}
 $seenTicks = @{}
@@ -2028,7 +2047,7 @@ try {
             $activeDay=$now.ToString("yyyy-MM-dd")
             $previous=@{}; $history=@{}; $preopenHistory=@{}; $preopenState=@{}; $seenTicks=@{}; $creditSaved=@{}; $orHigh=@{}; $orLow=@{}; $or5High=@{}; $or5Low=@{}; $minuteBars=@{}; $currentMinuteBars=@{}; $dayHigh=@{}; $dayLow=@{}; $pmAboveSince=@{}; $pmBelowSince=@{}; $lastSignal=@{}; $lastHoldSpoken=@{}; $loggedSignals=@{}
             $kioFlowCandidate=""; $lastKioFlowSpoken=""; $lastKioFlowSpokenAt=Get-Date "2000-01-01"
-            $lastPreopenVoice=""; $lastOpenDecisionVoice=""
+            $lastPreopenVoice=""; $lastOpenDecisionVoice=""; $spokenRuleSignals=@{}; $preopenGapSpoken=$false
             $lastPtsBand=0; $lastPtsVoiceAt=Get-Date "2000-01-01"
             $tdnetDisclosures=@(); $lastTdnetFetchAt=Get-Date "2000-01-01"; $tdnetStatus="取得待ち"; $lastIrVoiceCodes=@{}; $irDynamicSlots=@{}
             $loadedHoldDay=""; $holdFinalized=$false; $holdFinalizedAt=$null; $holdEntryCaptured=$false; $finalHoldTop5=@()
@@ -3110,20 +3129,33 @@ try {
             }
         }
 
-        $voiceCandidates=@()
-        if ($null -ne $kioxia) {$voiceCandidates += $kioxia}
-        $voiceCandidates += @($qualified|Where-Object{$_.ticker -ne "285A.T"}|Select-Object -First 3)
-        foreach ($x in $voiceCandidates) {
-            $key=$x.ticker; $old=$lastSignal[$key]; $spokenAt=$lastSpoken[$key]
-            $isKioxia=($key -eq "285A.T")
-            $speakable=($x.signal -in @("買いサイン","空売りサイン") -or ($isKioxia -and $x.signal -eq "往復ピンタ回避"))
-            if ($speakable -and $old -ne $x.signal -and ($null -eq $spokenAt -or ($now-$spokenAt).TotalMinutes -ge 10)) {
-                $side=if($x.signal -eq "買いサイン"){"買いサイン点灯"}elseif($x.signal -eq "空売りサイン"){"空売りサイン点灯"}else{"往復ピンタ警戒"}
-                $orderVoice=if($null -eq $x.entry_price){"注文条件は未完成です"}else{"発動価格"+$x.entry_price+"円。損切り"+$x.stop_price+"円。第一目標"+$x.target1+"円"}
-                Invoke-SerializedSpeak $speaker ($x.name+"、"+$x.strategy+"、"+$side+"。"+$orderVoice+"。"+$x.market_state+"。確定ローソク足を確認し、注文は武蔵で手動です。")
-                $lastSpoken[$key]=$now
+        # Only signals matching rule ①②④⑤ (Brain observer), each setup once, at most one
+        # voice per issue per 10 minutes. The rule's own target/stop are read out.
+        foreach ($x in (Get-BrainRuleSignals $brainPickPath $now)) {
+            $key=[string]$x.ticker+'|'+[string]$x.strategy+'|'+[string]$x.signal+'|'+[string]$x.signal_bar+'|'+[string]$x.rule
+            if ($spokenRuleSignals.ContainsKey($key)) { continue }
+            $spokenAt=$lastSpoken[[string]$x.ticker]
+            if ($null -ne $spokenAt -and ($now-$spokenAt).TotalMinutes -lt 10) { continue }
+            $spokenRuleSignals[$key]=$now
+            $ruleName=@{R1='ルール1';R2='ルール2';R4='ルール4';R5='ルール5'}[[string]$x.rule]
+            $side=if($x.signal -eq "買いサイン"){"買い"}else{"空売り"}
+            Invoke-SerializedSpeak $speaker ($ruleName+"に該当。"+$x.name+"、"+$side+"。発動"+$x.entry+"円。損切り"+$x.stop+"円。目標"+$x.target+"円。仮想検証中の数字です。注文は武蔵で手動です。")
+            $lastSpoken[[string]$x.ticker]=$now
+        }
+        # OWNER 2026-10-22 「キオクシアの8時55分の判定より、寄りの気配で期待値のある銘柄を読み上げて」:
+        # before the open the only rule the opening quote decides is ⑤ (shorts on a day that
+        # opens >= 1 % below 前日終値). Once at 08:55-09:00: up to five issues whose pre-open
+        # quote implies such a gap (split-sized gaps left out), largest first.
+        if (-not $preopenGapSpoken -and $now.TimeOfDay -ge [TimeSpan]::Parse("08:55:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:00:00")) {
+            $gapDown=@($results | Where-Object { $null -ne $_.preopen_gap_pct -and [double]$_.preopen_gap_pct -le -1 -and [double]$_.preopen_gap_pct -gt -20 } |
+                Sort-Object { [double]$_.preopen_gap_pct } | Select-Object -First 5)
+            if ($gapDown.Count -eq 0) {
+                Invoke-SerializedSpeak $speaker "8時55分。寄り前の気配で、窓下げ1パーセント以上の銘柄はありません。ルール5の対象候補はなしです。"
+            } else {
+                $names=($gapDown | ForEach-Object { $_.name+"、マイナス"+[Math]::Abs([Math]::Round([double]$_.preopen_gap_pct,1))+"パーセント" }) -join "。"
+                Invoke-SerializedSpeak $speaker ("8時55分。寄り前の気配で窓下げ1パーセント以上、ルール5の対象候補です。"+$names+"。寄った後にルール5のサインが出た時だけ有効です。気配は始値ではありません。")
             }
-            $lastSignal[$key]=$x.signal
+            $preopenGapSpoken=$true
         }
         if($now.TimeOfDay -ge [TimeSpan]::Parse("15:00:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("15:25:00")){
             foreach($x in @($holdTop5|Select-Object -First 3)){
@@ -3144,11 +3176,6 @@ try {
                     $lastPtsBand=$ptsBand
                     $lastPtsVoiceAt=$now
                 }
-            }
-            if($now.TimeOfDay -ge [TimeSpan]::Parse("08:55:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:00:00") -and $lastPreopenVoice -ne [string]$kioxia.preopen_plan){
-                $gapVoice=if($null -eq $kioxia.preopen_gap_pct){"GU、GDは算出不能"}else{"GU、GD、"+$kioxia.preopen_gap_pct+"パーセント"}
-                Invoke-SerializedSpeak $speaker ("キオクシア、8時55分判定。"+$kioxia.preopen_plan+"。"+$gapVoice+"。成行偏り"+$kioxia.preopen_market_imbalance+"パーセント。これは準備判定です。寄った直後は注文せず、実価格と歩み値を確認してください。")
-                $lastPreopenVoice=[string]$kioxia.preopen_plan
             }
             if($now.TimeOfDay -ge [TimeSpan]::Parse("09:01:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:15:00") -and $kioxia.open_decision -in @("初動買い候補","初動ショート候補") -and $lastOpenDecisionVoice -ne [string]$kioxia.open_decision){
                 Invoke-SerializedSpeak $speaker ("キオクシア、"+$kioxia.open_decision+"。現在値"+$kioxia.price+"円。始値"+$kioxia.open_price+"円。歩み値とローソク足を確認し、逆指値で発動してください。")
