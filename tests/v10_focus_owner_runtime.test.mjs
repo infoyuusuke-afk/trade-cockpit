@@ -218,7 +218,7 @@ test("NO-EVENT clock advance revokes a previously fresh FOCUS price without a ne
   const h=mounted({cockpitFocusPinnedV10:JSON.stringify(["464A.T"])});
   h.fire("ms2RssUpdate",snapshot([row()]));
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[PRICE:464A.T:1234]"));
-  h.advanceClock(11999);
+  h.advanceClock(39999);
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[PRICE:464A.T:1234]"));
   h.advanceClock(2);
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
@@ -234,7 +234,7 @@ test("NO-EVENT clock advance revokes a previously fresh FOCUS price without a ne
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
   h.fire("ms2RssUpdate",snapshot([row("464A.T",8,h.clock.now)],{},h.clock.now));
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[PRICE:464A.T:1234]"));
-  h.advanceClock(12001);
+  h.advanceClock(40001);
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
 });
 
@@ -244,7 +244,7 @@ test("throttled watchdog cannot re-render an old price after silent clock advanc
   h.nodes["focus-owner-select"].value="464A.T";
   h.nodes["focus-owner-add"].click();
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[PRICE:464A.T:1234]"));
-  h.advanceClock(18000,false); // background timer did not run
+  h.advanceClock(45000,false); // background timer did not run
   h.nodes["focus-owner-select"].value="1000.T";
   h.nodes["focus-owner-add"].click(); // forces paint: must independently detect expired event
   assert.ok(h.nodes["focus-owner-cards"].innerHTML.includes("[BLOCK:464A]"));
