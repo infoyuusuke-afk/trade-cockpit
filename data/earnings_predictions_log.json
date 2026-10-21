@@ -3438,7 +3438,10 @@
     "logged_at": "2026-10-19 09:29:46 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.0,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 2.3,
+    "actual_direction": "上昇",
+    "hit": false
   },
   {
     "code": "3466",
@@ -3447,7 +3450,10 @@
     "logged_at": "2026-10-19 09:29:46 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.21,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -0.36,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "5933",
@@ -3456,7 +3462,10 @@
     "logged_at": "2026-10-19 09:29:47 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.84,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -2.36,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "5990",
@@ -3465,7 +3474,10 @@
     "logged_at": "2026-10-19 09:29:47 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -1.48,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -2.36,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "8968",
@@ -3474,7 +3486,10 @@
     "logged_at": "2026-10-19 09:29:48 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.48,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 1.59,
+    "actual_direction": "上昇",
+    "hit": false
   },
   {
     "code": "296A",
@@ -3519,6 +3534,60 @@
     "logged_at": "2026-10-20 01:13:38 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 1.17,
+    "status": "pending"
+  },
+  {
+    "code": "3091",
+    "name": "ブロンコビリー",
+    "target_date": "2026-10-22",
+    "logged_at": "2026-10-21 09:56:51 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 7.52,
+    "status": "pending"
+  },
+  {
+    "code": "5204",
+    "name": "石塚硝子",
+    "target_date": "2026-10-22",
+    "logged_at": "2026-10-21 09:56:51 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.93,
+    "status": "pending"
+  },
+  {
+    "code": "6146",
+    "name": "ディスコ",
+    "target_date": "2026-10-22",
+    "logged_at": "2026-10-21 09:56:51 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -6.11,
+    "status": "pending"
+  },
+  {
+    "code": "8617",
+    "name": "光世証券",
+    "target_date": "2026-10-22",
+    "logged_at": "2026-10-21 09:56:51 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 5.35,
+    "status": "pending"
+  },
+  {
+    "code": "8954",
+    "name": "オリックス不動産投資法人",
+    "target_date": "2026-10-22",
+    "logged_at": "2026-10-21 09:56:52 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.34,
+    "status": "pending"
+  },
+  {
+    "code": "9478",
+    "name": "ＳＥホールディングス・アンド・インキュベーションズ",
+    "target_date": "2026-10-22",
+    "logged_at": "2026-10-21 09:56:52 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.6,
     "status": "pending"
   }
 ]
