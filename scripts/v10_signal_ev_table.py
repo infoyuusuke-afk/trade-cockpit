@@ -88,9 +88,15 @@ def _not_before(signal: dict, at: datetime) -> str:
     return first
 
 
-def replay(signal: dict, ticks: list) -> dict | None:
+def replay(signal: dict, ticks: list, *, target_mult: float = 1.0, stop_mult: float = 1.0,
+           max_hold_minutes: int | None = None) -> dict | None:
+    """Default: the signal's own target1/stop. A rule can widen both as multiples of
+    the signal's entry-to-target distance and cap the holding time."""
     side = SIDES.get(signal.get("signal"))
     entry, stop, target = _f(signal.get("entry")), _f(signal.get("stop")), _f(signal.get("target1"))
+    if (target_mult, stop_mult) != (1.0, 1.0) and None not in (side, entry, target):
+        base = abs(target - entry)
+        target, stop = entry + side * target_mult * base, entry - side * stop_mult * base
     try:
         at = datetime.strptime(signal["captured_at"], "%Y-%m-%d %H:%M:%S")
     except (KeyError, ValueError):
@@ -112,7 +118,10 @@ def replay(signal: dict, ticks: list) -> dict | None:
     if fill_i is None:
         return {"state": "NOT_FILLED", "start": start}
     fill_t, fill = later[fill_i][0], later[fill_i][2]
-    rest = [x for x in later[fill_i + 1:] if x[0] <= EXIT_TIME]
+    exit_limit = EXIT_TIME
+    if max_hold_minutes:
+        exit_limit = min(EXIT_TIME, (datetime.strptime(fill_t, "%H:%M:%S") + timedelta(minutes=max_hold_minutes)).strftime("%H:%M:%S"))
+    rest = [x for x in later[fill_i + 1:] if x[0] <= exit_limit]
     by_second = {}
     for t, _, p in rest:
         by_second.setdefault(t, []).append(p)
@@ -228,11 +237,85 @@ def build(records: Path, *, now: datetime, days: list[str] | None = None) -> dic
     }
 
 
+# OWNER 2026-10-21 「①②でSHADOW開始」: rules chosen on 2026-09-24..10-21 records
+# (first 14 days chosen, last 7 days checked). Forward results count only days from
+# RULES_FORWARD_FROM, i.e. after the rules were fixed. Virtual only; no orders.
+RULES_SCHEMA = "100b-v10-rule-shadow-v1"
+RULES_FORWARD_FROM = "2026-10-22"
+RULES = {
+    "R1": {"label": "① 買い 9:15〜10:00・目標2倍・損切り2倍", "side": 1, "from": "09:15", "to": "10:00",
+           "market": None, "target_mult": 2.0, "stop_mult": 2.0, "max_hold_minutes": None,
+           "backtest": {"train": {"n": 102, "ev_pct": 0.097, "pf": 1.39}, "test": {"n": 54, "ev_pct": 0.096, "pf": 1.51}}},
+    "R2": {"label": "② 売り 地合い弱い日 9:15〜10:00・目標3倍・損切り2倍・最長60分", "side": -1, "from": "09:15",
+           "to": "10:00", "market": "弱い", "target_mult": 3.0, "stop_mult": 2.0, "max_hold_minutes": 60,
+           "backtest": {"train": {"n": 37, "ev_pct": 0.103, "pf": 1.52}, "test": {"n": 53, "ev_pct": 0.183, "pf": 1.79}}},
+}
+
+
+def rule_matches(rule: dict, signal: dict) -> bool:
+    side = SIDES.get(signal.get("signal"))
+    hm = str(signal.get("captured_at", ""))[11:16]
+    return (side == rule["side"] and rule["from"] <= hm < rule["to"]
+            and (rule["market"] is None or rule["market"] in str(signal.get("market_state", ""))))
+
+
+def build_rule_shadow(records: Path, *, now: datetime) -> dict:
+    """Virtual trades of each rule on completed days from RULES_FORWARD_FROM."""
+    local = now.astimezone(JST)
+    today, complete = local.date().isoformat(), local.strftime("%H:%M") >= "15:30"
+    trades = {k: [] for k in RULES}
+    days = []
+    for day_dir in sorted(p for p in records.iterdir() if p.is_dir()):
+        day = day_dir.name
+        if day < RULES_FORWARD_FROM or day > today or (day == today and not complete):
+            continue
+        sig_path = day_dir / "trade_signals.csv"
+        ticks = load_ticks(day_dir / "ticks.csv")
+        if not sig_path.is_file() or not ticks:
+            continue
+        days.append(day)
+        with open(sig_path, newline="", encoding="utf-8-sig") as f:
+            signals = list(csv.DictReader(f))
+        for key, rule in RULES.items():
+            open_until = {}
+            for s in signals:
+                if not rule_matches(rule, s):
+                    continue
+                setup = (s.get("ticker", ""), s.get("strategy", ""), s.get("signal", ""))
+                stamp = str(s.get("captured_at", ""))[11:19]
+                if setup in open_until and stamp <= open_until[setup]:
+                    continue
+                got = replay(s, ticks.get(s.get("ticker", ""), []), target_mult=rule["target_mult"],
+                             stop_mult=rule["stop_mult"], max_hold_minutes=rule["max_hold_minutes"])
+                if not got or got.get("state") != "FILLED":
+                    continue
+                open_until[setup] = got["exit_time"]
+                trades[key].append(dict(got, day=day, ticker=s.get("ticker", ""), name=s.get("name", ""),
+                                        signal_at=s.get("captured_at", "")))
+    return {
+        "schema_version": RULES_SCHEMA,
+        "generated_at": now.astimezone(timezone.utc).isoformat(),
+        "forward_from": RULES_FORWARD_FROM, "days": days,
+        "rules": {k: {k2: v for k2, v in r.items()} for k, r in RULES.items()},
+        "forward": {k: dict(stats(v), recent=[{x: t[x] for x in ("day", "ticker", "name", "signal_at", "exit",
+                                                               "fill_price", "exit_price", "return_pct")}
+                                              for t in v[-10:]]) for k, v in trades.items()},
+        "basis": "VIRTUAL_REPLAY_OF_RECORDED_SIGNALS_ON_RECORDED_MS2_TICKS",
+        "real_submit_allowed": False, "trade_instruction": False,
+    }
+
+
 def write_table(records: Path, target: Path, *, now: datetime) -> dict:
     table = build(records, now=now)
     temp = target.with_name(target.name + ".tmp")
     temp.write_text(json.dumps(table, ensure_ascii=False, sort_keys=True), encoding="utf-8")
     temp.replace(target)
+    shadow = build_rule_shadow(records, now=now)
+    rule_target = target.with_name("rule_shadow_v1.json")
+    temp = rule_target.with_name(rule_target.name + ".tmp")
+    temp.write_text(json.dumps(shadow, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+    temp.replace(rule_target)
+    table["rule_shadow_days"] = len(shadow["days"])
     return table
 
 

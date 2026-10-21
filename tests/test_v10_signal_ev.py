@@ -123,6 +123,54 @@ class Replay(unittest.TestCase):
         self.assertFalse(out.with_name(out.name + ".tmp").exists())
 
 
+class RuleShadow(unittest.TestCase):
+    """OWNER 2026-10-21 「①②でSHADOW開始」: forward virtual trades from 2026-10-22 only."""
+
+    def setUp(self):
+        tmp = tempfile.mkdtemp(prefix="v10-rules-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self.records = Path(tmp) / "records"
+
+    def test_rule_widths_hold_and_forward_window(self):
+        buy, short = "買いサイン", "空売りサイン"
+        sigs = [
+            ("09:20:00", "A.T", buy, "OR15押し目", 1000, 990, 1010),    # R1: target 1020 / stop 980
+            ("10:30:00", "B.T", buy, "OR15押し目", 1000, 990, 1010),    # outside 9:15-10:00: no rule
+            ("09:30:00", "C.T", short, "OR15戻り", 1000, 1010, 990),    # R2 needs a weak market
+        ]
+        ticks = [("A.T", "09:21:00", 1000), ("A.T", "09:40:00", 1012), ("A.T", "09:50:00", 1021),
+                 ("B.T", "10:31:00", 1000), ("B.T", "10:40:00", 1011),
+                 ("C.T", "09:31:00", 1000), ("C.T", "09:40:00", 985), ("C.T", "10:35:00", 975)]
+        write_day(self.records, "2026-10-21", sigs, ticks)   # before the forward window
+        write_day(self.records, "2026-10-22", sigs, ticks)
+        path = self.records / "2026-10-22" / "trade_signals.csv"
+        path.write_text(path.read_text("utf-8-sig").replace('"C.T","n","空売りサイン","OR15戻り","b","1000","1010","990","0",""',
+                                                             '"C.T","n","空売りサイン","OR15戻り","b","1000","1010","990","0","地合い弱い"'),
+                        encoding="utf-8-sig")
+        view = ev.build_rule_shadow(self.records, now=NOW)
+        self.assertEqual(view["days"], ["2026-10-22"])
+        r1, r2 = view["forward"]["R1"], view["forward"]["R2"]
+        self.assertEqual(r1["n"], 1)
+        self.assertEqual(r1["recent"][0]["exit"], "TARGET")           # 1012 did not reach the widened 1020
+        self.assertEqual(r1["recent"][0]["exit_price"], 1021)
+        self.assertEqual(r2["n"], 1)
+        # short: target 1000 - 3*10 = 970 not reached in 60 min; exits at the last tick by 10:31
+        self.assertEqual((r2["recent"][0]["exit"], r2["recent"][0]["exit_price"]), ("TIME_EXIT", 985))
+        self.assertIs(view["real_submit_allowed"], False)
+
+    def test_default_replay_is_unchanged(self):
+        sig = {"signal": "買いサイン", "entry": "1000", "stop": "990", "target1": "1010", "captured_at": "2026-10-22 09:20:00", "signal_bar": "b"}
+        ticks = [("09:21:00", 0, 1000), ("09:30:00", 1, 1010)]
+        self.assertEqual(ev.replay(sig, ticks)["exit"], "TARGET")
+        self.assertEqual(ev.replay(sig, ticks, target_mult=2, stop_mult=2)["exit"], "TIME_EXIT")
+
+    def test_ui_marks_rule_matches(self):
+        self.assertIn("const ruleFor=(x,nowMs)=>{", HTML)
+        self.assertIn("に該当</b>（Shadow）", HTML)
+        text = GATEWAY.read_text(encoding="utf-8-sig")
+        self.assertIn("if ($path -eq '/rule_shadow.json') {", text)
+
+
 class ObserverDailyRebuild(unittest.TestCase):
     def setUp(self):
         spec = importlib.util.spec_from_file_location("obs_ev_under_test", ROOT / "scripts" / "ai_brain_observer.py")

@@ -601,6 +601,30 @@ function Get-PtsPickupView([string]$RuntimeDir) {
     }
 }
 
+# Forward virtual results of the OWNER-chosen rules (R1/R2), rebuilt daily by the
+# Brain observer into RuntimeDir\rule_shadow_v1.json. Read-only; no order path.
+function Get-RuleShadowView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'rule_shadow_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'RULE_SHADOW_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'RULE_SHADOW_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-rule-shadow-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'RULE_SHADOW_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'RULE_SHADOW_UNREADABLE')
+    }
+}
+
 function Get-GitInfo([string]$repoRoot) {
     $branch = "unknown"
     $sha = "unknown"
@@ -2591,6 +2615,11 @@ try {
             if ($path -eq '/pts_pickup.json') {
                 $ptsView = Get-PtsPickupView $RuntimeDir
                 Send-Response $stream $ptsView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$ptsView.body))
+                continue
+            }
+            if ($path -eq '/rule_shadow.json') {
+                $ruleView = Get-RuleShadowView $RuntimeDir
+                Send-Response $stream $ruleView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$ruleView.body))
                 continue
             }
             if ($path -eq '/signal_ev.json') {
