@@ -58,7 +58,7 @@ else:  # direct file mode resolves the sibling script, never a global package
     import agent_sdk_brain_handoff as handoff
 
 RECEIVER_COMPONENT = "v10-brain-agent-research-receiver"
-ACK_SCHEMA = "100b-v10-brain-agent-research-ack-v2"
+ACK_SCHEMA = "100b-v10-brain-agent-research-ack-v3"
 ACK_KIND = "BRAIN_RECEIVER_ACK"
 RECEIVER_KEY_ENV = "AGENT_BRAIN_RECEIVER_HMAC_KEY"
 DB_NAME = "brain_agent_research_receipts.sqlite"
@@ -66,7 +66,12 @@ DATA_LANE = "PUBLIC_RESEARCH_UNAUTHENTICATED_NOT_EXECUTION"
 INBOX_PREFIX = "agent_research_"
 SIDECAR_ACK_SUFFIX = ".ack.json"
 BRAIN_ACK_SUFFIX = ".brain_ack.json"
-ROLE_STATUSES = ("WATCH", "NO_SIGNAL", "NO_DATA")
+ROLE_STATUSES = ("WATCH", "NO_SIGNAL", "NO_DATA", "UNAVAILABLE")
+# Screen view rebuilt from the stored, verified ACKs after every pass. It is a
+# derived file (replaced atomically), never an input to any decision.
+DISPLAY_NAME = "agent_research_display_v1.json"
+DISPLAY_SCHEMA = "100b-v10-agent-research-display-v1"
+DISPLAY_MAX_RUNS = 12
 
 
 class ReceiverBlocked(ValueError):
@@ -151,22 +156,31 @@ def _record_attempt(conn, *, name, file_sha, run_id, now, state, reason):
         raise
 
 
+REPORT_KEYS = ("report_id", "role", "lane", "target_at", "generated_at", "expires_at", "status",
+               "unavailable_reason", "evidence_ids", "evidence", "hypothesis", "conditions", "invalidation")
+
+
 def _roles_and_conflicts(research: dict) -> tuple[list, list]:
     roles = []
     for item in research["specialists"]:
-        status = item["status"]
-        if status not in ROLE_STATUSES:
+        if item["status"] not in ROLE_STATUSES:
             raise ReceiverBlocked("ROLE_STATUS_UNKNOWN")
-        roles.append({"role": item["role"], "status": status,
-                      "evidence_ids": list(item["evidence_ids"])})
+        roles.append({k: copy_json(item[k]) for k in REPORT_KEYS})
     roles.sort(key=lambda r: r["role"])
     conflicts = [{"kind": "COORDINATOR_REPORTED", "text": text}
                  for text in research["coordinator"]["conflicts"]]
-    observed = {r["status"] for r in roles if r["status"] != "NO_DATA"}
+    # Revenue Hunter is project progress, not market research: never compared.
+    observed = {r["status"] for r in roles
+                if r["lane"] == "MARKET_RESEARCH_NOT_EXECUTION" and r["status"] in ("WATCH", "NO_SIGNAL")}
     if len(observed) > 1:
         conflicts.append({"kind": "ROLE_STATUS_DIVERGENCE",
-                          "text": ",".join(r["role"] + "=" + r["status"] for r in roles)})
+                          "text": ",".join(r["role"] + "=" + r["status"] for r in roles
+                                           if r["lane"] == "MARKET_RESEARCH_NOT_EXECUTION")})
     return roles, conflicts
+
+
+def copy_json(value):
+    return json.loads(json.dumps(value))
 
 
 def _ack_path(root: Path, run_id: str) -> Path:
@@ -221,7 +235,11 @@ def receive_one(path: Path, root: Path, conn, *, now: datetime, identity: dict) 
             "verification": "PASS",
             "state": "RECEIVED",
             "reasons": [],
+            "target_at": research["target_at"],
+            "slot": research["slot"],
             "roles": roles,
+            "coordinator": {k: research["coordinator"][k] for k in ("status", "summary", "next_checks")},
+            "verification_checks": list(research["verification"]),
             "conflicts": conflicts,
             "data_lane": DATA_LANE,
             "live_market_data": False,
@@ -276,7 +294,7 @@ def _inbox_files(root: Path) -> list[Path]:
     out = []
     for p in sorted(root.iterdir()):
         n = p.name
-        if (n.startswith(INBOX_PREFIX) and n.endswith(".json")
+        if (n.startswith(INBOX_PREFIX) and n.endswith(".json") and n != DISPLAY_NAME
                 and not n.endswith(SIDECAR_ACK_SUFFIX) and not n.endswith(BRAIN_ACK_SUFFIX)):
             out.append(p)
     return out
@@ -309,8 +327,57 @@ def receive_inbox(private_dir, *, now: datetime, host_component=None) -> dict:
             if sha is not None and (path.name, sha) in seen:
                 continue  # this exact file content was already decided (received or blocked)
             results.append(receive_one(path, root, conn, now=now, identity=identity))
+        display = write_display(root, conn, now=now)
     return {"state": "PASS_COMPLETED", "receiver": RECEIVER_COMPONENT, "restored_acks": restored,
-            "results": results, "real_submit_allowed": False}
+            "results": results, "display": display, "real_submit_allowed": False}
+
+
+def write_display(root: Path, conn, *, now: datetime) -> str:
+    """Rebuild the screen view from stored ACK bytes whose hash still matches.
+
+    Each report is marked usable only while it is unexpired, has a cited
+    source and a WATCH/NO_SIGNAL status. Expired, unsourced, NO_DATA and
+    UNAVAILABLE reports are listed as not usable, never hidden or upgraded.
+    """
+    runs = []
+    for run_id, ack_bytes, ack_sha, received_at in conn.execute(
+            "SELECT run_id, ack_bytes, ack_sha256, received_at FROM receipts"
+            " ORDER BY received_at DESC, run_id DESC LIMIT ?", (DISPLAY_MAX_RUNS,)).fetchall():
+        ack_bytes = bytes(ack_bytes)
+        if hashlib.sha256(ack_bytes).hexdigest() != ack_sha:
+            runs.append({"run_id": run_id, "state": "ACK_HASH_MISMATCH", "reports": []})
+            continue
+        ack = json.loads(ack_bytes.decode("utf-8"))
+        body = {k: v for k, v in ack.items() if k != "hmac_sha256"}
+        if not hmac.compare_digest(_sign(body), ack.get("hmac_sha256", "")):
+            runs.append({"run_id": run_id, "state": "ACK_SIGNATURE_MISMATCH", "reports": []})
+            continue
+        reports = []
+        for role in ack.get("roles", []):
+            expired = handoff._dt(role["expires_at"]) <= now
+            reason = ("EXPIRED" if expired else
+                      role["status"] if role["status"] in ("NO_DATA", "UNAVAILABLE") else
+                      "NO_SOURCE" if not role["evidence_ids"] else None)
+            reports.append(dict(role, usable=reason is None, not_usable_reason=reason))
+        runs.append({
+            "run_id": run_id, "state": ack["state"], "received_at": received_at,
+            "ack_sha256": ack_sha, "envelope_sha256": ack["envelope_sha256"],
+            "ack_kind": ack["ack_kind"], "target_at": ack.get("target_at"), "slot": ack.get("slot"),
+            "coordinator": ack.get("coordinator"), "verification_checks": ack.get("verification_checks", []),
+            "conflicts": ack["conflicts"], "reports": reports,
+        })
+    view = {
+        "schema_version": DISPLAY_SCHEMA, "generated_at": _iso(now), "receiver": RECEIVER_COMPONENT,
+        "data_lane": DATA_LANE, "brain_trade_decision_eligible": False, "live_market_data": False,
+        "real_submit_allowed": False, "runs": runs,
+    }
+    target = root / DISPLAY_NAME
+    if target.is_symlink():
+        raise ReceiverBlocked("DISPLAY_LINK_UNTRUSTED")
+    temp = root / (DISPLAY_NAME + ".tmp")
+    temp.write_bytes(_canon(view) + b"\n")
+    os.replace(temp, target)
+    return "DISPLAY_WRITTEN"
 
 
 def _pending_expiry(path: Path):

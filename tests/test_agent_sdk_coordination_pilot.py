@@ -3,7 +3,7 @@
 No SDK, API key, external network, Excel, broker or scheduled Task is needed.
 """
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from contextlib import closing
 import importlib.util
 import json
@@ -48,8 +48,8 @@ def sample():
 async def fake_provider(role, prompt):
     if role == "progress_coordinator":
         reports = json.loads(prompt)["reports"]
-        assert len(reports) == 3
-        assert all(r["real_submit_allowed"] is False for r in reports)
+        assert len(reports) == len(pilot.ROLES)
+        assert all(set(r) >= {"report_id", "conditions", "invalidation"} for r in reports)
         return {
             "summary": "Research-only synthetic comparison",
             "conflicts": ["No real validation yet"],
@@ -61,6 +61,7 @@ async def fake_provider(role, prompt):
         "status": "WATCH",
         "evidence_ids": [x["source_id"] for x in d["sources"]],
         "hypothesis": "Unverified watch-only hypothesis",
+        "conditions": "Holds only while the cited source stays current",
         "invalidation": "Missing or stale data",
     }
 
@@ -112,14 +113,22 @@ class Validation(unittest.TestCase):
             pilot.validate_specialist("pre_next", {
                 "role": "pre_next", "status": "WATCH",
                 "evidence_ids": ["fabricated"], "hypothesis": "guess",
-                "invalidation": "unknown",
+                "conditions": "unknown", "invalidation": "unknown",
             }, sample()["sources"][:1])
 
     def test_watch_requires_evidence(self):
         with self.assertRaises(pilot.Blocked):
             pilot.validate_specialist("pre_next", {
                 "role": "pre_next", "status": "WATCH",
-                "evidence_ids": [], "hypothesis": "guess", "invalidation": "unknown",
+                "evidence_ids": [], "hypothesis": "guess", "conditions": "unknown",
+                "invalidation": "unknown",
+            }, sample()["sources"][:1])
+
+    def test_conditions_are_required(self):
+        with self.assertRaises(pilot.Blocked):
+            pilot.validate_specialist("pre_next", {
+                "role": "pre_next", "status": "NO_SIGNAL", "evidence_ids": [],
+                "hypothesis": "nothing", "invalidation": "unknown",
             }, sample()["sources"][:1])
 
     def test_unsafe_coordinator_output_is_rejected(self):
@@ -154,24 +163,81 @@ class Orchestration(unittest.IsolatedAsyncioTestCase):
             if role == "progress_coordinator":
                 self.assertEqual(
                     [r["status"] for r in json.loads(prompt)["reports"]],
-                    ["WATCH", "NO_DATA", "NO_DATA"],
+                    ["NO_DATA", "WATCH", "NO_DATA", "NO_DATA"],
                 )
             return await fake_provider(role, prompt)
         result = await pilot.coordinate(d, track, now=NOW)
         self.assertEqual(called, ["pre_next", "progress_coordinator"])
-        self.assertEqual(result["specialists"][1]["status"], "NO_DATA")
+        by_role = {r["role"]: r for r in result["specialists"]}
+        self.assertEqual(by_role["supply_sq"]["status"], "NO_DATA")
+        self.assertEqual(by_role["supply_sq"]["unavailable_reason"], "NO_SOURCE")
+        self.assertEqual(by_role["premarket"]["status"], "NO_DATA")
 
-    async def test_hallucinated_evidence_fails_closed_without_coordinator(self):
+    async def test_hallucinated_evidence_makes_each_role_unavailable_not_usable(self):
         called = []
         async def bad(role, prompt):
             called.append(role)
             return {
                 "role": role, "status": "WATCH", "evidence_ids": ["not_in_payload"],
-                "hypothesis": "bad", "invalidation": "none",
+                "hypothesis": "bad", "conditions": "none", "invalidation": "none",
             }
-        with self.assertRaises(pilot.Blocked):
-            await pilot.coordinate(sample(), bad, now=NOW)
-        self.assertEqual(called, ["pre_next"])
+        result = await pilot.coordinate(sample(), bad, now=NOW)
+        self.assertEqual(called, ["pre_next", "supply_sq", "revenue_hunter"])
+        for r in result["specialists"]:
+            if r["role"] != "premarket":
+                self.assertEqual((r["status"], r["unavailable_reason"]),
+                                 ("UNAVAILABLE", "OUTPUT_VALIDATION_FAILED"))
+                self.assertEqual(r["evidence_ids"], [])
+        self.assertEqual(result["coordinator"]["status"], "UNAVAILABLE")
+
+    async def test_one_role_api_failure_does_not_stop_the_others(self):
+        async def flaky(role, prompt):
+            if role == "supply_sq":
+                raise TimeoutError("synthetic provider timeout")
+            return await fake_provider(role, prompt)
+        result = await pilot.coordinate(sample(), flaky, now=NOW)
+        by_role = {r["role"]: r for r in result["specialists"]}
+        self.assertEqual(by_role["supply_sq"]["status"], "UNAVAILABLE")
+        self.assertEqual(by_role["supply_sq"]["unavailable_reason"], "API_OR_RUNTIME_FAILED")
+        self.assertEqual(by_role["pre_next"]["status"], "WATCH")
+        self.assertEqual(result["coordinator"]["status"], "OK")
+        self.assertIn("supply_sq:UNAVAILABLE:API_OR_RUNTIME_FAILED", result["verification"])
+
+    async def test_coordinator_failure_keeps_specialist_reports(self):
+        async def no_coord(role, prompt):
+            if role == "progress_coordinator":
+                raise ConnectionError("synthetic")
+            return await fake_provider(role, prompt)
+        result = await pilot.coordinate(sample(), no_coord, now=NOW)
+        self.assertEqual(result["coordinator"]["status"], "UNAVAILABLE")
+        self.assertEqual({r["status"] for r in result["specialists"] if r["role"] != "premarket"}, {"WATCH"})
+
+    async def test_every_report_is_traceable_and_expires(self):
+        result = await pilot.coordinate(sample(), fake_provider, now=NOW,
+                                        target_at="2026-10-20T08:30:00+09:00", slot="premarket_0830")
+        self.assertEqual(result["schema_version"], "100b-agent-bridge-result-v2")
+        self.assertEqual(result["slot"], "premarket_0830")
+        for r in result["specialists"]:
+            self.assertEqual(r["report_id"], "synthetic_20261020_01." + r["role"])
+            self.assertEqual(r["target_at"], "2026-10-20T08:30:00+09:00")
+            self.assertEqual(datetime.fromisoformat(r["expires_at"]) - datetime.fromisoformat(r["generated_at"]),
+                             pilot.ROLE_VALIDITY[r["role"]])
+            self.assertIs(r["real_submit_allowed"], False)
+            for e in r["evidence"]:
+                self.assertTrue(e["source_url"].startswith("https://"))
+        lanes = {r["role"]: r["lane"] for r in result["specialists"]}
+        self.assertEqual(lanes["revenue_hunter"], "PROJECT_PROGRESS_NOT_TRADING")
+        self.assertEqual({lanes[k] for k in ("premarket", "pre_next", "supply_sq")},
+                         {"MARKET_RESEARCH_NOT_EXECUTION"})
+
+    async def test_revenue_hunter_never_counts_as_market_disagreement(self):
+        async def mixed(role, prompt):
+            out = await fake_provider(role, prompt)
+            if role == "revenue_hunter":
+                out["status"] = "NO_SIGNAL"
+            return out
+        result = await pilot.coordinate(sample(), mixed, now=NOW)
+        self.assertNotIn("MARKET_ROLES_DISAGREE", result["verification"])
 
 
 class LocalReceipt(unittest.TestCase):
@@ -222,15 +288,17 @@ class PaidAttemptGate(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             ledger = Path(td) / "attempts.sqlite"
             first = "budgeted_run_00001"
-            pilot.reserve_billable_attempt(ledger, first, "fingerprint-a")
+            pilot.reserve_billable_attempt(ledger, first, "fingerprint-a", now=NOW)
             with self.assertRaisesRegex(pilot.Blocked, "BILLABLE_REPLAY_BLOCKED"):
-                pilot.reserve_billable_attempt(ledger, first, "fingerprint-a")
+                pilot.reserve_billable_attempt(ledger, first, "fingerprint-a", now=NOW)
             for index in range(2, 9):
                 pilot.reserve_billable_attempt(
-                    ledger, f"budgeted_run_{index:05d}", f"fingerprint-{index}"
+                    ledger, f"budgeted_run_{index:05d}", f"fingerprint-{index}",
+                    now=NOW + timedelta(days=index)
                 )
             with self.assertRaisesRegex(pilot.Blocked, "LOCAL_BUDGET_RESERVATION_EXHAUSTED"):
-                pilot.reserve_billable_attempt(ledger, "budgeted_run_00009", "fingerprint-9")
+                pilot.reserve_billable_attempt(ledger, "budgeted_run_00009", "fingerprint-9",
+                                               now=NOW + timedelta(days=30))
             with closing(sqlite3.connect(ledger)) as conn:
                 self.assertEqual(
                     conn.execute("SELECT SUM(reserved_cents) FROM paid_attempts").fetchone()[0],
@@ -239,6 +307,36 @@ class PaidAttemptGate(unittest.TestCase):
                 self.assertEqual(
                     conn.execute("SELECT COUNT(*) FROM paid_attempts").fetchone()[0], 8
                 )
+
+    def test_daily_cap_and_same_slot_block_double_charging(self):
+        with tempfile.TemporaryDirectory() as td:
+            ledger = Path(td) / "attempts.sqlite"
+            pilot.reserve_billable_attempt(ledger, "slot_run_00001", "fp1",
+                                           slot_key="2026-10-20:premarket_0830", now=NOW)
+            with self.assertRaisesRegex(pilot.Blocked, "BILLABLE_SLOT_ALREADY_RUN"):
+                pilot.reserve_billable_attempt(ledger, "slot_run_00002", "fp2",
+                                               slot_key="2026-10-20:premarket_0830", now=NOW)
+            pilot.reserve_billable_attempt(ledger, "slot_run_00003", "fp3",
+                                           slot_key="2026-10-20:supply_1730", now=NOW)
+            with self.assertRaisesRegex(pilot.Blocked, "DAILY_PAID_RUN_CAP_REACHED"):
+                pilot.reserve_billable_attempt(ledger, "slot_run_00004", "fp4",
+                                               slot_key="2026-10-20:pre_next_2000", now=NOW)
+            pilot.reserve_billable_attempt(ledger, "slot_run_00005", "fp5",
+                                           slot_key="2026-10-21:premarket_0830", now=NOW + timedelta(days=1))
+            with closing(sqlite3.connect(ledger)) as conn:
+                self.assertEqual(conn.execute("SELECT COUNT(*) FROM paid_attempts").fetchone()[0], 3)
+
+    def test_legacy_ledger_without_slot_columns_is_upgraded_in_place(self):
+        with tempfile.TemporaryDirectory() as td:
+            ledger = Path(td) / "attempts.sqlite"
+            with closing(sqlite3.connect(ledger)) as conn, conn:
+                conn.execute("""CREATE TABLE paid_attempts (run_id TEXT PRIMARY KEY,
+                    source_fingerprint TEXT NOT NULL, reserved_cents INTEGER NOT NULL,
+                    state TEXT NOT NULL, reserved_at TEXT NOT NULL)""")
+                conn.execute("INSERT INTO paid_attempts VALUES ('old_run_0001','fp',100,'ATTEMPT_RESERVED','x')")
+            pilot.reserve_billable_attempt(ledger, "new_run_00001", "fp", slot_key="k", now=NOW)
+            with closing(sqlite3.connect(ledger)) as conn:
+                self.assertEqual(conn.execute("SELECT SUM(reserved_cents) FROM paid_attempts").fetchone()[0], 200)
 
     def test_billable_without_ledger_fails_before_network(self):
         with tempfile.TemporaryDirectory() as td:

@@ -30,6 +30,7 @@ on:
       - "tests/v10_ms2_provenance_runtime.test.mjs"
       - "tests/v10_all_live_lanes_silence.test.mjs"
       - "tests/v10_kioxia_render_escape.test.mjs"
+      - "tests/v10_agent_research_view.test.mjs"
       - "tests/test_v10_stale_display_and_escape.py"
       - ".github/workflows/v10-candidate-runtime-bundle-synthetic.yml"
   workflow_dispatch:
@@ -60,7 +61,7 @@ jobs:
               # Independent-review candidate only: exact index.html blob.
               # No general source-pin relaxation and no runtime authorization.
               expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
-              test "$expected" = "78775fa92f3f9a30a15f4919dce749e7d7299427"
+              test "$expected" = "813976471a43ccecc9d9a4b8ee3692f1a7c22521"
               test "$(git rev-parse "HEAD:$file")" = "$expected"
               test "$(git rev-parse "$pinned:$file")" != "$expected"
               echo "V10_UI_CANDIDATE_EXACT_BLOB=$expected"
@@ -133,6 +134,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_v10_stale_display_and_escape.py -v
           node --test tests/v10_kioxia_render_escape.test.mjs
+          node --test tests/v10_agent_research_view.test.mjs
       - name: V10 UI missing metrics and no false zeros
         run: node --test tests/v10_trade_control_missing_data.test.mjs
       - name: V10 CONTROL strategy performance provenance and mode isolation

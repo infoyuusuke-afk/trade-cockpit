@@ -25,7 +25,7 @@ if __package__:
 else:
     import agent_sdk_coordination_pilot as pilot
 
-SCHEMA = "100b-agent-brain-research-envelope-v1"
+SCHEMA = "100b-agent-brain-research-envelope-v2"
 ACK_SCHEMA = "100b-agent-brain-research-ack-v1"
 MAX_BYTES = 65_536
 MAX_HANDOFF_AGE = timedelta(minutes=15)
@@ -122,16 +122,58 @@ def _write_once(path, content):
     # Never overwrite an existing message: crash leaves an inspectable trace.
 
 
+REPORT_FIELDS = {
+    "report_id", "role", "lane", "target_at", "generated_at", "expires_at", "status",
+    "unavailable_reason", "evidence_ids", "evidence", "hypothesis", "conditions",
+    "invalidation", "real_submit_allowed",
+}
+
+
+def _validate_report(item, assigned, *, run_id, evaluated, target_at):
+    role = item["role"]
+    if set(item) != REPORT_FIELDS or item.get("real_submit_allowed") is not False:
+        raise BridgeBlocked("SPECIALIST_RESULT_FIELDS_OR_SAFETY_INVALID")
+    if (item["report_id"] != run_id + "." + role or item["lane"] != pilot.ROLE_LANES[role]
+            or item["target_at"] != target_at):
+        raise BridgeBlocked("REPORT_IDENTITY_OR_LANE_INVALID")
+    generated, expires = _dt(item["generated_at"]), _dt(item["expires_at"])
+    if generated != evaluated or expires != generated + pilot.ROLE_VALIDITY[role]:
+        raise BridgeBlocked("REPORT_VALIDITY_WINDOW_INVALID")
+    status = item["status"]
+    if not assigned:
+        if status != "NO_DATA" or item["evidence_ids"] != [] or item["unavailable_reason"] != "NO_SOURCE":
+            raise BridgeBlocked("NO_DATA_ROLE_MISMATCH")
+    elif status == "NO_DATA":
+        raise BridgeBlocked("FALSE_NO_DATA")
+    elif status == "UNAVAILABLE":
+        if item["unavailable_reason"] not in pilot.UNAVAILABLE_REASONS or item["evidence_ids"] != []:
+            raise BridgeBlocked("UNAVAILABLE_ROLE_INVALID")
+    else:
+        if item["unavailable_reason"] is not None:
+            raise BridgeBlocked("REPORT_REASON_INVALID")
+        pilot.validate_specialist(role, {k: item[k] for k in (
+            "role", "status", "evidence_ids", "hypothesis", "conditions", "invalidation")}, assigned)
+    by_id = {x["source_id"]: x for x in assigned}
+    expected = [{"source_id": i, "source_url": by_id[i]["source_url"],
+                 "available_at": by_id[i]["available_at"]} for i in item["evidence_ids"]]
+    if item["evidence"] != expected:
+        raise BridgeBlocked("REPORT_EVIDENCE_BINDING_INVALID")
+    for name in ("hypothesis", "conditions", "invalidation"):
+        if not pilot._check_text(item[name]):
+            raise BridgeBlocked("REPORT_TEXT_INVALID")
+
+
 def _validate_result(source, result, *, now):
     # No model-generated ability to cross the trade gate. Exact fields only.
     valid_source = pilot.validate_snapshot(source, now)
     if type(result) is not dict or set(result) != {
-        "schema_version", "run_id", "evaluated_at", "state", "specialists",
-        "coordinator", "actual_profit_yen", "costs_verified",
-        "broker_fills_verified", "promotion_eligible", "real_submit_allowed"
+        "schema_version", "run_id", "evaluated_at", "target_at", "slot", "state",
+        "specialists", "coordinator", "verification", "actual_profit_yen",
+        "costs_verified", "broker_fills_verified", "promotion_eligible",
+        "real_submit_allowed"
     }:
         raise BridgeBlocked("MODEL_RESULT_SCHEMA_INVALID")
-    if (result["schema_version"] != "100b-agent-bridge-result-v1"
+    if (result["schema_version"] != pilot.RESULT_SCHEMA
             or result["run_id"] != source["run_id"]
             or result["state"] not in (
                 "RESEARCH_ONLY_NOT_LIVE", "OFFLINE_SYNTHETIC_NO_API_CALL"
@@ -141,6 +183,9 @@ def _validate_result(source, result, *, now):
                 "real_submit_allowed"
             ))):
         raise BridgeBlocked("MODEL_RESULT_SAFETY_GATE_INVALID")
+    if not isinstance(result["slot"], str) or not pilot.SLOT.fullmatch(result["slot"]):
+        raise BridgeBlocked("MODEL_RESULT_SLOT_INVALID")
+    _dt(result["target_at"])
     evaluated = _dt(result["evaluated_at"])
     if evaluated > now or not timedelta(0) <= now - evaluated <= MAX_HANDOFF_AGE:
         raise BridgeBlocked("MODEL_RESULT_STALE_OR_FUTURE")
@@ -152,32 +197,23 @@ def _validate_result(source, result, *, now):
         role = item.get("role") if type(item) is dict else None
         if role not in pilot.ROLES or role in by_role:
             raise BridgeBlocked("SPECIALIST_DUPLICATE_OR_INVALID_ROLE")
-        if (set(item) != {
-            "role", "status", "evidence_ids", "hypothesis",
-            "invalidation", "real_submit_allowed"
-        } or item.get("real_submit_allowed") is not False):
-            raise BridgeBlocked("SPECIALIST_RESULT_FIELDS_OR_SAFETY_INVALID")
         assigned = [x for x in valid_source["sources"] if x["role"] == role]
-        if not assigned:
-            if (item.get("status") != "NO_DATA" or
-                    item.get("evidence_ids") != [] or
-                    item.get("real_submit_allowed") is not False):
-                raise BridgeBlocked("NO_DATA_ROLE_MISMATCH")
-        else:
-            if item.get("status") == "NO_DATA":
-                raise BridgeBlocked("FALSE_NO_DATA")
-            pilot.validate_specialist(role, item, assigned)
+        _validate_report(item, assigned, run_id=valid_source["run_id"], evaluated=evaluated,
+                         target_at=result["target_at"])
         by_role[role] = item
     if set(by_role) != set(pilot.ROLES):
         raise BridgeBlocked("SPECIALIST_ROLE_MISSING")
-    if (type(result["coordinator"]) is not dict or
-            set(result["coordinator"]) != {
-                "summary", "conflicts", "next_checks", "real_submit_allowed"
-            }):
+    if result["verification"] != pilot.deterministic_checks(result["specialists"]):
+        raise BridgeBlocked("DETERMINISTIC_CHECKS_MISMATCH")
+    coord = result["coordinator"]
+    if (type(coord) is not dict or set(coord) != {
+                "status", "summary", "conflicts", "next_checks", "real_submit_allowed"
+            } or coord.get("real_submit_allowed") is not False):
         raise BridgeBlocked("COORDINATOR_RESULT_FIELDS_INVALID")
-    pilot.validate_coordinator(result["coordinator"])
-    if result["coordinator"].get("real_submit_allowed") is not False:
-        raise BridgeBlocked("COORDINATOR_ORDER_FLAG_UNSAFE")
+    if coord["status"] == "OK":
+        pilot.validate_coordinator(coord)
+    elif coord["status"] != "UNAVAILABLE" or coord["conflicts"] or coord["next_checks"]:
+        raise BridgeBlocked("COORDINATOR_STATUS_INVALID")
     for row in valid_source["sources"]:
         available = _dt(row["available_at"])
         if available > evaluated or evaluated - available > MAX_SOURCE_AGE:
