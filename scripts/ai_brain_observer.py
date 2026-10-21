@@ -50,7 +50,7 @@ AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_AC
 # (or when missing) into RuntimeDir/signal_ev_table_v1.json, which the Gateway
 # serves read-only for the REALTIME 5 ranking. The module is loaded only from
 # bytes whose git blob equals the pin. It never touches live data or orders.
-SIGNAL_EV_MODULE = ("v10_signal_ev_table", "2ed66182bca336ca3656df38f25e56bc8e71f3f5")
+SIGNAL_EV_MODULE = ("v10_signal_ev_table", "c1f26da365d50cb99ba6c12864324a009444550b")
 SIGNAL_EV_FILE = "signal_ev_table_v1.json"
 SIGNAL_EV_REBUILD_AFTER_JST = (15, 35)
 # Night PTS -> next-morning watch candidates, rebuilt every 5 minutes from the
@@ -58,6 +58,11 @@ SIGNAL_EV_REBUILD_AFTER_JST = (15, 35)
 PTS_PICKUP_MODULE = ("v10_pts_pickup", "06fffac84925e5b66d2ec346eee387fc25d1ae3e")
 PTS_PICKUP_FILE = "pts_pickup_v1.json"
 PTS_PICKUP_INTERVAL = timedelta(minutes=5)
+# Brain core (OWNER 2026-10-21 「全部やりたい」): every pass, score the lit live
+# signals with the EV table and the rule Shadow, write the top picks to
+# RuntimeDir/brain_pick_v1.json for the Gateway and log new picks to
+# records/<day>/brain_picks.csv for the rule Shadow (pinned module, no orders).
+BRAIN_CORE_MODULE = ("v10_brain_core", "0b95d8e078a4086d153bcf75eeb83acd891df1c7")
 
 
 def _aware(value):
@@ -349,6 +354,27 @@ def pts_pickup_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
     return summary
 
 
+def brain_core_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
+    """Pick the top live signals once per observer pass. Never raises; prints only on a change of state."""
+    now = now or datetime.now(timezone.utc)
+    try:
+        module = state.get("module") or load_pinned_module(Path(script_dir or Path(__file__).resolve().parent), *BRAIN_CORE_MODULE)
+        state["module"] = module
+        raw = Path(live_path).read_bytes()
+        if len(raw) > MAX_INPUT_BYTES:
+            raise ValueError("INPUT_TOO_LARGE")
+        live = json.loads(raw.decode("utf-8-sig"))
+        view = module.write_pick(Path(live_path).parent, live, now=now, logged=state.setdefault("logged", set()))
+        summary = {"brain_core": view["state"], "picks": len(view["picks"]), "logged_new": view["logged_new"]}
+    except Exception as exc:  # fail closed, keep the observer running
+        summary = {"brain_core": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}
+    summary["real_submit_allowed"] = False
+    if summary != state.get("last"):
+        state["last"] = summary
+        print(json.dumps(summary, sort_keys=True), flush=True)
+    return summary
+
+
 def agent_receiver_pass(state: dict, *, now=None, script_dir=None):
     """Opt-in: receive signed agent research once per interval. Never raises."""
     inbox = os.environ.get(AGENT_INBOX_ENV, "")
@@ -406,11 +432,13 @@ def main(argv=None):
     agent_state = {}
     ev_state = {}
     pts_state = {}
+    brain_state = {}
     while True:
         run_once(live, status_path)
         agent_receiver_pass(agent_state)
         signal_ev_pass(ev_state, live)
         pts_pickup_pass(pts_state, live)
+        brain_core_pass(brain_state, live)
         time.sleep(args.interval)
 
 

@@ -36,6 +36,8 @@ on:
       - "scripts/v10_signal_ev_table.py"
       - "scripts/v10_pts_pickup.py"
       - "tests/test_v10_pts_pickup.py"
+      - "scripts/v10_brain_core.py"
+      - "tests/test_v10_brain_core.py"
       - "tests/test_v10_stale_display_and_escape.py"
       - ".github/workflows/v10-candidate-runtime-bundle-synthetic.yml"
   workflow_dispatch:
@@ -66,7 +68,7 @@ jobs:
               # Independent-review candidate only: exact index.html blob.
               # No general source-pin relaxation and no runtime authorization.
               expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
-              test "$expected" = "13509c0082dea0f982e3b4c856b7552e3ca37bc3"
+              test "$expected" = "eee2bbbc85aee6fafda8e535147ac1c97b3e6138"
               test "$(git rev-parse "HEAD:$file")" = "$expected"
               test "$(git rev-parse "$pinned:$file")" != "$expected"
               echo "V10_UI_CANDIDATE_EXACT_BLOB=$expected"
@@ -143,6 +145,7 @@ jobs:
           node --test tests/v10_signal_ev_ranking.test.mjs
           python -m unittest discover -s tests -p test_v10_signal_ev.py -v
           python -m unittest discover -s tests -p test_v10_pts_pickup.py -v
+          python -m unittest discover -s tests -p test_v10_brain_core.py -v
       - name: V10 UI missing metrics and no false zeros
         run: node --test tests/v10_trade_control_missing_data.test.mjs
       - name: V10 CONTROL strategy performance provenance and mode isolation

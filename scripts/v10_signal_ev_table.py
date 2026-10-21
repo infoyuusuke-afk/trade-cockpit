@@ -294,11 +294,33 @@ def rule_matches(rule: dict, signal: dict) -> bool:
             and (rule["market"] is None or rule["market"] in str(signal.get("market_state", ""))))
 
 
+def brain_trades(picks_path: Path, ticks: dict) -> list[dict]:
+    """Replay the Brain core's own picks (records/<day>/brain_picks.csv), each with the
+    target/stop of the rule it was picked under, skipping picks made while an earlier
+    pick of the same setup was still open."""
+    with open(picks_path, newline="", encoding="utf-8-sig") as f:
+        picks = list(csv.DictReader(f))
+    out, open_until = [], {}
+    for s in picks:
+        rule = RULES.get(s.get("rule") or "") or {}
+        setup = (s.get("ticker", ""), s.get("strategy", ""), s.get("signal", ""))
+        stamp = str(s.get("captured_at", ""))[11:19]
+        if setup in open_until and stamp <= open_until[setup]:
+            continue
+        got = replay(s, ticks.get(s.get("ticker", ""), []), target_mult=rule.get("target_mult", 1.0),
+                     stop_mult=rule.get("stop_mult", 1.0), max_hold_minutes=rule.get("max_hold_minutes"))
+        if not got or got.get("state") != "FILLED":
+            continue
+        open_until[setup] = got["exit_time"]
+        out.append(dict(got, ticker=s.get("ticker", ""), name=s.get("name", ""), signal_at=s.get("captured_at", "")))
+    return out
+
+
 def build_rule_shadow(records: Path, *, now: datetime) -> dict:
     """Virtual trades of each rule on completed days from RULES_FORWARD_FROM."""
     local = now.astimezone(JST)
     today, complete = local.date().isoformat(), local.strftime("%H:%M") >= "15:30"
-    trades = {k: [] for k in list(RULES) + list(GAP_RULES)}
+    trades = {k: [] for k in list(RULES) + list(GAP_RULES) + ["BRAIN"]}
     days = []
     prev_ticks = None
     for day_dir in sorted(p for p in records.iterdir() if p.is_dir()):
@@ -315,6 +337,8 @@ def build_rule_shadow(records: Path, *, now: datetime) -> dict:
             for key, rule in GAP_RULES.items():
                 trades[key].extend(dict(t, day=day) for t in gap_trades(prev_ticks, ticks, rule))
         prev_ticks = ticks
+        if (day_dir / "brain_picks.csv").is_file():
+            trades["BRAIN"].extend(dict(t, day=day) for t in brain_trades(day_dir / "brain_picks.csv", ticks))
         sig_path = day_dir / "trade_signals.csv"
         if not sig_path.is_file():
             continue
@@ -343,6 +367,7 @@ def build_rule_shadow(records: Path, *, now: datetime) -> dict:
         "forward_from": RULES_FORWARD_FROM, "days": days,
         "rules": {k: {k2: v for k2, v in r.items()} for k, r in RULES.items()},
         "gap_rules": GAP_RULES,
+        "brain": {"label": "ブレインの選択（上位3銘柄）"},
         "forward": {k: dict(stats(v), recent=[{x: t[x] for x in ("day", "ticker", "name", "signal_at", "exit",
                                                                "fill_price", "exit_price", "return_pct")}
                                               for t in v[-10:]]) for k, v in trades.items()},

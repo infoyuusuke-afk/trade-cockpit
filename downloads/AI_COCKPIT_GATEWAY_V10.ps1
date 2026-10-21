@@ -577,6 +577,31 @@ function Get-SignalEvView([string]$RuntimeDir) {
     }
 }
 
+# Brain core picks (top live signals by expected value), rewritten by the Brain
+# observer every pass into RuntimeDirrain_pick_v1.json. Read-only; no order path.
+function Get-BrainPickView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'brain_pick_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'BRAIN_PICK_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'BRAIN_PICK_FILE_UNTRUSTED')
+        }
+        if (([DateTime]::UtcNow - $item.LastWriteTimeUtc).TotalSeconds -gt 60) { return (& $fail 'BRAIN_PICK_STALE') }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-brain-pick-v1' -or $view.real_submit_allowed -ne $false -or
+            $view.trade_instruction -ne $false) {
+            return (& $fail 'BRAIN_PICK_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'BRAIN_PICK_UNREADABLE')
+    }
+}
+
 # Night PTS -> next-morning watch candidates, rebuilt by the Brain observer into
 # RuntimeDir\pts_pickup_v1.json. Read-only; watch list only, never a trade signal.
 function Get-PtsPickupView([string]$RuntimeDir) {
@@ -2610,6 +2635,11 @@ try {
                     real_submit_allowed = $false
                 } | ConvertTo-Json -Depth 6
                 Send-Response $stream '200 OK' 'application/json; charset=utf-8' ($utf8.GetBytes($obsPayload))
+                continue
+            }
+            if ($path -eq '/brain_pick.json') {
+                $brainView = Get-BrainPickView $RuntimeDir
+                Send-Response $stream $brainView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$brainView.body))
                 continue
             }
             if ($path -eq '/pts_pickup.json') {
