@@ -104,6 +104,32 @@ Before any request:
 - each reservation records the model, max output tokens, timeout and maximum model calls;
 - `max_retries=0`, so nothing is re-sent after a failure or timeout.
 
+Evidence a paid model may receive (audit D1/D5):
+- `OFFICIAL_STATISTICS_FILE` rows (e.g. JPX margin figures) are refused unless
+  `AGENT_PAID_ALLOW_OFFICIAL_STATISTICS=OWNER_DECISION_RECORDED` is set after an OWNER decision
+  on reuse.
+- `SYNTHETIC_TEST` evidence runs only with `--synthetic-paid-trial`. It is never mixed with real
+  evidence and is never handed to the Brain.
+
+Ledger registry (audit D3):
+- `%LOCALAPPDATA%@B_AGENT\paid_ledger_registry.json`, or `AGENT_PAID_LEDGER_REGISTRY`, records
+  the active ledger.
+- A new ledger can only be created when none is active.
+- `--retire-paid-ledger <id> <reason>` closes the active ledger and carries its reserved total
+  forward, so the $8 lifetime allowance continues across ledgers.
+- The paid run is refused unless the configured ledger is the registered active one.
+
+Known limitations (audit D2/D3; need an OWNER decision number):
+- The per-run approval variable and the registry are set by the same Windows user. A process
+  running as that user, including an AI executor, could set or delete them. They are deliberate
+  per-run steps, not proof that the OWNER approved.
+- Deleting the registry file still lets the counts restart. The reconciliation report then shows
+  `USAGE_WITHOUT_RESERVATION`, but only after the fact.
+
+Usage reconciliation (audit D4/D5): the report compares each reservation on the Usage export's
+calendar. The default is UTC; use `--usage-dates JST` otherwise. It prints the ledger's
+`ledger_id` and flags `LEDGER_IDENTITY_MISSING`.
+
 The local reservation is not a provider-side stop. To reconcile it with OpenAI Usage, run
 `scripts/agent_paid_ledger_report.py --ledger <ledger> --usage-csv <Usage export>`. It flags:
 - usage on a day with no reservation;

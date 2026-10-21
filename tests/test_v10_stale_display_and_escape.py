@@ -38,6 +38,17 @@ class StaticSnapshotRemoved(unittest.TestCase):
         self.assertIn("静的分析作成：2026-09-25 10:41:50 JST（本日のLIVE市場情報ではありません）", HTML)
         self.assertIn("静的HTML作成：2026-09-25 10:41:50 JST／LIVE未認証", HTML)
 
+    def test_weekly_review_has_no_baked_results_and_hidden_tabs_are_not_restored(self):
+        body = section("weekly-review")
+        for baked in ("93.3%", "14.32", "109,200", "2026-09-14"):
+            self.assertNotIn(baked, body)
+        self.assertIn("週間振り返り：取得中", body)
+        self.assertIn("if(savedTab&&!savedTab.hidden)savedTab.click();", HTML)
+
+    def test_publication_validator_knows_the_owner_removal(self):
+        text = (ROOT / "scripts" / "validate_output.py").read_text(encoding="utf-8")
+        self.assertIn('snapshot_removed = "const SNAPSHOT_ONLY_TABS=" in html', text)
+
     def test_snapshot_only_tabs_are_hidden_and_live_sections_stay(self):
         self.assertIn('const SNAPSHOT_ONLY_TABS=["strong-yen","us-smr","investor-regime","expansion","policy",...policyTabs];', HTML)
         for sid in ("ms2-live-top5", "overnight-top5", "watchlist-100", "premarket-gap-ranking", "focus-owner-panel",

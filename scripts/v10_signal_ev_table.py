@@ -5,12 +5,18 @@ entry). For every buy/short signal the Collector logged in
 records/<day>/trade_signals.csv, the same day's recorded MS2 ticks of that
 ticker are replayed from the signal time:
 
-- fill: the first tick at or through the signal's entry price within
-  FILL_WINDOW (buy: price >= entry, short: price <= entry); otherwise NOT_FILLED
-  and left out of the expected value;
-- exit: target1 or stop, whichever is touched first by a later tick; otherwise
-  the last tick at or before 15:20 JST;
-- return: side * (exit / entry - 1) - 2 * COST_PER_SIDE.
+- only ticks strictly after the signal bar's close (and after the logged
+  signal time) are used, so a tick inside the signal's own bar never fills it;
+- fill: the first such tick at or through the entry within FILL_WINDOW (buy:
+  price >= entry, short: price <= entry), booked at that tick's price (a gap
+  through the entry fills at the gap price); otherwise NOT_FILLED;
+- exit: the first later second in which target1 or stop is touched, booked at
+  the touching tick's price (a gap through the stop exits at the gap price);
+  when one second touches both, the stop is taken (pessimistic, both sides);
+  otherwise the last tick at or before 15:20 JST;
+- while a trade from the same ticker and setup is open, later signals of that
+  ticker and setup are skipped (no overlapping, correlated trades);
+- return: side * (exit / fill - 1) minus the cost below.
 
 Ticks are recorded on change, not every trade, so a touch between two ticks
 can be missed; results are an estimate from this sampling. Statistics are
@@ -55,19 +61,31 @@ def _f(raw):
 
 
 def load_ticks(path: Path) -> dict:
+    """Per ticker: (exchange_time, file order, price), stably ordered by time."""
     out = {}
     if not path.is_file():
         return out
     with open(path, newline="", encoding="utf-8-sig") as f:
-        for r in csv.DictReader(f):
+        for seq, r in enumerate(csv.DictReader(f)):
             price = _f(r.get("price"))
             t = (r.get("exchange_time") or "").strip()
             if price is None or len(t) != 8:
                 continue
-            out.setdefault(r.get("ticker", ""), []).append((t, price))
+            out.setdefault(r.get("ticker", ""), []).append((t, seq, price))
     for rows in out.values():
-        rows.sort()
+        rows.sort(key=lambda x: (x[0], x[1]))
     return out
+
+
+def _not_before(signal: dict, at: datetime) -> str:
+    """First usable tick time: after the logged signal second and after the bar's close."""
+    first = (at + timedelta(seconds=1)).strftime("%H:%M:%S")
+    try:
+        bar = datetime.strptime(str(signal.get("signal_bar", "")).strip(), "%Y-%m-%d %H:%M")
+        first = max(first, (bar + timedelta(minutes=1)).strftime("%H:%M:%S"))
+    except ValueError:
+        pass
+    return first
 
 
 def replay(signal: dict, ticks: list) -> dict | None:
@@ -81,28 +99,33 @@ def replay(signal: dict, ticks: list) -> dict | None:
         return None
     if (side > 0 and not stop < entry < target) or (side < 0 and not target < entry < stop):
         return None
-    start, fill_until = at.strftime("%H:%M:%S"), (at + FILL_WINDOW).strftime("%H:%M:%S")
-    filled_at = None
-    for t, p in ticks:
-        if t < start:
-            continue
-        if filled_at is None:
-            if t > fill_until or t > EXIT_TIME:
-                return {"state": "NOT_FILLED"}
-            if (side > 0 and p >= entry) or (side < 0 and p <= entry):
-                filled_at = t
-            continue
-        if t > EXIT_TIME:
+    start = _not_before(signal, at)
+    fill_until = (at + FILL_WINDOW).strftime("%H:%M:%S")
+    later = [x for x in ticks if x[0] >= start]
+    fill_i = None
+    for i, (t, _, p) in enumerate(later):
+        if t > fill_until or t > EXIT_TIME:
             break
-        if (side > 0 and p >= target) or (side < 0 and p <= target):
-            return _result(side, entry, target, "TARGET")
-        if (side > 0 and p <= stop) or (side < 0 and p >= stop):
-            return _result(side, entry, stop, "STOP")
-        last = p
-    if filled_at is None:
-        return {"state": "NOT_FILLED"}
-    closes = [p for t, p in ticks if filled_at <= t <= EXIT_TIME]
-    return _result(side, entry, closes[-1] if closes else entry, "TIME_EXIT")
+        if (side > 0 and p >= entry) or (side < 0 and p <= entry):
+            fill_i = i
+            break
+    if fill_i is None:
+        return {"state": "NOT_FILLED", "start": start}
+    fill_t, fill = later[fill_i][0], later[fill_i][2]
+    rest = [x for x in later[fill_i + 1:] if x[0] <= EXIT_TIME]
+    by_second = {}
+    for t, _, p in rest:
+        by_second.setdefault(t, []).append(p)
+    for t in sorted(by_second):
+        prices = by_second[t]
+        stops = [p for p in prices if (side > 0 and p <= stop) or (side < 0 and p >= stop)]
+        targets = [p for p in prices if (side > 0 and p >= target) or (side < 0 and p <= target)]
+        if stops:  # a second touching both is resolved to the stop
+            return _result(side, fill, stops[0], "STOP", fill_t, t)
+        if targets:
+            return _result(side, fill, targets[0], "TARGET", fill_t, t)
+    last_t, last = (rest[-1][0], rest[-1][2]) if rest else (fill_t, fill)
+    return _result(side, fill, last, "TIME_EXIT", fill_t, last_t)
 
 
 def cost_pct(side: int) -> float:
@@ -111,9 +134,10 @@ def cost_pct(side: int) -> float:
     return 2 * (COMMISSION_PCT_PER_SIDE + SLIPPAGE_PCT_PER_SIDE) + rate / 365 * FINANCING_DAYS_PER_DAY_TRADE
 
 
-def _result(side, entry, exit_price, how):
-    gross = side * (exit_price / entry - 1) * 100
-    return {"state": "FILLED", "exit": how, "side": side, "gross_pct": gross, "return_pct": gross - cost_pct(side)}
+def _result(side, fill, exit_price, how, fill_t, exit_t):
+    gross = side * (exit_price / fill - 1) * 100
+    return {"state": "FILLED", "exit": how, "side": side, "fill_price": fill, "exit_price": exit_price,
+            "fill_time": fill_t, "exit_time": exit_t, "gross_pct": gross, "return_pct": gross - cost_pct(side)}
 
 
 def stats(trades: list[dict]) -> dict:
@@ -142,11 +166,15 @@ def stats(trades: list[dict]) -> dict:
 
 
 def build(records: Path, *, now: datetime, days: list[str] | None = None) -> dict:
-    by_strategy, by_ticker, counts, used_days = {}, {}, {"signals": 0, "filled": 0, "not_filled": 0, "invalid": 0}, []
-    today = now.astimezone(JST).date().isoformat()
+    by_strategy, by_ticker, used_days = {}, {}, []
+    counts = {"signals": 0, "filled": 0, "not_filled": 0, "invalid": 0, "overlapping_skipped": 0}
+    local = now.astimezone(JST)
+    today = local.date().isoformat()
+    today_complete = local.strftime("%H:%M") >= "15:30"
     for day_dir in sorted(p for p in records.iterdir() if p.is_dir()):
         day = day_dir.name
-        if (days and day not in days) or day >= today:   # only completed past days
+        # completed sessions only: past days, and today once the 15:30 close has passed
+        if (days and day not in days) or day > today or (day == today and not today_complete):
             continue
         sig_path = day_dir / "trade_signals.csv"
         if not sig_path.is_file():
@@ -155,9 +183,15 @@ def build(records: Path, *, now: datetime, days: list[str] | None = None) -> dic
         if not ticks:
             continue
         used_days.append(day)
+        open_until = {}
         with open(sig_path, newline="", encoding="utf-8-sig") as f:
             for s in csv.DictReader(f):
                 counts["signals"] += 1
+                setup = (s.get("ticker", ""), s.get("strategy", ""), s.get("signal", ""))
+                stamp = str(s.get("captured_at", ""))[11:19]
+                if setup in open_until and stamp <= open_until[setup]:
+                    counts["overlapping_skipped"] += 1
+                    continue
                 got = replay(s, ticks.get(s.get("ticker", ""), []))
                 if got is None:
                     counts["invalid"] += 1
@@ -166,6 +200,7 @@ def build(records: Path, *, now: datetime, days: list[str] | None = None) -> dic
                     counts["not_filled"] += 1
                     continue
                 counts["filled"] += 1
+                open_until[setup] = got["exit_time"]
                 key = s["strategy"] + "|" + s["signal"]
                 by_strategy.setdefault(key, []).append(got)
                 by_ticker.setdefault(key + "|" + s["ticker"], []).append(got)
@@ -175,6 +210,8 @@ def build(records: Path, *, now: datetime, days: list[str] | None = None) -> dic
         "basis": "BACKTEST_OF_RECORDED_COCKPIT_SIGNALS_ON_RECORDED_MS2_TICKS",
         "days": used_days,
         "assumptions": {"fill_window_minutes": FILL_WINDOW.total_seconds() / 60, "exit_time_jst": EXIT_TIME,
+                        "fill_and_exit_price": "touching tick price (gaps included); same-second target+stop = stop",
+                        "ticks_used": "strictly after the signal bar close; overlapping trades of one setup skipped",
                         "commission_pct_per_side": COMMISSION_PCT_PER_SIDE,
                         "long_interest_pct_per_year": LONG_INTEREST_PCT_PER_YEAR,
                         "short_lending_fee_pct_per_year": SHORT_LENDING_FEE_PCT_PER_YEAR,

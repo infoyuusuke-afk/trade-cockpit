@@ -54,14 +54,15 @@ class Replay(unittest.TestCase):
             ("D.T", "09:21:00", 995), ("D.T", "10:00:00", 1001),
         ])
         table = ev.build(self.records, now=NOW)
-        self.assertEqual(table["counts"], {"signals": 5, "filled": 3, "not_filled": 1, "invalid": 1})
+        self.assertEqual(table["counts"], {"signals": 5, "filled": 3, "not_filled": 1, "invalid": 1, "overlapping_skipped": 0})
         buy_stats = table["by_strategy"]["OR15押し目|買いサイン"]
         self.assertEqual(buy_stats["n"], 2)
         self.assertEqual(buy_stats["exits"], {"TARGET": 1, "TIME_EXIT": 1})
-        self.assertAlmostEqual(buy_stats["gross_ev_pct"], (1.0 + 0.5) / 2, places=3)
+        c_gross = (1005 / 1001 - 1) * 100   # C fills at the 1001 tick, not at the 1000 entry
+        self.assertAlmostEqual(buy_stats["gross_ev_pct"], (1.0 + c_gross) / 2, places=3)
         # 楽天ゼロコース: no commission; 制度信用 buyer interest 2.80 %/year for one day
-        self.assertAlmostEqual(buy_stats["ev_pct"], (1.0 + 0.5) / 2 - 2.80 / 365, places=3)
-        self.assertAlmostEqual(buy_stats["breakeven_slippage_pct_per_side"], ((1.0 + 0.5) / 2 - 2.80 / 365) / 2, places=3)
+        self.assertAlmostEqual(buy_stats["ev_pct"], (1.0 + c_gross) / 2 - 2.80 / 365, places=3)
+        self.assertAlmostEqual(buy_stats["breakeven_slippage_pct_per_side"], ((1.0 + c_gross) / 2 - 2.80 / 365) / 2, places=3)
         self.assertEqual(buy_stats["status"], "INSUFFICIENT")
         short_stats = table["by_strategy"]["OR15戻り|空売りサイン"]
         self.assertEqual(short_stats["exits"], {"STOP": 1})
@@ -72,14 +73,47 @@ class Replay(unittest.TestCase):
         self.assertIs(table["trade_instruction"], False)
 
     def test_only_completed_past_days_and_min_n(self):
-        sigs = [("09:%02d:00" % (10 + i), "A.T", "買いサイン", "OR15押し目", 1000, 990, 1010) for i in range(25)]
-        ticks = [("A.T", "09:%02d:30" % (10 + i), 1000) for i in range(25)] + [("A.T", "09:59:00", 1010)]
+        sigs = [("09:10:00", "T%d.T" % i, "買いサイン", "OR15押し目", 1000, 990, 1010) for i in range(25)]
+        ticks = [("T%d.T" % i, "09:10:30", 1000) for i in range(25)] + [("T%d.T" % i, "09:59:00", 1010) for i in range(25)]
         write_day(self.records, "2026-10-21", sigs, ticks)
-        write_day(self.records, "2026-10-22", sigs, ticks)   # today: not used
-        table = ev.build(self.records, now=NOW)
-        self.assertEqual(table["days"], ["2026-10-21"])
+        write_day(self.records, "2026-10-22", sigs, ticks)
+        morning = datetime(2026, 10, 22, 1, 0, tzinfo=timezone.utc)   # 10:00 JST: today's session not complete
+        self.assertEqual(ev.build(self.records, now=morning)["days"], ["2026-10-21"])
+        table = ev.build(self.records, now=NOW)                        # 16:00 JST: today is complete
+        self.assertEqual(table["days"], ["2026-10-21", "2026-10-22"])
+        table = ev.build(self.records, now=NOW, days=["2026-10-21"])
         stats = table["by_strategy"]["OR15押し目|買いサイン"]
         self.assertEqual((stats["n"], stats["status"]), (25, "OK"))
+
+    def test_gaps_same_second_bar_close_and_overlap(self):
+        buy, short = "買いサイン", "空売りサイン"
+        write_day(self.records, "2026-10-21", [
+            ("09:20:00", "G.T", buy, "S", 100, 99, 105),      # gap fill at 103, gap stop at 95
+            ("09:20:00", "H.T", short, "S", 100, 101, 95),    # one second touches target and stop: stop
+            ("09:20:30", "I.T", buy, "S", 100, 99, 105),      # bar 09:20 -> a 09:20:40 tick is inside the bar
+            ("09:20:00", "J.T", buy, "S", 100, 99, 105),      # first trade of J
+            ("09:30:00", "J.T", buy, "S", 100, 99, 105),      # J still open: skipped
+        ], [
+            ("G.T", "09:21:00", 103), ("G.T", "09:40:00", 95),
+            ("H.T", "09:21:00", 100), ("H.T", "09:41:00", 94), ("H.T", "09:41:00", 102),
+            ("I.T", "09:20:40", 100), ("I.T", "09:21:10", 99.5),
+            ("J.T", "09:21:00", 100), ("J.T", "10:00:00", 105),
+        ])
+        # signal_bar column: write_day puts "b"; give I a real bar to test the bar-close rule
+        path = self.records / "2026-10-21" / "trade_signals.csv"
+        text = path.read_text("utf-8-sig").replace('"I.T","n","買いサイン","S","b"', '"I.T","n","買いサイン","S","2026-10-21 09:20"')
+        path.write_text(text, encoding="utf-8-sig")
+        import csv as _csv, io as _io
+        rows = list(_csv.DictReader(_io.StringIO(text)))
+        ticks = ev.load_ticks(self.records / "2026-10-21" / "ticks.csv")
+        g = ev.replay(rows[0], ticks["G.T"])
+        self.assertEqual((g["fill_price"], g["exit_price"], g["exit"]), (103, 95, "STOP"))
+        h = ev.replay(rows[1], ticks["H.T"])
+        self.assertEqual((h["exit"], h["exit_price"]), ("STOP", 102))
+        i = ev.replay(rows[2], ticks["I.T"])
+        self.assertEqual(i["state"], "NOT_FILLED")   # 09:20:40 is inside the 09:20 bar; 09:21:10 is below entry
+        table = ev.build(self.records, now=NOW)
+        self.assertEqual(table["counts"]["overlapping_skipped"], 1)
 
     def test_write_table_is_atomic_json(self):
         write_day(self.records, "2026-10-21", [], [("A.T", "09:00:00", 1)])

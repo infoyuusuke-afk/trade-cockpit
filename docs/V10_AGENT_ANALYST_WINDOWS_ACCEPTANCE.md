@@ -61,7 +61,10 @@ Assumptions:
     first, so the reconciliation explains them.
 14. Set `OPENAI_API_KEY` (private), and set `AGENT_PAID_RUN_APPROVED_RUN_ID=<the new run_id>`
     for this run only.
-15. Run the pilot with `--enable-billable-api --paid-budget-db <ledger>` and the same
+15. The first paid trial uses only the synthetic fixture with `--synthetic-paid-trial` and no
+    `--handoff-dir`. A real-evidence paid run with JPX figures also needs
+    `AGENT_PAID_ALLOW_OFFICIAL_STATISTICS=OWNER_DECISION_RECORDED` after the OWNER decides reuse.
+    Run the pilot with `--enable-billable-api --paid-budget-db <ledger>` and the same
     `--handoff-dir`, `--target-at` and `--slot`. Do not retry after a failure; the run stays
     reserved.
 16. The next day, export Usage from the OpenAI platform and run

@@ -264,7 +264,8 @@ document.addEventListener("DOMContentLoaded",()=>{
    }
    const live=window.cockpitMs2ScreenReady?.(d)===true;
    if(!live){box.innerHTML='<div class="focus-empty">LIVEでないため表示しません</div>';return;}
-   const rows=evRank(evTable,d.all_targets);
+   // the same 120 s per-row gate as SCALP / opportunity radar: stale rows are never ranked or priced
+   const rows=evRank(evTable,(Array.isArray(d.all_targets)?d.all_targets:[]).filter(x=>window.cockpitMs2RowReady?.(x)===true));
    box.innerHTML=rows.length?'<div class="rotation-grid">'+rows.slice(0,10).map(evRowHtml).join("")+'</div>':'<div class="focus-empty">点灯中のサインなし</div>';
  };
  let evLast={};
@@ -344,7 +345,9 @@ document.addEventListener("DOMContentLoaded",()=>{
  });
  const qs=new URLSearchParams(location.search);
  const requested=qs.get("brain")==="1"?"brain":(qs.get("live")==="1"?"scalp":null);
- const saved=requested||localStorage.getItem("cockpitTabV5"); if(saved)document.querySelector('.cockpit-tab[data-tab="'+saved+'"]')?.click();
+ const saved=requested||localStorage.getItem("cockpitTabV5"); const savedTab=saved?document.querySelector('.cockpit-tab[data-tab="'+saved+'"]'):null;
+ // a saved tab that is now hidden (removed snapshot) falls back to the default tab
+ if(savedTab&&!savedTab.hidden)savedTab.click();
 
  fetch("event_calendar.json?t="+Date.now()).then(r=>r.json()).then(d=>{
    const b=document.querySelector('.cockpit-tab[data-tab="events"]');
@@ -900,21 +903,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 <!-- WEEKLY_REVIEW_START -->
 <section id="weekly-review" class="panel">
   <h2>週間振り返り・来週戦略</h2>
-  <p>2026-09-14～2026-09-20｜作成 2026-09-19 20:17 JST</p>
-  <div class="cards">
-    <div class="card"><b>仮想取引</b><span>15件</span></div>
-    <div class="card"><b>勝率</b><span>93.3%</span></div>
-    <div class="card"><b>PF</b><span>14.32</span></div>
-    <div class="card"><b>平均R</b><span>+0.57R</span></div>
-    <div class="card"><b>週間損益</b><span>+109,200円</span></div>
-    <div class="card"><b>実戦判定</b><span>仮想検証を継続</span></div>
-  </div>
-  <div class="weekly-grid">
-    <div><h3>良かった取引</h3><ul><li>Terra Drone（278A）：+41,000円（+0.30R）</li><li>マクニカHD（3132）：+15,000円（+1.50R）</li><li>マクニカHD（3132）：+15,000円（+1.50R）</li></ul></div>
-    <div><h3>改善する取引</h3><ul><li>IHI（7013）：-8,200円（-1.00R）</li><li>神戸物産（3038）：+100円（+0.01R）</li><li>IHI（7013）：+250円（+0.03R）</li></ul></div>
-    <div><h3>来週の注目テーマ</h3><p>[&#x27;フィジカルAI・ロボット&#x27;, 12.14, 1, [[&#x27;THK（6481）&#x27;, 12.14, 4.55]]]・[&#x27;蓄電池・電力&#x27;, 11.6, 1, [[&#x27;パワーエックス（485A）&#x27;, 11.6, 13.56]]]・[&#x27;電子部品・EV&#x27;, 11.01, 1, [[&#x27;ニデック（6594）&#x27;, 11.01, 4.85]]]</p></div>
-    <div><h3>来週のルール</h3><ol><li>日経平均が20日線下ではロング数量を半分</li><li>8:00版の発動価格を抜くまで注文しない</li><li>前場はVWAPとOR15が同方向の銘柄だけ</li><li>1銘柄の最大損失を資金の0.5%以内に固定</li></ol></div>
-  </div>
+  <!-- OWNER 2026-10-21: no baked past results here; trade_control.js fills this from weekly_review.json -->
+  <div class="focus-empty">週間振り返り：取得中（weekly_review.json）</div>
 </section>
 <!-- WEEKLY_REVIEW_END -->
 </main><footer><span>参考資料・過去の静的分析。現在の株価・推奨ではありません。</span><span>静的HTML作成：2026-09-25 10:41:50 JST／LIVE未認証</span></footer>
