@@ -3013,7 +3013,7 @@ try {
             $created=Write-ImmutableJson $holdImmutableJson $immutable
             $snapshotHash=if(Test-Path $holdImmutableJson){(Get-FileHash -Algorithm SHA256 $holdImmutableJson).Hash.ToLower()}else{""}
             Write-AtomicUtf8 $holdFinalMarker (([ordered]@{finalized_at=$holdFinalizedAt;candidate_count=$finalHoldTop5.Count;immutable_created=$created;snapshot_sha256=$snapshotHash;model_version=$immutable.model_version}|ConvertTo-Json))
-            Invoke-SerializedSpeak $speaker ("15時25分、翌日持ち越しTOP5を確定しました。候補数"+$finalHoldTop5.Count+"。銘柄と方向を保存しました。注文前に決算とイベントを確認してください。")
+            # OWNER 2026-10-22 「音声はIR急騰だけ残して他は止める」: voice removed, the rest of this step is unchanged.
         }
         $holdTop5=if($holdFinalized){@($finalHoldTop5)}else{@($provisionalHoldTop5)}
 
@@ -3228,7 +3228,7 @@ try {
                 $holdKey=[string]$x.ticker+'|'+[string]$x.hold_signal
                 $holdAt=$lastHoldSpoken[$holdKey]
                 if($null -eq $holdAt -or ($now-$holdAt).TotalMinutes -ge 20){
-                    Invoke-SerializedSpeak $speaker ($x.name+"、"+$x.hold_signal+"、評価"+$x.hold_score+"点。後場のOR15維持と引け位置を確認しました。決算、IR、PTS、米国市場が未確認なら持ち越し禁止です。")
+                    # OWNER 2026-10-22 「音声はIR急騰だけ残して他は止める」: voice removed, the rest of this step is unchanged.
                     $lastHoldSpoken[$holdKey]=$now
                 }
             }
@@ -3238,13 +3238,13 @@ try {
                 $ptsBand=if($ptsGap -ge 2){2}elseif($ptsGap -ge 1){1}elseif($ptsGap -le -2){-2}elseif($ptsGap -le -1){-1}else{0}
                 if($ptsBand -ne 0 -and ($ptsBand -ne $lastPtsBand -or ($now-$lastPtsVoiceAt).TotalMinutes -ge 30)){
                     $ptsDirection=if($ptsBand -gt 0){"上昇"}else{"下落"}
-                    Invoke-SerializedSpeak $speaker ("キオクシア夜間PTS。東証終値から"+$ptsDirection+"、"+[Math]::Abs([Math]::Round($ptsGap,2))+"パーセント。現在値"+$ptsPrice+"円。出来高"+$ptsVolume+"株。アンダー比率"+[Math]::Round($ptsUnderRatio,1)+"パーセント。PTSは参考値です。翌朝の気配で再確認してください。")
+                    # OWNER 2026-10-22 「音声はIR急騰だけ残して他は止める」: voice removed, the rest of this step is unchanged.
                     $lastPtsBand=$ptsBand
                     $lastPtsVoiceAt=$now
                 }
             }
             if($now.TimeOfDay -ge [TimeSpan]::Parse("09:01:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:15:00") -and $kioxia.open_decision -in @("初動買い候補","初動ショート候補") -and $lastOpenDecisionVoice -ne [string]$kioxia.open_decision){
-                Invoke-SerializedSpeak $speaker ("キオクシア、"+$kioxia.open_decision+"。現在値"+$kioxia.price+"円。始値"+$kioxia.open_price+"円。歩み値とローソク足を確認し、逆指値で発動してください。")
+                # OWNER 2026-10-22 「音声はIR急騰だけ残して他は止める」: voice removed, the rest of this step is unchanged.
                 $lastOpenDecisionVoice=[string]$kioxia.open_decision
             }
             $flowState=[string]$kioxia.orderflow_state
@@ -3259,7 +3259,7 @@ try {
                     if ($null -ne $kioxia.historical_prediction -and $kioxia.historical_prediction.ready) {
                         $statText="同時間帯の過去統計は"+$kioxia.historical_prediction.prediction+"。5分後の上昇率"+$kioxia.historical_prediction.up_rate_5m+"パーセント、下落率"+$kioxia.historical_prediction.down_rate_5m+"パーセントです"
                     }
-                    Invoke-SerializedSpeak $speaker ("キオクシア。"+$kioxia.time_band+"。"+$directionText+"。アンダー比率"+$kioxia.under_ratio+"パーセント。"+$oneMinuteText+"。歩み値偏り"+$kioxia.flow_bias+"パーセント。"+$statText+"。")
+                    # OWNER 2026-10-22 「音声はIR急騰だけ残して他は止める」: voice removed, the rest of this step is unchanged.
                     $lastKioFlowSpoken=$flowState
                     $lastKioFlowSpokenAt=$now
                 }
