@@ -108,7 +108,11 @@ receives margin data only for the watched issues (paid input limit 24,000 bytes)
 - The sidecar accepts a feedback file only if its texts are exactly the Brain's fixed
   table, and builds the prompt text from that table; the feedback bytes count against
   the paid input cap.
-- OWNER decision needed (D-number): the two derived-key signed message types
+- **OWNER decision D-P0-488-KEY-20261022 (2026-10-22 07:21 JST): 「鍵は今の方式で認める」.**
+  The derived-key scheme below is accepted as the authentication for feedback and read
+  receipts. Recorded limits: the sidecar can forge a read receipt (worst case: a wrong
+  DELIVERED status); it cannot change orders, gates or the paid budget, and forged
+  feedback can carry only the Brain's fixed wording. Previously: OWNER decision needed: the two derived-key signed message types
   (HMAC(bridge key, label) for feedback and read receipts) extend the authentication
   scheme. The sidecar holds the bridge key, so the Brain cannot prove a receipt was
   not forged by the sidecar; the fixed-wording check limits what a forged feedback
