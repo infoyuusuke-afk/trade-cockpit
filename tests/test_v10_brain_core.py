@@ -338,6 +338,10 @@ class Wiring(unittest.TestCase):
         self.assertIn("'100b-v10-brain-pick-v1'", text)
         self.assertIn("'BRAIN_PICK_STALE'", text)
         self.assertIn('<div id="brain-pick-rows">', HTML)
+        # 2026-10-22: a second `const renderBrain` in the same script stopped the whole page
+        # script (tabs could not be switched). Each top-level name is declared once.
+        self.assertEqual(HTML.count("const renderBrain="), 1)
+        self.assertEqual(HTML.count("const renderBrainPicks="), 1)
         self.assertIn("window.cockpitMs2ScreenReady?.(d)!==true||!(age<=30)", HTML)
         self.assertIn("v.trade_instruction===false", HTML)
         self.assertIn("window.cockpitMs2RowReady?.(x)===true&&x.signal===p.signal&&x.strategy===p.strategy", HTML)
