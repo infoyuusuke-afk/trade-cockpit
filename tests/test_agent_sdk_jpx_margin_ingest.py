@@ -73,9 +73,9 @@ def official_rows(as_of="2026/10/20", published="2026/10/21"):
         ["Outstanding Margin Trading of Issues Subject to Daily Publication"],
         ["", as_of, "", "申込み現在"] + [""] * 17 + [published, "(Unit:1Share)"],
         ["", "", "", "", "市場", "銘柄種別", "コード", "新証券コード", "売残高 Outstanding Sales", "", "", "買残高 Outstanding Purchases", "", "", "取組比率"],
-        ["B", "規", "株", "カウリス　普通株式", "グロース", "貸", "153A0", "JP3205750007", 27700.0, -27000.0, 0.4, 176100.0, -118000.0, 2.7, 15.7, 0, 0],
-        ["B", "日", "", "キオクシアホールディングス　普通株式", "プライム", "貸", "285A0", "JP3165650007", 4796300.0, -122000.0, 5.7, 1.70773E7, -4500.0, 20.4, 28.1, 0, 0],
-        ["J", "喚", "", "東証グロース２５０ＥＴＦ　受益証券", "投信等", "貸", "25160", "JP3048700003", 585480, -10180, "*", 1094740, -50960, "*", 53.5],
+        ["B", "規", "株", "テスト規制銘柄　普通株式", "グロース", "貸", "153A0", "JP3000000001", 10000.0, -1000.0, 0.1, 50000.0, -2000.0, 1.0, 20.0, 0, 0],
+        ["B", "日", "", "テスト日々公表銘柄　普通株式", "プライム", "貸", "285A0", "JP3000000002", 1000000.0, -100000.0, 5.0, 4.0E6, -5000.0, 20.0, 25.0, 0, 0],
+        ["J", "喚", "", "テストＥＴＦ　受益証券", "投信等", "貸", "25160", "JP3000000003", 100000, -1000, "*", 200000, -2000, "*", 50.0],
         ["B", "日", "", "壊れた行　普通株式", "プライム", "制", "99990", "JP3999999999", "n/a", 1, 1, 1, 1, 1, 1],
     ]
 
@@ -89,8 +89,8 @@ class Parse(unittest.TestCase):
         self.assertEqual((got["as_of_date"], got["published_date"]), ("2026-10-20", "2026-10-21"))
         k = got["issues"]["285A"]
         self.assertEqual((k["sales"], k["sales_change"], k["purchases"], k["purchases_change"], k["sale_purchase_ratio"]),
-                         (4796300, -122000, 17077300, -4500, 28.1))
-        self.assertEqual(k["name"], "キオクシアホールディングス　普通株式")  # phonetic guide not mixed in
+                         (1000000, -100000, 4000000, -5000, 25.0))
+        self.assertEqual(k["name"], "テスト日々公表銘柄　普通株式")  # phonetic guide not mixed in
         self.assertIn("153A", got["issues"])      # row with the 株 flag column
         self.assertIn("2516", got["issues"])      # ETF with "*" ratios
         self.assertNotIn("9999", got["issues"])   # malformed number: skipped, not guessed
