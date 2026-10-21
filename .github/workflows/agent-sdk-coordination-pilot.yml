@@ -19,6 +19,11 @@ on:
       - "tests/test_agent_sdk_brain_handoff.py"
       - "scripts/v10_brain_agent_research_receiver.py"
       - "tests/test_v10_brain_agent_research_receiver.py"
+      - "scripts/v10_brain_agent_feedback.py"
+      - "tests/test_v10_brain_agent_feedback.py"
+      - "scripts/coord_issue282_reader.py"
+      - "tests/test_coord_issue282_reader.py"
+      - "docs/P0_100B_THREE_ANALYST_BRAIN_BIDIRECTIONAL.md"
       - "scripts/ai_brain_observer.py"
       - "tests/test_v10_brain_observer_agent_receiver.py"
       - "tests/test_v10_agent_research_view.py"
@@ -62,6 +67,10 @@ jobs:
         run: python -m unittest discover -s tests -p test_agent_sdk_brain_handoff.py -v
       - name: V10 Brain receiver (independent verify, durable receipt, Brain ACK, restart, negatives)
         run: python -m unittest discover -s tests -p test_v10_brain_agent_research_receiver.py -v
+      - name: Brain -> specialist feedback loop and Issue #282 read-only bridge (offline)
+        run: |
+          python -m unittest discover -s tests -p test_v10_brain_agent_feedback.py -v
+          python -m unittest discover -s tests -p test_coord_issue282_reader.py -v
       - name: V10 Brain observer opt-in receiver (pinned modules, off by default, restart)
         run: python -m unittest discover -s tests -p test_v10_brain_observer_agent_receiver.py -v
       - name: Specialist AI research view (Gateway route, BRAIN tab, research lane only)

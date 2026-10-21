@@ -247,13 +247,26 @@ def deterministic_checks(reports: list[dict]) -> list[str]:
     return out
 
 
+def _feedback_module():
+    """Imported on use: the feedback module imports the bridge, which imports this module."""
+    if __package__:
+        from . import v10_brain_agent_feedback as module
+    else:
+        import v10_brain_agent_feedback as module
+    return module
+
+
 async def coordinate(doc: dict, runner, *, now: datetime, target_at: str | None = None,
-                     slot: str = "manual") -> dict:
+                     slot: str = "manual", feedback: dict | None = None,
+                     delivered: list | None = None) -> dict:
     """A deterministic manager runs four isolated roles, then the coordinator.
 
     runner(role, input_json) is injectable: unit tests need no API or key.
     One role's call or output failing makes only that role UNAVAILABLE; the
     evidence itself failing validation still blocks the whole run.
+    feedback: role -> (verified Brain feedback body, file sha256). A role whose
+    model is called gets its feedback in the input as untrusted data, and the
+    delivery is appended to ``delivered`` for the signed read receipt.
     """
     public = validate_snapshot(doc, now)
     if not isinstance(slot, str) or not SLOT.fullmatch(slot):
@@ -270,11 +283,14 @@ async def coordinate(doc: dict, runner, *, now: datetime, target_at: str | None 
                                         target_at=target, supplied=assigned, excluded=excluded,
                                         reason="NO_ELIGIBLE_SOURCE" if offered else "NO_SOURCE"))
             continue
-        prompt = json.dumps(
-            {"role": role, "goal": ROLE_GOALS[role], "sources": assigned,
-             "target_at": target, "evaluation_at": now.isoformat(), "research_only": True},
-            ensure_ascii=False, sort_keys=True,
-        )
+        request = {"role": role, "goal": ROLE_GOALS[role], "sources": assigned,
+                   "target_at": target, "evaluation_at": now.isoformat(), "research_only": True}
+        fb = (feedback or {}).get(role)
+        if fb is not None:
+            request["brain_feedback"] = _feedback_module().prompt_feedback(fb[0])
+            if delivered is not None:
+                delivered.append({"role": role, "feedback_id": fb[0]["feedback_id"], "feedback_sha256": fb[1]})
+        prompt = json.dumps(request, ensure_ascii=False, sort_keys=True)
         try:
             raw = await runner(role, prompt)
         except Exception:
@@ -760,7 +776,13 @@ def main(argv=None) -> int:
             reserve_billable_attempt(Path(args.paid_budget_db), validated["run_id"], fingerprint(validated),
                                      slot_key=slot_key, now=now, carried=carried_cents(read_registry()))
         runner = api_runner if args.enable_billable_api else offline_runner
-        result = asyncio.run(coordinate(validated, runner, now=now, target_at=target_at, slot=args.slot))
+        feedback, delivered = {}, []
+        if args.handoff_dir:
+            # P0-100B-THREE-ANALYST-BRAIN-BIDIRECTIONAL: the Brain's newest verified
+            # feedback per role goes into that role's input (no file -> none).
+            feedback = _feedback_module().load_latest_feedback(Path(args.handoff_dir), now=now)
+        result = asyncio.run(coordinate(validated, runner, now=now, target_at=target_at, slot=args.slot,
+                                        feedback=feedback, delivered=delivered))
         if args.offline_test:
             result["state"] = "OFFLINE_SYNTHETIC_NO_API_CALL"
         receipt = "NOT_REQUESTED"
@@ -773,11 +795,14 @@ def main(argv=None) -> int:
             bridge.produce(validated, result, private_dir=Path(args.handoff_dir),
                            now=datetime.now(timezone.utc))
             handoff = "SIGNED_PRIVATE_RESEARCH_ONLY_PENDING_RECEIVER_ACK"
+            _feedback_module().write_read_receipt(Path(args.handoff_dir), result["run_id"], delivered,
+                                            now=datetime.now(timezone.utc))
         print(json.dumps({
             "state": result["state"], "run_id": result["run_id"],
             "specialist_statuses": {x["role"]: x["status"] for x in result["specialists"]},
             "report_ids": [x["report_id"] for x in result["specialists"]],
             "receipt": receipt, "handoff": handoff, "real_submit_allowed": False,
+            "brain_feedback_delivered": [d["feedback_id"] for d in delivered],
             "broker_fills_verified": False, "costs_verified": False
         }, sort_keys=True))
         return 0
@@ -787,6 +812,8 @@ def main(argv=None) -> int:
         if isinstance(exc, Blocked):
             reason = str(exc)
         elif bridge is not None and isinstance(exc, bridge.BridgeBlocked):
+            reason = str(exc)
+        elif type(exc).__name__ == "FeedbackBlocked":
             reason = str(exc)
         else:
             reason = "RUNTIME_OR_INPUT_UNVERIFIED"

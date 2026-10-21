@@ -39,9 +39,10 @@ AGENT_RECEIVER_INTERVAL = timedelta(seconds=30)
 AGENT_HOST_COMPONENT = "v10-ai-brain-observer"
 AGENT_PACKAGE = "v10_pinned_agent"
 AGENT_RECEIVER_MODULES = (
-    ("agent_sdk_coordination_pilot", "cc321ff0186b00286f080c2d351029e964fc4b5d"),
+    ("agent_sdk_coordination_pilot", "fbb8931ab46ca9309c96a07e68212f7d7b08247a"),
     ("agent_sdk_brain_handoff", "b936f22ecb086fa56d4fad3361f0fce87c03be35"),
     ("v10_brain_agent_research_receiver", "5269ad6bb8f048b4ff45b35ac2535c9612693614"),
+    ("v10_brain_agent_feedback", "753fb4db8ff2eb5822556ebb45e73b2a2e4a727f"),
 )
 AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_ACK", "AGENT_RECEIVER_")
 
@@ -265,7 +266,7 @@ def git_blob_sha1(raw: bytes) -> str:
 
 
 def load_agent_receiver(script_dir: Path):
-    """Load the receiver and its two dependencies from pinned bytes only."""
+    """Load the receiver, its two dependencies and the feedback module from pinned bytes only."""
     package = sys.modules.get(AGENT_PACKAGE)
     if package is None:
         package = types.ModuleType(AGENT_PACKAGE)
@@ -392,6 +393,16 @@ def agent_receiver_pass(state: dict, *, now=None, script_dir=None):
         for item in out["results"]:
             counts[item["state"]] = counts.get(item["state"], 0) + 1
         summary = {"agent_receiver": "PASS", "results": counts, "restored_acks": len(out["restored_acks"])}
+        # P0-100B-THREE-ANALYST-BRAIN-BIDIRECTIONAL: Brain -> specialist feedback and its
+        # read receipts from the next run (pinned module, same private inbox).
+        try:
+            fb = sys.modules[AGENT_PACKAGE + ".v10_brain_agent_feedback"].process_feedback(inbox, now=now)
+            summary["feedback"] = {"issued": fb["issued"], "delivered": fb["delivered"],
+                                   "rejected_receipts": len(fb["rejected_receipts"])}
+        except Exception as exc:  # the forward direction keeps working
+            text = str(exc)
+            summary["feedback"] = {"state": "BLOCKED", "reason": text if text.startswith(AGENT_KNOWN_REASONS) or
+                                   text.isupper() else type(exc).__name__}
     except Exception as exc:  # fail closed, keep the observer running
         text = str(exc)
         reason = text if text.startswith(AGENT_KNOWN_REASONS) else type(exc).__name__
