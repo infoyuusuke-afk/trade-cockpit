@@ -304,6 +304,18 @@ class Orchestration(unittest.IsolatedAsyncioTestCase):
         result = await pilot.coordinate(sample(), no_coord, now=NOW)
         self.assertEqual(result["coordinator"]["status"], "UNAVAILABLE")
         self.assertEqual({r["status"] for r in result["specialists"] if r["role"] != "premarket"}, {"WATCH"})
+        # only the failure category is kept, never the exception text
+        self.assertEqual(result["coordinator"]["summary"], "Coordinator call or output failed (ConnectionError)")
+
+    async def test_coordinator_invalid_output_is_named(self):
+        async def long_coord(role, prompt):
+            if role == "progress_coordinator":
+                return {"summary": "x" * 601, "conflicts": [], "next_checks": []}
+            return await fake_provider(role, prompt)
+        result = await pilot.coordinate(sample(), long_coord, now=NOW)
+        self.assertEqual(result["coordinator"]["summary"], "Coordinator call or output failed (COORDINATOR_OUTPUT_INVALID)")
+        self.assertEqual(pilot.SETTINGS["max_output_tokens_coordinator"][0], 1500)
+        self.assertEqual(pilot.SETTINGS["max_output_tokens_per_call"][0], 600)
 
     async def test_every_report_is_traceable_and_expires(self):
         result = await pilot.coordinate(sample(), fake_provider, now=NOW,

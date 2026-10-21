@@ -301,8 +301,11 @@ async def coordinate(doc: dict, runner, *, now: datetime, target_at: str | None 
                                                "hypothesis", "conditions", "invalidation")} for r in reports],
                 "available_at": now.isoformat(), "research_only": True
             }, ensure_ascii=False, sort_keys=True)))
-        except Exception:
-            review = {"status": "UNAVAILABLE", "summary": "Coordinator call or output failed",
+        except Exception as exc:
+            # Record only the failure category (a fixed Blocked code or the exception class),
+            # never the exception text, which may carry request details.
+            why = str(exc) if isinstance(exc, Blocked) else type(exc).__name__
+            review = {"status": "UNAVAILABLE", "summary": "Coordinator call or output failed (" + why[:80] + ")",
                       "conflicts": [], "next_checks": [], "real_submit_allowed": False}
     return {
         "schema_version": RESULT_SCHEMA,
@@ -368,7 +371,9 @@ async def api_runner(role: str, prompt: str) -> dict:
         instructions = (
             rule + " You are the 100B project coordinator. Compare specialist "
             "evidence, flag disagreement and missing input, and suggest checks. "
-            "You cannot issue trade instructions or declare a production pass."
+            "You cannot issue trade instructions or declare a production pass. "
+            "Keep summary under 500 characters, at most 8 conflicts and 8 next_checks, "
+            "each under 200 characters."
         )
         typ = CoordinatorOutput
     else:
@@ -387,7 +392,8 @@ async def api_runner(role: str, prompt: str) -> dict:
         name=role, instructions=instructions, output_type=typ,
         model=PAID_MODEL,
         model_settings=ModelSettings(
-            max_tokens=PAID_MAX_OUTPUT_TOKENS, timeout=float(PAID_TIMEOUT_SECONDS), parallel_tool_calls=False,
+            max_tokens=PAID_COORDINATOR_MAX_OUTPUT_TOKENS if role == "progress_coordinator" else PAID_MAX_OUTPUT_TOKENS,
+            timeout=float(PAID_TIMEOUT_SECONDS), parallel_tool_calls=False,
             truncation="disabled"
         ),
     )
@@ -444,6 +450,9 @@ PAID_TOTAL_LEDGER_CENTS = 800
 PAID_MAX_RUNS_PER_JST_DAY = 2
 JST = timezone(timedelta(hours=9))
 PAID_MAX_OUTPUT_TOKENS = 600
+# The coordinator reads all four reports and failed on the first paid run
+# (live_20261022_01) with 600; OWNER 2026-10-22 「承認」 to review the limit.
+PAID_COORDINATOR_MAX_OUTPUT_TOKENS = 1500
 PAID_TIMEOUT_SECONDS = 30
 PAID_MAX_MODEL_CALLS = len(ROLES) + 1
 # One private ledger for every paid run. Its absolute path and its id are
@@ -473,6 +482,7 @@ SETTINGS = {
     "model": (PAID_MODEL, "APPROVED_OWNER_2026-10-20/21 (#481 $10 pilot)"),
     "openai_max_retries": (0, "APPROVED_OWNER_2026-10-20/21 (#481)"),
     "max_output_tokens_per_call": (PAID_MAX_OUTPUT_TOKENS, "APPROVED_OWNER_2026-10-20/21 (#481)"),
+    "max_output_tokens_coordinator": (PAID_COORDINATOR_MAX_OUTPUT_TOKENS, "APPROVED_OWNER_2026-10-22 (review after live_20261022_01)"),
     "timeout_seconds_per_call": (PAID_TIMEOUT_SECONDS, "APPROVED_OWNER_2026-10-20/21 (#481)"),
     "reserved_cents_per_run": (PAID_RESERVED_CENTS_PER_RUN, "APPROVED_OWNER_2026-10-20/21 (#481)"),
     "lifetime_reserved_cents": (PAID_TOTAL_LEDGER_CENTS, "APPROVED_OWNER_2026-10-20/21 (#481, $10 prepaid, auto-reload off)"),
