@@ -764,10 +764,16 @@ def main(argv=None) -> int:
                 raise Blocked("HANDOFF_REPLAY_BLOCKED_NO_CALL")
         if args.enable_billable_api and not os.environ.get("OPENAI_API_KEY"):
             raise Blocked("API_KEY_MISSING_NO_CALL")
+        feedback, delivered = {}, []
+        if args.handoff_dir:
+            # P0-100B-THREE-ANALYST-BRAIN-BIDIRECTIONAL: the Brain's newest verified
+            # feedback per role goes into that role's input (no file -> none).
+            feedback = _feedback_module().load_latest_feedback(Path(args.handoff_dir), now=now)
         if args.enable_billable_api:
             if not args.paid_budget_db:
                 raise Blocked("PAID_BUDGET_LEDGER_REQUIRED_NO_CALL")
-            if path.stat().st_size > PAID_INPUT_LIMIT_BYTES:
+            # audit 6326093087: the feedback put into the inputs counts against the cap
+            if path.stat().st_size + _feedback_module().prompt_feedback_bytes(feedback) > PAID_INPUT_LIMIT_BYTES:
                 raise Blocked("PAID_INPUT_TOO_LARGE_NO_CALL")
             if os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_AGENT_MODEL", PAID_MODEL).strip() != PAID_MODEL:
                 raise Blocked("PAID_MODEL_OR_ENDPOINT_UNAPPROVED_NO_CALL")
@@ -779,11 +785,6 @@ def main(argv=None) -> int:
             reserve_billable_attempt(Path(args.paid_budget_db), validated["run_id"], fingerprint(validated),
                                      slot_key=slot_key, now=now, carried=carried_cents(read_registry()))
         runner = api_runner if args.enable_billable_api else offline_runner
-        feedback, delivered = {}, []
-        if args.handoff_dir:
-            # P0-100B-THREE-ANALYST-BRAIN-BIDIRECTIONAL: the Brain's newest verified
-            # feedback per role goes into that role's input (no file -> none).
-            feedback = _feedback_module().load_latest_feedback(Path(args.handoff_dir), now=now)
         result = asyncio.run(coordinate(validated, runner, now=now, target_at=target_at, slot=args.slot,
                                         feedback=feedback, delivered=delivered))
         if args.offline_test:
@@ -799,7 +800,8 @@ def main(argv=None) -> int:
                            now=datetime.now(timezone.utc))
             handoff = "SIGNED_PRIVATE_RESEARCH_ONLY_PENDING_RECEIVER_ACK"
             _feedback_module().write_read_receipt(Path(args.handoff_dir), result["run_id"], delivered,
-                                            now=datetime.now(timezone.utc))
+                                                  now=datetime.now(timezone.utc),
+                                                  runner="api" if args.enable_billable_api else "offline")
         print(json.dumps({
             "state": result["state"], "run_id": result["run_id"],
             "specialist_statuses": {x["role"]: x["status"] for x in result["specialists"]},

@@ -14,6 +14,7 @@ import json
 import math
 import os
 from pathlib import Path
+import subprocess
 import sys
 import time
 import types
@@ -39,10 +40,10 @@ AGENT_RECEIVER_INTERVAL = timedelta(seconds=30)
 AGENT_HOST_COMPONENT = "v10-ai-brain-observer"
 AGENT_PACKAGE = "v10_pinned_agent"
 AGENT_RECEIVER_MODULES = (
-    ("agent_sdk_coordination_pilot", "442ce736de3acef5e4d4cb82d82ed8bed25a1cf7"),
+    ("agent_sdk_coordination_pilot", "4ed33ef6832c317a672cee42f7c08593996a1c17"),
     ("agent_sdk_brain_handoff", "b936f22ecb086fa56d4fad3361f0fce87c03be35"),
     ("v10_brain_agent_research_receiver", "5269ad6bb8f048b4ff45b35ac2535c9612693614"),
-    ("v10_brain_agent_feedback", "3af710fd2826f14f0f572904984cbb8aab1e0ef0"),
+    ("v10_brain_agent_feedback", "4e41917ebcc106655ea823bc83a8653449e17e53"),
 )
 AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_ACK", "AGENT_RECEIVER_")
 
@@ -71,10 +72,11 @@ JPX_PACKAGE = "v10_pinned_jpx"
 JPX_MODULES = (
     ("agent_sdk_public_feed_ingest", "a03ad2aa16996d91eb60f496c04babfbe8f72900"),
     ("agent_sdk_jpx_margin_ingest", "88b9749795bba809a1d37813f0b1c15468e42074"),
-    ("agent_sdk_jpx_margin_all_ingest", "88e1c18694713527b2882374e4f9e9260052867d"),
+    ("agent_sdk_jpx_margin_all_ingest", "db10e2d42ff5ae416739824a957f0e945e67c82c"),
 )
 JPX_RETRY = timedelta(minutes=30)
-BRAIN_CORE_MODULE = ("v10_brain_core", "e7914a5abd5ea28e03a0eb4cd71553bdf893b90e")
+JPX_CHILD_DEADLINE_SECONDS = 60   # audit 6327603446: fetch + parse never block the loop longer
+BRAIN_CORE_MODULE = ("v10_brain_core", "34808bfc70a3d845dce98a36fa0a7257ef8333c6")
 
 
 def _aware(value):
@@ -402,13 +404,26 @@ def jpx_margin_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
         return None
     state["next_try"] = now + JPX_RETRY
     try:
-        module = state.get("module") or load_pinned_package(Path(script_dir or Path(__file__).resolve().parent),
-                                                             JPX_PACKAGE, JPX_MODULES)
-        state["module"] = module
-        cache = module.write_cache(Path(live_path).parent, now=now)
+        if state.get("module") is not None:   # injected in tests: in-process
+            cache = state["module"].write_cache(Path(live_path).parent, now=now)
+        else:
+            # audit 6327603446: a child process with a hard total deadline does the download
+            # and the PDF parse; this loop only reads its one-line result.
+            proc = subprocess.run([sys.executable, "-B", str(Path(__file__).resolve()), "--jpx-cache-once",
+                                   str(Path(live_path).parent), "--script-dir",
+                                   str(Path(script_dir or Path(__file__).resolve().parent))],
+                                  capture_output=True, text=True, timeout=JPX_CHILD_DEADLINE_SECONDS)
+            cache = json.loads((proc.stdout.strip().splitlines() or ["{}"])[-1])
+            if proc.returncode != 0 or "as_of_date" not in cache:
+                raise RuntimeError(str(cache.get("reason") or "JPX_CHILD_FAILED"))
         state["done_for"] = jst_day
         summary = {"jpx_margin_all": "BUILT", "as_of": cache["as_of_date"], "issues": cache["issue_count"],
                    "dropped": cache["dropped_blocks"]}
+    except subprocess.TimeoutExpired:
+        summary = {"jpx_margin_all": "BLOCKED", "reason": "JPX_CHILD_DEADLINE"}
+        summary["real_submit_allowed"] = False
+        print(json.dumps(summary, sort_keys=True), flush=True)
+        return summary
     except Exception as exc:  # fail closed: the Brain keeps the weekly ratio
         text = str(exc)
         summary = {"jpx_margin_all": "BLOCKED", "reason": text if text.isupper() or text.startswith("PINNED_MODULE_MISMATCH")
@@ -500,8 +515,25 @@ def run_once(live_path: Path, status_path: Path, *, now=None, pid=None):
     return status
 
 
+def jpx_cache_once(runtime_dir: str, script_dir: str) -> int:
+    """Child entry: pinned modules, one fetch + parse + cache write, one JSON line out."""
+    try:
+        module = load_pinned_package(Path(script_dir), JPX_PACKAGE, JPX_MODULES)
+        cache = module.write_cache(Path(runtime_dir), now=datetime.now(timezone.utc))
+        print(json.dumps({"as_of_date": cache["as_of_date"], "issue_count": cache["issue_count"],
+                          "dropped_blocks": cache["dropped_blocks"]}))
+        return 0
+    except Exception as exc:
+        text = str(exc)
+        print(json.dumps({"reason": text if text.isupper() or text.startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}))
+        return 2
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Read-only independent V10 BRAIN observation processor")
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if len(argv) == 4 and argv[0] == "--jpx-cache-once" and argv[2] == "--script-dir":
+        return jpx_cache_once(argv[1], argv[3])
     parser.add_argument("--live", required=True)
     parser.add_argument("--status", required=True)
     parser.add_argument("--interval", type=float, default=5.0)

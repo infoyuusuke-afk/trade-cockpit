@@ -18,6 +18,12 @@ release clock, so every record is DATE_ONLY_OBSERVED_AT_FETCH at the verified
 fetch time. Manual --fetch only. No model/API/Excel/broker/scheduler. Whether
 the figures may be sent to a paid model is an OWNER decision (recorded
 2026-10-22 「JPX渡してOK」, still enforced per run by the pilot).
+
+JPX terms: the figures are JPX's published statistics. They are read on the
+OWNER's PC and kept in private local files only; never commit real figures
+(tests use synthetic values) and do not redistribute them.
+
+PDF reader: pymupdf (AGPL-3.0), used only locally to read the published PDF.
 """
 from __future__ import annotations
 
@@ -36,6 +42,10 @@ SOURCE_NAME = "JPX 銘柄別信用取引残高 (Outstanding Margin Trading by Is
 MAX_PDF_BYTES = 8_388_608
 MAX_AGE_DAYS = 7
 MAX_CODES = 150
+# A complete daily file has about 4,200 issues. Fewer than this, or more than 1 % of
+# blocks dropped, means a truncated or misread file: refused for the Brain cache.
+MIN_COMPLETE_ISSUES = 3500
+MAX_DROPPED_RATIO = 0.01
 ISSUES_PER_SOURCE = 7
 CODE_LINE = re.compile(r"^([0-9][0-9A-Z]{2}[0-9A-Z])0$")
 ISIN_LINE = re.compile(r"^JP[0-9A-Z]{10} 株数 Shs\.\s*$")
@@ -93,6 +103,20 @@ def parse_lines(lines: list[str], *, observed_at: datetime) -> dict:
     if not issues:
         raise MarginBlocked("JPX_MTALL_NO_ISSUE_ROWS")
     return {"as_of_date": as_of.isoformat(), "issues": issues, "dropped_blocks": dropped}
+
+
+def require_reader() -> None:
+    """Check the PDF reader before any download (a missing reader never fetches 8 MB)."""
+    try:
+        import pymupdf  # noqa: F401
+    except ImportError as exc:
+        raise MarginBlocked("PDF_READER_MISSING") from exc
+
+
+def check_complete(parsed: dict) -> None:
+    total = len(parsed["issues"]) + parsed["dropped_blocks"]
+    if len(parsed["issues"]) < MIN_COMPLETE_ISSUES or parsed["dropped_blocks"] > MAX_DROPPED_RATIO * total:
+        raise MarginBlocked("JPX_MTALL_INCOMPLETE")
 
 
 def read_pdf_lines(raw: bytes) -> list[str]:
@@ -191,8 +215,10 @@ def write_cache(runtime_dir, *, now: datetime) -> dict:
     """Fetch the latest all-issue file, parse every block and write the Brain cache atomically."""
     from pathlib import Path
     import json as _json
+    require_reader()
     url = latest_file_url(daily._get(PAGE_URL, daily.MAX_INDEX_BYTES))
     parsed = parse_lines(read_pdf_lines(daily._get(url, MAX_PDF_BYTES)), observed_at=now)
+    check_complete(parsed)
     cache = build_cache(parsed, url, observed_at=now)
     target = Path(runtime_dir) / CACHE_FILE
     temp = target.with_name(target.name + ".tmp")

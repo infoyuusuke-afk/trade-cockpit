@@ -90,6 +90,25 @@ class Sources(unittest.TestCase):
         self.assertTrue(all(len(r["summary"]) <= 400 and r["summary"].endswith("売買シグナルではない") for r in rows))
 
 
+class Completeness(unittest.TestCase):
+    def test_truncated_or_misread_files_are_refused_for_the_cache(self):
+        parsed = jpx_all.parse_lines(LINES, observed_at=NOW)
+        with self.assertRaises(jpx_all.MarginBlocked):              # 3 issues: far below a full file
+            jpx_all.check_complete(parsed)
+        full = {"issues": {str(i): {} for i in range(4000)}, "dropped_blocks": 30}
+        jpx_all.check_complete(full)
+        with self.assertRaises(jpx_all.MarginBlocked):              # more than 1 % dropped
+            jpx_all.check_complete({"issues": full["issues"], "dropped_blocks": 100})
+
+    def test_reader_checked_before_download(self):
+        calls = []
+        with patch.object(jpx_all.daily, "_get", side_effect=lambda *a: calls.append(a) or b""), \
+                patch.dict("sys.modules", {"pymupdf": None}):
+            with self.assertRaises(jpx_all.MarginBlocked) as ctx:
+                jpx_all.write_cache(tempfile.gettempdir(), now=NOW)
+        self.assertEqual((str(ctx.exception), calls), ("PDF_READER_MISSING", []))
+
+
 class BrainCache(unittest.TestCase):
     def test_cache_keeps_every_valid_issue(self):
         parsed = jpx_all.parse_lines(LINES, observed_at=NOW)

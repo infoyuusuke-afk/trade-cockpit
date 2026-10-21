@@ -144,9 +144,12 @@ def margin_ratio(margin: dict | None, ticker, *, now: datetime):
     if not timedelta(0) <= now.astimezone(JST) - as_of <= timedelta(days=MARGIN_MAX_AGE_DAYS):
         return None
     item = (margin.get("issues") or {}).get(str(ticker or "").replace(".T", ""))
-    if not item or not item.get("sales"):
+    if not item:
         return None
-    return item["purchases"] / item["sales"], margin["as_of_date"]
+    md = margin["as_of_date"][5:7].lstrip("0") + "/" + margin["as_of_date"][8:10].lstrip("0")
+    if not item.get("sales"):   # no sales balance: no ratio; the weekly ratio is used and this is said
+        return None, md
+    return item["purchases"] / item["sales"], md
 
 
 def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: datetime,
@@ -192,9 +195,11 @@ def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: da
         flags = []
         ratio = _f(row.get("credit_ratio"))
         daily = margin_ratio(margin, row.get("ticker"), now=now)
-        if daily is not None:  # the JPX daily figure replaces the weekly MS2 ratio
+        if daily is not None and daily[0] is not None:  # the JPX daily figure replaces the weekly MS2 ratio
             ratio = daily[0]
             flags.append("信用倍率%.2f（JPX日次 %s申込み）" % (daily[0], daily[1]))
+        elif daily is not None:
+            flags.append("JPX日次 %s申込みは売0（倍率なし・週次の倍率を使用）" % daily[1])
         if ratio is None:
             flags.append("信用倍率不明（空売り状況 未確認）")
         elif side < 0 and ratio < SHORT_MIN_CREDIT_RATIO:

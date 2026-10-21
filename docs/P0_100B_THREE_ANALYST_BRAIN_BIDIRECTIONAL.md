@@ -91,3 +91,25 @@ not add up are dropped). The Brain core uses the daily 信用倍率 (purchases /
 its own issues in place of the weekly MS2 ratio for the squeeze-risk exclusion and
 shows it as a flag; data older than 7 days is not used. No model, no cost. GPT
 receives margin data only for the watched issues (paid input limit 24,000 bytes).
+
+## Audit fixes (comments 6327603446 and 6326093087)
+
+- JPX cache: fetch + parse run in a child process (`ai_brain_observer.py --jpx-cache-once`)
+  with a 60 s total deadline; the loop only reads the result. A file with fewer than
+  3,500 issues or more than 1 % dropped blocks is refused (JPX_MTALL_INCOMPLETE). The
+  PDF reader is checked before any download. Flags show the as-of as M/D, and a zero
+  sales balance is said explicitly. pymupdf (AGPL-3.0, local only) is declared in
+  `requirements-brain-local.txt`; JPX figures stay in private local files.
+- Read receipts are accepted only for a run the Brain itself received, made by the
+  API runner (`runner: "api"`; offline runs are never delivered), written after the
+  feedback and within a day, and only for roles whose model was called. Only rows
+  actually changed are counted. One bad report never stops the others; unchanged
+  feedback files are not rewritten.
+- The sidecar accepts a feedback file only if its texts are exactly the Brain's fixed
+  table, and builds the prompt text from that table; the feedback bytes count against
+  the paid input cap.
+- OWNER decision needed (D-number): the two derived-key signed message types
+  (HMAC(bridge key, label) for feedback and read receipts) extend the authentication
+  scheme. The sidecar holds the bridge key, so the Brain cannot prove a receipt was
+  not forged by the sidecar; the fixed-wording check limits what a forged feedback
+  file can put into a prompt.

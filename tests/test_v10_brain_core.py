@@ -130,12 +130,18 @@ class Pick(unittest.TestCase):
         view = brain.pick(live(rows, at="2026-10-22 11:29:55"), ev_table=TABLE, rule_shadow=SHADOW, now=later, margin=cache)
         reasons = {e["ticker"]: e["reason"] for e in view["excluded"]}
         self.assertIn("売り長（信用倍率0.50）", reasons["B.T"])          # weekly 3.0 replaced by the daily 0.50
+        self.assertEqual(brain.margin_ratio(cache, "B.T", now=later), (0.5, "10/20"))
         a = next(x for x in view["excluded"] + view["picks"] if x["ticker"] == "A.T")
         self.assertNotIn("信用倍率不明", str(a))
         stale = dict(cache, as_of_date="2026-10-01")                      # older than 7 days: not used
         view = brain.pick(live(rows, at="2026-10-22 11:29:55"), ev_table=TABLE, rule_shadow=SHADOW, now=later, margin=stale)
         self.assertEqual([p["ticker"] for p in view["picks"]], ["B.T"])
         self.assertIsNone(brain.margin_ratio(dict(cache, schema_version="x"), "B.T", now=later))
+        zero = dict(cache, issues={"B": {"sales": 0, "purchases": 1000, "sales_change": 0, "purchases_change": 0}})
+        self.assertEqual(brain.margin_ratio(zero, "B.T", now=later), (None, "10/20"))
+        view = brain.pick(live(rows, at="2026-10-22 11:29:55"), ev_table=TABLE, rule_shadow=SHADOW, now=later, margin=zero)
+        b = next(p for p in view["picks"] if p["ticker"] == "B.T")
+        self.assertIn("JPX日次 10/20申込みは売0（倍率なし・週次の倍率を使用）", b["flags"])
 
     def test_valid_is_the_collectors_integer_row_count(self):
         for valid, state in ((100, "PICK"), (95, "PICK"), (90, "PICK"), (89, "NOT_LIVE"), (111, "NOT_LIVE"),
