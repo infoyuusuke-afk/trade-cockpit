@@ -71,6 +71,11 @@ ROLE_STATUSES = ("WATCH", "NO_SIGNAL", "NO_DATA", "UNAVAILABLE")
 # derived file (replaced atomically), never an input to any decision.
 DISPLAY_NAME = "agent_research_display_v1.json"
 DISPLAY_SCHEMA = "100b-v10-agent-research-display-v1"
+# The file on disk is a signed wrapper: body_json is the exact view text and
+# hmac_sha256 is HMAC-SHA256(receiver key, UTF-8 bytes of body_json). The
+# Gateway re-verifies the signature and the age of generated_at before serving.
+DISPLAY_WRAPPER_SCHEMA = "100b-v10-agent-research-display-signed-v1"
+DISPLAY_MAX_AGE_SECONDS = 300
 DISPLAY_MAX_RUNS = 12
 
 
@@ -376,9 +381,31 @@ def write_display(root: Path, conn, *, now: datetime) -> str:
     if target.is_symlink():
         raise ReceiverBlocked("DISPLAY_LINK_UNTRUSTED")
     temp = root / (DISPLAY_NAME + ".tmp")
-    temp.write_bytes(_canon(view) + b"\n")
+    body_json = _canon(view).decode("utf-8")
+    wrapper = {"schema_version": DISPLAY_WRAPPER_SCHEMA, "body_json": body_json,
+               "hmac_sha256": hmac.new(_receiver_key(), body_json.encode("utf-8"), hashlib.sha256).hexdigest()}
+    temp.write_bytes(_canon(wrapper) + b"\n")
     os.replace(temp, target)
     return "DISPLAY_WRITTEN"
+
+
+def read_display(root: Path, *, now: datetime, max_age_seconds: int = DISPLAY_MAX_AGE_SECONDS) -> dict:
+    """The checks the Gateway makes before serving: signature, schema, flags, age."""
+    doc = json.loads((Path(root) / DISPLAY_NAME).read_text(encoding="utf-8"))
+    if type(doc) is not dict or set(doc) != {"schema_version", "body_json", "hmac_sha256"} \
+            or doc["schema_version"] != DISPLAY_WRAPPER_SCHEMA or type(doc["body_json"]) is not str:
+        raise ReceiverBlocked("DISPLAY_WRAPPER_INVALID")
+    expected = hmac.new(_receiver_key(), doc["body_json"].encode("utf-8"), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, str(doc["hmac_sha256"])):
+        raise ReceiverBlocked("DISPLAY_SIGNATURE_INVALID")
+    view = json.loads(doc["body_json"])
+    if (view.get("schema_version") != DISPLAY_SCHEMA or view.get("real_submit_allowed") is not False
+            or view.get("brain_trade_decision_eligible") is not False or view.get("live_market_data") is not False):
+        raise ReceiverBlocked("DISPLAY_FLAGS_INVALID")
+    age = (handoff._now(now) - handoff._dt(view["generated_at"])).total_seconds()
+    if age < -60 or age > max_age_seconds:
+        raise ReceiverBlocked("DISPLAY_STALE_OR_FUTURE")
+    return view
 
 
 def _pending_expiry(path: Path):

@@ -78,7 +78,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const agentPanel=document.createElement("section");
  agentPanel.className="card wide";
  agentPanel.id="agent-research";
- agentPanel.innerHTML='<h2>専門AIアナリスト</h2><p class="sub">GPT APIの研究レポート（BRAIN受信・ACK済みのものだけ）。価格・板・出来高はMS2の検証済み情報だけを使い、このレポートは売買判定・発注に使いません。</p><div id="agent-research-body"><div class="focus-empty">取得待ち</div></div>';
+ agentPanel.innerHTML='<h2>専門AIアナリスト</h2><p class="warning">AI推論・研究用（MS2の実測データではありません）</p><p class="sub">GPT APIの研究レポート（BRAIN受信・ACK済みのものだけ）。価格・板・出来高はMS2の検証済み情報だけを使い、このレポートは売買判定・発注に使いません。</p><div id="agent-research-body"><div class="focus-empty">取得待ち</div></div>';
  panes.brain.appendChild(agentPanel);
  const AGENT_ROLE_LABEL={premarket:"寄り前",pre_next:"PRE-NEXT",supply_sq:"需給・SQ",revenue_hunter:"Revenue Hunter（PROJECT進捗）"};
  const AGENT_REASON_LABEL={EXPIRED:"期限切れ・利用不可",NO_SOURCE:"出典なし・利用不可",NO_DATA:"データ不足・利用不可",UNAVAILABLE:"分析失敗・利用不可"};
@@ -99,9 +99,12 @@ document.addEventListener("DOMContentLoaded",()=>{
      '<small>出典：'+links+'</small></div>';
  };
  const renderAgentResearch=()=>{
+   // The Gateway answers 503 with {state:"UNAVAILABLE",reason} when it cannot verify the
+   // Brain signature or freshness of the view; that body is still shown as the reason.
    fetch("/agent_research.json?t="+Date.now()).then(r=>r.json()).then(v=>{
      const box=document.getElementById("agent-research-body");
      if(v?.state==="DISABLED"){box.innerHTML='<div class="focus-empty">専門AI連携は未設定（受け箱 V10_AGENT_RESEARCH_INBOX が未設定）</div>';return;}
+     if(v?.state==="UNAVAILABLE"){box.innerHTML='<div class="focus-empty">専門AIレポート利用不可（'+esc(v?.reason||"検証できません")+'）</div>';return;}
      if(v?.real_submit_allowed!==false||!Array.isArray(v?.runs)){box.innerHTML='<div class="focus-empty">専門AIレポート利用不可</div>';return;}
      const nowMs=Date.now();
      box.innerHTML=v.runs.slice(0,3).map(run=>{

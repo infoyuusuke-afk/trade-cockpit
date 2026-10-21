@@ -494,32 +494,60 @@ function Send-Response($stream, [string]$status, [string]$contentType, [byte[]]$
 }
 
 # Specialist AI research view (research lane only). The Brain receiver writes
-# agent_research_display_v1.json into the OWNER's private inbox from verified,
-# signed ACKs. The Gateway only re-reads it, checks the safety flags and size,
-# and serves it read-only. It never makes LIVE data usable or enables orders.
-# Off (DISABLED) unless V10_AGENT_RESEARCH_INBOX is set.
-function Get-AgentResearchView([string]$Inbox) {
-    $disabled = '{"state":"DISABLED","real_submit_allowed":false,"brain_trade_decision_eligible":false}'
-    $unavailable = '{"state":"UNAVAILABLE","real_submit_allowed":false,"brain_trade_decision_eligible":false}'
-    if ([string]::IsNullOrWhiteSpace($Inbox)) { return @{ status = '200 OK'; body = $disabled } }
+# agent_research_display_v1.json into the OWNER's private inbox: a wrapper whose
+# body_json is signed with the receiver key (HMAC-SHA256 over its UTF-8 bytes).
+# The Gateway re-verifies that signature with the same private key, checks the
+# safety flags and that the view was generated within the last 300 s, and only
+# then serves body_json. Anything unverifiable is UNAVAILABLE with a reason.
+# It never makes LIVE data usable or enables orders. DISABLED unless
+# V10_AGENT_RESEARCH_INBOX is set.
+function Get-AgentResearchView([string]$Inbox, [string]$ReceiverKeyHex, [datetime]$NowUtc = [datetime]::UtcNow) {
+    $fail = {
+        param([string]$Reason)
+        @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false,"brain_trade_decision_eligible":false}') }
+    }
+    if ([string]::IsNullOrWhiteSpace($Inbox)) {
+        return @{ status = '200 OK'; body = '{"state":"DISABLED","real_submit_allowed":false,"brain_trade_decision_eligible":false}' }
+    }
     try {
-        if (-not [IO.Path]::IsPathRooted($Inbox)) { return @{ status = '503 Service Unavailable'; body = $unavailable } }
+        if (-not [IO.Path]::IsPathRooted($Inbox)) { return (& $fail 'INBOX_NOT_ABSOLUTE') }
+        if ($ReceiverKeyHex -notmatch '^[0-9a-fA-F]{64}$') { return (& $fail 'RECEIVER_KEY_UNAVAILABLE') }
         $file = Join-Path $Inbox 'agent_research_display_v1.json'
-        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return @{ status = '503 Service Unavailable'; body = $unavailable } }
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'DISPLAY_MISSING') }
         $item = Get-Item -LiteralPath $file -Force
-        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 262144) {
-            return @{ status = '503 Service Unavailable'; body = $unavailable }
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 524288) {
+            return (& $fail 'DISPLAY_FILE_UNTRUSTED')
         }
-        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
-        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        $wrapper = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop
+        $names = @($wrapper.PSObject.Properties.Name | Sort-Object)
+        if (($names -join ',') -cne 'body_json,hmac_sha256,schema_version' -or
+            [string]$wrapper.schema_version -cne '100b-v10-agent-research-display-signed-v1' -or
+            $wrapper.body_json -isnot [string]) {
+            return (& $fail 'DISPLAY_WRAPPER_INVALID')
+        }
+        $keyBytes = [byte[]]::new(32)
+        for ($i = 0; $i -lt 32; $i++) { $keyBytes[$i] = [Convert]::ToByte($ReceiverKeyHex.Substring($i * 2, 2), 16) }
+        $mac = [Security.Cryptography.HMACSHA256]::new($keyBytes)
+        try {
+            $digest = $mac.ComputeHash([Text.UTF8Encoding]::new($false).GetBytes([string]$wrapper.body_json))
+        } finally { $mac.Dispose() }
+        $expected = -join ($digest | ForEach-Object { $_.ToString('x2') })
+        $given = ([string]$wrapper.hmac_sha256).ToLowerInvariant()
+        $diff = $expected.Length -bxor $given.Length
+        for ($i = 0; $i -lt [Math]::Min($expected.Length, $given.Length); $i++) { $diff = $diff -bor ([int][char]$expected[$i] -bxor [int][char]$given[$i]) }
+        if ($diff -ne 0) { return (& $fail 'DISPLAY_SIGNATURE_INVALID') }
+        $view = [string]$wrapper.body_json | ConvertFrom-Json -ErrorAction Stop
         if ([string]$view.schema_version -cne '100b-v10-agent-research-display-v1' -or
             $view.real_submit_allowed -ne $false -or $view.brain_trade_decision_eligible -ne $false -or
             $view.live_market_data -ne $false) {
-            return @{ status = '503 Service Unavailable'; body = $unavailable }
+            return (& $fail 'DISPLAY_FLAGS_INVALID')
         }
-        return @{ status = '200 OK'; body = $text }
+        $generated = [DateTimeOffset]::Parse([string]$view.generated_at, [Globalization.CultureInfo]::InvariantCulture).UtcDateTime
+        $age = ($NowUtc - $generated).TotalSeconds
+        if ($age -lt -60 -or $age -gt 300) { return (& $fail 'DISPLAY_STALE_OR_FUTURE') }
+        return @{ status = '200 OK'; body = [string]$wrapper.body_json }
     } catch {
-        return @{ status = '503 Service Unavailable'; body = $unavailable }
+        return (& $fail 'DISPLAY_UNREADABLE')
     }
 }
 
@@ -2511,7 +2539,7 @@ try {
                 continue
             }
             if ($path -eq '/agent_research.json') {
-                $agentView = Get-AgentResearchView ([Environment]::GetEnvironmentVariable('V10_AGENT_RESEARCH_INBOX'))
+                $agentView = Get-AgentResearchView ([Environment]::GetEnvironmentVariable('V10_AGENT_RESEARCH_INBOX')) ([Environment]::GetEnvironmentVariable('AGENT_BRAIN_RECEIVER_HMAC_KEY'))
                 Send-Response $stream $agentView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$agentView.body))
                 continue
             }
