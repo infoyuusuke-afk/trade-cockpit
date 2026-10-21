@@ -21,7 +21,11 @@ from urllib.parse import urlsplit
 from urllib.request import build_opener, HTTPRedirectHandler, Request
 import xml.etree.ElementTree as ET
 
-SCHEMA = "100b-public-agent-evidence-v1"
+SCHEMA = "100b-public-agent-evidence-v2"
+FEED_NAMES = {
+    "pre_next": "日本銀行 RSS 新着情報 (Bank of Japan, What's New)",
+    "supply_sq": "日本銀行 RSS 統計公表 (Bank of Japan, Statistics)",
+}
 FEEDS = {
     "pre_next": "https://www.boj.or.jp/rss/whatsnew.xml",
     "supply_sq": "https://www.boj.or.jp/rss/statistics.xml",
@@ -159,6 +163,7 @@ def parse_feed(raw: bytes, role: str, observed_at: datetime) -> list[dict]:
                 if published_day > today_jst or (today_jst - published_day).days > 7:
                     continue
                 at = now
+                data_status = "DATE_ONLY_OBSERVED_AT_FETCH"
                 temporal_label = (
                     "DATE_ONLY_OBSERVED_AT_FETCH; source calendar day="
                     + published + "; earliest release TIME UNKNOWN; no lead-time inference. "
@@ -167,6 +172,7 @@ def parse_feed(raw: bytes, role: str, observed_at: datetime) -> list[dict]:
                 at = _time(published)
                 if at > now or now - at > MAX_AGE:
                     continue
+                data_status = "PUBLICATION_TIME_VERIFIED"
                 temporal_label = "EXPLICIT_FEED_PUBLICATION_TIMESTAMP; "
         except (EvidenceBlocked, ValueError):
             continue
@@ -183,9 +189,13 @@ def parse_feed(raw: bytes, role: str, observed_at: datetime) -> list[dict]:
         results.append({
             "source_id": f"boj_{role}_{token}",
             "role": role, "source_url": link,
+            "source_name": FEED_NAMES[role],
+            "source_type": "OFFICIAL_RSS_HEADLINE",
             "as_of": at.isoformat(),
             # available_at is actual first verified fetch, NOT release-time proof.
             "available_at": now.isoformat(),
+            "fetched_at": now.isoformat(),
+            "data_status": data_status,
             "summary": summary,
         })
         if len(results) >= MAX_ITEMS_PER_ROLE:
