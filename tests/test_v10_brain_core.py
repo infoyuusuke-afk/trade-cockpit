@@ -245,6 +245,11 @@ class CollectorVoice(unittest.TestCase):
         watcher = (ROOT / "ms2_live" / "Kioxia_RSS_Live_Watcher.ps1").read_text(encoding="utf-8-sig")
         self.assertNotIn("キオクシア、買いサイン点灯", watcher)                # OWNER: Kioxia sign voice stopped
         self.assertNotIn("往復ピンタ警戒", text)
+        # OWNER 2026-10-22 「音声はIR急騰だけ残して他は止める」
+        for gone in ("翌日持ち越しTOP5を確定しました", "後場のOR15維持と引け位置を確認しました", "キオクシア夜間PTS。",
+                     "逆指値で発動してください", "\"キオクシア。\"+$kioxia.time_band"):
+            self.assertNotIn(gone, text)
+        self.assertIn('Invoke-SerializedSpeak $speaker ("IR急騰PTS候補。', text)
 
     @unittest.skipUnless(shutil.which("powershell.exe"), "Windows PowerShell 5.1 required")
     def test_brain_rule_signal_reader_fails_silent(self):
