@@ -53,6 +53,11 @@ AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_AC
 SIGNAL_EV_MODULE = ("v10_signal_ev_table", "a08a010f3d30ca2d8959e439b106732a61d3fd72")
 SIGNAL_EV_FILE = "signal_ev_table_v1.json"
 SIGNAL_EV_REBUILD_AFTER_JST = (15, 35)
+# Night PTS -> next-morning watch candidates, rebuilt every 5 minutes from the
+# Collector's PTS records into RuntimeDir/pts_pickup_v1.json (pinned module).
+PTS_PICKUP_MODULE = ("v10_pts_pickup", "06fffac84925e5b66d2ec346eee387fc25d1ae3e")
+PTS_PICKUP_FILE = "pts_pickup_v1.json"
+PTS_PICKUP_INTERVAL = timedelta(minutes=5)
 
 
 def _aware(value):
@@ -317,6 +322,24 @@ def signal_ev_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
     return summary
 
 
+def pts_pickup_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
+    """Rebuild the PTS watch list at most every 5 minutes. Never raises."""
+    now = now or datetime.now(timezone.utc)
+    if state.get("next_at") is not None and now < state["next_at"]:
+        return None
+    state["next_at"] = now + PTS_PICKUP_INTERVAL
+    try:
+        module = state.get("module") or load_pinned_module(Path(script_dir or Path(__file__).resolve().parent), *PTS_PICKUP_MODULE)
+        state["module"] = module
+        view = module.write_pickup(Path(live_path).parent / "records", Path(live_path).parent / PTS_PICKUP_FILE, now=now)
+        summary = {"pts_pickup": "BUILT", "session": view["pts_session_date"], "rows": len(view["rows"])}
+    except Exception as exc:  # fail closed, keep the observer running
+        summary = {"pts_pickup": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}
+    summary["real_submit_allowed"] = False
+    print(json.dumps(summary, sort_keys=True), flush=True)
+    return summary
+
+
 def agent_receiver_pass(state: dict, *, now=None, script_dir=None):
     """Opt-in: receive signed agent research once per interval. Never raises."""
     inbox = os.environ.get(AGENT_INBOX_ENV, "")
@@ -373,10 +396,12 @@ def main(argv=None):
         return 0
     agent_state = {}
     ev_state = {}
+    pts_state = {}
     while True:
         run_once(live, status_path)
         agent_receiver_pass(agent_state)
         signal_ev_pass(ev_state, live)
+        pts_pickup_pass(pts_state, live)
         time.sleep(args.interval)
 
 

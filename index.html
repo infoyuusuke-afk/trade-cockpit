@@ -273,6 +273,42 @@ document.addEventListener("DOMContentLoaded",()=>{
  document.addEventListener("ms2RssUpdate",e=>{evLast=e.detail||{};renderEv(evLast);});
  loadEv();
  setInterval(loadEv,600000);
+ // Night PTS -> next-morning watch candidates (REALTIME 5). The PTS list comes from the
+ // Collector's recorded JNX snapshots; the morning column is the MS2 pre-open quote of the
+ // same issue (row-gated). Watch list only: not a trade signal, no orders.
+ const ptsPanel=document.createElement("section");
+ ptsPanel.className="card wide";
+ ptsPanel.id="pts-morning-pickup";
+ ptsPanel.innerHTML='<h2>PTS→寄り前ピックアップ（監視候補）</h2><p class="warning">前夜のPTS（JNX）で動いて売買代金のあった銘柄を、朝のMS2寄り前気配と並べています。監視候補で売買サインではありません。PTSの動きが翌日に続くかは検証前です。</p><div id="pts-pickup-summary" class="sub">PTSデータ取得待ち</div><div id="pts-pickup-rows"><div class="focus-empty">候補なし</div></div>';
+ evPanel.after(ptsPanel);
+ let ptsView=null,ptsLast={};
+ const ptsPct=v=>Number.isFinite(Number(v))?(Number(v)>=0?"+":"")+Number(v).toFixed(2)+"%":"—";
+ const ptsMorningRow=(p,rows)=>{
+   const live=(Array.isArray(rows)?rows:[]).find(x=>x&&x.ticker===p.ticker&&window.cockpitMs2RowReady?.(x)===true);
+   const pre=live&&Number.isFinite(Number(live.preopen_gap_pct))?Number(live.preopen_gap_pct):null;
+   const same=pre===null?"寄り前気配待ち":(pre>0)===(p.direction==="UP")?"PTSと同じ方向":"PTSと逆方向";
+   return {pre,same};
+ };
+ const ptsRowHtml=(p,rows)=>{
+   const m=ptsMorningRow(p,rows);
+   return '<div class="rotation-box"><b>'+esc(p.name||p.ticker)+'｜PTS '+ptsPct(p.pts_gap_pct)+'</b>'+
+     '<strong>'+esc(m.same)+'</strong>'+
+     '<small>PTS '+esc(p.pts_price??"—")+'円（東証終値 '+esc(p.tse_close??"—")+'円）／売買代金 '+esc(Math.round(Number(p.turnover_yen||0)/10000).toLocaleString("ja-JP"))+'万円／気配の幅 '+esc(p.spread_pct)+'%</small>'+
+     '<small>寄り前気配 '+(m.pre===null?"—":ptsPct(m.pre))+'／'+esc(p.stance||"")+'／記録 '+esc(String(p.captured_at||"").slice(5,16))+'</small></div>';
+ };
+ const renderPts=d=>{
+   const box=document.getElementById("pts-pickup-rows"),sum=document.getElementById("pts-pickup-summary");
+   if(!box||!sum)return;
+   if(!ptsView){sum.textContent="PTSピックアップなし（PTS記録の集計が未作成）";box.innerHTML='<div class="focus-empty">候補なし</div>';return;}
+   sum.textContent="PTS "+(ptsView.pts_session_date||"記録なし")+"／記録した夜の数 "+ptsView.recorded_pts_evenings+"／条件：PTSの差±"+ptsView.criteria?.min_abs_gap_pct+"%以上・売買代金"+Math.round(Number(ptsView.criteria?.min_turnover_yen||0)/10000)+"万円以上・気配の幅"+ptsView.criteria?.max_spread_pct+"%以下（暫定）・検証前";
+   const rows=Array.isArray(ptsView.rows)?ptsView.rows:[];
+   const live=window.cockpitMs2ScreenReady?.(d)===true?d.all_targets:[];
+   box.innerHTML=rows.length?'<div class="rotation-grid">'+rows.map(p=>ptsRowHtml(p,live)).join("")+'</div>':'<div class="focus-empty">条件に合うPTS銘柄なし</div>';
+ };
+ const loadPts=()=>fetch("/pts_pickup.json?t="+Date.now()).then(r=>r.json()).then(v=>{ptsView=(v&&v.schema_version==="100b-v10-pts-pickup-v1"&&v.real_submit_allowed===false)?v:null;renderPts(ptsLast);}).catch(()=>{ptsView=null;renderPts(ptsLast);});
+ document.addEventListener("ms2RssUpdate",e=>{ptsLast=e.detail||{};renderPts(ptsLast);});
+ loadPts();
+ setInterval(loadPts,300000);
  const SNAPSHOT_ONLY_TABS=["strong-yen","us-smr","investor-regime","expansion","policy",...policyTabs];
  SNAPSHOT_ONLY_TABS.forEach(k=>{document.querySelectorAll('.cockpit-tab[data-tab="'+k+'"]').forEach(b=>{b.hidden=true;});});
 
