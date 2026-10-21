@@ -1957,22 +1957,39 @@ function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 30000
 # OWNER 2026-10-22 「音声は①②④⑤だけ」: signal voices come only from the Brain
 # observer's rule matches in brain_pick_v1.json (same folder, at most 30 s old,
 # flags checked). Any problem gives an empty list, i.e. silence, never a guess.
+# Audit 6325885133: the file's own generated_at (offset-aware) must be at most 30 s old
+# and not in the future, the flags must be real booleans and the state PICK or NO_PICK.
+function Test-BrainPickFresh([string]$GeneratedAt, [datetime]$Now) {
+    $at = [DateTimeOffset]::MinValue
+    if ($GeneratedAt -notmatch '(Z|[+-]\d{2}:\d{2})$' -or
+        -not [DateTimeOffset]::TryParse($GeneratedAt, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$at)) { return $false }
+    $age = ([DateTimeOffset]$Now - $at).TotalSeconds
+    return ($age -ge -2 -and $age -le 30)
+}
 function Get-BrainRuleSignals([string]$Path, [datetime]$Now) {
     try {
         if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return @() }
         $item = Get-Item -LiteralPath $Path -Force
-        if ($item.Length -le 2 -or $item.Length -gt 1048576 -or ($Now - $item.LastWriteTime).TotalSeconds -gt 30) { return @() }
+        if ($item.Length -le 2 -or $item.Length -gt 1048576) { return @() }
         $view = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop
-        if ([string]$view.schema_version -cne '100b-v10-brain-pick-v1' -or $view.real_submit_allowed -ne $false -or
-            $view.trade_instruction -ne $false -or [string]$view.state -ceq 'NOT_LIVE') { return @() }
+        if ([string]$view.schema_version -cne '100b-v10-brain-pick-v1' -or
+            $view.real_submit_allowed -isnot [bool] -or $view.real_submit_allowed -or
+            $view.trade_instruction -isnot [bool] -or $view.trade_instruction -or
+            [string]$view.state -notin @('PICK','NO_PICK')) { return @() }
+        if (-not (Test-BrainPickFresh ([string]$view.generated_at) $Now)) { return @() }
         return @($view.rule_signals | Where-Object { [string]$_.rule -in @('R1','R2','R4','R5') -and [string]$_.signal -in @('買いサイン','空売りサイン') })
     } catch {
         return @()
     }
 }
+function Get-BrainPickGeneratedAt([string]$Path) {
+    try { return [string](([IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop).generated_at) } catch { return "" }
+}
+$MaxRuleVoicesPerCycle = 1   # each read-out blocks until played; one per cycle keeps the Collector on time
 $brainPickPath = Join-Path $PSScriptRoot "brain_pick_v1.json"
 $spokenRuleSignals = @{}
 $preopenGapSpoken = $false
+$PreopenMinCoverage = 80   # PROVISIONAL: issues (of 100) that need a pre-open gap before the 08:55 voice
 $previous = @{}
 $history = @{}
 $seenTicks = @{}
@@ -3130,23 +3147,40 @@ try {
         }
 
         # Only signals matching rule ①②④⑤ (Brain observer), each setup once, at most one
-        # voice per issue per 10 minutes. The rule's own target/stop are read out.
-        foreach ($x in (Get-BrainRuleSignals $brainPickPath $now)) {
-            $key=[string]$x.ticker+'|'+[string]$x.strategy+'|'+[string]$x.signal+'|'+[string]$x.signal_bar+'|'+[string]$x.rule
-            if ($spokenRuleSignals.ContainsKey($key)) { continue }
-            $spokenAt=$lastSpoken[[string]$x.ticker]
-            if ($null -ne $spokenAt -and ($now-$spokenAt).TotalMinutes -lt 10) { continue }
-            $spokenRuleSignals[$key]=$now
-            $ruleName=@{R1='ルール1';R2='ルール2';R4='ルール4';R5='ルール5'}[[string]$x.rule]
-            $side=if($x.signal -eq "買いサイン"){"買い"}else{"空売り"}
-            Invoke-SerializedSpeak $speaker ($ruleName+"に該当。"+$x.name+"、"+$side+"。発動"+$x.entry+"円。損切り"+$x.stop+"円。目標"+$x.target+"円。仮想検証中の数字です。注文は武蔵で手動です。")
-            $lastSpoken[[string]$x.ticker]=$now
+        # voice per issue per 10 minutes and $MaxRuleVoicesPerCycle per cycle. Before each
+        # read-out (audit 6325885133): this cycle published live values, the Brain file is
+        # at most 30 s old by its own generated_at, and the issue's current row is still
+        # fresh with the same signal and strategy. A setup skipped by the 10-minute rule is
+        # marked, so it is never read out later at an old price.
+        $ruleVoices=0
+        if ($publishLiveValues) {
+            foreach ($x in (Get-BrainRuleSignals $brainPickPath $now)) {
+                if ($ruleVoices -ge $MaxRuleVoicesPerCycle) { break }
+                $key=[string]$x.ticker+'|'+[string]$x.strategy+'|'+[string]$x.signal+'|'+[string]$x.signal_bar+'|'+[string]$x.rule
+                if ($spokenRuleSignals.ContainsKey($key)) { continue }
+                $row=@($results | Where-Object { $_.ticker -eq $x.ticker } | Select-Object -First 1)
+                if ($row.Count -eq 0 -or $row[0].aggregate_row_fresh -ne $true -or [string]$row[0].signal -ne [string]$x.signal -or [string]$row[0].strategy -ne [string]$x.strategy) { continue }
+                $spokenRuleSignals[$key]=$now
+                $spokenAt=$lastSpoken[[string]$x.ticker]
+                if ($null -ne $spokenAt -and ($now-$spokenAt).TotalMinutes -lt 10) { continue }
+                if (-not (Test-BrainPickFresh (Get-BrainPickGeneratedAt $brainPickPath) (Get-Date))) { break }
+                $ruleName=@{R1='ルール1';R2='ルール2';R4='ルール4';R5='ルール5'}[[string]$x.rule]
+                $side=if($x.signal -eq "買いサイン"){"買い"}else{"空売り"}
+                Invoke-SerializedSpeak $speaker ($ruleName+"に該当。"+$x.name+"、"+$side+"。発動"+[Math]::Round([double]$x.entry,1)+"円。損切り"+[Math]::Round([double]$x.stop,1)+"円。目標"+[Math]::Round([double]$x.target,1)+"円。仮想検証中の数字です。注文は武蔵で手動です。")
+                $lastSpoken[[string]$x.ticker]=$now
+                $ruleVoices++
+            }
         }
         # OWNER 2026-10-22 「キオクシアの8時55分の判定より、寄りの気配で期待値のある銘柄を読み上げて」:
         # before the open the only rule the opening quote decides is ⑤ (shorts on a day that
         # opens >= 1 % below 前日終値). Once at 08:55-09:00: up to five issues whose pre-open
         # quote implies such a gap (split-sized gaps left out), largest first.
-        if (-not $preopenGapSpoken -and $now.TimeOfDay -ge [TimeSpan]::Parse("08:55:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:00:00")) {
+        # Audit 6325885133: only when at least $PreopenMinCoverage issues have a pre-open gap
+        # (quote and 基準値) and the price source agrees; otherwise silent this cycle and the
+        # flag stays unset. A per-row 120 s check cannot work before the open.
+        $preopenCovered=@($results | Where-Object { $null -ne $_.preopen_gap_pct }).Count
+        if (-not $preopenGapSpoken -and $preopenCovered -ge $PreopenMinCoverage -and -not $script:priceSourceMismatch -and
+            $now.TimeOfDay -ge [TimeSpan]::Parse("08:55:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:00:00")) {
             $gapDown=@($results | Where-Object { $null -ne $_.preopen_gap_pct -and [double]$_.preopen_gap_pct -le -1 -and [double]$_.preopen_gap_pct -gt -20 } |
                 Sort-Object { [double]$_.preopen_gap_pct } | Select-Object -First 5)
             if ($gapDown.Count -eq 0) {
