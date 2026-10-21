@@ -291,7 +291,8 @@ document.addEventListener("DOMContentLoaded",()=>{
  // Brain core picks: the top live signals by expected value (Brain observer, every pass).
  // Shown only while the screen is LIVE and the pick file is under 30 s old. Virtual; no orders.
  let brainPick=null;
- const renderBrain=d=>{
+ // named apart from the BRAIN tab renderer above (same script scope)
+ const renderBrainPicks=d=>{
    const box=document.getElementById("brain-pick-rows");
    if(!box)return;
    const age=brainPick?(Date.now()-Date.parse(brainPick.generated_at))/1000:Infinity;
@@ -309,7 +310,7 @@ document.addEventListener("DOMContentLoaded",()=>{
      '<small>発動 '+esc(p.entry)+'／損切 '+esc(p.stop)+'／目標 '+esc(p.target)+'</small>'+
      (p.flags&&p.flags.length?'<small>'+p.flags.map(esc).join("／")+'</small>':'')+'</div>').join("")+'</div>';
  };
- const loadBrain=()=>fetch("/brain_pick.json?t="+Date.now()).then(r=>r.json()).then(v=>{brainPick=(v&&v.schema_version==="100b-v10-brain-pick-v1"&&v.real_submit_allowed===false&&v.trade_instruction===false)?v:null;renderBrain(evLast);}).catch(()=>{brainPick=null;renderBrain(evLast);});
+ const loadBrain=()=>fetch("/brain_pick.json?t="+Date.now()).then(r=>r.json()).then(v=>{brainPick=(v&&v.schema_version==="100b-v10-brain-pick-v1"&&v.real_submit_allowed===false&&v.trade_instruction===false)?v:null;renderBrainPicks(evLast);}).catch(()=>{brainPick=null;renderBrainPicks(evLast);});
  const evRowHtml=(r,i)=>{
    const x=r.x,s=r.ev,ok=s&&s.status==="OK";
    const rule=ruleFor(x,Date.now());
@@ -338,7 +339,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const loadRules=()=>fetch("/rule_shadow.json?t="+Date.now()).then(r=>r.json()).then(v=>{ruleShadow=(v&&v.schema_version==="100b-v10-rule-shadow-v1"&&v.real_submit_allowed===false)?v:null;renderEv(evLast);}).catch(()=>{ruleShadow=null;});
  let evLast={};
  const loadEv=()=>fetch("/signal_ev.json?t="+Date.now()).then(r=>r.json()).then(t=>{evTable=(t&&t.schema_version==="100b-v10-signal-ev-table-v1"&&t.real_submit_allowed===false)?t:null;renderEv(evLast);}).catch(()=>{evTable=null;renderEv(evLast);});
- document.addEventListener("ms2RssUpdate",e=>{evLast=e.detail||{};renderEv(evLast);renderBrain(evLast);});
+ document.addEventListener("ms2RssUpdate",e=>{evLast=e.detail||{};renderEv(evLast);renderBrainPicks(evLast);});
  loadEv();
  loadRules();
  loadBrain();
