@@ -289,7 +289,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   "use strict";
   const label=document.getElementById("v10-source-provenance");
   if(!label)return;
-  const SILENCE_MS=12000;
+  const SILENCE_MS=40000;
   let lastGoodEventAt=null;
   const block=(reason)=>{
     lastGoodEventAt=null;
@@ -316,7 +316,7 @@ document.addEventListener("DOMContentLoaded",()=>{
        diag?.real_submit_allowed!==false||
        typeof window.livePriceBlocked!=="function"||
        window.livePriceBlocked(d)!=="")return false;
-    return withinAge(d.observed_at_offset,12000);
+    return withinAge(d.observed_at_offset,SILENCE_MS);
   };
   block("市場データの出所・鮮度を確認中（固定分析は過去データ）");
   document.addEventListener("ms2RssUpdate",e=>{
@@ -334,7 +334,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     if(lastGoodEventAt===null)return;
     const age=Date.now()-lastGoodEventAt;
     if(!Number.isFinite(age)||age< -5000||age>SILENCE_MS)
-      block("MS2通信停止・12秒超の無受信／価格とシグナルの証拠切れ");
+      block("MS2通信停止・40秒超の無受信／価格とシグナルの証拠切れ");
   };
   let timer=setInterval(expireSilent,1000);
   window.addEventListener("pageshow",()=>{
@@ -422,7 +422,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  let pinned=readPinned(), lastAll=[], lastVerified=false;
  // Collector refresh is nominally every five seconds. A stopped event stream
  // must revoke quote permission even if the last ms2RssUpdate was green.
- const FOCUS_EVENT_SILENCE_MS=12000;
+ const FOCUS_EVENT_SILENCE_MS=40000;
  let lastEventReceivedAt=null;
  const eventRecent=()=>{
    if(lastEventReceivedAt===null)return false;
@@ -433,7 +433,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(!lastVerified||eventRecent())return;
    lastVerified=false;
    lastAll=[];
-   status.textContent="MS2通信が停止・12秒超無受信。価格・シグナル遮断／OWNER固定銘柄は維持。";
+   status.textContent="MS2通信が停止・40秒超無受信。価格・シグナル遮断／OWNER固定銘柄は維持。";
    paint();
  };
  const save=()=>{try{localStorage.setItem(key,JSON.stringify(pinned))}catch(_){status.textContent="固定銘柄の保存に失敗しました。ページ再読込後は要確認。"}};
@@ -490,7 +490,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    const raw=typeof d.observed_at_offset==="string"?d.observed_at_offset.trim():"";
    if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(raw))return false;
    const age=Date.now()-Date.parse(raw);
-   return Number.isFinite(age)&&age>=-5000&&age<=12000;
+   return Number.isFinite(age)&&age>=-5000&&age<=40000;
  };
  document.addEventListener("ms2RssUpdate",e=>{
    const d=e.detail||{};
@@ -1410,9 +1410,10 @@ document.addEventListener("liveFocusUpdate",e=>{
 </script>
 <script>
 document.addEventListener("DOMContentLoaded",()=>{
- // One 12-second MS2 admission/expiry contract for every LIVE-labeled panel.
+ // One 40-second MS2 admission/expiry contract for every LIVE-labeled panel
+ // (OWNER 2026-10-21: was 12 s; the in-session Collector cycle is 15-20 s).
  // A fresh HTTP response carrying an old observation never renews validity.
- const SCREEN_SILENCE_MS=12000;
+ const SCREEN_SILENCE_MS=40000;
  const offsetFresh=(value,limit)=>{
   if(typeof value!=="string"||!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?(?:Z|[+-]\d\d:\d\d)$/.test(value.trim()))return false;
   const age=Date.now()-Date.parse(value.trim());

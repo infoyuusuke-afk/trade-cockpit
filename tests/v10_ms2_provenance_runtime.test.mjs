@@ -133,15 +133,15 @@ test("missing or conflicting independent proof always BLOCKS the panel",()=>{
   assert.match(h.label.textContent,/証拠不足/);
 });
 
-test("no additional MS2 event: watchdog clears previously accepted banner after 12 seconds",()=>{
+test("no additional MS2 event: watchdog clears previously accepted banner after 40 seconds",()=>{
   const h=createHarness();
   h.event(packet(h));
   assert.equal(h.label.dataset.marketTrust,"OBSERVATION_ONLY");
-  h.advance(11999);
+  h.advance(39999);
   assert.equal(h.label.dataset.marketTrust,"OBSERVATION_ONLY");
   h.advance(2);
   assert.equal(h.label.dataset.marketTrust,"BLOCKED");
-  assert.match(h.label.textContent,/通信停止・12秒超の無受信/);
+  assert.match(h.label.textContent,/通信停止・40秒超の無受信/);
   h.event(packet(h));
   assert.equal(h.label.dataset.marketTrust,"OBSERVATION_ONLY");
 });
@@ -161,7 +161,7 @@ test("page becomes hidden or closed: revoke and remove watchdog timer",()=>{
   assert.equal(h.label.dataset.marketTrust,"BLOCKED","old data must not restore");
   h.event(packet(h));
   assert.equal(h.label.dataset.marketTrust,"OBSERVATION_ONLY");
-  h.advance(12001);
+  h.advance(40001);
   assert.equal(h.label.dataset.marketTrust,"BLOCKED");
 });
 

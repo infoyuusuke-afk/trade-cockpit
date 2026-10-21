@@ -154,19 +154,19 @@ test("real UI handlers share the same source and quote admission gate",()=>{
   assert.match(content(h,"opportunity-radar-cards"),/<radar/);
   assert.match(h.nodes.get("kio-ms2-state").textContent,/買い優勢/);
 });
-test("no next event: all LIVE-labeled lanes, cards and metrics clear after 12 sec",()=>{
+test("no next event: all LIVE-labeled lanes, cards and metrics clear after 40 sec",()=>{
   const h=harness();h.send(good(h));
   for(const id of ["ms2-live-cards","ms2-hold-cards","ms2-pts-cards","ms2-ir-pts-cards"])
     h.nodes.get(id).innerHTML="LIVE接続中 price=1234";
   h.nodes.get("ms2-live-health").textContent="LIVE 接続中";
-  h.advance(11999);
+  h.advance(39999);
   assert.match(h.nodes.get("unified-mode").className,/live/);
   h.advance(2);
   assertBlocked(h);
   assert.equal(h.timers.size,1,"central watchdog must be single shared interval");
   h.send(good(h));
   assert.match(h.nodes.get("unified-mode").className,/live/);
-  h.advance(12001);
+  h.advance(40001);
   assertBlocked(h);
 });
 test("malformed identity, frozen timestamp or one unverifiable row never paint LIVE",()=>{
@@ -176,7 +176,7 @@ test("malformed identity, frozen timestamp or one unverifiable row never paint L
     {...valid,connection_source:"公開スナップショット"},
     {...valid,source_authenticated:false},
     {...valid,live_price_diagnostics:{...valid.live_price_diagnostics,workbook_identity_verified:null}},
-    {...valid,observed_at_offset:new Date(h.now()-20000).toISOString()},
+    {...valid,observed_at_offset:new Date(h.now()-50000).toISOString()},
     {...valid,stale:true},
     {...valid,real_submit_allowed:true},
   ]){h.send(d);assertBlocked(h);}
@@ -191,7 +191,7 @@ test("pagehide/pageshow and background-tab disable every panel until new verifie
   h.pageshow();assertBlocked(h);assert.equal(h.timers.size,1);
   h.send(good(h));assert.match(h.nodes.get("unified-mode").className,/live/);
   h.hide();assertBlocked(h);
-  h.send(good(h));h.advance(12001);assertBlocked(h);
+  h.send(good(h));h.advance(40001);assertBlocked(h);
 });
 test("unknown data source or an old per-row quote/provenance time never paints LIVE",()=>{
   const h=harness();
