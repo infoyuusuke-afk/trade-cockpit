@@ -103,7 +103,11 @@ def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: da
             "ev_table_days": len((ev_table or {}).get("days") or []), "rule_forward_from": (rule_shadow or {}).get("forward_from")}
     updated = _live_time(live.get("updated_at"))
     base["live_updated_at"] = updated.isoformat() if updated else None
-    if (live.get("valid") is not True or live.get("stale") is not False or updated is None
+    valid_count = live.get("valid")
+    # Collector emits an integer count, never a boolean; missing permission fails closed.
+    if (type(valid_count) is not int or not 95 <= valid_count <= 100
+            or live.get("real_submit_allowed") is not False
+            or live.get("stale") is not False or updated is None
             or not timedelta(seconds=-5) <= local - updated <= timedelta(seconds=MAX_LIVE_AGE_SECONDS)):
         return dict(base, state="NOT_LIVE")
     scored = []

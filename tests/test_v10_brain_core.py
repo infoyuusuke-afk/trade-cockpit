@@ -29,8 +29,8 @@ def target(ticker, signal="買いサイン", strategy="OR15", entry=1000, stop=9
             "market_state": market}
 
 
-def live(rows, *, at="2026-10-22 09:29:55", valid=True, stale=False):
-    return {"updated_at": at, "valid": valid, "stale": stale, "all_targets": rows}
+def live(rows, *, at="2026-10-22 09:29:55", valid=100, stale=False):
+    return {"updated_at": at, "valid": valid, "stale": stale, "real_submit_allowed": False, "all_targets": rows}
 
 
 SHADOW = {"schema_version": ev.RULES_SCHEMA, "real_submit_allowed": False, "forward_from": "2026-10-22",
@@ -75,6 +75,26 @@ class Pick(unittest.TestCase):
         self.assertIn("未確定", reasons["F.T"])
         self.assertEqual(view["picks"][0]["ticker"], "G.T")
         self.assertIn("信用倍率不明（空売り状況 未確認）", view["picks"][0]["flags"])
+
+    def test_integer_valid_and_permission_gate(self):
+        rows = [target("A.T")]
+        self.assertEqual(brain.pick(live(rows, valid=100), ev_table=TABLE, rule_shadow=SHADOW, now=NOW)["state"], "PICK")
+        for invalid in (True, False, None, 94, 101, "100", 100.0, -1):
+            with self.subTest(valid=invalid):
+                view = brain.pick(live(rows, valid=invalid), ev_table=TABLE, rule_shadow=SHADOW, now=NOW)
+                self.assertEqual((view["state"], view["picks"]), ("NOT_LIVE", []))
+        for unsafe in (True, None, "false", 0):
+            with self.subTest(permission=unsafe):
+                payload = live(rows)
+                payload["real_submit_allowed"] = unsafe
+                view = brain.pick(payload, ev_table=TABLE, rule_shadow=SHADOW, now=NOW)
+                self.assertEqual((view["state"], view["picks"]), ("NOT_LIVE", []))
+
+    def test_brain_ui_row_match_and_ev_provenance_label(self):
+        html = HTML.split('const renderBrain=d=>{', 1)[1].split('const loadBrain=', 1)[0]
+        self.assertIn('cockpitMs2RowReady?.(r)===true', html)
+        self.assertIn('r.signal_bar_time===p.signal_bar', html)
+        self.assertIn('forward Shadow未検証', html)
 
     def test_not_live(self):
         for kw in ({"stale": True}, {"valid": False}, {"at": "2026-10-22 09:28:00"}, {"at": ""}):

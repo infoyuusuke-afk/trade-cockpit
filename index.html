@@ -282,9 +282,17 @@ document.addEventListener("DOMContentLoaded",()=>{
    const age=brainPick?(Date.now()-Date.parse(brainPick.generated_at))/1000:Infinity;
    if(window.cockpitMs2ScreenReady?.(d)!==true||!(age<=30)){box.innerHTML='<div class="focus-empty">ブレインの選択：LIVEでないため表示しません</div>';return;}
    if(brainPick.state!=="PICK"){box.innerHTML='<div class="focus-empty">ブレインの選択：今は見送り（基準を超える期待値のサインなし・'+esc(brainPick.considered)+'件を確認）</div>';return;}
-   box.innerHTML='<p class="sub">ブレインの選択（期待値の高い順・Shadow・発注しません）</p><div class="rotation-grid">'+brainPick.picks.map(p=>
+   // A Brain pick is not a live quote: re-check the current row, strategy and signal bar.
+   const rows=Array.isArray(d?.all_targets)?d.all_targets:[];
+   const eligible=rows.filter(r=>window.cockpitMs2RowReady?.(r)===true);
+   const picks=(Array.isArray(brainPick.picks)?brainPick.picks:[]).filter(p=>
+     eligible.some(r=>r.ticker===p.ticker&&r.name===p.name&&
+       r.signal===p.signal&&r.strategy===p.strategy&&
+       r.signal_bar_time===p.signal_bar));
+   if(!picks.length){box.innerHTML='<div class="focus-empty">ブレインの選択：該当銘柄の最新シグナル未確認（表示禁止）</div>';return;}
+   box.innerHTML='<p class="sub">ブレインの選択（検証中・過去データ内の期待値推定・forward Shadow未検証・発注しません）</p><div class="rotation-grid">'+picks.map(p=>
      '<div class="rotation-box"><b>'+esc(p.rank)+'. '+esc(p.name)+'｜'+esc(p.signal)+'・'+esc(p.strategy)+'</b>'+
-     '<strong>期待値 '+evPct(p.score_pct)+'（根拠 '+esc(p.n_eff)+'回分）</strong>'+
+     '<strong>検証中：推定期待値 '+evPct(p.score_pct)+'（過去記録の有効標本 '+esc(p.n_eff)+'回分）</strong>'+
      '<small>'+(p.rule_label?esc(p.rule_label):p.source==="TICKER"?"この銘柄の同じサインの記録":"同じ戦略の全銘柄の記録")+'</small>'+
      '<small>発動 '+esc(p.entry)+'／損切 '+esc(p.stop)+'／目標 '+esc(p.target)+'</small>'+
      (p.flags&&p.flags.length?'<small>'+p.flags.map(esc).join("／")+'</small>':'')+'</div>').join("")+'</div>';
