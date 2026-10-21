@@ -245,14 +245,39 @@ document.addEventListener("DOMContentLoaded",()=>{
      return ok(a.ev)?Number(b.ev.ev_pct)-Number(a.ev.ev_pct):0;
    });
  const evPct=v=>Number.isFinite(Number(v))?(Number(v)>=0?"+":"")+Number(v).toFixed(3)+"%":"—";
+ // OWNER rules ①②: matched on the live signal (direction, JST time now, market state);
+ // the rule's own wider target/stop are shown. Virtual Shadow only; no orders.
+ let ruleShadow=null;
+ const ruleFor=(x,nowMs)=>{
+   const rules=ruleShadow?.rules||{},side=x?.signal==="買いサイン"?1:x?.signal==="空売りサイン"?-1:0;
+   const jst=new Date(nowMs+324e5),hm=String(jst.getUTCHours()).padStart(2,"0")+":"+String(jst.getUTCMinutes()).padStart(2,"0");
+   for(const [k,r] of Object.entries(rules)){
+     if(r.side!==side||!(r.from<=hm&&hm<r.to))continue;
+     if(r.market&&!String(x?.market_state||"").includes(r.market))continue;
+     const e=Number(x?.entry_price),t=Number(x?.target1);
+     if(!Number.isFinite(e)||!Number.isFinite(t)||e<=0)return {key:k,rule:r};
+     const base=Math.abs(t-e);
+     return {key:k,rule:r,target:e+side*r.target_mult*base,stop:e-side*r.stop_mult*base};
+   }
+   return null;
+ };
+ const ruleSummaryHtml=()=>{
+   if(!ruleShadow)return "";
+   return '<p class="sub">Shadow（'+esc(ruleShadow.forward_from)+'以降・仮想）：'+Object.entries(ruleShadow.rules||{}).map(([k,r])=>{
+     const f=ruleShadow.forward?.[k]||{};
+     return esc(r.label)+" → "+(f.n?esc(f.n)+"回・平均"+evPct(f.ev_pct)+"・PF"+esc(f.pf??"—"):"まだ0回")+"（検証時 後半"+esc(r.backtest?.test?.n)+"回・"+evPct(r.backtest?.test?.ev_pct)+"）";
+   }).join("／")+'</p>';
+ };
  const evRowHtml=(r,i)=>{
    const x=r.x,s=r.ev,ok=s&&s.status==="OK";
+   const rule=ruleFor(x,Date.now());
    const verdict=!ok?"根拠不足":Number(s.ev_pct)>0?"期待値プラス":"期待値マイナス";
    return '<div class="rotation-box"><b>'+(ok?(i+1)+". ":"")+esc(x.name||x.ticker)+'｜'+esc(x.signal)+'・'+esc(x.strategy)+'</b>'+
      '<strong>'+esc(verdict)+'</strong>'+
      '<small>期待値（費用込） '+(s?evPct(s.ev_pct):"—")+'／費用前 '+(s?evPct(s.gross_ev_pct):"—")+'／損益分岐の約定ずれ 片道'+(s&&s.breakeven_slippage_pct_per_side!=null?esc(s.breakeven_slippage_pct_per_side)+"%":"—")+'</small>'+
      '<small>勝率 '+(s&&s.win_rate_pct!=null?esc(s.win_rate_pct)+"%":"—")+'／PF '+(s&&s.pf!=null?esc(s.pf):"—")+'／'+(s?esc(s.n)+"回（"+esc(s.level)+"）":"記録なし")+'</small>'+
-     '<small>発動 '+esc(x.entry_price??"—")+'／損切 '+esc(x.stop_price??"—")+'／目標 '+esc(x.target1??"—")+'</small></div>';
+     '<small>発動 '+esc(x.entry_price??"—")+'／損切 '+esc(x.stop_price??"—")+'／目標 '+esc(x.target1??"—")+'</small>'+
+     (rule?'<small><b>'+esc(rule.rule.label)+' に該当</b>（Shadow）：目標 '+(Number.isFinite(rule.target)?esc(rule.target.toFixed(1)):"—")+'／損切 '+(Number.isFinite(rule.stop)?esc(rule.stop.toFixed(1)):"—")+'</small>':'')+'</div>';
  };
  const renderEv=d=>{
    const box=document.getElementById("signal-ev-rows"),sum=document.getElementById("signal-ev-summary");
@@ -266,13 +291,16 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(!live){box.innerHTML='<div class="focus-empty">LIVEでないため表示しません</div>';return;}
    // the same 120 s per-row gate as SCALP / opportunity radar: stale rows are never ranked or priced
    const rows=evRank(evTable,(Array.isArray(d.all_targets)?d.all_targets:[]).filter(x=>window.cockpitMs2RowReady?.(x)===true));
-   box.innerHTML=rows.length?'<div class="rotation-grid">'+rows.slice(0,10).map(evRowHtml).join("")+'</div>':'<div class="focus-empty">点灯中のサインなし</div>';
+   box.innerHTML=ruleSummaryHtml()+(rows.length?'<div class="rotation-grid">'+rows.slice(0,10).map(evRowHtml).join("")+'</div>':'<div class="focus-empty">点灯中のサインなし</div>');
  };
+ const loadRules=()=>fetch("/rule_shadow.json?t="+Date.now()).then(r=>r.json()).then(v=>{ruleShadow=(v&&v.schema_version==="100b-v10-rule-shadow-v1"&&v.real_submit_allowed===false)?v:null;renderEv(evLast);}).catch(()=>{ruleShadow=null;});
  let evLast={};
  const loadEv=()=>fetch("/signal_ev.json?t="+Date.now()).then(r=>r.json()).then(t=>{evTable=(t&&t.schema_version==="100b-v10-signal-ev-table-v1"&&t.real_submit_allowed===false)?t:null;renderEv(evLast);}).catch(()=>{evTable=null;renderEv(evLast);});
  document.addEventListener("ms2RssUpdate",e=>{evLast=e.detail||{};renderEv(evLast);});
  loadEv();
+ loadRules();
  setInterval(loadEv,600000);
+ setInterval(loadRules,600000);
  // Night PTS -> next-morning watch candidates (REALTIME 5). The PTS list comes from the
  // Collector's recorded JNX snapshots; the morning column is the MS2 pre-open quote of the
  // same issue (row-gated). Watch list only: not a trade signal, no orders.
