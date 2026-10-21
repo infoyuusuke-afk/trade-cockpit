@@ -5,7 +5,10 @@ provider-side spending stop. This report compares it with an OpenAI Usage
 export the OWNER downloads by hand (CSV with a date column and a cost column in
 USD). No network, no API key, no write.
 
-    python scripts/agent_paid_ledger_report.py --ledger <ledger> [--usage-csv <export.csv>]
+    python scripts/agent_paid_ledger_report.py --ledger <ledger> [--usage-csv <export.csv>] [--usage-dates UTC|JST]
+
+The Usage export is assumed to be dated in UTC (--usage-dates UTC, default);
+each reservation is then compared on its UTC day, not its JST day.
 
 Flags:
   USAGE_WITHOUT_RESERVATION  provider cost on a JST day with no ledger reservation
@@ -18,6 +21,7 @@ from __future__ import annotations
 import argparse
 from contextlib import closing
 import csv
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import sqlite3
@@ -28,14 +32,29 @@ DATE_COLUMNS = ("date", "day", "start_date", "start_time", "bucket_start")
 COST_COLUMNS = ("cost_usd", "amount_usd", "cost", "amount", "amount_value")
 
 
-def ledger_days(path: Path) -> dict:
+def ledger_identity(path: Path):
+    with closing(sqlite3.connect(f"file:{path}?mode=ro", uri=True)) as conn:
+        if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='ledger_meta'").fetchone():
+            return None
+        rows = conn.execute("SELECT ledger_id FROM ledger_meta").fetchall()
+    return rows[0][0] if len(rows) == 1 else None
+
+
+def ledger_days(path: Path, *, usage_dates: str = "UTC") -> dict:
+    """Reservations per day, on the same calendar as the Usage export."""
     with closing(sqlite3.connect(f"file:{path}?mode=ro", uri=True)) as conn:
         cols = {r[1] for r in conn.execute("PRAGMA table_info(paid_attempts)")}
         if not cols:
             return {}
-        day = "jst_day" if "jst_day" in cols else "substr(reserved_at,1,10)"
-        rows = conn.execute("SELECT %s, COUNT(*), SUM(reserved_cents) FROM paid_attempts GROUP BY 1" % day).fetchall()
-    return {str(d): {"runs": n, "reserved_cents": int(c or 0)} for d, n, c in rows}
+        rows = conn.execute("SELECT reserved_at, reserved_cents FROM paid_attempts").fetchall()
+    tz = timezone.utc if usage_dates == "UTC" else timezone(timedelta(hours=9))
+    out = {}
+    for at, cents in rows:
+        day = datetime.fromisoformat(str(at)).astimezone(tz).date().isoformat()
+        out.setdefault(day, {"runs": 0, "reserved_cents": 0})
+        out[day]["runs"] += 1
+        out[day]["reserved_cents"] += int(cents or 0)
+    return out
 
 
 def usage_days(path: Path) -> dict:
@@ -77,9 +96,15 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Read-only paid ledger vs OpenAI Usage reconciliation")
     ap.add_argument("--ledger", required=True, type=Path)
     ap.add_argument("--usage-csv", type=Path)
+    ap.add_argument("--usage-dates", choices=("UTC", "JST"), default="UTC", help="calendar of the Usage export")
     args = ap.parse_args(argv)
     try:
-        out = reconcile(ledger_days(args.ledger), usage_days(args.usage_csv) if args.usage_csv else None)
+        out = reconcile(ledger_days(args.ledger, usage_dates=args.usage_dates),
+                        usage_days(args.usage_csv) if args.usage_csv else None)
+        out["ledger_id"] = ledger_identity(args.ledger)
+        out["usage_dates"] = args.usage_dates
+        if out["ledger_id"] is None:
+            out["flags"].append("LEDGER_IDENTITY_MISSING")
         print(json.dumps(out, sort_keys=True))
         return 0 if not out["flags"] else 1
     except (OSError, ValueError, sqlite3.Error) as exc:

@@ -452,7 +452,19 @@ PAID_MAX_MODEL_CALLS = len(ROLES) + 1
 PAID_LEDGER_PATH_ENV = "AGENT_PAID_LEDGER_PATH"
 PAID_LEDGER_ID_ENV = "AGENT_PAID_LEDGER_ID"
 # Explicit per-run permission: the OWNER sets this to the exact run_id.
+# KNOWN LIMITATION (needs an OWNER decision number): any process started by
+# the same Windows user, including an AI executor, can set this variable; it
+# is a deliberate per-run step, not proof that the OWNER pressed it.
 PAID_RUN_APPROVAL_ENV = "AGENT_PAID_RUN_APPROVED_RUN_ID"
+# Ledger registry: which ledger is active, and the reservations of retired
+# ledgers, which keep counting against the lifetime allowance. A new ledger can
+# only be created when none is active. Default under %LOCALAPPDATA%.
+PAID_LEDGER_REGISTRY_ENV = "AGENT_PAID_LEDGER_REGISTRY"
+# Official statistics figures (e.g. JPX margin balances) may be sent to a paid
+# model only after an explicit OWNER decision on their reuse; until then they
+# are refused in billable mode. Set to the exact value below once decided.
+PAID_ALLOW_STATISTICS_ENV = "AGENT_PAID_ALLOW_OFFICIAL_STATISTICS"
+PAID_ALLOW_STATISTICS_VALUE = "OWNER_DECISION_RECORDED"
 LEDGER_ID = re.compile(r"^ledger_[0-9a-f]{32}$")
 
 # Which numbers are OWNER decisions and which are provisional (shown by
@@ -473,12 +485,71 @@ SETTINGS = {
 }
 
 
+def _registry_path() -> Path:
+    raw = os.environ.get(PAID_LEDGER_REGISTRY_ENV, "")
+    if raw:
+        return Path(raw)
+    base = os.environ.get("LOCALAPPDATA") or str(Path.home())
+    return Path(base) / "100B_AGENT" / "paid_ledger_registry.json"
+
+
+def read_registry() -> dict:
+    path = _registry_path()
+    if not path.exists():
+        return {"active": None, "ledgers": []}
+    if path.is_symlink():
+        raise Blocked("PAID_LEDGER_REGISTRY_UNTRUSTED")
+    try:
+        reg = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise Blocked("PAID_LEDGER_REGISTRY_UNREADABLE") from exc
+    if type(reg) is not dict or set(reg) != {"active", "ledgers"} or type(reg["ledgers"]) is not list:
+        raise Blocked("PAID_LEDGER_REGISTRY_INVALID")
+    return reg
+
+
+def _write_registry(reg: dict) -> None:
+    path = _registry_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_name(path.name + ".tmp")
+    temp.write_text(json.dumps(reg, sort_keys=True, indent=1), encoding="utf-8")
+    os.replace(temp, path)
+
+
+def carried_cents(reg: dict) -> int:
+    """Reservations of retired ledgers: they still count toward the lifetime allowance."""
+    return sum(int(x.get("reserved_cents_at_retire") or 0) for x in reg["ledgers"] if x.get("retired_at"))
+
+
+def _ledger_reserved_cents(db_path: Path) -> int:
+    with closing(sqlite3.connect(db_path, timeout=5)) as conn:
+        if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='paid_attempts'").fetchone():
+            return 0
+        return int(conn.execute("SELECT COALESCE(SUM(reserved_cents),0) FROM paid_attempts").fetchone()[0])
+
+
+def retire_paid_ledger(ledger_id: str, reason: str) -> dict:
+    """Close the active ledger; its reserved total is carried to the next one."""
+    reg = read_registry()
+    if reg["active"] != ledger_id or not reason.strip():
+        raise Blocked("PAID_LEDGER_RETIRE_NOT_ACTIVE_OR_NO_REASON")
+    entry = [x for x in reg["ledgers"] if x["ledger_id"] == ledger_id][0]
+    entry.update(retired_at=datetime.now(timezone.utc).isoformat(), retire_reason=reason[:200],
+                 reserved_cents_at_retire=_ledger_reserved_cents(Path(entry["path"])))
+    reg["active"] = None
+    _write_registry(reg)
+    return entry
+
+
 def init_paid_ledger(db_path: Path) -> str:
     """Create the one private ledger; returns its id for AGENT_PAID_LEDGER_ID."""
     db_path = Path(db_path)
     if (not db_path.is_absolute() or db_path.exists() or db_path.is_symlink()
             or not db_path.parent.is_dir() or db_path.parent.is_symlink()):
         raise Blocked("PAID_LEDGER_INIT_PATH_INVALID_OR_EXISTS")
+    reg = read_registry()
+    if reg["active"] is not None:
+        raise Blocked("PAID_LEDGER_ALREADY_ACTIVE_RETIRE_IT_FIRST")
     ledger_id = "ledger_" + os.urandom(16).hex()
     with closing(sqlite3.connect(db_path, timeout=5, isolation_level=None)) as conn:
         conn.execute("PRAGMA synchronous=FULL")
@@ -486,6 +557,10 @@ def init_paid_ledger(db_path: Path) -> str:
         conn.execute("CREATE TABLE ledger_meta (ledger_id TEXT NOT NULL, created_at TEXT NOT NULL)")
         conn.execute("INSERT INTO ledger_meta VALUES (?, ?)", (ledger_id, datetime.now(timezone.utc).isoformat()))
         conn.execute("COMMIT")
+    reg["ledgers"].append({"ledger_id": ledger_id, "path": str(db_path), "created_at": datetime.now(timezone.utc).isoformat(),
+                           "retired_at": None, "reserved_cents_at_retire": None})
+    reg["active"] = ledger_id
+    _write_registry(reg)
     return ledger_id
 
 
@@ -509,12 +584,17 @@ def check_paid_ledger(db_path: Path, run_id: str) -> None:
         raise Blocked("PAID_LEDGER_UNREADABLE_NO_CALL") from exc
     if got != [(want_id,)]:
         raise Blocked("PAID_LEDGER_IDENTITY_MISMATCH_NO_CALL")
+    reg = read_registry()
+    active = [x for x in reg["ledgers"] if x["ledger_id"] == reg["active"]]
+    if reg["active"] != want_id or not active or Path(active[0]["path"]).resolve() != path.resolve():
+        raise Blocked("PAID_LEDGER_NOT_THE_REGISTERED_ACTIVE_LEDGER_NO_CALL")
     if os.environ.get(PAID_RUN_APPROVAL_ENV, "") != run_id:
         raise Blocked("PAID_RUN_NOT_APPROVED_FOR_THIS_RUN_ID_NO_CALL")
 
 
 def reserve_billable_attempt(db_path: Path, run_id: str, source_fp: str, *,
-                             slot_key: str | None = None, now: datetime | None = None) -> None:
+                             slot_key: str | None = None, now: datetime | None = None,
+                             carried: int = 0) -> None:
     """Reserve one entire run BEFORE any request, crash-safe and no retry.
 
     An interrupted/failed attempt remains reserved: the operator must explicitly
@@ -559,7 +639,7 @@ def reserve_billable_attempt(db_path: Path, run_id: str, source_fp: str, *,
             total = conn.execute(
                 "SELECT COALESCE(SUM(reserved_cents), 0) FROM paid_attempts"
             ).fetchone()[0]
-            if total + PAID_RESERVED_CENTS_PER_RUN > PAID_TOTAL_LEDGER_CENTS:
+            if carried + total + PAID_RESERVED_CENTS_PER_RUN > PAID_TOTAL_LEDGER_CENTS:
                 raise Blocked("LOCAL_BUDGET_RESERVATION_EXHAUSTED")
             conn.execute(
                 "INSERT INTO paid_attempts (run_id, source_fingerprint, reserved_cents, state,"
@@ -575,12 +655,32 @@ def reserve_billable_attempt(db_path: Path, run_id: str, source_fp: str, *,
             raise
 
 
+def check_billable_sources(validated: dict, *, synthetic_trial: bool) -> None:
+    """Which evidence a paid model may receive. Synthetic and real evidence never mix."""
+    kinds = {r["source_type"] for r in validated["sources"]}
+    if "SYNTHETIC_TEST" in kinds:
+        if not synthetic_trial or kinds != {"SYNTHETIC_TEST"}:
+            raise Blocked("SYNTHETIC_EVIDENCE_NEEDS_SYNTHETIC_PAID_TRIAL_ONLY_NO_CALL")
+    elif synthetic_trial:
+        raise Blocked("SYNTHETIC_PAID_TRIAL_WITH_REAL_EVIDENCE_NO_CALL")
+    if "OFFICIAL_STATISTICS_FILE" in kinds and \
+            os.environ.get(PAID_ALLOW_STATISTICS_ENV, "") != PAID_ALLOW_STATISTICS_VALUE:
+        raise Blocked("OFFICIAL_STATISTICS_FIGURES_NEED_OWNER_DECISION_NO_CALL")
+
+
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv == ["--print-settings"]:
         print(json.dumps({k: {"value": v, "status": st} for k, (v, st) in SETTINGS.items()},
                          ensure_ascii=False, sort_keys=True))
         return 0
+    if len(argv) == 3 and argv[0] == "--retire-paid-ledger":
+        try:
+            print(json.dumps({"state": "PAID_LEDGER_RETIRED", **retire_paid_ledger(argv[1], argv[2])}))
+            return 0
+        except Blocked as exc:
+            print(json.dumps({"state": "BLOCKED", "reason": str(exc)}))
+            return 2
     if len(argv) == 2 and argv[0] == "--init-paid-ledger":
         try:
             print(json.dumps({"state": "PAID_LEDGER_CREATED", "ledger_id": init_paid_ledger(Path(argv[1])),
@@ -601,6 +701,8 @@ def main(argv=None) -> int:
     parser.add_argument("--handoff-dir", help="Optional signed private RESEARCH handoff (not V10 deployment)")
     parser.add_argument("--target-at", help="Offset-aware ISO time the analysis is for (default: now)")
     parser.add_argument("--slot", default="manual", help="Analysis slot, e.g. premarket_0830 (one paid run per JST day+slot)")
+    parser.add_argument("--synthetic-paid-trial", action="store_true",
+                        help="Billable run on SYNTHETIC_TEST evidence only; never handed to the Brain")
     args = parser.parse_args(argv)
     bridge = None
     try:
@@ -640,10 +742,13 @@ def main(argv=None) -> int:
                 raise Blocked("PAID_INPUT_TOO_LARGE_NO_CALL")
             if os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_AGENT_MODEL", PAID_MODEL).strip() != PAID_MODEL:
                 raise Blocked("PAID_MODEL_OR_ENDPOINT_UNAPPROVED_NO_CALL")
+            check_billable_sources(validated, synthetic_trial=args.synthetic_paid_trial)
+            if args.synthetic_paid_trial and args.handoff_dir:
+                raise Blocked("SYNTHETIC_PAID_TRIAL_IS_NOT_HANDED_TO_THE_BRAIN_NO_CALL")
             check_paid_ledger(Path(args.paid_budget_db), validated["run_id"])
             slot_key = _time(target_at).astimezone(JST).date().isoformat() + ":" + args.slot
             reserve_billable_attempt(Path(args.paid_budget_db), validated["run_id"], fingerprint(validated),
-                                     slot_key=slot_key, now=now)
+                                     slot_key=slot_key, now=now, carried=carried_cents(read_registry()))
         runner = api_runner if args.enable_billable_api else offline_runner
         result = asyncio.run(coordinate(validated, runner, now=now, target_at=target_at, slot=args.slot))
         if args.offline_test:
