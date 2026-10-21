@@ -1,5 +1,5 @@
 {
-  "schema_version": "100b-public-agent-evidence-v1",
+  "schema_version": "100b-public-agent-evidence-v2",
   "run_id": "owner_demo_20261021_01",
   "sources": [
     {
@@ -8,7 +8,11 @@
       "source_url": "https://www.jpx.co.jp/markets/",
       "as_of": "2026-10-19T09:00:00+09:00",
       "available_at": "2026-10-19T15:00:00+09:00",
-      "summary": "SYNTHETIC TEST ONLY: no verified pre-move Japanese-equity catalysts supplied; do not recommend a trade."
+      "summary": "SYNTHETIC TEST ONLY: no verified pre-move Japanese-equity catalysts supplied; do not recommend a trade.",
+      "fetched_at": "2026-10-19T15:00:00+09:00",
+      "source_name": "SYNTHETIC TEST SOURCE (not a market observation)",
+      "source_type": "SYNTHETIC_TEST",
+      "data_status": "PUBLICATION_TIME_VERIFIED"
     },
     {
       "source_id": "public_demo_supply_001",
@@ -16,7 +20,11 @@
       "source_url": "https://www.jpx.co.jp/markets/",
       "as_of": "2026-10-19T09:00:00+09:00",
       "available_at": "2026-10-19T15:00:00+09:00",
-      "summary": "SYNTHETIC TEST ONLY: no verified stock-specific credit, short interest, futures or SQ observations supplied."
+      "summary": "SYNTHETIC TEST ONLY: no verified stock-specific credit, short interest, futures or SQ observations supplied.",
+      "fetched_at": "2026-10-19T15:00:00+09:00",
+      "source_name": "SYNTHETIC TEST SOURCE (not a market observation)",
+      "source_type": "SYNTHETIC_TEST",
+      "data_status": "PUBLICATION_TIME_VERIFIED"
     },
     {
       "source_id": "public_demo_revenue_001",
@@ -24,7 +32,11 @@
       "source_url": "https://www.jpx.co.jp/markets/",
       "as_of": "2026-10-19T09:00:00+09:00",
       "available_at": "2026-10-19T15:00:00+09:00",
-      "summary": "SYNTHETIC TEST ONLY: no independently verified product revenue, conversion rate or cost evidence supplied."
+      "summary": "SYNTHETIC TEST ONLY: no independently verified product revenue, conversion rate or cost evidence supplied.",
+      "fetched_at": "2026-10-19T15:00:00+09:00",
+      "source_name": "SYNTHETIC TEST SOURCE (not a market observation)",
+      "source_type": "SYNTHETIC_TEST",
+      "data_status": "PUBLICATION_TIME_VERIFIED"
     }
   ]
 }

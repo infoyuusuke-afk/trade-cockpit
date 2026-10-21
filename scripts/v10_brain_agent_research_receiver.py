@@ -157,7 +157,8 @@ def _record_attempt(conn, *, name, file_sha, run_id, now, state, reason):
 
 
 REPORT_KEYS = ("report_id", "role", "lane", "target_at", "generated_at", "expires_at", "status",
-               "unavailable_reason", "evidence_ids", "evidence", "hypothesis", "conditions", "invalidation")
+               "unavailable_reason", "evidence_ids", "evidence", "excluded_source_ids", "hypothesis",
+               "conditions", "invalidation")
 
 
 def _roles_and_conflicts(research: dict) -> tuple[list, list]:

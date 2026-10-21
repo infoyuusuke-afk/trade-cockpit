@@ -30,6 +30,8 @@ def doc():
             "role": role, "source_url": "https://www.boj.or.jp/rss/whatsnew.xml",
             "as_of": "2026-10-20T12:00:00+09:00",
             "available_at": "2026-10-20T16:35:00+00:00",
+            "fetched_at": "2026-10-20T16:35:00+00:00",
+            "source_name": "Synthetic public source", "source_type": "SYNTHETIC_TEST", "data_status": "PUBLICATION_TIME_VERIFIED",
             "summary": "Synthetic offline headline; no trading information",
         }
     return {
@@ -214,6 +216,7 @@ class SignedHandoff(unittest.TestCase):
             for row in d["sources"]:
                 row["as_of"] = (now-timedelta(minutes=5)).isoformat()
                 row["available_at"] = (now-timedelta(minutes=1)).isoformat()
+                row["fetched_at"] = row["available_at"]
             source = Path(td) / "sample.json"
             source.write_text(json.dumps(d), encoding="utf-8")
             env = dict(os.environ)
