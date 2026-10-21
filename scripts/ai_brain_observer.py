@@ -45,6 +45,15 @@ AGENT_RECEIVER_MODULES = (
 )
 AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_ACK", "AGENT_RECEIVER_")
 
+# Backtest expected value of the cockpit's own recorded signals (OWNER
+# 2026-10-21). Rebuilt from RuntimeDir/records once per JST day after the close
+# (or when missing) into RuntimeDir/signal_ev_table_v1.json, which the Gateway
+# serves read-only for the REALTIME 5 ranking. The module is loaded only from
+# bytes whose git blob equals the pin. It never touches live data or orders.
+SIGNAL_EV_MODULE = ("v10_signal_ev_table", "864131da87c13739d0025e579c956f8362de4200")
+SIGNAL_EV_FILE = "signal_ev_table_v1.json"
+SIGNAL_EV_REBUILD_AFTER_JST = (15, 35)
+
 
 def _aware(value):
     if not isinstance(value, str) or not value:
@@ -273,6 +282,41 @@ def load_agent_receiver(script_dir: Path):
     return sys.modules[AGENT_PACKAGE + ".v10_brain_agent_research_receiver"]
 
 
+def load_pinned_module(script_dir: Path, name: str, pin: str):
+    path = Path(script_dir) / (name + ".py")
+    raw = path.read_bytes()
+    if git_blob_sha1(raw) != pin:
+        raise RuntimeError("PINNED_MODULE_MISMATCH:" + name)
+    module = types.ModuleType("v10_pinned_" + name)
+    module.__file__ = str(path)
+    exec(compile(raw, str(path), "exec"), module.__dict__)
+    return module
+
+
+def signal_ev_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
+    """Rebuild the EV table at most once per JST day, after 15:35 or when missing. Never raises."""
+    now = now or datetime.now(timezone.utc)
+    jst = now.astimezone(timezone(timedelta(hours=9)))
+    target = Path(live_path).parent / SIGNAL_EV_FILE
+    after_close = (jst.hour, jst.minute) >= SIGNAL_EV_REBUILD_AFTER_JST
+    due = not target.exists() or (after_close and state.get("built_after_close_for") != jst.date().isoformat())
+    if not due or (state.get("next_try") is not None and now < state["next_try"]):
+        return None
+    state["next_try"] = now + timedelta(minutes=10)
+    try:
+        module = state.get("module") or load_pinned_module(Path(script_dir or Path(__file__).resolve().parent), *SIGNAL_EV_MODULE)
+        state["module"] = module
+        table = module.write_table(Path(live_path).parent / "records", target, now=now)
+        if after_close:
+            state["built_after_close_for"] = jst.date().isoformat()
+        summary = {"signal_ev": "BUILT", "days": len(table["days"]), "filled": table["counts"]["filled"]}
+    except Exception as exc:  # fail closed, keep the observer running
+        summary = {"signal_ev": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}
+    summary["real_submit_allowed"] = False
+    print(json.dumps(summary, sort_keys=True), flush=True)
+    return summary
+
+
 def agent_receiver_pass(state: dict, *, now=None, script_dir=None):
     """Opt-in: receive signed agent research once per interval. Never raises."""
     inbox = os.environ.get(AGENT_INBOX_ENV, "")
@@ -328,9 +372,11 @@ def main(argv=None):
         run_once(live, status_path)
         return 0
     agent_state = {}
+    ev_state = {}
     while True:
         run_once(live, status_path)
         agent_receiver_pass(agent_state)
+        signal_ev_pass(ev_state, live)
         time.sleep(args.interval)
 
 

@@ -551,6 +551,32 @@ function Get-AgentResearchView([string]$Inbox, [string]$ReceiverKeyHex, [datetim
     }
 }
 
+# Backtest expected value of the cockpit's own recorded signals, rebuilt daily
+# by the Brain observer into RuntimeDir\signal_ev_table_v1.json. Served
+# read-only for the REALTIME 5 ranking; it is a past-data statistic, never a
+# LIVE price, never a trade instruction.
+function Get-SignalEvView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'signal_ev_table_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'EV_TABLE_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 4194304) {
+            return (& $fail 'EV_TABLE_FILE_UNTRUSTED')
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $table = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$table.schema_version -cne '100b-v10-signal-ev-table-v1' -or $table.real_submit_allowed -ne $false -or
+            $table.trade_instruction -ne $false) {
+            return (& $fail 'EV_TABLE_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'EV_TABLE_UNREADABLE')
+    }
+}
+
 function Get-GitInfo([string]$repoRoot) {
     $branch = "unknown"
     $sha = "unknown"
@@ -2536,6 +2562,11 @@ try {
                     real_submit_allowed = $false
                 } | ConvertTo-Json -Depth 6
                 Send-Response $stream '200 OK' 'application/json; charset=utf-8' ($utf8.GetBytes($obsPayload))
+                continue
+            }
+            if ($path -eq '/signal_ev.json') {
+                $evView = Get-SignalEvView $RuntimeDir
+                Send-Response $stream $evView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$evView.body))
                 continue
             }
             if ($path -eq '/agent_research.json') {
