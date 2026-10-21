@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-21 17:01:05 JST",
+  "updated_at": "2026-10-21 19:37:59 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -275,7 +275,7 @@
           "vwap": 3103.3333333333335,
           "high": 3150,
           "low": 3020,
-          "market_cap": 253907391930,
+          "market_cap": 241006595641,
           "sector": "Technology Services",
           "already_watched": true
         },
@@ -1266,7 +1266,7 @@
           "vwap": 195.9,
           "high": 197.7,
           "low": 193.5,
-          "market_cap": 44913998304,
+          "market_cap": 45124972200,
           "sector": "Process Industries",
           "already_watched": false
         },
@@ -1458,7 +1458,7 @@
           "price": 6756,
           "change_pct": 1.7010386873400574,
           "volume": 16375800,
-          "relative_volume": 0.7781414470870659,
+          "relative_volume": 0.7781414470870661,
           "atr_pct": 6.35,
           "vwap": 6827,
           "high": 7017,
@@ -2038,7 +2038,7 @@
       "price": 6756,
       "change_pct": 1.7010386873400574,
       "volume": 16375800,
-      "relative_volume": 0.7781414470870659,
+      "relative_volume": 0.7781414470870661,
       "atr_pct": 6.35,
       "vwap": 6827,
       "high": 7017,
@@ -3483,7 +3483,7 @@
       "vwap": 195.9,
       "high": 197.7,
       "low": 193.5,
-      "market_cap": 44913998304,
+      "market_cap": 45124972200,
       "sector": "Process Industries",
       "already_watched": false
     },
@@ -5051,7 +5051,7 @@
       "vwap": 3103.3333333333335,
       "high": 3150,
       "low": 3020,
-      "market_cap": 253907391930,
+      "market_cap": 241006595641,
       "sector": "Technology Services",
       "already_watched": true
     },
