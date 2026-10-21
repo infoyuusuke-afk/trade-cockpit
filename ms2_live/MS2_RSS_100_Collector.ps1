@@ -1959,7 +1959,10 @@ function Invoke-SerializedSpeak($speaker, [string]$text, [int]$timeoutMs = 30000
 # flags checked). Any problem gives an empty list, i.e. silence, never a guess.
 # Audit 6325885133: the file's own generated_at (offset-aware) must be at most 30 s old
 # and not in the future, the flags must be real booleans and the state PICK or NO_PICK.
-function Test-BrainPickFresh([string]$GeneratedAt, [datetime]$Now) {
+function Test-BrainPickFresh($GeneratedAt, [datetime]$Now) {
+    # pwsh 7 ConvertFrom-Json turns ISO strings into DateTime; 5.1 keeps the string.
+    if ($GeneratedAt -is [datetime]) { $GeneratedAt = ([DateTimeOffset]$GeneratedAt).ToString('o') }
+    $GeneratedAt = [string]$GeneratedAt
     $at = [DateTimeOffset]::MinValue
     if ($GeneratedAt -notmatch '(Z|[+-]\d{2}:\d{2})$' -or
         -not [DateTimeOffset]::TryParse($GeneratedAt, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$at)) { return $false }
@@ -1976,16 +1979,23 @@ function Get-BrainRuleSignals([string]$Path, [datetime]$Now) {
             $view.real_submit_allowed -isnot [bool] -or $view.real_submit_allowed -or
             $view.trade_instruction -isnot [bool] -or $view.trade_instruction -or
             [string]$view.state -notin @('PICK','NO_PICK')) { return @() }
-        if (-not (Test-BrainPickFresh ([string]$view.generated_at) $Now)) { return @() }
+        if (-not (Test-BrainPickFresh $view.generated_at $Now)) { return @() }
         return @($view.rule_signals | Where-Object { [string]$_.rule -in @('R1','R2','R4','R5') -and [string]$_.signal -in @('買いサイン','空売りサイン') })
     } catch {
         return @()
     }
 }
-function Get-BrainPickGeneratedAt([string]$Path) {
-    try { return [string](([IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop).generated_at) } catch { return "" }
+function Test-RuleSignalStillListed([string]$Path, [string]$Key) {
+    # Re-read right before speaking: the setup must still be listed in a fresh, valid file.
+    foreach ($y in (Get-BrainRuleSignals $Path (Get-Date))) {
+        if (([string]$y.ticker+'|'+[string]$y.strategy+'|'+[string]$y.signal+'|'+[string]$y.signal_bar+'|'+[string]$y.rule) -ceq $Key) { return $true }
+    }
+    return $false
 }
 $MaxRuleVoicesPerCycle = 1   # each read-out blocks until played; one per cycle keeps the Collector on time
+$PreopenVoiceFrom = [TimeSpan]::Parse("08:55:00")
+$PreopenVoiceUntil = [TimeSpan]::Parse("08:59:30")   # audit 6326225807: never spoken at or after the open
+$preopenSkipLoggedAt = Get-Date "2000-01-01"
 $brainPickPath = Join-Path $PSScriptRoot "brain_pick_v1.json"
 $spokenRuleSignals = @{}
 $preopenGapSpoken = $false
@@ -3154,16 +3164,22 @@ try {
         # marked, so it is never read out later at an old price.
         $ruleVoices=0
         if ($publishLiveValues) {
-            foreach ($x in (Get-BrainRuleSignals $brainPickPath $now)) {
+            # audit 6326225807: the Brain rewrites its file every 5 s from the live data this
+            # cycle just published, so its generated_at is normally later than the cycle start;
+            # the current clock is the reference, not $now.
+            foreach ($x in (Get-BrainRuleSignals $brainPickPath (Get-Date))) {
                 if ($ruleVoices -ge $MaxRuleVoicesPerCycle) { break }
                 $key=[string]$x.ticker+'|'+[string]$x.strategy+'|'+[string]$x.signal+'|'+[string]$x.signal_bar+'|'+[string]$x.rule
                 if ($spokenRuleSignals.ContainsKey($key)) { continue }
                 $row=@($results | Where-Object { $_.ticker -eq $x.ticker } | Select-Object -First 1)
                 if ($row.Count -eq 0 -or $row[0].aggregate_row_fresh -ne $true -or [string]$row[0].signal -ne [string]$x.signal -or [string]$row[0].strategy -ne [string]$x.strategy) { continue }
+                # the same bar and entry price as now: a re-lit setup on a new bar is a new key
+                if ([string]$row[0].signal_bar_time -ne [string]$x.signal_bar -or $null -eq $row[0].entry_price -or
+                    [Math]::Abs([double]$row[0].entry_price - [double]$x.entry) -gt 1e-6) { continue }
                 $spokenRuleSignals[$key]=$now
                 $spokenAt=$lastSpoken[[string]$x.ticker]
                 if ($null -ne $spokenAt -and ($now-$spokenAt).TotalMinutes -lt 10) { continue }
-                if (-not (Test-BrainPickFresh (Get-BrainPickGeneratedAt $brainPickPath) (Get-Date))) { break }
+                if (-not (Test-RuleSignalStillListed $brainPickPath $key)) { continue }
                 $ruleName=@{R1='ルール1';R2='ルール2';R4='ルール4';R5='ルール5'}[[string]$x.rule]
                 $side=if($x.signal -eq "買いサイン"){"買い"}else{"空売り"}
                 Invoke-SerializedSpeak $speaker ($ruleName+"に該当。"+$x.name+"、"+$side+"。発動"+[Math]::Round([double]$x.entry,1)+"円。損切り"+[Math]::Round([double]$x.stop,1)+"円。目標"+[Math]::Round([double]$x.target,1)+"円。仮想検証中の数字です。注文は武蔵で手動です。")
@@ -3179,17 +3195,33 @@ try {
         # (quote and 基準値) and the price source agrees; otherwise silent this cycle and the
         # flag stays unset. A per-row 120 s check cannot work before the open.
         $preopenCovered=@($results | Where-Object { $null -ne $_.preopen_gap_pct }).Count
-        if (-not $preopenGapSpoken -and $preopenCovered -ge $PreopenMinCoverage -and -not $script:priceSourceMismatch -and
-            $now.TimeOfDay -ge [TimeSpan]::Parse("08:55:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("09:00:00")) {
-            $gapDown=@($results | Where-Object { $null -ne $_.preopen_gap_pct -and [double]$_.preopen_gap_pct -le -1 -and [double]$_.preopen_gap_pct -gt -20 } |
-                Sort-Object { [double]$_.preopen_gap_pct } | Select-Object -First 5)
-            if ($gapDown.Count -eq 0) {
-                Invoke-SerializedSpeak $speaker "8時55分。寄り前の気配で、窓下げ1パーセント以上の銘柄はありません。ルール5の対象候補はなしです。"
+        # Audit 6326225807: also $publishLiveValues, and the window 08:55:00-08:59:30 is
+        # re-checked on the current clock right before speaking (never at or after the open).
+        # Inside the window it retries every cycle until the gates pass; a skip is logged
+        # once a minute with the reason. With 80-99 covered issues the voice says so.
+        $inPreopenWindow=($now.TimeOfDay -ge $PreopenVoiceFrom -and $now.TimeOfDay -lt $PreopenVoiceUntil)
+        if (-not $preopenGapSpoken -and $inPreopenWindow) {
+            $preopenReady=($preopenCovered -ge $PreopenMinCoverage -and -not $script:priceSourceMismatch -and $publishLiveValues)
+            if (-not $preopenReady) {
+                if (((Get-Date)-$preopenSkipLoggedAt).TotalSeconds -ge 60) {
+                    Write-Host ("[VOICE] 08:55 gap voice skipped: covered=" + $preopenCovered + "/" + $PreopenMinCoverage + " live=" + [bool]$publishLiveValues + " mismatch=" + [bool]$script:priceSourceMismatch) -ForegroundColor Yellow
+                    $preopenSkipLoggedAt=Get-Date
+                }
             } else {
-                $names=($gapDown | ForEach-Object { $_.name+"、マイナス"+[Math]::Abs([Math]::Round([double]$_.preopen_gap_pct,1))+"パーセント" }) -join "。"
-                Invoke-SerializedSpeak $speaker ("8時55分。寄り前の気配で窓下げ1パーセント以上、ルール5の対象候補です。"+$names+"。寄った後にルール5のサインが出た時だけ有効です。気配は始値ではありません。")
+                $gapDown=@($results | Where-Object { $null -ne $_.preopen_gap_pct -and [double]$_.preopen_gap_pct -le -1 -and [double]$_.preopen_gap_pct -gt -20 } |
+                    Sort-Object { [double]$_.preopen_gap_pct } | Select-Object -First 5)
+                $scope=if($preopenCovered -ge 100){"寄り前の気配で"}else{"寄り前の気配が取得済みの"+$preopenCovered+"銘柄では"}
+                $clock=(Get-Date).TimeOfDay
+                if ($clock -ge $PreopenVoiceFrom -and $clock -lt $PreopenVoiceUntil) {
+                    if ($gapDown.Count -eq 0) {
+                        Invoke-SerializedSpeak $speaker ("8時55分。"+$scope+"、窓下げ1パーセント以上の銘柄はありません。ルール5の対象候補はなしです。")
+                    } else {
+                        $names=($gapDown | ForEach-Object { $_.name+"、マイナス"+[Math]::Abs([Math]::Round([double]$_.preopen_gap_pct,1))+"パーセント" }) -join "。"
+                        Invoke-SerializedSpeak $speaker ("8時55分。"+$scope+"窓下げ1パーセント以上、ルール5の対象候補です。"+$names+"。寄った後にルール5のサインが出た時だけ有効です。気配は始値ではありません。")
+                    }
+                    $preopenGapSpoken=$true
+                }
             }
-            $preopenGapSpoken=$true
         }
         if($now.TimeOfDay -ge [TimeSpan]::Parse("15:00:00") -and $now.TimeOfDay -lt [TimeSpan]::Parse("15:25:00")){
             foreach($x in @($holdTop5|Select-Object -First 3)){

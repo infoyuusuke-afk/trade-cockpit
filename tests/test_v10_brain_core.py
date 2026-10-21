@@ -197,7 +197,15 @@ class CollectorVoice(unittest.TestCase):
         text = COLLECTOR.read_text(encoding="utf-8-sig")
         self.assertNotIn("$voiceCandidates", text)                      # the voice for every lit signal is gone
         self.assertNotIn("キオクシア、8時55分判定", text)
-        self.assertIn("foreach ($x in (Get-BrainRuleSignals $brainPickPath $now)) {", text)
+        # audit 6326225807: the current clock, not the cycle start, is the freshness reference
+        self.assertIn("foreach ($x in (Get-BrainRuleSignals $brainPickPath (Get-Date))) {", text)
+        self.assertNotIn("Get-BrainRuleSignals $brainPickPath $now", text)
+        self.assertIn("if (-not (Test-RuleSignalStillListed $brainPickPath $key)) { continue }", text)
+        self.assertIn("[string]$row[0].signal_bar_time -ne [string]$x.signal_bar", text)
+        self.assertIn('$PreopenVoiceUntil = [TimeSpan]::Parse("08:59:30")', text)
+        self.assertIn("-not $script:priceSourceMismatch -and $publishLiveValues)", text)
+        self.assertIn("if ($clock -ge $PreopenVoiceFrom -and $clock -lt $PreopenVoiceUntil) {", text)
+        self.assertIn("[VOICE] 08:55 gap voice skipped: covered=", text)
         self.assertIn("[string]$_.rule -in @('R1','R2','R4','R5')", text)
         self.assertIn("ルール5の対象候補です。", text)
         self.assertIn("$spokenRuleSignals=@{}; $preopenGapSpoken=$false", text)   # reset each day
@@ -219,11 +227,17 @@ class CollectorVoice(unittest.TestCase):
         harness = r"""
 param([string]$Collector, [string]$Dir)
 $t=$null;$e=$null;$ast=[Management.Automation.Language.Parser]::ParseFile($Collector,[ref]$t,[ref]$e)
-foreach($name in 'Test-BrainPickFresh','Get-BrainRuleSignals'){
+foreach($name in 'Test-BrainPickFresh','Get-BrainRuleSignals','Test-RuleSignalStillListed'){
   $fn=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq $name},$true))
   . ([scriptblock]::Create($fn[0].Extent.Text))
 }
 $o=[ordered]@{}
+# the file was written after an earlier cycle start: judged on the current clock it is fresh,
+# judged on a cycle start 10 s ago it would look 10 s in the future and be refused
+$o['cycle_start_ref']=(@(Get-BrainRuleSignals (Join-Path $Dir 'valid.json') (Get-Date).AddSeconds(-10)) | ForEach-Object { $_.ticker }) -join ','
+$o['pwsh7_datetime']=[string](Test-BrainPickFresh ([datetime]::UtcNow) (Get-Date))
+$o['still_listed']=[string](Test-RuleSignalStillListed (Join-Path $Dir 'valid.json') 'A.T||買いサイン||R1')
+$o['not_listed']=[string](Test-RuleSignalStillListed (Join-Path $Dir 'valid.json') 'Z.T||買いサイン||R3A_1000')
 foreach($n in 'valid','old','future','nooffset','unsafe','stringflag','notlive','oddstate','missing','broken'){ $o[$n]=(@(Get-BrainRuleSignals (Join-Path $Dir ($n+'.json')) (Get-Date)) | ForEach-Object { $_.ticker+':'+$_.rule }) -join ',' }
 $o | ConvertTo-Json -Compress
 """
@@ -247,7 +261,8 @@ $o | ConvertTo-Json -Compress
             p = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(h), "-Collector", str(COLLECTOR),
                                 "-Dir", d], capture_output=True, text=True, encoding="utf-8", errors="replace")
         self.assertEqual(json.loads(p.stdout.strip().splitlines()[-1]),
-                         {"valid": "A.T:R1", "old": "", "future": "", "nooffset": "", "unsafe": "", "stringflag": "",
+                         {"cycle_start_ref": "", "pwsh7_datetime": "True", "still_listed": "True", "not_listed": "False",
+                          "valid": "A.T:R1", "old": "", "future": "", "nooffset": "", "unsafe": "", "stringflag": "",
                           "notlive": "", "oddstate": "", "missing": "", "broken": ""})
 
 
