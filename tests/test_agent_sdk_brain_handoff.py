@@ -119,11 +119,43 @@ class SignedHandoff(unittest.TestCase):
     def test_signed_but_false_source_evidence_reference_denied(self):
         f = self.valid()
         data = json.loads(f.read_text(encoding="utf-8"))
-        data["payload"]["research"]["specialists"][0]["status"] = "WATCH"
-        data["payload"]["research"]["specialists"][0]["evidence_ids"] = ["fake"]
+        pre = [x for x in data["payload"]["research"]["specialists"] if x["role"] == "pre_next"][0]
+        pre["status"] = "WATCH"
+        pre["evidence_ids"] = ["fake"]
         resign(data)
         f.write_bytes(bridge._canon(data))
-        with self.assertRaises(pilot.Blocked):
+        with self.assertRaises((pilot.Blocked, bridge.BridgeBlocked)):
+            bridge.consume(input_path=f, private_dir=self.root, now=NOW)
+
+    def test_signed_report_with_extended_expiry_is_denied(self):
+        f = self.valid()
+        data = json.loads(f.read_text(encoding="utf-8"))
+        pre = [x for x in data["payload"]["research"]["specialists"] if x["role"] == "pre_next"][0]
+        pre["expires_at"] = "2027-01-01T00:00:00+00:00"
+        resign(data)
+        f.write_bytes(bridge._canon(data))
+        with self.assertRaisesRegex(bridge.BridgeBlocked, "REPORT_VALIDITY_WINDOW_INVALID"):
+            bridge.consume(input_path=f, private_dir=self.root, now=NOW)
+
+    def test_signed_revenue_hunter_moved_to_market_lane_is_denied(self):
+        f = self.valid()
+        data = json.loads(f.read_text(encoding="utf-8"))
+        rev = [x for x in data["payload"]["research"]["specialists"] if x["role"] == "revenue_hunter"][0]
+        rev["lane"] = "MARKET_RESEARCH_NOT_EXECUTION"
+        resign(data)
+        f.write_bytes(bridge._canon(data))
+        with self.assertRaisesRegex(bridge.BridgeBlocked, "REPORT_IDENTITY_OR_LANE_INVALID"):
+            bridge.consume(input_path=f, private_dir=self.root, now=NOW)
+
+    def test_signed_status_rewrite_to_unavailable_is_denied(self):
+        f = self.valid()
+        data = json.loads(f.read_text(encoding="utf-8"))
+        pre = [x for x in data["payload"]["research"]["specialists"] if x["role"] == "pre_next"][0]
+        pre["status"] = "UNAVAILABLE"
+        pre["unavailable_reason"] = "API_OR_RUNTIME_FAILED"
+        resign(data)
+        f.write_bytes(bridge._canon(data))
+        with self.assertRaises(bridge.BridgeBlocked):
             bridge.consume(input_path=f, private_dir=self.root, now=NOW)
 
     def test_source_available_after_analysis_denied(self):

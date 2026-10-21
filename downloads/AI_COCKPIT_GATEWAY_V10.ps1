@@ -493,6 +493,36 @@ function Send-Response($stream, [string]$status, [string]$contentType, [byte[]]$
     $stream.Flush()
 }
 
+# Specialist AI research view (research lane only). The Brain receiver writes
+# agent_research_display_v1.json into the OWNER's private inbox from verified,
+# signed ACKs. The Gateway only re-reads it, checks the safety flags and size,
+# and serves it read-only. It never makes LIVE data usable or enables orders.
+# Off (DISABLED) unless V10_AGENT_RESEARCH_INBOX is set.
+function Get-AgentResearchView([string]$Inbox) {
+    $disabled = '{"state":"DISABLED","real_submit_allowed":false,"brain_trade_decision_eligible":false}'
+    $unavailable = '{"state":"UNAVAILABLE","real_submit_allowed":false,"brain_trade_decision_eligible":false}'
+    if ([string]::IsNullOrWhiteSpace($Inbox)) { return @{ status = '200 OK'; body = $disabled } }
+    try {
+        if (-not [IO.Path]::IsPathRooted($Inbox)) { return @{ status = '503 Service Unavailable'; body = $unavailable } }
+        $file = Join-Path $Inbox 'agent_research_display_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return @{ status = '503 Service Unavailable'; body = $unavailable } }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 262144) {
+            return @{ status = '503 Service Unavailable'; body = $unavailable }
+        }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-agent-research-display-v1' -or
+            $view.real_submit_allowed -ne $false -or $view.brain_trade_decision_eligible -ne $false -or
+            $view.live_market_data -ne $false) {
+            return @{ status = '503 Service Unavailable'; body = $unavailable }
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return @{ status = '503 Service Unavailable'; body = $unavailable }
+    }
+}
+
 function Get-GitInfo([string]$repoRoot) {
     $branch = "unknown"
     $sha = "unknown"
@@ -2478,6 +2508,11 @@ try {
                     real_submit_allowed = $false
                 } | ConvertTo-Json -Depth 6
                 Send-Response $stream '200 OK' 'application/json; charset=utf-8' ($utf8.GetBytes($obsPayload))
+                continue
+            }
+            if ($path -eq '/agent_research.json') {
+                $agentView = Get-AgentResearchView ([Environment]::GetEnvironmentVariable('V10_AGENT_RESEARCH_INBOX'))
+                Send-Response $stream $agentView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$agentView.body))
                 continue
             }
             # Serve ONLY the explicit public UI files. Never serve arbitrary files

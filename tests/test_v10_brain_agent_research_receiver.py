@@ -56,9 +56,11 @@ async def divergent_runner(role, prompt):
     ids = [s["source_id"] for s in data["sources"]]
     if role == "pre_next":
         return {"role": role, "status": "WATCH", "evidence_ids": ids[:1],
-                "hypothesis": "Synthetic watch hypothesis", "invalidation": "Synthetic invalidation"}
+                "hypothesis": "Synthetic watch hypothesis", "conditions": "Synthetic condition",
+                "invalidation": "Synthetic invalidation"}
     return {"role": role, "status": "NO_SIGNAL", "evidence_ids": [],
-            "hypothesis": "Synthetic no signal", "invalidation": "Synthetic invalidation"}
+            "hypothesis": "Synthetic no signal", "conditions": "Synthetic condition",
+            "invalidation": "Synthetic invalidation"}
 
 
 def resign(path):
@@ -103,7 +105,11 @@ class ReceiverTests(unittest.TestCase):
         self.assertIs(ack["live_market_data"], False)
         self.assertIs(ack["brain_trade_decision_eligible"], False)
         roles = {r["role"]: r["status"] for r in ack["roles"]}
-        self.assertEqual(roles, {"pre_next": "NO_SIGNAL", "revenue_hunter": "NO_DATA", "supply_sq": "NO_SIGNAL"})
+        self.assertEqual(roles, {"premarket": "NO_DATA", "pre_next": "NO_SIGNAL", "revenue_hunter": "NO_DATA",
+                                 "supply_sq": "NO_SIGNAL"})
+        for r in ack["roles"]:
+            self.assertEqual(r["report_id"], "brain_rx_20261021_01." + r["role"])
+            self.assertTrue({"target_at", "expires_at", "evidence", "conditions", "invalidation", "lane"} <= set(r))
         self.assertIs(ack["receiver_key_separate_from_sidecar"], True)
         body = {k: v for k, v in ack.items() if k != "hmac_sha256"}
         # Signed with the receiver key, not the sidecar key.
@@ -120,8 +126,37 @@ class ReceiverTests(unittest.TestCase):
         with sqlite3.connect(str(self.root / receiver.DB_NAME)) as conn:
             raw = bytes(conn.execute("SELECT ack_bytes FROM receipts").fetchone()[0])
         roles = json.loads(raw.decode("utf-8"))["roles"]
-        self.assertEqual([r for r in roles if r["role"] == "revenue_hunter"],
-                         [{"role": "revenue_hunter", "status": "NO_DATA", "evidence_ids": []}])
+        rev = [r for r in roles if r["role"] == "revenue_hunter"]
+        self.assertEqual([(r["status"], r["evidence_ids"], r["unavailable_reason"], r["lane"]) for r in rev],
+                         [("NO_DATA", [], "NO_SOURCE", "PROJECT_PROGRESS_NOT_TRADING")])
+
+    def test_display_marks_usable_expired_and_no_data_reports(self):
+        doc = source_doc()
+        self.emit(doc, research(doc, runner=divergent_runner))
+        self.receive()
+        view = json.loads((self.root / receiver.DISPLAY_NAME).read_text("utf-8"))
+        self.assertEqual(view["schema_version"], receiver.DISPLAY_SCHEMA)
+        self.assertIs(view["real_submit_allowed"], False)
+        self.assertIs(view["brain_trade_decision_eligible"], False)
+        run = view["runs"][0]
+        self.assertEqual(run["run_id"], "brain_rx_20261021_01")
+        self.assertRegex(run["ack_sha256"], r"^[0-9a-f]{64}$")
+        rep = {r["role"]: r for r in run["reports"]}
+        self.assertEqual((rep["pre_next"]["usable"], rep["pre_next"]["not_usable_reason"]), (True, None))
+        self.assertEqual(rep["supply_sq"]["not_usable_reason"], "NO_SOURCE")
+        self.assertEqual(rep["revenue_hunter"]["not_usable_reason"], "NO_DATA")
+        self.assertEqual(rep["premarket"]["not_usable_reason"], "NO_DATA")
+        # 25 hours later the pre_next report has expired and is not usable.
+        receiver.receive_inbox(self.root, now=NOW + timedelta(hours=25))
+        later = json.loads((self.root / receiver.DISPLAY_NAME).read_text("utf-8"))
+        rep = {r["role"]: r for r in later["runs"][0]["reports"]}
+        self.assertEqual((rep["pre_next"]["usable"], rep["pre_next"]["not_usable_reason"]), (False, "EXPIRED"))
+
+    def test_display_file_is_never_taken_as_an_envelope(self):
+        self.emit()
+        self.receive()
+        out = self.receive(now=NOW + timedelta(minutes=2))
+        self.assertEqual(out["results"], [])
 
     def test_divergent_specialists_are_recorded_as_conflicts(self):
         doc = source_doc()
