@@ -219,6 +219,59 @@ document.addEventListener("DOMContentLoaded",()=>{
  Object.entries(intros).forEach(([k,v])=>{if(!panes[k])return;const h=document.createElement("div");h.className="pane-intro";h.innerHTML='<span>AI COCKPIT</span><h2>'+v[0]+'</h2><p>'+v[1]+'</p>';panes[k].prepend(h);});
  // OWNER 2026-10-21: the 2026-09-25 static snapshot sections were removed (never
  // updated in V10). Tabs whose whole content was that snapshot are hidden; panes stay in the DOM.
+ // OWNER 2026-10-21: "今、最も期待値のあるもの" in REALTIME 5. Signals lit now (MS2,
+ // screen-ready only) are ranked by the backtest expected value of the same strategy
+ // (per ticker when it has enough trades) from the cockpit's own recorded past
+ // signals. Past data is used for the statistic only, never as an entry; no orders.
+ const evPanel=document.createElement("section");
+ evPanel.className="card wide";
+ evPanel.id="signal-ev-ranking";
+ evPanel.innerHTML='<h2>期待値ランキング（今点灯中のサイン）</h2><p class="warning">期待値は過去の記録（MS2）で同じサインを検証したバックテストの数字です。発注はしません。回数20回未満は「根拠不足」で順位に入れません。</p><div id="signal-ev-summary" class="sub">期待値データ取得待ち</div><div id="signal-ev-rows"><div class="focus-empty">点灯中のサインなし</div></div>';
+ if(panes["ms2-live"]){const intro=panes["ms2-live"].querySelector(":scope > .pane-intro");if(intro)intro.after(evPanel);else panes["ms2-live"].prepend(evPanel);}
+ let evTable=null;
+ const evStatFor=(t,x)=>{
+   const key=String(x?.strategy||"")+"|"+String(x?.signal||"");
+   const tick=t?.by_strategy_ticker?.[key+"|"+String(x?.ticker||"")];
+   if(tick&&tick.status==="OK")return {...tick,level:"銘柄別"};
+   const strat=t?.by_strategy?.[key];
+   return strat?{...strat,level:"戦略別"}:null;
+ };
+ const evRank=(t,rows)=>(Array.isArray(rows)?rows:[])
+   .filter(x=>x&&(x.signal==="買いサイン"||x.signal==="空売りサイン"))
+   .map(x=>({x,ev:evStatFor(t,x)}))
+   .sort((a,b)=>{
+     const ok=s=>s&&s.status==="OK"&&Number.isFinite(Number(s.ev_pct));
+     if(ok(a.ev)!==ok(b.ev))return ok(a.ev)?-1:1;
+     return ok(a.ev)?Number(b.ev.ev_pct)-Number(a.ev.ev_pct):0;
+   });
+ const evPct=v=>Number.isFinite(Number(v))?(Number(v)>=0?"+":"")+Number(v).toFixed(3)+"%":"—";
+ const evRowHtml=(r,i)=>{
+   const x=r.x,s=r.ev,ok=s&&s.status==="OK";
+   const verdict=!ok?"根拠不足":Number(s.ev_pct)>0?"期待値プラス":"期待値マイナス";
+   return '<div class="rotation-box"><b>'+(ok?(i+1)+". ":"")+esc(x.name||x.ticker)+'｜'+esc(x.signal)+'・'+esc(x.strategy)+'</b>'+
+     '<strong>'+esc(verdict)+'</strong>'+
+     '<small>期待値（手数料込） '+(s?evPct(s.ev_pct):"—")+'／手数料前 '+(s?evPct(s.gross_ev_pct):"—")+'</small>'+
+     '<small>勝率 '+(s&&s.win_rate_pct!=null?esc(s.win_rate_pct)+"%":"—")+'／PF '+(s&&s.pf!=null?esc(s.pf):"—")+'／'+(s?esc(s.n)+"回（"+esc(s.level)+"）":"記録なし")+'</small>'+
+     '<small>発動 '+esc(x.entry_price??"—")+'／損切 '+esc(x.stop_price??"—")+'／目標 '+esc(x.target1??"—")+'</small></div>';
+ };
+ const renderEv=d=>{
+   const box=document.getElementById("signal-ev-rows"),sum=document.getElementById("signal-ev-summary");
+   if(!box||!sum)return;
+   if(!evTable){sum.textContent="期待値データなし（過去記録の検証表が未作成）";}
+   else{
+     const st=Object.entries(evTable.by_strategy||{}).map(([k,v])=>esc(k.replace("|","・"))+" "+evPct(v.ev_pct)+"（"+esc(v.n)+"回）").join("／");
+     sum.innerHTML="検証期間 "+esc((evTable.days||[])[0]||"—")+"〜"+esc((evTable.days||[]).slice(-1)[0]||"—")+"・"+esc((evTable.days||[]).length)+"日／戦略別："+st+"／手数料 片道"+esc(evTable.assumptions?.cost_pct_per_side)+"%（暫定）";
+   }
+   const live=window.cockpitMs2ScreenReady?.(d)===true;
+   if(!live){box.innerHTML='<div class="focus-empty">LIVEでないため表示しません</div>';return;}
+   const rows=evRank(evTable,d.all_targets);
+   box.innerHTML=rows.length?'<div class="rotation-grid">'+rows.slice(0,10).map(evRowHtml).join("")+'</div>':'<div class="focus-empty">点灯中のサインなし</div>';
+ };
+ let evLast={};
+ const loadEv=()=>fetch("/signal_ev.json?t="+Date.now()).then(r=>r.json()).then(t=>{evTable=(t&&t.schema_version==="100b-v10-signal-ev-table-v1"&&t.real_submit_allowed===false)?t:null;renderEv(evLast);}).catch(()=>{evTable=null;renderEv(evLast);});
+ document.addEventListener("ms2RssUpdate",e=>{evLast=e.detail||{};renderEv(evLast);});
+ loadEv();
+ setInterval(loadEv,600000);
  const SNAPSHOT_ONLY_TABS=["strong-yen","us-smr","investor-regime","expansion","policy",...policyTabs];
  SNAPSHOT_ONLY_TABS.forEach(k=>{document.querySelectorAll('.cockpit-tab[data-tab="'+k+'"]').forEach(b=>{b.hidden=true;});});
 
