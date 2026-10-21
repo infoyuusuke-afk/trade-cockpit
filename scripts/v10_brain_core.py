@@ -4,9 +4,11 @@ OWNER 2026-10-21 「１の期待値を最大限にするためにこのシステ
 Every Brain pass scores the signals lit in the Controller's live_ms2.json with
 what the recorded history says about them:
 
-  * an OWNER rule (R1/R2 of the rule Shadow) that matches the signal's side, the
-    JST time and the market state: its backtest (later half, weighted 0.5) and
-    its forward results from 2026-10-22, with the rule's own wider target/stop;
+  * the best supported OWNER rule of the rule Shadow (R1/R2/R4/R5) that matches the
+    signal's side, strategy, JST time, market state and open/gap conditions: its
+    backtest test block, weighted by the rule's backtest_weight (0.5 for R1/R2, whose
+    test block was out of sample; 0.1 for the search-selected R4/R5), plus its
+    forward results from 2026-10-22, with the rule's own wider target/stop;
   * otherwise the EV table of the same strategy on the same stock, then the same
     strategy on all stocks.
 
@@ -32,7 +34,8 @@ SIDES = {"買いサイン": 1, "空売りサイン": -1}
 MAX_PICKS = 3
 MAX_LIVE_AGE_SECONDS = 60
 SHRINK_N = 30                      # PROVISIONAL
-BACKTEST_WEIGHT = 0.5              # PROVISIONAL: the backtest chose the rule, so it counts half
+BACKTEST_WEIGHT = 0.5              # PROVISIONAL default; a rule's own "backtest_weight" wins
+MIN_VALID_ROWS, MAX_VALID_ROWS = 90, 110   # the Collector's integer valid count (same bounds as the observer)
 MIN_SCORE_PCT = 0.03               # PROVISIONAL: below this a pick would not survive a tick of slippage
 SHORT_MIN_CREDIT_RATIO = 1.0       # PROVISIONAL: 売り長 (倍率 < 1) shorts are left out
 BUY_HEAVY_CREDIT_RATIO = 10.0      # PROVISIONAL: shown as a caution only
@@ -88,6 +91,8 @@ def rules_for(rules: dict, row: dict, hm: str) -> list:
             continue
         if rule.get("market") and rule["market"] not in str(row.get("market_state", "")):
             continue
+        if rule.get("strategy") and rule["strategy"] != row.get("strategy"):
+            continue
         if not _context_ok(rule, row, side):
             continue
         out.append((key, rule))
@@ -100,14 +105,15 @@ def estimate(row: dict, *, ev_table: dict | None, rule_shadow: dict | None, hm: 
     for key, rule in rules_for((rule_shadow or {}).get("rules"), row, hm):
         test = (rule.get("backtest") or {}).get("test") or {}
         fwd = ((rule_shadow or {}).get("forward") or {}).get(key) or {}
-        w_bt = BACKTEST_WEIGHT * (test.get("n") or 0)
+        weight = _f(rule.get("backtest_weight"))
+        w_bt = (BACKTEST_WEIGHT if weight is None else weight) * (test.get("n") or 0)
         n_fw = fwd.get("n") or 0
         ev_bt, ev_fw = _f(test.get("ev_pct")) or 0.0, _f(fwd.get("ev_pct")) or 0.0
         n_eff = w_bt + n_fw
         ev = (w_bt * ev_bt + n_fw * ev_fw) / n_eff if n_eff else None
         if ev is None:
             continue
-        got = {"rule": key, "label": rule.get("label"), "ev_pct": ev, "n_eff": n_eff, "source": "RULE",
+        got = {"rule": key, "label": rule.get("label"), "ev_pct": ev, "n_eff": n_eff, "source": "RULE", "forward_n": n_fw,
                "target_mult": rule.get("target_mult", 1.0), "stop_mult": rule.get("stop_mult", 1.0)}
         if best is None or ev * n_eff / (n_eff + SHRINK_N) > best["ev_pct"] * best["n_eff"] / (best["n_eff"] + SHRINK_N):
             best = got  # several rules can match one signal: the best supported one is used
@@ -118,8 +124,9 @@ def estimate(row: dict, *, ev_table: dict | None, rule_shadow: dict | None, hm: 
                         ("STRATEGY", ((ev_table or {}).get("by_strategy") or {}).get(strat))):
         if stat and stat.get("status") == "OK" and _f(stat.get("ev_pct")) is not None:
             return {"rule": None, "label": None, "ev_pct": _f(stat["ev_pct"]), "n_eff": stat.get("n") or 0,
-                    "source": level, "target_mult": 1.0, "stop_mult": 1.0}
-    return {"rule": None, "label": None, "ev_pct": None, "n_eff": 0, "source": "NONE", "target_mult": 1.0, "stop_mult": 1.0}
+                    "source": level, "forward_n": 0, "target_mult": 1.0, "stop_mult": 1.0}
+    return {"rule": None, "label": None, "ev_pct": None, "n_eff": 0, "source": "NONE", "forward_n": 0,
+            "target_mult": 1.0, "stop_mult": 1.0}
 
 
 def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: datetime) -> dict:
@@ -133,7 +140,9 @@ def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: da
             "ev_table_days": len((ev_table or {}).get("days") or []), "rule_forward_from": (rule_shadow or {}).get("forward_from")}
     updated = _live_time(live.get("updated_at"))
     base["live_updated_at"] = updated.isoformat() if updated else None
-    if (live.get("valid") is not True or live.get("stale") is not False or updated is None
+    valid = live.get("valid")   # the Collector's count of valid rows, an integer
+    if (type(valid) is not int or not MIN_VALID_ROWS <= valid <= MAX_VALID_ROWS
+            or live.get("stale") is not False or updated is None
             or not timedelta(seconds=-5) <= local - updated <= timedelta(seconds=MAX_LIVE_AGE_SECONDS)):
         return dict(base, state="NOT_LIVE")
     scored = []
@@ -172,6 +181,7 @@ def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: da
                        "stop": round(entry - side * est["stop_mult"] * dist, 4),
                        "signal_stop": stop, "signal_target": target, "score_pct": round(score, 4),
                        "ev_pct": round(est["ev_pct"], 4), "n_eff": round(est["n_eff"], 1), "source": est["source"],
+                       "forward_n": est["forward_n"],
                        "rule": est["rule"], "rule_label": est["label"], "flags": flags})
     scored.sort(key=lambda s: -s["score_pct"])
     seen = set()

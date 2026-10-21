@@ -249,18 +249,25 @@ RULES_FORWARD_FROM = "2026-10-22"
 RULES = {
     "R1": {"label": "① 買い 9:15〜10:00・目標2倍・損切り2倍", "side": 1, "from": "09:15", "to": "10:00",
            "market": None, "target_mult": 2.0, "stop_mult": 2.0, "max_hold_minutes": None,
+           "selection": "TRAIN_THEN_TEST", "backtest_weight": 0.5,
            "backtest": {"train": {"n": 102, "ev_pct": 0.097, "pf": 1.39}, "test": {"n": 54, "ev_pct": 0.096, "pf": 1.51}}},
     "R2": {"label": "② 売り 地合い弱い日 9:15〜10:00・目標3倍・損切り2倍・最長60分", "side": -1, "from": "09:15",
            "to": "10:00", "market": "弱い", "target_mult": 3.0, "stop_mult": 2.0, "max_hold_minutes": 60,
+           "selection": "TRAIN_THEN_TEST", "backtest_weight": 0.5,
            "backtest": {"train": {"n": 37, "ev_pct": 0.103, "pf": 1.52}, "test": {"n": 53, "ev_pct": 0.183, "pf": 1.79}}},
     # OWNER 2026-10-22 「④⑤もSHADOW追加」: round-2 search on 2026-09-19..10-21 records,
     # kept only because each of three equal day blocks was positive (train = first two).
+    # All three blocks chose them, so no block is out of sample: the Brain gives their
+    # backtest a small weight (PROVISIONAL) until forward trades accumulate. Only the
+    # strategy the search saw (押し目 for buys, 戻り for shorts) matches.
     "R4": {"label": "④ 買い 寄りから+0.5%以上上げている銘柄の押し目・目標2倍・損切り2倍", "side": 1, "from": "09:00",
            "to": "15:20", "market": None, "target_mult": 2.0, "stop_mult": 2.0, "max_hold_minutes": None,
-           "min_move_pct": 0.5, "backtest": R4_BACKTEST},
+           "strategy": "OR15押し目", "min_move_pct": 0.5, "selection": "IN_SAMPLE_ALL_BLOCKS", "backtest_weight": 0.1,
+           "backtest": R4_BACKTEST},
     "R5": {"label": "⑤ 売り 窓を1%以上下に開けた日の戻り売り・目標3倍・損切り2倍・最長60分", "side": -1, "from": "09:00",
            "to": "15:20", "market": None, "target_mult": 3.0, "stop_mult": 2.0, "max_hold_minutes": 60,
-           "gap": "down", "backtest": R5_BACKTEST},
+           "strategy": "OR15戻り", "gap": "down", "selection": "IN_SAMPLE_ALL_BLOCKS", "backtest_weight": 0.1,
+           "backtest": R5_BACKTEST},
 }
 
 
@@ -323,22 +330,28 @@ def gap_trades(prev_ticks: dict, ticks: dict, rule: dict, reference: dict | None
 def day_context(prev_ticks: dict | None, ticks: dict, reference: dict | None = None) -> dict:
     """Each issue's open (first tick at or after 09:00) and opening gap in % against the
     reference price, else the previous day's last tick (None when unknown or split-sized)."""
-    opens, gaps = {}, {}
+    opens, open_times, gaps = {}, {}, {}
     for ticker, rows in ticks.items():
         day = [p for t, _, p in rows if t >= "09:00:00"]
         if not day:
             continue
         opens[ticker] = day[0]
+        open_times[ticker] = next(t for t, _, _ in rows if t >= "09:00:00")
         before = [p for t, _, p in (prev_ticks or {}).get(ticker, []) if t <= "15:30:00"]
         close = (reference or {}).get(ticker) or (before[-1] if before else None)
         if close:
             gap = (day[0] / close - 1) * 100
             gaps[ticker] = gap if abs(gap) < MAX_GAP_PCT else None
-    return {"open": opens, "gap": gaps}
+    return {"open": opens, "open_time": open_times, "gap": gaps}
 
 
-def context_matches(rule: dict, side: int, ticker: str, entry, context: dict | None) -> bool:
-    """The R4 move-from-open and R5 gap-down conditions (True for rules without them)."""
+def context_matches(rule: dict, side: int, ticker: str, entry, context: dict | None, at: str = "") -> bool:
+    """The R4 move-from-open and R5 gap-down conditions (True for rules without them).
+    The open must already have traded at the signal time (no look-ahead)."""
+    if rule.get("min_move_pct") is not None or rule.get("gap"):
+        open_t = ((context or {}).get("open_time") or {}).get(ticker)
+        if not open_t or not at or open_t > at:
+            return False
     if rule.get("min_move_pct") is not None:
         open_ = ((context or {}).get("open") or {}).get(ticker)
         if not open_ or entry is None or side * (entry / open_ - 1) * 100 < rule["min_move_pct"]:
@@ -355,7 +368,9 @@ def rule_matches(rule: dict, signal: dict, context: dict | None = None) -> bool:
     hm = str(signal.get("captured_at", ""))[11:16]
     return (side == rule["side"] and rule["from"] <= hm < rule["to"]
             and (rule["market"] is None or rule["market"] in str(signal.get("market_state", "")))
-            and context_matches(rule, side, signal.get("ticker", ""), _f(signal.get("entry")), context))
+            and (not rule.get("strategy") or rule["strategy"] == signal.get("strategy"))
+            and context_matches(rule, side, signal.get("ticker", ""), _f(signal.get("entry")), context,
+                                str(signal.get("captured_at", ""))[11:19]))
 
 
 def brain_trades(picks_path: Path, ticks: dict) -> list[dict]:

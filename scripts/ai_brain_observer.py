@@ -50,7 +50,7 @@ AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_AC
 # (or when missing) into RuntimeDir/signal_ev_table_v1.json, which the Gateway
 # serves read-only for the REALTIME 5 ranking. The module is loaded only from
 # bytes whose git blob equals the pin. It never touches live data or orders.
-SIGNAL_EV_MODULE = ("v10_signal_ev_table", "0ccfc51934d440f0bcd080bb6840db62c9d6e491")
+SIGNAL_EV_MODULE = ("v10_signal_ev_table", "0e890b62bed238e4fdf60e5056adc809604c8edc")
 SIGNAL_EV_FILE = "signal_ev_table_v1.json"
 SIGNAL_EV_REBUILD_AFTER_JST = (15, 35)
 # Night PTS -> next-morning watch candidates, rebuilt every 5 minutes from the
@@ -62,7 +62,7 @@ PTS_PICKUP_INTERVAL = timedelta(minutes=5)
 # signals with the EV table and the rule Shadow, write the top picks to
 # RuntimeDir/brain_pick_v1.json for the Gateway and log new picks to
 # records/<day>/brain_picks.csv for the rule Shadow (pinned module, no orders).
-BRAIN_CORE_MODULE = ("v10_brain_core", "537faafcff001592060da2d8315eaa7ba13a1353")
+BRAIN_CORE_MODULE = ("v10_brain_core", "af1bd4a68b931f83668d53b1329fff7cb09f2d78")
 
 
 def _aware(value):

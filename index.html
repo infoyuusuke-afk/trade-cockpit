@@ -245,25 +245,36 @@ document.addEventListener("DOMContentLoaded",()=>{
      return ok(a.ev)?Number(b.ev.ev_pct)-Number(a.ev.ev_pct):0;
    });
  const evPct=v=>Number.isFinite(Number(v))?(Number(v)>=0?"+":"")+Number(v).toFixed(3)+"%":"—";
- // OWNER rules ①②: matched on the live signal (direction, JST time now, market state);
- // the rule's own wider target/stop are shown. Virtual Shadow only; no orders.
+ // OWNER rules ①②④⑤: matched on the live signal (direction, strategy, JST time now, market
+ // state, open/gap); when several match, the best supported one is used, scored like the
+ // Brain core (backtest x the rule's backtest_weight plus forward, shrunk by n/(n+30)).
+ // The rule's own wider target/stop are shown. Virtual Shadow only; no orders.
  let ruleShadow=null;
+ const ruleScore=(k,r)=>{
+   const t=r.backtest?.test||{},f=ruleShadow?.forward?.[k]||{},w=Number.isFinite(Number(r.backtest_weight))?Number(r.backtest_weight):0.5;
+   const wb=w*(Number(t.n)||0),nf=Number(f.n)||0,n=wb+nf;
+   return n>0?((wb*(Number(t.ev_pct)||0)+nf*(Number(f.ev_pct)||0))/n)*n/(n+30):-Infinity;
+ };
  const ruleFor=(x,nowMs)=>{
    const rules=ruleShadow?.rules||{},side=x?.signal==="買いサイン"?1:x?.signal==="空売りサイン"?-1:0;
    const jst=new Date(nowMs+324e5),hm=String(jst.getUTCHours()).padStart(2,"0")+":"+String(jst.getUTCMinutes()).padStart(2,"0");
+   let best=null;
    for(const [k,r] of Object.entries(rules)){
      if(r.side!==side||!(r.from<=hm&&hm<r.to))continue;
      if(r.market&&!String(x?.market_state||"").includes(r.market))continue;
+     if(r.strategy&&r.strategy!==x?.strategy)continue;
      // ④: entry at least min_move_pct beyond the open; ⑤: opened >= 1 % below the reference price (splits skipped)
      const o=Number(x?.open_price),ref=Number(x?.reference_price),en=Number(x?.entry_price);
      if(r.min_move_pct!=null&&!(o>0&&Number.isFinite(en)&&side*(en/o-1)*100>=r.min_move_pct))continue;
      if(r.gap==="down"){const g=(o>0&&ref>0)?(o/ref-1)*100:NaN;if(!(g<=-1&&Math.abs(g)<20))continue;}
+     const sc=ruleScore(k,r);
+     if(best&&best.score>=sc)continue;
      const e=Number(x?.entry_price),t=Number(x?.target1);
-     if(!Number.isFinite(e)||!Number.isFinite(t)||e<=0)return {key:k,rule:r};
+     if(!Number.isFinite(e)||!Number.isFinite(t)||e<=0){best={key:k,rule:r,score:sc};continue;}
      const base=Math.abs(t-e);
-     return {key:k,rule:r,target:e+side*r.target_mult*base,stop:e-side*r.stop_mult*base};
+     best={key:k,rule:r,score:sc,target:e+side*r.target_mult*base,stop:e-side*r.stop_mult*base};
    }
-   return null;
+   return best;
  };
  const ruleSummaryHtml=()=>{
    if(!ruleShadow)return "";
@@ -285,10 +296,15 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(!box)return;
    const age=brainPick?(Date.now()-Date.parse(brainPick.generated_at))/1000:Infinity;
    if(window.cockpitMs2ScreenReady?.(d)!==true||!(age<=30)){box.innerHTML='<div class="focus-empty">ブレインの選択：LIVEでないため表示しません</div>';return;}
-   if(brainPick.state!=="PICK"){box.innerHTML='<div class="focus-empty">ブレインの選択：今は見送り（基準を超える期待値のサインなし・'+esc(brainPick.considered)+'件を確認）</div>';return;}
-   box.innerHTML='<p class="sub">ブレインの選択（期待値の高い順・Shadow・発注しません）</p><div class="rotation-grid">'+brainPick.picks.map(p=>
+   // the same 120 s per-row gate as the EV list and PTS: a pick whose row is not fresh now,
+   // or whose live signal changed, is not shown
+   const rows=Array.isArray(d?.all_targets)?d.all_targets:[];
+   const picks=(brainPick.state==="PICK"?brainPick.picks:[]).filter(p=>{const x=rows.find(y=>y&&y.ticker===p.ticker);return x&&window.cockpitMs2RowReady?.(x)===true&&x.signal===p.signal&&x.strategy===p.strategy;});
+   if(!picks.length){box.innerHTML='<div class="focus-empty">ブレインの選択：今は見送り（基準を超える期待値で、今も鮮度が確認できるサインなし・'+esc(brainPick.considered)+'件を確認）</div>';return;}
+   box.innerHTML='<p class="sub">ブレインの選択（検証中・期待値は仮の数字・Shadow・発注しません）</p><div class="rotation-grid">'+picks.map(p=>
      '<div class="rotation-box"><b>'+esc(p.rank)+'. '+esc(p.name)+'｜'+esc(p.signal)+'・'+esc(p.strategy)+'</b>'+
      '<strong>期待値 '+evPct(p.score_pct)+'（根拠 '+esc(p.n_eff)+'回分）</strong>'+
+     '<small>'+(Number(p.forward_n)>0?"検証中：Shadow実績 "+esc(p.forward_n)+"回を含む":"未検証：過去記録だけの数字（Shadow実績まだ0回）")+'</small>'+
      '<small>'+(p.rule_label?esc(p.rule_label):p.source==="TICKER"?"この銘柄の同じサインの記録":"同じ戦略の全銘柄の記録")+'</small>'+
      '<small>発動 '+esc(p.entry)+'／損切 '+esc(p.stop)+'／目標 '+esc(p.target)+'</small>'+
      (p.flags&&p.flags.length?'<small>'+p.flags.map(esc).join("／")+'</small>':'')+'</div>').join("")+'</div>';

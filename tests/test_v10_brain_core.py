@@ -29,7 +29,7 @@ def target(ticker, signal="買いサイン", strategy="OR15", entry=1000, stop=9
             "market_state": market}
 
 
-def live(rows, *, at="2026-10-22 09:29:55", valid=True, stale=False):
+def live(rows, *, at="2026-10-22 09:29:55", valid=100, stale=False):
     return {"updated_at": at, "valid": valid, "stale": stale, "all_targets": rows}
 
 
@@ -76,18 +76,33 @@ class Pick(unittest.TestCase):
         self.assertEqual(view["picks"][0]["ticker"], "G.T")
         self.assertIn("信用倍率不明（空売り状況 未確認）", view["picks"][0]["flags"])
 
-    def test_r4_r5_conditions_and_the_best_matching_rule(self):
-        up = dict(target("K.T", entry=1010, stop=1000, t1=1015), open_price=1000)          # +1 % from the open
-        flat = dict(target("L.T", entry=1003, stop=993, t1=1008), open_price=1000)         # +0.3 %: R1 only
+    def test_r4_r5_conditions_strategy_and_the_best_matching_rule(self):
+        up = dict(target("K.T", strategy="OR15押し目", entry=1010, stop=1000, t1=1015), open_price=1000)   # +1 % from the open
+        other = dict(target("L.T", strategy="OR5初動", entry=1010, stop=1000, t1=1015), open_price=1000)   # not 押し目
         down = dict(target("M.T", "空売りサイン", "OR15戻り", 975, 980, 970), open_price=980, reference_price=1000)
         split = dict(target("N.T", "空売りサイン", "OR15戻り", 975, 980, 970), open_price=200, reference_price=1000)
-        view = brain.pick(live([up, flat, down, split]), ev_table=None, rule_shadow=SHADOW, now=NOW)
-        rules = {p["ticker"]: p["rule"] for p in view["picks"]}
-        # 09:30: K.T matches R1 and R4; R4 rests on more trades (0.5 x 93) and wins
-        self.assertEqual(rules, {"K.T": "R4", "L.T": "R1", "M.T": "R5"})
-        self.assertNotIn("N.T", rules)   # an -80 % "gap" is a split, not R5
-        k = next(p for p in view["picks"] if p["ticker"] == "K.T")
-        self.assertEqual((k["target"], k["stop"]), (1020, 1000))
+        hm = "09:30"
+        rules = SHADOW["rules"]
+        self.assertEqual([k for k, _ in brain.rules_for(rules, up, hm)], ["R1", "R4"])
+        self.assertEqual([k for k, _ in brain.rules_for(rules, other, hm)], ["R1"])
+        self.assertEqual([k for k, _ in brain.rules_for(rules, down, hm)], ["R5"])
+        self.assertEqual(brain.rules_for(rules, split, hm), [])   # an -80 % "gap" is a split, not R5
+        # R1's out-of-sample test block counts 0.5, the search-selected R4 only 0.1: R1 is used
+        self.assertEqual(brain.estimate(up, ev_table=None, rule_shadow=SHADOW, hm=hm)["rule"], "R1")
+        # with forward results R4 can take over
+        fwd = dict(SHADOW, forward={"R1": {"n": 0}, "R4": {"n": 60, "ev_pct": 0.3}})
+        got = brain.estimate(up, ev_table=None, rule_shadow=fwd, hm=hm)
+        self.assertEqual((got["rule"], got["forward_n"]), ("R4", 60))
+        view = brain.pick(live([down]), ev_table=None, rule_shadow=SHADOW, now=NOW)
+        p = view["picks"][0]
+        self.assertEqual((p["rule"], p["forward_n"], p["n_eff"]), ("R5", 0, round(0.1 * 44, 1)))
+        self.assertEqual((p["target"], p["stop"]), (960, 985))
+
+    def test_valid_is_the_collectors_integer_row_count(self):
+        for valid, state in ((100, "PICK"), (95, "PICK"), (90, "PICK"), (89, "NOT_LIVE"), (111, "NOT_LIVE"),
+                             (True, "NOT_LIVE"), ("100", "NOT_LIVE"), (None, "NOT_LIVE")):
+            view = brain.pick(live([target("A.T")], valid=valid), ev_table=TABLE, rule_shadow=SHADOW, now=NOW)
+            self.assertEqual(view["state"], state, valid)
 
     def test_not_live(self):
         for kw in ({"stale": True}, {"valid": False}, {"at": "2026-10-22 09:28:00"}, {"at": ""}):
@@ -162,6 +177,11 @@ class Wiring(unittest.TestCase):
         self.assertIn('<div id="brain-pick-rows">', HTML)
         self.assertIn("window.cockpitMs2ScreenReady?.(d)!==true||!(age<=30)", HTML)
         self.assertIn("v.trade_instruction===false", HTML)
+        self.assertIn("window.cockpitMs2RowReady?.(x)===true&&x.signal===p.signal&&x.strategy===p.strategy", HTML)
+        self.assertIn("未検証：過去記録だけの数字（Shadow実績まだ0回）", HTML)
+        self.assertIn("ブレインの選択（検証中・期待値は仮の数字・Shadow・発注しません）", HTML)
+        self.assertIn("if(r.strategy&&r.strategy!==x?.strategy)continue;", HTML)
+        self.assertIn("if(best&&best.score>=sc)continue;", HTML)
 
     @unittest.skipUnless(shutil.which("powershell.exe"), "Windows PowerShell 5.1 required")
     def test_gateway_states(self):
