@@ -81,3 +81,13 @@ back independently.
   the cockpit's universe) appear as 「専門AIが先回り監視中」 on matching picks and in
   a 専門AIの先回り監視 line. They do not change the score until their own forward
   results exist; every trading decision stays with the Brain (Shadow only).
+
+## All-issue margin read by the Brain on the PC (OWNER 2026-10-22)
+
+「全銘柄の信用残はブレインがPCで読む」. The Brain observer fetches JPX 銘柄別信用取引残高
+(public daily PDF, every issue, about 4,200) once per JST day into
+`RuntimeDir/jpx_margin_all_v1.json` (pinned modules, JPX host allow-list, blocks that do
+not add up are dropped). The Brain core uses the daily 信用倍率 (purchases / sales) of
+its own issues in place of the weekly MS2 ratio for the squeeze-risk exclusion and
+shows it as a flag; data older than 7 days is not used. No model, no cost. GPT
+receives margin data only for the watched issues (paid input limit 24,000 bytes).

@@ -90,6 +90,17 @@ class Sources(unittest.TestCase):
         self.assertTrue(all(len(r["summary"]) <= 400 and r["summary"].endswith("売買シグナルではない") for r in rows))
 
 
+class BrainCache(unittest.TestCase):
+    def test_cache_keeps_every_valid_issue(self):
+        parsed = jpx_all.parse_lines(LINES, observed_at=NOW)
+        cache = jpx_all.build_cache(parsed, FILE_URL, observed_at=NOW)
+        self.assertEqual((cache["schema_version"], cache["as_of_date"], cache["issue_count"], cache["dropped_blocks"]),
+                         ("100b-v10-jpx-margin-all-cache-v1", "2026-10-20", 3, 1))
+        self.assertEqual(cache["issues"]["123A"], {"sales": 2000000, "sales_change": -500000,
+                                                  "purchases": 30000000, "purchases_change": -10000000})
+        self.assertIs(cache["real_submit_allowed"], False)
+
+
 class Bundle(unittest.TestCase):
     def test_bundle_option_and_boj_trim(self):
         parsed = jpx_all.parse_lines(LINES, observed_at=NOW)

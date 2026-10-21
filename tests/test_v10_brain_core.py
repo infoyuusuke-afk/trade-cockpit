@@ -119,6 +119,24 @@ class Pick(unittest.TestCase):
         self.assertEqual([p["score_pct"] for p in view["picks"]], [p["score_pct"] for p in plain["picks"]])   # no score change
         self.assertEqual(view["specialist_watch"], [{"code": "A", "name": "名A.T", "roles": ["pre_next"], "signal_now": "買いサイン"}])
 
+    def test_jpx_daily_margin_replaces_the_weekly_ratio(self):
+        # synthetic cache (no real balances): code "B" is sale-heavy, "A" buy-heavy
+        cache = {"schema_version": "100b-v10-jpx-margin-all-cache-v1", "as_of_date": "2026-10-20",
+                 "issues": {"B": {"sales": 2000, "purchases": 1000, "sales_change": 0, "purchases_change": 0},
+                            "A": {"sales": 1000, "purchases": 4000, "sales_change": 0, "purchases_change": 0}},
+                 "real_submit_allowed": False, "trade_instruction": False}
+        rows = [target("B.T", "空売りサイン", "OR15戻り", 1000, 1010, 990, ratio=3.0), target("A.T", ratio=None)]
+        later = NOW + timedelta(hours=2)
+        view = brain.pick(live(rows, at="2026-10-22 11:29:55"), ev_table=TABLE, rule_shadow=SHADOW, now=later, margin=cache)
+        reasons = {e["ticker"]: e["reason"] for e in view["excluded"]}
+        self.assertIn("売り長（信用倍率0.50）", reasons["B.T"])          # weekly 3.0 replaced by the daily 0.50
+        a = next(x for x in view["excluded"] + view["picks"] if x["ticker"] == "A.T")
+        self.assertNotIn("信用倍率不明", str(a))
+        stale = dict(cache, as_of_date="2026-10-01")                      # older than 7 days: not used
+        view = brain.pick(live(rows, at="2026-10-22 11:29:55"), ev_table=TABLE, rule_shadow=SHADOW, now=later, margin=stale)
+        self.assertEqual([p["ticker"] for p in view["picks"]], ["B.T"])
+        self.assertIsNone(brain.margin_ratio(dict(cache, schema_version="x"), "B.T", now=later))
+
     def test_valid_is_the_collectors_integer_row_count(self):
         for valid, state in ((100, "PICK"), (95, "PICK"), (90, "PICK"), (89, "NOT_LIVE"), (111, "NOT_LIVE"),
                              (True, "NOT_LIVE"), ("100", "NOT_LIVE"), (None, "NOT_LIVE")):
@@ -264,6 +282,33 @@ $o | ConvertTo-Json -Compress
                          {"cycle_start_ref": "", "pwsh7_datetime": "True", "still_listed": "True", "not_listed": "False",
                           "valid": "A.T:R1", "old": "", "future": "", "nooffset": "", "unsafe": "", "stringflag": "",
                           "notlive": "", "oddstate": "", "missing": "", "broken": ""})
+
+
+class JpxMarginPass(unittest.TestCase):
+    def test_pins_once_a_day_and_fail_closed(self):
+        spec = importlib.util.spec_from_file_location("obs_jpx_under_test", ROOT / "scripts" / "ai_brain_observer.py")
+        obs = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(obs)
+        for name, pin in obs.JPX_MODULES:
+            self.assertEqual(obs.git_blob_sha1((ROOT / "scripts" / (name + ".py")).read_bytes()), pin)
+        calls = []
+
+        class Fake:
+            @staticmethod
+            def write_cache(runtime, *, now):
+                calls.append(now)
+                return {"as_of_date": "2026-10-20", "issue_count": 3, "dropped_blocks": 0}
+        state = {"module": Fake}
+        live_path = Path(tempfile.gettempdir()) / "live_ms2.json"
+        self.assertEqual(obs.jpx_margin_pass(state, live_path, now=NOW)["jpx_margin_all"], "BUILT")
+        self.assertIsNone(obs.jpx_margin_pass(state, live_path, now=NOW + timedelta(hours=3)))   # once a JST day
+        self.assertEqual(len(calls), 1)
+        bad = Path(tempfile.mkdtemp(prefix="v10-jpx-bad-"))
+        self.addCleanup(shutil.rmtree, bad, True)
+        for name, _ in obs.JPX_MODULES:
+            (bad / (name + ".py")).write_text("x = 1\n", encoding="utf-8")
+        got = obs.jpx_margin_pass({}, live_path, now=NOW, script_dir=bad)
+        self.assertEqual(got["reason"], "PINNED_MODULE_MISMATCH:agent_sdk_public_feed_ingest")
 
 
 class Wiring(unittest.TestCase):

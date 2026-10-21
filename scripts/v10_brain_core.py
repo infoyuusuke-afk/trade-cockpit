@@ -129,8 +129,28 @@ def estimate(row: dict, *, ev_table: dict | None, rule_shadow: dict | None, hm: 
             "target_mult": 1.0, "stop_mult": 1.0}
 
 
+MARGIN_MAX_AGE_DAYS = 7
+
+
+def margin_ratio(margin: dict | None, ticker, *, now: datetime):
+    """(信用倍率 = purchases / sales, as-of date) from the JPX all-issue daily cache, or None.
+    OWNER 2026-10-22 「全銘柄の信用残はブレインがPCで読む」. Older than 7 days: not used."""
+    if not margin or margin.get("schema_version") != "100b-v10-jpx-margin-all-cache-v1":
+        return None
+    try:
+        as_of = datetime.strptime(str(margin.get("as_of_date")), "%Y-%m-%d").replace(tzinfo=JST)
+    except ValueError:
+        return None
+    if not timedelta(0) <= now.astimezone(JST) - as_of <= timedelta(days=MARGIN_MAX_AGE_DAYS):
+        return None
+    item = (margin.get("issues") or {}).get(str(ticker or "").replace(".T", ""))
+    if not item or not item.get("sales"):
+        return None
+    return item["purchases"] / item["sales"], margin["as_of_date"]
+
+
 def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: datetime,
-         attention: dict | None = None) -> dict:
+         attention: dict | None = None, margin: dict | None = None) -> dict:
     """attention: code -> [{role, report_id, expires_at}] from the specialists' unexpired
     WATCH reports (OWNER 2026-10-22: specialists watch, the Brain decides). Shown as a flag
     and listed; it does not change the score until its own forward results exist."""
@@ -171,6 +191,10 @@ def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: da
         est = estimate(row, ev_table=ev_table, rule_shadow=rule_shadow, hm=hm)
         flags = []
         ratio = _f(row.get("credit_ratio"))
+        daily = margin_ratio(margin, row.get("ticker"), now=now)
+        if daily is not None:  # the JPX daily figure replaces the weekly MS2 ratio
+            ratio = daily[0]
+            flags.append("信用倍率%.2f（JPX日次 %s申込み）" % (daily[0], daily[1]))
         if ratio is None:
             flags.append("信用倍率不明（空売り状況 未確認）")
         elif side < 0 and ratio < SHORT_MIN_CREDIT_RATIO:
@@ -267,7 +291,9 @@ def write_pick(runtime: Path, live: dict, *, now: datetime, logged: set, attenti
     runtime = Path(runtime)
     ev_table = _read_json(runtime / "signal_ev_table_v1.json", "100b-v10-signal-ev-table-v1")
     rule_shadow = _read_json(runtime / "rule_shadow_v1.json", "100b-v10-rule-shadow-v1")
-    view = pick(live, ev_table=ev_table, rule_shadow=rule_shadow, now=now, attention=attention)
+    margin = _read_json(runtime / "jpx_margin_all_v1.json", "100b-v10-jpx-margin-all-cache-v1")
+    view = pick(live, ev_table=ev_table, rule_shadow=rule_shadow, now=now, attention=attention, margin=margin)
+    view["jpx_margin_as_of"] = (margin or {}).get("as_of_date")
     view["logged_new"] = log_new_picks(runtime / "records", view, now=now, logged=logged)
     target = runtime / "brain_pick_v1.json"
     temp = target.with_name(target.name + ".tmp")

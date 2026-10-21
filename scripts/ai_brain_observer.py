@@ -63,7 +63,18 @@ PTS_PICKUP_INTERVAL = timedelta(minutes=5)
 # signals with the EV table and the rule Shadow, write the top picks to
 # RuntimeDir/brain_pick_v1.json for the Gateway and log new picks to
 # records/<day>/brain_picks.csv for the rule Shadow (pinned module, no orders).
-BRAIN_CORE_MODULE = ("v10_brain_core", "43af5968bf69b5106baae3e9247c37549a2b0439")
+# OWNER 2026-10-22 「全銘柄の信用残はブレインがPCで読む」: once a JST day (and on a failure,
+# again after 30 minutes) the observer fetches JPX 銘柄別信用取引残高 (public PDF, every
+# issue) into RuntimeDir/jpx_margin_all_v1.json for the Brain core. The three modules are
+# loaded only from bytes whose git blob equals the pins (package-relative imports).
+JPX_PACKAGE = "v10_pinned_jpx"
+JPX_MODULES = (
+    ("agent_sdk_public_feed_ingest", "a03ad2aa16996d91eb60f496c04babfbe8f72900"),
+    ("agent_sdk_jpx_margin_ingest", "88b9749795bba809a1d37813f0b1c15468e42074"),
+    ("agent_sdk_jpx_margin_all_ingest", "88e1c18694713527b2882374e4f9e9260052867d"),
+)
+JPX_RETRY = timedelta(minutes=30)
+BRAIN_CORE_MODULE = ("v10_brain_core", "e7914a5abd5ea28e03a0eb4cd71553bdf893b90e")
 
 
 def _aware(value):
@@ -355,6 +366,58 @@ def pts_pickup_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
     return summary
 
 
+def load_pinned_package(script_dir: Path, package_name: str, modules) -> types.ModuleType:
+    """Load modules in order into one package, each only from bytes matching its pin."""
+    package = sys.modules.get(package_name)
+    if package is None:
+        package = types.ModuleType(package_name)
+        package.__path__ = []
+        sys.modules[package_name] = package
+    for name, pin in modules:
+        qualified = package_name + "." + name
+        if qualified in sys.modules:
+            continue
+        path = Path(script_dir) / (name + ".py")
+        raw = path.read_bytes()
+        if git_blob_sha1(raw) != pin:
+            raise RuntimeError("PINNED_MODULE_MISMATCH:" + name)
+        module = types.ModuleType(qualified)
+        module.__file__ = str(path)
+        module.__package__ = package_name
+        sys.modules[qualified] = module
+        try:
+            exec(compile(raw, str(path), "exec"), module.__dict__)
+        except Exception:
+            del sys.modules[qualified]
+            raise
+        setattr(package, name, module)
+    return sys.modules[package_name + "." + modules[-1][0]]
+
+
+def jpx_margin_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
+    """Refresh the JPX all-issue margin cache once per JST day. Never raises."""
+    now = now or datetime.now(timezone.utc)
+    jst_day = now.astimezone(timezone(timedelta(hours=9))).date().isoformat()
+    if state.get("done_for") == jst_day or (state.get("next_try") is not None and now < state["next_try"]):
+        return None
+    state["next_try"] = now + JPX_RETRY
+    try:
+        module = state.get("module") or load_pinned_package(Path(script_dir or Path(__file__).resolve().parent),
+                                                             JPX_PACKAGE, JPX_MODULES)
+        state["module"] = module
+        cache = module.write_cache(Path(live_path).parent, now=now)
+        state["done_for"] = jst_day
+        summary = {"jpx_margin_all": "BUILT", "as_of": cache["as_of_date"], "issues": cache["issue_count"],
+                   "dropped": cache["dropped_blocks"]}
+    except Exception as exc:  # fail closed: the Brain keeps the weekly ratio
+        text = str(exc)
+        summary = {"jpx_margin_all": "BLOCKED", "reason": text if text.isupper() or text.startswith("PINNED_MODULE_MISMATCH")
+                   else type(exc).__name__}
+    summary["real_submit_allowed"] = False
+    print(json.dumps(summary, sort_keys=True), flush=True)
+    return summary
+
+
 def brain_core_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
     """Pick the top live signals once per observer pass. Never raises; prints only on a change of state."""
     now = now or datetime.now(timezone.utc)
@@ -454,11 +517,13 @@ def main(argv=None):
     ev_state = {}
     pts_state = {}
     brain_state = {}
+    jpx_state = {}
     while True:
         run_once(live, status_path)
         agent_receiver_pass(agent_state)
         signal_ev_pass(ev_state, live)
         pts_pickup_pass(pts_state, live)
+        jpx_margin_pass(jpx_state, live)
         brain_core_pass(brain_state, live)
         time.sleep(args.interval)
 

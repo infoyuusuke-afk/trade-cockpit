@@ -162,3 +162,40 @@ def fetch_sources(codes: list[str], *, observed_at: datetime) -> tuple[list[dict
             "issue_count_in_file": len(parsed["issues"]), "dropped_blocks": parsed["dropped_blocks"],
             "matched_codes": [c for c in codes if c in parsed["issues"]]}
     return rows, meta
+
+
+# ---------------------------------------------------------------- Brain cache
+# OWNER 2026-10-22 「全銘柄の信用残はブレインがPCで読む」: the Brain reads every issue of the
+# daily file on the PC (no model, no cost). The Brain observer refreshes this cache once a
+# JST day; the Brain core uses the daily ratio of its own issues.
+CACHE_SCHEMA = "100b-v10-jpx-margin-all-cache-v1"
+CACHE_FILE = "jpx_margin_all_v1.json"
+
+
+def build_cache(parsed: dict, file_url: str, *, observed_at: datetime) -> dict:
+    return {
+        "schema_version": CACHE_SCHEMA,
+        "as_of_date": parsed["as_of_date"],
+        "fetched_at": observed_at.astimezone(timezone.utc).isoformat(),
+        "source_url": file_url,
+        "issue_count": len(parsed["issues"]),
+        "dropped_blocks": parsed["dropped_blocks"],
+        "issues": {c: {k: x[k] for k in ("sales", "sales_change", "purchases", "purchases_change")}
+                   for c, x in sorted(parsed["issues"].items())},
+        "real_submit_allowed": False,
+        "trade_instruction": False,
+    }
+
+
+def write_cache(runtime_dir, *, now: datetime) -> dict:
+    """Fetch the latest all-issue file, parse every block and write the Brain cache atomically."""
+    from pathlib import Path
+    import json as _json
+    url = latest_file_url(daily._get(PAGE_URL, daily.MAX_INDEX_BYTES))
+    parsed = parse_lines(read_pdf_lines(daily._get(url, MAX_PDF_BYTES)), observed_at=now)
+    cache = build_cache(parsed, url, observed_at=now)
+    target = Path(runtime_dir) / CACHE_FILE
+    temp = target.with_name(target.name + ".tmp")
+    temp.write_text(_json.dumps(cache, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+    temp.replace(target)
+    return cache
