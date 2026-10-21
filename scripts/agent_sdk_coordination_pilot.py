@@ -32,8 +32,8 @@ DATA_STATUSES = ("PUBLICATION_TIME_VERIFIED", "DATE_ONLY_OBSERVED_AT_FETCH")
 ROLES = ("premarket", "pre_next", "supply_sq", "revenue_hunter")
 ROLE_GOALS = {
     "premarket": "Before the Tokyo open, evaluate dated public overnight and macro evidence for today's session, with conditions and invalidations.",
-    "pre_next": "Evaluate forward-looking public Japanese-equity catalysts before price reaction, and give invalidations.",
-    "supply_sq": "Evaluate public credit, borrow, futures, arbitrage and SQ signals using release-time-safe evidence.",
+    "pre_next": "Monitor forward-looking public Japanese-equity catalysts before price reaction and pick issues to watch ahead, naming each by its 4-character code (e.g. 285A), with invalidations. Monitoring only: the Brain makes every trading decision.",
+    "supply_sq": "Monitor public credit, borrow, futures, arbitrage and SQ signals using release-time-safe evidence and pick issues to watch ahead by 4-character code. Monitoring only: the Brain makes every trading decision.",
     "revenue_hunter": "Evaluate publicly shareable revenue/product assumptions; do not claim sales without actual accounting.",
 }
 # Revenue Hunter is PROJECT progress work and never feeds a market decision.

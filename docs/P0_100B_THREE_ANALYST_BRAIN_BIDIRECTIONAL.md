@@ -68,3 +68,16 @@ back independently.
 - Outcome scoring (MISSED_SIGNAL / FALSE_ALERT, EV/PF/N) needs WATCH reports to
   carry a structured code and direction; requested in the feedback, UNKNOWN now.
 - Real revenue, cost, net profit and the remaining amount to 100 billion JPY: UNKNOWN.
+
+## Role split (OWNER 2026-10-22)
+
+「専門AIは役目は市場動向の監視とピックアップ銘柄の先回り監視であり、売買判断ではない、
+売買判断は各情報を纏めてブレインが判断する」.
+
+- Specialists (pre_next, supply_sq): monitor the market and name issues to watch
+  ahead by 4-character code. Their goals and the Brain's improvement requests say
+  "monitoring only; no buy/sell call".
+- Brain core: issues named in unexpired WATCH reports (market lanes, restricted to
+  the cockpit's universe) appear as 「専門AIが先回り監視中」 on matching picks and in
+  a 専門AIの先回り監視 line. They do not change the score until their own forward
+  results exist; every trading decision stays with the Brain (Shadow only).

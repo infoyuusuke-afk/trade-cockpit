@@ -39,10 +39,10 @@ AGENT_RECEIVER_INTERVAL = timedelta(seconds=30)
 AGENT_HOST_COMPONENT = "v10-ai-brain-observer"
 AGENT_PACKAGE = "v10_pinned_agent"
 AGENT_RECEIVER_MODULES = (
-    ("agent_sdk_coordination_pilot", "fbb8931ab46ca9309c96a07e68212f7d7b08247a"),
+    ("agent_sdk_coordination_pilot", "89f6cb2a351e5d9a60680d5c0b96b99124eea4ba"),
     ("agent_sdk_brain_handoff", "b936f22ecb086fa56d4fad3361f0fce87c03be35"),
     ("v10_brain_agent_research_receiver", "5269ad6bb8f048b4ff45b35ac2535c9612693614"),
-    ("v10_brain_agent_feedback", "753fb4db8ff2eb5822556ebb45e73b2a2e4a727f"),
+    ("v10_brain_agent_feedback", "3af710fd2826f14f0f572904984cbb8aab1e0ef0"),
 )
 AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_ACK", "AGENT_RECEIVER_")
 
@@ -63,7 +63,7 @@ PTS_PICKUP_INTERVAL = timedelta(minutes=5)
 # signals with the EV table and the rule Shadow, write the top picks to
 # RuntimeDir/brain_pick_v1.json for the Gateway and log new picks to
 # records/<day>/brain_picks.csv for the rule Shadow (pinned module, no orders).
-BRAIN_CORE_MODULE = ("v10_brain_core", "5929de272585e94fb36c3be1df0b01528b427ea1")
+BRAIN_CORE_MODULE = ("v10_brain_core", "43af5968bf69b5106baae3e9247c37549a2b0439")
 
 
 def _aware(value):
@@ -365,7 +365,17 @@ def brain_core_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
         if len(raw) > MAX_INPUT_BYTES:
             raise ValueError("INPUT_TOO_LARGE")
         live = json.loads(raw.decode("utf-8-sig"))
-        view = module.write_pick(Path(live_path).parent, live, now=now, logged=state.setdefault("logged", set()))
+        attention = None
+        fb_mod = sys.modules.get(AGENT_PACKAGE + ".v10_brain_agent_feedback")
+        inbox = os.environ.get(AGENT_INBOX_ENV, "")
+        if fb_mod is not None and inbox:
+            try:  # specialists' watched issues (research lane); a failure only drops the flag
+                attention = fb_mod.specialist_watch_codes(
+                    inbox, now=now, known_codes=[str(r.get("ticker", "")).replace(".T", "") for r in live.get("all_targets") or []])
+            except Exception:
+                attention = None
+        view = module.write_pick(Path(live_path).parent, live, now=now, logged=state.setdefault("logged", set()),
+                                 attention=attention)
         summary = {"brain_core": view["state"], "picks": len(view["picks"]), "logged_new": view["logged_new"]}
     except Exception as exc:  # fail closed, keep the observer running
         summary = {"brain_core": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}

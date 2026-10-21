@@ -142,6 +142,22 @@ class FeedbackLoop(unittest.TestCase):
             with self.assertRaises(fb.FeedbackBlocked):
                 fb._sign(body, fb.FEEDBACK_LABEL)
 
+    def test_specialist_watch_codes_feed_the_brain_only_as_attention(self):
+        async def watcher(role, prompt):
+            if role == "pre_next":
+                ids = [x["source_id"] for x in json.loads(prompt)["sources"]]
+                return {"role": role, "status": "WATCH", "evidence_ids": ids[:1],
+                        "hypothesis": "Watch 285A and 8035 ahead of the release; 9999 is not ours",
+                        "conditions": "Dated catalyst stays valid", "invalidation": "Catalyst withdrawn"}
+            return await pilot.offline_runner(role, prompt)
+        self.runner = watcher
+        self.run_once("fb_watch_01", NOW)
+        got = fb.specialist_watch_codes(self.root, now=NOW + timedelta(minutes=5), known_codes=["285A", "8035", "6857"])
+        self.assertEqual(sorted(got), ["285A", "8035"])
+        self.assertEqual(got["285A"][0]["role"], "pre_next")
+        later = NOW + pilot.ROLE_VALIDITY["pre_next"] + timedelta(minutes=1)      # expired reports are ignored
+        self.assertEqual(fb.specialist_watch_codes(self.root, now=later, known_codes=["285A"]), {})
+
     def test_every_role_and_status_has_one_request(self):
         for role in fb.ROLES:
             for status in fb.VERDICTS:

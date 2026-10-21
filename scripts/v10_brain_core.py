@@ -129,15 +129,24 @@ def estimate(row: dict, *, ev_table: dict | None, rule_shadow: dict | None, hm: 
             "target_mult": 1.0, "stop_mult": 1.0}
 
 
-def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: datetime) -> dict:
+def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: datetime,
+         attention: dict | None = None) -> dict:
+    """attention: code -> [{role, report_id, expires_at}] from the specialists' unexpired
+    WATCH reports (OWNER 2026-10-22: specialists watch, the Brain decides). Shown as a flag
+    and listed; it does not change the score until its own forward results exist."""
     local = now.astimezone(JST)
     hm = local.strftime("%H:%M")
     base = {"schema_version": SCHEMA, "generated_at": now.astimezone(timezone.utc).isoformat(), "picks": [],
-            "excluded": [], "rule_signals": [], "considered": 0, "real_submit_allowed": False, "trade_instruction": False,
+            "excluded": [], "rule_signals": [], "specialist_watch": [], "considered": 0, "real_submit_allowed": False, "trade_instruction": False,
             "thresholds": {"max_picks": MAX_PICKS, "shrink_n": SHRINK_N, "backtest_weight": BACKTEST_WEIGHT,
                            "min_score_pct": MIN_SCORE_PCT, "short_min_credit_ratio": SHORT_MIN_CREDIT_RATIO,
                            "status": "PROVISIONAL"},
             "ev_table_days": len((ev_table or {}).get("days") or []), "rule_forward_from": (rule_shadow or {}).get("forward_from")}
+    lit = {str(r.get("ticker", "")).replace(".T", ""): r.get("signal") for r in live.get("all_targets") or []}
+    names = {str(r.get("ticker", "")).replace(".T", ""): r.get("name") for r in live.get("all_targets") or []}
+    base["specialist_watch"] = [{"code": c, "name": names.get(c) or c, "roles": sorted({x["role"] for x in v}),
+                                 "signal_now": lit.get(c) if lit.get(c) in SIDES else None}
+                                for c, v in sorted((attention or {}).items())]
     updated = _live_time(live.get("updated_at"))
     base["live_updated_at"] = updated.isoformat() if updated else None
     valid = live.get("valid")   # the Collector's count of valid rows, an integer
@@ -169,6 +178,9 @@ def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: da
             continue
         elif side > 0 and ratio >= BUY_HEAVY_CREDIT_RATIO:
             flags.append("買い長（信用倍率%.1f）戻り売り注意" % ratio)
+        watched = (attention or {}).get(str(row.get("ticker", "")).replace(".T", ""))
+        if watched:
+            flags.append("専門AIが先回り監視中（" + "・".join(sorted({x["role"] for x in watched})) + "）")
         if est["ev_pct"] is None:
             base["excluded"].append({"ticker": row.get("ticker"), "name": name, "reason": "根拠不足（記録20回未満）"})
             continue
@@ -251,11 +263,11 @@ def _read_json(path: Path, schema: str):
     return data
 
 
-def write_pick(runtime: Path, live: dict, *, now: datetime, logged: set) -> dict:
+def write_pick(runtime: Path, live: dict, *, now: datetime, logged: set, attention: dict | None = None) -> dict:
     runtime = Path(runtime)
     ev_table = _read_json(runtime / "signal_ev_table_v1.json", "100b-v10-signal-ev-table-v1")
     rule_shadow = _read_json(runtime / "rule_shadow_v1.json", "100b-v10-rule-shadow-v1")
-    view = pick(live, ev_table=ev_table, rule_shadow=rule_shadow, now=now)
+    view = pick(live, ev_table=ev_table, rule_shadow=rule_shadow, now=now, attention=attention)
     view["logged_new"] = log_new_picks(runtime / "records", view, now=now, logged=logged)
     target = runtime / "brain_pick_v1.json"
     temp = target.with_name(target.name + ".tmp")

@@ -73,12 +73,12 @@ REQUESTS = {
     ("supply_sq", "NO_DATA"): "No margin/futures figures reached this role. Use JPX 銘柄別信用取引残高 (all issues) when supplied; never the daily-publication list as a full-market view.",
     ("revenue_hunter", "NO_DATA"): "No verified revenue or cost record was supplied. Report UNKNOWN; estimated sales are not realized revenue.",
     ("premarket", "NO_SIGNAL"): "State which dated source would turn NO_SIGNAL into WATCH, so the Brain can check whether it later appeared (missed-signal audit).",
-    ("pre_next", "NO_SIGNAL"): "Name the dated trigger (issuer, 4-character code, direction, available_at) that would make a WATCH, so a later move can be audited as missed or correctly ignored.",
-    ("supply_sq", "NO_SIGNAL"): "Name the per-issue margin change (sales/purchases, ratio, as-of date) that would make a WATCH, so the Brain can audit false alerts and misses.",
+    ("pre_next", "NO_SIGNAL"): "Name the dated trigger (issuer, 4-character code such as 285A, available_at) that would put an issue on watch, so a later move can be audited as missed or correctly ignored.",
+    ("supply_sq", "NO_SIGNAL"): "Name the per-issue margin change (code, sales/purchases, ratio, as-of date) that would put an issue on watch, so the Brain can audit false alerts and misses.",
     ("revenue_hunter", "NO_SIGNAL"): "List the one revenue experiment to verify next with its measurable success metric and cost; keep it out of the market lane.",
-    ("premarket", "WATCH"): "For each WATCH give the 4-character code, direction and the session window, so the Brain can score it against recorded prices (EV/PF/N).",
-    ("pre_next", "WATCH"): "For each WATCH give the 4-character code, direction and horizon (next session / next week), so the Brain can score hit or miss on recorded prices.",
-    ("supply_sq", "WATCH"): "For each WATCH give the code, the margin figures behind it and the expected direction, so the Brain can score early detection and false alerts.",
+    ("premarket", "WATCH"): "Write each watched issue's 4-character code (e.g. 285A), why and for which session window. Monitoring only: the Brain makes every trading decision.",
+    ("pre_next", "WATCH"): "Write each watched issue's 4-character code (e.g. 285A), the dated reason and the watch horizon (next session / next week), so the Brain can audit whether it moved before others saw it. Monitoring only; no buy/sell call.",
+    ("supply_sq", "WATCH"): "Write each watched issue's code with the margin figures behind it, so the Brain can audit early detection and false alerts. Monitoring only; no buy/sell call.",
     ("revenue_hunter", "WATCH"): "Attach the verified revenue/cost record behind the WATCH, or mark it UNVERIFIED; it never feeds a trade.",
 }
 REQUESTS.update({(r, "UNAVAILABLE"): "The previous run failed for this role. Keep the output within the schema (texts under 600 characters) and cite only supplied source IDs."
@@ -265,6 +265,28 @@ def process_feedback(private_dir, *, now: datetime) -> dict:
         counts = dict(conn.execute("SELECT state, COUNT(*) FROM feedback GROUP BY state").fetchall())
     return {"feedback": "PASS", "issued": issued, "delivered": delivered, "rejected_receipts": rejected,
             "states": counts, "real_submit_allowed": False}
+
+
+CODE_IN_TEXT = re.compile(r"(?<![0-9A-Za-z])([0-9][0-9A-Z]{2}[0-9A-Z])(?![0-9A-Za-z])")
+
+
+def specialist_watch_codes(private_dir, *, now: datetime, known_codes) -> dict:
+    """OWNER 2026-10-22: specialists watch the market and pick issues to watch ahead; the
+    Brain decides. Codes named in unexpired WATCH reports of the market lanes, restricted
+    to the cockpit's own universe (known_codes), as code -> [{role, report_id, expires_at}]."""
+    root = handoff._private_dir(private_dir)
+    known = {str(c).upper() for c in known_codes}
+    out = {}
+    for run_id, ack in _received_runs(root):
+        for report in ack.get("roles", []):
+            if (report.get("status") != "WATCH" or report.get("lane") != "MARKET_RESEARCH_NOT_EXECUTION"
+                    or handoff._dt(report["expires_at"]) <= now):
+                continue
+            text = " ".join(str(report.get(k) or "") for k in ("hypothesis", "conditions"))
+            for code in sorted(set(CODE_IN_TEXT.findall(text.upper())) & known):
+                out.setdefault(code, []).append({"role": report["role"], "report_id": report["report_id"],
+                                                 "expires_at": report["expires_at"]})
+    return out
 
 
 def feedback_status(private_dir) -> list[dict]:

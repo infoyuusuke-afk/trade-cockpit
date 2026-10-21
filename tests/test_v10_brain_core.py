@@ -108,6 +108,17 @@ class Pick(unittest.TestCase):
         self.assertEqual((view["rule_signals"][0]["target"], view["rule_signals"][0]["stop"]), (1020, 980))
         self.assertEqual(brain.pick(live(rows, stale=True), ev_table=TABLE, rule_shadow=SHADOW, now=NOW)["rule_signals"], [])
 
+    def test_specialist_attention_is_a_flag_and_a_list_not_a_score(self):
+        rows = [target("A.T"), target("K.T", ratio=3.0)]
+        att = {"A": [{"role": "pre_next", "report_id": "r.pre_next", "expires_at": "x"}],
+               "K": [{"role": "supply_sq", "report_id": "r.supply_sq", "expires_at": "x"}]}
+        plain = brain.pick(live(rows), ev_table=TABLE, rule_shadow=SHADOW, now=NOW)
+        view = brain.pick(live(rows), ev_table=TABLE, rule_shadow=SHADOW, now=NOW, attention={"A.T".replace(".T", ""): att["A"]})
+        a = next(p for p in view["picks"] if p["ticker"] == "A.T")
+        self.assertIn("専門AIが先回り監視中（pre_next）", a["flags"])
+        self.assertEqual([p["score_pct"] for p in view["picks"]], [p["score_pct"] for p in plain["picks"]])   # no score change
+        self.assertEqual(view["specialist_watch"], [{"code": "A", "name": "名A.T", "roles": ["pre_next"], "signal_now": "買いサイン"}])
+
     def test_valid_is_the_collectors_integer_row_count(self):
         for valid, state in ((100, "PICK"), (95, "PICK"), (90, "PICK"), (89, "NOT_LIVE"), (111, "NOT_LIVE"),
                              (True, "NOT_LIVE"), ("100", "NOT_LIVE"), (None, "NOT_LIVE")):
