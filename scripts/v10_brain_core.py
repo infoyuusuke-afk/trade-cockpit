@@ -137,6 +137,10 @@ def margin_ratio(margin: dict | None, ticker, *, now: datetime):
     OWNER 2026-10-22 「全銘柄の信用残はブレインがPCで読む」. Older than 7 days: not used."""
     if not margin or margin.get("schema_version") != "100b-v10-jpx-margin-all-cache-v1":
         return None
+    # audit 6327787186: refuse an incomplete cache at read time as well (same bounds as ingest)
+    count, dropped = margin.get("issue_count"), margin.get("dropped_blocks")
+    if type(count) is not int or type(dropped) is not int or count < 3500 or dropped > 0.01 * (count + dropped):
+        return None
     try:
         as_of = datetime.strptime(str(margin.get("as_of_date")), "%Y-%m-%d").replace(tzinfo=JST)
     except ValueError:

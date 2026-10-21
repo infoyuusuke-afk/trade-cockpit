@@ -122,6 +122,7 @@ class Pick(unittest.TestCase):
     def test_jpx_daily_margin_replaces_the_weekly_ratio(self):
         # synthetic cache (no real balances): code "B" is sale-heavy, "A" buy-heavy
         cache = {"schema_version": "100b-v10-jpx-margin-all-cache-v1", "as_of_date": "2026-10-20",
+                 "issue_count": 4000, "dropped_blocks": 0,
                  "issues": {"B": {"sales": 2000, "purchases": 1000, "sales_change": 0, "purchases_change": 0},
                             "A": {"sales": 1000, "purchases": 4000, "sales_change": 0, "purchases_change": 0}},
                  "real_submit_allowed": False, "trade_instruction": False}
@@ -137,6 +138,8 @@ class Pick(unittest.TestCase):
         view = brain.pick(live(rows, at="2026-10-22 11:29:55"), ev_table=TABLE, rule_shadow=SHADOW, now=later, margin=stale)
         self.assertEqual([p["ticker"] for p in view["picks"]], ["B.T"])
         self.assertIsNone(brain.margin_ratio(dict(cache, schema_version="x"), "B.T", now=later))
+        self.assertIsNone(brain.margin_ratio(dict(cache, issue_count=120), "B.T", now=later))          # partial cache
+        self.assertIsNone(brain.margin_ratio(dict(cache, dropped_blocks=200), "B.T", now=later))       # > 1 % dropped
         zero = dict(cache, issues={"B": {"sales": 0, "purchases": 1000, "sales_change": 0, "purchases_change": 0}})
         self.assertEqual(brain.margin_ratio(zero, "B.T", now=later), (None, "10/20"))
         view = brain.pick(live(rows, at="2026-10-22 11:29:55"), ev_table=TABLE, rule_shadow=SHADOW, now=later, margin=zero)
@@ -318,8 +321,14 @@ class JpxMarginPass(unittest.TestCase):
         self.addCleanup(shutil.rmtree, bad, True)
         for name, _ in obs.JPX_MODULES:
             (bad / (name + ".py")).write_text("x = 1\n", encoding="utf-8")
-        got = obs.jpx_margin_pass({}, live_path, now=NOW, script_dir=bad)
+        # audit 6327787186: the child is started and polled, never waited for
+        state = {}
+        self.assertIsNone(obs.jpx_margin_pass(state, live_path, now=NOW, script_dir=bad))
+        self.assertIsNotNone(state.get("proc"))
+        state["proc"].wait(timeout=60)
+        got = obs.jpx_margin_pass(state, live_path, now=NOW + timedelta(seconds=10), script_dir=bad)
         self.assertEqual(got["reason"], "PINNED_MODULE_MISMATCH:agent_sdk_public_feed_ingest")
+        self.assertIsNone(state.get("proc"))
 
 
 class Wiring(unittest.TestCase):

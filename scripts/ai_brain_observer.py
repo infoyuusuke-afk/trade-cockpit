@@ -43,7 +43,7 @@ AGENT_RECEIVER_MODULES = (
     ("agent_sdk_coordination_pilot", "4ed33ef6832c317a672cee42f7c08593996a1c17"),
     ("agent_sdk_brain_handoff", "b936f22ecb086fa56d4fad3361f0fce87c03be35"),
     ("v10_brain_agent_research_receiver", "5269ad6bb8f048b4ff45b35ac2535c9612693614"),
-    ("v10_brain_agent_feedback", "4e41917ebcc106655ea823bc83a8653449e17e53"),
+    ("v10_brain_agent_feedback", "0a37d68d9bfb6d4124fbd0e9d583459b82c9775e"),
 )
 AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_ACK", "AGENT_RECEIVER_")
 
@@ -76,7 +76,7 @@ JPX_MODULES = (
 )
 JPX_RETRY = timedelta(minutes=30)
 JPX_CHILD_DEADLINE_SECONDS = 60   # audit 6327603446: fetch + parse never block the loop longer
-BRAIN_CORE_MODULE = ("v10_brain_core", "34808bfc70a3d845dce98a36fa0a7257ef8333c6")
+BRAIN_CORE_MODULE = ("v10_brain_core", "acda62b942903e76fc4979de437beebc2a91c3be")
 
 
 def _aware(value):
@@ -400,20 +400,35 @@ def jpx_margin_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
     """Refresh the JPX all-issue margin cache once per JST day. Never raises."""
     now = now or datetime.now(timezone.utc)
     jst_day = now.astimezone(timezone(timedelta(hours=9))).date().isoformat()
-    if state.get("done_for") == jst_day or (state.get("next_try") is not None and now < state["next_try"]):
-        return None
-    state["next_try"] = now + JPX_RETRY
+    proc = state.get("proc")
+    if proc is None:
+        if state.get("done_for") == jst_day or (state.get("next_try") is not None and now < state["next_try"]):
+            return None
+        state["next_try"] = now + JPX_RETRY
     try:
         if state.get("module") is not None:   # injected in tests: in-process
             cache = state["module"].write_cache(Path(live_path).parent, now=now)
+        elif proc is None:
+            # audit 6327787186: started and left running; this loop never waits for it. Each
+            # pass polls it; at JPX_CHILD_DEADLINE_SECONDS it is killed (the child also exits
+            # on its own deadline).
+            state["proc"] = subprocess.Popen(
+                [sys.executable, "-B", str(Path(__file__).resolve()), "--jpx-cache-once",
+                 str(Path(live_path).parent), "--script-dir", str(Path(script_dir or Path(__file__).resolve().parent))],
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+            state["started"] = now
+            return None
+        elif proc.poll() is None:
+            if (now - state["started"]).total_seconds() < JPX_CHILD_DEADLINE_SECONDS:
+                return None
+            proc.kill()
+            proc.wait(timeout=5)
+            state["proc"] = None
+            raise subprocess.TimeoutExpired("jpx", JPX_CHILD_DEADLINE_SECONDS)
         else:
-            # audit 6327603446: a child process with a hard total deadline does the download
-            # and the PDF parse; this loop only reads its one-line result.
-            proc = subprocess.run([sys.executable, "-B", str(Path(__file__).resolve()), "--jpx-cache-once",
-                                   str(Path(live_path).parent), "--script-dir",
-                                   str(Path(script_dir or Path(__file__).resolve().parent))],
-                                  capture_output=True, text=True, timeout=JPX_CHILD_DEADLINE_SECONDS)
-            cache = json.loads((proc.stdout.strip().splitlines() or ["{}"])[-1])
+            out = proc.stdout.read() if proc.stdout else ""
+            state["proc"] = None
+            cache = json.loads((out.strip().splitlines() or ["{}"])[-1])
             if proc.returncode != 0 or "as_of_date" not in cache:
                 raise RuntimeError(str(cache.get("reason") or "JPX_CHILD_FAILED"))
         state["done_for"] = jst_day
@@ -517,6 +532,10 @@ def run_once(live_path: Path, status_path: Path, *, now=None, pid=None):
 
 def jpx_cache_once(runtime_dir: str, script_dir: str) -> int:
     """Child entry: pinned modules, one fetch + parse + cache write, one JSON line out."""
+    import threading
+    killer = threading.Timer(JPX_CHILD_DEADLINE_SECONDS - 5, lambda: os._exit(3))   # the child's own deadline
+    killer.daemon = True
+    killer.start()
     try:
         module = load_pinned_package(Path(script_dir), JPX_PACKAGE, JPX_MODULES)
         cache = module.write_cache(Path(runtime_dir), now=datetime.now(timezone.utc))
