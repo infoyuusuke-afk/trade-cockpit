@@ -158,6 +158,23 @@ class RuleShadow(unittest.TestCase):
         self.assertEqual((r2["recent"][0]["exit"], r2["recent"][0]["exit_price"]), ("TIME_EXIT", 985))
         self.assertIs(view["real_submit_allowed"], False)
 
+    def test_gap_rules_follow_and_fade_from_the_open_to_ten(self):
+        write_day(self.records, "2026-10-21", [], [("G.T", "15:00:00", 1000), ("H.T", "15:00:00", 1000), ("I.T", "15:00:00", 1000)])
+        write_day(self.records, "2026-10-22", [], [
+            ("G.T", "09:00:05", 1020), ("G.T", "09:59:00", 1030), ("G.T", "10:30:00", 900),   # +2 % gap, up to 10:00
+            ("H.T", "09:00:05", 1005),                                                       # gap below 1 %: skipped
+            ("I.T", "10:05:00", 1050),                                                       # first trade after 10:00: not entered
+        ])
+        view = ev.build_rule_shadow(self.records, now=NOW)
+        a, b = view["forward"]["R3A_1000"], view["forward"]["R3B_1000"]
+        self.assertEqual((a["n"], b["n"]), (1, 1))
+        gross = (1030 / 1020 - 1) * 100
+        self.assertAlmostEqual(a["recent"][0]["return_pct"], gross - 2.80 / 365, places=6)   # follow = long
+        self.assertAlmostEqual(b["recent"][0]["return_pct"], -gross - 1.10 / 365, places=6)  # fade = short
+        self.assertEqual(sorted(view["gap_rules"]), ["R3A_0915", "R3A_0930", "R3A_1000", "R3B_0915", "R3B_0930", "R3B_1000"])
+        self.assertEqual(view["forward"]["R3A_0915"]["n"], 1)   # 09:00:05 fill, exit at the same tick by 09:15
+        self.assertAlmostEqual(view["forward"]["R3A_0915"]["recent"][0]["return_pct"], -2.80 / 365, places=6)
+
     def test_default_replay_is_unchanged(self):
         sig = {"signal": "買いサイン", "entry": "1000", "stop": "990", "target1": "1010", "captured_at": "2026-10-22 09:20:00", "signal_bar": "b"}
         ticks = [("09:21:00", 0, 1000), ("09:30:00", 1, 1010)]

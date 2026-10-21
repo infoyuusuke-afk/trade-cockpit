@@ -266,6 +266,10 @@ document.addEventListener("DOMContentLoaded",()=>{
    return '<p class="sub">Shadow（'+esc(ruleShadow.forward_from)+'以降・仮想）：'+Object.entries(ruleShadow.rules||{}).map(([k,r])=>{
      const f=ruleShadow.forward?.[k]||{};
      return esc(r.label)+" → "+(f.n?esc(f.n)+"回・平均"+evPct(f.ev_pct)+"・PF"+esc(f.pf??"—"):"まだ0回")+"（検証時 後半"+esc(r.backtest?.test?.n)+"回・"+evPct(r.backtest?.test?.ev_pct)+"）";
+   }).join("／")+'</p>'+
+   '<p class="sub">記録のみ：'+Object.entries(ruleShadow.gap_rules||{}).map(([k,r])=>{
+     const f=ruleShadow.forward?.[k]||{};
+     return esc(r.label)+" → "+(f.n?esc(f.n)+"回・平均"+evPct(f.ev_pct)+"・PF"+esc(f.pf??"—"):"まだ0回");
    }).join("／")+'</p>';
  };
  const evRowHtml=(r,i)=>{

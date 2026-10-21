@@ -252,6 +252,41 @@ RULES = {
 }
 
 
+# OWNER 2026-10-21 「③」: record only, both directions. Every watched issue that opens
+# >= 1 % away from the previous close: R3A follows the gap from the first tick at or
+# after 09:00 to the last tick by 10:00; R3B fades it. (21 recorded days favoured
+# following; 3 years of 60-minute bars favoured fading: no stable edge yet.)
+# OWNER 2026-10-21 「9時15分と9時30に決済も検証」: three exit times for each direction.
+GAP_RULES = {
+    f"R3{d}_{hm.replace(':', '')}": {"label": f"③{d} 窓{'の方向' if sign > 0 else 'と反対'}に寄りで入り{hm}決済（記録のみ）",
+                                      "direction": sign, "min_gap_pct": 1.0, "exit": hm + ":00"}
+    for d, sign in (("A", 1), ("B", -1)) for hm in ("09:15", "09:30", "10:00")
+}
+
+
+def gap_trades(prev_ticks: dict, ticks: dict, rule: dict) -> list[dict]:
+    out = []
+    for ticker, rows in ticks.items():
+        before = [p for t, _, p in prev_ticks.get(ticker, []) if t <= "15:30:00"]
+        day = [(t, p) for t, _, p in rows if t >= "09:00:00"]
+        if not before or not day:
+            continue
+        close, (open_t, open_) = before[-1], day[0]
+        gap = (open_ / close - 1) * 100
+        if abs(gap) < rule["min_gap_pct"]:
+            continue
+        side = rule["direction"] * (1 if gap > 0 else -1)
+        upto = [(t, p) for t, p in day if t <= rule["exit"]]
+        if not upto:  # no trade before the exit time: not entered
+            continue
+        exit_t, exit_p = upto[-1]
+        gross = side * (exit_p / open_ - 1) * 100
+        out.append({"state": "FILLED", "exit": "TIME_EXIT", "side": side, "fill_price": open_, "exit_price": exit_p,
+                    "fill_time": open_t, "exit_time": exit_t, "gap_pct": round(gap, 3), "gross_pct": gross,
+                    "return_pct": gross - cost_pct(side), "ticker": ticker, "name": "", "signal_at": open_t})
+    return out
+
+
 def rule_matches(rule: dict, signal: dict) -> bool:
     side = SIDES.get(signal.get("signal"))
     hm = str(signal.get("captured_at", ""))[11:16]
@@ -263,15 +298,25 @@ def build_rule_shadow(records: Path, *, now: datetime) -> dict:
     """Virtual trades of each rule on completed days from RULES_FORWARD_FROM."""
     local = now.astimezone(JST)
     today, complete = local.date().isoformat(), local.strftime("%H:%M") >= "15:30"
-    trades = {k: [] for k in RULES}
+    trades = {k: [] for k in list(RULES) + list(GAP_RULES)}
     days = []
+    prev_ticks = None
     for day_dir in sorted(p for p in records.iterdir() if p.is_dir()):
         day = day_dir.name
-        if day < RULES_FORWARD_FROM or day > today or (day == today and not complete):
+        if day > today or (day == today and not complete):
             continue
-        sig_path = day_dir / "trade_signals.csv"
         ticks = load_ticks(day_dir / "ticks.csv")
-        if not sig_path.is_file() or not ticks:
+        if not ticks:
+            continue
+        if day < RULES_FORWARD_FROM:
+            prev_ticks = ticks
+            continue
+        if prev_ticks is not None:
+            for key, rule in GAP_RULES.items():
+                trades[key].extend(dict(t, day=day) for t in gap_trades(prev_ticks, ticks, rule))
+        prev_ticks = ticks
+        sig_path = day_dir / "trade_signals.csv"
+        if not sig_path.is_file():
             continue
         days.append(day)
         with open(sig_path, newline="", encoding="utf-8-sig") as f:
@@ -297,6 +342,7 @@ def build_rule_shadow(records: Path, *, now: datetime) -> dict:
         "generated_at": now.astimezone(timezone.utc).isoformat(),
         "forward_from": RULES_FORWARD_FROM, "days": days,
         "rules": {k: {k2: v for k2, v in r.items()} for k, r in RULES.items()},
+        "gap_rules": GAP_RULES,
         "forward": {k: dict(stats(v), recent=[{x: t[x] for x in ("day", "ticker", "name", "signal_at", "exit",
                                                                "fill_price", "exit_price", "return_pct")}
                                               for t in v[-10:]]) for k, v in trades.items()},
