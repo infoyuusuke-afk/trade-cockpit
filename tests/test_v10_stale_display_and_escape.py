@@ -48,6 +48,39 @@ class StaleSnapshotNotShownAsCurrent(unittest.TestCase):
                     self.assertTrue(any(k in line for k in ("過去", "本日のLIVE市場情報ではありません", "LIVE未認証")), line[:120])
 
 
+class StaticSnapshotSectionsLabelled(unittest.TestCase):
+    """OWNER 2026-10-21: every section whose numbers are baked into the page
+    (the 2026-09-25 snapshot, e.g. 地合いサマリー on 検証・除外, 資金流入テーマ
+    TOP5 on 国策) says it is 9/25 past data. Runtime-filled sections are not."""
+
+    def sections(self):
+        import re
+        main = HTML[HTML.index("<main"):HTML.index("</main>")]
+        for m in re.finditer(r'<section([^>]*)>(.*?)</section>', main, re.S):
+            yield m.group(1), m.group(2)
+
+    def test_named_owner_sections_are_labelled(self):
+        for title in ("① 地合いサマリー", "② 当日資金流入テーマ TOP5", "国策テーマ・実戦優先順位"):
+            with self.subTest(section=title):
+                body = [b for _, b in self.sections() if title in b][0]
+                self.assertIn("9/25時点の過去データ", body)
+
+    def test_every_static_table_section_is_labelled_or_already_marked_past(self):
+        import re
+        for attrs, body in self.sections():
+            ids = set(re.findall(r'id="([^"]+)"', body))
+            dynamic = any(('getElementById("' + i + '")') in HTML for i in ids)
+            if dynamic or "<tr" not in body:
+                continue
+            with self.subTest(section=(re.findall(r"<h2[^>]*>(.*?)</h2>", body) or [attrs])[0][:30]):
+                self.assertTrue("9/25時点の過去データ" in body or "過去資料" in body)
+
+    def test_live_sections_are_not_labelled_past(self):
+        for sid in ("ms2-live-top5", "overnight-top5", "watchlist-100", "premarket-gap-ranking", "focus-owner-panel"):
+            with self.subTest(section=sid):
+                self.assertNotIn("9/25時点の過去データ", section(sid))
+
+
 class KioxiaRendererEscapes(unittest.TestCase):
     def test_no_raw_external_fields_in_catalyst_markup(self):
         start = HTML.index('document.getElementById("kio-catalyst-list").innerHTML=')
