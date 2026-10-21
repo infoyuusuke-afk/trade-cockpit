@@ -25,7 +25,7 @@ if __package__:
 else:
     import agent_sdk_coordination_pilot as pilot
 
-SCHEMA = "100b-agent-brain-research-envelope-v2"
+SCHEMA = "100b-agent-brain-research-envelope-v3"
 ACK_SCHEMA = "100b-agent-brain-research-ack-v1"
 MAX_BYTES = 65_536
 MAX_HANDOFF_AGE = timedelta(minutes=15)
@@ -124,13 +124,16 @@ def _write_once(path, content):
 
 REPORT_FIELDS = {
     "report_id", "role", "lane", "target_at", "generated_at", "expires_at", "status",
-    "unavailable_reason", "evidence_ids", "evidence", "hypothesis", "conditions",
-    "invalidation", "real_submit_allowed",
+    "unavailable_reason", "evidence_ids", "evidence", "excluded_source_ids", "hypothesis",
+    "conditions", "invalidation", "real_submit_allowed",
 }
 
 
-def _validate_report(item, assigned, *, run_id, evaluated, target_at):
+def _validate_report(item, offered, *, run_id, evaluated, target_at):
     role = item["role"]
+    assigned, excluded = pilot.eligible_sources(role, offered, target_at)
+    if item.get("excluded_source_ids") != excluded:
+        raise BridgeBlocked("REPORT_SOURCE_ELIGIBILITY_INVALID")
     if set(item) != REPORT_FIELDS or item.get("real_submit_allowed") is not False:
         raise BridgeBlocked("SPECIALIST_RESULT_FIELDS_OR_SAFETY_INVALID")
     if (item["report_id"] != run_id + "." + role or item["lane"] != pilot.ROLE_LANES[role]
@@ -141,7 +144,8 @@ def _validate_report(item, assigned, *, run_id, evaluated, target_at):
         raise BridgeBlocked("REPORT_VALIDITY_WINDOW_INVALID")
     status = item["status"]
     if not assigned:
-        if status != "NO_DATA" or item["evidence_ids"] != [] or item["unavailable_reason"] != "NO_SOURCE":
+        expected_reason = "NO_ELIGIBLE_SOURCE" if offered else "NO_SOURCE"
+        if status != "NO_DATA" or item["evidence_ids"] != [] or item["unavailable_reason"] != expected_reason:
             raise BridgeBlocked("NO_DATA_ROLE_MISMATCH")
     elif status == "NO_DATA":
         raise BridgeBlocked("FALSE_NO_DATA")
@@ -155,6 +159,7 @@ def _validate_report(item, assigned, *, run_id, evaluated, target_at):
             "role", "status", "evidence_ids", "hypothesis", "conditions", "invalidation")}, assigned)
     by_id = {x["source_id"]: x for x in assigned}
     expected = [{"source_id": i, "source_url": by_id[i]["source_url"],
+                 "source_name": by_id[i]["source_name"], "data_status": by_id[i]["data_status"],
                  "available_at": by_id[i]["available_at"]} for i in item["evidence_ids"]]
     if item["evidence"] != expected:
         raise BridgeBlocked("REPORT_EVIDENCE_BINDING_INVALID")

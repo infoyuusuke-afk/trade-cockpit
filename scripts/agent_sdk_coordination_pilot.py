@@ -18,7 +18,16 @@ import re
 import sqlite3
 from urllib.parse import urlsplit
 
-SCHEMA = "100b-public-agent-evidence-v1"
+SCHEMA = "100b-public-agent-evidence-v2"
+SOURCE_FIELDS = {
+    "source_id", "role", "source_url", "source_name", "source_type",
+    "as_of", "available_at", "fetched_at", "data_status", "summary",
+}
+SOURCE_TYPES = ("OFFICIAL_RSS_HEADLINE", "OFFICIAL_STATISTICS_FILE", "SYNTHETIC_TEST")
+# PUBLICATION_TIME_VERIFIED: the publisher states the release time.
+# DATE_ONLY_OBSERVED_AT_FETCH: only a calendar date is known; available_at is
+# the first verified fetch, never an invented release clock.
+DATA_STATUSES = ("PUBLICATION_TIME_VERIFIED", "DATE_ONLY_OBSERVED_AT_FETCH")
 ROLES = ("premarket", "pre_next", "supply_sq", "revenue_hunter")
 ROLE_GOALS = {
     "premarket": "Before the Tokyo open, evaluate dated public overnight and macro evidence for today's session, with conditions and invalidations.",
@@ -41,7 +50,16 @@ ROLE_VALIDITY = {
     "supply_sq": timedelta(hours=24),
     "revenue_hunter": timedelta(days=7),
 }
-RESULT_SCHEMA = "100b-agent-bridge-result-v2"
+RESULT_SCHEMA = "100b-agent-bridge-result-v3"
+# Which supplied sources a role may use for an analysis aimed at target_at:
+# nothing published after target_at (no lookahead), nothing older than the
+# window. PROVISIONAL windows (not an OWNER decision yet).
+ROLE_SOURCE_WINDOW = {
+    "premarket": timedelta(hours=18),
+    "pre_next": timedelta(days=7),
+    "supply_sq": timedelta(days=7),
+    "revenue_hunter": timedelta(days=7),
+}
 # A role whose call or output fails is UNAVAILABLE; the other roles still run.
 UNAVAILABLE_REASONS = ("API_OR_RUNTIME_FAILED", "OUTPUT_VALIDATION_FAILED")
 SLOT = re.compile(r"^[a-z0-9_]{3,40}$")
@@ -82,15 +100,20 @@ def validate_snapshot(doc: dict, now: datetime) -> dict:
     ids = set()
     safe = []
     for row in records:
-        if not isinstance(row, dict) or set(row) != {
-            "source_id", "role", "source_url", "as_of", "available_at", "summary"
-        }:
+        if not isinstance(row, dict) or set(row) != SOURCE_FIELDS:
             raise Blocked("SOURCE_FIELDS_INVALID")
         sid, role = row["source_id"], row["role"]
         if not isinstance(sid, str) or not SRC_ID.fullmatch(sid) or sid in ids:
             raise Blocked("SOURCE_ID_INVALID_OR_DUPLICATE")
         if role not in ROLES:
             raise Blocked("ROLE_UNSUPPORTED")
+        if row["source_type"] not in SOURCE_TYPES:
+            raise Blocked("SOURCE_TYPE_UNSUPPORTED")
+        if row["data_status"] not in DATA_STATUSES:
+            raise Blocked("DATA_STATUS_UNSUPPORTED")
+        name = row["source_name"]
+        if not isinstance(name, str) or not 1 <= len(name) <= 120 or any(ord(ch) < 32 for ch in name):
+            raise Blocked("SOURCE_NAME_INVALID")
         link = row["source_url"]
         if not isinstance(link, str) or len(link) > 500:
             raise Blocked("SOURCE_URL_INVALID")
@@ -102,12 +125,27 @@ def validate_snapshot(doc: dict, now: datetime) -> dict:
         if (not isinstance(summary, str) or not 1 <= len(summary) <= 400
                 or any(ord(ch) < 32 for ch in summary)):
             raise Blocked("SOURCE_SUMMARY_INVALID")
-        as_of, available = _time(row["as_of"]), _time(row["available_at"])
-        if as_of > available or available > now or as_of > now:
+        as_of, available, fetched = _time(row["as_of"]), _time(row["available_at"]), _time(row["fetched_at"])
+        if as_of > available or available > fetched or fetched > now:
             raise Blocked("FUTURE_OR_LOOKAHEAD_EVIDENCE")
+        if row["data_status"] == "DATE_ONLY_OBSERVED_AT_FETCH" and available != fetched:
+            raise Blocked("DATE_ONLY_SOURCE_MUST_BE_AVAILABLE_AT_FETCH")
         ids.add(sid)
         safe.append(row.copy())
     return {"schema_version": SCHEMA, "run_id": doc["run_id"], "sources": safe}
+
+
+def eligible_sources(role: str, assigned: list[dict], target_at: str) -> tuple[list[dict], list[str]]:
+    """Sources a role may use for target_at, and the ids it must not use."""
+    target = _time(target_at)
+    keep, excluded = [], []
+    for row in assigned:
+        available = _time(row["available_at"])
+        if available <= target and target - available <= ROLE_SOURCE_WINDOW[role]:
+            keep.append(row)
+        else:
+            excluded.append(row["source_id"])
+    return keep, sorted(excluded)
 
 
 def _check_text(value, max_length=600):
@@ -143,7 +181,7 @@ def validate_specialist(role: str, value: dict, supplied: list[dict]) -> dict:
 
 def build_report(run_id: str, role: str, *, status: str, generated_at: datetime,
                  target_at: str, supplied: list[dict], body: dict | None = None,
-                 reason: str | None = None) -> dict:
+                 reason: str | None = None, excluded: list[str] | None = None) -> dict:
     """Wrap one role's result into a traceable, expiring report (no model input)."""
     body = body or {}
     ids = list(body.get("evidence_ids", []))
@@ -167,7 +205,9 @@ def build_report(run_id: str, role: str, *, status: str, generated_at: datetime,
         "unavailable_reason": reason,
         "evidence_ids": ids,
         "evidence": [{"source_id": i, "source_url": by_id[i]["source_url"],
+                      "source_name": by_id[i]["source_name"], "data_status": by_id[i]["data_status"],
                       "available_at": by_id[i]["available_at"]} for i in ids],
+        "excluded_source_ids": list(excluded or []),
         "hypothesis": body.get("hypothesis", texts[0] if texts else ""),
         "conditions": body.get("conditions", texts[1] if texts else ""),
         "invalidation": body.get("invalidation", texts[2] if texts else ""),
@@ -222,10 +262,12 @@ async def coordinate(doc: dict, runner, *, now: datetime, target_at: str | None 
         raise Blocked("TARGET_AT_INVALID")
     reports = []
     for role in ROLES:
-        assigned = [r for r in public["sources"] if r["role"] == role]
+        offered = [r for r in public["sources"] if r["role"] == role]
+        assigned, excluded = eligible_sources(role, offered, target)
         if not assigned:
             reports.append(build_report(public["run_id"], role, status="NO_DATA", generated_at=now,
-                                        target_at=target, supplied=assigned, reason="NO_SOURCE"))
+                                        target_at=target, supplied=assigned, excluded=excluded,
+                                        reason="NO_ELIGIBLE_SOURCE" if offered else "NO_SOURCE"))
             continue
         prompt = json.dumps(
             {"role": role, "goal": ROLE_GOALS[role], "sources": assigned,
@@ -236,16 +278,18 @@ async def coordinate(doc: dict, runner, *, now: datetime, target_at: str | None 
             raw = await runner(role, prompt)
         except Exception:
             reports.append(build_report(public["run_id"], role, status="UNAVAILABLE", generated_at=now,
-                                        target_at=target, supplied=assigned, reason="API_OR_RUNTIME_FAILED"))
+                                        target_at=target, supplied=assigned, excluded=excluded,
+                                        reason="API_OR_RUNTIME_FAILED"))
             continue
         try:
             body = validate_specialist(role, raw, assigned)
         except Blocked:
             reports.append(build_report(public["run_id"], role, status="UNAVAILABLE", generated_at=now,
-                                        target_at=target, supplied=assigned, reason="OUTPUT_VALIDATION_FAILED"))
+                                        target_at=target, supplied=assigned, excluded=excluded,
+                                        reason="OUTPUT_VALIDATION_FAILED"))
             continue
         reports.append(build_report(public["run_id"], role, status=body["status"], generated_at=now,
-                                    target_at=target, supplied=assigned, body=body))
+                                    target_at=target, supplied=assigned, body=body, excluded=excluded))
     usable = [r for r in reports if r["status"] in ("WATCH", "NO_SIGNAL")]
     review = {"status": "UNAVAILABLE", "summary": "No usable specialist report to coordinate",
               "conflicts": [], "next_checks": [], "real_submit_allowed": False}

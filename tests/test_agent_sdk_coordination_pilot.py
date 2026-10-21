@@ -32,6 +32,8 @@ def sample():
             "source_url": "https://www.jpx.co.jp/markets/",
             "as_of": "2026-10-19T09:00:00+09:00",
             "available_at": "2026-10-19T15:00:00+09:00",
+            "fetched_at": "2026-10-19T15:00:00+09:00",
+            "source_name": "Synthetic public source", "source_type": "SYNTHETIC_TEST", "data_status": "PUBLICATION_TIME_VERIFIED",
             "summary": "Synthetic public evidence; no actual financial observation",
         }
     return {
@@ -138,7 +140,98 @@ class Validation(unittest.TestCase):
             })
 
 
+class SourceTimeContract(unittest.TestCase):
+    """T02/T03/T05: evidence v2 time fields and URL rules."""
+
+    def test_fetched_before_available_is_rejected(self):
+        d = sample()
+        d["sources"][0]["fetched_at"] = "2026-10-19T14:00:00+09:00"
+        with self.assertRaisesRegex(pilot.Blocked, "FUTURE_OR_LOOKAHEAD_EVIDENCE"):
+            pilot.validate_snapshot(d, NOW)
+
+    def test_fetch_in_the_future_is_rejected(self):
+        d = sample()
+        d["sources"][0]["fetched_at"] = "2026-10-21T00:00:00+09:00"
+        with self.assertRaisesRegex(pilot.Blocked, "FUTURE_OR_LOOKAHEAD_EVIDENCE"):
+            pilot.validate_snapshot(d, NOW)
+
+    def test_date_only_source_cannot_claim_an_earlier_release(self):
+        d = sample()
+        d["sources"][0]["data_status"] = "DATE_ONLY_OBSERVED_AT_FETCH"
+        d["sources"][0]["fetched_at"] = "2026-10-19T16:00:00+09:00"
+        with self.assertRaisesRegex(pilot.Blocked, "DATE_ONLY_SOURCE_MUST_BE_AVAILABLE_AT_FETCH"):
+            pilot.validate_snapshot(d, NOW)
+
+    def test_unknown_status_or_type_is_rejected(self):
+        for key, value in (("data_status", "GUESSED"), ("source_type", "BLOG")):
+            d = sample()
+            d["sources"][0][key] = value
+            with self.subTest(key=key), self.assertRaises(pilot.Blocked):
+                pilot.validate_snapshot(d, NOW)
+
+    def test_v1_evidence_without_fetch_fields_is_rejected(self):
+        d = sample()
+        d["schema_version"] = "100b-public-agent-evidence-v1"
+        with self.assertRaisesRegex(pilot.Blocked, "SCHEMA_UNSUPPORTED"):
+            pilot.validate_snapshot(d, NOW)
+        d = sample()
+        del d["sources"][0]["fetched_at"]
+        with self.assertRaisesRegex(pilot.Blocked, "SOURCE_FIELDS_INVALID"):
+            pilot.validate_snapshot(d, NOW)
+
+    def test_http_and_credentialed_urls_are_rejected(self):
+        for url in ("http://www.jpx.co.jp/a", "https://u:p@www.jpx.co.jp/a", "javascript:alert(1)",
+                    "https://www.jpx.co.jp/a?x=1"):
+            d = sample()
+            d["sources"][0]["source_url"] = url
+            with self.subTest(url=url), self.assertRaises(pilot.Blocked):
+                pilot.validate_snapshot(d, NOW)
+
+
 class Orchestration(unittest.IsolatedAsyncioTestCase):
+    async def test_source_published_after_target_is_not_given_to_the_role(self):
+        seen = {}
+        async def capture(role, prompt):
+            if role != "progress_coordinator":
+                seen[role] = [s["source_id"] for s in json.loads(prompt)["sources"]]
+            return await fake_provider(role, prompt)
+        # target before the 2026-10-19 15:00 JST publication: nothing is eligible.
+        result = await pilot.coordinate(sample(), capture, now=NOW, target_at="2026-10-19T14:59:00+09:00")
+        self.assertEqual(seen, {})
+        by_role = {r["role"]: r for r in result["specialists"]}
+        self.assertEqual(by_role["pre_next"]["status"], "NO_DATA")
+        self.assertEqual(by_role["pre_next"]["unavailable_reason"], "NO_ELIGIBLE_SOURCE")
+        self.assertEqual(by_role["pre_next"]["excluded_source_ids"], ["public_alpha"])
+
+    async def test_premarket_uses_only_the_overnight_window(self):
+        d = sample()
+        d["sources"].append(dict(d["sources"][0], source_id="pre_old", role="premarket",
+                                 as_of="2026-10-19T11:00:00+09:00", available_at="2026-10-19T12:00:00+09:00",
+                                 fetched_at="2026-10-19T12:00:00+09:00"))
+        d["sources"].append(dict(d["sources"][0], source_id="pre_new", role="premarket",
+                                 as_of="2026-10-20T07:00:00+09:00", available_at="2026-10-20T07:30:00+09:00",
+                                 fetched_at="2026-10-20T07:30:00+09:00"))
+        seen = {}
+        async def capture(role, prompt):
+            if role == "premarket":
+                seen[role] = [s["source_id"] for s in json.loads(prompt)["sources"]]
+            return await fake_provider(role, prompt)
+        result = await pilot.coordinate(d, capture, now=NOW, target_at="2026-10-20T08:30:00+09:00")
+        self.assertEqual(seen["premarket"], ["pre_new"])
+        pre = [r for r in result["specialists"] if r["role"] == "premarket"][0]
+        self.assertEqual(pre["excluded_source_ids"], ["pre_old"])
+        self.assertEqual([e["source_id"] for e in pre["evidence"]], ["pre_new"])
+
+    async def test_each_role_only_sees_its_own_sources(self):
+        seen = {}
+        async def capture(role, prompt):
+            if role != "progress_coordinator":
+                seen[role] = {s["role"] for s in json.loads(prompt)["sources"]}
+            return await fake_provider(role, prompt)
+        await pilot.coordinate(sample(), capture, now=NOW)
+        for role, roles in seen.items():
+            self.assertEqual(roles, {role})
+
     async def test_all_four_roles_route_without_api_or_broker(self):
         seen = []
         async def track(role, prompt):
@@ -215,7 +308,7 @@ class Orchestration(unittest.IsolatedAsyncioTestCase):
     async def test_every_report_is_traceable_and_expires(self):
         result = await pilot.coordinate(sample(), fake_provider, now=NOW,
                                         target_at="2026-10-20T08:30:00+09:00", slot="premarket_0830")
-        self.assertEqual(result["schema_version"], "100b-agent-bridge-result-v2")
+        self.assertEqual(result["schema_version"], pilot.RESULT_SCHEMA)
         self.assertEqual(result["slot"], "premarket_0830")
         for r in result["specialists"]:
             self.assertEqual(r["report_id"], "synthetic_20261020_01." + r["role"])

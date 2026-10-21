@@ -39,9 +39,9 @@ AGENT_RECEIVER_INTERVAL = timedelta(seconds=30)
 AGENT_HOST_COMPONENT = "v10-ai-brain-observer"
 AGENT_PACKAGE = "v10_pinned_agent"
 AGENT_RECEIVER_MODULES = (
-    ("agent_sdk_coordination_pilot", "fd9d53a6365d940aeaea2419e3e71d3b259c085c"),
-    ("agent_sdk_brain_handoff", "62ac8b820cadfb5aad9b44466f9f46666f5bf100"),
-    ("v10_brain_agent_research_receiver", "b8b7e851bc4b40fafe24b5b33367d95067ce1247"),
+    ("agent_sdk_coordination_pilot", "c600bae0874eb4266d8ba737f4a551ce186c0604"),
+    ("agent_sdk_brain_handoff", "b936f22ecb086fa56d4fad3361f0fce87c03be35"),
+    ("v10_brain_agent_research_receiver", "f749d06983c2db1d92207725787b50ecf9506403"),
 )
 AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_ACK", "AGENT_RECEIVER_")
 

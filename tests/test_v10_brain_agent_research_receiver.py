@@ -37,6 +37,7 @@ def source_doc(run_id="brain_rx_20261021_01", roles=("pre_next", "supply_sq")):
             "source_id": "syn_%s_%d" % (role, ix), "role": role,
             "source_url": "https://www.boj.or.jp/rss/whatsnew.xml",
             "as_of": "2026-10-20T12:00:00+09:00", "available_at": "2026-10-20T16:35:00+00:00",
+            "fetched_at": "2026-10-20T16:35:00+00:00", "source_name": "Synthetic public source", "source_type": "SYNTHETIC_TEST", "data_status": "PUBLICATION_TIME_VERIFIED",
             "summary": "Synthetic offline headline; no trading information",
         })
     return {"schema_version": pilot.SCHEMA, "run_id": run_id, "sources": rows}

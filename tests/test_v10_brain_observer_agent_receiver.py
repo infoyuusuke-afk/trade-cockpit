@@ -51,6 +51,7 @@ def _emit(inbox, run_id="observer_rx_20261021_01", now=NOW):
     doc = {"schema_version": pilot.SCHEMA, "run_id": run_id, "sources": [{
         "source_id": "syn_pre_0", "role": "pre_next", "source_url": "https://www.boj.or.jp/rss/whatsnew.xml",
         "as_of": "2026-10-20T12:00:00+09:00", "available_at": "2026-10-20T16:35:00+00:00",
+        "fetched_at": "2026-10-20T16:35:00+00:00", "source_name": "Synthetic public source", "source_type": "SYNTHETIC_TEST", "data_status": "PUBLICATION_TIME_VERIFIED",
         "summary": "Synthetic offline headline; no trading information"}]}
     result = asyncio.run(pilot.coordinate(doc, pilot.offline_runner, now=now))
     result["state"] = "OFFLINE_SYNTHETIC_NO_API_CALL"
