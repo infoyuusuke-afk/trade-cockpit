@@ -40,7 +40,7 @@ class KioxiaChartSourceContract(unittest.TestCase):
         start = page.index("// KIO_HTML_SAFE_BEGIN")
         end = page.index("// KIO_HTML_SAFE_END")
         self.assertLess(start, end)
-        self.assertGreater(page.rfind("<script", start), page.rfind("</script>", start))
+        self.assertGreater(page.rfind("<script", 0, start), page.rfind("</script>", 0, start))
         block = page[page.index('document.getElementById("kio-us-context").innerHTML'):
                      page.index("}).catch(() => {", page.index('document.getElementById("kio-us-context").innerHTML'))]
         for needle in ("kioEsc(x.title)", "kioEsc(x.fact)", "kioEsc(x.expectation)",
