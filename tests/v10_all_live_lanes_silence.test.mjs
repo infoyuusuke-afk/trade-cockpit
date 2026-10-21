@@ -27,7 +27,7 @@ function oneLine(needle) {
   assert.notEqual(start,-1,needle);
   return html.slice(start,html.indexOf("\n",start));
 }
-const sourceCentral=inside(" // One 12-second MS2 admission/expiry contract",
+const sourceCentral=inside(" // One 40-second MS2 admission/expiry contract",
                             "\n const esc=v=>").replace(/\n const esc=v=>$/,"");
 const sourceScalp=inside('document.addEventListener("ms2RssUpdate",e=>{\n   const d=e.detail||{},stale=',"\n });");
 const sourceUnified=oneLine('document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{},live=');
@@ -161,7 +161,9 @@ test("no next event: all LIVE-labeled lanes, cards and metrics clear after 40 se
   h.nodes.get("ms2-live-health").textContent="LIVE 接続中";
   h.advance(39999);
   assert.match(h.nodes.get("unified-mode").className,/live/);
-  h.advance(2);
+  h.advance(1);                                   // exactly 40,000 ms: still valid
+  assert.match(h.nodes.get("unified-mode").className,/live/);
+  h.advance(1);                                   // 40,001 ms: blocked
   assertBlocked(h);
   assert.equal(h.timers.size,1,"central watchdog must be single shared interval");
   h.send(good(h));

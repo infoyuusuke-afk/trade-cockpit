@@ -492,11 +492,11 @@ class UiFailClosed(unittest.TestCase):
         missing_identity = json.loads(json.dumps(live))
         del missing_identity["live_price_diagnostics"]["workbook_identity_verified"]
         outdated = json.loads(json.dumps(live))
-        outdated["observed_at_offset"] = (datetime.now(timezone.utc) - timedelta(seconds=30)).isoformat()
+        outdated["observed_at_offset"] = (datetime.now(timezone.utc) - timedelta(seconds=50)).isoformat()
         cases = [
             {"name": "http_200_without_workbook_identity", "bridge_status": 200,
              "bridge_body": json.dumps(missing_identity), "health": healthy},
-            {"name": "http_200_with_30s_frozen_observation", "bridge_status": 200,
+            {"name": "http_200_with_50s_frozen_observation", "bridge_status": 200,
              "bridge_body": json.dumps(outdated), "health": healthy},
             {"name": "positive_control", "bridge_status": 200, "bridge_body": json.dumps(live), "health": healthy},
             {"name": "row_stale_503", "bridge_status": 503,
