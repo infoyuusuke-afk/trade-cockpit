@@ -299,12 +299,21 @@ def load_pinned_module(script_dir: Path, name: str, pin: str):
 
 
 def signal_ev_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
-    """Rebuild the EV table at most once per JST day, after 15:35 or when missing. Never raises."""
+    """Rebuild the EV table (and rule Shadow) when missing, when it was built on an
+    earlier JST day (the OWNER stops V10 right after the close, so the next morning's
+    start picks up the previous session), and once after 15:35. Never raises."""
     now = now or datetime.now(timezone.utc)
     jst = now.astimezone(timezone(timedelta(hours=9)))
     target = Path(live_path).parent / SIGNAL_EV_FILE
     after_close = (jst.hour, jst.minute) >= SIGNAL_EV_REBUILD_AFTER_JST
-    due = not target.exists() or (after_close and state.get("built_after_close_for") != jst.date().isoformat())
+    built_day = None
+    try:
+        built_day = datetime.fromisoformat(json.loads(target.read_text(encoding="utf-8"))["generated_at"]).astimezone(
+            timezone(timedelta(hours=9))).date().isoformat()
+    except Exception:
+        built_day = None
+    due = (built_day is None or built_day < jst.date().isoformat()
+           or (after_close and state.get("built_after_close_for") != jst.date().isoformat()))
     if not due or (state.get("next_try") is not None and now < state["next_try"]):
         return None
     state["next_try"] = now + timedelta(minutes=10)
