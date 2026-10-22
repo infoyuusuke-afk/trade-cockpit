@@ -2764,6 +2764,20 @@ try {
                 continue
             }
 
+            # OWNER 2026-10-23: the public analysis JSON refreshed on main is served from
+            # RuntimeDir\public_feed (copied every 10 minutes by the Brain observer) when a
+            # copy is there; otherwise the checkout's file as before. Display data only.
+            $publicFeedFiles = @('correlations.json', 'credit_supply.json', 'earnings_calendar.json', 'event_calendar.json',
+                'kioxia_5m_calendar.json', 'kioxia_catalysts.json', 'kioxia_prediction_history.json', 'live_focus.json',
+                'next_theme_radar.json', 'paper_trade_history.json', 'signals.json', 'weekly_review.json', 'world_market.json')
+            if ($RuntimeDir -and $publicFeedFiles -ccontains $relative) {
+                $feedFile = Join-Path (Join-Path $RuntimeDir 'public_feed') $relative
+                $feedItem = Get-Item -LiteralPath $feedFile -Force -ErrorAction SilentlyContinue
+                if ($null -ne $feedItem -and -not $feedItem.PSIsContainer -and
+                    ($feedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
+                    $resolvedFull = $feedItem.FullName
+                }
+            }
             $ct = Get-ContentType $resolvedFull
             if ($resolvedFull -match '(?i)index\.html$') {
                 $git = $script:GitInfo

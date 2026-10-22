@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import threading
 import time
 import types
 
@@ -60,6 +61,12 @@ SIGNAL_EV_REBUILD_AFTER_JST = (15, 35)
 PTS_PICKUP_MODULE = ("v10_pts_pickup", "06fffac84925e5b66d2ec346eee387fc25d1ae3e")
 PTS_PICKUP_FILE = "pts_pickup_v1.json"
 PTS_PICKUP_INTERVAL = timedelta(minutes=5)
+# OWNER 2026-10-23 「キオクシアの予測チャートが直ってない」: every 10 minutes, fresh copies of
+# the public analysis files from main into RuntimeDir/public_feed (pinned module), in a
+# background thread so a slow download never delays the Brain core. Display data only.
+PUBLIC_FEED_MODULE = ("v10_public_feed_sync", "22d1a3ae4f8d83cef163631772240587e83df8d3")
+PUBLIC_FEED_DIR = "public_feed"
+PUBLIC_FEED_INTERVAL = timedelta(minutes=10)
 # Brain core (OWNER 2026-10-21 「全部やりたい」): every pass, score the lit live
 # signals with the EV table and the rule Shadow, write the top picks to
 # RuntimeDir/brain_pick_v1.json for the Gateway and log new picks to
@@ -368,6 +375,40 @@ def pts_pickup_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
     return summary
 
 
+def public_feed_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
+    """Start a refresh of the public display files at most every 10 minutes. Never raises."""
+    now = now or datetime.now(timezone.utc)
+    worker = state.get("worker")
+    if worker is not None and worker.is_alive():
+        return None
+    if state.get("next_at") is not None and now < state["next_at"]:
+        return None
+    state["next_at"] = now + PUBLIC_FEED_INTERVAL
+    try:
+        module = state.get("module") or load_pinned_module(Path(script_dir or Path(__file__).resolve().parent), *PUBLIC_FEED_MODULE)
+        state["module"] = module
+        target = Path(live_path).parent / PUBLIC_FEED_DIR
+
+        def run():
+            try:
+                meta = module.sync(target)
+                ok = sum(1 for v in meta["files"].values() if v.get("ok"))
+                print(json.dumps({"public_feed": "SYNCED", "ok": ok, "files": len(meta["files"]),
+                                  "real_submit_allowed": False}, sort_keys=True), flush=True)
+            except Exception as exc:  # keep the previous copies
+                print(json.dumps({"public_feed": "BLOCKED", "reason": type(exc).__name__,
+                                  "real_submit_allowed": False}, sort_keys=True), flush=True)
+        worker = threading.Thread(target=run, name="public-feed", daemon=True)
+        state["worker"] = worker
+        worker.start()
+        return {"public_feed": "STARTED", "real_submit_allowed": False}
+    except Exception as exc:  # fail closed, keep the observer running
+        summary = {"public_feed": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__,
+                   "real_submit_allowed": False}
+        print(json.dumps(summary, sort_keys=True), flush=True)
+        return summary
+
+
 def load_pinned_package(script_dir: Path, package_name: str, modules) -> types.ModuleType:
     """Load modules in order into one package, each only from bytes matching its pin."""
     package = sys.modules.get(package_name)
@@ -569,12 +610,14 @@ def main(argv=None):
     pts_state = {}
     brain_state = {}
     jpx_state = {}
+    feed_state = {}
     while True:
         run_once(live, status_path)
         agent_receiver_pass(agent_state)
         signal_ev_pass(ev_state, live)
         pts_pickup_pass(pts_state, live)
         jpx_margin_pass(jpx_state, live)
+        public_feed_pass(feed_state, live)
         brain_core_pass(brain_state, live)
         time.sleep(args.interval)
 
