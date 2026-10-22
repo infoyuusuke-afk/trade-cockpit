@@ -112,7 +112,7 @@ def _clock(value, *, required=False):
 def _public_url(raw):
     if not isinstance(raw, str) or not 12 <= len(raw) <= 600 or raw != raw.strip():
         raise ContractBlocked("SOURCE_URL_INVALID")
-    if any(ord(c) <= 32 or ord(c) == 127 or c == "\\" for c in raw):
+    if any(ord(c) <= 32 or ord(c) == 127 or 0xD800 <= ord(c) <= 0xDFFF or c == "\\" for c in raw):
         raise ContractBlocked("SOURCE_URL_INVALID")
     try:
         parsed = urlsplit(raw)
@@ -140,7 +140,7 @@ def _public_url(raw):
 
 def _text(value, *, limit):
     return (isinstance(value, str) and 1 <= len(value) <= limit
-            and all(ord(c) >= 32 or c == "\n" for c in value))
+            and all((ord(c) >= 32 or c == "\n") and not (0xD800 <= ord(c) <= 0xDFFF) for c in value))
 
 
 def validate_event(event: dict, *, now: datetime) -> dict:
