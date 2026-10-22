@@ -3,7 +3,7 @@ D-045 optional sidecar: six futures/index series, RESEARCH RECORDING ONLY.
 DO NOT add to the V10 launcher or scheduler. Existing Collector/Excel safety
 contracts are untouched. Probe uses ONE unsaved throwaway Excel workbook.
 Install/Once/Run require D-019, D-035 AND the exact OWNER cutover approval.
-No RssOrder, no trading, no network, no API, no raw data printed.
+No broker/order calls, no network/API, no raw market data printed.
 #>
 [CmdletBinding()]
 param(
