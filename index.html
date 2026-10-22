@@ -325,6 +325,13 @@ document.addEventListener("DOMContentLoaded",()=>{
  // OWNER 2026-10-23 「画面の一番上に『注目』欄を常に出し…その日の分は消さずに残す」: the top box on
  // every tab lists today's new ranking entries and rule ①②④⑤ signals (time, name, rule),
  // newest first. A failed read keeps the last list of the same day. Display only; no orders.
+ window.syncAttentionFrame=()=>{
+   const bar=document.getElementById("unified-mode"),abox=document.getElementById("attention-box");
+   if(!bar||!abox)return;
+   const c=getComputedStyle(bar);
+   abox.style.borderWidth=c.borderTopWidth;abox.style.borderStyle=c.borderTopStyle;abox.style.borderColor=c.borderTopColor;abox.style.borderRadius=c.borderTopLeftRadius;
+ };
+ document.addEventListener("ms2RssUpdate",()=>setTimeout(()=>window.syncAttentionFrame(),0));
  let attentionToday=null;
  const renderBrainToday=()=>{
    const box=document.getElementById("attention-rows"),cnt=document.getElementById("attention-count");
@@ -336,6 +343,8 @@ document.addEventListener("DOMContentLoaded",()=>{
    cnt.textContent=t?"ランキング入り"+(t.new_picks_total??0)+"銘柄・ルールのサイン"+(t.rule_signals_total??0)+"件（検証中・実注文には使いません）":"今日の記録 取得待ち";
    const hm=v=>esc(String(v||"").slice(11,16));
    const nm=(n,c)=>esc(String(n||"").replace(/（[0-9A-Z]{4}）$/,""))+"("+esc(String(c||"").replace(".T",""))+")";
+   // OWNER 2026-10-23: the frame matches the status bar above (its colour follows the LIVE/stale state)
+   window.syncAttentionFrame?.();
    const empty=document.getElementById("attention-empty");if(empty)empty.style.display=list.length?"none":"";
    box.innerHTML=list.length?list.map(r=>'<div class="attention-row"><i>'+hm(r.captured_at)+'</i><div>'+nm(r.name,r.ticker)+' <b>'+esc(r.label)+'</b> <em>'+esc(r.signal)+'・'+esc(r.strategy)+'／発動 '+esc(r.entry)+(r.kind==="RULE"?'・目標 '+esc(r.target)+'・損切 '+esc(r.stop):'')+'・検証中</em></div></div>').join(""):'';
  };
@@ -540,7 +549,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 </style>
 <link rel="stylesheet" href="theme.css?v=20260923-deeperblack">
 <!-- OWNER 2026-10-23 「無駄な情報はコンパクトにしろ」: tab headings on one short line, slimmer status bar -->
-<style>.pane-intro{padding:10px 4px 8px!important;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}.pane-intro>span{display:none}.pane-intro h2{font-size:20px!important;line-height:1.3!important;margin:0!important}.pane-intro p{font-size:12px!important;line-height:1.4!important;margin:0!important}.unified-mode{padding:8px 16px!important;border-radius:14px!important}.unified-mode-wrap:not(.attention-wrap){padding-top:12px!important}.unified-mode small{display:inline;margin-left:8px}.focus-empty{padding:10px 12px!important;font-size:13px!important}</style>
+<style>.pane-intro{padding:18px 4px 14px!important;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}.pane-intro>span{display:none}.pane-intro h2{font-size:20px!important;line-height:1.3!important;margin:0!important}.pane-intro p{font-size:12px!important;line-height:1.4!important;margin:0!important}.unified-mode{padding:8px 16px!important;border-radius:14px!important}.unified-mode-wrap:not(.attention-wrap){padding-top:12px!important}.unified-mode small{display:inline;margin-left:8px}.focus-empty{padding:10px 12px!important;font-size:13px!important}</style>
 <link rel="stylesheet" href="focus.css?v=20260915-power3">
 <link rel="stylesheet" href="next-theme-radar.css?v=c024-1">
 <script defer src="next-theme-radar.js?v=c024-1"></script>

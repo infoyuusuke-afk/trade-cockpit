@@ -138,6 +138,10 @@ class ScreenStaysPut(unittest.TestCase):
         self.assertIn(".unified-mode-wrap:not(.attention-wrap){padding-top:12px!important}", html)
         self.assertIn("border-radius:14px!important}", html)
         self.assertIn(".attention-box{margin:0 0 8px;padding:8px 16px;border:1px solid #6b5426;border-radius:14px;", html)
+        # OWNER 2026-10-23: room around the heading line; the 注目 frame copies the status bar's frame
+        self.assertIn(".pane-intro{padding:18px 4px 14px!important;", html)
+        self.assertIn("abox.style.borderColor=c.borderTopColor;abox.style.borderRadius=c.borderTopLeftRadius;", html)
+        self.assertIn('document.addEventListener("ms2RssUpdate",()=>setTimeout(()=>window.syncAttentionFrame(),0));', html)
         self.assertLess(html.index('href="theme.css'), html.index(".pane-intro{padding:10px 4px 8px!important"))   # overrides theme.css
 
 
