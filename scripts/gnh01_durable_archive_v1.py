@@ -18,7 +18,7 @@ import threading
 from typing import Callable
 
 from scripts.gnh01_intelligence_contract_v1 import (
-    ContractBlocked, canonical_bytes, content_digest, validate_event,
+    ContractBlocked, canonical_bytes, content_digest, parse_event_json_bytes, validate_event,
 )
 
 _SCHEMA = """
@@ -288,3 +288,18 @@ def archive_event(db_path, event: dict, *, clock=None) -> dict:
         return result
     except sqlite3.DatabaseError as exc:
         raise ArchiveBlocked("STORAGE_UNAVAILABLE") from exc
+
+
+def archive_json_once(db_path, raw: bytes, *, clock=None) -> dict:
+    """One-shot local bytes-to-archive entry point for a future private exporter.
+
+    This is NOT a listener, scheduler, endpoint, external-origin authentication,
+    verified source receipt, PRE-NEXT ACK, Brain decision or Shadow execution.
+    Parse first (bounded UTF-8, no duplicate keys, floats or NaN) and archive
+    only after full semantic/safety validation. No network or broker imports.
+    """
+    try:
+        event = parse_event_json_bytes(raw)
+    except ContractBlocked as exc:
+        raise ArchiveBlocked(str(exc)) from exc
+    return archive_event(db_path, event, clock=clock)
