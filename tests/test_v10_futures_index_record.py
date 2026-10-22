@@ -23,7 +23,8 @@ class FuturesIndexRecord(unittest.TestCase):
         for code, fn in (("N225.FUT01.OS", "RssFOPMarket"), ("N225M.FUT01.OS", "RssFOPMarket"),
                          ("TOPX.FUT01.OS", "RssFOPMarket"), ("MOT.FUT01.OS", "RssFOPMarket"),
                          ("N225.FUT01.C", "RssFOPMarket"), ("N225", "RssIndexMarket"),
-                         ("TOPX", "RssIndexMarket"), ("MTHR", "RssIndexMarket")):
+                         ("TOPX", "RssIndexMarket"), ("MTHR", "RssIndexMarket"),
+                         ("TSGM", "RssIndexMarket")):
             self.assertRegex(text, r'Code = "%s";\s+Name = "[^"]+";\s+Fn = "%s"' % (re.escape(code), fn))
         self.assertIn('$futItems = @("現在値","現在値詳細時刻","前日比率","出来高","出来高加重平均","最良売気配値1","最良買気配値1","建玉")', text)
         self.assertIn('$indexItems = @("現在値","更新時刻","前日比率","出来高"', text)

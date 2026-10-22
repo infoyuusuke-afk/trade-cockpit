@@ -1812,7 +1812,8 @@ $futIndexDefs = @(
     @{ Code = "N225.FUT01.C";   Name = "日経225先物 CME 期近";    Fn = "RssFOPMarket" },
     @{ Code = "N225";           Name = "日経225";               Fn = "RssIndexMarket" },
     @{ Code = "TOPX";           Name = "TOPIX";                 Fn = "RssIndexMarket" },
-    @{ Code = "MTHR";           Name = "東証グロース250指数";      Fn = "RssIndexMarket" }
+    @{ Code = "MTHR";           Name = "東証グロース250指数";      Fn = "RssIndexMarket" },
+    @{ Code = "TSGM";           Name = "東証グロース市場指数";      Fn = "RssIndexMarket" }
 )
 # Columns B..I. Indexes have no 詳細時刻, VWAP, quotes or open interest (empty columns).
 $futItems = @("現在値","現在値詳細時刻","前日比率","出来高","出来高加重平均","最良売気配値1","最良買気配値1","建玉")
