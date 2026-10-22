@@ -293,6 +293,40 @@ Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-A
 State: PENDING_DOC_SYNC until merged to `main` (D-022).
 Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-AUDIT-DECISIONS-20261022-01), P0-V10-POSTCLOSE-AUDIT-AND-DECISIONS-20261022.
 
+### D-041 fix specification (frozen 2026-10-22)
+- The OWNER asked for the fix (「とっとと直す」). It is separate from tonight's 2daff2a switch.
+- Gaps found in the 2daff2a code:
+  - an environment variable can move the registry;
+  - a missing registry is treated as a first run;
+  - retire/init can open a new active ledger;
+  - the approval environment variable is an equality check, not OWNER identity.
+- Implementation scope (PC Claude only, on a separate branch from 2daff2a):
+  - Remove the registry-location override. Use one fixed Windows user folder, resolved through the Known Folder API rather than environment variables. Reject network paths, symlinks and reparse points.
+  - Keep the lifetime reservation total twice: in the on-disk ledger and registry, and in an HKCU registry value bound to the Windows SID. If either copy is missing, unreadable, lowered, recreated or inconsistent, paid runs are blocked, with no automatic recovery or reset.
+  - The pilot already made a paid call (live_20261022_01). The total is carried forward and is never re-initialised to 0. Failed and unknown attempts stay counted, and concurrent reservations are serialised.
+  - Retire, rotate and re-init cannot lower the lifetime total. There is no reset path in production code.
+  - Residual: both copies are editable by the same Windows user, so they are not tamper-proof against a process with that user's rights. This is documented.
+- Provider costs (Costs API): implemented and tested offline with mocked responses only.
+  - No organisation admin key on the OWNER trading PC, in source, environment, tasks or GitHub.
+  - Without an authenticated, complete, correctly scoped cost check just before each attempt, billable runs stay blocked. (1)+(2) alone do not reopen paid runs.
+  - Cost scope starts from the first paid attempt (to be evidenced), not a calendar month.
+- Approval: the environment variable is not OWNER proof. Paid runs stay blocked until there is a separate, expiring, run-specific authorisation rooted outside the AI-controlled user session (for example another OWNER device). That needs its own design and OWNER consent.
+- Prepaid balance and auto-reload OFF are auxiliary defences only, not an instant $8 cap.
+- Unchanged: $1 per run reservation, $8 lifetime, 2 runs per JST day, no retry, no new paid run, real_submit_allowed=false.
+- Acceptance:
+  - negative tests N01-N10, mock only;
+  - Linux and Windows CI on the exact HEAD;
+  - independent cloud Claude PASS;
+  - OWNER exact-SHA approval;
+  - the OWNER approves each later paid run.
+  - A synthetic PASS alone does not reopen paid runs.
+- Open OWNER point (2026-10-22 19:40-19:43 JST):
+  - The OWNER said in chat to build in the Costs API link (「API連携を組み込む」).
+  - The frozen spec forbids an admin key on the trading PC and keeps paid runs blocked until independent OWNER authentication exists.
+  - Whether paid runs may restart before that is awaiting the OWNER's choice. Until it is recorded, the frozen spec applies.
+State: FROZEN_SPEC, OFFLINE_FIX_AUTHORIZED, PAID_RESTART_BLOCKED; PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: Issue #282 comment 6338791128 (COORD-D041-S4-PAID-LEDGER-SPEC-FREEZE-20261022-01); PR #443 comment 6338808787.
+
 ## D-042 Stale and empty tabs: design only (2026-10-22)
 - Hide stale/static displays and unimplemented empty tabs from active trading navigation when they cannot show source and as-of time. Keep the evidence and code history.
 - Rebuild only functions with rights-cleared current sources and verified use.

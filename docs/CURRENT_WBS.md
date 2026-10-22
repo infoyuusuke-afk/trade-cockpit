@@ -32,7 +32,7 @@ All stages: `REAL_SUBMIT_ALLOWED=false`, `STOP_ALLOWED=false`, `CUTOVER_ELIGIBLE
   - after-15:30 downtime exclusion
   - S1-S3 Excel order
 - Design only: per-symbol LIVE status (D-040); stale and empty tab cleanup table (D-042).
-- Paid GPT ledger hardening before any new paid run (D-041). Owner: GPT lead; independent acceptance required.
+- Paid GPT ledger hardening (D-041, spec frozen 2026-10-22): the PC Claude builds a fixed registry location, a double-kept lifetime total that cannot reset, and mocked Costs API checks, on a branch separate from 2daff2a. The cloud Claude audits it. Paid runs stay blocked; restart conditions await the OWNER's choice.
 - Supply/SQ checklist C01-C10 (D-043): design recorded; API wiring by the PC Claude after separate authorization.
 - Market regime research subsystem (D-044), P1. Phase 0 read-only log inventory (PC Claude), then offline classifier/backtest, then independent review (cloud Claude). R2 and its 60-min hold unchanged.
 - Futures/index record-only extension (D-045 R2): seven series recorded automatically by the V10 Collector, in OWNER-confirmed contract months (no FUT01). Base is the PC Collector design (09d1835a8), to be modified by the PC Claude; the PR #495 sidecar is not adopted. Ships OFF until the D-019 rights check. Needs a load before/after comparison, an independent review, OWNER SHA approval and the D-035 acceptance first. Not in tonight's 2daff2a switch.
