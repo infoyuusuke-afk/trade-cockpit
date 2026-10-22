@@ -105,6 +105,53 @@ class DurableArchiveTests(unittest.TestCase):
         with self.assertRaisesRegex(ArchiveBlocked, "PRIVATE_STORAGE_PATH_REQUIRED"):
             archive_event(Path("public_repo.db"), self.event(), clock=self.clock)
 
+    def test_checkout_storage_path_blocked_without_creating_db(self):
+        # Never allow even a synthetic event to place raw research in public git.
+        unsafe = Path(__file__).resolve().parents[1] / "GNH01_UNSAFE.db"
+        self.assertFalse(unsafe.exists())
+        with self.assertRaisesRegex(ArchiveBlocked, "PRIVATE_STORAGE_INSIDE_REPOSITORY"):
+            archive_event(unsafe, self.event(), clock=self.clock)
+        self.assertFalse(unsafe.exists())
+
+    def test_external_symlinked_private_folder_blocked(self):
+        link = Path(self.tmp.name) / "redirect"
+        safe = Path(self.tmp.name) / "real"
+        safe.mkdir()
+        try:
+            link.symlink_to(safe, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlink creation prohibited by host")
+        with self.assertRaisesRegex(ArchiveBlocked, "PRIVATE_STORAGE_LINK_UNTRUSTED"):
+            archive_event(link / "archive.db", self.event(), clock=self.clock)
+        self.assertFalse((safe / "archive.db").exists())
+
+    def test_externally_world_readable_parent_blocked_on_posix(self):
+        import os
+        if os.name == "nt":
+            self.skipTest("Windows ACLs require separate independent validation")
+        path = Path(self.tmp.name) / "shared"
+        path.mkdir(mode=0o755)
+        path.chmod(0o755)
+        with self.assertRaisesRegex(ArchiveBlocked, "PRIVATE_STORAGE_PERMISSION_UNSAFE"):
+            archive_event(path / "archive.db", self.event(), clock=self.clock)
+        self.assertFalse((path / "archive.db").exists())
+
+    def test_existing_hardlinked_archive_blocked(self):
+        source = Path(self.tmp.name) / "source.db"
+        source.write_text("synthetic", encoding="utf-8")
+        try:
+            source.hardlink_to(self.db)
+        except FileNotFoundError:
+            # Path.hardlink_to(target): create self as link to target.
+            self.db.hardlink_to(source)
+        except OSError:
+            self.skipTest("hard links unsupported")
+        # Ensure the path itself is not a normal single-link database file.
+        if not self.db.exists():
+            self.db.hardlink_to(source)
+        with self.assertRaisesRegex(ArchiveBlocked, "PRIVATE_STORAGE_FILE_UNSAFE"):
+            archive_event(self.db, self.event(), clock=self.clock)
+
     def test_sender_real_submit_allowed_true_rejected_before_storage(self):
         x = self.event()
         x["real_submit_allowed"] = True
