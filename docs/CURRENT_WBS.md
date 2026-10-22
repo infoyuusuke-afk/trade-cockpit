@@ -35,6 +35,7 @@ All stages: `REAL_SUBMIT_ALLOWED=false`, `STOP_ALLOWED=false`, `CUTOVER_ELIGIBLE
 - Paid GPT ledger hardening before any new paid run (D-041). Owner: GPT lead; independent acceptance required.
 - Supply/SQ checklist C01-C10 (D-043): design recorded; API wiring by the PC Claude after separate authorization.
 - Market regime research subsystem (D-044), P1. Phase 0 read-only log inventory (PC Claude), then offline classifier/backtest, then independent review (cloud Claude). R2 and its 60-min hold unchanged.
+- Futures/index record-only extension (D-045): Probe first while V10 is stopped; Install/Run need D-035 acceptance, a D-019 rights check and OWNER SHA approval. Choose one implementation (PR #495 or the PC Collector-sheet version).
 - Deferred, medium:
   - slippage in EV
   - Excel-busy Shadow pauses

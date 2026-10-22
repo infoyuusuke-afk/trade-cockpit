@@ -359,3 +359,20 @@ Source: Issue #282 comments 6336507382 and 6336655933.
 - The D-035 fixes come first for production. No change to the running V10, Excel, paid API, schedules, UI colours/fonts or real orders.
 State: PENDING_DOC_SYNC until merged to `main` (D-022).
 Source: Issue #282 comment 6336857406.
+
+## D-045 Six futures/index series: private, record-only extension (Draft, 2026-10-22)
+- OWNER instruction ("先物・指数をついかして", "グロースも追加"), to fill the futures/index gap found in D-044 Phase 0.
+- Six series:
+  - Nikkei 225 mini futures, TOPIX futures and TSE Growth Market 250 futures, each in the centre contract month, which the OWNER confirms by hand. Read via `RssFOPCode` + `RssFOPMarket`.
+  - Nikkei 225, TOPIX and TSE Growth Market 250 indices, via `RssIndexMarket`.
+- Record only. Not used for the 100-name board, LIVE/freshness gates, signals, Shadow, Brain decisions, voice or UI. No futures orders. real_submit_allowed=false.
+- Source granularity is kept as is (futures in seconds, indices in minutes); missing values stay NULL. Real-time behaviour is UNVERIFIED until it is checked on the OWNER PC.
+- Stages:
+  - Probe: a temporary unsaved workbook, only while V10 is stopped, one Excel; the V10 workbook is not touched.
+  - Install and Run: each needs D-035 acceptance, a D-019 rights check and OWNER exact-SHA approval.
+- Data stays on the OWNER PC. No figures go to GitHub, social media, external APIs or the cloud.
+- Open items:
+  - The OWNER also asked for the TSE Growth Market index, the broad one, not the 250 (2026-10-22 18:51 JST). It is not in the six series yet; the GPT lead to amend.
+  - There are two parallel implementations: Draft PR #495 (separate recorder) and the PC Claude's Collector-sheet version (09d1835). Only one may proceed (D-017).
+State: PENDING_DOC_SYNC until merged to `main` (D-022). Spec draft: `docs/drafts/D-045_FUTURES_INDEX_SIX_SERIES_RECORD_ONLY.md` in PR #495.
+Source: PR #443 comment 6338067646; Draft PR #495.
