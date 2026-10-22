@@ -122,3 +122,51 @@ identity, clock and secrets are separately verified. A public Issue #282
 single-shot comment and a local archive receipt are insufficient. PRE-NEXT
 and Brain must each independently acknowledge consumption; no automatic
 trading or brokerage orders may be enabled.
+
+
+## 9. Phase 1E — signed private local review / reader-only ACK
+
+Draft-only module: `scripts/gnh01_private_review_handoff_v1.py`, synthetic tests:
+`tests/test_gnh01_private_review_handoff_v1.py`.
+
+- `export_review` invokes the earlier archive-backed `build_pre_next_review_request`,
+  not an untrusted arbitrary sender dictionary. It exclusively writes one
+  canonical JSON, HMAC-SHA256 signed, immutable review-envelope file in a
+  private **absolute folder outside the checkout**. No overwrite, raw
+  news publication, caller-visible secrets, API calls, timers, or new IPC.
+- `receive_review` is an explicit **local test reader**. It independently
+  reads a stable regular file, validates HMAC with
+  `GNH01_PRENEXT_REVIEW_HMAC_KEY`, checks exact review schema, preserved
+  OWNER relay provenance, no-trade/no-elevation flags, 15-minute freshness,
+  and receipt filename/content identity. It creates one no-overwrite
+  reader-only ACK signed using a *different* key,
+  `GNH01_PRENEXT_READER_ACK_HMAC_KEY`, then independently rereads and
+  validates that ACK.
+- Both environment keys must be distinct 64-character hexadecimal strings
+  stored privately by the permitted deployment service. The **synthetic**
+  test fixture uses dummy keys only. No live credentials added to GitHub.
+  These local HMAC signatures prove possession of local keys, **not** that
+  cloud Grok emitted the message, that a scheduled PRE-NEXT task read it,
+  or that the official news source/ticker was verified.
+- ACK `ack_kind=LOCAL_READER_ONLY_NOT_CHATGPT_PRE_NEXT` and
+  `pre_next_scheduled_task_ack=false`; `brain_received=false`,
+  `shadow_eligible=false`, `real_submit_allowed=false`.
+  A receipt returned from this module MUST NOT be counted as a
+  cross-chat ChatGPT Task ACK or `PRIVATE_BRAIN_ACK`.
+- Fail-closed cases tested include malformed/duplicate JSON, source-role
+  laundering, payload or signature tampering (including a recomputed HMAC
+  on a forbidden Boolean), source and ACK key mismatch/missing, duplicate
+  send/receive, stale/future timestamp, renamed files, public repo path,
+  symlinked private directory, and ACK corruption.
+- The module is **manual, on-demand, default OFF**, and has no connector
+  to Grok, ChatGPT Tasks, PRE-NEXT running task, existing #481/482/483
+  Brain bridge, V10, MS2 RSS, order APIs, UI, or SHADOW. A cloud-to-private
+  outbound adapter, real recipient process integration, independent source
+  verification and signed Brain ACK remain separate owner-approved gates.
+- Windows ACL, clock trust, authentication to an unattended Grok Routine,
+  and end-to-end actual receiver authorization remain NOT VERIFIED.
+  OWNER must approve deployment location and any costs; no main merge,
+  real orders, or schedule changes are implied.
+
+Latest exact-head GitHub CI should be recorded against the actual tested
+commit in PR #490; never reuse CI PASS from an older HEAD.
