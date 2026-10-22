@@ -95,22 +95,21 @@ document.addEventListener("DOMContentLoaded",()=>{
  const AGENT_STATUS_JA={WATCH:"監視候補あり",NO_SIGNAL:"材料なし",NO_DATA:"データ不足で判断なし",UNAVAILABLE:"分析できず"};
  const agentJst=v=>{const t=Date.parse(v||"");if(!Number.isFinite(t))return "—";const d=new Date(t+324e5);return (d.getUTCMonth()+1)+"/"+d.getUTCDate()+" "+String(d.getUTCHours()).padStart(2,"0")+":"+String(d.getUTCMinutes()).padStart(2,"0");};
  const agentCodes=rep=>[...new Set((String(rep?.hypothesis||"")+" "+String(rep?.conditions||"")).match(/\b[0-9][0-9A-Z]{3}\b/g)||[])].filter(c=>!/^20\d\d$/.test(c)).slice(0,10);
+ // OWNER 2026-10-23 「各AIアナリストが注目する銘柄のみ表示」: per analyst, only the issues it
+ // watches (WATCH reports that can still be referred to); names from the Brain's
+ // specialist_watch list when known.
+ let agentNames={};
  const agentReportCard=(rep,nowMs)=>{
    const u=agentReportUsable(rep,nowMs);
-   const links=(Array.isArray(rep.evidence)?rep.evidence:[]).map(e=>'<a href="'+kioSafeUrl(e.source_url)+'" target="_blank" rel="noopener">'+esc(e.source_id)+'</a>').join(" ")||"—";
-   const codes=rep.status==="WATCH"?agentCodes(rep):[];
+   const codes=u.ok&&rep.status==="WATCH"?agentCodes(rep):[];
    return '<div class="rotation-box"><b>'+esc(AGENT_ROLE_LABEL[rep.role]||rep.role)+'</b>'+
-     '<strong>'+esc(AGENT_STATUS_JA[rep.status]||rep.status)+'</strong>'+
-     (codes.length?'<small>監視する銘柄：'+codes.map(esc).join("、")+'</small>':'')+
-     '<small>'+(u.ok?"参考にできる（"+esc(agentJst(rep.expires_at))+"まで）":esc(AGENT_REASON_LABEL[u.reason]||u.reason))+'／売買判断には使いません</small>'+
-     '<details><summary>原文（英語）</summary><small>report_id '+esc(rep.report_id)+'<br>対象 '+esc(rep.target_at)+'／期限 '+esc(rep.expires_at)+'</small>'+
-     '<small>仮説：'+esc(rep.hypothesis)+'<br>成立条件：'+esc(rep.conditions)+'<br>撤回条件：'+esc(rep.invalidation)+'</small>'+
-     '<small>出典：'+links+'</small></details></div>';
+     (codes.length?'<strong>'+codes.map(c=>esc(agentNames[c]?agentNames[c]+"("+c+")":c)).join("<br>")+'</strong>':'<small>注目銘柄なし</small>')+'</div>';
  };
  const renderAgentResearch=()=>{
    // The Gateway answers 503 with {state:"UNAVAILABLE",reason} when it cannot verify the
    // Brain signature or freshness of the view; that body is still shown as the reason.
-   fetch("/agent_research.json?t="+Date.now()).then(r=>r.json()).then(v=>{
+   fetch("/brain_pick.json?t="+Date.now()).then(r=>r.json()).then(b=>{(b?.specialist_watch||[]).forEach(w=>{if(w?.code&&w?.name&&w.name!==w.code)agentNames[w.code]=String(w.name).replace(/（[0-9A-Z]{4}）$/,"");});}).catch(()=>{}).then(()=>
+   fetch("/agent_research.json?t="+Date.now())).then(r=>r.json()).then(v=>{
      const box=document.getElementById("agent-research-body");
      if(v?.state==="DISABLED"){box.innerHTML='<div class="focus-empty">専門AI連携は未設定（受け箱 V10_AGENT_RESEARCH_INBOX が未設定）</div>';return;}
      if(v?.state==="UNAVAILABLE"){box.innerHTML='<div class="focus-empty">専門AIレポート利用不可（'+esc(v?.reason||"検証できません")+'）</div>';return;}
@@ -119,10 +118,7 @@ document.addEventListener("DOMContentLoaded",()=>{
      box.innerHTML=v.runs.slice(0,3).map(run=>{
        const reps=Array.isArray(run.reports)?run.reports:[];
        const market=reps.filter(x=>x.lane==="MARKET_RESEARCH_NOT_EXECUTION"),progress=reps.filter(x=>x.lane==="PROJECT_PROGRESS_NOT_TRADING");
-       const watched=[...new Set(market.filter(x=>x.status==="WATCH").flatMap(agentCodes))];
-       return '<h3>'+esc(agentJst(run.received_at))+'受信のレポート</h3><p class="sub">'+(watched.length?'監視候補：'+watched.map(esc).join("、"):'今回は監視候補なし')+'（AIの調査メモ。売買判断はブレインが行います）</p>'+
-         '<details><summary>原文（英語）・確認事項</summary><p class="sub">'+esc(run.slot||"")+'｜run '+esc(run.run_id)+'／ACK '+esc(String(run.ack_sha256||"").slice(0,12))+'／統括 '+esc(run.coordinator?.status||"—")+'：'+esc(run.coordinator?.summary||"")+'</p>'+
-         (Array.isArray(run.verification_checks)&&run.verification_checks.length?'<p class="warning">確認事項：'+run.verification_checks.map(esc).join("／")+'</p>':"")+'</details>'+
+       return '<h3>'+esc(agentJst(run.received_at))+'受信</h3>'+
          '<div class="rotation-grid">'+market.map(x=>agentReportCard(x,nowMs)).join("")+'</div>'+
          (progress.length?'<h3>PROJECT進捗（売買判定に使わない）</h3><div class="rotation-grid">'+progress.map(x=>agentReportCard(x,nowMs)).join("")+'</div>':"");
      }).join("")||'<div class="focus-empty">受信済みレポートなし</div>';
@@ -1071,7 +1067,11 @@ const saveTvList = (items, filename) => {
   URL.revokeObjectURL(url);
   status.textContent = symbols.length + "銘柄を保存しました：" + filename;
 };
-fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {
+// window.renderScalpCard is created in the DOMContentLoaded handler: a fast answer must wait for
+// it, or the whole block failed into 「取得できませんでした」 (race found 2026-10-23).
+fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => new Promise(res =>
+  typeof window.renderScalpCard === "function" ? res(d) : document.addEventListener("DOMContentLoaded", () => res(d))
+)).then(d => {
   document.getElementById("signal-meta").textContent =
     d.source + "／走査 " + d.scanned_count.toLocaleString() + "銘柄／準備 " +
     d.signal_count + "銘柄／更新 " + d.updated_at;
@@ -1100,7 +1100,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {
     const foot = (x.theme||"") + "／" + (x.theme_status||"") + "／" + (x.action||"");
     return window.renderScalpCard({name:x.name,code:x.code,_staticCurrent:true,price:x.close,change_pct:x.ret1,volume_burst:Number.isFinite(Number(x.rvol))?Number(x.rvol).toFixed(2):null,foot},sv,"日足");
   }).join("");
-  document.getElementById("speculative-theme-watch").innerHTML =
+  if (!window.event5Fed) document.getElementById("speculative-theme-watch").innerHTML =
     speculative || "<div class='focus-empty'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</div>";
   const accumulation = (d.large_lot_accumulation || []).slice(0, 20).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td><b class='" +
@@ -1210,7 +1210,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {
   document.getElementById("signal-meta").textContent = "全銘柄シグナルデータを取得できませんでした。次回自動更新で再試行します。";
   document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>データ取得待ち</td></tr>";
   document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>データ取得待ち</td></tr>";
-  document.getElementById("speculative-theme-watch").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
+  if (!window.event5Fed) document.getElementById("speculative-theme-watch").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
   document.getElementById("accumulation-signals").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
   document.getElementById("hammer-signals").innerHTML = "<tr><td colspan='13'>データ取得待ち</td></tr>";
   document.getElementById("long-term-ma-signals").innerHTML = "<tr><td colspan='15'>データ取得待ち</td></tr>";
@@ -1218,6 +1218,23 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {
   document.getElementById("overnight-long").innerHTML = "<tr><td colspan='9'>データ取得待ち</td></tr>";
   document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
 });
+// OWNER 2026-10-23 「EVENT5もあやしい」: EVENT 5 from the fed event5_watch.json, loaded on its own;
+// the checkout's signals.json list is shown only until (or unless) the fed list answers.
+window.renderEvent5 = rows => {
+    const html = (rows || []).slice(0, 5).map(x => {
+      const sv = x.phase === "初動候補" ? {label:"初動候補",cls:"long"} : x.phase === "資金流入" ? {label:"資金流入",cls:"wait"} : {label:x.phase||"警戒",cls:"short"};
+      const foot = (x.theme||"") + "／" + (x.theme_status||"") + "／" + (x.action||"");
+      return window.renderScalpCard({name:x.name,code:x.code,_staticCurrent:true,price:x.close,change_pct:x.ret1,volume_burst:Number.isFinite(Number(x.rvol))?Number(x.rvol).toFixed(2):null,foot},sv,"日足");
+    }).join("");
+    document.getElementById("speculative-theme-watch").innerHTML =
+      html || "<div class='focus-empty'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</div>";
+  };
+fetch("event5_watch.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(e5 => {
+  if (!e5 || !Array.isArray(e5.speculative_theme_watch)) return;
+  window.event5Fed = true;
+  const go = () => window.renderEvent5(e5.speculative_theme_watch);
+  if (typeof window.renderScalpCard === "function") go(); else document.addEventListener("DOMContentLoaded", go);
+}).catch(() => {});
 const worldEsc = v => String(v ?? "—").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 // OWNER 2026-10-23: daily 地合い判定 for the 検証・除外 tab (market_summary.json, built by the
 // Brain observer's public feed from the public data.json). Reference only.
@@ -1243,7 +1260,7 @@ setInterval(loadRegimeSummary, 600000);
 // OWNER 2026-10-23 「古い時は画面に古いと出して、表示可にしない」: each section fed from the
 // public feed gets a 古い banner when its file is stale, unreadable or not refreshed in the
 // last 30 minutes (fail closed: no meta = not fresh). The banner names the file's own time.
-const FEED_SECTIONS = {"world_market.json": "world-market-live", "event_calendar.json": "event-calendar",
+const FEED_SECTIONS = {"event5_watch.json": "speculative-theme-monitor", "world_market.json": "world-market-live", "event_calendar.json": "event-calendar",
   "kioxia_5m_calendar.json": "kioxia-5m-calendar", "correlations.json": "correlation-monitor",
   "next_theme_radar.json": "next-theme-radar", "weekly_review.json": "weekly-review", "market_summary.json": "regime-summary"};
 const markFeedStale = meta => {

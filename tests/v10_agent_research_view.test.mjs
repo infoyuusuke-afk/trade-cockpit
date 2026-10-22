@@ -40,15 +40,14 @@ const card=(r)=>vm.runInContext("agentReportCard("+JSON.stringify(r)+","+NOW+")"
 
 test("unexpired sourced WATCH report is usable as research",()=>{
   assert.deepEqual({...usable(rep({}))},{ok:true,reason:null});
-  assert.match(card(rep({})),/参考にできる/);   // OWNER 2026-10-23: plain Japanese card
-  assert.match(card(rep({})),/監視候補あり/);
-  assert.match(card(rep({})),/<details><summary>原文（英語）<\/summary>/);
+  assert.match(card(rep({})),/注目銘柄なし/);   // OWNER 2026-10-23: only watched issues are shown
 });
 
-test("watched issues are the 4-character codes in a WATCH report, years left out",()=>{
+test("a card shows only the issues a usable WATCH report watches",()=>{
   const out=card(rep({hypothesis:"Watch 593A, 7012 and 285A on the 2026-10-20 data",conditions:"hold 7012"}));
-  assert.match(out,/監視する銘柄：593A、7012、285A</);
-  assert.doesNotMatch(card(rep({status:"NO_SIGNAL",hypothesis:"7012"})),/監視する銘柄/);
+  assert.match(out,/<strong>593A<br>7012<br>285A<\/strong>/);
+  assert.doesNotMatch(card(rep({status:"NO_SIGNAL",hypothesis:"7012"})),/7012/);
+  assert.doesNotMatch(card(rep({expires_at:"2026-10-20T00:00:00Z",hypothesis:"7012"})),/7012/);   // expired: hidden
 });
 
 test("expired, unsourced, NO_DATA and UNAVAILABLE are not usable",()=>{
@@ -57,8 +56,8 @@ test("expired, unsourced, NO_DATA and UNAVAILABLE are not usable",()=>{
   assert.equal(usable(rep({evidence:[]})).reason,"NO_SOURCE");
   assert.equal(usable(rep({usable:false,not_usable_reason:"NO_DATA",status:"NO_DATA"})).reason,"NO_DATA");
   assert.equal(usable(rep({usable:false,not_usable_reason:"UNAVAILABLE",status:"UNAVAILABLE"})).reason,"UNAVAILABLE");
-  assert.match(card(rep({expires_at:"2026-10-20T00:00:00Z"})),/期限切れ・利用不可/);
-  assert.match(card(rep({evidence:[]})),/出典なし・利用不可/);
+  assert.match(card(rep({expires_at:"2026-10-20T00:00:00Z"})),/注目銘柄なし/);
+  assert.match(card(rep({evidence:[]})),/注目銘柄なし/);
 });
 
 test("report text and links are escaped; only http(s) links",()=>{

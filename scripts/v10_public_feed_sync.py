@@ -74,6 +74,21 @@ MAX_BYTES = 8 * 1024 * 1024
 TIMEOUT_SECONDS = 20
 META_FILE = "public_feed_meta.json"
 SUMMARY_FILE = "market_summary.json"
+# OWNER 2026-10-23 「EVENT5もあやしい」: only the EVENT 5 list (speculative_theme_watch) is
+# taken out of the public signals.json; signals.json itself stays unfed (it also drives the
+# live tab's IN/準備 lists and a status badge, audit 6349440798).
+EVENT5_FILE = "event5_watch.json"
+EVENT5_FIELDS = ("code", "ticker", "name", "score", "phase", "action", "close", "ret1", "ret5", "ret20", "rvol",
+                 "theme", "theme_status", "signal_date")
+
+
+def event5_view(signals: dict) -> dict:
+    rows = []
+    for x in (signals.get("speculative_theme_watch") or [])[:5]:
+        if isinstance(x, dict):
+            rows.append({k: x.get(k) for k in EVENT5_FIELDS})
+    return {"updated_at": str(signals.get("updated_at") or ""), "speculative_theme_watch": rows,
+            "real_submit_allowed": False, "trade_instruction": False}
 DATA_MAX_BYTES = 16 * 1024 * 1024
 # OWNER 2026-10-23 「検証・除外に本来地合判定がでるはず」: the daily index figures of the
 # public page's 地合いサマリー, plus a reference verdict. Display only (never a gate,
@@ -185,6 +200,19 @@ def sync(target: Path, *, fetch=_download, now: datetime | None = None) -> dict:
         files[SUMMARY_FILE] = dict(fresh, ok=True, bytes=(target / SUMMARY_FILE).stat().st_size)
     except Exception as exc:  # keep the previous copy
         files[SUMMARY_FILE] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
+    try:
+        raw = fetch(BASE_URL + "signals.json")
+        if len(raw) > MAX_BYTES:
+            raise ValueError("TOO_LARGE")
+        sig = json.loads(raw.decode("utf-8-sig"))
+        view = event5_view(sig if isinstance(sig, dict) else {})
+        fresh = freshness(EVENT5_FILE, view, now)
+        temp = target / (EVENT5_FILE + ".tmp")
+        temp.write_text(json.dumps(view, ensure_ascii=False), encoding="utf-8")
+        os.replace(temp, target / EVENT5_FILE)
+        files[EVENT5_FILE] = dict(fresh, ok=True, bytes=(target / EVENT5_FILE).stat().st_size)
+    except Exception as exc:  # keep the previous copy
+        files[EVENT5_FILE] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
     meta = {"fetched_at": now.isoformat(), "source": BASE_URL, "files": files,
             "real_submit_allowed": False, "trade_instruction": False}
     (target / META_FILE).write_text(json.dumps(meta, sort_keys=True), encoding="utf-8")

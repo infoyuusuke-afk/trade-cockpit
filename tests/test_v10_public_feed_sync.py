@@ -90,6 +90,31 @@ class Freshness(unittest.TestCase):
             self.assertTrue(meta["files"]["event_calendar.json"]["stale"])   # {} has no time
 
 
+class Event5(unittest.TestCase):
+    def test_only_the_event5_list_is_taken_from_signals(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "public_feed"
+            sig = {"updated_at": "2026-10-22 21:19:01 JST", "day_candidates": [{"code": "9999"}],
+                   "speculative_theme_watch": [{"code": "4475", "name": "HENNGE（4475）", "chart": [1, 2], "ret1": 14.5}] * 7}
+            meta = feed.sync(target, now=Freshness.NOW, fetch=lambda url: json.dumps(sig).encode()
+                             if url.endswith("signals.json") else b"{}")
+            view = json.loads((target / feed.EVENT5_FILE).read_text("utf-8"))
+            self.assertEqual(len(view["speculative_theme_watch"]), 5)
+            self.assertNotIn("chart", view["speculative_theme_watch"][0])
+            self.assertNotIn("day_candidates", view)          # the IN lists are not fed
+            self.assertFalse((target / "signals.json").exists())
+            self.assertFalse(meta["files"][feed.EVENT5_FILE]["stale"])
+
+    def test_screen_reads_event5_and_marks_it(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('fetch("event5_watch.json?t="', html)
+        self.assertIn('"event5_watch.json": "speculative-theme-monitor"', html)
+        # loaded on its own; the checkout list only until the fed list answered
+        self.assertIn("if (!window.event5Fed) document.getElementById(\"speculative-theme-watch\")", html)
+        # the signals block waits for the card renderer made at DOMContentLoaded
+        self.assertIn('typeof window.renderScalpCard === "function" ? res(d) : document.addEventListener("DOMContentLoaded", () => res(d))', html)
+
+
 class RegimeSummary(unittest.TestCase):
     """OWNER 2026-10-23: daily 地合い判定 for the 検証・除外 tab (reference only)."""
 
@@ -163,10 +188,10 @@ class Wiring(unittest.TestCase):
     def test_gateway_serves_only_the_listed_files_from_the_feed(self):
         text = GATEWAY.read_text(encoding="utf-8-sig")
         listed = re.findall(r"'([a-z0-9_]+\.json)'", text[text.index("$publicFeedFiles = @("):text.index("if ($RuntimeDir -and $publicFeedFiles")])
-        self.assertEqual(sorted(listed), sorted(feed.FEED_FILES + (feed.SUMMARY_FILE, feed.META_FILE)))
+        self.assertEqual(sorted(listed), sorted(feed.FEED_FILES + (feed.SUMMARY_FILE, feed.META_FILE, feed.EVENT5_FILE)))
         self.assertIn("($feedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0", text)
         allowed = text[text.index("$allowedUiFiles = @("):text.index("if ($allowedUiFiles -cnotcontains $relative)")]
-        for name in feed.FEED_FILES + (feed.SUMMARY_FILE, feed.META_FILE):   # each served name is on the allow-list
+        for name in feed.FEED_FILES + (feed.SUMMARY_FILE, feed.META_FILE, feed.EVENT5_FILE):   # each served name is on the allow-list
             self.assertIn("'" + name + "'", allowed)
 
 
