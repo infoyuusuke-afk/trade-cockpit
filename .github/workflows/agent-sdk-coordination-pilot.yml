@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "scripts/agent_sdk_coordination_pilot.py"
+      - "scripts/supply_sq_checklist_d043.py"
+      - "tests/test_supply_sq_checklist_d043.py"
       - "tests/test_agent_sdk_coordination_pilot.py"
       - "scripts/agent_sdk_public_feed_ingest.py"
       - "tests/test_agent_sdk_public_feed_ingest.py"
@@ -52,9 +54,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Compile without importing Agents SDK
-        run: python -m py_compile scripts/agent_sdk_coordination_pilot.py tests/test_agent_sdk_coordination_pilot.py scripts/agent_sdk_public_feed_ingest.py tests/test_agent_sdk_public_feed_ingest.py scripts/agent_sdk_brain_handoff.py tests/test_agent_sdk_brain_handoff.py scripts/v10_brain_agent_research_receiver.py tests/test_v10_brain_agent_research_receiver.py
+        run: python -m py_compile scripts/supply_sq_checklist_d043.py tests/test_supply_sq_checklist_d043.py scripts/agent_sdk_coordination_pilot.py tests/test_agent_sdk_coordination_pilot.py scripts/agent_sdk_public_feed_ingest.py tests/test_agent_sdk_public_feed_ingest.py scripts/agent_sdk_brain_handoff.py tests/test_agent_sdk_brain_handoff.py scripts/v10_brain_agent_research_receiver.py tests/test_v10_brain_agent_research_receiver.py
       - name: Offline test for 4 roles, fail-closed and no-key denial
-        run: python -m unittest discover -s tests -p test_agent_sdk_coordination_pilot.py -v
+        run: |
+          python -m unittest discover -s tests -p test_agent_sdk_coordination_pilot.py -v
+          python -m unittest discover -s tests -p test_supply_sq_checklist_d043.py -v
       - name: Offline official RSS intake and timestamp security tests
         run: python -m unittest discover -s tests -p test_agent_sdk_public_feed_ingest.py -v
       - name: JPX daily-publication margin adapter, evidence bundle and supply_sq path to the display (offline)
