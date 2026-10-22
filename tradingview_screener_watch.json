@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-22 19:41:11 JST",
+  "updated_at": "2026-10-22 21:19:55 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -5408,22 +5408,6 @@
       "already_watched": false
     },
     {
-      "code": "5713",
-      "name": "Sumitomo Metal Mining Co., Ltd.",
-      "exchange": "TSE",
-      "price": 8094,
-      "change_pct": -3.2628182144137687,
-      "volume": 2106900,
-      "relative_volume": 0.9600688985796503,
-      "atr_pct": 5.13,
-      "vwap": 8146.666666666667,
-      "high": 8321,
-      "low": 8025,
-      "market_cap": 2281736921722,
-      "sector": "Non-Energy Minerals",
-      "already_watched": true
-    },
-    {
       "code": "4911",
       "name": "Shiseido Company,Limited",
       "exchange": "TSE",
@@ -5438,6 +5422,22 @@
       "market_cap": 1399805012695,
       "sector": "Consumer Non-Durables",
       "already_watched": false
+    },
+    {
+      "code": "5713",
+      "name": "Sumitomo Metal Mining Co., Ltd.",
+      "exchange": "TSE",
+      "price": 8094,
+      "change_pct": -3.2628182144137687,
+      "volume": 2106900,
+      "relative_volume": 0.9600688985796503,
+      "atr_pct": 5.13,
+      "vwap": 8146.666666666667,
+      "high": 8321,
+      "low": 8025,
+      "market_cap": 2281736921722,
+      "sector": "Non-Energy Minerals",
+      "already_watched": true
     },
     {
       "code": "325A",
