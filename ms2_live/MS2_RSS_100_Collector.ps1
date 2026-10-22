@@ -1799,6 +1799,74 @@ try {
     }
 }
 
+# OWNER 2026-10-22 「先物を追加」「グロースも追加」(D-044 Phase 0: no futures or index
+# data was recorded). Futures via RssFOPMarket and indexes via RssIndexMarket on their own
+# sheet, recorded to records/<day>/futures_index.csv with the lag between the capture time
+# and the quote time, so whether they are real time can be measured. Record only: they feed
+# no signal, gate, Brain input or voice, and a failure here never stops the Collector.
+$futIndexDefs = @(
+    @{ Code = "N225.FUT01.OS";  Name = "日経225先物 大阪 期近";   Fn = "RssFOPMarket" },
+    @{ Code = "N225M.FUT01.OS"; Name = "日経225ミニ 大阪 期近";   Fn = "RssFOPMarket" },
+    @{ Code = "TOPX.FUT01.OS";  Name = "TOPIX先物 大阪 期近";     Fn = "RssFOPMarket" },
+    @{ Code = "MOT.FUT01.OS";   Name = "グロース250先物 大阪 期近"; Fn = "RssFOPMarket" },
+    @{ Code = "N225.FUT01.C";   Name = "日経225先物 CME 期近";    Fn = "RssFOPMarket" },
+    @{ Code = "N225";           Name = "日経225";               Fn = "RssIndexMarket" },
+    @{ Code = "TOPX";           Name = "TOPIX";                 Fn = "RssIndexMarket" },
+    @{ Code = "MTHR";           Name = "東証グロース250指数";      Fn = "RssIndexMarket" }
+)
+# Columns B..I. Indexes have no 詳細時刻, VWAP, quotes or open interest (empty columns).
+$futItems = @("現在値","現在値詳細時刻","前日比率","出来高","出来高加重平均","最良売気配値1","最良買気配値1","建玉")
+$indexItems = @("現在値","更新時刻","前日比率","出来高","","","","")
+$futIndexSheet = $null
+$futIndexReady = $false
+try {
+    try {
+        $futIndexSheet = Invoke-ExcelCom -Label "先物指数シート確認" -Action { $book.Worksheets.Item("FUT_INDEX") }
+    } catch {
+        $futIndexSheet = $null
+    }
+    if ($null -eq $futIndexSheet) {
+        # The saved workbook has no such sheet; it is added for this session only (Safe Stop
+        # closes the workbook without saving).
+        $futIndexSheet = Invoke-ExcelCom -Label "先物指数シート作成" -Action { $book.Worksheets.Add() }
+        Invoke-ExcelCom -Label "先物指数シート命名" -Action { $futIndexSheet.Name = "FUT_INDEX" } | Out-Null
+        for ($i=0; $i -lt $futIndexDefs.Count; $i++) {
+            $fiRow = $i + 2
+            $fiDef = $futIndexDefs[$i]
+            $fiItems = if ($fiDef.Fn -eq "RssFOPMarket") { $futItems } else { $indexItems }
+            Invoke-ExcelCom -Label "先物指数コード設定" -Action { $futIndexSheet.Cells.Item($fiRow,1).Value2 = [string]$fiDef.Code } | Out-Null
+            for ($j=0; $j -lt $fiItems.Count; $j++) {
+                if ([string]::IsNullOrEmpty($fiItems[$j])) { continue }
+                $fiCol = $j + 2
+                $fiFormula = '=' + $fiDef.Fn + '("' + [string]$fiDef.Code + '","' + [string]$fiItems[$j] + '")'
+                Invoke-ExcelCom -Label "先物指数RSS式設定" -Action { $futIndexSheet.Cells.Item($fiRow,$fiCol).FormulaLocal = [string]$fiFormula } | Out-Null
+            }
+        }
+        Invoke-ExcelCom -Label "先物指数シート非表示" -Action { $futIndexSheet.Visible = 0 } | Out-Null
+    }
+    $futIndexReady = ($null -ne $futIndexSheet)
+    Write-Host "[FUT_INDEX] READY (record only)" -ForegroundColor Green
+} catch {
+    $futIndexSheet = $null
+    $futIndexReady = $false
+    Write-Host "[FUT_INDEX] WARN / UNAVAILABLE - Collector continues" -ForegroundColor DarkYellow
+}
+
+# Excel returns a time either as text (HH:mm:ss) or as a day fraction.
+function ConvertTo-FutIndexClock($value) {
+    if ($null -eq $value) { return $null }
+    if ($value -is [double] -and $value -ge 0 -and $value -lt 1) {
+        return [TimeSpan]::FromSeconds([Math]::Round($value * 86400)).ToString("hh\:mm\:ss")
+    }
+    $text = ([string]$value).Trim()
+    if ($text -match '(\d{1,2}:\d{2}(:\d{2})?)') {
+        $t = $Matches[1]
+        if ($t.Length -le 5) { $t = $t + ":00" }
+        return $t.PadLeft(8, '0')
+    }
+    return $null
+}
+
 # 決算・IR開示があった銘柄（固定100銘柄リスト外を含む）を引け後に動的追跡するための専用シート。
 # TDnetで好材料判定された銘柄をその場でRssMarket式として追加し、100銘柄リストに
 # 偶然含まれていなくてもPTS反応を検知できるようにする（ユーザー指示: 2026-09-15）。
@@ -2240,6 +2308,36 @@ try {
                 } else {
                     $jnxStatus = "OFF / MARKET CLOSED"
                 }
+            }
+        }
+        # OWNER 2026-10-22: futures and index quotes, record only (see FUT_INDEX above).
+        if ($futIndexReady -and $null -ne $futIndexSheet) {
+            try {
+                $fiPacket = Invoke-ExcelCom -Label "先物指数値取得" -Action {
+                    [pscustomobject]@{ Data = $futIndexSheet.Range("B2:I" + [string]($futIndexDefs.Count + 1)).Value2 }
+                }
+                $fiCsv = Join-Path $dayDir "futures_index.csv"
+                Ensure-Csv $fiCsv "captured_at,code,name,price,quote_time,lag_seconds,change_pct,volume,vwap,ask,bid,open_interest"
+                $fiNow = Get-Date
+                $fiLines = New-Object System.Collections.Generic.List[string]
+                for ($i=0; $i -lt $futIndexDefs.Count; $i++) {
+                    $fiVals = @(for ($j=1; $j -le 8; $j++) { Get-TableValue $fiPacket.Data ($i + 1) $j 8 })
+                    $fiClock = ConvertTo-FutIndexClock $fiVals[1]
+                    $fiLag = ""
+                    if ($null -ne $fiClock) {
+                        $fiAt = [datetime]::ParseExact($fiNow.ToString("yyyy-MM-dd") + " " + $fiClock, "yyyy-MM-dd HH:mm:ss", [Globalization.CultureInfo]::InvariantCulture)
+                        $fiLag = [string][Math]::Round(($fiNow - $fiAt).TotalSeconds)
+                    }
+                    $fiCells = @($fiNow.ToString("yyyy-MM-dd HH:mm:ss"), $futIndexDefs[$i].Code, $futIndexDefs[$i].Name,
+                        [string]$fiVals[0], [string]$fiClock, $fiLag, [string]$fiVals[2], [string]$fiVals[3],
+                        [string]$fiVals[4], [string]$fiVals[5], [string]$fiVals[6], [string]$fiVals[7])
+                    $fiLines.Add((@($fiCells | ForEach-Object { '"' + ([string]$_).Replace('"', '""') + '"' }) -join ','))
+                }
+                Add-Content -Encoding UTF8 -Path $fiCsv -Value $fiLines
+            } catch {
+                $futIndexReady = $false
+                $futIndexSheet = $null
+                Write-Host "[FUT_INDEX] WARN / READ FAILED - Collector continues" -ForegroundColor DarkYellow
             }
         }
         $script:preopenIdentitySpare = $null
