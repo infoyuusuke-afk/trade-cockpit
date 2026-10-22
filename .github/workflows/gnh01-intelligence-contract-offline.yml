@@ -6,6 +6,8 @@ on:
       - "schemas/intelligence_event_v1.schema.json"
       - "scripts/gnh01_intelligence_contract_v1.py"
       - "tests/test_gnh01_intelligence_contract_v1.py"
+      - "scripts/gnh01_durable_archive_v1.py"
+      - "tests/test_gnh01_durable_archive_v1.py"
       - ".github/workflows/gnh01-intelligence-contract-offline.yml"
   workflow_dispatch:
 permissions:
@@ -24,10 +26,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Compile offline validator and synthetic test
-        run: python -m py_compile scripts/gnh01_intelligence_contract_v1.py tests/test_gnh01_intelligence_contract_v1.py
-      - name: Contract negative cases, provenance, synthetic schema parity
+      - name: Compile offline validator and synthetic tests
+        run: python -m py_compile scripts/gnh01_intelligence_contract_v1.py tests/test_gnh01_intelligence_contract_v1.py scripts/gnh01_durable_archive_v1.py tests/test_gnh01_durable_archive_v1.py
+      - name: Install pinned JSON Schema validator for strict contract check
+        run: python -m pip install --disable-pip-version-check jsonschema==4.23.0
+      - name: Contract negative cases, provenance, JSON Schema
         run: python -m unittest discover -s tests -p test_gnh01_intelligence_contract_v1.py -v
+      - name: Durable archive, crash/replay/concurrent readback negative cases
+        run: python -m unittest discover -s tests -p test_gnh01_durable_archive_v1.py -v
       - name: Unicode project directory smoke test (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -37,7 +43,9 @@ jobs:
           Push-Location $unicodeRoot
           try {
             python -m unittest discover -s tests -p test_gnh01_intelligence_contract_v1.py -v
-            if ($LASTEXITCODE -ne 0) { throw 'UNICODE_PATH_TEST_FAILED' }
+            if ($LASTEXITCODE -ne 0) { throw 'UNICODE_CONTRACT_TEST_FAILED' }
+            python -m unittest discover -s tests -p test_gnh01_durable_archive_v1.py -v
+            if ($LASTEXITCODE -ne 0) { throw 'UNICODE_ARCHIVE_TEST_FAILED' }
           } finally {
             Pop-Location
           }
