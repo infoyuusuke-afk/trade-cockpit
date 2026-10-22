@@ -303,10 +303,13 @@ document.addEventListener("DOMContentLoaded",()=>{
    // OWNER 2026-10-22: specialists watch ahead, the Brain decides. Their watched issues, listed only.
    const watchLine=(brainPick.specialist_watch||[]).length?'<p class="sub">専門AIの先回り監視：'+brainPick.specialist_watch.map(w=>esc(w.name)+(w.signal_now?"（"+esc(w.signal_now)+"点灯中）":"")).join("／")+'（監視のみ・判断はブレイン）</p>':'';
    const picks=(brainPick.state==="PICK"?brainPick.picks:[]).filter(p=>{const x=rows.find(y=>y&&y.ticker===p.ticker);return x&&window.cockpitMs2RowReady?.(x)===true&&x.signal===p.signal&&x.strategy===p.strategy;});
-   if(!picks.length){box.innerHTML=watchLine+'<div class="focus-empty">ブレインの選択：今は見送り（基準を超える期待値で、今も鮮度が確認できるサインなし・'+esc(brainPick.considered)+'件を確認）</div>';return;}
+   if(!picks.length){box.innerHTML=watchLine+'<div class="focus-empty">ブレインの選択：今は見送り（基準を超える順位スコアで、今も鮮度が確認できるサインなし・'+esc(brainPick.considered)+'件を確認）</div>';return;}
    box.innerHTML=watchLine+'<p class="sub">ブレインの選択（検証中・期待値は仮の数字・Shadow・発注しません）</p><div class="rotation-grid">'+picks.map(p=>
      '<div class="rotation-box"><b>'+esc(p.rank)+'. '+esc(p.name)+'｜'+esc(p.signal)+'・'+esc(p.strategy)+'</b>'+
-     '<strong>期待値 '+evPct(p.score_pct)+'（根拠 '+esc(p.n_eff)+'回分）</strong>'+
+     // OWNER 2026-10-22 ③: the expected value is ev_pct; score_pct (ev shrunk by the
+     // amount of evidence) only orders the picks and is labelled as a ranking score.
+     '<strong>期待値 '+evPct(p.ev_pct)+'（根拠 '+esc(p.n_eff)+'回分）</strong>'+
+     '<small>順位スコア '+evPct(p.score_pct)+'（根拠の少なさで割り引いた並べ替え用の数字）</small>'+
      '<small>'+(Number(p.forward_n)>0?"検証中：Shadow実績 "+esc(p.forward_n)+"回を含む":"未検証：過去記録だけの数字（Shadow実績まだ0回）")+'</small>'+
      '<small>'+(p.rule_label?esc(p.rule_label):p.source==="TICKER"?"この銘柄の同じサインの記録":"同じ戦略の全銘柄の記録")+'</small>'+
      '<small>発動 '+esc(p.entry)+'／損切 '+esc(p.stop)+'／目標 '+esc(p.target)+'</small>'+
@@ -1515,13 +1518,7 @@ document.addEventListener("liveFocusUpdate",e=>{
       window.kioSignalMarkers=window.kioSignalMarkers.slice(-12);
       if(window.kioChartState)kioOneMinuteChart(window.kioChartState.points,window.kioChartState.actual,window.kioChartState.turns,window.kioSignalMarkers,window.kioChartState.levels,true);
     }
-    let voiceState={};
-    try{voiceState=JSON.parse(localStorage.getItem("kioVoiceSignalState")||"{}")}catch(_e){voiceState={}}
-    const nowMs=Date.now(),sameDirection=voiceState.type===k.signal_type,insideCooldown=sameDirection&&nowMs-Number(voiceState.at||0)<600000;
-    if(k.signal_key!==voiceState.key&&!insideCooldown&&e.detail?.speech_enabled===true){
-      window.cockpitSpeak?.(k.voice_message);
-      localStorage.setItem("kioVoiceSignalState",JSON.stringify({key:k.signal_key,type:k.signal_type,at:nowMs}));
-    }
+    // OWNER 2026-10-22: the KIOXIA signal is shown, not spoken, on the screen.
   }
 });
 </script>
