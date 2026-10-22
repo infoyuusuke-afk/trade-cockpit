@@ -14,6 +14,9 @@ on:
       - "tests/test_gnh01_private_review_handoff_v1.py"
       - "scripts/gnh01_delivery_chain_audit_v1.py"
       - "tests/test_gnh01_delivery_chain_audit_v1.py"
+      - "scripts/gnh01_stage_review_once_v1.py"
+      - "tests/test_gnh01_stage_review_once_v1.py"
+      - "docs/GNH01_STAGING_ADAPTER_V1.md"
       - "docs/GNH01_DURABLE_ARCHIVE_V1.md"
       - "docs/GNH01_ROUTINE_EGRESS_ACCEPTANCE.md"
       - ".github/workflows/gnh01-intelligence-contract-offline.yml"
@@ -48,6 +51,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_gnh01_private_review_handoff_v1.py -v
       - name: Independent archival-envelope-ACK correlation audit
         run: python -m unittest discover -s tests -p test_gnh01_delivery_chain_audit_v1.py -v
+      - name: One-shot staging and sticky UNKNOWN negative cases
+        run: python -m unittest discover -s tests -p test_gnh01_stage_review_once_v1.py -v
       - name: Unicode project directory smoke test (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -66,6 +71,8 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'UNICODE_PRIVATE_HANDOFF_TEST_FAILED' }
             python -m unittest discover -s tests -p test_gnh01_delivery_chain_audit_v1.py -v
             if ($LASTEXITCODE -ne 0) { throw 'UNICODE_CHAIN_AUDIT_TEST_FAILED' }
+            python -m unittest discover -s tests -p test_gnh01_stage_review_once_v1.py -v
+            if ($LASTEXITCODE -ne 0) { throw 'UNICODE_STAGING_TEST_FAILED' }
           } finally {
             Pop-Location
           }
