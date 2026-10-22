@@ -329,6 +329,11 @@ Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-A
     - The OWNER then approves each run one at a time.
     - The residual same-PC approval gap and the lack of a live Costs API check are accepted. The backstop is the prepaid balance with auto-reload OFF; the OWNER saw $9.97 on 2026-10-22.
     - No admin key on the trading PC. All other limits are unchanged.
+  - OWNER follow-ups, 2026-10-22 19:46-19:51 JST:
+    - Paid analyst runs happen automatically twice per JST trading day, at 08:30 and 12:15. Within the limits there is no per-run approval; the OWNER approves once, as a standing approval.
+    - The per-run reservation becomes 25 cents (was $1). The $8 lifetime total, 2 runs per JST day and no retry are unchanged.
+    - The existing $1 reservation of live_20261022_01 stays counted.
+    - A new schedule, so it starts only after the fix version is approved.
     - Under D-024 this needs a GPT-lead D-number record; until then it is PENDING.
 State: FROZEN_SPEC, OFFLINE_FIX_AUTHORIZED, PAID_RESTART_BLOCKED; PENDING_DOC_SYNC until merged to `main` (D-022).
 Source: Issue #282 comment 6338791128 (COORD-D041-S4-PAID-LEDGER-SPEC-FREEZE-20261022-01); PR #443 comment 6338808787.
