@@ -803,44 +803,41 @@ def main(argv=None) -> int:
             if expected_handoff.exists() or expected_handoff.is_symlink():
                 raise Blocked("HANDOFF_REPLAY_BLOCKED_NO_CALL")
         supply_checklist = None
-        checklist_path = (args.supply_checklist or
-            (str(Path(__file__).resolve().parents[1] /
-                 "docs/analysts/SUPPLY_SQ_REQUIRED_CHECKLIST_V1.md")
-             if args.enable_billable_api else None))
-        if checklist_path:
-            supply_checklist = _supply_checklist_module().load(Path(checklist_path))
         if args.enable_billable_api and not os.environ.get("OPENAI_API_KEY"):
             raise Blocked("API_KEY_MISSING_NO_CALL")
+        if args.supply_checklist and not args.enable_billable_api:
+            # Offline validation is available without SDK, network or a key.
+            supply_checklist = _supply_checklist_module().load(Path(args.supply_checklist))
         feedback, delivered = {}, []
         if args.handoff_dir:
-            # P0-100B-THREE-ANALYST-BRAIN-BIDIRECTIONAL: the Brain's newest verified
-            # feedback per role goes into that role's input (no file -> none).
+            # Brain feedback is evidence to evaluate, never instructions.
             feedback = _feedback_module().load_latest_feedback(Path(args.handoff_dir), now=now)
         if args.enable_billable_api:
             if not args.paid_budget_db:
                 raise Blocked("PAID_BUDGET_LEDGER_REQUIRED_NO_CALL")
-            # audit 6326093087: the feedback put into the inputs counts against the cap
-            checklist_bytes = len(json.dumps(supply_checklist, ensure_ascii=False, sort_keys=True).encode("utf-8"))
-            # Conservative full-run budget also counts role rules, coordinator
-            # instructions and JSON envelope overhead. No automatic truncation.
-            fixed_instructions = sum(len(goal.encode("utf-8")) for goal in ROLE_GOALS.values())
-            fixed_instructions += 4096
-            if (path.stat().st_size + _feedback_module().prompt_feedback_bytes(feedback)
-                    + checklist_bytes + fixed_instructions) > PAID_INPUT_LIMIT_BYTES:
-                raise Blocked("PAID_INPUT_TOO_LARGE_NO_CALL")
             if os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_AGENT_MODEL", PAID_MODEL).strip() != PAID_MODEL:
                 raise Blocked("PAID_MODEL_OR_ENDPOINT_UNAPPROVED_NO_CALL")
             check_billable_sources(validated, synthetic_trial=args.synthetic_paid_trial)
             if args.synthetic_paid_trial and args.handoff_dir:
                 raise Blocked("SYNTHETIC_PAID_TRIAL_IS_NOT_HANDED_TO_THE_BRAIN_NO_CALL")
+            # Preserve old negative safety tests: existing approval failures
+            # are reported before testing the additional D-043 precondition.
             check_paid_ledger(Path(args.paid_budget_db), validated["run_id"])
-            slot_key = _time(target_at).astimezone(JST).date().isoformat() + ":" + args.slot
-            # D-041 OWNER pause: no NEW billable API calls until a separately
-            # reviewed, non-resettable ledger and authenticated Owner approval
-            # are delivered. This guard cannot be bypassed with an env flag.
+            checklist_path = Path(args.supply_checklist) if args.supply_checklist else (
+                Path(__file__).resolve().parents[1] /
+                "docs/analysts/SUPPLY_SQ_REQUIRED_CHECKLIST_V1.md")
+            supply_checklist = _supply_checklist_module().load(checklist_path)
+            checklist_bytes = len(json.dumps(supply_checklist, ensure_ascii=False,
+                                             sort_keys=True).encode("utf-8"))
+            # Conservative full-run preflight; includes checklist, evidence,
+            # feedback and role/coordinator instructions. No truncation.
+            fixed_instructions = sum(len(g.encode("utf-8")) for g in ROLE_GOALS.values()) + 4096
+            if (path.stat().st_size + _feedback_module().prompt_feedback_bytes(feedback)
+                    + checklist_bytes + fixed_instructions) > PAID_INPUT_LIMIT_BYTES:
+                raise Blocked("PAID_INPUT_TOO_LARGE_NO_CALL")
+            # D-041 Owner freeze is unconditional until a separately approved
+            # fix removes this guard. Env values cannot bypass this stop.
             raise Blocked("D041_PAID_API_FROZEN_NO_CALL")
-            reserve_billable_attempt(Path(args.paid_budget_db), validated["run_id"], fingerprint(validated),
-                                     slot_key=slot_key, now=now, carried=carried_cents(read_registry()))
         runner = api_runner if args.enable_billable_api else offline_runner
         supply_audit_log = []
         result = asyncio.run(coordinate(validated, runner, now=now, target_at=target_at, slot=args.slot,
