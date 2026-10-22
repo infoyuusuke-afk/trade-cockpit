@@ -83,7 +83,7 @@ JPX_MODULES = (
 )
 JPX_RETRY = timedelta(minutes=30)
 JPX_CHILD_DEADLINE_SECONDS = 60   # audit 6327603446: fetch + parse never block the loop longer
-BRAIN_CORE_MODULE = ("v10_brain_core", "b574290a42f117a23606fb4b553750b8ab262e5b")
+BRAIN_CORE_MODULE = ("v10_brain_core", "5107869e40d69e4412ad9fe448e102102bb6216a")
 
 
 def _aware(value):
@@ -509,7 +509,7 @@ def brain_core_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
             except Exception:
                 attention = None
         view = module.write_pick(Path(live_path).parent, live, now=now, logged=state.setdefault("logged", set()),
-                                 attention=attention)
+                                 attention=attention, logged_rules=state.setdefault("logged_rules", set()))
         summary = {"brain_core": view["state"], "picks": len(view["picks"]), "logged_new": view["logged_new"]}
     except Exception as exc:  # fail closed, keep the observer running
         summary = {"brain_core": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}

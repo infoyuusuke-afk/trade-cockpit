@@ -2125,6 +2125,28 @@ function Get-BrainRuleSignals([string]$Path, [datetime]$Now) {
         return @()
     }
 }
+# OWNER 2026-10-23 「新しく載った時は『検証中』付きで音声で1回知らせる」: a stock's first entry into
+# the Brain ranking today, from the same fresh, checked file (the same gates as the rule voice).
+function Get-BrainNewPicks([string]$Path, [datetime]$Now) {
+    try {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return @() }
+        $item = Get-Item -LiteralPath $Path -Force
+        if ($item.Length -le 2 -or $item.Length -gt 1048576) { return @() }
+        $view = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-brain-pick-v1' -or
+            $view.real_submit_allowed -isnot [bool] -or $view.real_submit_allowed -or
+            $view.trade_instruction -isnot [bool] -or $view.trade_instruction -or
+            [string]$view.state -cne 'PICK') { return @() }
+        if (-not (Test-BrainPickFresh $view.generated_at $Now)) { return @() }
+        # only stocks still picked now (never an old entry after a restart)
+        $pickedNow = @($view.picks | ForEach-Object { [string]$_.ticker+'|'+[string]$_.signal+'|'+[string]$_.strategy })
+        return @($view.today.attention | Where-Object { [string]$_.kind -ceq 'RANKING' -and
+            [string]$_.signal -in @('買いサイン', '空売りサイン') -and
+            ([string]$_.ticker+'|'+[string]$_.signal+'|'+[string]$_.strategy) -in $pickedNow })
+    } catch {
+        return @()
+    }
+}
 function Test-RuleSignalStillListed([string]$Path, [string]$Key) {
     # Re-read right before speaking: the setup must still be listed in a fresh, valid file.
     foreach ($y in (Get-BrainRuleSignals $Path (Get-Date))) {
@@ -2214,7 +2236,7 @@ try {
             $activeDay=$now.ToString("yyyy-MM-dd")
             $previous=@{}; $history=@{}; $preopenHistory=@{}; $preopenState=@{}; $seenTicks=@{}; $creditSaved=@{}; $orHigh=@{}; $orLow=@{}; $or5High=@{}; $or5Low=@{}; $minuteBars=@{}; $currentMinuteBars=@{}; $dayHigh=@{}; $dayLow=@{}; $pmAboveSince=@{}; $pmBelowSince=@{}; $lastSignal=@{}; $lastHoldSpoken=@{}; $loggedSignals=@{}
             $kioFlowCandidate=""; $lastKioFlowSpoken=""; $lastKioFlowSpokenAt=Get-Date "2000-01-01"
-            $lastPreopenVoice=""; $lastOpenDecisionVoice=""; $spokenRuleSignals=@{}; $preopenGapSpoken=$false
+            $lastPreopenVoice=""; $lastOpenDecisionVoice=""; $spokenRuleSignals=@{}; $spokenNewPicks=@{}; $preopenGapSpoken=$false
             $lastPtsBand=0; $lastPtsVoiceAt=Get-Date "2000-01-01"
             $tdnetDisclosures=@(); $lastTdnetFetchAt=Get-Date "2000-01-01"; $tdnetStatus="取得待ち"; $lastIrVoiceCodes=@{}; $irDynamicSlots=@{}
             $loadedHoldDay=""; $holdFinalized=$false; $holdFinalizedAt=$null; $holdEntryCaptured=$false; $finalHoldTop5=@()
@@ -3374,7 +3396,27 @@ try {
                 if (-not (Test-RuleSignalStillListed $brainPickPath $key)) { continue }
                 $ruleName=@{R1='ルール1';R2='ルール2';R4='ルール4';R5='ルール5'}[[string]$x.rule]
                 $side=if($x.signal -eq "買いサイン"){"買い"}else{"空売り"}
-                Invoke-SerializedSpeak $speaker ($ruleName+"に該当。"+$x.name+"、"+$side+"。発動"+[Math]::Round([double]$x.entry,1)+"円。損切り"+[Math]::Round([double]$x.stop,1)+"円。目標"+[Math]::Round([double]$x.target,1)+"円。仮想検証中の数字です。注文は武蔵で手動です。")
+                Invoke-SerializedSpeak $speaker ("注目、検証中。"+$ruleName+"に該当。"+$x.name+"、"+$side+"。発動"+[Math]::Round([double]$x.entry,1)+"円。損切り"+[Math]::Round([double]$x.stop,1)+"円。目標"+[Math]::Round([double]$x.target,1)+"円。仮想検証中の数字です。注文は武蔵で手動です。")
+                $lastSpoken[[string]$x.ticker]=$now
+                $ruleVoices++
+            }
+        }
+        # OWNER 2026-10-23 「新しく載った時は『検証中』付きで音声で1回知らせる」: each stock's first
+        # entry into the Brain ranking, once a day, within the same one-voice-per-cycle cap and
+        # current-row check. If a rule voice named the stock in the last 10 minutes, the
+        # OWNER has already heard it: marked as told, not read again.
+        if ($publishLiveValues) {
+            foreach ($x in (Get-BrainNewPicks $brainPickPath (Get-Date))) {
+                if ($ruleVoices -ge $MaxRuleVoicesPerCycle) { break }
+                $key=[string]$x.ticker
+                if ($spokenNewPicks.ContainsKey($key)) { continue }
+                $row=@($results | Where-Object { $_.ticker -eq $x.ticker } | Select-Object -First 1)
+                if ($row.Count -eq 0 -or $row[0].aggregate_row_fresh -ne $true -or [string]$row[0].signal -ne [string]$x.signal -or [string]$row[0].strategy -ne [string]$x.strategy) { continue }
+                $spokenNewPicks[$key]=$now
+                $spokenAt=$lastSpoken[[string]$x.ticker]
+                if ($null -ne $spokenAt -and ($now-$spokenAt).TotalMinutes -lt 10) { continue }
+                $side=if($x.signal -eq "買いサイン"){"買い"}else{"空売り"}
+                Invoke-SerializedSpeak $speaker ("注目、検証中。ブレインのランキングに新しく入りました。"+$x.name+"、"+$side+"。発動"+[Math]::Round([double]$x.entry,1)+"円。仮想検証中の数字です。注文は武蔵で手動です。")
                 $lastSpoken[[string]$x.ticker]=$now
                 $ruleVoices++
             }
