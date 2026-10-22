@@ -28,7 +28,7 @@ This isolated Draft #490 implements **offline validation and crash-recoverable s
 from datetime import datetime, timezone
 from pathlib import Path
 from scripts.gnh01_durable_archive_v1 import archive_event, read_archive_receipt
-from tests.test_gnh01_intelligence_contract_v1 import fixture  # synthetic fixture
+from test_gnh01_intelligence_contract_v1 import fixture  # synthetic fixture, set PYTHONPATH=tests
 
 db = Path("/tmp/gnh01_private_test.db")  # example only; private absolute folder required
 event = fixture()
@@ -38,7 +38,7 @@ assert result["shadow_eligible"] is False
 assert read_archive_receipt(db, result["event_id"], 1)["state"] == "ARCHIVED"
 ```
 
-The path above is illustrative for non-Windows tests. For a Windows test use a dedicated private absolute path selected by the operator, not a project/repo directory.
+Run this snippet with the repository root as current directory and PYTHONPATH=tests so the synthetic test fixture is importable. The path above is illustrative for non-Windows tests. For a Windows test use a dedicated private absolute path selected by the operator, not a project/repo directory.
 
 ## 4. Test gates and known limitations
 
