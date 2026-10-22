@@ -35,10 +35,28 @@ class ContractTests(unittest.TestCase):
     def test_valid_is_archive_only_not_brain_or_shadow(self):
         v = validate_event(fixture(), now=NOW)
         self.assertEqual(v["state"], "ARCHIVE_RESEARCH_ONLY")
-        self.assertEqual(v["available_at"], "2026-10-21T23:07:00+00:00")
+        self.assertIsNone(v["available_at"])
+        self.assertFalse(v["available_at_verified"])
+        self.assertEqual(v["claimed_bridge_received_at"], "2026-10-21T23:07:00+00:00")
         self.assertIs(v["real_submit_allowed"], False)
         self.assertIs(v["shadow_eligible"], False)
         self.assertIs(v["brain_receiver_ack_verified"], False)
+
+    def test_untrusted_receive_time_cannot_backdate_available_at(self):
+        x = fixture()
+        y = copy.deepcopy(x)
+        y["bridge_received_at"] = "2026-10-21T23:06:00Z"
+        # The content digest deliberately excludes delivery metadata; a
+        # sender can change the claimed receipt without changing the hash.
+        self.assertEqual(x["content_hash"], y["content_hash"])
+        a = validate_event(x, now=NOW)
+        b = validate_event(y, now=NOW)
+        self.assertIsNone(a["available_at"])
+        self.assertIsNone(b["available_at"])
+        self.assertFalse(b["available_at_verified"])
+        self.assertNotEqual(a["claimed_bridge_received_at"],
+                            b["claimed_bridge_received_at"])
+        self.assertFalse(b["shadow_eligible"])
 
     def test_sender_primary_claim_never_proves_authenticity(self):
         x = fixture()

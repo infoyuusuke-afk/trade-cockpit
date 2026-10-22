@@ -169,12 +169,15 @@ def validate_event(event: dict, *, now: datetime) -> dict:
         raise ContractBlocked("CONTENT_HASH_FORMAT_INVALID")
     if content_digest(event) != event["content_hash"]:
         raise ContractBlocked("CONTENT_HASH_MISMATCH")
-    # No upstream assertion grants execution permission or an authenticated
-    # Brain receipt. Bridge receive time is the earliest usable research time.
+    # An upstream-supplied bridge_received_at is an untrusted claim. It is
+    # NOT a point-in-time receipt. Only a separate durable receiver receipt
+    # can establish an independently verified available_at.
     return {"state": "ARCHIVE_RESEARCH_ONLY", "event_id": event["event_id"],
             "event_revision": event["event_revision"],
             "content_hash": event["content_hash"],
-            "available_at": received.isoformat(),
+            "available_at": None,
+            "claimed_bridge_received_at": received.isoformat(),
+            "available_at_verified": False,
             "source_authenticity_verified": False,
             "stock_identity_verified": False,
             "brain_receiver_ack_verified": False,
