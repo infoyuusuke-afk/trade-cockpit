@@ -12,6 +12,7 @@ import hashlib
 import json
 from pathlib import Path
 import sqlite3
+import threading
 from typing import Callable
 
 from scripts.gnh01_intelligence_contract_v1 import (
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS grok_archive_v1 (
     payload_sha256 TEXT NOT NULL,
     received_at TEXT NOT NULL,
     available_at TEXT,
+    receipt_sha256 TEXT NOT NULL,
     state TEXT NOT NULL CHECK (state IN ('PENDING','ARCHIVED')),
     PRIMARY KEY (event_id, revision)
 );
@@ -35,6 +37,19 @@ CREATE TABLE IF NOT EXISTS grok_archive_v1 (
 
 class ArchiveBlocked(ValueError):
     """Stable fail-closed diagnostic without exposing payloads or filesystem paths."""
+
+
+# Serializes *same-process* schema/WAL bootstrap. SQLite WAL still arbitrates
+# cross-process writes; each transaction retains busy_timeout and fail-closed.
+_INIT_LOCK = threading.RLock()
+
+
+def _receipt_digest(event_id, revision, digest, payload_sha, received, available, state):
+    """Detect accidental post-commit mutation; unkeyed, NOT authentication."""
+    row = dict(event_id=event_id, revision=revision, content_hash=digest,
+               payload_sha256=payload_sha, received_at=received,
+               available_at=available, state=state)
+    return hashlib.sha256(canonical_bytes(row)).hexdigest()
 
 
 def _utc(clock: Callable[[], datetime]) -> datetime:
@@ -55,13 +70,25 @@ def _path(db_path) -> Path:
 def _connect(path: Path, *, initialize=False):
     if not initialize and not path.is_file():
         raise ArchiveBlocked("ARCHIVE_NOT_FOUND")
+    if initialize:
+        # PRAGMA journal_mode=WAL cannot race another thread initializing WAL.
+        # Restrict bootstrap to one same-process writer, never the readback.
+        with _INIT_LOCK:
+            con = sqlite3.connect(str(path), timeout=5, isolation_level="IMMEDIATE")
+            try:
+                con.execute("PRAGMA busy_timeout=5000")
+                mode = con.execute("PRAGMA journal_mode=WAL").fetchone()[0]
+                if mode.lower() != "wal":
+                    raise ArchiveBlocked("WAL_REQUIRED")
+                con.execute("PRAGMA synchronous=FULL")
+                con.execute(_SCHEMA)
+                con.commit()
+                return con
+            except Exception:
+                con.close()
+                raise
     con = sqlite3.connect(str(path), timeout=5, isolation_level="IMMEDIATE")
     con.execute("PRAGMA busy_timeout=5000")
-    if initialize:
-        con.execute("PRAGMA journal_mode=WAL")
-        con.execute("PRAGMA synchronous=FULL")
-        con.execute(_SCHEMA)
-        con.commit()
     return con
 
 
@@ -71,21 +98,36 @@ def _read(path: Path, event_id: str, revision: int) -> dict:
     try:
         row = con.execute(
             "SELECT event_id,revision,content_hash,payload_json,payload_sha256,"
-            "received_at,available_at,state FROM grok_archive_v1 "
+            "received_at,available_at,state,receipt_sha256 FROM grok_archive_v1 "
             "WHERE event_id=? AND revision=?", (event_id, revision)
         ).fetchone()
     finally:
         con.close()
     if row is None:
         raise ArchiveBlocked("RECEIPT_NOT_DURABLE")
-    eid, rev, digest, payload_json, payload_hash, received, available, state = row
+    eid, rev, digest, payload_json, payload_hash, received, available, state, receipt_sha = row
     try:
         payload = json.loads(payload_json)
         if (eid != event_id or rev != revision
                 or hashlib.sha256(payload_json.encode("utf-8")).hexdigest() != payload_hash
                 or content_digest(payload) != digest
                 or payload["event_id"] != eid or payload["event_revision"] != rev
-                or payload["content_hash"] != digest):
+                or payload["content_hash"] != digest
+                or _receipt_digest(eid, rev, digest, payload_hash,
+                                   received, available, state) != receipt_sha):
+            raise ArchiveBlocked("ARCHIVE_INTEGRITY_FAILURE")
+        received_dt = datetime.fromisoformat(received)
+        if (received_dt.tzinfo is None or received_dt.utcoffset() is None
+                or received_dt.utcoffset().total_seconds() != 0):
+            raise ArchiveBlocked("ARCHIVE_INTEGRITY_FAILURE")
+        if state == "ARCHIVED":
+            if available is None:
+                raise ArchiveBlocked("ARCHIVE_INTEGRITY_FAILURE")
+            available_dt = datetime.fromisoformat(available)
+            if (available_dt.tzinfo is None or available_dt.utcoffset() is None
+                    or available_dt < received_dt):
+                raise ArchiveBlocked("ARCHIVE_INTEGRITY_FAILURE")
+        elif available is not None:
             raise ArchiveBlocked("ARCHIVE_INTEGRITY_FAILURE")
     except (TypeError, ValueError, KeyError, AttributeError) as exc:
         raise ArchiveBlocked("ARCHIVE_INTEGRITY_FAILURE") from exc
@@ -160,11 +202,16 @@ def archive_event(db_path, event: dict, *, clock=None) -> dict:
                         raise ArchiveBlocked("REVISION_GAP_OR_REGRESSION")
                     if newest_at is not None and started.isoformat() < newest_at:
                         raise ArchiveBlocked("RECEIVER_CLOCK_REGRESSION")
+                    received_at = started.isoformat()
+                    receipt_sha = _receipt_digest(event_id, rev, digest, payload_sha,
+                                                  received_at, None, "PENDING")
                     con.execute(
                         "INSERT INTO grok_archive_v1 "
                         "(event_id,revision,content_hash,payload_json,payload_sha256,"
-                        "received_at,available_at,state) VALUES (?,?,?,?,?,?,NULL,'PENDING')",
-                        (event_id, rev, digest, payload_json, payload_sha, started.isoformat()),
+                        "received_at,available_at,receipt_sha256,state) "
+                        "VALUES (?,?,?,?,?,?,NULL,?,'PENDING')",
+                        (event_id, rev, digest, payload_json, payload_sha,
+                         received_at, receipt_sha),
                     )
         finally:
             con.close()
@@ -182,10 +229,14 @@ def archive_event(db_path, event: dict, *, clock=None) -> dict:
             con = _connect(path)
             try:
                 with con:
+                    receipt_sha = _receipt_digest(
+                        event_id, rev, digest, initial["raw_payload_sha256"],
+                        initial["received_at"], finish.isoformat(), "ARCHIVED")
                     con.execute(
-                        "UPDATE grok_archive_v1 SET available_at=?,state='ARCHIVED' "
+                        "UPDATE grok_archive_v1 "
+                        "SET available_at=?,state='ARCHIVED',receipt_sha256=? "
                         "WHERE event_id=? AND revision=? AND content_hash=? AND state='PENDING'",
-                        (finish.isoformat(), event_id, rev, digest),
+                        (finish.isoformat(), receipt_sha, event_id, rev, digest),
                     )
             finally:
                 con.close()
