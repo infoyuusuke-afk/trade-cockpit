@@ -4,7 +4,7 @@
   when its write time or length changed; one /health looks the processes up in
   one query. ② The screen no longer speaks (Radar WATCH/HOT, KIOXIA signal).
 ③ The Brain card shows ev_pct as 期待値 and score_pct as 順位スコア. ④ Shadow
-  downtime and uptime count only the trading sessions (not after 15:30).
+  downtime and uptime do not count time after 15:30 (D-035).
 S1 Safe Stop quits Excel only when no other workbook is open in it. S2 START
   refuses while another Excel runs. S3 Safe Stop stops nothing while another
   Excel runs. CI PASS approves no deployment.
@@ -112,17 +112,17 @@ class BrainCardLabels(unittest.TestCase):
         self.assertNotIn("期待値 '+evPct(p.score_pct)", html)
 
 
-class DowntimeOnlyInSessions(unittest.TestCase):
+class DowntimeNotAfter1530(unittest.TestCase):
     def at(self, hm, day=22):
         h, m = map(int, hm.split(":"))
         return datetime(2026, 10, day, h, m, tzinfo=JST)
 
-    def test_session_seconds(self):
-        self.assertEqual(sup.session_seconds(self.at("15:00"), self.at("16:00")), 1800)
-        self.assertEqual(sup.session_seconds(self.at("15:31"), self.at("23:00")), 0)
-        self.assertEqual(sup.session_seconds(self.at("11:00"), self.at("13:00")), 3600)  # lunch is not counted
-        self.assertEqual(sup.session_seconds(self.at("08:00"), self.at("09:10")), 600)
-        self.assertEqual(sup.session_seconds(self.at("15:00", 23), self.at("10:00", 26)), 1800 + 3600)  # Fri -> Mon
+    def test_counted_seconds(self):
+        self.assertEqual(sup.counted_seconds(self.at("15:00"), self.at("16:00")), 1800)
+        self.assertEqual(sup.counted_seconds(self.at("15:31"), self.at("23:00")), 0)
+        self.assertEqual(sup.counted_seconds(self.at("11:00"), self.at("13:00")), 7200)  # lunch still counts
+        self.assertEqual(sup.counted_seconds(self.at("08:00"), self.at("09:10")), 4200)  # before 9:00 still counts
+        self.assertEqual(sup.counted_seconds(self.at("15:00", 22), self.at("10:00", 23)), 1800 + 36000)
 
     def test_open_incident_after_close_adds_no_downtime(self):
         incident = {"occurrence_at": self.at("15:32").isoformat(), "recovery_at": None}
@@ -130,13 +130,13 @@ class DowntimeOnlyInSessions(unittest.TestCase):
         incident = {"occurrence_at": self.at("15:20").isoformat(), "recovery_at": None}
         self.assertEqual(sup._clip_duration(incident, self.at("09:00"), self.at("16:30")), 600)
 
-    def test_uptime_uses_session_time(self):
+    def test_uptime_stops_counting_at_1530(self):
         engine = {"state": {"engine_started_at": self.at("08:00").isoformat()}, "ledger": [],
                   "incidents": [{"occurrence_at": self.at("15:00").isoformat(), "recovery_at": None,
                                  "error_code": "STALE_OR_MISSING_TIMESTAMP"}]}
         daily = sup.summarize_operations(engine, now=self.at("18:00"))["daily"]
         self.assertEqual(daily["total_downtime_seconds"], 1800)
-        self.assertAlmostEqual(daily["shadow_uptime_ratio"], 1 - 1800 / (5.5 * 3600))  # 9:00-11:30 and 12:30-15:30
+        self.assertAlmostEqual(daily["shadow_uptime_ratio"], 1 - 1800 / (7.5 * 3600))  # 08:00-15:30 counted
 
 
 class ExcelSafety(unittest.TestCase):

@@ -1494,12 +1494,14 @@ def _plain_int(value) -> int | None:
     return value
 
 
-def session_seconds(left: datetime, right: datetime) -> int:
-    """Seconds of [left, right] inside the weekday trading sessions (JST).
+DOWNTIME_COUNT_UNTIL = clock_time(15, 30)
 
-    OWNER 2026-10-22 ④: time after 15:30 is not downtime. A board that stops
-    updating outside the sessions (before 9:00, the lunch break, after 15:30,
-    weekends) is the market being closed, not the Shadow being down.
+
+def counted_seconds(left: datetime, right: datetime) -> int:
+    """Seconds of [left, right] that count toward downtime and uptime (JST).
+
+    OWNER 2026-10-22 ④ (D-035): time after 15:30 is not counted as downtime.
+    Every other moment counts as before; the incident log itself is unchanged.
     """
     if right <= left:
         return 0
@@ -1507,12 +1509,10 @@ def session_seconds(left: datetime, right: datetime) -> int:
     total = 0.0
     day = lo.date()
     while day <= hi.date():
-        if day.weekday() < 5:
-            for start, end in SESSIONS:
-                a = max(lo, datetime.combine(day, start, JST))
-                b = min(hi, datetime.combine(day, end, JST))
-                if b > a:
-                    total += (b - a).total_seconds()
+        a = max(lo, datetime.combine(day, clock_time(0, 0), JST))
+        b = min(hi, datetime.combine(day, DOWNTIME_COUNT_UNTIL, JST))
+        if b > a:
+            total += (b - a).total_seconds()
         day += timedelta(days=1)
     return int(total)
 
@@ -1526,7 +1526,7 @@ def _clip_duration(incident: dict, start: datetime, end: datetime) -> int:
         return 0
     left = max(opened, start)
     right = min(closed, end)
-    return session_seconds(left, right)
+    return counted_seconds(left, right)
 
 
 def summarize_operations(engine: dict, *, now: datetime) -> dict:
@@ -1537,7 +1537,7 @@ def summarize_operations(engine: dict, *, now: datetime) -> dict:
         if started is None:
             return _empty_window(label)
         begin = max(started, now - timedelta(seconds=seconds))
-        elapsed = session_seconds(begin, now)
+        elapsed = counted_seconds(begin, now)
         incidents = [item for item in engine["incidents"] if parse_timestamp(item.get("occurrence_at"), now.tzinfo) and parse_timestamp(item.get("occurrence_at"), now.tzinfo) >= begin]
         downtime = sum(_clip_duration(item, begin, now) for item in engine["incidents"])
         recovered = [item for item in incidents if item.get("recovery_at")]
