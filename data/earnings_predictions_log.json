@@ -3498,7 +3498,10 @@
     "logged_at": "2026-10-20 01:13:36 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 5.94,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -1.47,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "3290",
@@ -3507,7 +3510,10 @@
     "logged_at": "2026-10-20 01:13:36 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 2.15,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 1.49,
+    "actual_direction": "上昇",
+    "hit": true
   },
   {
     "code": "4929",
@@ -3516,7 +3522,10 @@
     "logged_at": "2026-10-20 01:13:37 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.68,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -2.63,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "5576",
@@ -3525,7 +3534,10 @@
     "logged_at": "2026-10-20 01:13:37 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 1.3,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -6.26,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "8953",
@@ -3534,7 +3546,10 @@
     "logged_at": "2026-10-20 01:13:38 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 1.17,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 0.1,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "3091",
@@ -3588,6 +3603,132 @@
     "logged_at": "2026-10-21 09:56:52 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.6,
+    "status": "pending"
+  },
+  {
+    "code": "2268",
+    "name": "Ｂ－Ｒ　サーティワン　アイスクリーム",
+    "target_date": "2026-10-23",
+    "logged_at": "2026-10-22 09:54:11 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.12,
+    "status": "pending"
+  },
+  {
+    "code": "2804",
+    "name": "ブルドックソース",
+    "target_date": "2026-10-23",
+    "logged_at": "2026-10-22 09:54:11 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.16,
+    "status": "pending"
+  },
+  {
+    "code": "3492",
+    "name": "ＭＩＲＡＲＴＨ不動産投資法人",
+    "target_date": "2026-10-23",
+    "logged_at": "2026-10-22 09:54:11 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.35,
+    "status": "pending"
+  },
+  {
+    "code": "3912",
+    "name": "モバイルファクトリー",
+    "target_date": "2026-10-23",
+    "logged_at": "2026-10-22 09:54:11 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.65,
+    "status": "pending"
+  },
+  {
+    "code": "5423",
+    "name": "東京製鐵",
+    "target_date": "2026-10-23",
+    "logged_at": "2026-10-22 09:54:11 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 3.23,
+    "status": "pending"
+  },
+  {
+    "code": "6629",
+    "name": "テクノホライゾン",
+    "target_date": "2026-10-23",
+    "logged_at": "2026-10-22 09:54:12 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 3.62,
+    "status": "pending"
+  },
+  {
+    "code": "6954",
+    "name": "ファナック",
+    "target_date": "2026-10-23",
+    "logged_at": "2026-10-22 09:54:12 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.23,
+    "status": "pending"
+  },
+  {
+    "code": "6999",
+    "name": "ＫＯＡ",
+    "target_date": "2026-10-23",
+    "logged_at": "2026-10-22 09:54:12 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.21,
+    "status": "pending"
+  },
+  {
+    "code": "7422",
+    "name": "東邦レマック",
+    "target_date": "2026-10-23",
+    "logged_at": "2026-10-22 09:54:12 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.79,
+    "status": "pending"
+  },
+  {
+    "code": "7931",
+    "name": "未来工業",
+    "target_date": "2026-10-23",
+    "logged_at": "2026-10-22 09:54:12 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.97,
+    "status": "pending"
+  },
+  {
+    "code": "8707",
+    "name": "岩井コスモホールディングス",
+    "target_date": "2026-10-23",
+    "logged_at": "2026-10-22 09:54:13 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -4.21,
+    "status": "pending"
+  },
+  {
+    "code": "8961",
+    "name": "森トラストリート投資法人",
+    "target_date": "2026-10-23",
+    "logged_at": "2026-10-22 09:54:13 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.34,
+    "status": "pending"
+  },
+  {
+    "code": "9029",
+    "name": "ヒガシホールディングス",
+    "target_date": "2026-10-23",
+    "logged_at": "2026-10-22 09:54:13 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.3,
+    "status": "pending"
+  },
+  {
+    "code": "9353",
+    "name": "櫻島埠頭",
+    "target_date": "2026-10-23",
+    "logged_at": "2026-10-22 09:54:13 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -1.66,
     "status": "pending"
   }
 ]
