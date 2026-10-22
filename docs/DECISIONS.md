@@ -324,6 +324,12 @@ Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-A
   - The OWNER said in chat to build in the Costs API link (「API連携を組み込む」).
   - The frozen spec forbids an admin key on the trading PC and keeps paid runs blocked until independent OWNER authentication exists.
   - Whether paid runs may restart before that is awaiting the OWNER's choice. Until it is recorded, the frozen spec applies.
+  - OWNER choice, 2026-10-22 19:45 JST (「すぐに連携」, on the restart card): restart sooner.
+    - Paid runs may reopen after fixes (1) and (2) of the frozen spec, an independent cloud Claude PASS and OWNER exact-SHA approval.
+    - The OWNER then approves each run one at a time.
+    - The residual same-PC approval gap and the lack of a live Costs API check are accepted. The backstop is the prepaid balance with auto-reload OFF; the OWNER saw $9.97 on 2026-10-22.
+    - No admin key on the trading PC. All other limits are unchanged.
+    - Under D-024 this needs a GPT-lead D-number record; until then it is PENDING.
 State: FROZEN_SPEC, OFFLINE_FIX_AUTHORIZED, PAID_RESTART_BLOCKED; PENDING_DOC_SYNC until merged to `main` (D-022).
 Source: Issue #282 comment 6338791128 (COORD-D041-S4-PAID-LEDGER-SPEC-FREEZE-20261022-01); PR #443 comment 6338808787.
 
