@@ -128,6 +128,14 @@ class ScreenStaysPut(unittest.TestCase):
         self.assertIn("if(Date.now()-lastTouch<120000){setTimeout(quietReload,60000);return;}", html)
         self.assertIn('sessionStorage.setItem("cockpitScrollY",String(Math.round(window.scrollY)))', html)
 
+    def test_compact_headings_and_one_line_attention_box(self):
+        # OWNER 2026-10-23 「無駄な情報はコンパクトにしろ」
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn(".pane-intro>span{display:none}", html)
+        self.assertIn(".focus-empty{padding:10px 12px!important;font-size:13px!important}", html)
+        self.assertIn("#attention-rows:empty{display:none}", html)
+        self.assertLess(html.index('href="theme.css'), html.index(".pane-intro{padding:10px 4px 8px!important"))   # overrides theme.css
+
 
 class DowntimeNotAfter1530(unittest.TestCase):
     def at(self, hm, day=22):
