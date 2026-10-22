@@ -64,8 +64,14 @@ test("report text and links are escaped; only http(s) links",()=>{
   const bad="<img src=x onerror=alert(1)>";
   const out=card(rep({hypothesis:bad,conditions:bad,invalidation:bad,report_id:bad,
     evidence:[{source_id:bad,source_url:"javascript:alert(1)",available_at:"x"}]}));
-  assert.doesNotMatch(out,/<img|javascript:/);
-  assert.match(out,/href="#"/);
+  assert.doesNotMatch(out,/<img|javascript:|onerror/);
+  // OWNER 2026-10-23: the card shows only watched issues, so no report text or link is
+  // rendered at all; a name taken from the Brain's list is escaped as well.
+  vm.runInContext('agentNames={"7012":"<img src=x onerror=alert(1)>"}',ctx);
+  const named=card(rep({hypothesis:"watch 7012"}));
+  assert.doesNotMatch(named,/<img/);
+  assert.match(named,/&lt;img src=x onerror=alert\(1\)&gt;\(7012\)/);
+  vm.runInContext("agentNames={}",ctx);
 });
 
 test("Revenue Hunter is labelled as project progress",()=>{
