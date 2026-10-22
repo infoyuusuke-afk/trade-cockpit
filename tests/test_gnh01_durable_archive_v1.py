@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sqlite3
@@ -53,7 +54,7 @@ class DurableArchiveTests(unittest.TestCase):
         again = self.record()
         self.assertTrue(again["duplicate"])
         self.assertEqual(first["raw_payload_sha256"], again["raw_payload_sha256"])
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM grok_archive_v1").fetchone()[0], 1)
 
     def test_changed_claimed_receipt_cannot_backdate_real_local_receipt(self):
@@ -77,7 +78,7 @@ class DurableArchiveTests(unittest.TestCase):
         second = self.record(self.event(revision=2, summary="material correction"))
         self.assertNotEqual(first["content_hash"], second["content_hash"])
         self.assertEqual(read_archive_receipt(self.db, first["event_id"], 1)["content_hash"], first["content_hash"])
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM grok_archive_v1").fetchone()[0], 2)
 
     def test_revision_gap_without_history_blocked(self):
@@ -125,21 +126,21 @@ class DurableArchiveTests(unittest.TestCase):
 
     def test_payload_db_corruption_detected_after_restart(self):
         result = self.record()
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             conn.execute("UPDATE grok_archive_v1 SET payload_json='{}'")
         with self.assertRaisesRegex(ArchiveBlocked, "ARCHIVE_INTEGRITY_FAILURE"):
             read_archive_receipt(self.db, result["event_id"], 1)
 
     def test_payload_sha_db_corruption_detected(self):
         result = self.record()
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             conn.execute("UPDATE grok_archive_v1 SET payload_sha256=?", ("0" * 64,))
         with self.assertRaisesRegex(ArchiveBlocked, "ARCHIVE_INTEGRITY_FAILURE"):
             read_archive_receipt(self.db, result["event_id"], 1)
 
     def test_available_at_tamper_after_archive_rejected(self):
         result = self.record()
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             conn.execute(
                 "UPDATE grok_archive_v1 SET available_at=?",
                 ((NOW - timedelta(minutes=2)).isoformat(),)
@@ -149,7 +150,7 @@ class DurableArchiveTests(unittest.TestCase):
 
     def test_received_at_tamper_after_archive_rejected(self):
         result = self.record()
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             conn.execute(
                 "UPDATE grok_archive_v1 SET received_at=?",
                 ((NOW - timedelta(minutes=10)).isoformat(),)
@@ -159,7 +160,7 @@ class DurableArchiveTests(unittest.TestCase):
 
     def test_receipt_checksum_tamper_rejected(self):
         result = self.record()
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             conn.execute("UPDATE grok_archive_v1 SET receipt_sha256=?", ("0" * 64,))
         with self.assertRaisesRegex(ArchiveBlocked, "ARCHIVE_INTEGRITY_FAILURE"):
             read_archive_receipt(self.db, result["event_id"], 1)
@@ -168,7 +169,7 @@ class DurableArchiveTests(unittest.TestCase):
         sequence = iter([NOW, NOW - timedelta(seconds=1)])
         with self.assertRaisesRegex(ArchiveBlocked, "RECEIVER_CLOCK_REGRESSION"):
             self.record(clock=lambda: next(sequence))
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             self.assertEqual(conn.execute("SELECT state FROM grok_archive_v1").fetchone()[0], "PENDING")
         recovered = self.record(clock=self.clock)
         self.assertTrue(recovered["duplicate"])
@@ -190,7 +191,7 @@ class DurableArchiveTests(unittest.TestCase):
         self.assertFalse(errors, errors)
         self.assertEqual(len(results), 2)
         self.assertEqual(sum(not r["duplicate"] for r in results), 1)
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             self.assertEqual(conn.execute("SELECT COUNT(*) FROM grok_archive_v1").fetchone()[0], 1)
 
 
