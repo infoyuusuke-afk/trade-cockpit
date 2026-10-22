@@ -51,6 +51,38 @@ class PreNextReviewTests(unittest.TestCase):
         self.assertNotIn("available_at", out)
         self.assertNotIn("sources", out)
 
+    def test_claimed_direct_grok_sender_never_becomes_authenticated(self):
+        self.archived()
+        out = self.review()
+        self.assertEqual(out["source_role"], "grok_bot_gnh01")
+        self.assertFalse(out["sender_role_authenticated"])
+        self.assertFalse(out["grok_direct_emission_verified"])
+        self.assertFalse(out["origin_transport_verified"])
+
+    def test_owner_relay_remains_relay_not_direct_grok(self):
+        # OWNER relay must not be turned into a forged direct-Bot provenance.
+        self.event["source_role"] = "owner_instruction_relay"
+        self.event["content_hash"] = content_digest(self.event)
+        self.archived()
+        out = self.review()
+        self.assertEqual(out["source_role"], "owner_instruction_relay")
+        self.assertFalse(out["sender_role_authenticated"])
+        self.assertFalse(out["grok_direct_emission_verified"])
+        self.assertFalse(out["origin_transport_verified"])
+        self.assertFalse(out["pre_next_ack_verified"])
+        self.assertFalse(out["brain_trade_decision_eligible"])
+
+    def test_changing_archived_relay_to_direct_grok_rejected(self):
+        self.event["source_role"] = "owner_instruction_relay"
+        self.event["content_hash"] = content_digest(self.event)
+        self.archived()
+        forged = copy.deepcopy(self.event)
+        forged["source_role"] = "grok_bot_gnh01"
+        forged["content_hash"] = content_digest(forged)
+        with self.assertRaisesRegex(
+                ArchiveBlocked, "ARCHIVE_CONTENT_OR_STATUS_MISMATCH"):
+            self.review(event=forged)
+
     def test_primary_verified_sender_claim_never_becomes_verified_source(self):
         self.event["evidence_status"] = "PRIMARY_VERIFIED"
         self.event["content_hash"] = content_digest(self.event)
