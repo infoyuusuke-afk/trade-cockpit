@@ -21,6 +21,7 @@ def imported(name):
 
 checks = imported("supply_sq_checklist_d043")
 pilot = imported("agent_sdk_coordination_pilot")
+adapter = imported("agent_sdk_d043_adapter")
 NOW = datetime(2026, 10, 20, 6, 0, tzinfo=timezone.utc)
 
 
@@ -108,8 +109,9 @@ class Integration(unittest.IsolatedAsyncioTestCase):
                   "full_text": "Synthetic fixture " + " ".join(checks.IDS)}
         async def provider(role, prompt):
             return audited_result(role, prompt)
-        result = await pilot.coordinate(source(), provider, now=NOW,
-                                        supply_checklist=sample, supply_audit_log=audit)
+        result, attestation = await adapter.coordinate_with_checklist(
+            source(), provider, now=NOW, checklist=sample)
+        audit = [attestation["audit"]]
         self.assertEqual(next(x for x in result["specialists"]
                               if x["role"] == "supply_sq")["status"], "WATCH")
         self.assertEqual(len(audit), 1)
@@ -122,9 +124,8 @@ class Integration(unittest.IsolatedAsyncioTestCase):
                   "full_text": "Synthetic fixture"}
         async def provider(role, prompt):
             return audited_result(role, prompt, drop_id="C10")
-        with self.assertRaisesRegex(checks.ChecklistBlocked, "COVERAGE_INCOMPLETE"):
-            await pilot.coordinate(source(), provider, now=NOW,
-                                   supply_checklist=sample, supply_audit_log=[])
+        with self.assertRaisesRegex(adapter.AdapterBlocked, "AUDIT_NOT_COMPLETED"):
+            await adapter.coordinate_with_checklist(source(), provider, now=NOW, checklist=sample)
 
     async def test_no_eligible_source_still_reports_ten_unknowns(self):
         sample = {"checklist_version": checks.VERSION, "checklist_sha256": checks.APPROVED_SHA256,
@@ -134,11 +135,20 @@ class Integration(unittest.IsolatedAsyncioTestCase):
         audit = []
         async def forbidden(role, prompt):
             raise AssertionError("No providers must be invoked without sources")
-        out = await pilot.coordinate(d, forbidden, now=NOW,
-                                     supply_checklist=sample, supply_audit_log=audit)
+        out, attestation = await adapter.coordinate_with_checklist(
+            d, forbidden, now=NOW, checklist=sample)
+        audit = [attestation["audit"]]
         self.assertEqual(len(audit), 1)
         self.assertEqual(audit[0]["missing_ids"], list(checks.IDS))
         self.assertEqual(out["specialists"][2]["status"], "NO_DATA")
+
+    async def test_paid_attempt_stopped_before_provider_or_ledger(self):
+        async def forbidden(role, prompt):
+            raise AssertionError("Paid provider must not run")
+        with self.assertRaisesRegex(adapter.AdapterBlocked, "D041_PAID_API_FROZEN_NO_CALL"):
+            await adapter.coordinate_with_checklist(source(), forbidden, now=NOW,
+                checklist={"checklist_version": checks.VERSION, "checklist_sha256": checks.APPROVED_SHA256,
+                           "full_text": "Synthetic only"}, billable=True)
 
 
 if __name__ == "__main__":
