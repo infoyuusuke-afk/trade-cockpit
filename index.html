@@ -89,14 +89,23 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(!Array.isArray(rep?.evidence)||rep.evidence.length===0)return {ok:false,reason:"NO_SOURCE"};
    return {ok:true,reason:null};
  };
+ // OWNER 2026-10-23 「こんなの表示されても意味がわからない」: each analyst card says in plain
+ // Japanese what it concluded, which issues it watches (4-character codes found in its
+ // text) and until when; the English original is folded under 原文（英語）.
+ const AGENT_STATUS_JA={WATCH:"監視候補あり",NO_SIGNAL:"材料なし",NO_DATA:"データ不足で判断なし",UNAVAILABLE:"分析できず"};
+ const agentJst=v=>{const t=Date.parse(v||"");if(!Number.isFinite(t))return "—";const d=new Date(t+324e5);return (d.getUTCMonth()+1)+"/"+d.getUTCDate()+" "+String(d.getUTCHours()).padStart(2,"0")+":"+String(d.getUTCMinutes()).padStart(2,"0");};
+ const agentCodes=rep=>[...new Set((String(rep?.hypothesis||"")+" "+String(rep?.conditions||"")).match(/\b[0-9][0-9A-Z]{3}\b/g)||[])].filter(c=>!/^20\d\d$/.test(c)).slice(0,10);
  const agentReportCard=(rep,nowMs)=>{
    const u=agentReportUsable(rep,nowMs);
    const links=(Array.isArray(rep.evidence)?rep.evidence:[]).map(e=>'<a href="'+kioSafeUrl(e.source_url)+'" target="_blank" rel="noopener">'+esc(e.source_id)+'</a>').join(" ")||"—";
-   return '<div class="rotation-box"><b>'+esc(AGENT_ROLE_LABEL[rep.role]||rep.role)+'｜'+esc(rep.status)+'</b>'+
-     '<strong>'+(u.ok?"研究用・参照可":esc(AGENT_REASON_LABEL[u.reason]||u.reason))+'</strong>'+
-     '<small>report_id '+esc(rep.report_id)+'<br>対象 '+esc(rep.target_at)+'／期限 '+esc(rep.expires_at)+'</small>'+
+   const codes=rep.status==="WATCH"?agentCodes(rep):[];
+   return '<div class="rotation-box"><b>'+esc(AGENT_ROLE_LABEL[rep.role]||rep.role)+'</b>'+
+     '<strong>'+esc(AGENT_STATUS_JA[rep.status]||rep.status)+'</strong>'+
+     (codes.length?'<small>監視する銘柄：'+codes.map(esc).join("、")+'</small>':'')+
+     '<small>'+(u.ok?"参考にできる（"+esc(agentJst(rep.expires_at))+"まで）":esc(AGENT_REASON_LABEL[u.reason]||u.reason))+'／売買判断には使いません</small>'+
+     '<details><summary>原文（英語）</summary><small>report_id '+esc(rep.report_id)+'<br>対象 '+esc(rep.target_at)+'／期限 '+esc(rep.expires_at)+'</small>'+
      '<small>仮説：'+esc(rep.hypothesis)+'<br>成立条件：'+esc(rep.conditions)+'<br>撤回条件：'+esc(rep.invalidation)+'</small>'+
-     '<small>出典：'+links+'</small></div>';
+     '<small>出典：'+links+'</small></details></div>';
  };
  const renderAgentResearch=()=>{
    // The Gateway answers 503 with {state:"UNAVAILABLE",reason} when it cannot verify the
@@ -110,8 +119,10 @@ document.addEventListener("DOMContentLoaded",()=>{
      box.innerHTML=v.runs.slice(0,3).map(run=>{
        const reps=Array.isArray(run.reports)?run.reports:[];
        const market=reps.filter(x=>x.lane==="MARKET_RESEARCH_NOT_EXECUTION"),progress=reps.filter(x=>x.lane==="PROJECT_PROGRESS_NOT_TRADING");
-       return '<h3>'+esc(run.slot||"")+'｜run '+esc(run.run_id)+'</h3><p class="sub">受信 '+esc(run.received_at)+'／ACK '+esc(String(run.ack_sha256||"").slice(0,12))+'／統括 '+esc(run.coordinator?.status||"—")+'：'+esc(run.coordinator?.summary||"")+'</p>'+
-         (Array.isArray(run.verification_checks)&&run.verification_checks.length?'<p class="warning">確認事項：'+run.verification_checks.map(esc).join("／")+'</p>':"")+
+       const watched=[...new Set(market.filter(x=>x.status==="WATCH").flatMap(agentCodes))];
+       return '<h3>'+esc(agentJst(run.received_at))+'受信のレポート</h3><p class="sub">'+(watched.length?'監視候補：'+watched.map(esc).join("、"):'今回は監視候補なし')+'（AIの調査メモ。売買判断はブレインが行います）</p>'+
+         '<details><summary>原文（英語）・確認事項</summary><p class="sub">'+esc(run.slot||"")+'｜run '+esc(run.run_id)+'／ACK '+esc(String(run.ack_sha256||"").slice(0,12))+'／統括 '+esc(run.coordinator?.status||"—")+'：'+esc(run.coordinator?.summary||"")+'</p>'+
+         (Array.isArray(run.verification_checks)&&run.verification_checks.length?'<p class="warning">確認事項：'+run.verification_checks.map(esc).join("／")+'</p>':"")+'</details>'+
          '<div class="rotation-grid">'+market.map(x=>agentReportCard(x,nowMs)).join("")+'</div>'+
          (progress.length?'<h3>PROJECT進捗（売買判定に使わない）</h3><div class="rotation-grid">'+progress.map(x=>agentReportCard(x,nowMs)).join("")+'</div>':"");
      }).join("")||'<div class="focus-empty">受信済みレポートなし</div>';
@@ -909,7 +920,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <h3>直近25営業日・5分足カレンダー</h3>
 <div id="kioxia-calendar-grid" class="kio-calendar"><div class="focus-empty">5分足を取得中...</div></div>
 <p class="warning"><b>使い方：</b>寄り前は前夜のSanDisk・Micron・SOX・NASDAQ、GU/GD帯、信用需給、公式材料の織り込み段階から仮説を作ります。9:15以降は当日5分足を65%へ引き上げて再計算。類似度60%以上が3日未満なら「見送り」。発動は完成5分足のOR15・VWAP・EMA9/20・出来高・ヒゲ反転の一致が条件で、事前予測だけでは注文しません。</p></section>
-<section id="regime-summary" class="card wide"><h2>地合い判定（日次・参考）</h2>
+<section id="regime-summary" class="card wide"><h2>地合い判定（日次・参考・未検証）</h2>
 <div id="regime-summary-meta" class="sub">取得待ち</div>
 <div class="rotation-grid" id="regime-summary-verdict"><div class="focus-empty">取得待ち</div></div>
 <table><thead><tr><th>指標</th><th>現在値</th><th>前日比</th><th>5日</th><th>20日線から</th><th>20日線／60日線</th></tr></thead>
@@ -1216,7 +1227,7 @@ const loadRegimeSummary = () => fetch("market_summary.json?t=" + Date.now()).the
   const cls = v => Number(v) > 0 ? "up" : Number(v) < 0 ? "down" : "";
   const v = d.verdict || {};
   document.getElementById("regime-summary-meta").textContent = "データ " + (d.updated_at || "不明") + "（" + (d.phase || "") + "）";
-  document.getElementById("regime-summary-verdict").innerHTML = "<div class='rotation-box'><b>地合い</b><strong class='" + (v.label === "強い" ? "up" : v.label === "弱い" ? "down" : "") + "'>" + worldEsc(v.label || "—") + "</strong><br><span>点数 " + worldEsc(v.score) + "（+3以上で強い・−3以下で弱い）</span></div>"
+  document.getElementById("regime-summary-verdict").innerHTML = "<div class='rotation-box'><b>地合い</b><strong class='" + (v.label === "強い" ? "up" : v.label === "弱い" ? "down" : "") + "'>" + worldEsc(v.label || "—") + "</strong><br><span>点数 " + worldEsc(v.score) + "（+3以上で強い・−3以下で弱い・しきい値は未検証）</span></div>"
     + "<div class='rotation-box'><b>内訳</b><small>" + ((v.parts || []).map(x => worldEsc(x.text) + "（" + (x.point > 0 ? "+" : "") + worldEsc(x.point) + "）").join("<br>") || "—") + "</small></div>";
   document.getElementById("regime-summary-rows").innerHTML = Object.entries(d.indices || {}).map(([n, x]) =>
     "<tr><td><b>" + worldEsc(n) + "</b></td><td>" + f(x.price, 2) + "</td><td class='" + cls(x.change_pct) + "'>" + p(x.change_pct) + "</td><td class='" + cls(x.ret5) + "'>" + p(x.ret5) + "</td><td class='" + cls(x.from_ma20) + "'>" + p(x.from_ma20) + "</td><td>" + (x.ma20 == null || x.ma60 == null ? "—" : (x.ma20 > x.ma60 ? "上向き" : "下向き")) + "</td></tr>"

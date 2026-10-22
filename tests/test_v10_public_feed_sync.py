@@ -99,14 +99,15 @@ class RegimeSummary(unittest.TestCase):
     def test_verdict_strong_weak_neutral(self):
         up = {"日経平均": self.idx(110, 100, 90, 1.0), "TOPIX": self.idx(110, 100, 90, 1.0),
               "NASDAQ": {"change_pct": 1.0}, "SOX": {"change_pct": 1.0}, "VIX": {"change_pct": -6}}
-        self.assertEqual(feed.regime_verdict(up)["label"], "強い")
+        self.assertEqual(feed.regime_verdict(up)["label"], "強い（未検証）")
         down = {"日経平均": self.idx(90, 100, 110, -1.0), "TOPIX": self.idx(90, 100, 110, -1.0),
                 "NASDAQ": {"change_pct": -1.0}, "SOX": {"change_pct": -1.0}, "VIX": {"change_pct": 6}}
         v = feed.regime_verdict(down)
-        self.assertEqual((v["label"], v["score"]), ("弱い", -9))   # 6 Japan parts, NASDAQ, SOX, VIX
-        self.assertEqual(feed.regime_verdict({})["label"], "中立")
+        self.assertEqual((v["label"], v["score"]), ("弱い（未検証）", -6))   # 3 Nikkei parts, NASDAQ, SOX, VIX
+        self.assertNotIn("TOPIX", " ".join(x["text"] for x in v["parts"]))   # wrong series in the source
+        self.assertEqual(feed.regime_verdict({})["label"], "中立（未検証）")
         flat = {"日経平均": self.idx(100, 100, 100, 0.1)}
-        self.assertEqual(feed.regime_verdict(flat)["status"], "REFERENCE_DAILY_NOT_A_GATE")
+        self.assertEqual(feed.regime_verdict(flat)["status"], "REFERENCE_DAILY_UNVALIDATED_NOT_A_GATE")
 
     def test_summary_keeps_only_valid_indices_and_top5_themes(self):
         data = {"updated_at": "u", "phase": "p",
@@ -114,7 +115,7 @@ class RegimeSummary(unittest.TestCase):
                             "NASDAQ": {"ok": True, "price": "x"}},
                 "themes": [["T%d" % i, i, 1, [["A", 1.0, 2.0]]] for i in range(7)] + [["bad"]]}
         s = feed.summarize(data)
-        self.assertEqual(list(s["indices"]), ["日経平均", "NASDAQ"])
+        self.assertEqual(list(s["indices"]), ["日経平均", "NASDAQ"])   # TOPIX never listed
         self.assertIsNone(s["indices"]["NASDAQ"]["price"])        # non-numbers are dropped, never invented
         self.assertEqual(len(s["themes"]), 5)
         self.assertFalse(s["real_submit_allowed"])
@@ -146,7 +147,7 @@ class RegimeSummary(unittest.TestCase):
 
     def test_screen_section_is_in_the_market_tab_and_labelled_reference(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
-        self.assertIn('<section id="regime-summary" class="card wide"><h2>地合い判定（日次・参考）</h2>', html)
+        self.assertIn('<section id="regime-summary" class="card wide"><h2>地合い判定（日次・参考・未検証）</h2>', html)
         self.assertIn('fetch("market_summary.json?t="', html)
         self.assertIn("場中の売買サイン・安全ゲート・ブレインの点数・音声には使いません", html)
 

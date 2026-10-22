@@ -78,7 +78,9 @@ DATA_MAX_BYTES = 16 * 1024 * 1024
 # OWNER 2026-10-23 「検証・除外に本来地合判定がでるはず」: the daily index figures of the
 # public page's 地合いサマリー, plus a reference verdict. Display only (never a gate,
 # Brain score, voice or order); daily after-close data, not intraday.
-SUMMARY_INDICES = ("日経平均", "TOPIX", "NASDAQ", "S&P500", "SOX", "VIX", "ドル円", "米10年金利")
+# Audit 6349520576 item 3: the source "TOPIX" row is about 420 against a real TOPIX of
+# about 3,998 (another series), so it is neither shown nor scored until the source is fixed.
+SUMMARY_INDICES = ("日経平均", "NASDAQ", "S&P500", "SOX", "VIX", "ドル円", "米10年金利")
 INDEX_FIELDS = ("price", "change_pct", "ret5", "ret20", "ma5", "ma20", "ma60", "from_ma20")
 
 
@@ -89,7 +91,7 @@ def _num(v):
 def regime_verdict(indices: dict) -> dict:
     """Reference score from daily data: Japan trend and day move, US risk appetite."""
     parts = []
-    for name in ("日経平均", "TOPIX"):
+    for name in ("日経平均",):   # TOPIX excluded (wrong series in the source)
         r = indices.get(name) or {}
         price, ma20, ma60, chg = (_num(r.get(k)) for k in ("price", "ma20", "ma60", "change_pct"))
         if price is not None and ma20 is not None:
@@ -106,9 +108,11 @@ def regime_verdict(indices: dict) -> dict:
     if vix is not None and abs(vix) >= 5:
         parts.append(("VIX %+.1f%%" % vix, -1 if vix > 0 else 1))
     score = sum(v for _, v in parts)
+    # Audit item 4: an unvalidated rule (thresholds not tested); shown as 未検証 and read by
+    # nothing until GPT gives it a D-number.
     label = "強い" if score >= 3 else "弱い" if score <= -3 else "中立"
-    return {"label": label, "score": score, "parts": [{"text": t, "point": v} for t, v in parts],
-            "status": "REFERENCE_DAILY_NOT_A_GATE"}
+    return {"label": label + "（未検証）", "score": score, "parts": [{"text": t, "point": v} for t, v in parts],
+            "status": "REFERENCE_DAILY_UNVALIDATED_NOT_A_GATE"}
 
 
 def summarize(data: dict) -> dict:
