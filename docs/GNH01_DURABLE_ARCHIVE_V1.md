@@ -82,3 +82,43 @@ Run this snippet with the repository root as current directory and PYTHONPATH=te
 ### Acceptance status
 
 `test_gnh01_pre_next_review_v1.py` exercises matching private receipt, sender-source claims, missing/stale/future data, corrupted payload, mismatched revision and no-execution invariants. These tests are synthetic-only and are included in the isolated Windows/Ubuntu CI matrix. GitHub run evidence must be updated to the exact latest HEAD before any PASS claim.
+
+## 8. Phase 1D — strict JSON ingestion and origin preservation
+
+This extension keeps the existing one-shot, isolated archive—no new IPC,
+network listener, webhook, scheduling or broker interface.
+
+- `parse_event_json_bytes` consumes at most 64,000 bytes of strict UTF-8. It
+  rejects duplicate JSON keys (including nested keys), floating-point or
+  nonfinite literals, invalid UTF-8, BOM, trailing JSON, unexpected root types,
+  and malformed inputs. `archive_json_once` parses bytes through this
+  guard and reuses `archive_event` durable local receipts. It is not a live
+  Grok origin authentication mechanism.
+- Duplicate Japanese security codes are normalized for a `.T` suffix during
+  structural review: `285A` and `285A.T` cannot both appear as independent
+  securities in one event. This is NOT external issuer-identity verification.
+- Reject escaped lone Unicode surrogate code points in source URL and news
+  text before attempting the canonical UTF-8 content hash.
+- PRE-NEXT candidate construction now preserves the **original claimed
+  `source_role`**, including `owner_instruction_relay`; no OWNER relay may
+  be mislabeled a direct `grok_bot_gnh01` emission.
+  `sender_role_authenticated=false`, `grok_direct_emission_verified=false`,
+  and `origin_transport_verified=false` remain invariant even when the
+  sender claims to be Grok. A GitHub comment by the OWNER or its connector
+  cannot prove Grok's unattended automation.
+- This is compatible with future inspection of Draft #481's public research
+  snapshot, but **DOES NOT** automatically set its `available_at`, which
+  requires independent evidence-source availability and authorization.
+- Negative tests cover relay-origin laundering, changed role despite a
+  matching local archive, ambiguous JSON, ticker suffix duplicates, and
+  surrogate Unicode. The exact latest HEAD-specific CI is documented
+  in Draft PR #490; all former CI claims apply to the former HEAD only.
+
+### Deferred operational acceptance
+
+To connect the hourly Grok Routine, supply an authenticated **private**
+outbound message transport and a receiver whose access rights, source
+identity, clock and secrets are separately verified. A public Issue #282
+single-shot comment and a local archive receipt are insufficient. PRE-NEXT
+and Brain must each independently acknowledge consumption; no automatic
+trading or brokerage orders may be enabled.
