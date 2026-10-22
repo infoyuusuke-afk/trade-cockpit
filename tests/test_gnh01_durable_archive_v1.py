@@ -137,6 +137,33 @@ class DurableArchiveTests(unittest.TestCase):
         with self.assertRaisesRegex(ArchiveBlocked, "ARCHIVE_INTEGRITY_FAILURE"):
             read_archive_receipt(self.db, result["event_id"], 1)
 
+    def test_available_at_tamper_after_archive_rejected(self):
+        result = self.record()
+        with sqlite3.connect(self.db) as conn:
+            conn.execute(
+                "UPDATE grok_archive_v1 SET available_at=?",
+                ((NOW - timedelta(minutes=2)).isoformat(),)
+            )
+        with self.assertRaisesRegex(ArchiveBlocked, "ARCHIVE_INTEGRITY_FAILURE"):
+            read_archive_receipt(self.db, result["event_id"], 1)
+
+    def test_received_at_tamper_after_archive_rejected(self):
+        result = self.record()
+        with sqlite3.connect(self.db) as conn:
+            conn.execute(
+                "UPDATE grok_archive_v1 SET received_at=?",
+                ((NOW - timedelta(minutes=10)).isoformat(),)
+            )
+        with self.assertRaisesRegex(ArchiveBlocked, "ARCHIVE_INTEGRITY_FAILURE"):
+            read_archive_receipt(self.db, result["event_id"], 1)
+
+    def test_receipt_checksum_tamper_rejected(self):
+        result = self.record()
+        with sqlite3.connect(self.db) as conn:
+            conn.execute("UPDATE grok_archive_v1 SET receipt_sha256=?", ("0" * 64,))
+        with self.assertRaisesRegex(ArchiveBlocked, "ARCHIVE_INTEGRITY_FAILURE"):
+            read_archive_receipt(self.db, result["event_id"], 1)
+
     def test_crash_between_pending_and_archived_can_recover_without_duplicate(self):
         sequence = iter([NOW, NOW - timedelta(seconds=1)])
         with self.assertRaisesRegex(ArchiveBlocked, "RECEIVER_CLOCK_REGRESSION"):
