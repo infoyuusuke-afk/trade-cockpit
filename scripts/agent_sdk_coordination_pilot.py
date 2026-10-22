@@ -504,7 +504,7 @@ SETTINGS = {
     "paid_input_limit_bytes": (PAID_INPUT_LIMIT_BYTES, "APPROVED_OWNER_2026-10-22 (24000OK)"),
     "max_output_tokens_coordinator": (PAID_COORDINATOR_MAX_OUTPUT_TOKENS, "APPROVED_OWNER_2026-10-22 (review after live_20261022_01)"),
     "timeout_seconds_per_call": (PAID_TIMEOUT_SECONDS, "APPROVED_OWNER_2026-10-20/21 (#481)"),
-    "reserved_cents_per_run": (PAID_RESERVED_CENTS_PER_RUN, "APPROVED_OWNER_2026-10-22 (確保を1回25セント)"),
+    "reserved_cents_per_run": (PAID_RESERVED_CENTS_PER_RUN, "APPROVED_OWNER_2026-10-22 (25 cents per run)"),
     "lifetime_reserved_cents": (PAID_TOTAL_LEDGER_CENTS, "APPROVED_OWNER_2026-10-20/21 (#481, $10 prepaid, auto-reload off)"),
     "max_model_calls_per_run": (PAID_MAX_MODEL_CALLS, "PROVISIONAL (4 specialists + coordinator)"),
     "max_paid_runs_per_jst_day": (PAID_MAX_RUNS_PER_JST_DAY, "PROVISIONAL"),
