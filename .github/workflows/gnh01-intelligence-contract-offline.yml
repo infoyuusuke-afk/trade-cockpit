@@ -1,0 +1,43 @@
+name: GNH01 public research contract (offline synthetic)
+# Isolated research-only CI. No secrets, network API, broker, orders or live V10.
+on:
+  pull_request:
+    paths:
+      - "schemas/intelligence_event_v1.schema.json"
+      - "scripts/gnh01_intelligence_contract_v1.py"
+      - "tests/test_gnh01_intelligence_contract_v1.py"
+      - ".github/workflows/gnh01-intelligence-contract-offline.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-contract:
+    name: GNH01 offline contract / ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile offline validator and synthetic test
+        run: python -m py_compile scripts/gnh01_intelligence_contract_v1.py tests/test_gnh01_intelligence_contract_v1.py
+      - name: Contract negative cases, provenance, synthetic schema parity
+        run: python -m unittest discover -s tests -p test_gnh01_intelligence_contract_v1.py -v
+      - name: Unicode project directory smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -c "import os,pathlib,shutil; dst=pathlib.Path(os.environ['RUNNER_TEMP'])/'100億PROJECT'/'GNH01'; [(shutil.copytree(p,dst/p,dirs_exist_ok=True)) for p in ('scripts','tests','schemas')]; print('UNICODE_TEST_ROOT_CREATED')"
+          $unicodeRoot = Join-Path $env:RUNNER_TEMP '100億PROJECT\GNH01'
+          Push-Location $unicodeRoot
+          try {
+            python -m unittest discover -s tests -p test_gnh01_intelligence_contract_v1.py -v
+            if ($LASTEXITCODE -ne 0) { throw 'UNICODE_PATH_TEST_FAILED' }
+          } finally {
+            Pop-Location
+          }
