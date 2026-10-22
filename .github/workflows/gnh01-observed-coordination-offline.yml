@@ -1,0 +1,32 @@
+name: GNH01 observed-delivery coordination contract (offline)
+# Draft protocol only. No network, tokens, orders, GitHub comments, or deployment.
+on:
+  pull_request:
+    paths:
+      - "scripts/coordination_ledger_v1.py"
+      - "scripts/gnh01_coordination_observation_v1.py"
+      - "tests/test_coordination_ledger_v1.py"
+      - "tests/test_gnh01_coordination_observation_v1.py"
+      - ".github/workflows/gnh01-observed-coordination-offline.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  observation-regression:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile strict coordination and observational parser
+        run: python -m py_compile scripts/coordination_ledger_v1.py scripts/gnh01_coordination_observation_v1.py tests/test_coordination_ledger_v1.py tests/test_gnh01_coordination_observation_v1.py
+      - name: Legacy ledger negative cases
+        run: python -m unittest discover -s tests -p test_coordination_ledger_v1.py -v
+      - name: Grok observational receipt and bounded ACK negatives
+        run: python -m unittest discover -s tests -p test_gnh01_coordination_observation_v1.py -v
