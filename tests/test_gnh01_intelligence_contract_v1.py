@@ -1,9 +1,10 @@
 """Synthetic negative/state-transition tests: no network, broker or live V10."""
 import copy
+import json
 from datetime import datetime, timezone, timedelta
 import unittest
 from scripts.gnh01_intelligence_contract_v1 import (
-    ContractBlocked, LANE, SCHEMA_VERSION, content_digest, validate_event,
+    ContractBlocked, LANE, SCHEMA_VERSION, content_digest, validate_event, parse_event_json_bytes,
 )
 
 NOW = datetime(2026, 10, 22, 0, 0, tzinfo=timezone.utc)
@@ -103,6 +104,15 @@ class ContractTests(unittest.TestCase):
             x["content_hash"] = content_digest(x)
         self.reject(f, "STOCK_IDENTITY_INVALID")
 
+    def test_suffix_alias_of_same_ticker_rejected(self):
+        def f(x):
+            x["related_japanese_stocks"].append({
+                "security_code": "285A.T",
+                "official_company_name": "キオクシアホールディングス株式会社"
+            })
+            x["content_hash"] = content_digest(x)
+        self.reject(f, "STOCK_IDENTITY_INVALID")
+
     def test_localhost_source_blocked(self):
         def f(x):
             x["original_source_url"] = "https://localhost.local/secret"
@@ -140,6 +150,54 @@ class ContractTests(unittest.TestCase):
             x["event_revision"] = True
             x["content_hash"] = content_digest(x)
         self.reject(f, "EVENT_ID_OR_REVISION_INVALID")
+
+
+class StrictJsonIntakeTests(unittest.TestCase):
+    def test_complete_synthetic_event_roundtrips(self):
+        raw = json.dumps(fixture(), sort_keys=True, ensure_ascii=False).encode("utf-8")
+        value = parse_event_json_bytes(raw)
+        self.assertEqual(value, fixture())
+        self.assertEqual(validate_event(value, now=NOW)["state"], "ARCHIVE_RESEARCH_ONLY")
+
+    def test_reject_duplicate_top_level_keys(self):
+        with self.assertRaisesRegex(ContractBlocked, "JSON_DUPLICATE_KEY"):
+            parse_event_json_bytes(b'{"event_id":"synthetic","event_id":"forged"}')
+
+    def test_reject_nested_duplicate_ticker_key(self):
+        with self.assertRaisesRegex(ContractBlocked, "JSON_DUPLICATE_KEY"):
+            parse_event_json_bytes(b'{"related_japanese_stocks":[{"security_code":"285A","security_code":"464A"}]}')
+
+    def test_reject_nonfinite_json_constants(self):
+        for malformed in (b'{"n":NaN}', b'{"n":Infinity}', b'{"n":-Infinity}'):
+            with self.subTest(malformed=malformed):
+                with self.assertRaisesRegex(ContractBlocked, "JSON_NONFINITE_OR_FLOAT_BLOCKED"):
+                    parse_event_json_bytes(malformed)
+
+    def test_reject_float_or_overflow_literals(self):
+        for malformed in (b'{"n":1.25}', b'{"n":1e309}'):
+            with self.subTest(malformed=malformed):
+                with self.assertRaisesRegex(ContractBlocked, "JSON_NONFINITE_OR_FLOAT_BLOCKED"):
+                    parse_event_json_bytes(malformed)
+
+    def test_reject_nonutf8_and_trailing_json(self):
+        for malformed in (b"\xff\xfe", b"{}{}"):
+            with self.subTest(malformed=malformed):
+                with self.assertRaisesRegex(ContractBlocked, "EVENT_JSON_INVALID"):
+                    parse_event_json_bytes(malformed)
+
+    def test_reject_bom(self):
+        with self.assertRaisesRegex(ContractBlocked, "EVENT_JSON_INVALID"):
+            parse_event_json_bytes(b"\xef\xbb\xbf{}")
+
+    def test_reject_unexpected_binary_size_and_str(self):
+        for malformed in (b"", b" " * 65000, "{}", bytearray(b"{}")):
+            with self.subTest(type=type(malformed).__name__):
+                with self.assertRaisesRegex(ContractBlocked, "EVENT_JSON_SIZE_OR_TYPE_INVALID"):
+                    parse_event_json_bytes(malformed)
+
+    def test_reject_array_root(self):
+        with self.assertRaisesRegex(ContractBlocked, "EVENT_FIELDS_INVALID"):
+            parse_event_json_bytes(b"[]")
 
 
 class StructuralSchemaTests(unittest.TestCase):
