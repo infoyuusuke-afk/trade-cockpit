@@ -18,6 +18,8 @@ Newest first. Keep one short entry per day; detailed evidence stays in PRs and t
 - Voice alerts limited to rules ①②④⑤ and IR急騰 (D-039).
 - Design only, no change now: whole-screen LIVE gate (D-040), stale and empty tabs (D-042).
 - No new paid GPT API runs until the ledger reset gap is fixed (D-041).
+- One versioned C01-C10 checklist for the supply/SQ analyst (D-043).
+- Market regime / algorithm-behaviour research subsystem adopted as P1; data inventory first (D-044).
 
 ### 2. Work
 - Claude independent defect audit after the close, of live 48bbfe2 and dev 08c1479. Read-only; nothing was changed on the running V10.

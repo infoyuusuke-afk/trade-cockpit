@@ -307,3 +307,55 @@ Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-A
 - If another Excel cannot be proven absent, normal STOP refuses safely and reports BLOCKED. It never closes another file.
 - Emergency procedures beyond D-023 need a separate OWNER decision.
 Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-AUDIT-DECISIONS-20261022-01), P0-V10-POSTCLOSE-AUDIT-AND-DECISIONS-20261022.
+
+## D-043 One versioned mandatory checklist for the supply/SQ analyst (2026-10-22)
+- Every supply/SQ analyst run reads the full checklist (C01-C10), with its version and hash, and reports each item as VERIFIED / UNVERIFIED / STALE / NOT_APPLICABLE. A missing item marks the report QUALITY_INCOMPLETE. Unknown values are never filled in by guessing.
+- Items:
+  - C01 market-wide margin balances, ratio and margin unrealized P/L, with the weekly change;
+  - C02 liquidation/relief-selling hypotheses with falsifiers;
+  - C03 per-symbol margin;
+  - C04 short-sale ratio, lending and reverse interest;
+  - C05 foreign investor and arbitrage flows;
+  - C06 futures/options and SQ calendar;
+  - C07 sector rotation;
+  - C08 source, as_of, available_at and data rights;
+  - C09 review of previous hypotheses;
+  - C10 three-line next-session warning, with no trade decision.
+- Market-wide margin risk is reported separately from the technical R2 label (D-034). Neither changes the other.
+- OWNER-only market figures stay on the PC (D-037) and are never posted to Issue #282, GitHub or social media.
+- The checklist must fit inside the 24,000-byte input cap (D-036). On overflow, the run is blocked, never truncated. No paid API run under D-041.
+- Wiring the checklist into the API prompt is assigned to the PC Claude after a separate authorization. Checklist changes need a numbered OWNER decision (D-024). The planned file `docs/analysts/SUPPLY_SQ_REQUIRED_CHECKLIST_V1.md` is not committed yet.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: Issue #282 comments 6336507382 and 6336655933.
+
+## D-044 Market regime / observed algorithm-behaviour research subsystem (2026-10-22)
+- Adopted as P1 research. It classifies the morning's market type from observable prices. It does NOT identify who is trading or which execution algorithm runs. Labels:
+  - VWAP_PERSISTENT_SELL / VWAP_PERSISTENT_BUY
+  - FUTURES_LEAD_TREND_CANDIDATE
+  - INDEX_LINKED_SYNCHRONOUS_CANDIDATE
+  - VWAP_RANGE
+  - MIXED / UNKNOWN
+- Each label carries its evidence, confidence and falsifiers. It gives no buy/sell advice and places no order.
+- Labels are frozen at 09:15 and/or 09:30 JST, using only data available by then, and are then checked against the rest of the day. A whole-day tag made afterwards is kept separate and is never a live label.
+- Validation:
+  - chronological train / validation / holdout days;
+  - every tried combination counted;
+  - net of costs and slippage;
+  - compared with the unchanged R2;
+  - exits of 15/30/60/90/120 minutes and the close studied as research only.
+  - Too few days gives INSUFFICIENT_SAMPLE.
+- The R2 definition (D-034) and its 60-minute maximum hold are unchanged.
+- Order splitting is not inferred from the four recent trade prints. Futures lead/lag stays UNKNOWN without licensed, synchronized timestamps.
+- Roles:
+  - the PC Claude makes a read-only inventory of logs since 2026-09-19 and builds the isolated offline classifier and backtest;
+  - the cloud Claude does the independent review on sanitized fixtures;
+  - the GPT lead owns the contract and acceptance.
+- Phases:
+  - 0 data inventory;
+  - 1 offline classifier and backtest;
+  - 2 independent review;
+  - 3 research SHADOW (separate OWNER authorization);
+  - 4 Brain input, then UI/voice only after OWNER acceptance.
+- The D-035 fixes come first for production. No change to the running V10, Excel, paid API, schedules, UI colours/fonts or real orders.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: Issue #282 comment 6336857406.
