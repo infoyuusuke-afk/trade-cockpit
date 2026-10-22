@@ -64,7 +64,13 @@ def build_pre_next_review_request(db_path, event: dict, *, now: datetime) -> dic
     return {
         "schema_version": SCHEMA_VERSION,
         "state": "SOURCE_REVIEW_REQUIRED",
-        "source_role": "grok_bot_gnh01",
+        # Preserve the sender's claimed role exactly. In particular an OWNER
+        # relay MUST NEVER be silently elevated to a direct Grok emission.
+        # Neither value proves who actually controlled the upstream sender.
+        "source_role": event["source_role"],
+        "sender_role_authenticated": False,
+        "grok_direct_emission_verified": False,
+        "origin_transport_verified": False,
         "intended_recipient_role": "pre_next",
         "event_id": claimed["event_id"],
         "event_revision": claimed["event_revision"],
