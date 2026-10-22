@@ -1,4 +1,4 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="900"><title>AIトレードコクピット</title><script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AIトレードコクピット</title><script src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
 <style>*{box-sizing:border-box}body{margin:0;background:#05070a;color:#f4f7fa;font-family:"Segoe UI","Yu Gothic",sans-serif;font-size:13px}header{padding:10px 12px;border-bottom:2px solid #526274;background:#030405;display:flex;justify-content:space-between;gap:12px;align-items:center}h1{margin:0;font-size:25px}h2{font-size:17px;margin:0 0 7px;color:#d9e8ff;border-bottom:1px solid #405064;padding-bottom:5px}h3{color:#9fc8ff;margin:15px 0 7px}a{color:#70c7ff}.sub{color:#aebdcb;margin-top:4px}.tag{background:#ffe86b;color:#111;padding:7px 11px;border-radius:6px;font-weight:900}main{padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:6px}.card{background:linear-gradient(180deg,#151d27,#0e141c);border:1px solid #73808c;border-radius:6px;padding:7px;overflow:auto}.wide{grid-column:1/-1}table{width:100%;border-collapse:collapse}th{background:#1b2a39}th,td{border:1px solid #485664;padding:6px 5px;text-align:right;vertical-align:middle}th:nth-child(-n+2),td:nth-child(-n+2){text-align:left}tr:nth-child(even) td{background:#111923}.up{color:#52e46f;font-weight:900}.down{color:#ff6262;font-weight:900}small{color:#bac6d2}.warning{color:#ffe66d}.steps,.rotation-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.step,.rotation-box{background:#0b1118;border:1px solid #526274;border-radius:7px;padding:10px;line-height:1.65}.step b,.rotation-box b{display:block;color:#ffe66d;font-size:15px}.rotation-box strong{font-size:17px;color:#f4f7fa}.pill{display:inline-block;padding:3px 8px;border-radius:12px;font-weight:900}.prep{background:#f2a900;color:#111}.in{background:#52e46f;color:#071009}.long{background:#2f80ed;color:white}.short{background:#e23b3b;color:white}.ifo-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:9px 0}.ifo-summary .rotation-box strong{font-size:19px}.ifo-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.ifo-card{background:linear-gradient(145deg,#101c2a,#081019);border:1px solid #3b6588;border-radius:10px;padding:11px;box-shadow:0 8px 22px #0007}.ifo-head{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;border-bottom:1px solid #35506a;padding-bottom:8px}.ifo-head h3{margin:0;color:#f4f7fa;font-size:16px}.ifo-rank{background:#ffe66d;color:#101820;font-weight:900;border-radius:6px;padding:5px 7px}.ifo-score{font-size:18px;color:#52e46f}.ifo-columns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.order-box{background:#07101a;border:1px solid #425a70;border-radius:8px;padding:9px}.order-box>b{display:block;color:#79c7ff;margin-bottom:7px}.exit-order>b{color:#58e3ae}.order-box dl{display:grid;grid-template-columns:minmax(88px,.9fr) 1.25fr;gap:4px 8px;margin:0}.order-box dt{color:#9eafbf}.order-box dd{margin:0;text-align:right}.ifo-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin:8px 0}.ifo-metrics span{background:#182637;border-radius:5px;padding:6px;text-align:center}.ifo-card p{line-height:1.55;margin:6px 0}footer{padding:8px 12px;color:#aeb8c2;border-top:1px solid #33404b;display:flex;justify-content:space-between}@media(max-width:800px){header{align-items:flex-start;flex-direction:column}main{grid-template-columns:1fr}.wide{grid-column:1}table{min-width:700px}.steps,.rotation-grid,.ifo-summary,.ifo-grid,.ifo-columns{grid-template-columns:1fr}.ifo-metrics{grid-template-columns:1fr 1fr}}</style><!-- COCKPIT_TABS_START -->
 <style>
 .cockpit-tabs{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:2px;padding:5px 7px;background:#131722f2;border-bottom:1px solid #2a2e39;backdrop-filter:blur(10px);overflow-x:auto}
@@ -465,10 +465,24 @@ document.addEventListener("DOMContentLoaded",()=>{
    if(b.dataset.tab==="kioxia-calendar"&&window.kioChart)requestAnimationFrame(()=>requestAnimationFrame(()=>window.kioChart.timeScale().fitContent()));
  });
  const qs=new URLSearchParams(location.search);
- const requested=qs.get("brain")==="1"?"brain":(qs.get("live")==="1"?"scalp":null);
+ // OWNER 2026-10-23 「場中に画面がころころ変わる」: ?live=1 / ?brain=1 choose the tab only when the
+ // window is first opened; after the periodic refresh the OWNER's tab and scroll stay put.
+ let firstOpen=true;try{firstOpen=sessionStorage.getItem("cockpitOpenedV10")!=="1";sessionStorage.setItem("cockpitOpenedV10","1");}catch(_e){}
+ const requested=!firstOpen?null:(qs.get("brain")==="1"?"brain":(qs.get("live")==="1"?"scalp":null));
  const saved=requested||localStorage.getItem("cockpitTabV5"); const savedTab=saved?document.querySelector('.cockpit-tab[data-tab="'+saved+'"]'):null;
  // a saved tab that is now hidden (removed snapshot) falls back to the default tab
  if(savedTab&&!savedTab.hidden)savedTab.click();
+ // The page still reloads every 15 minutes for the analysis files it reads once, but only after
+ // 2 minutes without the OWNER touching it, and the scroll position comes back.
+ let lastTouch=Date.now();
+ ["pointerdown","keydown","wheel","touchstart"].forEach(ev=>window.addEventListener(ev,()=>{lastTouch=Date.now();},{passive:true}));
+ try{const y=Number(sessionStorage.getItem("cockpitScrollY"));sessionStorage.removeItem("cockpitScrollY");if(y>0)setTimeout(()=>window.scrollTo(0,y),800);}catch(_e){}
+ const quietReload=()=>{
+   if(Date.now()-lastTouch<120000){setTimeout(quietReload,60000);return;}
+   try{sessionStorage.setItem("cockpitScrollY",String(Math.round(window.scrollY)));}catch(_e){}
+   location.reload();
+ };
+ setTimeout(quietReload,900000);
 
  fetch("event_calendar.json?t="+Date.now()).then(r=>r.json()).then(d=>{
    const b=document.querySelector('.cockpit-tab[data-tab="events"]');

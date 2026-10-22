@@ -118,6 +118,17 @@ class BrainCardLabels(unittest.TestCase):
         self.assertNotIn('"期待値%+.3f%%', text)
 
 
+class ScreenStaysPut(unittest.TestCase):
+    """OWNER 2026-10-23 「場中に画面がころころ変わる」: no forced tab jumps on refresh."""
+
+    def test_no_meta_refresh_and_launch_tab_only_once(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertNotIn('http-equiv="refresh"', html)
+        self.assertIn('const requested=!firstOpen?null:(qs.get("brain")==="1"?"brain":(qs.get("live")==="1"?"scalp":null));', html)
+        self.assertIn("if(Date.now()-lastTouch<120000){setTimeout(quietReload,60000);return;}", html)
+        self.assertIn('sessionStorage.setItem("cockpitScrollY",String(Math.round(window.scrollY)))', html)
+
+
 class DowntimeNotAfter1530(unittest.TestCase):
     def at(self, hm, day=22):
         h, m = map(int, hm.split(":"))
