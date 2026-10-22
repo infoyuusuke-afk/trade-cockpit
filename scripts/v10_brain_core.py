@@ -219,8 +219,16 @@ def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: da
         elif side > 0 and ratio >= BUY_HEAVY_CREDIT_RATIO:
             flags.append("買い長（信用倍率%.1f）戻り売り注意" % ratio)
         watched = (attention or {}).get(str(row.get("ticker", "")).replace(".T", ""))
-        if watched:
-            flags.append("専門AIが先回り監視中（" + "・".join(sorted({x["role"] for x in watched})) + "）")
+        agents = sorted({x["role"] for x in watched or [] if x.get("role") != "grok"})
+        if agents:
+            flags.append("専門AIが先回り監視中（" + "・".join(agents) + "）")
+        # OWNER 2026-10-23 manual Grok notes: a flag for the Brain's overall view, never a score;
+        # a note against the lit signal (悪材料 on a buy, 好材料 on a short) is marked as a caution.
+        for x in watched or []:
+            if x.get("role") == "grok":
+                against = x.get("stance") == ("悪材料" if side > 0 else "好材料")
+                flags.append("Grok（手動）：" + str(x.get("stance")) + "「" + str(x.get("summary"))[:120] + "」"
+                             + ("（サインと逆向き・注意）" if against else ""))
         if est["ev_pct"] is None:
             base["excluded"].append({"ticker": row.get("ticker"), "name": name, "reason": "根拠不足（記録20回未満）"})
             continue
@@ -368,7 +376,7 @@ def _read_json(path: Path, schema: str):
 
 
 def write_pick(runtime: Path, live: dict, *, now: datetime, logged: set, attention: dict | None = None,
-               logged_rules: set | None = None) -> dict:
+               logged_rules: set | None = None, grok: dict | None = None) -> dict:
     runtime = Path(runtime)
     ev_table = _read_json(runtime / "signal_ev_table_v1.json", "100b-v10-signal-ev-table-v1")
     rule_shadow = _read_json(runtime / "rule_shadow_v1.json", "100b-v10-rule-shadow-v1")
@@ -379,6 +387,7 @@ def write_pick(runtime: Path, live: dict, *, now: datetime, logged: set, attenti
     view["logged_rule_new"] = log_new_rule_signals(runtime / "records", view, now=now,
                                                    logged=set() if logged_rules is None else logged_rules)
     view["today"] = today_lists(runtime / "records", now=now, rule_labels=(rule_shadow or {}).get("rules"))
+    view["grok"] = grok or {"notes": [], "status": "MANUAL_WATCH_ONLY_NOT_A_SCORE"}
     target = runtime / "brain_pick_v1.json"
     temp = target.with_name(target.name + ".tmp")
     temp.write_text(json.dumps(view, ensure_ascii=False, sort_keys=True), encoding="utf-8")

@@ -233,7 +233,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const evPanel=document.createElement("section");
  evPanel.className="card wide";
  evPanel.id="signal-ev-ranking";
- evPanel.innerHTML='<h2>期待値ランキング（今点灯中のサイン）</h2><div id="brain-pick-rows"><div class="focus-empty">ブレインの選択 取得待ち</div></div><p class="warning">期待値は過去の記録（MS2）で同じサインを検証したバックテストの数字です。発注はしません。回数20回未満は「根拠不足」で順位に入れません。</p><div id="signal-ev-summary" class="sub">期待値データ取得待ち</div><div id="signal-ev-rows"><div class="focus-empty">点灯中のサインなし</div></div>';
+ evPanel.innerHTML='<h2>期待値ランキング（今点灯中のサイン）</h2><div id="brain-pick-rows"><div class="focus-empty">ブレインの選択 取得待ち</div></div><div id="grok-rows"></div><p class="warning">期待値は過去の記録（MS2）で同じサインを検証したバックテストの数字です。発注はしません。回数20回未満は「根拠不足」で順位に入れません。</p><div id="signal-ev-summary" class="sub">期待値データ取得待ち</div><div id="signal-ev-rows"><div class="focus-empty">点灯中のサインなし</div></div>';
  if(panes["ms2-live"]){const intro=panes["ms2-live"].querySelector(":scope > .pane-intro");if(intro)intro.after(evPanel);else panes["ms2-live"].prepend(evPanel);}
  let evTable=null;
  const evStatFor=(t,x)=>{
@@ -338,7 +338,17 @@ document.addEventListener("DOMContentLoaded",()=>{
    const nm=(n,c)=>esc(String(n||"").replace(/（[0-9A-Z]{4}）$/,""))+"("+esc(String(c||"").replace(".T",""))+")";
    box.innerHTML=list.length?list.map(r=>'<div class="attention-row"><i>'+hm(r.captured_at)+'</i><div>'+nm(r.name,r.ticker)+' <b>'+esc(r.label)+'</b> <em>'+esc(r.signal)+'・'+esc(r.strategy)+'／発動 '+esc(r.entry)+(r.kind==="RULE"?'・目標 '+esc(r.target)+'・損切 '+esc(r.stop):'')+'・検証中</em></div></div>').join(""):'<div class="attention-row"><i>—</i><div><em>今日はまだありません</em></div></div>';
  };
- const loadBrain=()=>fetch("/brain_pick.json?t="+Date.now()).then(r=>r.json()).then(v=>{brainPick=(v&&v.schema_version==="100b-v10-brain-pick-v1"&&v.real_submit_allowed===false&&v.trade_instruction===false)?v:null;renderBrainPicks(evLast);renderBrainToday();}).catch(()=>{brainPick=null;renderBrainPicks(evLast);renderBrainToday();});
+ // OWNER 2026-10-23 manual Grok notes: listed as handed over (newest note first), with the time
+ // they stay valid. The Brain shows them as flags on its picks; they never change a score.
+ const renderGrok=()=>{
+   const box=document.getElementById("grok-rows");
+   if(!box||!brainPick)return;
+   const notes=Array.isArray(brainPick.grok?.notes)?brainPick.grok.notes:[];
+   const hm=v=>esc(String(v||"").slice(11,16));
+   box.innerHTML=notes.length?'<div class="rotation-box"><b>Grokの情報（手動・監視のみ・判断はブレイン）</b>'+notes.map(n=>'<small>'+hm(n.as_of)+'時点（'+hm(n.valid_until)+'まで有効）</small><ol class="sub">'+(n.items||[]).map(x=>'<li>'+esc(x.name?String(x.name).replace(/（[0-9A-Z]{4}）$/,""):"")+'('+esc(x.code)+') <b>'+esc(x.stance)+'</b> '+esc(x.summary)+(x.in_universe?"":"（監視100銘柄の外）")+'</li>').join("")+'</ol>').join("")+'</div>'
+     :'<p class="sub">Grokの情報：有効なものはありません（Grokの答えをコピーして、デスクトップの「Grok情報をコクピットへ」を押すと渡せます）</p>';
+ };
+ const loadBrain=()=>fetch("/brain_pick.json?t="+Date.now()).then(r=>r.json()).then(v=>{brainPick=(v&&v.schema_version==="100b-v10-brain-pick-v1"&&v.real_submit_allowed===false&&v.trade_instruction===false)?v:null;renderBrainPicks(evLast);renderBrainToday();renderGrok();}).catch(()=>{brainPick=null;renderBrainPicks(evLast);renderBrainToday();});
  const evRowHtml=(r,i)=>{
    const x=r.x,s=r.ev,ok=s&&s.status==="OK";
    const rule=ruleFor(x,Date.now());

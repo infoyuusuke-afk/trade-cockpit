@@ -83,7 +83,11 @@ JPX_MODULES = (
 )
 JPX_RETRY = timedelta(minutes=30)
 JPX_CHILD_DEADLINE_SECONDS = 60   # audit 6327603446: fetch + parse never block the loop longer
-BRAIN_CORE_MODULE = ("v10_brain_core", "5107869e40d69e4412ad9fe448e102102bb6216a")
+# OWNER 2026-10-23 「手動で連携できる形でgrokの情報をAIコクピットに渡し、ブレインに総合判断させる」:
+# the OWNER's pasted Grok notes in RuntimeDir/grok_inbox, read every pass (pinned module);
+# they become Brain flags and a screen list, never a score. A failure only drops them.
+GROK_MODULE = ("v10_grok_manual", "e33aa60e2453335300e4eb673c0caca20082bce8")
+BRAIN_CORE_MODULE = ("v10_brain_core", "84355baabf15bdf902c03b358a280534f7126112")
 
 
 def _aware(value):
@@ -508,8 +512,20 @@ def brain_core_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
                     inbox, now=now, known_codes=[str(r.get("ticker", "")).replace(".T", "") for r in live.get("all_targets") or []])
             except Exception:
                 attention = None
+        grok = None
+        try:
+            grok_mod = state.get("grok_module") or load_pinned_module(Path(script_dir or Path(__file__).resolve().parent), *GROK_MODULE)
+            state["grok_module"] = grok_mod
+            known = {str(r.get("ticker", "")).replace(".T", ""): str(r.get("name") or "") for r in live.get("all_targets") or []}
+            got = grok_mod.load_notes(Path(live_path).parent, now=now, known=known, logged=state.setdefault("grok_logged", set()))
+            grok = got["view"]
+            attention = dict(attention or {})
+            for code, entries in got["attention"].items():
+                attention[code] = list(attention.get(code) or []) + entries
+        except Exception:
+            grok = {"notes": [], "status": "GROK_NOTES_UNAVAILABLE"}
         view = module.write_pick(Path(live_path).parent, live, now=now, logged=state.setdefault("logged", set()),
-                                 attention=attention, logged_rules=state.setdefault("logged_rules", set()))
+                                 attention=attention, logged_rules=state.setdefault("logged_rules", set()), grok=grok)
         summary = {"brain_core": view["state"], "picks": len(view["picks"]), "logged_new": view["logged_new"]}
     except Exception as exc:  # fail closed, keep the observer running
         summary = {"brain_core": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}
