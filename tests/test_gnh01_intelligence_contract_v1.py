@@ -113,6 +113,16 @@ class ContractTests(unittest.TestCase):
             x["content_hash"] = content_digest(x)
         self.reject(f, "STOCK_IDENTITY_INVALID")
 
+    def test_reject_lone_surrogate_in_source_url(self):
+        def f(x):
+            x["original_source_url"] = "https://example.com/ir/\\ud800".replace("\\ud800", chr(0xd800))
+        self.reject(f, "SOURCE_URL_INVALID")
+
+    def test_reject_lone_surrogate_in_news_body(self):
+        def f(x):
+            x["event_summary"] = chr(0xd800)
+        self.reject(f, "EVENT_TEXT_INVALID")
+
     def test_localhost_source_blocked(self):
         def f(x):
             x["original_source_url"] = "https://localhost.local/secret"
