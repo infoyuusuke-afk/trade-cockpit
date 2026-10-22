@@ -8,6 +8,7 @@ on:
       - "tests/test_gnh01_intelligence_contract_v1.py"
       - "scripts/gnh01_durable_archive_v1.py"
       - "tests/test_gnh01_durable_archive_v1.py"
+      - "docs/GNH01_DURABLE_ARCHIVE_V1.md"
       - ".github/workflows/gnh01-intelligence-contract-offline.yml"
   workflow_dispatch:
 permissions:
