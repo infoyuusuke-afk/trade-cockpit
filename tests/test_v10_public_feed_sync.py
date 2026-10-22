@@ -49,9 +49,45 @@ class Sync(unittest.TestCase):
             self.assertTrue((target / feed.META_FILE).exists())
             self.assertEqual(list(target.glob("*.tmp")), [])
 
-    def test_only_public_main_files(self):
+    def test_only_public_main_display_files(self):
         self.assertTrue(feed.BASE_URL.startswith("https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/"))
         self.assertIn("kioxia_5m_calendar.json", feed.FEED_FILES)
+        for not_display in ("live_focus.json", "signals.json", "paper_trade_history.json"):   # audit 6349440798
+            self.assertNotIn(not_display, feed.FEED_FILES)
+
+
+class Freshness(unittest.TestCase):
+    NOW = feed.datetime(2026, 10, 23, 0, 0, tzinfo=feed.timezone.utc)   # 09:00 JST
+
+    def test_source_time_forms_and_no_assumed_zone(self):
+        for text in ("2026-10-22 21:19 JST", "2026-10-22T21:19:35.715034+09:00", "2026-10-22 21:19:56 JST",
+                     "2026-10-22T12:19:00Z"):
+            self.assertIsNotNone(feed.source_time({"updated_at": text}), text)
+        self.assertIsNone(feed.source_time({"updated_at": "2026-10-22 21:19"}))   # no zone: unknown
+        self.assertIsNone(feed.source_time({"other": "x"}))
+
+    def test_stale_limits(self):
+        fresh = feed.freshness("event_calendar.json", {"updated_at": "2026-10-22 21:19 JST"}, self.NOW)
+        self.assertFalse(fresh["stale"])
+        old = feed.freshness("event_calendar.json", {"updated_at": "2026-10-20 21:19 JST"}, self.NOW)
+        self.assertEqual((old["stale"], old["reason"]), (True, "TOO_OLD"))
+        none = feed.freshness("event_calendar.json", {}, self.NOW)
+        self.assertEqual((none["stale"], none["reason"]), (True, "NO_SOURCE_TIME"))
+        week = feed.freshness("weekly_review.json", {"updated_at": "2026-10-17 11:34 JST"}, self.NOW)
+        self.assertFalse(week["stale"])
+
+    def test_stale_world_market_rows_are_never_verified(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "public_feed"
+            world = {"updated_at": "2026-10-19T18:00:00+09:00", "verified_count": 2,
+                     "rows": {"a": {"verified": True}, "b": {"verified": True}}}
+            meta = feed.sync(target, now=self.NOW, fetch=lambda url: json.dumps(world).encode()
+                             if url.endswith("world_market.json") else b"{}")
+            got = json.loads((target / "world_market.json").read_text("utf-8"))
+            self.assertEqual([r["verified"] for r in got["rows"].values()], [False, False])
+            self.assertEqual(got["verified_count"], 0)
+            self.assertTrue(meta["files"]["world_market.json"]["stale"])
+            self.assertTrue(meta["files"]["event_calendar.json"]["stale"])   # {} has no time
 
 
 class RegimeSummary(unittest.TestCase):
@@ -93,6 +129,21 @@ class RegimeSummary(unittest.TestCase):
             self.assertFalse(meta["files"][feed.SUMMARY_FILE]["ok"])
             self.assertIn("日経平均", json.loads((target / feed.SUMMARY_FILE).read_text("utf-8"))["indices"])
 
+    def test_stale_data_day_is_not_judged(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "public_feed"
+            old = json.dumps({"updated_at": "2026-10-19 21:19:56 JST", "indices": {}, "themes": []}).encode()
+            feed.sync(target, now=Freshness.NOW, fetch=lambda url: old if url.endswith("data.json") else b"{}")
+            summary = json.loads((target / feed.SUMMARY_FILE).read_text("utf-8"))
+            self.assertEqual(summary["verdict"]["label"], "古い（判定しない）")
+            self.assertTrue(summary["freshness"]["stale"])
+
+    def test_screen_marks_stale_sections(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('fetch("public_feed_meta.json?t="', html)
+        self.assertIn("const stale = !metaFresh || f.ok !== true || f.stale !== false;", html)
+        self.assertIn("表示可として扱わず、判断に使わないでください。", html)
+
     def test_screen_section_is_in_the_market_tab_and_labelled_reference(self):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn('<section id="regime-summary" class="card wide"><h2>地合い判定（日次・参考）</h2>', html)
@@ -111,10 +162,10 @@ class Wiring(unittest.TestCase):
     def test_gateway_serves_only_the_listed_files_from_the_feed(self):
         text = GATEWAY.read_text(encoding="utf-8-sig")
         listed = re.findall(r"'([a-z0-9_]+\.json)'", text[text.index("$publicFeedFiles = @("):text.index("if ($RuntimeDir -and $publicFeedFiles")])
-        self.assertEqual(sorted(listed), sorted(feed.FEED_FILES + (feed.SUMMARY_FILE,)))
+        self.assertEqual(sorted(listed), sorted(feed.FEED_FILES + (feed.SUMMARY_FILE, feed.META_FILE)))
         self.assertIn("($feedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0", text)
         allowed = text[text.index("$allowedUiFiles = @("):text.index("if ($allowedUiFiles -cnotcontains $relative)")]
-        for name in feed.FEED_FILES + (feed.SUMMARY_FILE,):   # each served name is on the allow-list
+        for name in feed.FEED_FILES + (feed.SUMMARY_FILE, feed.META_FILE):   # each served name is on the allow-list
             self.assertIn("'" + name + "'", allowed)
 
 

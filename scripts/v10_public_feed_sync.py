@@ -11,19 +11,65 @@ score, voice or order.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import os
+import re
 from pathlib import Path
 import urllib.request
 
 BASE_URL = "https://raw.githubusercontent.com/infoyuusuke-afk/trade-cockpit/main/"
+# Audit 6349440798: live_focus.json (voice switch), signals.json (IN/準備 lists in the
+# live tab) and paper_trade_history.json (trade control) are NOT fed: they are not
+# display-only.
 FEED_FILES = (
     "correlations.json", "credit_supply.json", "earnings_calendar.json", "event_calendar.json",
     "kioxia_5m_calendar.json", "kioxia_catalysts.json", "kioxia_prediction_history.json",
-    "live_focus.json", "next_theme_radar.json", "paper_trade_history.json", "signals.json",
-    "weekly_review.json", "world_market.json",
+    "next_theme_radar.json", "weekly_review.json", "world_market.json",
 )
+# OWNER 2026-10-23 「古い時は画面に古いと出して、表示可にしない」: a file whose own update
+# time is older than this (hours), or has no readable update time, is marked stale in
+# the meta file; the screen shows 古い and nothing from it as verified. World market rows
+# of a stale copy are written with verified=false.
+STALE_HOURS = {"weekly_review.json": 24 * 8}
+DEFAULT_STALE_HOURS = 24
+TIME_KEYS = ("updated_at", "generated_at", "created_at", "fetched_at")
+_TIME = re.compile(r"(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?\s*(Z|[+-]\d{2}:?\d{2}|JST)?")
+
+
+def source_time(doc) -> datetime | None:
+    """The file's own update time; None when absent or without a time zone (never assumed)."""
+    if not isinstance(doc, dict):
+        return None
+    for key in TIME_KEYS:
+        m = _TIME.search(str(doc.get(key) or ""))
+        if not m:
+            continue
+        zone = m.group(7)
+        if not zone:
+            return None
+        if zone == "JST":
+            tz = timezone(timedelta(hours=9))
+        elif zone == "Z":
+            tz = timezone.utc
+        else:
+            sign = 1 if zone[0] == "+" else -1
+            digits = zone[1:].replace(":", "")
+            tz = timezone(sign * timedelta(hours=int(digits[:2]), minutes=int(digits[2:])))
+        return datetime(int(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4)), int(m.group(5)),
+                        int(m.group(6) or 0), tzinfo=tz)
+    return None
+
+
+def freshness(name: str, doc, now: datetime) -> dict:
+    at = source_time(doc)
+    limit = STALE_HOURS.get(name, DEFAULT_STALE_HOURS)
+    if at is None:
+        return {"source_at": None, "age_hours": None, "limit_hours": limit, "stale": True, "reason": "NO_SOURCE_TIME"}
+    age = (now - at).total_seconds() / 3600
+    stale = age > limit or age < -0.25
+    return {"source_at": at.isoformat(), "age_hours": round(age, 2), "limit_hours": limit, "stale": stale,
+            "reason": "TOO_OLD" if age > limit else "FUTURE_TIME" if age < -0.25 else None}
 MAX_BYTES = 8 * 1024 * 1024
 TIMEOUT_SECONDS = 20
 META_FILE = "public_feed_meta.json"
@@ -105,22 +151,34 @@ def sync(target: Path, *, fetch=_download, now: datetime | None = None) -> dict:
             data = fetch(BASE_URL + name)
             if len(data) > MAX_BYTES:
                 raise ValueError("TOO_LARGE")
-            json.loads(data.decode("utf-8-sig"))
+            doc = json.loads(data.decode("utf-8-sig"))
+            fresh = freshness(name, doc, now)
+            if fresh["stale"] and name == "world_market.json" and isinstance(doc, dict):
+                for row in (doc.get("rows") or {}).values():   # never shown as 表示可
+                    if isinstance(row, dict):
+                        row["verified"] = False
+                doc["verified_count"] = 0
+                data = json.dumps(doc, ensure_ascii=False).encode("utf-8")
             temp = target / (name + ".tmp")
             temp.write_bytes(data)
             os.replace(temp, target / name)
-            files[name] = {"ok": True, "bytes": len(data)}
+            files[name] = dict(fresh, ok=True, bytes=len(data))
         except Exception as exc:  # keep the previous copy
             files[name] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
     try:
         raw = fetch(BASE_URL + "data.json")
         if len(raw) > DATA_MAX_BYTES:
             raise ValueError("TOO_LARGE")
-        summary = summarize(json.loads(raw.decode("utf-8-sig")))
+        data_doc = json.loads(raw.decode("utf-8-sig"))
+        summary = summarize(data_doc)
+        fresh = freshness("data.json", data_doc, now)
+        summary["freshness"] = fresh
+        if fresh["stale"]:   # a stale day is not judged
+            summary["verdict"] = dict(summary["verdict"], label="古い（判定しない）", stale=True)
         temp = target / (SUMMARY_FILE + ".tmp")
         temp.write_text(json.dumps(summary, ensure_ascii=False), encoding="utf-8")   # index order kept
         os.replace(temp, target / SUMMARY_FILE)
-        files[SUMMARY_FILE] = {"ok": True, "bytes": (target / SUMMARY_FILE).stat().st_size}
+        files[SUMMARY_FILE] = dict(fresh, ok=True, bytes=(target / SUMMARY_FILE).stat().st_size)
     except Exception as exc:  # keep the previous copy
         files[SUMMARY_FILE] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
     meta = {"fetched_at": now.isoformat(), "source": BASE_URL, "files": files,
