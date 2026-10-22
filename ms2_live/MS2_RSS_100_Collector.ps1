@@ -1799,94 +1799,144 @@ try {
     }
 }
 
-# OWNER 2026-10-22 「先物を追加」「グロースも追加」(D-044 Phase 0: no futures or index
-# data was recorded). Futures via RssFOPMarket and indexes via RssIndexMarket on their own
-# sheet, recorded to records/<day>/futures_index.csv with the lag between the capture time
-# and the quote time, so whether they are real time can be measured. Record only: they feed
-# no signal, gate, Brain input or voice, and a failure here never stops the Collector.
-# D-045 rev (OWNER/GPT 2026-10-22): 7 series. Mini and Growth 250 futures at the central
-# (quarterly) contract month via RssFOPCode, TOPIX futures at the front month (TOPIX futures
-# are quarterly only, so the front month is the central one), and 4 indexes. The large 225
-# and CME contracts are not recorded.
-function Get-CentralQuarterMonth([datetime]$Day) {
-    # The nearest March/June/September/December contract whose SQ (second Friday) is still
-    # ahead; from the SQ day on, the next quarter.
-    $d = $Day.Date
-    $first = New-Object datetime $d.Year, ([int]([Math]::Ceiling($d.Month / 3.0) * 3)), 1
-    for ($k = 0; $k -lt 3; $k++) {
-        $m = $first.AddMonths(3 * $k)
-        $offset = (([int][DayOfWeek]::Friday - [int]$m.DayOfWeek) + 7) % 7
-        if ($d -lt $m.AddDays($offset + 7)) { return $m.ToString("yyyyMM") }
+# OWNER 2026-10-22 「先物を追加」「グロースも追加」 / D-045 R2: the 7 futures/index series
+# are recorded with the 100 stocks on the same cycle, to records/<day>/futures_index.csv.
+# Record only: nothing here feeds a signal, gate, freshness, Brain, voice, screen or order,
+# and a failure suspends only this recorder (the Collector continues).
+# Local switch and contract months: d045_futures_index_config.json next to this script
+# (RuntimeDir, not in GitHub), e.g.
+#   {"schema":"100b-d045-config-v1","enabled":true,
+#    "contract_month":{"N225MF":"202612","TOPIX":"202612","MOTF":"202612"}}
+# Missing or invalid file -> OFF. "enabled": false -> OFF and latched until the Collector
+# restarts (the OWNER's off switch; V10 keeps running). The months are the OWNER's: no
+# automatic month choice; from a contract's SQ day (second Friday) its row records no data.
+$d045ConfigPath = Join-Path $PSScriptRoot "d045_futures_index_config.json"
+$d045Latched = $false
+function Get-D045Config {
+    if ($script:d045Latched) { return $null }
+    try {
+        if (-not (Test-Path -LiteralPath $d045ConfigPath -PathType Leaf)) { return $null }
+        $cfg = [IO.File]::ReadAllText($d045ConfigPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+        if ($null -eq $cfg -or [string]$cfg.schema -cne "100b-d045-config-v1") { return $null }
+        if ($cfg.enabled -ne $true) { $script:d045Latched = $true; return $null }
+        return $cfg
+    } catch {
+        return $null
     }
+}
+function Test-D045Month([string]$Month, [datetime]$Day) {
+    # A quarterly YYYYMM whose SQ (second Friday of that month) is still ahead of $Day.
+    if ($Month -notmatch '^(20\d\d)(03|06|09|12)$') { return $false }
+    $m = New-Object datetime ([int]$Matches[1]), ([int]$Matches[2]), 1
+    $offset = (([int][DayOfWeek]::Friday - [int]$m.DayOfWeek) + 7) % 7
+    return ($Day.Date -lt $m.AddDays($offset + 7))
+}
+function ConvertTo-D045Month($value) {
+    # The month an RSS 限月 cell names (e.g. 202612, 2026/12, 26/12) as YYYYMM, else $null.
+    if ($null -eq $value) { return $null }
+    $digits = ([string]$value) -replace '[^0-9]', ''
+    if ($digits.Length -ge 6 -and $digits.Substring(0, 2) -eq '20') { return $digits.Substring(0, 6) }
+    if ($digits.Length -eq 4) { return '20' + $digits }
     return $null
 }
-$futCentralMonth = Get-CentralQuarterMonth (Get-Date)
+# Fn RssFOPMarket rows read 限月 in column J and are kept only when it equals the
+# configured month. TOPIX futures are not in the RssFOPCode product list, so the Osaka
+# front-month code is used and accepted only while its returned 限月 is the configured month.
 $futIndexDefs = @(
-    @{ Code = "N225MF";        Month = $futCentralMonth; Name = "日経225ミニ 中心限月";      Fn = "RssFOPMarket" },
-    @{ Code = "TOPX.FUT01.OS"; Month = "";               Name = "TOPIX先物 期近(中心限月)"; Fn = "RssFOPMarket" },
-    @{ Code = "MOTF";          Month = $futCentralMonth; Name = "グロース250先物 中心限月";   Fn = "RssFOPMarket" },
-    @{ Code = "N225";          Month = "";               Name = "日経225";               Fn = "RssIndexMarket" },
-    @{ Code = "TOPX";          Month = "";               Name = "TOPIX";                 Fn = "RssIndexMarket" },
-    @{ Code = "MTHR";          Month = "";               Name = "東証グロース250指数";      Fn = "RssIndexMarket" },
-    @{ Code = "TSGM";          Month = "";               Name = "東証グロース市場指数";      Fn = "RssIndexMarket" }
+    @{ Key = "N225MF"; Code = "N225MF";        Resolve = "RssFOPCode"; Name = "日経225ミニ";        Fn = "RssFOPMarket" },
+    @{ Key = "TOPIX";  Code = "TOPX.FUT01.OS"; Resolve = "";           Name = "TOPIX先物";          Fn = "RssFOPMarket" },
+    @{ Key = "MOTF";   Code = "MOTF";          Resolve = "RssFOPCode"; Name = "グロース250先物";     Fn = "RssFOPMarket" },
+    @{ Key = "N225";   Code = "N225";          Resolve = "";           Name = "日経225";            Fn = "RssIndexMarket" },
+    @{ Key = "TOPX";   Code = "TOPX";          Resolve = "";           Name = "TOPIX";              Fn = "RssIndexMarket" },
+    @{ Key = "MTHR";   Code = "MTHR";          Resolve = "";           Name = "東証グロース250指数";  Fn = "RssIndexMarket" },
+    @{ Key = "TSGM";   Code = "TSGM";          Resolve = "";           Name = "東証グロース市場指数";  Fn = "RssIndexMarket" }
 )
-# Column A: the code (RssFOPCode for a month contract). Columns B..I read through A.
-# Indexes have no 詳細時刻, VWAP, quotes or open interest (empty columns).
-$futItems = @("現在値","現在値詳細時刻","前日比率","出来高","出来高加重平均","最良売気配値1","最良買気配値1","建玉")
-$indexItems = @("現在値","更新時刻","前日比率","出来高","","","","")
+# Columns B..J read through the code in column A. Indexes have no 詳細時刻, VWAP, quotes,
+# open interest or 限月 (empty columns); their 更新時刻 is HH:MM only.
+$futItems = @("現在値","現在値詳細時刻","前日比率","出来高","出来高加重平均","最良売気配値1","最良買気配値1","建玉","限月")
+$indexItems = @("現在値","更新時刻","前日比率","出来高","","","","","")
 $futIndexSheet = $null
 $futIndexReady = $false
-try {
+$d045StartConfig = Get-D045Config
+if ($null -eq $d045StartConfig) {
+    Write-Host "[FUT_INDEX] OFF (no local D-045 config or switched off)" -ForegroundColor DarkGray
+} else {
     try {
-        $futIndexSheet = Invoke-ExcelCom -Label "先物指数シート確認" -Action { $book.Worksheets.Item("FUT_INDEX") }
+        try {
+            $futIndexSheet = Invoke-ExcelCom -Label "先物指数シート確認" -Action { $book.Worksheets.Item("FUT_INDEX") }
+        } catch {
+            $futIndexSheet = $null
+        }
+        if ($null -eq $futIndexSheet) {
+            # The saved workbook has no such sheet; it is added for this session only (Safe Stop
+            # closes the workbook without saving).
+            $futIndexSheet = Invoke-ExcelCom -Label "先物指数シート作成" -Action { $book.Worksheets.Add() }
+            Invoke-ExcelCom -Label "先物指数シート命名" -Action { $futIndexSheet.Name = "FUT_INDEX" } | Out-Null
+            for ($i=0; $i -lt $futIndexDefs.Count; $i++) {
+                $fiRow = $i + 2
+                $fiDef = $futIndexDefs[$i]
+                $fiItems = if ($fiDef.Fn -eq "RssFOPMarket") { $futItems } else { $indexItems }
+                $fiMonth = [string]$d045StartConfig.contract_month.($fiDef.Key)
+                if ($fiDef.Resolve -eq "RssFOPCode") {
+                    if (-not (Test-D045Month $fiMonth (Get-Date))) { continue }   # no valid month: no formula, no data
+                    $fiCodeFormula = '=RssFOPCode("' + [string]$fiDef.Code + '","' + $fiMonth + '")'
+                    Invoke-ExcelCom -Label "先物限月コード設定" -Action { $futIndexSheet.Cells.Item($fiRow,1).FormulaLocal = [string]$fiCodeFormula } | Out-Null
+                } else {
+                    Invoke-ExcelCom -Label "先物指数コード設定" -Action { $futIndexSheet.Cells.Item($fiRow,1).Value2 = [string]$fiDef.Code } | Out-Null
+                }
+                for ($j=0; $j -lt $fiItems.Count; $j++) {
+                    if ([string]::IsNullOrEmpty($fiItems[$j])) { continue }
+                    $fiCol = $j + 2
+                    $fiFormula = '=' + $fiDef.Fn + '(A' + [string]$fiRow + ',"' + [string]$fiItems[$j] + '")'
+                    Invoke-ExcelCom -Label "先物指数RSS式設定" -Action { $futIndexSheet.Cells.Item($fiRow,$fiCol).FormulaLocal = [string]$fiFormula } | Out-Null
+                }
+            }
+            Invoke-ExcelCom -Label "先物指数シート非表示" -Action { $futIndexSheet.Visible = 0 } | Out-Null
+        }
+        $futIndexReady = ($null -ne $futIndexSheet)
+        Write-Host "[FUT_INDEX] READY (record only)" -ForegroundColor Green
     } catch {
         $futIndexSheet = $null
+        $futIndexReady = $false
+        Write-Host "[FUT_INDEX] WARN / UNAVAILABLE - Collector continues" -ForegroundColor DarkYellow
     }
-    if ($null -eq $futIndexSheet) {
-        # The saved workbook has no such sheet; it is added for this session only (Safe Stop
-        # closes the workbook without saving).
-        $futIndexSheet = Invoke-ExcelCom -Label "先物指数シート作成" -Action { $book.Worksheets.Add() }
-        Invoke-ExcelCom -Label "先物指数シート命名" -Action { $futIndexSheet.Name = "FUT_INDEX" } | Out-Null
-        for ($i=0; $i -lt $futIndexDefs.Count; $i++) {
-            $fiRow = $i + 2
-            $fiDef = $futIndexDefs[$i]
-            $fiItems = if ($fiDef.Fn -eq "RssFOPMarket") { $futItems } else { $indexItems }
-            if ([string]::IsNullOrEmpty([string]$fiDef.Month)) {
-                Invoke-ExcelCom -Label "先物指数コード設定" -Action { $futIndexSheet.Cells.Item($fiRow,1).Value2 = [string]$fiDef.Code } | Out-Null
-            } else {
-                $fiCodeFormula = '=RssFOPCode("' + [string]$fiDef.Code + '","' + [string]$fiDef.Month + '")'
-                Invoke-ExcelCom -Label "先物限月コード設定" -Action { $futIndexSheet.Cells.Item($fiRow,1).FormulaLocal = [string]$fiCodeFormula } | Out-Null
-            }
-            for ($j=0; $j -lt $fiItems.Count; $j++) {
-                if ([string]::IsNullOrEmpty($fiItems[$j])) { continue }
-                $fiCol = $j + 2
-                $fiFormula = '=' + $fiDef.Fn + '(A' + [string]$fiRow + ',"' + [string]$fiItems[$j] + '")'
-                Invoke-ExcelCom -Label "先物指数RSS式設定" -Action { $futIndexSheet.Cells.Item($fiRow,$fiCol).FormulaLocal = [string]$fiFormula } | Out-Null
-            }
-        }
-        Invoke-ExcelCom -Label "先物指数シート非表示" -Action { $futIndexSheet.Visible = 0 } | Out-Null
-    }
-    $futIndexReady = ($null -ne $futIndexSheet)
-    Write-Host "[FUT_INDEX] READY (record only)" -ForegroundColor Green
-} catch {
-    $futIndexSheet = $null
-    $futIndexReady = $false
-    Write-Host "[FUT_INDEX] WARN / UNAVAILABLE - Collector continues" -ForegroundColor DarkYellow
 }
 
-# Excel returns a time either as text (HH:mm:ss) or as a day fraction.
-function ConvertTo-FutIndexClock($value) {
+# The source clock as text with its precision: futures 詳細時刻 to the second, index
+# 更新時刻 to the minute. A minute clock is never padded into a fake second.
+function ConvertTo-FutIndexClock($value, [string]$Precision) {
     if ($null -eq $value) { return $null }
+    $clock = $null
     if ($value -is [double] -and $value -ge 0 -and $value -lt 1) {
-        return [TimeSpan]::FromSeconds([Math]::Round($value * 86400)).ToString("hh\:mm\:ss")
+        $clock = [TimeSpan]::FromSeconds([Math]::Round($value * 86400)).ToString("hh\:mm\:ss")
+    } else {
+        $text = ([string]$value).Trim()
+        if ($text -match '(\d{1,2}):(\d{2})(?::(\d{2}))?') {
+            if ($Precision -eq "second" -and -not $Matches[3]) { return $null }   # no seconds given
+            $clock = $Matches[1].PadLeft(2, '0') + ":" + $Matches[2] + $(if ($Matches[3]) { ":" + $Matches[3] } else { "" })
+        }
     }
-    $text = ([string]$value).Trim()
-    if ($text -match '(\d{1,2}:\d{2}(:\d{2})?)') {
-        $t = $Matches[1]
-        if ($t.Length -le 5) { $t = $t + ":00" }
-        return $t.PadLeft(8, '0')
+    if ($null -eq $clock) { return $null }
+    if ($Precision -eq "minute") { return $clock.Substring(0, 5) }
+    return $clock
+}
+# Lag of a same-day source clock behind the capture time, in seconds: exact for a second
+# clock, a [min, max] range for a minute clock. A clock in the future (or before midnight
+# of a night session) gives no lag.
+function Get-FutIndexLag([datetime]$Now, [string]$Clock, [string]$Precision) {
+    $none = @{ Exact = ""; Min = ""; Max = "" }
+    if ([string]::IsNullOrEmpty($Clock)) { return $none }
+    $fmt = if ($Precision -eq "minute") { "yyyy-MM-dd HH:mm" } else { "yyyy-MM-dd HH:mm:ss" }
+    $at = [datetime]::ParseExact($Now.ToString("yyyy-MM-dd") + " " + $Clock, $fmt, [Globalization.CultureInfo]::InvariantCulture)
+    if ($Precision -eq "minute") {
+        $max = [Math]::Floor(($Now - $at).TotalSeconds)
+        $min = $max - 59
+        if ($max -lt 0) { return $none }
+        return @{ Exact = ""; Min = [string][Math]::Max(0, $min); Max = [string]$max }
     }
-    return $null
+    $lag = [Math]::Round(($Now - $at).TotalSeconds)
+    if ($lag -lt 0) { return $none }
+    return @{ Exact = [string]$lag; Min = [string]$lag; Max = [string]$lag }
 }
 
 # 決算・IR開示があった銘柄（固定100銘柄リスト外を含む）を引け後に動的追跡するための専用シート。
@@ -2333,35 +2383,55 @@ try {
             }
         }
         # OWNER 2026-10-22: futures and index quotes, record only (see FUT_INDEX above).
+        $d045Config = if ($futIndexReady) { Get-D045Config } else { $null }
+        if ($futIndexReady -and $null -eq $d045Config) {
+            $futIndexReady = $false   # switched off or config gone: stays off until restart
+            Write-Host "[FUT_INDEX] OFF - switched off by local config (latched)" -ForegroundColor DarkYellow
+        }
         if ($futIndexReady -and $null -ne $futIndexSheet) {
             try {
                 $fiPacket = Invoke-ExcelCom -Label "先物指数値取得" -Action {
-                    [pscustomobject]@{ Data = $futIndexSheet.Range("A2:I" + [string]($futIndexDefs.Count + 1)).Value2 }
+                    [pscustomobject]@{ Data = $futIndexSheet.Range("A2:J" + [string]($futIndexDefs.Count + 1)).Value2 }
                 }
                 $fiCsv = Join-Path $dayDir "futures_index.csv"
-                Ensure-Csv $fiCsv "captured_at,code,month,contract,name,price,quote_time,lag_seconds,change_pct,volume,vwap,ask,bid,open_interest"
+                Ensure-Csv $fiCsv "captured_at,key,code,configured_month,contract_code,contract_month_seen,status,name,price,source_clock,source_precision,lag_seconds,lag_min_seconds,lag_max_seconds,change_pct,volume,vwap,ask,bid,open_interest"
                 $fiNow = Get-Date
                 $fiLines = New-Object System.Collections.Generic.List[string]
                 for ($i=0; $i -lt $futIndexDefs.Count; $i++) {
-                    $fiRowVals = @(for ($j=1; $j -le 9; $j++) { Get-TableValue $fiPacket.Data ($i + 1) $j 9 })
-                    $fiVals = @($fiRowVals[1..8])
-                    $fiClock = ConvertTo-FutIndexClock $fiVals[1]
-                    $fiLag = ""
-                    if ($null -ne $fiClock) {
-                        $fiAt = [datetime]::ParseExact($fiNow.ToString("yyyy-MM-dd") + " " + $fiClock, "yyyy-MM-dd HH:mm:ss", [Globalization.CultureInfo]::InvariantCulture)
-                        $fiLag = [string][Math]::Round(($fiNow - $fiAt).TotalSeconds)
+                    $fiDef = $futIndexDefs[$i]
+                    $fiRowVals = @(for ($j=1; $j -le 10; $j++) { Get-TableValue $fiPacket.Data ($i + 1) $j 10 })
+                    $fiVals = @($fiRowVals[1..9])
+                    $isFut = ($fiDef.Fn -eq "RssFOPMarket")
+                    $fiPrecision = if ($isFut) { "second" } else { "minute" }
+                    $fiMonth = if ($isFut) { [string]$d045Config.contract_month.($fiDef.Key) } else { "" }
+                    $fiSeen = if ($isFut) { ConvertTo-D045Month $fiVals[8] } else { $null }
+                    $fiStatus = "OK"
+                    if ($isFut) {
+                        if (-not (Test-D045Month $fiMonth $fiNow)) { $fiStatus = "NO_VALID_MONTH_OR_EXPIRED" }
+                        elseif ($fiSeen -ne $fiMonth) { $fiStatus = "MONTH_NOT_CONFIRMED" }
                     }
-                    $fiCells = @($fiNow.ToString("yyyy-MM-dd HH:mm:ss"), $futIndexDefs[$i].Code, [string]$futIndexDefs[$i].Month,
-                        [string]$fiRowVals[0], $futIndexDefs[$i].Name,
-                        [string]$fiVals[0], [string]$fiClock, $fiLag, [string]$fiVals[2], [string]$fiVals[3],
-                        [string]$fiVals[4], [string]$fiVals[5], [string]$fiVals[6], [string]$fiVals[7])
+                    if ($fiStatus -eq "OK" -and ($null -eq $fiVals[0] -or [string]::IsNullOrWhiteSpace([string]$fiVals[0]))) { $fiStatus = "NO_VALUE" }
+                    $fiClock = $null
+                    $fiLag = @{ Exact = ""; Min = ""; Max = "" }
+                    if ($fiStatus -eq "OK") {
+                        $fiClock = ConvertTo-FutIndexClock $fiVals[1] $fiPrecision
+                        $fiLag = Get-FutIndexLag $fiNow ([string]$fiClock) $fiPrecision
+                    }
+                    $ok = ($fiStatus -eq "OK")
+                    $fiCells = @($fiNow.ToString("yyyy-MM-ddTHH:mm:sszzz"), $fiDef.Key, $fiDef.Code, $fiMonth,
+                        [string]$fiRowVals[0], [string]$fiSeen, $fiStatus, $fiDef.Name,
+                        $(if ($ok) { [string]$fiVals[0] } else { "" }), [string]$fiClock, $fiPrecision,
+                        $fiLag.Exact, $fiLag.Min, $fiLag.Max,
+                        $(if ($ok) { [string]$fiVals[2] } else { "" }), $(if ($ok) { [string]$fiVals[3] } else { "" }),
+                        $(if ($ok) { [string]$fiVals[4] } else { "" }), $(if ($ok) { [string]$fiVals[5] } else { "" }),
+                        $(if ($ok) { [string]$fiVals[6] } else { "" }), $(if ($ok) { [string]$fiVals[7] } else { "" }))
                     $fiLines.Add((@($fiCells | ForEach-Object { '"' + ([string]$_).Replace('"', '""') + '"' }) -join ','))
                 }
                 Add-Content -Encoding UTF8 -Path $fiCsv -Value $fiLines
             } catch {
                 $futIndexReady = $false
                 $futIndexSheet = $null
-                Write-Host "[FUT_INDEX] WARN / READ FAILED - Collector continues" -ForegroundColor DarkYellow
+                Write-Host "[FUT_INDEX] WARN / READ FAILED - recorder suspended, Collector continues" -ForegroundColor DarkYellow
             }
         }
         $script:preopenIdentitySpare = $null
