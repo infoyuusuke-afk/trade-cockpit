@@ -220,7 +220,7 @@ class LogAndShadow(unittest.TestCase):
         nextday = brain.write_pick(self.tmp, live([]), now=NOW + timedelta(days=1), logged=set(), logged_rules=set())
         self.assertEqual((nextday["today"]["date"], nextday["today"]["attention"]), ("2026-10-23", []))   # a new day starts empty
         # top of every tab: the box sits between the status bar and <main>
-        self.assertIn('<b id="unified-mode-time">—</b></div></div><section id="attention-box"', HTML)
+        self.assertIn('<b id="unified-mode-time">—</b></div></div><div class="unified-mode-wrap attention-wrap"><section id="attention-box"', HTML)
         self.assertIn("if(brainPick?.today?.date===jst)attentionToday=brainPick.today;", HTML)
         self.assertIn("検証中（Shadow）・実注文には使いません", HTML)
 
