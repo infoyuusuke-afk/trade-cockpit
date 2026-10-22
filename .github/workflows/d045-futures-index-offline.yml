@@ -1,0 +1,44 @@
+name: D045 Six-Series Futures Index Offline Tests
+
+on:
+  pull_request:
+    paths:
+      - "ms2_live/D045_FuturesIndex_Recorder.ps1"
+      - "ms2_live/d045_futures_index_record.py"
+      - "tests/test_d045_futures_index_record.py"
+      - "docs/drafts/D-045_FUTURES_INDEX_SIX_SERIES_RECORD_ONLY.md"
+      - ".github/workflows/d045-futures-index-offline.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-only:
+    name: D045 ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile strict local recorder
+        run: python -m py_compile ms2_live/d045_futures_index_record.py
+      - name: Run synthetic-only six-series acceptance
+        run: python -m unittest discover -s tests -p test_d045_futures_index_record.py -v
+      - name: Confirm no order function in D045 sidecar
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          s = Path("ms2_live/D045_FuturesIndex_Recorder.ps1").read_text(encoding="utf-8")
+          forbidden = re.compile(r"RssFOP(?:Open|Close|Multi).*Order|RssStockOrder|RssMargin(?:Open|Close)Order")
+          assert forbidden.search(s) is None, "D045_DERIVATIVES_ORDER_API_FORBIDDEN"
+          assert "D023_REQUIRES_EXACTLY_ONE_EXCEL_PROCESS" in s
+          assert "$script:RealSubmitAllowed = $false" in s
+          print("D045_NO_ORDER_SOURCE_PASS")
