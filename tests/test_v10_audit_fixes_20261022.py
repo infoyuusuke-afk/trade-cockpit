@@ -142,7 +142,7 @@ class ScreenStaysPut(unittest.TestCase):
         self.assertIn(".pane-intro{padding:18px 4px 14px!important;", html)
         self.assertIn("abox.style.borderColor=c.borderTopColor;abox.style.borderRadius=c.borderTopLeftRadius;", html)
         self.assertIn('document.addEventListener("ms2RssUpdate",()=>setTimeout(()=>window.syncAttentionFrame(),0));', html)
-        self.assertLess(html.index('href="theme.css'), html.index(".pane-intro{padding:10px 4px 8px!important"))   # overrides theme.css
+        self.assertLess(html.index('href="theme.css'), html.index(".pane-intro{padding:18px 4px 14px!important"))   # overrides theme.css
 
 
 class DowntimeNotAfter1530(unittest.TestCase):
