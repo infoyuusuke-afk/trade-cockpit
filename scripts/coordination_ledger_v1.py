@@ -13,6 +13,8 @@ from pathlib import Path
 import re
 from typing import Any
 
+from scripts.gnh01_coordination_observation_v1 import validate_observed_test
+
 PREFIX = "[100B_COORD_V1]"
 REPO = "https://github.com/infoyuusuke-afk/trade-cockpit"
 ROLES = frozenset({
@@ -21,6 +23,8 @@ ROLES = frozenset({
 })
 EVENTS = frozenset({"REPORT", "ASSIGN", "ACK", "RESULT", "REVIEW", "CHANGE_REQUEST"})
 REPLY_EVENTS = frozenset({"ACK", "RESULT", "REVIEW", "CHANGE_REQUEST"})
+OBSERVATION_ACK_SCOPE = "GITHUB_COMMENT_READBACK_ONLY"
+OBSERVATION_FIELDS = frozenset({"routine_run_id", "scheduled_fire_jst", "actual_start_jst", "marker", "note"})
 BOUNDARIES = frozenset({
     "REVIEW_ONLY", "OWNER_APPROVED_PILOT", "CHANGE_REQUEST_PENDING_OWNER",
 })
@@ -32,7 +36,7 @@ REQUIRED = frozenset({
 OPTIONAL = frozenset({
     "in_reply_to", "state", "next_action", "acceptance", "main_sha",
     "pr_number", "head_sha", "data_as_of", "data_available_at", "ev",
-    "pf", "n", "cost_impact",
+    "pf", "n", "cost_impact", "ack_scope", *OBSERVATION_FIELDS,
 })
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,95}$")
 SHA_RE = re.compile(r"^[a-fA-F0-9]{40}$")
@@ -79,12 +83,26 @@ def parse_message(body: str, *, now: datetime | None = None) -> dict[str, str] |
         if not value or len(value) > 1000:
             raise InvalidMessage("EMPTY_OR_OVERSIZE_FIELD")
         values[key] = value
+    if values.get("event_type") == "DELIVERY_TEST":
+        try:
+            return validate_observed_test(values, now=now)
+        except ValueError as exc:
+            raise InvalidMessage(str(exc)) from exc
+    if OBSERVATION_FIELDS.intersection(values):
+        raise InvalidMessage("OBSERVATION_FIELDS_FORBIDDEN")
     if not REQUIRED.issubset(values):
         raise InvalidMessage("MISSING_REQUIRED_FIELD")
     if values["real_submit_allowed"] != "false":
         raise InvalidMessage("REAL_SUBMIT_MUST_BE_FALSE")
-    if values["source_role"] not in ROLES or values["recipient_role"] not in ROLES:
+    external_ack = (values["event_type"] == "ACK" and
+                    values["source_role"] == "development_lead" and
+                    values["recipient_role"] == "global_news_hunter_01" and
+                    values.get("ack_scope") == OBSERVATION_ACK_SCOPE)
+    if values["source_role"] not in ROLES or (
+            values["recipient_role"] not in ROLES and not external_ack):
         raise InvalidMessage("UNKNOWN_ROLE")
+    if "ack_scope" in values and not external_ack:
+        raise InvalidMessage("INVALID_ACK_SCOPE")
     if values["source_role"] == values["recipient_role"]:
         raise InvalidMessage("SELF_DELIVERY_FORBIDDEN")
     if values["event_type"] not in EVENTS:
@@ -145,10 +163,12 @@ def reconcile(comments: list[dict[str, Any]], *, now: datetime | None = None) ->
                     or message["project_item_id"] != parent["project_item_id"]
                 ):
                     raise InvalidMessage("WRONG_DIRECTION_OR_PROJECT")
-                if message["event_type"] == "ACK" and parent["event_type"] not in {
-                    "ASSIGN", "REPORT", "REVIEW"
-                }:
-                    raise InvalidMessage("INVALID_ACK_PARENT")
+                if message["event_type"] == "ACK":
+                    if parent["event_type"] == "DELIVERY_TEST":
+                        if message.get("ack_scope") != OBSERVATION_ACK_SCOPE:
+                            raise InvalidMessage("UNVERIFIED_DELIVERY_ACK_SCOPE")
+                    elif parent["event_type"] not in {"ASSIGN", "REPORT", "REVIEW"}:
+                        raise InvalidMessage("INVALID_ACK_PARENT")
                 if message["event_type"] == "REVIEW" and parent["event_type"] not in {
                     "RESULT", "REPORT"
                 }:
@@ -168,6 +188,8 @@ def reconcile(comments: list[dict[str, Any]], *, now: datetime | None = None) ->
                 "in_reply_to": parent_id or "",
                 "url": url,
                 "sender_role_verified": "false",
+                "observation_only": "true" if (message["event_type"] == "DELIVERY_TEST"
+                    or message.get("ack_scope") == OBSERVATION_ACK_SCOPE) else "false",
             })
         except InvalidMessage as exc:
             errors.append({"index": str(index), "url": url, "error": str(exc)})
