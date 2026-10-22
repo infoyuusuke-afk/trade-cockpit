@@ -466,4 +466,9 @@ Revision R2 replaces the earlier draft (six series, manual sidecar, PR #443 comm
   - A synthetic PASS alone is not DEPLOYED or PRODUCTION_VERIFIED.
 - Related: D-004, D-017, D-019, D-023, D-035, D-044.
 State: PENDING_DOC_SYNC until merged to `main` (D-022).
+- OWNER instructions, 2026-10-22 JST:
+  - 19:24: contract month 202612 confirmed for the mini, TOPIX and Growth 250 futures.
+  - 20:21: start on 2026-10-23 with ONE combined version: 2daff2a + D-045 seven series (with the D-045-only off switch) + the D-041 fix.
+    - Conditions: cloud Claude PASS tonight and OWNER exact-SHA approval by 08:00. Otherwise 2daff2a runs unchanged.
+    - This brings forward the "ships OFF until D-019" and "after D-035 acceptance" order for D-045. That needs a GPT-lead record (D-024); PENDING.
 Source: Issue #282 comment 6338378161 (R2); PR #495 comment 6338396552 (audit-fix instruction); PR #443 comment 6338411123 (sync request).
