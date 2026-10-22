@@ -1804,18 +1804,34 @@ try {
 # sheet, recorded to records/<day>/futures_index.csv with the lag between the capture time
 # and the quote time, so whether they are real time can be measured. Record only: they feed
 # no signal, gate, Brain input or voice, and a failure here never stops the Collector.
+# D-045 rev (OWNER/GPT 2026-10-22): 7 series. Mini and Growth 250 futures at the central
+# (quarterly) contract month via RssFOPCode, TOPIX futures at the front month (TOPIX futures
+# are quarterly only, so the front month is the central one), and 4 indexes. The large 225
+# and CME contracts are not recorded.
+function Get-CentralQuarterMonth([datetime]$Day) {
+    # The nearest March/June/September/December contract whose SQ (second Friday) is still
+    # ahead; from the SQ day on, the next quarter.
+    $d = $Day.Date
+    $first = New-Object datetime $d.Year, ([int]([Math]::Ceiling($d.Month / 3.0) * 3)), 1
+    for ($k = 0; $k -lt 3; $k++) {
+        $m = $first.AddMonths(3 * $k)
+        $offset = (([int][DayOfWeek]::Friday - [int]$m.DayOfWeek) + 7) % 7
+        if ($d -lt $m.AddDays($offset + 7)) { return $m.ToString("yyyyMM") }
+    }
+    return $null
+}
+$futCentralMonth = Get-CentralQuarterMonth (Get-Date)
 $futIndexDefs = @(
-    @{ Code = "N225.FUT01.OS";  Name = "日経225先物 大阪 期近";   Fn = "RssFOPMarket" },
-    @{ Code = "N225M.FUT01.OS"; Name = "日経225ミニ 大阪 期近";   Fn = "RssFOPMarket" },
-    @{ Code = "TOPX.FUT01.OS";  Name = "TOPIX先物 大阪 期近";     Fn = "RssFOPMarket" },
-    @{ Code = "MOT.FUT01.OS";   Name = "グロース250先物 大阪 期近"; Fn = "RssFOPMarket" },
-    @{ Code = "N225.FUT01.C";   Name = "日経225先物 CME 期近";    Fn = "RssFOPMarket" },
-    @{ Code = "N225";           Name = "日経225";               Fn = "RssIndexMarket" },
-    @{ Code = "TOPX";           Name = "TOPIX";                 Fn = "RssIndexMarket" },
-    @{ Code = "MTHR";           Name = "東証グロース250指数";      Fn = "RssIndexMarket" },
-    @{ Code = "TSGM";           Name = "東証グロース市場指数";      Fn = "RssIndexMarket" }
+    @{ Code = "N225MF";        Month = $futCentralMonth; Name = "日経225ミニ 中心限月";      Fn = "RssFOPMarket" },
+    @{ Code = "TOPX.FUT01.OS"; Month = "";               Name = "TOPIX先物 期近(中心限月)"; Fn = "RssFOPMarket" },
+    @{ Code = "MOTF";          Month = $futCentralMonth; Name = "グロース250先物 中心限月";   Fn = "RssFOPMarket" },
+    @{ Code = "N225";          Month = "";               Name = "日経225";               Fn = "RssIndexMarket" },
+    @{ Code = "TOPX";          Month = "";               Name = "TOPIX";                 Fn = "RssIndexMarket" },
+    @{ Code = "MTHR";          Month = "";               Name = "東証グロース250指数";      Fn = "RssIndexMarket" },
+    @{ Code = "TSGM";          Month = "";               Name = "東証グロース市場指数";      Fn = "RssIndexMarket" }
 )
-# Columns B..I. Indexes have no 詳細時刻, VWAP, quotes or open interest (empty columns).
+# Column A: the code (RssFOPCode for a month contract). Columns B..I read through A.
+# Indexes have no 詳細時刻, VWAP, quotes or open interest (empty columns).
 $futItems = @("現在値","現在値詳細時刻","前日比率","出来高","出来高加重平均","最良売気配値1","最良買気配値1","建玉")
 $indexItems = @("現在値","更新時刻","前日比率","出来高","","","","")
 $futIndexSheet = $null
@@ -1835,11 +1851,16 @@ try {
             $fiRow = $i + 2
             $fiDef = $futIndexDefs[$i]
             $fiItems = if ($fiDef.Fn -eq "RssFOPMarket") { $futItems } else { $indexItems }
-            Invoke-ExcelCom -Label "先物指数コード設定" -Action { $futIndexSheet.Cells.Item($fiRow,1).Value2 = [string]$fiDef.Code } | Out-Null
+            if ([string]::IsNullOrEmpty([string]$fiDef.Month)) {
+                Invoke-ExcelCom -Label "先物指数コード設定" -Action { $futIndexSheet.Cells.Item($fiRow,1).Value2 = [string]$fiDef.Code } | Out-Null
+            } else {
+                $fiCodeFormula = '=RssFOPCode("' + [string]$fiDef.Code + '","' + [string]$fiDef.Month + '")'
+                Invoke-ExcelCom -Label "先物限月コード設定" -Action { $futIndexSheet.Cells.Item($fiRow,1).FormulaLocal = [string]$fiCodeFormula } | Out-Null
+            }
             for ($j=0; $j -lt $fiItems.Count; $j++) {
                 if ([string]::IsNullOrEmpty($fiItems[$j])) { continue }
                 $fiCol = $j + 2
-                $fiFormula = '=' + $fiDef.Fn + '("' + [string]$fiDef.Code + '","' + [string]$fiItems[$j] + '")'
+                $fiFormula = '=' + $fiDef.Fn + '(A' + [string]$fiRow + ',"' + [string]$fiItems[$j] + '")'
                 Invoke-ExcelCom -Label "先物指数RSS式設定" -Action { $futIndexSheet.Cells.Item($fiRow,$fiCol).FormulaLocal = [string]$fiFormula } | Out-Null
             }
         }
@@ -2315,21 +2336,23 @@ try {
         if ($futIndexReady -and $null -ne $futIndexSheet) {
             try {
                 $fiPacket = Invoke-ExcelCom -Label "先物指数値取得" -Action {
-                    [pscustomobject]@{ Data = $futIndexSheet.Range("B2:I" + [string]($futIndexDefs.Count + 1)).Value2 }
+                    [pscustomobject]@{ Data = $futIndexSheet.Range("A2:I" + [string]($futIndexDefs.Count + 1)).Value2 }
                 }
                 $fiCsv = Join-Path $dayDir "futures_index.csv"
-                Ensure-Csv $fiCsv "captured_at,code,name,price,quote_time,lag_seconds,change_pct,volume,vwap,ask,bid,open_interest"
+                Ensure-Csv $fiCsv "captured_at,code,month,contract,name,price,quote_time,lag_seconds,change_pct,volume,vwap,ask,bid,open_interest"
                 $fiNow = Get-Date
                 $fiLines = New-Object System.Collections.Generic.List[string]
                 for ($i=0; $i -lt $futIndexDefs.Count; $i++) {
-                    $fiVals = @(for ($j=1; $j -le 8; $j++) { Get-TableValue $fiPacket.Data ($i + 1) $j 8 })
+                    $fiRowVals = @(for ($j=1; $j -le 9; $j++) { Get-TableValue $fiPacket.Data ($i + 1) $j 9 })
+                    $fiVals = @($fiRowVals[1..8])
                     $fiClock = ConvertTo-FutIndexClock $fiVals[1]
                     $fiLag = ""
                     if ($null -ne $fiClock) {
                         $fiAt = [datetime]::ParseExact($fiNow.ToString("yyyy-MM-dd") + " " + $fiClock, "yyyy-MM-dd HH:mm:ss", [Globalization.CultureInfo]::InvariantCulture)
                         $fiLag = [string][Math]::Round(($fiNow - $fiAt).TotalSeconds)
                     }
-                    $fiCells = @($fiNow.ToString("yyyy-MM-dd HH:mm:ss"), $futIndexDefs[$i].Code, $futIndexDefs[$i].Name,
+                    $fiCells = @($fiNow.ToString("yyyy-MM-dd HH:mm:ss"), $futIndexDefs[$i].Code, [string]$futIndexDefs[$i].Month,
+                        [string]$fiRowVals[0], $futIndexDefs[$i].Name,
                         [string]$fiVals[0], [string]$fiClock, $fiLag, [string]$fiVals[2], [string]$fiVals[3],
                         [string]$fiVals[4], [string]$fiVals[5], [string]$fiVals[6], [string]$fiVals[7])
                     $fiLines.Add((@($fiCells | ForEach-Object { '"' + ([string]$_).Replace('"', '""') + '"' }) -join ','))
