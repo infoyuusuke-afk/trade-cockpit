@@ -1,5 +1,6 @@
 """Synthetic read-only GNH01 -> PRE-NEXT review preparation, no transmission."""
 import copy
+from contextlib import closing
 from datetime import timedelta, datetime
 from pathlib import Path
 import sqlite3
@@ -118,7 +119,7 @@ class PreNextReviewTests(unittest.TestCase):
 
     def test_corrupt_archive_blocks_review(self):
         self.archived()
-        with sqlite3.connect(self.db) as conn:
+        with closing(sqlite3.connect(self.db)) as conn, conn:
             conn.execute("UPDATE grok_archive_v1 SET payload_json=?", ("{}",))
         with self.assertRaisesRegex(ArchiveBlocked, "ARCHIVE_INTEGRITY_FAILURE"):
             self.review()
