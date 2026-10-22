@@ -20,7 +20,7 @@ Newest first. Keep one short entry per day; detailed evidence stays in PRs and t
 - No new paid GPT API runs until the ledger reset gap is fixed (D-041).
 - One versioned C01-C10 checklist for the supply/SQ analyst (D-043).
 - Market regime / algorithm-behaviour research subsystem adopted as P1; data inventory first (D-044).
-- Futures/index six series, record-only, private to the OWNER PC (D-045, Draft).
+- Futures/index: seven series recorded automatically by the V10 Collector, record only, private to the OWNER PC (D-045 R2; it replaces the six-series sidecar draft).
 
 ### 2. Work
 - Claude independent defect audit after the close, of live 48bbfe2 and dev 08c1479. Read-only; nothing was changed on the running V10.

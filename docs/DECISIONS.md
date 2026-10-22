@@ -360,19 +360,65 @@ Source: Issue #282 comments 6336507382 and 6336655933.
 State: PENDING_DOC_SYNC until merged to `main` (D-022).
 Source: Issue #282 comment 6336857406.
 
-## D-045 Six futures/index series: private, record-only extension (Draft, 2026-10-22)
-- OWNER instruction ("先物・指数をついかして", "グロースも追加"), to fill the futures/index gap found in D-044 Phase 0.
-- Six series:
-  - Nikkei 225 mini futures, TOPIX futures and TSE Growth Market 250 futures, each in the centre contract month, which the OWNER confirms by hand. Read via `RssFOPCode` + `RssFOPMarket`.
-  - Nikkei 225, TOPIX and TSE Growth Market 250 indices, via `RssIndexMarket`.
-- Record only. Not used for the 100-name board, LIVE/freshness gates, signals, Shadow, Brain decisions, voice or UI. No futures orders. real_submit_allowed=false.
-- Source granularity is kept as is (futures in seconds, indices in minutes); missing values stay NULL. Real-time behaviour is UNVERIFIED until it is checked on the OWNER PC.
-- Stages:
-  - Probe: a temporary unsaved workbook, only while V10 is stopped, one Excel; the V10 workbook is not touched.
-  - Install and Run: each needs D-035 acceptance, a D-019 rights check and OWNER exact-SHA approval.
-- Data stays on the OWNER PC. No figures go to GitHub, social media, external APIs or the cloud.
-- Open items:
-  - The OWNER also asked for the TSE Growth Market index, the broad one, not the 250 (2026-10-22 18:51 JST). It is not in the six series yet; the GPT lead to amend.
-  - There are two parallel implementations: Draft PR #495 (separate recorder) and the PC Claude's Collector-sheet version (09d1835). Only one may proceed (D-017).
-State: PENDING_DOC_SYNC until merged to `main` (D-022). Spec draft: `docs/drafts/D-045_FUTURES_INDEX_SIX_SERIES_RECORD_ONLY.md` in PR #495.
-Source: PR #443 comment 6338067646; Draft PR #495.
+## D-045 R2 Seven futures/index series, recorded automatically by the V10 Collector (record only, 2026-10-22)
+Revision R2 replaces the earlier draft (six series, manual sidecar, PR #443 comment 6338067646). That draft is SUPERSEDED and is not part of this ledger.
+- Purpose: D-044 market-regime research needs time-aligned futures and index data every day. Recording is automatic with V10. The OWNER does not start a recorder by hand (D-004).
+- Record only. The data does not feed the Brain, signals, LIVE/freshness gates, voice, UI, orders or execution. real_submit_allowed=false.
+- Exactly seven series:
+  - Futures (Osaka), each in a centre contract month that the OWNER confirms as an explicit YYYYMM:
+    - Nikkei 225 mini;
+    - TOPIX;
+    - TSE Growth Market 250.
+  - Indices (`RssIndexMarket`):
+    - Nikkei 225 (N225);
+    - TOPIX (TOPX);
+    - TSE Growth Market 250 (MTHR);
+    - TSE Growth Market, the broad index, not the 250 (TSGM).
+  - Excluded: large Nikkei 225 futures, CME, and every other candidate.
+- Contract month:
+  - FUT01 and every other floating near-month code is prohibited.
+  - The months come from a local, private config file. Only a template without account values may be public.
+  - The resolved contract code is checked against the product, market and month that MS2 returns. The TOPIX futures code type for `RssFOPCode` is not assumed; it is proven on the official help or the OWNER PC.
+  - A missing, expired, inconsistent or unconfirmed month means no data for that series only.
+  - Every rollover needs OWNER review. There is no automatic month choice and no silently stitched history.
+- Runtime:
+  - The single existing V10 Excel workbook is used (D-023). The Collector owns a hidden FUT_INDEX sheet in memory and records the seven series in the same cycle as the 100 names.
+  - The saved workbook is never rewritten. There is no second Excel, no sidecar process, no scheduler and no new OWNER action.
+  - Output goes to local private CSV files.
+- Capture:
+  - Each row keeps the instrument, the contract month and code, the source date and time with its precision, the PC capture time in JST, the price and the available fields.
+  - Futures use the HH:MM:SS source time. Exact lag seconds are given only when the source date and time are verified.
+  - Index times are HH:MM only. They are kept at that precision with a lag range or UNKNOWN, never padded to :00 as an exact time.
+  - Night sessions, day rollover, missing or future timestamps and stale rows fail closed. Prices and times are never inferred.
+- Fault and load isolation:
+  - A read or write failure suspends only this recorder, with a reason code. The Collector and the 100 names carry on.
+  - A latched D-045 off switch is provided that does not stop V10.
+  - Before/after comparison in comparable intervals: 100-name freshness, Excel COM busy/reject counts, Collector cycle time (p50/p95/max), health and output continuity. Any confirmed degradation turns off D-045 only.
+- Rights (D-019): the right to keep MS2 data on the PC and analyse it with AI is still PENDING. Until it is cleared, the recorder ships OFF. Only a safe offline probe on an unsaved workbook may run, and only while V10 is safely stopped. No futures/index figures, account data, PC paths or keys go to GitHub, social media, the cloud or the paid GPT API.
+- Implementation choice:
+  - The base is A, the Collector-integrated design of the PC Claude commit 09d1835a8. It is modified to seven series, explicit months, honest lag precision and the safety gates above. 09d1835a8 itself is not a release.
+  - B, the manual six-series sidecar in Draft PR #495 (head 653baf042), is not adopted, not even as a probe. It is removed from the target candidate. Only B's test expectations are carried over to A.
+  - PR #495 stays as a historical Draft. It must not be closed or merged without approval.
+- Roles (D-017):
+  - only the PC Claude edits the Collector, the config and the D-045 code;
+  - the cloud Claude does the independent review on synthetic fixtures (code, scope, rights, timing, load);
+  - the GPT lead freezes the contract and judges acceptance;
+  - the OWNER approves an exact SHA.
+- Not in tonight's switch: tonight's switch is the D-035 fix 2daff2a only, with no D-045 code in it. D-045 stays DEPLOYED=NO until the D-035 Windows acceptance, an independent PASS on the D-045 SHA and OWNER exact-SHA approval.
+- Acceptance:
+  - 7/7 identities, with TSGM and MTHR distinct;
+  - 3/3 OWNER-confirmed months, and no FUT01, CME or large N225 futures;
+  - zero change to the 100-name gates, signals, UI and orders;
+  - no persistent workbook change;
+  - automatic same-cycle recording after an approved launch;
+  - time, lag precision and midnight tests;
+  - a CSV failure does not block the Collector;
+  - data stays local;
+  - the off switch and rollback work;
+  - the before/after load comparison passes;
+  - offline CI passes on Windows and Linux;
+  - an independent cloud Claude PASS, then OWNER exact-SHA approval, then Windows LIVE acceptance.
+  - A synthetic PASS alone is not DEPLOYED or PRODUCTION_VERIFIED.
+- Related: D-004, D-017, D-019, D-023, D-035, D-044.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: Issue #282 comment 6338378161 (R2); PR #495 comment 6338396552 (audit-fix instruction); PR #443 comment 6338411123 (sync request).
