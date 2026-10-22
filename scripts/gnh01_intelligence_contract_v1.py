@@ -42,6 +42,7 @@ IDENT = re.compile(r"^[A-Za-z0-9_-]{3,96}$")
 TICKER = re.compile(r"^(?:\d{4}|\d{3}[A-Z])(?:\.T)?$")
 HOST_LABEL = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
+MAX_EVENT_JSON_BYTES = 64_000
 
 
 class ContractBlocked(ValueError):
@@ -55,6 +56,43 @@ def canonical_bytes(value: dict) -> bytes:
 
 def content_digest(event: dict) -> str:
     return hashlib.sha256(canonical_bytes({k: event[k] for k in CONTENT_FIELDS})).hexdigest()
+
+
+def parse_event_json_bytes(raw: bytes) -> dict:
+    """Strict bounded JSON for a future external adapter; no network or trust.
+
+    json.loads normally keeps only the last duplicate key and accepts NaN/Inf.
+    Both can conceal sender assertions or create inconsistent content hashes.
+    The GNH01 schema has no floating-point values at any nesting level.
+    """
+    if type(raw) is not bytes or not 2 <= len(raw) <= MAX_EVENT_JSON_BYTES:
+        raise ContractBlocked("EVENT_JSON_SIZE_OR_TYPE_INVALID")
+
+    def unique_keys(pairs):
+        obj = {}
+        for k, v in pairs:
+            if k in obj:
+                raise ContractBlocked("JSON_DUPLICATE_KEY")
+            obj[k] = v
+        return obj
+
+    def reject_noninteger(_):
+        raise ContractBlocked("JSON_NONFINITE_OR_FLOAT_BLOCKED")
+
+    try:
+        obj = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=unique_keys,
+            parse_float=reject_noninteger,
+            parse_constant=reject_noninteger,
+        )
+    except ContractBlocked:
+        raise
+    except (ValueError, UnicodeError, TypeError, RecursionError) as exc:
+        raise ContractBlocked("EVENT_JSON_INVALID") from exc
+    if type(obj) is not dict:
+        raise ContractBlocked("EVENT_FIELDS_INVALID")
+    return obj
 
 
 def _clock(value, *, required=False):
@@ -142,10 +180,14 @@ def validate_event(event: dict, *, now: datetime) -> dict:
         if (type(row) is not dict or set(row) != {"security_code", "official_company_name"}
                 or not isinstance(row["security_code"], str)
                 or not TICKER.fullmatch(row["security_code"])
-                or not _text(row["official_company_name"], limit=120)
-                or row["security_code"] in seen):
+                or not _text(row["official_company_name"], limit=120)):
             raise ContractBlocked("STOCK_IDENTITY_INVALID")
-        seen.add(row["security_code"])
+        # Japanese tickers may be supplied with or without the .T suffix.
+        # Treat 285A and 285A.T as the same security, not two stocks.
+        normalized_code = row["security_code"].removesuffix(".T")
+        if normalized_code in seen:
+            raise ContractBlocked("STOCK_IDENTITY_INVALID")
+        seen.add(normalized_code)
     if not isinstance(now, datetime) or now.utcoffset() is None:
         raise ContractBlocked("LOCAL_CLOCK_UNVERIFIED")
     now = now.astimezone(timezone.utc)
