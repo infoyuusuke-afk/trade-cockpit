@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -12,7 +13,7 @@ import unittest
 
 from scripts.gnh01_intelligence_contract_v1 import content_digest
 from scripts.gnh01_durable_archive_v1 import (
-    ArchiveBlocked, archive_event, read_archive_receipt,
+    ArchiveBlocked, archive_event, archive_json_once, read_archive_receipt,
 )
 from test_gnh01_intelligence_contract_v1 import fixture, NOW
 
@@ -48,6 +49,31 @@ class DurableArchiveTests(unittest.TestCase):
         self.assertIs(result["real_submit_allowed"], False)
         self.assertFalse(result["duplicate"])
         self.assertEqual(read_archive_receipt(self.db, result["event_id"], 1)["state"], "ARCHIVED")
+
+    def test_one_shot_json_ingest_durable_without_delivery_claim(self):
+        raw = json.dumps(self.event(), ensure_ascii=False).encode("utf-8")
+        first = archive_json_once(self.db, raw, clock=self.clock)
+        self.assertEqual(first["state"], "ARCHIVED_RESEARCH_ONLY")
+        self.assertTrue(first["receipt_independently_read_back"])
+        self.assertFalse(first["available_at_verified"])
+        self.assertFalse(first["brain_receiver_ack_verified"])
+        self.assertFalse(first["shadow_eligible"])
+        again = archive_json_once(self.db, raw, clock=self.clock)
+        self.assertTrue(again["duplicate"])
+
+    def test_one_shot_rejects_ambiguous_json_before_sqlite_creation(self):
+        with self.assertRaisesRegex(ArchiveBlocked, "JSON_DUPLICATE_KEY"):
+            archive_json_once(self.db, b'{"a":1,"a":2}', clock=self.clock)
+        self.assertFalse(self.db.exists())
+
+    def test_one_shot_real_order_true_denied_before_sqlite_creation(self):
+        x = self.event()
+        x["real_submit_allowed"] = True
+        x["content_hash"] = content_digest(x)
+        raw = json.dumps(x, ensure_ascii=False).encode("utf-8")
+        with self.assertRaisesRegex(ArchiveBlocked, "SCHEMA_OR_SAFETY_GATE_INVALID"):
+            archive_json_once(self.db, raw, clock=self.clock)
+        self.assertFalse(self.db.exists())
 
     def test_same_event_revision_and_hash_is_idempotent(self):
         first = self.record()
