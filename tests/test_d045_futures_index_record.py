@@ -185,13 +185,14 @@ class D045OfflineValidation(unittest.TestCase):
         exe = shutil.which("powershell.exe")
         if not exe:
             self.skipTest("powershell.exe unavailable")
+        ps_path = str(PS).replace("'", "''")
         ps = (
             "$t=$null;$e=$null;"
-            "$a=[Management.Automation.Language.Parser]::ParseFile($args[0],[ref]$t,[ref]$e);"
+            "$a=[Management.Automation.Language.Parser]::ParseFile('" + ps_path + "',[ref]$t,[ref]$e);"
             "if($e.Count){$e|Out-String|Write-Host;exit 1};"
             "if($null -eq $a){exit 2};'D045_PARSER_PASS'"
         )
-        p = subprocess.run([exe, "-NoProfile", "-Command", ps, str(PS)],
+        p = subprocess.run([exe, "-NoProfile", "-Command", ps],
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                            timeout=20)
         self.assertEqual(p.returncode, 0, p.stdout.decode(errors="replace") + p.stderr.decode(errors="replace"))
