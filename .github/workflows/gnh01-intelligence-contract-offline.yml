@@ -15,6 +15,7 @@ on:
       - "scripts/gnh01_delivery_chain_audit_v1.py"
       - "tests/test_gnh01_delivery_chain_audit_v1.py"
       - "docs/GNH01_DURABLE_ARCHIVE_V1.md"
+      - "docs/GNH01_ROUTINE_EGRESS_ACCEPTANCE.md"
       - ".github/workflows/gnh01-intelligence-contract-offline.yml"
   workflow_dispatch:
 permissions:
