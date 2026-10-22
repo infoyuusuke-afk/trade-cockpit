@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-22 21:19:55 JST",
+  "updated_at": "2026-10-23 07:51:36 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -1442,7 +1442,7 @@
           "price": 6432,
           "change_pct": -4.7957371225577266,
           "volume": 21611800,
-          "relative_volume": 1.058545784047217,
+          "relative_volume": 1.0585457840472168,
           "atr_pct": 6.88,
           "vwap": 6574.333333333332,
           "high": 6954,
@@ -1990,7 +1990,7 @@
       "price": 6432,
       "change_pct": -4.7957371225577266,
       "volume": 21611800,
-      "relative_volume": 1.058545784047217,
+      "relative_volume": 1.0585457840472168,
       "atr_pct": 6.88,
       "vwap": 6574.333333333332,
       "high": 6954,
@@ -5408,22 +5408,6 @@
       "already_watched": false
     },
     {
-      "code": "4911",
-      "name": "Shiseido Company,Limited",
-      "exchange": "TSE",
-      "price": 3569,
-      "change_pct": 1.8550228310502281,
-      "volume": 2106900,
-      "relative_volume": 0.8217783550391407,
-      "atr_pct": 3.15,
-      "vwap": 3559,
-      "high": 3613,
-      "low": 3495,
-      "market_cap": 1399805012695,
-      "sector": "Consumer Non-Durables",
-      "already_watched": false
-    },
-    {
       "code": "5713",
       "name": "Sumitomo Metal Mining Co., Ltd.",
       "exchange": "TSE",
@@ -5438,6 +5422,22 @@
       "market_cap": 2281736921722,
       "sector": "Non-Energy Minerals",
       "already_watched": true
+    },
+    {
+      "code": "4911",
+      "name": "Shiseido Company,Limited",
+      "exchange": "TSE",
+      "price": 3569,
+      "change_pct": 1.8550228310502281,
+      "volume": 2106900,
+      "relative_volume": 0.8217783550391407,
+      "atr_pct": 3.15,
+      "vwap": 3559,
+      "high": 3613,
+      "low": 3495,
+      "market_cap": 1399805012695,
+      "sector": "Consumer Non-Durables",
+      "already_watched": false
     },
     {
       "code": "325A",
