@@ -909,6 +909,14 @@ document.addEventListener("DOMContentLoaded",()=>{
 <h3>直近25営業日・5分足カレンダー</h3>
 <div id="kioxia-calendar-grid" class="kio-calendar"><div class="focus-empty">5分足を取得中...</div></div>
 <p class="warning"><b>使い方：</b>寄り前は前夜のSanDisk・Micron・SOX・NASDAQ、GU/GD帯、信用需給、公式材料の織り込み段階から仮説を作ります。9:15以降は当日5分足を65%へ引き上げて再計算。類似度60%以上が3日未満なら「見送り」。発動は完成5分足のOR15・VWAP・EMA9/20・出来高・ヒゲ反転の一致が条件で、事前予測だけでは注文しません。</p></section>
+<section id="regime-summary" class="card wide"><h2>地合い判定（日次・参考）</h2>
+<div id="regime-summary-meta" class="sub">取得待ち</div>
+<div class="rotation-grid" id="regime-summary-verdict"><div class="focus-empty">取得待ち</div></div>
+<table><thead><tr><th>指標</th><th>現在値</th><th>前日比</th><th>5日</th><th>20日線から</th><th>20日線／60日線</th></tr></thead>
+<tbody id="regime-summary-rows"><tr><td colspan="6">取得待ち</td></tr></tbody></table>
+<h3>当日資金流入テーマ TOP5</h3>
+<table><thead><tr><th>順位</th><th>テーマ</th><th>強度</th><th>有力銘柄</th></tr></thead><tbody id="regime-summary-themes"><tr><td colspan="4">取得待ち</td></tr></tbody></table>
+<p class="warning"><b>参考：</b>前日引け後の日次データによる判定です。場中の売買サイン・安全ゲート・ブレインの点数・音声には使いません。</p></section>
 <section id="world-market-live" class="card wide"><h2>世界市況リアルタイム・地合い確認</h2>
 <div id="world-market-meta" class="sub">世界の株価リアルタイムチャートを検証中...</div>
 <div class="rotation-grid" id="world-market-cards"><div class="focus-empty">市場データ取得待ち</div></div>
@@ -1200,6 +1208,27 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => {
   document.getElementById("overnight-short").innerHTML = "<tr><td colspan='8'>データ取得待ち</td></tr>";
 });
 const worldEsc = v => String(v ?? "—").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+// OWNER 2026-10-23: daily 地合い判定 for the 検証・除外 tab (market_summary.json, built by the
+// Brain observer's public feed from the public data.json). Reference only.
+const loadRegimeSummary = () => fetch("market_summary.json?t=" + Date.now()).then(r => r.json()).then(d => {
+  const f = (v, digits) => v == null || !Number.isFinite(Number(v)) ? "—" : Number(v).toLocaleString("ja-JP", {maximumFractionDigits: digits});
+  const p = v => v == null || !Number.isFinite(Number(v)) ? "—" : (Number(v) > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
+  const cls = v => Number(v) > 0 ? "up" : Number(v) < 0 ? "down" : "";
+  const v = d.verdict || {};
+  document.getElementById("regime-summary-meta").textContent = "データ " + (d.updated_at || "不明") + "（" + (d.phase || "") + "）";
+  document.getElementById("regime-summary-verdict").innerHTML = "<div class='rotation-box'><b>地合い</b><strong class='" + (v.label === "強い" ? "up" : v.label === "弱い" ? "down" : "") + "'>" + worldEsc(v.label || "—") + "</strong><br><span>点数 " + worldEsc(v.score) + "（+3以上で強い・−3以下で弱い）</span></div>"
+    + "<div class='rotation-box'><b>内訳</b><small>" + ((v.parts || []).map(x => worldEsc(x.text) + "（" + (x.point > 0 ? "+" : "") + worldEsc(x.point) + "）").join("<br>") || "—") + "</small></div>";
+  document.getElementById("regime-summary-rows").innerHTML = Object.entries(d.indices || {}).map(([n, x]) =>
+    "<tr><td><b>" + worldEsc(n) + "</b></td><td>" + f(x.price, 2) + "</td><td class='" + cls(x.change_pct) + "'>" + p(x.change_pct) + "</td><td class='" + cls(x.ret5) + "'>" + p(x.ret5) + "</td><td class='" + cls(x.from_ma20) + "'>" + p(x.from_ma20) + "</td><td>" + (x.ma20 == null || x.ma60 == null ? "—" : (x.ma20 > x.ma60 ? "上向き" : "下向き")) + "</td></tr>"
+  ).join("") || "<tr><td colspan='6'>データなし</td></tr>";
+  document.getElementById("regime-summary-themes").innerHTML = (d.themes || []).map((t, i) =>
+    "<tr><td>" + (i + 1) + "</td><td>" + worldEsc(t.name) + "</td><td class='" + cls(t.score) + "'>" + f(t.score, 1) + "</td><td>" + (t.members || []).map(m => worldEsc(m.name) + " <small>" + p(m.change_pct) + "</small>").join("<br>") + "</td></tr>"
+  ).join("") || "<tr><td colspan='4'>データなし</td></tr>";
+}).catch(() => {
+  document.getElementById("regime-summary-meta").textContent = "地合いデータ未取得（10分ごとに再取得）";
+});
+loadRegimeSummary();
+setInterval(loadRegimeSummary, 600000);
 fetch("world_market.json?t=" + Date.now()).then(r => r.json()).then(d => {
   const rows = Object.values(d.rows || {});
   document.getElementById("world-market-meta").textContent = d.source + "／更新 " + d.updated_at + "／検証 " + d.verified_count + "/" + d.expected_count;

@@ -64,7 +64,7 @@ PTS_PICKUP_INTERVAL = timedelta(minutes=5)
 # OWNER 2026-10-23 「キオクシアの予測チャートが直ってない」: every 10 minutes, fresh copies of
 # the public analysis files from main into RuntimeDir/public_feed (pinned module), in a
 # background thread so a slow download never delays the Brain core. Display data only.
-PUBLIC_FEED_MODULE = ("v10_public_feed_sync", "22d1a3ae4f8d83cef163631772240587e83df8d3")
+PUBLIC_FEED_MODULE = ("v10_public_feed_sync", "e83f728e5fda38149e45765ad7ba3033816da5a8")
 PUBLIC_FEED_DIR = "public_feed"
 PUBLIC_FEED_INTERVAL = timedelta(minutes=10)
 # Brain core (OWNER 2026-10-21 「全部やりたい」): every pass, score the lit live

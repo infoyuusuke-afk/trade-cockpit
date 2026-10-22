@@ -54,6 +54,52 @@ class Sync(unittest.TestCase):
         self.assertIn("kioxia_5m_calendar.json", feed.FEED_FILES)
 
 
+class RegimeSummary(unittest.TestCase):
+    """OWNER 2026-10-23: daily 地合い判定 for the 検証・除外 tab (reference only)."""
+
+    def idx(self, price, ma20, ma60, chg):
+        return {"ok": True, "price": price, "ma20": ma20, "ma60": ma60, "change_pct": chg}
+
+    def test_verdict_strong_weak_neutral(self):
+        up = {"日経平均": self.idx(110, 100, 90, 1.0), "TOPIX": self.idx(110, 100, 90, 1.0),
+              "NASDAQ": {"change_pct": 1.0}, "SOX": {"change_pct": 1.0}, "VIX": {"change_pct": -6}}
+        self.assertEqual(feed.regime_verdict(up)["label"], "強い")
+        down = {"日経平均": self.idx(90, 100, 110, -1.0), "TOPIX": self.idx(90, 100, 110, -1.0),
+                "NASDAQ": {"change_pct": -1.0}, "SOX": {"change_pct": -1.0}, "VIX": {"change_pct": 6}}
+        v = feed.regime_verdict(down)
+        self.assertEqual((v["label"], v["score"]), ("弱い", -9))   # 6 Japan parts, NASDAQ, SOX, VIX
+        self.assertEqual(feed.regime_verdict({})["label"], "中立")
+        flat = {"日経平均": self.idx(100, 100, 100, 0.1)}
+        self.assertEqual(feed.regime_verdict(flat)["status"], "REFERENCE_DAILY_NOT_A_GATE")
+
+    def test_summary_keeps_only_valid_indices_and_top5_themes(self):
+        data = {"updated_at": "u", "phase": "p",
+                "indices": {"日経平均": dict(self.idx(1, 1, 1, 0), ret5=2), "TOPIX": {"ok": False, "price": 9},
+                            "NASDAQ": {"ok": True, "price": "x"}},
+                "themes": [["T%d" % i, i, 1, [["A", 1.0, 2.0]]] for i in range(7)] + [["bad"]]}
+        s = feed.summarize(data)
+        self.assertEqual(list(s["indices"]), ["日経平均", "NASDAQ"])
+        self.assertIsNone(s["indices"]["NASDAQ"]["price"])        # non-numbers are dropped, never invented
+        self.assertEqual(len(s["themes"]), 5)
+        self.assertFalse(s["real_submit_allowed"])
+
+    def test_sync_writes_the_summary_and_keeps_it_on_failure(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "public_feed"
+            good = json.dumps({"indices": {"日経平均": self.idx(1, 1, 1, 0)}, "themes": []}).encode()
+            feed.sync(target, fetch=lambda url: good if url.endswith("data.json") else b"{}")
+            self.assertIn("日経平均", json.loads((target / feed.SUMMARY_FILE).read_text("utf-8"))["indices"])
+            meta = feed.sync(target, fetch=lambda url: b"broken" if url.endswith("data.json") else b"{}")
+            self.assertFalse(meta["files"][feed.SUMMARY_FILE]["ok"])
+            self.assertIn("日経平均", json.loads((target / feed.SUMMARY_FILE).read_text("utf-8"))["indices"])
+
+    def test_screen_section_is_in_the_market_tab_and_labelled_reference(self):
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn('<section id="regime-summary" class="card wide"><h2>地合い判定（日次・参考）</h2>', html)
+        self.assertIn('fetch("market_summary.json?t="', html)
+        self.assertIn("場中の売買サイン・安全ゲート・ブレインの点数・音声には使いません", html)
+
+
 class Wiring(unittest.TestCase):
     def test_observer_pin_matches_and_runs_in_the_background(self):
         name, pin = obs.PUBLIC_FEED_MODULE
@@ -65,10 +111,10 @@ class Wiring(unittest.TestCase):
     def test_gateway_serves_only_the_listed_files_from_the_feed(self):
         text = GATEWAY.read_text(encoding="utf-8-sig")
         listed = re.findall(r"'([a-z0-9_]+\.json)'", text[text.index("$publicFeedFiles = @("):text.index("if ($RuntimeDir -and $publicFeedFiles")])
-        self.assertEqual(sorted(listed), sorted(feed.FEED_FILES))
+        self.assertEqual(sorted(listed), sorted(feed.FEED_FILES + (feed.SUMMARY_FILE,)))
         self.assertIn("($feedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0", text)
         allowed = text[text.index("$allowedUiFiles = @("):text.index("if ($allowedUiFiles -cnotcontains $relative)")]
-        for name in feed.FEED_FILES:   # the feed never widens what the Gateway serves
+        for name in feed.FEED_FILES + (feed.SUMMARY_FILE,):   # each served name is on the allow-list
             self.assertIn("'" + name + "'", allowed)
 
 
