@@ -10,8 +10,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 import sqlite3
+import stat
 import threading
 from typing import Callable
 
@@ -60,11 +62,44 @@ def _utc(clock: Callable[[], datetime]) -> datetime:
 
 
 def _path(db_path) -> Path:
-    p = Path(db_path)
-    if (not p.is_absolute() or not p.parent.is_dir() or p.is_symlink()
-            or (p.exists() and not p.is_file())):
-        raise ArchiveBlocked("PRIVATE_STORAGE_PATH_REQUIRED")
-    return p
+    """Enforce an external private archive directory before SQLite may create files.
+
+    This is a local-path guard, NOT a proof of Windows ACL configuration.
+    A storage service still needs OS ACLs and an authorized deployment directory.
+    """
+    try:
+        p = Path(db_path)
+        if (not p.is_absolute() or ".." in p.parts
+                or not p.parent.is_dir()
+                or str(p).startswith(("\\\\", "//"))):
+            raise ArchiveBlocked("PRIVATE_STORAGE_PATH_REQUIRED")
+        project = Path(__file__).resolve().parent.parent
+        parent = p.parent.resolve(strict=True)
+        if parent == project or project in parent.parents:
+            raise ArchiveBlocked("PRIVATE_STORAGE_INSIDE_REPOSITORY")
+        # Reject links/reparse points in *every* path component. An attacker
+        # must not redirect a private database into the public checkout.
+        for component in (p.parent, *p.parent.parents):
+            info = component.lstat()
+            if stat.S_ISLNK(info.st_mode) or (
+                getattr(info, "st_file_attributes", 0) & 0x400
+            ):
+                raise ArchiveBlocked("PRIVATE_STORAGE_LINK_UNTRUSTED")
+        if os.name != "nt":
+            # Parent is the private data directory, not shared /tmp itself.
+            if p.parent.stat().st_mode & 0o077:
+                raise ArchiveBlocked("PRIVATE_STORAGE_PERMISSION_UNSAFE")
+        if p.exists() or p.is_symlink():
+            if p.is_symlink():
+                raise ArchiveBlocked("PRIVATE_STORAGE_LINK_UNTRUSTED")
+            info = p.lstat()
+            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+                raise ArchiveBlocked("PRIVATE_STORAGE_FILE_UNSAFE")
+        return p
+    except ArchiveBlocked:
+        raise
+    except (OSError, TypeError, ValueError) as exc:
+        raise ArchiveBlocked("PRIVATE_STORAGE_PATH_REQUIRED") from exc
 
 
 def _connect(path: Path, *, initialize=False):
