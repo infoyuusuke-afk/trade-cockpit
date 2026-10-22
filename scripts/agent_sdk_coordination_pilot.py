@@ -558,18 +558,22 @@ def _ledger_reserved_cents(db_path: Path) -> int:
         return int(conn.execute("SELECT COALESCE(SUM(reserved_cents),0) FROM paid_attempts").fetchone()[0])
 
 
-# D-041 (1)(2), OWNER 2026-10-22: a new registry (another AGENT_PAID_LEDGER_REGISTRY or a
-# deleted file) or a re-created ledger used to restart the lifetime count at zero. The
-# spend anchor keeps the ledger ids and the highest lifetime reservation ever seen, in the
-# real per-user LocalAppData folder asked from Windows (not from an environment variable).
-# Before a paid reservation the lifetime total is the larger of the anchor and the
-# registry; an unknown or rolled-back ledger, or a missing or unreadable anchor while a
-# ledger already holds reservations, stops the run before any request. This is a local
-# guard, not proof against deleting every file: the OpenAI prepaid balance with
-# auto-reload off stays the hard stop.
+# D-041 (1)(2), OWNER 2026-10-22, audit 6339629207 item 5: a new registry (another
+# AGENT_PAID_LEDGER_REGISTRY or a deleted file) or a re-created ledger used to restart the
+# lifetime count at zero. The spend record (ledger ids, highest lifetime reservation, a
+# revision counter) is kept twice: a file in the per-user LocalAppData folder asked from the
+# Windows known-folder API (not from an environment variable) and the HKCU registry key
+# below. Before a paid reservation both must exist and agree; the lifetime total is the
+# larger of the record and the registry; an unknown or rolled-back ledger stops the run.
+# Nothing is ever created automatically: a PC with no record at all adopts it once with
+# --adopt-spend-anchor, and only while its ledger already holds reservations.
+# RESIDUAL RISK (documented, not solved): both copies belong to the same Windows user, so
+# a process running as that user can delete both and the ledger. The OpenAI prepaid
+# balance with auto-reload off remains the last stop.
 SPEND_ANCHOR_NAME = "paid_spend_anchor.json"
-SPEND_ANCHOR_KEYS = {"schema", "ledger_ids", "high_water_cents", "updated_at"}
-SPEND_ANCHOR_SCHEMA = "100b-paid-spend-anchor-v1"
+SPEND_ANCHOR_KEYS = {"schema", "ledger_ids", "high_water_cents", "revision", "updated_at"}
+SPEND_ANCHOR_SCHEMA = "100b-paid-spend-anchor-v2"
+SPEND_MIRROR_KEY = r"Software\100B_AGENT\PaidSpend"
 
 
 def _known_local_appdata() -> Path:
@@ -598,33 +602,82 @@ def spend_anchor_path() -> Path:
     return _known_local_appdata() / "100B_AGENT" / SPEND_ANCHOR_NAME
 
 
-def read_spend_anchor() -> dict | None:
+def _valid_record(rec) -> bool:
+    return (type(rec) is dict and set(rec) == SPEND_ANCHOR_KEYS and rec["schema"] == SPEND_ANCHOR_SCHEMA
+            and type(rec["ledger_ids"]) is list and all(LEDGER_ID.fullmatch(str(x)) for x in rec["ledger_ids"])
+            and type(rec["high_water_cents"]) is int and rec["high_water_cents"] >= 0
+            and type(rec["revision"]) is int and rec["revision"] >= 1)
+
+
+def _read_anchor_file():
     path = spend_anchor_path()
     if not path.exists():
         return None
     if path.is_symlink():
         raise Blocked("PAID_SPEND_ANCHOR_UNTRUSTED_NO_CALL")
     try:
-        anchor = json.loads(path.read_text(encoding="utf-8"))
+        rec = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise Blocked("PAID_SPEND_ANCHOR_UNREADABLE_NO_CALL") from exc
-    if (type(anchor) is not dict or set(anchor) != SPEND_ANCHOR_KEYS or anchor["schema"] != SPEND_ANCHOR_SCHEMA
-            or type(anchor["ledger_ids"]) is not list
-            or not all(LEDGER_ID.fullmatch(str(x)) for x in anchor["ledger_ids"])
-            or type(anchor["high_water_cents"]) is not int or anchor["high_water_cents"] < 0):
+    if not _valid_record(rec):
         raise Blocked("PAID_SPEND_ANCHOR_INVALID_NO_CALL")
-    return anchor
+    return rec
 
 
-def _write_spend_anchor(ledger_ids: list, high_water: int) -> None:
+def _write_anchor_file(rec: dict) -> None:
     path = spend_anchor_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_name(path.name + ".tmp")
-    temp.write_text(json.dumps({"schema": SPEND_ANCHOR_SCHEMA, "ledger_ids": sorted(set(ledger_ids)),
-                                "high_water_cents": int(high_water),
-                                "updated_at": datetime.now(timezone.utc).isoformat()}, sort_keys=True),
-                    encoding="utf-8")
+    temp.write_text(json.dumps(rec, sort_keys=True), encoding="utf-8")
     os.replace(temp, path)
+
+
+def _read_mirror():
+    """The HKCU copy as a record, None when the key is absent."""
+    if os.name != "nt":
+        raise Blocked("PAID_SPEND_MIRROR_UNAVAILABLE_NO_CALL")
+    import winreg
+    try:
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, SPEND_MIRROR_KEY)
+    except FileNotFoundError:
+        return None
+    try:
+        with key:
+            raw = winreg.QueryValueEx(key, "Record")[0]
+        rec = json.loads(raw)
+    except (OSError, ValueError) as exc:
+        raise Blocked("PAID_SPEND_MIRROR_UNREADABLE_NO_CALL") from exc
+    if not _valid_record(rec):
+        raise Blocked("PAID_SPEND_MIRROR_INVALID_NO_CALL")
+    return rec
+
+
+def _write_mirror(rec: dict) -> None:
+    if os.name != "nt":
+        raise Blocked("PAID_SPEND_MIRROR_UNAVAILABLE_NO_CALL")
+    import winreg
+    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, SPEND_MIRROR_KEY) as key:
+        winreg.SetValueEx(key, "Record", 0, winreg.REG_SZ, json.dumps(rec, sort_keys=True))
+
+
+def read_spend_anchor() -> dict | None:
+    """Both copies agreeing, or None when neither exists. One missing, or any
+    difference between them, stops the run."""
+    disk, mirror = _read_anchor_file(), _read_mirror()
+    if disk is None and mirror is None:
+        return None
+    if disk is None or mirror is None:
+        raise Blocked("PAID_SPEND_RECORD_ONE_COPY_MISSING_NO_CALL")
+    if disk != mirror:
+        raise Blocked("PAID_SPEND_RECORD_COPIES_DIFFER_NO_CALL")
+    return disk
+
+
+def _write_spend_anchor(ledger_ids: list, high_water: int, revision: int) -> None:
+    rec = {"schema": SPEND_ANCHOR_SCHEMA, "ledger_ids": sorted(set(ledger_ids)), "high_water_cents": int(high_water),
+           "revision": int(revision), "updated_at": datetime.now(timezone.utc).isoformat()}
+    _write_anchor_file(rec)
+    _write_mirror(rec)   # an interrupted pair differs and stops the next run
 
 
 def _registry_lifetime(reg: dict) -> tuple:
@@ -635,25 +688,24 @@ def _registry_lifetime(reg: dict) -> tuple:
 
 
 def adopt_spend_anchor() -> dict:
-    """One-time OWNER step for a PC whose ledger predates the anchor."""
-    if read_spend_anchor() is not None:
+    """One-time OWNER step for a PC whose ledger predates the record: allowed only when
+    neither copy exists and the ledger already holds reservations."""
+    if _read_anchor_file() is not None or _read_mirror() is not None:
         raise Blocked("PAID_SPEND_ANCHOR_ALREADY_EXISTS")
     reg = read_registry()
     lifetime, _, _ = _registry_lifetime(reg)
-    _write_spend_anchor([x["ledger_id"] for x in reg["ledgers"]], lifetime)
+    if lifetime <= 0:
+        raise Blocked("PAID_SPEND_ANCHOR_ADOPT_NEEDS_EXISTING_RESERVATIONS")
+    _write_spend_anchor([x["ledger_id"] for x in reg["ledgers"]], lifetime, 1)
     return read_spend_anchor()
 
 
 def spend_anchor_carried(reg: dict) -> int:
-    """`carried` for reserve_billable_attempt, never below the anchor's high-water mark."""
+    """`carried` for reserve_billable_attempt, never below the record's high-water mark."""
     lifetime, active_id, active_cents = _registry_lifetime(reg)
     anchor = read_spend_anchor()
     if anchor is None:
-        # First paid use ever: nothing reserved anywhere yet.
-        if lifetime != 0 or len(reg["ledgers"]) > 1:
-            raise Blocked("PAID_SPEND_ANCHOR_MISSING_NO_CALL")
-        _write_spend_anchor([x["ledger_id"] for x in reg["ledgers"]], 0)
-        anchor = read_spend_anchor()
+        raise Blocked("PAID_SPEND_ANCHOR_MISSING_NO_CALL")   # never a fresh start
     if active_id is None or active_id not in anchor["ledger_ids"]:
         raise Blocked("PAID_LEDGER_NOT_IN_SPEND_ANCHOR_NO_CALL")
     if lifetime < anchor["high_water_cents"]:
@@ -665,8 +717,8 @@ def record_spend_anchor(reg: dict) -> None:
     """After a reservation: raise the high-water mark to the new lifetime total."""
     anchor = read_spend_anchor()
     lifetime, active_id, _ = _registry_lifetime(reg)
-    _write_spend_anchor(anchor["ledger_ids"] + [active_id], max(lifetime, anchor["high_water_cents"]))
-
+    _write_spend_anchor(anchor["ledger_ids"] + [active_id], max(lifetime, anchor["high_water_cents"]),
+                        anchor["revision"] + 1)
 
 def retire_paid_ledger(ledger_id: str, reason: str) -> dict:
     """Close the active ledger; its reserved total is carried to the next one."""
@@ -702,8 +754,8 @@ def init_paid_ledger(db_path: Path) -> str:
     reg["active"] = ledger_id
     _write_registry(reg)
     anchor = read_spend_anchor()
-    if anchor is not None:  # a new ledger joins the anchor; its high-water mark is kept
-        _write_spend_anchor(anchor["ledger_ids"] + [ledger_id], anchor["high_water_cents"])
+    if anchor is not None:  # a new ledger joins the record; its high-water mark is kept
+        _write_spend_anchor(anchor["ledger_ids"] + [ledger_id], anchor["high_water_cents"], anchor["revision"] + 1)
     return ledger_id
 
 

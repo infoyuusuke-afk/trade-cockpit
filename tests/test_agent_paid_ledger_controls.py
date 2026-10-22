@@ -36,9 +36,37 @@ def setUpModule():
     _REGISTRY_PATCH.start()
     _ANCHOR_PATCH = patch.object(pilot, "spend_anchor_path", lambda: Path(_REGISTRY_DIR.name) / "anchor.json")
     _ANCHOR_PATCH.start()
+    # The HKCU copy is a temp file here: tests never write the real registry.
+    _MIRROR_PATCHES[:] = [patch.object(pilot, "_read_mirror", _fake_read_mirror),
+                          patch.object(pilot, "_write_mirror", _fake_write_mirror)]
+    for p in _MIRROR_PATCHES:
+        p.start()
+
+
+def _mirror_file():
+    return Path(_REGISTRY_DIR.name) / "mirror.json"
+
+
+def _fake_read_mirror():
+    path = _mirror_file()
+    if not path.exists():
+        return None
+    rec = json.loads(path.read_text("utf-8"))
+    if not pilot._valid_record(rec):
+        raise pilot.Blocked("PAID_SPEND_MIRROR_INVALID_NO_CALL")
+    return rec
+
+
+def _fake_write_mirror(rec):
+    _mirror_file().write_text(json.dumps(rec, sort_keys=True), encoding="utf-8")
+
+
+_MIRROR_PATCHES = []
 
 
 def tearDownModule():
+    for p in _MIRROR_PATCHES:
+        p.stop()
     _ANCHOR_PATCH.stop()
     _REGISTRY_PATCH.stop()
     _REGISTRY_DIR.cleanup()
@@ -48,9 +76,9 @@ def fresh_registry():
     path = Path(os.environ[pilot.PAID_LEDGER_REGISTRY_ENV])
     if path.exists():
         path.unlink()
-    anchor = pilot.spend_anchor_path()
-    if anchor.exists():
-        anchor.unlink()
+    for record in (pilot.spend_anchor_path(), _mirror_file()):
+        if record.exists():
+            record.unlink()
 
 
 class FixedLedger(unittest.TestCase):
@@ -155,7 +183,7 @@ class FixedLedger(unittest.TestCase):
 
 
 class SpendAnchor(unittest.TestCase):
-    """D-041 (1)(2): a new registry or a re-created ledger cannot restart the lifetime count."""
+    """D-041 (1)(2), audit item 5: two copies, never a fresh start, no reset by files or env."""
 
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
@@ -165,73 +193,101 @@ class SpendAnchor(unittest.TestCase):
         self.ledger = self.dir / "paid.sqlite"
         self.ledger_id = pilot.init_paid_ledger(self.ledger)
 
+    def adopt_after_first_run(self):
+        # the OWNER PC already had paid runs: a reservation exists, then the record is adopted
+        pilot.reserve_billable_attempt(self.ledger, "anchor_run_0000", "fp", slot_key="s0", now=NOW)
+        pilot.adopt_spend_anchor()
+
     def reserve(self, ledger, i):
         carried = pilot.spend_anchor_carried(pilot.read_registry())
         pilot.reserve_billable_attempt(ledger, "anchor_run_%04d" % i, "fp", slot_key="s%d" % i,
                                        now=NOW + timedelta(days=i), carried=carried)
         pilot.record_spend_anchor(pilot.read_registry())
 
-    def test_first_use_creates_the_anchor_and_raises_the_high_water_mark(self):
+    def test_no_automatic_first_use(self):
+        with self.assertRaisesRegex(pilot.Blocked, "PAID_SPEND_ANCHOR_MISSING_NO_CALL"):
+            pilot.spend_anchor_carried(pilot.read_registry())
+        with self.assertRaisesRegex(pilot.Blocked, "ADOPT_NEEDS_EXISTING_RESERVATIONS"):
+            pilot.adopt_spend_anchor()
         self.assertIsNone(pilot.read_spend_anchor())
+
+    def test_adopt_then_each_reservation_raises_both_copies(self):
+        self.adopt_after_first_run()
+        per = pilot.PAID_RESERVED_CENTS_PER_RUN
+        self.assertEqual(pilot.read_spend_anchor()["high_water_cents"], per)
         self.reserve(self.ledger, 1)
-        self.reserve(self.ledger, 2)
-        anchor = pilot.read_spend_anchor()
-        self.assertEqual(anchor["high_water_cents"], 2 * pilot.PAID_RESERVED_CENTS_PER_RUN)
-        self.assertEqual(anchor["ledger_ids"], [self.ledger_id])
+        rec = pilot.read_spend_anchor()
+        self.assertEqual((rec["high_water_cents"], rec["revision"]), (2 * per, 2))
+        self.assertEqual(json.loads(_mirror_file().read_text("utf-8")), rec)
+        with self.assertRaisesRegex(pilot.Blocked, "ALREADY_EXISTS"):
+            pilot.adopt_spend_anchor()
+
+    def test_one_copy_deleted_or_changed_stops(self):
+        self.adopt_after_first_run()
+        _mirror_file().unlink()
+        with self.assertRaisesRegex(pilot.Blocked, "ONE_COPY_MISSING"):
+            pilot.spend_anchor_carried(pilot.read_registry())
+        with self.assertRaisesRegex(pilot.Blocked, "ALREADY_EXISTS"):
+            pilot.adopt_spend_anchor()                 # cannot be rebuilt over one remaining copy
+        rec = json.loads(pilot.spend_anchor_path().read_text("utf-8"))
+        _fake_write_mirror(dict(rec, high_water_cents=0))   # lowered in one copy
+        with self.assertRaisesRegex(pilot.Blocked, "COPIES_DIFFER"):
+            pilot.spend_anchor_carried(pilot.read_registry())
+
+    def test_both_copies_deleted_after_runs_stop_not_a_first_use(self):
+        self.adopt_after_first_run()
+        pilot.spend_anchor_path().unlink()
+        _mirror_file().unlink()
+        with self.assertRaisesRegex(pilot.Blocked, "PAID_SPEND_ANCHOR_MISSING_NO_CALL"):
+            pilot.spend_anchor_carried(pilot.read_registry())
 
     def test_new_registry_and_recreated_ledger_stop_instead_of_resetting(self):
-        self.reserve(self.ledger, 1)
+        self.adopt_after_first_run()
         high = pilot.read_spend_anchor()["high_water_cents"]
-        Path(os.environ[pilot.PAID_LEDGER_REGISTRY_ENV]).unlink()   # registry deleted
+        Path(os.environ[pilot.PAID_LEDGER_REGISTRY_ENV]).unlink()   # registry deleted (or env points elsewhere)
         self.ledger.unlink()                                        # ledger deleted
         new_id = pilot.init_paid_ledger(self.ledger)                # and re-created
-        anchor = pilot.read_spend_anchor()
-        self.assertIn(new_id, anchor["ledger_ids"])
-        self.assertEqual(anchor["high_water_cents"], high)          # the total is kept
+        rec = pilot.read_spend_anchor()
+        self.assertIn(new_id, rec["ledger_ids"])
+        self.assertEqual(rec["high_water_cents"], high)             # the total is kept
         with self.assertRaisesRegex(pilot.Blocked, "PAID_LEDGER_ROLLBACK_DETECTED_NO_CALL"):
             pilot.spend_anchor_carried(pilot.read_registry())       # fail-closed, no reset
 
     def test_a_properly_retired_ledger_carries_its_total(self):
-        self.reserve(self.ledger, 1)
+        self.adopt_after_first_run()
         pilot.retire_paid_ledger(self.ledger_id, "new disk")
         pilot.init_paid_ledger(self.dir / "next.sqlite")
         self.assertEqual(pilot.spend_anchor_carried(pilot.read_registry()), pilot.PAID_RESERVED_CENTS_PER_RUN)
 
-    def test_unknown_ledger_rollback_and_missing_anchor_stop_the_run(self):
-        self.reserve(self.ledger, 1)
-        with closing(sqlite3.connect(self.ledger)) as conn, conn:   # ledger rolled back
+    def test_rollback_and_unknown_ledger_stop(self):
+        self.adopt_after_first_run()
+        with closing(sqlite3.connect(self.ledger)) as conn, conn:
             conn.execute("DELETE FROM paid_attempts")
         with self.assertRaisesRegex(pilot.Blocked, "PAID_LEDGER_ROLLBACK_DETECTED_NO_CALL"):
             pilot.spend_anchor_carried(pilot.read_registry())
-        pilot.spend_anchor_path().unlink()                           # anchor deleted, ledger empty again
-        self.reserve(self.ledger, 2)                                 # looks like a first use: allowed
-        pilot.spend_anchor_path().unlink()                           # anchor deleted with reservations
-        with self.assertRaisesRegex(pilot.Blocked, "PAID_SPEND_ANCHOR_MISSING_NO_CALL"):
-            pilot.spend_anchor_carried(pilot.read_registry())
-        pilot.adopt_spend_anchor()                                   # explicit OWNER step
-        self.assertEqual(pilot.read_spend_anchor()["high_water_cents"], pilot.PAID_RESERVED_CENTS_PER_RUN)
-        with self.assertRaisesRegex(pilot.Blocked, "ALREADY_EXISTS"):
-            pilot.adopt_spend_anchor()
-        anchor = pilot.read_spend_anchor()
-        pilot._write_spend_anchor([], anchor["high_water_cents"])   # ledger not in the anchor
+        rec = pilot.read_spend_anchor()
+        pilot._write_spend_anchor([], rec["high_water_cents"], rec["revision"] + 1)
         with self.assertRaisesRegex(pilot.Blocked, "PAID_LEDGER_NOT_IN_SPEND_ANCHOR_NO_CALL"):
             pilot.spend_anchor_carried(pilot.read_registry())
 
-    def test_unreadable_or_invalid_anchor_stops_the_run(self):
-        self.reserve(self.ledger, 1)
+    def test_unreadable_or_invalid_file_stops(self):
+        self.adopt_after_first_run()
         path = pilot.spend_anchor_path()
         for body, reason in (("{not json", "UNREADABLE"), ('{"schema": "x"}', "INVALID")):
             path.write_text(body, encoding="utf-8")
             with self.subTest(body=body), self.assertRaisesRegex(pilot.Blocked, "PAID_SPEND_ANCHOR_" + reason):
                 pilot.spend_anchor_carried(pilot.read_registry())
 
-    def test_anchor_folder_is_not_taken_from_the_environment(self):
+    def test_record_locations_are_not_taken_from_the_environment(self):
         source = SCRIPT.read_text(encoding="utf-8")
         body = source[source.index("def _known_local_appdata"):source.index("def spend_anchor_path")]
         self.assertNotIn("os.environ", body)
         self.assertIn("SHGetKnownFolderPath", body)
+        self.assertIn('SPEND_MIRROR_KEY = r"Software\\100B_AGENT\\PaidSpend"', source)
+        self.assertIn("winreg.HKEY_CURRENT_USER", source)
+        self.assertIn("RESIDUAL RISK", source)
 
-    def test_cli_main_uses_the_anchor(self):
+    def test_cli_main_uses_the_record(self):
         source = SCRIPT.read_text(encoding="utf-8")
         self.assertIn("carried=spend_anchor_carried(read_registry()))", source)
         self.assertIn("record_spend_anchor(read_registry())", source)
