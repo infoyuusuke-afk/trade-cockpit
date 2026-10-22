@@ -1,6 +1,34 @@
 # 100億PROJECT — DAILY PROGRESS
 Newest first. Keep one short entry per day; detailed evidence stays in PRs and the Issue #282 records.
 
+## 2026-10-22 JST
+
+### 0. 現実の紙幣
+- 今日の現実売上：未確認
+- 今日の実現トレード利益：未確認
+- 今日の実費：未集計
+- 今日のOwner労務コスト：未集計
+- 今日のProject純損益：未確定
+- 100億円までの残額：UNKNOWN
+
+### 1. Decisions (Issue #282 comment 6335516423, PENDING_DOC_SYNC)
+- R2 "地合い弱い" stays the Collector's VWAP breadth; the "advancers" wording was wrong (D-034).
+- OWNER-approved draft repair scope on the 08c1479 line (D-035).
+- GPT API input cap 24,000 bytes (D-036). JPX all-issue margin data is read locally by the Brain (D-037). Research-only HMAC subkeys (D-038).
+- Voice alerts limited to rules ①②④⑤ and IR急騰 (D-039).
+- Design only, no change now: whole-screen LIVE gate (D-040), stale and empty tabs (D-042).
+- No new paid GPT API runs until the ledger reset gap is fixed (D-041).
+
+### 2. Work
+- Claude independent defect audit after the close, of live 48bbfe2 and dev 08c1479. Read-only; nothing was changed on the running V10.
+  - Serious: slow Gateway 28581 replies against the screen timeout; browser speech left over; one missing name blocks screen LIVE; screen shows the ranking score as 期待値.
+  - Safety: no real-order path, no committed secrets, no freshness-gate loosening since 714c020. S1-S3 (Excel handling vs D-023) and S4 (paid ledger reset) found.
+- Repairs under D-035 are being drafted on the OWNER PC. Not deployed; independent audit and OWNER approval are still needed.
+
+### 3. Blockers
+- New paid GPT API runs are on hold (D-041).
+- Gateway speed during market hours is not measured yet.
+
 ## 2026-10-18 JST
 
 ### 0. 現実の紙幣

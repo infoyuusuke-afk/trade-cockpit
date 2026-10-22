@@ -24,5 +24,22 @@ All stages: `REAL_SUBMIT_ALLOWED=false`, `STOP_ALLOWED=false`, `CUTOVER_ELIGIBLE
 - Legacy V8/V9 test isolation: Draft PR #434. Merge awaits GPT lead approval.
 - Revenue lane: must not be starved. Record actual cash only, never projected value.
 
+## 2026-10-22 additions (Issue #282 comment 6335516423, PENDING_DOC_SYNC)
+- Post-close audit repairs, D-035 scope, on the PR #488 line from 08c1479. The Claude on the OWNER PC drafts. Claude audits independently. Switching the live machine needs OWNER approval.
+  - Gateway cache
+  - browser speech removal
+  - 期待値 / 順位スコア labels
+  - after-15:30 downtime exclusion
+  - S1-S3 Excel order
+- Design only: per-symbol LIVE status (D-040); stale and empty tab cleanup table (D-042).
+- Paid GPT ledger hardening before any new paid run (D-041). Owner: GPT lead; independent acceptance required.
+- Deferred, medium:
+  - slippage in EV
+  - Excel-busy Shadow pauses
+  - afternoon cycle time
+  - tick-rounded stop/target
+  - Brain vs Shadow time basis
+  - JPX data age
+
 ## Owner operation target
 Nearly 0. Repeated manual PowerShell/debug loops are a system failure, not normal operation.

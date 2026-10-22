@@ -1,5 +1,5 @@
 # 100億PROJECT — DECISIONS
-Updated: 2026-10-18 JST
+Updated: 2026-10-22 JST
 
 > D-001〜D-016 were recorded on 2026-10-08 on the V10 branch line and are carried to `main` unchanged, except D-002, D-005 and D-016 are annotated below (the original text is kept).
 > D-017 onward summarize later formal decisions; the full text is the Issue #282 record named in each entry.
@@ -222,3 +222,88 @@ Source: OWNER chat 2026-10-19 15:20Z in the Claude project thread (D-024).
 - The Claude Brain track (D-030) is the manual first step: candidate methods are tested in TradingView by the OWNER.
 State: PENDING_DOC_SYNC until merged to `main` (D-022).
 Source: OWNER chat 2026-10-19 15:54Z in the Claude project thread (D-024).
+
+> D-032 and D-033 are recorded on Issue #282 only (D-032 is reserved for the v3 watch universe; D-033 was allocated earlier). They are not synced in this file yet. This edit adds D-034 to D-042 and does not renumber or overwrite any earlier decision.
+
+## D-034 R2 "地合い弱い" is the VWAP breadth already in the Collector (documentation correction, 2026-10-22)
+- R2 "地合い弱い" means: among eligible names with fresh, valid VWAP data (and an adequate sample count), 40% or fewer trade ABOVE their VWAP. This is the definition already in the Collector code.
+- It does NOT mean "40% or fewer names advancing versus the previous close". Any description saying so is wrong and is corrected here.
+- Why: the R2 backtest matched the Collector's recorded "地合い弱い" label, so its numbers hold only for this definition. Changing the definition would make R2 an untested rule.
+- The R2 formula, threshold and backtest labels are unchanged. The OWNER left the choice to the AIs ("R2はAIが決めて判断する").
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-AUDIT-DECISIONS-20261022-01), P0-V10-POSTCLOSE-AUDIT-AND-DECISIONS-20261022.
+
+## D-035 OWNER-approved draft repair scope on the 08c1479 line (2026-10-22)
+- On the development line (PR #488, HEAD 08c1479), the Claude on the OWNER PC may draft these fixes only:
+  1. Gateway 28581 cache: run git once at start-up, reload large files only when they change, and fail closed if the cache is invalid.
+  2. Remove the browser speech in `opportunity_radar.js` and in the KIOXIA tab.
+  3. Show `ev_pct` as the expected value and `score_pct` only as 「順位スコア」.
+  4. Exclude time after 15:30 JST from the virtual-downtime metric, without changing any timestamp or stop log.
+  5. S1-S3, D-023 Excel order:
+     - START refuses if another Excel exists.
+     - STOP checks for another Excel before stopping anything.
+     - STOP never quits an Excel instance that still holds other workbooks.
+- No safety gate is loosened. Nothing is deployed until an independent audit and a separate OWNER approval.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-AUDIT-DECISIONS-20261022-01), P0-V10-POSTCLOSE-AUDIT-AND-DECISIONS-20261022.
+
+## D-036 GPT API input cap of 24,000 bytes (2026-10-22)
+- The OWNER approved 24,000 bytes as the upper bound for the input of each existing specialist GPT API run, including feedback and metadata.
+- It is a byte limit, not a token allowance. It does not approve external JPX figures, extra cost, more runs or new paid calls. Other budget limits are unchanged.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-AUDIT-DECISIONS-20261022-01), P0-V10-POSTCLOSE-AUDIT-AND-DECISIONS-20261022.
+
+## D-037 JPX all-issue margin data is read locally by the Brain on the OWNER PC (2026-10-22)
+- The Brain on the OWNER PC may read JPX all-issue margin balances locally, with source and as-of date validated.
+- This is not the JPX daily designated-issue list.
+- Official figures are not sent automatically to the paid GPT API, to the cloud or to GitHub. Licence and machine-reuse permission remain separate gates.
+- The current 7-day age limit is not approved as a trading freshness rule. A later freshness decision is required.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-AUDIT-DECISIONS-20261022-01), P0-V10-POSTCLOSE-AUDIT-AND-DECISIONS-20261022.
+
+## D-038 Research-only HMAC subkeys for feedback (2026-10-22)
+- Records the PR #488 research-only scheme: context-labelled HMAC-SHA256 subkeys derived from the existing bridge key, one for feedback and one for read receipts. The Brain-only receiver ACK key stays separate.
+- Approved for isolated synthetic review and documentation only. It is not evidence of separate trust boundaries and does not authorize production keys or rotation.
+- No secret values in the public repo. Production security review and OWNER approval remain required.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-AUDIT-DECISIONS-20261022-01), P0-V10-POSTCLOSE-AUDIT-AND-DECISIONS-20261022.
+
+## D-039 Voice alerts are limited to rules ①②④⑤ and IR急騰 (2026-10-22)
+- The only allowed voice alert categories are the signal rules ①②④⑤ and IR急騰.
+- Browser narration of current price / VWAP and the KIOXIA tab voice are removed.
+- No new voice categories, no change to colours, fonts or the fixed zaraba layout, and no link to orders.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-AUDIT-DECISIONS-20261022-01), P0-V10-POSTCLOSE-AUDIT-AND-DECISIONS-20261022.
+
+## D-040 Whole-screen LIVE gate: design only, no relaxation (2026-10-22)
+- Today one missing name keeps the whole screen from showing LIVE. The current gate is NOT relaxed.
+- Future design: separate Collector/market health from per-symbol FRESH / STALE / UNKNOWN / INVALID, with explicit partial coverage. A missing or stale name can be unavailable on its own while other safely sourced data stays visible as RESEARCH / PARTIAL, never as global LIVE.
+- Aligned with D-026, with fail-closed negative tests. Any runtime threshold change needs independent acceptance and explicit OWNER approval.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-AUDIT-DECISIONS-20261022-01), P0-V10-POSTCLOSE-AUDIT-AND-DECISIONS-20261022.
+
+## D-041 Paid GPT API ledger: no new paid runs until the reset gap is fixed (2026-10-22)
+- The audit found the paid ledger can be reset by pointing environment settings at a new registry or ledger. That is not accepted.
+- No NEW billable API runs until fixed. Prerequisites:
+  - a protected, non-resettable lifetime spend record;
+  - an approval that is not just an environment flag;
+  - reconciliation against the provider's usage records;
+  - a verified provider-side hard limit where available.
+- The existing $1 per run, $8 lifetime reservation and no-retry rules stay.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-AUDIT-DECISIONS-20261022-01), P0-V10-POSTCLOSE-AUDIT-AND-DECISIONS-20261022.
+
+## D-042 Stale and empty tabs: design only (2026-10-22)
+- Hide stale/static displays and unimplemented empty tabs from active trading navigation when they cannot show source and as-of time. Keep the evidence and code history.
+- Rebuild only functions with rights-cleared current sources and verified use.
+- The fixed intraday zaraba screen, its order, palette and fonts stay. No unapproved tab redesign or deletion of valid live widgets.
+- A per-screen cleanup table is to be submitted before any change.
+State: PENDING_DOC_SYNC until merged to `main` (D-022).
+Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-AUDIT-DECISIONS-20261022-01), P0-V10-POSTCLOSE-AUDIT-AND-DECISIONS-20261022.
+
+## D-023 interpretation for S1-S3 (2026-10-22)
+- The Controller refuses to launch if another Excel workbook or process exists.
+- STOP checks for another Excel before stopping any V10 process or quitting Excel.
+- If another Excel cannot be proven absent, normal STOP refuses safely and reports BLOCKED. It never closes another file.
+- Emergency procedures beyond D-023 need a separate OWNER decision.
+Source: GPT lead record on Issue #282, comment 6335516423 (COORD-V10-POSTCLOSE-AUDIT-DECISIONS-20261022-01), P0-V10-POSTCLOSE-AUDIT-AND-DECISIONS-20261022.
