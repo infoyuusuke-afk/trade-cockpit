@@ -69,6 +69,33 @@ Business flow: `REPORT/ASSIGN -> ACK -> RESULT -> REVIEW -> (next change or BLOC
 - These two pre-v1 comments are **not machine-schema v1**, and do not prove the analyst's independent scheduled-run receipt. E2E=PENDING until separate analyst evidence.
 - Development, PRE-NEXT, Revenue Hunter and spec-audit routes are **not** E2E-proven. PRE-NEXT's existing schedule text is not a guaranteed Issue #282 inbox, and no task prompt shall be silently modified.
 
+## GNH01 legacy DELIVERY_TEST observation extension (Draft only)
+
+The 2026-10-22 one-shot Routine GitHub comment
+[6335466037](https://github.com/infoyuusuke-afk/trade-cockpit/issues/282#issuecomment-6335466037)
+does **not** have required standard v1 sent_at_jst, evidence_url or
+owner_approval_boundary. Never synthesize those fields or treat this comment
+as a regular REPORT or authenticated transport. The separate read-only
+`gnh01_coordination_observation_v1` validator permits only the observed
+legacy DELIVERY_TEST shape (fixed external global_news_hunter_01 source,
+development_lead recipient, strict marker, clock and real_submit_allowed=false).
+Its asserted routine run ID UNKNOWN remains UNKNOWN.
+
+Under this **proposed, unmerged** extension, a development_lead ACK may
+reference that one DELIVERY_TEST only when it includes
+`ack_scope: GITHUB_COMMENT_READBACK_ONLY`, standard valid ACK metadata and
+reversed roles. Correlation proves only a declared GitHub readback. It does NOT
+prove a Grok-authenticated sender, unattended PRE-NEXT task delivery, specialist
+receipt, SHADOW/BRAIN input, or end-to-end verification. Any duplicate ACK or
+unsupported ACK scope fails closed. The external Grok source is not an active
+coordination role; the five-role OWNER roster in Issue #282 prevails over
+legacy role descriptions in this Draft.
+
+This change is a review proposal. Do not post an ACK relying on its
+not-yet-approved contract, install schedulers, modify Grok/PRE-NEXT/V10,
+promote delivery tests to market events, merge, deploy or authorize real orders.
+Independent review and OWNER acceptance are required before activation.
+
 ## Local read-only verifier
 
 `python -m scripts.coordination_ledger_v1 path/to/public_issue_comments.json`
