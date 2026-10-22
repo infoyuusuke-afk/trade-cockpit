@@ -69,3 +69,16 @@ Run this snippet with the repository root as current directory and PYTHONPATH=te
 | Owner Windows V10 production acceptance | NOT RUN |
 | Main merge or deployment | NOT PERFORMED |
 | Real trading | DISABLED |
+
+## 7. Phase 1C — PRE-NEXT review request (NOT AUTOMATED DELIVERY)
+
+- `scripts/gnh01_pre_next_review_v1.py` builds an in-memory `100b-gnh01-pre-next-review-request-v1` from an event whose immutable content hash/revision matches an independently reread private archive receipt.
+- Strict gate: private archive must be ARCHIVED and fresh (maximum 2 hours since local archive completion); missing/tampered/older/future/corrupt data are rejected.
+- Every external assertion remains a **claim**. Even sender-marked PRIMARY_VERIFIED is not independent source verification. The exported request explicitly keeps `publication_available_at_verified=false`, `pre_next_delivery_verified=false`, `pre_next_ack_verified=false`, `brain_trade_decision_eligible=false`, `shadow_eligible=false` and `real_submit_allowed=false`.
+- Crucially, this object is NOT the `100b-public-agent-evidence-v1` schema from Draft PR #481: #481 requires a verified evidence availability timestamp and specialist research output. Do not forge `available_at` from a Grok claim or local archive time. A separate actual PRE-NEXT receiving process and independent official-source verification must precede any adaptation to #481 and #482/#483.
+- This pure converter **does not** read/modify ChatGPT scheduled Tasks, call Grok, post Issue #282, write a delivery queue or claim any PRE-NEXT ACK. The received original JSON must remain in private storage only.
+- Safety improvement: archive path guard refuses databases in the GitHub checkout, linked/reparse directories, hardlinks and POSIX directories with broad permissions. This is still not a substitute for Windows ACL validation, which remains a deployment gate.
+
+### Acceptance status
+
+`test_gnh01_pre_next_review_v1.py` exercises matching private receipt, sender-source claims, missing/stale/future data, corrupted payload, mismatched revision and no-execution invariants. These tests are synthetic-only and are included in the isolated Windows/Ubuntu CI matrix. GitHub run evidence must be updated to the exact latest HEAD before any PASS claim.
