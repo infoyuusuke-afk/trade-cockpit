@@ -134,6 +134,10 @@ class ScreenStaysPut(unittest.TestCase):
         self.assertIn(".pane-intro>span{display:none}", html)
         self.assertIn(".focus-empty{padding:10px 12px!important;font-size:13px!important}", html)
         self.assertIn("#attention-rows:empty{display:none}", html)
+        # OWNER 2026-10-23: a gap under the tab bar; status bar and 注目 share one corner radius
+        self.assertIn(".unified-mode-wrap:not(.attention-wrap){padding-top:12px!important}", html)
+        self.assertIn("border-radius:14px!important}", html)
+        self.assertIn(".attention-box{margin:0 0 8px;padding:8px 16px;border:1px solid #6b5426;border-radius:14px;", html)
         self.assertLess(html.index('href="theme.css'), html.index(".pane-intro{padding:10px 4px 8px!important"))   # overrides theme.css
 
 
