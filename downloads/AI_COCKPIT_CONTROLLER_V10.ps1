@@ -1105,6 +1105,15 @@ try {
     Write-Host "==================================================" -ForegroundColor DarkCyan
     Write-Host ""
 
+    # OWNER 2026-10-22 S2 (also in START): before anything is stopped, started
+    # or opened, refuse while any Excel already runs in this Windows session.
+    # The other Excel is never closed, killed or operated.
+    $otherExcelAtControllerStart = @(Get-ForeignExcelProcesses)
+    if ($otherExcelAtControllerStart.Count -gt 0) {
+        Write-Host ("V10_START_BLOCKED_OTHER_EXCEL (PID " + (($otherExcelAtControllerStart | ForEach-Object { $_.Id }) -join ",") + "); nothing was started.") -ForegroundColor Red
+        throw "Another Excel is open in this Windows session. Close it, then start AI Cockpit again. Nothing was started or stopped."
+    }
+
     Write-Status "Resolving repo checkout and MS2 runtime folder..."
     $RepoRootResolved = Resolve-RepoRoot $RepoRoot
     $RuntimeDir = Resolve-RuntimeDir $RuntimeDirOverride

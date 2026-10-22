@@ -244,7 +244,7 @@ def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: da
         seen.add(s["ticker"])
         if s["score_pct"] < MIN_SCORE_PCT or len(base["picks"]) >= MAX_PICKS:
             base["excluded"].append({"ticker": s["ticker"], "name": s["name"],
-                                     "reason": ("期待値%+.3f%%（基準%.2f%%未満）" % (s["score_pct"], MIN_SCORE_PCT))
+                                     "reason": ("順位スコア%+.3f%%（基準%.2f%%未満）" % (s["score_pct"], MIN_SCORE_PCT))
                                      if s["score_pct"] < MIN_SCORE_PCT else "上位%d件の外" % MAX_PICKS})
             continue
         base["picks"].append(dict(s, rank=len(base["picks"]) + 1))

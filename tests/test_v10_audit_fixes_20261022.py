@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 GATEWAY = ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1"
 STOP = ROOT / "downloads" / "STOP_AI_COCKPIT_V10.ps1"
 START = ROOT / "downloads" / "START_AI_COCKPIT_V10.ps1"
+CONTROLLER = ROOT / "downloads" / "AI_COCKPIT_CONTROLLER_V10.ps1"
 JST = timezone(timedelta(hours=9))
 
 
@@ -111,6 +112,11 @@ class BrainCardLabels(unittest.TestCase):
         self.assertIn("'<small>順位スコア '+evPct(p.score_pct)", html)
         self.assertNotIn("期待値 '+evPct(p.score_pct)", html)
 
+    def test_brain_exclusion_reason_says_ranking_score(self):
+        text = (ROOT / "scripts" / "v10_brain_core.py").read_text(encoding="utf-8")
+        self.assertIn('"順位スコア%+.3f%%（基準%.2f%%未満）"', text)
+        self.assertNotIn('"期待値%+.3f%%', text)
+
 
 class DowntimeNotAfter1530(unittest.TestCase):
     def at(self, hm, day=22):
@@ -163,6 +169,15 @@ class ExcelSafety(unittest.TestCase):
         self.assertLess(guard, text.index("Stop-Process -Id $controllerPid"))
         self.assertLess(guard, text.index("Stop-OwnedJobBridge 28580"))
         self.assertIn("[int]$_.Id -ne $v10ExcelPid", text)
+
+    def test_s2_controller_refuses_before_anything_starts(self):
+        text = CONTROLLER.read_text(encoding="utf-8").replace("\r\n", "\n")
+        self.assertTrue(all(b < 128 for b in CONTROLLER.read_bytes()))
+        guard = text.index("V10_START_BLOCKED_OTHER_EXCEL")
+        for later in ('Write-Status "Resolving repo checkout', "Stopping this controller's previously managed",
+                      'Write-Status "Starting Gateway first', 'Write-Status "Opening MS2 RSS workbook'):
+            self.assertLess(guard, text.index(later), later)
+        self.assertLess(text.index("$otherExcelAtControllerStart = @(Get-ForeignExcelProcesses)"), guard)
 
     def test_s2_start_refuses_before_the_runner(self):
         text = START.read_text(encoding="utf-8").replace("\r\n", "\n")

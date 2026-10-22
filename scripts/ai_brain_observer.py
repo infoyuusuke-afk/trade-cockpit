@@ -76,7 +76,7 @@ JPX_MODULES = (
 )
 JPX_RETRY = timedelta(minutes=30)
 JPX_CHILD_DEADLINE_SECONDS = 60   # audit 6327603446: fetch + parse never block the loop longer
-BRAIN_CORE_MODULE = ("v10_brain_core", "acda62b942903e76fc4979de437beebc2a91c3be")
+BRAIN_CORE_MODULE = ("v10_brain_core", "b574290a42f117a23606fb4b553750b8ab262e5b")
 
 
 def _aware(value):
