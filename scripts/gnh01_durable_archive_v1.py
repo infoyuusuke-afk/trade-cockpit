@@ -184,6 +184,10 @@ def archive_event(db_path, event: dict, *, clock=None) -> dict:
     try:
         con = _connect(path, initialize=True)
         try:
+            # BEGIN IMMEDIATE MUST precede SELECT; otherwise concurrent writers
+            # both observe "missing" before an implicit transaction begins and
+            # one hits a UNIQUE constraint at INSERT (not a safe duplicate ACK).
+            con.execute("BEGIN IMMEDIATE")
             with con:
                 existing = con.execute(
                     "SELECT content_hash,state FROM grok_archive_v1 "
