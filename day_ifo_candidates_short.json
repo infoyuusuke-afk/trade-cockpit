@@ -1,7 +1,26 @@
 {
-  "updated_at": "2026-10-22 14:00:13 JST",
+  "updated_at": "2026-10-22 14:59:22 JST",
   "side": "SHORT",
   "status": "試運転・検証中",
-  "count": 0,
-  "candidates": []
+  "count": 1,
+  "candidates": [
+    {
+      "name": "ハーモニック・ドライブ・システムズ（6324）",
+      "code": "6324",
+      "ticker": "6324.T",
+      "side": "SHORT",
+      "score": 61,
+      "trigger": 4865.0,
+      "stop": 5480.0,
+      "target1": 3940.0,
+      "target2": 3330.0,
+      "rvol": 1.27,
+      "atr_pct": 6.73,
+      "supply_phase": null,
+      "margin_caution_flagged": false,
+      "reason": "下降配列（終値<5日線<20日線）／20日線からの乖離-19.1%／出来高比1.27倍／信用需給不明",
+      "caution": "貸借銘柄・在庫・逆日歩・空売り規制を楽天MS2で必ず確認。",
+      "status": "試運転・検証中（LONG側と異なりまだ実績なし）"
+    }
+  ]
 }
