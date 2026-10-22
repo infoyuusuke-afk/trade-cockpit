@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-10-22T09:54:07.203535+09:00",
+  "updated_at": "2026-10-22T23:08:47.471572+09:00",
   "calendar": [
     {
       "code": "1407",
@@ -172,9 +172,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "一過性利益"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261022554415.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -981,9 +985,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "配当変更・内容要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261022554636.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -3431,9 +3439,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261017552553.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -3454,9 +3466,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261021554163.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -3477,9 +3493,15 @@
       "status": "予定（変更あり）",
       "watched": true,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表",
+          "配当変更・内容要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261021554279.pdf",
+          "https://www.release.tdnet.info/inbs/140120261021554281.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -3500,9 +3522,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261021554066.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -3523,9 +3549,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261022554447.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -3548,9 +3578,11 @@
       "analysis": {
         "label": "関連開示を確認",
         "recent_tags": [
+          "決算発表",
           "業績修正・方向要確認"
         ],
         "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261022554428.pdf",
           "https://www.release.tdnet.info/inbs/140120261014550394.pdf"
         ],
         "upward_revision_probability": null,
@@ -3588,9 +3620,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4050.0,
-        "return_5d_pct": 0.12,
-        "return_20d_pct": 0.12,
+        "last_close": 4055.0,
+        "return_5d_pct": 0.25,
+        "return_20d_pct": 0.25,
         "momentum_direction": "中立"
       }
     },
@@ -3618,9 +3650,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1866.0,
-        "return_5d_pct": -0.16,
-        "return_20d_pct": -0.48,
+        "last_close": 1850.0,
+        "return_5d_pct": -1.02,
+        "return_20d_pct": -1.33,
         "momentum_direction": "中立"
       }
     },
@@ -3648,10 +3680,10 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 74900.0,
-        "return_5d_pct": -2.35,
-        "return_20d_pct": -6.26,
-        "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
+        "last_close": 75200.0,
+        "return_5d_pct": -1.96,
+        "return_20d_pct": -5.88,
+        "momentum_direction": "中立"
       }
     },
     {
@@ -3678,9 +3710,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1076.0,
-        "return_5d_pct": 0.65,
-        "return_20d_pct": -4.95,
+        "last_close": 1078.0,
+        "return_5d_pct": 0.84,
+        "return_20d_pct": -4.77,
         "momentum_direction": "中立"
       }
     },
@@ -3708,9 +3740,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1696.0,
-        "return_5d_pct": 3.23,
-        "return_20d_pct": -4.5,
+        "last_close": 1705.0,
+        "return_5d_pct": 3.77,
+        "return_20d_pct": -4.0,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -3738,9 +3770,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 973.0,
-        "return_5d_pct": 3.62,
-        "return_20d_pct": -1.92,
+        "last_close": 962.0,
+        "return_5d_pct": 2.45,
+        "return_20d_pct": -3.02,
         "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -3768,9 +3800,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 5775.0,
-        "return_5d_pct": -2.23,
-        "return_20d_pct": -1.32,
+        "last_close": 5624.0,
+        "return_5d_pct": -4.79,
+        "return_20d_pct": -3.9,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -3798,9 +3830,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2071.0,
-        "return_5d_pct": -4.21,
-        "return_20d_pct": -8.81,
+        "last_close": 1965.0,
+        "return_5d_pct": -9.11,
+        "return_20d_pct": -13.47,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -3829,8 +3861,8 @@
       "momentum": {
         "available": true,
         "last_close": 500.0,
-        "return_5d_pct": -0.79,
-        "return_20d_pct": 23.46,
+        "return_5d_pct": 0.6,
+        "return_20d_pct": 21.95,
         "momentum_direction": "中立"
       }
     },
@@ -3858,9 +3890,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 3630.0,
-        "return_5d_pct": 0.97,
-        "return_20d_pct": -1.22,
+        "last_close": 3645.0,
+        "return_5d_pct": 1.39,
+        "return_20d_pct": -0.82,
         "momentum_direction": "中立"
       }
     },
@@ -3888,9 +3920,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 4205.0,
-        "return_5d_pct": -4.21,
-        "return_20d_pct": -11.29,
+        "last_close": 4110.0,
+        "return_5d_pct": -6.38,
+        "return_20d_pct": -13.29,
         "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）"
       }
     },
@@ -3918,9 +3950,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 66400.0,
-        "return_5d_pct": -1.34,
-        "return_20d_pct": -7.0,
+        "last_close": 66900.0,
+        "return_5d_pct": -0.59,
+        "return_20d_pct": -6.3,
         "momentum_direction": "中立"
       }
     },
@@ -3948,9 +3980,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 1942.0,
-        "return_5d_pct": 1.3,
-        "return_20d_pct": 6.88,
+        "last_close": 1936.0,
+        "return_5d_pct": 0.99,
+        "return_20d_pct": 6.55,
         "momentum_direction": "中立"
       }
     },
@@ -3982,9 +4014,9 @@
       },
       "momentum": {
         "available": true,
-        "last_close": 2970.0,
-        "return_5d_pct": -1.66,
-        "return_20d_pct": -1.0,
+        "last_close": 2950.0,
+        "return_5d_pct": -0.34,
+        "return_20d_pct": -2.48,
         "momentum_direction": "中立"
       }
     },
@@ -6903,9 +6935,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261022554460.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -8977,9 +9013,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261022554551.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -12385,9 +12425,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "発表済み好材料あり",
+        "recent_tags": [
+          "増配"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261022554591.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -31808,9 +31852,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261019552965.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -35676,9 +35724,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261022554346.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -36642,9 +36694,15 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "警戒材料あり",
+        "recent_tags": [
+          "訂正・取消確認",
+          "決算発表"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261020553692.pdf",
+          "https://www.release.tdnet.info/inbs/140120261020553672.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -47664,9 +47722,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261019553163.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -51279,9 +51341,14 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認",
+          "配当変更・内容要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261021554289.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -51532,9 +51599,13 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "配当変更・内容要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261021554228.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -53721,9 +53792,14 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "発表済み好材料あり",
+        "recent_tags": [
+          "増配",
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261021554202.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -59594,9 +59670,14 @@
       "status": "予定（変更あり）",
       "watched": false,
       "analysis": {
-        "label": "未発表・期待判断の根拠不足",
-        "recent_tags": [],
-        "evidence_urls": [],
+        "label": "関連開示を確認",
+        "recent_tags": [
+          "業績修正・方向要確認"
+        ],
+        "evidence_urls": [
+          "https://www.release.tdnet.info/inbs/140120261022554360.pdf",
+          "https://www.release.tdnet.info/inbs/140120261022554396.pdf"
+        ],
         "upward_revision_probability": null,
         "checks": [
           "通期計画と進捗率・前年同期の季節性",
@@ -69767,6 +69848,389 @@
   ],
   "catalysts": [
     {
+      "code": "2961",
+      "name": "日本調理機",
+      "title": "2026年９月期通期業績予想及び配当予想の修正（増配）に関するお知らせ",
+      "published_at": "2026-10-22T17:15:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261021554202.pdf",
+      "tags": [
+        "増配",
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "369A",
+      "name": "Ｇ－エータイ",
+      "title": "剰余金の配当に関するお知らせ",
+      "published_at": "2026-10-22T17:00:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261022554636.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6246",
+      "name": "テクノスマート",
+      "title": "2027年３月期第２四半期（中間期）業績予想の修正に関するお知らせ",
+      "published_at": "2026-10-22T16:10:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261019553163.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2168",
+      "name": "パソナグループ",
+      "title": "持分法適用会社株式に対する公開買付けに係る応募契約の締結及び特別利益の計上見込みに関するお知らせ",
+      "published_at": "2026-10-22T16:00:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261022554415.pdf",
+      "tags": [
+        "一過性利益"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "6146",
+      "name": "ディスコ",
+      "title": "2027年3月期第2四半期（中間期）決算短信〔日本基準〕（連結）",
+      "published_at": "2026-10-22T16:00:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261021554279.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": true
+    },
+    {
+      "code": "6146",
+      "name": "ディスコ",
+      "title": "剰余金の配当に関するお知らせ",
+      "published_at": "2026-10-22T16:00:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261021554281.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": true
+    },
+    {
+      "code": "7177",
+      "name": "ＧＭＯＦＨＤ",
+      "title": "2026年12月期第３四半期連結決算速報及び配当予想の修正（増配）に関するお知らせ",
+      "published_at": "2026-10-22T15:31:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261022554591.pdf",
+      "tags": [
+        "増配"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "1976",
+      "name": "明星工業",
+      "title": "業績予想の修正に関するお知らせ",
+      "published_at": "2026-10-22T15:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261022554551.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2980",
+      "name": "ＳＲＥＨＤ",
+      "title": "（訂正・数値データ訂正）「2026年３月期 決算短信〔日本基準〕（連結）」の一部訂正について",
+      "published_at": "2026-10-22T15:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261020553692.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2980",
+      "name": "ＳＲＥＨＤ",
+      "title": "（訂正・数値データ訂正）「2027年３月期　第1四半期決算短信〔日本基準〕（連結）」の一部訂正について",
+      "published_at": "2026-10-22T15:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261020553672.pdf",
+      "tags": [
+        "訂正・取消確認",
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "2999",
+      "name": "ホームポジション",
+      "title": "剰余金の配当に関するお知らせ",
+      "published_at": "2026-10-22T15:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261022554555.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3091",
+      "name": "ブロンコＢ",
+      "title": "2026年12月期　第３四半期決算短信〔日本基準〕（連結）",
+      "published_at": "2026-10-22T15:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261017552553.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3111",
+      "name": "オーミケンシ",
+      "title": "2027年３月期　第１四半期決算短信〔日本基準〕（連結）",
+      "published_at": "2026-10-22T15:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261022554674.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "3111",
+      "name": "オーミケンシ",
+      "title": "特別損失の計上に関するお知らせ",
+      "published_at": "2026-10-22T15:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261022554686.pdf",
+      "tags": [
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "4047",
+      "name": "関電化",
+      "title": "業績予想の修正に関するお知らせ",
+      "published_at": "2026-10-22T15:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261019552965.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "5909",
+      "name": "コロナ",
+      "title": "連結業績予想の修正に関するお知らせ",
+      "published_at": "2026-10-22T15:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261022554460.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "7058",
+      "name": "共栄セキュリティ",
+      "title": "特別損失（役員退職慰労金）計上に伴う業績予想の修正に関するお知らせ",
+      "published_at": "2026-10-22T15:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261022554704.pdf",
+      "tags": [
+        "業績修正・方向要確認",
+        "一過性損失"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "8904",
+      "name": "ＡＶＡＮＴＩＡ",
+      "title": "剰余金の配当に関するお知らせ",
+      "published_at": "2026-10-22T15:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261021553849.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "8954",
+      "name": "Ｒ－オリックスＦ",
+      "title": "2026年8月期 決算短信(REIT)",
+      "published_at": "2026-10-22T15:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261022554447.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "9478",
+      "name": "ＳＥ　Ｈ＆Ｉ",
+      "title": "2027年３月期　第２四半期（中間期）決算短信〔日本基準〕(連結)",
+      "published_at": "2026-10-22T15:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261022554428.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "9994",
+      "name": "やまや",
+      "title": "剰余金の配当（中間配当）に関するお知らせ",
+      "published_at": "2026-10-22T15:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261021554228.pdf",
+      "tags": [
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "9729",
+      "name": "トーカイ",
+      "title": "業績予想及び配当予想の修正に関するお知らせ",
+      "published_at": "2026-10-22T15:00:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261021554289.pdf",
+      "tags": [
+        "業績修正・方向要確認",
+        "配当変更・内容要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "8617",
+      "name": "光世証",
+      "title": "2027年３月期　第２四半期（中間期）決算短信〔日本基準〕（非連結）",
+      "published_at": "2026-10-22T14:00:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261021554066.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "9888",
+      "name": "ＵＥＸ",
+      "title": "業績予想の修正に関するお知らせ",
+      "published_at": "2026-10-22T14:00:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261022554346.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "5204",
+      "name": "石塚硝",
+      "title": "2027年３月期 第２四半期（中間期）決算短信〔日本基準〕(連結)",
+      "published_at": "2026-10-22T13:00:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261021554163.pdf",
+      "tags": [
+        "決算発表"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "549A",
+      "name": "ヒトトヒトＨＤ",
+      "title": "2027年3月期通期業績予想の修正に関するお知らせ",
+      "published_at": "2026-10-22T11:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261022554360.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
+      "code": "549A",
+      "name": "ヒトトヒトＨＤ",
+      "title": "2027年3月期通期業績予想の修正に関するお知らせ　補足説明資料",
+      "published_at": "2026-10-22T11:30:00+09:00",
+      "date": "2026-10-22",
+      "source_url": "https://www.release.tdnet.info/inbs/140120261022554396.pdf",
+      "tags": [
+        "業績修正・方向要確認"
+      ],
+      "basis": "TDnet表題。数値・本文はリンク先で確認",
+      "forecast_probability": null,
+      "watched": false
+    },
+    {
       "code": "5029",
       "name": "Ｇ－サークレイス",
       "title": "（訂正）「主要株主である筆頭株主の異動に関するお知らせ」の訂正につきまして",
@@ -70896,7 +71360,7 @@
   "sources": [
     {
       "url": "https://www.jpx.co.jp/listing/event-schedules/financial-announcement/tvdivq0000001ofb-att/kessan.xlsx",
-      "events": 4
+      "events": 8
     },
     {
       "url": "https://www.jpx.co.jp/listing/event-schedules/financial-announcement/tvdivq0000001ofb-att/kessan08_1002.xlsx",
@@ -70910,7 +71374,7 @@
   "disclosure_coverage": [
     {
       "date": "2026-10-22",
-      "pages": 1,
+      "pages": 2,
       "truncated": false
     },
     {
