@@ -52,7 +52,7 @@ AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_AC
 # (or when missing) into RuntimeDir/signal_ev_table_v1.json, which the Gateway
 # serves read-only for the REALTIME 5 ranking. The module is loaded only from
 # bytes whose git blob equals the pin. It never touches live data or orders.
-SIGNAL_EV_MODULE = ("v10_signal_ev_table", "89c2fae2e588a0722a93ef1607dd21333afc73ee")
+SIGNAL_EV_MODULE = ("v10_signal_ev_table", "0e890b62bed238e4fdf60e5056adc809604c8edc")
 SIGNAL_EV_FILE = "signal_ev_table_v1.json"
 SIGNAL_EV_REBUILD_AFTER_JST = (15, 35)
 # Night PTS -> next-morning watch candidates, rebuilt every 5 minutes from the
@@ -76,7 +76,7 @@ JPX_MODULES = (
 )
 JPX_RETRY = timedelta(minutes=30)
 JPX_CHILD_DEADLINE_SECONDS = 60   # audit 6327603446: fetch + parse never block the loop longer
-BRAIN_CORE_MODULE = ("v10_brain_core", "6288e13a1483d73b72249ab56c5e8cb512bab023")
+BRAIN_CORE_MODULE = ("v10_brain_core", "acda62b942903e76fc4979de437beebc2a91c3be")
 
 
 def _aware(value):

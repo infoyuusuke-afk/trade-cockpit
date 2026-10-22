@@ -83,29 +83,13 @@ def _context_ok(rule: dict, row: dict, side: int) -> bool:
     return True
 
 
-MIN_BREADTH_ROWS = 20  # the rule Shadow's MIN_BREADTH_ISSUES
-
-
-def advance_pct(rows: list) -> float | None:
-    """OWNER 2026-10-22 R2: share in % of the fresh rows trading above their reference price
-    (基準値). None with fewer than MIN_BREADTH_ROWS fresh rows that have both prices."""
-    base = [(p, r) for p, r in ((_f(x.get("price")), _f(x.get("reference_price"))) for x in rows
-                                if x.get("aggregate_row_fresh") is True)
-            if p and r and p > 0 and r > 0]
-    if len(base) < MIN_BREADTH_ROWS:
-        return None
-    return sum(1 for p, r in base if p > r) * 100.0 / len(base)
-
-
-def rules_for(rules: dict, row: dict, hm: str, breadth: float | None = None) -> list:
+def rules_for(rules: dict, row: dict, hm: str) -> list:
     side = SIDES.get(row.get("signal"))
     out = []
     for key, rule in (rules or {}).items():
         if rule.get("side") != side or not (rule.get("from", "") <= hm < rule.get("to", "")):
             continue
         if rule.get("market") and rule["market"] not in str(row.get("market_state", "")):
-            continue
-        if rule.get("advance_max_pct") is not None and (breadth is None or breadth > rule["advance_max_pct"]):
             continue
         if rule.get("strategy") and rule["strategy"] != row.get("strategy"):
             continue
@@ -115,11 +99,10 @@ def rules_for(rules: dict, row: dict, hm: str, breadth: float | None = None) -> 
     return out
 
 
-def estimate(row: dict, *, ev_table: dict | None, rule_shadow: dict | None, hm: str,
-             breadth: float | None = None) -> dict:
+def estimate(row: dict, *, ev_table: dict | None, rule_shadow: dict | None, hm: str) -> dict:
     """Expected net return in % of one trade on this signal, and what it rests on."""
     best = None
-    for key, rule in rules_for((rule_shadow or {}).get("rules"), row, hm, breadth):
+    for key, rule in rules_for((rule_shadow or {}).get("rules"), row, hm):
         test = (rule.get("backtest") or {}).get("test") or {}
         fwd = ((rule_shadow or {}).get("forward") or {}).get(key) or {}
         weight = _f(rule.get("backtest_weight"))
@@ -199,8 +182,6 @@ def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: da
             or not timedelta(seconds=-5) <= local - updated <= timedelta(seconds=MAX_LIVE_AGE_SECONDS)):
         return dict(base, state="NOT_LIVE")
     scored = []
-    breadth = advance_pct(live.get("all_targets") or [])
-    base["advance_pct"] = None if breadth is None else round(breadth, 1)
     for row in live.get("all_targets") or []:
         side = SIDES.get(row.get("signal"))
         if side is None:
@@ -214,7 +195,7 @@ def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: da
         if None in (entry, stop, target) or entry <= 0:
             base["excluded"].append({"ticker": row.get("ticker"), "name": name, "reason": "発動・損切・目標が未確定"})
             continue
-        est = estimate(row, ev_table=ev_table, rule_shadow=rule_shadow, hm=hm, breadth=breadth)
+        est = estimate(row, ev_table=ev_table, rule_shadow=rule_shadow, hm=hm)
         flags = []
         ratio = _f(row.get("credit_ratio"))
         daily = margin_ratio(margin, row.get("ticker"), now=now)

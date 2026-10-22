@@ -27,7 +27,6 @@ No order path; nothing here is a trade instruction.
 from __future__ import annotations
 
 import argparse
-import bisect
 import csv
 from datetime import datetime, timedelta, timezone
 import json
@@ -252,15 +251,10 @@ RULES = {
            "market": None, "target_mult": 2.0, "stop_mult": 2.0, "max_hold_minutes": None,
            "selection": "TRAIN_THEN_TEST", "backtest_weight": 0.5,
            "backtest": {"train": {"n": 102, "ev_pct": 0.097, "pf": 1.39}, "test": {"n": 54, "ev_pct": 0.096, "pf": 1.51}}},
-    # OWNER 2026-10-22: 地合い弱い = at most 40 % of the watched issues above their reference
-    # price (基準値) at the signal time, not the Collector's above-VWAP breadth.
-    "R2": {"label": "② 売り 地合い弱い日（基準値より値上がりの銘柄が40%以下） 9:15〜10:00・目標3倍・損切り2倍・最長60分",
-           "side": -1, "from": "09:15",
-           "to": "10:00", "market": None, "advance_max_pct": 40.0, "target_mult": 3.0, "stop_mult": 2.0, "max_hold_minutes": 60,
+    "R2": {"label": "② 売り 地合い弱い日 9:15〜10:00・目標3倍・損切り2倍・最長60分", "side": -1, "from": "09:15",
+           "to": "10:00", "market": "弱い", "target_mult": 3.0, "stop_mult": 2.0, "max_hold_minutes": 60,
            "selection": "TRAIN_THEN_TEST", "backtest_weight": 0.5,
-           # Recomputed 2026-10-22 for the 基準値 definition by this module's replay on the
-           # 2026-09-24..10-21 records (train = first 14 days, test = the last 6).
-           "backtest": {"train": {"n": 25, "ev_pct": 0.096, "pf": 1.51}, "test": {"n": 56, "ev_pct": 0.211, "pf": 1.94}}},
+           "backtest": {"train": {"n": 37, "ev_pct": 0.103, "pf": 1.52}, "test": {"n": 53, "ev_pct": 0.183, "pf": 1.79}}},
     # OWNER 2026-10-22 「④⑤もSHADOW追加」: round-2 search on 2026-09-19..10-21 records,
     # kept only because each of three equal day blocks was positive (train = first two).
     # All three blocks chose them, so no block is out of sample: the Brain gives their
@@ -333,28 +327,10 @@ def gap_trades(prev_ticks: dict, ticks: dict, rule: dict, reference: dict | None
     return out
 
 
-# R2's breadth needs at least this many issues with a reference price and a trade.
-MIN_BREADTH_ISSUES = 20
-
-
-def advance_pct_at(context: dict | None, at: str) -> float | None:
-    """Share in % of the issues whose last trade at or before `at` (from 09:00) is above
-    the reference price (基準値). None with fewer than MIN_BREADTH_ISSUES issues."""
-    up = n = 0
-    for ticker, (times, prices) in ((context or {}).get("series") or {}).items():
-        ref = ((context or {}).get("ref") or {}).get(ticker)
-        i = bisect.bisect_right(times, at) - 1
-        if not ref or i < 0 or times[i] < "09:00:00":
-            continue
-        n += 1
-        up += prices[i] > ref
-    return up * 100.0 / n if n >= MIN_BREADTH_ISSUES else None
-
-
 def day_context(prev_ticks: dict | None, ticks: dict, reference: dict | None = None) -> dict:
     """Each issue's open (first tick at or after 09:00) and opening gap in % against the
     reference price, else the previous day's last tick (None when unknown or split-sized)."""
-    opens, open_times, gaps, refs, series = {}, {}, {}, {}, {}
+    opens, open_times, gaps = {}, {}, {}
     for ticker, rows in ticks.items():
         day = [p for t, _, p in rows if t >= "09:00:00"]
         if not day:
@@ -366,10 +342,7 @@ def day_context(prev_ticks: dict | None, ticks: dict, reference: dict | None = N
         if close:
             gap = (day[0] / close - 1) * 100
             gaps[ticker] = gap if abs(gap) < MAX_GAP_PCT else None
-            if abs(gap) < MAX_GAP_PCT:
-                refs[ticker] = close
-        series[ticker] = ([t for t, _, _ in rows], [p for _, _, p in rows])
-    return {"open": opens, "open_time": open_times, "gap": gaps, "ref": refs, "series": series}
+    return {"open": opens, "open_time": open_times, "gap": gaps}
 
 
 def context_matches(rule: dict, side: int, ticker: str, entry, context: dict | None, at: str = "") -> bool:
@@ -386,10 +359,6 @@ def context_matches(rule: dict, side: int, ticker: str, entry, context: dict | N
     if rule.get("gap") == "down":
         gap = ((context or {}).get("gap") or {}).get(ticker)
         if gap is None or gap > -1.0:
-            return False
-    if rule.get("advance_max_pct") is not None:
-        breadth = advance_pct_at(context, at) if at else None
-        if breadth is None or breadth > rule["advance_max_pct"]:
             return False
     return True
 

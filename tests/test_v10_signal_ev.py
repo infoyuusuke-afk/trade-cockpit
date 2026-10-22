@@ -141,11 +141,8 @@ class RuleShadow(unittest.TestCase):
         ticks = [("A.T", "09:21:00", 1000), ("A.T", "09:40:00", 1012), ("A.T", "09:50:00", 1021),
                  ("B.T", "10:31:00", 1000), ("B.T", "10:40:00", 1011),
                  ("C.T", "09:31:00", 1000), ("C.T", "09:40:00", 985), ("C.T", "10:35:00", 975)]
-        # OWNER 2026-10-22: R2's weak market is at most 40 % of the issues above the
-        # reference price (here the previous day's last trade): 20 issues trade lower.
-        breadth = [("W%02d.T" % i, "09:05:00", 99) for i in range(20)]
-        write_day(self.records, "2026-10-21", sigs, ticks + [(t, "15:00:00", 100) for t, _, _ in breadth])
-        write_day(self.records, "2026-10-22", sigs, ticks + breadth)
+        write_day(self.records, "2026-10-21", sigs, ticks)   # before the forward window
+        write_day(self.records, "2026-10-22", sigs, ticks)
         path = self.records / "2026-10-22" / "trade_signals.csv"
         path.write_text(path.read_text("utf-8-sig").replace('"C.T","n","空売りサイン","OR15戻り","b","1000","1010","990","0",""',
                                                              '"C.T","n","空売りサイン","OR15戻り","b","1000","1010","990","0","地合い弱い"'),

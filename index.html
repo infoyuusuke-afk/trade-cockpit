@@ -250,10 +250,6 @@ document.addEventListener("DOMContentLoaded",()=>{
  // Brain core (backtest x the rule's backtest_weight plus forward, shrunk by n/(n+30)).
  // The rule's own wider target/stop are shown. Virtual Shadow only; no orders.
  let ruleShadow=null;
- // OWNER 2026-10-22 R2: 地合い弱い = at most 40 % of the fresh rows above their reference
- // price (基準値); null with fewer than 20 rows (the Brain core counts the same way).
- let evAdvancePct=null;
- const advancePct=rows=>{const b=rows.filter(x=>Number(x?.price)>0&&Number(x?.reference_price)>0);return b.length>=20?b.filter(x=>Number(x.price)>Number(x.reference_price)).length*100/b.length:null;};
  const ruleScore=(k,r)=>{
    const t=r.backtest?.test||{},f=ruleShadow?.forward?.[k]||{},w=Number.isFinite(Number(r.backtest_weight))?Number(r.backtest_weight):0.5;
    const wb=w*(Number(t.n)||0),nf=Number(f.n)||0,n=wb+nf;
@@ -266,7 +262,6 @@ document.addEventListener("DOMContentLoaded",()=>{
    for(const [k,r] of Object.entries(rules)){
      if(r.side!==side||!(r.from<=hm&&hm<r.to))continue;
      if(r.market&&!String(x?.market_state||"").includes(r.market))continue;
-     if(r.advance_max_pct!=null&&!(evAdvancePct!=null&&evAdvancePct<=r.advance_max_pct))continue;
      if(r.strategy&&r.strategy!==x?.strategy)continue;
      // ④: entry at least min_move_pct beyond the open; ⑤: opened >= 1 % below the reference price (splits skipped)
      const o=Number(x?.open_price),ref=Number(x?.reference_price),en=Number(x?.entry_price);
@@ -343,9 +338,7 @@ document.addEventListener("DOMContentLoaded",()=>{
    const live=window.cockpitMs2ScreenReady?.(d)===true;
    if(!live){box.innerHTML='<div class="focus-empty">LIVEでないため表示しません</div>';return;}
    // the same 120 s per-row gate as SCALP / opportunity radar: stale rows are never ranked or priced
-   const fresh=(Array.isArray(d.all_targets)?d.all_targets:[]).filter(x=>window.cockpitMs2RowReady?.(x)===true);
-   evAdvancePct=advancePct(fresh);
-   const rows=evRank(evTable,fresh);
+   const rows=evRank(evTable,(Array.isArray(d.all_targets)?d.all_targets:[]).filter(x=>window.cockpitMs2RowReady?.(x)===true));
    box.innerHTML=ruleSummaryHtml()+(rows.length?'<div class="rotation-grid">'+rows.slice(0,10).map(evRowHtml).join("")+'</div>':'<div class="focus-empty">点灯中のサインなし</div>');
  };
  const loadRules=()=>fetch("/rule_shadow.json?t="+Date.now()).then(r=>r.json()).then(v=>{ruleShadow=(v&&v.schema_version==="100b-v10-rule-shadow-v1"&&v.real_submit_allowed===false)?v:null;renderEv(evLast);}).catch(()=>{ruleShadow=null;});
