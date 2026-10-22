@@ -247,18 +247,6 @@ def deterministic_checks(reports: list[dict]) -> list[str]:
     return out
 
 
-def _supply_checklist_module():
-    # Load adjacent pinned module without importing an unrelated installed package.
-    import importlib.util
-    source = Path(__file__).with_name("supply_sq_checklist_d043.py")
-    spec = importlib.util.spec_from_file_location("supply_sq_checklist_d043", source)
-    if spec is None or spec.loader is None:
-        raise Blocked("D043_MODULE_MISSING_NO_CALL")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
 def _feedback_module():
     """Imported on use: the feedback module imports the bridge, which imports this module."""
     if __package__:
@@ -270,9 +258,7 @@ def _feedback_module():
 
 async def coordinate(doc: dict, runner, *, now: datetime, target_at: str | None = None,
                      slot: str = "manual", feedback: dict | None = None,
-                     delivered: list | None = None,
-                     supply_checklist: dict | None = None,
-                     supply_audit_log: list | None = None) -> dict:
+                     delivered: list | None = None) -> dict:
     """A deterministic manager runs four isolated roles, then the coordinator.
 
     runner(role, input_json) is injectable: unit tests need no API or key.
@@ -293,26 +279,18 @@ async def coordinate(doc: dict, runner, *, now: datetime, target_at: str | None 
         offered = [r for r in public["sources"] if r["role"] == role]
         assigned, excluded = eligible_sources(role, offered, target)
         if not assigned:
-            if role == "supply_sq" and supply_checklist is not None and supply_audit_log is not None:
-                supply_audit_log.append(_supply_checklist_module().no_source_audit())
             reports.append(build_report(public["run_id"], role, status="NO_DATA", generated_at=now,
                                         target_at=target, supplied=assigned, excluded=excluded,
                                         reason="NO_ELIGIBLE_SOURCE" if offered else "NO_SOURCE"))
             continue
         request = {"role": role, "goal": ROLE_GOALS[role], "sources": assigned,
                    "target_at": target, "evaluation_at": now.isoformat(), "research_only": True}
-        if role == "supply_sq" and supply_checklist is not None:
-            request["mandatory_checklist"] = supply_checklist
         fb = (feedback or {}).get(role)
         if fb is not None:
             request["brain_feedback"] = _feedback_module().prompt_feedback(fb[0])
             if delivered is not None:
                 delivered.append({"role": role, "feedback_id": fb[0]["feedback_id"], "feedback_sha256": fb[1]})
         prompt = json.dumps(request, ensure_ascii=False, sort_keys=True)
-        if supply_checklist is not None and role == "supply_sq":
-            # Exact serialized input bytes, not Python character count.
-            if len(prompt.encode("utf-8")) > PAID_INPUT_LIMIT_BYTES:
-                raise Blocked("D043_ASSEMBLED_INPUT_TOO_LARGE_NO_CALL")
         try:
             raw = await runner(role, prompt)
         except Exception:
@@ -322,12 +300,6 @@ async def coordinate(doc: dict, runner, *, now: datetime, target_at: str | None 
             continue
         try:
             body = validate_specialist(role, raw, assigned)
-            if role == "supply_sq" and supply_checklist is not None:
-                coverage = _supply_checklist_module().audit(
-                    raw.get("checklist_statuses"), raw.get("checklist_reasons"),
-                    evidence_ids=body["evidence_ids"])
-                if supply_audit_log is not None:
-                    supply_audit_log.append(coverage)
         except Blocked:
             reports.append(build_report(public["run_id"], role, status="UNAVAILABLE", generated_at=now,
                                         target_at=target, supplied=assigned, excluded=excluded,
@@ -397,8 +369,6 @@ async def api_runner(role: str, prompt: str) -> dict:
         hypothesis: str
         conditions: str
         invalidation: str
-        checklist_statuses: dict[str, str] | None = None
-        checklist_reasons: dict[str, str] | None = None
 
     class CoordinatorOutput(BaseModel):
         summary: str
@@ -424,15 +394,6 @@ async def api_runner(role: str, prompt: str) -> dict:
         typ = CoordinatorOutput
     else:
         instructions = rule + " " + ROLE_GOALS[role]
-        if role == "supply_sq":
-            instructions += (
-                " If mandatory_checklist is supplied in the input, read its full_text "
-                "on EVERY call. Return checklist_statuses and checklist_reasons as "
-                "JSON maps with EXACTLY C01..C10. Status must be VERIFIED, UNVERIFIED, "
-                "STALE, or NOT_APPLICABLE; give a concrete reason for every entry. "
-                "Do not guess unavailable figures or equate whole-market credit "
-                "stress with the separate VWAP-based R2 regime. Monitoring only."
-            )
         typ = SpecialistOutput
     # Pin a known low-cost model. Refuse environment-driven model escalation.
     from agents import ModelSettings, set_default_openai_client
@@ -769,7 +730,6 @@ def main(argv=None) -> int:
     parser.add_argument("--handoff-dir", help="Optional signed private RESEARCH handoff (not V10 deployment)")
     parser.add_argument("--target-at", help="Offset-aware ISO time the analysis is for (default: now)")
     parser.add_argument("--slot", default="manual", help="Analysis slot, e.g. premarket_0830 (one paid run per JST day+slot)")
-    parser.add_argument("--supply-checklist", help="D-043 full canonical file; exact SHA validated")
     parser.add_argument("--synthetic-paid-trial", action="store_true",
                         help="Billable run on SYNTHETIC_TEST evidence only; never handed to the Brain")
     args = parser.parse_args(argv)
@@ -802,48 +762,31 @@ def main(argv=None) -> int:
                 ("agent_research_" + validated["run_id"] + ".json"))
             if expected_handoff.exists() or expected_handoff.is_symlink():
                 raise Blocked("HANDOFF_REPLAY_BLOCKED_NO_CALL")
-        supply_checklist = None
         if args.enable_billable_api and not os.environ.get("OPENAI_API_KEY"):
             raise Blocked("API_KEY_MISSING_NO_CALL")
-        if args.supply_checklist and not args.enable_billable_api:
-            # Offline validation is available without SDK, network or a key.
-            supply_checklist = _supply_checklist_module().load(Path(args.supply_checklist))
         feedback, delivered = {}, []
         if args.handoff_dir:
-            # Brain feedback is evidence to evaluate, never instructions.
+            # P0-100B-THREE-ANALYST-BRAIN-BIDIRECTIONAL: the Brain's newest verified
+            # feedback per role goes into that role's input (no file -> none).
             feedback = _feedback_module().load_latest_feedback(Path(args.handoff_dir), now=now)
         if args.enable_billable_api:
             if not args.paid_budget_db:
                 raise Blocked("PAID_BUDGET_LEDGER_REQUIRED_NO_CALL")
+            # audit 6326093087: the feedback put into the inputs counts against the cap
+            if path.stat().st_size + _feedback_module().prompt_feedback_bytes(feedback) > PAID_INPUT_LIMIT_BYTES:
+                raise Blocked("PAID_INPUT_TOO_LARGE_NO_CALL")
             if os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_AGENT_MODEL", PAID_MODEL).strip() != PAID_MODEL:
                 raise Blocked("PAID_MODEL_OR_ENDPOINT_UNAPPROVED_NO_CALL")
             check_billable_sources(validated, synthetic_trial=args.synthetic_paid_trial)
             if args.synthetic_paid_trial and args.handoff_dir:
                 raise Blocked("SYNTHETIC_PAID_TRIAL_IS_NOT_HANDED_TO_THE_BRAIN_NO_CALL")
-            # Preserve old negative safety tests: existing approval failures
-            # are reported before testing the additional D-043 precondition.
             check_paid_ledger(Path(args.paid_budget_db), validated["run_id"])
-            checklist_path = Path(args.supply_checklist) if args.supply_checklist else (
-                Path(__file__).resolve().parents[1] /
-                "docs/analysts/SUPPLY_SQ_REQUIRED_CHECKLIST_V1.md")
-            supply_checklist = _supply_checklist_module().load(checklist_path)
-            checklist_bytes = len(json.dumps(supply_checklist, ensure_ascii=False,
-                                             sort_keys=True).encode("utf-8"))
-            # Conservative full-run preflight; includes checklist, evidence,
-            # feedback and role/coordinator instructions. No truncation.
-            fixed_instructions = sum(len(g.encode("utf-8")) for g in ROLE_GOALS.values()) + 4096
-            if (path.stat().st_size + _feedback_module().prompt_feedback_bytes(feedback)
-                    + checklist_bytes + fixed_instructions) > PAID_INPUT_LIMIT_BYTES:
-                raise Blocked("PAID_INPUT_TOO_LARGE_NO_CALL")
-            # D-041 Owner freeze is unconditional until a separately approved
-            # fix removes this guard. Env values cannot bypass this stop.
-            raise Blocked("D041_PAID_API_FROZEN_NO_CALL")
+            slot_key = _time(target_at).astimezone(JST).date().isoformat() + ":" + args.slot
+            reserve_billable_attempt(Path(args.paid_budget_db), validated["run_id"], fingerprint(validated),
+                                     slot_key=slot_key, now=now, carried=carried_cents(read_registry()))
         runner = api_runner if args.enable_billable_api else offline_runner
-        supply_audit_log = []
         result = asyncio.run(coordinate(validated, runner, now=now, target_at=target_at, slot=args.slot,
-                                        feedback=feedback, delivered=delivered,
-                                        supply_checklist=supply_checklist,
-                                        supply_audit_log=supply_audit_log))
+                                        feedback=feedback, delivered=delivered))
         if args.offline_test:
             result["state"] = "OFFLINE_SYNTHETIC_NO_API_CALL"
         receipt = "NOT_REQUESTED"
@@ -865,7 +808,6 @@ def main(argv=None) -> int:
             "report_ids": [x["report_id"] for x in result["specialists"]],
             "receipt": receipt, "handoff": handoff, "real_submit_allowed": False,
             "brain_feedback_delivered": [d["feedback_id"] for d in delivered],
-            "supply_checklist_audit": supply_audit_log[-1] if supply_audit_log else None,
             "broker_fills_verified": False, "costs_verified": False
         }, sort_keys=True))
         return 0
@@ -873,8 +815,6 @@ def main(argv=None) -> int:
         # Report only enumerated local fail-closed guard reasons.
         # Do not leak provider errors, API keys, paths or model contents.
         if isinstance(exc, Blocked):
-            reason = str(exc)
-        elif type(exc).__name__ == "ChecklistBlocked":
             reason = str(exc)
         elif bridge is not None and isinstance(exc, bridge.BridgeBlocked):
             reason = str(exc)
