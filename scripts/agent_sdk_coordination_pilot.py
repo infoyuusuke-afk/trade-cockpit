@@ -461,7 +461,8 @@ PAID_MODEL = "gpt-5.4-mini"
 # OWNER 2026-10-22 「目的は全ての信用残、24000OK」: room for the JPX all-issue margin of
 # every watched issue (about 21 KB with six BOJ headlines).
 PAID_INPUT_LIMIT_BYTES = 24_000
-PAID_RESERVED_CENTS_PER_RUN = 100
+# OWNER 2026-10-22 「確保を1回25セントにして」 (was 100).
+PAID_RESERVED_CENTS_PER_RUN = 25
 PAID_TOTAL_LEDGER_CENTS = 800
 # PROVISIONAL (frequency is not decided yet): at most this many paid runs per
 # JST calendar day, and one paid run per (JST target date, slot).
@@ -503,7 +504,7 @@ SETTINGS = {
     "paid_input_limit_bytes": (PAID_INPUT_LIMIT_BYTES, "APPROVED_OWNER_2026-10-22 (24000OK)"),
     "max_output_tokens_coordinator": (PAID_COORDINATOR_MAX_OUTPUT_TOKENS, "APPROVED_OWNER_2026-10-22 (review after live_20261022_01)"),
     "timeout_seconds_per_call": (PAID_TIMEOUT_SECONDS, "APPROVED_OWNER_2026-10-20/21 (#481)"),
-    "reserved_cents_per_run": (PAID_RESERVED_CENTS_PER_RUN, "APPROVED_OWNER_2026-10-20/21 (#481)"),
+    "reserved_cents_per_run": (PAID_RESERVED_CENTS_PER_RUN, "APPROVED_OWNER_2026-10-22 (確保を1回25セント)"),
     "lifetime_reserved_cents": (PAID_TOTAL_LEDGER_CENTS, "APPROVED_OWNER_2026-10-20/21 (#481, $10 prepaid, auto-reload off)"),
     "max_model_calls_per_run": (PAID_MAX_MODEL_CALLS, "PROVISIONAL (4 specialists + coordinator)"),
     "max_paid_runs_per_jst_day": (PAID_MAX_RUNS_PER_JST_DAY, "PROVISIONAL"),
@@ -557,6 +558,116 @@ def _ledger_reserved_cents(db_path: Path) -> int:
         return int(conn.execute("SELECT COALESCE(SUM(reserved_cents),0) FROM paid_attempts").fetchone()[0])
 
 
+# D-041 (1)(2), OWNER 2026-10-22: a new registry (another AGENT_PAID_LEDGER_REGISTRY or a
+# deleted file) or a re-created ledger used to restart the lifetime count at zero. The
+# spend anchor keeps the ledger ids and the highest lifetime reservation ever seen, in the
+# real per-user LocalAppData folder asked from Windows (not from an environment variable).
+# Before a paid reservation the lifetime total is the larger of the anchor and the
+# registry; an unknown or rolled-back ledger, or a missing or unreadable anchor while a
+# ledger already holds reservations, stops the run before any request. This is a local
+# guard, not proof against deleting every file: the OpenAI prepaid balance with
+# auto-reload off stays the hard stop.
+SPEND_ANCHOR_NAME = "paid_spend_anchor.json"
+SPEND_ANCHOR_KEYS = {"schema", "ledger_ids", "high_water_cents", "updated_at"}
+SPEND_ANCHOR_SCHEMA = "100b-paid-spend-anchor-v1"
+
+
+def _known_local_appdata() -> Path:
+    """LocalAppData from the Windows known-folder API; elsewhere ~/.local/share."""
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+        import uuid
+
+        class _GUID(ctypes.Structure):
+            _fields_ = [("Data1", wintypes.DWORD), ("Data2", wintypes.WORD), ("Data3", wintypes.WORD),
+                        ("Data4", ctypes.c_ubyte * 8)]
+        u = uuid.UUID("{F1B32785-6FBA-4FCF-9D55-7B8E7F157091}")  # FOLDERID_LocalAppData
+        guid = _GUID(u.fields[0], u.fields[1], u.fields[2], (ctypes.c_ubyte * 8)(*u.bytes[8:]))
+        out = ctypes.c_wchar_p()
+        if ctypes.windll.shell32.SHGetKnownFolderPath(ctypes.byref(guid), 0, None, ctypes.byref(out)) != 0:
+            raise Blocked("PAID_SPEND_ANCHOR_FOLDER_UNKNOWN_NO_CALL")
+        try:
+            return Path(out.value)
+        finally:
+            ctypes.windll.ole32.CoTaskMemFree(out)
+    return Path.home() / ".local" / "share"
+
+
+def spend_anchor_path() -> Path:
+    return _known_local_appdata() / "100B_AGENT" / SPEND_ANCHOR_NAME
+
+
+def read_spend_anchor() -> dict | None:
+    path = spend_anchor_path()
+    if not path.exists():
+        return None
+    if path.is_symlink():
+        raise Blocked("PAID_SPEND_ANCHOR_UNTRUSTED_NO_CALL")
+    try:
+        anchor = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise Blocked("PAID_SPEND_ANCHOR_UNREADABLE_NO_CALL") from exc
+    if (type(anchor) is not dict or set(anchor) != SPEND_ANCHOR_KEYS or anchor["schema"] != SPEND_ANCHOR_SCHEMA
+            or type(anchor["ledger_ids"]) is not list
+            or not all(LEDGER_ID.fullmatch(str(x)) for x in anchor["ledger_ids"])
+            or type(anchor["high_water_cents"]) is not int or anchor["high_water_cents"] < 0):
+        raise Blocked("PAID_SPEND_ANCHOR_INVALID_NO_CALL")
+    return anchor
+
+
+def _write_spend_anchor(ledger_ids: list, high_water: int) -> None:
+    path = spend_anchor_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_name(path.name + ".tmp")
+    temp.write_text(json.dumps({"schema": SPEND_ANCHOR_SCHEMA, "ledger_ids": sorted(set(ledger_ids)),
+                                "high_water_cents": int(high_water),
+                                "updated_at": datetime.now(timezone.utc).isoformat()}, sort_keys=True),
+                    encoding="utf-8")
+    os.replace(temp, path)
+
+
+def _registry_lifetime(reg: dict) -> tuple:
+    """(lifetime reserved per the registry, active ledger id, active ledger reserved)."""
+    active = [x for x in reg["ledgers"] if x["ledger_id"] == reg["active"]]
+    active_cents = _ledger_reserved_cents(Path(active[0]["path"])) if active else 0
+    return carried_cents(reg) + active_cents, reg["active"], active_cents
+
+
+def adopt_spend_anchor() -> dict:
+    """One-time OWNER step for a PC whose ledger predates the anchor."""
+    if read_spend_anchor() is not None:
+        raise Blocked("PAID_SPEND_ANCHOR_ALREADY_EXISTS")
+    reg = read_registry()
+    lifetime, _, _ = _registry_lifetime(reg)
+    _write_spend_anchor([x["ledger_id"] for x in reg["ledgers"]], lifetime)
+    return read_spend_anchor()
+
+
+def spend_anchor_carried(reg: dict) -> int:
+    """`carried` for reserve_billable_attempt, never below the anchor's high-water mark."""
+    lifetime, active_id, active_cents = _registry_lifetime(reg)
+    anchor = read_spend_anchor()
+    if anchor is None:
+        # First paid use ever: nothing reserved anywhere yet.
+        if lifetime != 0 or len(reg["ledgers"]) > 1:
+            raise Blocked("PAID_SPEND_ANCHOR_MISSING_NO_CALL")
+        _write_spend_anchor([x["ledger_id"] for x in reg["ledgers"]], 0)
+        anchor = read_spend_anchor()
+    if active_id is None or active_id not in anchor["ledger_ids"]:
+        raise Blocked("PAID_LEDGER_NOT_IN_SPEND_ANCHOR_NO_CALL")
+    if lifetime < anchor["high_water_cents"]:
+        raise Blocked("PAID_LEDGER_ROLLBACK_DETECTED_NO_CALL")
+    return max(lifetime, anchor["high_water_cents"]) - active_cents
+
+
+def record_spend_anchor(reg: dict) -> None:
+    """After a reservation: raise the high-water mark to the new lifetime total."""
+    anchor = read_spend_anchor()
+    lifetime, active_id, _ = _registry_lifetime(reg)
+    _write_spend_anchor(anchor["ledger_ids"] + [active_id], max(lifetime, anchor["high_water_cents"]))
+
+
 def retire_paid_ledger(ledger_id: str, reason: str) -> dict:
     """Close the active ledger; its reserved total is carried to the next one."""
     reg = read_registry()
@@ -590,6 +701,9 @@ def init_paid_ledger(db_path: Path) -> str:
                            "retired_at": None, "reserved_cents_at_retire": None})
     reg["active"] = ledger_id
     _write_registry(reg)
+    anchor = read_spend_anchor()
+    if anchor is not None:  # a new ledger joins the anchor; its high-water mark is kept
+        _write_spend_anchor(anchor["ledger_ids"] + [ledger_id], anchor["high_water_cents"])
     return ledger_id
 
 
@@ -710,6 +824,13 @@ def main(argv=None) -> int:
         except Blocked as exc:
             print(json.dumps({"state": "BLOCKED", "reason": str(exc)}))
             return 2
+    if argv == ["--adopt-spend-anchor"]:
+        try:
+            print(json.dumps({"state": "PAID_SPEND_ANCHOR_CREATED", **adopt_spend_anchor()}))
+            return 0
+        except Blocked as exc:
+            print(json.dumps({"state": "BLOCKED", "reason": str(exc)}))
+            return 2
     if len(argv) == 2 and argv[0] == "--init-paid-ledger":
         try:
             print(json.dumps({"state": "PAID_LEDGER_CREATED", "ledger_id": init_paid_ledger(Path(argv[1])),
@@ -783,7 +904,8 @@ def main(argv=None) -> int:
             check_paid_ledger(Path(args.paid_budget_db), validated["run_id"])
             slot_key = _time(target_at).astimezone(JST).date().isoformat() + ":" + args.slot
             reserve_billable_attempt(Path(args.paid_budget_db), validated["run_id"], fingerprint(validated),
-                                     slot_key=slot_key, now=now, carried=carried_cents(read_registry()))
+                                     slot_key=slot_key, now=now, carried=spend_anchor_carried(read_registry()))
+            record_spend_anchor(read_registry())
         runner = api_runner if args.enable_billable_api else offline_runner
         result = asyncio.run(coordinate(validated, runner, now=now, target_at=target_at, slot=args.slot,
                                         feedback=feedback, delivered=delivered))
