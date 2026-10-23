@@ -1154,6 +1154,14 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => new Promise(
     x.ret20.toFixed(2) + "%</td></tr>").join("");
   document.getElementById("prepared-signals").innerHTML =
     prepared || "<tr><td colspan='10'>本日の準備点灯銘柄なし。</td></tr>";
+  // OWNER 2026-10-23 「ここの表示って古くないのか」: ⑧⑨ come from the checkout's signals.json (not fed,
+  // audit 6349440798). Older than 24 hours: marked 古い and not shown (no stale IN / 準備 list).
+  const sigAt = Date.parse(String(d.updated_at || "").replace(" JST", "+09:00").replace(" ", "T"));
+  if (!(Date.now() - sigAt < 864e5)) {
+    document.getElementById("signal-meta").textContent = "古いデータ（更新 " + (d.updated_at || "不明") + "）・表示しません";
+    document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>古いデータのため表示しません（更新 " + (d.updated_at || "不明") + "）</td></tr>";
+    document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>古いデータのため表示しません（更新 " + (d.updated_at || "不明") + "）</td></tr>";
+  }
   // ユーザー依頼2026-09-19：SCALP 5と同じ銘柄カード見た目に統一。ただしEVENT 5は全市場走査
   // （MS2ライブ100銘柄の外側も含む）が元データのため、VWAP・OR5・OR15・EMA・ENTRY/STOP/T1・
   // FLOWはこのデータソースに存在せず「—」のまま（推測で埋めない）。出来高比(rvol)だけは

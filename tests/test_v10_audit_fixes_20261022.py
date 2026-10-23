@@ -128,6 +128,12 @@ class ScreenStaysPut(unittest.TestCase):
         self.assertIn("if(Date.now()-lastTouch<120000){setTimeout(quietReload,60000);return;}", html)
         self.assertIn('sessionStorage.setItem("cockpitScrollY",String(Math.round(window.scrollY)))', html)
 
+    def test_stale_checkout_signal_lists_are_not_shown(self):
+        # OWNER 2026-10-23 「ここの表示って古くないのか」: ⑧⑨ from a signals.json older than 24 h
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        self.assertIn("if (!(Date.now() - sigAt < 864e5)) {", html)
+        self.assertIn("古いデータのため表示しません（更新 ", html)
+
     def test_compact_headings_and_one_line_attention_box(self):
         # OWNER 2026-10-23 「無駄な情報はコンパクトにしろ」
         html = (ROOT / "index.html").read_text(encoding="utf-8")
