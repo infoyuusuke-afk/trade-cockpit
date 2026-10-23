@@ -93,7 +93,7 @@ class ZeroTokenLabTests(unittest.TestCase):
         bars=self.parsed(breach=True)
         # The previous VWAP bar was available only after the prior
         # decision time. A later complete file must not backdate it.
-        bars[10]["available_at"]=bars[10]["time"]+timedelta(seconds=120)
+        bars[16]["available_at"]=bars[16]["time"]+timedelta(seconds=120)
         self.assertIsNone(replay_one_day(bars,long_variant(),cost_bps=18))
 
     def test_gap_prior_to_later_breakout_cannot_be_backfilled(self):
