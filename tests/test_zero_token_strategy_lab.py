@@ -7,14 +7,14 @@ from hashlib import sha256
 import io
 import json
 import unittest
-from zoneinfo import ZoneInfo
+from datetime import timezone
 
 from scripts.zero_token_strategy_lab import (
     BAR_COLS, ResearchBlocked, _metric, _day_block_lower,
     analyze, load_bars_bytes, replay_one_day, variants,
 )
 
-JST=ZoneInfo("Asia/Tokyo")
+JST=timezone(timedelta(hours=9))
 SHA="0"*64
 
 
