@@ -22,8 +22,9 @@ from uuid import uuid4
 
 from scripts.zero_token_strategy_lab import (
     MAX_INPUT_BYTES, MIN_ROUND_TRIP_COST_BPS, ResearchBlocked,
-    analyze, load_bars_bytes,
+    load_bars_bytes,
 )
+from scripts.zero_token_strategy_history import append_and_analyze_history
 
 REPORT = "strategy_lab_latest.json"
 LEDGER = "strategy_lab_runs.sqlite3"
@@ -141,10 +142,13 @@ def run_once(input_path, output_dir, *, base_cost_bps=18.0, clock=None) -> dict:
             con.execute("COMMIT")
             return {"state":"UNCHANGED_NO_NEW_ANALYSIS","input_sha256":fingerprint,
                     "llm_api_tokens_used":0,"real_submit_allowed":False}
-        analysis=analyze(bars,input_sha256=fingerprint,base_cost_bps=base_cost_bps)
         when=clock()
         if not isinstance(when,datetime) or when.tzinfo is None or when.utcoffset() is None:
             raise ResearchBlocked("LOCAL_CLOCK_INVALID")
+        analysis=append_and_analyze_history(
+            out,bars,base_cost_bps=base_cost_bps,now=when
+        )
+        pending=analysis["cumulative_history"]["pending_symbol_days"]
         report={
             "worker_schema":SCHEMA_VERSION,
             "completed_at_utc":when.astimezone(timezone.utc).isoformat(),
@@ -157,19 +161,25 @@ def run_once(input_path, output_dir, *, base_cost_bps=18.0, clock=None) -> dict:
             "automatic_order_execution":False,
         }
         output_sha=_persist_atomic(out,REPORT,report)
-        con.execute(
-            "INSERT INTO runs VALUES(?,?,?,?)",
-            (fingerprint,base_cost_bps,output_sha,report["completed_at_utc"])
-        )
+        # Do not mark a CSV as exhausted while a session remains incomplete.
+        # A stationary intraday input can become finalizable after 15:45 JST.
+        # Re-analysis on the next poll is idempotent in the history DB.
+        if pending==0:
+            con.execute(
+                "INSERT INTO runs VALUES(?,?,?,?)",
+                (fingerprint,base_cost_bps,output_sha,report["completed_at_utc"])
+            )
         con.execute("COMMIT")
-        verified=con.execute(
-            "SELECT report_sha256 FROM runs WHERE input_sha256=? AND cost_bps=?",
-            (fingerprint,base_cost_bps),
-        ).fetchone()
-        if not verified or verified[0]!=output_sha:
-            raise ResearchBlocked("LEDGER_READBACK_FAILED")
+        if pending==0:
+            verified=con.execute(
+                "SELECT report_sha256 FROM runs WHERE input_sha256=? AND cost_bps=?",
+                (fingerprint,base_cost_bps),
+            ).fetchone()
+            if not verified or verified[0]!=output_sha:
+                raise ResearchBlocked("LEDGER_READBACK_FAILED")
         return {"state":"RESEARCH_RECORDED","analysis_status":analysis["status"],
                 "observed_days":analysis["observed_days"],
+                "pending_symbol_days":pending,
                 "candidate":((analysis.get("best_research_candidate") or {}).get("strategy") or {}).get("id"),
                 "input_sha256":fingerprint,"report_sha256":output_sha,
                 "llm_api_tokens_used":0,"real_submit_allowed":False}
