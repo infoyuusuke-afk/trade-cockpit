@@ -351,8 +351,6 @@ document.addEventListener("DOMContentLoaded",()=>{
    const held=on.map(x=>'<div class="attention-row att-held"><i>保有</i><div>'+nm(x.name,x.ticker)+' <b>持ち越し'+(x.side==="LONG"?"買い":"空売り")+'（仮想）</b> <em>'+esc(String(x.decided_at||"").slice(5,16))+'決定・基準 '+esc(x.reference_price)+'・'+esc(String(x.valid_until||"").replace("next trading day","翌営業日"))+'に採点・注文なし</em></div></div>');
    const rows=list.map(r=>{const p=r.kind==="RULE"?posOf(r):null,cls=p&&p.status==="OPEN"?"att-held":hotOf(r)?"att-"+hotOf(r):"";
      return '<div class="attention-row '+cls+'"><i>'+hm(r.captured_at)+'</i><div>'+nm(r.name,r.ticker)+' <b>'+esc(r.label)+'</b> <em>'+(r.kind==="XTOPIC"?'Grok（手動）・点数には使いません':esc(r.signal)+'・'+esc(r.strategy)+'／発動 '+esc(r.entry))+(r.kind==="RULE"?'・目標 '+esc(r.target)+'・損切 '+esc(r.stop):'')+stateText(p)+'・検証中</em></div></div>';});
-   const anyHeld=on.length>0||rp.some(p=>p.status==="OPEN");
-   const abox=document.getElementById("attention-box");if(abox)abox.classList.toggle("att-held",anyHeld);
    const empty=document.getElementById("attention-empty");if(empty)empty.style.display=(list.length||held.length)?"none":"";
    box.innerHTML=held.concat(rows).join("");
  };
@@ -653,7 +651,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
 })();
 </script>
-<div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><div class="unified-mode-wrap attention-wrap"><section id="attention-box" class="attention-box"><div class="attention-head" title="ブレインのランキングに新しく入った銘柄とルール①②④⑤のサイン。新しい順・今日の分は残します。検証中（Shadow）・実注文には使いません。"><b>注目</b><em id="attention-empty">今日はまだありません</em><span id="attention-count">今日の記録 取得待ち</span></div><div id="attention-rows"></div></section></div><style>.attention-box{margin:0 0 8px;padding:8px 16px;border:1px solid #303033;border-radius:14px;background:#111113}.attention-box.att-held{border-color:#4ea1ff}.attention-head{display:flex;align-items:baseline;gap:12px}.attention-head span{margin-left:auto}.attention-head em{font-style:normal;color:#9aa0a6;font-size:13px}#attention-rows:empty{display:none}.attention-head b{color:#f5c542;font-size:16px}.attention-head span,.attention-box small{color:#9aa0a6;font-size:12px}#attention-rows{max-height:9.5em;overflow-y:auto;margin:4px 0 0}.attention-row{display:grid;grid-template-columns:3.2em 1fr;gap:8px;padding:3px 8px;margin-top:4px;border:1px solid #303033;border-radius:8px;font-size:13px;color:#e7e9eb}.attention-row.att-held{border-color:#4ea1ff}.attention-row.att-hot-long{border-color:#35e2ae}.attention-row.att-hot-short{border-color:#ff5a5f}.attention-row:first-child{margin-top:0}.attention-row i{font-style:normal;color:#f5c542}.attention-row em{font-style:normal;color:#9aa0a6;font-size:12px}</style><main>
+<div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><div class="unified-mode-wrap attention-wrap"><section id="attention-box" class="attention-box"><div class="attention-head" title="ブレインのランキングに新しく入った銘柄とルール①②④⑤のサイン。新しい順・今日の分は残します。検証中（Shadow）・実注文には使いません。"><b>注目</b><em id="attention-empty">今日はまだありません</em><span id="attention-count">今日の記録 取得待ち</span></div><div id="attention-rows"></div></section></div><style>.attention-box{margin:0 0 8px;padding:8px 16px;border:1px solid #303033;border-radius:14px;background:#111113}.attention-head{display:flex;align-items:baseline;gap:12px}.attention-head span{margin-left:auto}.attention-head em{font-style:normal;color:#9aa0a6;font-size:13px}#attention-rows:empty{display:none}.attention-head b{color:#f5c542;font-size:16px}.attention-head span,.attention-box small{color:#9aa0a6;font-size:12px}#attention-rows{max-height:9.5em;overflow-y:auto;margin:4px 0 0}.attention-row{display:grid;grid-template-columns:3.2em 1fr;gap:8px;padding:3px 8px;margin-top:4px;border:1px solid #303033;border-radius:8px;font-size:13px;color:#e7e9eb}.attention-row.att-hot-long{border-color:#35e2ae}.attention-row.att-hot-short{border-color:#ff5a5f}.attention-row:first-child{margin-top:0}.attention-row i{font-style:normal;color:#f5c542}.attention-row em{font-style:normal;color:#9aa0a6;font-size:12px}</style><main>
 
 
 
@@ -1056,7 +1054,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <p class="warning">最も入りたい型。①長い下ヒゲで売りを吸収、②終値がレンジ上側へ回復、③次足が反転足の実体上端または高値＋1ティックを上抜く、の3条件で発動。候補足安値割れで撤退し、ナンピンしません。</p></section>
 
 
-<section class="card wide"><h2>⑦ AIスイングサインの使い方</h2>
+<section id="swing-howto" class="card wide"><h2>⑦ AIスイングサインの使い方</h2>
 <div class="steps">
 <div class="step"><b>1　<span class="pill prep">準備</span>を探す</b>大引け後に一覧を確認。準備は「まだ買わない」の意味です。</div>
 <div class="step"><b>2　IN価格をメモ</b>準備足の高値＋1ティック。翌日からこの価格を監視します。</div>
@@ -1082,7 +1080,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <tbody id="overnight-short"><tr><td colspan="8">読み込み中...</td></tr></tbody></table>
 <p class="warning">翌日寄りで無条件に売りません。準備足安値を割った場合だけSHORT。楽天MS2で貸借区分・在庫・逆日歩・空売り規制を必ず確認。大幅GDは追いかけません。</p></section>
 <section class="card"><h2>⑫ 運用ルール</h2><p>最大損失を先に固定／同テーマ集中を避ける／持ち越しは通常の半分の株数／損切りを広げない。</p></section>
-<section class="card"><h2>⑬ 選定ロジック</h2><p>信用需給を最優先。信用買い残の1週・4週減少、低い信用倍率、機関空売りの買い戻し、複数社買い戻しを評価し、週足・月足反転と重なる銘柄を上位表示。需給未取得は暫定候補です。</p></section>
+<section id="selection-logic" class="card"><h2>⑬ 選定ロジック</h2><p>信用需給を最優先。信用買い残の1週・4週減少、低い信用倍率、機関空売りの買い戻し、複数社買い戻しを評価し、週足・月足反転と重なる銘柄を上位表示。需給未取得は暫定候補です。</p></section>
 
 
 <section class="card wide"><h2>🔮 本格占い・行動管理（売買AI点数とは完全分離）</h2>
@@ -1094,7 +1092,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 <p class="warning">公開ページには生年月日・出生地・出生時刻を保存しません。娯楽・心理管理用で、銘柄順位や売買期待値には加点しません。</p></section>
 
 <!-- WEEKLY_REVIEW_START -->
-<section id="weekly-review" class="panel">
+<!-- OWNER 2026-10-23 夜 「BとCを隠す」: the weekly figures count unclosed trades as wins with no costs; hidden until the generator on main is fixed -->
+<section id="weekly-review" class="panel" hidden>
   <h2>週間振り返り・来週戦略</h2>
   <!-- OWNER 2026-10-21: no baked past results here; trade_control.js fills this from weekly_review.json -->
   <div class="focus-empty">週間振り返り：取得中（weekly_review.json）</div>
@@ -1161,7 +1160,10 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => new Promise(
   if (!(Date.now() - sigAt < 864e5)) {
     // OWNER 2026-10-23 「使えないのは外す」: the two sections are taken off the screen while stale
     // (a section that holds another section is never hidden as a whole)
-    ["entered-signals", "prepared-signals", "overnight-long", "overnight-short"].forEach(id => { const sec = document.getElementById(id)?.closest("section"); if (sec && !sec.querySelector("section")) sec.hidden = true; });
+    // OWNER 2026-10-23 夜 「BとCを隠す」 (FOCUS and the fortune panel stay): the same file also feeds
+    // ⑤-E, ⑤-F, the TradingView export, ⑦ and ⑬, so they go with ⑧-⑪
+    ["entered-signals", "prepared-signals", "overnight-long", "overnight-short", "hammer-signals", "long-term-ma-rebound",
+     "tv-watchlist-export", "swing-howto", "selection-logic"].forEach(id => { const sec = document.getElementById(id)?.closest("section"); if (sec && !sec.querySelector("section")) sec.hidden = true; });
     document.getElementById("entered-signals").innerHTML = "<tr><td colspan='7'>古いデータのため表示しません（更新 " + (d.updated_at || "不明") + "）</td></tr>";
     document.getElementById("prepared-signals").innerHTML = "<tr><td colspan='10'>古いデータのため表示しません（更新 " + (d.updated_at || "不明") + "）</td></tr>";
   }
@@ -1409,7 +1411,9 @@ fetch("event_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => {
     }
     return "<div class='event-month'><h4>"+year+"年"+month+"月</h4><div class='event-weekdays'><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span><span>日</span></div><div class='event-days'>"+cells.join("")+"</div></div>";
   }).join("") || "<div class='focus-empty'>カレンダー対象なし</div>";
-  document.getElementById("event-unverified").innerHTML = (d.unverified || []).map(x=>
+  // OWNER 2026-10-23 夜 「BとCを隠す」: a dated event that has already passed is not listed as 未確定
+  const eventToday = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  document.getElementById("event-unverified").innerHTML = (d.unverified || []).filter(x => !/^\d{4}-\d{2}-\d{2}$/.test(String(x.effective_date || "")) || String(x.effective_date) >= eventToday).map(x=>
     "<div class='event-block'><b>"+eventEsc(x.title)+"</b><span>"+eventEsc(x.effective_date)+"</span><small>売買禁止："+eventEsc(x.note)+"</small><a href='"+eventEsc(x.source_url)+"' target='_blank' rel='noopener'>公式確認先</a></div>"
   ).join("") || "<div class='up'>未確定イベントなし</div>";
 }).catch(() => {
@@ -1538,6 +1542,17 @@ const kioOneMinuteChart = (points,actual=[],turns=[],signals=[],levels={},isRefr
   if(!kioMarkersPrimitive)kioMarkersPrimitive=LightweightCharts.createSeriesMarkers(kioCandleSeries,markers);
   else kioMarkersPrimitive.setMarkers(markers);
 };
+// OWNER 2026-10-23 夜 「BとCを隠す」: a forecast file for another day (or none) shows no forecast;
+// the MS2 / Excel Watcher panels in the same section stay.
+const hideStaleKioxiaForecast = date => {
+  const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  if (date === today) return;
+  ["kio-decision-panel", "kio-decision-reason"].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
+  document.querySelectorAll("#kioxia-5m-calendar .kio-best-chart").forEach(el => { el.hidden = true; });
+  const meta = document.getElementById("kioxia-calendar-meta");
+  if (meta) meta.textContent = "予測ファイルが今日の分ではないため、予測は表示しません（" + (date || "日付不明") + "）";
+};
+fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()).then(d => setTimeout(() => hideStaleKioxiaForecast(d.analysis_date), 0)).catch(() => hideStaleKioxiaForecast(null));
 Promise.all([
  fetch("kioxia_5m_calendar.json?t=" + Date.now()).then(r => r.json()),
  fetch("credit_supply.json?t=" + Date.now()).then(r => r.json()).catch(() => ({stocks:{}})),

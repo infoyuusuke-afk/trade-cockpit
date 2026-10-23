@@ -1716,6 +1716,13 @@ Invoke-ExcelCom -Label "RSSシート非表示" -Action { $sheet.Visible = 0 } | 
 
 
 # キオクシア夜間PTS（JNX）は東証データと混ぜず、専用シートで取得する。
+# OWNER 2026-10-23 夜 「PTS修正」: the JNX code is the 4-character code + ".JNX" (e.g. 8035.JNX).
+# The old pattern '\\.T$' (a literal backslash) never matched, so every row asked RSS for
+# "8035.T.JNX", got nothing, and no PTS row was ever recorded (kioxia_jnx_pts.csv held the
+# header only from 10/10 to 10/23).
+function ConvertTo-JnxTicker([string]$Ticker) {
+    return (($Ticker.Trim()) -replace '\.T$', '') + '.JNX'
+}
 # JNXは補助データのため、Excel/RSSが起動直後で不安定でもCollector本体を停止させない。
 $jnxSheet = $null
 $jnxReady = $false
@@ -1741,7 +1748,19 @@ try {
         throw "KIOXIA_JNX worksheet is unavailable."
     }
 
-    if (-not $liveSheetReady) {
+    # A prepared workbook keeps its JNX sheet, so wrong codes saved in it are rewritten for this
+    # session (Safe Stop closes the workbook without saving).
+    $jnxRewrite = -not $liveSheetReady
+    if ($liveSheetReady -and $null -ne $jnxSheet -and $stocks.Count -gt 0) {
+        $jnxExpectedCode = ConvertTo-JnxTicker ([string]$stocks[0].Ticker)
+        $jnxFirstCode = [string](Invoke-ExcelCom -Label "JNXコード確認" -Action { $jnxSheet.Cells.Item(2,1).Value2 })
+        if ($jnxFirstCode -cne $jnxExpectedCode) {
+            $jnxRewrite = $true
+            Write-Host ("[JNX] codes corrected: " + $jnxFirstCode + " -> " + $jnxExpectedCode) -ForegroundColor Yellow
+        }
+    }
+
+    if ($jnxRewrite) {
     $jnxHeaders = @("コード","現在値","時刻","前日終値","前日比率","出来高","VWAP","買気配","売気配","買数量","売数量","OVER","UNDER","歩み1","歩み1時刻","現在日付")
     $jnxItems = @("現在値","現在値詳細時刻","前日終値","前日比率","出来高","出来高加重平均","最良買気配値","最良売気配値","最良買気配数量1","最良売気配数量1","OVER気配数量","UNDER気配数量","歩み1","歩み1詳細時刻","現在日付")
 
@@ -1757,7 +1776,7 @@ try {
 
     for ($i=0; $i -lt $stocks.Count; $i++) {
         $jnxRow = $i + 2
-        $jnxTicker = (([string]$stocks[$i].Ticker) -replace '\\.T$','') + '.JNX'
+        $jnxTicker = ConvertTo-JnxTicker ([string]$stocks[$i].Ticker)
         Invoke-ExcelCom -Label "JNXコード設定" -Action {
             $cell = $jnxSheet.Cells.Item($jnxRow,1)
             if ($null -eq $cell) { throw "JNX ticker cell unavailable." }

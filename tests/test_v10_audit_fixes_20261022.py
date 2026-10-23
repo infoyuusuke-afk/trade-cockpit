@@ -135,7 +135,8 @@ class ScreenStaysPut(unittest.TestCase):
         self.assertIn("古いデータのため表示しません（更新 ", html)
         # OWNER 2026-10-23 「使えないのは外す」
         self.assertIn('if (sec && !sec.querySelector("section")) sec.hidden = true;', html)
-        self.assertIn('["entered-signals", "prepared-signals", "overnight-long", "overnight-short"].forEach(id =>', html)
+        # OWNER 2026-10-23 夜: more sections fed by the same file joined the list (test_v10_screen_cleanup_20261023)
+        self.assertIn('["entered-signals", "prepared-signals", "overnight-long", "overnight-short", "hammer-signals",', html)
         self.assertIn(".ms2-download{display:none!important}", html)
         self.assertNotIn("#pts-morning-pickup,", html)   # V10 may run in the evening (OWNER 2026-10-23)
 
@@ -151,9 +152,15 @@ class ScreenStaysPut(unittest.TestCase):
         self.assertIn(".attention-box{margin:0 0 8px;padding:8px 16px;border:1px solid #303033;border-radius:14px;", html)
         # OWNER 2026-10-23: room around the heading line; the 注目 frame copies the status bar's frame
         self.assertIn(".pane-intro{padding:18px 4px 14px!important;", html)
-        # OWNER 2026-10-23 「保有：青 HOT：緑（ロング）hot：赤（ショート）」, otherwise the card frame
+        # OWNER 2026-10-23 「保有：青 HOT：緑（ロング）hot：赤（ショート）」, otherwise the card frame;
+        # OWNER 2026-10-23 夜 「外枠はグレー他と一緒で良い」: only the rows are coloured, the box stays grey
         self.assertNotIn("syncAttentionFrame", html)
-        for rule in (".attention-box.att-held{border-color:#4ea1ff}", ".attention-row.att-held{border-color:#4ea1ff}",
+        # OWNER 2026-10-23 夜 「保有中銘柄もちかちかして見にくい、青枠にこだわらない、全体に合わせて」:
+        # held rows keep the 保有 label but use the plain row frame
+        self.assertNotIn(".attention-box.att-held", html)
+        self.assertNotIn('abox.classList.toggle("att-held"', html)
+        self.assertNotIn(".attention-row.att-held{", html)
+        for rule in (
                      ".attention-row.att-hot-long{border-color:#35e2ae}", ".attention-row.att-hot-short{border-color:#ff5a5f}"):
             self.assertIn(rule, html)
         self.assertIn('cls=p&&p.status==="OPEN"?"att-held":hotOf(r)?"att-"+hotOf(r):""', html)
