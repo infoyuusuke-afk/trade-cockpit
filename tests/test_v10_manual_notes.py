@@ -157,6 +157,7 @@ class Wiring(unittest.TestCase):
         self.assertIn('<div id="grok-rows"></div>', html)
         self.assertIn("renderGrok();", html)
         self.assertIn("『手動』", html)
+        self.assertIn("box.innerHTML=manualHtml+'<div class=\"focus-empty\">専門AIレポート利用不可（'", html)   # also when unavailable
         ps = (ROOT / "downloads" / "GROK_TO_COCKPIT_V10.ps1").read_bytes()
         self.assertTrue(all(b < 128 for b in ps))
         self.assertIn(b'[ValidateSet("grok", "analyst")][string]$Kind = "grok"', ps)
