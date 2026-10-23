@@ -122,7 +122,7 @@ def accumulation_view(signals: dict) -> dict:
 # OWNER saved with the 5番 button (Desktop\Claudeブレイン\Grok1号 ... Grok3号). Read only, this PC only;
 # shown for reading, never a score, gate, voice or order.
 GROK_FILE = "grok_bots.json"
-GROK_BOTS = (("Grok1号", "1号 朝夕ニュース巡回"), ("Grok2号", "2号 好決算監視"), ("Grok3号", "3号 米国地合い"))
+GROK_BOTS = (("Grok1号", "1号 朝夕ニュース巡回"), ("Grok2号", "2号 好決算監視"), ("Grok3号", "3号 決算前監視"))
 GROK_TEXT_MAX = 20000
 GROK2_FIELDS = ("銘柄", "決算発表日", "動きの型", "判断案", "目安の価格帯", "無効になる条件", "見直す日", "自信")
 

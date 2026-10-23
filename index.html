@@ -106,9 +106,9 @@ document.addEventListener("DOMContentLoaded",()=>{
      (codes.length?'<strong>'+codes.map(c=>esc(agentNames[c]?agentNames[c]+"("+c+")":c)).join("<br>")+'</strong>':'<small>注目銘柄なし</small>')+'</div>';
  };
  // OWNER 2026-10-24 「専門アナリストも同様　ステータスランプで最新情報なのか過去情報なのかわからないとこわい」「グロックも同様」
- window.freshLamp=(cls,label,line)=>'<div class="brain-lamp mini '+cls+'"><span class="brain-lamp-dot"></span><div><b>'+esc(label)+'</b><small>'+esc(line)+'</small></div></div>';
- window.jstParts=ms=>{const j=new Date(ms+9*3600000);return {day:j.toISOString().slice(0,10),md:j.toISOString().slice(5,10).replace("-","/"),hm:j.toISOString().slice(11,16),wd:j.getUTCDay(),min:j.getUTCHours()*60+j.getUTCMinutes()};};
- window.parseJstMs=s=>{s=String(s||"").trim().replace(" ","T");if(!s)return NaN;if(!/(Z|[+-]\d{2}:?\d{2})$/.test(s))s+="+09:00";return Date.parse(s);};
+ globalThis.freshLamp=(cls,label,line)=>'<div class="brain-lamp mini '+cls+'"><span class="brain-lamp-dot"></span><div><b>'+esc(label)+'</b><small>'+esc(line)+'</small></div></div>';
+ globalThis.jstParts=ms=>{const j=new Date(ms+9*3600000);return {day:j.toISOString().slice(0,10),md:j.toISOString().slice(5,10).replace("-","/"),hm:j.toISOString().slice(11,16),wd:j.getUTCDay(),min:j.getUTCHours()*60+j.getUTCMinutes()};};
+ globalThis.parseJstMs=s=>{s=String(s||"").trim().replace(" ","T");if(!s)return NaN;if(!/(Z|[+-]\d{2}:?\d{2})$/.test(s))s+="+09:00";return Date.parse(s);};
  const renderAgentResearch=()=>{
    // The Gateway answers 503 with {state:"UNAVAILABLE",reason} when it cannot verify the
    // Brain signature or freshness of the view; that body is still shown as the reason.
