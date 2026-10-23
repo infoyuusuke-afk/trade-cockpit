@@ -1,0 +1,52 @@
+name: Zero-token 24h Strategy Lab (offline synthetic)
+
+on:
+  pull_request:
+    paths:
+      - "scripts/zero_token_strategy_lab.py"
+      - "scripts/zero_token_strategy_worker.py"
+      - "tests/test_zero_token_strategy_lab.py"
+      - "tests/test_zero_token_strategy_worker.py"
+      - "docs/ZERO_TOKEN_STRATEGY_LAB_V1.md"
+      - ".github/workflows/zero-token-strategy-lab-offline.yml"
+  workflow_dispatch:
+
+# No secrets, cloud LLMs, broker, scheduled runs or real market data.
+permissions:
+  contents: read
+
+jobs:
+  no-token-offline:
+    name: Offline research / ${{ matrix.os }} / Python ${{ matrix.py }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        py: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.py }}
+      - name: Byte-compile isolated engine and tests
+        run: python -m py_compile scripts/zero_token_strategy_lab.py scripts/zero_token_strategy_worker.py tests/test_zero_token_strategy_lab.py tests/test_zero_token_strategy_worker.py
+      - name: Synthetic strategy/out-of-sample/time-causality negatives
+        run: python -m unittest discover -s tests -p test_zero_token_strategy_lab.py -v
+      - name: Local idempotent worker and no-public-output negatives
+        run: python -m unittest discover -s tests -p test_zero_token_strategy_worker.py -v
+      - name: Windows Japanese directory re-run
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -c "import os,pathlib,shutil; dst=pathlib.Path(os.environ['RUNNER_TEMP'])/'100億PROJECT'/'戦略研究'; [(shutil.copytree(p,dst/p,dirs_exist_ok=True)) for p in ('scripts','tests')]; print('JAPANESE_PATH_READY')"
+          $testDir = Join-Path $env:RUNNER_TEMP '100億PROJECT\戦略研究'
+          Push-Location $testDir
+          try {
+            python -m unittest discover -s tests -p test_zero_token_strategy_lab.py -v
+            if ($LASTEXITCODE -ne 0) { throw 'RESEARCH_UNICODE_FAIL' }
+            python -m unittest discover -s tests -p test_zero_token_strategy_worker.py -v
+            if ($LASTEXITCODE -ne 0) { throw 'WORKER_UNICODE_FAIL' }
+          } finally {
+            Pop-Location
+          }
