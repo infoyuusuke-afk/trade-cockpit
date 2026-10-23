@@ -1,0 +1,39 @@
+name: Owner Shadow Handoff (Synthetic Only)
+on:
+  pull_request:
+    paths:
+      - "scripts/owner_shadow_handoff.py"
+      - "scripts/owner_approval_queue.py"
+      - "tests/test_owner_shadow_handoff.py"
+      - ".github/workflows/shadow-owner-handoff-synthetic.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Pure shadow approval handoff with adversarial cases
+        run: python -m unittest discover -s tests -p test_owner_shadow_handoff.py -v
+      - name: Zero-broker zero-Owner-device synthetic demonstration
+        run: python -m scripts.owner_shadow_handoff --synthetic-demo
+  synthetic-windows:
+    runs-on: windows-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Windows Python paper-only approval contract
+        shell: powershell
+        run: |
+          python -m unittest discover -s tests -p test_owner_shadow_handoff.py -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m scripts.owner_shadow_handoff --synthetic-demo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

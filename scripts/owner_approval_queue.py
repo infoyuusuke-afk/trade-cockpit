@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-APPROVAL_TYPES = {"MAIN_MERGE", "REAL_MONEY_SUBMIT", "EXTERNAL_PUBLISH"}
+APPROVAL_TYPES = {"MAIN_MERGE", "REAL_MONEY_SUBMIT", "EXTERNAL_PUBLISH", "SHADOW_REVIEW"}
 INPUT_FIELDS = {"approval_id", "approval_type", "created_at", "summary"}
 QUEUE_FIELDS = INPUT_FIELDS | {"status", "auto_approve"}
 DECIDED_FIELDS = QUEUE_FIELDS | {"decided_at", "decided_by"}
