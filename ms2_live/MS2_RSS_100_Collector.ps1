@@ -2083,7 +2083,8 @@ if ($null -eq $scalp8StartConfig) {
 
 # OWNER 2026-10-23 夜 「コントロールに保有株をカード表示追加、場中、売買したら保有中」「両方 ただし分けて表示」:
 # the OWNER's real holdings are read with the RSS list functions that only READ the account
-# (RssMarginPositionList = 信用建玉一覧, RssPositionList = 現物保有一覧; 楽天 MS2 RSS 関数一覧) into
+# (RssMarginPositionList = 信用建玉一覧, RssPositionList = 現物保有一覧, RssExecutionList = 約定一覧 for the
+# open time and today's closed trades; 楽天 MS2 RSS 関数一覧) into
 # RuntimeDir\real_positions_v1.json for the CONTROL tab of this PC only. Display only: no order
 # function is written or called, the file is not published (not in the public feed, GitHub, the
 # Brain or any AI), and a failure stops only this reader.
@@ -2097,6 +2098,7 @@ $realPosEvery = 5            # loops between reads (about 6 to 10 s)
 $realPosRows = 300           # rows kept for each list
 $realPosMarginTop = 1        # formula cell; header on the next row, positions after it
 $realPosCashTop = 310
+$realPosExecTop = 620
 function Get-RealPosConfig {
     if ($script:realPosLatched) { return $null }
     try {
@@ -2155,6 +2157,7 @@ if ($null -eq (Get-RealPosConfig)) {
         # read-only list functions only (all issues, all accounts, all margin kinds and sides)
         Invoke-ExcelCom -Label "信用建玉一覧式設定" -Action { $realPosSheet.Cells.Item($realPosMarginTop, 1).FormulaLocal = '=RssMarginPositionList(,,"A",0,0,0)' } | Out-Null
         Invoke-ExcelCom -Label "現物保有一覧式設定" -Action { $realPosSheet.Cells.Item($realPosCashTop, 1).FormulaLocal = '=RssPositionList(,,"A")' } | Out-Null
+        Invoke-ExcelCom -Label "約定一覧式設定" -Action { $realPosSheet.Cells.Item($realPosExecTop, 1).FormulaLocal = '=RssExecutionList(,0,,"A",0,0)' } | Out-Null
         Invoke-ExcelCom -Label "実保有シート非表示" -Action { $realPosSheet.Visible = 0 } | Out-Null
         $realPosReady = $true
         Write-Host "[REAL_POS] READY (read only, this PC only)" -ForegroundColor Green
@@ -2799,7 +2802,7 @@ try {
         $realPosSeq++
         if ($realPosReady -and $null -ne $realPosSheet -and ($realPosSeq % $realPosEvery) -eq 1) {
             try {
-                $rpLast = $realPosCashTop + $realPosRows + 2
+                $rpLast = $realPosExecTop + $realPosRows + 2
                 $rpPacket = Invoke-ExcelCom -Label "実保有取得" -Action {
                     [pscustomobject]@{ Data = $realPosSheet.Range($realPosSheet.Cells.Item(1, 1), $realPosSheet.Cells.Item($rpLast, 20)).Value2 }
                 }
@@ -2814,6 +2817,16 @@ try {
                     $rpCash = ConvertFrom-RealPosBlock $rpData $h $realPosRows 20
                     if ($null -ne $rpCash) { break }
                 }
+                $rpExec = $null
+                foreach ($h in @($realPosExecTop, ($realPosExecTop + 1), ($realPosExecTop + 2))) {
+                    $rpExec = ConvertFrom-RealPosBlock $rpData $h $realPosRows 20
+                    if ($null -ne $rpExec) { break }
+                }
+                $rpToday = (Get-Date).ToString("yyyy/MM/dd")
+                $rpExecRows = @(foreach ($p in @($rpExec)) { if ($null -ne $p -and ([string]$p."約定日").StartsWith($rpToday)) {
+                    [ordered]@{ at = [string]$p."約定日"; code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
+                                market = [string]$p."市場名称"; trade = [string]$p."取引"; side = [string]$p."売買"
+                                qty = Get-RealPosNumber $p."約定数量"; price = Get-RealPosNumber $p."約定単価" } } })
                 $rpMarginRows = @(foreach ($p in @($rpMargin)) { if ($null -ne $p) {
                     [ordered]@{ code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
                                 market = [string]$p."建市場"; kind = [string]$p."信用区分"; term = [string]$p."弁済期限"; side = [string]$p."売買"
@@ -2829,8 +2842,10 @@ try {
                     source = "MS2 RSS RssMarginPositionList / RssPositionList (read only)"
                     margin_state = $(if ($null -eq $rpMargin) { "NOT_READY" } else { "OK" })
                     cash_state = $(if ($null -eq $rpCash) { "NOT_READY" } else { "OK" })
+                    executions_state = $(if ($null -eq $rpExec) { "NOT_READY" } else { "OK" })
                     margin = $rpMarginRows
                     cash = $rpCashRows
+                    executions_today = $rpExecRows
                     read_only = $true
                     real_submit_allowed = $false
                     trade_instruction = $false

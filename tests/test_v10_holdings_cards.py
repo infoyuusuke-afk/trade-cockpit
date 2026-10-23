@@ -33,6 +33,7 @@ class ReadOnly(unittest.TestCase):
         setup, cycle = _blocks(_collector())
         self.assertIn("'=RssMarginPositionList(,,\"A\",0,0,0)'", setup)
         self.assertIn("'=RssPositionList(,,\"A\")'", setup)
+        self.assertIn("'=RssExecutionList(,0,,\"A\",0,0)'", setup)
         for order_fn in ("Order", "RssStock", "RssMargin" + "OpenOrder", "RssMarginCloseOrder"):
             self.assertNotIn(order_fn, setup + cycle)
         self.assertNotIn(".Formula", cycle)          # the cycle never writes to the workbook
@@ -131,18 +132,20 @@ $o | ConvertTo-Json -Compress
             self.assertEqual(got[name], "503 Service Unavailable", name)
 
 
-class ControlPanels(unittest.TestCase):
-    def test_two_separate_panels(self):
+class JournalPanels(unittest.TestCase):
+    def test_four_panels_in_the_journal_tab(self):
         js = CONTROL_JS.read_text(encoding="utf-8")
-        self.assertIn('id="owner-real-holdings"', js)
-        self.assertIn('id="owner-virtual-holdings"', js)
-        self.assertIn("保有中｜実口座（読むだけ）", js)
-        self.assertIn("保有中｜仮想（コクピットの検証）", js)
+        # OWNER 2026-10-23 夜 「保有中、保有した銘柄はAIトレード日記のタブ」
+        self.assertIn("const journal=document.querySelector('.tab-pane[data-pane=\"ai-journal\"]');", js)
+        for pid, title in (("owner-real-holdings", "保有中｜実口座（読むだけ）"), ("owner-real-closed", "保有した銘柄｜実口座・今日決済"),
+                           ("owner-virtual-holdings", "保有中｜仮想（コクピットの検証）"), ("owner-virtual-closed", "保有した銘柄｜仮想・今日決済")):
+            self.assertIn('["%s","%s",' % (pid, title), js)
         self.assertIn('fetch("/real_positions.json?t="+Date.now(),{cache:"no-store"})', js)
         self.assertIn('filter(p=>p&&p.status==="OPEN")', js)
+        self.assertIn('filter(p=>p&&p.status==="CLOSED"&&p.fill_price!=null)', js)
         self.assertIn("setInterval(renderHoldings,10000);", js)
-        # an unreadable source shows a notice, never old holdings
         self.assertIn("古い保有は表示しません", js)
+        self.assertIn("手数料・金利は含まない概算", js)
 
 
 if __name__ == "__main__":
