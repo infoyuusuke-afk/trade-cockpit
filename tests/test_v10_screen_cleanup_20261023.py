@@ -130,6 +130,35 @@ class WickFeed(unittest.TestCase):
         self.assertEqual(gw.count("'wick_watch.json'"), 2)
 
 
+class AccumulationEvent5Gpt(unittest.TestCase):
+    def test_accumulation_fed(self):
+        # OWNER 2026-10-24 「本当に買い集めなのか…継続監視銘柄で大口が定期的に吸収してるのか」
+        from scripts import v10_public_feed_sync as feed
+        v = feed.accumulation_view({"updated_at": "2026-10-23 21:00:37 JST", "large_lot_accumulation": [{"name": "A（1111）"}],
+                                    "large_lot_accumulation_note": "n", "credit_supply_updated_at": "c"})
+        self.assertEqual((len(v["large_lot_accumulation"]), v["real_submit_allowed"]), (1, False))
+        html = _html()
+        self.assertIn('fetch("accumulation_watch.json?t=" + Date.now())', html)
+        self.assertIn("window.renderAccumulation(window.accFedData || d);", html)
+        self.assertIn('"accumulation_watch.json": "large-lot-accumulation"', html)
+        self.assertEqual((ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig").count("'accumulation_watch.json'"), 2)
+
+    def test_event5_dated_daily_cards(self):
+        # OWNER 2026-10-24 「古くないか」 (EVENT 5)
+        html = _html()
+        start = html.index("window.renderEvent5 = rows => {")
+        fn = html[start:html.index('document.getElementById("speculative-theme-watch").innerHTML =', start)]
+        self.assertIn("<span>終値（' + e(date) + '）<b>", fn)
+        self.assertIn("日足（ライブの値段ではありません）", fn)
+        self.assertNotIn("_staticCurrent", fn)
+
+    def test_gpt_panel_shows_the_tasks(self):
+        # OWNER 2026-10-24 「アナリストは自動になったはず」
+        html = _html()
+        self.assertIn("<h3>GPTタスクの答え（自動・ChatGPTアプリ）</h3>", html)
+        self.assertIn("GPTタスクの答えは、まだ届いていません", html)
+
+
 class JnxCodes(unittest.TestCase):
     def test_static(self):
         text = _collector()

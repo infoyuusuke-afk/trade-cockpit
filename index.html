@@ -78,7 +78,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const agentPanel=document.createElement("section");
  agentPanel.className="card wide";
  agentPanel.id="agent-research";
- agentPanel.innerHTML='<h2>専門AIアナリスト</h2><p class="warning">AI推論・研究用（MS2の実測データではありません）</p><p class="sub">GPT APIの研究レポート（BRAIN受信・ACK済みのものだけ）。価格・板・出来高はMS2の検証済み情報だけを使い、このレポートは売買判定・発注に使いません。</p><div id="agent-research-body"><div class="focus-empty">取得待ち</div></div>';
+ agentPanel.innerHTML='<h2>専門AIアナリスト</h2><p class="warning">AI推論・研究用（MS2の実測データではありません）</p><p class="sub">ChatGPTアプリのGPTタスク（PRE-NEXT・需給）が毎朝このPCに置く答えです。価格・板・出来高はMS2の検証済み情報だけを使い、この答えは売買判定・発注に使いません。</p><div id="agent-research-body"><div class="focus-empty">取得待ち</div></div>';
  panes.brain.appendChild(agentPanel);
  const AGENT_ROLE_LABEL={premarket:"寄り前",pre_next:"PRE-NEXT",supply_sq:"需給・SQ",revenue_hunter:"Revenue Hunter（PROJECT進捗）"};
  const AGENT_REASON_LABEL={EXPIRED:"期限切れ・利用不可",NO_SOURCE:"出典なし・利用不可",NO_DATA:"データ不足・利用不可",UNAVAILABLE:"分析失敗・利用不可"};
@@ -110,11 +110,15 @@ document.addEventListener("DOMContentLoaded",()=>{
    // Brain signature or freshness of the view; that body is still shown as the reason.
    let manual={};
    fetch("/brain_pick.json?t="+Date.now()).then(r=>r.json()).then(b=>{manual=(b&&b.real_submit_allowed===false&&b.manual_analysts)||{};(b?.specialist_watch||[]).forEach(w=>{if(w?.code&&w?.name&&w.name!==w.code)agentNames[w.code]=String(w.name).replace(/（[0-9A-Z]{4}）$/,"");});}).catch(()=>{}).then(()=>
-   fetch("/agent_research.json?t="+Date.now())).then(r=>r.json()).then(v=>{
+   fetch("/agent_research.json?t="+Date.now()).then(r=>r.json()).catch(()=>null)).then(v=>{
      const box=document.getElementById("agent-research-body");
      // OWNER 2026-10-23: backup answers pasted by hand when an automatic run failed, marked 『手動』;
      // shown above the automatic reports, and also when those are unavailable.
-     const manualHtml=Object.keys(manual).length?'<h3>手動で取り込んだ意見（予備・自動が届かなかった時だけ）</h3><div class="rotation-grid">'+Object.entries(manual).map(([role,rows])=>'<div class="rotation-box"><b>'+esc(AGENT_ROLE_LABEL[role]||role)+'『手動』</b>'+(Array.isArray(rows)?rows:[]).map(x=>'<small>'+esc(x.code)+' '+esc(x.view)+'：'+esc(x.reason)+'（'+esc(String(x.posted_at||"").slice(11,16))+'）</small>').join("")+'</div>').join("")+'</div>':'';
+     // OWNER 2026-10-24 「アナリストは自動になったはず」: the GPT API runs are stopped (2026-10-23), so the panel shows
+     // the ChatGPT tasks' answers (analyst_inbox) as the automatic source; the API runs are not listed.
+     const manualHtml=Object.keys(manual).length?'<h3>GPTタスクの答え（自動・ChatGPTアプリ）</h3><div class="rotation-grid">'+Object.entries(manual).map(([role,rows])=>'<div class="rotation-box"><b>'+esc(AGENT_ROLE_LABEL[role]||role)+'（GPTタスク）</b>'+(Array.isArray(rows)?rows:[]).map(x=>'<small>'+esc(x.code)+' '+esc(x.view)+'：'+esc(x.reason)+'（'+esc(String(x.posted_at||"").slice(11,16))+'）</small>').join("")+'</div>').join("")+'</div>':'';
+     box.innerHTML=manualHtml||'<div class="focus-empty">GPTタスクの答えは、まだ届いていません（PRE-NEXT・需給は毎日7:30。届いた日のうち8時間だけ表示）</div>';
+     return;
      if(v?.state==="DISABLED"){box.innerHTML=manualHtml+'<div class="focus-empty">専門AI連携は未設定（受け箱 V10_AGENT_RESEARCH_INBOX が未設定）</div>';return;}
      if(v?.state==="UNAVAILABLE"){box.innerHTML=manualHtml+'<div class="focus-empty">専門AIレポート利用不可（'+esc(v?.reason||"検証できません")+'）</div>';return;}
      if(v?.real_submit_allowed!==false||!Array.isArray(v?.runs)){box.innerHTML=manualHtml+'<div class="focus-empty">専門AIレポート利用不可</div>';return;}
@@ -1228,7 +1232,11 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => new Promise(
   }).join("");
   if (!window.event5Fed) document.getElementById("speculative-theme-watch").innerHTML =
     speculative || "<div class='focus-empty'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</div>";
-  const accumulation = (d.large_lot_accumulation || []).slice(0, 20).map((x, i) =>
+  // OWNER 2026-10-24 「本当に買い集めなのか…継続監視銘柄で大口が定期的に吸収してるのか」: the list comes from the
+  // fed accumulation_watch.json (latest close) when it is there, with its date; the checkout copy otherwise.
+  window.renderAccumulation = src => {
+  const fedNote = src === window.accFedData ? "（" + String(src.updated_at || "").slice(0, 10) + " 引け後の判定）" : "（古い可能性）";
+  const accumulation = (src.large_lot_accumulation || []).slice(0, 20).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td><b class='" +
     (x.phase.includes("上放れ") ? "up" : "warning") + "'>" + x.phase +
     "</b></td><td><b class='up'>" + x.score + "/100</b></td><td>" +
@@ -1247,8 +1255,10 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => new Promise(
   document.getElementById("accumulation-signals").innerHTML =
     accumulation || "<tr><td colspan='15'>本日の大口買い集め痕跡の合格銘柄なし。</td></tr>";
   document.getElementById("accumulation-meta").textContent =
-    (d.large_lot_accumulation_note || "価格・出来高痕跡による推定") +
-    "／信用需給更新 " + (d.credit_supply_updated_at || "未取得");
+    (src.large_lot_accumulation_note || "価格・出来高痕跡による推定") + fedNote +
+    "／信用需給更新 " + (src.credit_supply_updated_at || "未取得");
+  };
+  window.renderAccumulation(window.accFedData || d);
   const hammers = (d.monthly_weekly_hammers || []).slice(0, 5).map((x, i) =>
     "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.timeframe +
     "</td><td>" + x.status + "</td><td><b class='up'>" + x.score +
@@ -1338,14 +1348,30 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => new Promise(
 // OWNER 2026-10-23 「EVENT5もあやしい」: EVENT 5 from the fed event5_watch.json, loaded on its own;
 // the checkout's signals.json list is shown only until (or unless) the fed list answers.
 window.renderEvent5 = rows => {
+    // OWNER 2026-10-24 「古くないか」: EVENT 5 is built from the day's closing data, so each card shows that
+    // close with its date as daily data (not live) instead of hiding everything as FAIL-CLOSED.
+    const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const pct = v => v == null || !Number.isFinite(Number(v)) ? "—" : (Number(v) > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
     const html = (rows || []).slice(0, 5).map(x => {
-      const sv = x.phase === "初動候補" ? {label:"初動候補",cls:"long"} : x.phase === "資金流入" ? {label:"資金流入",cls:"wait"} : {label:x.phase||"警戒",cls:"short"};
-      const foot = (x.theme||"") + "／" + (x.theme_status||"") + "／" + (x.action||"");
-      return window.renderScalpCard({name:x.name,code:x.code,_staticCurrent:true,price:x.close,change_pct:x.ret1,volume_burst:Number.isFinite(Number(x.rvol))?Number(x.rvol).toFixed(2):null,foot},sv,"日足");
+      const cls = x.phase === "初動候補" ? "long" : x.phase === "資金流入" ? "wait" : "short";
+      const date = String(x.signal_date || "").slice(5).replace("-", "/");
+      return '<article class="cc-card cc-card--' + cls + '"><div class="cc-head"><div class="cc-identity"><span class="cc-company">' + e(x.name) +
+        '</span><span class="cc-symbol">TSE:' + e(x.code) + '</span></div><span class="cc-badge">' + e(x.phase || "警戒") + '</span></div>' +
+        '<div class="cc-metrics-grid"><span>終値（' + e(date) + '）<b>' + (x.close == null ? "—" : Number(x.close).toLocaleString("ja-JP") + "円") + '</b></span>' +
+        '<span>前日比<b class="' + (Number(x.ret1) >= 0 ? "up" : "down") + '">' + pct(x.ret1) + '</b></span>' +
+        '<span>5日<b>' + pct(x.ret5) + '</b></span><span>20日<b>' + pct(x.ret20) + '</b></span>' +
+        '<span>出来高<b>' + (Number.isFinite(Number(x.rvol)) ? Number(x.rvol).toFixed(2) + "倍" : "—") + '</b></span>' +
+        '<span>見方<b>' + e(x.action || "—") + '</b></span></div>' +
+        '<div class="cc-foot">' + e((x.theme || "") + "／" + (x.theme_status || "")) + '／日足（ライブの値段ではありません）</div></article>';
     }).join("");
     document.getElementById("speculative-theme-watch").innerHTML =
       html || "<div class='focus-empty'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</div>";
   };
+fetch("accumulation_watch.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(a => {
+  if (!a || !Array.isArray(a.large_lot_accumulation)) return;
+  window.accFedData = a;
+  window.renderAccumulation?.(a);
+}).catch(() => {});
 // OWNER 2026-10-24 「最重要…セリクラとなり反転となるか」: 下ヒゲ吸収反転 from the fed wick_watch.json (the public
 // signals.json of the latest close), with its date shown; the checkout's copy is used only until it answers.
 window.renderWickRows = (rows, at, fed) => {
@@ -1400,7 +1426,7 @@ setInterval(loadRegimeSummary, 600000);
 // OWNER 2026-10-23 「古い時は画面に古いと出して、表示可にしない」: each section fed from the
 // public feed gets a 古い banner when its file is stale, unreadable or not refreshed in the
 // last 30 minutes (fail closed: no meta = not fresh). The banner names the file's own time.
-const FEED_SECTIONS = {"event5_watch.json": "speculative-theme-monitor", "wick_watch.json": "lower-wick-reversal", "world_market.json": "world-market-live", "event_calendar.json": "event-calendar",
+const FEED_SECTIONS = {"event5_watch.json": "speculative-theme-monitor", "wick_watch.json": "lower-wick-reversal", "accumulation_watch.json": "large-lot-accumulation", "world_market.json": "world-market-live", "event_calendar.json": "event-calendar",
   "kioxia_5m_calendar.json": "kioxia-5m-calendar", "correlations.json": "correlation-monitor",
   "next_theme_radar.json": "next-theme-radar", "weekly_review.json": "weekly-review", "market_summary.json": "regime-summary"};
 const markFeedStale = meta => {

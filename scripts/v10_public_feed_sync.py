@@ -106,6 +106,18 @@ def wick_view(signals: dict) -> dict:
             "real_submit_allowed": False, "trade_instruction": False}
 
 
+# OWNER 2026-10-24 「本当に買い集めなのか」: the 大口買い集め list of the public signals.json, fed like 下ヒゲ.
+ACCUMULATION_FILE = "accumulation_watch.json"
+
+
+def accumulation_view(signals: dict) -> dict:
+    rows = [x for x in (signals.get("large_lot_accumulation") or [])[:20] if isinstance(x, dict)]
+    return {"updated_at": str(signals.get("updated_at") or ""), "large_lot_accumulation": rows,
+            "large_lot_accumulation_note": str(signals.get("large_lot_accumulation_note") or ""),
+            "credit_supply_updated_at": str(signals.get("credit_supply_updated_at") or ""),
+            "real_submit_allowed": False, "trade_instruction": False}
+
+
 DATA_MAX_BYTES = 16 * 1024 * 1024
 # OWNER 2026-10-23 「検証・除外に本来地合判定がでるはず」: the daily index figures of the
 # public page's 地合いサマリー, plus a reference verdict. Display only (never a gate,
@@ -242,6 +254,17 @@ def sync(target: Path, *, fetch=_download, now: datetime | None = None) -> dict:
         files[WICK_FILE] = dict(fresh, ok=True, bytes=(target / WICK_FILE).stat().st_size)
     except Exception as exc:  # keep the previous copy
         files[WICK_FILE] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
+    try:
+        if not isinstance(sig, dict):
+            raise ValueError("NO_SIGNALS")
+        view = accumulation_view(sig)
+        fresh = freshness(ACCUMULATION_FILE, view, now)
+        temp = target / (ACCUMULATION_FILE + ".tmp")
+        temp.write_text(json.dumps(view, ensure_ascii=False), encoding="utf-8")
+        os.replace(temp, target / ACCUMULATION_FILE)
+        files[ACCUMULATION_FILE] = dict(fresh, ok=True, bytes=(target / ACCUMULATION_FILE).stat().st_size)
+    except Exception as exc:  # keep the previous copy
+        files[ACCUMULATION_FILE] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
     meta = {"fetched_at": now.isoformat(), "source": BASE_URL, "files": files,
             "real_submit_allowed": False, "trade_instruction": False}
     (target / META_FILE).write_text(json.dumps(meta, sort_keys=True), encoding="utf-8")
