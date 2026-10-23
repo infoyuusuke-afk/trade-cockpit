@@ -133,6 +133,10 @@ class ScreenStaysPut(unittest.TestCase):
         html = (ROOT / "index.html").read_text(encoding="utf-8")
         self.assertIn("if (!(Date.now() - sigAt < 864e5)) {", html)
         self.assertIn("古いデータのため表示しません（更新 ", html)
+        # OWNER 2026-10-23 「使えないのは外す」
+        self.assertIn('if (sec && !sec.querySelector("section")) sec.hidden = true;', html)
+        self.assertIn('["entered-signals", "prepared-signals", "overnight-long", "overnight-short"].forEach(id =>', html)
+        self.assertIn("#pts-morning-pickup,.ms2-download{display:none!important}", html)
 
     def test_compact_headings_and_one_line_attention_box(self):
         # OWNER 2026-10-23 「無駄な情報はコンパクトにしろ」
