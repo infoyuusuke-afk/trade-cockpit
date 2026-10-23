@@ -33,7 +33,7 @@ def synthetic_rows(*, symbol="285A", date="2026-10-19",
             op=100.5; close=100.53; hi=100.54; lo=100.48
         if i==22 and breach:
             hi=101.1
-        if i==21 and breach and stop_and_target:
+        if i==22 and breach and stop_and_target:
             lo=99.8; hi=101.2
         available=ts+timedelta(seconds=5) if i==20 and signal_delayed else ts
         result.append({"symbol":symbol,"time":ts.isoformat(),
@@ -66,19 +66,51 @@ class ZeroTokenLabTests(unittest.TestCase):
         self.assertEqual(len(all_),64)
         self.assertEqual(len({v["id"] for v in all_}),64)
 
-    def test_opening_breakout_uses_completed_bar_next_open(self):
+    def test_opening_breakout_uses_delayed_second_bar_open(self):
         bars=self.parsed(breach=True)
         x=replay_one_day(bars,long_variant(),cost_bps=18.)
         self.assertIsNotNone(x)
         self.assertEqual(x["decision_at"],bars[20]["time"].isoformat())
-        self.assertEqual(x["entry_bar_end"],bars[21]["time"].isoformat())
+        self.assertEqual(x["entry_bar_end"],bars[22]["time"].isoformat())
         self.assertEqual(x["exit_reason"],"TARGET")
         self.assertGreater(x["net_bps"],0)
         self.assertEqual(x["cost_bps"],18)
         self.assertIs(x["real_submit_allowed"],False)
 
-    def test_known_at_signal_bar_end_required(self):
+    def test_five_second_source_lag_uses_second_next_bar_open(self):
         bars=self.parsed(breach=True,signal_delayed=True)
+        result=replay_one_day(bars,long_variant(),cost_bps=18)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["entry_bar_end"],bars[22]["time"].isoformat())
+        self.assertFalse(result["real_submit_allowed"])
+
+    def test_sixteen_second_signal_lag_cannot_fill_past_entry_open(self):
+        bars=self.parsed(breach=True)
+        bars[20]["available_at"]=bars[20]["time"]+timedelta(seconds=16)
+        self.assertIsNone(replay_one_day(bars,long_variant(),cost_bps=18))
+
+    def test_delayed_earlier_vwap_bar_not_seen_at_prev_decision(self):
+        bars=self.parsed(breach=True)
+        # The previous VWAP bar was available only after the prior
+        # decision time. A later complete file must not backdate it.
+        bars[10]["available_at"]=bars[10]["time"]+timedelta(seconds=120)
+        self.assertIsNone(replay_one_day(bars,long_variant(),cost_bps=18))
+
+    def test_gap_prior_to_later_breakout_cannot_be_backfilled(self):
+        bars=self.parsed(breach=True)
+        # Shift the only signal from bar 20 to bar 25, then erase bar 23.
+        bars[20]["close"]=100
+        bars[20]["high"]=100.03
+        for i in range(21,25):
+            bars[i]["open"]=100
+            bars[i]["close"]=100
+            bars[i]["high"]=100.03
+            bars[i]["low"]=99.97
+        bars[25]["open"]=100
+        bars[25]["close"]=100.5
+        bars[25]["high"]=100.6
+        bars[25]["low"]=99.99
+        bars.pop(23)
         self.assertIsNone(replay_one_day(bars,long_variant(),cost_bps=18))
 
     def test_both_stop_target_same_bar_stop_first(self):
