@@ -136,7 +136,8 @@ class ScreenStaysPut(unittest.TestCase):
         # OWNER 2026-10-23 「使えないのは外す」
         self.assertIn('if (sec && !sec.querySelector("section")) sec.hidden = true;', html)
         self.assertIn('["entered-signals", "prepared-signals", "overnight-long", "overnight-short"].forEach(id =>', html)
-        self.assertIn("#pts-morning-pickup,.ms2-download{display:none!important}", html)
+        self.assertIn(".ms2-download{display:none!important}", html)
+        self.assertNotIn("#pts-morning-pickup,", html)   # V10 may run in the evening (OWNER 2026-10-23)
 
     def test_compact_headings_and_one_line_attention_box(self):
         # OWNER 2026-10-23 「無駄な情報はコンパクトにしろ」
