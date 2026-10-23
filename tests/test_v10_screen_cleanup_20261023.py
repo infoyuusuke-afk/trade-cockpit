@@ -76,6 +76,8 @@ class OvernightAndFocus(unittest.TestCase):
     def test_fixed_holds_listed_while_ms2_is_not_live(self):
         html = _html()
         self.assertIn("15:25確定の持ち越し（仮想・", html)
+        # drawn from the kept list; read again at most once a minute and only where fetch exists
+        self.assertIn('if(typeof fetch==="function"&&!(Date.now()-(window.__overnightHoldsAt||0)<60000))', html)
         self.assertIn("現在値はMS2が止まっているため表示しません。", html)
 
     def test_focus_layout(self):
@@ -101,9 +103,10 @@ class Calendars(unittest.TestCase):
         html = _html()
         self.assertIn(".event-months{gap:14px!important;grid-template-columns:1fr!important}", html)
         self.assertIn(".event-chip.high{background:#22171a!important;border-left-color:#ff5a5f!important;", html)
-        js = (ROOT / "earnings-calendar.js").read_text(encoding="utf-8")
-        self.assertIn("heat=count>=400?4:count>=150?3:count>=50?2:count>0?1:0", js)
-        self.assertIn("#earnings-calendar-panel .ec-day.ec-weekend{", js)
+        # earnings-calendar.js stays the pinned source; the look is set from index.html
+        self.assertIn("const heat=count>=400?4:count>=150?3:count>=50?2:count>0?1:0;", html)
+        self.assertIn("html body #earnings-calendar-panel .ec-day.ec-weekend{", html)
+        self.assertNotIn("ec-weekend", (ROOT / "earnings-calendar.js").read_text(encoding="utf-8"))
 
 
 class WorldAndCorrelationOff(unittest.TestCase):

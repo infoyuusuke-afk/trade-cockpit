@@ -5,17 +5,10 @@
   root.id = 'earnings-calendar-panel'; root.className = 'card wide';
   root.innerHTML = `<style>
   #earnings-calendar-panel .ec-controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:16px 0}
-  #earnings-calendar-panel .ec-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:14px 0}
-  #earnings-calendar-panel .ec-wd{font-size:11px;letter-spacing:.08em;color:#8b9299;padding:0 4px 2px}
-  #earnings-calendar-panel .ec-day{position:relative;min-height:64px;border:1px solid #26272b;border-radius:10px;padding:8px 10px;background:#141518;color:#c9ccd1;cursor:pointer;text-align:left;font-size:13px;font-weight:700;transition:border-color .15s,background .15s}
-  #earnings-calendar-panel .ec-day:hover{border-color:#4a4d55}
-  #earnings-calendar-panel .ec-day.ec-weekend{background:#0f1012;color:#5f646b}
-  #earnings-calendar-panel .ec-day.ec-today{border-color:#35e2ae}
-  #earnings-calendar-panel .ec-day.active{border-color:#e7e9eb;background:#1d1f24}
-  #earnings-calendar-panel .ec-day small{position:absolute;right:10px;bottom:8px;font-size:12px;font-weight:700;color:#e7e9eb;font-variant-numeric:tabular-nums}
-  #earnings-calendar-panel .ec-day small i{font-style:normal;font-size:10px;color:#8b9299;margin-left:1px}
-  #earnings-calendar-panel .ec-day.ec-h1{background:#13201c}#earnings-calendar-panel .ec-day.ec-h2{background:#16302a}
-  #earnings-calendar-panel .ec-day.ec-h3{background:#1a4136}#earnings-calendar-panel .ec-day.ec-h4{background:#1f5444}
+  #earnings-calendar-panel .ec-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:16px 0}
+  #earnings-calendar-panel .ec-day{min-height:58px;border:1px solid #53677d;border-radius:7px;padding:7px;background:transparent;color:inherit;cursor:pointer;text-align:left}
+  #earnings-calendar-panel .ec-day.active{border:2px solid #58d9b4;background:#163a36}
+  #earnings-calendar-panel .ec-day small{display:block;color:#58d9b4}
   #earnings-calendar-panel .ec-item{padding:12px 0;border-bottom:1px solid #53677d}
   #earnings-calendar-panel .ec-item a{color:#58d9b4;margin-right:12px}
   #earnings-calendar-panel .ec-note{font-size:13px;line-height:1.6;opacity:.85}
@@ -59,10 +52,8 @@
       for(let d=1;d<=new Date(year,mon,0).getDate();d++){
         const day=`${month.value}-${String(d).padStart(2,'0')}`;
         const count=events.filter(x=>x.date===day).length;
-        const dow=new Date(day+'T00:00:00').getDay(),heat=count>=400?4:count>=150?3:count>=50?2:count>0?1:0;
-        const todayJst=new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
-        const b=text(grid,'button',String(d),'ec-day'+(selected===day?' active':'')+(dow===0||dow===6?' ec-weekend':'')+(heat?' ec-h'+heat:'')+(day===todayJst?' ec-today':''));b.type='button';b.setAttribute('aria-label',`${day} 決算予定${count}件`);
-        if(count){const s=text(b,'small',String(count));text(s,'i','社');}b.onclick=()=>{selected=selected===day?null:day;render();};
+        const b=text(grid,'button',String(d),'ec-day'+(selected===day?' active':''));b.type='button';b.setAttribute('aria-label',`${day} 決算予定${count}件`);
+        if(count)text(b,'small',count+'社');b.onclick=()=>{selected=selected===day?null:day;render();};
       }
       const list=find('ec-events');list.replaceChildren();find('ec-date-title').textContent=(selected||month.value)+' の決算予定';
       const shown=events.filter(x=>!selected||x.date===selected);

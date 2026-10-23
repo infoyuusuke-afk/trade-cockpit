@@ -1851,15 +1851,23 @@ document.addEventListener("DOMContentLoaded",()=>{
   Object.entries(areas).forEach(([id,v])=>put(id,v));
   // OWNER 2026-10-24 「持ち越しているはず」: the 15:25 holds were fixed from the day's own record, so they stay
   // listed while MS2 is not live; only the current price is withheld.
-  fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(b=>{
-   const on=Array.isArray(b?.positions?.overnight)?b.positions.overnight:[];
+  // The list is kept and drawn at once on every clear; /brain_pick.json is read again at most once a minute.
+  const drawHolds=on=>{
    const el=document.getElementById("ms2-hold-cards");
-   if(!el||!on.length)return;
+   if(!el||!Array.isArray(on)||!on.length)return;
    const e=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
    el.innerHTML="<div class='focus-empty'><span><b>15:25確定の持ち越し（仮想・"+on.length+"銘柄）</b><br>"+
     on.map(x=>e(x.name)+" "+(x.side==="LONG"?"買い":"空売り")+"・基準 "+e(x.reference_price)+"円").join("<br>")+
     "<br><small>現在値はMS2が止まっているため表示しません。採点 "+e(String(on[0].valid_until||"").replace("next trading day","翌営業日"))+"</small></span></div>";
-  }).catch(()=>{});
+  };
+  drawHolds(window.__overnightHolds);
+  if(typeof fetch==="function"&&!(Date.now()-(window.__overnightHoldsAt||0)<60000)){
+   window.__overnightHoldsAt=Date.now();
+   fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(b=>{
+    window.__overnightHolds=Array.isArray(b?.positions?.overnight)?b.positions.overnight:[];
+    drawHolds(window.__overnightHolds);
+   }).catch(()=>{});
+  }
   const common=document.getElementById("ms2-common-status");
   if(common){
    const score=common.querySelector(".score"),metrics=common.querySelector(".ms2-metrics");
@@ -2101,4 +2109,40 @@ document.addEventListener("DOMContentLoaded",()=>{
  loadWatcherKioxia(); setInterval(loadWatcherKioxia,3000);
 });
 </script>
-<script src="earnings-calendar.js" defer></script></body></html>
+<script src="earnings-calendar.js" defer></script>
+<style>
+/* OWNER 2026-10-24 「安っぽい、もっと洗練された作りこみ」: the earnings calendar look is set here, so
+   earnings-calendar.js stays the pinned source. Heat by number of companies, weekend dimmed, today outlined. */
+html body #earnings-calendar-panel .ec-grid{gap:6px;margin:14px 0}
+html body #earnings-calendar-panel .ec-day{position:relative;min-height:64px;border:1px solid #26272b;border-radius:10px;padding:8px 10px;background:#141518;color:#c9ccd1;font-size:13px;font-weight:700;transition:border-color .15s,background .15s}
+html body #earnings-calendar-panel .ec-day:hover{border-color:#4a4d55}
+html body #earnings-calendar-panel .ec-day.ec-weekend{background:#0f1012;color:#5f646b}
+html body #earnings-calendar-panel .ec-day.ec-h1{background:#13201c}html body #earnings-calendar-panel .ec-day.ec-h2{background:#16302a}
+html body #earnings-calendar-panel .ec-day.ec-h3{background:#1a4136}html body #earnings-calendar-panel .ec-day.ec-h4{background:#1f5444}
+html body #earnings-calendar-panel .ec-day.ec-today{border-color:#35e2ae}
+html body #earnings-calendar-panel .ec-day.active{border:1px solid #e7e9eb;background:#1d1f24}
+html body #earnings-calendar-panel .ec-day small{position:absolute;right:10px;bottom:8px;font-size:12px;font-weight:700;color:#e7e9eb;font-variant-numeric:tabular-nums}
+html body #earnings-calendar-panel .ec-day small i{font-style:normal;font-size:10px;color:#8b9299;margin-left:1px}
+</style>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{
+ const panel=document.getElementById("earnings-calendar-panel");
+ if(!panel)return;
+ const deco=()=>{
+  const today=new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+  panel.querySelectorAll(".ec-day").forEach(b=>{
+   const m=/^(\d{4}-\d\d-\d\d) 決算予定(\d+)件$/.exec(b.getAttribute("aria-label")||"");
+   if(!m)return;
+   const count=Number(m[2]),dow=new Date(m[1]+"T00:00:00").getDay();
+   const heat=count>=400?4:count>=150?3:count>=50?2:count>0?1:0;
+   b.classList.toggle("ec-weekend",dow===0||dow===6);
+   for(let i=1;i<=4;i++)b.classList.toggle("ec-h"+i,heat===i);
+   b.classList.toggle("ec-today",m[1]===today);
+   const s=b.querySelector("small");
+   if(s&&!s.querySelector("i")){s.textContent=String(count);const u=document.createElement("i");u.textContent="社";s.appendChild(u);}
+  });
+ };
+ new MutationObserver(deco).observe(panel,{childList:true,subtree:true});
+ deco();
+});
+</script></body></html>

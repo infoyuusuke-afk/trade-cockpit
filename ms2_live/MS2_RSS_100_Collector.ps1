@@ -1058,8 +1058,22 @@ function Write-ImmutableJson([string]$path, [object]$payload) {
     } catch [IO.IOException] { return $false }
 }
 
+# OWNER 2026-10-24 (overnight / 10-23 session logs): the loop grew from ~1.3 s to 10-19 s within a
+# couple of hours, because every cycle walked the whole day's 1-minute bars of all 100 rows with
+# Select-Object pipelines and a full-day EMA. Index slices and a bounded EMA keep each cycle flat.
+function Get-LastItems($Items, [int]$Count) {
+    $all = @($Items)
+    if ($Count -le 0 -or $all.Count -eq 0) { return @() }
+    if ($all.Count -le $Count) { return $all }
+    return $all[($all.Count - $Count)..($all.Count - 1)]
+}
+
+# EMA over the most recent bars only: the weight left on bars older than 150 is (1-2/21)^150 < 0.0001,
+# so EMA9 / EMA20 match the full-day value to well below one tick.
+$EmaWindowBars = 150
 function Get-EmaValue([object[]]$bars, [int]$period) {
     if ($null -eq $bars -or $bars.Count -lt 3) { return $null }
+    $bars = @(Get-LastItems $bars $(if ($script:EmaWindowBars -gt 0) { $script:EmaWindowBars } else { 150 }))
     $alpha = 2.0 / ($period + 1.0)
     $ema = [double]$bars[0].Close
     foreach ($bar in $bars) { $ema = ([double]$bar.Close * $alpha) + ($ema * (1.0 - $alpha)) }
@@ -1112,7 +1126,7 @@ function Convert-LiveBars([object[]]$bars, [int]$minutes, [double]$currentVwap =
             $x.vwap = $currentVwap
         }
     }
-    return @($groups.Values | Select-Object -Last 180)
+    return @(Get-LastItems @($groups.Values) 180)
 }
 
 function Get-MarketTimeBand([DateTime]$at) {
@@ -2991,10 +3005,10 @@ try {
             $emaReady=($completedBars.Count -ge 20)
             $barBurst=0.0; $atr1m=0.0; $medianBody=0.0; $chaseGuard=$false; $observedTick=Get-ObservedTick $history[$ticker]
             if($completedBars.Count -ge 3 -and $null -ne $lastBar){
-                $priorBars=@($completedBars|Select-Object -SkipLast 1|Select-Object -Last 10)
+                $priorBars=@(Get-LastItems $completedBars[0..($completedBars.Count-2)] 10)
                 $avgBarVolume=($priorBars|Measure-Object -Property Volume -Average).Average
                 if($avgBarVolume -gt 0){$barBurst=[double]$lastBar.Volume/[double]$avgBarVolume}
-                $ranges=@($completedBars|Select-Object -Last 14|ForEach-Object{[double]$_.High-[double]$_.Low})
+                $ranges=@(Get-LastItems $completedBars 14|ForEach-Object{[double]$_.High-[double]$_.Low})
                 if($ranges.Count -gt 0){$atr1m=($ranges|Measure-Object -Average).Average}
                 $bodies=@($priorBars|ForEach-Object{[Math]::Abs([double]$_.Close-[double]$_.Open)})
                 $medianBody=Get-Median $bodies
@@ -3572,8 +3586,8 @@ try {
             # Full-day bars for 100 rows made live_ms2.json ~15MB by 11:00 and the 2-second cycle ~25 s.
             $rowBars=@($minuteBars[[string]$result.ticker])
             if([string]$result.ticker -ne "285A.T"){
-                $rowBars1m=@($rowBars|Select-Object -Last $LiveRowBars1m)
-                $rowBars5m=@(Convert-LiveBars @($rowBars|Select-Object -Last ($LiveRowBars5m*5+5)) 5 ([double]$result.vwap)|Select-Object -Last $LiveRowBars5m)
+                $rowBars1m=@(Get-LastItems $rowBars $LiveRowBars1m)
+                $rowBars5m=@(Get-LastItems (Convert-LiveBars @(Get-LastItems $rowBars ($LiveRowBars5m*5+5)) 5 ([double]$result.vwap)) $LiveRowBars5m)
             } else {
                 $rowBars1m=$rowBars
                 $rowBars5m=@(Convert-LiveBars $rowBars 5 ([double]$result.vwap))
