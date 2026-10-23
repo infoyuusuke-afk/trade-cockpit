@@ -112,19 +112,12 @@ class OrderCard(unittest.TestCase):
 class GrokOnEarningsCalendar(unittest.TestCase):
     def test_tags_per_code(self):
         # OWNER 2026-10-24 「決算日程にGrokをつなぐ」
-        bots = [{"bot": "Grok2号", "text": "GROK2_EARNINGS_V1
-実行日時：2026-10-24 05:00
-", "cards": [
-                    {"銘柄": "大末建設（1814）", "判断案": "押し目の買い候補"}]},
-                {"bot": "Grok3号", "cards": [], "text": "GROK3_PREVIEW_V1
-実行日時：2026-10-27 17:30
----
-銘柄：キオクシアHD（285A）
-"
-                 "事前の空気：警戒（下げて悲観）
----
-決算のあとの答え合わせ：アドバンテスト（6857）／結果 上振れ／事前の空気 期待先行 → 外れ
-END"}]
+        two = "\n".join(["GROK2_EARNINGS_V1", "実行日時：2026-10-24 05:00", ""])
+        three = "\n".join(["GROK3_PREVIEW_V1", "実行日時：2026-10-27 17:30", "---", "銘柄：キオクシアHD（285A）",
+                           "事前の空気：警戒（下げて悲観）", "---",
+                           "決算のあとの答え合わせ：アドバンテスト（6857）／結果 上振れ／事前の空気 期待先行 → 外れ", "END"])
+        bots = [{"bot": "Grok2号", "text": two, "cards": [{"銘柄": "大末建設（1814）", "判断案": "押し目の買い候補"}]},
+                {"bot": "Grok3号", "cards": [], "text": three}]
         tags = feed.grok_tags(bots)
         self.assertEqual(tags["1814"], [{"bot": "2号", "kind": "決算後", "label": "押し目の買い候補", "day": "10/24"}])
         self.assertEqual(tags["285A"], [{"bot": "3号", "kind": "決算前", "label": "警戒", "day": "10/27"}])
