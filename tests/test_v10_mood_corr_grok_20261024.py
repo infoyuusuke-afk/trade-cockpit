@@ -87,5 +87,16 @@ class BrainLamp(unittest.TestCase):
         self.assertIn('if(ex.real_submit_allowed!==false)down.push(', HTML)
 
 
+class FreshnessLamps(unittest.TestCase):
+    def test_gpt_and_grok_lamps(self):
+        # OWNER 2026-10-24 「専門アナリストも同様…最新情報なのか過去情報なのかわからないとこわい」「グロックも同様」
+        self.assertIn('<div id="agent-lamp"></div>', HTML)
+        self.assertIn('<div id="grok-lamp"></div>', HTML)
+        for word in ('"最新","今日 "', '"前の答え"', '"届いていません"', '"休日"'):
+            self.assertIn(word, HTML)
+        self.assertIn("実行日時：", HTML)              # Grok lamps use the answer's own run time
+        self.assertIn('["red", "古い"', HTML)
+
+
 if __name__ == "__main__":
     unittest.main()

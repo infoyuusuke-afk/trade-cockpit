@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const brainPanel=document.createElement("section");
  brainPanel.className="card wide";
  brainPanel.id="brain-runtime";
- brainPanel.innerHTML='<h2>AI BRAIN</h2><div id="brain-lamp" class="brain-lamp gray"><span class="brain-lamp-dot"></span><div><b>確認中</b><small>接続待ち</small></div></div><details class="brain-detail"><summary>詳しい状態（調べる時だけ）</summary><div class="rotation-grid" id="brain-runtime-grid"></div></details><style>.brain-lamp{display:flex;align-items:center;gap:16px;padding:16px 18px;border:1px solid #303033;border-radius:14px;background:#111113}.brain-lamp-dot{width:22px;height:22px;border-radius:50%;flex:0 0 22px;background:#5f646b}.brain-lamp b{display:block;font-size:20px;color:#e7e9eb}.brain-lamp small{display:block;margin-top:4px;color:#9ba3af;font-size:13px}.brain-lamp.green .brain-lamp-dot{background:#35e2ae;box-shadow:0 0 12px #35e2ae99}.brain-lamp.yellow .brain-lamp-dot{background:#f7a600;box-shadow:0 0 12px #f7a60099}.brain-lamp.red .brain-lamp-dot{background:#f23645;box-shadow:0 0 12px #f2364599}.brain-detail{margin-top:10px;color:#8b9299}.brain-detail summary{cursor:pointer;font-size:12px}</style>';
+ brainPanel.innerHTML='<h2>AI BRAIN</h2><div id="brain-lamp" class="brain-lamp gray"><span class="brain-lamp-dot"></span><div><b>確認中</b><small>接続待ち</small></div></div><details class="brain-detail"><summary>詳しい状態（調べる時だけ）</summary><div class="rotation-grid" id="brain-runtime-grid"></div></details><style>.brain-lamp{display:flex;align-items:center;gap:16px;padding:16px 18px;border:1px solid #303033;border-radius:14px;background:#111113}.brain-lamp-dot{width:22px;height:22px;border-radius:50%;flex:0 0 22px;background:#5f646b}.brain-lamp b{display:block;font-size:20px;color:#e7e9eb}.brain-lamp small{display:block;margin-top:4px;color:#9ba3af;font-size:13px}.brain-lamp.green .brain-lamp-dot{background:#35e2ae;box-shadow:0 0 12px #35e2ae99}.brain-lamp.yellow .brain-lamp-dot{background:#f7a600;box-shadow:0 0 12px #f7a60099}.brain-lamp.red .brain-lamp-dot{background:#f23645;box-shadow:0 0 12px #f2364599}.brain-lamp.mini{padding:10px 14px;margin:8px 0;gap:12px}.brain-lamp.mini .brain-lamp-dot{width:14px;height:14px;flex:0 0 14px}.brain-lamp.mini b{font-size:15px}.brain-lamp.mini small{font-size:12px}.brain-detail{margin-top:10px;color:#8b9299}.brain-detail summary{cursor:pointer;font-size:12px}</style>';
  panes.brain.appendChild(brainPanel);
 
  // Specialist AI analysts (GPT API research). Research lane only: never a
@@ -78,7 +78,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const agentPanel=document.createElement("section");
  agentPanel.className="card wide";
  agentPanel.id="agent-research";
- agentPanel.innerHTML='<h2>専門AIアナリスト</h2><p class="warning">AI推論・研究用（MS2の実測データではありません）</p><p class="sub">ChatGPTアプリのGPTタスク（PRE-NEXT・需給）が毎朝このPCに置く答えです。価格・板・出来高はMS2の検証済み情報だけを使い、この答えは売買判定・発注に使いません。</p><div id="agent-research-body"><div class="focus-empty">取得待ち</div></div><h2 style="margin-top:18px">Grokの答え（1号・2号・3号）</h2><p class="sub">5番のボタンで保存した、Grok Botのいちばん新しい答えです。読むためだけに出しています（売買判定・点数・発注には使いません）。</p><div id="grok-bots-body"><div class="focus-empty">取得待ち</div></div>';
+ agentPanel.innerHTML='<h2>専門AIアナリスト</h2><p class="warning">AI推論・研究用（MS2の実測データではありません）</p><p class="sub">ChatGPTアプリのGPTタスク（PRE-NEXT・需給）が毎朝このPCに置く答えです。価格・板・出来高はMS2の検証済み情報だけを使い、この答えは売買判定・発注に使いません。</p><div id="agent-lamp"></div><div id="agent-research-body"><div class="focus-empty">取得待ち</div></div><h2 style="margin-top:18px">Grokの答え（1号・2号・3号）</h2><p class="sub">5番のボタンで保存した、Grok Botのいちばん新しい答えです。読むためだけに出しています（売買判定・点数・発注には使いません）。</p><div id="grok-lamp"></div><div id="grok-bots-body"><div class="focus-empty">取得待ち</div></div>';
  panes.brain.appendChild(agentPanel);
  const AGENT_ROLE_LABEL={premarket:"寄り前",pre_next:"PRE-NEXT",supply_sq:"需給・SQ",revenue_hunter:"Revenue Hunter（PROJECT進捗）"};
  const AGENT_REASON_LABEL={EXPIRED:"期限切れ・利用不可",NO_SOURCE:"出典なし・利用不可",NO_DATA:"データ不足・利用不可",UNAVAILABLE:"分析失敗・利用不可"};
@@ -105,6 +105,10 @@ document.addEventListener("DOMContentLoaded",()=>{
    return '<div class="rotation-box"><b>'+esc(AGENT_ROLE_LABEL[rep.role]||rep.role)+'</b>'+
      (codes.length?'<strong>'+codes.map(c=>esc(agentNames[c]?agentNames[c]+"("+c+")":c)).join("<br>")+'</strong>':'<small>注目銘柄なし</small>')+'</div>';
  };
+ // OWNER 2026-10-24 「専門アナリストも同様　ステータスランプで最新情報なのか過去情報なのかわからないとこわい」「グロックも同様」
+ window.freshLamp=(cls,label,line)=>'<div class="brain-lamp mini '+cls+'"><span class="brain-lamp-dot"></span><div><b>'+esc(label)+'</b><small>'+esc(line)+'</small></div></div>';
+ window.jstParts=ms=>{const j=new Date(ms+9*3600000);return {day:j.toISOString().slice(0,10),md:j.toISOString().slice(5,10).replace("-","/"),hm:j.toISOString().slice(11,16),wd:j.getUTCDay(),min:j.getUTCHours()*60+j.getUTCMinutes()};};
+ window.parseJstMs=s=>{s=String(s||"").trim().replace(" ","T");if(!s)return NaN;if(!/(Z|[+-]\d{2}:?\d{2})$/.test(s))s+="+09:00";return Date.parse(s);};
  const renderAgentResearch=()=>{
    // The Gateway answers 503 with {state:"UNAVAILABLE",reason} when it cannot verify the
    // Brain signature or freshness of the view; that body is still shown as the reason.
@@ -118,6 +122,13 @@ document.addEventListener("DOMContentLoaded",()=>{
      // the ChatGPT tasks' answers (analyst_inbox) as the automatic source; the API runs are not listed.
      const manualHtml=Object.keys(manual).length?'<h3>GPTタスクの答え（自動・ChatGPTアプリ）</h3><div class="rotation-grid">'+Object.entries(manual).map(([role,rows])=>'<div class="rotation-box"><b>'+esc(AGENT_ROLE_LABEL[role]||role)+'（GPTタスク）</b>'+(Array.isArray(rows)?rows:[]).map(x=>'<small>'+esc(x.code)+' '+esc(x.view)+'：'+esc(x.reason)+'（'+esc(String(x.posted_at||"").slice(11,16))+'）</small>').join("")+'</div>').join("")+'</div>':'';
      box.innerHTML=manualHtml||'<div class="focus-empty">GPTタスクの答えは、まだ届いていません（PRE-NEXT・需給は毎日7:30。届いた日のうち8時間だけ表示）</div>';
+     const posted=Object.values(manual).flatMap(rows=>Array.isArray(rows)?rows:[]).map(x=>parseJstMs(x.posted_at)).filter(Number.isFinite);
+     const now=jstParts(Date.now()),latest=posted.length?Math.max(...posted):null,lp=latest?jstParts(latest):null;
+     const lamp=latest&&lp.day===now.day?["green","最新","今日 "+lp.hm+" の答え"]:
+       latest?["yellow","前の答え",lp.md+" "+lp.hm+" の答え（今日の分はまだ）"]:
+       (now.wd===0||now.wd===6)?["gray","休日","次は平日の7:30に届きます"]:
+       now.min<465?["gray","まだ","今日の答えは7:30に届きます"]:["red","届いていません","今日7:30の答えが来ていません（ChatGPTアプリとPCが動いているか確認）"];
+     const al=document.getElementById("agent-lamp");if(al)al.innerHTML=freshLamp(...lamp);
      return;
      if(v?.state==="DISABLED"){box.innerHTML=manualHtml+'<div class="focus-empty">専門AI連携は未設定（受け箱 V10_AGENT_RESEARCH_INBOX が未設定）</div>';return;}
      if(v?.state==="UNAVAILABLE"){box.innerHTML=manualHtml+'<div class="focus-empty">専門AIレポート利用不可（'+esc(v?.reason||"検証できません")+'）</div>';return;}
@@ -1389,15 +1400,26 @@ window.renderEvent5 = rows => {
 // Desktop\Claudeブレイン\Grok1号〜3号 on this PC). Reading only; every text is escaped.
 window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(g => {
   const box = document.getElementById("grok-bots-body");
-  if (!box) return;
+  if (!box || typeof window.freshLamp !== "function") { setTimeout(window.loadGrokBots, 700); return; }
   if (!g || !Array.isArray(g.bots)) { box.innerHTML = "<div class='focus-empty'>Grokの答えはまだありません（5番のボタンで保存すると出ます）</div>"; return; }
   const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const runAt = b => { const m = /実行日時：\s*(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2})/.exec(b.text || ""); const r = m ? window.parseJstMs(m[1]) : NaN; return Number.isFinite(r) ? r : Date.parse(b.saved_at || ""); };
+  const nowP = window.jstParts(Date.now()), offDay = nowP.wd === 0 || nowP.wd === 6 || (nowP.wd === 1 && nowP.min < 480);
+  const lampOf = b => { if (!b.file) return ["gray", "未保存", "5番のボタンで保存すると出ます"]; const at = runAt(b), h = (Date.now() - at) / 3600000, p = window.jstParts(at);
+    if (!Number.isFinite(h)) return ["red", "時刻不明", "答えの時刻が読めません"];
+    if (h <= 14) return ["green", "最新", p.md + " " + p.hm + " の答え"];
+    if (h <= 36 || (offDay && h <= 72)) return ["yellow", "前の答え", p.md + " " + p.hm + " の答え（新しい答えはまだ）"];
+    return ["red", "古い", p.md + " " + p.hm + " の答え（" + Math.round(h) + "時間前）"]; };
+  const lamps = g.bots.map(lampOf), rank = {red: 3, yellow: 2, gray: 1, green: 0};
+  const worst = lamps.filter(l => l[0] !== "gray").sort((a, b) => rank[b[0]] - rank[a[0]])[0];
+  const gl = document.getElementById("grok-lamp");
+  if (gl) gl.innerHTML = window.freshLamp(...(worst ? [worst[0], worst[0] === "green" ? "Grokの答えは最新" : worst[0] === "yellow" ? "前の答えがあります" : "古い答えがあります", g.bots.map((b, i) => b.label.split(" ")[0] + "：" + lamps[i][1]).join("／")] : ["gray", "未保存", "まだGrokの答えがありません"]));
   const age = at => { const t = Date.parse(at || ""); return Number.isFinite(t) ? (Date.now() - t) / 3600000 : null; };
   const cls = v => /買い|追随/.test(v) ? "long" : /空売り/.test(v) ? "short" : "wait";
   box.innerHTML = g.bots.map(b => {
-    if (!b.file) return "<div class='rotation-box'><b>" + e(b.label) + "</b><small>まだ保存された答えがありません</small></div>";
+    if (!b.file) return "<div class='rotation-box'><b>" + e(b.label) + "</b>" + window.freshLamp(...lampOf(b)) + "</div>";
     const h = age(b.saved_at), old = h == null || h > 36;
-    const head = "<b>" + e(b.label) + "</b><small>保存 " + e(String(b.saved_at || "").slice(5, 16).replace("T", " ")) +
+    const head = "<b>" + e(b.label) + "</b>" + window.freshLamp(...lampOf(b)) + "<small>保存 " + e(String(b.saved_at || "").slice(5, 16).replace("T", " ")) +
       (old ? "　<span class='down'>古い（36時間より前）</span>" : "") + "　" + e(b.file) + "</small>";
     const cards = (b.cards || []).map(c => "<article class='cc-card cc-card--" + cls(c["判断案"]) + "'><div class='cc-head'><div class='cc-identity'><span class='cc-company'>" +
       e(c["銘柄"]) + "</span></div><span class='cc-badge'>" + e(c["判断案"]) + "</span></div><div class='cc-metrics-grid'>" +
