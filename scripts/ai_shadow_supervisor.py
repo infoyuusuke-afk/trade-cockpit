@@ -1494,6 +1494,7 @@ def _plain_int(value) -> int | None:
     return value
 
 
+DOWNTIME_COUNT_FROM = clock_time(9, 0)
 DOWNTIME_COUNT_UNTIL = clock_time(15, 30)
 
 
@@ -1501,7 +1502,9 @@ def counted_seconds(left: datetime, right: datetime) -> int:
     """Seconds of [left, right] that count toward downtime and uptime (JST).
 
     OWNER 2026-10-22 ④ (D-035): time after 15:30 is not counted as downtime.
-    Every other moment counts as before; the incident log itself is unchanged.
+    OWNER 2026-10-23: nor is the time before 09:00 (pre-open quotes are never fresh, so the
+    Shadow is paused fail-closed every morning). The lunch break still counts. The
+    incident log itself is unchanged.
     """
     if right <= left:
         return 0
@@ -1509,7 +1512,7 @@ def counted_seconds(left: datetime, right: datetime) -> int:
     total = 0.0
     day = lo.date()
     while day <= hi.date():
-        a = max(lo, datetime.combine(day, clock_time(0, 0), JST))
+        a = max(lo, datetime.combine(day, DOWNTIME_COUNT_FROM, JST))
         b = min(hi, datetime.combine(day, DOWNTIME_COUNT_UNTIL, JST))
         if b > a:
             total += (b - a).total_seconds()

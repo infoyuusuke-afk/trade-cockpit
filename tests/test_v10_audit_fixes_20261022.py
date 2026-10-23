@@ -161,8 +161,9 @@ class DowntimeNotAfter1530(unittest.TestCase):
         self.assertEqual(sup.counted_seconds(self.at("15:00"), self.at("16:00")), 1800)
         self.assertEqual(sup.counted_seconds(self.at("15:31"), self.at("23:00")), 0)
         self.assertEqual(sup.counted_seconds(self.at("11:00"), self.at("13:00")), 7200)  # lunch still counts
-        self.assertEqual(sup.counted_seconds(self.at("08:00"), self.at("09:10")), 4200)  # before 9:00 still counts
-        self.assertEqual(sup.counted_seconds(self.at("15:00", 22), self.at("10:00", 23)), 1800 + 36000)
+        self.assertEqual(sup.counted_seconds(self.at("08:00"), self.at("09:10")), 600)  # OWNER 2026-10-23: not before 9:00
+        self.assertEqual(sup.counted_seconds(self.at("05:00"), self.at("08:59")), 0)
+        self.assertEqual(sup.counted_seconds(self.at("15:00", 22), self.at("10:00", 23)), 1800 + 3600)
 
     def test_open_incident_after_close_adds_no_downtime(self):
         incident = {"occurrence_at": self.at("15:32").isoformat(), "recovery_at": None}
@@ -176,7 +177,7 @@ class DowntimeNotAfter1530(unittest.TestCase):
                                  "error_code": "STALE_OR_MISSING_TIMESTAMP"}]}
         daily = sup.summarize_operations(engine, now=self.at("18:00"))["daily"]
         self.assertEqual(daily["total_downtime_seconds"], 1800)
-        self.assertAlmostEqual(daily["shadow_uptime_ratio"], 1 - 1800 / (7.5 * 3600))  # 08:00-15:30 counted
+        self.assertAlmostEqual(daily["shadow_uptime_ratio"], 1 - 1800 / (6.5 * 3600))  # 09:00-15:30 counted
 
 
 class ExcelSafety(unittest.TestCase):

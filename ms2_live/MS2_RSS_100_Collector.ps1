@@ -1840,11 +1840,19 @@ function ConvertTo-D045Month($value) {
     return $null
 }
 # Fn RssFOPMarket rows read 限月 in column J and are kept only when it equals the
-# configured month. TOPIX futures are not in the RssFOPCode product list, so the Osaka
-# front-month code is used and accepted only while its returned 限月 is the configured month.
+# configured month. TOPIX futures are not in the RssFOPCode product list. OWNER 2026-10-23 fix:
+# "TOPX.FUT01.OS" is an RssIndexMarket (指標) code, so RssFOPMarket returned nothing and every
+# row was MONTH_NOT_CONFIRMED. The 9-digit Osaka code is now built from the configured month
+# (楽天証券 先物OPコード構成: 1, 6 = futures, year digit (2015 = 0, cycling) + month, 00, 05 =
+# TOPIX), and the row is still kept only while its returned 限月 is the configured month.
+function ConvertTo-JpxFutureCode([string]$Month, [string]$IndexDigits) {
+    if ($Month -notmatch '^20\d{2}(0[1-9]|1[0-2])$' -or $IndexDigits -notmatch '^\d{2}$') { return $null }
+    $yearDigit = ([int]$Month.Substring(0, 4) - 2015) % 10
+    return ("16" + [string]$yearDigit + $Month.Substring(4, 2) + "00" + $IndexDigits)
+}
 $futIndexDefs = @(
     @{ Key = "N225MF"; Code = "N225MF";        Resolve = "RssFOPCode"; Name = "日経225ミニ";        Fn = "RssFOPMarket" },
-    @{ Key = "TOPIX";  Code = "TOPX.FUT01.OS"; Resolve = "";           Name = "TOPIX先物";          Fn = "RssFOPMarket" },
+    @{ Key = "TOPIX";  Code = "05";            Resolve = "JPX9";       Name = "TOPIX先物";          Fn = "RssFOPMarket" },
     @{ Key = "MOTF";   Code = "MOTF";          Resolve = "RssFOPCode"; Name = "グロース250先物";     Fn = "RssFOPMarket" },
     @{ Key = "N225";   Code = "N225";          Resolve = "";           Name = "日経225";            Fn = "RssIndexMarket" },
     @{ Key = "TOPX";   Code = "TOPX";          Resolve = "";           Name = "TOPIX";              Fn = "RssIndexMarket" },
@@ -1881,6 +1889,10 @@ if ($null -eq $d045StartConfig) {
                     if (-not (Test-D045Month $fiMonth (Get-Date))) { continue }   # no valid month: no formula, no data
                     $fiCodeFormula = '=RssFOPCode("' + [string]$fiDef.Code + '","' + $fiMonth + '")'
                     Invoke-ExcelCom -Label "先物限月コード設定" -Action { $futIndexSheet.Cells.Item($fiRow,1).FormulaLocal = [string]$fiCodeFormula } | Out-Null
+                } elseif ($fiDef.Resolve -eq "JPX9") {
+                    $fiJpxCode = ConvertTo-JpxFutureCode $fiMonth ([string]$fiDef.Code)
+                    if (-not (Test-D045Month $fiMonth (Get-Date)) -or $null -eq $fiJpxCode) { continue }   # no valid month: no formula, no data
+                    Invoke-ExcelCom -Label "先物限月コード設定" -Action { $futIndexSheet.Cells.Item($fiRow,1).Value2 = [string]$fiJpxCode } | Out-Null
                 } else {
                     Invoke-ExcelCom -Label "先物指数コード設定" -Action { $futIndexSheet.Cells.Item($fiRow,1).Value2 = [string]$fiDef.Code } | Out-Null
                 }

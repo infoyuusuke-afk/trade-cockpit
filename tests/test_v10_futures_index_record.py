@@ -41,7 +41,7 @@ class SevenSeries(unittest.TestCase):
         defs = text[text.index("$futIndexDefs = @("):text.index("$futItems = @(")]
         self.assertEqual(defs.count("Key = "), 7)
         for key, code, resolve, fn in (("N225MF", "N225MF", "RssFOPCode", "RssFOPMarket"),
-                                       ("TOPIX", "TOPX.FUT01.OS", "", "RssFOPMarket"),
+                                       ("TOPIX", "05", "JPX9", "RssFOPMarket"),
                                        ("MOTF", "MOTF", "RssFOPCode", "RssFOPMarket"),
                                        ("N225", "N225", "", "RssIndexMarket"), ("TOPX", "TOPX", "", "RssIndexMarket"),
                                        ("MTHR", "MTHR", "", "RssIndexMarket"), ("TSGM", "TSGM", "", "RssIndexMarket")):
@@ -50,8 +50,26 @@ class SevenSeries(unittest.TestCase):
         for gone in ("N225.FUT01.OS", "N225.FUT01.C", "N225M.FUT01.OS", "MOT.FUT01.OS", "Get-CentralQuarterMonth"):
             self.assertNotIn(gone, text)
         self.assertIn('"建玉","限月")', text)
+        # OWNER 2026-10-23: TOPX.FUT01.OS is an RssIndexMarket code; TOPIX futures use the 9-digit code
+        self.assertNotIn('Code = "TOPX.FUT01.OS"', text)
+        self.assertIn('$fiJpxCode = ConvertTo-JpxFutureCode $fiMonth ([string]$fiDef.Code)', text)
         # every futures row is kept only when its returned 限月 equals the configured month
         self.assertIn('elseif ($fiSeen -ne $fiMonth) { $fiStatus = "MONTH_NOT_CONFIRMED" }', text)
+
+    @unittest.skipUnless(WINDOWS, "Windows PowerShell 5.1 only")
+    def test_topix_nine_digit_code_from_the_configured_month(self):
+        text = _text()
+        start = text.index("function ConvertTo-JpxFutureCode")
+        fn = text[start:text.index("\n}\n", start) + 2]
+        with tempfile.TemporaryDirectory() as d:
+            script = Path(d) / "t.ps1"
+            script.write_text(fn + "\n" + "\n".join("Write-Output ('R=' + [string](ConvertTo-JpxFutureCode '%s' '%s'))" % m
+                                                      for m in (("202612", "05"), ("202612", "19"), ("202703", "05"),
+                                                                ("202612", "11"), ("2026xx", "05"))), encoding="utf-8-sig")
+            out = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)],
+                                 capture_output=True, text=True, timeout=60).stdout.split()
+        # 161120019 and 161120011 are the codes RSS itself resolved for 日経225ミニ / グロース250 202612 (2026-10-23)
+        self.assertEqual(out, ["R=161120005", "R=161120019", "R=162030005", "R=161120011", "R="])
 
     def test_off_by_default_and_record_only(self):
         text = _text()
