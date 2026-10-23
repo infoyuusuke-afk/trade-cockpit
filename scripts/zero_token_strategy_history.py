@@ -190,6 +190,7 @@ def append_and_analyze_history(out_dir, bars, *, base_cost_bps, now: datetime):
         "completed_symbol_days":source_days,
         "recorded_trade_candidates":trade_count,
         "newly_finalized_symbol_days":added_days,
+        "pending_symbol_days":len(grouped)-len(completed),
         "new_replayed_trades":added_trades,
         "private_history_sha256":fingerprint,
         "market_source_authenticated":False,
