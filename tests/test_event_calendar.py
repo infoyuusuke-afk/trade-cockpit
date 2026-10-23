@@ -74,5 +74,25 @@ class EventBuilderTests(unittest.TestCase):
             self.assertTrue(item['fetched_at'])
 
 
+class IndexReviewDates20261024(unittest.TestCase):
+    """OWNER 2026-10-24 「カレンダーのデータ修正」: TOPIX (JPX 2026-10-07) and MSCI November review dates."""
+
+    def by_id(self):
+        return {x["id"]: x for x in ecal.build()["events"]}
+
+    def test_topix_first_periodic_review_on_october_30_close(self):
+        x = self.by_id()["topix-2026-10"]
+        self.assertEqual((x["date"], x["time_jst"], x["announcement_date"], x["flow_date"]),
+                         ("2026-10-30", "大引け", "2026-10-07", "2026-10-30"))
+        self.assertFalse(x["trade_block"])
+
+    def test_msci_november_review_announcement_and_close(self):
+        ev = self.by_id()
+        self.assertEqual(ev["msci-2026-11-announce"]["date"], "2026-11-12")
+        x = ev["msci-2026-11"]
+        self.assertEqual((x["date"], x["time_jst"], x["effective_date"]), ("2026-11-30", "大引け", "2026-12-01"))
+        self.assertIn("変更あり得る", x["status"])
+
+
 if __name__ == '__main__':
     unittest.main()
