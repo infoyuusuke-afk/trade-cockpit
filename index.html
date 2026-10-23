@@ -904,6 +904,13 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div class="step"><b>3　未確定は取引禁止</b>公式日程や対象銘柄を確認できるまで、予想日を売買根拠にしない。</div>
  <div class="step"><b>4　価格で最終確認</b>イベント後もOR15・VWAP・出来高・先物を見て当日の方向を再判定。</div>
 </div></section>
+<style>
+/* OWNER 2026-10-24 「あやしいからいらない」「うらでしっかり把握できていればいらない」(world markets) and
+   「これもいらないが、相関性を検査・分析する仕組みがあやしい」(correlations): both sections are off the screen.
+   The data keeps being collected behind the screen; the correlation method was checked
+   (Claudeブレイン\correlation_check.py): only US memory stocks -> Kioxia's opening gap held up. */
+#world-market-live,#correlation-monitor{display:none!important}
+</style>
 <section id="correlation-monitor" class="card wide"><h2>当日デイトレ・相関／逆相関／先行銘柄</h2>
 <div id="correlation-meta" class="sub">日足20・60営業日と5分足の関係を更新中...</div>
 <label style="display:inline-flex;gap:8px;align-items:center;margin:10px 0;color:#9db0bc">主役銘柄

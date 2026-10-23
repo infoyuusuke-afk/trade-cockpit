@@ -106,6 +106,12 @@ class Calendars(unittest.TestCase):
         self.assertIn("#earnings-calendar-panel .ec-day.ec-weekend{", js)
 
 
+class WorldAndCorrelationOff(unittest.TestCase):
+    def test_hidden(self):
+        # OWNER 2026-10-24 「あやしいからいらない」「これもいらないが、相関性を検査・分析する仕組みがあやしい」
+        self.assertIn("#world-market-live,#correlation-monitor{display:none!important}", _html())
+
+
 class JnxCodes(unittest.TestCase):
     def test_static(self):
         text = _collector()
