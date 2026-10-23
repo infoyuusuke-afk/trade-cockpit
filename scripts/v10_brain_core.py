@@ -221,14 +221,15 @@ def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: da
         watched = (attention or {}).get(str(row.get("ticker", "")).replace(".T", ""))
         agents = sorted({x["role"] for x in watched or [] if x.get("role") != "grok"})
         if agents:
-            flags.append("専門AIが先回り監視中（" + "・".join(agents) + "）")
-        # OWNER 2026-10-23 manual Grok notes: a flag for the Brain's overall view, never a score;
-        # a note against the lit signal (悪材料 on a buy, 好材料 on a short) is marked as a caution.
+            flags.append("専門AIが先回り監視中（" + "・".join(a.replace("manual_", "") + ("・手動" if a.startswith("manual_") else "")
+                                                        for a in agents) + "）")
+        # OWNER 2026-10-23 manual Grok X topics: a flag for the Brain's overall view, never a score;
+        # a view against the lit signal (弱気 on a buy, 強気 on a short) is marked as a caution.
         for x in watched or []:
             if x.get("role") == "grok":
-                against = x.get("stance") == ("悪材料" if side > 0 else "好材料")
-                flags.append("Grok（手動）：" + str(x.get("stance")) + "「" + str(x.get("summary"))[:120] + "」"
-                             + ("（サインと逆向き・注意）" if against else ""))
+                against = x.get("stance") == ("弱気" if side > 0 else "強気")
+                flags.append("X話題（Grok・手動）：" + str(x.get("strength") or "") + "・" + str(x.get("stance")) + "「"
+                             + str(x.get("summary"))[:120] + "」" + ("（サインと逆向き・注意）" if against else ""))
         if est["ev_pct"] is None:
             base["excluded"].append({"ticker": row.get("ticker"), "name": name, "reason": "根拠不足（記録20回未満）"})
             continue
@@ -355,6 +356,13 @@ def today_lists(records: Path, *, now: datetime, rule_labels: dict | None = None
                       "name": r.get("name"), "signal": r.get("signal"), "strategy": r.get("strategy"),
                       "entry": r.get("entry"), "rule": r.get("rule") or "",
                       "label": "ブレインのランキング入り" + ("（" + label(r.get("rule")) + "）" if r.get("rule") else "")})
+    for r in rows("manual_notes.csv"):   # OWNER 2026-10-23: Grok's X topics as 『X話題』
+        if r.get("source") != "grok":
+            continue
+        items.append({"kind": "XTOPIC", "captured_at": r.get("seen_at"), "ticker": (r.get("code") or "") + ".T",
+                      "name": r.get("name") or r.get("code"), "signal": r.get("view"), "strategy": "Grok（手動）",
+                      "entry": "", "rule": "", "label": "X話題 " + str(r.get("strength") or "") + "・" + str(r.get("view") or "")
+                      + "「" + str(r.get("reason") or "")[:60] + "」"})
     for r in rows(RULE_SIGNALS_FILE):
         items.append({"kind": "RULE", "captured_at": r.get("captured_at"), "ticker": r.get("ticker"),
                       "name": r.get("name"), "signal": r.get("signal"), "strategy": r.get("strategy"),
@@ -362,7 +370,8 @@ def today_lists(records: Path, *, now: datetime, rule_labels: dict | None = None
                       "rule": r.get("rule"), "label": label(r.get("rule"))})
     items.sort(key=lambda x: (str(x.get("captured_at") or ""), x["kind"] == "RULE"), reverse=True)
     return {"date": local.date().isoformat(), "attention": items, "new_picks_total": len(seen),
-            "rule_signals_total": len(items) - len(seen), "status": "VERIFYING_SHADOW_ONLY"}
+            "rule_signals_total": sum(1 for x in items if x["kind"] == "RULE"),
+            "x_topics_total": sum(1 for x in items if x["kind"] == "XTOPIC"), "status": "VERIFYING_SHADOW_ONLY"}
 
 
 def _read_json(path: Path, schema: str):
@@ -376,7 +385,8 @@ def _read_json(path: Path, schema: str):
 
 
 def write_pick(runtime: Path, live: dict, *, now: datetime, logged: set, attention: dict | None = None,
-               logged_rules: set | None = None, grok: dict | None = None, positions: dict | None = None) -> dict:
+               logged_rules: set | None = None, grok: dict | None = None, positions: dict | None = None,
+               manual_analysts: dict | None = None) -> dict:
     runtime = Path(runtime)
     ev_table = _read_json(runtime / "signal_ev_table_v1.json", "100b-v10-signal-ev-table-v1")
     rule_shadow = _read_json(runtime / "rule_shadow_v1.json", "100b-v10-rule-shadow-v1")
@@ -388,6 +398,7 @@ def write_pick(runtime: Path, live: dict, *, now: datetime, logged: set, attenti
                                                    logged=set() if logged_rules is None else logged_rules)
     view["today"] = today_lists(runtime / "records", now=now, rule_labels=(rule_shadow or {}).get("rules"))
     view["grok"] = grok or {"notes": [], "status": "MANUAL_WATCH_ONLY_NOT_A_SCORE"}
+    view["manual_analysts"] = manual_analysts or {}   # backup only, shown as 『手動』
     # OWNER 2026-10-23: virtual holdings for the screen colours and the 08:50 / 15:30 voice
     view["positions"] = {k: (positions or {}).get(k) for k in ("generated_at", "date", "rule_positions", "overnight",
                                                                "swing", "value", "counts", "status")}

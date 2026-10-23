@@ -83,16 +83,18 @@ JPX_MODULES = (
 )
 JPX_RETRY = timedelta(minutes=30)
 JPX_CHILD_DEADLINE_SECONDS = 60   # audit 6327603446: fetch + parse never block the loop longer
-# OWNER 2026-10-23 「手動で連携できる形でgrokの情報をAIコクピットに渡し、ブレインに総合判断させる」:
-# the OWNER's pasted Grok notes in RuntimeDir/grok_inbox, read every pass (pinned module);
-# they become Brain flags and a screen list, never a score. A failure only drops them.
-GROK_MODULE = ("v10_grok_manual", "e33aa60e2453335300e4eb673c0caca20082bce8")
+# OWNER 2026-10-23: hand-delivered notes, read every pass (pinned module): Grok's X topics
+# (RuntimeDir/grok_inbox) and, only when that slot's automatic run did not deliver, the GPT
+# analysts (RuntimeDir/analyst_inbox). Brain flags and screen lists, never a score; each
+# finished day is scored for hits and misses. A failure only drops them.
+MANUAL_NOTES_MODULE = ("v10_manual_notes", "94b261a1d15dd87051de7ae553bd4f1a4137f882")
+MANUAL_SCORE_AFTER_JST = (15, 35)
 # OWNER 2026-10-23 「保有中は枠青」「8時50分と15時30分に保有銘柄告知」: virtual holdings (rule signals
 # replayed on today's ticks with the pinned EV module's replay, and the 15:25 carry-over)
 # every 15 s into RuntimeDir/positions_live_v1.json and the Brain pick file. Display only.
 POSITIONS_MODULE = ("v10_positions_live", "346cd3bce73f95d798a47d4c31545fbd29df7f9f")
 POSITIONS_INTERVAL = timedelta(seconds=15)
-BRAIN_CORE_MODULE = ("v10_brain_core", "7476761ee35254db9e74f394beffa41d0de125be")
+BRAIN_CORE_MODULE = ("v10_brain_core", "1ad7dea6ca742f83f4a1a6382510ab1e28a83105")
 
 
 def _aware(value):
@@ -531,21 +533,33 @@ def brain_core_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
                 positions = {"status": "POSITIONS_UNAVAILABLE", "reason": type(exc).__name__, "rule_positions": [],
                              "overnight": [], "swing": None, "value": None, "counts": {}}
             state["positions_view"] = positions
-        grok = None
+        grok, analysts = None, None
         try:
-            grok_mod = state.get("grok_module") or load_pinned_module(Path(script_dir or Path(__file__).resolve().parent), *GROK_MODULE)
-            state["grok_module"] = grok_mod
+            base = Path(script_dir or Path(__file__).resolve().parent)
+            notes_mod = state.get("notes_module") or load_pinned_module(base, *MANUAL_NOTES_MODULE)
+            state["notes_module"] = notes_mod
             known = {str(r.get("ticker", "")).replace(".T", ""): str(r.get("name") or "") for r in live.get("all_targets") or []}
-            got = grok_mod.load_notes(Path(live_path).parent, now=now, known=known, logged=state.setdefault("grok_logged", set()))
-            grok = got["view"]
+            got = notes_mod.load(Path(live_path).parent, now=now, known=known, agent_inbox=os.environ.get(AGENT_INBOX_ENV, ""),
+                                 logged=state.setdefault("notes_logged", set()))
+            grok, analysts = got["view"], got["analysts"]
             attention = dict(attention or {})
             for code, entries in got["attention"].items():
                 attention[code] = list(attention.get(code) or []) + entries
+            jst = now.astimezone(timezone(timedelta(hours=9)))
+            if state.get("notes_scored_for") != (jst.date(), (jst.hour, jst.minute) >= MANUAL_SCORE_AFTER_JST):
+                state["notes_scored_for"] = (jst.date(), (jst.hour, jst.minute) >= MANUAL_SCORE_AFTER_JST)
+                ev_mod = state.get("positions_ev_module") or load_pinned_module(base, *SIGNAL_EV_MODULE)
+                state["positions_ev_module"] = ev_mod
+                for back in range(0, 6):   # finished days not yet scored (V10 is stopped right after the close)
+                    d = jst.date() - timedelta(days=back)
+                    if back == 0 and (jst.hour, jst.minute) < MANUAL_SCORE_AFTER_JST:
+                        continue
+                    notes_mod.score_day(Path(live_path).parent / "records" / d.isoformat(), ev=ev_mod)
         except Exception:
-            grok = {"notes": [], "status": "GROK_NOTES_UNAVAILABLE"}
+            grok = {"notes": [], "status": "MANUAL_NOTES_UNAVAILABLE"}
         view = module.write_pick(Path(live_path).parent, live, now=now, logged=state.setdefault("logged", set()),
                                  attention=attention, logged_rules=state.setdefault("logged_rules", set()), grok=grok,
-                                 positions=positions)
+                                 positions=positions, manual_analysts=analysts)
         summary = {"brain_core": view["state"], "picks": len(view["picks"]), "logged_new": view["logged_new"]}
     except Exception as exc:  # fail closed, keep the observer running
         summary = {"brain_core": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}
