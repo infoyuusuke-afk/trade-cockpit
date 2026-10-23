@@ -2140,9 +2140,22 @@ function ConvertFrom-RealPosBlock($Data, [int]$HeaderRow, [int]$Rows, [int]$Cols
         foreach ($c in $names.Keys) { $row[$names[$c]] = $Data[$r, $c] }
         $code = [string]$row["銘柄コード"]
         if ([string]::IsNullOrWhiteSpace($code)) { break }
+        # OWNER PC check 2026-10-24 (copy of the workbook, V10 stopped): an empty list is shown by RSS as
+        # one row of "--------" in every column; that row is not a position.
+        if ($code.Trim() -match '^-+$') { break }
         $out.Add([pscustomobject]$row)
     }
     return ,$out.ToArray()
+}
+# The execution date may come as an Excel date number (Value2) or as text; both become yyyy/MM/dd.
+function Get-RealPosDate($Value) {
+    if ($Value -is [double]) {
+        try { return [DateTime]::FromOADate($Value).ToString("yyyy/MM/dd") } catch { return "" }
+    }
+    $s = ([string]$Value).Trim()
+    $m = [regex]::Match($s, '^(\d{4})[/-](\d{1,2})[/-](\d{1,2})')
+    if ($m.Success) { return ("{0}/{1:D2}/{2:D2}" -f $m.Groups[1].Value, [int]$m.Groups[2].Value, [int]$m.Groups[3].Value) }
+    return ""
 }
 function Get-RealPosNumber($Value) {
     if ($Value -is [double]) { return $Value }
@@ -2837,8 +2850,8 @@ try {
                     if ($null -ne $rpExec) { break }
                 }
                 $rpToday = (Get-Date).ToString("yyyy/MM/dd")
-                $rpExecRows = @(foreach ($p in @($rpExec)) { if ($null -ne $p -and ([string]$p."約定日").StartsWith($rpToday)) {
-                    [ordered]@{ at = [string]$p."約定日"; code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
+                $rpExecRows = @(foreach ($p in @($rpExec)) { if ($null -ne $p -and (Get-RealPosDate $p."約定日") -eq $rpToday) {
+                    [ordered]@{ at = Get-RealPosDate $p."約定日"; code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
                                 market = [string]$p."市場名称"; trade = [string]$p."取引"; side = [string]$p."売買"
                                 qty = Get-RealPosNumber $p."約定数量"; price = Get-RealPosNumber $p."約定単価" } } })
                 $rpMarginRows = @(foreach ($p in @($rpMargin)) { if ($null -ne $p) {

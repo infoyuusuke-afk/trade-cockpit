@@ -62,7 +62,7 @@ class ReadOnly(unittest.TestCase):
     def test_block_parser(self):
         text = _collector()
         fns = ""
-        for name in ("ConvertFrom-RealPosBlock", "Get-RealPosNumber"):
+        for name in ("ConvertFrom-RealPosBlock", "Get-RealPosNumber", "Get-RealPosDate"):
             start = text.index("function " + name)
             fns += text[start:text.index("\n}\n", start) + 2]
         script = fns + r'''
@@ -83,13 +83,20 @@ $e = New-Object 'object[,]' 4,4
 $e[1,1] = "銘柄コード"
 $empty = ConvertFrom-RealPosBlock $e 1 2 3
 Write-Output ("E=" + ($null -eq $empty) + "|" + @($empty).Count)
+# OWNER PC 2026-10-24: RSS shows an empty list as one row of dashes in every column
+$z = New-Object 'object[,]' 4,4
+$z[1,1] = "銘柄コード"; $z[1,2] = "売買"; $z[2,1] = "--------"; $z[2,2] = "--------"
+$zr = ConvertFrom-RealPosBlock $z 1 2 3
+Write-Output ("Z=" + ($null -eq $zr) + "|" + @($zr).Count)
+Write-Output ("D=" + (Get-RealPosDate ([DateTime]::new(2026,10,26).ToOADate())) + "|" + (Get-RealPosDate "2026/10/26 09:01") + "|" + (Get-RealPosDate "2026-1-5") + "|" + (Get-RealPosDate "--------") + "|")
 '''
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "t.ps1"
             p.write_text(script, encoding="utf-8-sig")
             out = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(p)],
                                  capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60).stdout.split()
-        self.assertEqual(out[:5], ["NR=True", "N=2", "A=285A|True|100", "B=6857|1200", "E=False|0"])
+        self.assertEqual(out[:7], ["NR=True", "N=2", "A=285A|True|100", "B=6857|1200", "E=False|0", "Z=False|0",
+                                   "D=2026/10/26|2026/10/26|2026/01/05||"])
 
 
 class GatewayRoute(unittest.TestCase):
