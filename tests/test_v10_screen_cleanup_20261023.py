@@ -78,7 +78,8 @@ class OvernightAndFocus(unittest.TestCase):
         self.assertIn("15:25確定の持ち越し（仮想・", html)
         # drawn from the kept list; read again at most once a minute and only where fetch exists
         self.assertIn('if(typeof fetch==="function"&&!(Date.now()-(window.__overnightHoldsAt||0)<60000))', html)
-        self.assertIn("現在値はMS2が止まっているため表示しません。", html)
+        self.assertIn("現在値はMS2が止まっているため出しません。", html)
+        self.assertIn("<span>基準（15:25）<b>", html)   # one card per hold (OWNER 2026-10-24 「文字配置なおってないぞ」)
 
     def test_focus_layout(self):
         html = _html()
