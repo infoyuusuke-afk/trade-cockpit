@@ -98,5 +98,16 @@ class FreshnessLamps(unittest.TestCase):
         self.assertIn('["red", "古い"', HTML)
 
 
+class OrderCard(unittest.TestCase):
+    def test_reference_only_card_never_orders(self):
+        # OWNER 2026-10-24 「注文カード作成。検証中と表示し、成績が出るまでは参考のみ　俺が確認して執行おす」
+        self.assertIn("検証中：成績が出るまで参考のみ。確認してから自分で執行してください（このカードは注文を出しません）", HTML)
+        self.assertIn('window.ORDER_CARD_CODES = ["285A.T"];', HTML)
+        self.assertIn("b.real_submit_allowed === false && Number.isFinite(gen) && Date.now() - gen < window.ORDER_CARD_TTL_MS", HTML)
+        block = HTML[HTML.index("window.ORDER_CARD_CODES"):HTML.index('window.loadGrokBots = () =>')]
+        for word in ("RssMarginOpenOrder", "RssStockOrder", "method:\"POST\"", "method: \"POST\"", "/order"):
+            self.assertNotIn(word, block)
+
+
 if __name__ == "__main__":
     unittest.main()

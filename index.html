@@ -1398,6 +1398,47 @@ window.renderEvent5 = rows => {
   };
 // OWNER 2026-10-24 「Grokの答えをコクピットで読む機能」: grok_bots.json (public feed, read from
 // Desktop\Claudeブレイン\Grok1号〜3号 on this PC). Reading only; every text is escaped.
+// OWNER 2026-10-24 「注文カード作成。検証中と表示し、成績が出るまでは参考のみ　俺が確認して執行おすから」:
+// when the Brain lights a buy / short on Kioxia (285A), a card in the order of 武蔵's 信用新規→信用返済 (IFO)
+// screen: the OWNER checks it and types it in. Nothing is sent anywhere; real orders stay locked.
+window.ORDER_CARD_CODES = ["285A.T"];
+window.ORDER_CARD_TTL_MS = 180000;
+window.tseTick = p => p <= 1000 ? 0.1 : p <= 3000 ? 0.5 : p <= 10000 ? 1 : p <= 30000 ? 5 : p <= 100000 ? 10 : 50;
+window.roundTick = (p, mode) => { const t = window.tseTick(p), k = p / t; return +((mode === "down" ? Math.floor(k) : mode === "up" ? Math.ceil(k) : Math.round(k)) * t).toFixed(1); };
+window.orderCardHtml = (s, generatedMs, nowMs) => {
+  const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const buy = Number(s.side) > 0, entry = Number(s.entry), stop = Number(s.stop), target = Number(s.target);
+  if (![entry, stop, target].every(Number.isFinite) || entry <= 0) return "";
+  const left = Math.max(0, Math.round((generatedMs + window.ORDER_CARD_TTL_MS - nowMs) / 1000));
+  const lim = window.roundTick(entry, buy ? "down" : "up"), tp = window.roundTick(target, buy ? "down" : "up"), sl = window.roundTick(stop, buy ? "down" : "up");
+  const row = (k, v) => "<span>" + k + "<b>" + e(v) + "</b></span>";
+  return "<article class='cc-card cc-card--" + (buy ? "long" : "short") + " order-card'><div class='order-card-warn'>検証中：成績が出るまで参考のみ。確認してから自分で執行してください（このカードは注文を出しません）</div>" +
+    "<div class='cc-head'><div class='cc-identity'><span class='cc-company'>" + e(s.name || s.ticker) + "</span><span class='cc-symbol'>" + e(String(s.ticker || "").replace(".T", "")) + "</span></div><span class='cc-badge'>" + (buy ? "買建" : "売建") + "</span></div>" +
+    "<div class='cc-metrics-grid'>" + row("市場", "東証") + row("信用区分", "制度(6ヶ月)") + row("数量", "100株") + row("価格", "指値 " + lim.toLocaleString("ja-JP") + "円") +
+    row("執行条件", "本日中") + row("返済（IFO）", "利確 " + (buy ? "売埋" : "買埋") + " 指値 " + tp.toLocaleString("ja-JP") + "円") +
+    row("損切り", "逆指値 " + sl.toLocaleString("ja-JP") + "円で" + (buy ? "売埋" : "買埋")) + row("ルール", (s.rule_label || s.rule || s.strategy || "—")) + "</div>" +
+    "<div class='cc-foot'>サイン " + e(s.signal_bar || "—") + "／期待値 " + (Number.isFinite(Number(s.ev_pct)) ? Number(s.ev_pct).toFixed(2) + "%" : "—") + "（実績 " + e(s.forward_n ?? 0) + "回）／" +
+    (left > 0 ? "あと" + left + "秒で古くなります" : "古くなりました（使わない）") + "</div></article>";
+};
+window.loadOrderCards = () => fetch("/brain_pick.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(b => {
+  const pane = document.querySelector('.tab-pane[data-pane="control"]');
+  if (!pane) return;
+  let box = document.getElementById("order-card-box");
+  if (!box) {
+    const sec = document.createElement("section");
+    sec.className = "card wide";
+    sec.id = "order-card-section";
+    sec.innerHTML = "<h2>注文カード（検証中・参考のみ）</h2><p class='sub'>ブレインがキオクシアHD（285A）に買い・空売りのサインを出した時だけ、武蔵の「信用新規→信用返済（IFO）」画面と同じ順番で数字を出します。成績が出るまでは参考です。執行はOWNERが確認してから押します。</p><div id='order-card-box'></div><style>.order-card-warn{background:#3a1d1f;border:1px solid #6f2730;color:#ffb3b8;border-radius:8px;padding:6px 10px;margin-bottom:10px;font-size:12px;font-weight:700}</style>";
+    pane.prepend(sec);
+    box = document.getElementById("order-card-box");
+  }
+  const gen = Date.parse(String(b?.generated_at || ""));
+  const ok = b && b.real_submit_allowed === false && Number.isFinite(gen) && Date.now() - gen < window.ORDER_CARD_TTL_MS;
+  const sigs = ok ? (b.picks || []).filter(s => window.ORDER_CARD_CODES.includes(String(s.ticker)) && Number(s.side) !== 0) : [];
+  box.innerHTML = sigs.map(s => window.orderCardHtml(s, gen, Date.now())).join("") ||
+    "<div class='focus-empty'>今は注文カードはありません（キオクシアHD（285A）にサインが出た時だけ出ます）</div>";
+}).catch(() => {});
+document.addEventListener("DOMContentLoaded", () => { window.loadOrderCards(); setInterval(window.loadOrderCards, 5000); });
 window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(g => {
   const box = document.getElementById("grok-bots-body");
   if (!box || typeof window.freshLamp !== "function") { setTimeout(window.loadGrokBots, 700); return; }
