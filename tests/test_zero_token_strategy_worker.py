@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import csv
+from contextlib import closing
 import hashlib
 import json
 from pathlib import Path
@@ -39,7 +40,7 @@ class ZeroTokenWorkerTests(unittest.TestCase):
         self.assertFalse(report["automatic_order_execution"])
         self.assertIs(report["real_submit_allowed"],False)
         self.assertEqual(hashlib.sha256((self.output/REPORT).read_bytes()).hexdigest(),r["report_sha256"])
-        with sqlite3.connect(self.output/LEDGER) as con:
+        with closing(sqlite3.connect(self.output/LEDGER)) as con:
             self.assertEqual(con.execute("SELECT COUNT(*) FROM runs").fetchone()[0],1)
 
     def test_second_run_same_input_no_new_analysis_or_rewrite(self):
@@ -48,7 +49,7 @@ class ZeroTokenWorkerTests(unittest.TestCase):
         second=run_once(self.csv,self.output)
         self.assertEqual(second["state"],"UNCHANGED_NO_NEW_ANALYSIS")
         self.assertEqual((self.output/REPORT).read_bytes(),old)
-        with sqlite3.connect(self.output/LEDGER) as con:
+        with closing(sqlite3.connect(self.output/LEDGER)) as con:
             self.assertEqual(con.execute("SELECT COUNT(*) FROM runs").fetchone()[0],1)
 
     def test_changed_dataset_triggers_new_analysis(self):
@@ -57,7 +58,7 @@ class ZeroTokenWorkerTests(unittest.TestCase):
         self.csv.write_bytes(raw)
         result=run_once(self.csv,self.output)
         self.assertEqual(result["state"],"RESEARCH_RECORDED")
-        with sqlite3.connect(self.output/LEDGER) as con:
+        with closing(sqlite3.connect(self.output/LEDGER)) as con:
             self.assertEqual(con.execute("SELECT COUNT(*) FROM runs").fetchone()[0],2)
 
     def test_missing_data_is_not_fabricated(self):
