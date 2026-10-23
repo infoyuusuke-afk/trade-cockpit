@@ -19,9 +19,8 @@ from pathlib import Path
 import random
 import re
 from statistics import mean
-from zoneinfo import ZoneInfo
 
-JST = ZoneInfo("Asia/Tokyo")
+JST = timezone(timedelta(hours=9))
 SCHEMA_VERSION = "zero_token_strategy_lab_v1"
 BAR_SECONDS = 15
 BAR_COLS = ("symbol", "time", "available_at", "open", "high", "low",
