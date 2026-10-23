@@ -767,6 +767,30 @@ def pct(v):
     return "—" if v is None else f"{v:+.2f}%"
 
 
+def yield_points(level, change_pct):
+    """Change of a yield in percentage points from its level and its percent change
+    (4.95% after -3.75% is -0.19 points)."""
+    try:
+        level, change_pct = float(level), float(change_pct)
+        return round(level - level / (1 + change_pct / 100), 2)
+    except (TypeError, ValueError, ZeroDivisionError):
+        return 0.0
+
+
+def index_summary_row(name, r):
+    """One row of the market summary. Yields (金利) are shown in percentage points."""
+    if "金利" in name:
+        pts = yield_points(r.get("price"), r.get("change_pct"))
+        price = r.get("price")
+        level = f"{float(price):.2f}%" if price is not None else "—"
+        trend = "上昇" if pts >= .03 else "低下" if pts <= -.03 else "横ばい"
+        return (f"<tr><td>{name}</td><td>{level}</td><td class='{css(pts)}'>{pts:+.2f}%ポイント</td>"
+                f"<td>{trend}</td></tr>")
+    change = r.get("change_pct", 0) or 0
+    return (f"<tr><td>{name}</td><td>{money(r.get('price'))}</td><td class='{css(r.get('change_pct'))}'>{pct(r.get('change_pct'))}</td>"
+            f"<td>{'上向き' if change > .3 else '下向き' if change < -.3 else '横ばい'}</td></tr>")
+
+
 def css(v):
     return "up" if isinstance(v, (int, float)) and v > 0 else "down" if isinstance(v, (int, float)) and v < 0 else ""
 
@@ -954,10 +978,11 @@ def build_sector_rotation(indices, valid):
 
     positive_breadth = sum(row["rel5"] > 0 for row in us_rows)
     us10y = indices.get("米10年金利", {})
-    rate5 = us10y.get("ret5", 0)
-    if rate5 >= 1:
+    # OWNER 2026-10-24: a yield is shown and judged by its change in percentage points.
+    rate5 = yield_points(us10y.get("price"), us10y.get("ret5"))
+    if rate5 >= .10:
         rate_view = "金利上昇：高PERグロースに逆風"
-    elif rate5 <= -1:
+    elif rate5 <= -.10:
         rate_view = "金利低下：グロースに追い風"
     else:
         rate_view = "金利横ばい：業績と需給を優先"
@@ -2228,10 +2253,12 @@ def main():
     total_loss = sum(x["max_loss"] for x in day_ifo_candidates)
     data = {
         "updated_at": now.strftime("%Y-%m-%d %H:%M:%S JST"),
+        # OWNER 2026-10-24: a run after the close (e.g. 21:01) is not the 15:00 pre-close edition.
         "phase": (
             "寄り付き前8:00版" if session == "morning"
             else "前場検証11:45版" if session == "midday"
-            else "引け前持ち越し15:00版"
+            else "引け前持ち越し15:00版" if (now.hour, now.minute) < (15, 30)
+            else f"大引け後版（{now:%H:%M}作成）"
         ),
         "session": session,
         "active_buybacks": active_buybacks,
@@ -2274,11 +2301,7 @@ def main():
     }
     data_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    idx_rows = "".join(
-        f"<tr><td>{n}</td><td>{money(r.get('price'))}</td><td class='{css(r.get('change_pct'))}'>{pct(r.get('change_pct'))}</td>"
-        f"<td>{'上向き' if r.get('change_pct',0)>.3 else '下向き' if r.get('change_pct',0)<-.3 else '横ばい'}</td></tr>"
-        for n, r in indices.items()
-    )
+    idx_rows = "".join(index_summary_row(n, r) for n, r in indices.items())
     theme_rows = "".join(
         f"<tr><td>{i}</td><td>{name}</td><td class='{css(score)}'>{score:+.1f}</td>"
         f"<td>{'<br>'.join(f'{m[0]} <small>強度{m[1]:+.1f}／{m[2]:+.2f}%</small>' for m in members)}</td>"
@@ -3096,7 +3119,7 @@ document.addEventListener("DOMContentLoaded",()=>{
 <section id="sector-rotation" class="card wide"><h2>②-R 機関投資家型 セクターローテーション</h2>
 <div class="rotation-grid">
 <div class="rotation-box"><b>市場レジーム</b><strong>{rotation['regime']}</strong><br>{rotation['regime_action']}</div>
-<div class="rotation-box"><b>金利スイッチ</b><strong>{rotation['rate_view']}</strong><br>米10年金利 5日変化 {rotation['rate5']:+.2f}%</div>
+<div class="rotation-box"><b>金利スイッチ</b><strong>{rotation['rate_view']}</strong><br>米10年金利 5日変化 {rotation['rate5']:+.2f}%ポイント</div>
 <div class="rotation-box"><b>米国業種の広がり</b><strong>{rotation['breadth']}業種</strong><br>S&P500を5日で上回った業種数</div>
 <div class="rotation-box"><b>判定順序</b><strong>資産 → 業種 → 個別株</strong><br>個別材料だけで逆風業種を買わない</div>
 </div>

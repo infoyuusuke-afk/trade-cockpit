@@ -62,6 +62,10 @@ def sector_alignment_bias(code: str, correlations: dict) -> tuple[int, list[str]
     for rel in correlations.get("relationships", []):
         if code not in (rel.get("anchor_ticker", ""), rel.get("anchor", "")):
             continue
+        # OWNER 2026-10-24: the US previous-day relations explain only the opening gap; they are not
+        # a same-direction sector tailwind, so they do not add to this score.
+        if "寄り" in str(rel.get("relation", "")):
+            continue
         checked += 1
         if (rel.get("corr60") or 0) >= 0.6 and rel.get("state") == "確認":
             strong_same_direction += 1
