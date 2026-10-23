@@ -100,6 +100,13 @@ def event(event_id: str, title: str, day: str | None, category: str, source: str
     }
 
 
+def us_0830_in_jst(day: str) -> str:
+    """BLS/BEA releases are at 8:30 a.m. Eastern time: 21:30 JST in US summer time and 22:30 JST
+    from the first Sunday of November (OWNER 2026-10-24: 11/1以降は22:30)."""
+    local = datetime.fromisoformat(day).replace(hour=8, minute=30, tzinfo=ZoneInfo("America/New_York"))
+    return local.astimezone(JST).strftime("%H:%M")
+
+
 def nth_weekday(year: int, month: int, weekday: int, n: int) -> date:
     first = date(year, month, 1)
     return first + timedelta(days=(weekday - first.weekday()) % 7 + 7 * (n - 1))
@@ -137,12 +144,12 @@ def build() -> dict:
         ("2026-11-06", "米雇用統計（10月）", "発表前の持ち越しを再点検"),
         ("2026-12-04", "米雇用統計（11月）", "発表前の持ち越しを再点検"),
     ]:
-        e.append(event("jobs-" + d, title, d, "米経済", "jobs", time_jst="21:30",
+        e.append(event("jobs-" + d, title, d, "米経済", "jobs", time_jst=us_0830_in_jst(d),
             impact="高", flow="ドル円・米金利・NASDAQ経由で翌営業日に波及", action=action))
 
     for d, title in [("2026-09-11", "米CPI（8月）"), ("2026-10-14", "米CPI（9月）"),
                      ("2026-11-10", "米CPI（10月）"), ("2026-12-10", "米CPI（11月）")]:
-        e.append(event("cpi-" + d, title, d, "米経済", "cpi", time_jst="21:30",
+        e.append(event("cpi-" + d, title, d, "米経済", "cpi", time_jst=us_0830_in_jst(d),
             impact="高", flow="米金利・ドル円・グロースのボラティリティ拡大",
             action="発表直前の新規持ち越し禁止。翌朝は気配を再判定"))
 
@@ -165,7 +172,7 @@ def build() -> dict:
 
     for d, title in [("2026-09-30", "米PCE（8月）"), ("2026-10-29", "米GDP速報・PCE（9月）"),
                      ("2026-11-25", "米GDP改定・PCE（10月）")]:
-        e.append(event("bea-" + d, title, d, "米経済", "bea", time_jst="21:30",
+        e.append(event("bea-" + d, title, d, "米経済", "bea", time_jst=us_0830_in_jst(d),
             impact="中", flow="米金利とグロース評価へ影響", action="持ち越し時だけ警戒"))
 
     # Actual passive flow and index-effective dates are explicitly separate.
@@ -183,15 +190,29 @@ def build() -> dict:
         announcement="公式発表待ち", actual_flow="2026-09-30", effective="2026-10-01",
         block=True, note="10月第1営業日反映から逆算した需給候補日。正式発表で解除する。"))
 
-    e.append(event("topix-2026-10", "TOPIX第1回定期見直し", None, "指数入替", "topix",
-        status="日付未確定・売買利用禁止", impact="高", flow="採用・除外の双方向",
-        action="JPXの実施日・構成銘柄発表まで材料視しない", effective="2026年10月",
-        block=True, note="2026年10月実施のみ公式確認。正確な需給日は未入力。"))
-    e.append(event("msci-2026-11", "MSCI 11月Index Review", None, "指数入替", "msci",
-        status="日付未確認・売買利用禁止", impact="高", flow="採用買い・除外売り",
-        action="MSCI公式の発表日とeffective date確認後にのみ解禁",
-        announcement="未確認", effective="未確認", block=True,
-        note="推測の日付を表示しない。"))
+    # OWNER 2026-10-24 「カレンダーのデータ修正」: TOPIX and MSCI dates from the official documents.
+    # TOPIX: JPX総研「2026年10月初回定期入替の結果」(2026-10-07) — constituents after the review are
+    # those of the end of October 2026; the last business day of October is 2026-10-30 (Fri).
+    e.append(event("topix-2026-10", "TOPIX初回定期入替・移行措置の第1段階ウエイト低減", "2026-10-30", "指数入替", "topix",
+        time_jst="大引け", status="公式確認済み（10/7公表・10月末実施）", impact="高",
+        flow="新規採用の買い・移行措置銘柄（683銘柄）のウエイト低減の売り。双方向",
+        action="対象銘柄はJPXの10/7公表資料で確認。引け板と先物を見て方向を決め打ちしない",
+        announcement="2026-10-07", base="2026-08-31", actual_flow="2026-10-30", effective="2026年10月末",
+        note="JPX総研 2026-10-07『2026年10月初回定期入替の結果』。移行措置銘柄は四半期ごと8段階でウエイト低減。"))
+    # MSCI: November 2026 Index Review — announcement 2026-11-11 (US time; Tokyo morning of 11/12),
+    # effective 2026-12-01, so index funds trade at the close of the last business day before, 2026-11-30.
+    e.append(event("msci-2026-11-announce", "MSCI 11月Index Review 発表", "2026-11-12", "指数入替", "msci",
+        time_jst="早朝（米国11/11発表）", status="MSCI公表の予定（変更あり得る）", impact="中",
+        flow="採用・除外の発表。発表当日の寄りに思惑の売買",
+        action="発表された採用・除外銘柄を確認するまで材料視しない",
+        announcement="2026-11-11（米国時間）", effective="2026-12-01",
+        note="MSCIの公表スケジュールに基づく。発表の時刻は未確認。"))
+    e.append(event("msci-2026-11", "MSCI 11月Index Review 実施（引け）", "2026-11-30", "指数入替", "msci",
+        time_jst="大引け", status="MSCI公表の予定（変更あり得る）", impact="高",
+        flow="採用買い・除外売りの引け需給",
+        action="11/12朝の発表で対象銘柄を確認できた場合だけ引け需給へ対応",
+        announcement="2026-11-11（米国時間）", actual_flow="2026-11-30", effective="2026-12-01",
+        note="effective 2026-12-01 の前営業日の引けで実施。MSCIは日程を変更することがある。"))
 
     for d, title, action in [
         ("2026-08-31", "月末リバランス", "買い需要と決めつけない。引け板・先物・TOPIXを確認"),

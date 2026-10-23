@@ -74,5 +74,44 @@ class EventBuilderTests(unittest.TestCase):
             self.assertTrue(item['fetched_at'])
 
 
+class IndexReviewDates20261024(unittest.TestCase):
+    """OWNER 2026-10-24 「カレンダーのデータ修正」: TOPIX (JPX 2026-10-07) and MSCI November review dates."""
+
+    def by_id(self):
+        return {x["id"]: x for x in ecal.build()["events"]}
+
+    def test_topix_first_periodic_review_on_october_30_close(self):
+        x = self.by_id()["topix-2026-10"]
+        self.assertEqual((x["date"], x["time_jst"], x["announcement_date"], x["flow_date"]),
+                         ("2026-10-30", "大引け", "2026-10-07", "2026-10-30"))
+        self.assertFalse(x["trade_block"])
+
+    def test_msci_november_review_announcement_and_close(self):
+        ev = self.by_id()
+        self.assertEqual(ev["msci-2026-11-announce"]["date"], "2026-11-12")
+        x = ev["msci-2026-11"]
+        self.assertEqual((x["date"], x["time_jst"], x["effective_date"]), ("2026-11-30", "大引け", "2026-12-01"))
+        self.assertIn("変更あり得る", x["status"])
+
+
+class UsReleaseTimeAfterSummerTime(unittest.TestCase):
+    """OWNER 2026-10-24: BLS/BEA releases are 8:30 ET - 21:30 JST until US summer time ends
+    (2026-11-01), 22:30 JST from then on."""
+
+    def test_helper_follows_us_summer_time(self):
+        self.assertEqual(ecal.us_0830_in_jst("2026-10-30"), "21:30")
+        self.assertEqual(ecal.us_0830_in_jst("2026-11-02"), "22:30")
+        self.assertEqual(ecal.us_0830_in_jst("2027-03-12"), "22:30")
+        self.assertEqual(ecal.us_0830_in_jst("2027-03-15"), "21:30")
+
+    def test_jobs_cpi_bea_from_november_at_2230(self):
+        ev = {x["id"]: x for x in ecal.build()["events"]}
+        for key in ("jobs-2026-11-06", "jobs-2026-12-04", "cpi-2026-11-10", "cpi-2026-12-10", "bea-2026-11-25"):
+            self.assertEqual(ev[key]["time_jst"], "22:30", key)
+            self.assertEqual(ev[key]["scheduled_at_utc"][11:16], "13:30", key)
+        for key in ("jobs-2026-10-02", "cpi-2026-10-14", "bea-2026-10-29"):
+            self.assertEqual(ev[key]["time_jst"], "21:30", key)
+
+
 if __name__ == '__main__':
     unittest.main()

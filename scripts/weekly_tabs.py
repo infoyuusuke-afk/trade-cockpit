@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import html
 import json
+import math
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -31,18 +32,48 @@ def save(path: Path, value) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+# OWNER 2026-10-24 「週間振り返り修正」: the review counted open marks (時点評価・未決済) as wins,
+# counted the same record twice, and took no cost. Only closed trades count; duplicates are
+# dropped; the cost is the OWNER's contract (楽天証券ゼロコース・制度信用, 2026-10-24): commission 0,
+# one day of buy interest (年2.80%) or stock-lending fee for shorts (年1.10%) per trade.
+CLOSED_RESULTS = {"IFO利確1", "IFO利確2", "IFO損切り", "大引け決済"}
+CLOSED_EXITS = {"TARGET1", "TARGET2", "STOP", "CLOSE"}
+BUY_INTEREST = 0.028
+SHORT_LENDING_FEE = 0.011
+
+
+def is_closed(x: dict) -> bool:
+    if x.get("pnl_yen") is None or "成績除外" in str(x.get("result", "")):
+        return False
+    return x.get("result") in CLOSED_RESULTS or x.get("exit_reason") in CLOSED_EXITS
+
+
+def trade_cost(x: dict) -> int:
+    price = x.get("simulated_fill") or x.get("entry") or 0
+    rate = SHORT_LENDING_FEE if str(x.get("side", "")).upper() == "SHORT" else BUY_INTEREST
+    return math.ceil(float(price) * float(x.get("shares") or 0) * rate / 365)
+
+
 def build_weekly(now: datetime) -> dict:
     monday = (now.date() - timedelta(days=now.weekday())).isoformat()
     sunday = (now.date() + timedelta(days=6 - now.weekday())).isoformat()
-    records = [
-        x for x in load(HISTORY, [])
-        if monday <= x.get("date", "") <= sunday and x.get("pnl_yen") is not None
-    ]
-    gains = sum(max(0, x["pnl_yen"]) for x in records)
-    losses = abs(sum(min(0, x["pnl_yen"]) for x in records))
+    week = [x for x in load(HISTORY, []) if monday <= x.get("date", "") <= sunday]
+    records, seen, duplicates = [], set(), 0
+    for x in week:
+        if not is_closed(x):
+            continue
+        key = (x.get("date"), x.get("ticker"), x.get("side"), x.get("entry"), x.get("result"))
+        if key in seen:
+            duplicates += 1
+            continue
+        seen.add(key)
+        records.append(dict(x, cost_yen=trade_cost(x), net_yen=int(x["pnl_yen"]) - trade_cost(x)))
+    open_marks = sum(1 for x in week if x.get("pnl_yen") is not None and not is_closed(x))
+    gains = sum(max(0, x["net_yen"]) for x in records)
+    losses = abs(sum(min(0, x["net_yen"]) for x in records))
     pf = round(gains / losses, 2) if losses else (99.0 if gains else 0.0)
-    wins = sum(x["pnl_yen"] > 0 for x in records)
-    avg_r = round(sum(x.get("r", 0) for x in records) / len(records), 2) if records else 0
+    wins = sum(x["net_yen"] > 0 for x in records)
+    avg_r = round(sum(x.get("r") or 0 for x in records) / len(records), 2) if records else 0
     data = load(DATA, {})
     indices = data.get("indices", {})
     nikkei = indices.get("日経平均", {})
@@ -69,9 +100,13 @@ def build_weekly(now: datetime) -> dict:
         "win_rate": round(wins / len(records) * 100, 1) if records else 0,
         "pf": pf,
         "avg_r": avg_r,
-        "pnl": sum(x["pnl_yen"] for x in records),
-        "best": sorted(records, key=lambda x: x["pnl_yen"], reverse=True)[:3],
-        "worst": sorted(records, key=lambda x: x["pnl_yen"])[:3],
+        "pnl": sum(x["net_yen"] for x in records),
+        "cost": sum(x["cost_yen"] for x in records),
+        "open_excluded": open_marks,
+        "duplicates_excluded": duplicates,
+        "cost_basis": "楽天証券ゼロコース・制度信用：手数料0円、1取引ごとに買方金利 年2.80%／売りの貸株料 年1.10% の1日分。すべり・逆日歩は含まない",
+        "best": sorted(records, key=lambda x: x["net_yen"], reverse=True)[:3],
+        "worst": sorted(records, key=lambda x: x["net_yen"])[:3],
         "themes": theme_names,
         "next_rules": next_rules,
         "decision": "少額実戦候補" if len(records) >= 20 and pf >= 1.2 and avg_r > 0 else "仮想検証を継続",
@@ -82,11 +117,11 @@ def weekly_html(w: dict) -> str:
     if not w:
         return f"{WSTART}<section id=\"weekly-review\"><h2>週間振り返り・来週戦略</h2><p>土曜日の集計後に表示します。</p></section>{WEND}"
     best = "".join(
-        f"<li>{html.escape(x.get('name',''))}：{x.get('pnl_yen',0):+,}円（{x.get('r',0):+.2f}R）</li>"
+        f"<li>{html.escape(x.get('name',''))}：{x.get('net_yen', x.get('pnl_yen',0)):+,}円（{x.get('r') or 0:+.2f}R）</li>"
         for x in w.get("best", [])
     ) or "<li>確定取引なし</li>"
     worst = "".join(
-        f"<li>{html.escape(x.get('name',''))}：{x.get('pnl_yen',0):+,}円（{x.get('r',0):+.2f}R）</li>"
+        f"<li>{html.escape(x.get('name',''))}：{x.get('net_yen', x.get('pnl_yen',0)):+,}円（{x.get('r') or 0:+.2f}R）</li>"
         for x in w.get("worst", [])
     ) or "<li>確定取引なし</li>"
     rules = "".join(f"<li>{html.escape(x)}</li>" for x in w.get("next_rules", []))
@@ -95,12 +130,14 @@ def weekly_html(w: dict) -> str:
 <section id="weekly-review" class="panel">
   <h2>週間振り返り・来週戦略</h2>
   <p>{html.escape(w['week'])}｜作成 {html.escape(w['created_at'])}</p>
+  <p>{html.escape(w.get('cost_basis', '費用の前提：未記録（古い集計）'))}｜費用 {w.get('cost', 0):,}円</p>
   <div class="cards">
-    <div class="card"><b>仮想取引</b><span>{w['count']}件</span></div>
+    <div class="card"><b>決済済みの仮想取引</b><span>{w['count']}件</span></div>
     <div class="card"><b>勝率</b><span>{w['win_rate']:.1f}%</span></div>
     <div class="card"><b>PF</b><span>{w['pf']:.2f}</span></div>
     <div class="card"><b>平均R</b><span>{w['avg_r']:+.2f}R</span></div>
-    <div class="card"><b>週間損益</b><span>{w['pnl']:+,}円</span></div>
+    <div class="card"><b>週間損益（費用差引後）</b><span>{w['pnl']:+,}円</span></div>
+    <div class="card"><b>除外した記録</b><span>未決済 {w.get('open_excluded', 0)}件・重複 {w.get('duplicates_excluded', 0)}件</span></div>
     <div class="card"><b>実戦判定</b><span>{html.escape(w['decision'])}</span></div>
   </div>
   <div class="weekly-grid">
