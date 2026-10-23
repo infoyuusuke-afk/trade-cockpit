@@ -313,29 +313,72 @@ def _day_block_lower(trades, *, candidates: int, seed: str) -> float | None:
 
 
 def analyze(bars: list[dict], *, input_sha256: str, base_cost_bps: float=18.0) -> dict:
-    """Bounded 64-hypothesis search; held-out test touched only for winner.
+    """Single-file bounded search; uses the same scorer as cumulative history."""
+    grouped=defaultdict(list)
+    for row in bars:
+        grouped[(row["date"],row["symbol"])].append(row)
+    source={row["source"] for row in bars}
+    if len(source)!=1:
+        raise ResearchBlocked("MIXED_SYNTHETIC_REAL_INPUT")
+    by_id={}
+    for v in variants():
+        by_id[v["id"]]=[
+            t for bucket in grouped.values()
+            if (t:=replay_one_day(bucket,v,cost_bps=base_cost_bps)) is not None
+        ]
+    return analyze_trade_records(
+        by_id, sorted({key[0] for key in grouped}),
+        input_sha256=input_sha256, source=next(iter(source)),
+        base_cost_bps=base_cost_bps,
+    )
 
-    The output is an exploratory research *candidate*, never verified
-    real-world trading edge. No LLM API tokens or broker calls.
+
+def analyze_trade_records(
+        trades_by_id: dict, observed_days: list[str], *,
+        input_sha256: str, source: str, base_cost_bps: float=18.0) -> dict:
+    """Long-lived compact evidence ledger scoring, same locked-day gates.
+
+    Ingestion is performed by the separate local history writer. This
+    function neither authenticates the issuer/source nor grants orders.
     """
     if (not isinstance(base_cost_bps,(int,float))
             or not math.isfinite(base_cost_bps)
             or base_cost_bps < MIN_ROUND_TRIP_COST_BPS):
         raise ResearchBlocked("ROUND_TRIP_COST_UNREALISTIC")
-    if not re.fullmatch("[0-9a-f]{64}",input_sha256):
+    if not isinstance(input_sha256,str) or not re.fullmatch("[0-9a-f]{64}",input_sha256):
         raise ResearchBlocked("INPUT_FINGERPRINT_INVALID")
-    grouped=defaultdict(list)
-    for r in bars:
-        grouped[(r["date"],r["symbol"])].append(r)
-    days=sorted({key[0] for key in grouped})
-    source=set(x["source"] for x in bars)
-    if len(source)!=1:
-        raise ResearchBlocked("MIXED_SYNTHETIC_REAL_INPUT")
+    if source not in ALLOWED_SOURCES:
+        raise ResearchBlocked("SOURCE_OR_QUALITY_NOT_CONFIRMED")
+    if not isinstance(observed_days,list) or observed_days!=sorted(set(observed_days)):
+        raise ResearchBlocked("INVALID_DATE_SERIES")
+    days=observed_days
+    allowed_ids={v["id"] for v in variants()}
+    if not isinstance(trades_by_id,dict) or not set(trades_by_id).issubset(allowed_ids):
+        raise ResearchBlocked("UNKNOWN_RESEARCH_VARIANT")
+    for key,trade_list in trades_by_id.items():
+        if not isinstance(trade_list,list):
+            raise ResearchBlocked("TRADE_LEDGER_INVALID")
+        seen=set()
+        for row in trade_list:
+            if (not isinstance(row,dict) or row.get("strategy_id")!=key
+                    or row.get("source")!=source
+                    or row.get("date") not in days
+                    or row.get("real_submit_allowed") is not False
+                    or type(row.get("symbol")) is not str
+                    or not isinstance(row.get("gross_bps"),(float,int))
+                    or not math.isfinite(row["gross_bps"])
+                    or row.get("cost_bps")!=base_cost_bps
+                    or abs(row["net_bps"]-(row["gross_bps"]-base_cost_bps))>0.00011):
+                raise ResearchBlocked("TRADE_LEDGER_INTEGRITY_FAILURE")
+            uniq=(row["symbol"],row["date"])
+            if uniq in seen:
+                raise ResearchBlocked("DUPLICATE_RESEARCH_TRADE")
+            seen.add(uniq)
     hypotheses=variants()
     result={
         "schema_version":SCHEMA_VERSION,
         "input_sha256":input_sha256,
-        "source":next(iter(source)),
+        "source":source,
         "llm_api_tokens_used":0,
         "requires_paid_api":False,
         "hypotheses_evaluated":len(hypotheses),
@@ -368,8 +411,7 @@ def analyze(bars: list[dict], *, input_sha256: str, base_cost_bps: float=18.0) -
     }
     candidate_pool=[]
     for v in hypotheses:
-        trades=[x for day_symbol,bucket in grouped.items()
-                if (x:=replay_one_day(bucket,v,cost_bps=base_cost_bps)) is not None]
+        trades=trades_by_id.get(v["id"],[])
         tr=[x for x in trades if x["date"] in train_days]
         va=[x for x in trades if x["date"] in val_days]
         tm=_metric(tr)
@@ -398,14 +440,13 @@ def analyze(bars: list[dict], *, input_sha256: str, base_cost_bps: float=18.0) -
     # variant. Never choose another variant based on TEST outcomes.
     candidate_pool.sort(key=lambda x:(-x[0],-x[1],x[2]["id"]))
     lower,_,winner,train_metrics,val_metrics=candidate_pool[0]
-    test_trades=[x for (day,_),bucket in grouped.items() if day in test_days
-                 if (x:=replay_one_day(bucket,winner,cost_bps=base_cost_bps)) is not None]
+    test_trades=[x for x in trades_by_id.get(winner["id"],[]) if x["date"] in test_days]
     hold=_metric(test_trades)
     hold_lower=_day_block_lower(test_trades,candidates=1,
                                 seed=input_sha256+"|"+winner["id"]+"|locked_test")
     stress=_metric(test_trades,cost_override=base_cost_bps*2)
     observed_n=(train_metrics["trades"]+val_metrics["trades"]+hold["trades"])
-    strong=(source=={"MS2_RSS_15S_CONFIRMED"} and
+    strong=(source=="MS2_RSS_15S_CONFIRMED" and
             observed_n>=100 and
             hold["distinct_days"]>=HOLDOUT_TRADE_MIN and
             hold_lower is not None and hold_lower>0 and
