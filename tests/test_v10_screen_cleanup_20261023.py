@@ -84,6 +84,17 @@ class OvernightAndFocus(unittest.TestCase):
         self.assertIn("#focus-owner-panel select{min-width:240px;height:34px;", html)
 
 
+class KioxiaTab(unittest.TestCase):
+    def test_only_the_live_blocks_and_stale_forecast_really_hidden(self):
+        html = _html()
+        # [hidden] loses to grid / flex display rules, so the forecast blocks get display:none
+        self.assertIn('["kio-decision-panel", "kio-decision-reason", "kio-live-monitor", "kio-best-analog"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = "none"; });', html)
+        self.assertIn("#kioxia-5m-calendar .kio-detail-grid{display:none!important}", html)
+        self.assertIn("キオクシアHD（285A）板・歩み値・サイン ", html)
+        for keep in ('id="kio-ms2-orderflow"', 'id="kio-watcher-signal"', 'id="kio-watcher-board"', 'id="kioxia-supply"'):
+            self.assertIn(keep, html)
+
+
 class JnxCodes(unittest.TestCase):
     def test_static(self):
         text = _collector()

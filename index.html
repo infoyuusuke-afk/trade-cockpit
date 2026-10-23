@@ -900,6 +900,22 @@ document.addEventListener("DOMContentLoaded",()=>{
 <div class="step"><b>4　不一致は見送り</b>相関株が逆行、または条件3/5以下なら主役銘柄へ飛び乗らない。</div>
 </div>
 <p class="warning"><b>キオクシア―任天堂は固定ルールではありません。</b> 20日・60日・当日5分足の逆相関が安定した期間だけ有効。サンディスクは取引時間が重ならないため「米国前日→キオクシア翌日」で判定します。9:15までは方向を決めず、OR15・VWAP・EMA9/20・高安の4/5一致を優先します。</p></section>
+<style>
+/* OWNER 2026-10-24 「キオクシアタブ…綺麗に配置されていない 本当に必要なのだけ表示」: the Kioxia section uses the
+   same boxes as the other cards; the static reference blocks (GU/GD statistics, EMA/VWAP playbook) are off */
+#kioxia-5m-calendar .kio-detail-grid{display:none!important}
+#kioxia-5m-calendar .kio-ms2-orderflow,#kioxia-5m-calendar .kio-supply-panel,#kioxia-5m-calendar .kio-subpanel{background:#111113!important;border:1px solid #303033!important;border-radius:14px!important;padding:14px 16px!important;margin:10px 0!important;box-shadow:none!important}
+#kioxia-5m-calendar .kio-ms2-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 6px}
+#kioxia-5m-calendar .kio-ms2-title span,#kioxia-5m-calendar .kio-supply-head span,#kioxia-5m-calendar .kio-section-head span{display:block;font-size:11px;letter-spacing:.06em;color:#8b9299}
+#kioxia-5m-calendar .kio-ms2-title b,#kioxia-5m-calendar .kio-supply-head b{font-size:16px;color:#e7e9eb}
+#kioxia-5m-calendar .kio-ms2-title strong{font-size:12px;padding:6px 12px;border-radius:999px;background:#1b1d22;border:1px solid #303033;color:#c9ccd1;white-space:nowrap}
+#kioxia-5m-calendar .kio-ms2-grid,#kioxia-5m-calendar .kio-supply-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(180px,1fr))!important;gap:6px!important}
+#kioxia-5m-calendar .kio-ms2-grid>div,#kioxia-5m-calendar .kio-supply-grid>div{background:#18191c!important;border:1px solid #26272b!important;border-radius:10px!important;padding:8px 10px!important;min-height:0!important}
+#kioxia-5m-calendar .kio-ms2-grid span,#kioxia-5m-calendar .kio-supply-grid span{display:block;font-size:11px;color:#8b9299}
+#kioxia-5m-calendar .kio-ms2-grid b,#kioxia-5m-calendar .kio-supply-grid b{display:block;font-size:15px;color:#e7e9eb;margin-top:2px}
+#kioxia-5m-calendar .kio-ms2-grid small,#kioxia-5m-calendar .kio-supply-grid small{display:block;font-size:11px;color:#8b9299;margin-top:2px}
+#kioxia-5m-calendar p{font-size:12px;line-height:1.6}
+</style>
 <section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）本日1分足予測・5分足類似日 <button class="voice-toggle" data-voice-toggle type="button" style="float:right">🔇</button></h2>
 <div id="kioxia-calendar-meta" class="sub">直近60日の5分足を照合中...</div>
 <div id="kio-decision-panel" class="rotation-grid" style="margin:10px 0">
@@ -1557,8 +1573,9 @@ const kioOneMinuteChart = (points,actual=[],turns=[],signals=[],levels={},isRefr
 const hideStaleKioxiaForecast = date => {
   const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
   if (date === today) return;
-  ["kio-decision-panel", "kio-decision-reason"].forEach(id => { const el = document.getElementById(id); if (el) el.hidden = true; });
-  document.querySelectorAll("#kioxia-5m-calendar .kio-best-chart").forEach(el => { el.hidden = true; });
+  ["kio-decision-panel", "kio-decision-reason", "kio-live-monitor", "kio-best-analog"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = "none"; });
+  const h2 = document.querySelector("#kioxia-5m-calendar > h2");
+  if (h2 && h2.firstChild && h2.firstChild.nodeType === 3) h2.firstChild.textContent = "キオクシアHD（285A）板・歩み値・サイン ";
   const meta = document.getElementById("kioxia-calendar-meta");
   if (meta) meta.textContent = "予測ファイルが今日の分ではないため、予測は表示しません（" + (date || "日付不明") + "）";
 };
