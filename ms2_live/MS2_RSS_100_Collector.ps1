@@ -1951,6 +1951,117 @@ function Get-FutIndexLag([datetime]$Now, [string]$Clock, [string]$Precision) {
     return @{ Exact = [string]$lag; Min = [string]$lag; Max = [string]$lag }
 }
 
+# OWNER 2026-10-23 「Phase 2」 (SCALP8-SYSTEM-SPEC-001): up to 8 focus issues, each with its
+# RssTickList (300 prints, with the volume of every print) and its 10-level board, read on the
+# same 2-second cycle as the 100 stocks with ONE extra COM read, and saved to
+# records/<day>/scalp8_ticks.csv, scalp8_board.csv and scalp8_diag.csv.
+# Record only: nothing here feeds a signal, gate, freshness, Brain, voice, screen or order,
+# and a failure suspends only this recorder (the Collector continues).
+# Local switch and issues: scalp8_config.json next to this script (RuntimeDir, not in GitHub), e.g.
+#   {"schema":"100b-scalp8-config-v1","enabled":true,"codes":["285A","6857","8035","9984"]}
+# Missing or invalid file -> OFF. "enabled": false -> OFF and latched until the Collector restarts.
+# The issues are fixed for the session (no intraday switching: a new formula loses prints).
+# Phase 1 (2026-10-23, copy of the workbook): 8 issues read in about 6 ms, 2.0 s cycle.
+$scalp8ConfigPath = Join-Path $PSScriptRoot "scalp8_config.json"
+$scalp8Latched = $false
+$scalp8MaxIssues = 8
+$scalp8TickRows = 300
+$scalp8TickFirstRow = 22   # RssTickList at row 20: header on row 21, prints from row 22 (newest first)
+$scalp8BlockWidth = 6
+function Test-Scalp8Code([string]$Code) {
+    return ($Code -cmatch '^[0-9][0-9A-Z]{3}$')
+}
+function Get-Scalp8Config {
+    if ($script:scalp8Latched) { return $null }
+    try {
+        if (-not (Test-Path -LiteralPath $scalp8ConfigPath -PathType Leaf)) { return $null }
+        $cfg = [IO.File]::ReadAllText($scalp8ConfigPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+        if ($null -eq $cfg -or [string]$cfg.schema -cne "100b-scalp8-config-v1") { return $null }
+        if ($cfg.enabled -ne $true) { $script:scalp8Latched = $true; return $null }
+        $codes = @($cfg.codes | ForEach-Object { ([string]$_).Trim().ToUpperInvariant() } | Where-Object { Test-Scalp8Code $_ } | Select-Object -Unique)
+        if ($codes.Count -lt 1 -or $codes.Count -gt $script:scalp8MaxIssues) { return $null }
+        return @{ Codes = $codes }
+    } catch {
+        return $null
+    }
+}
+# Prints that are new since the previous read. RssTickList has no print id, so the newest part of
+# the previous window is looked for inside the current one (same time, price and volume in the
+# same order); everything above the match is new. Repeated identical prints are kept. When the
+# previous window cannot be found at all, every print is returned and Gap is set (more than 300
+# prints in 2 s, or a restart of the list).
+function Get-Scalp8NewTicks($Previous, $Current) {
+    $cur = if ($null -eq $Current) { @() } else { @($Current) }
+    $prev = if ($null -eq $Previous) { @() } else { @($Previous) }
+    if ($cur.Count -eq 0) { return @{ New = @(); Gap = $false } }
+    if ($prev.Count -eq 0) { return @{ New = $cur; Gap = $false } }
+    $probe = [Math]::Min(10, $prev.Count)
+    for ($o = 0; $o -lt $cur.Count; $o++) {
+        $m = [Math]::Min($probe, $cur.Count - $o)
+        if ($m -lt [Math]::Min($probe, 3) -and $o -gt 0) { break }
+        $same = $true
+        for ($k = 0; $k -lt $m; $k++) {
+            if ($cur[$o + $k] -cne $prev[$k]) { $same = $false; break }
+        }
+        if ($same) {
+            if ($o -eq 0) { return @{ New = @(); Gap = $false } }
+            return @{ New = @($cur[0..($o - 1)]); Gap = $false }
+        }
+    }
+    return @{ New = $cur; Gap = $true }
+}
+# Which side took the print, judged against the best quotes of the same read (an estimate).
+function Get-Scalp8Side([double]$Price, $Bid, $Ask) {
+    if ($Ask -is [double] -and $Ask -gt 0 -and $Price -ge $Ask) { return "BUY" }
+    if ($Bid -is [double] -and $Bid -gt 0 -and $Price -le $Bid) { return "SELL" }
+    return "MID"
+}
+$scalp8Sheet = $null
+$scalp8Ready = $false
+$scalp8Codes = @()
+$scalp8PrevKeys = @{}
+$scalp8PrevBoard = @{}
+$scalp8Seq = 0
+$scalp8StartConfig = Get-Scalp8Config
+if ($null -eq $scalp8StartConfig) {
+    Write-Host "[SCALP8] OFF (no local scalp8 config or switched off)" -ForegroundColor DarkGray
+} else {
+    try {
+        $scalp8Codes = @($scalp8StartConfig.Codes)
+        try {
+            $scalp8Sheet = Invoke-ExcelCom -Label "SCALP8シート確認" -Action { $book.Worksheets.Item("SCALP8") }
+        } catch {
+            $scalp8Sheet = $null
+        }
+        if ($null -eq $scalp8Sheet) {
+            # Added for this session only (Safe Stop closes the workbook without saving).
+            $scalp8Sheet = Invoke-ExcelCom -Label "SCALP8シート作成" -Action { $book.Worksheets.Add() }
+            Invoke-ExcelCom -Label "SCALP8シート命名" -Action { $scalp8Sheet.Name = "SCALP8" } | Out-Null
+        }
+        for ($i = 0; $i -lt $scalp8Codes.Count; $i++) {
+            $s8Col = 1 + $scalp8BlockWidth * $i
+            $s8Sym = [string]$scalp8Codes[$i] + ".T"
+            Invoke-ExcelCom -Label "SCALP8コード設定" -Action { $scalp8Sheet.Cells.Item(1, $s8Col).Value2 = $s8Sym } | Out-Null
+            for ($lv = 1; $lv -le 10; $lv++) {
+                $s8Items = @(("最良売気配値" + $lv), ("最良売気配数量" + $lv), ("最良買気配値" + $lv), ("最良買気配数量" + $lv))
+                for ($j = 0; $j -lt 4; $j++) {
+                    $s8Formula = '=RssMarket("' + $s8Sym + '","' + $s8Items[$j] + '")'
+                    Invoke-ExcelCom -Label "SCALP8板式設定" -Action { $scalp8Sheet.Cells.Item(2 + $lv, $s8Col + $j).FormulaLocal = [string]$s8Formula } | Out-Null
+                }
+            }
+            $s8TickFormula = '=RssTickList(,"' + $s8Sym + '",' + [string]$scalp8TickRows + ')'
+            Invoke-ExcelCom -Label "SCALP8歩み値式設定" -Action { $scalp8Sheet.Cells.Item(20, $s8Col).FormulaLocal = [string]$s8TickFormula } | Out-Null
+        }
+        Invoke-ExcelCom -Label "SCALP8シート非表示" -Action { $scalp8Sheet.Visible = 0 } | Out-Null
+        $scalp8Ready = $true
+        Write-Host ("[SCALP8] READY (record only) " + ($scalp8Codes -join ",")) -ForegroundColor Green
+    } catch {
+        $scalp8Sheet = $null
+        $scalp8Ready = $false
+        Write-Host "[SCALP8] WARN / UNAVAILABLE - Collector continues" -ForegroundColor DarkYellow
+    }
+}
+
 # 決算・IR開示があった銘柄（固定100銘柄リスト外を含む）を引け後に動的追跡するための専用シート。
 # TDnetで好材料判定された銘柄をその場でRssMarket式として追加し、100銘柄リストに
 # 偶然含まれていなくてもPTS反応を検知できるようにする（ユーザー指示: 2026-09-15）。
@@ -2505,6 +2616,76 @@ try {
                 $futIndexReady = $false
                 $futIndexSheet = $null
                 Write-Host "[FUT_INDEX] WARN / READ FAILED - recorder suspended, Collector continues" -ForegroundColor DarkYellow
+            }
+        }
+        # OWNER 2026-10-23 Phase 2: SCALP8 prints and 10-level boards, record only (see SCALP8 above).
+        $scalp8Config = if ($scalp8Ready) { Get-Scalp8Config } else { $null }
+        if ($scalp8Ready -and $null -eq $scalp8Config) {
+            $scalp8Ready = $false   # switched off or config gone: stays off until restart
+            Write-Host "[SCALP8] OFF - switched off by local config (latched)" -ForegroundColor DarkYellow
+        }
+        if ($scalp8Ready -and $null -ne $scalp8Sheet) {
+            try {
+                $s8Started = Get-Date
+                $s8Packet = Invoke-ExcelCom -Label "SCALP8値取得" -Action {
+                    [pscustomobject]@{ Data = $scalp8Sheet.Range($scalp8Sheet.Cells.Item(1, 1), $scalp8Sheet.Cells.Item($scalp8TickFirstRow + $scalp8TickRows - 1, $scalp8BlockWidth * $scalp8Codes.Count)).Value2 }
+                }
+                $s8Now = Get-Date
+                $s8ReadMs = [int]($s8Now - $s8Started).TotalMilliseconds
+                $scalp8Seq++
+                $s8Data = $s8Packet.Data
+                $s8TickCsv = Join-Path $dayDir "scalp8_ticks.csv"
+                $s8BoardCsv = Join-Path $dayDir "scalp8_board.csv"
+                $s8DiagCsv = Join-Path $dayDir "scalp8_diag.csv"
+                Ensure-Csv $s8TickCsv "captured_at,ticker,exchange_time,price,volume,side_estimate,best_bid,best_ask,read_seq,batch"
+                $s8BoardHeader = "captured_at,ticker,read_seq," + ((1..10 | ForEach-Object { "ask$_,ask_qty$_,bid$_,bid_qty$_" }) -join ",")
+                Ensure-Csv $s8BoardCsv $s8BoardHeader
+                Ensure-Csv $s8DiagCsv "captured_at,read_seq,read_ms,ticker,window,new_ticks,gap_suspected"
+                $s8Stamp = $s8Now.ToString("yyyy-MM-dd HH:mm:ss.fff")
+                $s8TickLines = New-Object System.Collections.Generic.List[string]
+                $s8BoardLines = New-Object System.Collections.Generic.List[string]
+                $s8DiagLines = New-Object System.Collections.Generic.List[string]
+                for ($i = 0; $i -lt $scalp8Codes.Count; $i++) {
+                    $c = 1 + $scalp8BlockWidth * $i
+                    $code = [string]$scalp8Codes[$i]
+                    $ask = $s8Data[3, $c]
+                    $bid = $s8Data[3, ($c + 2)]
+                    $keys = New-Object System.Collections.Generic.List[string]
+                    for ($r = $scalp8TickFirstRow; $r -lt $scalp8TickFirstRow + $scalp8TickRows; $r++) {
+                        $tm = $s8Data[$r, $c]; $vol = $s8Data[$r, ($c + 1)]; $px = $s8Data[$r, ($c + 2)]
+                        if ($vol -is [double] -and $px -is [double] -and $vol -gt 0 -and $px -gt 0) {
+                            $tt = if ($tm -is [double]) { [TimeSpan]::FromSeconds([Math]::Round(($tm % 1) * 86400)).ToString("hh\:mm\:ss") } else { ([string]$tm).Trim() }
+                            $keys.Add($tt + "|" + [string]$px + "|" + [string]$vol)
+                        }
+                    }
+                    $first = -not $scalp8PrevKeys.ContainsKey($code)
+                    $diff = Get-Scalp8NewTicks $scalp8PrevKeys[$code] $keys
+                    $scalp8PrevKeys[$code] = $keys
+                    $batch = if ($first) { "initial" } elseif ($diff.Gap) { "gap" } else { "" }
+                    $newTicks = @($diff.New)
+                    for ($k = $newTicks.Count - 1; $k -ge 0; $k--) {   # oldest first
+                        $parts = ([string]$newTicks[$k]).Split("|")
+                        # the first read holds older prints: the quotes of this read say nothing about them
+                        $side = if ($first) { "" } else { Get-Scalp8Side ([double]$parts[1]) $bid $ask }
+                        $s8TickLines.Add((@($s8Stamp, $code, $parts[0], $parts[1], $parts[2], $side, [string]$bid, [string]$ask, [string]$scalp8Seq, $batch) -join ","))
+                    }
+                    $boardVals = @(for ($lv = 1; $lv -le 10; $lv++) { for ($j = 0; $j -lt 4; $j++) { $bv = $s8Data[(2 + $lv), ($c + $j)]; if ($bv -is [double]) { [string]$bv } else { "" } } })
+                    $boardText = $boardVals -join ","
+                    if ($scalp8PrevBoard[$code] -cne $boardText -and ($boardVals | Where-Object { $_ -ne "" }).Count -gt 0) {
+                        $scalp8PrevBoard[$code] = $boardText
+                        $s8BoardLines.Add($s8Stamp + "," + $code + "," + [string]$scalp8Seq + "," + $boardText)
+                    }
+                    if ($newTicks.Count -gt 0 -or $diff.Gap -or ($scalp8Seq % 30) -eq 1) {
+                        $s8DiagLines.Add((@($s8Stamp, [string]$scalp8Seq, [string]$s8ReadMs, $code, [string]$keys.Count, [string]$newTicks.Count, [string]([bool]$diff.Gap)) -join ","))
+                    }
+                }
+                if ($s8TickLines.Count -gt 0) { Add-Content -Encoding UTF8 -Path $s8TickCsv -Value $s8TickLines }
+                if ($s8BoardLines.Count -gt 0) { Add-Content -Encoding UTF8 -Path $s8BoardCsv -Value $s8BoardLines }
+                if ($s8DiagLines.Count -gt 0) { Add-Content -Encoding UTF8 -Path $s8DiagCsv -Value $s8DiagLines }
+            } catch {
+                $scalp8Ready = $false
+                $scalp8Sheet = $null
+                Write-Host "[SCALP8] WARN / READ FAILED - recorder suspended, Collector continues" -ForegroundColor DarkYellow
             }
         }
         $script:preopenIdentitySpare = $null
