@@ -112,7 +112,9 @@ class Calendars(unittest.TestCase):
 class WorldAndCorrelationOff(unittest.TestCase):
     def test_hidden(self):
         # OWNER 2026-10-24 「あやしいからいらない」「これもいらないが、相関性を検査・分析する仕組みがあやしい」
-        self.assertIn("#world-market-live,#correlation-monitor{display:none!important}", _html())
+        # world markets stay off; the correlations are shown again after their rebuild (OWNER 2026-10-24)
+        self.assertIn("#world-market-live{display:none!important}", _html())
+        self.assertNotIn("#correlation-monitor{display:none", _html())
 
 
 class WickFeed(unittest.TestCase):

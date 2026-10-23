@@ -78,7 +78,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const agentPanel=document.createElement("section");
  agentPanel.className="card wide";
  agentPanel.id="agent-research";
- agentPanel.innerHTML='<h2>専門AIアナリスト</h2><p class="warning">AI推論・研究用（MS2の実測データではありません）</p><p class="sub">ChatGPTアプリのGPTタスク（PRE-NEXT・需給）が毎朝このPCに置く答えです。価格・板・出来高はMS2の検証済み情報だけを使い、この答えは売買判定・発注に使いません。</p><div id="agent-research-body"><div class="focus-empty">取得待ち</div></div>';
+ agentPanel.innerHTML='<h2>専門AIアナリスト</h2><p class="warning">AI推論・研究用（MS2の実測データではありません）</p><p class="sub">ChatGPTアプリのGPTタスク（PRE-NEXT・需給）が毎朝このPCに置く答えです。価格・板・出来高はMS2の検証済み情報だけを使い、この答えは売買判定・発注に使いません。</p><div id="agent-research-body"><div class="focus-empty">取得待ち</div></div><h2 style="margin-top:18px">Grokの答え（1号・2号・3号）</h2><p class="sub">5番のボタンで保存した、Grok Botのいちばん新しい答えです。読むためだけに出しています（売買判定・点数・発注には使いません）。</p><div id="grok-bots-body"><div class="focus-empty">取得待ち</div></div>';
  panes.brain.appendChild(agentPanel);
  const AGENT_ROLE_LABEL={premarket:"寄り前",pre_next:"PRE-NEXT",supply_sq:"需給・SQ",revenue_hunter:"Revenue Hunter（PROJECT進捗）"};
  const AGENT_REASON_LABEL={EXPIRED:"期限切れ・利用不可",NO_SOURCE:"出典なし・利用不可",NO_DATA:"データ不足・利用不可",UNAVAILABLE:"分析失敗・利用不可"};
@@ -913,13 +913,13 @@ document.addEventListener("DOMContentLoaded",()=>{
    「これもいらないが、相関性を検査・分析する仕組みがあやしい」(correlations): both sections are off the screen.
    The data keeps being collected behind the screen; the correlation method was checked
    (Claudeブレイン\correlation_check.py): only US memory stocks -> Kioxia's opening gap held up. */
-#world-market-live,#correlation-monitor{display:none!important}
+#world-market-live{display:none!important}
 </style>
-<section id="correlation-monitor" class="card wide"><h2>当日デイトレ・相関／逆相関／先行銘柄</h2>
+<section id="correlation-monitor" class="card wide"><h2>米国の前日 → 東京の寄り（窓）の確かめ</h2>
 <div id="correlation-meta" class="sub">日足20・60営業日と5分足の関係を更新中...</div>
 <label style="display:inline-flex;gap:8px;align-items:center;margin:10px 0;color:#9db0bc">主役銘柄
 <select id="correlation-anchor" style="min-width:240px;padding:8px;border:1px solid #2c5067;border-radius:7px;background:#0b1720;color:#eaf4fa"><option value="285A.T">キオクシアHD（285A）</option></select></label>
-<table><thead><tr><th>主役銘柄</th><th>確認銘柄</th><th>関係</th><th>成立判定</th><th>信頼度</th><th>20日</th><th>60日</th><th>5分足</th><th>先行</th><th>主役の当日</th><th>確認銘柄の当日</th><th>売買判断</th></tr></thead>
+<table><thead><tr><th>主役銘柄</th><th>確認銘柄</th><th>関係</th><th>成立判定</th><th>信頼度</th><th>窓の相関 20日</th><th>60日</th><th>全期間（前半／後半）</th><th>米国±2%の日 窓が同じ向き</th><th>主役の当日</th><th>確認銘柄の当日</th><th>売買判断</th></tr></thead>
 <tbody id="correlation-rows"><tr><td colspan="12">相関データを取得中...</td></tr></tbody></table>
 <div class="steps">
 <div class="step"><b>1　米国先行</b>サンディスク・Micronの前日終値から、翌日のキオクシア反応を確認。</div>
@@ -1367,6 +1367,30 @@ window.renderEvent5 = rows => {
     document.getElementById("speculative-theme-watch").innerHTML =
       html || "<div class='focus-empty'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</div>";
   };
+// OWNER 2026-10-24 「Grokの答えをコクピットで読む機能」: grok_bots.json (public feed, read from
+// Desktop\Claudeブレイン\Grok1号〜3号 on this PC). Reading only; every text is escaped.
+window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(g => {
+  const box = document.getElementById("grok-bots-body");
+  if (!box) return;
+  if (!g || !Array.isArray(g.bots)) { box.innerHTML = "<div class='focus-empty'>Grokの答えはまだありません（5番のボタンで保存すると出ます）</div>"; return; }
+  const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const age = at => { const t = Date.parse(at || ""); return Number.isFinite(t) ? (Date.now() - t) / 3600000 : null; };
+  const cls = v => /買い|追随/.test(v) ? "long" : /空売り/.test(v) ? "short" : "wait";
+  box.innerHTML = g.bots.map(b => {
+    if (!b.file) return "<div class='rotation-box'><b>" + e(b.label) + "</b><small>まだ保存された答えがありません</small></div>";
+    const h = age(b.saved_at), old = h == null || h > 36;
+    const head = "<b>" + e(b.label) + "</b><small>保存 " + e(String(b.saved_at || "").slice(5, 16).replace("T", " ")) +
+      (old ? "　<span class='down'>古い（36時間より前）</span>" : "") + "　" + e(b.file) + "</small>";
+    const cards = (b.cards || []).map(c => "<article class='cc-card cc-card--" + cls(c["判断案"]) + "'><div class='cc-head'><div class='cc-identity'><span class='cc-company'>" +
+      e(c["銘柄"]) + "</span></div><span class='cc-badge'>" + e(c["判断案"]) + "</span></div><div class='cc-metrics-grid'>" +
+      "<span>動きの型<b>" + e(String(c["動きの型"] || "—").split("（")[0]) + "</b></span><span>目安<b>" + e(c["目安の価格帯"] || "—") + "</b></span>" +
+      "<span>無効<b>" + e(c["無効になる条件"] || "—") + "</b></span><span>自信<b>" + e(String(c["自信"] || "—").split("（")[0]) + "</b></span></div>" +
+      "<div class='cc-foot'>決算 " + e(c["決算発表日"] || "—") + "／見直し " + e(c["見直す日"] || "—") + "</div></article>").join("");
+    return "<div class='rotation-box' style='grid-column:1/-1'>" + head + (cards ? "<div class='scalp-strip'>" + cards + "</div>" : "") +
+      "<details><summary>全文を見る</summary><pre style='white-space:pre-wrap;max-height:420px;overflow:auto'>" + e(b.text) + "</pre></details></div>";
+  }).join("");
+}).catch(() => {});
+document.addEventListener("DOMContentLoaded", () => { window.loadGrokBots(); setInterval(window.loadGrokBots, 600000); });
 fetch("accumulation_watch.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(a => {
   if (!a || !Array.isArray(a.large_lot_accumulation)) return;
   window.accFedData = a;
@@ -1412,7 +1436,10 @@ const loadRegimeSummary = () => fetch("market_summary.json?t=" + Date.now()).the
   document.getElementById("regime-summary-meta").textContent = "データ " + (d.updated_at || "不明") + "（" + (d.phase || "") + "）";
   document.getElementById("regime-summary-verdict").innerHTML = "<div class='rotation-box'><b>地合い</b><strong class='" + (v.label === "強い" ? "up" : v.label === "弱い" ? "down" : "") + "'>" + worldEsc(v.label || "—") + "</strong><br><span>点数 " + worldEsc(v.score) + "（+3以上で強い・−3以下で弱い・しきい値は未検証）</span></div>"
     + "<div class='rotation-box'><b>内訳</b><small>" + ((v.parts || []).map(x => worldEsc(x.text) + "（" + (x.point > 0 ? "+" : "") + worldEsc(x.point) + "）").join("<br>") || "—") + "</small></div>";
-  document.getElementById("regime-summary-rows").innerHTML = Object.entries(d.indices || {}).map(([n, x]) =>
+  // OWNER 2026-10-24: yields (金利) in percentage points: level 4.95%, day -0.19 points
+  const pt = v => v == null || !Number.isFinite(Number(v)) ? "—" : (Number(v) > 0 ? "+" : "") + Number(v).toFixed(2) + "pt";
+  document.getElementById("regime-summary-rows").innerHTML = Object.entries(d.indices || {}).map(([n, x]) => x.unit === "yield" ?
+    "<tr><td><b>" + worldEsc(n) + "</b></td><td>" + f(x.price, 2) + "%</td><td class='" + cls(x.change_pt) + "'>" + pt(x.change_pt) + "</td><td class='" + cls(x.ret5_pt) + "'>" + pt(x.ret5_pt) + "</td><td class='" + cls(x.from_ma20_pt) + "'>" + pt(x.from_ma20_pt) + "</td><td>" + (x.ma20 == null || x.ma60 == null ? "—" : x.ma20 > x.ma60 ? "上昇基調" : "低下基調") + "</td></tr>" :
     "<tr><td><b>" + worldEsc(n) + "</b></td><td>" + f(x.price, 2) + "</td><td class='" + cls(x.change_pct) + "'>" + p(x.change_pct) + "</td><td class='" + cls(x.ret5) + "'>" + p(x.ret5) + "</td><td class='" + cls(x.from_ma20) + "'>" + p(x.from_ma20) + "</td><td>" + (x.ma20 == null || x.ma60 == null ? "—" : (x.ma20 > x.ma60 ? "上向き" : "下向き")) + "</td></tr>"
   ).join("") || "<tr><td colspan='6'>データなし</td></tr>";
   document.getElementById("regime-summary-themes").innerHTML = (d.themes || []).map((t, i) =>
@@ -1532,13 +1559,17 @@ fetch("correlations.json?t=" + Date.now()).then(r => r.json()).then(d => {
       x.relation + "<br><small>" + x.expected + "</small></td><td><b class='" +
       (x.state === "確認" ? "up" : x.state === "不成立" ? "down" : "warning") + "'>" +
       x.state + "</b></td><td>" + x.confidence + "/100</td><td>" + corrText(x.corr20) +
-      "</td><td>" + corrText(x.corr60) + "</td><td>" + corrText(x.intraday_corr) +
-      "</td><td>" + lead + "</td><td>" + todayText(x.anchor_today) + "</td><td>" +
+      "</td><td>" + corrText(x.corr60) + "</td><td>" + (x.gap_test ? corrText(x.gap_test.corr_all) + "<br><small>" +
+      corrText(x.gap_test.corr_first_half) + "／" + corrText(x.gap_test.corr_second_half) + "　" + x.gap_test.days + "日（" + (x.gap_test.since || "—") + "〜）</small>" : corrText(x.intraday_corr)) +
+      "</td><td>" + (x.gap_test && x.gap_test.big_same_dir_pct != null ? x.gap_test.big_same_dir_pct + "%<br><small>" + x.gap_test.big_days + "日。寄った後との相関 " + corrText(x.gap_test.corr_after_open) + "</small>" : lead) +
+      "</td><td>" + todayText(x.anchor_today) + "</td><td>" +
       todayText(x.peer_today) + "</td><td><b>" + x.decision + "</b><br><small>" + x.reason +
       "</small></td></tr>";
    }).join("");
-   document.getElementById("correlation-rows").innerHTML = rows ||
-    "<tr><td colspan='12'>安定した相関・逆相関はありません。相関を売買根拠にしません。</td></tr>";
+   document.getElementById("correlation-rows").innerHTML = (rows ||
+    "<tr><td colspan='12'>安定した相関・逆相関はありません。相関を売買根拠にしません。</td></tr>") +
+    (Array.isArray(d.removed) && d.removed.length ? "<tr><td colspan='12'><b>使わなくした関係</b><br>" + d.removed.map(r =>
+      "<small>" + String(r.relation).replace(/[&<>"']/g, "") + "：" + String(r.reason).replace(/[&<>"']/g, "") + "</small>").join("<br>") + "</td></tr>" : "");
   };
   select.onchange = renderRelations;
   renderRelations();

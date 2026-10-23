@@ -31,7 +31,7 @@ FEED_FILES = (
 # time is older than this (hours), or has no readable update time, is marked stale in
 # the meta file; the screen shows 古い and nothing from it as verified. World market rows
 # of a stale copy are written with verified=false.
-STALE_HOURS = {"weekly_review.json": 24 * 8}
+STALE_HOURS = {"weekly_review.json": 24 * 8, "grok_bots.json": 36}
 DEFAULT_STALE_HOURS = 24
 TIME_KEYS = ("updated_at", "generated_at", "created_at", "fetched_at")
 _TIME = re.compile(r"(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?\s*(Z|[+-]\d{2}:?\d{2}|JST)?")
@@ -118,6 +118,51 @@ def accumulation_view(signals: dict) -> dict:
             "real_submit_allowed": False, "trade_instruction": False}
 
 
+# OWNER 2026-10-24 「Grokの答えをコクピットで読む機能」: the latest answer of Grok 1号・2号・3号 that the
+# OWNER saved with the 5番 button (Desktop\Claudeブレイン\Grok1号 ... Grok3号). Read only, this PC only;
+# shown for reading, never a score, gate, voice or order.
+GROK_FILE = "grok_bots.json"
+GROK_BOTS = (("Grok1号", "1号 朝夕ニュース巡回"), ("Grok2号", "2号 好決算監視"), ("Grok3号", "3号 米国地合い"))
+GROK_TEXT_MAX = 20000
+GROK2_FIELDS = ("銘柄", "決算発表日", "動きの型", "判断案", "目安の価格帯", "無効になる条件", "見直す日", "自信")
+
+
+def grok_default_root() -> Path:
+    return Path.home() / "Desktop" / "Claudeブレイン"
+
+
+def grok_cards(text: str) -> list:
+    """2号: one card per 銘柄 (a new card starts at each 「銘柄：」 line; fields after the full-width colon)."""
+    cards, fields = [], None
+    for line in text.splitlines():
+        key, sep, value = line.strip().partition("：")
+        if not sep or key not in GROK2_FIELDS:
+            continue
+        if key == GROK2_FIELDS[0]:
+            fields = {}
+            cards.append(fields)
+        if fields is not None and key not in fields:
+            fields[key] = value.strip()[:200]
+    return [c for c in cards if "判断案" in c][:15]
+
+
+def grok_bots_view(root: Path) -> dict:
+    bots, latest = [], None
+    for folder, label in GROK_BOTS:
+        files = sorted((Path(root) / folder).glob("*.txt"), key=lambda p: p.stat().st_mtime) if (Path(root) / folder).is_dir() else []
+        if not files:
+            bots.append({"bot": folder, "label": label, "file": None, "saved_at": None, "text": "", "cards": []})
+            continue
+        path = files[-1]
+        saved = datetime.fromtimestamp(path.stat().st_mtime, timezone(timedelta(hours=9)))
+        text = path.read_text(encoding="utf-8-sig", errors="replace")[:GROK_TEXT_MAX]
+        bots.append({"bot": folder, "label": label, "file": path.name, "saved_at": saved.isoformat(),
+                     "text": text, "cards": grok_cards(text) if folder == "Grok2号" else []})
+        latest = saved if latest is None or saved > latest else latest
+    return {"updated_at": latest.isoformat() if latest else "", "bots": bots,
+            "real_submit_allowed": False, "trade_instruction": False}
+
+
 DATA_MAX_BYTES = 16 * 1024 * 1024
 # OWNER 2026-10-23 「検証・除外に本来地合判定がでるはず」: the daily index figures of the
 # public page's 地合いサマリー, plus a reference verdict. Display only (never a gate,
@@ -159,12 +204,36 @@ def regime_verdict(indices: dict) -> dict:
             "status": "REFERENCE_DAILY_UNVALIDATED_NOT_A_GATE"}
 
 
+def yield_points(level, change_pct):
+    """A yield's move in percentage points from its level and its percent change."""
+    level, change_pct = _num(level), _num(change_pct)
+    if level is None or change_pct is None or change_pct == -100:
+        return None
+    return round(level - level / (1 + change_pct / 100), 2)
+
+
+def edition_name(phase: str, updated_at: str) -> str:
+    """OWNER 2026-10-24: a run after the close (e.g. 21:01) is not the 15:00 pre-close edition."""
+    m = re.search(r"(\d{2}):(\d{2})", updated_at[11:16] if len(updated_at) >= 16 else "")
+    if phase == "引け前持ち越し15:00版" and m and (int(m.group(1)), int(m.group(2))) >= (15, 30):
+        return "大引け後版（%s作成）" % m.group(0)
+    return phase
+
+
 def summarize(data: dict) -> dict:
     indices = {}
     for name in SUMMARY_INDICES:
         r = (data.get("indices") or {}).get(name) or {}
         if r.get("ok") is True:
             indices[name] = {k: _num(r.get(k)) for k in INDEX_FIELDS}
+            if "金利" in name:
+                # OWNER 2026-10-24: yields are shown in percentage points (4.95%, -0.19 points)
+                x = indices[name]
+                x["unit"] = "yield"
+                x["change_pt"] = yield_points(x.get("price"), x.get("change_pct"))
+                x["ret5_pt"] = yield_points(x.get("price"), x.get("ret5"))
+                x["from_ma20_pt"] = (round(x["price"] - x["ma20"], 2)
+                                     if x.get("price") is not None and x.get("ma20") is not None else None)
     themes = []
     for row in (data.get("themes") or [])[:5]:
         try:
@@ -174,7 +243,8 @@ def summarize(data: dict) -> dict:
                                        for m in members[:3]]})
         except (TypeError, ValueError, IndexError):
             continue
-    return {"updated_at": str(data.get("updated_at") or ""), "phase": str(data.get("phase") or ""),
+    updated_at = str(data.get("updated_at") or "")
+    return {"updated_at": updated_at, "phase": edition_name(str(data.get("phase") or ""), updated_at),
             "indices": indices, "verdict": regime_verdict(indices), "themes": themes,
             "real_submit_allowed": False, "trade_instruction": False}
 
@@ -186,7 +256,7 @@ def _download(url: str) -> bytes:
     return data
 
 
-def sync(target: Path, *, fetch=_download, now: datetime | None = None) -> dict:
+def sync(target: Path, *, fetch=_download, now: datetime | None = None, grok_root: Path | None = None) -> dict:
     """Refresh every feed file it can; returns a summary (also written as META_FILE)."""
     now = now or datetime.now(timezone.utc)
     target = Path(target)
@@ -265,6 +335,18 @@ def sync(target: Path, *, fetch=_download, now: datetime | None = None) -> dict:
         files[ACCUMULATION_FILE] = dict(fresh, ok=True, bytes=(target / ACCUMULATION_FILE).stat().st_size)
     except Exception as exc:  # keep the previous copy
         files[ACCUMULATION_FILE] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
+    try:
+        root = Path(grok_root) if grok_root is not None else grok_default_root()
+        if not root.is_dir():
+            raise ValueError("NO_GROK_FOLDER")
+        view = grok_bots_view(root)
+        fresh = freshness(GROK_FILE, view, now) if view["updated_at"] else {"stale": True, "reason": "NO_ANSWER"}
+        temp = target / (GROK_FILE + ".tmp")
+        temp.write_text(json.dumps(view, ensure_ascii=False), encoding="utf-8")
+        os.replace(temp, target / GROK_FILE)
+        files[GROK_FILE] = dict(fresh, ok=True, bytes=(target / GROK_FILE).stat().st_size)
+    except Exception as exc:  # keep the previous copy
+        files[GROK_FILE] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
     meta = {"fetched_at": now.isoformat(), "source": BASE_URL, "files": files,
             "real_submit_allowed": False, "trade_instruction": False}
     (target / META_FILE).write_text(json.dumps(meta, sort_keys=True), encoding="utf-8")
