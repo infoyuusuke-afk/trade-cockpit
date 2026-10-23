@@ -142,6 +142,9 @@ class ScreenStaysPut(unittest.TestCase):
         self.assertIn(".pane-intro{padding:18px 4px 14px!important;", html)
         self.assertIn("abox.style.borderColor=c.borderTopColor;abox.style.borderRadius=c.borderTopLeftRadius;", html)
         self.assertIn('document.addEventListener("ms2RssUpdate",()=>setTimeout(()=>window.syncAttentionFrame(),0));', html)
+        # OWNER 2026-10-23: a grabbable tab-bar scrollbar; the wheel over the tab bar scrolls it sideways
+        self.assertIn(".cockpit-tabs{scrollbar-width:auto!important;", html)
+        self.assertIn('t.addEventListener("wheel",e=>{if(Math.abs(e.deltaY)>Math.abs(e.deltaX)&&t.scrollWidth>t.clientWidth){t.scrollLeft+=e.deltaY;e.preventDefault();}},{passive:false});', html)
         self.assertLess(html.index('href="theme.css'), html.index(".pane-intro{padding:18px 4px 14px!important"))   # overrides theme.css
 
 
