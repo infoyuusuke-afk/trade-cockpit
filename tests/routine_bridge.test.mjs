@@ -107,6 +107,7 @@ const mutations = {
     f.e.comment.created_at = f.e.comment.updated_at = t;
   },
   wrongIssue: f => f.e.issue.number = 172,
+  legacyIssue171: f => f.e.issue.number = 171,
   prComment: f => f.e.issue.pull_request = {},
   closed: f => f.e.issue.state = 'closed',
   push: f => f.env.GITHUB_EVENT_NAME = 'push',
@@ -205,6 +206,8 @@ test('workflow is main-only, protected-only, and contains no signing-key depende
   assert.match(yml, /github\.ref_protected == true/);
   assert.match(yml, /format\('\{0\}', github\.event\.sender\.id\) == '307830101'/);
   assert.match(yml, /GPT-CLAUDE-NEXT-V2/);
+  assert.match(yml, /github\.event\.issue\.number == 282/);
+  assert.doesNotMatch(yml, /github\.event\.issue\.number == 171/);
   assert.doesNotMatch(yml, /GPT_PUBLIC_KEY|SIGNING_PRIVATE|GPT_REVIEWER_PUBLIC|GPT_REVIEWER_ACTOR_ID/);
   assert.doesNotMatch(yml, /run:.*\$\{\{/);
 });
