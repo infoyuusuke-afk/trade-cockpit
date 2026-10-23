@@ -154,8 +154,12 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
                                "return_pct": round(got["return_pct"], 3) if status == "CLOSED" and got.get("return_pct") is not None else None})
     overnight = []
     prev = _previous_day_dir(records, today)
-    if prev is not None and hm < OVERNIGHT_SCORED_AT:   # yesterday's carry-over, scored at today's close
-        overnight = _overnight(prev, valid_until=today + " " + OVERNIGHT_SCORED_AT)
+    # OWNER 2026-10-24 「持ち越しているはず」: on Saturday and Sunday Friday's holds are still held; they are
+    # scored at Monday's close (exchange holidays are not known here).
+    weekend = local.weekday() >= 5
+    if prev is not None and (hm < OVERNIGHT_SCORED_AT or weekend):   # carry-over, scored at the next session's close
+        scored_on = today if not weekend else (local.date() + timedelta(days=7 - local.weekday())).isoformat()
+        overnight = _overnight(prev, valid_until=scored_on + " " + OVERNIGHT_SCORED_AT)
     if (day_dir / OVERNIGHT_FILE).is_file():               # fixed at 15:25 today, held into the next day
         overnight = overnight + _overnight(day_dir, valid_until="next trading day " + OVERNIGHT_SCORED_AT)
     view = {"schema_version": SCHEMA, "generated_at": now.astimezone(timezone.utc).isoformat(), "date": today,

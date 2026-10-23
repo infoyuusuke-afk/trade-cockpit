@@ -70,6 +70,18 @@ class Positions(unittest.TestCase):
         self.assertEqual((v["rule_positions"][0]["status"], v["rule_positions"][0]["exit"]), ("CLOSED", "TIME_EXIT"))
         self.assertEqual(len(pos.build(self.tmp, now=at(23, "15:31"), ev=ev, rules=ev.RULES, state={})["overnight"]), 0)
 
+    def test_friday_holds_stay_over_the_weekend(self):
+        # OWNER 2026-10-24 「持ち越しているはず」: Friday's 15:25 holds are held on Saturday and Sunday and scored
+        # at Monday's close
+        write_csv(self.tmp / "records" / "2026-10-23" / pos.OVERNIGHT_FILE,
+                  ["finalized_at", "rank", "ticker", "name", "hold_signal", "reference_price_1525"],
+                  [{"finalized_at": "2026-10-23 15:25:00", "rank": "1", "ticker": "5713.T", "name": "住友金属鉱山（5713）",
+                    "hold_signal": "持ち越しロング確定", "reference_price_1525": "7981"}])
+        for day, hm in ((24, "03:40"), (24, "16:00"), (25, "20:00"), (26, "10:00")):
+            got = pos.build(self.tmp, now=at(day, hm), ev=ev, rules=ev.RULES, state={})["overnight"]
+            self.assertEqual([(x["ticker"], x["valid_until"]) for x in got], [("5713.T", "2026-10-26 15:30")], (day, hm))
+        self.assertEqual(pos.build(self.tmp, now=at(26, "15:31"), ev=ev, rules=ev.RULES, state={})["overnight"], [])
+
     def test_waiting_inside_the_fill_window(self):
         self.ticks.write_text("captured_at,ticker,name,exchange_time,price\nx,A.T,n,09:17:05,1180\n", encoding="utf-8-sig")
         self.assertEqual(pos.build(self.tmp, now=at(23, "09:20"), ev=ev, rules=ev.RULES, state={})["rule_positions"][0]["status"],

@@ -681,6 +681,16 @@ document.addEventListener("DOMContentLoaded",()=>{
  <div id="next-theme-content">海外ニュース・市場反応を確認中です。</div>
 </section>
 
+<style>
+/* OWNER 2026-10-24 「配置バランスがいまいち」: FOCUS controls and notice laid out like the other cards */
+#focus-owner-panel .ec-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 10px}
+#focus-owner-panel .ec-controls label{display:flex;align-items:center;gap:8px;font-weight:700}
+#focus-owner-panel select{min-width:240px;height:34px;padding:4px 10px;background:#111113;color:#e7e9eb;border:1px solid #303033;border-radius:8px}
+#focus-owner-panel .focus-owner-action{height:34px;padding:0 14px;border:1px solid #303033;border-radius:8px;background:#1b1d22;color:#e7e9eb;font-weight:700;cursor:pointer}
+#focus-owner-panel .focus-owner-action:hover{border-color:#4a4d55}
+#focus-owner-panel #focus-owner-status{margin:0 0 10px;padding:10px 14px;border-radius:10px}
+#focus-owner-panel #focus-owner-cards .focus-empty{padding:16px;align-items:flex-start}
+</style>
 <section id="focus-owner-panel" class="card wide focus-dashboard" aria-label="OWNER選択・MS2監視">
   <h2>FOCUS｜OWNER指定・最大5銘柄</h2>
   <p class="sub">監視対象は自動で入れ替えません。価格・板・シグナルはMS2の出所と鮮度が確認できた場合だけ表示。実注文禁止。</p>
@@ -1758,6 +1768,17 @@ document.addEventListener("DOMContentLoaded",()=>{
    "kio-preopen-stat":"—"
   };
   Object.entries(areas).forEach(([id,v])=>put(id,v));
+  // OWNER 2026-10-24 「持ち越しているはず」: the 15:25 holds were fixed from the day's own record, so they stay
+  // listed while MS2 is not live; only the current price is withheld.
+  fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(b=>{
+   const on=Array.isArray(b?.positions?.overnight)?b.positions.overnight:[];
+   const el=document.getElementById("ms2-hold-cards");
+   if(!el||!on.length)return;
+   const e=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+   el.innerHTML="<div class='focus-empty'><span><b>15:25確定の持ち越し（仮想・"+on.length+"銘柄）</b><br>"+
+    on.map(x=>e(x.name)+" "+(x.side==="LONG"?"買い":"空売り")+"・基準 "+e(x.reference_price)+"円").join("<br>")+
+    "<br><small>現在値はMS2が止まっているため表示しません。採点 "+e(String(on[0].valid_until||"").replace("next trading day","翌営業日"))+"</small></span></div>";
+  }).catch(()=>{});
   const common=document.getElementById("ms2-common-status");
   if(common){
    const score=common.querySelector(".score"),metrics=common.querySelector(".ms2-metrics");

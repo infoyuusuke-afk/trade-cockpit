@@ -72,6 +72,18 @@ class StaleSectionsHidden(unittest.TestCase):
         self.assertIn('(d.unverified || []).filter(x => !/^\\d{4}-\\d{2}-\\d{2}$/.test(String(x.effective_date || "")) || String(x.effective_date) >= eventToday)', html)
 
 
+class OvernightAndFocus(unittest.TestCase):
+    def test_fixed_holds_listed_while_ms2_is_not_live(self):
+        html = _html()
+        self.assertIn("15:25確定の持ち越し（仮想・", html)
+        self.assertIn("現在値はMS2が止まっているため表示しません。", html)
+
+    def test_focus_layout(self):
+        html = _html()
+        self.assertIn("#focus-owner-panel .ec-controls{display:flex;align-items:center;gap:10px;", html)
+        self.assertIn("#focus-owner-panel select{min-width:240px;height:34px;", html)
+
+
 class JnxCodes(unittest.TestCase):
     def test_static(self):
         text = _collector()
