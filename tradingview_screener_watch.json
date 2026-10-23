@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-23 16:58:00 JST",
+  "updated_at": "2026-10-23 19:33:25 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -323,7 +323,7 @@
           "vwap": 196.5,
           "high": 199.5,
           "low": 190.5,
-          "market_cap": 46062633960,
+          "market_cap": 45570361536,
           "sector": "Process Industries",
           "already_watched": false
         }
@@ -3099,7 +3099,7 @@
       "vwap": 196.5,
       "high": 199.5,
       "low": 190.5,
-      "market_cap": 46062633960,
+      "market_cap": 45570361536,
       "sector": "Process Industries",
       "already_watched": false
     },
@@ -4768,22 +4768,6 @@
       "already_watched": true
     },
     {
-      "code": "1803",
-      "name": "Shimizu Corporation",
-      "exchange": "TSE",
-      "price": 2029,
-      "change_pct": 0.8950770760815515,
-      "volume": 3361900,
-      "relative_volume": 0.872885228535524,
-      "atr_pct": 2.8,
-      "vwap": 2015.8333333333333,
-      "high": 2033,
-      "low": 1985.5,
-      "market_cap": 1343103621277,
-      "sector": "Industrial Services",
-      "already_watched": false
-    },
-    {
       "code": "8697",
       "name": "Japan Exchange Group, Inc.",
       "exchange": "TSE",
@@ -4797,6 +4781,22 @@
       "low": 2159.5,
       "market_cap": 2266014881897,
       "sector": "Finance",
+      "already_watched": false
+    },
+    {
+      "code": "1803",
+      "name": "Shimizu Corporation",
+      "exchange": "TSE",
+      "price": 2029,
+      "change_pct": 0.8950770760815515,
+      "volume": 3361900,
+      "relative_volume": 0.872885228535524,
+      "atr_pct": 2.8,
+      "vwap": 2015.8333333333333,
+      "high": 2033,
+      "low": 1985.5,
+      "market_cap": 1343103621277,
+      "sector": "Industrial Services",
       "already_watched": false
     },
     {
