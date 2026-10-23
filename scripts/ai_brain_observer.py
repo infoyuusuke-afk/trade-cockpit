@@ -87,7 +87,12 @@ JPX_CHILD_DEADLINE_SECONDS = 60   # audit 6327603446: fetch + parse never block 
 # the OWNER's pasted Grok notes in RuntimeDir/grok_inbox, read every pass (pinned module);
 # they become Brain flags and a screen list, never a score. A failure only drops them.
 GROK_MODULE = ("v10_grok_manual", "e33aa60e2453335300e4eb673c0caca20082bce8")
-BRAIN_CORE_MODULE = ("v10_brain_core", "84355baabf15bdf902c03b358a280534f7126112")
+# OWNER 2026-10-23 「保有中は枠青」「8時50分と15時30分に保有銘柄告知」: virtual holdings (rule signals
+# replayed on today's ticks with the pinned EV module's replay, and the 15:25 carry-over)
+# every 15 s into RuntimeDir/positions_live_v1.json and the Brain pick file. Display only.
+POSITIONS_MODULE = ("v10_positions_live", "346cd3bce73f95d798a47d4c31545fbd29df7f9f")
+POSITIONS_INTERVAL = timedelta(seconds=15)
+BRAIN_CORE_MODULE = ("v10_brain_core", "7476761ee35254db9e74f394beffa41d0de125be")
 
 
 def _aware(value):
@@ -512,6 +517,20 @@ def brain_core_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
                     inbox, now=now, known_codes=[str(r.get("ticker", "")).replace(".T", "") for r in live.get("all_targets") or []])
             except Exception:
                 attention = None
+        positions = state.get("positions_view")
+        if state.get("positions_next") is None or now >= state["positions_next"]:
+            state["positions_next"] = now + POSITIONS_INTERVAL
+            try:
+                base = Path(script_dir or Path(__file__).resolve().parent)
+                pos_mod = state.get("positions_module") or load_pinned_module(base, *POSITIONS_MODULE)
+                ev_mod = state.get("positions_ev_module") or load_pinned_module(base, *SIGNAL_EV_MODULE)
+                state["positions_module"], state["positions_ev_module"] = pos_mod, ev_mod
+                positions = pos_mod.build(Path(live_path).parent, now=now, ev=ev_mod, rules=ev_mod.RULES,
+                                          state=state.setdefault("positions_state", {}))
+            except Exception as exc:
+                positions = {"status": "POSITIONS_UNAVAILABLE", "reason": type(exc).__name__, "rule_positions": [],
+                             "overnight": [], "swing": None, "value": None, "counts": {}}
+            state["positions_view"] = positions
         grok = None
         try:
             grok_mod = state.get("grok_module") or load_pinned_module(Path(script_dir or Path(__file__).resolve().parent), *GROK_MODULE)
@@ -525,7 +544,8 @@ def brain_core_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
         except Exception:
             grok = {"notes": [], "status": "GROK_NOTES_UNAVAILABLE"}
         view = module.write_pick(Path(live_path).parent, live, now=now, logged=state.setdefault("logged", set()),
-                                 attention=attention, logged_rules=state.setdefault("logged_rules", set()), grok=grok)
+                                 attention=attention, logged_rules=state.setdefault("logged_rules", set()), grok=grok,
+                                 positions=positions)
         summary = {"brain_core": view["state"], "picks": len(view["picks"]), "logged_new": view["logged_new"]}
     except Exception as exc:  # fail closed, keep the observer running
         summary = {"brain_core": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}

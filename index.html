@@ -325,13 +325,6 @@ document.addEventListener("DOMContentLoaded",()=>{
  // OWNER 2026-10-23 「画面の一番上に『注目』欄を常に出し…その日の分は消さずに残す」: the top box on
  // every tab lists today's new ranking entries and rule ①②④⑤ signals (time, name, rule),
  // newest first. A failed read keeps the last list of the same day. Display only; no orders.
- window.syncAttentionFrame=()=>{
-   const bar=document.getElementById("unified-mode"),abox=document.getElementById("attention-box");
-   if(!bar||!abox)return;
-   const c=getComputedStyle(bar);
-   abox.style.borderWidth=c.borderTopWidth;abox.style.borderStyle=c.borderTopStyle;abox.style.borderColor=c.borderTopColor;abox.style.borderRadius=c.borderTopLeftRadius;
- };
- document.addEventListener("ms2RssUpdate",()=>setTimeout(()=>window.syncAttentionFrame(),0));
  let attentionToday=null;
  const renderBrainToday=()=>{
    const box=document.getElementById("attention-rows"),cnt=document.getElementById("attention-count");
@@ -343,10 +336,21 @@ document.addEventListener("DOMContentLoaded",()=>{
    cnt.textContent=t?"ランキング入り"+(t.new_picks_total??0)+"銘柄・ルールのサイン"+(t.rule_signals_total??0)+"件（検証中・実注文には使いません）":"今日の記録 取得待ち";
    const hm=v=>esc(String(v||"").slice(11,16));
    const nm=(n,c)=>esc(String(n||"").replace(/（[0-9A-Z]{4}）$/,""))+"("+esc(String(c||"").replace(".T",""))+")";
-   // OWNER 2026-10-23: the frame matches the status bar above (its colour follows the LIVE/stale state)
-   window.syncAttentionFrame?.();
-   const empty=document.getElementById("attention-empty");if(empty)empty.style.display=list.length?"none":"";
-   box.innerHTML=list.length?list.map(r=>'<div class="attention-row"><i>'+hm(r.captured_at)+'</i><div>'+nm(r.name,r.ticker)+' <b>'+esc(r.label)+'</b> <em>'+esc(r.signal)+'・'+esc(r.strategy)+'／発動 '+esc(r.entry)+(r.kind==="RULE"?'・目標 '+esc(r.target)+'・損切 '+esc(r.stop):'')+'・検証中</em></div></div>').join(""):'';
+   // OWNER 2026-10-23 「保有：青 HOT：緑（ロング）hot：赤（ショート）」, otherwise the plain card frame.
+   // Held = a virtual rule position still open (Brain positions) or a 15:25 carry-over not yet
+   // scored; HOT = the same signal is lit now on a fresh live row.
+   const pos=brainPick?.positions||{},rp=Array.isArray(pos.rule_positions)?pos.rule_positions:[],on=Array.isArray(pos.overnight)?pos.overnight:[];
+   const posOf=r=>rp.find(p=>p.ticker===r.ticker&&String(p.signal_at)===String(r.captured_at));
+   const liveRows=Array.isArray(evLast?.all_targets)?evLast.all_targets:[];
+   const hotOf=r=>{const x=liveRows.find(y=>y&&y.ticker===r.ticker);return x&&x.signal===r.signal&&window.cockpitMs2RowReady?.(x)===true?(r.signal==="買いサイン"?"hot-long":r.signal==="空売りサイン"?"hot-short":""):"";};
+   const stateText=p=>!p?"":p.status==="OPEN"?"・保有中（仮想）":p.status==="WAITING"?"・約定待ち（仮想）":p.status==="CLOSED"?"・終了 "+esc({STOP:"損切",TARGET:"利確",TIME_EXIT:"時間"}[p.exit]||p.exit||"")+(p.return_pct!=null?" "+(p.return_pct>=0?"+":"")+esc(Number(p.return_pct).toFixed(2))+"%":""):p.status==="NOT_FILLED"?"・約定せず":"";
+   const held=on.map(x=>'<div class="attention-row att-held"><i>保有</i><div>'+nm(x.name,x.ticker)+' <b>持ち越し'+(x.side==="LONG"?"買い":"空売り")+'（仮想）</b> <em>'+esc(String(x.decided_at||"").slice(5,16))+'決定・基準 '+esc(x.reference_price)+'・'+esc(String(x.valid_until||"").replace("next trading day","翌営業日"))+'に採点・注文なし</em></div></div>');
+   const rows=list.map(r=>{const p=r.kind==="RULE"?posOf(r):null,cls=p&&p.status==="OPEN"?"att-held":hotOf(r)?"att-"+hotOf(r):"";
+     return '<div class="attention-row '+cls+'"><i>'+hm(r.captured_at)+'</i><div>'+nm(r.name,r.ticker)+' <b>'+esc(r.label)+'</b> <em>'+esc(r.signal)+'・'+esc(r.strategy)+'／発動 '+esc(r.entry)+(r.kind==="RULE"?'・目標 '+esc(r.target)+'・損切 '+esc(r.stop):'')+stateText(p)+'・検証中</em></div></div>';});
+   const anyHeld=on.length>0||rp.some(p=>p.status==="OPEN");
+   const abox=document.getElementById("attention-box");if(abox)abox.classList.toggle("att-held",anyHeld);
+   const empty=document.getElementById("attention-empty");if(empty)empty.style.display=(list.length||held.length)?"none":"";
+   box.innerHTML=held.concat(rows).join("");
  };
  // OWNER 2026-10-23 manual Grok notes: listed as handed over (newest note first), with the time
  // they stay valid. The Brain shows them as flags on its picks; they never change a score.
@@ -642,7 +646,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   });
 })();
 </script>
-<div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><div class="unified-mode-wrap attention-wrap"><section id="attention-box" class="attention-box"><div class="attention-head" title="ブレインのランキングに新しく入った銘柄とルール①②④⑤のサイン。新しい順・今日の分は残します。検証中（Shadow）・実注文には使いません。"><b>注目</b><em id="attention-empty">今日はまだありません</em><span id="attention-count">今日の記録 取得待ち</span></div><div id="attention-rows"></div></section></div><style>.attention-box{margin:0 0 8px;padding:8px 16px;border:1px solid #6b5426;border-radius:14px;background:#111113}.attention-head{display:flex;align-items:baseline;gap:12px}.attention-head span{margin-left:auto}.attention-head em{font-style:normal;color:#9aa0a6;font-size:13px}#attention-rows:empty{display:none}.attention-head b{color:#f5c542;font-size:16px}.attention-head span,.attention-box small{color:#9aa0a6;font-size:12px}#attention-rows{max-height:9.5em;overflow-y:auto;margin:4px 0 0}.attention-row{display:grid;grid-template-columns:3.2em 1fr;gap:8px;padding:3px 0;border-top:1px solid #272A30;font-size:13px;color:#e7e9eb}.attention-row:first-child{border-top:0}.attention-row i{font-style:normal;color:#f5c542}.attention-row em{font-style:normal;color:#9aa0a6;font-size:12px}</style><main>
+<div class="unified-mode-wrap"><div id="unified-mode" class="unified-mode stale"><i class="lamp"></i><div><strong id="unified-mode-title">事前分析モード</strong><br><span id="unified-mode-note">MS2 RSSへの接続を確認しています</span><small id="unified-mode-verified">完全照合 —</small></div><div class="unified-mode-controls"><span id="unified-mode-market-status" class="market-status-pill"><i class="dot"></i><b>—</b></span><button class="voice-toggle" data-voice-toggle type="button">🔇</button></div><b id="unified-mode-time">—</b></div></div><div class="unified-mode-wrap attention-wrap"><section id="attention-box" class="attention-box"><div class="attention-head" title="ブレインのランキングに新しく入った銘柄とルール①②④⑤のサイン。新しい順・今日の分は残します。検証中（Shadow）・実注文には使いません。"><b>注目</b><em id="attention-empty">今日はまだありません</em><span id="attention-count">今日の記録 取得待ち</span></div><div id="attention-rows"></div></section></div><style>.attention-box{margin:0 0 8px;padding:8px 16px;border:1px solid #303033;border-radius:14px;background:#111113}.attention-box.att-held{border-color:#4ea1ff}.attention-head{display:flex;align-items:baseline;gap:12px}.attention-head span{margin-left:auto}.attention-head em{font-style:normal;color:#9aa0a6;font-size:13px}#attention-rows:empty{display:none}.attention-head b{color:#f5c542;font-size:16px}.attention-head span,.attention-box small{color:#9aa0a6;font-size:12px}#attention-rows{max-height:9.5em;overflow-y:auto;margin:4px 0 0}.attention-row{display:grid;grid-template-columns:3.2em 1fr;gap:8px;padding:3px 8px;margin-top:4px;border:1px solid #303033;border-radius:8px;font-size:13px;color:#e7e9eb}.attention-row.att-held{border-color:#4ea1ff}.attention-row.att-hot-long{border-color:#35e2ae}.attention-row.att-hot-short{border-color:#ff5a5f}.attention-row:first-child{margin-top:0}.attention-row i{font-style:normal;color:#f5c542}.attention-row em{font-style:normal;color:#9aa0a6;font-size:12px}</style><main>
 
 
 

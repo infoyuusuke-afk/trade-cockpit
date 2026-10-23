@@ -233,7 +233,13 @@ class LogAndShadow(unittest.TestCase):
         # hotfix 2026-10-23: initialised at start-up, before the main loop first uses it
         self.assertLess(text.index("$spokenNewPicks = @{}"), text.index("if ($spokenNewPicks.ContainsKey($key)) { continue }"))
         self.assertLess(text.index("$spokenNewPicks = @{}"), text.index("$spokenRuleSignals=@{}; $spokenNewPicks=@{}"))
-        self.assertIn("$spokenRuleSignals=@{}; $spokenNewPicks=@{}; $preopenGapSpoken=$false", text)
+        # OWNER 2026-10-23: holdings voice once at 08:50-08:55 and 15:30-15:35, flags set at start-up too
+        self.assertLess(text.index("$holdingVoiceMorningDone = $false; $holdingVoiceCloseDone = $false"),
+                        text.index("if (-not $holdingVoiceMorningDone -and $clockNow -ge $HoldingVoiceMorningFrom"))
+        self.assertIn('Invoke-SerializedSpeak $speaker (Format-HoldingVoice $positions "朝")', text)
+        self.assertIn('Invoke-SerializedSpeak $speaker (Format-HoldingVoice $positions "引け")', text)
+        self.assertIn("スイングとバリューは、保有の記録がまだありません。", text)
+        self.assertIn("$spokenRuleSignals=@{}; $spokenNewPicks=@{}; $holdingVoiceMorningDone=$false; $holdingVoiceCloseDone=$false; $preopenGapSpoken=$false", text)
         body = text[text.index("function Get-BrainNewPicks"):text.index("function Test-RuleSignalStillListed")]
         self.assertIn("[string]$view.state -cne 'PICK'", body)
         self.assertIn("Test-BrainPickFresh $view.generated_at $Now", body)
@@ -283,7 +289,7 @@ class CollectorVoice(unittest.TestCase):
         self.assertIn("[VOICE] 08:55 gap voice skipped: covered=", text)
         self.assertIn("[string]$_.rule -in @('R1','R2','R4','R5')", text)
         self.assertIn("ルール5の対象候補です。", text)
-        self.assertIn("$spokenRuleSignals=@{}; $spokenNewPicks=@{}; $preopenGapSpoken=$false", text)   # reset each day
+        self.assertIn("$spokenRuleSignals=@{}; $spokenNewPicks=@{}; $holdingVoiceMorningDone=$false; $holdingVoiceCloseDone=$false; $preopenGapSpoken=$false", text)   # reset each day
         # audit 6325885133: live gate, current-row re-check, cap per cycle, rounding, coverage gate
         self.assertIn("if ($publishLiveValues) {", text)
         self.assertIn("$row[0].aggregate_row_fresh -ne $true -or [string]$row[0].signal -ne [string]$x.signal", text)

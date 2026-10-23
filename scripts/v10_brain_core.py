@@ -376,7 +376,7 @@ def _read_json(path: Path, schema: str):
 
 
 def write_pick(runtime: Path, live: dict, *, now: datetime, logged: set, attention: dict | None = None,
-               logged_rules: set | None = None, grok: dict | None = None) -> dict:
+               logged_rules: set | None = None, grok: dict | None = None, positions: dict | None = None) -> dict:
     runtime = Path(runtime)
     ev_table = _read_json(runtime / "signal_ev_table_v1.json", "100b-v10-signal-ev-table-v1")
     rule_shadow = _read_json(runtime / "rule_shadow_v1.json", "100b-v10-rule-shadow-v1")
@@ -388,6 +388,9 @@ def write_pick(runtime: Path, live: dict, *, now: datetime, logged: set, attenti
                                                    logged=set() if logged_rules is None else logged_rules)
     view["today"] = today_lists(runtime / "records", now=now, rule_labels=(rule_shadow or {}).get("rules"))
     view["grok"] = grok or {"notes": [], "status": "MANUAL_WATCH_ONLY_NOT_A_SCORE"}
+    # OWNER 2026-10-23: virtual holdings for the screen colours and the 08:50 / 15:30 voice
+    view["positions"] = {k: (positions or {}).get(k) for k in ("generated_at", "date", "rule_positions", "overnight",
+                                                               "swing", "value", "counts", "status")}
     target = runtime / "brain_pick_v1.json"
     temp = target.with_name(target.name + ".tmp")
     temp.write_text(json.dumps(view, ensure_ascii=False, sort_keys=True), encoding="utf-8")

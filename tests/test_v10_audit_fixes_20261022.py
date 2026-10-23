@@ -137,11 +137,15 @@ class ScreenStaysPut(unittest.TestCase):
         # OWNER 2026-10-23: a gap under the tab bar; status bar and 注目 share one corner radius
         self.assertIn(".unified-mode-wrap:not(.attention-wrap){padding-top:12px!important}", html)
         self.assertIn("border-radius:14px!important}", html)
-        self.assertIn(".attention-box{margin:0 0 8px;padding:8px 16px;border:1px solid #6b5426;border-radius:14px;", html)
+        self.assertIn(".attention-box{margin:0 0 8px;padding:8px 16px;border:1px solid #303033;border-radius:14px;", html)
         # OWNER 2026-10-23: room around the heading line; the 注目 frame copies the status bar's frame
         self.assertIn(".pane-intro{padding:18px 4px 14px!important;", html)
-        self.assertIn("abox.style.borderColor=c.borderTopColor;abox.style.borderRadius=c.borderTopLeftRadius;", html)
-        self.assertIn('document.addEventListener("ms2RssUpdate",()=>setTimeout(()=>window.syncAttentionFrame(),0));', html)
+        # OWNER 2026-10-23 「保有：青 HOT：緑（ロング）hot：赤（ショート）」, otherwise the card frame
+        self.assertNotIn("syncAttentionFrame", html)
+        for rule in (".attention-box.att-held{border-color:#4ea1ff}", ".attention-row.att-held{border-color:#4ea1ff}",
+                     ".attention-row.att-hot-long{border-color:#35e2ae}", ".attention-row.att-hot-short{border-color:#ff5a5f}"):
+            self.assertIn(rule, html)
+        self.assertIn('cls=p&&p.status==="OPEN"?"att-held":hotOf(r)?"att-"+hotOf(r):""', html)
         # OWNER 2026-10-23: a grabbable tab-bar scrollbar; the wheel over the tab bar scrolls it sideways
         self.assertIn(".cockpit-tabs{scrollbar-width:auto!important;", html)
         self.assertIn('t.addEventListener("wheel",e=>{if(Math.abs(e.deltaY)>Math.abs(e.deltaX)&&t.scrollWidth>t.clientWidth){t.scrollLeft+=e.deltaY;e.preventDefault();}},{passive:false});', html)

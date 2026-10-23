@@ -2147,6 +2147,39 @@ function Get-BrainNewPicks([string]$Path, [datetime]$Now) {
         return @()
     }
 }
+# OWNER 2026-10-23 「オーバーナイト、スイング、バリューもまた音声で何銘柄保有中と朝の8時50分くらいに告知、
+# 引けは15時30分保有銘柄告知」: the virtual holdings the Brain observer wrote into the same fresh,
+# checked pick file. Any problem gives $null, i.e. silence.
+function Get-BrainPositions([string]$Path, [datetime]$Now) {
+    try {
+        if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
+        $item = Get-Item -LiteralPath $Path -Force
+        if ($item.Length -le 2 -or $item.Length -gt 1048576) { return $null }
+        $view = [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-brain-pick-v1' -or
+            $view.real_submit_allowed -isnot [bool] -or $view.real_submit_allowed -or
+            $view.trade_instruction -isnot [bool] -or $view.trade_instruction) { return $null }
+        if (-not (Test-BrainPickFresh $view.generated_at $Now)) { return $null }
+        if ($null -eq $view.positions -or $null -eq $view.positions.counts) { return $null }
+        return $view.positions
+    } catch {
+        return $null
+    }
+}
+function Format-HoldingVoice($Positions, [string]$When) {
+    $parts = @("保有の告知、" + $When + "。仮想の検証で、注文はありません。")
+    $on = @($Positions.overnight)
+    if ($on.Count -gt 0) {
+        $names = @($on | ForEach-Object { ([string]$_.name -replace '（[0-9A-Z]{4}）$','') + "、" + $(if ([string]$_.side -eq 'LONG') { "買い" } else { "空売り" }) })
+        $parts += ("オーバーナイト" + $on.Count + "銘柄。" + ($names -join "。") + "。")
+    } else {
+        $parts += "オーバーナイトの保有はありません。"
+    }
+    $open = @($Positions.rule_positions | Where-Object { [string]$_.status -eq 'OPEN' })
+    if ($open.Count -gt 0) { $parts += ("ルールの仮想売買で保有中" + $open.Count + "銘柄。") }
+    $parts += "スイングとバリューは、保有の記録がまだありません。"
+    return ($parts -join "")
+}
 function Test-RuleSignalStillListed([string]$Path, [string]$Key) {
     # Re-read right before speaking: the setup must still be listed in a fresh, valid file.
     foreach ($y in (Get-BrainRuleSignals $Path (Get-Date))) {
@@ -2163,6 +2196,9 @@ $spokenRuleSignals = @{}
 # OWNER 2026-10-23 hotfix: set at start-up as well (the day-reset line alone left it null on a
 # same-day start, and the first new ranking entry stopped the Collector at 09:16)
 $spokenNewPicks = @{}
+$holdingVoiceMorningDone = $false; $holdingVoiceCloseDone = $false
+$HoldingVoiceMorningFrom = [TimeSpan]::Parse("08:50:00"); $HoldingVoiceMorningUntil = [TimeSpan]::Parse("08:55:00")
+$HoldingVoiceCloseFrom = [TimeSpan]::Parse("15:30:00"); $HoldingVoiceCloseUntil = [TimeSpan]::Parse("15:35:00")
 $preopenGapSpoken = $false
 $PreopenMinCoverage = 80   # PROVISIONAL: issues (of 100) that need a pre-open gap before the 08:55 voice
 $previous = @{}
@@ -2239,7 +2275,7 @@ try {
             $activeDay=$now.ToString("yyyy-MM-dd")
             $previous=@{}; $history=@{}; $preopenHistory=@{}; $preopenState=@{}; $seenTicks=@{}; $creditSaved=@{}; $orHigh=@{}; $orLow=@{}; $or5High=@{}; $or5Low=@{}; $minuteBars=@{}; $currentMinuteBars=@{}; $dayHigh=@{}; $dayLow=@{}; $pmAboveSince=@{}; $pmBelowSince=@{}; $lastSignal=@{}; $lastHoldSpoken=@{}; $loggedSignals=@{}
             $kioFlowCandidate=""; $lastKioFlowSpoken=""; $lastKioFlowSpokenAt=Get-Date "2000-01-01"
-            $lastPreopenVoice=""; $lastOpenDecisionVoice=""; $spokenRuleSignals=@{}; $spokenNewPicks=@{}; $preopenGapSpoken=$false
+            $lastPreopenVoice=""; $lastOpenDecisionVoice=""; $spokenRuleSignals=@{}; $spokenNewPicks=@{}; $holdingVoiceMorningDone=$false; $holdingVoiceCloseDone=$false; $preopenGapSpoken=$false
             $lastPtsBand=0; $lastPtsVoiceAt=Get-Date "2000-01-01"
             $tdnetDisclosures=@(); $lastTdnetFetchAt=Get-Date "2000-01-01"; $tdnetStatus="取得待ち"; $lastIrVoiceCodes=@{}; $irDynamicSlots=@{}
             $loadedHoldDay=""; $holdFinalized=$false; $holdFinalizedAt=$null; $holdEntryCaptured=$false; $finalHoldTop5=@()
@@ -3402,6 +3438,24 @@ try {
                 Invoke-SerializedSpeak $speaker ("注目、検証中。"+$ruleName+"に該当。"+$x.name+"、"+$side+"。発動"+[Math]::Round([double]$x.entry,1)+"円。損切り"+[Math]::Round([double]$x.stop,1)+"円。目標"+[Math]::Round([double]$x.target,1)+"円。仮想検証中の数字です。注文は武蔵で手動です。")
                 $lastSpoken[[string]$x.ticker]=$now
                 $ruleVoices++
+            }
+        }
+        # OWNER 2026-10-23: holdings read out once at 08:50-08:55 and once at 15:30-15:35 (virtual
+        # only). Not tied to live prices (before the open none are published); the pick file must
+        # be fresh. A window without a valid file stays silent and is retried next cycle.
+        $clockNow = (Get-Date).TimeOfDay
+        if (-not $holdingVoiceMorningDone -and $clockNow -ge $HoldingVoiceMorningFrom -and $clockNow -lt $HoldingVoiceMorningUntil) {
+            $positions = Get-BrainPositions $brainPickPath (Get-Date)
+            if ($null -ne $positions) {
+                $holdingVoiceMorningDone = $true
+                Invoke-SerializedSpeak $speaker (Format-HoldingVoice $positions "朝")
+            }
+        }
+        if (-not $holdingVoiceCloseDone -and $clockNow -ge $HoldingVoiceCloseFrom -and $clockNow -lt $HoldingVoiceCloseUntil) {
+            $positions = Get-BrainPositions $brainPickPath (Get-Date)
+            if ($null -ne $positions) {
+                $holdingVoiceCloseDone = $true
+                Invoke-SerializedSpeak $speaker (Format-HoldingVoice $positions "引け")
             }
         }
         # OWNER 2026-10-23 「新しく載った時は『検証中』付きで音声で1回知らせる」: each stock's first
