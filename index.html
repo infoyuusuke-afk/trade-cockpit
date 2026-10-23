@@ -880,6 +880,23 @@ document.addEventListener("DOMContentLoaded",()=>{
 <h3>今後30日・売買判断表</h3>
 <div class="event-table-wrap"><table><thead><tr><th>実需・発表日</th><th>時刻</th><th>次の通知</th><th>イベント</th><th>分類</th><th>警戒</th><th>想定需給</th><th>当日の行動</th><th>発表日</th><th>基準日</th><th>需給日</th><th>反映日</th><th>確認状態</th><th>公式資料</th></tr></thead><tbody id="event-upcoming"><tr><td colspan="14">取得中...</td></tr></tbody></table></div>
 <h3>月間カレンダー</h3><div id="event-months" class="event-months"><div class="focus-empty">作成中...</div></div>
+<style>
+/* OWNER 2026-10-24 「安っぽい、もっと洗練された作りこみ」: the event calendar in the same quiet boxes as the cards;
+   chips are small labels with a colour bar for importance instead of solid colour blocks */
+.event-months{gap:14px!important;grid-template-columns:1fr!important}
+.event-day>*{max-width:100%}
+.event-month{border:1px solid #303033!important;border-radius:14px!important;background:#111113!important}
+.event-month h4{margin:0;padding:12px 14px;font-size:14px;color:#e7e9eb;border-bottom:1px solid #26272b}
+.event-weekdays{display:grid;grid-template-columns:repeat(7,1fr);padding:6px 0;color:#8b9299;font-size:11px;letter-spacing:.08em;text-align:center;border-bottom:1px solid #26272b}
+.event-day{min-height:84px!important;padding:6px!important;border-color:#1e1f23!important;background:#141518}
+.event-day.empty{background:#0c0d0f!important}
+.event-day>strong{display:block;font-size:12px;color:#c9ccd1}
+.event-day.today{outline:1px solid #35e2ae;outline-offset:-1px}
+.event-chip{margin:4px 0 0!important;padding:3px 6px!important;border-radius:6px!important;background:#1a1d22!important;border-left:3px solid #4ea1ff;color:#d7dbe0!important;font-size:10.5px!important;line-height:1.35!important}
+.event-chip{display:block!important;width:auto!important;white-space:normal}
+.event-chip.high{background:#22171a!important;border-left-color:#ff5a5f!important;color:#ffd5d8!important}
+.event-chip.block{background:#221d12!important;border-left-color:#f5c542!important;color:#f3e3b5!important}
+</style>
 <h3>未確定・売買利用禁止</h3><div id="event-unverified" class="event-unverified">確認中...</div>
 <div class="steps">
  <div class="step"><b>1　日付を分離</b>発表日・基準日・大引けの需給日・指数反映日を別々に確認。</div>

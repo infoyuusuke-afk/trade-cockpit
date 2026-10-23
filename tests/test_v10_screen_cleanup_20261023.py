@@ -95,6 +95,17 @@ class KioxiaTab(unittest.TestCase):
             self.assertIn(keep, html)
 
 
+class Calendars(unittest.TestCase):
+    def test_refined_calendar_styles(self):
+        # OWNER 2026-10-24 「安っぽい、もっと洗練された作りこみ」
+        html = _html()
+        self.assertIn(".event-months{gap:14px!important;grid-template-columns:1fr!important}", html)
+        self.assertIn(".event-chip.high{background:#22171a!important;border-left-color:#ff5a5f!important;", html)
+        js = (ROOT / "earnings-calendar.js").read_text(encoding="utf-8")
+        self.assertIn("heat=count>=400?4:count>=150?3:count>=50?2:count>0?1:0", js)
+        self.assertIn("#earnings-calendar-panel .ec-day.ec-weekend{", js)
+
+
 class JnxCodes(unittest.TestCase):
     def test_static(self):
         text = _collector()
