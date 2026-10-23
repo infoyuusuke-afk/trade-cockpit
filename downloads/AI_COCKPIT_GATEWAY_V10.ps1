@@ -658,6 +658,32 @@ function Get-BrainPickView([string]$RuntimeDir) {
     }
 }
 
+# OWNER 2026-10-23 夜 「コントロールに保有株をカード表示」: the OWNER's real holdings, read by the
+# Collector with the read-only RSS position lists into RuntimeDir\real_positions_v1.json.
+# Served to this PC's screen only; older than 60 s or not read-only -> 503 (no stale holdings).
+function Get-RealPositionsView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'real_positions_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'REAL_POSITIONS_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'REAL_POSITIONS_FILE_UNTRUSTED')
+        }
+        if (([DateTime]::UtcNow - $item.LastWriteTimeUtc).TotalSeconds -gt 60) { return (& $fail 'REAL_POSITIONS_STALE') }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-real-positions-v1' -or $view.read_only -ne $true -or
+            $view.real_submit_allowed -ne $false -or $view.trade_instruction -ne $false) {
+            return (& $fail 'REAL_POSITIONS_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'REAL_POSITIONS_UNREADABLE')
+    }
+}
+
 # Night PTS -> next-morning watch candidates, rebuilt by the Brain observer into
 # RuntimeDir\pts_pickup_v1.json. Read-only; watch list only, never a trade signal.
 function Get-PtsPickupView([string]$RuntimeDir) {
@@ -2708,6 +2734,11 @@ try {
             if ($path -eq '/brain_pick.json') {
                 $brainView = Get-BrainPickView $RuntimeDir
                 Send-Response $stream $brainView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$brainView.body))
+                continue
+            }
+            if ($path -eq '/real_positions.json') {
+                $realView = Get-RealPositionsView $RuntimeDir
+                Send-Response $stream $realView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$realView.body))
                 continue
             }
             if ($path -eq '/pts_pickup.json') {

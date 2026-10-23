@@ -26,7 +26,8 @@ def _function(text, name):
 
 def _cycle(text):
     start = text.index("# OWNER 2026-10-23 Phase 2: SCALP8 prints")
-    return text[start:text.index("$script:preopenIdentitySpare = $null", start)]
+    # the SCALP8 block ends where the real-holdings reader (OWNER 2026-10-23 夜) starts
+    return text[start:text.index("# OWNER 2026-10-23 夜: the OWNER's real holdings", start)]
 
 
 def _ps(body):

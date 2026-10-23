@@ -2081,6 +2081,90 @@ if ($null -eq $scalp8StartConfig) {
     }
 }
 
+# OWNER 2026-10-23 夜 「コントロールに保有株をカード表示追加、場中、売買したら保有中」「両方 ただし分けて表示」:
+# the OWNER's real holdings are read with the RSS list functions that only READ the account
+# (RssMarginPositionList = 信用建玉一覧, RssPositionList = 現物保有一覧; 楽天 MS2 RSS 関数一覧) into
+# RuntimeDir\real_positions_v1.json for the CONTROL tab of this PC only. Display only: no order
+# function is written or called, the file is not published (not in the public feed, GitHub, the
+# Brain or any AI), and a failure stops only this reader.
+# Local switch: real_positions_config.json next to this script,
+#   {"schema":"100b-real-positions-config-v1","enabled":true}
+# Missing or invalid file -> OFF. "enabled": false -> OFF and latched until the Collector restarts.
+$realPosConfigPath = Join-Path $PSScriptRoot "real_positions_config.json"
+$realPosFile = Join-Path $PSScriptRoot "real_positions_v1.json"
+$realPosLatched = $false
+$realPosEvery = 5            # loops between reads (about 6 to 10 s)
+$realPosRows = 300           # rows kept for each list
+$realPosMarginTop = 1        # formula cell; header on the next row, positions after it
+$realPosCashTop = 310
+function Get-RealPosConfig {
+    if ($script:realPosLatched) { return $null }
+    try {
+        if (-not (Test-Path -LiteralPath $realPosConfigPath -PathType Leaf)) { return $null }
+        $cfg = [IO.File]::ReadAllText($realPosConfigPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+        if ($null -eq $cfg -or [string]$cfg.schema -cne "100b-real-positions-config-v1") { return $null }
+        if ($cfg.enabled -ne $true) { $script:realPosLatched = $true; return $null }
+        return $cfg
+    } catch {
+        return $null
+    }
+}
+# One list block (header row + rows) of the read range -> objects keyed by the RSS header names.
+# A block whose header has no 銘柄コード is not ready (null), an empty list is @().
+function ConvertFrom-RealPosBlock($Data, [int]$HeaderRow, [int]$Rows, [int]$Cols) {
+    $names = @{}
+    for ($c = 1; $c -le $Cols; $c++) {
+        $h = $Data[$HeaderRow, $c]
+        if ($null -ne $h -and -not [string]::IsNullOrWhiteSpace([string]$h)) { $names[$c] = ([string]$h).Trim() }
+    }
+    if (-not ($names.Values -contains "銘柄コード")) { return $null }
+    $out = New-Object System.Collections.Generic.List[object]
+    for ($r = $HeaderRow + 1; $r -le $HeaderRow + $Rows; $r++) {
+        $row = [ordered]@{}
+        foreach ($c in $names.Keys) { $row[$names[$c]] = $Data[$r, $c] }
+        $code = [string]$row["銘柄コード"]
+        if ([string]::IsNullOrWhiteSpace($code)) { break }
+        $out.Add([pscustomobject]$row)
+    }
+    return ,$out.ToArray()
+}
+function Get-RealPosNumber($Value) {
+    if ($Value -is [double]) { return $Value }
+    $t = ([string]$Value) -replace '[,\s円株%]', ''
+    $n = 0.0
+    if ([double]::TryParse($t, [ref]$n)) { return $n }
+    return $null
+}
+$realPosSheet = $null
+$realPosReady = $false
+$realPosSeq = 0
+if ($null -eq (Get-RealPosConfig)) {
+    Write-Host "[REAL_POS] OFF (no local real positions config or switched off)" -ForegroundColor DarkGray
+} else {
+    try {
+        try {
+            $realPosSheet = Invoke-ExcelCom -Label "実保有シート確認" -Action { $book.Worksheets.Item("REAL_POS") }
+        } catch {
+            $realPosSheet = $null
+        }
+        if ($null -eq $realPosSheet) {
+            # Added for this session only (Safe Stop closes the workbook without saving).
+            $realPosSheet = Invoke-ExcelCom -Label "実保有シート作成" -Action { $book.Worksheets.Add() }
+            Invoke-ExcelCom -Label "実保有シート命名" -Action { $realPosSheet.Name = "REAL_POS" } | Out-Null
+        }
+        # read-only list functions only (all issues, all accounts, all margin kinds and sides)
+        Invoke-ExcelCom -Label "信用建玉一覧式設定" -Action { $realPosSheet.Cells.Item($realPosMarginTop, 1).FormulaLocal = '=RssMarginPositionList(,,"A",0,0,0)' } | Out-Null
+        Invoke-ExcelCom -Label "現物保有一覧式設定" -Action { $realPosSheet.Cells.Item($realPosCashTop, 1).FormulaLocal = '=RssPositionList(,,"A")' } | Out-Null
+        Invoke-ExcelCom -Label "実保有シート非表示" -Action { $realPosSheet.Visible = 0 } | Out-Null
+        $realPosReady = $true
+        Write-Host "[REAL_POS] READY (read only, this PC only)" -ForegroundColor Green
+    } catch {
+        $realPosSheet = $null
+        $realPosReady = $false
+        Write-Host "[REAL_POS] WARN / UNAVAILABLE - Collector continues" -ForegroundColor DarkYellow
+    }
+}
+
 # 決算・IR開示があった銘柄（固定100銘柄リスト外を含む）を引け後に動的追跡するための専用シート。
 # TDnetで好材料判定された銘柄をその場でRssMarket式として追加し、100銘柄リストに
 # 偶然含まれていなくてもPTS反応を検知できるようにする（ユーザー指示: 2026-09-15）。
@@ -2705,6 +2789,57 @@ try {
                 $scalp8Ready = $false
                 $scalp8Sheet = $null
                 Write-Host "[SCALP8] WARN / READ FAILED - recorder suspended, Collector continues" -ForegroundColor DarkYellow
+            }
+        }
+        # OWNER 2026-10-23 夜: the OWNER's real holdings, read only, this PC only (see REAL_POS above).
+        if ($realPosReady -and $null -eq (Get-RealPosConfig)) {
+            $realPosReady = $false   # switched off or config gone: stays off until restart
+            Write-Host "[REAL_POS] OFF - switched off by local config (latched)" -ForegroundColor DarkYellow
+        }
+        $realPosSeq++
+        if ($realPosReady -and $null -ne $realPosSheet -and ($realPosSeq % $realPosEvery) -eq 1) {
+            try {
+                $rpLast = $realPosCashTop + $realPosRows + 2
+                $rpPacket = Invoke-ExcelCom -Label "実保有取得" -Action {
+                    [pscustomobject]@{ Data = $realPosSheet.Range($realPosSheet.Cells.Item(1, 1), $realPosSheet.Cells.Item($rpLast, 20)).Value2 }
+                }
+                $rpData = $rpPacket.Data
+                $rpMargin = $null
+                foreach ($h in @($realPosMarginTop, ($realPosMarginTop + 1), ($realPosMarginTop + 2))) {
+                    $rpMargin = ConvertFrom-RealPosBlock $rpData $h $realPosRows 20
+                    if ($null -ne $rpMargin) { break }
+                }
+                $rpCash = $null
+                foreach ($h in @($realPosCashTop, ($realPosCashTop + 1), ($realPosCashTop + 2))) {
+                    $rpCash = ConvertFrom-RealPosBlock $rpData $h $realPosRows 20
+                    if ($null -ne $rpCash) { break }
+                }
+                $rpMarginRows = @(foreach ($p in @($rpMargin)) { if ($null -ne $p) {
+                    [ordered]@{ code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
+                                market = [string]$p."建市場"; kind = [string]$p."信用区分"; term = [string]$p."弁済期限"; side = [string]$p."売買"
+                                qty = Get-RealPosNumber $p."建玉数量"; price = Get-RealPosNumber $p."建値"; open_date = [string]$p."建日"
+                                last = Get-RealPosNumber $p."時価"; pnl = Get-RealPosNumber $p."評価損益額"; pnl_pct = Get-RealPosNumber $p."評価損益率" } } })
+                $rpCashRows = @(foreach ($p in @($rpCash)) { if ($null -ne $p) {
+                    [ordered]@{ code = [string]$p."銘柄コード"; name = [string]$p."銘柄名称"; account = [string]$p."口座区分"
+                                qty = Get-RealPosNumber $p."保有数量"; price = Get-RealPosNumber $p."平均取得価額"
+                                last = Get-RealPosNumber $p."時価"; pnl = Get-RealPosNumber $p."評価損益額"; pnl_pct = Get-RealPosNumber $p."評価損益率" } } })
+                $rpView = [ordered]@{
+                    schema_version = "100b-v10-real-positions-v1"
+                    updated_at = (Get-Date).ToString("yyyy-MM-ddTHH:mm:sszzz")
+                    source = "MS2 RSS RssMarginPositionList / RssPositionList (read only)"
+                    margin_state = $(if ($null -eq $rpMargin) { "NOT_READY" } else { "OK" })
+                    cash_state = $(if ($null -eq $rpCash) { "NOT_READY" } else { "OK" })
+                    margin = $rpMarginRows
+                    cash = $rpCashRows
+                    read_only = $true
+                    real_submit_allowed = $false
+                    trade_instruction = $false
+                }
+                Write-AtomicUtf8 $realPosFile ($rpView | ConvertTo-Json -Depth 5)
+            } catch {
+                $realPosReady = $false
+                $realPosSheet = $null
+                Write-Host "[REAL_POS] WARN / READ FAILED - reader suspended, Collector continues" -ForegroundColor DarkYellow
             }
         }
         $script:preopenIdentitySpare = $null
