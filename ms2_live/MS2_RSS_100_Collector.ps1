@@ -2160,6 +2160,9 @@ $PreopenVoiceUntil = [TimeSpan]::Parse("08:59:30")   # audit 6326225807: never s
 $preopenSkipLoggedAt = Get-Date "2000-01-01"
 $brainPickPath = Join-Path $PSScriptRoot "brain_pick_v1.json"
 $spokenRuleSignals = @{}
+# OWNER 2026-10-23 hotfix: set at start-up as well (the day-reset line alone left it null on a
+# same-day start, and the first new ranking entry stopped the Collector at 09:16)
+$spokenNewPicks = @{}
 $preopenGapSpoken = $false
 $PreopenMinCoverage = 80   # PROVISIONAL: issues (of 100) that need a pre-open gap before the 08:55 voice
 $previous = @{}
