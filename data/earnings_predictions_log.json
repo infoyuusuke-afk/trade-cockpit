@@ -3558,7 +3558,10 @@
     "logged_at": "2026-10-21 09:56:51 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 7.52,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 7.37,
+    "actual_direction": "上昇",
+    "hit": true
   },
   {
     "code": "5204",
@@ -3567,7 +3570,10 @@
     "logged_at": "2026-10-21 09:56:51 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -0.93,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -1.92,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "6146",
@@ -3576,7 +3582,10 @@
     "logged_at": "2026-10-21 09:56:51 JST",
     "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": -6.11,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -3.57,
+    "actual_direction": "下落",
+    "hit": true
   },
   {
     "code": "8617",
@@ -3585,7 +3594,10 @@
     "logged_at": "2026-10-21 09:56:51 JST",
     "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
     "return_5d_pct": 5.35,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -4.44,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "8954",
@@ -3594,7 +3606,10 @@
     "logged_at": "2026-10-21 09:56:52 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -0.34,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": 0.23,
+    "actual_direction": "中立",
+    "hit": true
   },
   {
     "code": "9478",
@@ -3603,7 +3618,10 @@
     "logged_at": "2026-10-21 09:56:52 JST",
     "momentum_direction": "中立",
     "return_5d_pct": 0.6,
-    "status": "pending"
+    "status": "resolved",
+    "actual_return_pct": -0.98,
+    "actual_direction": "下落",
+    "hit": false
   },
   {
     "code": "2268",
@@ -3729,6 +3747,78 @@
     "logged_at": "2026-10-22 09:54:13 JST",
     "momentum_direction": "中立",
     "return_5d_pct": -1.66,
+    "status": "pending"
+  },
+  {
+    "code": "1718",
+    "name": "美樹工業",
+    "target_date": "2026-10-26",
+    "logged_at": "2026-10-23 09:56:31 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": -0.22,
+    "status": "pending"
+  },
+  {
+    "code": "2211",
+    "name": "不二家",
+    "target_date": "2026-10-26",
+    "logged_at": "2026-10-23 09:56:31 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.67,
+    "status": "pending"
+  },
+  {
+    "code": "3635",
+    "name": "コーエーテクモホールディングス",
+    "target_date": "2026-10-26",
+    "logged_at": "2026-10-23 09:56:31 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 1.16,
+    "status": "pending"
+  },
+  {
+    "code": "6230",
+    "name": "ＳＡＮＥＩ",
+    "target_date": "2026-10-26",
+    "logged_at": "2026-10-23 09:56:31 JST",
+    "momentum_direction": "中立",
+    "return_5d_pct": 0.6,
+    "status": "pending"
+  },
+  {
+    "code": "6663",
+    "name": "太洋テクノレックス",
+    "target_date": "2026-10-26",
+    "logged_at": "2026-10-23 09:56:31 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.23,
+    "status": "pending"
+  },
+  {
+    "code": "6923",
+    "name": "スタンレー電気",
+    "target_date": "2026-10-26",
+    "logged_at": "2026-10-23 09:56:32 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -2.34,
+    "status": "pending"
+  },
+  {
+    "code": "7970",
+    "name": "信越ポリマー",
+    "target_date": "2026-10-26",
+    "logged_at": "2026-10-23 09:56:32 JST",
+    "momentum_direction": "下落レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": -7.66,
+    "status": "pending"
+  },
+  {
+    "code": "8060",
+    "name": "キヤノンマーケティングジャパン",
+    "target_date": "2026-10-26",
+    "logged_at": "2026-10-23 09:56:32 JST",
+    "momentum_direction": "上昇レーン（モメンタムのみ・決算内容は未考慮）",
+    "return_5d_pct": 4.82,
     "status": "pending"
   }
 ]
