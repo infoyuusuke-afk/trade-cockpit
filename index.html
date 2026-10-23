@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  const brainPanel=document.createElement("section");
  brainPanel.className="card wide";
  brainPanel.id="brain-runtime";
- brainPanel.innerHTML='<h2>AI BRAIN</h2><p class="sub">V10 Brain Gateway / Controller / Market Data / AI Shadow の実稼働状態</p><div class="rotation-grid" id="brain-runtime-grid"><div class="rotation-box"><b>状態</b><strong>接続待ち</strong></div></div>';
+ brainPanel.innerHTML='<h2>AI BRAIN</h2><div id="brain-lamp" class="brain-lamp gray"><span class="brain-lamp-dot"></span><div><b>確認中</b><small>接続待ち</small></div></div><details class="brain-detail"><summary>詳しい状態（調べる時だけ）</summary><div class="rotation-grid" id="brain-runtime-grid"></div></details><style>.brain-lamp{display:flex;align-items:center;gap:16px;padding:16px 18px;border:1px solid #303033;border-radius:14px;background:#111113}.brain-lamp-dot{width:22px;height:22px;border-radius:50%;flex:0 0 22px;background:#5f646b}.brain-lamp b{display:block;font-size:20px;color:#e7e9eb}.brain-lamp small{display:block;margin-top:4px;color:#9ba3af;font-size:13px}.brain-lamp.green .brain-lamp-dot{background:#35e2ae;box-shadow:0 0 12px #35e2ae99}.brain-lamp.yellow .brain-lamp-dot{background:#f7a600;box-shadow:0 0 12px #f7a60099}.brain-lamp.red .brain-lamp-dot{background:#f23645;box-shadow:0 0 12px #f2364599}.brain-detail{margin-top:10px;color:#8b9299}.brain-detail summary{cursor:pointer;font-size:12px}</style>';
  panes.brain.appendChild(brainPanel);
 
  // Specialist AI analysts (GPT API research). Research lane only: never a
@@ -178,8 +178,26 @@ document.addEventListener("DOMContentLoaded",()=>{
        ["UPDATED",h.now||"—"]
      ];
      document.getElementById("brain-runtime-grid").innerHTML=cells.map(([k,v])=>'<div class="rotation-box"><b>'+esc(k)+'</b><strong>'+esc(v)+'</strong></div>').join("");
+     // OWNER 2026-10-24 「ブレインが正常稼働しているかのステータスランプがほしい」: one lamp; the details stay folded.
+     const j=new Date(Date.now()+9*3600000), wd=j.getUTCDay(), hm=j.getUTCHours()*60+j.getUTCMinutes();
+     const session=wd>=1&&wd<=5&&((hm>=540&&hm<690)||(hm>=750&&hm<930));
+     const down=[];
+     if(!rt.controller_pid)down.push("コントローラーが止まっています");
+     if(String(rt.collector_status||"")!=="LIVE")down.push("データ収集が止まっています");
+     if(!rt.workbook_identity_verified)down.push("RSSのExcelが確認できません");
+     if(String(proof.dataConflict).toUpperCase()==="TRUE")down.push("データが食い違っています");
+     if(ex.real_submit_allowed!==false)down.push("実注文のロックが確認できません");
+     if(session&&String(rt.price_source_status||"")!=="OK")down.push("場中なのに値段が止まっています");
+     const pausedInSession=session&&!/RUNNING/.test(String(ex.shadow_engine_state||""));
+     const [cls,label,line]=down.length?["red","止まっています",down.join("／")]:
+       pausedInSession?["yellow","一時停止中","データの鮮度を待っています（自動で戻ります）"]:
+       ["green","正常に動いています",session?"場中：データ収集・ブレインとも動作中":"市場時間外：収集は動作中。値段は次の取引時間から動きます"];
+     const lamp=document.getElementById("brain-lamp");
+     if(lamp){lamp.className="brain-lamp "+cls;lamp.innerHTML='<span class="brain-lamp-dot"></span><div><b>'+esc(label)+'</b><small>'+esc(line)+'　更新 '+esc(String(h.now||"—").slice(11,19))+'</small></div>';}
    }).catch(()=>{
      document.getElementById("brain-runtime-grid").innerHTML='<div class="rotation-box"><b>BRAIN</b><strong>OFFLINE</strong></div>';
+     const lamp=document.getElementById("brain-lamp");
+     if(lamp){lamp.className="brain-lamp red";lamp.innerHTML='<span class="brain-lamp-dot"></span><div><b>止まっています</b><small>ブレインの状態が読めません（コクピットが止まっている可能性）</small></div>';}
    });
  };
  renderBrain();

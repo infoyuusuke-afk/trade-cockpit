@@ -77,5 +77,15 @@ class Correlations(unittest.TestCase):
         self.assertNotIn("任天堂など逆相関候補", HTML)
 
 
+class BrainLamp(unittest.TestCase):
+    def test_one_lamp_details_folded(self):
+        # OWNER 2026-10-24 「ブレインが正常稼働しているかのステータスランプがほしい　この表示はおれにはいらない」
+        self.assertIn('id="brain-lamp"', HTML)
+        self.assertIn('<details class="brain-detail"><summary>詳しい状態（調べる時だけ）</summary>', HTML)
+        for word in ('"正常に動いています"', '"止まっています"', '"一時停止中"', '"場中なのに値段が止まっています"'):
+            self.assertIn(word, HTML)
+        self.assertIn('if(ex.real_submit_allowed!==false)down.push(', HTML)
+
+
 if __name__ == "__main__":
     unittest.main()
