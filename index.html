@@ -1275,16 +1275,7 @@ fetch("signals.json?t=" + Date.now()).then(r => r.json()).then(d => new Promise(
     "</td></tr>").join("");
   document.getElementById("long-term-ma-signals").innerHTML =
     longTerm || "<tr><td colspan='15'>信用需給必須条件に合格した50週線／200日線反発銘柄なし。</td></tr>";
-  const dailyReversals = (d.daily_capitulation_reversals || []).slice(0, 20).map((x, i) =>
-    "<tr><td>" + (i + 1) + "</td><td>" + x.name + "</td><td>" + x.phase +
-    "</td><td>" + x.setup + "</td><td><b class='up'>" + x.score +
-    "/100</b></td><td>" + yen(x.close) + "</td><td class='down'>−" +
-    x.fall_from_10d.toFixed(1) + "%</td><td>" + x.volume_ratio.toFixed(2) +
-    "倍</td><td><b>" + yen(x.trigger) + "</b></td><td class='down'>" +
-    yen(x.stop) + "</td><td>" + yen(x.target1) + "／" + yen(x.target2) +
-    "</td><td>" + x.reason + "</td></tr>").join("");
-  document.getElementById("daily-reversal-signals").innerHTML =
-    dailyReversals || "<tr><td colspan='12'>本日のセリクラ反転合格銘柄なし。</td></tr>";
+  if (!window.wickFed) window.renderWickRows?.(d.daily_capitulation_reversals, d.updated_at, false);
   const carryRows = (items, side) => (items || []).slice(0, 5).map((x, i) => {
     const risk100 = Math.abs(x.trigger - x.stop) * 100;
     const tick = x.trigger < 1000 && Math.abs(x.trigger - Math.round(x.trigger)) >= .05
@@ -1355,6 +1346,29 @@ window.renderEvent5 = rows => {
     document.getElementById("speculative-theme-watch").innerHTML =
       html || "<div class='focus-empty'>本日の仕手化兆候合格銘柄なし。無理に抽出しません。</div>";
   };
+// OWNER 2026-10-24 「最重要…セリクラとなり反転となるか」: 下ヒゲ吸収反転 from the fed wick_watch.json (the public
+// signals.json of the latest close), with its date shown; the checkout's copy is used only until it answers.
+window.renderWickRows = (rows, at, fed) => {
+  const yen = v => v == null || !Number.isFinite(Number(v)) ? "—" : Number(v).toLocaleString("ja-JP");
+  const num = (v, n) => v == null || !Number.isFinite(Number(v)) ? "—" : Number(v).toFixed(n);
+  const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const html = (rows || []).slice(0, 20).map((x, i) =>
+    "<tr><td>" + (i + 1) + "</td><td>" + e(x.name) + "</td><td>" + e(x.phase || "—") +
+    "</td><td>" + e(x.setup || "—") + "</td><td><b class='up'>" + e(x.score) +
+    "/100</b></td><td>" + yen(x.close) + "</td><td class='down'>" + (x.fall_from_10d == null ? "—" : "−" + num(x.fall_from_10d, 1) + "%") +
+    "</td><td>" + (x.volume_ratio == null ? "—" : num(x.volume_ratio, 2) + "倍") +
+    "</td><td><b>" + yen(x.trigger) + "</b></td><td class='down'>" +
+    yen(x.stop) + "</td><td>" + yen(x.target1) + "／" + yen(x.target2) +
+    "</td><td>" + e(x.reason || "") + "<br><small>判定日 " + e(x.signal_date || String(at || "").slice(0, 10)) + (fed ? "" : "（古い可能性）") + "</small></td></tr>").join("");
+  const el = document.getElementById("daily-reversal-signals");
+  if (el) el.innerHTML = html || "<tr><td colspan='12'>" + e(String(at || "").slice(0, 10)) + " のセリクラ反転合格銘柄なし。</td></tr>";
+};
+fetch("wick_watch.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(w => {
+  if (!w || !Array.isArray(w.daily_capitulation_reversals)) return;
+  window.wickFed = true;
+  const go = () => window.renderWickRows(w.daily_capitulation_reversals, w.updated_at, true);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", go); else go();
+}).catch(() => {});
 fetch("event5_watch.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(e5 => {
   if (!e5 || !Array.isArray(e5.speculative_theme_watch)) return;
   window.event5Fed = true;
@@ -1386,7 +1400,7 @@ setInterval(loadRegimeSummary, 600000);
 // OWNER 2026-10-23 「古い時は画面に古いと出して、表示可にしない」: each section fed from the
 // public feed gets a 古い banner when its file is stale, unreadable or not refreshed in the
 // last 30 minutes (fail closed: no meta = not fresh). The banner names the file's own time.
-const FEED_SECTIONS = {"event5_watch.json": "speculative-theme-monitor", "world_market.json": "world-market-live", "event_calendar.json": "event-calendar",
+const FEED_SECTIONS = {"event5_watch.json": "speculative-theme-monitor", "wick_watch.json": "lower-wick-reversal", "world_market.json": "world-market-live", "event_calendar.json": "event-calendar",
   "kioxia_5m_calendar.json": "kioxia-5m-calendar", "correlations.json": "correlation-monitor",
   "next_theme_radar.json": "next-theme-radar", "weekly_review.json": "weekly-review", "market_summary.json": "regime-summary"};
 const markFeedStale = meta => {

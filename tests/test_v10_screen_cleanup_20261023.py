@@ -112,6 +112,24 @@ class WorldAndCorrelationOff(unittest.TestCase):
         self.assertIn("#world-market-live,#correlation-monitor{display:none!important}", _html())
 
 
+class WickFeed(unittest.TestCase):
+    def test_fed_list_with_date(self):
+        # OWNER 2026-10-24 「最重要、特に昨日のザラバがセリクラとなり反転となるか」
+        from scripts import v10_public_feed_sync as feed
+        sig = {"updated_at": "2026-10-23 21:00:37 JST", "daily_capitulation_reversals": [
+            {"name": "データセクション（3905）", "score": 100, "close": 1530.0, "signal_date": "2026-10-23", "extra": 1}]}
+        v = feed.wick_view(sig)
+        self.assertEqual(v["daily_capitulation_reversals"][0]["name"], "データセクション（3905）")
+        self.assertNotIn("extra", v["daily_capitulation_reversals"][0])
+        self.assertEqual((v["real_submit_allowed"], v["trade_instruction"]), (False, False))
+        html = _html()
+        self.assertIn('fetch("wick_watch.json?t=" + Date.now())', html)
+        self.assertIn('"wick_watch.json": "lower-wick-reversal"', html)
+        self.assertIn("判定日 ", html)
+        gw = (ROOT / "downloads" / "AI_COCKPIT_GATEWAY_V10.ps1").read_text(encoding="utf-8-sig")
+        self.assertEqual(gw.count("'wick_watch.json'"), 2)
+
+
 class JnxCodes(unittest.TestCase):
     def test_static(self):
         text = _collector()

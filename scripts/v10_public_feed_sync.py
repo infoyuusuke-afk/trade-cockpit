@@ -89,6 +89,23 @@ def event5_view(signals: dict) -> dict:
             rows.append({k: x.get(k) for k in EVENT5_FIELDS})
     return {"updated_at": str(signals.get("updated_at") or ""), "speculative_theme_watch": rows,
             "real_submit_allowed": False, "trade_instruction": False}
+# OWNER 2026-10-24 「最重要、特に昨日のザラバがセリクラとなり反転となるか」: the 下ヒゲ吸収反転 list
+# (daily_capitulation_reversals) of the public signals.json is fed the same way as EVENT 5, so the
+# screen no longer shows the checkout's frozen copy.
+WICK_FILE = "wick_watch.json"
+WICK_FIELDS = ("code", "ticker", "name", "phase", "setup", "score", "close", "fall_from_10d", "volume_ratio",
+               "trigger", "stop", "target1", "target2", "reason", "signal_date")
+
+
+def wick_view(signals: dict) -> dict:
+    rows = []
+    for x in (signals.get("daily_capitulation_reversals") or [])[:20]:
+        if isinstance(x, dict):
+            rows.append({k: x.get(k) for k in WICK_FIELDS})
+    return {"updated_at": str(signals.get("updated_at") or ""), "daily_capitulation_reversals": rows,
+            "real_submit_allowed": False, "trade_instruction": False}
+
+
 DATA_MAX_BYTES = 16 * 1024 * 1024
 # OWNER 2026-10-23 「検証・除外に本来地合判定がでるはず」: the daily index figures of the
 # public page's 地合いサマリー, plus a reference verdict. Display only (never a gate,
@@ -213,6 +230,18 @@ def sync(target: Path, *, fetch=_download, now: datetime | None = None) -> dict:
         files[EVENT5_FILE] = dict(fresh, ok=True, bytes=(target / EVENT5_FILE).stat().st_size)
     except Exception as exc:  # keep the previous copy
         files[EVENT5_FILE] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
+        sig = None
+    try:
+        if not isinstance(sig, dict):
+            raise ValueError("NO_SIGNALS")
+        view = wick_view(sig)
+        fresh = freshness(WICK_FILE, view, now)
+        temp = target / (WICK_FILE + ".tmp")
+        temp.write_text(json.dumps(view, ensure_ascii=False), encoding="utf-8")
+        os.replace(temp, target / WICK_FILE)
+        files[WICK_FILE] = dict(fresh, ok=True, bytes=(target / WICK_FILE).stat().st_size)
+    except Exception as exc:  # keep the previous copy
+        files[WICK_FILE] = {"ok": False, "reason": type(exc).__name__ if not isinstance(exc, ValueError) else str(exc)[:40]}
     meta = {"fetched_at": now.isoformat(), "source": BASE_URL, "files": files,
             "real_submit_allowed": False, "trade_instruction": False}
     (target / META_FILE).write_text(json.dumps(meta, sort_keys=True), encoding="utf-8")

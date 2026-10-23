@@ -2765,7 +2765,7 @@ try {
             # from the local Git checkout (e.g. .git/config, secrets or private data).
             $relative = if ($path -eq '/') { 'index.html' } else { $path.TrimStart('/') }
             $relative = [Uri]::UnescapeDataString($relative)
-            $allowedUiFiles = @('index.html', 'card_system.css', 'card_system.js', 'card_table_adapter.css', 'card_table_adapter.js', 'correlations.json', 'credit_supply.json', 'earnings-calendar.js', 'event_calendar.json', 'focus.css', 'kioxia_5m_calendar.json', 'kioxia_breaking_radar.json', 'kioxia_catalysts.json', 'kioxia_prediction_history.json', 'live_focus.json', 'paper_trade_history.json', 'weekly_review.json', 'earnings_calendar.json', 'next-theme-radar.css', 'next-theme-radar.js', 'next_theme_radar.json', 'opportunity_radar.js', 'signals.json', 'theme.css', 'trade_control.js', 'v10_publication_status.js', 'voice_client.js', 'world_market.json', 'market_summary.json', 'public_feed_meta.json', 'event5_watch.json')
+            $allowedUiFiles = @('index.html', 'card_system.css', 'card_system.js', 'card_table_adapter.css', 'card_table_adapter.js', 'correlations.json', 'credit_supply.json', 'earnings-calendar.js', 'event_calendar.json', 'focus.css', 'kioxia_5m_calendar.json', 'kioxia_breaking_radar.json', 'kioxia_catalysts.json', 'kioxia_prediction_history.json', 'live_focus.json', 'paper_trade_history.json', 'weekly_review.json', 'earnings_calendar.json', 'next-theme-radar.css', 'next-theme-radar.js', 'next_theme_radar.json', 'opportunity_radar.js', 'signals.json', 'theme.css', 'trade_control.js', 'v10_publication_status.js', 'voice_client.js', 'world_market.json', 'market_summary.json', 'public_feed_meta.json', 'event5_watch.json', 'wick_watch.json')
             if ($allowedUiFiles -cnotcontains $relative) {
                 Send-Response $stream '404 Not Found' 'text/plain; charset=utf-8' ($utf8.GetBytes('V10_PUBLIC_PATH_NOT_ALLOWED'))
                 continue
@@ -2792,7 +2792,7 @@ try {
             $publicFeedFiles = @('correlations.json', 'credit_supply.json', 'earnings_calendar.json', 'event_calendar.json',
                 'kioxia_5m_calendar.json', 'kioxia_catalysts.json', 'kioxia_prediction_history.json',
                 'next_theme_radar.json', 'weekly_review.json', 'world_market.json',
-                'market_summary.json', 'public_feed_meta.json', 'event5_watch.json')
+                'market_summary.json', 'public_feed_meta.json', 'event5_watch.json', 'wick_watch.json')
             if ($RuntimeDir -and $publicFeedFiles -ccontains $relative) {
                 $feedFile = Join-Path (Join-Path $RuntimeDir 'public_feed') $relative
                 $feedItem = Get-Item -LiteralPath $feedFile -Force -ErrorAction SilentlyContinue
