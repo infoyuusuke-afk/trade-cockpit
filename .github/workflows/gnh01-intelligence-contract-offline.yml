@@ -1,0 +1,71 @@
+name: GNH01 public research contract (offline synthetic)
+# Isolated research-only CI. No secrets, network API, broker, orders or live V10.
+on:
+  pull_request:
+    paths:
+      - "schemas/intelligence_event_v1.schema.json"
+      - "scripts/gnh01_intelligence_contract_v1.py"
+      - "tests/test_gnh01_intelligence_contract_v1.py"
+      - "scripts/gnh01_durable_archive_v1.py"
+      - "tests/test_gnh01_durable_archive_v1.py"
+      - "scripts/gnh01_pre_next_review_v1.py"
+      - "tests/test_gnh01_pre_next_review_v1.py"
+      - "scripts/gnh01_private_review_handoff_v1.py"
+      - "tests/test_gnh01_private_review_handoff_v1.py"
+      - "scripts/gnh01_delivery_chain_audit_v1.py"
+      - "tests/test_gnh01_delivery_chain_audit_v1.py"
+      - "docs/GNH01_DURABLE_ARCHIVE_V1.md"
+      - "docs/GNH01_ROUTINE_EGRESS_ACCEPTANCE.md"
+      - ".github/workflows/gnh01-intelligence-contract-offline.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-contract:
+    name: GNH01 offline contract / ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile offline validator and synthetic tests
+        run: python -m py_compile scripts/gnh01_intelligence_contract_v1.py tests/test_gnh01_intelligence_contract_v1.py scripts/gnh01_durable_archive_v1.py tests/test_gnh01_durable_archive_v1.py scripts/gnh01_pre_next_review_v1.py tests/test_gnh01_pre_next_review_v1.py scripts/gnh01_private_review_handoff_v1.py tests/test_gnh01_private_review_handoff_v1.py scripts/gnh01_delivery_chain_audit_v1.py tests/test_gnh01_delivery_chain_audit_v1.py
+      - name: Install pinned JSON Schema validator for strict contract check
+        run: python -m pip install --disable-pip-version-check jsonschema==4.23.0
+      - name: Contract negative cases, provenance, JSON Schema
+        run: python -m unittest discover -s tests -p test_gnh01_intelligence_contract_v1.py -v
+      - name: Durable archive, crash/replay/concurrent readback negative cases
+        run: python -m unittest discover -s tests -p test_gnh01_durable_archive_v1.py -v
+      - name: PRE-NEXT unverified review boundary negative cases
+        run: python -m unittest discover -s tests -p test_gnh01_pre_next_review_v1.py -v
+      - name: Local signed request and independent reader-only ACK negative cases
+        run: python -m unittest discover -s tests -p test_gnh01_private_review_handoff_v1.py -v
+      - name: Independent archival-envelope-ACK correlation audit
+        run: python -m unittest discover -s tests -p test_gnh01_delivery_chain_audit_v1.py -v
+      - name: Unicode project directory smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -c "import os,pathlib,shutil; dst=pathlib.Path(os.environ['RUNNER_TEMP'])/'100億PROJECT'/'GNH01'; [(shutil.copytree(p,dst/p,dirs_exist_ok=True)) for p in ('scripts','tests','schemas')]; print('UNICODE_TEST_ROOT_CREATED')"
+          $unicodeRoot = Join-Path $env:RUNNER_TEMP '100億PROJECT\GNH01'
+          Push-Location $unicodeRoot
+          try {
+            python -m unittest discover -s tests -p test_gnh01_intelligence_contract_v1.py -v
+            if ($LASTEXITCODE -ne 0) { throw 'UNICODE_CONTRACT_TEST_FAILED' }
+            python -m unittest discover -s tests -p test_gnh01_durable_archive_v1.py -v
+            if ($LASTEXITCODE -ne 0) { throw 'UNICODE_ARCHIVE_TEST_FAILED' }
+            python -m unittest discover -s tests -p test_gnh01_pre_next_review_v1.py -v
+            if ($LASTEXITCODE -ne 0) { throw 'UNICODE_PRE_NEXT_TEST_FAILED' }
+            python -m unittest discover -s tests -p test_gnh01_private_review_handoff_v1.py -v
+            if ($LASTEXITCODE -ne 0) { throw 'UNICODE_PRIVATE_HANDOFF_TEST_FAILED' }
+            python -m unittest discover -s tests -p test_gnh01_delivery_chain_audit_v1.py -v
+            if ($LASTEXITCODE -ne 0) { throw 'UNICODE_CHAIN_AUDIT_TEST_FAILED' }
+          } finally {
+            Pop-Location
+          }
