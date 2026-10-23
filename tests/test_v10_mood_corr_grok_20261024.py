@@ -109,5 +109,33 @@ class OrderCard(unittest.TestCase):
             self.assertNotIn(word, block)
 
 
+class GrokOnEarningsCalendar(unittest.TestCase):
+    def test_tags_per_code(self):
+        # OWNER 2026-10-24 「決算日程にGrokをつなぐ」
+        bots = [{"bot": "Grok2号", "text": "GROK2_EARNINGS_V1
+実行日時：2026-10-24 05:00
+", "cards": [
+                    {"銘柄": "大末建設（1814）", "判断案": "押し目の買い候補"}]},
+                {"bot": "Grok3号", "cards": [], "text": "GROK3_PREVIEW_V1
+実行日時：2026-10-27 17:30
+---
+銘柄：キオクシアHD（285A）
+"
+                 "事前の空気：警戒（下げて悲観）
+---
+決算のあとの答え合わせ：アドバンテスト（6857）／結果 上振れ／事前の空気 期待先行 → 外れ
+END"}]
+        tags = feed.grok_tags(bots)
+        self.assertEqual(tags["1814"], [{"bot": "2号", "kind": "決算後", "label": "押し目の買い候補", "day": "10/24"}])
+        self.assertEqual(tags["285A"], [{"bot": "3号", "kind": "決算前", "label": "警戒", "day": "10/27"}])
+        self.assertEqual(tags["6857"], [{"bot": "3号", "kind": "答え合わせ", "label": "外れ", "day": "10/27"}])
+
+    def test_calendar_decoration_and_no_summary_boxes(self):
+        self.assertIn("window.decorateEarningsWithGrok = () =>", HTML)
+        self.assertIn('.tab-pane[data-pane="earnings"] > .cc-tab-owner-summary{display:none!important}', HTML)
+        js = (ROOT / "earnings-calendar.js").read_text(encoding="utf-8")
+        self.assertNotIn("grok", js.lower())          # the pinned calendar script is unchanged
+
+
 if __name__ == "__main__":
     unittest.main()

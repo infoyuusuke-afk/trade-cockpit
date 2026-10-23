@@ -146,6 +146,45 @@ def grok_cards(text: str) -> list:
     return [c for c in cards if "判断案" in c][:15]
 
 
+_GROK_CODE = re.compile(r"[（(]([0-9][0-9A-Z]{3})[）)]")
+_GROK_RUN = re.compile(r"実行日時：\s*(\d{4})-(\d{2})-(\d{2})")
+
+
+def grok_tags(bots: list) -> dict:
+    """OWNER 2026-10-24 「決算日程にGrokをつなぐ」: per stock code, the labels the earnings calendar shows —
+    2号's 判断案, 3号's 事前の空気 and the after-results check (当たり/外れ/判定不能), each with its date."""
+    tags = {}
+
+    def add(code, bot, kind, label, day):
+        if code and label:
+            tags.setdefault(code, []).append({"bot": bot, "kind": kind, "label": label[:40], "day": day})
+
+    for b in bots:
+        text = b.get("text") or ""
+        m = _GROK_RUN.search(text)
+        day = "%s/%s" % (m.group(2), m.group(3)) if m else str(b.get("saved_at") or "")[5:10].replace("-", "/")
+        if b.get("bot") == "Grok2号":
+            for c in b.get("cards") or []:
+                cm = _GROK_CODE.search(c.get("銘柄", ""))
+                add(cm.group(1) if cm else None, "2号", "決算後", c.get("判断案", "").split("（")[0], day)
+        if b.get("bot") == "Grok3号":
+            code = None
+            for line in text.splitlines():
+                key, sep, value = line.strip().partition("：")
+                if not sep:
+                    continue
+                if key == "銘柄":
+                    cm = _GROK_CODE.search(value)
+                    code = cm.group(1) if cm else None
+                elif key == "事前の空気":
+                    add(code, "3号", "決算前", value.split("（")[0].strip(), day)
+                elif key == "決算のあとの答え合わせ":
+                    cm = _GROK_CODE.search(value)
+                    verdict = next((w for w in ("当たり", "外れ", "判定不能") if w in value.split("→")[-1]), "")
+                    add(cm.group(1) if cm else None, "3号", "答え合わせ", verdict, day)
+    return tags
+
+
 def grok_bots_view(root: Path) -> dict:
     bots, latest = [], None
     for folder, label in GROK_BOTS:
@@ -159,7 +198,7 @@ def grok_bots_view(root: Path) -> dict:
         bots.append({"bot": folder, "label": label, "file": path.name, "saved_at": saved.isoformat(),
                      "text": text, "cards": grok_cards(text) if folder == "Grok2号" else []})
         latest = saved if latest is None or saved > latest else latest
-    return {"updated_at": latest.isoformat() if latest else "", "bots": bots,
+    return {"updated_at": latest.isoformat() if latest else "", "bots": bots, "tags": grok_tags(bots),
             "real_submit_allowed": False, "trade_instruction": False}
 
 

@@ -1440,12 +1440,40 @@ window.loadOrderCards = () => fetch("/brain_pick.json?t=" + Date.now()).then(r =
     "<div class='focus-empty'>今は注文カードはありません（キオクシアHD（285A）にサインが出た時だけ出ます）</div>";
 }).catch(() => {});
 document.addEventListener("DOMContentLoaded", () => { window.loadOrderCards(); setInterval(window.loadOrderCards, 5000); });
+// OWNER 2026-10-24 「決算日程にGrokをつなぐ」: each stock line of the earnings calendar gets the Grok labels for
+// its code (3号 事前の空気 / 答え合わせ, 2号 判断案) with their dates. Reading only; earnings-calendar.js unchanged.
+window.decorateEarningsWithGrok = () => {
+  const panel = document.getElementById("earnings-calendar-panel");
+  if (!panel) return;
+  const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const cls = l => /当たり|追随|買い/.test(l) ? "good" : /外れ|空売り|警戒/.test(l) ? "bad" : /期待先行/.test(l) ? "warn" : "";
+  panel.querySelectorAll(".ec-item > strong").forEach(s => {
+    const m = /（([0-9][0-9A-Z]{3})）/.exec(s.textContent || "");
+    const tags = m ? (window.grokTags || {})[m[1]] || [] : [];
+    const key = JSON.stringify(tags);
+    if (s.dataset.grokKey === key) return;
+    s.dataset.grokKey = key;
+    s.parentElement.querySelectorAll(":scope > .grok-tags").forEach(x => x.remove());
+    if (!tags.length) return;
+    const div = document.createElement("div");
+    div.className = "grok-tags";
+    div.innerHTML = tags.map(t => "<span class='grok-tag " + cls(t.label) + "'>Grok" + e(t.bot) + "・" + e(t.kind) + "：" + e(t.label) + "（" + e(t.day) + "）</span>").join("");
+    s.insertAdjacentElement("afterend", div);
+  });
+};
+document.addEventListener("DOMContentLoaded", () => {
+  const hook = () => { const p = document.getElementById("earnings-calendar-panel"); if (!p) return setTimeout(hook, 1000);
+    new MutationObserver(() => window.decorateEarningsWithGrok()).observe(p, {childList: true, subtree: true}); window.decorateEarningsWithGrok(); };
+  hook();
+});
 window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(g => {
   const box = document.getElementById("grok-bots-body");
   if (!box || typeof window.freshLamp !== "function") { setTimeout(window.loadGrokBots, 700); return; }
   if (!g || !Array.isArray(g.bots)) { box.innerHTML = "<div class='focus-empty'>Grokの答えはまだありません（5番のボタンで保存すると出ます）</div>"; return; }
   // OWNER 2026-10-24 「グロック2号まで今はしかいないぞ」: 3号 is shown only once it has a saved answer.
   g = Object.assign({}, g, {bots: g.bots.filter(b => b.bot !== "Grok3号" || b.file)});
+  window.grokTags = g.tags || {};
+  if (typeof window.decorateEarningsWithGrok === "function") window.decorateEarningsWithGrok();
   const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const runAt = b => { const m = /実行日時：\s*(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2})/.exec(b.text || ""); const r = m ? window.parseJstMs(m[1]) : NaN; return Number.isFinite(r) ? r : Date.parse(b.saved_at || ""); };
   const nowP = window.jstParts(Date.now()), offDay = nowP.wd === 0 || nowP.wd === 6 || (nowP.wd === 1 && nowP.min < 480);
@@ -2230,6 +2258,11 @@ document.addEventListener("DOMContentLoaded",()=>{
 /* OWNER 2026-10-24 「安っぽい、もっと洗練された作りこみ」: the earnings calendar look is set here, so
    earnings-calendar.js stays the pinned source. Heat by number of companies, weekend dimmed, today outlined. */
 html body #earnings-calendar-panel .ec-grid{gap:6px;margin:14px 0}
+html body #earnings-calendar-panel .grok-tags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}
+html body #earnings-calendar-panel .grok-tag{font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid #303033;background:#141518;color:#c9ccd1}
+html body #earnings-calendar-panel .grok-tag.good{border-color:#1f5444;color:#35e2ae}html body #earnings-calendar-panel .grok-tag.bad{border-color:#6f2730;color:#ff8a92}html body #earnings-calendar-panel .grok-tag.warn{border-color:#6b5426;color:#f7c66b}
+/* OWNER 2026-10-24: the 決算日程 tab shows the calendar only (no per-tab result / control boxes) */
+.tab-pane[data-pane="earnings"] > .cc-tab-owner-summary{display:none!important}
 html body #earnings-calendar-panel .ec-day{position:relative;min-height:64px;border:1px solid #26272b;border-radius:10px;padding:8px 10px;background:#141518;color:#c9ccd1;font-size:13px;font-weight:700;transition:border-color .15s,background .15s}
 html body #earnings-calendar-panel .ec-day:hover{border-color:#4a4d55}
 html body #earnings-calendar-panel .ec-day.ec-weekend{background:#0f1012;color:#5f646b}
