@@ -100,6 +100,13 @@ def event(event_id: str, title: str, day: str | None, category: str, source: str
     }
 
 
+def us_0830_in_jst(day: str) -> str:
+    """BLS/BEA releases are at 8:30 a.m. Eastern time: 21:30 JST in US summer time and 22:30 JST
+    from the first Sunday of November (OWNER 2026-10-24: 11/1以降は22:30)."""
+    local = datetime.fromisoformat(day).replace(hour=8, minute=30, tzinfo=ZoneInfo("America/New_York"))
+    return local.astimezone(JST).strftime("%H:%M")
+
+
 def nth_weekday(year: int, month: int, weekday: int, n: int) -> date:
     first = date(year, month, 1)
     return first + timedelta(days=(weekday - first.weekday()) % 7 + 7 * (n - 1))
@@ -137,12 +144,12 @@ def build() -> dict:
         ("2026-11-06", "米雇用統計（10月）", "発表前の持ち越しを再点検"),
         ("2026-12-04", "米雇用統計（11月）", "発表前の持ち越しを再点検"),
     ]:
-        e.append(event("jobs-" + d, title, d, "米経済", "jobs", time_jst="21:30",
+        e.append(event("jobs-" + d, title, d, "米経済", "jobs", time_jst=us_0830_in_jst(d),
             impact="高", flow="ドル円・米金利・NASDAQ経由で翌営業日に波及", action=action))
 
     for d, title in [("2026-09-11", "米CPI（8月）"), ("2026-10-14", "米CPI（9月）"),
                      ("2026-11-10", "米CPI（10月）"), ("2026-12-10", "米CPI（11月）")]:
-        e.append(event("cpi-" + d, title, d, "米経済", "cpi", time_jst="21:30",
+        e.append(event("cpi-" + d, title, d, "米経済", "cpi", time_jst=us_0830_in_jst(d),
             impact="高", flow="米金利・ドル円・グロースのボラティリティ拡大",
             action="発表直前の新規持ち越し禁止。翌朝は気配を再判定"))
 
@@ -165,7 +172,7 @@ def build() -> dict:
 
     for d, title in [("2026-09-30", "米PCE（8月）"), ("2026-10-29", "米GDP速報・PCE（9月）"),
                      ("2026-11-25", "米GDP改定・PCE（10月）")]:
-        e.append(event("bea-" + d, title, d, "米経済", "bea", time_jst="21:30",
+        e.append(event("bea-" + d, title, d, "米経済", "bea", time_jst=us_0830_in_jst(d),
             impact="中", flow="米金利とグロース評価へ影響", action="持ち越し時だけ警戒"))
 
     # Actual passive flow and index-effective dates are explicitly separate.
