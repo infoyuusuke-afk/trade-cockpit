@@ -71,6 +71,10 @@ class Correlations(unittest.TestCase):
         self.assertIn("米国の前日 → 東京の寄り（窓）の確かめ", HTML)
         self.assertIn("x.gap_test.big_same_dir_pct", HTML)
         self.assertIn("使わなくした関係", HTML)
+        # the explanation below the table matches the rebuild (no Nintendo rotation rule)
+        self.assertIn("2　寄った後には使わない", HTML)
+        self.assertNotIn("キオクシア―任天堂は固定ルールではありません", HTML)
+        self.assertNotIn("任天堂など逆相関候補", HTML)
 
 
 if __name__ == "__main__":

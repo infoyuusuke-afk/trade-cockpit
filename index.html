@@ -223,7 +223,7 @@ document.addEventListener("DOMContentLoaded",()=>{
  intros["ai-journal"]=["AIトレード日記","判断と結果の照合、週間振返り、見逃し・改善仮説を追跡。実績の未認証値は非表示。"];
  intros["pre-next"]=["PRE-NEXT｜先行兆候の研究","上昇前の情報・発見時刻を検証。研究段階のテーマはREALTIMEの売買候補へ自動昇格しません。"];
  intros["focus-owner"]=["FOCUS｜OWNER固定監視","OWNERが選択した銘柄を維持。MS2認証失敗時は価格・シグナルを表示しません。"];
- intros.correlation=["相関・先行／逆行銘柄","当日候補の方向を、連動株・逆相関株・米国先行株で確認。"];
+ intros.correlation=["相関・米国の前日→寄りの窓","米国の前日の動きと東京の寄りの窓の関係だけを、2年分で確かめた結果。寄った後の方向には使わない。"];
  intros.events=["注意","重要イベント・市場警報・売買禁止条件を確認。"];
  intros["investor-regime"]=["投資主体別レジーム","JPX公式の当時利用可能な版だけで、銘柄タイプの追い風・逆風を判定。"];
  intros["kioxia-calendar"]=["KIOXIA","キオクシア専用。5分足カレンダー、MS2 RSS、時間帯統計を集約。"];
@@ -922,12 +922,12 @@ document.addEventListener("DOMContentLoaded",()=>{
 <table><thead><tr><th>主役銘柄</th><th>確認銘柄</th><th>関係</th><th>成立判定</th><th>信頼度</th><th>窓の相関 20日</th><th>60日</th><th>全期間（前半／後半）</th><th>米国±2%の日 窓が同じ向き</th><th>主役の当日</th><th>確認銘柄の当日</th><th>売買判断</th></tr></thead>
 <tbody id="correlation-rows"><tr><td colspan="12">相関データを取得中...</td></tr></tbody></table>
 <div class="steps">
-<div class="step"><b>1　米国先行</b>サンディスク・Micronの前日終値から、翌日のキオクシア反応を確認。</div>
-<div class="step"><b>2　同方向確認</b>正相関銘柄がOR15・VWAP・EMA9/20で同方向なら信頼度を加点。</div>
-<div class="step"><b>3　資金ローテーション</b>任天堂など逆相関候補が反対方向へ動いた場合だけ補強材料。</div>
-<div class="step"><b>4　不一致は見送り</b>相関株が逆行、または条件3/5以下なら主役銘柄へ飛び乗らない。</div>
+<div class="step"><b>1　米国の前日 → 寄りの窓</b>米国が±2%以上動いた日は、東京の寄りの窓が同じ向きになりやすい（表の「窓が同じ向き」）。</div>
+<div class="step"><b>2　寄った後には使わない</b>寄った後の値動きとの相関はほぼ0。寄った後はOR15・VWAP・EMA9/20で判断する。</div>
+<div class="step"><b>3　「確認」の条件</b>2年分で、前半・後半とも相関0.30以上、米国±2%の日に窓が同じ向き65%以上。毎日作り直す。</div>
+<div class="step"><b>4　使わなくした関係</b>韓国の前日・任天堂の逆相関・自動で選んだ相関は使わない（理由は表の下）。</div>
 </div>
-<p class="warning"><b>キオクシア―任天堂は固定ルールではありません。</b> 20日・60日・当日5分足の逆相関が安定した期間だけ有効。サンディスクは取引時間が重ならないため「米国前日→キオクシア翌日」で判定します。9:15までは方向を決めず、OR15・VWAP・EMA9/20・高安の4/5一致を優先します。</p></section>
+<p class="warning"><b>相関は「寄りの窓の向き」の確認だけに使います。</b> 売買の根拠にはしません。9:15までは方向を決めず、OR15・VWAP・EMA9/20・高安の4/5一致を優先します。</p></section>
 <style>
 /* OWNER 2026-10-24 「キオクシアタブ…綺麗に配置されていない 本当に必要なのだけ表示」: the Kioxia section uses the
    same boxes as the other cards; the static reference blocks (GU/GD statistics, EMA/VWAP playbook) are off */
