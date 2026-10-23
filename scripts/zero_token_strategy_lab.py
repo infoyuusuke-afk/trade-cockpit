@@ -166,33 +166,38 @@ def _signed_return_bps(side, entry, exit):
 
 
 def _simulate(bars, signal_i, v, cost_bps):
-    """Signal on bar close, fill next bar OPEN, bounded future path.
+    """Signal on confirmed close; allow one 15s bar for feed/decision latency.
 
+    Fill is at the OPEN of the *second* bar after the signal, but only if
+    the source observation was known by that open. The immediate next
+    15s bar is a mandatory causality buffer, not a synthetic fill.
     Entry bar high/low can hit either stop or target. If both, stop wins.
     Any missing 15s bar prevents using a fictional fill and blocks trade.
     All exits are inside the same session; never assumes a close on
     an unfinished/truncated price series.
     """
-    if signal_i + 1 >= len(bars):
+    if signal_i + 2 >= len(bars):
         return None
     signal = bars[signal_i]
-    following = bars[signal_i + 1]
-    if (signal["available_at"] > signal["time"]
-            or following["time"]-signal["time"] != timedelta(seconds=15)):
+    observation_buffer = bars[signal_i + 1]
+    entry_bar = bars[signal_i + 2]
+    if (signal["available_at"] > observation_buffer["time"]
+            or observation_buffer["time"]-signal["time"] != timedelta(seconds=15)
+            or entry_bar["time"]-observation_buffer["time"] != timedelta(seconds=15)):
         return None
-    entry = following["open"]
+    entry = entry_bar["open"]
     sign = 1 if v["side"] == "LONG" else -1
     stop = entry * (1 - sign * v["stop_bps"] / 10_000)
     target = entry * (1 + sign * v["stop_bps"] * v["reward_r"] / 10_000)
     max_exit = signal_i + v["hold_bars"]
     if max_exit >= len(bars):
         return None
-    entry_clock = following["time"]
+    entry_clock = observation_buffer["time"]
     if entry_clock.timetz().replace(tzinfo=None) >= time(11, 30):
         return None
-    for j in range(signal_i+1, max_exit+1):
+    for j in range(signal_i+2, max_exit+1):
         x = bars[j]
-        if (j > signal_i+1
+        if (j > signal_i+2
                 and x["time"] - bars[j-1]["time"] != timedelta(seconds=15)):
             return None
         if x["time"].date() != entry_clock.date():
@@ -224,7 +229,7 @@ def _simulate(bars, signal_i, v, cost_bps):
             "strategy_id": v["id"], "date": signal["date"],
             "symbol": signal["symbol"], "side": v["side"],
             "decision_at": signal["time"].isoformat(),
-            "entry_bar_end": following["time"].isoformat(),
+            "entry_bar_end": entry_bar["time"].isoformat(),
             "exit_bar_end": x["time"].isoformat(),
             "gross_bps": round(gross, 5),
             "cost_bps": cost_bps, "net_bps": round(net, 5),
@@ -248,13 +253,23 @@ def replay_one_day(bars: list[dict], v: dict, *, cost_bps: float):
         accum_value += (x["high"]+x["low"]+x["close"])/3*x["volume"]
         accum_vol += x["volume"]
         vwaps.append(accum_value/accum_vol if accum_vol else None)
-    for i in range(v["or_bars"], len(bars)-1):
+    # A VWAP crossover requires *every* earlier bar used by the previous
+    # VWAP to have been observable at the preceding bar's close. The
+    # signal bar itself may arrive late, but must be known before the
+    # second-next-bar open. Older missing bars invalidate all later VWAP.
+    known_by=[]
+    latest=bars[0]["available_at"]
+    for x in bars:
+        latest=max(latest,x["available_at"])
+        known_by.append(latest)
+    for i in range(v["or_bars"], len(bars)-2):
         current, prev = bars[i], bars[i-1]
         if current["time"].timetz().replace(tzinfo=None) > time(10, 30):
             break
-        if (current["available_at"] > current["time"]
-                or prev["available_at"] > current["time"]
-                or current["time"]-prev["time"] != timedelta(seconds=15)
+        if current["time"]-prev["time"] != timedelta(seconds=15):
+            break  # No interpolation across an earlier data gap
+        if (known_by[i-1] > prev["time"]
+                or known_by[i] > bars[i+1]["time"]
                 or vwaps[i] is None or vwaps[i-1] is None):
             continue
         if v["side"] == "LONG":
