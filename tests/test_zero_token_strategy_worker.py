@@ -25,7 +25,12 @@ class ZeroTokenWorkerTests(unittest.TestCase):
         self.output=self.root/"private_reports"
         self.output.mkdir(mode=0o700)
         self.csv=self.root/"confirmed_15s.csv"
-        self.csv.write_bytes(encode(synthetic_rows(breach=True,n=100)))
+        rows=synthetic_rows(breach=True,n=100)
+        # A completed afternoon observation marks this test day final.
+        from datetime import datetime
+        rows.append({**rows[-1], "time":"2026-10-19T15:25:00+09:00",
+                     "available_at":"2026-10-19T15:25:00+09:00"})
+        self.csv.write_bytes(encode(rows))
 
     def test_first_run_persists_and_independent_readback(self):
         r=run_once(self.csv,self.output,clock=lambda:datetime(2026,10,23,tzinfo=timezone.utc))
@@ -35,6 +40,8 @@ class ZeroTokenWorkerTests(unittest.TestCase):
         self.assertFalse(r["real_submit_allowed"])
         report=json.loads((self.output/REPORT).read_text("utf-8"))
         self.assertEqual(report["analysis"]["status"],"INSUFFICIENT_HISTORY")
+        self.assertEqual(report["analysis"]["cumulative_history"]["completed_symbol_days"],1)
+        self.assertEqual(report["analysis"]["cumulative_history"]["pending_symbol_days"],0)
         self.assertFalse(report["paid_api_connected"])
         self.assertFalse(report["broker_connected"])
         self.assertFalse(report["automatic_order_execution"])
@@ -54,8 +61,10 @@ class ZeroTokenWorkerTests(unittest.TestCase):
 
     def test_changed_dataset_triggers_new_analysis(self):
         run_once(self.csv,self.output)
-        raw=encode(synthetic_rows(breach=False,n=100))
-        self.csv.write_bytes(raw)
+        rows=synthetic_rows(breach=False,n=100,date="2026-10-20")
+        rows.append({**rows[-1], "time":"2026-10-20T15:25:00+09:00",
+                     "available_at":"2026-10-20T15:25:00+09:00"})
+        self.csv.write_bytes(encode(rows))
         result=run_once(self.csv,self.output)
         self.assertEqual(result["state"],"RESEARCH_RECORDED")
         with closing(sqlite3.connect(self.output/LEDGER)) as con:
