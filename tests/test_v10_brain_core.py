@@ -230,6 +230,9 @@ class LogAndShadow(unittest.TestCase):
         self.assertIn('("注目、検証中。"+$ruleName+"に該当。"', text)
         self.assertIn("foreach ($x in (Get-BrainNewPicks $brainPickPath (Get-Date))) {", text)
         self.assertIn("if ($spokenNewPicks.ContainsKey($key)) { continue }", text)
+        # hotfix 2026-10-23: initialised at start-up, before the main loop first uses it
+        self.assertLess(text.index("$spokenNewPicks = @{}"), text.index("if ($spokenNewPicks.ContainsKey($key)) { continue }"))
+        self.assertLess(text.index("$spokenNewPicks = @{}"), text.index("$spokenRuleSignals=@{}; $spokenNewPicks=@{}"))
         self.assertIn("$spokenRuleSignals=@{}; $spokenNewPicks=@{}; $preopenGapSpoken=$false", text)
         body = text[text.index("function Get-BrainNewPicks"):text.index("function Test-RuleSignalStillListed")]
         self.assertIn("[string]$view.state -cne 'PICK'", body)
