@@ -19,7 +19,8 @@ with the ANSI code page.
 #>
 [CmdletBinding()]
 param([string]$LogDir = "", [string]$StateFile = "C:\AI_Cockpit_OneClick_Starter\V10_CONTROLLER_STATE.json",
-      [switch]$NoAlert)   # NoAlert: tests only (no voice, no message box)
+      [switch]$NoAlert,   # NoAlert: tests only (no voice, no message box)
+      [int]$StopGraceSeconds = 10, [int]$StopWaitSeconds = 300)
 $ErrorActionPreference = "Continue"
 function J([string]$s) { return [regex]::Unescape($s) }
 $start = Join-Path $PSScriptRoot "START_AI_COCKPIT_V10.ps1"
@@ -39,6 +40,25 @@ $utf8 = [Text.UTF8Encoding]::new($true)
 $rc = $LASTEXITCODE
 $text = [IO.File]::ReadAllText($log, $utf8)
 $stateLeft = Test-Path -LiteralPath $StateFile
+# OWNER 2026-10-24: a Safe Stop was announced as an abnormal stop. Safe Stop stops the Controller
+# first and removes the state file only after every component and the Excel have stopped, so the
+# runner ends while the file is still there. Wait for that: a short grace period always, and while
+# a Safe Stop (STOP_AI_COCKPIT_V10) is still running, up to StopWaitSeconds. Read-only.
+if ($text.Contains("V10_RUNNER_EXIT_FAILURE") -and $stateLeft) {
+    $waitStart = Get-Date
+    while ($stateLeft) {
+        $elapsed = ((Get-Date) - $waitStart).TotalSeconds
+        if ($elapsed -ge $StopWaitSeconds) { break }
+        if ($elapsed -ge $StopGraceSeconds) {
+            $stopping = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
+                Where-Object { [string]$_.CommandLine -match "STOP_AI_COCKPIT_V10" }).Count -gt 0
+            if (-not $stopping) { break }
+        }
+        Start-Sleep -Seconds 1
+        $stateLeft = Test-Path -LiteralPath $StateFile
+    }
+    [IO.File]::AppendAllText($log, ("STOP_WAIT " + [int]((Get-Date) - $waitStart).TotalSeconds + "s state_left=" + $stateLeft + "`r`n"), $utf8)
+}
 if ($rc -eq 0 -or ($text.Contains("V10_RUNNER_EXIT_FAILURE") -and -not $stateLeft)) {
     $result = "RESULT=NORMAL_STOP rc=" + $rc
     [IO.File]::AppendAllText($log, ("END " + (Get-Date -Format "yyyy-MM-dd HH:mm:ss") + " " + $result + "`r`n"), $utf8)
