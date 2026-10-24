@@ -1,6 +1,6 @@
 {
   "schema_version": "tradingview-screener-watch-1.0",
-  "updated_at": "2026-10-24 07:39:11 JST",
+  "updated_at": "2026-10-24 11:52:32 JST",
   "source": "TradingViewスクリーナー（非公式・無保証API、scanner.tradingview.com）",
   "note": "参考・未検証。MS2 RSSのリアルタイムデータではない。$buy/$short判定・音声通知には一切使用しない。固定100銘柄ウォッチリストに無い銘柄はalready_watched=falseで示すのみで、ウォッチリストへの自動追加は行わない。market_ranking_watch.py（Yahoo!ファイナンス版）とは独立した別実装で、互いのフォールバックとして併存させる。",
   "rankings": {
@@ -4768,22 +4768,6 @@
       "already_watched": true
     },
     {
-      "code": "8697",
-      "name": "Japan Exchange Group, Inc.",
-      "exchange": "TSE",
-      "price": 2218.5,
-      "change_pct": -0.29213483146067415,
-      "volume": 3361900,
-      "relative_volume": 0.7382803836009917,
-      "atr_pct": 2.58,
-      "vwap": 2201,
-      "high": 2225,
-      "low": 2159.5,
-      "market_cap": 2266014881897,
-      "sector": "Finance",
-      "already_watched": false
-    },
-    {
       "code": "1803",
       "name": "Shimizu Corporation",
       "exchange": "TSE",
@@ -4797,6 +4781,22 @@
       "low": 1985.5,
       "market_cap": 1343103621277,
       "sector": "Industrial Services",
+      "already_watched": false
+    },
+    {
+      "code": "8697",
+      "name": "Japan Exchange Group, Inc.",
+      "exchange": "TSE",
+      "price": 2218.5,
+      "change_pct": -0.29213483146067415,
+      "volume": 3361900,
+      "relative_volume": 0.7382803836009917,
+      "atr_pct": 2.58,
+      "vwap": 2201,
+      "high": 2225,
+      "low": 2159.5,
+      "market_cap": 2266014881897,
+      "sector": "Finance",
       "already_watched": false
     },
     {
