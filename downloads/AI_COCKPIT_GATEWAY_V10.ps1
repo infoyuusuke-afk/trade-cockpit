@@ -92,6 +92,42 @@ function Read-JsonUtf8([string]$Path) {
     return $text | ConvertFrom-Json
 }
 
+# Audit 2026-10-22 ①: /health took 1.4-12 s because every call re-parsed the
+# 1.2 MB live_ms2.json and other status files. A file is parsed again only
+# when its write time or length changed. The stamp is taken before and after
+# the read; a file written during the read is not cached. Callers only read
+# the returned object.
+$script:FileReadCache = @{}
+function Get-FileStamp([string]$Path) {
+    $item = [IO.FileInfo]::new($Path)
+    $item.Refresh()
+    if (-not $item.Exists) { return $null }
+    return ([string]$item.LastWriteTimeUtc.Ticks + ':' + [string]$item.Length)
+}
+function Read-FileCached([string]$Path, [string]$Kind, [scriptblock]$Parse) {
+    $key = $Kind + '|' + $Path
+    $before = Get-FileStamp $Path
+    $hit = $script:FileReadCache[$key]
+    if ($null -ne $before -and $null -ne $hit -and $hit.stamp -ceq $before) { return $hit.value }
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $value = & $Parse $bytes
+    $after = Get-FileStamp $Path
+    if ($null -ne $before -and $before -ceq $after) {
+        $script:FileReadCache[$key] = @{ stamp = $before; value = $value }
+    } else {
+        $script:FileReadCache.Remove($key)
+    }
+    return $value
+}
+function ConvertFrom-Utf8JsonBytes([byte[]]$Bytes) {
+    $text = [Text.Encoding]::UTF8.GetString($Bytes)
+    if ($text.Length -gt 0 -and $text[0] -eq [char]0xFEFF) { $text = $text.Substring(1) }
+    return $text | ConvertFrom-Json
+}
+function Read-JsonUtf8Cached([string]$Path) {
+    return Read-FileCached $Path 'json' { param($b) ConvertFrom-Utf8JsonBytes $b }
+}
+
 
 # A recent publication is NOT a recent market tick, source authentication, or
 # a trading gate. Validate only the producer's exact timestamp contract.
@@ -147,7 +183,7 @@ function Get-V10WatcherPublication([string]$RuntimeDirectory, [bool]$ProcessVeri
             $result.publication_state = 'WATCHER_FILE_SIZE_INVALID'
             return $result
         }
-        $data = Read-JsonUtf8 $file
+        $data = Read-JsonUtf8Cached $file
         if ([string]$data.schema_version -cne 'kioxia-watcher-1.0' -or
             [string]$data.source -cne 'Kioxia_RSS_Live_Watcher (Excel RSS)') {
             $result.publication_state = 'WATCHER_IDENTITY_UNVERIFIED'
@@ -203,7 +239,7 @@ function Get-V10BrainObserverProof([string]$RuntimeDirectory, [int]$ExpectedPid,
             $result.status = 'BRAIN_FILE_UNTRUSTED'
             return $result
         }
-        $data = Read-JsonUtf8 $path
+        $data = Read-JsonUtf8Cached $path
         if ([string]$data.schema_version -cne 'ai-brain-observer-1' -or
             [string]$data.component_role -cne 'INDEPENDENT_BRAIN_OBSERVER_NOT_TRADE_ENGINE') {
             $result.status = 'BRAIN_SCHEMA_UNVERIFIED'
@@ -329,7 +365,7 @@ function Get-V10ShadowHeartbeatProof([string]$RuntimeDirectory, [int]$ExpectedPi
             $result.status = 'SHADOW_FILE_UNTRUSTED'
             return $result
         }
-        $data = Read-JsonUtf8 $path
+        $data = Read-JsonUtf8Cached $path
         if ([string]$data.schema_version -cne 'ai-shadow-supervisor-1' -or
             $data.ui_independent -ne $true) {
             $result.status = 'SHADOW_IDENTITY_UNVERIFIED'
@@ -402,7 +438,7 @@ function Get-ShadowEnginePublication([string]$RuntimeDirectory) {
     $path = Join-Path $RuntimeDirectory "ai_shadow_status.json"
     if (-not (Test-Path -LiteralPath $path)) { return $result }
     try {
-        $status = Read-JsonUtf8 $path
+        $status = Read-JsonUtf8Cached $path
         $written = (Get-Item -LiteralPath $path).LastWriteTime
         $age = ((Get-Date) - $written).TotalSeconds
         $publishedState = [string]$status.state
@@ -442,10 +478,30 @@ function Get-ShadowEnginePublication([string]$RuntimeDirectory) {
     }
 }
 
+# Audit 2026-10-22 ①: one /health asked Windows about each of 8 processes
+# separately. The processes are now looked up in one query per /health
+# (Set-HealthProcessMemo), with the same checks applied to each. Outside a
+# /health call the memo is empty and each lookup queries Windows itself.
+$script:HealthProcessMemo = $null
+function Set-HealthProcessMemo([int[]]$ProcessIds) {
+    $script:HealthProcessMemo = $null
+    $ids = @($ProcessIds | Where-Object { $_ -gt 0 } | Select-Object -Unique)
+    if ($ids.Count -eq 0) { return }
+    $filter = (@($ids | ForEach-Object { "ProcessId = " + [int]$_ }) -join " OR ")
+    $memo = @{}
+    foreach ($p in @(Get-CimInstance Win32_Process -Filter $filter -ErrorAction Stop)) { $memo[[int]$p.ProcessId] = $p }
+    $script:HealthProcessMemo = @{ ids = $ids; found = $memo }
+}
+function Get-HealthProcess([int]$ProcessId) {
+    $memo = $script:HealthProcessMemo
+    if ($null -ne $memo -and $memo.ids -contains $ProcessId) { return $memo.found[$ProcessId] }
+    return Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction Stop
+}
+
 function Test-HealthProcess([int]$ProcessId, [string]$ScriptName, [datetime]$StateWrittenAt) {
     if ($ProcessId -le 0) { return $false }
     try {
-        $process = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction Stop
+        $process = Get-HealthProcess $ProcessId
         if ($null -eq $process -or [string]::IsNullOrWhiteSpace([string]$process.CommandLine)) { return $false }
         if ([datetime]$process.CreationDate -gt $StateWrittenAt) { return $false }
         return ([string]$process.CommandLine -match [regex]::Escape($ScriptName))
@@ -455,7 +511,7 @@ function Test-HealthProcess([int]$ProcessId, [string]$ScriptName, [datetime]$Sta
 function Test-ControllerHealthProcess([int]$ProcessId, [datetime]$StateWrittenAt) {
     if ($ProcessId -le 0) { return $false }
     try {
-        $process = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $ProcessId) -ErrorAction Stop
+        $process = Get-HealthProcess $ProcessId
         if ($null -eq $process -or [string]::IsNullOrWhiteSpace([string]$process.CommandLine)) { return $false }
         if ([datetime]$process.CreationDate -gt $StateWrittenAt) { return $false }
         $cmd = [string]$process.CommandLine
@@ -599,6 +655,32 @@ function Get-BrainPickView([string]$RuntimeDir) {
         return @{ status = '200 OK'; body = $text }
     } catch {
         return (& $fail 'BRAIN_PICK_UNREADABLE')
+    }
+}
+
+# OWNER 2026-10-23 夜 「コントロールに保有株をカード表示」: the OWNER's real holdings, read by the
+# Collector with the read-only RSS position lists into RuntimeDir\real_positions_v1.json.
+# Served to this PC's screen only; older than 60 s or not read-only -> 503 (no stale holdings).
+function Get-RealPositionsView([string]$RuntimeDir) {
+    $fail = { param([string]$Reason) @{ status = '503 Service Unavailable'; body = ('{"state":"UNAVAILABLE","reason":"' + $Reason + '","real_submit_allowed":false}') } }
+    try {
+        if ([string]::IsNullOrWhiteSpace($RuntimeDir) -or -not [IO.Path]::IsPathRooted($RuntimeDir)) { return (& $fail 'RUNTIME_DIR_UNKNOWN') }
+        $file = Join-Path $RuntimeDir 'real_positions_v1.json'
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { return (& $fail 'REAL_POSITIONS_MISSING') }
+        $item = Get-Item -LiteralPath $file -Force
+        if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $item.Length -le 2 -or $item.Length -gt 1048576) {
+            return (& $fail 'REAL_POSITIONS_FILE_UNTRUSTED')
+        }
+        if (([DateTime]::UtcNow - $item.LastWriteTimeUtc).TotalSeconds -gt 60) { return (& $fail 'REAL_POSITIONS_STALE') }
+        $text = [IO.File]::ReadAllText($file, [Text.UTF8Encoding]::new($false))
+        $view = $text | ConvertFrom-Json -ErrorAction Stop
+        if ([string]$view.schema_version -cne '100b-v10-real-positions-v1' -or $view.read_only -ne $true -or
+            $view.real_submit_allowed -ne $false -or $view.trade_instruction -ne $false) {
+            return (& $fail 'REAL_POSITIONS_FLAGS_INVALID')
+        }
+        return @{ status = '200 OK'; body = $text }
+    } catch {
+        return (& $fail 'REAL_POSITIONS_UNREADABLE')
     }
 }
 
@@ -1228,10 +1310,12 @@ function Read-LiveSnapshot([string]$Path) {
         file_mtime = $item.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss')
     }
     try {
-        $snap.bytes = [IO.File]::ReadAllBytes($Path)
-        $text = [Text.Encoding]::UTF8.GetString($snap.bytes)
-        if ($text.Length -gt 0 -and $text[0] -eq [char]0xFEFF) { $text = $text.Substring(1) }
-        $snap.obj = $text | ConvertFrom-Json
+        # Parsed again only when the file changed (audit 2026-10-22 ①). The
+        # cached bytes are the bytes that were parsed, so what is judged is
+        # still what is served.
+        $cached = Read-FileCached $Path 'snapshot' { param($b) @{ bytes = $b; obj = (ConvertFrom-Utf8JsonBytes $b) } }
+        $snap.bytes = $cached.bytes
+        $snap.obj = $cached.obj
         $snap.updated_at = [string]$snap.obj.updated_at
         if (-not [string]::IsNullOrWhiteSpace($snap.updated_at)) {
             $clean = $snap.updated_at -replace '\s+JST\s*$',''
@@ -1810,7 +1894,7 @@ function Get-LivePriceRejection {
     $workbookVerified = $false
     try {
         if (Test-Path -LiteralPath $controllerStateFile) {
-            $st = Read-JsonUtf8 $controllerStateFile
+            $st = Read-JsonUtf8Cached $controllerStateFile
             $workbookVerified = ($st.workbook_identity_verified -eq $true)
         }
     } catch { $workbookVerified = $false }
@@ -2119,6 +2203,10 @@ if ($startSnapshot.ok) {
 $script:ServedHistoryEmptyAccepted = ($ServedHistoryBootstrap -ceq "ACCEPT_EMPTY_HISTORY") -and ($script:ServedHistoryState -ceq "NO_HISTORY_FILE") -and -not $script:ServedHistoryPriorEvidence
 if (-not $script:ServedHistoryEmptyAccepted) { $script:ServedHistoryStartFloor = $startFloor }
 
+# Audit 2026-10-22 ①: git is asked once at start-up, not on every /health
+# and page load (two git processes per call). A deploy folder is one commit.
+$script:GitInfo = Get-GitInfo $RepoRoot
+
 try {
     $listener.Start()
     Write-Host ("AI Cockpit Gateway V10: http://127.0.0.1:{0}/?live=1" -f $Port) -ForegroundColor Green
@@ -2176,7 +2264,8 @@ try {
             $path = $uri.AbsolutePath
 
             if ($path -eq '/health') {
-                $git = Get-GitInfo $RepoRoot
+                $script:HealthProcessMemo = $null
+                $git = $script:GitInfo
                 $liveExists = if ($liveJson) { Test-Path -LiteralPath $liveJson } else { $false }
                 $liveMtime = if ($liveExists) { (Get-Item -LiteralPath $liveJson).LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss') } else { $null }
                 $runtime = [ordered]@{
@@ -2224,7 +2313,11 @@ try {
                 $brainProcessVerified = $false
                 try {
                     if (Test-Path -LiteralPath $controllerStateFile) {
-                        $st = Read-JsonUtf8 $controllerStateFile
+                        $st = Read-JsonUtf8Cached $controllerStateFile
+                        try {
+                            Set-HealthProcessMemo @([int]$st.controller_pid, [int]$st.shadow_supervisor_pid, [int]$st.brain_observer_pid,
+                                [int]$st.watcher_pid, [int]$st.heartbeat_pid, [int]$st.collector_pid, [int]$st.voice_bridge_pid, [int]$st.sbv2_pid)
+                        } catch { $script:HealthProcessMemo = $null }
                         $runtime.controller_pid = $st.controller_pid
                         $runtime.collector_status = $st.collector_status
                         $runtime.watcher_status = $st.watcher_status
@@ -2274,7 +2367,7 @@ try {
                 $healthLive = $null
                 if ($liveExists) {
                     try {
-                        $healthLive = Read-JsonUtf8 $liveJson
+                        $healthLive = Read-JsonUtf8Cached $liveJson
                         $healthDiag = $healthLive.live_price_diagnostics
                         $runtime.live_updated_at = [string]$healthLive.updated_at
                         $runtime.collector_observed_at_offset = [string]$healthLive.observed_at_offset
@@ -2439,6 +2532,7 @@ try {
                     $execution.shadow_latest_incident = $null
                 }
 
+                $script:HealthProcessMemo = $null
                 $payload = [ordered]@{
                     status           = 'ok'
                     port             = $Port
@@ -2642,6 +2736,11 @@ try {
                 Send-Response $stream $brainView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$brainView.body))
                 continue
             }
+            if ($path -eq '/real_positions.json') {
+                $realView = Get-RealPositionsView $RuntimeDir
+                Send-Response $stream $realView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$realView.body))
+                continue
+            }
             if ($path -eq '/pts_pickup.json') {
                 $ptsView = Get-PtsPickupView $RuntimeDir
                 Send-Response $stream $ptsView.status 'application/json; charset=utf-8' ($utf8.GetBytes([string]$ptsView.body))
@@ -2666,7 +2765,7 @@ try {
             # from the local Git checkout (e.g. .git/config, secrets or private data).
             $relative = if ($path -eq '/') { 'index.html' } else { $path.TrimStart('/') }
             $relative = [Uri]::UnescapeDataString($relative)
-            $allowedUiFiles = @('index.html', 'card_system.css', 'card_system.js', 'card_table_adapter.css', 'card_table_adapter.js', 'correlations.json', 'credit_supply.json', 'earnings-calendar.js', 'event_calendar.json', 'focus.css', 'kioxia_5m_calendar.json', 'kioxia_breaking_radar.json', 'kioxia_catalysts.json', 'kioxia_prediction_history.json', 'live_focus.json', 'paper_trade_history.json', 'weekly_review.json', 'earnings_calendar.json', 'next-theme-radar.css', 'next-theme-radar.js', 'next_theme_radar.json', 'opportunity_radar.js', 'signals.json', 'theme.css', 'trade_control.js', 'v10_publication_status.js', 'voice_client.js', 'world_market.json')
+            $allowedUiFiles = @('index.html', 'card_system.css', 'card_system.js', 'card_table_adapter.css', 'card_table_adapter.js', 'correlations.json', 'credit_supply.json', 'earnings-calendar.js', 'event_calendar.json', 'focus.css', 'kioxia_5m_calendar.json', 'kioxia_breaking_radar.json', 'kioxia_catalysts.json', 'kioxia_prediction_history.json', 'live_focus.json', 'paper_trade_history.json', 'weekly_review.json', 'earnings_calendar.json', 'next-theme-radar.css', 'next-theme-radar.js', 'next_theme_radar.json', 'opportunity_radar.js', 'signals.json', 'theme.css', 'trade_control.js', 'v10_publication_status.js', 'voice_client.js', 'world_market.json', 'market_summary.json', 'public_feed_meta.json', 'event5_watch.json', 'wick_watch.json', 'accumulation_watch.json', 'grok_bots.json')
             if ($allowedUiFiles -cnotcontains $relative) {
                 Send-Response $stream '404 Not Found' 'text/plain; charset=utf-8' ($utf8.GetBytes('V10_PUBLIC_PATH_NOT_ALLOWED'))
                 continue
@@ -2686,6 +2785,22 @@ try {
                 continue
             }
 
+            # OWNER 2026-10-23: the public analysis JSON refreshed on main is served from
+            # RuntimeDir\public_feed (copied every 10 minutes by the Brain observer) when a
+            # copy is there; otherwise the checkout's file as before. Display data only.
+            # live_focus / signals / paper_trade_history are not fed (audit 6349440798).
+            $publicFeedFiles = @('correlations.json', 'credit_supply.json', 'earnings_calendar.json', 'event_calendar.json',
+                'kioxia_5m_calendar.json', 'kioxia_catalysts.json', 'kioxia_prediction_history.json',
+                'next_theme_radar.json', 'weekly_review.json', 'world_market.json',
+                'market_summary.json', 'public_feed_meta.json', 'event5_watch.json', 'wick_watch.json', 'accumulation_watch.json', 'grok_bots.json')
+            if ($RuntimeDir -and $publicFeedFiles -ccontains $relative) {
+                $feedFile = Join-Path (Join-Path $RuntimeDir 'public_feed') $relative
+                $feedItem = Get-Item -LiteralPath $feedFile -Force -ErrorAction SilentlyContinue
+                if ($null -ne $feedItem -and -not $feedItem.PSIsContainer -and
+                    ($feedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0) {
+                    $resolvedFull = $feedItem.FullName
+                }
+            }
             if (-not (Test-Path -LiteralPath $resolvedFull -PathType Leaf)) {
                 Send-Response $stream '404 Not Found' 'text/plain; charset=utf-8' ($utf8.GetBytes('Not found: ' + $relative))
                 continue
@@ -2698,7 +2813,7 @@ try {
 
             $ct = Get-ContentType $resolvedFull
             if ($resolvedFull -match '(?i)index\.html$') {
-                $git = Get-GitInfo $RepoRoot
+                $git = $script:GitInfo
                 $html = Get-Content -LiteralPath $resolvedFull -Raw -Encoding UTF8
                 $html = Add-StaticSnapshotNotice $html (Get-Date)
                 $html = Add-BuildBadge $html $git.branch $git.sha $Build

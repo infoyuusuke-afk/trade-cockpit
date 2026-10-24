@@ -178,6 +178,21 @@ try {
         exit 0
     }
 
+    # OWNER 2026-10-22 S2: refuse to start while any other Excel runs in this
+    # Windows session. V10 opens its own Excel and finds it again through
+    # the shared Excel.Application object, which another Excel can take over.
+    # Nothing has been started yet; the other Excel is not touched.
+    $selfSessionForExcel = [int](Get-Process -Id $PID -ErrorAction Stop).SessionId
+    $otherExcelAtStart = @(Get-Process -Name EXCEL -ErrorAction SilentlyContinue | Where-Object {
+        [int]$_.SessionId -eq $selfSessionForExcel
+    })
+    if ($otherExcelAtStart.Count -gt 0) {
+        Write-Output ("V10_OTHER_EXCEL_PIDS=" + (($otherExcelAtStart | ForEach-Object { $_.Id }) -join ","))
+        # Japanese text kept as escapes: this file has no BOM.
+        Write-Output ([regex]::Unescape("V10\u4ee5\u5916\u306eExcel\u304c\u958b\u3044\u3066\u3044\u307e\u3059\u3002\u305d\u306eExcel\u3092\u9589\u3058\u3066\u304b\u3089\u8d77\u52d5\u3057\u3066\u304f\u3060\u3055\u3044\u3002"))
+        throw "V10_START_BLOCKED_OTHER_EXCEL"
+    }
+
     # This call only becomes reachable when a future explicitly approved
     # release includes the complete immutable V10 runtime in the same repo.
     # RUN retains its OWN approval/SHA/git-clean fail-closed checks.

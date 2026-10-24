@@ -409,6 +409,95 @@
     }
   }
 
+  // OWNER 2026-10-23 夜 「コントロールに保有株をカード表示追加、場中、売買したら保有中」「両方 ただし分けて表示」
+  // 「保有中、保有した銘柄はAIトレード日記のタブ」: separate panels in the AIトレード日記 tab, for what is held now
+  // and what was held and closed today. 実口座: the OWNER's real holdings read by the Collector with the read-only RSS
+  // position lists (this PC only). 仮想: the cockpit's simulated holdings (rule signals, overnight).
+  // Display only; nothing here can place an order.
+  function holdingCard(name,code,badge,metrics,foot,cls){
+    return '<article class="cc-card cc-card--'+cls+'">'+
+      '<div class="cc-head"><div class="cc-identity"><span class="cc-company">'+esc(name||code||"—")+'</span>'+
+      '<span class="cc-symbol">'+esc(code||"")+'</span></div><span class="cc-badge">'+esc(badge)+'</span></div>'+
+      '<div class="cc-metrics-grid">'+metrics.filter(x=>x&&x[1]!=null).map(x=>'<span>'+esc(x[0])+'<b>'+esc(x[1])+'</b></span>').join("")+'</div>'+
+      (foot?'<div class="cc-foot">'+esc(foot)+'</div>':"")+'</article>';
+  }
+  const yen=v=>{const n=knownNumber(v);return n===null?"—":n.toLocaleString("ja-JP")+"円";};
+  const shares=v=>{const n=knownNumber(v);return n===null?"—":n.toLocaleString("ja-JP")+"株";};
+  const signedPct=v=>{const n=knownNumber(v);return n===null?"—":(n>=0?"+":"")+n.toFixed(2)+"%";};
+  const openDay=v=>{const s=String(v||"");if(!/^\d{8}$/.test(s))return s||"—";const jst=new Date(Date.now()+9*3600e3).toISOString().slice(0,10).replace(/-/g,"");return s===jst?"本日":s.slice(4,6)+"/"+s.slice(6,8);};
+  async function renderHoldings(){
+    const realRoot=document.getElementById("owner-real-holdings");
+    if(realRoot){
+      try{
+        const r=await fetch("/real_positions.json?t="+Date.now(),{cache:"no-store"});
+        if(!r.ok)throw new Error("unavailable");
+        const d=await r.json();
+        const execs=Array.isArray(d.executions_today)?d.executions_today:[];
+        const openedAt=x=>{const e=execs.filter(e=>e.code===x.code&&e.trade==="信用新規"&&e.side===x.side).map(e=>String(e.at||"").slice(11,19)).sort();return e.length?e[0]:null;};
+        const margin=(Array.isArray(d.margin)?d.margin:[]).map(x=>holdingCard(x.name,x.code,"保有中・"+(x.side||"信用"),[
+          ["売買",x.side||"—"],["株数",shares(x.qty)],["建値",yen(x.price)],["時価",yen(x.last)],
+          ["含み損益",money(x.pnl)],["損益率",signedPct(x.pnl_pct)],["建てた時刻",openedAt(x)?"本日 "+openedAt(x):openDay(x.open_date)],["区分",(x.kind||"")+(x.term?"・"+x.term:"")]
+        ],"信用建玉（"+(x.account||"")+"・"+(x.market||"")+"）",String(x.side||"").includes("売")?"short":"long"));
+        const cash=(Array.isArray(d.cash)?d.cash:[]).map(x=>holdingCard(x.name,x.code,"保有中・現物",[
+          ["株数",shares(x.qty)],["平均取得",yen(x.price)],["時価",yen(x.last)],
+          ["含み損益",money(x.pnl)],["損益率",signedPct(x.pnl_pct)]
+        ],"現物（"+(x.account||"")+"）","long"));
+        const state=d.margin_state==="OK"&&d.cash_state==="OK"?"":"（一部取得待ち）";
+        const doneRoot=document.getElementById("owner-real-closed");
+        if(doneRoot){
+          // today's executions per issue: opening and closing sides, average prices and an estimate without costs
+          const byCode={};
+          execs.forEach(e=>{(byCode[e.code]=byCode[e.code]||{name:e.name,code:e.code,open:[],close:[]})[/埋|売付/.test(String(e.side))?"close":"open"].push(e);});
+          const avg=a=>{const q=a.reduce((s,e)=>s+(knownNumber(e.qty)||0),0);return q?{q,p:a.reduce((s,e)=>s+(knownNumber(e.qty)||0)*(knownNumber(e.price)||0),0)/q}:null;};
+          const heldNow=new Set([...(d.margin||[]),...(d.cash||[])].map(x=>x.code));
+          const cards=Object.values(byCode).filter(g=>g.close.length).map(g=>{
+            const o=avg(g.open),c=avg(g.close),short=g.close.some(e=>e.side==="買埋");
+            const est=o&&c?Math.round((c.p-o.p)*Math.min(o.q,c.q)*(short?-1:1)):null;
+            const times=[...g.open,...g.close].map(e=>String(e.at||"").slice(11,19)).sort();
+            return holdingCard(g.name,g.code,heldNow.has(g.code)?"一部保有中":"決済済み",[
+              ["売買",short?"空売り→買い戻し":"買い→売り"],["株数",shares(c?c.q:null)],["建値（平均）",o?yen(Math.round(o.p*10)/10):"—（前日以前）"],
+              ["決済（平均）",c?yen(Math.round(c.p*10)/10):"—"],["損益（概算）",est===null?"—":money(est)],["時刻",times.length?times[0]+"〜"+times[times.length-1]:"—"]
+            ],"本日の約定から（手数料・金利は含まない概算）",est!==null&&est<0?"short":"long");
+          });
+          doneRoot.innerHTML=cards.join("")||'<div class="focus-empty">今日決済した銘柄はありません</div>';
+        }
+        realRoot.innerHTML=(margin.join("")+cash.join(""))||'<div class="focus-empty">保有中の銘柄はありません'+esc(state)+'（'+esc(String(d.updated_at||"").slice(11,19))+' 時点）</div>';
+      }catch(_e){
+        realRoot.innerHTML='<div class="focus-empty">実口座の保有を読めません（V10停止中・MS2未接続・または設定OFF）。古い保有は表示しません。</div>';
+        const doneRoot=document.getElementById("owner-real-closed");
+        if(doneRoot)doneRoot.innerHTML='<div class="focus-empty">実口座の約定を読めません。</div>';
+      }
+    }
+    const virtRoot=document.getElementById("owner-virtual-holdings");
+    if(virtRoot){
+      try{
+        const r=await fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"});
+        if(!r.ok)throw new Error("unavailable");
+        const pos=(await r.json())?.positions||{};
+        const rules=(Array.isArray(pos.rule_positions)?pos.rule_positions:[]).filter(p=>p&&p.status==="OPEN").map(p=>holdingCard(p.name,String(p.ticker||"").replace(/\.T$/,""),"保有中（仮想）",[
+          ["サイン",p.signal||"—"],["ルール",p.rule||"—"],["約定（仮想）",yen(p.fill_price)],["約定時刻",p.fill_time||"—"],
+          ["利確",yen(p.target)],["損切り",yen(p.stop)]
+        ],"ルールのサインの仮想売買（検証中・注文なし）",String(p.signal||"").includes("空売り")?"short":"long"));
+        const overnight=(Array.isArray(pos.overnight)?pos.overnight:[]).map(p=>holdingCard(p.name,String(p.ticker||"").replace(/\.T$/,""),"持ち越し（仮想）",[
+          ["売買",p.side==="LONG"?"買い":"空売り"],["基準",yen(p.reference_price)],["決定",String(p.decided_at||"").slice(5,16)],
+          ["採点",String(p.valid_until||"").replace("next trading day","翌営業日")]
+        ],"オーバーナイトの仮想売買（検証中・注文なし）",p.side==="LONG"?"long":"short"));
+        virtRoot.innerHTML=(rules.join("")+overnight.join(""))||'<div class="focus-empty">仮想の保有はありません</div>';
+        const vDone=document.getElementById("owner-virtual-closed");
+        if(vDone){
+          const exitName={TARGET:"利確",STOP:"損切り",TIME_EXIT:"時間で手じまい",CLOSE_EXIT:"引けで手じまい"};
+          const closed=(Array.isArray(pos.rule_positions)?pos.rule_positions:[]).filter(p=>p&&p.status==="CLOSED"&&p.fill_price!=null).map(p=>holdingCard(p.name,String(p.ticker||"").replace(/\.T$/,""),"決済済み（仮想）",[
+            ["サイン",p.signal||"—"],["ルール",p.rule||"—"],["約定（仮想）",yen(p.fill_price)],["約定時刻",p.fill_time||"—"],
+            ["決済",exitName[p.exit]||p.exit||"—"],["決済値",yen(p.exit_price)],["損益率",signedPct(p.return_pct)]
+          ],"ルールのサインの仮想売買（検証中・注文なし）",knownNumber(p.return_pct)!==null&&Number(p.return_pct)<0?"short":"long"));
+          vDone.innerHTML=closed.join("")||'<div class="focus-empty">今日決済した仮想の売買はありません</div>';
+        }
+      }catch(_e){
+        virtRoot.innerHTML='<div class="focus-empty">仮想の保有を読めません（ブレインの記録が新しくありません）</div>';
+      }
+    }
+  }
+
   document.addEventListener("DOMContentLoaded",()=>{
     const control=document.querySelector('.tab-pane[data-pane="control"]');
     if(control&&!document.getElementById("owner-control-overview")){
@@ -423,8 +512,28 @@
       section.innerHTML='<div class="pane-intro"><span>OWNER CONTROL</span><h2>戦略別パフォーマンス（実績区分・証拠付き）</h2><p>REAL／SHADOW・PAPER／BACKTESTを混同しません。証拠不足は未接続と表示します。</p></div><div id="owner-strategy-performance" class="cc-grid"><div>戦略実績を照合中...</div></div>';
       control.appendChild(section);
     }
+    const journal=document.querySelector('.tab-pane[data-pane="ai-journal"]');
+    if(journal&&!document.getElementById("owner-real-holdings")){
+      const panels=[
+        ["owner-real-holdings","保有中｜実口座（読むだけ）","武蔵などで売買した本当の保有です。MS2 RSSの建玉一覧・保有一覧・約定一覧を読むだけで、注文は出しません。このPCの画面だけに出します。"],
+        ["owner-real-closed","保有した銘柄｜実口座・今日決済","今日の約定一覧から、決済した銘柄をまとめます。損益は手数料・金利を含まない概算です。"],
+        ["owner-virtual-holdings","保有中｜仮想（コクピットの検証）","ルール①②④⑤のサインとオーバーナイトの仮想売買です。お金は動いていません。"],
+        ["owner-virtual-closed","保有した銘柄｜仮想・今日決済","ルールのサインの仮想売買で、今日決済したものです。"]
+      ];
+      const intro=journal.querySelector(":scope > .pane-intro");
+      let after=intro;
+      panels.forEach(([id,title,note])=>{
+        const section=document.createElement("section");
+        section.className="card wide";
+        section.innerHTML='<div class="pane-intro"><span>AIトレード日記</span><h2>'+esc(title)+'</h2><p>'+esc(note)+'</p></div><div id="'+id+'" class="cc-grid"><div>読込中...</div></div>';
+        if(after&&after.parentNode===journal)after.after(section);else journal.prepend(section);
+        after=section;
+      });
+    }
     renderOwnerSummaries();
+    renderHoldings();
     upgradeWeeklyReview();
     setInterval(renderOwnerSummaries,15000);
+    setInterval(renderHoldings,10000);
   });
 })();

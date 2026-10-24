@@ -1494,6 +1494,32 @@ def _plain_int(value) -> int | None:
     return value
 
 
+DOWNTIME_COUNT_FROM = clock_time(9, 0)
+DOWNTIME_COUNT_UNTIL = clock_time(15, 30)
+
+
+def counted_seconds(left: datetime, right: datetime) -> int:
+    """Seconds of [left, right] that count toward downtime and uptime (JST).
+
+    OWNER 2026-10-22 ④ (D-035): time after 15:30 is not counted as downtime.
+    OWNER 2026-10-23: nor is the time before 09:00 (pre-open quotes are never fresh, so the
+    Shadow is paused fail-closed every morning). The lunch break still counts. The
+    incident log itself is unchanged.
+    """
+    if right <= left:
+        return 0
+    lo, hi = left.astimezone(JST), right.astimezone(JST)
+    total = 0.0
+    day = lo.date()
+    while day <= hi.date():
+        a = max(lo, datetime.combine(day, DOWNTIME_COUNT_FROM, JST))
+        b = min(hi, datetime.combine(day, DOWNTIME_COUNT_UNTIL, JST))
+        if b > a:
+            total += (b - a).total_seconds()
+        day += timedelta(days=1)
+    return int(total)
+
+
 def _clip_duration(incident: dict, start: datetime, end: datetime) -> int:
     opened = parse_timestamp(incident.get("occurrence_at"), start.tzinfo)
     if opened is None:
@@ -1503,9 +1529,7 @@ def _clip_duration(incident: dict, start: datetime, end: datetime) -> int:
         return 0
     left = max(opened, start)
     right = min(closed, end)
-    if right <= left:
-        return 0
-    return int((right - left).total_seconds())
+    return counted_seconds(left, right)
 
 
 def summarize_operations(engine: dict, *, now: datetime) -> dict:
@@ -1516,7 +1540,7 @@ def summarize_operations(engine: dict, *, now: datetime) -> dict:
         if started is None:
             return _empty_window(label)
         begin = max(started, now - timedelta(seconds=seconds))
-        elapsed = int((now - begin).total_seconds())
+        elapsed = counted_seconds(begin, now)
         incidents = [item for item in engine["incidents"] if parse_timestamp(item.get("occurrence_at"), now.tzinfo) and parse_timestamp(item.get("occurrence_at"), now.tzinfo) >= begin]
         downtime = sum(_clip_duration(item, begin, now) for item in engine["incidents"])
         recovered = [item for item in incidents if item.get("recovery_at")]

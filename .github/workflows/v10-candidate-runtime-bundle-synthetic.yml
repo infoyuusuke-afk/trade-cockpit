@@ -68,7 +68,7 @@ jobs:
               # Independent-review candidate only: exact index.html blob.
               # No general source-pin relaxation and no runtime authorization.
               expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
-              test "$expected" = "c28ea9d22c0da70531274859a20a211e376e83a9"
+              test "$expected" = "048efbcc09f90fe14c18ff012592cf6ff9360702"
               test "$(git rev-parse "HEAD:$file")" = "$expected"
               test "$(git rev-parse "$pinned:$file")" != "$expected"
               echo "V10_UI_CANDIDATE_EXACT_BLOB=$expected"
@@ -76,7 +76,7 @@ jobs:
               # Exact reviewed change for 12s screen admission; SCALP 5 pins
               # Kioxia 285A.T (464A.T is QPS HD, not Kioxia); NOT a wildcard manifest exception.
               expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
-              test "$expected" = "9fb2dc272919fe9c6cb347af01ce365d9ef3b94e"
+              test "$expected" = "e2f97131c1860f1e9f827571cc26a2f24006c635"
               test "$(git rev-parse "HEAD:$file")" = "$expected"
               test "$(git rev-parse "$pinned:$file")" != "$expected"
               echo "V10_RADAR_PROVENANCE_CANDIDATE_EXACT_BLOB=$expected"
@@ -115,6 +115,14 @@ jobs:
               test "$(git rev-parse "HEAD:$file")" = "$expected"
               test "$(git rev-parse "HEAD:$file")" != "$(git rev-parse "$pinned:$file")"
               echo "V10_INTEGRATION_REPAIR=$file"
+            elif [[ "$file" == "downloads/STOP_AI_COCKPIT_V10.ps1" ]]; then
+              # OWNER 2026-10-22 S1/S3: Safe Stop quits Excel only when no other
+              # workbook is open in it, and stops nothing while another Excel
+              # runs. Locked to the reviewed HEAD:path blob in the manifest.
+              expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
+              test "$(git rev-parse "HEAD:$file")" = "$expected"
+              test "$(git rev-parse "HEAD:$file")" != "$(git rev-parse "$pinned:$file")"
+              echo "V10_OWNER_EXCEL_SAFETY_REPAIR=$file"
             elif [[ "$file" == "downloads/AI_COCKPIT_GATEWAY_V10.ps1" ||
                     "$file" == "downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1" ||
                     "$file" == "ms2_live/MS2_RSS_100_Collector.ps1" ||

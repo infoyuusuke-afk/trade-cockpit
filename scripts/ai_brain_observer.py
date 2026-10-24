@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import threading
 import time
 import types
 
@@ -40,7 +41,7 @@ AGENT_RECEIVER_INTERVAL = timedelta(seconds=30)
 AGENT_HOST_COMPONENT = "v10-ai-brain-observer"
 AGENT_PACKAGE = "v10_pinned_agent"
 AGENT_RECEIVER_MODULES = (
-    ("agent_sdk_coordination_pilot", "4ed33ef6832c317a672cee42f7c08593996a1c17"),
+    ("agent_sdk_coordination_pilot", "110efa63dca4cb6449e407fe85263ab904fec305"),
     ("agent_sdk_brain_handoff", "b936f22ecb086fa56d4fad3361f0fce87c03be35"),
     ("v10_brain_agent_research_receiver", "5269ad6bb8f048b4ff45b35ac2535c9612693614"),
     ("v10_brain_agent_feedback", "0a37d68d9bfb6d4124fbd0e9d583459b82c9775e"),
@@ -60,6 +61,12 @@ SIGNAL_EV_REBUILD_AFTER_JST = (15, 35)
 PTS_PICKUP_MODULE = ("v10_pts_pickup", "06fffac84925e5b66d2ec346eee387fc25d1ae3e")
 PTS_PICKUP_FILE = "pts_pickup_v1.json"
 PTS_PICKUP_INTERVAL = timedelta(minutes=5)
+# OWNER 2026-10-23 「キオクシアの予測チャートが直ってない」: every 10 minutes, fresh copies of
+# the public analysis files from main into RuntimeDir/public_feed (pinned module), in a
+# background thread so a slow download never delays the Brain core. Display data only.
+PUBLIC_FEED_MODULE = ("v10_public_feed_sync", "5e2e5a10f92dd293c7023dc1fcbbad6c6fd5f8ab")
+PUBLIC_FEED_DIR = "public_feed"
+PUBLIC_FEED_INTERVAL = timedelta(minutes=10)
 # Brain core (OWNER 2026-10-21 「全部やりたい」): every pass, score the lit live
 # signals with the EV table and the rule Shadow, write the top picks to
 # RuntimeDir/brain_pick_v1.json for the Gateway and log new picks to
@@ -76,7 +83,18 @@ JPX_MODULES = (
 )
 JPX_RETRY = timedelta(minutes=30)
 JPX_CHILD_DEADLINE_SECONDS = 60   # audit 6327603446: fetch + parse never block the loop longer
-BRAIN_CORE_MODULE = ("v10_brain_core", "acda62b942903e76fc4979de437beebc2a91c3be")
+# OWNER 2026-10-23: hand-delivered notes, read every pass (pinned module): Grok's X topics
+# (RuntimeDir/grok_inbox) and, only when that slot's automatic run did not deliver, the GPT
+# analysts (RuntimeDir/analyst_inbox). Brain flags and screen lists, never a score; each
+# finished day is scored for hits and misses. A failure only drops them.
+MANUAL_NOTES_MODULE = ("v10_manual_notes", "94b261a1d15dd87051de7ae553bd4f1a4137f882")
+MANUAL_SCORE_AFTER_JST = (15, 35)
+# OWNER 2026-10-23 「保有中は枠青」「8時50分と15時30分に保有銘柄告知」: virtual holdings (rule signals
+# replayed on today's ticks with the pinned EV module's replay, and the 15:25 carry-over)
+# every 15 s into RuntimeDir/positions_live_v1.json and the Brain pick file. Display only.
+POSITIONS_MODULE = ("v10_positions_live", "1c206a4a92bb8f25c9d20763d2d3aaa0583fc02b")
+POSITIONS_INTERVAL = timedelta(seconds=15)
+BRAIN_CORE_MODULE = ("v10_brain_core", "1ad7dea6ca742f83f4a1a6382510ab1e28a83105")
 
 
 def _aware(value):
@@ -368,6 +386,40 @@ def pts_pickup_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
     return summary
 
 
+def public_feed_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
+    """Start a refresh of the public display files at most every 10 minutes. Never raises."""
+    now = now or datetime.now(timezone.utc)
+    worker = state.get("worker")
+    if worker is not None and worker.is_alive():
+        return None
+    if state.get("next_at") is not None and now < state["next_at"]:
+        return None
+    state["next_at"] = now + PUBLIC_FEED_INTERVAL
+    try:
+        module = state.get("module") or load_pinned_module(Path(script_dir or Path(__file__).resolve().parent), *PUBLIC_FEED_MODULE)
+        state["module"] = module
+        target = Path(live_path).parent / PUBLIC_FEED_DIR
+
+        def run():
+            try:
+                meta = module.sync(target)
+                ok = sum(1 for v in meta["files"].values() if v.get("ok"))
+                print(json.dumps({"public_feed": "SYNCED", "ok": ok, "files": len(meta["files"]),
+                                  "real_submit_allowed": False}, sort_keys=True), flush=True)
+            except Exception as exc:  # keep the previous copies
+                print(json.dumps({"public_feed": "BLOCKED", "reason": type(exc).__name__,
+                                  "real_submit_allowed": False}, sort_keys=True), flush=True)
+        worker = threading.Thread(target=run, name="public-feed", daemon=True)
+        state["worker"] = worker
+        worker.start()
+        return {"public_feed": "STARTED", "real_submit_allowed": False}
+    except Exception as exc:  # fail closed, keep the observer running
+        summary = {"public_feed": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__,
+                   "real_submit_allowed": False}
+        print(json.dumps(summary, sort_keys=True), flush=True)
+        return summary
+
+
 def load_pinned_package(script_dir: Path, package_name: str, modules) -> types.ModuleType:
     """Load modules in order into one package, each only from bytes matching its pin."""
     package = sys.modules.get(package_name)
@@ -467,8 +519,47 @@ def brain_core_pass(state: dict, live_path: Path, *, now=None, script_dir=None):
                     inbox, now=now, known_codes=[str(r.get("ticker", "")).replace(".T", "") for r in live.get("all_targets") or []])
             except Exception:
                 attention = None
+        positions = state.get("positions_view")
+        if state.get("positions_next") is None or now >= state["positions_next"]:
+            state["positions_next"] = now + POSITIONS_INTERVAL
+            try:
+                base = Path(script_dir or Path(__file__).resolve().parent)
+                pos_mod = state.get("positions_module") or load_pinned_module(base, *POSITIONS_MODULE)
+                ev_mod = state.get("positions_ev_module") or load_pinned_module(base, *SIGNAL_EV_MODULE)
+                state["positions_module"], state["positions_ev_module"] = pos_mod, ev_mod
+                positions = pos_mod.build(Path(live_path).parent, now=now, ev=ev_mod, rules=ev_mod.RULES,
+                                          state=state.setdefault("positions_state", {}))
+            except Exception as exc:
+                positions = {"status": "POSITIONS_UNAVAILABLE", "reason": type(exc).__name__, "rule_positions": [],
+                             "overnight": [], "swing": None, "value": None, "counts": {}}
+            state["positions_view"] = positions
+        grok, analysts = None, None
+        try:
+            base = Path(script_dir or Path(__file__).resolve().parent)
+            notes_mod = state.get("notes_module") or load_pinned_module(base, *MANUAL_NOTES_MODULE)
+            state["notes_module"] = notes_mod
+            known = {str(r.get("ticker", "")).replace(".T", ""): str(r.get("name") or "") for r in live.get("all_targets") or []}
+            got = notes_mod.load(Path(live_path).parent, now=now, known=known, agent_inbox=os.environ.get(AGENT_INBOX_ENV, ""),
+                                 logged=state.setdefault("notes_logged", set()))
+            grok, analysts = got["view"], got["analysts"]
+            attention = dict(attention or {})
+            for code, entries in got["attention"].items():
+                attention[code] = list(attention.get(code) or []) + entries
+            jst = now.astimezone(timezone(timedelta(hours=9)))
+            if state.get("notes_scored_for") != (jst.date(), (jst.hour, jst.minute) >= MANUAL_SCORE_AFTER_JST):
+                state["notes_scored_for"] = (jst.date(), (jst.hour, jst.minute) >= MANUAL_SCORE_AFTER_JST)
+                ev_mod = state.get("positions_ev_module") or load_pinned_module(base, *SIGNAL_EV_MODULE)
+                state["positions_ev_module"] = ev_mod
+                for back in range(0, 6):   # finished days not yet scored (V10 is stopped right after the close)
+                    d = jst.date() - timedelta(days=back)
+                    if back == 0 and (jst.hour, jst.minute) < MANUAL_SCORE_AFTER_JST:
+                        continue
+                    notes_mod.score_day(Path(live_path).parent / "records" / d.isoformat(), ev=ev_mod)
+        except Exception:
+            grok = {"notes": [], "status": "MANUAL_NOTES_UNAVAILABLE"}
         view = module.write_pick(Path(live_path).parent, live, now=now, logged=state.setdefault("logged", set()),
-                                 attention=attention)
+                                 attention=attention, logged_rules=state.setdefault("logged_rules", set()), grok=grok,
+                                 positions=positions, manual_analysts=analysts)
         summary = {"brain_core": view["state"], "picks": len(view["picks"]), "logged_new": view["logged_new"]}
     except Exception as exc:  # fail closed, keep the observer running
         summary = {"brain_core": "BLOCKED", "reason": str(exc) if str(exc).startswith("PINNED_MODULE_MISMATCH") else type(exc).__name__}
@@ -569,12 +660,14 @@ def main(argv=None):
     pts_state = {}
     brain_state = {}
     jpx_state = {}
+    feed_state = {}
     while True:
         run_once(live, status_path)
         agent_receiver_pass(agent_state)
         signal_ev_pass(ev_state, live)
         pts_pickup_pass(pts_state, live)
         jpx_margin_pass(jpx_state, live)
+        public_feed_pass(feed_state, live)
         brain_core_pass(brain_state, live)
         time.sleep(args.interval)
 
