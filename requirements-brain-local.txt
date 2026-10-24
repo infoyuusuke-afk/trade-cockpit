@@ -1,0 +1,4 @@
+# Local-only extras for the V10 Brain on the OWNER PC (not needed by CI).
+# pymupdf: reads the JPX 銘柄別信用取引残高 PDF on the PC. Licence: AGPL-3.0 (local use only;
+# not redistributed). Without it the Brain keeps the weekly MS2 margin ratio.
+pymupdf==1.28.2
