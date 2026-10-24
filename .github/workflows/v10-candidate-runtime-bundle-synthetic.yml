@@ -24,6 +24,19 @@ on:
       - "tests/test_v10_runtime_bundle_candidate.py"
       - "tests/test_v10_local_http_security.py"
       - "tests/test_v10_brain*.py"
+      - "tests/test_v10_ui_evidence_regression.py"
+      - "tests/test_v10_ui_mission_navigation.py"
+      - "tests/v10_focus_owner_runtime.test.mjs"
+      - "tests/v10_ms2_provenance_runtime.test.mjs"
+      - "tests/v10_all_live_lanes_silence.test.mjs"
+      - "tests/v10_kioxia_render_escape.test.mjs"
+      - "tests/v10_agent_research_view.test.mjs"
+      - "tests/v10_signal_ev_ranking.test.mjs"
+      - "tests/test_v10_signal_ev.py"
+      - "scripts/v10_signal_ev_table.py"
+      - "scripts/v10_pts_pickup.py"
+      - "tests/test_v10_pts_pickup.py"
+      - "tests/test_v10_stale_display_and_escape.py"
       - ".github/workflows/v10-candidate-runtime-bundle-synthetic.yml"
   workflow_dispatch:
 permissions:
@@ -50,11 +63,21 @@ jobs:
             test -f "$file"
             git cat-file -e "$pinned:$file"
             if [ "$file" = "index.html" ]; then
-              # Deliberate security repair: stale MS2/Watcher prices and
-              # cards must be cleared, even if the prior V10 Draft did not.
-              # A separate V10 UI fail-closed contract validates content.
-              echo "V10_INDEX_STALE_SAFETY_REPAIR=index.html"
-              test "$(git rev-parse "HEAD:$file")" = "cb01cce5f7ed30f2670361ec5fad93ac3c57a693"
+              # Independent-review candidate only: exact index.html blob.
+              # No general source-pin relaxation and no runtime authorization.
+              expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
+              test "$expected" = "6bfc572dc41e7d8ff39cedf5935466d5bf7b7ec3"
+              test "$(git rev-parse "HEAD:$file")" = "$expected"
+              test "$(git rev-parse "$pinned:$file")" != "$expected"
+              echo "V10_UI_CANDIDATE_EXACT_BLOB=$expected"
+            elif [[ "$file" == "opportunity_radar.js" ]]; then
+              # Exact reviewed change for 12s screen admission; SCALP 5 pins
+              # Kioxia 285A.T (464A.T is QPS HD, not Kioxia); NOT a wildcard manifest exception.
+              expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
+              test "$expected" = "9fb2dc272919fe9c6cb347af01ce365d9ef3b94e"
+              test "$(git rev-parse "HEAD:$file")" = "$expected"
+              test "$(git rev-parse "$pinned:$file")" != "$expected"
+              echo "V10_RADAR_PROVENANCE_CANDIDATE_EXACT_BLOB=$expected"
             elif [[ "$file" == "trade_control.js" ]]; then
               # P0 V10 UI data-integrity repair. Exact blob is reviewed and
               # pinned in the manifest; no general source-pin exemption.
@@ -80,6 +103,16 @@ jobs:
               test "$(git rev-parse "HEAD:$file")" = "$expected"
               test "$(git rev-parse "HEAD:$file")" != "$(git rev-parse "$pinned:$file")"
               echo "V10_PRICE_FRESHNESS_REPAIR=$file"
+            elif [[ "$file" == "scripts/ai_brain_observer.py" ||
+                    "$file" == "downloads/AI_COCKPIT_CONTROLLER_V10.ps1" ]]; then
+              # P0-V10-INTEGRATION-AND-LIVE-START-20261020: the Brain observer
+              # reads only rows the Collector marked FRESH, and the Controller
+              # keeps previous worker logs instead of deleting them. Each is
+              # locked to the reviewed HEAD:path blob in the manifest.
+              expected="$(python -c 'import json,sys; m=json.load(open("downloads/V10_RELEASE_BUNDLE_MANIFEST.json",encoding="utf-8")); print(next(i["git_blob_sha"] for i in m["files"] if i["path"] == sys.argv[1]))' "$file")"
+              test "$(git rev-parse "HEAD:$file")" = "$expected"
+              test "$(git rev-parse "HEAD:$file")" != "$(git rev-parse "$pinned:$file")"
+              echo "V10_INTEGRATION_REPAIR=$file"
             elif [[ "$file" == "downloads/AI_COCKPIT_GATEWAY_V10.ps1" ||
                     "$file" == "downloads/AI_COCKPIT_VOICE_BRIDGE_V10.ps1" ||
                     "$file" == "ms2_live/MS2_RSS_100_Collector.ps1" ||
@@ -98,6 +131,18 @@ jobs:
           echo "APPROVED_FOR_RUNTIME=0"
       - name: Watchlist replacement check rejects wrong name, ticker, order and manifest tampering
         run: python -m unittest discover -s tests -p test_v10_watchlist_replacement.py -v
+      - name: OWNER-fixed FOCUS and mission UI source negative regressions
+        run: |
+          python -m unittest discover -s tests -p test_v10_ui_evidence_regression.py -v
+          python -m unittest discover -s tests -p test_v10_ui_mission_navigation.py -v
+      - name: V10 stale 09-25 display and KIOXIA external JSON escaping (FIX-02/FIX-03)
+        run: |
+          python -m unittest discover -s tests -p test_v10_stale_display_and_escape.py -v
+          node --test tests/v10_kioxia_render_escape.test.mjs
+          node --test tests/v10_agent_research_view.test.mjs
+          node --test tests/v10_signal_ev_ranking.test.mjs
+          python -m unittest discover -s tests -p test_v10_signal_ev.py -v
+          python -m unittest discover -s tests -p test_v10_pts_pickup.py -v
       - name: V10 UI missing metrics and no false zeros
         run: node --test tests/v10_trade_control_missing_data.test.mjs
       - name: V10 CONTROL strategy performance provenance and mode isolation
