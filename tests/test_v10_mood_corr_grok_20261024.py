@@ -184,6 +184,36 @@ class Grok3Cards(unittest.TestCase):
         self.assertIn("答え合わせ（確認日ごと）", HTML)
 
 
+class PriceVolumeHints(unittest.TestCase):
+    # OWNER 2026-10-24 「決算前の値動きと出来高のヒントをPCで計算して、3号カードの横に出して」
+    def test_hint_numbers_and_labels(self):
+        flat = [(100.0, 1000)] * 60
+        rising = [(100.0 + i, 3000) for i in range(1, 6)]     # +5% on 3x volume
+        h = feed.price_volume_hint(flat + rising, [(1000.0, 0)] * 65)
+        self.assertEqual((h["ret5"], h["vol_ratio"], h["rel20"]), (5.0, 3.0, 5.0))
+        self.assertEqual(h["hints"][0], {"tone": "warn", "text": "出来高を伴って上昇（期待で買われている。織り込みに注意）"})
+        self.assertIsNone(feed.price_volume_hint(flat[:20]))
+        quiet = feed.price_volume_hint(flat + [(100.0, 1000)] * 5)
+        self.assertEqual(quiet["hints"], [{"tone": "", "text": "目立つ動きなし"}])
+
+    def test_attach_uses_cache_and_never_breaks(self):
+        calls = []
+
+        def bars(symbol):
+            calls.append(symbol)
+            return [(100.0, 1000)] * 65
+        view = {"bots": [{"bot": "Grok3号", "preview_cards": [{"code": "285A"}]}]}
+        now = datetime(2026, 10, 24, 3, 0, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as d:
+            feed.attach_hints(view, Path(d), now, bars)
+            feed.attach_hints(view, Path(d), now, bars)              # cached: no second download
+            self.assertEqual(calls, ["^N225", "285A.T"])
+            self.assertEqual(view["bots"][0]["preview_cards"][0]["pv"]["vol_ratio"], 1.0)
+            feed.attach_hints({"bots": [{"preview_cards": [{"code": "6857"}]}]}, Path(d), now,
+                              lambda s: (_ for _ in ()).throw(OSError("offline")))
+        self.assertIn("値動き・出来高（PC計算 ", HTML)
+
+
 class HeaderLamps(unittest.TestCase):
     def test_badge_and_verified_line(self):
         # OWNER 2026-10-24 「ランプの赤を直して」「完全照合の日付」

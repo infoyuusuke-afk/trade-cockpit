@@ -1541,6 +1541,11 @@ window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.
     const g3 = (b.preview_cards || []).map(c => { const mood = String(c.mood || "").split("（")[0];
       return "<article class='cc-card cc-card--" + (c.score > 0 ? "long" : c.score < 0 ? "short" : "wait") + "'><div class='cc-head'><div class='cc-identity'><span class='cc-company'>" + e(c.name) +
       "</span></div><span class='cc-badge'>" + e(mood || "—") + "</span></div><div class='g3-score'><b>" + (c.score == null ? "—" : (c.score > 0 ? "+" : "") + c.score) + "</b>" + delta(c) + "</div>" + bar(c.score) +
+      // OWNER 2026-10-24 「決算前の値動きと出来高のヒントをPCで計算して、3号カードの横に出して」
+      (c.pv ? "<div class='g3-pv'><b>値動き・出来高（PC計算 " + e(String(c.pv_at || "").slice(5, 16).replace("T", " ")) + "）</b><div class='g3-pv-nums'>" +
+        [["5日", c.pv.ret5, "%"], ["20日", c.pv.ret20, "%"], ["対日経", c.pv.rel20, "%"], ["出来高", c.pv.vol_ratio, "倍"], ["25日線", c.pv.from_ma25, "%"]]
+          .map(([k, v, u]) => "<span>" + k + "<i>" + (v == null ? "—" : (u === "%" && v > 0 ? "+" : "") + v + u) + "</i></span>").join("") + "</div>" +
+        c.pv.hints.map(h => "<small class='" + e(h.tone) + "'>" + e(h.text) + "</small>").join("") + "</div>" : "") +
       (c.points ? "<div class='g3-points'>" + [["空気", c.points.mood], ["X", c.points.x], ["証券会社", c.points.broker]].map(([k, v]) => "<span class='" + (v > 0 ? "up" : v < 0 ? "down" : "") + "'>" + k + " " + (v > 0 ? "+" : "") + v + "</span>").join("") + "</div>" : "") +
       "<div class='cc-metrics-grid'><span>決算<b>" + e(String(c.earnings).split("／")[0]) + "</b></span><span>需給<b>" + e(c.supply) + "</b></span><span>X<b>" + e(String(c.x).split("（")[0]) + "</b></span><span>答え<b>" + e(c.day) + "</b></span></div>" +
       "<div class='cc-foot'>" + e(String(c.mood || "").replace(/^[^（]*（?/, "").replace(/）$/, "")) + "</div><small class='g3-broker'>証券会社：" + e(String(c.broker || "—").slice(0, 90)) + "</small></article>"; }).join("");
@@ -1550,7 +1555,7 @@ window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.
       k.items.map(i => "<li class='" + (i.verdict === "当たり" ? "up" : i.verdict === "外れ" ? "down" : "") + "'>" + e(i.name) + "：結果 " + e(i.result || "—") + (i.gap ? "・翌日の窓 " + e(i.gap) : "") + "・事前 " + e(i.mood || "—") + " → <b>" + e(i.verdict) + "</b></li>").join("") + "</ul></div>").join("")
       : "<div class='focus-empty'>まだ答え合わせはありません（決算が出た銘柄から、3号が次の答えで書きます）</div>") + "</div>" : "";
     return "<div class='rotation-box' style='grid-column:1/-1'>" + head + (cards ? "<div class='scalp-strip'>" + cards + "</div>" : "") +
-      (g3 ? "<div class='g3-note'>期待の強さ：事前の空気（期待先行+2／中立0／警戒-2）＋Xの空気（強気+1／弱気-1）＋証券会社（目標株価の引き上げ+1／引き下げ-1／なし・混在0）。市場の空気の記録で、売買のサインではありません。＋が大きいほど期待が強く、織り込み済みの注意も要ります。</div><div class='scalp-strip'>" + g3 + "</div>" : "") + checks +
+      (g3 ? "<div class='g3-note'>期待の強さ：事前の空気（期待先行+2／中立0／警戒-2）＋Xの空気（強気+1／弱気-1）＋証券会社（目標株価の引き上げ+1／引き下げ-1／なし・混在0）。市場の空気の記録で、売買のサインではありません。＋が大きいほど期待が強く、織り込み済みの注意も要ります。値動き・出来高はPCが日足から計算（出来高＝直近5日平均÷その前60日平均、対日経＝20日の騰落率の差）。</div><div class='scalp-strip'>" + g3 + "</div>" : "") + checks +
       "<details><summary>全文を見る</summary><pre style='white-space:pre-wrap;max-height:420px;overflow:auto'>" + e(b.text) + "</pre></details></div>";
   }).join("");
 }).catch(() => {});
@@ -2320,6 +2325,9 @@ html body #earnings-calendar-panel .grok-tags{display:flex;flex-wrap:wrap;gap:6p
 .g3-points{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}.g3-points span{font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid #303033;color:#c9ccd1}
 .g3-points span.up{border-color:#1f5444;color:#35e2ae}.g3-points span.down{border-color:#6f2730;color:#ff8a92}
 .g3-broker{display:block;margin-top:6px;font-size:11px;color:#8b9299;line-height:1.5}
+.g3-pv{margin:0 0 8px;padding:6px 8px;border:1px solid #272a30;border-radius:8px;background:#0f1013}.g3-pv>b{display:block;font-size:11px;color:#9ba3af;margin-bottom:4px}
+.g3-pv-nums{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:4px}.g3-pv-nums span{font-size:10px;color:#8b9299;text-align:center}.g3-pv-nums i{display:block;white-space:nowrap;font-style:normal;font-size:11px;color:#e7e9eb;font-weight:700}
+.g3-pv small{display:block;font-size:11px;color:#c9ccd1;line-height:1.5}.g3-pv small.good{color:#35e2ae}.g3-pv small.bad{color:#ff8a92}.g3-pv small.warn{color:#f7c66b}
 .g3-checks{margin-top:14px}.g3-checks h3{font-size:15px;margin:0 0 8px;color:#e7e9eb}.g3-check-day{padding:8px 10px;border:1px solid #272a30;border-radius:8px;margin-bottom:8px}
 .g3-check-day small{margin-left:10px;color:#9ba3af}.g3-check-day ul{margin:6px 0 0 18px;padding:0;font-size:12px;color:#c9ccd1;line-height:1.7}
 .g3-check-day li.up b{color:#35e2ae}.g3-check-day li.down b{color:#ff8a92}

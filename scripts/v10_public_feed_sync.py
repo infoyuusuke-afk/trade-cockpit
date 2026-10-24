@@ -305,6 +305,98 @@ def grok3_cards(folder: Path, max_files: int = 30) -> list:
     return cards[:20]
 
 
+# OWNER 2026-10-24 「決算前の値動きと出来高のヒントをPCで計算して、3号カードの横に出して」:
+# daily bars of each 3号 stock (and the Nikkei 225 for comparison) are read from Yahoo's public chart
+# API on this PC at most once per HINT_REFRESH_HOURS, and turned into a few numbers and plain hints.
+# Display only: nothing here reaches a signal, gate, Brain score, voice or order.
+HINT_CACHE = "earnings_hints_cache.json"
+HINT_REFRESH_HOURS = 3
+HINT_INDEX = "^N225"
+YAHOO_CHART = "https://query1.finance.yahoo.com/v8/finance/chart/%s?range=6mo&interval=1d"
+
+
+def _yahoo_bars(symbol: str) -> list:
+    req = urllib.request.Request(YAHOO_CHART % urllib.request.quote(symbol), headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=TIMEOUT_SECONDS) as resp:
+        doc = json.loads(resp.read(MAX_BYTES).decode("utf-8"))
+    r = doc["chart"]["result"][0]
+    q = r["indicators"]["quote"][0]
+    return [(c, v or 0) for c, v in zip(q["close"], q["volume"]) if isinstance(c, (int, float))]
+
+
+def price_volume_hint(bars: list, index_bars: list | None = None):
+    """bars: [(close, volume), ...] oldest first. Returns the numbers and hints, or None when too short."""
+    if len(bars) < 30:
+        return None
+    closes = [c for c, _ in bars]
+    vols = [v for _, v in bars]
+    last = closes[-1]
+    ret = lambda n, xs=closes: round((xs[-1] / xs[-1 - n] - 1) * 100, 1) if len(xs) > n and xs[-1 - n] else None
+    base = vols[-65:-5] if len(vols) >= 35 else vols[:-5]
+    base_avg = sum(base) / len(base) if base else 0
+    vol_ratio = round(sum(vols[-5:]) / 5 / base_avg, 2) if base_avg else None
+    ma25 = sum(closes[-25:]) / 25
+    # share of the last 10 days' volume on up days, among up and down days (unchanged days left out)
+    up_vol = sum(v for i, v in enumerate(vols[-10:], len(vols) - 10) if closes[i] > closes[i - 1])
+    down_vol = sum(v for i, v in enumerate(vols[-10:], len(vols) - 10) if closes[i] < closes[i - 1])
+    up_share = round(up_vol / (up_vol + down_vol), 2) if up_vol + down_vol else None
+    ret5, ret20 = ret(5), ret(20)
+    idx20 = ret(20, [c for c, _ in index_bars]) if index_bars and len(index_bars) > 20 else None
+    rel20 = round(ret20 - idx20, 1) if ret20 is not None and idx20 is not None else None
+    high = max(closes[-120:])
+    hints = []
+    if vol_ratio is not None and vol_ratio >= 1.5:
+        if ret5 is not None and ret5 >= 3:
+            hints.append(("warn", "出来高を伴って上昇（期待で買われている。織り込みに注意）"))
+        elif ret5 is not None and ret5 <= -3:
+            hints.append(("bad", "出来高を伴って下落（売られている。悪い話の先回りかも）"))
+        else:
+            hints.append(("warn", "値段は動かず出来高だけ増加（誰かが先回りしているかも。要注目）"))
+    elif vol_ratio is not None and vol_ratio <= 0.7 and ret20 is not None and ret20 <= -5:
+        hints.append(("good", "出来高が細りながら下落（売り枯れ気味）"))
+    if up_share is not None and up_share >= 0.65:
+        hints.append(("good", "上げた日の出来高が多い（買い集めの気配）"))
+    elif up_share is not None and up_share <= 0.35:
+        hints.append(("bad", "下げた日の出来高が多い（売り抜けの気配）"))
+    if rel20 is not None and rel20 >= 8:
+        hints.append(("warn", "日経平均より強い（20日で%+.1f%%）" % rel20))
+    elif rel20 is not None and rel20 <= -8:
+        hints.append(("bad", "日経平均より弱い（20日で%+.1f%%）" % rel20))
+    if not hints:
+        hints.append(("", "目立つ動きなし"))
+    return {"close": round(last, 1), "ret5": ret5, "ret20": ret20, "rel20": rel20, "vol_ratio": vol_ratio,
+            "up_vol_share": up_share, "from_ma25": round((last / ma25 - 1) * 100, 1),
+            "from_high": round((last / high - 1) * 100, 1), "hints": [{"tone": t, "text": x} for t, x in hints]}
+
+
+def attach_hints(view: dict, cache_dir: Path, now: datetime, bars_fetch=_yahoo_bars) -> None:
+    """Adds card["pv"] to each 3号 card from the cache, refreshing codes older than HINT_REFRESH_HOURS."""
+    cards = [c for b in view.get("bots", []) for c in (b.get("preview_cards") or [])]
+    if not cards:
+        return
+    path = Path(cache_dir) / HINT_CACHE
+    try:
+        cache = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        cache = {}
+    fresh = lambda e: isinstance(e, dict) and (now - datetime.fromisoformat(e.get("at", "2000-01-01T00:00:00+00:00"))).total_seconds() < HINT_REFRESH_HOURS * 3600
+    index_bars = None
+    for c in cards:
+        code = c["code"]
+        if not fresh(cache.get(code)):
+            try:
+                if index_bars is None:
+                    index_bars = bars_fetch(HINT_INDEX)
+                cache[code] = {"at": now.isoformat(), "hint": price_volume_hint(bars_fetch(code + ".T"), index_bars)}
+            except Exception as exc:  # keep the previous numbers, if any
+                cache.setdefault(code, {"at": now.isoformat(), "hint": None, "error": type(exc).__name__})
+        c["pv"] = (cache.get(code) or {}).get("hint")
+        c["pv_at"] = (cache.get(code) or {}).get("at")
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp, path)
+
+
 def grok_bots_view(root: Path) -> dict:
     bots, latest = [], None
     for folder, label in GROK_BOTS:
@@ -417,7 +509,7 @@ def _download(url: str) -> bytes:
     return data
 
 
-def sync(target: Path, *, fetch=_download, now: datetime | None = None, grok_root: Path | None = None) -> dict:
+def sync(target: Path, *, fetch=_download, now: datetime | None = None, grok_root: Path | None = None, bars_fetch=None) -> dict:
     """Refresh every feed file it can; returns a summary (also written as META_FILE)."""
     now = now or datetime.now(timezone.utc)
     target = Path(target)
@@ -511,6 +603,10 @@ def sync(target: Path, *, fetch=_download, now: datetime | None = None, grok_roo
         if not root.is_dir():
             raise ValueError("NO_GROK_FOLDER")
         view = grok_bots_view(root)
+        try:
+            attach_hints(view, target, now, bars_fetch if bars_fetch is not None else _yahoo_bars)
+        except Exception:
+            pass
         fresh = freshness(GROK_FILE, view, now) if view["updated_at"] else {"stale": True, "reason": "NO_ANSWER"}
         temp = target / (GROK_FILE + ".tmp")
         temp.write_text(json.dumps(view, ensure_ascii=False), encoding="utf-8")
