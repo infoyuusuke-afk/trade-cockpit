@@ -130,5 +130,29 @@ class GrokOnEarningsCalendar(unittest.TestCase):
         self.assertNotIn("grok", js.lower())          # the pinned calendar script is unchanged
 
 
+class Grok3Cards(unittest.TestCase):
+    def test_score_and_change_from_previous(self):
+        # OWNER 2026-10-24 「カードタイプで点数バロメーター付きで日々の上下が一目でわかるようにして」
+        def answer(day, mood, x, broker):
+            return chr(10).join(["GROK3_PREVIEW_V1", "実行日時：2026-10-%s 17:30" % day, "---", "銘柄：キオクシアHD（285A）／5",
+                              "決算予定：2026-10-30 18:45（引け後）", "証券会社：" + broker, "Xの空気：" + x,
+                              "需給と織り込み：20日 -3%", "事前の空気：" + mood, "END"])
+        with tempfile.TemporaryDirectory() as d:
+            folder = Path(d)
+            first = folder / "a.txt"
+            first.write_text(answer("26", "警戒（悲観）", "弱気（売り）", "見当たらず"), encoding="utf-8")
+            os.utime(first, (time.time() - 3600, time.time() - 3600))
+            (folder / "b.txt").write_text(answer("27", "中立（並み）", "強気（買い）", "目標株価を引き上げ"), encoding="utf-8")
+            cards = feed.grok3_cards(folder)
+        self.assertEqual(len(cards), 1)
+        c = cards[0]
+        self.assertEqual((c["code"], c["score"], c["prev_score"], c["prev_day"], c["history"]), ("285A", 2, -3, "10/26", [-3, 2]))
+        self.assertIn("g3-bar", HTML)
+        self.assertIn("期待の強さ：事前の空気（期待先行+2／中立0／警戒-2）", HTML)
+
+    def test_no_score_without_mood(self):
+        self.assertIsNone(feed.grok3_score({"事前の空気": "材料不足（カバーなし）"}))
+
+
 if __name__ == "__main__":
     unittest.main()

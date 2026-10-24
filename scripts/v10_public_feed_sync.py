@@ -185,6 +185,64 @@ def grok_tags(bots: list) -> dict:
     return tags
 
 
+# OWNER 2026-10-24 「文字なのか　カードタイプで点数バロメーター付きで日々の上下が一目でわかるようにして」:
+# 3号's answers as one card per stock with a 期待の強さ score (-4..+4) and its change from the previous answer.
+# The score only summarises 3号's own words (a record of market mood, not a buy/sell signal):
+# 事前の空気 期待先行 +2 / 中立 0 / 警戒 -2 (材料不足: no score), Xの空気 強気 +1 / 弱気 -1,
+# 証券会社 目標株価の引き上げ +1 / 引き下げ -1.
+GROK3_FIELDS = ("銘柄", "決算予定", "市場予想", "証券会社", "Xの空気", "需給と織り込み", "事前の空気")
+_MOOD = {"期待先行": 2, "中立": 0, "警戒": -2}
+
+
+def grok3_blocks(text: str) -> list:
+    blocks, cur = [], None
+    for line in text.splitlines():
+        key, sep, value = line.strip().partition("：")
+        if not sep or key not in GROK3_FIELDS:
+            continue
+        if key == "銘柄":
+            cur = {}
+            blocks.append(cur)
+        if cur is not None and key not in cur:
+            cur[key] = value.strip()
+    return [b for b in blocks if "事前の空気" in b]
+
+
+def grok3_score(b: dict):
+    mood = b.get("事前の空気", "").split("（")[0].strip()
+    if mood not in _MOOD:
+        return None
+    x = b.get("Xの空気", "")[:6]
+    broker = b.get("証券会社", "")
+    return (_MOOD[mood] + (1 if x.startswith("強気") else -1 if x.startswith("弱気") else 0)
+            + (1 if "引き上げ" in broker else 0) - (1 if "引き下げ" in broker else 0))
+
+
+def grok3_cards(folder: Path, max_files: int = 30) -> list:
+    files = sorted(Path(folder).glob("*.txt"), key=lambda p: p.stat().st_mtime)[-max_files:] if Path(folder).is_dir() else []
+    history = {}
+    for path in files:
+        text = path.read_text(encoding="utf-8-sig", errors="replace")
+        m = _GROK_RUN.search(text)
+        day = "%s/%s" % (m.group(2), m.group(3)) if m else ""
+        for b in grok3_blocks(text):
+            cm = _GROK_CODE.search(b.get("銘柄", ""))
+            if cm:
+                history.setdefault(cm.group(1), []).append((day, b, grok3_score(b)))
+    cards = []
+    for code, rows in history.items():
+        day, b, score = rows[-1]
+        prev = next(((d, s) for d, _, s in reversed(rows[:-1]) if s is not None), None)
+        cards.append({"code": code, "name": b.get("銘柄", "").split("／")[0].strip()[:40], "day": day,
+                      "earnings": b.get("決算予定", "")[:60], "mood": b.get("事前の空気", "")[:120],
+                      "x": b.get("Xの空気", "")[:120], "supply": b.get("需給と織り込み", "")[:120],
+                      "consensus": b.get("市場予想", "")[:160], "broker": b.get("証券会社", "")[:160],
+                      "score": score, "prev_score": prev[1] if prev else None, "prev_day": prev[0] if prev else None,
+                      "history": [s for _, _, s in rows if s is not None][-10:]})
+    cards.sort(key=lambda c: c["earnings"])
+    return cards[:20]
+
+
 def grok_bots_view(root: Path) -> dict:
     bots, latest = [], None
     for folder, label in GROK_BOTS:
@@ -196,7 +254,8 @@ def grok_bots_view(root: Path) -> dict:
         saved = datetime.fromtimestamp(path.stat().st_mtime, timezone(timedelta(hours=9)))
         text = path.read_text(encoding="utf-8-sig", errors="replace")[:GROK_TEXT_MAX]
         bots.append({"bot": folder, "label": label, "file": path.name, "saved_at": saved.isoformat(),
-                     "text": text, "cards": grok_cards(text) if folder == "Grok2号" else []})
+                     "text": text, "cards": grok_cards(text) if folder == "Grok2号" else [],
+                     "preview_cards": grok3_cards(Path(root) / folder) if folder == "Grok3号" else []})
         latest = saved if latest is None or saved > latest else latest
     return {"updated_at": latest.isoformat() if latest else "", "bots": bots, "tags": grok_tags(bots),
             "real_submit_allowed": False, "trade_instruction": False}
