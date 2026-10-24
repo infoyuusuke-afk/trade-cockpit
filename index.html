@@ -211,6 +211,9 @@ document.addEventListener("DOMContentLoaded",()=>{
      document.getElementById("brain-runtime-grid").innerHTML='<div class="rotation-box"><b>BRAIN</b><strong>OFFLINE</strong></div>';
      const lamp=document.getElementById("brain-lamp");
      if(lamp){lamp.className="brain-lamp red";lamp.innerHTML='<span class="brain-lamp-dot"></span><div><b>止まっています</b><small>ブレインの状態が読めません（コクピットが止まっている可能性）</small></div>';}
+     // OWNER 2026-10-24 「トレード中タブのブレインのランプを、状態が読めない時は赤にして」
+     const tl=document.getElementById("trade-brain-lamp");
+     if(tl&&typeof freshLamp==="function")tl.innerHTML=freshLamp("red","ブレイン：止まっています","ブレインの状態が読めません（コクピットが止まっている可能性）");
    });
  };
  renderBrain();

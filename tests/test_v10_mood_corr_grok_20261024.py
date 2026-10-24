@@ -246,6 +246,12 @@ class TradeWatchView(unittest.TestCase):
         self.assertIn('const pane = document.getElementById("trade-watch-orders");', HTML)
         self.assertIn("setInterval(window.loadGrokBots, 120000)", HTML)
 
+    def test_trade_brain_lamp_red_when_unreadable(self):
+        # OWNER 2026-10-24 「トレード中タブのブレインのランプを、状態が読めない時は赤にして」
+        failed = HTML[HTML.index("}).catch(()=>{\n     document.getElementById(\"brain-runtime-grid\")".replace("\n", "\r\n" if "\r\n" in HTML else "\n")):]
+        failed = failed[:failed.index("});")]
+        self.assertIn('tl.innerHTML=freshLamp("red","ブレイン：止まっています"', failed)
+
 
 if __name__ == "__main__":
     unittest.main()
