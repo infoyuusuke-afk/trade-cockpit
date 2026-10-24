@@ -208,14 +208,76 @@ def grok3_blocks(text: str) -> list:
     return [b for b in blocks if "事前の空気" in b]
 
 
-def grok3_score(b: dict):
+_TARGET_MOVE = re.compile(r"([0-9][0-9,]*)円?\s*→\s*([0-9][0-9,]*)")
+
+
+def grok3_broker_points(text: str) -> int:
+    """OWNER 2026-10-24 「証券会社の点数」: +1 when the target-price changes 3号 lists are mostly raises
+    (引き上げ, or A→B with B > A), -1 when mostly cuts, 0 for none / mixed / 見当たらず (an older change
+    quoted after 見当たらず is not counted)."""
+    text = str(text or "")
+    if "見当たらず" in text[:24]:
+        return 0
+    up = text.count("引き上げ")
+    down = text.count("引き下げ")
+    for a, b in _TARGET_MOVE.findall(text):
+        a, b = int(a.replace(",", "")), int(b.replace(",", ""))
+        up, down = up + (b > a), down + (b < a)
+    return (up > down) - (down > up)
+
+
+def grok3_points(b: dict):
     mood = b.get("事前の空気", "").split("（")[0].strip()
     if mood not in _MOOD:
         return None
     x = b.get("Xの空気", "")[:6]
-    broker = b.get("証券会社", "")
-    return (_MOOD[mood] + (1 if x.startswith("強気") else -1 if x.startswith("弱気") else 0)
-            + (1 if "引き上げ" in broker else 0) - (1 if "引き下げ" in broker else 0))
+    return {"mood": _MOOD[mood], "x": 1 if x.startswith("強気") else -1 if x.startswith("弱気") else 0,
+            "broker": grok3_broker_points(b.get("証券会社", ""))}
+
+
+def grok3_score(b: dict):
+    p = grok3_points(b)
+    return None if p is None else p["mood"] + p["x"] + p["broker"]
+
+
+_CHECK_KEY = "決算のあとの答え合わせ"
+_VERDICTS = ("当たり", "外れ", "判定不能")
+
+
+def grok3_checks(folder: Path, max_files: int = 60) -> list:
+    """OWNER 2026-10-24 「答え合わせ（確認日ごと）」: 3号's after-results checks from every saved answer,
+    grouped by the answer's run day (newest first) with 当たり / 外れ / 判定不能 counts. One stock counts
+    once per day (a re-saved answer of the same day replaces the earlier line)."""
+    files = sorted(Path(folder).glob("*.txt"), key=lambda p: p.stat().st_mtime)[-max_files:] if Path(folder).is_dir() else []
+    days = {}
+    for path in files:
+        text = path.read_text(encoding="utf-8-sig", errors="replace")
+        m = _GROK_RUN.search(text)
+        if not m:
+            continue
+        day = "%s-%s-%s" % m.groups()
+        for line in text.splitlines():
+            key, sep, value = line.strip().partition("：")
+            if key != _CHECK_KEY or not sep:
+                continue
+            for part in value.split("；"):
+                cm = _GROK_CODE.search(part)
+                if not cm:
+                    continue
+                fields = [f.strip() for f in part.split("／")]
+                verdict = next((w for w in _VERDICTS if w in part.split("→")[-1]), "判定不能")
+                pick = lambda head: next((f[len(head):].strip() for f in fields if f.startswith(head)), "")
+                days.setdefault(day, {})[cm.group(1)] = {
+                    "code": cm.group(1), "name": fields[0][:40], "result": pick("結果")[:20],
+                    "gap": pick("翌日の窓")[:20], "mood": pick("事前の空気").split("→")[0].strip()[:20],
+                    "verdict": verdict}
+    out = []
+    for day in sorted(days, reverse=True)[:20]:
+        items = list(days[day].values())
+        out.append({"day": day[5:].replace("-", "/"), "date": day, "items": items,
+                    "hit": sum(i["verdict"] == "当たり" for i in items), "miss": sum(i["verdict"] == "外れ" for i in items),
+                    "unknown": sum(i["verdict"] == "判定不能" for i in items)})
+    return out
 
 
 def grok3_cards(folder: Path, max_files: int = 30) -> list:
@@ -228,17 +290,17 @@ def grok3_cards(folder: Path, max_files: int = 30) -> list:
         for b in grok3_blocks(text):
             cm = _GROK_CODE.search(b.get("銘柄", ""))
             if cm:
-                history.setdefault(cm.group(1), []).append((day, b, grok3_score(b)))
+                history.setdefault(cm.group(1), []).append((day, b, grok3_score(b), grok3_points(b)))
     cards = []
     for code, rows in history.items():
-        day, b, score = rows[-1]
-        prev = next(((d, s) for d, _, s in reversed(rows[:-1]) if s is not None), None)
+        day, b, score, points = rows[-1]
+        prev = next(((d, s) for d, _, s, _ in reversed(rows[:-1]) if s is not None), None)
         cards.append({"code": code, "name": b.get("銘柄", "").split("／")[0].strip()[:40], "day": day,
                       "earnings": b.get("決算予定", "")[:60], "mood": b.get("事前の空気", "")[:120],
                       "x": b.get("Xの空気", "")[:120], "supply": b.get("需給と織り込み", "")[:120],
                       "consensus": b.get("市場予想", "")[:160], "broker": b.get("証券会社", "")[:160],
-                      "score": score, "prev_score": prev[1] if prev else None, "prev_day": prev[0] if prev else None,
-                      "history": [s for _, _, s in rows if s is not None][-10:]})
+                      "score": score, "points": points, "prev_score": prev[1] if prev else None, "prev_day": prev[0] if prev else None,
+                      "history": [s for _, _, s, _ in rows if s is not None][-10:]})
     cards.sort(key=lambda c: c["earnings"])
     return cards[:20]
 
@@ -255,7 +317,8 @@ def grok_bots_view(root: Path) -> dict:
         text = path.read_text(encoding="utf-8-sig", errors="replace")[:GROK_TEXT_MAX]
         bots.append({"bot": folder, "label": label, "file": path.name, "saved_at": saved.isoformat(),
                      "text": text, "cards": grok_cards(text) if folder == "Grok2号" else [],
-                     "preview_cards": grok3_cards(Path(root) / folder) if folder == "Grok3号" else []})
+                     "preview_cards": grok3_cards(Path(root) / folder) if folder == "Grok3号" else [],
+                     "checks": grok3_checks(Path(root) / folder) if folder == "Grok3号" else []})
         latest = saved if latest is None or saved > latest else latest
     return {"updated_at": latest.isoformat() if latest else "", "bots": bots, "tags": grok_tags(bots),
             "real_submit_allowed": False, "trade_instruction": False}
@@ -387,6 +450,16 @@ def sync(target: Path, *, fetch=_download, now: datetime | None = None, grok_roo
             raise ValueError("TOO_LARGE")
         data_doc = json.loads(raw.decode("utf-8-sig"))
         summary = summarize(data_doc)
+        # OWNER 2026-10-24 「完全照合の日付」: the header line showed the pinned 10/20 copy. Only the
+        # counts, status and time of main's live_focus.json are copied (display only; the voice
+        # switch stays on the local file, audit 6349440798).
+        try:
+            lf = json.loads(fetch(BASE_URL + "live_focus.json").decode("utf-8-sig"))
+            if isinstance(lf, dict) and isinstance(lf.get("verified_count"), int) and isinstance(lf.get("expected_count"), int):
+                summary["live_check"] = {"verified_count": lf["verified_count"], "expected_count": lf["expected_count"],
+                                         "status": str(lf.get("status") or "")[:20], "updated_at": str(lf.get("updated_at") or "")[:30]}
+        except Exception:
+            pass
         fresh = freshness("data.json", data_doc, now)
         summary["freshness"] = fresh
         if fresh["stale"]:   # a stale day is not judged

@@ -567,9 +567,17 @@ document.addEventListener("DOMContentLoaded",()=>{
    const b=document.querySelector('.cockpit-tab[data-tab="events"]');
    if(d.today_level!=="通常"){b.classList.add("event-alert");b.textContent="⚠ 注意";}
  }).catch(()=>{});
- fetch("signals.json?t="+Date.now()).then(r=>r.json()).then(d=>{
+ // OWNER 2026-10-24 「ランプの赤を直して」: the badge read the pinned signals.json (10/19) and stayed red.
+ // It now reads the public feed meta: red only when the feed stopped syncing (30 min) or a file is old.
+ fetch("public_feed_meta.json?t="+Date.now()).then(r=>r.json()).then(m=>{
    const badge=document.getElementById("cockpit-status"); if(!badge)return;
-   const result=cockpitSnapshotHealth(d?.updated_at,Date.now());
+   const files=Object.values(m?.files||{}).filter(f=>f&&f.ok&&f.source_at);
+   const synced=Date.parse(m?.fetched_at||""), old=files.filter(f=>f.stale).length;
+   const newest=files.map(f=>Date.parse(f.source_at)).filter(Number.isFinite).sort((a,b)=>b-a)[0];
+   const ok=Number.isFinite(synced)&&Date.now()-synced<30*60000&&files.length&&!old;
+   const stamp=newest?new Date(newest+324e5).toISOString().slice(5,16).replace("T"," "):"不明";
+   const result=ok?{cls:"status-warn",title:"公開分析は最新（"+stamp+"）・LIVE未検証"}:
+     {cls:"status-error",title:(old?"古い公開分析 "+old+"件":"公開分析の取り込みが止まっています")+"・LIVE未検証"};
    badge.classList.remove("status-ok","status-warn","status-error");
    badge.classList.add(result.cls);
    badge.title=result.title;
@@ -699,7 +707,15 @@ document.addEventListener("DOMContentLoaded",()=>{
    window.cockpitLiveSpeechEnabled=d.speech_enabled===true;
    window.cockpitVoiceSetLiveEnabled?.(d.speech_enabled===true);
    const verifiedEl=document.getElementById("unified-mode-verified");
-   if(verifiedEl)verifiedEl.textContent="完全照合 "+(d.verified_count||0)+" / "+(d.expected_count||0)+"銘柄（"+(d.updated_at||"更新時刻不明")+"）";
+   // OWNER 2026-10-24 「完全照合の日付」: the public check's counts and time (market_summary.live_check)
+   if(verifiedEl)fetch("market_summary.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.json()).catch(()=>null).then(s=>{
+     const c=s&&s.live_check&&Number.isInteger(s.live_check.verified_count)?s.live_check:d;
+     const at=Date.parse(String(c.updated_at||"").replace(" JST","+09:00").replace(" ","T"));
+     const old=!Number.isFinite(at)||Date.now()-at>24*3600000;
+     verifiedEl.textContent="完全照合 "+(c.verified_count||0)+" / "+(c.expected_count||0)+"銘柄（"+(Number.isFinite(at)?new Date(at+324e5).toISOString().slice(5,16).replace("T"," ").replace("-","/"):"時刻不明")+
+       (c.status?"・"+c.status:"")+(old?"・古い":"")+"）";
+     verifiedEl.classList.toggle("down",old);
+   });
    document.dispatchEvent(new CustomEvent("liveFocusUpdate",{detail:d}));
  }).catch(()=>{
    window.cockpitLiveSpeechEnabled=false;
@@ -1525,10 +1541,16 @@ window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.
     const g3 = (b.preview_cards || []).map(c => { const mood = String(c.mood || "").split("（")[0];
       return "<article class='cc-card cc-card--" + (c.score > 0 ? "long" : c.score < 0 ? "short" : "wait") + "'><div class='cc-head'><div class='cc-identity'><span class='cc-company'>" + e(c.name) +
       "</span></div><span class='cc-badge'>" + e(mood || "—") + "</span></div><div class='g3-score'><b>" + (c.score == null ? "—" : (c.score > 0 ? "+" : "") + c.score) + "</b>" + delta(c) + "</div>" + bar(c.score) +
+      (c.points ? "<div class='g3-points'>" + [["空気", c.points.mood], ["X", c.points.x], ["証券会社", c.points.broker]].map(([k, v]) => "<span class='" + (v > 0 ? "up" : v < 0 ? "down" : "") + "'>" + k + " " + (v > 0 ? "+" : "") + v + "</span>").join("") + "</div>" : "") +
       "<div class='cc-metrics-grid'><span>決算<b>" + e(String(c.earnings).split("／")[0]) + "</b></span><span>需給<b>" + e(c.supply) + "</b></span><span>X<b>" + e(String(c.x).split("（")[0]) + "</b></span><span>答え<b>" + e(c.day) + "</b></span></div>" +
-      "<div class='cc-foot'>" + e(String(c.mood || "").replace(/^[^（]*（?/, "").replace(/）$/, "")) + "</div></article>"; }).join("");
+      "<div class='cc-foot'>" + e(String(c.mood || "").replace(/^[^（]*（?/, "").replace(/）$/, "")) + "</div><small class='g3-broker'>証券会社：" + e(String(c.broker || "—").slice(0, 90)) + "</small></article>"; }).join("");
+    // OWNER 2026-10-24 「答え合わせ（確認日ごと）」
+    const checks = b.bot === "Grok3号" ? "<div class='g3-checks'><h3>答え合わせ（確認日ごと）</h3>" + ((b.checks || []).length ? b.checks.map(k =>
+      "<div class='g3-check-day'><b>" + e(k.day) + " 確認</b><small>当たり " + k.hit + "・外れ " + k.miss + "・判定不能 " + k.unknown + "</small><ul>" +
+      k.items.map(i => "<li class='" + (i.verdict === "当たり" ? "up" : i.verdict === "外れ" ? "down" : "") + "'>" + e(i.name) + "：結果 " + e(i.result || "—") + (i.gap ? "・翌日の窓 " + e(i.gap) : "") + "・事前 " + e(i.mood || "—") + " → <b>" + e(i.verdict) + "</b></li>").join("") + "</ul></div>").join("")
+      : "<div class='focus-empty'>まだ答え合わせはありません（決算が出た銘柄から、3号が次の答えで書きます）</div>") + "</div>" : "";
     return "<div class='rotation-box' style='grid-column:1/-1'>" + head + (cards ? "<div class='scalp-strip'>" + cards + "</div>" : "") +
-      (g3 ? "<div class='g3-note'>期待の強さ：事前の空気（期待先行+2／中立0／警戒-2）＋Xの空気（強気+1／弱気-1）＋目標株価（引き上げ+1／引き下げ-1）。市場の空気の記録で、売買のサインではありません。＋が大きいほど期待が強く、織り込み済みの注意も要ります。</div><div class='scalp-strip'>" + g3 + "</div>" : "") +
+      (g3 ? "<div class='g3-note'>期待の強さ：事前の空気（期待先行+2／中立0／警戒-2）＋Xの空気（強気+1／弱気-1）＋証券会社（目標株価の引き上げ+1／引き下げ-1／なし・混在0）。市場の空気の記録で、売買のサインではありません。＋が大きいほど期待が強く、織り込み済みの注意も要ります。</div><div class='scalp-strip'>" + g3 + "</div>" : "") + checks +
       "<details><summary>全文を見る</summary><pre style='white-space:pre-wrap;max-height:420px;overflow:auto'>" + e(b.text) + "</pre></details></div>";
   }).join("");
 }).catch(() => {});
@@ -2295,6 +2317,13 @@ html body #earnings-calendar-panel .grok-tags{display:flex;flex-wrap:wrap;gap:6p
 .g3-bar i{position:absolute;top:-4px;width:4px;height:16px;margin-left:-2px;border-radius:2px;background:#fff;box-shadow:0 0 6px #fff}
 .g3-bar em{position:absolute;top:10px;font-style:normal;font-size:10px;color:#8b9299}.g3-bar em:first-of-type{left:0}.g3-bar em:last-of-type{right:0}
 .g3-bar.none{background:#26272b;height:auto;padding:4px 8px;margin:6px 0 8px}.g3-bar.none span{font-size:11px;color:#8b9299}
+.g3-points{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}.g3-points span{font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid #303033;color:#c9ccd1}
+.g3-points span.up{border-color:#1f5444;color:#35e2ae}.g3-points span.down{border-color:#6f2730;color:#ff8a92}
+.g3-broker{display:block;margin-top:6px;font-size:11px;color:#8b9299;line-height:1.5}
+.g3-checks{margin-top:14px}.g3-checks h3{font-size:15px;margin:0 0 8px;color:#e7e9eb}.g3-check-day{padding:8px 10px;border:1px solid #272a30;border-radius:8px;margin-bottom:8px}
+.g3-check-day small{margin-left:10px;color:#9ba3af}.g3-check-day ul{margin:6px 0 0 18px;padding:0;font-size:12px;color:#c9ccd1;line-height:1.7}
+.g3-check-day li.up b{color:#35e2ae}.g3-check-day li.down b{color:#ff8a92}
+#unified-mode-verified.down{color:#f7c66b}
 html body #earnings-calendar-panel .grok-tag{font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid #303033;background:#141518;color:#c9ccd1}
 html body #earnings-calendar-panel .grok-tag.good{border-color:#1f5444;color:#35e2ae}html body #earnings-calendar-panel .grok-tag.bad{border-color:#6f2730;color:#ff8a92}html body #earnings-calendar-panel .grok-tag.warn{border-color:#6b5426;color:#f7c66b}
 /* OWNER 2026-10-24 「タブの箱を外す」: the per-tab result / control / AI SHADOW boxes are shown on CONTROL only */

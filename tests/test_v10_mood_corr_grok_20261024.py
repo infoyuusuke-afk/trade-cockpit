@@ -154,6 +154,58 @@ class Grok3Cards(unittest.TestCase):
     def test_no_score_without_mood(self):
         self.assertIsNone(feed.grok3_score({"事前の空気": "材料不足（カバーなし）"}))
 
+    def test_broker_points(self):
+        # OWNER 2026-10-24 「証券会社の点数」
+        self.assertEqual(feed.grok3_broker_points("2026-10-19 GSが買い継続・目標13,350→14,900円"), 1)
+        self.assertEqual(feed.grok3_broker_points("目標株価の引き下げが続いている（UBS 7,200→6,700円、7,600→7,300円）"), -1)
+        self.assertEqual(feed.grok3_broker_points("目標を13,100円に引き上げ"), 1)
+        self.assertEqual(feed.grok3_broker_points("10月の変更は見当たらず（直近は9,400→8,900円）"), 0)
+        self.assertEqual(feed.grok3_broker_points("A 1,000→1,200円、B 2,000→1,800円"), 0)
+        self.assertEqual(feed.grok3_points({"事前の空気": "警戒（悲観）", "Xの空気": "強気", "証券会社": "目標を3,200→3,600円"}),
+                         {"mood": -2, "x": 1, "broker": 1})
+        self.assertIn("[\"証券会社\", c.points.broker]", HTML)
+
+    def test_checks_grouped_by_check_day(self):
+        # OWNER 2026-10-24 「答え合わせ（確認日ごと）」
+        def answer(day, *checks):
+            return chr(10).join(["GROK3_PREVIEW_V1", "実行日時：2026-10-%s 17:30" % day, "---"] +
+                                ["決算のあとの答え合わせ：" + c for c in checks] + ["END"])
+        with tempfile.TemporaryDirectory() as d:
+            folder = Path(d)
+            first = folder / "a.txt"
+            first.write_text(answer("28", "アドバンテスト（6857）／結果 上振れ／翌日の窓 +3.1%／事前の空気 警戒 → 外れ"), encoding="utf-8")
+            os.utime(first, (time.time() - 3600, time.time() - 3600))
+            (folder / "b.txt").write_text(answer("31", "キオクシアHD（285A）／結果 上振れ／翌日の窓 +5.0%／事前の空気 期待先行 → 当たり；中外製薬（4519）／結果 同じ／事前の空気 中立 → 判定不能",
+                                                 "なし"), encoding="utf-8")
+            checks = feed.grok3_checks(folder)
+        self.assertEqual([(k["day"], k["hit"], k["miss"], k["unknown"]) for k in checks], [("10/31", 1, 0, 1), ("10/28", 0, 1, 0)])
+        self.assertEqual(checks[0]["items"][0], {"code": "285A", "name": "キオクシアHD（285A）", "result": "上振れ", "gap": "+5.0%",
+                                                 "mood": "期待先行", "verdict": "当たり"})
+        self.assertIn("答え合わせ（確認日ごと）", HTML)
+
+
+class HeaderLamps(unittest.TestCase):
+    def test_badge_and_verified_line(self):
+        # OWNER 2026-10-24 「ランプの赤を直して」「完全照合の日付」
+        self.assertIn('fetch("public_feed_meta.json?t="+Date.now()).then(r=>r.json()).then(m=>{', HTML)
+        self.assertNotIn('fetch("signals.json?t="+Date.now()).then(r=>r.json()).then(d=>{\n   const badge', HTML.replace("\r\n", "\n"))
+        self.assertIn("s.live_check", HTML)
+
+    def test_live_check_copied_into_summary(self):
+        def fetch(url):
+            name = url.rsplit("/", 1)[1]
+            if name == "live_focus.json":
+                return json.dumps({"verified_count": 7, "expected_count": 10, "status": "稼働", "updated_at": "2026-10-26 10:00:00 JST",
+                                   "speech_enabled": True, "rows": [{"x": 1}]}).encode()
+            if name == "data.json":
+                return json.dumps({"updated_at": "2026-10-26 09:55:00 JST", "indices": {}}).encode()
+            raise OSError("offline")
+        with tempfile.TemporaryDirectory() as d:
+            feed.sync(Path(d), fetch=fetch, now=datetime(2026, 10, 26, 1, 0, tzinfo=timezone.utc), grok_root=Path(d) / "none")
+            s = json.loads((Path(d) / feed.SUMMARY_FILE).read_text(encoding="utf-8"))
+            self.assertFalse((Path(d) / "live_focus.json").exists())
+        self.assertEqual(s["live_check"], {"verified_count": 7, "expected_count": 10, "status": "稼働", "updated_at": "2026-10-26 10:00:00 JST"})
+
 
 class TradeWatchView(unittest.TestCase):
     def test_first_tab_shows_what_to_watch(self):
