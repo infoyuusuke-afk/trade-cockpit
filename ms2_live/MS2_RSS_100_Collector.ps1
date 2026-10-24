@@ -904,25 +904,60 @@ function Hide-UntrustedLivePrices($rows) {
 }
 
 function Write-AtomicUtf8([string]$path, [string]$content) {
-    $tmp = "$path.tmp"
+    # The single stable "$path.tmp" collided after crash/restart or overlapping
+    # attempts. Use a private temporary file per call, in the same directory.
+    $identity = [Guid]::NewGuid().ToString('N')
+    $tmp = "$path.$identity.tmp"
+    $backup = "$path.$identity.bak"
     [IO.File]::WriteAllText($tmp, $content, [Text.UTF8Encoding]::new($false))
-    # live_ms2.json 等は127.0.0.1:28580経由で他プロセスから同時に読まれているため、
-    # Move-Item -Force が「Cannot create a file when that file already exists」で
-    # 失敗することがある（宛先ファイルが一瞬読み取りロックされているため）。
-    # 数回だけ短い間隔でリトライする。既存の他ファイル（recordsのCSV等）には触れない。
     $maxAttempts = 5
-    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-        try {
-            Move-Item -Force $tmp $path -ErrorAction Stop
-            return
-        } catch {
-            if ($attempt -ge $maxAttempts) {
-                Write-Host ("Write-AtomicUtf8: " + $path + " への書き込みに" + $maxAttempts + "回失敗: " + $_.Exception.Message) -ForegroundColor Yellow
-                if (Test-Path $tmp) { Remove-Item -Force $tmp -ErrorAction SilentlyContinue }
-                throw
+    try {
+        for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            try {
+                if ([IO.File]::Exists($path)) {
+                    # Atomic replacement of an existing JSON/CSV file. Readers
+                    # see either complete previous or complete new bytes.
+                    # Windows PowerShell 5.1/.NET Framework requires a legal
+                    # backup path; null may raise "path is not of a legal form".
+                    [IO.File]::Replace($tmp, $path, $backup)
+                } else {
+                    # Initial publication; Move is atomic within this directory.
+                    [IO.File]::Move($tmp, $path)
+                }
+                return
+            } catch {
+                if ($attempt -ge $maxAttempts) {
+                    # Do not overwrite/remove the previous good publication.
+                    Write-Host ("Write-AtomicUtf8: publish failed after " + $maxAttempts + " attempts: " + $_.Exception.GetType().Name) -ForegroundColor Yellow
+                    throw
+                }
+                Start-Sleep -Milliseconds 150
             }
-            Start-Sleep -Milliseconds 150
         }
+    } finally {
+        # Remove only this invocation's staging file. Older crash leftovers
+        # are handled by independent housekeeping after review.
+        if ([IO.File]::Exists($tmp)) {
+            try { [IO.File]::Delete($tmp) } catch { }
+        }
+        if ([IO.File]::Exists($backup)) {
+            try { [IO.File]::Delete($backup) } catch { }
+        }
+    }
+}
+
+
+function Publish-OptionalCockpitMirror([string]$mirrorPath, [string]$payload) {
+    # The primary Collector /live_ms2.json publication is authoritative.
+    # The optional dashboard copy must never terminate market-data capture.
+    # Its consumers must independently reject stale snapshots by timestamp.
+    try {
+        Write-AtomicUtf8 $mirrorPath $payload
+        return $true
+    } catch {
+        # Public-safe operational reason, no private path or raw market bytes.
+        Write-Host '[COCKPIT_MIRROR_WRITE_FAILED] primary Collector data remains authoritative' -ForegroundColor Yellow
+        return $false
     }
 }
 
@@ -2076,7 +2111,7 @@ try {
             $script:excelComTelemetry.consecutive_failed_loops++
             $failText = (New-ExcelComFailClosedPayload $now (Get-ExcelComReason $valueRead)) | ConvertTo-Json -Depth 6
             Write-AtomicUtf8 $jsonPath $failText
-            if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $failText }
+            if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { $null = Publish-OptionalCockpitMirror $cockpitJsonPath $failText }
             if ($valueRead.error_class -ceq "OTHER") { throw ("リアルタイム値取得：Excel COM エラー " + $script:excelComTelemetry.last_event.code) }
             Start-Sleep -Seconds $IntervalSeconds
             continue
@@ -2942,7 +2977,7 @@ try {
         $payload=[ordered]@{schema_version='ms2-common-1.0';updated_at=$now.ToString("yyyy-MM-dd HH:mm:ss");observed_at_offset=$now.ToString("yyyy-MM-ddTHH:mm:sszzz");timestamp_timezone="Asia/Tokyo";source="MarketSpeed II RSS / local PC";source_mode=$livePriceDiagnostics.source_mode;universe=100;valid=$validCount;stale=(-not $publishLiveValues);stale_reason=$staleReason;data_conflict=[bool]$script:priceSourceMismatch;price_source_status=$livePriceDiagnostics.price_source_status;live_values_available=[bool]$publishLiveValues;real_submit_allowed=$false;live_price_diagnostics=$livePriceDiagnostics;preopen_quote_count=$preopenQuoteCount;preopen_recording_status=$preopenRecordingStatus;market_state=$marketState;breadth_pct=$breadthPct;notice="共通判定は取得確認済みデータだけを使用。未取得は未確認、注文は既定で無効です。";capabilities=$capabilities;account_gate=$accountGate;tdnet_status=$tdnetStatus;jnx_status=$jnxStatus;stats_status=$statsStatus;kioxia_stats_meta=$statsMeta;kioxia=$kioxia;kioxia_pts=$kioxiaPts;pts_top5=$ptsTop5;ir_pts_top5=$irPtsTop5;hold_top5=$holdTop5;hold_finalized=$holdFinalized;hold_finalized_at=$holdFinalizedAt;hold_stats=$holdStats;top5=$qualified;all_targets=$results;missing_row_count=$missingRowCount;missing_rows=$missingRowArray}
         $jsonText=$payload|ConvertTo-Json -Depth 6
         Write-AtomicUtf8 $jsonPath $jsonText
-        if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { Write-AtomicUtf8 $cockpitJsonPath $jsonText }
+        if (Test-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "index.html")) { $null = Publish-OptionalCockpitMirror $cockpitJsonPath $jsonText }
 
         $cards = if ($qualified.Count -eq 0) {'<div class="empty">発動条件を満たす候補なし</div>'} else {($qualified|ForEach-Object{
             $cls=if($_.signal -in @("買いサイン","初動買い候補","買い準備")){"buy"}elseif($_.signal -in @("空売りサイン","初動ショート候補","ショート準備")){"sell"}elseif($_.signal -eq "往復ピンタ回避"){"block"}else{"watch"}
