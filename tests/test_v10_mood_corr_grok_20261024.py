@@ -125,7 +125,8 @@ class GrokOnEarningsCalendar(unittest.TestCase):
 
     def test_calendar_decoration_and_no_summary_boxes(self):
         self.assertIn("window.decorateEarningsWithGrok = () =>", HTML)
-        self.assertIn('.tab-pane[data-pane="earnings"] > .cc-tab-owner-summary{display:none!important}', HTML)
+        # the per-tab boxes are now shown on CONTROL only (OWNER 2026-10-24 「タブの箱を外す」)
+        self.assertIn('.tab-pane:not([data-pane="control"]) > .cc-tab-owner-summary{display:none!important}', HTML)
         js = (ROOT / "earnings-calendar.js").read_text(encoding="utf-8")
         self.assertNotIn("grok", js.lower())          # the pinned calendar script is unchanged
 
@@ -152,6 +153,16 @@ class Grok3Cards(unittest.TestCase):
 
     def test_no_score_without_mood(self):
         self.assertIsNone(feed.grok3_score({"事前の空気": "材料不足（カバーなし）"}))
+
+
+class TradeWatchView(unittest.TestCase):
+    def test_first_tab_shows_what_to_watch(self):
+        # OWNER 2026-10-24 「トレード中におれが見るべきところを表示するように設定してくれ」
+        self.assertIn('<button class="cockpit-tab active" data-tab="scalp">トレード中</button>', HTML)
+        for part in ("<h2>トレード中に見るところ</h2>", "id='trade-brain-lamp'", "id='trade-ai-lamp'", "id='trade-watch-orders'"):
+            self.assertIn(part, HTML)
+        self.assertIn('const pane = document.getElementById("trade-watch-orders");', HTML)
+        self.assertIn("setInterval(window.loadGrokBots, 120000)", HTML)
 
 
 if __name__ == "__main__":

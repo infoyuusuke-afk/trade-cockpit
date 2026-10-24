@@ -36,7 +36,7 @@
  <button class="cockpit-tab" data-tab="control">CONTROL</button>
  <button class="cockpit-tab" data-tab="brain">BRAIN</button>
  <button class="cockpit-tab" data-tab="ai-journal">AIトレード日記</button>
- <button class="cockpit-tab active" data-tab="scalp">SCALP 5</button>
+ <button class="cockpit-tab active" data-tab="scalp">トレード中</button>
  <button class="cockpit-tab" data-tab="event-hot">EVENT 5</button>
  <button class="cockpit-tab" data-tab="ms2-live">REALTIME 5</button>
  <button class="cockpit-tab" data-tab="pre-next">PRE-NEXT</button>
@@ -205,6 +205,8 @@ document.addEventListener("DOMContentLoaded",()=>{
        ["green","正常に動いています",session?"場中：データ収集・ブレインとも動作中":"市場時間外：収集は動作中。値段は次の取引時間から動きます"];
      const lamp=document.getElementById("brain-lamp");
      if(lamp){lamp.className="brain-lamp "+cls;lamp.innerHTML='<span class="brain-lamp-dot"></span><div><b>'+esc(label)+'</b><small>'+esc(line)+'　更新 '+esc(String(h.now||"—").slice(11,19))+'</small></div>';}
+     const tl=document.getElementById("trade-brain-lamp");
+     if(tl)tl.innerHTML=freshLamp(cls,"ブレイン："+label,line);
    }).catch(()=>{
      document.getElementById("brain-runtime-grid").innerHTML='<div class="rotation-box"><b>BRAIN</b><strong>OFFLINE</strong></div>';
      const lamp=document.getElementById("brain-lamp");
@@ -1402,6 +1404,20 @@ window.renderEvent5 = rows => {
 // OWNER 2026-10-24 「注文カード作成。検証中と表示し、成績が出るまでは参考のみ　俺が確認して執行おすから」:
 // when the Brain lights a buy / short on Kioxia (285A), a card in the order of 武蔵's 信用新規→信用返済 (IFO)
 // screen: the OWNER checks it and types it in. Nothing is sent anywhere; real orders stay locked.
+window.buildTradeWatch = () => {
+  const pane = document.querySelector('.tab-pane[data-pane="scalp"]');
+  if (!pane || document.getElementById("trade-watch")) return;
+  const sec = document.createElement("section");
+  sec.id = "trade-watch";
+  sec.className = "card wide";
+  sec.innerHTML = "<h2>トレード中に見るところ</h2><ol class='trade-watch-steps'><li><b>いちばん上の「注目」</b>：ランキング入り・ルール①②④⑤のサインが時刻つきで積まれる。まずここ</li>" +
+    "<li><b>下の2つのランプ</b>：緑ならOK。赤になったら止まっているので、その時だけ確認</li><li><b>注文カード</b>：キオクシアHD（285A）にサインが出た時だけ出る（検証中・参考のみ。執行は自分で）</li>" +
+    "<li><b>その下の好機レーダーとSCALP 5</b>：今動いている銘柄と、主力5銘柄の1分足・板。キオクシアの板・歩み値の詳細はKIOXIAタブ</li></ol>" +
+    "<div class='trade-watch-lamps'><div id='trade-brain-lamp'></div><div id='trade-ai-lamp'></div></div><div id='trade-watch-orders'></div>";
+  const intro = pane.querySelector(":scope > .pane-intro");
+  if (intro) intro.insertAdjacentElement("afterend", sec); else pane.prepend(sec);
+};
+document.addEventListener("DOMContentLoaded", () => { window.buildTradeWatch(); setTimeout(window.buildTradeWatch, 1500); });
 window.ORDER_CARD_CODES = ["285A.T"];
 window.ORDER_CARD_TTL_MS = 180000;
 window.tseTick = p => p <= 1000 ? 0.1 : p <= 3000 ? 0.5 : p <= 10000 ? 1 : p <= 30000 ? 5 : p <= 100000 ? 10 : 50;
@@ -1422,15 +1438,15 @@ window.orderCardHtml = (s, generatedMs, nowMs) => {
     (left > 0 ? "あと" + left + "秒で古くなります" : "古くなりました（使わない）") + "</div></article>";
 };
 window.loadOrderCards = () => fetch("/brain_pick.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(b => {
-  const pane = document.querySelector('.tab-pane[data-pane="control"]');
+  const pane = document.getElementById("trade-watch-orders");
   if (!pane) return;
   let box = document.getElementById("order-card-box");
   if (!box) {
     const sec = document.createElement("section");
-    sec.className = "card wide";
+    sec.className = "order-card-slot";
     sec.id = "order-card-section";
-    sec.innerHTML = "<h2>注文カード（検証中・参考のみ）</h2><p class='sub'>ブレインがキオクシアHD（285A）に買い・空売りのサインを出した時だけ、武蔵の「信用新規→信用返済（IFO）」画面と同じ順番で数字を出します。成績が出るまでは参考です。執行はOWNERが確認してから押します。</p><div id='order-card-box'></div><style>.order-card-warn{background:#3a1d1f;border:1px solid #6f2730;color:#ffb3b8;border-radius:8px;padding:6px 10px;margin-bottom:10px;font-size:12px;font-weight:700}</style>";
-    pane.prepend(sec);
+    sec.innerHTML = "<h3>注文カード（検証中・参考のみ）</h3><p class='sub'>ブレインがキオクシアHD（285A）に買い・空売りのサインを出した時だけ、武蔵の「信用新規→信用返済（IFO）」画面と同じ順番で数字を出します。成績が出るまでは参考です。執行はOWNERが確認してから押します。</p><div id='order-card-box'></div><style>.order-card-warn{background:#3a1d1f;border:1px solid #6f2730;color:#ffb3b8;border-radius:8px;padding:6px 10px;margin-bottom:10px;font-size:12px;font-weight:700}</style>";
+    pane.appendChild(sec);
     box = document.getElementById("order-card-box");
   }
   const gen = Date.parse(String(b?.generated_at || ""));
@@ -1485,6 +1501,9 @@ window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.
   const lamps = g.bots.map(lampOf), rank = {red: 3, yellow: 2, gray: 1, green: 0};
   const worst = lamps.filter(l => l[0] !== "gray").sort((a, b) => rank[b[0]] - rank[a[0]])[0];
   const gl = document.getElementById("grok-lamp");
+  const gsum = (worst ? [worst[0], worst[0] === "green" ? "Grokの答えは最新" : worst[0] === "yellow" ? "前の答えがあります" : "古い答えがあります", g.bots.map((b, i) => b.label.split(" ")[0] + "：" + lamps[i][1]).join("／")] : ["gray", "未保存", "まだGrokの答えがありません"]);
+  const tg = document.getElementById("trade-ai-lamp");
+  if (tg) tg.innerHTML = window.freshLamp(...gsum);
   if (gl) gl.innerHTML = window.freshLamp(...(worst ? [worst[0], worst[0] === "green" ? "Grokの答えは最新" : worst[0] === "yellow" ? "前の答えがあります" : "古い答えがあります", g.bots.map((b, i) => b.label.split(" ")[0] + "：" + lamps[i][1]).join("／")] : ["gray", "未保存", "まだGrokの答えがありません"]));
   const age = at => { const t = Date.parse(at || ""); return Number.isFinite(t) ? (Date.now() - t) / 3600000 : null; };
   const cls = v => /買い|追随/.test(v) ? "long" : /空売り/.test(v) ? "short" : "wait";
@@ -1513,7 +1532,7 @@ window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.
       "<details><summary>全文を見る</summary><pre style='white-space:pre-wrap;max-height:420px;overflow:auto'>" + e(b.text) + "</pre></details></div>";
   }).join("");
 }).catch(() => {});
-document.addEventListener("DOMContentLoaded", () => { window.loadGrokBots(); setInterval(window.loadGrokBots, 600000); });
+document.addEventListener("DOMContentLoaded", () => { window.loadGrokBots(); setInterval(window.loadGrokBots, 120000); });
 fetch("accumulation_watch.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(a => {
   if (!a || !Array.isArray(a.large_lot_accumulation)) return;
   window.accFedData = a;
@@ -2278,8 +2297,11 @@ html body #earnings-calendar-panel .grok-tags{display:flex;flex-wrap:wrap;gap:6p
 .g3-bar.none{background:#26272b;height:auto;padding:4px 8px;margin:6px 0 8px}.g3-bar.none span{font-size:11px;color:#8b9299}
 html body #earnings-calendar-panel .grok-tag{font-size:12px;padding:3px 8px;border-radius:999px;border:1px solid #303033;background:#141518;color:#c9ccd1}
 html body #earnings-calendar-panel .grok-tag.good{border-color:#1f5444;color:#35e2ae}html body #earnings-calendar-panel .grok-tag.bad{border-color:#6f2730;color:#ff8a92}html body #earnings-calendar-panel .grok-tag.warn{border-color:#6b5426;color:#f7c66b}
-/* OWNER 2026-10-24: the 決算日程 tab shows the calendar only (no per-tab result / control boxes) */
-.tab-pane[data-pane="earnings"] > .cc-tab-owner-summary{display:none!important}
+/* OWNER 2026-10-24 「タブの箱を外す」: the per-tab result / control / AI SHADOW boxes are shown on CONTROL only */
+.tab-pane:not([data-pane="control"]) > .cc-tab-owner-summary{display:none!important}
+#trade-watch .trade-watch-steps{margin:6px 0 12px 18px;padding:0;font-size:13px;color:#c9ccd1;line-height:1.7}
+#trade-watch .trade-watch-lamps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#trade-watch .order-card-slot h3{font-size:15px;margin:14px 0 6px;color:#e7e9eb}
 html body #earnings-calendar-panel .ec-day{position:relative;min-height:64px;border:1px solid #26272b;border-radius:10px;padding:8px 10px;background:#141518;color:#c9ccd1;font-size:13px;font-weight:700;transition:border-color .15s,background .15s}
 html body #earnings-calendar-panel .ec-day:hover{border-color:#4a4d55}
 html body #earnings-calendar-panel .ec-day.ec-weekend{background:#0f1012;color:#5f646b}
