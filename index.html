@@ -1533,7 +1533,10 @@ window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.
     const head = "<b>" + e(b.label) + "</b>" + window.freshLamp(...lampOf(b)) + "<small>保存 " + e(String(b.saved_at || "").slice(5, 16).replace("T", " ")) +
       (old ? "　<span class='down'>古い（36時間より前）</span>" : "") + "　" + e(b.file) + "</small>";
     const cards = (b.cards || []).map(c => "<article class='cc-card cc-card--" + cls(c["判断案"]) + "'><div class='cc-head'><div class='cc-identity'><span class='cc-company'>" +
-      e(c["銘柄"]) + "</span></div><span class='cc-badge'>" + e(c["判断案"]) + "</span></div><div class='cc-metrics-grid'>" +
+      // OWNER 2026-10-26 「文字がきれてるとこある」: the badge shows the 判断案 itself; its （note） goes under the card
+      e(c["銘柄"]) + "</span></div><span class='cc-badge'>" + e(String(c["判断案"] || "—").split("（")[0]) + "</span></div>" +
+      (String(c["判断案"] || "").includes("（") ? "<div class='g2-note'>" + e(String(c["判断案"]).slice(String(c["判断案"]).indexOf("（") + 1).replace(/）$/, "")) + "</div>" : "") +
+      "<div class='cc-metrics-grid'>" +
       "<span>動きの型<b>" + e(String(c["動きの型"] || "—").split("（")[0]) + "</b></span><span>目安<b>" + e(c["目安の価格帯"] || "—") + "</b></span>" +
       "<span>無効<b>" + e(c["無効になる条件"] || "—") + "</b></span><span>自信<b>" + e(String(c["自信"] || "—").split("（")[0]) + "</b></span></div>" +
       "<div class='cc-foot'>決算 " + e(c["決算発表日"] || "—") + "／見直し " + e(c["見直す日"] || "—") + "</div></article>").join("");
@@ -2340,6 +2343,9 @@ html body #earnings-calendar-panel .grok-tag{font-size:12px;padding:3px 8px;bord
 html body #earnings-calendar-panel .grok-tag.good{border-color:#1f5444;color:#35e2ae}html body #earnings-calendar-panel .grok-tag.bad{border-color:#6f2730;color:#ff8a92}html body #earnings-calendar-panel .grok-tag.warn{border-color:#6b5426;color:#f7c66b}
 /* OWNER 2026-10-24 「タブの箱を外す」: the per-tab result / control / AI SHADOW boxes are shown on CONTROL only */
 .tab-pane:not([data-pane="control"]) > .cc-tab-owner-summary{display:none!important}
+#grok-bots-body .cc-head .cc-badge{max-width:55%;white-space:normal;text-align:center;line-height:1.35}
+#grok-bots-body .cc-identity{min-width:0;flex:1}#grok-bots-body .cc-company{white-space:normal}
+#grok-bots-body .g2-note{font-size:11px;color:#c9ccd1;margin:6px 0 2px;line-height:1.5}
 #trade-watch .trade-watch-steps{margin:6px 0 12px 18px;padding:0;font-size:13px;color:#c9ccd1;line-height:1.7}
 #trade-watch .trade-watch-lamps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #trade-watch .order-card-slot h3{font-size:15px;margin:14px 0 6px;color:#e7e9eb}

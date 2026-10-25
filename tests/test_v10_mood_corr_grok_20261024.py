@@ -58,6 +58,12 @@ class GrokBots(unittest.TestCase):
                              now=datetime.now(timezone.utc), grok_root=Path(d) / "missing")
             self.assertEqual(meta["files"][feed.GROK_FILE], {"ok": False, "reason": "NO_GROK_FOLDER"})
 
+    def test_2go_badge_is_short_and_note_below(self):
+        # OWNER 2026-10-26 「文字がきれてるとこある」
+        self.assertIn("e(String(c[\"判断案\"] || \"—\").split(\"（\")[0])", HTML)
+        self.assertIn("<div class='g2-note'>", HTML)
+        self.assertIn("#grok-bots-body .cc-head .cc-badge{max-width:55%;white-space:normal", HTML)
+
     def test_screen_and_gateway(self):
         self.assertIn('id="grok-bots-body"', HTML)
         self.assertIn('fetch("grok_bots.json?t="', HTML)
