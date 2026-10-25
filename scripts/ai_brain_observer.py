@@ -87,7 +87,7 @@ JPX_CHILD_DEADLINE_SECONDS = 60   # audit 6327603446: fetch + parse never block 
 # (RuntimeDir/grok_inbox) and, only when that slot's automatic run did not deliver, the GPT
 # analysts (RuntimeDir/analyst_inbox). Brain flags and screen lists, never a score; each
 # finished day is scored for hits and misses. A failure only drops them.
-MANUAL_NOTES_MODULE = ("v10_manual_notes", "94b261a1d15dd87051de7ae553bd4f1a4137f882")
+MANUAL_NOTES_MODULE = ("v10_manual_notes", "3fc2a731d1010cf8532d95b65fa5f1f6f1958fe2")
 MANUAL_SCORE_AFTER_JST = (15, 35)
 # OWNER 2026-10-23 「保有中は枠青」「8時50分と15時30分に保有銘柄告知」: virtual holdings (rule signals
 # replayed on today's ticks with the pinned EV module's replay, and the 15:25 carry-over)

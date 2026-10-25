@@ -60,6 +60,18 @@ class Parse(unittest.TestCase):
         self.assertEqual(len(got["rejected"]), 1)
         self.assertFalse(notes.parse("GROK_NOTE_V1\n285A | 好材料 | x | https://e.com\nEND", now=NOW)["ok"])
 
+    def test_time_with_japan_time_label(self):
+        # OWNER 2026-10-26 「GPTの答えの時刻に日本時間やJSTが付いていても、コクピットで読めるようにして」
+        text = chr(10).join(["GPT_ANALYST_NOTE_V1",
+                             "PRE-NEXT | 123A | 監視 | 上方修正 | https://example.com/a | 2026-10-22 08:20 日本時間",
+                             "需給 | 456D | 監視 | 売残減少 | https://example.com/b | 2026-10-22 08:21 JST",
+                             "需給 | 789E | 監視 | 買残増加 | https://example.com/c | 2026-10-22 08:22（日本時間）",
+                             "需給 | 321F | 監視 | 形が違う | https://example.com/d | 2026/10/22 08:23 日本時間", "END"])
+        got = notes.parse(text, now=NOW)
+        self.assertEqual([(x["code"], x["posted_at"][11:16]) for x in got["items"]],
+                         [("123A", "08:20"), ("456D", "08:21"), ("789E", "08:22")])
+        self.assertEqual([r["code"] for r in got["rejected"]], ["321F"])
+
     def test_expired_rows_are_refused(self):
         got = notes.parse(GROK, now=NOW + timedelta(hours=7))
         self.assertNotIn("123A", [x["code"] for x in got["items"]])

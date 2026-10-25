@@ -80,7 +80,12 @@ def _body(text: str, header: str):
     return [x for x in lines[start + 1:end] if x]
 
 
+# OWNER 2026-10-26 「GPTの答えの時刻に日本時間やJSTが付いていても、コクピットで読めるようにして」
+TIME_ZONE_LABEL = re.compile(r"\s*[（(]?(?:日本時間|JST)[）)]?\s*$")
+
+
 def _posted(raw: str, local: datetime):
+    raw = TIME_ZONE_LABEL.sub("", raw)
     if not POSTED.match(raw):
         return None, "時刻は YYYY-MM-DD HH:MM で書く"
     try:
