@@ -120,20 +120,28 @@ document.addEventListener("DOMContentLoaded",()=>{
      // shown above the automatic reports, and also when those are unavailable.
      // OWNER 2026-10-24 「アナリストは自動になったはず」: the GPT API runs are stopped (2026-10-23), so the panel shows
      // the ChatGPT tasks' answers (analyst_inbox) as the automatic source; the API runs are not listed.
-     // OWNER 2026-10-26 「カードタイプにして直観的に理解できる表示にして」: one card per stock — name, view, the
-     // conditions to watch (注目) and to drop (無効) picked out of the reason, the other points as a list, time and sources.
+     // OWNER 2026-10-26 「GPTの答えを1銘柄1枚のカードにして。コードと名前を大きく、PRE-NEXTか需給かの札、何があったか1行、
+     // 注目する条件を緑・無効になる条件を灰色で分けて、需給は買残・売残・倍率を数字で並べて」
      const gptCard=(role,x)=>{
-       const parts=String(x.reason||"").split(/[。：]/).map(s=>s.trim()).filter(Boolean);
+       const reason=String(x.reason||"");
+       const parts=reason.split(/[。：]/).map(s=>s.trim()).filter(Boolean);
        const named=parts.length&&/株式会社|ホールディングス|グループ/.test(parts[0]);
-       const name=x.name||(named?parts[0].replace(/株式会社/g,"").trim()+"（"+x.code+"）":x.code);
+       const name=String(x.name||"").replace(/（[^）]*）$/,"")||(named?parts[0].replace(/株式会社/g,"").trim():"");
        const rest=(named?parts.slice(1):parts).flatMap(s=>/注目/.test(s)&&/無効/.test(s)?s.split("、").map(v=>v.trim()).filter(Boolean):[s]);
-       const go=rest.filter(s=>/注目/.test(s)),stop=rest.filter(s=>/無効/.test(s)&&!/注目/.test(s)),other=rest.filter(s=>!/注目|無効/.test(s));
-       const tone=x.view==="強気"?"long":x.view==="弱気"?"short":"wait";
-       return '<article class="cc-card cc-card--'+tone+' gpt-card"><div class="cc-head"><div class="cc-identity"><span class="cc-company">'+esc(name)+'</span></div><span class="cc-badge">'+esc(x.view||"—")+'</span></div>'+
-        '<small class="gpt-role">'+esc(AGENT_ROLE_LABEL[role]||role)+'・'+esc(String(x.posted_at||"").slice(11,16))+'</small>'+
-        (other.length?'<ul class="gpt-points">'+other.map(s=>'<li>'+esc(s)+'</li>').join("")+'</ul>':'')+
+       const go=rest.filter(s=>/注目/.test(s)),stop=rest.filter(s=>/無効/.test(s)&&!/注目/.test(s));
+       const num=re=>{const m=re.exec(reason);return m?m[1]:null;};
+       const supply=role==="supply_sq"?{buy:num(/買残\s*([+\-−]?[0-9.]+%)/),sell:num(/売残\s*([+\-−]?[0-9.]+%)/),ratio:num(/倍率\s*([0-9.]+倍)/),asof:num(/対象\s*(\d{4}-\d{2}-\d{2})/)}:null;
+       const other=rest.filter(s=>!/注目|無効/.test(s)&&!(supply&&/(買残|売残|倍率)\s*[+\-−]?[0-9]/.test(s)));
+       const what=other[0]||"—";
+       const sign=v=>v==null?"—":v;
+       const cls=v=>v==null?"":/^[\-−]/.test(v)?"down":"up";
+       return '<article class="cc-card cc-card--wait gpt-card"><div class="cc-head"><div class="cc-identity"><span class="gpt-code">'+esc(x.code)+'</span><span class="gpt-name">'+esc(name||"—")+'</span></div>'+
+        '<span class="gpt-role-badge '+esc(role)+'">'+esc(role==="supply_sq"?"需給":role==="pre_next"?"PRE-NEXT":(AGENT_ROLE_LABEL[role]||role))+'</span></div>'+
+        '<div class="gpt-what">'+esc(what)+'</div>'+
+        (supply?'<div class="gpt-supply"><span>買残<b class="'+cls(supply.buy)+'">'+esc(sign(supply.buy))+'</b></span><span>売残<b class="'+cls(supply.sell)+'">'+esc(sign(supply.sell))+'</b></span><span>倍率<b>'+esc(sign(supply.ratio))+'</b></span></div>'+(supply.asof?'<small class="gpt-asof">信用残 '+esc(supply.asof)+'時点（前週比）</small>':''):'')+
         (go.length?'<div class="gpt-cond go"><b>注目</b>'+esc(go.join("、"))+'</div>':'')+(stop.length?'<div class="gpt-cond stop"><b>無効</b>'+esc(stop.join("、"))+'</div>':'')+
-        '<div class="cc-foot">出典 '+(Array.isArray(x.sources)?x.sources:[]).map((u,i)=>'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+(i+1)+'</a>').join(" ")+'</div></article>';};
+        (other.length>1?'<small class="gpt-more">'+esc(other.slice(1).join("／"))+'</small>':'')+
+        '<div class="cc-foot">'+esc(x.view||"")+'・'+esc(String(x.posted_at||"").slice(11,16))+'　出典 '+(Array.isArray(x.sources)?x.sources:[]).map((u,i)=>'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+(i+1)+'</a>').join(" ")+'</div></article>';};
      const manualHtml=Object.keys(manual).length?'<h3>GPTタスクの答え（自動・ChatGPTアプリ）</h3><div class="scalp-strip gpt-cards">'+Object.entries(manual).map(([role,rows])=>(Array.isArray(rows)?rows:[]).map(x=>gptCard(role,x)).join("")).join("")+'</div>':'';
      box.innerHTML=manualHtml||'<div class="focus-empty">GPTタスクの答えは、まだ届いていません（PRE-NEXT・需給は毎日7:30。届いた日のうち8時間だけ表示）</div>';
      const posted=Object.values(manual).flatMap(rows=>Array.isArray(rows)?rows:[]).map(x=>parseJstMs(x.posted_at)).filter(Number.isFinite);
@@ -2357,9 +2365,14 @@ html body #earnings-calendar-panel .grok-tag{font-size:12px;padding:3px 8px;bord
 html body #earnings-calendar-panel .grok-tag.good{border-color:#1f5444;color:#35e2ae}html body #earnings-calendar-panel .grok-tag.bad{border-color:#6f2730;color:#ff8a92}html body #earnings-calendar-panel .grok-tag.warn{border-color:#6b5426;color:#f7c66b}
 /* OWNER 2026-10-24 「タブの箱を外す」: the per-tab result / control / AI SHADOW boxes are shown on CONTROL only */
 .tab-pane:not([data-pane="control"]) > .cc-tab-owner-summary{display:none!important}
-.gpt-card .gpt-role{display:block;font-size:11px;color:#9ba3af;margin:4px 0 6px}.gpt-card .gpt-points{margin:0 0 6px 16px;padding:0;font-size:12px;color:#c9ccd1;line-height:1.6}
+.gpt-card .gpt-code{display:block;font-size:22px;font-weight:800;color:#e7e9eb;line-height:1.1}.gpt-card .gpt-name{display:block;font-size:15px;font-weight:700;color:#e7e9eb;margin-top:2px}
+.gpt-card .gpt-role-badge{flex:none;font-size:11px;font-weight:800;padding:4px 9px;border-radius:999px;border:1px solid #3a4a6b;color:#8ab4ff;background:#121a2b}.gpt-card .gpt-role-badge.supply_sq{border-color:#6b5426;color:#f7c66b;background:#231c0f}
+.gpt-card .gpt-what{font-size:13px;color:#e7e9eb;margin:10px 0 8px;line-height:1.5;font-weight:700}
+.gpt-card .gpt-supply{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 4px}.gpt-card .gpt-supply span{font-size:11px;color:#9ba3af;text-align:center;border:1px solid #272a30;border-radius:6px;padding:4px 2px}
+.gpt-card .gpt-supply b{display:block;font-size:15px;color:#e7e9eb}.gpt-card .gpt-supply b.up{color:#35e2ae}.gpt-card .gpt-supply b.down{color:#ff8a92}.gpt-card .gpt-asof{display:block;font-size:10px;color:#8b9299;margin-bottom:6px}
+.gpt-card .gpt-more{display:block;font-size:11px;color:#8b9299;margin-top:6px;line-height:1.5}
 .gpt-card .gpt-cond{font-size:12px;line-height:1.5;padding:5px 8px;border-radius:6px;margin:4px 0;color:#e7e9eb}.gpt-card .gpt-cond b{margin-right:6px}
-.gpt-card .gpt-cond.go{background:#0f2a22;border:1px solid #1f5444}.gpt-card .gpt-cond.go b{color:#35e2ae}.gpt-card .gpt-cond.stop{background:#2a1418;border:1px solid #6f2730}.gpt-card .gpt-cond.stop b{color:#ff8a92}
+.gpt-card .gpt-cond.go{background:#0f2a22;border:1px solid #1f5444}.gpt-card .gpt-cond.go b{color:#35e2ae}.gpt-card .gpt-cond.stop{background:#1b1c20;border:1px solid #3a3b40;color:#b8bcc4}.gpt-card .gpt-cond.stop b{color:#9ba3af}
 .gpt-card .cc-foot a{color:#8ab4ff;margin-right:4px}
 #grok-bots-body .cc-head .cc-badge{max-width:55%;white-space:normal;text-align:center;line-height:1.35}
 #grok-bots-body .cc-identity{min-width:0;flex:1}#grok-bots-body .cc-company{white-space:normal}

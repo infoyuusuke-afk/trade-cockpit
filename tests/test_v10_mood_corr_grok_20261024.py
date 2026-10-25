@@ -112,6 +112,12 @@ class GptCards(unittest.TestCase):
         self.assertIn('const gptCard=(role,x)=>{', HTML)
         self.assertIn('<div class="gpt-cond go"><b>注目</b>', HTML)
         self.assertIn('<div class="gpt-cond stop"><b>無効</b>', HTML)
+        # OWNER 2026-10-26 「コードと名前を大きく、PRE-NEXTか需給かの札、何があったか1行、注目する条件を緑・無効になる条件を灰色…
+        # 需給は買残・売残・倍率を数字で並べて」
+        for part in ('<span class="gpt-code">', '<span class="gpt-name">', 'gpt-role-badge', '<div class="gpt-what">',
+                     '<div class="gpt-supply"><span>買残<b', '<span>売残<b', '<span>倍率<b'):
+            self.assertIn(part, HTML)
+        self.assertIn(".gpt-card .gpt-cond.stop{background:#1b1c20;border:1px solid #3a3b40", HTML)
         self.assertIn('rel="noopener noreferrer"', HTML)
         self.assertIn("'<h3>GPTタスクの答え（自動・ChatGPTアプリ）</h3><div class=\"scalp-strip gpt-cards\">'", HTML)
 
