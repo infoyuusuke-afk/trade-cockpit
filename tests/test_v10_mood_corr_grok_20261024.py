@@ -106,6 +106,16 @@ class FreshnessLamps(unittest.TestCase):
         self.assertIn("|| /[（(](\d{4}-\d{2}-\d{2} \d{2}:\d{2}) JST[）)]/.exec(b.text", HTML)
 
 
+class GptCards(unittest.TestCase):
+    def test_gpt_answers_as_cards(self):
+        # OWNER 2026-10-26 「カードタイプにして直観的に理解できる表示にして」
+        self.assertIn('const gptCard=(role,x)=>{', HTML)
+        self.assertIn('<div class="gpt-cond go"><b>注目</b>', HTML)
+        self.assertIn('<div class="gpt-cond stop"><b>無効</b>', HTML)
+        self.assertIn('rel="noopener noreferrer"', HTML)
+        self.assertIn("'<h3>GPTタスクの答え（自動・ChatGPTアプリ）</h3><div class=\"scalp-strip gpt-cards\">'", HTML)
+
+
 class OrderCard(unittest.TestCase):
     def test_reference_only_card_never_orders(self):
         # OWNER 2026-10-24 「注文カード作成。検証中と表示し、成績が出るまでは参考のみ　俺が確認して執行おす」

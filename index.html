@@ -120,7 +120,21 @@ document.addEventListener("DOMContentLoaded",()=>{
      // shown above the automatic reports, and also when those are unavailable.
      // OWNER 2026-10-24 「アナリストは自動になったはず」: the GPT API runs are stopped (2026-10-23), so the panel shows
      // the ChatGPT tasks' answers (analyst_inbox) as the automatic source; the API runs are not listed.
-     const manualHtml=Object.keys(manual).length?'<h3>GPTタスクの答え（自動・ChatGPTアプリ）</h3><div class="rotation-grid">'+Object.entries(manual).map(([role,rows])=>'<div class="rotation-box"><b>'+esc(AGENT_ROLE_LABEL[role]||role)+'（GPTタスク）</b>'+(Array.isArray(rows)?rows:[]).map(x=>'<small>'+esc(x.code)+' '+esc(x.view)+'：'+esc(x.reason)+'（'+esc(String(x.posted_at||"").slice(11,16))+'）</small>').join("")+'</div>').join("")+'</div>':'';
+     // OWNER 2026-10-26 「カードタイプにして直観的に理解できる表示にして」: one card per stock — name, view, the
+     // conditions to watch (注目) and to drop (無効) picked out of the reason, the other points as a list, time and sources.
+     const gptCard=(role,x)=>{
+       const parts=String(x.reason||"").split(/[。：]/).map(s=>s.trim()).filter(Boolean);
+       const named=parts.length&&/株式会社|ホールディングス|グループ/.test(parts[0]);
+       const name=x.name||(named?parts[0].replace(/株式会社/g,"").trim()+"（"+x.code+"）":x.code);
+       const rest=(named?parts.slice(1):parts).flatMap(s=>/注目/.test(s)&&/無効/.test(s)?s.split("、").map(v=>v.trim()).filter(Boolean):[s]);
+       const go=rest.filter(s=>/注目/.test(s)),stop=rest.filter(s=>/無効/.test(s)&&!/注目/.test(s)),other=rest.filter(s=>!/注目|無効/.test(s));
+       const tone=x.view==="強気"?"long":x.view==="弱気"?"short":"wait";
+       return '<article class="cc-card cc-card--'+tone+' gpt-card"><div class="cc-head"><div class="cc-identity"><span class="cc-company">'+esc(name)+'</span></div><span class="cc-badge">'+esc(x.view||"—")+'</span></div>'+
+        '<small class="gpt-role">'+esc(AGENT_ROLE_LABEL[role]||role)+'・'+esc(String(x.posted_at||"").slice(11,16))+'</small>'+
+        (other.length?'<ul class="gpt-points">'+other.map(s=>'<li>'+esc(s)+'</li>').join("")+'</ul>':'')+
+        (go.length?'<div class="gpt-cond go"><b>注目</b>'+esc(go.join("、"))+'</div>':'')+(stop.length?'<div class="gpt-cond stop"><b>無効</b>'+esc(stop.join("、"))+'</div>':'')+
+        '<div class="cc-foot">出典 '+(Array.isArray(x.sources)?x.sources:[]).map((u,i)=>'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+(i+1)+'</a>').join(" ")+'</div></article>';};
+     const manualHtml=Object.keys(manual).length?'<h3>GPTタスクの答え（自動・ChatGPTアプリ）</h3><div class="scalp-strip gpt-cards">'+Object.entries(manual).map(([role,rows])=>(Array.isArray(rows)?rows:[]).map(x=>gptCard(role,x)).join("")).join("")+'</div>':'';
      box.innerHTML=manualHtml||'<div class="focus-empty">GPTタスクの答えは、まだ届いていません（PRE-NEXT・需給は毎日7:30。届いた日のうち8時間だけ表示）</div>';
      const posted=Object.values(manual).flatMap(rows=>Array.isArray(rows)?rows:[]).map(x=>parseJstMs(x.posted_at)).filter(Number.isFinite);
      const now=jstParts(Date.now()),latest=posted.length?Math.max(...posted):null,lp=latest?jstParts(latest):null;
@@ -2343,6 +2357,10 @@ html body #earnings-calendar-panel .grok-tag{font-size:12px;padding:3px 8px;bord
 html body #earnings-calendar-panel .grok-tag.good{border-color:#1f5444;color:#35e2ae}html body #earnings-calendar-panel .grok-tag.bad{border-color:#6f2730;color:#ff8a92}html body #earnings-calendar-panel .grok-tag.warn{border-color:#6b5426;color:#f7c66b}
 /* OWNER 2026-10-24 「タブの箱を外す」: the per-tab result / control / AI SHADOW boxes are shown on CONTROL only */
 .tab-pane:not([data-pane="control"]) > .cc-tab-owner-summary{display:none!important}
+.gpt-card .gpt-role{display:block;font-size:11px;color:#9ba3af;margin:4px 0 6px}.gpt-card .gpt-points{margin:0 0 6px 16px;padding:0;font-size:12px;color:#c9ccd1;line-height:1.6}
+.gpt-card .gpt-cond{font-size:12px;line-height:1.5;padding:5px 8px;border-radius:6px;margin:4px 0;color:#e7e9eb}.gpt-card .gpt-cond b{margin-right:6px}
+.gpt-card .gpt-cond.go{background:#0f2a22;border:1px solid #1f5444}.gpt-card .gpt-cond.go b{color:#35e2ae}.gpt-card .gpt-cond.stop{background:#2a1418;border:1px solid #6f2730}.gpt-card .gpt-cond.stop b{color:#ff8a92}
+.gpt-card .cc-foot a{color:#8ab4ff;margin-right:4px}
 #grok-bots-body .cc-head .cc-badge{max-width:55%;white-space:normal;text-align:center;line-height:1.35}
 #grok-bots-body .cc-identity{min-width:0;flex:1}#grok-bots-body .cc-company{white-space:normal}
 #grok-bots-body .g2-note{font-size:11px;color:#c9ccd1;margin:6px 0 2px;line-height:1.5}
