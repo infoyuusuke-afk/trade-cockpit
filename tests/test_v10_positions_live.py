@@ -92,6 +92,9 @@ class Positions(unittest.TestCase):
         write_csv(self.tmp / "records" / "2026-10-26" / pos.OVERNIGHT_FILE, fields, [])
         got = pos.build(self.tmp, now=at(26, "08:20"), ev=ev, rules=ev.RULES, state={})["overnight"]
         self.assertEqual([(x["ticker"], x["side"], x["valid_until"]) for x in got], [("9432.T", "SHORT", "2026-10-26 15:30")])
+        # only Saturday / Sunday folders are skipped: a weekday with a header-only file means no holds
+        write_csv(self.tmp / "records" / "2026-10-27" / pos.OVERNIGHT_FILE, fields, [])
+        self.assertEqual(pos.build(self.tmp, now=at(28, "08:20"), ev=ev, rules=ev.RULES, state={})["overnight"], [])
 
     def test_waiting_inside_the_fill_window(self):
         self.ticks.write_text("captured_at,ticker,name,exchange_time,price\nx,A.T,n,09:17:05,1180\n", encoding="utf-8-sig")

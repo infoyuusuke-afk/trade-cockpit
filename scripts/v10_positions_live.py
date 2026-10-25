@@ -94,10 +94,16 @@ def _previous_day_dir(records: Path, today: str):
         days = sorted(p.name for p in Path(records).iterdir() if p.is_dir() and p.name < today and len(p.name) == 10)
     except OSError:
         return None
-    # OWNER 2026-10-26 「持ち越し銘柄きえてる」: a header-only file (written on Saturday 00:00 / today 08:03 with
-    # no holds) is not a hold day; the latest day that has rows is taken.
+    # OWNER 2026-10-26 「持ち越しは、空のファイルを飛ばすのではなく、土日の日付のフォルダだけ飛ばして」:
+    # Saturday 00:00 wrote a header-only file into the Saturday folder; Saturday and Sunday folders are never
+    # the previous trading day. A weekday file with no rows still means "no holds that day".
     for name in reversed(days):
-        if (Path(records) / name / OVERNIGHT_FILE).is_file() and _rows(Path(records) / name / OVERNIGHT_FILE):
+        try:
+            if datetime.strptime(name, "%Y-%m-%d").weekday() >= 5:
+                continue
+        except ValueError:
+            continue
+        if (Path(records) / name / OVERNIGHT_FILE).is_file():
             return Path(records) / name
     return None
 
