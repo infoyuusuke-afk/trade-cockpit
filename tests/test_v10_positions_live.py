@@ -82,6 +82,17 @@ class Positions(unittest.TestCase):
             self.assertEqual([(x["ticker"], x["valid_until"]) for x in got], [("5713.T", "2026-10-26 15:30")], (day, hm))
         self.assertEqual(pos.build(self.tmp, now=at(26, "15:31"), ev=ev, rules=ev.RULES, state={})["overnight"], [])
 
+    def test_header_only_weekend_file_does_not_hide_friday_holds(self):
+        # OWNER 2026-10-26 「持ち越し銘柄きえてる」: Saturday 00:00 and Monday 08:03 wrote header-only files
+        fields = ["finalized_at", "rank", "ticker", "name", "hold_signal", "reference_price_1525"]
+        write_csv(self.tmp / "records" / "2026-10-23" / pos.OVERNIGHT_FILE, fields,
+                  [{"finalized_at": "2026-10-23 15:25:00", "rank": "1", "ticker": "9432.T", "name": "NTT（9432）",
+                    "hold_signal": "持ち越しショート確定", "reference_price_1525": "174.4"}])
+        write_csv(self.tmp / "records" / "2026-10-24" / pos.OVERNIGHT_FILE, fields, [])
+        write_csv(self.tmp / "records" / "2026-10-26" / pos.OVERNIGHT_FILE, fields, [])
+        got = pos.build(self.tmp, now=at(26, "08:20"), ev=ev, rules=ev.RULES, state={})["overnight"]
+        self.assertEqual([(x["ticker"], x["side"], x["valid_until"]) for x in got], [("9432.T", "SHORT", "2026-10-26 15:30")])
+
     def test_waiting_inside_the_fill_window(self):
         self.ticks.write_text("captured_at,ticker,name,exchange_time,price\nx,A.T,n,09:17:05,1180\n", encoding="utf-8-sig")
         self.assertEqual(pos.build(self.tmp, now=at(23, "09:20"), ev=ev, rules=ev.RULES, state={})["rule_positions"][0]["status"],

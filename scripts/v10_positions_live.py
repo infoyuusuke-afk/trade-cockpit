@@ -94,8 +94,10 @@ def _previous_day_dir(records: Path, today: str):
         days = sorted(p.name for p in Path(records).iterdir() if p.is_dir() and p.name < today and len(p.name) == 10)
     except OSError:
         return None
+    # OWNER 2026-10-26 「持ち越し銘柄きえてる」: a header-only file (written on Saturday 00:00 / today 08:03 with
+    # no holds) is not a hold day; the latest day that has rows is taken.
     for name in reversed(days):
-        if (Path(records) / name / OVERNIGHT_FILE).is_file():
+        if (Path(records) / name / OVERNIGHT_FILE).is_file() and _rows(Path(records) / name / OVERNIGHT_FILE):
             return Path(records) / name
     return None
 

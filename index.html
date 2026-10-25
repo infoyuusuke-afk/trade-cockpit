@@ -1510,7 +1510,8 @@ window.loadGrokBots = () => fetch("grok_bots.json?t=" + Date.now()).then(r => r.
   window.grokTags = g.tags || {};
   if (typeof window.decorateEarningsWithGrok === "function") window.decorateEarningsWithGrok();
   const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  const runAt = b => { const m = /実行日時：\s*(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2})/.exec(b.text || ""); const r = m ? window.parseJstMs(m[1]) : NaN; return Number.isFinite(r) ? r : Date.parse(b.saved_at || ""); };
+  // OWNER 2026-10-26 「本文の（2026-10-26 06:53 JST）から日時を読むようにして」: without a 実行日時 line, the answer's own 「（YYYY-MM-DD HH:MM JST）」
+  const runAt = b => { const m = /実行日時：\s*(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2})/.exec(b.text || "") || /[（(](\d{4}-\d{2}-\d{2} \d{2}:\d{2}) JST[）)]/.exec(b.text || ""); const r = m ? window.parseJstMs(m[1]) : NaN; return Number.isFinite(r) ? r : Date.parse(b.saved_at || ""); };
   const nowP = window.jstParts(Date.now()), offDay = nowP.wd === 0 || nowP.wd === 6 || (nowP.wd === 1 && nowP.min < 480);
   const lampOf = b => { if (!b.file) return ["gray", "未保存", "5番のボタンで保存すると出ます"]; const at = runAt(b), h = (Date.now() - at) / 3600000, p = window.jstParts(at);
     if (!Number.isFinite(h)) return ["red", "時刻不明", "答えの時刻が読めません"];
