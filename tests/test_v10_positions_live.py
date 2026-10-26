@@ -96,6 +96,21 @@ class Positions(unittest.TestCase):
         write_csv(self.tmp / "records" / "2026-10-27" / pos.OVERNIGHT_FILE, fields, [])
         self.assertEqual(pos.build(self.tmp, now=at(28, "08:20"), ev=ev, rules=ev.RULES, state={})["overnight"], [])
 
+    def test_rule_one_once_per_stock_per_day(self):
+        # OWNER 2026-10-26 「1銘柄1日1回」: a second rule ① signal on a stock already traded today is skipped
+        rec = self.tmp / "records" / "2026-10-27"
+        fields = ["captured_at", "ticker", "name", "signal", "strategy", "signal_bar", "rule", "entry", "target", "stop"]
+        sig = {"ticker": "D.T", "name": "名D", "signal": "買いサイン", "strategy": "OR15押し目", "rule": "R1",
+               "entry": "1000", "target": "1020", "stop": "980"}
+        write_csv(rec / pos.RULE_SIGNALS_FILE, fields,
+                  [dict(sig, captured_at="2026-10-27 09:16:00", signal_bar="2026-10-27 09:15"),
+                   dict(sig, captured_at="2026-10-27 09:30:00", signal_bar="2026-10-27 09:29")])
+        write_csv(rec / pos.TICKS_FILE, ["captured_at", "ticker", "name", "exchange_time", "price"],
+                  [{"captured_at": "x", "ticker": "D.T", "name": "n", "exchange_time": t, "price": p}
+                   for t, p in (("09:16:30", "1000"), ("09:20:00", "975"), ("09:31:00", "1000"), ("09:40:00", "1025"))])
+        got = pos.build(self.tmp, now=at(27, "15:31"), ev=ev, rules=ev.RULES, state={})["rule_positions"]
+        self.assertEqual([(p["signal_at"][11:16], p["status"]) for p in got], [("09:16", "CLOSED")])
+
     def test_waiting_inside_the_fill_window(self):
         self.ticks.write_text("captured_at,ticker,name,exchange_time,price\nx,A.T,n,09:17:05,1180\n", encoding="utf-8-sig")
         self.assertEqual(pos.build(self.tmp, now=at(23, "09:20"), ev=ev, rules=ev.RULES, state={})["rule_positions"][0]["status"],

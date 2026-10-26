@@ -53,7 +53,7 @@ AGENT_KNOWN_REASONS = ("PRIVATE_", "RECEIVER_", "INBOX_", "HANDOFF_", "STORED_AC
 # (or when missing) into RuntimeDir/signal_ev_table_v1.json, which the Gateway
 # serves read-only for the REALTIME 5 ranking. The module is loaded only from
 # bytes whose git blob equals the pin. It never touches live data or orders.
-SIGNAL_EV_MODULE = ("v10_signal_ev_table", "0e890b62bed238e4fdf60e5056adc809604c8edc")
+SIGNAL_EV_MODULE = ("v10_signal_ev_table", "8c51296fd5b56e34d33d0aefe0f8c9ac16bdfbd9")
 SIGNAL_EV_FILE = "signal_ev_table_v1.json"
 SIGNAL_EV_REBUILD_AFTER_JST = (15, 35)
 # Night PTS -> next-morning watch candidates, rebuilt every 5 minutes from the
@@ -92,9 +92,9 @@ MANUAL_SCORE_AFTER_JST = (15, 35)
 # OWNER 2026-10-23 「保有中は枠青」「8時50分と15時30分に保有銘柄告知」: virtual holdings (rule signals
 # replayed on today's ticks with the pinned EV module's replay, and the 15:25 carry-over)
 # every 15 s into RuntimeDir/positions_live_v1.json and the Brain pick file. Display only.
-POSITIONS_MODULE = ("v10_positions_live", "6953ff5f2209b23d4fc6ba66ea7ee314367d8b67")
+POSITIONS_MODULE = ("v10_positions_live", "d5b1cda29adb2bbf8b45992ec7d6d54c706b0ffe")
 POSITIONS_INTERVAL = timedelta(seconds=15)
-BRAIN_CORE_MODULE = ("v10_brain_core", "1ad7dea6ca742f83f4a1a6382510ab1e28a83105")
+BRAIN_CORE_MODULE = ("v10_brain_core", "73bbb28bd93c13a07618e43949c970ab4baace4c")
 
 
 def _aware(value):

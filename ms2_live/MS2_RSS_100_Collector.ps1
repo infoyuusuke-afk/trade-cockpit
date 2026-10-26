@@ -2463,7 +2463,8 @@ function Get-BrainRuleSignals([string]$Path, [datetime]$Now) {
             $view.trade_instruction -isnot [bool] -or $view.trade_instruction -or
             [string]$view.state -notin @('PICK','NO_PICK')) { return @() }
         if (-not (Test-BrainPickFresh $view.generated_at $Now)) { return @() }
-        return @($view.rule_signals | Where-Object { [string]$_.rule -in @('R1','R2','R4','R5') -and [string]$_.signal -in @('買いサイン','空売りサイン') })
+        # OWNER 2026-10-26 「ルール①を記録だけにして」: a record-only rule signal is never spoken
+        return @($view.rule_signals | Where-Object { [string]$_.rule -in @('R1','R2','R4','R5') -and [string]$_.signal -in @('買いサイン','空売りサイン') -and $_.record_only -ne $true })
     } catch {
         return @()
     }

@@ -135,8 +135,11 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
     ticks = state["ticks_state"].get("ticks", {})
     now_t = local.strftime("%H:%M:%S")
     rule_positions = []
+    traded = set()   # OWNER 2026-10-26 「1銘柄1日1回」: (rule, ticker) already filled today
     for s in signals:
         rule = rules.get(s.get("rule") or "") or {}
+        if rule.get("once_per_ticker_day") and (s.get("rule"), s.get("ticker")) in traded:
+            continue
         sig = {"signal": s.get("signal"), "entry": s.get("entry"), "stop": s.get("stop"), "target1": s.get("target"),
                "captured_at": s.get("captured_at"), "signal_bar": s.get("signal_bar")}
         got = ev.replay(sig, ticks.get(s.get("ticker", ""), []), max_hold_minutes=rule.get("max_hold_minutes")) or {}
@@ -153,6 +156,7 @@ def build(runtime: Path, *, now: datetime, ev, rules: dict, state: dict) -> dict
                 limit = min(limit, (datetime.strptime(got["fill_time"], "%H:%M:%S")
                                     + timedelta(minutes=rule["max_hold_minutes"])).strftime("%H:%M:%S"))
             status = "OPEN" if got.get("exit") == "TIME_EXIT" and now_t < limit else "CLOSED"
+            traded.add((s.get("rule"), s.get("ticker")))
         rule_positions.append({"ticker": s.get("ticker"), "name": s.get("name"), "rule": s.get("rule"),
                                "signal": s.get("signal"), "signal_at": s.get("captured_at"), "entry": s.get("entry"),
                                "target": s.get("target"), "stop": s.get("stop"), "status": status,

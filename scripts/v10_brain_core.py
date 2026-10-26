@@ -110,6 +110,8 @@ def estimate(row: dict, *, ev_table: dict | None, rule_shadow: dict | None, hm: 
     """Expected net return in % of one trade on this signal, and what it rests on."""
     best = None
     for key, rule in rules_for((rule_shadow or {}).get("rules"), row, hm):
+        if rule.get("record_only"):   # OWNER 2026-10-26: recorded, never scored
+            continue
         test = (rule.get("backtest") or {}).get("test") or {}
         fwd = ((rule_shadow or {}).get("forward") or {}).get(key) or {}
         weight = _f(rule.get("backtest_weight"))
@@ -203,6 +205,20 @@ def pick(live: dict, *, ev_table: dict | None, rule_shadow: dict | None, now: da
             base["excluded"].append({"ticker": row.get("ticker"), "name": name, "reason": "発動・損切・目標が未確定"})
             continue
         est = estimate(row, ev_table=ev_table, rule_shadow=rule_shadow, hm=hm)
+        # OWNER 2026-10-26 「ルール①を記録だけにして」: a signal that only a record-only rule matches is
+        # logged as that rule's signal (virtual replay and 注目 list) and never ranked, spoken or carded.
+        matched = rules_for((rule_shadow or {}).get("rules"), row, hm)
+        record_only = [(k, r) for k, r in matched if r.get("record_only")]
+        if record_only and not [k for k, r in matched if not r.get("record_only")]:
+            key, rule = record_only[0]
+            dist = abs(target - entry)
+            base["rule_signals"].append({"ticker": row.get("ticker"), "name": name, "signal": row.get("signal"),
+                                         "strategy": row.get("strategy"), "signal_bar": row.get("signal_bar_time"),
+                                         "rule": key, "entry": entry, "record_only": True,
+                                         "target": round(entry + side * rule.get("target_mult", 1.0) * dist, 4),
+                                         "stop": round(entry - side * rule.get("stop_mult", 1.0) * dist, 4)})
+            base["excluded"].append({"ticker": row.get("ticker"), "name": name, "reason": "ルール①は記録のみ（ブレインは使わない）"})
+            continue
         flags = []
         ratio = _f(row.get("credit_ratio"))
         daily = margin_ratio(margin, row.get("ticker"), now=now)
@@ -345,7 +361,8 @@ def today_lists(records: Path, *, now: datetime, rule_labels: dict | None = None
             return []
 
     def label(rule):
-        return (rule_labels or {}).get(rule, {}).get("label", rule or "")
+        got = (rule_labels or {}).get(rule, {})
+        return got.get("label", rule or "") + ("（記録のみ）" if got.get("record_only") else "")
 
     items, seen = [], set()
     for r in rows(PICKS_FILE):

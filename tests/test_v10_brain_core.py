@@ -33,13 +33,34 @@ def live(rows, *, at="2026-10-22 09:29:55", valid=100, stale=False):
     return {"updated_at": at, "valid": valid, "stale": stale, "all_targets": rows}
 
 
+# The scoring tests below use the rules as scoring rules (R1 as it was before 2026-10-26); the
+# record-only behaviour of the real ev.RULES (OWNER 2026-10-26) has its own tests (RecordOnlyRule).
+SCORING_RULES = {k: {kk: vv for kk, vv in v.items() if kk not in ("record_only", "once_per_ticker_day")}
+                 for k, v in ev.RULES.items()}
 SHADOW = {"schema_version": ev.RULES_SCHEMA, "real_submit_allowed": False, "forward_from": "2026-10-22",
-          "rules": ev.RULES, "forward": {"R1": {"n": 0}}}
+          "rules": SCORING_RULES, "forward": {"R1": {"n": 0}}}
 TABLE = {"schema_version": ev.SCHEMA, "real_submit_allowed": False, "days": ["d"] * 20,
          "by_strategy": {"OR15戻り|空売りサイン": {"n": 100, "ev_pct": 0.2, "status": "OK"},
                          "OR15|買いサイン": {"n": 400, "ev_pct": -0.05, "status": "OK"}},
          "by_strategy_ticker": {"OR15戻り|空売りサイン|B.T": {"n": 30, "ev_pct": 0.5, "status": "OK"},
                                 "OR15戻り|空売りサイン|C.T": {"n": 5, "ev_pct": 3.0, "status": "INSUFFICIENT"}}}
+
+
+class RecordOnlyRule(unittest.TestCase):
+    # OWNER 2026-10-26 「ルール①を記録だけにして、1銘柄1日1回を入れて」
+    def test_rule_one_is_logged_but_never_picked(self):
+        real = dict(SHADOW, rules=ev.RULES)
+        self.assertTrue(ev.RULES["R1"]["record_only"] and ev.RULES["R1"]["once_per_ticker_day"])
+        view = brain.pick(live([target("A.T")]), ev_table=TABLE, rule_shadow=real, now=NOW)
+        self.assertEqual(view["picks"], [])
+        self.assertEqual([(x["rule"], x["record_only"]) for x in view["rule_signals"]], [("R1", True)])
+        self.assertIn("ルール①は記録のみ（ブレインは使わない）", [x["reason"] for x in view["excluded"]])
+        self.assertIsNone(brain.estimate(target("A.T"), ev_table=None, rule_shadow=real, hm="09:20")["rule"])
+
+    def test_attention_label_says_record_only(self):
+        self.assertIn('("（記録のみ）" if got.get("record_only") else "")', (ROOT / "scripts" / "v10_brain_core.py").read_text(encoding="utf-8"))
+        collector = (ROOT / "ms2_live" / "MS2_RSS_100_Collector.ps1").read_text(encoding="utf-8-sig")
+        self.assertIn("-and $_.record_only -ne $true })", collector)   # never spoken
 
 
 class Pick(unittest.TestCase):
