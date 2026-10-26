@@ -149,7 +149,7 @@ document.addEventListener("DOMContentLoaded",()=>{
      // OWNER 2026-10-26: after the 8-hour display window the answers are gone from the list, not missing
      const arrivedMs=Object.values(arrivedToday).map(parseJstMs).filter(Number.isFinite),arrivedLast=arrivedMs.length?jstParts(Math.max(...arrivedMs)):null;
      const lamp=latest&&lp.day===now.day?["green","最新","今日 "+lp.hm+" の答え"]:
-       arrivedLast&&arrivedLast.day===now.day?["green","今日の分は届きました","今日 "+arrivedLast.hm+" の答え（表示は届いてから8時間まで）"]:
+       arrivedLast&&arrivedLast.day===now.day?["gray","期限切れ","今日 "+arrivedLast.hm+" に届いた答え（届いてから8時間を過ぎたので期限切れ）"]:
        latest?["yellow","前の答え",lp.md+" "+lp.hm+" の答え（今日の分はまだ）"]:
        (now.wd===0||now.wd===6)?["gray","休日","次は平日の7:30に届きます"]:
        now.min<465?["gray","まだ","今日の答えは7:30に届きます"]:["red","届いていません","今日7:30の答えが来ていません（ChatGPTアプリとPCが動いているか確認）"];

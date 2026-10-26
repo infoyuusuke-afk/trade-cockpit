@@ -110,8 +110,8 @@ class FreshnessLamps(unittest.TestCase):
             self.assertIn(word, HTML)
         self.assertIn("実行日時：", HTML)              # Grok lamps use the answer's own run time
         self.assertIn('["red", "古い"', HTML)
-        # OWNER 2026-10-26: after the 8-hour window the lamp says today's answers arrived (not red)
-        self.assertIn('["green","今日の分は届きました","今日 "+arrivedLast.hm+" の答え（表示は届いてから8時間まで）"]', HTML)
+        # OWNER 2026-10-26 「期限切れの時は、赤の届いていませんではなく、灰色で届いた時刻と期限切れと出して」
+        self.assertIn('["gray","期限切れ","今日 "+arrivedLast.hm+" に届いた答え（届いてから8時間を過ぎたので期限切れ）"]', HTML)
         self.assertIn('manual=Object.fromEntries(Object.entries(manual).filter(([k])=>!k.startsWith("_")));', HTML)
         # OWNER 2026-10-26: a 1号 answer without 実行日時 is timed from its own 「（YYYY-MM-DD HH:MM JST）」
         self.assertIn(r"|| /[（(](\d{4}-\d{2}-\d{2} \d{2}:\d{2}) JST[）)]/.exec(b.text", HTML)
