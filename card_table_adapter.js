@@ -97,7 +97,7 @@
   }
 
   function convertTable(table){
-    if(table.matches("[data-keep-table]")||table.closest(".tv-lightweight-charts, [data-keep-table]"))return;
+    if(table.matches("[data-keep-table]"))return;
     if(!observers.has(table)){
       const mo=new MutationObserver(()=>scheduleRender(table));
       mo.observe(table,{subtree:true,childList:true,characterData:true});
