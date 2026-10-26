@@ -1037,6 +1037,8 @@ document.addEventListener("DOMContentLoaded",()=>{
 #kioxia-5m-calendar .kio-ms2-grid span,#kioxia-5m-calendar .kio-supply-grid span,#kioxia-5m-calendar .kio-ms2-grid small,#kioxia-5m-calendar .kio-supply-grid small,#kioxia-5m-calendar .kio-monitor-grid span,#kioxia-5m-calendar .kio-monitor-grid small{color:#9AA0AA}
 #kioxia-5m-calendar .kio-ms2-grid b,#kioxia-5m-calendar .kio-supply-grid b,#kioxia-5m-calendar .kio-monitor-grid b{color:#E8EAED}
 #kioxia-5m-calendar .kio-ms2-title strong{background:#0E1013;border-color:#22252A}
+#kioxia-5m-calendar .kio-metric>span,#kioxia-5m-calendar .kio-chart-legend>span,#kioxia-5m-calendar .kio-subpanel>p.sub,#kioxia-5m-calendar .kio-monitor-grid span{color:#9AA0AA!important}
+#kioxia-5m-calendar .rotation-box>strong{color:#E8EAED}
 </style>
 <section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）本日1分足予測・5分足類似日 <button class="voice-toggle" data-voice-toggle type="button" style="float:right">🔇</button></h2>
 <div id="kioxia-calendar-meta" class="sub">直近60日の5分足を照合中...</div>
@@ -1851,7 +1853,7 @@ const kioIndexToClock=i=>{const m=i<=150?540+i:750+(i-151),hh=String(Math.floor(
 let kioChart=null,kioCandleSeries=null,kioForecastSeries=null,kioEmaSeries=null,kioVwapSeries=null,kioPriceLines=[],kioMarkersPrimitive=null;
 function ensureKioChart(){
   if(kioChart||typeof LightweightCharts==="undefined")return kioChart;
-  kioChart=LightweightCharts.createChart(document.getElementById("kio-best-path"),{layout:{background:{color:"transparent"},textColor:"#9bb0bd",fontSize:11},grid:{vertLines:{color:"#1c303c"},horzLines:{color:"#1c303c"}},rightPriceScale:{borderColor:"#233744"},timeScale:{borderColor:"#233744",tickMarkFormatter:t=>kioIndexToClock(Number(t))},crosshair:{mode:LightweightCharts.CrosshairMode.Normal},autoSize:true});
+  kioChart=LightweightCharts.createChart(document.getElementById("kio-best-path"),{layout:{background:{color:"transparent"},textColor:"#9bb0bd",fontSize:11},grid:{vertLines:{color:"#1c303c"},horzLines:{color:"#1c303c"}},rightPriceScale:{borderColor:"#233744"},timeScale:{borderColor:"#233744",tickMarkFormatter:t=>kioIndexToClock(Number(t))},crosshair:{mode:LightweightCharts.CrosshairMode.Normal,vertLine:{labelVisible:false}},autoSize:true});
   window.kioChart=kioChart;
   // OWNER 2026-10-26 「なおってない」: the chart's own layout table is not a data table; card_table_adapter.js
   // turned it into 項目1/項目2 cards and the candles vanished. Marked before the adapter's observer runs.

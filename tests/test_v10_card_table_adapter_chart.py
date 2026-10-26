@@ -26,3 +26,11 @@ def test_kioxia_boxes_use_the_same_dark_tokens_as_other_tabs():
     assert "#kioxia-5m-calendar .kio-ms2-grid>div" in css and "background:#0E1013!important" in css
     assert "#kioxia-5m-calendar .kio-monitor-grid>div" in css and "#kioxia-5m-calendar .kio-summary>.kio-metric" in css
     assert "background:#090A0C!important" in css
+    assert "#kioxia-5m-calendar .kio-metric>span" in css and "color:#9AA0AA!important" in css
+
+
+def test_kioxia_chart_hides_the_1970_crosshair_date():
+    # OWNER 2026-10-26 「チャート下の『01 1月 '70』も消して」: the x values are minute numbers, not dates
+    html = (ROOT / "index.html").read_text(encoding="utf-8")
+    body = html.split("function ensureKioChart(){", 1)[1].split("kioForecastSeries=", 1)[0]
+    assert "crosshair:{mode:LightweightCharts.CrosshairMode.Normal,vertLine:{labelVisible:false}}" in body
