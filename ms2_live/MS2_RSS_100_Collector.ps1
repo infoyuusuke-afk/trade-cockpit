@@ -1976,6 +1976,12 @@ if ($null -eq $d045StartConfig) {
             # closes the workbook without saving).
             $futIndexSheet = Invoke-ExcelCom -Label "先物指数シート作成" -Action { $book.Worksheets.Add() }
             Invoke-ExcelCom -Label "先物指数シート命名" -Action { $futIndexSheet.Name = "FUT_INDEX" } | Out-Null
+        }
+        # OWNER 2026-10-26: the saved workbook already had a FUT_INDEX sheet, so the formulas were never
+        # written again (the USD/JPY row stayed empty, TOPIX kept an old code). Every start now clears the
+        # rows and writes the formulas from $futIndexDefs.
+        if ($null -ne $futIndexSheet) {
+            Invoke-ExcelCom -Label "先物指数シート消去" -Action { $futIndexSheet.Range("A2:J" + [string]($futIndexDefs.Count + 9)).ClearContents() } | Out-Null
             for ($i=0; $i -lt $futIndexDefs.Count; $i++) {
                 $fiRow = $i + 2
                 $fiDef = $futIndexDefs[$i]

@@ -165,6 +165,18 @@ class Helpers(unittest.TestCase):
         self.assertIn('elseif ($fxDate -ne $fiNow.ToString("yyyy-MM-dd")) { $fiStatus = "STALE_OLD_DATE" }', text)
         self.assertIn('if ($null -eq $fxDate) { $fiStatus = "STALE_DATE_UNKNOWN" }', text)
 
+    def test_formulas_written_every_start_even_when_the_sheet_was_saved(self):
+        # OWNER 2026-10-26: the saved workbook already had FUT_INDEX, so the USD/JPY row never got its formulas
+        text = _text()
+        create = text.index('$futIndexSheet = Invoke-ExcelCom -Label "先物指数シート作成"')
+        clear = text.index('Invoke-ExcelCom -Label "先物指数シート消去"')
+        loop = text.index("$fiItems = if ($fiDef.Fn -eq \"RssFOPMarket\")")
+        self.assertLess(create, clear)
+        self.assertLess(clear, loop)
+        between = text[create:clear]
+        self.assertIn("\n        }\n", between)                 # the create branch closes before the formulas
+        self.assertIn("if ($null -ne $futIndexSheet) {", between)
+
     def test_usdjpy_row_through_rss_fx(self):
         # OWNER 2026-10-26 「ドル円を先物と同じように記録に足して」
         text = _text()
