@@ -91,6 +91,9 @@ class BrainLamp(unittest.TestCase):
         for word in ('"正常に動いています"', '"止まっています"', '"一時停止中"', '"場中なのに値段が止まっています"'):
             self.assertIn(word, HTML)
         self.assertIn('if(ex.real_submit_allowed!==false)down.push(', HTML)
+        # OWNER 2026-10-26 「特別気配の直し」: stocks with no price yet are named on a yellow lamp
+        self.assertIn('rt.availability?.quote_pending_sample', HTML)
+        self.assertIn('"動いています（値待ちあり）","特別気配など値がまだない "', HTML)
 
 
 class FreshnessLamps(unittest.TestCase):

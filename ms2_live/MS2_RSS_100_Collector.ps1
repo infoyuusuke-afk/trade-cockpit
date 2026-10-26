@@ -718,6 +718,29 @@ function Get-BoardAvailability {
         if ($unexpected.Count -gt 0) { [void]$reasons.Add("UNIVERSE_ROW_UNEXPECTED") }
         if ($declaredOk -and $declared -ne $expectedCount) { [void]$reasons.Add("UNIVERSE_DECLARED_MISMATCH") }
     }
+    # OWNER 2026-10-26 「特別気配の直し」: rows missing only because the stock has no price yet
+    # (特別気配 at the open) do not block the board. Each such row must be listed by the
+    # Collector in missing_rows as PRICE_MISSING with its sheet code matching, at most 5 rows,
+    # no unexpected row, the declared universe equal to the expected one and to present +
+    # pending rows, and >= 95% of the expected rows FRESH. The rows stay reported (missing_*,
+    # quote_pending_*) and are never used; the board becomes AVAILABLE_PARTIAL.
+    $quotePendingMax = 5
+    $quotePending = New-Object System.Collections.Generic.List[string]
+    if ($universeVerified -and $missing.Count -gt 0 -and $missing.Count -le $quotePendingMax -and $unexpected.Count -eq 0 -and
+        $declaredOk -and $declared -eq $expectedCount -and $declared -eq ($rowCount + $missing.Count) -and $null -ne $LiveObj -and
+        $null -ne $RowFreshness -and $null -ne $RowFreshness.state_counts -and $expectedCount -gt 0 -and
+        (100.0 * [int]$RowFreshness.state_counts.FRESH / $expectedCount) -ge 95.0) {
+        $pendingDeclared = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        foreach ($m in @($LiveObj.missing_rows)) {
+            if ($null -ne $m -and [string]$m.reason -ceq "PRICE_MISSING" -and $m.sheet_code_matches -eq $true -and $m.ticker -is [string]) { [void]$pendingDeclared.Add($m.ticker) }
+        }
+        $allPending = $true
+        foreach ($t in $missing) { if (-not $pendingDeclared.Contains([string]$t)) { $allPending = $false } }
+        if ($allPending) {
+            foreach ($t in $missing) { [void]$quotePending.Add([string]$t) }
+            [void]$reasons.RemoveAll([Predicate[string]]{ param($r) $r -ceq "UNIVERSE_ROW_MISSING" -or $r -ceq "UNIVERSE_DECLARED_MISMATCH" })
+        }
+    }
     $unique = @($reasons | Select-Object -Unique)
     $sorted = [string[]]$unique
     if ($null -eq $sorted) { $sorted = [string[]]@() }
@@ -751,6 +774,11 @@ function Get-BoardAvailability {
             $status = "AVAILABLE_PARTIAL"
         }
     }
+    if ($quotePending.Count -gt 0) {
+        $partialRows = $true
+        $partialReasons = [string[]]@(@($partialReasons) + @("UNIVERSE_QUOTE_PENDING") | Select-Object -Unique)
+        if ($status -ceq "AVAILABLE") { $status = "AVAILABLE_PARTIAL" }
+    }
     $counts = [ordered]@{ FRESH = 0; STALE = 0; UNKNOWN = 0; INVALID = 0; MISSING = $missing.Count }
     if ($null -ne $RowFreshness -and $null -ne $RowFreshness.state_counts) {
         foreach ($k in @("FRESH", "STALE", "UNKNOWN", "INVALID")) { $counts[$k] = [int]$RowFreshness.state_counts[$k] }
@@ -783,6 +811,8 @@ function Get-BoardAvailability {
         partial_rows = $partialRows
         partial_reasons = @($partialReasons)
         partial_min_fresh_pct = $partialMinFreshPct
+        quote_pending_count = $quotePending.Count
+        quote_pending_sample = @($quotePending | Select-Object -First 10)
         order_allowed = $false
         real_submit_allowed = $false
     }
@@ -805,6 +835,8 @@ function Get-AvailabilitySummary($Availability) {
         missing_count = $Availability.missing_count
         missing_sample = @($Availability.missing_sample)
         unexpected_count = $Availability.unexpected_count
+        quote_pending_count = $Availability.quote_pending_count
+        quote_pending_sample = @($Availability.quote_pending_sample)
         collector_valid_count = $Availability.collector_valid_count
         collector_valid_quality_pass = ($Availability.collector_valid_quality_pass -eq $true)
         order_allowed = $false

@@ -402,6 +402,7 @@ def _plain_positive_int(value) -> int | None:
 
 
 PARTIAL_MIN_FRESH_PCT = 95.0
+QUOTE_PENDING_MAX = 5   # OWNER 2026-10-26: rows waiting for their first price (特別気配) that do not block the board
 
 
 def assess_board_availability(payload, quote_freshness: dict | None, row_freshness: dict | None,
@@ -454,6 +455,21 @@ def assess_board_availability(payload, quote_freshness: dict | None, row_freshne
             reasons.append("UNIVERSE_ROW_UNEXPECTED")
         if declared is not None and declared != expected_count:
             reasons.append("UNIVERSE_DECLARED_MISMATCH")
+    # OWNER 2026-10-26 「特別気配の直し」: the same rule as Get-BoardAvailability — rows missing only
+    # because the stock has no price yet (PRICE_MISSING with the sheet code matching, listed by the
+    # Collector in missing_rows), at most QUOTE_PENDING_MAX, no unexpected row, declared == expected
+    # == present + pending, >= 95% of expected rows FRESH. Reported, never used; AVAILABLE_PARTIAL.
+    quote_pending: list[str] = []
+    if (verified and missing and len(missing) <= QUOTE_PENDING_MAX and not unexpected and declared is not None
+            and declared == expected_count and declared == row_count + len(missing)
+            and isinstance(row_freshness, dict) and isinstance(row_freshness.get("state_counts"), dict) and expected_count
+            and 100.0 * int(row_freshness["state_counts"].get(FRESH) or 0) / expected_count >= PARTIAL_MIN_FRESH_PCT):
+        declared_pending = {m.get("ticker") for m in (payload.get("missing_rows") or []) if isinstance(m, dict)
+                            and m.get("reason") == "PRICE_MISSING" and m.get("sheet_code_matches") is True
+                            and isinstance(m.get("ticker"), str)}
+        if all(t in declared_pending for t in missing):
+            quote_pending = list(missing)
+            reasons = [r for r in reasons if r not in ("UNIVERSE_ROW_MISSING", "UNIVERSE_DECLARED_MISMATCH")]
     unique = sorted(set(reasons))
     if not identity_fresh:
         status = "BLOCKED_IDENTITY_QUOTE"
@@ -480,6 +496,11 @@ def assess_board_availability(payload, quote_freshness: dict | None, row_freshne
             partial_rows = True
             partial_reasons = unique
             unique = []
+            status = "AVAILABLE_PARTIAL"
+    if quote_pending:
+        partial_rows = True
+        partial_reasons = sorted(set(partial_reasons) | {"UNIVERSE_QUOTE_PENDING"})
+        if status == "AVAILABLE":
             status = "AVAILABLE_PARTIAL"
     counts = {FRESH: 0, STALE: 0, UNKNOWN: 0, INVALID: 0, "MISSING": len(missing)}
     if isinstance(row_freshness, dict) and isinstance(row_freshness.get("state_counts"), dict):
@@ -510,6 +531,8 @@ def assess_board_availability(payload, quote_freshness: dict | None, row_freshne
         "partial_rows": partial_rows,
         "partial_reasons": partial_reasons,
         "partial_min_fresh_pct": PARTIAL_MIN_FRESH_PCT,
+        "quote_pending_count": len(quote_pending),
+        "quote_pending_sample": quote_pending[:10],
         "order_allowed": False,
         "real_submit_allowed": False,
     }
