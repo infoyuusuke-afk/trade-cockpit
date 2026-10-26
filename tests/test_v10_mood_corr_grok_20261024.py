@@ -246,6 +246,35 @@ class PriceVolumeHints(unittest.TestCase):
         self.assertIn("値動き・出来高（PC計算 ", HTML)
 
 
+class FxLink(unittest.TestCase):
+    # OWNER 2026-10-26 「ドル円をMS2から取って連動を出して。表示と記録だけで、サインには使わない」
+    def test_minute_correlation_from_records(self):
+        with tempfile.TemporaryDirectory() as d:
+            day = Path(d) / "2026-10-27"
+            day.mkdir()
+            fut = ["captured_at,key,code,configured_month,contract_code,contract_month_seen,status,name,price"]
+            snap = ["captured_at,ticker,name,price"]
+            for i in range(40):
+                hm = "09:%02d" % (i + 1)
+                fx = 150 + (i % 5) * 0.1 + i * 0.01
+                fut.append("2026-10-27T%s:10+09:00,USDJPY,USD/JPY,,,,OK,ドル円,%.3f" % (hm, fx))
+                fut.append("2026-10-27T%s:10+09:00,N225MF,N225MF,202612,,202612,OK,日経225ミニ,%.1f" % (hm, fx * 400))
+                snap.append("2026-10-27 %s:10,285A.T,キオクシア,%.1f" % (hm, 12000 - (i % 5) * 10 - i))
+            fut.append("2026-10-27T09:05:30+09:00,USDJPY,USD/JPY,,,,NO_VALUE,ドル円,")
+            (day / "futures_index.csv").write_text(chr(10).join(fut), encoding="utf-8-sig")
+            (day / "market_snapshots.csv").write_text(chr(10).join(snap), encoding="utf-8-sig")
+            v = feed.fx_link(Path(d), datetime(2026, 10, 27, 1, 0, tzinfo=timezone.utc))
+            empty = feed.fx_link(Path(d), datetime(2026, 10, 28, 1, 0, tzinfo=timezone.utc))
+        self.assertEqual((v["state"], v["usdjpy_at"], v["points"]), ("OK", "09:40", 40))
+        nk, kx = v["peers"]
+        self.assertEqual((nk["corr_today"], nk["n_today"], nk["n_recent"]), (1.0, 39, 30))
+        self.assertLess(kx["corr_today"], 0)
+        self.assertFalse(v["real_submit_allowed"])
+        self.assertEqual(empty["state"], "NO_DATA")
+        self.assertIn("window.loadFxLink = () =>", HTML)
+        self.assertIn("ドル円との連動（参考・サインには使わない）", HTML)
+
+
 class HeaderLamps(unittest.TestCase):
     def test_badge_and_verified_line(self):
         # OWNER 2026-10-24 「ランプの赤を直して」「完全照合の日付」

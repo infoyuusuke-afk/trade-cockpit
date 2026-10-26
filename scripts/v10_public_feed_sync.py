@@ -12,6 +12,7 @@ score, voice or order.
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import csv
 import json
 import os
 import re
@@ -416,6 +417,73 @@ def grok_bots_view(root: Path) -> dict:
             "real_submit_allowed": False, "trade_instruction": False}
 
 
+# OWNER 2026-10-26 「ドル円をMS2から取って連動を出して。表示と記録だけで、サインには使わない」:
+# today's USD/JPY (key USDJPY in records/<day>/futures_index.csv, from MS2 RssFXMarket) beside the Nikkei
+# 225 mini future (N225MF) and Kioxia (285A.T in market_snapshots.csv): the last price of each minute in
+# the session, and the correlation of their 1-minute changes over the last 30 minutes and the whole day.
+# Display only: nothing here reaches a signal, gate, Brain score, voice or order.
+FX_KEY, FX_PEERS = "USDJPY", (("N225MF", "日経225ミニ"), ("285A.T", "キオクシアHD（285A）"))
+FX_MIN_POINTS = 10
+FX_RECENT_MINUTES = 30
+
+
+def _minute_series(path: Path, key_field: str, keys: set, ok_field: str | None = None) -> dict:
+    out = {k: {} for k in keys}
+    if not path.is_file():
+        return out
+    with path.open(encoding="utf-8-sig", newline="") as f:
+        for row in csv.DictReader(f):
+            k = row.get(key_field)
+            if k not in keys or (ok_field and row.get(ok_field) != "OK"):
+                continue
+            minute = str(row.get("captured_at") or "").replace("T", " ")[11:16]
+            try:
+                price = float(row.get("price") or "")
+            except ValueError:
+                continue
+            if price > 0 and ("09:00" <= minute < "11:31" or "12:30" <= minute < "15:31"):
+                out[k][minute] = price
+    return out
+
+
+def _corr(xs: list, ys: list):
+    n = len(xs)
+    if n < FX_MIN_POINTS:
+        return None
+    mx, my = sum(xs) / n, sum(ys) / n
+    vx = sum((x - mx) ** 2 for x in xs)
+    vy = sum((y - my) ** 2 for y in ys)
+    if vx <= 0 or vy <= 0:
+        return None
+    return round(sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / (vx * vy) ** 0.5, 2)
+
+
+def fx_link(records_root: Path, now: datetime) -> dict:
+    day = now.astimezone(timezone(timedelta(hours=9))).strftime("%Y-%m-%d")
+    folder = Path(records_root) / day
+    fut = _minute_series(folder / "futures_index.csv", "key", {FX_KEY, "N225MF"}, ok_field="status")
+    stock = _minute_series(folder / "market_snapshots.csv", "ticker", {"285A.T"})
+    series = {FX_KEY: fut[FX_KEY], "N225MF": fut["N225MF"], "285A.T": stock["285A.T"]}
+    fx = series[FX_KEY]
+    view = {"date": day, "display_only": True, "trade_instruction": False, "real_submit_allowed": False,
+            "usdjpy": None, "usdjpy_at": None, "points": len(fx), "peers": []}
+    if not fx:
+        view["state"] = "NO_DATA"
+        return view
+    last = max(fx)
+    view.update(state="OK", usdjpy=fx[last], usdjpy_at=last)
+    for key, label in FX_PEERS:
+        peer = series[key]
+        minutes = sorted(set(fx) & set(peer))
+        steps = [(m, (fx[m] / fx[p] - 1), (peer[m] / peer[p] - 1)) for p, m in zip(minutes, minutes[1:])]
+        recent = steps[-FX_RECENT_MINUTES:]
+        view["peers"].append({"key": key, "label": label, "n_today": len(steps),
+                              "corr_today": _corr([a for _, a, _ in steps], [b for _, _, b in steps]),
+                              "n_recent": len(recent),
+                              "corr_recent": _corr([a for _, a, _ in recent], [b for _, _, b in recent])})
+    return view
+
+
 DATA_MAX_BYTES = 16 * 1024 * 1024
 # OWNER 2026-10-23 「検証・除外に本来地合判定がでるはず」: the daily index figures of the
 # public page's 地合いサマリー, plus a reference verdict. Display only (never a gate,
@@ -509,7 +577,8 @@ def _download(url: str) -> bytes:
     return data
 
 
-def sync(target: Path, *, fetch=_download, now: datetime | None = None, grok_root: Path | None = None, bars_fetch=None) -> dict:
+def sync(target: Path, *, fetch=_download, now: datetime | None = None, grok_root: Path | None = None, bars_fetch=None,
+         records_root: Path | None = None) -> dict:
     """Refresh every feed file it can; returns a summary (also written as META_FILE)."""
     now = now or datetime.now(timezone.utc)
     target = Path(target)
@@ -542,6 +611,11 @@ def sync(target: Path, *, fetch=_download, now: datetime | None = None, grok_roo
             raise ValueError("TOO_LARGE")
         data_doc = json.loads(raw.decode("utf-8-sig"))
         summary = summarize(data_doc)
+        try:   # OWNER 2026-10-26: USD/JPY link, display only
+            summary["fx_link"] = fx_link(Path(records_root) if records_root is not None else Path(target).parent / "records",
+                                         now)
+        except Exception as exc:
+            summary["fx_link"] = {"state": "UNAVAILABLE", "reason": type(exc).__name__}
         # OWNER 2026-10-24 「完全照合の日付」: the header line showed the pinned 10/20 copy. Only the
         # counts, status and time of main's live_focus.json are copied (display only; the voice
         # switch stays on the local file, audit 6349440798).

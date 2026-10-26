@@ -1464,11 +1464,25 @@ window.buildTradeWatch = () => {
   sec.innerHTML = "<h2>トレード中に見るところ</h2><ol class='trade-watch-steps'><li><b>いちばん上の「注目」</b>：ランキング入り・ルール①②④⑤のサインが時刻つきで積まれる。まずここ</li>" +
     "<li><b>下の2つのランプ</b>：緑ならOK。赤になったら止まっているので、その時だけ確認</li><li><b>注文カード</b>：キオクシアHD（285A）にサインが出た時だけ出る（検証中・参考のみ。執行は自分で）</li>" +
     "<li><b>その下の好機レーダーとSCALP 5</b>：今動いている銘柄と、主力5銘柄の1分足・板。キオクシアの板・歩み値の詳細はKIOXIAタブ</li></ol>" +
-    "<div class='trade-watch-lamps'><div id='trade-brain-lamp'></div><div id='trade-ai-lamp'></div></div><div id='trade-watch-orders'></div>";
+    "<div class='trade-watch-lamps'><div id='trade-brain-lamp'></div><div id='trade-ai-lamp'></div></div><div id='trade-fx-link'></div><div id='trade-watch-orders'></div>";
   const intro = pane.querySelector(":scope > .pane-intro");
   if (intro) intro.insertAdjacentElement("afterend", sec); else pane.prepend(sec);
 };
 document.addEventListener("DOMContentLoaded", () => { window.buildTradeWatch(); setTimeout(window.buildTradeWatch, 1500); });
+// OWNER 2026-10-26 「ドル円をMS2から取って連動を出して。表示と記録だけで、サインには使わない」
+window.loadFxLink = () => fetch("market_summary.json?t=" + Date.now()).then(r => r.ok ? r.json() : null).then(s => {
+  const box = document.getElementById("trade-fx-link");
+  if (!box) return;
+  const f = s && s.fx_link;
+  const e = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  if (!f || f.state !== "OK") { box.innerHTML = "<div class='fx-link'><b>ドル円との連動（参考）</b><small>まだ記録がありません（MS2のドル円を記録中。表示だけでサインには使いません）</small></div>"; return; }
+  const c = v => v == null ? "—" : (v > 0 ? "+" : "") + v.toFixed(2);
+  const word = v => v == null ? "データ不足" : v >= 0.5 ? "強く一緒に動く" : v >= 0.25 ? "やや一緒" : v > -0.25 ? "ほぼ無関係" : v > -0.5 ? "やや逆" : "強く逆に動く";
+  box.innerHTML = "<div class='fx-link'><b>ドル円との連動（参考・サインには使わない）</b><small>ドル円 " + e(f.usdjpy) + "（" + e(f.usdjpy_at) + "）・1分ごとの動きの相関。＋は円安で上がる向き</small>" +
+    "<div class='fx-link-grid'>" + (f.peers || []).map(p => "<span>" + e(p.label) + "<i>直近30分 " + c(p.corr_recent) + "（" + word(p.corr_recent) + "）</i><i>今日 " + c(p.corr_today) + "・" + e(p.n_today) + "分</i></span>").join("") + "</div>" +
+    "<small>相関は日によって変わり、0.25くらいは偶然でも出ます。売買の根拠にはしません。</small></div>";
+}).catch(() => {});
+document.addEventListener("DOMContentLoaded", () => { setTimeout(window.loadFxLink, 1800); setInterval(window.loadFxLink, 120000); });
 window.ORDER_CARD_CODES = ["285A.T"];
 window.ORDER_CARD_TTL_MS = 180000;
 window.tseTick = p => p <= 1000 ? 0.1 : p <= 3000 ? 0.5 : p <= 10000 ? 1 : p <= 30000 ? 5 : p <= 100000 ? 10 : 50;
@@ -2389,6 +2403,10 @@ html body #earnings-calendar-panel .grok-tag.good{border-color:#1f5444;color:#35
 #grok-bots-body .g2-note{font-size:11px;color:#c9ccd1;margin:6px 0 2px;line-height:1.5}
 #trade-watch .trade-watch-steps{margin:6px 0 12px 18px;padding:0;font-size:13px;color:#c9ccd1;line-height:1.7}
 #trade-watch .trade-watch-lamps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#trade-watch .fx-link{margin-top:10px;padding:8px 12px;border:1px solid #272a30;border-radius:10px;background:#101114}
+#trade-watch .fx-link b{display:block;font-size:13px;color:#e7e9eb}#trade-watch .fx-link small{display:block;font-size:11px;color:#9ba3af;margin:3px 0}
+#trade-watch .fx-link-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0}#trade-watch .fx-link-grid span{font-size:12px;color:#c9ccd1;border:1px solid #272a30;border-radius:8px;padding:6px 8px}
+#trade-watch .fx-link-grid i{display:block;font-style:normal;color:#e7e9eb;margin-top:2px}
 #trade-watch .order-card-slot h3{font-size:15px;margin:14px 0 6px;color:#e7e9eb}
 html body #earnings-calendar-panel .ec-day{position:relative;min-height:64px;border:1px solid #26272b;border-radius:10px;padding:8px 10px;background:#141518;color:#c9ccd1;font-size:13px;font-weight:700;transition:border-color .15s,background .15s}
 html body #earnings-calendar-panel .ec-day:hover{border-color:#4a4d55}
