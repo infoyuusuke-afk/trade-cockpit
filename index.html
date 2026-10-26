@@ -143,7 +143,8 @@ document.addEventListener("DOMContentLoaded",()=>{
         (other.length>1?'<small class="gpt-more">'+esc(other.slice(1).join("／"))+'</small>':'')+
         '<div class="cc-foot">'+esc(x.view||"")+'・'+esc(String(x.posted_at||"").slice(11,16))+'　出典 '+(Array.isArray(x.sources)?x.sources:[]).map((u,i)=>'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+(i+1)+'</a>').join(" ")+'</div></article>';};
      const manualHtml=Object.keys(manual).length?'<h3>GPTタスクの答え（自動・ChatGPTアプリ）</h3><div class="scalp-strip gpt-cards">'+Object.entries(manual).map(([role,rows])=>(Array.isArray(rows)?rows:[]).map(x=>gptCard(role,x)).join("")).join("")+'</div>':'';
-     box.innerHTML=manualHtml||(Object.keys(arrivedToday).length?'<div class="focus-empty">今日のGPTタスクの答えは届いています（届いてから8時間を過ぎたので、一覧からは外しました）</div>':'<div class="focus-empty">GPTタスクの答えは、まだ届いていません（PRE-NEXT・需給は毎日7:30。届いた日のうち8時間だけ表示）</div>');
+     const expiredAt=Object.values(arrivedToday).map(parseJstMs).filter(Number.isFinite);
+     box.innerHTML=manualHtml||(expiredAt.length?'<div class="focus-empty">期限切れ：今日 '+esc(jstParts(Math.max(...expiredAt)).hm)+' に届いたGPTタスクの答え（届いてから8時間を過ぎたので一覧から外しました）</div>':'<div class="focus-empty">GPTタスクの答えは、まだ届いていません（PRE-NEXT・需給は毎日7:30。届いた日のうち8時間だけ表示）</div>');
      const posted=Object.values(manual).flatMap(rows=>Array.isArray(rows)?rows:[]).map(x=>parseJstMs(x.posted_at)).filter(Number.isFinite);
      const now=jstParts(Date.now()),latest=posted.length?Math.max(...posted):null,lp=latest?jstParts(latest):null;
      // OWNER 2026-10-26: after the 8-hour display window the answers are gone from the list, not missing

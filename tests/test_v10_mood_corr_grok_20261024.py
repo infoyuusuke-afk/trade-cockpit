@@ -112,6 +112,7 @@ class FreshnessLamps(unittest.TestCase):
         self.assertIn('["red", "古い"', HTML)
         # OWNER 2026-10-26 「期限切れの時は、赤の届いていませんではなく、灰色で届いた時刻と期限切れと出して」
         self.assertIn('["gray","期限切れ","今日 "+arrivedLast.hm+" に届いた答え（届いてから8時間を過ぎたので期限切れ）"]', HTML)
+        self.assertIn("期限切れ：今日 '+esc(jstParts(Math.max(...expiredAt)).hm)+' に届いたGPTタスクの答え", HTML)
         self.assertIn('manual=Object.fromEntries(Object.entries(manual).filter(([k])=>!k.startsWith("_")));', HTML)
         # OWNER 2026-10-26: a 1号 answer without 実行日時 is timed from its own 「（YYYY-MM-DD HH:MM JST）」
         self.assertIn(r"|| /[（(](\d{4}-\d{2}-\d{2} \d{2}:\d{2}) JST[）)]/.exec(b.text", HTML)
