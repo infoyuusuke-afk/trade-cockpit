@@ -1924,12 +1924,18 @@ $futIndexDefs = @(
     @{ Key = "N225";   Code = "N225";          Resolve = "";           Name = "日経225";            Fn = "RssIndexMarket" },
     @{ Key = "TOPX";   Code = "TOPX";          Resolve = "";           Name = "TOPIX";              Fn = "RssIndexMarket" },
     @{ Key = "MTHR";   Code = "MTHR";          Resolve = "";           Name = "東証グロース250指数";  Fn = "RssIndexMarket" },
-    @{ Key = "TSGM";   Code = "TSGM";          Resolve = "";           Name = "東証グロース市場指数";  Fn = "RssIndexMarket" }
+    @{ Key = "TSGM";   Code = "TSGM";          Resolve = "";           Name = "東証グロース市場指数";  Fn = "RssIndexMarket" },
+    # OWNER 2026-10-26 「ドル円を先物と同じように記録に足して」: USD/JPY through RssFXMarket (楽天
+    # ms2rss_function.pdf 2026/9/19: 指標コード 186 USD/JPY, 取得項目 現在値(Bid)/(Ask), 現在値更新日時, 前日終値(Bid)).
+    @{ Key = "USDJPY"; Code = "USD/JPY";       Resolve = "";           Name = "ドル円";             Fn = "RssFXMarket" }
 )
 # Columns B..J read through the code in column A. Indexes have no 詳細時刻, VWAP, quotes,
 # open interest or 限月 (empty columns); their 更新時刻 is HH:MM only.
 $futItems = @("現在値","現在値詳細時刻","前日比率","出来高","出来高加重平均","最良売気配値1","最良買気配値1","建玉","限月")
 $indexItems = @("現在値","更新時刻","前日比率","出来高","","","","","")
+# FX: B 現在値(Bid), C 現在値更新日時 (YY/MM/DD HH:MM, minute), G ask, H bid, I 前日終値(Bid) (used for
+# change_pct; open_interest stays empty), no volume / VWAP / 限月.
+$fxItems = @("現在値(Bid)","現在値更新日時","","","","現在値(Ask)","現在値(Bid)","前日終値(Bid)","")
 $futIndexSheet = $null
 $futIndexReady = $false
 $d045StartConfig = Get-D045Config
@@ -1950,7 +1956,7 @@ if ($null -eq $d045StartConfig) {
             for ($i=0; $i -lt $futIndexDefs.Count; $i++) {
                 $fiRow = $i + 2
                 $fiDef = $futIndexDefs[$i]
-                $fiItems = if ($fiDef.Fn -eq "RssFOPMarket") { $futItems } else { $indexItems }
+                $fiItems = if ($fiDef.Fn -eq "RssFOPMarket") { $futItems } elseif ($fiDef.Fn -eq "RssFXMarket") { $fxItems } else { $indexItems }
                 $fiMonth = [string]$d045StartConfig.contract_month.($fiDef.Key)
                 if ($fiDef.Resolve -eq "RssFOPCode") {
                     if (-not (Test-D045Month $fiMonth (Get-Date))) { continue }   # no valid month: no formula, no data
@@ -1986,6 +1992,8 @@ if ($null -eq $d045StartConfig) {
 function ConvertTo-FutIndexClock($value, [string]$Precision) {
     if ($null -eq $value) { return $null }
     $clock = $null
+    # a date and time serial (e.g. FX 現在値更新日時 read as a number) keeps its time of day
+    if ($value -is [double] -and $value -ge 1) { $value = $value - [Math]::Floor($value) }
     if ($value -is [double] -and $value -ge 0 -and $value -lt 1) {
         $clock = [TimeSpan]::FromSeconds([Math]::Round($value * 86400)).ToString("hh\:mm\:ss")
     } else {
@@ -2753,6 +2761,7 @@ try {
                     $fiRowVals = @(for ($j=1; $j -le 10; $j++) { Get-TableValue $fiPacket.Data ($i + 1) $j 10 })
                     $fiVals = @($fiRowVals[1..9])
                     $isFut = ($fiDef.Fn -eq "RssFOPMarket")
+                    $isFx = ($fiDef.Fn -eq "RssFXMarket")
                     $fiPrecision = if ($isFut) { "second" } else { "minute" }
                     $fiMonth = if ($isFut) { [string]$d045Config.contract_month.($fiDef.Key) } else { "" }
                     $fiSeen = if ($isFut) { ConvertTo-D045Month $fiVals[8] } else { $null }
@@ -2769,13 +2778,24 @@ try {
                         $fiLag = Get-FutIndexLag $fiNow ([string]$fiClock) $fiPrecision
                     }
                     $ok = ($fiStatus -eq "OK")
+                    $fiChange = $(if ($ok) { [string]$fiVals[2] } else { "" })
+                    $fiOi = $(if ($ok) { [string]$fiVals[7] } else { "" })
+                    if ($isFx) {
+                        # change_pct from 現在値(Bid) and 前日終値(Bid); no open interest for FX
+                        $fiChange = ""
+                        $fiOi = ""
+                        $fxNow = 0.0; $fxPrev = 0.0
+                        if ($ok -and [double]::TryParse([string]$fiVals[0], [ref]$fxNow) -and [double]::TryParse([string]$fiVals[7], [ref]$fxPrev) -and $fxPrev -gt 0) {
+                            $fiChange = [string][Math]::Round(($fxNow / $fxPrev - 1) * 100, 3)
+                        }
+                    }
                     $fiCells = @($fiNow.ToString("yyyy-MM-ddTHH:mm:sszzz"), $fiDef.Key, $fiDef.Code, $fiMonth,
                         [string]$fiRowVals[0], [string]$fiSeen, $fiStatus, $fiDef.Name,
                         $(if ($ok) { [string]$fiVals[0] } else { "" }), [string]$fiClock, $fiPrecision,
                         $fiLag.Exact, $fiLag.Min, $fiLag.Max,
-                        $(if ($ok) { [string]$fiVals[2] } else { "" }), $(if ($ok) { [string]$fiVals[3] } else { "" }),
+                        $fiChange, $(if ($ok) { [string]$fiVals[3] } else { "" }),
                         $(if ($ok) { [string]$fiVals[4] } else { "" }), $(if ($ok) { [string]$fiVals[5] } else { "" }),
-                        $(if ($ok) { [string]$fiVals[6] } else { "" }), $(if ($ok) { [string]$fiVals[7] } else { "" }))
+                        $(if ($ok) { [string]$fiVals[6] } else { "" }), $fiOi)
                     $fiLines.Add((@($fiCells | ForEach-Object { '"' + ([string]$_).Replace('"', '""') + '"' }) -join ','))
                 }
                 Add-Content -Encoding UTF8 -Path $fiCsv -Value $fiLines

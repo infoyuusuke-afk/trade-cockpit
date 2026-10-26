@@ -39,12 +39,13 @@ class SevenSeries(unittest.TestCase):
     def test_exact_series_and_no_floating_month(self):
         text = _text()
         defs = text[text.index("$futIndexDefs = @("):text.index("$futItems = @(")]
-        self.assertEqual(defs.count("Key = "), 7)
+        self.assertEqual(defs.count("Key = "), 8)   # 7 futures/index + USD/JPY (OWNER 2026-10-26)
         for key, code, resolve, fn in (("N225MF", "N225MF", "RssFOPCode", "RssFOPMarket"),
                                        ("TOPIX", "05", "JPX9", "RssFOPMarket"),
                                        ("MOTF", "MOTF", "RssFOPCode", "RssFOPMarket"),
                                        ("N225", "N225", "", "RssIndexMarket"), ("TOPX", "TOPX", "", "RssIndexMarket"),
-                                       ("MTHR", "MTHR", "", "RssIndexMarket"), ("TSGM", "TSGM", "", "RssIndexMarket")):
+                                       ("MTHR", "MTHR", "", "RssIndexMarket"), ("TSGM", "TSGM", "", "RssIndexMarket"),
+                                       ("USDJPY", "USD/JPY", "", "RssFXMarket")):
             self.assertRegex(defs, r'Key = "%s";\s+Code = "%s";\s+Resolve = "%s";\s+Name = "[^"]+";\s+Fn = "%s"'
                              % (re.escape(key), re.escape(code), resolve, fn))
         for gone in ("N225.FUT01.OS", "N225.FUT01.C", "N225M.FUT01.OS", "MOT.FUT01.OS", "Get-CentralQuarterMonth"):
@@ -115,9 +116,19 @@ class Helpers(unittest.TestCase):
             'Write-Output ("D=" + (ConvertTo-FutIndexClock ([double]0.5) "second"))',
             'Write-Output ("E=" + (ConvertTo-FutIndexClock "15:44:30" "minute"))',
             'Write-Output ("F=" + [string](ConvertTo-FutIndexClock "-" "minute"))',
+            'Write-Output ("G=" + (ConvertTo-FutIndexClock "26/10/26 10:23" "minute"))',     # FX 現在値更新日時
+            'Write-Output ("H=" + (ConvertTo-FutIndexClock ([double]46321.5) "minute"))',   # a date-time serial
         ]) + "\n")
-        for want in ("A=09:05:07\n", "B=\n", "C=15:44\n", "D=12:00:00\n", "E=15:44\n", "F=\n"):
+        for want in ("A=09:05:07\n", "B=\n", "C=15:44\n", "D=12:00:00\n", "E=15:44\n", "F=\n", "G=10:23\n", "H=12:00\n"):
             self.assertIn(want, out)
+
+    def test_usdjpy_row_through_rss_fx(self):
+        # OWNER 2026-10-26 「ドル円を先物と同じように記録に足して」
+        text = _text()
+        self.assertIn('$fxItems = @("現在値(Bid)","現在値更新日時","","","","現在値(Ask)","現在値(Bid)","前日終値(Bid)","")', text)
+        self.assertIn('elseif ($fiDef.Fn -eq "RssFXMarket") { $fxItems }', text)
+        self.assertIn('$fiChange = [string][Math]::Round(($fxNow / $fxPrev - 1) * 100, 3)', text)
+        self.assertIn('$fiChange, $(if ($ok) { [string]$fiVals[3] } else { "" }),', text)
 
     def test_lag_exact_range_and_future(self):
         func = _function(_text(), "Get-FutIndexLag")
