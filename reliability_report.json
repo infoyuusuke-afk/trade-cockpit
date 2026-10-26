@@ -1,17 +1,17 @@
 {
-  "generated_at": "2026-10-26 11:37:06 JST",
+  "generated_at": "2026-10-26 13:57:59 JST",
   "note": "resolved_n が30件未満の区分は、勝率・PFを『確立した手法』として扱わないこと。95%信頼区間の幅が広いほど、まだ結論を出せる段階ではない。by_strategy/by_regimeはstrategy_schema.py導入(2026-09-17)以降のレコードのみ区分でき、それ以前のレコードはUNTAGGED_LEGACYにまとめている。",
   "by_side": {
     "LONG": {
-      "total_recorded": 282,
-      "resolved_n": 116,
-      "win_rate_pct": 62.1,
+      "total_recorded": 283,
+      "resolved_n": 117,
+      "win_rate_pct": 62.4,
       "win_rate_95ci": [
-        53.0,
-        70.4
+        53.4,
+        70.6
       ],
-      "avg_r": 0.32,
-      "profit_factor": 3.35,
+      "avg_r": 0.318,
+      "profit_factor": 3.36,
       "max_drawdown_r": 4.55,
       "status": "参考値（要検証）",
       "min_n_threshold": 30
@@ -33,15 +33,15 @@
   },
   "by_strategy": {
     "day_rank_long": {
-      "total_recorded": 99,
-      "resolved_n": 66,
-      "win_rate_pct": 74.2,
+      "total_recorded": 100,
+      "resolved_n": 67,
+      "win_rate_pct": 74.6,
       "win_rate_95ci": [
-        62.6,
-        83.3
+        63.1,
+        83.5
       ],
-      "avg_r": 0.519,
-      "profit_factor": 6.2,
+      "avg_r": 0.513,
+      "profit_factor": 6.22,
       "max_drawdown_r": 3.81,
       "status": "参考値（要検証）",
       "min_n_threshold": 30
