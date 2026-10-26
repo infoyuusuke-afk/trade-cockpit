@@ -1026,6 +1026,29 @@ function Ensure-Csv([string]$path, [string]$header) {
     if (-not (Test-Path $path)) { [IO.File]::WriteAllText($path, $header + [Environment]::NewLine, [Text.UTF8Encoding]::new($true)) }
 }
 
+# OWNER 2026-10-26 「ブレインとまりすぎ」: Add-Content fails ("used by another process") while any reader
+# has the record open (the Brain observer reads ticks.csv for the virtual holdings), and with
+# $ErrorActionPreference Stop that stopped the whole Collector 12 times in one morning. Records are now
+# appended with FileShare.ReadWrite, retried 3 times, and a write that still fails is skipped with a
+# warning: a record line may be lost, the Collector keeps running.
+$script:recordWriteFailures = 0
+function Add-RecordLines([string]$Path, $Value) {
+    $lines = @($Value | ForEach-Object { [string]$_ })
+    if ($lines.Count -eq 0) { return }
+    $bytes = (New-Object Text.UTF8Encoding($false)).GetBytes(($lines -join [Environment]::NewLine) + [Environment]::NewLine)
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        try {
+            $fs = New-Object IO.FileStream($Path, [IO.FileMode]::Append, [IO.FileAccess]::Write, [IO.FileShare]::ReadWrite)
+            try { $fs.Write($bytes, 0, $bytes.Length) } finally { $fs.Dispose() }
+            return
+        } catch {
+            if ($attempt -lt 3) { Start-Sleep -Milliseconds 40 }
+        }
+    }
+    $script:recordWriteFailures++
+    Write-Host ("[RECORD] WARN / WRITE SKIPPED " + [IO.Path]::GetFileName($Path) + " (count " + $script:recordWriteFailures + ") - Collector continues") -ForegroundColor DarkYellow
+}
+
 function Write-CsvObjects([string]$path, [object[]]$rows) {
     if ($null -eq $rows -or $rows.Count -eq 0) { return }
     $csv = ($rows | ConvertTo-Csv -NoTypeInformation) -join [Environment]::NewLine
@@ -1987,6 +2010,22 @@ if ($null -eq $d045StartConfig) {
     }
 }
 
+# OWNER 2026-10-26 「ドル円の時刻は日付ごと読んで、今日の日付でなければ古い値として記録して」:
+# the date of the FX 現在値更新日時 (YY/MM/DD HH:MM, YYYY/MM/DD HH:MM, or a date-time serial) as yyyy-MM-dd, else $null.
+function Get-FxQuoteDate($value) {
+    if ($null -eq $value) { return $null }
+    if ($value -is [double]) {
+        if ($value -lt 1) { return $null }   # a time without a date
+        try { return [DateTime]::FromOADate($value).ToString("yyyy-MM-dd") } catch { return $null }
+    }
+    $text = ([string]$value).Trim()
+    if ($text -match '^(\d{2}|\d{4})/(\d{1,2})/(\d{1,2})') {
+        $y = [int]$Matches[1]; if ($y -lt 100) { $y += 2000 }
+        try { return (New-Object datetime $y, ([int]$Matches[2]), ([int]$Matches[3])).ToString("yyyy-MM-dd") } catch { return $null }
+    }
+    return $null
+}
+
 # The source clock as text with its precision: futures 詳細時刻 to the second, index
 # 更新時刻 to the minute. A minute clock is never padded into a fake second.
 function ConvertTo-FutIndexClock($value, [string]$Precision) {
@@ -2771,13 +2810,20 @@ try {
                         elseif ($fiSeen -ne $fiMonth) { $fiStatus = "MONTH_NOT_CONFIRMED" }
                     }
                     if ($fiStatus -eq "OK" -and ($null -eq $fiVals[0] -or [string]::IsNullOrWhiteSpace([string]$fiVals[0]))) { $fiStatus = "NO_VALUE" }
+                    if ($isFx -and $fiStatus -eq "OK") {
+                        # an FX value whose update date is not today is recorded as old (never as today's value)
+                        $fxDate = Get-FxQuoteDate $fiVals[1]
+                        if ($null -eq $fxDate) { $fiStatus = "STALE_DATE_UNKNOWN" }
+                        elseif ($fxDate -ne $fiNow.ToString("yyyy-MM-dd")) { $fiStatus = "STALE_OLD_DATE" }
+                    }
                     $fiClock = $null
                     $fiLag = @{ Exact = ""; Min = ""; Max = "" }
-                    if ($fiStatus -eq "OK") {
+                    if ($fiStatus -eq "OK" -or ($isFx -and $fiStatus -like "STALE_*")) {
                         $fiClock = ConvertTo-FutIndexClock $fiVals[1] $fiPrecision
                         $fiLag = Get-FutIndexLag $fiNow ([string]$fiClock) $fiPrecision
                     }
-                    $ok = ($fiStatus -eq "OK")
+                    # old FX values keep their price and clock in the record, marked by the status
+                    $ok = ($fiStatus -eq "OK" -or ($isFx -and $fiStatus -like "STALE_*"))
                     $fiChange = $(if ($ok) { [string]$fiVals[2] } else { "" })
                     $fiOi = $(if ($ok) { [string]$fiVals[7] } else { "" })
                     if ($isFx) {
@@ -2798,7 +2844,7 @@ try {
                         $(if ($ok) { [string]$fiVals[6] } else { "" }), $fiOi)
                     $fiLines.Add((@($fiCells | ForEach-Object { '"' + ([string]$_).Replace('"', '""') + '"' }) -join ','))
                 }
-                Add-Content -Encoding UTF8 -Path $fiCsv -Value $fiLines
+                Add-RecordLines $fiCsv $fiLines
             } catch {
                 $futIndexReady = $false
                 $futIndexSheet = $null
@@ -2866,9 +2912,9 @@ try {
                         $s8DiagLines.Add((@($s8Stamp, [string]$scalp8Seq, [string]$s8ReadMs, $code, [string]$keys.Count, [string]$newTicks.Count, [string]([bool]$diff.Gap)) -join ","))
                     }
                 }
-                if ($s8TickLines.Count -gt 0) { Add-Content -Encoding UTF8 -Path $s8TickCsv -Value $s8TickLines }
-                if ($s8BoardLines.Count -gt 0) { Add-Content -Encoding UTF8 -Path $s8BoardCsv -Value $s8BoardLines }
-                if ($s8DiagLines.Count -gt 0) { Add-Content -Encoding UTF8 -Path $s8DiagCsv -Value $s8DiagLines }
+                if ($s8TickLines.Count -gt 0) { Add-RecordLines $s8TickCsv $s8TickLines }
+                if ($s8BoardLines.Count -gt 0) { Add-RecordLines $s8BoardCsv $s8BoardLines }
+                if ($s8DiagLines.Count -gt 0) { Add-RecordLines $s8DiagCsv $s8DiagLines }
             } catch {
                 $scalp8Ready = $false
                 $scalp8Sheet = $null
@@ -3213,7 +3259,7 @@ try {
                     if (-not $seenTicks.ContainsKey($tickKey)) {
                         $tickDir=if ($ask -gt 0 -and $tickPrice -ge $ask) {"BUY_EST"} elseif ($bid -gt 0 -and $tickPrice -le $bid) {"SELL_EST"} else {"UNKNOWN"}
                         $line=@($now.ToString("yyyy-MM-dd HH:mm:ss.fff"),$ticker,$s.Name,$tickTime,$tickPrice,$tickDir,$bid,$ask,"方向は気配との比較による推定") | ForEach-Object {Escape-Csv $_}
-                        Add-Content -Encoding UTF8 -Path $tickCsv -Value ($line -join ',')
+                        Add-RecordLines $tickCsv ($line -join ',')
                         $seenTicks[$tickKey]=$now
                     }
                 }
@@ -3225,20 +3271,20 @@ try {
                 $orHighForLog=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
                 $orLowForLog=if($orLow.ContainsKey($ticker)){$orLow[$ticker]}else{0}
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$vwap,$ema9,$ema20,$trendLong,$trendShort,$or5HighValue,$or5LowValue,$orHighForLog,$orLowForLog,[Math]::Round($barBurst,3),[Math]::Round($flowBias,4),$whipsaw,$chaseGuard,$or5Long,$or5Short,$or15Long,$or15Short,$pullbackLong,$pullbackShort,$signal,$strategy)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $conditionCsv -Value ($line -join ',')
+                Add-RecordLines $conditionCsv ($line -join ',')
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$over,$under,[Math]::Round($underRatio,5),[Math]::Round($uoChange,5),$vwap)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $supplyCsv -Value ($line -join ',')
+                Add-RecordLines $supplyCsv ($line -join ',')
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$price,$volume,$vwap,$bid,$ask,$bidQty,$askQty,$marketSell,$marketBuy,$over,$under)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $snapshotCsv -Value ($line -join ',')
+                Add-RecordLines $snapshotCsv ($line -join ',')
                 if (-not $creditSaved.ContainsKey($ticker)) {
                     $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$creditSell,$creditSellChange,$creditBuy,$creditBuyChange,$creditRatio)|ForEach-Object{Escape-Csv $_}
-                    Add-Content -Encoding UTF8 -Path $creditCsv -Value ($line -join ',')
+                    Add-RecordLines $creditCsv ($line -join ',')
                     $creditSaved[$ticker]=$true
                 }
             }
             if($snapshotDue -and $inPreopen){
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ticker,$s.Name,$reference,$quoteCenter,$gapPct,$bid,$ask,$bidQty,$askQty,$marketSell,$marketBuy,[Math]::Round($marketImbalance*100,2),$over,$under,[Math]::Round($underRatio*100,2),$quoteChange1m,$quoteChange5m,$specialSell,$specialBuy,[Math]::Round($preopenScore,1),$preopenPlan)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $preopenCsv -Value ($line -join ',')
+                Add-RecordLines $preopenCsv ($line -join ',')
             }
 
             $orHighValue=if($orHigh.ContainsKey($ticker)){$orHigh[$ticker]}else{0}
@@ -3420,7 +3466,7 @@ try {
             $ptsResults += $ptsRow
             if($snapshotDue -and $inPts){
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ptsTicker,$stock.Name,$ptsDate,$ptsTime,$ptsPrice,$tseClose,$ptsGap,$ptsVolume,$tseVolume,$ptsVolumeRatio,$turnover,$ptsVwap,$ptsBid,$ptsAsk,$spreadPct,$ptsBidQty,$ptsAskQty,$ptsOver,$ptsUnder,$ptsUnderRatio,$ptsTick,$biasScore,$expectation,$stance)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $ptsCsv -Value ($line -join ',')
+                Add-RecordLines $ptsCsv ($line -join ',')
             }
         }
 
@@ -3498,7 +3544,7 @@ try {
         if($snapshotDue -and $inPts){
             foreach($ir in $irPtsTop5){
                 $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$ir.code,$ir.ticker,$ir.name,$ir.disclosure_time,$ir.material_label,$ir.material_score,$ir.title,$ir.official_url,$ir.pts_price,$ir.tse_close,$ir.gap_pct,$ir.turnover,$ir.spread_pct,$ir.under_ratio,$ir.pts_score,$ir.total_score,$ir.judgement)|ForEach-Object{Escape-Csv $_}
-                Add-Content -Encoding UTF8 -Path $irPtsCsv -Value ($line -join ',')
+                Add-RecordLines $irPtsCsv ($line -join ',')
             }
         }
         $kioxiaPts=$ptsResults|Where-Object{$_.tse_ticker -eq "285A.T"}|Select-Object -First 1
@@ -3666,7 +3712,7 @@ try {
                 $logKey=([string]$result.ticker+'|'+[string]$result.strategy+'|'+[string]$result.signal_bar_time)
                 if(-not $loggedSignals.ContainsKey($logKey)){
                     $line=@($now.ToString("yyyy-MM-dd HH:mm:ss"),$result.ticker,$result.name,$result.signal,$result.strategy,$result.signal_bar_time,$result.entry_price,$result.stop_price,$result.target1,$result.target2,$marketState,$breadthPct,$sectorPct,$holdSignal,$result.hold_score)|ForEach-Object{Escape-Csv $_}
-                    Add-Content -Encoding UTF8 -Path $signalCsv -Value ($line -join ',')
+                    Add-RecordLines $signalCsv ($line -join ',')
                     $loggedSignals[$logKey]=$true
                 }
             }

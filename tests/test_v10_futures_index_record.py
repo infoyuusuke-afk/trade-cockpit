@@ -89,6 +89,33 @@ class SevenSeries(unittest.TestCase):
         self.assertFalse((ROOT / "ms2_live" / "d045_futures_index_config.json").exists())   # never in GitHub
 
 
+class RecordWrites(unittest.TestCase):
+    # OWNER 2026-10-26 「ブレインとまりすぎ」: a reader holding a record file open stopped the Collector
+    def test_no_add_content_left_and_writer_shares(self):
+        text = _text()
+        self.assertNotIn("Add-Content", text.replace("# OWNER 2026-10-26 「ブレインとまりすぎ」: Add-Content fails", ""))
+        self.assertGreaterEqual(text.count("Add-RecordLines "), 13)
+        self.assertIn("[IO.FileShare]::ReadWrite", _function(text, "Add-RecordLines"))
+
+    @unittest.skipUnless(WINDOWS, "Windows PowerShell 5.1 only")
+    def test_append_while_a_reader_holds_the_file(self):
+        text = _text()
+        start = text.index("$script:recordWriteFailures = 0")
+        nl = chr(10)
+        fn = text[start:text.index(nl + "}" + nl, text.index("function Add-RecordLines")) + 3]
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "ticks.csv"
+            f.write_text("h" + nl, encoding="utf-8")
+            script = Path(d) / "t.ps1"
+            script.write_text(nl.join(['$ErrorActionPreference = "Stop"', fn, 'Add-RecordLines "%s" @("a,1","b,2")' % f,
+                                       'Write-Output "DONE"', '']), encoding="utf-8-sig")
+            with open(f, encoding="utf-8"):      # a reader, like the Brain observer reading ticks.csv
+                out = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)],
+                                     capture_output=True, text=True, timeout=60).stdout
+            self.assertIn("DONE", out)
+            self.assertEqual(f.read_text(encoding="utf-8").splitlines(), ["h", "a,1", "b,2"])
+
+
 @unittest.skipUnless(WINDOWS, "Windows PowerShell 5.1 only")
 class Helpers(unittest.TestCase):
     def test_owner_month_valid_until_its_sq(self):
@@ -121,6 +148,22 @@ class Helpers(unittest.TestCase):
         ]) + "\n")
         for want in ("A=09:05:07\n", "B=\n", "C=15:44\n", "D=12:00:00\n", "E=15:44\n", "F=\n", "G=10:23\n", "H=12:00\n"):
             self.assertIn(want, out)
+
+    def test_fx_quote_date_and_old_values(self):
+        # OWNER 2026-10-26 「ドル円の時刻は日付ごと読んで、今日の日付でなければ古い値として記録して」
+        text = _text()
+        func = _function(text, "Get-FxQuoteDate")
+        out = _ps(func + "\n" + "\n".join([
+            'Write-Output ("A=" + [string](Get-FxQuoteDate "26/10/26 10:23"))',
+            'Write-Output ("B=" + [string](Get-FxQuoteDate "2026/10/23 23:59"))',
+            'Write-Output ("C=" + [string](Get-FxQuoteDate ([double]46321.5)))',
+            'Write-Output ("D=" + [string](Get-FxQuoteDate ([double]0.5)))',
+            'Write-Output ("E=" + [string](Get-FxQuoteDate "10:23"))',
+        ]) + "\n")
+        for want in ("A=2026-10-26\n", "B=2026-10-23\n", "C=2026-10-26\n", "D=\n", "E=\n"):
+            self.assertIn(want, out)
+        self.assertIn('elseif ($fxDate -ne $fiNow.ToString("yyyy-MM-dd")) { $fiStatus = "STALE_OLD_DATE" }', text)
+        self.assertIn('if ($null -eq $fxDate) { $fiStatus = "STALE_DATE_UNKNOWN" }', text)
 
     def test_usdjpy_row_through_rss_fx(self):
         # OWNER 2026-10-26 「ドル円を先物と同じように記録に足して」
