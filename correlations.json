@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-26 07:51:01 JST",
+  "updated_at": "2026-10-26 10:00:44 JST",
   "relationships": [
     {
       "anchor": "キオクシアHD（285A）",
@@ -9,32 +9,32 @@
       "relation": "米国前日→日本の寄り（窓）",
       "expected": "正相関",
       "reason": "DRAM/NANDを含む米国メモリ地合い",
-      "corr20": 0.61,
-      "corr60": 0.54,
+      "corr20": 0.57,
+      "corr60": 0.55,
       "sample20": 20,
       "sample60": 60,
       "intraday_corr": null,
       "lead_bars": null,
       "bars": 0,
       "gap_test": {
-        "days": 447,
-        "corr_all": 0.53,
-        "corr_first_half": 0.58,
-        "corr_second_half": 0.49,
+        "days": 448,
+        "corr_all": 0.52,
+        "corr_first_half": 0.56,
+        "corr_second_half": 0.5,
         "corr_after_open": -0.05,
-        "big_days": 274,
-        "big_same_dir_pct": 77.0,
-        "corr20": 0.61,
-        "corr60": 0.54,
+        "big_days": 275,
+        "big_same_dir_pct": 76.7,
+        "corr20": 0.57,
+        "corr60": 0.55,
         "since": "2024-12-19"
       },
       "state": "確認",
       "confidence": 77,
       "anchor_today": {
-        "ret": 7.56,
-        "or15": "上抜け",
-        "vwap": "上",
-        "ema": "上向き"
+        "ret": -0.96,
+        "or15": "下抜け",
+        "vwap": "下",
+        "ema": "下向き"
       },
       "peer_today": {
         "ret": null,
@@ -53,14 +53,14 @@
       "expected": "正相関",
       "reason": "NAND・SSD価格と米国メモリ株",
       "corr20": 0.69,
-      "corr60": 0.66,
+      "corr60": 0.69,
       "sample20": 20,
       "sample60": 60,
       "intraday_corr": null,
       "lead_bars": null,
       "bars": 0,
       "gap_test": {
-        "days": 411,
+        "days": 412,
         "corr_all": 0.6,
         "corr_first_half": 0.6,
         "corr_second_half": 0.6,
@@ -68,16 +68,16 @@
         "big_days": 279,
         "big_same_dir_pct": 73.5,
         "corr20": 0.69,
-        "corr60": 0.66,
+        "corr60": 0.69,
         "since": "2025-02-17"
       },
       "state": "確認",
       "confidence": 74,
       "anchor_today": {
-        "ret": 7.56,
-        "or15": "上抜け",
-        "vwap": "上",
-        "ema": "上向き"
+        "ret": -0.96,
+        "or15": "下抜け",
+        "vwap": "下",
+        "ema": "下向き"
       },
       "peer_today": {
         "ret": null,
@@ -96,7 +96,7 @@
       "expected": "正相関",
       "reason": "米国半導体株の地合い（SOX連動ETF）",
       "corr20": 0.72,
-      "corr60": 0.69,
+      "corr60": 0.72,
       "sample20": 20,
       "sample60": 60,
       "intraday_corr": null,
@@ -106,20 +106,20 @@
         "days": 484,
         "corr_all": 0.66,
         "corr_first_half": 0.71,
-        "corr_second_half": 0.64,
+        "corr_second_half": 0.63,
         "corr_after_open": -0.04,
         "big_days": 182,
         "big_same_dir_pct": 87.9,
         "corr20": 0.72,
-        "corr60": 0.69,
-        "since": "2024-10-28"
+        "corr60": 0.72,
+        "since": "2024-10-29"
       },
       "state": "確認",
       "confidence": 88,
       "anchor_today": {
-        "ret": 1.57,
-        "or15": "上抜け",
-        "vwap": "上",
+        "ret": -1.79,
+        "or15": "レンジ内",
+        "vwap": "下",
         "ema": "上向き"
       },
       "peer_today": {
@@ -138,8 +138,8 @@
       "relation": "米国前日→日本の寄り（窓）",
       "expected": "正相関",
       "reason": "米国半導体株の地合い（SOX連動ETF）",
-      "corr20": 0.75,
-      "corr60": 0.66,
+      "corr20": 0.72,
+      "corr60": 0.69,
       "sample20": 20,
       "sample60": 60,
       "intraday_corr": null,
@@ -153,16 +153,16 @@
         "corr_after_open": -0.09,
         "big_days": 182,
         "big_same_dir_pct": 87.4,
-        "corr20": 0.75,
-        "corr60": 0.66,
-        "since": "2024-10-28"
+        "corr20": 0.72,
+        "corr60": 0.69,
+        "since": "2024-10-29"
       },
       "state": "確認",
       "confidence": 87,
       "anchor_today": {
-        "ret": 4.45,
-        "or15": "上抜け",
-        "vwap": "上",
+        "ret": -1.44,
+        "or15": "レンジ内",
+        "vwap": "下",
         "ema": "上向き"
       },
       "peer_today": {
@@ -181,8 +181,8 @@
       "relation": "米国前日→日本の寄り（窓）",
       "expected": "正相関",
       "reason": "米国半導体株の地合い（SOX連動ETF）",
-      "corr20": 0.71,
-      "corr60": 0.7,
+      "corr20": 0.69,
+      "corr60": 0.73,
       "sample20": 20,
       "sample60": 60,
       "intraday_corr": null,
@@ -196,17 +196,17 @@
         "corr_after_open": -0.09,
         "big_days": 182,
         "big_same_dir_pct": 86.3,
-        "corr20": 0.71,
-        "corr60": 0.7,
-        "since": "2024-10-28"
+        "corr20": 0.69,
+        "corr60": 0.73,
+        "since": "2024-10-29"
       },
       "state": "確認",
       "confidence": 86,
       "anchor_today": {
-        "ret": 7.56,
-        "or15": "上抜け",
-        "vwap": "上",
-        "ema": "上向き"
+        "ret": -1.04,
+        "or15": "レンジ内",
+        "vwap": "下",
+        "ema": "下向き"
       },
       "peer_today": {
         "ret": null,
@@ -225,7 +225,7 @@
       "expected": "正相関",
       "reason": "米国半導体株の地合い（SOX連動ETF）",
       "corr20": 0.78,
-      "corr60": 0.48,
+      "corr60": 0.5,
       "sample20": 20,
       "sample60": 60,
       "intraday_corr": null,
@@ -240,15 +240,15 @@
         "big_days": 182,
         "big_same_dir_pct": 85.7,
         "corr20": 0.78,
-        "corr60": 0.48,
-        "since": "2024-10-28"
+        "corr60": 0.5,
+        "since": "2024-10-29"
       },
       "state": "確認",
       "confidence": 86,
       "anchor_today": {
-        "ret": 6.17,
-        "or15": "上抜け",
-        "vwap": "上",
+        "ret": -1.65,
+        "or15": "レンジ内",
+        "vwap": "下",
         "ema": "上向き"
       },
       "peer_today": {
@@ -268,7 +268,7 @@
       "expected": "正相関",
       "reason": "米国半導体株の地合い（SOX連動ETF）",
       "corr20": 0.75,
-      "corr60": 0.63,
+      "corr60": 0.66,
       "sample20": 20,
       "sample60": 60,
       "intraday_corr": null,
@@ -283,15 +283,15 @@
         "big_days": 182,
         "big_same_dir_pct": 85.7,
         "corr20": 0.75,
-        "corr60": 0.63,
-        "since": "2024-10-28"
+        "corr60": 0.66,
+        "since": "2024-10-29"
       },
       "state": "確認",
       "confidence": 86,
       "anchor_today": {
-        "ret": 7.47,
-        "or15": "上抜け",
-        "vwap": "上",
+        "ret": -1.56,
+        "or15": "レンジ内",
+        "vwap": "下",
         "ema": "上向き"
       },
       "peer_today": {
