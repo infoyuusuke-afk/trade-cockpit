@@ -17,3 +17,12 @@ def test_kioxia_chart_table_is_kept_out_of_the_card_adapter():
 def test_adapter_still_skips_tables_marked_keep():
     js = (ROOT / "card_table_adapter.js").read_text(encoding="utf-8")
     assert 'if(table.matches("[data-keep-table]"))return;' in js
+
+
+def test_kioxia_boxes_use_the_same_dark_tokens_as_other_tabs():
+    # OWNER 2026-10-26 「全体的に色味が他のタブとくらべて薄い」
+    html = (ROOT / "index.html").read_text(encoding="utf-8")
+    css = html.split("全体的に色味が他のタブとくらべて薄い", 1)[1].split("</style>", 1)[0]
+    assert "#kioxia-5m-calendar .kio-ms2-grid>div" in css and "background:#0E1013!important" in css
+    assert "#kioxia-5m-calendar .kio-monitor-grid>div" in css and "#kioxia-5m-calendar .kio-summary>.kio-metric" in css
+    assert "background:#090A0C!important" in css

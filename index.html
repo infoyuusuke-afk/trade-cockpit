@@ -1030,6 +1030,13 @@ document.addEventListener("DOMContentLoaded",()=>{
 #kioxia-5m-calendar .kio-ms2-grid b,#kioxia-5m-calendar .kio-supply-grid b{display:block;font-size:15px;color:#e7e9eb;margin-top:2px}
 #kioxia-5m-calendar .kio-ms2-grid small,#kioxia-5m-calendar .kio-supply-grid small{display:block;font-size:11px;color:#8b9299;margin-top:2px}
 #kioxia-5m-calendar p{font-size:12px;line-height:1.6}
+/* OWNER 2026-10-26 「全体的に色味が他のタブとくらべて薄い」: the KIOXIA boxes were lighter greys (#18191c/#1c1c1e/#242427);
+   same dark tokens as the other tabs' cards (card_system.css): panels #090A0C, boxes #0E1013, border #22252A, text #E8EAED/#9AA0AA */
+#kioxia-5m-calendar .kio-ms2-orderflow,#kioxia-5m-calendar .kio-supply-panel,#kioxia-5m-calendar .kio-subpanel,#kioxia-5m-calendar .kio-live-monitor,#kioxia-5m-calendar .kio-best-analog,#kioxia-5m-calendar .kio-best-chart,#kioxia-5m-calendar .kio-best-detail{background:#090A0C!important;border-color:#22252A!important}
+#kioxia-5m-calendar .kio-ms2-grid>div,#kioxia-5m-calendar .kio-supply-grid>div,#kioxia-5m-calendar .kio-monitor-grid>div,#kioxia-5m-calendar .kio-summary>.kio-metric,#kioxia-5m-calendar .rotation-grid>.rotation-box,#kioxia-5m-calendar .kio-playbook>div,#kioxia-5m-calendar .kio-action-board>div,#kioxia-5m-calendar .kio-gap-row{background:#0E1013!important;border:1px solid #22252A!important}
+#kioxia-5m-calendar .kio-ms2-grid span,#kioxia-5m-calendar .kio-supply-grid span,#kioxia-5m-calendar .kio-ms2-grid small,#kioxia-5m-calendar .kio-supply-grid small,#kioxia-5m-calendar .kio-monitor-grid span,#kioxia-5m-calendar .kio-monitor-grid small{color:#9AA0AA}
+#kioxia-5m-calendar .kio-ms2-grid b,#kioxia-5m-calendar .kio-supply-grid b,#kioxia-5m-calendar .kio-monitor-grid b{color:#E8EAED}
+#kioxia-5m-calendar .kio-ms2-title strong{background:#0E1013;border-color:#22252A}
 </style>
 <section id="kioxia-5m-calendar" class="card wide"><h2>キオクシアHD（285A）本日1分足予測・5分足類似日 <button class="voice-toggle" data-voice-toggle type="button" style="float:right">🔇</button></h2>
 <div id="kioxia-calendar-meta" class="sub">直近60日の5分足を照合中...</div>
