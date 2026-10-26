@@ -1231,12 +1231,14 @@ function Get-BoardAvailability {
     # (特別気配 at the open) do not block the board. Each such row must be listed by the
     # Collector in missing_rows as PRICE_MISSING with its sheet code matching, at most 5 rows,
     # no unexpected row, the declared universe equal to the expected one and to present +
-    # pending rows, and >= 95% of the expected rows FRESH. The rows stay reported (missing_*,
+    # pending rows, >= 95% of the expected rows FRESH, and the Collector's FRESH_ROWS_ONLY
+    # declaration (the same as the partial rule). The rows stay reported (missing_*,
     # quote_pending_*) and are never used; the board becomes AVAILABLE_PARTIAL.
     $quotePendingMax = 5
     $quotePending = New-Object System.Collections.Generic.List[string]
     if ($universeVerified -and $missing.Count -gt 0 -and $missing.Count -le $quotePendingMax -and $unexpected.Count -eq 0 -and
         $declaredOk -and $declared -eq $expectedCount -and $declared -eq ($rowCount + $missing.Count) -and $null -ne $LiveObj -and
+        [string]$LiveObj.aggregate_basis -ceq "FRESH_ROWS_ONLY" -and
         $null -ne $RowFreshness -and $null -ne $RowFreshness.state_counts -and $expectedCount -gt 0 -and
         (100.0 * [int]$RowFreshness.state_counts.FRESH / $expectedCount) -ge 95.0) {
         $pendingDeclared = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)

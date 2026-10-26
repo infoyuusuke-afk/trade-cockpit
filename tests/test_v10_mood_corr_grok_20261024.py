@@ -106,7 +106,7 @@ class FreshnessLamps(unittest.TestCase):
         self.assertIn("実行日時：", HTML)              # Grok lamps use the answer's own run time
         self.assertIn('["red", "古い"', HTML)
         # OWNER 2026-10-26: a 1号 answer without 実行日時 is timed from its own 「（YYYY-MM-DD HH:MM JST）」
-        self.assertIn("|| /[（(](\d{4}-\d{2}-\d{2} \d{2}:\d{2}) JST[）)]/.exec(b.text", HTML)
+        self.assertIn(r"|| /[（(](\d{4}-\d{2}-\d{2} \d{2}:\d{2}) JST[）)]/.exec(b.text", HTML)
 
 
 class GptCards(unittest.TestCase):

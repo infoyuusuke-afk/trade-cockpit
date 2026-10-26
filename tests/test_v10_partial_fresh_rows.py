@@ -148,6 +148,10 @@ class PartialAvailabilityRule(unittest.TestCase):
         mixed = partial(board(self.now, drop={"SYN42.T", "SYN43.T"}, stale=set(UNIVERSE[96:]), declared=100))
         mixed["missing_rows"] = pending
         self.assertIs(self._avail(mixed)["decision_available"], False)
+        # without the Collector's FRESH_ROWS_ONLY declaration, it stays blocked
+        bare = board(self.now, drop={"SYN42.T", "SYN43.T"}, declared=100)
+        bare["missing_rows"] = pending
+        self.assertIs(self._avail(bare)["decision_available"], False)
 
     def test_invalid_row_is_never_partial(self):
         # A row observed in the future is INVALID; one INVALID row blocks.

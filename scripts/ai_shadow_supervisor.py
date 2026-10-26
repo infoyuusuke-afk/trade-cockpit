@@ -458,10 +458,12 @@ def assess_board_availability(payload, quote_freshness: dict | None, row_freshne
     # OWNER 2026-10-26 「特別気配の直し」: the same rule as Get-BoardAvailability — rows missing only
     # because the stock has no price yet (PRICE_MISSING with the sheet code matching, listed by the
     # Collector in missing_rows), at most QUOTE_PENDING_MAX, no unexpected row, declared == expected
-    # == present + pending, >= 95% of expected rows FRESH. Reported, never used; AVAILABLE_PARTIAL.
+    # == present + pending, >= 95% of expected rows FRESH, aggregate_basis FRESH_ROWS_ONLY. Reported,
+    # never used; AVAILABLE_PARTIAL.
     quote_pending: list[str] = []
     if (verified and missing and len(missing) <= QUOTE_PENDING_MAX and not unexpected and declared is not None
             and declared == expected_count and declared == row_count + len(missing)
+            and isinstance(payload, dict) and payload.get("aggregate_basis") == "FRESH_ROWS_ONLY"
             and isinstance(row_freshness, dict) and isinstance(row_freshness.get("state_counts"), dict) and expected_count
             and 100.0 * int(row_freshness["state_counts"].get(FRESH) or 0) / expected_count >= PARTIAL_MIN_FRESH_PCT):
         declared_pending = {m.get("ticker") for m in (payload.get("missing_rows") or []) if isinstance(m, dict)
