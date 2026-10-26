@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-26 22:29:16 JST",
+  "updated_at": "2026-10-27 07:50:44 JST",
   "source": "固定監視リスト（JPX取得失敗）",
   "universe_count": 100,
   "scanned_count": 100,
@@ -2771,7 +2771,7 @@
         {
           "o": 3635.0,
           "h": 3737.0,
-          "l": 3630.0,
+          "l": 3631.0,
           "c": 3736.0
         }
       ],
@@ -8745,8 +8745,8 @@
         },
         {
           "o": 5887.0,
-          "h": 5935.0,
-          "l": 5621.0,
+          "h": 5934.0,
+          "l": 5620.0,
           "c": 5639.0
         }
       ],
@@ -9566,8 +9566,8 @@
   ],
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-10-26T22:29:12+09:00",
-    "decision_at": "2026-10-26T22:29:12+09:00",
+    "generated_at": "2026-10-27T07:50:40+09:00",
+    "decision_at": "2026-10-27T07:50:40+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -11045,7 +11045,7 @@
         {
           "o": 4150.0,
           "h": 4170.0,
-          "l": 4090.0,
+          "l": 4091.0,
           "c": 4135.0
         }
       ],
@@ -14189,7 +14189,7 @@
         {
           "o": 3635.0,
           "h": 3737.0,
-          "l": 3630.0,
+          "l": 3631.0,
           "c": 3736.0
         }
       ],
@@ -17744,7 +17744,7 @@
   "large_lot_accumulation_note": "価格・出来高・OBV・終値位置・安値切り上げから買い集めの痕跡を推定。大口の実在を断定せず、大量保有報告・信用需給・会社IRで確認する。",
   "speculative_theme_note": "監視専用。出来高・騰落・値幅の異常度を検出した銘柄を通常LONG/SHORT候補から隔離。仕手株との断定ではなく、会社IR・適時開示・信用需給を確認するための警戒リスト。",
   "monthly_weekly_hammers": [],
-  "credit_supply_updated_at": "2026-10-26 20:34:23 JST",
+  "credit_supply_updated_at": "2026-10-26 22:29:32 JST",
   "long_term_ma_rebounds": [],
   "long_term_ma_rebounds_unverified": [],
   "daily_capitulation_reversals": [
