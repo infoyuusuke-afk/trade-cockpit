@@ -224,7 +224,12 @@ document.addEventListener("DOMContentLoaded",()=>{
      const pausedInSession=session&&!/RUNNING/.test(String(ex.shadow_engine_state||""));
      // OWNER 2026-10-26 「特別気配の直し」: stocks with no price yet (特別気配) are set aside; the lamp says which
      const pend=Array.isArray(rt.availability?.quote_pending_sample)?rt.availability.quote_pending_sample:[];
-     const [cls,label,line]=down.length?["red","止まっています",down.join("／")]:
+     // OWNER 2026-10-26 「たびたびとまる」: one 5-second read glitch (the Collector re-reading Excel) recovers by
+     // itself; red only when it has stayed down for 20 seconds, before that a yellow "確認中".
+     if(down.length){window.__brainDownSince=window.__brainDownSince||Date.now();}else{window.__brainDownSince=0;}
+     const briefDown=down.length&&Date.now()-window.__brainDownSince<20000;
+     const [cls,label,line]=briefDown?["yellow","確認中","一瞬データが読めませんでした（"+down.join("／")+"）。20秒続いたら赤にします"]:
+       down.length?["red","止まっています",down.join("／")]:
        pend.length?["yellow","動いています（値待ちあり）","特別気配など値がまだない "+pend.length+"銘柄（"+pend.map(s=>String(s).replace(/\.T$/,"")).join("・")+"）は外して動作中。寄れば自動で戻ります"]:
        pausedInSession?["yellow","一時停止中","データの鮮度を待っています（自動で戻ります）"]:
        ["green","正常に動いています",session?"場中：データ収集・ブレインとも動作中":"市場時間外：収集は動作中。値段は次の取引時間から動きます"];

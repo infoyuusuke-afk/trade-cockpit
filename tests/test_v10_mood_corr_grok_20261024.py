@@ -93,6 +93,9 @@ class BrainLamp(unittest.TestCase):
         self.assertIn('if(ex.real_submit_allowed!==false)down.push(', HTML)
         # OWNER 2026-10-26 「特別気配の直し」: stocks with no price yet are named on a yellow lamp
         self.assertIn('rt.availability?.quote_pending_sample', HTML)
+        # OWNER 2026-10-26 「たびたびとまる」: red only after 20 seconds down; a single glitch is a yellow 確認中
+        self.assertIn('const briefDown=down.length&&Date.now()-window.__brainDownSince<20000;', HTML)
+        self.assertIn('["yellow","確認中","一瞬データが読めませんでした（"', HTML)
         self.assertIn('"動いています（値待ちあり）","特別気配など値がまだない "', HTML)
 
 
