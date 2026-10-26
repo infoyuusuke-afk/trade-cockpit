@@ -90,11 +90,13 @@ class BrainLamp(unittest.TestCase):
         self.assertIn('<details class="brain-detail"><summary>詳しい状態（調べる時だけ）</summary>', HTML)
         for word in ('"正常に動いています"', '"止まっています"', '"一時停止中"', '"場中なのに値段が止まっています"'):
             self.assertIn(word, HTML)
-        self.assertIn('if(ex.real_submit_allowed!==false)down.push(', HTML)
+        self.assertIn('if(lockUnknown)down.push("実注文のロックが確認できません");', HTML)
         # OWNER 2026-10-26 「特別気配の直し」: stocks with no price yet are named on a yellow lamp
         self.assertIn('rt.availability?.quote_pending_sample', HTML)
         # OWNER 2026-10-26 「たびたびとまる」: red only after 20 seconds down; a single glitch is a yellow 確認中
-        self.assertIn('const briefDown=down.length&&Date.now()-window.__brainDownSince<20000;', HTML)
+        # the real-order lock not confirmed is red at once (OWNER 2026-10-26)
+        self.assertIn('const briefDown=down.length&&!lockUnknown&&Date.now()-window.__brainDownSince<20000;', HTML)
+        self.assertIn('const lockUnknown=ex.real_submit_allowed!==false;', HTML)
         self.assertIn('["yellow","確認中","一瞬データが読めませんでした（"', HTML)
         self.assertIn('"動いています（値待ちあり）","特別気配など値がまだない "', HTML)
 

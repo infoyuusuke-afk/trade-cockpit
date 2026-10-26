@@ -219,7 +219,8 @@ document.addEventListener("DOMContentLoaded",()=>{
      if(String(rt.collector_status||"")!=="LIVE")down.push("データ収集が止まっています");
      if(!rt.workbook_identity_verified)down.push("RSSのExcelが確認できません");
      if(String(proof.dataConflict).toUpperCase()==="TRUE")down.push("データが食い違っています");
-     if(ex.real_submit_allowed!==false)down.push("実注文のロックが確認できません");
+     const lockUnknown=ex.real_submit_allowed!==false;
+     if(lockUnknown)down.push("実注文のロックが確認できません");
      if(session&&String(rt.price_source_status||"")!=="OK")down.push("場中なのに値段が止まっています");
      const pausedInSession=session&&!/RUNNING/.test(String(ex.shadow_engine_state||""));
      // OWNER 2026-10-26 「特別気配の直し」: stocks with no price yet (特別気配) are set aside; the lamp says which
@@ -227,7 +228,8 @@ document.addEventListener("DOMContentLoaded",()=>{
      // OWNER 2026-10-26 「たびたびとまる」: one 5-second read glitch (the Collector re-reading Excel) recovers by
      // itself; red only when it has stayed down for 20 seconds, before that a yellow "確認中".
      if(down.length){window.__brainDownSince=window.__brainDownSince||Date.now();}else{window.__brainDownSince=0;}
-     const briefDown=down.length&&Date.now()-window.__brainDownSince<20000;
+     // OWNER 2026-10-26 「実注文のロックが確認できない時だけは待たずにすぐ赤にして」
+     const briefDown=down.length&&!lockUnknown&&Date.now()-window.__brainDownSince<20000;
      const [cls,label,line]=briefDown?["yellow","確認中","一瞬データが読めませんでした（"+down.join("／")+"）。20秒続いたら赤にします"]:
        down.length?["red","止まっています",down.join("／")]:
        pend.length?["yellow","動いています（値待ちあり）","特別気配など値がまだない "+pend.length+"銘柄（"+pend.map(s=>String(s).replace(/\.T$/,"")).join("・")+"）は外して動作中。寄れば自動で戻ります"]:
