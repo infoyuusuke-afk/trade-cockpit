@@ -72,6 +72,22 @@ class Parse(unittest.TestCase):
                          [("123A", "08:20"), ("456D", "08:21"), ("789E", "08:22")])
         self.assertEqual([r["code"] for r in got["rejected"]], ["321F"])
 
+    def test_arrived_today_survives_the_8_hour_window(self):
+        # OWNER 2026-10-26: the lamp turned red after 15:40 because the 7:36 answers had expired
+        with tempfile.TemporaryDirectory() as d:
+            runtime = Path(d)
+            inbox = runtime / notes.ANALYST_DIR
+            inbox.mkdir()
+            (inbox / "PRE-NEXT_x.txt").write_text(GPT, encoding="utf-8")
+            early = NOW - timedelta(hours=1)       # 08:30 JST: the 08:20 row is valid and logged
+            notes.load(runtime, now=early, known={}, logged=set())
+            late = NOW + timedelta(hours=8)        # 17:30 JST: every row has expired
+            got = notes.load(runtime, now=late, known={}, logged=set())
+            self.assertEqual(got["arrived_today"].get("premarket"), "2026-10-22T08:20:00+09:00")
+            self.assertNotIn("premarket", got["analysts"])           # gone from the list after 8 hours
+        obs = (Path(__file__).resolve().parents[1] / "scripts" / "ai_brain_observer.py").read_text(encoding="utf-8")
+        self.assertIn('analysts = dict(analysts, _arrived_today=got["arrived_today"])', obs)
+
     def test_expired_rows_are_refused(self):
         got = notes.parse(GROK, now=NOW + timedelta(hours=7))
         self.assertNotIn("123A", [x["code"] for x in got["items"]])

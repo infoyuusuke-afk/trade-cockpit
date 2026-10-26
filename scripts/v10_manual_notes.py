@@ -208,9 +208,21 @@ def load(runtime: Path, *, now: datetime, known: dict, agent_inbox=None, logged:
                                                         "summary": item["reason"]})
     if logged is not None:
         _log(runtime / "records", notes, now=now, logged=logged)
+    # OWNER 2026-10-26 (lamp red after 15:40): a GPT answer is shown for 8 hours only, so after that the
+    # lamp still needs to know it arrived today. The newest posting time per role, from today's log.
+    arrived = {}
+    log_path = runtime / "records" / day / LOG_FILE
+    if log_path.is_file():
+        try:
+            with open(log_path, newline="", encoding="utf-8-sig") as f:
+                for r in csv.DictReader(f):
+                    if r.get("source") == "gpt" and str(r.get("posted_at") or "")[:10] == day:
+                        arrived[r.get("role")] = max(arrived.get(r.get("role"), ""), str(r.get("posted_at")))
+        except OSError:
+            pass
     notes.sort(key=lambda r: r["posted_at"], reverse=True)
     view = {"notes": notes[:40], "refused": refused[:20], "status": "MANUAL_WATCH_ONLY_NOT_A_SCORE"}
-    return {"view": view, "attention": attention, "analysts": analysts}
+    return {"view": view, "attention": attention, "analysts": analysts, "arrived_today": arrived}
 
 
 def _log(records: Path, notes: list, *, now: datetime, logged: set) -> int:

@@ -112,8 +112,8 @@ document.addEventListener("DOMContentLoaded",()=>{
  const renderAgentResearch=()=>{
    // The Gateway answers 503 with {state:"UNAVAILABLE",reason} when it cannot verify the
    // Brain signature or freshness of the view; that body is still shown as the reason.
-   let manual={};
-   fetch("/brain_pick.json?t="+Date.now()).then(r=>r.json()).then(b=>{manual=(b&&b.real_submit_allowed===false&&b.manual_analysts)||{};(b?.specialist_watch||[]).forEach(w=>{if(w?.code&&w?.name&&w.name!==w.code)agentNames[w.code]=String(w.name).replace(/（[0-9A-Z]{4}）$/,"");});}).catch(()=>{}).then(()=>
+   let manual={},arrivedToday={};
+   fetch("/brain_pick.json?t="+Date.now()).then(r=>r.json()).then(b=>{manual=(b&&b.real_submit_allowed===false&&b.manual_analysts)||{};arrivedToday=manual._arrived_today||{};manual=Object.fromEntries(Object.entries(manual).filter(([k])=>!k.startsWith("_")));(b?.specialist_watch||[]).forEach(w=>{if(w?.code&&w?.name&&w.name!==w.code)agentNames[w.code]=String(w.name).replace(/（[0-9A-Z]{4}）$/,"");});}).catch(()=>{}).then(()=>
    fetch("/agent_research.json?t="+Date.now()).then(r=>r.json()).catch(()=>null)).then(v=>{
      const box=document.getElementById("agent-research-body");
      // OWNER 2026-10-23: backup answers pasted by hand when an automatic run failed, marked 『手動』;
@@ -143,10 +143,13 @@ document.addEventListener("DOMContentLoaded",()=>{
         (other.length>1?'<small class="gpt-more">'+esc(other.slice(1).join("／"))+'</small>':'')+
         '<div class="cc-foot">'+esc(x.view||"")+'・'+esc(String(x.posted_at||"").slice(11,16))+'　出典 '+(Array.isArray(x.sources)?x.sources:[]).map((u,i)=>'<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer">'+(i+1)+'</a>').join(" ")+'</div></article>';};
      const manualHtml=Object.keys(manual).length?'<h3>GPTタスクの答え（自動・ChatGPTアプリ）</h3><div class="scalp-strip gpt-cards">'+Object.entries(manual).map(([role,rows])=>(Array.isArray(rows)?rows:[]).map(x=>gptCard(role,x)).join("")).join("")+'</div>':'';
-     box.innerHTML=manualHtml||'<div class="focus-empty">GPTタスクの答えは、まだ届いていません（PRE-NEXT・需給は毎日7:30。届いた日のうち8時間だけ表示）</div>';
+     box.innerHTML=manualHtml||(Object.keys(arrivedToday).length?'<div class="focus-empty">今日のGPTタスクの答えは届いています（届いてから8時間を過ぎたので、一覧からは外しました）</div>':'<div class="focus-empty">GPTタスクの答えは、まだ届いていません（PRE-NEXT・需給は毎日7:30。届いた日のうち8時間だけ表示）</div>');
      const posted=Object.values(manual).flatMap(rows=>Array.isArray(rows)?rows:[]).map(x=>parseJstMs(x.posted_at)).filter(Number.isFinite);
      const now=jstParts(Date.now()),latest=posted.length?Math.max(...posted):null,lp=latest?jstParts(latest):null;
+     // OWNER 2026-10-26: after the 8-hour display window the answers are gone from the list, not missing
+     const arrivedMs=Object.values(arrivedToday).map(parseJstMs).filter(Number.isFinite),arrivedLast=arrivedMs.length?jstParts(Math.max(...arrivedMs)):null;
      const lamp=latest&&lp.day===now.day?["green","最新","今日 "+lp.hm+" の答え"]:
+       arrivedLast&&arrivedLast.day===now.day?["green","今日の分は届きました","今日 "+arrivedLast.hm+" の答え（表示は届いてから8時間まで）"]:
        latest?["yellow","前の答え",lp.md+" "+lp.hm+" の答え（今日の分はまだ）"]:
        (now.wd===0||now.wd===6)?["gray","休日","次は平日の7:30に届きます"]:
        now.min<465?["gray","まだ","今日の答えは7:30に届きます"]:["red","届いていません","今日7:30の答えが来ていません（ChatGPTアプリとPCが動いているか確認）"];
