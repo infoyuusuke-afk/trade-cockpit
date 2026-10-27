@@ -56,3 +56,14 @@ class AnalystTab(_unittest.TestCase):
         self.assertNotIn("cockpitSpeak", b)
         self.assertIn("指示文は「アナリスト」タブ。", html)
 
+    def test_cards_show_role_paste_time_last_answer_and_grok1_theme_only(self):
+        # OWNER 2026-10-28 「役目・貼る時刻・その日の指示文・コピーボタン・最後の答えの時刻…Grok1号はテーマ先回りだけ」
+        b = _html().split("// OWNER 2026-10-28 「全てのタブに同じ文言は不要", 1)[1].split("</script>", 1)[0]
+        for label in ("<b>役目</b>", "<b>動く時刻</b>", "<b>答えを貼る時刻</b>", "<b>最後の答え</b>"):
+            self.assertIn(label, b)
+        self.assertIn("text:G1_TASK,g1:true}", b)
+        self.assertIn("テーマ先回り・決算の追加はなし", b)
+        self.assertIn("GROK_THEME_V1", b.split("const G1_TASK=", 1)[1].split("\n", 1)[0])
+        self.assertEqual(b.count("paste:"), 5)
+        self.assertEqual(b.count("last:lastAt("), 5)
+
