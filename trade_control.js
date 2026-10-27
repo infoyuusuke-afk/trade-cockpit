@@ -470,11 +470,12 @@
   const yen=v=>{const n=knownNumber(v);return n===null?"—":n.toLocaleString("ja-JP")+"円";};
   // OWNER 2026-10-27 「保有銘柄が現在含み損か含み益か一目で分かるようにして」: the live price the screen trusts
   // (window.cockpitLivePrices, fresh rows only, at most 30 s old) against the virtual entry / reference price.
+  // OWNER 2026-10-27: a short is 1 - now / entry, the same formula as the scoring (not entry / now - 1).
   // No live price -> 「現在値なし」, never an old number. Display only.
   function unrealized(code,entry,isShort){
     const lp=window.cockpitLivePrices,now=lp&&Date.now()-lp.at<=30000?Number(lp.rows?.[code]):NaN,e=knownNumber(entry);
     if(!Number.isFinite(now)||now<=0||e===null||e<=0)return {cls:"pl-none",text:"含み損益：現在値なし",now:null};
-    const pct=(isShort?e/now-1:now/e-1)*100,sign=pct>0?"+":"";
+    const pct=(isShort?1-now/e:now/e-1)*100,sign=pct>0?"+":"";
     return {cls:pct>0?"pl-plus":pct<0?"pl-minus":"pl-flat",text:(pct>0?"含み益 ":pct<0?"含み損 ":"±0 ")+sign+pct.toFixed(2)+"%",now};
   }
   function plLine(u){return '<div class="cc-pl '+u.cls+'"><b>'+esc(u.text)+'</b>'+(u.now!==null?'<small>現在値 '+esc(u.now.toLocaleString("ja-JP"))+'円</small>':"")+'</div>';}

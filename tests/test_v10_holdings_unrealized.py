@@ -16,7 +16,7 @@ def test_cards_show_unrealized_pl_from_entry_or_reference_price():
     js = (ROOT / "trade_control.js").read_text(encoding="utf-8")
     assert "function unrealized(code,entry,isShort)" in js
     assert "Date.now()-lp.at<=30000" in js                       # at most 30 s old
-    assert "(isShort?e/now-1:now/e-1)*100" in js
+    assert "(isShort?1-now/e:now/e-1)*100" in js   # OWNER 2026-10-27: short = 1 - now / entry, as the scoring
     assert '"含み損益：現在値なし"' in js and '"含み益 "' in js and '"含み損 "' in js
     assert "plLine(unrealized(String(p.ticker||\"\").replace(/\\.T$/,\"\"),p.fill_price," in js
     assert "plLine(unrealized(String(p.ticker||\"\").replace(/\\.T$/,\"\"),p.reference_price,p.side!==\"LONG\"))" in js
