@@ -53,7 +53,14 @@ def test_owner_follow_up_hit_rate_order_card_swap_one_line_method_and_freshness(
     assert "hitScore=t=>{const r=[...(sources[t]||[])].map(x=>hitOf[x]).filter(Boolean).sort((a,b)=>b.rate-a.rate);" in b
     assert 'if(h3+m3>0)hitOf["Grok3号"]={rate:h3/(h3+m3)*100,n:h3+m3};' in b
     assert "const i=selected?st.pinned.indexOf(selected):-1;if(i>=0){st.pinned[i]=t;selected=null;" in b
-    assert "今日の手法：<b>'+esc(lab(good[0][0]))+'</b>" in b
+    assert "今日の手法（検証中）：<b>'+esc(lab(good[0][0]))+'</b>" in b
     html = (ROOT / "index.html").read_text(encoding="utf-8")
     card = html.split("window.renderScalpCard=(x,sv,tf)=>{", 1)[1].split("metrics:[", 1)[0]
     assert "Date.parse(String(x.source_timestamp_at||\"\"))" in card and "staleThresholdSeconds:120" in card
+
+
+def test_list_shows_codes_and_rates_are_marked_under_verification():
+    """OWNER 2026-10-27 「一覧に銘柄コードを付ける、当たり率と期待値に検証中を付ける」"""
+    b = _block()
+    assert 'o.textContent=code+"　"+' in b
+    assert "当たり率（検証中）" in b and "期待値（検証中）" in b

@@ -2506,10 +2506,12 @@ document.addEventListener("DOMContentLoaded",()=>{
   const write=v=>{try{localStorage.setItem(KEY,JSON.stringify(v))}catch(_){}};
   async function check(){
     const now=jst();
-    if(now.wd===0||now.wd===6||now.min<480||now.min>930){box.hidden=true;return;}
+    if(now.wd===0||now.wd===6||now.min<420||now.min>930){box.hidden=true;return;}   // OWNER 2026-10-27: 9時前でも（7:00から）
     let bp=null,gb=null;
     try{bp=await (await fetch("/brain_pick.json?t="+Date.now(),{cache:"no-store"})).json();}catch(_){}
     try{gb=await (await fetch("grok_bots.json?t="+Date.now(),{cache:"no-store"})).json();}catch(_){}
+    // OWNER 2026-10-27 「読めない時は確認できませんと出す」: a failed read is not reported as missing
+    if(!bp||!gb){box.hidden=false;box.className="paste-reminder";box.innerHTML="貼り忘れの確認ができません（"+[!bp?"GPTの答えの記録":"",!gb?"Grokの答えの記録":""].filter(Boolean).join("・")+"を読めません）<small>コクピットが止まっている・起動途中の時に出ます。しばらくしても消えない時はPCのClaudeに知らせてください。</small>";return;}
     const arrived=(bp&&bp.manual_analysts&&bp.manual_analysts._arrived_today)||{};
     const missing=[];
     [["pre_next","GPT PRE-NEXT"],["supply_sq","GPT 需給"]].forEach(([k,label])=>{if(dayOf(arrived[k])!==now.day)missing.push(label);});
@@ -2521,7 +2523,9 @@ document.addEventListener("DOMContentLoaded",()=>{
     box.hidden=false;box.className="paste-reminder";
     box.innerHTML="【貼り忘れ】まだ今日の答えが届いていません："+missing.join("・")+"<small>ChatGPT・Grokの答えをコピーして、プロジェクトのチャット（PCのClaude）に貼ってください。PCのClaudeがコクピットに入れます。</small>";
     if(st.count<6&&Date.now()-(st.last||0)>=30*60000&&typeof window.cockpitSpeak==="function"){
-      window.cockpitSpeak("アナリストの答えがまだです。"+missing.join("、").replace(/GPT /g,"ジーピーティー ").replace(/Grok /g,"グロック ")+"。チャットのクロードに貼ってください。","CALM");
+      // before the open the live-speech gate is off; this one reminder passes it (signals stay silent)
+      const prevLive=window.cockpitLiveSpeechEnabled;if(prevLive===false)window.cockpitLiveSpeechEnabled=true;
+      try{window.cockpitSpeak("アナリストの答えがまだです。"+missing.join("、").replace(/GPT /g,"ジーピーティー ").replace(/Grok /g,"グロック ")+"。チャットのクロードに貼ってください。","CALM");}finally{if(prevLive===false)window.cockpitLiveSpeechEnabled=false;}
       st.count+=1;st.last=Date.now();
     }
     write(st);
@@ -2585,7 +2589,7 @@ document.addEventListener("DOMContentLoaded",()=>{
       const good=Object.entries(f).filter(([k,v])=>Number(v.n)>=20&&Number(v.ev_pct)>0&&Number(v.pf)>=1).sort((a,b)=>Number(b[1].ev_pct)-Number(a[1].ev_pct));
       // OWNER 2026-10-27 「一番上に今日の手法を1行出して」: the best one only, on one line (the rule behind it in the tooltip)
       m.title='ブレインの仮想売買の記録（'+(rs&&rs.forward_from||'')+'〜、費用込み）で20回以上・期待値プラス・PF1以上の手法のうち、期待値が一番高いもの。売買の判断はOWNER。';
-      m.innerHTML=rs?(good.length?'今日の手法：<b>'+esc(lab(good[0][0]))+'</b>　1回 +'+esc(Number(good[0][1].ev_pct).toFixed(2))+'%・PF'+esc(good[0][1].pf)+'（'+esc(good[0][1].n)+'回）':'今日の手法：期待値プラスの手法なし（見送り寄り）'):'今日の手法：記録を読めません（0件とは扱いません）';}
+      m.innerHTML=rs?(good.length?'今日の手法（検証中）：<b>'+esc(lab(good[0][0]))+'</b>　1回 +'+esc(Number(good[0][1].ev_pct).toFixed(2))+'%・PF'+esc(good[0][1].pf)+'（'+esc(good[0][1].n)+'回）':'今日の手法：期待値プラスの手法なし（見送り寄り）'):'今日の手法：記録を読めません（0件とは扱いません）';}
     paint();
   }
   function paint(){
@@ -2599,10 +2603,10 @@ document.addEventListener("DOMContentLoaded",()=>{
       const card=ok&&typeof window.renderScalpCard==="function"?window.renderScalpCard({...row,_stale:false,foot:"AIアナリスト注目｜実注文禁止"},{label:"監視",cls:"wait"},"1m"):
         window.renderCockpitCard({symbol:t.replace(/\.T$/,""),company:(row&&row.name)||t,direction:"block",failClosed:"MS2の値が新しくない・未取得",freshness:"stale",price:null,foot:"実注文禁止"});
       const h=hitScore(t);
-      return '<div class="ai5-pin'+(t===selected?' selected':'')+'" data-pick="'+t+'">'+card+'<span class="ai5-src">'+esc([...(sources[t]||[])].join("・")||"OWNERが入れた銘柄")+'・当たり率 '+(h?Math.round(h.rate)+'%（'+h.n+'件）':'まだ無し')+'・期待値 '+(e===null?"記録不足":(e>0?"+":"")+e.toFixed(3)+"%")+'</span><button type="button" class="ai5-out" data-out="'+t+'">この銘柄を外す</button></div>';}).join("");
+      return '<div class="ai5-pin'+(t===selected?' selected':'')+'" data-pick="'+t+'">'+card+'<span class="ai5-src">'+esc([...(sources[t]||[])].join("・")||"OWNERが入れた銘柄")+'・当たり率（検証中） '+(h?Math.round(h.rate)+'%（'+h.n+'件）':'まだ無し')+'・期待値（検証中） '+(e===null?"記録不足":(e>0?"+":"")+e.toFixed(3)+"%")+'</span><button type="button" class="ai5-out" data-out="'+t+'">この銘柄を外す</button></div>';}).join("");
   }
   document.addEventListener("ms2RssUpdate",e=>{const d=e.detail||{};live=Array.isArray(d.all_targets)?d.all_targets.filter(x=>valid(x&&x.ticker)):[];liveOk=window.cockpitMs2ScreenReady?.(d)===true;
-    const sel=document.getElementById("ai5-select");if(sel&&sel.options.length<=1&&live.length){live.forEach(x=>{const o=document.createElement("option");o.value=x.ticker;o.textContent=(x.name||x.ticker);sel.append(o);});}
+    const sel=document.getElementById("ai5-select");if(sel&&sel.options.length<=1&&live.length){live.forEach(x=>{const o=document.createElement("option"),code=x.ticker.replace(/\.T$/,""),nm=String(x.name||x.ticker);o.value=x.ticker;o.textContent=code+"　"+(nm.includes(code)?nm.replace("（"+code+"）",""):nm);sel.append(o);});}
     if(!auto.length)refreshAuto();else paint();});
   const toManual=()=>{if(st.mode!=="manual"){st={day:today(),mode:"manual",pinned:auto.slice()};}};
   // OWNER 2026-10-27 「カード選択で入れ替えできるようにして」: a selected card (click) is replaced in place by the chosen stock;
