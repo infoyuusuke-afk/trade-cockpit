@@ -476,11 +476,15 @@
   // (window.cockpitLivePrices, fresh rows only, at most 30 s old) against the virtual entry / reference price.
   // OWNER 2026-10-27: a short is 1 - now / entry, the same formula as the scoring (not entry / now - 1).
   // No live price -> 「現在値なし」, never an old number. Display only.
-  function unrealized(code,entry,isShort){
-    const lp=window.cockpitLivePrices,now=lp&&Date.now()-lp.at<=30000?Number(lp.rows?.[code]):NaN,e=knownNumber(entry);
+  // OWNER 2026-10-27 「持ち越し銘柄も含み益・損いれるように」: with lastOk (carried positions), no fresh price -> the last price of
+  // the data (window.cockpitLastPrices, e.g. the close after 15:30), labelled 「最後の値・HH:MM」.
+  function unrealized(code,entry,isShort,lastOk){
+    const lp=window.cockpitLivePrices,e=knownNumber(entry);
+    let now=lp&&Date.now()-lp.at<=30000?Number(lp.rows?.[code]):NaN,tag="";
+    if((!Number.isFinite(now)||now<=0)&&lastOk){const lq=window.cockpitLastPrices;now=Number(lq?.rows?.[code]);if(Number.isFinite(now)&&now>0)tag="（最後の値・"+(lq.asof||"時刻不明")+"）";}
     if(!Number.isFinite(now)||now<=0||e===null||e<=0)return {cls:"pl-none",text:"含み損益：現在値なし",now:null};
     const pct=(isShort?1-now/e:now/e-1)*100,sign=pct>0?"+":"";
-    return {cls:pct>0?"pl-plus":pct<0?"pl-minus":"pl-flat",text:(pct>0?"含み益 ":pct<0?"含み損 ":"±0 ")+sign+pct.toFixed(2)+"%",now};
+    return {cls:pct>0?"pl-plus":pct<0?"pl-minus":"pl-flat",text:(pct>0?"含み益 ":pct<0?"含み損 ":"±0 ")+sign+pct.toFixed(2)+"%"+tag,now};
   }
   function plLine(u){return '<div class="cc-pl '+u.cls+'"><b>'+esc(u.text)+'</b>'+(u.now!==null?'<small>現在値 '+esc(u.now.toLocaleString("ja-JP"))+'円</small>':"")+'</div>';}
   const shares=v=>{const n=knownNumber(v);return n===null?"—":n.toLocaleString("ja-JP")+"株";};
@@ -544,7 +548,7 @@
           ["売買",p.side==="LONG"?"買い":"空売り"],["基準",yen(p.reference_price)],["決定",String(p.decided_at||"").slice(5,16)],
           ["採点",String(p.valid_until||"").replace("next trading day","翌営業日")]
         ],"オーバーナイトの仮想売買（検証中・注文なし）",p.side==="LONG"?"long":"short",
-          plLine(unrealized(String(p.ticker||"").replace(/\.T$/,""),p.reference_price,p.side!=="LONG"))));
+          plLine(unrealized(String(p.ticker||"").replace(/\.T$/,""),p.reference_price,p.side!=="LONG",true))));
         virtRoot.innerHTML=(rules.join("")+overnight.join(""))||'<div class="focus-empty">仮想の保有はありません</div>';
         const vDone=document.getElementById("owner-virtual-closed");
         if(vDone){
@@ -574,8 +578,8 @@
   const gBar=(v,max)=>{if(v===null||!Number.isFinite(v)||!max)return '<i class="g-bar"></i>';const w=Math.max(2,Math.min(100,Math.abs(v)/max*100));return '<i class="g-bar"><b class="'+(v>=0?"g-up":"g-dn")+'" style="width:'+w.toFixed(0)+'%"></b></i>';};
   const gTile=(title,value,cls,sub)=>'<div class="g-tile '+cls+'"><span>'+esc(title)+'</span><b>'+esc(value)+'</b><small>'+esc(sub)+'</small></div>';
   async function gJson(url){try{const r=await fetch(url+(url.includes("?")?"&":"?")+"t="+Date.now(),{cache:"no-store"});return r.ok?await r.json():null;}catch(_e){return null;}}
-  function gHeld(kind,p,entry,short){
-    const u=unrealized(String(p.ticker||"").replace(/\.T$/,""),entry,short);
+  function gHeld(kind,p,entry,short,lastOk){
+    const u=unrealized(String(p.ticker||"").replace(/\.T$/,""),entry,short,lastOk);
     const e=knownNumber(entry),val=u.now===null||e===null||e<=0?null:(short?1-u.now/e:u.now/e-1)*100;
     return {kind,name:p.name,code:String(p.ticker||"").replace(/\.T$/,""),side:short?"空売り":"買い",val,text:u.text.replace("含み損益：","")};
   }
@@ -655,7 +659,7 @@
     // OWNER 2026-10-27 「金額もいれる」: the same closed trades in yen at 100 shares each (return after cost x fill price x 100)
     const vYenRows=closed.filter(p=>gNum(p.fill_price)>0),vYen=vYenRows.reduce((a,p)=>a+Number(p.return_pct)/100*Number(p.fill_price)*100,0);
     const vHeld=rp.filter(p=>p&&p.status==="OPEN").map(p=>gHeld("仮想",p,p.fill_price,String(p.signal||"").includes("空売り")))
-      .concat(on.map(p=>gHeld("仮想・持越",p,p.reference_price,p.side!=="LONG")));
+      .concat(on.map(p=>gHeld("仮想・持越",p,p.reference_price,p.side!=="LONG",true)));
     const vVals=vHeld.map(x=>x.val).filter(v=>v!==null),vAvg=vVals.length?vVals.reduce((a,b)=>a+b,0)/vVals.length:null;
     let html='<div class="g-tiles">'+
       gTile("実口座 今日の確定損益（概算）",acct?gYen(realDone):"読めません",acct?gCls(realDone):"g-none",acct?"買い→売埋 "+gYen(realSide.long.yen)+"（"+realSide.long.n+"件）／空売り→買埋 "+gYen(realSide.short.yen)+"（"+realSide.short.n+"件）・勝ち"+realWin+"／負け"+realLose+(realUncalc?"・未計算"+realUncalc+"件（前日以前の建玉の決済）":"")+"（手数料なしの概算）":"V10停止中・MS2未接続・設定OFF")+

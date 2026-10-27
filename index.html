@@ -2250,6 +2250,9 @@ document.addEventListener("DOMContentLoaded",()=>{
    // OWNER 2026-10-27 「保有銘柄が現在含み損か含み益か一目で分かるように」: the same fresh rows the screen trusts
    // (row gate, not stale) are shared with the holdings cards; nothing is shared while the data is stopped.
    window.cockpitLivePrices=stale?null:{at:Date.now(),rows:Object.fromEntries((Array.isArray(d.all_targets)?d.all_targets:[]).filter(x=>rowReady(x)).map(x=>[String(x.ticker||"").replace(/\.T$/,""),Number(x.price)]))};
+   // OWNER 2026-10-27 「持ち越し銘柄も含み益・損いれるように」: after the close (no fresh rows) the last price of each row is kept apart,
+   // with the time of the data, so a carried position can be valued at its last price, labelled as such.
+   window.cockpitLastPrices={asof:String(d.updated_at||"").slice(11,16),rows:Object.fromEntries((Array.isArray(d.all_targets)?d.all_targets:[]).filter(x=>Number(x.price)>0).map(x=>[String(x.ticker||"").replace(/\.T$/,""),Number(x.price)]))};
    health.className="ms2-health "+(stale?"stale":"live"); health.textContent=stale?"データ停止・売買禁止":"LIVE 接続中";
    const common=document.getElementById("ms2-common-status"),caps=d.capabilities||{},gate=d.account_gate||{};
    if(common){const coverage=caps.market?.status||"未確認",depth=caps.orderflow?.depth10||"未確認",blocks=(gate.blocks||[]).join("／")||"なし";common.querySelector(".score").textContent=coverage;common.querySelector(".ms2-metrics").innerHTML=`<span>対象<b>${esc(d.valid||0)}/${esc(d.universe||0)}銘柄</b></span><span>共通判定<b>5分類・取得確認値のみ</b></span><span>自動発注<b>${caps.auto_order?.enabled?"ON":"OFF（既定）"}</b></span><span>10本板<b>${esc(depth)}</b></span><span>口座ゲート<b>${esc(gate.status||"未確認")}</b></span><span>停止理由<b>${esc(blocks)}</b></span>`;}

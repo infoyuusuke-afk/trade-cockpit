@@ -14,12 +14,12 @@ def test_screen_shares_only_fresh_rows_and_nothing_when_stale():
 
 def test_cards_show_unrealized_pl_from_entry_or_reference_price():
     js = (ROOT / "trade_control.js").read_text(encoding="utf-8")
-    assert "function unrealized(code,entry,isShort)" in js
+    assert "function unrealized(code,entry,isShort,lastOk)" in js   # lastOk: carried positions (OWNER 2026-10-27)
     assert "Date.now()-lp.at<=30000" in js                       # at most 30 s old
     assert "(isShort?1-now/e:now/e-1)*100" in js   # OWNER 2026-10-27: short = 1 - now / entry, as the scoring
     assert '"含み損益：現在値なし"' in js and '"含み益 "' in js and '"含み損 "' in js
     assert "plLine(unrealized(String(p.ticker||\"\").replace(/\\.T$/,\"\"),p.fill_price," in js
-    assert "plLine(unrealized(String(p.ticker||\"\").replace(/\\.T$/,\"\"),p.reference_price,p.side!==\"LONG\"))" in js
+    assert "plLine(unrealized(String(p.ticker||\"\").replace(/\\.T$/,\"\"),p.reference_price,p.side!==\"LONG\",true))" in js
 
 
 def test_pl_colours():
@@ -37,3 +37,15 @@ class FunctionTests(_unittest.TestCase):
 for _name, _fn in list(globals().items()):
     if _name.startswith("test_") and callable(_fn):
         setattr(FunctionTests, _name, (lambda f: lambda self: f())(_fn))
+
+
+class CarriedUnrealized(_unittest.TestCase):
+    def test_carried_positions_use_the_last_price_after_the_close(self):
+        # OWNER 2026-10-27 「持ち越し銘柄も含み益・損いれるように」
+        html = (ROOT / "index.html").read_text(encoding="utf-8")
+        js = (ROOT / "trade_control.js").read_text(encoding="utf-8")
+        self.assertIn("window.cockpitLastPrices={asof:String(d.updated_at||\"\").slice(11,16),rows:", html)
+        self.assertIn('tag="（最後の値・"+(lq.asof||"時刻不明")+"）"', js)
+        self.assertIn('.concat(on.map(p=>gHeld("仮想・持越",p,p.reference_price,p.side!=="LONG",true)));', js)
+        self.assertIn('p.reference_price,p.side!=="LONG",true))));', js)
+
