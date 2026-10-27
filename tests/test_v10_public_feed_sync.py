@@ -188,7 +188,7 @@ class Wiring(unittest.TestCase):
     def test_gateway_serves_only_the_listed_files_from_the_feed(self):
         text = GATEWAY.read_text(encoding="utf-8-sig")
         listed = re.findall(r"'([a-z0-9_]+\.json)'", text[text.index("$publicFeedFiles = @("):text.index("if ($RuntimeDir -and $publicFeedFiles")])
-        self.assertEqual(sorted(listed), sorted(feed.FEED_FILES + (feed.SUMMARY_FILE, feed.META_FILE, feed.EVENT5_FILE, feed.WICK_FILE, feed.ACCUMULATION_FILE, feed.GROK_FILE)))
+        self.assertEqual(sorted(listed), sorted(feed.FEED_FILES + (feed.SUMMARY_FILE, feed.META_FILE, feed.EVENT5_FILE, feed.WICK_FILE, feed.ACCUMULATION_FILE, feed.GROK_FILE, feed.ANALYST_FILE)))   # + OWNER 2026-10-27 analyst_scores.json
         self.assertIn("($feedItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -eq 0", text)
         allowed = text[text.index("$allowedUiFiles = @("):text.index("if ($allowedUiFiles -cnotcontains $relative)")]
         for name in feed.FEED_FILES + (feed.SUMMARY_FILE, feed.META_FILE, feed.EVENT5_FILE, feed.WICK_FILE, feed.ACCUMULATION_FILE):   # each served name is on the allow-list
