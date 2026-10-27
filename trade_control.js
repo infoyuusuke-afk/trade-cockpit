@@ -581,7 +581,10 @@
   function gHeld(kind,p,entry,short,lastOk){
     const u=unrealized(String(p.ticker||"").replace(/\.T$/,""),entry,short,lastOk);
     const e=knownNumber(entry),val=u.now===null||e===null||e<=0?null:(short?1-u.now/e:u.now/e-1)*100;
-    return {kind,name:p.name,code:String(p.ticker||"").replace(/\.T$/,""),side:short?"空売り":"買い",val,text:u.text.replace("含み損益：","")};
+    // OWNER 2026-10-27 「仮想の含み損益（持ち越し含む）にも1回100株で計算した円を出して」
+    const yen100=val===null?null:val/100*e*100;
+    return {kind,name:p.name,code:String(p.ticker||"").replace(/\.T$/,""),side:short?"空売り":"買い",val,yen100,
+      text:u.text.replace("含み損益：","")+(yen100===null?"":"・100株 "+gYen(yen100))};
   }
   // OWNER 2026-10-27 過去実績（たたき直し）: /owner_review.json is built on this PC from the OWNER's own CSV exports
   // (Claudeブレイン\研究スクリプト\owner_review_build.py). Display only; unreadable -> says so, never zero.
@@ -665,7 +668,7 @@
       gTile("実口座 今日の確定損益（概算）",acct?gYen(realDone):"読めません",acct?gCls(realDone):"g-none",acct?"買い→売埋 "+gYen(realSide.long.yen)+"（"+realSide.long.n+"件）／空売り→買埋 "+gYen(realSide.short.yen)+"（"+realSide.short.n+"件）・勝ち"+realWin+"／負け"+realLose+(realUncalc?"・未計算"+realUncalc+"件（前日以前の建玉の決済）":"")+"（手数料なしの概算）":"V10停止中・MS2未接続・設定OFF")+
       gTile("実口座 含み損益",acct?gYen(realOpen):"読めません",acct?gCls(realOpen):"g-none",acct?"保有"+realHeld.length+"銘柄":"—")+
       gTile("コクピット仮想 今日の決済",closed.length?gPct(vSum)+"／"+gYen(vYen):"まだなし",closed.length?gCls(vSum):"g-none",closed.length?closed.length+"回・勝率"+Math.round(vWin/closed.length*100)+"%（％は1回ごとの合計・金額は100株ずつの換算、費用込み"+(vYenRows.length<closed.length?"・約定値の無い"+(closed.length-vYenRows.length)+"回は金額に入れず":"")+"）":"今日の仮想決済はまだありません")+
-      gTile("コクピット仮想 含み損益（平均）",vAvg===null?"—":gPct(vAvg),gCls(vAvg),"保有"+vHeld.length+"件"+(vHeld.length&&vAvg===null?"・現在値なし":""))+
+      gTile("コクピット仮想 含み損益（平均）",vAvg===null?"—":gPct(vAvg)+"／"+gYen(vHeld.reduce((a,x)=>a+(x.yen100||0),0)),gCls(vAvg),"保有"+vHeld.length+"件"+(vHeld.length&&vAvg===null?"・現在値なし":"・金額は1回100株ずつの合計（持ち越し含む）"))+
       '</div>';
     // OWNER 2026-10-27 「1回の損切り、1日の負けの上限3万円、6146・6920・285Aは仮想だけ、の決まりをブレインの仮想売買に入れて、
     // おれの実際の成績と毎日並べて」: AI side = brain_pick positions.owner_rules (virtual, 100 shares, cost included);

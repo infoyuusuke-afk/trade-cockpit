@@ -81,7 +81,7 @@ if __name__ == "__main__":
 def test_bars_line_up_with_fixed_value_columns():
     # OWNER 2026-10-27 「横グラフの位置を統一」: the value column has a fixed width, so every bar starts at the same place.
     html = (ROOT / "index.html").read_text(encoding="utf-8")
-    assert ".g-row.g-row5{grid-template-columns:70px minmax(160px,1fr) 120px 190px}.g-row.g-row5>b{text-align:right}" in html
+    assert ".g-row.g-row5{grid-template-columns:70px minmax(160px,1fr) 120px 320px}.g-row.g-row5>b{text-align:right}" in html
     assert "minmax(150px,1.6fr) minmax(120px,1.4fr) 120px 190px 90px;" in html
     assert "minmax(110px,auto)" not in html and "minmax(120px,auto)}" not in html
 
@@ -104,4 +104,11 @@ class VirtualTodayYen(unittest.TestCase):
         js = (ROOT / "trade_control.js").read_text(encoding="utf-8")
         self.assertIn("vYen=vYenRows.reduce((a,p)=>a+Number(p.return_pct)/100*Number(p.fill_price)*100,0);", js)
         self.assertIn('closed.length?gPct(vSum)+"／"+gYen(vYen):"まだなし"', js)
+
+    def test_virtual_unrealized_also_in_yen_at_100_shares(self):
+        # OWNER 2026-10-27 「仮想の含み損益（持ち越し含む）にも1回100株で計算した円を出して」
+        js = (ROOT / "trade_control.js").read_text(encoding="utf-8")
+        self.assertIn("const yen100=val===null?null:val/100*e*100;", js)
+        self.assertIn('"・100株 "+gYen(yen100)', js)
+        self.assertIn('gPct(vAvg)+"／"+gYen(vHeld.reduce((a,x)=>a+(x.yen100||0),0))', js)
 
