@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-10-27 17:23:08 JST",
+  "updated_at": "2026-10-27 20:02:20 JST",
   "source": "固定監視リスト（JPX取得失敗）",
   "universe_count": 100,
   "scanned_count": 100,
@@ -2003,14 +2003,14 @@
       "setup": "5日線反発",
       "score": 80,
       "close": 2173.0,
-      "trigger": 2167,
-      "stop": 2088,
-      "target1": 2286,
-      "target2": 2364,
+      "trigger": 2193,
+      "stop": 2087,
+      "target1": 2352,
+      "target2": 2458,
       "ma5": 2122.2,
       "rvol": 0.5,
       "ret20": 5.85,
-      "atr_pct": 5.16,
+      "atr_pct": 5.25,
       "signal_date": "2026-10-27",
       "reason": "5日線反発／終値が主要移動平均線上／出来高比0.50倍",
       "event_risk": "決算・重要IR・海外指数急変を確認。決算7日以内は原則見送り。",
@@ -2372,8 +2372,8 @@
         },
         {
           "o": 2103.0,
-          "h": 2166.0,
-          "l": 2086.0,
+          "h": 2192.0,
+          "l": 2085.0,
           "c": 2173.0
         }
       ],
@@ -5984,8 +5984,8 @@
   ],
   "investor_regime": {
     "model_version": "investor-regime-1.2.0",
-    "generated_at": "2026-10-27T17:23:05+09:00",
-    "decision_at": "2026-10-27T17:23:05+09:00",
+    "generated_at": "2026-10-27T20:02:15+09:00",
+    "decision_at": "2026-10-27T20:02:15+09:00",
     "source": {
       "equity_page": "https://www.jpx.co.jp/markets/statistics-equities/investor-type/index.html",
       "derivative_page": "https://www.jpx.co.jp/markets/statistics-derivatives/sector/index.html",
@@ -14555,7 +14555,7 @@
   "large_lot_accumulation_note": "価格・出来高・OBV・終値位置・安値切り上げから買い集めの痕跡を推定。大口の実在を断定せず、大量保有報告・信用需給・会社IRで確認する。",
   "speculative_theme_note": "監視専用。出来高・騰落・値幅の異常度を検出した銘柄を通常LONG/SHORT候補から隔離。仕手株との断定ではなく、会社IR・適時開示・信用需給を確認するための警戒リスト。",
   "monthly_weekly_hammers": [],
-  "credit_supply_updated_at": "2026-10-27 15:35:55 JST",
+  "credit_supply_updated_at": "2026-10-27 17:23:22 JST",
   "long_term_ma_rebounds": [],
   "long_term_ma_rebounds_unverified": [],
   "daily_capitulation_reversals": [
